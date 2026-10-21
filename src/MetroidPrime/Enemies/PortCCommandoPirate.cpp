@@ -37,6 +37,7 @@
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
@@ -93,6 +94,8 @@ static const CCommandoPirateWaypointPredicate skWaypointPredicate;
 // no object id (0x0000C060..0x0000C0E8) and only then sets the flag.
 static u64 sShieldFilter = 0;
 static bool sShieldFilterBuilt = false;
+
+// TEMPORARY INSTRUMENTATION (reverted before the commit).
 
 // TEMPORARY INSTRUMENTATION (reverted before the commit).
 
@@ -225,10 +228,13 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb74_(0.f)                                      // 0xb74, a timer; fn_9_662C advances it
 , xb78_(0.f)                                      // 0xb78, a timer; fn_9_662C advances it
 , xb84_(0.f)                                      // 0xb84, a timer; fn_9_662C advances it
+, xb88_(0.f)                                      // 0xb88, the time to the waypoint
 , xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xbb8_(CVector3f::Zero())                         // 0xbb8, the fourth vector; fn_9_D904 @0x0000DB5C
+, xba0_(CVector3f::Zero())                         // 0xba0, the charge direction
+, xbac_(CVector3f::Zero())                         // 0xbac, the waypoint's forward
 , xc4c_(-1)                                       // 0xc4c, the module's own state word; -1 = unset
 , xc44_(0.f)                                      // 0xc44, the module's own scale
 , xc48_(0.f)                                      // 0xc48, the scale's target
@@ -247,6 +253,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
 , xbd8_(kInvalidUniqueId)                          // 0xbd8, the id the delete case deletes
+, x6c0_(kInvalidUniqueId)                          // 0x6c0, the AI waypoint the module follows
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
 , mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
 , mLocatorGun(CSegId::Invalid())                  // 0xc5e, fn_9_D904 @0x0000E304
@@ -1311,6 +1318,56 @@ void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
   xc44_ = 0.f;  // 0x00002360
 }
 
+// fn_9_2A98 (0x214 bytes): the module's waypoint picker - it takes the AI waypoint the module
+// follows (the id at guest this+0x6C0) and, when the third argument is set, walks to the
+// waypoint's own "arrived" connection.
+//
+// The charge speed (the block's +0x12C = guest this+0x8EC) has to be above zero
+// (0x00002AD0..0x00002AD4), the AI waypoint has to be there (0x00002AD8..0x00002AF8) and it has
+// to allow the boost (its flags, the word at its +0x164, have to have their 0x20 bit - the
+// rlwinm at 0x00002B00). Then the module's own connection search finds the waypoint's "arrived"
+// connection (0x00002B44: the state kSS_Arrived and the message kSM_Next, with the module's own
+// waypoint predicate), the found waypoint becomes the module's waypoint (the store at
+// 0x00002B8C) and its position (the loads at 0x00002B90..0x00002BA8) and its forward column
+// (0x00002BAC..0x00002BC4) become the module's own vectors. Without the third argument the
+// module keeps the waypoint it has (0x00002C0C..0x00002C3C). The module's time to the waypoint
+// (the float at guest this+0xB88) is the distance to it over the charge speed
+// (0x00002BF8..0x00002C04).
+bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
+  const float speed = mData.mShield.mChargeSpeed;  // guest this+0x8EC
+  if (speed <= 0.f) {  // 0x00002AD0..0x00002AD4
+    return false;
+  }
+  const CScriptAIWaypoint* waypoint =
+      TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(x6c0_));  // 0x00002AD8..0x00002AF8
+  if (waypoint == nullptr) {
+    return false;
+  }
+  if ((waypoint->GetFlags() & 0x20) == 0) {  // 0x00002B00..0x00002B04
+    return false;
+  }
+  CVector3f position;
+  CVector3f forward;
+  if (useNext) {  // 0x00002B08
+    const TUniqueId id = FindConnectedObject_if(mgr, kSS_Arrived, kSM_Next, skWaypointPredicate);
+    const CScriptWaypoint* next = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id));
+    if (next == nullptr) {  // 0x00002B80..0x00002B84
+      return false;
+    }
+    x6c0_ = id;                                       // 0x00002B8C
+    position = next->GetTranslation();                // 0x00002B90..0x00002BA8
+    forward = next->GetTransform().GetForward();      // 0x00002BAC..0x00002BC4
+  } else {
+    position = waypoint->GetTranslation();             // 0x00002C0C..0x00002C24
+    forward = waypoint->GetTransform().GetForward();   // 0x00002C28..0x00002C3C
+  }
+  xb94_ = position;  // guest this+0xB94
+  xbac_ = forward;   // guest this+0xBAC
+  const CVector3f delta = xb94_ - GetTranslation();  // 0x00002C40..0x00002C6C
+  xb88_ = delta.Magnitude() / speed;                // 0x00002BF8..0x00002C04
+  return true;
+}
+
 // fn_9_2D0C (0x384 bytes): the module's knock-back helper - the shield's and the blade's damage
 // and the knock-back they cause.
 //
@@ -2221,9 +2278,28 @@ bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData&
   return true;                                                     // 0x0000B5F4
 }
 
+// fn_9_B1E0 (0x70 bytes): the trigger that enters the module's scripted shield charge.
+//
+// The byte at guest this+0xC66's 0x80 bit (the extrwi at 0x0000B1F0) and the byte at guest
+// this+0xC64's 0x01 bit (the clrlwi at 0x0000B1FC) both have to be right, and the AI waypoint the
+// module follows (the id at guest this+0x6C0) has to allow the boost: the waypoint's flags (the
+// word at the waypoint's +0x164) have to have their 0x20 bit (the rlwinm at 0x0000B22C).
 bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B1E0");
-  return false;
+  if ((xc66_ & 0x80) == 0) {  // 0x0000B1F0
+    return false;
+  }
+  if ((xc64_ & 0x01) != 0) {  // 0x0000B1FC
+    return false;
+  }
+  const CScriptAIWaypoint* waypoint =
+      TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(x6c0_));  // 0x0000B218..0x0000B224
+  if (waypoint == nullptr) {
+    return false;
+  }
+  if ((waypoint->GetFlags() & 0x20) == 0) {  // 0x0000B22C
+    return false;
+  }
+  return true;
 }
 
 // fn_9_B1D4: the module's flag byte at guest this+0xC64 has its 0x04 bit set (extrwi r3, r0,
@@ -2901,6 +2977,7 @@ void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_9_86B4
 // fn_9_86B4 (0x280 bytes): the shield's arming state.
 //
 // On activate (the guest's message 0, 0x00008704) the module's flag byte at guest this+0xC65 gets
@@ -2988,6 +3065,7 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_9_8028
 // fn_9_8028 (0x68c bytes): the shield-charge state - the commando charges at its target with
 // the shield up.
 //

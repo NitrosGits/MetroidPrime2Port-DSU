@@ -391,6 +391,10 @@ private:
   // damage and knock-back.
   void x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg);
 
+  // fn_9_2A98: the module's waypoint picker - the AI waypoint it follows and the waypoint it
+  // walks to.
+  bool x2A98_PickWaypoint(CStateManager& mgr, bool useNext);
+
   // fn_9_2048: the module's shield effect - the explosion and the sound the shield makes when
   // it takes a hit.
   void x2048_ShieldEffect(CStateManager& mgr);
@@ -442,10 +446,12 @@ private:
   float xb74_;                            // 0xb74, a timer; fn_9_662C advances it
   float xb78_;                            // 0xb78, a timer; fn_9_662C advances it
   float xb84_;                            // 0xb84, a timer; fn_9_662C advances it
+  float xb88_;                            // 0xb88, the time to the waypoint; fn_9_2A98 sets it
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   CVector3f xba0_;                         // 0xba0, the charge direction; fn_9_8028 sets it
+  CVector3f xbac_;                         // 0xbac, the waypoint's forward; fn_9_2A98 sets it
   CVector3f xbb8_;                         // 0xbb8, the fourth vector; fn_9_BF44 stores a normal
   float xbec_;                            // 0xbec, a float of the jump-back helper fn_9_3900
   CVector3f xbf0_;                         // 0xbf0, the jump-back target; fn_9_3900 reads it
@@ -467,6 +473,7 @@ private:
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
   TUniqueId xbd8_;                       // 0xbd8, the id the delete case asks to delete
+  TUniqueId x6c0_;                       // 0x6c0, the AI waypoint the module follows
   CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
   CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
