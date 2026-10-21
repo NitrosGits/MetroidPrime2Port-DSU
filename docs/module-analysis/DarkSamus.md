@@ -1745,3 +1745,17 @@ trigger's entry, one per hit, from gdb convenience variables).
   Retail pushes unconditionally too, so the port is unchanged.
 - Open: Think 313 (dead at the alive check) not forced; Think stays a stand-in (fn_10_1ACA0 ..
   fn_10_1B154 unported).
+
+## Slice 34 (2026-10-22): DS2-FOLLOWUP - the three review fixes
+
+- The merge of `port` (e85ad6ac1, batch 14) was a fast-forward; no conflict.
+- **fn_10_16600 is IsRingPathClear**: the function loops over the ring's rays (the counter at
+  0x0001663C) and calls fn_10_166AC (the ray check) at 0x00016658 - so the `// @ fn_10_16600` on
+  IsRingRayClear (which is fn_10_166AC) was a slip and is removed; IsRingPathClear keeps the
+  marker.
+- **fn_10_9E00 (SpawnBoostBall)** calls fn_10_99B8 at 0x00009E30 - the port's
+  StopBoostBallParticles - and no longer the stand-in (the helpers lane's comment said the merge
+  would swap the call in; fn_10_9B24, the swooshes, is still a stand-in because it is not in the
+  port).
+- The DigitalGuardianHead's damage colour is stored at 0x18E64..0x18E6C (the store follows the
+  armour model's constructor call at 0x18E60), not at 0x18F28.
