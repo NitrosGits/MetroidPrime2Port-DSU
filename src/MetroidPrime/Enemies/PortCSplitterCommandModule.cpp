@@ -352,7 +352,6 @@ SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
-SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
 SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
 SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
 SPLITTER_CODE_STANDIN(SetDockingDest, fn_75_3BEC)
@@ -1521,6 +1520,35 @@ void CSplitterCommandModule::Dead(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     PortDespawnProjectile(mgr);
     DeathDelete(mgr);
+  }
+}
+
+// fn_75_4AC0 (the head's Dodge state, 0x4AC0-0x4CA8). Activate (0x4B0C): the animation state is
+// kAS_Ready (0x4B10) and the flag byte 0xF6A gets its 0x10 bit (0x4B14-0x4B1C rlwimi). Update
+// (0x4B24): when CTryCommand::ShouldRetry (CAnimationState::CanIssueCommand) allows body state 3
+// (kAS_Step, 0x4B2C-0x4B38) a step command (lbl_75_data_5A0, kind 1) in the dodge direction at
+// 0xF30 (0x4B4C) of type 1 (kStep_Dodge, 0x4B54) goes out (0x4B9C). Otherwise, with a positive
+// frame time (0x4BFC fcmpo against 0.0f) and the target at 0xEFE (0x4C14 GetObjectById, 0x4C18),
+// the head faces the flat offset (z 0.0f, 0x4C64) to the target's position (0x4C20-0x4C54;
+// 0x4C6C FaceDirection). Deactivate (0x4C74): kAS_NotReady and the 0x10 bit cleared.
+void CSplitterCommandModule::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mAutoDestructFlags |= 0x10;
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(
+          static_cast< pas::EStepDirection >(mDodgeDirection), pas::kStep_Dodge));
+    } else if (dt > 0.f) {
+      if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId))) {
+        // The id is the chassis's target (0xCC0), always an actor; retail does no cast.
+        const CVector3f delta = target->GetTranslation() - GetTranslation();
+        BodyController()->FaceDirection(CVector3f(delta.GetX(), delta.GetY(), 0.f), dt);
+      }
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mAutoDestructFlags &= ~0x10;
   }
 }
 
