@@ -4044,11 +4044,8 @@ void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
         if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_WallHang)) {  // 0x0000753C
           // 0x0000754C..0x000075AC: the guest's inlined DeliverCmd(CBCWallHangCmd(xbd6_)) - the
           // command id, then the waypoint id into the command manager's wall-hang command
-          // (cmd mgr +0x2F4/+0x2F8), which CBSWallHang reads. The host's DeliverCmd(const
-          // CBodyStateCmd&) would slice the waypoint id off, so it is stored by hand.
-          CBodyStateCmdMgr& cmdMgr = BodyController()->CommandMgr();
-          cmdMgr.DeliverCmd(kBSC_WallHang);                            // 0x00007588
-          *static_cast< CBCWallHangCmd* >(cmdMgr.GetCmd(kBSC_WallHang)) = CBCWallHangCmd(xbd6_);
+          // (cmd mgr +0x2F4/+0x2F8), which CBSWallHang reads.
+          BodyController()->CommandMgr().DeliverCmd(CBCWallHangCmd(xbd6_));  // 0x00007588
         } else if (BodyController()->GetCurrentStateId() == pas::kAS_WallHang) {  // 0x000075C0
           if (x3CBC_(mgr, xb94_, 0.0f)) {                            // 0x000075E0
             // 0x000075EC..0x00007614: the direction from the actor to the aim position.
