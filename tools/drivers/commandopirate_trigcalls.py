@@ -88,13 +88,22 @@ def main():
         for name in TRIGGERS:
             log("trigcall %s: %s" % (name, cmd("trigcall %s %s" % (target, name))))
             wait_frame(frame() + 2)
-        # the knock-back: a small damage on the live commando, so the module's KnockBack
-        # override (fn_9_C300) is entered and reads the reaction flags.
+        # the knock-back: the module's own knock-back helper only runs when the byte at guest
+        # this+0xC65 has its 0x04 or 0x08 bit (the shield's charge or the shield arming), so the
+        # ArmShield state goes first; then a small damage on the live commando, and the module's
+        # KnockBack override (fn_9_C300) is entered and reads the reaction flags.
+        log("fsm ArmShield: %s" % cmd("fsm %s ArmShield" % target))
+        wait_frame(frame() + 10)
         log("darkburst: %s" % cmd("damage %s 5 darkburst" % target))
         wait_frame(frame() + 10)
         log("damage: %s" % cmd("damage %s 1" % target))
         wait_frame(frame() + 10)
         log("damage: %s" % cmd("damage %s 1" % target))
+        wait_frame(frame() + 10)
+        # the dead arm: the commando dies and the damage lands on the dead actor.
+        log("kill: %s" % cmd("kill %s" % target))
+        wait_frame(frame() + 10)
+        log("damage dead: %s" % cmd("damage %s 1" % target))
         wait_frame(frame() + 10)
         for name, msg in STATES:
             log("statecall %s %d: %s" % (name, msg, cmd("statecall %s %s %d" % (target, name, msg))))

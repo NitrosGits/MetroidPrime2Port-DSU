@@ -13,10 +13,11 @@ import gdb
 # The usual sides first: tools/cov/force.py (the spec's FORCE list) and tools/cov/gdb_cov.py (its
 # SPEC list, the arm counts), each in its own namespace - the same as tools/cov/cov_force.py.
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else 'tools/cov'
-# Only tools/cov/force.py here: gdb_cov.py's 'ret' handling (a FinishBreakpoint) fails in an
-# attached gdb ("end_pc should be greater than or equal to start_pc"), and the arm counts are not
-# needed in a forcing run - the forced log is the evidence.
-for name in ('force.py',):
+# tools/cov/force.py (the spec's FORCE list) and tools/cov/gdb_cov.py (its SPEC list, the arm
+# counts), each in its own namespace - the same as tools/cov/cov_force.py.  A spec whose SPEC
+# entries use the 'ret' flag makes gdb_cov.py's FinishBreakpoint fail in an attached gdb ("end_pc
+# should be greater than or equal to start_pc"), so such a spec is not used here.
+for name in ('force.py', 'gdb_cov.py'):
     path = os.path.join(HERE, name)
     exec(compile(open(path).read(), path, 'exec'), {'__name__': '__main__', '__file__': path})
 
