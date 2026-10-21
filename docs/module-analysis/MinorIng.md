@@ -5,7 +5,7 @@ The MinorIng REL's host body: `src/MetroidPrime/Enemies/PortCMinorIng.cpp`,
 and module 44 `MinorIng` together) is in `IngFamily.md`; this note is the MinorIng
 half: what is ported, what is not, and the layout facts the port depends on.
 
-## Status (2026-10-21 16:55)
+## Status (2026-10-21 17:35)
 
 - 128/217 functions marked (was 126). The new ones: `fn_44_4DDC` (the target's aim
   position) and `fn_44_204C` (the lure point on the nav mesh), plus (from the earlier
