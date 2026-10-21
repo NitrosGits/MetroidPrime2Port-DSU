@@ -377,7 +377,8 @@ void CDarkSamus::UpdatePhazonEnrage(CStateManager& mgr, EStateMsg msg, float dt)
 }
 
 // fn_10_45F8's token at 0x00004644: the beam's hit effect at guest 0xF00, locked, from the asset id
-// at 0xEFC when it is a real one (`addis r0, r5, 0x1; cmplwi r0, 0xffff` at 0x00004604), else empty.
+// at 0xEFC when it is a real one (`addis r0, r5, 0x1` at 0x00004604, `cmplwi r0, 0xffff` at
+// 0x00004608, the `beq` at 0x00004640), else empty.
 rstl::optional_object< TLockedToken< CGenDescription > > CDarkSamus::PhazonBeamHitToken(CAssetId id) {
   if (id == kInvalidAssetId) {
     return rstl::optional_object< TLockedToken< CGenDescription > >();
