@@ -1027,7 +1027,7 @@ entered, so no grenade is thrown.
 
 ### The run with the message switch (2026-10-21)
 
-The area 59 run with the ported message switch (`tools/run_gameplay.sh`,
+The area 59 run with the ported message switch and the charge state (`tools/run_gameplay.sh`,
 `TELEPORT=05_temple_federationsite_dark`, `FRAMES=9000`, the card in /tmp/opencode/u_ds9,
 `MP2_GODMODE=1`, the console's `tp 75.9 371.6 -47.1` over `MP2_CONSOLE`, the console's `face`
 towards the commando and the player firing at it with the console's `press a`) reaches gameplay at
@@ -1035,9 +1035,10 @@ towards the commando and the player firing at it with the console's `press a`) r
 player (it ends at (78.6, 370.9, -46.1) beside the player at (81.2, 371.4)) and the shots hit
 it: the base's own knock-back runs, the module's message switch sees `kSM_Damage` and
 `kSM_ResistedDamage`, and in the run where the shots kill it the rag-doll event fires and the
-commando's rag-doll helper (fn_9_3E1C) stands in. The run's stand-ins are five: the module's
-own KnockBack (fn_9_C300), its Listen (fn_9_BE4C), the CVisualKnowledge's Update and
-SetVisualTarget (guest this+0xAB0) and the JumpBack state (fn_9_8B70). The two stand-ins the
+commando's rag-doll helper (fn_9_3E1C) stands in. The run's stand-ins are three in the last run
+(the CVisualKnowledge's Update and SetVisualTarget, guest this+0xAB0, and the JumpBack state
+fn_9_8B70) and five in the runs where the shots reach the commando (the module's own KnockBack
+fn_9_C300 and its Listen fn_9_BE4C join them). The two stand-ins the
 earlier slice removed - the module's AcceptScriptMsg and the module's collision actor managers -
 stay gone. A second run with the same teleport and
 without the firing ends the same way (exit=0, `grep -c '[port] caught|reach-stub'` = 0) with two
