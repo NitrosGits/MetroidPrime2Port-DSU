@@ -728,6 +728,11 @@ void CDigitalGuardianHead::xF424_(CStateManager& mgr) {
 // (li r6, 0) at locator 1 times its offset, solid, orbit, target and seeker-target (.data
 // 0xEA4..0xEB0: 59, 41, 40, 63), with the echo-target vulnerability (data +0x454), this head as
 // its owner and the parameter block; its id goes to 0xF34.
+// The arms: the echo target asset id is invalid -> nothing is built, else the three echo targets
+// are built. The run: area 53 (Sanctuary Fortress 09_cliff_temple_dark), 3000 frames; the
+// "invalid" arm was forced (the asset id set to kInvalidAssetId at the entry, tools/cov/force.sh
+// with /tmp/opencode/dgclose_12314.py).
+// @ fn_14_12314
 void CDigitalGuardianHead::x12314_(CStateManager& mgr) {
   xF40_[0] = CTransform4f::RotateX(CRelAngle::FromRadians(1.5707964f));
   xF40_[1] = CTransform4f::RotateX(CRelAngle::FromRadians(-1.5707964f)) *
@@ -847,6 +852,11 @@ const CDamageVulnerability* CDigitalGuardianHead::GetDamageVulnerability() const
 // final one at 0xD7C, else 0x40 set: the stunned one at 0xD78, else the shield one at 0xD74);
 // otherwise, or with no token, the base's. The tokens are not built yet, so the head's answer is
 // always the base's; the ctor sets 0x08, so that is also retail's answer until the head moves.
+// The arms: the head's flag byte's bit 3 (head+0x10F4) is clear -> the scannable info of the
+// head's model, else the one of the base. The run: area 53 (Sanctuary Fortress
+// 09_cliff_temple_dark), 3000 frames; the "the bit is set" arm was forced (the flag byte's bit 3
+// set at the entry, tools/cov/force.sh with /tmp/opencode/dgclose_177C8.py).
+// @ fn_14_177C8
 CScannableObjectInfo* CDigitalGuardianHead::GetScannableObjectInfo() const {
   if ((x10F4_ & 0x08) == 0) {
     StandInFn("fn_14_177C8 'SCAN' tokens (0xD74..0xD7C)");

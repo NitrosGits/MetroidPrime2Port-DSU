@@ -726,6 +726,30 @@ Every arm ran, so `fn_14_5644` is **marked**. The retail's third early-out (the 
 -1) is dead in the port as well: `fn_14_43AC` (the sender is one of the four toe target
 colliders) is false for every id `fn_14_4350` does not know.
 
+### 3.7 The bodies of section 7 that this lane closed
+
+Of the thirteen bodies of section 7, the FSM ones belong to the Opus lane (they are named by the
+state tables): `fn_14_95B8` (Idle), `fn_14_9930` (ShouldVortexAttack), `fn_14_9994`
+(ShouldProtectKnees) and `fn_14_173CC` (ShouldProjectileAttack). The other nine are stateless
+helpers, and five of them are now closed and **marked**:
+
+| id | the missing arm | how it was taken |
+|---|---|---|
+| `fn_14_A5BC` (the Think) | none - the coverage build's report has it at 4/4, ALL-ARMS | the plain area-53 run |
+| `fn_14_3974` (the root collider's active flag) | the collider is gone | forced: the uid at guest this+0x1080 pointed at an actor that does not exist (`/tmp/opencode/dgclose_3974.py`) |
+| `fn_14_D664` (the beacon's particle generator) | the asset id is invalid | forced: the asset id set to kInvalidAssetId at the entry (`/tmp/opencode/dgclose_D664.py`) |
+| `fn_14_12314` (the head's echo targets) | the echo target asset id is invalid | forced: the asset id set to kInvalidAssetId at the entry (`/tmp/opencode/dgclose_12314.py`) |
+| `fn_14_177C8` (the head's scannable info) | the flag byte's bit 3 is set | forced: the head's flag byte's bit 3 set at the entry (`/tmp/opencode/dgclose_177C8.py`) |
+
+The four that are still open are `fn_14_1B8` and `fn_14_DF7C` (the loaders: the missing arm is
+"the model data is missing", which means no guardian at all - the run would not cover anything
+else), `fn_14_1994` and `fn_14_2578` (the missing arm needs the model's optional to be valid,
+which the shipped asset id does not give).
+
+`fn_14_6E04` and `fn_14_10120` stay unmarked too: the head's states and codes that call them
+are still stand-ins, so a `fsm u051b <state>` step reaches the head's state but its body does
+not call the helper. They close when the head's FSM (the Opus lane's) is ported.
+
 ## 7. The unmarked bodies that are one run away (for the FSM lane)
 
 `tools/cov/gcov_report.py build-port-cov <the prefix dirs> --module DigitalGuardian` prints the
