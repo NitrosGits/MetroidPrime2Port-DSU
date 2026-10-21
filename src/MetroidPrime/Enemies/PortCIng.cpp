@@ -3584,11 +3584,39 @@ void CIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserE
   }
 }
 
-// fn_29_B3C4 (not yet exercised in a run)
+// fn_29_B3C4 (0x170, asm 0x0000B3C4-0x0000B530): the Ing's own death body. It *replaces*
+// CPatterned::Death - the retail never calls the base class here - so the base's massive-death
+// logic, the dark-visor highlight and the unpossess step are not part of the Ing's death. The
+// body: the body controller's time scale, the FSM's "Dead" state (only when the state machine
+// has one), the ground collider's material, the vertical movement flag (unless the Ing burns),
+// the alive bit, the death body command in the forms 2 and 6..9 - and the script messages, which
+// the retail sends whether the Ing was alive or not.
 void CIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   EnsureBodyActive(mgr);
-  StopSfx();
-  CPatterned::Death(mgr, direction, state);
+  if (GetAlive()) {
+    BodyController()->SetTimeScale(1.f); // asm 0x0000B400-0x0000B408: the body controller's 0x5c8
+    // asm 0x0000B40C-0x0000B424: the state machine's vtable slot 0x28 (the same slot fn_29_3B50
+    // asks before it initialises the machine): the machine has a state.
+    if (mStateMachine->HasState()) {
+      // asm 0x0000B428-0x0000B458: the state machine's slot 0x20 - SetState(mgr, owner, "Dead").
+      mStateMachine->SetState(mgr, *this, rstl::string_l("Dead"));
+    }
+    RemoveMaterial(kMT_GroundCollider, mgr); // asm 0x0000B464-0x0000B470: the material 0x25
+    if (!mBurning && !mLaggedBurnDeath) {    // asm 0x0000B474-0x0000B47C: the byte at 0x421
+      mVerticalMovement = false;             // asm 0x0000B488-0x0000B494: the byte at 0x34c, bit 6
+    }
+    mAlive = false;                           // asm 0x0000B498-0x0000B4A4: the byte at 0x420, bit 6
+    // asm 0x0000B4A8-0x0000B4C4: the corporeal form and the form changes 6..9.
+    if (mForm == kForm_Corporeal ||
+        (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingWallProjectile)) {
+      IssueDeathBodyCommand(mgr, direction); // asm 0x0000B4C8-0x0000B4E0
+    }
+  }
+  // asm 0x0000B4E4-0x0000B508: the state argument (-1 is kSS_InvalidState) and the message (-1
+  // is kSM_None); the source is the invalid id, not the Ing's own.
+  if (state != kSS_InvalidState) {
+    SendScriptMsgs(state, mgr, kSM_None);
+  }
 }
 
 // fn_29_B8C0 (0xB0, asm 0x0000B8C0-0x0000B96C): only the corporeal form (2) outside the

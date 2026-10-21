@@ -1082,8 +1082,41 @@ state, removes the material 0x25, clears the alive bit (0x420 bit 6) and the byt
 the parts the Ing's body replaces, so porting it needs the anim data's vtable slot 0x28 (the test
 before the effect state) mapped first - left open, and `fn_29_B3C4` stays unmarked.
 
-## B. MinorIng.rel (module 44)
+### A.21 The death body and the next five hot behaviour bodies (2026-10-21)
 
+**`fn_29_B3C4` (Death, vtable slot 0x98) is now the retail's body.** The retail's Ing *replaces*
+`CPatterned::Death` - the base class's body is never called (asm 0x0000B3C4-0x0000B530):
+
+| step | the asm | the port |
+|---|---|---|
+| the gate | the byte at 0x420's bit 1 (the alive bit) | `GetAlive()` |
+| the body controller | 0x5c8 = 1.0f | `BodyController()->SetTimeScale(1.f)` |
+| the FSM | the state machine's vtable slot 0x28 (the same slot `fn_29_3B50` asks before it calls `InitializeStateMachine`: "the machine has a state") and then its slot 0x20 with (mgr, owner, "Dead") | `mStateMachine->HasState()` and `mStateMachine->SetState(mgr, *this, rstl::string_l("Dead"))` |
+| the material | 0x25 | `RemoveMaterial(kMT_GroundCollider, mgr)` (the host's enum value is 37 = 0x25) |
+| the burn flags | the byte at 0x421's bits 1 and 2 (the host's `mBurning` and `mLaggedBurnDeath`) guard the clearing of the byte at 0x34c's bit 6 | `if (!mBurning && !mLaggedBurnDeath) mVerticalMovement = false;` |
+| the alive bit | the byte at 0x420's bit 1 | `mAlive = false` |
+| the death body command | only in the form 2 and the form changes 6..9 | the same forms |
+| the script messages | outside the alive gate, and only when the state argument is not -1; the source is the invalid id | `if (state != kSS_InvalidState) SendScriptMsgs(state, mgr, kSM_None);` (-1 is `kSM_None`) |
+
+What the Ing's body does **not** do (the base class's body does, and the retail's Ing does not):
+the massive-death logic, `SetHighlightedInDarkVisor(false)`, the unpossess step, and the death
+sound (`CSfxManager::AddEmitter(mDeathSfx, ...)`) - the Ing's own `Dead` state (fn_29_5CB0) plays
+the ing spot's death sound instead. The sounds also stop on the delete, not in the death body
+(`fn_29_2194` is called from the Think, fn_29_C9A4), so the port's `StopSfx()` call left the
+death body.
+
+**The next five hot behaviour bodies** (by the module's own call sites and by how often a run
+calls them), each read field by field against the REL - all five match the port:
+
+| fn | what it is | verdict |
+|---|---|---|
+| `fn_29_45BC` (0x48) | the cover hint lookup: the retail reads the Ing's own hint id (0xd72) and looks it up, casting to `CScriptAIHint` | the port's helper takes the id instead; every call site passes 0xd72 except `FindCoverPoint`, which looks up the *picked* hint - the retail does that in its own helper (fn_29_4510), so the object is the same either way |
+| `fn_29_4604` (0x22C) | the blob's align: the blend factor is 1.0 in the ing-spot form, in the form changes 6..9 when the Ing started as an ing spot, and in the corporeal form when the Ing is dead and started as an ing spot; the blob then looks along the surface normal with the up vector (the normal's z >= 0.95) or the right one | the port matches, including the 0.6/0.95 constants and the up/right choice (the retail's double trick resolves to "z < 0.95 -> up, else right") |
+| `fn_29_426C` (0xC0) | the valid target: the forms 0/1 are never targets, the forms 3 and 5 follow the Dark visor (3) and the byte at 0x9d0's bit 0, every other form is always a target | the port matches (`CIng::UpdateValidTarget`) |
+| `fn_29_3948` (0x208) | the move on the surface: the parallel part is cut when it is below 0.6 of the move's length, the result is normalised, the actor moves by speed*dt and the move direction is stored; a move that is not magnitude-safe stores the zero vector | the port matches (`CIng::MoveOnSurface`) |
+| `fn_29_4AA8` (0xA4) | the light struct's copy assignment (0x50 bytes, field by field) | **not module behaviour** - it is one of the plain struct copies, so it joins the host-code group of A.20 |
+
+## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).
 - **Class**: `CMinorIng : CPatterned`, **not** derived from CIng [proven: its ctor `fn_44_9D58`
