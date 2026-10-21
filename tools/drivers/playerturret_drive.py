@@ -199,9 +199,9 @@ try:
             # skipped - the guest's arm at 0x12BC.  The stick command releases the button: the
             # console's `press` holds it, and a held button has no second press event.
             run('press A 1')
-            wait_frames(5)
+            wait_frames(1)
             run('stick 0 0 1')
-            wait_frames(2)
+            wait_frames(1)
             run('press A 1')
             wait_frames(40)
             run('status')
