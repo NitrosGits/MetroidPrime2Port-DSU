@@ -124,7 +124,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x6D44	0x60	CValidEntityPredicate (weak)	deleting dtor (vtable data_AD4)	weak-dtor	H	data_AD4	compiler-emitted dtor	unmarked	fn_72_6D44
 0x6DA4	0xC8	CSpacePirate	PostWarpOut (state)	fsm-state	B	data_46C	-	marked	fn_72_6DA4
 0x6E6C	0x20C	CSpacePirate	WarpOut (state)	fsm-state	B	data_460	-	marked	fn_72_6E6C
-0x7078	0x528	CSpacePirate	WarpIn (state)	fsm-state	B	data_454	-	unmarked	fn_72_7078
+0x7078	0x528	CSpacePirate	WarpIn (state)	fsm-state	B	data_454	-	marked	fn_72_7078
 0x75A0	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_75A0
 0x75DC	0x54	(weak)	local dtor (from 7078)	weak-dtor	H	7078	compiler-emitted dtor	unmarked	fn_72_75DC
 0x7630	0x4C	CSpacePirate	Ambushing (state)	fsm-state	B	data_448	-	marked	fn_72_7630

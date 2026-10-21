@@ -58,6 +58,14 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
 // materials, restores alpha 1, resets the warp point to -1 and clears 0x8fa bit 0x20. (The two
 // cases were once swapped, so every update reset the warp: a warped-in trooper stayed invisible,
 // unhittable and in "WarpIn" for good, and the counters its death feeds never moved.)
+// Every arm ran or was forced (tools/cov, 2026-10-21). The GRNT/FOLW waypoint arms of case 0 are
+// data-dead: none of the 65 PIRT placements on the disc has a GRNT connection (173 connections, all
+// other states), so the list stays empty. Natural runs: blocked box (9514 updates) and clear box, case 1
+// issue / neither / cache / fade. Forced (tools/cov/force.sh, specs/spacepirate_force.py), one fade
+// update each in 08_sand_casualpirates L3: 0xbd0 = 0 for the cached time <= FLT_EPSILON arm (no alpha
+// write: 0 where the fade gives 4), then 0xbd0 = 1e-6 for the f <= 0 clamp (alpha 0 where the fade gives 8).
+// The alpha is retail's 255-scaled u8: f * 255 (rodata BB8, 0x7508) stored to 0x44f by psq_st qr2.
+// @ fn_72_7078
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
