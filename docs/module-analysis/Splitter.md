@@ -1048,13 +1048,11 @@ yet (0x0000F11C-0x0000F130).
 | the collision actors | every collision actor of the manager is walked (0x0000A774) and looked up; the one named "target_LCTR" (the rodata string at 0x34C) gives its id to the chassis's 0xCC2 (0x0000A7E8) and the reflected vulnerability (0x0000A814) | the same: `mTargetActorId` and `SetDamageVulnerability` |
 | the material filter | the include mask has the bit 59 (`kMT_Solid`), the exclude mask the bits 47, 28 and 32 (`kMT_CollisionActor`, `kMT_AIPassthrough` and `kMT_Player`) and the type is 3 (the include/exclude one) (0x0000A844-0x0000A8D0) | the same: `SetMaterialFilter` with the two masks |
 
-**The port's own limits in this body**: the retail also scales the "target_LCTR" collision actor
-(the model data's 0x0, 0x4 and 0x8 times the rodata's 1.5f, 0x0000A7F0-0x0000A810) and the host
-has no setter for the collision actor's scale, so that part is out. The module's own call
-(fn_75_A37C, 0x0000A840) stays a shell. The retail's cylinder builder takes the radius as a
-vector and one more argument (the word 1) that the host's `SphereSubdivideCollision` does not
-have; the port gives it the radius 0.05f, the max separation 1.0f and the between-joints
-orientation.
+**Corrected 2026-10-21** (marked `// @ fn_75_A4E4`): the four legs are **OBB boxes**, not sphere chains - each is `OBBAutoSizeCollision` (0x0000A6A8) from the knee to the ankle with the bounds (0.8f, 0.8f, 0.8f) (the table's third word 0x3F4CCCCD, 0x0000A68C-0x0000A6A0), the orientation 1 (`kOT_BetweenJoints`) and the knee's name; the earlier "radius 0.05f" was a misread. Every collision actor (not only "target_LCTR") gets `ImmuneRicochetVulnerability` (0x0000A814, the host's `ReflectVulnerabilty`); the name test (fn_75_3678, the REL's `rstl::string ==`) only adds the id at 0xCC2 and the "target_LCTR" actor's 0x35C-0x364 = the model data's scale times 1.5f (0x0000A7EC-0x0000A810, the host's `SetExtendedTouchBounds`). REL copies cited, not ported: fn_75_7B1C (vector reserve), fn_75_38B0 (description copy), fn_75_3830 (push_back), fn_75_3970 (vector dtor).
+
+**fn_75_A37C (0x114) - ported 2026-10-21, marked**: every collision actor of 0xC68 that casts gets the chassis's health info (vtable 0x3C `GetHealthInfo` copied by fn_75_A490, the REL's `CHealthInfo` copy, into the actor's vtable 0x38 `HealthInfo`).
+
+Run (area-5 harness `/tmp/opencode/smoke/split853_run.sh`, 7440 chassis Thinks, 0 caught/reach-stub): one manager build, 6 actors given the vulnerability and the health, "target_LCTR" found once; the casts' null arms (the retail's own) do not run for actors the manager just made. The chassis holds z -142.21 the whole run with the OBB legs.
 
 #### The chassis's head placement, fn_75_ACEC (0xACEC-0xAFE8) - ported 2026-10-21
 
@@ -1085,11 +1083,7 @@ The retail's Patrol state calls this body (0x0000DDB8) with the chassis and the 
 | the face vector | with a safe magnitude (0x0000994C `IsMagnitudeSafe`) and a step direction other than 0 (0x00009958) the vector becomes the face vector - the step direction 1 negates it (0x000099A0), 2 negates its x (0x000099E8) and 3 negates its y (0x000099C8) - and the steering speed range becomes 1.0f and 1.0f (0x00009A04) | the same: `kSD_Backward` negates the vector, `kSD_Left` negates its x and `kSD_Right` negates its y, and `SetSteeringSpeedRange(1.f, 1.f)` |
 | the commands | the locomotion command with the move vector, the normalized face vector and the weight 1.0f (0x00009A1C-0x00009A70); otherwise the steering speed range becomes the chassis's 0xD0C (0x00009A78) and the command has the move vector, a zero face vector and the weight 1.0f (0x00009A8C-0x00009ADC) | the same: `CBCLocomotionCmd(move, face.AsNormalized(), 1.f)` and, in the other branch, `CBCLocomotionCmd(move, CVector3f::Zero(), 1.f)` with `SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed)` |
 
-**The port's own limit in this body**: the separation steering (fn_75_8EC8, 0x8EC8-0x915C) is
-still a shell. Its object list walk (the state manager's list at 0x830), the head's own check
-(the command module's chassis id at 0xEFA) and the DOL's `CSteeringBehaviors::Separation` (whose
-retail signature takes a radius vector the host's does not) are not ported, so the separation
-vector is zero and the first command of the body is never delivered.
+**fn_75_8EC8 (0x1D4) - ported 2026-10-21** (`PortSeparationVector`): the state manager's list at 0x830 is `kOL_ListeningAi` (the fifth `auto_ptr` of 0x808); every `CPatterned` other than the chassis in its area (the entity's 0x4), except a command module whose 0xEFA is valid (a docked head), gives `CSteeringBehaviors::Separation(*this, other's translation, 6.5f * scale.x)` (the mangled DOL name takes a float radius, the same as the host's); safe results are normalized and averaged. In the area-5 run the walk runs ~7 objects per call and skips the docked head every call, but no actor is ever inside the radius, so the sum/average arms and fn_75_986C's 0.5-weight command never run: **not marked**. fn_75_986C's `kSD_Left`/`kSD_Right` arms and fn_75_ACEC's no-head, head-gone, slerp and plain `SetTransform` arms also never ran (ACEC took the `LookAt` arm every frame): neither is marked.
 
 #### The head's own move, fn_75_2154 (0x2154-0x21FC) - ported 2026-10-21
 

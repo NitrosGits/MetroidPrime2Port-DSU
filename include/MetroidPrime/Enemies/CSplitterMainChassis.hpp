@@ -342,6 +342,9 @@ private:
   // The retail's fn_75_A4E4: the chassis's collision actor manager (the Think's call at
   // 0x0000F130).
   void PortCreateCollisionActorManager(CStateManager& mgr);
+  // The retail's fn_75_A37C: the chassis's health info copied to its collision actors
+  // (fn_75_A4E4's call at 0x0000A840).
+  void PortCopyHealthToCollisionActors(CStateManager& mgr);
   // guest 0xCC2: the id of the "target_LCTR" collision actor (fn_75_A4E4, 0x0000A7E8).
   TUniqueId mTargetActorId = kInvalidUniqueId;
 #endif

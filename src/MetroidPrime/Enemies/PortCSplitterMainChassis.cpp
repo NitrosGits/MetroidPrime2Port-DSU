@@ -147,12 +147,6 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 #undef SPLITTER_STATE_PORTED
 
 
-// The module's own calls in the main chassis's Think and the DOL's two helpers it makes, as
-// named once-logging shells: the name is the retail function and its size (the DOL's functions
-// are not in the module, so they carry none). They are the docking link, the line-of-sight
-// tracker and the derived state.
-void StandInFn_75_A37C() { StandIn("fn_75_A37C"); }
-
 // The chassis's own path update (fn_75_986C, 0x28C) is ported as
 // CSplitterMainChassis::PortUpdatePath.
 
@@ -329,14 +323,41 @@ void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
   cmdMgr.DeliverCmd(CBCLocomotionCmd(move, face.AsNormalized(), 1.f));
 }
 
-// fn_75_8EC8 (the chassis's separation steering, 0x8EC8-0x915C): the object list walk (the
-// state manager's list at 0x830), the head's own check (the command module's chassis id at
-// 0xEFA) and the separation call (the DOL's CSteeringBehaviors::Separation, whose retail
-// signature takes a radius vector the host's does not) stay a shell, so the vector is zero and
-// the separation command is never delivered.
-CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager&) {
-  StandIn("fn_75_8EC8 (0x148) (the chassis's separation steering)");
-  return CVector3f::Zero();
+// fn_75_8EC8 (the chassis's separation steering, 0x8EC8-0x909C): the state manager's list at
+// 0x830 (0x00008EF8, the fifth list - kOL_ListeningAi) is walked from its first index
+// (0x00008F20 lha 0x2008) to -1 (0x0000902C). Every CPatterned (0x00008F34) other than the
+// chassis (0x00008F40) in the chassis's area (0x00008F50, the entity's 0x4) is kept unless it is
+// a command module whose chassis id at 0xEFA is valid (0x00008F58-0x00008F74: a docked head is
+// skipped). The chassis's steering (0x61C) gives the separation from the actor's position (its
+// 0x54) with the radius 6.5f (lbl_75_rodata_394) times the model data's scale x
+// (0x00008F78-0x00008FB4); a safe-magnitude result (0x00008FD4) is normalized and summed and the
+// count (lbl_75_rodata_390, 0.0f) goes up by 1.0f (lbl_75_rodata_364). A count above 0.0f
+// (0x0000903C fcmpo, 0x00009040 ble) divides the sum by it (0x0000904C fdivs).
+CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  CVector3f sum = CVector3f::Zero();
+  float count = 0.f;
+  for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
+    CPatterned* other = TCastToPtr< CPatterned >(list[idx]);
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CSplitterCommandModule* head = TCastToConstPtr< CSplitterCommandModule >(other);
+    if (head != nullptr && head->GetChassisId() != kInvalidUniqueId) {
+      continue;
+    }
+    const CVector3f scale = GetModelData()->GetScale();
+    const CVector3f separation =
+        mSteeringBehaviors.Separation(*this, other->GetTranslation(), 6.5f * scale.GetX());
+    if (separation.IsMagnitudeSafe()) {
+      sum += separation.AsNormalized();
+      count += 1.f;
+    }
+  }
+  if (count > 0.f) {
+    sum *= 1.f / count;
+  }
+  return sum;
 }
 
 // fn_75_ACEC (the chassis's head placement, 0xACEC-0xAFE8): the head's id at 0xC6C (0x0000AD18
@@ -406,25 +427,29 @@ void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
 
 // fn_75_A4E4 (the chassis's collision actor manager, 0xA4E4-0xA8FC): the six joints are built
 // from the retail's rodata tables - 0x30C gives the two spheres ("Skeleton_Root" with the radius
-// 1.5f and "target_LCTR" with the radius 0.38f) and 0x31C the four leg cylinders (the knee and
-// the ankle of each leg, the radius 0.05f) - the mass is 1000.0f (the rodata at 0x3AC) and the
-// manager is made with them (0x0000A754), the old one deleted (0x0000A764) and the new one kept
-// at 0xC68. The retail's cylinder builder takes the radius as a vector and the word 1 (the
-// between-joints orientation); the host's takes a radius and a max separation, so the port gives
-// it the radius 0.05f, the max separation 0.0f and the between-joints orientation. Then every collision actor of the manager is walked (0x0000A774): the actor named
+// 1.5f and "target_LCTR" with the radius 0.38f) and 0x31C the four leg boxes (the knee and the
+// ankle of each leg and the extent 0x3F4CCCCD, 0.8f) - the mass is 1000.0f (the rodata at 0x3AC)
+// and the manager is made with them (0x0000A754), the old one deleted (0x0000A764) and the new
+// one kept at 0xC68. Each leg is an OBBAutoSizeCollision (0x0000A6A8) with the bounds
+// (0.8f, 0.8f, 0.8f) (0x0000A68C-0x0000A6A0), the orientation 1 (kOT_BetweenJoints, 0x0000A698
+// li r7, 1) and the knee's name. Then every collision actor of the manager is walked
+// (0x0000A774): the actor named
 // "target_LCTR" (the rodata string at 0x34C) gives its id to the chassis's 0xCC2 (0x0000A7E8)
-// and the reflected vulnerability (0x0000A814); the retail also scales the actor (the model
-// data's 0x0, 0x4 and 0x8 times the rodata's 1.5f), which the host has no setter for. The
-// module's own call (fn_75_A37C, 0x0000A840) stays a shell and the material filter (the
+// and its extended touch bounds (the model data's 0x0, 0x4 and 0x8 times the rodata's 1.5f,
+// 0x0000A7F0-0x0000A810), and every actor gets the ricochet vulnerability (0x0000A814). The
+// module's own call (fn_75_A37C, 0x0000A840) copies the health info and the material filter (the
 // include mask with the bit 59 - kMT_Solid - and the exclude mask with the bits 47, 28 and 32 -
 // kMT_CollisionActor, kMT_AIPassthrough and kMT_Player - and the type 3) is set at the end
 // (0x0000A8D0). The four masks are the data words 0x3B, 0x2F, 0x1C and 0x20 shifted into the
 // list (0x0000A858 and the three after it); the data word 0x3B is the include mask on its own
 // (0x0000A8B4) and the other three the exclude mask.
+// @ fn_75_A4E4
 void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
   const CAnimData* anim = GetModelData()->GetAnimationData();
   rstl::vector< CJointCollisionDescription > joints;
-  joints.reserve(6);
+  joints.reserve(6); // fn_75_7B1C reserve (0x0000A51C), fn_75_3970 its dtor (0x0000A8DC)
+  // fn_75_38B0: the REL's description copy (0x0000A5B0)
+  // fn_75_3830: the REL's rstl::vector::push_back (0x0000A5D4)
   joints.push_back_unsafe(CJointCollisionDescription::SphereCollision(
       anim->GetLocatorSegId(rstl::string_l("Skeleton_Root")), CVector3f::Zero(), 1.5f,
       rstl::string_l("Skeleton_Root"), 1000.f));
@@ -442,9 +467,9 @@ void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
     {"R_B_knee_2", "R_B_ankle"},
   };
   for (int i = 0; i < 4; ++i) {
-    joints.push_back_unsafe(CJointCollisionDescription::SphereSubdivideCollision(
+    joints.push_back_unsafe(CJointCollisionDescription::OBBAutoSizeCollision(
         anim->GetLocatorSegId(rstl::string_l(sLegs[i].mKnee)),
-        anim->GetLocatorSegId(rstl::string_l(sLegs[i].mAnkle)), 0.05f, 0.f,
+        anim->GetLocatorSegId(rstl::string_l(sLegs[i].mAnkle)), CVector3f(0.8f, 0.8f, 0.8f),
         CJointCollisionDescription::kOT_BetweenJoints, rstl::string_l(sLegs[i].mKnee), 1000.f));
   }
   CCollisionActorManager* manager =
@@ -459,16 +484,39 @@ void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
     if (actor == nullptr) {
       continue;
     }
-    if (strcmp(desc.GetName().c_str(), "target_LCTR") != 0) {
-      continue;
+    if (strcmp(desc.GetName().c_str(), "target_LCTR") == 0) { // fn_75_3678, string == (0x0000A7C4)
+      mTargetActorId = id;
+      // 0x0000A7EC-0x0000A810: the actor's extended touch bounds (its 0x35C) are the model
+      // data's scale times 1.5f (lbl_75_rodata_388).
+      actor->SetExtendedTouchBounds(GetModelData()->GetScale() * 1.5f);
     }
-    mTargetActorId = id;
+    // 0x0000A814: every collision actor, not only "target_LCTR", gets the DOL's
+    // ImmuneRicochetVulnerability (the host's ReflectVulnerabilty).
     actor->SetDamageVulnerability(CDamageVulnerability::ReflectVulnerabilty());
   }
-  StandInFn_75_A37C();
+  PortCopyHealthToCollisionActors(mgr); // fn_75_A37C
   SetMaterialFilter(CMaterialFilter(CMaterialList(0x0800000000000000ull),
                                     CMaterialList(0x0000800110000000ull),
                                     CMaterialFilter::kFT_IncludeExclude));
+}
+
+// fn_75_A37C (the chassis's health copy, 0xA37C-0xA48C): every collision actor of the manager
+// at 0xC68 (0x0000A3B0 GetCollisionDescFromIndex, to GetNumCollisionActors at 0x0000A464) is
+// looked up and cast (0x0000A3C8, 0x0000A3CC); one that is there gets the chassis's health info
+// (the vtable's 0x3C GetHealthInfo, copied by fn_75_A490 into its 0x38 HealthInfo,
+// 0x0000A3D8-0x0000A458).
+// @ fn_75_A37C
+void CSplitterMainChassis::PortCopyHealthToCollisionActors(CStateManager& mgr) {
+  for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
+    const CJointCollisionDescription& desc = mCollisionActorManager->GetCollisionDescFromIndex(i);
+    CCollisionActor* actor =
+        TCastToPtr< CCollisionActor >(mgr.ObjectById(desc.GetCollisionActorId()));
+    // 0x0000A3D0: the retail's own null test of the cast (mr. r30, r3 - 0x0000A3D4 beq).
+    if (actor == nullptr) {
+      continue;
+    }
+    *actor->HealthInfo() = *GetHealthInfo(); // fn_75_A490, CHealthInfo's copy (0x0000A3F4)
+  }
 }
 
 // fn_75_E620 (the chassis's IsDisabled trigger, 0xE620-0xE62C): the flag byte at 0xD40 gets its

@@ -195,6 +195,8 @@ public:
 
   // guest 0xF24-0xF2C: the vector the chassis's fn_75_ACEC adds to the position it looks from.
   const CVector3f& GetEditorProperties() const { return mEditorProperties; }
+  // guest 0xEFA: the chassis the head is docked in (the chassis's fn_75_8EC8 reads it, 0x00008F68).
+  TUniqueId GetChassisId() const { return mChassisId; }
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
