@@ -231,12 +231,27 @@ the REL's copies of host/DOL code, so they are cited here and neither reimplemen
      (f24 = the radius argument, asm 0x1390) and only the search box is radius+margin wide.
   2. the port ran an extra "player-obstruction scan" that the retail does not have (see the
      bullet above); it could set `mPlayerObstructed` and stop the crawler.
-- **Not exercised by these runs:** the constrained variant of the floor search (no crawler in
-  Temple Grounds area 10 or Agon Wastes area 40 has a constraint, so x834 == 0), the kART_Five
-  bend, and the boost-ball and contact damage (no player input). The `// @ fn_83_1310` marker
-  therefore rests on the unconstrained arms alone.
+- **Where the constraint (0x834) comes from.** The WallCrawler REL has no loader, so no shipped
+  placement creates a bare `CWallCrawler`; the class is only the base of the modules that do
+  (`CPillBug`, `CParasite`, `CKralee`, `COctapedeSegment`, `CWallWalker`). Of those, only the
+  PillBug sets a constraint: its init data carries the property `planarConstraint` (id
+  `0xde7e9f94`, `SLdrPillBug.hpp`), and `CPillBug::PatrolImpl`/`ReturnToPath` pass it to
+  `SetConstraint(mgr, mPlanarConstraint)`, which stores it in 0x834 and rebuilds the constraint
+  plane (`UpdateConstraintPlane`). The other families' init data has no such property.
+- **Shipped placements with a non-zero constraint** (scan of every MREA script layer, property id
+  `0xde7e9f94`): 15 PillBugs, all with a constraint - 12 with `1` and 3 with `2`, none with `3`:
+  Agon Wastes `0b_sand_hall` (3x 1), `0d_sand_hall` (4x 1, 1x 2), `05_portalpuzzle` L2 (2x 1) and
+  Sanctuary Fortress `06_cliff_spiderballguardian` L8 (3x 1, 2x 2). So the constrained arm of
+  `fn_83_1310` (asm 0x15AC-0x17A4) **is** reachable and was run: a temporary probe (removed
+  before the commit) logged `[wc] constrained floor search: x834=1` in Agon `0b_sand_hall` and
+  `0d_sand_hall` and `x834=2` in `0d_sand_hall`. The constraint-3 arm (the absolute value) has no
+  shipped instance.
 - The base class is shared with `CPillBug`, `CKralee`, `COctapedeSegment` and `CParasite`, which
   call this `AlignToFloor`; the tighter best distance and the removed `mPlayerObstructed` write
   change what they inherit. Those sessions should re-check their own runs (their RELs have their
   own floor-alignment functions).
+- **Still not exercised:** the kART_Five bend and the boost-ball and contact damage (no player
+  input). The `// @ fn_83_1310` marker keeps: both variants of the floor search (unconstrained and
+  constrained) ran in the Agon Wastes areas above; only the constraint-3 sub-arm has no shipped
+  instance.
 

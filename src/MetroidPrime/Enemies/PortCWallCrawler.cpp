@@ -361,6 +361,10 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
             // Constrained: AI-passthrough triangles are skipped, and the distance of a triangle
             // whose normal agrees with the constraint plane (> 0.5) is scaled up by 1 + that
             // agreement. Constraint 1 compares with the normal, 2 with its reverse, 3 with either.
+            // The constraint is the PillBug's `planarConstraint` init property (0xde7e9f94, set
+            // through SetConstraint): the shipped placements use 1 and 2 only (Agon Wastes
+            // 0b_sand_hall, 0d_sand_hall and 05_portalpuzzle, Sanctuary Fortress
+            // 06_cliff_spiderballguardian), so the constraint-3 arm has no shipped instance.
             if ((surface.GetSurfaceFlags() & (static_cast< u64 >(1) << kMT_AIPassthrough)) != 0) {
               continue;
             }
