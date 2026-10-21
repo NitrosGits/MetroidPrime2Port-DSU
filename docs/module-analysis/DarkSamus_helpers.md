@@ -67,11 +67,11 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_43A8` | 0xC0 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_4468` | 0x68 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_452C` | 0xCC | method | blocked - it resets the 0xEF0 sub-object's members (0xF10..0xF5C), which are not modelled yet |
-| `fn_10_45F8` | 0x270 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
+| `fn_10_45F8` | 0x270 | method | 1 | ported body | **marked** - ConstructPhazonBeam (the scalars) + PhazonBeamHitToken (the token); the ids are mData's |
 | `fn_10_4868` | 0x60 | method | **ported** |
 | `fn_10_48C8` | 0x44 | method | **ported** |
 | `fn_10_490C` | 0x19C | method | 2 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_4AA8` | 0x14 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
+| `fn_10_4AA8` | 0x14 | method | 1 | ported body | **marked** - HasPhazonBeam (AddToRenderer's beam test) |
 | `fn_10_4C40` | 0x15C | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_4D9C` | 0x54 | method | 4 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_4DF0` | 0x5C | method | 2 | missing | missing body (the caller is a state or a helper the port does not have yet) |

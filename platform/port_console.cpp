@@ -1635,6 +1635,37 @@ void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
   out += "statecall " + wanted + " msg " + std::to_string(msg) + "\n";
 }
 
+// trigcall <id> <trigger> [arg]: evaluate one trigger of an FSM2 actor once with its argument
+// (default 0) and print the answer, outside the machine, like `statecall` for the states.
+void CmdTrigCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float arg = 0.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], arg))) {
+    Fail("usage: trigcall <id> <trigger name> [arg]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  if (machine->GetType() != 1) {
+    Fail("not an FSM2 machine");
+    return;
+  }
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::TriggerFunc fn =
+      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindTriggerFunction(
+          wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no trigger function '" + wanted + "'");
+    return;
+  }
+  const bool answer = (patterned->*fn)(mgr, CTriggerData(arg));
+  out += "trigcall " + wanted + " = " + (answer ? "true" : "false") + "\n";
+}
+
 // hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
 // setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
 // phazon waypoints) finds one the area lacks, or skips one of another area.
@@ -2399,6 +2430,7 @@ constexpr SCommand kCommands[] = {
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
     {"statecall", CmdStateCall, true},
+    {"trigcall", CmdTrigCall, true},
     {"hint", CmdHint, true},
     {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},

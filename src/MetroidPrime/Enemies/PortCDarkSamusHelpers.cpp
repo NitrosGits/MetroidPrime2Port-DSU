@@ -377,13 +377,32 @@ void CDarkSamus::UpdatePhazonEnrage(CStateManager& mgr, EStateMsg msg, float dt)
 }
 
 // fn_10_45F8's token at 0x00004644: the beam's hit effect at guest 0xF00, locked, from the asset id
-// at 0xEFC when it is a real one (`addis r0, r5, 0x1; cmplwi r0, 0xffff` at 0x00004604), else empty.
+// at 0xEFC when it is a real one (`addis r0, r5, 0x1` at 0x00004604, `cmplwi r0, 0xffff` at
+// 0x00004608, the `beq` at 0x00004640), else empty.
 rstl::optional_object< TLockedToken< CGenDescription > > CDarkSamus::PhazonBeamHitToken(CAssetId id) {
   if (id == kInvalidAssetId) {
     return rstl::optional_object< TLockedToken< CGenDescription > >();
   }
   return rstl::optional_object< TLockedToken< CGenDescription > >(
       TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
+}
+
+// fn_10_45F8 (0x000045F8, 0x270 bytes): the 0xEF0 sub-object's constructor, at 0x000201B4 of the
+// actor's. Its id/token/damage/sound members (0xEF0 = r4, 0xEFC = r5 and the locked token 0xF00,
+// 0xF2C..0xF46 = *r6, 0xF5E = r7) are mData's in the host and PhazonBeamHitToken (the member
+// initializer of mGuestF00); the beam 0xEF4/0xEF8 starts empty (0x00004634/0x00004638). The
+// scalars: 0xF14 and 0xF20 the zero vector (0x000047BC..0x000047F8), 0xF58 = lbl_10_rodata_13C
+// = 0.0f, the emitter 0xF60 none and 0xF64 = lbl_10_rodata_140 = -1000.0f (0x0000483C..0x00004848),
+// then fn_10_452C (0x0000484C). Run: every actor's constructor; the token's invalid-id arm
+// forced (darksamus_phazonbeam_invalid.py).
+// @ fn_10_45F8
+void CDarkSamus::ConstructPhazonBeam() {
+  mGuestF14 = CVector3f::Zero();
+  mGuestF20 = CVector3f::Zero();
+  mGuestF58 = 0.f;
+  mGuestF60 = CSfxHandle();
+  mGuestF64 = -1000.f;
+  ResetPhazonAttack();
 }
 
 // fn_10_6118 (0x00006118, 0x19C bytes): the phazon beam. A CElementGen of the asset 0xEF0
@@ -440,7 +459,8 @@ void CDarkSamus::StartPhazonBeamSfx() {
 // the player's eye (0x00006098).
 // Run (darksamus_phazonbeam.py, _invalid.py): every arm by a keyed force (the zero offset, the
 // turn, the reach clamps, each cylinder test, a NaN locator for the unnormalizable 0xF14, a ray
-// too short to hit, the empty hit token). The CExplosion allocation's null/throw edges have no
+// too short to hit). The hit token 0xF00 is read unchecked, as retail does (0x00006098); the
+// fights' data always carries pART_0x494de4a4. The CExplosion allocation's null/throw edges have no
 // host counterpart (rs_new does not return null).
 // @ fn_10_5974
 void CDarkSamus::UpdatePhazonBeam(CStateManager& mgr, float dt) {
@@ -518,11 +538,6 @@ void CDarkSamus::UpdatePhazonBeam(CStateManager& mgr, float dt) {
     const CVector3f& point = hit.GetPoint();
     mGuestF20 = CVector3f(point.GetX() - ringX, point.GetY() - ringY, point.GetZ() - 0.f);
     const CTransform4f xf = CTransform4f::LookAt(point, player->GetEyePosition(), CVector3f::Up());
-    // Host-only guard: retail passes 0xF00 unchecked (an absent pART_0x494de4a4 leaves the
-    // optional empty, and retail would read its storage as a token).
-    if (!mGuestF00) {
-      continue;
-    }
     const rstl::string name = rstl::string_l("Phazon Attack Collision");
     const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId);
     const TUniqueId uid = mgr.AllocateUniqueId();
@@ -564,31 +579,23 @@ void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
   mGuestD18 = CVector3f::Zero(); // 0x00006E10..0x00006E20
 }
 
-// fn_10_8870 (0x00008870, 0xE0 bytes): the freeze beam's command over the state's messages.
-// Activate (0x000088B0) stores 1 (kAS_Ready) to the animation state 0x6B4, delivers the command
-// (0x000088C8) and copies it into the command manager's slot at 0x1B8 (0x000088D4..0x000088E8);
-// Update (0x000088F0) re-delivers it while the DOL's ShouldRetry answers true (0x000088F8, the
-// animation state 0x9 = pas::kAS_LoopAttack); Deactivate (0x0000893C) stores 0 (kAS_NotReady).
-// The command is the module's own class (its vtable lbl_10_data_1B0): the id 0x9 = 9 =
-// kBSC_LoopHitReaction (0x00016E70) and the payload 7, 4 and the byte 0 (0x00016E80..0x00016E88).
-// The host's CBCLoopHitReactionCmd carries the reaction type only, and the host's body
-// (CBSLoopReaction::Start, which reads the command manager's slot for kBSC_LoopHitReaction)
-// reads exactly that field - the type the module's payload puts first - so the port delivers
-// the host's command with the type 7 (the host's enum has four values; the value is a plain
-// int, and the host's CPASAnimParm::FromEnum keeps it). The module's other two payload words
-// (4 and the byte 0) are copied over the slot's tail in the retail and nothing reads them, so
-// the port drops them.
-void CDarkSamus::RunFreezeBeamCmd(EStateMsg msg) {
+// fn_10_8870 (0x00008870, 0xE0 bytes): the loop attack command over a state's messages. The
+// function is generic: the message is in r4, the animation state for the DOL's ShouldRetry in r5
+// (0x000088F8) and the command in r6 - the id at cmd+4 (0x000088B4, 0x00008908) is delivered
+// and cmd+4..+0x10 is copied into the command manager's slot (0x000088D4..0x000088E8,
+// 0x0000891C..0x00008934). Activate (0x000088B0) stores 1 (kAS_Ready) to the animation state
+// 0x6B4, Update (0x000088F0) re-delivers the command while ShouldRetry answers true, and
+// Deactivate (0x0000893C) stores 0 (kAS_NotReady).
+// @ fn_10_8870
+void CDarkSamus::RunLoopAttackCmd(EStateMsg msg, const CBCLoopAttackCmd& attack) {
   switch (msg) {
   case kStateMsg_Activate:
     mAnimationState.SetState(CAnimationState::kAS_Ready);
-    BodyController()->CommandMgr().DeliverCmd(
-        CBCLoopHitReactionCmd(static_cast< pas::EReactionType >(7)));
+    BodyController()->CommandMgr().DeliverCmd(attack);
     break;
   case kStateMsg_Update:
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
-      BodyController()->CommandMgr().DeliverCmd(
-          CBCLoopHitReactionCmd(static_cast< pas::EReactionType >(7)));
+      BodyController()->CommandMgr().DeliverCmd(attack);
     }
     break;
   case kStateMsg_Deactivate:

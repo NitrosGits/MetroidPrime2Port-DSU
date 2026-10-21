@@ -24,7 +24,7 @@ fn_10_11974 UpdateScatterShotFire, fn_10_11C60 UpdateDiveFlight, fn_10_11DDC Sen
 fn_10_11EB8 UpdateDiveStuck, fn_10_128D8 UpdateSafePosition, fn_10_12960 FindDiveLanding,
 fn_10_12F60 FireScatterShotProjectile, fn_10_1444C IsLineOnMesh, fn_10_14A00 ApplyDashStuckBlast,
 fn_10_14D14 UpdateDoubleDash, fn_10_14FE0 PickNextDash, fn_10_154FC PickDash,
-fn_10_16B8C TurnTowardPoint, fn_10_1707C UpdateDodge, fn_10_17F04 AddToRenderer (stand-in),
+fn_10_16B8C TurnTowardPoint, fn_10_1707C UpdateDodge, fn_10_17F04 AddToRenderer (ported, marked),
 fn_10_18964 Render (stand-in), fn_10_18AB8 PreRender (stand-in), fn_10_18D78 SetupStateMachine,
 fn_10_19B64 CollectReachAttacks, fn_10_1AAC4 GetCollisionPrimitive (stand-in),
 fn_10_1B1FC Think (stand-in), fn_10_1C6C8 ProjectileInfo, fn_10_1CDD0 BounceDive,

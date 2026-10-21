@@ -22,6 +22,7 @@ class CBCProjectileAttackCmd;
 // The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
+class CParticleSwoosh;
 class CEnergyProjectile;
 class CScriptAIHint;
 struct SLdrDSStageInfo;
@@ -1064,7 +1065,7 @@ private:
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
   void StopBoostBallParticles();                  // fn_10_99B8: the boost ball's old effects
-  void RunFreezeBeamCmd(EStateMsg msg);            // fn_10_8870: the freeze beam's command
+  void RunLoopAttackCmd(EStateMsg msg, const CBCLoopAttackCmd& attack); // fn_10_8870
   void UpdateShieldFromHealth(EStateMsg msg);     // fn_10_6DAC: the shield flag and direction
   void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
                              float dt); // fn_10_6F90: the path find to the destination
@@ -1126,6 +1127,14 @@ private:
   // guest 0xF00, the beam's hit effect (mData.mPart494DE4A4, fn_10_45F8 at 0x00004644)
   rstl::optional_object< TLockedToken< CGenDescription > > mGuestF00 =
       PhazonBeamHitToken(mData.mPart494DE4A4);
+  // The render pass (fn_10_17F04) and what it reads.
+  void ConstructPhazonBeam();   // fn_10_45F8, the 0xEF0 sub-object's ctor (the scalars)
+  bool HasPhazonBeam() const;   // fn_10_4AA8: the beam 0xEF8 is not null
+  float GetFadeFactor() const;  // fn_10_185CC: 1, then down to 0 over fn_10_18628's window
+  // guest 0xE3C / 0xE4C, the boost ball's two swooshes (fn_10_9B24 builds them, fn_10_99B8
+  // deletes them). The host builds neither yet, so both stay null; they are not owned.
+  CParticleSwoosh* mBoostBallSwooshE3C = nullptr;
+  CParticleSwoosh* mBoostBallSwooshE4C = nullptr;
 #endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
