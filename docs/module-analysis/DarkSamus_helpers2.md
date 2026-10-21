@@ -225,6 +225,17 @@ member write can reach). The forced run (the same fight, the members written at 
 The rest of the missing arms need the world (the mesh, the ray, the cover points) or a call with
 different arguments, so they stay open.
 
+**The merged profile** (the natural run and the forced one, `tools/cov/gcov_report.py build-port-cov
+<run1>/gcov <force>/gcov --module DarkSamus`) shows what the force closed: fn_10_1E740's "the
+attacker has no cover point" (only the "the path is shagged" is left), fn_10_1DD14's "the contact
+time is fresh" (the strength and the "the separation is not normalisable" are left),
+fn_10_1D860's "deactivate without an animation" (the "no additive animation was found" is left)
+and fn_10_1EE4C's "the hit is too recent" (the weapon type, the stage and the radius damage are
+left). fn_10_1C6C8's force reached the scatter shot's case but the arm it opens (the optional
+that holds the info) is never cached, so it stays open; fn_10_154FC's fight covered four of its
+thirteen arms on its own (the fight is not the same every run). No body of the twelve is
+ALL-ARMS yet, so no new marker was added.
+
 
 ## 10. The gcov branch coverage (the exact arms)
 
@@ -271,3 +282,14 @@ attacker-has-no-cover-point arm, fn_10_1EE4C's too-recent and no-stage arms and 
 second-scatter-info arm. The arms that need the world (the mesh, the ray, the cover points, the
 stage's attack bits) or an argument the caller does not pass (the weapon type, the damage info)
 stay open.
+
+**The merged profile** (the natural run and the forced one, `tools/cov/gcov_report.py build-port-cov
+<run1>/gcov <force>/gcov --module DarkSamus`) shows what the force closed: fn_10_1E740's "the
+attacker has no cover point" (only the "the path is shagged" is left), fn_10_1DD14's "the contact
+time is fresh" (the strength and the "the separation is not normalisable" are left),
+fn_10_1D860's "deactivate without an animation" (the "no additive animation was found" is left)
+and fn_10_1EE4C's "the hit is too recent" (the weapon type, the stage and the radius damage are
+left). fn_10_1C6C8's force reached the scatter shot's case but the arm it opens (the optional
+that holds the info) is never cached, so it stays open; fn_10_154FC's fight covered four of its
+thirteen arms on its own (the fight is not the same every run). No body of the twelve is
+ALL-ARMS yet, so no new marker was added.
