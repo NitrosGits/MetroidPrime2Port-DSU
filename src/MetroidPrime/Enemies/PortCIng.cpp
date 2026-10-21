@@ -3358,7 +3358,16 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
   switch (msg.GetMessage()) {
   case kSM_Create:
-    // fn_29_4C88
+    // @ fn_29_4C88 (0x90, asm 0x00004C88-0x00004D18): the create handler. The data flag byte
+    // 0x9d0's bit 7 (asm 0x00004CAC, the guest copy at 0xe5d's bit 5 is seeded from the same flag
+    // in the ctor) picks the form: the flag set gives the ing spot (the form 3) and the flag clear
+    // the corporeal Ing (the form 2); the flag set also sets the locomotion type 0 and aligns the
+    // Ing near its position (asm 0x00004CBC-0x00004CFC).
+    // The arms (the coverage run of 2026-10-21 with tools/cov, the key is the flag word
+    // $this->mData.mFlags210): the flag set (the top bit, 180 hits) and the flag clear (0, 2820
+    // hits - the Ing 0x101c01c3 of the Great Temple's 06_swamp_boostballguardian_dark, the one
+    // placement the disc scan found without the flag). The create branch's own calls ran too (the
+    // collision actor manager, the blob and the light). Both arms ran, so the body is marked.
     EnsureBodyActive(mgr);
     // 0x00004CA4: the data flag byte 0x9d0 bit 0x80, not the guest copy at 0xe5d bit 5 (the ctor
     // seeds that from the same flag, 0x0000E368, but the states rewrite it).
