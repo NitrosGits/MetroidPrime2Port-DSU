@@ -40,7 +40,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | `ses_ea41a5a31ffepOI5VzaWlfqLr8` | minoring @ `3a1f9d7fd` (126/217; the 13 left are all REL copies of host classes, cited) | mark 4DDC/204C after a field check + run, recheck 31 "unreferenced" in data asm, stale note count |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (Opus) | `ses_ea4205b59ffe5a7g0z7AkibaZa` | darksamus2 @ `804bb299a` (1E740 ShouldForgetLastAttacker; guest CPathFindSearch layout) | cover chain 1D9A4/1DD14, 13FFC/1D860, 11334, 1E360/1E4C4/1E3C0, EFC8/128D8, state 1DF74, then the walk |
+| DarkSamus (Opus) | `ses_ea3fe1f4dffe4QX8qVsNnhkp9C` | darksamus2 @ `c84700db6` (TravelToCoverPoints 1DF74 + 10 helpers ported, AreaLoaded search area 1E864; 1E360/1E864 marked; boss moves cover to cover) | rest of AreaLoaded + battle stage 0x974 writer, Dash/BreakDash/WasHeavyHit, force missing arms, 0x9FC default |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
