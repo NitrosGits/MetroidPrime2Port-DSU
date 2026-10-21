@@ -1222,8 +1222,8 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
 // sets the combat bit, switches bone tracking off and sets 0x8fa bit 0x02. Update skips the hung
 // command while the body still has to turn (more than 15 degrees, rodata 0xBF8) towards that axis;
 // the turn is the usual zero move vector with the axis as the face vector and speed 1 (rodata 0xB54).
-// Only once the body state is kAS_WallHang does it read the state's vtable slot 0x28 and store the
-// negation of its byte into 0x8fa bit 0x02, and it always ends by setting the burst type to 1.
+// Only once the body state is kAS_WallHang does it read the state's vtable slot 0x28 (CanShoot) and
+// store its negation into 0x8fa bit 0x02, and it always ends by setting the burst type to 1.
 // gcov 2026-10-21: every arm but the switch default. The hung arms run naturally in 02_sand_sandfalls
 // L3 (cover point 000a0186); the no-cover-point arm is the first forced Activate of
 // spacepirate_force4.py, whose second Activate takes the cover arm.
@@ -1260,7 +1260,9 @@ void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
       BodyController()->CommandMgr().DeliverCmd(CBCWallHangCmd(mDestObj));
     }
     if (BodyController()->GetCurrentStateId() == pas::kAS_WallHang) {
-      x8fa_30_ = !BodyController()->GetBodyStateInfo().GetCurrentState()->UnkVtable2C();
+      // Vtable slot 0x28 (0x6C64) is CanShoot (CBSWallHang: in the hung sub-state), so the aim
+      // block (UpdateAimBodyState's !x8fa_30_) opens once the pirate hangs.
+      x8fa_30_ = !BodyController()->GetBodyStateInfo().GetCurrentState()->CanShoot();
     }
     mBurstFire.SetBurstType(1);
     break;
