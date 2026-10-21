@@ -26,6 +26,13 @@ void GXRequestScanPeek(s32 left, s32 top, u32 width, u32 height, void* idOut, vo
 // (GXSetTexCopySrc/GXSetTexCopyDst) for the geometry, as the copy itself does. See
 // lib/gfx/efb_copy.cpp.
 void GXRequestEfbCpuCopy(void* staging, u32* sequence, u32 capacity);
+// Aurora-only: snapshot the framebuffer depth as it is now (one pass break, no copy), for
+// GXPeekZRegion a frame or two later. Does nothing offscreen or with MSAA.
+void GXSnapshotDepth(void);
+// Aurora-only: the z24 values of a `width` x `height` region (render-mode framebuffer pixels,
+// top-down, row-major) of the latest GXSnapshotDepth or GXPeekZ snapshot. GX_FALSE when there is
+// none younger than `maxAgeMs` or the region is outside it.
+GXBool GXPeekZRegion(u16 x, u16 y, u16 width, u16 height, u32* z, u32 maxAgeMs);
 u32 GXCompressZ16(u32 z24, GXZFmt16 zfmt);
 u32 GXDecompressZ16(u32 z16, GXZFmt16 zfmt);
 

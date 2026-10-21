@@ -200,6 +200,12 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
   if (passInfo.discardable) {
     // This pass has no effect and can be safely discarded (e.g. an empty EFB segment between two back-to-back pass
     // breaks, or an unresolved offscreen pass).
+    if (passInfo.forceDepthSnapshot) {
+      // The depth target still holds what the earlier passes wrote.
+      depth_peek::encode_frame_snapshot(cmd, passInfo.copySourceDepthView,
+                                        passInfo.colorAttachments[SceneColorAttachmentIndex].size,
+                                        passInfo.msaaSamples, true);
+    }
     return;
   }
 
@@ -252,9 +258,10 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
   render_pass(pass, frame, passInfo);
   pass.End();
 
-  if (passInfo.captureDepthSnapshot) {
+  if (passInfo.captureDepthSnapshot || passInfo.forceDepthSnapshot) {
     depth_peek::encode_frame_snapshot(cmd, passInfo.copySourceDepthView,
-                                      passInfo.colorAttachments[SceneColorAttachmentIndex].size, passInfo.msaaSamples);
+                                      passInfo.colorAttachments[SceneColorAttachmentIndex].size, passInfo.msaaSamples,
+                                      passInfo.forceDepthSnapshot);
   }
 
   if (passInfo.resolveTarget) {
