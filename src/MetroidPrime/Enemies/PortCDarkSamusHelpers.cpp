@@ -19,6 +19,8 @@
 #include "Collision/CRayCastResult.hpp"
 #include "Kyoto/Math/CCylinder.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/Weapons/CFreezeBeamProjectile.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
@@ -544,4 +546,137 @@ void CDarkSamus::UpdatePhazonBeam(CStateManager& mgr, float dt) {
     mgr.AddObject(rs_new CExplosion(*mGuestF00, uid, info, name, xf, 0, CVector3f::One() * 1.f,
                                     CColor::White(), -1));
   }
+}
+
+// fn_10_77B8 (0x000077B8, 0xB4 bytes): the enrage sphere's generator (the auto_ptr at guest
+// 0x1024/0x1028) is replaced by an empty one built on the stack (0x000077D8..0x000077E0): the old
+// generator, if owned, is deleted through its vtable (0x00007810).
+// @ fn_10_77B8
+void CDarkSamus::ClearEnrageSphere() { mGuest1028 = rstl::auto_ptr< CElementGen >(); }
+
+// fn_10_13998 (0x00013998, 0x11C bytes): the melee hit, once per swing (the record's hit byte
+// 0x9DE, 0x000139B4; set at 0x00013A98): the record's damage (meleeAttackDamage, 0x9A4) on the
+// player from the actor, filtered include kMT_Solid (lbl_10_data_200 = 59) exclude nothing with
+// type 3 (0x000139DC), at the zero vector (0x00013A3C); unless the player is a morph ball (vtable
+// 0x1CC = fn_10_112E8 with a 0.0f trigger, 0x00013A68) fn_10_13750 pushes it with
+// lbl_10_rodata_4BC = 25.0f across and lbl_10_rodata_3E0 = 2.0f up (0x00013A90).
+// @ fn_10_13998
+void CDarkSamus::ApplyMeleeDamage(CStateManager& mgr) {
+  if (mMeleeContact.mHit == 1) {
+    return;
+  }
+  mgr.ApplyDamage(GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), GetUniqueId(),
+                  mData.mMeleeAttackDamage,
+                  CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                  CVector3f::Zero());
+  if (!PlayerIsMorphball(mgr, CTriggerData(0))) {
+    PushPlayer(mgr, 25.f, 2.f);
+  }
+  mMeleeContact.mHit = 1;
+}
+
+// fn_10_13AB4 (0x00013AB4, 0x388 bytes): the melee pulse. From 1.0f above the actor
+// (lbl_10_rodata_3E8, 0x00013AFC..0x00013B10) a 20.0f (lbl_10_rodata_4C0) ray straight down finds
+// the floor (BuildNearList 0x00013C28, RayWorldIntersection 0x00013C68) through the static filter
+// lbl_10_bss_F8 built once (0x00013B30..0x00013BF0): include kMT_Solid / kMT_Platform (data CA0 /
+// CA4 = 59 / 49), exclude kMT_Character / kMT_Player / kMT_ProjectilePassthrough (CA8 / CAC /
+// CB0 = 33 / 32 / 20), type 3. The explosion "Dark Samus Melee Pulse" (lbl_10_rodata_560 + 0x53A)
+// takes the actor's transform moved to the root bone 0x8FC/0x900 at the hit's height (the root's
+// own when the ray misses, 0x00013C7C) plus lbl_10_rodata_4B8 = 1.9f (0x00013CAC), the model's
+// scale (0x60, 0x00013CF8), white and player -1 (0x00013D98); attack 2 takes the record's pART
+// token 0x9D0, the rest meleeAttackFX 0x9C4 (0x00013D7C). Its uid goes to the record's 0x9DC
+// (0x00013DFC). Port limit: a token whose asset was invalid is never built, so no explosion.
+// Unmarked: the ray-miss arm never ran (darksamus_attacks.py key 21 moves the actor 1000 up and
+// 100000 across, yet the host's RayWorldIntersection still answers a hit at the player's height).
+void CDarkSamus::SpawnMeleePulse(CStateManager& mgr) {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f start(pos.GetX() + 0.f, pos.GetY() + 0.f, pos.GetZ() + 1.f);
+  const float rootX = mRootPos.GetX();
+  const float rootY = mRootPos.GetY();
+  float floorZ = mRootPos.GetZ();
+  // The filter is built each call: retail's once-built static holds the same value.
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid, kMT_Platform),
+      CMaterialList(kMT_Character, kMT_Player, kMT_ProjectilePassthrough));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, start, CVector3f::Down(), 20.f, filter, nullptr);
+  TUniqueId hitId = kInvalidUniqueId;
+  const CRayCastResult hit =
+      mgr.RayWorldIntersection(hitId, start, CVector3f::Down(), 20.f, filter, nearList);
+  if (hit.IsValid()) {
+    floorZ = hit.GetPoint().GetZ();
+  }
+  CTransform4f xf = GetTransform();
+  xf.SetTranslation(CVector3f(rootX + 0.f, rootY + 0.f, floorZ + 1.9f));
+  const rstl::optional_object< TLockedToken< CGenDescription > >& token =
+      mCurrentAttack == 2 ? mMeleePartToken : mMeleeAttackFXToken;
+  if (!token) {
+    return;
+  }
+  const CVector3f scale = GetModelData()->GetScale();
+  const rstl::string name = rstl::string_l("Dark Samus Melee Pulse");
+  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId);
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  CExplosion* explosion =
+      rs_new CExplosion(*token, uid, info, name, xf, 0, scale, CColor::White(), -1);
+  mgr.AddObject(explosion);
+  mMeleeContact.mHitUid = explosion->GetUniqueId();
+}
+
+// fn_10_1353C (0x0001353C, 0x140 bytes): the missile. The player's aim position (its vtable
+// 0x54) led by a random time in [0, distance / 25.0f] (fn_10_17CEC, lbl_10_rodata_4BC, Range at
+// 0x00013580); the gun locator 0x8CC turned to look at it with its own up (0x00013604); then
+// LaunchProjectile with 5 at most, no attributes, not homing, an empty visor effect (fn_10_4EB4)
+// and scale 1.0f (0x00013650). The info is ProjectileInfo's for the attack (0xA0C).
+// @ fn_10_1353C
+void CDarkSamus::FireMissile(CStateManager& mgr) {
+  CPlayer* player = mgr.GetPlayer(0);
+  const float lead = mgr.Random()->Range(0.f, GetDistanceToPlayer(mgr) / 25.f);
+  const CVector3f aim = player->GetAimPosition(mgr, lead);
+  CTransform4f xf = mGunLctrXf;
+  xf = CTransform4f::LookAt(xf.GetTranslation(), aim, xf.GetUp());
+  LaunchProjectile(xf, mgr, 5, 0, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+}
+
+// fn_10_133D0 (0x000133D0, 0x12C bytes): the super missile, as fn_10_1353C but aimed at the
+// player's position, 1.9f (lbl_10_rodata_4B8) higher unless it is morphed (0x38C == 1,
+// 0x0001340C); the info is 0xA4C.
+// @ fn_10_133D0
+void CDarkSamus::FireSuperMissile(CStateManager& mgr) {
+  const CPlayer* player = mgr.GetPlayer(0);
+  CVector3f aim = player->GetTranslation();
+  if (player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    aim = CVector3f(aim.GetX() + 0.f, aim.GetY() + 0.f, aim.GetZ() + 1.9f);
+  }
+  CTransform4f xf = mGunLctrXf;
+  xf = CTransform4f::LookAt(xf.GetTranslation(), aim, xf.GetUp());
+  LaunchProjectile(xf, mgr, 5, 0, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+}
+
+// fn_10_9164 (0x00009164, 0x1B0 bytes): the freeze beam, only with a token (0xA90, 0x0000918C).
+// Aimed as fn_10_133D0 (lbl_10_bss_124 = 1.9f, set by the static init fn_10_CDB8) from the gun
+// locator; a CFreezeBeamProjectile (0x000092DC) of the token 0xA88, weapon type 10 (kWT_Phazon,
+// `li r5, 0xa`), excluding kMT_ProjectilePassthrough (`li r7, 0x14`), the damage 0xA94
+// (freezeBeamDamage), a new uid, the actor's area, owned by the actor, freeze 5.0f / ice bound
+// 4.0f (lbl_10_rodata_274 / 278), the sound 0xEE0 and particle 0xEDC (iceSpreadSound /
+// iceSpreadFX, the constructor at 0x00020174) and the steam texture 0xAB4 (freezeBeamVisorTexture).
+// @ fn_10_9164
+void CDarkSamus::FireFreezeBeam(CStateManager& mgr) {
+  if (!mFreezeBeamToken) {
+    return;
+  }
+  const CPlayer* player = mgr.GetPlayer(0);
+  CVector3f aim = player->GetTranslation();
+  if (player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    aim = CVector3f(aim.GetX() + 0.f, aim.GetY() + 0.f, aim.GetZ() + 1.9f);
+  }
+  CTransform4f xf = mGunLctrXf;
+  xf = CTransform4f::LookAt(xf.GetTranslation(), aim, xf.GetUp());
+  const ushort sfx = mData.mIceSpreadSound == -1 ? CSfxManager::kInternalInvalidSfxId
+                                                 : static_cast< ushort >(mData.mIceSpreadSound);
+  // The new's null check (0x000092E4) is left out: the host's new does not answer null.
+  mgr.AddObject(rs_new CFreezeBeamProjectile(
+      *mFreezeBeamToken, kWT_Phazon, xf, kMT_ProjectilePassthrough, mData.mFreezeBeamDamage,
+      mgr.AllocateUniqueId(), GetCurrentAreaId(), GetUniqueId(), 5.f, 4.f, sfx, mData.mIceSpreadFX,
+      mData.mFreezeBeamVisorTexture));
 }

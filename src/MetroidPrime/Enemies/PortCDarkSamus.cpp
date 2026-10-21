@@ -200,6 +200,30 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
     mScatterShotInfo2 = CProjectileInfo(data.mScatterShotProjectile2, data.mScatterShotDamage);
     mScatterShotInfo2.data().Token().Lock();
   }
+  // The melee record's tokens (fn_10_EA24 at 0x0001FCFC: meleeAttackFX at +0x20 0x0000EAB8,
+  // pART at +0x2C), the missile info 0xA0C (fn_10_21A14 at 0x0001FD1C, normalMissileProjectile /
+  // normalMissileDamage), the super missile info 0xA4C (fn_10_2199C at 0x0001FDB4) and the freeze
+  // beam's token 0xA88 (fn_10_217FC at 0x0001FDC8), each only for a valid asset on the host.
+  if (data.mMeleeAttackFX != kInvalidAssetId) {
+    mMeleeAttackFXToken = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', data.mMeleeAttackFX)));
+  }
+  if (data.mPart != kInvalidAssetId) {
+    mMeleePartToken =
+        TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', data.mPart)));
+  }
+  if (data.mNormalMissileProjectile != kInvalidAssetId) {
+    mMissileInfo = CProjectileInfo(data.mNormalMissileProjectile, data.mNormalMissileDamage);
+    mMissileInfo.data().Token().Lock();
+  }
+  if (data.mSuperMissileProjectile != kInvalidAssetId) {
+    mSuperMissileInfo = CProjectileInfo(data.mSuperMissileProjectile, data.mSuperMissileDamage);
+    mSuperMissileInfo.data().Token().Lock();
+  }
+  if (data.mFreezeBeamProjectile != kInvalidAssetId) {
+    mFreezeBeamToken = TToken< CWeaponDescription >(
+        gpSimplePool->GetObj(SObjectTag('WPSC', data.mFreezeBeamProjectile)));
+  }
   mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
@@ -560,10 +584,10 @@ void CDarkSamus::FadeEnvFxIn(CStateManager& mgr) {
 // event type (`cmplwi r31, 0x2e` at 0x0001BF28, jumptable_10_data_FB4). The cases that switch on
 // the current attack 0x980 (0, 8, 9, 12, 17, 18, 27, 28, 33, 34) return without the base
 // (0x0001C6A0); the rest and every other type end in CPatterned::DoUserAnimEvent (0x0001C69C).
-// Eight callees are not in the port yet and stay logged stand-ins: the melee hit fn_10_13998 and
-// fn_10_13AB4, the missiles fn_10_1353C and fn_10_133D0, the freeze beam fn_10_9164, the 0x800000
-// shot fn_10_5840, and fn_10_77B8 / fn_10_9E00 (case 37, case 19); the body is unmarked until
-// they are. Run (darksamus_uevent.py, `uevent` with the attack forced by the dt key): every type
+// Two callees are not in the port yet and stay logged stand-ins: the 0x800000 shot fn_10_5840
+// (it needs fn_10_50B8 / fn_10_4C40 and the 0xF80 / 0x1064 infos) and the boost ball's spawn
+// fn_10_9E00 (case 19; it builds the module's own actor classes fn_10_3BC4 / fn_10_3FD8); the
+// body is unmarked until they are. Run (darksamus_uevent.py, `uevent` with the attack forced by the dt key): every type
 // the switch names and the arms above, except BeginAction's deflect slow-down (it needs a missile
 // in flight past 28 units), Landing's dive bounce and type 46 with dash steps left.
 void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
@@ -575,18 +599,18 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     case 1:
     case 2:
     case 4:
-      StandIn("fn_10_13AB4", "the melee hit (DoUserAnimEvent Projectile, 0x0001C1B8)");
+      SpawnMeleePulse(mgr); // fn_10_13AB4 at 0x0001C1B8
       break;
     case 0x40:
     case 0x80:
-      StandIn("fn_10_1353C", "the missile (DoUserAnimEvent Projectile, 0x0001C1C8)");
+      FireMissile(mgr); // fn_10_1353C at 0x0001C1C8
       break;
     case 0x100:
-      StandIn("fn_10_133D0", "the super missile (DoUserAnimEvent Projectile, 0x0001C1D0)");
+      FireSuperMissile(mgr); // fn_10_133D0 at 0x0001C1D0
       break;
     case 0x20000:
     case 0x100000:
-      StandIn("fn_10_9164", "the freeze beam (DoUserAnimEvent Projectile, 0x0001C1E0)");
+      FireFreezeBeam(mgr); // fn_10_9164 at 0x0001C1E0
       break;
     case 0x800000:
       StandIn("fn_10_5840", "DoUserAnimEvent Projectile 0x800000 (0x0001C1E8)");
@@ -597,7 +621,7 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     return;
   case kUE_DamageOn: // 0x0001BFAC: the melee attacks 1, 2 and 4 hit within reach (strict)
     if ((attack == 1 || attack == 2 || attack == 4) && GetDistanceToPlayer(mgr) < GetMeleeReach()) {
-      StandIn("fn_10_13998", "the melee damage (DoUserAnimEvent DamageOn, 0x0001BFF8)");
+      ApplyMeleeDamage(mgr); // fn_10_13998 at 0x0001BFF8
     }
     return;
   case kUE_DamageOff: // 0x0001C000
@@ -741,7 +765,7 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     }
     break;
   case kUE_Unknown37: // 0x0001C5FC
-    StandIn("fn_10_77B8", "DoUserAnimEvent type 37 (0x0001C5FC)");
+    ClearEnrageSphere(); // fn_10_77B8 at 0x0001C5FC
     break;
   case kUE_Unknown38: // 0x0001C604
     mGuestF5C40 = true;
@@ -843,10 +867,11 @@ CVector3f CDarkSamus::GetOrigin(const CStateManager& mgr, const CTeamAiRole& rol
 // vtable slot 55 = fn_10_1C6C8 (0xB0): the projectile info the attacks launch.
 CProjectileInfo* CDarkSamus::ProjectileInfo() {
   // The switch on the current attack 0x980: the scatter shots 8 and 0x10 (0x0001C718) take the
-  // second info 0xBB0 when 0xBAE is 1, the first 0xB50 otherwise. The missiles' 0x40/0x80
-  // (0xA0C), 0x100 (0xA4C) and 0x800000 (0xF80 / 0x1064 by 0xFB8) infos are not in the port yet,
-  // so those arms answer null as the default does (0x0001C770). Port limit: an info whose asset
-  // was invalid is never built on the host, so it answers null too.
+  // second info 0xBB0 when 0xBAE is 1, the first 0xB50 otherwise; the missiles 0x40/0x80 the
+  // info 0xA0C (0x0001C734), 0x100 the super missile's 0xA4C (0x0001C73C). The 0x800000 infos
+  // (0xF80 / 0x1064 by 0xFB8) are not in the port yet, so that arm answers null as the default
+  // does (0x0001C770). Port limit: an info whose asset was invalid is never built on the host, so
+  // it answers null too.
   switch (mCurrentAttack) {
   case 8:
   case 0x10:
@@ -854,6 +879,11 @@ CProjectileInfo* CDarkSamus::ProjectileInfo() {
       return mScatterShotInfo2 ? &mScatterShotInfo2.data() : nullptr;
     }
     return mScatterShotInfo ? &mScatterShotInfo.data() : nullptr;
+  case 0x40:
+  case 0x80:
+    return mMissileInfo ? &mMissileInfo.data() : nullptr;
+  case 0x100:
+    return mSuperMissileInfo ? &mSuperMissileInfo.data() : nullptr;
   default:
     return nullptr;
   }

@@ -1,0 +1,9 @@
+# darksamus_attacks.py's driver (25 frames apart). `uevent <id> <type> <dt>`: the dt is the key; each
+# line starts with the save (130) and ends with the put-back (199), both on DamageOff (9), which
+# returns at once. Types: 0 Projectile, 8 DamageOn, 37 (the enrage sphere's reset).
+@f600 send u04f7 Activate; god 1
+@f625 uevent u04f7 9 130; place u04f7 player 1; uevent u04f7 9 122; uevent u04f7 8 101; uevent u04f7 8 101; uevent u04f7 9 122; uevent u04f7 9 120; uevent u04f7 8 102; uevent u04f7 9 199
+@f650 uevent u04f7 9 130; place u04f7 player 3; uevent u04f7 0 101; uevent u04f7 0 102; uevent u04f7 0 104; uevent u04f7 9 121; uevent u04f7 0 101; uevent u04f7 9 199
+@f675 uevent u04f7 9 130; uevent u04f7 0 105; uevent u04f7 0 106; uevent u04f7 0 107; uevent u04f7 0 108; uevent u04f7 0 109; uevent u04f7 9 120; uevent u04f7 9 124; uevent u04f7 0 107; uevent u04f7 0 109; uevent u04f7 9 199
+@f700 uevent u04f7 9 130; uevent u04f7 9 123; uevent u04f7 0 101; uevent u04f7 0 102; uevent u04f7 0 108; uevent u04f7 9 199; uevent u04f7 37 119; uevent u04f7 37 119
+@f725 status
