@@ -2745,11 +2745,34 @@ CAABox CDigitalGuardian::GetScanVisorRenderBounds(const CStateManager& mgr) cons
   return x1570_(); // 0x9D98
 }
 
-// vtable slot 72 = fn_14_9ABC.
+// vtable slot 72 = fn_14_9ABC: the head (0x1082, 0x9AF0) draws itself at xf * the "Head_1"
+// locator's scaled transform (0x10B8, 0x9B08..0x9B18; vtable 0x120 at 0x9B44). The body then
+// draws as AddToRenderer does, but at xf with the given flags: the transform (0x24) and draw
+// flags (0xFC) are swapped for them (0x9B48..0x9BB8) and put back at the end (0x9C5C..0x9C8C).
 void CDigitalGuardian::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                        const CModelFlags& flags) const {
-  StandIn("CDigitalGuardian::ScanVisorRender (vtable slot 72, fn_14_9ABC)");
-  CPatterned::ScanVisorRender(mgr, xf, flags);
+  if (const CDigitalGuardianHead* head =
+          TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_))) {
+    head->ScanVisorRender(mgr, xf * GetScaledLocatorTransform(CSegId(x10B8_)), flags);
+  }
+  const CTransform4f savedXf = GetTransform();   // 0x9B50
+  const CModelFlags savedFlags = GetModelFlags(); // 0x9B54..0x9B84
+  PortRawTransform() = xf;                        // 0x9B88
+  const_cast< CDigitalGuardian* >(this)->SetModelFlags(flags); // 0x9B8C..0x9BB8
+  CPatterned::Render(mgr);  // 0x9BBC
+  x1994_(mgr, xf, flags);   // 0x9BD0
+  x18B4_(mgr, xf, flags);   // 0x9BE4
+  // The beacon: 0x128C bit 0x08 clear (0x9BEC), the model there (0x1238, 0x9BF8) and its height
+  // above 0 (.rodata 0x264, fcmpo/ble at 0x9C0C); at fn_14_2578's transform of xf (0x9C20),
+  // with the actor's lights (0xBC) and the given flags (Render at 0x9C44).
+  if ((x128C_ & 0x08) == 0 && x11EC_.valid() && x1264_ > 0.f) {
+    CTransform4f modelXf = CTransform4f::Identity();
+    x2578_(modelXf, xf);
+    x11EC_.data().Render(mgr, modelXf, GetActorLights(), flags);
+  }
+  x1700_(mgr, xf, flags);                     // 0x9C58
+  PortRawTransform() = savedXf;               // 0x9C64
+  const_cast< CDigitalGuardian* >(this)->SetModelFlags(savedFlags); // 0x9C68..0x9C8C
 }
 
 // vtable slot 73 = fn_14_D8 (0x8): it returns the base member at 0x754, which is what the base
