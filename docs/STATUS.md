@@ -19,7 +19,20 @@ Batch 7 (branch `batch7` in `../wt-mp2-batch5`, head `07d7159e1`, 10 heads from 
 green 12:13) merged into port `54e8498b0`: 1785 markers, 15.21% fns / 20.13% bytes. smoke7 (`/tmp/opencode/smoke7`)
 vs smoke6: 0 new errors, 17/17 rc 0; sandboss stalled once at frame 240 (rc 124, blank frame), passed solo: watch it.
 Parallel smoke runner (3-4 Xvfb displays + ticks-per-frame + `@f`) next, checked against smoke7.
-Lane watcher: `~/.cache/mp2-orch/watch.sh` (lanes file beside it), detached loop logs events to `events.log` there.
+Orchestrator queue: grapple points never become the orbit target (CScriptGrapplePoint.cpp:68 only kMT_Orbit vs
+CPlayerOrbit.cpp:1004/1070 kMT_Target only; SwampBoss-stage2.md §7.17), a shared-code bug to fix on port.
+Lane watcher: `~/.cache/mp2-orch/watch.sh` (lanes file beside it), detached loop (`loop.sh`) logs events to `events.log` there.
+
+**Accepted since batch 7 (batch 8 candidates, 2026-10-21 13:56):** CommandoPirate `ed504da00` (86B4 forced, 8028),
+DarkSamus `482a38568`+`4154642ea`+`5d31354a9` (C85C, C798, BE18), SwampBoss2 `1fb9cf495` (5030), SwampBoss1
+`46aeee651` (docs/driver), EmperorIngStage1 `6386fff8f` (4954 forced), Ing `329c5a27c` minus the fn_29_4604 marker
+(rework sent: port GeomBlobV2 fn_25_256C call + byte 0x154 store). Port gained console `shoot <id> [charged] [d]
+[dir x y z]` (`ae2161442`, `3fb4fa815`) and the fsm FSM2 reply fix; lanes told to `git merge port`.
+**Reports waiting for review** (`/tmp/opencode/reports/<lane>.md` + `session.messages lastAssistant`): ing (13:35),
+digitalguardian (13:39), swampboss2 (13:44), commandopirate (13:44), swampboss1 (13:46), splitter (13:48).
+emperoring1 got its slice at 13:55 (tentacle state 1→2 out-animation bug). DarkSamus (`ses_ea1ed1e2cffegrXDwaC2UuwA6a`,
+slice 1B658/138A4/11FA4) was a subagent of the old orchestrator: its result lands there, so read it with
+`session.messages`. ElitePirate, bg2: not checked since their first slices.
 
 Batch 5 merged into port `3bb8177db` (via branch `batch5`, worktree `../wt-mp2-batch5`): playerturret
 `c377344ed`, ing `8855b1674`, spacepirate-vt `c42d82fce`, emperoring `542d6c9b8`, emperoring3 `f786b983e`,
