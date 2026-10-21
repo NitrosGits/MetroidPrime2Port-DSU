@@ -1606,3 +1606,45 @@ trigger's entry, one per hit, from gdb convenience variables).
   `GetTranslation()` (`mPosition`), so it ran from (68, 412, 165) and hit the static floor at z 164
   (t 1, materials 0x81000005, hit id none). With the position moved too, the ray misses and every
   arm runs (`s9/a4`). It's left unmarked at the orchestrator's request.
+
+## Slice 32 (2026-10-21): the review fixes, the port merge and the sweep beam's damage mode
+
+- **The merges**: `review12/darksamus2` (e824da91d) and then `port` (batch 12, with the dsfsm2
+  lane's b5dec578a). The port merge conflicted in PortCDarkSamusHelpers.cpp and in this note;
+  both sides' functions are kept (the link check reports 0 duplicate definitions and 0 undefined
+  symbols).
+- **The attack ids** are the `lis` (X << 16) ones: the BoostBallFire 0x20000 (`lis r4, 0x2` at
+  0x00009758), the FadeIn 0x40000 (0x0000BD60), the FadeOut 0x80000 (0x0000BC74) and the
+  FreezeBeam 0x100000 (0x00016D10). The other states use the `li` ids (the Pause 0x400 at
+  0x00010748, the FallFromTheAir 0x4000 at 0x0000F88C, the DiveAttack 0x20 at 0x00011FE4, the
+  MeleeDash 0x4 at 0x00017AE4, the SideDash 0x80 at 0x000177F0, the ScatterShot 0x8 at 0x000175EC),
+  so the comments that said "id 2/4/8" are fixed.
+- **The FreezeBeam returns after the exit state command** (the branch to the epilogue at
+  0x00016DE8): the turn and the dodge (0x00016DF0) no longer run in the same Update as the
+  command.
+- **The EnragedTravel** sets the navigation's face target and runs the path find (0x00006F30 and
+  0x00006F34).
+- **The EnrageHitReact** divides signed by 3 (0x00007A8C): `mulhw` is the signed high word and
+  `srwi r0, r4, 31` is the logical shift (the sign bit), so the step is the signed division by 3
+  rounding to zero.
+- **The module's globals**: lbl_10_bss_128 is the module's static vector - the module's data
+  initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the actor's
+  0xD18 (0x0000E5C8), so the port's mGuestD18 (CVector3f::Zero) is the same value and fn_10_6DAC's
+  direction write (0x00006E10..0x00006E20) matches it. lbl_10_bss_11C = 22.0f and lbl_10_bss_120 =
+  0.5f are written by the module's init fn_10_CDB8 at 0x0000CE38 and 0x0000CE3C (the freeze beam's
+  dodge step takes them as its impulse and its time).
+- **The audit's two findings**:
+  - fn_10_C85C (StartSweepBeam): the guard around the CElementGen stays (the pool has no object
+    for an invalid 'PART' id), but 0xDC8 bit 0x40 is set either way (0x0000C9E4), so the damage
+    rays (fn_10_C104) and the collision response (fn_10_C470) run as in the retail - the ray code
+    tolerates a null generator (0x0000C32C).
+  - fn_10_BE18 (SweepBeamRay): the "any other hit" damage uses the module's weapon mode
+    lbl_10_bss_114 (the read at 0x0000C024, the store into the damage info at 0x0000C05C). The
+    module's init fn_10_CDB8 writes it at 0x0000CE30 as 0x000A0000 - the guest's CWeaponMode keeps
+    the type in the high half, so the type is 10 = kWT_Phazon and the flags are 0. The port keeps
+    it in mSweepBeamWeaponMode.
+- **The FreezeBeam's arms on the merged code**: the coverage run (the coverage driver, the
+  normal build) - 4 hits of the state, the Activate, two Updates and the Deactivate; the first
+  Update (the counter 0xAB0 = 1, written by the coverage spec's expression) delivers the exit
+  state command and returns (no turn, no dodge), the second (the bit 0x40 of 0xAB8) turns and
+  dodges. The game's exit code 0 and no SIGSEGV.
