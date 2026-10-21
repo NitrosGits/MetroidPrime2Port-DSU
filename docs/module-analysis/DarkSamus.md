@@ -567,3 +567,148 @@ MovingScatterShot fn_10_11AD8 = ScatterShot's Activate/Deactivate without the fa
 11974 + 1B478(0x10) on every message, then the step command fn_10_21DF8 (kAS_Step, BreakDodge,
 right unless 0xBAC, then left). 0xBAC is set only by the unported picker collector fn_10_19B64
 (0x0001A020/0x0001A0D0). 0x9E0..0xA08 is CDarkSamusDash (fn_10_15348; 0x9FC was mGuest9FC).
+
+**Slice 9** (2026-10-21): the Dash chain. Dash fn_10_150DC (double-dash roll: Range(0,100) <
+the stage info's +0x20 = `chanceToDoubleDash`), the slot pick fn_10_154FC (eight slots, the end
+point = the step animation's distance along fn_10_EB90's direction, slot -> step direction table
+fn_10_EDE0 {0,1,2,3,6,7,8,9}), the path clearance fn_10_16048 (three rays, 0.49 off per blocked
+side ray), the stuck blast fn_10_14A00 (guest 0x968 = `mDashStuckCount`, radius 15 + count, 100
+damage, instant kill), the double dash fn_10_14D14 with 14FE0 (pick, no target), 14C50 (next step)
+and 14E5C (step anim, advanced 0.3 s), and the step 12CE0/12C2C (attack id 0x8000). The
+CDarkSamusDash members are named: 9E0 `mSlot`, 9E4 `mDestination`, 9F0 `mStartPosition`, 9FC
+`mLastSlot`, A00 `mWeight`, A04 `mStepsLeft`, A08 0x80 `mBlocked`, 0x40 `mDoubleDash`. Runs (pick
+forced to 8, reverted hooks; z 9.43 -> 4.12 floor, no falls; 0 caught/reach-stub): 15 single
+dashes (step ~16-18.7 u, one blocked pick of weight 0 -> BreakDash), and with the double dash
+forced 13 double dashes (two picks each, the second with the last slot and its opposite zeroed,
+weights = squared distance gained). Unmarked: 150DC/14FE0 (the stuck arm, still > 1.2 s, never
+ran; no natural double-dash roll on this stage), 154FC (the failed-height and still >= 1.2 s
+clearance arms), 16048 (the centre ray's static vs dynamic block not told apart), 14A00 (never
+ran), 14D14 (blocked arm). Next: fn_10_19B64 (sets 0xBAC) is a tree, not one slice: 17CEC/1A980
+are in; new are 16418 (-> 164C0, 0x140), 16600 (-> 166AC 0x1B4, 16ADC), 12B38, 141BC, 13E2C
+(-> 13EE0), 16B1C, 145E4 (-> 1444C 0x198). SideDash fn_10_153EC also calls 154FC/12CE0.
+
+**Slice 10** (2026-10-21): the reach collector fn_10_19B64 is in (it replaces the stand-in), with
+its whole tree: 16418 (gun-locator line +5 z to the player's aim position, vtable 0x54 =
+GetAimPosition) / 164C0 (RayStaticIntersection, include Solid|AIBlock), 16600 / 166AC (eight ring
+rays, world offsets 16984, count 16ADC = 8, radius 1.1, reach 0.75; include Solid|AIBlock, exclude
+Platform), 12B38 (dive target: the player when morphed, else 5 past it), 141BC (player distance in
+[min, max] x the anim distance x scale y; melee kAS_MeleeAttack (2 | 0xA, locomotion type) with
+0.7..1.3 for 0x4 and 0.9..3.0 for 0x80), 13E2C / 13EE0 (slot 2/3 break-dodge step offset from
+the unflattened forward column), 16B1C (OnPath), 145E4 / 1444C (line on the mesh within 5 of the
+actor's height, 0.1 steps). 0xBAC = 1 when slot 2's end is nearer the player, else 0. This stage's
+mask is 0x6D8 (0x1/0x4/0x20/0x100 off), so the runs forced those bits in (a reverted hook that
+also took them back out after the collector) and teleported the player (`tp 410.1 88.1 5.1`, then
+419.1, then morph ball): all bits cleared and kept, both sides, morph 0/1, the anim reach above /
+below / inside. Unmarked: 19B64 (the 145E4-false arm after both OnPath tests pass never ran),
+166AC (the line <= 0.5 arm), 1444C (the height-band arm). Boss z 9.43 -> 4.12, no falls.
+
+**Slice 11** (2026-10-21). *The shipped stage data* (each DSBS script object read from the MREAs,
+SLdrDSStageInfo weights; a bit is on when its weight > 0, fn_10_17D50). Agon Wastes /
+10_sand_alamostorage (area 46) layer 6: the actor links stage 182e0198 first (IS05), which goes
+(kSS_Connect) to 182e019f and then 182e009e. 0198 (advance below 50 % health): meleeAttack 1,
+meleeDash 8, scatter 10, movingScatter 5, missile 5, missileJump 15, taunt/pause 0.02 = mask 0x6D8
+plus 0x1/0x4. 019f (below 10 %): meleeAttack 1, meleeDash 8, **dive 20, superMissile 10**. 009e
+(final, threshold -1): dive 30. Sanctuary / 10_cliff_rooftop (area 65) layer 2: six stages
+(80/60/40/20/10 % and a final -1); 08410175 has dive 50 + superMissile 10, 08410177 superMissile 15,
+08410174 dive 60 + meleeAttack 15. So 0x1, 0x4, 0x20 and 0x100 are all enabled by shipped data in
+the encounter the runs use: 0x6D8 was only the first stage. The slice-10 markers stay. Their arms
+that ran only under the forced mask: 164C0/16418 (0x100 path), 16600/16984/16ADC (0x20 ring) - all
+reachable once 019f is active with an unmorphed player in band 1; 141BC's "above" arm (0x4 forced
+with an unmorphed player; shipped 0x4 survives only with a morphed player, fn_10_1A278); 12B38's
+morph = 1 arm, which 19B64 cannot produce from shipped data (1A278 clears 0x20 when morphed) but its
+other caller, the dive state fn_10_11FA4, can (a player who morphs during the dive); not run yet.
+13EE0/13E2C/16B1C/145E4 ran on the natural 0x10 path.
+
+*The stage advance* is in: fn_10_193A0 (from Think before the attack pick, 0x0001B308), 194AC (the
+next stage, the first kSS_Connect link), 17E90 (health percent = 100 x hp / initial hp), B86C (wakes
+the AI-hint chains linked with kSS_InternalState6 when the new stage's +0x35 is set) and the 0x97C
+flags (`mUseAltScan` = +0x34, `mCanDie` = +0x32 not 1; F40C/F488 that read them are not ported).
+Runs (reverted probes, `damage` steps from the console): Agon 0198 -> 019f at 40 % (300/600 = 50 %
+did not advance, strict `<`); rooftop (`WORLD=10_cliff_rooftop`, `LAYER2@400`, boss u04f7, 600 hp)
+went 0173 -> 0172 (79 %, mCanDie 0) -> 0175 (58 %, 1) -> 0176 (37 %, 0) -> 0177 (19.5 %, hints on:
+B86C walked 58 type-0x11 chains, each to four active radius-0 hints) -> 0174 (9 %, threshold -1, no
+further advance). Marked 193A0, 194AC, 17E90 (the null-stage and no-link arms are unreachable: every
+encounter links a first stage, and only the final stage, threshold -1, lacks a link). B86C unmarked:
+the inactive-next-hint, chain-end and non-0x11-start arms never ran (the shipped chains are loops of
+already-active hints).
+
+*SideDash* fn_10_153EC (+ fn_10_EDB8, the slot weights 0.6/0.7/1/1/0.8/0.8/0.9/0.9) is ported but
+unmarked: the actor's FSM2 (59 states, the MP2_DS_FSM dump) has no SideDash node, so no shipped
+transition enters it.
+
+## Slice 12 (2026-10-21)
+
+- fn_10_F40C (GetScannableObjectInfo) and fn_10_F488 (TakeDamage) ported, unmarked. New members:
+  `mPhazonHealthMark` (0x1054), `mPhazonPhase` (0x1060 bit 0x80), `mGuestD24` (0xD24),
+  `mAltScanInfo` (0x92C, the constructor locks the data's alternateScannableInfo).
+- Temple Grounds `12_temple_finalgate_dark` layer 4: stage 102a0045 (advance below 78%,
+  0xc96b8223 = 1, so the boss cannot die) links to 102a0044 (usesAlternateScannableInfo = 1, can die).
+  Boss u0564 has 1380 hp. Runs with `damage` from the console (it goes through TakeDamage):
+  - In 0045, 1380 damage: hp -20 is held at 1.0.
+  - After the advance, 50 damage: hp -49, the boss dies (Dead state).
+  - With the scan visor on, F40C answered the alternate token (alt=1, tok=1) after the advance and
+    the base path before it (alt=0) or while inactive.
+- Not run, so neither is marked:
+  - F488: the inactive arm, and the phazon-phase arms. mPhazonPhase is set only by fn_10_6BA0
+    (unported). Temple 0045 has phazonAttack 50, so shipped data reaches them.
+  - F40C: the not-alive arm, and the null-token arm with alt=1. That arm is unreachable on shipped
+    data: only Temple sets alt, and its boss has the token.
+- Agon natural run (console damage 30 hp per step to 240/600 hp; real fire with `press L+A` did no
+  damage): only the arms already seen ran naturally. They are 12B38 unmorphed, 141BC "inside"
+  (0.9), 164C0 and 16418 blocked, and 16984 on its first ray. A morphed player (`fastmorph`, X)
+  next to the boss never reached the collectors: the boss stayed in stand-in states
+  (MissileJump, NormalMissileAttack). The morph arm of 12B38 needs DiveAttack fn_10_11FA4
+  (0x764, a stand-in).
+- Think tail: FD4C is the stage-change watcher. On a new stage count (0x978 vs 0xD54, which
+  starts at 1) the previous stage's info +0x84 (`unknown_0x911a2476`) sets 0xD58 PissedOff, else
+  0xD59. Agon 182e0198 has it set, so porting FD4C alone would send the Agon boss into the
+  stand-in PissedOff/TravelToPissedOff states. Port it together with F930, FB8C, FAF4, FC64,
+  105F4 and 18F90.
+  1D6CC, 1D5C4 and 1B0E0 are the fade/invisibility block (0xDE8, 0xDEC, 0xDED, stage +0x33,
+  fn_10_18628). F654 ramps 0xD24 from the 0xCD0 sub-object's vector at 0xD18. Neither is
+  ported.
+
+## Slice 13 (2026-10-21): real fire, the pissed-off chain
+
+- Real fire does hurt her: with the player 9 units from her, facing her, 50 power-beam hits reached
+  her CDarkSamus (eid 002e00c4, mode 0, multiplier 1.00) and each applied 2.0 damage. Slice 12's
+  "no damage" was shots fired from the spawn point missing her. Nothing shared is wrong here.
+- Ported and marked: FD4C (WatchStageChange, called from Think after the attack pick, ahead of the
+  unported fn_10_1ACA0/fn_10_10A64), FAF4 (ReachedPissedOff), FB8C (TravelToPissedOff), F930
+  (PissedOff), FC64 (FindAreaHint), 105F4 (UpdateShieldFlag), 18F90 (UpdateGroundCollision).
+  0xD50 is renamed mSeenStageUid; 0xD54 mSeenStageCount, 0xD59 mStageChanged, 0xD18 mGuestD18 are new.
+- Agon run (damage to 240/600 before Activate, so the 0198 advance lands while she is in
+  TravelToCoverPoints, the only state with ShouldGetPissedOff): FD4C pissed -> TravelToPissedOff
+  (Activate, Update, Deactivate by Dash, re-entry) -> FAF4 distance 25.8 .. 2.9 -> PissedOff with
+  the type-0xE hint (005e) and the type-0xF face hint, 18F90 Activate/Deactivate -> AnimOver ->
+  TurnToFacePlayer. Rooftop run: FD4C "changed" arm on five advances, then Dead.
+- Not run, unreachable on shipped data: no type-0xE hint (FAF4/FB8C/F930/FC64 null arms), no type-0xF
+  hint (F930 player turn), and FD4C's no-stage arm. Only Agon 0198 sets +0x84, and Agon has both hints.
+- When the stage advances during a stand-in state (MissileJump), she never gets back to
+  TravelToCoverPoints, so the reaction waits on those stand-ins.
+
+## Slice 14 (2026-10-21): the dive
+
+- Ported (`8feff8481`, `a55d1351d`): DiveAttack 11FA4 with FindDiveLanding 12960,
+  SetDiveTargetVector 12B00, DoDiveJumpCmd 1285C/12764, UpdateDiveFlight 11C60, BounceDive 1CDD0,
+  UpdateDiveStuck 11EB8, SendDiveAttack 11DDC, the bubble 12E90/12EF8, 18628, 18FCC, UpdateDodge
+  1707C, CheckDiveCollision 1C99C (from CollidedWith), the dive record (ctor E784, Reset E910),
+  BreakDiveAttack 11C54, and the XLAU/XLND and UE Landing arms. Also `d06bbbb92`: 100DC/FF20
+  (unmarked; the enrage arm needs the phazon-enrage states). Stand-ins: 1B658 (reflect), 138A4 (the
+  dive's hit on the player).
+- Reaching the dive: damage before the first pick lands her in the final stage. A stage with
+  melee, boost ball, sweep beam or missile jump soon traps her in a stand-in state with no exit;
+  the dive also needs an unmorphed player in band 1 whom she can walk to. The Agon harness
+  (damage 570, `stick 0 127` held into a wall, then a jump or a sideways teleport about 0.8 s
+  into each dive) gave 3 and 10 dives, wall bounces among them. Rooftop runs (no teleports)
+  covered the 0x58 = 1 sides (fast turn, 1.15 flight, dodge call).
+- Ran: every DiveAttack arm except the jump re-issue (0x0001239C) and the static wall hit
+  (0x00012534); bounce (both sides of 0.6 s, flat normal); morph target (12B38's morph arm,
+  slice 10); landing found/none; flight set/impulse/fast; stuck moved/still; collision
+  wall/floor/player; UE Landing (both arms); XLND (both arms).
+- Marked: E910, 12B00, 12E90, 12EF8, 18628, 18FCC, 11C54 (all branch-free, all ran). Left unmarked,
+  with a note above each: 11FA4, 12960 and 11C60 (their non-normalizable lines), 1CDD0 (no
+  normal), 11EB8 (stuck bounce), 1707C (no dodge started), and 1C99C (WeaponHits arm). 11DDC's
+  0xCD0 arm would need a dive stage without +0x59; none was seen in the two surveyed encounters.
+- Next: MissileJump 177BC, MeleeAttack 17BC0, BoostBallInto B164 and SweepBeam CA0C are the
+  traps that end dive runs.

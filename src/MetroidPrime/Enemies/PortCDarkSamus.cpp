@@ -15,6 +15,7 @@
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/CSimplePool.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -68,7 +69,17 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mFadeOut(0)
 , mBattleStageUid(kInvalidUniqueId)
 , mStageCount(0)
-, mFirstBattleStageUid(kInvalidUniqueId)
+, mUseAltScan(false)                            // 0x0001FCD0
+, mCanDie(true)                                 // 0x0001FCDC
+, mPhazonHealthMark(0.f)                        // 0x00020214
+, mPhazonPhase(false)                           // 0x00020224
+, mGuestD24(0.f)                                // 0x0000E5DC
+, mGuestCD4(CDamageVulnerability::ReflectVulnerabilty())            // 0x0000E58C
+, mEnrageVulnerability(CDamageVulnerability::ReflectVulnerabilty()) // 0x00020FC4
+, mSeenStageUid(kInvalidUniqueId)
+, mSeenStageCount(1)                            // 0x0002001C
+, mStageChanged(0)                              // 0x00020028
+, mGuestD18(CVector3f::Zero())                  // 0x0000E5C8 (lbl_10_bss_128)
 , mLastAttackerUid(kInvalidUniqueId)
 , mAttackerCount(0)
 , mAttackerUids{kInvalidUniqueId, kInvalidUniqueId}
@@ -81,6 +92,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mDamageDecay(1.f)
 , mDamageThreshold(data.mDamageInterruptThreshold)
 , mStillTime(0.f)
+, mDashStuckCount(0)
 , mStillPosition(CVector3f(0.f, 0.f, 0.f))
 , mLastWallHitTime(0.f)
 , mElapsedTime(0.f)
@@ -117,6 +129,12 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mScatterProjectileUid(kInvalidUniqueId)      // 0x000216D0
 , mScatterSide(0)                               // 0x000216B4
 , mScatterUseSecondInfo(0)                      // 0x000216BC
+, mDive(data.mDiveAttackDamage)                 // fn_10_E784 at 0x0001FE64
+, mGuestE04(0.f) // not written by the constructor; fn_10_18628 is the only writer
+, mGuestE08(0.f)
+, mGuestE0C(0.f)
+, mDodgeTime(0.f)                               // 0x00020248
+, mDodgeDir(CVector3f::Zero())                  // 0x00020254..0x00020264
 , mGunLctrXf(CTransform4f::Identity()) {        // 0x0001FBC0
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
   // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
@@ -153,6 +171,12 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   // collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed time at 0x8B0 is 0.0f
   // (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
+  // 0x0002048C: a valid alternate scannable info is locked into 0x92C (`addis r0, r29, 0x1;
+  // cmplwi r0, 0xffff`, i.e. the id is not -1).
+  if (mData.mAlternateScannableInfo != kInvalidAssetId) {
+    mAltScanInfo = rs_new TLockedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', mData.mAlternateScannableInfo)));
+  }
 }
 
 CDarkSamus::~CDarkSamus() {}
@@ -170,12 +194,14 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
   }
   CPatterned::Think(dt, mgr);
   // 0x0001B2E4: the module's own AI runs only while the actor is alive (the guest's 0x420 bit 6,
-  // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the attack pick
-  // (fn_10_1954C, the call at 0x0001B314); the stage advance before it (fn_10_193A0, 0x0001B308)
-  // and the twelve after it (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a
-  // stand-in rather than a retail-order Think.
+  // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the stage
+  // advance (fn_10_193A0, 0x0001B308) and the attack pick (fn_10_1954C, 0x0001B314) and the stage
+  // watch (fn_10_FD4C, 0x0001B33C); the eleven others (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a stand-in rather
+  // than a retail-order Think.
   if (GetAlive()) {
+    AdvanceBattleStage(mgr);
     UpdateAttackPick(mgr);
+    WatchStageChange(mgr); // 0x0001B33C (fn_10_1ACA0 and fn_10_10A64 before it are not ported)
   }
 }
 
@@ -219,11 +245,35 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       if (const CDarkSamusBattleStage* stage =
               TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(stageUid))) {
         mBattleStageUid = stage->GetUniqueId();
-        mFirstBattleStageUid = mBattleStageUid;
+        mSeenStageUid = mBattleStageUid;
         mStageCount = 1;
       }
     }
     SetPathSearchArea(mgr);
+  }
+  // The 'XLAU' arm (kSM_Launching, 0x0001ED58): the base first takes a kSM_OffGround from the
+  // same sender (0x0001EDA0), then the dive is in flight (0x40, 0x0001EDAC) from the actor's
+  // position and the bubble comes on (fn_10_12EF8 at 0x0001EDD4); the original message goes to
+  // the base in the common tail.
+  if (msg.GetMessage() == kSM_Launching) {
+    CPatterned::AcceptScriptMsg(mgr, CScriptMsg(msg.GetSenderId(), GetUniqueId(), kSM_OffGround,
+                                                kInvalidUniqueId,
+                                                static_cast< EScriptObjectState >(-1)));
+    mDive.mLaunched = true;
+    mDive.mStart = GetTranslation();
+    StartDiveBubble(mgr);
+  }
+  // The 'XLND' arm (kSM_Landed, 0x0001EDDC): in the dive (0x20, 0x0001EDE4), after a bounce
+  // (0x0001EDF4) the dive is done and vertical movement off (0x0001EE00/0x0001EE0C); the message
+  // reaches the base only when the dive is done (`extrwi. 1,24` at 0x0001EE18).
+  if (msg.GetMessage() == kSM_Landed && mCurrentAttack == 0x20) {
+    if (mDive.mBounced == true) {
+      mDive.mDone = true;
+      mVerticalMovement = false;
+    }
+    if (!mDive.mDone) {
+      return;
+    }
   }
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
@@ -264,10 +314,33 @@ void CDarkSamus::Render(const CStateManager& mgr) const {
 // result, which is what the base class's own accessor does.
 const CHealthInfo* CDarkSamus::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
-// vtable slot 16 = fn_10_100DC (0x134): the phazon-phase vulnerability.
+// vtable slot 16 = fn_10_100DC (0x134): the vulnerability others read. During the phazon enrage
+// (attack 0x800000) every weapon but phazon does nothing: the patterned vulnerability is copied
+// to 0xFD0 (fn_10_FFB4, its operator=, 0x00010128) and every normal type but kWT_Phazon, every
+// charged and every combo slot is set to (lbl_10_rodata_3FC = 0.0f, kE_Normal, false).
 const CDamageVulnerability* CDarkSamus::GetDamageVulnerability() const {
-  StandIn("fn_10_100DC", "vtable slot 16, GetDamageVulnerability");
-  return CPatterned::GetDamageVulnerability();
+  if (mGuestCD0 == 1) { // 0x000100FC
+    return &mGuestCD4;
+  }
+  if (mCurrentAttack == 0x800000) { // 0x00010110 (subis/cmplwi)
+    mEnrageVulnerability = *CPatterned::GetDamageVulnerability(); // 0x00010128
+    for (int i = 0; i < 0x15; ++i) {                                // 0x00010168
+      if (i != kWT_Phazon) {                                        // 0x00010138 (10)
+        mEnrageVulnerability.SetVulnerability(
+            i, CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_Normal, false));
+      }
+    }
+    for (int i = 0; i < 4; ++i) { // 0x000101A4
+      mEnrageVulnerability.SetChargedVulnerability(
+          i, CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_Normal, false));
+    }
+    for (int i = 0; i < 4; ++i) { // 0x000101E0
+      mEnrageVulnerability.SetComboVulnerability(
+          i, CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_Normal, false));
+    }
+    return &mEnrageVulnerability;
+  }
+  return CPatterned::GetDamageVulnerability(); // 0x000101F0
 }
 
 // vtable slot 18 = fn_10_F5C0 (0x2C): it builds the box from CPhysicsActor::GetBoundingBox.
@@ -322,13 +395,32 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     }
     return;
   }
+  // kUE_Landing (case 12, 0x0001C2C0) switches on the current attack too; the dive's arm
+  // (0x20, 0x0001C384) starts the landing (0x10) and, after a bounce (0x0001C3A0), puts the actor
+  // on the ground (fn_10_18FCC with 1), resets the dive record and ends it (0x40 and 0x80). Its
+  // 0x40, 0x100, 0x100000 and 0x400000 arms are not in the port yet.
+  if (type == kUE_Landing && mCurrentAttack == 0x20) {
+    mDive.mLanding = true;
+    if (mDive.mBounced == true) {
+      SetGrounded(mgr, true);
+      mDive.Reset();
+      mDive.mLaunched = true;
+      mDive.mDone = true;
+    }
+    return;
+  }
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
-// vtable slot 29 = fn_10_F40C (0x7C): the alternate scannable info (the 'SCAN' token at 0x92C
-// when the actor is alive, frozen and visible).
+// vtable slot 29 = fn_10_F40C (0x7C): the alternate scannable info. Alive (0x420 bit 0x40,
+// 0x0000F430), active (0x20 bit 0x80, 0x0000F44C), on a stage that asks for it (0x97C bit 0x80,
+// 0x0000F45C) and with the token at 0x92C (0x0000F468) the actor answers that token's object
+// (+0x8, 0x0000F46C); otherwise CPatterned::GetScannableObjectInfo (0x0000F474).
 CScannableObjectInfo* CDarkSamus::GetScannableObjectInfo() const {
-  StandIn("fn_10_F40C", "vtable slot 29, GetScannableObjectInfo");
+  if (GetAlive() == true && GetActive() == true && mUseAltScan == true &&
+      !mAltScanInfo.null()) {
+    return **mAltScanInfo;
+  }
   return CPatterned::GetScannableObjectInfo();
 }
 
@@ -342,20 +434,55 @@ const CCollisionPrimitive* CDarkSamus::GetCollisionPrimitive() const {
 void CDarkSamus::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                               CStateManager& mgr) {
   StandIn("fn_10_1C7FC", "vtable slot 33, CollidedWith");
+  // The dive's arm (fn_10_1C99C at 0x0001C85C) with the collider cast to an actor
+  // (0x0001C838); fn_10_1D0A0 before it and fn_10_1CF84, fn_10_A734 and fn_10_1D194 after it are
+  // not in the port yet, so the base takes the rest.
+  CheckDiveCollision(mgr, TCastToPtr< CActor >(mgr.ObjectById(id)), list);
   CPatterned::CollidedWith(id, list, mgr);
 }
 
 // vtable slot 40 = fn_10_FF20 (0x94): the damage vulnerability the actor is hit with - the phazon
-// sub-object at 0xCD4 when the byte at 0xCD0 is 1, the combo vulnerability at 0xFD0 otherwise.
+// sub-object at 0xCD4 when the byte at 0xCD0 is 1; during the phazon enrage the patterned
+// vulnerability copied to 0xFD0 with combo slot 3 set to (0.0f, kE_Normal, false); the CAi one
+// otherwise.
 CDamageVulnerability* CDarkSamus::DamageVulnerability() {
-  StandIn("fn_10_FF20", "vtable slot 40, DamageVulnerability");
-  return CPatterned::DamageVulnerability();
+  if (mGuestCD0 == 1) { // 0x0000FF38
+    return &mGuestCD4;
+  }
+  if (mCurrentAttack == 0x800000) { // 0x0000FF4C (subis/cmplwi)
+    mEnrageVulnerability = *CPatterned::GetDamageVulnerability(); // 0x0000FF64
+    mEnrageVulnerability.SetComboVulnerability(                     // 0x0000FF90
+        3, CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_Normal, false));
+    return &mEnrageVulnerability;
+  }
+  return CAi::DamageVulnerability(); // 0x0000FF9C
 }
 
-// vtable slot 41 = fn_10_F488 (0x138): the damage handling (the interrupt threshold at 0x908).
+// vtable slot 41 = fn_10_F488 (0x138): the damage handling. The hit cooldown 0x448 =
+// skDamageHitTime (0x0000F4AC, CPatterned::TakeDamage). Active (0x0000F4C8), a health below
+// lbl_10_rodata_3E8 = 1.0f (0x0000F4EC) is held at 1.0f (the vtable slot 0x38, 0x0000F528) when
+// the stage forbids dying (0x97C bit 0x40 clear, 0x0000F4F8) or in the phazon phase (0x1060 bit
+// 0x80, 0x0000F508). In the phazon phase (0x0000F538) a health below 0x1054 -
+// lbl_10_rodata_E4 = 60.0f (0x0000F568) is set to that mark - lbl_10_rodata_41C = 0.1f, the
+// 0xCD0 byte to 1 and 0xD24 to 1.0f (0x0000F598..0x0000F5A0).
 void CDarkSamus::TakeDamage(const CVector3f& direction, float magnitude) {
-  StandIn("fn_10_F488", "vtable slot 41, TakeDamage");
   CPatterned::TakeDamage(direction, magnitude);
+  if (GetActive() != true) {
+    return;
+  }
+  if (GetHealthInfo()->GetHP() < 1.f) {
+    if (mCanDie == false || mPhazonPhase == true) {
+      HealthInfo()->SetHP(1.f);
+    }
+  }
+  if (mPhazonPhase == true) {
+    const float mark = mPhazonHealthMark - 60.f;
+    if (GetHealthInfo()->GetHP() < mark) {
+      HealthInfo()->SetHP(mark - 0.1f);
+      mGuestCD0 = 1;
+      mGuestD24 = 1.f;
+    }
+  }
 }
 
 // vtable slot 45 = fn_10_CEB4 (0x1C): it copies the three floats out of this+0x54/0x58/0x5C, the
