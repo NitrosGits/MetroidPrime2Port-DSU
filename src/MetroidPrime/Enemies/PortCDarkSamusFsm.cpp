@@ -1020,9 +1020,11 @@ bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) co
 
 // fn_10_16B48 (0x00016B48, 0xC bytes): the byte at guest 0xAB8's bit 7 - the extrwi at
 // 0x00016B4C keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24)).
-// @ fn_10_16B48
+// The only writer of that bit is the anim-event handler (fn_10_1BEFC, 0x0001C250), which is
+// still a stand-in, so the trigger stays a stand-in too.
 bool CDarkSamus::BreakFreezeBeam(CStateManager&, const CTriggerData&) const {
-  return (mGuestAB8 & 0x80) != 0;
+  FsmStandIn("fn_10_16B48", "trigger BreakFreezeBeam");
+  return false;
 }
 
 // fn_10_149B4 (0x000149B4, 0x4C bytes): the dash record's flag 0x80 (0xA08's
@@ -1045,10 +1047,12 @@ bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
   return mDive.mDone;
 }
 
-// fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C).
-// @ fn_10_16B5C
+// fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C). Its only
+// writer is the anim-event handler (fn_10_1BEFC, 0x0001C30C), still a stand-in, so the trigger
+// stays a stand-in too.
 bool CDarkSamus::BreakNormalMissile(CStateManager&, const CTriggerData&) const {
-  return mGuestA40 != 0;
+  FsmStandIn("fn_10_16B5C", "trigger BreakNormalMissile");
+  return false;
 }
 
 // fn_10_106F8 (0x000106F8, 0x1C bytes): the float at guest 0xC30 against the actor's elapsed
@@ -1064,10 +1068,12 @@ bool CDarkSamus::BreakPhazonAttack(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-// fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54).
-// @ fn_10_16B54
+// fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54). Its only
+// writer is the anim-event handler (fn_10_1BEFC, 0x0001C31C), still a stand-in, so the trigger
+// stays a stand-in too.
 bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
-  return mGuestA80 != 0;
+  FsmStandIn("fn_10_16B54", "trigger BreakSuperMissile");
+  return false;
 }
 
 // fn_10_10634 (0x00010634, 0x24 bytes): fn_10_17D50 with the attack 1 (the melee, `li r5, 0x1`
@@ -2647,9 +2653,22 @@ void CDarkSamus::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
 }
 
-void CDarkSamus::Pause(CStateManager&, EStateMsg msg, float) {
+// fn_10_10710 (0x00010710, 0x154 bytes): the Pause state. The rest of its body is still a
+// stand-in, but its write of the guest's 0xC30 is ported: on Activate (0x00010754) 0xC30 takes
+// the elapsed time 0x8B0 (0x00010768) and then the stage's pause duration (the stage's +0x18
+// and +0x1C, the random range at 0x000107A0) is added (0x000107AC) - 0xC30 is the time the
+// pause ends, which the BreakPause trigger (fn_10_106F8) compares with the elapsed time.
+void CDarkSamus::Pause(CStateManager& mgr, EStateMsg msg, float) {
   FsmStandIn("fn_10_10710", "state Pause");
   DsStateEntered("Pause", msg);
+  if (msg == kStateMsg_Activate) {
+    mGuestC30 = mElapsedTime; // 0x00010768
+    const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+    if (stage != nullptr) {
+      mGuestC30 += mgr.Random()->Range(stage->GetStageInfo().pauseDurationMin,
+                                       stage->GetStageInfo().pauseDurationMax); // 0x000107A0
+    }
+  }
 }
 
 void CDarkSamus::PhazonAttack(CStateManager&, EStateMsg msg, float) {

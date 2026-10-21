@@ -1159,3 +1159,30 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
 | 16B54 | the byte 0xA80 set / clear | forced (gdb `set var`), yes |
 | 16B5C | the byte 0xA40 set / clear | forced (gdb `set var`), yes |
 | 106F8 | 0xC30 below the elapsed time / not | forced (gdb `set var`), yes |
+
+## Slice 25 (2026-10-21): the reflect record bytes - their writers, and the Break* triggers
+
+- **Every writer of the guest's 0xA40, 0xA80, 0xAB8 and 0xC30 in the REL** (the rel_pseudo
+  dumps; the stores and the bit writes):
+  | byte | writer | what it writes |
+  |---|---|---|
+  | 0xC30 | fn_10_10710 (the Pause state) | 0x00010768: the elapsed time 0x8B0; 0x000107AC: that plus the stage's pause duration (+0x18..+0x1C, the random range at 0x000107A0) - the time the pause ends |
+  | 0xA40 | fn_10_17448 (the NormalMissileAttack state) | 0x000174A0: 0 (with 0xA38 and 0xA3C, 0x00017498/0x0001749C) on Activate |
+  | 0xA40 | fn_10_1BEFC (the anim-event handler) | 0x0001C30C |
+  | 0xA80 | fn_10_16ECC (the SuperMissileAttack state) | 0x00016F54: 0 (with 0xA78 and 0xA7C, 0x00016F50/0x00016F4C) on Activate |
+  | 0xA80 | fn_10_1BEFC (the anim-event handler) | 0x0001C31C |
+  | 0xAB8 | fn_10_16CDC (the FreezeBeam state) | 0x00016D70 and 0x00016D80: the bit 0x40 cleared and the bit 0x80 set to the old bit 0x40 (0x00016D6C and 0x00016D7C) |
+  | 0xAB8 | fn_10_1BEFC (the anim-event handler) | 0x0001C250 and 0x0001C298 (the bit 0x80) |
+- The three states' writes are ported where they are the whole write (the Pause state's), the
+  anim-event handler (fn_10_1BEFC) is still a stand-in, so the bytes it alone sets stay 0.
+- **The triggers:** fn_10_16B48 (BreakFreezeBeam), fn_10_16B54 (BreakSuperMissile) and
+  fn_10_16B5C (BreakNormalMissile) read the bytes the anim-event handler writes, so they go
+  back to their FsmStandIn bodies (unmarked); their members (mGuestA40, mGuestA80, mGuestAB8) stay
+  for the writers. fn_10_106F8 (BreakPause) reads 0xC30, which the Pause state writes, so it
+  stays ported: with the Pause state's write ported the trigger is false while the pause runs and
+  true when it ends.
+- The arms ran with natural writes (no gdb forcing): tools/cov with
+  `tools/cov/specs/darksamus.py` and `tools/cov/specs/darksamus_pause.con` (the rooftop, the
+  boss, `fsm u04f7 Pause`) - `106F8 BreakPause: 101 hits, key 0 -> ret 0 (100), key 1 -> ret 1
+  (1)`; `10710 Pause: 211 hits, -> CRandom16::Range 1` (the pause's duration drawn once).
+- The Pause state's own body is still a stand-in apart from its 0xC30 write.

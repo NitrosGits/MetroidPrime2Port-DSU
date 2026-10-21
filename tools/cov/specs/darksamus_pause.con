@@ -1,0 +1,4 @@
+# the Dark Samus's Pause state: the BreakPause trigger's two arms.
+@f600 send u04f7 Activate
+@f700 fsm u04f7 Pause
+@f1400 objs dark
