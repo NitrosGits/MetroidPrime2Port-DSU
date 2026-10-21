@@ -995,11 +995,10 @@ bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) co
   mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
   for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
+    // The retail casts the entry and hands it to fn_10_1B9B0, which answers false for a
+    // null projectile (the `mr.` test at 0x0001B9C0), so the cast's result is used as it is.
     const CEnergyProjectile* proj =
         TCastToConstPtr< CEnergyProjectile >(mgr.ObjectById(*it));
-    if (proj == nullptr) {
-      continue;
-    }
     if (!CanReflectProjectile(mgr, proj, 6)) { // kWT_Missile, 0x0001BBF4
       continue;
     }
@@ -2148,7 +2147,7 @@ bool CDarkSamus::CanReflectHit(CStateManager& mgr, const CDamageInfo& damage, TU
     return false;
   }
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
-  if (stage == nullptr) { // 0x0001EEBC
+  if (stage == nullptr) { // the retail's own null test, 0x0001EEBC
     return false;
   }
   const float roll = RollReflectChanceForHit(mgr, uid); // fn_10_F100, 0x0001EED8

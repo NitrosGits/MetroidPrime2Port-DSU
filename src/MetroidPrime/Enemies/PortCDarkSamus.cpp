@@ -277,7 +277,7 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   if (msg.GetMessage() == kSM_Damage) {
     const CGameProjectile* proj =
         TCastToConstPtr< CGameProjectile >(mgr.GetObjectById(msg.GetSenderId()));
-    if (proj != nullptr &&                                  // 0x0001EA48
+    if (proj != nullptr &&  // the retail's own null test, 0x0001EA48
         GetDamageVulnerability()->WeaponHurts(                // 0x0001EA5C, 0x0001EA64
             proj->GetCurrentDamageInfo().GetWeaponMode()) &&
         3.f + (mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20) <= mElapsedTime) { // 0x0001EAB4
