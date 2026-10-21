@@ -16,7 +16,9 @@
 
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.hpp"
@@ -137,6 +139,16 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
 // 'ACTV' (0x0001E908), 'ALRT' (0x0001E8F4), 'DCTV' (0x0001E8E0), 'XALD' (0x0001E930), 'XDEL'
 // (0x0001E8B8), 'XDMG' (0x0001E968), 'XLAU' (0x0001E958), 'XLND' (0x0001E944), 'XLSG'
 // (0x0001E98C) and 'XOFF' (0x0001E978).
+// fn_10_1E864 (0x0001E864, 0x38 bytes): the path search's area - the actor's area (the guest's
+// this+4) in the world's area list (the state manager's 0x1604, the list at 0x24 and the entry's
+// +4 at 0x0001E884), its post-constructed data (+0x104) and that data's path area (+0xEC), stored
+// into the search (the guest's 0x7C0, 0x0001E890).
+// @ fn_10_1E864
+void CDarkSamus::SetPathSearchArea(CStateManager& mgr) {
+  mPathFindSearch.SetArea(
+      mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
+}
+
 void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("fn_10_1E89C", "vtable slot 6, AcceptScriptMsg");
   // The 'XCRT' arm (0x58435254, the host's kSM_Create; the compare at 0x0001E91C) loads the body
@@ -146,6 +158,12 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   // forwarded here too - after the activation, in retail's order.
   if (msg.GetMessage() == kSM_Create) {
     BodyController()->Activate(mgr, pas::kAS_Invalid);
+  }
+  // The 'XALD' arm (0x58414C44, kSM_AreaLoaded; the compare at 0x0001E938) sets the path search's
+  // area (fn_10_1E864 at 0x0001EBD0); the arm's battle-stage lookup before it (0x0001EB60..) and
+  // its collision primitive and boss parameters after it are not in the port yet.
+  if (msg.GetMessage() == kSM_AreaLoaded) {
+    SetPathSearchArea(mgr);
   }
   CPatterned::AcceptScriptMsg(mgr, msg);
 }

@@ -258,6 +258,16 @@ changes, and the four handlers the walk reaches - `Start` (`fn_10_F920`), `Start
 (section 7). The walk is now `Start` -> `TurnToFacePlayer` -> `TravelToCoverPoints`; the next
 state and its triggers are the next slice.
 
+**Milestone 2, slice 3** (2026-10-21) is in: `TravelToCoverPoints` (`fn_10_1DF74`) and its helpers
+(the repulsion point and separation 1D9A4/1DD14, the additive animation 1D860, the glide emitter
+11334, the cover-point scoring 1E360/1E3C0/1E4C4, the safe position EFC8/128D8) and the path
+search's area (`fn_10_1E864`, called from the 'XALD' = kSM_AreaLoaded arm of AcceptScriptMsg;
+without it every search answered kR_InvalidArea, every update forgot the cover point and the actor
+hit a wall into `Dash`). The run now stays in `TravelToCoverPoints` and walks cover to cover (the
+path find's waypoints advance, the near/path-over forgets fire). No Picked* trigger fires because
+the rest of the 'XALD' arm - the battle-stage lookup that sets 0x974 - is not ported: that is the
+next slice.
+
 What is **not** established:
 
 1. ~~The state machine: which of the 92 function pointers after the vtable are triggers, states and

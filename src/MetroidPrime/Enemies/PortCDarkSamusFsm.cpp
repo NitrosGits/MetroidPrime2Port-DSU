@@ -480,6 +480,7 @@ void CDarkSamus::EraseFirstAttacker() {
 // fn_10_1E360 (0x0001E360, 0x60 bytes): the point on the player the cover points are scored
 // against - the player's aim position (the state manager's 0x14FC and its vtable slot 0x54) a
 // lbl_10_rodata_55C = 0.65f ahead.
+// @ fn_10_1E360
 CVector3f CDarkSamus::GetPlayerAimPosition(CStateManager& mgr) const {
   return mgr.GetPlayer(0)->GetAimPosition(mgr, 0.65f);
 }

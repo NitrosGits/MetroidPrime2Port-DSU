@@ -379,6 +379,9 @@ private:
   // attacker has no cover point, or when the attacker's cover point is within 2 units.
   bool ShouldForgetLastAttacker(CStateManager& mgr) const;
 
+  // fn_10_1E864: the path search's area (the path area of the actor's area).
+  void SetPathSearchArea(CStateManager& mgr);
+
   // fn_10_1D9A4: the point the actor is pushed away from - an active repulsor of the actor's
   // connections in the actor's area that holds the actor inside its radius (`strength`, when not
   // null, gets 1 - distance / radius), else the centroid of an obstructed path find region the
