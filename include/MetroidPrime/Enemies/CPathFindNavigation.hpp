@@ -14,6 +14,9 @@ public:
   void PathFind(CStateManager& mgr, EStateMsg msg, float dt, CPatterned& actor);
   void SetDestination(const CVector3f& position);
   void SetFaceTarget(const TUniqueId& id) { mFaceTarget = id; }
+#ifdef TARGET_PC
+  TUniqueId GetFaceTarget() const { return mFaceTarget; }
+#endif
   const CVector3f& GetDestinationPosition() const { return mDestinationPosition; } // Guessed name
   void SetUseLocomotionFacing(bool use) { mUseLocomotionFacing = use; } // Guessed name
 

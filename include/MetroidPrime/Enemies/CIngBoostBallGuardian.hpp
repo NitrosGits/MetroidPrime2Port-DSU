@@ -424,6 +424,10 @@ private:
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id);
   // fn_30_6064: release the cover hint (guest 0x108E); the id is cleared only if the hint exists.
   void ReleaseOwnCoverHint(CStateManager& mgr);
+  // fn_30_68F0: the kSM_Create body - the form, the locomotion type and the surface alignment.
+  void OnCreate(CStateManager& mgr);
+  // fn_30_6014: claim a cover hint (in use, then the hint's id into 0x108E and 0x1090).
+  void ClaimCoverHint(CScriptAIHint& hint);
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();

@@ -302,6 +302,24 @@ void CIngBoostBallGuardian::UpdateHitLight(float dt, CStateManager& mgr) {
 }
 
 
+// fn_30_68F0: the kSM_Create body. The form is 2 (corporeal) or 3 (ing spot) from the data
+// byte's kFlag_StartAsIngSpot (0x0000690C/0x00006914), not the guest bit 0x11ED 0x40; the same
+// bit picks the locomotion type (0x00006928): crouch (0x00006934) with the surface alignment
+// (0x00006954) or relaxed (0x00006960). The flag byte's 0x80 is never set - the loader's
+// fn_30_10C24 leaves it clear (0x00010D9C) - so the ing-spot arm cannot run in the shipped data.
+// @ fn_30_68F0
+void CIngBoostBallGuardian::OnCreate(CStateManager& mgr) {
+  const bool startAsIngSpot = (mData.mFlags210 & kFlag_StartAsIngSpot) != 0;
+  mForm = startAsIngSpot ? kForm_IngSpot : kForm_Corporeal; // 0x00006910/0x0000691C/0x00006920
+  if (startAsIngSpot) {
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00006934: li r4, 0
+    mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f); // 0x00006954
+  } else {
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00006960: li r4, 1
+  }
+}
+
+
 // fn_30_DDA0 (this module).
 // The Ing's AcceptScriptMsg (the Ing REL's fn_29_C9A4): the message switch that creates the body
 // and the collision actors, joins the team, relays the hits and cleans up on delete.
@@ -329,16 +347,7 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
   }
   switch (msg.GetMessage()) {
   case kSM_Create:
-    // fn_30_68F0 tests the data byte's kFlag_StartAsIngSpot (0x0000690C/0x00006914 for the form,
-    // 0x00006924/0x00006928 for the locomotion), not the guest bit 0x11ED 0x40. It stays folded
-    // into this case (no host function, so no marker).
-    mForm = (mData.mFlags210 & kFlag_StartAsIngSpot) != 0 ? kForm_IngSpot : kForm_Corporeal;
-    if ((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) {
-      BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00006934: li r4, 0
-      mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
-    } else {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x00006960: li r4, 1
-    }
+    OnCreate(mgr); // fn_30_68F0
     // 0x0000DF0C: the body is activated after the form picks its locomotion (kAS_Invalid). The
     // [port] guard skips it when a think already activated the body (see EnsureBodyActive).
     EnsureBodyActive(mgr);
