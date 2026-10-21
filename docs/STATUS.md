@@ -35,7 +35,7 @@ CommandoPirate `d72c5d88a` (961C ported, 2474 time fix), SwampBoss2 `83d44d889` 
 `~/.cache/mp2-orch/lanes` (the table's session column is stale). Surviving old sessions: Splitter (re-sent),
 EmperorIng1 (busy), DarkSamus (busy, old orchestrator's child). Shared asks queued for port: ELoopAttackType 5/6
 + CBCLoopAttackCmd skip-into setter (CommandoPirate), `;`-separated console commands per poll (Splitter),
-fluid plane `Burn` on patterned actors (Ing fn_29_B3C4 burning arm). Grapple/orbit bug: Opus lane in `../wt-mp2-grapple` (branch fix/grapple-orbit), report `/tmp/opencode/reports/grapple.md`.
+fluid plane `Burn` on patterned actors (Ing fn_29_B3C4 burning arm). Grapple/orbit: not a bug (L pressed before the 20-update candidate rebuild); console `grapple <id> [d]` merged `cc780b874`.
 
 Batch 5 merged into port `3bb8177db` (via branch `batch5`, worktree `../wt-mp2-batch5`): playerturret
 `c377344ed`, ing `8855b1674`, spacepirate-vt `c42d82fce`, emperoring `542d6c9b8`, emperoring3 `f786b983e`,
