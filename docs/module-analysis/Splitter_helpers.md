@@ -169,6 +169,29 @@ without asking the distance") and `forced.txt` lists it.
 | `fn_75_5F18` (the head's Listen) | (a) the actor is not alive: false, (b) the noise type is not 4: false, (c) the noise type is 4 and the distance is 20 or more: false, (d) the noise type is 4 and the noise is inside the radius: the flag byte at 0xF6A gets its 0x40 bit and the body returns true | (b) ran (the `noise 3` call, 2 entries), (c) ran (the `noise 4` call from 60 units up, 7 entries), (d) ran (the `noise 4` call next to the head, 2 entries, the return value 1). (a) cannot run in play - a dead head is deleted, so the noise system never asks it - and was **forced**: the alive flag is written at the body's entry for one call (`tools/cov/force.sh` with `tools/cov/specs/splitter_helpers_force.py`, the `forced.log` in the run's directory). **Marked** |
 | `fn_75_5E50` (the head's CanBeIngPossessed) | (a) the head is docked: false, (b) it is not: the base class's answer | the body was never called in the run (the Ing possession system does not ask in this area): 0 entries. **Unmarked** |
 
+The four marked bodies' arms are also in the **coverage** profile, which is the stronger
+evidence: one forcing run per body (`SPLITTER_FORCE=<body>`, `COV_GDB_SCRIPT=tools/cov/cov_force.py`,
+`BUILD=build-port-cov`) writes the alive flag at the body's entry, and the runs' counters add up:
+
+    SPLITTER_FORCE=6310 COV_GDB_SCRIPT=$PWD/tools/cov/cov_force.py BUILD=$PWD/build-port-cov \
+      tools/cov/force.sh tools/cov/specs/splitter_helpers_force.py /tmp/opencode/gcov_f_6310 \
+      1baa96c2,914f1381 --con tools/cov/specs/splitter_hive_temple.con --fast --frames 12000
+    (the same for 633C, 6368 and 5F18 - one body per run, because the force makes the head dead
+    and a dead head is not rendered any more, so one gate's force would keep the others uncalled)
+
+    tools/cov/gcov_report.py build-port-cov /tmp/opencode/gcov_temple/gcov \
+      /tmp/opencode/gcov_hive/gcov /tmp/opencode/gcov_contr/gcov /tmp/opencode/gcov_f_6310/gcov \
+      /tmp/opencode/gcov_f_633C/gcov /tmp/opencode/gcov_f_6368/gcov /tmp/opencode/gcov_f_5F18b/gcov \
+      --module Splitter
+
+| id | the profile | arms |
+|---|---|---|
+| `fn_75_6310` (the head's AddToRenderer) | 4/4 lines, 2/2 branches | **ALL-ARMS** |
+| `fn_75_633C` (the head's PreRender) | 4/4 lines, 2/2 branches | **ALL-ARMS** |
+| `fn_75_6368` (the head's Render) | 4/4 lines, 2/2 branches | **ALL-ARMS** |
+| `fn_75_5F18` (the head's Listen) | 7/7 lines, 8/8 branches | **ALL-ARMS** |
+| `fn_75_5E50` (the head's CanBeIngPossessed) | 0/3 lines | never called |
+
 The gdb counters are the evidence for the three alive gates: the `calls` key counts the
 hits at the base class's call site (400) and the entry key the hits of the body itself (800),
 so 400 entries took the gate and 400 did not. The coverage build's profile of the three
@@ -223,6 +246,29 @@ the Hive Temple, layer 10 - the generated `SPLL`/`SPLU` through the relays `SRLY
 The bodies that ran but whose arms did not all run are the queue's next work: the profile
 names the exact lines and branches each one still misses, so the lane can take them one at a
 time (`gdb` forces what no run reaches).
+
+### 3.4 The queue's next step: the head's DoUserAnimEvent
+
+The queue rows whose retail caller ran in the coverage runs are four, and three of them are
+host copies (the loader's own helpers `fn_75_E60` and `fn_75_F00`, and the destructor
+`fn_75_14CC` - all class `H`). The fourth is `fn_75_1CA0` (0x198), which `fn_75_6394` calls.
+
+`fn_75_6394` itself is the head's **DoUserAnimEvent** (vtable slot 0x70), not its
+GetSortingBounds: the note's section f row ("0x70 | `GetSortingBounds(const CStateManager&)
+const` | `fn_75_6394`") is off by one slot. The REL's own vtable (`lbl_75_data_448`) has the
+DOL's `GetSortingBounds__6CActorCFRC13CStateManager` at slot **0x6C** and the module's
+`fn_75_6394` at slot **0x70**, and `docs/module-analysis/vtable-offsets.md` names the DOL's
+slot 0x70 `DoUserAnimEvent(CStateManager&, const CInt32POINode&, EUserEventType, float)` -
+which is exactly `fn_75_6394`'s signature (r4 the manager, r5 the node, r6 the type, f1 the dt).
+The body switches on the type (asm 0x63B4 `cmpwi r31, 0x16`): the type 0x16 asks the player
+(the id at 0xEFE) for an orbit request, the type 0 calls `fn_75_1CA0`, and either way the
+base class's own `DoUserAnimEvent` runs (asm 0x6468).
+
+So the port's head has **no** DoUserAnimEvent override (the retail's is fn_75_6394) and its
+`GetSortingBounds` override names the wrong retail function (the head does not override
+GetSortingBounds at all - the DOL's at 0x6C is used). Porting `fn_75_6394` therefore means a
+**new override** in the FSM lane's class, not a stand-in call site swap, and it needs
+`fn_75_1CA0` first; that is the next slice, and the note's section f wants the row corrected.
 
 ## 4. What is left, and why
 
