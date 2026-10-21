@@ -418,3 +418,28 @@ the same gap §6 lists for `Blow`/`Flinch`.
   instructions of state body plus its callees) and the dark phase cannot be reached in the port,
   so the port's `Blow` stays the partial body it was. It needs a port-side decision on the
   weapon/same-toucher checks first.
+
+### 7.6 The beam and the growth joints (2026-10-21, third lane pass)
+
+- **The cast is not the blocker.** `CGameProjectile : public CWeapon`
+  (`include/MetroidPrime/Weapons/CGameProjectile.hpp:27`), and `CEnergyProjectile` derives from
+  it, so the projectile that damages a joint *is* a `CWeapon`: retail's `TCastToPtr<CWeapon>` on
+  the joint's last-touched object should succeed. A probe build that logged the cast result on
+  the boss's `kSM_Damage` message was built for exactly this, but it never logged - the damage
+  message never arrived, because no beam hit a joint (see below). The probe was removed again.
+- **The growth joints do not move.** With the boss hovering, the four growth spheres keep fixed
+  positions (traced): g0 (-176.6, -103.2, 85.1), g1 (-174.5, -104.0, 97.2), g2 (-181.6, -142.9,
+  83.6), g3 (-179.5, -143.6, 95.7) - the boss's own origin moves around (-181..-184,
+  -115..-132, 58..66) while the joint spheres stay put, so the aim can be computed exactly.
+- **The aim still misses.** `tp <x> <y> <z>` (the player is teleported and keeps its heading),
+  `face <yaw>` and `aim <yaw> <pitch>` (the camera's angles) were used to place the player
+  14-17 units east of a growth, level with it, and fire (`press a`) with the growth's yaw
+  computed from those positions; sixteen such combinations over the run never produced a hit
+  on any of the ten joint spheres. The beam does not reach: the player falls (gravity) as soon
+  as it is teleported into the air, the camera sits above and behind the player so the beam
+  starts high, and the wings are radius-3 spheres 50 units up and 50 to the side.
+- **What is left to try:** a beam that starts level with the player (the camera's pitch offset
+  would have to be known exactly), or a shorter distance to a growth, or a shot that comes from
+  the growth's own height (the player would have to be standing on something at z ~ 85).
+  Until a joint is hit, `fn_79_2E84` (only reachable from `DarkLurk`), `fn_79_3578` (only from
+  `Blow`) and `fn_79_1E40`/`fn_79_2A84`/`fn_79_33BC` stay compared-but-unmarked.
