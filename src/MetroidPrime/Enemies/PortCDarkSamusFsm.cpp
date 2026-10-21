@@ -44,6 +44,8 @@
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
+#include "MetroidPrime/CAxisAngle.hpp"
+#include "MetroidPrime/CRumbleManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
@@ -53,6 +55,10 @@
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CAnimPlaybackParms.hpp"
 #include "Collision/CRayCastResult.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "MetroidPrime/CDecalManager.hpp"
+#include "Weapons/CCollisionResponseData.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1372,9 +1378,188 @@ void CDarkSamus::BoostBallFire(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("BoostBallFire", msg);
 }
 
-void CDarkSamus::BoostBallInto(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_B164", "state BoostBallInto");
+// fn_10_B164 (0x0000B164, 0x2F4 bytes): the BoostBallInto state, the morph into the boost ball.
+// The shield flag (fn_10_105F4 at 0x0000B1A4) and the collision failsafe (fn_10_1AEC0 at
+// 0x0000B1B0) run first. Activate (`cmpwi r31, 0x0` at 0x0000B1C0) starts the roll emitter at the
+// actor (AddEmitter with mBoostBallRollSfxId 0xE68 in the actor's area, not looped at
+// 0x0000B1E8, with acoustics at 0x0000B1EC, kMedPriority, the handle to 0xE6C at 0x0000B204), clears 0xEC8 and
+// the hint 0xEC0 and looks for the hint to roll to: the nearest boost hint (fn_10_B6C4,
+// `cmplwi r3, 0x0` at 0x0000B220) and the first active hint it arrives at (fn_10_B458,
+// 0x0000B244). With one, 0xECC is the zero vector, 0xEC0 its uid, 0xEC4 the distance to it and
+// 0xED8 its value parameter clamped to lbl_10_rodata_25C = 0.0f .. lbl_10_rodata_27C = 2.0f when
+// above 0.0f (`fcmpo` at 0x0000B2C8, 0x0000B2E0, 0x0000B2F4), else lbl_10_rodata_264 = 1.0f
+// (0x0000B314). Update (`cmpwi r31, 0x1` at 0x0000B1B4) moves the ball and the emitter
+// (fn_10_A06C). Every message then runs the attack bookkeeping with id 0x20000 (`lis r4, 0x2`,
+// fn_10_1B478 at 0x0000B338) and turns: toward the player at lbl_10_rodata_2B4 = 1.7453293f
+// rad/s with no hint (`cmplw r4, r0` at 0x0000B348, fn_10_16B64), else toward the hint actor at
+// lbl_10_rodata_2B8 = 3.4906585f (`mr. r5, r3` at 0x0000B388, fn_10_16B8C). It clears 0xEBC
+// bit 0x40 (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4) and runs the melee attack command with
+// severity 7 (0x0000B3E0; pas::kAS_MeleeAttack = 7 at 0x0000B3F8; fn_10_8764 at
+// 0x0000B414).
+void CDarkSamus::BoostBallInto(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallInto", msg);
+  UpdateShieldFlag(msg);
+  RunCollisionFailsafe(mgr);
+  if (msg == kStateMsg_Update) {
+    UpdateBoostBallAtActor(mgr);
+  } else if (msg == kStateMsg_Activate) {
+    mBoostBallRollSfx = CSfxManager::AddEmitter(mBoostBallRollSfxId, GetTranslation(),
+                                                GetCurrentAreaId().Value(), false, true,
+                                                CSfxManager::kMedPriority);
+    mGuestEC8 = 0;
+    mBoostHintUid = kInvalidUniqueId;
+    const CScriptAIHint* start = FindBoostBallHint(mgr);
+    if (start != nullptr) { // 0x0000B220
+      CScriptAIHint* hint = FindArrivedHint(mgr, start->GetUniqueId());
+      if (hint != nullptr) { // 0x0000B244
+        mGuestECC = CVector3f::Zero();
+        mBoostHintUid = hint->GetUniqueId();
+        mBoostHintDist = (hint->GetTranslation() - GetTranslation()).Magnitude();
+        if (hint->GetValueParm() > 0.f) { // 0x0000B2C8
+          const float value = hint->GetValueParm();
+          float clamped;
+          if (0.f > value) { // 0x0000B2E0
+            clamped = 0.f;
+          } else if (2.f >= value) { // 0x0000B2F4
+            clamped = value;
+          } else {
+            clamped = 2.f;
+          }
+          mBoostHintValue = clamped;
+        } else {
+          mBoostHintValue = 1.f; // 0x0000B310
+        }
+      }
+    }
+  }
+  UpdateCurrentAttack(0x20000, mgr, msg);
+  if (mBoostHintUid == kInvalidUniqueId) { // 0x0000B348
+    TurnTowardPlayer(mgr, dt, 1.7453293f);
+  } else if (const CActor* act = TCastToConstPtr< CActor >(mgr.GetObjectById(mBoostHintUid))) {
+    TurnTowardPoint(dt, act->GetTranslation(), 3.4906585f); // 0x0000B388
+  }
+  mBoostBallFlag40 = false; // 0x0000B3B4
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Seven));
+}
+
+// fn_10_B6C4 (0x0000B6C4, 0x1A8 bytes): the hints the actor links with kSS_InternalState6 (`lis
+// r6, 0x4953` at 0x0000B6EC, any message) and keeps the nearest by squared distance (from
+// lbl_10_rodata_2BC = FLT_MAX, `fcmpo cr0, f30, f31` at 0x0000B7E8) that is active (the 0x20
+// bit 0x80, `cmplwi r0, 0x1` at 0x0000B768), of type 0x11 (`cmpwi r0, 0x11` at 0x0000B774),
+// whose radius 0x15C holds the actor (`fcmpo cr0, f30, f0` at 0x0000B7E0: not beyond it) and
+// whose chain fn_10_BA38 does not answer true for (`clrlwi. r0, r3, 24` at 0x0000B80C).
+const CScriptAIHint* CDarkSamus::FindBoostBallHint(CStateManager& mgr) const {
+  const rstl::vector< TUniqueId > links = FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
+  float best = 3.4028235e38f; // lbl_10_rodata_2BC (0x0000B728)
+  const CScriptAIHint* found = nullptr;
+  for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+    const CScriptAIHint* hint = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(*it));
+    if (hint == nullptr) { // 0x0000B750
+      continue;
+    }
+    if (hint->GetActive() != true) { // 0x0000B768
+      continue;
+    }
+    if (static_cast< int >(hint->GetHintType()) != 0x11) { // 0x0000B774
+      continue;
+    }
+    const CVector3f delta = hint->GetTranslation() - GetTranslation();
+    const float distSq = delta.MagSquared();
+    const float radius = hint->GetRadius();
+    if (distSq > radius * radius) { // 0x0000B7E4
+      continue;
+    }
+    if (!(distSq < best)) { // 0x0000B7EC
+      continue;
+    }
+    if (BoostChainHasInactiveHint(mgr, hint->GetUniqueId())) { // 0x0000B80C
+      continue;
+    }
+    best = distSq;
+    found = hint;
+  }
+  return found;
+}
+
+// fn_10_B458 (0x0000B458, 0x118 bytes): null when uid is no hint (0x0000B48C);
+// else the first active hint (`cmplwi r0, 0x1` at 0x0000B50C) among its kSS_Arrived
+// links (`lis r6, 0x4152` at 0x0000B49C, any message), null when there is none (0x0000B550).
+CScriptAIHint* CDarkSamus::FindArrivedHint(CStateManager& mgr, TUniqueId uid) {
+  const CScriptAIHint* from = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(uid));
+  if (from == nullptr) { // 0x0000B48C
+    return nullptr;
+  }
+  const rstl::vector< TUniqueId > links = from->FindConnectedObjects(mgr, kSS_Arrived, kSM_None);
+  for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+    CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
+    if (hint == nullptr) { // 0x0000B4F4
+      continue;
+    }
+    if (hint->GetActive() == true) { // 0x0000B50C
+      return hint;
+    }
+  }
+  return nullptr;
+}
+
+// fn_10_BA38 (0x0000BA38, 0x140 bytes): follows a hint chain for at most 15 steps (`cmpwi r29,
+// 0xf` at 0x0000BB4C). A step that finds no hint at uid answers false (`cmplwi r3, 0x0` at
+// 0x0000BA80); else the first of its kSS_Arrived links (`lis r31, 0x4152` at 0x0000BA4C) that is a
+// hint of type 0x11 (`cmpwi r0, 0x11` at 0x0000BAEC) answers true when it is inactive (the 0x20
+// bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BAF8) and is the next step's uid when active. A
+// step with no such link repeats the same uid; after 15 steps the answer is false (0x0000BB54).
+bool CDarkSamus::BoostChainHasInactiveHint(CStateManager& mgr, TUniqueId uid) const {
+  for (int step = 0; step < 15; ++step) { // 0x0000BB4C
+    const CScriptAIHint* from = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(uid));
+    if (from == nullptr) { // 0x0000BA80
+      return false;
+    }
+    const rstl::vector< TUniqueId > links =
+        from->FindConnectedObjects(mgr, kSS_Arrived, kSM_None);
+    for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+      const CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
+      if (hint == nullptr) { // 0x0000BAE0
+        continue;
+      }
+      if (static_cast< int >(hint->GetHintType()) != 0x11) { // 0x0000BAEC
+        continue;
+      }
+      if (!hint->GetActive()) { // 0x0000BAF8
+        return true;
+      }
+      uid = hint->GetUniqueId(); // 0x0000BB18
+      break;
+    }
+  }
+  return false;
+}
+
+// fn_10_9920 (0x00009920, 0x4C bytes): null when the ball's uid 0xE38 is kInvalidUniqueId
+// (`cmplw r6, r0` at 0x00009938), else the actor it names.
+CActor* CDarkSamus::GetBoostBallActor(CStateManager& mgr) const {
+  if (mBoostBallUid == kInvalidUniqueId) { // 0x00009938
+    return nullptr;
+  }
+  return TCastToPtr< CActor >(mgr.ObjectById(mBoostBallUid));
+}
+
+// fn_10_A06C (0x0000A06C, 0xE8 bytes): with a ball actor (`mr. r31, r3` at 0x0000A088) its
+// transform moves to the actor's position offset by (lbl_10_rodata_25C = 0.0f, 0.0f,
+// lbl_10_rodata_290 = -0.45f) with the actor's rotation (0x0000A0E0..0x0000A0F8); with a roll
+// emitter (`cmplwi r0, 0x0` at 0x0000A100) the emitter moves to the actor along its forward
+// vector (0x28/0x38/0x48) at volume 0x7F (`li r6, 0x7f` at 0x0000A120).
+void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
+  if (CActor* ball = GetBoostBallActor(mgr)) { // 0x0000A088
+    CTransform4f xf(ball->GetTransform());
+    const CVector3f& pos = GetTranslation();
+    xf.SetTranslation(CVector3f(pos.GetX() + 0.f, pos.GetY() + 0.f, pos.GetZ() + -0.45f));
+    xf.SetRotation(GetTransform().GetRotation());
+    ball->SetTransform(xf);
+  }
+  if (mBoostBallRollSfx) { // 0x0000A100
+    CSfxManager::UpdateEmitter(mBoostBallRollSfx, GetTranslation(), GetTransform().GetForward(),
+                               0x7F);
+  }
 }
 
 void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
@@ -1404,7 +1589,7 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mDash.mDoubleDash = false;
     const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
-    if (stage != nullptr && // `mr. r28, r3; beq` at 0x0001511C/0x00015120
+    if (stage != nullptr && // `mr. r28, r3` at 0x0001511C/0x00015120
         mgr.Random()->Range(0.f, 100.f) < stage->GetStageInfo().chanceToDoubleDash) {
       mDash.mDoubleDash = true;
     }
@@ -1456,8 +1641,13 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
 // the ground; the projectile reflect (0x000125CC..0x000125F0) and, before the launch, the dodge
 // (0x00012608..0x00012644). Deactivate (0x0001266C) stops the actor, clears the animation state
 // and 0xC00, delivers kBSC_NextState and turns the bubble off.
-// Unmarked: the jump re-issue (0x0001239C) and the static wall hit (0x00012534) arms have not
-// run yet.
+// The static wall hit (0x00012534) needs the dive record's boost bit 0x01 (0xB20), which
+// DiveFromBoost fn_10_9424 sets (`rlwimi r0, r3, 0, 31, 31` at 0x00009460, ported): without
+// the bit the collision failsafe (`clrlwi.` at 0x00012018) runs first in the same message and
+// puts an actor placed in a wall back at its safe position. With the bit set - the boost
+// ball's dive, forced with `fsm <id> DiveFromBoost` - an actor placed into the wall while it
+// is in flight reaches the static collision test and the wall bounce runs.
+// @ fn_10_11FA4
 void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveAttack", msg);
   UpdateCurrentAttack(0x20, mgr, msg);
@@ -1474,7 +1664,7 @@ void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     mDive.mTarget = GetDiveTarget(mgr);
     FindDiveLanding(mgr, &mDive.mTarget);
     SetDiveTargetVector();
-    DoDiveJumpCmd();
+    DoDiveJumpCmd(); // fn_10_12764 (0x000120FC)
     break;
   case kStateMsg_Update: {
     const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
@@ -1569,13 +1759,17 @@ void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_10_E784 (0x0000E784, 0x18C bytes): the vectors to zero, the damage copied to +0x30
-// (0x0000E83C..0x0000E85C), the boost-ball bit cleared (0x0000E86C) and fn_10_E910 (0x0000E8F0).
-CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage)
+// (0x0000E83C..0x0000E85C), the two impulses to +0x50/+0x54 (0x0000E860/0x0000E864), the
+// boost-ball bit cleared (0x0000E86C) and fn_10_E910 (0x0000E8F0).
+CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage, float impulseHorizontal,
+                               float impulseVertical)
 : mTarget(CVector3f::Zero())
 , mStart(CVector3f::Zero())
 , mBounceDir(CVector3f::Zero())
 , mLastPos(CVector3f::Zero())
 , mDamage(damage)
+, mImpulseHorizontal(impulseHorizontal)
+, mImpulseVertical(impulseVertical)
 , mBounceTime(0.f)
 , mStuckTime(0.f)
 , mFromBoost(false) {
@@ -1733,16 +1927,212 @@ void CDarkSamus::StartDiveBubble(CStateManager& mgr) {
   AnimationData()->SetEffectState(rstl::string_l("DiveBubble"), true, mgr);
 }
 
-// fn_10_1B658: the projectile reflect around the actor (the near list, the CEnergyProjectile
-// fields, lbl_10_data_F298's 0x10A8 table, the vtable call at 0x8C). Not in the port yet.
-void CDarkSamus::ReflectProjectiles(CStateManager&) {
-  FsmStandIn("fn_10_1B658", "projectile reflect");
+// fn_10_1B658 (0x0001B658, 0x2E0 bytes): the projectile reflect. The near list (0x0001B708) is the
+// box of half-size lbl_10_rodata_3F0 = 100.0f around the actor (lbl_10_rodata_54C = -100.0f for
+// the low corner, 0x0001B680..0x0001B6CC) with the default filter (include 0xFFFFFFFF, type 0,
+// 0x0001B6D4..0x0001B704) and the actor itself; each entry is cast to a CEnergyProjectile
+// (0x0001B730) and skipped unless fn_10_1B9B0 with any weapon type (`li r6, -0x1` at 0x0001B748)
+// lets it through (0x0001B750) and it is within 0xC00 of the root bone 0x8FC (Magnitude at
+// 0x0001B798, `fcmpo; bgt` at 0x0001B7A4). Then the ricochet sound 0xC50 plays at the projectile
+// in the actor's area 0x4 (AddEmitter at 0x0001B7C8: acoustics `li r7, 0x1` at 0x0001B7C0, not looped
+// `li r8, 0x0` at 0x0001B7C4, kMedPriority at 0x0001B7B0). The new direction is the projectile's
+// forward (its transform's column 1, 0x0001B7CC..0x0001B7E4) with x and y each moved by
+// lbl_10_rodata_520 = 0.4f - lbl_10_rodata_550 = 0.8f * random (`fnmsubs` at 0x0001B804 and
+// 0x0001B82C) and z lowered by lbl_10_rodata_3E4 = 0.5f * random + lbl_10_rodata_474 = 0.05f
+// (`fmadds` at 0x0001B854); normalized when it can be (0x0001B868), else the forward again
+// (0x0001B87C). The projectile explodes there with response 0xD (`li r6, 0xd` at 0x0001B8C4), the
+// reflect vulnerability (fn_800DBB40 at 0x0001B8A0) and no hit actor (kInvalidUniqueId at
+// 0x0001B898) through its vtable 0x8C (Explode, 0x0001B8B4). Last 0xC08 takes the elapsed time
+// (0x0001B8D4), the oldest uid goes when five are kept (`cmpwi r0, 0x5` at 0x0001B8DC,
+// fn_10_1B938 at 0x0001B8EC) and the projectile's uid is appended (0x0001B8FC).
+// The not-normalizable arm is dead: the forward is a unit vector and the largest offset is
+// |(0.4, 0.4, 0.55)|, whose square 0.6225 is below 1, so the sum is never zero.
+// @ fn_10_1B658
+void CDarkSamus::ReflectProjectiles(CStateManager& mgr) {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
+  const CVector3f min(pos.GetX() + -100.f, pos.GetY() + -100.f, pos.GetZ() + -100.f);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    CEnergyProjectile* proj = TCastToPtr< CEnergyProjectile >(mgr.ObjectById(*it));
+    if (!CanReflectProjectile(mgr, proj, -1)) {
+      continue;
+    }
+    if ((mRootPos - proj->GetTranslation()).Magnitude() > mGuestC00) {
+      continue;
+    }
+    CSfxManager::AddEmitter(mRicochetSfxId, proj->GetTranslation(), GetCurrentAreaId().Value(),
+                            true, false, CSfxManager::kMedPriority);
+    CVector3f dir = proj->GetTransform().GetForward();
+    dir.SetX(dir.GetX() + (0.4f - 0.8f * mgr.Random()->Float()));
+    dir.SetY(dir.GetY() + (0.4f - 0.8f * mgr.Random()->Float()));
+    dir.SetZ(dir.GetZ() - (0.5f * mgr.Random()->Float() + 0.05f));
+    if (dir.CanBeNormalized() == true) {
+      dir.Normalize();
+    } else {
+      dir = proj->GetTransform().GetForward();
+    }
+    proj->Explode(proj->GetTranslation(), dir, EWeaponCollisionResponseTypes(0xD), mgr,
+                  CDamageVulnerability::ReflectVulnerabilty(), kInvalidUniqueId);
+    mLastReflectTime = mElapsedTime;
+    if (mReflectedUids.size() >= 5) {
+      mReflectedUids.erase(mReflectedUids.begin());
+    }
+    mReflectedUids.push_back(proj->GetUniqueId());
+  }
 }
 
-// fn_10_138A4: the dive's hit on the player (the damage, fn_10_1382C and fn_10_13750's knock
-// back). Not in the port yet.
-void CDarkSamus::HitPlayerWithDive(CStateManager&) {
-  FsmStandIn("fn_10_138A4", "dive hits the player");
+// fn_10_1B9B0 (0x0001B9B0, 0x158 bytes): a projectile may be sent back unless it is null
+// (`mr.` at 0x0001B9C0), the actor's own (its owner 0x15C against the uid 0x8, 0x0001B9E4), already
+// exploded (0x562 `extrwi r3, r0, 1, 26` at 0x0001B9F0), of another weapon type than a given one
+// (`cmpwi r6, -0x1` at 0x0001BA10, its 0x160 at 0x0001BA1C) or already sent back (the walk over
+// 0xBF0 at 0x0001BA48..0x0001BA58). During attack 0x800000 (`subis r0, r3, 0x80` at 0x0001BA70)
+// phazon and cannon-ball projectiles (the damage's weapon type 0x19C:
+// `cmpwi r0, 0xa` at 0x0001BA80,
+// `cmpwi r0, 0x8` at 0x0001BA88) are not; any other is. Outside it any weapon type
+// (`cmpwi r6, -0x1` at 0x0001BA98) passes; a given type is compared with the stage's chance: the
+// stage (fn_10_17E14 at 0x0001BAA8, null passes at 0x0001BAB0) and fn_10_F298's roll for the uid
+// against the stage info's +0x24 (`fcmpo` at 0x0001BAD4). Only fn_10_1B658 calls it in the port,
+// always with -1; the typed caller (0x0001BBF8, AnyIncomingMissiles fn_10_1BB08) is outside the
+// port, so the roll below runs only when the typed path is reached.
+bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj,
+                                      int type) {
+  if (proj == nullptr || proj->GetOwnerId() == GetUniqueId() || proj->HasExploded()) {
+    return false;
+  }
+  if (type != -1 && type != proj->GetType()) {
+    return false;
+  }
+  const TUniqueId* it = mReflectedUids.begin();
+  while (it != mReflectedUids.end() && *it != proj->GetUniqueId()) {
+    ++it;
+  }
+  if (it != mReflectedUids.end()) {
+    return false;
+  }
+  if (mCurrentAttack == 0x800000) {
+    const EWeaponType weapon = proj->GetCurrentDamageInfo().GetWeaponMode().GetType();
+    return weapon != kWT_Phazon && weapon != kWT_CannonBall;
+  }
+  if (type == -1 || GetBattleStage(mgr) == nullptr) {
+    return true;
+  }
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  // fn_10_F298 (0x0001BACC) rolls the chance for the projectile's uid and the stage info's +0x24
+  // (the missiles' first float, lbl_10_rodata of SLdrDSMissiles) is the chance the roll is
+  // compared with (`fcmpo cr0, f1, f0` at 0x0001BAD4, the less-than bit at 0x0001BADC).
+  const float roll = RollReflectChance(mgr, proj->GetUniqueId());
+  return roll < stage->GetStageInfo().missiles.unknown_0x7ee77018;
+}
+
+// fn_10_F210 (0x0000F210, 0x88 bytes): the reflect chance cache's entry erased - the entries
+// behind it move down (the next entry's uid at +0x0C, its roll at +0x10 and its roll at +0x14
+// go to +0x00, +0x04 and +0x08 of this one, 0x0001F240..0x0001F254) and the count falls by one
+// (0x0001F27C). The guest's range test (0x0001F218 and 0x0001F230) has no host counterpart:
+// the only caller erases the first entry of a full table.
+// @ fn_10_F210
+void CDarkSamus::EraseReflectChance(uint index) {
+  for (uint i = index + 1; i < mReflectChanceCount; ++i) {
+    mReflectChances[i - 1] = mReflectChances[i];
+  }
+  --mReflectChanceCount;
+}
+
+// fn_10_F298 (0x0000F298, 0x174 bytes): the reflect chance for a projectile's uid. The cache
+// (the count at guest 0x10A8 and the ten entries from 0x10AC) is walked (0x0001F2E4..0x0001F2FC)
+// and the entry's +0x04 answers when the uid is in it (0x0001F2F0). Otherwise, with ten entries
+// (0x0001F300), the first one is erased (fn_10_F210, 0x0001F310) and two rolls are made
+// (Range(0.0f, lbl_10_rodata_3F0 = 100.0f), 0x0001F32C and 0x0001F348). The time since the last
+// hit or heavy hit (the larger of guest 0xC0C and 0xC20, 0x0001F34C and 0x0001F350) shifts the
+// rolls: zero for the first four seconds (lbl_10_rodata_408 = 4.0f, 0x0001F378) and -50.0f
+// (lbl_10_rodata_418 = 50.0f, 0x0001F3B0) for the next four (lbl_10_rodata_414 = 8.0f,
+// 0x0001F39C). The uid and the two rolls go into the next entry (0x0001F3C8..0x0001F3D4) and the
+// count rises (0x0001F3E0). The second roll answers.
+// @ fn_10_F298
+float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) {
+  for (uint i = 0; i < mReflectChanceCount; ++i) {
+    if (mReflectChances[i].mUid == uid) {
+      return mReflectChances[i].mChance; // 0x0001F2F0
+    }
+  }
+  if (mReflectChanceCount == 10) { // 0x0001F300
+    EraseReflectChance(0);          // fn_10_F210, 0x0001F310
+  }
+  float roll = mgr.Random()->Range(0.f, 100.f);      // 0x0001F32C, lbl_10_rodata_3F0
+  float chance = mgr.Random()->Range(0.f, 100.f);    // 0x0001F348
+  const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0001F34C, 0x0001F350
+  if (4.f + since > mElapsedTime) { // lbl_10_rodata_408, 0x0001F378
+    roll = 0.f;
+    chance = 0.f;
+  } else if (8.f + since > mElapsedTime) { // lbl_10_rodata_414, 0x0001F39C
+    roll -= 50.f;                             // lbl_10_rodata_418, 0x0001F3B0
+    chance -= 50.f;
+  }
+  mReflectChances[mReflectChanceCount].mUid = uid; // 0x0001F3C8
+  mReflectChances[mReflectChanceCount].mChance = chance; // 0x0001F3D0
+  mReflectChances[mReflectChanceCount].mRoll = roll; // 0x0001F3D4
+  ++mReflectChanceCount; // 0x0001F3E0
+  return chance;
+}
+
+// fn_10_138A4 (0x000138A4, 0xF4 bytes): the dive's hit on the player. The dive record's 0x20 is
+// set (`rlwimi r0, r5, 5, 26, 26` at 0x000138D0), the dive damage 0xAF0 goes to the player
+// (0x14FC's uid at 0x00013934) from the actor (ApplyDamage at 0x0001394C) through the filter
+// including lbl_10_data_200 = 0x3B (kMT_Solid, the __shl2i at 0x000138E4) with type 3
+// (`li r0, 0x3` at 0x000138EC) and no knock back (sZeroVector, 0x000138F8), the player's orbit
+// target is cleared (fn_10_1382C at 0x00013958), and unless the player is morphed (0x38C:
+// `cmpwi r0, 0x1` at 0x00013964) fn_10_13750 pushes it with the dive's impulses 0xB10/0xB14
+// (0x0001396C/0x00013974).
+// @ fn_10_138A4
+void CDarkSamus::HitPlayerWithDive(CStateManager& mgr) {
+  mDive.mHitPlayer = true;
+  CPlayer* player = mgr.GetPlayer(0);
+  mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), mDive.mDamage,
+                  CMaterialFilter(CMaterialList(kMT_Solid), CMaterialList(),
+                                  CMaterialFilter::kFT_IncludeExclude),
+                  CVector3f::Zero());
+  ClearPlayerOrbitTarget(mgr);
+  if (mgr.GetPlayer(0)->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    PushPlayer(mgr, mDive.mImpulseHorizontal, mDive.mImpulseVertical);
+  }
+}
+
+// fn_10_1382C (0x0001382C, 0x3C bytes): the player (0x14FC) orbits nothing: SetOrbitTargetId
+// with kInvalidUniqueId (0x00013840, the call at 0x00013854).
+// @ fn_10_1382C
+void CDarkSamus::ClearPlayerOrbitTarget(CStateManager& mgr) {
+  mgr.GetPlayer(0)->SetOrbitTargetId(kInvalidUniqueId, mgr);
+}
+
+// fn_10_13750 (0x00013750, 0xDC bytes): the direction from the actor to the player (0x14FC's
+// position less the actor's, 0x00013784..0x000137B4) with z = lbl_10_rodata_3FC = 0.0f
+// (0x000137C4), normalized (0x000137C8), x and y times `horizontal` (0x000137DC..0x000137EC), z
+// replaced by `vertical` (0x000137FC), then fn_10_1367C (0x00013800).
+// @ fn_10_13750
+void CDarkSamus::PushPlayer(CStateManager& mgr, float horizontal, float vertical) {
+  const CVector3f& playerPos = mgr.GetPlayer(0)->GetTranslation();
+  const CVector3f& pos = GetTranslation();
+  CVector3f dir(playerPos.GetX() - pos.GetX(), playerPos.GetY() - pos.GetY(), 0.f);
+  dir.Normalize();
+  KnockPlayer(mgr, CVector3f(dir.GetX() * horizontal, dir.GetY() * horizontal, vertical));
+}
+
+// fn_10_1367C (0x0001367C, 0xD4 bytes): the player (0x14FC) stops (0x000136A4), takes the impulse
+// times its mass 0x158 (0x000136A8..0x000136C0) with no turn (CAxisAngle::Identity, the call at
+// 0x000136E0), moves to state 2 (kMS_ApplyJump: `li r4, 0x2` at 0x000136EC, SetMoveState at
+// 0x000136F0) and its rumble manager (0x152C by MaskUIdNumPlayers, 0x00013708) plays effect 6
+// (`li r5, 0x6` at 0x00013728) at lbl_10_rodata_3E8 = 1.0f with priority 2
+// (`li r6, 0x2` at 0x0001372C).
+// @ fn_10_1367C
+void CDarkSamus::KnockPlayer(CStateManager& mgr, const CVector3f& impulse) {
+  CPlayer* player = mgr.GetPlayer(0);
+  player->Stop();
+  player->ApplyImpulseWR(impulse * player->GetMass(), CAxisAngle::Identity());
+  player->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
+  mgr.RumbleManager(mgr.MaskUIdNumPlayers(player->GetUniqueId()))
+      ->Rumble(mgr, kRFX_CameraShake, 1.f, kRP_Two);
 }
 
 // fn_10_18628 (0x00018628, 0x10 bytes): 0xE04 = the elapsed time 0x8B0, 0xE08 = a, 0xE0C = b.
@@ -1854,9 +2244,73 @@ void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
   }
 }
 
-void CDarkSamus::DiveFromBoost(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_9424", "state DiveFromBoost");
+// fn_10_9424 (0x00009424, 0x184 bytes): the DiveFromBoost state, the dive out of the boost
+// ball. Only Activate runs the body (`mr. r31, r5` at 0x00009444 and `bne .L_0000954C` at
+// 0x00009454 skip it for the other messages): the dive record's boost bit 0x01
+// (`rlwimi r0, r3, 0, 31, 31` at 0x00009460, the byte 0xB20), the roll emitter removed
+// (`bl RemoveEmitter__11CSfxManagerF10CSfxHandle` at 0x00009474) and its handle cleared
+// (`stw r0, 0xe6c(r29)` at 0x00009480), fn_10_9644 (the turn around, 0x00009484), 0xD24 =
+// lbl_10_rodata_284 = 0.5f (`stfs f0, 0xd24(r29)` at 0x000094A8), 0xEBC bit 0x40
+// (`rlwimi r3, r4, 6, 25, 25` at 0x000094B0), fn_10_9AC4 (the boost ball's deletion,
+// 0x0000953C) and fn_10_99B8 (0x00009548). Then the base state handler - the vtable's word
+// 136 (`lwz r12, 0x220(r12)` at 0x00009560), the DiveAttack state fn_10_11FA4 - runs on
+// every message. Deactivate (`cmpwi r31, 0x2` at 0x0000956C) clears the boost bit again
+// (`rlwimi r0, r3, 0, 31, 31` at 0x0000957C).
+// Outside the port: the boost ball's particle effects - the two swooshes (guest 0xE3C /
+// 0xE4C) and the element generator (guest 0xE60 / 0xE64). fn_10_9B24, which builds them,
+// has no host counterpart and the loader's swoosh tokens are not in the host, so the
+// pointers are always null and fn_10_99B8's "stop the old effect" calls (0x000099F4,
+// 0x00009A20 and 0x00009A68) and fn_10_9424's (0x000094EC) have nothing to stop. That is
+// why this body has no `// @` marker: one of its calls is outside the port.
+void CDarkSamus::DiveFromBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveFromBoost", msg);
+  if (msg == kStateMsg_Activate) {                 // 0x00009454 `bne .L_0000954C`
+    mDive.mFromBoost = true;                       // 0x00009460 `rlwimi r0, r3, 0, 31, 31`
+    CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x00009474
+    mBoostBallRollSfx = CSfxHandle();              // 0x00009480 `stw r0, 0xe6c(r29)`
+    TurnAround();                                  // fn_10_9644, 0x00009484
+    mGuestD24 = 0.5f;                              // lbl_10_rodata_284, 0x000094A8
+    mBoostBallFlag40 = true;                       // 0x000094B0 `rlwimi r3, r4, 6, 25, 25`
+    DeleteBoostBall(mgr);                          // fn_10_9AC4, 0x0000953C
+    // fn_10_99B8 (0x00009548) stops the boost ball's particle effects; the port has none.
+  }
+  DiveAttack(mgr, msg, dt); // 0x00009560, the vtable's word 136
+  if (msg == kStateMsg_Deactivate) { // 0x0000956C `cmpwi r31, 0x2`
+    mDive.mFromBoost = false;        // 0x0000957C `rlwimi r0, r3, 0, 31, 31`
+  }
+}
+
+// fn_10_9644 (0x00009644, 0xDC bytes): the actor turned around. Its facing (the transform's
+// Y column, guest 0x28/0x38/0x48) is a vector that is normalized when it can be
+// (`clrlwi r0, r3, 24` and `cmplwi r0, 0x1` at 0x00009688 and 0x0000968C), scaled by
+// lbl_10_rodata_288 = -1.0f (0x000096C0) and used as the LookAt target (0x000096E4); the
+// matrix's quaternion (0x000096F0) and the actor's position (guest 0x54, 0x000096FC) build
+// the transform (0x00009700) the actor takes (0x0000970C).
+// The arm whose facing cannot be normalized is dead: the transform's Y column is a unit
+// vector, so CanBeNormalized is always true.
+// @ fn_10_9644
+void CDarkSamus::TurnAround() {
+  CVector3f dir = GetTransform().GetColumn(kDY); // guest 0x28/0x38/0x48
+  if (dir.CanBeNormalized() == true) {            // 0x0000968C
+    dir.Normalize();
+    SetTransform(CQuaternion::FromMatrix(CTransform4f::LookAt(CVector3f::Zero(), -1.f * dir,
+                                                               CVector3f::Up()))
+                     .BuildTransform4f(GetTranslation()));
+  }
+}
+
+// fn_10_9AC4 (0x00009AC4, 0x60 bytes): the boost ball actor (guest 0xE38) deleted from the
+// state manager (`bl DeleteObjectRequest__13CStateManagerF9TUniqueId` at 0x00009B00) and the
+// uid set to kInvalidUniqueId (`sth r0, 0xe38(r31)` at 0x00009B0C), unless it already is (the
+// test at 0x00009AE8).
+// Unmarked: the arm that deletes an actor needs a boost ball in the world. The uid 0xE38 is
+// set by the BoostBallRoll (fn_10_A3B0) and BoostBallFire (fn_10_9724) paths, which are
+// outside the port, so only the "no ball" arm ran.
+void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
+  if (mBoostBallUid != kInvalidUniqueId) { // 0x00009AE8
+    mgr.DeleteObjectRequest(mBoostBallUid); // 0x00009B00
+    mBoostBallUid = kInvalidUniqueId;       // 0x00009B0C
+  }
 }
 
 void CDarkSamus::EnrageHitReact(CStateManager&, EStateMsg msg, float) {
@@ -1909,14 +2363,47 @@ void CDarkSamus::Interrupt(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("Interrupt", msg);
 }
 
-void CDarkSamus::MeleeAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17BC0", "state MeleeAttack");
+// fn_10_17BC0 (0x00017BC0, 0xF8 bytes): the MeleeAttack state. The attack bookkeeping with id 1
+// (`li r4, 0x1`, fn_10_1B478 at 0x00017BEC); Activate (0x00017BF0) resets the melee contact
+// (fn_10_EA08 on 0x9A4); the melee attack command with severity 1 (`li r7, 0x1` at 0x00017C28,
+// pas::kAS_MeleeAttack = `li r5, 0x7`, fn_10_8764 at 0x00017C5C); Deactivate (`cmpwi r30, 0x2` at
+// 0x00017C6C) clears 0xC00 (lbl_10_rodata_3FC = 0.0f) and forgets the last attacker (0xC24 =
+// kInvalidUniqueId); every message stores the elapsed time 0x8B0 to 0x9C0 (0x00017C9C).
+// @ fn_10_17BC0
+void CDarkSamus::MeleeAttack(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("MeleeAttack", msg);
+  UpdateCurrentAttack(0x1, mgr, msg);
+  if (msg == kStateMsg_Activate) {
+    mMeleeContact.Reset();
+  }
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_One));
+  if (msg == kStateMsg_Deactivate) {
+    mGuestC00 = 0.f;
+    mLastAttackerUid = kInvalidUniqueId;
+  }
+  mLastMeleeTime = mElapsedTime;
 }
 
-void CDarkSamus::MeleeDash(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17ABC", "state MeleeDash");
+// fn_10_17ABC (0x00017ABC, 0x104 bytes): the MeleeDash state. The attack bookkeeping with id 4
+// (`li r4, 0x4`, fn_10_1B478 at 0x00017AEC) and the collision failsafe (fn_10_1AEC0 at
+// 0x00017AF8); Activate (`cmpwi r30, 0x0` at 0x00017AFC) resets the melee contact (fn_10_EA08 on
+// 0x9A4); the melee attack command with severity 2 (`li r7, 0x2` at 0x00017B34,
+// pas::kAS_MeleeAttack = `li r5, 0x7`, fn_10_8764 at 0x00017B68); Deactivate (`cmpwi r30, 0x2`
+// at 0x00017B78) clears 0xC00 (lbl_10_rodata_3FC = 0.0f) and the contact's uid (0x9DC =
+// kInvalidUniqueId, 0x00017BA0).
+// @ fn_10_17ABC
+void CDarkSamus::MeleeDash(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("MeleeDash", msg);
+  UpdateCurrentAttack(0x4, mgr, msg);
+  RunCollisionFailsafe(mgr);
+  if (msg == kStateMsg_Activate) {
+    mMeleeContact.Reset();
+  }
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Two));
+  if (msg == kStateMsg_Deactivate) {
+    mGuestC00 = 0.f;
+    mMeleeContact.mHitUid = kInvalidUniqueId;
+  }
 }
 
 void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
@@ -1924,9 +2411,58 @@ void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("MissileDeflect", msg);
 }
 
-void CDarkSamus::MissileJump(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_177BC", "state MissileJump");
+// fn_10_177BC (0x000177BC, 0x128 bytes): the MissileJump state. The attack bookkeeping with id
+// 0x80 (`li r4, 0x80`, fn_10_1B478 at 0x000177F8), the shield flag (fn_10_105F4 at 0x0001780C),
+// the ground collision (fn_10_18F90 at 0x0001781C), the turn toward the player at
+// lbl_10_rodata_508 = 1.0471976f rad/s (fn_10_16B64 at 0x00017838), the collision failsafe
+// (fn_10_1AEC0 at 0x00017844) and the melee attack command with severity 10 (0x00017870;
+// pas::kAS_MeleeAttack = 7, fn_10_8764 at 0x000178A4).
+// @ fn_10_177BC
+void CDarkSamus::MissileJump(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("MissileJump", msg);
+  UpdateCurrentAttack(0x80, mgr, msg);
+  UpdateShieldFlag(msg);
+  UpdateGroundCollision(mgr, msg);
+  TurnTowardPlayer(mgr, dt, 1.0471976f);
+  RunCollisionFailsafe(mgr);
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Ten));
+}
+
+// fn_10_8764 (0x00008764, 0x10C bytes): the switch over the message (0x0000876C..0x000087A0).
+// Activate (0x000087A4) stores 1 (kAS_Ready) to the animation state 0x6B4 and delivers the
+// command (DeliverCmd of its id, then the copy into the command manager's melee slot
+// 0x180..0x194); Update (0x000087F4) re-delivers it when the DOL's ShouldRetry with `state`
+// answers true (0x00008800) - the host's CAnimationState::CanIssueCommand, as in
+// TurnToFacePlayer; Deactivate (0x00008850) stores 0 (kAS_NotReady).
+// Unmarked: the Update re-delivery (ShouldRetry true, 0x00008808) never ran - Activate's command
+// moves the body into kAS_MeleeAttack before the first Update in every MeleeAttack, MeleeDash and
+// MissileJump seen, so the check only answered false.
+void CDarkSamus::RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state,
+                                   const CBCMeleeAttackCmd& cmd) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(cmd);
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), state)) {
+      BodyController()->CommandMgr().DeliverCmd(cmd);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_10_EA08 (0x0000EA08, 0x1C bytes): the contact's uid to kInvalidUniqueId (0x0000EA18) and its
+// hit byte to 0 (0x0000EA1C).
+// @ fn_10_EA08
+void CDarkSamusMeleeContact::Reset() {
+  mHitUid = kInvalidUniqueId;
+  mHit = 0;
 }
 
 // fn_10_11AD8 (0x00011AD8, 0x17C bytes): the MovingScatterShot state, the scatter shot fired
@@ -2238,9 +2774,251 @@ void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("SuperMissileAttack", msg);
 }
 
-void CDarkSamus::SweepBeam(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_CA0C", "state SweepBeam");
+// fn_10_CA0C (0x0000CA0C, 0x394 bytes): the SweepBeam state. Every message first runs the attack
+// bookkeeping with id 0x10000 (`lis r4, 0x1` at 0x0000CA44, fn_10_1B478 at 0x0000CA4C) and the
+// melee attack command with severity 5 (`li r8, 0x5` at 0x0000CA5C; pas::kAS_MeleeAttack = 7,
+// `li r5, 0x7` at 0x0000CA90; fn_10_8764 at 0x0000CAAC). Activate (`cmpwi r28, 0x0` at 0x0000CAD4)
+// turns the kAR_Flinch reaction off (`li r4, 0x1` at 0x0000CAF0,
+// `li r5, 0x0` at 0x0000CAF4), clears 0xDC8 bit 0x80 (`rlwimi r0, r7, 7, 24, 24` at 0x0000CB04) and
+// bit 0x40 (`rlwimi r0, r7, 6, 25, 25` at 0x0000CB64), zeroes the last and current directions
+// (0x0000CB2C..0x0000CB5C) and starts two emitters in the actor's area, at volume 0x7F
+// (`li r6, 0x7f` at 0x0000CB28), without acoustics
+// (`li r8, 0x0` at 0x0000CB30), not looped
+// (`li r9, 0x0` at 0x0000CB34), kMedPriority: the beam sound 0xDD8 at the actor (the handle to
+// 0xDDC at 0x0000CB88) and the end sound 0xDE0 lbl_10_rodata_2D8 = 20.0f along the actor's forward
+// vector (0x0000CB94; the handle to 0xDE4 at 0x0000CC1C). It keeps the speed 0x3C8 in 0xDC4
+// (0x0000CC2C) and scales it by Range(lbl_10_rodata_2DC = 0.7f, lbl_10_rodata_264 = 1.0f)
+// (0x0000CC30), then runs the collision failsafe (fn_10_1AEC0 at 0x0000CC48). Update
+// (`cmpwi r28, 0x1` at 0x0000CABC) aims the beam (fn_10_C2B0 at 0x0000CC5C), sweeps the damage rays
+// while 0xDC8 bit 0x40 is set (`extrwi r0, r0, 1, 25` at 0x0000CC64, fn_10_C104 at 0x0000CC78) and,
+// with a beam sound (`cmplwi r0, 0x0` at 0x0000CC80), moves it lbl_10_rodata_2E0 = 7.0f along the
+// gun's forward vector (0x0000CC90) at volume 0x7F (`li r6, 0x7f` at 0x0000CCD4). Deactivate
+// (`cmpwi r28, 0x3` at 0x0000CAE0) turns kAR_Flinch back on (`li r5, 0x1` at 0x0000CD0C), releases
+// the effect (fn_10_C798 at 0x0000CD18), removes each emitter that is set
+// (`cmplwi r0, 0x0` at 0x0000CD20, 0x0000CD3C), zeroes both handles (0x0000CD5C, 0x0000CD68),
+// restores the speed (0x0000CD70) and runs the failsafe (0x0000CD74).
+void CDarkSamus::SweepBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("SweepBeam", msg);
+  UpdateCurrentAttack(0x10000, mgr, msg);
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Five));
+  if (msg == kStateMsg_Activate) {
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, false); // 0x0000CAF4
+    mSweepBeamHitPlayer = false; // 0x0000CB04
+    mSweepBeamPrevDir = CVector3f::Zero();
+    mSweepBeamDir = mSweepBeamPrevDir;
+    mSweepBeamOn = false; // 0x0000CB64
+    mSweepBeamSfx = CSfxManager::AddEmitter(mSweepBeamSfxId, GetTranslation(), 0x7F,
+                                            GetCurrentAreaId().Value(), false, false,
+                                            CSfxManager::kMedPriority); // 0x0000CB28
+    mSweepBeamEndSfx = CSfxManager::AddEmitter(
+        mSweepBeamEndSfxId, GetTranslation() + 20.f * GetTransform().GetForward(), 0x7F,
+        GetCurrentAreaId().Value(), false, false, CSfxManager::kMedPriority); // 0x0000CB94
+    mSweepBeamSpeed = mSpeed;                                             // 0x0000CC2C
+    mSpeed = mSweepBeamSpeed * mgr.Random()->Range(0.7f, 1.f);            // 0x0000CC30
+    RunCollisionFailsafe(mgr);
+  } else if (msg == kStateMsg_Update) {
+    UpdateSweepBeamAim(mgr, dt);
+    if (mSweepBeamOn == true) { // 0x0000CC64
+      SweepBeamDamage(mgr);
+    }
+    if (mSweepBeamSfx) { // 0x0000CC80
+      const CVector3f fwd = mGunLctrXf.GetForward();
+      CSfxManager::UpdateEmitter(mSweepBeamSfx, mGunLctrXf.GetTranslation() + 7.f * fwd, fwd,
+                                 0x7F); // 0x0000CC90
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, true); // 0x0000CD0C
+    StopSweepBeam();
+    if (mSweepBeamSfx) { // 0x0000CD20
+      CSfxManager::RemoveEmitter(mSweepBeamSfx);
+    }
+    if (mSweepBeamEndSfx) { // 0x0000CD3C
+      CSfxManager::RemoveEmitter(mSweepBeamEndSfx);
+    }
+    mSweepBeamSfx = CSfxHandle();
+    mSweepBeamEndSfx = mSweepBeamSfx;
+    mSpeed = mSweepBeamSpeed; // 0x0000CD70
+    RunCollisionFailsafe(mgr);
+  }
+}
+
+// fn_10_C85C (0x0000C85C, 0x1B0 bytes): releases any effect (fn_10_C798 at 0x0000C87C), makes a
+// CElementGen (`li r3, 0x338` at 0x0000C890) from the 'PART' 0xD74 (`lis r5, 0x5041` at 0x0000C8A8)
+// with kMOT_Normal (`li r5, 0x0` at 0x0000C8F8) and kOSF_One
+// (`li r6, 0x1` at 0x0000C8FC) into 0xD78, turns its emission on
+// (`li r4, 0x1` at 0x0000C9C8, vtable slot 0x2C) and sets 0xDC8 bit 0x40
+// (`rlwimi r0, r3, 6, 25, 25` at 0x0000C9E4).
+// Host guard: Agon's boss (10_sand_alamostorage) leaves sweepSwoosh unset (kInvalidAssetId), and a
+// forced SweepBeam there built the effect from that id and crashed in CElementGen's constructor;
+// with no beam asset the host makes no beam (no effect, no damage rays).
+// @ fn_10_C85C
+void CDarkSamus::StartSweepBeam() {
+  StopSweepBeam();
+  if (mSweepBeamPart == kInvalidAssetId) {
+    return;
+  }
+  mSweepBeamGen = new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', mSweepBeamPart)),
+                                  CElementGen::kMOT_Normal, CElementGen::kOSF_One);
+  mSweepBeamGen->SetParticleEmission(true); // 0x0000C9C8
+  mSweepBeamOn = true;                      // 0x0000C9E4
+}
+
+// fn_10_C798 (0x0000C798, 0xC4 bytes): the effect 0xD78 reset to null (the auto_ptr's
+// self-assignment test `cmplw r3, r0` at 0x0000C7BC; an owned old effect,
+// `cmplwi r0, 0x0` at 0x0000C7CC and
+// `cmplwi r3, 0x0` at 0x0000C7D8, deleted at 0x0000C7F0) and 0xDC8 bit 0x40 cleared
+// (`rlwimi r0, r3, 6, 25, 25` at 0x0000C840).
+// @ fn_10_C798
+void CDarkSamus::StopSweepBeam() {
+  mSweepBeamGen = nullptr;
+  mSweepBeamOn = false; // 0x0000C840
+}
+
+// fn_10_C2B0 (0x0000C2B0, 0x1C0 bytes): finds the end point (fn_10_C470 at 0x0000C2D0), then the
+// direction 0xD9C = end point 0xDB4 - the gun's position (the 0x8CC transform's origin,
+// 0x0000C2F8..0x0000C31C) and the length 0xDC0 its magnitude (0x0000C324). With an effect
+// (`cmplwi r3, 0x0` at 0x0000C32C) the effect goes to the gun (slot 0x20 at 0x0000C33C), looks at
+// the end point (LookAt with the up vector at 0x0000C35C, slot 0x1C at 0x0000C378), is scaled to
+// (lbl_10_rodata_278 = 4.0f, lbl_10_rodata_2D0 = 0.18f * length, 4.0f) (slot 0x24 at 0x0000C3B4)
+// and updated by dt (slot 0xC at 0x0000C3CC). The direction is normalized when it can be
+// (`cmplwi r0, 0x1` at 0x0000C3E4). With an end sound
+// (`cmplwi r0, 0x0` at 0x0000C3F8) it moves to the end point along lbl_10_rodata_288 = -1.0f times
+// the actor's forward vector (0x0000C410) at volume 0x7F (`li r6, 0x7f` at 0x0000C42C).
+void CDarkSamus::UpdateSweepBeamAim(CStateManager& mgr, float dt) {
+  UpdateSweepBeamEnd(mgr);
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  const CVector3f end = mSweepBeamEnd;
+  mSweepBeamDir = end - gunPos;
+  mSweepBeamLength = mSweepBeamDir.Magnitude();
+  if (CElementGen* gen = mSweepBeamGen.get()) { // 0x0000C32C
+    gen->SetGlobalTranslation(gunPos);
+    gen->SetGlobalOrientation(CTransform4f::LookAt(gunPos, end, CVector3f::Up()));
+    gen->SetGlobalScale(CVector3f(4.f, 0.18f * mSweepBeamLength, 4.f)); // 0x0000C39C
+    gen->Update(dt);
+  }
+  if (mSweepBeamDir.CanBeNormalized() == true) { // 0x0000C3E4
+    mSweepBeamDir.Normalize();
+  }
+  if (mSweepBeamEndSfx) { // 0x0000C3F8
+    const CVector3f fwd = GetTransform().GetForward();
+    CSfxManager::UpdateEmitter(mSweepBeamEndSfx, mSweepBeamEnd, -1.f * fwd, 0x7F); // 0x0000C42C
+  }
+}
+
+// fn_10_C470 (0x0000C470, 0x328 bytes): the beam's end point. The ray runs from the gun along the
+// gun's forward vector with its z set to lbl_10_rodata_25C = 0.0f (0x0000C4BC), normalized when it
+// can be (`cmplwi r0, 0x1` at 0x0000C4C8), for lbl_10_rodata_2D4 = 100.0f (0x0000C580) against a
+// filter built once (the guard `extsb. r0, r0` at 0x0000C4E0): include lbl_10_data_1E4 = 0x3B
+// (kMT_Solid), exclude lbl_10_data_1E8 = 0x20 (kMT_Player) and lbl_10_data_1EC = 0x2F
+// (kMT_CollisionActor), kFT_IncludeExclude (`li r7, 0x3` at 0x0000C53C). On a hit
+// (`cmplwi r0, 0x1` at 0x0000C5B8) while 0xDC8 bit 0x40 is set
+// (`cmplwi r0, 0x1` at 0x0000C5C8) the response 0xDCC runs for the hit with no target, the beam
+// damage and false (`li r8, 0x0` at 0x0000C5EC; DoCollisionResponse at 0x0000C5F4) and its decal
+// for type 1 (`li r5, 0x1` at 0x0000C600), when it has one (`cmplwi r0, 0x0` at 0x0000C664), goes
+// at the hit point facing the hit plane's normal (LookAt from the origin with the up vector at
+// 0x0000C684; AddDecal at 0x0000C6D4, the ray's direction unnormalized). The end point is the hit
+// point on any hit (0x0000C6FC..0x0000C710), else the gun plus 100.0f times the direction
+// (0x0000C718..0x0000C758); its z is then the gun's (0x0000C774).
+void CDarkSamus::UpdateSweepBeamEnd(CStateManager& mgr) {
+  CVector3f dir(mGunLctrXf.GetForward().GetX(), mGunLctrXf.GetForward().GetY(), 0.f);
+  if (dir.CanBeNormalized() == true) { // 0x0000C4C8
+    dir.Normalize();
+  }
+  static const CMaterialFilter skFilter(CMaterialList(kMT_Solid),
+                                        CMaterialList(kMT_Player, kMT_CollisionActor),
+                                        CMaterialFilter::kFT_IncludeExclude); // 0x0000C53C
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  const CRayCastResult result = mgr.RayStaticIntersection(gunPos, dir, 100.f, skFilter);
+  if (result.IsValid() == true) { // 0x0000C5B8
+    if (mSweepBeamOn == true) {   // 0x0000C5C8
+      mgr.DoCollisionResponse(**mSweepBeamResponse, result, kInvalidUniqueId, mSweepBeamDamageInfo,
+                              false);
+      const rstl::optional_object< TLockedToken< CDecalDescription > > decal =
+          mSweepBeamResponse->GetDecalDescription(static_cast< EWeaponCollisionResponseTypes >(1));
+      if (decal.valid()) { // 0x0000C664
+        CTransform4f xf =
+            CTransform4f::LookAt(CVector3f::Zero(), result.GetPlane().GetNormal(), CVector3f::Up());
+        xf.SetTranslation(result.GetPoint());
+        CDecalManager::AddDecal(*decal, xf, CUnitVector3f(dir, CUnitVector3f::kN_No), mgr);
+      }
+    }
+    mSweepBeamEnd = result.GetPoint();
+  } else {
+    mSweepBeamEnd = gunPos + 100.f * dir; // 0x0000C720
+  }
+  mSweepBeamEnd.SetZ(gunPos.GetZ()); // 0x0000C774
+}
+
+// fn_10_C104 (0x0000C104, 0x1AC bytes): with a beam effect asset 0xD74
+// (`cmplwi r0, 0x0` at 0x0000C130) and a last direction 0xDA8 that is not the zero vector
+// (`fcmpu cr0, f1, f0` at 0x0000C148, 0x0000C158, 0x0000C168) the angle between the last and this
+// direction (GetAngleDiff at 0x0000C184) is halved (lbl_10_rodata_284 = 0.5f) and the ray count
+// doubled until it is at most lbl_10_rodata_2C0 = 0.05235988f (3 degrees,
+// `fcmpo cr0, f1, f0` at 0x0000C1A8); with more than one ray (`cmpwi r27, 0x1` at 0x0000C1B0) the
+// rays i = 1..n-1 (`cmpw r26, r27` at 0x0000C258) run along last * (lbl_10_rodata_264 = 1.0f - i/n)
+// + this * i/n for the length 0xDC0 (fn_10_BE18 at 0x0000C250). Then the ray along this direction
+// (0x0000C270), and this direction becomes the last (0x0000C274..0x0000C288).
+void CDarkSamus::SweepBeamDamage(CStateManager& mgr) {
+  if (mSweepBeamPart == 0) { // 0x0000C130
+    return;
+  }
+  if (!(mSweepBeamPrevDir == CVector3f::Zero())) { // 0x0000C148
+    float angle = CVector3f::GetAngleDiff(mSweepBeamDir, mSweepBeamPrevDir);
+    int count = 1;
+    while (angle > 0.05235988f) { // 0x0000C1A8
+      angle *= 0.5f;              // lbl_10_rodata_284 (0x0000C190)
+      count <<= 1;
+    }
+    if (count > 1) { // 0x0000C1B0
+      for (int i = 1; i < count; ++i) { // 0x0000C258
+        const float t = static_cast< float >(i) / static_cast< float >(count);
+        const float u = 1.f - t; // 0x0000C224
+        const CVector3f dir(mSweepBeamPrevDir.GetX() * u + mSweepBeamDir.GetX() * t,
+                            mSweepBeamPrevDir.GetY() * u + mSweepBeamDir.GetY() * t,
+                            mSweepBeamPrevDir.GetZ() * u + mSweepBeamDir.GetZ() * t);
+        SweepBeamRay(mgr, dir, mSweepBeamLength);
+      }
+    }
+  }
+  SweepBeamRay(mgr, mSweepBeamDir, mSweepBeamLength);
+  mSweepBeamPrevDir = mSweepBeamDir;
+}
+
+// fn_10_BE18 (0x0000BE18, 0x2EC bytes): one damage ray from the gun along dir for length. The near
+// list and the dynamic ray share a filter built once (the guard `extsb. r0, r0` at 0x0000BE48):
+// include lbl_10_data_1F0 = 0x20 (kMT_Player) and lbl_10_data_1F4 = 0x31 (kMT_Platform),
+// kFT_Include (`li r7, 0x1` at 0x0000BE88); the near list ignores no actor
+// (`li r8, 0x0` at 0x0000BEEC). A hit on the player (`cmplw r4, r0` at 0x0000BF64) takes the beam
+// damage 0xD80 once per beam (0xDC8 bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BF70; set by
+// `rlwimi r0, r3, 7, 24, 24` at 0x0000BFF8). Any other hit (`cmplw r4, r0` at 0x0000C00C, against
+// kInvalidUniqueId) takes lbl_10_rodata_294 = 1000.0f (0x0000C034) with radius and knock-back
+// lbl_10_rodata_25C = 0.0f, no immunity (`rlwimi r4, r0, 7, 24, 24` at 0x0000C03C), no radius
+// damage (`rlwimi r0, r3, 6, 25, 25` at 0x0000C054) and the zeroed weapon mode lbl_10_bss_114
+// (0x0000C024). Both go through ApplyDamage from the actor with a filter including lbl_10_data_1E0
+// = 0x3B (kMT_Solid), kFT_IncludeExclude (`li r10, 0x3` at 0x0000BF94, 0x0000C08C), and the zero
+// vector.
+// @ fn_10_BE18
+void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float length) {
+  static const CMaterialFilter skFilter = CMaterialFilter::MakeInclude(
+      CMaterialList(kMT_Player, kMT_Platform)); // 0x0000BE88
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, gunPos, dir, length, skFilter, nullptr);
+  TUniqueId hit = kInvalidUniqueId;
+  CGameCollision::RayDynamicIntersection(mgr, hit, gunPos, dir, length, skFilter, nearList);
+  const CMaterialFilter damageFilter(CMaterialList(kMT_Solid), CMaterialList(),
+                                     CMaterialFilter::kFT_IncludeExclude); // 0x0000BF94
+  if (hit == mgr.GetPlayer(0)->GetUniqueId()) { // 0x0000BF64
+    if (mSweepBeamHitPlayer) { // 0x0000BF70
+      return;
+    }
+    mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), mSweepBeamDamageInfo, damageFilter,
+                    CVector3f::Zero());
+    mSweepBeamHitPlayer = true; // 0x0000BFF8
+  } else if (hit != kInvalidUniqueId) { // 0x0000C00C
+    const CDamageInfo info(CWeaponMode(kWT_Power), 1000.f, 0.f, 0.f, true); // 0x0000C034
+    mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), info, damageFilter, CVector3f::Zero());
+  }
 }
 
 void CDarkSamus::Taunt(CStateManager&, EStateMsg msg, float) {
@@ -3386,7 +4164,7 @@ static pas::EStepDirection GetDashStepDirection(int slot) {
 }
 
 // fn_10_EB90 (0x0000EB90, 0x228 bytes): the dash slot's direction from the flat facing axis f, the
-// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7; bgt` at 0x0000EB98 to the zero vector):
+// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7` at 0x0000EB98 to the zero vector):
 // 0 f, 1 -f (lbl_10_rodata_3EC = -1.0f), 2 (-f.y, f.x, 0), 3 (f.y, -f.x, 0), and the diagonals
 // normalized (AsNormalized at 0x0000EC70/0x0000ECC4/0x0000ED2C/0x0000ED80): 4 the sum of f and
 // slot 2's, 6 slot 2's minus f, 5 the sum of f and slot 3's, 7 slot 3's minus f (the `cmpwi` at
@@ -3479,7 +4257,7 @@ void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
        it != nearList.end(); ++it) {
     // The near list holds actors only; retail passes the entity on as one.
     CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it));
-    if (actor != nullptr) { // `mr. r6, r3; beq` at 0x00014BE4/0x00014BE8
+    if (actor != nullptr) { // `mr. r6, r3` at 0x00014BE4/0x00014BE8
       mgr.ApplyRadiusDamage(*this, GetTranslation(), *actor, GetUniqueId(), info);
     }
   }
@@ -3667,7 +4445,7 @@ float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* 
     if (endDistSq < playerDistSq) {
       weight = weight * 0.5f;
     }
-    if (target != nullptr) { // `cmplwi r25, 0x0; beq` at 0x00015D6C/0x00015D70
+    if (target != nullptr) { // `cmplwi r25, 0x0` at 0x00015D6C/0x00015D70
       const float dist = (*target - end).Magnitude();
       if (dist < mMaxAttackRange) {
         weight = weight * (1.f - dist / mMaxAttackRange);

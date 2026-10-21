@@ -37,6 +37,7 @@
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIWaypoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAiJumpPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
@@ -125,6 +126,7 @@ void StandInFn(const char* fn) {
   }
   fprintf(stderr, "[cmdopirate] stand-in %s\n", fn);
 }
+
 
 // The body's two FSM tables. Retail builds them in a static initialiser (fn_9_F9F8,
 // .ctors): the tables are lbl_9_data_198 (34 triggers, .data 0x198) and lbl_9_data_568
@@ -223,10 +225,13 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb74_(0.f)                                      // 0xb74, a timer; fn_9_662C advances it
 , xb78_(0.f)                                      // 0xb78, a timer; fn_9_662C advances it
 , xb84_(0.f)                                      // 0xb84, a timer; fn_9_662C advances it
+, xb88_(0.f)                                      // 0xb88, the time to the waypoint
 , xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
 , xb90_(0.f)                                      // 0xb90, fn_9_D904 @0x0000DB0C
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xbb8_(CVector3f::Zero())                         // 0xbb8, the fourth vector; fn_9_D904 @0x0000DB5C
+, xba0_(CVector3f::Zero())                         // 0xba0, the charge direction
+, xbac_(CVector3f::Zero())                         // 0xbac, the waypoint's forward
 , xc4c_(-1)                                       // 0xc4c, the module's own state word; -1 = unset
 , xc44_(0.f)                                      // 0xc44, the module's own scale
 , xc48_(0.f)                                      // 0xc48, the scale's target
@@ -241,10 +246,12 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbdc_(-1)                                    // 0xbdc, the dodge id; fn_9_8934 sets it
 , xbe0_(0.f)                                    // 0xbe0, the jump-back distance
 , xbe4_(0.f)                                    // 0xbe4, a distance
+, xbe8_(0.f)                                    // 0xbe8, the jump distance
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
 , xbd8_(kInvalidUniqueId)                          // 0xbd8, the id the delete case deletes
+, xbda_(kInvalidUniqueId)                          // 0xbda, the waypoint the commando is at
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
 , mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
 , mLocatorGun(CSegId::Invalid())                  // 0xc5e, fn_9_D904 @0x0000E304
@@ -297,6 +304,12 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
     const CPASAnimParmData backStep(pas::kAS_Step, CPASAnimParm::FromEnum(1),
                                     CPASAnimParm::FromEnum(2));
     xbe0_ = scale.GetY() * GetAnimationDistance(backStep);
+    // The jump distance (0x0000E4D4): the jump animation's travel distance (the state id 13 =
+    // kAS_Jump with the parms (0, 0, 0), the parm data fn_9_5D74 builds at 0x0000E49C) times the
+    // model's scale Y (the model's scale's second float, the load at 0x0000E4B0).
+    const CPASAnimParmData jumpParm(pas::kAS_Jump, CPASAnimParm::FromEnum(0),
+                                    CPASAnimParm::FromEnum(0), CPASAnimParm::FromEnum(0));
+    xbe8_ = scale.GetY() * GetAnimationDistance(jumpParm);
   }
 }
 
@@ -1247,6 +1260,199 @@ void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg)
   mCurDamageRemTime = mDamageWaitTime;              // guest this+0x444, 0x00003C9C
 }
 
+// fn_9_2048 (0x330 bytes): the module's shield effect - the explosion and the sound that play
+// when the shield takes a hit.
+//
+// The byte at guest this+0xC64's 0x01 bit stops it (the clrlwi at 0x00002064); otherwise the bit
+// is set (0x00002074) and the effect is built at the module's left-wrist locator (the
+// GetLctrTransform call at 0x00002088, the locator id at guest this+0xC62).
+//
+// Which effect it is depends on the module's state word at guest this+0xC4C: 1 is the charge (the
+// compare at 0x0000209C), which needs the effect the guest's token at guest this+0xC08 holds to
+// be loaded (the test at 0x000020A8) and builds an explosion it clears again (the call at
+// 0x000021A4), so the charge's effect never reaches the world; 0 is the armed shield (the compare
+// at 0x000021BC), which needs the effect the guest's token at guest this+0xC0C holds to be loaded
+// (the test at 0x000021C8) and puts its explosion into the world (the AddObject call at
+// 0x000022E8), starts the block's explode sound (the SfxStart call at 0x00002324, the sound id at
+// guest this+0x8F4 = the block's +0x134) and removes the module's own second sound emitter (the
+// RemoveEmitter call at 0x00002340, the handle at guest this+0xC38) before it resets the module's
+// state word and its two scale floats (0x0000234C..0x00002360).
+//
+// The guest's two tokens are the block's two effect asset ids: the port reads the charge effect
+// (the block's +0x78) for the charge and the explode effect (the block's +0x58, the one the
+// explode sound at the block's +0x5C belongs to) for the armed shield.
+void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
+  if ((xc64_ & 0x01) != 0) {  // 0x00002064
+    return;
+  }
+  xc64_ |= 0x01;              // 0x00002074
+  const CTransform4f xf = GetLctrTransform(mLocatorLWrist);  // 0x00002088
+  if (xc4c_ == 1) {           // 0x0000209C (the charge)
+    // The guest builds the explosion and clears it again (the call at 0x000021A4), so the
+    // charge's effect never reaches the world.
+    return;
+  }
+  if (xc4c_ != 0) {           // 0x000021BC
+    return;
+  }
+  rstl::optional_object< TCachedToken< CGenDescription > > effect;
+  const CAssetId effectId = mData.mShield.mExplodeEffect;
+  if (effectId != kInvalidAssetId) {
+    effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
+  }
+  if (!effect.valid()) {  // 0x000021C8 (the guest's test of the flag at guest this+0xC24)
+    return;
+  }
+  CExplosion* explosion = rs_new CExplosion(
+      TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+      rstl::string_l("CommandExplosion F"), xf, 0, GetModelData()->GetScale(), CColor::White(),
+      -1);
+  if (explosion != nullptr) {
+    mgr.AddObject(explosion);  // 0x000022E8
+  }
+  CSfxManager::SfxStart(mData.mShield.mSoundExplode, 0x40, 0, CSfxManager::kAllAreas, false, false,
+                        CSfxManager::kMedPriority);  // 0x00002324
+  if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002344
+    CSfxManager::RemoveEmitter(xc38_);
+    xc38_ = CSfxHandle::NullHandle();
+  }
+  xc4c_ = -1;   // 0x00002354
+  xc48_ = 0.f;  // 0x0000235C
+  xc44_ = 0.f;  // 0x00002360
+}
+
+// fn_9_2A98 (0x214 bytes): the module's waypoint picker - it takes the AI waypoint the module
+// follows (the id at guest this+0x6C0) and, when the third argument is set, walks to the
+// waypoint's own "arrived" connection.
+//
+// The charge speed (the block's +0x12C = guest this+0x8EC) has to be above zero
+// (0x00002AD0..0x00002AD4), the AI waypoint has to be there (0x00002AD8..0x00002AF8) and it has
+// to allow the boost (its flags, the word at its +0x164, have to have their 0x20 bit - the
+// rlwinm at 0x00002B00). Then the module's own connection search finds the waypoint's "arrived"
+// connection (0x00002B44: the state kSS_Arrived and the message kSM_Next, with the module's own
+// waypoint predicate), the found waypoint becomes the module's waypoint (the store at
+// 0x00002B8C) and its position (the loads at 0x00002B90..0x00002BA8) and its forward column
+// (0x00002BAC..0x00002BC4) become the module's own vectors. Without the third argument the
+// module keeps the waypoint it has (0x00002C0C..0x00002C3C). The module's time to the waypoint
+// (the float at guest this+0xB88) is the distance to it over the charge speed
+// (0x00002BF8..0x00002C04).
+bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
+  const float speed = mData.mShield.mChargeSpeed;  // guest this+0x8EC
+  if (speed <= 0.f) {  // 0x00002AD0..0x00002AD4
+    return false;
+  }
+  const CScriptAIWaypoint* waypoint =
+      TCastToPtr< CScriptAIWaypoint >(
+          mgr.ObjectById(mWaypointNavigation.GetDestination()));  // 0x00002AD8..0x00002AF8
+  if (waypoint == nullptr) {
+    return false;
+  }
+  if ((waypoint->GetFlags() & 0x20) == 0) {  // 0x00002B00..0x00002B04
+    return false;
+  }
+  CVector3f position;
+  CVector3f forward;
+  if (useNext) {  // 0x00002B08
+    // The guest searches the *waypoint's* connections (its r4 is the waypoint the flags were
+    // read from, 0x00002AF4..0x00002B44), not the commando's own.
+    const TUniqueId id =
+        waypoint->FindConnectedObject_if(mgr, kSS_Arrived, kSM_Next, skWaypointPredicate);
+    const CScriptWaypoint* next = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id));
+    if (next == nullptr) {  // 0x00002B80..0x00002B84
+      return false;
+    }
+    mWaypointNavigation.SetDestination(id);           // 0x00002B8C (guest this+0x6C0)
+    position = next->GetTranslation();                // 0x00002B90..0x00002BA8
+    forward = next->GetTransform().GetForward();      // 0x00002BAC..0x00002BC4
+  } else {
+    position = waypoint->GetTranslation();             // 0x00002C0C..0x00002C24
+    forward = waypoint->GetTransform().GetForward();   // 0x00002C28..0x00002C3C
+  }
+  xb94_ = position;  // guest this+0xB94
+  xbac_ = forward;   // guest this+0xBAC
+  const CVector3f delta = xb94_ - GetTranslation();  // 0x00002C40..0x00002C6C
+  xb88_ = delta.Magnitude() / speed;                // 0x00002BF8..0x00002C04
+  return true;
+}
+
+// fn_9_2474 (0x580 bytes): the module's turn helper - it turns the commando towards the waypoint
+// it follows and charges at it.
+//
+// The charge speed (the block's +0x12C = guest this+0x8EC) has to be above zero
+// (0x000024B4..0x000024B8) or the helper does nothing. The direction to the waypoint (the vector
+// at guest this+0xB94, the delta at 0x00002534..0x0000253C) is normalized when it is magnitude
+// safe (0x0000254C..0x00002564) and the actor's own forward column otherwise
+// (0x0000256C..0x00002584). The time to the waypoint is the *raw* delta's length over the charge
+// speed (0x000025A4): the guest's Magnitude call takes the delta at its own stack slot (the
+// `addi r3, r1, 0xd4` at 0x0000258C), not the copy of the direction it made at sp+0xC8.
+//
+// The new rotation: the actor's position and the direction give a look-at transform (with the
+// waypoint's forward column as the up vector, 0x000025EC), the target's quaternion comes from it
+// (0x00002604) and the actor's own quaternion (0x000024DC) is slerped towards it with the factor
+// clamp(1 - the time / the module's own time to the waypoint (the float at guest this+0xB88), 0, 1)
+// (0x00002634..0x00002678). The result is normalized (0x000026A4), turned into a transform
+// (0x000026B4) and the actor takes it (0x000026C0).
+//
+// The charge command: when the actor's facing and the direction differ by more than 10 degrees
+// (rodata_498 = 0.17453292, 0x000026D8) the commando is told to loop-attack, and the loop attack
+// type depends on the sign of the dot product between the direction and the actor's own right
+// column (guest this+0x24, 0x34 and 0x44, 0x000026E0..0x00002718): 6 when it is positive
+// (0x00002720..0x0000276C) and 5 when it is not (0x000027B0..0x000027FC). When the actor faces
+// the waypoint the type is 4 (0x00002840..0x00002890). The guest also sets the command's flag
+// byte's 0x80 bit (0x00002740, 0x000027D0 and 0x00002860) - the retail's skip-into flag - and
+// leaves the "wait for the animation" word at 0 (0x0000274C and 0x000027DC).
+//
+// The movement: the direction in the actor's own frame (TransposeRotate, 0x000028CC) times the
+// charge speed and the frame time (0x00002918) moves the actor, and the module's own push vector
+// (guest this+0xBB8) does the same when it is not zero (0x0000291C..0x000029A4), after which the
+// push vector is cleared (0x000029A8..0x000029C0).
+void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
+  const float speed = mData.mShield.mChargeSpeed;  // guest this+0x8EC
+  if (speed <= 0.f) {  // 0x000024B4..0x000024B8
+    return;
+  }
+  const CVector3f pos = GetTranslation();  // guest this+0x54
+  const CVector3f delta = xb94_ - pos;    // guest this+0xB94
+  CVector3f dir;
+  if (delta.IsMagnitudeSafe()) {  // 0x0000254C
+    dir = delta.AsNormalized();   // 0x00002560
+  } else {
+    dir = GetTransform().GetForward();  // 0x0000256C (guest this+0x28, 0x38 and 0x48)
+  }
+  // 0x000025A4: the guest's Magnitude call takes the raw delta (sp+0xD4, the `addi r3, r1, 0xd4`
+  // at 0x0000258C) - the normalized copy at sp+0xC8 is the direction the look-at uses, not the
+  // one the time comes from.
+  const float time = delta.Magnitude() / speed;  // 0x000025A4
+  const CTransform4f lookAt = CTransform4f::LookAt(pos, pos + dir, xbac_);  // 0x000025EC
+  const CQuaternion current = CQuaternion::FromMatrix(GetTransform());  // 0x000024DC
+  const CQuaternion target = CQuaternion::FromMatrix(lookAt);  // 0x00002604
+  // the factor: clamp(1 - the time / the module's time to the waypoint, 0, 1) (0x00002634..0x00002678)
+  const float factor = CMath::Clamp(0.f, 1.f - time / xb88_, 1.f);
+  const CQuaternion turn = CQuaternion::SlerpLocal(current, target, factor);
+  SetTransform(turn.BuildNormalized().BuildTransform4f(pos));  // 0x000026A4..0x000026C0
+  const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), dir);  // 0x000026CC
+  pas::ELoopAttackType type = pas::kLAT_Four;  // 0x00002840
+  if (angle > 0.17453292f) {  // rodata_498 = 10 degrees, 0x000026D8
+    const float dot = CVector3f::Dot(dir, GetTransform().GetRight());  // 0x000026E0..0x00002718
+    type = (dot > 0.f) ? pas::kLAT_Six : pas::kLAT_Five;  // 0x0000271C, 0x000027D8
+  }
+  CBCLoopAttackCmd cmd(type, false);  // 0x00002744..0x0000276C, the "wait" word stays 0
+  cmd.SetSkipInto(true);  // the guest's flag byte's 0x80 bit (0x00002740)
+  BodyController()->CommandMgr().DeliverCmd(cmd);
+  // The movement: the direction in the actor's own frame (0x000028CC) times the charge speed and
+  // the frame time (0x00002918).
+  const CVector3f local = GetTransform().TransposeRotate(dir);
+  MoveInOneFrameOR(local * (speed * dt), dt);
+  if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {  // 0x0000291C..0x00002948
+    const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00002964
+    // 0x000029A4: the push is scaled by the charge speed and the frame time, like the movement
+    // above (the two fmuls chains at 0x0000297C..0x00002994).
+    MoveInOneFrameOR(push * (speed * dt), dt);  // 0x000029A4
+    xbb8_ = CVector3f::Zero();  // 0x000029A8..0x000029C0
+  }
+}
+
 // fn_9_2D0C (0x384 bytes): the module's knock-back helper - the shield's and the blade's damage
 // and the knock-back they cause.
 //
@@ -1279,7 +1485,7 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
       weapon = TCastToPtr< CWeapon >(mgr.ObjectById(actor->GetLastTouchedObject()));
     }
     if ((xc66_ & 0x20) != 0) {  // 0x00002D78..0x00002D84
-      StandIn("the module's own shield effect helper (fn_9_2048)");  // 0x00002D90
+      x2048_ShieldEffect(mgr);  // 0x00002D90
     }
   } else {
     weapon = TCastToPtr< CWeapon >(mgr.ObjectById(senderId));  // 0x00002D9C..0x00002DA8
@@ -2157,9 +2363,38 @@ bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData&
   return true;                                                     // 0x0000B5F4
 }
 
+// @ fn_9_B1E0
+// fn_9_B1E0 (0x70 bytes): the trigger that enters the module's scripted shield charge.
+//
+// The byte at guest this+0xC66's 0x80 bit (the extrwi at 0x0000B1F0) and the byte at guest
+// this+0xC64's 0x01 bit (the clrlwi at 0x0000B1FC) both have to be right, and the AI waypoint the
+// module follows (the id at guest this+0x6C0 - the waypoint navigation's destination field) has to
+// allow the boost: the waypoint's flags (the word at the waypoint's +0x164) have to have their
+// 0x20 bit (the rlwinm at 0x0000B22C).
+//
+// The three arms the run does not reach are unreachable in the shipped data: the FollowAttackPattern
+// state (fn_9_961C) sets the 0x80 bit of guest this+0xC66 and the waypoint on its activate
+// (0x000096CC and 0x00009754), and this trigger is only evaluated while that state is current;
+// nothing in the module ever sets the 0x01 bit of guest this+0xC64 (the constructor clears it at
+// 0x0000E1AC and every store to that byte sets another bit - the 0x02, 0x04, 0x08, 0x10, 0x20,
+// 0x40 or 0x80 one).
 bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) const {
-  StandInFn("fn_9_B1E0");
-  return false;
+  if ((xc66_ & 0x80) == 0) {  // 0x0000B1F0
+    return false;
+  }
+  if ((xc64_ & 0x01) != 0) {  // 0x0000B1FC
+    return false;
+  }
+  const CScriptAIWaypoint* waypoint =
+      TCastToPtr< CScriptAIWaypoint >(
+          mgr.ObjectById(mWaypointNavigation.GetDestination()));  // 0x0000B218..0x0000B224
+  if (waypoint == nullptr) {
+    return false;
+  }
+  if ((waypoint->GetFlags() & 0x20) == 0) {  // 0x0000B22C
+    return false;
+  }
+  return true;
 }
 
 // fn_9_B1D4: the module's flag byte at guest this+0xC64 has its 0x04 bit set (extrwi r3, r0,
@@ -2674,8 +2909,119 @@ void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
+// fn_9_961C (0x350 bytes): the FollowAttackPattern state - the commando walks the attack
+// pattern's waypoints and, at the end of the chain, goes for the target.
+//
+// The guest's own waypoint navigation patrols first (the call at 0x00009658, the navigation at
+// guest this+0x6B8) and the state's own work follows.
+//
+// On activate (the guest's message 0, 0x00009680) the module's waypoint is the one it is at (the
+// id at guest this+0xBDA, the load at 0x00009684) or, when that is kInvalidUniqueId, the object
+// connected in the "ATTK"/"FOLW" state (the GetConnectedObject call at 0x000096B8); the id goes to
+// guest this+0x6C0 (0x000096CC). Then the waypoint (a CScriptWaypoint, the cast at 0x000096E0)
+// is looked up: when it is behind the commando (the delta's projection on the actor's forward
+// column - the loads at 0x000096EC..0x0000972C - is zero or less, the compare with rodata_494 =
+// 0 at 0x00009730) the navigation's "in position" flag (the byte at guest this+0x6F0, the
+// bitfield byte of the navigation at guest this+0x6B8) gets its 0x80 bit (0x0000973C..0x00009748).
+// The byte at guest this+0xC66 gets its 0x80 bit too (0x0000974C..0x00009758) - the bit the
+// ShouldBoost trigger reads (0x0000B1F0).
+//
+// On update (the guest's message 1, 0x00009760) the AI waypoint the module follows (the id at
+// guest this+0x6C0) is looked up. When it is there and its flags (the word at its +0x164) have
+// their 0x02 bit (the rlwinm at 0x00009788) or their 0x04 bit (the rlwinm at 0x00009790), the
+// commando's reach is the body's max speed (the GetMaxSpeed call at 0x000097A0) times
+// (0.1f + 1.5f * dt) (rodata_42C and rodata_47C) times the model's scale Y (the model data at
+// guest this+0x60, the load at 0x000097C0) plus the module's jump distance (the float at guest
+// this+0xBE8, the load at 0x000097CC); when the commando is nearer to the waypoint than that (the
+// squared distance at 0x000097D0..0x00009828) the navigation's in-position flag is set
+// (0x00009830..0x0000983C) and the float at guest this+0xBEC takes 3 (rodata_448) when the
+// waypoint's flags have their 0x02 bit and 0 (rodata_494) when they do not
+// (0x00009840..0x00009860).
+//
+// Then, when the body is in the jump state (the body's state id 13, the compare at 0x0000986C)
+// and the waypoint has no successor (its "ARRV"/"NEXT" connection, the CheckConnectedObject call
+// at 0x0000989C, is kInvalidUniqueId - the same chain the host's waypoint navigation walks), the
+// target's aim position (the module's helper fn_9_3CBC, the call at 0x000098D8) becomes the
+// body's target vector (the delta to the position, the stores at 0x0000990C..0x00009914).
+//
+// Finally the navigation's destination position (guest this+0x6D4..0x6DC) is copied to the
+// module's jump-back target (guest this+0xBF0, 0x00009918..0x0000992C).
+//
+// On deactivate (the guest's message 2, 0x00009934) the byte at guest this+0xC66 loses its 0x80
+// bit (0x0000993C..0x00009940).
 void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_961C");
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);  // 0x00009654..0x00009658
+  switch (msg) {
+  case kStateMsg_Activate: {  // the guest's message 0
+    TUniqueId id = xbda_;  // 0x00009684
+    if (xbda_ == kInvalidUniqueId) {  // 0x0000968C..0x00009690
+      id = GetConnectedObject(mgr, kSS_Attack, kSM_Follow);  // 0x000096B8
+    }
+    mWaypointNavigation.SetDestination(id);  // 0x000096CC (guest this+0x6C0)
+    // The guest's guest this+0x6C0 is the waypoint navigation's own destination field (the
+    // navigation sits at guest this+0x6B8 and its destination is at +0x8), so the host's
+    // navigation gets it too: the AttackPatternOver trigger reads the destination there
+    // (0x0000B800) and the state has to stay when it is set.
+    mWaypointNavigation.SetDestination(id);
+    const CScriptWaypoint* waypoint =
+        TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id));  // 0x000096DC..0x000096E8
+    if (waypoint != nullptr) {
+      // the delta to the waypoint and the actor's forward column (guest this+0x28, 0x38, 0x48)
+      const CVector3f delta = waypoint->GetTranslation() - GetTranslation();  // 0x000096EC..0x00009720
+      if (CVector3f::Dot(GetTransform().GetForward(), delta) <= 0.f) {  // rodata_494, 0x00009730
+        mWaypointNavigation.SetInPosition(true);  // 0x0000973C..0x00009748
+      }
+    }
+    xc66_ |= 0x80;  // 0x0000974C..0x00009758
+    break;
+  }
+  case kStateMsg_Update: {  // the guest's message 1
+    const CScriptAIWaypoint* waypoint =
+        TCastToPtr< CScriptAIWaypoint >(
+            mgr.ObjectById(mWaypointNavigation.GetDestination()));  // 0x00009774..0x00009780
+    if (waypoint != nullptr) {
+      const uint flags = waypoint->GetFlags();  // the word at the waypoint's +0x164
+      if ((flags & 0x02) != 0 || (flags & 0x04) != 0) {  // 0x00009788, 0x00009790
+        const float maxSpeed = BodyController()->BodyStateInfo().GetMaxSpeed();  // 0x000097A0
+        const float scaleY = GetModelData()->GetScale().GetY();  // guest this+0x60, 0x000097C0
+        // rodata_42C = 0.1f, rodata_47C = 1.5f, the module's jump distance at guest this+0xBE8
+        const float reach = maxSpeed * ((0.1f + 1.5f * dt) * scaleY) + xbe8_;  // 0x000097AC..0x000097DC
+        const CVector3f delta =
+            GetTranslation() - waypoint->GetTranslation();  // 0x000097D0..0x000097F4
+        if (delta.MagSquared() < reach * reach) {  // 0x00009824..0x0000982C
+          mWaypointNavigation.SetInPosition(true);  // 0x00009830..0x0000983C
+          xbec_ = (flags & 0x02) != 0 ? 3.f : 0.f;  // rodata_448 / rodata_494, 0x00009840..0x00009860
+        }
+      }
+    }
+    // the body's state: the jump state (the id 13, the compare at 0x0000986C)
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Jump) {
+      // the chain: the waypoint's "ARRV"/"NEXT" connection (0x0000989C); a waypoint without one
+      // is the end of the pattern.
+      bool endOfPattern = (waypoint == nullptr);
+      if (waypoint != nullptr) {
+        endOfPattern =
+            waypoint->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next) == kInvalidUniqueId;
+      }
+      if (endOfPattern) {
+        if (x3CBC_(mgr, xb94_, 0.f)) {  // 0x000098D8 (fn_9_3CBC with rodata_494 = 0.f)
+          // the body's target vector (the command manager's fifth CVector3f, the body
+          // controller's +0x34, the stores at 0x0000990C..0x00009914)
+          BodyController()->CommandMgr().SetTargetVector(xb94_ - GetTranslation());
+        }
+      }
+    }
+    // the navigation's destination position becomes the module's jump-back target
+    xbf0_ = mWaypointNavigation.GetDestinationPosition();  // 0x00009918..0x0000992C
+    break;
+  }
+  case kStateMsg_Deactivate: {  // the guest's message 2
+    xc66_ &= ~0x80;  // 0x0000993C..0x00009940
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -2837,6 +3183,7 @@ void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_9_86B4
 // fn_9_86B4 (0x280 bytes): the shield's arming state.
 //
 // On activate (the guest's message 0, 0x00008704) the module's flag byte at guest this+0xC65 gets
@@ -2924,6 +3271,7 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_9_8028
 // fn_9_8028 (0x68c bytes): the shield-charge state - the commando charges at its target with
 // the shield up.
 //
@@ -3069,8 +3417,124 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
+// fn_9_7A98 (0x590 bytes): the scripted shield charge - the commando walks its waypoint path
+// with the shield up and charges at the waypoints.
+//
+// On activate (the guest's message 0, 0x00007B24) the byte at guest this+0xC65 gets its 0x04
+// bit (the shield is up, 0x00007B2C), the byte at guest this+0xC66 loses its 0x20 bit
+// (0x00007B48), the byte at guest this+0xC64 loses its 0x08 and its 0x04 bit (0x00007B54 and
+// 0x00007B60), the timer at guest this+0xB84 is zeroed (0x00007B68), the animation state goes
+// "ready" (guest this+0x6B4 = 1, 0x00007B6C) and the counter at guest this+0xB54 takes the counter
+// at guest this+0xB50 plus one (0x00007B70..0x00007B78). Then the module's waypoint picker
+// (fn_9_2A98) takes the waypoint (0x00007B7C); when it fails the animation state goes "over"
+// (0x00007C34). The actor's own material filter gets kMT_Ceiling and kMT_Wall in its exclude list
+// (the data words 0x1D and 0x1E at lbl_9_data_7E8 and lbl_9_data_7EC, 0x00007B94..0x00007C10) and the
+// module's push vector (guest this+0xBB8) is cleared (0x00007C14..0x00007C2C).
+//
+// On update (the guest's message 1, 0x00007C40) the loop-attack command may be issued (the
+// guest's ShouldRetry with the command id 9, 0x00007C40..0x00007C4C): then the actor's vertical
+// movement flag (the byte at guest this+0x34C's 0x40 bit, 0x00007C58..0x00007C68) is set, the
+// ground collider material is removed (0x00007C74), the loop-attack command is delivered
+// (0x00007CC4) and the shield's collision actor manager goes active (0x00007D0C). When the
+// command may not be issued and the body is in the loop attack (0x00007D18..0x00007D20) the timer
+// at guest this+0xB84 is zeroed (0x00007D2C) and, while the byte at guest this+0xC64 has no
+// 0x04 bit, the commando either has reached the waypoint (the waypoint is behind it or inside
+// the actor's own bounding box - 0x00007E70..0x00007DF0) and takes the next one (fn_9_2A98 with
+// the third argument set, 0x00007E00; when that fails the body is told to leave the state, the
+// command id 0xa, 0x00007E2C) or it turns towards the waypoint (fn_9_2474, 0x00007E54).
+//
+// On deactivate (the guest's message 2, 0x00007E5C) the animation state goes "not ready"
+// (0x00007E60), the body is told to leave the state (the command id 0xa, 0x00007E84) - and, when
+// the byte at guest this+0xC64 has its 0x04 bit, the abort command (the id 0xd) instead
+// (0x00007EC8) - the waypoint the commando is at goes to guest this+0xBDA (0x00007ED8), the actor's
+// vertical movement flag is cleared (0x00007EF0..0x00007EF8), the ground collider material is
+// added (0x00007EFC), the actor's own material filter loses kMT_Ceiling and kMT_Wall again (the
+// data words 0x1D and 0x1E at lbl_9_data_7F0 and lbl_9_data_7F4, 0x00007F04..0x00007F90), the shield's
+// collision actor manager goes inactive (0x00007FA0), the module's own activate helper (fn_9_1EF8)
+// runs (0x00007FA8) and the bytes at guest this+0xC64 and this+0xC65 lose their 0x08 and their
+// 0x04 bit (0x00007FB4 and 0x00007FC0).
 void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_7A98");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    xc65_ |= 0x04;                    // 0x00007B2C (the shield is up)
+    xc66_ &= ~0x20;                   // 0x00007B48
+    xc64_ &= ~0x08;                   // 0x00007B54
+    xc64_ &= ~0x04;                   // 0x00007B60
+    xb84_ = 0.f;                      // 0x00007B68
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x00007B6C
+    xb54_ = xb50_ + 1;                // 0x00007B70..0x00007B78
+    if (!x2A98_PickWaypoint(mgr, false)) {  // 0x00007B7C
+      mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x00007C34
+      break;
+    }
+    CMaterialFilter filter = GetMaterialFilter();
+    filter.ExcludeList().Add(kMT_Ceiling);  // the data word 0x1D at lbl_9_data_7E8
+    filter.ExcludeList().Add(kMT_Wall);     // the data word 0x1E at lbl_9_data_7EC
+    SetMaterialFilter(filter);              // 0x00007C10
+    xbb8_ = CVector3f::Zero();               // 0x00007C14..0x00007C2C
+    break;
+  }
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      // 0x00007C58: the vertical movement flag (the byte at guest this+0x34C's 0x40 bit).
+      mVerticalMovement = true;
+      RemoveMaterial(kMT_GroundCollider, mgr);  // 0x00007C74
+      // 0x00007CC4: the loop-attack command; the guest's payload is the loop attack type 4, no
+      // wait for the animation and the skip-into flag clear.
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Four, false));
+      // The guest calls the manager without a test; the host's test covers the window before
+      // the kSM_Create case has built it (the host limit named here).
+      if (mCollisionShield.get() != nullptr) {
+        mCollisionShield->SetActive(mgr, true);  // 0x00007D0C
+      }
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
+      xb84_ = 0.f;  // 0x00007D2C
+      if ((xc64_ & 0x04) != 0) {  // 0x00007D34
+        BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00007E3C (the id 0xa)
+      } else {
+        // 0x00007E70: the commando has reached the waypoint when the waypoint is behind it or
+        // inside the actor's own bounding box.
+        const CVector3f delta = xb94_ - GetTranslation();
+        const CAABox box = GetBoundingBox();
+        const float height = box.GetMaxPoint().GetZ() - box.GetMinPoint().GetZ();
+        const float along = CVector3f::Dot(GetTransform().GetForward(), delta);
+        if (along <= 0.f || delta.MagSquared() <= height * height) {  // 0x00007DDC..0x00007DF0
+          if (!x2A98_PickWaypoint(mgr, true)) {  // 0x00007E00
+            BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00007E2C (the id 0xa)
+          }
+        } else if ((xc64_ & 0x08) == 0) {  // 0x00007E40..0x00007E48
+          x2474_TurnToWaypoint(mgr, dt);  // 0x00007E54
+        }
+      }
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x00007E60
+    BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00007E84 (the id 0xa)
+    if ((xc64_ & 0x04) != 0) {  // 0x00007EA0..0x00007EA4
+      BodyController()->CommandMgr().DeliverCmd(kBSC_AbortScripted);  // 0x00007EC8 (the id 0xd)
+    }
+    xbda_ = mWaypointNavigation.GetDestination();  // 0x00007ED8..0x00007EE8 (guest this+0x6C0)
+    mVerticalMovement = false;  // 0x00007EF0..0x00007EF8
+    AddMaterial(kMT_GroundCollider, mgr);  // 0x00007EFC
+    CMaterialFilter filter = GetMaterialFilter();
+    filter.ExcludeList().Remove(kMT_Ceiling);  // the data word 0x1D at lbl_9_data_7F0
+    filter.ExcludeList().Remove(kMT_Wall);     // the data word 0x1E at lbl_9_data_7F4
+    SetMaterialFilter(filter);                 // 0x00007F90
+    // The guest calls the manager without a test; the host's test covers the window before the
+    // kSM_Create case has built it (the host limit named here).
+    if (mCollisionShield.get() != nullptr) {
+      mCollisionShield->SetActive(mgr, false);  // 0x00007FA0
+    }
+    x1EF8_Activate();  // 0x00007FA8
+    xc64_ &= ~0x08;    // 0x00007FB4
+    xc65_ &= ~0x04;    // 0x00007FC0
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, float dt) {

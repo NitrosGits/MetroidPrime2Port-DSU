@@ -36,6 +36,8 @@ void CVisualKnowledge::Update(CStateManager& mgr, float dt) {
   }
   if (x2C_timer <= 0.f) {
     x38_visible = false;
+    // Port limit: retail only null-tests the two lookups (0x801F5670, 0x801F568C) and calls
+    // vtable 0x54 (GetAimPosition) on them as actors; the casts add a type check it lacks.
     const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(x20_target));
     const CActor* owner =
         target != nullptr ? TCastToConstPtr< CActor >(mgr.GetObjectById(x0_owner)) : nullptr;

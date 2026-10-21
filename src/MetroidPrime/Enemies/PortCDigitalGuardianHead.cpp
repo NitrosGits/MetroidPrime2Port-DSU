@@ -896,7 +896,9 @@ bool CDigitalGuardianHead::IsBurstOver(CStateManager& mgr, const CTriggerData& d
 }
 
 // fn_14_173AC: bit 0x80 of 0x10F4 (extrwi 1, 24).
-// Unmarked: run 37 entered Idle (0x10F4 0x88) but no trigger read IsIdle there; true never ran.
+// Unmarked: true never ran. Runs 37-39 entered Idle (0x10F4 0x88) but no trigger read IsIdle
+// there, and seven fights to the head's death never read it with the bit set. The triggers that
+// read it sit in FSM2 sub-machines, which `fsm` cannot enter (it resolves root states only).
 bool CDigitalGuardianHead::IsIdle(CStateManager& mgr, const CTriggerData& data) const {
   return (x10F4_ & 0x80) != 0;
 }
@@ -1001,7 +1003,7 @@ bool CDigitalGuardianHead::BombPitDestroyed(CStateManager& mgr, const CTriggerDa
 }
 
 // fn_14_17184: the lives left (0x10E4, a word) at most 0.
-// Unmarked: true never ran; no fight with the probes has reached the head's death yet.
+// @ fn_14_17184
 bool CDigitalGuardianHead::IsDead(CStateManager& mgr, const CTriggerData& data) const {
   return x10E4_ <= 0;
 }
@@ -1254,7 +1256,9 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
 // the retreat destroyed none, so no armour-off stun came first). With armour off, 0x1038 holds no
 // platform until SelectRetreatPlatform runs, and the platforms' waypoints span z -18.12..-9.21
 // across the centre's -16.74, so neither arm is excluded by the data. A failed fn_14_11698 cannot
-// happen: once d is magnitude-safe, centre + 50 d/|d| is off the centre.
+// happen: once d is magnitude-safe, centre + 50 d/|d| is off the centre. Run 403 destroyed the
+// armour (0xFE0 at 0) but no stun followed, and `fsm` cannot enter StunnedReaction (a sub-machine
+// state).
 void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation();
   if ((x10F4_ & 0x10) == 0) {
@@ -1378,8 +1382,9 @@ void CDigitalGuardianHead::EndSplitterDeployment(CStateManager& mgr, float dt) {
 // 6's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the gun 3.
 // A pulse fires a burst of 3 (0x10D8), the rest none.
 // Unmarked: area-53 runs ran the splitter, first-shot and random 0 and 2 arms. Random 1 and 3 need
-// more fights: the first random pick comes after the first shot and the splitters (run 37's five
-// fights, four of them stopped 20 s after VULN, made none).
+// more fights: the first random pick comes after the first shot and the splitters. Runs 37-39 made
+// none (seven fights to the head's death among them); only run 36's fight made one. Runs 402/403
+// (11 picks) never had the splitters dead: the main chassis stand-in passes every shot through.
 void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
   const SLdrDigitalGuardianHeadStruct& odds = mData.digitalGuardianHeadStruct_0x48b46e55;
   if (!AllSplittersDead(mgr, CTriggerData(0.f))) {

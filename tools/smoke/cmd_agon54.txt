@@ -1,0 +1,3 @@
+@22 status
+@36 objs spacepirate
+@50 status

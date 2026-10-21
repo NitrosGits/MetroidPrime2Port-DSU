@@ -1105,41 +1105,84 @@ the ing spot's death sound instead. The sounds also stop on the delete, not in t
 (`fn_29_2194` is called from the Think, fn_29_C9A4), so the port's `StopSfx()` call left the
 death body.
 
-**`fn_29_B3C4` is not marked yet.** The body is the retail's, but no run has killed an Ing with
-it: the Ings of area 57 start as ing spots (the data's `kFlag_StartAsIngSpot`), and the ing-spot
-form takes no damage (A.19), so the death only happens in the corporeal form - which the runs in
-area 57 reached (the first run's log: "state Lurk form 2") but where the driver's damage never
-landed (the Ing was in the form 3 when the console's `damage` arrived). The arms that still need a
-run: the alive bit clear, the burn flags (the byte at 0x421's bits 1 and 2 - the Ing has to be
-burning when it dies, which is a lava/knock-back scenario), the form 3 (the ing spot, which
-cannot die) and the state argument -1 (no script messages). The death run itself
-(`/tmp/opencode/ing_lane/ing_death.sh`, the driver's `damage u<uid> 100` x3 after the log shows
-form 2) exits 0 with 0 `[port] caught` and 0 `[reach-stub]`, so the new body does not fault.
+**The wake-up, diagnosed (2026-10-21).** The nine runs that kept the Ings as ing spots were a
+harness problem, not the module's. With a probe in `CIng::Listen` and in
+`CStateManager::InformListeners` the run says exactly what happens:
+
+1. **The Ing has to be active before it can hear anything.** `CStateManager::InformListeners`
+   (src/MetroidPrime/CStateManager.cpp:3512-3518) walks `kOL_ListeningAi` and calls
+   `patterned->Listen(...)` **only for an active actor**; the probe printed
+   "inform: listener 04f2 **active 0**" for every noise while the Ings slept. The active flag
+   comes from the `Activate` script message: `CEntity::AcceptScriptMsg` (src/MetroidPrime/CEntity.cpp:44-49)
+   sets it, and the chain `CIng::AcceptScriptMsg` -> `CPatterned::AcceptScriptMsg` ->
+   `CAi::AcceptScriptMsg` (src/MetroidPrime/Enemies/CAi.cpp:59) -> `CActor::AcceptScriptMsg` ->
+   `CEntity::AcceptScriptMsg` is complete, so the message does activate the Ing - **but only if it
+   reaches it**. The driver's `send <uid> Activate` was sent in the first two rounds, before the
+   area's actors were up, so it went to nobody. Sending it **once, when the Ing first shows up in
+   `objs Ing`**, wakes it (the probe then prints "listener 04f2 active 1"). It must not be repeated:
+   the message restarts the Ing's state machine.
+2. **The player has to stand on the puddle.** The noise is registered at the gun
+   (`CPlayerGun.cpp:247` informs the listeners with the gun's world position), and the retail's
+   Listen (fn_29_B294, asm 0x0000B32C-0x0000B3A4) rejects the noise when the squared distance is
+   over the hearing radius squared (CIngData+0 = 40) or the squared height difference over the
+   leash value (0x3d4) squared. The port's body matches the asm field for field (the radius, the
+   leash, the "0 disables the test" case) - the probe printed "dist 438.36, dz 7.83, radius 40.0"
+   for a player that had fallen off the ledge, and "dist 43.46, dz 1.89" for one standing on the
+   puddle. **No module bug here**: the port's `CIng::Listen` is the retail's body.
+3. **The beam has to be the light one.** The power beam is charged, so a short console press does
+   not fire (the probe saw no type-0 noise at all); the light beam fires while it is held (the
+   probe: "inform: type 0 at (97.0, 366.3, 6.4)" and 57 "listen: ... heard").
+
+With all three, the Ings wake: the probe logged "heard" 57 times and the log shows the whole
+cycle again - "state PathFind form 2" (the corporeal form), "state FindCoverPoint form 3",
+"state SetCoverDest form 3", "state IngSpotPathFind form 3" - and the console's
+`damage u<uid> 100` hits the corporeal Ing. Two things are still open: the hit has to land while
+the Ing is corporeal (the ing-spot form takes no damage, A.19), and the driver's id mapping (the
+log prints the unique id without its version bits, the console with them: `0x400 | tag`).
+
+**`fn_29_B3C4` is not marked yet** (the run of 2026-10-21, the probe in the death body): the
+run killed **both** Ings of area 57 and the death body ran with these arms: alive, not alive
+(the second death), the machine has a state, not burning, **the form 2 - the death body command**
+(the death in the corporeal form, through a real beam at the joint collision actors), the form 3
+(no command) and the script messages. Two arms are open:
+- **the burning arm** (the byte at 0x421's bits 1 and 2: the Ing has to be on fire when it dies).
+  The host has no fire that burns a patterned actor - only `COctapedeSegment` calls
+  `CPatterned::Burn` (src/MetroidPrime/Enemies/COctapedeSegment.cpp:267,650,657) and the fluid
+  plane never does, so the arm is **blocked by unported shared code**, not unreachable. Request
+  for the orchestrator: the fire plane should call `Burn` on the patterned actors it sets on fire
+  (the Ing's area list in docs/modules.tsv is the Agon Wastes, which has lava);
+- **"no messages"** (the state argument -1): the Ing's death always comes with a real state (the
+  damage path's kSS_DeathRattle), so this arm cannot run in the shipped data.
+
+**The ing spot does die** - the earlier note that it cannot was wrong: the run of 2026-10-21 shows
+the death body with the form 3 ("form 3, no command"), and the ing spot's HP does go down.
+
+**The corporeal death needs a real beam at the joint collision actors.** The console's `damage`
+goes to the Ing itself, and the Ing's own table (the trigger table) takes nothing from the power
+beam, so the corporeal Ing never loses HP that way. The joints carry the Ing's health and the
+base table (fn_29_3014), so the driver's `shoot <joint uid> charged 1` (a real beam projectile
+from one unit away, at the joint's aim position) is what kills it - the run of 2026-10-21 killed
+both Ings that way and the death body ran with the form 2.
 
 **The four hot bodies' branches** (the count is from the asm; the "run" column is what the area
-57 runs reached - the runs there keep the Ings in the ing-spot form, so the corporeal arms stay
-open):
+57 run of 2026-10-21 reached, with a probe in each body):
 
 | fn | branches | arms | the run |
 |---|---|---|---|
-| `fn_29_45BC` GetCoverHint | 1 | the id is invalid -> null; the id is valid -> the lookup | the null arm (before a hint is picked) and the lookup arm (the runs show "state FindCoverPoint" and "state SetCoverDest", so a hint was picked and the cover triggers then ask for it) |
-| `fn_29_4604` the blob align | 3 | the blob is gone -> nothing; the align flag is 0 -> nothing; the align flag is 1 -> the look along the normal, with the up vector (the normal's z < 0.95) or the right one (z >= 0.95) | the ing-spot form (the align flag 1) and the floor normal (the right vector); the "the blob is gone" and the "align 0" arms need the corporeal form |
-| `fn_29_426C` the valid target | 3 | the forms 0/1 -> false; the forms 3/5 with the Dark visor -> the byte at 0x9d0's bit 0; the forms 3/5 with another visor -> true; the other forms -> true | the forms 3/5 (the visor path) and the "another visor" case; the forms 0/1 and 2 need the host and the corporeal forms |
-| `fn_29_3948` MoveOnSurface | 2 | the parallel part is below 0.6 of the move -> the perpendicular part; the move is not magnitude-safe -> the zero vector; else the normalised move | the ing-spot path states (the move) and the strip case; the "not magnitude-safe" arm needs a degenerate move |
+| `fn_29_45BC` GetCoverHint | 1 | the id is invalid -> null; the id is valid -> the lookup | **both ran** (2 and 4145 calls) -> **marked** |
+| `fn_29_4604` the blob align | 3 | the blob is gone -> nothing; the align flag is 0 -> nothing; the align flag is 1 -> the look along the normal, with the up vector (the normal's z < 0.95) or the right one (z >= 0.95) | the align flag 0 (the forms 0, 1, 2, 4, 6, 7, 8) and 1 (the forms 3, 6, 7), the up vector and the right vector; the "the blob is gone" arm cannot run (the blob is made in the create branch and deleted in the delete branch) -> **marked** (the two steps the retail's body has and the port had not - GeomBlobV2's fn_25_256C and the blob's flag byte at 0x154 - are ported now: the host's `CCollisionTracker::SetParticleEmissionRateScalar` and its new `SetOwnerDamaged`) |
+| `fn_29_426C` the valid target | 3 | the forms 0/1 -> false; the forms 3/5 with the Dark visor -> the byte at 0x9d0's bit 0; the forms 3/5 with another visor -> true; the other forms -> true | **all four ran** ("always a target" 7166, "another visor" 21, "never a target" 2277 - the host form - and "the Dark visor" 9292, with the console's `give darkVisor` and `visor dark`) -> **marked** |
+| `fn_29_3948` MoveOnSurface | 2 | the parallel part is below 0.6 of the move -> the perpendicular part; the move is not magnitude-safe -> the zero vector; else the normalised move | **all three ran** (3369, 37 and 311 calls) -> **marked** |
 
-**The driver's recipe for the corporeal form (2026-10-21, still not working in area 57).** The
-wake-up is a *heard shot*: the port's `CIng::Listen` (fn_29_B294) only answers the noise type 0
-(`kLNT_PlayerFire`) inside the hearing radius, and the shot has to land on the Ing for the noise
-to be registered where the Ing is. The runs in area 57 keep both Ings in the ing-spot form: the
-log shows "state Start form 3 / BecomeIngSpot form 3 / Lurk form 3" and the probe's "touch: form
-3, 0400, skipped (the id)" - the player stands on the puddle, the shot noise is not heard, and the
-Ing never leaves the ing-spot form. The driver (`/tmp/opencode/ing_lane/ing_drive.py`, the
-`kill` mode) does what A.5's recipe does - activate both Ings, give the light beam and the ammo,
-stand six units off the Ing, aim at it with the pitch and fire - and the Ing still does not wake
-here, so the ing-spot form is where the area 57 Ings live (the data's `kFlag_StartAsIngSpot`).
-The Agon Wastes recipe (A.12) is the other way in: there the Ings are ing spots that the player
-morphs into a ball next to, and the Ing grabs it - that is the run the "the ball" arms of
-`fn_29_BB8C` and `fn_29_BF20` need.
+**The Agon Wastes recipe** (A.12) is the other way in: there the Ings are ing spots that the
+player morphs into a ball next to, and the Ing grabs it. The driver's `grapple` mode
+(`tools/drivers/ing_drive.py`) does it: the layers on, the Ings woken, `press x` to morph and the
+player teleported onto the puddle. The run of 2026-10-21 (Agon Wastes `01_sand_entrance_dark`, the
+world 42b935e4) reached the state: "state GrappleBall form 3" and the probe's arms -
+`fn_29_BB8C`'s "the ball is held" (4484 calls, the Ing with the ball in it) and
+`fn_29_BF20`'s "the grapple table" (2 calls) - so **`fn_29_BB8C` is marked** (all five of its
+arms ran: the hit, the form, the id, the cooldown and the ball). `fn_29_BF20` keeps one open
+arm: the base table, which only the body projectile (the form 4) asks for.
 
 **The next five hot behaviour bodies** (by the module's own call sites and by how often a run
 calls them), each read field by field against the REL - all five match the port:
@@ -1151,6 +1194,82 @@ calls them), each read field by field against the REL - all five match the port:
 | `fn_29_426C` (0xC0) | the valid target: the forms 0/1 are never targets, the forms 3 and 5 follow the Dark visor (3) and the byte at 0x9d0's bit 0, every other form is always a target | the port matches (`CIng::UpdateValidTarget`) |
 | `fn_29_3948` (0x208) | the move on the surface: the parallel part is cut when it is below 0.6 of the move's length, the result is normalised, the actor moves by speed*dt and the move direction is stored; a move that is not magnitude-safe stores the zero vector | the port matches (`CIng::MoveOnSurface`) |
 | `fn_29_4AA8` (0xA4) | the light struct's copy assignment (0x50 bytes, field by field) | **not module behaviour** - it is one of the plain struct copies, so it joins the host-code group of A.20 |
+
+### A.22 The five hot vtable bodies, arm by arm (2026-10-21)
+
+The next five unmarked Ing bodies (the module's own hot vtable slots), each read field by field
+against the REL and each run in area 57 (Temple Grounds `0i_cliff_hall_dark`, the world `1baa96c2`
+and the area `2735236b`, the fast harness `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`) with a
+temporary probe in every arm. The probes are not committed.
+
+**The fix.** `fn_29_BCB4` predicted the motion in the form 9 as well: the port's range ran to
+`kForm_BecomingWallProjectile`, but the retail's `cmpwi r0, 0x9 / beq` (asm 0x0000BD28-0x0000BD30)
+sends the form 9 and everything above it to the base class. The range now ends at
+`kForm_BecomingBodyProjectile` (8) - the predict forms are 2, 6, 7, 8, as the doc said.
+
+**The bodies.** `fn_29_B534` (CollidedWith), `fn_29_B890` (TakeDamage), `fn_29_B8C0` (KnockBack),
+`fn_29_BCB4` (GetAimPosition) and `fn_29_BF20` (GetDamageVulnerability) are otherwise the retail's
+bodies - the mask of the six splat surfaces is the retail's own six bit indices (0x1d, 0x1e, 0x1f,
+0x3b, 0x2b, 0x2a = the host's `kMT_Ceiling`, `kMT_Wall`, `kMT_Floor`, `kMT_Solid`, `kMT_Immovable`,
+`kMT_Occluder`), the collision list's stride is 0x60 and its material list and normal are the
+`CCollisionInfo`'s 0x30 and 0x40, the flinch type is the weapon type (2 = the light beam) and the
+cover hint's id is the Ing's own.
+
+| fn | the arms (the asm) | the run (2026-10-21, area 57) | verdict |
+|---|---|---|---|
+| `fn_29_B534` CollidedWith | the form is not 4 (0xB558); the flight time is under 0.5 (0xB56C); the contact list is empty (0xB710); a contact whose material is not a splat surface (0xB720); a contact that meets the mask (0xB738, the first hit wins) | the form, the flight time (203 calls) and the surface hit (1) in the run of A.20; the empty list (6 calls) in the same run; **the contact that does not meet the mask never ran** | the port matches; **not marked** (one arm open) |
+| `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC); every other form stores the base class's damage-cooldown (0xB8B0) | the store in the forms 2, 3 and 6; **the early return never ran** - the area 57 Ings never took a hit in their host phases | the port matches; **not marked** (one arm open) |
+| `fn_29_B8C0` KnockBack | the form is not 2 (0xB8E8); the form 2 and the body state 6 (0xB8F8); the form 2 and any other body state (0xB900); the weapon type 2 (0xB928); any other weapon (0xB93C) | all five: the reaction off in the form 3 (26 calls), the reaction off in the form 2 (1 call), the reaction on in the form 2 (12 calls), the flinch 2 and the flinch 1 (the power beam, 6 calls) | the port matches; **marked** |
+| `fn_29_BCB4` GetAimPosition | the base class (0xBE4C); the prediction (0xBD34) with dt above zero (0xBD3C) and with dt of zero (the aim stays the zero vector); the collar locator (0xBD6C) and the forms 6/7's fall back (0xBDF8) | the base in the form 3 (dt 0.00), the prediction in the form 6 (dt 0.22, 0.23) and the form 2 (dt 0.07, 0.22) - the lock-on asks the target with a prediction time - and the form 6 with dt 0.00; the collar locator and the forms 6/7's fall back are inside the locator's path, and the locator is invalid in retail (0xd7a = 0xff) | the port matches (after the form 9 fix); **marked** |
+| `fn_29_BF20` GetDamageVulnerability | the form 4 takes the base class's table (0xBF34); the form 3 takes the grapple's table when the ball is held (0xBF50) or the ing spot's table (0xBF64); every other form takes the trigger's table (0xBF6C) | the trigger's table in the forms 2 and 6 (71 calls), the ing spot's table in the form 3 (37 calls), the grapple's table in the Agon Wastes run of 2026-10-21 (2 calls); **the base table never ran** - only the body projectile (the form 4) asks for it | the port matches; **not marked** (one arm open) |
+
+**The two arms that are still open** are the same two the earlier runs left open (A.20): the
+contact that is not a splat surface and the base damage table both need the body projectile (the
+form 4), and the area 57 runs of 2026-10-21 never reached that form - the Ings there stay in the
+ing spot (3) or the form changes (6). The Agon Wastes run reaches the body projectile.
+
+**The clrlwi question (for the orchestrator).** Three places in the module read the flags byte at
+0xe5d with `lbz r0, 0xe5d(r3); clrlwi. r0, r0, 31` and branch on the result: `fn_29_BB8C` (the
+touch, 0xBBB0), `fn_29_BF20` (0xBF50) and the Think's damage branch (0xCDC0). The port reads that
+as the byte's bit 0 (`mGrappled`), which is what `tools/asmcheck.py` models (`clrlwi` as the
+`rlwinm` family, the mask 0x1). The PowerPC definition of `clrlwi rA, rS, 31` is "keep the low 31
+bits", so on a byte the branch would ask "is the whole flags byte zero" - every flag of 0xe5d
+(`mRenderModel`, `mPortalPlane`, `mStartAsIngSpot`, `mForm9Render`, `mFollowingAttackPath`,
+`mAlert`, `mMoving`, `mGrappled`) instead of the one bit. The module's other bit reads of the same
+byte use `extrwi` (0x22A0, 0x4684, 0xB1E8), so the compiler does have a bit-test idiom. Two of
+the three places are marked functions (`fn_29_BB8C`, `fn_29_2E8C`), so this is a decision for the
+orchestrator, not for a lane: if the strict reading is the right one, those two bodies and
+`fn_29_BF20` have to test the whole byte.
+
+### A.23 The death body's burning arm and the next five triggers (2026-10-21)
+
+**`fn_29_B3C4` (the death body) is now marked.** The one arm that was open - the Ing burning when
+it dies (asm 0x0000B474: the byte at 0x421's bits 1 and 2) - runs with the power bomb: the
+console's `damage <ing> 100 powerbomb` applies the knock-back whose follow-up is
+`kFU_LaggedBurnDeath`, the follow-up burns the Ing, and the death then runs with the lagged bit
+set. The recipe (from the shared lane): `send <ing> Activate; place <ing> player 8; damage <ing>
+100 powerbomb`. The run of 2026-10-21 (area 57) shows the death body three times: `alive 1
+burning 0 lagged 1 form 3` (the burn arm), `alive 1 burning 0 lagged 0 form 6` and `alive 0
+burning 0 lagged 0 form 2` (the not-alive arm and the form 2's death body command). The two
+arms that cannot run are cited: the machine always has a state (the constructor sets it up) and
+the Ing's death always carries a real state (the damage path's `kSS_DeathRattle`), so the "no
+message" arm is unreachable.
+
+**The next five unmarked behaviour functions** are the triggers the FSM2 graph puts in the state
+lists; each was read against the REL and probed in the area 57 run of 2026-10-21 (the probes are
+not committed). None of them is marked: the arms that need the attack pattern's waypoint or a
+safe zone did not run.
+
+| fn | the arms (the asm) | the run | verdict |
+|---|---|---|---|
+| `fn_29_A4E0` FoundMovementPos | the byte at 0xe5c's bit 3 (0xA4E0) | the trigger is only in the `SetLuredDest` code function's list, and the lure never ran | the port matches; not marked |
+| `fn_29_A340` AttackPatternOver | the attack path flag (0xA348) and the waypoint destination against `kInvalidUniqueId` (0xA35C) | the true arm (the path is followed and the destination is gone) ran with the state forced (`fsm <ing> FollowAttackPattern`); the two false arms did not | the port matches; not marked |
+| `fn_29_AA04` ShouldBecomeIngSpot | the desired form is 3 (0xAA1C) and `!fn_29_AD40` (0xAA24) | the "the desired form is not 3" arm and both of the `IsIngSpot` variants ran (forced); the arms with the desired form set did not - the desired form is only set by the attack pattern's waypoint (0x00008310) | the port matches; not marked |
+| `fn_29_AA4C` ShouldBecomeCorporeal | the desired form is 2 (0xAA64) and `!fn_29_AD54` (0xAA6C) | the "the desired form is not 2" arm only | the port matches; not marked |
+| `fn_29_AA94` ShouldFleeSafeZone | the word at 0xe2c is not zero (0xAA94, the neg/andc/srwi idiom) | the trigger never ran - the area 57 run has no safe zone | the port matches; not marked |
+
+The port's `mSafeZoneCount > 0` is the retail's "the count is not zero" for every count the
+module can hold (the XENZ/XEXZ messages only add and remove one).
 
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into

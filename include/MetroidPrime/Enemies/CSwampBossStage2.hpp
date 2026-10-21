@@ -156,6 +156,10 @@ protected:
                         const CVector3f& from);
   void PlaceChainNodes(CStateManager& mgr, const rstl::vector< TUniqueId >& nodes,
                        const rstl::vector< CVector3f >& positions) const;
+  void CollectChainNodes(CStateManager& mgr, TUniqueId chain, rstl::vector< TUniqueId >& nodes,
+                         rstl::vector< CVector3f >& positions);
+  void WalkChainNodes(CStateManager& mgr, CActor* node, rstl::vector< TUniqueId >& nodes,
+                      rstl::vector< CVector3f >& positions);
   void SwingChainNodes(CStateManager& mgr, const rstl::vector< TUniqueId >& nodes,
                        const CVector3f& origin, const CTransform4f& rotation) const;
   void PlaceChainSegment(CStateManager& mgr, CActor& chain, const CVector3f& origin,
@@ -213,14 +217,14 @@ protected:
   // 0xc77: the retail's eight flags, with the bit numbers of the word at +0xc74 (the byte's
   // bit 0 is the word's bit 24). The names say what the retail's bits do; see
   // docs/module-analysis/SwampBoss-stage2.md 7.11.
-  bool mUnusedC77Bit0 : 1;       // bit 24: never read or written by the retail
-  bool mReelEffect : 1;          // bit 25: a growth was hit (ProcessDamage) - the flinch sound
-  bool mTargetEffectsOn : 1;     // bit 26: the growth target effects are on (Reel)
-  bool mDarkFlyerForm : 1;       // bit 27: the boss is a dark flyer (BecomeDarkFlyer)
-  bool mBlowing : 1;             // bit 28: the player is being blown (Blow)
-  bool mBlowWindowOpen : 1;      // bit 29: the blow window is open (anim event 0x2a)
-  bool mWindEffectPending : 1;   // bit 30: the wind effect is waiting (anim event -> Blow)
-  bool mBubbleTelegraphed : 1;   // bit 31: one-shot for anim event 7 (fn_79_A838 -> fn_79_1E40)
+  bool mUnusedC77Bit0 : 1;       // 0xc77 bit 0 (the word's bit 24): never read or written
+  bool mReelEffect : 1;          // 0xc77 bit 1 (the word's bit 25): a growth was hit (ProcessDamage)
+  bool mTargetEffectsOn : 1;     // 0xc77 bit 2 (the word's bit 26): the growth target effects are on (Reel)
+  bool mDarkFlyerForm : 1;       // 0xc77 bit 3 (the word's bit 27): the boss is a dark flyer (BecomeDarkFlyer)
+  bool mBlowing : 1;             // 0xc77 bit 4 (the word's bit 28): the player is being blown (Blow)
+  bool mBlowWindowOpen : 1;      // 0xc77 bit 5 (the word's bit 29): the blow window is open (anim event 0x2a)
+  bool mWindEffectPending : 1;   // 0xc77 bit 6 (the word's bit 30): the wind effect is waiting (anim event -> Blow)
+  bool mBubbleTelegraphed : 1;   // 0xc77 bit 7 (the word's bit 31): one-shot for anim event 7 (fn_79_A838)
   int mAdditiveAnim;                                          // 0xc78
   float mAdditiveWeight;                                      // 0xc7c
   float mAdditiveRate;                                        // 0xc80

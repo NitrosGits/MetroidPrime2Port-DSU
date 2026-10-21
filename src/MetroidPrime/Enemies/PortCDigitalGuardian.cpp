@@ -376,6 +376,16 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   // fn_14_D664 (the call at 0xB6AC): the beacon's particle generator, from the beacon's effect
   // asset (guest 0x950, the data block's mTransmissionBeaconFx).
   x123C_ = xD664_(mData.mTransmissionBeaconFx);
+
+  // The beacon's echo emitter (0xC01C..0xC074): with the beacon's model (0x1238, 0x11EC's valid
+  // flag), enabled, over the model's bounds at fn_14_2578's transform of the actor's (0x24), with
+  // the beacon's echo parameters (0x954, the data block's +0x194).
+  if (x11EC_.valid()) {
+    CTransform4f xf = CTransform4f::Identity();
+    x2578_(xf, GetTransform());
+    AllocateEchoEmitter(true, x11EC_.data().GetBounds(xf),
+                        LdrToEchoParameters(mData.mTransmissionBeaconEchoParameters));
+  }
 }
 
 CDigitalGuardian::~CDigitalGuardian() {}
@@ -1141,7 +1151,11 @@ void CDigitalGuardian::Render(const CStateManager& mgr) const {
 // other and render bounds (0xE4). The echo emitter (0xC8), if any, goes inactive with bit 0x08 of
 // 0x128C (extrwi. 1, 28); else, with the beacon model (0x11EC) and its height (0x1264) above 0
 // (.rodata 0x264), it takes the model's bounds at fn_14_2578's transform.
-// Unmarked: area-53 run 37 ran the no-emitter arm only (with and without particle bounds).
+// Runs 37-39 ran the no-emitter arm (with and without particle bounds); with the constructor's
+// emitter, run 402 ran the beacon arm and the emitter-without-beacon-height arm. Bit 0x08 is set
+// only by "CLOS", which also requests the body's deletion; run 404 (forced: send <body> CLOS)
+// shows the body gone before its next pre-render, so the inactive arm cannot run.
+// @ fn_14_A138
 void CDigitalGuardian::PreRenderAllViewports(CStateManager& mgr) {
   CPatterned::PreRenderAllViewports(mgr);
   CAABox bounds = GetOtherBounds();
@@ -1187,7 +1201,10 @@ rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
 // GetLctrTransform). With the guard's collision actor (0x10CC) active, its translation plus 4
 // (.rodata 0x2A8) times the scale's z along up; else, with 0x11B8 set, only z becomes the
 // translation's z plus 5 (.rodata 0x27C) times the scale's z. dt is unused.
-// Unmarked: area-53 run 37 ran the active collision actor arm only.
+// Unmarked: area-53 runs 37-39 ran the active collision actor arm and, with the actor inactive
+// and 0x11B8 clear, the locator; the 0x11B8 arm never ran. Only the vortex states (fn_14_9260,
+// fn_14_9070, fn_14_8E44, fn_14_76D0) and the constructor write 0x11B8, and the vortex states are
+// still stand-ins, so the arm is unreachable until they are ported.
 CVector3f CDigitalGuardian::GetAimPosition(const CStateManager& mgr, float dt) const {
   const CVector3f locator = GetLctrTransform(CSegId(x10B8_)).GetTranslation();
   const float scaleZ = GetModelData()->GetScale().GetZ();

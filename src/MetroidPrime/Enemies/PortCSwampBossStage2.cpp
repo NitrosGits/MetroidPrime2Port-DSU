@@ -989,7 +989,11 @@ void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator)
   (void)projectile;
 }
 
-// fn_79_5030: put every chain node on its recorded position.
+// fn_79_5030: put every chain node on its recorded position. The retail walks the *nodes* vector
+// and reads the position at the same index (0x505C-0x5080, the loop's bound at 0x5090/0x5094);
+// the `if (node)` is the retail's own cast test (0x5074). The extra `i < positions.size()` is a
+// host guard: the retail trusts the two vectors to be the same length.
+// @ fn_79_5030
 void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const rstl::vector< CVector3f >& positions) const {
@@ -1002,7 +1006,10 @@ void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
   }
 }
 
-// fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
+// @ fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
+// The arm that pulls a node back inside the edge radius (0x53B0) ran: the chain launch in the
+// light phase's Lurk leaves a node 83 units from the centre, past the 54.9 unit edge radius
+// (a `place`d node ends up 495 units out).
 void CSwampBossStage2::SwingChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const CVector3f& origin,
@@ -1040,6 +1047,47 @@ void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
     if (child) {
       PlaceChainSegment(mgr, *child, origin, rotation);
     }
+  }
+  --mChainDepth;
+}
+
+// @ fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk. The engine
+// delivers the boss's kSM_AreaLoaded at the area load, so the walk runs without any forcing
+// (the console's `send <boss> AreaLoaded` only adds a second one).
+void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
+                                         rstl::vector< TUniqueId >& nodes,
+                                         rstl::vector< CVector3f >& positions) {
+  CActor* chainActor = TCastToPtr< CActor >(mgr.ObjectById(chain));
+  if (!chainActor) {
+    return;
+  }
+  const TUniqueId nodeId = chainActor->FindConnectedObject(mgr, kSS_Patrol, kSM_Follow);
+  CActor* node = TCastToPtr< CActor >(mgr.ObjectById(nodeId));
+  if (!node) {
+    return;
+  }
+  WalkChainNodes(mgr, node, nodes, positions);
+}
+
+// @ fn_79_50AC: the chain walk's recursion: the node's position and uid go on the lists and the
+// walk follows the node's "ARRV/NEXT" connections. It runs with fn_79_5830 above.
+void CSwampBossStage2::WalkChainNodes(CStateManager& mgr, CActor* node,
+                                      rstl::vector< TUniqueId >& nodes,
+                                      rstl::vector< CVector3f >& positions) {
+  ++mChainDepth;
+  positions.push_back(node->GetTranslation());
+  nodes.push_back(node->GetUniqueId());
+  const rstl::vector< TUniqueId > connected =
+      node->FindConnectedObjects(mgr, kSS_Arrived, kSM_Next);
+  for (const TUniqueId& uid : connected) {
+    if (uid == node->GetUniqueId()) {
+      continue;
+    }
+    CActor* next = TCastToPtr< CActor >(mgr.ObjectById(uid));
+    if (!next) {
+      continue;
+    }
+    WalkChainNodes(mgr, next, nodes, positions);
   }
   --mChainDepth;
 }
@@ -1103,7 +1151,10 @@ void CSwampBossStage2::AimSpitPlatforms(CStateManager& mgr,
   pivot->SetTranslation(target);
 }
 
-// fn_79_55B0: wake the platform chain, drop its nodes on their recorded positions, swing them by the
+// @ fn_79_55B0: wake the platform chain (the retail's two virtual calls on the chain actor, the
+// vtable slot +0x18 = CEntity::AcceptScriptMsg, at 0x5654 and 0x56B0; the second one's message
+// id is the "DECR" fourcc at 0x5668-0x5670, the first is the activation),
+// drop its nodes on their recorded positions, swing them by the
 // heading difference to the chain's follow node and park that node at the event's locator.
 void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
                                            rstl::vector< TUniqueId >& nodes,
@@ -1752,7 +1803,10 @@ void CSwampBossStage2::Swoop(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_7E24
+// @ fn_79_7E24: the Blow state. Its arms all ran: the window's three tests (in front, the
+// 18 model scales to the side, the player not grappling), the push, the damage, the wind
+// effect and the deactivate that pops the sustained damage while the window is still open
+// (forced (fsm) - the window is open for fewer updates than a console round trip).
 void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
@@ -2058,8 +2112,10 @@ void CSwampBossStage2::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     mPlatformsB = FindConnectedObjects(mgr, kSS_InternalState4, kSM_None);
     mWater = FindConnectedObject(mgr, kSS_InternalState12, kSM_None);
     mLightChain = FindConnectedObject(mgr, kSS_InternalState2, kSM_None);
-    // TODO(uncertain): fn_79_5830 walks each chain into its node/position lists.
+    // fn_79_5830: each chain walks into its own node and position lists.
+    CollectChainNodes(mgr, mLightChain, mChainANodes, mChainAPositions);
     mDarkChain = FindConnectedObject(mgr, kSS_InternalState7, kSM_None);
+    CollectChainNodes(mgr, mDarkChain, mChainBNodes, mChainBPositions);
     ReadWaterAndNodes(mgr);
     break;
   case kSM_Delete:

@@ -748,11 +748,7 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
     picked = sCandidates[index].id;
     // The id came off the hint list, so retail takes the object as a hint with no type test.
     if (CScriptAIHint* hint = static_cast< CScriptAIHint* >(mgr.ObjectById(picked))) {
-      // fn_30_6014 (asm 0x000088E4): in use, then the cover hint (0x108E) and the last one (0x1090).
-      // It stays folded into this caller (no host function, so no marker).
-      hint->SetInUse(true);
-      mCoverHintId = hint->GetUniqueId();
-      mLastCoverHintId = mCoverHintId;
+      ClaimCoverHint(*hint); // fn_30_6014 (asm 0x000088E4)
     }
   }
   if (DebugBg()) {
@@ -762,6 +758,16 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
             GetUniqueId().Value(), scanned, sCandidateCount, picked.Value(), inactive, inUse,
             wrongArea, lastUsed, boostNav, spotGated, safeZone);
   }
+}
+
+// fn_30_6014: claim the cover hint. The hint goes in use (0x00006038), then its id is written to
+// the cover hint (guest 0x108E, 0x00006040) and copied to the last cover hint (guest 0x1090,
+// 0x00006048). FindCoverPoint's pick (asm 0x000088E4) is the only caller.
+// @ fn_30_6014
+void CIngBoostBallGuardian::ClaimCoverHint(CScriptAIHint& hint) {
+  hint.SetInUse(true); // 0x00006038
+  mCoverHintId = hint.GetUniqueId(); // 0x0000603C/0x00006040
+  mLastCoverHintId = mCoverHintId; // 0x00006044/0x00006048
 }
 
 // fn_30_5888 (the Ing's fn_29_3E1C): the segment test of one arm. Four boxes along the arm (shoulder-elbow,

@@ -1344,3 +1344,119 @@ Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projecti
   and CModel::DolphinDrawFlat. Aurora has all of them: GXCopyTex resolves into a texture keyed by
   the destination pointer, and binding that same pointer samples it (PortEfbCopy, GOTCHAS). No
   Aurora feature is missing; they stay stand-ins only because of size (0x760 + 0x64C).
+
+## Undocked head, HeadExplosion, bomb kill (2026-10-21)
+
+- Ported the undocked head's path: turn upright 2994, PathFind 4E90, separation 23F0, chassis
+  search 2280 (with the chassis's dock reservation E788/E768), SetTargetDest 3D20,
+  ResetAttackTimes 3ADC, InLaserPulseRange 565C, InHoverRange 570C, ShouldAttack 5624. The chassis
+  HeadExplosion BEEC is ported too. 42F8's knock-back is along the Y column (transform 0x28/0x38/0x48),
+  not the translation.
+- Runs (04_cliff_contraption, area 914f1381, layer 2): u19 (sweep kill of u0532, head u0531 then
+  FaceTarget→PathFind for 170 s); c21 (no console damage: morph-ball bombs at target actor u0678
+  (-85.1, 111.5, -124.4) during LaserSweepAttack; u0532 died at 58.5 s through A0A0's CWeapon arm;
+  head u0531 went PathFind→LaserPulse, the next stand-in 4864); h20/h22 (head u0520 killed:
+  u0521 ran HeadExplosion's Activate/Update/issue/Deactivate arms in h20; in h22 it died by
+  sweep damage instead).
+- Marked: 5624, 42F8 (and 3ADC). Unmarked: 2994 (slerp arm not recorded), 23F0 (docked-head
+  skip), 2280 (release of an older pick, nearer-pick arms), 3D20 (no-target arm), 4E90 (unsafe
+  move return), 565C/570C (no-target return), E788/E768 (release never ran), BEEC (CanIssueCommand
+  false arm not recorded), EB04 (head-null arm: a killed head stays as an object in Dead, so the
+  chassis still finds it).
+- In c21 the other chassis u0521 also reached Dead at the same moment without being attacked;
+  the cause (script link from u0532's death?) is not traced.
+
+## LaserPulse, Dodge, dodge pick, head Dead (2026-10-21)
+
+- Ported: LaserPulse 4864, Dodge 4AC0, ShouldFireAgain 5610, ShouldDodge 5644,
+  FindBestDodgeDirection 3B34 with the dodge pick 270C (`PortDodgeDirection`) and the clear-path
+  check 25C4 (`PortDodgeClear`), the head's Dead 5448. New head fields: 0xEE8 dodge distance
+  (the constructor, 0x6E60-0x6EF8: scale x times a right dodge step's animation distance),
+  0xEEC dodge count (-1), 0xF30 dodge direction. Dodge sets/clears 0xF6A's 0x10 bit.
+- Runs (area 914f1381, layer 2, `tools/drivers/splitter_drv.py`): g27 (u0532 bomb kill at 55 s,
+  head u0531 Hover→LaserPulse→Dodge, then stuck in the Dodge stand-in), g29 (after Dodge's port:
+  u0532 died at 45.5 s, u0531 PathFind→Dodge→PathFind, both trigger results), h30 (head u0520
+  killed outside a sweep: Dead deleted it, u0521 ran HeadExplosion incl. the no-issue arm).
+
+| fn | arm | result |
+|---|---|---|
+| 4864 LaserPulse | Activate / Update issue / Update face (target found) / Deactivate | ran (g27) |
+| 4864 | dt <= 0 (0x49B0) / no target (0x49CC; 0xEFE is the chassis's 0xCC0, the player) | not run → unmarked |
+| 4AC0 Dodge | Activate / issue / face / Deactivate | ran (g29) |
+| 4AC0 | dt <= 0 (0x4BFC) / no target (0x4C18) | not run → unmarked |
+| 5610 / 5644 | true and false | ran (g27, g29) → marked |
+| 3B34 | flag/max return, roll pick | ran |
+| 3B34 | count to max (0x3BCC): needs a roll above dodgeChance (100 by default; placements not checked) | not run → unmarked |
+| 270C | an AI nearer than the dodge distance (0x27EC-0x2884), random keeps left (0x292C), none (-1) | not run → unmarked |
+| 25C4 | ray clear / ray hit | ran; OnPath failure not recorded → unmarked |
+| 5448 Dead | Activate | ran; other messages not recorded → unmarked |
+| BEEC HeadExplosion | every arm incl. CanIssueCommand false | ran (h30) → marked |
+| EB04 Death | head-null return | unreachable in play (comment at 0xEBB8): a dead head is deleted, PortPlaceHead clears 0xC6C, a headless chassis never stays in LaserSweepAttack, the only state where it takes damage. A forced `fsm u0521 LaserSweepAttack` leaves at once (console: "not entered; now PathFind"). Unmarked |
+
+## Forced arms: LaserPulse, Dodge, dodge pick, head Dead (2026-10-21)
+
+- Runs (area 914f1381, layer 2): n3/n5 (plan N: bomb kill of u0532, player ring around head
+  u0531, chassis u0521 parked on the head's right/left by `place`, the head held at z -60 by
+  `place`); r1 (plan R: bomb kill, head forced into LaserPulse every 6 s by `fsm`); n6 (docked head
+  u0531 killed by `damage u0531 200 0 power`); f1/f7 (fast/real speed: `fsm` LaserPulse/Dodge on the
+  docked heads before their chassis targets). `tools/scan_splitter_props.py`: all 13 shipped SPLU
+  placements have dodgeChance 100, minDodges 1, maxDodges 3, flags 11.
+- A forced chassis death does not stick: `fsm u0532 LaserSweepAttack` leaves the sub-machine at
+  once and `damage u0678` does nothing outside the sweep's vulnerable window; undocking needs bombs.
+
+| fn | arm | result |
+|---|---|---|
+| 4864 LaserPulse | Activate / issue / face / Deactivate | ran (n5, r1) |
+| 4864 | dt <= 0 (0x49B0) | unreachable: Think only when dt > FLT_EPSILON |
+| 4864 | no target (0x49CC) | forced (fsm), f1/f7 → marked |
+| 4AC0 Dodge | Activate / issue / face / Deactivate | ran (n5, r1) |
+| 4AC0 | dt <= 0 (0x4BFC) | unreachable, as 4864 |
+| 4AC0 | no target (0x4C18) | not run even forced (a docked head always issues the step); 0xEFE is never cleared once set → unmarked |
+| 3B34 | 0x2 bit clear (0x3B5C) / count to max (0x3BCC) | unreachable with shipped data (flags 11; roll at most 100 vs dodgeChance 100) |
+| 3B34 | at max (0x3B6C) / below min / roll pick | ran (n3, r1) → marked |
+| 270C | AI nearer than the dodge distance on the right (0x2830) / left (0x2874), none (-1) | forced (place), n5 |
+| 270C | other entries, far AI, both open, random keeps right / left (0x292C) | ran (n3, n5); left forced (fsm), r1 → marked |
+| 25C4 | ray clear / OnPath ok | ran (n3) |
+| 25C4 | ray hit / OnPath failure | forced (place), n5 → marked |
+| 5448 Dead | Activate | ran (h30) |
+| 5448 | Update, Deactivate (after the delete request) | forced (damage), n6 → marked |
+
+## Dodge no-target, separation, hit/hint arms (2026-10-21)
+
+- g2 (fast): `send u0521 Deactivate; send u0532 Deactivate` at f380, then `fsm u0531 Dodge; fsm
+  u0520 Dodge` every 4 frames: the heads of inactive chassis (no target yet, 0xEFE invalid) run
+  Dodge's no-target arm. n11/n12 (plan N, real time): bomb kill, natural fight.
+- `send <id> Delete` crashes (g1): CPatterned's kSM_Delete resets the FSM2 state (mMachine null)
+  but the console leaves the object alive, so the next Think re-runs `Setup`, which
+  `push_back_unsafe`s past `mSubMachines`' capacity (CGenericFSM2StateImpl.hpp `Setup`). Retail
+  always follows Delete with the delete request; a console artefact, not a Splitter bug.
+- `place <id> player d` zeroes only the direction's z (port_console.cpp CmdPlace): the position's z
+  is the player's own, so the z -20522 seen earlier was a player fallen out of the world.
+
+| fn | arm | result |
+|---|---|---|
+| 4AC0 Dodge | no target (0x4C18) | forced (send Deactivate + fsm), g2 → marked |
+| 8EC8 / 23F0 separation | not CPatterned/self/other area, docked head, safe/unsafe, count > 0 / 0 | ran (n11, n12) → marked |
+| 5D50 | shield state 2 (0x5D90) | not run → unmarked |
+| AB8C | player morphing/unmorphing (0xABE0-0xABF0) | not run → unmarked |
+| 9FA8 | spin bit 0x80 with a boosting player | not run → unmarked |
+| 9B9C | boosting player (target LCTR or not), leg stab, spin damage, the non-player spin arms | not run → unmarked (needs boost ball contact / the spin attack) |
+
+## Boost, morph and hint arms (2026-10-21)
+
+Runs (area 914f1381 layer 2, MP2_GODMODE=1): b3/b4 real speed (`give MorphBall 1; give BoostBall 1`,
+`press x 4; place u0532 player 1` mid-morph, then `place u0532 player <d>; boost` every 40 frames;
+fast mode never finished the morph); b1 (fast: `place u0532 player 3; fsm u0532 LegStabAttack`);
+b5 (`send u0528 Delete`, the area's CScriptPlayerHint, then `place u0532 player 1`); g2 rerun after
+port a19792273 (Deactivate route, still `Dodge:notarget`); g3 (`send <chassis> Delete` is now a
+real delete: the heads go LostChassisReaction → PathFind, SelectTarget gives them the player, so the
+Delete route never reaches Dodge's no-target arm - 4AC0 rests on the Deactivate route).
+
+| fn | arm | result |
+|---|---|---|
+| AB8C | hint free → take / held / no hint | ran (b4) / ran (b4) / forced (send Delete), b5 |
+| AB8C | morphing or unmorphing (0xABE0) | forced (press x + place), b3/b4 → marked |
+| 9B9C | boosting, sender the target LCTR / another actor | forced (boost), b4 |
+| 9B9C | leg stab damage (0x9CC8) | forced (fsm LegStabAttack + place), b1 |
+| 9B9C, 9FA8 | spin arms (0xD41 0x80: 0x9D20, 0x9ED0; 9FA8 0x9FD0) | blocked: the bit's one setter is SetupSpinAttack fn_75_BAA8 (0xBB04), a stand-in → unmarked |
+| 5D50 | shield state 2 (0x5D90) | blocked: written only by fn_75_5DDC (0x5E28), called only from BAA8 (0xBB70) → unmarked |

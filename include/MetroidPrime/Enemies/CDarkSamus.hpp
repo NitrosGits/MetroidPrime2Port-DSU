@@ -12,12 +12,17 @@
 #include "rstl/optional_object.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/TToken.hpp"
+#include "Weapons/CCollisionResponseData.hpp"
+#include "rstl/auto_ptr.hpp"
 
 class CBCProjectileAttackCmd;
 
 // The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
+class CEnergyProjectile;
 class CScriptAIHint;
 struct SLdrDSStageInfo;
 
@@ -187,12 +192,12 @@ struct CDarkSamusDash {
 };
 
 // The dive record at the guest's 0xAC0..0xB28 (fn_10_E784 builds it from the data's
-// diveAttackDamage, the constructor's call at 0x0001FE64). Not on the host: the +0x4C float
-// (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f), the +0x50/+0x54 floats (the constructor's
-// f26/f27) and the CCollidableAABox at +0x68 (fn_10_E784 at 0x0000E8A8) - no ported reader uses
-// them.
+// diveAttackDamage and its two impulses, the constructor's call at 0x0001FE64). Not on the host:
+// the +0x4C float (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f) and the CCollidableAABox at +0x68
+// (fn_10_E784 at 0x0000E8A8) - no ported reader uses them.
 struct CDarkSamusDive {
-  explicit CDarkSamusDive(const CDamageInfo& damage); // fn_10_E784
+  CDarkSamusDive(const CDamageInfo& damage, float impulseHorizontal,
+                 float impulseVertical); // fn_10_E784
   void Reset();                                       // fn_10_E910
 
   CVector3f mTarget;     // +0x00 (0xAC0), where the dive lands (fn_10_12B38 / fn_10_12960)
@@ -200,6 +205,10 @@ struct CDarkSamusDive {
   CVector3f mBounceDir;  // +0x18 (0xAD8), the direction fn_10_1CDD0 bounces the actor along
   CVector3f mLastPos;    // +0x24 (0xAE4), the position the stuck timer measures from
   CDamageInfo mDamage;   // +0x30 (0xAF0), the data's diveAttackDamage (0x0000E83C..0x0000E85C)
+  float mImpulseHorizontal; // +0x50 (0xB10), diveAttackImpulseHorizontal (f1, 0x0000E860; the
+                            // loader's 0x964 is the constructor's f4, 0x0000DD70)
+  float mImpulseVertical;   // +0x54 (0xB14), diveAttackImpulseVertical (f2, 0x0000E864; the
+                            // loader's 0x960 is the constructor's f5, 0x0000DD74)
   float mBounceTime;     // +0x58 (0xB18), the time since the bounce
   float mStuckTime;      // +0x5C (0xB1C), the time the actor has not moved 0.2 in flight
   // +0x60 (0xB20), flags, LSB-first (`clrlwi 31` is 0x01, `extrwi 1,30` 0x02 ... `extrwi 1,24` 0x80)
@@ -208,9 +217,21 @@ struct CDarkSamusDive {
   bool mAttackSent : 1;  // 0x04, fn_10_11DDC sent kSS_Attack
   bool mHitFloor : 1;    // 0x08, fn_10_1C99C saw the floor or the player
   bool mLanding : 1;     // 0x10, the landing has started
-  bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4, not in the port yet)
+  bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4)
   bool mLaunched : 1;    // 0x40, 'XLAU' came: the actor is in the air
   bool mDone : 1;        // 0x80, the dive is over
+};
+
+// The melee contact record at the guest's 0x9A4..0x9E0 (fn_10_EA24 builds it, the constructor's
+// call at 0x0001FCA8, and ends with fn_10_EA08 at 0x0000EB6C). On the host only the two fields
+// fn_10_EA08 resets; the damage, the "PART" token and the rest of the record stay out until a
+// reader (fn_10_12DD0, fn_10_13998, fn_10_13AB4, fn_10_1AE08) is ported.
+struct CDarkSamusMeleeContact {
+  CDarkSamusMeleeContact() : mHitUid(kInvalidUniqueId), mHit(0) {}
+  void Reset(); // fn_10_EA08
+
+  TUniqueId mHitUid; // +0x38 (0x9DC), kInvalidUniqueId (0x0000EA18)
+  uchar mHit;        // +0x3A (0x9DE), 0 (0x0000EA1C)
 };
 
 class REL_EXPORT CDarkSamus : public CPatterned {
@@ -519,11 +540,37 @@ private:
   TUniqueId GetNextBattleStage(CStateManager& mgr) const;
   void ActivateHintChains(CStateManager& mgr);
   void AdvanceBattleStage(CStateManager& mgr);
+  // fn_10_B6C4 / B458 / BA38: the boost ball's hints. The nearest active type-0x11 hint the
+  // actor links with kSS_InternalState6 whose radius holds the actor; the first active hint a
+  // hint links with kSS_Arrived; whether a type-0x11 hint chain from a hint reaches an inactive
+  // type-0x11 hint within 15 steps.
+  const CScriptAIHint* FindBoostBallHint(CStateManager& mgr) const;
+  static CScriptAIHint* FindArrivedHint(CStateManager& mgr, TUniqueId uid);
+  bool BoostChainHasInactiveHint(CStateManager& mgr, TUniqueId uid) const;
+  // fn_10_9920 / A06C: the boost ball actor (the 0xE10 sub-object's uid, 0xE38); the ball's
+  // transform under the actor and the roll emitter's position (BoostBallInto's Update).
+  CActor* GetBoostBallActor(CStateManager& mgr) const;
+  void UpdateBoostBallAtActor(CStateManager& mgr);
+  // fn_10_C85C / C798: the sweep beam's effect (0xD78) made at the kUE_BeginAction event with
+  // emission on and 0xDC8 bit 0x40 set; released with the bit cleared. fn_10_C2B0 / C470: the
+  // beam's aim each Update (the static ray from the gun and its end point, the wall's collision
+  // response and decal, the direction, length and effect). fn_10_C104 / BE18: the dynamic rays
+  // swept from the last direction to this one and the damage the first hit takes.
+  void StartSweepBeam();
+  void StopSweepBeam();
+  void UpdateSweepBeamAim(CStateManager& mgr, float dt);
+  void UpdateSweepBeamEnd(CStateManager& mgr);
+  void SweepBeamDamage(CStateManager& mgr);
+  void SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float length);
 
   // fn_10_1D794: the still timer (the guest's 0x964) and the position it measures from (the
   // guest's 0x958). kStateMsg_Activate clears the timer and moves the reference position to the
   // actor's own position.
   void UpdateStillTimer(EStateMsg msg, float dt);
+
+  // fn_10_8764: a melee attack command run over a state's messages - Activate delivers it,
+  // Update re-delivers it while the animation state allows, Deactivate ends the state.
+  void RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state, const CBCMeleeAttackCmd& cmd);
 
   // The dive (fn_10_11FA4). fn_10_12960: moves *target up to 8 back toward the actor until the
   // ring path to it is clear. fn_10_12B00: the body's target vector to the dive target.
@@ -542,9 +589,24 @@ private:
   void StartDiveBubble(CStateManager& mgr);
   // fn_10_1C99C: CollidedWith's dive arm (a wall bounces, the floor or the player lands).
   void CheckDiveCollision(CStateManager& mgr, CActor* collider, const CCollisionInfoList& list);
+  // fn_10_9644: the actor turned around (its facing negated).
+  void TurnAround();
+  // fn_10_9AC4: the boost ball actor deleted.
+  void DeleteBoostBall(CStateManager& mgr);
   // fn_10_1B658 / 138A4: the projectile reflect and the dive's hit on the player (stand-ins).
   void ReflectProjectiles(CStateManager& mgr);
+  // fn_10_1B9B0: whether the projectile may be sent back (type -1 = any weapon type).
+  bool CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj, int type);
+  // fn_10_F298 / F210: the reflect chance roll and the cache's erase.
+  float RollReflectChance(CStateManager& mgr, TUniqueId uid);
+  void EraseReflectChance(uint index);
   void HitPlayerWithDive(CStateManager& mgr);
+  // fn_10_1382C: the player's orbit target cleared.
+  void ClearPlayerOrbitTarget(CStateManager& mgr);
+  // fn_10_13750: the player pushed away from the actor (flat), up by the vertical impulse.
+  void PushPlayer(CStateManager& mgr, float horizontal, float vertical);
+  // fn_10_1367C: the impulse (times the player's mass) on the stopped player, with a rumble.
+  void KnockPlayer(CStateManager& mgr, const CVector3f& impulse);
   // fn_10_18628: the three floats at 0xE04 (the elapsed time, a, b).
   void SetGuestE04(float a, float b);
   // fn_10_18FCC: vertical movement off, on the ground as given, kMT_GroundCollider back.
@@ -646,10 +708,12 @@ private:
                                    // writes 1 (0x0001EBC4), fn_10_193A0 adds 1 (0x0001941C); the
                                    // constructor writes 0 (0x0001FCC8)
   // guest 0x97C, two flags fn_10_193A0 copies from the stage info (0x00019470/0x0001948C); the
-  // constructor writes 0 / 1 (0x0001FCD0/0x0001FCDC)
-  bool mUseAltScan;                 // 0x80, usesAlternateScannableInfo; fn_10_F40C reads it
-  bool mCanDie;                     // 0x40, the info's +0x32 not 1; fn_10_F488 keeps the health
-                                    // at 1.0f while it is clear (0x0000F4F4)
+  // constructor writes 0 / 1 (0x0001FCD0/0x0001FCDC). The guest packs both into the byte
+  // 0x97C (the rlwimi at 0x0001946C sets bit 0x80, the one at 0x00019488 bit 0x40); the host
+  // keeps two bools, so the comment names the byte first and the bit after it.
+  bool mUseAltScan;                 // 0x97C, bit 0x80: usesAlternateScannableInfo; fn_10_F40C reads it
+  bool mCanDie;                     // 0x97C, bit 0x40: the info's +0x32 not 1; fn_10_F488 keeps the
+                                    // health at 1.0f while it is clear (0x0000F4F4)
   float mPhazonHealthMark;          // guest 0x1054, the health the phazon phase started at
                                     // (fn_10_6BA0 at 0x00006D20); the constructor writes 0.0f
                                     // (0x00020214)
@@ -773,8 +837,8 @@ private:
   CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
                                    // constructor writes the zero vector to it (0x0001FF24..)
   float mLastMeleeTime;            // guest 0x9C0, the elapsed time the MeleeAttack state
-                                   // fn_10_17BC0 stores (0x00017C9C, not in the port yet), its only
-                                   // writer in the module; fn_10_1A34C reads it (0x0001A3E0) only
+                                   // fn_10_17BC0 stores (0x00017C9C), its only writer in the
+                                   // module; fn_10_1A34C reads it (0x0001A3E0) only
                                    // when the newest finished attack is the melee, i.e. after
                                    // MeleeAttack ran. Neither the constructor (its stores run
                                    // 0x8AC..0xD58 with no 0x9C0) nor the game heap clears it, so
@@ -821,13 +885,85 @@ private:
   rstl::optional_object< CProjectileInfo > mScatterShotInfo;
   rstl::optional_object< CProjectileInfo > mScatterShotInfo2;
   CDarkSamusDive mDive;            // guest 0xAC0..0xB28, fn_10_E784 at 0x0001FE64
+  CDarkSamusMeleeContact mMeleeContact; // guest 0x9A4..0x9E0, fn_10_EA24 at 0x0001FCA8
   float mGuestE04;                 // guest 0xE04, the elapsed time at fn_10_18628
   float mGuestE08;                 // guest 0xE08, fn_10_18628's first float
   float mGuestE0C;                 // guest 0xE0C, fn_10_18628's second float
+  // The boost ball sub-object at 0xE10 (fn_10_895C, built at 0x000200F8): the host keeps only
+  // the members BoostBallInto (fn_10_B164) reads.
+  TUniqueId mBoostBallUid;         // guest 0xE38 (+0x28), the ball actor; kInvalidUniqueId
+                                   // (0x000089FC)
+  ushort mBoostBallRollSfxId;      // guest 0xE68 (+0x58), the roll sound (0x00008A2C; -1 is
+                                   // kInternalInvalidSfxId). [probable] the loader's
+                                   // boostBallRollSound: fn_10_895C's stack arguments follow
+                                   // the data order (the r9 token is the 'SWHC' trail swoosh,
+                                   // then the two sounds +0x58 / +0x5A)
+  CSfxHandle mBoostBallRollSfx;    // guest 0xE6C (+0x5C), the roll emitter; 0 (0x00008A50)
+  bool mBoostBallFlag40 : 1;       // 0xebc 0x40 (+0xAC); BoostBallInto clears it
+                                   // (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4)
+  TUniqueId mBoostHintUid;         // guest 0xEC0, the hint the ball rolls to; kInvalidUniqueId
+                                   // (0x0002011C)
+  float mBoostHintDist;            // guest 0xEC4, the distance to it; lbl_10_rodata_558 =
+                                   // 1000.0f (0x0002012C)
+  uchar mGuestEC8;                 // guest 0xEC8, 0 (0x00020138)
+  CVector3f mGuestECC;             // guest 0xECC, the zero vector (0x00020140..0x00020150)
+  float mBoostHintValue;           // guest 0xED8, the hint's value parameter clamped to 0..2,
+                                   // lbl_10_rodata_3E8 = 1.0f (0x00020154)
+  // The sweep beam sub-object at 0xD74 (fn_10_8DB4, built at 0x00020060): the host keeps only
+  // the members SweepBeam (fn_10_CA0C) and its callees read. [probable] fn_10_8DB4's arguments
+  // follow the data order (sweepSwoosh, sweepBeamDamage, sweepBeamCollisionEffect, sweepBeamSound,
+  // unknown_0x0ef8dc15), as fn_10_895C's do for the boost ball.
+  CAssetId mSweepBeamPart;         // guest 0xD74 (+0x00), the beam effect's 'PART' (`lis r5,
+                                   // 0x5041` at 0x0000C8A8); r4 (0x00008DF8)
+  rstl::auto_ptr< CElementGen > mSweepBeamGen; // guest 0xD78/0xD7C (+0x04/+0x08), null
+                                   // (0x00008E08/0x00008E18)
+  CDamageInfo mSweepBeamDamageInfo; // guest 0xD80 (+0x0C), r5 (0x00008E28..0x00008E64)
+  CVector3f mSweepBeamDir;         // guest 0xD9C (+0x28), gun to end point, normalized; zero
+                                   // (0x00008E6C)
+  CVector3f mSweepBeamPrevDir;     // guest 0xDA8 (+0x34), the last swept direction; zero
+  CVector3f mSweepBeamEnd;         // guest 0xDB4 (+0x40), the end point; zero
+  float mSweepBeamLength;          // guest 0xDC0 (+0x4C), lbl_10_rodata_25C = 0.0f (0x00008EB0)
+  float mSweepBeamSpeed;           // guest 0xDC4 (+0x50), lbl_10_rodata_264 = 1.0f (0x00008EB4);
+                                   // SweepBeam keeps the base's speed 0x3C8 here
+  bool mSweepBeamHitPlayer : 1;    // 0xdc8 0x80 (+0x54), false (0x00008EBC)
+  bool mSweepBeamOn : 1;           // 0xdc8 0x40, false (0x00008EC8)
+  TLockedToken< CCollisionResponseData > mSweepBeamResponse; // guest 0xDCC (+0x58), 'CRSC'
+                                   // (`lis r4, 0x4352` at 0x00008E10), r6
+  ushort mSweepBeamSfxId;          // guest 0xDD8 (+0x64), r7 (0x00008F18)
+  CSfxHandle mSweepBeamSfx;        // guest 0xDDC (+0x68), 0 (0x00008F24)
+  ushort mSweepBeamEndSfxId;       // guest 0xDE0 (+0x6C), r8 (0x00008F28)
+  CSfxHandle mSweepBeamEndSfx;     // guest 0xDE4 (+0x70), 0 (0x00008F2C)
   float mDodgeTime;                // guest 0x1090, the dodge's time left (fn_10_1707C)
   CVector3f mDodgeDir;             // guest 0x1094, the dodge's direction (fn_10_1707C)
   CTransform4f mGunLctrXf;         // guest 0x8CC, identity (0x0001FBC0); PreRender (fn_10_18AB8)
                                    // stores GetLctrTransform("GUN_Particle_LCTR") (0x00018C24)
+  CVector3f mRootPos;              // guest 0x8FC/0x900/0x904, the zero vector (0x0001FBDC..);
+                                   // PreRender stores GetLctrTransform("Skeleton_Root")'s
+                                   // translation (lbl_10_rodata_560 + 0x551, 0x00018C64..)
+  rstl::reserved_vector< TUniqueId, 5 > mReflectedUids; // guest 0xBEC (count, 0 at 0x0001FE9C)
+                                   // and 0xBF0 (five uids): the projectiles fn_10_1B658 sent back
+  float mLastReflectTime;          // guest 0xC08, lbl_10_rodata_410 = -1000.0f (0x0001FEE0);
+                                   // fn_10_1B658 stores the elapsed time 0x8B0 (0x0001B8D4)
+  float mGuestC0C;                 // guest 0xC0C, the elapsed time of the last hit (the damage
+                                   // arm of AcceptScriptMsg, 0x0001EAF8); the constructor writes
+                                   // lbl_10_rodata_3EC = -1.0f (0x0001FEE4)
+  float mGuestC20;                 // guest 0xC20, the elapsed time of the last heavy hit (the
+                                   // HeavyHit state's Deactivate, 0x00010F4C); the constructor
+                                   // writes lbl_10_rodata_410 = -1000.0f (0x0001FF04)
+  ushort mRicochetSfxId;           // guest 0xC50, the loader's missileRicochetSound (its 0x928;
+                                   // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
+  // guest 0x10A8: the reflect chance cache. The count (a word) and ten 12-byte entries from
+  // 0x10AC: the projectile's uid (a u16 in the guest) and the two rolls fn_10_F100 and fn_10_F298
+  // put in. The constructor writes the count 0 (0x00020270); the entries are written at run time
+  // by fn_10_F100 (0x0001F1CC) and fn_10_F298 (0x0001F3C8) and erased by fn_10_F210 (0x0001F27C).
+  struct SReflectChance {
+    SReflectChance() : mUid(kInvalidUniqueId), mChance(0.f), mRoll(0.f) {}
+    TUniqueId mUid;   // +0x00 (0x10AC), the projectile's uid
+    float mChance;    // +0x04, the roll fn_10_F298's lookup answers and 1B9B0 compares
+    float mRoll;      // +0x08, the roll fn_10_F100's lookup answers
+  };
+  uint mReflectChanceCount;        // guest 0x10A8, the number of entries in the cache
+  SReflectChance mReflectChances[10]; // guest 0x10AC, the ten entries
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

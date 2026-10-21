@@ -294,3 +294,4 @@ on scannables"; asked how, "they flash".
 Older sessions: `docs/STATUS-history.md`.
 
 The openchamber tool rejects every non-string argument (2026-10-20), so lanes run as subagents now; old lane sessions can't be resumed from here.
+- 2026-10-21 16:40 batch9 merged (081b71c14): CommandoPirate a957ff47c, EmperorIng1 298b62b1c, Splitter a619f5a69, DarkSamus2 ce575f3c8, Ing blob 9f8fd3003, Ing 646a9fabd, Sandworm cad0531f5, SwampBoss2 4a51bc63c, DigitalGuardian f8ec985d5; smoke9 no regressions.

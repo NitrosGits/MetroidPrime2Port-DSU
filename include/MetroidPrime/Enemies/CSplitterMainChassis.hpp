@@ -104,6 +104,9 @@ public:
 
   // The command module reads these two ids (fn_75_31A8).
   TUniqueId GetCommandModuleId() const { return mCommandModuleId; }
+  // fn_75_E788 / fn_75_E768: a free head reserves this chassis for docking / lets it go.
+  bool PortReserveDock(TUniqueId head);
+  void PortReleaseDock(TUniqueId head);
   TUniqueId GetSyncId() const { return mSyncId; }
 
 #ifdef TARGET_PC
