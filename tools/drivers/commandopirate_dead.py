@@ -83,19 +83,28 @@ def state_of(cid):
 
 def main():
     wait_frame(200)
-    ids = commandos()
+    ids = []
+    # under gdb the frames are slow and the area loads late: wait for the commando.
+    for _ in range(120):
+        ids = commandos()
+        if ids:
+            break
+        time.sleep(1.0)
     log("commandos %s (frame %d)" % (ids, frame()))
     for target in ids:
         log("=== commando %s ===" % target)
         log("send Activate: %s" % cmd("send %s Activate" % target))
         time.sleep(1.0)
-        # the commando dies (the console's `kill`), then the damage: the KnockBack override's
-        # dead arm.
+        # the commando is frozen with the dark beam (the frozen knock-back reaction's flags are
+        # 1|2 = 3), then it dies (the console's `kill`), then the damage lands on the dead actor:
+        # the KnockBack override's dead arm.
+        log("darkburst: %s" % cmd("damage %s 5 darkburst" % target))
+        wait_frame(frame() + 10)
         log("kill: %s" % cmd("kill %s" % target))
-        wait_frame(frame() + 20)
+        wait_frame(frame() + 10)
         log("state: %s" % state_of(target))
         log("damage: %s" % cmd("damage %s 5" % target))
-        wait_frame(frame() + 20)
+        wait_frame(frame() + 10)
         log("state: %s" % state_of(target))
         log("objs: %s" % cmd("objs commando"))
 

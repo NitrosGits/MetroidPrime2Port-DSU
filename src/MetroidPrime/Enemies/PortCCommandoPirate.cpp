@@ -116,15 +116,6 @@ void StandIn(const char* what) {
 // The same, for the state machine's own functions: the message names the retail function
 // the entry stands in for, so the log says which of the module's 70 FSM functions the run
 // reached.
-// The guest's own bit pun: it puts a float on the stack and reads its low byte (the psq_st and
-// the lbz at 0x00008FC4..0x00008FC8 in the WarpOut state). The port keeps the guest's byte at
-// guest this+0x44F in the host's colour, so it has to produce the same byte.
-static uint8_t LowByteOfFloat(float value) {
-  uint32_t bits = 0;
-  memcpy(&bits, &value, sizeof(bits));
-  return static_cast<uint8_t>(bits & 0xffu);
-}
-
 void StandInFn(const char* fn) {
   static const char* sSeen[80] = {};
   static int sCount = 0;
@@ -3203,7 +3194,11 @@ void CCommandoPirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
           const float ratio =
               BodyController()->GetAnimTimeRemaining() / xc58_;    // 0x00008F94..0x00008FA4
           const float scaled = 255.0f * (ratio < 1.0f ? ratio : 1.0f);  // rodata_43C, rodata_4DC
-          mColor.SetAlpha(LowByteOfFloat(scaled));                 // 0x00008FC4..0x00008FCC
+          // The retail casts the float to a byte (the guest's psq_st + lbz at 0x00008FC4..
+          // 0x00008FC8 is its own float-to-byte cast, the one the host's CCast::ToUint8 is the
+          // counterpart of); the host's cast is the value conversion, as it is everywhere else
+          // the host's colour alpha is set.
+          mColor.SetAlpha(CCast::ToUint8(scaled));                  // 0x00008FC4..0x00008FCC
         } else {
         }
       } else {
@@ -3958,7 +3953,8 @@ void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
             const CVector3f direction = xb94_ - GetTranslation();
             xb94_.SetZ(0.0f);                                         // 0x00007618
             // 0x00007620..0x00007628: the direction goes into the body controller's own vector
-            // at +0x34, which the host's body controller has no member for.
+            // at +0x34 - the host's command manager's target vector.
+            BodyController()->CommandMgr().SetTargetVector(direction);
           }
         }
       }
