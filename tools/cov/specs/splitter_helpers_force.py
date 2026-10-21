@@ -8,6 +8,13 @@
 # forcing one gate would keep the other gates from being called at all.  The runs' counters add
 # up (tools/cov/gcov_report.py takes several prefix dirs), so the merged profile has every arm.
 #
+# The two DoUserAnimEvent bodies (fn_75_6394 the head's, fn_75_EFA4 the chassis's) are forced
+# with the event's type in the register: the host is x86-64, so this=rdi, the manager=rsi, the
+# node=rdx, the event's type=ecx (the fourth integer argument) and the dt=xmm0.  The members the
+# arms read are written through $this at the body's entry (the members are read after the entry,
+# unlike the registers of a copied argument).  The chassis's own members are written through an
+# explicit cast, since this spec's CLASS is the head's class.
+#
 # Run with COV_GDB_SCRIPT=tools/cov/cov_force.py and BUILD=build-port-cov, so the run's counters
 # (and the forced arm) land in the coverage profile that tools/cov/gcov_report.py reads:
 #
@@ -18,6 +25,8 @@ import os
 
 CLASS = 'CSplitterCommandModule'
 WHICH = os.environ.get('SPLITTER_FORCE', '6310')
+# the chassis's own members: this spec's CLASS is the head's class, so the chassis is cast here.
+CH = '((CSplitterMainChassis*)$rdi)'
 BODIES = {
     '6310': ('6310 AddToRenderer', 'CSplitterCommandModule::PortAddToRenderer(',
              'the head is dead: the base class is not called'),
@@ -45,7 +54,67 @@ BODIES = {
                      'there is no player at 0xEFE: no orbit request'),
     '6394OTHER': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
                   'another event type: the base class is asked and nothing else happens'),
+    '32F4': ('32F4 UpdateFlashAndDeath', 'CSplitterCommandModule::PortUpdateFlashAndDeath(',
+             'the death timer at 0xEF0 is above zero: the module does not die yet'),
+    '1188': ('1188 SpawnBeamEffect', 'CSplitterCommandModule::PortSpawnBeamEffect(',
+             'the detection range at 0x3D0 is not above zero: no beam effect is made'),
+    'D61C': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+             'the dodge direction is 5 and there is no head: the shield is not raised'),
+    '6394LOCK': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+                 'the event is a break-lock one and the flags are clear: the orbit request'),
+    '6394P0': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+               'the event is a projectile one: the head shoots at the player'),
+    '6394P0NP': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+                 'the event is a projectile one and there is no player at 0xEFE'),
+    'EFA4LOCK': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+                 'the event is a break-lock one and the flag byte is clear: the orbit requests'),
+    'EFA4FLAG': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+                 'the flag byte at 0xD41 has its 0x10 bit: no orbit request'),
+    'EFA4NOPLAYER': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+                     'there is no player at 0xCC0: no orbit request'),
+    'EFA4MAT': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+                'the event is a material one and the flag byte has its 0x80 bit: the reflected'
+                ' vulnerability'),
+    'EFA4MATCLEAR': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+                     'the event is a material one and the flag byte is clear: nothing happens'),
+    'EFA4OTHER': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+                  'another event type: the base class is asked and nothing else happens'),
+    '32F4D': ('32F4 UpdateFlashAndDeath', 'CSplitterCommandModule::PortUpdateFlashAndDeath(',
+              'the death timer at 0xEF0 is at or below zero: the module dies'),
+    'E87C': ('E87C SetIngPossessed', 'CSplitterMainChassis::SetIngPossessed(bool, float,',
+             'the possession flag is set: the command module is told it is possessed'),
+    'E87C2': ('E87C SetIngPossessed', 'CSplitterMainChassis::SetIngPossessed(bool, float,',
+              'the possession flag is set and the command module is the head u0520'),
+    'E87CN': ('E87C SetIngPossessed', 'CSplitterMainChassis::SetIngPossessed(bool, float,',
+              'the possession flag is set and the command module keeps its own id'),
+    '32F4DEAD': ('32F4 UpdateFlashAndDeath', 'CSplitterCommandModule::PortUpdateFlashAndDeath(',
+                 'the head is dead: the death timer is not counted'),
+    '32F4F': ('32F4 UpdateFlashAndDeath', 'CSplitterCommandModule::PortUpdateFlashAndDeath(',
+              'the flash weight at 0xF08 is above one: the weight is capped'),
+    'D61C': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+             'the dodge direction at 0xD04 is 5 and the head at 0xC6C (u0531) exists'),
+    'D61CN': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+              'the dodge direction at 0xD04 is 5 and there is no head at 0xC6C'),
+    'SEPHEAD': ('23F0 SeparationVector', 'CSplitterCommandModule::PortSeparationVector(',
+                'the head\'s area id is not the other actors\': the other-area arm'),
+    'SEPC': ('8EC8 SeparationVector', 'CSplitterMainChassis::PortSeparationVector(',
+             'the chassis\'s area id is not the other actors\': the other-area arm'),
+    'D61CP': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+              'the Dodge state is entered with the console, nothing is written'),
+    'D61CX': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+              'the message is 3: no case of the switch is taken'),
+    'EFA4MATN': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+                 'the material event and there is no head at 0xC6C'),
+    'E87CN': ('E87C SetIngPossessed', 'CSplitterMainChassis::SetIngPossessed(bool, float,',
+              'the possession flag is set and there is no head at 0xC6C'),
 }
+# the head's own members, written through $this (the spec's CLASS is the head's class).
+HEAD = '((CSplitterCommandModule*)$rdi)'
+# the head's flag byte at 0xF6A and the data's flag word at 0x7C0 are cleared, so the orbit
+# request's arm runs; the head's id at 0xEFE is the player.
+# the head's flag byte at 0xF6A (its 0x10 bit) and the data's flag word at 0x7C0 (its 0x4 bit)
+# must be SET for the orbit request (asm 0x63E4, 0x63F0: the branch skips when the bit is clear).
+LOCK = ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10', '$this->mData.mUnknownBD80FD94 = 0x4']
 if WHICH in ('6394DEAD', '6394NOPLAYER'):
     _label, _where, _what = BODIES['6394']
 else:
@@ -53,42 +122,150 @@ else:
 FORCE = [
     (_label, _where, [], ['$this->mAlive = 0'], 1, _what),
 ]
-# The two DoUserAnimEvent bodies are forced with the event type in the register instead of the
-# alive flag: the fight does not play the head's projectile event, and the chassis's own
-# DoUserAnimEvent is not reached at all.  The host is x86-64: this=rdi, the manager=rsi, the
-# node=rdx, the event type=ecx (the fourth integer argument) and the dt=xmm0.
+# The event's type is written in ecx (the fourth integer argument) and the members the arms read
+# are written through $this in the same stop.
 if WHICH == '6394':
-    FORCE = [(_label, _where, [], ['$ecx = 0'], 1, _what)]
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0'], 1, _what)]
+elif WHICH == '6394P0':
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0'], 1, _what)]
 elif WHICH == 'EFA4':
-    FORCE = [(_label, _where, [], ['$ecx = 0x16'], 1, _what)]
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x16'], 1, _what)]
 elif WHICH == 'EFA4M':
-    FORCE = [(_label, _where, [], ['$ecx = 0x5'], 1, _what)]
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x5'], 1, _what)]
 elif WHICH == '6394FLAG':
-    FORCE = [(_label, _where, [], ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10'], 1, _what)]
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0',
+               '$this->mData.mUnknownBD80FD94 = 0x4'], 1, _what)]
 elif WHICH == '6394DATA':
-    FORCE = [(_label, _where, [],
-              ['$ecx = 0x16', '$this->mData.mUnknownBD80FD94 = 0x20000000'], 1, _what)]
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10',
+               '$this->mData.mUnknownBD80FD94 = 0'], 1, _what)]
 elif WHICH == '6394NOPLAYER':
-    FORCE = [(_label, _where, [], ['$ecx = 0x16', '$this->mSyncedId.value = 0xffff'], 1, _what)]
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10',
+               '$this->mData.mUnknownBD80FD94 = 0x4', '$this->mSyncedId.value = 0xffff'], 1, _what)]
+elif WHICH == '6394P0NP':
+    FORCE = [('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+              ['$ecx'], ['$ecx = 0'], 1,
+              'the event is a projectile one: the head shoots at the player'),
+             ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
+              [], ['$this->mSyncedId.value = 0xffff'], 1,
+              'there is no player at 0xEFE: the aim ends at once')]
 elif WHICH == '6394OTHER':
-    FORCE = [(_label, _where, [], ['$ecx = 3'], 1, _what)]
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 3'], 1, _what)]
 elif WHICH == '1CA0D':
     FORCE = [(_label, _where, [], ['$this->mAlive = 0'], 1, _what)]
 elif WHICH == '1CA0P':
     FORCE = [(_label, _where, [], ['$this->mSyncedId.value = 0xffff'], 1, _what)]
 elif WHICH == '6394DEAD':
-    # the head's projectile event (the type in r6) and the dead head: both at once, since the
+    # the head's projectile event (the type in ecx) and the dead head: both at once, since the
     # fight never plays the projectile event, so the aim is only reached through the first.
     FORCE = [('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
-              [], ['$ecx = 0'], 1, 'the event is a projectile one: the head shoots at the player'),
+              ['$ecx'], ['$ecx = 0'], 1,
+              'the event is a projectile one: the head shoots at the player'),
              ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
               [], ['$this->mAlive = 0'], 1, 'the head is dead: the aim ends at once')]
-elif WHICH == '6394NOPLAYER':
-    FORCE = [('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
-              [], ['$ecx = 0'], 1, 'the event is a projectile one: the head shoots at the player'),
-             ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
-              [], ['$this->mSyncedId.value = 0xffff'], 1,
-              'there is no player at 0xEFE: the aim ends at once')]
+elif WHICH == '6394LOCK':
+    # the break-lock event (the type 0x16) with the flags clear and the player at 0xEFE: the
+    # head asks the player for the orbit.
+    FORCE = [(_label, _where, ['$ecx'], LOCK, 1, _what)]
+elif WHICH == 'EFA4LOCK':
+    # the chassis's break-lock event with the flag byte at 0xD41's 0x10 bit set: the two orbit
+    # requests (asm 0xEFE8, 0xEFF0: the branch skips when the bit is clear).
+    # the flag byte at 0xD41 has its 0x10 bit clear: the base class's call.
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x16', CH + '->mFlagsD41 = 0'], 0, _what)]
+elif WHICH == 'EFA4FLAG':
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x16', CH + '->mFlagsD41 = 0x10'], 0, _what)]
+elif WHICH == 'EFA4NOPLAYER':
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x16', CH + '->mFlagsD41 = 0x10', CH + '->mSyncId.value = 0xffff'], 0, _what)]
+elif WHICH == 'EFA4MAT':
+    # the material event with the flag byte's 0x80 bit set: the reflected vulnerability and the
+    # head at 0xC6C (u0531) resetting its shield (asm 0xF054, 0xF084).
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x5', CH + '->mFlagsD41 = 0x80', CH + '->mCommandModuleId.value = 0x531'],
+              0, _what)]
+elif WHICH == 'EFA4MATCLEAR':
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x5', CH + '->mFlagsD41 = 0'], 0, _what)]
+elif WHICH == '32F4':
+    # the flash weight at 0xF08 above zero, the flag byte's 0x04 bit and the death timer above
+    # zero: the module counts down but does not die.
+    FORCE = [(_label, _where, [],
+              ['$this->mAutoDestructFlags = 4', '$this->mFlashAlpha = 0.001f',
+               '$this->mDeathTimer = 100.f'], 1, _what)]
+elif WHICH == '32F4D':
+    # the same, but the death timer at or below zero: the module dies.
+    FORCE = [(_label, _where, [],
+              ['$this->mAutoDestructFlags = 4', '$this->mFlashAlpha = 0.001f',
+               '$this->mDeathTimer = -1.f'], 1, _what)]
+elif WHICH == 'D61CX':
+    # the message is 3 (the third argument, in rdx): no case of the switch is taken
+    # (asm 0xD650, 0xD654).
+    FORCE = [(_label, _where, [], ['$rdx = 3'], 0, _what)]
+elif WHICH == 'EFA4MATN':
+    # the material event with the flag byte's 0x80 bit set and no head at 0xC6C: the shield
+    # reset is skipped (asm 0xF09C, 0xF0A0).
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x5', CH + '->mFlagsD41 = 0x80', CH + '->mCommandModuleId.value = 0xffff'],
+              0, _what)]
+elif WHICH == 'D61CP':
+    FORCE = [(_label, _where, [], [], 0, _what)]
+elif WHICH == 'D61C':
+    # the chassis's Dodge state: the dodge direction at 0xD04 is 5 and the head at 0xC6C is the
+    # head u0531, so the head raises its dodge shield (asm 0xD690, 0xD6A0).
+    FORCE = [(_label, _where, [],
+              [CH + '->mDodgeDirection = 5', CH + '->mCommandModuleId.value = 0x531'], 0, _what)]
+elif WHICH == 'D61CN':
+    # the same, but there is no head at 0xC6C: the cast fails (asm 0xD690).
+    FORCE = [(_label, _where, [],
+              [CH + '->mDodgeDirection = 5', CH + '->mCommandModuleId.value = 0xffff'], 0, _what)]
+elif WHICH == 'SEPHEAD':
+    # the head's area id is a value no other actor has: the "an AI in another area" arm of the
+    # listening-AI walk (asm 0x2470-0x247C).
+    FORCE = [(_label, _where, [], ['$this->mAreaId.value = 12'], 0, _what)]
+elif WHICH == 'SEPC':
+    FORCE = [(_label, _where, [], [CH + '->mAreaId.value = 12'], 0, _what)]
+elif WHICH == 'E87C':
+    # the possession flag (the second argument, in esi) is set and the command module's id at
+    # 0xC6C is the head u0531's: the head is looked up and told it is possessed.
+    FORCE = [(_label, _where, [], ['$esi = 1', CH + '->mCommandModuleId.value = 0x531'], 1, _what)]
+elif WHICH == 'E87CN':
+    FORCE = [(_label, _where, [], ['$esi = 1', CH + '->mCommandModuleId.value = 0xffff'], 1, _what)]
+elif WHICH == 'E87C2':
+    FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'],
+              ['$esi = 1', CH + '->mCommandModuleId.value = 0x520'], 0, _what)]
+elif WHICH == 'E87CN':
+    FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'], ['$esi = 1'], 0, _what)]
+elif WHICH == '32F4F':
+    # the flash weight at 0xF08 above one: the countdown does not go below zero and the weight
+    # is capped at 1.0f.
+    FORCE = [(_label, _where, [],
+              ['$this->mAutoDestructFlags = 4', '$this->mFlashAlpha = 5.f',
+               '$this->mDeathTimer = 100.f'], 1, _what)]
+elif WHICH == '32F4DEAD':
+    # the same as 32F4, but the head is dead: the death timer is not counted.
+    FORCE = [(_label, _where, [],
+              ['$this->mAutoDestructFlags = 4', '$this->mFlashAlpha = 0.001f',
+               '$this->mDeathTimer = 100.f', '$this->mAlive = 0'], 1, _what)]
+elif WHICH == 'EFA4OTHER':
+    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 3'], 0, _what)]
+elif WHICH == '1188':
+    FORCE = [(_label, _where, [], [HEAD + '->mDetectionRange = 0.f'], 1, _what)]
+elif WHICH == 'D61CX':
+    # the message is 3 (the third argument, in rdx): no case of the switch is taken
+    # (asm 0xD650, 0xD654).
+    FORCE = [(_label, _where, [], ['$rdx = 3'], 0, _what)]
+elif WHICH == 'EFA4MATN':
+    # the material event with the flag byte's 0x80 bit set and no head at 0xC6C: the shield
+    # reset is skipped (asm 0xF09C, 0xF0A0).
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x5', CH + '->mFlagsD41 = 0x80', CH + '->mCommandModuleId.value = 0xffff'],
+              0, _what)]
+elif WHICH == 'D61CP':
+    FORCE = [(_label, _where, [], [], 0, _what)]
+elif WHICH == 'D61C':
+    FORCE = [(_label, _where, [],
+              [CH + '->mDodgeDirection = 5', CH + '->mCommandModuleId.value = 0xffff'], 1, _what)]
 SPEC = [
     # fn_75_6310: the head's AddToRenderer runs the base class's call only while the actor is
     # alive (the base's flag byte at 0x420, its 0x40 bit).

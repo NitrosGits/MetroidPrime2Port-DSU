@@ -64,6 +64,11 @@ FORCE = [
       '((CPlayer*)((CStateManager*)$rsi)->mPlayers[0])->mActive = ($ct_a && $ct == 1) ? 0 : 1',
       '$ct = $ct_a ? $ct + 1 : $ct'],
      0, 'the attack target is not a player, and the player is not active'),
+    ('8670 Shuffle', 'CSpacePirate::Shuffle(',
+     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck'],
+     ['$this->x8f4_28_noShuffleCloseCheck = 0'],
+     0, 'the close check (the 0x8f4 bit 28) clear, so the shuffle picks a close spot and'
+        ' fn_72_D608 runs'),
 ]
 
 # The arms are counted too (tools/cov/cov_force.py runs this list's breakpoints after force.py's
@@ -78,4 +83,6 @@ SPEC = [
      ['$this->xba0_teamAiMgrId.value', '$this->x8f4_27_melee'], 'calls max=100000'),
     ('EDEC ChooseTarget: arms', 'CSpacePirate::ChooseTarget(',
      ['$this->mAttackTarget.value'], 'calls max=100000'),
+    ('8670 Shuffle: arms', 'CSpacePirate::Shuffle(',
+     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck'], 'max=100000'),
 ]

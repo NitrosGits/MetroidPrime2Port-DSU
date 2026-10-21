@@ -486,7 +486,7 @@ void CIngBoostBallGuardian::SuckEnergy(CStateManager& mgr, EStateMsg msg, float 
     break;
   }
   case kStateMsg_Update: {
-    if (StateMachineState().GetTime() > mData.mBodyProjectile.mSuckTime) { // 0x864
+    if (StateMachineState().GetTime() >= mData.mBodyProjectile.mSuckTime) { // 0x86C, 0x9204 cror eq,gt,eq
       mHostId = kInvalidUniqueId; // 0xcdc
       break;
     }

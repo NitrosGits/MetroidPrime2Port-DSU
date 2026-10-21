@@ -259,12 +259,12 @@ void CScriptDock::Think(float dt, CStateManager& mgr) {
       const IGameArea::Dock& dock =
           mgr.GetWorld()->GetAreaAlways(mgr.GetNextAreaId()).GetDock(mDock);
       const TAreaId nextArea = dock.GetConnectedAreaId(dock.GetReferenceCount());
-      if (nextArea != kInvalidAreaId && !mgr.GetWorld()->GetAreaAlways(nextArea).IsLoaded()) {
 #ifdef TARGET_PC
+      if (nextArea != kInvalidAreaId && !mgr.GetWorld()->GetAreaAlways(nextArea).IsLoaded()) {
         std::fprintf(stderr, "[dock] crossed dock %d but area %d is not loaded\n", mDock,
                      nextArea.Value());
-#endif
       }
+#endif
       if (nextArea != kInvalidAreaId && mgr.GetWorld()->GetAreaAlways(nextArea).IsLoaded()) {
 #ifdef TARGET_PC
         std::fprintf(stderr, "[dock] crossed dock %d -> area %d\n", mDock, nextArea.Value());

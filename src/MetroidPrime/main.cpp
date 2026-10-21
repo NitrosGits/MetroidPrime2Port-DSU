@@ -48,7 +48,6 @@
 #include "stdlib.h"
 #include "string.h"
 
-
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetaRender/IRenderer.hpp"
 
