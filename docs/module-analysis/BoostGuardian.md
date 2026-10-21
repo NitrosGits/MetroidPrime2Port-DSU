@@ -957,7 +957,7 @@ rows = [l.split('\t') for l in
         pathlib.Path('docs/module-analysis/BoostGuardian_functions.tsv').read_text().split('\n')[1:] if l.strip()]
 print('symbols:', len(ids), 'rows:', len(rows))
 print(collections.Counter(r[3] for r in rows))
-print('unmarked B:', [r[1] for r in rows if r[3] == 'B' and r[7] == 'no'])
+print('unmarked B:', [r[1] for r in rows if r[3] == 'B' and r[8] == 'no'])
 PY
 symbols: 318 rows: 318
 Counter({'B': 207, 'H': 102, 'T': 9})
