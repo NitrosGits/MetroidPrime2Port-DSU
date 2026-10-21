@@ -189,6 +189,9 @@ private:
   // fn_14_1303C (0x20C bytes): "XDMG". With the armour gone a dead ball collider costs a life;
   // before, a destroyed echo target (state 4) is removed.
   void x1303C_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_12D98 (0x248 bytes): "XRDG". A weapon resisted by the root collider wears down the
+  // gravity repulsor (0x10E0).
+  void x12D98_(CStateManager& mgr, TUniqueId sender);
   // fn_14_F2B8 (0xC4 bytes): move the IS07/FOLW waypoint to pos and send state.
   void xF2B8_(CStateManager& mgr, const CVector3f& pos, EScriptObjectState state);
   // fn_14_13248 (0x3C bytes): a ball collider's index (0xDC4), or -1.

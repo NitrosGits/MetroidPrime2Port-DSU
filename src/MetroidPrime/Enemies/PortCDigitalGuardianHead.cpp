@@ -18,12 +18,14 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/CEchoEmitter.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Weapons/CBomb.hpp"
+#include "MetroidPrime/Weapons/CWeapon.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp"
@@ -452,11 +454,55 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     x1303C_(mgr, msg.GetSenderId());
     break;
   case kSM_ResistedDamage: // "XRDG", 0x17F2C
-    StandInFn("fn_14_12D98 (head XRDG)");
+    x12D98_(mgr, msg.GetSenderId());
     break;
   default:
     break;
   }
+}
+
+// fn_14_12D98: "XRDG". With the armour gone (0x10F4 bit 0x10) and the sender the root collider
+// (0xE00), the weapon that last touched it (not the one already counted, 0x1040) and that its
+// vulnerability (vtable 0x40) lets hit: the vulnerable damage, if above .rodata 0x960 (0), hurts
+// the head along its column 1 (vtable 0xA4), flashes the echo emitter (0xC8) for
+// skDamageHitTime and, above .rodata 0x9B0 (25) with the weapon still there, flinches the body
+// (state cmd 0x1C, weight .rodata 0x96C = 1). Then the gravity repulsor's health (0x10E0) drops
+// by it (even at 0), the weapon is remembered and "HeadModuleHit" (data +0x2C) plays at the
+// collider, downward.
+// Unmarked: in the area-53 run bombs on the root reached the WeaponHits test and failed it; the
+// damage branch needs a beam hit.
+void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
+  if ((x10F4_ & 0x10) == 0 || sender != xE00_) {
+    return;
+  }
+  const CCollisionActor* col = TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(sender));
+  if (col == nullptr) {
+    return;
+  }
+  const TUniqueId touched = col->GetLastTouchedObject();
+  const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched));
+  if (weapon == nullptr || touched == x1040_) {
+    return;
+  }
+  // The host's WeaponHits takes a direct flag retail's lacks; 0 skips its radius test.
+  if (!col->GetDamageVulnerability()->WeaponHits(weapon->GetCurrentDamageInfo().GetWeaponMode(),
+                                                 0)) {
+    return;
+  }
+  const float damage =
+      weapon->GetCurrentDamageInfo().GetVulnerableDamage(*col->GetDamageVulnerability());
+  if (damage > 0.f) {
+    TakeDamage(GetTransform().GetColumn(kDY), damage);
+    if (EchoEmitter() != nullptr) {
+      EchoEmitter()->SetAutoReducingYellowDamage(CPatterned::skDamageHitTime);
+    }
+    if (TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched)) && damage > 25.f) {
+      BodyController()->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f));
+    }
+  }
+  x10E0_ -= damage;
+  x1040_ = touched;
+  PlayCustomSound(col->GetTranslation(), CVector3f::Down(), mData.sound_HeadModuleHit, false);
 }
 
 // fn_14_13830: the body is the CONN/ATCH object; if it is a guardian it is linked to this head
@@ -1125,6 +1171,17 @@ void CDigitalGuardianHead::DeploySplitters(CStateManager& mgr, EStateMsg msg, fl
   }
 }
 
+// fn_14_1561C: on activate only, the boss bar is cleared (no boss, .rodata 0x960 = 0, string 0),
+// then MassiveDeath (vtable 0xD4).
+// @ fn_14_1561C
+void CDigitalGuardianHead::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg != kStateMsg_Activate) {
+    return;
+  }
+  mgr.SetBossParams(kInvalidUniqueId, 0.f, 0);
+  MassiveDeath(mgr);
+}
+
 #define DGHD_STATE_STANDIN(name, fn)                                                               \
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
@@ -1138,8 +1195,25 @@ DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
 DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 DGHD_STATE_STANDIN(FollowRetreatPath, fn_14_1569C)
-DGHD_STATE_STANDIN(Dead, fn_14_1561C)
 #undef DGHD_STATE_STANDIN
+
+// fn_14_13F0C: the root collider (0xE00) takes the head's own vulnerability (CPatterned's,
+// called directly).
+// @ fn_14_13F0C
+void CDigitalGuardianHead::SetVulnerableToDamage(CStateManager& mgr, float dt) {
+  if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
+    root->SetDamageVulnerability(*CPatterned::GetDamageVulnerability());
+  }
+}
+
+// fn_14_13EB8: the root collider (0xE00) is immune again (ImmuneRicochetVulnerability, the host's
+// ReflectVulnerabilty, as fn_14_13318 gives it).
+// Unmarked: the area-53 run never reached it.
+void CDigitalGuardianHead::SetImmuneToDamage(CStateManager& mgr, float dt) {
+  if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
+    root->SetDamageVulnerability(CDamageVulnerability::ReflectVulnerabilty());
+  }
+}
 
 // Codes not ported yet: once-logging stand-ins (the FSM2 state machine runs codes by name).
 // fn_14_1560C: the player (state manager +0x14FC) becomes the face target (0x1036).
@@ -1236,8 +1310,6 @@ DGHD_CODE_STANDIN(SelectDeathHeadAttack, fn_14_14470)
 DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
 DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_14058)
 DGHD_CODE_STANDIN(GrabPlayerHintControl, fn_14_13F70)
-DGHD_CODE_STANDIN(SetVulnerableToDamage, fn_14_13F0C)
-DGHD_CODE_STANDIN(SetImmuneToDamage, fn_14_13EB8)
 DGHD_CODE_STANDIN(SelectRetreatPlatform, fn_14_13C6C)
 DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13C1C)
 #undef DGHD_CODE_STANDIN

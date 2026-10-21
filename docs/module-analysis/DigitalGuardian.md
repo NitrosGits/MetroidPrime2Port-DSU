@@ -1239,3 +1239,15 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   0xFE0 down 3→2→1→0. The body got CLOS, and the head ran Stage3Start: 0 caught/reach-stub.
 - The harness must retry the knees until all four are down: one knee can resist a single round, and
   the body then never reaches Crippled.
+
+### Bomb slots and the head's death (area-53 run, 2026-10-21, base d503a8674)
+
+- fn_14_12818 holds a fully morphed player on an intact ball's bomb slot (within the sphere radius
+  1.5) and gives that ball 0xDD0 (`bombPitVulnerability`, data +0x2F8); fn_14_126C8 pulls the bombs
+  there. With a harness that teleports the morph ball onto each ball (positions from a temporary
+  trace) and lays bombs, real bomb XDMGs took 0x10E4 2→1→0, the FSM entered Dead (fn_14_1561C:
+  boss bar cleared, MassiveDeath) and the head was removed: 0 caught/reach-stub. Head HP stays
+  150/150 throughout (TakeDamage only sets the hit timer).
+- The player must morph after the stage-3 cinematic (`press x` before it does nothing).
+- XRDG fn_14_12D98: bombs touching the root collider (vulnerable after SetVulnerableToDamage) fail
+  its WeaponHits test, so the gravity repulsor (0x10E0) only drops on beam hits; not yet exercised.
