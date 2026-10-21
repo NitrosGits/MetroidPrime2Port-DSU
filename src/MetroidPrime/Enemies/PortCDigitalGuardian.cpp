@@ -428,6 +428,11 @@ void CDigitalGuardian::PreThink(float dt, CStateManager& mgr) {
 
 // vtable slot 5 = fn_14_A5BC. It tests the actor's active bit (the byte at 0x20, bit 0, read at
 // 0x0000A5E0) and returns when it is clear, then runs CPatterned::Think.
+// The arms: the actor's active bit (the byte at guest 0x20, bit 7, the extrwi at 0xA5E4) and
+// the collision manager's state (guest this+0xE60 is null -> the managers are built with
+// fn_14_676C, else they are updated). The run: area 53 (Sanctuary Fortress 09_cliff_temple_dark),
+// 3000 frames, the coverage build (tools/cov/gcov_report.py: 4/4 branches, ALL-ARMS).
+// @ fn_14_A5BC
 void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
   StandIn("CDigitalGuardian::Think (vtable slot 5, fn_14_A5BC)");
   if (!GetActive()) {
@@ -446,6 +451,15 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
     xE60_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
     xE64_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
+  // The retail's four calls after the managers (fn_14_A5BC): the body turns to the head
+  // (fn_14_6E04, the call at 0xA63C), the toe targets' sound emitters and hit timers
+  // (fn_14_2358, the call at 0xA64C), the leg-stab, jump and protect-the-knees timers
+  // (fn_14_38BC, the call at 0xA65C) and the knee armours follow the knee locators
+  // (fn_14_3F90, the call at 0xA668).
+  x6E04_(mgr, dt); // fn_14_6E04
+  x2358_(mgr, dt); // fn_14_2358
+  x38BC_(mgr, dt); // fn_14_38BC
+  x3F90_(mgr);     // fn_14_3F90
 }
 
 // vtable slot 6 = fn_14_A6A8 (0x4F0), the biggest body function: it switches on the script
@@ -457,8 +471,7 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 // the case at 0xAA80), "XDEL" (0x5844454C, the case at 0xA880), "XAUD" (0x58415544, the case
 // at 0xA9A8), "XALC" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
 // 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
-// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C). The helper fn_14_5644 the XRDG case
-// calls is not ported yet.
+// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C).
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
   // The retail reads the actor's active bit before it calls the base (the byte at guest 0x20,
@@ -540,7 +553,7 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     x5838_(mgr, msg.GetSenderId()); // fn_14_5838
     break;
   case 0x58524447: // "XRDG"
-    StandInFn("fn_14_5644 (the XRDG case's helper)");
+    x5644_(mgr, msg.GetSenderId()); // fn_14_5644
     break;
   case 0x58484954: // "XHIT"
     x4F2C_(mgr, msg.GetSenderId()); // fn_14_4F2C
@@ -618,6 +631,12 @@ void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
 // 0x3988) is looked up (the ObjectById call at 0x3998) and its active flag is set (the virtual
 // call at 0x39B4, the vtable slot 0x1C, which is CEntity::SetActive) to the flag the third
 // argument carries (the clrlwi at 0x39A8, its low byte).
+// The arms: the root collider (the uid at guest this+0x1080) is there -> its active flag is
+// set, or it is gone -> nothing happens (the retail's test at 0x398C). The run: area 53, 3000
+// frames; the "it is gone" arm was forced (the id at 0x1080 pointed at an actor that does not
+// exist, tools/cov/force.sh with /tmp/opencode/dgclose_3974.py: the CStateManager::ObjectById
+// call site without the CEntity::SetActive one).
+// @ fn_14_3974
 void CDigitalGuardian::x3974_(CStateManager& mgr, bool active) {
   CEntity* actor = mgr.ObjectById(TUniqueId(x1080_));
   if (actor != nullptr) {
@@ -1217,6 +1236,11 @@ void CDigitalGuardian::x2578_(CTransform4f& out, const CTransform4f& xf) const {
 // CElementGen with the normal orientation and the kOSF_One flag (the li r5, 0 and the li r6, 1
 // at 0xD720). An invalid asset id (the cmplwi at 0xD674) gives no generator. The retail's
 // allocation also carries a memory-node name (a .rodata label); the host's rs_new has none.
+// The arms: the asset id is invalid (kInvalidAssetId) -> no generator, else the generator is
+// built from the beacon's effect. The run: area 53 (Sanctuary Fortress 09_cliff_temple_dark), 3000
+// frames; the "invalid" arm was forced (the asset id set to kInvalidAssetId at the entry,
+// tools/cov/force.sh with /tmp/opencode/dgclose_D664.py).
+// @ fn_14_D664
 CElementGen* CDigitalGuardian::xD664_(CAssetId id) {
   if (id == kInvalidAssetId) {
     return nullptr;
