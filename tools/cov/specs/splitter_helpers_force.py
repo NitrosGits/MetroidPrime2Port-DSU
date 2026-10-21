@@ -33,8 +33,15 @@ BODIES = {
              'the event is a break-lock one: the chassis asks the player for the orbit'),
     'EFA4M': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
               'the event is a material one: the chassis reflects its vulnerability'),
+    '1CA0D': ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
+              'the head is dead: the aim ends at once'),
+    '1CA0P': ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
+              'there is no player at 0xEFE: the aim ends at once'),
 }
-_label, _where, _what = BODIES[WHICH]
+if WHICH in ('6394DEAD', '6394NOPLAYER'):
+    _label, _where, _what = BODIES['6394']
+else:
+    _label, _where, _what = BODIES[WHICH]
 FORCE = [
     (_label, _where, [], ['$this->mAlive = 0'], 1, _what),
 ]
@@ -47,6 +54,23 @@ elif WHICH == 'EFA4':
     FORCE = [(_label, _where, [], ['$r6 = 0x16'], 1, _what)]
 elif WHICH == 'EFA4M':
     FORCE = [(_label, _where, [], ['$r6 = 0x5'], 1, _what)]
+elif WHICH == '1CA0D':
+    FORCE = [(_label, _where, [], ['$this->mAlive = 0'], 1, _what)]
+elif WHICH == '1CA0P':
+    FORCE = [(_label, _where, [], ['$this->mSyncedId.value = 0xffff'], 1, _what)]
+elif WHICH == '6394DEAD':
+    # the head's projectile event (the type in r6) and the dead head: both at once, since the
+    # fight never plays the projectile event, so the aim is only reached through the first.
+    FORCE = [('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+              [], ['$r6 = 0'], 1, 'the event is a projectile one: the head shoots at the player'),
+             ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
+              [], ['$this->mAlive = 0'], 1, 'the head is dead: the aim ends at once')]
+elif WHICH == '6394NOPLAYER':
+    FORCE = [('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+              [], ['$r6 = 0'], 1, 'the event is a projectile one: the head shoots at the player'),
+             ('1CA0 ProjectileAim', 'CSplitterCommandModule::PortHeadProjectileAim(',
+              [], ['$this->mSyncedId.value = 0xffff'], 1,
+              'there is no player at 0xEFE: the aim ends at once')]
 SPEC = [
     # fn_75_6310: the head's AddToRenderer runs the base class's call only while the actor is
     # alive (the base's flag byte at 0x420, its 0x40 bit).

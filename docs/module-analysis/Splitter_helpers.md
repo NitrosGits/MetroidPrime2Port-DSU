@@ -263,7 +263,8 @@ manager, 6 max projectiles, 0 attributes, no homing, the impact visor effect and
 1.0, 1.0, 1.0 - the rodata constant lbl_75_rodata_34). Every offset is cited in the body.
 
 **But none of the three is marked yet**, because the coverage profile of the run still misses
-arms:
+arms (the forces fire - the runs' `forced.log` names the forced hit - but the profile does not
+show the forced arms, so they do not count yet):
 - `fn_75_6394`'s body: 5/13 lines, 2/10 branches - the kUE_BreakLockOn case ran, the
   kUE_Projectile case did not (the fight does not play it; the force that takes it - the event
   type in r6 set to 0 - is in the spec, `SPLITTER_FORCE=6394`).

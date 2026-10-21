@@ -205,12 +205,15 @@ void CSplitterCommandModule::PortDoUserAnimEvent(CStateManager& mgr, const CInt3
 //     CProjectileInfo parameter, so the host uses the actor's own mProjectileInfo (the head's
 //     laser pulse, built by the constructor).
 //   asm 0x1E08 `bl LaunchProjectile__10CPatternedFRC12CTransform4fR13CStateManageriUibRC18CImpactVisorEffectRC9CVector3f`
-//     the launch: the transform (the copy of the look-at), the manager, 6 (the max projectiles,
-//     asm 0x1DF4), 0 (the attributes, asm 0x1DF8), 0 (the homing, asm 0x1E00), the impact visor
-//     effect and the scale.  The scale is the rodata constant lbl_75_rodata_34 (1.0f, asm 0x1DDC
-//     and the stores at 0x1DEC, 0x1DFC, 0x1E04) and the retail's impact visor effect is three
-//     floats of the same constant (the stores at 0x1DEC, 0x1DFC and 0x1E04); the host's
-//     CImpactVisorEffect is a different shape, so the host passes its empty one.
+//     the launch.  The register layout is the host's own (r4 the transform, r5 the manager, r6 the
+//     max projectiles, r7 the attributes, r8 the homing, r9 the impact visor effect, r10 the
+//     scale): r6 is 6 (asm 0x1DF4), r7 and r8 are 0 (asm 0x1DF8, 0x1E00), r9 is the local at
+//     r1+0x3c (asm 0x1DE8) - the impact visor effect that fn_75_1F50 built (asm 0x1DD0) and
+//     that fn_75_1E38 destroys after the launch (asm 0x1E14) - and r10 is the local at
+//     r1+0xc (asm 0x1DF0), the scale: the three floats of the rodata constant lbl_75_rodata_34
+//     (1.0f, asm 0x1DDC and the stores at 0x1DEC, 0x1DFC and 0x1E04).  The effect fn_75_1F50
+//     builds is the empty one (fn_75_1F98 clears the three optionals' valid bytes, asm 0x1F68,
+//     0x1F70 and 0x1F74), so the host's CImpactVisorEffect::None() is the same thing.
 void CSplitterCommandModule::PortHeadProjectileAim(CStateManager& mgr,
                                                    const rstl::string& locatorName) {
   // asm 0x1CC8-0x1CD0: the alive gate.
