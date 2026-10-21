@@ -169,6 +169,18 @@ The host does not reproduce the guest layout (the host object is larger than ret
 | `mPissedOff` | 0xD58 | the flag the PissedOff state clears (fn_10_F930) and the fight script sets; fn_10_FD30 reads it |
 | `mFadeOut` | 0xDEC | the fade flag; fn_10_117A0 and fn_10_BBE4 read it |
 | `mPickedAttack` | 0x984 | the word the fight script writes: the picked attack's id (the `Picked*` triggers compare it) |
+| `mLastAttackerUid` | 0xC24 | the uid of the attacker that hit the actor last: fn_10_1E26C pushes it and fn_10_1E740 (`ShouldForgetLastAttacker`) decides when the actor drops it again |
+
+**The guest's `CPathFindSearch` (0xEC at 0x7C0)** [proven from the DOL's constructor
+`__ct__15CPathFindSearchFP7CPFAreaUiiffUiQ29CPFRegion13ERootPosition` at 0x8013E6A0 and its
+`Search`]: +0x00 the area, **+0x04 the number of waypoints** (the `Search` appends at
++0x08 + count*12 and counts up at 0x8013DD78..0x8013DD80), +0x08 the 16 reserved waypoints
+(0xC0 bytes), **+0xC8 the current waypoint** (the `Search` clears it at 0x8013DCF8),
++0xCC the result, +0xD0 the height, +0xD4 the radius, +0xD8 the padding, +0xDC the avoidance
+filter, +0xE0 the flags, +0xE4 the index mask, +0xE8 the root position. So the guest's 0x7C4 is
+the waypoint count and the guest's 0x888 is the current waypoint: fn_10_1E740's test
+`0x888 >= 0x7C4 - 1` (0x0001E798..0x0001E7A8) is "the path find is over", which the host spells
+`GetSearchPath()->GetCurrentWaypoint() >= GetWaypoints().size() - 1`.
 
 ## 3. Loader `fn_10_CF44`
 
@@ -438,12 +450,29 @@ elapsed time grown in every Think the walk stays in `TravelToCoverPoints`.
 of its own (`fn_10_1D860`, `fn_10_128D8`, `fn_10_11334`, `fn_10_1E740`, `fn_10_1E3C0`,
 `fn_10_1E26C`, `fn_10_1C778`, `fn_10_1DD14`, `fn_10_1E178`, `fn_10_1D794`), so it is a chain of
 slices, not one body. The ones that are ported: `fn_10_1D794`, `fn_10_1E178`, `fn_10_1C778`,
-`fn_10_1E26C` and `fn_10_1E2E8`. The next ones, smallest first: `fn_10_128D8` (0xDC bytes: the
-position at 0x91C/0x920/0x924 and the flag byte at 0x928, but it calls `fn_10_EFC8`, a 0x1DC-byte
-body that walks the AI hints of the fight script's object), `fn_10_11334` (0xF4 bytes),
-`fn_10_1E3C0` (0xDC bytes: it walks the cover points of the fight script's object and needs
-`CScriptCoverPoint`), `fn_10_1E740` (0x120 bytes), `fn_10_1D860` (0x144 bytes), `fn_10_1DD14`
-(0x160 bytes) and then `fn_10_1DF74` itself (0x400 bytes).
+`fn_10_1E26C`, `fn_10_1E2E8` and `fn_10_1E740` (2026-10-21: `ShouldForgetLastAttacker` - the
+actor drops the attacker's uid when the path is shagged, when the path find is over, when the
+attacker has no cover point, or when the cover point is within 2 units (the squared distance
+against `lbl_10_rodata_408` = 4.0f at 0x0001E840); its only caller, `fn_10_1DF74`, clears the
+uid at 0xC24 when it answers true, 0x0001E048..0x0001E050). The ones that are left, and the
+helper each one needs (none of the helpers is in the REL's own tables, so each is a slice of its
+own): `fn_10_128D8` (0xDC bytes: the position at 0x91C/0x920/0x924 and the flag byte at 0x928,
+but it calls `fn_10_EFC8`, a 0x1DC-byte body that walks the AI hints of the fight script's
+object), `fn_10_11334` (0xF4 bytes: the emitter around the actor - the sound id at 0xC48 and the
+handle at 0xC4C; the DOL's `AddEmitter` takes the priority 0 (`lbl_8041E2E4`), rejects the
+invalid id 0x7FFF (`lbl_8041E2E6`) and the update's volume is `lbl_8041E9C8` = 0x7F), `fn_10_1E3C0`
+(0xDC bytes: it walks the cover points of the fight script's object and needs
+`CScriptCoverPoint`; it also calls `fn_10_1E360` and `fn_10_1E4C4`), `fn_10_1D860` (0x144 bytes:
+the additive animation - it calls `fn_10_13FFC`, a static helper that picks the animation
+parms), `fn_10_1DD14` (0x160 bytes: the separation - it calls `fn_10_1D9A4`, a 0x31C-byte helper
+that walks the repulsors and the path find regions) and then `fn_10_1DF74` itself (0x400 bytes).
+
+**The guest's 0xC48 / 0xC50** (2026-10-21): two sound ids the constructor writes from its stack
+arguments (the `lhz` at 0x0001FF3C and 0x0001FF40); 0xC48 drives the looping emitter of
+`fn_10_11334` (both of the DOL's `AddEmitter` flags set, 0x00011394/0x00011398) and 0xC50 an
+emitter in the Think with one of them off (0x0001B7AC/0x0001B7C4), but **which** loader property
+(`glideSound` / `missileRicochetSound`) lands in which of the two is **not** established - the
+constructor's ~50 stack arguments are still not mapped back to the loader's properties.
 
 **The fight script's object** (2026-10-21): the helper `fn_10_17E14` gets it from the uid at
 0x974 (`fn_10_17DE0`: the lhz at 0x00017DEC, `GetObjectById` at 0x00017DFC and the cast to
