@@ -1,0 +1,13 @@
+# DigitalGuardian area 53: the body (u054e) and head (u051b) are woken and the body is scanned
+# (console `scan`; the first call raises the scan visor): the scan display calls fn_14_9CA4 and
+# fn_14_9ABC.
+@f30 layer 3
+@f60 layer 11
+@f140 send u054e Activate; send u051b Activate
+@f300 scan u054e
+@f360 scan u054e
+@f420 scan
+@f520 scan
+@f620 scan
+@f760 scan
+@f900 scan

@@ -553,6 +553,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
       "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"
+      "scan <id> [d] [updates]     scan an actor: d (40) units away, orbit locked, L held (alone: progress)\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
@@ -2337,6 +2338,81 @@ void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// scan <id> [d] [updates]: a scan of an actor without aiming. The orbit candidate lists rarely
+// offer a big actor whose orbit point is far above the player, so this puts the player d (40)
+// units from the actor on its level, facing it, locks the orbit on it (CPlayer::PortForceOrbit:
+// what a lock-on press does) and holds L (lock-on and Scan Item) for `updates` (the scan's
+// download time plus 2 s). It takes two calls ~30 updates apart: the first raises the scan visor
+// and starts holding L, because the update that sees L go down runs UpdateOrbitSelection, which
+// would move a fresh lock to the player's next orbit candidate. A completed scan soft-pauses the game and the scan display renders the
+// actor (CScanDisplay::PrepareScanDisplay and Draw: GetScanVisorRenderBounds / ScanVisorRender
+// for a self-rendering CPatterned). `scan` alone prints the orbit target, scanning time and the
+// game state (2 = soft-paused: the scan display is up).
+void CmdScan(CStateManager& mgr, const Args& args, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  CPlayerState* state = mgr.PlayerState(0);
+  if (player == nullptr || state == nullptr) {
+    Fail("no player");
+    return;
+  }
+  char line[256];
+  if (args.size() < 2) {
+    std::snprintf(line, sizeof(line),
+                  "scan: visor %s, orbit state %d target u%04x, scanning time %.2f, game state %d\n",
+                  VisorName(state->GetCurrentVisor()), static_cast< int >(player->GetOrbitState()),
+                  player->GetOrbitTargetId().value, player->GetScanningTime(),
+                  static_cast< int >(mgr.GetGameState()));
+    out += line;
+    return;
+  }
+  const CEntity* ent = ResolveObject(mgr, args[1]);
+  const CActor* actor = ent != nullptr ? TCastToConstPtr< CActor >(ent) : nullptr;
+  float dist = 40.f;
+  if (actor == nullptr || (args.size() > 2 && (!ParseFloat(args[2], dist) || !(dist > 1.f)))) {
+    Fail("usage: scan <actor id> [dist > 1] [updates]   (`scan` alone: progress)");
+    return;
+  }
+  if (!state->HasVisor(CPlayerState::kPV_Scan)) {
+    Fail("scan visor not owned (`give scanVisor 1`)");
+    return;
+  }
+  static TUniqueId sArmed = kInvalidUniqueId;
+  if (state->GetCurrentVisor() != CPlayerState::kPV_Scan || sArmed != actor->GetUniqueId()) {
+    if (state->GetCurrentVisor() != CPlayerState::kPV_Scan) {
+      state->StartTransitionToVisor(CPlayerState::kPV_Scan);
+      if (CPlayerGun* gun = player->GetPlayerGun()) {
+        gun->HolsterGun(mgr);
+      }
+    }
+    sArmed = actor->GetUniqueId();
+    PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, 0);
+    out += "scan visor up, L held: repeat the command in ~30 updates\n";
+    return;
+  }
+  sArmed = kInvalidUniqueId;
+  const CScannableObjectInfo* info = actor->GetScannableObjectInfo();
+  const float download = info != nullptr ? info->GetTotalDownloadTime() : 0.f;
+  const unsigned updates = args.size() > 3 ? static_cast< unsigned >(ArgToInt(args[3], 0))
+                                           : static_cast< unsigned >(download * 60.f) + 120u;
+  const CVector3f target = actor->GetOrbitPosition(mgr);
+  CVector3f dir = player->GetTranslation() - actor->GetTranslation();
+  dir.SetZ(0.f);
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, -1.f, 0.f);
+  CVector3f pos = actor->GetTranslation() + dir * dist;
+  pos.SetZ(actor->GetTranslation().GetZ());
+  player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
+  player->PortForceOrbit(actor->GetUniqueId(), mgr);
+  PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, updates);
+  std::snprintf(line, sizeof(line),
+                "scan u%04x (orbit point %.1f, %.1f, %.1f, visor flags %x, download %.1f s)%s%s: "
+                "player at (%.1f, %.1f, %.1f), orbit locked, L held for %u updates\n",
+                actor->GetUniqueId().value, target.GetX(), target.GetY(), target.GetZ(),
+                actor->GetTargetableVisorFlags(), download, info != nullptr ? "" : "; no scan info",
+                actor->GetMaterialList().HasMaterial(kMT_Scannable) ? "" : "; not kMT_Scannable",
+                pos.GetX(), pos.GetY(), pos.GetZ(), updates);
+  out += line;
+}
+
 // stick <x> <y> [updates]: hold the main stick, -127..127 (0 holds until the next press/stick).
 void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
   (void)mgr;
@@ -2623,6 +2699,7 @@ constexpr SCommand kCommands[] = {
     {"take", CmdGiveTake, true},
     {"press", CmdPress, true},
     {"grapple", CmdGrapple, true},
+    {"scan", CmdScan, true},
     {"stick", CmdStick, true},
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
