@@ -1289,6 +1289,8 @@ void CSplitterCommandModule::PortUpdateEffectStates(CStateManager& mgr) {
 // SetVisorOrbitableFlags 0xF, true); with the shield state at 0xEDC at 2 (0x5D90 cmpwi) the timer
 // at 0xF1C is zeroed (0x5DA0); the shield state and the timer at 0xF18 are zeroed (0x5DB4,
 // 0x5DBC) and the effect states are updated (0x5DC0 fn_75_1578).
+// Not marked: shield state 2 is written only by fn_75_5DDC (0x5E28), whose one caller is the
+// chassis's SetupSpinAttack (fn_75_BAA8, 0xBB70), still a stand-in.
 void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
   SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
   if (mShieldState == 2) {

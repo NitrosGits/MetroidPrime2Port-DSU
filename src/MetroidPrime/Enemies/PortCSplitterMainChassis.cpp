@@ -1357,6 +1357,9 @@ void CSplitterMainChassis::PortReleasePlayerHint(CStateManager& mgr) {
 // morphed (its 0x38C in 0..1; 0xABDC-0xABF0): the hint's actor id becomes this actor's (0xABF4)
 // and the hint gets an "INCR" message (0xAC4C DeliverScriptMsg: this actor the sender, the player
 // the originator).
+// The no-hint arm ran forced (send <hint> Delete), the mid-morph return forced (press x + place);
+// the morph state is never below kMS_Unmorphed (the enum's 0..3).
+// @ fn_75_AB8C
 void CSplitterMainChassis::PortTakePlayerHint(CStateManager& mgr) {
   CScriptPlayerHint* hint = TCastToPtr< CScriptPlayerHint >(mgr.ObjectById(mConnectedObjectId));
   if (hint == nullptr || hint->GetActorId() == GetUniqueId()) {  // 0xABC0-0xABD4
@@ -1389,6 +1392,8 @@ static bool PortIsBoosting(const CPlayer& player) {
 // CCollisionActor::GetLastTouchedObject) is a boosting player (0xA020-0xA058) advances the spin
 // counter at 0xCFC by the data's 0x888 (0xA05C-0xA06C) and sets 0xD40's 0x2 bit (0xA070-0xA078).
 // Then the player hint is taken (0xA084 fn_75_AB8C).
+// Not marked: the 0xD41 0x80 (spin) bit is set only by SetupSpinAttack (fn_75_BAA8, 0xBB04-0xBB08),
+// still a stand-in, so the boosting-player arm cannot run yet.
 void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive) {  // 0x9FC8-0x9FCC
     return;
@@ -1422,6 +1427,8 @@ void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId send
 // - Anything else, while 0xD41's 0x80 bit is set (0x9ED0-0x9ED8) and the object is not a CAi
 //   (0x9EEC-0x9EF8), takes the spin attack damage the same way (lbl_75_data_CA0, 0x3B; 0x9F84),
 //   without the wait.
+// Not marked: the spin arms (0x9D20, 0x9ED0) need 0xD41's 0x80 bit, set only by SetupSpinAttack
+// (fn_75_BAA8, a stand-in); the boost (both senders) and leg stab arms ran forced (boost, fsm).
 void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive || (mFlagsD40 & 0x40) != 0) {  // 0x9BC8-0x9BD8
     return;

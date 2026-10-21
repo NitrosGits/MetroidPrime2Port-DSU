@@ -1441,3 +1441,22 @@ Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projecti
 | AB8C | player morphing/unmorphing (0xABE0-0xABF0) | not run → unmarked |
 | 9FA8 | spin bit 0x80 with a boosting player | not run → unmarked |
 | 9B9C | boosting player (target LCTR or not), leg stab, spin damage, the non-player spin arms | not run → unmarked (needs boost ball contact / the spin attack) |
+
+## Boost, morph and hint arms (2026-10-21)
+
+Runs (area 914f1381 layer 2, MP2_GODMODE=1): b3/b4 real speed (`give MorphBall 1; give BoostBall 1`,
+`press x 4; place u0532 player 1` mid-morph, then `place u0532 player <d>; boost` every 40 frames;
+fast mode never finished the morph); b1 (fast: `place u0532 player 3; fsm u0532 LegStabAttack`);
+b5 (`send u0528 Delete`, the area's CScriptPlayerHint, then `place u0532 player 1`); g2 rerun after
+port a19792273 (Deactivate route, still `Dodge:notarget`); g3 (`send <chassis> Delete` is now a
+real delete: the heads go LostChassisReaction → PathFind, SelectTarget gives them the player, so the
+Delete route never reaches Dodge's no-target arm - 4AC0 rests on the Deactivate route).
+
+| fn | arm | result |
+|---|---|---|
+| AB8C | hint free → take / held / no hint | ran (b4) / ran (b4) / forced (send Delete), b5 |
+| AB8C | morphing or unmorphing (0xABE0) | forced (press x + place), b3/b4 → marked |
+| 9B9C | boosting, sender the target LCTR / another actor | forced (boost), b4 |
+| 9B9C | leg stab damage (0x9CC8) | forced (fsm LegStabAttack + place), b1 |
+| 9B9C, 9FA8 | spin arms (0xD41 0x80: 0x9D20, 0x9ED0; 9FA8 0x9FD0) | blocked: the bit's one setter is SetupSpinAttack fn_75_BAA8 (0xBB04), a stand-in → unmarked |
+| 5D50 | shield state 2 (0x5D90) | blocked: written only by fn_75_5DDC (0x5E28), called only from BAA8 (0xBB70) → unmarked |
