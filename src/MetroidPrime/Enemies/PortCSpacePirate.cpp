@@ -314,6 +314,7 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
 
   // 0xFB30: the launcher block (data+0xc8) builds the grenade launcher's model.
   InitLauncherModel(data);
+  // 0xFB34-0xFB40: the data's projectile (+0x20) is not -1 (`addis 1` + `cmplwi 0xffff`).
   if (data.mProjectile != kInvalidAssetId) {
     mProjectileInfo = CProjectileInfo(data.mProjectile, data.mProjectileDamage);
   }
@@ -616,6 +617,12 @@ void CSpacePirate::SquadReset(CStateManager& mgr) {
 }
 
 // Tells the squad manager who this member is shooting at.
+// fn_72_DE5C (0x80): no squad (0xba0 == kInvalidUniqueId, asm 0xDE80-0xDE84) or a squad id that no
+// longer resolves to a CScriptTeamAiMgr (asm 0xDEA0-0xDEA4) does nothing; otherwise the member is
+// the pirate's own id (0x8, asm 0xDEB8) and its target the attack target (0xa94, asm 0xDEA8).
+// All three arms ran (tools/cov, 07_sand_alamoportalobservation L3 with the squads deleted before
+// round 2, 2026-10-21): no squad 10051 entries, the cast 20000 times and SetMemberTargetId 319.
+// @ fn_72_DE5C
 void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     return;
@@ -625,6 +632,9 @@ void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
   }
 }
 
+// fn_72_EFD4 (0xCC): a squad (0xba0 != kInvalidUniqueId, asm 0xF00C) that still resolves (asm
+// 0xF028) and has this member within 20 units (rodata B74 = 20.0, asm 0xF040-0xF04C) picks the
+// best individual target (asm 0xF060); every other case falls to ChoosePlayer (asm 0xF068-0xF07C).
 TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
   if (xba0_teamAiMgrId != kInvalidUniqueId) {
     CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
@@ -1632,6 +1642,11 @@ uchar CSpacePirate::GetModelAlphau8(const CStateManager& mgr) const {
   return mColor.GetAlphau8();
 }
 
+// fn_72_4F0C: the null arm is dead in the shipped data. The optional is built only for a valid
+// projectile id (the ctor's 0xFB34-0xFB40) and every one of the 65 PIRT placements carries the
+// projectile property 0xef485db9 = 0x681ed507 (tools/scan_pirt_props.py with that property added,
+// 2026-10-21); the built arm ran in every run.
+// @ fn_72_4F0C
 CProjectileInfo* CSpacePirate::ProjectileInfo() {
   // 0x4F0C-0x4F14: the optional's built flag (0xbfc); set -> this+0xbd4 (0x4F18), clear -> null (0x4F20).
   return mProjectileInfo.valid() ? &mProjectileInfo.data() : nullptr;

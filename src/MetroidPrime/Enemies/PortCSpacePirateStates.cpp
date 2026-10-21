@@ -955,8 +955,12 @@ void CSpacePirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_DFD4: find the squad this pirate belongs to (the field starts invalid) and take a
-// role in it - melee or projectile, the same role SquadReset later gives up.
+// Retail fn_72_DFD4 (0xBC): find the squad this pirate belongs to (the field starts invalid) and take a
+// role in it - melee or projectile, the same role SquadReset later gives up. An invalid 0xba0 (asm
+// 0xE000) asks GetAssociatedTeamId and stores the answer (asm 0xE014-0xE01C); a still-invalid id
+// (asm 0xE02C) or one that is no CScriptTeamAiMgr (asm 0xE04C) ends it. The role is the 0x8f4 byte's
+// melee bit (bit 27, asm 0xE060): set 1 = kTAR_Melee (asm 0xE068), clear 2 = kTAR_Projectile (asm
+// 0xE05C); then 3 = kTAR_Unknown (asm 0xE06C) and -1 = kTAR_Invalid (asm 0xE070).
 void CSpacePirate::SquadJoin(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     xba0_teamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);

@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Coverage driver for the SpacePirate module (tools/drivers/spacepirate_cov.sh): wake the
-pirates, fight them with live aim, then force the states the area's FSM never reaches on one
-pirate (`fsm <id> <state>`, labelled "forced" in the coverage) and kill one.
+"""Coverage driver for the SpacePirate module (tools/cov/run.sh with tools/cov/specs/spacepirate.py):
+wake the pirates, fight them with live aim, then force the states the area's FSM never reaches on
+one pirate (`fsm <id> <state>`, labelled "forced" in the coverage) and kill two.
 
 usage: spacepirate_drive.py <port> [layer|-] [rounds]
+env:   SP_FORCE      the states to force (default below)
+       SP_FORCE_EID  editor id (8 hex digits, as `objs` prints it) of the pirate to force; default the first
+       SP_DELETE_TEAM=<n>  before round n, delete every CScriptTeamAiMgr (`send <id> Delete`), so
+                     the members' squad ids go stale for the rest of the run
 
 It talks to the port's debug console (MP2_CONSOLE): it switches the area's layer, reads the
 pirates with `objs spacepirate`, activates each of them with `send <id> Activate`, then puts
@@ -106,6 +110,7 @@ def aim_at(px, py, pz, tx, ty, tz):
 
 
 
+TEAM = re.compile(r'u([0-9a-f]+) [0-9a-f]{8}\s+CScriptTeamAiMgr')
 FORCED = os.environ.get('SP_FORCE', 'JumpBack Halt Approach TurnAround Shuffle DoubleSnap Crouch '
                         'CoverAttack Cover GetUp WallHang LaunchGrenade WarpIn Generate Captured '
                         'Deactivate').split()
@@ -128,7 +133,13 @@ def main():
     print('driver: %d pirates: %s' % (len(ps), [(hex(p[0]), hex(p[4])) for p in ps]), flush=True)
     for p in ps:
         c.cmd('send u%04x Activate' % p[0])
+    delete_at = int(os.environ.get('SP_DELETE_TEAM', '-1'))
     for r in range(rounds):
+        if r == delete_at:
+            for m in TEAM.finditer(c.cmd('objs teamai')):
+                print('driver: delete team u%s %s' % (m.group(1), c.cmd('send u%s Delete' % m.group(1)).splitlines()[-1:]),
+                      flush=True)
+            time.sleep(2)
         ps = pirates(c.cmd('objs spacepirate'))
         if not ps:
             break
@@ -141,8 +152,11 @@ def main():
         print('driver: round %d at u%04x' % (r, uid), flush=True)
         time.sleep(3)
     ps = pirates(c.cmd('objs spacepirate'))
+    want = os.environ.get('SP_FORCE_EID', '').lower()
+    ps = [p for p in ps if '%08x' % p[4] == want] or ps
     if ps:
         uid = ps[0][0]
+        print('driver: forcing u%04x %08x' % (uid, ps[0][4]), flush=True)
         for st in FORCED:
             print('driver: forced %s -> %s' % (st, c.cmd('fsm u%04x %s' % (uid, st)).splitlines()[-1:]),
                   flush=True)

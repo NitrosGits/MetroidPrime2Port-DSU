@@ -508,7 +508,7 @@ The SpacePirate module is at **95 marked bodies of 262** (the module's own count
 ## 8. Classification and gdb coverage (2026-10-21)
 
 `SpacePirate_functions.tsv` (next to this note) classifies all 262 `.text` functions: **B 145** (module
-behaviour, 0xD9EC bytes; 94 marked, 51 unmarked), **H 107** (0x3B94: host copies of shared code - the REL
+behaviour, 0xD9EC bytes; 97 marked, 48 unmarked), **H 107** (0x3B94: host copies of shared code - the REL
 runtime 11A30-11BFC, weak/EH dtors, the CBC*Cmd deleting dtors (vtables data_A8C-B20), rstl list/vector
 templates, TToken copy chains, the SLdr ctor/dtor/reader 109C/FE8/13A4/149C (`LoadTypedefSpacePirateWeaponData`
 on the host), B9E0, 5418/5510, 8A44, 10568, the copy ctors 106D4/108D8/10954, the dtor F10C/F1CC/F3B0/F444,
@@ -519,13 +519,17 @@ BounceFind 602C, Bounce 5D0C or PathFindEx 5EA4 (those names only appear in othe
 `0x7a71739a`/`0x7d9a41a2`/`0x214e18eb`/`0x68a7f573`); 5E28 is only called from 5D0C; 2EA0, EDDC and EDE4 have no
 reference at all. 686C ShouldJumpBack stays B: JumpBack 63C8 calls it directly.
 
-**Coverage without probes**: `tools/drivers/spacepirate_cov.sh <out> [world,area] [layer] [rounds] [frames]`
-launches the game under gdb (ptrace_scope=1 forbids attaching later) with non-stopping entry breakpoints from
-`spacepirate_cov.py`, which record per function the arm key (member bits read on the entry registers, the
-message, the bool result); `spacepirate_drive.py` wakes and fights the pirates over the console, then forces
-the states the FSM does not reach (`fsm <id> <state>`) on one pirate and kills two. Results are labelled
-*forced* below when only the forced state ran them. Runs: 08_sand_casualpirates (no layer) and
-07_sand_alamoportalobservation L3, 14000 frames each, 0 `[port] caught` / reach-stub.
+**Coverage without probes**: the shared harness `tools/cov/run.sh` (docs/LANE_BRIEF.md, "Coverage without
+probes") with the spec `tools/cov/specs/spacepirate.py` and the driver `tools/drivers/spacepirate_drive.py`:
+
+    tools/cov/run.sh tools/cov/specs/spacepirate.py <out> 42b935e4,08_sand_casualpirates \
+      --driver "python3 tools/drivers/spacepirate_drive.py {port} 3 8" --frames 14000 --env MP2_DEBUG_SPACEPIRATE=1
+
+The driver wakes and fights the pirates over the console, then forces the states the FSM does not reach
+(`fsm <id> <state>`, env `SP_FORCE`, on the pirate `SP_FORCE_EID`) and kills two; `SP_DELETE_TEAM=1` deletes
+the squad managers before two last rounds. Results are labelled *forced* below when only the forced state
+ran them. Runs: 08_sand_casualpirates (no layer) and 07_sand_alamoportalobservation L3, 14000 frames each,
+0 `[port] caught` / reach-stub.
 
 Marked from these runs (11): `10` IsListening, `8` GetSearchPath (400+ calls, branchless), `C488` Stuck (all
 four arms: 400 entries vs 181 CPatterned::Stuck calls = the `<= 0.5 s` arm; CPatterned::Stuck true once;
@@ -534,18 +538,24 @@ Stuck true 7 times = PathShagged true, which is a tail call, so the caller-filte
 `E090` GetOrigin (400+, the alamo team AI), `BBB0` Halt, `9478` Approach, `A310` CoverAttack and `5BF4`
 Deactivate (*forced*: every message ran).
 
-Unmarked B (51) and what each still lacks:
+Marked from the 2026-10-21 tools/cov runs (3): `4F0C` ProjectileInfo (null arm data-dead: every one of the
+65 PIRT placements carries the projectile 0xef485db9 = 0x681ed507, and the ctor builds the optional only for a
+valid id, 0xFB34-0xFB40), `689C` AnimOver (wall-hang arm once, from a *forced* WallHang), `DE5C`
+UpdateTeamTarget (`SP_DELETE_TEAM=2` in alamo L3: cast 20000, SetMemberTargetId 319, so the stale-id arm ran).
+
+Unmarked B (48) and what each still lacks:
 - Never called in the runs: `0`/`18`/`24`/`17A0` (vtable thunks; the host inlines the direct calls),
   `C9DC`/`CA94` (only on a cinematic-camera edge in Think), `18BC` TryToBeCaptured (a capture), `51C8`
   TrooperWarpOut, `6328` BreakAttack, `99F0` DoubleSnap (no such state name in the AFSM: `fsm` refuses it),
   `A71C` ShouldAttack, `D608` (from Shuffle's close branch).
-- Partly covered: `686C` ShouldJumpBack (the 0x8f4 mask 0x08 bit is never set: only the "true" arm), `689C`
-  AnimOver (never in a wall hang), `77D0` ShouldWarpIn (**its true arm does run**: troopers with `x8fa_26_` in
+- Partly covered: `686C` ShouldJumpBack (bit set in 11 placements, e.g. casual L3 `0036013d`: bit clear -> 1
+  and bit set with hold time <= 6 -> 0 ran; bit set with the player still > 6 s did not), `77D0` ShouldWarpIn (**its true arm does run**: troopers with `x8fa_26_` in
   both areas return 1; the "warp point set" and "trooper without x8fa_26_" arms do not), `4F0C` ProjectileInfo
-  (every pirate has projectile info), `98D8` Crouch (*forced*, no cover point: only the null-cover arm),
-  `DE5C` UpdateTeamTarget (no-team and team arms ran; the stale-id cast-null arm did not), `A8D0`/`A988`/`AA64`
+  `98D8` Crouch (*forced*, no cover point: only the null-cover arm),
+  `A8D0`/`A988`/`AA64`
   (cover triggers, a few calls each), `3220` ShouldFrenzy (true in alamo, false in casual; its inner arms not
-  traced), `CE30`, `EDEC`, `EFD4`, `DFD4`, `E3D8` (ragdoll branch), and the *forced*-only states `5610`, `58D8`,
+  traced), `CE30`, `EDEC`, `EFD4` (in-range -> FindBestIndividualAttackTarget never ran), `DFD4` (only the
+  invalid-at-entry path, JoinTeam twice with the projectile role; entry-valid, cast-null and melee did not), `E3D8` (ragdoll branch), and the *forced*-only states `5610`, `58D8`,
   `69AC`, `7078`, `8464`, `8670`, `A3C0`, `B3D4`, `C1A4` (messages ran, inner arms not traced).
 - Not traced: the module head `90`/`B4`/`D4` (the host's REL runtime registers the module), the loader `140`,
   `C0C`, the ctor `F49C`, `10A10`, `10C64`, `10CE4`, `1854`, `2EA8`, the grenade bodies `3D7C`/`4030`/`4174`,

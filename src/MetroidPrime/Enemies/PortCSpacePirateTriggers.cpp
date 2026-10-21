@@ -504,6 +504,11 @@ bool CSpacePirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) 
   return result;
 }
 
+// fn_72_689C (0x48): in a wall hang (the 0x8f7 byte's bit 29, asm 0x68AC) the animation is over
+// once the body has left kAS_WallHang (20; the body controller 0x48c, its state 0x37c, asm 0x68B4-0x68C8 is the branchless `state != 20`);
+// otherwise CPatterned::AnimOver (asm 0x68D0). Both arms ran (tools/cov, 08_sand_casualpirates L3 and
+// 07_sand_alamoportalobservation L3, 2026-10-21); the wall-hang arm only from a forced WallHang.
+// @ fn_72_689C
 bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   if (x8f7_29_inWallHang) {
     return GetBodyController()->GetCurrentStateId() != pas::kAS_WallHang;
@@ -761,6 +766,9 @@ bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
   return result;
 }
 
+// fn_72_686C (0x30): true unless the 0x8f4 byte's bit 28 (mask 0x08, the data flag 0x10; asm
+// 0x6874 `extrwi.`) is set; with it set, true once the hold-position time (0xbac) is above 6
+// (rodata BE8 = 6.0, asm 0x6880-0x688C `fcmpo` + `ble`).
 bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
   return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
 }

@@ -84,7 +84,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x4E40	0x54	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4E40
 0x4E94	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4E94
 0x4ED0	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4ED0
-0x4F0C	0x1C	CSpacePirate	ProjectileInfo -> &xbd4	virtual	B	data_8D8	-	unmarked	fn_72_4F0C
+0x4F0C	0x1C	CSpacePirate	ProjectileInfo -> &xbd4	virtual	B	data_8D8	-	marked	fn_72_4F0C
 0x4F28	0x9C	CSpacePirate	InitLauncherModel	method	B	F49C	-	marked	fn_72_4F28
 0x4FC4	0x30	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4F28	rstl::optional_object assign	unmarked	fn_72_4FC4
 0x4FF4	0x48	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4FC4	rstl::optional_object assign	unmarked	fn_72_4FF4
@@ -117,7 +117,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x63C8	0x448	CSpacePirate	JumpBack (state)	fsm-state	B	data_598	-	marked	fn_72_63C8
 0x6810	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AE4	CBodyStateCmd subclass dtor	unmarked	fn_72_6810
 0x686C	0x30	CSpacePirate	ShouldJumpBack (trigger)	fsm-trigger	B	63C8 data_184	-	unmarked	fn_72_686C
-0x689C	0x48	CSpacePirate	AnimOver (trigger)	fsm-trigger	B	data_118	-	unmarked	fn_72_689C
+0x689C	0x48	CSpacePirate	AnimOver (trigger)	fsm-trigger	B	data_118	-	marked	fn_72_689C
 0x68E4	0xC8	CSpacePirate	WallDetach (state)	fsm-state	B	data_55C	-	marked	fn_72_68E4
 0x69AC	0x33C	CSpacePirate	WallHang (state)	fsm-state	B	data_550	-	unmarked	fn_72_69AC
 0x6CE8	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AC8	CBodyStateCmd subclass dtor	unmarked	fn_72_6CE8
@@ -206,7 +206,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xD800	0x348	CSpacePirate	UpdateGuardPosition	method	B	8464 8A90 98D8 99F0 9F1C A310 A3C0 AF70 BFCC	-	marked	fn_72_D800
 0xDB48	0x8C	CSpacePirate	LineOfSightRay	method	B	45F8 D800	-	marked	fn_72_DB48
 0xDBD4	0x288	CSpacePirate	CheckForProjectiles	method	B	1980	-	marked	fn_72_DBD4
-0xDE5C	0x80	CSpacePirate	UpdateTeamTarget	method	B	1980 7970 AF70 B59C CB30 E120 E498	-	unmarked	fn_72_DE5C
+0xDE5C	0x80	CSpacePirate	UpdateTeamTarget	method	B	1980 7970 AF70 B59C CB30 E120 E498	-	marked	fn_72_DE5C
 0xDEDC	0x50	CSpacePirate	SquadReset	method	B	28F0 5C10 B3D4	-	marked	fn_72_DEDC
 0xDF2C	0xA8	CSpacePirate	SquadAdd (team membership)	method	B	E498	-	marked	fn_72_DF2C
 0xDFD4	0xBC	CSpacePirate	SquadJoin	method	B	B59C C1A4	-	unmarked	fn_72_DFD4
