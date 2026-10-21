@@ -1059,6 +1059,7 @@ list(APPEND MP_GAME_SOURCES
     src/Kyoto/Graphics/PortDrawDebug.cpp
     src/MetroidPrime/PortCMorphBallVtables.cpp
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
+    src/MetroidPrime/PortCVisualKnowledge.cpp
     src/MetroidPrime/PortDataGlobals.cpp
     src/MetroidPrime/PortDefaultFont.cpp
     src/MetroidPrime/PortEfbCopy.cpp

@@ -30,6 +30,7 @@
 #include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CParticleDatabase.hpp"
 #include "rstl/StringExtras.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "MetroidPrime/Enemies/CDigitalGuardianHead.hpp"
@@ -338,14 +339,15 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   }
 
 
-  // The locator ids the retail constructor resolves with GetLocatorSegId (the calls from 0xBAF0
-  // on): 0x10B9 is "neck_SDK" (the store at 0xBAFC), 0x10C0..0x10C3 the four knee locators
+  // The locator ids the retail constructor resolves with GetLocatorSegId (the calls from 0xBAB4
+  // on): 0x10B8 is "Head_1" (.rodata 0x6BF, the store at 0xBAC8), 0x10B9 "neck_SDK" (0xBAFC), 0x10C0..0x10C3 the four knee locators
   // ("L_front_knee_2", "L_back_knee_2", "R_front_knee_2", "R_back_knee_2" - the stores at
   // 0xBB30, 0xBB64, 0xBB98 and 0xBBCC) and 0x10D4..0x10D7 the four ankle locators
   // ("L_front_ankle", "L_back_ankle", "R_front_ankle", "R_back_ankle" - the stores at 0xBCD0,
   // 0xBD04, 0xBD38 and 0xBD6C). The ids at 0x10C8..0x10CB (the "*_col_LCTR" locators) belong
   // to the melee trigger and are not resolved yet.
   const CAnimData* anim = GetAnimationData();
+  x10B8_ = anim->GetLocatorSegId(rstl::string_l("Head_1")).val();
   x10B9_ = anim->GetLocatorSegId(rstl::string_l("neck_SDK")).val();
   x10C0_ = anim->GetLocatorSegId(rstl::string_l("L_front_knee_2")).val();
   x10C1_ = anim->GetLocatorSegId(rstl::string_l("L_back_knee_2")).val();
@@ -1134,15 +1136,37 @@ void CDigitalGuardian::Render(const CStateManager& mgr) const {
   sRendering = 0;
 }
 
-// vtable slot 13 = fn_14_A138.
+// vtable slot 13 = fn_14_A138: after the base, the other bounds (0xCC) take in the model's own
+// bounds (0xA18C) and the particles' total bounds when there are any (0xA1B8); they become the
+// other and render bounds (0xE4). The echo emitter (0xC8), if any, goes inactive with bit 0x08 of
+// 0x128C (extrwi. 1, 28); else, with the beacon model (0x11EC) and its height (0x1264) above 0
+// (.rodata 0x264), it takes the model's bounds at fn_14_2578's transform.
+// Unmarked: area-53 run 37 ran the no-emitter arm only (with and without particle bounds).
 void CDigitalGuardian::PreRenderAllViewports(CStateManager& mgr) {
-  StandIn("CDigitalGuardian::PreRenderAllViewports (vtable slot 13, fn_14_A138)");
   CPatterned::PreRenderAllViewports(mgr);
+  CAABox bounds = GetOtherBounds();
+  bounds.Include(GetModelData()->GetBounds());
+  const rstl::optional_object< CAABox > particles =
+      GetModelData()->GetAnimationData()->GetParticleDB().GetTotalBounds();
+  if (particles) {
+    bounds.Include(*particles);
+  }
+  SetOtherBounds(bounds);
+  SetRenderBounds(bounds);
+  if (CEchoEmitter* echo = EchoEmitter()) {
+    if ((x128C_ & 0x08) != 0) {
+      echo->SetActive(false);
+    } else if (x11EC_ && x1264_ > 0.f) {
+      CTransform4f xf = CTransform4f::Identity();
+      x2578_(xf, GetTransform());
+      echo->SetBounds(x11EC_->GetBounds(xf));
+    }
+  }
 }
 
 // vtable slot 15 = fn_14_10C (0x2C): it calls the vtable's HealthInfo slot (0x38) and returns
-// its result, which is what the base class's own accessor does.
-// @ fn_14_10C
+// its result, which is what the base class's own accessor does: a REL copy of the DOL's
+// CActor::GetHealthInfo (0x8000B900, the same 11 instructions), so it is cited, not marked.
 const CHealthInfo* CDigitalGuardian::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
 // fn_14_9FE4 (vtable slot 16): the "pass through" vulnerability (the call at 0x9FF0) is the
@@ -1152,16 +1176,29 @@ const CDamageVulnerability* CDigitalGuardian::GetDamageVulnerability() const {
 }
 
 // fn_14_10 (vtable slot 18): the actor's bounding box (the GetBoundingBox call at 0x28) is the
-// touch bounds, and the optional is always valid (the byte at 0x18 is set to 1 at 0x30).
-// @ fn_14_10
+// touch bounds, and the optional is always valid (the byte at 0x18 is set to 1 at 0x30). A REL
+// copy of the DOL's CPatterned::GetTouchBounds (0x80073BF0, the same 26 instructions), so it is
+// cited, not marked.
 rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
   return rstl::optional_object< CAABox >(GetBoundingBox());
 }
 
-// vtable slot 21 = fn_14_9E88.
+// vtable slot 21 = fn_14_9E88: the "Head_1" locator's position (0x10B8, CPatterned's
+// GetLctrTransform). With the guard's collision actor (0x10CC) active, its translation plus 4
+// (.rodata 0x2A8) times the scale's z along up; else, with 0x11B8 set, only z becomes the
+// translation's z plus 5 (.rodata 0x27C) times the scale's z. dt is unused.
+// Unmarked: area-53 run 37 ran the active collision actor arm only.
 CVector3f CDigitalGuardian::GetAimPosition(const CStateManager& mgr, float dt) const {
-  StandIn("CDigitalGuardian::GetAimPosition (vtable slot 21, fn_14_9E88)");
-  return CPatterned::GetAimPosition(mgr, dt);
+  const CVector3f locator = GetLctrTransform(CSegId(x10B8_)).GetTranslation();
+  const float scaleZ = GetModelData()->GetScale().GetZ();
+  const CCollisionActor* col = TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(x10CC_));
+  if (col != nullptr && col->GetActive()) {
+    return col->GetTranslation() + CVector3f::Up() * (4.f * scaleZ);
+  }
+  if (x11B8_ != 0) {
+    return CVector3f(locator.GetX(), locator.GetY(), GetTranslation().GetZ() + 5.f * scaleZ);
+  }
+  return locator;
 }
 
 // vtable slot 28 = fn_14_A468: it dispatches through the jump table jumptable_14_data_5CC, whose

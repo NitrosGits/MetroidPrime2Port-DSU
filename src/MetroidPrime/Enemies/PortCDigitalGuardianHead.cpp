@@ -157,9 +157,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDC4_{kInvalidUniqueId, kInvalidUniqueId} // 0x18358
 , xDD0_(LdrToDamageVulnerability(data.bombPitVulnerability)) // 0x18370
 , xE00_(kInvalidUniqueId)
-, xDA0_(kInvalidUniqueId)
-, xDB0_(0.f)
-, xDB8_(0)
+, xD80_(uid, CSegId(), 0.1f, 0.05f) // 0x183F8: no locator (0xFF), .rodata 0x9F4 / 0x9F8
 , xEF4_()
 , xF04_()
 , xF14_()
@@ -231,18 +229,18 @@ void CDigitalGuardianHead::EnsureBodyActive(CStateManager& mgr) {
 }
 
 // fn_14_17C98: only while active. The base's Think, then the collision actor manager's update
-// (object space, the li r5, 0 at 0x17CD8), the visual knowledge's update (0xD80), the timers
-// (fn_14_13AE0), fn_14_12818 and fn_14_1223C.
+// (object space, the li r5, 0 at 0x17CD8), the visual knowledge's update (0xD80, 0x17CEC), the
+// timers (fn_14_13AE0), fn_14_12818 and fn_14_1223C. The manager is not null-tested (0x17CCC):
+// XCRT, which CStateManager::AddObject delivers before any Think, builds it (fn_14_13318).
+// @ fn_14_17C98
 void CDigitalGuardianHead::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
-  if (xD70_ != nullptr) { // retail calls it unchecked; the port builds no manager yet
-    xD70_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
-  }
-  StandInFn("CVisualKnowledge::Update (head 0xD80)");
+  xD70_->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace); // built on XCRT (fn_14_13318)
+  xD80_.Update(mgr, dt);
   x13AE0_(dt);
   x12818_(mgr, dt);
   x1223C_(mgr);
@@ -355,8 +353,10 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
 // it, the 0x1038 platform excludes the player (material 32, the ori at 0x12A38), the ball gets
 // 0xDD0, bit 0x80 is set and the bombs there are pulled in (fn_14_126C8 with r^2); out of range
 // the ball is pass-through again. .rodata 0x960 is 0.
-// Unmarked: area-53 runs ran every arm except in-range with no platform at 0x1038 (morphed in a
-// bomb slot before the retreat). The inactive-ball arm ran only with a console DCTV on the ball.
+// Unmarked: area-53 runs ran every arm but the inactive ball, which ran only with a console DCTV
+// (run 37 ran in-range with no platform: morphed in a slot before the retreat). A slot's ball goes
+// inactive in fn_14_1303C only after fn_14_12B04 set its 0xF28 sound, so the arm needs that
+// sound's PlayCustomSound to return no handle.
 void CDigitalGuardianHead::x12818_(CStateManager& mgr, float dt) {
   x10F5_ &= ~0x80;
   if ((x10F4_ & 0x10) == 0) {
@@ -896,6 +896,7 @@ bool CDigitalGuardianHead::IsBurstOver(CStateManager& mgr, const CTriggerData& d
 }
 
 // fn_14_173AC: bit 0x80 of 0x10F4 (extrwi 1, 24).
+// Unmarked: run 37 entered Idle (0x10F4 0x88) but no trigger read IsIdle there; true never ran.
 bool CDigitalGuardianHead::IsIdle(CStateManager& mgr, const CTriggerData& data) const {
   return (x10F4_ & 0x80) != 0;
 }
@@ -966,13 +967,13 @@ bool CDigitalGuardianHead::IsAntennaTransmitting(CStateManager& mgr,
 }
 
 // fn_14_171F8: with no visual target (0xDA0 invalid) the answer is true; else the target must be
-// seen (bit 0x80 of 0xDB8, extrwi. 1, 24) for longer than 2.25 (.rodata 0x9DC, 0xDB0). The visual
-// knowledge is not ported, so its target stays invalid.
+// seen (bit 0x80 of 0xDB8, extrwi. 1, 24) for longer than 2.25 (.rodata 0x9DC, 0xDB0).
+// @ fn_14_171F8
 bool CDigitalGuardianHead::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
-  if (xDA0_ == kInvalidUniqueId) {
+  if (xD80_.GetVisualTarget() == kInvalidUniqueId) {
     return true;
   }
-  return (xDB8_ & 0x80) != 0 && xDB0_ > 2.25f;
+  return xD80_.IsTargetVisible() && xD80_.GetVisibleTime() > 2.25f;
 }
 
 // fn_14_171EC: bit 0x02 of 0x10F4 (extrwi 1, 30).
@@ -1000,6 +1001,7 @@ bool CDigitalGuardianHead::BombPitDestroyed(CStateManager& mgr, const CTriggerDa
 }
 
 // fn_14_17184: the lives left (0x10E4, a word) at most 0.
+// Unmarked: true never ran; no fight with the probes has reached the head's death yet.
 bool CDigitalGuardianHead::IsDead(CStateManager& mgr, const CTriggerData& data) const {
   return x10E4_ <= 0;
 }
@@ -1248,7 +1250,8 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
 // (extrwi. 1, 27; the head armour is gone) and 0x1038 a platform, it is instead the attack area's
 // point at the angle (fn_14_11698, fn_14_11788) of the centre plus 50 (.rodata 0x9C4) along the
 // direction to the platform.
-// Unmarked: area-53 runs ran the armour-on and platform arms only. With armour off, 0x1038 holds no
+// Unmarked: area-53 runs ran the armour-on and platform arms only (run 37's bombs in a slot before
+// the retreat destroyed none, so no armour-off stun came first). With armour off, 0x1038 holds no
 // platform until SelectRetreatPlatform runs, and the platforms' waypoints span z -18.12..-9.21
 // across the centre's -16.74, so neither arm is excluded by the data. A failed fn_14_11698 cannot
 // happen: once d is magnitude-safe, centre + 50 d/|d| is off the centre.
@@ -1278,7 +1281,7 @@ void CDigitalGuardianHead::SetAttackPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation();
   CVector3f points[3];
   const int count = x118B0_(points);
-  if ((xDB8_ & 0x80) != 0 && xDB0_ > 2.25f) {
+  if (xD80_.IsTargetVisible() && xD80_.GetVisibleTime() > 2.25f) {
     xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count);
   } else {
     const CVector3f move = GetTranslation() - xFF8_;
@@ -1305,6 +1308,13 @@ void CDigitalGuardianHead::StartSplitterDeployment(CStateManager& mgr, float dt)
   x10E8_ = AllSplittersDead(mgr, CTriggerData(0.f)) ? xF390_(mgr) : 0;
 }
 
+// fn_14_1524C: the player (the state manager's 0x14FC) becomes the visual knowledge's target
+// (CVisualKnowledge::SetVisualTarget, 0x15334).
+// @ fn_14_1524C
+void CDigitalGuardianHead::SeekLineOfSight(CStateManager& mgr, float dt) {
+  xD80_.SetVisualTarget(mgr.GetPlayer(0)->GetUniqueId());
+}
+
 #define DGHD_CODE_STANDIN(name, fn)                                                                \
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
@@ -1312,10 +1322,6 @@ void CDigitalGuardianHead::StartSplitterDeployment(CStateManager& mgr, float dt)
 DGHD_CODE_STANDIN(ResetProjectileAttackTimes, fn_14_15598)
 DGHD_CODE_STANDIN(SelectProjectileAttack, fn_14_15448)
 DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
-// fn_14_1524C makes the player the visual knowledge's target (CVisualKnowledge::SetVisualTarget
-// at 0xD80: 0xDA0 = the player, bit 0x80 of 0xDB8 and the times 0xDAC..0xDB4 cleared). Its
-// Update is not ported, so a set target would never be seen and HasLineOfSight would stay false.
-DGHD_CODE_STANDIN(SeekLineOfSight, fn_14_1524C)
 DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
 DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
 DGHD_CODE_STANDIN(EnableDynamicCollision, fn_14_14828)
@@ -1372,7 +1378,8 @@ void CDigitalGuardianHead::EndSplitterDeployment(CStateManager& mgr, float dt) {
 // 6's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the gun 3.
 // A pulse fires a burst of 3 (0x10D8), the rest none.
 // Unmarked: area-53 runs ran the splitter, first-shot and random 0 and 2 arms. Random 1 and 3 need
-// more fights, since each fight makes one random pick.
+// more fights: the first random pick comes after the first shot and the splitters (run 37's five
+// fights, four of them stopped 20 s after VULN, made none).
 void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
   const SLdrDigitalGuardianHeadStruct& odds = mData.digitalGuardianHeadStruct_0x48b46e55;
   if (!AllSplittersDead(mgr, CTriggerData(0.f))) {
@@ -1401,7 +1408,6 @@ void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
 // fn_14_13F70: the IS02/ATCH player hint, unless already this head's, takes this head as its
 // actor (0x1AC) and gets INCR from this head on the player's behalf. The area-53 placement's only
 // IS02/ATCH link is PlayerHint 0x0C35001D, so the hint is always there.
-// @ fn_14_13F70
 // @ fn_14_13F70
 void CDigitalGuardianHead::GrabPlayerHintControl(CStateManager& mgr, float dt) {
   CScriptPlayerHint* hint = TCastToPtr< CScriptPlayerHint >(

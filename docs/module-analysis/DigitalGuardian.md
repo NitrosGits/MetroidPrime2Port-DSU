@@ -1333,3 +1333,36 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
     run scripts read ROOT and BALL0 from it.
   - The DGNEW lines in 14470 and the other bodies, and the `DGC` arm counters (`probe35.py`), are
     evidence only.
+
+## 2026-10-21: CVisualKnowledge, body aim/pre-render, run 37
+
+- `fn_14_10` and `fn_14_10C` are REL copies of DOL functions, so they are cited, not marked:
+  `CPatterned::GetTouchBounds` (0x80073BF0, the same 26 instructions) and
+  `CActor::GetHealthInfo` (0x8000B900, 11 instructions).
+- CVisualKnowledge (DOL 0x801F55F0..0x801F59D0) is now a shared port-only class:
+  `include/MetroidPrime/CVisualKnowledge.hpp`, `src/MetroidPrime/PortCVisualKnowledge.cpp` (listed
+  in `tools/gen_files_cmake.py` PORT_ONLY). CommandoPirate's stand-ins can use it too. The head
+  keeps one at 0xD80 (ctor 0x183F8: no locator, 0.1 + 0.05 × Float() s). Think updates it, 1524C
+  sets the player as its target, and HasLineOfSight / SetAttackPosition read it.
+- Body: `x10B8_` is the "Head_1" locator (.rodata 0x6BF, store 0xBAC8). A138 (pre-render bounds and
+  echo emitter) and 9E88 (aim position) are ported.
+- Run 37: one full fight plus four short ones (stopped 20 s after VULN), `/tmp/opencode/dghd2/run37.sh
+  <tag> <port> <display> full|short` and `probe37.py` (probe35 plus a head FSM state trace `DGST`,
+  CVisualKnowledge / A138 / 9E88 counters and a dump in the head's destructor). Save clean copies
+  of the probed files first and restore them afterwards: the sed strip breaks one-line bodies.
+  - CVisualKnowledge works: VK.visible 12.2k, VK.hidden 2.0k, HasLOS 1 ×4 and 0 ×2.3k. With
+    runs 35/36 (no target), 171F8 ran every arm and is marked. 1524C and Think 17C98 are marked
+    too. Think's retail-absent `xD70_` null test is gone: AddObject delivers XCRT (and so
+    fn_14_13318) before any Think.
+  - 12818: morphed in ball slot 0 before the retreat, 479 holds with no 0x1038 platform. That
+    leaves only the inactive ball, which needs the 0xF28 sound to return no handle.
+  - 15284: armour-on calls only. The bombs laid in the slot destroyed nothing.
+  - 14470: every fight's first picks were first-shot (1) and splitters (3), so no random pick
+    happened. A random pick needs a longer fight past the splitters.
+  - IsIdle: the FSM entered Idle (0x10F4 0x88) but no trigger read IsIdle there. IsDead: the full
+    fight crashed before the head's death.
+  - A138 ran the no-emitter arm only, and 9E88 the active collision actor arm only. Both are
+    unmarked.
+  - The full fight crashed at the morph-out (`press x` after the bombs). The crash was in
+    `CPlayer::Render` → `CModelData::Render` → `CTexture::Load`, which is player model texture
+    code, not DG code.
