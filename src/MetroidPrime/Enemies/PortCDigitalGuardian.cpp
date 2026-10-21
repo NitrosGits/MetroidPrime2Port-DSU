@@ -712,9 +712,10 @@ bool CDigitalGuardian::x34E8_(CStateManager& mgr, float dt, float minDist) {
 // mass (0x158) and dt (0x3734..0x3770), applied with no angular part (0x3790); then the player's
 // collision impulses (0x3798), its minimal acceleration timer at 2 * dt (.rodata 0x26C, 0x37AC)
 // and a static interference source from the body at 0.1 for 0.1 s (.rodata 0x2B4, 0x37D4).
-// Unmarked: the 0x04 arm ran (fn_14_4F2C sets the bit on a vortex hit; the body placed on the
-// player during VortexAttack), but the out-of-range arm (the player beyond
-// maxVortexAttractionDistance) has not run.
+// The arms: the pull and the 0x04 arm ran (fn_14_4F2C sets the bit on a vortex hit; the body
+// placed on the player during VortexAttack); the player beyond maxVortexAttractionDistance was
+// forced (tools/cov/force.sh, the distance set to 0.001 at the entry, 530 frames).
+// @ fn_14_3674
 void CDigitalGuardian::x3674_(CStateManager& mgr, float dt) {
   // 0x40: extrwi. at 0x36A4; 0x04: extrwi. at 0x36B0; the duration: fcmpo at 0x36C4.
   if ((x128D_ & 0x40) == 0 || (x128C_ & 0x04) != 0 || !(mData.mVortexAttackDuration > 0.f)) {
@@ -1610,6 +1611,9 @@ bool CDigitalGuardian::AllKneesDestroyed(CStateManager& mgr, const CTriggerData&
 // cr0 at 0x99E0, the "cror eq, lt, eq" at 0x99E4 and the mfcr/extrwi pair at 0x99E8..0x99EC:
 // the mfcr puts CR0 in the top four bits of r0, so the extracted bit 29 is CR0's eq, which the
 // cror has just made "f1 <= f0").
+// The arms: gcov had the body's answer; the head's bit 0x20 (set by its ProjectileTelegraph)
+// answered false in the area-53 head-stun runs (local probe).
+// @ fn_14_9994
 bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const {
   if (HeadFlag20_(mgr)) {
     return false;
@@ -1622,6 +1626,9 @@ bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData
 // byte's bit 5, the mask 1u << (31 - 26) = 0x20), the answer is false (the bne at 0x996C and
 // the li at 0x997C). Otherwise the answer is bit 0 (the mask 1u << (31 - 30) = 0x1) of the flag
 // byte at guest this+0x128C (the clrlwi at 0x9974).
+// The arms: gcov had the body's answer; the head's bit 0x20 (set by its ProjectileTelegraph)
+// answered false in the area-53 head-stun runs (local probe).
+// @ fn_14_9930
 bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (HeadFlag20_(mgr)) {
     return false;

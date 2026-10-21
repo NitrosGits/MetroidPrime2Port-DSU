@@ -895,6 +895,10 @@ bool CDigitalGuardianHead::MainBodyDestroyed(CStateManager& mgr, const CTriggerD
 }
 
 // fn_14_173CC: attack mode 0 or 1 and the projectile timer (0x10D4) at most 0 (.rodata 0x960).
+// The arms: modes 0 and 1 run in every area-53 fight; the other modes' false was forced
+// (tools/cov/force.sh, xFE8_ = 2 at the entry from hit 41, 1911 hits), as SetVortexAttackMode
+// sets it while the head's triggers are not asked.
+// @ fn_14_173CC
 bool CDigitalGuardianHead::ShouldProjectileAttack(CStateManager& mgr,
                                                   const CTriggerData& data) const {
   if (xFE8_ == 0 || xFE8_ == 1) {
@@ -1216,7 +1220,6 @@ void CDigitalGuardianHead::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
   }
-DGHD_STATE_STANDIN(ProjectileTelegraph, fn_14_16F74)
 DGHD_STATE_STANDIN(PulseAttack, fn_14_16D64)
 DGHD_STATE_STANDIN(ChargeAttack, fn_14_16A50)
 DGHD_STATE_STANDIN(MissileAttack, fn_14_167EC)
@@ -1224,8 +1227,94 @@ DGHD_STATE_STANDIN(MachineGunAttack, fn_14_16408)
 DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
 DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
-DGHD_STATE_STANDIN(FollowRetreatPath, fn_14_1569C)
 #undef DGHD_STATE_STANDIN
+
+// fn_14_16F74: the projectile telegraph. Activate (0): the animation state Ready (the store at
+// 0x16FCC), bit 0x20 of 0x10F4 set (0x16FD8) and the turn direction 0x1028 the fallback one
+// (fn_14_13B38, 0x16FE0). Update (1): the head turns to its target (fn_14_11D64, 0x17034) until
+// the state's time reaches block 6's projectileTelegraphTime (fn_14_10120's +4, the fcmpo at
+// 0x17020), then the state is Over (0x1703C). Deactivate (2): NotReady, bit 0x20 cleared and the
+// turn direction zeroed (sZeroVector, 0x17060).
+// The arms (local probes, area 53 (09_cliff_temple_dark), dg_steps_head_stun.sh): Activate, Update before the telegraph
+// time (76 frames), Update at it (Over) and Deactivate all ran, five telegraphs in one fight.
+// @ fn_14_16F74
+void CDigitalGuardianHead::ProjectileTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x10F4_ |= 0x20;
+    x1028_ = x13B38_();
+    break;
+  case kStateMsg_Update: {
+    const SLdrDigitalGuardianHeadStruct* attack = x10120_(mgr);
+    if (mStateMachine->GetTime() < attack->projectileTelegraphTime) {
+      x11D64_(mgr, dt);
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x10F4_ &= ~0x20;
+    x1028_ = CVector3f::Zero();
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_1569C: the ride on the retreat platform (0x1038). Activate (0): the animation state Ready
+// (0x156EC), the platform, if there is one, gets STRT from the head (its AcceptScriptMsg, the
+// vtable call at 0x15760), the bomb pit id 0x103A cleared (0x15770) and locomotion 5 (0x15778).
+// Update (1): with no platform the state is Over (0x15840). Else the locomotion is relaxed (1)
+// while the player rides the platform (CScriptPlatform::IsRider, 0x157B4) or bit 0x80 of 0x10F5
+// is set, else 5; while the state's time is at most fn_14_F374's value (the fcmpo/cror at
+// 0x1580C) the head takes the platform's transform (0x1582C), after it the state is Over.
+// Deactivate (2): NotReady, combat locomotion (3) and the platform, if there is one, gets STOP.
+// Unmarked: `fsm <head> FollowRetreatPath` after the head stun ran Activate, Update and Deactivate
+// with no platform only (0x1038 is set by SelectRetreatPlatform, which had not run); the
+// platform arms (STRT/STOP, the rider test, the ride and its end by time) have not run.
+void CDigitalGuardianHead::FollowRetreatPath(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Start));
+    }
+    x103A_ = kInvalidUniqueId;
+    BodyController()->SetLocomotionType(pas::kLT_Internal5);
+    break;
+  case kStateMsg_Update: {
+    const CScriptPlatform* plat = TCastToConstPtr< CScriptPlatform >(mgr.GetObjectById(x1038_));
+    if (plat == nullptr) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+      break;
+    }
+    if (plat->IsRider(mgr.GetPlayer(0)->GetUniqueId()) || (x10F5_ & 0x80) != 0) {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    } else {
+      BodyController()->SetLocomotionType(pas::kLT_Internal5);
+    }
+    const float limit = xF374_();
+    if (mStateMachine->GetTime() <= limit) {
+      SetTransform(plat->GetTransform());
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Stop));
+    }
+    break;
+  default:
+    break;
+  }
+}
 
 // fn_14_13F0C: the root collider (0xE00) takes the head's own vulnerability (CPatterned's,
 // called directly).
@@ -1265,13 +1354,11 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
 // (extrwi. 1, 27; the head armour is gone) and 0x1038 a platform, it is instead the attack area's
 // point at the angle (fn_14_11698, fn_14_11788) of the centre plus 50 (.rodata 0x9C4) along the
 // direction to the platform.
-// Unmarked: area-53 runs ran the armour-on and platform arms only (run 37's bombs in a slot before
-// the retreat destroyed none, so no armour-off stun came first). With armour off, 0x1038 holds no
-// platform until SelectRetreatPlatform runs, and the platforms' waypoints span z -18.12..-9.21
-// across the centre's -16.74, so neither arm is excluded by the data. A failed fn_14_11698 cannot
-// happen: once d is magnitude-safe, centre + 50 d/|d| is off the centre. Run 403 destroyed the
-// armour (0xFE0 at 0) but no stun followed, and `fsm` cannot enter StunnedReaction (a sub-machine
-// state).
+// The arms: armour on and the platform arm ran in area-53 runs (run 37); armour off with no
+// platform was forced (tools/cov/force.sh with the head-stun steps as its driver: bit 0x10 set and
+// 0x1038 cleared at the entry). A failed fn_14_11698 cannot happen: once d is magnitude-safe,
+// centre + 50 d/|d| is off the centre; a zero d needs the platform at the centre.
+// @ fn_14_15284
 void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation();
   if ((x10F4_ & 0x10) == 0) {
@@ -1336,13 +1423,56 @@ void CDigitalGuardianHead::SeekLineOfSight(CStateManager& mgr, float dt) {
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
   }
-DGHD_CODE_STANDIN(ResetProjectileAttackTimes, fn_14_15598)
-DGHD_CODE_STANDIN(SelectProjectileAttack, fn_14_15448)
 DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
 DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
 DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
 DGHD_CODE_STANDIN(EnableDynamicCollision, fn_14_14828)
 DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
+
+// fn_14_15598: the projectile timer 0x10D4 is block 6's projectileAttackTime (fn_14_10120's +8,
+// 0x155EC) once every splitter is dead (fn_14_17298, the test at 0x155C8), else 6 (.rodata 0x990).
+// Both arms ran in the area-53 head-stun runs (local probes): splitters alive and all dead.
+// @ fn_14_15598
+void CDigitalGuardianHead::ResetProjectileAttackTimes(CStateManager& mgr, float dt) {
+  if (AllSplittersDead(mgr, CTriggerData(0.f))) {
+    x10D4_ = x10120_(mgr)->projectileAttackTime;
+  } else {
+    x10D4_ = 6.f;
+  }
+}
+
+// fn_14_15448: block 6 (fn_14_10120, by the body's knee count) picks the projectile attack. When
+// the body's knee count (fn_14_705C; 0 with no body) differs from the one last seen (0x10DC, the
+// cmpw at 0x154A8) and the block's firstShotType is not 4, that type; else a weighted pick over
+// the block's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the
+// gun 3. The knee count is kept in 0x10DC (0x15558); a pulse fires a burst of 3 (0x10D8), the rest
+// none (the cntlzw at 0x15564).
+// Unmarked: the area-53 runs made one pick each, the first shot (knee count 4 against the ctor's
+// -1, firstShotType 0); the random arms need a second pick with the knee count unchanged.
+void CDigitalGuardianHead::SelectProjectileAttack(CStateManager& mgr, float dt) {
+  const SLdrDigitalGuardianHeadStruct* odds = x10120_(mgr);
+  const CDigitalGuardian* body = TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_));
+  const int knees = body != nullptr ? body->x705C_() : 0;
+  if (knees != x10DC_ && odds->firstShotType != 4) {
+    x10D0_ = odds->firstShotType;
+  } else {
+    const float r = mgr.Random()->Range(0.f, odds->annihilatorPulseOdds +
+                                                  odds->annihilatorChargeOdds +
+                                                  odds->machineGunOdds + odds->lockOnMissilesOdds);
+    float bound = odds->annihilatorPulseOdds;
+    if (r <= bound) {
+      x10D0_ = 0;
+    } else if (r <= (bound += odds->annihilatorChargeOdds)) {
+      x10D0_ = 1;
+    } else if (r <= bound + odds->lockOnMissilesOdds) {
+      x10D0_ = 2;
+    } else {
+      x10D0_ = 3;
+    }
+  }
+  x10DC_ = knees;
+  x10D8_ = x10D0_ == 0 ? 3 : 0;
+}
 DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
 DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
 DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
