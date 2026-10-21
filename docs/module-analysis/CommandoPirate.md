@@ -1025,21 +1025,42 @@ The arms of the five functions the task names, read out of a run with a temporar
 
 | function | arms that ran | arms that did not run |
 |---|---|---|
-| `fn_9_CB40` | `kSM_Create` (1), `kSM_AreaLoaded` (1), `kSM_Landed` (2971), `kSM_Delete` (1) and the default arm (5943) | `kSM_Deactivate`, `kSM_Activate`, `kSM_Escape`, `kSM_Start`, `kSM_Stop`, `kSM_AIUpdateDisabled`, `kSM_Damage`, `kSM_HitObject`, `kSM_Launching`, `kSM_ResistedDamage`, `kSM_OffGround`, `kSM_Alert` and `kSM_SetToZero` - the script connections that would send them do not reach this actor in this area, and no host code sends `kSM_Damage`, `kSM_HitObject` or `kSM_ResistedDamage` to an enemy |
-| `fn_9_C798` | the default arm only (235) | every arm of the module: `kUE_Projectile`, `kUE_DamageOn`, `kUE_DeGenerate`, `kUE_BecomeRagDoll`, `kUE_Landing`, `kUE_TakeOff`, `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` - they come from the module's own animations, and the states that play them (the melee, the E-grenade, the shield, the death and the jump) are stand-ins |
-| `fn_9_BF44` | the early return only (4187) | the shield's own arms - they need the 0x04 bit of the byte at guest this+0xC65, which only the module's unported ArmShield state (fn_9_86B4) and shield-charge states set |
-| `fn_9_1C0C` | the early return only (8880) | the arms past it - the module's state word at guest this+0xC4C stays -1, because only the shield's animation events (fn_9_1F88 and fn_9_1EF8) set it, and those need the shield's bits at guest this+0xC65 |
-| `fn_9_B250` | the first gate only (1784) | every arm past it - the 0x40 bit of the byte at guest this+0xC64 is set by the module's own shield events (fn_9_1F88), which need the shield's bits at guest this+0xC65 |
+| `fn_9_CB40` | `kSM_Create` (1), `kSM_AreaLoaded` (1), `kSM_Landed` (826), `kSM_OffGround` (122), `kSM_Damage` (6), `kSM_ResistedDamage` (3), `kSM_Launching` (1), `kSM_Delete` (1) and the default arm (1713) | `kSM_Deactivate`, `kSM_Activate`, `kSM_Escape`, `kSM_Start`, `kSM_Stop`, `kSM_AIUpdateDisabled`, `kSM_HitObject`, `kSM_Alert` and `kSM_SetToZero` - the script connections that would send them do not reach this actor in this area, and no host code sends `kSM_HitObject` to an enemy |
+| `fn_9_C798` | the default arm (46) and `kUE_BecomeRagDoll` (3) - the commando died and the rag-doll event fired | `kUE_Projectile`, `kUE_DamageOn`, `kUE_DeGenerate`, `kUE_Landing`, `kUE_TakeOff`, `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` - they come from the module's own animations, and the states that play them (the melee, the E-grenade, the shield and the jump) are stand-ins |
+| `fn_9_BF44` | the early return only (1264) | the shield's own arms - they need the 0x04 bit of the byte at guest this+0xC65, and only the module's shield-charge states (fn_9_7A98 and fn_9_8028) set that bit |
+| `fn_9_1C0C` | the early return only (2253) | the arms past it - the module's state word at guest this+0xC4C stays -1, because only the shield's animation events (fn_9_1F88 and fn_9_1EF8) set it, and those need the shield's bits at guest this+0xC65 |
+| `fn_9_B250` | the first gate only (415) | every arm past it - the 0x40 bit of the byte at guest this+0xC64 is set by the module's own timer helper (fn_9_662C) when the aggressiveness roll wins, and the counter at guest this+0xB54 that the gate also asks about is raised only by the module's shield-charge states |
 
-So `fn_9_BF44`, `fn_9_1C0C` and `fn_9_B250` are marked (`// @ fn_9_<hex>`): every arm that the
-port can reach ran. `fn_9_C798` is not marked - the base's own damage and death animations can
-fire `kUE_DamageOn` and `kUE_DeGenerate`, so its module arms are reachable and did not run.
-`fn_9_CB40` is not marked either: several of its arms are reachable through the actor's script
-connections and did not run.
+None of the five is marked: every one of them still has an arm that the port can reach and that
+did not run (`fn_9_C798`'s damage and death events, `fn_9_BF44`'s and `fn_9_1C0C`'s shield arms,
+`fn_9_B250`'s charge arms and `fn_9_CB40`'s script messages). The three markers that the earlier
+slice put on `fn_9_BF44`, `fn_9_1C0C` and `fn_9_B250` are gone for that reason.
 
-The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_2D0C` (the
-knock-back, 0x384) and `fn_9_3900` (the jump-back velocity, 0x15c) are now called from the
-message switch, so they are the next two to port.
+### The shield's own bits (2026-10-21)
+
+The byte at guest this+0xC65 and the byte at guest this+0xC64 decide what the shield does, and
+the writers are what the arms wait for:
+
+| bit | set by | cleared by |
+|---|---|---|
+| this+0xC65 0x04 (the shield is up) | the shield-charge states fn_9_7A98 (0x00007B34) and fn_9_8028 (0x00007FC4, 0x00008098, 0x0000867C) | the constructor |
+| this+0xC65 0x08 (the shield is arming) | the ArmShield state fn_9_86B4 (0x00008714) | the ArmShield state's deactivate (0x00008908) |
+| this+0xC65 0x10 | the module's timer helper fn_9_662C (0x00006A84) | the same helper (0x00006B58) |
+| this+0xC65 0x20 (the blade is out) | the MeleeAttack state fn_9_A4BC (0x0000A598) | the same state (0x0000A6F0) |
+| this+0xC65 0x02 | the charge states fn_9_7A98 and fn_9_8028 | the charge states and the WallHang state fn_9_7358 |
+| this+0xC64 0x80 (the shield may arm) | the burst-fire helper fn_9_6390 (0x00006434) when the block's arm chance (the block's +0x140) wins the roll | the same helper (0x00006964) and the ArmShield state's deactivate (0x000088D0) |
+| this+0xC64 0x40 (the commando is aggressive) | the timer helper fn_9_662C (0x000066C8) when the block's aggressiveness (the block's +0x4C) wins the roll | the constructor |
+
+So the ArmShield state (fn_9_86B4, now ported) is only entered when the burst-fire helper's arm
+chance roll wins: it needs more shots than the counter at guest this+0xB58 (0x000063E4..0x000063FC).
+In the area 59 run the commando never armed its shield, so the state did not run and the shield's
+arms stayed out of reach. The shield's "up" bit (0x04) comes only from the charge states, which
+are still stand-ins.
+
+The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_2048` (the
+shield's own effect, 0x330 - the message switch's knock-back helper calls it), `fn_9_3D64`'s
+warp-out helper is ported, and the shield-charge states `fn_9_8028` (0x68c) and `fn_9_7A98`
+(0x590) are what set the shield's "up" bit.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
@@ -1054,8 +1075,11 @@ message switch, so they are the next two to port.
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
   animation state answers it (`mAnimationState.CanIssueCommand`).
-- The module's knock-back helper (fn_9_2D0C, 0x384) and its jump-back velocity helper
-  (fn_9_3900, 0x15c): the message switch calls them, and they are named stand-ins.
+- The module's own shield effect (fn_9_2048, 0x330): the knock-back helper calls it when the
+  byte at guest this+0xC66 has its 0x20 bit, and it is a named stand-in.
+- The shield-charge states (fn_9_8028, 0x68c and fn_9_7A98, 0x590): they are what set the
+  shield's "up" bit (the byte at guest this+0xC65's 0x04 bit) and raise the counter at guest
+  this+0xB54, so the shield's collision arms and the charge trigger wait for them.
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two

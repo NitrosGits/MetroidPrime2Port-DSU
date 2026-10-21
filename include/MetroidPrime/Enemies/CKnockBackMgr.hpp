@@ -143,6 +143,10 @@ public:
 
   EAnimReaction GetAnimReaction() const { return mActiveParameters.mReaction; } // Guessed name.
 
+  // The reaction flags of the active parameters (the retail's SReactionParameters::mFlags, the
+  // word at the knock-back manager's +0x10). Added for the CommandoPirate's fn_9_2D0C.
+  uint GetActiveReactionFlags() const { return mActiveParameters.mFlags; }
+
   EAnimReaction GetActiveReaction() const { return mActiveParameters.mReaction; } // Guessed name.
   EFollowUp GetFollowUp() const { return mActiveParameters.mFollowUp; }
 

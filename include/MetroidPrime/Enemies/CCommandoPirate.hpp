@@ -388,15 +388,15 @@ private:
   void x3D64_SetWarpOut(CStateManager& mgr, bool warpOut);
 
   // fn_9_2D0C: the module's knock-back helper (0x384 bytes) - the shield's and the blade's
-  // damage and knock-back. Not ported yet, so it stays a named stand-in.
+  // damage and knock-back.
   void x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg);
 
   // fn_9_3A5C: the module's hit-object helper (0x260 bytes) - the shield's damage on the
   // player that touched it, and the blade's damage when the blade is out.
   void x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg);
 
-  // fn_9_3900: the module's jump-back velocity helper (0x15c bytes). Not ported yet, so it
-  // stays a named stand-in.
+  // fn_9_3900: the module's jump-back velocity helper (0x15c bytes) - the ballistic velocity
+  // towards the module's own jump target.
   void x3900_JumpBackVelocity(CStateManager& mgr);
 
   // fn_9_6390: the module's burst-fire helper - the shot timer, the burst fire and the
@@ -405,8 +405,10 @@ private:
 
   // Host layout. The guest offsets are the REL's; the host layout is its own and does not need to
   // match (host objects outgrow retail). A raw member is named after the offset it stands for
-  // (x6b4_ is guest +0x6B4), a structured one after its role; every comment carries the guest
-  // offset. The guest member map is in the analysis note.
+  // (the module's own members are the ones from guest +0x7C0 on; the base's members - the
+  // animation state at guest +0x6B4, the body controller, the colour - are the base's own), a
+  // structured one after its role; every comment carries the guest offset. The guest member map is
+  // in the analysis note.
 #ifdef TARGET_PC
   CCommandoPirateData mData;             // 0x7c0 (0x15e), the loader's parameter block
   int x920_;                              // 0x920, -1 from the ctor; the module's states rewrite it
@@ -423,6 +425,7 @@ private:
   uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
   CBurstFire mBurstFire;                  // 0xaf0, the module's burst fire (fn_9_D904 @0x0000DA78)
   float xb7c_;                            // 0xb7c, the cooldown since the last melee attack
+  float xb80_;                            // 0xb80, the shield's arm timer; fn_9_86B4 advances it
   float xb5c_;                            // 0xb5c, 0.f from the ctor (fn_9_D904 @0x0000DABC)
   uint xb50_;                             // 0xb50, the number of shots; fn_9_6390 raises it
   uint xb54_;                             // 0xb54, the number of shield charges; the charge states raise it
@@ -439,6 +442,8 @@ private:
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   CVector3f xbb8_;                         // 0xbb8, the fourth vector; fn_9_BF44 stores a normal
+  float xbec_;                            // 0xbec, a float of the jump-back helper fn_9_3900
+  CVector3f xbf0_;                         // 0xbf0, the jump-back target; fn_9_3900 reads it
   int xc4c_;                               // 0xc4c, the module's own state word; -1 when unset
   float xc44_;                            // 0xc44, the module's own scale; fn_9_1F88 starts it
   float xc48_;                            // 0xc48, the scale's target; fn_9_1F88 sets it

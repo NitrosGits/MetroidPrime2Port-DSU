@@ -29,6 +29,7 @@
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CGameArea.hpp"
+#include "MetroidPrime/CKnockBackInfo.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -1247,15 +1248,104 @@ void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg)
 }
 
 // fn_9_2D0C (0x384 bytes): the module's knock-back helper - the shield's and the blade's damage
-// and the knock-back they cause. Not ported yet, so it stays a named stand-in.
+// and the knock-back they cause.
+//
+// The weapon: when the sender is the shield's own collision actor (guest this+0xBC6) the weapon is
+// the one that touched that collision actor (0x00002D38..0x00002D74) and the module's own effect
+// helper fn_9_2048 runs when the byte at guest this+0xC66 has its 0x20 bit (0x00002D78..0x00002D90);
+// otherwise the weapon is the sender itself (0x00002D98..0x00002DA8).
+//
+// The knock-back: the info (the weapon's own forward column, its id, its owner id, its current
+// damage info and the direct flag - 0x00002DB8..0x00002ED4), the knock-back manager's anim
+// reaction range when the flag byte at guest this+0xC64 has its 0x01 bit (0x00002ED8..0x00002EE4),
+// the knock-back itself (the vtable slot 0x9C, 0x00002EF0) and the module's own flag byte
+// (0x00002F08..0x00002F1C).
+//
+// Then the commando looks for the ground under itself: a ray from its own position plus the up
+// vector six units down (rodata_49C) with the module's own material filter - the include list
+// kMT_Solid (the data word 0x3B at lbl_9_data_814) and the exclude list kMT_Character,
+// kMT_CollisionActor and kMT_Platform (the data words 0x21, 0x2F and 0x31 at lbl_9_data_818,
+// lbl_9_data_81C and lbl_9_data_824), the type 3 = kFT_IncludeExclude. When the ray hits, the
+// module's own float at guest this+0xC00 takes 0.01f (rodata_4A0), the commando dies with the
+// script object state "RATL" (kSS_DeathRattle) and its own forward direction (the vtable slot
+// 0x98, 0x00003018), its health is zeroed (the vtable slot 0x38, 0x0000302C) and the health cause
+// is updated (0x00003068).
 void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("the module's knock-back helper (fn_9_2D0C)");
+  const TUniqueId senderId = msg.GetSenderId();
+  const CWeapon* weapon = nullptr;
+  if (senderId == xbc6_) {
+    if (const CCollisionActor* actor =
+            TCastToPtr< CCollisionActor >(mgr.ObjectById(xbc6_))) {  // 0x00002D3C..0x00002D4C
+      weapon = TCastToPtr< CWeapon >(mgr.ObjectById(actor->GetLastTouchedObject()));
+    }
+    if ((xc66_ & 0x20) != 0) {  // 0x00002D78..0x00002D84
+      StandIn("the module's own shield effect helper (fn_9_2048)");  // 0x00002D90
+    }
+  } else {
+    weapon = TCastToPtr< CWeapon >(mgr.ObjectById(senderId));  // 0x00002D9C..0x00002DA8
+  }
+  if (weapon != nullptr) {
+    const CKnockBackInfo info(weapon->GetTransform().GetForward(), weapon->GetUniqueId(),
+                              weapon->GetOwnerId(), weapon->GetCurrentDamageInfo(),
+                              true);  // 0x00002DB8..0x00002ED4
+    if ((xc64_ & 0x01) != 0) {  // 0x00002ED8..0x00002EE4
+      KnockBackController().SetAnimReactionRange(CKnockBackMgr::kAR_Hurled, CKnockBackMgr::kAR_Fall);
+    }
+    KnockBack(mgr, info);  // 0x00002EF0 (the module's own override, fn_9_C300)
+  }
+  // The module's flag byte: the 0x04 bit is set when the knock-back manager's reaction flags are
+  // between 2 and 4 (the guest's word at guest this+0x630, the manager's own flags at its +0x10,
+  // 0x00002E4C..0x00002E74); otherwise the 0x01 bit is folded into the 0x04 bit (0x00002E78).
+  const uint reactionFlags = KnockBackController().GetActiveReactionFlags();
+  if (reactionFlags >= 2 && reactionFlags < 5) {
+    xc64_ |= 0x04;
+  } else {
+    xc64_ = (xc64_ & ~0x04) | ((xc64_ & 0x04) | (xc64_ & 0x01));
+  }
+  // The ray under the commando: from its own position plus the up vector six units down.
+  const CVector3f start = GetTranslation() + CVector3f::Up();
+  const CVector3f end = start + CVector3f::Down() * 6.f;
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_Character, kMT_CollisionActor, kMT_Platform));
+  if (mgr.RayCollideWorld(start, end, filter, this)) {  // 0x00002FC4
+    xc00_ = 0.01f;                                        // rodata_4A0, 0x00002FF0
+    Death(mgr, GetTransform().GetForward(), kSS_DeathRattle);  // 0x00003018
+    HealthInfo()->SetHP(0.f);                              // 0x0000302C..0x0000303C
+    // The guest's CStateManager::UpdateHealthCause (the DOL's fn at 0x8003DD88): the health
+    // info's last-damage record, and its cause of death when the actor is frozen.
+    const bool frozen = BodyController()->IsFrozen();
+    if (frozen) {
+      HealthInfo()->SetCauseOfDeathWeapon(weapon != nullptr
+                                              ? weapon->GetCurrentDamageInfo().GetWeaponMode()
+                                              : CWeaponMode(),
+                                          weapon != nullptr ? weapon->GetOwnerId() : senderId,
+                                          weapon != nullptr ? weapon->GetUniqueId() : senderId,
+                                          frozen, false);
+    }
+  }
 }
 
-// fn_9_3900 (0x15c bytes): the module's jump-back velocity helper. Not ported yet, so it stays a
-// named stand-in.
+// fn_9_3900 (0x15c bytes): the module's jump-back velocity helper - the ballistic velocity that
+// carries the commando to its own jump target (the vector at guest this+0xBF0, the float at guest
+// this+0xBEC). It runs only while the flag byte at guest this+0xC63 has no 0x08 bit
+// (0x00003930..0x0000393C) and sets that bit when it is done (0x00003A1C..0x00003A28).
 void CCommandoPirate::x3900_JumpBackVelocity(CStateManager& mgr) {
-  StandIn("the module's jump-back velocity helper (fn_9_3900)");
+  if ((xc63_ & 0x08) != 0) {  // 0x00003930..0x0000393C
+    return;
+  }
+  const float gravity = GetGravityConstant();  // the vtable slot 0x114, 0x00003974..0x00003980
+  const CVector3f target = xbf0_;             // guest this+0xBF0
+  const CVector3f pos = GetTranslation();      // guest this+0x54..0x5C
+  const float dx = target.GetX() - pos.GetX();
+  const float dy = target.GetY() - pos.GetY();
+  // The apex: the float at guest this+0xBEC over the higher of the two heights.
+  const float apex = xbec_ + (pos.GetZ() >= target.GetZ() ? pos.GetZ() : target.GetZ());
+  const float zVelocity = CMath::SqrtF(2.f * gravity * (apex - pos.GetZ()));  // 0x000039A8..0x000039BC
+  const float timeUp = zVelocity / gravity;                                 // 0x000039D8
+  const float timeDown = CMath::SqrtF(2.f * (apex - target.GetZ()) / gravity);  // 0x000039DC
+  const float time = timeUp + timeDown;                                      // 0x000039EC
+  SetVelocityWR(CVector3f(dx / time, dy / time, zVelocity));  // 0x00003A04..0x00003A18
+  xc63_ |= 0x08;                                                  // 0x00003A24
 }
 
 // vtable slot 0x24 = fn_9_C6D4 (0xc4): the base's PreRender and then the bone tracking's own.
@@ -1393,11 +1483,12 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
   }
 }
 
-// @ fn_9_1C0C
 // fn_9_1C0C (0x2ec bytes): the module's renderable driver, called from the actor's Think (the
 // call at 0x0000CA88). The run in area 59 (2026-10-21) reaches only the early return: the
 // module's state word at guest this+0xC4C stays -1, because only the shield's own animation
-// events (fn_9_1F88 and fn_9_1EF8) set it, and those need the shield's bits at guest this+0xC65. While the module's state word at guest this+0xC4C is -1 it does nothing
+// events (fn_9_1F88 and fn_9_1EF8) set it, and those need the shield's bits at guest this+0xC65
+// that the module's ArmShield state (fn_9_86B4) sets - until that state is ported, this body is
+// not marked. While the module's state word at guest this+0xC4C is -1 it does nothing
 // (the compare at 0x00001C34); otherwise, while the byte at guest this+0xC66 has its 0x20 bit
 // (the test at 0x00001C40) and the body controller's byte at guest this+0x48C + 0x594 has its
 // 0x20 bit (the test at 0x00001C50), it sets the 0x04 bit of the byte at guest this+0xC64 and
@@ -1541,11 +1632,10 @@ void CCommandoPirate::x1EF8_Activate() {
   xc50_ = 0.f;                                                         // 0x00001F70
 }
 
-// @ fn_9_BF44
 // vtable slot 0x84 = fn_9_BF44 (0x2b0): what the blade and the shield hit.
 // The run in area 59 (2026-10-21) reaches only the early return: the shield's own arms need the
-// 0x04 bit of the byte at guest this+0xC65, and only the module's unported ArmShield state
-// (fn_9_86B4) and shield-charge states set it.
+// 0x04 bit of the byte at guest this+0xC65, and the module's ArmShield state (fn_9_86B4) and its
+// shield-charge states are what set it - until those are ported, this body is not marked.
 //
 // fn_9_BF44 (0x2b0 bytes) runs the base's own CollidedWith first (the call at 0x0000BF70) and then
 // the module's own: while the flag byte at guest this+0xC65 has its 0x04 bit (the test at
@@ -1966,11 +2056,12 @@ bool CCommandoPirate::ShouldArmShield(CStateManager& mgr, const CTriggerData& da
   return (xc64_ & 0x80) != 0 && (mData.mFlags1 & 0x20) == 0 && (xc64_ & 0x01) == 0;
 }
 
-// @ fn_9_B250
 // fn_9_B250 (0x410 bytes): the commando charges with its shield when it is aggressive, the
 // The run in area 59 (2026-10-21) reaches only the first gate: the 0x40 bit of the byte at guest
-// this+0xC64 is set by the module's own shield events (fn_9_1F88), which need the shield's bits
-// at guest this+0xC65 - so every arm past the first gate is out of reach in the port.
+// this+0xC64 is set by the module's own timer helper (fn_9_662C) when the aggressiveness roll
+// wins, and the counter at guest this+0xB54 that the gate also asks about is raised only by the
+// module's shield-charge states (fn_9_7A98 and fn_9_8028) - until those are ported, this body
+// is not marked.
 // script does not forbid the charge, the target is inside the charge band and the way to it is
 // clear.
 //
@@ -2746,8 +2837,87 @@ void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_9_86B4 (0x280 bytes): the shield's arming state.
+//
+// On activate (the guest's message 0, 0x00008704) the module's flag byte at guest this+0xC65 gets
+// its 0x08 bit, the byte at guest this+0xC66 loses its 0x20 bit, the animation state goes "ready"
+// (guest this+0x6B4 = 1), the body's locomotion type becomes 1 (pas::kLT_Relaxed), the shield's
+// arm timer at guest this+0xB80 takes the block's arm time (the block's +0x144 = guest this+0x904)
+// plus a random fraction of the arm time variation (the block's +0x148 = guest this+0x908), the
+// flag byte at guest this+0xC64 loses its 0x04 bit and the module's shield collision actor manager
+// (guest this+0xA3C) becomes active.
+//
+// On update (the guest's message 1, 0x00008770) the timer falls by the frame time; when it is over
+// the animation state goes "over" (guest this+0x6B4 = 3), and so does it when the flag byte at
+// guest this+0xC64 has its 0x04 bit. Then the byte at guest this+0xC66's 0x20 bit stops the state,
+// and the module's own helper fn_9_3CBC asks the target for its aim position (the module's member
+// at guest this+0xB94, with the frame time 0.0f): the commando turns towards it when the angle
+// between its facing and the direction to the target is over 20 degrees (rodata_4B4).
+//
+// On deactivate (the guest's message 2, 0x000088B4) the animation state goes "not ready" (guest
+// this+0x6B4 = 0), the body's locomotion type becomes 3 (pas::kLT_Combat), the flag byte at guest
+// this+0xC64 loses its 0x80 bit, the counter at guest this+0xB58 takes the counter at guest
+// this+0xB50 plus one, the shield's collision actor manager goes inactive, the module's own
+// activate helper (fn_9_1EF8) runs and the flag byte at guest this+0xC65 loses its 0x08 bit.
 void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_86B4");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    xc65_ |= 0x08;                                   // 0x0000870C
+    xc66_ &= ~0x20;                                  // 0x00008720
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x00008728
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);  // 0x00008730 (the guest's 1)
+    xb80_ = mData.mShield.mArmTime +
+            mgr.Random()->Float() * mData.mShield.mArmTimeVariation;  // 0x00008744
+    xc64_ &= ~0x04;                                  // 0x0000875C
+    if (mCollisionShield.get() != nullptr) {
+      mCollisionShield->SetActive(mgr, true);        // 0x00008768
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    xb80_ -= dt;                                      // 0x00008778
+    if (xb80_ <= 0.f) {                               // 0x00008788
+      mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x000087A4
+      break;
+    }
+    if ((xc64_ & 0x04) != 0) {                       // 0x00008798
+      mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x000087A4
+      break;
+    }
+    if ((xc66_ & 0x20) != 0) {                       // 0x000087B0
+      break;
+    }
+    if (!x3CBC_(mgr, xb94_, 0.f)) {                   // 0x000087C0 (the guest's own helper)
+      break;
+    }
+    const CVector3f delta = xb94_ - GetTranslation();  // 0x000087CC..0x00008808
+    if (!delta.IsMagnitudeSafe()) {                    // 0x00008810
+      break;
+    }
+    // 0x00008820..0x00008848: the angle between the actor's facing (the transform's forward
+    // column) and the direction to the target, against 20 degrees (rodata_4B4).
+    if (CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= 0.34906584f) {
+      break;
+    }
+    const CBCLocomotionCmd cmd(CVector3f::Zero(), delta.AsNormalized(), 1.f);  // 0x00008850
+    BodyController()->CommandMgr().DeliverCmd(cmd);                        // 0x000088AC
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x000088B4
+    BodyController()->SetLocomotionType(pas::kLT_Combat);     // 0x000088C4 (the guest's 3)
+    xc64_ &= ~0x80;                                          // 0x000088D0
+    xb58_ = xb50_ + 1;                                       // 0x000088E4
+    if (mCollisionShield.get() != nullptr) {
+      mCollisionShield->SetActive(mgr, false);               // 0x000088F0
+    }
+    x1EF8_Activate();                                        // 0x000088F8
+    xc65_ &= ~0x08;                                          // 0x00008908
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {
