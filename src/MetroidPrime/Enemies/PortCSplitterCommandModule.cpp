@@ -576,7 +576,7 @@ void CSplitterCommandModule::PortFireLaserSweep(CStateManager& mgr, const CVecto
     CAudioSys::C3DEmitterParmData parms(150.f, 0.1f, 1, 0x7F, 0x23);
     parms.mPos = beam->GetCurrentPos();
     parms.mDir = CVector3f::Up();
-    parms.mSfxId = static_cast< ushort >(mData.mSoundLaserSweep & 0xFFFF);
+    parms.mSfxId = static_cast< ushort >(mData.mSoundLaserSweep & 0xFFFF);  // 0x1BD0-0x1BD4
     mLookAtSfxHandle = CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true,
                                                CSfxManager::kMedPriority);
     mLookAtTargetId = beamId;
