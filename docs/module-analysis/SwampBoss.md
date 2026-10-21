@@ -261,6 +261,121 @@ per-function trace/state probe (never committed), the player driven through the 
   `fn_78_B9D0`; `SetLocomotion` and `JointActor` are host helpers with no retail function of their
   own.
 
+### Stage1: the unmarked functions (2026-10-21, decomp lane)
+
+`symbols.txt` lists 243 Stage1 functions; 107 carried a `// @ fn_78_<off>` marker after the
+2026-10-20 traced fight, and **136 are unmarked**. The counts below are the `bl` sites in the
+retail asm (`build/G2ME01/SwampBossStage1/asm`), so they are the module's own call sites; an FSM
+state or trigger is called from the FSM table, not by a `bl`, so it shows 0.
+
+**The most-called unmarked functions, and this lane's verdict on each:**
+
+| fn | retail call sites | port body | verdict |
+|---|---|---|---|
+| `fn_78_A5B4` | 8 (4D3C, 5CDC, 5D6C, 5E84) | `CSwampBossStage1::SplashLocomotion` | **marked** |
+| `fn_78_CA4` | 8 (160, 7BC, A5E4) | none - the REL's copies of the `SLdrDamageInfo` / `SLdrDamageVulnerability` / `SLdrShockWaveInfo` destructors | **cited** (DOL copy) |
+| `fn_78_A5CC` | 6 (587C, 5984, 6198) | `CSwampBossStage1::RiseLocomotion` | **marked** |
+| `fn_78_9A1C` | 6 (48A8, 9744, 9AD8) | `JointMatches` (file-local) | **marked** |
+| `fn_78_E84` | 6 (838) | none - the REL's copy of `CInputStream::ReadFloat` / `ReadBytes` | **cited** (DOL copy) |
+| `fn_78_10B0`, `fn_78_8424` | 6 each | none - `SLdr` copy ctor / `CToken` destructor | **cited** (DOL copies) |
+| `fn_78_35DC` | 4 (3320, 348C) | `CSwampBossStage1::HitReactBody` | compared, **not marked** (see below) |
+| `fn_78_2C78` | 4 (2B20, 4D3C) | none - the REL's copy of the `CPASAnimParmData` constructor | **cited** (DOL copy) |
+
+**`fn_78_A5B4` / `fn_78_A5CC` (the splash and rise locomotion ids).** Retail, field by field:
+`lwz r0, 0xb6c(r3)` (the alt-animation flag, an `int`, so `!= 0` is the test), then a compare
+against 0, then one of two `li` returns - `0xb` / `0xa` for the splash, `0xe` / `0x1` for the
+rise. The port read the same member (`xb6c_altAnims`, `int`) and returned the same two values, so
+no behaviour change was needed; both getters were moved out of the header's class body into
+`PortCSwampBossStage1.cpp` (an inline class member cannot be read by `tools/asmcheck.py`, which
+only parses definitions at file scope) and marked there. `asmcheck.py check` on the three
+functions is clean (0 findings).
+
+**`fn_78_9A1C` (does a joint match the requested type).** Retail: `cmpwi r4, 0x3` on the joint's
+own type (from the rodata table), `cmpwi r5, 0x3` on the requested type - either one being 3
+(`kAllJoints`) matches everything - and otherwise `subf r0, r4, r5` + `cntlzw` + `srwi 3, 5`, the
+equal-when-zero idiom, is the equality test. The port's `JointMatches` is the same test with the
+same argument order (`JointMatches(kJoints[i].mType, type)` in `SetJointsActive`), so it is
+marked as it stands. The `a1 == 3` arm is unreachable: no entry of the joint table has type 3.
+
+**`fn_78_35DC` (the shared hit-react body).** Retail: `RecordState(3, msg)`,
+`SetLocomotionType(5)`, and under `msg == 1` (`kStateMsg_Update`) `RetractTongue`,
+`UpdateTongueTip(mgr, 1.0f, false)`, `HeadWeightDown(dt)` and `UpdateHeadTurn(mgr, dt)`. The
+port's `HitReactBody` (called by `LightHitReact` 3320 and `HeavyHitReact` 348C) is the same
+body, and `msg == kStateMsg_Update` is the same test (the host's `EStateMsg` starts at
+`kStateMsg_Activate = 0`). **Not marked**: no run reached it - both callers are FSM states that
+need state 3 (`ExposeBelly`), and state 3 needs the belly accumulator over 50, which needs ~50
+landed joint hits; the harness lands about one shot in six and the charged shot never comes out
+of `press a 0` / `stick 0 0 0` as a charged one (the trace shows `orig=2.00` every time).
+
+**The rest of the inventory** (136 unmarked functions; the ones with a retail body first, then
+the REL's copies of host/DOL classes, which are cited here and are neither reimplemented nor
+marked - the host already has the class, so a port body would be a second copy):
+
+| fn | call sites | callers | note |
+|---|---|---|---|
+| `fn_78_1104` | 2 | 838 | the `SLdrAudioPlaybackParms` reader (a DOL reader) |
+| `fn_78_130` | 1 | RELMain | the REL entry that installs the loader |
+| `fn_78_21C8` | 0 | - | `OnScanStateChange`, forwards to `CActor` |
+| `fn_78_25F4` | 0 | - | `IncrementMisses` (a code function, the FSM calls it) |
+| `fn_78_2840` | 2 | 260C | a code function of the FSM |
+| `fn_78_28A4` | 2 | 2728 | the `EScriptObjectState` 4CC helper ('I30'..'I33') - a DOL copy |
+| `fn_78_2C78` | 4 | 2B20, 4D3C | the `CPASAnimParmData` constructor - a DOL copy |
+| `fn_78_3088` | 2 | 2E38 | `CVector3f::Cross` - a DOL copy |
+| `fn_78_3320` | 0 | - | `LightHitReact` (an FSM state) |
+| `fn_78_348C` | 0 | - | `HeavyHitReact` (an FSM state) |
+| `fn_78_35DC` | 4 | 3320, 348C | the shared hit-react body (see above) |
+| `fn_78_3964` | 2 | 44CC | the tongue-pull helper |
+| `fn_78_39C0` | 2 | 44CC | `PullMorphedPlayer` |
+| `fn_78_5618` | 2 | 55AC | the `rstl` vector erase - an rstl copy |
+| `fn_78_5784` | 0 | - | `SlideIntoWater` (an FSM state) |
+| `fn_78_69AC`, `fn_78_69D8` | 0 | - | `GetAimPosition` / `GetDamageVulnerability`, forward to `CPatterned` |
+| `fn_78_772C` | 2 | 7440 | the tongue-tip helper |
+| `fn_78_7F38` | 2 | 7F14 | `LdrToDamageInfo` - a DOL copy |
+| `fn_78_8004` | 0 | - | `ProjectileInfo` (a vtable slot) |
+| `fn_78_838` | 2 | 160 | the `SLdrSwampBossStage1` property reader (the port uses the generated `.inc`) |
+| `fn_78_94`, `fn_78_9C`, `fn_78_A4`, `fn_78_C0` | 0 | - | the trivial vtable slots (see "Non-overridden / dropped virtuals") |
+| `fn_78_9A1C` | 6 | 48A8, 9744, 9AD8 | the joint-type match - **marked** here |
+| `fn_78_9A44` | 0 | - | `CollidedWith`, forwards to `CPatterned` |
+| `fn_78_A5B4` | 8 | 4D3C, 5CDC, 5D6C, 5E84 | the splash locomotion - **marked** here |
+| `fn_78_A5CC` | 6 | 587C, 5984, 6198 | the rise locomotion - **marked** here |
+| `fn_78_A5E4` | 0 | - | the destructor (a vtable slot) |
+| `fn_78_B474`, `fn_78_B630` | 2 each | B270 | `SLdr` copy constructors |
+| `fn_78_BCD0` | 1 | 8 | `CPhysicsActor::GetBoundingBox` - a DOL copy |
+| `fn_78_BD0C` | 0 | - | a weak `__dt` the REL carries - a DOL copy |
+| `fn_78_E84` | 6 | 838 | `CInputStream::ReadFloat` / `ReadBytes` - a DOL copy |
+
+The remaining 101 unmarked functions are the REL's copies of host/DOL classes and are cited
+rather than reimplemented: the `SLdr` / `SLdrActorParameters` / `SLdrPatternedAITypedef` /
+`SLdrEditorProperties` constructors, destructors and copies (`fn_78_1074` `fn_78_10B0`
+`fn_78_12E8` `fn_78_13A0` `fn_78_141C` `fn_78_14EC` `fn_78_1570` `fn_78_15C8` `fn_78_161C`
+`fn_78_1688` `fn_78_16E4` `fn_78_1750` `fn_78_18B0` `fn_78_1918` `fn_78_19A4` `fn_78_19FC`
+`fn_78_1B54` `fn_78_1B8C` `fn_78_1C18` `fn_78_1CB4` `fn_78_1D2C` `fn_78_1D90` `fn_78_1E0C`
+`fn_78_2100` `fn_78_2178` `fn_78_2C3C` `fn_78_2DFC` `fn_78_33E8` `fn_78_3444` `fn_78_3580`
+`fn_78_3848` `fn_78_4218` `fn_78_474` `fn_78_4B4` `fn_78_4D4` `fn_78_4FC` `fn_78_55AC`
+`fn_78_638` `fn_78_68F0` `fn_78_6958` `fn_78_6A4` `fn_78_6F8` `fn_78_75C` `fn_78_7788`
+`fn_78_7AA8` `fn_78_7BC` `fn_78_7E68` `fn_78_7EC0` `fn_78_7F14` `fn_78_81A8` `fn_78_81F0`
+`fn_78_82A4` `fn_78_82E4` `fn_78_8304` `fn_78_832C` `fn_78_83AC` `fn_78_83E8` `fn_78_8424`
+`fn_78_8480` `fn_78_84A0` `fn_78_84E8` `fn_78_8574` `fn_78_85AC` `fn_78_861C` `fn_78_8694`
+`fn_78_8BBC` `fn_78_8C40` `fn_78_8C78` `fn_78_8DE0` `fn_78_8E18` `fn_78_8E38` `fn_78_8F20`
+`fn_78_A744` `fn_78_A928` `fn_78_A9BC` `fn_78_ADAC` `fn_78_AE04` `fn_78_AE5C` `fn_78_AEB8`
+`fn_78_AF0C` `fn_78_B03C` `fn_78_B098` `fn_78_B0F0` `fn_78_B154` `fn_78_B1E4` `fn_78_B270`
+`fn_78_B8EC` `fn_78_B970` `fn_78_BBA8` `fn_78_BC68` `fn_78_CA4` `fn_78_D50`), plus the trivial
+vtable slots that only forward to the base (`fn_78_0` `fn_78_44` `fn_78_4C` `fn_78_54`
+`fn_78_5C` `fn_78_64` `fn_78_74` `fn_78_80` `fn_78_8C`).
+
+**Run evidence for the three new markers** (2026-10-21, world `3dfd2249` area
+`04_swamp_temple_dark`, layer 3 forced, `MP2_GODMODE=1`, 6000 frames, the boss woken with the
+console `send u05bb Activate` and dropped to 600 HP with `damage u05bb 1199`, the player parked
+in the arena's AI hint so the tongue chain fires). The probe was a temporary trace in the port
+code, never committed; the run walked the states -1, 0, 1, 2, 4, 5, 7, 8, 9 and 10.
+
+| function | arms seen in the traced run |
+|---|---|
+| `fn_78_A5B4` | `xb6c == 0` 154x, `xb6c == 1` 5x - both returns |
+| `fn_78_A5CC` | `xb6c == 0` 7x, `xb6c == 1` 44x - both returns |
+| `fn_78_9A1C` | `type == 3` -> true (448+32+32x), `type != 3` and equal -> true (280+7+30x), `type != 3` and different -> false (100+100+30+30+20+20+7x) - every reachable arm |
+| `fn_78_35DC` | never entered - no run reached state 3 |
+
 ## Stage2 (module 79) — verified
 
 Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata

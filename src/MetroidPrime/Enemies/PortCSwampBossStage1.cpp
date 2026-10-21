@@ -92,7 +92,13 @@ enum {
   kJF_RemoveRadar = 0x20,
 };
 
-// fn_78_9A1C
+// @ fn_78_9A1C: either side being kAllJoints matches everything; otherwise the joint's type
+// must equal the requested type.
+// `cmpwi r4, 0x3` at 0x9A1C tests the joint's own type against kAllJoints.
+// `cmpwi r5, 0x3` at 0x9A24 tests the requested type against kAllJoints.
+// `subf r0, r4, r5` at 0x9A34 is the difference of the two types.
+// `cntlzw r0, r0` at 0x9A38 counts that difference's leading zeros.
+// `srwi r3, r0, 5` at 0x9A3C turns the count into the equality flag.
 bool JointMatches(int jointType, int type) {
   if (jointType == kAllJoints || type == kAllJoints) {
     return true;
@@ -144,6 +150,20 @@ float XYDistance(const CVector3f& a, const CVector3f& b) {
   return CVector3f(a.GetX() - b.GetX(), a.GetY() - b.GetY(), 0.f).Magnitude();
 }
 } // namespace
+
+// @ fn_78_A5B4: the splash locomotion is 11 when the alt-animation flag is set, 10 otherwise.
+// `lwz r0, 0xb6c(r3)` at 0xA5B4 loads xb6c.
+// `cmpwi r0, 0x0` at 0xA5BC tests it.
+// `li r3, 0xb` at 0xA5B8 is the alt-animation locomotion.
+// `li r3, 0xa` at 0xA5C4 is the plain one.
+int CSwampBossStage1::SplashLocomotion() const { return xb6c_altAnims ? 11 : 10; }
+
+// @ fn_78_A5CC: the rise locomotion is 14 when the alt-animation flag is set, 1 otherwise.
+// `lwz r0, 0xb6c(r3)` at 0xA5CC loads xb6c.
+// `cmpwi r0, 0x0` at 0xA5D4 tests it.
+// `li r3, 0xe` at 0xA5D0 is the alt-animation locomotion.
+// `li r3, 0x1` at 0xA5DC is the plain one.
+int CSwampBossStage1::RiseLocomotion() const { return xb6c_altAnims ? 14 : 1; }
 
 // @ fn_78_AA50
 CSwampBossStage1::CSwampBossStage1(TUniqueId uid, const rstl::string& name,
