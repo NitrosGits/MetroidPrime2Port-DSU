@@ -257,9 +257,9 @@ private:
   // joint collision descriptions belong to the state machine.
   CCollisionActorManager* mCollisionActorManager = nullptr;
   TUniqueId mCommandModuleId;
-  // guest 0xCC0: the id the command module copies into its own 0xEFE (fn_75_31A8, 0x320C).
-  // The retail writes it at 0xBE54 and in its constructor (0xF764); what it names is not
-  // established, so the port keeps it invalid.
+  // guest 0xCC0: the chassis's target - the SelectTarget code (fn_75_BE28, 0xBE54) writes the
+  // player's id, the HasTarget trigger (fn_75_E54C) tests it, the constructor (0xF764) clears it
+  // and the command module copies it into its own 0xEFE (fn_75_31A8, 0x320C).
   TUniqueId mSyncId = kInvalidUniqueId;
   // guest 0xC70: the retail's CVisualKnowledge, whose Update the Think calls (the DOL's
   // fn_801F55F0). The host's CLineOfSightTracker is the same thing.

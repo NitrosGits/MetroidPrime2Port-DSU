@@ -19,6 +19,7 @@
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
@@ -56,8 +57,8 @@ void StandIn(const char* what) {
 // three-word records of .data 0x0..0x2D0, so the retail function of each name is
 // known (docs/module-analysis/Splitter.md section b). The ported ones are the IsScanning
 // trigger (fn_75_58E8), the IsInitiallyDocked (fn_75_58DC), the IsDocked (fn_75_58BC), the
-// HasDockingTarget (fn_75_57F0) and the HasTarget (fn_75_57B4) triggers, the Start state
-// (fn_75_5564), the NotifyDocking code (fn_75_3EEC) and the RaiseShields code (fn_75_3B20);
+// HasDockingTarget (fn_75_57F0), the HasTarget (fn_75_57B4) and the InDetectionRange
+// (fn_75_5944) triggers, the Start (fn_75_5564) and the Scanning (fn_75_523C) states, the NotifyDocking code (fn_75_3EEC) and the RaiseShields code (fn_75_3B20);
 // the rest are once-logging shells for the retail function they name.
 #define SPLITTER_TRIGGER(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
@@ -77,7 +78,7 @@ void StandIn(const char* what) {
 
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(StateOver),
-    SPLITTER_TRIGGER(InDetectionRange),
+    SPLITTER_TRIGGER_PORTED(InDetectionRange),
     SPLITTER_TRIGGER_PORTED(IsScanning),
     SPLITTER_TRIGGER_PORTED(IsInitiallyDocked),
     SPLITTER_TRIGGER_PORTED(IsDocked),
@@ -100,7 +101,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
     SPLITTER_STATE_PORTED(Idle),
     SPLITTER_STATE(SpawnIdle),
     SPLITTER_STATE(Dead),
-    SPLITTER_STATE(Scanning),
+    SPLITTER_STATE_PORTED(Scanning),
     SPLITTER_STATE(FaceTarget),
     SPLITTER_STATE(PathFind),
     SPLITTER_STATE_PORTED(Hover),
@@ -180,7 +181,6 @@ void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float
     StandIn(#fn " (the head's " #name " code)");                                 \
   }
 SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_5A40)
-SPLITTER_TRIGGER_STANDIN(InDetectionRange, fn_75_5944)
 SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
 SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
 SPLITTER_TRIGGER_STANDIN(InHoverRange, fn_75_570C)
@@ -193,7 +193,6 @@ SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
 SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
-SPLITTER_STATE_STANDIN(Scanning, fn_75_523C)
 SPLITTER_STATE_STANDIN(FaceTarget, fn_75_50B0)
 SPLITTER_STATE_STANDIN(PathFind, fn_75_4E90)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
@@ -347,6 +346,69 @@ bool CSplitterCommandModule::IsScanning(CStateManager& mgr, const CTriggerData&)
 
 void CSplitterCommandModule::NotifyDocking(CStateManager& mgr, float) {
   PortDockToChassis(mgr);
+}
+
+// fn_75_5944 (the head's InDetectionRange trigger, 0x5944-0x5A3C): false unless the IsScanning
+// trigger (0x5968 fn_75_58E8) and the base's InDetectionRange (0x5980) both answer true. Then
+// the player (the manager's 0x14FC) less the head's position, with z set to 0.0f (0x598C-0x59D0),
+// is dotted with the head's transform's Y column (0x28, 0x38 and 0x48 - 0x59D8-0x5A04) and the
+// answer is that dot above the distance times the base's detection cosine at 0x3D8
+// (0x59EC-0x5A18: fcmpo and the cr0 gt bit).
+// @ fn_75_5944
+bool CSplitterCommandModule::InDetectionRange(CStateManager& mgr, const CTriggerData& data) const {
+  if (!PortChassisTimerRunning(mgr) || !CPatterned::InDetectionRange(mgr, data)) {
+    return false;
+  }
+  CVector3f delta = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
+  delta.SetZ(0.f);
+  const float dist = delta.Magnitude();
+  return CVector3f::Dot(delta, GetTransform().GetColumn(kDY)) > dist * mDetectionAngle;
+}
+
+// fn_75_523C (the head's Scanning state, 0x523C-0x5444). The message picks the arm
+// (0x5260-0x5288): 0 (activate, 0x528C) clears the base's flag byte 0x420's 0x80 bit (the
+// host's hit-by-player-projectile flag, 0x528C-0x5298), zeroes the vector at 0xF24-0xF2C
+// (0x529C-0x52B4, sZeroVector) and runs the effect-state update (0x52B8 fn_75_1578); 2
+// (deactivate, 0x5420) runs only the update; 1 (update, 0x52C0) does the scan; others return.
+// The scan: the chassis at 0xEFA is looked up and cast (0x52C0-0x52D8); with one, the head's own
+// 0x80 bit set (0x52E0-0x52E8) or the InDetectionRange trigger with the value 0.0f
+// (0x52EC-0x5310, fn_75_5944) sets the chassis's 0x80 bit (0x5314-0x5320), which its ShotAt
+// trigger (fn_75_E5B8) reads. Then, chassis or not, the turn is the frame time times the data's
+// scanning turn speed at 0x7CC (0x5324-0x5334), and the head's Y and X columns flattened to z
+// 0.0f (0x28/0x38 and 0x24/0x34 - 0x5324-0x53A4) must both be IsMagnitudeSafe (0x53A8-0x53C0);
+// the vector at 0xF24 becomes Slerp(Y normalized, X normalized, turn * 0.017453292f)
+// (0x53C4-0x5418, the degrees to radians constant lbl_75_rodata_74).
+// @ fn_75_523C
+void CSplitterCommandModule::Scanning(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    SetHitByPlayerProjectile(false);
+    mEditorProperties = CVector3f::Zero();
+    PortUpdateEffectStates(mgr);
+    break;
+  case kStateMsg_Update: {
+    CSplitterMainChassis* chassis = TCastToPtr< CSplitterMainChassis >(mgr.ObjectById(mChassisId));
+    if (chassis != nullptr &&
+        (GetHitByPlayerProjectile() || InDetectionRange(mgr, CTriggerData(0.f)))) {
+      chassis->SetHitByPlayerProjectile(true);
+    }
+    const float turn = dt * mData.mScanningTurnSpeed;
+    const CVector3f yAxis = GetTransform().GetColumn(kDY);
+    const CVector3f xAxis = GetTransform().GetColumn(kDX);
+    const CVector3f forward(CVector2f(yAxis.GetX(), yAxis.GetY()), 0.f);
+    const CVector3f right(CVector2f(xAxis.GetX(), xAxis.GetY()), 0.f);
+    if (forward.IsMagnitudeSafe() && right.IsMagnitudeSafe()) {
+      mEditorProperties = CVector3f::Slerp(forward.AsNormalized(), right.AsNormalized(),
+                                           CRelAngle::FromRadians(turn * 0.017453292f));
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    PortUpdateEffectStates(mgr);
+    break;
+  default:
+    break;
+  }
 }
 
 // The head's own effect-state update (fn_75_1578, 0x218) is ported as

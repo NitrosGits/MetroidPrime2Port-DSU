@@ -11,6 +11,7 @@
 // and the retail function each stands in for is named on it.
 #include "MetroidPrime/Enemies/CSplitterMainChassis.hpp"
 
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -79,7 +80,7 @@ CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER_PORTED(LostHead),
     SPLITTER_TRIGGER(HasHead),
     SPLITTER_TRIGGER(HasRetreatPoint),
-    SPLITTER_TRIGGER(HasTarget),
+    SPLITTER_TRIGGER_PORTED(HasTarget),
     SPLITTER_TRIGGER(CanReachTarget),
     SPLITTER_TRIGGER(HasLineOfSight),
     SPLITTER_TRIGGER(PathShagged),
@@ -178,7 +179,6 @@ SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_E64C)
 SPLITTER_TRIGGER_STANDIN(IsIntact, fn_75_E62C)
 SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
 SPLITTER_TRIGGER_STANDIN(HasRetreatPoint, fn_75_E56C)
-SPLITTER_TRIGGER_STANDIN(HasTarget, fn_75_E54C)
 SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
 SPLITTER_TRIGGER_STANDIN(HasLineOfSight, fn_75_E524)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_E4DC)
@@ -214,7 +214,6 @@ SPLITTER_STATE_STANDIN(WaitForSnatch, fn_75_C8F4)
 SPLITTER_STATE_STANDIN(FollowDeployPath, fn_75_C51C)
 SPLITTER_STATE_STANDIN(DeploymentLanding, fn_75_C034)
 SPLITTER_STATE_STANDIN(HeadExplosion, fn_75_BEEC)
-SPLITTER_CODE_STANDIN(SelectTarget, fn_75_BE28)
 SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_BC70)
 SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
 SPLITTER_CODE_STANDIN(SetupSpinAttack, fn_75_BAA8)
@@ -538,6 +537,32 @@ bool CSplitterMainChassis::DeployFromHoldingTube(CStateManager&, const CTriggerD
 // srwi).
 bool CSplitterMainChassis::ShotAt(CStateManager&, const CTriggerData&) const {
   return GetHitByPlayerProjectile();
+}
+
+// fn_75_E54C (the chassis's HasTarget trigger, 0xE54C-0xE568): the target id at 0xCC0 against
+// kInvalidUniqueId (0xE550-0xE564: subf both ways, or, srwi by 31 - true when they differ).
+// @ fn_75_E54C
+bool CSplitterMainChassis::HasTarget(CStateManager&, const CTriggerData&) const {
+  return mSyncId != kInvalidUniqueId;
+}
+
+// fn_75_BE28 (the chassis's SelectTarget code, 0xBE28-0xBEE8): the player's id (the manager's
+// 0x14FC, its 0x8) becomes the target id at 0xCC0 (0xBE48-0xBE54) and goes to the line-of-sight
+// tracker at 0xC70 (0xBE60 fn_801F585C, the host's SetTarget). With a head (the command module id
+// at 0xC6C valid, 0xBE64-0xBE74) the alerted sound (the data's 0x8A0) starts as an emitter at the
+// chassis's position, volume 0x7F, its area, acoustics on, not looped, medium priority
+// (0xBE78-0xBEA0). The four timers are copied (0xBEA8 fn_75_8EA4) and the chassis sends its
+// "ATTK" state with its own id and no message (0xBEAC-0xBED0, li r7 -1).
+// fn_75_BE28 (not marked: the headless arm, no AddEmitter, never ran)
+void CSplitterMainChassis::SelectTarget(CStateManager& mgr, float) {
+  mSyncId = mgr.GetPlayer(0)->GetUniqueId();
+  mVisualKnowledge.SetTarget(mSyncId); // fn_801F585C
+  if (mCommandModuleId != kInvalidUniqueId) {
+    CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundAlerted & 0xFFFF), GetTranslation(),
+                            0x7F, GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
+  }
+  PortCopyTimers(); // fn_75_8EA4
+  SendScriptMsgs(kSS_Attack, mgr, GetUniqueId(), kSM_None);
 }
 
 // fn_75_E478 (the chassis's PatrolPathOver trigger, 0xE478-0xE494): the id at 0x6C0 (the base's

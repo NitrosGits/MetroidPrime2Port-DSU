@@ -1136,3 +1136,37 @@ Scanning and Patrol states were ported): neither gap closed. The run's scan time
 stays at zero - nothing in the module sends ACTN, the AFSM script does - so `fn_75_9520` keeps
 counting the fade up. The flag byte 0xD41's 0x01 bit is still unset, because only the shell
 `fn_75_ACEC` sets it, so `fn_75_AFE8` keeps the death timer idle. Both bodies stay unmarked.
+
+#### Detection and target selection: fn_75_523C, fn_75_5944, fn_75_E54C, fn_75_BE28 - ported 2026-10-21
+
+The head's Scanning state (fn_75_523C), its InDetectionRange trigger (fn_75_5944) and the
+chassis's HasTarget trigger (fn_75_E54C) and SelectTarget code (fn_75_BE28) were the live
+stand-ins that kept the fight in Scanning/Patrol. With them ported, the area-5 run goes
+head Scanning -> FaceTarget and chassis Patrol -> PathFind once the player comes into the
+head's cone. The path: Scanning's update asks InDetectionRange (the chassis's scan timer at
+0xD28 running, the base's range check, then a flattened dot with the head's Y column above the
+distance times the base's detection cosine); a hit, or the head's own 0x420 0x80 bit (set by ALRT),
+sets the chassis's 0x80 bit, which its ShotAt trigger reads. SelectTarget stores the player's
+id at 0xCC0 (so that field is the chassis's **target**, not a "sync" id; the header's name
+`mSyncId` stays), hands it to the line-of-sight tracker, starts the alerted sound when a head
+is docked, copies the four timers (fn_75_8EA4) and sends ATTK.
+
+Run evidence (three area-5 runs with temporary probes): every block of 523C ran (activate,
+update with the chassis alert and the slerp, deactivate); 5944 gave the early false (timer not
+running) and the true cone; E54C answered true; BE28 ran with a head only. Edges not seen:
+the head's own-flag shortcut (`hurt` on the head does not set the 0x80 bit; only ALRT does),
+the null-chassis and unsafe-column guards, 5944's false cone and its base-range false
+while the timer runs (the timer only starts once the player is close and in front). BE28's
+headless arm needs a detached head (the head's FaceTarget and later states are still stand-ins),
+so BE28 is not marked.
+
+What the next stand-ins are, in the order the run reaches them: the chassis's SetTargetDest
+(fn_75_BC70) and PathFind (fn_75_DC08), its Should* triggers (E2F0, E3A4, E098, E1D0, E0B0) and
+HasRetreatPoint (E56C), FindBestDodgeDirection (B2A0), and the head's FaceTarget (fn_75_50B0)
+and ShouldLaserSweep (fn_75_55F8). The separation (8EC8), steering (986C) and placement (ACEC)
+arms still unreached all need the head undocked, which is behind them.
+
+The most-called unmarked bodies are not the next targets: fn_75_70A0/fn_75_5B9C are REL copies
+of `CDamageVulnerability`'s assignment (cite), fn_75_8B74/fn_75_E60 are the loaders' compiler
+dtors, and fn_75_9AF8 (the per-collision-actor vulnerability) and fn_75_5D50 (the head's shields
+off) are only called from chassis/head states that are still stand-ins.
