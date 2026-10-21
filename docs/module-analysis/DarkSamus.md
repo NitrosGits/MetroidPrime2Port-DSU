@@ -667,3 +667,22 @@ transition enters it.
   1D6CC, 1D5C4 and 1B0E0 are the fade/invisibility block (0xDE8, 0xDEC, 0xDED, stage +0x33,
   fn_10_18628). F654 ramps 0xD24 from the 0xCD0 sub-object's vector at 0xD18. Neither is
   ported.
+
+## Slice 13 (2026-10-21): real fire, the pissed-off chain
+
+- Real fire does hurt her: with the player 9 units from her, facing her, 50 power-beam hits reached
+  her CDarkSamus (eid 002e00c4, mode 0, multiplier 1.00) and each applied 2.0 damage. Slice 12's
+  "no damage" was shots fired from the spawn point missing her. Nothing shared is wrong here.
+- Ported and marked: FD4C (WatchStageChange, called from Think after the attack pick, ahead of the
+  unported fn_10_1ACA0/fn_10_10A64), FAF4 (ReachedPissedOff), FB8C (TravelToPissedOff), F930
+  (PissedOff), FC64 (FindAreaHint), 105F4 (UpdateShieldFlag), 18F90 (UpdateGroundCollision).
+  0xD50 is renamed mSeenStageUid; 0xD54 mSeenStageCount, 0xD59 mStageChanged, 0xD18 mGuestD18 are new.
+- Agon run (damage to 240/600 before Activate, so the 0198 advance lands while she is in
+  TravelToCoverPoints, the only state with ShouldGetPissedOff): FD4C pissed -> TravelToPissedOff
+  (Activate, Update, Deactivate by Dash, re-entry) -> FAF4 distance 25.8 .. 2.9 -> PissedOff with
+  the type-0xE hint (005e) and the type-0xF face hint, 18F90 Activate/Deactivate -> AnimOver ->
+  TurnToFacePlayer. Rooftop run: FD4C "changed" arm on five advances, then Dead.
+- Not run, unreachable on shipped data: no type-0xE hint (FAF4/FB8C/F930/FC64 null arms), no type-0xF
+  hint (F930 player turn), and FD4C's no-stage arm. Only Agon 0198 sets +0x84, and Agon has both hints.
+- When the stage advances during a stand-in state (MissileJump), she never gets back to
+  TravelToCoverPoints, so the reaction waits on those stand-ins.
