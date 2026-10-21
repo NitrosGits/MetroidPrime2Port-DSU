@@ -301,7 +301,7 @@ void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
   }
   // The extrwi at 0x7004 takes 1 bit at 26 (the byte's bit 5, 1u << (31 - 26) = 0x20).
   if (x705C_() <= 2 && (head->x10F4_ & 0x20) != 0 && head->x10D0_ == 1) { // 0x6FF8, 0x7010
-    x128C_ |= 0x02; // the rlwimi at 0x7020 (the byte's bit 1)
+    x128C_ |= 0x01; // the rlwimi at 0x7020 (mask 31,31: the byte's bit 0)
   }
 }
 
