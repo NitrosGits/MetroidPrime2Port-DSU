@@ -430,6 +430,213 @@ Restating them as guest bits clears these and adds 24 XBITs on the Ing-module ch
 The MASK hit (`mBoostPuddleGenerate` placed by the host bitfield layout at 0x11EF 0x04) is fixed
 with a position comment (`guest 0x11EE bit 2`).
 
+## h. The unmarked functions: what each one is
+
+`tools/port_progress.py` counts 204 of the module's 318 functions as marked, so 114 are
+unmarked. Every one of them is either the REL's own copy of code the host's C++ already does
+or compiler output; this section says which is which, so the number stops being a mystery.
+
+A **REL copy of host/DOL code** never gets a marker: the host's own C++ (or the compiler) does
+the work, and a marker would claim a function the port does not implement. Where the same
+function also exists in the GameCube executable, the table gives its DOL address (from
+`config/G2ME01/symbols.txt`), so the copy can be checked against the original.
+
+The classes: 10 the REL runtime and the module's own entry glue, 47 the compiler's weak
+deleting dtors and copies of the module's own types, 31 the template inlines the compiler
+emitted out of line, 15 the REL's own copies of a DOL / host class member, 2 inline accessors
+and thunks, 5 the module's own memberwise copies of its two parameter blocks and 4 with
+retail behaviour (section h.1).
+
+The "called from" column is the REL's own call graph, read from the disassembly; a "-" means
+nothing in the module calls it and no table names it.
+
+##### rel - The REL runtime and the module's own entry glue
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `RELMain` | 0x20 | the REL's entry: it calls fn_30_100 | - | _prolog |
+| `RELExit` | 0x24 | the REL's exit: the DOL's SetSIngBoostBallGuardian_FuncPtrs (0x8022FFC4) with null | - | _epilog |
+| `fn_30_100` | 0x30 | the installer: fn_30_130 into lbl_30_bss_6C, then the DOL's SetSIngBoostBallGuardian_FuncPtrs (0x8022FFC4) | - | RELMain |
+| `_prolog` | 0x24 | the runtime's prolog: ModuleConstructors, then RELMain | - | - |
+| `_epilog` | 0x24 | the runtime's epilog: ModuleDestructors, then RELExit | - | - |
+| `ModuleConstructors` | 0x4C | the module's .ctors list | - | _prolog |
+| `ModuleDestructors` | 0x4C | the module's .dtors list | - | _epilog |
+| `__destroy_global_chain` | 0x58 | the runtime's global destructor chain | - | - |
+| `__register_global_object` | 0x1C | the runtime's global-object registration | - | fn_30_12510, fn_30_8520 |
+| `_unresolved` | 0xC4 | the runtime's unresolved-relocation stub | - | - |
+
+##### gen - The compiler's weak deleting dtors and copies of the module's own types
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_5E4` | 0xB8 | the module's own data block: the vulnerability's dtor, then the block's | - | fn_30_11CD8, fn_30_130, fn_30_E5EC |
+| `fn_30_69C` | 0x58 | the SLdr damage-info block's dtor chain | - | fn_30_14AC, fn_30_1988, fn_30_5E4 |
+| `fn_30_6F4` | 0x54 | the SLdr damage-info block's inner dtor | - | fn_30_69C |
+| `fn_30_B30` | 0x54 | a member's weak deleting dtor | - | - |
+| `fn_30_FEC` | 0x8C | a member's weak deleting dtor | - | - |
+| `fn_30_12A0` | 0x6C | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_130C` | 0x54 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_1360` | 0x64 | the CAnimData member's weak deleting dtor | - | - |
+| `fn_30_13C4` | 0x60 | the CModelData member's weak deleting dtor | - | - |
+| `fn_30_18B4` | 0x3C | a member's weak deleting dtor | - | - |
+| `fn_30_1078` | 0x64 | the vulnerability + SLdr block's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_1424` | 0x88 | the loader's SLdr block's dtor (actor parameters, patterned typedef, editor properties) | - | fn_30_130 |
+| `fn_30_14AC` | 0x94 | the loader's SLdr damage-info block's dtor | - | fn_30_1424 |
+| `fn_30_2C44` | 0x88 | the SLdr damage-vulnerability / plasma-beam block's dtor | - | fn_30_1078, fn_30_130, fn_30_1424, fn_30_E5EC |
+| `fn_30_6B74` | 0x48 | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_7D00` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_84C4` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_A308` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_A8C0` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_AFE0` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_890C` | 0x8C | a member's weak deleting dtor | - | - |
+| `fn_30_941C` | 0x50 | a wide rstl string member's weak deleting dtor | - | - |
+| `fn_30_946C` | 0x68 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_94D4` | 0x68 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_C46C` | 0x3C | a member's weak deleting dtor | - | - |
+| `fn_30_CE14` | 0x3C | a member's weak deleting dtor | - | - |
+| `fn_30_D8D8` | 0x74 | the SLdr plasma-beam block's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_E4EC` | 0x54 | the connected-ids vector member's weak deleting dtor | - | fn_30_11CD8, fn_30_DDA0, fn_30_E5EC |
+| `fn_30_E540` | 0x58 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_E598` | 0x54 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_EA38` | 0x94 | CPatterned's token member's weak deleting dtor | - | fn_30_E854 |
+| `fn_30_EACC` | 0x58 | the CSurfaceAlignmentHelper chain's weak deleting dtor | - | fn_30_E5EC |
+| `fn_30_EB24` | 0x58 | the CSurfaceAlignmentHelper chain's weak deleting dtor | - | fn_30_EACC |
+| `fn_30_EB7C` | 0x58 | the CSurfaceAlignmentHelper chain's weak deleting dtor | - | fn_30_EB24 |
+| `fn_30_EBD4` | 0x98 | the CSurfaceAlignmentHelper chain's weak deleting dtor | - | fn_30_EB7C |
+| `fn_30_101A8` | 0x3C | a member's weak deleting dtor (the ball's section) | - | - |
+| `fn_30_101E4` | 0x6C | a CToken holder's weak deleting dtor (the ball's section) | - | - |
+| `fn_30_1049C` | 0x58 | the CCollisionActorManager member's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_104F4` | 0x3C | a member's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_10530` | 0x3C | a member's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_11DF0` | 0x54 | a member's weak deleting dtor (the ball's section) | - | fn_30_11CD8 |
+| `fn_30_127C0` | 0x3C | a member's weak deleting dtor (the ball's section) | - | - |
+| `fn_30_3790` | 0x50 | an rstl string member's weak deleting dtor | - | - |
+| `fn_30_37E0` | 0x58 | a member's weak deleting dtor | - | fn_30_3478, fn_30_38E0, fn_30_3CB0, fn_30_6980, fn_30_7390, fn_30_B478, fn_30_D4F8 |
+| `fn_30_3838` | 0x54 | a member's weak deleting dtor | - | fn_30_37E0 |
+| `fn_30_4D18` | 0x5C | an rstl string member's weak deleting dtor | - | - |
+| `fn_30_E854` | 0x1E4 | CPatterned's own teardown (its token member, body state, vulnerability) | - | fn_30_E5EC |
+
+##### rstl - The template inlines the compiler emitted out of line
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_9E0` | 0x44 | the phase vector's copy constructor | - | fn_30_10250, fn_30_748 |
+| `fn_30_A24` | 0x68 | the phase vector's copy assignment (the element loop) | - | fn_30_9E0 |
+| `fn_30_A8C` | 0x20 | the phase struct's copy assignment | - | fn_30_A24, fn_30_F30 |
+| `fn_30_AAC` | 0x28 | the phase struct's self-assignment guard | - | fn_30_A8C |
+| `fn_30_F30` | 0x48 | the phase vector's element destructor | - | fn_30_130 |
+| `fn_30_AD4` | 0x5C | the CDamageVulnerability's copy constructor | - | fn_30_10250, fn_30_1056C, fn_30_10C24, fn_30_15924, fn_30_748 |
+| `fn_30_B84` | 0x130 | rstl's vector allocate (the damage-vulnerability array) | - | fn_30_AD4 |
+| `fn_30_CB4` | 0xAC | the boost block's copy constructor | - | fn_30_10250, fn_30_748 |
+| `fn_30_D60` | 0x1D0 | rstl's vector allocate (the damage-vulnerability array) | - | fn_30_CB4 |
+| `fn_30_4BD8` | 0x38 | the joint-sphere vector's push_back_unsafe | - | fn_30_4A38, fn_30_4E90 |
+| `fn_30_4C10` | 0x20 | the joint-sphere vector's element constructor | - | fn_30_1105C, fn_30_4BD8 |
+| `fn_30_4C30` | 0x28 | the joint-sphere vector's element copy | - | fn_30_4C10 |
+| `fn_30_4D74` | 0x84 | the joint-sphere vector's destructor | - | fn_30_4A38, fn_30_4E90 |
+| `fn_30_4DF8` | 0x38 | the material-filter vector's element constructor | - | fn_30_4D74 |
+| `fn_30_4E30` | 0x60 | the material-filter vector's element copy | - | fn_30_4DF8 |
+| `fn_30_10E04` | 0xA4 | rstl's vector allocate (the connected-ids array) | - | fn_30_E430 |
+| `fn_30_10EA8` | 0x98 | rstl's vector copy (the connected-ids array) | - | fn_30_1FB4 |
+| `fn_30_10F40` | 0x5C | the connected-ids vector's element copy | - | fn_30_10EA8 |
+| `fn_30_10F9C` | 0xC0 | rstl's vector reserve (the joint-sphere array) | - | fn_30_4A38, fn_30_4E90 |
+| `fn_30_1105C` | 0x68 | the joint-sphere vector's element constructor | - | fn_30_10F9C |
+| `fn_30_136B0` | 0x4C | rstl's vector insert (the ball's near list) | - | fn_30_12AB0 |
+| `fn_30_136FC` | 0x64 | rstl's vector insert (the ball's near list) | - | fn_30_136B0 |
+| `fn_30_14C54` | 0x78 | rstl's vector erase (the ball's near list) | - | fn_30_148DC, fn_30_14CCC |
+| `fn_30_1642C` | 0xA4 | rstl's vector reserve (the ball's bounce counts) | - | fn_30_1466C |
+| `fn_30_CD78` | 0x9C | rstl's optional_object<CAABox> assignment | - | fn_30_13ECC, fn_30_CC34 |
+| `fn_30_E430` | 0xB0 | rstl's vector assignment (the connected-ids array) | - | fn_30_DDA0 |
+| `fn_30_E4E0` | 0xC | rstl's vector's element destructor helper | - | fn_30_E430 |
+| `fn_30_10DC` | 0x40 | the CModelData copy's optional-model branch | - | fn_30_130 |
+| `fn_30_111C` | 0x20 | the optional model data's copy | - | fn_30_10DC |
+| `fn_30_113C` | 0x28 | the optional model data's null guard | - | fn_30_111C |
+| `fn_30_160D0` | 0x100 | the connected-ids vector's copy constructor (the ball's) | - | fn_30_15924 |
+
+##### dol - The REL's own copies of a DOL / host class member
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_388C` | 0x54 | the CHealthInfo copy constructor | 0x80070D60 `__ct__11CHealthInfoFRC11CHealthInfo` | fn_30_160A8, fn_30_3478, fn_30_4924 |
+| `fn_30_33B0` | 0x5C | the CRayCastResult copy constructor | 0x80015CAC `__ct__14CRayCastResultFRC14CRayCastResult` | fn_30_324C |
+| `fn_30_A91C` | 0x40 | CVector3f::Cross | 0x8001994C `Cross__9CVector3fFRC9CVector3fRC9CVector3f` | fn_30_11F2C, fn_30_12124, fn_30_123CC, fn_30_12AB0, fn_30_A45C |
+| `fn_30_D1C4` | 0x6C | the CMotionState copy constructor | 0x8000F200 `__ct__12CMotionStateFRC12CMotionState` | fn_30_CFC4 |
+| `fn_30_161D0` | 0x68 | the CMotionState copy constructor (the ball's) | 0x8000F200 `__ct__12CMotionStateFRC12CMotionState` | fn_30_15924 |
+| `fn_30_6710` | 0xA4 | the CLight copy constructor | 0x80038C9C `__ct__6CLightFRC6CLight` | fn_30_65C8 |
+| `fn_30_1164` | 0x13C | the CModelData copy constructor (three optional tokens, each locked) | 0x80018FBC `__ct__10CModelDataFRC10CModelData` | fn_30_113C |
+| `fn_30_4C58` | 0xC0 | the CJointCollisionDescription copy constructor | 0x80137214 `__ct__26CJointCollisionDescription...` | fn_30_4A38, fn_30_4C30, fn_30_4E90 |
+| `fn_30_160A8` | 0x28 | the CHealthInfo copy constructor (the ball's optional) | 0x80070D60 `__ct__11CHealthInfoFRC11CHealthInfo` | fn_30_16088 |
+| `fn_30_16088` | 0x20 | rstl's optional_object<CHealthInfo> assignment (the ball's) | 0x8016FCB8 `assign__optional_object<CHealthInfo>` | fn_30_15FF4 |
+| `fn_30_15FF4` | 0x94 | rstl's optional_object<CHealthInfo> assignment (the ball's) | 0x8016FCB8 `assign__optional_object<CHealthInfo>` | fn_30_15FC4 |
+| `fn_30_15FC4` | 0x30 | the ball's optional health-info assignment | 0x8016FC88 `__as__optional_object<CHealthInfo>` | fn_30_15924 |
+| `fn_30_1F08` | 0xAC | the CMayaSpline copy constructor (the loader's) | 0x80080B3C `__ct__11CMayaSplineFRC11CMayaSpline` | fn_30_1988 |
+| `fn_30_1FB4` | 0xE0 | the CMayaSpline assignment (the loader's) | 0x80080DB8 `__as__11CMayaSplineFRC11CMayaSpline` | fn_30_1F08 |
+| `fn_30_2094` | 0xC | the CMayaSpline's knot-array release | 0x800327FC `__dt__11CMayaSplineFv` | fn_30_1FB4 |
+
+##### acc - Inline accessors and thunks
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_90` | 0x2C | the vtable's HealthInfo() thunk: it calls the base's slot 9 (vslot 0x38) | - | a .data table |
+| `fn_30_4028` | 0x8 | an unreferenced accessor (the word at 0x254) | - | - |
+
+##### host - The module's own memberwise copies of its two parameter blocks
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_10250` | 0x24C | the boost block's memberwise copy into the object (guest 0xDEC) | - | fn_30_15924, fn_30_EC6C |
+| `fn_30_1056C` | 0x128 | the guardian block's memberwise copy into the object (guest 0x7C0) | - | fn_30_EC6C |
+| `fn_30_10694` | 0x240 | the guardian block's memberwise copy, part two | - | fn_30_1056C, fn_30_10C24 |
+| `fn_30_108D4` | 0x2BC | the guardian block's memberwise copy, part three | - | fn_30_10694 |
+| `fn_30_10B90` | 0x94 | the guardian block's memberwise copy, part four | - | fn_30_10694 |
+
+##### beh - Retail behaviour
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_68F0` | 0x90 | the kSM_Create body: the form, the locomotion type and the surface alignment | - | fn_30_DDA0 |
+| `fn_30_6014` | 0x50 | the cover hint claim: SetInUse(true), then the hint's id into 0x108E and 0x1090 | - | fn_30_8520 |
+| `fn_30_5260` | 0x170 | the separation steering (the module never calls it) | - | - |
+| `fn_30_110C4` | 0xC14 | the .ctors initialiser: the 86 FSM name/function records into the three tables | - | - |
+
+### h.1 The behaviour functions, branch by branch
+
+Four functions are behaviour rather than a copy. The two the fight reaches are marked; the
+other two are dead in retail (nothing calls them and no table names them), so they stay
+unmarked. Every branch of each is listed below with what the run proved.
+
+The evidence is one run of the area (world `3dfd2249`, area
+`06_swamp_boostballguardian_dark`, layer 5, `MP2_BG_FSM=1 MP2_DEBUG_BG=1 MP2_GODMODE=1`):
+the player's start point is 122 units from the guardian, so the console's `tp 14.9 290 58`
+puts it inside the guardian's 100-unit detection range. The probe lines below were in the tree
+for that run only (they are not committed).
+
+| function | asm branch | what the branch selects | verdict |
+|---|---|---|---|
+| `fn_30_68F0` | 0x00006918 `beq .L_00006920` | the data byte's 0x80 clear: form 2 (corporeal) | (b) ran: `[ibbg] PROBE create 012b form 2 startAsIngSpot 0` |
+| `fn_30_68F0` | 0x0000691C `li r3, 0x3` | the data byte's 0x80 set: form 3 (ing spot) | (c) unreachable in the shipped data: the loader's `fn_30_10C24` never sets 0x80 (0x00010D9C `rlwimi 7,24,24` from r11 = 0), so the flag byte's 0x80 is always 0 |
+| `fn_30_68F0` | 0x0000692C `beq .L_0000695C` | the same bit, read a second time | (b) ran (the same arm as 0x00006918) |
+| `fn_30_68F0` | 0x00006938 `bl SetLocomotionType` (0x00006934 `li r4, 0`) | crouch, with the surface alignment | (c) unreachable in the shipped data (the same 0x80) |
+| `fn_30_68F0` | 0x00006954 `bl fn_801F7714` | `AlignNearPosition` (rodata_64 = 1.0) | (c) unreachable in the shipped data (the same 0x80) |
+| `fn_30_68F0` | 0x00006958 `b .L_00006968` | the join after the alignment | (b) ran (the crouch arm is the only one that reaches it) |
+| `fn_30_68F0` | 0x00006964 `bl SetLocomotionType` (0x00006960 `li r4, 1`) | relaxed | (b) ran: the probe line above shows form 2, so this is the arm that ran |
+| `fn_30_6014` | none | the body is branch-free: `SetInUse`, then the id into 0x108E and 0x1090 | (b) ran: `[ibbg] PROBE claim 012b cover hint 0158` (six times in the run); a branch-free body needs only an entry line |
+| `fn_30_5260` | 0x000052A8, 0x000052B0, 0x000052C0, 0x00005328, 0x00005390, 0x000053AC | the separation steering's cast, self, team, magnitude, index and loop tests | (c) unreachable: the module's own text never calls `fn_30_5260` and no table names it, so the whole body is dead in retail (the host's `ApplySeparation` is the live one) |
+| `fn_30_4028` | none | `lwz r3, 0x254(r3)`, an unreferenced accessor | (c) unreachable: nothing calls it and no table names it |
+| `fn_30_110C4` | none | the `.ctors` initialiser: 773 straight-line instructions that copy the 86 FSM records (49 triggers, 28 states, 9 codes) into the module's three tables | (b) ran at module load (the machine's states and triggers fire), but no marker: it is the compiler's static initialiser, and the host's tables are static arrays in `PortCIngBoostBallGuardianFsm.cpp` |
+
+So `fn_30_68F0` (the `kSM_Create` body) and `fn_30_6014` (the cover hint claim) carry a marker
+each: every reachable arm of the first ran or is unreachable in the shipped data, and the
+second is branch-free and ran. `fn_30_5260` and `fn_30_4028` stay unmarked - retail never
+calls them, so the port has no behaviour to reproduce and no host counterpart.
+
+`asmcheck.py` reports one `BIT` finding on `fn_30_68F0` (0x6914: "asm tests xae0_80; C++
+never reads it"). It is the same false positive the module already has on the other flag-bit
+bodies (`fn_30_A0D8` 0xA174, `fn_30_9F50` 0x9FFC, `fn_30_9DA0` 0x9DFC, `fn_30_9C7C` 0x9CC8,
+`fn_30_8520` 0x8700): the host reads the packed flag byte through `mData.mFlags210`, and the
+annotator cannot resolve a member of a member, so it does not see the read.
+
+
 ## i. Port plan
 
 - **WP1 (done, `1e753b70e`):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)
