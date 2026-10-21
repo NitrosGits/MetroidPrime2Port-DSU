@@ -188,7 +188,7 @@ address per row: `docs/module-analysis/BoostGuardian_layout.md`, 0x11F0 total, b
 | 0x10AC+? 0x10BA | byte copy of 0x10AD | [0x00010164] |
 | 0x10F8..0x111B | three `CVector3f` = zero | [0x0000FC34].. |
 | 0x111C | int -1 | [0x0000FC84] |
-| 0x1120 | `CVector3f` = `Normalize(1.0, 0.1, 0.05)`, then 0x112C = its dot with the base's 0x54/0x58/0x5C | [0x0000FCA8]..[0x0000FCFC] |
+| 0x1120 | `mPortalPlaneNormal` = `Normalize(0, 0, 1)`, then 0x112C = its dot with the translation (0x54) | [0x0000FCA8]..[0x0000FCFC] |
 | 0x1130 / 0x1158 / 0x115C | 0 / -1 / 0 | [0x0000FD00].. |
 | 0x1160..0x1177 | two `CVector3f` = zero | [0x0000FD10].. |
 | 0x1178 | `CDamageVulnerability` (0x30) | [0x0000FD48] |
@@ -284,11 +284,13 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   puddle collider or a hit the boost ball relays; else `4078`, a body collider) and sets the
   player-projectile bit; XRDG runs `4324` in the ing-spot form only. Both count only a CWeapon as
   the collider's last-touched object, so the console's `damage <collider>` (the player as attacker)
-  moves no guardian HP, in retail too; real shots do. The puddle never kills (1 HP, puddle mode off
+  moves no guardian HP, in retail too; real shots do. In the boost puddle form its colliders take 0x1178, a
+  resist-everything vulnerability (ctor: 100.0, effect 3), so bombs arrive as XRDG at `4324` and
+  feed 0x11D8. The puddle never kills (1 HP, puddle mode off
   for good); `4030` turns puddle mode on with damage. `D4F8`'s events 37/38 clear/set 0x11EF 0x10
   (`mBodyHitsLethal`) in the host's (Ing-derived) DoUserAnimEvent. `CA18` (UpdateHitDamageTime) tints
-  with 0x1080 and the XENZ/XEXZ count 0x115C; that count's other readers (`A07C`, `C05C`, `C1B0`)
-  are not checked.
+  with 0x1080 and the XENZ/XEXZ count 0x115C; its other readers are ported too: `C1B0`
+  IsAggressive, `C05C` ShouldFleeSafeZone and PathFind's update (`A07C`).
 - *0xD60 manager:* `CreateCollisionActorManager` is now `4E90` (kSM_Create 0xDF18): the seven
   `lbl_30_rodata_0` spheres (same table as the Ing's), `SetupManagerActors` (`4924`), `AddMaterial`
   Unknown54 + ProjectilePassthrough, filter Solid / CollisionActor, AIPassthrough, Player,
@@ -296,6 +298,11 @@ Its asm is in `build/G2ME01/IngBoostBallGuardian/asm/auto_00_00011CD8_text.s` (4
   managers are raw pointers deleted in the dtor (0xD64 then 0xD60). Retail calls them unchecked
   everywhere but AIUpdateDisabled, and so does the host now. Area 28: a sphere hit relays to the
   guardian; the puddle box takes the IngSpot form's turns.
+- *Fight check (2026-10-21, after the ctor timers 9f041d425):* a hook-free area-28 run
+  (`MP2_BG_FSM=1 MP2_DEBUG_BG=1`) drops HP: a beam shot in the corporeal form 1000 -> 994, then
+  bombs on the ing-spot form outside boost puddle mode (`44A4`, weapon type 4, x1.0) 10 each to 954;
+  bombs in boost puddle mode only feed 0x11D8 (`4324`, resisted), as retail. Puddle-only bombing
+  (the earlier driver) never moves HP; that is not a stuck form.
 
 ## g. Function map
 
@@ -415,7 +422,7 @@ values therefore differ from the Ing's 0x9d0 byte: `kFlag_AlwaysTargetable` 0x02
 
 `tools/asmcheck.py check IngBoostBallGuardian PortCIngBoostBallGuardian.cpp --only
 MASK,XBIT,CROP,XCMP,XSTORE,OFFS` leaves three XBIT hits on the ctor (`mFoundMovementPos`,
-`mStartAsIngSpot`, `mRenderModel`), and the same kind on `fn_30_9DA0` in States2: false
+`mIngSpotBlobVisible`, `mRenderModel`), and the same kind on `fn_30_9DA0` in States2: false
 positives. Those Ing-half members state the Ing's offsets (`CIng: 0xE5C bit 3`) because most bodies
 cite `fn_29_*` and `review_decomp_diff.sh` checks them against the Ing REL; the guardian's ctor
 stores the guest bits (0x11EC 0x10 at 0xFE0C, 0x11ED 0x40 at 0xFE60, 0x11EC 0x01 at 0xFE3C).
@@ -473,6 +480,9 @@ offsets are in section e; the module's own addresses for the state machine's nod
 - live fight (2026-10-20): the boost puddle countdown now reaches `BecomeIngSpot` ->
   `BoostAttack`, which spawns the boost ball (`CBoostBallGuardianBall` in `objs`, at the ground
   under the guardian); with the ball's Think still a stand-in the state waits there (section f).
+- 0x10AC is the `Collar_SDK` locator (ctor 0x0000FFAC), live here (the Ing's 0xd7a stays 0xff):
+  `GetAimPosition` `fn_30_CFC4` takes the collar path. `fn_30_5888` (arm segment test) does not
+  restart the 0x440 contact-damage cooldown, unlike the Ing's `fn_29_3E1C`; `fn_30_5C80` picks the arm.
 
 ## k. What the loader and the constructor actually pass
 

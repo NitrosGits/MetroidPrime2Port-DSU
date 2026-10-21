@@ -13,12 +13,10 @@
 // PortCIngBoostBallGuardianStates2.cpp.
 //
 // What this module does not have, and what was dropped because of it:
-//   - no lure safe zone (the Ing's mLureSafeZoneId, mSafeZoneCount and mEvaporate do not exist
-//     here), so FaceLureOrTarget only turns to the target;
+//   - no lure safe zone (the Ing's mLureSafeZoneId and mEvaporate do not exist here), and
+//     BecomeCorporeal does not turn to it or to the target (fn_30_B03C has no face step);
 //   - no safe-zone ing-spot flag (the Ing's mSafeZoneIngSpot does not exist here);
-//   - no grapple block (the Ing's mData.mGrapple does not exist here);
-//   - no exit-host class yet (CIngExitHostEffect belongs to the Ing branch and the module's own
-//     exit-host body is a later slice), so ExitHost and SpawnExitHostSmoke only log.
+//   - no grapple block (the Ing's mData.mGrapple does not exist here).
 
 #include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp"
 
@@ -45,6 +43,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
+#include "MetroidPrime/Enemies/CIngExitHostEffect.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/PortBoostGuardianShared.hpp"
@@ -71,6 +70,7 @@
 // ---- states ---------------------------------------------------------------------------------
 
 // The Ing's fn_29_A094.
+// @ fn_30_B768
 void CIngBoostBallGuardian::Start(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Start");
@@ -78,65 +78,115 @@ void CIngBoostBallGuardian::Start(CStateManager&, EStateMsg msg, float) {
 }
 
 // The Ing's fn_29_A090 (not yet exercised in a run).
+// @ fn_30_B764
 void CIngBoostBallGuardian::WaitForFSMTransition(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("WaitForFSMTransition");
   }
 }
 
-// The Ing's fn_29_9D68. The exit host: the Ing it leaves behind is a swarm. Its Activate swaps the
-// possessed-mold billboard for the exit-host effect (one rs_new of 0x5e8, the class's only
-// allocation), Update rides that effect until it reports it has arrived, and Deactivate drops the
-// Ing back onto the mesh as an ing spot wherever SetExitHostDest pointed. Retail's Activate adds
-// kMT_Target (0x28), Deactivate adds back 0x21/0x3b/0x29.
-//
-// NOT PORTED YET: this module's own copy of the exit-host body (the module's own equivalent of the
-// Ing's fn_29_9D68) and the exit-host class are not part of this branch - the module's exit host is
-// a later slice. The Ing body's behaviour is in the Ing branch
-// (wt-mp2-ing/src/MetroidPrime/Enemies/PortCIng.cpp), so this body only logs the state.
-void CIngBoostBallGuardian::ExitHost(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// @ fn_30_B478 (the Ing's fn_29_9D68). The exit host: the Ing it leaves behind is a swarm. Its
+// Activate swaps the possessed-mold billboard (0xFDA) and any earlier swarm (0x1092) for the
+// exit-host effect (one rs_new of 0x5e8, the Ing REL's fn_29_1105C), Update rides that effect until
+// it reports it has arrived (its byte 0x5e2 bit 7), and Deactivate drops the Ing back onto the mesh
+// as an ing spot wherever SetExitHostDest pointed (0x10F8). Unlike the Ing's, this module's
+// Deactivate arms no grapple cooldown (the module has no grapple block).
+void CIngBoostBallGuardian::ExitHost(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate: {
     LogState("ExitHost");
+    AddMaterial(kMT_Target, mgr);  // 0x28
+    mForm = kForm_ControllingHost; // 0xAE4 = 1
+    if (mPossessedEffectId != kInvalidUniqueId) {
+      mgr.DeleteObjectRequest(mPossessedEffectId); // 0xFDA
+    }
+    if (mD76Id != kInvalidUniqueId) {
+      mgr.DeleteObjectRequest(mD76Id); // 0x1092
+    }
+    // Retail allocates the new id before the rs_new, so a failed build still consumes one.
+    mD76Id = mgr.AllocateUniqueId(); // 0x1092
+    // The swarm block's words: 0x804 sRSC, 0x808 pART 3DA2, 0x80C/0x814/0x818/0x81C the four
+    // floats, 0x820 the swarm-move sound; the destination is 0x10F8, the target 0x1088.
+    CIngExitHostEffect* effect = rs_new CIngExitHostEffect(
+        mD76Id,
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        GetTransform(), mTargetPos, GetModelData()->GetScale(), mData.mSwarm.mSRSC,
+        mData.mSwarm.mPART3DA2, mData.mSwarm.mUnknown2327, mData.mSwarm.mUnknownCB39, mTargetId,
+        mData.mSwarm.mUnknown587C, mData.mSwarm.mUnknown0BD7, mData.mSwarm.mSoundSwarmMove);
+    if (effect == nullptr) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    } else {
+      mgr.AddObject(*effect);
+      mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1
+    }
+    // One emitter, chosen by TargetInSafeZone (fn_30_C14C, given a zeroed CTriggerData): 0x82C
+    // in a safe zone, else 0x828.
+    const ushort sound = TargetInSafeZone(mgr, CTriggerData(0.f))
+                             ? mData.mSwarm.mSoundExitHostSafeZone
+                             : mData.mSwarm.mSoundExitHost;
+    CSfxManager::AddEmitter(sound, GetTranslation(), 0x7f, GetCurrentAreaId().Value(), true, false,
+                            CSfxManager::kMedPriority);
+    if (DebugBg()) {
+      fprintf(stderr, "[ibbg] %04x exit host: swarm %04x, sound %04x\n", GetUniqueId().Value(),
+              mD76Id.Value(), sound);
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    // Retail looks the object up by id and reads its byte 0x5e2 with no type test; the cast is
+    // only to reach IsDone().
+    const CIngExitHostEffect* effect =
+        static_cast< const CIngExitHostEffect* >(mgr.GetObjectById(mD76Id));
+    if (effect == nullptr || effect->IsDone()) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
+    } else {
+      SetTranslation(effect->GetTranslation());
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    SetTranslation(mTargetPos); // 0x10F8
+    mSurfaceAlignment.AlignNearPosition(*this, mgr, mTargetPos, 1.f); // rodata_64
+    AddMaterial(kMT_Character, kMT_Solid, kMT_Orbit, mgr);            // 0x21/0x3b/0x29
+    SpawnExitHostSmoke(mgr);                                          // fn_30_38E0
+    mForm = kForm_IngSpot;                                            // 0xAE4 = 3
+    if (DebugBg()) {
+      fprintf(stderr, "[ibbg] %04x exit host: left at (%.1f, %.1f, %.1f)\n", GetUniqueId().Value(),
+              mTargetPos.GetX(), mTargetPos.GetY(), mTargetPos.GetZ());
+    }
+    break;
+  default:
+    break;
   }
 }
 
-// The Ing's fn_29_1F1C (the 2026-10-20 run, /tmp/opencode/ing_run5.log: "state ExitHost" -> "exit
-// host: smoke explosion" -> "left at (78.0, 368.0, 4.9)" once the exit-host effect's Think set
-// the arrival flag): the exit host's smoke, spawned where the Ing lands. It only fires when the
-// swarm block's second GEN token is loaded (retail's engaged byte at 0xcfc); then one CExplosion
-// "IngExitHostSmokeFx" on the Ing's own transform at the model's scale (flags 0, white, player -1)
-// and the swarm block's own sound (0x9cc = CIngData swarm +0x28).
-//
-// NOT PORTED YET, for the same reason as ExitHost: the exit-host class and the module's own
-// exit-host body do not exist in this branch, so there is no smoke to spawn. The body only logs.
-void CIngBoostBallGuardian::SpawnExitHostSmoke(CStateManager&) {
+// @ fn_30_38E0 (the Ing's fn_29_1F1C): the exit host's smoke, spawned where the Ing lands. It only
+// fires when the swarm block's second GEN token is loaded (the engaged byte at 0xFF8); then one
+// CExplosion "IngExitHostSmokeFx" (rodata_12C + 0x558) of the token at 0xFEC on the Ing's own
+// transform at the model's scale (flags 0, white, -1), and the swarm block's own sound (0x830).
+void CIngBoostBallGuardian::SpawnExitHostSmoke(CStateManager& mgr) {
+  const bool smokeLoaded = static_cast< bool >(mSwarmEffect2); // 0xFF8
   if (DebugBg()) {
-    fprintf(stderr, "[ibbg] %04x exit host: the exit-host body is a later slice\n", GetUniqueId().Value());
+    fprintf(stderr, "[ibbg] %04x exit host: smoke %s\n", GetUniqueId().Value(),
+            smokeLoaded ? "explosion" : "token not loaded");
   }
-}
-
-// The Ing's fn_29_1A80: turn to the lure safe zone (0xd78) when one is set, else to the target
-// (0xd6c). The offset is taken horizontally (z of the delta is zeroed) and only applied when its
-// magnitude is safe; the actor's own z is kept. Called by BecomeCorporeal's Activate.
-//
-// This module has no lure safe zone (the Ing's mLureSafeZoneId does not exist here), so only the
-// "else turn to the target" half is ported.
-void CIngBoostBallGuardian::FaceLureOrTarget(CStateManager& mgr) {
-  const CVector3f pos = GetTranslation();
-  // Retail reads the object's +0x54 without a type test; the port asks for an actor (the target a
-  // CActor).
-  const CActor* other = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (other == nullptr) {
+  if (!smokeLoaded) {
     return;
   }
-  CVector3f delta = other->GetTranslation() - pos;
-  delta.SetZ(0.f);
-  if (delta.IsMagnitudeSafe()) {
-    SetTransform(CTransform4f::LookAt(pos, pos + delta, CVector3f::Up()));
+  CExplosion* smoke = rs_new CExplosion(
+      *mSwarmEffect2, mgr.AllocateUniqueId(),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+      rstl::string_l("IngExitHostSmokeFx"), GetTransform(), 0, GetModelData()->GetScale(),
+      CColor::White(), -1);
+  if (smoke != nullptr) {
+    mgr.AddObject(*smoke);
+    CSfxManager::AddEmitter(mData.mSwarm.mSound, GetTranslation(), 0x7f,
+                            GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
   }
 }
 
 // The Ing's fn_29_9A74.
+// @ fn_30_B03C
 void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -160,7 +210,6 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
     mCollisionActorManager1->SetActive(mgr, false); // fn_30_B03C 0x0000B144: guest 0xD64
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_WorldUp); // 0xca4 = 2
     mLineOfSight.SetSegment(mEyeSegId);                            // 0xd8a = 0xd7b ("head")
-    FaceLureOrTarget(mgr);                                         // the Ing's fn_29_1A80
     mMoving = false;                                               // 0xe5d bit 1
     Stop();
     SetBodyManagerReflect(mgr, false); // 0x0000B17C: fn_30_3190
@@ -181,7 +230,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
     mPortalPlane = false;                                    // 0xe5d bit 6
-    mStartAsIngSpot = false;                                 // 0xe5d bit 5
+    mIngSpotBlobVisible = false;                                 // 0xe5d bit 5
     mVerticalMovement = false;                               // CPatterned 0x34c bit 6
     AddMaterial(kMT_GroundCollider, mgr);                    // 0x25
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);   // 0x0000B3BC: li r4, 1
@@ -204,6 +253,7 @@ void CIngBoostBallGuardian::BecomeCorporeal(CStateManager& mgr, EStateMsg msg, f
 }
 
 // The Ing's fn_29_9750.
+// @ fn_30_ABC4
 void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -252,7 +302,7 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
     mCollisionActorManager0->SetActive(mgr, false); // guest 0xD60
     mCollisionActorManager1->SetActive(mgr, true); // fn_30_ABC4 0x0000AF70: guest 0xD64
     mPortalPlane = false;   // 0xe5d bit 6
-    mStartAsIngSpot = true; // 0xe5d bit 5
+    mIngSpotBlobVisible = true; // 0xe5d bit 5
     if (AnimationData() != nullptr) {
       AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr);
     }
@@ -262,11 +312,14 @@ void CIngBoostBallGuardian::BecomeIngSpot(CStateManager& mgr, EStateMsg msg, flo
   }
 }
 
+// fn_30_5F6C (this module).
 // The Ing's fn_29_4468: the target's aim position (vtable slot 0x54, CActor::GetAimPosition, with
 // the caller's prediction time in f1). False when the target id is empty; the caller then keeps
 // whatever it had. Every caller passes rodata_6C (0.0f) except the body projectile's flight, which
 // passes rodata_B4 (0.5f) - asm 0x00008054 loads it just before the call at 0x0000806C.
-bool CIngBoostBallGuardian::TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction) {
+// @ fn_30_5F6C
+bool CIngBoostBallGuardian::TargetAimPosition(CStateManager& mgr, CVector3f& out,
+                                              float prediction) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   if (target == nullptr) {
     return false;
@@ -275,7 +328,9 @@ bool CIngBoostBallGuardian::TargetAimPosition(CStateManager& mgr, CVector3f& out
   return true;
 }
 
-// The Ing's fn_29_94E8 (not yet exercised in a run).
+// fn_30_A95C (this module).
+// The Ing's fn_29_94E8.
+// @ fn_30_A95C
 void CIngBoostBallGuardian::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -325,7 +380,9 @@ void CIngBoostBallGuardian::BecomeBodyProjectile(CStateManager& mgr, EStateMsg m
   }
 }
 
-// The Ing's fn_29_8FE8 (not yet exercised in a run).
+// fn_30_A45C (this module).
+// The Ing's fn_29_8FE8.
+// @ fn_30_A45C
 void CIngBoostBallGuardian::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -338,7 +395,7 @@ void CIngBoostBallGuardian::BecomeWallProjectile(CStateManager& mgr, EStateMsg m
     // Face out of the surface it is on: columns = (normal x up normalised, normal, up), origin one
     // normal's length off the wall.
     const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();
-    const CVector3f side = CVector3f::Cross(normal, CVector3f::Up()); // the Ing's fn_29_94A8
+    const CVector3f side = CVector3f::Cross(normal, CVector3f::Up()); // fn_30_A91C (the Ing's fn_29_94A8)
     if (side.IsMagnitudeSafe()) {
       SetTransform(CTransform4f::FromColumns(side.AsNormalized(), normal, CVector3f::Up(),
                                             GetTranslation() + normal));
@@ -380,7 +437,7 @@ void CIngBoostBallGuardian::BecomeWallProjectile(CStateManager& mgr, EStateMsg m
     break;
   case kStateMsg_Deactivate:
     mPortalPlane = false;    // 0xe5d bit 6
-    mStartAsIngSpot = false; // 0xe5d bit 5
+    mIngSpotBlobVisible = false; // 0xe5d bit 5
     // The Ing's asm 0x000093C4: SetLocomotionType(0), i.e. kLT_Crouch.
     BodyController()->SetLocomotionType(pas::kLT_Crouch);
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
