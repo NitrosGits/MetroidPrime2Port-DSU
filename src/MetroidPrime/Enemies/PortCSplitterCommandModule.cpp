@@ -1289,10 +1289,6 @@ void CSplitterCommandModule::PortAutoDestructTimer(float dt) {
   }
 }
 
-// The DOL's CEntity virtual the look-at calls (the vtable slot 0x8C, 0x1924-0x192C): the DOL's
-// slot 35 is not named in the port, so the call stays a once-logging shell.
-void StandInCEntityVirtual0x8C() { StandIn("the DOL's CEntity virtual at the vtable slot 0x8C"); }
-
 // The DOL's CEntity virtual the projectile's despawn calls (the vtable word 0x24, 0x17C8-0x17DC
 // of fn_75_1790): the port has no name for it, so the call stays a once-logging shell.
 
@@ -1304,7 +1300,13 @@ void StandInCEntityVirtual0x8C() { StandIn("the DOL's CEntity virtual at the vta
 // (0x1900 LookAt with the up vector) and the result goes to the target's virtual at the vtable
 // slot 0x8C (0x1924-0x192C). The sound (the handle at 0xF5C read at 0x1930, the target's position
 // at 0x444 and the byte 0x7f, 0x194C UpdateEmitter) is the DOL's CSfxManager call, which the host
-// spells differently, so it stays a shell too.
+// has as CSfxManager::UpdateEmitter (the handle, the position, the direction and the volume).
+// The vtable slot 0x8C: the DOL's CEntity virtual the look-at calls is the CBeamProjectile's
+// first own virtual, UpdateFx - the next slot, 0x90, is CBeamProjectile::ResetBeam (asm 0x17D4,
+// fn_75_1790) and the header's order is UpdateFx, ResetBeam, Fire
+// (include/MetroidPrime/Weapons/CBeamProjectile.hpp:24-26).  The port's own chain (CEntity's 7
+// slots, CActor's 22, CGameProjectile's 4) puts UpdateFx at 0x84, two slots low because the
+// port's CEntity is a stub; the port calls it by name.
 void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
   CEntity* target = mgr.ObjectById(mLookAtTargetId);
   if (target == nullptr) {
@@ -1316,8 +1318,15 @@ void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
                             locator.GetTranslation().GetZ() + mLookAtOffset.GetZ());
   const CTransform4f lookAt =
       CTransform4f::LookAt(locator.GetTranslation(), position, CVector3f::Up());
-  StandInCEntityVirtual0x8C();
-  StandInSfxUpdateEmitter();
+  // asm 0x1910-0x192C: the target's virtual at the vtable slot 0x8C gets the transform (r4), the
+  // manager (r5) and the dt (f1).
+  if (CBeamProjectile* beam = TCastToPtr< CBeamProjectile >(target)) {
+    beam->UpdateFx(lookAt, dt, mgr);
+    // asm 0x1930-0x194C: the sound handle at 0xF5C is updated with the target's position (0x444),
+    // the up vector and the volume 0x7F.  The id at 0xF02 only ever holds the laser sweep beam
+    // (fn_75_1974), so the target is the actor the retail reads the position from.
+    CSfxManager::UpdateEmitter(mLookAtSfxHandle, beam->GetTranslation(), CVector3f::Up(), 0x7F);
+  }
 }
 
 // @ fn_75_58E8
