@@ -3577,10 +3577,19 @@ void CIng::Render(const CStateManager& mgr) const {
   }
 }
 
-// fn_29_BF20 (0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile
+// @ fn_29_BF20 (0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile
 // (4) takes the base class's own table, the ing spot (3) takes the grapple's table while the ball
 // is held (the byte at 0xe5d, bit 0) and the ing spot's own table otherwise, and every other form
 // takes the trigger table at CIngData+0x3c (0x7fc).
+// The arms:
+//   - the form 4 (asm 0x0000BF34): the base class's table - the Agon Wastes run of 2026-10-21
+//     (`fsm <ing> BecomeBodyProjectile` and a hit on the Ing) - the probe's key 8;
+//   - the form 3 and the ball is held (asm 0x0000BF50): the grapple's table - the Agon Wastes
+//     morph-ball run of 2026-10-21 (2 calls, the Ing with the ball in it);
+//   - the form 3 (asm 0x0000BF64): the ing spot's table - that run (the key 6);
+//   - every other form (asm 0x0000BF6C): the trigger's table - that run (the keys 0, 2, 4, 12
+//     and 14: the forms 0, 1, 2, 6 and 7).
+// All four arms ran, so the body is marked.
 // The arms:
 //   - the form 4 (asm 0x0000BF34): the base class's table - **open**, only the body projectile
 //     asks for it and the area 57 run of 2026-10-21 never reached that form;
@@ -3824,10 +3833,14 @@ void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 // (0x448 = lbl_8041AAB8, CPatterned::skDamageHitTime = 0.33). The base class does exactly that
 // store, so the port's early return plus the base call is retail's body.
 // The arms:
-//   - the forms 0, 1 and 5 (asm 0x0000B894-0x0000B8AC): the early return - **open**, the area 57
-//     run of 2026-10-21 never damaged an Ing in its host phases;
-//   - every other form (asm 0x0000B8B0): the base class's store - the forms 2, 3 and 6 in that
-//     run.
+//   - the forms 0, 1 and 5 (asm 0x0000B894-0x0000B8AC): the early return - **still open**. The
+//     Agon Wastes run of 2026-10-21 put the Ing in the host (`fsm <ing> SuckEnergy`, the form 0)
+//     and in the evaporating form (the form 5) and hit it: the damage reached the vulnerability
+//     lookup (the probe's keys 0 and 10) but not TakeDamage, because the trigger table takes
+//     nothing from the light beam. The arm needs a hit the Ing's own table accepts, or a joint
+//     shot that lands (the joints carry the base table, the one the light beam does hurt);
+//   - every other form (asm 0x0000B8B0): the base class's store - the forms 3 and 4 in the Agon
+//     Wastes run of 2026-10-21 (the probe's keys 3 and 4).
 void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
     return;
