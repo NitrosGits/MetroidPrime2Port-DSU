@@ -1616,7 +1616,7 @@ bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
 // (0x000097FC/0x00009804); the port has no counterpart for it.
 void CDarkSamus::BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallFire", msg);
-  UpdateCurrentAttack(2, mgr, msg); // 0x00009760
+  UpdateCurrentAttack(0x20000, mgr, msg); // `lis r4, 0x2` at 0x00009758, the call at 0x00009760
   if (msg == kStateMsg_Activate) {
     CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x00009778
     mBoostBallRollSfx = CSfxHandle();              // 0x00009784
