@@ -1,0 +1,242 @@
+offset	size	class	kind	callers	tables	what	marker
+0x00000000	0x60	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00000060	0x2C	H	host-copy	-	auto_04_00000000_data.s,auto_04_00000000_data.s	the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it	no
+0x0000008C	0x3B0	B	behaviour	fn_16_56D8	-		yes
+0x0000043C	0x50	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000048C	0x3C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x000004C8	0x368	B	behaviour	fn_16_56D8	-		yes
+0x00000830	0xB4	B	behaviour	fn_16_5928,fn_16_5C4C,fn_16_5DBC,fn_16_601C,fn_16_68F4,fn_16_6F28,fn_16_78AC,fn_16_7C28	-		yes
+0x000008E4	0x3C	B	behaviour	fn_16_5928,fn_16_6D94,fn_16_6F28,fn_16_71BC	-		yes
+0x00000920	0xA0	B	behaviour	fn_16_A64,fn_16_CD0	-		yes
+0x000009C0	0xA4	B	behaviour	fn_16_774C	-		yes
+0x00000A64	0x26C	B	behaviour	fn_16_774C	-		yes
+0x00000CD0	0x324	B	behaviour	fn_16_774C	-		yes
+0x00000FF4	0x94	H	host-copy	fn_16_CD0	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00001088	0xC8	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00001150	0x424	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00001574	0x1AC	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00001720	0x1C8	B	behaviour	fn_16_601C	-		yes
+0x000018E8	0x68	H	host-copy	fn_16_1720	-	the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it	no
+0x00001950	0x100	B	behaviour	fn_16_7F8C	-		yes
+0x00001A50	0x20C	B	behaviour	fn_16_7F8C	-		yes
+0x00001C5C	0x38	B	behaviour	fn_16_531C	-		yes
+0x00001C94	0x60	B	behaviour	fn_16_531C	-		yes
+0x00001CF4	0x44	B	behaviour	fn_16_531C	-		yes
+0x00001D38	0xC4	B	behaviour	fn_16_531C	-		yes
+0x00001DFC	0x24	B	behaviour	fn_16_4A04	-		yes
+0x00001E20	0x4C	B	behaviour	fn_16_353C	-		yes
+0x00001E6C	0xC8	B	behaviour	fn_16_36E8	-		yes
+0x00001F34	0x8C	B	behaviour	fn_16_1E6C,fn_16_2E1C	-		yes
+0x00001FC0	0xB0	B	behaviour	fn_16_26B8	-		yes
+0x00002070	0x12C	B	behaviour	fn_16_24AC	-		yes
+0x0000219C	0x68	H	host-copy	fn_16_2070	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00002204	0xAC	H	host-copy	fn_16_219C	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x000022B0	0x20	H	host-copy	fn_16_2204	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x000022D0	0x28	H	host-copy	fn_16_22B0,fn_16_BB1C	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x000022F8	0x24	H	host-copy	fn_16_22D0	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x0000231C	0x7C	H	host-copy	fn_16_22F8	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00002398	0x114	H	host-copy	fn_16_231C	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x000024AC	0x78	B	behaviour	fn_16_2B0C	-		yes
+0x00002524	0x194	B	behaviour	fn_16_2B0C	-		yes
+0x000026B8	0x3B0	B	behaviour	fn_16_2B0C	-		yes
+0x00002A68	0x50	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00002AB8	0x54	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00002B0C	0x5C	B	behaviour	fn_16_3668	-		yes
+0x00002B68	0xD4	B	behaviour	fn_16_36E8	-		yes
+0x00002C3C	0x60	B	behaviour	fn_16_6D94	-		yes
+0x00002C9C	0x140	B	behaviour	fn_16_2C3C,fn_16_7B40	-		yes
+0x00002DDC	0x40	H	host-copy	fn_16_2C9C	-	the DOL's inline code copied into the REL - the host has the same function (the DOL's Cross__9CVector3fFRC9CVector3fRC9CVector3f, 0x8001994C)	no
+0x00002E1C	0x60	B	behaviour	fn_16_5928,fn_16_601C	-		yes
+0x00002E7C	0x64	B	behaviour	fn_16_5DBC,fn_16_601C,fn_16_68F4	-		yes
+0x00002EE0	0x90	B	behaviour	fn_16_4A04,fn_16_6D94,fn_16_71BC,fn_16_78AC	-		yes
+0x00002F70	0x38	B	behaviour	fn_16_2E7C,fn_16_2EE0,fn_16_4A04,fn_16_5DBC,fn_16_601C,fn_16_68F4,fn_16_7AD4,fn_16_7F8C	-		yes
+0x00002FA8	0x50	B	behaviour	fn_16_3EAC,fn_16_51D4	-		yes
+0x00002FF8	0x34	B	behaviour	fn_16_4EB8,fn_16_71BC,fn_16_78AC	-		yes
+0x0000302C	0x34	B	behaviour	fn_16_2C9C,fn_16_3EAC,fn_16_4C0C,fn_16_4EB8,fn_16_7B40,fn_16_7F8C,fn_16_920,fn_16_A64,fn_16_CD0	-		yes
+0x00003060	0x34	B	behaviour	fn_16_2C3C,fn_16_2C9C,fn_16_4EB8,fn_16_71BC,fn_16_78AC	-		yes
+0x00003094	0x34	B	behaviour	fn_16_30C8	-		yes
+0x000030C8	0x278	B	behaviour	fn_16_7CE8	-		yes
+0x00003340	0x3C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000337C	0x184	H	host-copy	fn_16_30C8,fn_16_36E8	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00003500	0x3C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000353C	0x12C	B	behaviour	fn_16_5928,fn_16_5DBC,fn_16_601C,fn_16_68F4,fn_16_6F28,fn_16_71BC,fn_16_78AC,fn_16_7C28	-		yes
+0x00003668	0x80	B	behaviour	fn_16_56D8	-		yes
+0x000036E8	0x29C	B	behaviour	fn_16_7CE8	-		yes
+0x00003984	0x48	B	behaviour	fn_16_36E8	-		yes
+0x000039CC	0x20	H	host-copy	fn_16_3984	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x000039EC	0x28	H	host-copy	fn_16_39CC	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00003A14	0x94	H	host-copy	fn_16_39EC	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00003AA8	0x54	B	behaviour	fn_16_1E20,fn_16_1E6C,fn_16_1F34,fn_16_1FC0,fn_16_2524,fn_16_7F8C	-		yes
+0x00003AFC	0x74	B	behaviour	fn_16_56D8	-		yes
+0x00003B70	0x54	B	behaviour	fn_16_7CE8	-		yes
+0x00003BC4	0x94	B	behaviour	fn_16_2524	-		yes
+0x00003C58	0x10C	B	behaviour	fn_16_2070,fn_16_7EA8	-		yes
+0x00003D64	0x148	B	behaviour	fn_16_26B8,fn_16_3EAC,fn_16_71BC,fn_16_774C,fn_16_78AC	-		yes
+0x00003EAC	0x794	B	behaviour	fn_16_7CE8	-		yes
+0x00004640	0x5C	H	host-copy	fn_16_3EAC	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x0000469C	0x38	H	host-copy	-	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x000046D4	0x20	H	host-copy	fn_16_BD04	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x000046F4	0x28	H	host-copy	fn_16_46D4	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x0000471C	0xC0	H	host-copy	fn_16_3EAC,fn_16_46F4	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x000047DC	0x5C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00004838	0x84	H	host-copy	fn_16_3EAC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x000048BC	0x38	H	host-copy	fn_16_4838	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x000048F4	0x60	H	host-copy	fn_16_48BC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00004954	0xB0	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00004A04	0xE4	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00004AE8	0x4	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00004AEC	0x18	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00004B04	0x1C	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00004B20	0x4C	B	behaviour	fn_16_6F28	auto_04_00000000_data.s		yes
+0x00004B6C	0x48	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00004BB4	0x20	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00004BD4	0x38	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00004C0C	0x1E4	B	behaviour	fn_16_56D8	-		yes
+0x00004DF0	0x54	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00004E44	0x24	B	behaviour	fn_16_4C0C,fn_16_68F4	-		yes
+0x00004E68	0x50	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00004EB8	0x31C	B	behaviour	fn_16_56D8	-		yes
+0x000051D4	0x128	B	behaviour	fn_16_56D8	-		yes
+0x000052FC	0x20	B	behaviour	-	auto_04_00000000_data.s		yes
+0x0000531C	0x2B8	B	behaviour	-	auto_04_00000000_data.s		yes
+0x000055D4	0x3C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00005610	0x3C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000564C	0x8C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x000056D8	0x250	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00005928	0x280	B	behaviour	fn_16_6D94	auto_04_00000000_data.s		yes
+0x00005BA8	0x5C	H	host-copy	-	auto_04_00000000_data.s	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00005C04	0x48	H	host-copy	-	auto_04_00000000_data.s	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00005C4C	0x114	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00005D60	0x5C	H	host-copy	-	auto_04_00000000_data.s	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00005DBC	0x260	B	behaviour	fn_16_6D94	auto_04_00000000_data.s		yes
+0x0000601C	0x7D0	B	behaviour	fn_16_6D94	auto_04_00000000_data.s		yes
+0x000067EC	0x58	H	host-copy	fn_16_601C,fn_16_7F8C,fn_16_9BE8	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00006844	0x54	H	host-copy	fn_16_601C,fn_16_67EC,fn_16_7F8C,fn_16_9BE8	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00006898	0x5C	H	host-copy	fn_16_601C	-	the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it	no
+0x000068F4	0x41C	B	behaviour	fn_16_6D94	auto_04_00000000_data.s		yes
+0x00006D10	0x84	B	behaviour	fn_16_4C0C,fn_16_68F4,fn_16_6D10	-		yes
+0x00006D94	0x194	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00006F28	0x244	B	behaviour	-	auto_04_00000000_data.s		yes
+0x0000716C	0x50	B	behaviour	-	auto_04_00000000_data.s		yes
+0x000071BC	0x534	B	behaviour	-	auto_04_00000000_data.s		yes
+0x000076F0	0x5C	H	host-copy	-	auto_04_00000000_data.s	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000774C	0x160	B	behaviour	-	auto_04_00000000_data.s		yes
+0x000078AC	0x228	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00007AD4	0x6C	B	behaviour	fn_16_71BC	-		yes
+0x00007B40	0xE8	B	behaviour	fn_16_5C4C,fn_16_5DBC,fn_16_68F4,fn_16_7C28	-		yes
+0x00007C28	0xC0	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00007CE8	0x1C0	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00007EA8	0xE4	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00007F8C	0x5B0	B	behaviour	-	auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s,auto_04_00000000_data.s		yes
+0x0000853C	0x8C	H	host-copy	fn_16_7F8C	-	the visor effect's particle descriptor copy - the host's CImpactVisorEffect::ParticleEffect does it	no
+0x000085C8	0xB4	H	host-copy	fn_16_853C	-	the visor effect's particle descriptor copy - the host's CImpactVisorEffect::ParticleEffect does it	no
+0x0000867C	0x40	H	host-copy	fn_16_85C8	-	the visor effect's particle descriptor copy - the host's CImpactVisorEffect::ParticleEffect does it	no
+0x000086BC	0x20	H	host-copy	fn_16_867C,fn_16_8980	-	the visor effect's particle descriptor copy - the host's CImpactVisorEffect::ParticleEffect does it	no
+0x000086DC	0x28	H	host-copy	fn_16_86BC	-	the visor effect's particle descriptor copy - the host's CImpactVisorEffect::ParticleEffect does it	no
+0x00008704	0x80	H	host-copy	fn_16_86DC	-	the visor effect's particle descriptor copy - the host's CImpactVisorEffect::ParticleEffect does it	no
+0x00008784	0x6C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x000087F0	0x54	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008844	0x3C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008880	0x3C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x000088BC	0x5C	H	host-copy	fn_16_853C,fn_16_8AA0	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008918	0x20	H	host-copy	fn_16_88BC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008938	0x48	H	host-copy	fn_16_8918	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008980	0x38	H	host-copy	fn_16_853C	-	the visor effect's particle descriptor copy - the host's CImpactVisorEffect::ParticleEffect does it	no
+0x000089B8	0x70	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008A28	0x78	H	host-copy	fn_16_853C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008AA0	0x54	H	host-copy	fn_16_7F8C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008AF4	0x8C	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00008B80	0x1C0	B	behaviour	-	auto_04_00000000_data.s		yes
+0x00008D40	0x1E4	H	host-copy	fn_16_8B80	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008F24	0x94	H	host-copy	fn_16_8D40	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00008FB8	0x54	H	host-copy	fn_16_8B80	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000900C	0x604	B	behaviour	fn_16_A2A0	-		yes
+0x00009610	0x94	H	host-copy	fn_16_900C	-	a struct copy - the host's copy constructor / LdrToDamageVulnerability does it	no
+0x000096A4	0x5C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00009700	0xCC	H	host-copy	fn_16_900C	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x000097CC	0x58	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00009824	0x58	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000987C	0x54	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x000098D0	0x5C	H	host-copy	fn_16_900C	-	a struct copy - the host's copy constructor / LdrToDamageVulnerability does it	no
+0x0000992C	0x54	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00009980	0x130	H	host-copy	fn_16_98D0	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00009AB0	0x54	H	host-copy	fn_16_900C	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00009B04	0x8C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00009B90	0x58	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00009BE8	0x260	B	behaviour	fn_16_1574,fn_16_1A50	-		yes
+0x00009E48	0x54	H	host-copy	fn_16_9BE8	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x00009E9C	0x68	H	host-copy	fn_16_9BE8	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00009F04	0xAC	H	host-copy	fn_16_9E9C	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x00009FB0	0x54	H	host-copy	fn_16_A1D4	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000A004	0x1D0	H	host-copy	fn_16_9F04	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x0000A1D4	0x58	H	host-copy	fn_16_9BE8,fn_16_9E48	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000A22C	0x24	B	behaviour	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	yes
+0x0000A250	0x20	B	behaviour	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	yes
+0x0000A270	0x30	B	behaviour	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	yes
+0x0000A2A0	0x31C	B	behaviour	-	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	yes
+0x0000A5BC	0x40	H	host-copy	fn_16_A2A0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000A5FC	0x20	H	host-copy	fn_16_A5BC	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000A61C	0x28	H	host-copy	fn_16_A5FC	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000A644	0x13C	H	host-copy	fn_16_A61C	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x0000A780	0x6C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000A7EC	0x54	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000A840	0x64	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000A8A4	0x60	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000A904	0x7C	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000A980	0xF0	H	host-copy	fn_16_ABD0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000AA70	0x64	H	host-copy	fn_16_AEDC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000AAD4	0xFC	H	host-copy	fn_16_AF7C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000ABD0	0x30C	H	host-copy	fn_16_A2A0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000AEDC	0xA0	H	host-copy	fn_16_A2A0,fn_16_A904	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000AF7C	0x98	H	host-copy	fn_16_A2A0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000B014	0x11C	H	host-copy	fn_16_ABD0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000B130	0x58	H	host-copy	fn_16_AEDC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B188	0x50	H	host-copy	fn_16_AF7C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B1D8	0x1A0	H	host-copy	fn_16_ABD0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000B378	0x64	H	host-copy	fn_16_AEDC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B3DC	0x58	H	host-copy	fn_16_AF7C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B434	0xF8	H	host-copy	fn_16_ABD0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000B52C	0x58	H	host-copy	fn_16_AEDC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B584	0x44	H	host-copy	fn_16_AF7C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B5C8	0xA0	H	host-copy	fn_16_ABD0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000B668	0x54	H	host-copy	fn_16_AEDC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B6BC	0x30	H	host-copy	fn_16_AF7C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B6EC	0x180	H	host-copy	fn_16_ABD0	-	the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it	no
+0x0000B86C	0x88	H	host-copy	fn_16_AEDC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B8F4	0x64	H	host-copy	fn_16_AF7C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000B958	0x3C	H	host-copy	-	auto_04_00000000_data.s	the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it	no
+0x0000B994	0x10	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9A4	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9AC	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9B4	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9BC	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9C4	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9CC	0x10	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9DC	0xC	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9E8	0xC	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9F4	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B9FC	0x8	B	behaviour	-	auto_04_00000000_data.s		yes
+0x0000BA04	0x8	B	behaviour	-	auto_04_00000000_data.s		yes
+0x0000BA0C	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BA14	0x1C	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BA30	0x3C	H	host-copy	fn_16_B958	-	the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it	no
+0x0000BA6C	0xB0	H	host-copy	fn_16_2204	-	the rstl / compiler-generated helper - the host's rstl provides it	no
+0x0000BB1C	0x20	H	host-copy	fn_16_BA6C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BB3C	0x108	H	host-copy	fn_16_3C58	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BC44	0xC0	H	host-copy	fn_16_3EAC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BD04	0x68	H	host-copy	fn_16_BC44	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BD6C	0x64	H	host-copy	fn_16_26B8,fn_16_2A68,fn_16_2AB8	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BDD0	0x64	H	host-copy	fn_16_4C0C,fn_16_4DF0,fn_16_4E68,fn_16_68F4	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BE34	0x64	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BE98	0x4	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BE9C	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BEA4	0xC	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BEB0	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BEB8	0x5C	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BF14	0x74	H	host-copy	fn_16_BE34	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BF88	0x31C	B	behaviour	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	yes
+0x0000C2A4	0xC4	H	host-copy	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	no
+0x0000C368	0x24	H	host-copy	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	no
+0x0000C38C	0x24	H	host-copy	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	no
+0x0000C3B0	0x4C	H	host-copy	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	no
+0x0000C3FC	0x4C	H	host-copy	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	no
