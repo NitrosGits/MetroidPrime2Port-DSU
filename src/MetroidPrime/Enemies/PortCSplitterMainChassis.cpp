@@ -1722,7 +1722,7 @@ void CSplitterMainChassis::HeadExplosion(CStateManager& mgr, EStateMsg msg, floa
 bool CSplitterMainChassis::PortReserveDock(TUniqueId head) {
   if (mAlive && GetActive() && mCommandModuleId == kInvalidUniqueId &&
       mSecondLinkId == kInvalidUniqueId && (mLandedCount == 5 || mLandedCount == 0) &&
-      (mFlagsD41 & 0x80) == 0 && (mFlagsD40 & 0x1) == 0) {
+      (mFlagsD41 & 0x80) == 0 && (mFlagsD40 & 0x1) == 0) {  // 0xE788-0xE7EC
     mSecondLinkId = head;
   }
   return mSecondLinkId == head;

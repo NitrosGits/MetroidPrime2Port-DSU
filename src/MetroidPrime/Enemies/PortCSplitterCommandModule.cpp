@@ -1329,7 +1329,7 @@ void CSplitterCommandModule::LostChassisReaction(CStateManager& mgr, EStateMsg m
 // (0x2B38) is applied after the head's rotation (0x2B64 FromMatrix, 0x2B74 operator*,
 // 0x2BA4 BuildTransform4f at the translation, 0x2BB0 SetTransform).
 void CSplitterCommandModule::PortTurnUpright(float dt) {
-  if ((mAutoDestructFlags & 0x20) == 0) {
+  if ((mAutoDestructFlags & 0x20) == 0) {  // 0x29BC-0x29C8
     return;
   }
   const CVector3f pos = GetTranslation();
@@ -1362,11 +1362,11 @@ CVector3f CSplitterCommandModule::PortSeparationVector(CStateManager& mgr) const
   float count = 0.f;
   for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
     const CPatterned* other = TCastToConstPtr< CPatterned >(list[idx]);
-    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {  // 0x2460, 0x2468, 0x2470-0x247C
       continue;
     }
     const CSplitterCommandModule* head = TCastToConstPtr< CSplitterCommandModule >(other);
-    if (head != nullptr && head->GetChassisId() != kInvalidUniqueId) {
+    if (head != nullptr && head->GetChassisId() != kInvalidUniqueId) {  // 0x2484-0x249C
       continue;
     }
     const CVector3f separation = mSteeringBehaviors.Separation(
@@ -1393,7 +1393,7 @@ void CSplitterCommandModule::PortFindChassis(CStateManager& mgr) {
   float best = 3.4028235e38f;
   for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
     CSplitterMainChassis* chassis = TCastToPtr< CSplitterMainChassis >(list[idx]);
-    if (chassis == nullptr || chassis->GetCurrentAreaId() != GetCurrentAreaId()) {
+    if (chassis == nullptr || chassis->GetCurrentAreaId() != GetCurrentAreaId()) {  // 0x22EC cast, 0x22F8-0x2304
       continue;
     }
     if (!chassis->PortReserveDock(GetUniqueId())) {
@@ -1447,7 +1447,7 @@ void CSplitterCommandModule::SetTargetDest(CStateManager& mgr, float) {
 // 0x5008 GetObjectById) the flat offset to it (z 0.0f; 0x5014-0x504C); the body faces it
 // (0x505C FaceDirection). Deactivate (0x5064): the 0x80 bit is set.
 void CSplitterCommandModule::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
-  if ((mAutoDestructFlags & 0x80) != 0) {
+  if ((mAutoDestructFlags & 0x80) != 0) {  // 0x4EC8-0x4ED8
     mPathFindNavigation.PathFind(mgr, msg, dt, *this);
   }
   if (msg == kStateMsg_Activate) {
@@ -1485,7 +1485,7 @@ bool CSplitterCommandModule::ShouldAttack(CStateManager&, const CTriggerData&) c
 // maximum (0x7D8) laser pulse ranges squared (0x56D0-0x56E4).
 bool CSplitterCommandModule::InLaserPulseRange(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId));
-  if (target == nullptr) {
+  if (target == nullptr) {  // 0x5684-0x5688
     return false;
   }
   const float distSq = (target->GetTranslation() - GetTranslation()).MagSquared();
@@ -1498,7 +1498,7 @@ bool CSplitterCommandModule::InLaserPulseRange(CStateManager& mgr, const CTrigge
 // squared (0x573C-0x5794).
 bool CSplitterCommandModule::InHoverRange(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId));
-  if (target == nullptr) {
+  if (target == nullptr) {  // 0x5734
     return false;
   }
   const float distSq = (target->GetTranslation() - GetTranslation()).MagSquared();
