@@ -991,6 +991,8 @@ the log's.
 
 **What the collision actor manager changes (2026-10-21)**: with fn_75_A4E4 ported the patrol stalled because the head sat inside the chassis: the port left the segment at 0xCC8 at 0, so fn_75_ACEC put the head (a solid actor) at the chassis's origin and the chassis's move collided with it every frame (before A4E4 the same overlap shoved the chassis down through the world, which only looked like a walk). The retail ctor sets 0xCC8 to the segment of "attach_LCTR" (0x0000F98C) and 0xCC9 to "target_LCTR" (0x0000F9C0), and copies 0xCC8 to 0xC72 (0x0000F9D0); with 0xCC8 set the chassis walks its waypoints on the floor and fn_75_8EC8, fn_75_523C and fn_75_11884 run again.
 
+**The chassis's slide through the floor (2026-10-21)**: with 0xCC8 set the chassis still left the floor around frame 900 of the area-5 run (z -142 to -1749 in ~240 frames, velocity z 0, on the ground): the ground mover resolved it out of its own docked head (0286) every frame - the head was in the chassis's collider list because the port's head kept the flyer's default filter. The retail head ctor sets its filter at 0x00006DEC-0x00006E5C: include the data word 0x3B (kMT_Solid), exclude 0x2F and 0x21 (kMT_CollisionActor, kMT_Character), type 3; `CSortedListManager::BuildNearList` asks both filters, so the head's exclusion of kMT_Character keeps it out. With it the chassis stays at z -142.21 for 7400 frames and patrols 0291, 029e, 029a, 0294, 0288, 0281, 0298, 0287. Waypoint 0281 is an ordinary patrol point (no message reaches the chassis from it); it is not a retail teleport.
+
 #### The chassis's Patrol state, fn_75_DCFC (0xDCFC-0xDDF8) - ported 2026-10-21
 
 | what | retail | port |

@@ -395,6 +395,14 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
 // fn_75_6B08 @0x00006BC4: the CProjectileInfo (0x28) at 0xe5c, built from the data's laser pulse
 // projectile (+0x20) and damage (+0x514 of the runtime struct); fn_75_8 returns it.
 , mProjectileInfo(data.mLaserPulseProjectile, data.mLaserPulseDamage) {
+  // fn_75_6B08 @0x00006DEC-0x00006E5C: the material filter - the include mask is the data word
+  // 0x3B (lbl_75_data_428, kMT_Solid), the exclude mask the data words 0x2F and 0x21
+  // (lbl_75_data_42C and lbl_75_data_430, kMT_CollisionActor and kMT_Character) and the type 3
+  // (0x00006E3C, the include/exclude one). Excluding kMT_Character keeps the docked head out of
+  // the chassis's collider list (CSortedListManager asks both actors' filters).
+  SetMaterialFilter(CMaterialFilter(CMaterialList(kMT_Solid),
+                                    CMaterialList(kMT_CollisionActor, kMT_Character),
+                                    CMaterialFilter::kFT_IncludeExclude));
   // The retail constructor also builds the second CProjectileInfo at 0xe84 (its asset id is
   // unknown), the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
   // at 0xa7c..0xd6b. They belong to the state machine and the render paths this milestone does
