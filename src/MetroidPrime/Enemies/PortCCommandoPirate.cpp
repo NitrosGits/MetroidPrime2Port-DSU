@@ -1115,8 +1115,8 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
         const CDamageVulnerability vulnerability = *actor->GetDamageVulnerability();
         if (const CWeapon* weapon = TCastToPtr< CWeapon >(
                 mgr.ObjectById(actor->GetLastTouchedObject()))) {  // 0x0000D1B0..0x0000D1EC
-          if (vulnerability.WeaponHits(weapon->GetCurrentDamageInfo().GetWeaponMode(),
-                                       0)) {                                            // 0x0000D204
+          if (vulnerability.WeaponHurts(
+                  weapon->GetCurrentDamageInfo().GetWeaponMode())) {  // 0x0000D204
             x2D0C_KnockBack(mgr, msg);                       // 0x0000D224
           }
         }
