@@ -401,12 +401,10 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
             if ((surface.GetSurfaceFlags() & (static_cast< u64 >(1) << kMT_AIPassthrough)) != 0) {
               continue; // asm 0x1610-0x1630 (the 0x10000000 mask on the flags' low word)
             }
-            // The agreement is a two-dimensional dot: the constraint normal's z is loaded at
-            // asm 0x15C0 and immediately clobbered by the surface-flag mask (asm 0x15C4), so the
-            // z term of the dot is scaled by (float)0x10000000 (asm 0x1680) instead of by the
-            // constraint's own z.
-            const CVector3f n = surface.GetNormal();
-            float agree = n.GetX() * x838_.GetX() + n.GetY() * x838_.GetY(); // asm 0x165C-0x1680
+            // The agreement is the full dot with the constraint normal: x, y and z are held in
+            // f31/f30/f29 (asm 0x15AC-0x15BC) and summed at asm 0x1674-0x1680 (the `lis r29`
+            // beside them is the integer flag mask, not f29).
+            float agree = CVector3f::Dot(surface.GetNormal(), x838_);
             if (x834_ == 2) {
               agree = -agree;
             } else if (x834_ == 3) {
