@@ -558,6 +558,16 @@ CPatterned::UpdateAlphaDelta writes both, at 0x000747F0 and 0x000747E4). The byt
 this+0x440 is the host's `mCurDamageRemTime` and the one at guest this+0x444 its
 `mDamageWaitTime` (the host's CHealthInfo's layout puts mHealth second, at the guest's +0x04).
 
+### The base's animation state (guest +0x6B4)
+
+The word at guest this+0x6B4 is the base's own animation state (the DOL's CPatterned constructor
+initialises it and CPatterned::GetAnimOver at 0x80151990 reads it), not a module member: the
+module writes it (the stores at 0x00006A88, 0x00008728 and 0x000087A4 among others) and the guest
+asks the base's own try command about it (ShouldRetry__11CTryCommand at 0x0000ACC8). The DOL's
+CTryCommand::ShouldRetry (0x801B73E4) is exactly the host's CAnimationState::CanIssueCommand -
+the same three states (2 repeat, 1 ready, 3 over). The port therefore uses the base's
+`mAnimationState`; there is no `x6b4_` member.
+
 ### The module's collision actor managers (fn_9_45A4, 0x304)
 
 fn_9_45A4 is the module's own helper, called by its kSM_Create case. It builds two managers, each
@@ -1010,13 +1020,17 @@ entered, so no grenade is thrown.
 
 The area 59 run with the ported message switch (`tools/run_gameplay.sh`,
 `TELEPORT=05_temple_federationsite_dark`, `FRAMES=9000`, the card in /tmp/opencode/u_ds9,
-`MP2_GODMODE=1`, the console's `tp 75.9 371.6 -47.1` over `MP2_CONSOLE` and the player firing at
-the commando with the console's `press a`) reaches gameplay at 10.0 s, ends with exit=0 and
-`grep -c '[port] caught|reach-stub'` = 0. The commando walks to the player (it ends at
-(82.4, 368.3, -46.1) beside the player) and the run's stand-ins are four: the module's Listen
-(fn_9_BE4C), the CVisualKnowledge's Update and SetVisualTarget (guest this+0xAB0) and the
-JumpBack state (fn_9_8B70). The two stand-ins this slice removes - the module's AcceptScriptMsg
-and the module's collision actor managers - are gone. A second run with the same teleport and
+`MP2_GODMODE=1`, the console's `tp 75.9 371.6 -47.1` over `MP2_CONSOLE`, the console's `face`
+towards the commando and the player firing at it with the console's `press a`) reaches gameplay at
+10.0 s, ends with exit=0 and `grep -c '[port] caught|reach-stub'` = 0. The commando walks to the
+player (it ends at (78.6, 370.9, -46.1) beside the player at (81.2, 371.4)) and the shots hit
+it: the base's own knock-back runs, the module's message switch sees `kSM_Damage` and
+`kSM_ResistedDamage`, and in the run where the shots kill it the rag-doll event fires and the
+commando's rag-doll helper (fn_9_3E1C) stands in. The run's stand-ins are five: the module's
+own KnockBack (fn_9_C300), its Listen (fn_9_BE4C), the CVisualKnowledge's Update and
+SetVisualTarget (guest this+0xAB0) and the JumpBack state (fn_9_8B70). The two stand-ins the
+earlier slice removed - the module's AcceptScriptMsg and the module's collision actor managers -
+stay gone. A second run with the same teleport and
 without the firing ends the same way (exit=0, `grep -c '[port] caught|reach-stub'` = 0) with two
 stand-ins, the CVisualKnowledge's Update and SetVisualTarget.
 
