@@ -391,6 +391,10 @@ private:
   // damage and knock-back.
   void x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg);
 
+  // fn_9_2048: the module's shield effect - the explosion and the sound the shield makes when
+  // it takes a hit.
+  void x2048_ShieldEffect(CStateManager& mgr);
+
   // fn_9_3A5C: the module's hit-object helper (0x260 bytes) - the shield's damage on the
   // player that touched it, and the blade's damage when the blade is out.
   void x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg);

@@ -94,6 +94,8 @@ static const CCommandoPirateWaypointPredicate skWaypointPredicate;
 static u64 sShieldFilter = 0;
 static bool sShieldFilterBuilt = false;
 
+// TEMPORARY INSTRUMENTATION (reverted before the commit).
+
 // Reports a stand-in the first time it runs, so a log lists what is still a shell.
 void StandIn(const char* what) {
   static const char* sSeen[32] = {};
@@ -1247,6 +1249,68 @@ void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg)
   mCurDamageRemTime = mDamageWaitTime;              // guest this+0x444, 0x00003C9C
 }
 
+// fn_9_2048 (0x330 bytes): the module's shield effect - the explosion and the sound that play
+// when the shield takes a hit.
+//
+// The byte at guest this+0xC64's 0x01 bit stops it (the clrlwi at 0x00002064); otherwise the bit
+// is set (0x00002074) and the effect is built at the module's left-wrist locator (the
+// GetLctrTransform call at 0x00002088, the locator id at guest this+0xC62).
+//
+// Which effect it is depends on the module's state word at guest this+0xC4C: 1 is the charge (the
+// compare at 0x0000209C), which needs the effect the guest's token at guest this+0xC08 holds to
+// be loaded (the test at 0x000020A8) and builds an explosion it clears again (the call at
+// 0x000021A4), so the charge's effect never reaches the world; 0 is the armed shield (the compare
+// at 0x000021BC), which needs the effect the guest's token at guest this+0xC0C holds to be loaded
+// (the test at 0x000021C8) and puts its explosion into the world (the AddObject call at
+// 0x000022E8), starts the block's explode sound (the SfxStart call at 0x00002324, the sound id at
+// guest this+0x8F4 = the block's +0x134) and removes the module's own second sound emitter (the
+// RemoveEmitter call at 0x00002340, the handle at guest this+0xC38) before it resets the module's
+// state word and its two scale floats (0x0000234C..0x00002360).
+//
+// The guest's two tokens are the block's two effect asset ids: the port reads the charge effect
+// (the block's +0x78) for the charge and the explode effect (the block's +0x58, the one the
+// explode sound at the block's +0x5C belongs to) for the armed shield.
+void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
+  if ((xc64_ & 0x01) != 0) {  // 0x00002064
+    return;
+  }
+  xc64_ |= 0x01;              // 0x00002074
+  const CTransform4f xf = GetLctrTransform(mLocatorLWrist);  // 0x00002088
+  if (xc4c_ == 1) {           // 0x0000209C (the charge)
+    // The guest builds the explosion and clears it again (the call at 0x000021A4), so the
+    // charge's effect never reaches the world.
+    return;
+  }
+  if (xc4c_ != 0) {           // 0x000021BC
+    return;
+  }
+  rstl::optional_object< TCachedToken< CGenDescription > > effect;
+  const CAssetId effectId = mData.mShield.mExplodeEffect;
+  if (effectId != kInvalidAssetId) {
+    effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
+  }
+  if (!effect.valid()) {  // 0x000021C8 (the guest's test of the flag at guest this+0xC24)
+    return;
+  }
+  CExplosion* explosion = rs_new CExplosion(
+      TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+      rstl::string_l("CommandExplosion F"), xf, 0, GetModelData()->GetScale(), CColor::White(),
+      -1);
+  if (explosion != nullptr) {
+    mgr.AddObject(explosion);  // 0x000022E8
+  }
+  CSfxManager::SfxStart(mData.mShield.mSoundExplode, 0x40, 0, CSfxManager::kAllAreas, false, false,
+                        CSfxManager::kMedPriority);  // 0x00002324
+  if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002344
+    CSfxManager::RemoveEmitter(xc38_);
+    xc38_ = CSfxHandle::NullHandle();
+  }
+  xc4c_ = -1;   // 0x00002354
+  xc48_ = 0.f;  // 0x0000235C
+  xc44_ = 0.f;  // 0x00002360
+}
+
 // fn_9_2D0C (0x384 bytes): the module's knock-back helper - the shield's and the blade's damage
 // and the knock-back they cause.
 //
@@ -1279,7 +1343,7 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
       weapon = TCastToPtr< CWeapon >(mgr.ObjectById(actor->GetLastTouchedObject()));
     }
     if ((xc66_ & 0x20) != 0) {  // 0x00002D78..0x00002D84
-      StandIn("the module's own shield effect helper (fn_9_2048)");  // 0x00002D90
+      x2048_ShieldEffect(mgr);  // 0x00002D90
     }
   } else {
     weapon = TCastToPtr< CWeapon >(mgr.ObjectById(senderId));  // 0x00002D9C..0x00002DA8
