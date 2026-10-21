@@ -225,6 +225,7 @@ private:
 #ifdef TARGET_PC
   // Helpers (retail function on each; shared by Think, AcceptScriptMsg and the FSM states).
   bool IsShieldUp() const;                                         // fn_15_2CE8
+  // @ fn_15_1B50
   void SetXDamaged(bool xdamaged) { mXDamaged = xdamaged; }        // fn_15_1B50
   CPFArea* GetPathArea(CStateManager& mgr) const;                  // fn_15_1598
   void ReleaseClaimedRegion(CStateManager& mgr);                   // fn_15_1328
