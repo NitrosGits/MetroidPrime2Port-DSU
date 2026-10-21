@@ -1444,7 +1444,8 @@ bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
 // player at 10.0f (lbl_16_rodata_390) units a second on the horizontal (0xBE4..0xC44), the beam's
 // effect follows it (slot 33 UpdateFx at 0xC88) and its emitter (guest 0xA9C) sits on the beam's
 // collision point (the beam's +0x444, mCollisionPoint, 0xCA8; volume 0x7F).
-// Area 11 cannot reach fn_16_A64's body: the beam is only out in the heart stage.
+// Area 11 cannot reach fn_16_A64's body: the beam is only out in the heart stage. A temporary hook drove it (see the module note).
+// @ fn_16_A64
 void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(xa98_);
   if (entity == nullptr) {
@@ -1472,7 +1473,8 @@ void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
 // fn_16_9C0 (0x9C0..0xA64): when the beam (guest 0xA98) exists it is reset (vtable slot 34
 // ResetBeam with false, 0xA0C), its emitter removed (0xA1C), the object deleted (0xA30), and the
 // id and the emitter cleared (0xA44, 0xA48).
-// Area 11 cannot reach fn_16_9C0's body: the beam is only out in the heart stage.
+// Area 11 cannot reach fn_16_9C0's body: the beam is only out in the heart stage. A temporary hook drove it (see the module note).
+// @ fn_16_9C0
 void CEmperorIngStage1::StopBeam(CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(xa98_);
   if (entity == nullptr) {
@@ -2335,7 +2337,8 @@ void CEmperorIngStage1::BeginHeartStage(CStateManager& mgr, EStateMsg msg, float
 //     heart-stage timer runs down last (0x7858).
 //   Deactivate: the locomotion type 1 (0x7868), the heart's collision actor inactive (fn_16_3D64
 //     with 8, 0x787C) and the beam stopped (fn_16_9C0, 0x7888).
-// Area 11 cannot reach fn_16_774C's body: the FSM does not reach the heart stage there.
+// Area 11 cannot reach fn_16_774C's body: the FSM does not reach the heart stage there. A temporary hook drove it (see the module note).
+// @ fn_16_774C
 void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
     case kStateMsg_Activate:
