@@ -1,13 +1,34 @@
 # DarkSamus (module 10) proof spec for tools/cov/run.sh; the labels are the retail offsets.
-# Run: Sanctuary 10_cliff_rooftop with tools/cov/specs/darksamus_pause.con or
-# tools/cov/specs/darksamus_states.con.
+# Run: Sanctuary 10_cliff_rooftop with tools/cov/specs/darksamus_states.con.
 CLASS = 'CDarkSamus'
+# The DoneRolling trigger's arms are forced from the expressions (gdb convenience variables):
+# the arms the fight cannot reach are written at the trigger's entry, one per hit.
+DR_K = '($_isvoid($dk) ? ($dk = 0) : ($dk = $dk + 1))'
+DR_SET = ('($dk == 1 ? ($this->mBoostBallUid.value = 0xffff) : '
+          '($dk == 2 ? ($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 3.0) : '
+          '($dk == 3 ? ($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 0.0, '
+          '            $this->mBoostHintUid.value = 2, $this->mGuestEC8 = 1) : '
+          '($dk == 4 ? ($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 0.0, '
+          '            $this->mBoostHintUid.value = 2, $this->mGuestEC8 = 0) : '
+          '($dk == 5 ? ($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 0.0, '
+          '            $this->mBoostHintUid.value = 0xffff, $this->mBoostBallFlag80 = 1) : '
+          '($dk == 6 ? ($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 0.0, '
+          '            $this->mBoostHintUid.value = 0xffff, $this->mBoostBallFlag80 = 0, '
+          '            $this->mGuestEA8 = -1000.0) : '
+          '($dk == 7 ? ($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 0.0, '
+          '            $this->mBoostHintUid.value = 0xffff, $this->mBoostBallFlag80 = 0, '
+          '            $this->mGuestEA8 = 1000.0, $this->mGuestEAC = 0.0, $this->mGuestEB0 = 0.0, '
+          '            $this->mGuestEB4 = 0.0, $this->mGuestEB8 = 0.0) : '
+          '($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 0.0, '
+          ' $this->mBoostHintUid.value = 0xffff, $this->mBoostBallFlag80 = 0, '
+          ' $this->mGuestEA8 = 1000.0, $this->mGuestEAC = $this->mPosition.mX, '
+          ' $this->mGuestEB0 = $this->mPosition.mY, $this->mGuestEB4 = $this->mPosition.mZ, '
+          ' $this->mGuestEB8 = 0.0))))))))')
 SPEC = [
     # the BreakPause trigger: the pause is over (guest 0xC30 below the elapsed time 0x8B0) or not
     ('106F8 BreakPause', 'CDarkSamus::BreakPause(', ['$this->mGuestC30 < $this->mElapsedTime'], 'ret'),
-    # the Pause state, whose Activate writes 0xC30 (the pause's end time)
-    ('10710 Pause', 'CDarkSamus::Pause(', ['$rdx'], 'calls'),
     # the states of slice 26: the key is the message (0 = Activate, 1 = Update, 2 = Deactivate)
+    ('10710 Pause', 'CDarkSamus::Pause(', ['$rdx'], 'calls'),
     ('9724 BoostBallFire', 'CDarkSamus::BoostBallFire(', ['$rdx'], 'calls'),
     ('BD40 FadeIn', 'CDarkSamus::FadeIn(', ['$rdx'], 'calls'),
     ('BC54 FadeOut', 'CDarkSamus::FadeOut(', ['$rdx'], 'calls'),
@@ -15,7 +36,12 @@ SPEC = [
     ('7A14 EnrageHitReact', 'CDarkSamus::EnrageHitReact(', ['$rdx'], 'calls'),
     ('6E38 EnragedTravel', 'CDarkSamus::EnragedTravel(', ['$rdx'], 'calls'),
     ('16CDC FreezeBeam', 'CDarkSamus::FreezeBeam(', ['$rdx'], 'calls'),
-    # the two triggers: the key is the branch that decides, the result is the bool
+    # the helpers of slice 27
+    ('99B8 StopBoostBallParticles', 'CDarkSamus::StopBoostBallParticles(', [], 'calls'),
+    ('6DAC UpdateShieldFromHealth', 'CDarkSamus::UpdateShieldFromHealth(', ['$rdx'], 'calls'),
+    ('8870 RunFreezeBeamCmd', 'CDarkSamus::RunFreezeBeamCmd(', ['$rdx'], 'calls'),
+    # the DoneRolling trigger: the arms are forced from the expressions above
+    ('9314 DoneRolling', 'CDarkSamus::DoneRolling(', [DR_K, DR_SET], 'ret max=3000'),
+    # the Arrived trigger (the fight never evaluates it; the arms are forced from a call)
     ('62B4 Arrived', 'CDarkSamus::Arrived(', ['$this->mGuestCD0 == 0'], 'ret max=3000'),
-    ('9314 DoneRolling', 'CDarkSamus::DoneRolling(', ['$this->mBoostBallUid != 0xffff'], 'ret max=3000'),
 ]

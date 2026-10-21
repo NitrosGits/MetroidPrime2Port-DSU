@@ -1063,6 +1063,9 @@ private:
   void StopGuestSfx();           // fn_10_812C: the sfx handle at guest 0xF60
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
+  void StopBoostBallParticles();                  // fn_10_99B8: the boost ball's old effects
+  void UpdateShieldFromHealth(EStateMsg msg);     // fn_10_6DAC: the shield flag and direction
+  void RunFreezeBeamCmd(EStateMsg msg);            // fn_10_8870: the freeze beam's command
   void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
                              float dt); // fn_10_6F90: the path find to the destination
   void DeleteGuestUids(CStateManager& mgr); // fn_10_69C0: the uids at guest 0x934 are deleted

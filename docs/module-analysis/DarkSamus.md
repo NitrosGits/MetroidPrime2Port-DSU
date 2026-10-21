@@ -1334,3 +1334,50 @@ the bodies are the states' own work but not the whole function.
   | the distance test, the point at the actor | the same with the point at the actor | false |
 - The Arrived trigger is not evaluated by the fight (the coverage run: 0 hits), so its arms were
   not run and it keeps no marker.
+
+## Slice 27 (2026-10-21): the helpers behind the states' stand-ins, and the gcov coverage
+
+### The helpers
+
+- **fn_10_99B8 (0x000099B8, 0xDC bytes) - `StopBoostBallParticles`.** The boost ball's old
+  particle effects are stopped and forgotten: the two swoosh handles at 0xE3C and 0xE4C are
+  cleared and their objects told to stop (the vtable's word 2 with the argument 1, 0x000099F4
+  and 0x00009A20) and the element generator's record at 0xE60/0xE64 is cleared
+  (0x00009A68..0x00009A80). The port has no counterpart for any of them - the module's own
+  swooshes (fn_10_9B24) and the generator are not in the port - so the pointers are always null
+  and the body does nothing.
+- **fn_10_6DAC (0x00006DAC, 0xDC bytes) - `UpdateShieldFromHealth`.** Deactivate (0x00006DB4)
+  clears the shield flag byte 0xCD0 (0x00006DCC). The other messages read the health (the
+  vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is not above
+  lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 - the
+  `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 = 1.0f
+  (0x00006DFC) and the direction 0xD18..0xD20 to the zero vector (lbl_10_bss_128,
+  0x00006E10..0x00006E20).
+- **fn_10_8870 (0x00008870, 0xE0 bytes) - `RunFreezeBeamCmd`.** Activate (0x000088B0) stores 1
+  (kAS_Ready) to the animation state 0x6B4, delivers the command (0x000088C8) and copies it into
+  the command manager's slot at 0x1B8 (0x000088D4..0x000088E8); Update (0x000088F0) re-delivers
+  it while the DOL's ShouldRetry answers true (0x000088F8, the animation state 0x9 =
+  pas::kAS_LoopAttack); Deactivate (0x0000893C) stores 0 (kAS_NotReady). The command is the
+  loop hit reaction (the id 0x9 = 9 = kBSC_LoopHitReaction, 0x00016E70); the retail's command
+  carries three more words (7, 4 and the byte 0, 0x00016E80..0x00016E88) that the host's command
+  class does not model.
+
+The fourth helper behind a stand-in, fn_10_1707C (0x0001707C, 0x1F4 bytes - the freeze beam's
+dodge step), is not ported in this slice, so the FreezeBeam state keeps its stand-in for it and
+keeps no marker.
+
+### The states
+
+The BoostBallFire state's Deactivate arm (0x00009854) now calls fn_10_99B8 and the EnragedTravel
+state's every-message arm (0x00006F4C) calls fn_10_6DAC, so both states are whole again; the
+FreezeBeam state's command (0x00016E8C) calls fn_10_8870, but its dodge step (0x00016E3C) is
+still a stand-in.
+
+### The coverage
+
+The compiler coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`) and the ordinary
+rooftop run over it give the branch coverage of every module body at once
+(`tools/cov/gcov_report.py build-port-cov <run's gcov dir> --module DarkSamus`); the arms that
+the fight cannot reach are forced from the coverage spec's own expressions
+(`tools/cov/specs/darksamus.py`: the DoneRolling trigger's eight arms are written at the
+trigger's entry, one per hit, from gdb convenience variables).

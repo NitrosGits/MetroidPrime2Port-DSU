@@ -1545,7 +1545,7 @@ void CDarkSamus::BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt) {
   } else if (msg == kStateMsg_Update) {
     DeleteBoostBall(mgr); // fn_10_9AC4, 0x0000984C
   } else if (msg == kStateMsg_Deactivate) {
-    // fn_10_99B8 (0x00009864) stops the boost ball's particle effects; the port has none.
+    StopBoostBallParticles(); // fn_10_99B8, 0x00009864
   }
   TurnTowardPlayer(mgr, dt, 5.2359877f); // 0x00009880 (lbl_10_rodata_28C)
   RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Eight)); // 0x000098E0
@@ -1778,7 +1778,7 @@ void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
     TurnTowardPlayer(mgr, dt, 0.017453292f * mBss118); // 0x00016E1C
     FsmStandIn("fn_10_1707C", "state FreezeBeam's dodge step"); // 0x00016E3C
   }
-  FsmStandIn("fn_10_8870", "state FreezeBeam's command"); // 0x00016E8C
+  RunFreezeBeamCmd(msg); // fn_10_8870, 0x00016E8C
 }
 
 // fn_10_150DC (0x000150DC, 0x26C bytes): the Dash state. Activate (`mr. r31, r5` at 0x000150EC)
@@ -2634,7 +2634,7 @@ void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
     // 0x00006F34: the path find (the guest's CPathFindNavigation at 0x6F4); not in the port.
     Separate(mgr); // fn_10_1DD14, 0x00006F40
   }
-  FsmStandIn("fn_10_6DAC", "state EnragedTravel's helper"); // 0x00006F4C
+  UpdateShieldFromHealth(msg); // fn_10_6DAC, 0x00006F4C
   UpdateAdditiveAnimation(mgr, msg);                        // fn_10_1D860, 0x00006F5C
   UpdateGlideEmitter(msg);                                  // fn_10_11334, 0x00006F68
 }
