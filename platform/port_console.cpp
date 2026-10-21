@@ -497,6 +497,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
       "boost                       boost-ball release on the morphed player\n"
+      "noise <type> [x y z]        InformListeners at the player (6 = safe-zone noise)\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
@@ -909,6 +910,41 @@ void CmdBoost(CStateManager& mgr, const Args&, std::string& out) {
   }
   player->GetMorphBall()->EnterBoosting(mgr, false);
   out += "boosting\n";
+}
+
+// noise: CStateManager::InformListeners at the player (or at x y z) with a listen-noise type, so
+// lanes reach a listener's noise arms without the object that makes it (e.g. type 6, the safe-zone
+// noise only an "echo" safe zone sends, lures an Ing).
+void CmdNoise(CStateManager& mgr, const Args& args, std::string& out) {
+  const int type = args.size() < 2 ? -1 : ArgToInt(args[1], -1);
+  if (type < 0) {
+    Fail("usage: noise <type 0..6> [<x> <y> <z>] (0 fire, 1 bomb, 2 projectile, 3 scream, "
+         "4 path, 6 safe zone)");
+    return;
+  }
+  CVector3f pos;
+  if (args.size() >= 5) {
+    float x = 0.f;
+    float y = 0.f;
+    float z = 0.f;
+    if (!ParseFloat(args[2], x) || !ParseFloat(args[3], y) || !ParseFloat(args[4], z)) {
+      Fail("noise: bad position");
+      return;
+    }
+    pos = CVector3f(x, y, z);
+  } else {
+    const CPlayer* player = mgr.GetPlayer(0);
+    if (player == nullptr) {
+      Fail("no player");
+      return;
+    }
+    pos = player->GetTranslation();
+  }
+  mgr.InformListeners(pos, static_cast< EListenNoiseType >(type));
+  char line[96];
+  std::snprintf(line, sizeof(line), "noise %d at (%.1f, %.1f, %.1f)\n", type, pos.GetX(),
+                pos.GetY(), pos.GetZ());
+  out += line;
 }
 
 void CmdSpringBall(CStateManager&, const Args& args, std::string& out) {
@@ -2194,6 +2230,7 @@ constexpr SCommand kCommands[] = {
     {"skipcine", CmdSkipCine, true},
     {"fastmorph", CmdFastMorph, true},
     {"boost", CmdBoost, true},
+    {"noise", CmdNoise, true},
     {"springball", CmdSpringBall, true},
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},
