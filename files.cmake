@@ -781,9 +781,12 @@ set(MP_MODULE_CommandoPirate_SOURCES
 )
 set(MP_MODULE_DarkSamus_SOURCES
     src/MetroidPrime/Enemies/PortCDarkSamus.cpp
+    src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp
 )
 set(MP_MODULE_DigitalGuardian_SOURCES
     src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
+    src/MetroidPrime/Enemies/PortCDigitalGuardianEchoTarget.cpp
+    src/MetroidPrime/Enemies/PortCDigitalGuardianHead.cpp
     src/MetroidPrime/Enemies/PortCDigitalGuardianKneeArmor.cpp
 )
 set(MP_MODULE_ElitePirate_SOURCES
@@ -795,6 +798,7 @@ set(MP_MODULE_EmperorIngStage1_SOURCES
     src/MetroidPrime/Enemies/PortCEmperorIngStage1.cpp
 )
 set(MP_MODULE_EmperorIngStage3_SOURCES
+    src/MetroidPrime/Enemies/PortCEmperorIngLightSwarm.cpp
     src/MetroidPrime/Enemies/PortCEmperorIngStage3.cpp
 )
 set(MP_MODULE_Ing_SOURCES

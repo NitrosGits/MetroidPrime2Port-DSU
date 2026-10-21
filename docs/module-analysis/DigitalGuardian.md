@@ -188,18 +188,18 @@ The table is `.data 0x380..0x450` (13 entries); the records are in `.data 0x2E4.
 |---|---|---|---|---|---|
 | 0 | SetPlayerFaceTarget | `fn_14_1560C` | 15 | EnableDynamicCollision | `fn_14_14828` |
 | 1 | ResetProjectileAttackTimes | `fn_14_15598` | 16 | DisableDynamicCollision | `fn_14_14664` |
-| 2 | SelectProjectileAttack | `fn_14_15448` | 17 | EnableValidTarget | `fn_14_145A4` |
-| 3 | SetPlatformPosition | `fn_14_153D0` | 18 | DisableValidTarget | `fn_14_14470` |
-| 4 | SetStunnedPosition | `fn_14_15284` | 19 | SelectDeathHeadAttack | `fn_14_143D8` |
-| 5 | SeekLineOfSight | `fn_14_1524C` | 20 | SetInitialAttackPosition | `fn_14_14254` |
-| 6 | DropShields | `fn_14_15054` | 21 | SetAttackPosition | `fn_14_14248` |
-| 7 | RaiseShields | `fn_14_14F74` | 22 | ResetGravityRepulsorHP | `fn_14_14058` |
-| 8 | ExtractAntenna | `fn_14_14E78` | 23 | EjectPlayerFromBombPit | `fn_14_13F70` |
-| 9 | ExtractEchoTargets | `fn_14_14CF4` | 24 | GrabPlayerHintControl | `fn_14_13F0C` |
-| 10 | RetractEchoTargets | `fn_14_14DA0` | 25 | SetVulnerableToDamage | `fn_14_13EB8` |
-| 11 | DestroyActiveSplitters | `fn_14_14C24` | 26 | SetImmuneToDamage | `fn_14_13C6C` |
-| 12 | StartSplitterDeployment | `fn_14_14B98` | 27 | SelectRetreatPlatform | `fn_14_13C1C` |
-| 13 | EndSplitterDeployment | `fn_14_14B60` | 28 | StartVocalRecoverReaction | `fn_14_13B38` |
+| 2 | SelectProjectileAttack | `fn_14_15448` | 17 | EnableValidTarget | `fn_14_14604` |
+| 3 | SetPlatformPosition | `fn_14_153D0` | 18 | DisableValidTarget | `fn_14_145A4` |
+| 4 | SetStunnedPosition | `fn_14_15284` | 19 | SelectDeathHeadAttack | `fn_14_14470` |
+| 5 | SeekLineOfSight | `fn_14_1524C` | 20 | SetInitialAttackPosition | `fn_14_143D8` |
+| 6 | DropShields | `fn_14_15054` | 21 | SetAttackPosition | `fn_14_14254` |
+| 7 | RaiseShields | `fn_14_14F74` | 22 | ResetGravityRepulsorHP | `fn_14_14248` |
+| 8 | ExtractAntenna | `fn_14_14E78` | 23 | EjectPlayerFromBombPit | `fn_14_14058` |
+| 9 | ExtractEchoTargets | `fn_14_14CF4` | 24 | GrabPlayerHintControl | `fn_14_13F70` |
+| 10 | RetractEchoTargets | `fn_14_14DA0` | 25 | SetVulnerableToDamage | `fn_14_13F0C` |
+| 11 | DestroyActiveSplitters | `fn_14_14C24` | 26 | SetImmuneToDamage | `fn_14_13EB8` |
+| 12 | StartSplitterDeployment | `fn_14_14B98` | 27 | SelectRetreatPlatform | `fn_14_13C6C` |
+| 13 | EndSplitterDeployment | `fn_14_14B60` | 28 | StartVocalRecoverReaction | `fn_14_13C1C` |
 | 14 | Stage3Start | `fn_14_149F8` | | | |
 
 ## c. Parameters
@@ -485,7 +485,7 @@ the rest are the same base-class symbols as the body's inherited list.
 | 0x101E0-0x11FEC | head weapon spawners: `fn_14_101E0` (annihilator pulse), `fn_14_10A2C` (annihilator charge), `fn_14_10CA0` (the 0x568 `CEnergyProjectile`), `fn_14_111E0` (another 0x568 projectile), `fn_14_114C8`…`fn_14_11EA8` |
 | 0x11FEC-0x126C8 | `fn_14_11FEC` — the "EchoTargetExplosion" effect; **`fn_14_12314` — spawns the echo target** (0x790 `CActor`) |
 | 0x126C8-0x13B38 | head helpers (`fn_14_126C8`, `fn_14_12818`, `fn_14_1303C`, `fn_14_13318` — the 0x18 collision manager, `fn_14_13830`, `fn_14_139C4`) |
-| 0x13B38-0x17468 | **head codes**: `fn_14_13B38` StartVocalRecoverReaction … `fn_14_1560C` SetPlayerFaceTarget (the table order is reversed in address order) |
+| 0x13C1C-0x17468 | **head codes**: `fn_14_13C1C` StartVocalRecoverReaction … `fn_14_1560C` SetPlayerFaceTarget (the table order is reversed in address order) |
 | 0x1561C-0x17298 | **head states**: `fn_14_1561C` Dead … `fn_14_17180` Start |
 | 0x17298-0x17468 | **head triggers**: `fn_14_17298` AllSplittersDead … `fn_14_17454` StateOver |
 | 0x17468-0x174F4 | **`fn_14_17468` SetupStateMachine (head)** |
@@ -1202,3 +1202,52 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 7. `Splitter` (the head's sub-actor, layer 10 of the same area) is module 15/16-era and is still a
    stub in this port (`tools/modules_port.txt`); the head's `DeploySplitters` state cannot be
    exercised until it lands.
+
+### Knee reactions to Crippled (2026-10-20)
+
+- Ported: fn_14_8090 KneeDestroyedReaction, fn_14_3D2C (bit 5 of 0x128C + IS10/IS11), fn_14_7D8C CrippledReaction (no head path: the head class is unported), fn_14_5910 XALC (0x11C0/0x10CE/0x116A), fn_14_5384 + 5140 + 4350 (toe/root damage; vortex health 0x11C8, which BreakOutOfVortex now reads).
+- Armours were inactive because fn_14_3E88 cast the 0xFB0 ids to CCollisionActor; retail calls SetActive on the plain ObjectById result. Fixed: they activate on ACTV.
+- Area-53 run: each knee kill gives Idle -> KneeDestroyedReaction -> Idle and the 0x10CE counter drops 9->5. The 4th kill gives CrippledReaction -> Crippled (fn_14_7CB4 is still a stand-in). Knees close during the reaction (bit 5), so a kill needs ~15 s between hits.
+- Open: fn_14_5274 (head collider) needs fn_14_266C/2E60 and the beacon explosion token at 0x1244/0x1250 loaded in the ctor. fn_14_5140's toe path hasn't run yet, so it is unmarked.
+
+### Crippled and the beacon (2026-10-20)
+
+- Ported: fn_14_7CB4 Crippled (wakes 0xE64; 0xE60 goes to sleep except the head collider 0x10CC), and fn_14_5274/266C/2E60 for beacon damage. The ctor now locks the beacon tokens 0x1244/0x1254 (data +0x1F4/+0x1F8). 0x1168 starts as invalid. All eight manager null tests in AcceptScriptMsg are retail's and cite their offsets.
+- Area-53 run: the beacon (head collider) goes 240 → 140 (fn_14_2E60 returns early: the collider is asleep) → −160 (back to 250; fn_14_266C returns early: x1268 is 0, the beacon is closed). The guardian stays at 150/150, and `damage u054d 50` does nothing.
+- Blocker: OPEN (which opens the beacon) crashes in x28D0_ through `mgr.GetPlayerState()->GetActiveVisor` because the pointer is null. Retail writes CStateManager 0x150C only in fn_80040D88, to mPlayerStates[i]. Upstream sets it in the per-viewport render setup and nulls it in EndPlayerRender, so it is null during Think.
+
+### Head module (2026-10-20)
+
+- New `CDigitalGuardianHead` (DGHD, guest 0x10F8) in `PortCDigitalGuardianHead.cpp` + `CDigitalGuardianHead.hpp`. Ported: the loader, ctor, Think and AcceptScriptMsg (all cases; their big callees are stand-ins), fn_14_13830 (XALD link-up), fn_14_119E4, fn_14_13AE0, render and vulnerability overrides, SetupStateMachine, all 20 triggers, and the Start/Idle states. The other 15 states and all 29 codes are named stand-ins. So are CVisualKnowledge::Update (no host class), fn_14_13318, fn_14_12314, fn_14_12818, fn_14_1223C, fn_14_15598 (it needs fn_14_10120), XDMG fn_14_1303C and XRDG fn_14_12D98.
+- Body side: fn_14_7168 (head link) and fn_14_70B4 are ported. fn_14_7B24 calls the head's fn_14_13B08. The body attack triggers honour head flag 0x20. 0x1082/0x1084/0x1086 are TUniqueIds.
+- Area-53 run: the head spawns (u051b, 150/150) and XALD links it to the body (u054e). After Activate its FSM goes Start → Idle → FaceTarget → DetachFromBody; those last two are stand-ins, so it goes no further. Its marked triggers are exercised: StateOver, MainBodyDestroyed, IsStunned, IsGuarding and HeadArmorDestroyed. The guardian stays at 150/150 and the fight does not end. No `[port] caught` or reach-stub.
+- Fight path (second slice): the code table's addresses were off by one from index 17 (`fn_14_14604` is EnableValidTarget; `fn_14_13B38` is a helper, not StartVocalRecoverReaction = `fn_14_13C1C`). Ported in run order: FaceTarget (+ SetPlayerFaceTarget, fn_14_13B38/11C08/11D64), DetachFromBody (+ the body's fn_14_70E4), SeekAttackPosition (+ SetInitialAttackPosition, fn_14_11698/11788), StunnedReaction (+ SetStunnedPosition, SetAttackPosition, fn_14_118B0), DeploySplitters (+ StartSplitterDeployment, fn_14_F390, fn_14_F424 with the 'PART' token at 0xF04). fn_14_114C8 (needs the line of sight) is a stand-in.
+- Area-53 run (knees, OPEN, beacon): Start → FaceTarget → Idle → DetachFromBody (the head moves to its IS05 waypoint) → SeekAttackPosition → StunnedReaction → DeploySplitters (one splitter is ejected and the Splitter module wakes) → FaceTarget → SeekAttackPosition, which then repeats. Guardian and head stay at 150/150; console damage to the head does nothing, because retail damage lands on the head's collision actors (XDMG fn_14_1303C), which are not built yet. The fight does not end.
+- fn_14_13318 is ported: "L_ball_LCTR" and "R_ball_LCTR" (radius 1.5, pass-through, ids at 0xDC4) and "Skeleton_Root" (radius 6, immune-ricochet, id at 0xE00). In the area-53 run they are three CCollisionActors, and they come before the knee armours, so those ids shift by 3. Console damage on them changes nothing (0 HP, no XDMG yet).
+- The critical path runs through the echo targets. XDMG's armour branch (lives at 0x10E4 drop) needs bit 0x10 (HeadArmorDestroyed), and only fn_14_11FEC sets it, reached from XDMG's echo-target branch (an echo target in state 0x708 == 4). fn_14_12314 needs the 0x790 echo-target class: ctor fn_14_1A698 (0x3AC), dtor 1A5F4, Think 1A1F8 with fn_14_19A08/19B70/19CE0, AcceptScriptMsg 1A430, Render 1A168, and the vtable slots 1ABD8 (HealthInfo), 10C, 1A12C (GetDamageVulnerability), 1AB50 (GetTouchBounds), 1AB98 and 19FD0 (aim position). That is about 1000 asm lines. The class also allocates an echo emitter (AllocateEchoEmitter, already on the host) and a CElementGen from data +0xA0.
+- Ported (2026-10-20): the echo-target class, fn_14_12314/1223C, Extract/RetractEchoTargets, ExtractAntenna (fn_14_14E78, the only code that activates the echo targets: they are built inactive), and XDMG fn_14_1303C with F2B8/13248/11F30/11FEC/12B04. In an area-53 run the three targets died (0xFE0 3→0, bit 0x10 set) and ball-collider XDMGs took 0x10E4 2→1→0; the FSM then ran Stage3Start through the head's Dead state (fn_14_1561C, still a stand-in) and the body was removed. Two things still need forcing in a run: after one echo target dies the FSM stalls after the second ExtractAntenna (DropShields/ExtractEchoTargets never recur), and the balls only take damage once fn_14_12818 (stand-in) gives them the 0xDD0 vulnerability, when a morph ball sits in a bomb slot. The head has no IS07/FOLW link in area 53, so fn_14_F2B8 moves nothing there.
+- Remaining, in fight order: fn_14_12314 (echo targets, the 0xF30/0xF34 ids, transforms at 0xF40/0xF70/0xFA0) with the class above, then XDMG fn_14_1303C (armour destroyed: lives at 0x10E4 drop, IS08; echo target hit: IS09, bit 0x02) with fn_14_F2B8/13248/12B04/11F30/11FEC; the codes still logged in the run (ExtractAntenna, RaiseShields, GrabPlayerHintControl, DropShields, ExtractEchoTargets, RetractEchoTargets, EndSplitterDeployment, SelectDeathHeadAttack, SeekLineOfSight); a host CVisualKnowledge (owner 0xD80, target 0xDA0, the seen time 0xDB0 and flag 0xDB8 that SetAttackPosition reads; Update is DOL 0x801F55F0) with fn_14_114C8; the attack states (ProjectileTelegraph, Pulse/Charge/Missile/MachineGun attacks), AttachedToBody, Dead; XRDG fn_14_12D98, fn_14_12818/1223C, fn_14_15598 with fn_14_10120, the head paths in fn_14_7D8C and fn_14_2A28, fn_14_5644.
+
+### Head cycle without hooks (area-53 run, 2026-10-21, base d99bc2718)
+
+- The head's FSM2 graph, dumped at load, shows that the DeathHeadAttacks sub-machine leaves only on
+  `IsAntennaTransmitting` (fn_14_17244 → body fn_14_70B4) → DropShields → SetStunnedPosition →
+  ExtractEchoTargets → StunnedReaction. The trigger fires once the beacon is destroyed (body
+  fn_14_266C, which runs only in Crippled), so the beacon must be shot on **every** re-extension.
+  A run that shot it once stalls in DeathHeadAttacks. That is a harness limitation, not a port bug.
+- A harness that shoots the beacon and then the echo targets every round, with no env hooks, counted
+  0xFE0 down 3→2→1→0. The body got CLOS, and the head ran Stage3Start: 0 caught/reach-stub.
+- The harness must retry the knees until all four are down: one knee can resist a single round, and
+  the body then never reaches Crippled.
+
+### Bomb slots and the head's death (area-53 run, 2026-10-21, base d503a8674)
+
+- fn_14_12818 holds a fully morphed player on an intact ball's bomb slot (within the sphere radius
+  1.5) and gives that ball 0xDD0 (`bombPitVulnerability`, data +0x2F8); fn_14_126C8 pulls the bombs
+  there. With a harness that teleports the morph ball onto each ball (positions from a temporary
+  trace) and lays bombs, real bomb XDMGs took 0x10E4 2→1→0, the FSM entered Dead (fn_14_1561C:
+  boss bar cleared, MassiveDeath) and the head was removed: 0 caught/reach-stub. Head HP stays
+  150/150 throughout (TakeDamage only sets the hit timer).
+- The player must morph after the stage-3 cinematic (`press x` before it does nothing).
+- XRDG fn_14_12D98: bombs touching the root collider (vulnerable after SetVulnerableToDamage) fail
+  its WeaponHits test, so the gravity repulsor (0x10E0) only drops on beam hits; not yet exercised.

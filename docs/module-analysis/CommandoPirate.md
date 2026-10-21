@@ -65,7 +65,7 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0x18 | `AcceptScriptMsg` | `fn_9_CB40` (0x754) | stand-in |
 | 0x24 | `PreRender` | `fn_9_C6D4` (0xc4) | host (the base's, then the bone tracking's own) |
 | 0x28 | `AddToRenderer` | `fn_9_C4FC` (0x20) | host (a straight base call) |
-| 0x2C | `Render` | `fn_9_C598` (0x13c) | stand-in |
+| 0x2C | `Render` | `fn_9_C598` (0x13c) | host (the base's render, the space warp; the module's own renderables stay stand-ins) |
 | 0x34 | `PreRenderAllViewports` | `fn_9_C51C` (0x7c) | host (the base's; the guest's rag-doll branch is dead) |
 | 0x40 | `GetDamageVulnerability` | `fn_9_C2CC` (0x34) | host (the +0xC65 test) |
 | 0x70 | `DoUserAnimEvent` | `fn_9_C798` (0x1ac) | stand-in |
@@ -79,7 +79,7 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0xDC | `ProjectileInfo` | `fn_9_D474` (0x8) | host (this+0xA14) |
 | 0xE0 | `GetSearchPath` | `fn_9_0` | host (this+0x928) |
 | 0xE4 | `GetPointSearchPath` | `fn_9_70` | host (null) |
-| 0xE8 | `GetContactDamage` | `fn_9_C1F4` (0xd8) | stand-in |
+| 0xE8 | `GetContactDamage` | `fn_9_C1F4` (0xd8) | host (the module's charge or blade damage) |
 | 0xF0 | `SetupStateMachine` | `fn_9_BDE0` (0x6c) | host (registers the module's two tables) |
 | 0xF4 | `GetRagDoll` | `fn_9_78` | host (null) |
 | 0x10C | `GetAttackTarget` | `fn_9_80` | host (kInvalidUniqueId) |
@@ -265,7 +265,10 @@ read off the asm with `tools/asmcheck.py annotate` and carries the guest offset 
   (+0xB74), `xb78_` (+0xB78) and `xb84_` (+0xB84), and the counter it lowers is `xc50_`
   (+0xC50);
   `xb5c_` is the float at +0xB5C (the
-  constructor stores 0.f there at 0x0000DABC); `xb60_` is the float at +0xB60 (the constructor
+  constructor stores 0.f there at 0x0000DABC); `xc4c_` is the module's own state word at +0xC4C
+  (`fn_9_1C0C` reads it at 0x00001C30, sets it to -1 at 0x00001D0C and dispatches on it at
+  0x00001D14; the constructor does not write it, so the port starts it at -1, the value the aim
+  gate `fn_9_4CA4` wants); `xb60_` is the float at +0xB60 (the constructor
   stores 1.5f, `lbl_9_rodata_47C`, at 0x0000DACC; the `Listen` override rewrites it at 0x0000BF38);
   `xb8c_` and `xb90_` are the floats at +0xB8C and +0xB90 (both 0.f from the constructor, 0x0000DB08
   and 0x0000DB0C; the constructor's later locomotion term, 4.f * (this+0x814 / the locomotion speed)
@@ -584,14 +587,13 @@ Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHa
 (GetUp, 0x130), `fn_9_7724` (Crouch, 0x148), `fn_9_6C68` (CoverAttack, 0x154), `fn_9_A2EC`
 (EGrenadeAttack, 0x174), `fn_9_8B70` (the JumpBack state, 0x1b8), `fn_9_A110`
 (PostEGrenadeAttack, 0x1dc), `fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218),
-`fn_9_4D84` (0x228), `fn_9_786C`
+`fn_9_786C`
 (RestoreOrientation, 0x22c), `fn_9_86B4` (ArmShield, 0x280), `fn_9_6DBC` (Cover, 0x284),
-`fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_6390` (0x29c), `fn_9_3090` (0x2a8), `fn_9_1C0C` (0x2ec),
+`fn_9_A4BC` (MeleeAttack, 0x290), `fn_9_1C0C` (0x2ec),
 `fn_9_7358` (WallHang, 0x310), `fn_9_3E1C` (0x324), `fn_9_961C` (FollowAttackPattern, 0x350),
 `fn_9_B250` (ShouldShieldCharge, 0x410), `fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
 (ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The ones the area 59 run
-reaches are `fn_9_4D84`, `fn_9_6390`, `fn_9_3090`,
-`fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250`.
+reaches are `fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250`.
 
 `fn_9_4BC0` (the module's two sound emitters, 0xe4), `fn_9_9F24` (the JumpPointFind state, 0x1ec)
 and `fn_9_709C` (the CoverFind state, 0x1f0) are host code since 2026-10-20: the emitters follow
@@ -603,12 +605,165 @@ point (the id at guest this+0xBD2, copied to +0xBD4, a new member `xbd4_`). The 
 uses the host's own size, and the header's `CHECK_SIZEOF` (a no-op outside the retail build)
 still names the retail's 0xC68.
 
-`fn_9_4D84` (0x228, one of the module's Think helpers) is read as far as the host's API allows:
+`fn_9_4D84` (0x228, one of the module's Think helpers) is host code since 2026-10-20 (the port's
+member `x4D84_UpdateAim`): the alive test is the host's `GetAlive()` (the byte at guest
+this+0x420's 0x40 bit), the aim command is the guest's id 0x1b = 27 = `kBSC_AdditiveAim` (with
+the 0x02 bit of the flag byte at guest this+0xC65 as the command's third field, which the host's
+`CBCAdditiveAimCmd` needed a setter for) and the idle command is 0x1a = 26 =
+`kBSC_AdditiveIdle`. Its helper `fn_9_4CA4` (0xd8 bytes) is host code too - the port's member
+`x4CA4_CanAim`, below.
+
+`fn_9_4CA4` (0xd8 bytes, the gate the aim helper asks first) is host code since 2026-10-20 (the
+port's member `x4CA4_CanAim`): the body controller (guest this+0x48C) holds its state info at
++0x36C, whose current state is asked through its vtable slot 0x28 (the vcall at 0x00004CC8) - the
+slot is `CBodyState::CanShoot` (the DOL's `__vt__10CBodyState`: the dtor at +0x08, `IsInAir`
++0x0C, `IsDead` +0x10, `IsDying` +0x14, `IsMoving` +0x18, `ApplyGravity` +0x1C,
+`ApplyHeadTracking` +0x20, `ApplyAnimationDeltas` +0x24, `CanShoot` +0x28, `UnkVtable2C` +0x2C,
+`Start` +0x30, `UpdateBody` +0x34; the host's `CBodyState` has the same order). The guest keeps
+the low byte of the answer (the clrlwi at 0x00004CD4) and gives up when it is zero (the beq at
+0x00004CD8). Then the module's flag bytes: the byte at guest this+0xC64 must have its 0x10 bit
+(the extrwi at 0x00004CE0) and must not have its 0x20 bit (the extrwi at 0x00004CF4), the byte at
+guest this+0xC65 must not have its 0x01 bit (the clrlwi at 0x00004D00), its 0x04 bit (the extrwi
+at 0x00004D08) or its 0x08 bit (the extrwi at 0x00004D10), and the block's flag byte at guest
+this+0x91C (`mData.mFlags0`) must not have its 0x10 bit (the extrwi at 0x00004CEC). The module's
+own word at guest this+0xC4C (the new member `xc4c_`) must be -1 (the cmpwi at 0x00004D1C), the
+melee cooldown at guest this+0xB7C (`xb7c_`) must be above 1.0f (rodata_43C, the compare at
+0x00004D30) and the body must be neither frozen (its byte at guest this+0x48C + 0x594, the 0x20
+bit, the extrwi at 0x00004D40) nor electrocuting (its float at guest this+0x48C + 0x5B8 above
+0.0f, the compare at 0x00004D54).
+
+The word at guest this+0xC4C is the module's own state word: `fn_9_1C0C` reads it (0x00001C30),
+sets it to -1 (0x00001D0C) and dispatches on it (0x00001D14). The constructor does not write it,
+so the port starts it at -1 - the value the gate wants, and the value the module's own helper
+leaves it at.
+
+With the gate ported the area 59 run (the note's run: `tools/run_gameplay.sh`,
+`TELEPORT=05_temple_federationsite_dark`, `FRAMES=2400`, the card in /tmp/opencode/atk_user,
+`MP2_GODMODE=1`, the player teleported next to the commando with `tp 75.9 371.6 -47.1`) reaches
+gameplay at 10.2 s, ends with exit=0 and `grep -c '[port] caught\|reach-stub'` = 0 - and the aim
+path runs: the gate passes every frame (the body state is the locomotion state, whose `CanShoot`
+is true, the byte at guest this+0xC64 has its 0x10 bit, the byte at guest this+0xC65 is 0x80,
+the block's flag byte is 0, `xc4c_` is -1, the melee cooldown is above 1.0f and the body is
+neither frozen nor electrocuting), so `fn_9_4D84` now delivers the additive aim command.
+
+`fn_9_6390` (0x29c, one of the module's Think helpers) is host code since 2026-10-20 (the port's
+member `x6390_UpdateBurstFire`): the module's shot timer at guest this+0xB5C (`xb5c_`) falls by
+the frame time while it is above zero (0x000063C0..0x000063E0); the flag byte at guest this+0xC64
+must not have its 0x80 bit and the counter at guest this+0xB50 (`xb50_`, new) must be above the
+one at +0xB58 (`xb58_`, new) - the guest compares them unsigned (0x000063E4..0x000063FC) - and
+then the block's shield arm chance (the block's +0x140 = guest this+0x900, `mShield.mArmChance`)
+is rolled against a random number in [0, 100] (rodata_4CC): at least the roll sets the flag
+byte's 0x80 bit, else the counter at +0xB58 takes the counter at +0xB50 plus one
+(0x00006400..0x00006444). The two counters start at 0 (the constructor, 0x0000DA84 and
+0x0000DAA4). While the actor is alive the aim gate `fn_9_4CA4` has to agree (0x00006448..
+0x00006460) and the burst fire's own type (guest this+0xAF0) must not be -1 (0x00006464). The
+target (the id at guest this+0xBCA) is looked up (0x00006470) and, when the actor is alive and
+the target is there, the module's timer at +0xB5C must have run out (0x00006498..0x000064DC).
+Unless the flag byte at guest this+0xC65 has its 0x02 bit, the delta to the target dotted with
+the actor's own up column (guest this+0x28, +0x38 and +0x48 - the transform's Y column) must be
+above zero: the target must be higher than the commando (0x000064E0..0x000064FC). The same delta
+the other way round, dotted with the target's own up column (the target's +0x28, +0x38 and
++0x48), must be below zero, and then the burst fire's type takes two more when it is below two
+(0x00006500..0x0000655C). The burst fire starts, the module's timer at +0xB5C takes the base's
+average attack time (`GetAverageAttackTime`) plus a random number times the base's attack time
+variation (guest this+0x3E8, the base's `mAttackTimeVariation`), and the counter at +0xB50 goes
+up by one (0x00006560..0x00006594). Then the burst fire is updated with the frame time
+(0x00006598) and, when it wants to fire (its byte at guest this+0xB04's 0x80 bit - the burst
+fire's own `mShouldFire`), the module's helper `fn_9_57A0` (0x370 bytes, over the 0x80 limit, so
+a named stand-in) runs and the burst fire's own timer (guest this+0xAF8) takes the block's
+intra-burst shot time (the block's +0x60) plus a random number times the block's intra-burst
+shot variation (the block's +0x64) around its middle - but only when that timer is above zero
+(0x000065A8..0x000065F8).
+
+The module's burst fire (guest this+0xAF0) is the host's `CBurstFire`, built from the module's
+four `SBurst` entries: the REL's data table `lbl_9_data_7A8` (.data 0x7A8) points at the
+module's .rodata at 0x0, 0x134, 0x1E4 and 0x318 and its fifth entry is null - the weights are
+15, 20, 26 and 40, the shot angles are the 22.5 degree steps (6, 5, 3, 2, 1 / 16, 4, 8 / 16, 5,
+8, 11, 14 / 7, 9, 13) with the -1 that ends a burst, and every entry's time to the next shot is
+0.1f with a 0.05f variation. The constructor's own burst type is 0 (0x0000E420), not the -1 the
+`CBurstFire` constructor leaves, so the helper's burst path is live from the start.
+
+`fn_9_57A0` (0x370, the burst fire's shot) is host code since 2026-10-20 (the port's member
+`x57A0_FireShot`): the shot leaves the gun locator (guest this+0xC5E, `mLocatorGun`) and, while the
+actor is alive (the byte at guest this+0x420's 0x40 bit), it is aimed at the target (the id at
+guest this+0xBCA). The target's position is the aim point; when the target is the player and the
+player's own state word (the guest's player+0x12F8) is 3 - the host's morph ball transition state
+`kMS_Unmorphing` - the player's position is used and the line of sight ray is skipped
+(0x00005840..0x00005874, the test at 0x00005A2C). Otherwise the intercept position is predicted
+(`PredictInterceptPos`, 0x000058E8). The gun's own direction is the right wrist locator (guest
+this+0xC60) minus the right elbow locator (guest this+0xC61) (0x00005940..0x00005994) and the shot
+needs the angle between it and the aim point to be at most 30 degrees (rodata_4C8), or at most 45
+degrees (rodata_4C0) when the target is within 6 units (rodata_49C) (0x0000599C..0x000059D4).
+The line of sight ray runs from the gun to the aim point with the guest's own filter - the include
+list is the material 59 (`kMT_Solid`) and the exclude list the materials 32 and 20 (`kMT_Player`
+and `kMT_ProjectilePassthrough`), the filter type 3 (0x000059D8..0x00005A48) - and when it hits nothing the module's line of sight byte (guest
+this+0xAE8, `xae8_`) loses its 0x80 bit (0x00005B70..0x00005B7C). The burst fire's own error
+(`GetDistanceCompensatedError`) is rotated by the actor's frame and added to the aim point, the
+shot's transform looks from the gun to it (`LookAt`, 0x00005B0C) and the projectile is launched
+with the guest's type 6, no attributes, no homing and the scale 1.0f (rodata_43C)
+(0x00005B58). After a shot the muzzle flash is played: the additive animation's state id is 0x18
+and its one parameter is the enum 2, or 8 when the body is in its locomotion state (the body's own
+state word, the host's `GetCurrentStateId`) and that state says it is moving (the body state's
+vtable slot 0x18, which the retail's `__vt__10CBodyState` makes `IsMoving` - the base's own
+`ApplyHeadTracking` call at vptr+0x20 in `CBodyStateInfo.s` fixes the vtable's base), and the
+shot's sound (the block's +0x48 = guest this+0x808, `mSoundProjectile`) is emitted at the actor's
+position.
+
+Two readings are the port's own and are marked as such in the code: the guest builds the player's
+aim position with its own copy of the player (the vcall at 0x000058B4) - the port asks the player
+for its aim position (`GetAimPosition`) - and the guest's visor effect (fn_9_6054, fn_9_5F3C) is
+the default one, which is the host's `CImpactVisorEffect::None()`.
+
+With the shot ported the area 59 run (the note's run, the card in /tmp/opencode/atk_user,
+`MP2_GODMODE=1`, the player teleported next to the commando with `tp 75.9 371.6 -47.1` through the
+debug console - `MP2_CONSOLE=<port>`, one plain command per connection) reaches gameplay at
+10.0 s, ends with exit=0 and `grep -c '[port] caught|reach-stub'` = 0, and the commando shoots:
+with a temporary branch log (reverted) the shot helper takes the predicted-target path, the aim
+gate fails while the commando turns (the distance and the angle branches), the line of sight is
+blocked once, and then the helper fires - the projectile, the muzzle flash and the shot's sound
+all run.
+
+`fn_9_3090` (0x2a8, the module's drowning) is host code since 2026-10-20 (the port's member
+`x3090_Drown`): while the actor is alive (the byte at guest this+0x420's 0x40 bit) it must be in a
+fluid (the host's `InFluidId`), the fluid must be a water script object (the guest's cast at
+0x000030FC) whose own byte at +0x20 has its 0x80 bit (the extrwi at 0x0000310C - the port reads
+the trigger flags' low byte), and the head locator (guest this+0xC5C) must be below the water's
+trigger bounds (the GetTriggerBoundsWR call at 0x0000311C). Then the module's own float at guest
+this+0xC00 (new member `xc00_`) takes 0.01f (rodata_4A0), the health info's second float is
+cleared, the actor dies with the script object state 0x5241544C ("RATL" - the host's
+`kSS_DeathRattle`) and its own forward vector as the death direction (the vcall at 0x000031C8),
+the drowning explosion is built (the module's particle from the block's +0x08, the guest's token at
+guest this+0xC28; the guest only builds it when that token is loaded, the test at 0x000031CC) and
+the drowning sound (the block's +0x06 = guest this+0x7C6) is emitted at the actor's own position
+with the volume 0x7f.
+
+Area 59 has no water at all, so the drowning was driven with a temporary hook (reverted): the
+helper was run with a forced fluid, a trigger standing in for the water and the head forced under
+its bounds. Every statement of the body ran - the module's float, the health info, the death and
+the sound - and the explosion was skipped because the block's +0x08 particle is not in the pool,
+which is what the guest does with an unloaded token too.
+
+`fn_9_C1F4` (0xd8, the contact damage - the vtable slot 0xe8) is host code since 2026-10-21 (the
+port's `GetContactDamage`): the module's flag byte at guest this+0xC65 picks the damage - its 0x04
+bit (the extrwi at 0x0000C20C, the mask 1u << (31 - 29) = 0x04) gives the shield's charge damage
+(the block's +0xD8 = guest this+0x898), its 0x20 bit (the extrwi at 0x0000C260, the mask
+1u << (31 - 26) = 0x20) gives the blade damage (the block's +0x0C = guest this+0x7CC) and without
+either the base's own contact damage stands (the call at 0x0000C2B4). The guest copies the damage
+into the base's member and returns it; the port returns it directly (the host's base getter is a
+const one). All three branches ran: the area 59 run reaches the getter (the stand-in log is
+gone), and a temporary hook (reverted) set the flag byte to drive the 0x04 and the 0x20 branches.
+
+With the burst-fire helper ported the area 59 run (the note's run) still ends cleanly: gameplay
+at 10.1 s, exit=0 and `grep -c '[port] caught\|reach-stub'` = 0. The helper runs every frame and
+the burst fire asks to fire at least once (the stand-in log for `fn_9_57A0` is in the run), so
+the marker on the body is earned.
+
+The read of `fn_9_4D84` that led to the port:
 the byte at guest this+0x420 is `CPatterned`'s flag byte and its 0x40 bit is the actor's alive
 bit (the host's `GetAlive()`), the body commands are the guest's command id 0x1b = 27 =
 `pas::kBSC_AdditiveAim` and 0x1a = 26 = `pas::kBSC_AdditiveIdle` (the host's EBodyStateCmd
-matches the DOL's order), the helper it calls first (`fn_9_4CA4`, 0xd8 bytes) is over the 0x80
-limit and would be a named stand-in, and the last step writes the aim direction into the body
+matches the DOL's order), the helper it calls first (`fn_9_4CA4`, 0xd8 bytes) was over the 0x80
+limit and stood in until 2026-10-20, and the last step writes the aim direction into the body
 controller's own vector at +0x40 (the command manager's sixth CVector3f, the command manager
 sits at body + 4 and its six vectors run from +0x00 to +0x48). What is missing is the retail's
 command payload (the static data objects `lbl_9_data_A78` and `lbl_9_data_AA0` the commands
@@ -726,3 +881,17 @@ entered, so no grenade is thrown.
   scale's Y times the parms (1, 2) and the scale's X times the parms (3, 2)); +0xBE8 (the jump
   distance) and the locomotion-speed term at +0xB90 are not.
 - The CVisualKnowledge at +0xAB0 (the host has no such class yet).
+
+`fn_9_C598` (0x13c, the actor's render - the vtable slot 0x2c) is ported (2026-10-21, the port's
+`Render`): the guest fades the actor with its colour's alpha (the psq_l at 0x0000C5C4 reads the
+alpha byte at guest this+0x44F and rodata_4F0 is 1/255) and, while the actor is alive (the byte
+at guest this+0x420's 0x40 bit) and its own word at guest this+0x920 is 1 (the port's `x920_`),
+it draws the space warp at the bounding box's centre point with the sine of pi times the alpha
+(rodata_4F4, the FastSinR call at 0x0000C5F8 and the DrawSpaceWarp call at 0x0000C634). With an
+alpha above zero the base's own render runs (the call at 0x0000C650) and the module's own
+renderable follows - the one at guest this+0xC3C when the module's state word at guest this+0xC4C
+(the port's `xc4c_`) is 0 and the one at guest this+0xC40 when it is 1. The port has no such
+renderables, so those two remain named stand-ins and the function is not marked. The base's render
+ran in the area 59 run (the stand-in log is gone); the two renderables and the warp's draw did not
+(the module's state word is not 0 or 1 in the run, and the actor's alpha is 1.0, which makes the
+sine 0).

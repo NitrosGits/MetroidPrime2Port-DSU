@@ -26,8 +26,8 @@ patterned AI typedef, the actor parameters and the module's own data block. The 
 | slot | method | fn | milestone 1 |
 |---|---|---|---|
 | 0x08 | the deleting destructor | `fn_18_94C8` | the host destructor |
-| 0x14 | Think | `fn_18_47D4` | ported (the base's Think, the stampede-react check, the timers, the melee contact and the knock-back; four per-frame calls and the sound are stand-ins) |
-| 0x18 | AcceptScriptMsg | `fn_18_7B14` | partly ported (see section 4) |
+| 0x14 | Think | `fn_18_47D4` | ported, marked (no active test in retail; run e3chk reached all but the knock-back branch) |
+| 0x18 | AcceptScriptMsg | `fn_18_7B14` | ported, marked (section 4; run e3chk reached every case) |
 | 0x24 | PreRender | `fn_18_4650` | stand-in (the base's pre-render plus the damage flash) |
 | 0x2C | Render | `fn_18_47B4` | stand-in, forwards to CPatterned |
 | 0x3C | GetHealthInfo | `fn_18_B4` | real (a call through the vtable slot 0x38) |
@@ -223,7 +223,7 @@ The base class's Think runs first (0x4818). Then:
   and the DOL's `fn_801BF3DC` - `CPlayerKnockBackMgr::ApplyPlayerKnockBackForce` - pushes the
   player along 0x8FC normalised, power 100, 0. Ported.
 - The ing's sound (0x4A70..0x4BB8): the emitter (the handle at 0x908 and the object at 0x90C)
-  follows that object. A stand-in; DoUserAnimEvent's event 39 (`fn_18_9048`) writes them.
+  follows that object. Ported; DoUserAnimEvent's event 39 (`fn_18_9048`) writes them.
 
 ### The lists and the Think's per-frame calls
 
@@ -260,7 +260,7 @@ list helpers `2BF0` (list 0x830) and `2B68` (list 0x840).
 The base class's handler runs first, then one case per message: kSM_Damage, kSM_Create,
 kSM_AreaLoaded (0x330: the INTERNAL_STATE_00/01/02 connections into 0x8C2..0x8C8 and the portal
 list 0x8CC, `fn_18_3BB0`, the boss health and `SetBossParams` with "BossTempleBossStage3"),
-kSM_Delete (the manager's `Destroy`), kSM_Launching (ported: the base's off-ground message, the off-ground force and the jump velocity to 0x910 with the apex 7.5 above the higher end), kSM_HitObject, kSM_OffGround.
+kSM_Delete (the manager's `Destroy`), kSM_Launching (the base's off-ground message, sDownVector times gravity times mass, then a second gravity read and the jump velocity to 0x910 with the apex 7.5 above the higher end), kSM_HitObject, kSM_OffGround. All ported.
 
 ### `fn_18_1DF4` (0x4A0), the heart switch
 
@@ -397,6 +397,16 @@ beam takes the look-at from the DarkBeam locator via UpdateFx, the sound follows
 in kES_Release). It needs a `CPlasmaProjectile::GetExpansionState` (TARGET_PC getter, 0x5E8).
 It runs only once `1530` makes the beam, so the runs do not reach it yet. Stand-ins left on the
 fight's path: `4D0`, `BB8`, `1530`, `E40` (module 80's swarm mapping) and the Think sound `47D4`.
+
+Then the light swarm: `CEmperorIngLightSwarm : CSwarmBasics` (`PortCEmperorIngLightSwarm.cpp`,
+ctor `BD84`, its overrides, the locator `817C`), its spawn `BB8` (kUE_BeginAction), the
+per-frame update `E40` and the LightSwarmAttack state `6698`. The trigger `87F0` fires only on low
+light/dark ammo or when ChoseAction picks action 2, so an idle harness player rarely sees it; with
+a temporary (uncommitted) override preferring action 2 the swarm spawns and lives (15 polls),
+0 caught / reach-stub lines. Godmode off (heals every 2 s): the player is hurt only by the area's
+triggers (weapon 10), the shock waves (25) and the dark atmosphere; no beam hit was recorded in two
+runs (DarkBeamAttack entered). Stand-ins left: GroundPound `6390`, GenerateDarkFliers `6258` (it
+resets 0x7D8/0x7DC at 0x6364), `4CC8`.
 
 ### The base-class members (the sweep)
 

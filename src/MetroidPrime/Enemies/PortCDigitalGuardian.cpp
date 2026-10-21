@@ -19,6 +19,8 @@
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CMaterialList.hpp"
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
+#include "Kyoto/Animation/CPASDatabase.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
@@ -30,7 +32,9 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "rstl/StringExtras.hpp"
 #include "Kyoto/CSimplePool.hpp"
+#include "MetroidPrime/Enemies/CDigitalGuardianHead.hpp"
 #include "MetroidPrime/Enemies/CDigitalGuardianKneeArmor.hpp"
+#include "MetroidPrime/CEchoEmitter.hpp"
 #include "MetroidPrime/CExplosion.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
@@ -253,15 +257,21 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x10C4_(4)
 , x10C8_{CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid(), CSegId::Invalid()}
 , x1080_(kInvalidUniqueId.value)
-, x1082_(0)
+, x1082_(kInvalidUniqueId) // the stores at 0xB2B0..0xB2BC
+, x1084_(kInvalidUniqueId)
+, x1086_(kInvalidUniqueId)
 , x1010_(0)
 , x1011_(0)
 , x1012_(0)
 , x1013_(0)
-, x1168_(TUniqueId(0))
+, x1168_(kInvalidUniqueId) // the store at 0xB5B8
+, x116A_(kInvalidUniqueId) // the store at 0xB5C0
 , x11B8_(0)
+, x11C0_(kInvalidUniqueId) // the store at 0xB668
+, x11C8_(data.mUnknown4F5D725C) // the store at 0xB674
 , x11E0_(0.f)
 , x11E4_(0.f)
+, x11E8_(1) // the store at 0xB6A0
 , x1274_(0.f)
 , x1278_(CVector3f::Zero())
 , x1284_(-1)
@@ -285,7 +295,10 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x123C_(nullptr)
 , x10CC_(kInvalidUniqueId)
 , x1240_(CSfxHandle())
+, x1244_()
+, x1254_()
 , x1264_(0.f)
+, x126C_(0.f) // the store at 0xB9C4
 , x1268_(0)
 , x1270_(0)
 , xFBC_{kInvalidUniqueId.value, kInvalidUniqueId.value, kInvalidUniqueId.value,
@@ -312,6 +325,16 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   if (mData.mToeTargetExplosion != kInvalidAssetId) {
     x1100_ = TLockedToken< CGenDescription >(
         gpSimplePool->GetObj(SObjectTag('PART', mData.mToeTargetExplosion)));
+  }
+  // The beacon's explosion and echo-hit tokens (0xB6CC..0xB7B0 and 0xB834..0xB914), each
+  // locked when its id is set.
+  if (mData.mTransmissionBeaconExplosion != kInvalidAssetId) {
+    x1244_ = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', mData.mTransmissionBeaconExplosion)));
+  }
+  if (mData.mTransmissionBeaconEchoHit != kInvalidAssetId) {
+    x1254_ = TLockedToken< CGenDescription >(
+        gpSimplePool->GetObj(SObjectTag('PART', mData.mTransmissionBeaconEchoHit)));
   }
 
 
@@ -406,9 +429,8 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 // the case at 0xAA80), "XDEL" (0x5844454C, the case at 0xA880), "XAUD" (0x58415544, the case
 // at 0xA9A8), "XALC" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
 // 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
-// 0xAA1C). The "XCRT" case (0x58435254, the case at 0xA81C) is still a stand-in, and the
-// helpers the cases call (fn_14_3A44, fn_14_3F14, fn_14_5910, fn_14_5838, fn_14_5644 and
-// fn_14_4F2C) are not ported yet.
+// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C). The helpers fn_14_5644 and
+// fn_14_4F2C the cases call are not ported yet.
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
   // The retail reads the actor's active bit before it calls the base (the byte at guest 0x20,
@@ -418,12 +440,12 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   switch (static_cast< uint >(msg.GetMessage())) {
   case 0x41435456: // "ACTV"
     if (!active) {
-      if (xE60_ != nullptr) {
+      if (xE60_ != nullptr) { // the retail's test at 0xA8E8
         xE60_->SetActive(mgr, true);
       }
       // The second manager is only woken when the flag byte's bit 6 is set (the extrwi at
       // 0xA90C, the byte's bit 6 = 0x40).
-      if (xE64_ != nullptr && (x128C_ & 0x40) != 0) {
+      if (xE64_ != nullptr && (x128C_ & 0x40) != 0) { // the tests at 0xA900 and 0xA910
         xE64_->SetActive(mgr, true);
       }
       x3E88_(mgr, true);
@@ -435,10 +457,10 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     break;
   case 0x44435456: // "DCTV"
     if (active) {
-      if (xE60_ != nullptr) {
+      if (xE60_ != nullptr) { // the retail's test at 0xA958
         xE60_->SetActive(mgr, false);
       }
-      if (xE64_ != nullptr) {
+      if (xE64_ != nullptr) { // the retail's test at 0xA970
         xE64_->SetActive(mgr, false);
       }
       x3E88_(mgr, false);
@@ -463,28 +485,28 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     mgr.DeleteObjectRequest(GetUniqueId());
     break;
   case 0x5844454C: // "XDEL"
-    if (xE60_ != nullptr) {
+    if (xE60_ != nullptr) { // the retail's test at 0xA884
       xE60_->Destroy(mgr);
     }
-    if (xE64_ != nullptr) {
+    if (xE64_ != nullptr) { // the retail's test at 0xA898
       xE64_->Destroy(mgr);
     }
     if (x1240_ != CSfxHandle()) {
       CSfxManager::RemoveEmitter(x1240_);
       x1240_ = CSfxHandle();
     }
-    StandInFn("fn_14_3F14 (the XDEL case's helper)");
+    x3F14_(mgr); // fn_14_3F14
     break;
   case 0x58415544: // "XAUD"
-    if (xE60_ != nullptr) {
+    if (xE60_ != nullptr) { // the retail's test at 0xA9AC
       xE60_->SetPhysicsActive(mgr, false);
     }
-    if (xE64_ != nullptr) {
+    if (xE64_ != nullptr) { // the retail's test at 0xA9C4
       xE64_->SetPhysicsActive(mgr, false);
     }
     break;
   case 0x58414C44: // "XALC"
-    StandInFn("fn_14_5910 (the XALC case's helper)");
+    x5910_(mgr); // fn_14_5910
     break;
   case 0x58444D47: // "XDMG": the sender (the message's +0)
     x5838_(mgr, msg.GetSenderId()); // fn_14_5838
@@ -496,7 +518,7 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     StandInFn("fn_14_4F2C (the XHIT case's helper)");
     break;
   case 0x494D3030: // "IM00"
-    StandInFn("fn_14_3F14 (the IM00 message's helper)");
+    x3F14_(mgr); // fn_14_3F14
     break;
   case 0x494D3031: // "IM01"
     x1010_ = 1;
@@ -544,10 +566,10 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   }
 }
 
-// fn_14_3E88 (0x88 bytes): the knee colliders' active flag. The four knee ids (0xFB0, 0xFB2,
+// fn_14_3E88 (0x88 bytes): the knee armours' active flag. The four armour ids (0xFB0, 0xFB2,
 // 0xFB4 and 0xFB6 - the loop at 0x3EB0, the ids two bytes apart) are walked; every knee that
 // exists (the compare with kInvalidUniqueId at 0x3EB4) is looked up (the ObjectById call at
-// 0x3ED0) and its collision actor's active flag is set (the CEntity::SetActive call through the
+// 0x3ED0) and its active flag is set (the CEntity::SetActive call through the
 // vtable slot 0x1C at 0x3EE4) to the flag the message carries (the clrlwi at 0x3EA4, the low
 // byte of the third argument).
 void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
@@ -556,9 +578,10 @@ void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
     if (ids[i] == kInvalidUniqueId.value) {
       continue;
     }
-    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(TUniqueId(ids[i])));
-    if (actor != nullptr) {
-      actor->SetActive(active);
+    // The armours (fn_14_4080) are not cast: a plain ObjectById and the virtual SetActive.
+    CEntity* armour = mgr.ObjectById(TUniqueId(ids[i]));
+    if (armour != nullptr) { // the retail's test at 0x3ED4
+      armour->SetActive(active);
     }
   }
 }
@@ -1041,11 +1064,23 @@ void CDigitalGuardian::x28D0_(CStateManager& mgr) {
   SetVisorOrbitableFlags(CVisorParameters::kVOF_Dark, true);
 }
 
-// fn_14_2A28 (0x29C bytes): the beacon's effect update - it aims the particle generator at the
-// player and drives its external parameter. Over this slice's callee limit, so it is a
-// stand-in.
+// fn_14_2A28 (0x29C bytes): the beacon's effect update. While the beacon is up the echo flash
+// (0x126C) fades and tints the beacon model (0x1270), and the effect's external parameter 0 is
+// set; the effect always updates. The head part (the TCastToPtr<CDigitalGuardianHead> of 0x1084
+// at 0x2B04: the effect is aimed from the neck locator at the head, 0x2B10..0x2C6C, and the
+// parameter is dt times that distance) cannot run: the head class is not ported, so the
+// parameter is the 1.0 the retail loads at 0x2AF4 for a missing head.
 void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_2A28 (the beacon's effect update, 0x29C bytes)");
+  if (x123C_ == nullptr || !x11EC_.valid()) { // the tests at 0x2A60 and 0x2A6C
+    return;
+  }
+  if (x1268_ != 0) {
+    x126C_ = rstl::max_val(0.f, x126C_ - dt); // .rodata 0x264
+    const float t = rstl::min_val(1.f, x126C_); // .rodata 0x270
+    x1270_ = CColor::Lerp(CColor::Black(), CPatterned::skDamageColor, t).GetColor_u32();
+    static_cast< CElementGen* >(x123C_)->SetExternalParam(0, 1.f); // 0x2C7C
+  }
+  x123C_->Update(dt); // vtable 0xC
 }
 
 // fn_14_6864 (0x1BC bytes): the constructor's tail builds the module's five models - the leg
@@ -1237,11 +1272,10 @@ bool CDigitalGuardian::AllKneesDestroyed(CStateManager& mgr, const CTriggerData&
 // cr0 at 0x99E0, the "cror eq, lt, eq" at 0x99E4 and the mfcr/extrwi pair at 0x99E8..0x99EC:
 // the mfcr puts CR0 in the top four bits of r0, so the extracted bit 29 is CR0's eq, which the
 // cror has just made "f1 <= f0").
-// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
-// retail's head branch cannot be taken: the answer is the float test.
-// Retail tests the head's flag byte first (head+0x10F4 bit 0x20, asm 0x99CC): with no head the
-// TCastToPtr<CDigitalGuardianHead> is null and the branch falls through to the x1274 test.
 bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const {
+  if (HeadFlag20_(mgr)) {
+    return false;
+  }
   return x1274_ <= 0.0f;
 }
 
@@ -1250,14 +1284,15 @@ bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData
 // byte's bit 5, the mask 1u << (31 - 26) = 0x20), the answer is false (the bne at 0x996C and
 // the li at 0x997C). Otherwise the answer is bit 0 (the mask 1u << (31 - 30) = 0x1) of the flag
 // byte at guest this+0x128C (the clrlwi at 0x9974).
-// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
-// retail's head branch cannot be taken.
 bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const {
+  if (HeadFlag20_(mgr)) {
+    return false;
+  }
   return (x128C_ & 0x1) != 0;
 }
 
 // fn_14_97F0: the head's flag byte (head+0x10F4, bit 5) is tested first (the extrwi. at
-// 0x9854); with no head (WP3) that branch cannot be taken. Then the float at guest this+0x11E0
+// 0x9854); when it is set the answer is false. Then the float at guest this+0x11E0
 // must be at most zero (the fcmpo cr0 at 0x9868, the cror eq, lt, eq at 0x986C and the bne at
 // 0x9870). Then the four locator ids at guest this+0x10C8 (the count at 0x10C4) are walked
 // (the loop at 0x98E0..0x98EC): each locator's world position comes from GetLctrTransform
@@ -1266,6 +1301,9 @@ bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData
 // 0x98B0..0x98C8) must be below the far leg stab range squared (guest this+0x7C8 = the data
 // block's +0x08, the fmuls at 0x9884).
 bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
+  if (HeadFlag20_(mgr)) {
+    return false;
+  }
   if (x11E0_ > 0.0f) {
     return false;
   }
@@ -1286,10 +1324,16 @@ bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&
 // fn_14_97A4: the head's flag byte (head+0x10F4, bit 5) is the whole answer (the extrwi at
 // 0x97D4 keeps the byte's bit 5, the mask 1u << (31 - 26) = 0x20), but only when the head
 // exists (the cmplwi at 0x97C8 and the beq at 0x97CC answer false without it).
-// The head module is WP3 and its loader is a stand-in, so no head can exist in the port and
-// retail's head branch cannot be taken: the answer is always false.
 bool CDigitalGuardian::ShouldProjectileAttack(CStateManager& mgr, const CTriggerData& data) const {
-  return false;
+  return HeadFlag20_(mgr);
+}
+
+// The head test fn_14_9994, fn_14_9930, fn_14_97F0 and fn_14_97A4 share: the head (0x1082) exists
+// and bit 0x20 of its flag byte (head+0x10F4) is set.
+bool CDigitalGuardian::HeadFlag20_(CStateManager& mgr) const {
+  const CDigitalGuardianHead* head =
+      TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_));
+  return head != nullptr && (head->x10F4_ & 0x20) != 0;
 }
 
 // fn_14_308C: the objects connected with the state kSS_InternalState2 (0x49533032) and the
@@ -1358,7 +1402,7 @@ bool CDigitalGuardian::BreakOutOfVortex(CStateManager& mgr, const CTriggerData& 
   if (x11B8_ != 1) {
     return false;
   }
-  return mData.mUnknown4F5D725C <= 0.0f;
+  return x11C8_ <= 0.0f;
 }
 
 // @ fn_14_3A44
@@ -1418,16 +1462,98 @@ void CDigitalGuardian::x143C_(CStateManager& mgr, const CVector3f& pos,
 
 // fn_14_5838: the head collider (0x10CC) goes to fn_14_5274, a knee collider (fn_14_3E2C) to
 // fn_14_5470, a toe target (fn_14_43AC) or the root collider (0x1080) to fn_14_5384.
+// @ fn_14_5838
 void CDigitalGuardian::x5838_(CStateManager& mgr, TUniqueId sender) {
   if (sender == x10CC_) {
-    StandInFn("fn_14_5274 (the head collider's damage)");
+    x5274_(mgr, sender); // fn_14_5274
     return;
   }
   const int knee = x3E2C_(sender); // fn_14_3E2C
   if (knee != -1) {
     x5470_(mgr, sender, knee); // fn_14_5470
   } else if (x43AC_(sender) || sender.value == x1080_) {
-    StandInFn("fn_14_5384 (the toe target / root collider's damage)");
+    x5384_(mgr, sender); // fn_14_5384
+  }
+}
+
+// @ fn_14_5274
+void CDigitalGuardian::x5274_(CStateManager& mgr, TUniqueId sender) {
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) { // the TCastToPtr test at 0x52C0
+    return;
+  }
+  x126C_ = 1.f; // .rodata 0x270
+  const float hp = collider->GetHealthInfo()->GetHP();
+  const float initial = collider->GetHealthInfo()->GetInitialHP();
+  if (hp <= 0.f) { // .rodata 0x264
+    collider->HealthInfo()->SetHP(initial);
+    x266C_(mgr); // fn_14_266C: destroyed
+  } else {
+    x2E60_(mgr); // fn_14_2E60: hit
+  }
+  if (EchoEmitter() != nullptr) { // the test at 0x5348
+    EchoEmitter()->SetAutoReducingDamage(x126C_);
+  }
+}
+
+// @ fn_14_4350
+int CDigitalGuardian::x4350_(TUniqueId id) const {
+  if (x1078_[0] == id.value) {
+    return 0;
+  }
+  if (x1078_[1] == id.value) {
+    return 1;
+  }
+  if (x1078_[2] == id.value) {
+    return 2;
+  }
+  if (x1078_[3] == id.value) {
+    return 3;
+  }
+  return -1;
+}
+
+// fn_14_5140: the area-53 run only reaches the early return (a root hit, no toe index).
+void CDigitalGuardian::x5140_(CStateManager& mgr, TUniqueId sender, float damage) {
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) { // the TCastToPtr test at 0x5180
+    return;
+  }
+  const int toe = x4350_(sender); // fn_14_4350
+  if (toe == -1 || x10DC_[toe] == 3) { // 3: already destroyed
+    return;
+  }
+  x1144_[toe] -= damage;
+  x1158_[toe] = mDamageWaitTime; // CPatterned 0x444
+  if (x1144_[toe] <= 0.f) { // .rodata 0x264
+    x1A68_(mgr, toe, 3); // fn_14_1A68: destroyed
+    x143C_(mgr, collider->GetTranslation(), kSS_InternalState8); // fn_14_143C
+  } else {
+    PlayCustomSound(collider->GetTranslation(), CVector3f::Up(), mData.mSoundToeTargetHit, false);
+    if (x10DC_[toe] == 1) {
+      x1A68_(mgr, toe, 2); // fn_14_1A68: the flinch
+    }
+  }
+}
+
+// @ fn_14_5384
+void CDigitalGuardian::x5384_(CStateManager& mgr, TUniqueId sender) {
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) { // the TCastToPtr test at 0x53C4
+    return;
+  }
+  // The collider's damage is what it lost; its health goes back to full (0x53DC..0x53E8).
+  CHealthInfo* health = collider->HealthInfo();
+  const float initial = health->GetInitialHP();
+  const float damage = initial - health->GetHP();
+  health->SetHP(initial);
+  if (x11B8_ == 1) {
+    // In the vortex (0x11B8 == 1) the hit goes to the vortex's health.
+    x11C8_ -= damage;
+    mDamageCooldownTimer = skDamageHitTime; // CPatterned 0x448
+    PlayCustomSound(collider->GetTranslation(), CVector3f::Up(), mData.mSoundVortexFlash, false);
+  } else {
+    x5140_(mgr, sender, damage); // fn_14_5140
   }
 }
 
@@ -1460,6 +1586,39 @@ void CDigitalGuardian::x5470_(CStateManager& mgr, TUniqueId sender, int knee) {
     armour->AcceptScriptMsg(mgr, CScriptMsg(sender, armour->GetUniqueId(), kSM_Damage));
     PlayCustomSound(collider->GetTranslation(), CVector3f::Up(), mData.mSoundKneeArmorHit, false);
   }
+}
+
+// @ fn_14_3D2C
+void CDigitalGuardian::x3D2C_(CStateManager& mgr, bool set) {
+  // Bit 5 of 0x128C (the rlwimi at 0x3D40).
+  if (set) {
+    x128C_ |= 0x20;
+    SendScriptMsgs(kSS_InternalState10, mgr, GetUniqueId(), kSM_None);
+  } else {
+    x128C_ &= ~0x20;
+    SendScriptMsgs(kSS_InternalState11, mgr, GetUniqueId(), kSM_None);
+  }
+}
+
+// @ fn_14_3F14
+// The knee armours are deleted; 0x1284 is left at the last one's index (the store at 0x3F4C).
+void CDigitalGuardian::x3F14_(CStateManager& mgr) {
+  u16* const ids[4] = {&xFB0_, &xFB2_, &xFB4_, &xFB6_};
+  for (int i = 0; i < 4; ++i) {
+    if (*ids[i] == kInvalidUniqueId.value) {
+      continue;
+    }
+    x1284_ = i;
+    mgr.DeleteObjectRequest(TUniqueId(*ids[i]));
+    *ids[i] = kInvalidUniqueId.value;
+  }
+}
+
+// @ fn_14_5910
+void CDigitalGuardian::x5910_(CStateManager& mgr) {
+  x11C0_ = FindConnectedObject(mgr, kSS_InternalState0, kSM_Attach);
+  x10CE_ = FindConnectedObject(mgr, kSS_InternalState4, kSM_Activate);
+  x116A_ = CheckConnectedObject(mgr, kSS_InternalState5, kSM_Follow);
 }
 
 // fn_14_4080 (0x274 bytes): the four knee armours. Only with the knee model (the optional at
@@ -1590,6 +1749,70 @@ void CDigitalGuardian::x1A68_(CStateManager& mgr, int leg, int state) {
   }
 }
 
+// @ fn_14_266C
+void CDigitalGuardian::x266C_(CStateManager& mgr) {
+  if (x1268_ == 0) {
+    return;
+  }
+  x1268_ = 3;
+  const CTransform4f xf = CTransform4f::Translate(GetAimPosition(mgr, 0.f)); // vtable 0x54
+  if (x1244_.valid()) {
+    // "Beacon Explosion Fx" (.rodata 0x8CC) at the aim position, the model's scale, white.
+    const CVector3f scale = GetModelData()->GetScale();
+    const rstl::string name = rstl::string_l("Beacon Explosion Fx");
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                           kInvalidEditorId);
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    CExplosion* explosion = rs_new CExplosion(x1244_.data(), uid, info, name, xf, 0, scale,
+                                              CColor::White(), -1);
+    if (explosion != nullptr) { // the retail's test at 0x27E4
+      mgr.AddObject(explosion);
+    }
+  }
+  PlayCustomSound(GetTranslation(), CVector3f::Up(), mData.mSoundBeaconExplode, false);
+  CCollisionActor* head = TCastToPtr< CCollisionActor >(mgr.ObjectById(x10CC_));
+  if (head != nullptr && head->GetActive()) { // the tests at 0x2830 and 0x283C
+    head->SetActive(false);
+  }
+  if (x123C_ != nullptr) {
+    x123C_->SetParticleEmission(false); // vtable 0x2C
+  }
+  if (x1240_ != CSfxHandle()) {
+    CSfxManager::RemoveEmitter(x1240_);
+    x1240_ = CSfxHandle();
+  }
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
+}
+
+// @ fn_14_2E60
+void CDigitalGuardian::x2E60_(CStateManager& mgr) {
+  if ((x128C_ & 0x08) != 0) { // the extrwi at 0x2E7C
+    return;
+  }
+  const CCollisionActor* head = TCastToConstPtr< CCollisionActor >(mgr.GetObjectById(x10CC_));
+  if (head == nullptr || !head->GetActive()) { // the tests at 0x2E9C and 0x2EA8
+    return;
+  }
+  // Above the head collider by 4 (.rodata 0x2A8) times the model's z scale.
+  const CVector3f scale = GetModelData()->GetScale();
+  const CVector3f pos = head->GetTranslation() + CVector3f::Up() * (4.f * scale.GetZ());
+  // "Beacon Hit Fx" (.rodata 0x8E0); the retail does not test the token (0x1260) first.
+  const rstl::string name = rstl::string_l("Beacon Hit Fx");
+  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                         kInvalidEditorId);
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  CExplosion* explosion = rs_new CExplosion(x1254_.data(), uid, info, name,
+                                            CTransform4f::Translate(pos), 0, scale,
+                                            CColor::White(), -1);
+  if (explosion != nullptr) { // the retail's test at 0x3038
+    mgr.AddObject(explosion);
+  }
+  if (x1254_.valid()) { // the present byte at 0x304C
+    PlayCustomSound(pos, CVector3f::Up(), mData.mSoundBeaconHit, false);
+  }
+}
+
 // fn_14_14F8 (0x74 bytes): CPatterned's speed (guest 0x3C8) for the number of knee armours left
 // (fn_14_705C, 0x150C): 4 -> data +0x17C, 3 -> +0x180, 2 -> +0x184, otherwise +0x188.
 // @ fn_14_14F8
@@ -1689,25 +1912,100 @@ void CDigitalGuardian::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_14_8580");
 }
 
+// @ fn_14_8090
 void CDigitalGuardian::KneeDestroyedReaction(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_8090");
+  switch (msg) {
+  case kStateMsg_Activate:
+    // Ready when a knee was destroyed (0x1284), else already over (0x80D0..0x80EC).
+    mAnimationState.SetState(x1284_ != -1 ? CAnimationState::kAS_Ready
+                                          : CAnimationState::kAS_Over);
+    x3D2C_(mgr, true); // fn_14_3D2C
+    x3A44_(mgr);       // fn_14_3A44
+    x24E4_(mgr);       // fn_14_24E4
+    x11E8_ = 0;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      // The knee's angle (.rodata 0x20C: 135, 225, 45, 315) picks the knock-back (fn_14_83C0
+      // builds the parm data at 0x81D4); it is sent only when an animation scores above 0.
+      static const float kKneeAngles[4] = {135.f, 225.f, 45.f, 315.f};
+      const rstl::pair< float, int > best =
+          BodyController()->GetPASDatabase().FindBestAnimation(
+              CPASAnimParmData(pas::kAS_KnockBack, CPASAnimParm::FromReal32(kKneeAngles[x1284_]),
+                               CPASAnimParm::FromEnum(2)),
+              -1);
+      if (best.first > 0.f) { // .rodata 0x264
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCKnockBackCmd(GetTranslation(), pas::kS_Two, best.second, false));
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x14F8_(); // fn_14_14F8
+    x1284_ = -1;
+    SendScriptMsgs(kSS_InternalState9, mgr, GetUniqueId(), kSM_None);
+    x3D2C_(mgr, false); // fn_14_3D2C
+    x3A44_(mgr);        // fn_14_3A44
+    break;
+  default:
+    break;
+  }
 }
 
+// fn_14_7D8C (0x260 bytes): the guardian falls. The head part of the activate path (the
+// TCastToPtr<CDigitalGuardianHead> of 0x1082 at 0x7EC0: the head is put at the locator 0x10B8,
+// then bit 1 of 0x128C is cleared) cannot run: the head class is WP3 and its loader is a
+// stand-in, so no head exists in the port.
 void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_7D8C");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x3D2C_(mgr, true); // fn_14_3D2C
+    x3A44_(mgr);       // fn_14_3A44
+    x11E8_ = 0;
+    x128C_ |= 0x40; // the rlwimi at 0x7E00
+    for (int i = 0; i < 4; ++i) {
+      x1A68_(mgr, i, 3); // fn_14_1A68: every toe target destroyed
+    }
+    SendScriptMsgs(kSS_DeathRattle, mgr, GetUniqueId(), kSM_None);
+    // The guardian moves to the DeathRattle/Follow waypoint.
+    const TUniqueId id = CheckConnectedObject(mgr, kSS_DeathRattle, kSM_Follow);
+    const CScriptWaypoint* waypoint = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id));
+    if (waypoint == nullptr) { // the TCastToPtr test at 0x7E8C
+      break;
+    }
+    SetTransform(waypoint->GetTransform());
+    break;
+  }
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Fall)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockDownCmd(GetTranslation(), pas::kS_Two, false));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
 }
 
-// fn_14_7CB4 (0xD8 bytes): the Crippled state. The message is the retail's (the cmpwi at
-// 0x7CBC against 1 and the cmpwi at 0x7CE0 against 0): on Activate the knee joint colliders
-// are woken and every other collision actor is put to sleep, and on Update the beacon's update
-// runs (fn_14_2CC4, the call at 0x7D6C).
+// @ fn_14_7CB4
+// The Crippled state: on Activate the second manager (0xE64) wakes and every collider of the
+// first (0xE60) but the guard's (0x10CC) sleeps; on Update the beacon's update runs.
 void CDigitalGuardian::Crippled(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    // The activate path (the SetActive call at 0x7CF4 and the loop at 0x7D00-0x7D64, which
-    // puts every collision actor but the guard's to sleep) needs the collision actor managers
-    // at 0xE60 and 0xE64, which the constructor does not build yet.
-    StandInFn("fn_14_7CB4: the Crippled state's activate path (the collision actor managers)");
+    xE64_->SetActive(mgr, true); // 0x7CF4, no null test
+    for (uint i = 0; i < xE60_->GetNumCollisionActors(); ++i) {
+      const TUniqueId id = xE60_->GetCollisionDescFromIndex(i).GetCollisionActorId();
+      CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+      if (actor != nullptr && id != x10CC_) { // the tests at 0x7D28 and 0x7D38
+        actor->SetActive(false);
+      }
+    }
     break;
   case kStateMsg_Update:
     x2CC4_(mgr, dt);
@@ -1741,12 +2039,50 @@ void CDigitalGuardian::ResetJumpTime(CStateManager& mgr, float dt) {
 // block's +0x0C, mMinLegStabAttackTime, the load at 0x7B3C) goes into the member at guest
 // this+0x11E0 (the store at 0x7B40) and the jump timer (guest this+0x938) into the member at
 // guest this+0x11E4 (the load at 0x7B44 and the store at 0x7B48). Then the head module is
-// asked to reset its attack times (the head's fn_14_13B08, the call at 0x7B6C): the head class
-// is WP3 and its loader is a stand-in, so no head can exist in the port and that call cannot
-// be made.
+// asked to reset its attack times (the head's fn_14_13B08, the call at 0x7B6C).
+// @ fn_14_7B24
 void CDigitalGuardian::ResetAttackTimes(CStateManager& mgr, float dt) {
   x11E0_ = mData.mMinLegStabAttackTime;
   x11E4_ = mData.mJumpTimer;
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->x13B08_(mgr);
+  }
+}
+
+// fn_14_7168: the head's id goes to 0x1084, then 0x1082 = 0x1084 (0x7194..0x71A0), and 0x1086 is
+// cleared (0x71A8). The body stops being a target (li r4, 0x28 = kMT_Target, 0x71AC), its attack
+// times reset (fn_14_7B24 with .rodata 0x264, 0), and the head's attack mode becomes 0
+// (fn_14_13B30 at 0x71EC).
+// @ fn_14_7168
+void CDigitalGuardian::x7168_(CStateManager& mgr, TUniqueId head) {
+  x1084_ = head;
+  x1082_ = x1084_;
+  x1086_ = kInvalidUniqueId;
+  RemoveMaterial(kMT_Target, mgr);
+  ResetAttackTimes(mgr, 0.f);
+  if (CDigitalGuardianHead* linked = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    linked->SetAttackMode(0);
+  }
+}
+
+// fn_14_70E4: the head's attack mode becomes 1 (fn_14_13B30 at 0x7124), 0x1082 and 0x1086 are
+// cleared, and the body is a target again (AddMaterial with 0x28 = kMT_Target, 0x7148).
+// @ fn_14_70E4
+void CDigitalGuardian::x70E4_(CStateManager& mgr) {
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->SetAttackMode(1);
+  }
+  x1082_ = kInvalidUniqueId;
+  x1086_ = kInvalidUniqueId;
+  AddMaterial(kMT_Target, mgr);
+}
+
+// fn_14_70B4: bit 0x08 of 0x128C (extrwi. 1, 28) clear and the beacon's state 2 or 1.
+bool CDigitalGuardian::x70B4_() const {
+  if ((x128C_ & 0x08) != 0) {
+    return false;
+  }
+  return x1268_ == 2 || x1268_ == 1;
 }
 
 void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
@@ -1766,15 +2102,21 @@ void CDigitalGuardian::SetNormalAttackMode(CStateManager& mgr, float dt) {
 
 // fn_14_768C: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7698)
 // and, if it exists, asked to disable its attacks with the argument 3 (the li r4, 3 at 0x76B8
-// and the call at 0x76BC). The head class is WP3 and its loader is a stand-in, so no head can
-// exist in the port and that call cannot be made.
-void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {}
+// and the call at 0x76BC, fn_14_13B30).
+void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->SetAttackMode(3);
+  }
+}
 
 // fn_14_7648: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7654)
 // and, if it exists, asked to reset its attacks with the argument 4 (the li r4, 4 at 0x7674 and
-// the call at 0x7678). The head class is WP3 and its loader is a stand-in, so no head can
-// exist in the port and that call cannot be made.
-void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {}
+// the call at 0x7678, fn_14_13B30).
+void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {
+  if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
+    head->SetAttackMode(4);
+  }
+}
 
 // fn_14_7600: the closest active waypoint to the player (the state manager's player at
 // +0x14FC, the lwz at 0x761C, and its position at +0x54, the addi at 0x7624) is picked by
@@ -1902,17 +2244,8 @@ static CEntity* PortLoadDigitalGuardian(CStateManager& mgr, CInputStream& input,
                                   LdrToPatternedInfo(sldrThis.patterned, nullptr), data);
 }
 
-// The head module (CDigitalGuardianHead, guest 0x10F8, script type DGHD) is not ported yet: its
-// own class, its 0x5B0-byte parameter block and its 31 vtable overrides are the WP3 work
-// (docs/module-analysis/DigitalGuardian.md section i). The loader slot is filled so the module's
-// table is complete, and it logs once and returns null, which the script loader helper reads as
-// "skip this object" (src/MetroidPrime/CScriptObjectLoaderHelper.cpp skips the rest of the
-// object's bytes).
-static CEntity* PortLoadDigitalGuardianHead(CStateManager& mgr, CInputStream& input,
-                                             CEntityInfo& info) {
-  StandIn("CDigitalGuardianHead loader (module 14's DGHD actor is not ported yet)");
-  return nullptr;
-}
+// The head module's loader (fn_14_DF7C) is PortLoadDigitalGuardianHead in
+// PortCDigitalGuardianHead.cpp.
 
 static SDigitalGuardian_FuncPtrs REL_loader_DigitalGuardian;
 

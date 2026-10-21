@@ -8,8 +8,17 @@
 #include "MetroidPrime/CAnimationParameters.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "rstl/optional_object.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
+
+class CBCProjectileAttackCmd;
+
+// The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
+// ShouldFadeOut and CanMissileDeflect triggers read.
+class CDarkSamusBattleStage;
+struct SLdrDSStageInfo;
 
 // Host copy of the properties the DarkSamus loader reads (fn_10_CF44 reads the module's 63
 // property ids, which are exactly the ids of the generated SLdrDarkSamus reader). Retail keeps no
@@ -157,6 +166,24 @@ struct CDarkSamusData {
 // The state machine, the melee / dive / scatter-shot / missile attacks, the boost ball, the
 // freeze beam, the sweep beam and the phazon enrage are later milestones, and every override that
 // belongs to them forwards to CPatterned behind a once-only stand-in log.
+// The dash record at the guest's 0x9E0..0xA08 (fn_10_15348 builds it, the constructor at 0x0001FD04
+// and the Dash state on a stack copy at 0x0001518C). Names are the guest offsets until the dash
+// chain (fn_10_14A00/14D14/154FC) that fills them is ported.
+struct CDarkSamusDash {
+  CDarkSamusDash(); // fn_10_15348
+
+  int mGuest9E0;          // +0x00, -1 (0x000153D4)
+  CVector3f mGuest9E4;    // +0x04, the zero vector, then +0x10's (0x000153B8..0x000153CC)
+  CVector3f mGuest9F0;    // +0x10, the zero vector (0x0001537C..0x0001538C, again 0x000153A0..)
+  int mGuest9FC;          // +0x1C, -1 (0x000153D0); fn_10_1DF74 sets it to -1 on a new cover point
+  float mGuestA00;        // +0x20, lbl_10_rodata_3FC = 0.0f (0x000153D8)
+  int mGuestA04;          // +0x24, 0 (0x00015390); BreakDash answers false while it is above 0
+  // +0x28, flags, MSB-first: 0x80 (`rlwimi 7,24,24` at 0x000153E0, BreakDash's `extrwi 1,24`)
+  // and 0x40 (`rlwimi 6,25,25` at 0x00015398), both clear
+  bool mGuestA08Bit80 : 1; // 0x28 mask 0x80
+  bool mGuestA08Bit40 : 1; // 0x28 mask 0x40
+};
+
 class REL_EXPORT CDarkSamus : public CPatterned {
 public:
 #ifdef TARGET_PC
@@ -218,13 +245,267 @@ public:
   float GetGravityConstant() const override { return kDefaultGravityAccel; }                // 69
   const rstl::optional_object< TCachedToken< CGenDescription > >&
   GetDeathExplosionParticle() const override;                                              // 73
+
+  // ---------------------------------------------------------------------------------------------
+  // The state machine. fn_10_18D78 (the module's own setup, called from the first Think) hands the
+  // machine two tables: lbl_10_data_450 with 49 entries (the triggers) and lbl_10_data_964 with 43
+  // entries (the states). The names are the REL's own strings and the order is the table order;
+  // the machine finds a node's handler by name. The comment on each name is the REL's function that
+  // implements it (the .data record beside the entry holds its offset in lbl_10_data_CBC).
+  void SetupStateMachine(CStateManager& mgr) override;
+  void InstallStateMachineFunctions();
+
+  // The 49 triggers (lbl_10_data_450's order).
+
+  bool Alerted(CStateManager& mgr, const CTriggerData& data) const; // fn_10_F840
+  bool Arrived(CStateManager& mgr, const CTriggerData& data) const; // fn_10_62B4
+  bool AnyIncomingMissiles(CStateManager& mgr, const CTriggerData& data) const; // fn_10_1BB08
+  bool BreakFreezeBeam(CStateManager& mgr, const CTriggerData& data) const; // fn_10_16B48
+  bool BreakDash(CStateManager& mgr, const CTriggerData& data) const; // fn_10_149B4
+  bool BreakDiveAttack(CStateManager& mgr, const CTriggerData& data) const; // fn_10_11C54
+  bool BreakNormalMissile(CStateManager& mgr, const CTriggerData& data) const; // fn_10_16B5C
+  bool BreakPause(CStateManager& mgr, const CTriggerData& data) const; // fn_10_106F8
+  bool BreakPhazonAttack(CStateManager& mgr, const CTriggerData& data) const; // fn_10_4ABC
+  bool BreakSuperMissile(CStateManager& mgr, const CTriggerData& data) const; // fn_10_16B54
+  bool CanMeleeAttack(CStateManager& mgr, const CTriggerData& data) const; // fn_10_10634
+  bool CanMissileDeflect(CStateManager& mgr, const CTriggerData& data) const; // fn_10_14284
+  bool DiveAfterBoost(CStateManager& mgr, const CTriggerData& data) const; // fn_10_95A8
+  bool DoneRolling(CStateManager& mgr, const CTriggerData& data) const; // fn_10_9314
+  bool DoneTurning(CStateManager& mgr, const CTriggerData& data) const; // fn_10_F864
+  bool FacingPlayer(CStateManager& mgr, const CTriggerData& data) const; // fn_10_142CC
+  bool HitDuringEnrage(CStateManager& mgr, const CTriggerData& data) const; // fn_10_7B68
+  bool OutOfMeleeRange(CStateManager& mgr, const CTriggerData& data) const; // fn_10_17CB8
+  bool PickedBoostBall(CStateManager& mgr, const CTriggerData& data) const; // fn_10_116F8
+  bool PickedFreezeBeam(CStateManager& mgr, const CTriggerData& data) const; // fn_10_11760
+  bool PickedDiveAttack(CStateManager& mgr, const CTriggerData& data) const; // fn_10_1174C
+  bool PickedMelee(CStateManager& mgr, const CTriggerData& data) const; // fn_10_117D8
+  bool PickedMeleeDash(CStateManager& mgr, const CTriggerData& data) const; // fn_10_11710
+  bool PickedMissileJump(CStateManager& mgr, const CTriggerData& data) const; // fn_10_1178C
+  bool PickedMovingSShot(CStateManager& mgr, const CTriggerData& data) const; // fn_10_11724
+  bool PickedNormalMissile(CStateManager& mgr, const CTriggerData& data) const; // fn_10_117A0
+  bool PickedPause(CStateManager& mgr, const CTriggerData& data) const; // fn_10_11800
+  bool PickedPhazonAttack(CStateManager& mgr, const CTriggerData& data) const; // fn_10_8680
+  bool PickedPhazonEnrage(CStateManager& mgr, const CTriggerData& data) const; // fn_10_8114
+  bool PickedScatterShot(CStateManager& mgr, const CTriggerData& data) const; // fn_10_11738
+  bool PickedSuperMissile(CStateManager& mgr, const CTriggerData& data) const; // fn_10_11778
+  bool PickedSweepBeam(CStateManager& mgr, const CTriggerData& data) const; // fn_10_CDA0
+  bool PickedTaunt(CStateManager& mgr, const CTriggerData& data) const; // fn_10_117EC
+  bool PlayerIsMorphball(CStateManager& mgr, const CTriggerData& data) const; // fn_10_112E8
+  bool PlayerTooClose(CStateManager& mgr, const CTriggerData& data) const; // fn_10_10658
+  bool ReachedPissedOff(CStateManager& mgr, const CTriggerData& data) const; // fn_10_FAF4
+  bool ReadyForMissiles(CStateManager& mgr, const CTriggerData& data) const; // fn_10_6A40
+  bool ShouldEnragedMelee(CStateManager& mgr, const CTriggerData& data) const; // fn_10_6B78
+  bool ShouldFadeIn(CStateManager& mgr, const CTriggerData& data) const; // fn_10_BB78
+  bool ShouldFadeOut(CStateManager& mgr, const CTriggerData& data) const; // fn_10_BBE4
+  bool ShouldGetPissedOff(CStateManager& mgr, const CTriggerData& data) const; // fn_10_FD30
+  bool ShouldLeaveSphere(CStateManager& mgr, const CTriggerData& data) const; // fn_10_6A60
+  bool ShouldReact(CStateManager& mgr, const CTriggerData& data) const; // fn_10_11158
+  bool ShouldRiseAgain(CStateManager& mgr, const CTriggerData& data) const; // fn_10_6AE8
+  bool SkipPhazonAttack(CStateManager& mgr, const CTriggerData& data) const; // fn_10_110E0
+  bool StartsInTheAir(CStateManager& mgr, const CTriggerData& data) const; // fn_10_F924
+  bool TooMuchDamage(CStateManager& mgr, const CTriggerData& data) const; // fn_10_10698
+  bool WallCollision(CStateManager& mgr, const CTriggerData& data) const; // fn_10_F800
+  bool WasHeavyHit(CStateManager& mgr, const CTriggerData& data) const; // fn_10_112AC
+
+  // The 43 states (lbl_10_data_964's order). Start, Patrol and Dead hide CPatterned's own.
+  void BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_9724
+  void BoostBallInto(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_B164
+  void BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_A3B0
+  void FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_16CDC
+  void Dash(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_150DC
+  void DiveAttack(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_11FA4
+  void DiveFromBoost(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_9424
+  void EnrageHitReact(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_7A14
+  void EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_6E38
+  void FadeIn(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_BD40
+  void FadeOut(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_BC54
+  void FallFromTheAir(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_F86C
+  void GetUp(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_18EAC
+  void GoToPhazonAttack(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_652C
+  void GoToPhazonEnrage(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_6460
+  void HeavyHit(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_10C9C
+  void Interrupt(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_10FF4
+  void MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_17BC0
+  void MeleeDash(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_17ABC
+  void MissileDeflect(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_178E4
+  void MissileJump(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_177BC
+  void MovingScatterShot(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_11AD8
+  void NormalMissileAttack(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_17448
+  void Null(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_14448
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_143A8
+  void Patrol(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_1142C
+  void Pause(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_10710
+  void PhazonAttack(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_81D4
+  void PhazonEnraged(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_7BC0
+  void PhazonFall(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_6BA0
+  void PhazonMissiles(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_67B8
+  void PhazonRise(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_7054
+  void PhazonSuck(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_4AC8
+  void PissedOff(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_F930
+  void ScatterShot(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_175AC
+  void SideDash(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_153EC
+  void Start(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_F920
+  void SuperMissileAttack(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_16ECC
+  void SweepBeam(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_CA0C
+  void Taunt(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_11544
+  void TravelToCoverPoints(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_1DF74
+  void TravelToPissedOff(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_FB8C
+  void TurnToFacePlayer(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_FE18
 #endif
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
 
 private:
 #ifdef TARGET_PC
-  void EnsureBodyActive(CStateManager& mgr);
+  // fn_10_142F4: is the player within `angle` of the actor's facing axis? The direction to the
+  // player and the forward axis (the guest's 0x28/0x38/0x48) are flattened into the XY plane,
+  // normalized and compared (the fcmpo at 0x00014384).
+  bool IsPlayerInFront(CStateManager& mgr, float angle) const;
+
+  // The attack picker's weights: a count and one weight per attack bit (bit i is the attack id
+  // 1 << i, 24 of them - the loops' `cmpwi 0x18`). The pickers build it on the stack (the count at
+  // sp+0xC, the weights from sp+0x10) and copy it to the guest's 0xC54/0xC58.
+  struct SAttackWeights {
+    int count;
+    int weights[24];
+  };
+
+  // The pickers' leaves (fn_10_1AA30, 1A980, 1A8F8, 1AA5C, 10BBC, 1A6C4, 17D50, 11308, 17CEC,
+  // 1AA6C), the per-attack collectors (fn_10_1A5BC, 1A554, 1A278, 1A440, 1A34C, 1A1D4) and the
+  // weighted pick (fn_10_19918).
+  static void SetAttackBit(uint* mask, uchar set, uint bit);
+  static void SetAttackBits(uint* mask, uchar set, uint a, uint b, uint c, uint d);
+  static void SetAttackBitsExcept(uint* mask, uchar set, uint a, uint b, uint c, uint d);
+  static bool IsAttackTwo(uint bit);
+  static int GetAttackBitIndex(uint bit);
+  static float GetAttackWeight(const SLdrDSStageInfo& stage, int attack);
+  bool IsAttackEnabled(CStateManager& mgr, int attack) const;
+  static bool IsPlayerMorphed(CStateManager& mgr);
+  float GetDistanceToPlayer(CStateManager& mgr) const;
+  int GetPlayerRangeBand(CStateManager& mgr) const;
+  void CollectStageWeights(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectFadeAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectMorphballAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectRangeAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectHistoryPenalties(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectFacingAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  int PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, uint mask) const;
+
+  // fn_10_1905C: three flat rays at the player (heights 1, 2.5, 4) from up to 8 units short of
+  // it: 0 when none hits a platform (or the player is straight above), 1 when the nearest hit is
+  // short of the player, 2 when it is beyond.
+  int ClassifyLineToPlayer(CStateManager& mgr) const;
+  // fn_10_19A1C: the collector for the repulsion point and the line to the player.
+  void CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  // fn_10_14648: can the actor walk the straight line to the player on the path mesh?
+  bool CanWalkToPlayer(CStateManager& mgr) const;
+  // fn_10_19B64: the collector for the attacks' own reach checks (not ported yet: a stand-in).
+  void CollectReachAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  // fn_10_197D8 / fn_10_1969C: the visible and the faded pickers - the collectors' weights and
+  // mask go to mAttackWeights/mAttackMask and the weighted pick to mWeightedPick, which they
+  // answer.
+  int PickVisibleAttack(CStateManager& mgr);
+  int PickFadedAttack(CStateManager& mgr);
+  // fn_10_1954C: picks the next attack into mPickedAttack when none runs and its time has come.
+  void UpdateAttackPick(CStateManager& mgr);
+  // fn_10_1B478: the attack bookkeeping every attack state runs first - on Activate the attack
+  // becomes mCurrentAttack and the next pick's delay is drawn, on Deactivate it is pushed onto
+  // mAttackHistory and the delay becomes an absolute time.
+  void UpdateCurrentAttack(uint attack, CStateManager& mgr, EStateMsg msg);
+  // fn_10_1B5E4: mAttackHistory's erase (the rstl::reserved_vector<uint, 3> at 0x994).
+  uint* EraseFinishedAttack(uint* pos);
+  // fn_10_10520: the orbit and aim positions at the attack's start (0xD28/0xD34).
+  void UpdateAttackAimPoints(CStateManager& mgr, EStateMsg msg);
+  // fn_10_1AEC0: CGameCollision::CollisionFailsafe over the actor's motion volume.
+  void RunCollisionFailsafe(CStateManager& mgr);
+  // fn_10_16B64 / fn_10_16B8C: turn toward the player / a point by at most dt * rate radians.
+  void TurnTowardPlayer(CStateManager& mgr, float dt, float rate);
+  void TurnTowardPoint(float dt, const CVector3f& point, float rate);
+  // fn_10_11974: the scatter shot's aim drift and fire timer while firing (0xBAD).
+  void UpdateScatterShotFire(CStateManager& mgr, float dt);
+  // fn_10_11814: the scatter shot's start (the aim line, the firing byte, the timer).
+  void StartScatterShotFire(CStateManager& mgr, uchar side);
+  // fn_10_13230: the jittered point along the aim line the next shot aims at.
+  CVector3f GetScatterShotAimPoint(CStateManager& mgr) const;
+  // fn_10_12F60: fires one scatter shot projectile (a CEnergyProjectile stands in for the
+  // module's CScattershotProjectile).
+  void FireScatterShotProjectile(CStateManager& mgr);
+  // fn_10_21DF8: the step command driven by the animation state.
+  void DoStepCmd(EStateMsg msg, pas::EAnimationState state, const CBCStepCmd& cmd);
+  // fn_10_21F14: the projectile-attack command driven by the animation state.
+  void DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state,
+                             const CBCProjectileAttackCmd& cmd);
+
+  // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
+  // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
+  const CDarkSamusBattleStage* GetBattleStage(CStateManager& mgr) const;
+
+  // fn_10_1D794: the still timer (the guest's 0x964) and the position it measures from (the
+  // guest's 0x958). kStateMsg_Activate clears the timer and moves the reference position to the
+  // actor's own position.
+  void UpdateStillTimer(EStateMsg msg, float dt);
+
+  // fn_10_1E178: the damage the actor has taken (the guest's 0xCC0). The health that is gone is
+  // only added to the damage on a message other than kStateMsg_Activate.
+  void AccumulateDamage(EStateMsg msg, float dt);
+
+  // fn_10_1C778: the destination of the path find (the guest's 0x8B4/0x8B8/0x8BC) and the path
+  // find itself.
+  void SetPathFindDestination(CStateManager& mgr, const CVector3f& destination, float dt);
+
+  // fn_10_1E26C: the uid of the last attacker (the guest's 0xC24) and the two uids before it
+  // (the count at 0xC28, the uids at 0xC2C).
+  void PushAttacker(TUniqueId uid);
+
+  // fn_10_1E2E8: the oldest uid is dropped and the rest move one down.
+  void EraseFirstAttacker();
+
+  // fn_10_1E360: the player's aim position the cover points are scored against.
+  CVector3f GetPlayerAimPosition(CStateManager& mgr) const;
+
+  // fn_10_1E3C0: the uid of the best-scoring active cover point in the actor's area, or
+  // kInvalidUniqueId.
+  TUniqueId FindBestCoverPoint(CStateManager& mgr) const;
+
+  // fn_10_1E4C4: the score of a cover point against `target` (recent attackers, the attack
+  // ranges and the angles to the actor and its facing).
+  float ScoreCoverPoint(const CScriptCoverPoint& cover, const CVector3f& target) const;
+
+  // fn_10_1E740: should the actor forget the uid of the attacker that hit it last (the guest's
+  // 0xC24)? True when the path to the attacker is shagged, when the path find is over, when the
+  // attacker has no cover point, or when the attacker's cover point is within 2 units.
+  bool ShouldForgetLastAttacker(CStateManager& mgr) const;
+
+  // fn_10_1E864: the path search's area (the path area of the actor's area).
+  void SetPathSearchArea(CStateManager& mgr);
+
+  // fn_10_1D9A4: the point the actor is pushed away from - an active repulsor of the actor's
+  // connections in the actor's area that holds the actor inside its radius (`strength`, when not
+  // null, gets 1 - distance / radius), else the centroid of an obstructed path find region the
+  // actor stands in, else the last contact point (mContactPoint) for 0.3 seconds after the
+  // contact, else the zero vector.
+  CVector3f GetRepulsionPoint(CStateManager& mgr, float* strength) const;
+
+  // fn_10_1DD14: the separation - the actor steers away from GetRepulsionPoint's point
+  // (mSeparationDir is the direction it steers along, or zero).
+  void Separate(CStateManager& mgr);
+
+  // fn_10_1D860: the additive animation of the state's message - kStateMsg_Activate adds the
+  // best kAS_AdditiveReaction animation of the type 5 (its parms built by fn_10_13FFC, the
+  // CPASAnimParmData constructor), kStateMsg_Deactivate removes it.
+  void UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg);
+
+  // fn_10_EFC8: is the actor more than 10 units below its safe position (mSafePos), or inside an
+  // active type 0x1C AI hint of its area?
+  bool IsInUnsafeSpot(CStateManager& mgr) const;
+
+  // fn_10_128D8: keeps the actor's position as mSafePos the first time it is not unsafe.
+  void UpdateSafePosition(CStateManager& mgr);
+
+  // fn_10_11334: the looping glide emitter at the actor (mGlideSfxId, the handle mGlideSfx) -
+  // kStateMsg_Activate starts it, kStateMsg_Update starts it when it is not running and moves
+  // it to the actor, kStateMsg_Deactivate removes it.
+  void UpdateGlideEmitter(EStateMsg msg);
 
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
@@ -233,6 +514,169 @@ private:
   CDarkSamusData mData;            // host only: the loader's 60 data properties (see above)
   uchar mGuestCD0;                 // guest 0xCD0, the first byte of the sub-object fn_10_E560
                                    // builds; fn_10_F84C reads it to pick the collision response
+  uchar mFlags90C;                 // guest 0x90C, the flag byte: bit 6 (0x40) is the "starts in
+                                   // the air" flag (fn_10_F924) and bit 7 (0x80) the "alerted" one
+                                   // (fn_10_F840); the constructor's rlwimi chain (0x0001FBF8..)
+                                   // only clears them, so they start at 0
+  uchar mTurnDone;                 // guest 0xD4C, the "done turning" flag: fn_10_FE18 sets it and
+                                   // fn_10_F864 (the DoneTurning trigger) reads it
+  uchar mPissedOff;                // guest 0xD58, the flag the PissedOff state clears (fn_10_F930)
+                                   // and the fight script sets; fn_10_FD30 (ShouldGetPissedOff)
+                                   // reads it
+  uchar mFadeOut;                  // guest 0xDEC, the fade flag: fn_10_117A0 (PickedNormalMissile)
+                                   // and fn_10_BBE4 (ShouldFadeOut) read it
+  TUniqueId mBattleStageUid;        // guest 0x974, the uid of the fight script's object: the
+                                   // helper fn_10_17DE0 looks it up in the state manager and
+                                   // casts it to CScriptDarkSamusBattleStage. The constructor
+                                   // writes kInvalidUniqueId to it (the lhz/sth at 0x0001FCC0);
+                                   // the 'XALD' arm of AcceptScriptMsg links it (0x0001EBB8) and
+                                   // fn_10_193A0 moves it to the next stage (0x00019410)
+  uint mStageCount;                 // guest 0x978, the stages the actor has had: the 'XALD' arm
+                                   // writes 1 (0x0001EBC4), fn_10_193A0 adds 1 (0x0001941C); the
+                                   // constructor writes 0 (0x0001FCC8)
+  TUniqueId mFirstBattleStageUid;   // guest 0xD50, the stage the 'XALD' arm linked (0x0001EBC0);
+                                   // fn_10_FD4C reads it (0x0000FD88); the constructor writes
+                                   // kInvalidUniqueId (0x00020018)
+  TUniqueId mLastAttackerUid;       // guest 0xC24, the uid of the attacker that hit the actor
+                                   // last: fn_10_1DF74 clears it and fn_10_1E740 sets it (neither
+                                   // is in the port yet); the constructor writes
+                                   // kInvalidUniqueId to it (0x0001FF08)
+  uint mAttackerCount;              // guest 0xC28, the number of uids in mAttackerUids; the
+                                   // constructor writes 0 to it (0x0001FF14)
+  TUniqueId mAttackerUids[2];       // guest 0xC2C, the uids of the attackers that hit the actor
+                                   // (at most two): fn_10_1E26C pushes the last attacker's uid
+                                   // here and drops the oldest when there are two
+  int mPickedAttack;               // guest 0x984, the word the fight script writes and the
+                                   // Picked* triggers compare: the picked attack's id (1 melee,
+                                   // 4 melee dash, 8 scatter shot, 0x10 moving scatter shot,
+                                   // 0x20 dive attack, 0x40 normal missile, 0x80 missile jump,
+                                   // 0x100 super missile, 0x200 taunt, 0x400 pause, 0x10000 sweep
+                                   // beam, 0x20000 boost ball, 0x100000 freeze beam, 0x200000 the
+                                   // fade variant, 0x400000 phazon attack, 0x800000 phazon
+                                   // enrage). The constructor writes 0xFFFF to it (0x0001FCE8),
+                                   // which is "no attack picked"
+  uint mCurrentAttack;             // guest 0x980, the word the module writes when an attack starts
+                                   // (fn_10_1B478) and reads in
+                                   // ShouldReact and TooMuchDamage: the id of the attack the actor
+                                   // is performing (the same id space as mPickedAttack; 0xFFFF =
+                                   // none). The constructor writes 0xFFFF to it (0x0001FCE4)
+  uint mAttackHistory[3];          // guest 0x998, the ids of the attacks the actor has finished:
+                                   // fn_10_1B478 pushes the current attack here and trims the
+                                   // oldest entry when there are three
+  uint mAttackHistoryCount;        // guest 0x994, the number of ids in mAttackHistory; the
+                                   // constructor writes 0 to it (0x0001FCF8)
+  float mAccumulatedDamage;        // guest 0xCC0, the damage the actor has taken: fn_10_1E178 adds
+                                   // the health that is gone and decays it; the constructor writes
+                                   // 0.0f to it (0x0001FF58)
+  float mLastHealth;               // guest 0xCC4, the health at the last damage check: fn_10_1E178
+                                   // compares it with the health info's current health; the
+                                   // constructor writes lbl_10_rodata_3EC = -1.0f to it (0x0001FF5C)
+  float mDamageDecay;              // guest 0xCCC, the rate the accumulated damage decays at:
+                                   // fn_10_1E178 subtracts it times dt; the constructor writes
+                                   // lbl_10_rodata_3E8 = 1.0f to it (0x0001FF64)
+  float mDamageThreshold;          // guest 0xCC8, the threshold TooMuchDamage compares the
+                                   // accumulated damage with; the constructor writes its 8th float
+                                   // argument to it (0x0001FF60), the loader's
+                                   // damageInterruptThreshold (the property id 0x8f70d3f2)
+  float mStillTime;                // guest 0x964, how long the actor has stood still: fn_10_1D794
+                                   // adds dt to it while the actor stays within 0.6 of
+                                   // mStillPosition; the constructor writes 0.0f to it (0x0001FCB0)
+  CVector3f mStillPosition;        // guest 0x958/0x95C/0x960, the position the still timer
+                                   // measures from: fn_10_1D794 moves it to the actor's position
+                                   // when the actor walks away; the constructor writes the zero
+                                   // vector to it (0x0001FC64..0x0001FC74)
+  float mLastWallHitTime;          // guest 0xC44 (inside the 0xB50 sub-object), the time of the
+                                   // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it
+                                   // (fn_10_1CF84 is not in the port yet); the constructor
+                                   // writes 0.0f to it (0x0001FF38)
+  float mElapsedTime;              // guest 0x8B0, the time since the actor was created: the Think
+                                   // (fn_10_1B1FC) adds dt to it (0x0001B2DC); the constructor
+                                   // writes 0.0f to it (0x0001FB88)
+  CVector3f mPathFindDestination;  // guest 0x8B4/0x8B8/0x8BC, the destination of the path find:
+                                   // fn_10_1C778 writes it (0x0001C7A4..0x0001C7BC); the
+                                   // constructor writes the zero vector to it (0x0001FB94..)
+  int mAdditiveAnim;               // guest 0x970, the additive animation fn_10_1D860 added (-1 =
+                                   // none); the constructor writes -1 to it (0x0001FCBC)
+  ushort mGlideSfxId;              // guest 0xC48, the glide sound (the loader's glideSound, the
+                                   // property 0x1f468967: its case at 0x0000D334 stores it at
+                                   // the loader's 0x924, which becomes the constructor's first
+                                   // stack argument at 0x0000DB98; -1 is
+                                   // kInternalInvalidSfxId, 0x0000DAAC); the constructor's sth
+                                   // at 0x0001FF3C
+  CSfxHandle mGlideSfx;            // guest 0xC4C, the handle of the glide emitter fn_10_11334
+                                   // runs; the constructor writes 0 to it (0x0001FF44)
+  float mSavedSpeed;               // guest 0x96C, the speed TravelToCoverPoints (fn_10_1DF74) puts
+                                   // back on Deactivate; the constructor writes 0.0f (0x0001FCB8)
+  CDarkSamusDash mDash;            // guest 0x9E0..0xA08, built at 0x0001FD04 (fn_10_15348)
+  float mGuestC00;                 // guest 0xC00, the float fn_10_1DF74 clears every call; the
+                                   // constructor writes 0.0f (0x0001FECC)
+  CVector3f mSafePos;              // guest 0x91C/0x920/0x924, the first position fn_10_128D8
+                                   // found the actor safe at; the guest constructor leaves it
+                                   // unset (the host zeroes it)
+  uchar mHasSafePos;               // guest 0x928, set once mSafePos is; the constructor clears it
+                                   // (0x0001FC34)
+  CVector3f mSeparationDir;        // guest 0x910/0x914/0x918, the direction fn_10_1DD14 steers
+                                   // the actor along to get away from a repulsor (zero when it
+                                   // does not); the constructor writes the zero vector to it
+                                   // (0x0001FC20..)
+  float mContactTime;              // guest 0xC34, the elapsed time (mElapsedTime) of the last
+                                   // contact fn_10_1D0A0 records (0x0001D154; not in the port
+                                   // yet, so it stays at the constructor's 0.0f, 0x0001FF1C)
+  CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
+                                   // constructor writes the zero vector to it (0x0001FF24..)
+  float mLastMeleeTime;            // guest 0x9C0, the elapsed time the MeleeAttack state
+                                   // fn_10_17BC0 stores (0x00017C9C, not in the port yet), its only
+                                   // writer in the module; fn_10_1A34C reads it (0x0001A3E0) only
+                                   // when the newest finished attack is the melee, i.e. after
+                                   // MeleeAttack ran. Neither the constructor (its stores run
+                                   // 0x8AC..0xD58 with no 0x9C0) nor the game heap clears it, so
+                                   // retail leaves it unset until the first melee; the host's 0
+                                   // stands in for that never-read value
+  SAttackWeights mAttackWeights;   // guest 0xC54/0xC58, the pickers' last weights; the
+                                   // constructor writes the count 0 (0x0001FF4C)
+  uint mAttackMask;                // guest 0xCB8, the pickers' last attack mask; 0 (0x0001FF50)
+  int mWeightedPick;               // guest 0xCBC, fn_10_19918's last pick; 0xFFFF (0x0001FF54)
+  int mPickCount;                  // guest 0x988, the picks fn_10_1954C made (0x00019640); the
+                                   // constructor writes 0 (0x0001FCEC)
+  float mLastPickTime;             // guest 0x98C, the elapsed time of the last pick (0x00019678);
+                                   // lbl_10_rodata_410 = -1000.0f (0x0001FC9C, 0x0001FCF0)
+  float mNextActionTime;           // guest 0x990, the earliest time of the next pick: fn_10_1B478
+                                   // draws the delay when an attack starts (0x0001B558) and adds
+                                   // the elapsed time when it ends (0x0001B5B8); -1000.0f (0x0001FCF4)
+  CVector3f mAttackOrbitPos;       // guest 0xD28, CPatterned::GetOrbitPosition at the attack's
+                                   // Activate (fn_10_10520, 0x00010564), zero on Deactivate
+  CVector3f mAttackAimPos;         // guest 0xD34, CPatterned::GetAimPosition(0.0f) at the same
+                                   // point (0x00010588), zero on Deactivate
+  // The scatter shot sub-object at 0xB50 (fn_10_215FC builds it, the call at 0x0001FE80):
+  CVector3f mScatterLineStart;     // guest 0xB7C, zero (0x00021660); fn_10_11814 sets it
+  CVector3f mScatterAim;           // guest 0xB88, zero (0x0002167C); fn_10_11814 sets it
+  CVector3f mScatterLineEnd;       // guest 0xB94, zero (0x00021698); fn_10_11814 sets it
+  int mScatterShotCount;           // guest 0xBA0, 0 (0x000216A8)
+  float mScatterStartTime;         // guest 0xBA4, 0.0f (0x000216AC); fn_10_11814 stores the
+                                   // elapsed time 0x8B0 at the start (0x00011858)
+  float mScatterTimer;             // guest 0xBA8, 0.0f (0x000216B0)
+  uchar mScatterFiring;            // guest 0xBAD, 0 (0x000216B8); fn_10_11814 sets it (0x00011868)
+  float mScatterChance;            // guest 0xBDC, the constructor's 6th float (0x000216C4), the
+                                   // loader's unknown_0x378285b9 (0x0000D660)
+  float mScatterRate;              // guest 0xBE0, the constructor's 7th float (0x000216C8), the
+                                   // loader's scatterShotProjectilesPerSecond (0x0000D670)
+  TUniqueId mScatterProjectileUid; // guest 0xBE4, kInvalidUniqueId (0x000216D0)
+  uchar mScatterSide;              // guest 0xBAC, 0 (0x000216B4); the side MovingScatterShot's
+                                   // start passes to fn_10_11814 (0x0001C264)
+  uchar mScatterUseSecondInfo;     // guest 0xBAE, 0 (0x000216BC); fn_10_12F60 draws it
+                                   // (0x000130CC) and ProjectileInfo reads it (0x0001C718)
+  // guest 0xB50 / 0xBB0, the scatter shot's two projectile infos with their valid bytes at 0xB78
+  // (fn_10_20C2C clears it at 0x00020C4C) and 0xBD8 (0x000216C0): built from the loader's
+  // scatterShotProjectile / scatterShotProjectile2 and the one scatterShotDamage when the asset
+  // is valid (`addis r0, rX, 0x1; cmplwi r0, 0xffff` at 0x00020C38 / 0x00021644), then locked
+  // (0x00020C78 / 0x00021704).
+  rstl::optional_object< CProjectileInfo > mScatterShotInfo;
+  rstl::optional_object< CProjectileInfo > mScatterShotInfo2;
+  CTransform4f mGunLctrXf;         // guest 0x8CC, identity (0x0001FBC0); PreRender (fn_10_18AB8)
+                                   // stores GetLctrTransform("GUN_Particle_LCTR") (0x00018C24)
+  // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
+  // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
+  // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

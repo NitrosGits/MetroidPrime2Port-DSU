@@ -85,7 +85,7 @@ inline uint PackBgDataFlags(uint raw) {
   return flags;
 }
 
-const float kFacingAngle = 0.349f; // rodata: 20 degrees
+const float kFacingAngle = 0.34906584f; // rodata_104: 20 degrees
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface
 // normal.
 const float kWallLaunchAngle = 0.7853981f; // 45 degrees

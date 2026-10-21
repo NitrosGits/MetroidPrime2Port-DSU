@@ -44,6 +44,7 @@ public:
 
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
+  // @ fn_30_13B7C
   TUniqueId GetLastSender() const { return mId4F6; } // fn_30_13B7C
   void AddToRenderer(const CStateManager& mgr) const override; // fn_30_13E68
   void Render(const CStateManager& mgr) const override;        // fn_30_141B8
@@ -67,6 +68,7 @@ public:
 
   // fn_30_13B98: the shrink is over (guest 0x5D8 bit 0x04); BoostAttack's Update turns it into
   // the guardian's IsBoostOver.
+  // @ fn_30_13B98
   bool IsDone() const { return mDone; }
   int GetState() const { return mState; }    // 0x2D4, read by fn_30_6108
   float GetShrink() const { return mShrink; } // 0x530, read by fn_30_6108

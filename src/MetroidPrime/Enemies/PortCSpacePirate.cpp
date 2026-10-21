@@ -665,7 +665,8 @@ bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
   return --x8fc_frenzyFrames >= 0;
 }
 
-// Where the pirate looks and aims: its target, or a point ahead if the target is gone.
+// @ fn_72_CB30 (0x150): where the pirate looks and aims - its target, or a point ahead if the
+// target is gone.
 CVector3f CSpacePirate::GetTargetPos(CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(mAttackTarget);
   if (const CPlayer* player = TCastToPtr< CPlayer >(entity)) {

@@ -70,38 +70,113 @@ Evidence for the sizes (`li r3, N` immediately before `bl __nw__FUlPCcPCc`):
 | 0x6A8 | [0x000019D0] `li r3,0x6a8` → [0x000019D8] `bl __nw__` in `fn_75_1974` | `CPlasmaProjectile` (DOL class, laser pulse shot) |
 
 Other classes the module touches: the DOL's `CPlasmaProjectile` (0x6A8, allocated by the REL in
-`fn_75_1974` — the laser-pulse shot) and the `CMemory` vtables in `.data` (12-byte entries
-`{0, 0xFFFFFFFF, fn}` — small destructors, e.g. `.data:0x0` → `fn_75_5A40`, `.data:0xCAC` →
-`fn_75_5A54`).
+`fn_75_1974` — the laser-pulse shot). The 12-byte entries `{0, 0xFFFFFFFF, fn}` in `.data` are the
+**function records** of the FSM tables (§b), not destructor vtables: `.data:0x0` → `fn_75_5A40`
+(the head's `StateOver` trigger) and `.data:0xCAC` → `fn_75_5A54` (the module's auto-destruct,
+whose record the func-ptrs table of `fn_75_8254` copies).
 
 ## b. FSM
 
-Two independent state machines, one per class. Each registers **names only** — the tables are arrays
-of `{const char*, 0, 0, 0}` (16 bytes/entry) — so the transitions live in the area script
-([probable]; the REL has no transition data).
+Two independent state machines, one per class. A table entry is **16 bytes**:
+`{const char* name, 0, 0xFFFFFFFF, fn}` - the name pointer is in `.data`, the string in `.rodata`
+and the **function word is filled at load time** by the module's static initialisers, which the
+REL keeps in its `.ctors`: `fn_75_7C80` (the head) and `fn_75_FED0` (the chassis). Each copies the
+three-word records `{0, 0xFFFFFFFF, fn}` of `.data` into the tables, one record per entry, in
+order - so the retail function of every name is known. (The tables are **not** names only.)
 
-**FSM1 — command module** (initialiser `fn_75_5E8C`, vtable slot 0xF0 `SetupStateMachine`):
+**FSM1 - command module** (initialiser `fn_75_5E8C`, vtable slot 0xF0 `SetupStateMachine`):
 `(*mgr)->unk18(mgr, &lbl_75_data_CC, 0x11)` = 17 triggers, `unk14(mgr, &lbl_75_data_284, 0x0E)` =
-14 states, `unk1C(mgr, &lbl_75_data_3B8, 7)` = 7 codes.
+14 states, `unk1C(mgr, &lbl_75_data_3B8, 7)` = 7 codes. The records are `.data 0x0..0x2D0`
+(`fn_75_7C80`, the `.ctors` entry, fills them).
 
-| kind | index: name |
-|---|---|
-| trigger | 0 StateOver · 1 InDetectionRange · 2 IsScanning · 3 IsInitiallyDocked · 4 IsDocked · 5 HasDockingPath · 6 HasDockingTarget · 7 DockingPathOver · 8 HasTarget · 9 InHoverRange · 10 InLaserPulseRange · 11 ShouldDodge · 12 ShouldAttack · 13 ShouldFireAgain · 14 ShouldLaserSweep · 15 PathOver · 16 PathShagged |
-| state | 0 Start · 1 Idle · 2 SpawnIdle · 3 Dead · 4 Scanning · 5 FaceTarget · 6 PathFind · 7 Hover · 8 Dodge · 9 LaserPulse · 10 LaserSweep · 11 LostChassisReaction · 12 SeekMainChassis · 13 FollowDockingPath |
-| code | 0 NotifyDocking · 1 SelectTarget · 2 SetTargetDest · 3 SetDockingDest · 4 FindBestDodgeDirection · 5 RaiseShields · 6 ResetAttackTimes |
+| triggers | | states | | codes | |
+|---|---|---|---|---|---|
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | StateOver | `fn_75_5A40` | 9 | InHoverRange | `fn_75_570C` |
+| 1 | InDetectionRange | `fn_75_5944` | 10 | InLaserPulseRange | `fn_75_565C` |
+| 2 | IsScanning | `fn_75_58E8` | 11 | ShouldDodge | `fn_75_5644` |
+| 3 | IsInitiallyDocked | `fn_75_58DC` | 12 | ShouldAttack | `fn_75_5624` |
+| 4 | IsDocked | `fn_75_58BC` | 13 | ShouldFireAgain | `fn_75_5610` |
+| 5 | HasDockingPath | `fn_75_5864` | 14 | ShouldLaserSweep | `fn_75_55F8` |
+| 6 | HasDockingTarget | `fn_75_57F0` | 15 | PathOver | `fn_75_55B0` |
+| 7 | DockingPathOver | `fn_75_57D4` | 16 | PathShagged | `fn_75_5568` |
+| 8 | HasTarget | `fn_75_57B4` |  |  |  |
 
-**FSM2 — main chassis** (initialiser `fn_75_E9E4`, vtable slot 0xF0 `SetupStateMachine`):
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | Start | `fn_75_5564` | 7 | Hover | `fn_75_4D04` |
+| 1 | Idle | `fn_75_5538` | 8 | Dodge | `fn_75_4AC0` |
+| 2 | SpawnIdle | `fn_75_5498` | 9 | LaserPulse | `fn_75_4864` |
+| 3 | Dead | `fn_75_5448` | 10 | LaserSweep | `fn_75_44DC` |
+| 4 | Scanning | `fn_75_523C` | 11 | LostChassisReaction | `fn_75_42F8` |
+| 5 | FaceTarget | `fn_75_50B0` | 12 | SeekMainChassis | `fn_75_4138` |
+| 6 | PathFind | `fn_75_4E90` | 13 | FollowDockingPath | `fn_75_3FE0` |
+
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | NotifyDocking | `fn_75_3EEC` | 4 | FindBestDodgeDirection | `fn_75_3B34` |
+| 1 | SelectTarget | `fn_75_3E60` | 5 | RaiseShields | `fn_75_3B20` |
+| 2 | SetTargetDest | `fn_75_3D20` | 6 | ResetAttackTimes | `fn_75_3ADC` |
+| 3 | SetDockingDest | `fn_75_3BEC` |  |  |  |
+
+**FSM2 - main chassis** (initialiser `fn_75_E9E4`, vtable slot 0xF0 `SetupStateMachine`):
 `(*mgr)->unk18(mgr, &lbl_75_data_720, 0x1C)` = 28 triggers, `unk14(mgr, &lbl_75_data_9E8, 0x16)` =
-22 states, `unk1C(mgr, &lbl_75_data_BCC, 0x0B)` = 11 codes.
+22 states, `unk1C(mgr, &lbl_75_data_BCC, 0x0B)` = 11 codes. The records are `.data 0x5D0..0x714`
+(`fn_75_FED0` fills them).
 
-| kind | index: name |
-|---|---|
-| trigger | 0 StateOver · 1 IsIntact · 2 IsDisabled · 3 ShouldWaitForSnatch · 4 ShotAt · 5 LostHead · 6 HasHead · 7 HasRetreatPoint · 8 HasTarget · 9 CanReachTarget · 10 HasLineOfSight · 11 PathShagged · 12 PathOver · 13 PatrolPathOver · 14 ShouldLegStab · 15 ShouldMorphballStab · 16 ShouldSpinAttack · 17 ShouldLaserSweep · 18 ShouldDodge · 19 IsSpinAttackOver · 20 SpunIntoPlayer · 21 SpunIntoGeometry · 22 BreakOutOfSpin · 23 TooManyBounces · 24 DeployFromHoldingTube · 25 ShouldDeploy · 26 DeployPathOver · 27 PrepareForDocking |
-| state | 0 Start · 1 Idle · 2 Inactive · 3 Activate · 4 Patrol · 5 Scanning · 6 PathFind · 7 LegStabAttack · 8 SpinAttack · 9 Dodge · 10 LaserSweepAttack · 11 SpinCollisionReaction · 12 SpinBounce · 13 SpinTelegraph · 14 SpinToIdle · 15 SpawnDrop · 16 HoldingTube · 17 WaitForDocking · 18 WaitForSnatch · 19 FollowDeployPath · 20 DeploymentLanding · 21 HeadExplosion |
-| code | 0 SelectTarget · 1 SetTargetDest · 2 SetRetreatDest · 3 SetupSpinAttack · 4 EndSpinAttack · 5 SetupLaserSweep · 6 SetMorphballStabLeg · 7 FindBestStabLeg · 8 FindBestDodgeDirection · 9 BounceOffPlayer · 10 BounceOffGeometry |
+| triggers | | states | | codes | |
+|---|---|---|---|---|---|
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | StateOver | `fn_75_E64C` | 14 | ShouldLegStab | `fn_75_E3A4` |
+| 1 | IsIntact | `fn_75_E62C` | 15 | ShouldMorphballStab | `fn_75_E2F0` |
+| 2 | IsDisabled | `fn_75_E620` | 16 | ShouldSpinAttack | `fn_75_E1D0` |
+| 3 | ShouldWaitForSnatch | `fn_75_E5D0` | 17 | ShouldLaserSweep | `fn_75_E0B0` |
+| 4 | ShotAt | `fn_75_E5B8` | 18 | ShouldDodge | `fn_75_E098` |
+| 5 | LostHead | `fn_75_E5AC` | 19 | IsSpinAttackOver | `fn_75_E084` |
+| 6 | HasHead | `fn_75_E58C` | 20 | SpunIntoPlayer | `fn_75_E078` |
+| 7 | HasRetreatPoint | `fn_75_E56C` | 21 | SpunIntoGeometry | `fn_75_E06C` |
+| 8 | HasTarget | `fn_75_E54C` | 22 | BreakOutOfSpin | `fn_75_E060` |
+| 9 | CanReachTarget | `fn_75_E530` | 23 | TooManyBounces | `fn_75_E040` |
+| 10 | HasLineOfSight | `fn_75_E524` | 24 | DeployFromHoldingTube | `fn_75_E034` |
+| 11 | PathShagged | `fn_75_E4DC` | 25 | ShouldDeploy | `fn_75_E028` |
+| 12 | PathOver | `fn_75_E494` | 26 | DeployPathOver | `fn_75_E00C` |
+| 13 | PatrolPathOver | `fn_75_E478` | 27 | PrepareForDocking | `fn_75_DFEC` |
+
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | Start | `fn_75_DFE8` | 11 | SpinCollisionReaction | `fn_75_D2A0` |
+| 1 | Idle | `fn_75_DFE4` | 12 | SpinBounce | `fn_75_D13C` |
+| 2 | Inactive | `fn_75_DF88` | 13 | SpinTelegraph | `fn_75_D0A4` |
+| 3 | Activate | `fn_75_DDF8` | 14 | SpinToIdle | `fn_75_CF44` |
+| 4 | Patrol | `fn_75_DCFC` | 15 | SpawnDrop | `fn_75_CCF0` |
+| 5 | Scanning | `fn_75_DCF8` | 16 | HoldingTube | `fn_75_CC98` |
+| 6 | PathFind | `fn_75_DC08` | 17 | WaitForDocking | `fn_75_C9E4` |
+| 7 | LegStabAttack | `fn_75_DA38` | 18 | WaitForSnatch | `fn_75_C8F4` |
+| 8 | SpinAttack | `fn_75_D7D4` | 19 | FollowDeployPath | `fn_75_C51C` |
+| 9 | Dodge | `fn_75_D61C` | 20 | DeploymentLanding | `fn_75_C034` |
+| 10 | LaserSweepAttack | `fn_75_D3E0` | 21 | HeadExplosion | `fn_75_BEEC` |
+
+| # | name | fn | # | name | fn |
+|---|---|---|---|---|---|
+| 0 | SelectTarget | `fn_75_BE28` | 6 | SetMorphballStabLeg | `fn_75_B66C` |
+| 1 | SetTargetDest | `fn_75_BC70` | 7 | FindBestStabLeg | `fn_75_B57C` |
+| 2 | SetRetreatDest | `fn_75_BBC0` | 8 | FindBestDodgeDirection | `fn_75_B2A0` |
+| 3 | SetupSpinAttack | `fn_75_BAA8` | 9 | BounceOffPlayer | `fn_75_B1D8` |
+| 4 | EndSpinAttack | `fn_75_B9B0` | 10 | BounceOffGeometry | `fn_75_B104` |
+| 5 | SetupLaserSweep | `fn_75_B678` |  |  |  |
 
 Names are the rodata strings: FSM1 triggers at rodata 0xA0..0x17D, states 0x189..0x206, codes
-0x218..0x274; FSM2 triggers 0x3E4..0x55B, states 0x56D..0x663, codes 0x671..0x714.
+0x218..0x274; FSM2 triggers 0x3E4..0x55B, states 0x56D..0x663, codes 0x671..0x714. The
+**transitions** live in the AFSM resource (the state machine asset), the **state bodies** in the
+REL's tables above - the state machine runs a state or a code by name, and the table entry with
+that name gives the function.
+
+Two of the 99 bodies are ported: the head's `IsScanning` trigger (`fn_75_58E8`,
+`PortChassisTimerRunning`) and its `NotifyDocking` code (`fn_75_3EEC`, `PortDockToChassis`). The
+other 97 are once-logging stand-ins in the port (2026-10-20), each naming the retail function it
+stands in for.
 
 ## c. Parameters
 
@@ -211,7 +286,7 @@ copies: they duplicate the converted ones.
 | 0xC70 | `CVisualKnowledge` (0x40) | `fn_75_F5F8` `__ct__16CVisualKnowledge...(&arg0->unkC70, …)` |
 | 0xCB0-0xCB8 | u32 (from the patterned block), s32 anim id (-1), f32 (1.0) | `fn_75_F5F8` (the anim id is later set by `FindBestAnimation`) |
 | 0xCBC-0xCC6 | 5 × `TUniqueId` (invalid) | `fn_75_F5F8` |
-| 0xCC8 / 0xCC9 | u8 (0xFF) pose/anim indices | `fn_75_F5F8` |
+| 0xCC8 / 0xCC9 | u8 segment ids of "attach_LCTR" and "target_LCTR" (0xFF first, then GetLocatorSegId at 0x0000F98C / 0x0000F9C0) | `fn_75_F5F8` |
 | 0xCCC-0xCFC | 4 × `CVector3f` (zero) | `fn_75_F5F8` |
 | 0xD00-0xD08 | u32, s32 (-1), s32 (-1) | `fn_75_F5F8` |
 | 0xD0C-0xD3C | f32 block (0xD0C = 1.0, 0xD30 = 0.2, 0xD34 = 1.0) | `fn_75_F5F8` |
@@ -368,6 +443,19 @@ Splitters') loads no robot, so the boss-stage actors come from the area script, 
 (`src/MetroidPrime/Enemies/CGenericFSM2.cpp`, cf. `CSplinter::SetupStateMachineHelper`), then port
 the state bodies in the order §g lists them.
 
+**WP2 part 1 done (2026-10-20): the tables are wired.** Both `SetupStateMachine`s register the
+tables with the function of every name (§b): the two ported bodies (the head's `IsScanning`
+trigger `fn_75_58E8` and its `NotifyDocking` code `fn_75_3EEC`) and 97 once-logging stand-ins,
+each naming the retail function it stands in for. The head's `NotifyDocking` code is where the
+retail runs `fn_75_3EEC`, so the port does not call it from the Think any more.
+
+**The run (2026-10-20) enters**: the head's **Start** state and the chassis's **Start** and
+**Patrol** states. The triggers it asks are the head's `IsInitiallyDocked`, `HasDockingTarget`
+and `HasTarget` and the chassis's `IsDisabled`, `DeployFromHoldingTube`, `ShotAt`,
+`PatrolPathOver`, `LostHead`, `ShouldWaitForSnatch` and `PrepareForDocking`; the codes are the
+head's `RaiseShields` and `SelectTarget`. Every one of them is a stand-in except the head's
+`IsScanning` (the ported `fn_75_58E8`), which the run does not reach.
+
 **WP3 — the command module and the split-off halves.** Port `CSplitterCommandModule` (the head:
 scanning, laser pulse/sweep, shields, docking), the beam-effect actor (0x1A0, `fn_75_1188` +
 `fn_75_11804`/`fn_75_11884`) and the link between the two actors (`TUniqueId` at 0xEFA/0xEFC). The
@@ -383,10 +471,13 @@ triggers (module 14) are the integration test.
   is **unknown**.
 - `fn_75_5A54` is called from `fn_75_21FC` (the command module's Think helper) — so the auto-destruct
   is the head's, not the body's. The body has no auto-destruct in the REL.
-- `fn_75_7C80` (0x578, jump table) and `fn_75_FED0`/`fn_75_10778` (0x8A8/0x64C): roles **unknown**.
+- `fn_75_7C80` (0x578) and `fn_75_FED0` (0x8A8) are the module's **static initialisers** (the
+  REL's `.ctors`): they fill the function word of the FSM tables from the three-word records of
+  `.data` (§b). `fn_75_10778` (0x64C) is still **unknown**.
 - The derived blocks 0xA50-0xB7B (body) and 0xA7C-0xD6B (head) are **unmapped**.
-- Whether the area script (not the REL) owns the transitions is **probable, not proven**: the tables
-  hold names only.
+- The **transitions** live in the AFSM resource (the state machine asset the actor carries); the
+  REL's tables give the **bodies** by name (§b). The area script owns the placements and the
+  connections, not the transitions.
 - The beam actor's model name is "Splitter Beam Effect" (rodata 0x2D0); its class name is
   **unknown**.
 - `fn_75_1974` creates the laser-pulse `CPlasmaProjectile`; which `CAssetId` it uses comes from
@@ -407,6 +498,15 @@ other Splitter shell. In the order the log prints them, with the retail sizes fr
 | `CSplitterCommandModule::AcceptScriptMsg` (slot 0x18) | `fn_75_654C` | 0x24C |
 | `CSplitterCommandModule::Think` (slot 0x14) | `fn_75_6490` | 0xBC |
 | `CSplitterMainChassis::Think` (slot 0x14) | `fn_75_F0E8` | 0xB8 |
+
+The run of 2026-10-20 after `fn_75_F1C0` and `fn_75_654C` were ported no longer logs the two
+`AcceptScriptMsg` shells - they are ported - and no `[port] caught` line. It logs the five
+module-callee shells the two handlers make instead: `fn_75_3460` (0x218, the head's XCRT case),
+`fn_75_AC68` (0x84, the chassis's XAND case), `fn_75_AAC4` (0xC8) and `fn_75_8D50` (0xA8, the
+chassis's XDEL case) and `fn_75_1790` (0xBC, the head's XDEL case).
+
+The **head's Think does not run in that fight** - the beam-effect spawner's own shell
+(`fn_75_10D0`) would have logged - so `fn_75_1188` is not exercised by the area-4 layer-3 smoke.
 
 `fn_75_F1C0` (0x3A0) and `fn_75_654C` (0x24C) are over the 0x200 a slice covers, so they stay
 once-logging stand-ins for now. The other three are the size a slice can take, but each of them
@@ -568,9 +668,12 @@ that has to be 0..2 (0x30C8-0x30D8), the flag byte 0xF6A's 0x08 (0x30E0), a CCol
 virtual at 0x38 (0x30F8) and its 0x4 field (0x3104-0x3110), the state 0xEE0 cleared (0x311C), the
 timer 0xF10 set to a constant (0x312C), another module call (0x3130) and the flag's 0x08 again
 (0x313C). Several of those are DOL functions or virtuals the port has no name for yet, so the
-body needs a slice that can identify them.
+body needs a slice that can identify them. **One of them is named now**: the CCollisionActor's
+virtual at the vtable word 0x38 (0x30F0-0x30F8) is `CCollisionActor::HealthInfo()` and the
+float at its +0x4 is the health (found while porting fn_75_2CE0, which calls the same virtual
+at 0x2D9C), so the port's shell for it in this body can go with the next slice.
 
-#### fn_75_1188 (0x344) - the command module's spawn (not ported yet)
+#### fn_75_1188 (0x344) - the command module's spawn (ported 2026-10-20)
 
 Read on 2026-10-20, left for a slice with room. It is the biggest of the six callees: an object is
 looked up (0x11B0 ObjectById), a transform is built (0x11CC) and set (0x11E0), a module call
@@ -589,3 +692,451 @@ name is `lbl_75_rodata_A0 + 0x230` (0x12B8), and the rotation is built from the 
 `fctiwz` (0x1308) and reduced by `fnmsubs` (0x1324) - the same pattern the other ports' spawn
 code uses. The class the `new` makes is the one whose size is 0x1A0 and whose name sits at
 `lbl_75_rodata_A0 + 0x229`; reading that string gives the host class to use.
+
+**Two corrections to the read above** (found while porting it, 2026-10-20):
+
+- The string at `lbl_75_rodata_A0 + 0x229` (rodata **0x2C9**) is **not** a class name: it is the
+  obfuscated `__FILE__` string the placement `new` takes (`"??(?)"`; the actor's *name* is the
+  next string, rodata **0x2D0** = `"Splitter Beam Effect"`). The beam effect actor's class name is
+  still **unknown** - the host has no class for it.
+- The field at **0x3D0** is **not a timer**: the decomp's matching `CPatterned` fills 0x3C8-0x3D4
+  from `CPatternedInfo` + 0x4..0x10, so 0x3D0 is that struct's **+0xC, the detection range**
+  (the host reads it by name, `CPatterned::GetDetectionRange()`).
+
+**Port (2026-10-20).** `CSplitterCommandModule::PortSpawnBeamEffect` (fn_75_1188) and
+`CSplitterCommandModule::PortChassisTimerRunning` (fn_75_58E8) are the port's bodies. The gate
+looks the chassis up (0x5904 GetObjectById), casts it (0x5908) and tests the chassis's own field
+at **0xD28** (0x5918): that is the chassis's scan timer, which its script-message handler sets
+(fn_75_F1C0, 0x0000F40C-0x0000F42C: the scan duration when that is above zero, FLT_MAX
+otherwise); the port does not run that handler, so the timer stays zero. With the gate false
+the port clears the id at 0xF68 and removes the sound emitter (0x14A0-0x14AC); with it true and
+no beam effect yet it tests 0x3D0 and then, **port limit**, allocates no id: the retail
+allocates one (0x1230) and keeps it at 0xF68 (0x1244) before it creates the actor, and an id
+with no object behind it would be allocated again every frame and would eat the manager's
+object ids.
+
+The **creation of the 0x1A0-byte actor and the manager's add stay a once-logging shell**: the
+host has no class for the beam effect actor, so `fn_75_11884` (its constructor) and
+`fn_75_10D0` (the module's own transform) are shells too. The port still builds what the retail
+builds for them - the `CEntityInfo` (the area id, `NullConnectionList`, `true` and
+`kInvalidEditorId`), the name and the rotation (the data's angle at 0x864 times one degree in
+radians) - and hands them to the shell.
+
+#### fn_75_F1C0 (0x3A0) - the main chassis's script-message handler (ported 2026-10-20)
+
+The chassis's `AcceptScriptMsg` (vtable slot 0x18): the base's call (0x0000F1F4) and a switch on
+the message's four-character code (0x0000F1F8-0x0000F33C).
+
+| message | code | what the retail does | the port |
+|---|---|---|---|
+| XCRT | 0x58435254 | the locomotion type (fn_75_AA68) and the body controller's activation | ported |
+| XDEL | 0x5844454C | the collision actor manager's destruction and two module calls | ported + 2 shells |
+| ACTV | 0x41435456 | the manager's activation, only when the actor is inactive | ported |
+| DCVT | 0x44435456 | the manager's deactivation, only when the actor is active | ported |
+| AUDT | 0x58415544 | the manager's physics off | ported |
+| ALRT | 0x414C5254 | the base's flag byte at 0x420 gets its 0x80 bit | ported |
+| STRT | 0x53545254 | the flag byte at 0xD41 gets its 0x04 bit | ported |
+| ACTN | 0x4143544E | the scan timer at 0xD28 (the data's scan duration, FLT_MAX when it is zero) | ported |
+| XAND | 0x58414C44 | the manager's area list's value to 0xB7C and fn_75_AC68 | the write stays out, the call is a shell |
+| XCMG | 0x58434D47 | fn_75_A0A0 and the base's flag byte | the call is a shell, the flag is ported |
+| XRDG / XXDG | 0x58524447 / 0x58584447 | fn_75_9FA8 and the base's flag byte | the call is a shell, the flag is ported |
+| XHIT | 0x58484954 | fn_75_9B9C | shell |
+| XLND | 0x584C4E44 | the counter at 0xD00 is set to 5 | ported |
+| IM00 | 0x494D3030 | the flag byte at 0xD40 is cleared and, with 0xD41's 0x80 bit set, the timer at 0xD2C and the counter at 0xCFC advance | ported |
+| IM01 | 0x494D3031 | the flag byte at 0xD40 is set | ported |
+
+The module's own calls in it (fn_75_AAC4 0xC8, fn_75_8D50 0xA8, fn_75_A0A0 0x2DC, fn_75_9FA8 0xF8,
+fn_75_9B9C 0x40C, fn_75_AC68 0x84) are all over 0x80 and stay once-logging shells. **fn_75_AA68
+(0x5C)** is ported with it: the data's flag word at 0x828 gives the locomotion type (the word's
+bit 30 gives kLT_Lurk, bit 31 kLT_Crouch, anything else kLT_Relaxed).
+
+#### fn_75_654C (0x24C) - the command module's script-message handler (ported 2026-10-20)
+
+The head's `AcceptScriptMsg` (vtable slot 0x18): the base's call (0x6578) and a switch on the
+message's code (0x657C-0x660C). XCRT activates the body controller, runs fn_75_3460 (0x218, a
+shell) and rolls the manager's random (0.0f to 100.0f) to set the state at 0xEE4 to 2 when the
+roll is 50.0f or more and to 1 otherwise (0x6668); XDEL destroys the collision actor manager,
+deletes the beam effect at 0xF68 and runs fn_75_1790 (0xBC, a shell); ACTV and DCVT activate and
+deactivate the manager; AUDT switches its physics off; ALRT sets the base's flag byte at 0x420;
+XAND runs fn_75_3A8C and XCMG runs fn_75_2CC0.
+
+**fn_75_3A8C (0x50)** and **fn_75_2CC0 (0x20)** are ported with it: the first looks the object
+that is connected with the state "CONN" and the message "ATCH" up and keeps its id at 0xEFC; the
+second sets the flash weight at 0xF08 to 1.0f when the message's sender id is the id at 0xF00.
+
+#### fn_75_1790, fn_75_AC68, fn_75_8D50, fn_75_AAC4 (ported 2026-10-20, one commit each)
+
+The four module calls the area-4 layer-3 fight reaches besides `fn_75_3460`:
+
+| fn | size | what it does | the port |
+|---|---|---|---|
+| `fn_75_1790` | 0xBC | the head's laser-pulse projectile despawn: the id at 0xF02, the DOL's CEntity virtual at the vtable word 0x24, the emitter at 0xF5C, the base's flag byte at 0x420 | ported; the DOL's virtual and its RemoveEmitter stay shells |
+| `fn_75_AC68` | 0x84 | the chassis's connected-object lookups: the ids at 0xCC4 ("CONN"/"ATCH") and 0xCC6 ("RTRT"/"FOLW") | ported |
+| `fn_75_8D50` | 0xA8 | the chassis's team exit: the team id at 0xCBE | ported |
+| `fn_75_AAC4` | 0xC8 | the chassis's player-hint release: the hint's id at 0xCC4, the hint's actor id at 0x1AC, a "DECR" message | ported; `CScriptPlayerHint` grows a TARGET_PC setter for the actor id |
+
+`fn_75_3460` (0x218, the head's XCRT case) is still a shell: it builds the head's collision actor
+manager with the joint collision descriptions of the "Beam_LCTR" locator and walks the collision
+actors for the `CCollisionActor` whose id goes to 0xF00.
+
+**Why the head's Think never runs in the area-4 fight (2026-10-20).** The head is **inactive**:
+the host's `CStateManager` ticks every patterned actor (`ShouldUpdatePatterned` does not look at
+the active flag), but the port's `CSplitterCommandModule::Think` returns at its
+`if (!GetActive()) return;` gate, which is the retail's own gate (the byte at 0x20's 0x80).
+Nothing in the port activates either Splitter actor: the `CEntityInfo`'s active flag comes from
+the script's editor properties (`LdrToEntityInfo`), the host's generic FSM "Start" state is
+empty (`CPatternedAiFunctions.cpp:19`), the module's own FSMs (`fn_75_5E8C`, `fn_75_E9E4`) are
+not ported, and the fight's script sends the head no `kSM_Activate`. The chassis is in the same
+state (its Think shells `fn_75_AFE8`/`ACEC`/`9520` never log either). This is the port's FSM
+gap, not a bug in a ported body, so nothing was changed for it.
+
+#### fn_75_3460 (0x218) - the head's collision actor manager (ported 2026-10-20)
+
+The head's one joint sphere - the "Skeleton_Root" locator (rodata 0x0) with the radius 3.0f
+(rodata 0x4) and the mass 1000.0f (rodata 0x94) - is built and the collision actor manager is
+made with it (the old one deleted, the new one kept at 0xE58). Every collision actor of the
+manager is then walked: the description's id (its 0x3C) is looked up and cast to a
+CCollisionActor, and when the description's name is "Beam_LCTR" (rodata 0x8) the id goes to
+0xF00. The module's own call `fn_75_2CE0` (0x324) stays a once-logging shell - it is the last
+Splitter line the area-4 layer-3 fight logs.
+
+The module's own state machines are still shells: `fn_75_5E8C` (the head's FSM, **0x8C**) and
+`fn_75_E9E4` (the chassis's FSM, **0x8C**).
+
+#### fn_75_2CE0 (0x324) - the head's shield (ported 2026-10-20)
+
+The head's shield: it applies the state at 0xEE0 to the beam collision actor (the id at 0xF00).
+The flag (the third argument, r5) is the "a shield goes up" one - the asm tests its low byte
+(0x2D0C `clrlwi` with the word's bit 24 - the byte's 0xFF).
+
+| what | where |
+|---|---|
+| the shield-on sound (the sound id at **0x89C**) is added when the flag is set; its handle is dropped (the retail writes it to a stack slot it never reads) | 0x2D1C-0x2E44 |
+| the tracked emitter (the handle at **0xF60**) is removed and the handle cleared | 0x2D48-0x2D6C |
+| the beam collision actor (the id at **0xF00**) is looked up and cast; with no actor the body ends | 0x2D6C-0x2D88 |
+| the collision actor's health info's health (the float at **+0x4**) is set to the shield's HP (the float at **0x804**) | 0x2D8C-0x2DA0 |
+| state **1**: `AddMaterial(0x21)` on the collision actor, `AddMaterial(0x36)` on the head, the light shield's vulnerability (**0xD0C**) on the actor, the effect "LightShield" on and "DarkShield" off, the light shield's sound (the id at **0x894**) added as a looping emitter whose handle goes to 0xF60 | 0x2DC4-0x2E80 |
+| state **2**: `RemoveMaterial(0x21)` on the actor, `AddMaterial(0x36)` on the head, the dark shield's vulnerability (**0xD3C**), the effects swapped, the dark shield's sound (the id at **0x898**) | 0x2E88-0x2F44 |
+| any other state: both materials removed, the actor's vulnerability becomes the pass-through one (fn_800DBB50), both effects off | 0x2F4C-0x2FD8 |
+
+The host mappings: the materials 0x21 / 0x36 are `kMT_Character` / `kMT_Unknown54`; the two
+effect names are the rodata strings **"LightShield"** (rodata 0x10) and **"DarkShield"**
+(rodata 0x14); the collision actor's virtual at the vtable word **0x38** is
+`CCollisionActor::HealthInfo()` (the float at its +0x4 is the health), so the same virtual in
+fn_75_3004 is no longer nameless; the emitter's position is the guest's vector at 0x54 (the
+actor's translation) and its area the guest's word at 0x4 (the actor's area); the sound ids are
+masked to 16 bits (the asm's `clrlwi` 16). The port's body is
+`CSplitterCommandModule::PortUpdateShield(CStateManager&, bool shieldUp)`.
+
+#### The head's Think in the area-4 fight (2026-10-20)
+
+**The Splitter's objects live in the *next* area.** The console prints them as **a05**
+(`02_cliff_reactorcore`, the world's area 5) while the player is in **a04**
+(`0c_cliff_hall`, where the Ingsmasher fight is). The port's update loop skips an entity whose
+area has been occluded for more than 5 s (`CStateManager::Think`'s occlusion check and
+`CGameArea::AliveUpdate`'s `mOccludedTime`), so **the Splitter does not think at all while the
+player is in area 4** - the head's `if (!GetActive()) return;` gate is not even the blocker
+(the `send <uid> Activate` does clear the "inactive" mark). The player has to be in area 5:
+the `NEXTAREA` input token moves them there and the Splitter updates from then on.
+
+The recipe (the input file's tokens are **comma-separated on one line**, not one per line):
+
+    # input file: LAYER3@600+4,NEXTAREA@1500+4
+    # driver: a copy of the ElitePirate driver that also activates the Splitter
+    #   /tmp/opencode/smoke/split_ep_con.py  (a copy of ep_con.py) and the run script
+    #   /tmp/opencode/smoke/split_run.sh
+    #   WORLD=1baa96c2,b666b655 (Sanctuary Fortress), area 4 -> the layer-3 objects
+    #   (the Splitter) load; the driver walks the player into the dock trigger and
+    #   sends `send <uid> Activate` to the chassis and the head once each.
+
+The run (`/tmp/opencode/smoke/split.log`, the driver `/tmp/opencode/smoke/split_con.out`)
+logs, once the player is in area 5:
+
+    [splitter] CSplitterCommandModule::PreRender / AddToRenderer / GetSortingBounds /
+               Render / GetAimPosition          (the head's render-path overrides)
+    [splitter] CSplitterMainChassis::CollidedWith
+    [splitter] fn_75_2BE0 (0xE0) + the DOL's CSfxManager::UpdateEmitter   (fn_75_3004)
+    [splitter] fn_75_10D0 (0xB8) + the DOL's CSfxManager::RemoveEmitter    (fn_75_1188)
+    [splitter] fn_75_A4E4 / fn_75_AFE8 / fn_75_ACEC / fn_75_9520          (the chassis's Think)
+
+**fn_75_1188's gate does not pass.** The gate (fn_75_58E8) looks the chassis up by the id at
+0xEFA, which the retail's state machine sets and the port's names-only FSM does not, so the
+gate is false and the log shows the gate-false path (the DOL's `CSfxManager::RemoveEmitter`).
+
+**fn_75_2CE0 runs, but only up to the collision-actor lookup.** The head's create message
+(XCRT) reaches fn_75_3460, which calls fn_75_2CE0 - but the head's only joint is
+"Skeleton_Root", so the id at 0xF00 stays invalid, the lookup gives nothing and the body
+returns at 0x2D88. The three states cannot run in the port yet: the state at 0xEE0 only
+advances when the flag byte 0xF6A's 0x08 is set (the retail's "RaiseShields" code sets it),
+and the port's FSM is names-only.
+
+#### Who sets the head's chassis id at 0xEFA (read 2026-10-20)
+
+The only store of a *valid* id at 0xEFA is **fn_75_3EEC** (0x3EEC, 0xF4) - the head's "dock to
+the chassis". The other two stores are the invalid id (the ctor at 0x6C44 and the clear in
+fn_75_31A8 at 0x3240). fn_75_3EEC takes the id at **0xEFC** (the connected object the XAND
+message found), looks it up as a main chassis (0x3F18) and asks it to accept this head
+(0x3F3C **fn_75_E6E4**, 0x84: with the chassis's own command module id (0xC6C) still the invalid
+one the head's id goes there, 0xC6E is cleared, the flag byte 0xD40's 0x40 bit is cleared, the
+materials 0x28 and 0x29 are removed and **fn_75_8EA4** copies four of the chassis's data
+timers into 0xD10-0xD1C). When the chassis accepts, the id moves to 0xEFA (0x3F50), 0xEFC is
+cleared and the id goes to 0x12A; the docking sound (the id at 0x88C) is added when the flag
+byte 0xF6A's 0x02 bit and the data's flag word 0x7C0's 0x80 bit are both clear.
+
+**fn_75_3EEC is the head's `NotifyDocking` code** (§b): the module's static initialiser puts it
+in the head's code table, so the state machine runs it by name. The port binds that code to the
+ported body (`PortDockToChassis`) and does not call it from the Think any more.
+
+**The gate still fails in the area-4 fight**: the head has **no "Connect/Attach" connection**
+there - its connection list is only Dead/SetToZero, Patrol/Follow and DeathRattle/Decrement
+(the *chassis* has the Connect/Attach one, to the player hint) - so fn_75_3A8C leaves 0xEFC
+invalid, fn_75_3EEC finds no chassis and 0xEFA stays invalid. The area's placement does not
+wire the head to its chassis; the fight that does is elsewhere.
+
+#### The shells the run logs (2026-10-20, after the fn_75_2BE0/fn_75_10D0 port)
+
+Ported: **fn_75_2BE0** (the shield's particle effect: the state at 0xEE0 picks "LightShield" or
+"DarkShield", the animation data's first particle effect with that name is the result; the
+state 0 gives nothing) and **fn_75_10D0** (the module's own transform: the actor's own
+transform with the "Beam_LCTR" locator's translation moved through it - it runs every frame
+from the beam-effect spawner, so it is marked).
+
+Still shells in that run: the DOL's `CSfxManager::UpdateEmitter` and `RemoveEmitter` (the head's
+collision update and the beam spawner), and the chassis's **fn_75_A4E4** (0x418), **fn_75_AFE8**
+(0x11C), **fn_75_ACEC** (0x2FC) and **fn_75_9520** (0x11C) - the chassis's Think.
+
+#### The chassis's Think helpers (fn_75_AFE8, fn_75_9520) - ported 2026-10-20
+
+The chassis's Think (fn_75_F0E8, 0xF0E8) calls four module functions with the frame time in f1
+and the state manager in r4: **fn_75_A4E4** (0x418, the collision actor manager, 0xF130),
+**fn_75_AFE8** (0x11C, 0xF164), **fn_75_ACEC** (0x2FC, 0xF174) and **fn_75_9520** (0x11C,
+0xF180).
+
+**fn_75_AFE8 (0x11C)** - the chassis's timers. The four timers the chassis copies from its data
+(fn_75_8EA4) are counted down and the scan timer at 0xD28 too; three timers are counted up:
+
+| field | direction | asm |
+|---|---|---|
+| 0xD10 / 0xD14 / 0xD18 / 0xD1C | down | 0x0000AFF8, 0x0000B004, 0x0000B010, 0x0000B01C |
+| 0xD28 | down | 0x0000B028 |
+| 0xD34 / 0xD30 / 0xD2C | up | 0x0000B034, 0x0000B040, 0x0000B04C |
+
+The timer at **0xD3C** is counted up only while the id at **0xCC0** is valid (0x0000B058 `lhz`
+against kInvalidUniqueId) and the counter at **0xC48** is not zero (0x0000B068); otherwise it is
+cleared (0x0000B084, `lbl_75_rodata_390`, 0.0f). The flag byte at **0xD41**'s 0x01 bit (0x0000B094
+`clrlwi` with the word's bit 31 - the byte's 0x01) and the alive bit of the byte at **0x420**
+(0x0000B0A0 `extrwi` with the word's bit 25 - the byte's 0x40, the host's `GetAlive()`) gate the
+death: the timer at **0xD20** is counted down and, at zero or below (0x0000B0C0 `fcmpo` with the
+`cror eq, lt, eq` - the <= sense), the chassis dies with the transform's Y column (the vector at
+0x28, 0x38 and 0x48) and the state 'RATL' (0x0000B0E0). The retail calls the base class's
+`Death`, not the module's override.
+
+**fn_75_9520 (0x11C)** - the chassis's fade. The id at 0xCC0 picks the rate: a valid id gives
+`lbl_75_rodata_39C` (0.25f) and the invalid one `lbl_75_rodata_364` (1.0f), and the step is the
+frame time divided by it (0x0000956C `fdivs`). While the scan timer at 0xD28 is above zero or the
+id is valid, the weight at **0xCB8** is counted down and clamped at zero; otherwise it is counted
+up and clamped at one (0x000095C4, the >= sense). The weight above zero adds the additive
+animation with the id at **0xCB4** (0x000095FC, the two flags clear); at zero or below the
+animation is deleted when it is active (0x00009610 `clrlwi` with the word's bit 24 - the byte's
+0xFF).
+
+Both are ported as `CSplitterMainChassis::PortUpdateTimers` and
+`CSplitterMainChassis::PortUpdateFade`; the new fields are 0xC48, 0xCB4, 0xCB8, 0xD20, 0xD30,
+0xD34 and 0xD3C.
+
+**fn_75_ACEC (0x2FC)** and **fn_75_A4E4** (0x418) are still shells. fn_75_ACEC is the head's
+placement: with the command module's id at **0xC6C** valid (0x0000AD18 `lhz`) it looks the head
+up (0x0000AD40 `ObjectById`, 0x0000AD44 the `CSplitterCommandModule` cast) and builds the head's
+transform from the locator's transform (0x0000AD5C `GetLctrTransform`); with the flag byte at
+**0xD41**'s 0x80 (0x0000AD88 `extrwi` with the word's bit 24 - the byte's 0x80) and 0x08 bits
+(0x0000AD90, the word's bit 28 - the byte's 0x08) clear and the counter at **0xD00** equal to 5
+(0x0000AD98) it looks the head at the target (0x0000AEC0, the offset at 0xF24-0xF2C), otherwise
+it slerps the head's facing toward the chassis's (0x0000AE30 `GetAngleDiff`, 0x0000AE60
+`Slerp`, the turn rate 12.566371 rad/s) and sets the transform (0x0000AE44, 0x0000AED4,
+0x0000AF4C). With no head at 0xC6C the id is cleared (0x0000AF74), the materials 0x28 and 0x29
+are added (0x0000AF84) and the flag byte at 0xD41's 0x02 bit is set; the id at **0xC6E** is
+cleared when it names no head (0x0000AF8C-0x0000AFC0). fn_75_A4E4 (0x418) builds the collision
+actor manager.
+
+#### The state machine entries the area-4 run reaches (2026-10-21)
+
+The run (`/tmp/opencode/smoke/split_run.sh`, LAYER3 + NEXTAREA, the console driver that activates
+the two Splitters) asks the state machine for these entries, in this order. Each one is ported
+now, so the log no longer shows it:
+
+| # | entry | fn | ported as |
+|---|---|---|---|
+| 1 | the head's Start state | `fn_75_5564` | `CSplitterCommandModule::Start` (the body is one `blr`) |
+| 2 | the head's IsInitiallyDocked trigger | `fn_75_58DC` | `IsInitiallyDocked` (the SPLU block's first word, bit 0) |
+| 3 | the head's IsDocked trigger | `fn_75_58BC` | `IsDocked` (the chassis id at 0xEFA is valid) |
+| 4 | the head's HasDockingTarget trigger | `fn_75_57F0` | `HasDockingTarget` (the chassis at 0xEFC: alive, active, no command module) |
+| 5 | the chassis's Start state | `fn_75_DFE8` | `CSplitterMainChassis::Start` (the body is one `blr`) |
+| 6 | the chassis's IsDisabled trigger | `fn_75_E620` | `IsDisabled` (the flag byte 0xD40's 0x40) |
+| 7 | the chassis's DeployFromHoldingTube trigger | `fn_75_E034` | `DeployFromHoldingTube` (the data's flags at 0x828, bit 1) |
+| 8 | the chassis's Patrol state | `fn_75_DCFC` | `Patrol` (the base's waypoint navigation, the steering speed range, the two waypoint ids) |
+| 9 | the head's RaiseShields code | `fn_75_3B20` | `RaiseShields` (the flag byte 0xF6A's 0x08) |
+| 10 | the head's Hover state | `fn_75_4D04` | `Hover` (the locomotion type, the aim position, the height step) |
+| 11 | the chassis's Scanning state | `fn_75_DCF8` | `Scanning` (the body is one `blr`) |
+| 12 | the chassis's ShotAt trigger | `fn_75_E5B8` | `ShotAt` (the base's flag byte 0x420's 0x80) |
+| 13 | the chassis's PatrolPathOver trigger | `fn_75_E478` | `PatrolPathOver` (the waypoint destination at 0x6C0) |
+| 14 | the chassis's LostHead trigger | `fn_75_E5AC` | `LostHead` (the flag byte 0xD41's 0x02) |
+| 15 | the chassis's ShouldWaitForSnatch trigger | `fn_75_E5D0` | `ShouldWaitForSnatch` (the id at 0xCBC or `IsBeingSnatched`) |
+| 16 | the chassis's PrepareForDocking trigger | `fn_75_DFEC` | `PrepareForDocking` (the second link at 0xC6E) |
+| 17 | the head's SelectTarget code | `fn_75_3E60` | `SelectTarget` (the player id at 0xEFE, then the 'ATTK' state to the connections) |
+| 18 | the head's HasTarget trigger | `fn_75_57B4` | `HasTarget` (the synced id at 0xEFE) |
+| 19 | the head's Scanning state | `fn_75_523C` | still a shell (the run reaches it once the head's Idle state is ported) |
+
+The chassis's `fn_75_3B20` is the head's code, so it is the head's RaiseShields; the order above is
+the log's.
+
+**What the collision actor manager changes (2026-10-21)**: with fn_75_A4E4 ported the patrol stalled because the head sat inside the chassis: the port left the segment at 0xCC8 at 0, so fn_75_ACEC put the head (a solid actor) at the chassis's origin and the chassis's move collided with it every frame (before A4E4 the same overlap shoved the chassis down through the world, which only looked like a walk). The retail ctor sets 0xCC8 to the segment of "attach_LCTR" (0x0000F98C) and 0xCC9 to "target_LCTR" (0x0000F9C0), and copies 0xCC8 to 0xC72 (0x0000F9D0); with 0xCC8 set the chassis walks its waypoints on the floor and fn_75_8EC8, fn_75_523C and fn_75_11884 run again.
+
+#### The chassis's Patrol state, fn_75_DCFC (0xDCFC-0xDDF8) - ported 2026-10-21
+
+| what | retail | port |
+|---|---|---|
+| the waypoint navigation's own patrol | the `CWaypointNavigation` at 0x6B8 (`fn_801B7C08`: the navigation, the state manager, the message, the frame time, the actor) | `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` - the base's member, whose destination is at 0x6C0 and last destination at 0x6C2 |
+| the activate message | the body controller's 0x4C gets the word 1 (0x0000DD4C - the command manager's 0x48) and the steering speed range (0x0000DD50 the chassis's 0xD0C, 0x0000DD60) | `SetSteeringBlendMode(kSBM_FullSpeed)` and `SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed)` |
+| the update message | the two waypoint ids (0x0000DD68 the last destination, 0x0000DD84 the destination) are looked up and cast to a script waypoint (0x0000DD7C, 0x0000DD9C); with both there `fn_75_986C` runs (0x0000DDB8) and the command manager's face vector (the body controller's 0x10, 0x14, 0x18) is copied to the chassis's 0x6E0, 0x6E4, 0x6E8 (0x0000DDC0-0x0000DDD8) | the same lookups and cast, `fn_75_986C` stays a shell, and the face vector goes to the port's `mPatrolFacing` (the host's `CPatterned` has no member at the guest's 0x6E0) |
+| guest 0xD0C | the ctor leaves 1.0f and then divides the walk speed (anim 1) by the run speed (0x0000F93C-0x0000F964); the first call's anim register is not set in the dump | the port takes the walk speed over the host's `GetMaxSpeed()` in its constructor |
+
+#### The head's Hover state, fn_75_4D04 (0x4D04-0x4F90) - ported 2026-10-21
+
+| what | retail | port |
+|---|---|---|
+| the activate message | the body controller's locomotion type becomes 3 (0x00004D50 li r4, 3) | `SetLocomotionType(pas::kLT_Combat)` |
+| the update message | the head's synced id at 0xEFE (0x00004D6C) is looked up (0x00004D7C) and that actor's aim position is asked for (0x00004D90-0x00004DAC: the vtable's word 0x54, the out vector, the state manager, 0.0f) | the same lookup, cast to `CActor` (the host's `GetAimPosition` is `CActor`'s), and `GetAimPosition(mgr, 0.f)` |
+| facing | the direction is the aim position's x and y less the head's own 0x54 and 0x58, its z is 0.0f (0x00004DB0-0x00004DF4) | `FaceDirection` with that vector and the frame time |
+| the height step | the aim position's z less the head's own 0x5C, against the frame time times the data's max linear velocity at 0x7C4 (0x00004DFC-0x00004E0C); the head then moves up or down by that step (0x00004E10-0x00004E54) and the module's own move runs (0x00004E64 `fn_75_2154`) | the same step, and `fn_75_2154` (0xA8) stays a shell that logs the position once |
+
+**The port's own limits in these bodies**: the head's `HasDockingTarget` needs a chassis at 0xEFC
+(the head's second link), which the area-4 placement does not wire - so it is false in the run.
+The chassis's `ShouldWaitForSnatch` needs the id at 0xCBC, which the retail's `fn_75_E810`
+(`SetAttackTarget`, still a shell) keeps - so only the `IsBeingSnatched` half can run.
+
+#### The head's effect-state update, fn_75_1578 (0x1578-0x178C) - ported 2026-10-21
+
+The anim data (the model data at 0x60 and its 0x10 - 0x00001594 `lwz`, 0x0000159C `lwz`) gets two
+effect states in every branch: "AlertEye" (the rodata blob at 0x1C, whose first string is
+"AlertEye") and "LaserMuzzle" (the rodata string at 0x18).
+
+| what | retail | port |
+|---|---|---|
+| the shield counter | the counter at 0xEDC (0x00001590 `lwz`) is 1 or 2 (0x00001598 `cmpwi r0, 2` - 0x000015A0 `beq`, 0x000015A4 `cmpwi r0, 1`) | the same: the port's `mShieldState` (the guest's 0xEDC) is 1 or 2 |
+| the counter is 1 or 2 | both effects off (0x000015AC-0x0000160C) | `SetEffectState("AlertEye", false)` and `SetEffectState("LaserMuzzle", false)` |
+| the counter is 0 or 3 and the projectile's id at 0xF02 is valid | "LaserMuzzle" on, "AlertEye" off (0x00001628-0x00001688) | the same (`mLookAtTargetId` is the guest's 0xF02) |
+| the counter is 0 or 3, no projectile and the synced id at 0xEFE is valid | "AlertEye" on, "LaserMuzzle" off (0x000016B4-0x00001714) | the same (`mSyncedId` is the guest's 0xEFE) |
+| the counter is 0 or 3, no projectile and no synced id | the IsScanning trigger (fn_75_58E8, 0x000016A8) turns "AlertEye" on or both stay off (0x00001718-0x00001774) | the same (`PortChassisTimerRunning`) |
+
+The retail calls this body from the four shield functions (fn_75_5B28, fn_75_5CC4, fn_75_5D50
+and fn_75_5DDC, which set the counter to 3, 1, 0 and 2) and from the SelectTarget code
+(fn_75_3E60, 0x00003EA8), the chassis check (fn_75_31A8, 0x00003224) and the projectile's
+despawn (fn_75_1790, 0x00001830). The three shield functions are still shells, so the port's
+counter stays 0 and the body always takes the second branch.
+
+#### The chassis's collision actor manager, fn_75_A4E4 (0xA4E4-0xA8FC) - ported 2026-10-21
+
+The chassis's Think calls this body (0x0000F130) when the chassis has no collision actor manager
+yet (0x0000F11C-0x0000F130).
+
+| what | retail | port |
+|---|---|---|
+| the joints | the rodata table at 0x30C gives two spheres ("Skeleton_Root" with the radius 1.5f and "target_LCTR" with the radius 0.38f) and the table at 0x31C four leg cylinders (the knee and the ankle of each leg, the radius 0.05f); the mass is 1000.0f (the rodata at 0x3AC) | the same: `SphereCollision` and `SphereSubdivideCollision` with the locator's segment ids |
+| the manager | the manager is made with the joints (0x0000A754), the old one deleted (0x0000A764) and the new one kept at 0xC68 | the same |
+| the collision actors | every collision actor of the manager is walked (0x0000A774) and looked up; the one named "target_LCTR" (the rodata string at 0x34C) gives its id to the chassis's 0xCC2 (0x0000A7E8) and the reflected vulnerability (0x0000A814) | the same: `mTargetActorId` and `SetDamageVulnerability` |
+| the material filter | the include mask has the bit 59 (`kMT_Solid`), the exclude mask the bits 47, 28 and 32 (`kMT_CollisionActor`, `kMT_AIPassthrough` and `kMT_Player`) and the type is 3 (the include/exclude one) (0x0000A844-0x0000A8D0) | the same: `SetMaterialFilter` with the two masks |
+
+**The port's own limits in this body**: the retail also scales the "target_LCTR" collision actor
+(the model data's 0x0, 0x4 and 0x8 times the rodata's 1.5f, 0x0000A7F0-0x0000A810) and the host
+has no setter for the collision actor's scale, so that part is out. The module's own call
+(fn_75_A37C, 0x0000A840) stays a shell. The retail's cylinder builder takes the radius as a
+vector and one more argument (the word 1) that the host's `SphereSubdivideCollision` does not
+have; the port gives it the radius 0.05f, the max separation 1.0f and the between-joints
+orientation.
+
+#### The chassis's head placement, fn_75_ACEC (0xACEC-0xAFE8) - ported 2026-10-21
+
+The chassis's Think calls this body (0x0000F174) with the chassis, the state manager and the
+frame time.
+
+| what | retail | port |
+|---|---|---|
+| no head | the head's id at 0xC6C (0x0000AD18 `lhz`) is invalid, so the second link at 0xC6E (0x0000AF8C) is looked up and cast to a command module; an object that is not one clears the id (0x0000AFC0) | the same: `mSecondLinkId` is cleared when the object is not a `CSplitterCommandModule` |
+| the head is gone | the head's id at 0xC6C is looked up (0x0000AD40) and cast (0x0000AD44); with no object the id is cleared (0x0000AF74), the flag byte 0xD41's 0x02 bit is set (0x0000AF7C `rlwimi` with the word's bit 30) and the materials 0x28 and 0x29 (`kMT_Target` and `kMT_Orbit`) are added (0x0000AF84) | the same |
+| the placement | the chassis's locator transform (the segment id at 0xCC8, 0x0000AD58 `GetLctrTransform`) gives the position (the transform's translation) and its Z column | the same: `GetLctrTransform(mLocatorSegment)`, `GetTranslation()` and `GetColumn(kDZ)` |
+| the path | the flag byte 0xD41's 0x80 (0x0000AD88 `extrwi` with the word's bit 24) and 0x08 (0x0000AD90, the word's bit 28) bits, the counter at 0xD00 (0x0000AD98) and the head's editor offset (0xF24-0xF2C, 0x0000ADA8-0x0000ADD0) pick it: with the bits clear, the counter at 5 and a non-zero offset the head looks at the position plus that offset (0x0000AEDC, 0x0000AF34 `LookAt`) | the same |
+| the other path | the head's Y column is slerped toward the chassis's (0x0000AE30 `GetAngleDiff`, 0x0000AE60 `Slerp` with the turn rate 12.566371 rad/s) when the counter at 0xD00 is 5 and the angle is at least the turn rate times the frame time (0x0000AE34 `fcmpo`, 0x0000AE38 `bge`); the head then gets the chassis's transform (0x0000AE44 `SetTransform`) | the same: `GetColumn(kDY)`, `CVector3f::Slerp` and `SetTransform` |
+
+**The port's own limits in this body**: the segment id at 0xCC8 is the segment of "attach_LCTR" (the ctor, 0x0000F98C); 0xCC9 and 0xC72 are not kept by the port. The head's
+editor offset (the head's 0xF24-0xF2C) is the vector the head's Idle state (fn_75_5538) fills
+with the head's transform's Y column, so it is not zero in the run and the `LookAt` path is the
+one that runs.
+
+#### The chassis's own path update, fn_75_986C (0x986C-0x9AF8) - ported 2026-10-21
+
+The retail's Patrol state calls this body (0x0000DDB8) with the chassis and the state manager.
+
+| what | retail | port |
+|---|---|---|
+| the separation command | the separation vector (fn_75_8EC8, 0x00009890) is compared with 0.0f in each component (0x000098A8-0x000098C0); a vector that is not all zeros gives a locomotion command with it as the move vector, a zero face vector and the weight 0.5f (0x000098C8-0x00009914) | the same, but the separation vector is zero (fn_75_8EC8 is still a shell), so the command is never delivered |
+| the move vector | the command manager's move vector (the body controller's 0x4, 0x8 and 0xC - the command manager's 0x0, 0x4 and 0x8) is copied (0x00009918-0x00009930), the locomotion commands are cleared (0x00009934) and the best step direction for it is asked for (0x00009940) | the same: `GetMoveVector()`, `ClearLocomotionCmds()` and `FindBestStepDirection(move)` |
+| the face vector | with a safe magnitude (0x0000994C `IsMagnitudeSafe`) and a step direction other than 0 (0x00009958) the vector becomes the face vector - the step direction 1 negates it (0x000099A0), 2 negates its x (0x000099E8) and 3 negates its y (0x000099C8) - and the steering speed range becomes 1.0f and 1.0f (0x00009A04) | the same: `kSD_Backward` negates the vector, `kSD_Left` negates its x and `kSD_Right` negates its y, and `SetSteeringSpeedRange(1.f, 1.f)` |
+| the commands | the locomotion command with the move vector, the normalized face vector and the weight 1.0f (0x00009A1C-0x00009A70); otherwise the steering speed range becomes the chassis's 0xD0C (0x00009A78) and the command has the move vector, a zero face vector and the weight 1.0f (0x00009A8C-0x00009ADC) | the same: `CBCLocomotionCmd(move, face.AsNormalized(), 1.f)` and, in the other branch, `CBCLocomotionCmd(move, CVector3f::Zero(), 1.f)` with `SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed)` |
+
+**The port's own limit in this body**: the separation steering (fn_75_8EC8, 0x8EC8-0x915C) is
+still a shell. Its object list walk (the state manager's list at 0x830), the head's own check
+(the command module's chassis id at 0xEFA) and the DOL's `CSteeringBehaviors::Separation` (whose
+retail signature takes a radius vector the host's does not) are not ported, so the separation
+vector is zero and the first command of the body is never delivered.
+
+#### The head's own move, fn_75_2154 (0x2154-0x21FC) - ported 2026-10-21
+
+| what | retail | port |
+|---|---|---|
+| the auto-destruct timer | the timer at 0xEF4 (0x00002170 `lfs`) is compared with 0.0f (0x00002180 `fcmpo`, 0x00002184 `ble`); above zero the head is teleported to the destination (0x00002188 `SetTranslation`) | the same: `mAutoDestructTimer` (the guest's 0xEF4) above zero gives `SetTranslation(dest)` |
+| the move | the difference between the destination and the head's own position (0x54, 0x58 and 0x5C - 0x00002190-0x000021BC) is moved through the head's transform (0x000021B0 the transform at 0x24, 0x000021CC `TransposeRotate`) and the result moves the head in one frame (0x000021DC `MoveInOneFrameOR`) | the same: `MoveInOneFrameOR(GetTransform().TransposeRotate(dest - GetTranslation()), dt)` |
+
+The retail calls this body from the four states that move the head (0x000040F8, 0x000042A0, the
+Hover state 0x00004E64 and the Dodge state 0x00004FE4). The port's Hover state asks for it.
+
+#### The head's Idle state, fn_75_5538 (0x5538-0x5564) - ported 2026-10-21
+
+| what | retail | port |
+|---|---|---|
+| the message | the message is compared with 2 (0x00005538 `cmpwi r5, 2` - 0x0000553C `bgelr`) and with 0 (0x00005540 `cmpwi r5, 0` - 0x00005544 `bltlr`), so the body runs for the update and the activate message and returns for the deactivate and above | the same: the body runs for `kStateMsg_Update` and `kStateMsg_Activate` only |
+| the copy | the transform's Y column (the floats at 0x28, 0x38 and 0x48 - 0x00005548-0x00005550) goes into the vector at 0xF24-0xF2C (0x00005554-0x0000555C) | `GetTransform().GetColumn(kDY)` goes into the port's `mEditorProperties` (the guest's 0xF24-0xF2C) |
+
+The retail's constructor fills that vector from the editor properties (fn_75_6B08, the
+`arg4->unk4/14/24`), so the Idle state overwrites the editor's offset with the transform's Y
+column; the port's constructor has no editor-properties argument, so its vector starts at zero
+and the Idle state still writes the same value. The area-4 run does enter the head's Idle state
+(an earlier run's log logged it as a shell), but the run does not leave the state again, so the
+early return is untested and the body carries no `// @` marker.
+
+#### fn_75_AFE8 and fn_75_9520: the branches the run does not reach (2026-10-21)
+
+The two bodies are ported, but the area-4 run does not exercise every branch, so they carry no
+`// @` marker. The probes (a temporary log at the end of each branch, reverted after the run)
+gave this:
+
+| fn | branch | ran? | what it needs |
+|---|---|---|---|
+| `fn_75_AFE8` | 0xD3C counted up (0x0000B074) | no | the id at 0xCC0 valid **and** the counter at 0xC48 not zero - the REL never writes 0xC48, so this branch is dead in the retail too |
+| `fn_75_AFE8` | 0xD3C cleared (0x0000B084) | yes (7499 frames) | - |
+| `fn_75_AFE8` | the death timer 0xD20 counted down (0x0000B0B0) | no | the flag byte 0xD41's 0x01 bit, which the retail's `fn_75_ACEC` sets (still a shell) |
+| `fn_75_AFE8` | the death call (0x0000B0F0) | no | the same bit, and the timer at 0xD20 at zero |
+| `fn_75_9520` | the fade counted down (0x0000958C) | no | the scan timer at 0xD28 above zero - the retail's ACTN message sets it, and that message comes from the AFSM script, not from a state body (the chassis's Scanning state `fn_75_DCF8` is a single `blr`) |
+| `fn_75_9520` | the fade counted up (0x000095B4) | yes (7499 frames) | - |
+| `fn_75_9520` | the additive animation added (0x000095FC) | yes (7499 frames) | - |
+| `fn_75_9520` | the additive animation deleted (0x00009618) | no | the fade weight at zero, which needs the fade-down branch |
+
+So the next port that would close the death gap is the chassis's `fn_75_ACEC` (the head's
+placement, which sets the flag byte 0xD41's 0x01). The fade-down gap needs the AFSM script to
+send the ACTN message that starts the scan timer at 0xD28: the chassis's Scanning state
+`fn_75_DCF8` is a single `blr` (ported 2026-10-21) and does not send it.
+
+**Re-checked 2026-10-21** (after the head's IsDocked and SelectTarget and the chassis's
+Scanning and Patrol states were ported): neither gap closed. The run's scan timer at 0xD28
+stays at zero - nothing in the module sends ACTN, the AFSM script does - so `fn_75_9520` keeps
+counting the fade up. The flag byte 0xD41's 0x01 bit is still unset, because only the shell
+`fn_75_ACEC` sets it, so `fn_75_AFE8` keeps the death timer idle. Both bodies stay unmarked.

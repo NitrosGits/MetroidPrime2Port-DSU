@@ -40,6 +40,11 @@ public:
       mTimeToNextShot = time;
     }
   }
+#ifdef TARGET_PC
+  // The port's own getter: the CommandoPirate's burst-fire helper (fn_9_6390) reads the timer
+  // before it writes it, the way the guest reads the float at its own +0xAF8.
+  float GetTimeToNextShot() const { return mTimeToNextShot; }
+#endif
 
   void Start(CStateManager& mgr);
   void Update(CStateManager& mgr, float dt);

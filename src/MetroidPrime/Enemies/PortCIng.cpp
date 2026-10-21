@@ -204,7 +204,7 @@ enum {
   kFlag_StartAsIngSpot = 0x80000000,
 };
 
-const float kFacingAngle = 0.349f; // rodata: 20 degrees
+const float kFacingAngle = 0.34906584f; // lbl_29_rodata_E8: 20 degrees (fn_29_B0E0 0x0000B198)
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface normal.
 const float kWallLaunchAngle = 0.7853981f; // 45 degrees
 
@@ -860,7 +860,7 @@ CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
 void CIng::UpdateLoopSfx() {
   // fn_29_2270 (asm 0x2294-0x23F8): the ing spot's idle sound (0xd60) and move sound (0xd64). They
   // are added at the Ing's position (0x54) with the volume 0x7f and then follow it: the retail
-  // updates each emitter with the position and the transform's first column (the right vector,
+  // updates each emitter with the position and the transform's forward column (m01/m11/m21,
   // asm 0x22F0-0x2320). Outside the ing-spot form both emitters are removed.
   const bool spot = mForm == kForm_IngSpot;
   // The retail's condition is the moving flag (the bit 1 of the byte at 0xe5d, asm 0x22A0-0x22A8:
@@ -876,7 +876,7 @@ void CIng::UpdateLoopSfx() {
                                               CSfxManager::kMedPriority);
       }
       if (mLoopSfx[i]) {
-        CSfxManager::UpdateEmitter(mLoopSfx[i], GetTranslation(), GetTransform().GetRight(), 0x7f);
+        CSfxManager::UpdateEmitter(mLoopSfx[i], GetTranslation(), GetTransform().GetForward(), 0x7f); // 0x000022F0: 0x28/0x38/0x48
       }
     } else if (mLoopSfx[i]) {
       CSfxManager::RemoveEmitter(mLoopSfx[i]);
@@ -3219,8 +3219,10 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Create:
     // fn_29_4C88
     EnsureBodyActive(mgr);
-    mForm = mStartAsIngSpot ? kForm_IngSpot : kForm_Corporeal;
-    if (mForm == kForm_IngSpot) {
+    // 0x00004CA4: the data flag byte 0x9d0 bit 0x80, not the guest copy at 0xe5d bit 5 (the ctor
+    // seeds that from the same flag, 0x0000E368, but the states rewrite it).
+    mForm = (mData.mFlags210 & kFlag_StartAsIngSpot) != 0 ? kForm_IngSpot : kForm_Corporeal;
+    if ((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) { // 0x00004CBC re-reads the flag
       BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x00004CD0: li r4, 0
       mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), 1.f);
     } else {
