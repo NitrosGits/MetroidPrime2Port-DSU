@@ -527,3 +527,16 @@ TravelToCoverPoints -> PickedScatterShot (0x984 = 8 at t=2.5 s, mask 0x6D8) -> S
 (stand-in fn_10_175AC, never ends). Later picks: 0x80, 0x10, 0x40, 0x200; 0x980 stays 0xFFFF
 because fn_10_1B478 (the attack start) is not ported, so 1954C keeps picking. 0x9C0 has one
 writer (fn_10_17BC0, MeleeAttack, 0x00017C9C); the constructor does not write it.
+
+**Slice 6** (2026-10-21): 0x98C/0x990 start at -1000.0f (fixed; with that the first random pick in
+the run is MissileJump, not ScatterShot). In: fn_10_1B478 (attack start/end: 0x980, 0x984 cleared,
+0x990 = random stage gap, then += 0x8B0 at the end; history push + fn_10_1B5E4 erase), ScatterShot
+fn_10_175AC with 10520 (0xD28/0xD34 orbit/aim), 1AEC0 (collision failsafe), 16B64/16B8C (turn
+toward player, 1.7453293 rad/s), 11974 (fire timer while 0xBAD; its fire fn_10_12F60 is a stand-in)
+and 21F14 (CBCProjectileAttackCmd severity 1, kAS_ProjectileAttack). The 0xB50 sub-object
+(fn_10_215FC): 0xB7C/0xB88/0xB94 line start/aim/end, 0xBA0 count, 0xBA4/0xBA8 delay/timer,
+0xBAD firing (set only by fn_10_11814, from the anim-event handler at 0x0001C25C), 0xBDC =
+unknown_0x378285b9, 0xBE0 = scatterShotProjectilesPerSecond, 0xBE4 projectile uid. Walk (pick
+forced to 8 by a reverted hook): TravelToCoverPoints -> ScatterShot (gap 2.0..3.0 -> 2.55 s) ->
+AnimOver after ~2.4 s -> Dash (stand-in fn_10_150DC, BreakDash stand-in fn_10_149B4); picks
+resume at 0x990 = 6.37 s. Unforced: TravelToCoverPoints -> MissileJump (stand-in fn_10_177BC).

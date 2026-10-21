@@ -102,7 +102,19 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mWeightedPick(0xFFFF)
 , mPickCount(0)
 , mLastPickTime(-1000.f)   // lbl_10_rodata_410, `lfs f0` at 0x0001FC9C, stored at 0x0001FCF0
-, mNextActionTime(-1000.f) { // the same f0, 0x0001FCF4
+, mNextActionTime(-1000.f) // the same f0, 0x0001FCF4
+, mAttackOrbitPos(CVector3f(0.f, 0.f, 0.f))
+, mAttackAimPos(CVector3f(0.f, 0.f, 0.f))
+, mScatterLineStart(CVector3f(0.f, 0.f, 0.f)) // fn_10_215FC, 0x00021660..0x000216A4
+, mScatterAim(CVector3f(0.f, 0.f, 0.f))
+, mScatterLineEnd(CVector3f(0.f, 0.f, 0.f))
+, mScatterShotCount(0)
+, mScatterDelay(0.f)
+, mScatterTimer(0.f)
+, mScatterFiring(0)
+, mScatterChance(data.mUnknown378285B9)         // 0x000216C4
+, mScatterRate(data.mScatterShotProjectilesPerSecond) // 0x000216C8
+, mScatterProjectileUid(kInvalidUniqueId) {     // 0x000216D0
   mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,

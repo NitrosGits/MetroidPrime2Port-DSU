@@ -11,6 +11,8 @@
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
 
+class CBCProjectileAttackCmd;
+
 // The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
@@ -386,6 +388,26 @@ private:
   int PickFadedAttack(CStateManager& mgr);
   // fn_10_1954C: picks the next attack into mPickedAttack when none runs and its time has come.
   void UpdateAttackPick(CStateManager& mgr);
+  // fn_10_1B478: the attack bookkeeping every attack state runs first - on Activate the attack
+  // becomes mCurrentAttack and the next pick's delay is drawn, on Deactivate it is pushed onto
+  // mAttackHistory and the delay becomes an absolute time.
+  void UpdateCurrentAttack(uint attack, CStateManager& mgr, EStateMsg msg);
+  // fn_10_1B5E4: mAttackHistory's erase (the rstl::reserved_vector<uint, 3> at 0x994).
+  uint* EraseFinishedAttack(uint* pos);
+  // fn_10_10520: the orbit and aim positions at the attack's start (0xD28/0xD34).
+  void UpdateAttackAimPoints(CStateManager& mgr, EStateMsg msg);
+  // fn_10_1AEC0: CGameCollision::CollisionFailsafe over the actor's motion volume.
+  void RunCollisionFailsafe(CStateManager& mgr);
+  // fn_10_16B64 / fn_10_16B8C: turn toward the player / a point by at most dt * rate radians.
+  void TurnTowardPlayer(CStateManager& mgr, float dt, float rate);
+  void TurnTowardPoint(float dt, const CVector3f& point, float rate);
+  // fn_10_11974: the scatter shot's aim drift and fire timer while firing (0xBAD).
+  void UpdateScatterShotFire(CStateManager& mgr, float dt);
+  // fn_10_12F60: fires one scatter shot projectile (not ported yet: a stand-in).
+  void FireScatterShotProjectile(CStateManager& mgr);
+  // fn_10_21F14: the projectile-attack command driven by the animation state.
+  void DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state,
+                             const CBCProjectileAttackCmd& cmd);
 
   // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
@@ -507,14 +529,13 @@ private:
                                    // enrage). The constructor writes 0xFFFF to it (0x0001FCE8),
                                    // which is "no attack picked"
   uint mCurrentAttack;             // guest 0x980, the word the module writes when an attack starts
-                                   // (fn_10_1B478, which the port does not have yet) and reads in
+                                   // (fn_10_1B478) and reads in
                                    // ShouldReact and TooMuchDamage: the id of the attack the actor
                                    // is performing (the same id space as mPickedAttack; 0xFFFF =
                                    // none). The constructor writes 0xFFFF to it (0x0001FCE4)
   uint mAttackHistory[3];          // guest 0x998, the ids of the attacks the actor has finished:
                                    // fn_10_1B478 pushes the current attack here and trims the
-                                   // oldest entry when there are three (that function is not in
-                                   // the port yet)
+                                   // oldest entry when there are three
   uint mAttackHistoryCount;        // guest 0x994, the number of ids in mAttackHistory; the
                                    // constructor writes 0 to it (0x0001FCF8)
   float mAccumulatedDamage;        // guest 0xCC0, the damage the actor has taken: fn_10_1E178 adds
@@ -595,8 +616,25 @@ private:
   float mLastPickTime;             // guest 0x98C, the elapsed time of the last pick (0x00019678);
                                    // lbl_10_rodata_410 = -1000.0f (0x0001FC9C, 0x0001FCF0)
   float mNextActionTime;           // guest 0x990, the earliest time of the next pick: fn_10_1B478
-                                   // writes it when an attack ends (0x0001B558/0x0001B5B8, not in
-                                   // the port yet); -1000.0f (0x0001FCF4)
+                                   // draws the delay when an attack starts (0x0001B558) and adds
+                                   // the elapsed time when it ends (0x0001B5B8); -1000.0f (0x0001FCF4)
+  CVector3f mAttackOrbitPos;       // guest 0xD28, CPatterned::GetOrbitPosition at the attack's
+                                   // Activate (fn_10_10520, 0x00010564), zero on Deactivate
+  CVector3f mAttackAimPos;         // guest 0xD34, CPatterned::GetAimPosition(0.0f) at the same
+                                   // point (0x00010588), zero on Deactivate
+  // The scatter shot sub-object at 0xB50 (fn_10_215FC builds it, the call at 0x0001FE80):
+  CVector3f mScatterLineStart;     // guest 0xB7C, zero (0x00021660); fn_10_11814 sets it
+  CVector3f mScatterAim;           // guest 0xB88, zero (0x0002167C); fn_10_11814 sets it
+  CVector3f mScatterLineEnd;       // guest 0xB94, zero (0x00021698); fn_10_11814 sets it
+  int mScatterShotCount;           // guest 0xBA0, 0 (0x000216A8)
+  float mScatterDelay;             // guest 0xBA4, 0.0f (0x000216AC)
+  float mScatterTimer;             // guest 0xBA8, 0.0f (0x000216B0)
+  uchar mScatterFiring;            // guest 0xBAD, 0 (0x000216B8); fn_10_11814 sets it (0x00011868)
+  float mScatterChance;            // guest 0xBDC, the constructor's 6th float (0x000216C4), the
+                                   // loader's unknown_0x378285b9 (0x0000D660)
+  float mScatterRate;              // guest 0xBE0, the constructor's 7th float (0x000216C8), the
+                                   // loader's scatterShotProjectilesPerSecond (0x0000D670)
+  TUniqueId mScatterProjectileUid; // guest 0xBE4, kInvalidUniqueId (0x000216D0)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

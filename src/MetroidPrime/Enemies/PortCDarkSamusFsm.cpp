@@ -21,6 +21,12 @@
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
+#include "WorldFormat/CMetroidAreaCollider.hpp"
+#include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
+#include "Kyoto/Math/CQuaternion.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
+#include "Kyoto/CRandom16.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
@@ -1418,9 +1424,43 @@ void CDarkSamus::PissedOff(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("PissedOff", msg);
 }
 
-void CDarkSamus::ScatterShot(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_175AC", "state ScatterShot");
+// fn_10_175AC (0x000175AC, 0x1B4 bytes): the ScatterShot state. Every message runs the aim
+// points (fn_10_10520, 0x000175DC) and the attack bookkeeping with the scatter shot's id 8
+// (`li r4, 0x8`, fn_10_1B478 at 0x000175F0) first. Activate (0x00017618) clears the delay
+// (0xBA4 = lbl_10_rodata_3FC = 0.0f), the firing byte 0xBAD and the shot count 0xBA0, forgets the
+// projectile (0xBE4 = kInvalidUniqueId) and runs the collision failsafe (fn_10_1AEC0,
+// 0x00017648). Update (0x00017650) turns toward the player at lbl_10_rodata_434 = 1.7453293f
+// rad/s (fn_10_16B64) and runs the fire timer (fn_10_11974). Deactivate (0x00017680) forgets the
+// projectile and runs the failsafe. Last, for every message, the projectile-attack command
+// (fn_10_21F14 at 0x00017720, pas::kAS_ProjectileAttack = `li r5, 0x12`) with severity 1
+// (`li r7, 0x1`), the target lbl_10_rodata_3E4 = 0.5f times the sum of the line's ends (0xB7C +
+// 0xB94, 0x000176B8..0x000176E8) and no blend (`li r0, 0x0`). The state ends on the FSM's
+// AnimOver, which the command's animation state drives.
+void CDarkSamus::ScatterShot(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("ScatterShot", msg);
+  UpdateAttackAimPoints(mgr, msg);
+  UpdateCurrentAttack(8, mgr, msg);
+  switch (msg) {
+  case kStateMsg_Activate:
+    mScatterDelay = 0.f;
+    mScatterFiring = 0;
+    mScatterShotCount = 0;
+    mScatterProjectileUid = kInvalidUniqueId;
+    RunCollisionFailsafe(mgr);
+    break;
+  case kStateMsg_Update:
+    TurnTowardPlayer(mgr, dt, 1.7453293f);
+    UpdateScatterShotFire(mgr, dt);
+    break;
+  case kStateMsg_Deactivate:
+    mScatterProjectileUid = kInvalidUniqueId;
+    RunCollisionFailsafe(mgr);
+    break;
+  }
+  DoProjectileAttackCmd(msg, pas::kAS_ProjectileAttack,
+                        CBCProjectileAttackCmd(pas::kS_One,
+                                               0.5f * (mScatterLineStart + mScatterLineEnd),
+                                               false));
 }
 
 void CDarkSamus::SideDash(CStateManager&, EStateMsg msg, float) {
@@ -2044,4 +2084,185 @@ void CDarkSamus::UpdateAttackPick(CStateManager& mgr) {
     mPickedAttack = PickFadedAttack(mgr);
   }
   mLastPickTime = mElapsedTime;
+}
+
+// fn_10_1B5E4 (0x0001B5E4, 0x74 bytes): mAttackHistory's erase. A position outside
+// [begin, end) (the cmplw pair at 0x0001B5EC/0x0001B604) answers end; otherwise the later ids move
+// down one (0x0001B614..0x0001B630), the count drops (0x0001B63C) and the position is answered.
+uint* CDarkSamus::EraseFinishedAttack(uint* pos) {
+  if (pos < mAttackHistory || pos >= mAttackHistory + mAttackHistoryCount) {
+    return mAttackHistory + mAttackHistoryCount;
+  }
+  for (uint* it = pos; it < mAttackHistory + mAttackHistoryCount; ++it) {
+    it[0] = it[1];
+  }
+  mAttackHistoryCount--;
+  return pos;
+}
+
+// fn_10_1B478 (0x0001B478, 0x16C bytes): the attack bookkeeping. Activate (the `cmpwi r6, 0x0`
+// arm, 0x0001B4C8) makes `attack` the current attack (0x980, 0x0001B4CC), clears the pick (0x984
+// = 0xFFFF, 0x0001B4E0) and draws the next pick's delay into 0x990 (0x0001B558) between the
+// stage's minimum and maximum action gap (+0x4/+0x8, 0x0001B534/0x0001B544; +0xC/+0x10 when
+// faded, 0xDEC == 1 at 0x0001B500; without a stage both are lbl_10_rodata_3FC = 0.0f) with the
+// state manager's random (the CRandom16 at 0x16E4, 0x0001B54C). Deactivate (`cmpwi r6, 0x3` /
+// the 0x0001B560 arm) trims the oldest finished attack when there are three (0x0001B564,
+// fn_10_1B5E4 at 0x0001B574), pushes the current one (0x0001B590), counts it (0x0001B5A4), clears
+// 0x980 to 0xFFFF (0x0001B5A8) and turns the delay into a time (0x990 += 0x8B0, 0x0001B5B8).
+// Update does nothing.
+void CDarkSamus::UpdateCurrentAttack(uint attack, CStateManager& mgr, EStateMsg msg) {
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mCurrentAttack = attack;
+    mPickedAttack = 0xFFFF;
+    float minGap = 0.f;
+    float maxGap = minGap;
+    if (GetBattleStage(mgr) != nullptr) {
+      if (mFadeOut == 1) {
+        minGap = GetBattleStage(mgr)->GetStageInfo().minTimeBetweenActionsWhenInvisible;
+        maxGap = GetBattleStage(mgr)->GetStageInfo().maxTimeBetweenActionsWhenInvisible;
+      } else {
+        minGap = GetBattleStage(mgr)->GetStageInfo().minTimeBetweenActions;
+        maxGap = GetBattleStage(mgr)->GetStageInfo().maxTimeBetweenActions;
+      }
+    }
+    mNextActionTime = (maxGap - minGap) * mgr.Random()->Float() + minGap;
+    break;
+  }
+  case kStateMsg_Deactivate:
+    if (static_cast< int >(mAttackHistoryCount) >= 3) {
+      EraseFinishedAttack(mAttackHistory);
+    }
+    // 0x0001B584: the placement-new null test of the push; the slot is never null.
+    mAttackHistory[mAttackHistoryCount] = mCurrentAttack;
+    mAttackHistoryCount++;
+    mCurrentAttack = 0xFFFF;
+    mNextActionTime += mElapsedTime;
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_10_10520 (0x00010520, 0xD4 bytes): on Activate (0x00010528) the base's orbit position
+// (CPatterned::GetOrbitPosition, called directly at 0x00010550) into 0xD28 and its aim position
+// at lbl_10_rodata_3FC = 0.0f (CPatterned::GetAimPosition, 0x00010580) into 0xD34; on Deactivate
+// (0x000105A0) both become the zero vector.
+// @ fn_10_10520
+void CDarkSamus::UpdateAttackAimPoints(CStateManager& mgr, EStateMsg msg) {
+  if (msg == kStateMsg_Activate) {
+    mAttackOrbitPos = CPatterned::GetOrbitPosition(mgr);
+    mAttackAimPos = CPatterned::GetAimPosition(mgr, 0.f);
+  } else if (msg == kStateMsg_Deactivate) {
+    mAttackOrbitPos = CVector3f::Zero();
+    mAttackAimPos = CVector3f::Zero();
+  }
+}
+
+// fn_10_1AEC0 (0x0001AEC0, 0xF4 bytes): the motion volume at lbl_10_rodata_3FC = 0.0f
+// (0x0001AEEC) builds an area collision cache (0x0001AF28, filled at 0x0001AF34) and a collider
+// list (0x0001AF50), and CGameCollision::CollisionFailsafe runs with the actor's collision
+// primitive (vtable 0x7C, 0x0001AF64), dt 0.0f, 0 ticks and 0.0f (0x0001AF8C); the cache's
+// destructor (fn_10_1AFB4, 0x0001AF98) is the host's at the end of the scope.
+// @ fn_10_1AEC0
+void CDarkSamus::RunCollisionFailsafe(CStateManager& mgr) {
+  const CAABox motionVolume = GetMotionVolume(0.f);
+  CAreaCollisionCache cache(motionVolume);
+  CGameCollision::BuildAreaCollisionCache(mgr, cache);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildColliderList(nearList, *this, motionVolume);
+  CGameCollision::CollisionFailsafe(mgr, cache, *this, *GetCollisionPrimitive(), nearList, 0.f, 0,
+                                    0.f);
+}
+
+// fn_10_16B8C (0x00016B8C, 0x150 bytes): nothing when dt <= lbl_10_rodata_3FC = 0.0f (the cror at
+// 0x00016BCC). Otherwise the flattened facing axis (the transform's second column with z = 0.0f,
+// 0x00016BD4..0x00016BF0) and the flattened line to the point (0x00016C0C..0x00016C4C), each
+// normalized when it can be (0x00016BF4/0x00016C50), give a rotation arc clamped to dt * rate
+// (0x00016C68, 0x00016C80) that the actor turns by in one frame (0x00016CB0).
+void CDarkSamus::TurnTowardPoint(float dt, const CVector3f& point, float rate) {
+  if (dt <= 0.f) {
+    return;
+  }
+  const CVector3f forward = GetTransform().GetForward();
+  CVector3f flatForward(forward.GetX(), forward.GetY(), 0.f);
+  if (flatForward.CanBeNormalized() == true) {
+    flatForward.Normalize();
+  }
+  const CVector3f pos = GetTranslation();
+  CVector3f toPoint(point.GetX() - pos.GetX(), point.GetY() - pos.GetY(), 0.f);
+  if (toPoint.CanBeNormalized() == true) {
+    toPoint.Normalize();
+  }
+  const CQuaternion arc =
+      CQuaternion::ShortestRotationArcClamped(flatForward, toPoint, CRelAngle::FromRadians(dt * rate));
+  RotateInOneFrameOR(arc, dt);
+}
+
+// fn_10_16B64 (0x00016B64, 0x28 bytes): fn_10_16B8C toward the player's position (the state
+// manager's player at 0x14FC, its position at +0x54, 0x00016B70).
+// @ fn_10_16B64
+void CDarkSamus::TurnTowardPlayer(CStateManager& mgr, float dt, float rate) {
+  TurnTowardPoint(dt, mgr.GetPlayer(0)->GetTranslation(), rate);
+}
+
+// fn_10_12F60 (0x00012F60): spawns one CScattershotProjectile along the line - not ported yet.
+void CDarkSamus::FireScatterShotProjectile(CStateManager&) {
+  FsmStandIn("fn_10_12F60", "fire scatter shot projectile");
+}
+
+// fn_10_11974 (0x00011974, 0x164 bytes): only while the firing byte 0xBAD is set (0x0001199C).
+// The aim point 0xB88 moves toward the player by lbl_10_rodata_47C = 6.0f * dt of the way
+// (0x000119BC..0x00011A00) and the line's ends 0xB7C/0xB94 move with it (0x00011A04..0x00011A48);
+// the timer 0xBA8 counts dt (0x00011A78). With a rate 0xBE0 above 0.0f (0x00011A84) one projectile
+// (fn_10_12F60, 0x00011AA8) fires per lbl_10_rodata_3E8 = 1.0f / rate of the timer (0x00011A8C,
+// the loop at 0x00011AB4).
+void CDarkSamus::UpdateScatterShotFire(CStateManager& mgr, float dt) {
+  if (mScatterFiring == 0) {
+    return;
+  }
+  const float t = 6.f * dt;
+  const float keep = 1.f - t;
+  const CVector3f& player = mgr.GetPlayer(0)->GetTranslation();
+  const float dx = (mScatterAim.GetX() * keep + player.GetX() * t) - mScatterAim.GetX();
+  const float dy = (mScatterAim.GetY() * keep + player.GetY() * t) - mScatterAim.GetY();
+  const float dz = (mScatterAim.GetZ() * keep + player.GetZ() * t) - mScatterAim.GetZ();
+  const CVector3f delta(dx, dy, dz);
+  mScatterLineStart += delta;
+  mScatterLineEnd += delta;
+  mScatterAim += delta;
+  mScatterTimer += dt;
+  if (mScatterRate <= 0.f) {
+    return;
+  }
+  const float interval = 1.f / mScatterRate;
+  while (mScatterTimer > interval) {
+    mScatterTimer -= interval;
+    FireScatterShotProjectile(mgr);
+  }
+}
+
+// fn_10_21F14 (0x00021F14, 0x10C bytes): Activate (0x00021F54) sets the animation state to 1
+// (0x6B4, the base's CAnimationState: kAS_Ready) and delivers the command (DeliverCmd at
+// 0x00021F6C, the projectile-attack slot copy at 0x00021F78..0x00021F9C); Update (0x00021FA4)
+// delivers it again while CanIssueCommand(state) answers true (0x00021FAC); Deactivate
+// (0x00022000) sets the animation state to 0 (kAS_NotReady).
+void CDarkSamus::DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state,
+                                       const CBCProjectileAttackCmd& cmd) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(cmd);
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), state)) {
+      BodyController()->CommandMgr().DeliverCmd(cmd);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
 }
