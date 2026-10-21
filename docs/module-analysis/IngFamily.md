@@ -1421,6 +1421,28 @@ runs in both states. The Agon Wastes `01_sand_entrance_dark` (the world 42b935e4
 the console's `tp` into the zone does it) and the "the lure zone is set" moments for the two
 triggers whose lists are the lure code function's and the Lurk state's.
 
+### A.28 The arm coverage of the ported-but-unmarked bodies (2026-10-21)
+
+The Agon Wastes `01_sand_entrance_dark` boot (the world 42b935e4, the area 0x3f5cdf39) with a
+probe in every body and the states that the boot does not reach on its own forced with
+`fsm <ing> <state>` (the forced arms are labelled as such).
+
+| fn | the arms | the run | marker |
+|---|---|---|---|
+| `fn_29_84A4` Patrol | the message (asm 0x000084E0): the Activate and the other messages | both: the probe's keys 0, 1 and 2, four calls each (the state forced) | **marked** |
+| `fn_29_514C` EndRangedAttack | no branch (one call: the attack type 1, the team id 0xd6a, the Ing's id and the last argument 0) | evaluated once | **marked** |
+| `fn_29_5C28` Evaporate | the message (the Activate 0x5C48, the Update 0x5C54, the Deactivate 0x5C4C) and the state time against two seconds (0x5C84) | the three messages ran (the keys 0, 4, 8 - four calls each, forced); the two-second arm and the "the message is below zero" arm did not (the latter is dead: the state machine never sends it) | not marked |
+| `fn_29_75C0` SeekWallPoint | the message (0x75DC, 0x75E8), the cover hint (0x75F8), the magnitude (0x7650) and the length (0x7640) | the three messages ran (the keys 0, 16, 32 - four calls each, forced); the hint, the magnitude and the length arms did not (the forced state leaves before the Ing moves) | not marked |
+| `fn_29_8CF4` SafeZoneReaction | the message (0x8CFC, 0x8D10, 0x8D14, 0x8D20), the zone flags (0x8D64, 0x8D70) and the time (0x8D88) | the three messages ran (the keys 0, 8, 16 - four calls each, forced); the zone and the time arms did not | not marked |
+| `fn_29_8FE8` BecomeWallProjectile | the message (0x9014, 0x9024, 0x9028, 0x9034, 0x9038), the cross product (0x90CC) and the body command (0x91BC, 0x91E4) | the three messages ran (the keys 0, 5, 9 - four calls each, forced); the cross product and the body command arms did not | not marked |
+| `fn_29_B534` CollidedWith | the form (0xB558), the flight time (0xB56C), the empty list (0xB710), the contact that is not a splat surface (0xB720) and the one that is (0xB738) | the forms 3, 4, 5, 6 and 9 ran; the arm that is still open is the contact whose material is not one of the six splat surfaces | not marked |
+| `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC) and the other forms store (0xB8B0) | the form 3 ran; the early return needs a hit in the host phases (the form 0) or the evaporating form (5) | not marked |
+| `fn_29_BF20` GetDamageVulnerability | the form 4 (0xBF34), the form 3 with the ball (0xBF50), the form 3 (0xBF64) and the other forms (0xBF6C) | the forms 0, 3 (with and without the ball) and 9 ran; the form 4 (the base table) needs a hit on the body projectile | not marked |
+| `fn_29_5714` SetWallPointCoverDest | the hint (0x5748), the closest point (0x5784), the connected point (0x57C4) and the point path (0x57F0) | the code function ran, but the probe did not separate the arms | not marked |
+| `fn_29_4C88` the create handler | the data flag byte 0x9d0's bit 7 (0x4CAC and 0x4CC0) | not probed this run | not marked |
+| `fn_29_5190` StartRangedAttack | no branch (one call) | never ran - the Ing never starts a team projectile attack | not marked |
+| `fn_29_3684` the team leave | - | never ran - the Ing is not in a team | not marked |
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).

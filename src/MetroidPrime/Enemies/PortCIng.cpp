@@ -1814,7 +1814,12 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8FE8 (not yet exercised in a run)
+// fn_29_8FE8 (0x464, asm 0x00008FE8-0x0000944C): the BecomeWallProjectile state. The arms: the
+// message (asm 0x00009014, 0x00009024, 0x00009028, 0x00009034 and 0x00009038), the cross
+// product's magnitude (asm 0x000090CC) and the body command (asm 0x000091BC and 0x000091E4).
+// The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing>
+// BecomeWallProjectile`) ran the three messages (the probe's keys 0, 5 and 9, four calls
+// each); the cross product and the body command arms did not run. Not marked.
 void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1896,7 +1901,12 @@ void CIng::Alert(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8CF4 (not yet exercised in a run)
+// fn_29_8CF4 (0x1A0, asm 0x00008CF4-0x00008E94): the SafeZoneReaction state. The arms: the
+// message (asm 0x00008CFC, 0x00008D10, 0x00008D14 and 0x00008D20), the harmful zone and the
+// evaporating flag (asm 0x00008D64 and 0x00008D70) and the state time against a second
+// (asm 0x00008D88). The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm
+// <ing> SafeZoneReaction`) ran the three messages (the probe's keys 0, 8 and 16, four calls
+// each); the zone and the time arms did not run. Not marked.
 void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("SafeZoneReaction");
@@ -2055,7 +2065,12 @@ void CIng::IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   MoveOnSurface(move, speed, dt);
 }
 
-// fn_29_84A4 (not yet exercised in a run)
+// @ fn_29_84A4 (0xDC, asm 0x000084A4-0x00008580): the Ing walks its patrol path. The message
+// arms are the state's own: the Activate (asm 0x000084E0) sets the steering blend mode and the
+// speed range, and the other messages only run the waypoint navigation's patrol.
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark, with a probe in the
+// body and the state forced with `fsm <ing> Patrol`): the Activate (the probe's key 0) and the
+// other two messages (the keys 1 and 2) - four calls each. Both arms ran, so the body is marked.
 void CIng::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Patrol");
@@ -2332,7 +2347,12 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_75C0 (not yet exercised in a run)
+// fn_29_75C0 (0xF8, asm 0x000075C0-0x000076B8): the SeekWallPoint state. The arms: the
+// message (asm 0x000075DC and 0x000075E8), the cover hint (asm 0x000075F8), the delta's
+// magnitude (asm 0x00007650) and its length against the wall speed (asm 0x00007640). The run
+// of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing> SeekWallPoint`) ran
+// the three messages (the probe's keys 0, 16 and 32, four calls each); the hint, the magnitude
+// and the length arms did not run (the forced state leaves before the Ing moves). Not marked.
 void CIng::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("SeekWallPoint");
@@ -2938,7 +2958,14 @@ void CIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_5C28 (not yet exercised in a run)
+// fn_29_5C28 (0x88, asm 0x00005C28-0x00005CB0): the Evaporate state. The arms: the message
+// (the Activate at asm 0x00005C48, the Update at asm 0x00005C54, the Deactivate at
+// asm 0x00005C4C) and the state time against two seconds (asm 0x00005C84). The run of
+// 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing> Evaporate`) ran the three
+// messages (the probe's keys 0, 4 and 8, four calls each); the "the state time is over two
+// seconds" arm (the death delete) and the "the message is below zero" arm did not run - the
+// state machine never sends a message below zero, so that one is dead, but the two-second arm
+// needs the state to live for two seconds. Not marked.
 void CIng::Evaporate(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Evaporate");
@@ -3054,7 +3081,7 @@ void CIng::SetPointCoverDest(CStateManager& mgr, float) {
   }
 }
 
-// fn_29_5714 (not yet exercised in a run): the point-graph route to the cover hint. Two closest-point
+// fn_29_5714 (0x10C, asm 0x00005714-0x00005820): the point-graph route to the cover hint. Two closest-point
 // queries - the Ing's own position with filter (20, 0, -1) (asm 0x00005758-0x00005768), then the
 // hint's position with filter (20, 0, from) (asm 0x00005778-0x000057A0) - and a point-graph search
 // between the two results (asm 0x000057CC-0x000057EC). It sets no destination: mFoundMovementPos is
@@ -3152,12 +3179,18 @@ void CIng::SetLuredPointDest(CStateManager& mgr, float) {
 // fn_29_5190 (not yet exercised in a run): the Ing starts a projectile attack on its own team: the
 // attack type 1 (kAT_Projectile), the team id at 0xd6a and the Ing's own id (asm 0x000051A4-0x000051B8).
 void CIng::StartRangedAttack(CStateManager& mgr, float) {
+
   CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
 }
 
-// fn_29_514C (not yet exercised in a run): the team attack ends, but the Ing keeps its team role:
-// retail's last argument to EndAttack is 0 (asm 0x00005154), not a role clear.
+// @ fn_29_514C (0x44, asm 0x0000514C-0x00005190): the team attack ends, but the Ing keeps its
+// team role: retail's last argument to EndAttack is 0 (asm 0x00005154), not a role clear. The
+// attack type is 1 (kAT_Projectile, asm 0x00005170), the team id is the halfword at 0xd6a and
+// the second id is the Ing's own (asm 0x00005164).
+// The arms: the body has no branch (one call) - the run of 2026-10-21 (the Agon Wastes area
+// 01_sand_entrance_dark) evaluated it once, so the body is marked.
 void CIng::EndRangedAttack(CStateManager& mgr, float) {
+
   CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
                               false);
 }
