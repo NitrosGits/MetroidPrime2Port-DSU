@@ -23,6 +23,9 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
+#include "MetroidPrime/Weapons/CBeamInfo.hpp"
+#include "MetroidPrime/Weapons/CPlasmaProjectile.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -522,7 +525,7 @@ void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float
       mLookAtOffset = offset.AsNormalized();
       if (mLaserSweepStage == 0) {
         mLaserSweepStage = 1;
-        StandIn("fn_75_1974 (the head's laser shot, 0x298)");
+        PortFireLaserSweep(mgr, end);
       } else {
         mLaserSweepStage = -1;
       }
@@ -536,6 +539,46 @@ void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float
     PortDespawnProjectile(mgr);
     mLaserSweepStage = -1;
   }
+}
+
+// fn_75_1974 (the head's laser shot, 0x1974-0x1C0C): the laser sweep beam's info (data 0x81C)
+// becomes a CBeamInfo with the attributes 0x91 (0x199C fn_80239B64, the DOL's TLdrToBeamInfo;
+// 0x19A8 fn_75_1C0C copies it). A new id (0x19B4 AllocateUniqueId) gets the 0x6A8-byte
+// CPlasmaProjectile "LaserSweepBeam" (lbl_75_rodata_A0 + 0x245; 0x19D8 new, 0x1AA0 ctor): the
+// weapon at 0xE84, weapon type 2, the identity transform, material 0x14 (kMT_ProjectilePassthrough),
+// the converted sweep damage at 0xCF0, the area at 0x4, this actor as owner, a default
+// CWeaponAssetInfo (8 entries of -1, 0x19E4-0x1A20), not drawn owner first and the attributes
+// 0x21000. When it exists (0x1AB8): it fires (the vtable word 0x94, Fire with false; 0x1B2C) along
+// LookAt from the locator at 0xEF8 (0x1ACC GetLctrTransform) toward the given end with the up
+// vector (0x1B08), takes the chassis id at 0xEFA as its next draw node (its 0x12A, 0x1B48) and is
+// added (0x1B4C AddObject). Then the data's laser sweep sound (0x884) loops from the beam's
+// collision point (its 0x444-0x44C, CBeamProjectile::GetCurrentPos) with the 3D parameters 150.0f
+// and 0.1f (lbl_75_rodata_2C / lbl_75_rodata_48), flags 1, volume 0x7F and priority 0x23, the up
+// vector as direction, the area at 0x4, acoustics on and looped (0x1BD8 AddEmitter); its handle
+// goes to 0xF5C and the beam's id to 0xF02 (0x1BDC-0x1BE8). Last the effect states update
+// (0x1BF4 fn_75_1578), with or without the beam.
+void CSplitterCommandModule::PortFireLaserSweep(CStateManager& mgr, const CVector3f& end) {
+  const CBeamInfo beamInfo = TLdrToBeamInfo(mData.mLaserSweepBeamInfo, 0x91);
+  const TUniqueId beamId = mgr.AllocateUniqueId();
+  CPlasmaProjectile* beam = rs_new CPlasmaProjectile(
+      mLaserSweepProjectileInfo.Token(), rstl::string_l("LaserSweepBeam"), EWeaponType(2),
+      beamInfo, CTransform4f::Identity(), kMT_ProjectilePassthrough, mData.mLaserSweepDamage,
+      beamId, GetCurrentAreaId(), GetUniqueId(), CWeaponAssetInfo(), false, 0x21000);
+  if (beam != nullptr) {  // 0x1AB8-0x1ABC
+    beam->Fire(CTransform4f::LookAt(GetLctrTransform(mLookAtSegment).GetTranslation(), end,
+                                    CVector3f::Up()),
+               mgr, false);
+    beam->SetNextDrawNode(mChassisId);
+    mgr.AddObject(*beam);
+    CAudioSys::C3DEmitterParmData parms(150.f, 0.1f, 1, 0x7F, 0x23);
+    parms.mPos = beam->GetCurrentPos();
+    parms.mDir = CVector3f::Up();
+    parms.mSfxId = static_cast< ushort >(mData.mSoundLaserSweep & 0xFFFF);
+    mLookAtSfxHandle = CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true,
+                                               CSfxManager::kMedPriority);
+    mLookAtTargetId = beamId;
+  }
+  PortUpdateEffectStates(mgr);
 }
 
 // fn_75_5A40 (the head's StateOver trigger, 0x5A40-0x5A50): a REL copy of the DOL's
@@ -596,7 +639,11 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
 , mPathFindSearch(nullptr, 3, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0, CPFRegion::kRP_Center)
 // fn_75_6B08 @0x00006BC4: the CProjectileInfo (0x28) at 0xe5c, built from the data's laser pulse
 // projectile (+0x20) and damage (+0x514 of the runtime struct); fn_75_8 returns it.
-, mProjectileInfo(data.mLaserPulseProjectile, data.mLaserPulseDamage) {
+, mProjectileInfo(data.mLaserPulseProjectile, data.mLaserPulseDamage)
+// fn_75_6B08 @0x00006BD8-0x00006BEC: the second CProjectileInfo at 0xe84, built from the laser
+// sweep beam's weapon system (data +0x60, the beam info's second word) and a default damage
+// (fn_75_722C: weapon -1, every amount 0.0f, the sounds 0xFFFF); fn_75_1974 fires it.
+, mLaserSweepProjectileInfo(data.mLaserSweepBeamInfo.weaponSystem, CDamageInfo()) {
   // fn_75_6B08 @0x00006DEC-0x00006E5C: the material filter - the include mask is the data word
   // 0x3B (lbl_75_data_428, kMT_Solid), the exclude mask the data words 0x2F and 0x21
   // (lbl_75_data_42C and lbl_75_data_430, kMT_CollisionActor and kMT_Character) and the type 3
@@ -605,8 +652,7 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
   SetMaterialFilter(CMaterialFilter(CMaterialList(kMT_Solid),
                                     CMaterialList(kMT_CollisionActor, kMT_Character),
                                     CMaterialFilter::kFT_IncludeExclude));
-  // The retail constructor also builds the second CProjectileInfo at 0xe84 (its asset id is
-  // unknown), the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
+  // The retail constructor also builds the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
   // at 0xa7c..0xd6b. They belong to the state machine and the render paths this milestone does
   // not enter, so the port keeps the parameter block only.
 }
@@ -1116,11 +1162,11 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   CEntity* projectile = mgr.ObjectById(mLookAtTargetId);
   if (projectile != nullptr) {
     StandInCEntityVirtual0x24();
-    StandInSfxRemoveEmitter();
+    CSfxManager::RemoveEmitter(mLookAtSfxHandle);
     mgr.DeleteObjectRequest(mLookAtTargetId);
   }
   mLookAtTargetId = kInvalidUniqueId;
-  mLookAtSfxHandle = 0;
+  mLookAtSfxHandle.Clear();
   if (GetFlag26()) {
     PortUpdateEffectStates(mgr);
   }
