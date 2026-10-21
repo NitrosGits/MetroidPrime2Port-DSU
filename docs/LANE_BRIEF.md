@@ -29,6 +29,22 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
 - Kill only pids you launched (bracketed `pgrep -f` names) and any Xvfb you started. Delete your run
   outputs from `/tmp` (a 31 GB tmpfs).
 
+## Coverage without probes
+
+`tools/cov/run.sh <spec.py> <out> <world,area> [--con <cmdfile> | --driver '<cmd {port}>'] [--fast]
+[--frames n] [--env K=V]` boots the game under gdb with breakpoints that never stop it: no probe, no
+rebuild, works on any `build-port-link` binary. The spec (`tools/cov/specs/<module>.py`) is Python:
+`CLASS = 'CSandworm'` and `SPEC = [(label, where, [exprs], flags)]`. `where` is a demangled-name prefix
+(`'CSandworm::CanAttack('`) or `'loc:File.cpp:<line>'` for an arm inside a body; `exprs` are gdb
+expressions on the entry registers (`$this->x8C0_flags & 0x10`, `$rdx` = a state's EStateMsg); flags
+`ret` (bool result), `retp` (pointer non-null), `caller=<name>`, `max=<n>`. Each distinct key tuple
+is one arm: `<out>/cov.txt` lists per entry its hits and the count per key (`<out>/cov.json` the same).
+Label entries with the retail offset; an arm whose key never shows did not run. Put the layer switch
+and the `fsm`/`place`/`send` steps in the con script (example: `specs/sandworm_temple.con`). Keys are
+read at entry, so a key a body computes later needs a `loc:` entry on that line (check optimised
+code maps it). Output also reports caught/reach-stub lines. Give each run its own `COV_PORT` and
+`DISPLAY_NUM`; delete `<out>` afterwards.
+
 ## Gates (one line each in the report)
 
 Build `$T/ninja -C build-port-link metroid_prime2_port` 0 FAILED; `python3 tools/gen_files_cmake.py
