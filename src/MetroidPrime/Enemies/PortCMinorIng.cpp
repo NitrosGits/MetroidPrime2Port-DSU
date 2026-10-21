@@ -260,8 +260,9 @@ static void CopyImpactParticle(SImpactVisorEffect* dest, const SImpactVisorEffec
 static void CopyImpactParticleSet(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
 static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
 static void CopyImpactParticleEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
-static void AssignImpactVisorEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* particle, const SImpactVisorEffect* blur,
-                                     const SImpactVisorEffect* lowPass);
+static void AssignImpactVisorEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* particle,
+                                    const SImpactVisorEffect* blur,
+                                    const SImpactVisorEffect* lowPass);
 static void UnlockImpactParticle(SImpactVisorEffect* effect);
 static void UnlockImpactParticleEntry(SImpactVisorEffect* effect);
 static void DestroyImpactVisorEffect(SImpactVisorEffect* effect, int free);
@@ -391,7 +392,6 @@ static void BuildImpactVisorEffect(SImpactVisorEffect* effect) {
 static CImpactVisorEffect ToImpactVisorEffect(const SImpactVisorEffect& effect) {
   return CImpactVisorEffect(effect.mParticleEffect, effect.mBlurEffect, effect.mLowPassFilter);
 }
-
 
 } // namespace
 
