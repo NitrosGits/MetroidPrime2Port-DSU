@@ -1140,27 +1140,29 @@ cycle again - "state PathFind form 2" (the corporeal form), "state FindCoverPoin
 the Ing is corporeal (the ing-spot form takes no damage, A.19), and the driver's id mapping (the
 log prints the unique id without its version bits, the console with them: `0x400 | tag`).
 
-**`fn_29_B3C4` is not marked yet.** The body is the retail's, but no run has killed an Ing with
-it: the Ings of area 57 start as ing spots (the data's `kFlag_StartAsIngSpot`), and the ing-spot
-form takes no damage (A.19), so the death only happens in the corporeal form - which the runs in
-area 57 reached (the first run's log: "state Lurk form 2") but where the driver's damage never
-landed (the Ing was in the form 3 when the console's `damage` arrived). The arms that still need a
-run: the alive bit clear, the burn flags (the byte at 0x421's bits 1 and 2 - the Ing has to be
-burning when it dies, which is a lava/knock-back scenario), the form 3 (the ing spot, which
-cannot die) and the state argument -1 (no script messages). The death run itself
-(`/tmp/opencode/ing_lane/ing_death.sh`, the driver's `damage u<uid> 100` x3 after the log shows
-form 2) exits 0 with 0 `[port] caught` and 0 `[reach-stub]`, so the new body does not fault.
+**`fn_29_B3C4` is not marked yet** (the run of 2026-10-21, the probe in the death body): the
+run killed **both** Ings of area 57 and the death body ran, with these arms: alive, the machine has
+a state, not burning, the form 3 (no death body command) and the script messages. The arms that
+are still open: **the death in the corporeal form (2) or a form change (6..9), which issues the
+death body command** - the console's `damage` goes to the Ing itself, and the Ing's own table
+(the trigger table) takes nothing from it, so the corporeal Ing only dies from a shot that lands
+on its joint collision actors (they carry the base table, A.19) - and **the burning arm** (the
+byte at 0x421's bits 1 and 2: the Ing has to be on fire when it dies, which is a lava scenario).
+The arms that cannot run: "not alive" (the Ing dies once), "the machine has no state" (the state
+machine is set up in the constructor) and "no messages" (the state argument is a real one).
+
+**The ing spot does die** - the earlier note that it cannot was wrong: the run of 2026-10-21 shows
+the death body with the form 3 ("form 3, no command"), and the ing spot's HP does go down.
 
 **The four hot bodies' branches** (the count is from the asm; the "run" column is what the area
-57 runs reached - the runs there keep the Ings in the ing-spot form, so the corporeal arms stay
-open):
+57 run of 2026-10-21 reached, with a probe in each body):
 
 | fn | branches | arms | the run |
 |---|---|---|---|
-| `fn_29_45BC` GetCoverHint | 1 | the id is invalid -> null; the id is valid -> the lookup | the null arm (before a hint is picked) and the lookup arm (the runs show "state FindCoverPoint" and "state SetCoverDest", so a hint was picked and the cover triggers then ask for it) |
-| `fn_29_4604` the blob align | 3 | the blob is gone -> nothing; the align flag is 0 -> nothing; the align flag is 1 -> the look along the normal, with the up vector (the normal's z < 0.95) or the right one (z >= 0.95) | the ing-spot form (the align flag 1) and the floor normal (the right vector); the "the blob is gone" and the "align 0" arms need the corporeal form |
-| `fn_29_426C` the valid target | 3 | the forms 0/1 -> false; the forms 3/5 with the Dark visor -> the byte at 0x9d0's bit 0; the forms 3/5 with another visor -> true; the other forms -> true | the forms 3/5 (the visor path) and the "another visor" case; the forms 0/1 and 2 need the host and the corporeal forms |
-| `fn_29_3948` MoveOnSurface | 2 | the parallel part is below 0.6 of the move -> the perpendicular part; the move is not magnitude-safe -> the zero vector; else the normalised move | the ing-spot path states (the move) and the strip case; the "not magnitude-safe" arm needs a degenerate move |
+| `fn_29_45BC` GetCoverHint | 1 | the id is invalid -> null; the id is valid -> the lookup | **both ran** (2 and 4145 calls) -> **marked** |
+| `fn_29_4604` the blob align | 3 | the blob is gone -> nothing; the align flag is 0 -> nothing; the align flag is 1 -> the look along the normal, with the up vector (the normal's z < 0.95) or the right one (z >= 0.95) | the align flag 0 (2604 calls) and 1 (4789), the up vector and the right vector; the "the blob is gone" arm cannot run (the blob is made in the create branch and deleted in the delete branch) -> **marked** |
+| `fn_29_426C` the valid target | 3 | the forms 0/1 -> false; the forms 3/5 with the Dark visor -> the byte at 0x9d0's bit 0; the forms 3/5 with another visor -> true; the other forms -> true | "always a target" (the forms 2 and up, 2137 calls) and "another visor, the flag 0" (the forms 3/5, 2624); the forms 0/1 (the host form) and the Dark visor are still open -> **not marked** |
+| `fn_29_3948` MoveOnSurface | 2 | the parallel part is below 0.6 of the move -> the perpendicular part; the move is not magnitude-safe -> the zero vector; else the normalised move | **all three ran** (3369, 37 and 311 calls) -> **marked** |
 
 **The Agon Wastes recipe** (A.12) is the other way in: there the Ings are ing spots that the
 player morphs into a ball next to, and the Ing grabs it - that is the run the "the ball" arms of

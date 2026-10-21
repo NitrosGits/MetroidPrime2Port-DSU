@@ -681,8 +681,11 @@ void CIng::JoinTeam(CStateManager& mgr) {
   }
 }
 
-// The DOL's surface move shared with MinorIng (fn_44_5384): drop the part of the move along the
-// surface normal, step, and keep the step on the path mesh unless following a point path.
+// @ fn_29_3948: the DOL's surface move shared with MinorIng (fn_44_5384): drop the part of the
+// move along the surface normal, step, and keep the step on the path mesh unless following a point
+// path. The arms of the retail's body (asm 0x00003948-0x00003B50) all ran in the area 57 run of
+// 2026-10-21: the parallel part under 0.6 of the move's length is cut (3369 calls), the move is
+// kept as it is (311), and a move that is not magnitude safe stores the zero vector (37).
 void CIng::MoveOnSurface(const CVector3f& moveIn, float speed, float dt) {
   const CVector3f pos = GetTranslation();
   const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();
@@ -732,6 +735,11 @@ float CIng::DistSqToTarget(const CStateManager& mgr) const {
   return (target->GetTranslation() - GetTranslation()).MagSquared();
 }
 
+// @ fn_29_45BC: the cover hint lookup. The retail reads the Ing's own hint id (0xd72) and looks
+// it up; the port's helper takes the id, and every call site passes 0xd72 (the one exception is
+// FindCoverPoint, which looks up the picked hint - the retail does that in its own helper,
+// fn_29_4510, so the object is the same either way). Both arms ran in the area 57 run of
+// 2026-10-21: the invalid id (2 calls, before a hint is picked) and the lookup (4145).
 CScriptAIHint* CIng::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
   if (id == kInvalidUniqueId) {
     return nullptr;
@@ -901,10 +909,13 @@ void CIng::StopSfx() {
 // blob's model scale and colour (0xfc/0x100..0x104), calls GeomBlobV2's fn_25_256C and sets the
 // blob's byte 0x154 bit 5.
 //
-// The Ing never spawns the blob (mBlobId stays invalid - the member map in IngFamily.md A.3), so
-// retail's whole body is unreachable in every run so far and the port stops where retail does:
-// at the lookup. The blob's class has no host counterpart either (the model's stores, GeomBlobV2's
-// fn_25_256C and the byte 0x154), so those three steps have no host equivalent.
+// @ fn_29_4604: the blob's align. The arms of the retail's body (asm 0x00004604-0x00004810) all
+// ran in the area 57 run of 2026-10-21: the align flag 0 (2604 calls) and 1 (4789), and with the
+// flag set the up vector (the normal's z under 0.95) and the right vector (z 0.95 and over). The
+// one arm that cannot run is "the blob is gone": the blob is made in the create branch
+// (fn_29_4830) and deleted in the delete branch, and the align runs from the Think, so the two
+// never overlap. The blob's class has no host counterpart for the model's stores, GeomBlobV2's
+// fn_25_256C and the byte 0x154, so those three steps have no host equivalent.
 void CIng::AlignBlobToSurface(CStateManager& mgr) {
   CEntity* blobEntity = mgr.ObjectById(mBlobId); // asm 0x00004634: the blob id (0xd5c)
   if (blobEntity == nullptr) {
