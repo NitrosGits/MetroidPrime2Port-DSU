@@ -1613,10 +1613,9 @@ void CSplitterMainChassis::SpawnDrop(CStateManager& mgr, EStateMsg msg, float) {
 // there is one, takes its snatched shield (0xC958 fn_75_5B28). Update (0xC960): once the id at
 // 0xCBC is no longer a CIngSnatchingSwarm (0xC974) it is cleared. Deactivate (0xC990): the head's
 // shield is reset (0xC9B4 fn_75_5D50), the id at 0xCBC is cleared and the spin penalty timer at
-// 0xD14 is the data's spin attack interval penalty (0x874).
+// 0xD14 is the data's spin attack interval (0x874; the penalty is 0x878).
 // Arms: every arm ran in 09_cliff_temple (6c363cd4; the swarm from GENR 82500e1) - with a head,
 // and without one after `kill <head>`; swarm gone and still there both ran.
-// @ fn_75_C8F4
 void CSplitterMainChassis::WaitForSnatch(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1636,7 +1635,7 @@ void CSplitterMainChassis::WaitForSnatch(CStateManager& mgr, EStateMsg msg, floa
       head->PortResetShield(mgr);
     }
     mSnatcherId = kInvalidUniqueId;
-    mSpinPenaltyTimer = mData.mSpinAttackIntervalPenalty;
+    mSpinPenaltyTimer = mData.mSpinAttackInterval;
     break;
   default:
     break;
@@ -2428,9 +2427,10 @@ rstl::optional_object< CAABox > CSplitterMainChassis::GetTouchBounds() const {
 // the Z column (the transform's 0x2C, 0x3C, 0x4C; 0xEDC8-0xEDE4) sets 0xD40's 0x04 bit and is
 // the collision normal at 0xCE4 (0xEDE8-0xEE0C). Against an object (0xEE20-0xEE2C): one that is
 // not a CAi (0xEE34) but has a health info (vtable slot 0x3C, 0xEE40-0xEE58) only counts when the
-// spin attack damage (0x7DC) does more than 0.0f against its vulnerability (slot 0x40,
-// 0xEE5C-0xEE8C); then a safe object-to-chassis offset (0xEE90-0xEECC) sets the 0x04 bit and,
-// normalized, is the collision normal (0xEED0-0xEF00).
+// spin attack damage (0x7DC) does at most 0.0f against its vulnerability (slot 0x40,
+// 0xEE5C-0xEE8C: `cror eq, lt, eq; bne` leaves on damage > 0); then a safe object-to-chassis
+// offset (0xEE90-0xEECC) sets the 0x04 bit and, normalized, is the collision normal
+// (0xEED0-0xEF00).
 // Not marked: a non-CAi object with no health info, or one the spin damage hurts, never collided.
 void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                         CStateManager& mgr) {
@@ -2459,7 +2459,7 @@ void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInf
     return;
   }
   if (actor->TypesMatch(kET_Ai) == nullptr && actor->GetHealthInfo() != nullptr &&
-      mData.mSpinAttackDamage.GetDamage(*actor->GetDamageVulnerability()) <= 0.f) {
+      mData.mSpinAttackDamage.GetDamage(*actor->GetDamageVulnerability()) > 0.f) {
     return;
   }
   const CVector3f offset = GetTranslation() - actor->GetTranslation();

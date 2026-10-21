@@ -1160,7 +1160,7 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
 // ends. Then the chassis's id goes to 0xEFA (0x3F50) - the id fn_75_31A8 and the beam-effect
 // gate fn_75_58E8 read - the id at 0xEFC is cleared (0x3F58) and the id goes to 0x12A (0x3F60).
 // The docking sound (the sound id at 0x88C) is added when the flag byte 0xF6A's 0x02 bit is clear
-// (0x3F6C extrwi, the word's bit 30) and the data's flag word at 0x7C0 has its 0x80 bit clear
+// (0x3F6C extrwi, the word's bit 30) or the data's flag word at 0x7C0 has its 0x1 bit clear
 // (0x3F78 clrlwi, the word's bit 31); the flag byte's 0x02 bit is cleared either way (0x3FB4
 // rlwimi, the word's bit 30). The locomotion type becomes 1 (kLT_Relaxed, 0x3FC4
 // SetLocomotionType).
@@ -1176,7 +1176,7 @@ void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
   mChassisId = mCheckedChassisId;
   mCheckedChassisId = kInvalidUniqueId;
   mClearedId = mChassisId;
-  if ((mAutoDestructFlags & 0x2) == 0 && (mData.mUnknownBD80FD94 & 0x80000000) == 0) {
+  if ((mAutoDestructFlags & 0x2) == 0 || (mData.mUnknownBD80FD94 & 0x1) == 0) {
     // 0x3F80-0x3FA8: the docking sound; its handle is dropped (the retail writes it to a stack
     // slot it never reads).
     CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundDocking & 0xFFFF), GetTranslation(),
