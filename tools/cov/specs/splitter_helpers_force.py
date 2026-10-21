@@ -91,12 +91,30 @@ BODIES = {
                  'the head is dead: the death timer is not counted'),
     '32F4F': ('32F4 UpdateFlashAndDeath', 'CSplitterCommandModule::PortUpdateFlashAndDeath(',
               'the flash weight at 0xF08 is above one: the weight is capped'),
+    'D61C': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+             'the dodge direction at 0xD04 is 5 and the head at 0xC6C (u0531) exists'),
+    'D61CN': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+              'the dodge direction at 0xD04 is 5 and there is no head at 0xC6C'),
+    'SEPHEAD': ('23F0 SeparationVector', 'CSplitterCommandModule::PortSeparationVector(',
+                'the head\'s area id is not the other actors\': the other-area arm'),
+    'SEPC': ('8EC8 SeparationVector', 'CSplitterMainChassis::PortSeparationVector(',
+             'the chassis\'s area id is not the other actors\': the other-area arm'),
+    'D61CP': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+              'the Dodge state is entered with the console, nothing is written'),
+    'D61CX': ('D61C Dodge', 'CSplitterMainChassis::Dodge(',
+              'the message is 3: no case of the switch is taken'),
+    'EFA4MATN': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+                 'the material event and there is no head at 0xC6C'),
+    'E87CN': ('E87C SetIngPossessed', 'CSplitterMainChassis::SetIngPossessed(bool, float,',
+              'the possession flag is set and there is no head at 0xC6C'),
 }
 # the head's own members, written through $this (the spec's CLASS is the head's class).
 HEAD = '((CSplitterCommandModule*)$rdi)'
 # the head's flag byte at 0xF6A and the data's flag word at 0x7C0 are cleared, so the orbit
 # request's arm runs; the head's id at 0xEFE is the player.
-LOCK = ['$ecx = 0x16', '$this->mAutoDestructFlags = 0', '$this->mData.mUnknownBD80FD94 = 0']
+# the head's flag byte at 0xF6A (its 0x10 bit) and the data's flag word at 0x7C0 (its 0x4 bit)
+# must be SET for the orbit request (asm 0x63E4, 0x63F0: the branch skips when the bit is clear).
+LOCK = ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10', '$this->mData.mUnknownBD80FD94 = 0x4']
 if WHICH in ('6394DEAD', '6394NOPLAYER'):
     _label, _where, _what = BODIES['6394']
 else:
@@ -116,15 +134,16 @@ elif WHICH == 'EFA4M':
     FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x5'], 1, _what)]
 elif WHICH == '6394FLAG':
     FORCE = [(_label, _where, ['$ecx'],
-              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10'], 1, _what)]
+              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0',
+               '$this->mData.mUnknownBD80FD94 = 0x4'], 1, _what)]
 elif WHICH == '6394DATA':
     FORCE = [(_label, _where, ['$ecx'],
-              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0',
-               '$this->mData.mUnknownBD80FD94 = 0x20000000'], 1, _what)]
+              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10',
+               '$this->mData.mUnknownBD80FD94 = 0'], 1, _what)]
 elif WHICH == '6394NOPLAYER':
     FORCE = [(_label, _where, ['$ecx'],
-              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0',
-               '$this->mData.mUnknownBD80FD94 = 0', '$this->mSyncedId.value = 0xffff'], 1, _what)]
+              ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10',
+               '$this->mData.mUnknownBD80FD94 = 0x4', '$this->mSyncedId.value = 0xffff'], 1, _what)]
 elif WHICH == '6394P0NP':
     FORCE = [('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
               ['$ecx'], ['$ecx = 0'], 1,
@@ -151,15 +170,21 @@ elif WHICH == '6394LOCK':
     # head asks the player for the orbit.
     FORCE = [(_label, _where, ['$ecx'], LOCK, 1, _what)]
 elif WHICH == 'EFA4LOCK':
-    # the chassis's break-lock event with the flag byte at 0xD41 clear: the two orbit requests.
+    # the chassis's break-lock event with the flag byte at 0xD41's 0x10 bit set: the two orbit
+    # requests (asm 0xEFE8, 0xEFF0: the branch skips when the bit is clear).
+    # the flag byte at 0xD41 has its 0x10 bit clear: the base class's call.
     FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x16', CH + '->mFlagsD41 = 0'], 0, _what)]
 elif WHICH == 'EFA4FLAG':
     FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x16', CH + '->mFlagsD41 = 0x10'], 0, _what)]
 elif WHICH == 'EFA4NOPLAYER':
     FORCE = [(_label, _where, ['$ecx'],
-              ['$ecx = 0x16', CH + '->mFlagsD41 = 0', CH + '->mSyncId.value = 0xffff'], 0, _what)]
+              ['$ecx = 0x16', CH + '->mFlagsD41 = 0x10', CH + '->mSyncId.value = 0xffff'], 0, _what)]
 elif WHICH == 'EFA4MAT':
-    FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x5', CH + '->mFlagsD41 = 0x80'], 0, _what)]
+    # the material event with the flag byte's 0x80 bit set: the reflected vulnerability and the
+    # head at 0xC6C (u0531) resetting its shield (asm 0xF054, 0xF084).
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x5', CH + '->mFlagsD41 = 0x80', CH + '->mCommandModuleId.value = 0x531'],
+              0, _what)]
 elif WHICH == 'EFA4MATCLEAR':
     FORCE = [(_label, _where, ['$ecx'], ['$ecx = 0x5', CH + '->mFlagsD41 = 0'], 0, _what)]
 elif WHICH == '32F4':
@@ -173,10 +198,39 @@ elif WHICH == '32F4D':
     FORCE = [(_label, _where, [],
               ['$this->mAutoDestructFlags = 4', '$this->mFlashAlpha = 0.001f',
                '$this->mDeathTimer = -1.f'], 1, _what)]
+elif WHICH == 'D61CX':
+    # the message is 3 (the third argument, in rdx): no case of the switch is taken
+    # (asm 0xD650, 0xD654).
+    FORCE = [(_label, _where, [], ['$rdx = 3'], 0, _what)]
+elif WHICH == 'EFA4MATN':
+    # the material event with the flag byte's 0x80 bit set and no head at 0xC6C: the shield
+    # reset is skipped (asm 0xF09C, 0xF0A0).
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x5', CH + '->mFlagsD41 = 0x80', CH + '->mCommandModuleId.value = 0xffff'],
+              0, _what)]
+elif WHICH == 'D61CP':
+    FORCE = [(_label, _where, [], [], 0, _what)]
+elif WHICH == 'D61C':
+    # the chassis's Dodge state: the dodge direction at 0xD04 is 5 and the head at 0xC6C is the
+    # head u0531, so the head raises its dodge shield (asm 0xD690, 0xD6A0).
+    FORCE = [(_label, _where, [],
+              [CH + '->mDodgeDirection = 5', CH + '->mCommandModuleId.value = 0x531'], 0, _what)]
+elif WHICH == 'D61CN':
+    # the same, but there is no head at 0xC6C: the cast fails (asm 0xD690).
+    FORCE = [(_label, _where, [],
+              [CH + '->mDodgeDirection = 5', CH + '->mCommandModuleId.value = 0xffff'], 0, _what)]
+elif WHICH == 'SEPHEAD':
+    # the head's area id is a value no other actor has: the "an AI in another area" arm of the
+    # listening-AI walk (asm 0x2470-0x247C).
+    FORCE = [(_label, _where, [], ['$this->mAreaId.value = 12'], 0, _what)]
+elif WHICH == 'SEPC':
+    FORCE = [(_label, _where, [], [CH + '->mAreaId.value = 12'], 0, _what)]
 elif WHICH == 'E87C':
     # the possession flag (the second argument, in esi) is set and the command module's id at
     # 0xC6C is the head u0531's: the head is looked up and told it is possessed.
     FORCE = [(_label, _where, [], ['$esi = 1', CH + '->mCommandModuleId.value = 0x531'], 1, _what)]
+elif WHICH == 'E87CN':
+    FORCE = [(_label, _where, [], ['$esi = 1', CH + '->mCommandModuleId.value = 0xffff'], 1, _what)]
 elif WHICH == 'E87C2':
     FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'],
               ['$esi = 1', CH + '->mCommandModuleId.value = 0x520'], 0, _what)]
@@ -197,6 +251,18 @@ elif WHICH == 'EFA4OTHER':
     FORCE = [(_label, _where, ['$ecx'], ['$ecx = 3'], 0, _what)]
 elif WHICH == '1188':
     FORCE = [(_label, _where, [], [HEAD + '->mDetectionRange = 0.f'], 1, _what)]
+elif WHICH == 'D61CX':
+    # the message is 3 (the third argument, in rdx): no case of the switch is taken
+    # (asm 0xD650, 0xD654).
+    FORCE = [(_label, _where, [], ['$rdx = 3'], 0, _what)]
+elif WHICH == 'EFA4MATN':
+    # the material event with the flag byte's 0x80 bit set and no head at 0xC6C: the shield
+    # reset is skipped (asm 0xF09C, 0xF0A0).
+    FORCE = [(_label, _where, ['$ecx'],
+              ['$ecx = 0x5', CH + '->mFlagsD41 = 0x80', CH + '->mCommandModuleId.value = 0xffff'],
+              0, _what)]
+elif WHICH == 'D61CP':
+    FORCE = [(_label, _where, [], [], 0, _what)]
 elif WHICH == 'D61C':
     FORCE = [(_label, _where, [],
               [CH + '->mDodgeDirection = 5', CH + '->mCommandModuleId.value = 0xffff'], 1, _what)]

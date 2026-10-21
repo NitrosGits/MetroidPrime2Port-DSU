@@ -138,14 +138,15 @@ bool CSplitterCommandModule::PortListen(CStateManager& mgr, const CVector3f& pos
 //   `bne`, 0x6454-0x6468: the manager, the node, the type and the dt are put back and the DOL's
 //   `DoUserAnimEvent__10CPatternedFR13CStateManagerRC13CInt32POINode14EUserEventTypef` is
 //   called).
-// Arms: the break-lock event (the type 0x16) with the head's flag byte clear (asm 0x63E4) and
-// the data's flag word clear (asm 0x63F0), the player at the head's own id present (asm 0x63FC)
-// or missing, the projectile event (asm 0x63D8) and an event of another type.  The fight never
-// plays the head's break-lock event, so the event's type is written in ecx (the fourth integer
-// argument on the host) at the body's entry and the members the arms read are written through
-// $this in the same stop (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=6394LOCK,
-// 6394FLAG, 6394DATA, 6394NOPLAYER, 6394P0, 6394P0NP, 6394DEAD, 6394OTHER).  The coverage build's
-// merged profile of those runs says 13/13 lines and 10/10 branches, ALL-ARMS.
+// Arms: the break-lock event (the type 0x16) with the head's flag byte's 0x10 bit set (asm
+// 0x63E4) and the data's flag word's 0x4 bit set (asm 0x63F0), the player at the head's own id
+// present (asm 0x63FC) or missing, the projectile event (asm 0x63D8) and an event of another
+// type (the base class's call, asm 0x644C).  The fight never plays the head's break-lock event,
+// so the event's type is written in ecx (the fourth integer argument on the host) at the body's
+// entry and the members the arms read are written through $this in the same stop
+// (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=6394LOCK, 6394FLAG, 6394DATA,
+// 6394NOPLAYER, 6394P0, 6394P0NP, 6394DEAD, 6394OTHER).  The coverage build's merged profile of
+// those runs says 13/13 lines and 10/10 branches, ALL-ARMS.
 // @ fn_75_6394
 void CSplitterCommandModule::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                               EUserEventType type, float dt) {
@@ -267,10 +268,11 @@ void CSplitterCommandModule::PortHeadProjectileAim(CStateManager& mgr,
 // `DoUserAnimEvent(CStateManager&, const CInt32POINode&, EUserEventType, float)`, which is
 // this body's signature (r4 the manager, r5 the node, r6 the type, f1 the dt, asm
 // 0xEFBC-0xEFD4).
-// Arms: the break-lock event (the type 0x16) with the chassis's flag byte clear (asm 0xEFE8)
-// and the player at the chassis's own id present (asm 0xEFF4) or missing, the material event
-// (asm 0xEFDC) with the flag byte's 0x80 bit set (asm 0xF054) or clear, and an event of another
-// type.  The fight plays the chassis's break-lock event but never the material one, so the
+// Arms: the break-lock event (the type 0x16) with the chassis's flag byte's 0x10 bit set (asm
+// 0xEFE8) and the player at the chassis's own id present (asm 0xEFF4) or missing, the material
+// event (asm 0xEFDC) with the flag byte's 0x80 bit set (asm 0xF054) or clear and the head at
+// 0xC6C present (asm 0xF084) or missing, and an event of another type (the base class's call,
+// asm 0xF0B0).  The fight plays the chassis's break-lock event but never the material one, so the
 // event's type is written in ecx (the fourth integer argument on the host) at the body's entry
 // and the members the arms read are written through $this in the same stop
 // (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=EFA4LOCK, EFA4FLAG, EFA4NOPLAYER,
