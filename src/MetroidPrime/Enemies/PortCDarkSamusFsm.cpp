@@ -1018,9 +1018,11 @@ bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) co
   return false;
 }
 
+// fn_10_16B48 (0x00016B48, 0xC bytes): the byte at guest 0xAB8's bit 7 - the extrwi at
+// 0x00016B4C keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24)).
+// @ fn_10_16B48
 bool CDarkSamus::BreakFreezeBeam(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B48", "trigger BreakFreezeBeam");
-  return false;
+  return (mGuestAB8 & 0x80) != 0;
 }
 
 // fn_10_149B4 (0x000149B4, 0x4C bytes): the dash record's flag 0x80 (0xA08's
@@ -1043,14 +1045,18 @@ bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
   return mDive.mDone;
 }
 
+// fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C).
+// @ fn_10_16B5C
 bool CDarkSamus::BreakNormalMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B5C", "trigger BreakNormalMissile");
-  return false;
+  return mGuestA40 != 0;
 }
 
+// fn_10_106F8 (0x000106F8, 0x1C bytes): the float at guest 0xC30 against the actor's elapsed
+// time 0x8B0 (the lfs at 0x000106FC, the fcmpo at 0x00010700); the srwi at 0x00010708 takes
+// the compare's "less than" bit.
+// @ fn_10_106F8
 bool CDarkSamus::BreakPause(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_106F8", "trigger BreakPause");
-  return false;
+  return mGuestC30 < mElapsedTime;
 }
 
 bool CDarkSamus::BreakPhazonAttack(CStateManager&, const CTriggerData&) const {
@@ -1058,9 +1064,10 @@ bool CDarkSamus::BreakPhazonAttack(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54).
+// @ fn_10_16B54
 bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B54", "trigger BreakSuperMissile");
-  return false;
+  return mGuestA80 != 0;
 }
 
 // fn_10_10634 (0x00010634, 0x24 bytes): fn_10_17D50 with the attack 1 (the melee, `li r5, 0x1`
@@ -3438,7 +3445,6 @@ void CDarkSamus::CollectStageWeights(CStateManager& mgr, SAttackWeights& weights
 // fn_10_1A554 (0x0001A554, 0x68 bytes): faded (0xDEC == 1, 0x0001A564) the mask keeps only the
 // freeze beam, the melee and the phazon attacks (fn_10_1A8F8 with 0x100000, 1, 0x400000,
 // 0x800000); visible it loses the freeze beam and the fade missile (0x100000, 0x200000).
-// @ fn_10_1A554
 void CDarkSamus::CollectFadeAttacks(CStateManager&, SAttackWeights&, uint* mask) const {
   if (mFadeOut == 1) {
     SetAttackBitsExcept(mask, 0, 0x100000, 1, 0x400000, 0x800000);
@@ -3556,7 +3562,6 @@ int CDarkSamus::PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, 
 // 0x000191C8). The nearest hit (from the unshifted start) that is not 8 short of the player
 // (the blt at 0x000192F0) is kept (lbl_10_rodata_3EC = -1.0f = none, 0x00019300); none is 0
 // (0x0001932C), short of the player 1 (0x0001933C), else 2.
-// @ fn_10_1905C
 int CDarkSamus::ClassifyLineToPlayer(CStateManager& mgr) const {
   CVector3f dir = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
   dir.SetZ(0.f);
@@ -3686,7 +3691,6 @@ static CVector3f GetDashDirection(uint slot, const CVector3f& f);
 // 0x000165C8) over the whole line, the filter including lbl_10_data_C60 / C64 (0x3B kMT_Solid,
 // 0x30 kMT_AIBlock; type 1 at 0x00016550 = include only); fn_10_2C8 is the module's copy of the
 // CRayCastResult copy constructor, and the answer is the result not valid (0x000165DC).
-// @ fn_10_164C0
 bool CDarkSamus::IsGunLineClear(CStateManager& mgr, const CVector3f& offset,
                                 const CVector3f& target) const {
   const CVector3f start = mGunLctrXf.GetTranslation() + offset;
@@ -3701,7 +3705,6 @@ bool CDarkSamus::IsGunLineClear(CStateManager& mgr, const CVector3f& offset,
 // fn_10_16418 (0x00016418, 0xA8 bytes): the gun line (fn_10_164C0 at 0x000164A4) raised by
 // lbl_10_rodata_40C = 5.0f in z to the player's aim position (the vtable call at 0x00016458,
 // slot 0x54 = GetAimPosition, dt lbl_10_rodata_3FC = 0.0f).
-// @ fn_10_16418
 // @ fn_10_164C0
 bool CDarkSamus::IsPlayerAimLineClear(CStateManager& mgr) const {
   const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
@@ -3830,7 +3833,6 @@ CVector3f CDarkSamus::GetDodgeStepOffset(int slot) const {
 
 // fn_10_16B1C (0x00016B1C, 0x2C bytes): the point on the path (OnPath of 0x7C0 at 0x00016B2C
 // answers kR_Success).
-// @ fn_10_16B1C
 bool CDarkSamus::IsOnPath(const CVector3f& point) const {
   return mPathFindSearch.OnPath(point) == CPathFindSearch::kR_Success;
 }

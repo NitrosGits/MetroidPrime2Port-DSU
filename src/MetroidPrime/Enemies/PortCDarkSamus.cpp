@@ -177,6 +177,10 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mRicochetSfxId(data.mMissileRicochetSound == -1 // 0x0000DA94, stored at 0x0001FF48
                      ? CSfxManager::kInternalInvalidSfxId
                      : static_cast< ushort >(data.mMissileRicochetSound))
+, mGuestA40(0)
+, mGuestA80(0)
+, mGuestAB8(0)
+, mGuestC30(0.f)
 , mReflectChanceCount(0)                         // 0x00020270
 , mReflectChances() {
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first

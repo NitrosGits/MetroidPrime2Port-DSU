@@ -1119,3 +1119,43 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
 - The run: Sanctuary 10_cliff_rooftop, boss u04f7, 2200 frames - the boss next to the player,
   the missiles at it, the 'Alert' message, and the dive, the boost ball and the taunt states
   forced one after the other. 0 caught, 0 reach-stub, exit 0.
+
+## Slice 24 (2026-10-21): the marking rule - the gdb re-check, the Break* triggers
+
+- The 28 bodies of slice 23 were re-checked under gdb (no probes in the source): the game ran
+  under gdb with a breakpoint on every body, each hit printing its arguments and its result
+  (`$al` for the booleans, `$eax` for the integers) and the program continuing. The driver
+  (`/tmp` only) sent the boss after the player and far away, morphed the player
+  (`fastmorph 1`, `press X 8`), fired the missiles and forced the states.
+- **Dropped (their live arms did not all show up):**
+  - fn_10_16418 / 164C0 (IsPlayerAimLineClear): the body never ran - its only caller is the
+    reach collector fn_10_19B64, which is still a stand-in.
+  - fn_10_1905C (ClassifyLineToPlayer): only the class 0 was seen.
+  - fn_10_16B1C (IsOnPath): only the "on the path" answer was seen.
+  - fn_10_1A554 (CollectFadeAttacks): the faded arm needs the fade state, which the fight never
+    reaches.
+- **Kept (both arms seen in the run):** fn_10_11308 (the player morphed and not), 142F4 (the
+  player in front and not), 17D50 (the attack on and off), 1AA6C (the three range bands), 14648
+  (walkable and not), 1AA5C (the bit 2 and the others), 10BBC (the bit indices; the "no bit" arm
+  is dead by arithmetic), 17E14 / 17DE0 (a stage and none), 166AC / 16600 (clear and blocked),
+  17CEC (the distances), 1A6C4 (the 23 attack weights), 1A980 / 1A8F8 / 1AA30 (the set flag
+  and the bits), 1A5BC / 1A278 / 1A440 / 1A1D4 / 19A1C / 1A34C (the collectors), 1954C /
+  197D8 / 1969C / 19918 (the picks), 1B478 / 1B5E4 (the attack ids and the messages), 12B38
+  (the dive target), 1285C / 12764 (the jump command).
+- **New: the four Break* triggers**, with the bytes the retail reads as new members (the port has
+  no writer for them yet): fn_10_16B48 (BreakFreezeBeam: the byte 0xAB8's bit 0x80),
+  fn_10_16B54 (BreakSuperMissile: the byte 0xA80), fn_10_16B5C (BreakNormalMissile: the byte
+  0xA40) and fn_10_106F8 (BreakPause: the float 0xC30 against the elapsed time 0x8B0). Their
+  arms ran with the bytes forced under gdb (`set var this->mGuestAB8 = 0x80` and so on,
+  alternating), the states that use the triggers forced with `fsm`; the arms are labelled
+  forced in the table below.
+- The DarkSamus module is split: the other lane (branch decomp/darksamus-helpers) takes the
+  unmarked class-B rows with an empty `state` column and an offset below 0xA000; this note and
+  `DarkSamus_functions.tsv` stay here.
+
+| body | arm | ran |
+| --- | --- | --- |
+| 16B48 | the byte 0xAB8's bit 0x80 set / clear | forced (gdb `set var`), yes |
+| 16B54 | the byte 0xA80 set / clear | forced (gdb `set var`), yes |
+| 16B5C | the byte 0xA40 set / clear | forced (gdb `set var`), yes |
+| 106F8 | 0xC30 below the elapsed time / not | forced (gdb `set var`), yes |

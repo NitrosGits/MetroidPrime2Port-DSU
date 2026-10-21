@@ -956,6 +956,14 @@ private:
                                    // writes lbl_10_rodata_410 = -1000.0f (0x0001FF04)
   ushort mRicochetSfxId;           // guest 0xC50, the loader's missileRicochetSound (its 0x928;
                                    // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
+  uchar mGuestA40;                 // guest 0xA40, the normal missile's record byte; the
+                                   // BreakNormalMissile trigger (fn_10_16B5C) reads it
+  uchar mGuestA80;                 // guest 0xA80, the super missile's record byte; the
+                                   // BreakSuperMissile trigger (fn_10_16B54) reads it
+  uchar mGuestAB8;                 // guest 0xAB8, the freeze beam's record byte; the
+                                   // BreakFreezeBeam trigger (fn_10_16B48) reads its bit 0x80
+  float mGuestC30;                 // guest 0xC30, the time of the last pause; the BreakPause
+                                   // trigger (fn_10_106F8) compares it with the elapsed time
   // guest 0x10A8: the reflect chance cache. The count (a word) and ten 12-byte entries from
   // 0x10AC: the projectile's uid (a u16 in the guest) and the two rolls fn_10_F100 and fn_10_F298
   // put in. The constructor writes the count 0 (0x00020270); the entries are written at run time

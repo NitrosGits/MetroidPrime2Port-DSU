@@ -243,7 +243,7 @@ offset	size	class	kind	name	callers	marked	state
 0x10634	0x24	B	fsm-trigger	fn_10_10634	0	no	CanMeleeAttack
 0x10658	0x40	B	fsm-trigger	fn_10_10658	0	yes	PlayerTooClose
 0x10698	0x60	B	fsm-trigger	fn_10_10698	0	no	TooMuchDamage
-0x106F8	0x18	T	fsm-thunk	fn_10_106F8	0	no	BreakPause
+0x106F8	0x18	T	fsm-thunk	fn_10_106F8	0	yes	BreakPause
 0x10710	0x154	B	fsm-state	fn_10_10710	0	no	Pause
 0x10864	0x17C	B	method	fn_10_10864	1	no	
 0x109E0	0x40	B	method	fn_10_109E0	1	no	
@@ -334,7 +334,7 @@ offset	size	class	kind	name	callers	marked	state
 0x153EC	0x110	B	fsm-state	fn_10_153EC	0	no	SideDash
 0x154FC	0xB4C	B	method	fn_10_154FC	3	no	
 0x16048	0x3D0	B	method	fn_10_16048	1	no	
-0x16418	0xA8	B	method	fn_10_16418	1	yes	
+0x16418	0xA8	B	method	fn_10_16418	1	no	
 0x164C0	0x140	B	method	fn_10_164C0	5	yes	
 0x16600	0xAC	B	method	fn_10_16600	2	yes	
 0x166AC	0x1B4	B	method	fn_10_166AC	1	yes	
@@ -342,10 +342,10 @@ offset	size	class	kind	name	callers	marked	state
 0x16984	0x158	B	method	fn_10_16984	2	yes	
 0x16ADC	0x8	B	method	fn_10_16ADC	2	yes	
 0x16AE4	0x38	H	host-copy	fn_10_16AE4	0	no	
-0x16B1C	0x2C	B	method	fn_10_16B1C	5	yes	
-0x16B48	0xC	T	fsm-thunk	fn_10_16B48	0	no	BreakFreezeBeam
-0x16B54	0x8	T	fsm-thunk	fn_10_16B54	0	no	BreakSuperMissile
-0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	no	BreakNormalMissile
+0x16B1C	0x2C	B	method	fn_10_16B1C	5	no	
+0x16B48	0xC	T	fsm-thunk	fn_10_16B48	0	yes	BreakFreezeBeam
+0x16B54	0x8	T	fsm-thunk	fn_10_16B54	0	yes	BreakSuperMissile
+0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	yes	BreakNormalMissile
 0x16B64	0x28	B	method	fn_10_16B64	11	yes	
 0x16B8C	0x150	B	method	fn_10_16B8C	5	no	
 0x16CDC	0x1F0	B	fsm-state	fn_10_16CDC	0	no	FreezeBeam
@@ -385,7 +385,7 @@ offset	size	class	kind	name	callers	marked	state
 0x18F90	0x3C	B	method	fn_10_18F90	13	yes	
 0x18FCC	0x48	B	method	fn_10_18FCC	3	yes	
 0x19014	0x48	B	method	fn_10_19014	1	no	
-0x1905C	0x344	B	method	fn_10_1905C	1	yes	
+0x1905C	0x344	B	method	fn_10_1905C	1	no	
 0x193A0	0x10C	B	method	fn_10_193A0	1	yes	
 0x194AC	0xA0	B	method	fn_10_194AC	1	yes	
 0x1954C	0x150	B	method	fn_10_1954C	1	yes	
@@ -398,7 +398,7 @@ offset	size	class	kind	name	callers	marked	state
 0x1A278	0xD4	B	method	fn_10_1A278	1	yes	
 0x1A34C	0xF4	B	method	fn_10_1A34C	2	yes	
 0x1A440	0x114	B	method	fn_10_1A440	2	yes	
-0x1A554	0x68	B	method	fn_10_1A554	2	yes	
+0x1A554	0x68	B	method	fn_10_1A554	2	no	
 0x1A5BC	0x108	B	method	fn_10_1A5BC	3	yes	
 0x1A6C4	0x234	B	method	fn_10_1A6C4	2	yes	
 0x1A8F8	0x88	B	method	fn_10_1A8F8	4	yes	
