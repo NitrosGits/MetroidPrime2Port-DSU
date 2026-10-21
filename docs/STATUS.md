@@ -30,7 +30,7 @@ Ing `329c5a27c`..`15b1c9b33` + orchestrator `9f7134a47` + `04abccad1` (B8C0 BCB4
 claimed them ported without the code), DigitalGuardian `6c6eae0c7` (incl. shared fix `e403a065e`
 DolphinCModel UnlockTextures), Splitter `601ceaac7`, bg2 `6c8bfd383` + `396e8ec01` (module done: only copies left unmarked), ep2 `ef9806f4a`,
 CommandoPirate `d72c5d88a` (961C ported, 2474 time fix), SwampBoss2 `83d44d889` (5830 50AC 527C). New lane: Sandworm
-(`../wt-mp2-sandworm`, classification first). Ask: console `fsm` should search FSM2 sub-machines (bg2).
+(`../wt-mp2-sandworm`, classification first). Console `fsm` sub-machines + `damage ... powerbomb` merged `d272a3f96`; Ing lane next: `damage <ing> 100 powerbomb` for fn_29_B3C4's burning arm.
 **Lane sessions were deleted from the DB (14:05)**: fresh lanes spawned as subagents of this orchestrator; ids in
 `~/.cache/mp2-orch/lanes` (the table's session column is stale). Surviving old sessions: Splitter (re-sent),
 EmperorIng1 (busy), DarkSamus (busy, old orchestrator's child). Shared asks queued for port: ELoopAttackType 5/6
