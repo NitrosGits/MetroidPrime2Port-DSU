@@ -179,7 +179,8 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 | 16 | FollowAttackPattern | `fn_9_961C` | 0x78A |
 | 17 | WarpIn | `fn_9_9064` | 0x79E |
 | 18 | WarpOut | `fn_9_8DF0` | 0x7A5 |
-| 19 | PostWarpOut | `fn_9_8D28` | 0x7AD |
+| 19 | WarpOut | `fn_9_8DF0` | 0x7BA | on activate only: the animation state becomes "ready", the module's state word (guest this+0x920) becomes 1, the 0x40 bit of the flag byte at guest this+0xC65 is cleared and the cover point the module holds (guest this+0xBD2) is released. On update: the animation state is asked whether the generate command may be issued (the guest's command id 0xc = 12 = kAS_Generate) and, when it may, the generate command goes to the body controller (the type 1 = pas::kGType_One, the zero target vector, the animation id -1 and the flags clear); when it may not, the fade runs while the body's own state is the generate state (12): the first time the 0x40 bit of the flag byte at guest this+0xC65 is set and the body's remaining animation time is kept at guest this+0xC58, and after that the ratio of the remaining time to the kept one is clamped to 1.0 and scaled by 255.0 to make the alpha byte at guest this+0x44F | the guest's command carries the module's own animation object (lbl_9_data_A2C) and the guest copies the command into the base's field at guest this+0x20C; the host's command has no room for either, so the port delivers the host's CBCGenerateCmd (the type 1, the id -1) and the host's command manager keeps the command. The guest writes the *low byte of the float's bits* into the alpha byte (it puts the float on the stack and reads its low byte, 0x00008FC4..0x00008FC8) - the retail's own bit pun, which the port reproduces |
+| PostWarpOut | `fn_9_8D28` | 0x7AD |
 | 20 | JumpBack | `fn_9_8B70` | 0x7B9 |
 | 21 | Dodge | `fn_9_8934` | 0x7C2 |
 | 22 | ArmShield | `fn_9_86B4` | 0x7C8 |
@@ -1196,6 +1197,16 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_786C` (the RestoreOrientation state) | the activate (0x000078B0) and the deactivate (0x00007A00..0x00007A78) | b | four of each per run (the state is forced with the console's `fsm`, **forced (fsm)** - the commando only reaches it after a warp) |
 | | the update's "the commando stands upright" arm (0x000078F0..0x000078F4) | b | four times per run: the commando is upright, so the animation state goes "over" at once |
 | | the update's angle arm (0x00007918..0x00007924) and its turn (0x00007938..0x000079E0) | d | both need a commando that is tipped over, and nothing in the shipped flow tips it (the WarpOut and PostWarpOut states, which do, are still stand-ins) |
+| `fn_9_8DF0` (the WarpOut state) | the activate (0x00008E30) | b | forced (fsm): the animation state becomes "ready", the module's state word at guest this+0x920 becomes 1, the 0x40 bit of the byte at guest this+0xC65 is cleared and the cover point is released |
+| | the update's generate command (0x00008E68..0x00008EF0) | b | forced (fsm): the animation state lets the generate command through and the body controller takes it |
+| | the update's "the body is not in the generate state" exit (0x00008F4C..0x00008F54) | b | forced (fsm): twice in the run |
+| | the update's fade start (0x00008F5C..0x00008F78) | b | forced (fsm): the body's state is the generate state (12) and the 0x40 bit of the byte at guest this+0xC65 is clear, so the flag is set and the remaining animation time is kept at guest this+0xC58 |
+| | the update's fade (0x00008F8C..0x00008FCC) | b | forced (fsm): 118 times in the run, the ratio of the remaining time to the kept one |
+| | the update's epsilon guard (0x00008F8C..0x00008F90) | d | the kept time (guest this+0xC58) is written by the WarpOut's own fade start (0x00008F78) and nowhere else in the state - the WarpIn's write (0x0000949C) and the constructor's (0x0000E0D0) are the module's other two - and the WarpOut always writes it before the guard is reached, because the 0x40 bit of the byte at guest this+0xC65 is only set by that same fade start. The value is the body's remaining animation time while the body is in the generate state, so it is the length of the generate animation the state itself started |
+| | the deactivate (0x00008FD4) | b | forced (fsm): the state machine's own transition out of the state |
+| `fn_9_8D28` (the PostWarpOut state) | the activate (0x00008D48..0x00008D50) | b | forced (fsm): the state machine's own transition from the WarpOut state enters it |
+| | the deactivate message (0x00008D54..0x00008DA8) | b | forced (fsm): the byte at guest this+0xC63 has no 0x20 bit. Its only writer is the kSM_Activate case (0x0000CD7C), which is behind the block's flag at guest this+0x91D, and no shipped CommandoPirate has that flag, so the bit is clear on the shipped data and the message always goes out |
+| | the delete request (0x00008DB4..0x00008DD4) | d | the only writer of the 0x10 bit of the byte at guest this+0xC63 is the module's warp-out helper fn_9_3D64 (0x00003DF4), and the helper returns early when the block's flag at guest this+0x91D is clear - the "sound" property's bit 6 (the loader's mFlags1). None of the nine shipped CommandoPirate placements has it (the scan of every CMDO in the disc), so the bit is never set and the commando is never deleted here |
 | `fn_9_ADA0` (the Ambush state) | the activate (0x0000ADA8) and the other messages (0x0000ADB4) | b | the state is forced with the console's `fsm` (**forced (fsm)**): the activate sets the crouch locomotion, the update does nothing |
 | `fn_9_6BCC` (the BreakCover state) | the activate (0x00006BEC) and the other messages (0x00006BF0) | b | forced (fsm): the exit-state command, the cover point's release and the byte at guest this+0xC66 |
 | `fn_9_728C` (the WallDetach state) | the activate (0x000072C4), the update (0x000072DC) and the deactivate (0x00007330) | b | forced (fsm): all three messages ran |
@@ -1403,16 +1414,17 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 17 marked, 52 ported but not marked, 13
+The port's state per function (the `port` column): 19 marked, 51 ported but not marked, 12
 stand-ins, 174 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
 helpers, which the host's classes already have).
 
-**The unmarked B list** (the B functions the port does not mark, 119 of them): the stand-ins first -
-`fn_9_5410`, `fn_9_6A40`, `fn_9_6C68`, `fn_9_6DBC`, `fn_9_7358`, `fn_9_7724`, `fn_9_8DF0`, `fn_9_9064`, `fn_9_9BB4`, `fn_9_A110`, `fn_9_A2EC`, `fn_9_A4BC`, `fn_9_AFD4` - and then the ported ones whose every arm has not run yet (the table above names them). The
+**The unmarked B list** (the B functions the port does not mark, 117 of them): the stand-ins first -
+`fn_9_5410`, `fn_9_6A40`, `fn_9_6C68`, `fn_9_6DBC`, `fn_9_7358`, `fn_9_7724`, `fn_9_9064`, `fn_9_9BB4`, `fn_9_A110`, `fn_9_A2EC`, `fn_9_A4BC`, `fn_9_AFD4` - and then the ported ones whose every arm has not run yet (the table above names them). The
 full list is the `class`/`port` columns of `CommandoPirate_functions.tsv`.
 
 **The markers.** `fn_9_8028` (the charge state), `fn_9_86B4` (the ArmShield state), `fn_9_ADA0`
-(the Ambush state) and `fn_9_6BCC` (the BreakCover state) are marked:
+(the Ambush state), `fn_9_6BCC` (the BreakCover state), `fn_9_8DF0` (the WarpOut state) and
+`fn_9_8D28` (the PostWarpOut state) are marked:
 every message arm of both ran - the charge state in the normal flow, the ArmShield state through
 the console's `fsm` (**forced (fsm)**). `fn_9_B1E0` (ShouldBoost) is marked too: its two arms that
 ran (the 0x20 flag test and the true arm) ran in the Swamp's timber area, and its three other arms

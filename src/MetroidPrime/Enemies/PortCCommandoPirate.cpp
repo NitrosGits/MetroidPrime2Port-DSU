@@ -55,6 +55,7 @@
 #include "Kyoto/SObjectTag.hpp"
 
 #include <stdio.h>
+#include <string.h>
 #include "rstl/string.hpp"
 
 namespace {
@@ -115,6 +116,15 @@ void StandIn(const char* what) {
 // The same, for the state machine's own functions: the message names the retail function
 // the entry stands in for, so the log says which of the module's 70 FSM functions the run
 // reached.
+// The guest's own bit pun: it puts a float on the stack and reads its low byte (the psq_st and
+// the lbz at 0x00008FC4..0x00008FC8 in the WarpOut state). The port keeps the guest's byte at
+// guest this+0x44F in the host's colour, so it has to produce the same byte.
+static uint8_t LowByteOfFloat(float value) {
+  uint32_t bits = 0;
+  memcpy(&bits, &value, sizeof(bits));
+  return static_cast<uint8_t>(bits & 0xffu);
+}
+
 void StandInFn(const char* fn) {
   static const char* sSeen[80] = {};
   static int sCount = 0;
@@ -3092,10 +3102,80 @@ void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_9064");
 }
 
+// @ fn_9_8DF0
+// fn_9_8DF0 (0x218 bytes): the WarpOut state - the commando plays the generate animation and
+// fades out while it does.
+//
+// The message switch (0x00008E08..0x00008E2C) picks the activate (0), the update (1) and the
+// deactivate (2); every other message leaves the state alone.
+//
+// Activate (0x00008E30): the animation state becomes "ready" (the store at 0x00008E38), the
+// module's state word (guest this+0x920) becomes 1 (0x00008E44), the 0x40 bit of the flag byte
+// at guest this+0xC65 is cleared (the guest's rlwimi at 0x00008E4C takes the bit 25 from the
+// MSB, which is the LSB bit 6) and the cover point the module holds (the id at guest this+0xBD2)
+// is released (0x00008E54).
+//
+// Update (0x00008E5C): the animation state is asked whether the generate command may be issued
+// (0x00008E68, the guest's command id 0xc = 12 = kAS_Generate). When it may, the generate
+// command goes to the body controller (0x00008EF0): the guest's command carries the module's
+// own animation object (lbl_9_data_A2C), the type 1 (pas::kGType_One), the zero target vector,
+// the animation id -1 and the three flags clear. The host's command has no room for the
+// animation object, so the port delivers the host's CBCGenerateCmd with the type 1 and the id
+// -1 (the host's own defaults fill the rest). The guest also copies the command into the base's
+// field at guest this+0x20C (0x00008F04..0x00008F3C), which the host has no member for; the
+// host's command manager keeps the command instead.
+//
+// When the command may not be issued the guest looks at the body's own state (0x00008F4C): only
+// while it is the generate state (12) does the fade run. The first time (the 0x40 bit of the
+// flag byte at guest this+0xC65 is clear - the guest's extrwi at 0x00008F5C takes the bit 25
+// from the MSB) the flag is set and the body's remaining animation time is kept (guest
+// this+0xC58, 0x00008F74..0x00008F78). Afterwards, while the kept time is above the epsilon
+// (rodata_4C4 = 1.1920929e-07, 0x00008F8C), the ratio of the remaining time to the kept one
+// (0x00008F94..0x00008FA4) is clamped to 1.0 (rodata_43C) and scaled by 255.0 (rodata_4DC); the
+// guest puts that float on the stack and reads its low byte (0x00008FC4..0x00008FC8), so the
+// byte it writes into the alpha byte at guest this+0x44F is the low byte of the float's bits -
+// the retail's own bit pun, which the port reproduces.
+//
+// Deactivate (0x00008FD4): the alpha byte is 0 (the guest writes the low byte of rodata_494 =
+// 0.0f) and the base's alpha delta (guest this+0x40C) is 0.0.
 void CCommandoPirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_8DF0");
+  switch (msg) {
+    case kStateMsg_Activate: {                                   // 0x00008E30
+      mAnimationState.SetState(CAnimationState::kAS_Ready);      // 0x00008E38
+      x920_ = 1;                                                  // 0x00008E44
+      xc65_ &= ~0x40;                                             // 0x00008E48..0x00008E50
+      ReleaseCoverPoint(mgr, xbd2_, true);                         // 0x00008E54
+      break;
+    }
+    case kStateMsg_Update: {                                      // 0x00008E5C
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {  // 0x00008E68
+        BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_One, -1));  // 0x00008EF0
+      } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {  // 0x00008F4C..0x00008F54
+        if ((xc65_ & 0x40) == 0) {                                // 0x00008F5C..0x00008F60
+          xc65_ |= 0x40;                                          // 0x00008F68..0x00008F6C
+          xc58_ = BodyController()->GetAnimTimeRemaining();        // 0x00008F74..0x00008F78
+        } else if (xc58_ > 1.1920929e-07f) {                      // rodata_4C4, 0x00008F8C
+          const float ratio =
+              BodyController()->GetAnimTimeRemaining() / xc58_;    // 0x00008F94..0x00008FA4
+          const float scaled = 255.0f * (ratio < 1.0f ? ratio : 1.0f);  // rodata_43C, rodata_4DC
+          mColor.SetAlpha(LowByteOfFloat(scaled));                 // 0x00008FC4..0x00008FCC
+        } else {
+        }
+      } else {
+      }
+      break;
+    }
+    case kStateMsg_Deactivate: {                                 // 0x00008FD4
+      mColor.SetAlpha(0.f);                                       // 0x00008FD4..0x00008FE4
+      mAlphaDelta = 0.f;                                          // 0x00008FE8
+      break;
+    }
+    default:
+      break;
+  }
 }
 
+// @ fn_9_8D28
 // fn_9_8D28 (0xc8 bytes): the PostWarpOut state. Only the activate message (the guest's test of 0
 // at 0x00008D30) does anything: when the byte at guest this+0xC63 has no 0x20 bit (the test at
 // 0x00008D54) the commando tells the world it leaves with the deactivate message (the delivery at

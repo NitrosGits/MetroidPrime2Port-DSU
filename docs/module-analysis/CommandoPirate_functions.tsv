@@ -130,8 +130,8 @@ offset	size	fn	kind	class	port	note
 0x8934	0x1E0	fn_9_8934	fsm-trigger	B	ported	Dodge
 0x8B14	0x5C	fn_9_8B14	host-copy	H	not-port	
 0x8B70	0x1B8	fn_9_8B70	fsm-trigger	B	ported	JumpBack
-0x8D28	0xC8	fn_9_8D28	fsm-trigger	B	ported	PostWarpOut
-0x8DF0	0x218	fn_9_8DF0	fsm-trigger	B	stand-in	WarpOut
+0x8D28	0xC8	fn_9_8D28	fsm-trigger	B	marked	PostWarpOut
+0x8DF0	0x218	fn_9_8DF0	fsm-trigger	B	marked	WarpOut
 0x9008	0x5C	fn_9_9008	host-copy	H	not-port	
 0x9064	0x528	fn_9_9064	fsm-trigger	B	stand-in	WarpIn
 0x958C	0x3C	fn_9_958C	host-copy	H	not-port	
