@@ -645,3 +645,272 @@ the other six markers stand.  The port's multiplayer machinery is there (`CGMDea
 `CGMCoin`, the front end's VS screens), but nothing in the port can start a match: the console has
 no command for it, there is no environment variable for it, and the harness's boot path sets the
 single-player mode itself.  The arm is therefore an unported path, not an unreachable one.
+
+## 16. The function classification (all 59 symbols)
+
+Three classes, applied by rule so the table can be audited.
+
+- **H - host copy** (27 functions, 0x948 bytes): the body is a copy of something the host
+  already has - a shared class body, a compiler-emitted destructor, the generated property
+  class, inlined DOL code or the REL runtime - so the port writes no body for it.  These are the
+  40 rows of section 13.1 minus the 14 rows of section 16.1 (the dead ones and the two table
+  entries), which are T.
+- **T - dead or table-only** (14 functions, 0x554 bytes): no retail caller.  Twelve are dead in
+  retail (nothing calls them and no table names them), and two are table entries the port writes
+  as a line in the table (`fn_63_0`, the vtable's `GetHealthInfo` thunk, and `fn_63_3510`, the
+  generated owner's destructor).
+- **B - module behaviour** (18 functions, 0x2B78 bytes): the port writes a body for it - the
+  loader, the constructor and the destructor, the three vtable overrides, the five functions the
+  module hands the DOL through `SPlayerTurret_FuncPtrs`, and the module's own helpers.
+
+| class | functions | .text bytes | marked |
+|---|---|---|---|
+| H host copy | 27 | 0x948 (2,376) | 0 |
+| T dead or table-only | 14 | 0x554 (1,364) | 0 |
+| B module behaviour | 18 | 0x2B78 (11,128) | 18 |
+| **total** | **59** | **0x3A14 (14,868)** | **18** |
+
+### 16.1 The scan behind the classes
+
+The module's 59 functions are the 59 `type:function` rows of
+`config/G2ME01/rels/ScriptPlayerTurret/symbols.txt`.  The caller scan reads the module's own
+disassembly (`../MetroidPrime2Port/build/G2ME01/ScriptPlayerTurret/asm/`): the 45 functions of
+`auto_00_00000050_text.s`, the module head of `auto_00_00000000_text.s`, the static initializer
+of `auto_fn_63_376C_text.s`, the linker's `REL/REL_Setup.s` and
+`REL/global_destructor_chain.s` and the generated owner file
+`MetroidPrime/ScriptObjects/CScriptPlayerTurretObjOwner.s`.  Three passes:
+
+1. **Direct calls.** Every `bl <name>` in the module's `.text` gives the call sites.
+2. **Table references.** The module's `.data` (`auto_04_00000000_data.s`) holds the vtable
+   (`lbl_63_data_40`) and the owner's table; a function named there (as a symbolic `.4byte
+   fn_63_XXXX`) is called *through* that table.
+3. **The linker and the module's own stores.** `fn_63_70` stores the loader `fn_63_144` at
+   `lbl_63_bss_20`+0 (0x98) and copies the five pointers-to-member into the same table
+   (0xA8..0x11C), so the loader and the five PMF functions are reachable although nothing calls
+   them with `bl`; `fn_63_376C` registers the global string's destructor `fn_63_1020` with
+   `__register_global_object` (0x379C).
+
+A function that no pass names is dead in retail.  The scan is exact for the module: every
+function's name appears either in a `bl`, in a table, in the linker's own tables or nowhere.
+
+### 16.2 The 59 functions
+
+| fn | size | class | the scan | marked |
+|---|---|---|---|---|
+| `fn_63_0` | 0x2C | T | the vtable's slot 15 (`GetHealthInfo`): a `.data` table entry, no retail caller | no |
+| `RELExit` | 0x24 | H | the REL linker's exit (the `_epilog` calls it) | - |
+| `RELMain` | 0x20 | H | the REL's entry (the `_prolog` calls it) | - |
+| `fn_63_70` | 0xD4 | H | the REL's setup (called by `RELMain`): it stores the loader and the five pointers-to-member | - |
+| `fn_63_144` | 0x4CC | B | the loader: `fn_63_70` stores it at `lbl_63_bss_20`+0 (0x98) | yes |
+| `fn_63_610` | 0x64 | T | dead: no `bl` and no table names it | no |
+| `fn_63_674` | 0xB8 | H | `SLdrEditorProperties`' constructor - the generated property class (the loader calls it at 0x238) | - |
+| `fn_63_72C` | 0x114 | T | dead: no `bl` and no table names it (the second property reader) | no |
+| `fn_63_840` | 0xC | B | the PMF table `lbl_63_data_34`: the DOL calls it | yes |
+| `fn_63_84C` | 0x2CC | B | `fn_63_1134` calls it (0x12C8): the turret's shot | yes |
+| `fn_63_B18` | 0x48 | H | `CImpactVisorEffect`'s constructor (a host copy) | - |
+| `fn_63_B60` | 0xB4 | H | `CImpactVisorEffect`'s copy constructor (a host copy) | - |
+| `fn_63_C14` | 0x40 | H | the `CToken`/`CMemory` copy chain the compiler emitted | - |
+| `fn_63_C54` | 0x20 | H | the same chain | - |
+| `fn_63_C74` | 0x28 | H | the same chain | - |
+| `fn_63_C9C` | 0x80 | H | the same chain | - |
+| `fn_63_D1C` | 0x6C | T | dead: no `bl` and no table names it | no |
+| `fn_63_D88` | 0x54 | T | dead: no `bl` and no table names it | no |
+| `fn_63_DDC` | 0x3C | T | dead: no `bl` and no table names it | no |
+| `fn_63_E18` | 0x3C | T | dead: no `bl` and no table names it | no |
+| `fn_63_E54` | 0x5C | H | the `CToken`/`CMemory` copy chain | - |
+| `fn_63_EB0` | 0x20 | H | the same chain | - |
+| `fn_63_ED0` | 0x48 | H | the same chain | - |
+| `fn_63_F18` | 0x54 | H | `CImpactVisorEffect`'s destructor (a host copy; `fn_63_84C` calls it at 0x9AC) | - |
+| `fn_63_F6C` | 0xB4 | B | the PMF table `lbl_63_data_10`: the DOL calls it | yes |
+| `fn_63_1020` | 0x50 | H | the global string's destructor (registered by `fn_63_376C` at 0x379C) | - |
+| `fn_63_1070` | 0xC4 | B | the PMF table `lbl_63_data_04`: the DOL calls it | yes |
+| `fn_63_1134` | 0x32C | B | the PMF table `lbl_63_data_28`: the DOL calls it | yes |
+| `fn_63_1460` | 0x54 | B | `fn_63_1B70` calls it (0x1BC8) | yes |
+| `fn_63_14B4` | 0x54 | B | `fn_63_1BE8` calls it (0x1FF0) | yes |
+| `fn_63_1508` | 0xA8 | B | `fn_63_84C` calls it (0x870) | yes |
+| `fn_63_15B0` | 0x3C4 | B | `fn_63_1BE8` calls it (0x2244) | yes |
+| `fn_63_1974` | 0x3C | T | dead: no `bl` and no table names it (a `CMemory` destructor) | no |
+| `fn_63_19B0` | 0x184 | B | `fn_63_15B0` calls it five times (the five animation lookups) | yes |
+| `fn_63_1B34` | 0x3C | T | dead: no `bl` and no table names it (a `CMemory` destructor) | no |
+| `fn_63_1B70` | 0x78 | B | the PMF table `lbl_63_data_1C`: the DOL calls it | yes |
+| `fn_63_1BE8` | 0x784 | B | the vtable's slot 6 (`lbl_63_data_40`) | yes |
+| `fn_63_236C` | 0x54 | T | dead: no `bl` and no table names it (a `CMemory` destructor) | no |
+| `fn_63_23C0` | 0x968 | B | the vtable's slot 5 | yes |
+| `fn_63_2D28` | 0x40 | H | `CVector3f::Cross`, the guest's inline (`fn_63_23C0` calls it at 0x2684) | - |
+| `fn_63_2D68` | 0x2CC | B | the vtable's slot 9 | yes |
+| `fn_63_3034` | 0x3C | B | the vtable's slot 18 | yes |
+| `fn_63_3070` | 0x78 | B | the vtable's slot 2 (the destructor) | yes |
+| `fn_63_30E8` | 0x3B4 | B | `fn_63_144` calls it (the `rs_new 0x230` at 0x494) | yes |
+| `fn_63_349C` | 0x74 | H | `CToken(IObj* null)`, the host's empty token (a host copy; `fn_63_30E8` calls it at 0x3384) | - |
+| `fn_63_3510` | 0x90 | T | the generated owner's table (`auto_04_00000000_data.s`): a table entry, no retail caller | no |
+| `fn_63_35A0` | 0x78 | T | dead: no `bl` and no table names it (the owner's destructor) | no |
+| `fn_63_3618` | 0x90 | H | the generated owner's constructor (`fn_63_349C` calls it) | - |
+| `fn_63_36A8` | 0x5C | T | dead: no `bl` and no table names it (the owner's destructor) | no |
+| `fn_63_3704` | 0x48 | T | dead: no `bl` and no table names it (the owner's destructor) | no |
+| `fn_63_374C` | 0x20 | H | `CModelData`'s default constructor (a host copy; `fn_63_30E8` calls it at 0x3268) | - |
+| `fn_63_376C` | 0x90 | H | the module's static initializer (the `.ctors` entry): compiler-generated | - |
+| `__destroy_global_chain` | 0x58 | H | the REL linker's global-object registry | - |
+| `__register_global_object` | 0x1C | H | the REL linker's global-object registry | - |
+| `_unresolved` | 0xC4 | H | the REL linker's "unlinked function called" report | - |
+| `_epilog` | 0x24 | H | the REL linker's exit | - |
+| `_prolog` | 0x24 | H | the REL linker's entry | - |
+| `ModuleDestructors` | 0x4C | H | the REL linker's `_dtors` walker | - |
+| `ModuleConstructors` | 0x4C | H | the REL linker's `_ctors` walker | - |
+
+**The unmarked B list** (the B functions the port does not mark): none.  All 18 B functions
+carry a `// @ fn_63_<hexoff>` marker in `src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp`.
+The two that were unmarked when this slice started - `fn_63_84C` (the shot) and `fn_63_1BE8`
+(the messages) - are marked now; section 17 is their arm table.
+
+### 16.3 The count check
+
+```
+$ python3 - <<'PY'
+import re, pathlib, collections
+sym = pathlib.Path('config/G2ME01/rels/ScriptPlayerTurret/symbols.txt').read_text()
+ids = re.findall(r'^(\S+) = \.text:0x[0-9A-Fa-f]+; // type:function', sym, re.M)
+print('symbols:', len(ids))
+PY
+symbols: 59
+```
+
+and the class column of the table above counts 27 H + 14 T + 18 B = 59, one row per symbol; the
+sizes add up to the module's 14868 text bytes.
+
+## 17. The two unmarked B functions: every branch (2026-10-21)
+
+The marker means "the body is retail's and ran", so every branch of a marked function has to be
+accounted for.  The classes are the ones of section 15: **(a)** compiler-generated (the null test
+after `operator new`, an inlined host helper) - it needs no run; **(b)** a real arm that ran; **(c)**
+a real arm unreachable in the shipped data - the evidence is at the branch; **(d)** a real
+reachable arm that did not run - the marker goes; **(forced)** a real arm that only a forced
+command or a forced hook can reach, labelled with what forced it.
+
+The evidence is the **gdb coverage** (`tools/cov/run.sh` with the spec
+`tools/drivers/playerturret_spec.py`): a breakpoint on the port's own line of each arm, so the hit
+count is the number of times that arm ran.  The spec's lines are the arm's line; the tool's note
+about optimised code applies (a line with no code of its own is merged into another line, and the
+breakpoint then reports the line it was merged into - the table below gives the merged line).
+
+The runs are in the Agon Wastes, `sand_world,06_sand_alamofront`, **layer 3** (the player turret
+`u061d` is on that layer; the area's layer 3 is reached with the console's `layer 3`), driven by
+`tools/drivers/playerturret_drive.py` (a `tools/drivers/playerturret_run.sh` run starts the game
+and the driver):
+
+    tools/cov/run.sh tools/drivers/playerturret_spec.py <out> sand_world,06_sand_alamofront \
+        --driver 'python3 tools/drivers/playerturret_drive.py {port} <out>/con.out main' \
+        --frames 40000 --fast [--env MP2_TURRET_MP=1]
+
+The driver's phases: `main` (the message cases the game never sends), `null` (the cases with no
+player in the turret) and `stop` (the kSM_Stop case, which needs a player in the turret and kills
+it, so it goes last).
+
+### 17.1 fn_63_84C (the shot, 8 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x89C: the player is missing | (c) | the shot is only fired from ProcessInput, which returns early when the player is missing (fn_63_1134's own test at 0x1168); the breakpoint on the port's `return;` (line 974) was merged into the projectile's construction (line 1004) and hit **once** - the shot ran with the player in the turret |
+| 0x8AC: the token is not loaded | (c) | the token is loaded by the kSM_Create case at the area load (0x1C9C), before any shot; the same merged breakpoint (line 982 -> 1004) hit once - the shot ran with the token loaded |
+| 0x8CC: the allocation returned null | (a) | the null test after the placement new (the guest allocates 0x568 bytes at 0x8C0) |
+| 0x9A0: the impact visor effect's flag | (a) | the flag is the literal 1 the code sets at 0x8EC, so the test is on a constant |
+| 0x9B4: the projectile is missing | (a) | the null test after the placement new |
+| 0xA00/0xA10: the base actor or its animation data is missing | (c) | the base actor is the turret's own ATOB connection, resolved at the area load (fn_63_15B0); the breakpoint on the port's `EnableLooping` (line 1032) was merged into the collision cooldown (line 1016) and hit **once** - the base actor and its animation data were there |
+| 0xA90: the multiplayer sound | **forced (MP2_TURRET_MP=1)** | the port cannot start a match (section 15), so the run forced the arm with the module's own hook (`PortTurretMultiplayerForced()`, the environment variable `MP2_TURRET_MP`).  The coverage shows the port's multiplayer sound line (1049) hit **once** in the forced run and the single-player line (1054) **zero** times, and the other way round in the normal run (1049 zero, 1054 once) |
+
+So `fn_63_84C` is marked: every live arm ran, the one that needed help is labelled *forced*.
+
+### 17.2 fn_63_1BE8 (the messages, 24 branches)
+
+The switch has seven cases and a default.  The counts are from the `main` run (the message cases
+the game never sends), the `null` run (the cases with no player) and the `stop` run (the kSM_Stop
+case); the line in brackets is the port's line the breakpoint was merged into.
+
+| branch | class | evidence |
+|---|---|---|
+| 0x1C9C: kSM_Create - the weapon effect | (b) | the area load (the case ran twice: the first load and the layer 3 reload; line 448 hit twice) |
+| 0x1CA8: kSM_Create - the multi-player effect | **forced (MP2_TURRET_MP=1)** | the same run with the hook: the case ran with the game's mode test forced to true, so the multi-player effect (0x1E4) was taken |
+| 0x1DA4: kSM_Activate - the case | (b) | the trigger (the player standing on the turret) and the forced `send <id> Activate`: the case ran **twice** (line 460) |
+| 0x1DC0: kSM_Activate - the player is missing | (b) **forced (send Activate)** | the console's `send` has no originator, so the message's +2 is invalid: the case ran twice but the player's `StartTurret` (line 476) only **once** - the other run took the null arm |
+| 0x1DEC: kSM_Activate - the player is dead | (c) | the message's originator is always the living player who entered the trigger; a dead player cannot enter one.  The port has no way to send a message with an originator, so the arm cannot be forced |
+| 0x1E64/0x1E78/0x1E80: the base actor, its model or the top actor is missing | (c) | the base and the top actor are the turret's own connections, resolved at the area load (fn_63_15B0); the port's `AddAdditiveAnimation` (line 498) was merged into the flash timer (line 508) and hit twice - the block ran in both entries |
+| 0x1F58: kSM_Deactivate - the case | (b) | the forced `send <id> Deactivate` (twice: with and without a player; line 513 hit twice) |
+| 0x1F74: kSM_Deactivate - the player is missing | (b) **forced (send Deactivate)** | the case ran twice but the player's `SetTurretState(kTS_None)` (line 516) only **once** - the other run took the null arm |
+| 0x1FB0: kSM_Start - the turret is not active | (b) **forced (send Start after send Deactivate)** | the `main` run sent `Start` twice (both answers are in the transcript) and the case's body (line 531) hit **once**: the second `Start` came after the `send Deactivate` (which deactivates the turret) and took the early-out |
+| 0x1FD8: kSM_Start - the player is missing | (b) **forced (send Start)** | the `null` run: the case ran and the body (`AddSolidToTopActor` 537 and `AddMaterial` 539) hit once each, but the player's `SetTurretState` (534) **zero** times - the null arm |
+| 0x2008: kSM_Stop - the turret is not active | (b) **forced (send Stop after send Deactivate)** | the `main` run: the Stop case was entered but nothing after the test ran (the model's flags 555, the kill 571, the animation 605 and the deactivation 608 all **zero** hits) - the early-out |
+| 0x203C: kSM_Stop - the base actor is missing | (c) | the base actor is the turret's own ATOB connection, resolved at the area load |
+| 0x2068/0x2084: kSM_Stop - the player is missing | (b) **forced (send Stop)** | the `null` run: the case ran (the model's flags, line 555, hit once) but the player's ejection and the kill (both merged into line 571) **zero** times - the null arm |
+| 0x209C/0x20C4: kSM_Stop - the player is ejected and killed | (b) **forced (send Stop with the player in the turret)** | the `stop` run: the message was answered, the console's `status` printed `in-turret 0` afterwards (the ejection at 0x209C), the console's `objs turret` printed `inactive` (the deactivation at 0x2228) and the game stopped updating right after the message (the harness's "no game update for 30.0 s": the death's save prompt - the kill at 0x20C4).  That run's coverage table was lost: the death stops the game's update loop, so the run never reaches the frame limit and `tools/cov/gdb_cov.py` writes its table only at the exit |
+| 0x2124/0x2130/0x2138: the base and the top actor are missing | (c) | the same two connections; the `stop` run's animation (605) hit once - the block ran |
+| 0x224C: kSM_Damage - the case | (b) **forced (send Damage)** | the forced `send <id> Damage` (the flash timer, line 625, hit once) |
+| 0x225C: kSM_Damage - the multi-player sound | **forced (MP2_TURRET_MP=1)** | the forced run: the port's multi-player impact sound (line 633) hit **once** and the single-player emitter **zero** times; in the normal run the opposite |
+| 0x2264: kSM_Damage - the single-player sound | (b) **forced (send Damage)** | the normal run: the multi-player sound (633) hit **zero** times while the case ran, so the single-player emitter (the case's else branch) was taken |
+| 0x2284: kSM_Damage - the player is missing | (b) **forced (send Damage after send Deactivate)** | the multi-player branch's player lookup: the forced run sent a second `send Damage` after the `send Deactivate` (the player had left the turret by then) and the port's multi-player impact sound (line 633) was hit only **once** - by the first message, the one with the player in the turret |
+| 0x22E8/0x2308: kSM_Damage - the damaged actor is missing | (b) **forced (send Damage)** | the console's `send` has no sender, so the message's +0 is invalid: the case ran (the flash timer 625) and the sender's test (line 645) was taken with a null actor |
+| 0x231C/0x2320: kSM_Damage - the actor has no health info | (c) | the sender would have to be an actor without a health info, but only `CStateManager::ApplyDamage` (which needs one) and the safe zone send kSM_Damage |
+| 0x1C4C/0x1C5C/0x1C84/0x1C98: the default case | (b) **forced (send Open)** | `Open` is a message the turret's switch does not have (the guest's comparison tree covers six codes), so the forced `send <id> Open` took the default and fell through to CActor's handler (line 662) |
+
+So `fn_63_1BE8` is marked: every live arm ran or was forced and labelled.
+
+### 17.3 The two arms the port cannot force
+
+Two arms of the module are not reachable in the port at all and are not forced:
+
+- **kSM_Activate's "the player is dead" arm** (0x1DEC): the message's originator is the player who
+  entered the trigger, and the console's `send` cannot name an originator.  In retail the arm is
+  unreachable too (a dead player does not enter a trigger), so it is class (c).
+- **kSM_Damage's "the actor has no health info" arm** (0x2320): the sender would have to be an
+  actor without a health info; nothing sends kSM_Damage from one.  Class (c).
+
+## 18. The differences this slice fixed (2026-10-21)
+
+1. **The projectile's three floats** (`fn_63_84C`, 0x924/0x934/0x948): the guest loads
+   `lbl_63_rodata_10` = 1.0 into f1, `lbl_63_rodata_14` = 4.0 into f2 and copies f2 into f3
+   (`fmr f3, f2`).  The three floats are the constructor's `chargeFactor`, `closeImpactDistance`
+   and `impactScaleDistance` - the DOL's own `CEnergyProjectile` constructor stores f1 into the
+   charge factor (0x430), f2 into the close impact distance (0x558) and f3 into the impact scale
+   distance (0x55C) (`main.elf`, 0x8016AC68) - so the port's `4.f, 1.f, 4.f` had the first two
+   swapped and is now `1.f, 4.f, 4.f` (the sibling `CAIMannedTurret`'s port already had that).
+2. **The kSM_Stop case's pitch reset** (`fn_63_1BE8`, 0x2128/0x212C): the guest resets the pitch
+   and the pitch target *before* it tests the base and the top actor, so it happens even without a
+   base actor.  The port did it inside the base actor's test; it is now where the guest has it.
+3. **The kill amount** (`fn_63_1BE8`, 0x20B0): the guest passes the float at +0x14 of the player's
+   `CHealthInfo` - the last damage's weapon, 0 in practice - while the port passes the player's
+   current health.  `CStateManager::KillPlayer` only compares the amount with 0 (the DOL's
+   0x8003E1C8), so both kill the player; the difference is documented at the branch and not
+   changed, because the host's `CHealthInfo` has no accessor for that field and the header is a
+   shared file.
+4. **The forced multi-player hook** (`MP2_TURRET_MP=1`): the port cannot start a match (section
+   15), so the module's two game-mode tests take the multi-player arm when the variable is set.
+   It is off by default (retail's single player) and it is the only way to cover the two
+   multi-player arms.
+
+## 19. The runtime check (2026-10-21)
+
+The Agon Wastes runs: `WORLD=sand_world,06_sand_alamofront` with the console's `layer 3` (the
+player turret `u061d` is on that layer), driven by `tools/drivers/playerturret_drive.py`.
+
+- the player is teleported onto the turret (186.6, -112.1, 18.8) and the console's `status`
+  prints `in-turret 1`; the turret fires with A (the coverage's projectile line hit once);
+- the console's `send <id> <message>` delivers the messages the game never sends: `Activate`
+  (the null-player arm), `Open` (the default case), `Damage` (the damage case), `Deactivate`
+  (the player leaves, the turret is deactivated), `Start` (the not-active arm) and `Stop` (the
+  case with the player in it, which ejects and kills the player);
+- the `null` phase runs the cases with no player in the turret;
+- the `MP2_TURRET_MP=1` run forces the two multi-player arms.
+
+The gdb coverage runs (four of them: `main`, `main` with `MP2_TURRET_MP=1`, `null`, `stop`) end
+with `game exit code unknown (running, killed or crashed)` - the runs are killed by the harness
+at the frame limit - and every run's `caught/reach-stub` count is 0.  The console's transcripts
+are `/tmp/opencode/pt_cov_*/con.out`.
+
+**asmcheck** (`tools/asmcheck.py check ScriptPlayerTurret
+src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp fn_63_84C fn_63_1BE8`) reports no
+correctness tag for either function.  The five findings are completeness ones: `fn_63_84C`'s
+`fn_63_B18`/`fn_63_F18` (the host's `CImpactVisorEffect::None()` and the token copy), the two
+`rstl` string calls of the locator lookup (the host uses a literal), and the active flag: the
+tool reads the guest's test (`extrwi. r0, r0, 1, 24`) as the byte 0x20's bit 7 and cannot see the
+port's `GetActive()` (the flag lives in `CActor`, not in this module's class), so it reports
+`NOPOS` and `BIT`.  The two runs show the port's test is the guest's: with the turret active the
+`kSM_Start` case ran its body, and after the `kSM_Deactivate` (which deactivates the turret) the
+same case took the early-out.
