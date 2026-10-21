@@ -308,7 +308,7 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   xbc4_ = CVector3f::Zero();
   xbd0_ = 0.f;
   xbfc_ = false;
-  xc00_ = 0;
+  xc00_ = CSfxHandle::NullHandle();
   xc04_warpPoint = -1;
   xc58_ = 0;
 
@@ -479,6 +479,8 @@ void CSpacePirate::Think(float dt, CStateManager& mgr) {
     }
   }
   UpdateCloak(dt, mgr);
+  // 0x1B7C: the sfx emitter follows the pirate (fn_72_2EA8).
+  UpdateSfxEmitter();
   if (body->GetPercentageFrozen() < 1.f) {
     if (mAlive) {
       xa10_steeringDelayTimer = CMath::Max(0.f, xa10_steeringDelayTimer - dt);
@@ -504,21 +506,6 @@ void CSpacePirate::Think(float dt, CStateManager& mgr) {
     mBoneTracking.Think(dt);
   }
   TraceState(*this, StateMachineState().GetName());
-}
-
-void CSpacePirate::SetCinematicCollision(CStateManager& mgr) {
-  RemoveMaterial(kMT_AIBlock, mgr);
-  CMaterialList include = GetMaterialFilter().GetIncludeList();
-  include.Remove(kMT_AIBlock);
-  SetMaterialFilter(
-      CMaterialFilter::MakeIncludeExclude(include, GetMaterialFilter().GetExcludeList()));
-}
-
-void CSpacePirate::SetNonCinematicCollision(CStateManager& mgr) {
-  AddMaterial(kMT_AIBlock, mgr);
-  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
-      GetMaterialFilter().GetIncludeList().Union(CMaterialList(kMT_AIBlock)),
-      GetMaterialFilter().GetExcludeList()));
 }
 
 // @ fn_72_DB48
@@ -625,71 +612,6 @@ void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
   }
 }
 
-TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
-  if (xba0_teamAiMgrId != kInvalidUniqueId) {
-    CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
-    if (team != nullptr && team->IsTeamMemberInRange(mgr, *this, 20.f)) {
-      return team->FindBestIndividualAttackTarget(mgr, *this);
-    }
-  }
-  return CScriptTeamAiMgr::ChoosePlayer(mgr, *this);
-}
-
-// Keeps the current target unless it has gone inactive, in which case the squad picks one; a distant target is dropped for a player within 10 units.
-TUniqueId CSpacePirate::ChooseTarget(CStateManager& mgr) {
-  float nearest = 10.f;
-  float currentDist = 0.f;
-  TUniqueId nearestId = kInvalidUniqueId;
-  TUniqueId result = mAttackTarget;
-  for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
-    const CPlayer* player = mgr.GetPlayer(i);
-    if (player == nullptr) {
-      continue;
-    }
-    if (player->GetUniqueId() == mAttackTarget) {
-      if (!player->GetActive()) {
-        result = ChooseTeamTarget(mgr);
-      } else {
-        currentDist = (player->GetTranslation() - GetTranslation()).Magnitude();
-      }
-    } else {
-      const float dist = (player->GetTranslation() - GetTranslation()).Magnitude();
-      if (dist < nearest) {
-        nearest = dist;
-        nearestId = player->GetUniqueId();
-      }
-    }
-  }
-  if (currentDist > 30.f && nearest < 10.f) {
-    result = nearestId;
-  }
-  return result;
-}
-
-// Whether the next shot is a frenzy burst; a roll of 2..4 shots is queued and counted down.
-bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
-  bool reset = false;
-  if (x8f8_24_pendingFrenzyChance) {
-    x8f8_24_pendingFrenzyChance = false;
-    if (mgr.Random()->Next() % 100 < 25) {
-      reset = true;
-    }
-  }
-  // Retail also resets while the global charge-player list is non-empty (no port equivalent yet).
-  const CPlayer* target = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
-  if (target != nullptr && target->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
-    reset = true;
-  }
-  if (GetHealthInfo()->GetHP() < 0.3f * xa18_ && mgr.Random()->Next() % 100 < 60 &&
-      xb28_lowHealthFrenzyTimer < 0.5f) {
-    reset = true;
-  }
-  if (reset) {
-    x8fc_frenzyFrames = mgr.Random()->Range(2, 4);
-  }
-  return --x8fc_frenzyFrames >= 0;
-}
-
 // @ fn_72_CB30 (0x150): where the pirate looks and aims - its target, or a point ahead if the
 // target is gone.
 CVector3f CSpacePirate::GetTargetPos(CStateManager& mgr) {
@@ -761,108 +683,6 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
   }
   TraceCall(*this, "CheckForProjectiles", arm);
   x8f7_26_hearPlayerFire = false;
-}
-
-// Retail fn_72_3D7C: the launcher's ballistic solve. Ten candidate angles are tried from 0 (or from
-// pi/4 downwards when the target is above the gun); the first one whose required speed lands inside
-// [minLaunchSpeed, maxLaunchSpeed] wins, otherwise the closest miss is kept.
-static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin, float minLaunchSpeed,
-                               float maxLaunchSpeed, float& angle, float& speed) {
-  const float heightDelta = target.GetZ() - origin.GetZ();
-  const float distance =
-      CVector2f(target.GetX() - origin.GetX(), target.GetY() - origin.GetY()).Magnitude();
-  const float minSpeedSq = minLaunchSpeed * minLaunchSpeed;
-  const float maxSpeedSq = maxLaunchSpeed * maxLaunchSpeed;
-
-  float startAngle = 0.f;
-  float angleStep = 0.07853982f; // pi/40
-  if (target.GetZ() > origin.GetZ()) {
-    startAngle = 0.7853982f; // pi/4
-    angleStep = -angleStep;
-  }
-  const float halfGravityDist = 0.5f * kDefaultGravityAccel * distance;
-  const float lhs = distance * halfGravityDist;
-
-  float bestAngle = 0.f;
-  float bestSpeed = minLaunchSpeed;
-  float bestError = FLT_MAX;
-  for (float i = 0.f; i < 10.f; i += 1.f) {
-    const float candidate = angleStep * i + startAngle;
-    const float cosine = CMath::FastCosR(candidate);
-    const float sine = CMath::FastSinR(candidate);
-    // Retail's fmsubs leaves the terms in this order: distance*(cos*sin) - height*cos^2.
-    const float denominator = distance * (cosine * sine) - heightDelta * (cosine * cosine);
-    if (denominator > 1.1920929e-7f) {
-      const float speedSq = lhs / denominator;
-      if (speedSq >= minSpeedSq && speedSq <= maxSpeedSq) {
-        bestAngle = candidate;
-        bestSpeed = CMath::SqrtF(speedSq);
-        break; // retail branches straight past the loop counter here
-      }
-      const float error = speedSq > maxSpeedSq ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
-      if (error < bestError) {
-        bestAngle = candidate;
-        bestSpeed = CMath::SqrtF(speedSq);
-        bestError = error;
-      }
-    }
-  }
-  angle = bestAngle;
-  speed = bestSpeed;
-}
-
-// Retail fn_72_4030: the point the grenade is thrown at - the target's aim position, lowered to half
-// the player's eye height, then (for a bouncing launcher) pulled 70% of the way back towards the gun
-// when the aim is at most 2 m above the pirate (asm: cror lt/eq -> <=, not an equality test).
-static CVector3f GetGrenadeAimPoint(const CActor& target, const CStateManager& mgr,
-                                    const CVector3f& piratePos, uint numBounces) {
-  CVector3f aim = target.GetAimPosition(mgr, 0.5f);
-  const CPlayer* player = TCastToConstPtr< CPlayer >(target);
-  if (player && player->GetMorphballTransitionState() == CPlayer::kMS_Unmorphed) {
-    aim -= CVector3f(0.f, 0.f, 0.5f * player->GetEyeHeight());
-  }
-  if (numBounces != 0 && aim.GetZ() <= piratePos.GetZ() + 2.0f) {
-    aim = piratePos + 0.7f * (aim - piratePos);
-  }
-  return aim;
-}
-
-// Retail fn_72_4174: launches one bouncy grenade from the gun locator, aimed by fn_72_4030 and
-// fn_72_3D7C, with retail's default model / actor parameters and 5 m player-explode distance.
-void CSpacePirate::SpawnGrenade(CStateManager& mgr) {
-  --xc58_;
-  const CTransform4f gunXf = GetLctrTransform(xa86_gunSeg);
-  const CVector3f origin = gunXf.GetTranslation();
-  float angle = 0.f;
-  float speed = mData.mGrenadeMinLaunchSpeed;
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mAttackTarget));
-  if (!target) {
-    return;
-  }
-  const CVector3f aim =
-      GetGrenadeAimPoint(*target, mgr, GetTranslation(), mData.mGrenadeNumBounces);
-  SolveGrenadeLaunch(aim, origin, mData.mGrenadeMinLaunchSpeed, mData.mGrenadeMaxLaunchSpeed,
-                     angle, speed);
-
-  CVector3f flat = aim - origin;
-  flat.SetZ(0.f);
-  const CVector3f forward = gunXf.GetForward();
-  CVector3f horizontal = flat.CanBeNormalized() ? flat.AsNormalized() : forward;
-  if (CVector3f::GetAngleDiff(forward, horizontal) > 0.7853982f) {
-    horizontal = CVector3f::Slerp(forward, horizontal, CRelAngle::FromRadians(0.7853982f));
-  }
-  const CVector3f launchDir =
-      CVector3f::Slerp(horizontal, CVector3f::Up(), CRelAngle::FromRadians(angle));
-  const CTransform4f xf = CTransform4f::LookAt(origin, origin + launchDir, CVector3f::Up());
-
-  CBouncyGrenade* grenade = rs_new CBouncyGrenade(
-      mgr.AllocateUniqueId(), rstl::string_l("Bouncy Grenade"),
-      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId), xf,
-      CModelData(), CActorParameters(), GetUniqueId(), speed, mData.BuildGrenadeData(), 5.f,
-      CAABox::MakeMaxInvertedBox(), kInvalidUniqueId, 0.f, 0, nullptr, nullptr);
-  if (grenade) {
-    mgr.AddObject(*grenade);
-  }
 }
 
 // Fires one shot from the gun locator at the target (or straight ahead if the pirate is dying).
@@ -1202,14 +1022,6 @@ void CSpacePirate::SquadRemove(CStateManager& mgr) {
   }
 }
 
-// Retail fn_72_51C8: a live trooper with no warp point and no pending warp enters "WarpOut".
-void CSpacePirate::TrooperWarpOut(CStateManager& mgr, bool flag) {
-  if (mAlive && !x8fa_25_ && xc04_warpPoint == -1 && x8f6_24_trooper) {
-    mStateMachine->SetState(mgr, *this, rstl::string_l("WarpOut"));
-    x8fa_27_ = flag;
-  }
-}
-
 // @ fn_72_E168 (MP1 SetVelocityForJump): ballistic launch to the patrol destination.
 void CSpacePirate::SetVelocityForJump() {
   if (x8f7_30_jumpVelSet || x8fa_31_) {
@@ -1310,20 +1122,6 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
   RenderLauncherModel(mgr, GetTransform(), GetModelFlags());
 }
 
-// Retail fn_72_E3D8 adds a force-field trigger's push to the ragdoll's torso impulse once the
-// ragdoll is primed; with no ragdoll (xb30_ is never set) it is CPatterned::Touch.
-// Retail fn_72_E3D8 (0xC0): the base class's touch first, then a force-field trigger's push
-// onto the ragdoll's torso impulse. The ragdoll pointer at 0xb30 is never set in this port, so
-// that whole branch stays a comment (asm 0xE3F8-0xE47C): the ragdoll's own flag byte 0x70 has
-// to carry bit 0x40 (asm 0xE408), the other actor has to be a CScriptTrigger (asm 0xE414) whose
-// flag byte 0x20 carries bit 0x80 (asm 0xE424) and whose word 0x1a0 carries bit 0x10000 (asm
-// 0xE430), and the trigger's float 0x19c has to be above zero (asm 0xE444); the ragdoll's
-// 0xb8, 0xbc and 0xc0 then take the trigger's 0x190, 0x194 and 0x198.
-void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
-  TraceCall(*this, "Touch", 0);
-  CPatterned::Touch(actor, mgr);
-}
-
 // Retail fn_72_C538.
 // @ fn_72_C538
 void CSpacePirate::Death(CStateManager& mgr, const CVector3f& direction,
@@ -1379,16 +1177,20 @@ void CSpacePirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (mAlive) {
     if (reaction == CKnockBackMgr::kAR_Hurled) {
       mStateMachine->SetState(mgr, *this, rstl::string_l("GetUpNow"));
-      CSfxManager::AddEmitter(mData.mHurledSfx, GetTranslation(), 127,
-                              GetCurrentAreaId().Value(), false, false, CSfxManager::kMedPriority);
+      // 0xC93C-0xC944: the hurled sound's handle is kept at 0xc00 - the emitter fn_72_2EA8 moves.
+      xc00_ = CSfxManager::AddEmitter(mData.mHurledSfx, GetTranslation(), 127,
+                                      GetCurrentAreaId().Value(), false, false,
+                                      CSfxManager::kMedPriority);
     }
   } else if (!x8f5_30_floatingCorpse && reaction == CKnockBackMgr::kAR_Hurled) {
     const CKnockBackMgr::EFollowUp followUp = mKnockBackController.GetFollowUp();
     if (followUp != CKnockBackMgr::kFU_ExplodeDeath && followUp != CKnockBackMgr::kFU_IceDeath &&
         followUp != CKnockBackMgr::kFU_BurnDeath &&
         followUp != CKnockBackMgr::kFU_LaggedBurnDeath) {
-      CSfxManager::AddEmitter(mData.mDeathSfx, GetTranslation(), 127, GetCurrentAreaId().Value(),
-                              false, false, CSfxManager::kMedPriority);
+      // 0xC9B0-0xC9B8: the death sound's handle is kept at 0xc00 too.
+      xc00_ = CSfxManager::AddEmitter(mData.mDeathSfx, GetTranslation(), 127,
+                                      GetCurrentAreaId().Value(), false, false,
+                                      CSfxManager::kMedPriority);
     }
   }
 }
@@ -1498,7 +1300,7 @@ rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
   // touch bounds are the ragdoll's (ragdoll+0x58..0x70). The ragdoll is outside the port (xb30_
   // is never set), so there is no host member to read: port it with the ragdoll.
   // 0x183C bl fn_72_1854: the actor's own bounding box (GetBoundingBox).
-  return GetBoundingBox();
+  return GetActorTouchBounds();
 }
 
 // @ fn_72_35CC (GetSortingBounds): the model's bounds in the actor's transform, shrunk to a
@@ -1665,14 +1467,6 @@ void CSpacePirate::ScanVisorRender(const CStateManager& mgr, const CTransform4f&
   }
   // 0x3418: the launcher model.
   RenderLauncherModel(mgr, xf, flags);
-}
-
-// Retail fn_72_18BC (TryToBeCaptured): the pirate switches to the "Captured" state and says so.
-bool CSpacePirate::TryToBeCaptured(CStateManager& mgr) {
-  // 0x18D8: the state name "Captured" (rodata 0xF42), set through the state machine's virtual
-  // slot 0x20 (SetState).
-  mStateMachine->SetState(mgr, *this, rstl::string_l("Captured"));
-  return true; // 0x1918 li r3, 1
 }
 
 // Retail fn_72_140. Property ids and order are the generated SLdrSpacePirate reader's, which the

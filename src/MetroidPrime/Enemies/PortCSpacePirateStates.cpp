@@ -556,26 +556,6 @@ void CSpacePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-namespace {
-// Retail fn_72_D608 is MP1's CPatterned::Random2f, which this tree does not have. Two random
-// components in the XY plane - the *first* CRandom16 draw is y and the second is x, both minus
-// rodata 0xB44 = 0.5, while z is rodata 0xB9C = 0 (asm 0xD644-0xD688: the first draw lands at
-// sp+0xc and the second at sp+0x8, which is the vector base) - then the x term is forced to
-// rodata 0xBC8 = 0.001 when |x| is under 0.001 (0xD68C-0xD69C) so the normalize cannot collapse
-// the direction, the vector is normalized in place (0xD6A0), and a third draw lerps the length
-// minLen + (maxLen - minLen) * rand (0xD6C0 fmadds) which then scales the unit vector
-// (0xD6C4-0xD6E8). Retail leaves that scaled length in the return register unused.
-CVector3f ShuffleRandomVector(CStateManager& mgr, float minLen, float maxLen) {
-  const float y = mgr.Random()->Float() - 0.5f;
-  float x = mgr.Random()->Float() - 0.5f;
-  if (x > -0.001f && x < 0.001f) {
-    x = 0.001f;
-  }
-  CVector3f vec(x, y, 0.f);
-  vec.Normalize();
-  return (minLen + (maxLen - minLen) * mgr.Random()->Float()) * vec;
-}
-} // namespace
 
 // Retail fn_72_8670 (asm 0x8670-0x8B14) is MP1's CSpacePirate::Shuffle with Echoes' own pieces:
 // Activate runs only for kStateMsg_Activate (0x86B8-0x86CC jumps straight past it otherwise) and
