@@ -1512,7 +1512,8 @@ void CMinorIng::SelectTarget(CStateManager& mgr, float) {
   }
 }
 
-// fn_44_4DDC: the target's aim position (vtable 0x54, dt 0) into `out`.
+// fn_44_4DDC: the target's aim position (vtable 0x54, dt 0) into `out`; the retail reads the
+// target id at 0xcce and calls the vtable's 0x54 slot (asm 0x4DDC), which is the host's call.
 bool CMinorIng::TargetAimPosition(CStateManager& mgr, CVector3f& out) const {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
   if (target == nullptr) {
@@ -1622,6 +1623,9 @@ void CMinorIng::SetPointCoverDest(CStateManager& mgr, float) {
 }
 
 // @ fn_44_21A8
+// The retail's lured destination (asm 0x21A8) asks the nav mesh for the point under the lure
+// zone first (fn_44_204C, the REL's own copy of the shared helper) and then searches a path to
+// it. The host's PortIngLuredDest does the same through PortIngLuredMeshPoint.
 void CMinorIng::SetLuredDest(CStateManager& mgr, float) {
   CVector3f dest;
   mFoundMovementPos =
@@ -1631,6 +1635,9 @@ void CMinorIng::SetLuredDest(CStateManager& mgr, float) {
 }
 
 // @ fn_44_22B0
+// The retail's lured point destination (asm 0x22B0) asks the same question (fn_44_204C) and then
+// searches a point path to it. The host's PortIngLuredPointDest does the same through
+// PortIngLuredMeshPoint.
 void CMinorIng::SetLuredPointDest(CStateManager& mgr, float) {
   mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
                                             mSafeZoneId, GetTranslation());
@@ -2119,6 +2126,9 @@ void CMinorIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 // The retail's massive death spawns the inglets (asm 0x7058-0x76A8). The number of
 // them falls off with the distance to the player, and each one is a CBouncyGrenade named "Inglet"
 // that leaves the Ing's top at the angle the ten-entry table gives.
+// The retail's inglet gets its CEntityInfo on the stack and tears it down again (asm 0x75F4):
+// fn_44_28D8 -> fn_44_2930 is the REL's own copy of the members' destructors (it frees the
+// pointer at +0x0c and then the block itself). The host's CEntityInfo owns its destruction.
 void CMinorIng::MassiveDeath(CStateManager& mgr) {
   const CHealthInfo& health = *GetHealthInfo();
   // The retail's first guard (asm 0x70CC): the health info's cause-of-death weapon mode (the
@@ -2270,6 +2280,9 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
 // effect, the three damage infos, the vulnerability and the floats at +0x00..+0x2c, the sounds
 // at +0x2e..+0x36 and the rest of the block (asm 0xD54-0xE08). The host's CIngSpotData has the
 // retail's layout, so the copy is the class's own copy.
+// The retail's copy runs in three steps (asm 0xD54 -> fn_44_E08 -> fn_44_EB8): the last one is
+// the REL's own copy of the ing spot's vector member (it allocates the array and copies the
+// 12-byte entries), so the class's own copy covers it too.
 CIngSpotData CopyIngSpotData(const CIngSpotData& src) { return src; }
 
 // @ fn_44_9B4
