@@ -951,10 +951,17 @@ bool CSpacePirate::FireProjectile(float dt, CStateManager& mgr) {
   return fired;
 }
 
-// Squad bookkeeping and the burst-fire pattern. Retail's switch has a second case (an inert
-// pirate that only counts its attack timer down) that no state reaches.
+// Squad bookkeeping and the burst-fire pattern. Retail switches on the equipped weapon (0x2920
+// lwz 0x888 = data +0xc8): 0 runs the burst fire below; 1 (the grenade launcher) only counts the
+// attack timer down (0x2E60-0x2E70); any other weapon does nothing (0x2E74).
 // @ fn_72_28F0
 void CSpacePirate::UpdateAttacks(float dt, CStateManager& mgr) {
+  if (mData.mEquippedWeapon != 0) {
+    if (mData.mEquippedWeapon == 1) {
+      mAttackRemTime -= dt;
+    }
+    return;
+  }
   bool reset = true;
   const bool canShoot =
       !mAlive || (BodyController()->GetBodyStateInfo().GetCurrentState()->CanShoot() &&
