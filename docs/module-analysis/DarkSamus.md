@@ -416,12 +416,15 @@ attack (0x400000, 0x00004AE8 in `fn_10_4AC8`) and bit 23 the phazon enrage (0x80
 0x00006BF0 in `fn_10_6BA0`). **0x8000 is bit 15**, in the same family as the sweep beam, and no
 Picked\* trigger watches it.
 
-**The two ported helpers** (2026-10-21): `fn_10_1D794` (the still timer at 0x964 and the
-position it measures from at 0x958) and `fn_10_1E178` (the damage at 0xCC0, the health at 0xCC4
-and the decay rate at 0xCCC). Both are called from `fn_10_1DF74` (the `TravelToCoverPoints`
-state) and, for `fn_10_1D794`, also from `fn_10_FB8C` (`TravelToPissedOff`). `fn_10_1C778` (the
-path find's destination at 0x8B4/0x8B8/0x8BC and the path find itself, through the base class'
-navigation at 0x6F4) is ported as well.
+**The ported helpers** (2026-10-21): `fn_10_1D794` (the still timer at 0x964 and the
+position it measures from at 0x958), `fn_10_1E178` (the damage at 0xCC0, the health at 0xCC4
+and the decay rate at 0xCCC) and `fn_10_1C778` (the path find's destination at
+0x8B4/0x8B8/0x8BC and the path find itself, through the base class' navigation at 0x6F4).
+`fn_10_1D794` and `fn_10_1E178` are called from `fn_10_1DF74` (the `TravelToCoverPoints`
+state) and, for `fn_10_1D794`, also from `fn_10_FB8C` (`TravelToPissedOff`). `fn_10_1E26C`
+(the last attacker's uid at 0xC24, the count at 0xC28 and the uids at 0xC2C) and its helper
+`fn_10_1E2E8` (the oldest uid is dropped) are ported as well; `fn_10_1DF74` calls
+`fn_10_1E26C` at 0x0001E088 with the uid it read from 0xC24.
 
 **The walk** (2026-10-21, with the three triggers ported): `Start` -> `TurnToFacePlayer` ->
 `TravelToCoverPoints` -> `Dash`. The last step is `WallCollision` (the FSM2 dump: the trigger
@@ -434,10 +437,13 @@ elapsed time grown in every Think the walk stays in `TravelToCoverPoints`.
 **Next**: the rest of the `TravelToCoverPoints` state. `fn_10_1DF74` calls ten module helpers
 of its own (`fn_10_1D860`, `fn_10_128D8`, `fn_10_11334`, `fn_10_1E740`, `fn_10_1E3C0`,
 `fn_10_1E26C`, `fn_10_1C778`, `fn_10_1DD14`, `fn_10_1E178`, `fn_10_1D794`), so it is a chain of
-slices, not one body. The ones that are ported: `fn_10_1D794`, `fn_10_1E178` and
-`fn_10_1C778`. The next ones, smallest first: `fn_10_1E26C` (0xDC bytes: the uid at 0xC24, the
-count at 0xC28 and the uids at 0xC2C), `fn_10_1E3C0`, `fn_10_1E740`, `fn_10_11334`,
-`fn_10_128D8`, `fn_10_1D860`, `fn_10_1DD14` and then `fn_10_1DF74` itself.
+slices, not one body. The ones that are ported: `fn_10_1D794`, `fn_10_1E178`, `fn_10_1C778`,
+`fn_10_1E26C` and `fn_10_1E2E8`. The next ones, smallest first: `fn_10_128D8` (0xDC bytes: the
+position at 0x91C/0x920/0x924 and the flag byte at 0x928, but it calls `fn_10_EFC8`, a 0x1DC-byte
+body that walks the AI hints of the fight script's object), `fn_10_11334` (0xF4 bytes),
+`fn_10_1E3C0` (0xDC bytes: it walks the cover points of the fight script's object and needs
+`CScriptCoverPoint`), `fn_10_1E740` (0x120 bytes), `fn_10_1D860` (0x144 bytes), `fn_10_1DD14`
+(0x160 bytes) and then `fn_10_1DF74` itself (0x400 bytes).
 
 **The fight script's object** (2026-10-21): the helper `fn_10_17E14` gets it from the uid at
 0x974 (`fn_10_17DE0`: the lhz at 0x00017DEC, `GetObjectById` at 0x00017DFC and the cast to
