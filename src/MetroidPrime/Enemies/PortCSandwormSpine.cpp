@@ -121,12 +121,13 @@ CVector3f CSandworm::GetLocatorPosition(int idx) const {
   return GetLctrTransform(segId).GetTranslation();
 }
 
-// Retail returns only the translation (a CVector3f); the header's CTransform4f is kept and callers
-// take GetTranslation().
+// Retail returns the translation only: it calls GetLctrTransform (0x10A38) and copies the three
+// translation floats of the returned transform (0x10A48..0x10A50) into the return slot, so the
+// return type is a CVector3f, not a CTransform4f.
 // fn_56_10A20 (ported, not exercised yet)
 // Dead slot: no caller in the tree (the spine helpers call GetLctrTransform directly).
-CTransform4f CSandworm::GetLctrTransformWrapper(const CSegId& id) const {
-  return GetLctrTransform(id);
+CVector3f CSandworm::GetLctrTransformWrapper(const CSegId& id) const {
+  return GetLctrTransform(id).GetTranslation();
 }
 
 // @ fn_56_10090
@@ -259,8 +260,12 @@ CVector3f CSandworm::SpineHelperC994(CStateManager& mgr, const CVector3f& pt) co
 // fn_56_C828 (ported, not exercised yet)
 // Blocked by the only prefab that could reach it: this runs only from SetUnderground, which only
 // Patrol/Null activate call, and u048f (03_sand_temple L2, the one worm whose x8C0 bit 7 is clear)
-// never leaves Start/Prime/Snatch in seven boots — the AC24 hits of earlier runs are the adjacent
+// never leaves Start/Prime/Snatch in seven boots - the AC24 hits of earlier runs are the adjacent
 // u04e9, whose prefab sets the bit. See Sandworm.md Port status.
+// @ fn_56_C828
+// Run 2026-10-21 (03_sand_temple L2, u048f forced into Null with console `fsm`): the state calls
+// SetUnderground, whose underground bit (x8C0 b7) is clear on this prefab, so the spine rebuild ran
+// (forced (fsm u048f Null)); both of its loops ran in that one call.
 void CSandworm::SpineHelperC828(CStateManager& mgr) {
   while (x99C_joints.size() < 180) { // 0xB4 capacity
     x99C_joints.push_back(CVector3f::Zero());
