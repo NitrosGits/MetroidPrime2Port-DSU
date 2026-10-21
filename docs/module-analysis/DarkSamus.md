@@ -1247,3 +1247,86 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   (0xC0; needs 8F50), and unmapped members 0xDE8 (an alpha float Render gates the body on), 0xDED
   bits 0x40/0x80 (echo/dark visor), 0xE64, 0x90C bit 0x20, CActor 0x44C..0x44F, the model flags
   at 0xFC. A partial Render risks an invisible boss.
+
+## Slice 8 (dsfsm2, 2026-10-21)
+
+- Ported DoUserAnimEvent's callees into `PortCDarkSamusHelpers.cpp`: ClearEnrageSphere 77B8,
+  ApplyMeleeDamage 13998, SpawnMeleePulse 13AB4, FireMissile 1353C, FireSuperMissile 133D0,
+  FireFreezeBeam 9164. New host members (slice-8 TARGET_PC blocks): the melee 'PART' tokens
+  0x9C4/0x9D0, the missile infos 0xA0C/0xA4C (ProjectileInfo 1C6C8 now answers 0x40/0x80/0x100),
+  the freeze beam token 0xA88, the flash record 0xDF0 (`mFlashTexture`, `mFlashSize` 0xE00).
+- Marked (ALL-ARMS, `tools/cov/specs/darksamus_attacks.py`, run `/tmp/opencode/dsfsm2/s8/a6`):
+  77B8, 13998, 1353C, 133D0, 9164.
+- 13AB4 unmarked: its floor-ray miss arm never ran. With the actor moved 1000 up and 100000
+  across, the host's RayWorldIntersection still answered a hit (explosion z = player z + 1.9).
+  This looks like a host collision anomaly (dynamic near-list hit?) worth checking separately.
+- Still stand-ins in DoUserAnimEvent (kept unmarked): 5840 (needs 50B8, 4C40, 0xF80/0x1064 infos)
+  and 9E00 (builds module classes 3BC4/3FD8). The 0xE38 halfword/float conflict is unresolved.
+- Assumptions: 0xEE0/0xEDC = iceSpreadSound/iceSpreadFX; fn_10_4EB4 = `CImpactVisorEffect::None()`.
+- Render chain: DrawFlashQuad 1863C and RenderFlash 1890C ported, unwired and unmarked (no caller
+  until PreRender/Render land). 18238/183E8 not started: they need CopyScreenTex, CGX::SetDstAlpha,
+  RenderSilhouette, CAnimData::Render with CModelFlags, the model at 0xD6C and members 0xDE8
+  (1.0f), 0xDEC, 0xDED bits, 0xD24, the 0x1060 bit.
+- CanReflectProjectile not attempted.
+
+## Slice 9 (dsfsm2, 2026-10-21)
+
+- Ported and marked (ALL-ARMS): FirePhazonVolley 5840, FirePhazonShot 50B8, FirePhazonSuperMissile
+  4C40 (run `/tmp/opencode/dsfsm2/s9/a4`, darksamus_attacks.py keys 10..28) and DoUserAnimEvent 1BEFC
+  (`s9/u3`, darksamus_uevent.py; the deflect slow-down by keys 42/43 with `shoot`, the dive
+  bounce by key 40, type 46 by key 41).
+- New host members: the phazon infos `mPhazonShotInfo` (guest 0xF80, from phazonProjectile /
+  phazonProjectileDamage) and `mPhazonSuperMissileInfo` (0x1064, phazonSuperMissile*); ProjectileInfo
+  answers them for 0x800000 by 0xFB8 0 / 1. The pairing of the two loader stack words with the two
+  infos is by name; the asm only shows 0x280/0x284 to 0xF80 and 0x288/0x28C to 0x1064.
+- SpawnBoostBall 9E00 (unmarked, ALL-ARMS): the call is ported; the ball class (vtable
+  lbl_10_data_104, ctors 3FD8 / 3BC4, Think 3B08 with a CCollisionActorManager, AcceptScriptMsg 3998,
+  render 3008 / 3174, touch damage) is a job of its own. The host has a construction-only
+  `CDarkSamusBoostBallPortStub` (drawn, moved by UpdateBoostBallAtActor, no collision, no damage).
+  fn_10_99B8 (the darksamus2 lane's StopBoostBallParticles, 613d2cbfb) and fn_10_9B24 (the swooshes)
+  are logged stand-ins in it. The 0xE38 conflict: the halfword is the uid (`sth` at 0x00009E4C),
+  so `mBoostBallUid`; the float `mGuestE38` is unused.
+- 13AB4: the "host collision anomaly" was the spec. Key 21 moved `mTransform`, but the ray starts at
+  `GetTranslation()` (`mPosition`), so it ran from (68, 412, 165) and hit the static floor at z 164
+  (t 1, materials 0x81000005, hit id none). With the position moved too, the ray misses and every
+  arm runs (`s9/a4`). It's left unmarked at the orchestrator's request.
+
+## Slice 10 (dsfsm2, 2026-10-21)
+
+- Merged port b4f3292a5 (3b54a85ce). DeliverCmd check: every derived command the module sends
+  (LoopAttack, Getup, Locomotion, Jump, MeleeAttack, Step, ProjectileAttack, Taunt) has its own
+  overload; none binds to `CBodyStateCmd&`.
+- CanReflectProjectile 1B9B0: fixed to call GetBattleStage once (0x0001BAA8) after the untyped
+  return (0x0001BA9C); marked.
+- Render chain ported, wired and marked: Render 18964, GetSilhouetteColor 181E0,
+  RenderSilhouetteModel 18238, RenderInvulnerableModel 183E8, DrawFlashQuad 1863C. PreRender 18AB8
+  ported, unmarked (fn_10_10864 and fn_10_12DD0 stand-ins). RenderFlash 1890C unmarked: its
+  no-texture return never ran. 13AB4 marked (s9/a4).
+- Header (TARGET_PC, appended): `mGuestDE8 = 1.f`, `mDarkVisorDED80` / `mEchoVisorDED40`,
+  `mInvulnerableSkinnedModel` (retail optional at 0xD6C, valid byte 0xD70; Render reads
+  `**(*opt)`), `mBoostBallElementGen` (0xE64; always null on the host).
+- Runs: `dsfsm2-runs/s10/u4,u9,u10` (on the Leo disk; /tmp hit its quota), darksamus_uevent.py with
+  `--frames 1340`. Forcing keys for the render arms:
+
+  | key | forces | arm |
+  |-----|--------|-----|
+  | 45..49 | null / own / exploded / other type / sent back | CanReflectProjectile rejects |
+  | 50 | 0xD14 = 1 | silhouette pass (combat), min side of 181E0 |
+  | 51 / 52 | 0xD24 = 0.5 / 1 | 183E8 wave under / over 1.0 |
+  | 53 | phazon phase bit | 183E8 alpha 1.0 |
+  | 54 | 0xDE8 = 0 | Render's dark/echo visor test, PreRender alpha |
+  | 55 | flash window (E04/E08/E0C) | GetFadeFactor > 0, RenderFlash |
+  | 56 | boost-ball uid invalid | Render's model arms |
+  | 57 | 0xFC0 = 0.5 | PreRender's colour lerp |
+  | 63 / 64 | stage +0x33 set / restored (only the actor's stage, by uid) | Render's flash-only arm |
+
+  Visors: `give DarkVisor 1; give EchoVisor 1`, then `visor combat/dark/echo` (the cov save owns
+  neither). Not run (dead or host-only): Render's 0xD14 > 0 with 0x90C bit 0x20 clear (PreRender sets
+  it first), the 0xE64 generator, the host GetActiveVisor null-camera branch; 18238's
+  optional_object exception edges.
+- Re-read against the asm (compares, strictness, load sources, return vs base call): 77B8, 13998,
+  1353C, 133D0, 9164, 1863C, 1890C, 5840, 50B8, 4C40, 1BEFC. No mismatches. 9164's sfx: retail
+  converts -1 to kInternalInvalidSfxId in the ctor (0x0002015C) and stores a halfword at 0xEE0; the
+  port converts at use, which gives the same value.
+- Open: RollReflectChance F298 (14/18 lines); DE8 fades in Think (1D5C4/1D6CC) unported; the
+  stage-cast breakpoint's pre-existing FLAG writes (keys 61/62) are not uid-guarded like key 63.

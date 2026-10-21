@@ -12,6 +12,7 @@
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CSimplePool.hpp"
+#include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
@@ -218,7 +219,22 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
   // at 0x18E60).
   x137A8_();
+  mDamageColor = CPatterned::skHitsWithoutDamageColor; // 0x450, stored at 0x18F28..0x18F30
 
+  // The three 'SCAN' tokens (0x18E70..0x190B4): each id tested against -1 (addis/cmplwi 0xffff),
+  // a 0xC-byte TCachedToken (operator new at 0x18E98) cached at once (GetObj at 0x18EF0).
+  if (data.scannableInfoShieldHead != kInvalidAssetId) { // data +0, 0x18E70
+    xD74_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoShieldHead)), true);
+  }
+  if (data.scannableInfoStunnedHead != kInvalidAssetId) { // data +4, 0x18F38
+    xD78_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoStunnedHead)), true);
+  }
+  if (data.scannableInfoFinalHead != kInvalidAssetId) { // data +8, 0x19000
+    xD7C_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoFinalHead)), true);
+  }
 }
 
 CDigitalGuardianHead::~CDigitalGuardianHead() {}
@@ -664,11 +680,54 @@ int CDigitalGuardianHead::x118B0_(CVector3f* points) const {
   return count;
 }
 
-// fn_14_114C8 needs the visual knowledge's line of sight, which the host never reports yet.
+// fn_14_114C8 (0x1D0 bytes): a point near the 40-unit circle (in x/y) round the player. Each
+// point's score is its squared x/y distance to the player minus 1600 (.rodata 0x9BC), the head's
+// own translation's first (0x114E4..0x11544). `outside` keeps the closest point outside the
+// circle (while its score is still negative: any higher one), `inside` the closest point inside
+// (while its score is still positive: any lower one). Nothing inside: `inside` (the closest
+// outside one); nothing outside: `outside` (the closest inside one); else the two blended where
+// the score crosses 0.
+// Every return ran (area 53, `codecall <head> SetAttackPosition` with the player teleported
+// round the head): the closest outside (far off), the closest inside (on a candidate), the blend
+// (between); the last one forced (the player's x NaN at the entry: every compare false).
+// @ fn_14_114C8
 CVector3f CDigitalGuardianHead::x114C8_(const CVector3f& player, const CVector3f* points,
                                          int count) {
-  StandInFn("fn_14_114C8 (0x1D0, attack point in sight of the player)");
-  return xFEC_;
+  const CVector3f self = GetTranslation(); // 0x54/0x58/0x5C at 0x114E4..0x11510
+  const float selfDx = player.GetX() - self.GetX(); // 0x1150C
+  const float selfDy = player.GetY() - self.GetY(); // 0x114FC
+  // f29, 0x11540/0x11544
+  float outsideScore = 0.f + (selfDx * selfDx + selfDy * selfDy) - 1600.f;
+  float insideScore = outsideScore; // f30
+  CVector3f outside = self;         // f7..f9 (0x11508..0x11528)
+  CVector3f inside = self;          // f4..f6
+  for (int i = 0; i < count; ++i) { // the 0xC stride (0x115E0), the end test at 0x115E4
+    const CVector3f& p = points[i];
+    const float dx = player.GetX() - p.GetX();          // 0x1155C
+    const float dy = player.GetY() - p.GetY();          // 0x11554
+    const float d = 0.f + (dx * dx + dy * dy) - 1600.f; // 0x11564..0x1156C
+    // 0x11570..0x11594
+    if ((d > 0.f && d < outsideScore) || (outsideScore < 0.f && d > outsideScore)) {
+      outsideScore = d; // 0x11598
+      outside = p;      // 0x1159C..0x115A4
+    }
+    // 0x115A8..0x115CC
+    if ((d < 0.f && d > insideScore) || (insideScore > 0.f && d < insideScore)) {
+      insideScore = d; // 0x115D0
+      inside = p;      // 0x115D4..0x115DC
+    }
+  }
+  if (insideScore > 0.f) { // fcmpo/ble at 0x115F4
+    return inside;          // 0x115FC
+  }
+  if (outsideScore < 0.f) { // fcmpo/bge at 0x1160C
+    return outside;         // 0x11614
+  }
+  if (outsideScore > insideScore) { // fcmpo/ble at 0x11624
+    const float t = -insideScore / (outsideScore - insideScore); // 0x1162C..0x1163C
+    return inside * (1.f - t) + outside * t; // .rodata 0x96C, 0x11640..0x11658
+  }
+  return outside; // 0x1166C
 }
 
 // fn_14_F390: the echo targets (0xF30/0xF34) that are gone or inactive (+0x20 bit 0x80), plus
@@ -850,18 +909,27 @@ const CDamageVulnerability* CDigitalGuardianHead::GetDamageVulnerability() const
 
 // fn_14_177C8: while bit 0x08 of 0x10F4 is clear, one of the three 'SCAN' tokens (0x10 set: the
 // final one at 0xD7C, else 0x40 set: the stunned one at 0xD78, else the shield one at 0xD74);
-// otherwise, or with no token, the base's. The tokens are not built yet, so the head's answer is
-// always the base's; the ctor sets 0x08, so that is also retail's answer until the head moves.
-// The arms: the head's flag byte's bit 3 (head+0x10F4) is clear -> the scannable info of the
-// head's model, else the one of the base. The run: area 53 (Sanctuary Fortress
-// 09_cliff_temple_dark), 3000 frames; the "the bit is set" arm was forced (the flag byte's bit 3
-// set at the entry, tools/cov/force.sh with /tmp/opencode/dgclose_177C8.py).
+// otherwise, or with no token, the base's. The ctor sets 0x08, so the base's until the head
+// detaches (fn_14_16160 clears it).
+// Every arm ran (area 53, `scaninfo <head>` x180 under gdb attach): bit 0x08 set (the base's,
+// 4BA321EA) naturally; forced: 0x08 clear (the shield's 7D9FAEC7), +0x40 (the stunned
+// AFE327ED), +0x10 (the final A23D895E), the final token nulled (the base's again).
 // @ fn_14_177C8
 CScannableObjectInfo* CDigitalGuardianHead::GetScannableObjectInfo() const {
-  if ((x10F4_ & 0x08) == 0) {
-    StandInFn("fn_14_177C8 'SCAN' tokens (0xD74..0xD7C)");
+  if ((x10F4_ & 0x08) == 0) { // extrwi. 1, 28 / bne at 0x177D8
+    const rstl::single_ptr< TCachedToken< CScannableObjectInfo > >* token;
+    if ((x10F4_ & 0x10) != 0) {        // 0x177E0
+      token = &xD7C_;                  // 0x177E8
+    } else if ((x10F4_ & 0x40) != 0) { // 0x177FC
+      token = &xD78_;                  // 0x17804
+    } else {
+      token = &xD74_; // 0x17818
+    }
+    if (token->get() != nullptr) {  // cmplwi 0 / beq at 0x177EC, 0x17808, 0x1781C
+      return (*token)->GetObject(); // the cached object (+8) at 0x177F4, 0x17810, 0x17824
+    }
   }
-  return CPatterned::GetScannableObjectInfo();
+  return CPatterned::GetScannableObjectInfo(); // 0x1782C
 }
 
 // fn_14_17468: the base's setup, then the triggers (20 = 0x14), the states (17 = 0x11) and the
@@ -895,6 +963,10 @@ bool CDigitalGuardianHead::MainBodyDestroyed(CStateManager& mgr, const CTriggerD
 }
 
 // fn_14_173CC: attack mode 0 or 1 and the projectile timer (0x10D4) at most 0 (.rodata 0x960).
+// The arms: modes 0 and 1 run in every area-53 fight; the other modes' false was forced
+// (tools/cov/force.sh, xFE8_ = 2 at the entry from hit 41, 1911 hits), as SetVortexAttackMode
+// sets it while the head's triggers are not asked.
+// @ fn_14_173CC
 bool CDigitalGuardianHead::ShouldProjectileAttack(CStateManager& mgr,
                                                   const CTriggerData& data) const {
   if (xFE8_ == 0 || xFE8_ == 1) {
@@ -1216,7 +1288,6 @@ void CDigitalGuardianHead::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
   }
-DGHD_STATE_STANDIN(ProjectileTelegraph, fn_14_16F74)
 DGHD_STATE_STANDIN(PulseAttack, fn_14_16D64)
 DGHD_STATE_STANDIN(ChargeAttack, fn_14_16A50)
 DGHD_STATE_STANDIN(MissileAttack, fn_14_167EC)
@@ -1224,8 +1295,106 @@ DGHD_STATE_STANDIN(MachineGunAttack, fn_14_16408)
 DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
 DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
-DGHD_STATE_STANDIN(FollowRetreatPath, fn_14_1569C)
 #undef DGHD_STATE_STANDIN
+
+// fn_14_16F74: the projectile telegraph. Activate (0): the animation state Ready (the store at
+// 0x16FCC), bit 0x20 of 0x10F4 set (0x16FD8) and the turn direction 0x1028 the fallback one
+// (fn_14_13B38, 0x16FE0). Update (1): the head turns to its target (fn_14_11D64, 0x17034) until
+// the state's time reaches block 6's projectileTelegraphTime (fn_14_10120's +4, the fcmpo at
+// 0x17020), then the state is Over (0x1703C). Deactivate (2): NotReady, bit 0x20 cleared and the
+// turn direction zeroed (sZeroVector, 0x17060).
+// The arms (local probes, area 53 (09_cliff_temple_dark), dg_steps_head_stun.sh): Activate, Update before the telegraph
+// time (76 frames), Update at it (Over) and Deactivate all ran, five telegraphs in one fight.
+// @ fn_14_16F74
+void CDigitalGuardianHead::ProjectileTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) { // the cmpwi chain at 0x16F98..0x16FBC
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // stw 1 -> 0x6B4 at 0x16FCC
+    x10F4_ |= 0x20;                                        // rlwimi 5, 26, 26 at 0x16FD8
+    x1028_ = x13B38_();                                    // 0x16FE0, stores 0x16FE8..0x16FF8
+    break;
+  case kStateMsg_Update: {
+    const SLdrDigitalGuardianHeadStruct* attack = x10120_(mgr); // 0x17000
+    if (mStateMachine->GetTime() >= attack->projectileTelegraphTime) { // vtable 0x30 of 0x350 at
+                                                                       // 0x17014, +4, fcmpo/bge 0x17020
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x1703C
+    } else {
+      x11D64_(mgr, dt); // 0x17034
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x17050
+    x10F4_ &= ~0x20;                                          // 0x17058
+    x1028_ = CVector3f::Zero();                               // sZeroVector, 0x17060..0x17074
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_1569C: the ride on the retreat platform (0x1038). Activate (0): the animation state Ready
+// (0x156EC), the platform, if there is one, gets STRT from the head (its AcceptScriptMsg, the
+// vtable call at 0x15760), the bomb pit id 0x103A cleared (0x15770) and locomotion 5 (0x15778).
+// Update (1): with no platform the state is Over (0x15840). Else the locomotion is relaxed (1)
+// while the player rides the platform (CScriptPlatform::IsRider, 0x157B4) or bit 0x80 of 0x10F5
+// is set, else 5; while the state's time is at most fn_14_F374's value (the fcmpo/cror at
+// 0x1580C) the head takes the platform's transform (0x1582C), after it the state is Over.
+// Deactivate (2): NotReady, combat locomotion (3) and the platform, if there is one, gets STOP.
+// Every arm ran: with no platform after the head stun; after `codecall <head> SelectRetreatPlatform`
+// and `fsm <head> FollowRetreatPath`, STRT, the ride (time <= limit), locomotion 5, STOP; forced
+// (gdb attach): bit 0x80 of 0x10F5 (relaxed), the limit 0 (Over by time). IsRider itself stayed
+// false (the player teleported onto the moving platform each 0.3 s was never counted a rider).
+// @ fn_14_1569C
+void CDigitalGuardianHead::FollowRetreatPath(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) { // the cmpwi chain at 0x156A4..0x156DC
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // stw 1 -> 0x6B4 at 0x156EC
+    // ObjectById(0x1038) at 0x156FC, TCastToPtr<CScriptPlatform> at 0x15700, null test 0x15704
+    if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+      // the message at 0x1570C..0x15738: sender and originator the head (0x5C, 0x5E), id the
+      // platform (0x60), STRT (0x64), state -1 (0x68); AcceptScriptMsg (vtable 0x18) at 0x15760
+      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Start,
+                                            GetUniqueId()));
+    }
+    x103A_ = kInvalidUniqueId;                                  // 0x15770
+    BodyController()->SetLocomotionType(pas::kLT_Internal5);    // li 5 at 0x15768, 0x15778
+    break;
+  case kStateMsg_Update: {
+    // GetObjectById(0x1038) at 0x15790, the cast at 0x15794, null test (mr.) at 0x15798
+    const CScriptPlatform* plat = TCastToConstPtr< CScriptPlatform >(mgr.GetObjectById(x1038_));
+    if (plat == nullptr) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15840
+      break;
+    }
+    // IsRider(the player at mgr+0x14FC) at 0x157B4, bne 0x157BC; bit 0x80 of 0x10F5 at 0x157C4
+    if (plat->IsRider(mgr.GetPlayer(0)->GetUniqueId()) || (x10F5_ & 0x80) != 0) {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // li 1 at 0x157D0
+    } else {
+      BodyController()->SetLocomotionType(pas::kLT_Internal5); // li 5 at 0x157E0
+    }
+    const float limit = xF374_(); // 0x157F0
+    if (mStateMachine->GetTime() <= limit) { // vtable 0x30 of 0x350 at 0x15808, fcmpo/cror 0x1580C
+      SetTransform(plat->GetTransform()); // the platform's +0x24 at 0x1581C, 0x1582C
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15834
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);   // 0x15854
+    BodyController()->SetLocomotionType(pas::kLT_Combat);      // li 3 at 0x15850, 0x1585C
+    // ObjectById(0x1038) at 0x15870, the cast at 0x15874, null test 0x15878
+    if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+      // as at Activate with STOP (0x5354_4F50, 0x1588C); the call at 0x158D4
+      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Stop,
+                                            GetUniqueId()));
+    }
+    break;
+  default:
+    break;
+  }
+}
 
 // fn_14_13F0C: the root collider (0xE00) takes the head's own vulnerability (CPatterned's,
 // called directly).
@@ -1265,13 +1434,11 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
 // (extrwi. 1, 27; the head armour is gone) and 0x1038 a platform, it is instead the attack area's
 // point at the angle (fn_14_11698, fn_14_11788) of the centre plus 50 (.rodata 0x9C4) along the
 // direction to the platform.
-// Unmarked: area-53 runs ran the armour-on and platform arms only (run 37's bombs in a slot before
-// the retreat destroyed none, so no armour-off stun came first). With armour off, 0x1038 holds no
-// platform until SelectRetreatPlatform runs, and the platforms' waypoints span z -18.12..-9.21
-// across the centre's -16.74, so neither arm is excluded by the data. A failed fn_14_11698 cannot
-// happen: once d is magnitude-safe, centre + 50 d/|d| is off the centre. Run 403 destroyed the
-// armour (0xFE0 at 0) but no stun followed, and `fsm` cannot enter StunnedReaction (a sub-machine
-// state).
+// The arms: armour on and the platform arm ran in area-53 runs (run 37); armour off with no
+// platform was forced (tools/cov/force.sh with the head-stun steps as its driver: bit 0x10 set and
+// 0x1038 cleared at the entry). A failed fn_14_11698 cannot happen: once d is magnitude-safe,
+// centre + 50 d/|d| is off the centre; a zero d needs the platform at the centre.
+// @ fn_14_15284
 void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation();
   if ((x10F4_ & 0x10) == 0) {
@@ -1292,26 +1459,29 @@ void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
 // from fn_14_118B0. When the visual knowledge sees the player (flag 0x80 of 0xDB8) for over 2.25 s
 // (.rodata 0x9DC; 0xDB0) fn_14_114C8 picks one; otherwise the candidate furthest along the
 // previous move (translation minus 0xFF8, dot product >= the best so far, from 0) wins. 0xFF8
-// then keeps the result.
+// then keeps the result. The fn_14_114C8 arm re-run since 114C8 was ported: forced (0xDB8 bit
+// 0x80 set, 0xDB0 = 3 at the entry), its results the candidates or their blend.
 // @ fn_14_14254
 void CDigitalGuardianHead::SetAttackPosition(CStateManager& mgr, float dt) {
-  xFEC_ = GetTranslation();
+  xFEC_ = GetTranslation(); // 0x14278..0x1428C
   CVector3f points[3];
-  const int count = x118B0_(points);
+  const int count = x118B0_(points); // 0x14294, the count at sp+0x20
+  // bit 0x80 of 0xDB8 at 0x1429C; 0xDB0 > 2.25 (.rodata 0x9DC), fcmpo/ble at 0x142B0
   if (xD80_.IsTargetVisible() && xD80_.GetVisibleTime() > 2.25f) {
-    xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count);
+    // the player (mgr+0x14FC)'s translation at 0x142C8..0x142E0, the call at 0x142E4
+    xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count); // 0x142EC..0x142FC
   } else {
-    const CVector3f move = GetTranslation() - xFF8_;
-    float best = 0.f;
-    for (int i = 0; i < count; ++i) {
-      const float dot = CVector3f::Dot(move, points[i] - xFF8_);
-      if (dot >= best) {
-        xFEC_ = points[i];
-        best = dot;
+    const CVector3f move = GetTranslation() - xFF8_; // 0x14304..0x14334
+    float best = 0.f;                                 // .rodata 0x960 at 0x14330
+    for (int i = 0; i < count; ++i) {                 // 0x14390..0x143A4
+      const float dot = CVector3f::Dot(move, points[i] - xFF8_); // 0x1433C..0x14368
+      if (dot >= best) {   // fcmpo/cror/bne at 0x1436C..0x14374
+        xFEC_ = points[i]; // 0x14378..0x1438C
+        best = dot;        // 0x1437C
       }
     }
   }
-  xFF8_ = xFEC_;
+  xFF8_ = xFEC_; // 0x143A8..0x143BC
 }
 
 // fn_14_14B98: bit 0x04 of 0x10F4 cleared, bit 0x40 set (rlwimi 6, 25, 25), the deployment
@@ -1336,13 +1506,61 @@ void CDigitalGuardianHead::SeekLineOfSight(CStateManager& mgr, float dt) {
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
   }
-DGHD_CODE_STANDIN(ResetProjectileAttackTimes, fn_14_15598)
-DGHD_CODE_STANDIN(SelectProjectileAttack, fn_14_15448)
 DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
 DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
 DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
 DGHD_CODE_STANDIN(EnableDynamicCollision, fn_14_14828)
 DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
+
+// fn_14_15598: the projectile timer 0x10D4 is block 6's projectileAttackTime (fn_14_10120's +8,
+// 0x155EC) once every splitter is dead (fn_14_17298, the test at 0x155C8), else 6 (.rodata 0x990).
+// Both arms ran in the area-53 head-stun runs (local probes): splitters alive and all dead.
+// @ fn_14_15598
+void CDigitalGuardianHead::ResetProjectileAttackTimes(CStateManager& mgr, float dt) {
+  if (AllSplittersDead(mgr, CTriggerData(0.f))) { // 0.0 at 0x155C0, 0x155C4, bne at 0x155CC
+    x10D4_ = x10120_(mgr)->projectileAttackTime;  // 0x155E8, +8 at 0x155EC, 0x155F0
+  } else {
+    x10D4_ = 6.f; // .rodata 0x990 at 0x155D4, 0x155D8
+  }
+}
+
+// fn_14_15448: block 6 (fn_14_10120, by the body's knee count) picks the projectile attack. When
+// the body's knee count (fn_14_705C; 0 with no body) differs from the one last seen (0x10DC, the
+// cmpw at 0x154A8) and the block's firstShotType is not 4, that type; else a weighted pick over
+// the block's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the
+// gun 3. The knee count is kept in 0x10DC (0x15558); a pulse fires a burst of 3 (0x10D8), the rest
+// none (the cntlzw at 0x15564).
+// Every arm ran: the first shot (knee count 4 against the ctor's -1, firstShotType 0), then
+// `codecall <head> SelectProjectileAttack` x24 with the count unchanged drew pulse 0, missiles 2
+// and the gun 3; charge 1 (odds 0 in the 4-knee block 0xA64) forced, its odds set to 1000.
+// @ fn_14_15448
+void CDigitalGuardianHead::SelectProjectileAttack(CStateManager& mgr, float dt) {
+  const SLdrDigitalGuardianHeadStruct* odds = x10120_(mgr); // 0x1546C
+  // GetObjectById(0x1034) at 0x15484, the cast at 0x15488, null test 0x1548C, else 0 (0x154A0)
+  const CDigitalGuardian* body = TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_));
+  const int knees = body != nullptr ? body->x705C_() : 0; // 0x15494
+  // cmpw with 0x10DC at 0x154A8 (beq); firstShotType (+0) cmpwi 4 at 0x154B4 (beq)
+  if (knees != x10DC_ && odds->firstShotType != 4) {
+    x10D0_ = odds->firstShotType; // 0x154BC
+  } else {
+    // Range(mgr+0x16E4, 0 (.rodata 0x960), ((+0xC + +0x10) + +0x14) + +0x18) at 0x154F0
+    const float r = mgr.Random()->Range(0.f, odds->annihilatorPulseOdds +
+                                                  odds->annihilatorChargeOdds +
+                                                  odds->machineGunOdds + odds->lockOnMissilesOdds);
+    float bound = odds->annihilatorPulseOdds; // +0xC at 0x154F4
+    if (r <= bound) {                         // fcmpo/cror/bne at 0x154F8..0x15500
+      x10D0_ = 0;                             // 0x15508
+    } else if (r <= (bound += odds->annihilatorChargeOdds)) { // +0x10, 0x15514..0x15520
+      x10D0_ = 1;                                              // 0x15528
+    } else if (r <= bound + odds->lockOnMissilesOdds) {        // +0x18, 0x15534..0x15540
+      x10D0_ = 2;                                              // 0x15548
+    } else {
+      x10D0_ = 3; // 0x15554
+    }
+  }
+  x10DC_ = knees;               // 0x15558
+  x10D8_ = x10D0_ == 0 ? 3 : 0; // cntlzw/extrwi 1, 26/neg/and at 0x15564..0x15574
+}
 DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
 DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
 DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
