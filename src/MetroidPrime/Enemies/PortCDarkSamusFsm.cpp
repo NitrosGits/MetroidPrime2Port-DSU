@@ -1589,7 +1589,7 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mDash.mDoubleDash = false;
     const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
-    if (stage != nullptr && // `mr. r28, r3; beq` at 0x0001511C/0x00015120
+    if (stage != nullptr && // `mr. r28, r3` at 0x0001511C/0x00015120
         mgr.Random()->Range(0.f, 100.f) < stage->GetStageInfo().chanceToDoubleDash) {
       mDash.mDoubleDash = true;
     }
@@ -4043,7 +4043,7 @@ static pas::EStepDirection GetDashStepDirection(int slot) {
 }
 
 // fn_10_EB90 (0x0000EB90, 0x228 bytes): the dash slot's direction from the flat facing axis f, the
-// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7; bgt` at 0x0000EB98 to the zero vector):
+// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7` at 0x0000EB98 to the zero vector):
 // 0 f, 1 -f (lbl_10_rodata_3EC = -1.0f), 2 (-f.y, f.x, 0), 3 (f.y, -f.x, 0), and the diagonals
 // normalized (AsNormalized at 0x0000EC70/0x0000ECC4/0x0000ED2C/0x0000ED80): 4 the sum of f and
 // slot 2's, 6 slot 2's minus f, 5 the sum of f and slot 3's, 7 slot 3's minus f (the `cmpwi` at
@@ -4136,7 +4136,7 @@ void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
        it != nearList.end(); ++it) {
     // The near list holds actors only; retail passes the entity on as one.
     CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it));
-    if (actor != nullptr) { // `mr. r6, r3; beq` at 0x00014BE4/0x00014BE8
+    if (actor != nullptr) { // `mr. r6, r3` at 0x00014BE4/0x00014BE8
       mgr.ApplyRadiusDamage(*this, GetTranslation(), *actor, GetUniqueId(), info);
     }
   }
@@ -4324,7 +4324,7 @@ float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* 
     if (endDistSq < playerDistSq) {
       weight = weight * 0.5f;
     }
-    if (target != nullptr) { // `cmplwi r25, 0x0; beq` at 0x00015D6C/0x00015D70
+    if (target != nullptr) { // `cmplwi r25, 0x0` at 0x00015D6C/0x00015D70
       const float dist = (*target - end).Magnitude();
       if (dist < mMaxAttackRange) {
         weight = weight * (1.f - dist / mMaxAttackRange);
