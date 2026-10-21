@@ -1356,6 +1356,7 @@ void CSplitterCommandModule::PortTurnUpright(float dt) {
 // (0x2480-0x249C) gives the steering separation (0x24DC) from its position with 5.0f
 // (lbl_75_rodata_58) times the model data's scale x; safe ones (0x24FC) are normalized and summed
 // and counted; a count above 0.0f (0x2564) divides the sum (0x2574).
+// @ fn_75_23F0
 CVector3f CSplitterCommandModule::PortSeparationVector(CStateManager& mgr) const {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
@@ -1538,11 +1539,10 @@ void CSplitterCommandModule::Dead(CStateManager& mgr, EStateMsg msg, float) {
 // frame time (0x4BFC fcmpo against 0.0f) and the target at 0xEFE (0x4C14 GetObjectById, 0x4C18),
 // the head faces the flat offset (z 0.0f, 0x4C64) to the target's position (0x4C20-0x4C54;
 // 0x4C6C FaceDirection). Deactivate (0x4C74): kAS_NotReady and the 0x10 bit cleared.
-// The dt <= 0 arm (0x4BFC) is unreachable, as in LaserPulse. The no-target arm (0x4C18) did not
-// run, even forced: a docked head forced into Dodge can always issue the step. In play Dodge runs
-// only in DetachedAttackLogic, and 0xEFE, once set (the chassis's target at 0x3218, or the player
-// in SelectTarget at 0x3E9C), is never cleared again (the constructor alone writes it invalid,
-// 0x6C54).
+// The dt <= 0 arm (0x4BFC) is unreachable, as in LaserPulse. The no-target arm (0x4C18) ran
+// forced (send Deactivate + fsm): the head of a deactivated chassis, before the chassis has a
+// target, sent into Dodge.
+// @ fn_75_4AC0
 void CSplitterCommandModule::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);

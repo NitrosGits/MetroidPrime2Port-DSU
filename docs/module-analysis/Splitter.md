@@ -1420,3 +1420,24 @@ Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projecti
 | 25C4 | ray hit / OnPath failure | forced (place), n5 → marked |
 | 5448 Dead | Activate | ran (h30) |
 | 5448 | Update, Deactivate (after the delete request) | forced (damage), n6 → marked |
+
+## Dodge no-target, separation, hit/hint arms (2026-10-21)
+
+- g2 (fast): `send u0521 Deactivate; send u0532 Deactivate` at f380, then `fsm u0531 Dodge; fsm
+  u0520 Dodge` every 4 frames: the heads of inactive chassis (no target yet, 0xEFE invalid) run
+  Dodge's no-target arm. n11/n12 (plan N, real time): bomb kill, natural fight.
+- `send <id> Delete` crashes (g1): CPatterned's kSM_Delete resets the FSM2 state (mMachine null)
+  but the console leaves the object alive, so the next Think re-runs `Setup`, which
+  `push_back_unsafe`s past `mSubMachines`' capacity (CGenericFSM2StateImpl.hpp `Setup`). Retail
+  always follows Delete with the delete request; a console artefact, not a Splitter bug.
+- `place <id> player d` zeroes only the direction's z (port_console.cpp CmdPlace): the position's z
+  is the player's own, so the z -20522 seen earlier was a player fallen out of the world.
+
+| fn | arm | result |
+|---|---|---|
+| 4AC0 Dodge | no target (0x4C18) | forced (send Deactivate + fsm), g2 → marked |
+| 8EC8 / 23F0 separation | not CPatterned/self/other area, docked head, safe/unsafe, count > 0 / 0 | ran (n11, n12) → marked |
+| 5D50 | shield state 2 (0x5D90) | not run → unmarked |
+| AB8C | player morphing/unmorphing (0xABE0-0xABF0) | not run → unmarked |
+| 9FA8 | spin bit 0x80 with a boosting player | not run → unmarked |
+| 9B9C | boosting player (target LCTR or not), leg stab, spin damage, the non-player spin arms | not run → unmarked (needs boost ball contact / the spin attack) |

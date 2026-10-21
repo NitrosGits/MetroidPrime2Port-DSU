@@ -837,6 +837,7 @@ void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
 // (0x00008F78-0x00008FB4); a safe-magnitude result (0x00008FD4) is normalized and summed and the
 // count (lbl_75_rodata_390, 0.0f) goes up by 1.0f (lbl_75_rodata_364). A count above 0.0f
 // (0x0000903C fcmpo, 0x00009040 ble) divides the sum by it (0x0000904C fdivs).
+// @ fn_75_8EC8
 CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
