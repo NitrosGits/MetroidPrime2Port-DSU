@@ -1568,6 +1568,11 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
   }
 }
 
+// Run: cov 2026-10-21 (area 59, 05_temple_federationsite_dark, the launching driver): every arm -
+// the gcov report gives 15/15 lines and 2/2 branches.  The driver sends the module's own
+// launching message (0x584C4155) four times in a row, so the helper's early out (the 0x08 bit of
+// the flag byte at guest this+0xC63, 0x0000393C) runs after the first call set it (0x00003A24).
+// @ fn_9_3900
 // fn_9_3900 (0x15c bytes): the module's jump-back velocity helper - the ballistic velocity that
 // carries the commando to its own jump target (the vector at guest this+0xBF0, the float at guest
 // this+0xBEC). It runs only while the flag byte at guest this+0xC63 has no 0x08 bit

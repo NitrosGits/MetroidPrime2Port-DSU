@@ -1235,7 +1235,13 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the angle arm (the compare at 0x0000B8D4) - true and false | b | area 59: the trigger answers true 435 times and false 5 times in the run |
 | `fn_9_3338` (the jump-back helper) | the ray test (0x00003430..0x00003434) and the path check (0x00003440) | b | the coverage run (build-port-cov) in area 59 with the warpout driver: the gcov report gives the helper 7/7 lines and 2/2 branches - the ray came back clear and blocked and the path finder answered both ways |
 | `fn_9_3090` (the drowning) | the alive test (0x000030B8), the fluid id (0x000030D8), the water's cast (0x00003104), the trigger flag (0x00003110) and the head under the water (0x0000315C) | d | the commando has to drown: it needs a fluid, a water script object whose trigger byte has the 0x80 bit and the head below the water's bounds - the run's commando never enters a fluid |
-| `fn_9_3900` (the jump-back velocity) | the flag byte at guest this+0xC63 (0x0000393C) and the ballistic velocity (0x000039A8..0x00003A18) | d | the helper runs from the module's launching message (the call at 0x0000D040), which the area 59 run does not send |
+| `fn_9_3900` (the jump-back velocity) | the flag byte at guest this+0xC63 (0x0000393C) and the ballistic velocity (0x000039A8..0x00003A18) | b | the console's `send <id> 0x584c4155` (the module's own launching message, the kSM_Launching case of fn_9_CB40, the call at 0x0000D040) reaches the helper: the coverage build in area 59 with the driver's four sends in a row gives the helper 14/15 lines and both the early out and the ballistic velocity |
+| `fn_9_3A5C` (the hit-object helper) | the shield's path (0x00003A78..0x00003A90) and the blade's path (0x00003B90..0x00003BA8) | d | the module's shield has to be up (the 0x04 bit of the byte at guest this+0xC65) or its blade out (the 0x20 bit) and the sender has to be the module's own collision actor (guest this+0xBC6 or this+0xBC8); the area 59 run's commando never has the shield up, and the blade's own damage needs the melee state's blade |
+| | the touched object's player test (0x00003AD0..0x00003ADC) and the damage timer (0x00003AE0..0x00003AF4) | d | they need the shield's or the blade's collision actor to have touched the player |
+| `fn_9_3E1C` (the rag-doll driver) | the rag-doll path (0x00003E50..0x00003FF0) | c | the guest's own GetRagDoll (fn_9_78) answers null and the constructor stores 0 at guest this+0xBFC (0x0000DC18), so the guest never takes it |
+| | the drowning timer (0x00003FF8..0x0000401C) and the rag doll's creation (0x00004020..0x00004118) | b | the module's float at guest this+0xC00 runs down in the run; the creation is the port's stand-in (the host has no CPirateRagDoll) |
+| `fn_9_45A4` (the collision actors) | the two spheres (0x00004604..0x00004620 and 0x00004728..0x00004744), the ids (0x000046CC and 0x000047F8) and the filter (0x00004830..0x0000487C) | b | the module's kSM_Create case builds them: the run's commando has both collision actors, and the material filter's exclude list gets the bit 0x8000 (the material 15, kMT_Glass) |
+| | the collision actor's null tests (0x000046E4 and 0x00004810) | d | the coverage run's commando has both collision actors, so the null arms did not run - the body gets no marker |
 | `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) | d | the branch wants the block's flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest this+0xBFC to be there; the rag doll is always null (the constructor stores 0 there, 0x0000DC18, and the module's GetRagDoll returns null, fn_9_78), so the guest never takes it |
 | | the knock-back itself (0x0000C3C0..0x0000C3EC) | b | the area 59 boot: the console's `damage` reaches the module's override through the module's own helper fn_9_2D0C (the call at 0x00002EF0) |
 | | the alive branch (0x0000C3F0..0x0000C404) | b | twice in the run - the commando is alive when the damage lands, even after the Dead state (the byte at guest this+0x420's 0x40 bit) |
@@ -1449,7 +1455,7 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 52 marked, 63 ported but not marked, 141
+The port's state per function (the `port` column): 53 marked, 62 ported but not marked, 141
 not ported at all (the H and T ones, and the module's own loader/ctor/dtor helpers, which the
 host's classes already have).
 
@@ -1468,7 +1474,9 @@ the console's `fsm` (**forced (fsm)**). `fn_9_B1E0` (ShouldBoost) is marked too:
 ran (the 0x20 flag test and the true arm) ran in the Swamp's timber area, and its three other arms
 are unreachable in the shipped data (the class-**c** rows above). `fn_9_3338` (the jump-back
 helper) is marked too: the coverage run in area 59 gives it 7/7 lines and 2/2 branches - the ray
-and the path finder answered both ways. The four functions of the first
+and the path finder answered both ways.  `fn_9_3900` (the jump-back velocity) is marked as well:
+the console's `send <id> 0x584c4155` delivers the module's own launching message, so the helper
+runs and the coverage run gives it 15/15 lines and 2/2 branches. The four functions of the first
 slice (`fn_9_7A98`, `fn_9_2474`, `fn_9_2A98` and `fn_9_B1E0`) and the FollowAttackPattern state
 (`fn_9_961C`) are not marked: each of them still has a class-**d** arm (the charge's abort and
 0x08 bits, the turn helper's push vector, the picker's 0x20-clear and next-gone arms and the

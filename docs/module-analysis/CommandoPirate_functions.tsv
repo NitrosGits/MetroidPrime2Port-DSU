@@ -56,7 +56,7 @@ offset	size	fn	kind	class	port	note
 0x3338	0x148	fn_9_3338	behaviour	B	marked	
 0x3480	0x1F8	fn_9_3480	behaviour	B	marked	PickMeleeAttack; cov: every arm
 0x3678	0x288	fn_9_3678	behaviour	B	marked	
-0x3900	0x15C	fn_9_3900	behaviour	B	ported	
+0x3900	0x15C	fn_9_3900	behaviour	B	marked	
 0x3A5C	0x260	fn_9_3A5C	behaviour	B	not-port	
 0x3CBC	0xA8	fn_9_3CBC	host-copy	H	not-port	
 0x3D64	0xB8	fn_9_3D64	host-copy	H	not-port	
