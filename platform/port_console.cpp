@@ -495,7 +495,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
       "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
-      "                            sunburst, sonicboom; kb = knockback power)\n"
+      "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
@@ -1513,7 +1513,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
     Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
-         "annihilator|powerbomb|darkburst|sunburst|sonicboom]");
+         "annihilator|powerbomb|darkburst|sunburst|sonicboom|supermissile]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
@@ -1551,9 +1551,12 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     } else if (args[i] == "sonicboom") {
       weapon = kWT_Annihilator;
       comboed = true;
+    } else if (args[i] == "supermissile") {
+      weapon = kWT_Power;
+      comboed = true;
     } else {
       Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
-           "darkburst, sunburst or sonicboom");
+           "darkburst, sunburst, sonicboom or supermissile");
       return;
     }
   }
@@ -1654,7 +1657,26 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   out += "fsm " + before + " -> " + after + " [" + where + "]\n";
 }
 
-// statecall <id> <state> <msg> [dt]: run one state body of an FSM2 actor once with a message (0
+// The state/trigger function the actor's own table registered under `name`, from either machine
+// type: the FSM2 (GetType() 1, CGenericFSM2State) or the AFSM (0, TStateMachineState).
+CPatterned::StateMachine::StateFunc PortFindStateFunction(CPatterned& patterned, const char* name) {
+  TStateMachineStateBase< CPatterned >* machine = &patterned.StateMachineState();
+  if (machine->GetType() == 1) {
+    return static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(name);
+  }
+  return static_cast< TStateMachineState< CPatterned >* >(machine)->PortFindStateFunction(name);
+}
+
+CPatterned::StateMachine::TriggerFunc PortFindTriggerFunction(CPatterned& patterned,
+                                                              const char* name) {
+  TStateMachineStateBase< CPatterned >* machine = &patterned.StateMachineState();
+  if (machine->GetType() == 1) {
+    return static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindTriggerFunction(name);
+  }
+  return static_cast< TStateMachineState< CPatterned >* >(machine)->PortFindTriggerFunction(name);
+}
+
+// statecall <id> <state> <msg> [dt]: run one state body of a patterned actor (FSM2 or AFSM) once with a message (0
 // Activate, 1 Update, 2 Deactivate) and dt (default 1/60), outside the machine: the machine's state
 // does not change. The body is looked up in the actor's whole state table, so a state the shipped
 // FSM2 has no node for (unreachable by `fsm`) can still be run for coverage.
@@ -1672,15 +1694,9 @@ void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("not a patterned actor");
     return;
   }
-  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
-  if (machine->GetType() != 1) {
-    Fail("not an FSM2 machine");
-    return;
-  }
   const int msg = static_cast< int >(msgArg);
   const std::string wanted(args[2]);
-  const CPatterned::StateMachine::StateFunc fn =
-      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(wanted.c_str());
+  const CPatterned::StateMachine::StateFunc fn = PortFindStateFunction(*patterned, wanted.c_str());
   if (fn == nullptr) {
     Fail("no state function '" + wanted + "'");
     return;
@@ -1703,15 +1719,9 @@ void CmdTrigCall(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("not a patterned actor");
     return;
   }
-  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
-  if (machine->GetType() != 1) {
-    Fail("not an FSM2 machine");
-    return;
-  }
   const std::string wanted(args[2]);
   const CPatterned::StateMachine::TriggerFunc fn =
-      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindTriggerFunction(
-          wanted.c_str());
+      PortFindTriggerFunction(*patterned, wanted.c_str());
   if (fn == nullptr) {
     Fail("no trigger function '" + wanted + "'");
     return;

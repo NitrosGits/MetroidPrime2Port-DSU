@@ -22,7 +22,8 @@
 // is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
 // floats on top); the guest offsets are the REL's and the host layout is its own. The four
 // constants 0.1f/150.f/0.1f/150.f are the guest's (fn_9_98C stores them from its own arguments at
-// 0x0000098C..0x00000A0C) and the flag byte at guest +0x4C is the guest's zero.
+// 0x0000098C..0x00000A0C); the flag byte at guest +0x4C gets its 0x80 bit (0x00000A14) from the
+// caller's 1 (fn_9_168 @0x00000610), so CBouncyGrenadeData::x4c_ is true.
 struct CCommandoPirateGrenadeData {
   CCommandoPirateGrenadeData(float grenadeMass, float unknownED086CE0,
                              const CDamageInfo& bladeDamage, int grenadeNumBounces,
@@ -48,7 +49,7 @@ struct CCommandoPirateGrenadeData {
   , mDamageMax(150.f)
   , mRadiusMax(0.1f)
   , mDamageMin(150.f)
-  , mFlags(0)
+  , mFlags(0x80)
   , mEMPDuration(empDuration)
   , mGrenadeAttackChance(grenadeAttackChance)
   , mGrenadeMinAttackInterval(grenadeMinAttackInterval)
@@ -75,7 +76,7 @@ struct CCommandoPirateGrenadeData {
   float mDamageMax;                // guest +0x40, fn_9_98C @0x00000A04 (the guest's 150.f)
   float mRadiusMax;                // guest +0x44, fn_9_98C @0x00000A08 (the guest's 0.1f)
   float mDamageMin;                // guest +0x48, fn_9_98C @0x00000A0C (the guest's 150.f)
-  uchar mFlags;                    // guest +0x4c, fn_9_98C @0x00000A14 (the guest's zero)
+  uchar mFlags;                    // guest +0x4c, fn_9_98C @0x00000A14 (bit 0x80 from fn_9_168's 1)
   float mEMPDuration;              // guest +0x50, fn_9_F50C @0x00000A28
   float mGrenadeAttackChance;      // guest +0x54, fn_9_F50C @0x00000A2C
   float mGrenadeMinAttackInterval; // guest +0x58, fn_9_F50C @0x00000A30
