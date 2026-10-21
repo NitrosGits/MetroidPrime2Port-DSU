@@ -892,3 +892,81 @@ The port does not reproduce those two conversions: its host structs hold the sam
 own layout (`CIngBoostBallGuardianData`, `CBoostBallGuardianData` in the header) and the loader fills
 them straight from the `SLdr` fields, which is what later slices will read.
 
+
+## l. The function classification (all 318 symbols)
+
+Three classes, applied by rule so the table can be audited.  The machine-readable copy is
+`docs/module-analysis/BoostGuardian_functions.tsv` (one row per function: the offset, the name,
+the size, the class, the callers, the tables that reference it, the reason and the marker).
+
+- **H - host copy** (102 functions, 0x3200 bytes): the body is a copy of something the host
+  already has - a shared class body, a compiler-emitted destructor, rstl / template code, inlined
+  DOL code or the REL runtime - so the port writes no body for it.  Section h lists them one by
+  one with the DOL counterpart.
+- **T - data / vtable thunk or dead** (9 functions, 0x3B8 bytes): no retail caller.  Six are
+  the FSM2 node vtables' deleting destructors and one the vtable's `HealthInfo()` thunk - the
+  port writes them as a line in the table; two are dead in the shipped data (nothing calls them
+  and no table names them, so the port has no behaviour to reproduce).
+- **B - module behaviour** (207 functions, 0x13130 bytes): the port writes a body for it.  **All
+  207 carry a `// @` marker** - there is no unmarked behaviour function left in the module.
+
+| class | functions | .text bytes | marked |
+|---|---|---|---|
+| H host copy | 102 | 0x3200 (12,800) | 0 |
+| T data / vtable thunk or dead | 9 | 0x3B8 (952) | 0 |
+| B module behaviour | 207 | 0x13130 (78,128) | 207 |
+| **total** | **318** | **0x19B68 (105,880)** | **207** |
+
+### l.1 The nine T functions (the caller scan)
+
+| fn | size | why | the caller scan |
+|---|---|---|---|
+| `fn_30_90` | 0x2C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_4028` | 0x8 | dead in retail: nothing calls it and no table names it | no retail caller and no table names it |
+| `fn_30_5260` | 0x170 | dead in retail: nothing calls it and no table names it | no retail caller and no table names it |
+| `fn_30_6B74` | 0x48 | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_7D00` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_84C4` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_A308` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_A8C0` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_AFE0` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+
+### l.2 The H functions by kind
+
+| how many | what they are |
+|---|---|
+| 41 | the compiler's weak deleting dtor or a copy of the module's own type |
+| 31 | the template inline the compiler emitted out of line |
+| 15 | the REL's own copy of a DOL / host class member |
+| 9 | a copy of host code |
+| 5 | the module's own memberwise copy of a parameter block |
+| 1 | the REL runtime and the module's own entry glue |
+
+The per-function list is in the tsv's `what` column; section h gives the DOL counterpart of each.
+
+### l.3 Count check
+
+Every function id of the module's symbol list appears exactly once in the table:
+
+```
+$ python3 - <<'PY'
+import re, pathlib, collections
+sym = pathlib.Path('config/G2ME01/rels/IngBoostBallGuardian/symbols.txt').read_text()
+ids = re.findall(r'^(\S+) = \.text:0x[0-9A-Fa-f]+; // type:function', sym, re.M)
+rows = [l.split('\t') for l in
+        pathlib.Path('docs/module-analysis/BoostGuardian_functions.tsv').read_text().split('\n')[1:] if l.strip()]
+print('symbols:', len(ids), 'rows:', len(rows))
+print(collections.Counter(r[3] for r in rows))
+print('unmarked B:', [r[1] for r in rows if r[3] == 'B' and r[8] == 'no'])
+PY
+symbols: 318 rows: 318
+Counter({'B': 207, 'H': 102, 'T': 9})
+unmarked B: []
+```
+
+The machine-readable copy has one row per function:
+
+```
+$ awk -F'\t' 'NR>1{print $2}' docs/module-analysis/BoostGuardian_functions.tsv | sort -u | wc -l
+318
+```

@@ -188,32 +188,40 @@ protected:
   TUniqueId mCenter;                                         // 0xc64, IS01
   TUniqueId mEdgeMarker;                                     // 0xc66, IS06
   CVector3f mReelDir;                                        // 0xc68
-  // 0xc74
-  bool mDashing : 1;
-  bool mSwoopDone : 1;
-  bool mSwoopDamage : 1;
-  bool mSwoopWindow : 1;
-  bool mSurfaced : 1;
-  bool mGrowthDestroyed : 1;
-  bool mGrowthsVulnerable : 1;
-  bool mHeadMode : 1;
-  // 0xc75
-  bool mCircleDamaged : 1;
-  bool mSwoopRepeat : 1;
-  bool mFacePlayer : 1;
-  bool mRotateSign : 1;
-  bool mClampHealth : 1;
-  bool mUnusedC75Bit5 : 1; // never read or written in the module
-  bool mPlayerInWater : 1;
-  bool mAttackReady : 1;
-  // 0xc76
-  bool mLightFlyer : 1;
-  bool mMoveRequested : 1;
-  bool mSwoopSide : 1;
-  bool mCircleDone : 1;
-  bool mSwooping : 1;
-  bool mCircleCounting : 1;
-  bool mSwoopSelected : 1;
+  // 0xc74: the retail's flags, with the byte's bit positions (the word at +0xc74 holds its
+  // bits 0..7).
+  bool mDashing : 1;            // 0xc74 bit 0 (the word's bit 0)
+  bool mSwoopDone : 1;           // 0xc74 bit 1 (the word's bit 1)
+  bool mSwoopDamage : 1;        // 0xc74 bit 2 (the word's bit 2)
+  bool mSwoopWindow : 1;        // 0xc74 bit 3 (the word's bit 3)
+  bool mSurfaced : 1;           // 0xc74 bit 4 (the word's bit 4)
+  bool mGrowthDestroyed : 1;    // 0xc74 bit 5 (the word's bit 5)
+  bool mGrowthsVulnerable : 1;  // 0xc74 bit 6 (the word's bit 6)
+  bool mHeadMode : 1;           // 0xc74 bit 7 (the word's bit 7)
+  // 0xc75: the retail's flags, with the byte's bit positions.
+  bool mCircleDamaged : 1;      // 0xc75 bit 0 (the word's bit 8)
+  bool mSwoopRepeat : 1;        // 0xc75 bit 1 (the word's bit 9)
+  bool mFacePlayer : 1;         // 0xc75 bit 2 (the word's bit 10)
+  bool mRotateSign : 1;         // 0xc75 bit 3 (the word's bit 11)
+  bool mClampHealth : 1;        // 0xc75 bit 4 (the word's bit 12)
+  bool mUnusedC75Bit5 : 1;      // 0xc75 bit 5 (the word's bit 13): never read or written
+  bool mPlayerInWater : 1;      // 0xc75 bit 6 (the word's bit 14)
+  bool mAttackReady : 1;        // 0xc75 bit 7 (the word's bit 15)
+  // 0xc76: the retail's flags, with the byte's bit positions (the word at +0xc74 holds its
+  // bits 16..23). The names say what the retail's bits do; see
+  // docs/module-analysis/SwampBoss-stage2.md 7.11 and 7.19.
+  bool mLightFlyer : 1;        // 0xc76 bit 0 (the word's bit 16): the chain flag - set while the
+                               // boss is in the BecomeLightFlyer state (0x95CC, cleared 0x9734)
+                               // and read by the anim event 0x1b's chain pick (0xA9D8) and by
+                               // the egg lay (0xAA5C); the ctor clears it (0xC0E8)
+  bool mMoveRequested : 1;     // 0xc76 bit 1 (the word's bit 17): a move was asked for (0x6128)
+  bool mSwoopSide : 1;         // 0xc76 bit 2 (the word's bit 18): the swoop's side (0x83C8)
+  bool mCircleDone : 1;        // 0xc76 bit 3 (the word's bit 19): the circle is done (0x7C90)
+  bool mSwooping : 1;          // 0xc76 bit 4 (the word's bit 20): the boss is swooping (0x835C)
+  bool mCircleCounting : 1;    // 0xc76 bit 5 (the word's bit 21): the circle is counting (0xAB9C)
+  bool mUnusedC76Bit6 : 1;     // 0xc76 bit 6 (the word's bit 22): only the ctor clears it (0xC0AC)
+  bool mSwoopSelected : 1;     // 0xc76 bit 7 (the word's bit 23): the Lurk picked the swoop
+                               // (set 0x9B14, cleared 0x9BCC, read 0x9ADC)
   // 0xc77: the retail's eight flags, with the bit numbers of the word at +0xc74 (the byte's
   // bit 0 is the word's bit 24). The names say what the retail's bits do; see
   // docs/module-analysis/SwampBoss-stage2.md 7.11.

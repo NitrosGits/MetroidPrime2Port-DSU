@@ -294,7 +294,6 @@ B4 GetOrigin, D0 GetHealthInfo.
   - 4324 spit radius.
   - ZeroHealth index field.
   - Riding-platform clear in water.
-  - Scan by form.
   - Actor +0x150 draw gate.
   - AddParticleGen slot.
   - mDrawParticles mask.
@@ -992,17 +991,62 @@ setup, the blow damage, the pop at the blow's end, the wind effect) are the earl
 (7.12); this pass added the two above plus the two window tests the probe shows as well
 (0x801C the aim is not in front of the head, 0x8040 the aim is too far to the side).
 
-**A port divergence found, not fixed here: the chain flag's initial value.** The retail's
-constructor clears the flag that the chain selection reads (`rlwimi r4, r0, 0, 31, 31` at
-0xC0E8, mask 0x1 of the byte at 0xc76 - `tools/asmcheck.py annotate` on fn_79_BE3C), while the
-port's constructor sets it (`mLightFlyer(true)`). The flag is the one the anim event 0x1b
+**A port divergence found here and fixed in 7.20: the chain flag's initial value.** The
+retail's constructor clears the flag that the chain selection reads (`rlwimi r4, r0, 0, 31, 31`
+at 0xC0E8, mask 0x1 of the byte at 0xc76 - `tools/asmcheck.py annotate` on fn_79_BE3C), while the
+port's constructor set it (`mLightFlyer(true)`). The flag is the one the anim event 0x1b
 reads (0xA9D8, mask 0x1) and the one `BecomeLightFlyer` sets and clears (0x95CC / 0x9734), so
-with the port's value the **dark** chain (82 nodes) is the one that swings in the light and
+with the port's value the **dark** chain (82 nodes) was the one that swung in the light and
 the dark phase, where the retail swings the light chain (6 nodes); the dark chain is the
-retail's while the boss is in the `BecomeLightFlyer` state (the phase 2/4 transition). Fixing
-it needs the phase 2 path (the ovipositor's death), which this pass did not reach.
+retail's while the boss is in the `BecomeLightFlyer` state (the phase 2/4 transition). 7.20
+fixes it and reaches the phase 2.
 
 **The driver**: `tools/drivers/swampboss2_dark.py` (the console part) with
 `tools/drivers/swampboss2_run.sh` (`DRIVER=swampboss2_dark.py`, `--grapple` for the grapple
 arm). It waits for the area before it asks for layer 6 (a layer request that arrives during
 the boot never finishes), kills the growths, and then drives the Blow.
+
+### 7.20 The chain flag, the phase's chain and the scan (2026-10-21, thirteenth lane pass)
+
+**The chain flag is the byte at 0xc76's bit 0** (the word at +0xc74 holds its bits 16..23).
+Every reader and writer of it, against the asm (`tools/asmcheck.py annotate`):
+
+| where | what | the port |
+|---|---|---|
+| 0xC0E8 (fn_79_BE3C, the ctor) | the ctor **clears** it (`xc76 &= ~0x1`) | the ctor now clears it too: it used to set it (`mLightFlyer(true)`), which made the port swing the dark chain everywhere |
+| 0x95CC / 0x9734 (fn_79_9534, BecomeLightFlyer) | the activate sets it, the deactivate clears it | the same |
+| fn_79_91A4 (BecomeDarkFlyer) | never touches it | the same |
+| 0xA9D8 (fn_79_A838, the anim event 0x1b) | reads it: the chain pick - set means the chain at 0xdd0 (the dark chain, 82 nodes), clear the one at 0xca4 (the light chain, 6 nodes) | the same |
+| 0xAA5C (the anim event 0x01, the egg lay) | reads it the same way | the same |
+| fn_79_2690 (the scan) | **never reads it**: the scan is picked by the phase (0x26A0-0x26F0) - the phase 0 and 2 use the light scan (0xe04), the phase 1 and 3 the dark one (0xe08), the phase 4 and up the base's | the port used the flag (`TODO(uncertain)`, the "Scan by form" item); it now uses the phase |
+
+**Which chain swings where, after the fix** (the probe's lines, one run):
+
+    [probe] 1b the chain launch, lightflyer 0 phase 1 st DropFlyer
+    [probe] 55B0 the chain u0700 with 6 nodes
+    [probe] 1b the chain launch, lightflyer 1 phase 2 st BecomeLightFlyer
+    [probe] 55B0 the chain u06c8 with 82 nodes
+
+So the phase 1 (the dark flyer) swings the **light** chain (6 nodes) and the phase 2's
+`BecomeLightFlyer` swings the **dark** chain (82 nodes) - the retail's rule, because the flag
+is set exactly while the boss is in the `BecomeLightFlyer` state.
+
+**The phase 2 (the ovipositor's death)** is reached by damaging the tail joint (the collision
+actor 4, `spine_5_scale2`) while the boss is in the head mode: the retail's ProcessDamage
+takes the ovipositor's health off that joint's damage (fn_79_61C4), and the top machine's
+`OvipositorDead` edge then goes to `BecomeLightFlyer` (the phase 2). The driver's recipe is
+the same as for the growths: `damage u<tail> 25` alternating with a beam hit (the boss ignores
+a second hit from the same toucher). After the ovipositor dies the fight cycles on: the phase
+0 (the light flyer) -> 1 (the dark flyer) -> 2 (the light flyer again) -> 3 (the dark flyer
+again), and the chain follows the flag.
+
+**Two more bit positions fixed in the same byte**: the port's `mSwoopSelected` (the `Lurk`'s
+"swoop picked" flag) sat at 0xc76's bit 6, but the retail's flag is the byte's bit 7 (the
+`Lurk` sets it at 0x9B14, clears it at 0x9BCC and reads it at 0x9ADC); the byte's bit 6 is
+only ever cleared by the ctor (0xC0AC), so it is now `mUnusedC76Bit6`. The header's flag
+comments carry the byte's bit positions for 0xc74, 0xc75, 0xc76 and 0xc77, which is what
+`tools/asmcheck.py` reads: the module's check went from 212 findings to 107 (the rest are the
+loader-data findings, unchanged).
+
+**The scan fix** (`fn_79_2690`) also removes the "Scan by form" TODO: the retail picks the
+scan by the phase, and the port now does the same.

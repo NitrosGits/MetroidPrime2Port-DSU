@@ -215,6 +215,8 @@ public:
   // The retail's fn_75_5D50: the head's shield reset (the chassis's Death and its spin, dodge and
   // docking states call it).
   void PortResetShield(CStateManager& mgr);
+  // The retail's fn_75_5DDC: the head's spin shield (the chassis's SetupSpinAttack calls it).
+  void PortSpinShield(CStateManager& mgr);
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
@@ -263,6 +265,9 @@ private:
   // effects are off.
   void PortUpdateEffectStates(CStateManager& mgr);
   uint mShieldState = 0;  // guest 0xEDC
+  // guest 0xEAC: the head's own damage vulnerability (the constructor copies the base's, fn_75_70A0);
+  // the vulnerability slot (fn_75_616C) returns it and the shield functions overwrite it.
+  CDamageVulnerability mOwnVulnerability;
 
   // The retail's fn_75_2154: the head's own move. With the auto-destruct timer running the
   // head is teleported to the destination, otherwise it moves towards it in one frame.

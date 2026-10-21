@@ -26,6 +26,7 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/Weapons/CGameProjectile.hpp"
 
 #include <stdio.h>
 
@@ -264,6 +265,39 @@ void CDarkSamus::SetPathSearchArea(CStateManager& mgr) {
 
 void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("fn_10_1E89C", "vtable slot 6, AcceptScriptMsg");
+  // The 'XDMG' arm (0x58444D47, the host's kSM_Damage; the compare at 0x0001E96C) is the
+  // projectile that hit the actor: the sender must be a CGameProjectile (the cast at
+  // 0x0001EA40), the vulnerability (the vtable's slot 16, fn_10_100DC, at 0x0001EA5C) must be
+  // hurt by the projectile's damage info (fn_800DB834, the host's WeaponHurts, at 0x0001EA64),
+  // and the last hit must be lbl_10_rodata_438 = 3.0f old (0x0001EAB4). The hit direction (the
+  // projectile's position minus the actor's, 0x0001EA70..0x0001EAA4) goes to 0x8C0/0x8C4/0x8C8.
+  // Then fn_10_1EE4C (0x0001EED8) decides whether the missile can be sent back: then 0xC0C
+  // takes the elapsed time (0x0001EAF8) and 0xC10/0xC14/0xC18 the flattened direction
+  // (0x0001EB04..0x0001EB18), normalized (0x0001EB30).
+  if (msg.GetMessage() == kSM_Damage) {
+    const CGameProjectile* proj =
+        TCastToConstPtr< CGameProjectile >(mgr.GetObjectById(msg.GetSenderId()));
+    if (proj != nullptr &&  // the retail's own null test, 0x0001EA48
+        GetDamageVulnerability()->WeaponHurts(                // 0x0001EA5C, 0x0001EA64
+            proj->GetCurrentDamageInfo().GetWeaponMode()) &&
+        3.f + (mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20) <= mElapsedTime) { // 0x0001EAB4
+      mHitDirection = proj->GetTranslation() - GetTranslation(); // 0x0001EA70..0x0001EAA4
+      if (CanReflectHit(mgr, proj->GetCurrentDamageInfo(), proj->GetUniqueId())) { // 0x0001EED8
+        mGuestC0C = mElapsedTime; // 0x0001EAF8
+        mHitDirectionFlat = mHitDirection;
+        mHitDirectionFlat.SetZ(0.f); // 0x0001EB18
+        if (mHitDirectionFlat.CanBeNormalized() == true) {  // 0x0001EB1C
+          mHitDirectionFlat.Normalize(); // 0x0001EB30
+        }
+      }
+    }
+  }
+  // The 'ALRT' arm (0x414C5254, the host's kSM_Alert; the compare at 0x0001E8FC) sets the
+  // alerted flag: the byte 0x90C's bit 7 (the rlwimi at 0x0001EA24 keeps the mask 0x80, the
+  // PowerPC bit 24 being 1u << (31 - 24)).
+  if (msg.GetMessage() == kSM_Alert) {
+    mFlags90C |= 0x80;
+  }
   // The 'XCRT' arm (0x58435254, the host's kSM_Create; the compare at 0x0001E91C) loads the body
   // controller (this+0x48C at 0x0001E99C), passes -1 for the animation state (0x0001E9A0) and
   // calls CBodyController::Activate (0x0001E9A4). Every arm then falls into the common tail,
