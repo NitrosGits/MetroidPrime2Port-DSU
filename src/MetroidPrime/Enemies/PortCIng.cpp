@@ -822,7 +822,7 @@ void CIng::UpdateValidTarget(CStateManager& mgr) {
   }
 }
 
-// fn_29_BCB4: CIng's GetAimPosition - CPhysicsActor's vtable slot 0x54. Retail works out the
+// @ fn_29_BCB4: CIng's GetAimPosition - CPhysicsActor's vtable slot 0x54. Retail works out the
 // aim position from the form: the corporeal form (2) and the three form-change forms (6..8)
 // predict their motion first, and the collar locator (0xd7a) then decides between the locator's
 // aim and the base class's. The ctor writes 0xff (invalid) to 0xd7a and nothing else in the
@@ -830,12 +830,26 @@ void CIng::UpdateValidTarget(CStateManager& mgr) {
 // aim is always the base class's - the port keeps the structure anyway. (Grepped over the whole
 // module: only the ctor's two stores at asm 0x0000E170/0x0000E448 write 0xd7a, and it is outside
 // the loader's data block - CIngData covers 0x7c0..0x9d3.)
+//
+// The arms (the area 57 run of 2026-10-21, a probe in the body):
+//   - the base class (the forms 0, 1, 3, 4, 5 and 9 - asm 0x0000BE4C): the form 3 with dt 0.00
+//     (the aim the Ing asks for itself);
+//   - the prediction (the forms 2, 6, 7, 8 - asm 0x0000BD34) with dt above zero: the form 6
+//     with dt 0.22 and 0.23 and the form 2 with dt 0.07 and 0.22 (the lock-on asks the target
+//     with a prediction time);
+//   - the same forms with dt of zero or less (asm 0x0000BD3C-0x0000BD40: the aim stays the zero
+//     vector): the form 6 with dt 0.00;
+//   - the collar locator (0xd7a) and the forms 6/7's fall back to the base class when the aim
+//     is below the actor's own height (0x5c, asm 0x0000BDF8): unreachable, they are inside the
+//     collar locator's path, and the locator is invalid in retail.
 CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
   CVector3f aim = CVector3f::Zero(); // asm 0x0000BCFC: sZeroVector
   // asm 0x0000BD04-0x0000BD40: the corporeal form and the forms 6..8 predict; the prediction
-  // only runs when the argument is above zero (rodata_6C).
+  // only runs when the argument is above zero (rodata_6C). The form 9 (the wall projectile's
+  // form change) does not predict: asm 0x0000BD28-0x0000BD30 sends the forms 9 and above to the
+  // base class.
   const bool predict = mForm == kForm_Corporeal ||
-                       (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingWallProjectile);
+                       (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingBodyProjectile);
   if (!predict) {
     return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE4C
   }
@@ -3462,6 +3476,13 @@ void CIng::Render(const CStateManager& mgr) const {
 // (4) takes the base class's own table, the ing spot (3) takes the grapple's table while the ball
 // is held (the byte at 0xe5d, bit 0) and the ing spot's own table otherwise, and every other form
 // takes the trigger table at CIngData+0x3c (0x7fc).
+// The arms:
+//   - the form 4 (asm 0x0000BF34): the base class's table - **open**, only the body projectile
+//     asks for it and the area 57 run of 2026-10-21 never reached that form;
+//   - the form 3 and the ball is held (asm 0x0000BF50): the grapple's table - the Agon Wastes
+//     run of 2026-10-21, 2 calls;
+//   - the form 3 (asm 0x0000BF64): the ing spot's table - 37 calls in the area 57 run;
+//   - every other form (asm 0x0000BF6C): the trigger's table - the forms 2 and 6, 71 calls.
 const CDamageVulnerability* CIng::GetDamageVulnerability() const {
   if (mForm == kForm_BodyProjectile) {
     return CPatterned::GetDamageVulnerability();
@@ -3502,10 +3523,20 @@ void CIng::Touch(CActor& actor, CStateManager& mgr) {
   CPatterned::Touch(actor, mgr);
 }
 
-// fn_29_B534: CIng's CollidedWith - CPhysicsActor's vtable slot 0x80 (the REL's own override).
+// fn_29_B534 (0x250, asm 0x0000B534-0x0000B610): CIng's CollidedWith - CPhysicsActor's vtable
+// slot 0x80 (the REL's own override).
 // The flying body projectile (form 4) remembers the surface it hit: the first collision whose
 // material list holds one of the six splat surfaces gives the normal (0xdd4/0xdd8/0xddc) and
 // sets the splat flag (0xe5e bit 6).
+// The arms:
+//   - the form is not 4 (asm 0x0000B558): the body does nothing - every call;
+//   - the flight time is under 0.5 (asm 0x0000B56C): the body does nothing - 203 calls in the
+//     area 57 run of 2026-10-21;
+//   - the contact list is empty (asm 0x0000B710): the body does nothing - 6 calls in that run;
+//   - a contact whose material is not one of the six splat surfaces (asm 0x0000B720): the next
+//     contact is tried - **open**, that run had no such contact;
+//   - a contact whose material meets the mask (asm 0x0000B738): the normal is stored, the splat
+//     flag is set and the first hit wins (asm 0x0000B760) - 1 call in that run.
 void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr); // asm 0x0000B550
   if (mForm != kForm_BodyProjectile) {
@@ -3644,13 +3675,21 @@ void CIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectSt
   }
 }
 
-// fn_29_B8C0 (0xB0, asm 0x0000B8C0-0x0000B96C): only the corporeal form (2) outside the
+// @ fn_29_B8C0 (0xB0, asm 0x0000B8C0-0x0000B96C): only the corporeal form (2) outside the
 // knock-back body state (6) takes the knock-back animation reaction; the hit's weapon type picks
 // the flinch type the knock-back manager keeps at 0x688 (2 for the light beam, 1 for everything
 // else), and the base class runs last. The Boost Guardian REL carries the same body
 // (fn_30_CB84) and the port's copy of it is the reference for the two calls.
+//
+// The arms (the area 57 run of 2026-10-21, a probe in the body):
+//   - the form is not 2 (asm 0x0000B8E8): the reaction off - the form 3, 26 calls;
+//   - the form 2 and the body state 6 (asm 0x0000B8F8): the reaction off - 1 call;
+//   - the form 2 and any other body state (asm 0x0000B900): the reaction on - 12 calls;
+//   - the weapon type 2 (asm 0x0000B928): the flinch type 2;
+//   - every other weapon (asm 0x0000B93C): the flinch type 1 - the power beam, 6 calls.
 void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  EnsureBodyActive(mgr);
+  EnsureBodyActive(mgr); // host guard, not in retail: the body controller is only activated by
+                          // the kSM_Create message (fn_29_4C88) and the body state is read below
   // asm 0x0000B8E4-0x0000B8F8: form 2 and the body state (0x48c -> 0x37c) 6.
   const bool react =
       mForm == kForm_Corporeal && BodyController()->GetCurrentStateId() != pas::kAS_KnockBack;
@@ -3665,6 +3704,11 @@ void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 // form (5) take no damage; every other form only gets the base class's damage-cooldown store
 // (0x448 = lbl_8041AAB8, CPatterned::skDamageHitTime = 0.33). The base class does exactly that
 // store, so the port's early return plus the base call is retail's body.
+// The arms:
+//   - the forms 0, 1 and 5 (asm 0x0000B894-0x0000B8AC): the early return - **open**, the area 57
+//     run of 2026-10-21 never damaged an Ing in its host phases;
+//   - every other form (asm 0x0000B8B0): the base class's store - the forms 2, 3 and 6 in that
+//     run.
 void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
     return;

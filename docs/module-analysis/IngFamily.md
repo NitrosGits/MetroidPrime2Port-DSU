@@ -1195,6 +1195,52 @@ calls them), each read field by field against the REL - all five match the port:
 | `fn_29_3948` (0x208) | the move on the surface: the parallel part is cut when it is below 0.6 of the move's length, the result is normalised, the actor moves by speed*dt and the move direction is stored; a move that is not magnitude-safe stores the zero vector | the port matches (`CIng::MoveOnSurface`) |
 | `fn_29_4AA8` (0xA4) | the light struct's copy assignment (0x50 bytes, field by field) | **not module behaviour** - it is one of the plain struct copies, so it joins the host-code group of A.20 |
 
+### A.22 The five hot vtable bodies, arm by arm (2026-10-21)
+
+The next five unmarked Ing bodies (the module's own hot vtable slots), each read field by field
+against the REL and each run in area 57 (Temple Grounds `0i_cliff_hall_dark`, the world `1baa96c2`
+and the area `2735236b`, the fast harness `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`) with a
+temporary probe in every arm. The probes are not committed.
+
+**The fix.** `fn_29_BCB4` predicted the motion in the form 9 as well: the port's range ran to
+`kForm_BecomingWallProjectile`, but the retail's `cmpwi r0, 0x9 / beq` (asm 0x0000BD28-0x0000BD30)
+sends the form 9 and everything above it to the base class. The range now ends at
+`kForm_BecomingBodyProjectile` (8) - the predict forms are 2, 6, 7, 8, as the doc said.
+
+**The bodies.** `fn_29_B534` (CollidedWith), `fn_29_B890` (TakeDamage), `fn_29_B8C0` (KnockBack),
+`fn_29_BCB4` (GetAimPosition) and `fn_29_BF20` (GetDamageVulnerability) are otherwise the retail's
+bodies - the mask of the six splat surfaces is the retail's own six bit indices (0x1d, 0x1e, 0x1f,
+0x3b, 0x2b, 0x2a = the host's `kMT_Ceiling`, `kMT_Wall`, `kMT_Floor`, `kMT_Solid`, `kMT_Immovable`,
+`kMT_Occluder`), the collision list's stride is 0x60 and its material list and normal are the
+`CCollisionInfo`'s 0x30 and 0x40, the flinch type is the weapon type (2 = the light beam) and the
+cover hint's id is the Ing's own.
+
+| fn | the arms (the asm) | the run (2026-10-21, area 57) | verdict |
+|---|---|---|---|
+| `fn_29_B534` CollidedWith | the form is not 4 (0xB558); the flight time is under 0.5 (0xB56C); the contact list is empty (0xB710); a contact whose material is not a splat surface (0xB720); a contact that meets the mask (0xB738, the first hit wins) | the form, the flight time (203 calls) and the surface hit (1) in the run of A.20; the empty list (6 calls) in the same run; **the contact that does not meet the mask never ran** | the port matches; **not marked** (one arm open) |
+| `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC); every other form stores the base class's damage-cooldown (0xB8B0) | the store in the forms 2, 3 and 6; **the early return never ran** - the area 57 Ings never took a hit in their host phases | the port matches; **not marked** (one arm open) |
+| `fn_29_B8C0` KnockBack | the form is not 2 (0xB8E8); the form 2 and the body state 6 (0xB8F8); the form 2 and any other body state (0xB900); the weapon type 2 (0xB928); any other weapon (0xB93C) | all five: the reaction off in the form 3 (26 calls), the reaction off in the form 2 (1 call), the reaction on in the form 2 (12 calls), the flinch 2 and the flinch 1 (the power beam, 6 calls) | the port matches; **marked** |
+| `fn_29_BCB4` GetAimPosition | the base class (0xBE4C); the prediction (0xBD34) with dt above zero (0xBD3C) and with dt of zero (the aim stays the zero vector); the collar locator (0xBD6C) and the forms 6/7's fall back (0xBDF8) | the base in the form 3 (dt 0.00), the prediction in the form 6 (dt 0.22, 0.23) and the form 2 (dt 0.07, 0.22) - the lock-on asks the target with a prediction time - and the form 6 with dt 0.00; the collar locator and the forms 6/7's fall back are inside the locator's path, and the locator is invalid in retail (0xd7a = 0xff) | the port matches (after the form 9 fix); **marked** |
+| `fn_29_BF20` GetDamageVulnerability | the form 4 takes the base class's table (0xBF34); the form 3 takes the grapple's table when the ball is held (0xBF50) or the ing spot's table (0xBF64); every other form takes the trigger's table (0xBF6C) | the trigger's table in the forms 2 and 6 (71 calls), the ing spot's table in the form 3 (37 calls), the grapple's table in the Agon Wastes run of 2026-10-21 (2 calls); **the base table never ran** - only the body projectile (the form 4) asks for it | the port matches; **not marked** (one arm open) |
+
+**The two arms that are still open** are the same two the earlier runs left open (A.20): the
+contact that is not a splat surface and the base damage table both need the body projectile (the
+form 4), and the area 57 runs of 2026-10-21 never reached that form - the Ings there stay in the
+ing spot (3) or the form changes (6). The Agon Wastes run reaches the body projectile.
+
+**The clrlwi question (for the orchestrator).** Three places in the module read the flags byte at
+0xe5d with `lbz r0, 0xe5d(r3); clrlwi. r0, r0, 31` and branch on the result: `fn_29_BB8C` (the
+touch, 0xBBB0), `fn_29_BF20` (0xBF50) and the Think's damage branch (0xCDC0). The port reads that
+as the byte's bit 0 (`mGrappled`), which is what `tools/asmcheck.py` models (`clrlwi` as the
+`rlwinm` family, the mask 0x1). The PowerPC definition of `clrlwi rA, rS, 31` is "keep the low 31
+bits", so on a byte the branch would ask "is the whole flags byte zero" - every flag of 0xe5d
+(`mRenderModel`, `mPortalPlane`, `mStartAsIngSpot`, `mForm9Render`, `mFollowingAttackPath`,
+`mAlert`, `mMoving`, `mGrappled`) instead of the one bit. The module's other bit reads of the same
+byte use `extrwi` (0x22A0, 0x4684, 0xB1E8), so the compiler does have a bit-test idiom. Two of
+the three places are marked functions (`fn_29_BB8C`, `fn_29_2E8C`), so this is a decision for the
+orchestrator, not for a lane: if the strict reading is the right one, those two bodies and
+`fn_29_BF20` have to test the whole byte.
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).
