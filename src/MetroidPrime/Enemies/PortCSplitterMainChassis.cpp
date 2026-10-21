@@ -199,7 +199,6 @@ SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
 SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
 SPLITTER_STATE_STANDIN(SpinAttack, fn_75_D7D4)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_D61C)
-SPLITTER_STATE_STANDIN(LaserSweepAttack, fn_75_D3E0)
 SPLITTER_STATE_STANDIN(SpinCollisionReaction, fn_75_D2A0)
 SPLITTER_STATE_STANDIN(SpinBounce, fn_75_D13C)
 SPLITTER_STATE_STANDIN(SpinTelegraph, fn_75_D0A4)
@@ -438,7 +437,7 @@ void CSplitterMainChassis::SetMorphballStabLeg(CStateManager&, float) { mStabLeg
 void CSplitterMainChassis::FindBestStabLeg(CStateManager& mgr, float) {
   mStabLeg = -1;
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncId));
-  if (target == nullptr) {
+  if (target == nullptr) {  // 0xB5AC-0xB5B0
     return;
   }
   const CVector3f offset = target->GetTranslation() - GetTranslation();
@@ -507,7 +506,7 @@ int CSplitterMainChassis::PortFindDodgeDirection(CStateManager& mgr, const CVect
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     // The retail reads the entry's position (0x54-0x5C) without a cast: the list holds AI actors.
     const CActor* other = TCastToConstPtr< CActor >(list[i]);
-    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {  // 0x9320-0x933C
       continue;
     }
     const CVector3f offset = other->GetTranslation() - GetTranslation();
@@ -563,7 +562,7 @@ void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
     return;
   }
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mSyncId));
-  if (player == nullptr ||
+  if (player == nullptr ||  // 0xB368-0xB36C
       (player->GetOrbitTargetId() != GetUniqueId() && player->GetOrbitTargetId() != mCommandModuleId)) {
     return;
   }
@@ -574,7 +573,7 @@ void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
                     nullptr);
   for (int i = 0; i < nearList.size(); ++i) {
     const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(nearList[i]));
-    if (weapon == nullptr || weapon->GetType() != kWT_Missile ||
+    if (weapon == nullptr || weapon->GetType() != kWT_Missile ||  // 0xB464-0xB484
         weapon->GetCurrentAreaId() != GetCurrentAreaId()) {
       continue;
     }
@@ -602,7 +601,7 @@ void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
 void CSplitterMainChassis::SetupLaserSweep(CStateManager& mgr, float) {
   CSplitterCommandModule* head =
       TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
-  if (head == nullptr) {
+  if (head == nullptr) {  // 0xB6E8-0xB6EC
     return;
   }
   const CVector3f origin = head->PortLaserOrigin(mgr);
@@ -633,6 +632,64 @@ void CSplitterMainChassis::SetupLaserSweep(CStateManager& mgr, float) {
                          origin.GetZ() + dir.GetZ());
   head->PortStartLaserSweep(first, second);
   CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
+}
+
+// fn_75_9AF8 (0x9AF8-0x9B98): every collision actor of the manager at 0xC68 (0x9B28
+// GetCollisionDescFromIndex, to GetNumCollisionActors at 0x9B7C) that casts to a CCollisionActor
+// (0x9B44-0x9B4C) gets the first vulnerability when it is the "target_LCTR" actor at 0xCC2
+// (0x9B50-0x9B64), else the second (0x9B6C-0x9B70).
+void CSplitterMainChassis::PortSetCollisionVulnerability(CStateManager& mgr,
+                                                         const CDamageVulnerability& target,
+                                                         const CDamageVulnerability& other) {
+  for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
+    const TUniqueId id = mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId();
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    if (actor == nullptr) {  // 0x9B48-0x9B4C
+      continue;
+    }
+    actor->SetDamageVulnerability(id == mTargetActorId ? target : other);
+  }
+}
+
+// fn_75_D3E0 (the chassis's LaserSweepAttack state, 0xD3E0-0xD618). Activate (0xD424): the
+// animation state at 0x6B4 is kAS_Ready (1), 0xD41's 0x40 bit is set, and the "target_LCTR"
+// collision actor gets the base's vulnerability (0xD444 CPatterned::GetDamageVulnerability) while
+// the others get the DOL's ImmuneRicochetVulnerability (the host's ReflectVulnerabilty; 0xD438,
+// 0xD458 fn_75_9AF8). Update (0xD460): when CTryCommand::ShouldRetry (the host's
+// CAnimationState::CanIssueCommand) allows body state 9 (kAS_LoopAttack, 0xD468) a loop attack
+// command of type 0 goes out (lbl_75_data_E0C, id 7, not waiting for the animation, no skip;
+// 0xD478-0xD4F4). Then without the head at 0xC6C (0xD510-0xD518), or with its laser sweep stage
+// at 0xF34 back to -1 (0xD51C-0xD524), the body state is told to exit (id 10, kBSC_ExitState;
+// 0xD528-0xD548). Deactivate (0xD55C): the animation state is kAS_NotReady (0), the exit command
+// goes out (0xD584), every collision actor is immune again (0xD59C-0xD5B8), the laser sweep timer
+// at 0xD18 restarts with the data's laser sweep interval (0x858, 0xD5BC-0xD5CC), 0xD41's 0x40 bit
+// is cleared and the team's projectile attack ends (0xD5FC EndAttack with 1, the team at 0xCBE,
+// this actor and false).
+void CSplitterMainChassis::LaserSweepAttack(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mFlagsD41 |= 0x40;
+    PortSetCollisionVulnerability(mgr, *CPatterned::GetDamageVulnerability(),
+                                  CDamageVulnerability::ReflectVulnerabilty());
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Zero));
+    }
+    const CSplitterCommandModule* head =
+        TCastToConstPtr< CSplitterCommandModule >(mgr.GetObjectById(mCommandModuleId));
+    if (head == nullptr || head->GetLaserSweepStage() == -1) {  // 0xD514-0xD524
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    PortSetCollisionVulnerability(mgr, CDamageVulnerability::ReflectVulnerabilty(),
+                                  CDamageVulnerability::ReflectVulnerabilty());
+    mLaserSweepTimer = mData.mLaserSweepInterval;
+    mFlagsD41 &= ~0x40;
+    CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
+                                false);
+  }
 }
 
 // fn_75_DA38 (the chassis's LegStabAttack state, 0xDA38-0xDBA8). Activate (0xDA70): with a stab
@@ -1476,11 +1533,27 @@ void CSplitterMainChassis::KnockBack(CStateManager& mgr, const CKnockBackInfo& i
   CPatterned::KnockBack(mgr, info);
 }
 
-// vtable slot 0xB0 = fn_75_EA70: it listens for the noise types the state machine asks for.
-bool CSplitterMainChassis::Listen(CStateManager& mgr, const CVector3f& position,
+// vtable slot 0xB0 = fn_75_EA70 (0xEA70-0xEB04): only a live chassis (0x420's 0x40 bit,
+// mAlive; 0xEA70-0xEA7C) hears anything. A path obstruction (type 4, 0xEA80-0xEA84) closer than
+// 20 units (squared against 400.0f, lbl_75_rodata_3CC; 0xEA98-0xEAD4) sets 0xD40's 0x10 bit
+// (0xEAD8-0xEAE4) and is heard; the player's fire (type 0, 0xEA8C-0xEA90) clears the timer at
+// 0xD34 (0xEAEC-0xEAF8, the time since the last shot that FindBestDodgeDirection tests) and is
+// heard. The base's Listen is not called.
+bool CSplitterMainChassis::Listen(CStateManager&, const CVector3f& position,
                                    EListenNoiseType type) {
-  StandIn("CSplitterMainChassis::Listen (vtable slot 0xB0, fn_75_EA70)");
-  return CPatterned::Listen(mgr, position, type);
+  if (!mAlive) {  // 0xEA78-0xEA7C
+    return false;
+  }
+  if (type == kLNT_PathObstruction) {
+    if ((position - GetTranslation()).MagSquared() < 400.f) {
+      mFlagsD40 |= 0x10;
+      return true;
+    }
+  } else if (type == kLNT_PlayerFire) {
+    mTimerD34 = 0.f;
+    return true;
+  }
+  return false;
 }
 
 // vtable slot 0xF0 = fn_75_E9E4: it registers the module's three tables (28 triggers, 22 states

@@ -199,6 +199,7 @@ public:
   // chassis's SetupLaserSweep (fn_75_B678) calls.
   CVector3f PortLaserOrigin(CStateManager& mgr) const;
   void PortStartLaserSweep(const CVector3f& first, const CVector3f& second);
+  int GetLaserSweepStage() const { return mLaserSweepStage; }  // guest 0xF34
   // guest 0xEFA: the chassis the head is docked in (the chassis's fn_75_8EC8 reads it, 0x00008F68).
   TUniqueId GetChassisId() const { return mChassisId; }
 

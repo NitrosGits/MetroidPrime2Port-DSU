@@ -319,6 +319,9 @@ private:
   // The retail's fn_75_91E4 and fn_75_909C.
   int PortFindDodgeDirection(CStateManager& mgr, const CVector3f& away);
   bool PortDodgeIsClear(CStateManager& mgr, const CVector3f& dir, float length);
+  // The retail's fn_75_9AF8: the "target_LCTR" collision actor's and the others' vulnerability.
+  void PortSetCollisionVulnerability(CStateManager& mgr, const CDamageVulnerability& target,
+                                     const CDamageVulnerability& other);
   // The retail's fn_75_AFE8 (the chassis's timers) and fn_75_9520 (its fade), the Think's
   // calls at 0x0000F164 and 0x0000F180.
   void PortUpdateTimers(CStateManager& mgr, float dt);

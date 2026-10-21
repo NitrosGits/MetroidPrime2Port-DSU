@@ -491,7 +491,7 @@ void CSplitterCommandModule::PortStartLaserSweep(const CVector3f& first, const C
 void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mLookAtOffset = GetTransform().GetColumn(kDY);
-    if (mgr.GetObjectById(mSyncedId) != nullptr) {
+    if (mgr.GetObjectById(mSyncedId) != nullptr) {  // 0x4554-0x4558
       const float startAngle =
           CVector3f::GetAngleDiff(mLookAtOffset, mLaserSweepStart - GetTranslation());
       if (CVector3f::GetAngleDiff(mLookAtOffset, mLaserSweepEnd - GetTranslation()) <
