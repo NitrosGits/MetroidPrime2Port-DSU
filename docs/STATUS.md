@@ -25,7 +25,7 @@ Lane watcher: `~/.cache/mp2-orch/watch.sh` (lanes file beside it), detached loop
 
 **Accepted since batch 7 (batch 8 candidates, 2026-10-21 14:15):** CommandoPirate `ed504da00` + `24fca504f`
 (2474/7A98 ported unmarked), DarkSamus `482a38568`+`4154642ea`+`5d31354a9` + darksamus2 `c9eb05d69` (1B658 138A4 1382C 13750 1367C), SwampBoss2 `1fb9cf495` + `26715ee9c`
-(55B0), SwampBoss1 `46aeee651` + `23a9594eb` (belly cap fix, 35DC 3320 348C), EmperorIngStage1 `6386fff8f`,
+(55B0), SwampBoss1 `46aeee651` + `23a9594eb` (belly cap fix, 35DC 3320 348C), EmperorIngStage1 `6386fff8f` + `527356dac` (tentacle anim search order),
 Ing `329c5a27c`..`15b1c9b33` + orchestrator `9f7134a47` (fn_29_4604's three missing steps; the lane twice
 claimed them ported without the code), DigitalGuardian `6c6eae0c7` (incl. shared fix `e403a065e`
 DolphinCModel UnlockTextures), Splitter `601ceaac7`, bg2 `6c8bfd383`, ep2 `ef9806f4a`.
