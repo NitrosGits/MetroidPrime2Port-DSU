@@ -412,29 +412,33 @@ void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
   }
   xb68_ += dt;                                 // 0x000066D0
   if (xb68_ >= 2.f) {                          // 0x000066E8
-    if ((xc64_ & 0x40) == 0) {                // 0x000066F8
-      const bool roll = mData.mCoverCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x00006718
-      xc63_ = (xc63_ & ~0x04) | (roll ? 0x04 : 0);  // 0x0000673C
-    }
+    // 0x000066F4..0x000066FC: when the byte at guest this+0xC64 has its 0x40 bit the retail
+    // takes r4 = 0 (0x00006730) and writes the flag as 0 (the rlwimi at 0x0000673C) - the flag
+    // is cleared, not left alone.
+    const bool roll = (xc64_ & 0x40) == 0 &&
+                      mData.mDodgeCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x00006710, 0x00006718
+    xc63_ = (xc63_ & ~0x04) | (roll ? 0x04 : 0);  // 0x0000673C
     xb68_ = 0.f;                               // 0x00006748
   }
   xb6c_ += dt;                                 // 0x0000674C
   if (xb6c_ >= 5.f) {                          // 0x00006764
-    if ((xc64_ & 0x40) == 0) {                // 0x00006774
-      const bool roll = mData.mSearchRadius >= mgr.Random()->Range(0.f, 100.f);  // 0x00006794
-      xc63_ = (xc63_ & ~0x01) | (roll ? 0x01 : 0);  // 0x000067B8
-    }
+    // 0x00006764..0x0000676C: the same for the cover flag - the retail takes r4 = 0 at
+    // 0x000067AC and writes the flag as 0 at 0x000067B8.
+    const bool roll = (xc64_ & 0x40) == 0 &&
+                      mData.mCoverCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x0000678C, 0x00006794
+    xc63_ = (xc63_ & ~0x01) | (roll ? 0x01 : 0);  // 0x000067B8
     xb6c_ = 0.f;                               // 0x000067C4
   }
   xb74_ += dt;                                 // 0x000067C8
   if (sEgrenadeObjectCount > 0) {              // 0x000067D8
     xb74_ = 0.f;                               // 0x000067EC
   } else if (xb74_ >= mData.mGrenade.mGrenadeMinAttackInterval) {  // 0x000067F8
-    if ((xc64_ & 0x40) == 0) {                // 0x0000680C
-      const bool roll = mData.mGrenade.mGrenadeAttackChance >=
-                        mgr.Random()->Range(0.f, 100.f);  // 0x0000682C
-      xc63_ = (xc63_ & ~0x02) | (roll ? 0x02 : 0);  // 0x00006850
-    }
+    // 0x000067F8..0x00006804: the same for the grenade flag - the retail takes r4 = 0 at
+    // 0x00006844 and writes the flag as 0 at 0x00006850.
+    const bool roll = (xc64_ & 0x40) == 0 &&
+                      mData.mGrenade.mGrenadeAttackChance >=
+                          mgr.Random()->Range(0.f, 100.f);  // 0x0000682C
+    xc63_ = (xc63_ & ~0x02) | (roll ? 0x02 : 0);  // 0x00006850
     xb74_ = 0.f;                               // 0x0000685C
   }
   if ((xc64_ & 0x02) != 0) {                   // 0x00006864
@@ -1311,35 +1315,45 @@ void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
   }
   xc64_ |= 0x01;              // 0x00002074
   const CTransform4f xf = GetLctrTransform(mLocatorLWrist);  // 0x00002088
-  if (xc4c_ == 1) {           // 0x0000209C (the charge)
-    // The guest builds the explosion and clears it again (the call at 0x000021A4), so the
-    // charge's effect never reaches the world.
-    return;
-  }
-  if (xc4c_ != 0) {           // 0x000021BC
-    return;
-  }
+  // 0x00002098..0x000020AC: the state word at guest this+0x0C4C picks the effect - 1 is the
+  // charge (the guest's own token at guest this+0x0C08, used when the byte at guest this+0x0C14
+  // says it is loaded) and 0 is the armed shield (the token at guest this+0x18, used when the
+  // byte at guest this+0x0C24 says it is loaded); every other value does nothing (0x000021BC).
+  // Both effects reach the world (the AddObject at 0x000022E8) and the sound plays
+  // (0x00002324); the guest destroys its temporary copy of the token on the way (0x000021A4).
+  const CAssetId effectId = xc4c_ == 1 ? mData.mShield.mChargeEffect    // 0x0000216C (this+0x0C08)
+                          : xc4c_ == 0 ? mData.mShield.mExplodeEffect   // 0x0000228C (this+0x18)
+                                       : kInvalidAssetId;
+  // 0x000021BC..0x000021C0: a state word that is neither 0 nor 1 reaches 0x000022D8 with no
+  // explosion at all - the port takes the invalid id, so no token is loaded and the three fields
+  // at the end are reset like the guest's.
+  // 0x000020A8 (the charge) and 0x000021C8 (the armed shield): the guest's own test of the
+  // token's "loaded" flag (the bytes at guest this+0xC14 and this+0xC24); the port's token's
+  // validity stands in for it.  When the token is not there the guest reaches 0x000022D8 with no
+  // explosion, so nothing is added and no sound plays - but the three fields at the end are
+  // reset either way (0x0000234C..0x00002360).
+  CExplosion* explosion = nullptr;
   rstl::optional_object< TCachedToken< CGenDescription > > effect;
-  const CAssetId effectId = mData.mShield.mExplodeEffect;
   if (effectId != kInvalidAssetId) {
     effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
   }
-  if (!effect.valid()) {  // 0x000021C8 (the guest's test of the flag at guest this+0xC24)
-    return;
+  if (effect.valid()) {  // 0x000021C8 (the guest's test of the flag at guest this+0xC24)
+    explosion = rs_new CExplosion(
+        TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        rstl::string_l("CommandExplosion F"), xf, 0, GetModelData()->GetScale(), CColor::White(),
+        -1);
+    // 0x000021A4: the guest destroys its temporary copy of the token here - nothing is cleared
+    // from the explosion itself.
   }
-  CExplosion* explosion = rs_new CExplosion(
-      TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
-      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
-      rstl::string_l("CommandExplosion F"), xf, 0, GetModelData()->GetScale(), CColor::White(),
-      -1);
-  if (explosion != nullptr) {
+  if (explosion != nullptr) {  // 0x000022D8..0x000022DC
     mgr.AddObject(explosion);  // 0x000022E8
-  }
-  CSfxManager::SfxStart(mData.mShield.mSoundExplode, 0x40, 0, CSfxManager::kAllAreas, false, false,
-                        CSfxManager::kMedPriority);  // 0x00002324
-  if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002344
-    CSfxManager::RemoveEmitter(xc38_);
-    xc38_ = CSfxHandle::NullHandle();
+    CSfxManager::SfxStart(mData.mShield.mSoundExplode, 0x40, 0, CSfxManager::kAllAreas, false, false,
+                          CSfxManager::kMedPriority);  // 0x00002324
+    if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002344
+      CSfxManager::RemoveEmitter(xc38_);
+      xc38_ = CSfxHandle::NullHandle();
+    }
   }
   xc4c_ = -1;   // 0x00002354
   xc48_ = 0.f;  // 0x0000235C
@@ -3538,7 +3552,8 @@ void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
 //
 // On activate (the guest's message 0, 0x00008704) the module's flag byte at guest this+0xC65 gets
 // its 0x08 bit, the byte at guest this+0xC66 loses its 0x20 bit, the animation state goes "ready"
-// (guest this+0x6B4 = 1), the body's locomotion type becomes 1 (pas::kLT_Relaxed), the shield's
+// (guest this+0x6B4 = 1), the body's locomotion type becomes 2 (pas::kLT_Lurk, the guest's
+// li r4,0x2 at 0x00008718), the shield's
 // arm timer at guest this+0xB80 takes the block's arm time (the block's +0x144 = guest this+0x904)
 // plus a random fraction of the arm time variation (the block's +0x148 = guest this+0x908), the
 // flag byte at guest this+0xC64 loses its 0x04 bit and the module's shield collision actor manager
@@ -3562,7 +3577,8 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
     xc65_ |= 0x08;                                   // 0x0000870C
     xc66_ &= ~0x20;                                  // 0x00008720
     mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x00008728
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);  // 0x00008730 (the guest's 1)
+    // 0x00008718: the guest's locomotion type is 2 - pas::kLT_Lurk - not the relaxed one.
+    BodyController()->SetLocomotionType(pas::kLT_Lurk);  // 0x00008718, 0x00008730
     xb80_ = mData.mShield.mArmTime +
             mgr.Random()->Float() * mData.mShield.mArmTimeVariation;  // 0x00008744
     xc64_ &= ~0x04;                                  // 0x0000875C
@@ -3589,7 +3605,8 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
     if (!x3CBC_(mgr, xb94_, 0.f)) {                   // 0x000087C0 (the guest's own helper)
       break;
     }
-    const CVector3f delta = xb94_ - GetTranslation();  // 0x000087CC..0x00008808
+    CVector3f delta = xb94_ - GetTranslation();  // 0x000087CC..0x00008808
+    delta.SetZ(0.f);                            // 0x0000880C (rodata_494 = 0.0f)
     if (!delta.IsMagnitudeSafe()) {                    // 0x00008810
       break;
     }
@@ -3647,9 +3664,10 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
 // 0x000082F4) and the shield's collision actor manager goes active; the charge itself moves the
 // actor along the charge direction at the block's charge speed (the block's +0x12C = guest
 // this+0x8EC) - the direction rotated into the actor's own frame (TransposeRotate) and scaled by
-// the speed and the frame time - until the distance along the facing passes 10 units plus the time
-// the charge takes (0x00008404..0x00008578). The guest's own call on the state machine (its
-// vtable slot 0x30, 0x00008430) has no effect that the port can see and is left out.
+// the speed and the frame time - until the state machine's own time (its vtable slot 0x30,
+// 0x00008430) passes 3.0f (rodata_448) plus the time the charge takes (0x00008404..0x00008578),
+// and only while the byte at guest this+0xC64 has its 0x08 bit (the charge animation took off,
+// 0x0000848C..0x00008494).
 //
 // On deactivate (the guest's message 2, 0x0000859C) the animation state goes "not ready", the body
 // is told to leave the state (the command id 0xa = kBSC_ExitState, 0x000085B4) - and, when the
@@ -3719,20 +3737,24 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
           time = mData.mShield.mChargeMaxAttackDist / speed;
         }
         const float along = CVector3f::Dot(GetTransform().GetForward(), toTarget);
-        if (along > 0.f && (xc64_ & 0x04) == 0) {
-          if (along > 10.f + time) {  // rodata_448, 0x00008444..0x00008454
-            BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00008458 (the id 0xa)
-          } else {
-            const CVector3f local = GetTransform().TransposeRotate(xba0_);  // 0x000084A8
-            MoveInOneFrameOR(local * (speed * dt), dt);                     // 0x000084E8
-            if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {
-              const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00008538
-              MoveInOneFrameOR(push * (speed * dt), dt);                     // 0x00008578
-              xbb8_ = CVector3f::Zero();                                    // 0x0000857C..0x00008594
-            }
-          }
-        } else {
+        if (along <= 0.f || (xc64_ & 0x04) != 0) {  // 0x00008418..0x0000842C
+          // The dot product is not over 0 (0x00008418..0x00008420) or the byte at guest this+0xC64
+          // has its 0x04 bit (0x00008424..0x0000842C): the charge ends.
           BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00008458 (the id 0xa)
+        } else if (StateMachineState().GetTime() > 3.f + time) {
+          // 0x00008430..0x00008454: the state machine's own time (the vtable slot 0x30 of the
+          // machine, GetTime) against 3.0f (rodata_448) plus the charge time.
+          BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00008458 (the id 0xa)
+        } else if ((xc64_ & 0x08) != 0) {         // 0x0000848C..0x00008494
+          // The movement only runs while the byte at guest this+0xC64 has its 0x08 bit - the
+          // charge animation has taken off (the kUE_TakeOff event sets it).
+          const CVector3f local = GetTransform().TransposeRotate(xba0_);  // 0x000084A8
+          MoveInOneFrameOR(local * (speed * dt), dt);                     // 0x000084E8
+          if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {
+            const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00008538
+            MoveInOneFrameOR(push * (speed * dt), dt);                     // 0x00008578
+            xbb8_ = CVector3f::Zero();                                    // 0x0000857C..0x00008594
+          }
         }
       }
     } else if (x924_ == 0) {
