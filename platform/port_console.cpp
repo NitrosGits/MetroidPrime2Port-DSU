@@ -480,7 +480,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "warp <slot|id|name>         load an area of the current world (what MP2_TELEPORT takes)\n"
       "nextarea | prevarea         the next or previous existing area of this world\n"
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
-      "heal | kill                 refill energy, or kill the player (a respawn test)\n"
+      "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
       "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
       "                            sunburst, sonicboom; kb = knockback power)\n"
@@ -716,12 +716,33 @@ void CmdDoor(CStateManager&, const Args&, std::string&) { PortWarp::Door(); }
 void CmdDock(CStateManager&, const Args&, std::string&) { PortWarp::Dock(); }
 void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station(); }
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
-void CmdKill(CStateManager&, const Args& args, std::string&) {
-  if (args.size() > 1) {
-    Fail("usage: kill   (kills the player; for an actor use `damage <id> <amount>`)");
+const CEntity* ResolveObject(CStateManager& mgr, std::string_view text);
+
+// kill [id]: no id kills the player; an id zeroes a patterned actor's health and runs its Death the
+// way ApplyDamage does (kSS_DeathRattle), so an actor that reflects every weapon (the Splitter's
+// chassis) can still be killed.
+void CmdKill(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() > 2) {
+    Fail("usage: kill [id]   (no id: the player)");
     return;
   }
-  PortWarp::Kill();
+  if (args.size() == 1) {
+    PortWarp::Kill();
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr || patterned->GetHealthInfo() == nullptr) {
+    Fail("not a patterned actor with health");
+    return;
+  }
+  const_cast< CHealthInfo* >(patterned->GetHealthInfo())->SetHP(0.f);
+  CVector3f direction = CVector3f::Zero();
+  if (const CPlayer* player = mgr.GetPlayer(0)) {
+    direction = patterned->GetTranslation() - player->GetTranslation();
+  }
+  patterned->Death(mgr, direction, kSS_DeathRattle);
+  out += "killed\n";
 }
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
