@@ -993,14 +993,19 @@ lbl_9_data_7D4 and lbl_9_data_7D8.
   the host's `CBCStepCmd` takes them in that order (the base, the direction, the type).
 - `fn_9_3338` (0x148 bytes) is the module's jump-back helper, ported as
   `x3338_IsJumpBackClear`: the ray from the actor's bounding-box centre (0x00003374, 0x00003380)
-  to the point that distance along the given vector (0x000033B0..0x000033D8) must not hit the
-  world (the RayCollideWorld call at 0x0000342C) and must be on the path (the OnPath call at
-  0x00003440). `ShouldJumpBack` calls it with the forward column negated and the module's float
+  to the point that distance along the given vector (0x000033B0..0x000033D8) must be clear of the
+  world (the RayCollideWorld call at 0x0000342C - the answer is false when the ray is blocked) and
+  the point must be on the path (the OnPath call at 0x00003440 - the answer is true when it returns
+  0). The guest's filter includes the material 59 (kMT_Solid - the module's .data word at
+  lbl_9_data_80C) and excludes the material 47 (kMT_CollisionActor - the word at lbl_9_data_810):
+  the two `__shl2i` calls at 0x000033DC and 0x000033F8, the type kFT_IncludeExclude at 0x0000341C.
+  `ShouldJumpBack` calls it with the forward column negated and the module's float
   at guest this+0xBE0 (the new member `xbe0_`; the constructor stores the animation distance
   times the model's scale there at 0x0000E61C, and the same for the float at +0xBE4 - `xbe4_` -
-  at 0x0000E56C; the port leaves both at the constructor's first value, 0.f). So the jump-back
-  trigger runs but stays false: the jump-back distance is still zero, so the ray's end point is
-  the actor's own centre.
+  at 0x0000E56C; the port leaves both at the constructor's first value, 0.f). The jump-back
+  distance is still zero, so the ray's end point is the actor's own centre: the guest's
+  degenerate ray counts as clear (the host's RayCollideWorld answers true when the direction
+  cannot be normalized) and the trigger then answers what the path finder says about the centre.
 - The two constructor stores the port still owes: `fn_9_D904` sets the float at guest this+0xBE0
   (the jump-back distance) at 0x0000E61C and the one at +0xBE4 (the dodge picker's radius) at
   0x0000E56C - each is an animation's travel distance times the model's scale X (the load at
