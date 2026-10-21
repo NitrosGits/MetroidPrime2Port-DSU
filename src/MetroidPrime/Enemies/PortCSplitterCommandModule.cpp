@@ -1305,6 +1305,7 @@ void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
 // (the host's CAnimationState::CanIssueCommand) allows body state 6 (kAS_KnockBack, 0x4354-0x4360),
 // a knock-back command along the head's Y column (the transform's 0x28, 0x38, 0x48) with
 // severity 2 goes out (lbl_75_data_5B8, 0x4364-0x43C4). Deactivate (0x441C): the animation state is kAS_NotReady.
+// @ fn_75_42F8
 void CSplitterCommandModule::LostChassisReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1474,6 +1475,7 @@ void CSplitterCommandModule::PathFind(CStateManager& mgr, EStateMsg msg, float d
 
 // fn_75_5624 (the head's ShouldAttack trigger, 0x5624-0x5644): the countdown at 0xF0C is at or
 // below 0.0f (0x5630 fcmpo, 0x5634 cror lt|eq).
+// @ fn_75_5624
 bool CSplitterCommandModule::ShouldAttack(CStateManager&, const CTriggerData&) const {
   return mCountdownTimerB <= 0.f;
 }

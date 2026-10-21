@@ -1344,3 +1344,24 @@ Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projecti
   and CModel::DolphinDrawFlat. Aurora has all of them: GXCopyTex resolves into a texture keyed by
   the destination pointer, and binding that same pointer samples it (PortEfbCopy, GOTCHAS). No
   Aurora feature is missing; they stay stand-ins only because of size (0x760 + 0x64C).
+
+## Undocked head, HeadExplosion, bomb kill (2026-10-21)
+
+- Ported the undocked head's path: turn upright 2994, PathFind 4E90, separation 23F0, chassis
+  search 2280 (with the chassis's dock reservation E788/E768), SetTargetDest 3D20,
+  ResetAttackTimes 3ADC, InLaserPulseRange 565C, InHoverRange 570C, ShouldAttack 5624. The chassis
+  HeadExplosion BEEC is ported too. 42F8's knock-back is along the Y column (transform 0x28/0x38/0x48),
+  not the translation.
+- Runs (04_cliff_contraption, area 914f1381, layer 2): u19 (sweep kill of u0532, head u0531 then
+  FaceTarget→PathFind for 170 s); c21 (no console damage: morph-ball bombs at target actor u0678
+  (-85.1, 111.5, -124.4) during LaserSweepAttack; u0532 died at 58.5 s through A0A0's CWeapon arm;
+  head u0531 went PathFind→LaserPulse, the next stand-in 4864); h20/h22 (head u0520 killed:
+  u0521 ran HeadExplosion's Activate/Update/issue/Deactivate arms in h20; in h22 it died by
+  sweep damage instead).
+- Marked: 5624, 42F8 (and 3ADC). Unmarked: 2994 (slerp arm not recorded), 23F0 (docked-head
+  skip), 2280 (release of an older pick, nearer-pick arms), 3D20 (no-target arm), 4E90 (unsafe
+  move return), 565C/570C (no-target return), E788/E768 (release never ran), BEEC (CanIssueCommand
+  false arm not recorded), EB04 (head-null arm: a killed head stays as an object in Dead, so the
+  chassis still finds it).
+- In c21 the other chassis u0521 also reached Dead at the same moment without being attacked;
+  the cause (script link from u0532's death?) is not traced.
