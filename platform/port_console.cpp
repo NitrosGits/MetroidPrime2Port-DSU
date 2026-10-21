@@ -713,7 +713,13 @@ void CmdDoor(CStateManager&, const Args&, std::string&) { PortWarp::Door(); }
 void CmdDock(CStateManager&, const Args&, std::string&) { PortWarp::Dock(); }
 void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station(); }
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
-void CmdKill(CStateManager&, const Args&, std::string&) { PortWarp::Kill(); }
+void CmdKill(CStateManager&, const Args& args, std::string&) {
+  if (args.size() > 1) {
+    Fail("usage: kill   (kills the player; for an actor use `damage <id> <amount>`)");
+    return;
+  }
+  PortWarp::Kill();
+}
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
   if (args.size() < 2) {
