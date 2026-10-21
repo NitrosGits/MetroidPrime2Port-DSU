@@ -8,6 +8,8 @@
 #include "MetroidPrime/CAnimationParameters.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "rstl/optional_object.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
 
@@ -403,7 +405,12 @@ private:
   void TurnTowardPoint(float dt, const CVector3f& point, float rate);
   // fn_10_11974: the scatter shot's aim drift and fire timer while firing (0xBAD).
   void UpdateScatterShotFire(CStateManager& mgr, float dt);
-  // fn_10_12F60: fires one scatter shot projectile (not ported yet: a stand-in).
+  // fn_10_11814: the scatter shot's start (the aim line, the firing byte, the timer).
+  void StartScatterShotFire(CStateManager& mgr, uchar side);
+  // fn_10_13230: the jittered point along the aim line the next shot aims at.
+  CVector3f GetScatterShotAimPoint(CStateManager& mgr) const;
+  // fn_10_12F60: fires one scatter shot projectile (a CEnergyProjectile stands in for the
+  // module's CScattershotProjectile).
   void FireScatterShotProjectile(CStateManager& mgr);
   // fn_10_21F14: the projectile-attack command driven by the animation state.
   void DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state,
@@ -627,7 +634,8 @@ private:
   CVector3f mScatterAim;           // guest 0xB88, zero (0x0002167C); fn_10_11814 sets it
   CVector3f mScatterLineEnd;       // guest 0xB94, zero (0x00021698); fn_10_11814 sets it
   int mScatterShotCount;           // guest 0xBA0, 0 (0x000216A8)
-  float mScatterDelay;             // guest 0xBA4, 0.0f (0x000216AC)
+  float mScatterStartTime;         // guest 0xBA4, 0.0f (0x000216AC); fn_10_11814 stores the
+                                   // elapsed time 0x8B0 at the start (0x00011858)
   float mScatterTimer;             // guest 0xBA8, 0.0f (0x000216B0)
   uchar mScatterFiring;            // guest 0xBAD, 0 (0x000216B8); fn_10_11814 sets it (0x00011868)
   float mScatterChance;            // guest 0xBDC, the constructor's 6th float (0x000216C4), the
@@ -635,6 +643,19 @@ private:
   float mScatterRate;              // guest 0xBE0, the constructor's 7th float (0x000216C8), the
                                    // loader's scatterShotProjectilesPerSecond (0x0000D670)
   TUniqueId mScatterProjectileUid; // guest 0xBE4, kInvalidUniqueId (0x000216D0)
+  uchar mScatterSide;              // guest 0xBAC, 0 (0x000216B4); the side MovingScatterShot's
+                                   // start passes to fn_10_11814 (0x0001C264)
+  uchar mScatterUseSecondInfo;     // guest 0xBAE, 0 (0x000216BC); fn_10_12F60 draws it
+                                   // (0x000130CC) and ProjectileInfo reads it (0x0001C718)
+  // guest 0xB50 / 0xBB0, the scatter shot's two projectile infos with their valid bytes at 0xB78
+  // (fn_10_20C2C clears it at 0x00020C4C) and 0xBD8 (0x000216C0): built from the loader's
+  // scatterShotProjectile / scatterShotProjectile2 and the one scatterShotDamage when the asset
+  // is valid (`addis r0, rX, 0x1; cmplwi r0, 0xffff` at 0x00020C38 / 0x00021644), then locked
+  // (0x00020C78 / 0x00021704).
+  rstl::optional_object< CProjectileInfo > mScatterShotInfo;
+  rstl::optional_object< CProjectileInfo > mScatterShotInfo2;
+  CTransform4f mGunLctrXf;         // guest 0x8CC, identity (0x0001FBC0); PreRender (fn_10_18AB8)
+                                   // stores GetLctrTransform("GUN_Particle_LCTR") (0x00018C24)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

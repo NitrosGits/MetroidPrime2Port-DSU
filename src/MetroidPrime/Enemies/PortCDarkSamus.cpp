@@ -109,12 +109,26 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mScatterAim(CVector3f(0.f, 0.f, 0.f))
 , mScatterLineEnd(CVector3f(0.f, 0.f, 0.f))
 , mScatterShotCount(0)
-, mScatterDelay(0.f)
+, mScatterStartTime(0.f)
 , mScatterTimer(0.f)
 , mScatterFiring(0)
 , mScatterChance(data.mUnknown378285B9)         // 0x000216C4
 , mScatterRate(data.mScatterShotProjectilesPerSecond) // 0x000216C8
-, mScatterProjectileUid(kInvalidUniqueId) {     // 0x000216D0
+, mScatterProjectileUid(kInvalidUniqueId)      // 0x000216D0
+, mScatterSide(0)                               // 0x000216B4
+, mScatterUseSecondInfo(0)                      // 0x000216BC
+, mGunLctrXf(CTransform4f::Identity()) {        // 0x0001FBC0
+  // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
+  // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
+  // (0x000216E4), both with scatterShotDamage, each only for a valid asset and locked after.
+  if (data.mScatterShotProjectile != kInvalidAssetId) {
+    mScatterShotInfo = CProjectileInfo(data.mScatterShotProjectile, data.mScatterShotDamage);
+    mScatterShotInfo.data().Token().Lock();
+  }
+  if (data.mScatterShotProjectile2 != kInvalidAssetId) {
+    mScatterShotInfo2 = CProjectileInfo(data.mScatterShotProjectile2, data.mScatterShotDamage);
+    mScatterShotInfo2.data().Token().Lock();
+  }
   mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
@@ -229,6 +243,9 @@ void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
 void CDarkSamus::PreRender(CStateManager& mgr) {
   StandIn("fn_10_18AB8", "vtable slot 9, PreRender");
   CPatterned::PreRender(mgr);
+  // 0x00018C18: the gun locator's transform the scatter shot fires from (0x8CC). The rest of the
+  // pass (the effects and the colour lerps around it) is not in the port yet.
+  mGunLctrXf = GetLctrTransform(rstl::string_l("GUN_Particle_LCTR"));
 }
 
 // vtable slot 10 = fn_10_17F04 (0x2D8).
@@ -287,6 +304,24 @@ EWeaponCollisionResponseTypes CDarkSamus::GetCollisionResponseType(const CVector
 void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                  float dt) {
   StandIn("fn_10_1BEFC", "vtable slot 28, DoUserAnimEvent");
+  // The switch on the event type (`cmplwi r31, 0x2e` at 0x0001BF28, jumptable_10_data_FB4).
+  // kUE_EventStart (case 27, 0x0001C1F0) switches on the current attack 0x980 and never reaches
+  // the base: the scatter shots start (fn_10_11814) with side 0 for 8 (0x0001C25C) and the byte
+  // 0xBAC for 0x10 (0x0001C268). Its 0x100 (0xA84 = 1), 0x100000 (0xAB8 bit 0x40) and 0x400000
+  // (fn_10_6118, fn_10_8178) arms are not in the port yet.
+  if (type == kUE_EventStart) {
+    switch (mCurrentAttack) {
+    case 8:
+      StartScatterShotFire(mgr, 0);
+      break;
+    case 0x10:
+      StartScatterShotFire(mgr, mScatterSide);
+      break;
+    default:
+      break;
+    }
+    return;
+  }
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
@@ -332,8 +367,21 @@ CVector3f CDarkSamus::GetOrigin(const CStateManager& mgr, const CTeamAiRole& rol
 
 // vtable slot 55 = fn_10_1C6C8 (0xB0): the projectile info the attacks launch.
 CProjectileInfo* CDarkSamus::ProjectileInfo() {
-  StandIn("fn_10_1C6C8", "vtable slot 55, ProjectileInfo");
-  return CPatterned::ProjectileInfo();
+  // The switch on the current attack 0x980: the scatter shots 8 and 0x10 (0x0001C718) take the
+  // second info 0xBB0 when 0xBAE is 1, the first 0xB50 otherwise. The missiles' 0x40/0x80
+  // (0xA0C), 0x100 (0xA4C) and 0x800000 (0xF80 / 0x1064 by 0xFB8) infos are not in the port yet,
+  // so those arms answer null as the default does (0x0001C770). Port limit: an info whose asset
+  // was invalid is never built on the host, so it answers null too.
+  switch (mCurrentAttack) {
+  case 8:
+  case 0x10:
+    if (mScatterUseSecondInfo == 1) {
+      return mScatterShotInfo2 ? &mScatterShotInfo2.data() : nullptr;
+    }
+    return mScatterShotInfo ? &mScatterShotInfo.data() : nullptr;
+  default:
+    return nullptr;
+  }
 }
 
 // vtable slot 73 = fn_10_CE94 (0x8): it returns this+0x754, the base class's own member.

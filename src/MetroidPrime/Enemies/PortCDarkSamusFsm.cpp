@@ -46,6 +46,8 @@
 #include "MetroidPrime/StateMachineCommon.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CRayCastResult.hpp"
 
@@ -1442,7 +1444,7 @@ void CDarkSamus::ScatterShot(CStateManager& mgr, EStateMsg msg, float dt) {
   UpdateCurrentAttack(8, mgr, msg);
   switch (msg) {
   case kStateMsg_Activate:
-    mScatterDelay = 0.f;
+    mScatterStartTime = 0.f;
     mScatterFiring = 0;
     mScatterShotCount = 0;
     mScatterProjectileUid = kInvalidUniqueId;
@@ -2206,9 +2208,113 @@ void CDarkSamus::TurnTowardPlayer(CStateManager& mgr, float dt, float rate) {
   TurnTowardPoint(dt, mgr.GetPlayer(0)->GetTranslation(), rate);
 }
 
-// fn_10_12F60 (0x00012F60): spawns one CScattershotProjectile along the line - not ported yet.
-void CDarkSamus::FireScatterShotProjectile(CStateManager&) {
-  FsmStandIn("fn_10_12F60", "fire scatter shot projectile");
+// fn_10_11814 (0x00011814, 0x160 bytes): the scatter shot's start, from DoUserAnimEvent's
+// kUE_EventStart arm (0x0001C25C with side 0 for the ScatterShot attack 8, 0x0001C268 with the
+// byte 0xBAC for MovingScatterShot's 0x10). The start time 0xBA4 is the elapsed time 0x8B0
+// (0x00011858), the firing byte 0xBAD is set (0x00011868) and the fire timer 0xBA8 starts at
+// lbl_10_rodata_474 = 0.05f (0x00011874). The aim 0xB88 is the player's position (the state
+// manager's player at 0x14FC, +0x54, 0x00011878..0x00011890); the flattened direction to it
+// (z = lbl_10_rodata_3FC = 0.0f, 0x000118B8) is normalized (0x000118BC) and the line's ends sit
+// lbl_10_rodata_478 = 6.5f to either side of the aim (the perpendicular (y, -x), 0x000118E0..
+// 0x00011908; z = aim z + 0.0f). Side 1 (`cmplwi r0, 0x1` at 0x000118EC) starts the line on the
+// (y, -x) side, any other side on the (-y, x) side.
+void CDarkSamus::StartScatterShotFire(CStateManager& mgr, uchar side) {
+  mScatterStartTime = mElapsedTime;
+  mScatterFiring = 1;
+  mScatterTimer = 0.05f;
+  const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
+  mScatterAim = player;
+  const CVector3f pos = GetTranslation();
+  CVector3f dir(player.GetX() - pos.GetX(), player.GetY() - pos.GetY(), 0.f);
+  dir.Normalize();
+  const CVector3f right(player.GetX() + 6.5f * dir.GetY(), player.GetY() + 6.5f * -dir.GetX(),
+                        player.GetZ() + 0.f);
+  const CVector3f left(player.GetX() + 6.5f * -dir.GetY(), player.GetY() + 6.5f * dir.GetX(),
+                       player.GetZ() + 0.f);
+  if (side == 1) {
+    mScatterLineStart = right;
+    mScatterLineEnd = left;
+  } else {
+    mScatterLineStart = left;
+    mScatterLineEnd = right;
+  }
+}
+
+// fn_10_13230 (0x00013230, 0x1A0 bytes): the point the next shot aims at. The sweep fraction is
+// the time since the start (0x8B0 - 0xBA4) over lbl_10_rodata_4A8 = 0.47f for the ScatterShot
+// attack 8 (`cmpwi r0, 0x8` at 0x00013290), lbl_10_rodata_4AC = 0.67f for any other, clamped to
+// lbl_10_rodata_3E8 = 1.0f (0x000132BC). The point is the line start plus the fraction of the line
+// (0xB94 - 0xB7C), jittered by the state manager's random (0x16E4): x and y by
+// lbl_10_rodata_3E0 = 2.0f * (lbl_10_rodata_408 = 4.0f * rand) - 4.0f (0x000132F0..0x0001334C), z
+// by lbl_10_rodata_4B4 = 9.0f * rand + lbl_10_rodata_4B0 = -1.5f (0x00013350..0x00013378).
+CVector3f CDarkSamus::GetScatterShotAimPoint(CStateManager& mgr) const {
+  float t = (mElapsedTime - mScatterStartTime) / (mCurrentAttack == 8 ? 0.47f : 0.67f);
+  if (t > 1.f) {
+    t = 1.f;
+  }
+  const float sx = mScatterLineStart.GetX();
+  const float sy = mScatterLineStart.GetY();
+  const float sz = mScatterLineStart.GetZ();
+  const float dx = mScatterLineEnd.GetX() - sx;
+  const float dy = mScatterLineEnd.GetY() - sy;
+  const float dz = mScatterLineEnd.GetZ() - sz;
+  const float x = 2.f * (4.f * mgr.Random()->Float()) + ((sx + t * dx) - 4.f);
+  const float y = 2.f * (4.f * mgr.Random()->Float()) + ((sy + t * dy) - 4.f);
+  const float z = 9.f * mgr.Random()->Float() + (-1.5f + (sz + t * dz));
+  return CVector3f(x, y, z);
+}
+
+// fn_10_12F60 (0x00012F60, 0x2D0 bytes): one scatter shot. The shot's transform looks from the gun
+// locator transform 0x8CC's translation at the aim point (fn_10_13230, 0x00012F98) with the
+// locator's up (LookAt at 0x00013000). With a live projectile in 0xBE4 (0x0001301C;
+// TCastToPtr<CScattershotProjectile> at 0x00013038, else 0xBE4 = kInvalidUniqueId) the shot is
+// added to it (fn_10_C98 at 0x0001308C, from the locator's translation along the shot's forward).
+// Otherwise the second projectile's chance 0xBDC - divided by lbl_10_rodata_3F0 = 100.0f when above
+// lbl_10_rodata_3E8 = 1.0f (0x000130A0) - against the state manager's random decides 0xBAE
+// (`fcmpo; mfcr; srwi 31` = rand < chance, 0x000130CC), which ProjectileInfo (vtable 0xDC) reads;
+// when its weapon description is loaded (TCachedToken::TryCache, 0x000130E4..0x00013124) a new
+// uid goes to 0xBE4 (0x00013150) and the 0x27B0-byte CScattershotProjectile (fn_10_2AD0 at
+// 0x000131DC: the info's token, kWT_AI = `li r5, 0xb`, the transform, the info's damage at +0xC,
+// the uid, the area 0x4, the owner 0x8 and lbl_10_rodata_488 = 45.0f) is added (0x000131F4), or
+// 0xBE4 is cleared when the allocation fails (0x00013204).
+//
+// Port limit: CScattershotProjectile is the module's own CWeapon subclass (its vtable is
+// lbl_10_data_40, its ~57 functions fill 0x0..0x44D0) and the port does not have it yet. The
+// host's CEnergyProjectile stands in for it with the same description, weapon type, transform,
+// damage, uid, area and owner (the impact arguments are CPatterned::LaunchProjectile's); it is one
+// shot rather than a swarm, so fn_10_C98's added shots are a stand-in and the next projectile
+// spawns once the current one is gone.
+void CDarkSamus::FireScatterShotProjectile(CStateManager& mgr) {
+  const CVector3f aim = GetScatterShotAimPoint(mgr);
+  const CTransform4f xf = CTransform4f::LookAt(mGunLctrXf.GetTranslation(), aim, mGunLctrXf.GetUp());
+  if (mScatterProjectileUid != kInvalidUniqueId) {
+    if (TCastToPtr< CEnergyProjectile >(mgr.ObjectById(mScatterProjectileUid)) == nullptr) {
+      mScatterProjectileUid = kInvalidUniqueId;
+    } else {
+      FsmStandIn("fn_10_C98", "CScattershotProjectile add shot");
+      return;
+    }
+  }
+  float chance = mScatterChance;
+  if (chance > 1.f) {
+    chance = chance / 100.f;
+  }
+  mScatterUseSecondInfo = mgr.Random()->Float() < chance;
+  CProjectileInfo* info = ProjectileInfo();
+  if (!info->Token().TryCache()) {
+    return;
+  }
+  mScatterProjectileUid = mgr.AllocateUniqueId();
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, ProjectileInfo()->Token(), kWT_AI, xf, kMT_Character, ProjectileInfo()->GetDamage(),
+      mScatterProjectileUid, GetCurrentAreaId(), GetUniqueId(), kInvalidUniqueId,
+      CWeapon::kPA_None, false, CVector3f(1.f, 1.f, 1.f), CImpactVisorEffect::None(), false, true,
+      false, 1.f, 4.f, 4.f);
+  if (projectile != nullptr) {
+    mgr.AddObject(projectile);
+    return;
+  }
+  mScatterProjectileUid = kInvalidUniqueId;
 }
 
 // fn_10_11974 (0x00011974, 0x164 bytes): only while the firing byte 0xBAD is set (0x0001199C).
