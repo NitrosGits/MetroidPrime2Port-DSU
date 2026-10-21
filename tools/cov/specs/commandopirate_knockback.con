@@ -1,8 +1,9 @@
-# area 59: the commando is woken, frozen with the dark beam (the frozen reaction's flags are
-# 1|2 = 3), then killed, then hit again: the KnockBack override's dead arm.
-@f3000 objs commando
-@f3200 send u065a Activate
-@f3600 damage u065a 5 darkburst
-@f4000 kill u065a
-@f4400 damage u065a 5
-@f4800 objs commando
+# area 59: the commando is woken, frozen with the dark beam (the frozen knock-back reaction's
+# flags are 1|2 = 3), then killed, then hit again: the KnockBack override's dead arm, whose
+# flags the forcing spec writes to 3.  The steps are wall times: under gdb the frames are slow.
+@60 objs commando
+@80 send u0417 Activate
+@120 damage u0417 5 darkburst
+@160 kill u0417
+@200 damage u0417 5
+@240 objs commando

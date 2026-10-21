@@ -6,9 +6,14 @@ harness), the player is put next to it (`place`) so the module's aim helper fn_9
 target, and the states are forced with `fsm` - nothing in the shipped flow enters most of them in
 these areas. Listen runs from the console's `noise` at chosen offsets. With `cover` (the Swamp's
 05_swamp_timber!, the only area with cover points near commandos) the commando is put on a cover
-point first, so CoverFind holds it and the cover states take their cover arms.
+point first, so CoverFind holds it and the cover states take their cover arms (Cover is entered a
+second time from CoverAttack, with the body already in cover, and held longer). With `msgs` the
+E-grenade is thrown from four stand-offs, the MeleeAttack picker fn_9_3480 runs from eight, two
+commandos enter MeleeAttack in one tick, and every commando then gets the script messages the
+fights never send and two beam shots (AcceptScriptMsg's arms), Deactivate/Activate first, SetToZero
+last.
 
-usage: commandopirate_core.py <port> [outfile] [cover]
+usage: commandopirate_core.py <port> [outfile] [cover] [msgs]
 """
 import re
 import socket
@@ -17,7 +22,8 @@ import time
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 4841
 OUT = open(sys.argv[2], "w") if len(sys.argv) > 2 else sys.stdout
-COVER = len(sys.argv) > 3 and sys.argv[3] == "cover"
+COVER = "cover" in sys.argv[3:]
+MSGS = "msgs" in sys.argv[3:]
 
 
 def log(msg):
@@ -36,6 +42,8 @@ def connect():
 
 
 sock = connect()
+# A world load under gdb (a forcing run) can hold the console for longer than the connect timeout.
+sock.settimeout(300)
 stream = sock.makefile("rw")
 
 
@@ -132,6 +140,7 @@ def main():
                 step(cid, "fsm %s Crouch", 40)
                 step(cid, "fsm %s Cover", 60)
                 step(cid, "fsm %s CoverAttack", 60)
+                step(cid, "fsm %s Cover", 150)
                 step(cid, "fsm %s Lurk", 10)
             continue
         step(cid, "fsm %s SelectTarget", 10)
@@ -151,6 +160,28 @@ def main():
         step(cid, "fsm %s Lurk", 20)
         step(cid, "damage %s 1 20", 60)
         step(cid, "fsm %s GetUp", 60)
+        if MSGS:
+            for d in (4, 8, 15, 25):
+                step(cid, "place %%s player %d" % d, 5)
+                step(cid, "fsm %s EGrenadeAttack", 60)
+            for d in (2, 4, 8, 3, 6, 2, 5, 9):
+                step(cid, "place %%s player %d" % d, 5)
+                step(cid, "fsm %s MeleeAttack", 15)
+            if n == len(ids) - 1 and len(ids) > 1:
+                # two commandos into MeleeAttack in one tick: the team turns the second one down
+                for other in ids:
+                    step(other, "send %s Activate", 5)
+                    step(other, "place %s player 3", 5)
+                log("team melee: %s" % cmd("; ".join("fsm %s MeleeAttack" % i for i in ids)))
+                wait(30)
+            for m in ("Deactivate", "Deactivate", "Escape", "SetToZero", "Activate", "Activate",
+                      "AIUpdateDisabled", "Launching", "OffGround", "Landed", "Alert", "Start", "Stop",
+                      "AreaLoaded", "AreaLoaded"):
+                step(cid, "send %%s %s" % m, 15)
+            step(cid, "shoot %s", 20)
+            step(cid, "shoot %s charged", 20)
+            for m in ("Escape", "SetToZero"):
+                step(cid, "send %%s %s" % m, 15)
         if n == len(ids) - 1:
             step(cid, "kill %s", 60)
             noises(cid)

@@ -40,8 +40,8 @@ SPEC = [
     ('0xB818 IsFacingTarget: no aim', 'loc:PortCCommandoPirate.cpp:2242', [], 'max=3000'),
     # the KnockBack override (the vtable slot 0x9C): the "GetUp" state and the two sounds
     ('0xC300 KnockBack', 'CCommandoPirate::KnockBack(', [], 'calls max=3000'),
-    ('0xC300 KnockBack: GetUp', 'loc:PortCCommandoPirate.cpp:1954', [], 'max=3000'),
-    ('0xC300 KnockBack: death sound', 'loc:PortCCommandoPirate.cpp:1964', [], 'max=3000'),
+    ('0xC300 KnockBack: GetUp', 'loc:PortCCommandoPirate.cpp:1945', [], 'max=3000'),
+    ('0xC300 KnockBack: death sound', 'loc:PortCCommandoPirate.cpp:1955', [], 'max=3000'),
     ('0xB900 HasAttackPattern', 'CCommandoPirate::HasAttackPattern(', [], 'ret max=3000'),
     ('0xB990 PathOver', 'CCommandoPirate::PathOver(', [], 'ret max=3000'),
     ('0xB9D8 PathShagged', 'CCommandoPirate::PathShagged(', [], 'ret max=3000'),

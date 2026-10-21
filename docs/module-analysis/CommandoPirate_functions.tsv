@@ -1,257 +1,257 @@
-offset	size	fn	kind	class	port	callers	owner	note
-0x0	0x8	fn_9_0	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
-0x8	0x8	fn_9_8	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
-0x10	0xC	fn_9_10	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
-0x1C	0x3C	fn_9_1C	behaviour	B	not-port	data:lbl_9_data_828	cphelpers	
-0x58	0x10	fn_9_58	data-thunk	T	not-port	data:lbl_9_data_828	cphelpers	
-0x68	0x8	fn_9_68	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
-0x70	0x8	fn_9_70	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
-0x78	0x8	fn_9_78	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
-0x80	0x10	fn_9_80	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
-0x90	0xC	fn_9_90	data-thunk	T	not-port	data:lbl_9_data_828	cphelpers	
-0x9C	0x8	fn_9_9C	data-thunk	T	not-port	data:lbl_9_data_828	cphelpers	
-0xA4	0x8	fn_9_A4	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
-0xAC	0x1C	fn_9_AC	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
-0xC8	0x2C	fn_9_C8	data-thunk	T	not-port	data:lbl_9_data_828	cphelpers	
-0xF4	0x24	RELExit	rel-entry	H	not-port	-	cphelpers	
-0x118	0x20	RELMain	rel-entry	H	not-port	-	cphelpers	
-0x138	0x30	fn_9_138	host-copy	H	not-port	bl:RELMain	cphelpers	
-0x168	0x76C	fn_9_168	behaviour	B	not-port	-	cphelpers	
-0x8D4	0x60	fn_9_8D4	host-copy	H	not-port	-	cphelpers	
-0x934	0x58	fn_9_934	host-copy	H	not-port	-	cphelpers	
-0x98C	0x94	fn_9_98C	behaviour	B	not-port	bl:fn_9_168	cphelpers	
-0xA20	0x40	fn_9_A20	behaviour	B	not-port	bl:fn_9_168	cphelpers	
-0xA60	0x20	fn_9_A60	behaviour	B	not-port	bl:fn_9_A20	cphelpers	
-0xA80	0x28	fn_9_A80	behaviour	B	not-port	bl:fn_9_A60	cphelpers	
-0xAA8	0x13C	fn_9_AA8	host-copy	H	not-port	bl:fn_9_A80	cphelpers	
-0xBE4	0x6C	fn_9_BE4	host-copy	H	not-port	-	cphelpers	
-0xC50	0x54	fn_9_C50	host-copy	H	not-port	-	cphelpers	
-0xCA4	0x64	fn_9_CA4	host-copy	H	not-port	-	cphelpers	
-0xD08	0x60	fn_9_D08	host-copy	H	not-port	-	cphelpers	
-0xD68	0xC8	fn_9_D68	host-copy	H	not-port	bl:fn_9_168	cphelpers	
-0xE30	0x224	fn_9_E30	behaviour	B	not-port	bl:fn_9_168	cphelpers	
-0x1054	0x64	fn_9_1054	host-copy	H	not-port	-	cphelpers	
-0x10B8	0xFC	fn_9_10B8	host-copy	H	not-port	bl:fn_9_E30	cphelpers	
-0x11B4	0x58	fn_9_11B4	host-copy	H	not-port	-	cphelpers	
-0x120C	0xFC	fn_9_120C	host-copy	H	not-port	bl:fn_9_E30	cphelpers	
-0x1308	0x318	fn_9_1308	host-copy	H	not-port	bl:fn_9_168	cphelpers	
-0x1620	0x310	fn_9_1620	host-copy	H	not-port	bl:fn_9_168	cphelpers	
-0x1930	0xA8	fn_9_1930	behaviour	B	ported	bl:fn_9_CB40	cphelpers	
-0x19D8	0xC4	fn_9_19D8	behaviour	B	not-port	bl:fn_9_AA20	cphelpers	
-0x1A9C	0x170	fn_9_1A9C	behaviour	B	not-port	bl:fn_9_9AAC	cphelpers	
-0x1C0C	0x2EC	fn_9_1C0C	behaviour	B	not-port	bl:fn_9_C944	cphelpers	
-0x1EF8	0x90	fn_9_1EF8	behaviour	B	not-port	bl:fn_9_7A98 fn_9_8028 fn_9_86B4 fn_9_C798	cphelpers	
-0x1F88	0xC0	fn_9_1F88	behaviour	B	not-port	bl:fn_9_C798	cphelpers	
-0x2048	0x330	fn_9_2048	behaviour	B	ported	bl:fn_9_2D0C fn_9_69C8	cphelpers	
-0x2378	0x58	fn_9_2378	behaviour	B	not-port	bl:fn_9_2048 fn_9_3090 fn_9_5410	cphelpers	
-0x23D0	0x54	fn_9_23D0	host-copy	H	not-port	bl:fn_9_2378	cphelpers	
-0x2424	0x50	fn_9_2424	host-copy	H	not-port	-	cphelpers	
-0x2474	0x580	fn_9_2474	behaviour	B	ported	bl:fn_9_7A98	cphelpers	
-0x29F4	0x5C	fn_9_29F4	host-copy	H	not-port	data:lbl_9_data_A94	cphelpers	
-0x2A50	0x48	fn_9_2A50	host-copy	H	not-port	data:lbl_9_data_AA0	cphelpers	
-0x2A98	0x214	fn_9_2A98	behaviour	B	not-port	bl:fn_9_7A98	cphelpers	
-0x2CAC	0x60	fn_9_2CAC	host-copy	H	not-port	data:lbl_9_data_A84	cphelpers	
-0x2D0C	0x384	fn_9_2D0C	behaviour	B	not-port	bl:fn_9_CB40	cphelpers	
-0x3090	0x2A8	fn_9_3090	behaviour	B	marked	bl:fn_9_C944	cphelpers	
-0x3338	0x148	fn_9_3338	behaviour	B	ported	bl:fn_9_3678 fn_9_BB10	cphelpers	
-0x3480	0x1F8	fn_9_3480	behaviour	B	not-port	bl:fn_9_A4BC	cphelpers	
-0x3678	0x288	fn_9_3678	behaviour	B	marked	bl:fn_9_8934	cphelpers	
-0x3900	0x15C	fn_9_3900	behaviour	B	ported	bl:fn_9_CB40	cphelpers	
-0x3A5C	0x260	fn_9_3A5C	behaviour	B	not-port	bl:fn_9_CB40	cphelpers	
-0x3CBC	0xA8	fn_9_3CBC	host-copy	H	not-port	bl:fn_9_3480 fn_9_4D84 fn_9_709C fn_9_7358 fn_9_86B4 fn_9_8934 fn_9_8B70 fn_9_961C fn_9_9F24 fn_9_A110 fn_9_A2EC fn_9_A4BC fn_9_ABDC fn_9_AFD4 fn_9_B818 fn_9_BBC8	cphelpers	
-0x3D64	0xB8	fn_9_3D64	host-copy	H	not-port	bl:fn_9_CB40	cphelpers	
-0x3E1C	0x324	fn_9_3E1C	behaviour	B	not-port	bl:fn_9_C944	cphelpers	
-0x4140	0x48	fn_9_4140	behaviour	B	not-port	bl:fn_9_3E1C	cphelpers	
-0x4188	0xB8	fn_9_4188	behaviour	B	not-port	bl:fn_9_4140 fn_9_D8AC	cphelpers	
-0x4240	0x94	fn_9_4240	behaviour	B	not-port	bl:fn_9_4188	cphelpers	
-0x42D4	0x84	fn_9_42D4	host-copy	H	not-port	bl:fn_9_4240	cphelpers	
-0x4358	0x84	fn_9_4358	host-copy	H	not-port	bl:fn_9_4240	cphelpers	
-0x43DC	0x84	fn_9_43DC	host-copy	H	not-port	bl:fn_9_4240	cphelpers	
-0x4460	0x84	fn_9_4460	host-copy	H	not-port	bl:fn_9_4240	cphelpers	
-0x44E4	0x84	fn_9_44E4	host-copy	H	not-port	bl:fn_9_4240	cphelpers	
-0x4568	0x3C	fn_9_4568	host-copy	H	not-port	-	cphelpers	
-0x45A4	0x304	fn_9_45A4	behaviour	B	not-port	bl:fn_9_CB40	cphelpers	
-0x48A8	0x60	fn_9_48A8	behaviour	B	not-port	bl:fn_9_45A4	cphelpers	
-0x4908	0x38	fn_9_4908	behaviour	B	not-port	bl:fn_9_48A8 fn_9_4B3C	cphelpers	
-0x4940	0x60	fn_9_4940	host-copy	H	not-port	bl:fn_9_4908	cphelpers	
-0x49A0	0x38	fn_9_49A0	behaviour	B	not-port	bl:fn_9_45A4	cphelpers	
-0x49D8	0x20	fn_9_49D8	behaviour	B	not-port	bl:fn_9_49A0 fn_9_F8B0	cphelpers	
-0x49F8	0x28	fn_9_49F8	behaviour	B	not-port	bl:fn_9_49D8	cphelpers	
-0x4A20	0xC0	fn_9_4A20	host-copy	H	not-port	bl:fn_9_45A4 fn_9_49F8	cphelpers	
-0x4AE0	0x5C	fn_9_4AE0	host-copy	H	not-port	-	cphelpers	
-0x4B3C	0x84	fn_9_4B3C	behaviour	B	not-port	bl:fn_9_45A4	cphelpers	
-0x4BC0	0xE4	fn_9_4BC0	behaviour	B	marked	bl:fn_9_C944	cphelpers	
-0x4CA4	0xD8	fn_9_4CA4	behaviour	B	marked	bl:fn_9_4D84 fn_9_6390	cphelpers	
-0x4D7C	0x8	fn_9_4D7C	data-thunk	T	not-port	-	cphelpers	
-0x4D84	0x228	fn_9_4D84	behaviour	B	marked	bl:fn_9_C944	cphelpers	
-0x4FAC	0x5C	fn_9_4FAC	host-copy	H	not-port	data:lbl_9_data_A78	cphelpers	
-0x5008	0x2B4	fn_9_5008	behaviour	B	not-port	bl:fn_9_5410	cpcore	
-0x52BC	0x154	fn_9_52BC	behaviour	B	not-port	bl:fn_9_5410	cpcore	
-0x5410	0x370	fn_9_5410	behaviour	B	stand-in	bl:fn_9_C798	cpcore	
-0x5780	0x20	fn_9_5780	host-copy	H	not-port	bl:fn_9_5410	cpcore	
-0x57A0	0x598	fn_9_57A0	behaviour	B	marked	bl:fn_9_6390	cphelpers	
-0x5D38	0x3C	fn_9_5D38	host-copy	H	not-port	-	cphelpers	
-0x5D74	0x184	fn_9_5D74	behaviour	B	not-port	bl:fn_9_57A0 fn_9_D904	cphelpers	
-0x5EF8	0x3C	fn_9_5EF8	host-copy	H	not-port	-	cphelpers	
-0x5F34	0x8	fn_9_5F34	data-thunk	T	not-port	-	cphelpers	
-0x5F3C	0x54	fn_9_5F3C	behaviour	B	not-port	bl:fn_9_57A0	cphelpers	
-0x5F90	0x5C	fn_9_5F90	behaviour	B	not-port	bl:fn_9_5F3C fn_9_6054	cphelpers	
-0x5FEC	0x20	fn_9_5FEC	behaviour	B	not-port	bl:fn_9_5F90	cphelpers	
-0x600C	0x48	fn_9_600C	host-copy	H	not-port	bl:fn_9_5FEC	cphelpers	
-0x6054	0x48	fn_9_6054	behaviour	B	not-port	bl:fn_9_57A0	cphelpers	
-0x609C	0xB4	fn_9_609C	behaviour	B	not-port	bl:fn_9_6054	cphelpers	
-0x6150	0x40	fn_9_6150	behaviour	B	not-port	bl:fn_9_609C	cphelpers	
-0x6190	0x20	fn_9_6190	behaviour	B	not-port	bl:fn_9_6150	cphelpers	
-0x61B0	0x28	fn_9_61B0	behaviour	B	not-port	bl:fn_9_6190	cphelpers	
-0x61D8	0x80	fn_9_61D8	host-copy	H	not-port	bl:fn_9_61B0	cphelpers	
-0x6258	0x6C	fn_9_6258	host-copy	H	not-port	-	cphelpers	
-0x62C4	0x54	fn_9_62C4	host-copy	H	not-port	-	cphelpers	
-0x6318	0x3C	fn_9_6318	host-copy	H	not-port	-	cphelpers	
-0x6354	0x3C	fn_9_6354	host-copy	H	not-port	-	cphelpers	
-0x6390	0x29C	fn_9_6390	behaviour	B	marked	bl:fn_9_C944	cphelpers	
-0x662C	0x39C	fn_9_662C	vtable-override	B	not-port	bl:fn_9_C944	cpcore	
-0x69C8	0x78	fn_9_69C8	fsm-state	B	ported	data:lbl_9_data_55C	commando-lane	Dead
-0x6A40	0x130	fn_9_6A40	fsm-state	B	ported	data:lbl_9_data_550	cpcore	GetUp
-0x6B70	0x5C	fn_9_6B70	host-copy	H	not-port	data:lbl_9_data_A6C	cphelpers	
-0x6BCC	0x9C	fn_9_6BCC	fsm-state	B	marked	data:lbl_9_data_544	commando-lane	BreakCover
-0x6C68	0x154	fn_9_6C68	fsm-state	B	ported	data:lbl_9_data_538	cpcore	CoverAttack
-0x6DBC	0x284	fn_9_6DBC	fsm-state	B	ported	data:lbl_9_data_52C	cpcore	Cover
-0x7040	0x5C	fn_9_7040	host-copy	H	not-port	data:lbl_9_data_A60	cphelpers	
-0x709C	0x1F0	fn_9_709C	fsm-state	B	marked	data:lbl_9_data_514	commando-lane	CoverFind
-0x728C	0xCC	fn_9_728C	fsm-state	B	marked	data:lbl_9_data_508	commando-lane	WallDetach
-0x7358	0x310	fn_9_7358	fsm-state	B	ported	data:lbl_9_data_4FC	commando-lane	WallHang
-0x7668	0x5C	fn_9_7668	host-copy	H	not-port	data:lbl_9_data_A44	cphelpers	
-0x76C4	0x60	fn_9_76C4	host-copy	H	not-port	data:lbl_9_data_A50	cphelpers	
-0x7724	0x148	fn_9_7724	fsm-state	B	ported	data:lbl_9_data_4F0	cpcore	Crouch
-0x786C	0x22C	fn_9_786C	fsm-state	B	ported	data:lbl_9_data_4E4	commando-lane	RestoreOrientation
-0x7A98	0x590	fn_9_7A98	fsm-state	B	ported	data:lbl_9_data_4D8	commando-lane	ScriptedShieldCharge
-0x8028	0x68C	fn_9_8028	fsm-state	B	marked	data:lbl_9_data_4CC	commando-lane	ShieldCharge
-0x86B4	0x280	fn_9_86B4	fsm-state	B	marked	data:lbl_9_data_4C0	commando-lane	ArmShield
-0x8934	0x1E0	fn_9_8934	fsm-state	B	ported	data:lbl_9_data_4B4	commando-lane	Dodge
-0x8B14	0x5C	fn_9_8B14	host-copy	H	not-port	data:lbl_9_data_A38	cphelpers	
-0x8B70	0x1B8	fn_9_8B70	fsm-state	B	ported	data:lbl_9_data_4A8	commando-lane	JumpBack
-0x8D28	0xC8	fn_9_8D28	fsm-state	B	marked	data:lbl_9_data_49C	commando-lane	PostWarpOut
-0x8DF0	0x218	fn_9_8DF0	fsm-state	B	marked	data:lbl_9_data_490	commando-lane	WarpOut
-0x9008	0x5C	fn_9_9008	host-copy	H	not-port	data:lbl_9_data_A2C	cphelpers	
-0x9064	0x528	fn_9_9064	fsm-state	B	ported	data:lbl_9_data_484	cpcore	WarpIn
-0x958C	0x3C	fn_9_958C	host-copy	H	not-port	-	cphelpers	
-0x95C8	0x54	fn_9_95C8	host-copy	H	not-port	bl:fn_9_9064	cphelpers	
-0x961C	0x350	fn_9_961C	fsm-state	B	ported	data:lbl_9_data_478	commando-lane	FollowAttackPattern
-0x996C	0x140	fn_9_996C	behaviour	B	not-port	data:lbl_9_data_46C	cphelpers	
-0x9AAC	0x108	fn_9_9AAC	fsm-state	B	ported	data:lbl_9_data_460	commando-lane	PathFind
-0x9BB4	0x1FC	fn_9_9BB4	fsm-state	B	ported	data:lbl_9_data_454	cpcore	JetBoost
-0x9DB0	0x9C	fn_9_9DB0	data-thunk	T	not-port	bl:fn_9_9BB4	cphelpers	
-0x9E4C	0x5C	fn_9_9E4C	host-copy	H	not-port	data:lbl_9_data_A20	cphelpers	
-0x9EA8	0x7C	fn_9_9EA8	data-thunk	T	not-port	bl:fn_9_9BB4	cphelpers	
-0x9F24	0x1EC	fn_9_9F24	fsm-state	B	marked	data:lbl_9_data_448	commando-lane	JumpPointFind
-0xA110	0x1DC	fn_9_A110	fsm-state	B	ported	data:lbl_9_data_43C	cpcore	PostEGrenadeAttack
-0xA2EC	0x174	fn_9_A2EC	fsm-state	B	ported	data:lbl_9_data_430	cpcore	EGrenadeAttack
-0xA460	0x5C	fn_9_A460	host-copy	H	not-port	data:lbl_9_data_A14	cphelpers	
-0xA4BC	0x290	fn_9_A4BC	fsm-state	B	ported	data:lbl_9_data_424	cpcore	MeleeAttack
-0xA74C	0x5C	fn_9_A74C	host-copy	H	not-port	data:lbl_9_data_A08	cphelpers	
-0xA7A8	0x90	fn_9_A7A8	fsm-state	B	ported	data:lbl_9_data_520	commando-lane	SetCoverDest
-0xA838	0xB0	fn_9_A838	fsm-state	B	marked	data:lbl_9_data_418	commando-lane	SetPathMeshDest
-0xA8E8	0x94	fn_9_A8E8	fsm-state	B	ported	data:lbl_9_data_40C	commando-lane	SetJumpDest
-0xA97C	0xA4	fn_9_A97C	fsm-state	B	ported	data:lbl_9_data_400	commando-lane	SetRetreatDest
-0xAA20	0xE8	fn_9_AA20	fsm-state	B	ported	data:lbl_9_data_3F4	commando-lane	SetTargetDest
-0xAB08	0xD4	fn_9_AB08	fsm-state	B	ported	data:lbl_9_data_3E8	commando-lane	SelectTarget
-0xABDC	0x1C4	fn_9_ABDC	fsm-state	B	ported	data:lbl_9_data_3DC	commando-lane	FaceTarget
-0xADA0	0x34	fn_9_ADA0	fsm-state	B	marked	data:lbl_9_data_3C4	commando-lane	Ambush
-0xADD4	0x30	fn_9_ADD4	data-thunk	T	not-port	data:lbl_9_data_3B8	cphelpers	
-0xAE04	0x158	fn_9_AE04	fsm-state	B	ported	data:lbl_9_data_3D0	commando-lane	Alert
-0xAF5C	0x5C	fn_9_AF5C	host-copy	H	not-port	data:lbl_9_data_9FC	cphelpers	
-0xAFB8	0x1C	fn_9_AFB8	fsm-trigger	T	ported	data:lbl_9_data_18C	commando-lane	AbortSeekCover
-0xAFD4	0xE0	fn_9_AFD4	fsm-trigger	B	ported	data:lbl_9_data_180	cpcore	CoverBlown
-0xB0B4	0x20	fn_9_B0B4	fsm-trigger	T	ported	data:lbl_9_data_174	commando-lane	ShouldCoverAttack
-0xB0D4	0x20	fn_9_B0D4	fsm-trigger	T	ported	data:lbl_9_data_168	commando-lane	FoundCover
-0xB0F4	0x20	fn_9_B0F4	fsm-trigger	T	ported	data:lbl_9_data_15C	commando-lane	ShouldCover
-0xB114	0x54	fn_9_B114	fsm-trigger	B	ported	data:lbl_9_data_150	commando-lane	ShouldWallHang
-0xB168	0x40	fn_9_B168	fsm-trigger	B	ported	data:lbl_9_data_144	commando-lane	ShouldCrouch
-0xB1A8	0x20	fn_9_B1A8	fsm-trigger	T	ported	data:lbl_9_data_138	commando-lane	FoundJumpPoint
-0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	ported	data:lbl_9_data_12C	commando-lane	IsAggressive
-0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	ported	data:lbl_9_data_120	commando-lane	AbortShieldCharge
-0xB1E0	0x70	fn_9_B1E0	fsm-trigger	B	marked	data:lbl_9_data_114	commando-lane	ShouldBoost
-0xB250	0x410	fn_9_B250	fsm-trigger	B	ported	data:lbl_9_data_108	commando-lane	ShouldShieldCharge
-0xB660	0x30	fn_9_B660	fsm-trigger	T	ported	data:lbl_9_data_FC	commando-lane	ShouldArmShield
-0xB690	0xDC	fn_9_B690	fsm-trigger	H	ported	data:lbl_9_data_F0	commando-lane	ShouldDodge
-0xB76C	0x90	fn_9_B76C	fsm-trigger	H	ported	data:lbl_9_data_E4	commando-lane	TooClose
-0xB7FC	0x1C	fn_9_B7FC	fsm-trigger	B	ported	data:lbl_9_data_D8	commando-lane	AttackPatternOver
-0xB818	0xE8	fn_9_B818	fsm-trigger	B	marked	data:lbl_9_data_CC	commando-lane	IsFacingTarget
-0xB900	0x58	fn_9_B900	fsm-trigger	B	ported	data:lbl_9_data_C0	commando-lane	HasAttackPattern
-0xB958	0x38	fn_9_B958	fsm-trigger	B	marked	data:lbl_9_data_B4	commando-lane	IsOffPath
-0xB990	0x48	fn_9_B990	fsm-trigger	T	ported	data:lbl_9_data_A8	commando-lane	PathOver
-0xB9D8	0x48	fn_9_B9D8	fsm-trigger	T	ported	data:lbl_9_data_9C	commando-lane	PathShagged
-0xBA20	0x58	fn_9_BA20	fsm-trigger	B	ported	data:lbl_9_data_90	commando-lane	HasNewTarget
-0xBA78	0x3C	fn_9_BA78	fsm-trigger	H	ported	bl:fn_9_BA20 | data:lbl_9_data_84	commando-lane	HasTarget
-0xBAB4	0x1C	fn_9_BAB4	fsm-trigger	T	ported	data:lbl_9_data_78	commando-lane	HeardShot
-0xBAD0	0x1C	fn_9_BAD0	fsm-trigger	T	ported	data:lbl_9_data_6C	commando-lane	UnderFire
-0xBAEC	0xC	fn_9_BAEC	fsm-trigger	T	ported	data:lbl_9_data_60	commando-lane	HasLineOfSight
-0xBAF8	0xC	fn_9_BAF8	fsm-trigger	T	ported	data:lbl_9_data_54	commando-lane	BreakAmbush
-0xBB04	0xC	fn_9_BB04	fsm-trigger	T	ported	data:lbl_9_data_48	commando-lane	ShouldAmbush
-0xBB10	0x6C	fn_9_BB10	fsm-trigger	B	ported	data:lbl_9_data_3C	commando-lane	ShouldJumpBack
-0xBB7C	0x4C	fn_9_BB7C	fsm-trigger	T	ported	data:lbl_9_data_30	commando-lane	ShouldRetreat
-0xBBC8	0xF0	fn_9_BBC8	fsm-trigger	B	ported	data:lbl_9_data_24	commando-lane	ShouldFireEGrenade
-0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	H	ported	data:lbl_9_data_18	commando-lane	ShouldMeleeAttack
-0xBD98	0x34	fn_9_BD98	fsm-trigger	T	ported	data:lbl_9_data_C	commando-lane	ShouldWarpIn
-0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	marked	data:lbl_9_data_0	commando-lane	StateOver
-0xBDE0	0x6C	fn_9_BDE0	vtable-override	B	marked	data:lbl_9_data_828	cpcore	
-0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	ported	data:lbl_9_data_828	cpcore	
-0xBF44	0x2B0	fn_9_BF44	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
-0xC1F4	0xD8	fn_9_C1F4	vtable-override	B	marked	data:lbl_9_data_828	cpcore	
-0xC2CC	0x34	fn_9_C2CC	vtable-override	T	not-port	data:lbl_9_data_828	cpcore	
-0xC300	0x1FC	fn_9_C300	vtable-override	B	ported	data:lbl_9_data_828	cpcore	
-0xC4FC	0x20	fn_9_C4FC	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
-0xC51C	0x7C	fn_9_C51C	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
-0xC598	0x13C	fn_9_C598	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
-0xC6D4	0xC4	fn_9_C6D4	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
-0xC798	0x1AC	fn_9_C798	vtable-override	B	not-port	data:jumptable_9_data_970 lbl_9_data_828	cpcore	
-0xC944	0x184	fn_9_C944	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
-0xCAC8	0x78	fn_9_CAC8	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
-0xCB40	0x754	fn_9_CB40	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
-0xD294	0x5C	fn_9_D294	behaviour	B	not-port	bl:fn_9_CB40 fn_9_D904 fn_9_EB84 fn_9_EF80	cphelpers	
-0xD2F0	0x54	fn_9_D2F0	host-copy	H	not-port	-	cphelpers	
-0xD344	0x130	fn_9_D344	host-copy	H	not-port	bl:fn_9_D294	cphelpers	
-0xD474	0x8	fn_9_D474	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
-0xD47C	0x1B8	fn_9_D47C	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
-0xD634	0x1E4	fn_9_D634	behaviour	B	not-port	bl:fn_9_D47C	cphelpers	
-0xD818	0x94	fn_9_D818	host-copy	H	not-port	bl:fn_9_D634	cphelpers	
-0xD8AC	0x58	fn_9_D8AC	behaviour	B	not-port	bl:fn_9_D47C	cphelpers	
-0xD904	0xDCC	fn_9_D904	behaviour	B	not-port	bl:fn_9_168	cphelpers	
-0xE6D0	0x5C	fn_9_E6D0	behaviour	B	not-port	bl:fn_9_D904	cphelpers	
-0xE72C	0xC0	fn_9_E72C	behaviour	B	not-port	bl:fn_9_E6D0	cphelpers	
-0xE7EC	0xC	fn_9_E7EC	data-thunk	T	not-port	bl:fn_9_E72C	cphelpers	
-0xE7F8	0x6C	fn_9_E7F8	host-copy	H	not-port	-	cphelpers	
-0xE864	0x58	fn_9_E864	host-copy	H	not-port	-	cphelpers	
-0xE8BC	0x3C	fn_9_E8BC	host-copy	H	not-port	-	cphelpers	
-0xE8F8	0x3C	fn_9_E8F8	host-copy	H	not-port	-	cphelpers	
-0xE934	0x58	fn_9_E934	host-copy	H	not-port	-	cphelpers	
-0xE98C	0x5C	fn_9_E98C	host-copy	H	not-port	-	cphelpers	
-0xE9E8	0x3C	fn_9_E9E8	host-copy	H	not-port	-	cphelpers	
-0xEA24	0x160	fn_9_EA24	behaviour	B	not-port	bl:fn_9_D904	cphelpers	
-0xEB84	0x104	fn_9_EB84	behaviour	B	not-port	bl:fn_9_EA24 fn_9_EDC0	cphelpers	
-0xEC88	0x7C	fn_9_EC88	behaviour	B	not-port	bl:fn_9_EA24 fn_9_EDC0 fn_9_F418	cphelpers	
-0xED04	0xBC	fn_9_ED04	behaviour	B	not-port	bl:fn_9_EC88 fn_9_F50C	cphelpers	
-0xEDC0	0x1C0	fn_9_EDC0	behaviour	B	not-port	bl:fn_9_168	cphelpers	
-0xEF80	0x178	fn_9_EF80	behaviour	B	not-port	bl:fn_9_168	cphelpers	
-0xF0F8	0x198	fn_9_F0F8	behaviour	B	not-port	data:lbl_9_data_AAC	cphelpers	
-0xF290	0x84	fn_9_F290	behaviour	B	not-port	data:lbl_9_data_AAC	cpcore	
-0xF314	0x104	fn_9_F314	host-copy	H	not-port	bl:fn_9_F290	cphelpers	
-0xF418	0xF4	fn_9_F418	behaviour	B	not-port	bl:fn_9_5410	cpcore	
-0xF50C	0x80	fn_9_F50C	behaviour	B	not-port	bl:fn_9_168	cphelpers	
-0xF58C	0x110	fn_9_F58C	host-copy	H	not-port	bl:fn_9_D904	cphelpers	
-0xF69C	0x40	fn_9_F69C	behaviour	B	not-port	data:lbl_9_data_A50	cphelpers	
-0xF6DC	0x40	fn_9_F6DC	behaviour	B	not-port	data:lbl_9_data_A84	cphelpers	
-0xF71C	0x98	fn_9_F71C	behaviour	B	not-port	bl:fn_9_E72C	cphelpers	
-0xF7B4	0x3C	fn_9_F7B4	behaviour	B	not-port	bl:fn_9_F71C	cphelpers	
-0xF7F0	0xC0	fn_9_F7F0	behaviour	B	not-port	bl:fn_9_45A4	cphelpers	
-0xF8B0	0x68	fn_9_F8B0	behaviour	B	not-port	bl:fn_9_F7F0	cphelpers	
-0xF918	0xA4	fn_9_F918	host-copy	H	not-port	bl:fn_9_9064	cphelpers	
-0xF9BC	0x3C	fn_9_F9BC	behaviour	B	not-port	bl:fn_9_1C	cphelpers	
-0xF9F8	0xA88	fn_9_F9F8	rel-runtime	H	not-port	-	cphelpers	
-0x10480	0x58	__destroy_global_chain	rel-runtime	H	not-port	-	cphelpers	
-0x104D8	0x1C	__register_global_object	rel-runtime	H	not-port	bl:fn_9_F9F8	cphelpers	
-0x104F4	0xC4	_unresolved	rel-runtime	H	not-port	-	cphelpers	
-0x105B8	0x24	_epilog	rel-runtime	H	not-port	-	cphelpers	
-0x105DC	0x24	_prolog	rel-runtime	H	not-port	-	cphelpers	
-0x10600	0x4C	ModuleDestructors	rel-runtime	H	not-port	-	cphelpers	
-0x1064C	0x4C	ModuleConstructors	rel-runtime	H	not-port	-	cphelpers	
+offset	size	fn	kind	class	port	note
+0x0	0x8	fn_9_0	vtable-override	T	marked	
+0x8	0x8	fn_9_8	vtable-override	T	marked	
+0x10	0xC	fn_9_10	vtable-override	T	ported	
+0x1C	0x3C	fn_9_1C	behaviour	B	not-port	
+0x58	0x10	fn_9_58	data-thunk	T	not-port	
+0x68	0x8	fn_9_68	vtable-override	T	marked	
+0x70	0x8	fn_9_70	vtable-override	T	ported	
+0x78	0x8	fn_9_78	vtable-override	T	ported	
+0x80	0x10	fn_9_80	vtable-override	T	ported	
+0x90	0xC	fn_9_90	data-thunk	T	not-port	
+0x9C	0x8	fn_9_9C	data-thunk	T	not-port	
+0xA4	0x8	fn_9_A4	vtable-override	T	ported	
+0xAC	0x1C	fn_9_AC	vtable-override	T	marked	
+0xC8	0x2C	fn_9_C8	data-thunk	T	not-port	
+0xF4	0x24	RELExit	rel-entry	H	not-port	
+0x118	0x20	RELMain	rel-entry	H	not-port	
+0x138	0x30	fn_9_138	host-copy	H	not-port	
+0x168	0x76C	fn_9_168	behaviour	B	not-port	
+0x8D4	0x60	fn_9_8D4	host-copy	H	not-port	
+0x934	0x58	fn_9_934	host-copy	H	not-port	
+0x98C	0x94	fn_9_98C	behaviour	B	not-port	
+0xA20	0x40	fn_9_A20	behaviour	B	not-port	
+0xA60	0x20	fn_9_A60	behaviour	B	not-port	
+0xA80	0x28	fn_9_A80	behaviour	B	not-port	
+0xAA8	0x13C	fn_9_AA8	host-copy	H	not-port	
+0xBE4	0x6C	fn_9_BE4	host-copy	H	not-port	
+0xC50	0x54	fn_9_C50	host-copy	H	not-port	
+0xCA4	0x64	fn_9_CA4	host-copy	H	not-port	
+0xD08	0x60	fn_9_D08	host-copy	H	not-port	
+0xD68	0xC8	fn_9_D68	host-copy	H	not-port	
+0xE30	0x224	fn_9_E30	behaviour	B	not-port	
+0x1054	0x64	fn_9_1054	host-copy	H	not-port	
+0x10B8	0xFC	fn_9_10B8	host-copy	H	not-port	
+0x11B4	0x58	fn_9_11B4	host-copy	H	not-port	
+0x120C	0xFC	fn_9_120C	host-copy	H	not-port	
+0x1308	0x318	fn_9_1308	host-copy	H	not-port	
+0x1620	0x310	fn_9_1620	host-copy	H	not-port	
+0x1930	0xA8	fn_9_1930	behaviour	B	ported	
+0x19D8	0xC4	fn_9_19D8	behaviour	B	not-port	
+0x1A9C	0x170	fn_9_1A9C	behaviour	B	not-port	
+0x1C0C	0x2EC	fn_9_1C0C	behaviour	B	marked	shield effects driver; cov: every guest arm
+0x1EF8	0x90	fn_9_1EF8	behaviour	B	not-port	
+0x1F88	0xC0	fn_9_1F88	behaviour	B	not-port	
+0x2048	0x330	fn_9_2048	behaviour	B	ported	
+0x2378	0x58	fn_9_2378	behaviour	B	not-port	
+0x23D0	0x54	fn_9_23D0	host-copy	H	not-port	
+0x2424	0x50	fn_9_2424	host-copy	H	not-port	
+0x2474	0x580	fn_9_2474	behaviour	B	ported	
+0x29F4	0x5C	fn_9_29F4	host-copy	H	not-port	
+0x2A50	0x48	fn_9_2A50	host-copy	H	not-port	
+0x2A98	0x214	fn_9_2A98	behaviour	B	not-port	
+0x2CAC	0x60	fn_9_2CAC	host-copy	H	not-port	
+0x2D0C	0x384	fn_9_2D0C	behaviour	B	not-port	
+0x3090	0x2A8	fn_9_3090	behaviour	B	ported	
+0x3338	0x148	fn_9_3338	behaviour	B	ported	
+0x3480	0x1F8	fn_9_3480	behaviour	B	marked	PickMeleeAttack; cov: every arm
+0x3678	0x288	fn_9_3678	behaviour	B	marked	
+0x3900	0x15C	fn_9_3900	behaviour	B	ported	
+0x3A5C	0x260	fn_9_3A5C	behaviour	B	not-port	
+0x3CBC	0xA8	fn_9_3CBC	host-copy	H	not-port	
+0x3D64	0xB8	fn_9_3D64	host-copy	H	not-port	
+0x3E1C	0x324	fn_9_3E1C	behaviour	B	not-port	
+0x4140	0x48	fn_9_4140	behaviour	B	not-port	
+0x4188	0xB8	fn_9_4188	behaviour	B	not-port	
+0x4240	0x94	fn_9_4240	behaviour	B	not-port	
+0x42D4	0x84	fn_9_42D4	host-copy	H	not-port	
+0x4358	0x84	fn_9_4358	host-copy	H	not-port	
+0x43DC	0x84	fn_9_43DC	host-copy	H	not-port	
+0x4460	0x84	fn_9_4460	host-copy	H	not-port	
+0x44E4	0x84	fn_9_44E4	host-copy	H	not-port	
+0x4568	0x3C	fn_9_4568	host-copy	H	not-port	
+0x45A4	0x304	fn_9_45A4	behaviour	B	not-port	
+0x48A8	0x60	fn_9_48A8	behaviour	B	not-port	
+0x4908	0x38	fn_9_4908	behaviour	B	not-port	
+0x4940	0x60	fn_9_4940	host-copy	H	not-port	
+0x49A0	0x38	fn_9_49A0	behaviour	B	not-port	
+0x49D8	0x20	fn_9_49D8	behaviour	B	not-port	
+0x49F8	0x28	fn_9_49F8	behaviour	B	not-port	
+0x4A20	0xC0	fn_9_4A20	host-copy	H	not-port	
+0x4AE0	0x5C	fn_9_4AE0	host-copy	H	not-port	
+0x4B3C	0x84	fn_9_4B3C	behaviour	B	not-port	
+0x4BC0	0xE4	fn_9_4BC0	behaviour	B	ported	
+0x4CA4	0xD8	fn_9_4CA4	behaviour	B	marked	
+0x4D7C	0x8	fn_9_4D7C	data-thunk	T	not-port	
+0x4D84	0x228	fn_9_4D84	behaviour	B	marked	
+0x4FAC	0x5C	fn_9_4FAC	host-copy	H	not-port	
+0x5008	0x2B4	fn_9_5008	behaviour	B	marked	E-grenade launch solve; cov: every arm (geometry forced)
+0x52BC	0x154	fn_9_52BC	behaviour	B	ported	E-grenade aim point
+0x5410	0x370	fn_9_5410	behaviour	B	marked	CreateEGrenade; cov: every arm
+0x5780	0x20	fn_9_5780	host-copy	H	not-port	
+0x57A0	0x598	fn_9_57A0	behaviour	B	marked	
+0x5D38	0x3C	fn_9_5D38	host-copy	H	not-port	
+0x5D74	0x184	fn_9_5D74	behaviour	B	not-port	
+0x5EF8	0x3C	fn_9_5EF8	host-copy	H	not-port	
+0x5F34	0x8	fn_9_5F34	data-thunk	T	not-port	
+0x5F3C	0x54	fn_9_5F3C	behaviour	B	not-port	
+0x5F90	0x5C	fn_9_5F90	behaviour	B	not-port	
+0x5FEC	0x20	fn_9_5FEC	behaviour	B	not-port	
+0x600C	0x48	fn_9_600C	host-copy	H	not-port	
+0x6054	0x48	fn_9_6054	behaviour	B	not-port	
+0x609C	0xB4	fn_9_609C	behaviour	B	not-port	
+0x6150	0x40	fn_9_6150	behaviour	B	not-port	
+0x6190	0x20	fn_9_6190	behaviour	B	not-port	
+0x61B0	0x28	fn_9_61B0	behaviour	B	not-port	
+0x61D8	0x80	fn_9_61D8	host-copy	H	not-port	
+0x6258	0x6C	fn_9_6258	host-copy	H	not-port	
+0x62C4	0x54	fn_9_62C4	host-copy	H	not-port	
+0x6318	0x3C	fn_9_6318	host-copy	H	not-port	
+0x6354	0x3C	fn_9_6354	host-copy	H	not-port	
+0x6390	0x29C	fn_9_6390	behaviour	B	marked	
+0x662C	0x39C	fn_9_662C	vtable-override	B	marked	timers; cov: every guest arm (forced)
+0x69C8	0x78	fn_9_69C8	fsm-trigger	B	ported	Dead
+0x6A40	0x130	fn_9_6A40	fsm-trigger	B	ported	GetUp
+0x6B70	0x5C	fn_9_6B70	host-copy	H	not-port	
+0x6BCC	0x9C	fn_9_6BCC	fsm-trigger	B	marked	BreakCover
+0x6C68	0x154	fn_9_6C68	fsm-trigger	B	marked	CoverAttack; cov: every arm
+0x6DBC	0x284	fn_9_6DBC	fsm-trigger	B	ported	Cover
+0x7040	0x5C	fn_9_7040	host-copy	H	not-port	
+0x709C	0x1F0	fn_9_709C	fsm-trigger	B	marked	CoverFind
+0x728C	0xCC	fn_9_728C	fsm-trigger	B	marked	WallDetach
+0x7358	0x310	fn_9_7358	fsm-trigger	B	ported	WallHang
+0x7668	0x5C	fn_9_7668	host-copy	H	not-port	
+0x76C4	0x60	fn_9_76C4	host-copy	H	not-port	
+0x7724	0x148	fn_9_7724	fsm-trigger	B	marked	Crouch
+0x786C	0x22C	fn_9_786C	fsm-trigger	B	ported	RestoreOrientation
+0x7A98	0x590	fn_9_7A98	fsm-trigger	B	ported	ScriptedShieldCharge
+0x8028	0x68C	fn_9_8028	fsm-trigger	B	marked	ShieldCharge
+0x86B4	0x280	fn_9_86B4	fsm-trigger	B	marked	ArmShield
+0x8934	0x1E0	fn_9_8934	fsm-trigger	B	ported	Dodge
+0x8B14	0x5C	fn_9_8B14	host-copy	H	not-port	
+0x8B70	0x1B8	fn_9_8B70	fsm-trigger	B	ported	JumpBack
+0x8D28	0xC8	fn_9_8D28	fsm-trigger	B	marked	PostWarpOut
+0x8DF0	0x218	fn_9_8DF0	fsm-trigger	B	marked	WarpOut
+0x9008	0x5C	fn_9_9008	host-copy	H	not-port	
+0x9064	0x528	fn_9_9064	fsm-trigger	B	ported	WarpIn
+0x958C	0x3C	fn_9_958C	host-copy	H	not-port	
+0x95C8	0x54	fn_9_95C8	host-copy	H	not-port	
+0x961C	0x350	fn_9_961C	fsm-trigger	B	ported	FollowAttackPattern
+0x996C	0x140	fn_9_996C	behaviour	B	not-port	
+0x9AAC	0x108	fn_9_9AAC	fsm-trigger	B	ported	PathFind
+0x9BB4	0x1FC	fn_9_9BB4	fsm-trigger	B	ported	JetBoost
+0x9DB0	0x9C	fn_9_9DB0	data-thunk	T	not-port	
+0x9E4C	0x5C	fn_9_9E4C	host-copy	H	not-port	
+0x9EA8	0x7C	fn_9_9EA8	data-thunk	T	not-port	
+0x9F24	0x1EC	fn_9_9F24	fsm-trigger	B	ported	JumpPointFind
+0xA110	0x1DC	fn_9_A110	fsm-trigger	B	ported	PostEGrenadeAttack
+0xA2EC	0x174	fn_9_A2EC	fsm-trigger	B	ported	EGrenadeAttack
+0xA460	0x5C	fn_9_A460	host-copy	H	not-port	
+0xA4BC	0x290	fn_9_A4BC	fsm-trigger	B	marked	MeleeAttack; cov: every guest arm
+0xA74C	0x5C	fn_9_A74C	host-copy	H	not-port	
+0xA7A8	0x90	fn_9_A7A8	fsm-trigger	B	ported	SetCoverDest
+0xA838	0xB0	fn_9_A838	fsm-trigger	B	marked	SetPathMeshDest
+0xA8E8	0x94	fn_9_A8E8	fsm-trigger	B	ported	SetJumpDest
+0xA97C	0xA4	fn_9_A97C	fsm-trigger	B	ported	SetRetreatDest
+0xAA20	0xE8	fn_9_AA20	fsm-state	B	ported	SetTargetDest
+0xAB08	0xD4	fn_9_AB08	fsm-trigger	B	ported	SelectTarget
+0xABDC	0x1C4	fn_9_ABDC	fsm-trigger	B	ported	FaceTarget
+0xADA0	0x34	fn_9_ADA0	fsm-trigger	B	marked	Ambush
+0xADD4	0x30	fn_9_ADD4	data-thunk	T	not-port	
+0xAE04	0x158	fn_9_AE04	fsm-trigger	B	ported	Alert
+0xAF5C	0x5C	fn_9_AF5C	host-copy	H	not-port	
+0xAFB8	0x1C	fn_9_AFB8	fsm-trigger	T	ported	AbortSeekCover
+0xAFD4	0xE0	fn_9_AFD4	fsm-trigger	B	ported	CoverBlown
+0xB0B4	0x20	fn_9_B0B4	fsm-trigger	T	ported	ShouldCoverAttack
+0xB0D4	0x20	fn_9_B0D4	fsm-trigger	T	ported	FoundCover
+0xB0F4	0x20	fn_9_B0F4	fsm-trigger	T	ported	ShouldCover
+0xB114	0x54	fn_9_B114	fsm-trigger	B	ported	ShouldWallHang
+0xB168	0x40	fn_9_B168	fsm-trigger	B	ported	ShouldCrouch
+0xB1A8	0x20	fn_9_B1A8	fsm-trigger	T	marked	FoundJumpPoint
+0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	ported	IsAggressive
+0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	ported	AbortShieldCharge
+0xB1E0	0x70	fn_9_B1E0	fsm-trigger	B	marked	ShouldBoost
+0xB250	0x410	fn_9_B250	fsm-trigger	B	ported	ShouldShieldCharge
+0xB660	0x30	fn_9_B660	fsm-trigger	T	ported	ShouldArmShield
+0xB690	0xDC	fn_9_B690	fsm-trigger	H	ported	ShouldDodge
+0xB76C	0x90	fn_9_B76C	fsm-trigger	H	ported	TooClose
+0xB7FC	0x1C	fn_9_B7FC	fsm-trigger	B	marked	AttackPatternOver
+0xB818	0xE8	fn_9_B818	fsm-trigger	B	marked	IsFacingTarget
+0xB900	0x58	fn_9_B900	fsm-trigger	B	ported	HasAttackPattern
+0xB958	0x38	fn_9_B958	fsm-trigger	B	marked	IsOffPath
+0xB990	0x48	fn_9_B990	fsm-trigger	T	ported	PathOver
+0xB9D8	0x48	fn_9_B9D8	fsm-trigger	T	ported	PathShagged
+0xBA20	0x58	fn_9_BA20	fsm-trigger	B	ported	HasNewTarget
+0xBA78	0x3C	fn_9_BA78	fsm-trigger	H	marked	HasTarget
+0xBAB4	0x1C	fn_9_BAB4	fsm-trigger	T	ported	HeardShot
+0xBAD0	0x1C	fn_9_BAD0	fsm-trigger	T	marked	UnderFire
+0xBAEC	0xC	fn_9_BAEC	fsm-trigger	T	marked	HasLineOfSight
+0xBAF8	0xC	fn_9_BAF8	fsm-trigger	T	marked	BreakAmbush
+0xBB04	0xC	fn_9_BB04	fsm-trigger	T	marked	ShouldAmbush
+0xBB10	0x6C	fn_9_BB10	fsm-trigger	B	ported	ShouldJumpBack
+0xBB7C	0x4C	fn_9_BB7C	fsm-trigger	T	ported	ShouldRetreat
+0xBBC8	0xF0	fn_9_BBC8	fsm-trigger	B	ported	ShouldFireEGrenade
+0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	H	ported	ShouldMeleeAttack
+0xBD98	0x34	fn_9_BD98	fsm-trigger	T	ported	ShouldWarpIn
+0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	marked	StateOver
+0xBDE0	0x6C	fn_9_BDE0	vtable-override	B	marked	
+0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	ported	
+0xBF44	0x2B0	fn_9_BF44	vtable-override	B	ported	shield collision
+0xC1F4	0xD8	fn_9_C1F4	vtable-override	B	marked	
+0xC2CC	0x34	fn_9_C2CC	vtable-override	T	marked	
+0xC300	0x1FC	fn_9_C300	vtable-override	B	ported	
+0xC4FC	0x20	fn_9_C4FC	vtable-override	T	marked	
+0xC51C	0x7C	fn_9_C51C	vtable-override	B	marked	
+0xC598	0x13C	fn_9_C598	vtable-override	B	marked	Render; cov: every arm
+0xC6D4	0xC4	fn_9_C6D4	vtable-override	B	marked	
+0xC798	0x1AC	fn_9_C798	vtable-override	B	marked	anim events; cov: every arm (types forced)
+0xC944	0x184	fn_9_C944	vtable-override	B	ported	Think; CVisualKnowledge::Update stand-in
+0xCAC8	0x78	fn_9_CAC8	vtable-override	B	marked	
+0xCB40	0x754	fn_9_CB40	vtable-override	B	ported	AcceptScriptMsg; not every case run
+0xD294	0x5C	fn_9_D294	behaviour	B	not-port	
+0xD2F0	0x54	fn_9_D2F0	host-copy	H	not-port	
+0xD344	0x130	fn_9_D344	host-copy	H	not-port	
+0xD474	0x8	fn_9_D474	vtable-override	T	marked	
+0xD47C	0x1B8	fn_9_D47C	vtable-override	B	not-port	
+0xD634	0x1E4	fn_9_D634	behaviour	B	not-port	
+0xD818	0x94	fn_9_D818	host-copy	H	not-port	
+0xD8AC	0x58	fn_9_D8AC	behaviour	B	not-port	
+0xD904	0xDCC	fn_9_D904	behaviour	B	not-port	
+0xE6D0	0x5C	fn_9_E6D0	behaviour	B	not-port	
+0xE72C	0xC0	fn_9_E72C	behaviour	B	not-port	
+0xE7EC	0xC	fn_9_E7EC	data-thunk	T	not-port	
+0xE7F8	0x6C	fn_9_E7F8	host-copy	H	not-port	
+0xE864	0x58	fn_9_E864	host-copy	H	not-port	
+0xE8BC	0x3C	fn_9_E8BC	host-copy	H	not-port	
+0xE8F8	0x3C	fn_9_E8F8	host-copy	H	not-port	
+0xE934	0x58	fn_9_E934	host-copy	H	not-port	
+0xE98C	0x5C	fn_9_E98C	host-copy	H	not-port	
+0xE9E8	0x3C	fn_9_E9E8	host-copy	H	not-port	
+0xEA24	0x160	fn_9_EA24	behaviour	B	not-port	
+0xEB84	0x104	fn_9_EB84	behaviour	B	not-port	
+0xEC88	0x7C	fn_9_EC88	behaviour	B	ported	grenade block copy (the host copy ctor)
+0xED04	0xBC	fn_9_ED04	behaviour	B	not-port	
+0xEDC0	0x1C0	fn_9_EDC0	behaviour	B	not-port	
+0xEF80	0x178	fn_9_EF80	behaviour	B	not-port	
+0xF0F8	0x198	fn_9_F0F8	behaviour	B	marked	E-grenade Think; cov: every arm
+0xF290	0x84	fn_9_F290	behaviour	B	marked	E-grenade dtor
+0xF314	0x104	fn_9_F314	host-copy	H	not-port	
+0xF418	0xF4	fn_9_F418	behaviour	B	marked	E-grenade ctor
+0xF50C	0x80	fn_9_F50C	behaviour	B	not-port	
+0xF58C	0x110	fn_9_F58C	host-copy	H	marked	shield effect factory; cov: every arm
+0xF69C	0x40	fn_9_F69C	behaviour	B	not-port	
+0xF6DC	0x40	fn_9_F6DC	behaviour	B	not-port	
+0xF71C	0x98	fn_9_F71C	behaviour	B	not-port	
+0xF7B4	0x3C	fn_9_F7B4	behaviour	B	not-port	
+0xF7F0	0xC0	fn_9_F7F0	behaviour	B	not-port	
+0xF8B0	0x68	fn_9_F8B0	behaviour	B	not-port	
+0xF918	0xA4	fn_9_F918	host-copy	H	not-port	
+0xF9BC	0x3C	fn_9_F9BC	behaviour	B	not-port	
+0xF9F8	0xA88	fn_9_F9F8	rel-runtime	H	not-port	
+0x10480	0x58	__destroy_global_chain	rel-runtime	H	not-port	
+0x104D8	0x1C	__register_global_object	rel-runtime	H	not-port	
+0x104F4	0xC4	_unresolved	rel-runtime	H	not-port	
+0x105B8	0x24	_epilog	rel-runtime	H	not-port	
+0x105DC	0x24	_prolog	rel-runtime	H	not-port	
+0x10600	0x4C	ModuleDestructors	rel-runtime	H	not-port	
+0x1064C	0x4C	ModuleConstructors	rel-runtime	H	not-port	
