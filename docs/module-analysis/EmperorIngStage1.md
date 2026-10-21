@@ -1560,3 +1560,41 @@ cannot run.  The next lane should read the area's *actor list* (the placed entit
 script data: the 'PLAY' actor's own init animation and loop flag, the relay's script data and
 the keyframe's "passive"/"use originator" flags) to find what gives the 'PLAY' actor its
 one-shot animation in the retail.
+
+## 19. The 'PLAY' actor's animation: the shipped data loops, and the host's loop flag is the wrong one
+
+**The disc says the 'PLAY' actor loops.**  The area-11 MREA's SCLY layers hold the placed actors
+as objects whose editor id is the *layer* id | the entity id; the 'PLAY' actor is the layer-2
+object **0x080b0016** (the area 0x00b = 11, the entity id 0x0016 - the runtime editor id
+0x000b0016) and its property 0xc08d1b93 (**isLoop**) is **1**.  The port reads it correctly
+(the runtime's `CModelData::GetIsLoop()` is 1), so the loop is the shipped data's.
+
+**The host keeps the animation alive because of that flag, and the retail does not.**  The host's
+`CAnimData` has a `mLoop` member (src/MetroidPrime/CAnimData.cpp:100, from the constructor's
+bool) and `DoAdvance` branches on it (src/MetroidPrime/CAnimData.cpp:467 `if (mLoop) {`): the
+loop branch advances the tree again and again, so the anim root's `VGetTimeRemaining()` wraps
+(2.650 -> 2.317 -> ... -> 0.317 -> 2.650) and the module's "Whole Body has ended" test (the
+retail's IsAnimTimeRemaining at 0x7A60) can never be true.  The script data's isLoop reaches
+that member through `CScriptActor`'s constructor (src/MetroidPrime/ScriptObjects/CScriptActor.cpp:55
+`ModelData()->EnableLooping(looping)`; the loader passes `sldrThis.isLoop` at
+src/MetroidPrime/ScriptObjects/CScriptActor.cpp:320 and :338).
+
+The DOL's `CAnimData` has **no such flag**: its `SetAnimation`
+(build/G2ME01/asm/MetroidPrime/CAnimData.s:4434, 0x80029904) writes only the playback parms'
+byte 0x21 into `this + 0x2AC` (0x80029AA8) and its `DoAdvance` (CAnimData.s:4746) branches on
+**that** byte (0x80029F44 `lbz r0, 0x2ac(r26)` / 0x80029F4C `beq .L_8002A06C`) - the flag the
+animation was set with, not the script data's isLoop.  The host keeps the two apart (`mAnimating`
+at src/MetroidPrime/CAnimData.cpp:460/:567 and `mLoop` at :100) and branches on the wrong one
+for this case.
+
+**The proof, from a probe**: forcing the host's flag off on that actor
+(`body->AnimationData()->EnableLooping(false)` right after the module's own SetAnimation) makes
+the natural path work - the console's `obj` shows the FSM walk
+**"BeginHeartStage" -> "HeartStage" (seven polls, 14 s) -> "EndHeartStage"**, i.e. the
+"HeartStageOver" trigger fired and the "ChooseRandomTentacleCount" code node ran, with no
+`fsm` anywhere.  With the shipped flag the 'PLAY' actor's animation never ends and the heart
+stage is only reachable by forcing it.
+
+**This is shared code** (CAnimData / CScriptActor), so it is reported and not changed here: the
+host's `CAnimData::DoAdvance` should take its branch from the same byte the DOL's does (the
+animation state the parms set), not from the script data's isLoop.
