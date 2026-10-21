@@ -119,7 +119,11 @@ def main():
         log("fsm Dead: %s" % cmd("fsm %s Dead" % target))
         wait_frame(frame() + 30)
         log("state: %s" % state_of(target))
-        # the damage again, now that the commando is dead: the KnockBack override's dead arm.
+        # the commando dies (the console's `kill`), then the damage: the KnockBack override's
+        # dead arm.
+        log("kill: %s" % cmd("kill %s" % target))
+        wait_frame(frame() + 30)
+        log("state: %s" % state_of(target))
         log("damage again: %s" % cmd("damage %s 5" % target))
         wait_frame(frame() + 30)
         log("state: %s" % state_of(target))

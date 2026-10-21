@@ -3139,6 +3139,7 @@ void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_9064");
 }
 
+// run: area 59 (05_temple_federationsite_dark), tools/drivers/commandopirate_warpout.py, 2026-10-21
 // @ fn_9_8DF0
 // fn_9_8DF0 (0x218 bytes): the WarpOut state - the commando plays the generate animation and
 // fades out while it does.
@@ -3212,6 +3213,7 @@ void CCommandoPirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// run: area 59 (05_temple_federationsite_dark), tools/drivers/commandopirate_warpout.py, 2026-10-21
 // @ fn_9_8D28
 // fn_9_8D28 (0xc8 bytes): the PostWarpOut state. Only the activate message (the guest's test of 0
 // at 0x00008D30) does anything: when the byte at guest this+0xC63 has no 0x20 bit (the test at
@@ -3979,6 +3981,7 @@ void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
 // On deactivate (the guest's message 2, 0x00007330) the animation state goes "not ready"
 // (0x00007330..0x00007334) and the flag byte at guest this+0xC65 loses its 0x02 bit
 // (0x00007338..0x00007340).
+// run: the Swamp (05_swamp_timber!), tools/drivers/commandopirate_wallhang.py, 2026-10-21
 // @ fn_9_728C
 void CCommandoPirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
