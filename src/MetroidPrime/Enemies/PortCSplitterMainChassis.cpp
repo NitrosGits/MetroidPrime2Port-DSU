@@ -22,6 +22,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "MetroidPrime/CObjectList.hpp"
+#include "Collision/CCollisionInfoList.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
@@ -187,19 +188,12 @@ SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
 SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_E4DC)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_E494)
-SPLITTER_TRIGGER_STANDIN(SpunIntoPlayer, fn_75_E078)
-SPLITTER_TRIGGER_STANDIN(SpunIntoGeometry, fn_75_E06C)
-SPLITTER_TRIGGER_STANDIN(TooManyBounces, fn_75_E040)
 SPLITTER_TRIGGER_STANDIN(ShouldDeploy, fn_75_E028)
 SPLITTER_TRIGGER_STANDIN(DeployPathOver, fn_75_E00C)
 SPLITTER_STATE_STANDIN(Idle, fn_75_DFE4)
 SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
 SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
-SPLITTER_STATE_STANDIN(SpinAttack, fn_75_D7D4)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_D61C)
-SPLITTER_STATE_STANDIN(SpinCollisionReaction, fn_75_D2A0)
-SPLITTER_STATE_STANDIN(SpinBounce, fn_75_D13C)
-SPLITTER_STATE_STANDIN(SpinToIdle, fn_75_CF44)
 SPLITTER_STATE_STANDIN(SpawnDrop, fn_75_CCF0)
 SPLITTER_STATE_STANDIN(HoldingTube, fn_75_CC98)
 SPLITTER_STATE_STANDIN(WaitForDocking, fn_75_C9E4)
@@ -207,8 +201,6 @@ SPLITTER_STATE_STANDIN(WaitForSnatch, fn_75_C8F4)
 SPLITTER_STATE_STANDIN(FollowDeployPath, fn_75_C51C)
 SPLITTER_STATE_STANDIN(DeploymentLanding, fn_75_C034)
 SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
-SPLITTER_CODE_STANDIN(BounceOffPlayer, fn_75_B1D8)
-SPLITTER_CODE_STANDIN(BounceOffGeometry, fn_75_B104)
 #undef SPLITTER_TRIGGER_STANDIN
 #undef SPLITTER_STATE_STANDIN
 #undef SPLITTER_CODE_STANDIN
@@ -689,9 +681,8 @@ void CSplitterMainChassis::SetupSpinAttack(CStateManager& mgr, float) {
 // ImmuneRicochetVulnerability (the host's ReflectVulnerabilty; 0xBA18-0xBA34 fn_75_9AF8), the head
 // at 0xC6C (0xBA38-0xBA54) resets its shield (0xBA5C fn_75_5D50) and the team's melee attack ends
 // (0xBA74 li r3 0, 0xBA78 li r7 0, 0xBA88 EndAttack: the team at 0xCBE, this actor, false).
-// Not marked: never reached - the spin sub-machine past BreakOutOfSpin (SpinCollisionReaction
-// fn_75_D2A0, SpinBounce fn_75_D13C, SpinAttack fn_75_D7D4, BounceOffPlayer fn_75_B1D8 and the
-// SpunIntoPlayer/TooManyBounces/SpunIntoGeometry triggers) is still stand-ins.
+// The head-null arm runs only when the head is gone mid-spin (forced: send <head> Delete).
+// @ fn_75_B9B0
 void CSplitterMainChassis::EndSpinAttack(CStateManager& mgr, float) {
   mFlagsD41 &= ~0x80;
   mFlagsD40 &= ~(0x8 | 0x4 | 0x2);
@@ -762,6 +753,242 @@ void CSplitterMainChassis::LaserSweepAttack(CStateManager& mgr, EStateMsg msg, f
     mFlagsD41 &= ~0x40;
     CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
                                 false);
+  }
+}
+
+// fn_75_E040 (the chassis's TooManyBounces trigger, 0xE040-0xE05C): the bounce counter at 0xCFC
+// has reached the data's unknown_0xd5f34476 (0x888) - the subf/orc/srwi idiom of an unsigned >=.
+// @ fn_75_E040
+bool CSplitterMainChassis::TooManyBounces(CStateManager&, const CTriggerData&) const {
+  return static_cast< uint >(mSpinCounter) >= static_cast< uint >(mData.mUnknownD5F34476);
+}
+
+// fn_75_E06C (the chassis's SpunIntoGeometry trigger, 0xE06C-0xE074): 0xD40's 0x04 bit, which
+// CollidedWith (fn_75_ECA4) sets.
+// @ fn_75_E06C
+bool CSplitterMainChassis::SpunIntoGeometry(CStateManager&, const CTriggerData&) const {
+  return (mFlagsD40 & 0x4) != 0;
+}
+
+// fn_75_E078 (the chassis's SpunIntoPlayer trigger, 0xE078-0xE080): 0xD40's 0x08 bit, which the
+// spin damage on the player (fn_75_9B9C, 0x9D20) sets.
+// @ fn_75_E078
+bool CSplitterMainChassis::SpunIntoPlayer(CStateManager&, const CTriggerData&) const {
+  return (mFlagsD40 & 0x8) != 0;
+}
+
+// fn_75_B1D8 (the chassis's BounceOffPlayer code, 0xB1D8-0xB29C): the bounce vector at 0xCF0 is
+// the reversed spin vector (0xB1EC-0xB214), or, when the target at 0xCC0 is found (0xB220-0xB228),
+// the target-to-chassis offset (0xB22C-0xB258); its z is 0.0f (lbl_75_rodata_390, 0xB264). The
+// bounce time at 0xD24 is 0.75f (lbl_75_rodata_3B4) when 0xD40's 0x02 bit (the boost break-out)
+// is set, else 0.5f (lbl_75_rodata_3A8, 0xB268-0xB288). The no-target arm is dead: 0xCC0's one
+// writer (fn_75_BE28) stores the player's id, and the spin needs it (ShouldSpinAttack).
+// @ fn_75_B1D8
+void CSplitterMainChassis::BounceOffPlayer(CStateManager& mgr, float) {
+  mBounceVector = -mSpinVector;
+  if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncId))) {
+    mBounceVector = GetTranslation() - target->GetTranslation();
+  }
+  mBounceVector.SetZ(0.f);
+  mBounceTime = (mFlagsD40 & 0x2) != 0 ? 0.75f : 0.5f;
+}
+
+// fn_75_B104 (the chassis's BounceOffGeometry code, 0xB104-0xB1D8): the bounce vector at 0xCF0
+// is the reversed spin vector (0xB118-0xB13C), or, with a safe collision normal at 0xCE4
+// (0xB140-0xB148), the spin vector reflected about it: v - 2.0f (lbl_75_rodata_360) * (v . n) * n
+// (0xB14C-0xB1A8). Its z is 0.0f (0xB1BC) and the bounce time at 0xD24 0.5f (lbl_75_rodata_3A8,
+// 0xB1C0). The unsafe-normal arm is dead: the 0x04 bit that leads here (SpunIntoGeometry) is set
+// only together with a unit normal (fn_75_ECA4).
+// @ fn_75_B104
+void CSplitterMainChassis::BounceOffGeometry(CStateManager&, float) {
+  mBounceVector = -mSpinVector;
+  if (mCollisionNormal.IsMagnitudeSafe()) {
+    const CVector3f normal = mCollisionNormal.AsNormalized();
+    mBounceVector = mSpinVector - (2.f * CVector3f::Dot(mSpinVector, normal)) * normal;
+  }
+  mBounceVector.SetZ(0.f);
+  mBounceTime = 0.5f;
+}
+
+// fn_75_963C (the steered spin move, 0x963C-0x986C; SpinAttack's call at 0xD9E4 with the
+// velocity in r4 and the frame time in f1). Only for dt above 0.0f (0x968C-0x9690). The heading
+// is the spin vector at 0xCD8 as it is (0x9694-0x96A0); with a safe spin vector and a safe
+// velocity it turns toward the velocity: past the data's spin attack turn speed (0x870) times dt
+// in degrees (lbl_75_rodata_3A0, 0.017453292f) the Slerp of the two normalized vectors by that
+// angle (0x96E8-0x9714), else the normalized velocity (0x9728); with an unsafe spin vector the
+// normalized velocity when it is safe (0x9744-0x9768). The speed change is minus the data's
+// deceleration (0x86C) times dt when the velocity is more than 0.17453292f (lbl_75_rodata_3A4)
+// radians off the old spin vector, else the acceleration (0x868) times dt (0x976C-0x979C); the
+// speed is 1.0f (lbl_75_rodata_364) / dt times the old spin vector's length plus the change, at
+// most the data's linear velocity (0x864) and at least 0.0f (0x97A0-0x97E4). The spin vector
+// becomes dt * speed * heading (0x97E8-0x9814) and the chassis moves by it in its own frame
+// (0x9818 TransposeRotate, 0x9828 MoveInOneFrameOR). The dt and unsafe-velocity arms are dead: the
+// one caller (0xD9E4) passes dt above 0.0f and a safe velocity. The Slerp of opposite vectors is
+// NaN (a zero cross product), as in the retail; a forced 180-degree target flip hangs the game.
+// @ fn_75_963C
+void CSplitterMainChassis::PortSpinMove(const CVector3f& velocity, float dt) {
+  if (dt <= 0.f) {
+    return;
+  }
+  CVector3f heading = mSpinVector;
+  if (mSpinVector.IsMagnitudeSafe()) {
+    if (velocity.IsMagnitudeSafe()) {
+      const float maxAngle = 0.017453292f * (mData.mSpinAttackTurnSpeed * dt);
+      if (CVector3f::GetAngleDiff(mSpinVector, velocity) > maxAngle) {
+        heading = CVector3f::Slerp(mSpinVector.AsNormalized(), velocity.AsNormalized(),
+                                   CRelAngle::FromRadians(maxAngle));
+      } else {
+        heading = velocity.AsNormalized();
+      }
+    }
+  } else if (velocity.IsMagnitudeSafe()) {
+    heading = velocity.AsNormalized();
+  }
+  const float change = CVector3f::GetAngleDiff(velocity, mSpinVector) > 0.17453292f
+                           ? -mData.mSpinAttackLinearDeceleration * dt
+                           : mData.mSpinAttackLinearAcceleration * dt;
+  float speed = (1.f / dt) * mSpinVector.Magnitude() + change;
+  if (mData.mSpinAttackLinearVelocity < speed) {
+    speed = mData.mSpinAttackLinearVelocity;
+  }
+  if (speed <= 0.f) {
+    speed = 0.f;
+  }
+  mSpinVector = dt * (speed * heading);
+  MoveInOneFrameOR(GetTransform().TransposeRotate(mSpinVector), dt);
+}
+
+// fn_75_D7D4 (the chassis's SpinAttack state, 0xD7D4-0xDA38). Activate (0xD820): the animation
+// state at 0x6B4 is kAS_Ready (1). Update (0xD82C): past the data's spin attack max time (0x88C)
+// on the spin timer at 0xD2C the animation state is kAS_Over (3, 0xD83C). Otherwise, for dt above
+// 0.0f (0xD848-0xD854) and a found target at 0xCC0 (0xD858-0xD870): 0xD41's 0x20 bit is whether
+// the target is more than 10 units off (the squared offset against 100.0f, lbl_75_rodata_37C,
+// 0xD8C0-0xD8D8). The steering is the normalized offset (zero when unsafe, 0xD8DC-0xD900) plus
+// 0.5f (lbl_75_rodata_3A8) times the separation steering (fn_75_8EC8, 0xD928), with z 0.0f
+// (0xD978). A far target and a safe steering move the chassis by the steered spin move (fn_75_963C,
+// 0xD9E4) with dt * the data's linear velocity (0x864) * the normalized steering; otherwise it
+// moves by the spin vector at 0xCD8 in its own frame (0xD9F8 TransposeRotate, 0xDA08
+// MoveInOneFrameOR). Deactivate (0xDA10): kAS_NotReady (0).
+// Not marked: the far-target arm with an unsafe steering (a target more than 10 units straight
+// above or below with no separation) never ran. The dt and no-target arms are dead (the engine's dt
+// is above 0.0f; 0xCC0 is always the player's id here).
+void CSplitterMainChassis::SpinAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    break;
+  case kStateMsg_Update: {
+    if (mSpinTimer > mData.mSpinAttackMaxTime) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+      break;
+    }
+    if (dt <= 0.f) {
+      break;
+    }
+    const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncId));
+    if (target == nullptr) {
+      break;
+    }
+    const CVector3f offset = target->GetTranslation() - GetTranslation();
+    if (offset.MagSquared() > 100.f) {
+      mFlagsD41 |= 0x20;
+    } else {
+      mFlagsD41 &= ~0x20;
+    }
+    CVector3f steering = offset.IsMagnitudeSafe() ? offset.AsNormalized() : CVector3f::Zero();
+    steering += 0.5f * PortSeparationVector(mgr);
+    steering.SetZ(0.f);
+    if ((mFlagsD41 & 0x20) != 0 && steering.IsMagnitudeSafe()) {
+      PortSpinMove(dt * (mData.mSpinAttackLinearVelocity * steering.AsNormalized()), dt);
+    } else {
+      MoveInOneFrameOR(GetTransform().TransposeRotate(mSpinVector), dt);
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_D2A0 (the chassis's SpinCollisionReaction state, 0xD2A0-0xD3E0). Activate (0xD2D8): the
+// animation state at 0x6B4 is kAS_Ready (1). Update (0xD2E4): when CTryCommand::ShouldRetry (the
+// host's CAnimationState::CanIssueCommand) allows body state 6 (kAS_KnockBack, 0xD2EC-0xD2F8) a
+// knock-back command along the chassis's Y column (the transform's 0x28, 0x38, 0x48) goes out
+// (lbl_75_data_5B8, 0xD310-0xD3B8) with severity 2 when 0xD40's 0x08 bit (spun into the player)
+// is set, else 5 (0xD2FC-0xD30C). Deactivate (0xD3C4): kAS_NotReady (0).
+// @ fn_75_D2A0
+void CSplitterMainChassis::SpinCollisionReaction(CStateManager&, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCKnockBackCmd(
+          GetTransform().GetColumn(kDY), (mFlagsD40 & 0x8) != 0 ? pas::kS_Two : pas::kS_Five));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
+}
+
+// fn_75_D13C (the chassis's SpinBounce state, 0xD13C-0xD2A0). Activate (0xD180): the timer at
+// 0xD30 is 0.0f (lbl_75_rodata_390), the bounce counter at 0xCFC goes up by one (0xD190-0xD198);
+// with a safe bounce vector at 0xCF0 (0xD19C) the spin vector at 0xCD8 is its normalized copy,
+// the animation state kAS_Ready (1) and 0xD40's 0x04 and 0x08 bits are cleared (0xD1A8-0xD1EC),
+// else the animation state is kAS_Over (3, 0xD1F4). Update (0xD200): once the state machine's
+// time (0x350, its vtable slot 0x30) is past the bounce time at 0xD24 the animation state is
+// kAS_Over (0xD220); before that the chassis moves by dt * the data's linear velocity (0x864) *
+// the spin vector in its own frame (0xD22C-0xD274). Deactivate (0xD27C): kAS_NotReady (0).
+// @ fn_75_D13C
+void CSplitterMainChassis::SpinBounce(CStateManager&, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mTimerD30 = 0.f;
+    ++mSpinCounter;
+    if (mBounceVector.IsMagnitudeSafe()) {
+      mSpinVector = mBounceVector.AsNormalized();
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      mFlagsD40 &= ~0x4;
+      mFlagsD40 &= ~0x8;
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Update:
+    if (mStateMachine->GetTime() > mBounceTime) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    } else {
+      MoveInOneFrameOR(
+          GetTransform().TransposeRotate((dt * mData.mSpinAttackLinearVelocity) * mSpinVector), dt);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_CF44 (the chassis's SpinToIdle state, 0xCF44-0xD0A4). Activate (0xCF7C): the animation
+// state at 0x6B4 is kAS_Ready (1). Update (0xCF88): when CTryCommand::ShouldRetry (the host's
+// CAnimationState::CanIssueCommand) allows body state 12 (kAS_Generate, 0xCF90-0xCF9C) a generate
+// command goes out (lbl_75_data_E18, command 15, 0xCFB4-0xD080) with type 5 when 0xD40's 0x02
+// bit (the boost break-out) is set, else 3 (0xCFA0-0xCFB0), no target position, anim -1 and its
+// three flag bits clear (0xCFBC-0xCFF8). Deactivate (0xD088): kAS_NotReady (0).
+// @ fn_75_CF44
+void CSplitterMainChassis::SpinToIdle(CStateManager&, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(
+          (mFlagsD40 & 0x2) != 0 ? pas::kGType_Five : pas::kGType_Three, -1));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
   }
 }
 
@@ -1735,11 +1962,53 @@ CAABox CSplitterMainChassis::GetSortingBounds(const CStateManager& mgr) const {
   return CPatterned::GetSortingBounds(mgr);
 }
 
-// vtable slot 0x84 = fn_75_ECA4.
+// vtable slot 0x84 = fn_75_ECA4 (0xECA4-0xEF24): after the base class's call (0xECD0), only while
+// spinning (0xD41's 0x80 bit, 0xECD4-0xECDC) and past 0.2f (lbl_75_rodata_3D0) on the timer at
+// 0xD30 (0xECE0-0xECF0). Against the world (an invalid id, 0xECF4-0xED04) the first contact that
+// is a wall (the static mask 1 << 30, kMT_Wall - lbl_75_data_C7C, 0xED08-0xED68 - on the left
+// material, 0xEDA8-0xEDC4) or whose left normal is less than 0.707f (lbl_75_rodata_3D4) along
+// the Z column (the transform's 0x2C, 0x3C, 0x4C; 0xEDC8-0xEDE4) sets 0xD40's 0x04 bit and is
+// the collision normal at 0xCE4 (0xEDE8-0xEE0C). Against an object (0xEE20-0xEE2C): one that is
+// not a CAi (0xEE34) but has a health info (vtable slot 0x3C, 0xEE40-0xEE58) only counts when the
+// spin attack damage (0x7DC) does more than 0.0f against its vulnerability (slot 0x40,
+// 0xEE5C-0xEE8C); then a safe object-to-chassis offset (0xEE90-0xEECC) sets the 0x04 bit and,
+// normalized, is the collision normal (0xEED0-0xEF00).
+// Not marked: a non-CAi object with no health info, or one the spin damage hurts, never collided.
 void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                         CStateManager& mgr) {
-  StandIn("CSplitterMainChassis::CollidedWith (vtable slot 0x84, fn_75_ECA4)");
   CPatterned::CollidedWith(id, list, mgr);
+  if ((mFlagsD41 & 0x80) == 0 || mTimerD30 <= 0.2f) {
+    return;
+  }
+  if (id == kInvalidUniqueId) {
+    const CVector3f up = GetTransform().GetColumn(kDZ);
+    for (int i = 0; i < list.GetCount(); ++i) {
+      const CCollisionInfo& info = list[i];
+      if (info.GetMaterialLeft().HasMaterial(kMT_Wall) ||
+          CVector3f::Dot(up, info.GetNormalLeft()) < 0.707f) {
+        mFlagsD40 |= 0x4;
+        mCollisionNormal = info.GetNormalLeft();
+        return;
+      }
+    }
+    return;
+  }
+  // 0xEE34 TCastToPtr<CAi>: the host has no such cast, so the type test is spelled out. The
+  // retail reads the object's slots and position without a null or CActor test; the port
+  // returns for a missing or non-actor object instead.
+  const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(id));
+  if (actor == nullptr) {
+    return;
+  }
+  if (actor->TypesMatch(kET_Ai) == nullptr && actor->GetHealthInfo() != nullptr &&
+      mData.mSpinAttackDamage.GetDamage(*actor->GetDamageVulnerability()) <= 0.f) {
+    return;
+  }
+  const CVector3f offset = GetTranslation() - actor->GetTranslation();
+  if (offset.IsMagnitudeSafe()) {
+    mFlagsD40 |= 0x4;
+    mCollisionNormal = offset.AsNormalized();
+  }
 }
 
 // fn_75_A0A0 (0xA0A0-0xA37C): a collision actor reports damage. Only for a living chassis (the

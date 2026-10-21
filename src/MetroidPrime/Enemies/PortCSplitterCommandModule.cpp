@@ -1303,8 +1303,7 @@ void CSplitterCommandModule::PortSpinShield(CStateManager& mgr) {
 // SetVisorOrbitableFlags 0xF, true); with the shield state at 0xEDC at 2 (0x5D90 cmpwi) the timer
 // at 0xF1C is zeroed (0x5DA0); the shield state and the timer at 0xF18 are zeroed (0x5DB4,
 // 0x5DBC) and the effect states are updated (0x5DC0 fn_75_1578).
-// Not marked: the shield-state-2 arm (0x5D90) needs EndSpinAttack (fn_75_B9B0, 0xBA5C), which the
-// spin sub-machine's stand-in states never reach.
+// @ fn_75_5D50
 void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
   mOwnVulnerability = *CPatterned::GetDamageVulnerability();
   SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);

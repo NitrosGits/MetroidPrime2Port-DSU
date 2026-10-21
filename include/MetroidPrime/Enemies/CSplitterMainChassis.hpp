@@ -296,6 +296,16 @@ private:
   // guest 0xCD8: the spin vector SetupSpinAttack zeroes (fn_75_BAA8, 0xBAD8-0xBAF4); the spin
   // states and bounces (fn_75_963C, B104, B1D8, C51C, CCF0, D13C) read it.
   CVector3f mSpinVector = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xCE4: the normal of the geometry the spin hit - CollidedWith (fn_75_ECA4, 0xEE00 and
+  // 0xEEF0) is its only writer, BounceOffGeometry (fn_75_B104) reads it.
+  CVector3f mCollisionNormal = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xCF0: the bounce direction BounceOffPlayer and BounceOffGeometry (fn_75_B1D8,
+  // fn_75_B104) write and SpinBounce (fn_75_D13C, 0xD184) turns into the spin vector.
+  CVector3f mBounceVector = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xD24: how long SpinBounce lasts (0.5f or 0.75f, written by fn_75_B1D8/B104).
+  float mBounceTime = 0.f;
+  // The retail's fn_75_963C: the steered spin move SpinAttack (fn_75_D7D4) asks for.
+  void PortSpinMove(const CVector3f& velocity, float dt);
   // guest 0xD40 / 0xD41: the flag bytes (the IM00 and IM01 script messages set 0xD40's 0x80
   // bit, the STRT message sets 0xD41's 0x04 bit and IM00 tests 0xD41's 0x80 bit).
   uchar mFlagsD40 = 0;

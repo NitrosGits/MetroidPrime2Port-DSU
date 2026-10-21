@@ -1486,3 +1486,34 @@ state without running SetupSpinAttack (codes run only on transitions).
 | 9B9C | spin, player (0x9D20) / CAi return / non-CAi damage (0x9ED0) | ran (s4 / s4 / s5); dead return unrun → unmarked |
 | 9FA8 | spinning, boosting player (0xA070) | ran (s5); dead return unrun → unmarked |
 | B9B0, 5D50 state 2 | | not reached: SpinCollisionReaction D2A0, SpinBounce D13C, SpinAttack D7D4, BounceOffPlayer B1D8, SpunIntoPlayer E078, TooManyBounces E040, SpunIntoGeometry E06C are stand-ins |
+
+## Spin sub-machine (2026-10-21)
+
+Ported: SpinAttack `D7D4`, the steered spin move `963C` (`PortSpinMove`), SpinCollisionReaction
+`D2A0`, SpinBounce `D13C`, SpinToIdle `CF44`, BounceOffPlayer `B1D8`, BounceOffGeometry `B104`,
+TooManyBounces `E040` (unsigned `0xCFC >= 0x888`), SpunIntoGeometry `E06C` (0xD40 0x04),
+SpunIntoPlayer `E078` (0xD40 0x08) and CollidedWith `ECA4` (the 0x04 bit's only writer). New fields:
+0xCE4 `mCollisionNormal`, 0xCF0 `mBounceVector`, 0xD24 `mBounceTime`. A natural spin now goes
+SpinAttack → SpinCollisionReaction/SpinBounce (bounces off the player and walls) → SpinToIdle →
+EndSpinAttack → the head's PortResetShield (state 2).
+
+Runs (914f1381 layer 2, real speed, `/tmp/opencode/spl/rdrv.py` reactive driver): s7, s11 natural
+(Alert, then IM01 + `place u0532 player 18` until the spin; s11 without godmode); s8 forced (`place`
+±18 every update); s10 forced (90° `place` flips from the telegraph on, `place u0532 player 3; boost`
+in the spin, `send u0531 Delete` in the spin). A 180° flip (s9) makes 963C's Slerp NaN and hangs the
+game (retail math; not natural).
+
+| fn | arm | result |
+|---|---|---|
+| E040 / E06C / E078 | true, false | ran (s7) → marked |
+| B1D8 | plain / boosted | ran (s7) / forced (boost, s10); no-target dead (0xCC0 is the player) → marked |
+| B104 | reflected | ran (s7); unsafe normal dead (0x04 is set with a unit normal) → marked |
+| 963C | turn, slerp, accel, decel, max clamp / speed ≤ 0 clamp | ran (s7) / forced (90° place flips, s10); dt, unsafe velocity dead (one caller) → marked |
+| D2A0 | sev 2, sev 5 / no issue | ran (s7) / ran (s8) → marked |
+| D13C | safe bounce, over, move / unsafe bounce | ran (s7) / forced (place ±18, s8) → marked |
+| CF44 | type 3, no issue / type 5 | ran (s7) / forced (boost, s10) → marked |
+| B9B0 | head / no head | ran (s7) / forced (send u0531 Delete, s10) → marked |
+| 5D50 | shield state 2 (0x5D90) | ran (s7) → marked |
+| D7D4 | far + unsafe steering | not run (needs a target >10 straight above/below with no separation; a forced vertical place kept a separation) → unmarked |
+| ECA4 | non-CAi object without health / damaged by the spin | not run (wall, steep, floor, CAi, immune ran) → unmarked |
+| 9B9C, 9FA8 | dead-chassis returns | not reached: `damage u0532 99999` leaves hp 10/10 (pass-through vulnerability) → unmarked |
