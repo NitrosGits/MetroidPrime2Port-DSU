@@ -49,10 +49,25 @@ advance-wp radius, 0x824 obstruction dist, 0x828 bend weight, 0x82c `EType`, 0x8
 0 at 0x844 (`x844_`). Then f1..f6 go to 0x848..0x85c (`x848_`..`x85c_`). In the old stand-in, f1..f6
 were shifted one slot down, onto `x844_`..`x858_`.
 
-The bits of byte 0x860, MSB first: `mAlignToFloor`, `mHasAlignSurface`, `mPlayerObstructed`,
-`mDisableMove` (ctor arg), then `x860_27_` tumbling, `x860_28_` re-orienting, `x860_29_` kART_Six bend
-playing, and `x860_30_` kART_Five bend playing. Bit 0x80 of byte 0x861 is `x861_24_` (bending
-enabled), which the ctor sets to **true**. [proven]
+The flags live in byte 0x860 (the word's high byte) and byte 0x861. A bit N of a word is
+`1u << (31 - N)`, so the masks are (all **[proven]**, read from the ctor's `rlwimi` sequence
+asm 0x258C-0x25F0 and every read of the byte):
+
+| mask | member | who writes it |
+|---|---|---|
+| 0x860 `0x80` | `mAlignToFloor` | never set in this module (ctor clears it) |
+| 0x860 `0x40` | `mHasAlignSurface` | AlignToFloor (asm 0x1434, 0x17A0) |
+| 0x860 `0x20` | `mPlayerObstructed` | never set in this module (only PreThink reads it, asm 0x10CC) |
+| 0x860 `0x10` | `mDisableMove` | the ctor's argument (asm 0x25B0) |
+| 0x860 `0x08` | `x860_28_` tumbling | AlignToFloor (asm 0x180C clears, 0x1918 sets); Think clears it unless bending is on (asm 0x64C) |
+| 0x860 `0x04` | `x860_29_` re-orienting | AlignToFloor (asm 0x1850 sets, 0x1928 clears); Think clears it unless bending is on (asm 0x678) |
+| 0x860 `0x02` | `x860_30_` the kART_Six bend plays | Think (asm 0x8F0 sets, 0x93C clears) |
+| 0x860 `0x01` | `x860_31_` the kART_Five bend plays | Think (asm 0xA4C sets, 0xA98 clears) |
+| 0x861 `0x80` | `x861_24_` bending enabled | the ctor sets it (asm 0x25EC); nothing clears it |
+
+So `mAlignToFloor` and `mPlayerObstructed` are **always false** in the retail: PreThink leaves
+early at the `mAlignToFloor` test (asm 0x1124) and the `mPlayerObstructed` test (asm 0x10CC)
+never fires. The port keeps both flags (the retail's layout) but must not set them either.
 
 For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
 
@@ -63,8 +78,10 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
 
 ## 3. Behaviour
 
-- **PreThink.** The guard is active and not player-obstructed. With pause ≤ 0, not `mDisableMove`, and
-  frozen ≈ 0 (|x| < 1e-5): if `mAlignToFloor`, the actor runs `AddMotionState(PredictMotion)` and
+- **PreThink.** The guard is active and not player-obstructed (the 0x20 mask, which the module
+  never sets). With pause ≤ 0, not `mDisableMove`, and
+  frozen ≈ 0 (|x| < 1e-5): if `mAlignToFloor` (the 0x80 mask, which the module never sets either),
+  the actor runs `AddMotionState(PredictMotion)` and
   `ClearForcesAndTorques`. With an align surface, it lerps toward `radius+0.01` above that surface by
   `t = 60·x84c_·dt`, then calls `MoveCollisionPrimitive(0)`. Otherwise, if the pause is > 0, it calls
   `Stop()`. The stand-in had no `Stop()` and hard-coded `10·dt`.
@@ -72,12 +89,14 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
   1. Material `kMT_Solid` follows `mMovable`: add it when movable, remove it when not.
   2. `CPatterned::Think`.
   3. The patrol pause counts down, clamped at 0.
-  4. Only if the body controller **has `kAS_AdditiveReaction`**: clear `x860_27_`/`x860_28_` unless
-     `x861_24_` is set. The weight ramps up while `(x27 && !x30) || (x28 && !x29)` and ramps down
-     otherwise. The rate is `dt·|v| / divisor`, clamped to [0, 1]. While the weight is > 0 or a bend is
-     playing: if the weight is > 1e-4, deliver `CBCAdditiveReactionCmd(kART_Six` or
+  4. Only if the body controller **has `kAS_AdditiveReaction`**: clear the tumbling flag (0x08) and
+     the re-orienting flag (0x04) unless `x861_24_` (bending enabled) is set (asm 0x628-0x67C). The
+     weight ramps up while `(x860_28_ && !x860_31_) || (x860_29_ && !x860_30_)` and ramps down
+     otherwise. The rate is `dt·|v| / divisor`, clamped to [0, 1]; the divisor is `x850_` when the
+     tumbling or the kART_Six flag is set and `x858_` otherwise (asm 0x6C8-0x700). While the weight is
+     > 0 or a bend is playing: if the weight is > 1e-4, deliver `CBCAdditiveReactionCmd(kART_Six` or
      `kART_Five, w, true)` the first time and `CBCAdditiveWeightCmd(w)` after that. Otherwise deliver
-     `kBSC_StopReaction`. The tumble side is chosen by `x27 || x29`.
+     `kBSC_StopReaction`. The tumble side is chosen by `x860_28_ || x860_30_`.
   5. Damage, if `mAlive` and the player's and this actor's touch bounds overlap. When the player
      **boost-balls**, `ApplyDamage(player → this, owner player, gpTweakBall->GetBoostBallDamage())`,
      and the contact timer is not touched. Otherwise, once `mCurDamageRemTime ≤ 0`,
@@ -103,22 +122,32 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
   the waypoint is a `CScriptAIWaypoint` with a non-zero pause, that pause becomes the patrol pause, and
   `EType` 0 also sets `kLT_Relaxed` locomotion. Then the waypoint receives `kSM_Arrived`. `SetDestPos`
   runs whether or not the actor advanced. The stand-in had no pause.
-- **AlignToFloor.**
-  - The search box half-size is `radius+margin`, which is also the starting best distance.
-  - The existing surface is re-validated with PointOnSurface. The actor searches again when it has no
-    surface or on every 4th think.
-  - With no constraint, distance is |plane height|.
-  - With a constraint, triangles carrying `kMT_AIPassthrough` (bit 28) are skipped. `agree` is
-    dot(triangle normal, constraint normal). Constraint 2 negates it and constraint 3 takes its
-    absolute value. When `agree > 0.5`, the distance is multiplied by `1 + agree`. Retail does this as
-    written: a better-aligned triangle scores a *larger* distance.
-  - With a surface, the actor calls `AlignToPlane(normal, mAlignAngVel·dt)`, sets tumble angle 0 and
-    `x27 = 0`, and sets `x28 = dot(up, n) < 0.86`.
+- **AlignToFloor** (fn_83_1310).
+  - The search box half-size is `radius + margin` (asm 0x1390-0x13D4), but the **best distance
+    starts at the radius itself** (f24 = the radius argument, asm 0x1390), not at radius+margin.
+  - The standing surface is re-validated every frame: `mHasAlignSurface = PointOnSurface(mAlignSurface,
+    newPos)` (asm 0x1418-0x1438). The search then runs only when there is no surface, or on every
+    fourth think (`mThinkCounter & 3`, asm 0x1440-0x1450).
+  - With no constraint (x834 == 0), the distance of a triangle is `|dot(normal, newPos) - d|`
+    (asm 0x1460-0x14F0).
+  - With a constraint, triangles carrying `kMT_AIPassthrough` (bit 28 of the 64-bit surface flags,
+    asm 0x1610-0x1630) are skipped. `agree` is dot(triangle normal, constraint normal); constraint 2
+    negates it, constraint 3 takes its absolute value, and constraints >= 4 leave it alone
+    (asm 0x1674-0x16AC). The distance is `|plane height|`, scaled by `1 + agree` when
+    `agree > 0.5` (asm 0x16B0-0x16E4) - retail does this as written: a better-aligned triangle
+    scores a *larger* distance.
+  - With a surface, the actor calls `AlignToPlane(normal, mAlignAngVel·dt)`, sets tumble angle 0,
+    clears the tumbling flag (0x08) and sets the re-orienting flag (0x04) to
+    `dot(up, n) < 0.86` (asm 0x17AC-0x1854).
   - Without a surface, the actor tumbles: `ω = 57.2958·|v|/radius` (degrees/s), and it calls
-    `AlignToPlane(±forward` (the sign follows velocity)`, ω·dt)`, sets `x27 = 1` and `x28 = 0`, and
-    adds `ω·dt` to the tumble angle.
+    `AlignToPlane(±forward` (the sign follows velocity)`, ω·dt)`, sets the tumbling flag (0x08),
+    clears the re-orienting flag (0x04) and adds `ω·dt` to the tumble angle (asm 0x185C-0x1940).
+  - There is **no player-obstruction scan** in this function: the retail never sets the 0x20 mask.
+    (An earlier reading of asm 0x15C8-0x179C as such was wrong: it is the constrained variant of
+    the same floor search, and it stores the surface into the module's own copy at 0x7c0 and sets
+    the 0x40 mask, i.e. `mHasAlignSurface`.)
 
-  The stand-in mixed radians into the degree API and never set `x27`/`x28`.
+  The stand-in mixed radians into the degree API and never set the tumbling/re-orienting flags.
 - **AlignToPlane** does nothing when |dot(up, n) − 1| < 1e-5 or dot < −0.999. Otherwise it applies
   `ShortestRotationArcClamped(up, n, deg·π/180)` in local space, normalizes the result, and calls
   `SetTransform` at the current position. Retail calls `SetTransformAlt`; the port has only
@@ -139,14 +168,14 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
 - Runtime: the `u_gm_0` card, Temple Grounds (`3bfa3eff`), `TELEPORT=10`, 6000 frames, GODMODE. The log
   has no `[port] caught` and no `[reach-stub]`.
   - A temporary probe, since removed, saw three `EType 6` crawlers. They cycled between surface
-    (`x27=0`), tumbling (`x27=1`, tumble angle growing 6–42°) and re-orienting (`x28=1`). The default
-    plane was (0,1,0,0).
+    (the tumbling flag 0x08 clear), tumbling (0x08 set, tumble angle growing 6–42°) and
+    re-orienting (0x04 set). The default plane was (0,1,0,0).
   - Their body controllers have no `kAS_AdditiveReaction` state, so the bend branch is correctly
     skipped.
 - Runtime: Agon Wastes (`42b935e4`) `0b_sand_hall` (area 40, MREA `84303dd5`, picked from
   `docs/module_spawns.tsv`), 6000 frames, GODMODE: no `[port] caught` and no `[reach-stub]`. A
   temporary probe saw the `EType 5` crawlers (PillBug) *with* `kAS_AdditiveReaction`: the weight
-  ramped and the kART_Six bend started (`x860_29_` = 1, w = 0.07).
+  ramped and the kART_Six bend started (`x860_30_` = 1, w = 0.07).
 - Not exercised: the kART_Five bend, the boost-ball and contact damage (no player input in these
   runs).
 - **2026-07-20, branch `decomp/wallcrawler2`:** the module has **no stand-in left** in the port - the
@@ -161,29 +190,45 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
   CCollisionSurface copy in AlignToFloor) and `26CC` (0x54, the CCollisionSurface's constructor in
   the module's ctor) - 25 marked in all. A Temple Grounds run (3bfa3eff, TELEPORT=10, 6000 frames,
   GODMODE) is clean: 0 `[port] caught` and no `[reach-stub]`.
-- **The player-obstruction scan is ported (2026-07-20, branch `decomp/wallcrawler2`):** the retail's
-  `fn_83_1310` (AlignToFloor) runs two things - the floor alignment and a **player-obstruction
-  scan**, and the port now has both, so `fn_83_1310` is marked again (the scan's details are in the
-  next bullet). A temporary once-log (removed before the commit) showed the flag going up in the
-  Agon Wastes `0b_sand_hall` run; the Temple Grounds run never raises it, because the scan only runs
-  when the constraint (0x834) is set (asm 0x1454-0x145C) and no crawler there has one.
-- **What the scan does (the retail's asm 0x1410-0x17A4):** the obstruction a standing crawler keeps
-  is re-tested every frame against the new position (PointOnSurface on the module's own copy at
-  0x7c0, asm 0x1420-0x1438); with a constraint set, the cache's triangles are scanned: a triangle
-  whose flags carry bit 12 (the mask 0x1000) is skipped, the triangle's plane gives the distance
-  (|dot(normal, position) - d| - the host's `plane.GetHeight(position)`), the agreement with the
-  constraint plane starts at 1.0 (`rodata_14`) and grows by the agreement while it is above 0.5
-  (`rodata_24`), and the score is that accumulated agreement times the distance. The best surface
-  the crawler stands on becomes the module's own copy and sets `mPlayerObstructed` (the byte 0x860's
-  bit 6 - `extrwi` 1, 25 of the word). The retail's remaining `fn_83_1310` difference is the
-  obstruction branch that re-searches the floor on every fourth think (asm 0x1448-0x1450).
-- **Found by asmcheck, not yet ported:** the retail's `fn_83_1310` (AlignToFloor) also runs a
-  **player-obstruction scan** the port does not have (asm 0x15C8-0x179C): it walks the collision
-  cache's leaves and their triangles, keeps the surface that faces the player (the plane test at
-  0x1610-0x1630), measures the player-to-surface distance (0x16C0-0x16E4), compares it with
-  `rodata_24` and, when the point is on that surface (0x16F8-0x1700), stores the surface into the
-  module's own copy (0x7c0) and sets `mPlayerObstructed` (the byte 0x860's bit 6, asm 0x179C-0x17A4).
-  The port's `mPlayerObstructed` is therefore never set, so `PreThink`'s guard never blocks - the
-  next slice's target. The `// @ fn_83_1310` marker came **off** in the meantime (commit
-  "WallCrawler: drop the fn_83_1310 marker until the player-obstruction scan is ported"): the marker
-  claimed the whole retail function, and the port still has only its floor half.
+- **The "player-obstruction scan" was a misreading (2026-10-21, branch `decomp/wallcrawler`):** the
+  bullets above about a scan at asm 0x15C8-0x179C that sets `mPlayerObstructed` were wrong. The
+  region is the **constrained variant of the floor search**: it walks the same cache triangles,
+  skips the ones whose flags carry bit 28 (`kMT_AIPassthrough`, the high word's 0x1000 at asm
+  0x1610-0x1630), measures the triangle's plane height (0x16C0-0x16E4), scores it by the
+  agreement with the constraint plane, and stores the surface into the module's own copy at 0x7c0
+  while setting the 0x40 mask - `mHasAlignSurface`, not `mPlayerObstructed`. The retail never sets
+  the 0x20 mask anywhere in the module, so `mPlayerObstructed` is always false and PreThink's
+  guard never blocks. The port's extra "obstruction scan" block (added in 036ca13db) was removed in
+  this slice; it could set `mPlayerObstructed` and freeze a crawler that the retail keeps moving.
+
+## 6. The functions that carry no marker (2026-10-21)
+
+57 functions live in the REL's `.text`; 25 carry a `// @ fn_83_<off>` marker. The other 32 are
+the REL's copies of host/DOL code, so they are cited here and neither reimplemented nor marked:
+
+| fn | what it is |
+|---|---|
+| `0`, `10`, `18`, `20`, `28`, `30`, `38`, `48`, `54`, `60`, `68`, `70`, `78`, `80`, `9C` | the REL's weak copies of `CPatterned`/`CAi` inline virtuals (they sit in the module's vtable at 0xa4-0x124; the host's `CPatterned` provides the behaviour) |
+| `140` | `GetConstraint` - an 8-byte accessor for the constraint word (0x834) that nothing in the module calls |
+| `48C`, `DA8`, `DE4`, `E40`, `E9C`, `1A24`, `1A7C`, `1ACC`, `22E0`, `2684` | the optional members' destructors (rstl) |
+| `20FC` | the `~CPatterned` chain (0x1E4) |
+| `2720`, `27E4`, `2808`, `282C`, `2878` | the REL runtime (`_unresolved`, `_epilog`, `_prolog`, the module's constructors/destructors) |
+
+`fn_83_9C` is the one of the weak copies that is not a plain accessor: it is the vtable slot at
+0x3c and it forwards to the slot at 0x38 (a DOL function). The host's `CPatterned` covers it.
+
+## 7. This slice (2026-10-21, branch `decomp/wallcrawler`)
+
+- **The flag layout is now the retail's.** The header's bitfields carried the wrong masks (they
+  were one bit off): the retail's byte 0x860 is `mAlignToFloor` 0x80, `mHasAlignSurface` 0x40,
+  `mPlayerObstructed` 0x20, `mDisableMove` 0x10, then the tumbling flag 0x08, the re-orienting
+  flag 0x04, the kART_Six flag 0x02 and the kART_Five flag 0x01; byte 0x861's 0x80 is
+  `x861_24_` (bending enabled). The four unnamed members were renamed `x860_28_`..`x860_31_`
+  and every bitfield now carries its retail mask as a comment, so `tools/asmcheck.py check`
+  reports no MASK hit for the module any more.
+- **AlignToFloor had two behaviour differences**, both fixed:
+  1. the best distance started at `radius + margin`; the retail starts it at the **radius**
+     (f24 = the radius argument, asm 0x1390) and only the search box is radius+margin wide.
+  2. the port ran an extra "player-obstruction scan" that the retail does not have (see the
+     bullet above); it could set `mPlayerObstructed` and stop the crawler.
+

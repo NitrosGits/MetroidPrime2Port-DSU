@@ -33,12 +33,12 @@
 //   x854_ (f4)  bend weight ramp-down divisor while tumbling
 //   x858_ (f5)  bend weight ramp-up divisor while re-orienting (kART_Five)
 //   x85c_ (f6)  bend weight ramp-down divisor while re-orienting
-// The 0x860/0x861 bits past mDisableMove:
-//   x860_27_  tumbling: no align surface, rolling about the forward axis (set in AlignToFloor)
-//   x860_28_  on a surface but up is still > ~30 degrees off its normal (set in AlignToFloor)
-//   x860_29_  the kART_Six additive reaction is playing
-//   x860_30_  the kART_Five additive reaction is playing
-//   x861_24_  bending enabled (ctor sets it; nothing in this module clears it)
+// The 0x860/0x861 bits past mDisableMove (the masks are the retail's, asm 0x258C-0x25F0):
+//   x860_28_  (0x08) tumbling: no align surface, rolling about the forward axis (set in AlignToFloor)
+//   x860_29_  (0x04) on a surface but up is still > ~30 degrees off its normal (set in AlignToFloor)
+//   x860_30_  (0x02) the kART_Six additive reaction is playing
+//   x860_31_  (0x01) the kART_Five additive reaction is playing
+//   x861_24_  (0x80) bending enabled (ctor sets it; nothing in this module clears it)
 
 namespace {
 
@@ -110,10 +110,10 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
 , mHasAlignSurface(false)
 , mPlayerObstructed(false)
 , mDisableMove(disableMove)
-, x860_27_(false)
 , x860_28_(false)
 , x860_29_(false)
 , x860_30_(false)
+, x860_31_(false)
 , x861_24_(true)
 , mConstraintPlane(0.f, CUnitVector3f(0.f, 1.f, 0.f, CUnitVector3f::kN_No)) {}
 
@@ -166,11 +166,11 @@ void CWallCrawler::Think(float dt, CStateManager& mgr) {
   if (bc->HasBodyState(pas::kAS_AdditiveReaction)) {
     // The bend: an additive reaction whose weight follows how fast the enemy moves while it
     // tumbles (kART_Six) or turns onto a new surface (kART_Five).
-    x860_27_ = x860_27_ && x861_24_;
     x860_28_ = x860_28_ && x861_24_;
-    const bool tumbleBend = x860_27_ || x860_29_;
+    x860_29_ = x860_29_ && x861_24_;
+    const bool tumbleBend = x860_28_ || x860_30_;
     const float speed = GetVelocityWR().Magnitude();
-    if ((x860_27_ && !x860_30_) || (x860_28_ && !x860_29_)) {
+    if ((x860_28_ && !x860_31_) || (x860_29_ && !x860_30_)) {
       if (mBendingHackWeight < 1.f) {
         mBendingHackWeight += dt * speed / (tumbleBend ? x850_ : x858_);
         if (mBendingHackWeight >= 1.f) {
@@ -184,16 +184,16 @@ void CWallCrawler::Think(float dt, CStateManager& mgr) {
       }
     }
 
-    if (mBendingHackWeight > 0.f || x860_29_ || x860_30_) {
+    if (mBendingHackWeight > 0.f || x860_30_ || x860_31_) {
       bool playing;
       if (tumbleBend) {
-        playing = x860_29_;
-        DeliverBend(bc, mBendingHackWeight, playing, pas::kART_Six);
-        x860_29_ = playing;
-      } else {
         playing = x860_30_;
-        DeliverBend(bc, mBendingHackWeight, playing, pas::kART_Five);
+        DeliverBend(bc, mBendingHackWeight, playing, pas::kART_Six);
         x860_30_ = playing;
+      } else {
+        playing = x860_31_;
+        DeliverBend(bc, mBendingHackWeight, playing, pas::kART_Five);
+        x860_31_ = playing;
       }
     }
   }
@@ -329,65 +329,21 @@ bool CWallCrawler::UpdateWPDestination(CStateManager& mgr) {
 
 // @ fn_83_1310
 void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3f& newPos, float dt) {
-  float best = radius + mCollisionCloseMargin;
-  const CVector3f extent(best, best, best);
-  CAreaCollisionCache cache(CAABox(newPos - extent, newPos + extent));
+  // The retail's search box is radius+margin wide (asm 0x1390-0x13D4) while its best distance
+  // starts at the radius itself (f24 = the radius argument, asm 0x1390).
+  const float extent = radius + mCollisionCloseMargin;
+  const CVector3f half(extent, extent, extent);
+  CAreaCollisionCache cache(CAABox(newPos - half, newPos + half));
   CGameCollision::BuildAreaCollisionCache(mgr, cache);
+  float best = radius;
 
-  // The player-obstruction scan (the retail's fn_83_1310, asm 0x15AC-0x17A4) and the
-  // re-validation of a standing obstruction (asm 0x1410-0x1438). The scan walks the same cache:
-  // a triangle whose flags carry bit 12 (the mask 0x1000) is skipped, the triangle's plane gives the
-  // distance (|dot(normal, newPos) - d|, the host's plane.GetHeight(newPos)), the agreement with the
-  // constraint plane starts at 1.0 (rodata_14) and grows by the agreement while it is above 0.5
-  // (rodata_24), and the score is that accumulated agreement times the distance. The best surface
-  // the crawler stands on (PointOnSurface) becomes the module's own copy (0x7c0) and
-  // mPlayerObstructed is set (the byte 0x860's bit 6 - extrwi 1, 25 of the word).
-  if (mPlayerObstructed) {
-    mPlayerObstructed = PointOnSurface(mAlignSurface, newPos);
-  }
-  if (!mPlayerObstructed && x834_ != 0) {
-    float agreement = 1.f;
-    float bestScore = radius;
-    bool blocked = false;
-    CCollisionSurface blocker;
-    for (int i = 0; i < static_cast< int >(cache.GetNumCaches()); ++i) {
-      const CMetroidAreaCollider::COctreeLeafCache& leaf = cache.GetOctreeLeafCache(i);
-      for (int j = 0; j < leaf.GetNumLeaves(); ++j) {
-        const CAreaOctTree::Node& node = leaf.GetLeaf(j);
-        const CAreaOctTree::TriListReference triangles = node.GetTriangleArray();
-        const CAreaOctTree& tree = node.GetOwner();
-        for (int k = 0; k < triangles.GetSize(); ++k) {
-          const CCollisionSurface surface = tree.GetTriangle(triangles.GetAt(k));
-          if ((surface.GetSurfaceFlags() & 0x1000ull) != 0) {
-            continue;
-          }
-          float agree = CVector3f::Dot(surface.GetNormal(), x838_);
-          if (x834_ == 2) {
-            agree = -agree;
-          } else if (x834_ == 3) {
-            agree = CMath::AbsF(agree);
-          }
-          if (agree > 0.5f) {
-            agreement += agree;
-          }
-          const float score = agreement * CMath::AbsF(surface.GetPlane().GetHeight(newPos));
-          if (score < bestScore && PointOnSurface(surface, newPos)) {
-            bestScore = score;
-            blocker = surface;
-            blocked = true;
-          }
-        }
-      }
-    }
-    if (blocked) {
-      mAlignSurface = blocker;
-      mPlayerObstructed = true;
-    }
-  }
-
+  // The surface the crawler stands on is re-tested every frame (asm 0x1418-0x1438): the flag is
+  // the byte 0x860's 0x40 mask (mHasAlignSurface). The retail never sets the 0x20 mask
+  // (mPlayerObstructed) in this module - only PreThink reads it (asm 0x10CC).
   if (mHasAlignSurface) {
     mHasAlignSurface = PointOnSurface(mAlignSurface, newPos);
   }
+  // The search runs when there is no surface, or on every fourth think (asm 0x1440-0x1450).
   if (!mHasAlignSurface || (mThinkCounter & 3) == 0) {
     bool found = false;
     for (int i = 0; i < static_cast< int >(cache.GetNumCaches()); ++i) {
@@ -436,8 +392,8 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
     const CVector3f normal = mAlignSurface.GetNormal();
     AlignToPlane(CUnitVector3f(normal, CUnitVector3f::kN_No), mAlignAngVel * dt);
     mTumbleAngle = 0.f;
-    x860_27_ = false;
-    x860_28_ = CVector3f::Dot(GetTransform().GetUp(), normal) < 0.86f;
+    x860_28_ = false;
+    x860_29_ = CVector3f::Dot(GetTransform().GetUp(), normal) < 0.86f;
   } else {
     // Nothing to stand on: roll forward about the sphere at its rolling speed (degrees/s).
     const CVector3f forward = GetTransform().GetForward();
@@ -445,8 +401,8 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
     const float angVel = 57.295776f * velocity.Magnitude() / mColSphere.GetSphere().GetRadius();
     const CVector3f target = CVector3f::Dot(velocity, forward) > 0.f ? forward : -forward;
     AlignToPlane(CUnitVector3f(target, CUnitVector3f::kN_No), angVel * dt);
-    x860_27_ = true;
-    x860_28_ = false;
+    x860_28_ = true;
+    x860_29_ = false;
     mTumbleAngle += angVel * dt;
   }
 }
