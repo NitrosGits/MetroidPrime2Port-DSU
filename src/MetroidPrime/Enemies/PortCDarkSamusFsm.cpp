@@ -1995,10 +1995,10 @@ void CDarkSamus::ReflectProjectiles(CStateManager& mgr) {
 // (`cmpwi r6, -0x1` at 0x0001BA98) passes; a given type is compared with the stage's chance: the
 // stage (fn_10_17E14 at 0x0001BAA8, null passes at 0x0001BAB0) and fn_10_F298's roll for the uid
 // against the stage info's +0x24 (`fcmpo` at 0x0001BAD4). Only fn_10_1B658 calls it in the port,
-// always with -1; the typed callers (0x0001BBF8 and 0x0001BD58, AnyIncomingMissiles fn_10_1BB08)
-// and fn_10_F298 are not ported, so that last arm is a stand-in.
+// always with -1; the typed caller (0x0001BBF8, AnyIncomingMissiles fn_10_1BB08) is outside the
+// port, so the roll below runs only when the typed path is reached.
 bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj,
-                                      int type) const {
+                                      int type) {
   if (proj == nullptr || proj->GetOwnerId() == GetUniqueId() || proj->HasExploded()) {
     return false;
   }
@@ -2019,8 +2019,62 @@ bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectil
   if (type == -1 || GetBattleStage(mgr) == nullptr) {
     return true;
   }
-  FsmStandIn("fn_10_F298", "reflect chance roll");
-  return true;
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  // fn_10_F298 (0x0001BACC) rolls the chance for the projectile's uid and the stage info's +0x24
+  // (the missiles' first float, lbl_10_rodata of SLdrDSMissiles) is the chance the roll is
+  // compared with (`fcmpo cr0, f1, f0` at 0x0001BAD4, the less-than bit at 0x0001BADC).
+  const float roll = RollReflectChance(mgr, proj->GetUniqueId());
+  return roll < stage->GetStageInfo().missiles.unknown_0x7ee77018;
+}
+
+// fn_10_F210 (0x0000F210, 0x88 bytes): the reflect chance cache's entry erased - the entries
+// behind it move down (the next entry's uid at +0x0C, its roll at +0x10 and its roll at +0x14
+// go to +0x00, +0x04 and +0x08 of this one, 0x0001F240..0x0001F254) and the count falls by one
+// (0x0001F27C). The guest's range test (0x0001F218 and 0x0001F230) has no host counterpart:
+// the only caller erases the first entry of a full table.
+// @ fn_10_F210
+void CDarkSamus::EraseReflectChance(uint index) {
+  for (uint i = index + 1; i < mReflectChanceCount; ++i) {
+    mReflectChances[i - 1] = mReflectChances[i];
+  }
+  --mReflectChanceCount;
+}
+
+// fn_10_F298 (0x0000F298, 0x174 bytes): the reflect chance for a projectile's uid. The cache
+// (the count at guest 0x10A8 and the ten entries from 0x10AC) is walked (0x0001F2E4..0x0001F2FC)
+// and the entry's +0x04 answers when the uid is in it (0x0001F2F0). Otherwise, with ten entries
+// (0x0001F300), the first one is erased (fn_10_F210, 0x0001F310) and two rolls are made
+// (Range(0.0f, lbl_10_rodata_3F0 = 100.0f), 0x0001F32C and 0x0001F348). The time since the last
+// hit or heavy hit (the larger of guest 0xC0C and 0xC20, 0x0001F34C and 0x0001F350) shifts the
+// rolls: zero for the first four seconds (lbl_10_rodata_408 = 4.0f, 0x0001F378) and -50.0f
+// (lbl_10_rodata_418 = 50.0f, 0x0001F3B0) for the next four (lbl_10_rodata_414 = 8.0f,
+// 0x0001F39C). The uid and the two rolls go into the next entry (0x0001F3C8..0x0001F3D4) and the
+// count rises (0x0001F3E0). The second roll answers.
+// @ fn_10_F298
+float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) {
+  for (uint i = 0; i < mReflectChanceCount; ++i) {
+    if (mReflectChances[i].mUid == uid) {
+      return mReflectChances[i].mChance; // 0x0001F2F0
+    }
+  }
+  if (mReflectChanceCount == 10) { // 0x0001F300
+    EraseReflectChance(0);          // fn_10_F210, 0x0001F310
+  }
+  float roll = mgr.Random()->Range(0.f, 100.f);      // 0x0001F32C, lbl_10_rodata_3F0
+  float chance = mgr.Random()->Range(0.f, 100.f);    // 0x0001F348
+  const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0001F34C, 0x0001F350
+  if (4.f + since > mElapsedTime) { // lbl_10_rodata_408, 0x0001F378
+    roll = 0.f;
+    chance = 0.f;
+  } else if (8.f + since > mElapsedTime) { // lbl_10_rodata_414, 0x0001F39C
+    roll -= 50.f;                             // lbl_10_rodata_418, 0x0001F3B0
+    chance -= 50.f;
+  }
+  mReflectChances[mReflectChanceCount].mUid = uid; // 0x0001F3C8
+  mReflectChances[mReflectChanceCount].mChance = chance; // 0x0001F3D0
+  mReflectChances[mReflectChanceCount].mRoll = roll; // 0x0001F3D4
+  ++mReflectChanceCount; // 0x0001F3E0
+  return chance;
 }
 
 // fn_10_138A4 (0x000138A4, 0xF4 bytes): the dive's hit on the player. The dive record's 0x20 is
