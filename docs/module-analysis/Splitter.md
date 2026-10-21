@@ -1259,3 +1259,21 @@ What area-5 plan-F runs showed (temporary probes):
 
 Next: the chassis's Listen `fn_75_EA70` (unblocks the dodge path), LaserSweepAttack `fn_75_D3E0`
 (unblocks SetupLaserSweep and the head's sweep), then the laser shot `fn_75_1974`.
+
+### Listen, laser sweep attack and laser shot (2026-10-21)
+
+Ported the chassis's Listen (EA70), LaserSweepAttack (D3E0) with its per-collision-actor
+vulnerability (9AF8), and the head's laser shot (1974, the CPlasmaProjectile "LaserSweepBeam"
+from the projectile info at 0xE84; its looped sound handle at 0xF5C is now a real CSfxHandle, so
+the despawn 1790 removes the emitter). The area-5 run (plan G: stab quadrants, sweep range, lock-on
+missiles) reached every new body.
+
+- Marked: D3E0 (CanIssueCommand false and true, exit and deactivate all ran), DA38 (the
+  CanIssueCommand-false update ran; the invalid-leg arm is unreachable), 5A80, 1974 (its null arm
+  is an allocation failure).
+- Unmarked: EA70 (the dead and path-obstruction arms never ran: area 5 sends no type 4),
+  9AF8 (the non-collision-actor skip), 909C (the ray-blocked side is unsplit), 91E4 (left/default
+  axes, the in-cone and random tie-break arms), B2A0 (the dodge-chance miss, timer and flag-off
+  gates, the non-missile skip), B57C (ahead-left), B678 (head missing, unsafe offset, above, clamp),
+  5AD8 (undocked), 44DC (zero dt, unsafe flat).
+- Still stand-ins: the CEntity vtable word 0x24 call in 1790; 11884, 9B9C, 9FA8.

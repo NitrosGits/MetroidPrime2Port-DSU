@@ -461,6 +461,7 @@ void CSplitterCommandModule::FaceTarget(CStateManager& mgr, EStateMsg msg, float
 
 // fn_75_5A80 (0x5A80-0x5AD8): the head's laser origin - the translation of the locator at
 // 0xEF8 (0x5A9C GetLctrTransform, 0x5AAC-0x5AC0).
+// @ fn_75_5A80
 CVector3f CSplitterCommandModule::PortLaserOrigin(CStateManager&) const {
   return GetLctrTransform(mLookAtSegment).GetTranslation();
 }
@@ -557,6 +558,7 @@ void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float
 // vector as direction, the area at 0x4, acoustics on and looped (0x1BD8 AddEmitter); its handle
 // goes to 0xF5C and the beam's id to 0xF02 (0x1BDC-0x1BE8). Last the effect states update
 // (0x1BF4 fn_75_1578), with or without the beam.
+// @ fn_75_1974
 void CSplitterCommandModule::PortFireLaserSweep(CStateManager& mgr, const CVector3f& end) {
   const CBeamInfo beamInfo = TLdrToBeamInfo(mData.mLaserSweepBeamInfo, 0x91);
   const TUniqueId beamId = mgr.AllocateUniqueId();
@@ -564,6 +566,7 @@ void CSplitterCommandModule::PortFireLaserSweep(CStateManager& mgr, const CVecto
       mLaserSweepProjectileInfo.Token(), rstl::string_l("LaserSweepBeam"), EWeaponType(2),
       beamInfo, CTransform4f::Identity(), kMT_ProjectilePassthrough, mData.mLaserSweepDamage,
       beamId, GetCurrentAreaId(), GetUniqueId(), CWeaponAssetInfo(), false, 0x21000);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
   if (beam != nullptr) {  // 0x1AB8-0x1ABC
     beam->Fire(CTransform4f::LookAt(GetLctrTransform(mLookAtSegment).GetTranslation(), end,
                                     CVector3f::Up()),

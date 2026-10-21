@@ -665,6 +665,7 @@ void CSplitterMainChassis::PortSetCollisionVulnerability(CStateManager& mgr,
 // at 0xD18 restarts with the data's laser sweep interval (0x858, 0xD5BC-0xD5CC), 0xD41's 0x40 bit
 // is cleared and the team's projectile attack ends (0xD5FC EndAttack with 1, the team at 0xCBE,
 // this actor and false).
+// @ fn_75_D3E0
 void CSplitterMainChassis::LaserSweepAttack(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -702,6 +703,7 @@ void CSplitterMainChassis::LaserSweepAttack(CStateManager& mgr, EStateMsg msg, f
 // and no target flag (0xDB1C-0xDB28). Deactivate (0xDB7C): the animation state is kAS_NotReady
 // (0), the leg stab timer at 0xD10 gets the data's leg stab interval (0x82C) and 0xD40's 0x1 bit
 // is cleared.
+// @ fn_75_DA38
 void CSplitterMainChassis::LegStabAttack(CStateManager&, EStateMsg msg, float) {
   static const pas::ESeverity skLegStabSeverity[5] = {pas::kS_Zero, pas::kS_One, pas::kS_Two,
                                                        pas::kS_Three, pas::kS_Four};
@@ -710,6 +712,8 @@ void CSplitterMainChassis::LegStabAttack(CStateManager&, EStateMsg msg, float) {
       mAnimationState.SetState(CAnimationState::kAS_Ready);
       mFlagsD40 |= 0x1;
     } else {
+      // Unreachable in the shipped data: FindBestStabLeg (B57C) and SetMorphballStabLeg (B66C)
+      // leave a leg of 0-4; B57C's -1 is only on its null-target arm, which PathFind rules out.
       mAnimationState.SetState(CAnimationState::kAS_Over);
     }
   } else if (msg == kStateMsg_Update) {
