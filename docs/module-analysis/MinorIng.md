@@ -7,16 +7,13 @@ half: what is ported, what is not, and the layout facts the port depends on.
 
 ## Status (2026-10-20)
 
-- 136/217 functions marked (was 126). The new ones: `fn_44_E0` (the module
+- 114/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
   registration), `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info
   copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the ray the snap to the floor
   uses), `fn_44_3614` (the copy of the ray result), `fn_44_FE8` (the grenade data
   the loader builds), `fn_44_C44` (the copy of it into the data), `fn_44_D54` (the
   copy of the ing spot into the data), `fn_44_9B4` (the data build) and `fn_44_AB78`
-  (the best animation for a parm), and the impact visor effect's ten bodies
-  (`fn_44_65C4`, `fn_44_660C`, `fn_44_66C0`, `fn_44_6700`, `fn_44_6720`, `fn_44_6748`,
-  `fn_44_64AC`, `fn_44_6500`, `fn_44_655C`, `fn_44_657C` - see "The impact visor
-  effect" below).
+  (the best animation for a parm).
 - `tools/asmcheck.py check MinorIng src/MetroidPrime/Enemies/PortCMinorIng.cpp
   --root .` reports no correctness finding (MASK/XBIT/CROP/XCMP/XSTORE/OFFS).
 - Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=7000 GODMODE=1
@@ -206,51 +203,17 @@ The two branches that are not reachable on the host are the failed allocation (a
 failed constructor (asm 0x74D4).
 
 
-## The impact visor effect (the projectile's spawn parameters)
-
-The retail's `DoUserAnimEvent` (fn_44_6384) spawns the projectile with an impact visor effect
-its own chain builds: the effect on the stack (asm 0x6414-0x6418, `fn_44_65C4`), the spawn with
-the effect as the seventh argument (asm 0x6430-0x6450) and the effect's teardown (asm
-0x6454-0x645C, `fn_44_64AC`). The chain is the REL's own copy of Metaforce's
-`CImpactVisorEffect` helpers, so the host ports all ten bodies.
-
-The retail's effect is 0x3c bytes: the particle effect at +0x00 (its engaged flag byte at
-+0x14), the blur effect at +0x18 (its flag byte at +0x24), the low-pass filter at +0x28 (its
-flag byte at +0x30), the forced visor at +0x34 and the forced visor's duration at +0x38. The
-host's `CImpactVisorEffect` has the same parts in the same order but no setters (its parts are
-read-only), so the chain keeps them in the port's own `SImpactVisorEffect` and hands the
-finished effect to `LaunchProjectile`. The chain sets the forced visor to the invalid one and
-the duration to zero (asm 0x669C and asm 0x66A4, the rodata constant `lbl_44_rodata_7C`), which
-is what the host's `CImpactVisorEffect` constructor sets, so the effect the projectile carries is
-the same one the host passed as `None()` before.
-
-The branches, and how each ran (a temporary hook forced the arms the live cycle does not
-reach; it and its once-logs were reverted after the run):
-
-| branch | how it ran |
-|---|---|
-| the particle effect is set (asm 0x66CC) and it is not (asm 0x66DC) | both: the live cycle builds an empty effect, the hook built one with a particle effect |
-| the destination is set (asm 0x6728) and it is not | both: the hook passed a null destination |
-| the effect has a particle effect (asm 0x6520) | both: the live cycle's effect has none, the hook's had one |
-| the caller asks for the effect to be freed (asm 0x6530, asm 0x64D4) | both: the live cycle asks for no free (-1), the hook passed 1 |
-| the token is set (asm 0x6594) | only the empty arm: the host's `TLockedToken` can only be built from a loadable asset, and the ing's effect never has one |
-
-A run of area 13 (the Temple Grounds' `0n_temple_hall_dark`) fires the projectile six times
-(the port's `[minoring] <uid> projectile launched` line) and the console's `objs` lists the
-`CEnergyProjectile` in the area, flying to the player; the run is clean (0 `[port] caught`,
-0 `[reach-stub]`).
-
-
 ## The functions that are still not ported
 
-`tools/port_progress.py` counts 81 of the module's 217 functions as unmarked.
+`tools/port_progress.py` counts 103 of the module's 217 functions as unmarked.
 The table lists each with its retail size and the module functions that call it
 (the call graph is read from the REL's disassembly, so "called from" is the retail
 call, not the host's). The ones the live cycle reaches are the ctor/dtor/loader
-chain, the damage relay (`fn_44_25E4` -> `fn_44_28D8` -> `fn_44_2930`, `fn_44_2CD8`
--> `fn_44_2EF4` -> `fn_44_2F24` -> `fn_44_2FB0`) and the cover scan (`fn_44_4E84` ->
-`fn_44_4DDC`). The projectile's spawn parameters (the impact visor effect) are
-ported now; the note has them under "The impact visor effect".
+chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
+`fn_44_66C0` -> `fn_44_6700` -> `fn_44_6720` -> `fn_44_6748` and `fn_44_64AC` ->
+`fn_44_6500` -> `fn_44_655C` -> `fn_44_657C`), the damage relay
+(`fn_44_25E4` -> `fn_44_28D8` -> `fn_44_2930`, `fn_44_2CD8` -> `fn_44_2EF4` ->
+`fn_44_2F24` -> `fn_44_2FB0`) and the cover scan (`fn_44_4E84` -> `fn_44_4DDC`).
 
 ### Over 0x80 bytes (the stand-in size line)
 
@@ -263,6 +226,7 @@ ported now; the note has them under "The impact visor effect".
 | `fn_44_9CC0` | 0x98 | fn_44_9C68 |
 | `fn_44_4DDC` | 0xA8 | fn_44_4E84 |
 | `fn_44_5A04` | 0xB4 | - |
+| `fn_44_660C` | 0xB4 | fn_44_65C4 |
 | `fn_44_141C` | 0xBC | - |
 | `_unresolved` | 0xC4 | - |
 | `fn_44_16C4` | 0x108 | fn_44_14D8 |
@@ -304,6 +268,8 @@ ported now; the note has them under "The impact visor effect".
 | `__register_global_object` | 0x1C | - |
 | `RELMain` | 0x20 | - |
 | `fn_44_1114` | 0x20 | fn_44_10D4 |
+| `fn_44_655C` | 0x20 | fn_44_6500 |
+| `fn_44_6700` | 0x20 | fn_44_66C0 |
 | `fn_44_76AC` | 0x20 | fn_44_7058 |
 | `fn_44_8DF0` | 0x20 | - |
 | `fn_44_8E10` | 0x20 | - |
@@ -311,6 +277,7 @@ ported now; the note has them under "The impact visor effect".
 | `_epilog` | 0x24 | - |
 | `_prolog` | 0x24 | - |
 | `fn_44_1134` | 0x28 | fn_44_1114 |
+| `fn_44_6720` | 0x28 | fn_44_6700 |
 | `fn_44_70` | 0x2C | - |
 | `fn_44_6FA0` | 0x2C | - |
 | `fn_44_2EF4` | 0x30 | fn_44_2CD8 |
@@ -324,6 +291,9 @@ ported now; the note has them under "The impact visor effect".
 | `fn_44_A908` | 0x3C | - |
 | `fn_44_A944` | 0x3C | - |
 | `fn_44_10D4` | 0x40 | fn_44_110 |
+| `fn_44_66C0` | 0x40 | fn_44_660C |
+| `fn_44_657C` | 0x48 | fn_44_655C |
+| `fn_44_65C4` | 0x48 | fn_44_6384 |
 | `fn_44_7918` | 0x48 | - |
 | `ModuleDestructors` | 0x4C | - |
 | `ModuleConstructors` | 0x4C | - |
@@ -332,6 +302,7 @@ ported now; the note has them under "The impact visor effect".
 | `fn_44_1304` | 0x54 | - |
 | `fn_44_2930` | 0x54 | fn_44_28D8 |
 | `fn_44_2FB0` | 0x54 | fn_44_2F24 |
+| `fn_44_64AC` | 0x54 | fn_44_6384 |
 | `fn_44_6834` | 0x54 | - |
 | `fn_44_107C` | 0x58 | - |
 | `fn_44_28D8` | 0x58 | fn_44_25E4, fn_44_7058 |
@@ -341,6 +312,7 @@ ported now; the note has them under "The impact visor effect".
 | `fn_44_9C68` | 0x58 | fn_44_9C10 |
 | `__destroy_global_chain` | 0x58 | - |
 | `fn_44_E08` | 0x5C | fn_44_D54 |
+| `fn_44_6500` | 0x5C | fn_44_64AC, fn_44_65C4 |
 | `fn_44_78BC` | 0x5C | - |
 | `fn_44_8404` | 0x5C | - |
 | `fn_44_87E0` | 0x5C | - |
@@ -354,6 +326,7 @@ ported now; the note has them under "The impact visor effect".
 | `fn_44_67C8` | 0x6C | - |
 | `fn_44_A5D0` | 0x74 | fn_44_9D58 |
 | `fn_44_57C4` | 0x80 | - |
+| `fn_44_6748` | 0x80 | fn_44_6720 |
 
 ## Layout facts the port depends on (all read from the REL's disassembly)
 
@@ -384,12 +357,11 @@ data, the vector resize), 5 retail bodies the host does not model but that the l
 (the host's own classes cover them: fn_44_1114 is the host's generated `LdrToPatternedInfo`,
 fn_44_28D8 the host's `CEntityInfo` destructor, fn_44_9BB8 a member's own destructor, fn_44_E08
 the host's `CIngSpotData` copy and fn_44_9940 the host's `CPatterned` destructor), and the rest
-unported chains the module calls but the live cycle never reaches. The chain that mattered was
-the projectile's spawn parameters (fn_44_65C4 -> fn_44_660C -> fn_44_66C0 -> fn_44_6700 ->
-fn_44_6720 -> fn_44_6748, with fn_44_64AC -> fn_44_6500 -> fn_44_655C -> fn_44_657C beside it):
-the retail's DoUserAnimEvent (fn_44_6384) spawned the projectile through it, while the host's
-used the base's LaunchProjectile with a plain empty effect. That chain is ported now (see "The
-impact visor effect" above); the damage relay and the cover scan are the ones left.
+unported chains the module calls but the live cycle never reaches. The chain that matters is the
+projectile's spawn parameters (fn_44_65C4 -> fn_44_660C -> fn_44_66C0 -> fn_44_6700 -> fn_44_6720
+-> fn_44_6748, with fn_44_64AC -> fn_44_6500 -> fn_44_655C -> fn_44_657C beside it): the retail's
+DoUserAnimEvent (fn_44_6384) spawns the projectile through it, while the host's uses the base's
+LaunchProjectile, so porting that chain is the next slice.
 
 The thirteen vtable slots break down as: eight the host's `CMinorIng` overrides itself (marked
 below), nine that are the base class's own inline functions (the REL carries its own copies of

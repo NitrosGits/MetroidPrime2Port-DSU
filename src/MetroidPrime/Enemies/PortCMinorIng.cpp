@@ -240,159 +240,6 @@ CBouncyGrenadeData BuildGrenadeData(const SLdrUnknownStruct34& sldr) {
 // struct.
 CBouncyGrenadeData CopyGrenadeData(const CBouncyGrenadeData& src) { return src; }
 
-// The retail's CImpactVisorEffect: the parts the REL's own copies of Metaforce's helpers work
-// on. The REL carries its own copies of those helpers (it was compiled without them), so the
-// module's own code calls them instead of the ones in the main binary. The host's
-// CImpactVisorEffect has no setters (its parts are read-only), so the chain keeps the parts
-// here and hands the finished effect to LaunchProjectile. The retail's layout (0x3c bytes) is
-// the particle effect at +0x00 (its engaged flag byte at +0x14), the blur effect at +0x18 (its
-// flag byte at +0x24), the low-pass filter at +0x28 (its flag byte at +0x30), the forced visor
-// at +0x34 and the forced visor's duration at +0x38.
-struct SImpactVisorEffect {
-  rstl::optional_object< CImpactVisorEffect::SParticleEffect > mParticleEffect;
-  rstl::optional_object< CImpactVisorEffect::SBlurEffect > mBlurEffect;
-  rstl::optional_object< rstl::pair< int, float > > mLowPassFilter;
-  CPlayerState::EPlayerVisor mForcedVisor;
-  float mForcedVisorDuration;
-};
-
-static void CopyImpactParticle(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
-static void CopyImpactParticleSet(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
-static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
-static void CopyImpactParticleEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* src);
-static void AssignImpactVisorEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* particle,
-                                    const SImpactVisorEffect* blur,
-                                    const SImpactVisorEffect* lowPass);
-static void UnlockImpactParticle(SImpactVisorEffect* effect);
-static void UnlockImpactParticleEntry(SImpactVisorEffect* effect);
-static void DestroyImpactVisorEffect(SImpactVisorEffect* effect, int free);
-static void FreeImpactVisorEffect(SImpactVisorEffect* effect, int free);
-static void BuildImpactVisorEffect(SImpactVisorEffect* effect);
-
-// @ fn_44_6748
-// The retail copies the particle effect's token, its sound id and its collide flag into the
-// destination (asm 0x6748-0x67C4): the token's flag byte at +0x0c (asm 0x6754/0x6760), the
-// token itself (asm 0x6784-0x6794), the sound id at +0x10 (asm 0x6798) and the collide flag at
-// +0x12 (asm 0x67A0-0x67A8). The token is only copied when the source's token is set; the
-// host's optional assignment copies the flag either way.
-static void CopyImpactParticle(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
-  CImpactVisorEffect::SParticleEffect& particle = dest->mParticleEffect.data();
-  const CImpactVisorEffect::SParticleEffect& source = src->mParticleEffect.data();
-  particle.mParticle = source.mParticle;                        // the token (asm 0x6784-0x6794)
-  particle.mSound = source.mSound;                              // the sound id (asm 0x6798)
-  particle.mSendCollideMessage = source.mSendCollideMessage;    // the flag (asm 0x67A0-0x67A8)
-}
-
-// @ fn_44_6720
-// The retail checks the destination (asm 0x6728) before it copies the particle effect
-// (asm 0x6734).
-static void CopyImpactParticleSet(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
-  if (dest != nullptr) {
-    CopyImpactParticle(dest, src);
-  }
-}
-
-// @ fn_44_6700
-// The retail only calls the copy (asm 0x670C).
-static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
-  CopyImpactParticleSet(dest, src);
-}
-
-// @ fn_44_66C0
-// The retail copies the particle effect's engaged flag (asm 0x66CC/0x66DC) and, when the source
-// has a particle effect, the effect itself (asm 0x66E4).
-static void CopyImpactParticleEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
-  if (src->mParticleEffect) {  // the engaged flag byte at +0x14 (asm 0x66CC)
-    // The flag byte at +0x14 (asm 0x66DC). The retail writes the flag and then the copy, and the
-    // host's particle effect has no default constructor, so the destination's part is built empty
-    // before the copy fills it.
-    dest->mParticleEffect =
-        CImpactVisorEffect::SParticleEffect(rstl::optional_object_null(), 0, false);
-    CopyImpactParticleEntry(dest, src);  // asm 0x66E4
-  } else {
-    dest->mParticleEffect.clear();  // the flag byte at +0x14 (asm 0x66DC)
-  }
-}
-
-// @ fn_44_660C
-// The retail assigns the effect's three parts and then the forced visor (asm 0x669C) and the
-// forced visor's duration (asm 0x66A4): the particle effect (asm 0x6630), the blur effect
-// (asm 0x6634-0x6660) and the low-pass filter (asm 0x6664-0x6688). The duration is the rodata
-// constant lbl_44_rodata_7C, which is zero, and the forced visor is the invalid one.
-static void AssignImpactVisorEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* particle,
-                                    const SImpactVisorEffect* blur,
-                                    const SImpactVisorEffect* lowPass) {
-  CopyImpactParticleEffect(dest, particle);        // asm 0x6630
-  dest->mBlurEffect = blur->mBlurEffect;           // asm 0x6634-0x6660
-  dest->mLowPassFilter = lowPass->mLowPassFilter;  // asm 0x6664-0x6688
-  dest->mForcedVisor = CPlayerState::kPV_Invalid;  // asm 0x669C
-  dest->mForcedVisorDuration = 0.f;                // asm 0x66A4 (lbl_44_rodata_7C)
-}
-
-// @ fn_44_657C
-// The retail unlocks the particle effect's token when the token is set (asm 0x657C-0x65C0):
-// the token's flag byte at +0x0c (asm 0x6594/0x659C) and the token's own destructor
-// (asm 0x65B0). The host's optional object owns the token, so dropping it drops the lock; the
-// effect must have a particle effect for the token to be reachable (the retail reads the raw
-// bytes, the host's token is inside the particle effect).
-static void UnlockImpactParticle(SImpactVisorEffect* effect) {
-  if (effect->mParticleEffect && effect->mParticleEffect.data().mParticle) {
-    effect->mParticleEffect.data().mParticle = rstl::optional_object_null();  // asm 0x65B0
-  }
-}
-
-// @ fn_44_655C
-// The retail only calls the unlock (asm 0x6568).
-static void UnlockImpactParticleEntry(SImpactVisorEffect* effect) {
-  UnlockImpactParticle(effect);
-}
-
-// @ fn_44_6500
-// The retail checks the effect (asm 0x6518), unlocks the particle effect's token when the effect
-// has a particle effect (asm 0x6520/0x6528) and frees the effect when the caller asks for it
-// (asm 0x6530-0x653C).
-static void DestroyImpactVisorEffect(SImpactVisorEffect* effect, int free) {
-  if (effect != nullptr) {
-    if (effect->mParticleEffect) {      // the engaged flag byte at +0x14 (asm 0x6520/0x6528)
-      UnlockImpactParticleEntry(effect);  // asm 0x652C
-    }
-    if (free > 0) {                      // asm 0x6530/0x6534
-      delete effect;                     // asm 0x653C
-    }
-  }
-}
-
-// @ fn_44_64AC
-// The retail checks the effect (asm 0x64C4), tears it down (asm 0x64CC-0x64D0) and frees it when
-// the caller asks for it (asm 0x64D4-0x64E0).
-static void FreeImpactVisorEffect(SImpactVisorEffect* effect, int free) {
-  if (effect != nullptr) {
-    DestroyImpactVisorEffect(effect, -1);  // asm 0x64D0
-    if (free > 0) {                        // asm 0x64D4/0x64D8
-      delete effect;                       // asm 0x64E0
-    }
-  }
-}
-
-// @ fn_44_65C4
-// The retail builds the empty impact visor effect the projectile carries (asm 0x65C4-0x6608):
-// the three empty sources (asm 0x65DC/0x65E4/0x65E8), the assignment (asm 0x65EC) and the
-// teardown of the empty particle source (asm 0x65F0-0x65F8).
-static void BuildImpactVisorEffect(SImpactVisorEffect* effect) {
-  SImpactVisorEffect particle;  // the empty source (asm 0x65DC)
-  SImpactVisorEffect blur;      // the empty source (asm 0x65E4)
-  SImpactVisorEffect lowPass;   // the empty source (asm 0x65E8)
-  AssignImpactVisorEffect(effect, &particle, &blur, &lowPass);  // asm 0x65EC
-  DestroyImpactVisorEffect(&particle, -1);                       // asm 0x65F0-0x65F8
-}
-
-// The finished effect: the host's CImpactVisorEffect takes the three parts, and it always has
-// the invalid forced visor with a zero duration - what the retail's chain sets (asm 0x669C and
-// asm 0x66A4).
-static CImpactVisorEffect ToImpactVisorEffect(const SImpactVisorEffect& effect) {
-  return CImpactVisorEffect(effect.mParticleEffect, effect.mBlurEffect, effect.mLowPassFilter);
-}
-
 } // namespace
 
 // The retail's vtable slots that are the base class's own inline functions, which the REL
@@ -2336,20 +2183,13 @@ void CMinorIng::MassiveDeath(CStateManager& mgr) {
 }
 
 // @ fn_44_6384
-// The retail spawns the projectile with the impact visor effect its own chain builds: the effect
-// on the stack (asm 0x6414-0x6418), the spawn with the effect as the seventh argument
-// (asm 0x6430-0x6450) and the effect's teardown (asm 0x6454-0x645C).
 void CMinorIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                 EUserEventType type, float dt) {
   if (type == kUE_Projectile) {
     const CTransform4f lctr = GetLctrTransform(node.GetLocatorName());
-    const CTransform4f xf =
-        CTransform4f::LookAt(lctr.GetTranslation(), mTargetPos, CVector3f::Up());
-    SImpactVisorEffect effect;
-    BuildImpactVisorEffect(&effect);  // fn_44_65C4 (asm 0x6418)
     const CEnergyProjectile* shot = LaunchProjectile(
-        xf, mgr, 1, CWeapon::kPA_None, false, ToImpactVisorEffect(effect), CVector3f(1.f, 1.f, 1.f));
-    FreeImpactVisorEffect(&effect, -1);  // fn_44_64AC (asm 0x645C)
+        CTransform4f::LookAt(lctr.GetTranslation(), mTargetPos, CVector3f::Up()), mgr, 1,
+        CWeapon::kPA_None, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
     if (DebugMinorIng()) {
       fprintf(stderr, "[minoring] %04x projectile %s\n", GetUniqueId().Value(),
               shot != nullptr ? "launched" : "not launched");
