@@ -1047,12 +1047,11 @@ bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
   return mDive.mDone;
 }
 
-// fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C). Its only
-// writer is the anim-event handler (fn_10_1BEFC, 0x0001C30C), still a stand-in, so the trigger
-// stays a stand-in too.
+// fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C).
+// NormalMissileAttack (fn_10_17448) clears it on Activate; the only writer of a non-zero value is
+// the anim-event handler (fn_10_1BEFC, 0x0001C30C), still a stand-in, so only the false arm runs.
 bool CDarkSamus::BreakNormalMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B5C", "trigger BreakNormalMissile");
-  return false;
+  return mGuestA40 != 0;
 }
 
 // fn_10_106F8 (0x000106F8, 0x1C bytes): the float at guest 0xC30 against the actor's elapsed
@@ -1068,12 +1067,11 @@ bool CDarkSamus::BreakPhazonAttack(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-// fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54). Its only
-// writer is the anim-event handler (fn_10_1BEFC, 0x0001C31C), still a stand-in, so the trigger
-// stays a stand-in too.
+// fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54).
+// SuperMissileAttack (fn_10_16ECC) clears it on Activate; the only writer of a non-zero value is
+// the anim-event handler (fn_10_1BEFC, 0x0001C31C), still a stand-in, so only the false arm runs.
 bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B54", "trigger BreakSuperMissile");
-  return false;
+  return mGuestA80 != 0;
 }
 
 // fn_10_10634 (0x00010634, 0x24 bytes): fn_10_17D50 with the attack 1 (the melee, `li r5, 0x1`
@@ -2459,39 +2457,6 @@ void CDarkSamus::FallFromTheAir(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("FallFromTheAir", msg);
 }
 
-void CDarkSamus::GetUp(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_18EAC", "state GetUp");
-  DsStateEntered("GetUp", msg);
-}
-
-void CDarkSamus::GoToPhazonAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_652C", "state GoToPhazonAttack");
-  DsStateEntered("GoToPhazonAttack", msg);
-}
-
-void CDarkSamus::GoToPhazonEnrage(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_6460", "state GoToPhazonEnrage");
-  DsStateEntered("GoToPhazonEnrage", msg);
-}
-
-// fn_10_10C9C (0x00010C9C, 0x2C8 bytes): the HeavyHit state. The Deactivate arm
-// (`cmpwi r31, 0x2` at 0x00010F28) clears 0xC0C (lbl_10_rodata_3FC = 0.0f, 0x00010F44) and takes
-// the elapsed time 0x8B0 into 0xC20 (0x00010F4C) - the two floats fn_10_F298 and fn_10_1EE4C
-// compare to keep the reflect chance low for a while after a heavy hit.
-void CDarkSamus::HeavyHit(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_10C9C", "state HeavyHit");
-  DsStateEntered("HeavyHit", msg);
-  if (msg == kStateMsg_Deactivate) { // 0x00010F28
-    mGuestC0C = 0.f;                // 0x00010F44
-    mGuestC20 = mElapsedTime;       // 0x00010F4C
-  }
-}
-
-void CDarkSamus::Interrupt(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_10FF4", "state Interrupt");
-  DsStateEntered("Interrupt", msg);
-}
-
 // fn_10_17BC0 (0x00017BC0, 0xF8 bytes): the MeleeAttack state. The attack bookkeeping with id 1
 // (`li r4, 0x1`, fn_10_1B478 at 0x00017BEC); Activate (0x00017BF0) resets the melee contact
 // (fn_10_EA08 on 0x9A4); the melee attack command with severity 1 (`li r7, 0x1` at 0x00017C28,
@@ -2533,11 +2498,6 @@ void CDarkSamus::MeleeDash(CStateManager& mgr, EStateMsg msg, float) {
     mGuestC00 = 0.f;
     mMeleeContact.mHitUid = kInvalidUniqueId;
   }
-}
-
-void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_178E4", "state MissileDeflect");
-  DsStateEntered("MissileDeflect", msg);
 }
 
 // fn_10_177BC (0x000177BC, 0x128 bytes): the MissileJump state. The attack bookkeeping with id
@@ -2627,11 +2587,6 @@ void CDarkSamus::MovingScatterShot(CStateManager& mgr, EStateMsg msg, float dt) 
             CBCStepCmd(mScatterSide != 0 ? pas::kSD_Left : pas::kSD_Right, pas::kStep_BreakDodge));
 }
 
-void CDarkSamus::NormalMissileAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17448", "state NormalMissileAttack");
-  DsStateEntered("NormalMissileAttack", msg);
-}
-
 void CDarkSamus::Null(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_14448", "state Null");
   DsStateEntered("Null", msg);
@@ -2643,14 +2598,6 @@ void CDarkSamus::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   FsmStandIn("fn_10_143A8", "state Dead");
   DsStateEntered("Dead", msg);
   CPatterned::Dead(mgr, msg, dt);
-}
-
-// The base's Patrol body is the host's waypoint patrol; it stands in for the module's until
-// that one is ported.
-void CDarkSamus::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
-  FsmStandIn("fn_10_1142C", "state Patrol");
-  DsStateEntered("Patrol", msg);
-  CPatterned::Patrol(mgr, msg, dt);
 }
 
 // fn_10_10710 (0x00010710, 0x154 bytes): the Pause state. The rest of its body is still a
@@ -2669,36 +2616,6 @@ void CDarkSamus::Pause(CStateManager& mgr, EStateMsg msg, float) {
                                        stage->GetStageInfo().pauseDurationMax); // 0x000107A0
     }
   }
-}
-
-void CDarkSamus::PhazonAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_81D4", "state PhazonAttack");
-  DsStateEntered("PhazonAttack", msg);
-}
-
-void CDarkSamus::PhazonEnraged(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_7BC0", "state PhazonEnraged");
-  DsStateEntered("PhazonEnraged", msg);
-}
-
-void CDarkSamus::PhazonFall(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_6BA0", "state PhazonFall");
-  DsStateEntered("PhazonFall", msg);
-}
-
-void CDarkSamus::PhazonMissiles(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_67B8", "state PhazonMissiles");
-  DsStateEntered("PhazonMissiles", msg);
-}
-
-void CDarkSamus::PhazonRise(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_7054", "state PhazonRise");
-  DsStateEntered("PhazonRise", msg);
-}
-
-void CDarkSamus::PhazonSuck(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_4AC8", "state PhazonSuck");
-  DsStateEntered("PhazonSuck", msg);
 }
 
 // fn_10_F930 (0x0000F930, 0x1C4 bytes): the PissedOff state. Activate (`mr. r31, r5` at
@@ -2909,11 +2826,6 @@ void CDarkSamus::SideDash(CStateManager& mgr, EStateMsg msg, float) {
 void CDarkSamus::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("Start", msg);
   CPatterned::Start(mgr, msg, dt);
-}
-
-void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_16ECC", "state SuperMissileAttack");
-  DsStateEntered("SuperMissileAttack", msg);
 }
 
 // fn_10_CA0C (0x0000CA0C, 0x394 bytes): the SweepBeam state. Every message first runs the attack
@@ -3161,11 +3073,6 @@ void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float le
     const CDamageInfo info(CWeaponMode(kWT_Power), 1000.f, 0.f, 0.f, true); // 0x0000C034
     mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), info, damageFilter, CVector3f::Zero());
   }
-}
-
-void CDarkSamus::Taunt(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_11544", "state Taunt");
-  DsStateEntered("Taunt", msg);
 }
 
 // fn_10_1DF74 (0x0001DF74, 0x204 bytes): the state that glides the actor from cover point to
