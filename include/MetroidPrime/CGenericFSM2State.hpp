@@ -42,6 +42,14 @@ public:
   void SetStateFunction(const rstl::string& name, StateFunc function);
   void SetTriggerFunction(const rstl::string& name, TriggerFunc function);
   void SetCodeFunction(const rstl::string& name, CodeFunc function);
+#ifdef TARGET_PC
+  // Port console (`fsm`): the depth of the first machine (this one 0, its sub-machines 1, ...)
+  // whose own states hold `name`, or -1. PortSetStateDeep enters it the way a transition into a
+  // sub-machine does, filling path[0..depth) with the sub-machine names it went through.
+  int PortFindStateDepth(const rstl::string& name, int maxDepth) const;
+  int PortSetStateDeep(CStateManager& mgr, T& owner, const rstl::string& name, const char** path,
+                       int maxDepth);
+#endif
 
 private:
   struct SSubMachine { // Guessed name.
