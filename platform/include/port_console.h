@@ -23,5 +23,9 @@ bool Enabled();
 // Runs one queued command, if any, on the game thread. `CStateManager::PortWarpTick` calls it every
 // update.
 void Tick(CStateManager& mgr);
+// `CMFGame` calls this every timer tick. It serves the queue only when no `Tick` ran since the last
+// call, i.e. while the flow state skips the state manager's update (portal transitions, cinematic
+// skips, pause), so the console keeps answering there. Save states stay on `Tick` only.
+void IdleTick(CStateManager& mgr);
 
 } // namespace PortConsole
