@@ -12,6 +12,7 @@
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CSimplePool.hpp"
+#include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
@@ -219,6 +220,20 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   // at 0x18E60).
   x137A8_();
 
+  // The three 'SCAN' tokens (0x18E70..0x190B4): each id tested against -1 (addis/cmplwi 0xffff),
+  // a 0xC-byte TCachedToken (operator new at 0x18E98) cached at once (GetObj at 0x18EF0).
+  if (data.scannableInfoShieldHead != kInvalidAssetId) { // data +0, 0x18E70
+    xD74_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoShieldHead)), true);
+  }
+  if (data.scannableInfoStunnedHead != kInvalidAssetId) { // data +4, 0x18F38
+    xD78_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoStunnedHead)), true);
+  }
+  if (data.scannableInfoFinalHead != kInvalidAssetId) { // data +8, 0x19000
+    xD7C_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoFinalHead)), true);
+  }
 }
 
 CDigitalGuardianHead::~CDigitalGuardianHead() {}
@@ -850,18 +865,27 @@ const CDamageVulnerability* CDigitalGuardianHead::GetDamageVulnerability() const
 
 // fn_14_177C8: while bit 0x08 of 0x10F4 is clear, one of the three 'SCAN' tokens (0x10 set: the
 // final one at 0xD7C, else 0x40 set: the stunned one at 0xD78, else the shield one at 0xD74);
-// otherwise, or with no token, the base's. The tokens are not built yet, so the head's answer is
-// always the base's; the ctor sets 0x08, so that is also retail's answer until the head moves.
-// The arms: the head's flag byte's bit 3 (head+0x10F4) is clear -> the scannable info of the
-// head's model, else the one of the base. The run: area 53 (Sanctuary Fortress
-// 09_cliff_temple_dark), 3000 frames; the "the bit is set" arm was forced (the flag byte's bit 3
-// set at the entry, tools/cov/force.sh with /tmp/opencode/dgclose_177C8.py).
+// otherwise, or with no token, the base's. The ctor sets 0x08, so the base's until the head
+// detaches (fn_14_16160 clears it).
+// Every arm ran (area 53, `scaninfo <head>` x180 under gdb attach): bit 0x08 set (the base's,
+// 4BA321EA) naturally; forced: 0x08 clear (the shield's 7D9FAEC7), +0x40 (the stunned
+// AFE327ED), +0x10 (the final A23D895E), the final token nulled (the base's again).
 // @ fn_14_177C8
 CScannableObjectInfo* CDigitalGuardianHead::GetScannableObjectInfo() const {
-  if ((x10F4_ & 0x08) == 0) {
-    StandInFn("fn_14_177C8 'SCAN' tokens (0xD74..0xD7C)");
+  if ((x10F4_ & 0x08) == 0) { // extrwi. 1, 28 / bne at 0x177D8
+    const rstl::single_ptr< TCachedToken< CScannableObjectInfo > >* token;
+    if ((x10F4_ & 0x10) != 0) {        // 0x177E0
+      token = &xD7C_;                  // 0x177E8
+    } else if ((x10F4_ & 0x40) != 0) { // 0x177FC
+      token = &xD78_;                  // 0x17804
+    } else {
+      token = &xD74_; // 0x17818
+    }
+    if (token->get() != nullptr) {  // cmplwi 0 / beq at 0x177EC, 0x17808, 0x1781C
+      return (*token)->GetObject(); // the cached object (+8) at 0x177F4, 0x17810, 0x17824
+    }
   }
-  return CPatterned::GetScannableObjectInfo();
+  return CPatterned::GetScannableObjectInfo(); // 0x1782C
 }
 
 // fn_14_17468: the base's setup, then the triggers (20 = 0x14), the states (17 = 0x11) and the
