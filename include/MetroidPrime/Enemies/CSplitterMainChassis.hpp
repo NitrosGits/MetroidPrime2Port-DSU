@@ -330,8 +330,8 @@ private:
   uint mAdditiveAnimId = 0;
   // guest 0xCB8: the fade weight (fn_75_9520 counts it up and down).
   float mFadeWeight = 0.f;
-  // guest 0xCC8: the locator's segment id - the retail's constructor leaves it at 0
-  // (0x0000F780) and fn_75_ACEC asks the locator's transform for the head's placement.
+  // guest 0xCC8: the segment of the locator "attach_LCTR" (the retail's constructor,
+  // 0x0000F98C); fn_75_ACEC asks the locator's transform for the head's placement.
   CSegId mLocatorSegment = CSegId(0);
   // The retail's fn_75_986C (the chassis's own path update, called by the Patrol state) and
   // fn_75_8EC8 (the separation steering it asks first).

@@ -467,7 +467,7 @@ void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
   }
   StandInFn_75_A37C();
   SetMaterialFilter(CMaterialFilter(CMaterialList(0x0800000000000000ull),
-                                    CMaterialList(0x0000801100000000ull),
+                                    CMaterialList(0x0000800110000000ull),
                                     CMaterialFilter::kFT_IncludeExclude));
 }
 
@@ -559,6 +559,10 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
   // largest locomotion speed otherwise.
   const CBodyStateInfo& bodyInfo = BodyController()->GetBodyStateInfo();
   mSteeringSpeed = bodyInfo.GetLocomotionSpeed(pas::kLA_Walk) / bodyInfo.GetMaxSpeed();
+  // fn_75_F5F8 @0x0000F970-0x0000F98C: guest 0xCC8 is the segment of the locator "attach_LCTR"
+  // (the rodata string at 0x3B7) - fn_8002BE04 is CAnimData::GetLocatorSegId on the model's
+  // animation data. The 0xFF the ctor stores first (0x0000F780) is overwritten here.
+  mLocatorSegment = GetModelData()->GetAnimationData()->GetLocatorSegId(rstl::string_l("attach_LCTR"));
   // The retail constructor also builds the parameter block's converted forms (fn_75_FB30), the
   // possession data (fn_75_77C0), the line-of-sight tracker at 0xc70 and the derived state at
   // 0xa50..0xb7b. They belong to the state machine and the render paths this milestone does not

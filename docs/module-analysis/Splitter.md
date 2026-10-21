@@ -286,7 +286,7 @@ copies: they duplicate the converted ones.
 | 0xC70 | `CVisualKnowledge` (0x40) | `fn_75_F5F8` `__ct__16CVisualKnowledge...(&arg0->unkC70, …)` |
 | 0xCB0-0xCB8 | u32 (from the patterned block), s32 anim id (-1), f32 (1.0) | `fn_75_F5F8` (the anim id is later set by `FindBestAnimation`) |
 | 0xCBC-0xCC6 | 5 × `TUniqueId` (invalid) | `fn_75_F5F8` |
-| 0xCC8 / 0xCC9 | u8 (0xFF) pose/anim indices | `fn_75_F5F8` |
+| 0xCC8 / 0xCC9 | u8 segment ids of "attach_LCTR" and "target_LCTR" (0xFF first, then GetLocatorSegId at 0x0000F98C / 0x0000F9C0) | `fn_75_F5F8` |
 | 0xCCC-0xCFC | 4 × `CVector3f` (zero) | `fn_75_F5F8` |
 | 0xD00-0xD08 | u32, s32 (-1), s32 (-1) | `fn_75_F5F8` |
 | 0xD0C-0xD3C | f32 block (0xD0C = 1.0, 0xD30 = 0.2, 0xD34 = 1.0) | `fn_75_F5F8` |
@@ -989,12 +989,7 @@ now, so the log no longer shows it:
 The chassis's `fn_75_3B20` is the head's code, so it is the head's RaiseShields; the order above is
 the log's.
 
-**What the collision actor manager changes (2026-10-21)**: with the chassis's own collision
-actor manager (fn_75_A4E4) ported, the chassis collides with the world and its patrol no longer
-advances in the area-4 run - the head's Scanning state (entry 19), the separation steering
-(fn_75_8EC8) and the beam effect spawner (fn_75_11884) are not reached any more. The run is
-still clean (no crash, no caught stub), but fn_75_A4E4, fn_75_986C and fn_75_ACEC are therefore
-not behaviour-checked by that run and carry no `// @` marker.
+**What the collision actor manager changes (2026-10-21)**: with fn_75_A4E4 ported the patrol stalled because the head sat inside the chassis: the port left the segment at 0xCC8 at 0, so fn_75_ACEC put the head (a solid actor) at the chassis's origin and the chassis's move collided with it every frame (before A4E4 the same overlap shoved the chassis down through the world, which only looked like a walk). The retail ctor sets 0xCC8 to the segment of "attach_LCTR" (0x0000F98C) and 0xCC9 to "target_LCTR" (0x0000F9C0), and copies 0xCC8 to 0xC72 (0x0000F9D0); with 0xCC8 set the chassis walks its waypoints on the floor and fn_75_8EC8, fn_75_523C and fn_75_11884 run again.
 
 #### The chassis's Patrol state, fn_75_DCFC (0xDCFC-0xDDF8) - ported 2026-10-21
 
@@ -1049,7 +1044,7 @@ yet (0x0000F11C-0x0000F130).
 | the joints | the rodata table at 0x30C gives two spheres ("Skeleton_Root" with the radius 1.5f and "target_LCTR" with the radius 0.38f) and the table at 0x31C four leg cylinders (the knee and the ankle of each leg, the radius 0.05f); the mass is 1000.0f (the rodata at 0x3AC) | the same: `SphereCollision` and `SphereSubdivideCollision` with the locator's segment ids |
 | the manager | the manager is made with the joints (0x0000A754), the old one deleted (0x0000A764) and the new one kept at 0xC68 | the same |
 | the collision actors | every collision actor of the manager is walked (0x0000A774) and looked up; the one named "target_LCTR" (the rodata string at 0x34C) gives its id to the chassis's 0xCC2 (0x0000A7E8) and the reflected vulnerability (0x0000A814) | the same: `mTargetActorId` and `SetDamageVulnerability` |
-| the material filter | the include mask has the bit 59 (`kMT_Solid`), the exclude mask the bits 47, 60 and 32 (`kMT_CollisionActor`, `kMT_NoPlatformCollision` and `kMT_Player`) and the type is 3 (the include/exclude one) (0x0000A844-0x0000A8D0) | the same: `SetMaterialFilter` with the two masks |
+| the material filter | the include mask has the bit 59 (`kMT_Solid`), the exclude mask the bits 47, 28 and 32 (`kMT_CollisionActor`, `kMT_AIPassthrough` and `kMT_Player`) and the type is 3 (the include/exclude one) (0x0000A844-0x0000A8D0) | the same: `SetMaterialFilter` with the two masks |
 
 **The port's own limits in this body**: the retail also scales the "target_LCTR" collision actor
 (the model data's 0x0, 0x4 and 0x8 times the rodata's 1.5f, 0x0000A7F0-0x0000A810) and the host
@@ -1072,9 +1067,7 @@ frame time.
 | the path | the flag byte 0xD41's 0x80 (0x0000AD88 `extrwi` with the word's bit 24) and 0x08 (0x0000AD90, the word's bit 28) bits, the counter at 0xD00 (0x0000AD98) and the head's editor offset (0xF24-0xF2C, 0x0000ADA8-0x0000ADD0) pick it: with the bits clear, the counter at 5 and a non-zero offset the head looks at the position plus that offset (0x0000AEDC, 0x0000AF34 `LookAt`) | the same |
 | the other path | the head's Y column is slerped toward the chassis's (0x0000AE30 `GetAngleDiff`, 0x0000AE60 `Slerp` with the turn rate 12.566371 rad/s) when the counter at 0xD00 is 5 and the angle is at least the turn rate times the frame time (0x0000AE34 `fcmpo`, 0x0000AE38 `bge`); the head then gets the chassis's transform (0x0000AE44 `SetTransform`) | the same: `GetColumn(kDY)`, `CVector3f::Slerp` and `SetTransform` |
 
-**The port's own limits in this body**: the segment id at 0xCC8 is the retail's constructor
-value 0 (0x0000F780) - the host's `CSegId(0)` is the same number, but the retail's `CSegId` is
-two bytes wide and the host's is an int, so the mapping is the closest one available. The head's
+**The port's own limits in this body**: the segment id at 0xCC8 is the segment of "attach_LCTR" (the ctor, 0x0000F98C); 0xCC9 and 0xC72 are not kept by the port. The head's
 editor offset (the head's 0xF24-0xF2C) is the vector the head's Idle state (fn_75_5538) fills
 with the head's transform's Y column, so it is not zero in the run and the `LookAt` path is the
 one that runs.
