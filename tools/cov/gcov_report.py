@@ -270,6 +270,8 @@ def function_stats(fn):
         if line.get("count", 0) > 0:
             hit += 1
         for branch in line.get("branches", []):
+            if branch.get("throw"):
+                continue  # an exception edge (a call that can throw): not an arm of the body
             branches += 1
             if branch.get("count", 0) > 0:
                 taken += 1
