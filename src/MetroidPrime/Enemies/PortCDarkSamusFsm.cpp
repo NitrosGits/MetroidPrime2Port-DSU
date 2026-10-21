@@ -996,9 +996,10 @@ bool CDarkSamus::BreakDash(CStateManager& mgr, const CTriggerData& data) const {
   return GetAnimOver(mgr, data);
 }
 
+// fn_10_11C54 (0x00011C54, 0xC bytes): the dive record's done bit (0xB20, `extrwi 1,24` = 0x80).
+// @ fn_10_11C54
 bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_11C54", "trigger BreakDiveAttack");
-  return false;
+  return mDive.mDone;
 }
 
 bool CDarkSamus::BreakNormalMissile(CStateManager&, const CTriggerData&) const {
