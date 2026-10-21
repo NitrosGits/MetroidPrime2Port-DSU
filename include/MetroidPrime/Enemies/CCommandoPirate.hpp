@@ -498,6 +498,14 @@ private:
 #else
   uchar x7c0_[0xc68 - 0x7c0];
 #endif
+
+#ifdef TARGET_PC // helpers
+  // The module's stateless helpers - the bodies that are not the state machine's states and
+  // triggers (the CommandoPirate lane owns those; the FSM2 tables lbl_9_data_198 and
+  // lbl_9_data_568 name them). They live in PortCCommandoPirateHelpers.cpp; the per-function
+  // table is docs/module-analysis/CommandoPirate_functions.tsv.
+  bool xBE4C_Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type);
+#endif
 };
 CHECK_SIZEOF(CCommandoPirate, 0xc68)
 

@@ -1928,8 +1928,7 @@ bool CCommandoPirate::IsListening() const { return true; }
 
 // vtable slot 0xb0 = fn_9_BE4C (0xf8): what the actor hears.
 bool CCommandoPirate::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
-  StandIn("CCommandoPirate::Listen (vtable slot 0xb0, fn_9_BE4C)");
-  return CPatterned::Listen(mgr, position, type);
+  return xBE4C_Listen(mgr, position, type);
 }
 
 // vtable slot 0xdc = fn_9_D474 (0x8): `addi r3, r3, 0xa14`, the projectile info at guest +0xa14.
