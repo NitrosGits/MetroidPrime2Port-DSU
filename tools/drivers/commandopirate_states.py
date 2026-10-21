@@ -33,7 +33,8 @@ def log(msg):
 
 
 def connect():
-    for _ in range(240):
+    # a world load under gdb takes longer than the connect timeout, so the loop is long.
+    for _ in range(900):
         try:
             return socket.create_connection(("127.0.0.1", PORT), timeout=10)
         except OSError:
@@ -107,6 +108,12 @@ def main():
         for name in STATES:
             log("fsm %s: %s" % (name, cmd("fsm %s %s" % (target, name))))
             wait_frame(frame() + 6)
+        # a small damage: the commando is still alive, so the knock-back runs and the module's
+        # KnockBack override (fn_9_C300) is entered.
+        log("damage: %s" % cmd("damage %s 1" % target))
+        wait_frame(frame() + 10)
+        log("damage: %s" % cmd("damage %s 1" % target))
+        wait_frame(frame() + 10)
         log("state: %s" % state_of(target))
         log("objs: %s" % cmd("objs commando"))
 
