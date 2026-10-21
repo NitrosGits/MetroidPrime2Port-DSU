@@ -984,9 +984,17 @@ now, so the log no longer shows it:
 | 16 | the chassis's PrepareForDocking trigger | `fn_75_DFEC` | `PrepareForDocking` (the second link at 0xC6E) |
 | 17 | the head's SelectTarget code | `fn_75_3E60` | `SelectTarget` (the player id at 0xEFE, then the 'ATTK' state to the connections) |
 | 18 | the head's HasTarget trigger | `fn_75_57B4` | `HasTarget` (the synced id at 0xEFE) |
+| 19 | the head's Scanning state | `fn_75_523C` | still a shell (the run reaches it once the head's Idle state is ported) |
 
 The chassis's `fn_75_3B20` is the head's code, so it is the head's RaiseShields; the order above is
 the log's.
+
+**What the collision actor manager changes (2026-10-21)**: with the chassis's own collision
+actor manager (fn_75_A4E4) ported, the chassis collides with the world and its patrol no longer
+advances in the area-4 run - the head's Scanning state (entry 19), the separation steering
+(fn_75_8EC8) and the beam effect spawner (fn_75_11884) are not reached any more. The run is
+still clean (no crash, no caught stub), but fn_75_A4E4, fn_75_986C and fn_75_ACEC are therefore
+not behaviour-checked by that run and carry no `// @` marker.
 
 #### The chassis's Patrol state, fn_75_DCFC (0xDCFC-0xDDF8) - ported 2026-10-21
 
