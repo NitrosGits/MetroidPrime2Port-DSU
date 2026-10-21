@@ -153,7 +153,6 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // CSplitterCommandModule::PortMoveTo.
 
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
-void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
 
 
 } // namespace
@@ -983,7 +982,6 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 // virtual yet, so it stays a shell. The CCollisionActor's virtual at the vtable word 0x38 (the
 // float at its +0x4) is CCollisionActor::HealthInfo() (found while porting fn_75_2CE0, which
 // calls it), so the body asks the host for it now.
-void StandInVTable0x4C() { StandIn("the vtable word 0x4C of fn_75_2BE0's result"); }
 
 // fn_75_2CE0 (not marked: the run only reached the null collision-actor lookup)
 // The head's shield (0x2CE0-0x3004). The flag (the third argument, r5) is the "a shield goes up"
@@ -1118,9 +1116,13 @@ void CSplitterCommandModule::PortModuleTransform(CTransform4f& out) const {
 void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
   CParticleGenInfo* effect = PortGetShieldEffect();
   if (effect != nullptr) {
-    StandInVTable0x4C();
+    // asm 0x3034-0x3044: the effect's virtual at the vtable word 0x4C is called with the
+    // module's flash colour at 0xF04 - CParticleGenInfo::SetModulationColor.
+    effect->SetModulationColor(mFlashColor);
   }
-  StandInSfxUpdateEmitter();
+  // asm 0x3048-0x3078: the sound handle at 0xF60 is updated with the module's position (0x54)
+  // and its transform's Y column (0x28, 0x38 and 0x48), the volume 0x7F.
+  CSfxManager::UpdateEmitter(mSoundHandle, GetTranslation(), GetTransform().GetColumn(kDY), 0x7F);
   CEntity* entity = mgr.ObjectById(mSoundTargetId);
   if (entity == nullptr) {
     return;
