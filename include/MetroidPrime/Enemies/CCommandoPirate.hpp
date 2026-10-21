@@ -334,6 +334,9 @@ private:
   // fn_9_3CBC: the target's aim position - the guest's own helper, called by FaceTarget.
   bool x3CBC_(CStateManager& mgr, CVector3f& out, float dt) const;
 
+  // fn_9_3480: the melee-attack picker - the row of the attack table, or -1.
+  int x3480_PickMeleeAttack(CStateManager& mgr) const;
+
   // fn_9_19D8: the module's team helper - the commando joins the team of its area.
   void x19D8_JoinTeam(CStateManager& mgr);
 
@@ -361,11 +364,11 @@ private:
   // (PortCCommandoPirateCore.cpp).
   void x5410_CreateEGrenade(CStateManager& mgr);
 
-  // fn_9_1F88: the kUE_EventStart event's helper - the shield's sound emitter and the module's
-  // state word and scale.
+  // fn_9_1F88: the kUE_Activate event's helper (jump-table entry 29) - the shield's sound emitter
+  // and the module's state word and scale.
   void x1F88_EventStart();
 
-  // fn_9_1EF8: the kUE_Activate event's helper - the counterpart of fn_9_1F88.
+  // fn_9_1EF8: the kUE_Deactivate event's helper (entry 30) - the counterpart of fn_9_1F88.
   void x1EF8_Activate();
 
   // fn_9_57A0: the module's shot - the burst fire's projectile, aimed at the target.

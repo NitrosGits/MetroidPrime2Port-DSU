@@ -74,8 +74,11 @@ static const SBurst* sBurstTable[] = {&sBursts[0], &sBursts[1], &sBursts[2], &sB
 
 // The module's global at bss_38 counts the live "Commando E-Grenade" script objects: the module's
 // object constructor raises it (fn_9_F418 @0x0000F4E8) and its destructor lowers it (fn_9_F290
-// @0x0000F2D0). The port does not create those objects yet, so the count stays at zero.
-static int sEgrenadeObjectCount = 0;
+// @0x0000F2D0); PortCCommandoPirateCore.cpp's E-grenade does the same, so it sits outside the
+// anonymous namespace.
+}  // namespace
+int sEgrenadeObjectCount = 0;
+namespace {
 
 // The module's own predicate for the connected-object search in its area-loaded case: the
 // module's vtable lbl_9_data_A84 (.data 0xA84) replaces the DOL's CValidEntityPredicate vtable
@@ -402,6 +405,10 @@ void CCommandoPirate::PreThink(float dt, CStateManager& mgr) {
 //   1u << (31 - 24) = 0x80, the extrwi at 0x0000696C) - the base's mHitByPlayerProjectile - the
 //   under-fire timer at +0xB64 is cleared and that bit is cleared (the rlwimi at 0x00006988); else
 //   the timer grows (0x0000699C).
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every guest arm;
+// the hit flag / counter / shield data forced. Open: 0x0000673C's host ternary (the guest is
+// branchless).
+// @ fn_9_662C
 void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
   if (!GetAlive()) {
     return;                                    // 0x00006660
@@ -1619,6 +1626,9 @@ void CCommandoPirate::AddToRenderer(const CStateManager& mgr) const {
 // module's state word at guest this+0xC4C (the port's `xc4c_`) is 0 (the compare at 0x0000C664)
 // and the one at guest this+0xC40 when it is 1 (the compare at 0x0000C658). The port has no such
 // renderables, so those two are named stand-ins.
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm; the null
+// effects from F58C forced to kInvalidAssetId.
+// @ fn_9_C598
 void CCommandoPirate::Render(const CStateManager& mgr) const {
   const float alpha = mColor.GetAlpha();                        // 0x0000C5C4..0x0000C5D8
   if (GetAlive() && x920_ == 1) {                                // 0x0000C5CC..0x0000C5E8
@@ -1671,6 +1681,9 @@ const CDamageVulnerability* CCommandoPirate::GetDamageVulnerability() const {
 // of the module's own cases sets the "handled" register (r6, the test at 0x0000C8FC) and the
 // base's own DoUserAnimEvent (the call at 0x0000C918) is then skipped; the default case leaves
 // the register at zero and the base's call runs.
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every arm; types
+// 13/22/29/30/11 forced on alternate calls.
+// @ fn_9_C798
 void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                       EUserEventType type, float dt) {
   bool handled = false;                                              // r6, 0x0000C8D4
@@ -1710,14 +1723,14 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
   case kUE_BreakLockOn:                                              // the entry 22 (+0x5c)
     handled = true;                                                  // 0x0000C7F4
     break;
-  case kUE_EventStart: {                                             // the entry 28 (+0x10c)
+  case kUE_Activate: {                                               // the entry 29 (+0x10c)
     if ((xc65_ & 0x04) != 0 || (xc65_ & 0x08) != 0) {               // 0x0000C8A4..0x0000C8B4
       x1F88_EventStart();                                            // 0x0000C8B8..0x0000C8BC
     }
     handled = true;                                                  // 0x0000C8C0
     break;
   }
-  case kUE_Activate: {                                               // the entry 29 (+0x130)
+  case kUE_Deactivate: {                                             // the entry 30 (+0x130)
     if ((xc65_ & 0x04) != 0 || (xc65_ & 0x08) != 0) {               // 0x0000C8C8..0x0000C8D8
       x1EF8_Activate();                                              // 0x0000C8DC..0x0000C8E0
     }
@@ -1761,6 +1774,9 @@ void CCommandoPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& n
 // byte with the same mask (the extrwi at 0x00006920 and 0x00006978) and its own source guards
 // the same calls with mBodyController->IsFrozen()
 // (src/MetroidPrime/Enemies/CDarkCommando.cpp:451 and :459).
+// Run: cov 2026-10-21 (core drivers, 59 + swamp; force2/force3): every guest arm;
+// frozen, dt 0.6 and the state word forced. Open: the host-only shield-manager null test.
+// @ fn_9_1C0C
 void CCommandoPirate::x1C0C_UpdateRenderables(CStateManager& mgr, float dt) {
   if (xc4c_ == -1) {                                                // 0x00001C30..0x00001C38
     return;
@@ -1850,7 +1866,8 @@ void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt) {
   xc00_ = 0.f;                                                     // 0x00004110..0x00004118
 }
 
-// fn_9_1F88 (0xd4 bytes): the kUE_EventStart event's helper - the shield's sound and scale.
+// fn_9_1F88 (0xd4 bytes): the kUE_Activate event's helper (jump-table entry 29; the name predates
+// that) - the shield's sound and scale.
 // While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at
 // 0x00001FA0 clears the byte's low bit); otherwise it sets the 0x20 bit of the byte at guest this+0xC66 (the mask
 // 1u << (31 - 26) = 0x20, 0x00001FB0), adds the sound emitter whose id is the module's shield
@@ -1875,8 +1892,8 @@ void CCommandoPirate::x1F88_EventStart() {
   xc48_ = GetModelData()->GetScale().GetX();                           // 0x00002028..0x00002030
 }
 
-// fn_9_1EF8 (0xd4 bytes): the kUE_Activate event's helper - the counterpart of fn_9_1F88. While
-// the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at 0x00001F10
+// fn_9_1EF8 (0xd4 bytes): the kUE_Deactivate event's helper (entry 30) - the counterpart of
+// fn_9_1F88. While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at 0x00001F10
 // clears the byte's low bit); otherwise it removes the sound emitter whose handle is at guest this+0xC38, clears that handle
 // and adds the emitter whose id is the module's shield "turn off" sound (the block's +0x15A,
 // guest this+0x91A) without keeping its handle (0x00001F18..0x00001F60), and zeroes the floats at
