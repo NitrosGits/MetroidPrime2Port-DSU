@@ -129,7 +129,6 @@ protected:
   void SetupCollisionManager(CStateManager& mgr);
   void SetupCollisionJoints(CStateManager& mgr);
   void Activate(CStateManager& mgr);
-  void SetHeadVulnerable(CStateManager& mgr, bool vulnerable);
   void SetGrowthTargetEffects(CStateManager& mgr, bool on);
   void SetGrowthsActive(CStateManager& mgr, bool active);
   void SetGrowthActive(CStateManager& mgr, int idx, bool active);
