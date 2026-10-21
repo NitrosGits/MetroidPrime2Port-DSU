@@ -22,6 +22,11 @@
 #include "MetroidPrime/Enemies/CBabyMetroid.hpp"
 #include "MetroidPrime/Enemies/CBacteriaSwarm.hpp"
 #include "MetroidPrime/Enemies/CBouncyGrenade.hpp"
+#ifdef TARGET_PC
+// Guarded (like the ElitePirate include below) so the non-PC path of this upstream file stays
+// byte-identical: the class is only used by the guarded TYPES_MATCH_IMPL below.
+#include "MetroidPrime/Enemies/CDarkSamus.hpp" // REL module 10's host body (PortCDarkSamus.cpp)
+#endif
 #include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 #include "MetroidPrime/Enemies/CFlyerSwarm.hpp"
 #include "MetroidPrime/Enemies/CGlowbug.hpp"
@@ -64,6 +69,8 @@
 #include "MetroidPrime/Enemies/CElitePirate.hpp" // REL module 15's host body (PortCElitePirate.cpp)
 #include "MetroidPrime/Enemies/CDigitalGuardian.hpp" // REL module 14's host body
                                                             // (PortCDigitalGuardian.cpp)
+#include "MetroidPrime/Enemies/CDigitalGuardianHead.hpp" // REL module 14's head
+                                                            // (PortCDigitalGuardianHead.cpp)
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp" // REL module 75's host body
                                                             // (PortCSplitterCommandModule.cpp)
 #include "MetroidPrime/Enemies/CSplitterMainChassis.hpp" // REL module 75's host body
@@ -334,9 +341,12 @@ TYPES_MATCH_IMPL(CBeamProjectile, CGameProjectile, kET_BeamProjectile)
 TYPES_MATCH_IMPL(CPlasmaProjectile, CBeamProjectile, kET_PlasmaProjectile)
 // kET_DarkSamus (111): class not declared yet (DarkSamus REL); parent CPatterned
 #ifdef TARGET_PC
+TYPES_MATCH_IMPL(CDarkSamus, CPatterned, kET_DarkSamus) // REL module 10's host body
 TYPES_MATCH_IMPL(CDigitalGuardian, CPatterned, kET_DigitalGuardian) // REL module 14's host body
-#endif
+TYPES_MATCH_IMPL(CDigitalGuardianHead, CPatterned, kET_DigitalGuardianHead) // REL module 14's head
+#else
 // 113: class not declared yet (DigitalGuardian REL); parent CPatterned
+#endif
 #ifdef TARGET_PC
 TYPES_MATCH_IMPL(CElitePirate, CPatterned, kET_ElitePirate) // REL module 15's host body
 #endif
@@ -614,8 +624,15 @@ CAST_TO_PTR_IMPL(CPlasmaProjectile, kET_PlasmaProjectile)
 #ifdef TARGET_PC
 CAST_TO_REF_IMPL(CDigitalGuardian, kET_DigitalGuardian)
 CAST_TO_PTR_IMPL(CDigitalGuardian, kET_DigitalGuardian)
-#endif
+CAST_TO_REF_IMPL(CDigitalGuardianHead, kET_DigitalGuardianHead)
+CAST_TO_PTR_IMPL(CDigitalGuardianHead, kET_DigitalGuardianHead)
+#else
 // 113: class not declared yet (DigitalGuardian REL)
+#endif
+#ifdef TARGET_PC
+CAST_TO_REF_IMPL(CDarkSamus, kET_DarkSamus)
+CAST_TO_PTR_IMPL(CDarkSamus, kET_DarkSamus)
+#endif
 #ifdef TARGET_PC
 CAST_TO_REF_IMPL(CElitePirate, kET_ElitePirate)
 CAST_TO_PTR_IMPL(CElitePirate, kET_ElitePirate)

@@ -449,12 +449,23 @@ static u32 calc_vtx_size(GXVtxFmt fmt) noexcept {
 
 static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Range vertRange, gfx::Range idxRange,
                          u32 numIndices) noexcept {
+  // A frame begin_frame declined (Android surface lost or invalidated, e.g. mid scan-visor open)
+  // still runs the game's draws; with no render pass, building a pipeline would index the pass
+  // list with UINT32_MAX, so drop the draw like push_command drops the frame's other commands.
+  if (!gfx::has_render_pass())
+    UNLIKELY { return; }
   auto& state = g_gxState;
   auto& cache = sDrawCache;
 
+  // The shader's forced alpha also reaches the colour blend, so force it only when that blend does
+  // not read the source alpha; an alpha-blended draw keeps its TEV alpha (and writes
+  // tevAlpha * dstAlpha/255, the old approximation) instead of turning opaque.
+  const auto readsSrcAlpha = [](GXBlendFactor f) { return f == GX_BL_SRCALPHA || f == GX_BL_INVSRCALPHA; };
+  const bool colorReadsSrcAlpha =
+      state.blendMode == GX_BM_BLEND && (readsSrcAlpha(state.blendFacSrc) || readsSrcAlpha(state.blendFacDst));
   DrawImmediateData immediates{.vtxStart = vertRange.offset,
                                 .currentPnMtx = state.currentPnMtx,
-                                .forceDstAlpha = state.dstAlpha != UINT32_MAX ? 1u : 0u};
+                                .forceDstAlpha = state.dstAlpha != UINT32_MAX && !colorReadsSrcAlpha ? 1u : 0u};
   for (int i = GX_VA_POS; i <= GX_VA_TEX7; ++i) {
     if (state.vtxDesc[i] != GX_INDEX8 && state.vtxDesc[i] != GX_INDEX16) {
       continue;
@@ -545,6 +556,43 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
       .bindGroups = cache.bindGroups,
       .dstAlpha = state.dstAlpha,
   });
+
+  // An alpha-blended draw under GXSetDstAlpha keeps its TEV alpha for the colour blend, so the draw
+  // above wrote tevAlpha * dstAlpha/255 into the EFB alpha. The console writes the constant: a
+  // fading actor in the scan visor otherwise ramps its id through other objects' palettes and the
+  // reticle locks onto them (CMinorIng surfacing). Redraw the same fragments alpha-only, with the
+  // forced alpha and no blend; LESS/GREATER become LEQUAL/GEQUAL so the pass survives the depth
+  // the draw above may have written.
+  if (state.dstAlpha != UINT32_MAX && colorReadsSrcAlpha && cache.config.alphaUpdate) {
+    PipelineConfig alphaConfig = cache.config;
+    alphaConfig.blendMode = GX_BM_NONE;
+    alphaConfig.blendFacSrc = GX_BL_ONE;
+    alphaConfig.blendFacDst = GX_BL_ZERO;
+    alphaConfig.blendOp = GX_LO_COPY;
+    alphaConfig.colorUpdate = false;
+    alphaConfig.depthUpdate = false;
+    if (alphaConfig.depthFunc == GX_LESS) {
+      alphaConfig.depthFunc = GX_LEQUAL;
+    } else if (alphaConfig.depthFunc == GX_GREATER) {
+      alphaConfig.depthFunc = GX_GEQUAL;
+    }
+    DrawImmediateData alphaImmediates = immediates;
+    alphaImmediates.forceDstAlpha = 1u;
+    gfx::push_draw_command(DrawData{
+        .pipeline = gfx::pipeline_ref(alphaConfig),
+        .vertRange = vertRange,
+        .idxRange = idxRange,
+        .uniformRange = cache.uniformRange,
+        .immediateData = alphaImmediates,
+        .vtxCount = vtxCount,
+        .indexCount = numIndices,
+        .instanceCount = instanceCount,
+        .bindGroups = cache.bindGroups,
+        .dstAlpha = state.dstAlpha,
+    });
+    // The next draw must not merge its vertices into this alpha pass instead of the draw above.
+    state.dirty |= DirtyPipeline;
+  }
 }
 
 static void handle_draw_unmerged(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Range vertRange) noexcept {

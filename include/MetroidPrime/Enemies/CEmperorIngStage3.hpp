@@ -5,12 +5,18 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "MetroidPrime/CBasicSwarmData.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
+#include "MetroidPrime/Weapons/CShockWave.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "rstl/optional_object.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
 
 #include "Kyoto/Math/CTransform4f.hpp"
+#include "rstl/reserved_vector.hpp"
 #include "rstl/vector.hpp"
 
 class CCollisionActor;
@@ -93,6 +99,8 @@ public:
   TUniqueId GetAttackTarget() const override;
   bool IsOnGround() const override;
   float GetGravityConstant() const override;
+  const rstl::optional_object< TCachedToken< CGenDescription > >&
+  GetDeathExplosionParticle() const override; // fn_18_88
   void SetupStateMachine(CStateManager& mgr) override;
 
   // The body's state machine. Retail fn_18_943C (vtable slot 60) calls the base's setup and
@@ -192,14 +200,37 @@ private:
   // fn_18_125C: the module watches the object its id at guest 0x8C0 names and clears the id
   // when the object is gone.
   void WatchObject(CStateManager& mgr);
+  // fn_18_E40: the per-frame light-swarm, effect and portal-actor update.
+  void UpdateLightSwarm(CStateManager& mgr, float dt);
   // fn_18_2D1C: the vector from the actor to the first player, flattened to the XY plane.
   CVector3f PlayerDirection(CStateManager& mgr) const;
   // fn_18_2CB8: the distance from the actor to the player.
   float PlayerDistance(CStateManager& mgr) const;
+  // fn_18_25C: the distance to the static geometry ahead, along the facing; false on a miss.
+  bool ForwardClearance(CStateManager& mgr, float& distance) const;
   // fn_18_2C98: the actor's facing, flattened to the XY plane.
   CVector3f FlatFacing() const;
   // fn_18_1BD8: both hearts get the module's vulnerability at guest 0x86C.
   void SetHeartVulnerability(CStateManager& mgr) const;
+  // fn_18_B04: the stage record for the actor's health percentage (guest 0xB54..0xC98).
+  const SLdrEmperorIngStage3Stage& CurrentStage();
+  // fn_18_AA4: a stage's action record (0 stampede .. 6 dark flier), null past six.
+  static const SLdrEmperorIngStage3Action* StageAction(const SLdrEmperorIngStage3Stage& stage,
+                                                       int action);
+  // fn_18_458C, 431C, 4468, 4528, 44C4, 4344, 436C: whether ChoseAction may pick an action.
+  bool CanStampede(CStateManager& mgr) const;
+  bool CanJumpSlide(CStateManager& mgr) const;
+  bool CanLightSwarm(CStateManager& mgr) const;
+  bool CanDarkBeam(CStateManager& mgr) const;
+  bool CanLightBeam(CStateManager& mgr) const;
+  bool CanPortalAttack(CStateManager& mgr) const;
+  bool CanDarkFlier(CStateManager& mgr) const;
+  // fn_18_408: the heart ChangeVulnerability turns on (1 dark, 2 light), counted per heart.
+  int PickHeart(CStateManager& mgr);
+  // fn_18_27DC: the melee contact - the leg locators' box against the player's.
+  void MeleeContact(CStateManager& mgr);
+  // fn_18_22E0: the stampede and jump-slide contact damage.
+  void ChargeContact(CStateManager& mgr);
   // fn_18_1C34: saves the first heart's vulnerability and makes both hearts immune.
   void SetHeartsImmune(CStateManager& mgr);
   // fn_18_2B68: the entry kinds for the list at guest 0x840.
@@ -208,8 +239,24 @@ private:
   void SetCurrentHeart(CStateManager& mgr);
   // fn_18_1DF4: the heart switch (0 the enraged heart, 1 the dark heart, 2 the light heart).
   void SetHeartState(CStateManager& mgr, int heart, bool applyVulnerability);
+  // fn_18_1B88: the heart switch with no heart (3).
+  void HeartsOff(CStateManager& mgr);
+  // fn_18_12C4: resets and deletes the beam (guest 0x8AC) and removes its sound.
+  void StopBeam(CStateManager& mgr);
+  // fn_18_1370: turns the beam towards the player and moves its sound with it.
+  void SteerBeam(CStateManager& mgr, float dt);
+  // fn_18_1530 / fn_18_BB8 / fn_18_4D0: the beam start, kUE_BeginAction's and kUE_EggLay's spawns.
+  void StartBeam(CStateManager& mgr);
+  void BeginActionEvent(CStateManager& mgr);
+  void EggLayEvent(CStateManager& mgr, float dt);
   // fn_18_36BC: the damage's source id against the two hearts' ids.
   void OnDamage(CStateManager& mgr, u16 sourceId);
+  // fn_18_3448: the heart damage update (fn_18_2F04) and the heart effect's external params.
+  void UpdateHearts(CStateManager& mgr, float dt);
+  // fn_18_2F04: the heart hit timer, both hearts' reactions and the vulnerability step.
+  void UpdateHeartDamage(CStateManager& mgr, float dt);
+  // fn_18_3164: one heart's damage reaction; answers whether the heart is dead.
+  bool HeartDamageReaction(CStateManager& mgr, int heart);
   // fn_18_2D50: the hit object's id looked up in the heart holder.
   void OnHitObject(CStateManager& mgr, u16 sourceId);
   // The holder's record with the id that is looked for.
@@ -240,6 +287,8 @@ private:
                                         // jump-attack and dodge flags
   uchar x825_;                           // guest 0x825, 0: 0x01 the stampede-react flag, 0x04 the
                                         // aborted-jump-slide flag
+  uchar x826_;                           // guest 0x826, 0: 0x80 the heart-reacted flag
+                                        // (fn_18_3164 sets it)
   CCollisionActorManager* x7c0_;        // guest 0x7C0, 0: the collision actors (fn_18_3BB0
                                         // makes them, fn_18_3B14 reads the hearts)
   int mVulnerabilityState;               // guest 0x7C4, 0: 1 is the vulnerable state
@@ -271,6 +320,48 @@ private:
   float mX864_;                          // guest 0x864, 0.0f: the idle state's timer
   int mX868_;                            // guest 0x868, -1: the heart that is on
   int x8a4_;                             // guest 0x8A4, -1: the dodge's step direction
+  float mX7d8_;                          // guest 0x7D8, 100000.0f: the dark-flier timer (fn_18_E40)
+  float mX7dc_;                          // guest 0x7DC, 100000.0f (0x9B5C): the time since the light
+                                        // swarm went (fn_18_E40)
+  rstl::reserved_vector< int, 8 > mActionHistory; // guest 0x7EC: the last actions ChoseAction picked
+  int mX89c_;                            // guest 0x89C, 0: the light-heart count (fn_18_408)
+  int mX8a0_;                            // guest 0x8A0, 0: the dark-heart count (fn_18_408)
+  int x8a8_;                             // guest 0x8A8, -1: the taunt type
+  int mX8e0_;                            // guest 0x8E0, 0: the portal attack's count (fn_18_508)
+  int mX8e4_;                            // guest 0x8E4, 0: the portal attack's portal, 0..3
+  float mX828_;                          // guest 0x828, FLT_MAX: the jump slide's end time
+  float mX82c_;                          // guest 0x82C, 0.0f: the heart effect's growth
+  float mX860_;                          // guest 0x860, 0.0f: the heart hit timer
+  float mX8e8_;                          // guest 0x8E8, 0.0f: the jump slide's extra time
+  float mX8dc_;                          // guest 0x8DC, 0.0f: set to 1.5 by kUE_ObjectDrop
+  u16 mBeamId;                           // guest 0x8AC, 0xFFFF: the beam (fn_18_1530)
+  CSfxHandle mBeamSfx;                   // guest 0x8B0, 0: the beam's looped sound
+  CVector3f mX8b4_;                      // guest 0x8B4, 0: the point the beam aims at
+  u16 mShockWaveId;                      // guest 0x90C, 0xFFFF: the jump attack's shock wave
+  CSfxHandle mShockWaveSfx;              // guest 0x908, 0: the shock wave's sound
+  CShockWaveInfo mJumpAttackShockWave;   // guest 0xE90, the data's jumpAttackShockWaveInfo
+  u16 mJumpAttackSound;                  // guest 0xECC, the data's sound
+  CProjectileInfo mDarkBeamProjectile;   // guest 0xA60: darkBeamAttack's weapon and damage
+  SLdrPlasmaBeamInfo mDarkBeamInfo;      // guest 0xA88: darkBeamAttack's beam info (fn_18_A794)
+  u16 mDarkBeamSound;                    // guest 0xAD0: darkBeamAttack's beamSound
+  CProjectileInfo mLightBeamProjectile;  // guest 0xAD4: lightBeamAttack's weapon and damage
+  SLdrPlasmaBeamInfo mLightBeamInfo;     // guest 0xAFC: lightBeamAttack's beam info
+  u16 mLightBeamSound;                   // guest 0xB44: lightBeamAttack's beamSound
+  rstl::optional_object< TLockedToken< CGenDescription > > mPortalEffect; // guest 0xD04
+  u16 mPortalSound;                      // guest 0xD14: portalAttack's portalOpenSound
+  CDamageInfo mPortalDamage;             // guest 0xD18: portalAttack's projectileDamage
+  SLdrPlasmaBeamInfo mPortalBeamInfo;    // guest 0xD34: portalAttack's beamInfo
+  float mX8f8_;                          // guest 0x8F8, 0.0f: the player knock-back timer
+  CVector3f mX8fc_;                      // guest 0x8FC, 0: the player knock-back direction
+  float mVulnerableTime;                 // guest 0xB4C, the data's vulnerableTime
+  float mVulnerableDamageThresholdReset; // guest 0xB50, the data's vulnerableDamageThreshold
+                                        // (GrowHeart restores guest 0x814 from it)
+  SLdrEmperorIngStage3Stage mStages[4];  // guest 0xB54, 0xBC0, 0xC2C, 0xC98: the data's stage1..4
+  float mBaseTurnSpeed;                  // guest 0xE5C, the patterned info's turn speed
+  CAssetId mLightSwarmEffect;            // guest 0xB48, the data's lightSwarmEffect
+  CBasicSwarmData mLightSwarmData;       // guest 0xD7C, the data's lightSwarmProperties
+  SLdrAudioPlaybackParms mLightSwarmDeathSound;  // guest 0xE60, the data's lightSwarmDeathSound
+  SLdrAudioPlaybackParms mLightSwarmExpireSound; // guest 0xE78, the data's audioPlaybackParms
 };
 #endif
 

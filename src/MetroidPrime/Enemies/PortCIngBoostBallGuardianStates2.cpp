@@ -74,7 +74,9 @@ namespace {
 // shared header is not part of this module. The solid filter itself is shared with the other
 // files of this module: PortBoostGuardianShared.hpp has SolidFilter().
 
-// fn_29_3D74: the box between two points, three units taller at each end (retail's double 3.0).
+// The Ing's fn_29_3D74: the box between two points, three units taller at each end (retail's
+// double 3.0, passed in f1; fn_30_57E0 itself takes the pad as an argument).
+// @ fn_30_57E0
 CAABox BgSegmentBox(const CVector3f& a, const CVector3f& b) {
   return CAABox(
       CVector3f(CMath::Min(a.GetX(), b.GetX()), CMath::Min(a.GetY(), b.GetY()),
@@ -83,7 +85,9 @@ CAABox BgSegmentBox(const CVector3f& a, const CVector3f& b) {
                 CMath::Max(a.GetZ(), b.GetZ()) + 3.f));
 }
 
-// fn_29_421C: which arm swings; true is the left (0xd80..), false the right (0xd7c..).
+// fn_30_5C80 (the Ing's fn_29_421C): which arm swings; true is the left (0xd80..), false the right (0xd7c..).
+// Range(rodata_70 = 0, rodata_CC = 100) >= rodata_B4 = 50 (0x00005CA4..0x00005CB4).
+// @ fn_30_5C80
 bool BgPickSwipeArm(CStateManager& mgr) { return mgr.Random()->Range(0.f, 100.f) >= 50.f; }
 
 // fn_29_61B4's search ring (rodata_44): eight angles in degrees, 180 first, taken in order.
@@ -96,6 +100,7 @@ int sBgMiniPortalAngleIndex = 0;
 } // namespace
 
 // fn_29_8EF0
+// @ fn_30_A364
 void CIngBoostBallGuardian::Alert(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Alert");
@@ -112,7 +117,8 @@ void CIngBoostBallGuardian::Alert(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8BAC (not yet exercised in a run)
+// fn_29_8BAC
+// @ fn_30_A21C
 void CIngBoostBallGuardian::Taunt(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Taunt");
@@ -125,9 +131,11 @@ void CIngBoostBallGuardian::Taunt(CStateManager&, EStateMsg msg, float) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x00008C70: 0x6b4 = 0
     mTaunt = false; // 0x00008C78: 0xe5c bit 6
   }
+  // Any other message falls through to the return (0x00008C80), as in the REL.
 }
 
 // fn_29_8A2C
+// @ fn_30_A0D8
 void CIngBoostBallGuardian::Lurk(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Lurk");
@@ -154,6 +162,7 @@ void CIngBoostBallGuardian::Lurk(CStateManager& mgr, EStateMsg msg, float) {
 }
 
 // fn_29_8808
+// @ fn_30_9F50
 void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   const bool canPathFind = (mData.mFlags210 & kFlag_NoPathFind) == 0 && mFoundMovementPos;
   bool moved = false;
@@ -174,10 +183,9 @@ void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt
     mRecalcPath = false; // 0x0000A034: 0x11EC 0x08 = 0
   } else if (msg == kStateMsg_Update) {
     if (canPathFind) { // 0x0000A044: data 0x04; 0x0000A050: 0x11EC 0x10
-      // 0x0000A058: 0x11EC 0x20, 0x0000A070: HasLineOfSight (fn_30_C4E0), 0x0000A080: retail
-      // also paths while its count at 0x115c is > 0 (the Ing's safe-zone count; this module's
-      // host has no such field, so that term is dropped).
-      const bool hold = !mAggressive && mLineOfSight.HasLineOfSight();
+      // 0x0000A058: 0x11EC 0x20, 0x0000A070: HasLineOfSight (fn_30_C4E0), 0x0000A07C: it also
+      // paths while the safe-zone count (0x115C) is > 0.
+      const bool hold = !mAggressive && mLineOfSight.HasLineOfSight() && mSafeZoneCount <= 0;
       if (!hold) {
         mPathFindNavigation.PathFind(mgr, msg, dt, *this);
         moved = true; // 0x0000A0A0
@@ -196,6 +204,7 @@ void CIngBoostBallGuardian::PathFind(CStateManager& mgr, EStateMsg msg, float dt
 // spot's maximum, or the fast speed (data +0x14, unknown_0x50398a06) while retreating or in the
 // boost puddle form with a boost pending and a cover hint, times the phase's ingSpotSpeedScale; the
 // actor faces its move only while no retreat point is held.
+// @ fn_30_9DA0
 void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPathFind");
@@ -228,6 +237,7 @@ void CIngBoostBallGuardian::IngSpotPathFind(CStateManager& mgr, EStateMsg msg, f
 // fn_29_8570: the point-graph variant, same two guards and the same Activate stores as
 // fn_29_8684 (asm 0x0000858C-0x000086A8); the speed blends from the safe-zone-or-maximum base to
 // the wall speed by the angle between the actor's up and world up (asm 0x00008600-0x00008740).
+// @ fn_30_9C7C
 void CIngBoostBallGuardian::IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("IngSpotPointPathFind");
@@ -241,16 +251,21 @@ void CIngBoostBallGuardian::IngSpotPointPathFind(CStateManager& mgr, EStateMsg m
   mIngSpotPathFindNavigation.PathFind(mgr, msg, dt, *this);
   const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
   BodyController()->CommandMgr().ClearLocomotionCmds();
-  // Dropped: the Ing's safe-zone ing-spot flag (mSafeZoneIngSpot), so the base is the ing spot's
-  // maximum speed.
-  const float baseSpeed = mData.mIngSpot.GetMaxSpeed();
-  const float speed = CVector3f::GetAngleDiff(CVector3f::Up(), GetTransform().GetUp()) /
-                          3.1415927f * (mData.mIngSpot.GetMaxWallSpeed() - baseSpeed) +
-                      baseSpeed;
-  MoveOnSurface(move, speed, dt);
+  // 0x00009D38: the boost retreat (0x11EE 0x80) takes data 0x14 over data 0x08 as the floor
+  // speed, blended toward the wall speed (data 0x0C) by the tilt off world up, then scaled by the
+  // phase (0x00009D64: *(0x11D0)+0x34) like IngSpotPathFind.
+  const float baseSpeed = mBoostModeRetreatActive ? mData.mIngSpot.GetSpeedModifier()
+                                                  : mData.mIngSpot.GetMaxSpeed();
+  const float speed = (CVector3f::GetAngleDiff(CVector3f::Up(), GetTransform().GetUp()) /
+                           3.1415927f * (mData.mIngSpot.GetMaxWallSpeed() - baseSpeed) +
+                       baseSpeed) *
+                      CurrentPhase().mIngSpotSpeedScale;
+  MoveOnSurface(move, speed, dt); // 0x00009D80: fn_30_53D0
 }
 
-// fn_29_84A4 (not yet exercised in a run)
+// fn_30_9BB0 (this module).
+// fn_29_84A4
+// @ fn_30_9BB0
 void CIngBoostBallGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Patrol");
@@ -266,11 +281,14 @@ void CIngBoostBallGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt) 
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
-// fn_29_82D4 (not yet exercised in a run)
+// fn_30_99D4 (this module).
+// fn_29_82D4.
+// @ fn_30_99D4
 void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
-  // 0x00008310: in the ing-spot form the Ing walks the waypoint's own speed (0x158) over the ing
-  // spot's maximum speed (0x87c), on every message - the waypoint is the navigation's destination
+  // 0x00009A10: in the ing-spot form the Ing walks the phase's speed scale (0x00009A64:
+  // *(0x11D0)+0x34) times the waypoint's own speed (0x158) times the ing spot's maximum speed
+  // (0x00009A84: 0x7c8, data 0x08), on every message - the waypoint is the navigation's destination
   // (0x6c0) and a missing one leaves the speed at 1.0 (rodata_64).
   if (mForm == kForm_IngSpot) {
     const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
@@ -278,7 +296,8 @@ void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg ms
     const CScriptAIWaypoint* waypoint =
         TCastToConstPtr< CScriptAIWaypoint >(mgr.GetObjectById(mWaypointNavigation.GetDestination()));
     const float speed = waypoint != nullptr ? waypoint->GetSpeed() : 1.f;
-    MoveOnSurface(move, speed * mData.mIngSpot.GetMaxSpeed(), dt);
+    MoveOnSurface(move, CurrentPhase().mIngSpotSpeedScale * speed * mData.mIngSpot.GetMaxSpeed(),
+                  dt); // 0x00009A90: fn_30_53D0
   }
   if (msg == kStateMsg_Activate) {
     LogState("FollowAttackPattern");
@@ -301,7 +320,7 @@ void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg ms
         mDesiredForm = kForm_IngSpot;
       } else if ((waypoint->GetFlags() & 0x100) != 0) {
         mDesiredForm = kForm_Corporeal;
-      }
+      } // area 28 has no waypoint with neither flag, so the fall-through never runs there
     }
   } else if (msg == kStateMsg_Deactivate) {
     mFollowingAttackPath = false; // 0x00008468: 0xe5d bit 3
@@ -309,12 +328,14 @@ void CIngBoostBallGuardian::FollowAttackPattern(CStateManager& mgr, EStateMsg ms
   }
 }
 
+// fn_30_953C (this module).
 // fn_29_7E30: the body projectile in flight. The launch point and the flight direction are two
 // file statics in the REL's bss, seeded on the first call (bss_10, bss_20) from Zero() and
 // Forward() and shared by every Ing; each Activate rewrites both. Exercised in area 57
 // (/tmp/opencode/ing_bp3.log): BecomeBodyProjectile -> BodyProjectileFlight form 8 (the drift
 // branch, two frames) -> form 4 once the anim's kUE_BeginAction lands (35 units a second along the
 // launch direction) -> SuckEnergy on the hit, with the emitter removed in Deactivate.
+// @ fn_30_953C
 void CIngBoostBallGuardian::BodyProjectileFlight(CStateManager& mgr, EStateMsg msg, float dt) {
   static bool sInit = false;
   static CVector3f sLaunchPoint;
@@ -332,7 +353,7 @@ void CIngBoostBallGuardian::BodyProjectileFlight(CStateManager& mgr, EStateMsg m
     mProjectileFSMEntry = true; // 0xe5e bit 7
     sLaunchPoint = GetLctrTransform(mEyeSegId).GetTranslation(); // 0xd7b
     sFlightDir = CVector3f::Forward();
-    if (TargetAimPosition(mgr, mTargetPos, 0.5f)) { // fn_29_4468, 0xdc8; f1 = rodata_B4
+    if (TargetAimPosition(mgr, mTargetPos, 0.5f)) { // fn_29_4468, 0xdc8; f1 = rodata_80 (0.5)
       // The aim position is dropped by the model's height (scale.z, the REL's only non-zero scale
       // term); a shot that points upwards keeps Forward() as its direction.
       const CVector3f scale = GetModelData()->GetScale(); // 0x60, model data's first CVector3f
@@ -397,12 +418,14 @@ void CIngBoostBallGuardian::BodyProjectileFlight(CStateManager& mgr, EStateMsg m
   }
 }
 
+// fn_30_8DD4 (this module).
 // fn_29_76B8: the Ing possesses the player. Activate drops the body (form 0), clears its
 // particles, aborts the scripted body state, strips its materials, remembers the target as the host,
 // spawns the possessed-mold billboard and the drape voice, deals the body projectile's contact
 // damage and attaches to the player (with the HUD warning); Update rides on the host's transform and
 // aim point, draining mUnknownA0D6 a second through a solid-only filter, until the body projectile's
 // suck time runs out; Exit releases the player and the voice.
+// @ fn_30_8DD4
 void CIngBoostBallGuardian::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -514,7 +537,9 @@ void CIngBoostBallGuardian::SuckEnergy(CStateManager& mgr, EStateMsg msg, float 
   }
 }
 
-// fn_29_75C0 (not yet exercised in a run)
+// fn_29_75C0
+// Activate and Update both move (0x00008CE4: msg < 2).
+// @ fn_30_8CC0
 void CIngBoostBallGuardian::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("SeekWallPoint");
@@ -523,91 +548,109 @@ void CIngBoostBallGuardian::SeekWallPoint(CStateManager& mgr, EStateMsg msg, flo
   }
   const CScriptAIHint* hint = GetCoverHint(mgr, mCoverHintId);
   if (hint == nullptr) {
-    return; // 0x000075F8: a missing hint leaves mMoving as it was
+    return; // 0x00008D04: a missing hint leaves mMoving as it was
   }
   const CVector3f delta = hint->GetTranslation() - GetTranslation();
-  const float maxWall = mData.mIngSpot.GetMaxWallSpeed(); // 0x880
+  // 0x00008D4C: the phase's speed scale (*(0x11D0)+0x34) times ingSpotMaxWallSpeed (0x7cc).
+  const float maxWall = CurrentPhase().mIngSpotSpeedScale * mData.mIngSpot.GetMaxWallSpeed();
   if (!delta.IsMagnitudeSafe() || delta.Magnitude() <= dt * maxWall) {
-    mMoving = false; // 0x0000768C: 0xe5d bit 1
+    mMoving = false; // 0x00008DA8: 0x11ED 0x04
   } else {
-    MoveOnSurface(delta.AsNormalized(), maxWall, dt); // 0x00007674: the direction is normalised
-    mMoving = true; // 0x00007678: 0xe5d bit 1
+    MoveOnSurface(delta.AsNormalized(), maxWall, dt); // 0x00008D88: fn_30_53D0
+    mMoving = true; // 0x00008D94: 0x11ED 0x04
   }
 }
 
 // fn_29_7518
+// @ fn_30_8C18
 void CIngBoostBallGuardian::SelectTarget(CStateManager& mgr, EStateMsg msg, float) {
   if (msg != kStateMsg_Activate) {
     return;
   }
   LogState("SelectTarget");
-  if (mgr.GetObjectById(mTargetId) == nullptr) {
-    if (const CPlayer* player = mgr.GetPlayer(0)) {
-      mTargetId = player->GetUniqueId();
-    }
+  // 0x00008C58: a live target keeps everything as it is - no line-of-sight retarget, no message.
+  if (mgr.GetObjectById(mTargetId) != nullptr) {
+    return;
   }
-  mLineOfSight.SetTarget(mTargetId);
-  // [?] retail sends script messages here; which state/message pair was not read.
+  mTargetId = mgr.GetPlayer(0)->GetUniqueId(); // 0x00008C6C: mgr+0x14FC, no null test
+  mLineOfSight.SetTarget(mTargetId);           // 0x00008C78: 0x10B8
+  SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None); // 0x00008CA4: 'ATTK', -1
 }
 
 // fn_29_7244
-void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (msg == kStateMsg_Activate) {
+// @ fn_30_8998
+void CIngBoostBallGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
     LogState("FaceTarget");
-    mAnimationState.SetState(target == nullptr || IsFacingTarget(mgr, CTriggerData(0.f))
-                                 ? CAnimationState::kAS_Over
-                                 : CAnimationState::kAS_Ready);
-    mMoving = false;
-  } else if (msg == kStateMsg_Update) {
-    if (target == nullptr) {
-      mAnimationState.SetState(CAnimationState::kAS_Over);
-      return;
+    // 0x000089DC: the target's aim position into 0x10F8 (fn_30_5F6C, rodata_70 = 0.0), levelled
+    // to the Ing's own height (0x000089F4); more than 20 degrees off the forward axis
+    // (0x00008A50, rodata_104) leaves turning to do.
+    if (TargetAimPosition(mgr, mTargetPos)) {
+      mTargetPos.SetZ(GetTranslation().GetZ());
+      mAnimationState.SetState(CVector3f::GetAngleDiff(GetTransform().GetForward(),
+                                                       mTargetPos - GetTranslation()) > kFacingAngle
+                                   ? CAnimationState::kAS_Ready
+                                   : CAnimationState::kAS_Over);
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x00008A6C
     }
-    CVector3f delta = target->GetTranslation() - GetTranslation();
-    delta = CVector3f(delta.GetX(), delta.GetY(), 0.f);
-    if (mForm == kForm_IngSpot || (mForm >= 6 && mForm <= 9)) {
-      if (IsFacingTarget(mgr, CTriggerData(0.f)) || !delta.IsMagnitudeSafe()) {
-        mAnimationState.SetState(CAnimationState::kAS_Over);
-      } else {
-        BodyController()->FaceDirection(delta.AsNormalized(), dt);
-      }
-    } else if (mForm == kForm_Corporeal) {
+    mMoving = false; // 0x00008A7C: 0x11ED 0x04 = 0
+    break;
+  case kStateMsg_Update:
+    // Update turns toward the point Activate stored, not the live target.
+    switch (mForm) {
+    case kForm_Corporeal: // 0x00008AB8: a turn command once the body can take one
       if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
+        const CVector3f delta = mTargetPos - GetTranslation();
         if (delta.IsMagnitudeSafe()) {
           BodyController()->CommandMgr().DeliverCmd(
-              CBCLocomotionCmd(CVector3f::Zero(), delta.AsNormalized(), 1.f));
+              CBCLocomotionCmd(CVector3f::Zero(), delta.AsNormalized(), 1.f)); // rodata_64
         } else {
-          mAnimationState.SetState(CAnimationState::kAS_Over);
+          mAnimationState.SetState(CAnimationState::kAS_Over); // 0x00008B74
         }
       }
-    } else {
+      break;
+    case kForm_IngSpot: // 0x00008B80: forms 3 and 6-9 snap to face the point (LookAt, world up)
+    case 6:
+    case 7:
+    case 8:
+    case 9:
+      if ((mTargetPos - GetTranslation()).IsMagnitudeSafe()) {
+        SetTransform(CTransform4f::LookAt(GetTranslation(), mTargetPos, CVector3f::Up()));
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+      break;
+    default: // 0x00008BF0
       mAnimationState.SetState(CAnimationState::kAS_Over);
+      break;
     }
-  } else if (msg == kStateMsg_Deactivate) {
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x00008BFC
+    break;
+  default:
+    break;
   }
 }
 
-// fn_29_6DA0
-// Retail keeps the four lowest-scoring candidates in a file-static array (REL bss lbl_29_bss_40:
+// The Ing's fn_29_6DA0.
+// Retail keeps the four lowest-scoring candidates in a file-static array (REL bss lbl_30_bss_40:
 // a count plus four {TUniqueId, float} entries), insertion-sorted ascending, then takes one entry
-// at random through the state manager's RNG. Cover hints are types 3 and 4 (asm 0x00006F2C:
-// cmpwi 0x3 then cmpwi 0x4) - the port had guessed 4 and 5, which matched nothing in the areas the
-// Ings actually live in; type 4 (wall, the kind HasWallCoverPoint tests) additionally needs the
-// body projectile to be allowed by the properties (0x9d0 bit 5) and the target outside a hurtful
-// safe zone.
+// at random through the state manager's RNG. Unlike the Ing's copy, this module takes any hint
+// type but the boost nav points (14 and 15, asm 0x000086EC) and never tests the hint against the
+// safe zones; a wall hint (type 4) still needs the body projectile allowed by the properties (data
+// 0x20, 0x00008700) and the target outside every safe zone (TargetInSafeZone, 0x0000866C).
+// @ fn_30_8520
 void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, float) {
-  if (msg != kStateMsg_Activate) { // asm 0x00006DCC
+  if (msg != kStateMsg_Activate) { // asm 0x0000854C
     return;
   }
   LogState("FindCoverPoint");
-  ReleaseCoverHint(mgr, mCoverHintId); // fn_29_4560
-  if (!TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468, 0xdc8; f1 = rodata_6C (0.0)
+  ReleaseOwnCoverHint(mgr);                  // fn_30_6064, asm 0x00008554
+  if (!TargetAimPosition(mgr, mTargetPos)) { // fn_30_5F6C, 0x10F8; f1 = rodata_70 (0.0)
     return;
   }
-  // The candidate array lives in the REL's bss (lbl_29_bss_40), so it is shared by every Ing and
-  // cleared on each call (asm 0x00006E8C); function-local statics do the same here.
   struct SCandidate {
     SCandidate() : id(kInvalidUniqueId), score(0.f) {}
     TUniqueId id;
@@ -615,10 +658,10 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
   };
   static SCandidate sCandidates[4];
   static int sCandidateCount = 0;
-  sCandidateCount = 0;
-  // Near/far score bounds, each the max of two ranges, squared (asm 0x00006E98/0x00006EB0): f31
-  // from mMinAttackRange (0x3e0) vs body-projectile min (0x85c), f30 from body-projectile max
-  // (0x860) vs mini-portal max (0x934 = CIngData 0x7c0 + 0x174).
+  sCandidateCount = 0; // asm 0x00008614
+  // Near/far score bounds, each the max of two ranges, squared (asm 0x00008620/0x0000863C): near
+  // from mMinAttackRange (0x3E0) vs the body projectile's minimum (0x87C), far from its maximum
+  // (0x880) vs the mini portal's (0x894).
   const float nearBound = mMinAttackRange >= mData.mBodyProjectile.mMinAttackDist
                               ? mMinAttackRange
                               : mData.mBodyProjectile.mMinAttackDist;
@@ -627,78 +670,64 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
                              ? mData.mBodyProjectile.mMaxAttackDist
                              : mData.mMiniPortal.mMaxAttackDist;
   const float f30 = farBound * farBound;
-  // Evaluated once before the loop (asm 0x00006EE8, fn_29_ABC8): the target actor exists and sits
-  // in a hurtful safe zone.
-  const bool targetInHurtful = TargetInLightSafeZone(mgr, CTriggerData(0.f));
-  int scanned = 0;
-  // Debug: why the scan comes up empty (the puddle then never leaves FindCoverPoint, and the
-  // grapple behind IngSpotPathFind stays unreachable).
-  int inactive = 0, wrongType = 0, inUse = 0, wrongArea = 0, lastUsed = 0, safeZone = 0;
-  int spotGated = 0, hurtful = 0;
-  int typeHist[32] = {0};
+  // Evaluated once before the loop (fn_30_C14C with a zeroed CTriggerData).
+  const bool targetInSafeZone = TargetInSafeZone(mgr, CTriggerData(0.f));
+  // Debug: why the scan comes up empty.
+  int scanned = 0, inactive = 0, inUse = 0, wrongArea = 0, lastUsed = 0, boostNav = 0;
+  int spotGated = 0, safeZone = 0;
   const CObjectList& list = mgr.GetObjectListById(kOL_AiWaypoint); // mgr+0x838
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     const CScriptAIHint* hint = TCastToConstPtr< CScriptAIHint >(list[i]);
-    ++scanned;
-    if (hint != nullptr) {
-      const int type = static_cast< int >(hint->GetHintType());
-      if (type >= 0 && type < 32) {
-        ++typeHist[type];
-      }
-    }
     if (hint == nullptr) {
       continue;
     }
-    if (!hint->GetActive()) { // asm 0x00006F20: byte 0x20 bit 0
+    ++scanned;
+    if (!hint->GetActive()) { // asm 0x000086A0: byte 0x20 bit 7
       ++inactive;
       continue;
     }
-    const int type = static_cast< int >(hint->GetHintType());
-    if (type != 3 && type != 4) { // asm 0x00006F2C
-      ++wrongType;
-      continue;
-    }
-    if (hint->GetInUse(GetUniqueId())) { // asm 0x00006F50
+    if (hint->GetInUse(GetUniqueId())) { // asm 0x000086B8
       ++inUse;
       continue;
     }
-    if (hint->GetCurrentAreaId() != GetCurrentAreaId()) { // asm 0x00006F60, area word 0x4
+    if (hint->GetCurrentAreaId() != GetCurrentAreaId()) { // asm 0x000086CC, area word 0x4
       ++wrongArea;
       continue;
     }
-    if (hint->GetUniqueId() == mLastCoverHintId) { // asm 0x00006F74, 0xd74
+    if (hint->GetUniqueId() == mLastCoverHintId) { // asm 0x000086DC, 0x1090
       ++lastUsed;
       continue;
     }
-    if (mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, hint->GetTranslation())) { // 0x00006F8C
-      ++safeZone;
+    const int type = static_cast< int >(hint->GetHintType()); // hint 0x158
+    if (type == 14 || type == 15) { // asm 0x000086EC: (type - 14) <= 1 unsigned
+      ++boostNav;
       continue;
     }
-    if (type == 4) { // asm 0x00007074: wall hints only
-      // fn_30_8520 0x00008700 reads the data byte's 0x20 (this+0xAE0), not a guest bitfield: a
-      // guardian whose properties forbid the body projectile never takes a wall point either.
+    if (type == 4) { // asm 0x000086F4: wall hints only
+      // 0x00008700 reads the data byte's 0x20 (this+0xAE0), not a guest bitfield: a guardian
+      // whose properties forbid the body projectile never takes a wall point either.
       if ((mData.mFlags210 & kFlag_NoBodyProjectile) != 0) {
         ++spotGated;
         continue;
       }
-      if (targetInHurtful) { // asm 0x0000708C
-        ++hurtful;
+      if (targetInSafeZone) { // asm 0x00008708
+        ++safeZone;
         continue;
       }
     }
-    const CVector3f delta = mTargetPos - hint->GetTranslation(); // 0xdc8 - hint+0x54
+    const CVector3f delta = mTargetPos - hint->GetTranslation(); // 0x10F8 - hint+0x54
     float score = delta.MagSquared();
-    const float up = CVector3f::Dot(CVector3f::Up(), delta); // == delta.GetZ(), asm 0x000070D0
-    if (type != 4 || up > 0.f) { // asm 0x000070E4: wall hints at/below the target skip the term
-      score += 4.f * up * up; // rodata_AC
+    const float up = CVector3f::Dot(CVector3f::Up(), delta);
+    if (type != 4 || up > 0.f) { // asm 0x00008760: wall hints at/below the target skip the term
+      score += 4.f * up * up;    // rodata_9C
     }
-    if (score < f31) { // asm 0x00007108
-      score += f30; // asm 0x00007110
+    if (score < f31) { // asm 0x00008784
+      score += f30;
     }
-    // Same insertion shape as CMinorIng's copy of this routine: store at the end (or over the
-    // worst entry when full), then bubble down to keep the array ascending (asm 0x00007040).
+    // Store at the end (or over the worst entry when full), then bubble down to keep the array
+    // ascending (asm 0x0000879C/0x0000882C).
     int slot;
-    if (sCandidateCount < 4) { // asm 0x00007040
+    if (sCandidateCount < 4) {
       slot = sCandidateCount++;
     } else if (score < sCandidates[3].score) {
       slot = 3;
@@ -714,37 +743,35 @@ void CIngBoostBallGuardian::FindCoverPoint(CStateManager& mgr, EStateMsg msg, fl
     }
   }
   TUniqueId picked = kInvalidUniqueId;
-  if (sCandidateCount != 0) { // asm 0x00007148
-    const int index = mgr.Random()->Range(0, sCandidateCount - 1); // asm 0x00007234, mgr+0x16e4
+  if (sCandidateCount != 0) { // asm 0x000088A4
+    const int index = mgr.Random()->Range(0, sCandidateCount - 1); // asm 0x000088B8, mgr+0x16e4
     picked = sCandidates[index].id;
-  }
-  if (CScriptAIHint* hint = GetCoverHint(mgr, picked)) {
-    hint->SetInUse(true); // fn_29_4510
-    mCoverHintId = picked; // 0xd72
-    mLastCoverHintId = picked; // 0xd74
+    // The id came off the hint list, so retail takes the object as a hint with no type test.
+    if (CScriptAIHint* hint = static_cast< CScriptAIHint* >(mgr.ObjectById(picked))) {
+      // fn_30_6014 (asm 0x000088E4): in use, then the cover hint (0x108E) and the last one (0x1090).
+      // It stays folded into this caller (no host function, so no marker).
+      hint->SetInUse(true);
+      mCoverHintId = hint->GetUniqueId();
+      mLastCoverHintId = mCoverHintId;
+    }
   }
   if (DebugBg()) {
     fprintf(stderr,
-            "[ibbg] %04x cover scan: candidates %d, pick %04x: inactive %d type %d inuse %d area %d "
-            "last %d safezone %d wallspot %d hurtful %d; types",
-            GetUniqueId().Value(), scanned, picked.Value(), inactive, wrongType, inUse, wrongArea,
-            lastUsed, safeZone, spotGated, hurtful);
-    for (int t = 0; t < 32; ++t) {
-      if (typeHist[t] != 0) {
-        fprintf(stderr, " %d:%d", t, typeHist[t]);
-      }
-    }
-    fprintf(stderr, "\n");
+            "[ibbg] %04x cover scan: hints %d, candidates %d, pick %04x: inactive %d inuse %d "
+            "area %d last %d boostnav %d wallspot %d safezone %d\n",
+            GetUniqueId().Value(), scanned, sCandidateCount, picked.Value(), inactive, inUse,
+            wrongArea, lastUsed, boostNav, spotGated, safeZone);
   }
 }
 
-// fn_29_3E1C: the segment test of one arm. Four boxes along the arm (shoulder-elbow,
+// fn_30_5888 (the Ing's fn_29_3E1C): the segment test of one arm. Four boxes along the arm (shoulder-elbow,
 // elbow-forearm, forearm-wrist, then the wrist extended six units along the forearm) are tested
 // against the target's bounding box; retail's chained early-outs are one OR. A hit deals the arm
 // swipe damage with the given knock-back and clears the contact-damage pause.
 //
 // The live flag (0xe5c bit 1, xE5C_1) guards the test: only a swing that is live can hit, and a
 // hit clears the flag.
+// @ fn_30_5888
 void CIngBoostBallGuardian::ArmSwipeSegment(CStateManager& mgr, const CSegId& a, const CSegId& b,
                                              const CSegId& c, const CSegId& d,
                                              const CVector3f& knockback) {
@@ -783,11 +810,13 @@ void CIngBoostBallGuardian::ArmSwipeSegment(CStateManager& mgr, const CSegId& a,
   mgr.ApplyDamage(GetUniqueId(), mTargetId, GetUniqueId(), mData.mArmSwipeDamage,
                   CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
                   knockback);
-  mCurDamageRemTime = mDamageWaitTime; // 0x440 = 0x444
-  xE5C_1 = false;                      // 0xe5c bit 1
+  // Unlike the Ing's copy, this module does not restart the contact-damage cooldown (0x440) here.
+  xE5C_1 = false; // 0x00005C64: 0x11EC bit 2
 }
 
+// fn_30_8208 (this module).
 // fn_29_6A88
+// @ fn_30_8208
 void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -796,6 +825,7 @@ void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
       break;
     }
+    // No team AI is linked to the guardian in its room, so this refusal never runs there.
     if (mTeamId != kInvalidUniqueId &&
         !CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId, GetUniqueId())) {
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
@@ -807,7 +837,7 @@ void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
   case kStateMsg_Update:
     // CTryCommand::ShouldRetry(this+0x6b4, *BodyController(), 7); 7 is pas::kAS_MeleeAttack.
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
-      mSwipeArm = BgPickSwipeArm(mgr) ? 1 : 0; // fn_29_421C, 0xdec
+      mSwipeArm = BgPickSwipeArm(mgr) ? 1 : 0; // 0x000082F8: fn_30_5C80, 0x111C
       // rodata_38 = {1, 2}: the melee attack's severity, indexed by the arm.
       BodyController()->CommandMgr().DeliverCmd(
           CBCMeleeAttackCmd(mSwipeArm == 0 ? pas::kS_One : pas::kS_Two));
@@ -838,10 +868,12 @@ void CIngBoostBallGuardian::ArmSwipe(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// fn_30_8120 (this module).
 // fn_29_69A0: the puddle is off the navmesh. Activate sets kAS_Ready, teleports the actor onto
 // the closest physical point within 1000 (rodata_C4) and re-aligns to the surface with 1.0
 // (rodata_64), then sets kAS_Over; Deactivate sets kAS_NotReady. Update does nothing (asm
 // 0x00006A70 is the common tail).
+// @ fn_30_8120
 void CIngBoostBallGuardian::FailSafeMode(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("FailSafeMode");
@@ -888,10 +920,12 @@ void CIngBoostBallGuardian::FailSafeMode(CStateManager& mgr, EStateMsg msg, floa
   }
 }
 
+// fn_30_7D5C (this module).
 // fn_29_61B4: two rays a frame, out from the head locator to the
 // target's aim point, until three hits are stored or the shared angle index runs out (the ring is
 // eight angles, so a FindMiniPortals entry never searches more than four frames). The filter and
 // the geometry are the Space Jump Guardian's (fn_29_1E6C's FindMiniPortals), which is verified.
+// @ fn_30_7D5C
 void CIngBoostBallGuardian::FindMiniPortals(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -916,12 +950,12 @@ void CIngBoostBallGuardian::FindMiniPortals(CStateManager& mgr, EStateMsg msg, f
         CMaterialList(kMT_Solid),
         CMaterialList(kMT_Character, kMT_Player, kMT_CollisionActor, kMT_ProjectilePassthrough));
     for (int i = 0; i < 2; ++i) {
-      // Retail takes the pair's angle without re-testing the bound, so its last pair reads one
-      // float past the table when the index is already 8 (the bss guard is tested once, above).
-      if (sBgMiniPortalAngleIndex >= 8) {
-        break;
-      }
-      const float angle = skBgMiniPortalAngles[sBgMiniPortalAngleIndex++] * 0.017453292f;
+      // 0x00007FB4..0x00007FC0: the pair re-tests no bound (the bss guard is tested once, at
+      // 0x00007E64), so with the index at 7 the second ray reads rodata_44[8], the float after the
+      // table: rodata_64 = 1.0f. The host spells that read out instead of indexing past the array.
+      const int index = sBgMiniPortalAngleIndex++;
+      const float degrees = index < 8 ? skBgMiniPortalAngles[index] : 1.f;
+      const float angle = degrees * 0.017453292f; // rodata_100
       const float c = CMath::FastCosR(angle);
       const float s = CMath::FastSinR(angle);
       const CVector3f offset =
@@ -945,8 +979,10 @@ void CIngBoostBallGuardian::FindMiniPortals(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
+// fn_30_7BB0 (this module).
 // fn_29_6008: asks the body for one projectile attack; the animation's
 // kUE_Projectile events then spawn the portals FindMiniPortals queued (fn_29_C228).
+// @ fn_30_7BB0
 void CIngBoostBallGuardian::MiniPortalAttack(CStateManager&, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -970,63 +1006,58 @@ void CIngBoostBallGuardian::MiniPortalAttack(CStateManager&, EStateMsg msg, floa
   }
 }
 
-// fn_29_5CB0 (not yet exercised in a run)
+// fn_30_7390: the module's own Dead. Activate restores the speed the ctor saved (0x11A8). Forms
+// 0/1 are deleted; the ing spot, the body projectile and the evaporating form leave the boost
+// puddle mode, drop the target/orbit materials, explode with the death effect and play the death
+// sound; the corporeal form and the form changes burn away through CPatterned::Dead (this module
+// has no burning-flag skip and no hit-cooldown store, unlike the Ing REL's fn_29_5CB0).
+// @ fn_30_7390
 void CIngBoostBallGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Dead");
+    mSpeed = mInitialSpeed; // 0x000073C8: 0x3C8 = 0x11A8
   }
-  if (mForm == 0 || mForm == 1) {
+  if (mForm == kForm_Host || mForm == kForm_ControllingHost) {
     if (msg == kStateMsg_Activate) {
-      DeathDelete(mgr);
+      DeathDelete(mgr); // 0x00007590
     }
     return;
   }
-  // 0x00005CFC: the ing spot, the body projectile and the evaporating form die on the Activate
-  // message: the target and orbit materials go, the death effect explodes, the death sound plays.
   if (mForm == kForm_IngSpot || mForm == kForm_BodyProjectile || mForm == kForm_Evaporate) {
     if (msg != kStateMsg_Activate) {
       return;
     }
-    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x00005D18: 0x28/0x29
-    if (mDeathEffect) {
+    SetBoostPuddleMode(false);                   // 0x00007404: fn_30_3068
+    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x00007418: 0x28/0x29
+    if (mDeathEffect) {                          // 0x0000741C: 0x104C
       mgr.AddObject(rs_new CExplosion(
           *mDeathEffect, mgr.AllocateUniqueId(),
           CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
-          rstl::string_l("Ing death Fx"), GetTransform(), 0, mModelScale, CColor::White(), -1));
+          rstl::string_l("Ing death Fx"), GetTransform(), 0, GetModelData()->GetScale(),
+          CColor::White(), -1)); // 0x00007504
     }
-    // 0x00005E68: AddEmitter(sfx, position, 0x7f, area, true, false, kMedPriority)
-    CSfxManager::AddEmitter(mData.mIngSpot.GetDeathSound(), GetTranslation(), 0x7f,
+    CSfxManager::AddEmitter(mData.mIngSpot.GetDeathSound(), GetTranslation(), 0x7f, // 0x0000756C
                             GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
-    DeathDelete(mgr);
+    DeathDelete(mgr); // 0x00007578
     return;
   }
-  // 0x00005E8C: the corporeal form (2) and the form changes (6 and up) burn away; the base class
-  // gets its own death message first.
-  CPatterned::Dead(mgr, msg, dt);
-  // 0x00005EA4/0x00005EAC: two of CPatterned's flags (0x421's bits 13 and 14) skip the burn. They
-  // are the pair the Ing's own death handler tests at 0x0000B478 before it clears the vertical
-  // movement bit, which the host's CPatterned::Death gates on its burning flags.
-  if (mBurning || mLaggedBurnDeath) {
-    return;
-  }
+  CPatterned::Dead(mgr, msg, dt); // 0x000075A8
   if (msg == kStateMsg_Activate) {
-    mDeadFade = 2.f; // 0x00005EE4: rodata_74
-    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x00005EE8: 0x28/0x29
-    mDamageCooldownTimer = CPatterned::skDamageHitTime; // 0x00005EF4: 0x448
+    mDeadFade = 2.f;                             // 0x000075DC: 0x11C8, rodata_78
+    RemoveMaterial(kMT_Target, kMT_Orbit, mgr); // 0x000075E0
   } else if (msg == kStateMsg_Update) {
-    mAlphaDelta = 0.f; // 0x00005F14: 0x40c
-    mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), dt); // 0x00005F1C
-    if (BodyController()->GetCurrentStateId() == pas::kAS_Death) { // 0x00005F28
+    mAlphaDelta = 0.f;                                                     // 0x00007600: 0x40C
+    mSurfaceAlignment.AlignNearPosition(*this, mgr, GetTranslation(), dt); // 0x00007608
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Death) {        // 0x00007614
       const CVector3f scale = GetModelData()->GetScale();
-      const float z = scale.GetZ() - dt / 0.75f; // rodata_F4
-      // The scale is always written, its z clamped at zero (0x00005F74).
-      ModelData()->SetScale(CVector3f(scale.GetX(), scale.GetY(), z > 0.f ? z : 0.f));
+      const float z = scale.GetZ() - dt / 0.75f; // rodata_FC
+      ModelData()->SetScale(CVector3f(scale.GetX(), scale.GetY(), z > 0.f ? z : 0.f)); // 0x0000766C
       if (z <= 0.f) {
-        mDeadFade -= dt; // 0x00005FA0
-        mRenderModel = false; // 0x00005FAC: 0xe5d bit 7
-        mStartAsIngSpot = false; // 0x00005FB8: 0xe5d bit 5
+        mDeadFade -= dt;             // 0x00007690
+        mRenderModel = false;        // 0x0000769C: 0x11EC bit 0
+        mIngSpotBlobVisible = false; // 0x000076A8: 0x11ED bit 6
       }
-      if (mDeadFade <= 0.f) { // 0x00005FCC
+      if (mDeadFade <= 0.f) { // 0x000076BC
         DeathDelete(mgr);
       }
     }

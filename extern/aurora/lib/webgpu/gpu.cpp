@@ -16,6 +16,7 @@
 #include <aurora/gfx.h>
 #include <magic_enum.hpp>
 #include <webgpu/webgpu_cpp.h>
+#include <SDL3/SDL_timer.h>
 
 #include "../gx/gx.hpp"
 #include "../gfx/frame.hpp"
@@ -732,7 +733,19 @@ static wgpu::BackendType to_wgpu_backend(AuroraBackend backend) {
   }
 }
 
+// Port: a released surface is kept until the next create_surface. Dawn destroys a surface's
+// VkSurfaceKHR only after the GPU is done with it, and Android refuses a second VkSurfaceKHR for an
+// ANativeWindow that still has one (VK_ERROR_NATIVE_WINDOW_IN_USE_KHR, a device loss), so a surface
+// dropped while its window lives on (a skipped present while surfaceChanged runs, an Error status)
+// is configured again instead of replaced, like refresh_surface(false) does.
+static wgpu::Surface g_retiredSurface;
+static const void* g_retiredSurfaceWindow = nullptr;
+
 static void release_surface_locked() noexcept {
+  if (g_surface) {
+    g_retiredSurface = std::move(g_surface);
+    g_retiredSurfaceWindow = g_surfaceWindow;
+  }
   g_surface = {};
 }
 
@@ -743,13 +756,26 @@ static bool create_surface() {
     return false;
   }
   window::SurfaceLock surfaceLock;
+  // Port: Android has no native window between surfaceDestroyed and surfaceCreated, and a surface
+  // made from a null one crashes in CreateAndroidSurfaceKHR.
+  const void* nativeWindow = window::get_native_window_handle();
+  if (nativeWindow == nullptr) {
+    Log.warn("Failed to create surface: the window has no native surface yet");
+    return false;
+  }
   release_surface_locked();
-  g_surface = create_window_surface(g_instance, window, "Surface");
+  if (g_retiredSurface && g_retiredSurfaceWindow == nativeWindow) {
+    g_surface = std::move(g_retiredSurface);
+  } else {
+    g_surface = create_window_surface(g_instance, window, "Surface");
+  }
+  g_retiredSurface = {};
+  g_retiredSurfaceWindow = nullptr;
   if (!g_surface) {
     Log.error("Failed to create surface");
     return false;
   }
-  g_surfaceWindow = window::get_native_window_handle();
+  g_surfaceWindow = nativeWindow;
   return true;
 }
 
@@ -800,6 +826,12 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
   g_dawnInstance->EnableBackendValidation(backend != WGPUBackendType::D3D12);
 #endif
 
+#if defined(__ANDROID__)
+  // Port: a launch can race the SurfaceView (seen right after an install); give it up to 5 s.
+  for (int i = 0; i < 500 && window::get_native_window_handle() == nullptr; ++i) {
+    SDL_Delay(10);
+  }
+#endif
   if (!create_surface()) {
     return false;
   }
@@ -1085,6 +1117,7 @@ void shutdown() {
   g_frameBufferResolved = {};
   g_depthBuffer = {};
   g_queue = {};
+  g_retiredSurface = {};
   g_surface = {};
   g_device = {};
   g_adapter = {};

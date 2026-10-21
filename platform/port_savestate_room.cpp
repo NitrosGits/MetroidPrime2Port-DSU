@@ -252,7 +252,10 @@ struct ChangeLog {
 bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, ChangeLog& log) {
   bool changed = false;
   if (ent.GetActive() != obj.active) {
-    ent.SetActive(obj.active);
+    // Through the message, as a relay does: an object's own kSM_Activate sets up what its Think
+    // relies on (a patterned enemy's body controller, helper actors); flipping the flag alone
+    // left it thinking without that.
+    mgr.SendScriptMsg(&ent, kInvalidUniqueId, obj.active ? kSM_Activate : kSM_Deactivate);
     log.Note(obj.editorId, obj.active ? "activated" : "deactivated");
     changed = true;
   }

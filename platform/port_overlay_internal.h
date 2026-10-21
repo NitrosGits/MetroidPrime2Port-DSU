@@ -49,6 +49,7 @@ extern int sAnisotropy;
 extern int sHudScale;
 extern int sUiScale;
 extern bool sVsync;
+extern bool sFullscreen;
 extern bool sFrameLimit;
 extern bool sSmoothFrames;
 extern bool sPoseInterpolation;
@@ -72,7 +73,8 @@ void ApplySettingsText(std::istream& text);
 std::map< std::string, std::string > SettingsValues(const std::string& text);
 // The settings file's text, as SaveSettings writes it.
 std::string SettingsText();
-// Reads <user>/settings.cfg once per run (a later call does nothing). Never writes.
+// Reads <user>/settings.cfg once per run (a later call does nothing; one before
+// PortSettings::Initialize is ignored, and main.cpp calls it right after). Never writes.
 void LoadSettings();
 // Writes the file when a setter or row marked it dirty and the text now differs from what was last
 // read or saved.

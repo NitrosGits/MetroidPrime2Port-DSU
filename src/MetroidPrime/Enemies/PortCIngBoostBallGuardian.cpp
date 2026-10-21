@@ -12,6 +12,8 @@
 // four-to-twelve-instruction bodies, so they are real rather than stand-ins.
 #include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp"
 
+#include "Collision/CCollisionInfoList.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -193,6 +195,7 @@ void BgStandIn(const char* what) { StandIn(what); }
 // the stack arguments at 0x0000ECBC..0x0000ECC8). The path searches are fn_30_EC6C's own calls:
 // CPFArea null, flags 0x301, the patterned info's pathfinding index (+0xEC), radii 1.0f (rodata_64)
 // and region 0 (0x0000ED14..0x0000ED24).
+// @ fn_30_EC6C
 CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& name,
                                              const CEntityInfo& info, const CTransform4f& xf,
                                              const CModelData& modelData,
@@ -202,7 +205,7 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
                                              const CBoostBallGuardianData& boost)
 : CPatterned(static_cast< EPatternedAI >(0x19), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
-, mData(data)      // guest 0x7C0, copied by fn_30_1056C
+, mData(data)      // guest 0x7C0, fn_30_1056C (0x0000ECEC): a memberwise copy, the host's implicit one
 , mForm(2)         // 0x0000ED00
 , mDesiredForm(-1) // 0x0000ED10
 , mPathFindSearch(nullptr, 0x301, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0,
@@ -212,10 +215,8 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mCollisionActorManager1(nullptr)       // 0x0000ED40
 , mSurfaceAlignment()                    // 0x0000ED44
 , mIngSpotPathFindNavigation()           // 0x0000ED4C
-, mBoost(boost)                          // guest 0xDEC, copied by fn_30_10250
-, mVulnerability(mBoost.mVulnerability)  // 0x0000FD48 builds a CWeaponTypeVulnerability-derived
-                                         // CDamageVulnerability; its source is still open, this
-                                         // uses the boost ball's until the asm says otherwise
+, mBoost(boost) // guest 0xDEC, fn_30_10250 (0x0000ED98): a memberwise copy, the host's implicit one
+, mTouchBox(CAABox::MakeNullBox()) // 0x0000ED58..0x0000ED94: guest 0xDD0 = mskNullBox, 0xDE8 = 1
 , mHostId(kInvalidUniqueId)
 , mPossessedEffectId(kInvalidUniqueId)
 , mSwarmEffect(BgOptionalPart(data.mSwarm.mPART))
@@ -233,6 +234,9 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mDeathEffect(BgOptionalPart(data.mIngSpot.GetDeathEffect()))
 , mMiniPortalEffect(BgOptionalPart(data.mMiniPortal.mEffect))
 , mSplatEffect(BgOptionalPart(data.mBodyProjectile.mSplatEffect))
+, mBoostNormalHitEffect(BgOptionalPart(boost.mHitNormalDamage))
+, mBoostHeavyHitEffect(BgOptionalPart(boost.mHitHeavyDamage))
+, mCollarSegId(BgArmSegId(modelData, "Collar_SDK")) // 0x0000FFAC: rodata_12C+0x635
 , mEyeSegId(BgHeadSegId(modelData))
 , mRightShoulderSegId(BgArmSegId(modelData, "R_shoulder"))
 , mRightElbowSegId(BgArmSegId(modelData, "R_elbow"))
@@ -245,22 +249,23 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mLineOfSight(uid, mEyeSegId, 0.1f, 0.05f)
 , mTargetPos(CVector3f::Zero())
 , mSurfaceMoveDir(CVector3f::Zero())
-, mPortalPlaneNormal(CVector3f::Zero())
-, mPortalPlaneConstant(0.f)
+, mPortalPlaneNormal(CVector3f::Zero()) // set in the body (0x0000FCA8)
+, mPortalPlaneConstant(0.f)               // set in the body (0x0000FCFC)
 , mSwipeArm(-1)
 , mModelScale(modelData.GetScale())
 , mMiniPortalCount(0)
 , mMiniPortalPositions()
 , mMiniPortalIndex(-1)
-, mHeardShotTime(0.f)
-, mUnderFireTime(0.f)
-, mArmSwipeTime(0.f)
-, mFormTime(0.f)
-, mBodyState5Time(0.f)
-, mFrustrationTimer(0.f)
+, mHeardShotTime(1.5f)    // 0x0000FD74: 0x11AC = rodata_98 (1.5)
+, mUnderFireTime(0.75f)   // 0x0000FD84: 0x11B0 = rodata_FC (0.75)
+, mArmSwipeTime(1.f)      // 0x0000FD94: 0x11B4 = rodata_64 (1.0)
+, mFormTime(0.f)          // 0x0000FD98: 0x11B8 = rodata_70
+, mBodyState5Time(0.f)    // 0x0000FD9C: 0x11BC
+, mFrustrationTimer(0.f)  // 0x0000FDA0: 0x11C0
 , mBallCooldown(0.f)
 , mHitReactionTime(0.f)
-, mLightBlend(0.f)
+, mInitialSpeed(mSpeed) // ctor 0x0000FD4C/0x0000FD64
+, mLightBlend(1.f) // ctor 0x0000FDA4: 0x11C4
 , mDeadFade(0.f)
 , mBodyProjectileTime(0.f)
 , mCollidedWithCrystal(false)
@@ -272,24 +277,38 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mBoostPuddleGenerate(false) // ctor 0x0000FEF0: 0x11EE 0x04 = 0
 , mReflectVulnerability(false) // ctor 0x0000FEFC: 0x11EE 0x02 = 0
 , mBoostPuddleAllowed(true)    // ctor 0x0000FF2C: 0x11EF 0x20 = 1
+, mBodyHitsLethal(true)        // ctor 0x0000FF38: 0x11EF 0x10 = 1
+, mBoost11EF_40(false)         // ctor 0x0000FF20: 0x11EF 0x40 = 0
 , mBoostChildId(kInvalidUniqueId)
+, mIngBlobTrackerId(kInvalidUniqueId)
+, mBoostBlobTrackerId(kInvalidUniqueId)
+, mHitLightId(kInvalidUniqueId)
+, mBoostAimPos(CVector3f::Zero())   // ctor 0x0000FD10
+, mBoostSpawnPos(CVector3f::Zero()) // ctor 0x0000FD28
+, mVulnerability(CWeaponTypeVulnerability(100.f, CWeaponTypeVulnerability::kE_Immune,
+                                          false)) // 0x0000FCC0-0x0000FD48: rodata_CC, 3, 0
 , mBoostNavPointId(kInvalidUniqueId)
 , mBoostNavPointId2(kInvalidUniqueId)
 , mBoostTimer(0.f)
 , mBoost11D4(0.f)                                       // ctor 0x0000FDC4
 , mBoost11D8(0.f)                                       // ctor 0x0000FDC8
+, mBoost11E0(0.f)                                       // ctor 0x0000FDD0
+, mBoostHitTimer(0.f)                                   // ctor 0x0000FB70
+, mSafeZoneCount(0)                                     // ctor 0x0000FD08
 , mBoostPuddleModeTimer(mBoost.mPhase0.mBoostPuddleModeTime) // ctor 0x0000FDDC: *(0x11D0)+0
 , mBoostRandomFloat(0.f)
 , mPhaseIndex(0)
 , mAggressive(false)
+, xE5C_1(false) // ctor 0x0000FE24: 0x11EC 0x04 = 0
 , mFoundMovementPos(true) // ctor 0x0000FE0C: 0x11EC 0x10 = 1
 , mRecalcPath(false)
 , mTakeOff(false)
-, mStartAsIngSpot((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) // ctor 0x0000FE60: data 0x80
+, mIngSpotBlobVisible((mData.mFlags210 & kFlag_StartAsIngSpot) != 0) // ctor 0x0000FE60: data 0x80
 , mMoving(false)
 , mGrappled(false)
 , mProjectileFSMEntry(false)
 , mSplat(false)
+, mSplatNormal(CVector3f::Zero()) // ctor 0x0000FC58: 0x1104
 , mHurtfulZone(false)
 , mPortalPlane(false)
 , mRenderModel(true) // ctor 0x0000FE3C: 0x11EC 0x01 = 1 (Render's 0x0000D408 test)
@@ -304,9 +323,14 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mPathArea(nullptr)
 , mDebugPoll(0)
 {
+  // 0x1120 = Normalize(rodata_70 = 0, rodata_70, rodata_64 = 1) (0x0000FC3C/0x0000FC44, 0x0000FC94),
+  // 0x112C = Dot(translation (0x54), 0x1120) (0x0000FCD8..0x0000FCFC).
+  CVector3f planeNormal(0.f, 0.f, 1.f);
+  planeNormal.Normalize();
+  mPortalPlaneNormal = planeNormal;
+  mPortalPlaneConstant = CVector3f::Dot(GetTranslation(), mPortalPlaneNormal);
   // The retail constructor turns knock-back physics off on CPatterned's own manager
-  // (@0x0000FF40) and leaves the shadow off; everything else it builds - the locator segment ids
-  // at 0x10AC, the nine locked tokens at 0x0FDC and the line-of-sight tracker at 0x10B8 - belongs
+  // (@0x0000FF40) and leaves the shadow off; everything else it builds - the nine locked tokens at 0x0FDC and the line-of-sight tracker at 0x10B8 - belongs
   // to the state machine and the render paths this milestone does not enter.
   KnockBackController().EnableKnockBackPhysics(false);
   SetDrawShadow(false);
@@ -328,6 +352,15 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
   }
 }
 
+// fn_30_E5EC: no body of its own, only the member teardown, last-declared first: the
+// vulnerability at 0x1178 (0x0000E620), the connected-ids vector at 0x109C (0x0000E62C, fn_30_E4EC),
+// the nine optional tokens 0x1060 down to 0xFDC (0x0000E658..0x0000E7B8), the boost data at 0xDEC
+// (0x0000E7C4, fn_30_5E4), the surface helper at 0xD68 (0x0000E7D0, fn_30_EACC), the managers
+// 0xD64 then 0xD60 (0x0000E7E4/0x0000E7F8, single_ptr), the data at 0x7C0 (0x0000E80C/0x0000E818),
+// then CPatterned (0x0000E824, fn_30_E854). The host header declares the members in that order, so
+// the implicit teardown is retail's; the rest (path searches, line of sight, ids) is trivial in both.
+// Unload checked with every token engaged and, under a temporary hook, all nine absent.
+// @ fn_30_E5EC
 CIngBoostBallGuardian::~CIngBoostBallGuardian() {}
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
@@ -339,16 +372,30 @@ void CIngBoostBallGuardian::EnsureBodyActive(CStateManager& mgr) {
     BodyController()->Activate(mgr, pas::kAS_Invalid);
   }
 }
-// vtable slot 31 = fn_30_C850 (0x1c8): what the boost ball hits.
+// @ fn_30_C850
+// The body projectile splats on the first contact whose left material is level geometry: the
+// contact's normal is kept (0x1104) for SplatOntoMesh and ProjectileSplat fires (0x11ED 0x01).
 void CIngBoostBallGuardian::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                          CStateManager& mgr) {
-  StandIn("CIngBoostBallGuardian::CollidedWith (vtable slot 31, fn_30_C850)");
   CPatterned::CollidedWith(id, list, mgr);
+  if (mForm != kForm_BodyProjectile) { // 0xAE4
+    return;
+  }
+  static const CMaterialList kSplatMaterials(kMT_Ceiling, kMT_Wall, kMT_Floor, kMT_Solid);
+  for (int i = 0; i < list.GetCount(); ++i) {
+    const CCollisionInfo& info = list[i];
+    if (info.GetMaterialLeft().SharesMaterials(kSplatMaterials)) {
+      mSplatNormal = info.GetNormalLeft(); // 0x0000C9D8
+      mSplat = true;                       // 0x0000C9E8: 0x11ED 0x01
+      return;
+    }
+  }
 }
 
 // vtable slot 58 = fn_30_C6CC (0x8c): CPatterned's own setup, then the three name tables are
 // handed to the machine - lbl_30_data_250 (49 triggers), lbl_30_data_6B0 (28 states) and
 // lbl_30_data_8DC (9 codes). That is the module's FSM, and it is installed here.
+// @ fn_30_C6CC
 void CIngBoostBallGuardian::SetupStateMachine(CStateManager& mgr) {
   CPatterned::SetupStateMachine(mgr);
   // The three tables the REL hands the machine (the 49 triggers, the 28 states and the 9 code
@@ -365,6 +412,7 @@ void CIngBoostBallGuardian::SetupStateMachine(CStateManager& mgr) {
 
 // vtable slot 67 = fn_30_3C: stores kInvalidUniqueId, i.e. the actor never reports an attack
 // target through this accessor.
+// @ fn_30_3C
 TUniqueId CIngBoostBallGuardian::GetAttackTarget() const { return kInvalidUniqueId; }
 
 CEntity* CIngBoostBallGuardian::TypesMatch(int typeId) const {
@@ -374,9 +422,69 @@ CEntity* CIngBoostBallGuardian::TypesMatch(int typeId) const {
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_30_130) and entry points.
 
+// fn_30_130. Its property switch reads the five ids of the generated .inc (0x255a4580 editor,
+// 0xb3774750 patterned, 0x7e397fed actor, 0x22e574aa -> fn_30_2344, 0x78656d1e -> fn_30_1988),
+// unknown ids skipped by size. The block's default constructor is fn_30_1540: the editor/
+// patterned/actor constructors, fn_30_2CCC (Ing block, SLdr+0x2F8) and fn_30_160C (boost block,
+// SLdr+0x594), then the patterned overrides the generated constructor also makes (turnSpeed 360
+// 0x00001598, minAttackRange 0 0x000015B0, health 150 / knockback resistance 2 0x000015C0/
+// 0x000015C8, creatureSize 1 0x000015D0), the actor's ambient white (0x000015F0) and visor flags
+// 0xF (0x000015F4), which are already the struct defaults, and isEchoEmitter (below). The
+// constructors' floats and ints agree with the generated header field for field (checked
+// against rodata); the differences are set below.
+// The three property readers are the generated header's inline LoadTypedef* functions, checked id
+// by id against the REL's switch trees (ids, store offset order and reader type all agree):
+// fn_30_2344 = LoadTypedefIngBoostBallGuardianData (55 ids), fn_30_1988 =
+// LoadTypedefBoostBallGuardianData (31 ids; the spline case is CMayaSpline(input, size) plus the
+// assignment fn_30_1F08/1FB4/2094) and fn_30_20A0 = LoadTypedefIngBoostBallGuardianStruct (14 ids).
+// The data the loader then builds: fn_30_10C24 (Ing block: fn_30_10694 copies SLdr+0..0xEF, then
+// vulnerability SLdr+0x140, damage infos +0xE0/+0x88/+0x98, the flag byte = PackBgDataFlags) and
+// fn_30_748 (boost block, from the args at 0x0000039C-0x00000468; its field order differs from
+// the host's - trail/shield/charge-up at data+0xA8/0xAC/0xB0 - but every value lands in the
+// field named for its property; unknown_0x7b21e31a, SLdr+0x7C, is never passed). The phases are
+// fn_30_18F0 -> fn_30_194C, the 14 fields in declaration order, which is the `phase` lambda.
+// @ fn_30_130
+// @ fn_30_1540
+// @ fn_30_2CCC
+// @ fn_30_160C
+// @ fn_30_2344
+// @ fn_30_1988
+// @ fn_30_20A0
+// @ fn_30_10C24
+// @ fn_30_748
+// @ fn_30_18F0
+// @ fn_30_194C
 static CEntity* PortLoadIngBoostBallGuardian(CStateManager& mgr, CInputStream& input,
                                              CEntityInfo& info) {
   SLdrIngBoostBallGuardian sldrThis;
+  // fn_30_1540 0x000015DC: stb 1 at SLdr+0x26C = patterned+0x230, echoParameters.isEchoEmitter
+  // (the generated SLdrEchoParameters default is false).
+  sldrThis.patterned.echoParameters.isEchoEmitter = true;
+  // The sound ids default to -1 (no sound, 0xffff in the data's ushorts), not the header's 0:
+  // fn_30_2CCC stores li -1 at Ing SLdr+0x2C..0x3C (0x00002CF8-0x00002D08), +0x60..0x70
+  // (0x00002D1C-0x00002D2C), +0xC4/+0xC8 (0x00002D48/0x00002D4C) and +0xDC (0x00002D54);
+  // fn_30_160C at boost SLdr+0x90..0xA4 (0x0000166C-0x00001680). As in PortLoadIng.
+  SLdrIngBoostBallGuardianData& ingDefaults = sldrThis.guardianProperties;
+  ingDefaults.sound_IngSpotIdle = -1;
+  ingDefaults.sound_IngSpotMove = -1;
+  ingDefaults.sound_HitNormalDamage = -1;
+  ingDefaults.sound_HitHeavyDamage = -1;
+  ingDefaults.sound_IngSpotDeath = -1;
+  ingDefaults.sound_SwarmMove = -1;
+  ingDefaults.sound_InsideHost = -1;
+  ingDefaults.sound_ExitHost = -1;
+  ingDefaults.sound_ExitHostSafeZone = -1;
+  ingDefaults.sound = -1;
+  ingDefaults.sound_BodyProjectile = -1;
+  ingDefaults.sound_BodyProjectileSplatWall = -1;
+  ingDefaults.sound_MiniPortal = -1;
+  SLdrBoostBallGuardianData& boostDefaults = sldrThis.boostBallGuardian;
+  boostDefaults.sound_Bounce = -1;
+  boostDefaults.sound_IntoBall = -1;
+  boostDefaults.sound_OutofBall = -1;
+  boostDefaults.sound = -1;
+  boostDefaults.sound_Boost = -1;
+  boostDefaults.sound_Rolling = -1;
 #include "MetroidPrime/ScriptLoader/SLdrIngBoostBallGuardian.inc"
 
   rstl::optional_object< CModelData > modelData(LdrToModelData(
@@ -449,13 +557,14 @@ static CEntity* PortLoadIngBoostBallGuardian(CStateManager& mgr, CInputStream& i
 
   const CBoostBallGuardianData boost(
       boostSldr.boostBallScale, boostSldr.boostBallMass, boostSldr.unknown_0xbea96fb7,
-      boostSldr.boostBallMinDamageSpeed, boostSldr.unknown_0x7b21e31a, boostSldr.boostBallModel,
+      boostSldr.boostBallSpeed, boostSldr.boostBallMinDamageSpeed, boostSldr.unknown_0x7b21e31a, boostSldr.boostBallModel,
       boostSldr.boostBallChargeUpEffect, boostSldr.boostBallShieldEffect,
       boostSldr.boostBallTrailEffect, static_cast< ushort >(boostSldr.sound_Bounce),
       static_cast< ushort >(boostSldr.sound_IntoBall),
       static_cast< ushort >(boostSldr.sound_OutofBall),
       static_cast< ushort >(boostSldr.sound), static_cast< ushort >(boostSldr.sound_Boost),
       static_cast< ushort >(boostSldr.sound_Rolling),
+      1000.f, 1.f, // fn_30_748 0x000008E8/0x000008EC: lbl_30_rodata_68, lbl_30_rodata_64
       LdrToDamageVulnerability(boostSldr.boostBallVulnerability), boostSldr.unknown_0xee69b993,
       boostSldr.unknown_0x4b2de673, boostSldr.searchConeAngle, boostSldr.unknown_0xb0e85d53,
       LdrToDamageInfo(boostSldr.boostBallDamageToMorphBall),
@@ -485,3 +594,31 @@ void RELMain() {
 }
 
 void RELExit() { SetSIngBoostBallGuardian_FuncPtrs(nullptr); }
+
+// Module copies of generic code, the host's own templates and runtime (cited, no markers):
+// fn_30_90: CActor's const HealthInfo() weak inline, forwarding to vslot 12 (0x000000A0).
+// fn_30_9E0, fn_30_A24, fn_30_A8C, fn_30_AAC, fn_30_F30: rstl vector<phase> copy/construct chain (-> fn_30_F78).
+// fn_30_B84, fn_30_CB4, fn_30_D60, fn_30_10E04, fn_30_10EA8, fn_30_10F40, fn_30_1105C: rstl vector allocate/copy/reserve.
+// fn_30_4C10, fn_30_4C30, fn_30_4DF8, fn_30_4E30, fn_30_37E0, fn_30_3838, fn_30_890C, fn_30_E4E0: rstl construct/destroy/clear.
+// fn_30_136B0, fn_30_136FC: rstl vector insert (the ball's near list).
+// fn_30_B30, fn_30_FEC, fn_30_18B4, fn_30_C46C, fn_30_CE14, fn_30_101A8, fn_30_104F4, fn_30_10530: weak deleting dtors.
+// fn_30_1078 (vulnerability + SLdr), fn_30_1049C (CCollisionActorManager), fn_30_1360 (CAnimData), fn_30_13C4 (CModelData),
+//   fn_30_D8D8 (SLdrPlasmaBeamInfo): unreferenced weak deleting dtors.
+// fn_30_12A0, fn_30_130C, fn_30_946C, fn_30_94D4, fn_30_E540, fn_30_E598, fn_30_101E4: weak CToken-holder deleting dtors.
+// fn_30_3790, fn_30_4D18 (string), fn_30_941C (wstring): weak rstl string deleting dtors.
+// fn_30_6B74, fn_30_7D00, fn_30_84C4, fn_30_A308, fn_30_A8C0, fn_30_AFE0: compiler deleting dtors of the state functors
+//   (vtables lbl_30_data_BF0 base, BE4/BD8/BCC/BC0/BB4).
+// fn_30_15FF4, fn_30_16088, fn_30_160A8: unreferenced weak code in the ball's section.
+// fn_30_4028: an unreferenced accessor (lwz 0x254); fn_30_5260: unreferenced Separation steering (no .text/.data
+//   reference), dead in retail; the host's ApplySeparation is the live one.
+// fn_30_100: the REL runtime's RELMain installer (above).
+// fn_30_E854 (CPatterned teardown), fn_30_EA38 (its token member), fn_30_EACC, fn_30_EB24, fn_30_EB7C, fn_30_EBD4
+//   (the CSurfaceAlignmentHelper chain): inline dtors of DOL classes, the host's own.
+// fn_30_33B0 (CRayCastResult, fn_30_324C), fn_30_388C (CHealthInfo, fn_30_3478/fn_30_4924), fn_30_6710 (CLight,
+//   fn_30_65C8), fn_30_161D0 (CMotionState from zero vectors and identity CAxisAngles, ball ctor): DOL class copies.
+// fn_30_11DF0, fn_30_127C0: weak deleting dtors (ball section); fn_30_1642C: rstl vector reserve (Ball.cpp).
+// Loader helpers (fn_30_130, cited, no markers): fn_30_5E4/69C/6F4 (data-block dtor chain), fn_30_10DC/
+//   111C/113C/1164 (the model data's token vector copy + Lock: LdrToModelData's optional), fn_30_1424/
+//   14AC/2C44 (SLdr block dtors), fn_30_1F08/1FB4/2094 (CMayaSpline assignment in fn_30_1988), fn_30_10250/
+//   1056C/10694/108D4/10B90 (data memberwise copies, the host's implicit ones), fn_30_110C4 (.ctors: the
+//   FSM name tables, static arrays in PortCIngBoostBallGuardianFsm.cpp).

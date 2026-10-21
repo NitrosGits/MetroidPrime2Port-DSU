@@ -112,10 +112,10 @@ complete and section 3 sizes are computable.
 | 0x1114 | 4 | float `sZeroVector__9CVector3f[1]` (0.0f) | [0x0000FC78] |
 | 0x1118 | 4 | float `sZeroVector__9CVector3f[2]` (0.0f) | [0x0000FC80] |
 | 0x111C | 4 | -1 | [0x0000FC84] |
-| 0x1120 | 4 | float: x of `Normalize__9CVector3fFv` of (1.0f, 0.1f, 0.05f) | [0x0000FCA8] |
+| 0x1120 | 4 | float: x of `Normalize__9CVector3fFv` of (0.0f, 0.0f, 1.0f) (rodata_70, rodata_70, rodata_64; `mPortalPlaneNormal`) | [0x0000FCA8] |
 | 0x1124 | 4 | float: y of that normalized vector | [0x0000FCC8] |
 | 0x1128 | 4 | float: z of that normalized vector | [0x0000FCD4] |
-| 0x112C | 4 | float: dot of the 3 floats at this+0x54/0x58/0x5C with the normalized dir | [0x0000FCFC] |
+| 0x112C | 4 | float: dot of the translation (this+0x54/0x58/0x5C) with the normalized dir (`mPortalPlaneConstant`) | [0x0000FCFC] |
 | 0x1130 | 4 | 0 | [0x0000FD00] |
 | 0x1158 | 4 | -1 | [0x0000FD04] |
 | 0x115C | 4 | 0 | [0x0000FD08] |

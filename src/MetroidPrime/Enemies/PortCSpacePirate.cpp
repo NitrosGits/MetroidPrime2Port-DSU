@@ -665,7 +665,8 @@ bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
   return --x8fc_frenzyFrames >= 0;
 }
 
-// Where the pirate looks and aims: its target, or a point ahead if the target is gone.
+// @ fn_72_CB30 (0x150): where the pirate looks and aims - its target, or a point ahead if the
+// target is gone.
 CVector3f CSpacePirate::GetTargetPos(CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(mAttackTarget);
   if (const CPlayer* player = TCastToPtr< CPlayer >(entity)) {
@@ -1182,7 +1183,7 @@ void CSpacePirate::SetVelocityForJump() {
   x8fa_29_ = true;
 }
 
-// Retail fn_72_38E4 (PreRender): the ragdoll pre-renders instead of the model while a ragdoll is
+// @ fn_72_38E4 (PreRender): the ragdoll pre-renders instead of the model while a ragdoll is
 // live; then the patterned pre-render, the bone tracking and the ik chain.
 void CSpacePirate::PreRender(CStateManager& mgr) {
   // 0x3900: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3918 calls the ragdoll's own
@@ -1201,7 +1202,7 @@ void CSpacePirate::PreRender(CStateManager& mgr) {
   // set in the port and the retail's word is undefined, so that stays a comment.
 }
 
-// Retail fn_72_4F28: an equipped weapon of type 1 with a valid launcher model gives the pirate the
+// @ fn_72_4F28 (0x9C): an equipped weapon of type 1 with a valid launcher model gives the pirate the
 // launcher's static model at the body model's scale.
 void CSpacePirate::InitLauncherModel(const CSpacePirateData& data) {
   TraceCall(*this, "InitLauncherModel (fn_72_4F28) weapon", data.mEquippedWeapon);
@@ -1215,7 +1216,7 @@ void CSpacePirate::InitLauncherModel(const CSpacePirateData& data) {
   }
 }
 
-// Retail fn_72_36CC: draws the launcher model at the R_wrist locator inside the actor's render
+// @ fn_72_36CC (0xF8): draws the launcher model at the R_wrist locator inside the actor's render
 // alpha buffer pass.
 void CSpacePirate::RenderLauncherModel(const CStateManager& mgr, const CTransform4f& xf,
                                        const CModelFlags& flags) const {
@@ -1238,7 +1239,7 @@ void CSpacePirate::RenderLauncherModel(const CStateManager& mgr, const CTransfor
   }
 }
 
-// Retail fn_72_37C4 (Render): the space warp while warping in, the scoped time provider, the
+// @ fn_72_37C4 (Render): the space warp while warping in, the scoped time provider, the
 // portal plane, the patterned render and the launcher model.
 void CSpacePirate::Render(const CStateManager& mgr) const {
   // 0x37E0: the seconds mod 900 while alive (0x420 bit 0x40), else 0 (rodata B9C).
@@ -1380,7 +1381,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 
 } // namespace
 
-// Retail fn_72_F0A0: CPatterned's tables first, then its own 39 triggers (0x27) and 37 states
+// @ fn_72_F0A0 (0x6C): CPatterned's tables first, then its own 39 triggers (0x27) and 37 states
 // (0x25). The state bodies live in PortCSpacePirateStates.cpp, the triggers in
 // PortCSpacePirateTriggers.cpp.
 void CSpacePirate::SetupStateMachine(CStateManager& mgr) {
@@ -1399,7 +1400,7 @@ void CSpacePirate::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
   mAttackRemTime = 0.f;       // 0xE150 stfs 0, 0xa90 (rodata B9C)
 }
 
-// Retail fn_72_3A0C (PreRenderAllViewports): with a live ragdoll the ragdoll renders instead of
+// @ fn_72_3A0C (PreRenderAllViewports): with a live ragdoll the ragdoll renders instead of
 // the model and the portal system is updated; otherwise the patterned path.
 void CSpacePirate::PreRenderAllViewports(CStateManager& mgr) {
   // 0x3A28: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3A50 renders the ragdoll
@@ -1426,7 +1427,7 @@ const CDamageVulnerability* CSpacePirate::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
-// Retail fn_72_3A88: a tail call through the vtable slot 0x40, which for CSpacePirate is the
+// @ fn_72_3A88: a tail call through the vtable slot 0x40, which for CSpacePirate is the
 // no-argument GetDamageVulnerability (fn_72_3AB4) - the three arguments are not read.
 const CDamageVulnerability* CSpacePirate::GetDamageVulnerability(const CVector3f& position,
                                                                  const CVector3f& direction,
@@ -1434,7 +1435,7 @@ const CDamageVulnerability* CSpacePirate::GetDamageVulnerability(const CVector3f
   return GetDamageVulnerability();
 }
 
-// Retail fn_72_17C8 (GetTouchBounds): the ragdoll's own bounds while a ragdoll is live, otherwise
+// @ fn_72_17C8 (GetTouchBounds): the ragdoll's own bounds while a ragdoll is live, otherwise
 // the actor's bounding box (fn_72_1854).
 rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
   // 0x17DC-0x1834: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set and bit 0x80 clear, the
@@ -1581,7 +1582,7 @@ CAABox CSpacePirate::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return local.GetTransformedAABox(xf);
 }
 
-// Retail fn_72_339C (ScanVisorRender): the body model with the scan flags and no lights, then the
+// @ fn_72_339C (ScanVisorRender): the body model with the scan flags and no lights, then the
 // launcher model.
 void CSpacePirate::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                    const CModelFlags& flags) const {

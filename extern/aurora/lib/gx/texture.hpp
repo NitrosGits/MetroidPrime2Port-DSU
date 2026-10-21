@@ -26,6 +26,9 @@ const TextureStats& texture_stats() noexcept;
 namespace texture {
 constexpr uint64_t ContentCacheBudgetBytes = 128ull * 1024ull * 1024ull;
 constexpr uint64_t ObjectCacheIdleFrames = 600;
+// Port: a palette conversion of an EFB copy is render-scale RGBA8 (~24 MB at 3195x1864) and is
+// re-made from its copy texture on demand, so it is not kept for the full object idle time.
+constexpr uint64_t DynamicPaletteIdleFrames = 8;
 constexpr bool AsyncTextureReplacements = true;
 constexpr uint32_t ReplacementThumbnailDim = 64;
 constexpr uint64_t ReplacementPublishBudgetBytes = 12ull * 1024ull * 1024ull;

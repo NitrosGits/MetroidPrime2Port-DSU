@@ -5,11 +5,13 @@
 #include "REL/REL_Setup.h"
 
 #ifdef TARGET_PC
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/SObjectTag.hpp"
 #include "MetroidPrime/CBoneTracking.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 
@@ -170,9 +172,10 @@ struct CCommandoPirateData {
   CCommandoPirateGrenadeData mGrenade; // guest +0x68 (0x70), fn_9_EDC0 @0x0000E934
   CCommandoPirateShieldData mShield;   // guest +0xD8 (0x84), fn_9_EDC0 @0x0000E938
   // guest +0x15c / +0x15d: the guest packs eight and four bits of the "sound" property into these
-  // bytes (fn_9_EDC0 @0x0000EED4..0x0000EF60); the bit map is in the analysis note.
-  uchar mFlags0;
-  uchar mFlags1;
+  // bytes (fn_9_EDC0 @0x0000EED4..0x0000EF60); the bit map is in the analysis note. The block
+  // starts at guest +0x7C0, so the two bytes are the object's bytes at +0x91C and +0x91D.
+  uchar mFlags0;  // 0x15c (guest this+0x91c)
+  uchar mFlags1;  // 0x15d (guest this+0x91d)
 };
 #endif
 
@@ -322,10 +325,39 @@ private:
   // fn_9_19D8: the module's team helper - the commando joins the team of its area.
   void x19D8_JoinTeam(CStateManager& mgr);
 
+  // fn_9_662C: the module's per-frame helper - it advances the module's timers and flag bits.
+  void x662C_UpdateTimers(CStateManager& mgr, float dt);
+
+  // fn_9_3338: the module's jump-back helper - is the point behind the actor clear?
+  bool x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f& dir, float distance) const;
+
+  // fn_9_3678: the module's dodge picker - which side (left or right) can the commando dodge into?
+  int x3678_PickDodgeDirection(CStateManager& mgr) const;
+
+  // fn_9_4BC0: the module's sound emitters - the two handles the guest keeps at guest this+0xC04
+  // and this+0xC38 follow the actor.
+  void x4BC0_UpdateEmitters();
+
+  // fn_9_57A0: the module's shot - the burst fire's projectile, aimed at the target.
+  bool x57A0_FireShot(CStateManager& mgr, float dt);
+
+  // fn_9_3090: the module's drowning - the commando dies when its head is under water.
+  void x3090_Drown(CStateManager& mgr);
+
+  // fn_9_4D84: the module's aim helper - the additive aim command and the aim direction.
+  void x4D84_UpdateAim(CStateManager& mgr);
+
+  // fn_9_4CA4: the module's helper the aim helper asks first - may the actor aim now?
+  bool x4CA4_CanAim();
+
   // fn_9_1A9C: the module's own helper, called by the PathFind state after the path find
   // navigation runs. It walks the listening-AI object list and steers away from the other
   // listening AIs of the same area.
   void x1A9C_AvoidActors(CStateManager& mgr);
+
+  // fn_9_6390: the module's burst-fire helper - the shot timer, the burst fire and the
+  // intra-burst shot time.
+  void x6390_UpdateBurstFire(CStateManager& mgr, float dt);
 
   // Host layout. The guest offsets are the REL's; the host layout is its own and does not need to
   // match (host objects outgrow retail). A raw member is named after the offset it stands for
@@ -342,19 +374,37 @@ private:
   CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
   CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
   uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
+  CBurstFire mBurstFire;                  // 0xaf0, the module's burst fire (fn_9_D904 @0x0000DA78)
   float xb7c_;                            // 0xb7c, the cooldown since the last melee attack
   float xb5c_;                            // 0xb5c, 0.f from the ctor (fn_9_D904 @0x0000DABC)
+  uint xb50_;                             // 0xb50, a counter; fn_9_6390 raises it
+  uint xb58_;                             // 0xb58, a counter; fn_9_6390 raises it
   float xb60_;                            // 0xb60, 1.5f from the ctor (fn_9_D904 @0x0000DACC)
   float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites
+  float xb68_;                            // 0xb68, a timer; fn_9_662C advances it
+  float xb6c_;                            // 0xb6c, a timer; fn_9_662C advances it
+  float xb70_;                            // 0xb70, a timer; fn_9_662C advances it
+  float xb74_;                            // 0xb74, a timer; fn_9_662C advances it
+  float xb78_;                            // 0xb78, a timer; fn_9_662C advances it
+  float xb84_;                            // 0xb84, a timer; fn_9_662C advances it
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
+  int xc4c_;                               // 0xc4c, the module's own state word; -1 when unset
+  float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
+  float xc00_;                            // 0xc00, a float; fn_9_3090 sets 0.01f
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
   TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
+  int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
+  float xbe0_;                           // 0xbe0, the jump-back distance; fn_9_D904 @0x0000E61C
+  float xbe4_;                           // 0xbe4, a distance; fn_9_D904 @0x0000E56C
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
+  TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
+  CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
+  CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
   CSegId mLocatorMidLaunch;               // 0xc5d, "Mid_Launch_LCTRL" (fn_9_D904 @0x0000E2D0)
   CSegId mLocatorGun;                     // 0xc5e, "gun_LCTR" (fn_9_D904 @0x0000E304)

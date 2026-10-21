@@ -188,18 +188,18 @@ The table is `.data 0x380..0x450` (13 entries); the records are in `.data 0x2E4.
 |---|---|---|---|---|---|
 | 0 | SetPlayerFaceTarget | `fn_14_1560C` | 15 | EnableDynamicCollision | `fn_14_14828` |
 | 1 | ResetProjectileAttackTimes | `fn_14_15598` | 16 | DisableDynamicCollision | `fn_14_14664` |
-| 2 | SelectProjectileAttack | `fn_14_15448` | 17 | EnableValidTarget | `fn_14_145A4` |
-| 3 | SetPlatformPosition | `fn_14_153D0` | 18 | DisableValidTarget | `fn_14_14470` |
-| 4 | SetStunnedPosition | `fn_14_15284` | 19 | SelectDeathHeadAttack | `fn_14_143D8` |
-| 5 | SeekLineOfSight | `fn_14_1524C` | 20 | SetInitialAttackPosition | `fn_14_14254` |
-| 6 | DropShields | `fn_14_15054` | 21 | SetAttackPosition | `fn_14_14248` |
-| 7 | RaiseShields | `fn_14_14F74` | 22 | ResetGravityRepulsorHP | `fn_14_14058` |
-| 8 | ExtractAntenna | `fn_14_14E78` | 23 | EjectPlayerFromBombPit | `fn_14_13F70` |
-| 9 | ExtractEchoTargets | `fn_14_14CF4` | 24 | GrabPlayerHintControl | `fn_14_13F0C` |
-| 10 | RetractEchoTargets | `fn_14_14DA0` | 25 | SetVulnerableToDamage | `fn_14_13EB8` |
-| 11 | DestroyActiveSplitters | `fn_14_14C24` | 26 | SetImmuneToDamage | `fn_14_13C6C` |
-| 12 | StartSplitterDeployment | `fn_14_14B98` | 27 | SelectRetreatPlatform | `fn_14_13C1C` |
-| 13 | EndSplitterDeployment | `fn_14_14B60` | 28 | StartVocalRecoverReaction | `fn_14_13B38` |
+| 2 | SelectProjectileAttack | `fn_14_15448` | 17 | EnableValidTarget | `fn_14_14604` |
+| 3 | SetPlatformPosition | `fn_14_153D0` | 18 | DisableValidTarget | `fn_14_145A4` |
+| 4 | SetStunnedPosition | `fn_14_15284` | 19 | SelectDeathHeadAttack | `fn_14_14470` |
+| 5 | SeekLineOfSight | `fn_14_1524C` | 20 | SetInitialAttackPosition | `fn_14_143D8` |
+| 6 | DropShields | `fn_14_15054` | 21 | SetAttackPosition | `fn_14_14254` |
+| 7 | RaiseShields | `fn_14_14F74` | 22 | ResetGravityRepulsorHP | `fn_14_14248` |
+| 8 | ExtractAntenna | `fn_14_14E78` | 23 | EjectPlayerFromBombPit | `fn_14_14058` |
+| 9 | ExtractEchoTargets | `fn_14_14CF4` | 24 | GrabPlayerHintControl | `fn_14_13F70` |
+| 10 | RetractEchoTargets | `fn_14_14DA0` | 25 | SetVulnerableToDamage | `fn_14_13F0C` |
+| 11 | DestroyActiveSplitters | `fn_14_14C24` | 26 | SetImmuneToDamage | `fn_14_13EB8` |
+| 12 | StartSplitterDeployment | `fn_14_14B98` | 27 | SelectRetreatPlatform | `fn_14_13C6C` |
+| 13 | EndSplitterDeployment | `fn_14_14B60` | 28 | StartVocalRecoverReaction | `fn_14_13C1C` |
 | 14 | Stage3Start | `fn_14_149F8` | | | |
 
 ## c. Parameters
@@ -485,7 +485,7 @@ the rest are the same base-class symbols as the body's inherited list.
 | 0x101E0-0x11FEC | head weapon spawners: `fn_14_101E0` (annihilator pulse), `fn_14_10A2C` (annihilator charge), `fn_14_10CA0` (the 0x568 `CEnergyProjectile`), `fn_14_111E0` (another 0x568 projectile), `fn_14_114C8`…`fn_14_11EA8` |
 | 0x11FEC-0x126C8 | `fn_14_11FEC` — the "EchoTargetExplosion" effect; **`fn_14_12314` — spawns the echo target** (0x790 `CActor`) |
 | 0x126C8-0x13B38 | head helpers (`fn_14_126C8`, `fn_14_12818`, `fn_14_1303C`, `fn_14_13318` — the 0x18 collision manager, `fn_14_13830`, `fn_14_139C4`) |
-| 0x13B38-0x17468 | **head codes**: `fn_14_13B38` StartVocalRecoverReaction … `fn_14_1560C` SetPlayerFaceTarget (the table order is reversed in address order) |
+| 0x13C1C-0x17468 | **head codes**: `fn_14_13C1C` StartVocalRecoverReaction … `fn_14_1560C` SetPlayerFaceTarget (the table order is reversed in address order) |
 | 0x1561C-0x17298 | **head states**: `fn_14_1561C` Dead … `fn_14_17180` Start |
 | 0x17298-0x17468 | **head triggers**: `fn_14_17298` AllSplittersDead … `fn_14_17454` StateOver |
 | 0x17468-0x174F4 | **`fn_14_17468` SetupStateMachine (head)** |
@@ -962,6 +962,204 @@ and draws with the leg, shin and toe models; the beacon does not draw yet (its h
 above). No "[port] caught" and no reach-stub in the log.
 
 
+**WP2 part 2k done (2026-10-20): the Crippled state and the beacon's arrival.** `fn_14_7CB4`
+(the Crippled state, 0xD8) and `fn_14_28D0` (the beacon's arrival, 0x158) are ported;
+`fn_14_2A28` (the beacon's effect update, 0x29C) stays a stand-in.
+
+`fn_14_7CB4` dispatches on the state message the retail's way (the cmpwi at 0x7CBC against 1 and
+the cmpwi at 0x7CE0 against 0 - the host's `kStateMsg_Update` and `kStateMsg_Activate` have the
+same values): on Update the beacon's update runs (fn_14_2CC4, the call at 0x7D6C) and on
+Activate the knee joint colliders are woken and every collision actor but the guard's is put to
+sleep (the SetActive call at 0x7CF4 and the loop at 0x7D00-0x7D64). The activate path needs the
+collision actor managers at 0xE60 and 0xE64, which the constructor does not build yet, so it is
+a named once-logging stand-in.
+
+`fn_14_28D0` is the beacon's arrival: the guard's collision actor (the uid at 0x10CC) is woken -
+when its flag word's bit 24 is clear (the extrwi at 0x2910 - the byte's bit 7, the mask 0x80 -
+MWCC packs the bitfields from the MSB, so this is the CEntity's **first** bitfield, `mActive`,
+not `mUpdateDuringCinematicSkip`) the `CEntity::SetActive(true)` runs (the vtable slot 0x1C) - the particle generator starts (the CParticleGen's vtable slot 0x2C with the argument
+1, i.e. `SetGeneratorRate(1.f)`), the arrival sound plays (the PlayCustomSound call at 0x29E8: the
+position is the neck locator's translation, the direction the up vector and the parms are the
+transmission beacon's sound parms, the guest's 0x968..0x97F, with the maxVolume at 0x7F while the
+echo visor is active) and its handle goes to 0x1240, and the dark visor may orbit the beacon
+(the SetVisorOrbitableFlags call at 0x2A0C - the flag 8 is `kVOF_Dark`).
+
+**How the fight reaches Crippled** (the retail's chain, none of it in the port yet): the
+"VCTA"/"VCTD" script messages (the module's AcceptScriptMsg, fn_14_A6A8) call fn_14_3E88, which
+wakes the knee joint colliders; a knee's destruction (the helper that writes the word at 0x1284
+and asks for the knee's deletion) is what the `KneeDestroyed` trigger reads (fn_14_9A48, ported),
+and the state machine's transition then enters Crippled. In the port the word at 0x1284 stays -1:
+the module's AcceptScriptMsg (fn_14_A6A8, 0x4F0) is a stand-in and the port has no knee actors
+(since 2026-10-20 the knee chain fn_14_3A44/fn_14_5838/fn_14_5470 is ported and sets 0x1284,
+see "Knee chain" below; KneeDestroyedReaction fn_14_8090 is still a stand-in), so the
+Crippled state is still unreachable - the beacon's pieces are in place, but nothing runs them. The
+console's `damage` does not help either: the guardian's vulnerability is pass-through
+(fn_14_9FE4) and the retail's damage path (fn_14_78) is not ported.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frames): the run is
+clean, the guardian u054d is active (hp 150/150 - the damage passes through it) and draws with
+the leg, shin and toe models; the Crippled state is never entered, so the beacon does not draw
+yet. No "[port] caught" and no reach-stub in the log.
+
+
+**WP2 part 2l done (2026-10-20): the knee colliders' wake path, and how Crippled is reached.**
+`fn_14_3E88` (0x88) is ported and the module's AcceptScriptMsg handles the two messages that
+call it; the `fn_14_28D0` flag test is fixed (the byte's bit 7 is the CEntity's `mActive`, the
+first bitfield MWCC packs from the MSB).
+
+`fn_14_3E88` (0x88 bytes) walks the four knee ids (0xFB0, 0xFB2, 0xFB4 and 0xFB6 - the loop at
+0x3EB0) and sets the active flag of every knee that exists (the compare with kInvalidUniqueId at
+0x3EB4, the ObjectById call at 0x3ED0 and the `CEntity::SetActive` through the vtable slot 0x1C
+at 0x3EE4) to the flag the message carries (the clrlwi at 0x3EA4, the low byte of the third
+argument). The module's AcceptScriptMsg (fn_14_A6A8) calls it for the messages "ACTV"
+(0x41435456) and "DCTV" (0x44435456); the port handles those two cases and the rest of that
+function is still a stand-in.
+
+**Where the knee collision actors come from** (the retail's chain, and why the port cannot reach
+Crippled yet): the managers at 0xE60 and 0xE64 are **not** built by the constructor or by the
+AcceptScriptMsg - `fn_14_676C` (0xF8) builds them, and it is called from the module's
+`Think` (fn_14_A5BC, the call at 0xA604) - see WP2 part 2m, which corrects the call site this
+section guessed. It calls `fn_14_61DC` (0x590, the manager at 0xE60) and `fn_14_5C30` (0x2F4,
+the manager at 0xE64), which build the joint collision descriptions; both are over this
+slice's ~0x200 limit, so they would be stand-ins and the managers would stay empty - and the
+knee actors themselves belong to the knee armour sub-actor (fn_14_4080, not ported), so the
+knee ids at 0xFB0..0xFB6 stay invalid.
+With no knee actor the helper that writes the word at 0x1284 (the one that also asks for the
+knee's deletion) has nothing to delete, the word stays -1, the `KneeDestroyed` trigger
+(fn_14_9A48, ported) never fires and the state machine never enters Crippled. So 7CB4's
+activate path stays a stand-in and the beacon does not draw yet.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frames): the run is
+clean, the guardian u054d is active (hp 150/150 - the damage passes through it) and draws with
+the leg, shin and toe models; there are no knee collision actors and the Crippled state is not
+entered, so the beacon does not draw. No "[port] caught" and no reach-stub in the log.
+
+**WP2 part 2m done (2026-10-20): the collision actor managers' builder.** `fn_14_676C` (0xF8)
+is ported, its three builder callees are named stand-ins, and it is wired in at its retail
+call site.
+
+**The call site is the Think, not an animation event.** The call at 0xA604 is in
+`fn_14_A5BC` (0xCC bytes), the module's `Think` (vtable slot 5) - not in `DoUserAnimEvent`
+(fn_14_A468), as WP2 part 2l guessed. The Think's body is: the active bit test (the byte at
+guest 0x20, bit 0, read at 0xA5E0), the base's `CPatterned::Think` (the call at 0xA5EC), then
+the manager at guest 0xE60 (the load at 0xA5F0): when it is null the retail calls
+`fn_14_676C` (0xA604) to build both managers, otherwise it updates them (the two
+`CCollisionActorManager::Update` calls at 0xA610 and 0xA620, the options word 0 =
+`kUO_ObjectSpace`). So the trigger is **the manager at guest 0xE60 being null** - there is no
+animation event type in it. The Think then calls `fn_14_6E04`, `fn_14_2358`, `fn_14_38BC` and
+`fn_14_3F90`, which the port does not have yet.
+
+**`fn_14_676C` (0xF8 bytes)**, in retail order: `fn_14_61DC` (the call at 0x678C, 0x590
+bytes - the manager at 0xE60), `fn_14_5C30` (0x6798, 0x2F4 bytes - the manager at 0xE64),
+`fn_14_59BC` (0x67A4, 0x274 bytes), `fn_14_3974` (0x67B4, with the third argument 0) and the
+material filter (the `SetMaterialFilter` call at 0x6844). The three builders are over the
+~0x200 callee limit, so they are named once-logging stand-ins: the managers at 0xE60 and 0xE64
+stay null and the knee ids at 0xFB0..0xFB6 keep their invalid value - Crippled is still
+unreachable, exactly as WP2 part 2l described.
+
+**`fn_14_3974` (0x58 bytes)** is ported: the object with the id at guest 0x1080 (the halfword
+load at 0x3988) is looked up (the `ObjectById` call at 0x3998) and its active flag is set
+(the virtual call at 0x39B4, the vtable slot 0x1C = `CEntity::SetActive`) to the flag the
+third argument carries (the `clrlwi` at 0x39A8, its low byte).
+
+**The material filter** (0x67B8..0x6844) is built from the four `.rodata` words 0x470 (0x2F),
+0x474 (0x1C), 0x478 (0x20) and 0x46C (0x3B) with the MWCC helper `__shl2i` (the DOL's
+0x80345A44, 0x24 bytes). The helper is a 64-bit shift of the pair (r3:r4) by r5 that returns
+its high word in r3 and its low word in r4; for the call shape `__shl2i(0, 1, word)` it
+computes `1 << (word & 31)` in **both** words. The include list is the fourth word's shift
+(0x08000000 in both halves, the material types 27 and 59) and the exclude list is the or of
+the first three (0x10008001 in both halves, the types 0, 15, 27, 28, 32, 35, 59 and 60); the
+type word is 3, `kFT_IncludeExclude`. The port sets exactly those two lists.
+
+Runtime (area 53 `09_cliff_temple_dark` of world 1baa96c2, layers 3 and 11, the guardian
+activated with `send u054d Activate` and hit with `damage u054d 500`, 1800 frames): the run is
+clean, the guardian u054d is alive, and the log shows the three builder stand-ins once each -
+so the Think's manager branch runs. No "[port] caught" and no reach-stub in the log.
+
+**WP2 part 2n done (2026-10-20): the module's AcceptScriptMsg cases.** `fn_14_A6A8` (0x4F0)
+switches on the message's four-character code - a big-endian u32 of the four characters, each
+compare an `lis`/`addi` pair. The dispatch runs from 0xA6BC (the message load) to 0xA818, and
+the cases are:
+
+| message | FourCC | case | body |
+|---|---|---|---|
+| "IM01" | 0x494D3031 | 0xAAC8 | the byte at 0x1010 = 1, then fn_14_3A44 |
+| "IM02" | 0x494D3032 | 0xAAE0 | the byte at 0x1010 = 0, then fn_14_3A44 |
+| "IM03" | 0x494D3033 | 0xAAF8 | the byte at 0x1012 = 1, then fn_14_3A44 |
+| "IM04" | 0x494D3034 | 0xAB10 | the byte at 0x1012 = 0, then fn_14_3A44 |
+| "IM05" | 0x494D3035 | 0xAB28 | the byte at 0x1013 = 1, then fn_14_3A44 |
+| "IM06" | 0x494D3036 | 0xAB40 | the byte at 0x1013 = 0, then fn_14_3A44 |
+| "IM07" | 0x494D3037 | 0xAB58 | the byte at 0x1011 = 1, then fn_14_3A44 |
+| "IM08" | 0x494D3038 | 0xAB70 | the byte at 0x1011 = 0, then fn_14_3A44 |
+| "IM00" | 0x494D3030 | 0xAAB8 | fn_14_3F14 |
+| "XALC" | 0x58414C44 | 0xA998 | fn_14_5910 |
+| "XAUD" | 0x58415544 | 0xA9A8 | the two managers' `SetPhysicsActive(mgr, false)` |
+| "XDMG" | 0x58444D47 | 0xA9DC | fn_14_5838 with the message's first halfword |
+| "XRDG" | 0x58524447 | 0xA9FC | fn_14_5644 with the message's first halfword |
+| "XHIT" | 0x58484954 | 0xAA1C | fn_14_4F2C with the message's first halfword |
+| "ACTV" | 0x41435456 | 0xA8DC | the managers' `SetActive(mgr, true)`, fn_14_3E88, fn_14_7B24 |
+| "DCTV" | 0x44435456 | 0xA94C | the managers' `SetActive(mgr, false)`, fn_14_3E88 |
+| "OPEN" | 0x4F50454E | 0xAA3C | the state word at 0x1268 = 2 and the beacon's sound |
+| "CLOS" | 0x434C4F53 | 0xAA80 | the flag byte's bits 3 and 4, then the delete request |
+| "XDEL" | 0x5844454C | 0xA880 | the managers' `Destroy`, the sound emitter, fn_14_3F14 |
+| "XCRT" | 0x58435254 | 0xA81C | body controller `Activate`, fn_14_4080, fn_14_24E4, visor flags (0xF off, 2 on), `RemoveMaterial(0x3F)`, fn_14_14F8 |
+
+All cases are ported (the "XCRT" case since 2026-10-20, see "Knee chain" below). The helpers
+the ported cases call - fn_14_3F14, fn_14_5910, fn_14_5644 and fn_14_4F2C - are not ported
+either (fn_14_3A44 and fn_14_5838 are, 2026-10-20), so each case logs them once.
+
+The "ACTV" and "DCTV" cases only run when the actor's active bit is clear resp. set (the retail
+reads the byte at guest 0x20, bit 7, at 0xA6C4, before it calls the base), and the "ACTV"
+case only wakes the second manager when the flag byte's bit 6 is set (the `extrwi` at 0xA90C).
+The "OPEN" case needs the flag byte's bit 3 clear (the `extrwi` at 0xAA40) and the state word
+at 0x1268 different from 1 (the `cmpwi` at 0xAA4C); it plays the data block's +0x1C0 parms
+(sound_BeaconExtract) at the actor's translation. The "CLOS" case sets the flag byte's bits 3
+and 4 (the two `rlwimi` at 0xAA88 and 0xAA9C) and asks for the actor's own object to be
+deleted (the halfword at guest 0x8, the actor's id).
+
+Runtime (the same area-53 run): the run is clean, the guardian is alive, and the log shows the
+new case stand-ins ("XCRT", "XALC", "XRDG" and the "XDEL" case's helper) - the area's scripts
+do send those messages. No "[port] caught" and no reach-stub in the log.
+
+
+### Knee chain (2026-10-20)
+
+Ported: the collider builders fn_14_61DC (the xE60 manager: spheres, OBBs, per-collider
+vulnerabilities 0x1044/0x10CC/0x1110/0x1188), fn_14_5C30 (the xE64 manager: four knee-to-ankle
+OBBs, built inactive) and fn_14_59BC (collider health, knockback resistance 10); the knee-armour
+actor `CDigitalGuardianKneeArmor` (port-only `PortCDigitalGuardianKneeArmor.cpp`: ctor fn_14_D4D0,
+Think fn_14_CF94, AcceptScriptMsg fn_14_D320, GetDamageVulnerability fn_14_D7BC = pass-through,
+GetTouchBounds fn_14_D774, the armoured toggle fn_14_CE94); fn_14_4080 (one armour per knee
+locator, ids to 0xFB0..0xFB6), fn_14_24E4/fn_14_1A68 (toe-target state: effects "ToeTarget*",
+"ToeFlinch*", "SWBuildUp*", sounds, the "Toe Target Explosion Fx"), fn_14_14F8 (CPatterned's
+speed, guest 0x3C8, from data +0x17C..+0x188 by armours left) and the "XCRT" case. New host
+members: 0xE00 (the actor parameters, fn_14_C57C), 0x1100 (the explosion token), 0x10F0, 0x1144,
+0x1158.
+
+Retail damage flow: a knee collider's "XDMG" reaches fn_14_5838, which picks the head
+collider (0x10CC, fn_14_5274), a knee (fn_14_3E2C finds it in 0xFBC..; fn_14_5470 removes the
+armour and fires KneeDestroyed when its health is gone) or the root (fn_14_43AC / 0x1080,
+fn_14_5384). The knee colliders start with the ricochet vulnerability (0x1044); the "IM0x"
+messages' helper fn_14_3A44 swaps in the vulnerable one (0x1014) and calls fn_14_CE94 on the
+armour. Ported since the second slice: fn_14_3A44 (+ the 0x1014 vulnerability), fn_14_3E2C,
+fn_14_5470 (with fn_14_143C, which moves the IS06/Follow waypoint to the armour and sends IS07;
+0x10CE, which it decrements, is only set by the stand-in fn_14_5910) and fn_14_5838 (its head and
+root paths fn_14_5274/fn_14_5384 are stand-ins).
+
+Runtime, first slice (area 53, layers 3/11, `send u054d Activate`): clean; four
+`CDigitalGuardianKneeArmor` at the knee locators (inactive, like the guardian at XCRT); the knee
+colliders take `damage <id> 500` as 300 -> 300 (ricochet).
+
+Runtime, second slice (`/tmp/opencode/dgknee/run2.sh`): clean (0 caught, 0 reach-stub). After
+`send u054d 0x494d3031/3033/3035/3037` (IM01/03/05/07) each knee takes `damage 100` as 300 -> 200
+(the armour gets "XDMG"); `damage 500` takes it to -300, deletes its armour and sets 0x1284, and
+the FSM enters KneeDestroyedReaction (the fn_14_8090 stand-in logs). The level's IS07 links
+re-close the other knees (a later `damage` ricochets until IM0x is resent); with IM0x resent all
+four knees and armours go. Crippled is not entered: KneeDestroyedReaction (fn_14_8090) is a
+stand-in, so the walk stops there (guardian 150/150).
+
 ### WP3 — the head module
 
 `CDigitalGuardianHead : CPatterned` (guest size 0x10F8, `EPatternedAI 0xA`), its data struct
@@ -972,7 +1170,7 @@ above). No "[port] caught" and no reach-stub in the log.
 
 | piece | guest class | size | where |
 |---|---|---|---|
-| knee armour | `CActor` subclass, vtable `lbl_14_data_694` | 0x1A0 | `fn_14_4080` |
+| knee armour | `CDigitalGuardianKneeArmor : CActor` (ported), vtable `lbl_14_data_694` | 0x1A0 | `fn_14_4080` |
 | echo target | `CActor` subclass, vtable `lbl_14_data_10D0` | 0x790 | `fn_14_12314` |
 | guardian projectile | `CEnergyProjectile` subclass, vtable `lbl_14_data_1034` | 0x568 | `fn_14_10CA0` |
 | vortex | `CShockWave` | 0x9F8 | `fn_14_458C` |
@@ -1004,3 +1202,52 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 7. `Splitter` (the head's sub-actor, layer 10 of the same area) is module 15/16-era and is still a
    stub in this port (`tools/modules_port.txt`); the head's `DeploySplitters` state cannot be
    exercised until it lands.
+
+### Knee reactions to Crippled (2026-10-20)
+
+- Ported: fn_14_8090 KneeDestroyedReaction, fn_14_3D2C (bit 5 of 0x128C + IS10/IS11), fn_14_7D8C CrippledReaction (no head path: the head class is unported), fn_14_5910 XALC (0x11C0/0x10CE/0x116A), fn_14_5384 + 5140 + 4350 (toe/root damage; vortex health 0x11C8, which BreakOutOfVortex now reads).
+- Armours were inactive because fn_14_3E88 cast the 0xFB0 ids to CCollisionActor; retail calls SetActive on the plain ObjectById result. Fixed: they activate on ACTV.
+- Area-53 run: each knee kill gives Idle -> KneeDestroyedReaction -> Idle and the 0x10CE counter drops 9->5. The 4th kill gives CrippledReaction -> Crippled (fn_14_7CB4 is still a stand-in). Knees close during the reaction (bit 5), so a kill needs ~15 s between hits.
+- Open: fn_14_5274 (head collider) needs fn_14_266C/2E60 and the beacon explosion token at 0x1244/0x1250 loaded in the ctor. fn_14_5140's toe path hasn't run yet, so it is unmarked.
+
+### Crippled and the beacon (2026-10-20)
+
+- Ported: fn_14_7CB4 Crippled (wakes 0xE64; 0xE60 goes to sleep except the head collider 0x10CC), and fn_14_5274/266C/2E60 for beacon damage. The ctor now locks the beacon tokens 0x1244/0x1254 (data +0x1F4/+0x1F8). 0x1168 starts as invalid. All eight manager null tests in AcceptScriptMsg are retail's and cite their offsets.
+- Area-53 run: the beacon (head collider) goes 240 → 140 (fn_14_2E60 returns early: the collider is asleep) → −160 (back to 250; fn_14_266C returns early: x1268 is 0, the beacon is closed). The guardian stays at 150/150, and `damage u054d 50` does nothing.
+- Blocker: OPEN (which opens the beacon) crashes in x28D0_ through `mgr.GetPlayerState()->GetActiveVisor` because the pointer is null. Retail writes CStateManager 0x150C only in fn_80040D88, to mPlayerStates[i]. Upstream sets it in the per-viewport render setup and nulls it in EndPlayerRender, so it is null during Think.
+
+### Head module (2026-10-20)
+
+- New `CDigitalGuardianHead` (DGHD, guest 0x10F8) in `PortCDigitalGuardianHead.cpp` + `CDigitalGuardianHead.hpp`. Ported: the loader, ctor, Think and AcceptScriptMsg (all cases; their big callees are stand-ins), fn_14_13830 (XALD link-up), fn_14_119E4, fn_14_13AE0, render and vulnerability overrides, SetupStateMachine, all 20 triggers, and the Start/Idle states. The other 15 states and all 29 codes are named stand-ins. So are CVisualKnowledge::Update (no host class), fn_14_13318, fn_14_12314, fn_14_12818, fn_14_1223C, fn_14_15598 (it needs fn_14_10120), XDMG fn_14_1303C and XRDG fn_14_12D98.
+- Body side: fn_14_7168 (head link) and fn_14_70B4 are ported. fn_14_7B24 calls the head's fn_14_13B08. The body attack triggers honour head flag 0x20. 0x1082/0x1084/0x1086 are TUniqueIds.
+- Area-53 run: the head spawns (u051b, 150/150) and XALD links it to the body (u054e). After Activate its FSM goes Start → Idle → FaceTarget → DetachFromBody; those last two are stand-ins, so it goes no further. Its marked triggers are exercised: StateOver, MainBodyDestroyed, IsStunned, IsGuarding and HeadArmorDestroyed. The guardian stays at 150/150 and the fight does not end. No `[port] caught` or reach-stub.
+- Fight path (second slice): the code table's addresses were off by one from index 17 (`fn_14_14604` is EnableValidTarget; `fn_14_13B38` is a helper, not StartVocalRecoverReaction = `fn_14_13C1C`). Ported in run order: FaceTarget (+ SetPlayerFaceTarget, fn_14_13B38/11C08/11D64), DetachFromBody (+ the body's fn_14_70E4), SeekAttackPosition (+ SetInitialAttackPosition, fn_14_11698/11788), StunnedReaction (+ SetStunnedPosition, SetAttackPosition, fn_14_118B0), DeploySplitters (+ StartSplitterDeployment, fn_14_F390, fn_14_F424 with the 'PART' token at 0xF04). fn_14_114C8 (needs the line of sight) is a stand-in.
+- Area-53 run (knees, OPEN, beacon): Start → FaceTarget → Idle → DetachFromBody (the head moves to its IS05 waypoint) → SeekAttackPosition → StunnedReaction → DeploySplitters (one splitter is ejected and the Splitter module wakes) → FaceTarget → SeekAttackPosition, which then repeats. Guardian and head stay at 150/150; console damage to the head does nothing, because retail damage lands on the head's collision actors (XDMG fn_14_1303C), which are not built yet. The fight does not end.
+- fn_14_13318 is ported: "L_ball_LCTR" and "R_ball_LCTR" (radius 1.5, pass-through, ids at 0xDC4) and "Skeleton_Root" (radius 6, immune-ricochet, id at 0xE00). In the area-53 run they are three CCollisionActors, and they come before the knee armours, so those ids shift by 3. Console damage on them changes nothing (0 HP, no XDMG yet).
+- The critical path runs through the echo targets. XDMG's armour branch (lives at 0x10E4 drop) needs bit 0x10 (HeadArmorDestroyed), and only fn_14_11FEC sets it, reached from XDMG's echo-target branch (an echo target in state 0x708 == 4). fn_14_12314 needs the 0x790 echo-target class: ctor fn_14_1A698 (0x3AC), dtor 1A5F4, Think 1A1F8 with fn_14_19A08/19B70/19CE0, AcceptScriptMsg 1A430, Render 1A168, and the vtable slots 1ABD8 (HealthInfo), 10C, 1A12C (GetDamageVulnerability), 1AB50 (GetTouchBounds), 1AB98 and 19FD0 (aim position). That is about 1000 asm lines. The class also allocates an echo emitter (AllocateEchoEmitter, already on the host) and a CElementGen from data +0xA0.
+- Ported (2026-10-20): the echo-target class, fn_14_12314/1223C, Extract/RetractEchoTargets, ExtractAntenna (fn_14_14E78, the only code that activates the echo targets: they are built inactive), and XDMG fn_14_1303C with F2B8/13248/11F30/11FEC/12B04. In an area-53 run the three targets died (0xFE0 3→0, bit 0x10 set) and ball-collider XDMGs took 0x10E4 2→1→0; the FSM then ran Stage3Start through the head's Dead state (fn_14_1561C, still a stand-in) and the body was removed. Two things still need forcing in a run: after one echo target dies the FSM stalls after the second ExtractAntenna (DropShields/ExtractEchoTargets never recur), and the balls only take damage once fn_14_12818 (stand-in) gives them the 0xDD0 vulnerability, when a morph ball sits in a bomb slot. The head has no IS07/FOLW link in area 53, so fn_14_F2B8 moves nothing there.
+- Remaining, in fight order: fn_14_12314 (echo targets, the 0xF30/0xF34 ids, transforms at 0xF40/0xF70/0xFA0) with the class above, then XDMG fn_14_1303C (armour destroyed: lives at 0x10E4 drop, IS08; echo target hit: IS09, bit 0x02) with fn_14_F2B8/13248/12B04/11F30/11FEC; the codes still logged in the run (ExtractAntenna, RaiseShields, GrabPlayerHintControl, DropShields, ExtractEchoTargets, RetractEchoTargets, EndSplitterDeployment, SelectDeathHeadAttack, SeekLineOfSight); a host CVisualKnowledge (owner 0xD80, target 0xDA0, the seen time 0xDB0 and flag 0xDB8 that SetAttackPosition reads; Update is DOL 0x801F55F0) with fn_14_114C8; the attack states (ProjectileTelegraph, Pulse/Charge/Missile/MachineGun attacks), AttachedToBody, Dead; XRDG fn_14_12D98, fn_14_12818/1223C, fn_14_15598 with fn_14_10120, the head paths in fn_14_7D8C and fn_14_2A28, fn_14_5644.
+
+### Head cycle without hooks (area-53 run, 2026-10-21, base d99bc2718)
+
+- The head's FSM2 graph, dumped at load, shows that the DeathHeadAttacks sub-machine leaves only on
+  `IsAntennaTransmitting` (fn_14_17244 → body fn_14_70B4) → DropShields → SetStunnedPosition →
+  ExtractEchoTargets → StunnedReaction. The trigger fires once the beacon is destroyed (body
+  fn_14_266C, which runs only in Crippled), so the beacon must be shot on **every** re-extension.
+  A run that shot it once stalls in DeathHeadAttacks. That is a harness limitation, not a port bug.
+- A harness that shoots the beacon and then the echo targets every round, with no env hooks, counted
+  0xFE0 down 3→2→1→0. The body got CLOS, and the head ran Stage3Start: 0 caught/reach-stub.
+- The harness must retry the knees until all four are down: one knee can resist a single round, and
+  the body then never reaches Crippled.
+
+### Bomb slots and the head's death (area-53 run, 2026-10-21, base d503a8674)
+
+- fn_14_12818 holds a fully morphed player on an intact ball's bomb slot (within the sphere radius
+  1.5) and gives that ball 0xDD0 (`bombPitVulnerability`, data +0x2F8); fn_14_126C8 pulls the bombs
+  there. With a harness that teleports the morph ball onto each ball (positions from a temporary
+  trace) and lays bombs, real bomb XDMGs took 0x10E4 2→1→0, the FSM entered Dead (fn_14_1561C:
+  boss bar cleared, MassiveDeath) and the head was removed: 0 caught/reach-stub. Head HP stays
+  150/150 throughout (TakeDamage only sets the hit timer).
+- The player must morph after the stage-3 cinematic (`press x` before it does nothing).
+- XRDG fn_14_12D98: bombs touching the root collider (vulnerable after SetVulnerableToDamage) fail
+  its WeaponHits test, so the gravity repulsor (0x10E0) only drops on beam hits; not yet exercised.

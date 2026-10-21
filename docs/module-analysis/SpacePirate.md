@@ -390,8 +390,8 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId`.
 - **The 12 trigger stand-ins are gone (2026-10-20, this session):** `PortCSpacePirateTriggers.cpp`
   has no stand-in left - every one of the 39 triggers is now retail's (section 6 has the facts).
-  (`PortCSpacePirateStates.cpp` had none either; `PortCSpacePirate.cpp` still has 14 vtable-override
-  stand-ins.)
+  (`PortCSpacePirateStates.cpp` had none either; the 14 vtable overrides in
+  `PortCSpacePirate.cpp` were ported the same day - the next bullet.)
   Three of them carry a `// @` marker because the 208 cycle evaluates them (always false there):
   `ADC0` (AggressionCheck), `7970` (HasTargetingPoint), `55B8` (OffLine). The other nine are never
   evaluated, so they stay unmarked. `PortSpacePirateStandIn` is now called from nowhere but
@@ -400,6 +400,66 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   `33a4f2ae1`, `e2194e6b5`. The module is at 27/262 marked functions
   (`tools/port_progress.py`): every state and every trigger is ported, but only the states the
   208 cycle reaches are marked.
+- **The 14 vtable overrides are all ported and now marked (2026-07-20, this session, branch
+  `decomp/spacepirate-vt` off `port`).** The doc's old line that `PortCSpacePirate.cpp` "still has
+  14 vtable-override stand-ins" was stale: the bodies went in with the states, but six of them were
+  left unmarked. Each was re-read against the REL's asm and marked now:
+  `3A88` (0x2C, the vtable tail call through the slot 0x40), `3A0C` (0x7C, PreRenderAllViewports),
+  `17C8` (0x8C, GetTouchBounds), `339C` (0xA0, ScanVisorRender), `37C4` (0x120, Render) and
+  `38E4` (0x128, PreRender). The other eight were already marked: `E0D8` (0x48), `E0AC` (0x2C),
+  `3AB4` (0x34), `35CC` (0x100), `343C` (0x190), `E120` (0x48), `E090` (0x1C) and `18BC` (0x74) - the
+  last two are never exercised by the area run, so they keep their "Retail fn_72_..." comment.
+  asmcheck's findings on the six are the known false positives: the skipped ragdoll branches
+  (`xb30_` is never set), the vtable tail call in `3A88`, the string's destructor in `18BC` and the
+  uninitialised draw-flags word in `38E4`'s portal-plane tail (the plane is never set).
+  The area run (08_sand_casualpirates) is clean: 0 `[port] caught` / `[reach-stub]`, the 208 cycle
+  `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` repeats, and the pirate draws
+  (screenshot `/tmp/opencode/sp_vt_shot.png`).
+- **The marking pass over the ported-but-unmarked functions (2026-07-20, this session, branch
+  `decomp/spacepirate-vt`):** every ported function in the three `PortCSpacePirate*.cpp` files was run
+  through `tools/asmcheck.py check --all`. The marked count went from 61 to 67: `ADC0` (0xF8,
+  AggressionCheck - the port's comment cited only its helper `AEE0`), `7970` (0x1FC, HasTargetingPoint -
+  its helper `DE5C`), `4F28` (0x9C, InitLauncherModel), `36CC` (0xF8, RenderLauncherModel), `F0A0`
+  (0x6C, SetupStateMachine) and `BCB0` (0x31C, TargetPatrol). All six are exercised by the area run:
+  the log shows `AggressionCheck trigger 0` and `HasTargetingPoint trigger 0` 2858 times each,
+  `InitLauncherModel (fn_72_4F28) weapon 0` for every pirate, the state machine's setup in every
+  pirate's first frame and `state Taunt -> TargetPatrol` once. **No real mismatch was found** - the
+  remaining asmcheck findings on them are the known false positives (the `TCastToPtr` calls, the
+  navigation's `mInPosition` bit written through `SetInPosition`, the vtable tail call in `3A88` and
+  the `fn_72_CB30` helper call, which is the port's `GetTargetPos`).
+  **32 ported functions stay unmarked** because the area run never reaches them: the states WarpIn,
+  Attack, Crouch, CoverAttack, Halt, Shuffle, TurnAround, Dodge, SquadJoin, Cover, TargetCover,
+  Approach, WallHang, GetUp, Generate, DoubleSnap, Bounce, PathFindEx, Deactivate, LaunchGrenade and
+  Captured (no state line for them in the run), the triggers CoverFind, CoverBlown, CoverNearlyBlown,
+  CoveringFire, ShouldAttack, GetStrafeDir and BounceFind (never evaluated: the live cycle
+  `Patrol -> Taunt -> Lurk -> TargetPlayer -> Run -> PathFind -> Lurk` does not list them, and
+  `ShouldMove`/`ShouldAttack` are evaluated 0 times), and the main file's EnsureBodyActive,
+  SpawnGrenade, Touch, Listen (no grenade launcher data, no team AI and no CMetroid in the area, and
+  the pirate never touches the player). The loader `140` stays unmarked as well (asmcheck's 15
+  findings on it are the property reader's own calls).
+- **The pirates fight (2026-07-20, this session): 8 more of the 32 marked.** A console script
+  (`/tmp/opencode/sp_fight_con.py`) arms the player (the beam, the missile and the bombs), activates
+  every pirate, teleports next to each one and shoots it; the pirates then engage. The run's state
+  lines show `TargetPlayer -> Attack` (38), `Attack -> Lurk` (37), `PathFind -> Dodge` (28),
+  `Dodge -> Lurk` (28), `Attack -> JumpBack` (7), `JumpBack -> Lurk` (7), `PathFind -> Jump` and
+  `Jump -> Lurk` (1 each) and `state (none) -> WarpIn` (2), and its trigger lines show
+  `CoverFind trigger 0` (1822). Marked: `9F1C` (0x39C, Attack), `7DFC` (0x4D4, Dodge), `63C8`
+  (0x448, JumpBack - the state had no retail id in its comment at all), `5310` (0x108, Jump),
+  `7078` (0x528, WarpIn), `D720` (0xE0, UpdateHeldPosition - Lurk's update runs it every
+  message), `ABC0` (0x1F4, CoverFind) and `CB30` (0x150, GetTargetPos - the cover search calls it
+  for every candidate). The marked count is now 75. **No real mismatch was found**: the remaining
+  asmcheck findings on the eight are the known false positives (the retail's own helpers called
+  from C++ - `CB30`, `5510`, `5418`, `10D38`, `75DC` - `GetObjectById`, the 0x8f9 break-dodge
+  bitfield and the member-hash comparisons on x902/x914).
+  **24 stay unmarked** because the run still does not reach them: the states Crouch, Cover,
+  CoverAttack, Halt, Shuffle, TurnAround, SquadJoin, TargetCover, Approach, WallHang, GetUp,
+  Generate, DoubleSnap, Bounce, PathFindEx, Deactivate, LaunchGrenade and Captured (the pirates
+  take cover only when a cover point is near, the wall hang needs a wall-hang point, the grenade
+  launcher needs a launcher, the ambush needs an ambush connection), the triggers CoverBlown,
+  CoverNearlyBlown, CoveringFire, ShouldAttack, GetStrafeDir and BounceFind (the live cycle does
+  not list them and `ShouldMove`/`ShouldAttack` are evaluated 0 times), and the main file's
+  EnsureBodyActive, SpawnGrenade, Touch and Listen (no launcher data, no team AI and no CMetroid in
+  the area, and the pirate never touches the player - the player is teleported, not walked into).
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
 

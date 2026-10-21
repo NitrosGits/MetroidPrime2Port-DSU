@@ -8,17 +8,23 @@
 // AcceptScriptMsg, slot 9 PreRender, slot 18 GetTouchBounds; the entries in between are the
 // DOL's own CActor/CEntity symbols). AcceptScriptMsg (fn_63_1BE8, 0x784 bytes) has its message
 // switch ported: the player enters the turret (kSM_Activate), leaves it (kSM_Deactivate) and the
-// turret starts (kSM_Start); the four cases that are still stand-ins are named in its comment.
-// Think (fn_63_23C0, 0x968 bytes) and PreRender (fn_63_2D68, 0x2CC) are too big for this slice
-// and forward to CActor behind a once-only stand-in log; the five member functions the module
+// turret starts (kSM_Start), with the rest of retail's cases. Think (fn_63_23C0, 0x968 bytes)
+// and PreRender (fn_63_2D68, 0x2CC) are ported too, and the five member functions the module
 // hands the DOL through SPlayerTurret_FuncPtrs are ported, so the turret camera, the exit path
 // and the turret HUD keep working. The analysis is docs/module-analysis/ScriptPlayerTurret.md.
 #include "MetroidPrime/ScriptObjects/CScriptPlayerTurret.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Animation/CharacterCommon.hpp"
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/Input/CFinalInput.hpp"
+#include "Kyoto/Graphics/CModelFlags.hpp"
+#include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/Math/CQuaternion.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
+#include "Kyoto/Math/CUnitVector3f.hpp"
+#include "Kyoto/Math/CVector2f.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CAnimPlaybackParms.hpp"
 #include "MetroidPrime/CControlMapper.hpp"
@@ -26,31 +32,23 @@
 #include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrPlayerTurret.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#include "Weapons/CWeaponDescription.hpp"
 
 #include <math.h>
 #include <stdio.h>
 
 namespace {
 
-// Reports a stand-in the first time it runs, so a log lists what is still a shell.
-void StandIn(const char* what) {
-  static const char* sSeen[16] = {};
-  static int sCount = 0;
-  for (int i = 0; i < sCount; ++i) {
-    if (sSeen[i] == what) {
-      return;
-    }
-  }
-  if (sCount < 16) {
-    sSeen[sCount++] = what;
-  }
-  fprintf(stderr, "[turret] stand-in %s (see PortCScriptPlayerTurret.cpp)\n", what);
-}
+// lbl_63_rodata_60 + 0x26: the muzzle locator the module's static initializer fn_63_376C copies
+// into lbl_63_bss_C (0x00003788).
+const char* const kMuzzleLocator = "muzzleend_LCTR";
 
 // The guest turns -1 into the invalid sfx id before storing it (fn_63_144 at 0x000004A0).
 ushort TranslateSfx(int id) {
@@ -132,7 +130,7 @@ CScriptPlayerTurret::CScriptPlayerTurret(TUniqueId uid, const rstl::string& name
 , mWeaponDamage(weaponDamage)                   // guest 0x1F0
 , mUnknown20C(0.f)                              // guest 0x20C
 , mTargetPosition(xf.GetTranslation())          // guest 0x210
-, mSfxHandle(0)                                 // guest 0x21C
+, mSfxHandle()                                  // guest 0x21C
 , mHullActorId(kInvalidUniqueId)                // guest 0x220
 , mSfxTurretRotation(sfxTurretRotation)        // guest 0x222
 , mSfxSinglePlayerImpact(sfxSinglePlayerImpact) // guest 0x224
@@ -154,9 +152,241 @@ CScriptPlayerTurret::CScriptPlayerTurret(TUniqueId uid, const rstl::string& name
 CScriptPlayerTurret::~CScriptPlayerTurret() {}
 
 // vtable slot 5 = fn_63_23C0 (0x968): the turret's aiming, its sounds and the hull transform.
+// Retail does not call CActor::Think.
+// @ fn_63_23C0
 void CScriptPlayerTurret::Think(float dt, CStateManager& mgr) {
-  StandIn("fn_63_23C0 (CScriptPlayerTurret::Think)");
-  CActor::Think(dt, mgr);
+  // 0x2400: only an active turret thinks (the guest's byte 0x20 bit 0x80, CEntity's active flag).
+  if (!GetActive()) {
+    return;
+  }
+  // 0x2414: the yaw the input asked for, read before this frame zeroes it (0x2788).
+  const float yawInput = mYawTarget;
+  // 0x2418: the damage flash timer counts down (lbl_63_rodata_8 = 0.0).
+  if (mUnknown20C > 0.f) {
+    mUnknown20C -= dt;
+  }
+  // 0x2438: the player in the turret (0x188) and the base actor (0x198).
+  CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  // 0x2460
+  if (base != nullptr) {
+    // 0x2474: this frame's yaw step, the input times the horizontal speed (0x18C) and dt.
+    const CQuaternion yawStep = CQuaternion::ZRotation(
+        CRelAngle::FromRadians(dt * (mYawTarget * mHorizSpeed)));
+    // 0x24C0: the base actor's forward vector, flattened onto the ground plane.
+    const CVector3f baseForward = base->GetTransform().GetForward();
+    const CVector2f baseFlat =
+        CVector2f(baseForward.GetX(), baseForward.GetY()).AsNormalized();
+    const CVector3f current(baseFlat.GetX(), baseFlat.GetY(), 0.f);
+    CVector3f aim = current;
+    // 0x2518: a yaw input (lbl_63_rodata_24 = 1e-05) turns the base actor's direction.
+    if (fabs(mYawTarget - 0.f) >= 1e-05f) {
+      // 0x252C
+      aim = yawStep.Transform(current);
+    }
+    // 0x2564: the turret's own forward vector, flattened onto the ground plane.
+    const CVector3f turretForward = GetTransform().GetForward();
+    const CVector2f turretFlat =
+        CVector2f(turretForward.GetX(), turretForward.GetY()).AsNormalized();
+    const CVector3f rest(turretFlat.GetX(), turretFlat.GetY(), 0.f);
+    // 0x2594: a player that is not in control (its turret state, the guest's player + 0x12F8, is
+    // not 3 = kTS_Active) lets the base actor swing back towards the turret's forward, four times
+    // (lbl_63_rodata_14) as fast.
+    if (player != nullptr && player->GetTurretState() != CPlayer::kTS_Active) {
+      // 0x25C0
+      const CRelAngle maxAngle = CRelAngle::FromRadians(4.f * (dt * mHorizSpeed));
+      // 0x25EC
+      const CQuaternion swing =
+          CQuaternion::LookAt(CUnitVector3f(current), CUnitVector3f(rest), maxAngle);
+      // 0x261C
+      aim = swing.Transform(current);
+    }
+    // 0x2660: the cosine between the new direction and the turret's forward.
+    const float cosine = CVector3f::Dot(aim, rest);
+    // 0x266C: lbl_63_rodata_28 = 0.0001
+    if (fabs(cosine) >= 0.0001f) {
+      // 0x2684: fn_63_2D28 (0x40) is the cross product (the guest's inline of CVector3f::Cross);
+      // its sign of z tells the side.
+      const CVector3f side = CVector3f::Cross(aim, rest);
+      // 0x2694
+      if (side.GetZ() >= 0.f) {
+        // 0x26A4: past the right limit (0x178) the base actor keeps its own direction.
+        if (static_cast< float >(acos(cosine)) > mMaxHorizRotationRight) {
+          aim = base->GetTransform().GetForward();
+        }
+      } else {
+        // 0x26D8: past the left limit (0x174) the base actor keeps its own direction.
+        if (static_cast< float >(acos(cosine)) > mMaxHorizRotationLeft) {
+          aim = base->GetTransform().GetForward();
+        }
+      }
+      // 0x2704: the base actor's position (the guest's actor + 0x54).
+      const CVector3f position = base->GetTranslation();
+      // 0x2720
+      if (aim.IsMagnitudeSafe()) {
+        // 0x2770: the base actor looks along the new direction from where it stands.
+        base->SetTransform(CTransform4f::LookAt(position, position + aim, CVector3f::Up()));
+      }
+    }
+    // 0x2788: the yaw input is used up.
+    mYawTarget = 0.f;
+  }
+
+  // 0x2798: this frame's pitch step, the vertical speed (0x190) times dt.
+  float pitchStep = dt * mVertSpeed;
+  bool inControl = true;
+  // 0x279C: a player that is not in control (turret state != 3, kTS_Active) lets the pitch go
+  // back to zero, four times (lbl_63_rodata_14) as fast and without the ease-out.
+  if (player != nullptr && player->GetTurretState() != CPlayer::kTS_Active) {
+    inControl = false;
+    pitchStep *= 4.f;
+    // 0x27C4
+    mPitchTarget = 0.f;
+  }
+  // 0x27D8: the distance to the pitch the input asks for (lbl_63_rodata_2C = 0.0017453292).
+  const float pitchDelta = mPitchTarget - mPitch;
+  if (fabs(pitchDelta) >= 0.0017453292f) {
+    // 0x27FC: the distance over a quarter turn (lbl_63_rodata_30 = 1.5707964), clamped to 0..1.
+    const float t = CMath::Clamp(0.f, static_cast< float >(fabs(pitchDelta / 1.5707964f)), 1.f);
+    // 0x2834: the ease-out, PhongBlob with the exponent 8 (lbl_63_rodata_34).
+    float scale = 1.f - CMath::PhongBlob(t, 8.f);
+    // 0x283C
+    if (!inControl) {
+      scale = 1.f;
+    }
+    // 0x2854
+    const float step = pitchStep * scale;
+    // 0x285C
+    if (pitchDelta > 0.f) {
+      // 0x2870: up towards the target, no further than it (lbl_63_rodata_38 = -3.1415927).
+      mPitch = CMath::Clamp(-3.1415927f, mPitch + step, mPitchTarget);
+    } else {
+      // 0x28A8: down towards the target, no further than it (lbl_63_rodata_3C = 3.1415927).
+      mPitch = CMath::Clamp(mPitchTarget, mPitch - step, 3.1415927f);
+    }
+  } else {
+    // 0x28D8
+    mPitch = mPitchTarget;
+  }
+  // 0x28DC: the pitch stays within the elevation limits (0x180 down, 0x17C up).
+  mPitch = CMath::Clamp(-mMaxVertElevationDown, mPitch, mMaxVertElevationUp);
+
+  // 0x290C: the base actor's two additive animations (0x19C up, 0x1A0 down) show the pitch. The
+  // guest reads the model pointer (actor + 0x60) without a test; a port limit: the host allows an
+  // actor without a model.
+  if (base != nullptr && base->GetModelData() != nullptr &&
+      base->GetModelData()->GetAnimationData() != nullptr) {
+    CAnimData* animData = base->AnimationData();
+    // 0x2938
+    if (mPitch >= 0.f) {
+      // 0x295C: the weight is the pitch over a quarter turn (lbl_63_rodata_30), clamped to 0..1.
+      const float weight = CMath::Clamp(0.f, mPitch / 1.5707964f, 1.f);
+      // 0x298C
+      animData->AddAdditiveAnimation(mAnimId1, weight, false, false);
+      // 0x29B0
+      animData->AddAdditiveAnimation(mAnimId2, 0.f, false, false);
+    } else {
+      // 0x29C8
+      const float weight = CMath::Clamp(0.f, -mPitch / 1.5707964f, 1.f);
+      // 0x2A00
+      animData->AddAdditiveAnimation(mAnimId2, weight, false, false);
+      // 0x2A24
+      animData->AddAdditiveAnimation(mAnimId1, 0.f, false, false);
+    }
+  }
+
+  // 0x2A38: the top actor (0x19A).
+  CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
+  // 0x2A48: the top actor goes onto the base actor's "upwardballsnap_LCTR" locator
+  // (lbl_63_rodata_60 + 7). Same port limit for the model pointer as above.
+  if (base != nullptr && top != nullptr && base->GetModelData() != nullptr) {
+    // 0x2A74
+    const CTransform4f locator =
+        base->GetModelData()->GetLocatorTransform("upwardballsnap_LCTR");
+    // 0x2A90
+    top->SetTransform(base->GetTransform() * locator);
+  }
+
+  // 0x2A9C: the rotation sound runs only while the player is in control (turret state 3).
+  if (player != nullptr && player->GetTurretState() == CPlayer::kTS_Active) {
+    // 0x2AD8: the "still" threshold, 1 - 60 * (lbl_63_rodata_44 = 1.001358e-05) * dt
+    // (lbl_63_rodata_40 = 60).
+    const float stillThreshold = 1.f - 60.f * (1.001358e-05f * dt);
+    // 0x2AD4: last frame's alignment.
+    const float lastAlignment = mUnknown1C0;
+    // 0x2ADC
+    if (top == nullptr) {
+      return;
+    }
+    // 0x2B04: the alignment is the cosine between the top actor's forward vector and last
+    // frame's one (0x1C4..0x1CC), clamped to -1..1 keeping its sign (lbl_63_rodata_1C = -1).
+    const CVector3f topForward = top->GetTransform().GetForward();
+    float alignment = CVector3f::Dot(topForward, mBaseForward);
+    if (fabs(alignment) > 1.f) {
+      // 0x2B20
+      alignment = 1.f * (alignment >= 0.f ? 1.f : -1.f);
+    }
+    // 0x2B28
+    mUnknown1C0 = alignment;
+    // 0x2B50: no pitch input (lbl_63_rodata_48 = 0.05) and no yaw input count as still.
+    if (fabs(mPitchTarget - 0.f) < 0.05f && fabs(yawInput) <= dt) {
+      // 0x2B74
+      mUnknown1C0 = 1.f;
+    }
+    // 0x2B78: this frame's forward vector is the next frame's reference.
+    mBaseForward = topForward;
+    // 0x2B7C: the turret started or stopped moving this frame.
+    bool changed = false;
+    if (lastAlignment >= stillThreshold && mUnknown1C0 < stillThreshold) {
+      // 0x2BB8
+      changed = true;
+    } else if (lastAlignment < stillThreshold && mUnknown1C0 >= stillThreshold) {
+      // 0x2BB8
+      changed = true;
+    }
+    // 0x2BBC
+    if (changed) {
+      // 0x2BCC: the debounce restarts.
+      mUnknown1BC = 0.f;
+    } else if (mUnknown1BC < 0.05f) {
+      // 0x2BE8: the debounce (lbl_63_rodata_48 = 0.05) runs up to its end.
+      float timer = mUnknown1BC + dt;
+      if (timer >= 0.05f) {
+        timer = 0.05f;
+      }
+      // 0x2BFC
+      mUnknown1BC = timer;
+      // 0x2C0C: on the frame it ends the sound starts or stops.
+      if (0.05f == mUnknown1BC) {
+        // 0x2C18
+        if (mUnknown1C0 < stillThreshold) {
+          // 0x2C28: moving: the rotation sound (0x222) starts, unless it already runs.
+          if (!mSfxHandle) {
+            // 0x2C60: the volume 0x7f, the player's sound pan 4 (kMSP_Player), the turret's area
+            // (the guest's CEntity + 0x4), acoustics and looped.
+            mSfxHandle = CSfxManager::SfxStart(
+                mSfxTurretRotation, 0x7f, player->GetSoundPan(CPlayer::kMSP_Player),
+                GetCurrentAreaId().Value(), true, true, CSfxManager::kMedPriority);
+          }
+        } else {
+          // 0x2C7C: still: the sound stops.
+          CSfxManager::SfxStop(mSfxHandle);
+          // 0x2C84
+          mSfxHandle = CSfxHandle();
+        }
+      }
+    }
+    // 0x2C90
+    if (mSfxHandle) {
+      // 0x2CD0: the pitch bend follows the pitch: 8192 (lbl_63_rodata_4C) plus 4000
+      // (lbl_63_rodata_50) per quarter turn (lbl_63_rodata_30).
+      CSfxManager::PitchBend(mSfxHandle,
+                             static_cast< int >(4000.f * (mPitch / 1.5707964f) + 8192.f));
+    }
+  } else if (mSfxHandle) {
+    // 0x2CF0: no player in control: the sound stops. Retail leaves the handle at 0x21C as it is.
+    CSfxManager::SfxStop(mSfxHandle);
+  }
 }
 
 // vtable slot 6 = fn_63_1BE8 (0x784): the turret's script messages.
@@ -217,8 +447,8 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
       // 0x1EC4: the two additive animations (0x19C and 0x1A0) at weight zero.
       base->AnimationData()->AddAdditiveAnimation(mAnimId1, 0.f, false, false);
       base->AnimationData()->AddAdditiveAnimation(mAnimId2, 0.f, false, false);
-      // 0x1F00: the top actor goes onto the base actor's "upwardballsnapp_LCTR" locator.
-      const CTransform4f locator = model->GetLocatorTransform("upwardballsnapp_LCTR");
+      // 0x1F00: the top actor goes onto the base actor's "upwardballsnap_LCTR" locator.
+      const CTransform4f locator = model->GetLocatorTransform("upwardballsnap_LCTR");
       top->SetTransform(base->GetTransform() * locator);
     }
     // 0x1F48: the damage flash timer.
@@ -368,6 +598,17 @@ void CScriptPlayerTurret::AddSolidToTopActor(CStateManager& mgr) {
   }
 }
 
+// fn_63_19B0 (0x184): the animation parameters for one lookup - the state id, the number of
+// parameters and their pointers (the guest's CPASAnimParmData).
+CPASAnimParmData CScriptPlayerTurret::BuildAnimParmData(pas::EAnimationState state,
+                                                        const CPASAnimParm& parm) {
+  // 0x19E0: the state id; 0x19F8..0x1B18: the eight parameter slots, the first one the enum
+  // parameter and the seven others empty.
+  return CPASAnimParmData(state, parm, CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                          CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                          CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter());
+}
+
 // fn_63_15B0 (0x3C4): the base actor (0x198) and the top actor (0x19A) come from the turret's
 // "AttachedAnimatedObject" and "AttachedCollisionObject" connections, and the base actor's
 // animation database gives the five additive animation ids (0x19C..0x1AC) and the light colour
@@ -383,23 +624,75 @@ void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
   CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
   // 0x161C: the base actor's animation data; the guest reads the model pointer without a test
   // (a port limit: the host allows an actor without a model).
-  if (base != nullptr && base->GetModelData() != nullptr &&
-      base->GetModelData()->GetAnimationData() != nullptr) {
+  CAnimData* animData = base != nullptr && base->GetModelData() != nullptr
+                           ? base->AnimationData()
+                           : nullptr;
+  if (animData != nullptr) {
     // 0x1918: the base actor's model flags (the guest's 0xFC..0x104) become the turret's saved
     // copy (0x1D4..0x1DC), which the stop message hands back.
     mModelFlags = base->GetModelFlags();
   }
-  // The base actor's animation database gives the five animation ids (0x19C..0x1AC); that part of
-  // fn_63_15B0 is still a stand-in.
-  StandIn("fn_63_15B0 (the hull's animation ids)");
+  // 0x1634: the five animation ids (0x19C..0x1AC) come from the base actor's animation
+  // database: the getup (twice), the step, the death and the locomotion animation, each looked
+  // up with one enum parameter and seven empty ones.
+  mAnimId1 = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Getup, CPASAnimParm::FromEnum(0)));
+  mAnimId2 = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Getup, CPASAnimParm::FromEnum(1)));
+  mUnknown1A4 = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(3)));
+  mUnknown1A8 = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Death, CPASAnimParm::FromEnum(4)));
+  mUnknown1AC = animData->FindBestAnimation(
+      BuildAnimParmData(pas::kAS_Locomotion, CPASAnimParm::FromEnum(5)));
   // 0x1930: the top actor is the turret's "AttachedCollisionObject" connection.
   mTopActorId = FindConnectedObject(mgr, kSS_AttachedCollisionObject, kSM_Attach);
 }
 
-// vtable slot 9 = fn_63_2D68 (0x2CC): the turret's light colour on the hull.
+// vtable slot 9 = fn_63_2D68 (0x2CC): the base actor's light colour.
+//
+// The guest's model flags are 12 bytes: a word, the blend mode byte, the material set byte, the
+// flags half and the packed colour; the host's CModelFlags holds the same five fields.
 void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
-  StandIn("fn_63_2D68 (CScriptPlayerTurret::PreRender)");
-  CActor::PreRender(mgr);
+  // 0x2D88: the base actor (0x198).
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  if (base == nullptr) {
+    return;
+  }
+  // 0x2DAC: the base actor's own model flags are the starting point.
+  CModelFlags flags = base->GetModelFlags();
+  // 0x2DB4: the player in the turret (0x188).
+  if (mPlayerId != kInvalidUniqueId) {
+    // 0x2DE4: the player; 0x2DF4: its index has to be the game's player count - the player has
+    // to be in this game - and 0x2E24: its turret state (the guest's player + 0x12F8) must not be
+    // 2 (kTS_Exiting).
+    const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mPlayerId));
+    if (player != nullptr && mgr.GetNumPlayers() == mgr.MaskUIdNumPlayers(mPlayerId) &&
+        player->GetTurretState() != CPlayer::kTS_Exiting) {
+      // 0x2E30: white with the alpha 0.25 (lbl_63_rodata_54) and the blend mode 5 (kT_Blend).
+      flags.SetTrans(CModelFlags::kT_Blend);
+      flags.SetMatSetIdx(0);
+      flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
+      flags.SetColor(CColor(1.f, 1.f, 1.f, 0.25f));
+    }
+  }
+  // 0x2E9C: while the damage flash timer (0x20C) runs the colour goes from black to red.
+  if (mUnknown20C > 0.f) {
+    // 0x2F20: the factor is the timer over 0.33 (lbl_63_rodata_58), clamped to 0..1.
+    float factor = mUnknown20C / 0.33f;
+    if (factor < 0.f) {
+      factor = 0.f;
+    } else if (factor > 1.f) {
+      factor = 1.f;
+    }
+    // 0x2F48: Lerp(black, red, factor) with the blend mode 2 (kT_Two).
+    flags.SetTrans(CModelFlags::kT_Two);
+    flags.SetMatSetIdx(0);
+    flags.SetFlags(static_cast< CModelFlags::EFlags >(3));
+    flags.SetColor(CColor::Lerp(CColor::Black(), CColor::Red(), factor));
+  }
+  // 0x2F8C: the flags go back into the base actor.
+  base->SetModelFlags(flags);
 }
 
 // vtable slot 18 = fn_63_3034 (0x3C): the touch bounds are the turret's own box.
@@ -419,7 +712,7 @@ CTransform4f CScriptPlayerTurret::GetCameraTransform(CStateManager& mgr) {
                               CVector3f::Up());
 }
 
-// fn_63_F6C (0xB4). The turret sits on the base actor's "upwardballsnapp_LCTR" locator
+// fn_63_F6C (0xB4). The turret sits on the base actor's "upwardballsnap_LCTR" locator
 // (lbl_63_rodata_60 + 7); without a base actor the turret's own transform is used.
 CTransform4f CScriptPlayerTurret::GetTurretTransform(CStateManager& mgr) {
   const CActor* base = TCastToConstPtr< CActor >(mgr.ObjectById(mBaseActorId));
@@ -432,7 +725,7 @@ CTransform4f CScriptPlayerTurret::GetTurretTransform(CStateManager& mgr) {
     // host the base actor can be a script actor without a model.
     return GetTransform();
   }
-  const CTransform4f locator = model->GetLocatorTransform("upwardballsnapp_LCTR");
+  const CTransform4f locator = model->GetLocatorTransform("upwardballsnap_LCTR");
   return base->GetTransform() * locator;
 }
 
@@ -535,10 +828,74 @@ void CScriptPlayerTurret::ProcessInput(const CFinalInput& input, CStateManager& 
   }
 }
 
-// fn_63_84C (0x184): the turret's shot. Too big for this slice: it stays a stand-in that logs
-// once.
+// fn_63_1508 (0x68): the muzzle transform - the base actor's (0x198) scaled locator in the
+// base actor's own frame.
+CTransform4f CScriptPlayerTurret::GetMuzzleTransform(CStateManager& mgr) {
+  // 0x1534: the turret's own transform.
+  CTransform4f turret = GetTransform();
+  // 0x1538: the base actor (0x198).
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  if (base == nullptr) {
+    return turret;
+  }
+  // 0x1558: the locator is lbl_63_bss_C, the static string the module's initializer fn_63_376C
+  // builds from lbl_63_rodata_60 + 0x26 (0x00003788): "muzzleend_LCTR".
+  const CTransform4f locator = base->GetModelData()->GetScaledLocatorTransform(kMuzzleLocator);
+  // 0x1578: the locator in the base actor's frame, times the base actor's transform.
+  return base->GetTransform() * locator;
+}
+
+// fn_63_84C (0x184): the turret's shot.
 void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
-  StandIn("fn_63_84C (the turret's shot)");
+  // 0x864: the muzzle transform.
+  const CTransform4f xf = GetMuzzleTransform(mgr);
+  // 0x880: the player in the turret.
+  CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+  if (player == nullptr) {
+    return;
+  }
+  // 0x8A0: the turret's own token (0x1E8) is the weapon description and has to be loaded.
+  if (mToken.null() || !mToken->IsLoaded()) {
+    return;
+  }
+  // 0x98C: the projectile's type is the damage's weapon mode (the guest's 0x1F0), its exclude
+  // material 0x14 (kMT_ProjectilePassthrough) and its area the player's (0x4 of the player).
+  const TToken< CWeaponDescription > description(*mToken);
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, description, static_cast< EWeaponType >(mWeaponDamage.GetWeaponMode1()), xf,
+      kMT_ProjectilePassthrough, mWeaponDamage, mgr.AllocateUniqueId(),
+      player->GetCurrentAreaId(), mPlayerId, kInvalidUniqueId, 0, false, CVector3f::One(),
+      CImpactVisorEffect::None(), false, true, false, 4.f, 1.f, 4.f);
+  if (projectile == nullptr) {
+    return;
+  }
+  // 0x9B8: the top actor (0x19A) is the one the projectile does not hit (the guest's call with
+  // lbl_63_rodata_18 = 3.4028235e38f).
+  projectile->AddCollisionCooldown(mTopActorId, 3.4028235e38f);
+  // 0x9E0: the projectile joins the world.
+  mgr.AddObject(projectile);
+  // 0x9E4: the base actor (0x198) plays the shot animation (0x1A4).
+  CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  if (base != nullptr && base->GetModelData() != nullptr &&
+      base->GetModelData()->GetAnimationData() != nullptr) {
+    CAnimData* animData = base->AnimationData();
+    // 0xA24: the flag byte at 0x2AC loses bit 0x40 (the loop flag) and gains bit 0x80 (the
+    // animating flag).
+    animData->EnableLooping(false);
+    // 0xA4C: the animation id (0x1A4), -1, the weight 1.0 and "animating".
+    animData->SetAnimation(CAnimPlaybackParms(mUnknown1A4, -1, 1.f, true), false);
+  }
+  // 0xA84: the shot's sound.
+  if (mgr.IsMultiplayer()) {
+    // 0xA94: the multi-player projectile sound (0x22A) at the player's sound pan.
+    CSfxManager::SfxStart(mSfxMultiPlayerProjectile, 0x7f,
+                          player->GetSoundPan(CPlayer::kMSP_Player), CSfxManager::kAllAreas,
+                          false, false, CSfxManager::kMedPriority);
+  } else {
+    // 0xAEC: the single-player projectile sound (0x228) at the fixed pan 0x40.
+    CSfxManager::SfxStart(mSfxSinglePlayerProjectile, 0x7f, 0x40, CSfxManager::kAllAreas, false,
+                          false, CSfxManager::kMedPriority);
+  }
 }
 
 // fn_63_840 (0xC): the actor the turret HUD reads the hull's health from.

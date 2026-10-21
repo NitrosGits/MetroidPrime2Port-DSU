@@ -10,14 +10,24 @@
 // is its own: the flag bytes are one-bit members (include/MetroidPrime/Enemies/
 // CIngBoostBallGuardian.hpp), so a retail bit test reads the member that holds that bit.
 //
-// Not here yet: the module's second class (a CPhysicsActor built by fn_30_3478, the boost
-// attack's child; BoostGuardian.md section f), so the whole of BoostAttack is a later slice.
+// The boost attack's child is the module's second class, the boost ball
+// (PortCBoostBallGuardianBall.cpp; BoostGuardian.md section f).
 #include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp"
 
 #include "Kyoto/Math/CQuaternion.hpp"
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "Collision/CMaterialList.hpp"
+#include "Collision/CRayCastResult.hpp"
+#include "Kyoto/CRandom16.hpp"
+#include "MetroidPrime/CActorParameters.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
+#include "MetroidPrime/CHealthInfo.hpp"
+#include "MetroidPrime/CModelData.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Enemies/PortCBoostBallGuardianBall.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Enemies/PortBoostGuardianShared.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -27,17 +37,20 @@
 // ---- triggers -------------------------------------------------------------------------------
 
 // fn_30_B788: HasCollidedWithCrystal (guest 0x11EE bit 0).
+// @ fn_30_B788
 bool CIngBoostBallGuardian::HasCollidedWithCrystal(CStateManager& mgr,
                                                    const CTriggerData& data) const {
   return mCollidedWithCrystal;
 }
 
 // fn_30_B794: ShouldBoost (guest 0x11EE bit 4).
+// @ fn_30_B794
 bool CIngBoostBallGuardian::ShouldBoost(CStateManager& mgr, const CTriggerData& data) const {
   return mShouldBoost;
 }
 
 // fn_30_B7A0: IsCurrentlyInBoostPuddleForm (guest 0x11EF bit 7).
+// @ fn_30_B7A0
 bool CIngBoostBallGuardian::IsCurrentlyInBoostPuddleForm(CStateManager& mgr,
                                                         const CTriggerData& data) const {
   return mCurrentlyInBoostPuddleForm;
@@ -45,17 +58,20 @@ bool CIngBoostBallGuardian::IsCurrentlyInBoostPuddleForm(CStateManager& mgr,
 
 // fn_30_B7AC: IsBoostPuddleForm (guest 0x11EE bit 3 and not guest 0x11ED bit 1, the bit
 // UseProjectileFSMEntry fn_30_C1A4 reads).
+// @ fn_30_B7AC
 bool CIngBoostBallGuardian::IsBoostPuddleForm(CStateManager& mgr, const CTriggerData& data) const {
   // 0x0000B7B4: 0x11EE 0x08; 0x0000B7C0: 0x11ED 0x02.
   return mBoostPuddleForm && !mProjectileFSMEntry;
 }
 
 // fn_30_B7D4: IsBoostOver (guest 0x11EE bit 5).
+// @ fn_30_B7D4
 bool CIngBoostBallGuardian::IsBoostOver(CStateManager& mgr, const CTriggerData& data) const {
   return mBoostOver;
 }
 
 // fn_30_B76C: BoostModeRetreatOver (the u16 at guest 0x1096 is kInvalidUniqueId).
+// @ fn_30_B76C
 bool CIngBoostBallGuardian::BoostModeRetreatOver(CStateManager& mgr,
                                                  const CTriggerData& data) const {
   return mBoostNavPointId == kInvalidUniqueId;
@@ -65,11 +81,12 @@ bool CIngBoostBallGuardian::BoostModeRetreatOver(CStateManager& mgr,
 // (byte 0x20 bit 0x80, 0x00002FE4), in this actor's area (+0x04, 0x00003000) and of the given
 // type (+0x158, 0x00003010); null when there is none (0x00003044).
 // @ fn_30_2F9C
-CScriptAIHint* CIngBoostBallGuardian::FindBoostNavPoint(CStateManager& mgr, int hintType) const {
+CScriptAIHint* CIngBoostBallGuardian::FindBoostNavPoint(CStateManager& mgr, const CActor& actor,
+                                                       int hintType) {
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
-    if (hint != nullptr && hint->GetActive() && hint->GetCurrentAreaId() == GetCurrentAreaId() &&
+    if (hint != nullptr && hint->GetActive() && hint->GetCurrentAreaId() == actor.GetCurrentAreaId() &&
         static_cast< int >(hint->GetHintType()) == hintType) {
       return hint;
     }
@@ -79,30 +96,100 @@ CScriptAIHint* CIngBoostBallGuardian::FindBoostNavPoint(CStateManager& mgr, int 
 
 // ---- states ---------------------------------------------------------------------------------
 
-// fn_30_79C0: BoostAttack.
-//
-// Retail's three cases:
-//   - Activate: spawns the module's second class (a CPhysicsActor built by fn_30_3478) and calls
-//     SetActive(false) on the collision manager at guest 0xD64;
-//   - Update: copies the child's translation (its +0x54/+0x58/+0x5C, with z taken from the
-//     parent's 0x1174) onto the actor, and sets bit 5 of 0x11EE (mBoostOver) when fn_30_13B98() is
-//     not zero;
-//   - Deactivate: sets bit 5 of 0x11EE (mBoostOver), stops the child and sets bit 0 of its byte
-//     0x5D8, copies the child's translation onto the actor, sends the script state 'EXIT'
-//     (0x45584954) with kInvalidUniqueId, randomises the float at 0x11E8 (mBoostRandomFloat) from
-//     the array element at 0x11D0 (+0x10, +0x14), clears bit 0 of 0x11EE (mCollidedWithCrystal)
-//     and zeroes the float at 0x11DC (mBoostTimer), sets the collision manager at 0xD64 active
-//     and deletes the child by the id at 0x1094 (mBoostChildId).
-//
-// The second class is a later slice (the module note's WP4), so this body only logs: the
-// module's own fn_30_79C0 does the work once the class exists.
-void CIngBoostBallGuardian::BoostAttack(CStateManager&, EStateMsg msg, float) {
-  if (msg == kStateMsg_Activate) {
+// fn_30_340C: the player's aim position (vtable +0x54, no prediction), its z replaced by the
+// actor's.
+// @ fn_30_340C
+void CIngBoostBallGuardian::UpdateBoostAimPos(CStateManager& mgr) {
+  mBoostAimPos = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f); // mgr+0x14FC
+  mBoostAimPos.SetZ(GetTranslation().GetZ());               // 0x00003460
+}
+
+// fn_30_324C: the ground under the actor - a 10-unit ray down the actor's up axis from one unit
+// above it, against solid geometry only (lbl_30_data_9BC); zero when it hits nothing.
+// @ fn_30_324C
+CVector3f CIngBoostBallGuardian::FindBoostSpawnPos(CStateManager& mgr) const {
+  const CVector3f up = GetTransform().GetColumn(kDZ);
+  const CRayCastResult result =
+      mgr.RayStaticIntersection(GetTranslation() + up, -up, 10.f,
+                                CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid)));
+  return result.IsValid() ? result.GetPoint() : CVector3f::Zero(); // 0x00003340
+}
+
+// fn_30_3478: spawns the boost ball facing the player and keeps its id.
+// @ fn_30_3478
+void CIngBoostBallGuardian::SpawnBoostBall(CStateManager& mgr) {
+  UpdateBoostAimPos(mgr);
+  // 0x000034CC/0x000034D0: both ends of the look in the ground plane.
+  CVector3f from = GetTranslation();
+  from.SetZ(0.f);
+  mBoostAimPos.SetZ(0.f);
+  const CTransform4f xf = CTransform4f::LookAt(from, mBoostAimPos, CVector3f::Up());
+  SendScriptMsgs(kSS_Entered, mgr, kInvalidUniqueId, kSM_None); // 0x0000350C: 'ENTR'
+  mShouldBoost = false;                                         // 0x00003518: 0x11EE 0x10 = 0
+  const CModelData modelData(CStaticRes(mBoost.mModel, mBoost.mScale)); // 0x00003548
+  // 0x00003568: a copy of this actor's health info with the current hp reset to the initial.
+  CHealthInfo health = *HealthInfo();
+  health.SetHP(health.GetInitialHP());
+  mBoostSpawnPos = FindBoostSpawnPos(mgr); // 0x00003594: 0x116C
+  const CMaterialList matList(kMT_CollisionActor, kMT_Immovable); // lbl_30_data_9B4/9B8
+  CBoostBallGuardianBall* ball = rs_new CBoostBallGuardianBall(
+      mgr.AllocateUniqueId(), rstl::string_l("BoostBallGuardian"),
+      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId), xf,
+      mBoostSpawnPos, modelData, CActorParameters(), GetUniqueId(), mBoost, mPhaseIndex,
+      mBoost.mVulnerability, mModifyTargets, &matList, &health); // 0x00003704: fn_30_15924
+  if (ball != nullptr) {
+    mgr.AddObject(ball);                       // 0x00003744
+    ball->RemoveMaterial(kMT_Projectile, mgr); // 0x00003754
+    mBoostChildId = ball->GetUniqueId();       // 0x00003760: 0x1094
+    mBoostOver = false;                        // 0x00003768: 0x11EE 0x20 = 0
+  }
+}
+
+// fn_30_79C0: BoostAttack. The state ends on IsBoostOver, which the ball's shrink raises
+// (fn_30_13B98, 0x5D8 bit 0x04), or on HasCollidedWithCrystal.
+// @ fn_30_79C0
+void CIngBoostBallGuardian::BoostAttack(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
     LogState("BoostAttack");
-    if (DebugBg()) {
-      fprintf(stderr, "[ibbg] %04x boost attack: the second class (fn_30_3478) is a later slice\n",
-              GetUniqueId().Value());
+    SpawnBoostBall(mgr); // 0x00007A04
+    mCollisionActorManager1->SetActive(mgr, false); // 0x00007A14
+    break;
+  case kStateMsg_Update:
+    if (CBoostBallGuardianBall* ball =
+            TCastToPtr< CBoostBallGuardianBall >(mgr.ObjectById(mBoostChildId))) {
+      if (ball->IsDone()) {
+        mBoostOver = true; // 0x00007A50: 0x11EE 0x20 = 1
+      }
+      // 0x00007A58: follow the ball, at the spawn height (0x1174).
+      CVector3f pos = ball->GetTranslation();
+      pos.SetZ(mBoostSpawnPos.GetZ());
+      SetTranslation(pos);
     }
+    break;
+  case kStateMsg_Deactivate:
+    mBoostOver = true; // 0x00007A90
+    if (CBoostBallGuardianBall* ball =
+            TCastToPtr< CBoostBallGuardianBall >(mgr.ObjectById(mBoostChildId))) {
+      ball->Stop();          // 0x00007AB8
+      ball->SetHalted(true); // 0x00007AC4: 0x5D8 0x01 = 1
+      CVector3f pos = ball->GetTranslation();
+      pos.SetZ(mBoostSpawnPos.GetZ());
+      SetTranslation(pos);                                        // 0x00007AF4
+      SendScriptMsgs(kSS_Exited, mgr, kInvalidUniqueId, kSM_None); // 0x00007B20: 'EXIT'
+      mBoostRandomFloat = mgr.Random()->Range(CurrentPhase().mNextBoostTimeMin,
+                                              CurrentPhase().mNextBoostTimeMax); // 0x00007B34
+    }
+    if (mCollidedWithCrystal) { // 0x00007B40
+      mBoostTimer = 0.f;
+      mCollidedWithCrystal = false;
+    }
+    mCollisionActorManager1->SetActive(mgr, true); // 0x00007B70
+    mgr.DeleteObjectRequest(mBoostChildId); // 0x00007B84
+    mBoostChildId = kInvalidUniqueId;
+    break;
+  default:
+    break;
   }
 }
 

@@ -77,6 +77,7 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
 // than 10 s (rodata B58). A charging pirate that is not in that list yet adds its id to it: the
 // asm walk ends at the list's tail sentinel, so "reached the tail" means "not in the list" and
 // pushes (fn_72_AEB8 -> fn_72_AEE0 is a push_back), while a match stops the walk and does not.
+// @ fn_72_ADC0 (0xF8): the AggressionCheck trigger.
 bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!x8f4_26_nonAggressive) {
@@ -100,7 +101,7 @@ bool CSpacePirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) cons
   return x8f8_27_coverCheck;
 }
 
-// fn_72_ABC0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// @ fn_72_ABC0 (0x1F4): the cover-point search - the fight run evaluates it 1822 times.
 // Retail: the AiWaypoint object list (mgr+0x838) is scanned for the cover points this pirate
 // could take - active (0x20 bit 7), not a land-hang point (fn_800EC6A8), not reserved by this
 // pirate (fn_800EC550 with this pirate's id), in this area, not the cover point it used last
@@ -253,8 +254,12 @@ bool CSpacePirate::LineOfSight(CStateManager& mgr, const CTriggerData& data) con
   return !x8f7_28_noPlayerLos;
 }
 
+// Retail reads the waypoint navigation's destination (this+0x6c0, which TargetPatrol sets), not
+// MP1's mDestObj: with mDestObj, TargetPatrol ended on its first tick and the skiff pirates in
+// Central Mining Station lurked on the skiff instead of walking off it.
+// @ fn_72_BC94
 bool CSpacePirate::PatternOver(CStateManager& mgr, const CTriggerData& data) const {
-  return GetDestObj() == kInvalidUniqueId;
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
 // The detection cone test, over every player: the first one whose offset lies inside
@@ -399,6 +404,7 @@ bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const 
 // targeting point that is active, in this area and not locked (fn_8012CB70) becomes the attack
 // target; the squad is told and the bone tracking follows. The asm breaks out of the loop on
 // that first hit (the m2c loop only looks like it does not advance).
+// @ fn_72_7970 (0x1FC): the HasTargetingPoint trigger.
 bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   bool result = false;

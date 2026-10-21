@@ -1,6 +1,6 @@
 # ScriptPlayerTurret REL (module 63): analysis for a host body
 
-Analysis + host body, milestones 1-3 (2026-10-20). Sources: the archive build's disassembly
+Analysis + host body, milestones 1-5 (2026-10-20). Sources: the archive build's disassembly
 `../MetroidPrime2Port/build/G2ME01/ScriptPlayerTurret/asm/` (`auto_00_00000050_text.s` is the whole
 `.text`, `auto_03/04/05_*` are rodata/data/bss, `MetroidPrime/ScriptObjects/CScriptPlayerTurretRel.s`
 is the REL's own file), the m2c pseudo-C in `/tmp/opencode/pseudo/ScriptPlayerTurret/`, the
@@ -43,7 +43,7 @@ Module: id 63, 14868 text bytes, 59 functions, script type `PLRT`, entity type
 | `fn_63_14B4` | 0x54 | helper of the `0x53545254` message: the actor at 0x19A gains `kMT_Solid` | [proven] call at 0x00001FF0 |
 | `fn_63_15B0` | 0x3C4 | reads the two connections (`FindConnectedObject`) and stores the base actor at 0x198 and the top actor at 0x19A, then looks up five animation ids (0x19C..0x1AC) and the base actor's light colour (0x1D4..0x1DC); called from the `0x58414C44` message | [proven] the two stores at 0x00001818/0x00001860 |
 | `fn_63_374C` | 0x20 | `CModelData`'s default constructor (the turret's empty model) | [proven] call at 0x00003268 |
-| `fn_63_84C` | 0x184 | the turret's **shot**: the energy projectile, spawned at the muzzle (the `muzzleleen_LCTR` locator) | [proven] call at 0x000012C8 |
+| `fn_63_84C` | 0x184 | the turret's **shot**: the energy projectile, spawned at the muzzle (the `muzzleend_LCTR` locator) | [proven] call at 0x000012C8 |
 | `fn_63_349C` | 0x74 | `CToken(IObj* null)`: the turret's empty token at 0x1E8 | [proven] call at 0x00003384 |
 | `fn_63_674` | 0xB8 | `SLdrEditorProperties`' constructor (the loader's defaults) | [proven] call at 0x00000238 |
 | `fn_63_610` | 0x64 | `SLdrEditorProperties`' destructor | [proven] |
@@ -78,8 +78,8 @@ own fields run 0x158..0x22F. The host's layout is its own (Echoes' `CActor` grow
 | 0x1A4, 0x1A8, 0x1AC | three zeroed words | [proven] |
 | 0x1B0 | the **pitch the input asks for**: `fn_63_1134` writes it (the stick's forward axis times the elevation limit) and `fn_63_23C0` reads it | [proven] the store at 0x00001430/0x00001440 |
 | 0x1B4 | the **pitch the turret has reached**: `fn_63_23C0` moves it toward 0x1B0 and clamps it to -0x180..0x17C | [proven] the clamp at 0x00002B00 |
-| 0x1B8, 0x1BC, 0x1C0 | three floats zeroed at birth | [proven] |
-| 0x1C4..0x1CC | the editor transform's forward vector (m01, m11, m21) | [proven] the loads from the transform |
+| 0x1B8, 0x1BC, 0x1C0 | three floats zeroed at birth: the reload timer, `Think`'s rotation-sound debounce (0..0.05, lbl_63_rodata_48) and its alignment (top actor's forward . last frame's, forced to 1 with no input) | [proven] 0x2B28, 0x2BFC |
+| 0x1C4..0x1CC | the editor transform's forward vector (m01, m11, m21); `Think` overwrites it with the top actor's forward each frame | [proven] the loads from the transform, the stores at 0x2B78 |
 | 0x1D0 | the **yaw the input asks for**: `fn_63_1134` writes the turn axis into it | [proven] the store at 0x00001334 |
 | 0x1C0 | the yaw the turret has reached: `fn_63_23C0` writes the top actor's forward dotted with the turret's | [proven] the store at 0x00002A50 |
 | 0x1D4..0x1DC | the base actor's **model flags**: a word, two bytes, a u16 and the packed `CColor(1,1,1,1)` - the flags 3 and the blend modes 0 and 5 in `fn_63_2D68` are `CModelFlags`' | [proven] the `CColor` constructor call at 0x00003348 and the blend modes at 0x00002E54/0x00002ED4 |
@@ -121,7 +121,7 @@ the SnakeWeedSwarm port drops as well.
 `CEntity`'s active flag, read with `extrwi. r0,r0,1,24` at 0x000023F0; the *player's* flag is the
 turret's own byte 0x22C) it counts down 0x20C, looks at the player (0x188) and the base actor
 (0x198), clamps the aim to the rotation limits (0x174..0x180), drives the two additive animations
-(0x19C, 0x1A0), moves the top actor (0x19A) onto the base actor's `"upwardballsnapp_LCTR"` locator,
+(0x19C, 0x1A0), moves the top actor (0x19A) onto the base actor's `"upwardballsnap_LCTR"` locator,
 and runs the turret's sound (0x222).
 
 `fn_63_1BE8` (**AcceptScriptMsg**, slot 6) switches on the message word:
@@ -138,9 +138,9 @@ the turret and black-to-red while 0x20C counts down.
 | off | string | used by |
 |---|---|---|
 | 0x00 | `??(??)` | the allocation's file tag (the `__nw__` source name) |
-| 0x07 | `upwardballsnapp_LCTR` | `fn_63_F6C`, `fn_63_23C0`, `fn_63_1BE8` - the base actor's locator |
+| 0x07 | `upwardballsnap_LCTR` | `fn_63_F6C`, `fn_63_23C0`, `fn_63_1BE8` - the base actor's locator |
 | 0x1B | `Whole Body` | `fn_63_1134` - the animation the input path watches |
-| 0x26 | `muzzleleen_LCTR` | unreferenced in this milestone |
+| 0x26 | `muzzleend_LCTR` | `fn_63_1508` reads it from `lbl_63_bss_C`, the static string the module's initializer `fn_63_376C` builds from it (0x00003788) |
 
 ## 6. Host body (milestone 1)
 
@@ -204,7 +204,7 @@ Facts the ported cases established:
   slot 15, 0x3C) and reads the float at + 4 of it - the guest's `CHealthInfo` starts with the
   *initial* health, so + 4 is the current one (0x1DD8..0x1E00).
 - The base actor (0x198) keeps its own position but takes the turret's rotation; the top actor
-  (0x19A) goes onto the base actor's `"upwardballsnapp_LCTR"` locator (0x1E88..0x1F3C).
+  (0x19A) goes onto the base actor's `"upwardballsnap_LCTR"` locator (0x1E88..0x1F3C).
 - `kSM_Start` needs the turret to be **active** (the guest's byte 0x20, `CEntity`'s active flag),
   sets the player's turret state to 3 (kTS_Active), gives the top actor `kMT_Solid` (0x3b,
   `fn_63_14B4`) and the turret itself `kMT_Orbit` (0x29).
@@ -221,18 +221,23 @@ Facts the ported cases established:
   at the turret's target position (0x210), and takes the hull actor id (0x220) from the damaged
   actor's health info - the owner of the last damage (the guest's `CHealthInfo` + 0x18), or the
   message's originator when the actor has no health info.
-- The guest's `CGameState` byte 0xA4 bit 0x40 (`extrwi. r0,r0,1,25`) is the game's **invert Y**
-  option: it swaps the two stick axes of the turret's pitch (`CGameOptions::GetInvertYAxis`).
-  [probable]: the bit's position in the options' bitfield byte is the same as the host's.
+- The guest's `CGameState` byte 0xA4 bit 0x40 (`extrwi. r0,r0,1,25` - the word's bit 25 is the
+  byte's 0x40) is the game's **invert Y** option: it swaps the two stick axes of the turret's
+  pitch. The host's member is `CGameOptions::GetInvertYAxis()` (the options' bitfield byte has
+  `invertY` as its second field, so the bit is the same one the guest reads).
+  **[probable]**: the guest's `CGameState` and the host's have the same size (0x2f0) and the same
+  member order, but the offset 0xA4 was not confirmed inside the options' bitfield byte.
 
 ## 9. Milestone 2 (the message switch) - host body and runtime
 
 `AcceptScriptMsg` (fn_63_1BE8) now has retail's switch with **all seven cases ported**;
 `fn_63_14B4` (0x54) and `fn_63_1460` (0x54) are ported as named methods, and `ProcessInput`
-(fn_63_1134, 0x32C) is ported. Of `fn_63_15B0` (0x3C4) only the two `FindConnectedObject` calls and
-the base actor's model flags are ported - the animation lookup (0x2B4 of it) stays a stand-in -
-because the DOL's turret HUD (`CTurretHud::UpdateEnergy`) reads the hull actor's id and
-dereferences the actor it names: without the connections the run **crashes** (SIGSEGV in
+(fn_63_1134, 0x32C) is ported. `fn_63_15B0` (0x3C4) is ported as well: the two
+`FindConnectedObject` calls, the base actor's model flags and the five animation ids (0x19C..0x1AC)
+- the getup twice, the step, the death and the locomotion animation, each looked up with one enum
+parameter and seven empty ones (fn_63_19B0, 0x184, now a named method). The connections have to be
+real because the DOL's turret HUD (`CTurretHud::UpdateEnergy`) reads the hull actor's id and
+dereferences the actor it names: without them the run **crashes** (SIGSEGV in
 `CTurretHud::UpdateEnergy`) as soon as the player is in the turret.
 
 The module's own helper that is too big for a slice stays a named stand-in: `fn_63_84C` (0x184,
@@ -257,6 +262,83 @@ the trigger that activates it are at (0, -27, 10); the player spawns at (-100, 2
   `kill` leaves the game in (checked: `kill` freezes the updates the same way), not a crash.
 - 2400 game updates, `exit=0`, no `[port] caught` and no `reach-stub` (both counts 0).
 
-**Milestone 3 (next).** `fn_63_23C0` (Think, 0x968 - parked for an Opus lane) is what makes the
-turret aim and move the hull; then `fn_63_2D68` (PreRender, 0x2CC) and the rest of `fn_63_15B0`
-(the five animation ids), and `fn_63_84C` (0x184) for the shot itself.
+## 10. Milestone 4 (the shot) - host body and runtime
+
+`fn_63_84C` (0x184) is ported: the muzzle transform (`fn_63_1508`, 0x68, a named method), the
+projectile itself - a `CEnergyProjectile` with the turret's own token (0x1E8) as its weapon
+description, the exclude material 0x14 (kMT_ProjectilePassthrough), the damage's weapon mode as
+its type and the player's area - the top actor (0x19A) as its collision cooldown owner (the
+guest's call with lbl_63_rodata_18 = 3.4028235e38f), the base actor's shot animation (0x1A4) and
+the shot's sound (0x22A in multiplayer at the player's pan, 0x228 at the fixed pan 0x40 in single
+player). The guest's `fn_63_B18`/`fn_63_B60` build the projectile's visor effect; the host's
+`CImpactVisorEffect::None()` is the same empty effect (the retail's AI turret uses it too).
+
+The guest's muzzle locator is `lbl_63_bss_C`: a **static** `rstl::string` that the module's
+static initializer `fn_63_376C` fills with `lbl_63_rodata_60 + 0x26` = `muzzleend_LCTR`
+(0x00003788). A BSS string that the module only reads is not empty - `grep -n bss_X
+auto_fn_*_text.s` finds the initializer that fills it.
+
+**Runtime check (2026-10-20).** The same run as in section 9, with `press A 20`: the console's
+`objs projectile` lists nothing before the shot and
+
+    u0662 03ffffff  CEnergyProjectile          a00 (-0.0, -27.0, 10.0)
+
+after it - **the projectile spawns** at the turret's position. 2400 game updates, `exit=0`, no
+`[port] caught` and no `reach-stub` (both counts 0). The turret still does not aim (Think is
+parked), so the shot flies straight ahead and does not reach the gallery's targets.
+
+## 11. Milestone 5 (PreRender) - the guest's model flags
+
+`fn_63_2D68` (0x2CC) writes the base actor's **model flags**: 12 bytes at the guest's actor
+offset 0xFC - a word, the blend mode byte (0x100), the material set byte (0x101), the flags half
+(0x102) and the packed colour (0x104). The blend modes it writes are 5 (`kT_Blend`) for the white
+light and 2 (`kT_Two`) for the damage flash, the flags 3 (`kF_DepthCompare|kF_DepthUpdate`) and
+the material set 0 - the same values the host's `CModelFlags` holds, whose members are private, so
+`include/Kyoto/Graphics/CModelFlags.hpp` gets three TARGET_PC-guarded setters
+(`SetTrans`, `SetMatSetIdx`, `SetFlags`).
+
+The case: the base actor (0x198) is looked up (0x2D88); with a player in the turret (0x188) that
+belongs to this game (0x2DF4) and is not leaving (the guest's player + 0x12F8 != 2, 0x2E24) the
+flags become white with the alpha 0.25 (lbl_63_rodata_54); while the flash timer (0x20C) runs the
+colour is `Lerp(black, red, timer / 0.33)` (lbl_63_rodata_58) with the blend mode 2; the flags
+go back into the base actor (0x2F8C). The guest also raises a bit on the base actor's
+`CScriptActor` (0x396, bit 1) when the colour changed - the host has no such flag, so that store
+is not ported.
+
+**Runtime check (2026-10-20).** The same run: the player gets on the turret, the turret's own
+model is drawn from inside (screenshot `/tmp/opencode/turret_render.png`, the "Turret" HUD and
+the lit hull in the foreground), 2400 game updates, `exit=0`, no `[port] caught` and no
+`reach-stub` (both counts 0).
+
+**Milestone 6 (next).** Only `fn_63_23C0` (Think, 0x968) is left, and it is parked for an Opus
+lane. `fn_63_23C0` (Think, 0x968 - parked for an Opus lane) is what makes the
+turret aim and move the hull; then `fn_63_2D68` (PreRender, 0x2CC), the rest of `fn_63_15B0`
+(the five animation ids - its own helper `fn_63_19B0`, 0x184, is over the 0x80 callee cap, so it
+stays a named stand-in too).
+
+## 12. Milestone 6 (Think) - host body and runtime
+
+`fn_63_23C0` (0x968) is ported in retail order, `// @` marked. It does **not** call
+`CActor::Think`. Per frame, while active: the flash timer 0x20C counts down; the base actor's
+flattened forward is turned by `ZRotation(dt * yawInput * 0x18C)` (only for |yaw input| >= 1e-5),
+or, with a player not in control (turret state != 3), swung back to the turret's forward with
+`CQuaternion::LookAt` at 4x speed; past the left/right limits (0x174/0x178, side from the cross
+product's z - `fn_63_2D28` is the inline `CVector3f::Cross`) the base keeps its forward, else it
+gets `CTransform4f::LookAt(pos, pos + dir, up)`; the yaw input 0x1D0 is zeroed. The pitch 0x1B4
+slews to 0x1B0 at `dt * 0x190 * (1 - PhongBlob(clamp(|d|/(pi/2)), 8))` (4x and no ease without
+control), clamped to -0x180..0x17C, and drives the additive animations 0x19C (up) / 0x1A0 (down)
+with weight |pitch|/(pi/2). The top actor goes onto the base's `upwardballsnap_LCTR`. With the
+player in control the rotation sound 0x222 starts/stops (looped, acoustics, the player's pan 4)
+once the alignment crosses `1 - 60 * 1.001358e-5 * dt` and the 0.05 s debounce ends, and is
+pitch-bent by `8192 + 4000 * pitch/(pi/2)`; without control the sound is stopped but the handle
+0x21C is left set (retail).
+
+asmcheck findings, all explained: x20 bit 0x80 is `GetActive()`; the 0x28F8 compare is inside
+`CMath::Clamp`; `string_l`/`internal_dereference` are the locator string temporary;
+`fn_63_2D28` is the host's `CVector3f::Cross`.
+
+**Runtime check (2026-10-20).** `/tmp/opencode/pt_think/run.sh` (06_ShootingGallery, console
+`tp 0 -27 11`, `stick 127 0 120`, `stick 0 127 90`, `press A 20`, `stick -127 -127 120`, `press B 20`):
+`in-turret 1`, the camera turns from (0, -24.05) to (-2.10, -24.92) around the turret, the shot
+spawns at (9.8, -26.7, 17.6) (aimed right), `B` gets off (`in-turret 0`); 4000 updates, `exit=0`,
+0 `[port] caught`/`reach-stub`; screenshots `/tmp/opencode/pt_think/grid.png`.

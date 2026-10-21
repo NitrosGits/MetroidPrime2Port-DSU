@@ -783,8 +783,18 @@ void CCubeMaterial::SetCurrent(const CModelFlags& flags, const CCubeSurface& sur
     const rstl::vector< TCachedToken< CTexture > >& textures = model.GetTextures();
     materialDataCur += 2;
     for (uint i = 0; i < texCount; ++i) {
+#ifdef TARGET_PC
+      // A texture token unlocked under a model that still counts as locked has no object; the
+      // stage keeps its previous texture for this draw instead of crashing (see
+      // CModel::UnlockTextures).
+      const CTexture* texture = textures[SBig(*materialDataCur)].GetObject();
+      if (texture != nullptr) {
+        texture->Load(static_cast< GXTexMapID >(i), CTexture::kCM_Repeat);
+      }
+#else
       textures[SBig(*materialDataCur)].GetObject()->Load(static_cast< GXTexMapID >(i),
                                                    CTexture::kCM_Repeat);
+#endif
       ++materialDataCur;
     }
   } else {

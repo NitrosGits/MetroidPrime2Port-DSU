@@ -85,12 +85,12 @@ inline uint PackBgDataFlags(uint raw) {
   return flags;
 }
 
-const float kFacingAngle = 0.349f; // rodata: 20 degrees
+const float kFacingAngle = 0.34906584f; // rodata_104: 20 degrees
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface
 // normal.
 const float kWallLaunchAngle = 0.7853981f; // 45 degrees
 
-// The seven joint spheres: the Ing REL's own rodata_0 table, seven (locator, radius) pairs. Every
+// The seven joint spheres: lbl_30_rodata_0 (the Ing REL's own rodata_0 table is the same), seven (locator, radius) pairs. Every
 // radius is 1.5 (0x3FC00000); the pivot point is the zero vector and the mass is 1000.0 (rodata_C4).
 // The names are the Ing model's locators.
 struct SIngJointSphere {
@@ -101,7 +101,7 @@ const SIngJointSphere skIngJointSpheres[] = {
     {"head", 1.5f},   {"Pelvis_SDK", 1.5f}, {"L_knee", 1.5f}, {"R_knee", 1.5f},
     {"F_elbow", 1.5f}, {"L_elbow", 1.5f},   {"R_elbow", 1.5f},
 };
-const float kIngJointMass = 1000.f; // rodata_C4
+const float kIngJointMass = 1000.f; // lbl_30_rodata_68 (the Ing REL's rodata_C4)
 
 // Reports a stand-in the first time it runs (PortCIngBoostBallGuardian.cpp).
 void BgStandIn(const char* what);

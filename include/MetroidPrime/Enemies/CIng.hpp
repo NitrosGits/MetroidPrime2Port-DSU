@@ -248,6 +248,9 @@ public:
   bool CanBeShot(const CStateManager&, int) override { return true; }   // slot 42, fn_29_6C
   bool IsListening() const override { return true; }                    // slot 43, fn_29_10
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
+  // CPatterned, vtable slot 0xec (the REL's fn_29_B784, 0x10C): the module overrides it; the host
+  // runs the base class's body and logs the stand-in.
+  void UpdateHitDamageTime(float dt) override;
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
   void TakeDamage(const CVector3f& direction, float magnitude) override;
@@ -262,6 +265,7 @@ public:
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
   void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
   void Render(const CStateManager& mgr) const override;
   void Touch(CActor& actor, CStateManager& mgr) override;
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
@@ -398,6 +402,12 @@ private:
   // fn_29_1F1C: ExitHost's Deactivate smoke, "IngExitHostSmokeFx" at the Ing's transform, plus the
   // swarm block's own sound (CIngData swarm +0x28); only when the second GEN token is loaded.
   void SpawnExitHostSmoke(CStateManager& mgr);
+  // fn_29_4830: the ing spot's blob (a GeomBlobV2, module 25's CCollisionTracker).
+  void CreateBlob(CStateManager& mgr);
+  // fn_29_4B4C: the actor's own light (a CGameLight).
+  void CreateLight(CStateManager& mgr);
+  // fn_29_4960: the actor's light (0xd68) follows the Ing's eye segment and its data colour.
+  void UpdateLight(CStateManager& mgr, float dt);
   // fn_29_4468: the target's aim position (CActor's GetAimPosition, prediction in f1), false when
   // it is gone. Callers pass rodata_6C (0.0f) except the body projectile's flight (rodata_B4, 0.5f).
   bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f);
@@ -441,6 +451,7 @@ private:
   // flag stands in for it as with mSwarmEffect above.
   rstl::optional_object< TLockedToken< CGenDescription > > mSwarmEffect2;
   TUniqueId mBlobId;                         // 0xd5c [?] never spawned yet
+  TUniqueId mLightId;                        // 0xd68: the actor's light (fn_29_4B4C)
   TUniqueId mTeamId;                         // 0xd6a
   TUniqueId mTargetId;                       // 0xd6c
   TUniqueId mPrevTargetId;                   // 0xd6e

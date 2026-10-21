@@ -7,6 +7,7 @@
 // (PortWarp, PortOverlay) plus the world/player state a state manager gives for free. Adding one is a
 // row in `kCommands`.
 
+#include "port_harness.h"
 #include "port_console.h"
 #include "port_mouse.h"
 #include "port_freecam.h"
@@ -47,6 +48,8 @@
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
@@ -473,8 +476,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "nextarea | prevarea         the next or previous existing area of this world\n"
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
       "heal | kill                 refill energy, or kill the player (a respawn test)\n"
-      "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile or\n"
-      "                            cannonball; kb = knockback power)\n"
+      "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
+      "                            cannonball, dark or light; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -503,6 +506,9 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "obj <id>                    one object (an id as `objs` prints it: u046e): health, fsm, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
+      "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
+      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it)\n"
+      "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
@@ -1279,6 +1285,35 @@ void CmdObjs(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+}  // namespace
+}  // namespace PortConsole
+
+// `obj <door>`: the door and lock state machines, which is what a door that will not open is stuck
+// in (a lock that never finishes unlocking, an open request count that never rose).
+struct PortConsoleDoor {
+  static void Describe(const CScriptDoor& door, CStateManager& mgr, std::string& out) {
+    static const char* const kDoor[] = {"closed", "waiting-for-area", "opening",
+                                        "open",   "close-delay",      "closing"};
+    static const char* const kLock[] = {"unlocked", "pending", "locking", "locked", "unlocking"};
+    const CActor* lock = TCastToConstPtr< CActor >(mgr.GetObjectById(door.mLockActorId));
+    char line[224];
+    std::snprintf(line, sizeof(line),
+                  "  door %s, lock %s (timer %.2f, lock actor u%04x%s), open requests %d%s\n",
+                  door.mDoorState <= CScriptDoor::kDS_Closing ? kDoor[door.mDoorState] : "?",
+                  door.mLockState <= CScriptDoor::kLS_Unlocking ? kLock[door.mLockState] : "?",
+                  door.mLockTimer, door.mLockActorId.Value(),
+                  lock == nullptr                          ? " missing"
+                  : lock->GetModelData() == nullptr        ? ""
+                  : lock->GetModelData()->IsAnimating()    ? " animating"
+                                                           : " still",
+                  door.mOpenRequestCount, door.mResetPending ? ", reset pending" : "");
+    out += line;
+  }
+};
+
+namespace PortConsole {
+namespace {
+
 void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() < 2) {
     Fail("usage: obj <id>");
@@ -1303,6 +1338,9 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   // reading TStateMachineState's own mState through that cast reads a vector's guts as a CState*.
   // The base subobject sits at the same address under both, so take it as the base interface and
   // make only virtual calls; the state's own data is touched only on the AFSM type.
+  if (const CScriptDoor* door = TCastToConstPtr< CScriptDoor >(ent)) {
+    ::PortConsoleDoor::Describe(*door, mgr, out);
+  }
   const CPatterned* patterned = TCastToConstPtr< CPatterned >(ent);
   if (patterned != nullptr) {
     TStateMachineStateBase< CPatterned >* machine =
@@ -1342,7 +1380,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float amount = 0.f;
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
-    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball]");
+    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
@@ -1358,10 +1396,14 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
       weapon = kWT_Missile;
     } else if (args[i] == "cannonball") {
       weapon = kWT_CannonBall;
+    } else if (args[i] == "dark") {
+      weapon = kWT_Dark;
+    } else if (args[i] == "light") {
+      weapon = kWT_Light;
     } else if (args[i] == "power") {
       weapon = kWT_Power;
     } else {
-      Fail("damage: weapon is power, missile or cannonball");
+      Fail("damage: weapon is power, missile, cannonball, dark or light");
       return;
     }
   }
@@ -1385,6 +1427,78 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   } else {
     std::snprintf(line, sizeof(line), "hp %.1f -> (gone)\n", before);
   }
+  out += line;
+}
+
+// frame: the game updates run so far (what MP2_FRAMES counts), so a console script can wait on
+// game time rather than wall time (con.py's `@f<n>`), which a fast harness run does not keep.
+void CmdFrame(CStateManager&, const Args&, std::string& out) {
+  out += "frame " + std::to_string(PortHarness::GameUpdates()) + '\n';
+}
+
+// fsm <id> <state>: put a patterned actor's state machine in a named state, through the machine's
+// own SetState (the AFSM and FSM2 dispatchers both take a name), so a run can enter a state whose
+// trigger it cannot reach. The leave/enter callbacks run as they would in game.
+void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() != 3) {
+    Fail("usage: fsm <id> <state name>");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  const std::string before = machine->HasState() && machine->GetName() != nullptr ? machine->GetName() : "?";
+  machine->SetState(mgr, *patterned, rstl::string_l(std::string(args[2]).c_str()));
+  const char* after = machine->HasState() ? machine->GetName() : nullptr;
+  // An unknown name leaves the machine where it was; say so rather than report a no-op.
+  if (after == nullptr || std::string_view(after) != args[2]) {
+    Fail("state '" + Str(args[2]) + "' not entered (unknown name?); now " +
+         (after != nullptr ? after : "?"));
+    return;
+  }
+  out += "fsm " + before + " -> " + after + '\n';
+}
+
+// place <id> <x> <y> <z> | place <id> player [dist]: move an actor (keeping its rotation), to a
+// point or `dist` units (default 6) in front of the player, and stop any physics motion.
+void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
+  CEntity* ent = args.size() >= 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr) {
+    Fail("usage: place <id> <x> <y> <z> | place <id> player [dist]   (id must be an actor)");
+    return;
+  }
+  CVector3f pos;
+  if (args[2] == "player") {
+    CPlayer* player = mgr.GetPlayer(0);
+    float dist = 6.f;
+    if (player == nullptr || (args.size() > 3 && !ParseFloat(args[3], dist))) {
+      Fail("no player, or a bad distance");
+      return;
+    }
+    CVector3f dir = player->GetTransform().GetForward();
+    dir.SetZ(0.f);
+    dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, 1.f, 0.f);
+    pos = player->GetTranslation() + dir * dist;
+  } else {
+    float x = 0.f, y = 0.f, z = 0.f;
+    if (args.size() != 5 || !ParseFloat(args[2], x) || !ParseFloat(args[3], y) ||
+        !ParseFloat(args[4], z)) {
+      Fail("usage: place <id> <x> <y> <z> | place <id> player [dist]");
+      return;
+    }
+    pos = CVector3f(x, y, z);
+  }
+  actor->SetTranslation(pos);
+  if (CPhysicsActor* physics = TCastToPtr< CPhysicsActor >(ent)) {
+    physics->Stop();
+  }
+  char line[64];
+  std::snprintf(line, sizeof(line), "placed at %.2f %.2f %.2f\n", pos.GetX(), pos.GetY(), pos.GetZ());
   out += line;
 }
 
@@ -1636,6 +1750,8 @@ void CmdGive(CStateManager& mgr, const Args& args, bool take, std::string& out) 
     state->AddPowerUp(type, amount);
     state->IncrPickUp(type, amount);
   }
+  // A translator gate reads the inventory once, when its area loads; this has it read again.
+  CScriptConditionalRelay::PortNoteInventoryCheat();
   const char* name = EnumName(kItemNames, kItemCount, static_cast< uint >(item));
   char line[128];
   std::snprintf(line, sizeof(line), "%s %s: %d/%d\n", take ? "took" : "gave",
@@ -1922,6 +2038,9 @@ constexpr SCommand kCommands[] = {
     {"obj", CmdObj, true},
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
+    {"fsm", CmdFsm, true},
+    {"frame", CmdFrame, true},
+    {"place", CmdPlace, true},
     {"visor", CmdVisor, true},
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},

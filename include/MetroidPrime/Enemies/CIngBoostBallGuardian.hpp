@@ -8,6 +8,7 @@
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Graphics/CColor.hpp"
 #include "Kyoto/Math/CAABox.hpp"
+#include "Kyoto/Math/CMayaSpline.hpp"
 #include "Kyoto/SObjectTag.hpp"
 #include "Kyoto/TToken.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -20,6 +21,7 @@
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrPlasmaBeamInfo.hpp"
 #include "rstl/optional_object.hpp"
+#include "rstl/single_ptr.hpp"
 
 class CCollisionActorManager;
 class CGenDescription;
@@ -123,10 +125,11 @@ struct CIngBoostBallGuardianPhase {
 // phases.
 struct CBoostBallGuardianData {
   CBoostBallGuardianData(const CVector3f& scale, float mass, float unknownBEA9,
-                         float minDamageSpeed, float unknown7B21, CAssetId model,
+                         const CMayaSpline& speed, float minDamageSpeed, float unknown7B21, CAssetId model,
                          CAssetId chargeUpEffect, CAssetId shieldEffect, CAssetId trailEffect,
                          ushort soundBounce, ushort soundIntoBall, ushort soundOutOfBall,
                          ushort soundLoop, ushort soundBoost, ushort soundRolling,
+                         float soundMaxDistance, float soundDistanceComp,
                          const CDamageVulnerability& vulnerability, int unknownEE69,
                          int unknown4B2D, float searchConeAngle, float unknownB0E8,
                          const CDamageInfo& damageToMorphBall,
@@ -140,6 +143,7 @@ struct CBoostBallGuardianData {
   : mScale(scale)
   , mMass(mass)
   , mUnknownBEA9(unknownBEA9)
+  , mSpeed(speed)
   , mMinDamageSpeed(minDamageSpeed)
   , mUnknown7B21(unknown7B21)
   , mModel(model)
@@ -152,6 +156,8 @@ struct CBoostBallGuardianData {
   , mSoundLoop(soundLoop)
   , mSoundBoost(soundBoost)
   , mSoundRolling(soundRolling)
+  , mSoundMaxDistance(soundMaxDistance)
+  , mSoundDistanceComp(soundDistanceComp)
   , mVulnerability(vulnerability)
   , mUnknownEE69(unknownEE69)
   , mUnknown4B2D(unknown4B2D)
@@ -171,6 +177,7 @@ struct CBoostBallGuardianData {
   CVector3f mScale;                     // boostBallScale
   float mMass;                          // boostBallMass
   float mUnknownBEA9;                   // unknown_0xbea96fb7
+  CMayaSpline mSpeed;                   // boostBallSpeed (guest data +0x4C)
   float mMinDamageSpeed;                // boostBallMinDamageSpeed
   float mUnknown7B21;                   // unknown_0x7b21e31a
   CAssetId mModel;                      // boostBallModel
@@ -183,6 +190,11 @@ struct CBoostBallGuardianData {
   ushort mSoundLoop;                    // sound (0x9f7372b3)
   ushort mSoundBoost;                   // sound_Boost
   ushort mSoundRolling;                 // sound_Rolling
+  // Guest data +0xC0/+0xC4: not properties but the loader's constants 1000.0 and 1.0
+  // (fn_30_748, 0x000008E8/0x000008EC); the ball's rolling sfx builds its
+  // C3DEmitterParmData(maxDist, distComp) from them (0x000129C8).
+  float mSoundMaxDistance;              // 1000.0
+  float mSoundDistanceComp;             // 1.0
   CDamageVulnerability mVulnerability;  // boostBallVulnerability
   int mUnknownEE69;                     // unknown_0xee69b993
   int mUnknown4B2D;                     // unknown_0x4b2de673
@@ -225,13 +237,37 @@ public:
   ~CIngBoostBallGuardian() override;
 
   // CPatterned accessors this REL overrides with a one-line body, so they are real, not stand-ins.
+  // @ fn_30_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }              // fn_30_0
+  // @ fn_30_8
   CPathFindPointSearch* GetPointSearchPath() override { return &mPointPathFindSearch; } // fn_30_8
+  // @ fn_30_58
   float GetGravityConstant() const override { return kDefaultGravityAccel; }          // fn_30_58
+  // @ fn_30_6C
   bool IsListening() const override { return true; }                                 // fn_30_6C
+  // @ fn_30_10
   bool CanBeShot(const CStateManager&, int) override { return true; }                // fn_30_10
+  // @ fn_30_34
   CRagDoll* GetRagDoll() const override { return nullptr; }                          // fn_30_34
   TUniqueId GetAttackTarget() const override;                                        // fn_30_3C
+  // The REL's own copies of base-class one-liners (vtable slots 43, 48, 53, 66, 71, 72).
+  // @ fn_30_74
+  CVector3f GetOrigin(const CStateManager&, const CTeamAiRole&, const CVector3f&) const override {
+    return GetTranslation(); // 0x00000074: 0x54/0x58/0x5C
+  }
+  // @ fn_30_24
+  uchar GetModelAlphau8(const CStateManager&) const override { return mColor.GetAlphau8(); } // 0x44F
+  // @ fn_30_2C
+  CProjectileInfo* ProjectileInfo() override { return nullptr; }
+  // @ fn_30_4C
+  bool IsOnGround() const override { return mOnGround; } // 0x0000004C: 0x34C 0x08
+  // @ fn_30_64
+  const rstl::optional_object< TCachedToken< CGenDescription > >&
+  GetDeathExplosionParticle() const override {
+    return CPatterned::GetDeathExplosionParticle(); // 0x00000064: this + 0x754
+  }
+  // @ fn_30_18
+  float GetDeathTimeScale() const override { return 1.f; } // 0x00000018: rodata_64, no burn scale
 
   // CAi
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
@@ -242,11 +278,15 @@ public:
   void Think(float dt, CStateManager& mgr) override;
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override;
   void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  // @ fn_30_D2C0
+  void PreRenderAllViewports(CStateManager& mgr) override { CPatterned::PreRenderAllViewports(mgr); }
   void Render(const CStateManager& mgr) const override;
   void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                     CStateManager& mgr) override;
   void SetupStateMachine(CStateManager& mgr) override;
   void Touch(CActor& actor, CStateManager& mgr) override;
+  void UpdateHitDamageTime(float dt) override; // fn_30_CA18
   void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                        float dt) override;
 
@@ -256,6 +296,7 @@ public:
   rstl::optional_object< CAABox > GetTouchBounds() const override;
   void TakeDamage(const CVector3f& direction, float magnitude) override;
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
+  CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override; // fn_30_CFC4
 
   // ---------------------------------------------------------------------------------------------
   // The state machine. fn_30_C6CC installs three tables into the machine: the 49 triggers
@@ -355,6 +396,8 @@ public:
   void StartRangedAttack(CStateManager& mgr, float dt);
   void EndRangedAttack(CStateManager& mgr, float dt);
   void SplatOntoMesh(CStateManager& mgr, float dt);
+  // fn_30_2F9C takes the actor by pointer; the boost ball calls it too (0x00013304, 0x000144E4).
+  static CScriptAIHint* FindBoostNavPoint(CStateManager& mgr, const CActor& actor, int hintType);
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
@@ -370,14 +413,24 @@ private:
   void ApplySeparation(CStateManager& mgr);
   float DistSqToTarget(const CStateManager& mgr) const;
   CScriptAIHint* GetCoverHint(CStateManager& mgr, TUniqueId id) const;
-  CScriptAIHint* FindBoostNavPoint(CStateManager& mgr, int hintType) const; // fn_30_2F9C
+  CScriptAIHint* FindBoostNavPoint(CStateManager& mgr, int hintType) const {
+    return FindBoostNavPoint(mgr, *this, hintType);
+  }
+  // fn_30_3478: spawns the boost ball (PortCBoostBallGuardianBall.hpp); fn_30_340C stores the
+  // player's aim position, fn_30_324C finds the ground under the actor.
+  void SpawnBoostBall(CStateManager& mgr);
+  void UpdateBoostAimPos(CStateManager& mgr);
+  CVector3f FindBoostSpawnPos(CStateManager& mgr) const;
   void ReleaseCoverHint(CStateManager& mgr, TUniqueId& id);
+  // fn_30_6064: release the cover hint (guest 0x108E); the id is cleared only if the hint exists.
+  void ReleaseOwnCoverHint(CStateManager& mgr);
   void UpdateTimers(float dt, CStateManager& mgr);
   void UpdateValidTarget(CStateManager& mgr);
   void UpdateLoopSfx();
   void StopSfx();
+  void RemoveSfxEmitters(); // fn_30_3A60
   // The target's aim position (CActor's GetAimPosition, prediction in f1), false when it is gone.
-  bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f);
+  bool TargetAimPosition(CStateManager& mgr, CVector3f& out, float prediction = 0.f) const;
   // One arm's segment boxes against the target's bounds; on a hit, the arm swipe damage with the
   // given knock-back.
   void ArmSwipeSegment(CStateManager& mgr, const CSegId& a, const CSegId& b, const CSegId& c,
@@ -386,9 +439,8 @@ private:
   void SpawnExitHostSmoke(CStateManager& mgr);
   // Turn horizontally to the target (the Ing turns to the lure safe zone when one is set; this
   // module has no lure safe zone).
-  void FaceLureOrTarget(CStateManager& mgr);
   // fn_30_30E4: the guest's second manager (0xD64) takes the boost-ball vulnerability or the ing
-  // spot's. fn_30_3190: the body manager (guest 0xD60, the host's mCollisionActorManager) takes the
+  // spot's. fn_30_3190: the body manager (guest 0xD60) takes the
   // reflect vulnerability or the base one. fn_30_3068: enter or leave the boost puddle mode.
   void SetIngSpotManagerVulnerability(CStateManager& mgr, bool boost);
   void SetBodyManagerReflect(CStateManager& mgr, bool reflect);
@@ -405,16 +457,30 @@ private:
   void UpdateTouchBox();
   void UpdatePuddleEffects(float dt, CStateManager& mgr);
   void UpdateHitLight(float dt, CStateManager& mgr);
-  // The manager of the seven joint spheres, and every collision actor's health and vulnerability.
+  // fn_30_4E90: the body manager (guest 0xD60), the seven joint spheres.
   void CreateCollisionActorManager(CStateManager& mgr);
-  void SetupCollisionActors(CStateManager& mgr);
+  // fn_30_4A38: the guest's second manager (0xD64), one "PuddleCollisionActor" box at the "Root"
+  // locator. fn_30_4924: a manager's collision actors take the health info and CPatterned's own
+  // damage vulnerability.
+  void CreateIngSpotManager(CStateManager& mgr);
+  void SetupManagerActors(CStateManager& mgr, CCollisionActorManager* const& manager);
+  // fn_30_648C: an "IngBlobEffect" collision tracker drawn after the guardian, emission 0.
+  // fn_30_67B4: the "Ing Light" game light (black point light). fn_30_510C: leave the team.
+  TUniqueId CreateBlobTracker(CStateManager& mgr, const TLockedToken< CGenDescription >& desc);
+  void CreateHitLight(CStateManager& mgr);
+  void LeaveTeam(CStateManager& mgr);
   // A collision actor that last touched the player deals contact damage.
   void CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender);
-  // The hit reaction in the ing-spot form, and the weapon hit on a collision actor otherwise.
-  void IngSpotDamage(CStateManager& mgr, TUniqueId sender);
-  void CollisionActorDamage(CStateManager& mgr, TUniqueId sender);
-  // The explosion of the hit effect token (heavy when asked and loaded).
-  CEntity* SpawnHitEffect(CStateManager& mgr, bool heavy);
+  // fn_30_479C: kSM_Damage. fn_30_4078: a weapon hit on a body (0xD60) collider. fn_30_44A4: a
+  // weapon hit on the puddle (0xD64) collider, or a hit the boost ball relays. fn_30_4324:
+  // kSM_ResistedDamage on the puddle collider. fn_30_4030: the damage that turns on puddle mode.
+  // fn_30_3CB0: the ing-spot hit effect and sound.
+  void ColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void BodyColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void PuddleColliderDamage(CStateManager& mgr, TUniqueId sender);
+  void PuddleColliderResistedDamage(CStateManager& mgr, TUniqueId sender);
+  void AccumulatePuddleDamage(CStateManager& mgr, float hp, float damage);
+  void SpawnSpotHitEffect(CStateManager& mgr, float damage);
 
   // Host layout (retail's object is 0x11F0; CPatterned is 0x7C0). Guest offsets are the REL's,
   // from the constructor fn_30_EC6C - the full table is in the analysis note. The host layout is
@@ -427,17 +493,15 @@ private:
   int mDesiredForm;                                      // guest 0xAE8, -1 (CIng: 0x9D8)
   CPathFindSearch mPathFindSearch;                       // guest 0xAEC
   CPathFindPointSearch mPointPathFindSearch;             // guest 0xBD8
-  CCollisionActorManager* mCollisionActorManager0;       // guest 0xD60
-  CCollisionActorManager* mCollisionActorManager1;       // guest 0xD64
+  // Owning pointers, as retail: the dtor (fn_30_E5EC) deletes them as members, 0xD64 then 0xD60
+  // (0x0000E7E4/0x0000E7F8), after the boost data and the surface helper.
+  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager0; // guest 0xD60
+  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager1; // guest 0xD64
   CSurfaceAlignmentHelper mSurfaceAlignment;             // guest 0xD68
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // guest 0xDC0
   CBoostBallGuardianData mBoost;                         // guest 0xDEC (0x110)
-  CDamageVulnerability mVulnerability;                   // guest 0x1178
   // The Ing half's members, under the Ing REL's names (the guest offsets are in
   // docs/module-analysis/BoostGuardian.md section e; the host layout is its own).
-  // The manager of the seven joint spheres (the Ing's own at guest 0xC50; the guest's 0xD60/0xD64
-  // are this module's own two managers, which the boost half uses).
-  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager;
   rstl::optional_object< CAABox > mTouchBox;            // CIng: 0xCC0
   TUniqueId mHostId;                                     // CIng: 0xCDC
   TUniqueId mPossessedEffectId;                          // CIng: 0xCDE
@@ -457,8 +521,13 @@ private:
   rstl::optional_object< TLockedToken< CGenDescription > > mDeathEffect;    // CIng: 0xD28
   rstl::optional_object< TLockedToken< CGenDescription > > mMiniPortalEffect; // CIng: 0xD38
   rstl::optional_object< TLockedToken< CGenDescription > > mSplatEffect;   // CIng: 0xD48
+  // Guest 0x1020/0x1030: boostIngSpotHitNormalDamage / boostIngSpotHitHeavyDamage (ctor 0x0000F46C,
+  // 0x0000F5E8). mNormalHitEffect/mHeavyHitEffect are the guest's 0x1000/0x1010.
+  rstl::optional_object< TLockedToken< CGenDescription > > mBoostNormalHitEffect;
+  rstl::optional_object< TLockedToken< CGenDescription > > mBoostHeavyHitEffect;
   CSfxHandle mBodyProjectileSfx;                         // CIng: 0xD58
   CSfxHandle mLoopSfx[2];                                // CIng: 0xD60/0xD64
+  CSegId mCollarSegId; // CIng: 0xD7A; IngBoostBallGuardian: 0x10AC (Collar_SDK, ctor 0x0000FFAC)
   CSegId mEyeSegId;                                      // CIng: 0xD7B
   CSegId mRightShoulderSegId;                            // CIng: 0xD7C
   CSegId mRightElbowSegId;                               // CIng: 0xD7D
@@ -486,7 +555,8 @@ private:
   float mFrustrationTimer;                               // CIng: 0xE44
   float mBallCooldown;                                   // CIng: 0xE48
   float mHitReactionTime;                                // CIng: 0xE4C
-  float mLightBlend;                                     // CIng: 0xE50
+  float mInitialSpeed; // guest 0x11A8: mSpeed at construction (ctor 0x0000FD64); Dead restores it
+  float mLightBlend;                                     // guest 0x11C4 (CIng: 0xE50)
   float mDeadFade;                                       // CIng: 0xE54
   float mBodyProjectileTime;                             // CIng: 0xE58
   // The boost half's members (this module's own; the guest offsets are in
@@ -503,33 +573,56 @@ private:
   bool mBoostPuddleGenerate : 1;                        // guest 0x11EE bit 2
   bool mReflectVulnerability : 1;                        // guest 0x11EE bit 1 (0x02), fn_30_3190
   bool mBoostPuddleAllowed : 1;                          // guest 0x11EF bit 5 (0x20), fn_30_3068
+  // Guest 0x11EF bit 4 (0x10), ctor 1: while set a body hit may kill (fn_30_4078). Retail's
+  // DoUserAnimEvent (fn_30_D4F8) clears it on kUE_Unknown37 and sets it on kUE_Unknown38.
+  bool mBodyHitsLethal : 1; // IngBoostBallGuardian 0x11EF bit 4
+  bool mBoost11EF_40 : 1;   // IngBoostBallGuardian 0x11EF bit 6: only the ctor writes it (0x0000FF20)
   TUniqueId mBoostChildId;                               // guest 0x1094: the second class's id
+  TUniqueId mIngBlobTrackerId;                           // guest 0x1074: ingSpotBlobEffect
+  TUniqueId mBoostBlobTrackerId;                         // guest 0x1076: boostIngSpotBlobEffect
+  TUniqueId mHitLightId;                                 // guest 0x1084: "Ing Light"
+  // Guest 0x109C: the ids connected with (kSS_Modify, kSM_Activate), gathered on kSM_Create
+  // (0x0000E06C) and handed to the boost ball.
+  rstl::vector< TUniqueId > mModifyTargets;
+  CVector3f mBoostAimPos;                                // guest 0x1160 (fn_30_340C)
+  CVector3f mBoostSpawnPos;                              // guest 0x116C (fn_30_324C)
+  // guest 0x1178 (declared here so it is built after 0x116C and destroyed first, as retail): every weapon resisted; the boost puddle's colliders take it (fn_30_30E4), so
+  // their hits arrive as kSM_ResistedDamage (fn_30_4324).
+  CDamageVulnerability mVulnerability;
   TUniqueId mBoostNavPointId;                            // guest 0x1096: the retreat's first point
   TUniqueId mBoostNavPointId2;                           // guest 0x1098: the retreat's second point
   float mBoostTimer;                                     // guest 0x11DC
   float mBoost11D4;                                      // guest 0x11D4
   float mBoost11D8;                                      // guest 0x11D8
+  float mBoost11E0;     // guest 0x11E0: bomb damage relayed by the ball (fn_30_44A4)
+  float mBoostHitTimer; // guest 0x1080: skDamageHitTime on a resisted bomb hit; fn_30_CA18 reads it
+  CVector3f mSplatNormal; // guest 0x1104: set by CollidedWith (fn_30_C850), read by fn_30_6980
+  int mSafeZoneCount;   // guest 0x115C: XENZ/XEXZ count; read by CA18, C05C, C1B0 and PathFind
   float mBoostPuddleModeTimer;                           // guest 0x11E4: the phase's boostPuddleModeTime
   float mBoostRandomFloat;                               // guest 0x11E8
   int mPhaseIndex;                                       // guest 0x11CC: the current phase
-  bool mAggressive : 1;                                  // CIng: 0xE5C bit 4
-  bool xE5C_1 : 1;                                       // CIng: 0xE5C bit 1 (the arm swipe's live flag)
-  bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3
-  bool mRecalcPath : 1;                                  // CIng: 0xE5C bit 2
-  bool mTakeOff : 1;                                     // CIng: 0xE5C bit 0
-  bool mStartAsIngSpot : 1;                              // CIng: 0xE5D bit 5
-  bool mMoving : 1;                                      // CIng: 0xE5D bit 1
-  bool mGrappled : 1;                                    // CIng: 0xE5D bit 0
-  bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7
-  bool mSplat : 1;                                       // CIng: 0xE5E bit 6
-  bool mHurtfulZone : 1;                                 // CIng: 0xE5E bit 4
-  bool mPortalPlane : 1;                                 // CIng: 0xE5D bit 6
-  bool mRenderModel : 1;                                 // CIng: 0xE5D bit 7
-  bool mForm9Render : 1;                                 // CIng: 0xE5D bit 4
-  bool mFollowingAttackPath : 1;                         // CIng: 0xE5D bit 3
-  bool mAlert : 1;                                       // CIng: 0xE5D bit 2
-  bool mTaunt : 1;                                       // CIng: 0xE5C bit 6
-  bool mBodyProjectileAllowed : 1;                       // CIng: 0xE5C bit 5
+  bool mAggressive : 1;                                  // CIng: 0xE5C bit 4; IngBoostBallGuardian 0x11EC bit 5
+  bool xE5C_1 : 1;                                       // CIng: 0xE5C bit 1 (the arm swipe's live flag); IngBoostBallGuardian 0x11EC bit 2
+  bool mFoundMovementPos : 1;                            // CIng: 0xE5C bit 3; IngBoostBallGuardian 0x11EC bit 4
+  bool mRecalcPath : 1;                                  // CIng: 0xE5C bit 2; IngBoostBallGuardian 0x11EC bit 3
+  bool mTakeOff : 1;                                     // CIng: 0xE5C bit 0; IngBoostBallGuardian 0x11EC bit 1
+  // guest 0x11ED 0x40 (CIng: 0xE5D bit 5, there mStartAsIngSpot): ctor from the start-as-ing-spot
+  // flag, set by BecomeIngSpot and kUE_Activate, cleared by BecomeCorporeal, the death fade and
+  // kUE_Deactivate. Its only reader, fn_30_6108, keeps the blob tracker emitting while it is set.
+  bool mIngSpotBlobVisible : 1;                          // IngBoostBallGuardian 0x11ED bit 6
+  bool mMoving : 1;                                      // CIng: 0xE5D bit 1; IngBoostBallGuardian 0x11ED bit 2
+  // CIng: 0xE5D bit 0. This module has no grapple and no guest bit for it: nothing writes it.
+  bool mGrappled : 1;
+  bool mProjectileFSMEntry : 1;                          // CIng: 0xE5E bit 7; IngBoostBallGuardian 0x11ED bit 1
+  bool mSplat : 1; // guest 0x11ED bit 0 (CIng: 0xE5E bit 6): set by CollidedWith (fn_30_C850)
+  bool mHurtfulZone : 1;                                 // CIng: 0xE5E bit 4; IngBoostBallGuardian 0x11EE bit 6
+  bool mPortalPlane : 1;                                 // CIng: 0xE5D bit 6; IngBoostBallGuardian 0x11ED bit 7
+  bool mRenderModel : 1;                                 // CIng: 0xE5D bit 7; IngBoostBallGuardian 0x11EC bit 0
+  bool mForm9Render : 1;                                 // CIng: 0xE5D bit 4; IngBoostBallGuardian 0x11ED bit 5
+  bool mFollowingAttackPath : 1;                         // CIng: 0xE5D bit 3; IngBoostBallGuardian 0x11ED bit 4
+  bool mAlert : 1;                                       // CIng: 0xE5D bit 2; IngBoostBallGuardian 0x11ED bit 3
+  bool mTaunt : 1;                                       // CIng: 0xE5C bit 6; IngBoostBallGuardian 0x11EC bit 7
+  bool mBodyProjectileAllowed : 1;                       // CIng: 0xE5C bit 5; IngBoostBallGuardian 0x11EC bit 6
   // Host-only bookkeeping.
   const char* mLastLoggedState;                          // host: the last state logged
   float mStateTime;                                      // host: time in the current state

@@ -68,6 +68,24 @@ CFoldySurface::CFoldySurface(const TToken< CModel >& model, float lowerX, float 
   const CVector3f* positions =
       static_cast< const CVector3f* >(cubeModel.GetModelInstance().GetVertexPointer());
   for (int i = 0; i < mVertexCount; ++i) {
+#ifdef TARGET_PC
+    // The model's position array is disc data, big-endian in memory: read raw, every vertex fell
+    // into an arbitrary segment with a garbage offset, which is what made the Ing blob's strands
+    // (CCollisionTracker) draw as shards. mPositions is host-native (SetMaterialCurrent).
+    const CVector3f position(CBasics::SwapBytes(positions[i].GetX()),
+                             CBasics::SwapBytes(positions[i].GetY()),
+                             CBasics::SwapBytes(positions[i].GetZ()));
+    if (position.GetX() < lowerX) {
+      mPositions.get()[i] = position + lowerOffset;
+      segmentMatrixIndices[i] = kS_LowerX * 3;
+    } else if (position.GetX() < upperX) {
+      mPositions.get()[i] = position + middleOffset;
+      segmentMatrixIndices[i] = kS_MiddleX * 3;
+    } else {
+      mPositions.get()[i] = position + upperOffset;
+      segmentMatrixIndices[i] = kS_UpperX * 3;
+    }
+#else
     if (positions[i].GetX() < lowerX) {
       mPositions.get()[i] = positions[i] + lowerOffset;
       segmentMatrixIndices[i] = kS_LowerX * 3;
@@ -78,6 +96,7 @@ CFoldySurface::CFoldySurface(const TToken< CModel >& model, float lowerX, float 
       mPositions.get()[i] = positions[i] + upperOffset;
       segmentMatrixIndices[i] = kS_UpperX * 3;
     }
+#endif
   }
   DCFlushRange(mPositions.get(), mVertexCount * sizeof(CVector3f));
 
@@ -152,7 +171,15 @@ void CFoldySurface::SetMaterialCurrent(const CModelFlags& flags) const {
   cubeModel.GetMaterial(surface).SetCurrent(flags, surface, cubeModel);
   cubeModel.SetArraysCurrent();
   if (mVertexCount != 0) {
+#ifdef TARGET_PC
+    // Host-generated array: the three-argument SetArray is the guest path (size 0, big-endian),
+    // so it has to go through SetArrayNative with its real size.
+    CGX::ClearArray(GX_VA_POS);
+    CGX::SetArrayNative(GX_VA_POS, mPositions.get(), mVertexCount * sizeof(CVector3f),
+                        sizeof(CVector3f));
+#else
     CGX::SetArray(GX_VA_POS, mPositions.get(), sizeof(CVector3f));
+#endif
   }
   CGX::SetVtxDesc(GX_VA_PNMTXIDX, GX_DIRECT);
 }

@@ -28,24 +28,24 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_56D8` | 0x250 | `Think` (vtable slot 3): the timers, the effect state and the emitter that follows the target | [proven] |
 | `fn_16_3668` | 0x80 | every live tentacle's per-frame update | [proven] |
 | `fn_16_2B0C` | 0x50 | the per-tentacle update (it calls three more module functions) | [proven] |
-| `fn_16_51D4` | 0x128 | the module's own sound update | [proven] |
-| `fn_16_4EB8` | 0x31C | moves the actor onto the target's locator | [probable] |
+| `fn_16_51D4` | 0x128 | the heart's health becomes the boss's (heart damage sound, the mode 0/1/2 thresholds) - ported, `UpdateHeartHealth` | [proven] |
+| `fn_16_4EB8` | 0x31C | the body follows the heart: the rotate actor on the heart's "brainSpine_scale", the 'PLAY' actor turned along the current angle, the body at the 'PLAY' actor's segment 1 - ported, `UpdateTentacleAnchor` | [proven] |
 | `fn_16_3AFC` | 0x74 | the three collision actor managers' update | [proven] |
 | `fn_16_4C0C` | 0xBC | the module's track-player update | [probable] |
-| `fn_16_4C8` | 0x368 | aims the actor at the player | [probable] |
-| `fn_16_8C` | 0x11C4 | the tentacles' hit test and damage | [probable] |
+| `fn_16_4C8` | 0x368 | the melee sweep's contact damage to the player (the 0x80 flag; every box grows 4.0f) - ported, `UpdateMeleeHits` | [proven] |
+| `fn_16_8C` | 0x3B0 | the sweeping tentacles' contact damage to the player - ported, `UpdateTentacleHits` | [proven] |
+| `fn_16_6F28` | 0x244 | the state "MeleeAttack": the melee flag (0xA74 bit 0x80), the turn angle, the loop attack command - ported, `MeleeAttack` | [proven] |
 | `fn_16_4C0C` | 0xBC | the track-player update: the "Damage" and "Telegraph" effect states | [probable] |
-| `fn_16_51D4` | 0x128 | the module's own sound update (it reads a float at the damage vulnerability's +4) | [probable] |
 | `fn_16_2B0C` | 0x50 | the per-tentacle update | [proven] |
 | `fn_16_24AC` | 0x78 | the tentacle's dark and light vulnerability effect states | [proven] |
-| `fn_16_2070` | 0x194 | the effect state a tentacle carries | [probable] |
-| `fn_16_26B8` | 0x3B0 | the tentacle's own update | [?] |
-| `fn_16_2524` | 0x194 | the tentacle's motion update | [?] |
+| `fn_16_2070` | 0x12C | the effect state a tentacle carries - ported `SetTentacleEffectState` | [probable] |
+| `fn_16_26B8` | 0x3B0 | the tentacle's own update (state 0..3, hits, retract timer) - ported `UpdateTentacleCore` | [probable] |
+| `fn_16_2524` | 0x194 | the tentacle's motion update - ported `UpdateTentacleMotion` | [probable] |
 | `fn_16_302C` | 0x34 | the actor the module tracks (the id at guest 0xA1A) | [proven] |
 | `fn_16_2FA8` | 0x50 | the collision actor of the second tentacle's collision actor manager | [proven] |
-| `fn_16_4E44` | 0x24 | takes the particle effect's reference | [probable] |
-| `fn_16_BDD0` | 0x64 | releases that reference | [probable] |
-| `fn_16_6D10` | 0x84 | the particle effect's own update | [probable] |
+| `fn_16_4E44` | 0x24 | takes the effect's particle-system reference - folded into `GetEffectSystem` | [probable] |
+| `fn_16_BDD0` | 0x64 | releases that reference - folded into `GetEffectSystem` | [probable] |
+| `fn_16_6D10` | 0x84 | external parameter on a system and its spawned systems - `SetSystemParam` | [probable] |
 | `fn_16_3094` | 0x34 | the actor connected on CONNECT/'PLAY' | [proven] |
 | `fn_16_30C8` | 0x278 | the three tentacle animation ids | [proven] |
 | `fn_16_36E8` | 0x29C | the tentacle joint descriptions (eight slots) | [proven] |
@@ -55,7 +55,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_1F34` | 0x20 | the tentacle actor's materials | [proven] |
 | `fn_16_3984` | 0x90 | adds the joint to the vector at guest 0x7D4 | [proven] |
 | `fn_16_3AA8` | 0x54 | the tentacle's collision actor (the owner's first manager, five descriptions per tentacle, the index 4 + index * 5) | [proven] |
-| `fn_16_39CC` | 0xDC | the joint vector's growth | [?] |
+| `fn_16_39CC` | 0x20 | the element's placement copy (calls fn_16_39EC, the null test, then fn_16_3A14, the joint's copy constructor) - the host assignment in `AddTentacleJointToVector` | [proven] |
 | `fn_16_7CE8` | 0x1C0 | `AcceptScriptMsg` (vtable slot 4): the message switch | [proven] |
 | `fn_16_3B70` | 0x54 | destroys the three collision actor managers | [proven] |
 | `fn_16_30C8` | 0x278 | builds the tentacle animation parameter sets | [probable] |
@@ -65,16 +65,16 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_56D8` | 0xC4 | `Think` (vtable slot 3) | [proven] |
 | `fn_16_7CE8` | 0xC4 | `AcceptScriptMsg` (vtable slot 4) | [proven] |
 | `fn_16_52FC` | 0x20 | `PreRender` (vtable slot 7): the base's own body | [proven] |
-| `fn_16_531C` | 0x2B8 | `Render` (vtable slot 9) | [proven] |
-| `fn_16_7F8C` | 0x2C4 | `DoUserAnimEvent` (vtable slot 26) | [proven] |
-| `fn_16_7EA8` | 0xC4 | `ProcessSoundEvent` (vtable slot 28) | [proven] |
+| `fn_16_531C` | 0x2B8 | `Render` (vtable slot 9) - ported | [proven] |
+| `fn_16_1D38` | 0xC4 | the tentacle's draw flags for the model's draw pass - ported | [proven] |
+| `fn_16_7F8C` | 0x5B0 | `DoUserAnimEvent` (vtable slot 26); case 0 (charged projectile), 7, 17, 22, 27 and 28 ported | [proven] |
+| `fn_16_7EA8` | 0xC4 | `ProcessSoundEvent` (vtable slot 28) - ported | [proven] |
 | `fn_16_B958` | 0x30 | `GetTouchBounds` (vtable slot 16): the actor's bounding box | [proven] |
 | `fn_16_BA30` | 0x30 | builds the `optional<CAABox>` from the bounding box | [proven] |
 | `fn_16_9AB0` | 0xC4 | copies the `SLdrHealthInfo` into the actor's `CHealthInfo` (0x1E bytes) | [proven] |
 | `fn_16_98D0` | 0xC4 | copies an `SLdrDamageVulnerability` into a `CDamageVulnerability` (0x54 bytes) | [proven] |
 | `fn_16_9700` | 0xC4 | builds the shock-wave block at guest 0xC40 from the taunt attack's `SLdrShockWaveInfo` | [proven] |
 | `fn_16_9610` | 0x94 | copies the `SLdrPlasmaBeamInfo` (0x48 bytes) into guest 0xCA8 | [proven] |
-| `fn_16_8C` | 0x3B0 | tentacle hit/damage helper (accumulated bounds, `ApplyDamage`) | [?] |
 | `fn_16_830` | 0xB4 | sends IS01 (1), IS02 (2) or IS00 (anything else) to the script - ported, `SendStageMessage` | [proven] |
 | `fn_16_920` | 0xA0 | the tracked actor's "brainSpine_scale" locator position - ported, `GetBrainSpinePosition` | [proven] |
 | `fn_16_8E4` | 0x3C | the attack timer (guest 0xA4C) takes Random Range(attackIntervalMin, attackIntervalMax) - ported, `ResetAttackTimer` | [proven] |
@@ -86,9 +86,12 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_2C3C` | 0x60 | fn_16_2C9C with the 'PLAY' actor's own Y column - ported, `ResetTurnAngle` | [proven] |
 | `fn_16_3060` | 0x34 | same body as fn_16_3094 (id 0xA1E) - the port uses `GetPlayActor` | [proven] |
 | `fn_16_2FF8` | 0x34 | the CONNECT/ACTIVATE actor (id 0xA1C) - ported, `GetActivateActor` | [proven] |
-| `fn_16_CD0` | 0x324 | creates the heart stage's beam (rs_new 0x6A8, guest 0xA98) - stand-in `FireBeam`, returns false | [probable] |
+| `fn_16_CD0` | 0x324 | creates the heart stage's beam (rs_new 0x6A8, guest 0xA98) - ported `FireBeam` | [probable] |
 | `fn_16_A64` | 0x26C | aims and updates the beam (CBeamProjectile slots 35 Fire, 33 UpdateFx; emitter 0xA9C) - ported, `UpdateBeam` | [probable] |
 | `fn_16_9C0` | 0xA4 | resets (slot 34 ResetBeam) and deletes the beam - ported, `StopBeam` | [probable] |
+| `fn_16_9BE8` | 0x260 | the portal's effect (a CScriptEffect) is created - ported | [proven] |
+| `fn_16_9E9C` | 0x68 | the CGameSplineDesc from a CMayaSpline (the type 3, the duration 1.0f, no closed loop) | [proven] |
+| `fn_16_1720` | 0x1C8 | the module's own CPhysicsActor subclass - the "Attack Tip" portal actor (a stand-in) | [proven] |
 | `fn_16_1DFC` | 0x24 | resets one tentacle slot (the timer, the state) | [proven] |
 | `fn_16_2F70` | 0x38 | the number of tentacle slots the sub-stage uses (4, 6 or 8) | [proven] |
 | `fn_16_2EE0` | 0x90 | sets the 0x80 flag of the live tentacles' slots | [proven] |
@@ -173,7 +176,7 @@ constants at 0x00009060..0x00009070). The patterned info is the stack slot 0 at 
 | 0x7C0-0x7D4 | six ints | 0 (0x7C0 the mode, 0x7C4 the sub-stage, 0x7C8/0x7CC/0x7D0 the tentacle collision actor managers, 0x7D4 the live tentacle count) |
 | 0xA18-0xA1E | four u16 | `kInvalidUniqueId` |
 | 0xA20-0xA28 | three ints | -1 |
-| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 (0xA3C the heart-stage timer, 0xA50 the taunt timer) |
+| 0xA2C, 0xA30, 0xA38, 0xA3C, 0xA44, 0xA48, 0xA50, 0xA58-0xA6C | floats | 0 (0xA2C the turn angle, 0xA30 the current turn angle (fn_16_4EB8), 0xA3C the heart-stage timer, 0xA50 the taunt timer) |
 | 0xA34 | float | maxTurnSpeedNormal |
 | 0xA40 | float | the initial health (from `GetHealthInfo()`) |
 | 0xA4C | float | 4.0f |
@@ -334,21 +337,21 @@ The body only runs while the actor is active: the asm's gate is the byte at 0x20
 | 0x5710 | fn_16_3668: every live tentacle's per-frame update (fn_16_2B0C each) |
 | 0x5720 | `CPatterned::Think` - the base's own Think |
 | 0x5734 / 0x5740 | the attack timer (guest 0xA4C) counts down, the taunt timer (guest 0xA50) counts up |
-| 0x5748 | fn_16_51D4: the module's own sound update |
-| 0x5758 | fn_16_4EB8: moves the actor onto the target's locator |
+| 0x5748 | fn_16_51D4: the heart's health becomes the boss's |
+| 0x5758 | fn_16_4EB8: the body follows the heart |
 | 0x5768 | fn_16_3AFC: the three collision actor managers (guest 0x7C8, 0x7CC, 0x7D0) get their update |
 | 0x5778 | fn_16_4C0C: the module's track-player update |
 | 0x578C | the effect-state timer (guest 0xA78) counts down |
 | 0x57CC | `SetEffectState("DarkProjectileCharge", timer > 0.0f)` - the name is the string lbl_16_rodata_340 points at |
-| 0x57E4 | fn_16_4C8: aims the actor at the player |
-| 0x57F4 | fn_16_8C: the tentacles' hit test and damage |
+| 0x57E4 | fn_16_4C8: the melee sweep's contact damage |
+| 0x57F4 | fn_16_8C: the sweeping tentacles' contact damage |
 | 0x57F8..0x5900 | the emitter that follows the target: the handle (guest 0xA8C) must be playing, the target id (guest 0xA90) must exist, and the emitter sits on the target's momentum (its X) in the horizontal direction of the player |
 
 Ported with it (both at or under the slice's 0x80 line): fn_16_3668 (0x80, the loop over the live
 tentacles) and fn_16_3AFC (0x74, the collision actor managers' update). The six calls that are
 bigger keep a named private stand-in that logs once: fn_16_2B0C (0x50 - it is small, but it calls
 three more module functions), fn_16_51D4 (0x128), fn_16_4EB8 (0x31C), fn_16_4C0C (0xBC), fn_16_4C8
-(0x368) and fn_16_8C (0x11C4).
+(0x368) and fn_16_8C (0x3B0; the 0x11C4 was a wrong extent).
 
 ### The Think's callees
 
@@ -356,13 +359,11 @@ Ported: fn_16_2B0C (0x50, the per-tentacle update), fn_16_24AC (0x78, the tentac
 vulnerability effect states), fn_16_302C (0x34, the tracked actor) and fn_16_2FA8 (0x50, the
 second tentacle's collision actor).
 
-Stand-ins, each a named private method that logs once: fn_16_26B8 (0x3B0), fn_16_2524 (0x194)
-and fn_16_2070 (0x194) for the tentacle's work, fn_16_4E44 (0x24), fn_16_BDD0 (0x64) and
-fn_16_6D10 (0x84) for the particle effect's reference and update - the reference counter the
-retail takes at the effect's +0x78/+0x7C lives in the retail particle effect, which the port does
-not have - and fn_16_51D4 (0x128) for the sound update, which reads a float at the damage
-vulnerability's +4 (0x5214): the retail's CDamageVulnerability is 0x54 bytes and the port's is 0x38
-(upstream's layout), so the port has no float there and the value's meaning is not established.
+Ported in slice 3: fn_16_26B8, fn_16_2524, fn_16_2070 (the tentacle's work) and fn_16_4E44 /
+fn_16_BDD0 / fn_16_6D10 (the +0x78/+0x7C counted reference is CParticleGenInfoGeneric's
+`ncrc_ptr<CParticleGen>`, so they become `GetEffectSystem` + `SetSystemParam`). fn_16_51D4 is
+not a sound update: the +4 it reads is the heart collision actor's CHealthInfo::mHealth (vtable slot
+14, HealthInfo), ported in slice 4.
 
 ### The animation builders (fn_16_30C8 and fn_16_36E8)
 
@@ -408,8 +409,8 @@ kMT_SeekerTarget (0x3F) and kMT_ExcludeFromRadar (0x39) to the tentacle actor wh
 set (0x1F74..0x1F8C) and removes them when it is not (0x1F90).
 
 **fn_16_3984** (0x3984..0x39CC) adds the joint to the vector at guest 0x7D4: the retail's vector
-grows first (fn_16_39CC, 0xDC - too big, so it stays a stand-in) and the count is raised
-(0x39B4); the port's vector holds the eight tentacle slots, so it never grows.
+copy-constructs the element at the count (fn_16_39CC, 0x20 -> fn_16_39EC -> fn_16_3A14) and the
+count is raised (0x39B4); the vector has a fixed capacity, so it never grows.
 
 **fn_16_3AA8** (0x3AA8..0x3AFC) finds the tentacle's collision actor: the owner's first collision
 actor manager (guest 0x7C8) holds five joint descriptions per tentacle - the index is scaled by
@@ -459,16 +460,337 @@ when "Whole Body" ends; deactivate hides the 'PLAY' actor and the body sphere), 
 (fn_16_774C: heartExposedTime, beam delay 3.0, firing time 3.75, refire delay 0.5, locomotion 9 then
 1) and Attack (fn_16_6D94: per-mode attack lists rodata_34C/358/368 = {0,0,3}, {1,0,3,0},
 {2,3,1,0}; 0 ProjectileAttack, 1 WarpAttack, 2 TauntAttack, 3 JumpRope; index guest 0xA70).
-Still stand-ins on the walk: ProjectileAttack fn_16_68F4 (0x41C), WarpAttack fn_16_601C (0x7D0),
-TauntAttack fn_16_5DBC (0x260), JumpRope fn_16_5928 (0x280), EndHeartStage fn_16_71BC (0x534),
-the beam's fn_16_CD0 (0x324), and the tentacle motion fn_16_26B8/2524/2070.
+(Slice 3 below ports the rest of this walk up to EndHeartStage.)
 
 The retail CPatterned word at guest 0x6B4 is the host's `mAnimationState` (0 not ready, 1 ready,
 3 over). The beam (guest 0xA98) is a `CBeamProjectile`; its +0x444 is `mCollisionPoint`.
 
+### Slice 3: tentacle motion, ProjectileAttack, FireBeam, Taunt, JumpRope
+
+Ported: fn_16_26B8 `UpdateTentacleCore`, fn_16_2524 `UpdateTentacleMotion`, fn_16_2070
+`SetTentacleEffectState`, fn_16_1FC0 `RestoreTentacleHealth`, fn_16_3C58 `GetTentacleIndex`,
+fn_16_3BC4 `SendTentacleDestroyed`, fn_16_68F4 `ProjectileAttack`, fn_16_2E7C
+`RetractedTentacleCount`, fn_16_CD0 `FireBeam`, fn_16_5C4C `Taunt`, fn_16_5928 `JumpRope`,
+fn_16_2E1C `SetTentacleMaterials`, and case 0 of fn_16_7F8C `DoUserAnimEvent` (the charged
+projectile; without it the loop attack's projectile event fell through to CPatterned and crashed
+in LaunchProjectile).
+
+Joint fields: +0x0C out animation, +0x10 back animation, +0x14 retracted idle, +0x1C hit time,
++0x20 last health. Joint flags: 0x04 forces state 2, 0x10 shootable, 0x20 collision on, 0x40
+collision wanted, 0x80 fn_16_2EE0's flag. States: 0 retracted, 1 coming out, 2 out, 3 going back.
+Guest 0xA74 flags: 0x04 ?, 0x08 projectile charged, 0x10 ?, 0x20 ?, 0x40 jump rope, 0x80 the melee
+sweep (fn_16_6F28 sets it at 0x6F8C and clears it at 0x7144; fn_16_4C8's gate). Retail
+`CTryCommand::ShouldRetry(0x6B4,
+bc, n)` is host `mAnimationState.CanIssueCommand(bc, n)`; the +0x350 vtable 0x30 call is
+`StateMachineState().GetTime()`.
+
+Member fixes: guest 0xBB8/0xBC4 are `projectile.projectile` + `projectile.projectileDamage`
+(data+0x594), now `mProjectile` (the old `mBeamDamage` read beamAttack.damage); 0xBE0 is
+`projectile.projectileVisorEffect`; 0xC80 is the beam's CProjectileInfo (beamInfo.weaponSystem +
+beamAttack.damage at data+0x65C), 0xCA8 the SLdrPlasmaBeamInfo, 0xCF0 beamAttack.sound; 0xBF8 is
+`unknown_0xe5a7c358`, the jump rope's turn speed in degrees; 0xA34 the current turn speed, 0xA38
+the jump rope duration (3.5/5.0/6.5 by mode 0x7C0).
+
+Runtime (area 11, `send <uid> Activate`, console `damage` on the tentacle boxes): the walk cycles
+TrackPlayer -> Attack (ProjectileAttack charges and sets 0x08; JumpRope) -> TrackPlayer -> Taunt;
+damaged tentacles go 3 -> 0 and BeginHeartStage follows. The 'PLAY' actor stays inactive when the
+boss is activated from the console (the script that wakes it is skipped), so BeginHeartStage
+waits until it is sent Activate too; then HeartStage fires the beam three times (guest 0xA98 takes
+new ids) and the heart-exposed time runs out into EndHeartStage (fn_16_71BC, 0x534, a stand-in that
+never ends). 0 caught/reach-stub.
+
+Still stand-ins: EndHeartStage fn_16_71BC (0x534), fn_16_8C (0x3B0, tentacle/heart hit test -
+heart damage does not reach the boss) and fn_16_51D4 (0x128).
+
+fn_16_4C8 is not the "facing": it is fn_16_8C's body with two differences - the gate is the
+0x80 flag (the melee sweep) instead of 0x40 (the jump rope), and every box grows by 4.0f
+(lbl_16_rodata_38C: the box's minimum drops by 4.0f at 0x704, its maximum rises by 4.0f at
+0x734) instead of the tip pair reaching 8.0f past its end. The melee damage, the player's touch
+bounds and the 0.2f cooldown are the same. Ported as `UpdateMeleeHits`.
+
+fn_16_4EB8 (0x4EB8..0x51D4) is the body following the heart, not the facing: the CONNECT/ACTIVATE
+actor (fn_16_2FF8) goes to the heart's (fn_16_302C) "brainSpine_scale" locator (0x4F10), the 'PLAY'
+actor (fn_16_3060) is turned along its own flattened Y column, rotated by the current angle (guest
+0xA30) times dt and looked at the heart's "sphere_base" (rodata_37C) with the heart's Z column as
+up (0x5060..0x5110), and the body itself goes to the 'PLAY' actor's segment 1, 1.5f (rodata_394)
+along its X column (0x5120..0x51A8). The angle (guest 0xA2C) is approached at the accel (guest
+0xBFC, degrees per second, turned into radians with rodata_3DC = 0.017453292) and the current
+angle is clamped to the turn speed (guest 0xA34). Ported as `UpdateTentacleAnchor`; the guest
+0xA30 member is new to the port.
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u04e3 Activate`): the boss moves from (1.7, -43.5, 105.0) to (3.2, -43.5, 104.9) - the body
+now rides the heart - and the run ends on the frame limit with 0 caught/reach-stub. fn_16_4C8 needs
+the player within the melee range (the trigger ShouldMeleeAttack, 30 units), so it does not run in
+that scenario; with the player teleported next to the boss (`tp 5.0 -43.5 104.9`) the FSM enters
+the state "MeleeAttack" (fn_16_6F28), which sets the 0x80 flag, and a gdb breakpoint on
+`CEmperorIngStage1::UpdateMeleeHits` with the condition `xa74_ & 0x80` is hit from
+`CEmperorIngStage1::Think` - fn_16_4C8's body runs.
+
+fn_16_6F28 (0x6F28..0x716C) is the state "MeleeAttack" (lbl_16_data_94 entry 5), not part of
+fn_16_6D94 (that is the state "Attack", already ported): on activate it sends IS00 (fn_16_830,
+0x6F6C), gives the tentacles the melee vulnerability (mode 2, fn_16_353C, 0x6F7C), sets the
+animation state ready (0x6F84), sets the melee flag (guest 0xA74 bit 0x80, 0x6F8C) and the melee
+turn speed (guest 0xBF4, 0x6F98). On update it asks the animation state for the loop attack
+(CanIssueCommand, pas 9 = kAS_LoopAttack, 0x6FAC) and delivers CBCLoopAttackCmd(kLAT_Four)
+(the retail's direction 4, 0x7004); otherwise it sets the turn angle (guest 0xA2C) to the melee
+turn speed in radians (lbl_16_rodata_3DC), positive once the state has run for 0.5f
+(lbl_16_rodata_3F4) and negative before, and after 3.0f (lbl_16_rodata_3C0) the melee trigger
+(fn_16_4B20) decides whether the animation state is over (0x70E8). On deactivate the body gets
+ExitState (0x7110), the animation state is not ready, the attack timer is re-rolled (fn_16_8E4),
+the melee flag is cleared (0x7144) and the turn speed is the normal one (guest 0xBF0). Ported as
+`MeleeAttack`.
+
 The rodata also holds the tentacle locator names ("one_Spine_1_SDK" ... "eight_Spine_7_SDK", the
 "portal1_LCTR_SDK" .. "portal8_LCTR_SDK" set, "DarkProjectileCharge", "DarkVulnerability",
 "LightVulnerability", "brainSpine_scale") - the tentacle and attack work, milestone 2.
+
+### Slice 4: the stage can be finished
+
+Extents (`.fn` markers of the retail listing, next prologue after each `blr`): fn_16_8C is
+0x8C..0x43C (0x3B0; fns.txt agrees, the old 0x11C4/0x1A50 were wrong); fn_16_39CC is 0x39CC..0x39EC
+(0x20, a call to fn_16_39EC; the old 0xDC was wrong).
+
+- fn_16_8C is not the heart's hit test: it is the tentacles' contact damage while flag 0x40 (JumpRope)
+  is set - 8 x 5 locator boxes (the tip box stretched 8.0f horizontally), player touch bounds,
+  melee damage (guest 0xB8C), 0.2 s cooldown (guest 0xA48).
+- The heart's hits land on its own collision actor (a copy of the boss's health info); fn_16_51D4
+  (Think, 0x5748) copies its health back to the boss, plays heartDamageSound (guest 0xCFC) on a drop
+  (guest 0xA40 the last value), pulses the "Damage" effect and steps the mode 0 -> 1 -> 2 at
+  unknown_0x905938b8 / unknown_0xb826317a (guest 0xBAC / 0xBB0, `mModeOneHealth` / `mModeTwoHealth`).
+- EndHeartStage fn_16_71BC: body sphere and 'PLAY' active, CONNECT/ACTIVATE actor DEACTIVATE, 'PLAY'
+  anim 3 + IS05; update issues a generate (type by sub-stage 0/1/2 -> 0/2/1) or sets used slots to
+  state 2 (fn_16_7AD4); over when "Whole Body" ends; deactivate restores anim 1, flags, attack timer,
+  normal vulnerability.
+- The body command id of that generate is 0xF (`li r4, 0xf` at 0x73D8, 0x74AC and 0x7580 before
+  `DeliverCmd__16CBodyStateCmdMgrF13EBodyStateCmd`), and 0xF is the retail's Generate: the DOL's
+  `CBodyStateCmdMgr` ctor (0x800EE990) stores {&__vt__14CBCGenerateCmd, 0xF} at 0x208/0x20C. The
+  DOL's order is 0 Getup, 1 Step, 2 Die, 3 KnockDown, 4 KnockBack, 5 MeleeAttack, 6
+  ProjectileAttack, 7 LoopAttack, 8 LoopReaction, 9 LoopHitReaction, 10..14 the base
+  CBodyStateCmd, 15 (0xF) Generate, 16 Hurled, 17 Jump, 18 Unknown18, 19 Unknown19, 20 Slide, 21
+  Taunt, 22 Scripted, 23 Cover, 24 WallHang, 25 Locomotion, 26 AdditiveIdle, 27 AdditiveAim, 28
+  AdditiveFlinch. The host's `EBodyStateCmd` (include/Kyoto/Animation/CharacterCommon.hpp) is the
+  same order, so `kBSC_Generate` is 15 = 0xF (14 is `kBSC_MaintainVelocity`).
+
+### Slice 5: the boss's own sound handling and the user-event cases
+
+**fn_16_7EA8 (ProcessSoundEvent, vtable slot 28, 0x7EA8..0x7F8C)**: the sound is swallowed while
+the locator belongs to a tentacle that cannot be shot. The tentacle is fn_16_3C58 (0x7F08, the
+segment's spine locator); -1 means there is none (0x7F0C) and the base's own handling runs. With a
+tentacle, the joint's flag byte (the joint's +0x24; the guest 0x7D8 + index * 0x48 + 0x24 = 0x7FC,
+read at 0x7F1C) is tested: the extrwi at 0x7F20 takes one bit at the bit 27, the bit 4 of the byte,
+so the mask is 1u << (31 - 27) = 0x10 - the "shootable" bit. Clear means no sound at all (0x7F24),
+set means the base's own `ProcessSoundEvent` runs (the call at 0x7F6C). Ported.
+
+**fn_16_7F8C (DoUserAnimEvent, vtable slot 26, 0x7F8C..0x853C)**: the switch is the jump table at
+lbl_16_data_314 (29 entries, the event type is the index); the default entry (fn_16_7F8C+0x58C)
+and every type above 28 (the bgt at 0x7FAC) call the base's own DoUserAnimEvent (0x8524). The
+cases that are not the base's:
+
+| type | name | entry | what it does |
+|---|---|---|---|
+| 0 | kUE_Projectile | +0x98 (0x8024) | the charged projectile (ported in slice 3) |
+| 7 | kUE_GenerateEnd | +0x404 (0x8390) | the flag byte at guest 0xA74 gets its bit 4 (0x10) set (the rlwimi at 0x8398 rotates 1 left by 4 into the bit 27) |
+| 17 | kUE_BeginAction | +0x418 (0x83A4) | the taunt's shock wave (below) |
+| 22 | kUE_BreakLockOn | +0x3C (0x7FC8) | every tentacle's collision actor becomes the player's orbit target (the request 8, `li r5, 0x8` at 0x7FF8) |
+| 27 | kUE_EventStart | +0x26C (0x81F8) | the tentacle's portal starts |
+| 28 | kUE_EventStop | +0x360 (0x82EC) | the tentacle's portal stops |
+
+**Case 17 (the shock wave)**: a new unique id from the state manager (0x83A8) is kept at guest
+0xA90 (0x83B8) and handed to the CShockWave (0x8464). The tracked actor's transform (fn_16_302C,
+the retail's +0x24) is the shock wave's; the CShockWave is 0x9F8 bytes, its name is the string at
+lbl_16_rodata_41C's 0x685 ("Shockwave"), the entity info is the area (the guest +0x04), no
+connections, active and no editor id, the parent is this actor's id (the guest +0x08), the shock
+wave info is the one at guest 0xC40 (data+0x5E0, `tauntAttack.shockWaveInfo`), and the two floats
+are 4.0f (lbl_16_rodata_38C) and 0.4f (lbl_16_rodata_40C). The wave is added at 0x84AC and the
+emitter for the shock wave's travel sound (the guest 0xC7C, data+0x610) is created on this actor's
+position (the guest 0x54) and kept at guest 0xA8C (0x8510). The host's `CEntity::NullConnectionList`
+is the empty connection list.
+
+**Cases 27 and 28 (the portal)**: the eight portal locators are lbl_16_rodata_1E0 ("portal1" ..
+"portal8" with the seventh before the sixth); the event's locator name is compared with them
+case-insensitively (0x8260, 0x8330) and the name's place in the list is the tentacle's index.
+Case 27 only runs while the flag byte's bit 5 (0x20) is set (the extrwi at 0x81FC takes one bit at
+the bit 26, so the mask is 1u << (31 - 26) = 0x20); it takes the locator's world transform
+(0x8204, `GetTransform() * GetScaledLocatorTransform`), the translation (the fourth column) and
+the Y column (the second basis vector, negated at 0x82A8). Both cases stop at the sub-stage's
+tentacle count (fn_16_2F70, 0x8284/0x8354). Case 28 computes the same world transform
+(0x82F0..0x8314) but never reads it.
+
+**fn_16_1A50 (0x1A50..0x1C5C, 0x20C) and fn_16_1950 (0x1950..0x1A14, 0xC4)**: the tentacle's
+portal effect. Both are over the slice's 0x80 line, so they stay stand-ins. fn_16_1A50 sets the
+joint's flag 0x08 (the rlwimi at 0x1A84), writes the position and the up vector into the joint
+(0x1B88..0x1BBC), turns the portal's effect towards the player (0x1BFC) and sends "ACTV" (0x1BC8);
+fn_16_1950 clears the joint's flag 0x08 (the rlwimi at 0x1980), zeroes the joint's position and
+sets its up vector (0x1990..0x19C0) and sends "ACTV" (0x1A18).
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send <uid> Activate`, the player teleported next to the boss): the run ends on the frame limit
+with 0 caught/reach-stub and only the Render stand-in left in the log. An instrumented build shows
+that the **only** user event the area-11 scenario fires is type 2 (kUE_LoopedSoundStop, twice), so
+none of the new cases runs there and no CShockWave object appears (the taunt attack, which would
+fire case 17, is still a stand-in). The new cases need their own scenario.
+
+**Render (fn_16_531C, 0x531C..0x55D4) is ported.** The model is drawn eight times, once per
+tentacle: the particle POI mask and target (the flag byte at the guest 0x421's bit 0 = the host's
+`mDrawParticles`, 0x5340), `RenderSystemsToBeDrawnFirst` (the vtable slot 46, 0x535C), the point
+generator particles (the byte at the guest 0x152's bit 6 = the host's
+`GetPointGeneratorParticles`, 0x537C), the rendering model and the alpha buffer (0x5394..0x53D8),
+the eight passes (0x53DC..0x54E0) and `RenderModelMultipleTimesWithFlags` (0x54FC, the count 8),
+the alpha buffer again (0x5518), the point generator particles' own draw (0x5580) and
+`RenderSystemsToBeDrawnLast` (the vtable slot 47, 0x55A0). The host's masked draw keeps the
+surfaces whose material mask intersects the pass's mask, so every surface is drawn once, by the
+pass that owns it.
+
+The four values each pass gets (the joint's slot at guest 0x7D8 + index * 0x48):
+
+| fn | size | what it builds |
+|---|---|---|
+| fn_16_1D38 | 0xC4 | the draw flags: opaque (the blend mode 0), the shader set 0, the depth flags 0x03 (the depth compare and the depth update) and the colour white (the CColor at 0x1D88); the joint's flag 0x08 (the extrwi at 0x1D50, the bit 28) adds the 0x80 flag (the ori at 0x1D94). The retail leaves the flags' first word (the host's `x0_`, which nothing reads) uninitialised; the port zeroes it. |
+| fn_16_1C94 | 0x60 | the colour: `CColor::Lerp(skDamageColor, Black, hitTime / skDamageHitTime)` (the fdivs at 0x1CD4), so a tentacle that was just hit is dark red and one that was never hit is black |
+| fn_16_1C5C | 0x38 | the plane: the joint's up vector and the position's dot with it (the fmadds at 0x1C78 and 0x1C84) |
+| fn_16_1CF4 | 0x44 | the draw mask: the joint's index picks one of the eight u64s at lbl_16_rodata_300 (their high half is zero and their low half holds 0x200, 0x400, 0x100, 0x1000, 0x8, 0x4, 0x10 and 0x40); the index 0 also gets the bit 0x02000000 (the lis 0x200 at 0x1D00) |
+
+**The draw mask's byte order**: the host reads a material's mask as a native u64 (the material
+data stays big-endian in memory, `include/Kyoto/Graphics/CCubeMaterial.hpp`'s `GetMaterialMask`),
+so the host's masks are the retail's byte-swapped. The model's eight surfaces have the host's
+masks 0x0500002000000000, 0x0900002000000000, 0x1100002000000000, 0x4100002000000000,
+0x0101002000000000, 0x0102002000000000, 0x0104002000000000 and 0x0110002000000000, whose
+retail's values are 0x0000000020000005, 0x0000000020000009, 0x0000000020000011,
+0x0000000020000041, 0x0000000020010001, 0x0000000020020001, 0x0000000020040001 and
+0x0000000020100001 - each of them matches exactly one of the retail's table entries (the fifth,
+the fourth, the sixth, the seventh, the second, the zeroth, the first and the third). So the port
+passes the byte-swapped entries, and the host's masked draw (the material mask AND the pass's
+mask) keeps each surface in exactly one pass.
+
+### Slice 6: the taunt attack and the tentacle's portal
+
+**fn_16_5DBC (TauntAttack, 0x5DBC..0x601C, 0x260)** - ported. Two function-local statics with
+their own "initialized" guard bytes (lbl_16_bss_C with lbl_16_bss_10 and lbl_16_bss_14 with
+lbl_16_bss_18; both start at 0, and the second one takes the retracted tentacle count at the
+activate, 0x5EB4). Activate: the script hears IS00 (fn_16_830, 0x5E60), the tentacles get the mode
+1 vulnerability (fn_16_353C, 0x5E7C) and the state's own timer (the guest 0xA54) is 0.0f
+(0x5EA8). Update: the actor looks at the player (fn_16_7B40, 0x5EC4), the timer counts up (0x5ED4)
+and the animation state is asked for the loop attack (ShouldRetry, pas 9 = kAS_LoopAttack,
+0x5EE0); if it may, the body gets the loop attack command (the command id 7 with the type 2,
+0x5EEC), otherwise the timer over the taunt's loop duration (the guest 0xC38, 0x5F78) gives the
+exit state command (the id 10, 0x5FA8). Deactivate: the body gets the abort scripted command
+(the id 13, 0x5FDC) and the animation state is not ready (0x5FF8).
+
+**fn_16_1A50 (0x1A50..0x1C5C, 0x20C) and fn_16_1950 (0x1950..0x1A14, 0xC4)** - the tentacle's
+portal, ported. The portal's event (case 27) sets the joint's flag 0x08 (the rlwimi at 0x1A84),
+writes the position and the up vector into the joint (0x1A88..0x1ABC) and turns the portal's effect
+(the joint's id, the joint's +0x2C) along the up vector (the fadds at 0x1B34..0x1B4C and the LookAt
+at 0x1B60); the effect hears "ACTV" (kSM_Activate, 0x41435456, 0x1B84). The stop (case 28) clears
+the flag (0x1980), the position and the up vector (0x1990..0x19C0) and the effect hears "DCTV"
+(kSM_Deactivate, 0x44435456, 0x19F8). The effect's creation (fn_16_9BE8) and the tail of
+fn_16_1A50 are ported in slice 7 below.
+
+**fn_16_601C (WarpAttack, 0x601C..0x67EC, 0x7D0)** is ported in slice 7 below.
+
+Runtime (area 11, 2026-10-20, a temporary hook that forces the mode to 2 in the heart's health
+update, reverted before the commit): the FSM's Attack state uses the mode 2 list {2, 3, 1, 0} -
+the taunt attack (2), the jump rope (3), the warp attack (1) and the projectile attack (0) - and
+the run shows the taunt attack's activate, update and deactivate and, with a longer run, the
+warp attack's stand-in as well. **No user event fires in area 11 at all** (not the portal's 27 and
+28 and not any other type), so the two portal functions are not exercised by this scenario. 0
+caught/reach-stub.
+
+### Slice 7: the warp attack, the portal's effect and the warp sound
+
+**fn_16_601C (WarpAttack, 0x601C..0x67EC, 0x7D0)** - ported. The switch on the message is the
+retail's: 0 activate (0x60D8), 1 update (0x613C), 2 deactivate (0x6720), everything else returns.
+
+| at | what |
+|---|---|
+| 0x6084 | the function's own statics: the portal counter (lbl_16_bss_4, an int) and its initialisation guard (lbl_16_bss_8, a byte); the guard sets the counter to -1 on the first call |
+| 0x60E4 | the script hears IS02 (fn_16_830 with 2) |
+| 0x60F0 | the animation state is ready |
+| 0x60FC | the tentacles take the warp vulnerability (mode 4, fn_16_353C) |
+| 0x6100 | the portal timer (the guest 0xA44) is 0.0f |
+| 0x6120 / 0x612C | the flag byte (the guest 0xA74): the bit 27 (the byte's 0x10) is cleared and the bit 26 (the byte's 0x20) is set |
+| 0x6134 | the portal counter is -1 |
+| 0x6158 | past 4.0f (lbl_16_rodata_38C) the tentacles are immune (fn_16_353C with 0) and lose their materials (fn_16_2E1C with 0) |
+| 0x618C | the portal counter takes the tentacles that are out (fn_16_2F70 - fn_16_2E7C) |
+| 0x61BC | the loop attack (ShouldRetry, pas 9): the body gets CBCLoopAttackCmd(kLAT_One) - the id 7 with the type 1 |
+| 0x6258 | otherwise the flag byte's bit 27 (0x10, the "GenerateEnd" event) has to be set |
+| 0x6270 | the portal timer counts down |
+| 0x62B0 | one portal: the counter is spent, the timer is 0.75f (lbl_16_rodata_3A4) and the portal is made |
+| 0x66D0 | the state is over when the counter is spent and the state has run for more than 5.0f (lbl_16_rodata_3AC) |
+| 0x6740 | the body gets the exit state command (the id 10) |
+| 0x6760 / 0x6774 / 0x677C | the flag byte's bit 26 (0x20) is cleared, the tentacles get their materials back and the animation state is not ready |
+
+The two body-command records are lbl_16_data_3B0 {0, 0, fn_16_5BA8} (the loop attack) and
+lbl_16_data_3BC {0, 0, fn_16_5C04} (the exit state); the retail tells the two apart by the
+address of the record.
+
+**The portal (0x62B0..0x66AC)**: the "Attack Tip" model data is the CAnimRes of the guest 0xC04
+(the ANCS id), 0xC08 (the character index), 0xC0C (the default animation) with the one vector as
+its scale and no loop. The portal's position has two paths: the random one (0x6364) and the ray
+one (0x6458). The player's **morph ball state** (the retail's CPlayer+0x38C, the host's
+CPlayer::mMorphBallState) picks between them: zero gives the random path, anything else the ray
+path. The random path puts the portal at the player's eye position plus the player's transform
+applied to the local vector (range2, 10.0f, range1), with range1 = Random Range(2.0f, 5.0f)
+(lbl_16_rodata_3B0/3AC) and range2 = Random Range(-10.0f, 10.0f) (lbl_16_rodata_3EC/390), and the
+portal looks at the eye position. The ray path drops a ray of 50.0f (lbl_16_rodata_3BC) from the
+player's position plus the up vector and takes the hit point (the look at point stays the
+origin). The portal actor itself (fn_16_1720, 0x1C8: the module's own CPhysicsActor subclass
+with the portal's effect, the warp stab damage and the two warp sounds) is over the slice's 0x80
+line here and stays a stand-in - slice 8 ports it.
+
+**fn_16_9BE8 (the portal's effect, 0x9BE8..0x9E48, 0x260)** - ported. The id comes from the state
+manager (0x9C08); the effect is a CScriptEffect (0x2D0 bytes) named "WarpPortalEffect" (the
+string at lbl_16_rodata_41C's 0x68F) with the identity transform, the one vector as the scale,
+the entity info (the area, no connections, active and no editor id), the light parameters
+(CLightParameters(false, 1.0f, kST_Zero, 0.0f, 0.0f, Black, true, kLO_NoShadowCast,
+kLR_FourFrames, the zero vector, 2, 2, false, 0, true)) and the spline (fn_16_9E9C: a default
+CMayaSpline, the type 3 (kST_Bezier), the duration 1.0f and no closed loop).
+
+**fn_16_1A50's tail (0x1BD0..0x1C3C)** - ported: the emitter for the warp sound (the guest 0xC2E)
+at the effect's own position, the max distance 50.0f (lbl_16_rodata_3BC), the distance
+compensation 0.1f (lbl_16_rodata_39C), the flags 1, the max volume 0x7F and the min volume 0; the
+emitter's area is the effect's own area and the retail throws the handle away.
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u04e3 Activate`, a temporary hook that forces the mode to 2 in the heart's health update,
+reverted before the commit): the warp attack runs (its portal block logs the fn_16_1720
+stand-in), **four portal effects are created** (the ids 414, 416, 418 and 420 in area 11 - one
+per tentacle that gets the portal's "EventStart" event) and the run ends on the frame limit with
+0 caught/reach-stub.
+
+### Slice 8: the ray path's origin and the portal actor
+
+**CPlayer's vtable slot 21** (the word at 0x54 of `__vt__7CPlayer`, the DOL's
+`GetAimPosition__7CPlayerCFRC13CStateManagerf`) is `GetAimPosition` - the retail's warp attack
+asks the player for it (0x6470) with the state manager and 0.75f (lbl_16_rodata_3A4, 0x6474) and
+drops the ray from that point plus the up vector.
+
+**The portal actor (fn_16_1720, 0x1720..0x18E8)** - ported as the module's own CPhysicsActor
+subclass (`CEmperorIngStage1WarpPortal`, the retail's vtable lbl_16_data_27C). The retail's object
+is 0x300 bytes; its own fields are the timer (the guest 0x2D0), the effect id (0x2D4), the hit
+flag (0x2D6), the portal's effect asset (0x2D8), the stab damage (0x2DC) and the two warp sounds
+(0x2F8 and 0x2FA). The base call (0x1848) is CPhysicsActor with the flag 0, an empty material
+list, the bounding box (-2.0f..2.0f, 0x1800), the mover data (fn_16_18E8: the zero velocity, the
+identity angular velocity, the zero momentum, the identity and the mass 1.0f), the actor
+parameters and the default step data.
+
+Its overrides:
+
+| fn | what |
+|---|---|
+| fn_16_0 | the destructor (the vtable back and the base's own) |
+| fn_16_1150 (0x424) | the think: the timer counts up, past 0.75f the portal goes inactive, when the "Whole Body" animation is over the portal goes inactive and its effect gets the emitter for the second warp sound and the "ACTV" message, past 5.0f the portal asks to be deleted, the animation is updated, and once the player's touch bounds overlap one of the seven "eight_Spine_*" locator boxes (2.0f around the locator) the stab damage is applied |
+| fn_16_1574 (0x1AC) | the script messages: kSM_Create creates the portal's effect (fn_16_9BE8) and gives it the portal's transform and the "ACTV" message, kSM_Delete deletes the effect |
+| fn_16_1088 (0xC8) | the render: the transform's Y column is the plane's normal and the position's dot with it the constant |
+
+The retail's animation data flag byte (the guest CAnimData+0x2AC, 0x1194) has no member in the
+host's CAnimData, so that one line is not ported.
+
+Runtime (area 11, 2026-10-20, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u04e3 Activate`, a temporary hook that forces the mode to 2 in the heart's health update,
+reverted before the commit): the warp attack runs and **the portal actor appears** (16 of them
+over the run, each created with the state manager's id and deleted again after 5.0f), the four
+portal effects are created and the run ends on the frame limit with 0 caught/reach-stub.
 
 ## 5. The port (milestone 1)
 
@@ -521,8 +843,7 @@ CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code
 the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
 
 With the joint work ported (fn_16_2B68, fn_16_1E6C, fn_16_3984) the area load fills the joint
-descriptions and the joint vector: the run reaches the vector's growth (fn_16_39CC), which stays a
-stand-in because the port's vector holds the eight tentacle slots, and the tentacle actor lookup
+descriptions and the joint vector: the run reaches the element's copy (fn_16_39CC) and the tentacle actor lookup
 (fn_16_3AA8), which finds the tentacle's collision actor in fn_16_3EAC's manager.
 
 With the two animation builders ported (fn_16_30C8, fn_16_36E8) the `kSM_AreaLoaded` message
@@ -578,3 +899,316 @@ count that was always 0. After the slice-2 fold (one `mJoints` at guest 0x7D4) R
 (code function, runs: mode 0, count 8) puts tentacles out, so the walk is TrackPlayer -> Attack ->
 ProjectileAttack (fn_16_68F4, a stand-in that never ends). BeginHeartStage/HeartStage are ported
 but not reached until the tentacles can be retracted (fn_16_26B8 and the attack states).
+
+## 6. The vtable's local slots
+
+`lbl_16_data_3C8` (CEmperorIngStage1) has 80 slots: 82 words, two leading zeros, then 80
+entries, of which **24 are the module's own** (`fn_16_*`); the rest are the inherited DOL entries,
+spelled out by name in the table. The WarpPortal's own vtable `lbl_16_data_27C` has 36 slots (38
+words, 2 + 36) and five local entries: the destructor `fn_16_0`, `Think` `fn_16_1150`,
+`AcceptScriptMsg` `fn_16_1574`, `Render` `fn_16_1088` and `fn_16_60` (slot 13).
+
+The module's local entries and what the host already does:
+
+| slot | fn | host virtual | the port |
+|---|---|---|---|
+| 0 | `fn_16_8B80` | `~CEmperorIngStage1()` | ported |
+| 3 | `fn_16_56D8` | `CEntity::Think` | ported |
+| 4 | `fn_16_7CE8` | `CEntity::AcceptScriptMsg` | ported |
+| 7 | `fn_16_52FC` | `CActor::PreRender` | ported (the base's body) |
+| 9 | `fn_16_531C` | `CActor::Render` | ported |
+| 13 | `fn_16_60` (0x2C) | `CActor::GetHealthInfo` | **not ported**: the retail body is the base's own (a virtual call to slot 12, `HealthInfo`), and so is the host's `CActor::GetHealthInfo`. Both module classes use it (it is slot 13 of `lbl_16_data_27C` too) |
+| 16 | `fn_16_B958` (0x3C) | `CActor::GetTouchBounds` | **not ported**: the retail body is `CPhysicsActor::GetBoundingBox` in an `optional_object<CAABox>` (`fn_16_BA30`), which is what the host's `CPatterned::GetTouchBounds` returns |
+| 26 | `fn_16_7F8C` | `CActor::DoUserAnimEvent` | ported |
+| 28 | `fn_16_7EA8` | `CActor::ProcessSoundEvent` | ported |
+| 39 | `fn_16_B994` | `CAi::TakeDamage` | the host's own |
+| 40 | `fn_16_B9FC` | `CAi::CanBeShot` | ported (`true`) |
+| 41 | `fn_16_BA04` | `CAi::IsListening` | ported (`false`) |
+| 42 | `fn_16_BA0C` | `CAi::Listen` | the host's own |
+| 43 | `fn_16_BA14` | `CAi::GetOrigin` | the host's own |
+| 48 | `fn_16_B9A4` | `CPatterned::GetModelAlphau8` | the host's own |
+| 53 | `fn_16_B9AC` | `CPatterned::ProjectileInfo` | the host's own |
+| 54 | `fn_16_B9B4` | `CPatterned::GetSearchPath` | the host's own |
+| 55 | `fn_16_B9BC` | `CPatterned::GetPointSearchPath` | the host's own |
+| 58 | `fn_16_8AF4` | `CPatterned::SetupStateMachine` | ported |
+| 59 | `fn_16_B9C4` | `CPatterned::GetRagDoll` | the host's own |
+| 65 | `fn_16_B9CC` | `CPatterned::GetAttackTarget` | the host's own |
+| 66 | `fn_16_B9DC` | `CPatterned::IsOnGround` | the host's own |
+| 67 | `fn_16_B9E8` | `CPatterned::GetGravityConstant` | the host's own |
+| 71 | `fn_16_B9F4` | `CPatterned::GetDeathExplosionParticle` | the host's own |
+
+The module's **deleting destructors** are the slot 0 of the classes it creates. They are thunks:
+the host's own classes destroy their members, so none of them is ported.
+
+| fn | size | class vtable | destroys |
+|---|---|---|---|
+| `fn_16_48C` `fn_16_3340` `fn_16_3500` `fn_16_55D4` `fn_16_5610` `fn_16_8844` `fn_16_8880` | 0x3C | REL-local (no vtable in the REL `.data`) | nothing (free only) |
+| `fn_16_2A68` `fn_16_2AB8` | 0x50/0x54 | REL-local | the counted reference release `fn_16_BD6C` |
+| `fn_16_4DF0` | 0x54 | REL-local | the counted reference release `fn_16_BDD0` |
+| `fn_16_87F0` `fn_16_9824` `fn_16_987C` `fn_16_96A4` `fn_16_97CC` | 0x54-0x5C | REL-local | a `CToken` |
+| `fn_16_8784` `fn_16_A780` | 0x6C | REL-local | a `CToken`, only when the byte at +0xC is set |
+| `fn_16_89B8` | 0x70 | REL-local | a `CToken` |
+| `fn_16_A840` | 0x64 | REL-local | a `CAnimData` |
+| `fn_16_47DC` | 0x5C | REL-local | the `rstl::string` at +0x2C |
+| `fn_16_564C` `fn_16_9B04` | 0x8C | REL-local | the block whose size is the word at +0x00 |
+| `fn_16_A904` | 0x7C | REL-local | the loader's script block (`SLdrActorParameters`, `SLdrPatternedAITypedef`, `SLdrEditorProperties`) |
+| `fn_16_5D60` | 0x5C | `lbl_16_data_3A4` (a `CBodyStateCmd` subclass) | the vtable back to `lbl_16_data_3A4`, then the base's `lbl_16_data_3BC` |
+| `fn_16_76F0` | 0x5C | `lbl_16_data_398` (a `CBodyStateCmd` subclass) | the vtable back to `lbl_16_data_398`, then the base's `lbl_16_data_3BC` |
+
+`lbl_16_data_3BC` is the base `CBodyStateCmd` (its only virtual is the destructor) and
+`lbl_16_data_3B0` a third subclass (`fn_16_5BA8`); the JumpRope state (fn_16_5928) hands them
+to `CBodyStateCmdMgr::DeliverCmd` at 0x00005A60. The whole map (with the sizes) is in
+`/tmp/opencode/emp1_vt.tsv`.
+
+## 7. The helper chains the host already does
+
+The module's own functions that are not vtable entries fall into chains whose work the host
+does in the caller. Each one is cited on the port's code that replaces it and is not ported.
+
+| chain | functions | what they do | the host's own |
+|---|---|---|---|
+| ← `fn_16_3EAC` | `fn_16_4838` `fn_16_48F4` | the joint vector's destructor and, per element, the release of the string at +0x2C | `rstl::vector` and `rstl::string` |
+| ← `fn_16_22D0` | `fn_16_22F8` `fn_16_231C` `fn_16_2398` | the name comparison of the effect lookup (`fn_16_219C` -> `fn_16_2204` -> `fn_16_22B0` -> `fn_16_22D0`) | `rstl::find_by_key` |
+| ← `fn_16_9BE8` | `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` | the `CGameSplineDesc`'s and the `CMayaSpline`'s deleting destructors | the host's own classes |
+| ← `fn_16_8B80` | `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` | `CPatterned`'s destructor, the `CAiKnockBackMgr`'s deleting destructor and the `rstl::vector<CSegId>`'s deleting destructor (the call at 0x8D38) | the host's `CPatterned`, `CAi` and `rstl::vector` |
+| ← `fn_16_7F8C` | `fn_16_853C` `fn_16_85C8` `fn_16_867C` `fn_16_86BC` `fn_16_86DC` `fn_16_8704` `fn_16_8980` | the copy of the visor effect's particle descriptor into the projectile: the emitter's token and vectors, the `CToken`'s copy and lock (0x8704), and the flag (0x8980) | `CImpactVisorEffect::ParticleEffect` |
+| ← `fn_16_601C` | `fn_16_6898` | the field-by-field copy of the `CRayCastResult` the ray cast returns | the host's assignment |
+| ← `fn_16_A2A0` | `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A644` | the loader's `optional<CModelData>` copy and the `CModelData` copy constructor (the fields and the three locked tokens) | the host's `CModelData` copy |
+| ← `fn_16_ABD0` | `fn_16_B130` `fn_16_B188` `fn_16_B1D8` `fn_16_B378` `fn_16_B3DC` `fn_16_B434` `fn_16_B52C` `fn_16_B584` `fn_16_B5C8` `fn_16_B668` `fn_16_B6BC` `fn_16_B6EC` `fn_16_B86C` | the data block's property readers: the `SLdr` structs' constructors and destructors and the per-type readers (the animation set, the damage info, the health info with its four vulnerabilities) | the generated `SLdrEmperorIngStage1.inc` |
+
+## 8. The branch sweep (the area-11 hooks)
+
+The branches the first run only entered early were driven with temporary hooks - the tested
+flags, modes, timers and ids forced, the hooks and their once-logs reverted afterwards.
+
+* fn_16_1C94 and fn_16_1C5C **are** called in the port, in the retail's order: the render path
+  (fn_16_531C) asks for the flags (fn_16_1D38, 0x540C), the colour (fn_16_1C94, 0x545C), the
+  plane (fn_16_1C5C, 0x5484) and the mask (fn_16_1CF4, 0x54C4) of each of the eight tentacle
+  passes before RenderModelMultipleTimesWithFlags (0x54E4), exactly as the retail does. An entry
+  once-log proved both run in area 11.
+* fn_16_4E44 (the effect's particle system, called from fn_16_4C0C) and fn_16_3AA8 (the
+  tentacle's collision actor) run in area 11: the first probe's once-log had sat after the
+  return statement, and with it before the return both logged.
+* fn_16_7F8C dispatches every event type: the hook forced the types 0..28 in turn and the log
+  shows all 29. The retail's jump table (jumptable_16_data_314) has six case bodies - the types
+  0 (fn_16_7F8C+0x98), 7 (+0x404), 17 (+0x418), 23 (+0x3C), 27 (+0x26C) and 28 (+0x360) - and
+  the other 23 point at the default (+0x58C), the base's own DoUserAnimEvent, which is what the
+  port's default case does.
+* The module's own deleting destructors that the port never names - fn_16_4E68, fn_16_992C,
+  fn_16_9B90, fn_16_A7EC, fn_16_A8A4, fn_16_A980, fn_16_AA70, fn_16_AAD4, fn_16_BA6C,
+  fn_16_BB1C, fn_16_BD04, fn_16_BE34, fn_16_BF14 - and the five entries of the particle
+  system's own vtable (lbl_16_data_510: fn_16_BE98, fn_16_BE9C, fn_16_BEA4, fn_16_BEB0 and
+  fn_16_BEB8) are the host's own: its collision actor manager, its model data, its particle
+  generator and its script loader destroy their members and dispatch their own tables.
+* The ten ported bodies that had no evidence yet all run in area 11: an entry once-log
+  (temporary, reverted) showed fn_16_1DFC, fn_16_52FC, fn_16_56D8, fn_16_7CE8, fn_16_8AF4,
+  fn_16_8B80, fn_16_900C and fn_16_BA04; fn_16_0 (the warp portal's destructor) and fn_16_B9FC
+  (CanBeShot) do not - the portal actor is never created there and nothing shoots the boss.
+* The bodies area 11 never reaches were driven with temporary hooks (reverted): the follow-target
+  emitter (fn_16_56D8) took the handle from the shock wave's travel sound (the kUE_BeginAction
+  case, 0x84E8) and the boss as its target; the warp portal actor was spawned the way retail's
+  WarpAttack does (0x6660), made active and sent its kSM_Create, so it thought (fn_16_1150),
+  drew (fn_16_1088), was deleted (fn_16_0) and created the effect (fn_16_9BE8); the tentacle's
+  portal started and stopped (fn_16_1A50, fn_16_1950); the FSM was forced into the heart stage
+  (fn_16_774C) and the end of it (fn_16_71BC), which fired the beam (fn_16_CD0), updated it
+  (fn_16_A64) and stopped it (fn_16_9C0) and evaluated the two triggers (fn_16_4BB4,
+  fn_16_4B6C); and CanBeShot (fn_16_B9FC) was called. Only fn_16_4954 (the host's FSM1 dispatches
+  no code nodes) and fn_16_7EA8 (no sound event comes from a tentacle's locator) stay unreachable.
+
+## 9. The branch table (the ten functions with conditional branches)
+
+The once-logs (temporary, reverted) sat at the end of every arm of the C++ conditions; the
+retail's offsets come from the asm. `L<n>` is the C++ line the arm's log stood on. The
+retail's extra branches are the short-circuit arms of a C++ condition that is one
+expression (`&&`, `||`), so they are not instrumented separately.
+
+### fn_16_0 (2 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x001C | stw r30, 0x8(r1) | the C++ condition at L0 (a short-circuit arm) | n/a |
+| 0x0038 | extsh. r0, r31 | the C++ condition at L0 (a short-circuit arm) | n/a |
+
+### fn_16_9C0 (1 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x09F4 | cmplwi r3, 0x0 | L1477 then | no |
+
+### fn_16_A64 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x0AA8 | sth r0, 0x8(r1) | L1449 then | no |
+| 0x0AC0 | lbz r0, 0x20(r31) | L1454 then | no |
+| 0x0AD4 | fcmpo cr0, f1, f0 | L1463 then | yes |
+| 0x0BEC | fsubs f1, f2, f1 | the C++ condition at L1463 (a short-circuit arm) | n/a |
+
+### fn_16_CD0 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x0D24 | mr r30, r4 | L1406 then | yes |
+| 0x0DD4 | stb r6, 0x76(r1) | L1422 then | yes |
+| 0x0EAC | extsb. r0, r28 | the C++ condition at L1422 (a short-circuit arm) | n/a |
+| 0x0EBC | cmplwi r31, 0x0 | the C++ condition at L1422 (a short-circuit arm) | n/a |
+
+### fn_16_71BC (10 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x7204 | mr r28, r3 | L2400 then | yes |
+| 0x7208 | mr r28, r3 | L2420 then | yes |
+| 0x7210 | cmpwi r27, 0x0 | the C++ condition at L2420 (a short-circuit arm) | n/a |
+| 0x721C | cmpwi r27, 0x3 | the C++ condition at L2420 (a short-circuit arm) | n/a |
+| 0x7354 | addi r3, r29, 0x6b4 | the C++ condition at L2420 (a short-circuit arm) | n/a |
+| 0x7360 | cmpwi r0, 0x1 | the C++ condition at L2420 (a short-circuit arm) | n/a |
+| 0x7364 | cmpwi r0, 0x1 | the C++ condition at L2420 (a short-circuit arm) | n/a |
+| 0x736C | cmpwi r0, 0x0 | the C++ condition at L2420 (a short-circuit arm) | n/a |
+| 0x7378 | cmpwi r0, 0x3 | the C++ condition at L2420 (a short-circuit arm) | n/a |
+| 0x763C | addi r3, r1, 0x20 | the C++ condition at L2420 (a short-circuit arm) | n/a |
+
+### fn_16_774C (8 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x7778 | mr r31, r4 | L2344 then | yes |
+| 0x777C | mr r31, r4 | L2349 then | no |
+| 0x7784 | cmpwi r5, 0x0 | the C++ condition at L2349 (a short-circuit arm) | n/a |
+| 0x7790 | cmpwi r5, 0x3 | the C++ condition at L2349 (a short-circuit arm) | n/a |
+| 0x77D8 | fcmpo cr0, f2, f0 | the C++ condition at L2349 (a short-circuit arm) | n/a |
+| 0x77E4 | fcmpo cr0, f2, f0 | the C++ condition at L2349 (a short-circuit arm) | n/a |
+| 0x7820 | lhz r0, kInvalidUniqueId@l(r3) | the C++ condition at L2349 (a short-circuit arm) | n/a |
+| 0x7834 | fcmpo cr0, f1, f0 | the C++ condition at L2349 (a short-circuit arm) | n/a |
+
+### fn_16_1150 (13 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x11D0 | fcmpo cr0, f1, f0 | L2020 then | yes |
+| 0x11F8 | cmplwi r4, 0x0 | L2024 then | no |
+| 0x1204 | cmplwi r0, 0x0 | L2041 then | yes |
+| 0x1210 | cmplwi r0, 0x0 | L2046 then | yes |
+| 0x1254 | addi r3, r1, 0x90 | the C++ condition at L2046 (a short-circuit arm) | n/a |
+| 0x128C | sth r0, 0x38(r1) | the C++ condition at L2046 (a short-circuit arm) | n/a |
+| 0x1298 | lbz r0, 0x20(r29) | the C++ condition at L2046 (a short-circuit arm) | n/a |
+| 0x132C | fcmpo cr0, f1, f0 | the C++ condition at L2046 (a short-circuit arm) | n/a |
+| 0x1368 | cmplwi r0, 0x0 | the C++ condition at L2046 (a short-circuit arm) | n/a |
+| 0x1390 | stb r0, 0x120(r1) | the C++ condition at L2046 (a short-circuit arm) | n/a |
+| 0x13CC | cmplwi r0, 0x0 | the C++ condition at L2046 (a short-circuit arm) | n/a |
+| 0x1494 | addi r4, r1, 0xf0 | the C++ condition at L2046 (a short-circuit arm) | n/a |
+| 0x1530 | cmpwi r28, 0x7 | the C++ condition at L2046 (a short-circuit arm) | n/a |
+
+### fn_16_1A50 (3 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x1A78 | cmpwi r0, 0x0 | L1925 then | no |
+| 0x1ACC | lhz r0, kInvalidUniqueId@l(r3) | L1931 then | yes |
+| 0x1B18 | sth r0, 0x18(r1) | L1938 then | no |
+
+### fn_16_1950 (1 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x19D8 | cmplwi r3, 0x0 | L2135 then | no |
+
+### fn_16_9BE8 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x9CD4 | addi r4, r3, 0x60b | L1906 then | yes |
+| 0x9DEC | extsb. r0, r24 | the C++ condition at L1906 (a short-circuit arm) | n/a |
+| 0x9DFC | extsb. r0, r25 | the C++ condition at L1906 (a short-circuit arm) | n/a |
+| 0x9E10 | extsb. r0, r26 | the C++ condition at L1906 (a short-circuit arm) | n/a |
+
+The arms that did not come up: fn_16_0: none; fn_16_9C0: 0x09F4; fn_16_A64: 0x0AA8, 0x0AC0; fn_16_CD0: none; fn_16_71BC: none; fn_16_774C: 0x777C; fn_16_1150: 0x11F8; fn_16_1A50: 0x1A78, 0x1B18; fn_16_1950: 0x19D8; fn_16_9BE8: none.
+
+## 9. The branch table (the ten functions with conditional branches)
+
+The once-logs (temporary, reverted) sat at the end of every arm of the C++ conditions; the
+retail's offsets come from the asm. `L<n>` is the C++ line the arm's log stood on. The
+retail's extra branches are the short-circuit arms of a C++ condition that is one
+expression (`&&`, `||`), so they are not instrumented separately.
+
+### fn_16_0 (2 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x001C | stw r30, 0x8(r1) | the C++ condition at L0 (a short-circuit arm) | n/a |
+| 0x0038 | extsh. r0, r31 | the C++ condition at L0 (a short-circuit arm) | n/a |
+
+### fn_16_9C0 (1 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x09F4 | cmplwi r3, 0x0 | L1478 then | yes |
+
+### fn_16_A64 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x0AA8 | sth r0, 0x8(r1) | L1450 then | yes |
+| 0x0AC0 | lbz r0, 0x20(r31) | L1455 then | yes |
+| 0x0AD4 | fcmpo cr0, f1, f0 | L1464 then | yes |
+| 0x0BEC | fsubs f1, f2, f1 | the C++ condition at L1464 (a short-circuit arm) | n/a |
+
+### fn_16_CD0 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x0D24 | mr r30, r4 | L1407 then | yes |
+| 0x0DD4 | stb r6, 0x76(r1) | L1423 then | yes |
+| 0x0EAC | extsb. r0, r28 | the C++ condition at L1423 (a short-circuit arm) | n/a |
+| 0x0EBC | cmplwi r31, 0x0 | the C++ condition at L1423 (a short-circuit arm) | n/a |
+
+### fn_16_71BC (10 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x7204 | mr r28, r3 | L2403 then | yes |
+| 0x7208 | mr r28, r3 | L2423 then | yes |
+| 0x7210 | cmpwi r27, 0x0 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x721C | cmpwi r27, 0x3 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x7354 | addi r3, r29, 0x6b4 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x7360 | cmpwi r0, 0x1 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x7364 | cmpwi r0, 0x1 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x736C | cmpwi r0, 0x0 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x7378 | cmpwi r0, 0x3 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x763C | addi r3, r1, 0x20 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+
+### fn_16_774C (8 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x7778 | mr r31, r4 | L2346 then | yes |
+| 0x777C | mr r31, r4 | L2351 then | yes |
+| 0x7784 | cmpwi r5, 0x0 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x7790 | cmpwi r5, 0x3 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x77D8 | fcmpo cr0, f2, f0 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x77E4 | fcmpo cr0, f2, f0 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x7820 | lhz r0, kInvalidUniqueId@l(r3) | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x7834 | fcmpo cr0, f1, f0 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+
+### fn_16_1150 (13 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x11D0 | fcmpo cr0, f1, f0 | L2022 then | yes |
+| 0x11F8 | cmplwi r4, 0x0 | L2026 then | no |
+| 0x1204 | cmplwi r0, 0x0 | L2043 then | yes |
+| 0x1210 | cmplwi r0, 0x0 | L2048 then | yes |
+| 0x1254 | addi r3, r1, 0x90 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x128C | sth r0, 0x38(r1) | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1298 | lbz r0, 0x20(r29) | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x132C | fcmpo cr0, f1, f0 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1368 | cmplwi r0, 0x0 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1390 | stb r0, 0x120(r1) | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x13CC | cmplwi r0, 0x0 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1494 | addi r4, r1, 0xf0 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1530 | cmpwi r28, 0x7 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+
+### fn_16_1A50 (3 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x1A78 | cmpwi r0, 0x0 | L1926 then | yes |
+| 0x1ACC | lhz r0, kInvalidUniqueId@l(r3) | L1932 then | yes |
+| 0x1B18 | sth r0, 0x18(r1) | L1939 then | yes |
+
+### fn_16_1950 (1 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x19D8 | cmplwi r3, 0x0 | L2137 then | yes |
+
+### fn_16_9BE8 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x9CD4 | addi r4, r3, 0x60b | L1907 then | yes |
+| 0x9DEC | extsb. r0, r24 | the C++ condition at L1907 (a short-circuit arm) | n/a |
+| 0x9DFC | extsb. r0, r25 | the C++ condition at L1907 (a short-circuit arm) | n/a |
+| 0x9E10 | extsb. r0, r26 | the C++ condition at L1907 (a short-circuit arm) | n/a |
+
+The arms that did not come up: fn_16_0: none; fn_16_9C0: none; fn_16_A64: none; fn_16_CD0: none; fn_16_71BC: none; fn_16_774C: none; fn_16_1150: 0x11F8; fn_16_1A50: none; fn_16_1950: none; fn_16_9BE8: none.

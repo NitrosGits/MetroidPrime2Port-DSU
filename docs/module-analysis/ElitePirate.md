@@ -471,3 +471,51 @@ The module is now verified running, and the reason it was invisible before is es
 The layer lesson generalises: **a module's actors are not reachable by walking its areas alone**,
 and every remaining family has to be checked the same way - warp into one of its areas, read the
 layer list the token prints, and ask for the layer the module's REL is loaded by.
+
+### Fight reach triage (2026-10-20): the fight reaches no stand-in
+
+Smoke (Sanctuary area 4, layer 3; the driver of `/tmp/opencode/smoke/ep_con.py`, the run of
+`/tmp/opencode/smoke/ep_run_ep.sh` from this worktree's `build-port-link`): `u04ff` runs
+PowerUp -> FollowAttackPattern -> Turn -> Alert -> Shockwave -> Turn -> ShieldUp -> MeleeAttack
+-> Shockwave -> Turn -> Pursue -> ProjectileAttack -> Turn (state counts: Shockwave 86, Turn 20,
+Pursue 11, MeleeAttack 10, ShieldUp 8, ProjectileAttack 7, FollowAttackPattern 6, Alert 5, PowerUp
+4); `u051b` (the dark Ingsmasher) runs PowerUp -> FollowAttackPattern. The log has **no
+`[elitepirate] ... is a port stand-in` line** (its five stand-in lines are the Splitter module's),
+**no `[reach-stub ...]`** and **no `[port] caught`**: the FSM is fully ported, so the fight reaches
+no shell.
+
+What the fight's path still leans on is the retail's *internal* helpers, each of which the port
+covers with a host call (so none of them is a port stand-in and there is nothing for a
+once-logging shell to say). The reachable ones, with their sizes from
+`config/G2ME01/rels/ElitePirate/symbols.txt` and the ported function that covers them:
+
+| fn | size | called from | the port's cover |
+|---|---|---|---|
+| `fn_15_2E04` | 0xC8 | `48BC`, `7BFC` | `SetArmTouchBounds` (now marked `@ fn_15_2E04`) |
+| `fn_15_776C` | 0x48 | `728C` | the host's projectile launch |
+| `fn_15_7AAC` | 0x54 | `728C` | ditto (the retail's free helper) |
+| `fn_15_2FC8` | 0x28 | `2F10`, `3574`, `70D4` | the host's collision setup |
+| `fn_15_2730` | 0x58 | `2564`, `3C5C`, `70D4` | the host's smart pointers |
+| `fn_15_2B08` | 0x5C | `27FC`, `A190` | `SetShieldVulnerability` |
+| `fn_15_3AE0` | 0x60 | `36CC` | the host's collision manager |
+| `fn_15_3288` | 0x38 | `36CC` | ditto |
+| `fn_15_3180` | 0x108 | `36CC` | ditto (over 0x80: a host cover, not a ported body) |
+| `fn_15_3424` | 0x150 | `36CC` | ditto |
+| `fn_15_BF6C` | 0xC0 | `36CC` | ditto |
+| `fn_15_3308` | 0xC0 | `36CC` | ditto |
+| `fn_15_3BD8` | 0x84 | `36CC` | ditto |
+| `fn_15_3FC0` | 0xC8 | `3C5C` | the host's particle/actor |
+| `fn_15_1A84` | 0xCC | `1A48` | the host's shock wave |
+| `fn_15_ABB8` | 0x48 | `A190` | the port's ctor |
+| `fn_15_B080` | 0x64 | `A190` | ditto |
+| `fn_15_B748` | 0x84 | `A190` | ditto |
+| `fn_15_A9D8` | 0xC8 | `A190` | ditto |
+| `fn_15_9988` | 0xEC | `A190` | ditto |
+| `fn_15_B360` | 0x21C | `A190` | the port's data copy |
+| `fn_15_CA8` | 0x40 | `178` | the port's loader |
+| `fn_15_10C0` | 0x268 | `178` | ditto |
+| `fn_15_B82C` | 0x2CC | `178` | ditto (the data builder) |
+
+`fn_15_2E04` was the one reachable helper whose port body is retail's (the three bounds floats at
+the collision actor's 0x35c/0x360/0x364, 0x2E70/0x2E74/0x2E78), and it is now marked; the retail
+calls it with this+0x9fc and this+0xa10, the port does both lists in one call.

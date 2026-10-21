@@ -410,6 +410,11 @@ public:
   CBCAdditiveAimCmd() : CBodyStateCmd(kBSC_AdditiveAim), mAimType(0) {}
 
   int GetAimType() const { return mAimType; } // Guessed name
+#ifdef TARGET_PC
+  // The CommandoPirate's aim helper (fn_9_4D84) hands the module's flag byte bit (the 0x02 bit
+  // of guest this+0xC65) to the command as its third field.
+  void SetAimType(int type) { mAimType = type; }
+#endif
 
 private:
   int mAimType;

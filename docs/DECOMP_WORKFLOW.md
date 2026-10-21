@@ -18,10 +18,16 @@ pointer to this file plus their slice, not a restatement of it.
   - m2c pseudo-C over the whole REL; REA `batch_decompile`.
 - One orchestrator (the port session) runs every family and reviews every lane patch; there are
   no per-family orchestrator sessions. Lanes run only on MiniMax free
-  (`opencode-go/minimax-m3.1-flash-free`, passed explicitly). At most one `claude` (Opus) lane may
-  run at a time, for hard tasks (audits, subtle asm, cross-file work). Never DeepSeek, `haiku` or
+  (`opencode-go/minimax-m3.1-flash-free`, passed explicitly). At most three `claude` (Opus) lanes
+  may run at a time, for hard tasks (audits, subtle asm, cross-file work). Never DeepSeek, `haiku` or
   `sonnet`. A lane that fails twice gets a narrower brief, or the
   orchestrator does the piece itself.
+- An accessor or field a lane needs in a shared header (one other families include) is asked for
+  in the report, not added on the branch: the orchestrator commits it to `port` once and the lane
+  merges `port`. (Two lanes adding the same accessor is the usual batch-merge conflict.)
+- Lanes also write their final report to `/tmp/opencode/reports/<lane>.md` (overwrite), so an
+  orchestrator after a handoff reads one directory instead of each lane session. The orchestrator
+  updates `docs/STATUS.md` as lanes report but commits it once per batch or at a handoff.
 - Each lane gets an exclusive list of functions (by `fn_<id>_<off>`) and files. Two lanes never
   hold the same file at once; run them in sequence, or split the file.
 
@@ -30,7 +36,10 @@ pointer to this file plus their slice, not a restatement of it.
 - A lane starts from a named commit on the session branch and commits on top of it. No
   rebases: if the branch moved, the session merges. A patch with unrelated or reversed hunks
   is rejected and redone, not repaired by hand.
-- Sessions merge `port` only when the orchestrator announces a merge point, not ad hoc.
+- Sessions merge `port` only when the orchestrator announces a merge point, not ad hoc. After each
+  batch lands, the orchestrator merges `port` into every live lane branch (or tells the lane to as
+  the first step of its next slice), so lanes build on each other's code and the next batch
+  merges cleanly.
 
 ## Don't re-investigate
 
@@ -50,7 +59,25 @@ TARGET_PC strip-diff CLEAN and the matching build's `fuzzy/matched` percentages;
 area, frame count and `grep -c '[port] caught\|reach-stub'` = 0. Anything skipped makes it
 `STATUS: INCOMPLETE - <what>`.
 
-Lanes never write `// @` markers. A marker needs a run that exercised the function and a pass of
+Run game runs in the foreground (with `timeout`). A lane that ends its turn waiting on a
+background job is never woken; it must report, not wait. Find and kill only the pids its own
+script launched (bracketed `pgrep -f` names); other lanes run the game at the same time.
+
+Fast runs: `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` runs the game ~3-4x faster than real time
+(same fixed 1/60 s ticks); time console scripts in game updates with `@f<n>` in
+`tools/drivers/con.py`, not wall seconds. Reach a state instead of playing to it: `fsm <id> <state>`
+(force an AI state), `place <id> player [d]` (move an actor), `damage <id> <n> [weapon]`, `send`,
+`aim`, `frame` (`help` lists all). Gameplay drivers go in `tools/drivers/` (committed with the
+slice), not only `/tmp`. A lane that would save runs with a console command it lacks says so in its
+report; the orchestrator adds it on `port`.
+
+An arm reached only through a forced setup (`fsm`, `place`, `send`, `damage`) counts toward a marker
+when the retail code of that arm then ran, and the module note's branch table says `forced (<cmd>)`
+for that arm. Forcing is meant for arms gated by shipped data or by hours of play; an arm normal
+play reaches in a short run is reached that way.
+
+Lanes mark only bodies a run exercised fully (not just an early return), unless their brief says the
+orchestrator marks that module. A marker needs a run that exercised the function and a pass of
 the asm-vs-C++ structure check, `tools/asmcheck.py check <Module> <cpp> [fn...]` with all tags (calls,
 compares, conditional branches, stores, bits; the orchestrator reads only what it flags; tags and
 tolerances in its docstring). `tools/review_decomp_diff.sh` runs its correctness tags on every

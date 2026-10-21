@@ -546,7 +546,7 @@ void end_frame() noexcept {
         break;
       case wgpu::SurfaceGetCurrentTextureStatus::Error:
         Log.warn("Surface texture is {}, dropping surface", magic_enum::enum_name(surfaceStatus));
-        g_surface = {};
+        webgpu::release_surface(); // Port: was `g_surface = {}`, see gpu.cpp release_surface_locked
         break;
       default:
         if (!window::is_presentable()) {

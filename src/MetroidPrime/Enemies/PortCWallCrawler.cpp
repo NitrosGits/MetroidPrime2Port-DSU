@@ -86,7 +86,7 @@ CWallCrawler::CWallCrawler(EPatternedAI character, TUniqueId uid, const rstl::st
                            float f2, float f3, float f4, float f5, float f6)
 : CPatterned(character, uid, name, flavor, info, xf, mData, pInfo, moveType, colType, bodyType,
              actParms)
-, mAlignSurface(CVector3f::Zero(), CVector3f::Right(), CVector3f::Forward(), 0xffffffff)
+, mAlignSurface(CVector3f::Zero(), CVector3f::Right(), CVector3f::Forward(), 0xffffffff) // @ fn_83_26CC (0x54): the CCollisionSurface ctor (asm 0x24A0)
 , mColSphere(CSphere(CVector3f::Zero(), sphereRadius), GetMaterialList())
 , mCollisionCloseMargin(collisionCloseMargin)
 , mAlignAngVel(alignAngVel)
@@ -131,6 +131,8 @@ void CWallCrawler::PreThink(float dt, CStateManager& mgr) {
     if (!mAlignToFloor) {
       return;
     }
+    // @ fn_83_129C (0x6C): the CMotionState copy the retail makes before AddMotionState
+    // (asm 0x1148-0x115C) - the C++ copy of the predicted state is the same value.
     AddMotionState(PredictMotion(dt));
     ClearForcesAndTorques();
     if (mHasAlignSurface) {
@@ -332,6 +334,57 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
   CAreaCollisionCache cache(CAABox(newPos - extent, newPos + extent));
   CGameCollision::BuildAreaCollisionCache(mgr, cache);
 
+  // The player-obstruction scan (the retail's fn_83_1310, asm 0x15AC-0x17A4) and the
+  // re-validation of a standing obstruction (asm 0x1410-0x1438). The scan walks the same cache:
+  // a triangle whose flags carry bit 12 (the mask 0x1000) is skipped, the triangle's plane gives the
+  // distance (|dot(normal, newPos) - d|, the host's plane.GetHeight(newPos)), the agreement with the
+  // constraint plane starts at 1.0 (rodata_14) and grows by the agreement while it is above 0.5
+  // (rodata_24), and the score is that accumulated agreement times the distance. The best surface
+  // the crawler stands on (PointOnSurface) becomes the module's own copy (0x7c0) and
+  // mPlayerObstructed is set (the byte 0x860's bit 6 - extrwi 1, 25 of the word).
+  if (mPlayerObstructed) {
+    mPlayerObstructed = PointOnSurface(mAlignSurface, newPos);
+  }
+  if (!mPlayerObstructed && x834_ != 0) {
+    float agreement = 1.f;
+    float bestScore = radius;
+    bool blocked = false;
+    CCollisionSurface blocker;
+    for (int i = 0; i < static_cast< int >(cache.GetNumCaches()); ++i) {
+      const CMetroidAreaCollider::COctreeLeafCache& leaf = cache.GetOctreeLeafCache(i);
+      for (int j = 0; j < leaf.GetNumLeaves(); ++j) {
+        const CAreaOctTree::Node& node = leaf.GetLeaf(j);
+        const CAreaOctTree::TriListReference triangles = node.GetTriangleArray();
+        const CAreaOctTree& tree = node.GetOwner();
+        for (int k = 0; k < triangles.GetSize(); ++k) {
+          const CCollisionSurface surface = tree.GetTriangle(triangles.GetAt(k));
+          if ((surface.GetSurfaceFlags() & 0x1000ull) != 0) {
+            continue;
+          }
+          float agree = CVector3f::Dot(surface.GetNormal(), x838_);
+          if (x834_ == 2) {
+            agree = -agree;
+          } else if (x834_ == 3) {
+            agree = CMath::AbsF(agree);
+          }
+          if (agree > 0.5f) {
+            agreement += agree;
+          }
+          const float score = agreement * CMath::AbsF(surface.GetPlane().GetHeight(newPos));
+          if (score < bestScore && PointOnSurface(surface, newPos)) {
+            bestScore = score;
+            blocker = surface;
+            blocked = true;
+          }
+        }
+      }
+    }
+    if (blocked) {
+      mAlignSurface = blocker;
+      mPlayerObstructed = true;
+    }
+  }
+
   if (mHasAlignSurface) {
     mHasAlignSurface = PointOnSurface(mAlignSurface, newPos);
   }
@@ -369,6 +422,7 @@ void CWallCrawler::AlignToFloor(CStateManager& mgr, float radius, const CVector3
           }
           if (dist < best && PointOnSurface(surface, newPos)) {
             best = dist;
+            // @ fn_83_19C8 (0x5C): the CCollisionSurface copy (asm 0x14BC and 0x160C).
             mAlignSurface = surface;
             found = true;
           }

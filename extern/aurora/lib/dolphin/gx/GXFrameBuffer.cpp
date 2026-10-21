@@ -46,8 +46,35 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
       .height = dstHeight,
       .format = texCopyFmt,
   };
+  // Port: the cache is keyed by size, and nothing evicts it unless the game calls GXDestroyCopyTex,
+  // which MP2 never does. The scan visor copies into the same buffers at a different size on most
+  // frames while its window opens, so each size kept a screen-scaled texture alive for good (the
+  // tablet was OOM-killed minutes after scanning). Keep a few recent entries per destination,
+  // since one buffer can take more than one size or format in a frame, and drop the oldest.
+  static u64 sCopyUse = 0;
+  constexpr size_t MaxCopyTexturesPerDest = 4;
   auto it = g_gxState.copyTextureCache.find(key);
   if (it == g_gxState.copyTextureCache.end()) {
+    size_t sameDest = 0;
+    auto oldest = g_gxState.copyTextureCache.end();
+    for (auto cit = g_gxState.copyTextureCache.begin(); cit != g_gxState.copyTextureCache.end(); ++cit) {
+      if (cit->first.dest != dest) {
+        continue;
+      }
+      ++sameDest;
+      if (oldest == g_gxState.copyTextureCache.end() || cit->second.lastUse < oldest->second.lastUse) {
+        oldest = cit;
+      }
+    }
+    if (sameDest >= MaxCopyTexturesPerDest) {
+      // Its palette conversions go with it: they are keyed by the copy texture's address and are
+      // as large as the copy, so on the tablet (3195x1864) each stale one held ~24 MB for the
+      // 600-frame idle sweep, and the scan visor made one per frame - over 1 GB in two seconds.
+      if (oldest->second.handle) {
+        evict_dynamic_palettes(oldest->second.handle.get());
+      }
+      g_gxState.copyTextureCache.erase(oldest);
+    }
     gfx::TextureHandle handle;
     if (gfx::tex_copy_conv::needs_conversion(texCopyFmt)) {
       handle = gfx::new_conv_texture(dstWidth, dstHeight, texCopyFmt, "Copy Conv Texture");
@@ -62,6 +89,7 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
     it = g_gxState.copyTextureCache.emplace(key, GXState::CopyTextureRef{.handle = handle, .revision = 0}).first;
   }
   auto& handle = it->second;
+  handle.lastUse = ++sCopyUse;
 
   if (g_gxState.alphaUpdate && g_gxState.dstAlpha != UINT32_MAX) {
     if (!clear) {
