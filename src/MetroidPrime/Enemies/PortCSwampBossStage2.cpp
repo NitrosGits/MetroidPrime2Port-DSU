@@ -989,7 +989,7 @@ void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator)
   (void)projectile;
 }
 
-// fn_79_5030: put every chain node on its recorded position.
+// @ fn_79_5030: put every chain node on its recorded position.
 void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const rstl::vector< CVector3f >& positions) const {
@@ -998,11 +998,13 @@ void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
     CActor* node = TCastToPtr< CActor >(mgr.ObjectById(nodes[i]));
     if (node) {
       node->SetTranslation(positions[i]);
+    } else {
     }
   }
 }
 
 // fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
+// Not marked: the swing ran, but the "pull it back to the edge radius" arm (0x53B0) did not.
 void CSwampBossStage2::SwingChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const CVector3f& origin,

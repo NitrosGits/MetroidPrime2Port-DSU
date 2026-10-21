@@ -804,3 +804,65 @@ rotation and `fn_79_527C` for the swing) is what the port's `LaunchPlatformChain
 body is the port's `LaunchPlatformChain` - it is not marked, because the anim event 0x1b that
 calls it never fires in a driver run (the chain walk is the anim event's job, not the script
 message's) and the retail's 55B0 also does not run the recursion.
+
+### 7.17 The chain walk, the anim event 0x1b and the grapple (2026-10-21, eleventh lane pass)
+
+The driver is committed: `tools/drivers/swampboss2_chain.py` (the console part) and
+`tools/drivers/swampboss2_run.sh` (it starts the port with `MP2_CONSOLE` and
+`MP2_TICKS_PER_FRAME=8` and runs the driver). It waits for the boss in the `objs` list, sends it
+the `kSM_AreaLoaded` message and forces the boss's AI states with `fsm <id> <state>`.
+
+**The anim event 0x1b** (the chain launch) is carried by the **light phase's `Lurk` state's
+animation**: a probe on the port's `DoUserAnimEvent` case 0x1b printed the state at the moment
+the event fired - `[probe] the chain launch in the state Lurk` - and the chain launch then ran
+(`fn_79_55B0` -> `fn_79_5030` -> `fn_79_527C`). It is not forced: `Lurk` is a sub-machine state,
+so `fsm <id> Lurk` cannot enter it by name (the console says "state 'Lurk' not entered"), and the
+launch happened in the state the boss reaches on its own.
+
+**fn_79_5030** (the port's `PlaceChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x5078 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x5094 | the walk's condition | (a) a loop condition |
+| - | the body | (b) `[arm] 60 5030 a chain node is put on its recorded position` (the light phase's `Lurk`, no forcing) |
+
+**fn_79_527C** (the port's `SwingChainNodes`) - **not marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x52D0 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (d) it did not run: the swung nodes stayed inside the edge radius |
+| 0x541C | the walk's condition | (a) a loop condition |
+| - | the body | (b) `[arm] 63 527C a chain node is swung` |
+
+**fn_79_55B0** (the port's `LaunchPlatformChain`) - **not marked**: its body ran (it is what calls
+`fn_79_5030` and `fn_79_527C`), but the port's body also sends the chain actor `kSM_Activate` and
+`kSM_Decrement`, which the retail's body does not have (its call list has no script message), so
+the port's body is not retail's.
+
+**fn_79_5830 / fn_79_50AC** (the chain's node list and the ARRV/NEXT recursion) - **not marked**:
+they run on the boss's `kSM_AreaLoaded` message, and the console's `send <boss uid> AreaLoaded`
+(the driver does it, once the boss is in the `objs` list) is accepted ("sent AreaLoaded to
+u0673 002002ca") but the port's `kSM_AreaLoaded` case does not run - the shared host's message
+routing does not reach it. The arms are otherwise (c): the chain actor, its "PTRL/FOLW" node and
+the "ARRV/NEXT" nodes are all actors in the shipped area.
+
+**The grapple (fn_79_7E24's 0x804C) is blocked by shared host code, not by the module**
+
+- `src/MetroidPrime/ScriptObjects/CScriptGrapplePoint.cpp:68` - the grapple point only gets
+  `kMT_Orbit` when it is activated; it never gets `kMT_Target`.
+- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1004` - the lock-on's near list is built with
+  `CMaterialFilter::MakeInclude(CMaterialList(kMT_Target))`, so a grapple point is not in it.
+- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1070` - `ValidateAimTargetId` rejects a target without
+  `kMT_Target`.
+- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1478,1492,1506` - `BeginGrapple` is reached from the
+  *orbit* target, which is the same aim target, so the grapple needs the same material.
+- Retail: the grapple points are `CScriptGrapplePoint`s that the arm's beam connects to
+  (`fn_79_7E24`'s window test is on `mGrappleTime`, +0xd8c); the port's `CPlayer::BeginGrapple`
+  (CPlayerOrbit.cpp:1361) is the same path.
+
+With the grapple beam owned (`give grappleBeam 1` - `CPlayerState::kIT_GrappleBeam` = 0x17, and
+`CPlayerState::ShouldDrawGrapple` needs it) and the point woken (`send u066b Activate`), the point
+still never becomes the player's orbit target, so `mGrappleTime` stayed at 0.00 in every run.
+The fix belongs in the shared `CScriptGrapplePoint`/`CPlayerOrbit` code, not here.
