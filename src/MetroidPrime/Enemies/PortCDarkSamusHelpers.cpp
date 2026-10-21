@@ -595,8 +595,12 @@ void CDarkSamus::ApplyMeleeDamage(CStateManager& mgr) {
 // scale (0x60, 0x00013CF8), white and player -1 (0x00013D98); attack 2 takes the record's pART
 // token 0x9D0, the rest meleeAttackFX 0x9C4 (0x00013D7C). Its uid goes to the record's 0x9DC
 // (0x00013DFC). Port limit: a token whose asset was invalid is never built, so no explosion.
+// Compiler copies, no code of their own here: fn_10_2C8 (0x00013C74) is the module's
+// CRayCastResult copy constructor, fn_10_2040 (0x00013DD8) and the string's
+// internal_dereference (0x00013DE8) destroy the new-expression's temporaries.
 // Run (darksamus_attacks.py): every arm, the ray's miss with key 21 (the actor's position 0x54
-// moved 1000 up and 100000 across); unmarked until the orchestrator signs it off.
+// moved 1000 up and 100000 across; run /tmp/opencode/dsfsm2/s9/a4, DarkSamus.md slice 9).
+// @ fn_10_13AB4
 void CDarkSamus::SpawnMeleePulse(CStateManager& mgr) {
   const CVector3f& pos = GetTranslation();
   const CVector3f start(pos.GetX() + 0.f, pos.GetY() + 0.f, pos.GetZ() + 1.f);
@@ -696,6 +700,9 @@ void CDarkSamus::FireFreezeBeam(CStateManager& mgr) {
 // Tev stage 0 modulate and stage 1 passthru, depth test off with kE_Always and no writes
 // (0x0001875C), the colour (alpha, alpha, alpha, alpha) and a triangle fan (0xA0) from
 // (0,0) at C-R+U, (1,0) at C-R-U, (1,1) at C+R-U, (0,1) at C+R+U.
+// Run (darksamus_uevent.py, dsfsm2-runs/s10 u4+u9+u10): every line (key 55's flash window under
+// `visor dark`, through Render 0x00018A98 and RenderFlash).
+// @ fn_10_1863C
 void CDarkSamus::DrawFlashQuad(float alpha, float size) const {
   const CTransform4f& view = CGraphics::GetViewMatrix();
   const float scale = size * alpha;

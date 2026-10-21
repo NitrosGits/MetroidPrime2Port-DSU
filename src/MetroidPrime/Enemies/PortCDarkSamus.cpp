@@ -26,6 +26,12 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetaRender/CCubeRenderer.hpp"
+#include "Kyoto/Graphics/CGX.hpp"
+#include "Kyoto/Graphics/CGraphics.hpp"
+#include "Kyoto/Animation/CSkinnedModel.hpp"
+#include "MetroidPrime/CSimpleShadow.hpp"
+#include "MetroidPrime/CModelData.hpp"
+#include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "Kyoto/Particles/CParticleSwoosh.hpp"
@@ -34,6 +40,7 @@
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
 
+#include <math.h>
 #include <stdio.h>
 
 namespace {
@@ -240,6 +247,13 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
         CProjectileInfo(data.mPhazonSuperMissileProjectile, data.mPhazonSuperMissileDamage);
     mPhazonSuperMissileInfo.data().Token().Lock();
   }
+  // The invulnerable model 0xD64 (0x000202D8..0x00020408): CMDL mInvulnerableModel (0xD5C,
+  // 0x000202E4), CSKR mInvulnerableSkinRules (0xD60, 0x00020358) and the character's layout info
+  // (0x000203B8), built and locked whatever the ids.
+  mInvulnerableSkinnedModel = TLockedToken< CSkinnedModel >(
+      rs_new CSkinnedModel(gpSimplePool->GetObj(SObjectTag('CMDL', data.mInvulnerableModel)),
+                           gpSimplePool->GetObj(SObjectTag('CSKR', data.mInvulnerableSkinRules)),
+                           AnimationData()->GetModelData()->GetLayoutInfo()));
   mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
@@ -417,16 +431,57 @@ void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
   InstallStateMachineFunctions();
 }
 
-// vtable slot 9 = fn_10_18AB8 (0x2C0): the pre-render pass (the locator-driven effect setup).
+// vtable slot 9 = fn_10_18AB8 (0x2C0): the pre-render pass. With 0xD14 above lbl_10_rodata_3FC =
+// 0.0f (0x00018AF0) the flag byte 0x90C's bit 0x20 is set
+// (`rlwimi r0, r3, 5, 26, 26` at 0x00018AFC); while it is set (`extrwi. r0, r0, 1, 26` at 0x00018B08) the renderer allocates the
+// phazon suit mask (0x00018B1C). The base's pass (0x00018B28); the colour's alpha byte 0x44F is
+// lbl_10_rodata_52C = 255.0f times 0.0f with a boost ball (fn_10_9624 at 0x00018B30) or 0xDE8
+// (0x00018B4C) (the u8 store at 0x00018B5C). With the last echo visor (0xDED bit 0x40,
+// `extrwi r0, r0, 1, 25` at 0x00018B6C) and the damage timer 0x448 above 0.0f (0x00018B88) the
+// draw flags 0xFC are (2, 0, 3, Lerp(Black, White, min(0x448 / skDamageHitTime, 1.0f)))
+// (`bge` at 0x00018BA4, 0x00018BE4..0x00018BF4). Then the gun locator's transform 0x8CC
+// (0x00018C18) and the root bone's position 0x8FC (0x00018C50..0x00018C6C), fn_10_10864
+// (0x00018C7C), the simple shadow 0xC0 from the model's bounds with 0xDE8 above 0.0f
+// (0x00018C90, 0x00018CB4), the visor bits 0xDED 0x80 (dark, cntlzw(3 - visor) by
+// `rlwimi r3, r5, 2, 24, 24` at 0x00018CD8) and 0x40 (echo, cntlzw(1 - visor) >> 5 by
+// `rlwimi r0, r4, 6, 25, 25` at 0x00018CF0), fn_10_12DD0 (0x00018D04), and with 0xFC0 above 0.0f
+// (0x00018D18) the colour's red, green and blue bytes 0x44C..0x44E from Lerp(Black, White, 0xFC0)
+// (0x00018D38..0x00018D50).
+// Unmarked: fn_10_10864 and fn_10_12DD0 are stand-ins.
 void CDarkSamus::PreRender(CStateManager& mgr) {
-  StandIn("fn_10_18AB8", "vtable slot 9, PreRender");
+  if (mGuestD14 > 0.f) { // 0x00018AF0
+    mFlags90C |= 0x20;   // 0x00018AFC
+  }
+  if ((mFlags90C & 0x20) != 0) { // 0x00018B08
+    gpRender->AllocatePhazonSuitMaskTexture();
+  }
   CPatterned::PreRender(mgr);
-  // 0x00018C18: the gun locator's transform the scatter shot fires from (0x8CC), then the root
-  // bone's position (lbl_10_rodata_560 + 0x551, 0x00018C50) the projectile reflect measures from
-  // (0x8FC, 0x00018C64..0x00018C6C). The rest of the pass (the effects and the colour lerps around
-  // it) is not in the port yet.
+  const float visible = HasBoostBall() == true ? 0.f : mGuestDE8; // 0x00018B38
+  mColor.SetAlpha(static_cast< uchar >(255.f * visible));       // lbl_10_rodata_52C, 0x00018B58
+  if (mEchoVisorDED40 == true && mDamageCooldownTimer > 0.f) {  // 0x00018B70, 0x00018B88
+    float t = mDamageCooldownTimer / skDamageHitTime;           // 0x00018B9C
+    if (t >= 1.f) {                                             // 0x00018BA4
+      t = 1.f;
+    }
+    SetModelFlags(CModelFlags(CModelFlags::kT_Two, 0, CModelFlags::EFlags(3),
+                              CColor::Lerp(CColor::Black(), CColor::White(), t)));
+  }
   mGunLctrXf = GetLctrTransform(rstl::string_l("GUN_Particle_LCTR"));
   mRootPos = GetLctrTransform(rstl::string_l("Skeleton_Root")).GetTranslation();
+  StandIn("fn_10_10864", "PreRender's 0x00018C7C");
+  if (mGuestDE8 > 0.f) { // 0x00018C90
+    Shadow()->Calculate(GetModelData()->GetBounds(), GetTransform(), mgr);
+  }
+  const CPlayerState::EPlayerVisor visor = mgr.GetPlayerState()->GetActiveVisor(mgr);
+  mDarkVisorDED80 = visor == CPlayerState::kPV_Dark; // 0x00018CC4..0x00018CD8
+  mEchoVisorDED40 = visor == CPlayerState::kPV_Echo; // 0x00018CD0..0x00018CF0
+  StandIn("fn_10_12DD0", "PreRender's 0x00018D04");
+  if (mGuestFC0 > 0.f) { // 0x00018D18
+    const CColor lerped = CColor::Lerp(CColor::Black(), CColor::White(), mGuestFC0);
+    mColor.SetRed(lerped.GetRedu8());     // 0x00018D48
+    mColor.SetGreen(lerped.GetGreenu8()); // 0x00018D4C
+    mColor.SetBlue(lerped.GetBlueu8());   // 0x00018D50
+  }
 }
 
 // vtable slot 10 = fn_10_17F04 (0x2D8): the base's pass, then - alive only (0x420 bit 0x40,
@@ -499,10 +554,128 @@ float CDarkSamus::GetFadeFactor() const {
   return 1.f;
 }
 
-// vtable slot 11 = fn_10_18964 (0x154).
+// vtable slot 11 = fn_10_18964 (0x154): with a stage (fn_10_17E14, 0x0001899C) whose +0x33 is
+// set (0x000189B4) and the last visor the dark one (0xDED bit 0x80,
+// `extrwi r0, r0, 1, 24` at 0x000189C0) only the flash below. Otherwise, without a boost ball (fn_10_9624, 0x000189D8): when
+// 0xDE8 is above 0.0f (0x000189EC) or the visor is the dark (3, 0x000189F0) or echo one (1,
+// 0x000189F8), the silhouette pass fn_10_18238 if 0xD14 is above 0.0f (0x00018A10), the visor is
+// the combat one (0x00018A14) and 0x90C bit 0x20 is set (0x00018A20), else the base's Render
+// (0x00018A40); then the invulnerable model fn_10_183E8 (0x00018A48). The boost ball's element
+// generator 0xE64 renders when there is one (vtable 0x10, 0x00018A64). Last, the flash
+// (fn_10_1890C, 0x00018A98) while the fade factor (fn_10_185CC) is above 0.0f (0x00018A7C) and
+// the visor is the dark one (0x00018A8C).
+// Run (darksamus_uevent.py, dsfsm2-runs/s10 u4+u9+u10): every retail arm (key 63 the stage's
+// +0x33 under the dark and the combat visor, 56 no boost ball, 50 0xD14 with the combat and dark
+// visors, 54 0xDE8 = 0 under dark/echo). Not run: the host GetActiveVisor inline's null-camera
+// branch; 0xD14 > 0 with 0x90C bit 0x20 clear (PreRender sets the bit first, 0x00018B08 path);
+// the 0xE64 generator (always null on the host, its spawn is unported).
+// @ fn_10_18964
 void CDarkSamus::Render(const CStateManager& mgr) const {
-  StandIn("fn_10_18964", "vtable slot 11, Render");
+  const CPlayerState::EPlayerVisor visor = mgr.GetPlayerState()->GetActiveVisor(mgr);
+  CStateManager& smgr = const_cast< CStateManager& >(mgr);
+  if (GetBattleStage(smgr) == nullptr || GetBattleStage(smgr)->GetUnknown53FDCB5B() != true ||
+      mDarkVisorDED80 != true) {
+    if (!HasBoostBall()) {
+      if (mGuestDE8 > 0.f || visor == CPlayerState::kPV_Dark || visor == CPlayerState::kPV_Echo) {
+        if (mGuestD14 > 0.f && visor == CPlayerState::kPV_Combat && (mFlags90C & 0x20) != 0) {
+          RenderSilhouetteModel(mgr);
+        } else {
+          CPatterned::Render(mgr);
+        }
+      }
+      RenderInvulnerableModel();
+    }
+    if (mBoostBallElementGen.get() != nullptr) {
+      mBoostBallElementGen->Render();
+    }
+  }
+  if (GetFadeFactor() > 0.f &&
+      mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
+    RenderFlash();
+  }
+}
+
+// fn_10_181E0 (0x000181E0, 0x58 bytes): the silhouette colour - the lesser of 0xDE8 and 0xD14
+// (`bge` at 0x000181F8 keeps 0xD14 when 0xDE8 is not below it) times 0xD18's x, y and z
+// (0x00018214..0x00018220), alpha lbl_10_rodata_3E4 = 0.5f.
+// Run (darksamus_uevent.py, dsfsm2-runs/s10 u4+u9+u10): both sides of the min (keys 50, 54).
+// @ fn_10_181E0
+CColor CDarkSamus::GetSilhouetteColor() const {
+  float scale = mGuestDE8;
+  if (scale >= mGuestD14) { // 0x000181F8
+    scale = mGuestD14;
+  }
+  return CColor(scale * mGuestD18.GetX(), scale * mGuestD18.GetY(), scale * mGuestD18.GetZ(),
+                0.5f);
+}
+
+// fn_10_18238 (0x00018238, 0x1B0 bytes): the phazon silhouette. The screen goes to the spare
+// buffer (CopyScreenTex(3, true, mpSpareBuffer, 4 = GX_TF_RGB565, false), 0x00018280), the
+// destination alpha is on at 0xFF (0x0001828C), the model matrix is the transform times the
+// model's scale (0x000182C8..0x00018304), the animated model (kWM_Normal, 0x00018338) is drawn
+// with the flags (1, 0, 3, Black) (0x00018318..0x0001832C, 0x00018348), the renderer's
+// silhouette at blur lbl_10_rodata_3E4 = 0.5f with fn_10_181E0's colour, no texture and
+// (0.0f, 0.0f, 0.0f, White) (0x00018394), then the base's Render (0x000183C4).
+// Run (darksamus_uevent.py, dsfsm2-runs/s10 u4+u9+u10): every line; the untaken
+// branches are the optional_object temporary's exception edges (no retail arm).
+// @ fn_10_18238
+void CDarkSamus::RenderSilhouetteModel(const CStateManager& mgr) const {
+  CCubeRenderer* render = gpRender;
+  render->CopyScreenTex(3, true, CGraphics::GetDolphinSpareBuffer(), GX_TF_RGB565, false);
+  CGX::SetDstAlpha(true, 0xFF);
+  CTransform4f xf = GetTransform();
+  const CVector3f& scale = GetModelData()->GetScale();
+  xf = xf * CTransform4f::Scale(scale.GetX(), scale.GetY(), scale.GetZ());
+  gpRender->SetModelMatrix(xf);
+  GetModelData()->GetAnimationData()->Render(
+      GetModelData()->PickAnimatedModel(CModelData::kWM_Normal),
+      CModelFlags(CModelFlags::kT_One, 0, CModelFlags::EFlags(3), CColor::Black()));
+  render->RenderSilhouette(0.5f, GetSilhouetteColor(),
+                           rstl::optional_object< TCachedToken< CTexture > >(), 0.f, 0.f, 0.f,
+                           CColor::White());
   CPatterned::Render(mgr);
+}
+
+// fn_10_183E8 (0x000183E8, 0x1E4 bytes): the invulnerable model 0xD6C, not with the last visor the
+// echo one (0xDED bit 0x40, `extrwi r0, r0, 1, 25` at 0x00018404). The model matrix is the
+// transform times the model's scale (0x00018434..0x00018464). The alpha: with 0xD24 above 0.0f
+// (0x00018478), the wave (1 + sin(lbl_10_rodata_518 = 16.0f * 0x8B0)) * 0.5f (0x0001848C..
+// 0x000184B0) and below lbl_10_rodata_3E8 = 1.0f (0x000184B4) lbl_10_rodata_51C = 0.4f * 0xD24 +
+// lbl_10_rodata_428 = 0.2f (0x000184C8), else 1.0f in the phazon phase (0x1060 bit 0x80 at
+// 0x000184D4) or during the attacks 0x400000 / 0x800000 (`subis` at 0x000184E4 / 0x000184F0),
+// else lbl_10_rodata_524 = 0.2f * the wave + lbl_10_rodata_520 = 0.4f (0x00018518); at 0.0f or
+// less the wave of lbl_10_rodata_528 = 14.0f (0x00018530) and lbl_10_rodata_41C = 0.1f * (1 +
+// wave) * 0.5f + 0.1f (0x00018558). The alpha is held to 0xDE8 (0x00018564) and the model drawn
+// with the flags (5, 0, 3, (1, 1, 1, alpha)) (0x0001858C..0x000185A0, 0x000185B0).
+// Run (darksamus_uevent.py, dsfsm2-runs/s10 u4+u9+u10): every arm (keys 51/52 0xD24 at
+// 0.5 / 1, 53 the phazon phase, the attacks by the dt key, `visor echo`).
+// @ fn_10_183E8
+void CDarkSamus::RenderInvulnerableModel() const {
+  if (mEchoVisorDED40 == true) { // 0x0001840C
+    return;
+  }
+  gpRender->SetModelMatrix(GetTransform() * CTransform4f::Scale(GetModelData()->GetScale()));
+  float alpha;
+  if (mGuestD24 > 0.f) { // 0x00018478
+    const float wave = (1.f + static_cast< float >(sin(16.f * mElapsedTime))) * 0.5f;
+    if (mGuestD24 < 1.f) { // 0x000184B4
+      alpha = 0.40000004f * mGuestD24 + 0.2f;
+    } else if (mPhazonPhase == true || mCurrentAttack == 0x400000 ||
+               mCurrentAttack == 0x800000) { // 0x000184DC, 0x000184EC, 0x000184F8
+      alpha = 1.f;
+    } else {
+      alpha = 0.20000002f * wave + 0.4f;
+    }
+  } else {
+    const float wave = (1.f + static_cast< float >(sin(14.f * mElapsedTime))) * 0.5f;
+    alpha = 0.1f * wave + 0.1f;
+  }
+  if (alpha > mGuestDE8) { // 0x00018564
+    alpha = mGuestDE8;
+  }
+  GetModelData()->GetAnimationData()->Render(
+      **(*mInvulnerableSkinnedModel),
+      CModelFlags(CModelFlags::kT_Blend, 0, CModelFlags::EFlags(3), CColor(1.f, 1.f, 1.f, alpha)));
 }
 
 // vtable slot 15 = fn_10_0 (0x2C): it calls the vtable's HealthInfo slot (0x38) and returns its
