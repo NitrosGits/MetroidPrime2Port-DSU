@@ -109,6 +109,20 @@ def main():
         log("send Escape: %s" % cmd("send %s Escape" % target))
         wait_frame(frame() + 30)
         log("state: %s" % state_of(target))
+        # the knock-back: the shield up, the damage (the module's KnockBack override runs) and
+        # then the Dead state, whose shield effect wants the byte at guest this+0xC66's 0x20 bit
+        # (the shield's own animation event sets it).
+        log("fsm ArmShield: %s" % cmd("fsm %s ArmShield" % target))
+        wait_frame(frame() + 30)
+        log("damage: %s" % cmd("damage %s 5" % target))
+        wait_frame(frame() + 30)
+        log("fsm Dead: %s" % cmd("fsm %s Dead" % target))
+        wait_frame(frame() + 30)
+        log("state: %s" % state_of(target))
+        # the damage again, now that the commando is dead: the KnockBack override's dead arm.
+        log("damage again: %s" % cmd("damage %s 5" % target))
+        wait_frame(frame() + 30)
+        log("state: %s" % state_of(target))
         log("objs: %s" % cmd("objs commando"))
 
 

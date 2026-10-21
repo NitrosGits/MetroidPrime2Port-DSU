@@ -118,8 +118,8 @@ offset	size	fn	kind	class	port	note
 0x6DBC	0x284	fn_9_6DBC	fsm-trigger	B	stand-in	Cover
 0x7040	0x5C	fn_9_7040	host-copy	H	not-port	
 0x709C	0x1F0	fn_9_709C	fsm-trigger	B	marked	CoverFind
-0x728C	0xCC	fn_9_728C	fsm-trigger	B	ported	WallDetach
-0x7358	0x310	fn_9_7358	fsm-trigger	B	stand-in	WallHang
+0x728C	0xCC	fn_9_728C	fsm-trigger	B	marked	WallDetach
+0x7358	0x310	fn_9_7358	fsm-trigger	B	ported	WallHang
 0x7668	0x5C	fn_9_7668	host-copy	H	not-port	
 0x76C4	0x60	fn_9_76C4	host-copy	H	not-port	
 0x7724	0x148	fn_9_7724	fsm-trigger	B	stand-in	Crouch

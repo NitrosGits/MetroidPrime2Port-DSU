@@ -477,6 +477,7 @@ private:
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
+  TUniqueId xbd6_;                       // 0xbd6, the waypoint the WallHang state finds
   TUniqueId xbd8_;                       // 0xbd8, the id the delete case asks to delete
   // Guest this+0x6C0 is the waypoint navigation's own destination field (the navigation sits at
   // guest this+0x6B8 and its destination is at +0x8), so the port uses the host's

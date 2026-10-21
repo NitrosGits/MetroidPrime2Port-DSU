@@ -265,6 +265,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
+, xbd6_(kInvalidUniqueId)                          // 0xbd6, the waypoint the WallHang state finds
 , xbd8_(kInvalidUniqueId)                          // 0xbd8, the id the delete case deletes
 , xbda_(kInvalidUniqueId)                          // 0xbda, the waypoint the commando is at
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
@@ -1930,7 +1931,6 @@ void CCommandoPirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) 
   StandIn("CCommandoPirate::KnockBack (vtable slot 0x9c, fn_9_C300)");
   CPatterned::KnockBack(mgr, info);
 }
-
 // vtable slot 0xa8 = fn_9_A4 (0x8): `li r3, 0x1`, so the actor can always be shot.
 bool CCommandoPirate::CanBeShot(const CStateManager& mgr, int attributes) { return true; }
 
@@ -3829,8 +3829,104 @@ void CCommandoPirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_7724");
 }
 
+// fn_9_7358 (0x310 bytes): the WallHang state - the commando hangs on the wall the cover point
+// it holds points at.
+//
+// The message switch (0x00007360..0x00007398) picks the activate (0), the update (1) and the
+// deactivate (2); every other message leaves the state alone.
+//
+// Activate (0x0000739C): the 0x02 bit of the flag byte at guest this+0xC65 is set (the guest's
+// rlwimi at 0x000073A4 takes the bit 30 from the MSB, which is the LSB bit 1), the 0x40 bit of
+// the byte at guest this+0xC66 is cleared (0x000073B8, the bit 25 from the MSB), the module's
+// word at guest this+0x924 becomes 0 (0x000073C0) and the animation state becomes "ready"
+// (0x000073C4). Then the cover point the module holds (the id at guest this+0xBD2) is looked up
+// (0x000073D0); when there is none the state does nothing more (0x000073D4..0x000073D8).
+// Otherwise the connected waypoint is looked for (the guest's "ARRV" state on the "NEXT"
+// message, 0x000073E8..0x00007414) and, when the connection is a waypoint, its id goes to guest
+// this+0xBD6 (0x00007454..0x00007458); the cover point's forward vector (its transform's 0x28,
+// 0x38 and 0x48) goes to guest this+0xBA0 (0x0000745C..0x00007470).
+//
+// Update (0x00007478): the module's word at guest this+0xAF0 is cleared (0x0000747C - the burst
+// fire's own type) and the word at guest this+0x924 picks the block:
+//   - 0 (0x0000749C): the angle between the actor's facing and the cover point's forward (the
+//     GetAngleDiff call at 0x000074BC) is compared with 10 degrees (rodata_498 = 0.17453292,
+//     0x000074C8): when the commando faces the cover point the word becomes 1 (0x00007528),
+//     otherwise the locomotion command that looks at the cover point goes to the body controller
+//     (the zero move vector, the cover point's forward as the look direction and the weight 1.0,
+//     0x000074D0..0x00007520);
+//   - 1 (0x00007534): the animation state is asked whether the wall-hang command may be issued
+//     (0x0000753C, the guest's command id 0x14 = 20 = kAS_WallHang). When it may, the wall-hang
+//     command goes to the body controller (0x00007588, the guest's command id 0x18 = 24 =
+//     kBSC_WallHang) and the guest keeps the command id and the waypoint id in the base's fields
+//     at guest this+0x2F4 and +0x2F8 (0x0000759C..0x000075AC), which the host has no member
+//     for. When it may not, the body must be in the wall-hang state (20, 0x000075C0): then the
+//     module's helper asks the target for its aim position (0x000075E0, the dt 0.0) and the
+//     direction from the actor to that aim position goes into the body controller's own vector
+//     at +0x34 (0x00007620..0x00007628), which the host's body controller has no member for.
+//     The aim position's z is cleared (0x00007618) after the direction is worked out.
+//
+// Deactivate (0x00007630): the animation state goes back to "not ready" (0x00007638), the 0x02
+// bit of the flag byte at guest this+0xC65 is cleared (0x00007640) and the module's word at
+// guest this+0x924 goes back to -1 (0x00007648).
 void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_7358");
+  switch (msg) {
+    case kStateMsg_Activate: {                                       // 0x0000739C
+      xc65_ |= 0x02;                                                 // 0x000073A4..0x000073AC
+      xc66_ &= ~0x40;                                                // 0x000073B8..0x000073BC
+      x924_ = 0;                                                     // 0x000073C0
+      mAnimationState.SetState(CAnimationState::kAS_Ready);          // 0x000073C4
+      const CScriptCoverPoint* cover = GetCoverPoint(mgr, xbd2_);     // 0x000073C8..0x000073D0
+      if (cover == nullptr) {                                        // 0x000073D4..0x000073D8
+        break;
+      }
+      // 0x000073E8..0x00007414: the connected waypoint ("ARRV" on "NEXT").
+      const TUniqueId waypointId =
+          FindConnectedObject_if(mgr, kSS_Arrived, kSM_Next, skWaypointPredicate);
+      const CScriptWaypoint* waypoint =
+          TCastToConstPtr< CScriptWaypoint >(mgr.ObjectById(waypointId));  // 0x00007428..0x0000742C
+      if (waypoint != nullptr) {                                     // 0x0000744C..0x00007458
+        xbd6_ = waypoint->GetUniqueId();
+      }
+      xba0_ = cover->GetTransform().GetForward();                    // 0x0000745C..0x00007470
+      break;
+    }
+    case kStateMsg_Update: {                                         // 0x00007478
+      mBurstFire.SetBurstType(0);                                    // 0x0000747C
+      if (x924_ == 0) {                                              // 0x00007480..0x00007498
+        // 0x0000749C..0x000074BC: the actor's facing (the transform's 0x28, 0x38 and 0x48) and
+        // the cover point's forward; the guest's three-argument GetAngleDiff has no host
+        // counterpart, the host's takes the facing and the direction.
+        const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), xba0_);
+        if (angle <= 0.17453292f) {                                  // rodata_498, 0x000074C8
+          x924_ = 1;                                                 // 0x00007528
+        } else {
+          BodyController()->CommandMgr().DeliverCmd(                 // 0x00007520
+              CBCLocomotionCmd(CVector3f::Zero(), xba0_, 1.0f));     // rodata_43C, 0x000074D0
+        }
+      } else if (x924_ == 1) {                                       // 0x00007488..0x00007534
+        if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_WallHang)) {  // 0x0000753C
+          BodyController()->CommandMgr().DeliverCmd(kBSC_WallHang);   // 0x00007588
+        } else if (BodyController()->GetCurrentStateId() == pas::kAS_WallHang) {  // 0x000075C0
+          if (x3CBC_(mgr, xb94_, 0.0f)) {                            // 0x000075E0
+            // 0x000075EC..0x00007614: the direction from the actor to the aim position.
+            const CVector3f direction = xb94_ - GetTranslation();
+            xb94_.SetZ(0.0f);                                         // 0x00007618
+            // 0x00007620..0x00007628: the direction goes into the body controller's own vector
+            // at +0x34, which the host's body controller has no member for.
+          }
+        }
+      }
+      break;
+    }
+    case kStateMsg_Deactivate: {                                    // 0x00007630
+      mAnimationState.SetState(CAnimationState::kAS_NotReady);       // 0x00007638
+      xc65_ &= ~0x02;                                                // 0x00007640..0x00007644
+      x924_ = -1;                                                    // 0x00007648
+      break;
+    }
+    default:
+      break;
+  }
 }
 
 // fn_9_728C (0xcc bytes): the WallDetach state.
@@ -3846,6 +3942,7 @@ void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
 // On deactivate (the guest's message 2, 0x00007330) the animation state goes "not ready"
 // (0x00007330..0x00007334) and the flag byte at guest this+0xC65 loses its 0x02 bit
 // (0x00007338..0x00007340).
+// @ fn_9_728C
 void CCommandoPirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {  // 0x000072C4
@@ -3857,6 +3954,7 @@ void CCommandoPirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
     BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x000072DC..0x000072FC (the id 0xa)
     if (BodyController()->GetCurrentStateId() != pas::kAS_WallHang) {  // 0x00007318..0x00007320
       mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x00007324..0x00007328
+    } else {
     }
     break;
   }
