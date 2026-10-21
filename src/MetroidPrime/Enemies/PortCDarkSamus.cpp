@@ -96,7 +96,11 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mHasSafePos(0)
 , mSeparationDir(CVector3f(0.f, 0.f, 0.f))
 , mContactTime(0.f)
-, mContactPoint(CVector3f(0.f, 0.f, 0.f)) {
+, mContactPoint(CVector3f(0.f, 0.f, 0.f))
+, mLastMeleeTime(0.f)
+, mAttackMask(0)
+, mWeightedPick(0xFFFF) {
+  mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
   // loaded at 0x0001FB38) and its root position kRP_Center (`li r8, 0x0` at 0x0001FB5C); the area

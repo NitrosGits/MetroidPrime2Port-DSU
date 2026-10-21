@@ -14,6 +14,7 @@
 // The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
+struct SLdrDSStageInfo;
 
 // Host copy of the properties the DarkSamus loader reads (fn_10_CF44 reads the module's 63
 // property ids, which are exactly the ids of the generated SLdrDarkSamus reader). Retail keeps no
@@ -339,6 +340,35 @@ private:
   // normalized and compared (the fcmpo at 0x00014384).
   bool IsPlayerInFront(CStateManager& mgr, float angle) const;
 
+  // The attack picker's weights: a count and one weight per attack bit (bit i is the attack id
+  // 1 << i, 24 of them - the loops' `cmpwi 0x18`). The pickers build it on the stack (the count at
+  // sp+0xC, the weights from sp+0x10) and copy it to the guest's 0xC54/0xC58.
+  struct SAttackWeights {
+    int count;
+    int weights[24];
+  };
+
+  // The pickers' leaves (fn_10_1AA30, 1A980, 1A8F8, 1AA5C, 10BBC, 1A6C4, 17D50, 11308, 17CEC,
+  // 1AA6C), the per-attack collectors (fn_10_1A5BC, 1A554, 1A278, 1A440, 1A34C, 1A1D4) and the
+  // weighted pick (fn_10_19918).
+  static void SetAttackBit(uint* mask, uchar set, uint bit);
+  static void SetAttackBits(uint* mask, uchar set, uint a, uint b, uint c, uint d);
+  static void SetAttackBitsExcept(uint* mask, uchar set, uint a, uint b, uint c, uint d);
+  static bool IsAttackTwo(uint bit);
+  static int GetAttackBitIndex(uint bit);
+  static float GetAttackWeight(const SLdrDSStageInfo& stage, int attack);
+  bool IsAttackEnabled(CStateManager& mgr, int attack) const;
+  static bool IsPlayerMorphed(CStateManager& mgr);
+  float GetDistanceToPlayer(CStateManager& mgr) const;
+  int GetPlayerRangeBand(CStateManager& mgr) const;
+  void CollectStageWeights(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectFadeAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectMorphballAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectRangeAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectHistoryPenalties(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  void CollectFacingAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  int PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, uint mask) const;
+
   // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
   const CDarkSamusBattleStage* GetBattleStage(CStateManager& mgr) const;
@@ -530,6 +560,13 @@ private:
                                    // yet, so it stays at the constructor's 0.0f, 0x0001FF1C)
   CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
                                    // constructor writes the zero vector to it (0x0001FF24..)
+  float mLastMeleeTime;            // guest 0x9C0, the elapsed time fn_10_17C9C stores (0x00017C9C,
+                                   // not in the port yet); fn_10_1A34C reads it (0x0001A3E0). The
+                                   // guest constructor does not write it (the host zeroes it)
+  SAttackWeights mAttackWeights;   // guest 0xC54/0xC58, the pickers' last weights; the
+                                   // constructor writes the count 0 (0x0001FF4C)
+  uint mAttackMask;                // guest 0xCB8, the pickers' last attack mask; 0 (0x0001FF50)
+  int mWeightedPick;               // guest 0xCBC, fn_10_19918's last pick; 0xFFFF (0x0001FF54)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
