@@ -1,0 +1,11 @@
+# 01_cliff_entrance (the world 1baa96c2), the layer 3 holds the six commandoes and the four
+# cover points; the CoverFind state is forced once (the forcing spec makes its radius 120) and
+# then the WallHang and WallDetach states.
+@f30 layer 3
+@f120 objs commando
+@f160 send u05df Activate
+@f200 place u05df player 5
+@f260 fsm u05df CoverFind
+@f320 fsm u05df WallHang
+@f420 fsm u05df WallDetach
+@f480 objs commando

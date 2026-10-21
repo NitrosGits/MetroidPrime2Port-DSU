@@ -1219,6 +1219,9 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_728C` (the WallDetach state) | the activate (0x000072C4) and the deactivate (0x00007330) | b | forced (fsm) |
 | | the update's "the body is not in the wall-hang state" arm (0x00007318..0x00007328) | b | forced (fsm): once in the run, before the body was in the wall hang |
 | | the update's "the body is in the wall-hang state" arm (0x00007318) | b | forced (fsm): 96 times in the run - the WallHang state's own command put the body in the wall-hang state |
+| `fn_9_BDCC` (the StateOver trigger) | the true arm (the animation state is "over") and the false arm | b | area 59: the trigger answers true 7 times and false 196 times in the run (tools/cov/run.sh with tools/cov/specs/commandopirate_triggers.py) |
+| `fn_9_B818` (the IsFacingTarget trigger) | the early return (the target has no aim position, 0x0000B860) | b | forced (gdb): the trigger's target id (the id at guest this+0xBCA, the port's xbca_) is written to an invalid id at the trigger's entry, so the module's helper x3CBC_ fails (tools/cov/force.sh with tools/cov/specs/commandopirate_isfacing.py) |
+| | the angle arm (the compare at 0x0000B8D4) - true and false | b | area 59: the trigger answers true 435 times and false 5 times in the run |
 | `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) | d | the branch wants the block's flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest this+0xBFC to be there; the rag doll is always null (the constructor stores 0 there, 0x0000DC18, and the module's GetRagDoll returns null, fn_9_78), so the guest never takes it |
 | | the knock-back itself (0x0000C3C0..0x0000C3EC) | b | the area 59 boot: the console's `damage` reaches the module's override through the module's own helper fn_9_2D0C (the call at 0x00002EF0) |
 | | the alive branch (0x0000C3F0..0x0000C404) | b | twice in the run - the commando is alive when the damage lands, even after the Dead state (the byte at guest this+0x420's 0x40 bit) |
@@ -1432,17 +1435,18 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 20 marked, 52 ported but not marked, 11
+The port's state per function (the `port` column): 22 marked, 50 ported but not marked, 11
 stand-ins, 173 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
 helpers, which the host's classes already have).
 
-**The unmarked B list** (the B functions the port does not mark, 116 of them): the stand-ins first -
+**The unmarked B list** (the B functions the port does not mark, 114 of them): the stand-ins first -
 `fn_9_5410`, `fn_9_6A40`, `fn_9_6C68`, `fn_9_6DBC`, `fn_9_7724`, `fn_9_9064`, `fn_9_9BB4`, `fn_9_A110`, `fn_9_A2EC`, `fn_9_A4BC`, `fn_9_AFD4` - and then the ported ones whose every arm has not run yet (the table above names them). The
 full list is the `class`/`port` columns of `CommandoPirate_functions.tsv`.
 
 **The markers.** `fn_9_8028` (the charge state), `fn_9_86B4` (the ArmShield state), `fn_9_ADA0`
 (the Ambush state), `fn_9_6BCC` (the BreakCover state), `fn_9_8DF0` (the WarpOut state),
-`fn_9_8D28` (the PostWarpOut state) and `fn_9_728C` (the WallDetach state) are marked:
+`fn_9_8D28` (the PostWarpOut state) and `fn_9_728C` (the WallDetach state) are marked, and so are
+`fn_9_BDCC` (the StateOver trigger) and `fn_9_B818` (the IsFacingTarget trigger):
 every message arm of both ran - the charge state in the normal flow, the ArmShield state through
 the console's `fsm` (**forced (fsm)**). `fn_9_B1E0` (ShouldBoost) is marked too: its two arms that
 ran (the 0x20 flag test and the true arm) ran in the Swamp's timber area, and its three other arms

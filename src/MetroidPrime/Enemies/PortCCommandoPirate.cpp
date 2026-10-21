@@ -2017,6 +2017,9 @@ CDamageInfo CCommandoPirate::GetContactDamage() const {
 // fn_9_BDCC: the base's animation state id (guest this+0x6B4) with 3. The asm tests it with
 // "subfic r0, r0, 3; cntlzw r0, r0; srwi r3, r0, 5" (0x0000BDD0..0x0000BDD8), i.e. the answer is
 // true when the id is 3 - the host enum's kAS_Over (the ctor's state id 0 is "not ready").
+// run: area 59 (05_temple_federationsite_dark), tools/cov/run.sh with
+// tools/cov/specs/commandopirate_triggers.py, 2026-10-21
+// @ fn_9_BDCC
 bool CCommandoPirate::StateOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimationState.GetState() == CAnimationState::kAS_Over;
 }
@@ -2236,6 +2239,10 @@ bool CCommandoPirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& d
 // call at 0x0000B85C) is at most 20 degrees (rodata_4B4 = 0.34906584, the compare at
 // 0x0000B8D4). The guest flattens the direction (the 0.f stored over the z difference at
 // 0x0000B8AC) and a target that is gone answers true (the test at 0x0000B860).
+// run: area 59 (05_temple_federationsite_dark), tools/cov/run.sh (the angle arms) and
+// tools/cov/force.sh (the early return) with tools/cov/specs/commandopirate_triggers.py and
+// tools/cov/specs/commandopirate_isfacing.py, 2026-10-21
+// @ fn_9_B818
 bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& data) const {
   CVector3f aim;
   if (!x3CBC_(mgr, aim, 0.f)) {

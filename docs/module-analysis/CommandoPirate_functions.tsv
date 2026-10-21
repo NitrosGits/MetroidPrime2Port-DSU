@@ -176,7 +176,7 @@ offset	size	fn	kind	class	port	note
 0xB690	0xDC	fn_9_B690	fsm-trigger	H	ported	ShouldDodge
 0xB76C	0x90	fn_9_B76C	fsm-trigger	H	ported	TooClose
 0xB7FC	0x1C	fn_9_B7FC	fsm-trigger	B	ported	AttackPatternOver
-0xB818	0xE8	fn_9_B818	fsm-trigger	B	ported	IsFacingTarget
+0xB818	0xE8	fn_9_B818	fsm-trigger	B	marked	IsFacingTarget
 0xB900	0x58	fn_9_B900	fsm-trigger	B	ported	HasAttackPattern
 0xB958	0x38	fn_9_B958	fsm-trigger	B	marked	IsOffPath
 0xB990	0x48	fn_9_B990	fsm-trigger	T	ported	PathOver
@@ -193,7 +193,7 @@ offset	size	fn	kind	class	port	note
 0xBBC8	0xF0	fn_9_BBC8	fsm-trigger	B	ported	ShouldFireEGrenade
 0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	H	ported	ShouldMeleeAttack
 0xBD98	0x34	fn_9_BD98	fsm-trigger	T	ported	ShouldWarpIn
-0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	ported	StateOver
+0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	marked	StateOver
 0xBDE0	0x6C	fn_9_BDE0	vtable-override	B	not-port	
 0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	not-port	
 0xBF44	0x2B0	fn_9_BF44	vtable-override	B	not-port	
