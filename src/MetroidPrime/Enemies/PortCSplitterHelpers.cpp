@@ -112,7 +112,9 @@ bool CSplitterCommandModule::PortListen(CStateManager& mgr, const CVector3f& pos
 // exactly this body's signature (r4 the manager, r5 the node, r6 the type, f1 the dt, asm
 // 0x63B0-0x63CC).
 //
-// The body switches on the type (asm 0x63B4 `cmpwi r31, 0x16`, 0x63D8 `cmpwi r31, 0x0`):
+// The body switches on the type:
+//   asm 0x63B4 `cmpwi r31, 0x16` (the type 0x16 is the first case)
+//   asm 0x63D8 `cmpwi r31, 0x0` (the type 0 is the second case)
 //   - the type 0x16 (kUE_BreakLockOn): the head's flag byte at 0xF6A gets its 0x10 bit tested
 //     (asm 0x63E4 `lbz`, 0x63E8 `extrwi` with the word's bit 27) and the data's flag word at
 //     0x7C0 its 0x20000000 bit (asm 0x63F0 `lwz`, 0x63F4 `rlwinm` with the bits 29..29).  With
