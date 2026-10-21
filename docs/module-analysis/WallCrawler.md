@@ -231,4 +231,12 @@ the REL's copies of host/DOL code, so they are cited here and neither reimplemen
      (f24 = the radius argument, asm 0x1390) and only the search box is radius+margin wide.
   2. the port ran an extra "player-obstruction scan" that the retail does not have (see the
      bullet above); it could set `mPlayerObstructed` and stop the crawler.
+- **Not exercised by these runs:** the constrained variant of the floor search (no crawler in
+  Temple Grounds area 10 or Agon Wastes area 40 has a constraint, so x834 == 0), the kART_Five
+  bend, and the boost-ball and contact damage (no player input). The `// @ fn_83_1310` marker
+  therefore rests on the unconstrained arms alone.
+- The base class is shared with `CPillBug`, `CKralee`, `COctapedeSegment` and `CParasite`, which
+  call this `AlignToFloor`; the tighter best distance and the removed `mPlayerObstructed` write
+  change what they inherit. Those sessions should re-check their own runs (their RELs have their
+  own floor-alignment functions).
 
