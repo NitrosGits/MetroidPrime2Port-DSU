@@ -73,7 +73,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mStillTime(0.f)
 , mStillPosition(CVector3f(0.f, 0.f, 0.f))
 , mLastWallHitTime(0.f)
-, mElapsedTime(0.f) {
+, mElapsedTime(0.f)
+, mPathFindDestination(CVector3f(0.f, 0.f, 0.f)) {
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
   // loaded at 0x0001FB38) and its root position kRP_Center (`li r8, 0x0` at 0x0001FB5C); the area

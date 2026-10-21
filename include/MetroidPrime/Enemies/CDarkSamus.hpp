@@ -352,6 +352,10 @@ private:
   // argument r4: the health that is gone is only added to the damage when it is set.
   void AccumulateDamage(bool count, float dt);
 
+  // fn_10_1C778: the destination of the path find (the guest's 0x8B4/0x8B8/0x8BC) and the path
+  // find itself.
+  void SetPathFindDestination(CStateManager& mgr, const CVector3f& destination, float dt);
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
@@ -421,6 +425,9 @@ private:
   float mElapsedTime;              // guest 0x8B0, the time since the actor was created: the Think
                                    // (fn_10_1B1FC) adds dt to it (0x0001B2DC); the constructor
                                    // writes 0.0f to it (0x0001FB88)
+  CVector3f mPathFindDestination;  // guest 0x8B4/0x8B8/0x8BC, the destination of the path find:
+                                   // fn_10_1C778 writes it (0x0001C7A4..0x0001C7BC); the
+                                   // constructor writes the zero vector to it (0x0001FB94..)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

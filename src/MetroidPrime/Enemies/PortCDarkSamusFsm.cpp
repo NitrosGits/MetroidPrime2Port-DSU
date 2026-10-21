@@ -422,6 +422,21 @@ void CDarkSamus::UpdateStillTimer(bool reset, float dt) {
   mStillPosition = GetTranslation();
 }
 
+// fn_10_1C778 (0x0001C778, 0xDC bytes): the destination of the path find (the guest's
+// 0x8B4/0x8B8/0x8BC) and the path find itself.
+//
+// The vector is written into the three floats (the three stfs at 0x0001C7A4..0x0001C7BC), then
+// the base class' path find navigation (the guest's 0x6F4) gets the destination (the
+// SetDestination call at 0x0001C7C0) and is told to find a path (the PathFind call at
+// 0x0001C7D8) with the message kStateMsg_Activate (the `li r5, 0x0` at 0x0001C7D4) and the
+// float argument.
+void CDarkSamus::SetPathFindDestination(CStateManager& mgr, const CVector3f& destination,
+                                        float dt) {
+  mPathFindDestination = destination;
+  mPathFindNavigation.SetDestination(destination);
+  mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this);
+}
+
 // fn_10_1E178 (0x0001E178, 0xF0 bytes): the damage the actor has taken (the guest's 0xCC0).
 //
 // The health info's current health (the base's GetHealthInfo - the vtable slot 0x3C - and the
