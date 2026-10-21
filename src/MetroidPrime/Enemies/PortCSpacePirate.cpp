@@ -1582,11 +1582,16 @@ void CSpacePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
 }
 
 // Retail fn_72_E318.
-// Retail fn_72_E318 (0xC0): a live pirate hears a noise inside the data's hearing radius (0x7d4)
+// @ fn_72_E318 (0xC0): a live pirate hears a noise inside the data's hearing radius (0x7d4)
 // and inside the detection height range (0x3d4, the squared test at asm 0xE384), which sets the
 // 0x8f6 mask 0x40 bit; a player-fire noise (type 0) also sets the 0x8f7 mask 0x20 bit and
-// remembers the noise position in 0xbb4/0xbb8/0xbbc (asm 0xE3A8-0xE3C8). Verified against the
-// asm; the "the pirate is dead" and "the height range is set" arms did not run in the area run.
+// remembers the noise position in 0xbb4/0xbb8/0xbbc (asm 0xE3A8-0xE3C8). The trace's argument is
+// the arm: 0 = the pirate is dead, 1 = the noise is out of the hearing radius, 2 = the height
+// range test failed, 3 = heard. The 2026-10-21 runs proved 0 (`hurt u04d0 100` kills the pirate
+// and the next shot reaches it), 1 and 3 (the awake trooper of 06_sand_alamofront, with its
+// 100-unit radius, hears the player's shot). Arm 2 needs a pirate whose detection height range
+// is set, and none of the 65 shipped SpacePirate placements has one (tools/scan_pirt_props.py
+// reads the patterned block's property 0x513f04b8: all 65 are 0.0), so that arm is unreachable.
 bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
   bool heard = false;
   if (mAlive) {

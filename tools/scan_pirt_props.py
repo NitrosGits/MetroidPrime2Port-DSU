@@ -27,6 +27,10 @@ FLOATS = {
     0xED69488F: "hearing",
 }
 INT_PROPS = {0xA64AB9B8: "flags"}
+# The patterned block (the property 0xb3774750) is a property list of its own; the detection
+# height range is the property 0x513f04b8 in it (SLdrPatternedAITypedef).
+PATTERNED_ID = 0xB3774750
+HEIGHT_ID = 0x513F04B8
 
 
 def parse_props(body):
@@ -45,9 +49,27 @@ def parse_props(body):
                 out[FLOATS[pid]] = struct.unpack_from(">f", payload, 0)[0]
             elif pid in INT_PROPS and size >= 4:
                 out[INT_PROPS[pid]] = struct.unpack_from(">i", payload, 0)[0] & 0xFFFFFFFF
+            elif pid == PATTERNED_ID:
+                out["heightRange"] = patterned_height(payload)
     except struct.error:
         return {}
     return out
+
+
+def patterned_height(payload):
+    """The detection height range (the property 0x513f04b8) of a patterned block."""
+    try:
+        count = struct.unpack_from(">H", payload, 0)[0]
+        p = 2
+        for _ in range(count):
+            pid, size = struct.unpack_from(">IH", payload, p)
+            data = payload[p + 6:p + 6 + size]
+            p += 6 + size
+            if pid == HEIGHT_ID and size >= 4:
+                return struct.unpack_from(">f", data, 0)[0]
+    except struct.error:
+        pass
+    return 0.0
 
 
 def main():
@@ -82,7 +104,8 @@ def main():
                         print(f"{nm}/{iname} L{li} eid=0x{eid:04x} " +
                               " ".join(f"{k}={v}" for k, v in sorted(props.items())) +
                               f" shadow={bool(flags & 0x2000)} trooper={bool(flags & 0x10000)}"
-                              f" amb={bool(flags & 0x1)} warp={bool(flags & 0x04000000)}")
+                              f" amb={bool(flags & 0x1)} warp={bool(flags & 0x04000000)}"
+                              f" heightRange={props.get('heightRange', 0.0)}")
     print(f"== {len(rows)} {fourcc} placements")
     return 0
 
