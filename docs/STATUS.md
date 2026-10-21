@@ -56,7 +56,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (Opus) | `ses_ea2935cc8ffeCvp1QjKlpVMOxG` (fresh) | darksamus2 @ `aa2baac9c` (55 markers; slice 13 accepted: beam damage works (missed shots before); pissed-off chain FD4C FAF4 FB8C F930 FC64 105F4 18F90 ported + marked) | DiveAttack 11FA4 + morph run (12B38); 100DC vulnerability; MissileJump |
+| DarkSamus (Opus) | `ses_ea2935cc8ffeCvp1QjKlpVMOxG` | darksamus2 @ `ef73b3963` (62 markers; accepted for batch 7: DiveAttack 11FA4 + helpers, BreakDiveAttack 11C54, 100DC/FF20 ported; marked E910 12B00 12E90 12EF8 18628 18FCC 11C54; dive recipe: damage u0732 570 → final stage) | IsPlayerAimLineClear always true; stand-ins MissileJump 177BC, MeleeAttack 17BC0, BoostBallInto B164, SweepBeam CA0C, 1B658, 138A4; 11FA4 open arms |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
