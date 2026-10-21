@@ -1508,11 +1508,13 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
 // vector six units down (rodata_49C) with the module's own material filter - the include list
 // kMT_Solid (the data word 0x3B at lbl_9_data_814) and the exclude list kMT_Character,
 // kMT_CollisionActor and kMT_Platform (the data words 0x21, 0x2F and 0x31 at lbl_9_data_818,
-// lbl_9_data_81C and lbl_9_data_824), the type 3 = kFT_IncludeExclude. When the ray hits, the
-// module's own float at guest this+0xC00 takes 0.01f (rodata_4A0), the commando dies with the
-// script object state "RATL" (kSS_DeathRattle) and its own forward direction (the vtable slot
-// 0x98, 0x00003018), its health is zeroed (the vtable slot 0x38, 0x0000302C) and the health cause
-// is updated (0x00003068).
+// lbl_9_data_81C and lbl_9_data_824), the type 3 = kFT_IncludeExclude.
+//
+// When the ray is clear, the module's own float at guest this+0xC00 takes
+// 0.01f (rodata_4A0), the commando dies with the script object state "RATL" (kSS_DeathRattle)
+// and its own forward direction (the vtable slot 0x98, 0x00003018), its health is zeroed (the
+// vtable slot 0x38, 0x0000302C), the damage source is recorded (0x00003044..0x00003068) and the
+// module's flag byte takes its 0x04 bit (0x0000306C..0x00003078).
 void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   const CWeapon* weapon = nullptr;
@@ -1557,17 +1559,12 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
     xc00_ = 0.01f;                                        // rodata_4A0, 0x00002FF0
     Death(mgr, GetTransform().GetForward(), kSS_DeathRattle);  // 0x00003018
     HealthInfo()->SetHP(0.f);                              // 0x0000302C..0x0000303C
-    // The guest's CStateManager::UpdateHealthCause (the DOL's fn at 0x8003DD88): the health
-    // info's last-damage record, and its cause of death when the actor is frozen.
-    const bool frozen = BodyController()->IsFrozen();
-    if (frozen) {
-      HealthInfo()->SetCauseOfDeathWeapon(weapon != nullptr
-                                              ? weapon->GetCurrentDamageInfo().GetWeaponMode()
-                                              : CWeaponMode(),
-                                          weapon != nullptr ? weapon->GetOwnerId() : senderId,
-                                          weapon != nullptr ? weapon->GetUniqueId() : senderId,
-                                          frozen, false);
+    // The guest records the damage source when there is a weapon (the call at 0x00003068).
+    if (weapon != nullptr) {
+      mgr.RecordDamageSource(*this, weapon->GetUniqueId(), weapon->GetCurrentDamageInfo(), true,
+                             false);                       // 0x00003044..0x00003068
     }
+    xc64_ |= 0x04;                                         // 0x0000306C..0x00003078
   }
 }
 
