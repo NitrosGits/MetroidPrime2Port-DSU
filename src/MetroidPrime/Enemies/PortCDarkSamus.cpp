@@ -364,6 +364,7 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 // its own two tables: lbl_10_data_450 with the 49 triggers and lbl_10_data_964 with the 43 states.
 // The host's machine asks for the tables through this virtual (CPatterned::InitializeStateMachine
 // calls it), so the module's tables go in here, after the base's own.
+// @ fn_10_18D78
 void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
   CPatterned::SetupStateMachine(mgr);
   InstallStateMachineFunctions();
