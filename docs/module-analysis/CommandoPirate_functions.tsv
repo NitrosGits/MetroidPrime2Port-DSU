@@ -1,17 +1,17 @@
 offset	size	fn	kind	class	port	callers	owner	note
-0x0	0x8	fn_9_0	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0x8	0x8	fn_9_8	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0x10	0xC	fn_9_10	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
+0x0	0x8	fn_9_0	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
+0x8	0x8	fn_9_8	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
+0x10	0xC	fn_9_10	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
 0x1C	0x3C	fn_9_1C	behaviour	B	not-port	data:lbl_9_data_828	cphelpers	
 0x58	0x10	fn_9_58	data-thunk	T	not-port	data:lbl_9_data_828	cphelpers	
-0x68	0x8	fn_9_68	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0x70	0x8	fn_9_70	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0x78	0x8	fn_9_78	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0x80	0x10	fn_9_80	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
+0x68	0x8	fn_9_68	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
+0x70	0x8	fn_9_70	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
+0x78	0x8	fn_9_78	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
+0x80	0x10	fn_9_80	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
 0x90	0xC	fn_9_90	data-thunk	T	not-port	data:lbl_9_data_828	cphelpers	
 0x9C	0x8	fn_9_9C	data-thunk	T	not-port	data:lbl_9_data_828	cphelpers	
-0xA4	0x8	fn_9_A4	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0xAC	0x1C	fn_9_AC	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
+0xA4	0x8	fn_9_A4	vtable-override	T	ported	data:lbl_9_data_828	cpcore	
+0xAC	0x1C	fn_9_AC	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
 0xC8	0x2C	fn_9_C8	data-thunk	T	not-port	data:lbl_9_data_828	cphelpers	
 0xF4	0x24	RELExit	rel-entry	H	not-port	-	cphelpers	
 0x118	0x20	RELMain	rel-entry	H	not-port	-	cphelpers	
@@ -85,10 +85,10 @@ offset	size	fn	kind	class	port	callers	owner	note
 0x4D7C	0x8	fn_9_4D7C	data-thunk	T	not-port	-	cphelpers	
 0x4D84	0x228	fn_9_4D84	behaviour	B	marked	bl:fn_9_C944	cphelpers	
 0x4FAC	0x5C	fn_9_4FAC	host-copy	H	not-port	data:lbl_9_data_A78	cphelpers	
-0x5008	0x2B4	fn_9_5008	behaviour	B	not-port	bl:fn_9_5410	cphelpers	
-0x52BC	0x154	fn_9_52BC	behaviour	B	not-port	bl:fn_9_5410	cphelpers	
-0x5410	0x370	fn_9_5410	behaviour	B	stand-in	bl:fn_9_C798	cphelpers	
-0x5780	0x20	fn_9_5780	host-copy	H	not-port	bl:fn_9_5410	cphelpers	
+0x5008	0x2B4	fn_9_5008	behaviour	B	not-port	bl:fn_9_5410	cpcore	
+0x52BC	0x154	fn_9_52BC	behaviour	B	not-port	bl:fn_9_5410	cpcore	
+0x5410	0x370	fn_9_5410	behaviour	B	stand-in	bl:fn_9_C798	cpcore	
+0x5780	0x20	fn_9_5780	host-copy	H	not-port	bl:fn_9_5410	cpcore	
 0x57A0	0x598	fn_9_57A0	behaviour	B	marked	bl:fn_9_6390	cphelpers	
 0x5D38	0x3C	fn_9_5D38	host-copy	H	not-port	-	cphelpers	
 0x5D74	0x184	fn_9_5D74	behaviour	B	not-port	bl:fn_9_57A0 fn_9_D904	cphelpers	
@@ -109,20 +109,20 @@ offset	size	fn	kind	class	port	callers	owner	note
 0x6318	0x3C	fn_9_6318	host-copy	H	not-port	-	cphelpers	
 0x6354	0x3C	fn_9_6354	host-copy	H	not-port	-	cphelpers	
 0x6390	0x29C	fn_9_6390	behaviour	B	marked	bl:fn_9_C944	cphelpers	
-0x662C	0x39C	fn_9_662C	vtable-override	B	not-port	bl:fn_9_C944	cphelpers	
-0x69C8	0x78	fn_9_69C8	fsm-state	B	stand-in	data:lbl_9_data_55C	commando-lane	Dead
-0x6A40	0x130	fn_9_6A40	fsm-state	B	stand-in	data:lbl_9_data_550	commando-lane	GetUp
+0x662C	0x39C	fn_9_662C	vtable-override	B	not-port	bl:fn_9_C944	cpcore	
+0x69C8	0x78	fn_9_69C8	fsm-state	B	ported	data:lbl_9_data_55C	commando-lane	Dead
+0x6A40	0x130	fn_9_6A40	fsm-state	B	ported	data:lbl_9_data_550	cpcore	GetUp
 0x6B70	0x5C	fn_9_6B70	host-copy	H	not-port	data:lbl_9_data_A6C	cphelpers	
-0x6BCC	0x9C	fn_9_6BCC	fsm-state	B	stand-in	data:lbl_9_data_544	commando-lane	BreakCover
-0x6C68	0x154	fn_9_6C68	fsm-state	B	stand-in	data:lbl_9_data_538	commando-lane	CoverAttack
-0x6DBC	0x284	fn_9_6DBC	fsm-state	B	stand-in	data:lbl_9_data_52C	commando-lane	Cover
+0x6BCC	0x9C	fn_9_6BCC	fsm-state	B	marked	data:lbl_9_data_544	commando-lane	BreakCover
+0x6C68	0x154	fn_9_6C68	fsm-state	B	ported	data:lbl_9_data_538	cpcore	CoverAttack
+0x6DBC	0x284	fn_9_6DBC	fsm-state	B	ported	data:lbl_9_data_52C	cpcore	Cover
 0x7040	0x5C	fn_9_7040	host-copy	H	not-port	data:lbl_9_data_A60	cphelpers	
 0x709C	0x1F0	fn_9_709C	fsm-state	B	marked	data:lbl_9_data_514	commando-lane	CoverFind
-0x728C	0xCC	fn_9_728C	fsm-state	B	stand-in	data:lbl_9_data_508	commando-lane	WallDetach
-0x7358	0x310	fn_9_7358	fsm-state	B	stand-in	data:lbl_9_data_4FC	commando-lane	WallHang
+0x728C	0xCC	fn_9_728C	fsm-state	B	marked	data:lbl_9_data_508	commando-lane	WallDetach
+0x7358	0x310	fn_9_7358	fsm-state	B	ported	data:lbl_9_data_4FC	commando-lane	WallHang
 0x7668	0x5C	fn_9_7668	host-copy	H	not-port	data:lbl_9_data_A44	cphelpers	
 0x76C4	0x60	fn_9_76C4	host-copy	H	not-port	data:lbl_9_data_A50	cphelpers	
-0x7724	0x148	fn_9_7724	fsm-state	B	stand-in	data:lbl_9_data_4F0	commando-lane	Crouch
+0x7724	0x148	fn_9_7724	fsm-state	B	ported	data:lbl_9_data_4F0	cpcore	Crouch
 0x786C	0x22C	fn_9_786C	fsm-state	B	ported	data:lbl_9_data_4E4	commando-lane	RestoreOrientation
 0x7A98	0x590	fn_9_7A98	fsm-state	B	ported	data:lbl_9_data_4D8	commando-lane	ScriptedShieldCharge
 0x8028	0x68C	fn_9_8028	fsm-state	B	marked	data:lbl_9_data_4CC	commando-lane	ShieldCharge
@@ -130,43 +130,43 @@ offset	size	fn	kind	class	port	callers	owner	note
 0x8934	0x1E0	fn_9_8934	fsm-state	B	ported	data:lbl_9_data_4B4	commando-lane	Dodge
 0x8B14	0x5C	fn_9_8B14	host-copy	H	not-port	data:lbl_9_data_A38	cphelpers	
 0x8B70	0x1B8	fn_9_8B70	fsm-state	B	ported	data:lbl_9_data_4A8	commando-lane	JumpBack
-0x8D28	0xC8	fn_9_8D28	fsm-state	B	stand-in	data:lbl_9_data_49C	commando-lane	PostWarpOut
-0x8DF0	0x218	fn_9_8DF0	fsm-state	B	stand-in	data:lbl_9_data_490	commando-lane	WarpOut
+0x8D28	0xC8	fn_9_8D28	fsm-state	B	marked	data:lbl_9_data_49C	commando-lane	PostWarpOut
+0x8DF0	0x218	fn_9_8DF0	fsm-state	B	marked	data:lbl_9_data_490	commando-lane	WarpOut
 0x9008	0x5C	fn_9_9008	host-copy	H	not-port	data:lbl_9_data_A2C	cphelpers	
-0x9064	0x528	fn_9_9064	fsm-state	B	stand-in	data:lbl_9_data_484	commando-lane	WarpIn
+0x9064	0x528	fn_9_9064	fsm-state	B	ported	data:lbl_9_data_484	cpcore	WarpIn
 0x958C	0x3C	fn_9_958C	host-copy	H	not-port	-	cphelpers	
 0x95C8	0x54	fn_9_95C8	host-copy	H	not-port	bl:fn_9_9064	cphelpers	
 0x961C	0x350	fn_9_961C	fsm-state	B	ported	data:lbl_9_data_478	commando-lane	FollowAttackPattern
 0x996C	0x140	fn_9_996C	behaviour	B	not-port	data:lbl_9_data_46C	cphelpers	
 0x9AAC	0x108	fn_9_9AAC	fsm-state	B	ported	data:lbl_9_data_460	commando-lane	PathFind
-0x9BB4	0x1FC	fn_9_9BB4	fsm-state	B	stand-in	data:lbl_9_data_454	commando-lane	JetBoost
+0x9BB4	0x1FC	fn_9_9BB4	fsm-state	B	ported	data:lbl_9_data_454	cpcore	JetBoost
 0x9DB0	0x9C	fn_9_9DB0	data-thunk	T	not-port	bl:fn_9_9BB4	cphelpers	
 0x9E4C	0x5C	fn_9_9E4C	host-copy	H	not-port	data:lbl_9_data_A20	cphelpers	
 0x9EA8	0x7C	fn_9_9EA8	data-thunk	T	not-port	bl:fn_9_9BB4	cphelpers	
 0x9F24	0x1EC	fn_9_9F24	fsm-state	B	marked	data:lbl_9_data_448	commando-lane	JumpPointFind
-0xA110	0x1DC	fn_9_A110	fsm-state	B	stand-in	data:lbl_9_data_43C	commando-lane	PostEGrenadeAttack
-0xA2EC	0x174	fn_9_A2EC	fsm-state	B	stand-in	data:lbl_9_data_430	commando-lane	EGrenadeAttack
+0xA110	0x1DC	fn_9_A110	fsm-state	B	ported	data:lbl_9_data_43C	cpcore	PostEGrenadeAttack
+0xA2EC	0x174	fn_9_A2EC	fsm-state	B	ported	data:lbl_9_data_430	cpcore	EGrenadeAttack
 0xA460	0x5C	fn_9_A460	host-copy	H	not-port	data:lbl_9_data_A14	cphelpers	
-0xA4BC	0x290	fn_9_A4BC	fsm-state	B	stand-in	data:lbl_9_data_424	commando-lane	MeleeAttack
+0xA4BC	0x290	fn_9_A4BC	fsm-state	B	ported	data:lbl_9_data_424	cpcore	MeleeAttack
 0xA74C	0x5C	fn_9_A74C	host-copy	H	not-port	data:lbl_9_data_A08	cphelpers	
-0xA7A8	0x90	fn_9_A7A8	fsm-state	B	stand-in	data:lbl_9_data_520	commando-lane	SetCoverDest
+0xA7A8	0x90	fn_9_A7A8	fsm-state	B	ported	data:lbl_9_data_520	commando-lane	SetCoverDest
 0xA838	0xB0	fn_9_A838	fsm-state	B	marked	data:lbl_9_data_418	commando-lane	SetPathMeshDest
-0xA8E8	0x94	fn_9_A8E8	fsm-state	B	stand-in	data:lbl_9_data_40C	commando-lane	SetJumpDest
-0xA97C	0xA4	fn_9_A97C	fsm-state	B	stand-in	data:lbl_9_data_400	commando-lane	SetRetreatDest
+0xA8E8	0x94	fn_9_A8E8	fsm-state	B	ported	data:lbl_9_data_40C	commando-lane	SetJumpDest
+0xA97C	0xA4	fn_9_A97C	fsm-state	B	ported	data:lbl_9_data_400	commando-lane	SetRetreatDest
 0xAA20	0xE8	fn_9_AA20	fsm-state	B	ported	data:lbl_9_data_3F4	commando-lane	SetTargetDest
 0xAB08	0xD4	fn_9_AB08	fsm-state	B	ported	data:lbl_9_data_3E8	commando-lane	SelectTarget
 0xABDC	0x1C4	fn_9_ABDC	fsm-state	B	ported	data:lbl_9_data_3DC	commando-lane	FaceTarget
-0xADA0	0x34	fn_9_ADA0	fsm-state	B	stand-in	data:lbl_9_data_3C4	commando-lane	Ambush
+0xADA0	0x34	fn_9_ADA0	fsm-state	B	marked	data:lbl_9_data_3C4	commando-lane	Ambush
 0xADD4	0x30	fn_9_ADD4	data-thunk	T	not-port	data:lbl_9_data_3B8	cphelpers	
 0xAE04	0x158	fn_9_AE04	fsm-state	B	ported	data:lbl_9_data_3D0	commando-lane	Alert
 0xAF5C	0x5C	fn_9_AF5C	host-copy	H	not-port	data:lbl_9_data_9FC	cphelpers	
 0xAFB8	0x1C	fn_9_AFB8	fsm-trigger	T	ported	data:lbl_9_data_18C	commando-lane	AbortSeekCover
-0xAFD4	0xE0	fn_9_AFD4	fsm-trigger	B	stand-in	data:lbl_9_data_180	commando-lane	CoverBlown
+0xAFD4	0xE0	fn_9_AFD4	fsm-trigger	B	ported	data:lbl_9_data_180	cpcore	CoverBlown
 0xB0B4	0x20	fn_9_B0B4	fsm-trigger	T	ported	data:lbl_9_data_174	commando-lane	ShouldCoverAttack
 0xB0D4	0x20	fn_9_B0D4	fsm-trigger	T	ported	data:lbl_9_data_168	commando-lane	FoundCover
 0xB0F4	0x20	fn_9_B0F4	fsm-trigger	T	ported	data:lbl_9_data_15C	commando-lane	ShouldCover
-0xB114	0x54	fn_9_B114	fsm-trigger	B	stand-in	data:lbl_9_data_150	commando-lane	ShouldWallHang
-0xB168	0x40	fn_9_B168	fsm-trigger	B	stand-in	data:lbl_9_data_144	commando-lane	ShouldCrouch
+0xB114	0x54	fn_9_B114	fsm-trigger	B	ported	data:lbl_9_data_150	commando-lane	ShouldWallHang
+0xB168	0x40	fn_9_B168	fsm-trigger	B	ported	data:lbl_9_data_144	commando-lane	ShouldCrouch
 0xB1A8	0x20	fn_9_B1A8	fsm-trigger	T	ported	data:lbl_9_data_138	commando-lane	FoundJumpPoint
 0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	ported	data:lbl_9_data_12C	commando-lane	IsAggressive
 0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	ported	data:lbl_9_data_120	commando-lane	AbortShieldCharge
@@ -194,25 +194,25 @@ offset	size	fn	kind	class	port	callers	owner	note
 0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	H	ported	data:lbl_9_data_18	commando-lane	ShouldMeleeAttack
 0xBD98	0x34	fn_9_BD98	fsm-trigger	T	ported	data:lbl_9_data_C	commando-lane	ShouldWarpIn
 0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	ported	data:lbl_9_data_0	commando-lane	StateOver
-0xBDE0	0x6C	fn_9_BDE0	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xBF44	0x2B0	fn_9_BF44	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xC1F4	0xD8	fn_9_C1F4	vtable-override	B	marked	data:lbl_9_data_828	cphelpers	
-0xC2CC	0x34	fn_9_C2CC	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0xC300	0x1FC	fn_9_C300	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xC4FC	0x20	fn_9_C4FC	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0xC51C	0x7C	fn_9_C51C	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xC598	0x13C	fn_9_C598	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xC6D4	0xC4	fn_9_C6D4	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xC798	0x1AC	fn_9_C798	vtable-override	B	not-port	data:jumptable_9_data_970 lbl_9_data_828	cphelpers	
-0xC944	0x184	fn_9_C944	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xCAC8	0x78	fn_9_CAC8	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
-0xCB40	0x754	fn_9_CB40	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
+0xBDE0	0x6C	fn_9_BDE0	vtable-override	B	marked	data:lbl_9_data_828	cpcore	
+0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	ported	data:lbl_9_data_828	cpcore	
+0xBF44	0x2B0	fn_9_BF44	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
+0xC1F4	0xD8	fn_9_C1F4	vtable-override	B	marked	data:lbl_9_data_828	cpcore	
+0xC2CC	0x34	fn_9_C2CC	vtable-override	T	not-port	data:lbl_9_data_828	cpcore	
+0xC300	0x1FC	fn_9_C300	vtable-override	B	ported	data:lbl_9_data_828	cpcore	
+0xC4FC	0x20	fn_9_C4FC	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
+0xC51C	0x7C	fn_9_C51C	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
+0xC598	0x13C	fn_9_C598	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
+0xC6D4	0xC4	fn_9_C6D4	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
+0xC798	0x1AC	fn_9_C798	vtable-override	B	not-port	data:jumptable_9_data_970 lbl_9_data_828	cpcore	
+0xC944	0x184	fn_9_C944	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
+0xCAC8	0x78	fn_9_CAC8	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
+0xCB40	0x754	fn_9_CB40	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
 0xD294	0x5C	fn_9_D294	behaviour	B	not-port	bl:fn_9_CB40 fn_9_D904 fn_9_EB84 fn_9_EF80	cphelpers	
 0xD2F0	0x54	fn_9_D2F0	host-copy	H	not-port	-	cphelpers	
 0xD344	0x130	fn_9_D344	host-copy	H	not-port	bl:fn_9_D294	cphelpers	
-0xD474	0x8	fn_9_D474	vtable-override	T	not-port	data:lbl_9_data_828	cphelpers	
-0xD47C	0x1B8	fn_9_D47C	vtable-override	B	not-port	data:lbl_9_data_828	cphelpers	
+0xD474	0x8	fn_9_D474	vtable-override	T	marked	data:lbl_9_data_828	cpcore	
+0xD47C	0x1B8	fn_9_D47C	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	
 0xD634	0x1E4	fn_9_D634	behaviour	B	not-port	bl:fn_9_D47C	cphelpers	
 0xD818	0x94	fn_9_D818	host-copy	H	not-port	bl:fn_9_D634	cphelpers	
 0xD8AC	0x58	fn_9_D8AC	behaviour	B	not-port	bl:fn_9_D47C	cphelpers	
@@ -234,9 +234,9 @@ offset	size	fn	kind	class	port	callers	owner	note
 0xEDC0	0x1C0	fn_9_EDC0	behaviour	B	not-port	bl:fn_9_168	cphelpers	
 0xEF80	0x178	fn_9_EF80	behaviour	B	not-port	bl:fn_9_168	cphelpers	
 0xF0F8	0x198	fn_9_F0F8	behaviour	B	not-port	data:lbl_9_data_AAC	cphelpers	
-0xF290	0x84	fn_9_F290	behaviour	B	not-port	data:lbl_9_data_AAC	cphelpers	
+0xF290	0x84	fn_9_F290	behaviour	B	not-port	data:lbl_9_data_AAC	cpcore	
 0xF314	0x104	fn_9_F314	host-copy	H	not-port	bl:fn_9_F290	cphelpers	
-0xF418	0xF4	fn_9_F418	behaviour	B	not-port	bl:fn_9_5410	cphelpers	
+0xF418	0xF4	fn_9_F418	behaviour	B	not-port	bl:fn_9_5410	cpcore	
 0xF50C	0x80	fn_9_F50C	behaviour	B	not-port	bl:fn_9_168	cphelpers	
 0xF58C	0x110	fn_9_F58C	host-copy	H	not-port	bl:fn_9_D904	cphelpers	
 0xF69C	0x40	fn_9_F69C	behaviour	B	not-port	data:lbl_9_data_A50	cphelpers	

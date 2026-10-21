@@ -5,7 +5,7 @@
 # that has been given a real body.
 WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 CommandoPirate;src/MetroidPrime/Enemies/PortCCommandoPirate.cpp
-CommandoPirate;src/MetroidPrime/Enemies/PortCCommandoPirateHelpers.cpp
+CommandoPirate;src/MetroidPrime/Enemies/PortCCommandoPirateCore.cpp
 DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamus.cpp
 DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp

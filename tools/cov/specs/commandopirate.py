@@ -1,25 +1,49 @@
-# CommandoPirate (module 9) coverage spec for tools/cov/run.sh; the labels are the retail offsets.
-# Run: Temple Grounds 05_temple_federationsite_dark (area 59) with the CommandoPirate lane's
-# driver (tools/drivers/commandopirate_warpout.py), which wakes the commando and makes the
-# noises its Listen override (fn_9_BE4C) has to answer.
+# CommandoPirate (module 9) core spec for tools/cov/run.sh; labels are the retail offsets, loc lines
+# are src/MetroidPrime/Enemies/PortCCommandoPirateCore.cpp's. States key on $rdx (the EStateMsg).
+# Run: tools/drivers/commandopirate_core.py in 3bfa3eff,05_temple_federationsite_dark (area 59) and
+# in the Swamp's 05_swamp_timber! with its `cover` mode (the only commando areas with cover points).
 CLASS = 'CCommandoPirate'
+C = 'loc:PortCCommandoPirateCore.cpp:'
 SPEC = [
-    # fn_9_BE4C: the actor hears. The body: the base's flag byte's 0x02 bit (the host's x420_26_),
-    # then the noise type - 4 (a path noise) and 0 (a shot) are the two that matter, every other
-    # type returns 0. The loc: entries are the lines of the built source, one per arm.
-    ('BE4C Listen', 'CCommandoPirate::xBE4C_Listen(', [], 'ret max=400'),
-    ('BE4C Listen: the actor is not alive (0x0000BE4C)', 'loc:PortCCommandoPirateHelpers.cpp:36',
-     [], 'ret max=400'),
-    ('BE4C Listen: a path noise, too far (0x0000BE7C)',
-     'loc:PortCCommandoPirateHelpers.cpp:44', [], 'ret max=400'),
-    ('BE4C Listen: a path noise, heard (0x0000BF0C)',
-     'loc:PortCCommandoPirateHelpers.cpp:46', [], 'ret max=400'),
-    ('BE4C Listen: a shot, too far (0x0000BEF4)',
-     'loc:PortCCommandoPirateHelpers.cpp:52', [], 'ret max=400'),
-    ('BE4C Listen: a shot, the height range (0x0000BF20)',
-     'loc:PortCCommandoPirateHelpers.cpp:56', [], 'ret max=400'),
-    ('BE4C Listen: a shot, heard (0x0000BF34)',
-     'loc:PortCCommandoPirateHelpers.cpp:58', [], 'ret max=400'),
-    ('BE4C Listen: another noise type (0x0000BF3C)',
-     'loc:PortCCommandoPirateHelpers.cpp:61', [], 'ret max=400'),
+    ('0 GetSearchPath', 'CCommandoPirate::GetSearchPath(', [], 'max=50'),
+    ('8 IsListening', 'CCommandoPirate::IsListening(', [], 'max=50'),
+    ('10 GetGravityConstant', 'CCommandoPirate::GetGravityConstant(', [], 'max=50'),
+    ('68 GetModelAlphau8', 'CCommandoPirate::GetModelAlphau8(', [], 'max=50'),
+    ('70 GetPointSearchPath', 'CCommandoPirate::GetPointSearchPath(', [], 'max=50'),
+    ('78 GetRagDoll', 'CCommandoPirate::GetRagDoll(', [], 'max=50'),
+    ('80 GetAttackTarget', 'CCommandoPirate::GetAttackTarget(', [], 'max=50'),
+    ('A4 CanBeShot', 'CCommandoPirate::CanBeShot(', [], 'max=50'),
+    ('AC GetOrigin', 'CCommandoPirate::GetOrigin(', [], 'max=50'),
+    ('D474 ProjectileInfo', 'CCommandoPirate::ProjectileInfo(', [], 'max=50'),
+    ('BDE0 SetupStateMachine', 'CCommandoPirate::SetupStateMachine(', [], 'calls'),
+    ('C4FC AddToRenderer', 'CCommandoPirate::AddToRenderer(', [], 'calls max=50'),
+    ('C2CC GetDamageVulnerability', 'CCommandoPirate::GetDamageVulnerability(',
+     ['($this->xc65_ & 4) != 0'], 'max=4000'),
+    # Listen: type ($rcx) and alive; the two "heard" lines
+    ('BE4C Listen', 'CCommandoPirate::Listen(', ['$rcx', '$this->mAlive'], 'ret'),
+    ('BE4C Listen: type 4 heard', C + '88', [], ''),
+    ('BE4C Listen: type 0 heard', C + '104', [], ''),
+    ('BE4C Listen: height range', 'loc:PortCCommandoPirateCore.cpp:100', ['this->mDetectionHeightRange != 0'], ''),
+    ('AFD4 CoverBlown', 'CCommandoPirate::CoverBlown(', ['$this->xbd2_.value != 0xffff'], 'ret calls'),
+    ('A4BC MeleeAttack', 'CCommandoPirate::MeleeAttack(', ['$rdx', '$this->xbc4_teamId.value != 0xffff'], 'calls'),
+    ('A2EC EGrenadeAttack', 'CCommandoPirate::EGrenadeAttack(', ['$rdx'], 'calls max=2000'),
+    ('A110 PostEGrenadeAttack', 'CCommandoPirate::PostEGrenadeAttack(', ['$rdx'], 'calls max=2000'),
+    ('A110 PostEGrenadeAttack: pause over', C + '243', [], ''),
+    ('A110 PostEGrenadeAttack: no aim', C + '247', [], ''),
+    ('A110 PostEGrenadeAttack: no target', C + '238', [], ''),
+    ('9BB4 JetBoost', 'CCommandoPirate::JetBoost(', ['$rdx', '$this->mAnimationState.mState'], 'calls max=2000'),
+    ('9BB4 JetBoost: turning', C + '304', [], ''),
+    ('9064 WarpIn', 'CCommandoPirate::WarpIn(', ['$rdx', '$this->x920_'], 'calls max=3000'),
+    ('9064 WarpIn: waypoint kept', C + '369', [], ''),
+    ('9064 WarpIn: no collision', C + '386', [], ''),
+    ('9064 WarpIn: anim time kept', C + '395', [], ''),
+    ('9064 WarpIn: fade clamped', C + '399', [], ''),
+    ('9064 WarpIn: fade', C + '401', [], 'max=2000'),
+    ('7724 Crouch', 'CCommandoPirate::Crouch(', ['$rdx', '$this->xbd2_.value != 0xffff'], 'calls max=2000'),
+    ('6DBC Cover', 'CCommandoPirate::Cover(', ['$rdx', '$this->xbd2_.value != 0xffff'], 'calls max=2000'),
+    ('6DBC Cover: slide', C + '482', [], ''),
+    ('6C68 CoverAttack', 'CCommandoPirate::CoverAttack(', ['$rdx', '$this->xbd2_.value != 0xffff'], 'calls max=2000'),
+    ('6C68 CoverAttack: slide', C + '516', [], ''),
+    ('6A40 GetUp', 'CCommandoPirate::GetUp(', ['$rdx'], 'calls max=2000'),
+    ('6A40 GetUp: pending death', C + '543', [], ''),
 ]
