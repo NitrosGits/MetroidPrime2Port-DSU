@@ -17,12 +17,12 @@ DR_SET = ('($dk == 1 ? ($this->mBoostBallUid.value = 0xffff) : '
           '            $this->mGuestEA8 = -1000.0) : '
           '($dk == 7 ? ($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 0.0, '
           '            $this->mBoostHintUid.value = 0xffff, $this->mBoostBallFlag80 = 0, '
-          '            $this->mGuestEA8 = 1000.0, $this->mGuestEAC = 0.0, $this->mGuestEB0 = 0.0, '
-          '            $this->mGuestEB4 = 0.0, $this->mGuestEB8 = 0.0) : '
+          '            $this->mGuestEA8 = 1000.0, $this->mGuestEAC = CVector3f::Zero(), '
+          '            $this->mGuestEB8 = 0.0) : '
           '($this->mBoostBallUid.value = 1, $this->mGuestEA4 = 0.0, '
           ' $this->mBoostHintUid.value = 0xffff, $this->mBoostBallFlag80 = 0, '
-          ' $this->mGuestEA8 = 1000.0, $this->mGuestEAC = $this->mPosition.mX, '
-          ' $this->mGuestEB0 = $this->mPosition.mY, $this->mGuestEB4 = $this->mPosition.mZ, '
+          ' $this->mGuestEA8 = 1000.0, $this->mGuestEAC = $this->mPosition, '
+          ' $this->mGuestEB8 = 0.0))))))))'))
           ' $this->mGuestEB8 = 0.0))))))))')
 # the Pause state: the second Activate runs without a fight stage (the battle stage's uid is
 # invalidated), which is the arm the retail's own null check at 0x00010770 takes.

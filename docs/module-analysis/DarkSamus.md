@@ -1647,4 +1647,5 @@ trigger's entry, one per hit, from gdb convenience variables).
   normal build) - 4 hits of the state, the Activate, two Updates and the Deactivate; the first
   Update (the counter 0xAB0 = 1, written by the coverage spec's expression) delivers the exit
   state command and returns (no turn, no dodge), the second (the bit 0x40 of 0xAB8) turns and
-  dodges. The game's exit code 0 and no SIGSEGV.
+  dodges. The game's exit code 0 and no SIGSEGV. The coverage build's report agrees: fn_10_16CDC
+  is 20/20 lines, 6/6 branches, **ALL-ARMS** (fn_10_10710 and fn_10_9314 are ALL-ARMS too).
