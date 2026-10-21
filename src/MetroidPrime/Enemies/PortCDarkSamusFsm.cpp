@@ -1616,7 +1616,7 @@ bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
 // (0x000097FC/0x00009804); the port has no counterpart for it.
 void CDarkSamus::BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallFire", msg);
-  UpdateCurrentAttack(2, mgr, msg); // 0x00009760
+  UpdateCurrentAttack(0x20000, mgr, msg); // `lis r4, 0x2` at 0x00009758, the call at 0x00009760
   if (msg == kStateMsg_Activate) {
     CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x00009778
     mBoostBallRollSfx = CSfxHandle();              // 0x00009784
@@ -1847,7 +1847,7 @@ void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
 // @ fn_10_16CDC
 void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("FreezeBeam", msg);
-  UpdateCurrentAttack(0x10, mgr, msg); // 0x00016D18
+  UpdateCurrentAttack(0x100000, mgr, msg); // `lis r4, 0x10` at 0x00016D10, the call at 0x00016D18
   RunCollisionFailsafe(mgr);           // 0x00016D24
   UpdateShieldFlag(msg);              // 0x00016D38
   UpdateGroundCollision(mgr, msg);    // 0x00016D48
@@ -1858,6 +1858,7 @@ void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
     mDodgeDir = CVector3f::Zero();    // 0x00016D88
   } else if (mGuestAB0 >= 1) {        // 0x00016DA8
     BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x00016DD0
+    return; // the b to the epilogue at 0x00016DE8: no turn, no loop attack command
   }
   if ((mGuestAB8 & 0x40) != 0) { // 0x00016DF0 (the bit 0x40 of 0xAB8)
     TurnTowardPlayer(mgr, dt, 0.017453292f * mBss118); // 0x00016E1C (lbl_10_rodata_454 times
@@ -2691,9 +2692,9 @@ void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float) {
     // 0x00007A8C: the `mulhw` with 0x55555556 - the high word of 0x55555556 * 0x1058 and its
     // carry bit - is added to 0x105C. The two words are the guest's own (the phazon volleys' in
     // the fsm2 lane's naming); the retail's are unsigned, so the step is done in unsigned.
-    const uint hi = static_cast< uint >(
-        (static_cast< uint64_t >(0x55555556u) * static_cast< uint32_t >(mGuest1058)) >> 32);
-    mGuest105C = static_cast< int >(static_cast< uint >(mGuest105C) + hi + (hi >> 31)); // 0x00007A8C
+    // mulhw is the signed high word, plus its sign bit: the signed division by 3 (rounding to 0).
+    mGuest105C = static_cast< int >(static_cast< uint >(mGuest105C) +
+                                    static_cast< uint >(static_cast< int >(mGuest1058) / 3)); // 0x00007A8C
     mGuestFC4 = GetHealthInfo()->GetHP(); // 0x00007AB0
   }
   FsmStandIn("fn_10_7F98", "state EnrageHitReact's enrage helper"); // 0x00007AC8
@@ -2724,8 +2725,8 @@ void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
     if (CVector3f::Dot(d, d) > 16.f) { // 0x00006EF8 (the squared distance)
       FindPathToDestination(mgr, aim, dt); // fn_10_6F90, 0x00006F10
     }
-    // 0x00006F30: the player's halfword at its +8 goes to 0x718; the port has no counterpart.
-    // 0x00006F34: the path find (the guest's CPathFindNavigation at 0x6F4); not in the port.
+    mPathFindNavigation.SetFaceTarget(mgr.GetPlayer(0)->GetUniqueId()); // 0x718, 0x00006F30
+    mPathFindNavigation.PathFind(mgr, msg, dt, *this);                  // 0x6F4, 0x00006F34
     Separate(mgr); // fn_10_1DD14, 0x00006F40
   }
   UpdateShieldFromHealth(msg); // fn_10_6DAC, 0x00006F4C
@@ -2740,7 +2741,7 @@ void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
 // @ fn_10_BD40
 void CDarkSamus::FadeIn(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("FadeIn", msg);
-  UpdateCurrentAttack(4, mgr, msg); // 0x0000BD70
+  UpdateCurrentAttack(0x40000, mgr, msg); // `lis r4, 0x4` at 0x0000BD60, the call at 0x0000BD70
   UpdateGroundCollision(mgr, msg); // 0x0000BD80
   RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Four)); // 0x0000BDE0
 }
@@ -2752,7 +2753,7 @@ void CDarkSamus::FadeIn(CStateManager& mgr, EStateMsg msg, float) {
 // @ fn_10_BC54
 void CDarkSamus::FadeOut(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("FadeOut", msg);
-  UpdateCurrentAttack(8, mgr, msg); // 0x0000BC84
+  UpdateCurrentAttack(0x80000, mgr, msg); // `lis r4, 0x8` at 0x0000BC74, the call at 0x0000BC84
   UpdateGroundCollision(mgr, msg); // 0x0000BC94
   UpdateShieldFlag(msg);           // 0x0000BCA8
   RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Three)); // 0x0000BD08
