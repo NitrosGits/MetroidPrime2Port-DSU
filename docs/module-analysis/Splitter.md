@@ -1027,10 +1027,19 @@ effect states in every branch: "AlertEye" (the rodata blob at 0x1C, whose first 
 
 The retail calls this body from the four shield functions (fn_75_5B28, fn_75_5CC4, fn_75_5D50
 and fn_75_5DDC, which set the counter to 3, 1, 0 and 2) and from the SelectTarget code
-(fn_75_3E60, 0x00003EA8) and the chassis check (fn_75_31A8, 0x00003224) and the projectile's
+(fn_75_3E60, 0x00003EA8), the chassis check (fn_75_31A8, 0x00003224) and the projectile's
 despawn (fn_75_1790, 0x00001830). The three shield functions are still shells, so the port's
-counter stays 0; the SelectTarget code and the chassis check run in the area-4 run, so the head
-gets its "AlertEye" effect on there.
+counter stays 0 and the body always takes the second branch.
+
+#### The head's own move, fn_75_2154 (0x2154-0x21FC) - ported 2026-10-21
+
+| what | retail | port |
+|---|---|---|
+| the auto-destruct timer | the timer at 0xEF4 (0x00002170 `lfs`) is compared with 0.0f (0x00002180 `fcmpo`, 0x00002184 `ble`); above zero the head is teleported to the destination (0x00002188 `SetTranslation`) | the same: `mAutoDestructTimer` (the guest's 0xEF4) above zero gives `SetTranslation(dest)` |
+| the move | the difference between the destination and the head's own position (0x54, 0x58 and 0x5C - 0x00002190-0x000021BC) is moved through the head's transform (0x000021B0 the transform at 0x24, 0x000021CC `TransposeRotate`) and the result moves the head in one frame (0x000021DC `MoveInOneFrameOR`) | the same: `MoveInOneFrameOR(GetTransform().TransposeRotate(dest - GetTranslation()), dt)` |
+
+The retail calls this body from the four states that move the head (0x000040F8, 0x000042A0, the
+Hover state 0x00004E64 and the Dodge state 0x00004FE4). The port's Hover state asks for it.
 
 #### The head's Idle state, fn_75_5538 (0x5538-0x5564) - ported 2026-10-21
 
@@ -1042,8 +1051,9 @@ gets its "AlertEye" effect on there.
 The retail's constructor fills that vector from the editor properties (fn_75_6B08, the
 `arg4->unk4/14/24`), so the Idle state overwrites the editor's offset with the transform's Y
 column; the port's constructor has no editor-properties argument, so its vector starts at zero
-and the Idle state still writes the same value. The area-4 run does not enter the head's Idle
-state (the walk table above stops at the Hover state), so the body carries no `// @` marker.
+and the Idle state still writes the same value. The area-4 run does enter the head's Idle state
+(an earlier run's log logged it as a shell), but the run does not leave the state again, so the
+early return is untested and the body carries no `// @` marker.
 
 #### fn_75_AFE8 and fn_75_9520: the branches the run does not reach (2026-10-21)
 

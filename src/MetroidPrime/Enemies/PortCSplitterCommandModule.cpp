@@ -137,18 +137,8 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // The module's own calls in the command module's script-message handler (fn_75_654C). Both are
 // over 0x80, so each stays a named once-logging shell.
 
-// The head's own move (fn_75_2154, 0xA8) - the Hover state asks it to move the head to a
-// position; the port logs the position once and does not move.
-void StandInFn_75_2154(const CVector3f& dest, float dt) {
-  static bool sLogged = false;
-  if (sLogged) {
-    return;
-  }
-  sLogged = true;
-  fprintf(stderr,
-          "[splitter] fn_75_2154 (0xA8) would move the head to (%.3f, %.3f, %.3f) in %.3f s\n",
-          dest.GetX(), dest.GetY(), dest.GetZ(), dt);
-}
+// The head's own move (fn_75_2154, 0xA8) is ported as
+// CSplitterCommandModule::PortMoveTo.
 
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
@@ -316,7 +306,22 @@ void CSplitterCommandModule::Hover(CStateManager& mgr, EStateMsg msg, float dt) 
   if (fabsf(dz) <= step) {
     return;
   }
-  StandInFn_75_2154(CVector3f(pos.GetX(), pos.GetY(), pos.GetZ() + (dz > 0.f ? step : -step)), dt);
+  PortMoveTo(CVector3f(pos.GetX(), pos.GetY(), pos.GetZ() + (dz > 0.f ? step : -step)), dt);
+}
+
+// fn_75_2154 (the head's own move, 0x2154-0x21FC): the auto-destruct timer at 0xEF4 (0x2170
+// lfs) decides - above zero (0x2180 fcmpo against 0.0f, 0x2184 ble) the head is teleported to
+// the destination (0x2188 SetTranslation); otherwise the difference between the destination and
+// the head's own position (0x54, 0x58 and 0x5C - 0x2190-0x21BC) is moved through the head's
+// transform (0x21B0 the transform at 0x24, 0x21CC TransposeRotate) and the result moves the
+// head in one frame (0x21DC MoveInOneFrameOR).
+void CSplitterCommandModule::PortMoveTo(const CVector3f& dest, float dt) {
+  if (mAutoDestructTimer > 0.f) {
+    SetTranslation(dest);
+    return;
+  }
+  const CVector3f delta = dest - GetTranslation();
+  MoveInOneFrameOR(GetTransform().TransposeRotate(delta), dt);
 }
 
 // fn_75_5538 (the head's Idle state, 0x5538-0x5564): the state message is compared with 2

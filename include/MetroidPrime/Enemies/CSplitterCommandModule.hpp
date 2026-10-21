@@ -240,6 +240,10 @@ private:
   void PortUpdateEffectStates(CStateManager& mgr);
   uint mShieldState = 0;  // guest 0xEDC
 
+  // The retail's fn_75_2154: the head's own move. With the auto-destruct timer running the
+  // head is teleported to the destination, otherwise it moves towards it in one frame.
+  void PortMoveTo(const CVector3f& dest, float dt);
+
   // The fields the retail's fn_75_31A8 touches.
   void PortUpdateChassis(CStateManager& mgr);
   TUniqueId mChassisId = kInvalidUniqueId;       // guest 0xEFA (the chassis it looks up)
