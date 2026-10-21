@@ -1016,7 +1016,9 @@ the commando with the console's `press a`) reaches gameplay at 10.0 s, ends with
 (82.4, 368.3, -46.1) beside the player) and the run's stand-ins are four: the module's Listen
 (fn_9_BE4C), the CVisualKnowledge's Update and SetVisualTarget (guest this+0xAB0) and the
 JumpBack state (fn_9_8B70). The two stand-ins this slice removes - the module's AcceptScriptMsg
-and the module's collision actor managers - are gone.
+and the module's collision actor managers - are gone. A second run with the same teleport and
+without the firing ends the same way (exit=0, `grep -c '[port] caught|reach-stub'` = 0) with two
+stand-ins, the CVisualKnowledge's Update and SetVisualTarget.
 
 The arms of the five functions the task names, read out of a run with a temporary branch log
 (reverted, not committed):
