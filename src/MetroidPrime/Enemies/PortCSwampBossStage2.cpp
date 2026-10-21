@@ -989,7 +989,10 @@ void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator)
   (void)projectile;
 }
 
-// fn_79_5030: put every chain node on its recorded position.
+// fn_79_5030: put every chain node on its recorded position. The retail walks the *nodes* vector
+// and reads the position at the same index (0x505C-0x5080, the loop's bound at 0x5090/0x5094);
+// the `if (node)` is the retail's own cast test (0x5074). The extra `i < positions.size()` is a
+// host guard: the retail trusts the two vectors to be the same length.
 // @ fn_79_5030
 void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
@@ -1046,9 +1049,10 @@ void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
   --mChainDepth;
 }
 
-// fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk. Not marked:
-// the walk is driven by the boss's kSM_AreaLoaded message, which the harness never delivers to
-// it (the boss is created with the layer), so the body has not run.
+// fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk. Not marked
+// yet: the walk is reached (the engine delivers the boss's kSM_AreaLoaded at the area load, and a
+// probe in the port's kSM_AreaLoaded case printed that it runs), but the per-arm probe for these
+// two bodies has not been run, so their arms are not proved.
 void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
                                          rstl::vector< TUniqueId >& nodes,
                                          rstl::vector< CVector3f >& positions) {
@@ -1066,7 +1070,7 @@ void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
 
 // fn_79_50AC: the chain walk's recursion: the node's position and uid go on the lists and the
 // walk follows the node's "ARRV/NEXT" connections. Not marked, for the same reason as
-// fn_79_5830 above.
+// fn_79_5830 above (reached, but the arms are not proved yet).
 void CSwampBossStage2::WalkChainNodes(CStateManager& mgr, CActor* node,
                                       rstl::vector< TUniqueId >& nodes,
                                       rstl::vector< CVector3f >& positions) {
@@ -1147,7 +1151,10 @@ void CSwampBossStage2::AimSpitPlatforms(CStateManager& mgr,
   pivot->SetTranslation(target);
 }
 
-// fn_79_55B0: wake the platform chain, drop its nodes on their recorded positions, swing them by the
+// @ fn_79_55B0: wake the platform chain (the retail's two virtual calls on the chain actor, the
+// vtable slot +0x18 = CEntity::AcceptScriptMsg, at 0x5654 and 0x56B0; the second one's message
+// id is the "DECR" fourcc at 0x5668-0x5670, the first is the activation),
+// drop its nodes on their recorded positions, swing them by the
 // heading difference to the chain's follow node and park that node at the event's locator.
 void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
                                            rstl::vector< TUniqueId >& nodes,

@@ -827,7 +827,9 @@ launch happened in the state the boss reaches on its own.
 | 0x5094 | the walk's condition | (a) a loop condition |
 | - | the body | (b) `[arm] 60 5030 a chain node is put on its recorded position` (the light phase's `Lurk`, no forcing) |
 
-**fn_79_527C** (the port's `SwingChainNodes`) - **not marked**
+**fn_79_527C** (the port's `SwingChainNodes`) - **not marked** (the edge-radius arm 0x53B0 was not
+reached: the swung node stayed inside the edge radius, so the driver would have to `place` a chain
+node outside it - forced (place))
 
 | branch | what | class |
 |---|---|---|
@@ -836,10 +838,15 @@ launch happened in the state the boss reaches on its own.
 | 0x541C | the walk's condition | (a) a loop condition |
 | - | the body | (b) `[arm] 63 527C a chain node is swung` |
 
-**fn_79_55B0** (the port's `LaunchPlatformChain`) - **not marked**: its body ran (it is what calls
-`fn_79_5030` and `fn_79_527C`), but the port's body also sends the chain actor `kSM_Activate` and
-`kSM_Decrement`, which the retail's body does not have (its call list has no script message), so
-the port's body is not retail's.
+**fn_79_55B0** (the port's `LaunchPlatformChain`) - **marked**: the retail's body makes two
+virtual calls on the chain actor (the vtable slot +0x18 = `CEntity::AcceptScriptMsg`, at 0x5654
+and 0x56B0, each with a message id in a `CScriptMsg`; the second one's id is the "DECR" fourcc
+built at 0x5668-0x5670, the first is the activation) - so the port's two script messages are the
+retail's, not extra ones. The rest of the body matches step for step (the chain actor, the
+"PTRL/FOLW" node, `fn_79_5030`, the "ARRV/NEXT" node, the two `atan2`s, the rotation,
+`fn_79_527C`, the patrol's position), and it ran (it is what calls `fn_79_5030` and
+`fn_79_527C`: `[arm] 60`, `[arm] 63`). Its three null guards are (c): the chain actor, the patrol
+node and the next node are all actors in the shipped area.
 
 **fn_79_5830 / fn_79_50AC** (the chain's node list and the ARRV/NEXT recursion) - **not marked**
 (the arms are not proved yet), but the message *does* arrive: a temporary probe as the first line
