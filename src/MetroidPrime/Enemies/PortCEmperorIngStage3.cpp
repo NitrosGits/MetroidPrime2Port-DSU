@@ -3211,12 +3211,13 @@ void CEmperorIngStage3::ChoseAction(CStateManager& mgr, float dt) {
 // SLdr ctor's extra defaults are in SLdrEmperorIngStage3.hpp. The data block's loader, ctor and
 // dtor (CA60 / CFAC / CE70) and their typedef copies (stage D58C/D840/D794, action
 // D8C0/D9F8/D9BC, beam D09C/D490/D1B8, portal D33C/D21C/D42C) are the generated SLdr inlines.
-// Cited REL runtime: RELMain fn_18_C330 calls fn_18_C350, which registers this loader
-// (fn_8022EBC8 with bss 0x30); RELExit fn_18_C30C unregisters it; _prolog fn_18_E8EC runs .ctors
-// (fn_18_E95C, the static initialiser fn_18_E180) and _epilog fn_18_E8C8 runs .dtors (fn_18_E910);
-// fn_18_E804 is _unresolved. The port's module registry does all of it. fn_18_C9E4 is
-// SLdrEmperorIngStage3's weak deleting destructor and fn_18_C69C/C6DC/C6FC/C724 the rstl copies of
-// its token (fn_18_C724 TLockedToken's copy).
+// Cited REL runtime: retail's RELMain (fn_18_C330) calls fn_18_C350, which registers this loader
+// (fn_8022EBC8 with bss 0x30) - the port's RELMain below carries that marker; the RELExit
+// (fn_18_C30C) unregisters it and the port's RELExit below carries that marker; _prolog
+// fn_18_E8EC runs .ctors (fn_18_E95C, the static initialiser fn_18_E180) and _epilog fn_18_E8C8
+// runs .dtors (fn_18_E910); fn_18_E804 is _unresolved. The port's module registry does all of
+// it. fn_18_C9E4 is SLdrEmperorIngStage3's weak deleting destructor and fn_18_C69C/C6DC/C6FC/C724
+// the rstl copies of its token (fn_18_C724 TLockedToken's copy).
 static CEntity* PortLoadEmperorIngStage3(CStateManager& mgr, CInputStream& input,
                                           CEntityInfo& info) {
   SLdrEmperorIngStage3 sldrThis;
@@ -3244,12 +3245,21 @@ static CEntity* PortLoadEmperorIngStage3(CStateManager& mgr, CInputStream& input
 
 static SEmperorIngStage3_FuncPtrs REL_loader_EmperorIngStage3;
 
-// Retail's RELMain calls fn_18_C350, which stores the loader fn_18_C380 into lbl_18_bss_30 (the
-// module's SEmperorIngStage3_FuncPtrs) and calls the DOL's SetSEmperorIngStage3_FuncPtrs. The
-// proxy in SEmperorIngStage3_FuncPtrs.cpp calls through it.
+// @ fn_18_C350
+// @ fn_18_C330
+// fn_18_C350 (0x30): the module init. The loader fn_18_C380 goes into the module's table
+// (lbl_18_bss_30, the host's SEmperorIngStage3_FuncPtrs) at 0xC368 and the DOL's
+// SetSEmperorIngStage3_FuncPtrs is called at 0xC36C. Retail's RELMain (fn_18_C330, 0x20) only
+// calls this (the call at 0xC33C); the host's module registry calls the port's RELMain instead
+// (src/MetroidPrime/CRelFile.cpp:151 -> platform/compiled_modules.cpp). The proxy in
+// SEmperorIngStage3_FuncPtrs.cpp calls through the table.
 void RELMain() {
   REL_loader_EmperorIngStage3.mLoader = PortLoadEmperorIngStage3;
   SetSEmperorIngStage3_FuncPtrs(&REL_loader_EmperorIngStage3);
 }
 
+// @ fn_18_C30C
+// fn_18_C30C (0x24): the REL's exit. The function pointers are cleared (`li r3, 0` at 0xC314)
+// and SetSEmperorIngStage3_FuncPtrs is called at 0xC31C. The host's module registry calls the
+// port's RELExit when the REL file closes (src/MetroidPrime/CRelFile.cpp:117).
 void RELExit() { SetSEmperorIngStage3_FuncPtrs(nullptr); }
