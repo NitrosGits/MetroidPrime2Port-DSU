@@ -11,6 +11,7 @@
 //    new state's constructor and the warp both stash every pak but the destination's.
 #include "port_savestate.h"
 
+#include "port_overlay.h"
 #include "port_save.h"
 #include "port_warp.h"
 
@@ -362,7 +363,11 @@ bool Capture(CStateManager& mgr, State& s, std::string& error) {
   s.worldId = world.IGetWorldAssetId();
   s.areaIndex = area.Value();
   s.areaAssetId = gameArea.GetAreaAssetId();
-  s.room = gameArea.IGetInternalAreaName().c_str();
+  // The English name when the room list has it (same thread: CStateManager feeds it), else the MLVL's.
+  s.room = PortOverlay::RoomName(static_cast< uint32_t >(s.worldId), area.Value());
+  if (s.room.empty()) {
+    s.room = gameArea.IGetInternalAreaName().c_str();
+  }
   if (s.room.empty()) {
     s.room = "Area " + std::to_string(area.Value());
   }
@@ -692,6 +697,7 @@ Info SlotInfo(int slot) {
   }
   info.exists = true;
   info.worldId = s.worldId;
+  info.areaIndex = s.areaIndex;
   info.room = s.room;
   info.playTime = s.playTime;
   info.savedAt = s.savedAt;
