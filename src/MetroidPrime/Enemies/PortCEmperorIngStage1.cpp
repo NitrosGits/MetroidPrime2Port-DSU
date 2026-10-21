@@ -750,9 +750,9 @@ void CEmperorIngStage1::UpdateTentacleAnchor(float dt, CStateManager& mgr) {
   // column) the body looks along; 0x5110: the 'PLAY' actor takes that transform.
   body->SetTransform(CTransform4f::LookAt(base.GetTranslation(),
                                            base.GetTranslation() + dir, base.GetColumn(kDZ)));
-  // 0x5120: the body at the 'PLAY' actor's segment 1, 1.5f along its X column (the X column is
-  // read after the new transform, 0x5124).
-  const CVector3f offset = body->GetTransform().GetColumn(kDX) * 1.5f; // lbl_16_rodata_394
+  // 0x5120: the body at the 'PLAY' actor's segment 1, 1.5f along its Z column (m02/m12/m22 at
+  // 0x2C/0x3C/0x4C, read after the new transform, 0x5124).
+  const CVector3f offset = body->GetTransform().GetColumn(kDZ) * 1.5f; // lbl_16_rodata_394
   const CTransform4f seg = body->GetModelData()->GetScaledLocatorTransform(CSegId(1));
   SetTransform((body->GetTransform() * seg) * CTransform4f::Translate(offset)); // 0x51A8
 }
@@ -2858,7 +2858,8 @@ void CEmperorIngStage1::CreateWarpPortalActor(CStateManager& mgr, const CModelDa
 // fn_16_5DBC (0x5DBC..0x601C, 0x260): the state "TauntAttack" - the taunt's own timer (the
 // guest 0xA54) counts up and the taunt ends when it is over the taunt's loop duration (the guest
 // 0xC38, 0x5F78).
-//   Activate: the script hears IS00 (fn_16_830, 0x5E60), the tentacles get the mode 1
+//   Activate: the script hears IS00 (fn_16_830, 0x5E60), the animation state is ready (0x5E6C),
+//     the tentacles get the mode 1
 //     vulnerability (fn_16_353C, 0x5E7C), the timer is 0.0f (0x5EA8) and the module's static
 //     (lbl_16_bss_14, 0x5EB4) takes the retracted tentacle count (fn_16_2E7C, 0x5EAC).
 //   Update: the actor looks at the player (fn_16_7B40, 0x5EC4), the timer counts up (0x5ED4) and
@@ -2873,6 +2874,7 @@ void CEmperorIngStage1::TauntAttack(CStateManager& mgr, EStateMsg msg, float dt)
   switch (msg) {
     case kStateMsg_Activate:
       SendStageMessage(mgr, 0); // 0x5E60
+      mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x5E6C
       SetTentacleVulnerability(mgr, 1); // 0x5E7C
       xa54_ = 0.f; // 0x5EA8
       sTauntRetracted = RetractedTentacleCount(); // 0x5EAC, 0x5EB4
