@@ -58,9 +58,18 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
 // materials, restores alpha 1, resets the warp point to -1 and clears 0x8fa bit 0x20. (The two
 // cases were once swapped, so every update reset the warp: a warped-in trooper stayed invisible,
 // unhittable and in "WarpIn" for good, and the counters its death feeds never moved.)
+// Every arm ran or was forced (tools/cov, 2026-10-21). The GRNT/FOLW waypoint arms of case 0 are
+// data-dead: none of the 65 PIRT placements on the disc has a GRNT connection (173 connections, all
+// other states), so the list stays empty. Natural runs: blocked box (9514 updates) and clear box, case 1
+// issue / neither / cache / fade. Forced (tools/cov/force.sh, specs/spacepirate_force.py), one fade
+// update each in 08_sand_casualpirates L3: 0xbd0 = 0 for the cached time <= FLT_EPSILON arm (no alpha
+// write: 0 where the fade gives 4), then 0xbd0 = 1e-6 for the f <= 0 clamp (alpha 0 where the fade gives 8).
+// The alpha is retail's 255-scaled u8: f * 255 (rodata BB8, 0x7508) stored to 0x44f by psq_st qr2.
+// @ fn_72_7078
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x70D4
     mColor.SetAlpha(0.f);
     mAlphaDelta = 0.f;
     xc04_warpPoint = 0;
@@ -90,14 +99,20 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
         SetTransform(
             CQuaternion::FromMatrix(wp->GetTransform()).BuildTransform4f(GetTranslation()));
       }
+      // +/-10 (rodata B58, 0x72B0-0x7318) around the pirate, filtered to the materials of data
+      // 8AC/8B0/8B4 = 0x3b/0x20/0x21 (Solid, Player, Character; 0x724C-0x72A4).
       const CVector3f extent(10.f, 10.f, 10.f);
       const CAABox bounds(GetTranslation() - extent, GetTranslation() + extent);
       const CMaterialFilter filter =
           CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Player, kMT_Character));
       rstl::reserved_vector< TUniqueId, 1024 > nearList;
       mgr.BuildNearList(nearList, bounds, filter, this);
+      // A clear box (0x735C-0x7360) moves the warp point to 1 (0x7364-0x736C) and puts back
+      // Character/Solid/Target (0x21/0x3b/0x28, 0x7374-0x7380); Orbit waits for Deactivate.
       if (!CGameCollision::DetectDynamicCollisionBoolean(*GetCollisionPrimitive(), GetTransform(),
                                                          nearList, mgr)) {
+        xc04_warpPoint = 1;
+        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, mgr);
       }
       break;
     }
@@ -137,6 +152,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x6EB4
     xc04_warpPoint = 1;
     x8fa_28_ = false;
     break;
@@ -556,6 +572,26 @@ void CSpacePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+namespace {
+// Retail fn_72_D608 is MP1's CPatterned::Random2f, which this tree does not have. Two random
+// components in the XY plane - the *first* CRandom16 draw is y and the second is x, both minus
+// rodata 0xB44 = 0.5, while z is rodata 0xB9C = 0 (asm 0xD644-0xD688: the first draw lands at
+// sp+0xc and the second at sp+0x8, which is the vector base) - then the x term is forced to
+// rodata 0xBC8 = 0.001 when |x| is under 0.001 (0xD68C-0xD69C) so the normalize cannot collapse
+// the direction, the vector is normalized in place (0xD6A0), and a third draw lerps the length
+// minLen + (maxLen - minLen) * rand (0xD6C0 fmadds) which then scales the unit vector
+// (0xD6C4-0xD6E8). Retail leaves that scaled length in the return register unused.
+CVector3f ShuffleRandomVector(CStateManager& mgr, float minLen, float maxLen) {
+  const float y = mgr.Random()->Float() - 0.5f;
+  float x = mgr.Random()->Float() - 0.5f;
+  if (x > -0.001f && x < 0.001f) {
+    x = 0.001f;
+  }
+  CVector3f vec(x, y, 0.f);
+  vec.Normalize();
+  return (minLen + (maxLen - minLen) * mgr.Random()->Float()) * vec;
+}
+} // namespace
 
 // Retail fn_72_8670 (asm 0x8670-0x8B14) is MP1's CSpacePirate::Shuffle with Echoes' own pieces:
 // Activate runs only for kStateMsg_Activate (0x86B8-0x86CC jumps straight past it otherwise) and
@@ -624,6 +660,14 @@ void CSpacePirate::Shuffle(CStateManager& mgr, EStateMsg msg, float dt) {
 // zero vector is stored first at 0x50-0x58, the normalized delta at 0x5c-0x64) and otherwise
 // gives up on the turn, kAS_Over. The guard position runs for every message; Deactivate returns
 // the animation to kAS_NotReady.
+// Retail fn_72_8464: Activate stores GetTargetPos (CB30) at 0xbc4 and sets 0x6b4 = 1 when the forward
+// axis dotted with the flat delta (Z = rodata B9C, 0) is below rodata B64 = 0.8 (asm 0x84B0-0x8568);
+// Update: CanIssueCommand(8 = kAS_Turn), a locomotion command (weight B54 = 1) when the delta is
+// magnitude-safe, else 0x6b4 = 3 (asm 0x8570-0x8630), then UpdateGuardPosition (D800).
+// Every arm ran or was forced (tools/cov, 2026-10-21): facing away and facing (08_sand_casualpirates L3,
+// 06_sand_alamofront L2, console `fsm TurnAround`), CanIssueCommand both ways, the command; forced once
+// (tools/cov/force.sh, specs/spacepirate_force2.py): 0xbc4 = the translation, so no safe delta (0x6b4 1 -> 3).
+// @ fn_72_8464
 void CSpacePirate::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -935,8 +979,19 @@ void CSpacePirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_DFD4: find the squad this pirate belongs to (the field starts invalid) and take a
-// role in it - melee or projectile, the same role SquadReset later gives up.
+// Retail fn_72_DFD4 (0xBC): find the squad this pirate belongs to (the field starts invalid) and take a
+// role in it - melee or projectile, the same role SquadReset later gives up. An invalid 0xba0 (asm
+// 0xE000) asks GetAssociatedTeamId and stores the answer (asm 0xE014-0xE01C); a still-invalid id
+// (asm 0xE02C) or one that is no CScriptTeamAiMgr (asm 0xE04C) ends it. The role is the 0x8f4 byte's
+// melee bit (bit 27, asm 0xE060): set 1 = kTAR_Melee (asm 0xE068), clear 2 = kTAR_Projectile (asm
+// 0xE05C); then 3 = kTAR_Unknown (asm 0xE06C) and -1 = kTAR_Invalid (asm 0xE070).
+// Every live arm ran (tools/cov, 2026-10-21): no team found (melee pirates, 08_sand_casualpirates L3),
+// found and joined (07_sand_alamoportalobservation L3), already valid and joined again (368 entries,
+// 06_sand_alamofront L2, console `fsm Taunt` then `fsm Generate`), already valid but the manager gone
+// (226 casts that failed after `send <team> Delete`). The melee role (asm 0xE068) is data-dead: all
+// three melee placements (data flag 0x8: alamofront 001d000f, casual 0036013d/003600fa) ran SquadJoin
+// and GetAssociatedTeamId found no team for any of them.
+// @ fn_72_DFD4
 void CSpacePirate::SquadJoin(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     xba0_teamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -1158,6 +1213,7 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x69F8
     x8f7_29_inWallHang = true;
     if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
       const TUniqueId id = cover->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next);
@@ -1226,9 +1282,18 @@ void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
 // sets 0x8fa bit 0x40. While the body lies on the ground and the path finder has no source point at
 // its own translation the pirate is left to die; otherwise it gets up as soon as the animation state
 // allows a kAS_Getup command. Both paths feed the leash timer. Deactivate undoes the flags.
+// Retail fn_72_B3D4: Update runs Search(pos, pos) (asm 0xB458-0xB464) only in body state 2
+// (kAS_LieOnGround); kR_NoSourcePoint (2) would set the pending death (0x421 bit 0x10, asm 0xB470).
+// Every live arm ran or was forced (tools/cov, 2026-10-21, 08_sand_casualpirates L3, `fsm GetUp`):
+// not lying (natural), lying (forced once: body state id = 2, specs/spacepirate_force2.py), then the
+// Getup command, Repeat (65 updates) and Over, Deactivate. The pending-death arm is dead in retail:
+// the DOL's Search (0x8013DCC8) returns 1 without an area and 0 when close_enough(src, dst)
+// (0x8013DD38-0x8013DD8C), so Search(p, p) never returns 2.
+// @ fn_72_B3D4
 void CSpacePirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0xB420
     SquadReset(mgr); // fn_72_DEDC
     xbb0_leashTimer = 0.f;
     x8fa_25_ = true;
@@ -1527,6 +1592,7 @@ void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x535C
     xbb0_leashTimer = 0.f;
     break;
   case kStateMsg_Update:

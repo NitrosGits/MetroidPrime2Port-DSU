@@ -108,10 +108,8 @@ public:
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
   void SetupStateMachine(CStateManager& mgr) override;
-  // fn_72_18 (0xC): the attack target (0xa94) - `lhz r0, 0xa94(r4)` / `sth r0, 0x0(r3)`
-  // (asm 0x18-0x20). Branchless; the forced gdb call of 2026-10-21 (one call on a live pirate)
-  // returned 0xffff, the invalid id.
   // @ fn_72_18
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
   TUniqueId GetAttackTarget() const override { return mAttackTarget; }
   void SetAttackTarget(CStateManager& mgr, TUniqueId target) override;
 
@@ -139,20 +137,13 @@ public:
   // @ fn_72_8 (0x8): `addi r3, r3, 0x920` (0x8), this + 0x920. Branchless; 400+ calls in the gdb run.
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // fn_72_40
-  // fn_72_17A0 (0x28): the ragdoll (0xb30) is returned only while it is primed and not over (the
-  // ragdoll's flag byte 0x70, asm 0x17AC-0x17BC), otherwise null (asm 0x17C0). The port never sets
-  // 0xb30 - there is no ragdoll in this port yet - so the body is the null arm only and stays
-  // without a marker.
-  CRagDoll* GetRagDoll() const override { return nullptr; }
-  // fn_72_24 (0xC): rodata 0xB00 = 50.0 (`lis r3, lbl_72_rodata_B00@ha` / `lfs f1`,
-  // asm 0x24-0x2C). Branchless; the forced gdb call of 2026-10-21 (one call on a live pirate)
-  // returned 50.
+  CRagDoll* GetRagDoll() const override { return nullptr; } // fn_72_17A0; xb30_ is never set yet
   // @ fn_72_24
-  float GetGravityConstant() const override { return 50.f; }
-  // fn_72_0 (0x8): `li r3, 1` (asm 0x0-0x4). Branchless; the forced gdb call of 2026-10-21
-  // (one call on a live pirate) returned true.
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
+  float GetGravityConstant() const override { return 50.f; } // fn_72_24
   // @ fn_72_0
-  bool IsScanVisorSelfRender() const override { return true; }
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
+  bool IsScanVisorSelfRender() const override { return true; } // fn_72_0
   CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override;
   void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                        const CModelFlags& flags) const override;
@@ -451,9 +442,8 @@ private:
   // The module's stateless helper half (retail fn_72_*): the bodies that are neither an FSM state
   // nor an FSM trigger. They live in PortCSpacePirateHelpers.cpp; the note with every offset and
   // the arm tables is docs/module-analysis/SpacePirate_helpers.md.
-  void UpdateSfxEmitter();                                          // 2EA8
-  rstl::optional_object< CAABox > GetActorTouchBounds() const;       // 1854
-  CVector3f ShuffleRandomVector(CStateManager& mgr, float minLen, float maxLen); // D608
+  void UpdateSfxEmitter();                                    // 2EA8
+  rstl::optional_object< CAABox > GetActorTouchBounds() const; // 1854
 #endif
 };
 CHECK_SIZEOF(CSpacePirate, 0xc70)

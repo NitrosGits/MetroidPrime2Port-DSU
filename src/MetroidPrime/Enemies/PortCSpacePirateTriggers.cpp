@@ -504,6 +504,11 @@ bool CSpacePirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) 
   return result;
 }
 
+// fn_72_689C (0x48): in a wall hang (the 0x8f7 byte's bit 29, asm 0x68AC) the animation is over
+// once the body has left kAS_WallHang (20; the body controller 0x48c, its state 0x37c, asm 0x68B4-0x68C8 is the branchless `state != 20`);
+// otherwise CPatterned::AnimOver (asm 0x68D0). Both arms ran (tools/cov, 08_sand_casualpirates L3 and
+// 07_sand_alamoportalobservation L3, 2026-10-21); the wall-hang arm only from a forced WallHang.
+// @ fn_72_689C
 bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   if (x8f7_29_inWallHang) {
     return GetBodyController()->GetCurrentStateId() != pas::kAS_WallHang;
@@ -511,6 +516,81 @@ bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const 
   return CPatterned::AnimOver(mgr, data);
 }
 
+// fn_72_CE30. Unmarked: ShouldStrafe never enters the branch that calls it in the 208 cycle
+// (the 0.66 s shot windows and the lost-LOS branch never open there).
+// Retail's step-direction picker for the strafe trigger: a side is dropped when another pirate of
+// the same area is that way (dot against the transform's right axis, in the squared-distance frame
+// MP1 uses), then the survivors must be on the path find mesh and have a clear dynamic ray. Both
+// sides clear is a coin flip on CRandom16 bit 0x4000. Returns pas::EStepDirection.
+int CSpacePirate::GetStrafeDir(CStateManager& mgr, float dist) {
+  const float distSquared = dist * dist;
+  bool canStrafeLeft = true;
+  bool canStrafeRight = true;
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CSpacePirate* other = TCastToConstPtr< CSpacePirate >(list[i]);
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f delta = other->GetTranslation() - GetTranslation();
+    const float magSquared = delta.MagSquared();
+    if (magSquared >= distSquared) {
+      continue;
+    }
+    const float rightDot = CVector3f::Dot(delta, GetTransform().GetRight());
+    if (rightDot > 0.866f * magSquared || (rightDot > 0.f && magSquared < 3.f)) {
+      canStrafeRight = false;
+    } else if (rightDot < 0.866f * -magSquared || (rightDot < 0.f && magSquared < 3.f)) {
+      canStrafeLeft = false;
+    }
+  }
+
+  const CVector3f center = GetBoundingBox().GetCenterPoint();
+  const CVector3f right = GetTransform().GetRight();
+  if (canStrafeRight) {
+    canStrafeRight =
+        mPathFindSearch.OnPath(center + dist * right) == CPathFindSearch::kR_Success;
+  }
+  if (canStrafeLeft) {
+    canStrafeLeft = mPathFindSearch.OnPath(center - dist * right) == CPathFindSearch::kR_Success;
+  }
+  if (!canStrafeLeft && !canStrafeRight) {
+    TraceCall(*this, "GetStrafeDir", pas::kSD_Invalid);
+    return pas::kSD_Invalid;
+  }
+
+  // The near list is anchored on the centre when the left side is open and on the left end point
+  // otherwise; its length doubles when both sides are still in play (0xB60 = 2).
+  const CVector3f startPoint = canStrafeLeft ? center : center - dist * right;
+  const float length = canStrafeLeft && canStrafeRight ? 2.f * dist : dist;
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, startPoint, right, length, filter, this);
+  if (canStrafeLeft) {
+    canStrafeLeft = CGameCollision::RayDynamicLineOfSightTest(mgr, startPoint, right, dist, filter,
+                                                             nearList, nullptr);
+  }
+  if (canStrafeRight) {
+    canStrafeRight = CGameCollision::RayDynamicLineOfSightTest(mgr, center, right, dist, filter,
+                                                               nearList, nullptr);
+  }
+  if (canStrafeLeft && canStrafeRight) {
+    if ((mgr.Random()->Next() & 0x4000) != 0) {
+      canStrafeLeft = false;
+    } else {
+      canStrafeRight = false;
+    }
+  }
+
+  int straightDir = pas::kSD_Invalid;
+  if (canStrafeLeft) {
+    straightDir = pas::kSD_Left;
+  } else if (canStrafeRight) {
+    straightDir = pas::kSD_Right;
+  }
+  TraceCall(*this, "GetStrafeDir", straightDir);
+  return straightDir;
+}
 
 // @ fn_72_960C
 // Two ways to skid: a hurt or frenzied pirate whose target is ahead and close to its own axis
@@ -686,6 +766,13 @@ bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
   return result;
 }
 
+// fn_72_686C (0x30): true unless the 0x8f4 byte's bit 28 (mask 0x08, the data flag 0x10; asm
+// 0x6874 `extrwi.`) is set; with it set, true once the hold-position time (0xbac) is above 6
+// (rodata BE8 = 6.0, asm 0x6880-0x688C `fcmpo` + `ble`).
+// All three arms ran (tools/cov, 2026-10-21): bit clear (06_sand_alamofront L2, 400 hits), bit set
+// with the hold time <= 6 and > 6 (08_sand_casualpirates L3 0036013d/003600fa, console `fsm Attack`/
+// `fsm Lurk` and 12 s held, then `fsm JumpBack`: 246 hits with the time > 6).
+// @ fn_72_686C
 bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
   return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
 }
@@ -708,12 +795,14 @@ bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) con
 }
 
 // Retail fn_72_77D0 (0x34): the warp point (0xc04) has to be -1 and the 0x8f6 byte's bit 24 (mask
-// 0x80, the data flag 0x10000) and the 0x8fa byte's bit 26 (mask 0x20, the data flag 0x04000000)
-// have to be set (asm 0x77D8-0x77F8). The trace's argument is the arm: 1 = the warp point is not
-// -1, 2 = not a trooper, 3 = the data flag 0x04000000 is missing, 4 = all three hold. The last
-// arm needs a placement with the data flag 0x04000000, which no shipped SpacePirate placement
-// carries (the scan of all 65 placements, tools/scan_pirt_props.py), so the other three arms are
-// all the run can reach.
+// 0x80, the data flag 0x40000 - the trooper) and the 0x8fa byte's bit 26 (mask 0x20) have to be set
+// (asm 0x77D8-0x77F8). Bit 26 is not a data flag: the kSM_Activate handler sets it at run time for a
+// trooper (fn_72_E498, asm 0xE38C). The trace's argument is the arm: 1 = the warp point is not -1,
+// 2 = not a trooper, 3 = the trooper has not been activated, 4 = all three hold.
+// All four arms ran (tools/cov, 2026-10-21): 1 in 07_sand_alamoportalobservation L3 (a trooper that
+// warped out, 0xc04 = 1), 2 for the non-troopers, 3 and 4 for the troopers before and after their
+// activation message.
+// @ fn_72_77D0
 bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
   const int arm = xc04_warpPoint != -1 ? 1 : (!x8f6_24_trooper ? 2 : (!x8fa_26_ ? 3 : 4));
   TraceCall(*this, "ShouldWarpIn trigger", arm);
