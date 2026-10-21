@@ -1491,31 +1491,37 @@ void CEmperorIngStage1::StopBeam(CStateManager& mgr) {
 
 // fn_16_36E8 (0x36E8..0x3984): the tentacle joint collision descriptions. For each of the eight
 // tentacle slots (the loop at 0x395C..0x3964) three parameter sets are searched for the best
-// animation - the first with FromEnum(0) and FromInt32(the index), the second with FromEnum(2)
-// and FromInt32(2), the third with FromEnum(1) and FromInt32(the index) - and when the first two
-// found an animation (the tests at 0x3918 and 0x3920) the joint is built and added to the vector at
-// guest 0x7D4 (0x3928..0x3958).
+// animation - the first with FromEnum(0), the second with FromEnum(2), the third with FromEnum(1),
+// each of them paired with FromInt32(the index) - and when the first two found an animation (the
+// tests at 0x3918 and 0x3920) the joint is built and added to the vector at guest 0x7D4
+// (0x3928..0x3958).  The retail's parameter ORDER is FromInt32(the index) first and the FromEnum
+// second: fn_16_337C gets r5 = the FromInt32 (0x378C, 0x382C, 0x38CC) and r6 = the FromEnum
+// (0x3790, 0x3830, 0x38D0), and the second search's FromInt32 is the index too (r22 at 0x3818),
+// not the constant 2.  The order matters: the parameter list is matched positionally, and with it
+// swapped the searches answered with the same animation for every tentacle (the joints 3..7 got
+// the joint 0's animation id), so one tentacle's state arm deleted another tentacle's additive
+// animation and the tentacle never left the state 1.
 // @ fn_16_36E8
 void CEmperorIngStage1::SetupTentacleJoints(CStateManager& mgr) {
   // The database is this actor's own model's animation data at +0x3C (0x3708..0x3728).
   const CPASDatabase& db = GetModelData()->GetAnimationData()->GetPASDatabase();
   for (int index = 0; index < 8; ++index) {
-    const CPASAnimParmData first(pas::EAnimationState(27), CPASAnimParm::FromEnum(0),
-                                 CPASAnimParm::FromInt32(index), CPASAnimParm::NoParameter(),
+    const CPASAnimParmData first(pas::EAnimationState(27), CPASAnimParm::FromInt32(index),
+                                 CPASAnimParm::FromEnum(0), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter());
     const rstl::pair< float, int > found = db.FindBestAnimation(first, -1);
     int animId1 = found.first > 1.1920929e-07f ? found.second : -1;
-    const CPASAnimParmData second(pas::EAnimationState(27), CPASAnimParm::FromEnum(2),
-                                 CPASAnimParm::FromInt32(2), CPASAnimParm::NoParameter(),
-                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
-                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
-                                 CPASAnimParm::NoParameter());
+    const CPASAnimParmData second(pas::EAnimationState(27), CPASAnimParm::FromInt32(index),
+                                  CPASAnimParm::FromEnum(2), CPASAnimParm::NoParameter(),
+                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                  CPASAnimParm::NoParameter());
     const rstl::pair< float, int > found2 = db.FindBestAnimation(second, -1);
     int animId2 = found2.first > 1.1920929e-07f ? found2.second : -1;
-    const CPASAnimParmData third(pas::EAnimationState(27), CPASAnimParm::FromEnum(1),
-                                 CPASAnimParm::FromInt32(index), CPASAnimParm::NoParameter(),
+    const CPASAnimParmData third(pas::EAnimationState(27), CPASAnimParm::FromInt32(index),
+                                 CPASAnimParm::FromEnum(1), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter());

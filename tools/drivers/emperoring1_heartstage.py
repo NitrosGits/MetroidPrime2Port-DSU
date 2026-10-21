@@ -27,7 +27,8 @@ import time
 
 port = int(sys.argv[1])
 outfile = sys.argv[2] if len(sys.argv) > 2 else None
-damages = [float(a) for a in sys.argv[3:]]
+damages = [float(a) for a in sys.argv[3:] if a != 'natural']
+natural = 'natural' in sys.argv[3:]
 
 WAIT_FRAMES = 1200  # the heart-stage timer is 16 s of game time (960 updates)
 out_lines = []
@@ -183,8 +184,17 @@ for i, amount in enumerate([0.0] + damages):
     if i:
         run(f'damage {heart} {amount}')
         wait_frames(frame() + 60)
-    run(f'fsm {uid} HeartStage')
-    wait_frames(frame() + WAIT_FRAMES)
+    if natural:
+        emit('[con] natural: the FSM walks to the heart stage on its own')
+        for _ in range(40):
+            wait_frames(frame() + 120)
+            lines = run(f'obj {uid}')
+            for l in lines:
+                if l.strip().startswith('fsm '):
+                    emit('[con] state: ' + l.strip())
+    else:
+        run(f'fsm {uid} HeartStage')
+        wait_frames(frame() + WAIT_FRAMES)
     run(f'obj {uid}')
 
 emit('[con] done')

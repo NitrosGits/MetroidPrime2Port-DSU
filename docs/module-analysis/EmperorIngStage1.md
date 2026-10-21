@@ -1423,3 +1423,36 @@ reachable but not run.
 | `fn_16_471C` | 4 | (a) the `CJointCollisionDescription`'s copy constructor | none - branch free |
 | `fn_16_6844` | 4 | (a) the connection list's destructor | none - branch free |
 | `fn_16_4640` | 2 | (a) the description's name (a string copy and an append) | none - branch free |
+
+## 15. The tentacle's state 1 -> 2: the joint animation searches had their parameters in the wrong order
+
+**The bug (module-local, fixed)**: fn_16_36E8 builds the three animation parameter sets of every
+joint and searches the PAS database with them.  The retail's parameter ORDER is
+**FromInt32(the index) first and the FromEnum second**: fn_16_337C gets r5 = the FromInt32
+(0x378C, 0x382C, 0x38CC) and r6 = the FromEnum (0x3790, 0x3830, 0x38D0), and the second search's
+FromInt32 is the index too (r22 at 0x3818), not the constant 2.  The port had the FromEnum first
+and the constant 2 in the second search, so the searches answered with the **same** animation for
+several tentacles: the joints 0..2 got (10, 21, 22), (11, 21, 23) and (12, 21, 1), and the joints
+3..7 all got (10, 21, 1) - the joint 0's "out" animation id 10 among them.
+
+The parameter list is matched positionally, so the collision had a visible effect: the joint 3's
+state-2 arm (fn_16_26B8, 0x28A0: it deletes all three animations) deleted the anim id 10, which
+was joint 0's "out" animation.  Joint 0's state-1 arm then found its animation gone
+(`IsAdditiveAnimationActive` false, 0x2798), added it again (0x2808) and the animation restarted -
+so the tentacle never left the state 1 and the "out" animation never reached its end (the state
+becomes 2 when the tree has no time left, 0x2884).  The tentacles stayed half out forever, and
+with them the FSM never reached "AllTentaclesRetracted" (fn_16_4BD4) and so never the heart
+stage.
+
+After the fix every joint has its own three animation ids (10/12/11, 22/1/23, 19/21/20, 7/9/8,
+4/6/5, 13/15/14, 16/18/17, 24/3/2), the tentacle's out animation plays to its end (the tree's
+time 0.500 -> 0.000) and the tentacle reaches the state 2.
+
+**The natural path now works up to the heart stage**: a run that hits the health-bearing
+collision actor of every tentacle (the tentacle's own box, section 13) kills them, the FSM walks
+"Attack" -> "BeginHeartStage" on its own (the console's `obj` prints the state), and the code node
+of section 12 is one step further: the "BeginHeartStage" state's "AnimOver" trigger does not fire
+in the port (the state plays the animation on the connected 'PLAY' actor, while the trigger
+watches the boss's own animation state), so the FSM stays in "BeginHeartStage" and the
+"HeartStage" state is still entered by forcing it.  That trigger is the next thing to look at; the
+fn_16_4954 marker stands on the forced run.
