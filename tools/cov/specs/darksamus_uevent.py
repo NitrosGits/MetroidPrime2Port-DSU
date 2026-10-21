@@ -105,19 +105,21 @@ REFLECT = [
     '(((CWeapon*)$rdx)->mOwnerId.value = $this->mUniqueId.value, $dsk_ow = 2) : 0']
 STAGE = ['$this->mBattleStageUid.value = $dsk_ns == 1 ? 0xffff : $this->mBattleStageUid.value']
 FLAG = '((CDarkSamusBattleStage*)$rdi)->mStageInfo.unknown_0x49b9936d'
-STAGEFLAG = ['%s = $dsk_ff == 1 ? 1 : ($dsk_ff == 2 ? 0 : %s)' % (FLAG, FLAG),
-             '$dsk_ff = $dsk_ff == 2 ? 0 : $dsk_ff']
 SB = '((CDarkSamusBattleStage*)$rdi)->mStageInfo.unknown_0x53fdcb5b'
-# The cast also runs on other entities: key 63 writes only the actor's stage (its uid, $dsk_uid).
-ISST = '(!$_isvoid($dsk_sb) && $rdi && ((CEntity*)$rdi)->mUniqueId.value == $dsk_uid)'
-STAGEFLAG += ['(%s && $dsk_sb == 1 && $dsk_sbo == -1) ? ($dsk_sbo = %s) : 0' % (ISST, SB),
-              '(%s && $dsk_sb == 1) ? (%s = 1) : 0' % (ISST, SB),
-              '(%s && $dsk_sb == 2 && $dsk_sbo != -1) ? (%s = $dsk_sbo, $dsk_sbo = -1, $dsk_sb = 0) : 0' % (ISST, SB)]
+# The cast also runs on other entities: keys 61..64 write only the actor's stage (its uid, $dsk_uid).
+ISST = '(!$_isvoid($dsk_uid) && $rdi && ((CEntity*)$rdi)->mUniqueId.value == $dsk_uid)'
+ISFF = '(%s && !$_isvoid($dsk_ff))' % ISST
+ISSB = '(%s && !$_isvoid($dsk_sb))' % ISST
+STAGEFLAG = ['(%s && $dsk_ff == 1) ? (%s = 1) : 0' % (ISFF, FLAG),
+             '(%s && $dsk_ff == 2) ? (%s = 0, $dsk_ff = 0) : 0' % (ISFF, FLAG),
+             '(%s && $dsk_sb == 1 && $dsk_sbo == -1) ? ($dsk_sbo = %s) : 0' % (ISSB, SB),
+             '(%s && $dsk_sb == 1) ? (%s = 1) : 0' % (ISSB, SB),
+             '(%s && $dsk_sb == 2 && $dsk_sbo != -1) ? (%s = $dsk_sbo, $dsk_sbo = -1, $dsk_sb = 0) : 0' % (ISSB, SB)]
 FORCE = [
     ('1BEFC entry', 'CDarkSamus::DoUserAnimEvent(', ['$xmm0.v4_float[0]', '(int)$rcx', '$this->mCurrentAttack'],
      SETS, 0, 'the attack by the dt key'),
     ('GetBattleStage', 'CDarkSamus::GetBattleStage(', ['$dsk_ns'], STAGE, 0, 'no stage after key 60'),
-    ('stage cast', 'CDarkSamusBattleStage* TCastToPtr<CDarkSamusBattleStage>(CEntity*)', ['$dsk_ff', FLAG, '(int)' + SB],
+    ('stage cast', 'CDarkSamusBattleStage* TCastToPtr<CDarkSamusBattleStage>(CEntity*)', ['$dsk_ff', '%s ? (int)%s : -1' % (ISST, FLAG), '%s ? (int)%s : -1' % (ISST, SB)],
      STAGEFLAG, 0, 'the fade-out flag after keys 61, 62'),
     ('CanReflectProjectile', 'CDarkSamus::CanReflectProjectile(', ['$dsk_mis', '(long)$rdx', '(int)$rcx'],
      MISSILE + REFLECT, 0, 'the projectile reads kWT_Missile after key 42 (45..49 the reflect arms)'),

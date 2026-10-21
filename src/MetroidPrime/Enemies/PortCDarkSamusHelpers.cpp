@@ -599,7 +599,7 @@ void CDarkSamus::ApplyMeleeDamage(CStateManager& mgr) {
 // CRayCastResult copy constructor, fn_10_2040 (0x00013DD8) and the string's
 // internal_dereference (0x00013DE8) destroy the new-expression's temporaries.
 // Run (darksamus_attacks.py): every arm, the ray's miss with key 21 (the actor's position 0x54
-// moved 1000 up and 100000 across; run /tmp/opencode/dsfsm2/s9/a4, DarkSamus.md slice 9).
+// moved 1000 up and 100000 across; ALL-ARMS on bec660618, dsfsm2-runs/s11/a1).
 // @ fn_10_13AB4
 void CDarkSamus::SpawnMeleePulse(CStateManager& mgr) {
   const CVector3f& pos = GetTranslation();
