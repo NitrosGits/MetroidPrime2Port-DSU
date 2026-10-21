@@ -16,7 +16,79 @@
 #include "rstl/math.hpp"
 #ifdef TARGET_PC
 #include "MetroidPrime/PortEfbCopy.hpp"
+#include <dolphin/gx/GXCpu2Efb.h>
 #include <string.h>
+
+namespace {
+// The occlusion test below costs two EFB copies per flare, and each copy ends Aurora's render
+// pass: a full store and reload of colour and depth, which on a tiled mobile GPU at native
+// resolution made rooms with many flares (Command Center: 18) crawl. Instead, the first flare of a
+// frame snapshots the depth once (flares never write depth, so it is the depth every flare's test
+// quad would meet) and each flare compares its own depth against the latest snapshot on the CPU,
+// counting the same samples the copy would have. A frame or two late, which the running average
+// absorbs; without a fresh snapshot (MSAA, offscreen, split screen) the copies run as before.
+// Generous: a mobile GPU's read-back can lag several frames, and every flare falling back to its
+// copies is the very cost this avoids. Staleness only shows for a frame or two after a camera cut.
+const uint kFlareDepthMaxAgeMs = 500;
+int sFlareDepthSnapshotFrame = -1;
+uint sFlareDepth[64 * 64];
+
+bool FlareRatioFromDepth(float screenZ, int left, int top, int width, int height, bool largeTest,
+                         float& ratio) {
+  const CViewport& viewport = CGraphics::GetViewport();
+  const GXRenderModeObj& mode = CGraphics::GetRenderMode();
+  if (viewport.mLeft != 0 || viewport.mTop != 0 || viewport.mWidth != mode.fbWidth ||
+      viewport.mHeight != mode.xfbHeight) {
+    return false;
+  }
+  if (sFlareDepthSnapshotFrame != CGraphics::GetFrameCounter()) {
+    sFlareDepthSnapshotFrame = CGraphics::GetFrameCounter();
+    GXSnapshotDepth();
+  }
+  if (!GXPeekZRegion(left, top, width, height, sFlareDepth, kFlareDepthMaxAgeMs)) {
+    return false;
+  }
+  // The camera's projection takes view depth to z/w in [-1, 1]; the GX one to [0, 1], then the
+  // viewport's depth range, then z24. The test quad is drawn at this depth with LEqual.
+  const float z01 = rstl::max_val(0.f, rstl::min_val(1.f, 0.5f * (screenZ + 1.f)));
+  const float depth =
+      CGraphics::GetDepthNear() + z01 * (CGraphics::GetDepthFar() - CGraphics::GetDepthNear());
+  // A few z24 steps of slack: GPU and CPU round a flare sitting on a surface differently.
+  const uint flareZ = uint(depth * 16777215.f + 0.5f);
+  const uint limit = flareZ > 16 ? flareZ - 16 : 0;
+  int visible = 0;
+  if (!largeTest) {
+    // 8x4 R8 copy: one sample per pixel.
+    for (int i = 0; i < width * height; ++i) {
+      if (limit <= sFlareDepth[i]) {
+        ++visible;
+      }
+    }
+    ratio = float(visible) / float(width * height);
+    return true;
+  }
+  // 64x64 copied to a 32x32 box-filtered R8 and read as 8-texel blocks: each block covers 16x2
+  // pixels and counts when any of them is lit.
+  for (int by = 0; by < height; by += 2) {
+    for (int bx = 0; bx < width; bx += 16) {
+      bool lit = false;
+      for (int y = by; y < by + 2 && !lit; ++y) {
+        for (int x = bx; x < bx + 16; ++x) {
+          if (limit <= sFlareDepth[y * width + x]) {
+            lit = true;
+            break;
+          }
+        }
+      }
+      if (lit) {
+        ++visible;
+      }
+    }
+  }
+  ratio = float(visible) / float((width / 16) * (height / 2));
+  return true;
+}
+} // namespace
 #endif
 
 CVisorFlare::CFlareDef::CFlareDef(const TToken< CTexture >& tex, float pos, float scale, uint color)
@@ -142,6 +214,16 @@ void CVisorFlare::UpdateOcclusion(const CVector3f& pos, const CStateManager& mgr
     mOcclusionAverage.AddValue(1.f);
     return;
   }
+
+#ifdef TARGET_PC
+  float depthRatio;
+  if (FlareRatioFromDepth(screenPos.GetZ(), left, framebufferHeight - top, width, height,
+                          largeTest, depthRatio)) {
+    const float depthOcclusion = 1.f - depthRatio;
+    mOcclusionAverage.AddValue(0.5f * (depthOcclusion * depthOcclusion + depthOcclusion));
+    return;
+  }
+#endif
 
   const bool videoFilter = CGraphics::GetUseVideoFilter();
   CGraphics::SetUseVideoFilter(false);

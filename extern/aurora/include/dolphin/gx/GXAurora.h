@@ -110,6 +110,12 @@ extern "C" {
 #define GX_AURORA_REQUEST_EFB_COPY 0x003C
 
 /**
+ * Seal the current EFB pass, snapshot its depth for GXPeekZRegion, and continue on a pass that
+ * loads the existing contents. No operands. Ignored offscreen and with MSAA.
+ */
+#define GX_AURORA_SNAPSHOT_DEPTH 0x003D
+
+/**
  * Draw primitives with the vertex count derived from a byte length, as written by
  * GXBegin(prim, fmt, GX_AUTO). Must be followed by a u8 draw opcode (vtxfmt|prim),
  * a u32 vertex data byte length, then that many bytes of vertex data. The byte length

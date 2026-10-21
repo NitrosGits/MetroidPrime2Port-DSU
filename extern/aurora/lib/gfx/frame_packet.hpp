@@ -112,6 +112,9 @@ struct RenderPass {
   bool hasDraws = false;
   bool discardable = false;
   bool captureDepthSnapshot = false;
+  // Snapshot the depth after this pass unconditionally (split_pass_for_depth_snapshot), even if the
+  // pass itself is discarded.
+  bool forceDepthSnapshot = false;
   bool sealed = false;
   std::vector<tex_palette_conv::ConvRequest> paletteConvs;
 

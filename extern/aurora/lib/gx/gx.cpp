@@ -111,7 +111,7 @@ wgpu::CompareFunction to_compare_function(GXCompare func) {
 }
 
 wgpu::BlendState to_blend_state(GXBlendMode mode, GXBlendFactor srcFac, GXBlendFactor dstFac, GXLogicOp op,
-                                u32 dstAlpha) {
+                                u32 dstAlpha, bool dualSrcAlpha) {
   wgpu::BlendComponent colorBlendComponent;
   switch (mode) {
     DEFAULT_FATAL("unsupported blend mode {}", underlying(mode));
@@ -162,6 +162,20 @@ wgpu::BlendState to_blend_state(GXBlendMode mode, GXBlendFactor srcFac, GXBlendF
       break;
     }
     break;
+  }
+  if (dualSrcAlpha) {
+    // The TEV alpha is at blend source 1 (ShaderConfig::dualSrcAlpha); source 0's alpha is 1.0.
+    const auto toSrc1 = [](wgpu::BlendFactor f) {
+      if (f == wgpu::BlendFactor::SrcAlpha) {
+        return wgpu::BlendFactor::Src1Alpha;
+      }
+      if (f == wgpu::BlendFactor::OneMinusSrcAlpha) {
+        return wgpu::BlendFactor::OneMinusSrc1Alpha;
+      }
+      return f;
+    };
+    colorBlendComponent.srcFactor = toSrc1(colorBlendComponent.srcFactor);
+    colorBlendComponent.dstFactor = toSrc1(colorBlendComponent.dstFactor);
   }
   wgpu::BlendComponent alphaBlendComponent;
   if (dstAlpha != UINT32_MAX) {
@@ -334,7 +348,8 @@ wgpu::RenderPipeline build_pipeline(const PipelineConfig& config, ArrayRef<wgpu:
       .depthBiasClamp = depthBiasClamp,
   };
   const auto blendState =
-      to_blend_state(config.blendMode, config.blendFacSrc, config.blendFacDst, config.blendOp, config.dstAlpha);
+      to_blend_state(config.blendMode, config.blendFacSrc, config.blendFacDst, config.blendOp, config.dstAlpha,
+                     config.shaderConfig.dualSrcAlpha);
   const std::array colorTargets{wgpu::ColorTargetState{
       .format = g_graphicsConfig.surfaceConfiguration.format,
       .blend = &blendState,
@@ -471,6 +486,14 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
       .alphaUpdate = g_gxState.alphaUpdate,
       .colorUpdate = g_gxState.colorUpdate,
   };
+  // Port: one draw instead of push_gx_draw's alpha-only second draw (ShaderConfig::dualSrcAlpha).
+  // Only GX_BM_BLEND reads the source alpha; the GX pipeline has one colour target (location 0),
+  // which dual-source blending requires.
+  const auto readsSrcAlpha = [](GXBlendFactor f) { return f == GX_BL_SRCALPHA || f == GX_BL_INVSRCALPHA; };
+  config.shaderConfig.dualSrcAlpha =
+      webgpu::g_dualSourceBlendingSupported && g_gxState.dstAlpha != UINT32_MAX && g_gxState.alphaUpdate &&
+      g_gxState.blendMode == GX_BM_BLEND &&
+      (readsSrcAlpha(g_gxState.blendFacSrc) || readsSrcAlpha(g_gxState.blendFacDst));
 }
 
 GXBindGroups build_bind_groups(const ShaderInfo& info) noexcept {
