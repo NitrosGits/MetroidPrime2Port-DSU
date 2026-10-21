@@ -1289,6 +1289,23 @@ void CSplitterCommandModule::PortUpdateEffectStates(CStateManager& mgr) {
   AnimationData()->SetEffectState(rstl::string_l("LaserMuzzle"), laserMuzzle, mgr);
 }
 
+// fn_75_5D50 (0x5D50-0x5DE0): the head's own vulnerability copy at 0xEAC takes the base's again
+// (0x5D6C GetDamageVulnerability, 0x5D78 fn_75_5B9C, the REL copy of the CDamageVulnerability
+// assignment); the port keeps no copy, the head's vulnerability slot (fn_75_616C) returns the
+// base's, so there is nothing to copy. The head becomes orbitable (0x5D88
+// SetVisorOrbitableFlags 0xF, true); with the shield state at 0xEDC at 2 (0x5D90 cmpwi) the timer
+// at 0xF1C is zeroed (0x5DA0); the shield state and the timer at 0xF18 are zeroed (0x5DB4,
+// 0x5DBC) and the effect states are updated (0x5DC0 fn_75_1578).
+void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
+  SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
+  if (mShieldState == 2) {
+    mCountupTimerB = 0.f;
+  }
+  mShieldState = 0;
+  mCountupTimerA = 0.f;
+  PortUpdateEffectStates(mgr);
+}
+
 // fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
 // active gate, the base's Think, the collision actor manager's update and the module's
 // own six calls in order (their sizes are in the table in

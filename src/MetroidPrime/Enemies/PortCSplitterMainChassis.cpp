@@ -1650,11 +1650,32 @@ void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInf
   CPatterned::CollidedWith(id, list, mgr);
 }
 
-// vtable slot 0x98 = fn_75_EB04.
+// vtable slot 0x98 = fn_75_EB04 (0xEB04-0xEBF4): the base's Death (0xEB28), then every
+// collision actor of the manager at 0xC68 (0xEB3C GetCollisionDescFromIndex, to
+// GetNumCollisionActors at 0xEB80) that casts to a CCollisionActor takes the chassis's material
+// filter (0xEB68-0xEB74); the chassis drops kMT_Target and kMT_Orbit (0xEB9C RemoveMaterial
+// 0x28, 0x29) and, with its head there (0xEBB0-0xEBBC), resets the head's shield (0xEBC4
+// fn_75_5D50) and lets the head go (0xEBD0: the id at 0xC6C cleared). The head's chassis check
+// (fn_75_31A8) then sees the chassis no longer holds it and undocks.
 void CSplitterMainChassis::Death(CStateManager& mgr, const CVector3f& direction,
                                   EScriptObjectState state) {
-  StandIn("CSplitterMainChassis::Death (vtable slot 0x98, fn_75_EB04)");
   CPatterned::Death(mgr, direction, state);
+  for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
+    const TUniqueId id = mCollisionActorManager->GetCollisionDescFromIndex(i).GetCollisionActorId();
+    CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(id));
+    if (actor == nullptr) {  // 0xEB5C-0xEB60
+      continue;
+    }
+    actor->SetMaterialFilter(GetMaterialFilter());
+  }
+  RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
+  CSplitterCommandModule* head =
+      TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
+  if (head == nullptr) {  // 0xEBB8-0xEBBC
+    return;
+  }
+  head->PortResetShield(mgr);
+  mCommandModuleId = kInvalidUniqueId;
 }
 
 // vtable slot 0x9C = fn_75_EBF4.

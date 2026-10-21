@@ -204,6 +204,10 @@ public:
   // guest 0xEFA: the chassis the head is docked in (the chassis's fn_75_8EC8 reads it, 0x00008F68).
   TUniqueId GetChassisId() const { return mChassisId; }
 
+  // The retail's fn_75_5D50: the head's shield reset (the chassis's Death and its spin, dodge and
+  // docking states call it).
+  void PortResetShield(CStateManager& mgr);
+
 private:
   void EnsureBodyActive(CStateManager& mgr);
 
