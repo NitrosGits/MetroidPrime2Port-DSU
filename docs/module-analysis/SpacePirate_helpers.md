@@ -140,7 +140,7 @@ and one call each, the command in brackets.
 | `DFD4` SquadJoin | the squad id is invalid -> the team is looked up (asm 0xE000); it is still invalid -> the body ends (asm 0xE02C); the id resolves to no team -> the body ends (asm 0xE04C); the 0x8f4 bit 27 (the melee role) -> kTAR_Melee (asm 0xE060) or kTAR_Projectile (asm 0xE05C) | forced (the same spec's DFD4 entry): the keys 0xffff,0 (3 calls), 0xffff,1 (1 call, the melee role) and 0x7ffe,0 (1 call); the call counts: `GetAssociatedTeamId` 4, `ObjectById` 3, `TCastToPtr<CScriptTeamAiMgr>` 3, `JoinTeam` 2 (the melee and the projectile role) |
 
 Marked: 11 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, `2EA8`, `51C8`, `EFD4`,
-`DFD4`) - the module goes 105 -> 116 of 262 marked (`tools/port_progress.py`).
+`DFD4`) - the module goes 106 -> 117 of 262 marked (`tools/port_progress.py`).
 
 Not marked, and why:
 
