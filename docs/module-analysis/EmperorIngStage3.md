@@ -100,7 +100,9 @@ machine's vtable slot +0x18 (0x9470), the states (`lbl_18_data_100`, 21 entries)
 28 four-word entries {name, 0, 0xFFFFFFFF, fn}; the machine uses the first 21 (or 2) and the rest
 are empty. The static initialiser `fn_18_E180` copies the function pointers out of the .data
 records {0, 0xFFFFFFFF, fn}: the states' twenty-one at 0x4..0xF4, the triggers' twenty-one at
-0x250..0x344 and the codes' two at 0x49C..0x4A8.
+0x250..0x344 and the codes' two at 0x49C..0x4A8. The port's three arrays are that initialiser's
+result and carry its marker (`// @ fn_18_E180` above `skTriggers`); section 6.2 has the check
+that all 44 entries hold the same names, in the same order, pointing at the same functions.
 
 | table | entry -> the retail function |
 |---|---|
@@ -506,11 +508,27 @@ light swarm, **WP6** the egg-lay event and the mini portal.
 
 ### 6.2 B - the module behaviour (133)
 
-132 of the 133 carry a body marker; the one that does not is the module's static initialiser:
+**All 133 carry a body marker: no unmarked behaviour is left in the module.**
 
-| id | size | what it is | why there is no body |
+The last one to be marked was `fn_18_E180` (0x684), the `.ctors` static initialiser. It is the
+compiler's initialiser that copies the three `.data` records {0, 0xFFFFFFFF, fn} - the states'
+twenty-one at 0x4, the triggers' twenty-one at 0x250 and the codes' two at 0x49C - into the
+three name tables `lbl_18_data_100` (the states), `lbl_18_data_34C` (the triggers) and
+`lbl_18_data_4B4` (the codes), whose entries are 16 bytes {name, 0, 0xFFFFFFFF, fn}. The port's
+three static arrays (`skTriggers`, `skStates`, `skCodes` in `PortCEmperorIngStage3.cpp`) are that
+initialiser's result, so the marker sits above the first of them, the way the EmperorIngStage1
+port marks `fn_16_BF88` and the IngBoostBallGuardian port marks `fn_30_110C4`. The check that
+the marker claims: all 44 entries (21 states, 21 triggers, 2 codes) carry retail's names in
+retail's order, and each points at the retail function the record names -
+
+| table | retail | the port's entry | the retail function |
 |---|---|---|---|
-| `fn_18_E180` | 0x684 | the static init (.ctors): the three FSM tables and the module's global string | the static init (.ctors): it copies the three .data FSM tables into .bss and builds the global rstl::string (the REL file name) with a global destructor. The host builds the tables in C++ (`skTriggers`, `skStates`, `skCodes` in PortCEmperorIngStage3.cpp) and has no use for the REL file name |
+| states `lbl_18_data_100` | `Start` `Idle` `MeleeAttack` `GainDistance` `Stampede` `Dodge` `Taunt` `ChangeVulnerability` `EyeShutResetVulnerability` `DarkBeamAttack` `LightBeamAttack` `LightSwarmAttack` `GroundPound` `GenerateDarkFliers` `PortalAttack` `JumpSlideAttack` `GrowHeart` `EyeShut` `JumpAttack` `StampedeReact` `Dead` | the same 21 names, in the same order | `fn_18_7ADC` `788C` `76D0` `7504` `71D8` `6E80` `6D84` `6A40` `6B80` `6904` `67C0` `6698` `6390` `6258` `60AC` `5844` `5614` `5264` `4EB4` `4CC8` `4C3C` |
+| triggers `lbl_18_data_34C` | `TooClose` `ShouldAttack` `ShouldMeleeAttack` `ShouldTaunt` `ShouldStampede` `ShouldDodge` `ShouldChangeVulnerabilityToVulnerable` `ShouldChangeVulnerabilityToInvulnerable` `ShouldDarkBeamAttack` `ShouldLightBeamAttack` `ShouldLightSwarmAttack` `ShouldGroundPound` `ShouldGenerateDarkFliers` `ShouldPortalAttack` `ShouldJumpSlideAttack` `ShouldGrowHeart` `JumpSlideAttackOver` `ShouldEyeShut` `AbortedJumpSlide` `ShouldJumpAttack` `ShouldStampedeReact` | the same 21 names, in the same order | `fn_18_8DA4` `8D88` `8C4C` `8A4C` `897C` `8A34` `8A20` `898C` `8968` `8954` `87F0` `8ACC` `868C` `8678` `8664` `8648` `8600` `85A4` `858C` `8518` `8500` |
+| codes `lbl_18_data_4B4` | `ResetAttackTimer` `ChoseAction` | the same 2 names, in the same order | `fn_18_84A8` `fn_18_8200` |
+
+The initialiser also builds the module's global `rstl::string` (the REL file name) in
+`lbl_18_bss_0` and registers its global destructor; the host has no use for either.
 
 `fn_18_4314` (0x8, `li r3, 1; blr`) is class T: nothing calls it and no data table names it,
 so the port has no body for it either.

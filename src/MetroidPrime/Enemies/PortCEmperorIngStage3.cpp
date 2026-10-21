@@ -95,6 +95,17 @@ void StandInFn(const char* fn) {
 // twenty-one at 0x4..0xF4, the triggers' twenty-one at 0x250..0x344 and the codes' two at
 // 0x49C..0x4A8.
 //
+// fn_18_E180 (0x684, .ctors at 0xE180) is the compiler's static initialiser that copies those
+// records into the tables' entries: the states' first record (lbl_18_data_4, loaded at
+// 0xE1D4..0xE1DC) into lbl_18_data_100's first entry at +0x4/+0x8/+0xC (the stores at
+// 0xE224..0xE22C; the name word stays), the second (lbl_18_data_10) into the second entry at
+// +0x14..+0x1C (0xE230..0xE238) and the third (lbl_18_data_1C) into the third at +0x24..+0x2C
+// (0xE23C..0xE244); the triggers' records (lbl_18_data_250, the base at 0xE400) into
+// lbl_18_data_34C (the base at 0xE428, the first entry's stores at 0xE520..0xE530) and the
+// codes' (lbl_18_data_49C, 0xE71C) into lbl_18_data_4B4 (0xE73C, the first entry's stores at
+// 0xE7E0..0xE7E8). The port's three arrays are that initialiser's result: the same 44 names in
+// the same order, each pointing at the same retail function.
+//
 // On the host the table addresses are irrelevant: the state machine matches a node by its name,
 // so the name strings are retail's and the entry's function is the module's member function.
 // The members are cast the way the DigitalGuardian, SpacePirate and EmperorIngStage1 ports do it.
@@ -105,6 +116,7 @@ void StandInFn(const char* fn) {
 #define EMP3_CODE(name)                                                                             \
   { #name, reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CEmperorIngStage3::name) }
 
+// @ fn_18_E180
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     EMP3_TRIGGER(TooClose),
     EMP3_TRIGGER(ShouldAttack),
