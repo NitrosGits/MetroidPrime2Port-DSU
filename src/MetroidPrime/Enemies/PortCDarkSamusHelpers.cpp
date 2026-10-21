@@ -19,6 +19,17 @@
 #include "Collision/CRayCastResult.hpp"
 #include "Kyoto/Math/CCylinder.hpp"
 #include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/Weapons/CFreezeBeamProjectile.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
+#include "Kyoto/Graphics/CGraphics.hpp"
+#include "Kyoto/Graphics/CTexture.hpp"
+#include "MetroidPrime/CActorParameters.hpp"
+#include "MetroidPrime/CAnimData.hpp"
+#include "MetroidPrime/CAnimPlaybackParms.hpp"
+#include "MetroidPrime/CAnimRes.hpp"
+#include "MetroidPrime/CPhysicsActor.hpp"
+#include <stdio.h>
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
@@ -602,4 +613,391 @@ void CDarkSamus::RunLoopAttackCmd(EStateMsg msg, const CBCLoopAttackCmd& attack)
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
     break;
   }
+}
+
+// fn_10_77B8 (0x000077B8, 0xB4 bytes): the enrage sphere's generator (the auto_ptr at guest
+// 0x1024/0x1028) is replaced by an empty one built on the stack (0x000077D8..0x000077E0): the old
+// generator, if owned, is deleted through its vtable (0x00007810).
+// @ fn_10_77B8
+void CDarkSamus::ClearEnrageSphere() { mGuest1028 = rstl::auto_ptr< CElementGen >(); }
+
+// fn_10_13998 (0x00013998, 0x11C bytes): the melee hit, once per swing (the record's hit byte
+// 0x9DE, 0x000139B4; set at 0x00013A98): the record's damage (meleeAttackDamage, 0x9A4) on the
+// player from the actor, filtered include kMT_Solid (lbl_10_data_200 = 59) exclude nothing with
+// type 3 (0x000139DC), at the zero vector (0x00013A3C); unless the player is a morph ball (vtable
+// 0x1CC = fn_10_112E8 with a 0.0f trigger, 0x00013A68) fn_10_13750 pushes it with
+// lbl_10_rodata_4BC = 25.0f across and lbl_10_rodata_3E0 = 2.0f up (0x00013A90).
+// @ fn_10_13998
+void CDarkSamus::ApplyMeleeDamage(CStateManager& mgr) {
+  if (mMeleeContact.mHit == 1) {
+    return;
+  }
+  mgr.ApplyDamage(GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), GetUniqueId(),
+                  mData.mMeleeAttackDamage,
+                  CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                  CVector3f::Zero());
+  if (!PlayerIsMorphball(mgr, CTriggerData(0))) {
+    PushPlayer(mgr, 25.f, 2.f);
+  }
+  mMeleeContact.mHit = 1;
+}
+
+// fn_10_13AB4 (0x00013AB4, 0x388 bytes): the melee pulse. From 1.0f above the actor
+// (lbl_10_rodata_3E8, 0x00013AFC..0x00013B10) a 20.0f (lbl_10_rodata_4C0) ray straight down finds
+// the floor (BuildNearList 0x00013C28, RayWorldIntersection 0x00013C68) through the static filter
+// lbl_10_bss_F8 built once (0x00013B30..0x00013BF0): include kMT_Solid / kMT_Platform (data CA0 /
+// CA4 = 59 / 49), exclude kMT_Character / kMT_Player / kMT_ProjectilePassthrough (CA8 / CAC /
+// CB0 = 33 / 32 / 20), type 3. The explosion "Dark Samus Melee Pulse" (lbl_10_rodata_560 + 0x53A)
+// takes the actor's transform moved to the root bone 0x8FC/0x900 at the hit's height (the root's
+// own when the ray misses, 0x00013C7C) plus lbl_10_rodata_4B8 = 1.9f (0x00013CAC), the model's
+// scale (0x60, 0x00013CF8), white and player -1 (0x00013D98); attack 2 takes the record's pART
+// token 0x9D0, the rest meleeAttackFX 0x9C4 (0x00013D7C). Its uid goes to the record's 0x9DC
+// (0x00013DFC). Port limit: a token whose asset was invalid is never built, so no explosion.
+// Run (darksamus_attacks.py): every arm, the ray's miss with key 21 (the actor's position 0x54
+// moved 1000 up and 100000 across); unmarked until the orchestrator signs it off.
+void CDarkSamus::SpawnMeleePulse(CStateManager& mgr) {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f start(pos.GetX() + 0.f, pos.GetY() + 0.f, pos.GetZ() + 1.f);
+  const float rootX = mRootPos.GetX();
+  const float rootY = mRootPos.GetY();
+  float floorZ = mRootPos.GetZ();
+  // The filter is built each call: retail's once-built static holds the same value.
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid, kMT_Platform),
+      CMaterialList(kMT_Character, kMT_Player, kMT_ProjectilePassthrough));
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, start, CVector3f::Down(), 20.f, filter, nullptr);
+  TUniqueId hitId = kInvalidUniqueId;
+  const CRayCastResult hit =
+      mgr.RayWorldIntersection(hitId, start, CVector3f::Down(), 20.f, filter, nearList);
+  if (hit.IsValid()) {
+    floorZ = hit.GetPoint().GetZ();
+  }
+  CTransform4f xf = GetTransform();
+  xf.SetTranslation(CVector3f(rootX + 0.f, rootY + 0.f, floorZ + 1.9f));
+  const rstl::optional_object< TLockedToken< CGenDescription > >& token =
+      mCurrentAttack == 2 ? mMeleePartToken : mMeleeAttackFXToken;
+  if (!token) {
+    return;
+  }
+  const CVector3f scale = GetModelData()->GetScale();
+  const rstl::string name = rstl::string_l("Dark Samus Melee Pulse");
+  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId);
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  CExplosion* explosion =
+      rs_new CExplosion(*token, uid, info, name, xf, 0, scale, CColor::White(), -1);
+  mgr.AddObject(explosion);
+  mMeleeContact.mHitUid = explosion->GetUniqueId();
+}
+
+// fn_10_1353C (0x0001353C, 0x140 bytes): the missile. The player's aim position (its vtable
+// 0x54) led by a random time in [0, distance / 25.0f] (fn_10_17CEC, lbl_10_rodata_4BC, Range at
+// 0x00013580); the gun locator 0x8CC turned to look at it with its own up (0x00013604); then
+// LaunchProjectile with 5 at most, no attributes, not homing, an empty visor effect (fn_10_4EB4)
+// and scale 1.0f (0x00013650). The info is ProjectileInfo's for the attack (0xA0C).
+// @ fn_10_1353C
+void CDarkSamus::FireMissile(CStateManager& mgr) {
+  CPlayer* player = mgr.GetPlayer(0);
+  const float lead = mgr.Random()->Range(0.f, GetDistanceToPlayer(mgr) / 25.f);
+  const CVector3f aim = player->GetAimPosition(mgr, lead);
+  CTransform4f xf = mGunLctrXf;
+  xf = CTransform4f::LookAt(xf.GetTranslation(), aim, xf.GetUp());
+  LaunchProjectile(xf, mgr, 5, 0, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+}
+
+// fn_10_133D0 (0x000133D0, 0x12C bytes): the super missile, as fn_10_1353C but aimed at the
+// player's position, 1.9f (lbl_10_rodata_4B8) higher unless it is morphed (0x38C == 1,
+// 0x0001340C); the info is 0xA4C.
+// @ fn_10_133D0
+void CDarkSamus::FireSuperMissile(CStateManager& mgr) {
+  const CPlayer* player = mgr.GetPlayer(0);
+  CVector3f aim = player->GetTranslation();
+  if (player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    aim = CVector3f(aim.GetX() + 0.f, aim.GetY() + 0.f, aim.GetZ() + 1.9f);
+  }
+  CTransform4f xf = mGunLctrXf;
+  xf = CTransform4f::LookAt(xf.GetTranslation(), aim, xf.GetUp());
+  LaunchProjectile(xf, mgr, 5, 0, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+}
+
+// fn_10_9164 (0x00009164, 0x1B0 bytes): the freeze beam, only with a token (0xA90, 0x0000918C).
+// Aimed as fn_10_133D0 (lbl_10_bss_124 = 1.9f, set by the static init fn_10_CDB8) from the gun
+// locator; a CFreezeBeamProjectile (0x000092DC) of the token 0xA88, weapon type 10 (kWT_Phazon,
+// `li r5, 0xa`), excluding kMT_ProjectilePassthrough (`li r7, 0x14`), the damage 0xA94
+// (freezeBeamDamage), a new uid, the actor's area, owned by the actor, freeze 5.0f / ice bound
+// 4.0f (lbl_10_rodata_274 / 278), the sound 0xEE0 and particle 0xEDC (iceSpreadSound /
+// iceSpreadFX, the constructor at 0x00020174) and the steam texture 0xAB4 (freezeBeamVisorTexture).
+// @ fn_10_9164
+void CDarkSamus::FireFreezeBeam(CStateManager& mgr) {
+  if (!mFreezeBeamToken) {
+    return;
+  }
+  const CPlayer* player = mgr.GetPlayer(0);
+  CVector3f aim = player->GetTranslation();
+  if (player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    aim = CVector3f(aim.GetX() + 0.f, aim.GetY() + 0.f, aim.GetZ() + 1.9f);
+  }
+  CTransform4f xf = mGunLctrXf;
+  xf = CTransform4f::LookAt(xf.GetTranslation(), aim, xf.GetUp());
+  const ushort sfx = mData.mIceSpreadSound == -1 ? CSfxManager::kInternalInvalidSfxId
+                                                 : static_cast< ushort >(mData.mIceSpreadSound);
+  // The new's null check (0x000092E4) is left out: the host's new does not answer null.
+  mgr.AddObject(rs_new CFreezeBeamProjectile(
+      *mFreezeBeamToken, kWT_Phazon, xf, kMT_ProjectilePassthrough, mData.mFreezeBeamDamage,
+      mgr.AllocateUniqueId(), GetCurrentAreaId(), GetUniqueId(), 5.f, 4.f, sfx, mData.mIceSpreadFX,
+      mData.mFreezeBeamVisorTexture));
+}
+
+// fn_10_1863C (0x0001863C, 0x2D0 bytes): the flash quad, one unit in front of the camera (the
+// view's translation plus its forward column, 0x000186CC..0x00018710), its right and up columns
+// scaled by size * alpha (0x000186BC); identity model matrix, additive blend (One / One, 0x00018728),
+// Tev stage 0 modulate and stage 1 passthru, depth test off with kE_Always and no writes
+// (0x0001875C), the colour (alpha, alpha, alpha, alpha) and a triangle fan (0xA0) from
+// (0,0) at C-R+U, (1,0) at C-R-U, (1,1) at C+R-U, (0,1) at C+R+U.
+void CDarkSamus::DrawFlashQuad(float alpha, float size) const {
+  const CTransform4f& view = CGraphics::GetViewMatrix();
+  const float scale = size * alpha;
+  const CVector3f center(view.Get03() + view.Get01(), view.Get13() + view.Get11(),
+                         view.Get23() + view.Get21());
+  const CVector3f right(scale * view.Get00(), scale * view.Get10(), scale * view.Get20());
+  const CVector3f up(scale * view.Get02(), scale * view.Get12(), scale * view.Get22());
+  CGraphics::SetModelMatrix(CTransform4f::Identity());
+  CGraphics::SetBlendMode(kBM_Blend, kBF_One, kBF_One, kLO_Clear);
+  CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvModulate);
+  CGraphics::SetTevOp(kTS_Stage1, CGraphics::kEnvPassthru);
+  CGraphics::SetDepthWriteMode(false, kE_Always, false);
+  CGraphics::StreamColor(CColor(alpha, alpha, alpha, alpha));
+  CGraphics::StreamBegin(kP_TriangleFan);
+  CGraphics::StreamTexcoord(0.f, 0.f);
+  CGraphics::StreamVertex(center - right + up);
+  CGraphics::StreamTexcoord(1.f, 0.f);
+  CGraphics::StreamVertex(center - right - up);
+  CGraphics::StreamTexcoord(1.f, 1.f);
+  CGraphics::StreamVertex(center + right - up);
+  CGraphics::StreamTexcoord(0.f, 1.f);
+  CGraphics::StreamVertex(center + right + up);
+  CGraphics::StreamEnd();
+}
+
+// fn_10_1890C (0x0001890C, 0x58 bytes): with the flash texture (0xDFC, 0x00018920) load it on
+// GX_TEXMAP0, repeating (0x00018938), and draw the quad at the fade factor (fn_10_185CC) and size
+// 0xE00 (0x0001894C); without it nothing.
+void CDarkSamus::RenderFlash() const {
+  if (!mFlashTexture) {
+    return;
+  }
+  (*mFlashTexture)->Load(GX_TEXMAP0, CTexture::kCM_Repeat);
+  DrawFlashQuad(GetFadeFactor(), mFlashSize);
+}
+
+// ---- dsfsm2 slice 9: the phazon volley ----
+
+// fn_10_5840 (0x00005840, 0x80 bytes): one missile of the phazon volley while 0xFB4 has any left
+// (0x0000585C, counted down at 0x00005864): 0xFB8 0 the phazon shot fn_10_50B8, which starts the
+// volley's clock 0xFCC at the elapsed time 0x8B0 if it is below 0.0f (0x00005898); 1 the phazon
+// super missile fn_10_4C40; any other value nothing.
+// @ fn_10_5840
+void CDarkSamus::FirePhazonVolley(CStateManager& mgr) {
+  if (mGuestFB4 <= 0) {
+    return;
+  }
+  --mGuestFB4;
+  switch (mGuestFB8) {
+  case 0:
+    FirePhazonShot(mgr);
+    if (mGuestFCC < 0.f) {
+      mGuestFCC = mElapsedTime;
+    }
+    break;
+  case 1:
+    FirePhazonSuperMissile(mgr);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_10_50B8 (0x000050B8, 0x788 bytes): a phazon shot. The dummy-target list 0x934 is padded with
+// kInvalidUniqueId to 12 (0x00005110). The shot leaves the root bone 0x8FC moved by a random
+// (x, y) in [-1.2, 1.2] (lbl_10_rodata_154 / 158, 0x000051E8 / 0x00005204) and up by 1.2 less
+// that offset's length (0x00005334), turned to look along the actor's flat forward plus 1.5 the
+// offset's direction plus 3 up (lbl_10_rodata_14C / 160 / 15C, LookAt from the zero vector at
+// 0x0000530C, SetRotation 0x00005318; the actor's own transform with the translation 1.3 times the
+// model's z scale up, 0x0000513C, is overwritten). It homes on the player unless the player orbits
+// the actor (its 0x3B0, 0x00005378); then the first free slot of 0x934 gets a new "DS3 Dummy
+// Target" CActor (lbl_10_rodata_1F0 + 0x2A, material kMT_Target = lbl_10_data_1AC 40, no model) at
+// the player moved -4..4 (lbl_10_rodata_164 / 168) across the flat direction from the actor
+// ((1, 0, 0) when that has no length, 0x0000543C) and 0.8 (lbl_10_rodata_16C) up, and the shot
+// homes on the list's first entry (0x00005648). Then, as CPatterned::LaunchProjectile: the info
+// cached (0x00005698), CanCreateProjectile kWT_AI with 14 (0x000056D4), a CEnergyProjectile
+// excluding kMT_Character, scale one, an empty visor effect (0x000057EC). Port limit: an info whose
+// asset was invalid is not built on the host, so no shot. The new's null check is left out.
+// Run (darksamus_attacks.py keys 10..28): every arm; forced: the orbit (16), the full dummy list
+// (17), the flat forward (18), the player on the actor (25), the zero side vector (26, loc:), the
+// uncached (27) and absent (28) info, and CanCreateProjectile's limit (16 shots in one frame).
+// @ fn_10_50B8
+void CDarkSamus::FirePhazonShot(CStateManager& mgr) {
+  while (mGuest930 < 12) {
+    mGuest934[mGuest930] = kInvalidUniqueId.value;
+    ++mGuest930;
+  }
+  CTransform4f xf = GetTransform();
+  CVector3f forward(xf.Get01(), xf.Get11(), 0.f);
+  if (forward.CanBeNormalized() == true) {
+    forward.Normalize();
+  }
+  const float offsetX = mgr.Random()->Range(-1.2f, 1.2f);
+  const float offsetY = mgr.Random()->Range(-1.2f, 1.2f);
+  CVector3f side(offsetX, offsetY, 0.f);
+  if (side.CanBeNormalized() == true) {
+    side.Normalize();
+  }
+  const CVector3f target = forward * 1.f + side * 1.5f + CVector3f::Up() * 3.f;
+  xf.SetRotation(CTransform4f::LookAt(CVector3f::Zero(), target, CVector3f::Up()));
+  const float rise = 1.2f - CVector3f(offsetX, offsetY, 0.f).Magnitude();
+  xf.SetTranslation(CVector3f(mRootPos.GetX() + offsetX, mRootPos.GetY() + offsetY,
+                              mRootPos.GetZ() + rise));
+
+  TUniqueId homingTarget = kInvalidUniqueId;
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player->GetOrbitTargetId() != GetUniqueId()) {
+    homingTarget = player->GetUniqueId();
+  } else {
+    for (int i = 0; i < mGuest930; ++i) {
+      if (mGuest934[i] != kInvalidUniqueId.value) {
+        continue;
+      }
+      const TUniqueId uid = mgr.AllocateUniqueId();
+      mGuest934[i] = uid.value;
+      CTransform4f dummyXf = player->GetTransform();
+      const CVector3f& pos = GetTranslation();
+      CVector3f dir(dummyXf.Get03() - pos.GetX(), dummyXf.Get13() - pos.GetY(), 0.f);
+      if (dir.CanBeNormalized() == true) {
+        dir.Normalize();
+      } else {
+        dir = CVector3f(1.f, 0.f, 0.f);
+      }
+      const float across = mgr.Random()->Range(-4.f, 4.f);
+      dummyXf.SetTranslation(CVector3f(dummyXf.Get03() + across * dir.GetY(),
+                                       dummyXf.Get13() + across * -dir.GetX(),
+                                       dummyXf.Get23() + (across * 0.f + 0.8f)));
+      const rstl::string name = rstl::string_l("DS3 Dummy Target");
+      const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                             kInvalidEditorId);
+      const CModelData model;
+      const CMaterialList material(kMT_Target);
+      const CActorParameters params;
+      mgr.AddObject(rs_new CActor(uid, name, info, 0, dummyXf, model, material, params,
+                                  kInvalidUniqueId));
+      break;
+    }
+    // Retail tests the target for kInvalidUniqueId here (0x00005640), which it always is.
+    homingTarget = TUniqueId(mGuest934[0]);
+  }
+
+  CProjectileInfo* info = ProjectileInfo();
+  if (info == nullptr || !info->Token().TryCache()) {
+    return;
+  }
+  if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 14)) {
+    return;
+  }
+  const CImpactVisorEffect visorEffect = CImpactVisorEffect::None();
+  const CVector3f scale(1.f, 1.f, 1.f);
+  const TUniqueId uid = mgr.AllocateUniqueId();
+  mgr.AddObject(rs_new CEnergyProjectile(true, info->Token(), kWT_AI, xf, kMT_Character,
+                                         info->GetDamage(), uid, GetCurrentAreaId(), GetUniqueId(),
+                                         homingTarget, 0, false, scale, visorEffect, false, true,
+                                         false, 1.f, 4.f, 4.f));
+}
+
+// fn_10_4C40 (0x00004C40, 0x15C bytes): the phazon super missile, from 5.3 (lbl_10_rodata_144)
+// above the root bone 0x8FC, looking at the player's aim position (its vtable 0x54 with no lead,
+// 0x00004CD8) 0.5 lower (lbl_10_rodata_148) with the world's up (0x00004D28); LaunchProjectile with
+// 14 at most, no attributes, homing, an empty visor effect and scale 1.0f (0x00004D74). The info
+// is ProjectileInfo's 0x1064.
+// @ fn_10_4C40
+void CDarkSamus::FirePhazonSuperMissile(CStateManager& mgr) {
+  const CVector3f from(mRootPos.GetX() + 0.f, mRootPos.GetY() + 0.f, mRootPos.GetZ() + 5.3f);
+  const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
+  const CVector3f to(aim.GetX() + 0.f, aim.GetY() + 0.f, aim.GetZ() + -0.5f);
+  CTransform4f xf = GetTransform();
+  xf = CTransform4f::LookAt(from, to, CVector3f::Up());
+  LaunchProjectile(xf, mgr, 14, 0, true, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+}
+
+// ---- dsfsm2 slice 9: the boost ball's spawn ----
+
+namespace {
+
+// Port stand-in for the module's boost ball actor (vtable lbl_10_data_104, 0x358 bytes; ctors
+// fn_10_3FD8 and fn_10_3BC4, which adds a fade 0.5 and the tint fn_10_181E0). Only the
+// construction is ported: the CPhysicsActor "Dark Samus BoostBall" (lbl_10_rodata_A4 + 0x15) with
+// the materials kMT_Character / Target / Orbit / RadarObject (lbl_10_data_E4..F0), the box
+// (-0.2, 0.2) (lbl_10_rodata_9C / 98), mass 0.75 (lbl_10_rodata_A0, fn_10_3F70), the actor
+// parameters hot in thermal (fn_10_4368) and the default step data (0x000041E8), then the default
+// animation set looping (0x00004340, 0x0000434C). The rest of the class (Think fn_10_3B08 with its
+// CCollisionActorManager fn_10_31E4, AcceptScriptMsg fn_10_3998, the render fn_10_3008 / 3174, the
+// touch damage from the 0xE10 damage info and the vulnerability, the fade and tint) is a job of its
+// own and not in the port: the host ball is drawn and moved (UpdateBoostBallAtActor) but neither
+// collides nor hurts.
+class CDarkSamusBoostBallPortStub : public CPhysicsActor {
+public:
+  CDarkSamusBoostBallPortStub(TUniqueId uid, TAreaId area, const CTransform4f& xf,
+                              const CModelData& model, int defaultAnim)
+  : CPhysicsActor(uid, rstl::string_l("Dark Samus BoostBall"),
+                  CEntityInfo(area, CEntity::NullConnectionList, true, kInvalidEditorId), 0, xf,
+                  model, CMaterialList(kMT_Character, kMT_Target, kMT_Orbit, kMT_RadarObject),
+                  CAABox(CVector3f(-0.2f, -0.2f, -0.2f), CVector3f(0.2f, 0.2f, 0.2f)),
+                  SMoverData(0.75f), CActorParameters().HotInThermal(true),
+                  CPhysicsActor::skDefaultStepData) {
+    if (CAnimData* anim = AnimationData()) {
+      anim->SetAnimation(CAnimPlaybackParms(defaultAnim, -1, 1.f, true), false); // 0x00004340
+      ModelData()->EnableLooping(true);                                           // 0x0000434C
+    }
+  }
+};
+
+// The two callees of fn_10_9E00 the port lacks, reported once each as PortCDarkSamus.cpp's StandIn.
+void SpawnStandIn(bool& seen, const char* fn, const char* what) {
+  if (!seen) {
+    seen = true;
+    fprintf(stderr, "[darksamus] stand-in %s (%s)\n", fn, what);
+  }
+}
+
+bool sStandIn99B8 = false;
+bool sStandIn9B24 = false;
+
+} // namespace
+
+// fn_10_9E00 (0x00009E00, 0x26C bytes): the old ball deleted (fn_10_9AC4, 0x00009E24) and its
+// effects stopped (fn_10_99B8, 0x00009E30), a new uid to 0xE38 (0x00009E4C), and the ball built at
+// the actor's transform with the z column set to (0, 0, 1) (lbl_10_rodata_25C / 264, 0x00009E6C)
+// from the CAnimRes of the boost ball model (the 0xE10 sub-object's 0xE2C / 0xE30 / 0xE34: the
+// data's mBoostBallModel), the actor's model scale and looping (0x00009EB8). 0xD14 == 0.0f picks
+// the ctor fn_10_3FD8 (0x00009ED0), else fn_10_3BC4; both are the stub above. Then lighting on
+// (0x0000A024), AddObject (0x0000A030) and the swooshes fn_10_9B24 (0x0000A03C).
+// Port limits: fn_10_99B8 is the darksamus2 lane's StopBoostBallParticles (613d2cbfb, not merged
+// here; the merge swaps the call in) and fn_10_9B24 is not in the port, so both stay stand-ins.
+void CDarkSamus::SpawnBoostBall(CStateManager& mgr) {
+  DeleteBoostBall(mgr); // fn_10_9AC4
+  SpawnStandIn(sStandIn99B8, "fn_10_99B8", "SpawnBoostBall (0x00009E30)");
+  mBoostBallUid = mgr.AllocateUniqueId();
+  CTransform4f xf = GetTransform();
+  xf.SetColumn(kDZ, CVector3f(0.f, 0.f, 1.f));
+  const CAnimationParameters& res = mData.mBoostBallModel;
+  const CModelData model(CAnimRes(res.GetACSFile(), res.GetCharacter(), GetModelData()->GetScale(),
+                                  res.GetInitialAnimation(), true));
+  CDarkSamusBoostBallPortStub* ball;
+  if (mGuestD14 == 0.f) { // 0x00009ED0
+    ball = rs_new CDarkSamusBoostBallPortStub(mBoostBallUid, GetCurrentAreaId(), xf, model,
+                                              res.GetInitialAnimation()); // fn_10_3FD8
+  } else {
+    ball = rs_new CDarkSamusBoostBallPortStub(mBoostBallUid, GetCurrentAreaId(), xf, model,
+                                              res.GetInitialAnimation()); // fn_10_3BC4
+  }
+  ball->SetCalculateLighting(true);
+  mgr.AddObject(ball);
+  SpawnStandIn(sStandIn9B24, "fn_10_9B24", "SpawnBoostBall (0x0000A03C)");
 }

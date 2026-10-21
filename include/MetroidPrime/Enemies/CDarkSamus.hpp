@@ -1154,6 +1154,50 @@ private:
                                           // DoneRolling trigger measures to it (0x000093B8)
   float mGuestEB8 = 0.f;                  // guest 0xEB8, the player's distance then
 #endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 8: the anim event's attack callees and the records they read.
+  void ClearEnrageSphere();                 // fn_10_77B8
+  void ApplyMeleeDamage(CStateManager& mgr); // fn_10_13998
+  void SpawnMeleePulse(CStateManager& mgr); // fn_10_13AB4
+  void FireMissile(CStateManager& mgr);     // fn_10_1353C
+  void FireSuperMissile(CStateManager& mgr); // fn_10_133D0
+  void FireFreezeBeam(CStateManager& mgr);  // fn_10_9164
+  // The melee record's two 'PART' tokens (fn_10_EA24): +0x20 (guest 0x9C4) meleeAttackFX, +0x2C
+  // (guest 0x9D0) pART. Retail builds them unconditionally; the host only for a valid asset.
+  rstl::optional_object< TLockedToken< CGenDescription > > mMeleeAttackFXToken;
+  rstl::optional_object< TLockedToken< CGenDescription > > mMeleePartToken;
+  // guest 0xA0C (fn_10_21A14) and 0xA4C (fn_10_2199C): the missile and super missile infos the
+  // vtable's ProjectileInfo (fn_10_1C6C8) answers for the attacks 0x40/0x80 and 0x100.
+  rstl::optional_object< CProjectileInfo > mMissileInfo;
+  rstl::optional_object< CProjectileInfo > mSuperMissileInfo;
+  // guest 0xA88 (fn_10_217FC), the freeze beam's 'WPSC' token; its valid byte 0xA90 is the
+  // optional's presence. The damage 0xA94 and visor texture 0xAB4 are mData's.
+  rstl::optional_object< TToken< CWeaponDescription > > mFreezeBeamToken;
+#endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 8, the Render chain (not wired yet: PreRender / Render wait for 18238 / 183E8).
+  void DrawFlashQuad(float alpha, float size) const; // fn_10_1863C
+  void RenderFlash() const;                          // fn_10_1890C
+  // fn_10_EDF4's record at guest 0xDF0: the flash's 'TXTR' token (tXTR; its valid byte 0xDFC is
+  // the optional's presence, built only for a valid asset) and the quad's size 0xE00
+  // (unknown_0x2c6a3344). EDF4 also writes 0xE04 = -1000 (mGuestE04 starts at 0 on the host).
+  rstl::optional_object< TLockedToken< CTexture > > mFlashTexture;
+  float mFlashSize = 0.f;
+#endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 9: the phazon volley (DoUserAnimEvent's 0x800000 shot).
+  void FirePhazonVolley(CStateManager& mgr);       // fn_10_5840
+  void FirePhazonShot(CStateManager& mgr);         // fn_10_50B8
+  void FirePhazonSuperMissile(CStateManager& mgr); // fn_10_4C40
+  // guest 0xF80 (the phazon sub-object's info, fn_10_20C2C from fn_10_20F50) and 0x1064
+  // (fn_10_20BFC): the infos ProjectileInfo answers for the attack 0x800000 by mGuestFB8 0 / 1.
+  rstl::optional_object< CProjectileInfo > mPhazonShotInfo;
+  rstl::optional_object< CProjectileInfo > mPhazonSuperMissileInfo;
+  // fn_10_9E00: the boost ball actor spawned (DoUserAnimEvent's BecomeRagDoll with 0x20000). The
+  // uid goes to mBoostBallUid (guest 0xE38 is that halfword, `sth` at 0x00009E4C; mGuestE38 is
+  // unused).
+  void SpawnBoostBall(CStateManager& mgr);
+#endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

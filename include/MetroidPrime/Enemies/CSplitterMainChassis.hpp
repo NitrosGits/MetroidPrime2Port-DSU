@@ -330,7 +330,7 @@ private:
   TUniqueId mSnatcherId = kInvalidUniqueId;
   // guest 0xD10-0xD1C: the four timers fn_75_8EA4 copies.
   float mLegStabTimer = 0.f;     // 0xD10 (the data's leg stab interval, 0x82C)
-  float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval penalty, 0x874)
+  float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval, 0x874)
   float mLaserSweepTimer = 0.f;   // 0xD18 (the data's laser sweep interval, 0x858)
   float mDodgeTimer = 0.f;        // 0xD1C (the data's min dodge interval, 0x848)
   // guest 0xD04: the dodge direction FindBestDodgeDirection (fn_75_B2A0) picks, -1 for none

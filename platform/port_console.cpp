@@ -49,6 +49,8 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "Collision/CMaterialFilter.hpp"
+#include "Collision/CRayCastResult.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
@@ -495,7 +497,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
       "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
-      "                            sunburst, sonicboom; kb = knockback power)\n"
+      "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
@@ -538,6 +540,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
+      "ray <x> <y> <z> [len]       static surfaces and the world hit straight below the point\n"
       "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"
       "aim <yaw> <pitch>          point the view outright, in degrees; negative pitch looks down\n"
       "items                       power-up amounts and capacities\n"
@@ -1513,7 +1516,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
     Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
-         "annihilator|powerbomb|darkburst|sunburst|sonicboom]");
+         "annihilator|powerbomb|darkburst|sunburst|sonicboom|supermissile]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
@@ -1551,9 +1554,12 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     } else if (args[i] == "sonicboom") {
       weapon = kWT_Annihilator;
       comboed = true;
+    } else if (args[i] == "supermissile") {
+      weapon = kWT_Power;
+      comboed = true;
     } else {
       Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
-           "darkburst, sunburst or sonicboom");
+           "darkburst, sunburst, sonicboom or supermissile");
       return;
     }
   }
@@ -1654,7 +1660,26 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   out += "fsm " + before + " -> " + after + " [" + where + "]\n";
 }
 
-// statecall <id> <state> <msg> [dt]: run one state body of an FSM2 actor once with a message (0
+// The state/trigger function the actor's own table registered under `name`, from either machine
+// type: the FSM2 (GetType() 1, CGenericFSM2State) or the AFSM (0, TStateMachineState).
+CPatterned::StateMachine::StateFunc PortFindStateFunction(CPatterned& patterned, const char* name) {
+  TStateMachineStateBase< CPatterned >* machine = &patterned.StateMachineState();
+  if (machine->GetType() == 1) {
+    return static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(name);
+  }
+  return static_cast< TStateMachineState< CPatterned >* >(machine)->PortFindStateFunction(name);
+}
+
+CPatterned::StateMachine::TriggerFunc PortFindTriggerFunction(CPatterned& patterned,
+                                                              const char* name) {
+  TStateMachineStateBase< CPatterned >* machine = &patterned.StateMachineState();
+  if (machine->GetType() == 1) {
+    return static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindTriggerFunction(name);
+  }
+  return static_cast< TStateMachineState< CPatterned >* >(machine)->PortFindTriggerFunction(name);
+}
+
+// statecall <id> <state> <msg> [dt]: run one state body of a patterned actor (FSM2 or AFSM) once with a message (0
 // Activate, 1 Update, 2 Deactivate) and dt (default 1/60), outside the machine: the machine's state
 // does not change. The body is looked up in the actor's whole state table, so a state the shipped
 // FSM2 has no node for (unreachable by `fsm`) can still be run for coverage.
@@ -1672,15 +1697,9 @@ void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("not a patterned actor");
     return;
   }
-  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
-  if (machine->GetType() != 1) {
-    Fail("not an FSM2 machine");
-    return;
-  }
   const int msg = static_cast< int >(msgArg);
   const std::string wanted(args[2]);
-  const CPatterned::StateMachine::StateFunc fn =
-      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(wanted.c_str());
+  const CPatterned::StateMachine::StateFunc fn = PortFindStateFunction(*patterned, wanted.c_str());
   if (fn == nullptr) {
     Fail("no state function '" + wanted + "'");
     return;
@@ -1703,15 +1722,9 @@ void CmdTrigCall(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("not a patterned actor");
     return;
   }
-  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
-  if (machine->GetType() != 1) {
-    Fail("not an FSM2 machine");
-    return;
-  }
   const std::string wanted(args[2]);
   const CPatterned::StateMachine::TriggerFunc fn =
-      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindTriggerFunction(
-          wanted.c_str());
+      PortFindTriggerFunction(*patterned, wanted.c_str());
   if (fn == nullptr) {
     Fail("no trigger function '" + wanted + "'");
     return;
@@ -2008,6 +2021,54 @@ void CmdBeam(CStateManager& mgr, const Args& args, std::string& out) {
   char line[64];
   std::snprintf(line, sizeof(line), "beam -> %s\n", choice->name);
   out += line;
+}
+
+// ray <x> <y> <z> [len]: cast straight down from the point and list every static surface the ray
+// crosses (point, normal, material bits, hex), then the first hit of the world ray (static plus
+// actors) and the actor it belongs to. For collision bugs: what holds the player up, and where.
+void CmdRay(CStateManager& mgr, const Args& args, std::string& out) {
+  float x = 0.f;
+  float y = 0.f;
+  float z = 0.f;
+  float len = 100.f;
+  if (args.size() < 4 || !ParseFloat(args[1], x) || !ParseFloat(args[2], y) ||
+      !ParseFloat(args[3], z) || (args.size() > 4 && !ParseFloat(args[4], len))) {
+    Fail("usage: ray <x> <y> <z> [len]");
+    return;
+  }
+  const CVector3f down(0.f, 0.f, -1.f);
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  char line[192];
+  CVector3f start(x, y, z);
+  float left = len;
+  for (int i = 0; i < 16 && left > 0.f; ++i) {
+    const CRayCastResult hit = CGameCollision::RayStaticIntersection(mgr, start, down, left, filter);
+    if (!hit.IsValid()) {
+      break;
+    }
+    const CVector3f& pt = hit.GetPoint();
+    const CVector3f n = hit.GetPlane().GetNormal();
+    std::snprintf(line, sizeof(line), "static %.3f %.3f %.3f  normal %.2f %.2f %.2f  mat %016llx\n",
+                  pt.GetX(), pt.GetY(), pt.GetZ(), n.GetX(), n.GetY(), n.GetZ(),
+                  static_cast< unsigned long long >(hit.GetMaterial().GetValue()));
+    out += line;
+    start = CVector3f(x, y, pt.GetZ() - 0.01f);
+    left = len - (z - start.GetZ());
+  }
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CVector3f(x, y, z), down, len, filter, nullptr);
+  TUniqueId id = kInvalidUniqueId;
+  const CRayCastResult hit =
+      mgr.RayWorldIntersection(id, CVector3f(x, y, z), down, len, filter, nearList);
+  if (hit.IsValid()) {
+    const CEntity* ent = id == kInvalidUniqueId ? nullptr : mgr.GetObjectById(id);
+    std::snprintf(line, sizeof(line), "world %.3f %.3f %.3f  id %04x %s (near %d)\n",
+                  hit.GetPoint().GetX(), hit.GetPoint().GetY(), hit.GetPoint().GetZ(), id.Value(),
+                  ent != nullptr ? ClassName(*ent).c_str() : "static", int(nearList.size()));
+    out += line;
+  } else {
+    out += "world: no hit\n";
+  }
 }
 
 void CmdTp(CStateManager& mgr, const Args& args, std::string& out) {
@@ -2493,6 +2554,7 @@ constexpr SCommand kCommands[] = {
     {"visor", CmdVisor, true},
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},
+    {"ray", CmdRay, true},
     {"items", CmdItems, true},
     {"world", CmdWorld, true},
     {"worlds", CmdWorlds, true},
@@ -2587,9 +2649,13 @@ void Start() {
 
 bool Enabled() { return sEnabled; }
 
-void Tick(CStateManager& mgr) {
-  // Save states share this game-thread hook (CStateManager::PortWarpTick) and run without the console.
-  PortSaveState::Tick(mgr);
+namespace {
+
+// Set by Tick (the state manager's update ran) and cleared by IdleTick, so IdleTick knows whether
+// this frame's commands have already been served.
+bool sTickedSinceIdle = false;
+
+void RunCommands(CStateManager& mgr) {
 #ifndef _WIN32
   if (!sEnabled) {
     return;
@@ -2636,6 +2702,23 @@ void Tick(CStateManager& mgr) {
 #else
   (void)mgr;
 #endif
+}
+
+} // namespace
+
+void Tick(CStateManager& mgr) {
+  // Save states share this game-thread hook (CStateManager::PortWarpTick) and run without the console.
+  PortSaveState::Tick(mgr);
+  sTickedSinceIdle = true;
+  RunCommands(mgr);
+}
+
+void IdleTick(CStateManager& mgr) {
+  if (sTickedSinceIdle) {
+    sTickedSinceIdle = false;
+    return;
+  }
+  RunCommands(mgr);
 }
 
 } // namespace PortConsole
