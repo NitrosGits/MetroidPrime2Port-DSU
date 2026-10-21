@@ -344,13 +344,13 @@ private:
   const CDarkSamusBattleStage* GetBattleStage(CStateManager& mgr) const;
 
   // fn_10_1D794: the still timer (the guest's 0x964) and the position it measures from (the
-  // guest's 0x958). `reset` is the guest's argument r4: it clears the timer and moves the
-  // reference position to the actor's own position.
-  void UpdateStillTimer(bool reset, float dt);
+  // guest's 0x958). kStateMsg_Activate clears the timer and moves the reference position to the
+  // actor's own position.
+  void UpdateStillTimer(EStateMsg msg, float dt);
 
-  // fn_10_1E178: the damage the actor has taken (the guest's 0xCC0). `count` is the guest's
-  // argument r4: the health that is gone is only added to the damage when it is set.
-  void AccumulateDamage(bool count, float dt);
+  // fn_10_1E178: the damage the actor has taken (the guest's 0xCC0). The health that is gone is
+  // only added to the damage on a message other than kStateMsg_Activate.
+  void AccumulateDamage(EStateMsg msg, float dt);
 
   // fn_10_1C778: the destination of the path find (the guest's 0x8B4/0x8B8/0x8BC) and the path
   // find itself.
@@ -480,8 +480,8 @@ private:
                                    // vector to it (0x0001FC64..0x0001FC74)
   float mLastWallHitTime;          // guest 0xC44 (inside the 0xB50 sub-object), the time of the
                                    // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it
-                                   // (neither is in the port yet); the constructor writes 0.0f to
-                                   // it (0x0001FF38)
+                                   // (fn_10_1CF84 is not in the port yet); the constructor
+                                   // writes 0.0f to it (0x0001FF38)
   float mElapsedTime;              // guest 0x8B0, the time since the actor was created: the Think
                                    // (fn_10_1B1FC) adds dt to it (0x0001B2DC); the constructor
                                    // writes 0.0f to it (0x0001FB88)
@@ -498,6 +498,13 @@ private:
                                    // at 0x0001FF3C
   CSfxHandle mGlideSfx;            // guest 0xC4C, the handle of the glide emitter fn_10_11334
                                    // runs; the constructor writes 0 to it (0x0001FF44)
+  float mSavedSpeed;               // guest 0x96C, the speed TravelToCoverPoints (fn_10_1DF74) puts
+                                   // back on Deactivate; the constructor writes 0.0f (0x0001FCB8)
+  int mGuest9FC;                   // guest 0x9FC, the word fn_10_1DF74 sets to -1 on a new cover
+                                   // point (its reader is not in the port; the constructor does
+                                   // not write it, the host starts it at -1)
+  float mGuestC00;                 // guest 0xC00, the float fn_10_1DF74 clears every call; the
+                                   // constructor writes 0.0f (0x0001FECC)
   CVector3f mSafePos;              // guest 0x91C/0x920/0x924, the first position fn_10_128D8
                                    // found the actor safe at; the guest constructor leaves it
                                    // unset (the host zeroes it)

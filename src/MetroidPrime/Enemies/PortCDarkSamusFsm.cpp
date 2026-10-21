@@ -413,15 +413,15 @@ const CDarkSamusBattleStage* CDarkSamus::GetBattleStage(CStateManager& mgr) cons
 // fn_10_1D794 (0x0001D794, 0xC8 bytes): the still timer (the guest's 0x964) and the position it
 // measures from (the guest's 0x958/0x95C/0x960).
 //
-// With the reset flag (the guest's argument r4) the timer is cleared and the reference position
-// becomes the actor's own position (the base class' position, the guest's 0x54/0x58/0x5C):
-// 0x0001D810..0x0001D834. Without it the distance between the actor's position and the reference
-// position is taken (the three fsubs at 0x0001D7D0..0x0001D7E4 and Magnitude at 0x0001D7FC):
-// when it is more than 0.6 (lbl_10_rodata_424, the ble at 0x0001D80C) the actor has walked away,
-// so the timer is cleared and the reference position becomes the actor's position again
-// (0x0001D810); when it is not, the timer grows by dt (0x0001D838).
-void CDarkSamus::UpdateStillTimer(bool reset, float dt) {
-  if (reset) {
+// On kStateMsg_Activate (the guest's argument r4 against 0, 0x0001D7B0) the timer is cleared and
+// the reference position becomes the actor's own position (the base class' position, the guest's
+// 0x54/0x58/0x5C): 0x0001D810..0x0001D834. On any other message the distance between the actor's
+// position and the reference position is taken (the three fsubs at 0x0001D7D0..0x0001D7E4 and
+// Magnitude at 0x0001D7FC): when it is more than 0.6 (lbl_10_rodata_424, the ble at 0x0001D80C) the
+// actor has walked away, so the timer is cleared and the reference position becomes the actor's
+// position again (0x0001D810); when it is not, the timer grows by dt (0x0001D838).
+void CDarkSamus::UpdateStillTimer(EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
     mStillTime = 0.f;
     mStillPosition = GetTranslation();
     return;
@@ -830,16 +830,17 @@ void CDarkSamus::UpdateSafePosition(CStateManager& mgr) {
 //
 // The health info's current health (the base's GetHealthInfo - the vtable slot 0x3C - and the
 // float at its +4) is compared with the health of the last call (the guest's 0xCC4): when they
-// differ (the fcmpu and the beq at 0x0001E1B8) and the flag (the guest's argument r4) is set
+// differ (the fcmpu and the beq at 0x0001E1B8) and the message (the guest's argument r4) is not
+// kStateMsg_Activate
 // and the last health was above zero (the fcmpo and the ble at 0x0001E1C8), the health that is
 // gone (0xCC4 - the current health) is added to the damage (0x0001E1F4..0x0001E200), and the last
 // health is updated (0x0001E218). Then the damage decays by the rate at 0xCCC (1.0f) times dt
 // (0x0001E22C..0x0001E238) and never goes below zero (0x0001E248).
-void CDarkSamus::AccumulateDamage(bool count, float dt) {
+void CDarkSamus::AccumulateDamage(EStateMsg msg, float dt) {
   const CHealthInfo* health = GetHealthInfo();
   const float current = health->GetHP();
   if (current != mLastHealth) {
-    if (mLastHealth > 0.f && count) {
+    if (mLastHealth > 0.f && msg != kStateMsg_Activate) {
       mAccumulatedDamage += (mLastHealth - current);
     }
     mLastHealth = current;
@@ -1449,9 +1450,66 @@ void CDarkSamus::Taunt(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("Taunt", msg);
 }
 
-void CDarkSamus::TravelToCoverPoints(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_1DF74", "state TravelToCoverPoints");
+// fn_10_1DF74 (0x0001DF74, 0x204 bytes): the state that glides the actor from cover point to
+// cover point.
+//
+// The additive animation runs first (fn_10_1D860 at 0x0001DFA8). kStateMsg_Activate keeps the speed
+// (the base's 0x3C8 into the guest's 0x96C, 0x0001DFC4), speeds up by lbl_10_rodata_4DC = 1.1f
+// (0x0001DFD8) and keeps the safe position (fn_10_128D8 at 0x0001DFDC). kStateMsg_Deactivate puts
+// the speed back (0x0001DFF0), stops the glide emitter (fn_10_11334 at 0x0001E004), drops the cover
+// point (0x0001E010) and is done. Any other message (and Activate) clears the byte at 0xCD0
+// (0x0001E028) and the float at 0xC00 (lbl_10_rodata_3FC = 0.0f, 0x0001E030), forgets the cover
+// point when fn_10_1E740 says so (0x0001E050) and, without one, pushes the best one (fn_10_1E3C0
+// and fn_10_1E26C at 0x0001E074/0x0001E088). A cover point that is gone (GetCoverPoint at
+// 0x0001E0A0) ends the call. On Activate the wall hit time becomes lbl_10_rodata_410 = -1000.0f
+// (0x0001E0BC). On Activate or a new cover point (the uid read at 0x0001E034 against the current
+// one, 0x0001E0CC) the path find heads for the cover point (fn_10_1C778 at 0x0001E0E4) and the word
+// at 0x9FC becomes -1 (0x0001E0EC); otherwise the path find faces the player (the player's uid into
+// the navigation's face target, 0x0001E110) and runs (0x0001E114), and the actor separates
+// (fn_10_1DD14 at 0x0001E120). Then the damage (fn_10_1E178), the glide emitter (fn_10_11334) and
+// the still timer (fn_10_1D794) are updated with the message.
+void CDarkSamus::TravelToCoverPoints(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("TravelToCoverPoints", msg);
+  UpdateAdditiveAnimation(mgr, msg);
+  if (msg == kStateMsg_Activate) {
+    mSavedSpeed = mSpeed;
+    mSpeed = 1.1f * mSpeed;
+    UpdateSafePosition(mgr);
+  } else if (msg == kStateMsg_Deactivate) {
+    mSpeed = mSavedSpeed;
+  }
+  if (msg == kStateMsg_Deactivate) {
+    UpdateGlideEmitter(msg);
+    mLastAttackerUid = kInvalidUniqueId;
+    return;
+  }
+  mGuestCD0 = 0;
+  mGuestC00 = 0.f;
+  const TUniqueId prev = mLastAttackerUid;
+  if (ShouldForgetLastAttacker(mgr) == true) { // 0x0001E044
+    mLastAttackerUid = kInvalidUniqueId;
+  }
+  if (mLastAttackerUid == kInvalidUniqueId) { // 0x0001E064
+    PushAttacker(FindBestCoverPoint(mgr));
+  }
+  const CScriptCoverPoint* cover = GetCoverPoint(mgr, mLastAttackerUid);
+  if (cover == nullptr) { // 0x0001E0A8
+    return;
+  }
+  if (msg == kStateMsg_Activate) {
+    mLastWallHitTime = -1000.f;
+  }
+  if (msg == kStateMsg_Activate || prev != mLastAttackerUid) { // 0x0001E0C4/0x0001E0D0
+    SetPathFindDestination(mgr, cover->GetTranslation(), dt);
+    mGuest9FC = -1;
+  } else {
+    mPathFindNavigation.SetFaceTarget(mgr.GetPlayer(0)->GetUniqueId());
+    mPathFindNavigation.PathFind(mgr, msg, dt, *this);
+    Separate(mgr);
+  }
+  AccumulateDamage(msg, dt);
+  UpdateGlideEmitter(msg);
+  UpdateStillTimer(msg, dt);
 }
 
 void CDarkSamus::TravelToPissedOff(CStateManager&, EStateMsg msg, float) {
