@@ -64,10 +64,10 @@ elif WHICH == 'EFA4':
 elif WHICH == 'EFA4M':
     FORCE = [(_label, _where, [], ['$ecx = 0x5'], 1, _what)]
 elif WHICH == '6394FLAG':
-    FORCE = [(_label, _where, [], ['$ecx = 0x16', '$this->mAutoDestructFlags |= 0x10'], 1, _what)]
+    FORCE = [(_label, _where, [], ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10'], 1, _what)]
 elif WHICH == '6394DATA':
     FORCE = [(_label, _where, [],
-              ['$ecx = 0x16', '$this->mData.mUnknownBD80FD94 |= 0x20000000'], 1, _what)]
+              ['$ecx = 0x16', '$this->mData.mUnknownBD80FD94 = 0x20000000'], 1, _what)]
 elif WHICH == '6394NOPLAYER':
     FORCE = [(_label, _where, [], ['$ecx = 0x16', '$this->mSyncedId.value = 0xffff'], 1, _what)]
 elif WHICH == '6394OTHER':
