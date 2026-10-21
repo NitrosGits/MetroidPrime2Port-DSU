@@ -35,6 +35,7 @@
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/SFX/SamusImpact_MP.h"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrPlayerTurret.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -83,6 +84,8 @@ float ClampAxis(float value) {
 // (0x00003348), the two weapon effects (0x0000337C), the empty token (fn_63_349C at
 // 0x00003384), the weapon damage (0x00003398..0x000033EC), the sound ids (0x00003418) and the
 // flag byte at 0x22C with its two top bits cleared (0x0000342C).
+// fn_63_30E8 (0x3B4): the constructor - the turret's own fields.
+// @ fn_63_30E8
 CScriptPlayerTurret::CScriptPlayerTurret(TUniqueId uid, const rstl::string& name,
                                          const CEntityInfo& info, const CTransform4f& xf,
                                          const CActorParameters& actParms, uint flags,
@@ -144,6 +147,10 @@ CScriptPlayerTurret::CScriptPlayerTurret(TUniqueId uid, const rstl::string& name
 , mPlayerInTurret(false)                        // guest 0x22C bit 0x80
 , mUnknown22C_6(false)                          // guest 0x22C bit 0x40
 {
+  // fn_63_30E8 at 0x00003398: the weapon damage is copied from the loader's argument; 0x00003444
+  // then overwrites its damage sound id with the module's own constant, 0x2812 (the Samus heavy
+  // hit sound).
+  mWeaponDamage.SetDamageSfxId(SFXsa2_r_hitheavy_00_oneshot);
   // fn_63_30E8 at 0x00003240: the bounds are the actor's position grown by half a unit
   // (lbl_63_rodata_5C = 0.5).
   const CVector3f position = GetTranslation();
@@ -153,6 +160,10 @@ CScriptPlayerTurret::CScriptPlayerTurret(TUniqueId uid, const rstl::string& name
 
 // fn_63_3070 (0x78): the vtable is reset, the token at 0x1E8 is destroyed and CActor's
 // destructor runs.
+// fn_63_3070 (0x78): the destructor - the vtable is reset, the token at 0x1E8 is destroyed
+// and CActor's destructor runs.  The host's own destructor chain does all three (the members are
+// destroyed by it and the pool frees the object), so the body is empty.
+// @ fn_63_3070
 CScriptPlayerTurret::~CScriptPlayerTurret() {}
 
 // vtable slot 5 = fn_63_23C0 (0x968): the turret's aiming, its sounds and the hull transform.
@@ -426,7 +437,12 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
     CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
     // 0x1DC8: the player's health is the float at + 4 of its CHealthInfo (the guest's CHealthInfo
     // starts with the initial health), and a dead player cannot enter the turret.
-    if (player != nullptr && player->GetHealthInfo()->GetHP() > 0.f) {
+    if (player != nullptr && player->GetHealthInfo()->GetHP() <= 0.f) {
+      // 0x1DEC: the guest returns here - the rest of the case and CActor::AcceptScriptMsg are
+      // both skipped.
+      return;
+    }
+    if (player != nullptr) {
       // 0x1DF0: the turret's own unique id (the guest's + 0x8) is what the player enters.
       player->StartTurret(GetUniqueId(), mgr);
       // 0x1E0C: the flag byte's bit 0x80 - the player is in the turret.
@@ -553,6 +569,11 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
     break;
   }
   case kSM_Damage: {
+    // No shipped code sends this message to a player turret: the turret has no health info
+    // (CActor::HealthInfo() returns nullptr, 0x00003078 in the DOL), so CStateManager::ApplyDamage
+    // never targets it, and the DOL's CScriptActor (the hull, the only damageable actor around)
+    // does not forward damage to its attachments - its AcceptScriptMsg has no kSM_Damage case.
+    // The case is retail's and is ported here; only the arm is unreachable.
     // 0x2254: the damage flash timer (lbl_63_rodata_20 = 0.15).
     mUnknown20C = 0.15f;
     if (mgr.IsMultiplayer()) {
@@ -592,6 +613,7 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
 }
 
 // fn_63_14B4 (0x54): the turret's top actor (0x19A) becomes solid.
+// @ fn_63_14B4
 void CScriptPlayerTurret::AddSolidToTopActor(CStateManager& mgr) {
   // 0x14CC: the top actor's id.
   CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
@@ -602,15 +624,21 @@ void CScriptPlayerTurret::AddSolidToTopActor(CStateManager& mgr) {
   }
 }
 
-// fn_63_19B0 (0x184): the animation parameters for one lookup - the state id, the number of
-// parameters and their pointers (the guest's CPASAnimParmData).
+// fn_63_19B0 (0x184): the animation parameters for one lookup - the state id and the eight
+// parameter slots (the guest's CPASAnimParmData: the state at +0, the count at +4 and the eight
+// eight-byte parameters at +8).
+// @ fn_63_19B0
 CPASAnimParmData CScriptPlayerTurret::BuildAnimParmData(pas::EAnimationState state,
-                                                        const CPASAnimParm& parm) {
-  // 0x19E0: the state id; 0x19F8..0x1B18: the eight parameter slots, the first one the enum
-  // parameter and the seven others empty.
-  return CPASAnimParmData(state, parm, CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
-                          CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
-                          CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter());
+                                                        const CPASAnimParm& p0,
+                                                        const CPASAnimParm& p1,
+                                                        const CPASAnimParm& p2,
+                                                        const CPASAnimParm& p3,
+                                                        const CPASAnimParm& p4,
+                                                        const CPASAnimParm& p5,
+                                                        const CPASAnimParm& p6,
+                                                        const CPASAnimParm& p7) {
+  // 0x19E0: the state id; 0x19F8..0x1B18: the eight parameter slots.
+  return CPASAnimParmData(state, p0, p1, p2, p3, p4, p5, p6, p7);
 }
 
 // fn_63_15B0 (0x3C4): the base actor (0x198) and the top actor (0x19A) come from the turret's
@@ -621,6 +649,7 @@ CPASAnimParmData CScriptPlayerTurret::BuildAnimParmData(pas::EAnimationState sta
 // Only the two connections are ported here: the animation lookup is 0x2B4 bytes of it and stays a
 // stand-in. The connections have to be real, because the DOL's turret HUD (CTurretHud::
 // UpdateEnergy) reads the hull actor's id and dereferences the actor it names.
+// @ fn_63_15B0
 void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
   // 0x15E4: the base actor is the turret's "AttachedAnimatedObject" connection.
   mBaseActorId = FindConnectedObject(mgr, kSS_AttachedAnimatedObject, kSM_Attach);
@@ -637,18 +666,16 @@ void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
     mModelFlags = base->GetModelFlags();
   }
   // 0x1634: the five animation ids (0x19C..0x1AC) come from the base actor's animation
-  // database: the getup (twice), the step, the death and the locomotion animation, each looked
-  // up with one enum parameter and seven empty ones.
+  // database: the getup (twice), the step, the death and the locomotion animation. Only the two
+  // getup lookups pass a parameter (the guest's FromEnum(0) at 0x1670 and FromEnum(1) at 0x1704);
+  // the other three pass eight empty ones (the guest's eight NoParameter calls at 0x175C..0x18B4).
   mAnimId1 = animData->FindBestAnimation(
       BuildAnimParmData(pas::kAS_Getup, CPASAnimParm::FromEnum(0)));
   mAnimId2 = animData->FindBestAnimation(
       BuildAnimParmData(pas::kAS_Getup, CPASAnimParm::FromEnum(1)));
-  mUnknown1A4 = animData->FindBestAnimation(
-      BuildAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(3)));
-  mUnknown1A8 = animData->FindBestAnimation(
-      BuildAnimParmData(pas::kAS_Death, CPASAnimParm::FromEnum(4)));
-  mUnknown1AC = animData->FindBestAnimation(
-      BuildAnimParmData(pas::kAS_Locomotion, CPASAnimParm::FromEnum(5)));
+  mUnknown1A4 = animData->FindBestAnimation(BuildAnimParmData(pas::kAS_Step));
+  mUnknown1A8 = animData->FindBestAnimation(BuildAnimParmData(pas::kAS_Death));
+  mUnknown1AC = animData->FindBestAnimation(BuildAnimParmData(pas::kAS_Locomotion));
   // 0x1930: the top actor is the turret's "AttachedCollisionObject" connection.
   mTopActorId = FindConnectedObject(mgr, kSS_AttachedCollisionObject, kSM_Attach);
 }
@@ -657,6 +684,7 @@ void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
 //
 // The guest's model flags are 12 bytes: a word, the blend mode byte, the material set byte, the
 // flags half and the packed colour; the host's CModelFlags holds the same five fields.
+// @ fn_63_2D68
 void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
   // 0x2D88: the base actor (0x198).
   CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
@@ -689,7 +717,10 @@ void CScriptPlayerTurret::PreRender(CStateManager& mgr) {
       flags.SetColor(CColor(1.f, 1.f, 1.f, 0.25f));
     }
   }
-  // 0x2E9C: while the damage flash timer (0x20C) runs the colour goes from black to red.
+  // 0x2E9C: while the damage flash timer (0x20C) runs the colour goes from black to red.  This
+  // arm needs a kSM_Damage message, and nothing in the shipped game sends one to a turret (the
+  // turret has no health info, so the damage path never targets it, and the DOL's CScriptActor
+  // does not forward damage to its attachments) - see the kSM_Damage case of AcceptScriptMsg.
   if (mUnknown20C > 0.f) {
     // 0x2F20: the factor is the timer over 0.33 (lbl_63_rodata_58), clamped to 0..1.
     float factor = mUnknown20C / 0.33f;
@@ -748,6 +779,7 @@ CTransform4f CScriptPlayerTurret::GetTurretTransform(CStateManager& mgr) {
 }
 
 // fn_63_1B70 (0x78). The player is let out of the turret and the hull loses its solid material.
+// @ fn_63_1B70
 void CScriptPlayerTurret::ExitTurret(CStateManager& mgr) {
   mPlayerInTurret = false; // guest 0x22C bit 0x80, cleared at 0x00001BA0
   SendScriptMsgs(kSS_Exited, mgr, kInvalidUniqueId, kSM_None);
@@ -756,6 +788,7 @@ void CScriptPlayerTurret::ExitTurret(CStateManager& mgr) {
 }
 
 // fn_63_1460 (0x54): the turret's top actor (0x19A) loses kMT_Solid.
+// @ fn_63_1460
 void CScriptPlayerTurret::RemoveSolidFromTopActor(CStateManager& mgr) {
   // 0x1478: the top actor's id.
   CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
@@ -849,6 +882,7 @@ void CScriptPlayerTurret::ProcessInput(const CFinalInput& input, CStateManager& 
 
 // fn_63_1508 (0x68): the muzzle transform - the base actor's (0x198) scaled locator in the
 // base actor's own frame.
+// @ fn_63_1508
 CTransform4f CScriptPlayerTurret::GetMuzzleTransform(CStateManager& mgr) {
   // 0x1534: the turret's own transform.
   CTransform4f turret = GetTransform();
@@ -865,6 +899,7 @@ CTransform4f CScriptPlayerTurret::GetMuzzleTransform(CStateManager& mgr) {
 }
 
 // fn_63_84C (0x184): the turret's shot.
+// @ fn_63_84C
 void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
   // 0x864: the muzzle transform.
   const CTransform4f xf = GetMuzzleTransform(mgr);
@@ -926,6 +961,7 @@ TUniqueId CScriptPlayerTurret::GetHullActorId() {
 // fn_63_144 (0x4CC). The property loop is the generated one (SLdrPlayerTurret.inc); the loader
 // turns the seven angles and speeds from degrees into radians (lbl_63_rodata_0 = 0.017453292)
 // and leaves the fire rate alone.
+// @ fn_63_144
 static CEntity* PortLoadScriptPlayerTurret(CStateManager& mgr, CInputStream& input,
                                             CEntityInfo& info) {
   SLdrPlayerTurret sldrThis;

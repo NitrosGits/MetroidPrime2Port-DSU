@@ -446,3 +446,96 @@ fn_63_840 fn_63_1134 fn_63_2D68`) reports no correctness tag; the six findings a
 ones: `TCastToPtr<6CActor>` (the port uses the const cast), the two `rstl` string calls (the port
 uses a literal) and the `x1d0` compare (the tool tracked the local difference back to
 `mYawTarget`; the guest compares the difference of the two analog inputs, which the port clamps).
+
+## 14. The remaining module functions (2026-10-21): the damage arm and the twelve functions
+
+### 14.1 Who sends kSM_Damage to a player turret? Nobody.
+
+The turret's flash arm (the damage case of `fn_63_1BE8`, 0x224C, and the red branch of
+`fn_63_2D68`, 0x2E9C) needs a `kSM_Damage` message addressed to the turret. In the shipped game
+there is no such sender:
+
+- **The turret is not damageable.** `CActor::HealthInfo()` returns `nullptr` (the DOL's code, the
+  upstream's `src/MetroidPrime/CActor.cpp:518`), so the turret has no health info, and
+  `CStateManager::ApplyDamage` returns early for an actor without one (`CStateManager.cpp:2941`).
+  The console confirms it: `hurt u040d 10` prints no hp line, while the hull (`u0418`) prints
+  `hp -5/5`.
+- **The hull is damageable but does not forward it.** The hull is a `CScriptActor`
+  (`u0418`, at (0, -27, 10)); its `AcceptScriptMsg` has no `kSM_Damage` case
+  (`CScriptActor.cpp:129`) and `CEntity::AcceptScriptMsg` only handles
+  activate/deactivate/toggle (`CEntity.cpp:43`), so a hit on the hull never reaches the turret.
+- **Nothing else sends it.** The only `kSM_Damage` senders in the tree are
+  `CStateManager::ApplyDamage` (to the damaged object), `CScriptSafeZoneCrystal` (to itself) and
+  two ported modules' relays; the shooting gallery has neither.
+
+So the arm is unreachable in retail as well - it is a relic of the REL. The port keeps retail's
+case and says so in a comment at both places (the `kSM_Damage` case of `AcceptScriptMsg` and the
+red branch of `PreRender`), and `fn_63_2D68` is marked with the white arm (the one a run reaches)
+exercised.
+
+### 14.2 The twelve remaining module functions
+
+| fn | verdict | evidence |
+|---|---|---|
+| `fn_63_30E8` (the ctor) | **marked** (one difference fixed) | the turret's construction at the area load |
+| `fn_63_3070` (the dtor) | **marked** | the world teardown at the end of the run (the host's destructor chain does retail's vtable reset, token and `~CActor`; the pool frees the object) |
+| `fn_63_144` (the loader) | **marked** | the area load; the property loop is the upstream's generated `SLdrPlayerTurret.inc`, the same code retail's REL was built from |
+| `fn_63_15B0` (the hull actors) | **marked** (three differences fixed) | the area load |
+| `fn_63_19B0` (the anim parameters) | **marked** | five calls from `fn_63_15B0` |
+| `fn_63_14B4` (the top actor becomes solid) | **marked** | the `kSM_Start` case |
+| `fn_63_1460` (the top actor loses solid) | **marked** | `fn_63_1B70` when the player leaves |
+| `fn_63_1508` (the muzzle transform) | **marked** | every shot |
+| `fn_63_84C` (the shot) | **marked** | `press A` in the turret |
+| `fn_63_1B70` (ExitTurret) | **marked** | `press B` in the turret |
+| `fn_63_2D68` (PreRender) | **marked** | every frame the player is in the turret (the white arm) |
+| `fn_63_1BE8` (AcceptScriptMsg) | **fixed, not marked** | five of the seven cases ran (Create, AreaLoaded, Activate, Start, Deactivate); the `kSM_Stop` case (0x2008) is only sent by the gallery's own script when the round ends - neither the hull's destruction (`hurt u0418 100`, hp -95/5) nor the player's death (`kill`) produces it - and the `kSM_Damage` case is unreachable (14.1) |
+
+### 14.3 The differences this slice fixed
+
+1. **The three animation lookups** (`fn_63_15B0`, 0x1634..0x18E8): only the two getup lookups pass
+   a parameter (the guest's `FromEnum(0)` at 0x1670 and `FromEnum(1)` at 0x1704); the step, death
+   and locomotion lookups pass **eight empty** parameters (the guest's eight `NoParameter` calls
+   at 0x175C..0x18B4). The port passed `FromEnum(3)`, `FromEnum(4)` and `FromEnum(5)`, so the
+   three animation ids could be the wrong ones. `BuildAnimParmData` now takes the guest's eight
+   slots and the three lookups pass none.
+2. **The dead player** (`fn_63_1BE8`, 0x1DEC): when the player that enters has no health left the
+   guest returns from the whole function - the rest of the `kSM_Activate` case *and*
+   `CActor::AcceptScriptMsg` are skipped. The port ran on and called the base handler.
+3. **The weapon damage's sound** (`fn_63_30E8`, 0x3444): after copying the loader's damage info
+   the guest overwrites its damage sound id with `0x2812`
+   (`SFXsa2_r_hitheavy_00_oneshot`, `include/MetroidPrime/SFX/SamusImpact_MP.h`). The host's
+   `CDamageInfo` had no setter for that field; it has one now, under `TARGET_PC`.
+
+### 14.4 Runtime check (2026-10-21)
+
+`WORLD=M06_ShootingGallery,06_ShootingGallery FRAMES=3000 GODMODE=1 MP2_CONSOLE=<port>
+tools/run_gameplay.sh` with the console's `tp 0 -27 11` (the player enters the turret), `press A`
+(the turret fires), `tp -40 -20 20` and `tp 0 -27 11` again (the trigger deactivates and
+activates), `press B` (the player leaves) and `objs`:
+
+    [harness] the frame limit is up at 59.9 s: world 7e19ed26, area 0 of 1
+    exit=0
+
+`grep -c '^\[port\] caught'` = 0 and `grep -c reach-stub` = 0. The console's `status` printed
+`in-turret 1` three times and `in-turret 0` after the `press B`.
+
+An instrumented build of the same inputs (the counters are not in the committed tree) counted:
+`call_144 1`, `call_84C 1`, `call_1460 1`, `call_14B4 1`, `call_1508 1`, `call_15B0 1`,
+`call_19B0 5`, `call_1B70 1`, `call_2D68 1350`, `call_3070 1`, `call_30E8 1`, `case_Create 1`,
+`case_Activate 1`, `case_Deactivate 1`, `case_Start 1`, `case_AreaLoaded 1`, `arm_white 1286`.
+A second run of 12000 updates (the player stays in the turret) counted `call_3070 1` - the
+destructor runs when the world is torn down at the end of the run.
+
+asmcheck (`tools/asmcheck.py check ScriptPlayerTurret
+src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp fn_63_144 fn_63_84C fn_63_1460
+fn_63_14B4 fn_63_1508 fn_63_15B0 fn_63_19B0 fn_63_1B70 fn_63_2D68 fn_63_3070 fn_63_30E8`) reports no
+correctness tag for any of them. The completeness findings: the loader's `BRANCH`/`CALLS` (the
+property loop is the upstream's generated `.inc`, an include the tool cannot parse) and its
+`CALL`s (`fn_63_674` is the properties' constructor, `LoadTypedefEditorProperties`,
+`ReadFloat`, `LoadTypedefDamageInfo` and `ReadBytes` are the generated loop, `AllocateUniqueId`,
+`LdrToDamageInfo`, `LdrToTransform4f` and `LdrToEntityInfo` are the host's names for the guest's),
+its `XCALL` (`TranslateSfx` is the port's helper for the guest's inline `-1` test at 0x4A4);
+`fn_63_15B0`'s `NoParameter` call (the port's default arguments live in the header) and `CALLS`;
+`fn_63_84C`'s `fn_63_B18`/`fn_63_F18` (the host's `CImpactVisorEffect::None()` and the token
+copy); `fn_63_3070`'s `Free` (the host's pool frees the object) and `fn_63_30E8`'s `fn_63_374C`
+(the host's `CModelData()`).
