@@ -116,6 +116,19 @@ if uid is None:
 emit(f'[con] boss {uid} at {bpos}')
 
 run(f'send {uid} Activate')
+run('objs')
+
+# The connected 'PLAY' actor (the CScriptActor the boss plays its body animation on) has to be
+# active for its animation to run: the retail's script activates it when the fight starts, and
+# the console cannot run that script, so the driver sends it the message itself.  The editor id
+# 000b0016 is the CONNECT/'PLAY' actor (a probe of fn_16_78AC named it: uid u04e8, the
+# CScriptActor at the body's position).
+for l in [x.strip() for x in out_lines]:
+    m = re.match(r'(u[0-9a-f]{4}) 000b0016\s+CScriptActor\b', l)
+    if m:
+        emit(f'[con] the PLAY actor {m.group(1)} gets Activate')
+        run(f'send {m.group(1)} Activate')
+        break
 wait_frames(frame() + 120)
 
 def dist(a):

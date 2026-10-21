@@ -1456,3 +1456,38 @@ in the port (the state plays the animation on the connected 'PLAY' actor, while 
 watches the boss's own animation state), so the FSM stays in "BeginHeartStage" and the
 "HeartStage" state is still entered by forcing it.  That trigger is the next thing to look at; the
 fn_16_4954 marker stands on the forced run.
+
+## 16. The "AnimOver" trigger of "BeginHeartStage" - what it reads and why it does not fire
+
+The trigger is the DOL's `CPatterned::GetAnimOver` (fn_80151990, 0x80151990): it reads the
+**owner's own** animation state (the word at the actor + 0x6B4) and answers `state == 3`
+(kAS_Over).  The host's `CPatterned::GetAnimOver`/`AnimOver` does the same through
+`mAnimationState.IsOver()`.  So the trigger watches **the boss's own** animation state, not the
+connected 'PLAY' actor's.
+
+The state writes that word: fn_16_78AC's update (0x7A3C) builds the string "Whole Body"
+(lbl_16_rodata_41C+0x627, 0x7A4C) and calls `IsAnimTimeRemaining(dt, "Whole Body")` on the
+**'PLAY' actor's** animation data (0x7A50: the actor at 0x60(r28) -> its CAnimData at +0x10;
+the call at 0x7A60), and when it answers false the boss's own animation state becomes 3
+(kAS_Over, 0x7A7C).  The port's `BeginHeartStage` does exactly that (`IsAnimTimeRemaining(dt,
+"Whole Body")` on the 'PLAY' actor, then `mAnimationState.SetState(kAS_Over)`), so **the port
+matches the retail here** - there is no mismatch to fix in the module.
+
+Why the trigger does not fire in the port's area-11 scenario (2026-10-21, probe on the state):
+
+* the 'PLAY' actor is the CScriptActor the body is played on (the probe named it: uid u04e8,
+  the CScriptActor at the body's position (1.7, -43.5, 98.1); the boss is u04e3 at
+  (1.7, -43.5, 105.0)).  It is **inactive**: the area's script activates it when the fight
+  starts, and the console's `send u04e3 Activate` only reaches the boss.  An inactive
+  CScriptActor does not think (`CScriptActor::Think`, src/MetroidPrime/ScriptObjects/
+  CScriptActor.cpp:89, returns at once when `!GetActive()`), so its animation never runs.
+  The driver now sends it the message too (`send u04e8 Activate`).
+* even then the animation never ends: the host's `CAnimData::IsAnimTimeRemaining`
+  (src/MetroidPrime/CAnimData.cpp:668) **ignores the "Whole Body" name** and answers with the
+  *root* animation's time remaining, while the retail's takes the animation name - so "the named
+  animation has ended" cannot be asked on the host.  That is shared code and is not changed
+  here; it is reported for the orchestrator.
+
+So the natural heart stage is still one step away: the tentacles are killed and the FSM walks
+into "BeginHeartStage" on its own (section 15), but the state's "AnimOver" trigger needs the
+'PLAY' actor's named animation to end, which the host cannot answer.
