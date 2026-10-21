@@ -40,6 +40,8 @@ public:
   // vulnerable sound and makes the armour a target; setting it stops the sound and removes the
   // target materials.
   void SetArmored(CStateManager& mgr, bool armored);
+  // fn_14_CE1C (0x78 bytes): the orbit material on, or off with the player's orbit on it broken.
+  void SetOrbitable(CStateManager& mgr, bool orbitable);
   bool IsArmored() const { return x19C_24_armored_; }
 
 private:
