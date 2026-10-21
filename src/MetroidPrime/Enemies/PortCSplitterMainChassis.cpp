@@ -209,7 +209,6 @@ SPLITTER_STATE_STANDIN(WaitForDocking, fn_75_C9E4)
 SPLITTER_STATE_STANDIN(WaitForSnatch, fn_75_C8F4)
 SPLITTER_STATE_STANDIN(FollowDeployPath, fn_75_C51C)
 SPLITTER_STATE_STANDIN(DeploymentLanding, fn_75_C034)
-SPLITTER_STATE_STANDIN(HeadExplosion, fn_75_BEEC)
 SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
 SPLITTER_CODE_STANDIN(SetupSpinAttack, fn_75_BAA8)
 SPLITTER_CODE_STANDIN(EndSpinAttack, fn_75_B9B0)
@@ -1693,6 +1692,50 @@ void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueI
   PortTakePlayerHint(mgr);
 }
 
+// fn_75_BEEC (the chassis's HeadExplosion state, 0xBEEC-0xC034). Activate (0xBF24): the animation
+// state is kAS_Ready and the flag byte 0xD41's 0x02 bit is cleared (0xBF34 rlwimi). Update
+// (0xBF40): when CTryCommand::ShouldRetry (the host's CAnimationState::CanIssueCommand) allows
+// body state 6 (kAS_KnockBack, 0xBF48-0xBF54) a knock-back command along the chassis's Y column
+// (the transform's 0x28, 0x38, 0x48) with severity 8 goes out (lbl_75_data_5B8, 0xBF58-0xBFB8).
+// Deactivate (0xC010): the animation state is kAS_NotReady and the spin penalty timer at 0xD14
+// restarts with the data's spin attack interval penalty (0x874, 0xC018-0xC01C).
+// @ fn_75_BEEC
+void CSplitterMainChassis::HeadExplosion(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mFlagsD41 &= ~0x02;
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(GetTransform().GetColumn(kDY), pas::kS_Eight));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mSpinPenaltyTimer = mData.mSpinAttackIntervalPenalty;
+  }
+}
+
+// fn_75_E788 (0xE788-0xE810): a living (the base's 0x420 0x40 bit, 0xE788-0xE790), active (the
+// entity's 0x20 0x80 bit, 0xE794-0xE79C) chassis with no head (0xC6C, 0xE7A4-0xE7B4) and no
+// reservation (0xC6E, 0xE7B8-0xE7C0), landed (0xD00 at 5 or 0, 0xE7C4-0xE7D4), with 0xD41's 0x80
+// and 0xD40's 0x01 bits clear (0xE7D8-0xE7EC) takes the head's reservation (0xE7F4); the result
+// is whether the reservation is that head's (0xE7F8-0xE808).
+bool CSplitterMainChassis::PortReserveDock(TUniqueId head) {
+  if (mAlive && GetActive() && mCommandModuleId == kInvalidUniqueId &&
+      mSecondLinkId == kInvalidUniqueId && (mLandedCount == 5 || mLandedCount == 0) &&
+      (mFlagsD41 & 0x80) == 0 && (mFlagsD40 & 0x1) == 0) {  // 0xE788-0xE7EC
+    mSecondLinkId = head;
+  }
+  return mSecondLinkId == head;
+}
+
+// fn_75_E768 (0xE768-0xE788): the reservation at 0xC6E is cleared when it is that head's.
+void CSplitterMainChassis::PortReleaseDock(TUniqueId head) {
+  if (mSecondLinkId == head) {
+    mSecondLinkId = kInvalidUniqueId;
+  }
+}
+
 // vtable slot 0x98 = fn_75_EB04 (0xEB04-0xEBF4): the base's Death (0xEB28), then every
 // collision actor of the manager at 0xC68 (0xEB3C GetCollisionDescFromIndex, to
 // GetNumCollisionActors at 0xEB80) that casts to a CCollisionActor takes the chassis's material
@@ -1714,6 +1757,12 @@ void CSplitterMainChassis::Death(CStateManager& mgr, const CVector3f& direction,
   RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
   CSplitterCommandModule* head =
       TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
+  // The head-null return is not reached in play: the chassis's hp only drops through A0A0 on
+  // target_LCTR, which is vulnerable only inside LaserSweepAttack (fn_75_D3E0 Activate); a dead
+  // head is deleted by its Dead state (fn_75_5448, 0x547C DeathDelete), then PortPlaceHead
+  // clears 0xC6C (0xAD50), LaserSweepAttack exits without a head (0xD510-0xD548) and its
+  // Deactivate makes every collision actor immune again (0xD59C-0xD5B8), and a headless PathFind
+  // leaves for SetRetreatDest through !HasHead (fn_75_E58C), never LaserSweepAttack.
   if (head == nullptr) {  // 0xEBB8-0xEBBC
     return;
   }

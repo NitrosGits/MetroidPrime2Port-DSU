@@ -45,8 +45,15 @@
 #include <stdio.h>
 
 // @ fn_15_4790
+// @ fn_15_47DC
+// @ fn_15_4848
 // Records the attack kind the running state belongs to; on leaving it, pushes the kind onto a
 // three-deep history (fn_15_47DC drops the oldest when full, fn_15_4848 being the erase) and resets.
+// Retail splits this over three functions: fn_15_4790 (0x4790) picks the branch on the message
+// (0x4798: `cmpwi r5,2` = kStateMsg_Deactivate), fn_15_47DC (0x47DC) pushes the kind and calls
+// fn_15_4848 (0x4848, the erase) when the history is full (0x47FC: cmpwi r0,3 -> cr0 = cmp(x0,3),
+// 0x4800 bne -> skip the erase), and the port
+// inlines both helpers here, so one body carries the three markers.
 void CElitePirate::SetAttackKind(int kind, EStateMsg msg) {
   if (msg == kStateMsg_Deactivate) {
     if (mAttackKindHistory.size() == 3) {

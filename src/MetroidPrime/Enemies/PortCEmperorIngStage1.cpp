@@ -1325,8 +1325,10 @@ void CEmperorIngStage1::LookAtPlayer(CStateManager& mgr) {
 
 // fn_16_2DDC (0x2DDC..0x2E1C, 0x40): the cross product of two vectors. The X is
 // a.y * b.z - b.y * a.z (the fmsubs at 0x2DFC), the Y is b.z * a.x - a.z * b.x (0x2E04) and the Z
-// is b.x * a.y - a.x * b.y (0x2E0C).
-// @ fn_16_2DDC
+// is b.x * a.y - a.x * b.y (0x2E0C). The REL's own copy of the DOL's
+// Cross__9CVector3fFRC9CVector3fRC9CVector3f (0x8001994C, 0x40 bytes - the same body, branch
+// free), so it is the host's function and is not marked; the host's CVector3f::Cross is the
+// same code.
 static CVector3f CrossProduct(const CVector3f& a, const CVector3f& b) {
   return CVector3f(a.GetY() * b.GetZ() - b.GetY() * a.GetZ(),
                    b.GetZ() * a.GetX() - a.GetZ() * b.GetX(),
@@ -1489,31 +1491,37 @@ void CEmperorIngStage1::StopBeam(CStateManager& mgr) {
 
 // fn_16_36E8 (0x36E8..0x3984): the tentacle joint collision descriptions. For each of the eight
 // tentacle slots (the loop at 0x395C..0x3964) three parameter sets are searched for the best
-// animation - the first with FromEnum(0) and FromInt32(the index), the second with FromEnum(2)
-// and FromInt32(2), the third with FromEnum(1) and FromInt32(the index) - and when the first two
-// found an animation (the tests at 0x3918 and 0x3920) the joint is built and added to the vector at
-// guest 0x7D4 (0x3928..0x3958).
+// animation - the first with FromEnum(0), the second with FromEnum(2), the third with FromEnum(1),
+// each of them paired with FromInt32(the index) - and when the first two found an animation (the
+// tests at 0x3918 and 0x3920) the joint is built and added to the vector at guest 0x7D4
+// (0x3928..0x3958).  The retail's parameter ORDER is FromInt32(the index) first and the FromEnum
+// second: fn_16_337C gets r5 = the FromInt32 (0x378C, 0x382C, 0x38CC) and r6 = the FromEnum
+// (0x3790, 0x3830, 0x38D0), and the second search's FromInt32 is the index too (r22 at 0x3818),
+// not the constant 2.  The order matters: the parameter list is matched positionally, and with it
+// swapped the searches answered with the same animation for every tentacle (the joints 3..7 got
+// the joint 0's animation id), so one tentacle's state arm deleted another tentacle's additive
+// animation and the tentacle never left the state 1.
 // @ fn_16_36E8
 void CEmperorIngStage1::SetupTentacleJoints(CStateManager& mgr) {
   // The database is this actor's own model's animation data at +0x3C (0x3708..0x3728).
   const CPASDatabase& db = GetModelData()->GetAnimationData()->GetPASDatabase();
   for (int index = 0; index < 8; ++index) {
-    const CPASAnimParmData first(pas::EAnimationState(27), CPASAnimParm::FromEnum(0),
-                                 CPASAnimParm::FromInt32(index), CPASAnimParm::NoParameter(),
+    const CPASAnimParmData first(pas::EAnimationState(27), CPASAnimParm::FromInt32(index),
+                                 CPASAnimParm::FromEnum(0), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter());
     const rstl::pair< float, int > found = db.FindBestAnimation(first, -1);
     int animId1 = found.first > 1.1920929e-07f ? found.second : -1;
-    const CPASAnimParmData second(pas::EAnimationState(27), CPASAnimParm::FromEnum(2),
-                                 CPASAnimParm::FromInt32(2), CPASAnimParm::NoParameter(),
-                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
-                                 CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
-                                 CPASAnimParm::NoParameter());
+    const CPASAnimParmData second(pas::EAnimationState(27), CPASAnimParm::FromInt32(index),
+                                  CPASAnimParm::FromEnum(2), CPASAnimParm::NoParameter(),
+                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
+                                  CPASAnimParm::NoParameter());
     const rstl::pair< float, int > found2 = db.FindBestAnimation(second, -1);
     int animId2 = found2.first > 1.1920929e-07f ? found2.second : -1;
-    const CPASAnimParmData third(pas::EAnimationState(27), CPASAnimParm::FromEnum(1),
-                                 CPASAnimParm::FromInt32(index), CPASAnimParm::NoParameter(),
+    const CPASAnimParmData third(pas::EAnimationState(27), CPASAnimParm::FromInt32(index),
+                                 CPASAnimParm::FromEnum(1), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter(), CPASAnimParm::NoParameter(),
                                  CPASAnimParm::NoParameter());
@@ -2150,7 +2158,11 @@ void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
 // 0x7D8 + index * 0x48 + 0x24 = 0x7FC, read at 0x7F1C) has its bit 27 clear - the extrwi at 0x7F20
 // takes one bit at the bit 27, the bit 4 of the byte, so the mask is 1u << (31 - 27) = 0x10. Only
 // then does the base's own handling run (the call at 0x7F6C).
-// Area 11 cannot reach fn_16_7EA8's early return: no sound event comes from a tentacle's locator there.
+// Both arms run in area 11 (2026-10-21, the boss activated with `send u<uid> Activate`): the
+// early return was taken 5627 times (the tentacle index 0..5, the joint's flag byte 0x00, 0x60
+// or 0x80 - the tentacle is not shootable, so its locator's sound is swallowed) and the base's
+// own handling ran 11838 times.
+// @ fn_16_7EA8
 void CEmperorIngStage1::ProcessSoundEvent(int sfxId, float weight, int flags, float fallOff,
                                           float maxDist, const CSegId& locator, ushort pitchStart,
                                           ushort pitchEnd, float pitchDuration, uchar minVol,
@@ -2185,8 +2197,11 @@ void CEmperorIngStage1::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
-  // The host's FSM1 does not dispatch code nodes yet (TStateMachineState::SetCodeFunctions is
-  // empty), so this only records the table retail registers.
+  // The actor's machine is an FSM2 one (the host's CPatterned picks the FSM2 runtime when the
+  // patterned info has a second machine id, and the run's probe of GetType() gives 1), so the
+  // codes are dispatched: the FSM2's CGenericFSM2State::CallCode runs them. The host's FSM1
+  // (TStateMachineState::SetCodeFunctions, an empty body like the DOL's fn_80194BF0) is not
+  // used here.
   stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
@@ -3011,7 +3026,19 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
 // CStateManager+0x16E4) asked for Range(0.0f, 100.0f) at 0x497C, with 0.0f from
 // lbl_16_rodata_380 and 100.0f from lbl_16_rodata_3D4 - against 50.0f (lbl_16_rodata_3BC): in
 // mode 0 the roll picks 0 or 1, in mode 1 it picks 1 or 2, and every other mode takes 2.
-// Area 11 cannot reach fn_16_4954's body: the host's FSM1 does not dispatch code nodes.
+// The FSM2 machine's code node "ChooseRandomTentacleCount" hangs off the "HeartStageOver"
+// trigger of the "HeartStage" state (the machine has 10 states, 4 codes and 12 triggers), so
+// the body only runs once the fight reaches the heart stage.  The area-11 scenario cannot play
+// there (the tentacles never leave the state 1 - their out animation never ends - so
+// AllTentaclesRetracted stays false), so the state is forced with the console's
+// `fsm <uid> HeartStage` (tools/drivers/emperoring1_heartstage.py): the heart-stage timer
+// (16 s) then runs out and the code node fires.  The mode (guest 0x7C0) is stepped by the
+// heart's health (fn_16_51D4), so the heart's collision actor is damaged between the runs to
+// get the mode 1 and mode 2 arms.  Every arm ran: the mode 0 rolls 38.68/42.64/42.90/51.87/
+// 78.90/98.61 and the mode 1 rolls 0.36/16.96/91.60/96.93 (both sides of 50), the mode 2
+// rolls 75.89/85.46/91.38 (the mode's own arm).  The mode is never below 0, so the arm at
+// 0x4998 is unreachable.
+// @ fn_16_4954
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
   const float roll = mgr.Random()->Range(0.f, 100.f);
   if (x7c0_ == 1) {

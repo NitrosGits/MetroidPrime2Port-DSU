@@ -68,7 +68,7 @@ The module is the Emperor Ing's first stage (the boss body with the tentacles an
 | `fn_16_531C` | 0x2B8 | `Render` (vtable slot 9) - ported | [proven] |
 | `fn_16_1D38` | 0xC4 | the tentacle's draw flags for the model's draw pass - ported | [proven] |
 | `fn_16_7F8C` | 0x5B0 | `DoUserAnimEvent` (vtable slot 26); case 0 (charged projectile), 7, 17, 22, 27 and 28 ported | [proven] |
-| `fn_16_7EA8` | 0xC4 | `ProcessSoundEvent` (vtable slot 28) - ported | [proven] |
+| `fn_16_7EA8` | 0xC4 | `ProcessSoundEvent` (vtable slot 28) - ported, marked (section 11.3) | [proven] |
 | `fn_16_B958` | 0x30 | `GetTouchBounds` (vtable slot 16): the actor's bounding box | [proven] |
 | `fn_16_BA30` | 0x30 | builds the `optional<CAABox>` from the bounding box | [proven] |
 | `fn_16_9AB0` | 0xC4 | copies the `SLdrHealthInfo` into the actor's `CHealthInfo` (0x1E bytes) | [proven] |
@@ -839,8 +839,9 @@ is true, so the TrackPlayer state's transition fires at once) and evaluates that
 triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM does not reach yet
 (their state body fn_16_76F0 is not ported), the Dead state is entered only on a normal death
 (the console's `damage` is an X-damage, which takes the massive-death path instead of
-CPatterned::Death's `SetState("Dead")`), and ChooseRandomTentacleCount is a code node of a state
-the FSM does not reach - so the four bodies ported in this slice did not run in that scenario.
+CPatterned::Death's `SetState("Dead")`). ChooseRandomTentacleCount is a code node of the
+heart stage (section 10), which the scenario does not reach - so the four bodies ported in this
+slice did not run in that scenario.
 
 With the joint work ported (fn_16_2B68, fn_16_1E6C, fn_16_3984) the area load fills the joint
 descriptions and the joint vector: the run reaches the element's copy (fn_16_39CC) and the tentacle actor lookup
@@ -1012,8 +1013,11 @@ flags, modes, timers and ids forced, the hooks and their once-logs reverted afte
   portal started and stopped (fn_16_1A50, fn_16_1950); the FSM was forced into the heart stage
   (fn_16_774C) and the end of it (fn_16_71BC), which fired the beam (fn_16_CD0), updated it
   (fn_16_A64) and stopped it (fn_16_9C0) and evaluated the two triggers (fn_16_4BB4,
-  fn_16_4B6C); and CanBeShot (fn_16_B9FC) was called. Only fn_16_4954 (the host's FSM1 dispatches
-  no code nodes) and fn_16_7EA8 (no sound event comes from a tentacle's locator) stay unreachable.
+  fn_16_4B6C); and CanBeShot (fn_16_B9FC) was called. Only fn_16_4954 stays unreachable: the
+  actor runs an FSM2 (section 10) and its code node hangs off the heart stage, which the
+  scenario does not reach. fn_16_7EA8 (ProcessSoundEvent) was **not** unreachable: a run on
+  2026-10-21 took its early return 5627 times and ran the base's own handling 11838 times, so
+  it is marked now (section 11.3).
 
 ## 9. The branch table (the ten functions with conditional branches)
 
@@ -1212,3 +1216,278 @@ expression (`&&`, `||`), so they are not instrumented separately.
 | 0x9E10 | extsb. r0, r26 | the C++ condition at L1907 (a short-circuit arm) | n/a |
 
 The arms that did not come up: fn_16_0: none; fn_16_9C0: none; fn_16_A64: none; fn_16_CD0: none; fn_16_71BC: none; fn_16_774C: none; fn_16_1150: 0x11F8; fn_16_1A50: none; fn_16_1950: none; fn_16_9BE8: none.
+
+## 10. The state machine is an FSM2 one, and the code nodes are dispatched
+
+The retail's `CPatterned` has **one** state-machine runtime, at `this + 0x350`. The DOL's
+constructor (0x80079E38) picks the FSM2 runtime (`__ct__17CGenericFSM2StateFv`, 0x54 bytes)
+unless the patterned info's second machine id is -2, in which case it creates the FSM1 runtime
+(`fn_801956BC`, 0x40 bytes, vtable `lbl_803B5D28`). The host does the same
+(`src/MetroidPrime/Enemies/CPatterned.cpp:84`). **This actor takes the FSM2 path**: a probe of
+the runtime's `GetType()` in area 11 gives 1.
+
+So the module's three code functions are dispatched - by the host's FSM2
+(`CGenericFSM2State::CallCode`, `include/MetroidPrime/CGenericFSM2StateImpl.hpp:233`), and by
+the retail's FSM2. The host's **FSM1** does not dispatch code nodes
+(`TStateMachineState::SetCodeFunctions`, `include/MetroidPrime/TStateMachineState.hpp:304`, is
+an empty body) - and neither does the retail's FSM1: the FSM1 runtime's vtable `lbl_803B5D28`
+slot 0x1C is `fn_80194BF0` (0x80194BF0), a single `blr`, and the runtime has only two function
+vectors (the states at +0x10, the triggers at +0x20); its update (`fn_80194F38`, 0x80194F38)
+calls only the state and the trigger functions.
+
+The shipped FSM2 machine of this actor has 10 states, 4 codes and 12 triggers (the dump below
+is the machine the actor runs, printed from the host's `CGenericFSM2`):
+
+| node | goes to |
+|---|---|
+| state "Start" | code "ResetTentacles" |
+| state "TrackPlayer" | triggers "ShouldAttack", "ShouldMeleeAttack", "ShouldTaunt", "AllTentaclesRetracted" |
+| state "BeginHeartStage" | trigger "AnimOver" |
+| state "HeartStage" | triggers "HeartStageOver", "IsDead" |
+| state "EndHeartStage" | trigger "AnimOver" |
+| state "MeleeAttack" | triggers "AllTentaclesRetracted", "AnimOver" |
+| state "Attack" | triggers "AllTentaclesRetracted", "AnimOver" |
+| state "Taunt" | triggers "AnimOver", "AllTentaclesRetracted" |
+| state "Dead" | - |
+| code "BeginSubStage" | state "TrackPlayer" |
+| code "ResetTentacles" (two of them) | code "BeginSubStage", state "Taunt" |
+| code "ChooseRandomTentacleCount" | state "EndHeartStage" |
+| trigger "AllTentaclesRetracted" | state "BeginHeartStage" |
+| trigger "HeartStageOver" | code "ChooseRandomTentacleCount" |
+| trigger "AnimOver" (four of them) | state "HeartStage", state "TrackPlayer" (twice), code "ResetTentacles" |
+| trigger "ShouldMeleeAttack" | state "MeleeAttack" |
+| trigger "ShouldAttack" | state "Attack" |
+| trigger "ShouldTaunt" | state "Taunt" |
+| trigger "IsDead" | state "Dead" |
+
+**fn_16_4954 (ChooseRandomTentacleCount)** therefore hangs off the "HeartStageOver" trigger of
+the "HeartStage" state: it runs only when the fight reaches the heart stage (the FSM2's
+"AllTentaclesRetracted" -> "BeginHeartStage" -> "AnimOver" -> "HeartStage"). The area-11
+scenario never gets there - the tentacles are not destroyed, so the FSM stays in
+TrackPlayer/Attack - and the trigger's body (fn_16_4BB4, the heart-stage timer) is the retail's
+own. The other two code functions do run: "ResetTentacles" and "BeginSubStage" once each, at
+the "Start" state. Nothing in the module's own code blocks fn_16_4954: the module's table
+(lbl_16_data_220) and the machine's code node have the same name, and the host's FSM2 binds
+them. The gap is the scenario, not the code.
+
+## 11. The classification of the unmarked functions
+
+Every function of the REL that carries no `// @` marker is listed here with its class:
+**(a)** a copy of host/DOL code (compiler-generated, rstl, a weak destructor, a thunk, the REL
+runtime) - never marked, the DOL address is cited instead; **(b)** a behaviour function of the
+module - marked once a run exercises it.
+
+### 11.1 The eight functions the map lists but no other section classifies
+
+| fn | what it is | class |
+|---|---|---|
+| `fn_16_920` | the tracked actor's "brainSpine_scale" locator position | (b) - marked |
+| `fn_16_1E20` | one slot's tentacle collision actor gets the damage vulnerability | (b) - marked |
+| `fn_16_2C3C` | the turn angle against the 'PLAY' actor's own Y column | (b) - marked |
+| `fn_16_2C9C` | the signed turn angle between the 'PLAY' actor's facing and a direction | (b) - marked |
+| `fn_16_2DDC` | the REL's own copy of the DOL's `Cross__9CVector3fFRC9CVector3fRC9CVector3f` (0x8001994C, 0x40 bytes - the same body, branch free) | (a) - the marker was taken off; the host's `CVector3f::Cross` is the same code |
+| `fn_16_9610` | the compiler's copy constructor of the 0x48-byte `SLdrPlasmaBeamInfo` | (a) - the host's own copy assignment |
+| `fn_16_98D0` | the copy of the `SLdrDamageVulnerability` into the `CDamageVulnerability` - the DOL's `LdrToDamageVulnerability__FRC23SLdrDamageVulnerability` (0x8023ACFC) | (a) - the host's own `LdrToDamageVulnerability` |
+| `fn_16_A270` | the REL's module head: it stores the loader `fn_16_A2A0` into `lbl_16_bss_0` and calls the DOL's `fn_8022756C` (0x8022756C, the store into `gLoader_EmperorIngStage1`) | (a) - the REL runtime |
+
+### 11.2 The rest of the unmarked functions
+
+| class | the functions |
+|---|---|
+| (a) the module's own deleting destructors and the free-only thunks | `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BB3C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BE98` `fn_16_BE9C` `fn_16_BEA4` `fn_16_BEB0` `fn_16_BEB8` `fn_16_BF14` |
+| (a) the rstl and compiler-generated helpers | `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C` `fn_16_FF4` |
+| (a) the loader's readers and the model's copies | `fn_16_A2A0` `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A980` `fn_16_ABD0` `fn_16_AEDC` `fn_16_AF7C` `fn_16_B014` `fn_16_B1D8` `fn_16_B434` `fn_16_B5C8` `fn_16_B6EC` `fn_16_9700` |
+| (a) the base classes' own bodies | `fn_16_60` (`CActor::GetHealthInfo` - a thunk to the base's slot 12), `fn_16_B958` (`CActor::GetTouchBounds` - the base's `GetBoundingBox` in an `optional`), `fn_16_BA30` (that `optional`'s builder), `fn_16_18E8` (the `SMoverData` copy constructor), `fn_16_6898` (the `CRayCastResult` copy) |
+| (a) the REL runtime | `fn_16_A270`, `fn_16_BF88` (the static initialiser of the three FSM tables), `fn_16_C3B0` (`ModuleDestructors`), `fn_16_C3FC` (`ModuleConstructors`), `fn_16_469C` (`push_back_unsafe`), `RELMain`, `RELExit` |
+| (b) the module's behaviour functions | `fn_16_3060` (the 'PLAY' actor - the same body as the marked `fn_16_3094`), `fn_16_7EA8` (`ProcessSoundEvent` - **marked now**, both arms ran), `fn_16_4954` (`ChooseRandomTentacleCount` - **marked now**, section 12) |
+
+### 11.3 The branch tables of the five most-called unmarked functions
+
+The call counts are the static `bl` counts in the REL's own text. `L<n>` is the C++ line the
+probe stood on.
+
+#### fn_16_BD6C (6 calls) - (a) the counted reference release
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| 0xBD90 | `bgt .L_0000BDBC` | (a) the reference count's test - the host's `ncrc_ptr` release |
+| 0xBD9C | `beq .L_0000BDB4` | (a) the count is zero -> only the free |
+
+#### fn_16_337C (6 calls) - (a) the CPASAnimParmData's parm list
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| - | no branch | (a) branch free; the host's `CPASAnimParmData` constructor fills the list |
+
+#### fn_16_BDD0 (5 calls) - (a) the counted reference release
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| 0xBDF4 | `bgt .L_0000BE20` | (a) the reference count's test |
+| 0xBE00 | `beq .L_0000BE18` | (a) the count is zero -> only the free |
+
+#### fn_16_3060 (5 calls) - (b) the 'PLAY' actor
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| - | no branch | (b) branch free (a lookup and a cast); the body is the marked `fn_16_3094`'s, so no second marker |
+
+#### fn_16_98D0 (4 calls) - (a) the damage vulnerability copy
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| - | no branch | (a) branch free; the DOL's `LdrToDamageVulnerability` (0x8023ACFC) |
+
+#### fn_16_7EA8 (the most-called one at runtime: 17465 calls) - (b) `ProcessSoundEvent`, marked
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| 0x7F10 | `beq .L_00007F28` (the tentacle index is -1) | (b) ran - the base's own `ProcessSoundEvent` (11838 calls) |
+| 0x7F24 | `beq .L_00007F70` (the joint's flag byte has its bit 27 clear) | (b) ran - 5627 early returns (the tentacle index 0..5, the flag byte 0x00, 0x60, 0x80) |
+
+#### fn_16_4954 - (b) `ChooseRandomTentacleCount`: marked (section 12)
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| 0x4988 | `beq .L_000049C4` (the mode is 1) | (b) ran (forced) |
+| 0x498C | `bge .L_000049E8` (the mode is 2 or more) | (b) ran (forced) |
+| 0x4994 | `bge .L_000049A0` (the mode is 0) | (b) ran (forced) |
+| 0x4998 | `b .L_000049E8` (the mode is below 0) | (c) unreachable in shipped data |
+| 0x49AC | `bge .L_000049B8` (the roll is 50 or more) | (b) ran (forced) |
+| 0x49B4 | `b .L_000049BC` (the roll is below 50) | (b) ran (forced) |
+| 0x49D0 | `bge .L_000049DC` (the roll is 50 or more) | (b) ran (forced) |
+| 0x49D8 | `b .L_000049E0` (the roll is below 50) | (b) ran (forced) |
+
+## 12. fn_16_4954 (ChooseRandomTentacleCount) is marked
+
+The code node is the FSM2 machine's, hanging off the "HeartStageOver" trigger of the
+"HeartStage" state (section 10), so it runs when the heart-stage timer (guest 0xA3C, 16 s -
+`heartExposedTime`, the value the probe read at the state's activate) runs out.  The area-11
+play cannot get there: the tentacles never leave the state 1 (their out animation never ends, so
+fn_16_26B8's 0x2884 test never fires), so "AllTentaclesRetracted" stays false and the FSM never
+enters "BeginHeartStage".  The state is therefore **forced** with the console's
+`fsm <uid> HeartStage` (`tools/drivers/emperoring1_heartstage.py`, which also damages the
+heart's collision actor between the runs so the mode steps).  The mode (guest 0x7C0) is stepped
+by the heart's health in fn_16_51D4 (0x527C: 0 -> 1 below 466 hp, 0x5294: 1 -> 2 below 233 hp),
+so the heart's collision actor is hit 100 hp at a time between the cycles.
+
+Every arm ran (2026-10-21, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u<uid> Activate`, `fsm u<uid> HeartStage`): the mode 0 rolls 38.68, 42.64, 42.90, 51.87,
+78.90 and 98.61, the mode 1 rolls 0.36, 16.96, 91.60 and 96.93, the mode 2 rolls 75.89, 85.46
+and 91.38.
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| 0x4988 | `beq .L_000049C4` (the mode is 1) | (b) ran (forced) - the mode 1 rolls |
+| 0x498C | `bge .L_000049E8` (the mode is 2 or more) | (b) ran (forced) - the mode 2 rolls |
+| 0x4994 | `bge .L_000049A0` (the mode is 0) | (b) ran (forced) - the mode 0 rolls |
+| 0x4998 | `b .L_000049E8` (the mode is below 0) | (c) unreachable in shipped data: the mode is 0, 1 or 2 (fn_16_51D4 only steps it up, the constructor clears it) |
+| 0x49AC | `bge .L_000049B8` (the roll is 50 or more, the mode 0) | (b) ran (forced) - the rolls 51.87, 78.90, 98.61 |
+| 0x49B4 | `b .L_000049BC` (the roll is below 50, the mode 0) | (b) ran (forced) - the rolls 38.68, 42.64, 42.90 |
+| 0x49D0 | `bge .L_000049DC` (the roll is 50 or more, the mode 1) | (b) ran (forced) - the rolls 91.60, 96.93 |
+| 0x49D8 | `b .L_000049E0` (the roll is below 50, the mode 1) | (b) ran (forced) - the rolls 0.36, 16.96 |
+
+## 13. Why a hit on the collision actors does not destroy the tentacles
+
+The tentacle's health is on **the tentacle's own collision actor**: the manager at guest 0x7C8
+holds five descriptions per tentacle and fn_16_3AA8 takes the last of them (4 + index * 5,
+0x3AB4/0x3AC0), fn_16_1E6C copies the module's tentacle health (guest 0xAAC, 40 hp) into it
+(0x1EB8..0x1F04) and fn_16_2524 reads it back (0x2584), compares it with the joint's last health
+(+0x20) and, at 0 or below, clears the joint's shootable flag (0x10), sets the tentacle's state
+to 3 and calls fn_16_3BC4 (the IS03 message).  The other four boxes of each tentacle (the
+segments) have **no health info at all** - `obj` prints no hp for 32 of the 40 boxes - so a hit
+on them does nothing, which is what made "hurt the collision actors" look broken.  The tentacle
+also only watches its health while the joint's flag 0x10 is set (fn_16_1FC0 sets it when the
+tentacle comes out and clears it when it dies), and a hit **before** the tentacle is out is
+undone: fn_16_1FC0 restores the health to the initial 40 while the flag is clear.  Only the
+tentacles of the current sub-stage (the first four, fn_16_2F70) have the flag set, so a hit on
+the fifth tentacle's box does nothing either.  The retail sends no message for the damage: the
+module polls the collision actor's health itself; the only message is the IS03 of the dead
+tentacle.  A run (2026-10-21) that hit all eight boxes killed exactly the three tentacles of
+the live sub-stage whose flag was set ("tentacle 0/1/2 dead" in the probe log) and left the
+others at 40 hp.
+
+## 14. The branch tables of the five most-called unmarked functions
+
+The call counts are the static `bl` counts in the REL's own text; the class is (a) a copy of
+host/DOL code, (b) the module's own behaviour, (c) unreachable in the shipped data, (d)
+reachable but not run.
+
+| fn | calls | class | branches |
+|---|---|---|---|
+| `fn_16_BD6C` | 6 | (a) the counted reference release (the host's `ncrc_ptr`) | 0xBD90 `bgt` (the count is above 1), 0xBD9C `beq` (the count is 0 -> only the free) |
+| `fn_16_337C` | 6 | (a) the CPASAnimParmData's parm list (the host's constructor fills it) | none - branch free |
+| `fn_16_BDD0` | 5 | (a) the counted reference release | 0xBDF4 `bgt`, 0xBE00 `beq` |
+| `fn_16_3060` | 5 | (b) the 'PLAY' actor - the same body as the marked `fn_16_3094`, so no second marker | none - branch free (a lookup and a cast) |
+| `fn_16_98D0` | 4 | (a) the damage vulnerability copy (the DOL's `LdrToDamageVulnerability`, 0x8023ACFC) | none - branch free |
+| `fn_16_471C` | 4 | (a) the `CJointCollisionDescription`'s copy constructor | none - branch free |
+| `fn_16_6844` | 4 | (a) the connection list's destructor | none - branch free |
+| `fn_16_4640` | 2 | (a) the description's name (a string copy and an append) | none - branch free |
+
+## 15. The tentacle's state 1 -> 2: the joint animation searches had their parameters in the wrong order
+
+**The bug (module-local, fixed)**: fn_16_36E8 builds the three animation parameter sets of every
+joint and searches the PAS database with them.  The retail's parameter ORDER is
+**FromInt32(the index) first and the FromEnum second**: fn_16_337C gets r5 = the FromInt32
+(0x378C, 0x382C, 0x38CC) and r6 = the FromEnum (0x3790, 0x3830, 0x38D0), and the second search's
+FromInt32 is the index too (r22 at 0x3818), not the constant 2.  The port had the FromEnum first
+and the constant 2 in the second search, so the searches answered with the **same** animation for
+several tentacles: the joints 0..2 got (10, 21, 22), (11, 21, 23) and (12, 21, 1), and the joints
+3..7 all got (10, 21, 1) - the joint 0's "out" animation id 10 among them.
+
+The parameter list is matched positionally, so the collision had a visible effect: the joint 3's
+state-2 arm (fn_16_26B8, 0x28A0: it deletes all three animations) deleted the anim id 10, which
+was joint 0's "out" animation.  Joint 0's state-1 arm then found its animation gone
+(`IsAdditiveAnimationActive` false, 0x2798), added it again (0x2808) and the animation restarted -
+so the tentacle never left the state 1 and the "out" animation never reached its end (the state
+becomes 2 when the tree has no time left, 0x2884).  The tentacles stayed half out forever, and
+with them the FSM never reached "AllTentaclesRetracted" (fn_16_4BD4) and so never the heart
+stage.
+
+After the fix every joint has its own three animation ids (10/12/11, 22/1/23, 19/21/20, 7/9/8,
+4/6/5, 13/15/14, 16/18/17, 24/3/2), the tentacle's out animation plays to its end (the tree's
+time 0.500 -> 0.000) and the tentacle reaches the state 2.
+
+**The natural path now works up to the heart stage**: a run that hits the health-bearing
+collision actor of every tentacle (the tentacle's own box, section 13) kills them, the FSM walks
+"Attack" -> "BeginHeartStage" on its own (the console's `obj` prints the state), and the code node
+of section 12 is one step further: the "BeginHeartStage" state's "AnimOver" trigger does not fire
+in the port (the state plays the animation on the connected 'PLAY' actor, while the trigger
+watches the boss's own animation state), so the FSM stays in "BeginHeartStage" and the
+"HeartStage" state is still entered by forcing it.  That trigger is the next thing to look at; the
+fn_16_4954 marker stands on the forced run.
+
+## 16. The "AnimOver" trigger of "BeginHeartStage" - what it reads and why it does not fire
+
+The trigger is the DOL's `CPatterned::GetAnimOver` (fn_80151990, 0x80151990): it reads the
+**owner's own** animation state (the word at the actor + 0x6B4) and answers `state == 3`
+(kAS_Over).  The host's `CPatterned::GetAnimOver`/`AnimOver` does the same through
+`mAnimationState.IsOver()`.  So the trigger watches **the boss's own** animation state, not the
+connected 'PLAY' actor's.
+
+The state writes that word: fn_16_78AC's update (0x7A3C) builds the string "Whole Body"
+(lbl_16_rodata_41C+0x627, 0x7A4C) and calls `IsAnimTimeRemaining(dt, "Whole Body")` on the
+**'PLAY' actor's** animation data (0x7A50: the actor at 0x60(r28) -> its CAnimData at +0x10;
+the call at 0x7A60), and when it answers false the boss's own animation state becomes 3
+(kAS_Over, 0x7A7C).  The port's `BeginHeartStage` does exactly that (`IsAnimTimeRemaining(dt,
+"Whole Body")` on the 'PLAY' actor, then `mAnimationState.SetState(kAS_Over)`), so **the port
+matches the retail here** - there is no mismatch to fix in the module.
+
+Why the trigger does not fire in the port's area-11 scenario (2026-10-21, probe on the state):
+
+* the 'PLAY' actor is the CScriptActor the body is played on (the probe named it: uid u04e8,
+  the CScriptActor at the body's position (1.7, -43.5, 98.1); the boss is u04e3 at
+  (1.7, -43.5, 105.0)).  It is **inactive**: the area's script activates it when the fight
+  starts, and the console's `send u04e3 Activate` only reaches the boss.  An inactive
+  CScriptActor does not think (`CScriptActor::Think`, src/MetroidPrime/ScriptObjects/
+  CScriptActor.cpp:89, returns at once when `!GetActive()`), so its animation never runs.
+  The driver now sends it the message too (`send u04e8 Activate`).
+* even then the animation never ends: the host's `CAnimData::IsAnimTimeRemaining`
+  (src/MetroidPrime/CAnimData.cpp:668) **ignores the "Whole Body" name** and answers with the
+  *root* animation's time remaining, while the retail's takes the animation name - so "the named
+  animation has ended" cannot be asked on the host.  That is shared code and is not changed
+  here; it is reported for the orchestrator.
+
+So the natural heart stage is still one step away: the tentacles are killed and the FSM walks
+into "BeginHeartStage" on its own (section 15), but the state's "AnimOver" trigger needs the
+'PLAY' actor's named animation to end, which the host cannot answer.

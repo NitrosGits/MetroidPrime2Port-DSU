@@ -1141,7 +1141,7 @@ void CDigitalGuardian::Render(const CStateManager& mgr) const {
 // other and render bounds (0xE4). The echo emitter (0xC8), if any, goes inactive with bit 0x08 of
 // 0x128C (extrwi. 1, 28); else, with the beacon model (0x11EC) and its height (0x1264) above 0
 // (.rodata 0x264), it takes the model's bounds at fn_14_2578's transform.
-// Unmarked: area-53 run 37 ran the no-emitter arm only (with and without particle bounds).
+// Unmarked: area-53 runs 37-39 ran the no-emitter arm only (with and without particle bounds).
 void CDigitalGuardian::PreRenderAllViewports(CStateManager& mgr) {
   CPatterned::PreRenderAllViewports(mgr);
   CAABox bounds = GetOtherBounds();
@@ -1187,7 +1187,8 @@ rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
 // GetLctrTransform). With the guard's collision actor (0x10CC) active, its translation plus 4
 // (.rodata 0x2A8) times the scale's z along up; else, with 0x11B8 set, only z becomes the
 // translation's z plus 5 (.rodata 0x27C) times the scale's z. dt is unused.
-// Unmarked: area-53 run 37 ran the active collision actor arm only.
+// Unmarked: area-53 runs 37-39 ran the active collision actor arm and, with the actor inactive
+// and 0x11B8 clear, the locator; the 0x11B8 arm never ran.
 CVector3f CDigitalGuardian::GetAimPosition(const CStateManager& mgr, float dt) const {
   const CVector3f locator = GetLctrTransform(CSegId(x10B8_)).GetTranslation();
   const float scaleZ = GetModelData()->GetScale().GetZ();

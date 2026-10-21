@@ -597,6 +597,18 @@ void CModel::UnlockTextures() {
 
   mInitialTextureLocksReleased = true;
   for (int i = 0; i < mMatSets.size(); ++i) {
+#ifdef TARGET_PC
+    // Host fix: the instance's current set needs CCubeModel::UnlockTextures (as in FrameDone) so it
+    // also clears mLoadTextures. Releasing it through the shader nulls the cached textures while
+    // TryLockTextures still reports them locked, so the next draw binds null CTextures (a crash on
+    // the host; GC reads low memory). Seen when CPlayer builds a transition beam CModelData for a
+    // model already drawn and calls LockTextures (CTexture::Load from CPlayer::Render).
+    if (mModelInstance.get() != nullptr &&
+        mModelInstance->GetTexturesPtr() == &mMatSets[i].mTextures) {
+      mModelInstance->UnlockTextures();
+      continue;
+    }
+#endif
     mMatSets[i].UnlockTextures();
   }
 #ifdef TARGET_PC
