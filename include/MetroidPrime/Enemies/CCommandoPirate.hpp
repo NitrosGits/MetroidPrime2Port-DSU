@@ -441,6 +441,7 @@ private:
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
+  CVector3f xba0_;                         // 0xba0, the charge direction; fn_9_8028 sets it
   CVector3f xbb8_;                         // 0xbb8, the fourth vector; fn_9_BF44 stores a normal
   float xbec_;                            // 0xbec, a float of the jump-back helper fn_9_3900
   CVector3f xbf0_;                         // 0xbf0, the jump-back target; fn_9_3900 reads it

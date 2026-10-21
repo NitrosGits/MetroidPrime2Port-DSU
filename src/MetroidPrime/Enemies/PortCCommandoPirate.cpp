@@ -2924,8 +2924,145 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_9_8028 (0x68c bytes): the shield-charge state - the commando charges at its target with
+// the shield up.
+//
+// On activate (the guest's message 0, 0x00008088) the byte at guest this+0xC65 gets its 0x04 bit
+// (the shield is up), the byte at guest this+0xC66 loses its 0x20 bit, the byte at guest this+0xC64
+// loses its 0x08 and its 0x04 bit, the timer at guest this+0xB84 is zeroed, the word at guest
+// this+0x924 is zeroed, the animation state goes "ready" (guest this+0x6B4 = 1) and the counter
+// at guest this+0xB54 takes the counter at guest this+0xB50 plus one (0x000080DC..0x000080E4).
+// Then the commando asks its team for the attack (0x000080E8..0x00008120) and, when the team lets
+// it, it takes the direction to the target: the horizontal delta from the target (the id at guest
+// this+0xBCA) is normalized, or the actor's own forward column when the delta is not magnitude
+// safe (0x00008124..0x000081B8). That direction goes to guest this+0xBA0, the charge target - the
+// actor's own position plus the block's maximum charge distance (the block's +0x128 = guest
+// this+0x8E8) times that direction - goes to guest this+0xB94, and the charge velocity vector at
+// guest this+0xBB8 is zeroed (0x000081BC..0x00008224).
+//
+// On update (the guest's message 1, 0x00008240) the word at guest this+0x924 picks the part: 0
+// turns towards the charge direction (the angle against 10 degrees, rodata_498, 0x0000825C) and 1
+// charges - the loop-attack command may be issued (the guest's ShouldRetry with the command id 9,
+// 0x000082F4) and the shield's collision actor manager goes active; the charge itself moves the
+// actor along the charge direction at the block's charge speed (the block's +0x12C = guest
+// this+0x8EC) - the direction rotated into the actor's own frame (TransposeRotate) and scaled by
+// the speed and the frame time - until the distance along the facing passes 10 units plus the time
+// the charge takes (0x00008404..0x00008578). The guest's own call on the state machine (its
+// vtable slot 0x30, 0x00008430) has no effect that the port can see and is left out.
+//
+// On deactivate (the guest's message 2, 0x0000859C) the animation state goes "not ready", the body
+// is told to leave the state (the command id 0xa = kBSC_ExitState, 0x000085B4) - and, when the
+// byte at guest this+0xC64 has its 0x04 bit, the abort command (the id 0xd = kBSC_AbortScripted)
+// instead - the word at guest this+0x924 goes -1, the shield's collision actor manager goes
+// inactive, the module's own activate helper (fn_9_1EF8) runs, the team is told the attack is
+// over (0x00008618..0x00008660) and the bytes at guest this+0xC64 and this+0xC65 lose their 0x08
+// and their 0x04 bit.
 void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_8028");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    xc65_ |= 0x04;                    // 0x00008090 (the shield is up)
+    xc66_ &= ~0x20;                   // 0x000080AC
+    xc64_ &= ~0x08;                   // 0x000080BC
+    xc64_ &= ~0x04;                   // 0x000080C8
+    xb84_ = 0.f;                      // rodata_494, 0x000080D0
+    x924_ = 0;                        // 0x000080D4
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x000080D8
+    xb54_ = xb50_ + 1;                // 0x000080DC..0x000080E4
+    if (xbc4_teamId != kInvalidUniqueId &&
+        !CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, xbc4_teamId,
+                                       GetUniqueId())) {  // 0x00008118
+      mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x00008234
+      break;
+    }
+    const CEntity* target = mgr.GetObjectById(xbca_);  // 0x00008134
+    const CActor* targetActor = TCastToConstPtr< CActor >(target);
+    if (targetActor == nullptr) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x00008228
+      break;
+    }
+    // The horizontal delta to the target (the guest zeroes the height, 0x0000817C).
+    const CVector3f delta(targetActor->GetTranslation().GetX() - GetTranslation().GetX(),
+                          targetActor->GetTranslation().GetY() - GetTranslation().GetY(), 0.f);
+    if (delta.IsMagnitudeSafe()) {
+      xba0_ = delta.AsNormalized();            // 0x0000818C..0x00008198
+    } else {
+      xba0_ = GetTransform().GetForward();     // 0x000081A0..0x000081B8
+    }
+    // The charge target: the actor's own position plus the maximum charge distance times the
+    // charge direction (0x000081D8..0x00008208).
+    xb94_ = GetTranslation() + mData.mShield.mChargeMaxAttackDist * xba0_;
+    xbb8_ = CVector3f::Zero();                 // 0x0000820C..0x00008220
+    break;
+  }
+  case kStateMsg_Update: {
+    if (x924_ == 1) {
+      // The charge (the guest's message 1 with the word at guest this+0x924 = 1).
+      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+        // 0x0000830C: the loop-attack command. The guest's payload is the four words
+        // {7, 4, 0, the flag byte}, which is the host's CBCLoopAttackCmd: the loop attack type
+        // 4 (pas::kLAT_Four), no wait for the animation and no skip.
+        BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Four, false));
+        // The guest calls the manager without a test; the host's test covers the window before
+        // the kSM_Create case has built it (the host limit named here).
+        if (mCollisionShield.get() != nullptr) {
+          mCollisionShield->SetActive(mgr, true);  // 0x000083A0
+        }
+      } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
+        // 0x000083A8: the charge movement.
+        const CVector3f toTarget = xb94_ - GetTranslation();
+        const float speed = mData.mShield.mChargeSpeed;  // the block's +0x12C = guest this+0x8EC
+        float time = 0.f;
+        if (speed > 0.f) {
+          time = mData.mShield.mChargeMaxAttackDist / speed;
+        }
+        const float along = CVector3f::Dot(GetTransform().GetForward(), toTarget);
+        if (along > 0.f && (xc64_ & 0x04) == 0) {
+          if (along > 10.f + time) {  // rodata_448, 0x00008444..0x00008454
+            BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00008458 (the id 0xa)
+          } else {
+            const CVector3f local = GetTransform().TransposeRotate(xba0_);  // 0x000084A8
+            MoveInOneFrameOR(local * (speed * dt), dt);                     // 0x000084E8
+            if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {
+              const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00008538
+              MoveInOneFrameOR(push * (speed * dt), dt);                     // 0x00008578
+              xbb8_ = CVector3f::Zero();                                    // 0x0000857C..0x00008594
+            }
+          }
+        } else {
+          BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00008458 (the id 0xa)
+        }
+      }
+    } else if (x924_ == 0) {
+      // 0x0000825C: turn towards the charge direction.
+      if (CVector3f::GetAngleDiff(GetTransform().GetForward(), xba0_) <= 0.17453292f) {
+        x924_ = 1;  // rodata_498, 0x000082E8
+      } else {
+        const CBCLocomotionCmd cmd(CVector3f::Zero(), xba0_, 1.f);  // 0x00008290..0x000082E4
+        BodyController()->CommandMgr().DeliverCmd(cmd);
+      }
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x000085A4
+    BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x000085B4 (the id 0xa)
+    if ((xc64_ & 0x04) != 0) {                                  // 0x000085DC..0x000085E4
+      BodyController()->CommandMgr().DeliverCmd(kBSC_AbortScripted);  // 0x000085EC (the id 0xd)
+    }
+    x924_ = -1;                                        // 0x00008620
+    if (mCollisionShield.get() != nullptr) {
+      mCollisionShield->SetActive(mgr, false);         // 0x0000862C
+    }
+    x1EF8_Activate();                                  // 0x00008634
+    CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Melee, mgr, xbc4_teamId, GetUniqueId(),
+                                false);                // 0x00008660
+    xc64_ &= ~0x08;                                    // 0x0000866C
+    xc65_ &= ~0x04;                                    // 0x00008678
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {

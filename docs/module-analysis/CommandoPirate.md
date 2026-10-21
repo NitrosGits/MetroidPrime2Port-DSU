@@ -568,6 +568,15 @@ CTryCommand::ShouldRetry (0x801B73E4) is exactly the host's CAnimationState::Can
 the same three states (2 repeat, 1 ready, 3 over). The port therefore uses the base's
 `mAnimationState`; there is no `x6b4_` member.
 
+### The charge state (fn_9_8028, 0x68c)
+
+The charge state is host code since 2026-10-21. Its activate (0x00008088) is what puts the
+shield's "up" bit (the byte at guest this+0xC65's 0x04 bit) up and raises the counter at guest
+this+0xB54 (0x000080DC); its update (0x00008240) turns the commando towards the charge direction
+and then charges with it; its deactivate (0x0000859C) takes the shield down again (the byte's
+0x04 bit, 0x00008678) and ends the team's attack. The per-branch table above has the evidence of
+what the run reaches.
+
 ### The module's collision actor managers (fn_9_45A4, 0x304)
 
 fn_9_45A4 is the module's own helper, called by its kSM_Create case. It builds two managers, each
@@ -1062,6 +1071,76 @@ The firing run has one more line in the log: the shots also hit a metroid in the
 module's own stand-in (`CMetroid::ApplyDamageGrowth`) logs a reach-stub. It belongs to the
 metroid's module, not to this one.
 
+### The per-branch table (2026-10-21)
+
+The table below lists every branch of the five functions the task names, with the class the run
+gives it:
+
+- **a** - the branch is compiler-generated (the switch's dispatch, the prologue's own tests).
+- **b** - the branch ran; the probe's line is the line of the temporary probe in the instrumented
+  build (the probes are not committed - the file below is the clean one).
+- **c** - the branch is unreachable with the shipped data; the evidence is in the table.
+- **d** - the branch did not run, so the body gets no `// @ fn_9_<hex>` marker.
+
+The runs that the table draws on are the area 59 runs of 2026-10-21 (`tools/run_gameplay.sh`,
+`TELEPORT=05_temple_federationsite_dark`, the card in /tmp/opencode/u_ds9, `MP2_GODMODE=1`, the
+console's `tp 75.9 371.6 -47.1` over `MP2_CONSOLE` and the console's `face` plus `press a` towards
+the commando's live position, read over the console with `objs commando`). The console has no
+`aim <yaw> <pitch>` command - `face <yaw>` is the flat equivalent, and the commando stands at the
+player's height, so the shot is horizontal.
+
+| function | branch | class | evidence |
+|---|---|---|---|
+| `fn_9_CB40` | the switch's binary search (0x0000CB88..0x0000CCC8) | a | the compiler's own dispatch |
+| | `kSM_Create` (0x0000CCCC) | b | the probe at the port's line 965, once per run |
+| | `kSM_AreaLoaded` (0x0000CE04) | b | the probe at the port's line 1015, once per run |
+| | `kSM_Landed` (0x0000D048) | b | the probe at the port's line 1055 (595-826 per run) |
+| | `kSM_Damage` (0x0000D09C) | b | the probe at the port's line 1061 (6-12 per run) |
+| | `kSM_ResistedDamage` (0x0000D164) | b | the probe at the port's line 1096 (2-3 per run) |
+| | `kSM_OffGround` (0x0000CF54) | b | the probe at the port's line 1116 (97-122 per run) |
+| | `kSM_Launching` (0x0000CFA4) | b | the probe at the port's line 1084, once per run |
+| | `kSM_Delete` (0x0000CCEC) | b | the probe at the port's line 995, at the end of the run |
+| | the default arm (0x0000D278) | b | the probe at the port's line 1137 (1425-5761 per run) |
+| | `kSM_Deactivate` (0x0000CD88) | d | no script connection of this actor sends it in area 59 |
+| | `kSM_Activate` (0x0000CD3C) | d | as above |
+| | `kSM_Escape` (0x0000CF2C) | d | as above |
+| | `kSM_Start` (0x0000D060) | d | as above |
+| | `kSM_Stop` (0x0000D074) | d | as above |
+| | `kSM_AIUpdateDisabled` (0x0000CDD0) | d | as above |
+| | `kSM_HitObject` (0x0000D25C) | c | no host code sends `kSM_HitObject` to an enemy (only the enemies' own handlers read it) and the level's connections for this actor do not either |
+| | `kSM_Alert` (0x0000D088) | d | no script connection of this actor sends it in area 59 |
+| | `kSM_SetToZero` (0x0000CEF8) | d | as above |
+| `fn_9_C798` | the jump table (0x0000C8FC) | a | the compiler's own dispatch |
+| | the default arm | b | the probe at the port's line 1514 (11-235 per run) |
+| | `kUE_BecomeRagDoll` (and `kUE_DeGenerate`, the same case) | b | the probe at the port's line 1471, three times in the run where the shots kill the commando |
+| | `kUE_Projectile` | d | the E-grenade's animation is played by the module's unported grenade state |
+| | `kUE_DamageOn` | d | the base's damage animation can fire it, but the shots that reach the commando do not start that animation in the port |
+| | `kUE_Landing`, `kUE_TakeOff` | d | the module's jump animations come from its unported jet-boost state |
+| | `kUE_BreakLockOn` | d | the shield's lock-on animation comes from the module's unported shield states |
+| | `kUE_EventStart`, `kUE_Activate` | d | the shield's animations come from the module's ArmShield state, which needs the arm chance roll to win |
+| `fn_9_BF44` | the shield's arms (0x0000BF90, 0x0000BFB0, 0x0000C03C, 0x0000C050, 0x0000C134, 0x0000C170, 0x0000C1A4) | d | they need the 0x04 bit of the byte at guest this+0xC65, which only the charge state (fn_9_8028, now ported) sets - and the charge never starts in the run, see below |
+| | the early return (0x0000BF7C) | b | the probe at the port's line 1710 (586-24036 per run) |
+| `fn_9_1C0C` | the early return (0x00001C34) | b | the probe at the port's line 1552 (300-11167 per run) |
+| | the frozen branch (0x00001C3C), the scale (0x00001CB4, 0x00001CE4, 0x00001CEC), the state-1 branch (0x00001D14) and the state-0 block (0x00001E04) | d | they need the module's state word at guest this+0xC4C, which only the shield's animation events (fn_9_1F88, fn_9_1EF8) set, and those need the shield's bits |
+| `fn_9_B250` | the first gate (0x0000B2B8) | b | the probe at the port's line 2152 (10-1377 per run) |
+| | the charge band (0x0000B370) | b | the probe at the port's line 2192 (20-398 per run) |
+| | the flag bytes (0x0000B2C0, 0x0000B2CC), the counter (0x0000B2D4), the target (0x0000B2F8), the height (0x0000B324) and the three rays (0x0000B548, 0x0000B598, 0x0000B5E8) | d | they are only reached when the aggressiveness bit is set, and then the commando has to stand 10 to 20 units from the player - the commando closes to about 2 units, so the band check fails every time (the probe at the port's line 2192) |
+| | the true arm (0x0000B5F4) | d | the band check never passes in the run |
+
+The commando's own data (the module's block) is what the charge needs, and the port prints it
+from the constructor: the shield's arm chance 75.0, the charge band 10.0 to 20.0, the charge
+speed 55.0 and the aggressiveness 25.0. The aggressiveness bit (the 0x40 bit of the byte at guest
+this+0xC64) is set by the module's timer helper (fn_9_662C) when a roll against it wins, so the
+charge needs the commando to be 10 to 20 units away during one of those windows. In the runs
+above the commando walks to about 2 units, so the window and the band rarely meet: the charge
+trigger answered true in one area 59 run of the earlier slice (the module's ShieldCharge state
+logged its stand-in then), which is why the charge state is reachable with the shipped data and
+why fn_9_8028 is ported.
+
+None of the five bodies is marked: every one of them still has a branch in class **d** that the
+port can reach (the shield's own arms, the charge's own arms, the module's own animations and the
+script messages).
+
 ### The shield's own bits (2026-10-21)
 
 The byte at guest this+0xC65 and the byte at guest this+0xC64 decide what the shield does, and
@@ -1084,9 +1163,9 @@ arms stayed out of reach. The shield's "up" bit (0x04) comes only from the charg
 are still stand-ins.
 
 The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_2048` (the
-shield's own effect, 0x330 - the message switch's knock-back helper calls it), `fn_9_3D64`'s
-warp-out helper is ported, and the shield-charge states `fn_9_8028` (0x68c) and `fn_9_7A98`
-(0x590) are what set the shield's "up" bit.
+shield's own effect, 0x330 - the message switch's knock-back helper calls it) and the scripted
+shield charge `fn_9_7A98` (0x590). The charge state `fn_9_8028` (0x68c) and the ArmShield state
+`fn_9_86B4` (0x280) are host code since 2026-10-21.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
@@ -1103,9 +1182,12 @@ warp-out helper is ported, and the shield-charge states `fn_9_8028` (0x68c) and 
   animation state answers it (`mAnimationState.CanIssueCommand`).
 - The module's own shield effect (fn_9_2048, 0x330): the knock-back helper calls it when the
   byte at guest this+0xC66 has its 0x20 bit, and it is a named stand-in.
-- The shield-charge states (fn_9_8028, 0x68c and fn_9_7A98, 0x590): they are what set the
-  shield's "up" bit (the byte at guest this+0xC65's 0x04 bit) and raise the counter at guest
-  this+0xB54, so the shield's collision arms and the charge trigger wait for them.
+- The scripted shield charge (fn_9_7A98, 0x590): the charge state (fn_9_8028) is host code
+  since 2026-10-21, but the scripted variant - the one a script connection enters - is still a
+  stand-in.
+- The shield's own effect (fn_9_2048, 0x330): it builds the shield's explosion out of the
+  module's two CGenDescription tokens (guest this+0xC08 and this+0xC0C), and the retail's
+  constructor leaves both null, so the port keeps the call a named stand-in.
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two
