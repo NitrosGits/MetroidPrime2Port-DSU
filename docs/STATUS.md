@@ -40,7 +40,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (Opus) | `ses_ea3fe1f4dffe4QX8qVsNnhkp9C` | darksamus2 @ `c84700db6` (TravelToCoverPoints 1DF74 + 10 helpers ported, AreaLoaded search area 1E864; 1E360/1E864 marked; boss moves cover to cover) | rest of AreaLoaded + battle stage 0x974 writer, Dash/BreakDash/WasHeavyHit, force missing arms, 0x9FC default |
+| DarkSamus (Opus) | `ses_ea3f74624ffePS7ynoZA3mCGYT` | darksamus2 @ `889368d49` (XALD battle-stage link 0x974/0x978/0xD50; 193A0 is the stage advance, not a ray cast) | attack picker 1954C chain (collectors 197D8/1969C, 14648, 1A980, 19918, 1AA6C), stage advance 193A0/194AC; later Dash/BreakDash/WasHeavyHit, missing arms, 0x9FC (written 0x12DB0, read 0x15718) |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 
