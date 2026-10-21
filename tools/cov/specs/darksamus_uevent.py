@@ -6,7 +6,12 @@
 #   30 every member saved                      99 every member put back (each driver line ends so)
 #   1, 2, 3, 4 the attack 1..4    5 0x40    6 0x80    7 0x100    8 0x20000    9 0x100000
 #   10 0x800000    11 0x1000    12 0x40000    13 0x400000    14 0x80000    19 no attack (0)
-#   15 0x10000
+#   15 0x10000    20 0x20 (the dive)    21 8    22 0x10
+#   40 the dive's bounced bit set until 99 (Landing's bounce)    41 one dash step left until 99
+#   42 the deflect slow-down's time 0xC04 at 0 and the projectiles CanReflectProjectile sees read
+#      kWT_Missile until 99 (with `shoot`, a power shot 40 units out, and key 60's no stage)
+#   43 0xC04 at 1 until 99; 99 also puts the body's time scale back
+#   44 0xD14 at 1 until 99 (SpawnBoostBall's second ctor arm)
 #   60 the next fight-script lookups (GetBattleStage) answer no object: its uid is written
 #      kInvalidUniqueId there until key 99 puts it back (the no-stage arms of the triggers)
 #   61 the stage's fade-out flag (its info's +0x31) reads 1 at the next lookups (written where
@@ -40,15 +45,25 @@ MEMBERS = [('$dsk_ca', '$this->mCurrentAttack'), ('$dsk_a40', '$this->mGuestA40'
            ('$dsk_a78', '$this->mGuestA78'), ('$dsk_ab0', '$this->mGuestAB0'),
            ('$dsk_fo', '$this->mFadeOut'), ('$dsk_sc', '$this->mStageChanged'),
            ('$dsk_c00', '$this->mGuestC00'), ('$dsk_d24', '$this->mGuestD24'),
-           ('$dsk_f5c', '$this->mGuestF5C40'), ('$dsk_uid', '$this->mBattleStageUid.value')]
+           ('$dsk_f5c', '$this->mGuestF5C40'), ('$dsk_uid', '$this->mBattleStageUid.value'),
+           ('$dsk_c04', '$this->mGuestC04'), ('$dsk_ts', '$this->mBodyController.mPtr->mTimeScale'),
+           ('$dsk_bnc', '$this->mDive.mBounced'), ('$dsk_stp', '$this->mDash.mStepsLeft'),
+           ('$dsk_d14', '$this->mGuestD14')]
 V = dict((m, v) for v, m in MEMBERS)
 ATTACKS = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 0x40), (6, 0x80), (7, 0x100), (8, 0x20000), (9, 0x100000),
-           (10, 0x800000), (11, 0x1000), (12, 0x40000), (13, 0x400000), (14, 0x80000), (15, 0x10000), (19, 0)]
+           (10, 0x800000), (11, 0x1000), (12, 0x40000), (13, 0x400000), (14, 0x80000), (15, 0x10000), (20, 0x20), (21, 8), (22, 0x10), (19, 0)]
 SETS = [keep(v, m) for v, m in MEMBERS] + [
     put('$this->mCurrentAttack', V['$this->mCurrentAttack'], *ATTACKS),
     '$dsk_ns = %s ? 1 : (%s || %s ? 0 : ($_isvoid($dsk_ns) ? 0 : $dsk_ns))' % (k(60), k(99), k(30)),
-    '$dsk_ff = %s ? 1 : (%s ? 2 : (%s ? 0 : ($_isvoid($dsk_ff) ? 0 : $dsk_ff)))' % (k(61), k(62), k(30))] + [
-    put(m, v) for v, m in MEMBERS[1:]]
+    '$dsk_ff = %s ? 1 : (%s ? 2 : (%s ? 0 : ($_isvoid($dsk_ff) ? 0 : $dsk_ff)))' % (k(61), k(62), k(30)),
+    '$dsk_mis = %s ? 1 : (%s || %s ? 0 : ($_isvoid($dsk_mis) ? 0 : $dsk_mis))' % (k(42), k(99), k(30))] + [
+    put(m, v) for v, m in MEMBERS[1:-5]] + [
+    put('$this->mGuestC04', '$dsk_c04', (42, 0), (43, 1)),
+    put('$this->mBodyController.mPtr->mTimeScale', '$dsk_ts'),
+    put('$this->mDive.mBounced', '$dsk_bnc', (40, 1)),
+    put('$this->mDash.mStepsLeft', '$dsk_stp', (41, 1)),
+    put('$this->mGuestD14', '$dsk_d14', (44, 1))]
+MISSILE = ['(!$_isvoid($dsk_mis) && $dsk_mis && $rdx) ? (((CWeapon*)$rdx)->mWeaponType = 6) : 0']
 STAGE = ['$this->mBattleStageUid.value = $dsk_ns == 1 ? 0xffff : $this->mBattleStageUid.value']
 FLAG = '((CDarkSamusBattleStage*)$rdi)->mStageInfo.unknown_0x49b9936d'
 STAGEFLAG = ['%s = $dsk_ff == 1 ? 1 : ($dsk_ff == 2 ? 0 : %s)' % (FLAG, FLAG),
@@ -59,4 +74,6 @@ FORCE = [
     ('GetBattleStage', 'CDarkSamus::GetBattleStage(', ['$dsk_ns'], STAGE, 0, 'no stage after key 60'),
     ('stage cast', 'CDarkSamusBattleStage* TCastToPtr<CDarkSamusBattleStage>(CEntity*)', ['$dsk_ff', FLAG],
      STAGEFLAG, 0, 'the fade-out flag after keys 61, 62'),
+    ('CanReflectProjectile', 'CDarkSamus::CanReflectProjectile(', ['$dsk_mis', '(long)$rdx', '(int)$rcx'],
+     MISSILE, 0, 'the projectile reads kWT_Missile after key 42'),
 ]
