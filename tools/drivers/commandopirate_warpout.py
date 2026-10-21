@@ -114,6 +114,11 @@ def main():
         # (the shield's own animation event sets it).
         log("fsm ArmShield: %s" % cmd("fsm %s ArmShield" % target))
         wait_frame(frame() + 30)
+        # the dark beam freezes the commando: the frozen knock-back reaction's rules (the
+        # retail's UNFZ and STFR) set the reaction flags to 1|2 = 3, which the KnockBack
+        # override's "GetUp" arm wants.
+        log("darkburst: %s" % cmd("damage %s 5 darkburst" % target))
+        wait_frame(frame() + 30)
         log("damage: %s" % cmd("damage %s 5" % target))
         wait_frame(frame() + 30)
         log("fsm Dead: %s" % cmd("fsm %s Dead" % target))

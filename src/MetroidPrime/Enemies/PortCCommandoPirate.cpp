@@ -2183,6 +2183,11 @@ bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) co
 // fn_9_BA78: the target the commando holds (the id at guest this+0xBCA) is still in the world.
 // The guest looks it up (the GetObjectById call at 0x0000BA94) and answers whether the lookup
 // found something (the neg/or/srwi pair at 0x0000BA98..0x0000BAA0).
+// run: area 59 (05_temple_federationsite_dark) and the Cliff's entrance, the coverage build
+// (build-port-cov) with tools/cov/run.sh and the gdb spec tools/cov/specs/commandopirate_triggers.py,
+// 2026-10-21: the gcov report has no branch in the body and the trigger answers true and false
+// (the gdb spec's ret counts: true 269 times in area 59, false 295 times in the Cliff).
+// @ fn_9_BA78
 bool CCommandoPirate::HasTarget(CStateManager& mgr, const CTriggerData& data) const {
   return mgr.GetObjectById(xbca_) != nullptr;
 }
@@ -2249,6 +2254,11 @@ bool CCommandoPirate::IsFacingTarget(CStateManager& mgr, const CTriggerData& dat
 // (0x0000B808), cntlzw (0x0000B80C) and srwi r3, r0, 5 (0x0000B810) - one iff the id is 0xFFFF.
 // The host's base carries the same role in its waypoint navigation, as the Grenchler's own
 // AttackPatternOver does.
+// run: area 59 (05_temple_federationsite_dark) and the Cliff's entrance, the coverage build
+// (build-port-cov) with tools/cov/run.sh and the gdb spec tools/cov/specs/commandopirate_triggers.py,
+// 2026-10-21: the gcov report has no branch in the body and the trigger answers true and false
+// (the gdb spec's ret counts: true twice in the Cliff, false 121 times in area 59).
+// @ fn_9_B7FC
 bool CCommandoPirate::AttackPatternOver(CStateManager& mgr, const CTriggerData& data) const {
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }

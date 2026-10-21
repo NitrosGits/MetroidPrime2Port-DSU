@@ -175,14 +175,14 @@ offset	size	fn	kind	class	port	note
 0xB660	0x30	fn_9_B660	fsm-trigger	T	ported	ShouldArmShield
 0xB690	0xDC	fn_9_B690	fsm-trigger	H	ported	ShouldDodge
 0xB76C	0x90	fn_9_B76C	fsm-trigger	H	ported	TooClose
-0xB7FC	0x1C	fn_9_B7FC	fsm-trigger	B	ported	AttackPatternOver
+0xB7FC	0x1C	fn_9_B7FC	fsm-trigger	B	marked	AttackPatternOver
 0xB818	0xE8	fn_9_B818	fsm-trigger	B	marked	IsFacingTarget
 0xB900	0x58	fn_9_B900	fsm-trigger	B	ported	HasAttackPattern
 0xB958	0x38	fn_9_B958	fsm-trigger	B	marked	IsOffPath
 0xB990	0x48	fn_9_B990	fsm-trigger	T	ported	PathOver
 0xB9D8	0x48	fn_9_B9D8	fsm-trigger	T	ported	PathShagged
 0xBA20	0x58	fn_9_BA20	fsm-trigger	B	ported	HasNewTarget
-0xBA78	0x3C	fn_9_BA78	fsm-trigger	H	ported	HasTarget
+0xBA78	0x3C	fn_9_BA78	fsm-trigger	H	marked	HasTarget
 0xBAB4	0x1C	fn_9_BAB4	fsm-trigger	T	ported	HeardShot
 0xBAD0	0x1C	fn_9_BAD0	fsm-trigger	T	ported	UnderFire
 0xBAEC	0xC	fn_9_BAEC	fsm-trigger	T	ported	HasLineOfSight
