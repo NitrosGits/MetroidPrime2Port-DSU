@@ -1,5 +1,6 @@
 #include "texture.hpp"
 
+#include "../gfx/perf.hpp"
 #include "../gfx/recording.hpp"
 #include "../gfx/tex_palette_conv.hpp"
 #include "../gfx/texture_convert.hpp"
@@ -333,6 +334,7 @@ void log_invalid_texture_source(const GXTexObj_& obj, const char* where) noexcep
 }
 
 TextureKeys hash_texture_source(const GXTexObj_& obj, const GXTlutObj_* tlut, bool buildSourceKey) {
+  perf::count(AURORA_PERF_TEX_HASH);
   ZoneScoped;
   const size_t textureBytes = texture::texture_source_size(obj.format(), obj.width(), obj.height(), obj.mip_count());
   // MP2_DEBUG_TEX: what is about to be hashed, for a texture that faults while hashing.
@@ -649,7 +651,10 @@ size_t texture_source_size(u32 format, u32 width, u32 height, u32 mipCount) noex
 
 size_t tlut_source_size(u16 numEntries) noexcept { return static_cast<size_t>(numEntries) * sizeof(u16); }
 
-void invalidate_bindings() noexcept { s_pendingInvalidations.fetch_add(1, std::memory_order_release); }
+void invalidate_bindings() noexcept {
+  perf::count(AURORA_PERF_BIND_INVALIDATE);
+  s_pendingInvalidations.fetch_add(1, std::memory_order_release);
+}
 
 uint64_t current_bind_generation() noexcept {
   apply_pending_invalidations();
@@ -683,20 +688,24 @@ gfx::TextureHandle resolve_static_texture(const GXTexObj_& obj) {
   if (!obj.has_data()) {
     return {};
   }
-  if (!texture_source_is_mapped(obj)) {
-    log_invalid_texture_source(obj, "resolve_static_texture");
-    return {};
-  }
-
   if (obj.texObjId != 0) {
     if (const auto it = s_textureObjectCaches.find(obj.texObjId); it != s_textureObjectCaches.end()) {
       auto& entry = it->second;
       if (entry.handle && entry.texDataVersion == obj.texDataVersion && entry.tlutObjId == 0) {
         entry.lastUsedFrame = s_frameCount;
         ++s_stats.objectHits;
+        perf::count(AURORA_PERF_TEX_OBJ_HIT);
         return entry.handle;
       }
     }
+  }
+
+  perf::count(AURORA_PERF_TEX_OBJ_MISS);
+  // After the object-cache hit, which never reads the source: one mincore per page per draw
+  // was the FIFO thread's top self cost.
+  if (!texture_source_is_mapped(obj)) {
+    log_invalid_texture_source(obj, "resolve_static_texture");
+    return {};
   }
 
   gfx::TextureHandle handle;
@@ -725,6 +734,7 @@ gfx::TextureHandle resolve_static_texture(const GXTexObj_& obj) {
       handle = gfx::new_static_texture_2d(obj.width(), obj.height(), obj.mip_count(), obj.format(),
                                           {static_cast<const uint8_t*>(obj.data), sourceBytes}, false, nameStr);
       ++s_stats.misses;
+      perf::count(AURORA_PERF_TEX_UPLOAD);
       s_stats.uploadBytes += texture_handle_size(handle);
       cache_content_texture(std::move(keys->contentKey), handle);
     }
@@ -741,11 +751,6 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
   if (!obj.has_data()) {
     return {};
   }
-  if (!texture_source_is_mapped(obj)) {
-    log_invalid_texture_source(obj, "resolve_static_palette_texture");
-    return {};
-  }
-
   if (obj.texObjId != 0) {
     if (const auto it = s_textureObjectCaches.find(obj.texObjId); it != s_textureObjectCaches.end()) {
       auto& entry = it->second;
@@ -756,9 +761,18 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
           tlutIt->second.lastUsedFrame = s_frameCount;
         }
         ++s_stats.objectHits;
+        perf::count(AURORA_PERF_TEX_OBJ_HIT);
         return entry.handle;
       }
     }
+  }
+
+  perf::count(AURORA_PERF_TEX_OBJ_MISS);
+  // After the object-cache hit, which never reads the source: one mincore per page per draw
+  // was the FIFO thread's top self cost.
+  if (!texture_source_is_mapped(obj)) {
+    log_invalid_texture_source(obj, "resolve_static_palette_texture");
+    return {};
   }
 
   gfx::TextureHandle handle;
@@ -789,6 +803,7 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
                                           "GX Static Palette Texture");
       handle->hasArbitraryMips = converted.hasArbitraryMips;
       ++s_stats.misses;
+      perf::count(AURORA_PERF_TEX_UPLOAD);
       s_stats.uploadBytes += texture_handle_size(handle);
       cache_content_texture(std::move(keys->contentKey), handle);
     }

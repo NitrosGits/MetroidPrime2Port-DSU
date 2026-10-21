@@ -339,14 +339,14 @@ void CIngExitHostEffect::Think(float dt, CStateManager& mgr) {
 
 // @ fn_29_10EB4
 // vtable 0x18: CEntity's handler (not CActor's), then kSM_Delete drops the move emitter and
-// kSM_Action tells the path search which area's paths to use (the CGrenchler idiom).
+// kSM_AreaLoaded (0x10EF8: 'XALD') tells the path search which area's paths to use.
 void CIngExitHostEffect::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CEntity::AcceptScriptMsg(mgr, msg);
   switch (msg.GetMessage()) {
   case kSM_Delete:
     StopSwarmSfx();
     break;
-  case kSM_Action:
+  case kSM_AreaLoaded:
     mPathFindSearch.SetArea(
         mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
     break;

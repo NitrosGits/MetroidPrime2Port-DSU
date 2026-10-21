@@ -252,6 +252,19 @@ private:
                    // EchoTargetDestroyed; 0x20 stops the body's attacks; 0x08, set by the ctor,
                    // and 0x40 pick the scan info in fn_14_177C8)
   uchar x10F5_;    // 0x10F5: the second flag byte
+
+  // -------------------------------------------------------------------------------------------
+  // The helpers this lane ports: the module's stateless functions that are not FSM handlers
+  // (the bodies are in src/MetroidPrime/Enemies/PortCDigitalGuardianHelpers.cpp; the function
+  // map, the caller map and the arm tables are in
+  // docs/module-analysis/DigitalGuardian_helpers.md). Append-only, so the FSM lane's edits in
+  // the same header merge cleanly.
+  SLdrDigitalGuardianHeadStruct* x10120_(CStateManager& mgr); // fn_14_10120
+  float xF374_() const;             // fn_14_F374: the retreat speed
+  void x11EA8_();                   // fn_14_11EA8: the bomb slots' sounds are stopped
+  void x11F7C_(CStateManager& mgr); // fn_14_11F7C: the echo targets are deleted
+  void x137A8_();                    // fn_14_137A8: the head's armour model
+  rstl::optional_object< CModelData > xEA4_; // 0xEA4: the armour model (fn_14_137A8)
 #else
   uchar x7c0_[0x10F8 - 0x7c0]; // the parameter block and everything above it in retail
 #endif

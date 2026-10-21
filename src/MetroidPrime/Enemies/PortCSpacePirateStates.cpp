@@ -258,7 +258,7 @@ void CSpacePirate::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
 // TargetPlayer call (the asm has only SetLocomotionType and GetCoverPoint) and no Deactivate case:
 // anything below 1 or above 1 falls straight to the epilogue.
 // gcov 2026-10-21: ALL-ARMS. The cover arm is forced once (spacepirate_force4.py: 0x900 = a cover
-// point on one Activate); the fights' Crouch never held one.
+// point on the second Activate, the first takes the no-cover arm); the fights' Crouch never held one.
 // @ fn_72_98D8
 void CSpacePirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
@@ -1220,8 +1220,12 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
 // sets the combat bit, switches bone tracking off and sets 0x8fa bit 0x02. Update skips the hung
 // command while the body still has to turn (more than 15 degrees, rodata 0xBF8) towards that axis;
 // the turn is the usual zero move vector with the axis as the face vector and speed 1 (rodata 0xB54).
-// Only once the body state is kAS_WallHang does it read the state's vtable slot 0x28 and store the
-// negation of its byte into 0x8fa bit 0x02, and it always ends by setting the burst type to 1.
+// Only once the body state is kAS_WallHang does it read the state's vtable slot 0x28 (CanShoot) and
+// store its negation into 0x8fa bit 0x02, and it always ends by setting the burst type to 1.
+// gcov 2026-10-21: every arm but the switch default. The hung arms run naturally in 02_sand_sandfalls
+// L3 (cover point 000a0186); the no-cover-point arm is the first forced Activate of
+// spacepirate_force4.py, whose second Activate takes the cover arm.
+// @ fn_72_69AC
 void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1254,7 +1258,9 @@ void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
       BodyController()->CommandMgr().DeliverCmd(CBCWallHangCmd(mDestObj));
     }
     if (BodyController()->GetCurrentStateId() == pas::kAS_WallHang) {
-      x8fa_30_ = !BodyController()->GetBodyStateInfo().GetCurrentState()->UnkVtable2C();
+      // Vtable slot 0x28 (0x6C64) is CanShoot (CBSWallHang: in the hung sub-state), so the aim
+      // block (UpdateAimBodyState's !x8fa_30_) opens once the pirate hangs.
+      x8fa_30_ = !BodyController()->GetBodyStateInfo().GetCurrentState()->CanShoot();
     }
     mBurstFire.SetBurstType(1);
     break;
@@ -1425,6 +1431,8 @@ void CSpacePirate::Skid(CStateManager& mgr, EStateMsg msg, float dt) {
 // a kBSC_MeleeAttack while the animation state allows one and, once the first hit is over, repeats
 // it as severity two when the target is still inside the melee range and in front (-0.123 of the
 // forward axis); the shadow variant ramps its cloak. Deactivate clears the flags.
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// state (disc scan of every PIRT placement, 2026-10-21).
 void CSpacePirate::DoubleSnap(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1535,6 +1543,8 @@ void CSpacePirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
 // xafc_patrolDestPos to that waypoint. Update (msg 1, asm 0x5DC8) forces the state machine's code
 // trigger once the machine has been in the state for more than 0.1 s (rodata B3C) and the body is not
 // already jumping (body +0x37c != 0xd). Deactivate and messages above 2 do nothing.
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// state (disc scan of every PIRT placement, 2026-10-21).
 void CSpacePirate::Bounce(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Update:
@@ -1567,6 +1577,8 @@ void CSpacePirate::Bounce(CStateManager& mgr, EStateMsg msg, float dt) {
 // model's Y scale (1.5 dt + 0.1, rodata BEC/B3C) plus xa70_intoJumpDist, then marks the jump point in
 // range when its squared distance is below that range squared. Activate (0x5EFC) and Deactivate
 // (0x5FF8) clear the bit.
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// state (disc scan of every PIRT placement, 2026-10-21).
 void CSpacePirate::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::PathFind(mgr, msg, dt);
   switch (msg) {
@@ -1685,7 +1697,8 @@ void CSpacePirate::LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt) {
 // the same generate command while the animation allows kAS_Generate; Deactivate (0x5858) only returns
 // the animation to kAS_NotReady.
 // gcov 2026-10-21: every arm but the switch default; the Update generate arm is forced once
-// (spacepirate_force4.py: body state 0 and kAS_Ready on one Update, as CanIssueCommand needs).
+// (spacepirate_force4.py: body state 0 and kAS_Ready on one Update, as CanIssueCommand needs) and the
+// refused arm once (kAS_NotReady on the 19th Update after it; this build's Captured issues every frame).
 // @ fn_72_5610
 void CSpacePirate::Captured(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {

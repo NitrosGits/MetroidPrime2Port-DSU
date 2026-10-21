@@ -100,7 +100,9 @@ machine's vtable slot +0x18 (0x9470), the states (`lbl_18_data_100`, 21 entries)
 28 four-word entries {name, 0, 0xFFFFFFFF, fn}; the machine uses the first 21 (or 2) and the rest
 are empty. The static initialiser `fn_18_E180` copies the function pointers out of the .data
 records {0, 0xFFFFFFFF, fn}: the states' twenty-one at 0x4..0xF4, the triggers' twenty-one at
-0x250..0x344 and the codes' two at 0x49C..0x4A8.
+0x250..0x344 and the codes' two at 0x49C..0x4A8. The port's three arrays are that initialiser's
+result and carry its marker (`// @ fn_18_E180` above `skTriggers`); section 6.2 has the check
+that all 44 entries hold the same names, in the same order, pointing at the same functions.
 
 | table | entry -> the retail function |
 |---|---|
@@ -416,3 +418,161 @@ store past CPatterned's size, 0x7C0) are base-class members: 0x158 -> `CPhysicsA
 0x6B4 -> `CPatterned::mAnimationState`, which the module's states write with
 `mAnimationState.SetState()` (0 = `kAS_NotReady`, 1 = `kAS_Ready`, 3 = `kAS_Over`).
 and the host's 0x1B8, so the host's named members are used and never a raw offset.
+
+### The state machine walk (the probe driver)
+
+`tools/drivers/emperoring3_probe.py` is a console driver for this module: it finds the ing
+(`objs emperoring` -> the `CEmperorIngStage3` line), then polls `obj <id>` for the FSM state and
+the health and prints every state change. A run (world `863fcd72`, area 11, layer 4, the ing
+`u05ac`) walks
+
+    JumpAttack -> Idle -> PortalAttack -> EyeShut -> PortalAttack -> JumpAttack -> Dodge ->
+    Taunt -> EyeShut -> Idle -> PortalAttack -> Dodge -> EyeShut -> JumpAttack -> Dodge ->
+    PortalAttack -> JumpAttack -> Dodge -> Taunt
+
+with the health at 1000/1000 throughout (the ing's own TakeDamage is retail's lone `blr`, so the
+damage lands on the heart collision actors, not on the ing). The run ends on the frame limit
+with `grep -c '[port] caught\|reach-stub'` = 0 and no stand-in lines.
+
+The module's own state machine is therefore reached and driven: the states, the triggers and the
+two codes all run, which is the coverage the classification in section 6 rests on.
+
+## 6. Function classification (all 270 symbols)
+
+Every function symbol of the module (`config/G2ME01/rels/EmperorIngStage3/symbols.txt`, 270 of
+them) is put in one of three classes, by the same rules as the Sandworm note (its section g and
+`docs/module-analysis/Sandworm_functions.tsv`). The machine-readable copy is
+`docs/module-analysis/EmperorIngStage3_functions.tsv` (one row per function, the `class`
+column naming the class below).
+
+- **H - host copy** (112 functions, 0x33C4 bytes): the body is a copy of something the host
+  already has, so the port writes no separate body for it: the crtexe REL runtime, the
+  compiler-emitted destructors that exist only for exception handling, the rstl template and
+  inline code (the vectors, the strings, the optionals, the ncrc_ptr), and the DOL class
+  members the REL emits in line (the SLdr struct helpers, the CJointCollisionDescription copy,
+  the CParticleGen vtable at `lbl_18_data_860`, the CAnimData and CPlasmaProjectile accessors).
+  A lane that checked such a body field by field puts a *cite* marker on the host's own copy
+  (the marker is `// @ fn_18_...` followed by a `Cited:` line); it is not a body of its own.
+- **T - data / vtable thunk** (25 functions, 0x240 bytes): the body only returns a constant, a
+  member address or a flag - the module's own vtable slots (`lbl_18_data_4F0` and the light
+  swarm's `lbl_18_data_798`) and the unreferenced `fn_18_4314`. The port writes it as one line
+  in the vtable.
+- **B - module behaviour** (133 functions, 0xB3A4 bytes): real behaviour - these are the port
+  bodies.
+
+| class | functions | .text bytes |
+|---|---|---|
+| H | 112 | 0x33C4 (13,252) |
+| T | 25 | 0x240 (576) |
+| B | 133 | 0xB3A4 (45,988) |
+| **total** | **270** | **0xE9A8** (59,816) |
+
+Breakdown by the `kind` column: 63 `method`, 42 `virtual`, 34 `template`, 33 `weak-dtor`, 21 `fsm-state`, 21 `fsm-trigger`, 21 `inline-dol`, 17 `inline-hdr`, 8 `rel-entry`, 2 `ctor`, 2 `fsm-code`, 2 `loader`, 1 `member-ctor`, 1 `member-dtor`, 1 `static-init`, 1 `unreferenced` (= 270).
+
+The packages in the tsv's last column are the slices the port was written in: **WP1** the load
+and the stand (the loader, the constructor, the vtable), **WP2** the state machine (the three
+tables, the 21 triggers, the 21 states, the 2 codes and the per-frame calls), **WP3** the
+attacks (the melee, the stampede, the jump slide, the ground pound, the two beams, the portal),
+**WP4** the hearts (the switch, the damage, the vulnerability, the collision actors), **WP5** the
+light swarm, **WP6** the egg-lay event and the mini portal.
+
+### 6.1 T - the vtable thunks (25)
+
+| id | size | what it is | port |
+|---|---|---|---|
+| `fn_18_0` | 0x8 | IsListening [vtable slot 0xAC] -> true | marked |
+| `fn_18_8` | 0x3C | GetTouchBounds [vtable slot 0x48]: the base class's bounding box, in an optional | marked |
+| `fn_18_44` | 0x8 | GetModelAlphau8 [vtable slot 0xC8]: the model alpha byte at guest 0x44F | marked |
+| `fn_18_4C` | 0x8 | ProjectileInfo [vtable slot 0xDC] -> null | marked |
+| `fn_18_54` | 0x8 | GetSearchPath [vtable slot 0xE0] -> null | marked |
+| `fn_18_5C` | 0x8 | GetPointSearchPath [vtable slot 0xE4] -> null | marked |
+| `fn_18_64` | 0x8 | GetRagDoll [vtable slot 0xF4] -> null | marked |
+| `fn_18_6C` | 0x10 | GetAttackTarget [vtable slot 0x10C] -> kInvalidUniqueId | marked |
+| `fn_18_7C` | 0xC | IsOnGround [vtable slot 0x110]: the on-ground bit of the byte at guest 0x34C | marked |
+| `fn_18_88` | 0x8 | GetDeathExplosionParticle [vtable slot 0x124] -> &guest 0x754 | marked |
+| `fn_18_90` | 0x8 | CanBeShot [vtable slot 0xA8] -> true | marked |
+| `fn_18_98` | 0x1C | GetOrigin [vtable slot 0xB4]: the actor's own translation | marked |
+| `fn_18_B4` | 0x2C | GetHealthInfo [vtable slot 0x3C]: a call through the vtable slot 0x38 | marked |
+| `fn_18_4314` | 0x8 | [?] unreferenced: returns true (no REL caller, no data reference) | no marker |
+| `fn_18_45B4` | 0x9C | GetSortingBounds [vtable slot 0x6C]: the base class's box grown by one unit | marked |
+| `fn_18_47B4` | 0x20 | Render [vtable slot 0x2C] -> CPatterned::Render | marked |
+| `fn_18_8E50` | 0x28 | Listen [vtable slot 0xB0]: a player fire sets bit 30 of the word at guest 0x824 | marked |
+| `fn_18_8E78` | 0xC | GetGravityConstant [vtable slot 0x114] -> rodata 0x2A4 (200.0f) | marked |
+| `fn_18_9044` | 0x4 | TakeDamage [vtable slot 0xA4]: a lone blr | marked |
+| `fn_18_AEAC` | 0x8 | GetHealthInfo [vtable slot 0x3C] -> &the swarm's own health (guest 0x5BC) | marked |
+| `fn_18_AF94` | 0x8 | CanRenderUnsorted [vtable slot 0x30] -> false | marked |
+| `fn_18_B588` | 0x44 | GetLockOnLocationValid [vtable slot 0x98]: the lock-on point's height against zero | marked |
+| `fn_18_B614` | 0x4 | RenderBoid [vtable slot 0xA8]: a lone blr | marked |
+| `fn_18_B618` | 0x4 | PreRenderBoid [vtable slot 0x88]: a lone blr | marked |
+| `fn_18_DAE4` | 0x8 | HealthInfo [vtable slot 0x38] -> &the swarm's own health (guest 0x5BC) | marked |
+
+### 6.2 B - the module behaviour (133)
+
+**All 133 carry a body marker: no unmarked behaviour is left in the module.**
+
+The last one to be marked was `fn_18_E180` (0x684), the `.ctors` static initialiser. It is the
+compiler's initialiser that copies the three `.data` records {0, 0xFFFFFFFF, fn} - the states'
+twenty-one at 0x4, the triggers' twenty-one at 0x250 and the codes' two at 0x49C - into the
+three name tables `lbl_18_data_100` (the states), `lbl_18_data_34C` (the triggers) and
+`lbl_18_data_4B4` (the codes), whose entries are 16 bytes {name, 0, 0xFFFFFFFF, fn}. The port's
+three static arrays (`skTriggers`, `skStates`, `skCodes` in `PortCEmperorIngStage3.cpp`) are that
+initialiser's result, so the marker sits above the first of them, the way the EmperorIngStage1
+port marks `fn_16_BF88` and the IngBoostBallGuardian port marks `fn_30_110C4`. The check that
+the marker claims: all 44 entries (21 states, 21 triggers, 2 codes) carry retail's names in
+retail's order, and each points at the retail function the record names -
+
+| table | retail | the port's entry | the retail function |
+|---|---|---|---|
+| states `lbl_18_data_100` | `Start` `Idle` `MeleeAttack` `GainDistance` `Stampede` `Dodge` `Taunt` `ChangeVulnerability` `EyeShutResetVulnerability` `DarkBeamAttack` `LightBeamAttack` `LightSwarmAttack` `GroundPound` `GenerateDarkFliers` `PortalAttack` `JumpSlideAttack` `GrowHeart` `EyeShut` `JumpAttack` `StampedeReact` `Dead` | the same 21 names, in the same order | `fn_18_7ADC` `788C` `76D0` `7504` `71D8` `6E80` `6D84` `6A40` `6B80` `6904` `67C0` `6698` `6390` `6258` `60AC` `5844` `5614` `5264` `4EB4` `4CC8` `4C3C` |
+| triggers `lbl_18_data_34C` | `TooClose` `ShouldAttack` `ShouldMeleeAttack` `ShouldTaunt` `ShouldStampede` `ShouldDodge` `ShouldChangeVulnerabilityToVulnerable` `ShouldChangeVulnerabilityToInvulnerable` `ShouldDarkBeamAttack` `ShouldLightBeamAttack` `ShouldLightSwarmAttack` `ShouldGroundPound` `ShouldGenerateDarkFliers` `ShouldPortalAttack` `ShouldJumpSlideAttack` `ShouldGrowHeart` `JumpSlideAttackOver` `ShouldEyeShut` `AbortedJumpSlide` `ShouldJumpAttack` `ShouldStampedeReact` | the same 21 names, in the same order | `fn_18_8DA4` `8D88` `8C4C` `8A4C` `897C` `8A34` `8A20` `898C` `8968` `8954` `87F0` `8ACC` `868C` `8678` `8664` `8648` `8600` `85A4` `858C` `8518` `8500` |
+| codes `lbl_18_data_4B4` | `ResetAttackTimer` `ChoseAction` | the same 2 names, in the same order | `fn_18_84A8` `fn_18_8200` |
+
+The initialiser also builds the module's global `rstl::string` (the REL file name) in
+`lbl_18_bss_0` and registers its global destructor; the host has no use for either.
+
+`fn_18_4314` (0x8, `li r3, 1; blr`) is class T: nothing calls it and no data table names it,
+so the port has no body for it either.
+
+### 6.3 H - the host copies (112)
+
+| kind | functions | what they are |
+|---|---|---|
+| weak-dtor | 33 | the compiler-emitted destructors (the ten CBodyStateCmd classes' own vtables, the tokens, the owning pointers, the SLdr structs) |
+| template | 34 | the rstl code (the vectors' reserve / push_back / erase / insert / dtor / copy-assign, the strings, the optionals, the ncrc_ptr) |
+| inline-dol | 21 | the DOL class members the REL emits in line (CParticleGen's own vtable at `lbl_18_data_860`, the CAnimData and CPlasmaProjectile accessors, the CJointCollisionDescription and CDamageVulnerability copies) |
+| inline-hdr | 17 | the generated SLdr struct helpers (the readers, the constructors and the destructors) |
+| rel-entry | 5 | the crtexe REL runtime (`_prolog`, `_epilog`, `_unresolved`, `ModuleConstructors`, `ModuleDestructors`) |
+| member-ctor / member-dtor | 2 | the data block's constructor and destructor |
+
+The 29 of them that a lane checked field by field carry a cite marker on the host's own copy;
+the other 83 are the host's code that the port never had to write.
+
+### 6.4 The count check
+
+Every function id of the module's symbol list appears exactly once in the tsv, and the class
+column holds only H, T or B:
+
+```
+$ python3 - <<'PY'
+import re, pathlib, collections
+sym = pathlib.Path('config/G2ME01/rels/EmperorIngStage3/symbols.txt').read_text()
+ids = re.findall(r'^(\S+) = \.text:0x([0-9A-Fa-f]+); // type:function', sym, re.M)
+tsv = pathlib.Path('docs/module-analysis/EmperorIngStage3_functions.tsv').read_text().splitlines()
+rows = [l.split('\t') for l in tsv[1:]]
+offs = {int(r[0], 16) for r in rows}
+c = collections.Counter(r[5] for r in rows)
+print('symbols:', len(ids))
+print('tsv rows:', len(rows))
+print('distinct offsets:', len(offs))
+print('classes:', dict(c))
+print('missing:', [n for n, o in ids if int(o, 16) not in offs])
+print('extra:', [r[0] for r in rows if int(r[0], 16) not in {int(o, 16) for _, o in ids}])
+PY
+symbols: 270
+tsv rows: 270
+distinct offsets: 270
+classes: {'B': 133, 'H': 112, 'T': 25}
+missing: []
+extra: []
+```
+

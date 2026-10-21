@@ -176,13 +176,17 @@ bool CSpacePirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const
   return result;
 }
 
-// fn_72_AA64. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// fn_72_AA64.
 // Retail: the point that is tested is the pirate's own target position (fn_72_CB30), not the
 // player. Inside the minimum attack range (0x3dc) the cover is not blown yet, so the trigger is
 // true. Outside it the cover point reports whether that target is inside its safe angle
 // (fn_800EC5A0). A cover that is not blown but more than 3 * scaleY away from the pirate (the
 // model's Y scale, 0x60) also counts as blown - the asm compares the squared distance with
 // 3.0 * scaleY, it does not square the radius.
+// gcov 2026-10-21: ALL-ARMS. Sandfalls L3 pirates in PathFind/TargetCover give the cover-point arms;
+// spacepirate_force5.py forces the rest one call each: the minimum attack range, a stopped pirate far
+// from its cover, the same pirate near it (scale Y), and the same pirate stepping (kAS_Step).
+// @ fn_72_AA64
 bool CSpacePirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   bool result = true;
@@ -250,7 +254,14 @@ bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) co
   return result;
 }
 
-// fn_72_A71C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// fn_72_A71C. Unmarked: Cover's LineOfSight->TargetPlayer chain reaches it only after RandomDelay 5
+// and Delay 0.5, and the fights leave Cover sooner; spacepirate_force6.py (Cover state time 5.1)
+// gives one call, 8 of 20 edges untaken. The rest needs, at one ShouldAttack call: an attack target
+// that is not a CPlayer (one-call force of 0xa94), and four other live pirates in this area with
+// 0x8f6 bit 31 set (Attack, CoverAttack, WallHang, Skid) closer to the player than this one, while
+// this one stays in Cover with a held, unblown cover point. Console staging (four pirates placed in
+// front of the player and sent to Attack, #173 put on cover 001d01e9 and sent to Cover, the player
+// 10 or 30 units off on either side) fails: CoverBlown fires on Cover's first Update (2026-10-21).
 // The asm casts the attack target to CPlayer (it does not compare ids as MP1 does) and then refuses
 // the attack while more than three other pirates, alive and in the attack state in this area, are
 // closer to that player than this one.
@@ -638,10 +649,14 @@ bool CSpacePirate::ShouldStrafe(CStateManager& mgr, const CTriggerData& data) co
   return result;
 }
 
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// trigger (disc scan of every PIRT placement, 2026-10-21).
 bool CSpacePirate::ShouldSpecialAttack(CStateManager& mgr, const CTriggerData& data) const {
   return x8f4_29_onlyAttackInRange && !mBurstFire.IsBurstSet() && mAttackRemTime > 2.f;
 }
 
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// trigger (disc scan of every PIRT placement, 2026-10-21).
 bool CSpacePirate::StartAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (x8f8_31_mayStartAttack) {
     const_cast< CSpacePirate* >(this)->x8f8_31_mayStartAttack = false;
@@ -657,6 +672,8 @@ bool CSpacePirate::BreakAttack(CStateManager& mgr, const CTriggerData& data) con
   return x8f5_25_breakAttack;
 }
 
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// trigger (disc scan of every PIRT placement, 2026-10-21).
 bool CSpacePirate::LostInterest(CStateManager& mgr, const CTriggerData& data) const {
   return x8f4_29_onlyAttackInRange && mAttackRemTime < 1.5f;
 }
@@ -678,6 +695,8 @@ bool CSpacePirate::LostInterest(CStateManager& mgr, const CTriggerData& data) co
 // The winner's current waypoint (0x180) decides: only if it still resolves does the pirate get
 // the jump point's translation as its destination, its id (0xb14), its jump apex (0x158 ->
 // 0xaf8) and the current waypoint's translation (0xafc).
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// trigger (disc scan of every PIRT placement, 2026-10-21).
 bool CSpacePirate::BounceFind(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   bool result = false;

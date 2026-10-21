@@ -44,6 +44,10 @@ public:
   void SetTimeRemaining(float time) { mTimeRemaining = time; } // Guessed name
   bool GetInUse(TUniqueId uid) const;
   bool GetInUseIgnoreLock(TUniqueId uid) const;
+#ifdef TARGET_PC
+  // The port console's `hint <id> <type>`: a hint type the area does not ship, for coverage runs.
+  void PortSetHintType(EHintType type) { mHintType = type; }
+#endif
 
 private:
   EHintType mHintType;

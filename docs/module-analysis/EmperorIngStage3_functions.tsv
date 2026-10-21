@@ -1,0 +1,271 @@
+offset	size	owner	name	kind	class	callers	dol_counterpart	package
+0xC30C	0x24	(module)	RELExit (the REL exit stub)	rel-entry	B	-	-	WP1
+0xC330	0x20	(module)	RELMain (the REL entry stub)	rel-entry	B	-	-	WP1
+0xE804	0xC4	(module)	crtexe REL runtime: the unresolved stub	rel-entry	H	-	crtexe REL runtime (_unresolved)	-
+0xE8C8	0x24	(module)	crtexe REL runtime: the epilogue stub	rel-entry	H	-	crtexe REL runtime (_epilog)	-
+0xE8EC	0x24	(module)	crtexe REL runtime: the prologue stub	rel-entry	H	-	crtexe REL runtime (_prolog)	-
+0xE910	0x4C	(module)	crtexe REL runtime: the module destructor table	rel-entry	H	-	crtexe REL runtime (ModuleDestructors)	-
+0xE95C	0x4C	(module)	crtexe REL runtime: the module constructor table	rel-entry	H	-	crtexe REL runtime (ModuleConstructors)	-
+0x0	0x8	CEmperorIngStage3	IsListening [vtable slot 0xAC] -> true	virtual	T	lbl_18_data_4F0+172	CActor::IsListening (module override)	WP1
+0x8	0x3C	CEmperorIngStage3	GetTouchBounds [vtable slot 0x48]: the base class's bounding box, in an optional	virtual	T	lbl_18_data_4F0+72	CActor::GetTouchBounds (module override)	WP1
+0x44	0x8	CEmperorIngStage3	GetModelAlphau8 [vtable slot 0xC8]: the model alpha byte at guest 0x44F	virtual	T	lbl_18_data_4F0+200	CActor::GetModelAlphau8 (module override)	WP1
+0x4C	0x8	CEmperorIngStage3	ProjectileInfo [vtable slot 0xDC] -> null	virtual	T	lbl_18_data_4F0+220	CActor::ProjectileInfo (module override)	WP1
+0x54	0x8	CEmperorIngStage3	GetSearchPath [vtable slot 0xE0] -> null	virtual	T	lbl_18_data_4F0+224	CActor::GetSearchPath (module override)	WP1
+0x5C	0x8	CEmperorIngStage3	GetPointSearchPath [vtable slot 0xE4] -> null	virtual	T	lbl_18_data_4F0+228	CActor::GetPointSearchPath (module override)	WP1
+0x64	0x8	CEmperorIngStage3	GetRagDoll [vtable slot 0xF4] -> null	virtual	T	lbl_18_data_4F0+244	CActor::GetRagDoll (module override)	WP1
+0x6C	0x10	CEmperorIngStage3	GetAttackTarget [vtable slot 0x10C] -> kInvalidUniqueId	virtual	T	lbl_18_data_4F0+268	CActor::GetAttackTarget (module override)	WP1
+0x7C	0xC	CEmperorIngStage3	IsOnGround [vtable slot 0x110]: the on-ground bit of the byte at guest 0x34C	virtual	T	lbl_18_data_4F0+272	CActor::IsOnGround (module override)	WP1
+0x88	0x8	CEmperorIngStage3	GetDeathExplosionParticle [vtable slot 0x124] -> &guest 0x754	virtual	T	lbl_18_data_4F0+292	CActor::GetDeathExplosionParticle (module override)	WP1
+0x90	0x8	CEmperorIngStage3	CanBeShot [vtable slot 0xA8] -> true	virtual	T	lbl_18_data_4F0+168	CActor::CanBeShot (module override)	WP1
+0x98	0x1C	CEmperorIngStage3	GetOrigin [vtable slot 0xB4]: the actor's own translation	virtual	T	lbl_18_data_4F0+180	CActor::GetOrigin (module override)	WP1
+0xB4	0x2C	CEmperorIngStage3	GetHealthInfo [vtable slot 0x3C]: a call through the vtable slot 0x38	virtual	T	lbl_18_data_4F0+60	CActor::GetHealthInfo (module override)	WP1
+0xE0	0x18	CPlasmaProjectile	the beam's expansion state (the vtable slot 0x90)	inline-dol	H	fn_18_5844	CPlasmaProjectile (header inline)	-
+0xF8	0x11C	CEmperorIngStage3	the look check: the angle to the player against the caller's limit in degrees	method	B	fn_18_431C fn_18_4344 fn_18_436C fn_18_4468 fn_18_44C4 fn_18_4528 fn_18_458C fn_18_6E80 fn_18_8518 fn_18_85A4 fn_18_898C fn_18_8A4C	-	WP2
+0x214	0x48	CEmperorIngStage3	a heart's collision actor is switched on or off	method	B	fn_18_3BB0 fn_18_5844	-	WP4
+0x25C	0x150	CEmperorIngStage3	the room ahead: a ray along the facing, the distance to the hit	method	B	fn_18_5844	-	WP3
+0x3AC	0x5C	CRayCastResult	the copy of the ray's result	inline-dol	H	fn_18_25C fn_18_1A54 fn_18_71D8	CRayCastResult (header inline)	-
+0x408	0xC8	CEmperorIngStage3	the heart ChangeVulnerability turns on	method	B	fn_18_6A40	-	WP4
+0x4D0	0x3C0	CEmperorIngStage3	the egg-lay event: one Ing mini portal (module 29) per event	method	B	fn_18_9048	-	WP6
+0x890	0x50	rstl	the rstl::string destructor	template	H	-	rstl::string (header inline)	-
+0x8E0	0x58	rstl	the optional_object<CToken> destructor	template	H	fn_18_4D0 fn_18_BB8 fn_18_9048	rstl::optional_object (header inline)	-
+0x938	0x54	rstl	the TToken destructor	template	H	fn_18_8E0 fn_18_BB8 fn_18_9048	TToken (header inline)	-
+0x98C	0x74	SLdr	the SLdrPlasmaBeamInfo and CToken destructors	inline-hdr	H	-	SLdrPlasmaBeamInfo (header inline)	-
+0xA00	0xA4	CEmperorIngStage3	the share of the ing's health lost	method	B	fn_18_5614	-	WP4
+0xAA4	0x60	CEmperorIngStage3	a stage's action record	method	B	fn_18_8200	-	WP3
+0xB04	0xB4	CEmperorIngStage3	the stage record for the actor's health	method	B	fn_18_8200 fn_18_84A8	-	WP3
+0xBB8	0x204	CEmperorIngStage3	the light swarm: spawn, update and draw order	method	B	fn_18_9048	-	WP5
+0xDBC	0x84	CEmperorIngStage3	the actor's "DarkBeam_LCTR_SDK" locator (rodata 0xA8) in world space	method	B	fn_18_F8 fn_18_1370 fn_18_1530	-	WP3
+0xE40	0x41C	CEmperorIngStage3	the per-frame light-swarm, effect and portal-actor update	method	B	fn_18_47D4	-	WP5
+0x125C	0x68	CEmperorIngStage3	the module watches the object its id at guest 0x8C0 names	method	B	fn_18_47D4	-	WP5
+0x12C4	0xAC	CEmperorIngStage3	the beam is reset and deleted	method	B	fn_18_67C0 fn_18_6904 fn_18_9048	-	WP3
+0x1370	0x1C0	CEmperorIngStage3	the beam steers towards the player	method	B	fn_18_47D4	-	WP3
+0x1530	0x3B4	CEmperorIngStage3	the beam start	method	B	fn_18_9048	-	WP3
+0x18E4	0x94	CEmperorIngStage3	the copy of the beam info	method	B	fn_18_1530	-	WP3
+0x1978	0xDC	CEmperorIngStage3	the flag check over the list at guest 0x850	method	B	fn_18_47D4	-	WP2
+0x1A54	0x134	CEmperorIngStage3	the look along the actor's facing: true when the way is clear	method	B	fn_18_6E80 fn_18_7504 fn_18_788C	-	WP2
+0x1B88	0x28	CEmperorIngStage3	the heart switch with no heart (3)	method	B	fn_18_9048	-	WP4
+0x1BB0	0x28	CEmperorIngStage3	the heart switch with the heart that is on	method	B	fn_18_5264 fn_18_6B80 fn_18_9048	-	WP4
+0x1BD8	0x5C	CEmperorIngStage3	both hearts get the module's vulnerability	method	B	fn_18_5264 fn_18_6E80	-	WP4
+0x1C34	0x98	CEmperorIngStage3	the first heart's vulnerability is saved and both hearts turn immune	method	B	fn_18_5614 fn_18_6B80 fn_18_6E80 fn_18_9048	-	WP4
+0x1CCC	0x5C	CDamageVulnerability	the copy of the heart vulnerability	inline-dol	H	fn_18_1C34	CDamageVulnerability (header inline)	-
+0x1D28	0xC0	rstl	the rstl::vector copy assignment (the module's list)	template	H	fn_18_1CCC	rstl::vector (header inline)	-
+0x1DE8	0xC	rstl	the rstl::vector count clear (the module's list)	template	H	fn_18_1D28	rstl::vector (header inline)	-
+0x1DF4	0x4A4	CEmperorIngStage3	the heart switch (0 enraged, 1 dark, 2 light)	method	B	fn_18_1B88 fn_18_1BB0 fn_18_5614 fn_18_6A40 fn_18_6B80 fn_18_7ADC	-	WP4
+0x2298	0x24	CEmperorIngStage3	the taunt average over the list at guest 0x840	method	B	fn_18_8A4C	-	WP2
+0x22BC	0x24	CEmperorIngStage3	the module's average over the list at guest 0x830	method	B	fn_18_8C4C	-	WP2
+0x22E0	0x4C0	CEmperorIngStage3	the charge contact (the stampede and the jump slide)	method	B	fn_18_47D4	-	WP3
+0x27A0	0x3C	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted destructor	-
+0x27DC	0x38C	CEmperorIngStage3	the melee contact	method	B	fn_18_47D4	-	WP3
+0x2B68	0x88	CEmperorIngStage3	the entry kinds for the list at guest 0x840	method	B	fn_18_6D84 fn_18_6E80 fn_18_76D0	-	WP2
+0x2BF0	0xA8	CEmperorIngStage3	the entry kinds for the list at guest 0x830	method	B	fn_18_3164 fn_18_7504 fn_18_76D0	-	WP2
+0x2C98	0x20	CEmperorIngStage3	the actor's facing, flattened to XY	method	B	fn_18_71D8 fn_18_8C4C fn_18_8DA4	-	WP2
+0x2CB8	0x64	CEmperorIngStage3	the distance from the actor to the player	method	B	fn_18_1978 fn_18_5844 fn_18_71D8	-	WP2
+0x2D1C	0x34	CEmperorIngStage3	the vector from the actor to the player, flattened to XY	method	B	fn_18_27DC fn_18_4EB4 fn_18_5844 fn_18_6E80 fn_18_71D8 fn_18_7504 fn_18_76D0 fn_18_8C4C fn_18_8DA4	-	WP2
+0x2D50	0x1B4	CEmperorIngStage3	the contact damage	method	B	fn_18_7B14	-	WP3
+0x2F04	0x1BC	CEmperorIngStage3	the heart hit timer and the hearts' reactions	method	B	fn_18_3448	-	WP4
+0x30C0	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_780)	weak-dtor	H	lbl_18_data_780+8	the host CBodyStateCmd destructor	-
+0x311C	0x48	(weak)	the CBodyStateCmd class destructor (vtable data_78C)	weak-dtor	H	lbl_18_data_78C+8	the host CBodyStateCmd destructor	-
+0x3164	0x288	CEmperorIngStage3	one heart's damage reaction	method	B	fn_18_2F04	-	WP4
+0x33EC	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_774)	weak-dtor	H	lbl_18_data_774+8	the host CBodyStateCmd destructor	-
+0x3448	0x1AC	CEmperorIngStage3	the heart damage update and the heart effect's params	method	B	fn_18_47D4	-	WP4
+0x35F4	0x54	(weak)	the CElementGen destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0x3648	0x24	CAnimData	the copy of the particle system reference	inline-dol	H	fn_18_3448	CAnimData (header inline)	-
+0x366C	0x50	(weak)	the CElementGen destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0x36BC	0x88	CEmperorIngStage3	the damage's source id against the two hearts' ids	method	B	fn_18_7B14	-	WP4
+0x3744	0xC0	CEmperorIngStage3	the angle snapped to the nearest 45 degrees	method	B	fn_18_3804	-	WP2
+0x3804	0x19C	CEmperorIngStage3	the turn towards a position (writes guest 0x818)	method	B	fn_18_4CC8 fn_18_788C	-	WP2
+0x39A0	0x40	CVector3f	the cross product of two vectors (inlined math)	inline-dol	H	fn_18_3804	CVector3f (header inline)	-
+0x39E0	0xA4	CEmperorIngStage3	the actor is a target while either heart is active	method	B	fn_18_47D4	-	WP4
+0x3A84	0x48	CEmperorIngStage3	the heart's collision description	method	B	fn_18_39E0 fn_18_8E84	-	WP4
+0x3ACC	0x48	CEmperorIngStage3	the collision actor of a heart	method	B	fn_18_214 fn_18_1BD8 fn_18_1C34 fn_18_1DF4 fn_18_3164 fn_18_36BC fn_18_3BB0	-	WP4
+0x3B14	0x50	CEmperorIngStage3	the module's heart record (0 the first, 1 the second)	method	B	fn_18_3A84 fn_18_3ACC fn_18_8E84	-	WP4
+0x3B64	0x28	CEmperorIngStage3	the collision actor manager's update	method	B	fn_18_47D4	-	WP4
+0x3B8C	0x24	CEmperorIngStage3	the collision actor manager's destroy	method	B	fn_18_7B14	-	WP4
+0x3BB0	0x450	CEmperorIngStage3	the leg boxes and the three spheres (two of them the hearts)	method	B	fn_18_7B14	-	WP4
+0x4000	0x38	rstl	the CJointCollisionDescription vector's push helper (the collision actors)	template	H	fn_18_3BB0	rstl::vector (header inline)	-
+0x4038	0x20	rstl	the CJointCollisionDescription vector's push helper (the collision actors)	template	H	fn_18_4000 fn_18_DDC4	rstl::vector (header inline)	-
+0x4058	0x28	rstl	the CJointCollisionDescription vector's push helper (the collision actors)	template	H	fn_18_4038	rstl::vector (header inline)	-
+0x4080	0xC0	CJointCollisionDescription	the copy of a CJointCollisionDescription	inline-dol	H	fn_18_3BB0 fn_18_4058	CJointCollisionDescription (header inline)	-
+0x4140	0x5C	rstl	the rstl::string destructor	template	H	-	rstl::string (header inline)	-
+0x419C	0x5C	rstl	the rstl::string append	template	H	fn_18_3BB0	rstl::string (header inline)	-
+0x41F8	0x84	rstl	the rstl::vector destructor (the collision actors)	template	H	fn_18_3BB0	rstl::vector (header inline)	-
+0x427C	0x38	rstl	the rstl::vector destructor (the collision actors)	template	H	fn_18_41F8	rstl::vector (header inline)	-
+0x42B4	0x60	rstl	the rstl::string destructor	template	H	fn_18_427C	rstl::string (header inline)	-
+0x4314	0x8	CEmperorIngStage3	[?] unreferenced: returns true (no REL caller, no data reference)	unreferenced	T	-	-	-
+0x431C	0x28	CEmperorIngStage3	the ChoseAction check: the jump slide	method	B	fn_18_8200	-	WP3
+0x4344	0x28	CEmperorIngStage3	the ChoseAction check: the portal attack	method	B	fn_18_8200	-	WP3
+0x436C	0xFC	CEmperorIngStage3	the ChoseAction check: the dark flier	method	B	fn_18_8200 fn_18_868C	-	WP3
+0x4468	0x5C	CEmperorIngStage3	the ChoseAction check: the light swarm	method	B	fn_18_8200 fn_18_87F0	-	WP5
+0x44C4	0x64	CEmperorIngStage3	the ChoseAction check: the light beam	method	B	fn_18_8200	-	WP3
+0x4528	0x64	CEmperorIngStage3	the ChoseAction check: the dark beam	method	B	fn_18_8200	-	WP3
+0x458C	0x28	CEmperorIngStage3	the ChoseAction check: the stampede	method	B	fn_18_8200	-	WP3
+0x45B4	0x9C	CEmperorIngStage3	GetSortingBounds [vtable slot 0x6C]: the base class's box grown by one unit	virtual	T	lbl_18_data_4F0+108	CActor::GetSortingBounds (module override)	WP1
+0x4650	0x164	CEmperorIngStage3	PreRender [vtable slot 0x24]: the base class's pre-render plus the damage flash	virtual	B	lbl_18_data_4F0+36	CPatterned::PreRender (module override, with the flash)	WP1
+0x47B4	0x20	CEmperorIngStage3	Render [vtable slot 0x2C] -> CPatterned::Render	virtual	T	lbl_18_data_4F0+44	CPatterned::Render (module override)	WP1
+0x47D4	0x3E4	CEmperorIngStage3	Think [vtable slot 0x14]	virtual	B	lbl_18_data_4F0+20	CPatterned::Think (module override)	WP2
+0x4BB8	0x84	CEmperorIngStage3	the heart effect's external parameters (the particle system's spawn count)	method	B	fn_18_3448 fn_18_4BB8	-	WP4
+0x4C3C	0x8C	CEmperorIngStage3	the Dead state	fsm-state	B	lbl_18_data_F4+8	-	WP2
+0x4CC8	0x190	CEmperorIngStage3	the StampedeReact state	fsm-state	B	lbl_18_data_E8+8	-	WP2
+0x4E58	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_768)	weak-dtor	H	lbl_18_data_768+8	the host CBodyStateCmd destructor	-
+0x4EB4	0x23C	CEmperorIngStage3	the JumpAttack state	fsm-state	B	lbl_18_data_DC+8	-	WP2
+0x50F0	0x9C	CEmperorIngStage3	the jump attack's body command	method	B	fn_18_4EB4	-	WP3
+0x518C	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_75C)	weak-dtor	H	lbl_18_data_75C+8	the host CBodyStateCmd destructor	-
+0x51E8	0x7C	CEmperorIngStage3	the jump attack's aim point	method	B	fn_18_4EB4	-	WP3
+0x5264	0x2F8	CEmperorIngStage3	the EyeShut state	fsm-state	B	lbl_18_data_D0+8	-	WP2
+0x555C	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_744)	weak-dtor	H	lbl_18_data_744+8	the host CBodyStateCmd destructor	-
+0x55B8	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_750)	weak-dtor	H	lbl_18_data_750+8	the host CBodyStateCmd destructor	-
+0x5614	0x230	CEmperorIngStage3	the GrowHeart state	fsm-state	B	lbl_18_data_C4+8	-	WP4
+0x5844	0x630	CEmperorIngStage3	the JumpSlideAttack state	fsm-state	B	lbl_18_data_B8+8	-	WP3
+0x5E74	0x3C	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted destructor	-
+0x5EB0	0x184	CEmperorIngStage3	the jump slide's animation and room ahead	method	B	fn_18_5844	-	WP3
+0x6034	0x3C	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted destructor	-
+0x6070	0x3C	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted destructor	-
+0x60AC	0x150	CEmperorIngStage3	the PortalAttack state	fsm-state	B	lbl_18_data_AC+8	-	WP3
+0x61FC	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_738)	weak-dtor	H	lbl_18_data_738+8	the host CBodyStateCmd destructor	-
+0x6258	0x138	CEmperorIngStage3	the GenerateDarkFliers state	fsm-state	B	lbl_18_data_A0+8	-	WP3
+0x6390	0x2AC	CEmperorIngStage3	the GroundPound state	fsm-state	B	lbl_18_data_94+8	-	WP3
+0x663C	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_72C)	weak-dtor	H	lbl_18_data_72C+8	the host CBodyStateCmd destructor	-
+0x6698	0x128	CEmperorIngStage3	the LightSwarmAttack state	fsm-state	B	lbl_18_data_88+8	-	WP5
+0x67C0	0x144	CEmperorIngStage3	the LightBeamAttack state	fsm-state	B	lbl_18_data_7C+8	-	WP3
+0x6904	0x13C	CEmperorIngStage3	the DarkBeamAttack state	fsm-state	B	lbl_18_data_70+8	-	WP3
+0x6A40	0x140	CEmperorIngStage3	the ChangeVulnerability state	fsm-state	B	lbl_18_data_58+8	-	WP4
+0x6B80	0x204	CEmperorIngStage3	the EyeShutResetVulnerability state	fsm-state	B	lbl_18_data_64+8	-	WP4
+0x6D84	0xFC	CEmperorIngStage3	the Taunt state	fsm-state	B	lbl_18_data_4C+8	-	WP2
+0x6E80	0x2FC	CEmperorIngStage3	the Dodge state	fsm-state	B	lbl_18_data_40+8	-	WP2
+0x717C	0x5C	(weak)	the CBodyStateCmd class destructor (vtable data_720)	weak-dtor	H	lbl_18_data_720+8	the host CBodyStateCmd destructor	-
+0x71D8	0x32C	CEmperorIngStage3	the Stampede state	fsm-state	B	lbl_18_data_34+8	-	WP3
+0x7504	0x1CC	CEmperorIngStage3	the GainDistance state	fsm-state	B	lbl_18_data_28+8	-	WP2
+0x76D0	0x1BC	CEmperorIngStage3	the MeleeAttack state	fsm-state	B	lbl_18_data_1C+8	-	WP3
+0x788C	0x250	CEmperorIngStage3	the Idle state	fsm-state	B	lbl_18_data_10+8	-	WP2
+0x7ADC	0x38	CEmperorIngStage3	the Start state	fsm-state	B	lbl_18_data_4+8	-	WP2
+0x7B14	0x668	CEmperorIngStage3	AcceptScriptMsg [vtable slot 0x18]	virtual	B	lbl_18_data_4F0+24	CPatterned::AcceptScriptMsg (module override)	WP1
+0x817C	0x84	CEmperorIngStage3	the ing's "Swarm_LCTR_SDK" locator (rodata 0xAC) in world space	method	B	fn_18_BB8 fn_18_BC1C	-	WP5
+0x8200	0x1F8	CEmperorIngStage3	the ChoseAction code	fsm-code	B	lbl_18_data_4A8+8	-	WP3
+0x83F8	0x74	rstl	the rstl::vector erase (the action history)	template	H	fn_18_8200	rstl::vector (header inline)	-
+0x846C	0x3C	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted destructor	-
+0x84A8	0x58	CEmperorIngStage3	the ResetAttackTimer code	fsm-code	B	lbl_18_data_49C+8	-	WP3
+0x8500	0x18	CEmperorIngStage3	the ShouldStampedeReact trigger	fsm-trigger	B	lbl_18_data_340+8	-	WP2
+0x8518	0x74	CEmperorIngStage3	the ShouldJumpAttack trigger	fsm-trigger	B	lbl_18_data_334+8	-	WP2
+0x858C	0x18	CEmperorIngStage3	the AbortedJumpSlide trigger	fsm-trigger	B	lbl_18_data_328+8	-	WP3
+0x85A4	0x5C	CEmperorIngStage3	the ShouldEyeShut trigger	fsm-trigger	B	lbl_18_data_31C+8	-	WP2
+0x8600	0x48	CEmperorIngStage3	the JumpSlideAttackOver trigger	fsm-trigger	B	lbl_18_data_310+8	-	WP3
+0x8648	0x1C	CEmperorIngStage3	the ShouldGrowHeart trigger	fsm-trigger	B	lbl_18_data_304+8	-	WP4
+0x8664	0x14	CEmperorIngStage3	the ShouldJumpSlideAttack trigger	fsm-trigger	B	lbl_18_data_2F8+8	-	WP3
+0x8678	0x14	CEmperorIngStage3	the ShouldPortalAttack trigger	fsm-trigger	B	lbl_18_data_2EC+8	-	WP3
+0x868C	0x164	CEmperorIngStage3	the ShouldGenerateDarkFliers trigger	fsm-trigger	B	lbl_18_data_2E0+8	-	WP3
+0x87F0	0x164	CEmperorIngStage3	the ShouldLightSwarmAttack trigger	fsm-trigger	B	lbl_18_data_2C8+8	-	WP5
+0x8954	0x14	CEmperorIngStage3	the ShouldLightBeamAttack trigger	fsm-trigger	B	lbl_18_data_2BC+8	-	WP3
+0x8968	0x14	CEmperorIngStage3	the ShouldDarkBeamAttack trigger	fsm-trigger	B	lbl_18_data_2B0+8	-	WP3
+0x897C	0x10	CEmperorIngStage3	the ShouldStampede trigger	fsm-trigger	B	lbl_18_data_280+8	-	WP3
+0x898C	0x94	CEmperorIngStage3	the ShouldChangeVulnerabilityToInvulnerable trigger	fsm-trigger	B	lbl_18_data_2A4+8	-	WP4
+0x8A20	0x14	CEmperorIngStage3	the ShouldChangeVulnerabilityToVulnerable trigger	fsm-trigger	B	lbl_18_data_298+8	-	WP4
+0x8A34	0x18	CEmperorIngStage3	the ShouldDodge trigger	fsm-trigger	B	lbl_18_data_28C+8	-	WP2
+0x8A4C	0x80	CEmperorIngStage3	the ShouldTaunt trigger	fsm-trigger	B	lbl_18_data_274+8	-	WP2
+0x8ACC	0x180	CEmperorIngStage3	the ShouldGroundPound trigger	fsm-trigger	B	lbl_18_data_2D4+8	-	WP3
+0x8C4C	0x13C	CEmperorIngStage3	the ShouldMeleeAttack trigger	fsm-trigger	B	lbl_18_data_268+8	-	WP3
+0x8D88	0x1C	CEmperorIngStage3	the ShouldAttack trigger	fsm-trigger	B	lbl_18_data_25C+8	-	WP2
+0x8DA4	0xAC	CEmperorIngStage3	the TooClose trigger	fsm-trigger	B	lbl_18_data_250+8	-	WP2
+0x8E50	0x28	CEmperorIngStage3	Listen [vtable slot 0xB0]: a player fire sets bit 30 of the word at guest 0x824	virtual	T	lbl_18_data_4F0+176	CActor::Listen (module override)	WP1
+0x8E78	0xC	CEmperorIngStage3	GetGravityConstant [vtable slot 0x114] -> rodata 0x2A4 (200.0f)	virtual	T	lbl_18_data_4F0+276	CActor::GetGravityConstant (module override)	WP1
+0x8E84	0x1C0	CEmperorIngStage3	GetAimPosition [vtable slot 0x54]	virtual	B	lbl_18_data_4F0+84	CActor::GetAimPosition (module override)	WP3
+0x9044	0x4	CEmperorIngStage3	TakeDamage [vtable slot 0xA4]: a lone blr	virtual	T	lbl_18_data_4F0+164	CActor::TakeDamage (module override)	WP1
+0x9048	0x3F4	CEmperorIngStage3	DoUserAnimEvent [vtable slot 0x70]	virtual	B	lbl_18_data_4F0+112	CPatterned::DoUserAnimEvent (module override)	WP6
+0x943C	0x8C	CEmperorIngStage3	SetupStateMachine [vtable slot 0xF0]: the base class's setup and the three FSM tables	virtual	B	lbl_18_data_4F0+240	CPatterned::SetupStateMachine (module override)	WP2
+0x94C8	0x220	CEmperorIngStage3	the deleting destructor [vtable slot 0x08]	virtual	B	lbl_18_data_4F0+8	CPatterned::~CPatterned (module override)	WP1
+0x96E8	0x1E4	CPatterned	the CPatterned destructor chain	inline-dol	H	fn_18_94C8	CPatterned::~CPatterned (the host)	-
+0x98CC	0x94	CPatterned	the CPatterned destructor chain	inline-dol	H	fn_18_96E8	CPatterned::~CPatterned (the host)	-
+0x9960	0x54	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	fn_18_94C8	compiler-emitted destructor	-
+0x99B4	0x84	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	fn_18_9960	compiler-emitted destructor	-
+0x9A38	0x54	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	fn_18_94C8	compiler-emitted destructor	-
+0x9A8C	0x860	CEmperorIngStage3	the constructor (0xED0 bytes on the GameCube)	ctor	B	fn_18_C380	-	WP1
+0xA2EC	0xCC	SLdr	the LdrToDamageInfo copy (the ground pound damage)	inline-hdr	H	fn_18_9A8C	SLdrDamageInfo (header inline)	-
+0xA3B8	0x190	SLdr	the LdrToBasicSwarmData copy	inline-hdr	H	fn_18_9A8C	SLdrBasicSwarmProperties (header inline)	-
+0xA548	0x58	(weak)	the CDamageVulnerability destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xA5A0	0x54	(weak)	the CToken destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xA5F4	0x6C	(weak)	the CToken destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xA660	0x58	(weak)	the CToken destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xA6B8	0xDC	SLdr	the LdrToDamageInfo copy (the melee damage)	inline-hdr	H	fn_18_9A8C	SLdrDamageInfo (header inline)	-
+0xA794	0x94	SLdr	the LdrToDamageInfo copy (the beam damage)	inline-hdr	H	fn_18_9A8C	SLdrDamageInfo (header inline)	-
+0xA828	0x5C	(weak)	the CToken destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xA884	0x54	SLdr	the LdrToHealthInfo copy (the yellow health)	inline-hdr	H	fn_18_9A8C fn_18_A3B8	SLdrHealthInfo (header inline)	-
+0xA8D8	0x5C	SLdr	the LdrToDamageVulnerability copy	inline-hdr	H	fn_18_9A8C fn_18_A3B8	SLdrDamageVulnerability (header inline)	-
+0xA934	0x54	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted destructor	-
+0xA988	0x130	rstl	the rstl::memory_allocator allocation	template	H	fn_18_A8D8	rstl::memory_allocator (header inline)	-
+0xAAB8	0x8C	(weak)	the weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted destructor	-
+0xAB44	0x58	(weak)	the CCollisionActorManager destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xAB9C	0x64	CEmperorIngStage3	the weighted average over a list	method	B	fn_18_1978 fn_18_2298 fn_18_22BC	-	WP2
+0xAC00	0x44	CEmperorIngStage3	an entry is added when the list has room	method	B	fn_18_2B68 fn_18_2BF0 fn_18_6E80	-	WP2
+0xAC44	0xB4	CEmperorIngStage3	the list walk: the timers grow, the due entries go	method	B	fn_18_2B68 fn_18_2BF0 fn_18_47D4	-	WP2
+0xACF8	0x4C	rstl	the rstl::vector erase (the module's list)	template	H	fn_18_AC44	rstl::vector (header inline)	-
+0xAD44	0xB4	rstl	the rstl::vector insert (the module's list)	template	H	fn_18_ACF8	rstl::vector (header inline)	-
+0xADF8	0x40	rstl	the rstl::vector reserve (the module's three lists)	template	H	fn_18_9A8C	rstl::vector (header inline)	-
+0xAE38	0x74	CEmperorIngLightSwarm	GetTouchBounds [vtable slot 0x48]	virtual	B	lbl_18_data_798+72	CSwarmBasics::GetTouchBounds (module override)	WP5
+0xAEAC	0x8	CEmperorIngLightSwarm	GetHealthInfo [vtable slot 0x3C] -> &the swarm's own health (guest 0x5BC)	virtual	T	lbl_18_data_798+60	CActor::GetHealthInfo (module override)	WP5
+0xAEB4	0xE0	CEmperorIngLightSwarm	GetBoundingBox [vtable slot 0x7C]	virtual	B	lbl_18_data_798+124	CSwarmBasics::GetBoundingBox (module override)	WP5
+0xAF94	0x8	CEmperorIngLightSwarm	CanRenderUnsorted [vtable slot 0x30] -> false	virtual	T	lbl_18_data_798+48	CActor::CanRenderUnsorted (module override)	WP5
+0xAF9C	0x134	CEmperorIngLightSwarm	Render [vtable slot 0x2C]	virtual	B	lbl_18_data_798+44	CSwarmBasics::Render (module override)	WP5
+0xB0D0	0xE0	CEmperorIngLightSwarm	PreRenderAllViewports [vtable slot 0x34]	virtual	B	lbl_18_data_798+52	CSwarmBasics::PreRenderAllViewports (module override)	WP5
+0xB1B0	0xA4	CEmperorIngLightSwarm	AcceptScriptMsg [vtable slot 0x18]	virtual	B	lbl_18_data_798+24	CSwarmBasics::AcceptScriptMsg (module override)	WP5
+0xB254	0x334	CEmperorIngLightSwarm	Think [vtable slot 0x14]	virtual	B	lbl_18_data_798+20	CSwarmBasics::Think (module override)	WP5
+0xB588	0x44	CEmperorIngLightSwarm	GetLockOnLocationValid [vtable slot 0x98]: the lock-on point's height against zero	virtual	T	lbl_18_data_798+152	CSwarmBasics::GetLockOnLocationValid (module override)	WP5
+0xB5CC	0x48	CEmperorIngLightSwarm	GetLockOnLocation [vtable slot 0x9C]: the boid's position	virtual	B	lbl_18_data_798+156	CSwarmBasics::GetLockOnLocation (module override)	WP5
+0xB614	0x4	CEmperorIngLightSwarm	RenderBoid [vtable slot 0xA8]: a lone blr	virtual	T	lbl_18_data_798+168	CSwarmBasics::RenderBoid (module override)	WP5
+0xB618	0x4	CEmperorIngLightSwarm	PreRenderBoid [vtable slot 0x88]: a lone blr	virtual	T	lbl_18_data_798+136	CSwarmBasics::PreRenderBoid (module override)	WP5
+0xB61C	0x78	CEmperorIngLightSwarm	the swarm's dying test	method	B	fn_18_B254 fn_18_B7A8	-	WP5
+0xB694	0x114	CEmperorIngLightSwarm	an active boid moves by its frame's offset and the effect follows it	method	B	fn_18_B7A8	-	WP5
+0xB7A8	0xDC	CEmperorIngLightSwarm	UpdateAllBoidMovement [vtable slot 0xB4]	virtual	B	lbl_18_data_798+180	CSwarmBasics::UpdateAllBoidMovement (module override)	WP5
+0xB884	0x398	CEmperorIngLightSwarm	UpdateBoid [vtable slot 0x8C]	virtual	B	lbl_18_data_798+140	CSwarmBasics::UpdateBoid (module override)	WP5
+0xBC1C	0x168	CEmperorIngLightSwarm	CreateBoid [vtable slot 0x80]	virtual	B	lbl_18_data_798+128	CSwarmBasics::CreateBoid (module override)	WP5
+0xBD84	0x344	CEmperorIngLightSwarm	the constructor (0x618 bytes on the GameCube)	ctor	B	fn_18_BB8	-	WP5
+0xC0C8	0xC8	CEmperorIngLightSwarm	the copy of the optional_object<TLockedToken<CGenDescription>>	template	H	fn_18_BD84	rstl::optional_object (header inline)	-
+0xC190	0x6C	CEmperorIngLightSwarm	the rstl::optional_object destructor	template	H	-	rstl::optional_object (header inline)	-
+0xC1FC	0x94	CEmperorIngLightSwarm	the CActorParameters copy	inline-dol	H	fn_18_BD84	CActorParameters (header inline)	-
+0xC290	0x7C	CEmperorIngLightSwarm	the CLightParameters copy	inline-dol	H	fn_18_C1FC	CLightParameters (header inline)	-
+0xC350	0x30	(module)	the module init: the loader in bss_30 and SetSEmperorIngStage3_FuncPtrs	rel-entry	B	RELMain	-	WP1
+0xC380	0x31C	(module)	the loader: LoadEmperorIngStage3(CStateManager&,CInputStream&,const CEntityInfo&)	loader	B	-	-	WP1
+0xC69C	0x40	CModelData	the CModelData copy	inline-dol	H	fn_18_C380	CModelData (header inline)	-
+0xC6DC	0x20	CModelData	the CModelData copy	inline-dol	H	fn_18_C69C	CModelData (header inline)	-
+0xC6FC	0x28	CModelData	the CModelData copy	inline-dol	H	fn_18_C6DC	CModelData (header inline)	-
+0xC724	0x13C	TToken	the TToken copy	template	H	fn_18_C6FC	TToken (header inline)	-
+0xC860	0x6C	(weak)	the CToken destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xC8CC	0x54	(weak)	the CToken destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xC920	0x64	(weak)	the CAnimData destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xC984	0x60	(weak)	the CModelData destructor	weak-dtor	H	-	compiler-emitted destructor	-
+0xC9E4	0x7C	(weak)	the loader's temporary destructors	weak-dtor	H	-	compiler-emitted destructor	-
+0xCA60	0x410	(module)	the loader's data block reader	loader	B	fn_18_C380	-	WP1
+0xCE70	0x13C	(module)	the data block's destructor	member-dtor	H	fn_18_C380 fn_18_C9E4	the SLdr struct destructors (host)	-
+0xCFAC	0xF0	(module)	the data block's constructor (the REL defaults)	member-ctor	H	fn_18_C380	the SLdr struct constructors (host)	-
+0xD09C	0x11C	(module)	the SLdrDamageInfo and SLdrPlasmaBeamInfo reader	inline-hdr	H	fn_18_CA60	SLdrDamageInfo/SLdrPlasmaBeamInfo (header inline)	-
+0xD1B8	0x64	(weak)	the SLdrPlasmaBeamInfo and SLdrDamageInfo destructors	inline-hdr	H	fn_18_CE70	SLdrPlasmaBeamInfo (header inline)	-
+0xD21C	0x120	(module)	the SLdrDamageInfo, SLdrPlasmaBeamInfo and CColor constructor	inline-hdr	H	fn_18_CFAC	SLdrDamageInfo/SLdrPlasmaBeamInfo (header inline)	-
+0xD33C	0xF0	(module)	the SLdrPlasmaBeamInfo and SLdrDamageInfo reader	inline-hdr	H	fn_18_CA60	SLdrPlasmaBeamInfo/SLdrDamageInfo (header inline)	-
+0xD42C	0x64	(weak)	the SLdrPlasmaBeamInfo and SLdrDamageInfo destructors	inline-hdr	H	fn_18_CE70	SLdrPlasmaBeamInfo (header inline)	-
+0xD490	0xFC	(module)	the SLdrPlasmaBeamInfo, SLdrDamageInfo and CColor constructor	inline-hdr	H	fn_18_CFAC	SLdrPlasmaBeamInfo/SLdrDamageInfo (header inline)	-
+0xD58C	0x208	(module)	the SLdrShockWaveInfo reader	inline-hdr	H	fn_18_CA60	SLdrShockWaveInfo (header inline)	-
+0xD794	0xAC	(module)	the SLdrAudioPlaybackParms destructor	inline-hdr	H	fn_18_94C8 fn_18_CE70	SLdrAudioPlaybackParms (header inline)	-
+0xD840	0x80	(module)	the SLdrBasicSwarmProperties destructor	inline-hdr	H	fn_18_CFAC	SLdrBasicSwarmProperties (header inline)	-
+0xD8C0	0xFC	(module)	the SLdrShockWaveInfo reader (the floats)	inline-hdr	H	fn_18_D58C	SLdrShockWaveInfo (header inline)	-
+0xD9BC	0x3C	(module)	the rstl::string destructor	template	H	fn_18_D794	rstl::string (header inline)	-
+0xD9F8	0x1C	(module)	the rstl::string destructor	template	H	fn_18_D840	rstl::string (header inline)	-
+0xDA14	0xD0	CEmperorIngLightSwarm	the deleting destructor [vtable slot 0x08]	virtual	B	lbl_18_data_798+8	CSwarmBasics::~CSwarmBasics (module override)	WP5
+0xDAE4	0x8	CEmperorIngLightSwarm	HealthInfo [vtable slot 0x38] -> &the swarm's own health (guest 0x5BC)	virtual	T	lbl_18_data_798+56	CActor::HealthInfo (module override)	WP5
+0xDAEC	0x3C	rstl	the optional_object<CAABox> copy	inline-dol	H	fn_18_8	rstl::optional_object (header inline)	-
+0xDB28	0x34	rstl	the SEmperorIngPortal copy	template	H	fn_18_7B14 fn_18_DF28	rstl::vector (header inline)	-
+0xDB5C	0x98	rstl	the rstl::vector grow helper	template	H	fn_18_BB8	rstl::vector (header inline)	-
+0xDBF4	0x3C	rstl	the rstl::vector grow helper	template	H	fn_18_DB5C	rstl::vector (header inline)	-
+0xDC30	0x98	rstl	the rstl::vector grow helper	template	H	fn_18_1D28	rstl::vector (header inline)	-
+0xDCC8	0x3C	rstl	the rstl::vector grow helper	template	H	fn_18_DC30	rstl::vector (header inline)	-
+0xDD04	0xC0	rstl	the CJointCollisionDescription vector's grow helper	template	H	fn_18_3BB0	rstl::vector (header inline)	-
+0xDDC4	0x68	rstl	the CJointCollisionDescription vector's grow helper	template	H	fn_18_DD04	rstl::vector (header inline)	-
+0xDE2C	0xB8	rstl	the rstl::vector grow helper	template	H	fn_18_ADF8	rstl::vector (header inline)	-
+0xDEE4	0x44	rstl	the rstl::vector grow helper	template	H	fn_18_DE2C	rstl::vector (header inline)	-
+0xDF28	0xA0	(module)	the SEmperorIngPortal vector's grow helper	template	H	fn_18_7B14	rstl::vector (header inline)	-
+0xDFC8	0x64	(module)	the rstl::string destructor	template	H	fn_18_3448 fn_18_35F4 fn_18_366C	rstl::string (header inline)	-
+0xE02C	0x64	CParticleGen	the CParticleGen destructor (vtable data_860)	inline-dol	H	-	CParticleGen (the host)	-
+0xE090	0x4	CParticleGen	CParticleGen vtable slot 0x34: a lone blr	inline-dol	H	lbl_18_data_860+52	CParticleGen (the host)	-
+0xE094	0x8	CParticleGen	CParticleGen vtable slot 0x38: stores the argument	inline-dol	H	lbl_18_data_860+56	CParticleGen (the host)	-
+0xE09C	0xC	CParticleGen	CParticleGen vtable slot 0x58: rodata 0x264	inline-dol	H	lbl_18_data_860+88	CParticleGen (the host)	-
+0xE0A8	0x8	CParticleGen	CParticleGen vtable slot 0x60: the member at +0x1C	inline-dol	H	lbl_18_data_860+96	CParticleGen (the host)	-
+0xE0B0	0x5C	CParticleGen	CParticleGen vtable slot 0x64: the draw mask test	inline-dol	H	lbl_18_data_860+100	CParticleGen (the host)	-
+0xE10C	0x74	CParticleGen	the CParticleGen destructor (vtable data_860)	inline-dol	H	fn_18_E02C	CParticleGen (the host)	-
+0xE180	0x684	(module)	the static init (.ctors): the three FSM tables and the module's global string	static-init	B	-	-	-

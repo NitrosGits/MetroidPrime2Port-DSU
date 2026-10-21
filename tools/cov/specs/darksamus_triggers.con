@@ -1,0 +1,8 @@
+# darksamus_triggers.py's driver (25 frames apart: the driver polls about every 24 frames).
+@f600 send u04f7 Activate; god 1
+@f625 place u04f7 player 60; trigcall u04f7 ShouldEnragedMelee; trigcall u04f7 SkipPhazonAttack; trigcall u04f7 BreakPhazonAttack
+@f650 place u04f7 player 1; trigcall u04f7 ShouldEnragedMelee; statecall u04f7 PhazonAttack 0 0.016; uevent u04f7 12; trigcall u04f7 BreakPhazonAttack; statecall u04f7 PhazonAttack 2 0.016
+@f675 trigcall u04f7 ShouldLeaveSphere 101; trigcall u04f7 ShouldLeaveSphere 102; trigcall u04f7 ShouldLeaveSphere 103; trigcall u04f7 ShouldLeaveSphere 104
+@f700 trigcall u04f7 ShouldRiseAgain 105; trigcall u04f7 ShouldRiseAgain 106; trigcall u04f7 ShouldRiseAgain 107
+@f725 trigcall u04f7 HitDuringEnrage 108; trigcall u04f7 HitDuringEnrage 109; trigcall u04f7 ReadyForMissiles 110; trigcall u04f7 ReadyForMissiles 111; trigcall u04f7 ReadyForMissiles 120
+@f750 status

@@ -8,6 +8,7 @@
 #include "rstl/optional_object.hpp"
 
 class CCollisionActorManager;
+class CDigitalGuardianHead;
 class CElementGen;
 class CParticleGen;
 class CGenDescription;
@@ -22,6 +23,7 @@ class CGenDescription;
 #include "MetroidPrime/ScriptLoader/Structs/SLdrDamageVulnerability.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrEchoParameters.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrShockWaveInfo.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
 
 // Host copy of the module's parameter block (SLdrDigitalGuardianData). Retail reads it into a
 // stack struct and copies it into the object verbatim (fn_14_C68C, guest 0x7C0, 0x640 bytes), so
@@ -309,6 +311,8 @@ private:
   float x11C8_;     // 0x11C8: the vortex's health (data +0x100, the store at 0xB674; fn_14_5384
                     // takes damage from it, fn_14_9638 reads it)
   CVector3f x11CC_; // 0x11CC: the vortex's drift velocity, zero (0xB67C; fn_14_3300 sets it)
+  int x11D8_;       // 0x11D8: the melee leg, -1 (0xB690; fn_14_7504 sets it, fn_14_73D4 reads it)
+  int x11DC_;       // 0x11DC: the melee range, -1 (0xB694; fn_14_73D4, read by fn_14_89D4)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
   int x11E8_;       // 0x11E8: s32, 1 (the store at 0xB6A0; the reaction states clear it,
@@ -472,6 +476,14 @@ private:
   void x4D54_(CStateManager& mgr);
   void x4878_(CStateManager& mgr);
   void x4838_(CStateManager& mgr);
+  // fn_14_3300 (0x1E8 bytes): the vortex drift towards the IS05/Follow object (0x11CC).
+  void x3300_(CStateManager& mgr);
+  // fn_14_4E00 (0x12C bytes): a camera shake at a locator (the user event ScreenShake).
+  void x4E00_(CStateManager& mgr, const rstl::string& locator);
+  // fn_14_20E4 (0xBC bytes): the leg of an ankle or toe collider locator, or -1.
+  int x20E4_(const rstl::string& name) const;
+  // fn_14_458C (0x1E0 bytes): a toe's shock wave (the user event EventStart).
+  void x458C_(CStateManager& mgr, const rstl::string& locator);
 
   // fn_14_676C (0xF8 bytes): the collision actor managers' builder, and the three builders it
   // calls: fn_14_61DC (0x590 bytes, the manager at 0xE60), fn_14_5C30 (0x2F4 bytes, the manager
@@ -504,6 +516,31 @@ private:
   // REL's and are in docs/module-analysis/DigitalGuardian.md section e; the host class has its
   // own layout and only keeps what this milestone needs.
   CDigitalGuardianData mData; // guest 0x7C0 (0x640), the block fn_14_C68C copies in
+
+  // -------------------------------------------------------------------------------------------
+  // The helpers this lane ports: the module's stateless functions that are not FSM handlers
+  // (the bodies are in src/MetroidPrime/Enemies/PortCDigitalGuardianHelpers.cpp; the function
+  // map, the caller map and the arm tables are in
+  // docs/module-analysis/DigitalGuardian_helpers.md). Append-only, so the FSM lane's edits in
+  // the same header merge cleanly.
+  float x37FC_(float v) const;   // fn_14_37FC: the nearest of the five 45-degree values
+  float x6C74_() const;          // fn_14_6C74: the attack angle (4*pi, pi/3 or 2*pi/3)
+  void x3F90_(CStateManager& mgr);            // fn_14_3F90: the knee armours follow the knees
+  void x38BC_(CStateManager& mgr, float dt);  // fn_14_38BC: the leg-stab, jump and protect timers
+  void x2358_(CStateManager& mgr, float dt);  // fn_14_2358: the toe targets' sound emitters
+  void x5644_(CStateManager& mgr, TUniqueId sender); // fn_14_5644: the "XRDG" case
+  bool x6C24_(CDigitalGuardianHead& head); // fn_14_6C24: the head's turn direction
+  void x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf, CVector3f& outForward,
+              CVector3f& outUp); // fn_14_6CB0: the aim (the forward and the up vector)
+  void x6E04_(CStateManager& mgr, float dt);   // fn_14_6E04: the body turns to the head
+  // fn_14_83C0 (0x184 bytes): the knock-back animation parm data (the state id and the
+  // eight parameters).
+  CPASAnimParmData x83C0_(pas::EAnimationState state, const CPASAnimParm& p1,
+                          const CPASAnimParm& p2, const CPASAnimParm& p3,
+                          const CPASAnimParm& p4, const CPASAnimParm& p5,
+                          const CPASAnimParm& p6, const CPASAnimParm& p7,
+                          const CPASAnimParm& p8) const;
+  CTransform4f x1088_ = CTransform4f::Identity(); // 0x1088: the aim transform (fn_14_6CB0)
 #else
   uchar x7c0_[0x1290 - 0x7c0]; // CDigitalGuardianData and everything above it in retail
 #endif
