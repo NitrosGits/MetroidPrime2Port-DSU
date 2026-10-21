@@ -162,3 +162,57 @@ breakpoints on the port's own symbols - no probe was committed. The forced arm i
 `tools/modules_port.txt` and `python3 tools/gen_files_cmake.py`) holds the bodies this lane
 ports; the header additions are in one `#ifdef TARGET_PC` block at the end of the class in
 `include/MetroidPrime/Enemies/CDarkSamus.hpp`.
+
+## 6. The helpers the FSM lane's next states call (the port order)
+
+The FSM lane's next states are 62B4 (Arrived), 9724 (BoostBallFire), A3B0 (BoostBallRoll), 143A8
+(Dead), 9314 (DoneRolling), 7A14 (EnrageHitReact), 6E38 (EnragedTravel) and then the phazon
+states. These are the helpers of this half that those states call - the bodies to port first, in
+the lane's order, so a state can be written against them:
+
+| helper | size | called from | the port |
+|---|---|---|---|
+| `fn_10_8764` | 0x10C | 9724 @0x98E0, 7A14 @0x7B28, 67B8 @0x6924 | to port (the melee command; the states run it inline) |
+| `fn_10_9E00` | 0x26C | A3B0 @0xA4AC | to port |
+| `fn_10_2F04` | 0xC | A3B0 @0xA4FC | **ported** |
+| `fn_10_2EFC` | 0x8 | A3B0 @0xA548 | **ported** |
+| `fn_10_7F98` | 0x17C | 7A14 @0x7AC8, 67B8 @0x68B4, 7BC0 @0x7CCC | to port |
+| `fn_10_6F90` | 0xC4 | 6E38 @0x6EBC, 6E38 @0x6F10 | to port (it calls `fn_10_1C778`, the lane's half) |
+| `fn_10_6DAC` | 0x8C | 6E38 @0x6F4C | to port |
+| `fn_10_65CC` | 0x1EC | 6460 @0x64A4, 652C @0x6570, 7054 @0x7190 | to port |
+| `fn_10_6374` | 0xEC | 6460 @0x64F0, 652C @0x65A4 | to port |
+| `fn_10_69C0` | 0x80 | 67B8 @0x68A0 | to port |
+| `fn_10_746C` | 0xCC | 6BA0 @0x6C04 | to port |
+| `fn_10_7610` | 0x170 | 6BA0 @0x6C10 | to port |
+| `fn_10_4868` | 0x60 | 6BA0 @0x6D30 | **ported** |
+| `fn_10_8698` | 0xCC | 6BA0 @0x6D6C, 7054 @0x72C4, 4AC8 @0x4B54 | to port (the taunt command; the states run it inline) |
+| `fn_10_786C` | 0x1A8 | 7BC0 @0x7C58 | to port |
+| `fn_10_452C` | 0xCC | 81D4 @0x8298 | to port |
+| `fn_10_5974` | 0x7A4 | 81D4 @0x8340 | to port (the biggest one) |
+| `fn_10_48C8` | 0x44 | 81D4 @0x834C | **ported** |
+| `fn_10_812C` | 0x4C | 81D4 @0x858C | **ported** |
+| `fn_10_8870` | 0xEC | 81D4 @0x85DC | to port |
+| `fn_10_9644` | 0xE0 | 9724 @0x9788 | ported and marked by the lane |
+| `fn_10_9920` | 0x4C | A3B0 @0xA4EC | ported and marked here |
+| `fn_10_9AC4` | 0x60 | 9724 @0x984C | ported and marked here |
+
+### 6.1 The bodies ported in this slice
+
+All of them are in `src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp`; the declarations are in the
+`#ifdef TARGET_PC` block at the end of the class in `CDarkSamus.hpp` (append-only, so the FSM
+lane's edits merge cleanly). They are **unmarked**: the port has no caller for them yet - the FSM
+lane's states are what will call them.
+
+| id | the body |
+|---|---|
+| `fn_10_2EFC` | the float at guest 0x314 (0x00002EFC) |
+| `fn_10_2F04` | bit 0x80 of the byte at guest 0x318 (the extrwi at 0x00002F08 takes the bit 25) |
+| `fn_10_2E44` | the `CModelData` default constructor (0x00002E50) |
+| `fn_10_4868` | the actor whose uid is at guest 0xF78 is deleted and the uid cleared (0x000048A4, 0x000048B0); a kInvalidUniqueId uid is left alone (0x00004890) |
+| `fn_10_48C8` | the same, but only when the timestamp at guest 0xF7C is older than the elapsed time (0x000048F0) |
+| `fn_10_812C` | the sfx handle at guest 0xF60 is removed and cleared (0x00008158, 0x00008160); a null handle is left alone (0x00008148) |
+| `fn_10_9624` | the boost ball's uid (guest 0xE38) is not kInvalidUniqueId (the subf/or/srwi idiom at 0x00009630..0x00009640) |
+
+The five members they need (guest 0x314, 0x318, 0xF60, 0xF78, 0xF7C) are not in the host class, so
+they were added to the same `TARGET_PC` block (`mGuest314`, `mGuest318`, `mGuestF60`, `mGuestF78`,
+`mGuestF7C`).

@@ -979,6 +979,20 @@ private:
   // src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp; docs/module-analysis/DarkSamus_helpers.md
   // has the function map and the arm tables.
   bool HasBoostBall() const; // fn_10_9624: the boost ball's uid (0xE38) is not kInvalidUniqueId
+  // The helpers below 0xA000 that the FSM states call (the module's own members, which the host
+  // class did not have). The bodies are in src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp;
+  // docs/module-analysis/DarkSamus_helpers.md has the caller map.
+  float GetGuest314() const;   // fn_10_2EFC: the float at guest 0x314
+  bool GetGuest318Bit6() const; // fn_10_2F04: bit 0x40 of the byte at guest 0x318
+  void DeleteGuestActor(CStateManager& mgr);        // fn_10_4868: the actor at guest 0xF78
+  void DeleteGuestActorIfExpired(CStateManager& mgr); // fn_10_48C8: ... when 0xF7C has expired
+  void StopGuestSfx();           // fn_10_812C: the sfx handle at guest 0xF60
+  void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
+  float mGuest314;               // guest 0x314 (fn_10_2EFC)
+  uchar mGuest318;               // guest 0x318 (fn_10_2F04)
+  TUniqueId mGuestF78 = kInvalidUniqueId; // guest 0xF78 (fn_10_4868, fn_10_48C8)
+  float mGuestF7C;               // guest 0xF7C (fn_10_48C8)
+  CSfxHandle mGuestF60;          // guest 0xF60 (fn_10_812C)
 #endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
