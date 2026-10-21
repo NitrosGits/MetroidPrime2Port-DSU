@@ -905,9 +905,6 @@ private:
                                    // then the two sounds +0x58 / +0x5A)
   CSfxHandle mBoostBallRollSfx;    // guest 0xE6C (+0x5C), the roll emitter; 0 (0x00008A50)
   bool mBoostBallFlag40 : 1;       // 0xebc 0x40 (+0xAC); BoostBallInto clears it
-  bool mBoostBallFlag80 : 1;       // 0xebc 0x80 (+0xAC); the DoneRolling trigger reads it
-                                    // (`extrwi r0, r0, 1, 24` at 0x00009378, the PowerPC bit 24
-                                    // being 1u << (31 - 24) = 0x80)
                                    // (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4)
   TUniqueId mBoostHintUid;         // guest 0xEC0, the hint the ball rolls to; kInvalidUniqueId
                                    // (0x0002011C)
@@ -968,17 +965,10 @@ private:
   // roll's other time), the point 0xEAC/0xEB0/0xEB4 and the radius 0xEB8, all in the boost
   // ball's record (the 0xE10 sub-object's +0x9C..+0xA8). Nothing in the port writes them yet.
   float mGuestEA4;                 // guest 0xEA4, the roll's time
-  float mGuestEA8;                 // guest 0xEA8, the roll's other time
-  float mGuestEAC;                 // guest 0xEAC, the point x
-  float mGuestEB0;                 // guest 0xEB0, the point y
-  float mGuestEB4;                 // guest 0xEB4, the point z
-  float mGuestEB8;                 // guest 0xEB8, the radius
   uchar mGuestA40;                 // guest 0xA40, the normal missile's record byte; the
                                    // BreakNormalMissile trigger (fn_10_16B5C) reads it
   uchar mGuestA80;                 // guest 0xA80, the super missile's record byte; the
                                    // BreakSuperMissile trigger (fn_10_16B54) reads it
-  uint mGuestAB0;                  // guest 0xAB0, the freeze beam's counter: at least 1 makes
-                                    // the state deliver the exit state command (0x00016DA8)
   int mGuest9FC;                   // guest 0x9FC, the EnragedTravel state's target (-1 = none,
                                     // 0x00006EC4)
   float mGuest1048;                // guest 0x1048, the EnragedTravel state's point x
@@ -1148,11 +1138,20 @@ private:
   float GetMeleeReach() const;            // fn_10_1BDF0
   void FadeEnvFxOut(CStateManager& mgr);  // fn_10_1BE04
   void FadeEnvFxIn(CStateManager& mgr);   // fn_10_1BE80
-  int mGuestAB0 = 0;                      // guest 0xAB0, the freeze beam shots fired (fn_10_1BEFC)
+  int mGuestAB0 = 0;                      // guest 0xAB0, the freeze beam shots fired (fn_10_1BEFC);
+                                          // the FreezeBeam state (fn_10_16CDC) uses it as its
+                                          // counter: at least 1 makes it deliver the exit state
+                                          // command (0x00016DA8)
   bool mBoostBallFlag20 = false;          // guest 0xEBC bit 0x20 (fn_10_1BEFC clears it)
-  bool mBoostBallFlag80 = false;          // guest 0xEBC bit 0x80 (fn_10_1BEFC clears it)
-  float mGuestEA8 = 0.f;                  // guest 0xEA8, the boost ball's start time (fn_10_1BEFC)
-  CVector3f mGuestEAC = CVector3f::Zero(); // guest 0xEAC, the actor's position then
+  bool mBoostBallFlag80 = false;          // guest 0xEBC bit 0x80 (fn_10_1BEFC clears it); the
+                                          // DoneRolling trigger reads it (`extrwi r0, r0, 1, 24` at
+                                          // 0x00009378, the PowerPC bit 24 being
+                                          // 1u << (31 - 24) = 0x80)
+  float mGuestEA8 = 0.f;                  // guest 0xEA8, the boost ball's start time (fn_10_1BEFC);
+                                          // the DoneRolling trigger reads it as the roll's other
+                                          // time (0x00009390)
+  CVector3f mGuestEAC = CVector3f::Zero(); // guest 0xEAC, the actor's position then; the
+                                          // DoneRolling trigger measures to it (0x000093B8)
   float mGuestEB8 = 0.f;                  // guest 0xEB8, the player's distance then
 #endif
 #else

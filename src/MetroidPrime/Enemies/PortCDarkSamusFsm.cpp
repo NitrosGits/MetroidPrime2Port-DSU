@@ -1202,7 +1202,9 @@ bool CDarkSamus::DoneRolling(CStateManager&, const CTriggerData&) const {
     return true;                            // 0x000093A8
   }
   const CVector3f pos = GetTranslation();
-  const CVector3f d(pos.GetX() - mGuestEAC, pos.GetY() - mGuestEB0, pos.GetZ() - mGuestEB4);
+  // 0xEAC/0xEB0/0xEB4 are the point (the fsm2 lane's mGuestEAC) and 0xEB8 the radius.
+  const CVector3f d(pos.GetX() - mGuestEAC.GetX(), pos.GetY() - mGuestEAC.GetY(),
+                    pos.GetZ() - mGuestEAC.GetZ());
   return d.Magnitude() > 12.f + mGuestEB8; // 0x00009404
 }
 
