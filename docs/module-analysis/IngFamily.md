@@ -1271,6 +1271,51 @@ safe zone did not run.
 The port's `mSafeZoneCount > 0` is the retail's "the count is not zero" for every count the
 module can hold (the XENZ/XEXZ messages only add and remove one).
 
+### A.24 The Ing attack patterns and the safe zones in the shipped data (2026-10-21)
+
+`tools/scan_ing_pattern.py` (new, on the CommandoPirate lane's `tools/scan_commando_pattern.py`
+model) reads the user's own disc - every world's MLVL, every area's MREA and every SCLY layer -
+and lists the script objects that the module's open triggers need: the Ings (the `INGS` object)
+with their script connections, the AI waypoints (`AIWP`) with their flag word and the safe zones
+(`SAFE`).
+
+**The attack pattern.** The module's FollowAttackPattern state (fn_29_82D4) takes the attack
+pattern from the connection in the `ATTK` state (0x4154544B) with the `FOLW` message
+(0x464f4c57) - the same fourCCs the CommandoPirate uses. Nine of the 95 areas have an Ing with
+such a connection:
+
+| world | area (MREA) | the Ings with the pattern | the safe zones |
+|---|---|---|---|
+| 0x3bfa3eff (Temple Grounds) | `01_temple_landingsite_dark` (0x16e116b4) | 4 | 3 |
+| 0x3bfa3eff | `04_temple_unknownenemies_dark` (0xfc8fc0a4) | 2 | 0 |
+| 0x42b935e4 (Agon Wastes) | `01_sand_entrance_dark` (0x3f5cdf39) | 3 | 7 |
+| 0x42b935e4 | `02_sand_sandfalls_dark` (0x6b77f9bd) | 2 | 9 |
+| 0x42b935e4 | `05_portalpuzzle_dark` (0xbf7f572c) | 2 | 7 |
+| 0x42b935e4 | `06_sand_alamofront_dark` (0xea79522c) | 4 | 6 |
+| 0x42b935e4 | `07_sand_alamoportalobservation_dark` (0xa49f8a6d) | 2 | 9 |
+| 0x42b935e4 | `0m_sand_hall_dark` (0xf2ccc41e) | 1 | 3 |
+| 0x3dfd2249 (Great Temple) | `06_swamp_boostballguardian_dark` (0xa49a572f) | 2 | 2 |
+
+**The waypoint the Ing follows is a `WAYP`, never an `AIWP`.** The scan prints the target of
+every `ATTK`/`FOLW` connection with its type: in every area it is a `CScriptWaypoint` (the base
+class, 0x158 bytes). The retail's fn_29_82D4 casts the navigation's destination to
+`CScriptAIWaypoint` before it reads the flags at +0x164 (asm 0x00008428) - and the port does the
+same - so the cast fails there too, and the desired form (0x9d8) is never taken from the attack
+pattern. The form change comes from the other writers of 0x9d8 (the states that want a form
+change), which is why the desired form does change in a run.
+
+**The run.** The Agon Wastes `01_sand_entrance_dark` (the world 42b935e4, the area 0x3f5cdf39, the
+layers 1..8 loaded with the console's `layer`), the Ings woken with `send <id> Activate` and the
+player next to them: the FollowAttackPattern state runs and the triggers are evaluated.
+
+| fn | the arms | the run (a probe in the body) | marker |
+|---|---|---|---|
+| `fn_29_A340` AttackPatternOver | the attack path flag (0xA348) and the destination against `kInvalidUniqueId` (0xA35C) | all three: the flag is not followed (the destination invalid and not), it is followed and the destination is there, it is followed and the destination is gone | **marked** |
+| `fn_29_AA4C` ShouldBecomeCorporeal | the desired form is 2 (0xAA64) and `!fn_29_AD54` (0xAA6C) | the "the desired form is not 2" arm and the "the desired form is 2 and the Ing is not corporeal" arm; the "already corporeal" arm did not run | not marked |
+| `fn_29_AA04` ShouldBecomeIngSpot | the desired form is 3 (0xAA1C) and `!fn_29_AD40` (0xAA24) | the "the desired form is not 3" arm; the arms with the desired form 3 did not run | not marked |
+| `fn_29_A4E0` FoundMovementPos | the byte at 0xe5c's bit 3 (0xA4E0) | the trigger is in the `SetLuredDest` code function's list only, and no Ing was lured | not marked |
+| `fn_29_AA94` ShouldFleeSafeZone | the word at 0xe2c is not zero (0xAA94) | the count never changed (the player teleporting into a safe zone does not raise the XENZ message) | not marked |
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).

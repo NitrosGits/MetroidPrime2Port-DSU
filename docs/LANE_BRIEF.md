@@ -24,10 +24,26 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   wall-timed plans) and `tools/drivers/con.py` `@f<n>` scripts; drivers go in `tools/drivers/`.
 - Console (`help` lists all): `fsm <id> <state>` (reaches FSM2 sub-machines), `place <id> player [d]`,
   `damage <id> <n> [weapon|powerbomb|annihilator|darkburst|sunburst|sonicboom]`, `send <id> <msg>`,
-  `shoot`, `boost` (morphed), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` takes no
+  `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` takes no
   argument (it kills the player).
 - Kill only pids you launched (bracketed `pgrep -f` names) and any Xvfb you started. Delete your run
   outputs from `/tmp` (a 31 GB tmpfs).
+
+## Coverage without probes
+
+`tools/cov/run.sh <spec.py> <out> <world,area> [--con <cmdfile> | --driver '<cmd {port}>'] [--fast]
+[--frames n] [--env K=V]` boots the game under gdb with breakpoints that never stop it: no probe, no
+rebuild, any `build-port-link` binary. A spec (`tools/cov/specs/<module>.py`) sets `CLASS = 'CSandworm'`
+and `SPEC = [(label, where, [exprs], flags)]`: `where` is a demangled-name prefix (`'CSandworm::CanAttack('`)
+or `'loc:File.cpp:<line>'` (lines of the *built* source); `exprs` are gdb expressions on the entry registers
+(`$this->x8C0_flags & 0x10`, `$rdx` = a state's EStateMsg); flags `ret` (bool result), `retp` (pointer
+non-null), `calls` (count every call/jmp site in the body by callee - the way to see arms that end in a
+call, tail calls included; `caller=` misses tail calls), `max=<n>` (hits per breakpoint, default 400: raise
+it for per-frame functions or later arms never show). `<out>/cov.txt` lists per entry its hits and the
+count per key tuple (also `cov.json`; both rewritten every 15 s, so a killed run keeps them); a key that
+never shows is an arm that never ran. Label entries with the retail offset; put layer switches and
+`fsm`/`place`/`send` steps in the driver (example: `specs/sandworm_temple.con`). Each run takes a free slot (its own
+display and console port; set `COV_PORT`/`DISPLAY_NUM` only to override, a busy port fails fast), stop a run by killing `run.sh`, delete `<out>` after.
 
 ## Gates (one line each in the report)
 

@@ -896,9 +896,9 @@ bool CDigitalGuardianHead::IsBurstOver(CStateManager& mgr, const CTriggerData& d
 }
 
 // fn_14_173AC: bit 0x80 of 0x10F4 (extrwi 1, 24).
-// Unmarked: true never ran. Runs 37-39 entered Idle (0x10F4 0x88) but no trigger read IsIdle
-// there, and seven fights to the head's death never read it with the bit set. The triggers that
-// read it sit in FSM2 sub-machines, which `fsm` cannot enter (it resolves root states only).
+// No branch: the extrwi result is returned. Runs 410-413 (forced `fsm <body> VortexAttack`) read
+// it with the bit set; earlier runs read it clear.
+// @ fn_14_173AC
 bool CDigitalGuardianHead::IsIdle(CStateManager& mgr, const CTriggerData& data) const {
   return (x10F4_ & 0x80) != 0;
 }
