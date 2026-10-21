@@ -34,6 +34,11 @@ void TraceCall(const CSpacePirate& self, const char* what, int arg) {
 }
 } // namespace
 
+// @ fn_72_C488 (0xB0): the state machine's time (0x350, vtable slot 0x30, 0xC4B0-0xC4C0) must beat
+// rodata B44 = 0.5 (0xC4CC `fcmpo`, 0xC4D0 `ble` -> false); then CPatterned::Stuck (0xC4E4, true ->
+// 0xC4EC `bne`) or CPatterned::PathShagged (0xC4FC, 0xC504 `beq`). The gdb run (2026-10-21,
+// casualpirates) ran every arm: 400 entries but 181 CPatterned::Stuck calls (the <= 0.5 arm), one
+// Stuck true, and 7 results true against that one (PathShagged true) as well as false ones.
 bool CSpacePirate::Stuck(CStateManager& mgr, const CTriggerData& data) const {
   if (mStateMachine->GetTime() > 0.5f) {
     return CPatterned::Stuck(mgr, data) || CPatterned::PathShagged(mgr, data);
@@ -41,6 +46,7 @@ bool CSpacePirate::Stuck(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
+// @ fn_72_C468 (0x20): a tail of CPatterned::Stuck (0xC474), no branch; the gdb run saw both results.
 bool CSpacePirate::PatternShagged(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Stuck(mgr, data);
 }
@@ -116,6 +122,8 @@ bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data)
   return result;
 }
 
+// @ fn_72_ADB4 (0xC): the 0x8f8 byte (0xADB4) bit 27, mask 0x10 (0xADB8 `extrwi 1,27`). Branchless;
+// 400+ calls in the gdb run (all false: no cover check is set in the shipped data).
 bool CSpacePirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) const {
   return x8f8_27_coverCheck;
 }
@@ -381,6 +389,8 @@ bool CSpacePirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) c
   return true;
 }
 
+// @ fn_72_8A84 (0xC): the 0x8f9 byte (0x8A84) bit 27, mask 0x10 (0x8A88 `extrwi 1,27`). Branchless; the
+// gdb run evaluated it 59 times (07_sand_alamoportalobservation L3, the PathFind state).
 bool CSpacePirate::InRange(CStateManager& mgr, const CTriggerData& data) const {
   return x8f9_27_inRange;
 }
