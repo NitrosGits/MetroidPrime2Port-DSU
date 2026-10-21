@@ -914,20 +914,21 @@ const CDamageVulnerability* CDigitalGuardianHead::GetDamageVulnerability() const
 // detaches (fn_14_16160 clears it).
 // Every arm ran (area 53, `scaninfo <head>` x180 under gdb attach): bit 0x08 set (the base's,
 // 4BA321EA) naturally; forced: 0x08 clear (the shield's 7D9FAEC7), +0x40 (the stunned
-// AFE327ED), +0x10 (the final A23D895E), the final token nulled (the base's again).
+// AFE327ED), +0x10 (the final A23D895E), and each token nulled in its own arm (the base's
+// again, three times).
 // @ fn_14_177C8
 CScannableObjectInfo* CDigitalGuardianHead::GetScannableObjectInfo() const {
-  if ((x10F4_ & 0x08) == 0) { // extrwi. 1, 28 / bne at 0x177D8
-    const rstl::single_ptr< TCachedToken< CScannableObjectInfo > >* token;
-    if ((x10F4_ & 0x10) != 0) {        // 0x177E0
-      token = &xD7C_;                  // 0x177E8
+  if ((x10F4_ & 0x08) == 0) {       // extrwi. 1, 28 / bne at 0x177D8
+    if ((x10F4_ & 0x10) != 0) {     // 0x177E0
+      if (xD7C_.get() != nullptr) { // cmplwi 0 / beq at 0x177EC
+        return xD7C_->GetObject();  // the cached object (+8) at 0x177F4
+      }
     } else if ((x10F4_ & 0x40) != 0) { // 0x177FC
-      token = &xD78_;                  // 0x17804
-    } else {
-      token = &xD74_; // 0x17818
-    }
-    if (token->get() != nullptr) {  // cmplwi 0 / beq at 0x177EC, 0x17808, 0x1781C
-      return (*token)->GetObject(); // the cached object (+8) at 0x177F4, 0x17810, 0x17824
+      if (xD78_.get() != nullptr) {    // cmplwi 0 / beq at 0x17808
+        return xD78_->GetObject();     // 0x17810
+      }
+    } else if (xD74_.get() != nullptr) { // cmplwi 0 / beq at 0x1781C
+      return xD74_->GetObject();         // 0x17824
     }
   }
   return CPatterned::GetScannableObjectInfo(); // 0x1782C
