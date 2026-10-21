@@ -604,6 +604,14 @@ private:
                                     // (0x00020224)
   float mGuestD24;                  // guest 0xD24, the 0xCD0 sub-object's +0x54 (fn_10_E560 writes
                                     // 0.0f at 0x0000E5DC); fn_10_F654 ramps it in [0, 1]
+  CDamageVulnerability mGuestCD4;   // guest 0xCD4, the 0xCD0 sub-object's vulnerability: fn_10_E560
+                                    // copies CDamageVulnerability::ReflectVulnerabilty() into it
+                                    // (0x0000E580/0x0000E58C); fn_10_100DC / fn_10_FF20 return it
+                                    // while mGuestCD0 is 1
+  // guest 0xFD0 (the 0xF80 sub-object's +0x50, built from ReflectVulnerabilty() by fn_10_20F50 at
+  // 0x00020FB8/0x00020FC4), the phazon-enrage vulnerability fn_10_100DC rebuilds from the
+  // patterned one on every call; mutable because that call is the const GetDamageVulnerability
+  mutable CDamageVulnerability mEnrageVulnerability;
   // guest 0x92C, the alternate 'SCAN' (the data's alternateScannableInfo, locked by the
   // constructor at 0x0002048C..0x00020538 when it is valid); fn_10_F40C answers it
   rstl::single_ptr< TLockedToken< CScannableObjectInfo > > mAltScanInfo;

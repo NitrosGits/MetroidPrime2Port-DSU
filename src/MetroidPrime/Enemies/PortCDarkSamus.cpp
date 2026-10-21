@@ -74,6 +74,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mPhazonHealthMark(0.f)                        // 0x00020214
 , mPhazonPhase(false)                           // 0x00020224
 , mGuestD24(0.f)                                // 0x0000E5DC
+, mGuestCD4(CDamageVulnerability::ReflectVulnerabilty())            // 0x0000E58C
+, mEnrageVulnerability(CDamageVulnerability::ReflectVulnerabilty()) // 0x00020FC4
 , mSeenStageUid(kInvalidUniqueId)
 , mSeenStageCount(1)                            // 0x0002001C
 , mStageChanged(0)                              // 0x00020028
@@ -282,10 +284,33 @@ void CDarkSamus::Render(const CStateManager& mgr) const {
 // result, which is what the base class's own accessor does.
 const CHealthInfo* CDarkSamus::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
-// vtable slot 16 = fn_10_100DC (0x134): the phazon-phase vulnerability.
+// vtable slot 16 = fn_10_100DC (0x134): the vulnerability others read. During the phazon enrage
+// (attack 0x800000) every weapon but phazon does nothing: the patterned vulnerability is copied
+// to 0xFD0 (fn_10_FFB4, its operator=, 0x00010128) and every normal type but kWT_Phazon, every
+// charged and every combo slot is set to (lbl_10_rodata_3FC = 0.0f, kE_Normal, false).
 const CDamageVulnerability* CDarkSamus::GetDamageVulnerability() const {
-  StandIn("fn_10_100DC", "vtable slot 16, GetDamageVulnerability");
-  return CPatterned::GetDamageVulnerability();
+  if (mGuestCD0 == 1) { // 0x000100FC
+    return &mGuestCD4;
+  }
+  if (mCurrentAttack == 0x800000) { // 0x00010110 (subis/cmplwi)
+    mEnrageVulnerability = *CPatterned::GetDamageVulnerability(); // 0x00010128
+    for (int i = 0; i < 0x15; ++i) {                                // 0x00010168
+      if (i != kWT_Phazon) {                                        // 0x00010138 (10)
+        mEnrageVulnerability.SetVulnerability(
+            i, CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_Normal, false));
+      }
+    }
+    for (int i = 0; i < 4; ++i) { // 0x000101A4
+      mEnrageVulnerability.SetChargedVulnerability(
+          i, CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_Normal, false));
+    }
+    for (int i = 0; i < 4; ++i) { // 0x000101E0
+      mEnrageVulnerability.SetComboVulnerability(
+          i, CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_Normal, false));
+    }
+    return &mEnrageVulnerability;
+  }
+  return CPatterned::GetDamageVulnerability(); // 0x000101F0
 }
 
 // vtable slot 18 = fn_10_F5C0 (0x2C): it builds the box from CPhysicsActor::GetBoundingBox.
@@ -369,10 +394,20 @@ void CDarkSamus::CollidedWith(const TUniqueId& id, const CCollisionInfoList& lis
 }
 
 // vtable slot 40 = fn_10_FF20 (0x94): the damage vulnerability the actor is hit with - the phazon
-// sub-object at 0xCD4 when the byte at 0xCD0 is 1, the combo vulnerability at 0xFD0 otherwise.
+// sub-object at 0xCD4 when the byte at 0xCD0 is 1; during the phazon enrage the patterned
+// vulnerability copied to 0xFD0 with combo slot 3 set to (0.0f, kE_Normal, false); the CAi one
+// otherwise.
 CDamageVulnerability* CDarkSamus::DamageVulnerability() {
-  StandIn("fn_10_FF20", "vtable slot 40, DamageVulnerability");
-  return CPatterned::DamageVulnerability();
+  if (mGuestCD0 == 1) { // 0x0000FF38
+    return &mGuestCD4;
+  }
+  if (mCurrentAttack == 0x800000) { // 0x0000FF4C (subis/cmplwi)
+    mEnrageVulnerability = *CPatterned::GetDamageVulnerability(); // 0x0000FF64
+    mEnrageVulnerability.SetComboVulnerability(                     // 0x0000FF90
+        3, CWeaponTypeVulnerability(0.f, CWeaponTypeVulnerability::kE_Normal, false));
+    return &mEnrageVulnerability;
+  }
+  return CAi::DamageVulnerability(); // 0x0000FF9C
 }
 
 // vtable slot 41 = fn_10_F488 (0x138): the damage handling. The hit cooldown 0x448 =
