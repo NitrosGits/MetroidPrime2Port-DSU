@@ -470,49 +470,48 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 // (0x494D3030..0x494D3038, the cases at 0xAAB8, 0xAAC8, 0xAAE0, 0xAAF8, 0xAB10, 0xAB28,
 // 0xAB40, 0xAB58 and 0xAB70), "OPEN" (0x4F50454E, the case at 0xAA3C), "CLOS" (0x434C4F53,
 // the case at 0xAA80), "XDEL" (0x5844454C, the case at 0xA880), "XAUD" (0x58415544, the case
-// at 0xA9A8), "XALC" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
+// at 0xA9A8), "XALD" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
 // 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
 // 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C).
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
   // The retail reads the actor's active bit before it calls the base (the byte at guest 0x20,
   // bit 7, read at 0xA6C4) and the "ACTV" and "DCTV" cases test that value.
   const bool active = GetActive();
-  CPatterned::AcceptScriptMsg(mgr, msg);
-  switch (static_cast< uint >(msg.GetMessage())) {
+  CPatterned::AcceptScriptMsg(mgr, msg); // 0xA6DC
+  switch (static_cast< uint >(msg.GetMessage())) { // the message (+8) at 0xA6BC
   case 0x41435456: // "ACTV"
-    if (!active) {
+    if (!active) { // 0xA8DC
       if (xE60_ != nullptr) { // the retail's test at 0xA8E8
-        xE60_->SetActive(mgr, true);
+        xE60_->SetActive(mgr, true); // 0xA8F8
       }
       // The second manager is only woken when the flag byte's bit 6 is set (the extrwi at
       // 0xA90C, the byte's bit 6 = 0x40).
       if (xE64_ != nullptr && (x128C_ & 0x40) != 0) { // the tests at 0xA900 and 0xA910
-        xE64_->SetActive(mgr, true);
+        xE64_->SetActive(mgr, true); // 0xA91C
       }
-      x3E88_(mgr, true);
+      x3E88_(mgr, true); // 0xA92C
       // The retail's call at 0xA944 passes the float at .rodata 0x264 (0.0f) as its last
       // argument and a pointer to that word as its state message; the code function ignores
       // both.
-      ResetAttackTimes(mgr, 0.f);
+      ResetAttackTimes(mgr, 0.f); // fn_14_7B24
     }
     break;
   case 0x44435456: // "DCTV"
-    if (active) {
+    if (active) {             // 0xA94C
       if (xE60_ != nullptr) { // the retail's test at 0xA958
-        xE60_->SetActive(mgr, false);
+        xE60_->SetActive(mgr, false); // 0xA968
       }
       if (xE64_ != nullptr) { // the retail's test at 0xA970
-        xE64_->SetActive(mgr, false);
+        xE64_->SetActive(mgr, false); // 0xA980
       }
-      x3E88_(mgr, false);
+      x3E88_(mgr, false); // 0xA990
     }
     break;
   case 0x4F50454E: // "OPEN"
     // The flag byte's bit 3 must be clear (the extrwi at 0xAA40, the byte's bit 3 = 0x08) and
     // the beacon's state word must not be 1 (the cmpwi at 0xAA4C).
     if ((x128C_ & 0x08) == 0 && x1268_ != 1) {
-      x1268_ = 2;
+      x1268_ = 2; // 0xAA5C
       // The sound (the call at 0xAA78): the position is the actor's translation (guest 0x54),
       // the direction is the up vector and the parms are the data block's +0x1C0
       // (sound_BeaconExtract).
@@ -528,80 +527,80 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     break;
   case 0x5844454C: // "XDEL"
     if (xE60_ != nullptr) { // the retail's test at 0xA884
-      xE60_->Destroy(mgr);
+      xE60_->Destroy(mgr);  // 0xA890
     }
     if (xE64_ != nullptr) { // the retail's test at 0xA898
-      xE64_->Destroy(mgr);
+      xE64_->Destroy(mgr);  // 0xA8A4
     }
-    if (x1240_ != CSfxHandle()) {
-      CSfxManager::RemoveEmitter(x1240_);
-      x1240_ = CSfxHandle();
+    if (x1240_ != CSfxHandle()) {        // cmplwi 0 at 0xA8AC
+      CSfxManager::RemoveEmitter(x1240_); // 0xA8C0
+      x1240_ = CSfxHandle();             // 0 at 0xA8C8
     }
-    x3F14_(mgr); // fn_14_3F14
+    x3F14_(mgr); // fn_14_3F14 at 0xA8D4
     break;
   case 0x58415544: // "XAUD"
     if (xE60_ != nullptr) { // the retail's test at 0xA9AC
-      xE60_->SetPhysicsActive(mgr, false);
+      xE60_->SetPhysicsActive(mgr, false); // 0xA9BC
     }
     if (xE64_ != nullptr) { // the retail's test at 0xA9C4
-      xE64_->SetPhysicsActive(mgr, false);
+      xE64_->SetPhysicsActive(mgr, false); // 0xA9D4
     }
     break;
-  case 0x58414C44: // "XALC"
-    x5910_(mgr); // fn_14_5910
+  case 0x58414C44: // "XALD"
+    x5910_(mgr); // fn_14_5910 at 0xA9A0
     break;
-  case 0x58444D47: // "XDMG": the sender (the message's +0)
-    x5838_(mgr, msg.GetSenderId()); // fn_14_5838
+  case 0x58444D47: // "XDMG": the sender (the message's +0, 0xA9DC)
+    x5838_(mgr, msg.GetSenderId()); // fn_14_5838 at 0xA9F4
     break;
   case 0x58524447: // "XRDG"
-    x5644_(mgr, msg.GetSenderId()); // fn_14_5644
+    x5644_(mgr, msg.GetSenderId()); // fn_14_5644 at 0xAA14
     break;
   case 0x58484954: // "XHIT"
-    x4F2C_(mgr, msg.GetSenderId()); // fn_14_4F2C
+    x4F2C_(mgr, msg.GetSenderId()); // fn_14_4F2C at 0xAA34
     break;
-  case 0x494D3030: // "IM00"
-    x3F14_(mgr); // fn_14_3F14
+  case 0x494D3030: // "IM00", 0xAAB8 (the bge at 0xA74C)
+    x3F14_(mgr); // fn_14_3F14 at 0xAAC0
     break;
-  case 0x494D3031: // "IM01"
-    x1010_ = 1;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3031: // "IM01", 0xAAC8
+    x1010_ = 1;  // stb at 0xAAD0
+    x3A44_(mgr); // fn_14_3A44 at 0xAAD8
     break;
-  case 0x494D3032: // "IM02"
-    x1010_ = 0;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3032: // "IM02", 0xAAE0
+    x1010_ = 0;  // stb at 0xAAE8
+    x3A44_(mgr); // fn_14_3A44 at 0xAAF0
     break;
-  case 0x494D3033: // "IM03"
-    x1012_ = 1;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3033: // "IM03", 0xAAF8
+    x1012_ = 1;  // stb at 0xAB00
+    x3A44_(mgr); // fn_14_3A44 at 0xAB08
     break;
-  case 0x494D3034: // "IM04"
-    x1012_ = 0;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3034: // "IM04", 0xAB10
+    x1012_ = 0;  // stb at 0xAB18
+    x3A44_(mgr); // fn_14_3A44 at 0xAB20
     break;
-  case 0x494D3035: // "IM05"
-    x1013_ = 1;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3035: // "IM05", 0xAB28
+    x1013_ = 1;  // stb at 0xAB30
+    x3A44_(mgr); // fn_14_3A44 at 0xAB38
     break;
-  case 0x494D3036: // "IM06"
-    x1013_ = 0;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3036: // "IM06", 0xAB40
+    x1013_ = 0;  // stb at 0xAB48
+    x3A44_(mgr); // fn_14_3A44 at 0xAB50
     break;
-  case 0x494D3037: // "IM07"
-    x1011_ = 1;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3037: // "IM07", 0xAB58
+    x1011_ = 1;  // stb at 0xAB60
+    x3A44_(mgr); // fn_14_3A44 at 0xAB68
     break;
-  case 0x494D3038: // "IM08"
-    x1011_ = 0;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3038: // "IM08", 0xAB70
+    x1011_ = 0;  // stb at 0xAB78
+    x3A44_(mgr); // fn_14_3A44 at 0xAB80
     break;
   case 0x58435254: // "XCRT", the case at 0xA81C
-    BodyController()->Activate(mgr, pas::kAS_Invalid);
-    x4080_(mgr); // fn_14_4080
-    x24E4_(mgr); // fn_14_24E4
-    SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
-    SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
-    RemoveMaterial(kMT_SeekerTarget, mgr);
-    x14F8_(); // fn_14_14F8
+    BodyController()->Activate(mgr, pas::kAS_Invalid);          // -1 at 0xA828
+    x4080_(mgr);                                                 // fn_14_4080 at 0xA834
+    x24E4_(mgr);                                                 // fn_14_24E4 at 0xA840
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);  // 0xF, 0 at 0xA850
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);  // 2, 1 at 0xA860
+    RemoveMaterial(kMT_SeekerTarget, mgr);                       // 0x3F at 0xA870
+    x14F8_();                                                    // fn_14_14F8 at 0xA878
     break;
   default:
     break;
