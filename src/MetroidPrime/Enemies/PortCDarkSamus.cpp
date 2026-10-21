@@ -144,6 +144,26 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mGuestEC8(0)                                       // 0x00020138
 , mGuestECC(CVector3f(0.f, 0.f, 0.f))                // 0x00020140
 , mBoostHintValue(1.f)                               // 0x00020154
+// fn_10_8DB4 at 0x00020060; the two sound ids are kInternalInvalidSfxId for -1 (0x0002000C,
+// 0x0002004C).
+, mSweepBeamPart(data.mSweepSwoosh)
+, mSweepBeamGen()
+, mSweepBeamDamageInfo(data.mSweepBeamDamage)
+, mSweepBeamDir(CVector3f::Zero())
+, mSweepBeamPrevDir(CVector3f::Zero())
+, mSweepBeamEnd(CVector3f::Zero())
+, mSweepBeamLength(0.f)
+, mSweepBeamSpeed(1.f)
+, mSweepBeamHitPlayer(false)
+, mSweepBeamOn(false)
+, mSweepBeamResponse(gpSimplePool->GetObj(SObjectTag('CRSC', data.mSweepBeamCollisionEffect)))
+, mSweepBeamSfxId(data.mSweepBeamSound == -1 ? CSfxManager::kInternalInvalidSfxId
+                                              : static_cast< ushort >(data.mSweepBeamSound))
+, mSweepBeamSfx()
+, mSweepBeamEndSfxId(data.mUnknown0EF8DC15 == -1
+                         ? CSfxManager::kInternalInvalidSfxId
+                         : static_cast< ushort >(data.mUnknown0EF8DC15))
+, mSweepBeamEndSfx()
 , mDodgeTime(0.f)                               // 0x00020248
 , mDodgeDir(CVector3f::Zero())                  // 0x00020254..0x00020264
 , mGunLctrXf(CTransform4f::Identity()) {        // 0x0001FBC0
@@ -413,6 +433,23 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
       break;
     default:
       break;
+    }
+    return;
+  }
+  // kUE_BeginAction (case 17, 0x0001C004) and kUE_EndAction (case 18, 0x0001C0A0) switch on the
+  // current attack 0x980 and never reach the base: the sweep beam (0x10000, `lis r0, 0x1` at
+  // 0x0001C008 / 0x0001C0A4) starts its effect (fn_10_C85C at 0x0001C098) and releases it
+  // (fn_10_C798 at 0x0001C11C). BeginAction's 0x2 arm (0x0001C018) and EndAction's 0x40, 0x100,
+  // 0x100000 counters (0xA38/0xA78/0xAB0) and 0x400000 arm are not in the port yet.
+  if (type == kUE_BeginAction) {
+    if (mCurrentAttack == 0x10000) {
+      StartSweepBeam();
+    }
+    return;
+  }
+  if (type == kUE_EndAction) {
+    if (mCurrentAttack == 0x10000) {
+      StopSweepBeam();
     }
     return;
   }

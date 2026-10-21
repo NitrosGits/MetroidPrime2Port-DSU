@@ -12,6 +12,10 @@
 #include "rstl/optional_object.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrAudioPlaybackParms.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/TToken.hpp"
+#include "Weapons/CCollisionResponseData.hpp"
+#include "rstl/auto_ptr.hpp"
 
 class CBCProjectileAttackCmd;
 
@@ -542,6 +546,17 @@ private:
   // transform under the actor and the roll emitter's position (BoostBallInto's Update).
   CActor* GetBoostBallActor(CStateManager& mgr) const;
   void UpdateBoostBallAtActor(CStateManager& mgr);
+  // fn_10_C85C / C798: the sweep beam's effect (0xD78) made at the kUE_BeginAction event with
+  // emission on and 0xDC8 bit 0x40 set; released with the bit cleared. fn_10_C2B0 / C470: the
+  // beam's aim each Update (the static ray from the gun and its end point, the wall's collision
+  // response and decal, the direction, length and effect). fn_10_C104 / BE18: the dynamic rays
+  // swept from the last direction to this one and the damage the first hit takes.
+  void StartSweepBeam();
+  void StopSweepBeam();
+  void UpdateSweepBeamAim(CStateManager& mgr, float dt);
+  void UpdateSweepBeamEnd(CStateManager& mgr);
+  void SweepBeamDamage(CStateManager& mgr);
+  void SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float length);
 
   // fn_10_1D794: the still timer (the guest's 0x964) and the position it measures from (the
   // guest's 0x958). kStateMsg_Activate clears the timer and moves the reference position to the
@@ -872,6 +887,30 @@ private:
   CVector3f mGuestECC;             // guest 0xECC, the zero vector (0x00020140..0x00020150)
   float mBoostHintValue;           // guest 0xED8, the hint's value parameter clamped to 0..2,
                                    // lbl_10_rodata_3E8 = 1.0f (0x00020154)
+  // The sweep beam sub-object at 0xD74 (fn_10_8DB4, built at 0x00020060): the host keeps only
+  // the members SweepBeam (fn_10_CA0C) and its callees read. [probable] fn_10_8DB4's arguments
+  // follow the data order (sweepSwoosh, sweepBeamDamage, sweepBeamCollisionEffect, sweepBeamSound,
+  // unknown_0x0ef8dc15), as fn_10_895C's do for the boost ball.
+  CAssetId mSweepBeamPart;         // guest 0xD74 (+0x00), the beam effect's 'PART' (`lis r5,
+                                   // 0x5041` at 0x0000C8A8); r4 (0x00008DF8)
+  rstl::auto_ptr< CElementGen > mSweepBeamGen; // guest 0xD78/0xD7C (+0x04/+0x08), null
+                                   // (0x00008E08/0x00008E18)
+  CDamageInfo mSweepBeamDamageInfo; // guest 0xD80 (+0x0C), r5 (0x00008E28..0x00008E64)
+  CVector3f mSweepBeamDir;         // guest 0xD9C (+0x28), gun to end point, normalized; zero
+                                   // (0x00008E6C)
+  CVector3f mSweepBeamPrevDir;     // guest 0xDA8 (+0x34), the last swept direction; zero
+  CVector3f mSweepBeamEnd;         // guest 0xDB4 (+0x40), the end point; zero
+  float mSweepBeamLength;          // guest 0xDC0 (+0x4C), lbl_10_rodata_25C = 0.0f (0x00008EB0)
+  float mSweepBeamSpeed;           // guest 0xDC4 (+0x50), lbl_10_rodata_264 = 1.0f (0x00008EB4);
+                                   // SweepBeam keeps the base's speed 0x3C8 here
+  bool mSweepBeamHitPlayer : 1;    // 0xdc8 0x80 (+0x54), false (0x00008EBC)
+  bool mSweepBeamOn : 1;           // 0xdc8 0x40, false (0x00008EC8)
+  TLockedToken< CCollisionResponseData > mSweepBeamResponse; // guest 0xDCC (+0x58), 'CRSC'
+                                   // (`lis r4, 0x4352` at 0x00008E10), r6
+  ushort mSweepBeamSfxId;          // guest 0xDD8 (+0x64), r7 (0x00008F18)
+  CSfxHandle mSweepBeamSfx;        // guest 0xDDC (+0x68), 0 (0x00008F24)
+  ushort mSweepBeamEndSfxId;       // guest 0xDE0 (+0x6C), r8 (0x00008F28)
+  CSfxHandle mSweepBeamEndSfx;     // guest 0xDE4 (+0x70), 0 (0x00008F2C)
   float mDodgeTime;                // guest 0x1090, the dodge's time left (fn_10_1707C)
   CVector3f mDodgeDir;             // guest 0x1094, the dodge's direction (fn_10_1707C)
   CTransform4f mGunLctrXf;         // guest 0x8CC, identity (0x0001FBC0); PreRender (fn_10_18AB8)

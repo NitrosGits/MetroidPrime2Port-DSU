@@ -773,3 +773,45 @@ transition enters it.
 - Not started: SweepBeam CA0C (needs C2B0 beam aim + C470 ray/decal/collision response, C104 with
   BE18 near-list damage, C798 the 0xD78 effect release, and the 0xD74 sub-object), 1B658, 138A4,
   11FA4's two open arms.
+
+## Slice 17 (2026-10-21): the forced boost hints, SweepBeam
+
+- Forced (send) on the rooftop (`tools/drivers/darksamus_boost_inactive.con`): at f700 the boss
+  stands in hint u01b2's radius only, whose kSS_Arrived link is u0140. `send u0140 Deactivate` ran
+  B6C4's inactive arm (u0140 is linked too), BA38's inactive answer (true at step 0) and B6C4's
+  BA38-true skip of u01b2; B164 then took u017f -> u0197. Still unmarked:
+  - B6C4: the null-cast and not-0x11 arms need a non-hint or non-0x11 link (data; no delete command).
+  - BA38: its no-hint arm is dead from its only caller (B6C4 passes a hint's uid).
+  - B458: its no-hint arm is reachable only from BoostBallRoll A3B0 (0x0000AC08, a stand-in); its
+    skip-inactive arm needs an inactive non-0x11 link ahead of the first type-0x11 Arrived link,
+    because BA38 already drops a start whose first arrived hint is inactive.
+  - A06C / 9920: 0xE38 is written only by fn_10_9AC4 (clear) and fn_10_9E00 (set); 9E00's callers
+    are BoostBallRoll A3B0 and DoUserAnimEvent 1BEFC, both stand-ins.
+- Ported: SweepBeam CA0C, the beam start C85C and release C798, the aim C2B0, the end point C470
+  (static ray, collision response, decal), the swept rays C104 and the damage ray BE18, the 0xD74
+  sub-object's members (fn_10_8DB4: 0xD74 PART, 0xD78 effect, 0xD80 damage, 0xD9C/0xDA8/0xDB4
+  directions and end, 0xDC0 length, 0xDC4 saved speed, 0xDC8 bits 0x80/0x40, 0xDCC CRSC, 0xDD8..0xDE4
+  sounds), and DoUserAnimEvent's kUE_BeginAction / kUE_EndAction sweep arms (0x10000 starts / stops
+  the beam; both cases return without the base, as retail does). [probable] fn_10_8DB4's arguments
+  follow the data order (sweepSwoosh, sweepBeamDamage, sweepBeamCollisionEffect, sweepBeamSound,
+  unknown_0x0ef8dc15).
+- Host guard: Agon's boss leaves sweepSwoosh as kInvalidAssetId and a forced SweepBeam there crashed
+  in CElementGen's constructor; StartSweepBeam makes no beam for an invalid PART.
+- Reach: `fsm <id> SweepBeam` (`tools/drivers/darksamus_sweep.con`, rooftop u04f7, PART a4381217).
+  BeginAction does not fire on every pass (it fired on all three rooftop passes, on one of three on Agon).
+  Neither world sets sweepBeamSound or unknown_0x0ef8dc15 (both 0xFFFF), so no emitter is made.
+
+| body | arm | ran |
+| --- | --- | --- |
+| CA0C | Activate / Update / Deactivate | yes / yes / yes |
+| CA0C | Update: beam on / off; beam sound / none | yes / yes; **no** (data) / yes |
+| CA0C | Deactivate: each sound set / not set | **no** (data) / yes |
+| C85C | release, build, emission on, bit 0x40 | yes |
+| C798 | old effect deleted / none | yes / yes |
+| C2B0 | effect / none; normalized / not; end sound / none | yes / yes; yes / **no**; **no** (data) / yes |
+| C470 | normalized / not; hit, beam on / hit, off / miss; decal / none | yes / **no**; yes / yes / yes; **no** / yes |
+| C104 | no PART (0) / previous zero / previous; one ray / subdivided | **no** (data) / yes / yes; yes / yes |
+| BE18 | player first / player again / other / none | yes / yes / yes / yes |
+
+- Marked: C85C, C798, BE18. CA0C and C2B0 wait on a world with the sweep sounds; C470 waits on a
+  decal-bearing CRSC (rooftop's has no type-1 decal) and a vertical gun; C104 waits on a 0 PART.

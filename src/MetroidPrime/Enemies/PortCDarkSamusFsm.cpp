@@ -53,6 +53,10 @@
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CAnimPlaybackParms.hpp"
 #include "Collision/CRayCastResult.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "MetroidPrime/CDecalManager.hpp"
+#include "Weapons/CCollisionResponseData.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -2499,9 +2503,247 @@ void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("SuperMissileAttack", msg);
 }
 
-void CDarkSamus::SweepBeam(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_CA0C", "state SweepBeam");
+// fn_10_CA0C (0x0000CA0C, 0x394 bytes): the SweepBeam state. Every message first runs the attack
+// bookkeeping with id 0x10000 (`lis r4, 0x1` at 0x0000CA44, fn_10_1B478 at 0x0000CA4C) and the
+// melee attack command with severity 5 (`li r8, 0x5` at 0x0000CA5C; pas::kAS_MeleeAttack = 7,
+// `li r5, 0x7` at 0x0000CA90; fn_10_8764 at 0x0000CAAC). Activate (`cmpwi r28, 0x0` at
+// 0x0000CAD4) turns the kAR_Flinch reaction off (`li r4, 0x1` at 0x0000CAF0, `li r5, 0x0` at
+// 0x0000CAF4), clears 0xDC8 bit 0x80 (`rlwimi r0, r7, 7, 24, 24` at 0x0000CB04) and bit 0x40
+// (`rlwimi r0, r7, 6, 25, 25` at 0x0000CB64), zeroes the last and current directions
+// (0x0000CB2C..0x0000CB5C) and starts two emitters in the actor's area, at volume 0x7F (`li r6,
+// 0x7f` at 0x0000CB28), without acoustics (`li r8, 0x0` at 0x0000CB30), not looped (`li r9, 0x0`
+// at 0x0000CB34), kMedPriority: the beam sound 0xDD8 at the actor (the handle to 0xDDC at
+// 0x0000CB88) and the end sound 0xDE0 lbl_10_rodata_2D8 = 20.0f along the actor's forward vector
+// (0x0000CB94; the handle to 0xDE4 at 0x0000CC1C). It keeps the speed 0x3C8 in 0xDC4 (0x0000CC2C)
+// and scales it by Range(lbl_10_rodata_2DC = 0.7f, lbl_10_rodata_264 = 1.0f) (0x0000CC30), then
+// runs the collision failsafe (fn_10_1AEC0 at 0x0000CC48). Update (`cmpwi r28, 0x1` at 0x0000CABC)
+// aims the beam (fn_10_C2B0 at 0x0000CC5C), sweeps the damage rays while 0xDC8 bit 0x40 is set
+// (`extrwi r0, r0, 1, 25` at 0x0000CC64, fn_10_C104 at 0x0000CC78) and, with a beam sound
+// (`cmplwi r0, 0x0` at 0x0000CC80), moves it lbl_10_rodata_2E0 = 7.0f along the gun's forward
+// vector (0x0000CC90) at volume 0x7F (`li r6, 0x7f` at 0x0000CCD4). Deactivate (`cmpwi r28, 0x3`
+// at 0x0000CAE0) turns kAR_Flinch back on (`li r5, 0x1` at 0x0000CD0C), releases the effect
+// (fn_10_C798 at 0x0000CD18), removes each emitter that is set (`cmplwi r0, 0x0` at 0x0000CD20,
+// 0x0000CD3C), zeroes both handles (0x0000CD5C, 0x0000CD68), restores the speed (0x0000CD70) and
+// runs the failsafe (0x0000CD74).
+void CDarkSamus::SweepBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("SweepBeam", msg);
+  UpdateCurrentAttack(0x10000, mgr, msg);
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Five));
+  if (msg == kStateMsg_Activate) {
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, false); // 0x0000CAF4
+    mSweepBeamHitPlayer = false; // 0x0000CB04
+    mSweepBeamPrevDir = CVector3f::Zero();
+    mSweepBeamDir = mSweepBeamPrevDir;
+    mSweepBeamOn = false; // 0x0000CB64
+    mSweepBeamSfx = CSfxManager::AddEmitter(mSweepBeamSfxId, GetTranslation(), 0x7F,
+                                            GetCurrentAreaId().Value(), false, false,
+                                            CSfxManager::kMedPriority); // 0x0000CB28
+    mSweepBeamEndSfx = CSfxManager::AddEmitter(
+        mSweepBeamEndSfxId, GetTranslation() + 20.f * GetTransform().GetForward(), 0x7F,
+        GetCurrentAreaId().Value(), false, false, CSfxManager::kMedPriority); // 0x0000CB94
+    mSweepBeamSpeed = mSpeed;                                             // 0x0000CC2C
+    mSpeed = mSweepBeamSpeed * mgr.Random()->Range(0.7f, 1.f);            // 0x0000CC30
+    RunCollisionFailsafe(mgr);
+  } else if (msg == kStateMsg_Update) {
+    UpdateSweepBeamAim(mgr, dt);
+    if (mSweepBeamOn == true) { // 0x0000CC64
+      SweepBeamDamage(mgr);
+    }
+    if (mSweepBeamSfx) { // 0x0000CC80
+      const CVector3f fwd = mGunLctrXf.GetForward();
+      CSfxManager::UpdateEmitter(mSweepBeamSfx, mGunLctrXf.GetTranslation() + 7.f * fwd, fwd,
+                                 0x7F); // 0x0000CC90
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, true); // 0x0000CD0C
+    StopSweepBeam();
+    if (mSweepBeamSfx) { // 0x0000CD20
+      CSfxManager::RemoveEmitter(mSweepBeamSfx);
+    }
+    if (mSweepBeamEndSfx) { // 0x0000CD3C
+      CSfxManager::RemoveEmitter(mSweepBeamEndSfx);
+    }
+    mSweepBeamSfx = CSfxHandle();
+    mSweepBeamEndSfx = mSweepBeamSfx;
+    mSpeed = mSweepBeamSpeed; // 0x0000CD70
+    RunCollisionFailsafe(mgr);
+  }
+}
+
+// fn_10_C85C (0x0000C85C, 0x1B0 bytes): releases any effect (fn_10_C798 at 0x0000C87C), makes a
+// CElementGen (`li r3, 0x338` at 0x0000C890) from the 'PART' 0xD74 (`lis r5, 0x5041` at
+// 0x0000C8A8) with kMOT_Normal (`li r5, 0x0` at 0x0000C8F8) and kOSF_One (`li r6, 0x1` at
+// 0x0000C8FC) into 0xD78, turns its emission on (`li r4, 0x1` at 0x0000C9C8, vtable slot 0x2C)
+// and sets 0xDC8 bit 0x40 (`rlwimi r0, r3, 6, 25, 25` at 0x0000C9E4).
+// Host guard: Agon's boss (10_sand_alamostorage) leaves sweepSwoosh unset (kInvalidAssetId), and
+// a forced SweepBeam there built the effect from that id and crashed in CElementGen's constructor;
+// with no beam asset the host makes no beam (no effect, no damage rays).
+// @ fn_10_C85C
+void CDarkSamus::StartSweepBeam() {
+  StopSweepBeam();
+  if (mSweepBeamPart == kInvalidAssetId) {
+    return;
+  }
+  mSweepBeamGen = new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', mSweepBeamPart)),
+                                  CElementGen::kMOT_Normal, CElementGen::kOSF_One);
+  mSweepBeamGen->SetParticleEmission(true); // 0x0000C9C8
+  mSweepBeamOn = true;                      // 0x0000C9E4
+}
+
+// fn_10_C798 (0x0000C798, 0xC4 bytes): the effect 0xD78 reset to null (the auto_ptr's
+// self-assignment test `cmplw r3, r0` at 0x0000C7BC; an owned old effect, `cmplwi r0, 0x0` at
+// 0x0000C7CC and `cmplwi r3, 0x0` at 0x0000C7D8, deleted at 0x0000C7F0) and 0xDC8 bit 0x40
+// cleared (`rlwimi r0, r3, 6, 25, 25` at 0x0000C840).
+// @ fn_10_C798
+void CDarkSamus::StopSweepBeam() {
+  mSweepBeamGen = nullptr;
+  mSweepBeamOn = false; // 0x0000C840
+}
+
+// fn_10_C2B0 (0x0000C2B0, 0x1C0 bytes): finds the end point (fn_10_C470 at 0x0000C2D0), then the
+// direction 0xD9C = end point 0xDB4 - the gun's position (the 0x8CC transform's origin,
+// 0x0000C2F8..0x0000C31C) and the length 0xDC0 its magnitude (0x0000C324). With an effect
+// (`cmplwi r3, 0x0` at 0x0000C32C) the effect goes to the gun (slot 0x20 at 0x0000C33C), looks at
+// the end point (LookAt with the up vector at 0x0000C35C, slot 0x1C at 0x0000C378), is scaled to
+// (lbl_10_rodata_278 = 4.0f, lbl_10_rodata_2D0 = 0.18f * length, 4.0f) (slot 0x24 at 0x0000C3B4)
+// and updated by dt (slot 0xC at 0x0000C3CC). The direction is normalized when it can be
+// (`cmplwi r0, 0x1` at 0x0000C3E4). With an end sound (`cmplwi r0, 0x0` at 0x0000C3F8) it moves
+// to the end point along lbl_10_rodata_288 = -1.0f times the actor's forward vector (0x0000C410)
+// at volume 0x7F (`li r6, 0x7f` at 0x0000C42C).
+void CDarkSamus::UpdateSweepBeamAim(CStateManager& mgr, float dt) {
+  UpdateSweepBeamEnd(mgr);
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  const CVector3f end = mSweepBeamEnd;
+  mSweepBeamDir = end - gunPos;
+  mSweepBeamLength = mSweepBeamDir.Magnitude();
+  if (CElementGen* gen = mSweepBeamGen.get()) { // 0x0000C32C
+    gen->SetGlobalTranslation(gunPos);
+    gen->SetGlobalOrientation(CTransform4f::LookAt(gunPos, end, CVector3f::Up()));
+    gen->SetGlobalScale(CVector3f(4.f, 0.18f * mSweepBeamLength, 4.f)); // 0x0000C39C
+    gen->Update(dt);
+  }
+  if (mSweepBeamDir.CanBeNormalized() == true) { // 0x0000C3E4
+    mSweepBeamDir.Normalize();
+  }
+  if (mSweepBeamEndSfx) { // 0x0000C3F8
+    const CVector3f fwd = GetTransform().GetForward();
+    CSfxManager::UpdateEmitter(mSweepBeamEndSfx, mSweepBeamEnd, -1.f * fwd, 0x7F); // 0x0000C42C
+  }
+}
+
+// fn_10_C470 (0x0000C470, 0x328 bytes): the beam's end point. The ray runs from the gun along the
+// gun's forward vector with its z set to lbl_10_rodata_25C = 0.0f (0x0000C4BC), normalized when it
+// can be (`cmplwi r0, 0x1` at 0x0000C4C8), for lbl_10_rodata_2D4 = 100.0f (0x0000C580) against a
+// filter built once (the guard `extsb. r0, r0` at 0x0000C4E0): include lbl_10_data_1E4 = 0x3B
+// (kMT_Solid), exclude lbl_10_data_1E8 = 0x20 (kMT_Player) and lbl_10_data_1EC = 0x2F
+// (kMT_CollisionActor), kFT_IncludeExclude (`li r7, 0x3` at 0x0000C53C). On a hit (`cmplwi r0,
+// 0x1` at 0x0000C5B8) while 0xDC8 bit 0x40 is set (`cmplwi r0, 0x1` at 0x0000C5C8) the response
+// 0xDCC runs for the hit with no target, the beam damage and false (`li r8, 0x0` at 0x0000C5EC;
+// DoCollisionResponse at 0x0000C5F4) and its decal for type 1 (`li r5, 0x1` at 0x0000C600), when it
+// has one (`cmplwi r0, 0x0` at 0x0000C664), goes at the hit point facing the hit plane's normal
+// (LookAt from the origin with the up vector at 0x0000C684; AddDecal at 0x0000C6D4, the ray's
+// direction unnormalized). The end point is the hit point on any hit (0x0000C6FC..0x0000C710),
+// else the gun plus 100.0f times the direction (0x0000C718..0x0000C758); its z is then the gun's
+// (0x0000C774).
+void CDarkSamus::UpdateSweepBeamEnd(CStateManager& mgr) {
+  CVector3f dir(mGunLctrXf.GetForward().GetX(), mGunLctrXf.GetForward().GetY(), 0.f);
+  if (dir.CanBeNormalized() == true) { // 0x0000C4C8
+    dir.Normalize();
+  }
+  static const CMaterialFilter skFilter(CMaterialList(kMT_Solid),
+                                        CMaterialList(kMT_Player, kMT_CollisionActor),
+                                        CMaterialFilter::kFT_IncludeExclude); // 0x0000C53C
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  const CRayCastResult result = mgr.RayStaticIntersection(gunPos, dir, 100.f, skFilter);
+  if (result.IsValid() == true) { // 0x0000C5B8
+    if (mSweepBeamOn == true) {   // 0x0000C5C8
+      mgr.DoCollisionResponse(**mSweepBeamResponse, result, kInvalidUniqueId, mSweepBeamDamageInfo,
+                              false);
+      const rstl::optional_object< TLockedToken< CDecalDescription > > decal =
+          mSweepBeamResponse->GetDecalDescription(static_cast< EWeaponCollisionResponseTypes >(1));
+      if (decal.valid()) { // 0x0000C664
+        CTransform4f xf =
+            CTransform4f::LookAt(CVector3f::Zero(), result.GetPlane().GetNormal(), CVector3f::Up());
+        xf.SetTranslation(result.GetPoint());
+        CDecalManager::AddDecal(*decal, xf, CUnitVector3f(dir, CUnitVector3f::kN_No), mgr);
+      }
+    }
+    mSweepBeamEnd = result.GetPoint();
+  } else {
+    mSweepBeamEnd = gunPos + 100.f * dir; // 0x0000C720
+  }
+  mSweepBeamEnd.SetZ(gunPos.GetZ()); // 0x0000C774
+}
+
+// fn_10_C104 (0x0000C104, 0x1AC bytes): with a beam effect asset 0xD74 (`cmplwi r0, 0x0` at
+// 0x0000C130) and a last direction 0xDA8 that is not the zero vector (`fcmpu cr0, f1, f0` at
+// 0x0000C148, 0x0000C158, 0x0000C168) the angle between the last and this direction (GetAngleDiff
+// at 0x0000C184) is halved (lbl_10_rodata_284 = 0.5f) and the ray count doubled until it is at
+// most lbl_10_rodata_2C0 = 0.05235988f (3 degrees, `fcmpo cr0, f1, f0` at 0x0000C1A8); with more
+// than one ray (`cmpwi r27, 0x1` at 0x0000C1B0) the rays i = 1..n-1 (`cmpw r26, r27` at
+// 0x0000C258) run along last * (lbl_10_rodata_264 = 1.0f - i/n) + this * i/n for the length 0xDC0
+// (fn_10_BE18 at 0x0000C250). Then the ray along this direction (0x0000C270), and this direction
+// becomes the last (0x0000C274..0x0000C288).
+void CDarkSamus::SweepBeamDamage(CStateManager& mgr) {
+  if (mSweepBeamPart == 0) { // 0x0000C130
+    return;
+  }
+  if (!(mSweepBeamPrevDir == CVector3f::Zero())) { // 0x0000C148
+    float angle = CVector3f::GetAngleDiff(mSweepBeamDir, mSweepBeamPrevDir);
+    int count = 1;
+    while (angle > 0.05235988f) { // 0x0000C1A8
+      angle *= 0.5f;              // lbl_10_rodata_284 (0x0000C190)
+      count <<= 1;
+    }
+    if (count > 1) { // 0x0000C1B0
+      for (int i = 1; i < count; ++i) { // 0x0000C258
+        const float t = static_cast< float >(i) / static_cast< float >(count);
+        const float u = 1.f - t; // 0x0000C224
+        const CVector3f dir(mSweepBeamPrevDir.GetX() * u + mSweepBeamDir.GetX() * t,
+                            mSweepBeamPrevDir.GetY() * u + mSweepBeamDir.GetY() * t,
+                            mSweepBeamPrevDir.GetZ() * u + mSweepBeamDir.GetZ() * t);
+        SweepBeamRay(mgr, dir, mSweepBeamLength);
+      }
+    }
+  }
+  SweepBeamRay(mgr, mSweepBeamDir, mSweepBeamLength);
+  mSweepBeamPrevDir = mSweepBeamDir;
+}
+
+// fn_10_BE18 (0x0000BE18, 0x2EC bytes): one damage ray from the gun along dir for length. The near
+// list and the dynamic ray share a filter built once (the guard `extsb. r0, r0` at 0x0000BE48):
+// include lbl_10_data_1F0 = 0x20 (kMT_Player) and lbl_10_data_1F4 = 0x31 (kMT_Platform),
+// kFT_Include (`li r7, 0x1` at 0x0000BE88); the near list ignores no actor (`li r8, 0x0` at
+// 0x0000BEEC). A hit on the player (`cmplw r4, r0` at 0x0000BF64) takes the beam damage 0xD80 once
+// per beam (0xDC8 bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BF70; set by `rlwimi r0, r3, 7, 24,
+// 24` at 0x0000BFF8). Any other hit (`cmplw r4, r0` at 0x0000C00C, against kInvalidUniqueId)
+// takes lbl_10_rodata_294 = 1000.0f (0x0000C034) with radius and knock-back lbl_10_rodata_25C =
+// 0.0f, no immunity (`rlwimi r4, r0, 7, 24, 24` at 0x0000C03C), no radius damage (`rlwimi r0, r3,
+// 6, 25, 25` at 0x0000C054) and the zeroed weapon mode lbl_10_bss_114 (0x0000C024). Both go
+// through ApplyDamage from the actor with a filter including lbl_10_data_1E0 = 0x3B (kMT_Solid),
+// kFT_IncludeExclude (`li r10, 0x3` at 0x0000BF94, 0x0000C08C), and the zero vector.
+// @ fn_10_BE18
+void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float length) {
+  static const CMaterialFilter skFilter = CMaterialFilter::MakeInclude(
+      CMaterialList(kMT_Player, kMT_Platform)); // 0x0000BE88
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, gunPos, dir, length, skFilter, nullptr);
+  TUniqueId hit = kInvalidUniqueId;
+  CGameCollision::RayDynamicIntersection(mgr, hit, gunPos, dir, length, skFilter, nearList);
+  const CMaterialFilter damageFilter(CMaterialList(kMT_Solid), CMaterialList(),
+                                     CMaterialFilter::kFT_IncludeExclude); // 0x0000BF94
+  if (hit == mgr.GetPlayer(0)->GetUniqueId()) { // 0x0000BF64
+    if (mSweepBeamHitPlayer) { // 0x0000BF70
+      return;
+    }
+    mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), mSweepBeamDamageInfo, damageFilter,
+                    CVector3f::Zero());
+    mSweepBeamHitPlayer = true; // 0x0000BFF8
+  } else if (hit != kInvalidUniqueId) { // 0x0000C00C
+    const CDamageInfo info(CWeaponMode(kWT_Power), 1000.f, 0.f, 0.f, true); // 0x0000C034
+    mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), info, damageFilter, CVector3f::Zero());
+  }
 }
 
 void CDarkSamus::Taunt(CStateManager&, EStateMsg msg, float) {
