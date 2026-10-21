@@ -560,6 +560,14 @@ BreakAttack 6328 is only in Ambushing's list, and Ambushing 7630 (marked before 
 even after `fsm <pirate> Ambushing`: the trace shows the transition, then no trigger is evaluated
 for that pirate (open).
 
+**gcov pass 4 (2026-10-21, rebuilt cov build)**: the forces now take the forced arm on the second
+Activate so the first keeps the natural arm (`spacepirate_force4.py`; Captured pinned to
+`SP_FORCE_EID=001d0051`). Crouch 98D8 and Ambushing 7630 ALL-ARMS; Captured 5610 and WallHang 69AC every
+arm but the switch default (WallHang marked). CoverBlown AA64 ALL-ARMS with `spacepirate_force5.py`
+(sandfalls L3, four one-call forces) and marked. ShouldAttack A71C (`spacepirate_force6.py`) ran once,
+8/20 edges untaken; unmarked. The seven dead states carry a 'dead in shipped data' comment and TSV note.
+Only LaunchGrenade and ShouldAttack remain unmarked among live states/triggers.
+
 **Coverage without probes**: the shared harness `tools/cov/run.sh` (docs/LANE_BRIEF.md, "Coverage without
 probes") with the spec `tools/cov/specs/spacepirate.py` and the driver `tools/drivers/spacepirate_drive.py`:
 
