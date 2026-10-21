@@ -53,7 +53,10 @@ class RetBp(gdb.FinishBreakpoint):
 
 class ForceBp(gdb.Breakpoint):
     def __init__(self, spec, label, exprs, sets, skip, what, ret):
-        super().__init__(spec, internal=False)
+        # internal: the breakpoint must not stop the game (the coverage harness's own
+        # breakpoints are internal too, and a visible breakpoint at the same address
+        # swallows the coverage counter and stops the game on every hit).
+        super().__init__(spec, internal=True)
         self.label, self.exprs, self.sets = label, exprs, sets
         self.skip, self.what, self.n, self.ret = skip, what, 0, ret
 
