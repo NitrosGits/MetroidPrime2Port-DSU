@@ -137,6 +137,9 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   (`platform/input/port_input_devices.cpp`, polled in `PortPumpEvents`), and Aurora then skips its
   own controller/keyboard read for the port but still merges the virtual pad (console, `MP2_INPUT`,
   touch) on top. A re-vendor of Aurora must keep the hook, or pad 0 silently loses the keyboard.
+  The override is one-shot (the next `PADRead` consumes it), so every game tick re-arms it
+  (`PortRearmPad0`, called in both `UpdateTicks` loops); a new loop that reads the pad needs the
+  same call, or its reads see `PAD_ERR_NO_CONTROLLER` and `CDolphinController` clears every button.
   Keyboard bindings live in `<user>/controls.toml`; `keybinds.cfg` is no longer read.
 - **The game's EFB copies all land in one spare buffer, and Aurora resolves each copy into a texture
   keyed by the destination pointer** - so two consumers copying into that buffer in the same frame end
