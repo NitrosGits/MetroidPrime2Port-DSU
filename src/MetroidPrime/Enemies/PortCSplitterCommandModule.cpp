@@ -344,9 +344,8 @@ void CSplitterCommandModule::NotifyDocking(CStateManager& mgr, float) {
   PortDockToChassis(mgr);
 }
 
-// The head's own effect-state update (fn_75_1578, 0x218); its body is below, with the module's
-// own calls.
-void StandInFn_75_1578();
+// The head's own effect-state update (fn_75_1578, 0x218) is ported as
+// CSplitterCommandModule::PortUpdateEffectStates.
 
 // fn_75_3E60 (the head's SelectTarget code, 0x3E60-0x3EEC): with the head's synced id at 0xEFE
 // invalid (0x3E84 lhz, 0x3E8C cmplw, 0x3E90 bne) the id of the actor the state manager holds at
@@ -367,7 +366,7 @@ void CSplitterCommandModule::SelectTarget(CStateManager& mgr, float) {
   if (mSyncedId == kInvalidUniqueId) {
     mSyncedId = mgr.GetPlayer(0)->GetUniqueId();
   }
-  StandInFn_75_1578();
+  PortUpdateEffectStates(mgr);
   SendScriptMsgs(kSS_Attack, mgr, GetUniqueId(), kSM_None);
 }
 
@@ -417,7 +416,6 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 
 // The module's own calls in the command module's chassis check: both are over 0x80, so each
 // stays a named once-logging shell.
-void StandInFn_75_1578() { StandIn("fn_75_1578 (0x218)"); }
 void StandInFn_75_2280() { StandIn("fn_75_2280 (0x170)"); }
 
 // The vtable word 0x4C of the object fn_75_2BE0 returns. The port has no name for that DOL
@@ -683,7 +681,7 @@ void CSplitterCommandModule::PortUpdateChassis(CStateManager& mgr) {
     }
     if (mSyncedId != chassis->GetSyncId()) {
       mSyncedId = chassis->GetSyncId();
-      StandInFn_75_1578();
+      PortUpdateEffectStates(mgr);
     }
     mChassisTimer = 3.f;
     return;
@@ -830,6 +828,30 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
   StandInFn_75_11884(info, name, angle);
 }
 
+// fn_75_1578 (the head's effect-state update, 0x1578-0x178C): the anim data (the model data at
+// 0x60 and its 0x10 - 0x1594 lwz, 0x159C lwz) gets two effect states. The counter at 0xEDC
+// (0x1590 lwz) picks the branch: 1 or 2 (0x1598 cmpwi r0, 2 - 0x15A0 beq, 0x15A4 cmpwi r0, 1)
+// turns both off ("AlertEye" and "LaserMuzzle", 0x15AC-0x160C). Otherwise the laser-pulse
+// projectile's id at 0xF02 (0x1614 lhz) decides: a valid id (the head is firing) turns
+// "LaserMuzzle" on and "AlertEye" off (0x1628-0x1688). With no projectile the head's synced id
+// at 0xEFE (0x168C lhz) decides: a valid id turns "AlertEye" on (0x16B4-0x1714); with no id
+// either the IsScanning trigger (fn_75_58E8, 0x16A8) turns "AlertEye" on or both stay off
+// (0x1718-0x1774). The two names are the rodata strings at 0x18 ("LaserMuzzle") and 0x1C (the
+// "AlertEye" blob at 0x2C0).
+void CSplitterCommandModule::PortUpdateEffectStates(CStateManager& mgr) {
+  bool alertEye = false;
+  bool laserMuzzle = false;
+  if (mShieldState != 1 && mShieldState != 2) {
+    if (mLookAtTargetId != kInvalidUniqueId) {
+      laserMuzzle = true;
+    } else if (mSyncedId != kInvalidUniqueId || PortChassisTimerRunning(mgr)) {
+      alertEye = true;
+    }
+  }
+  AnimationData()->SetEffectState(rstl::string_l("AlertEye"), alertEye, mgr);
+  AnimationData()->SetEffectState(rstl::string_l("LaserMuzzle"), laserMuzzle, mgr);
+}
+
 // fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
 // active gate, the base's Think, the collision actor manager's update and the module's
 // own six calls in order (their sizes are in the table in
@@ -885,7 +907,7 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   mLookAtTargetId = kInvalidUniqueId;
   mLookAtSfxHandle = 0;
   if (GetFlag26()) {
-    StandInFn_75_1578();
+    PortUpdateEffectStates(mgr);
   }
 }
 

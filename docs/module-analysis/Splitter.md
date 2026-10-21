@@ -1011,6 +1011,27 @@ the log's.
 The chassis's `ShouldWaitForSnatch` needs the id at 0xCBC, which the retail's `fn_75_E810`
 (`SetAttackTarget`, still a shell) keeps - so only the `IsBeingSnatched` half can run.
 
+#### The head's effect-state update, fn_75_1578 (0x1578-0x178C) - ported 2026-10-21
+
+The anim data (the model data at 0x60 and its 0x10 - 0x00001594 `lwz`, 0x0000159C `lwz`) gets two
+effect states in every branch: "AlertEye" (the rodata blob at 0x1C, whose first string is
+"AlertEye") and "LaserMuzzle" (the rodata string at 0x18).
+
+| what | retail | port |
+|---|---|---|
+| the shield counter | the counter at 0xEDC (0x00001590 `lwz`) is 1 or 2 (0x00001598 `cmpwi r0, 2` - 0x000015A0 `beq`, 0x000015A4 `cmpwi r0, 1`) | the same: the port's `mShieldState` (the guest's 0xEDC) is 1 or 2 |
+| the counter is 1 or 2 | both effects off (0x000015AC-0x0000160C) | `SetEffectState("AlertEye", false)` and `SetEffectState("LaserMuzzle", false)` |
+| the counter is 0 or 3 and the projectile's id at 0xF02 is valid | "LaserMuzzle" on, "AlertEye" off (0x00001628-0x00001688) | the same (`mLookAtTargetId` is the guest's 0xF02) |
+| the counter is 0 or 3, no projectile and the synced id at 0xEFE is valid | "AlertEye" on, "LaserMuzzle" off (0x000016B4-0x00001714) | the same (`mSyncedId` is the guest's 0xEFE) |
+| the counter is 0 or 3, no projectile and no synced id | the IsScanning trigger (fn_75_58E8, 0x000016A8) turns "AlertEye" on or both stay off (0x00001718-0x00001774) | the same (`PortChassisTimerRunning`) |
+
+The retail calls this body from the four shield functions (fn_75_5B28, fn_75_5CC4, fn_75_5D50
+and fn_75_5DDC, which set the counter to 3, 1, 0 and 2) and from the SelectTarget code
+(fn_75_3E60, 0x00003EA8) and the chassis check (fn_75_31A8, 0x00003224) and the projectile's
+despawn (fn_75_1790, 0x00001830). The three shield functions are still shells, so the port's
+counter stays 0; the SelectTarget code and the chassis check run in the area-4 run, so the head
+gets its "AlertEye" effect on there.
+
 #### The head's Idle state, fn_75_5538 (0x5538-0x5564) - ported 2026-10-21
 
 | what | retail | port |

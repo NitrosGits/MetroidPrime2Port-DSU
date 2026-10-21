@@ -234,6 +234,12 @@ private:
   // state (fn_75_5538) puts the transform's Y column there.
   CVector3f mEditorProperties;
 
+  // The retail's fn_75_1578: the head's two effect states ("AlertEye" and "LaserMuzzle").
+  // guest 0xEDC is the counter the four shield functions set (0, 1, 2 or 3); with 1 or 2 both
+  // effects are off.
+  void PortUpdateEffectStates(CStateManager& mgr);
+  uint mShieldState = 0;  // guest 0xEDC
+
   // The fields the retail's fn_75_31A8 touches.
   void PortUpdateChassis(CStateManager& mgr);
   TUniqueId mChassisId = kInvalidUniqueId;       // guest 0xEFA (the chassis it looks up)
