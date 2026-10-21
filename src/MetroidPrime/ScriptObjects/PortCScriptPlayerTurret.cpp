@@ -897,7 +897,7 @@ void CScriptPlayerTurret::ProcessInput(const CFinalInput& input, CStateManager& 
     // 0x1294: the beam is fired.
     if (player->FireBeamPressed(input)) {
       // 0x12A8: only when the reload timer is over.
-      if (mUnknown1B8 == 0.f) {
+      if (mUnknown1B8 <= 0.f) { // 0x12B4-0x12BC: fcmpo + cror eq,lt,eq is <=
         // 0x12C0: fn_63_84C fires the turret's shot.
         FireTurretShot(mgr);
         // 0x12CC: the reload timer is the fire rate (0x194).
