@@ -565,7 +565,9 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
   // reticle locks onto them (CMinorIng surfacing). Redraw the same fragments alpha-only, with the
   // forced alpha and no blend; LESS/GREATER become LEQUAL/GEQUAL so the pass survives the depth
   // the draw above may have written.
-  if (state.dstAlpha != UINT32_MAX && colorReadsSrcAlpha && cache.config.alphaUpdate) {
+  // With dual-source blending the draw above already wrote the constant (ShaderConfig::dualSrcAlpha).
+  if (state.dstAlpha != UINT32_MAX && colorReadsSrcAlpha && cache.config.alphaUpdate &&
+      !cache.config.shaderConfig.dualSrcAlpha) {
     PipelineConfig alphaConfig = cache.config;
     alphaConfig.blendMode = GX_BM_NONE;
     alphaConfig.blendFacSrc = GX_BL_ONE;
