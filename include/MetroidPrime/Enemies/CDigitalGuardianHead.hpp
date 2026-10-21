@@ -235,7 +235,7 @@ private:
   CVector3f x1028_; // 0x1028: the direction the head turns to (fn_14_11D64)
   TUniqueId x1034_; // 0x1034: the body (fn_14_13830)
   TUniqueId x1036_; // 0x1036: the face target (SetPlayerFaceTarget)
-  TUniqueId x1038_; // 0x1038
+  TUniqueId x1038_; // 0x1038: the retreat platform (SelectRetreatPlatform)
   TUniqueId x103A_; // 0x103A: the destroyed bomb pit (BombPitDestroyed)
   TUniqueId x103C_; // 0x103C: the MDFY/FOLW waypoint
   TUniqueId x103E_; // 0x103E: the IS04/ACTV object

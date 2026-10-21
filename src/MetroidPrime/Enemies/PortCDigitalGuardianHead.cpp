@@ -39,6 +39,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#include <float.h>
 #include <stdio.h>
 
 namespace {
@@ -346,7 +347,10 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
 // it, the 0x1038 platform excludes the player (material 32, the ori at 0x12A38), the ball gets
 // 0xDD0, bit 0x80 is set and the bombs there are pulled in (fn_14_126C8 with r^2); out of range
 // the ball is pass-through again. .rodata 0x960 is 0.
-// @ fn_14_12818
+// Unmarked: the 0x1038 platform branch has not run. Its writer, SelectRetreatPlatform, runs only
+// once ShouldRetreat sees the gravity repulsor (0x10E0) at 0, which needs XRDG beam damage on the
+// root collider; the area-53 harness's beam shots never touched it (only bombs, which fail
+// WeaponHits).
 void CDigitalGuardianHead::x12818_(CStateManager& mgr, float dt) {
   x10F5_ &= ~0x80;
   if ((x10F4_ & 0x10) == 0) {
@@ -1310,9 +1314,51 @@ DGHD_CODE_STANDIN(SelectDeathHeadAttack, fn_14_14470)
 DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
 DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_14058)
 DGHD_CODE_STANDIN(GrabPlayerHintControl, fn_14_13F70)
-DGHD_CODE_STANDIN(SelectRetreatPlatform, fn_14_13C6C)
 DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13C1C)
 #undef DGHD_CODE_STANDIN
+
+// fn_14_13C6C: 0x1038 is cleared (0x13CAC), then with any MDFY/PLAY platforms (0x1048) a random
+// one (the state manager's CRandom16, Range(0, count - 1)) is picked. Along its CONN/ATCH
+// waypoint's ARRV/NEXT chain (at most 30 waypoints: the counter starts at 1 and stops at 0x20)
+// the one nearest the head (from .rodata 0x9D8, FLT_MAX; a strictly smaller squared distance
+// wins) is where the platform teleports, and the platform becomes 0x1038 (0x13E80).
+// Unmarked: the area-53 run never reached it (see fn_14_12818).
+void CDigitalGuardianHead::SelectRetreatPlatform(CStateManager& mgr, float dt) {
+  x1038_ = kInvalidUniqueId;
+  if (x1044_.size() == 0) {
+    return;
+  }
+  const TUniqueId platId = x1044_[mgr.Random()->Range(0, x1044_.size() - 1)];
+  CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(platId));
+  if (plat == nullptr) {
+    return;
+  }
+  const TUniqueId firstId = plat->CheckConnectedObject_if(mgr, kSS_Connect, kSM_Attach,
+                                                          CWaypointPredicate());
+  const CVector3f headPos = GetTranslation();
+  int count = 1;
+  TUniqueId bestId = kInvalidUniqueId;
+  float best = FLT_MAX;
+  const CScriptWaypoint* wp = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(firstId));
+  while (wp != nullptr && ++count < 0x20) {
+    const CVector3f& pos = wp->GetTranslation();
+    const float dx = pos.GetX() - headPos.GetX();
+    const float dy = pos.GetY() - headPos.GetY();
+    const float dz = pos.GetZ() - headPos.GetZ();
+    const float dist = dz * dz + (dx * dx + dy * dy);
+    if (dist < best) {
+      best = dist;
+      bestId = wp->GetUniqueId();
+    }
+    const TUniqueId nextId = wp->CheckConnectedObject_if(mgr, kSS_Arrived, kSM_Next,
+                                                         CWaypointPredicate());
+    wp = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(nextId));
+  }
+  if (bestId != kInvalidUniqueId) {
+    plat->TeleportToWaypoint(bestId, mgr);
+    x1038_ = platId;
+  }
+}
 
 // ---------------------------------------------------------------------------------------------
 // fn_14_DF7C: the DGHD loader. The generated reader fills the four property blocks; an empty model
