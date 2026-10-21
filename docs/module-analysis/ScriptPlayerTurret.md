@@ -485,7 +485,7 @@ exercised.
 | `fn_63_14B4` (the top actor becomes solid) | **marked** | the `kSM_Start` case |
 | `fn_63_1460` (the top actor loses solid) | **marked** | `fn_63_1B70` when the player leaves |
 | `fn_63_1508` (the muzzle transform) | **marked** | every shot |
-| `fn_63_84C` (the shot) | **marked** | `press A` in the turret |
+| `fn_63_84C` (the shot) | **fixed, not marked** | `press A` in the turret; the multiplayer sound arm (0xA90) is an unported path (15) |
 | `fn_63_1B70` (ExitTurret) | **marked** | `press B` in the turret |
 | `fn_63_2D68` (PreRender) | **marked** | every frame the player is in the turret (the white arm) |
 | `fn_63_1BE8` (AcceptScriptMsg) | **fixed, not marked** | five of the seven cases ran (Create, AreaLoaded, Activate, Start, Deactivate); the `kSM_Stop` case (0x2008) is only sent by the gallery's own script when the round ends - neither the hull's destruction (`hurt u0418 100`, hp -95/5) nor the player's death (`kill`) produces it - and the `kSM_Damage` case is unreachable (14.1) |
@@ -540,13 +540,16 @@ its `XCALL` (`TranslateSfx` is the port's helper for the guest's inline `-1` tes
 copy); `fn_63_3070`'s `Free` (the host's pool frees the object) and `fn_63_30E8`'s `fn_63_374C`
 (the host's `CModelData()`).
 
-## 15. Every conditional branch of the seven marked functions (2026-10-21)
+## 15. Every conditional branch of the marked functions (2026-10-21)
 
 The marker means "the body is retail's and ran", so every branch of a marked function has to be
 accounted for. The classes are: **(a)** compiler-generated (the null test after `operator new`, an
 inlined host helper) - it needs no run; **(b)** a real arm that ran - the once-per-arm probe line
 is shown; **(c)** a real arm unreachable in the shipped data - the evidence is in the port's
 comment at the branch; **(d)** a real reachable arm that did not run - the marker goes.
+
+Seven functions were checked. One of them, `fn_63_84C`, lost its marker over its multiplayer
+sound arm (its row in the table below).
 
 The probe was a temporary once-per-arm flag array in the port (one flag per arm, printed at
 exit); it is not in the committed tree. Three runs: the shooting gallery (the turret in use),
@@ -573,7 +576,7 @@ so their lines are the loader's and the hull's.
 | 0x9A0: the impact visor effect's flag | (a) | the flag is the literal 1 the code sets at 0x8EC, so the test is on a constant; the port's `CImpactVisorEffect::None()` carries the same flag |
 | 0x9B4: the projectile is missing | (a) | the null test after the placement new |
 | 0xA00/0xA10: the base actor or its animation data is missing | (c) | the base actor is the turret's own ATOB connection, resolved at the area load (fn_63_15B0); it resolves in all three shipped turrets; the probe printed `[arm] 84C_base_and_anim_ok`, never `84C_base_or_anim_null` |
-| 0xA90: the multiplayer sound | (c) | a multiplayer session needs the retail's online lobby (Prime 2's Connection - a service, not shipped data, and not a ported module); the port's game mode comes from the card's save ('SNGL'), so `IsMultiplayer()` is false in every run the port can produce; the probe printed `[arm] 84C_single_player_sound`, never `84C_multiplayer_sound` |
+| 0xA90: the multiplayer sound | **(d)** | Echoes' multiplayer is local split-screen for 2-4 players on one console and it ships on the disc (the M0x_* worlds, M06_ShootingGallery among them, are multiplayer arenas), so the arm is reachable - but the port cannot start a match: there is no console command and no environment variable for it, the front end's VS flow is what creates one (CScriptGuiScreen's deathmatch/coin switches, `CGameState`'s `CGMDeathMatch`/`CGMCoin`), and the harness skips the front end and sets the single-player mode itself (`PortSkipFrontEnd.cpp:313`), driving pad 0 only.  The arm did not run (the probe printed `[arm] 84C_single_player_sound`, never `84C_multiplayer_sound`), so **`fn_63_84C` is not marked** |
 
 ### fn_63_3070 (the destructor, 3 branches)
 
@@ -637,7 +640,8 @@ and in the Agon Wastes and the Sanctuary Fortress runs:
     [arm] fn_15B0_entered
     [arm] fn_19B0_entered
 
-No branch is (d), so all seven markers stand. The one judgement call is fn_63_84C's multiplayer
-arm: it is classified (c) because the port cannot start a multiplayer session at all (the game
-mode comes from the card's save and the retail's online lobby is not shipped data and not a
-ported module).
+One branch is (d) - `fn_63_84C`'s multiplayer sound - so that function's marker was removed and
+the other six markers stand.  The port's multiplayer machinery is there (`CGMDeathMatch`,
+`CGMCoin`, the front end's VS screens), but nothing in the port can start a match: the console has
+no command for it, there is no environment variable for it, and the harness's boot path sets the
+single-player mode itself.  The arm is therefore an unported path, not an unreachable one.

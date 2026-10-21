@@ -918,7 +918,6 @@ CTransform4f CScriptPlayerTurret::GetMuzzleTransform(CStateManager& mgr) {
 }
 
 // fn_63_84C (0x184): the turret's shot.
-// @ fn_63_84C
 void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
   // 0x864: the muzzle transform.
   const CTransform4f xf = GetMuzzleTransform(mgr);
@@ -969,12 +968,15 @@ void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
     // 0xA4C: the animation id (0x1A4), -1, the weight 1.0 and "animating".
     animData->SetAnimation(CAnimPlaybackParms(mUnknown1A4, -1, 1.f, true), false);
   }
-  // 0xA84: the shot's sound.  The multiplayer arm is unreachable in the shipped data: a
-  // multiplayer session needs the retail's online lobby (Prime 2's Connection - a service, not
-  // shipped data, and not a ported module); the port's game mode comes from the card's save
-  // (CGameState::GetGameModeType reads the save's previous game results, 'SNGL'), so
-  // IsMultiplayer() is false in every run this port can produce.  The probe printed
-  // "84C_single_player_sound" and never "84C_multiplayer_sound".
+  // 0xA84: the shot's sound.  The multiplayer arm is an UNPORTED path, not an unreachable one:
+  // Echoes' multiplayer is local split-screen for 2-4 players on one console and it ships on the
+  // disc (the M0x_* worlds, M06_ShootingGallery among them, are multiplayer arenas), but the
+  // port cannot start a match: there is no console command and no environment variable for it,
+  // the front end's VS flow is what creates one (CScriptGuiScreen's deathmatch/coin switches,
+  // CGameState's CGMDeathMatch/CGMCoin) and the harness skips the front end and sets the
+  // single-player mode itself (PortSkipFrontEnd.cpp:313), driving pad 0 only.  So the arm did
+  // not run and this function is not marked; the probe printed "84C_single_player_sound" and
+  // never "84C_multiplayer_sound".
   if (mgr.IsMultiplayer()) {
     // 0xA94: the multi-player projectile sound (0x22A) at the player's sound pan.
     CSfxManager::SfxStart(mSfxMultiPlayerProjectile, 0x7f,
