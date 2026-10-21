@@ -1909,14 +1909,47 @@ void CDarkSamus::Interrupt(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("Interrupt", msg);
 }
 
-void CDarkSamus::MeleeAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17BC0", "state MeleeAttack");
+// fn_10_17BC0 (0x00017BC0, 0xF8 bytes): the MeleeAttack state. The attack bookkeeping with id 1
+// (`li r4, 0x1`, fn_10_1B478 at 0x00017BEC); Activate (0x00017BF0) resets the melee contact
+// (fn_10_EA08 on 0x9A4); the melee attack command with severity 1 (`li r7, 0x1` at 0x00017C28,
+// pas::kAS_MeleeAttack = `li r5, 0x7`, fn_10_8764 at 0x00017C5C); Deactivate (`cmpwi r30, 0x2` at
+// 0x00017C6C) clears 0xC00 (lbl_10_rodata_3FC = 0.0f) and forgets the last attacker (0xC24 =
+// kInvalidUniqueId); every message stores the elapsed time 0x8B0 to 0x9C0 (0x00017C9C).
+// @ fn_10_17BC0
+void CDarkSamus::MeleeAttack(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("MeleeAttack", msg);
+  UpdateCurrentAttack(0x1, mgr, msg);
+  if (msg == kStateMsg_Activate) {
+    mMeleeContact.Reset();
+  }
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_One));
+  if (msg == kStateMsg_Deactivate) {
+    mGuestC00 = 0.f;
+    mLastAttackerUid = kInvalidUniqueId;
+  }
+  mLastMeleeTime = mElapsedTime;
 }
 
-void CDarkSamus::MeleeDash(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17ABC", "state MeleeDash");
+// fn_10_17ABC (0x00017ABC, 0x104 bytes): the MeleeDash state. The attack bookkeeping with id 4
+// (`li r4, 0x4`, fn_10_1B478 at 0x00017AEC) and the collision failsafe (fn_10_1AEC0 at
+// 0x00017AF8); Activate (`cmpwi r30, 0x0` at 0x00017AFC) resets the melee contact (fn_10_EA08 on
+// 0x9A4); the melee attack command with severity 2 (`li r7, 0x2` at 0x00017B34,
+// pas::kAS_MeleeAttack = `li r5, 0x7`, fn_10_8764 at 0x00017B68); Deactivate (`cmpwi r30, 0x2`
+// at 0x00017B78) clears 0xC00 (lbl_10_rodata_3FC = 0.0f) and the contact's uid (0x9DC =
+// kInvalidUniqueId, 0x00017BA0).
+// @ fn_10_17ABC
+void CDarkSamus::MeleeDash(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("MeleeDash", msg);
+  UpdateCurrentAttack(0x4, mgr, msg);
+  RunCollisionFailsafe(mgr);
+  if (msg == kStateMsg_Activate) {
+    mMeleeContact.Reset();
+  }
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Two));
+  if (msg == kStateMsg_Deactivate) {
+    mGuestC00 = 0.f;
+    mMeleeContact.mHitUid = kInvalidUniqueId;
+  }
 }
 
 void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
@@ -1924,9 +1957,58 @@ void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("MissileDeflect", msg);
 }
 
-void CDarkSamus::MissileJump(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_177BC", "state MissileJump");
+// fn_10_177BC (0x000177BC, 0x128 bytes): the MissileJump state. The attack bookkeeping with id
+// 0x80 (`li r4, 0x80`, fn_10_1B478 at 0x000177F8), the shield flag (fn_10_105F4 at 0x0001780C),
+// the ground collision (fn_10_18F90 at 0x0001781C), the turn toward the player at
+// lbl_10_rodata_508 = 1.0471976f rad/s (fn_10_16B64 at 0x00017838), the collision failsafe
+// (fn_10_1AEC0 at 0x00017844) and the melee attack command with severity 10 (`li r7, 0xa` at
+// 0x00017870, pas::kAS_MeleeAttack = `li r5, 0x7`, fn_10_8764 at 0x000178A4).
+// @ fn_10_177BC
+void CDarkSamus::MissileJump(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("MissileJump", msg);
+  UpdateCurrentAttack(0x80, mgr, msg);
+  UpdateShieldFlag(msg);
+  UpdateGroundCollision(mgr, msg);
+  TurnTowardPlayer(mgr, dt, 1.0471976f);
+  RunCollisionFailsafe(mgr);
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Ten));
+}
+
+// fn_10_8764 (0x00008764, 0x10C bytes): the switch over the message (0x0000876C..0x000087A0).
+// Activate (0x000087A4) stores 1 (kAS_Ready) to the animation state 0x6B4 and delivers the
+// command (DeliverCmd of its id, then the copy into the command manager's melee slot
+// 0x180..0x194); Update (0x000087F4) re-delivers it when the DOL's ShouldRetry with `state`
+// answers true (0x00008800) - the host's CAnimationState::CanIssueCommand, as in
+// TurnToFacePlayer; Deactivate (0x00008850) stores 0 (kAS_NotReady).
+// Unmarked: the Update re-delivery (ShouldRetry true, 0x00008808) never ran - Activate's command
+// moves the body into kAS_MeleeAttack before the first Update in every MeleeAttack, MeleeDash and
+// MissileJump seen, so the check only answered false.
+void CDarkSamus::RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state,
+                                   const CBCMeleeAttackCmd& cmd) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(cmd);
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), state)) {
+      BodyController()->CommandMgr().DeliverCmd(cmd);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_10_EA08 (0x0000EA08, 0x1C bytes): the contact's uid to kInvalidUniqueId (0x0000EA18) and its
+// hit byte to 0 (0x0000EA1C).
+// @ fn_10_EA08
+void CDarkSamusMeleeContact::Reset() {
+  mHitUid = kInvalidUniqueId;
+  mHit = 0;
 }
 
 // fn_10_11AD8 (0x00011AD8, 0x17C bytes): the MovingScatterShot state, the scatter shot fired

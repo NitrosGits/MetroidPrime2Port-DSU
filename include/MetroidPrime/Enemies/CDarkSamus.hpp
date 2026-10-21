@@ -213,6 +213,18 @@ struct CDarkSamusDive {
   bool mDone : 1;        // 0x80, the dive is over
 };
 
+// The melee contact record at the guest's 0x9A4..0x9E0 (fn_10_EA24 builds it, the constructor's
+// call at 0x0001FCA8, and ends with fn_10_EA08 at 0x0000EB6C). On the host only the two fields
+// fn_10_EA08 resets; the damage, the "PART" token and the rest of the record stay out until a
+// reader (fn_10_12DD0, fn_10_13998, fn_10_13AB4, fn_10_1AE08) is ported.
+struct CDarkSamusMeleeContact {
+  CDarkSamusMeleeContact() : mHitUid(kInvalidUniqueId), mHit(0) {}
+  void Reset(); // fn_10_EA08
+
+  TUniqueId mHitUid; // +0x38 (0x9DC), kInvalidUniqueId (0x0000EA18)
+  uchar mHit;        // +0x3A (0x9DE), 0 (0x0000EA1C)
+};
+
 class REL_EXPORT CDarkSamus : public CPatterned {
 public:
 #ifdef TARGET_PC
@@ -525,6 +537,10 @@ private:
   // actor's own position.
   void UpdateStillTimer(EStateMsg msg, float dt);
 
+  // fn_10_8764: a melee attack command run over a state's messages - Activate delivers it,
+  // Update re-delivers it while the animation state allows, Deactivate ends the state.
+  void RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state, const CBCMeleeAttackCmd& cmd);
+
   // The dive (fn_10_11FA4). fn_10_12960: moves *target up to 8 back toward the actor until the
   // ring path to it is clear. fn_10_12B00: the body's target vector to the dive target.
   // fn_10_1285C + fn_10_12764: the jump command toward it.
@@ -773,8 +789,8 @@ private:
   CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
                                    // constructor writes the zero vector to it (0x0001FF24..)
   float mLastMeleeTime;            // guest 0x9C0, the elapsed time the MeleeAttack state
-                                   // fn_10_17BC0 stores (0x00017C9C, not in the port yet), its only
-                                   // writer in the module; fn_10_1A34C reads it (0x0001A3E0) only
+                                   // fn_10_17BC0 stores (0x00017C9C), its only writer in the
+                                   // module; fn_10_1A34C reads it (0x0001A3E0) only
                                    // when the newest finished attack is the melee, i.e. after
                                    // MeleeAttack ran. Neither the constructor (its stores run
                                    // 0x8AC..0xD58 with no 0x9C0) nor the game heap clears it, so
@@ -821,6 +837,7 @@ private:
   rstl::optional_object< CProjectileInfo > mScatterShotInfo;
   rstl::optional_object< CProjectileInfo > mScatterShotInfo2;
   CDarkSamusDive mDive;            // guest 0xAC0..0xB28, fn_10_E784 at 0x0001FE64
+  CDarkSamusMeleeContact mMeleeContact; // guest 0x9A4..0x9E0, fn_10_EA24 at 0x0001FCA8
   float mGuestE04;                 // guest 0xE04, the elapsed time at fn_10_18628
   float mGuestE08;                 // guest 0xE08, fn_10_18628's first float
   float mGuestE0C;                 // guest 0xE0C, fn_10_18628's second float

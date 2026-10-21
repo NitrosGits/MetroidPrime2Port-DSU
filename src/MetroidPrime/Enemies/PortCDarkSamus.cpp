@@ -382,6 +382,16 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
   // the base: the scatter shots start (fn_10_11814) with side 0 for 8 (0x0001C25C) and the byte
   // 0xBAC for 0x10 (0x0001C268). Its 0x100 (0xA84 = 1), 0x100000 (0xAB8 bit 0x40) and 0x400000
   // (fn_10_6118, fn_10_8178) arms are not in the port yet.
+  // kUE_Projectile (case 0, 0x0001C134) switches on the current attack 0x980 and never reaches
+  // the base either: the melee hit fn_10_13AB4 for 1..4 except 3 (0x0001C15C/0x0001C168,
+  // 0x0001C1B8), the missile fn_10_1353C for 0x40/0x80 (0x0001C1C8), fn_10_133D0 for 0x100
+  // (0x0001C1D0), fn_10_9164 for 0x20000/0x100000 (0x0001C1E0) and fn_10_5840 for 0x800000
+  // (0x0001C1E8); any other attack does nothing. None of those five is in the port yet, so the
+  // melee and missile events launch nothing - the base's LaunchProjectile would read the null
+  // ProjectileInfo those attacks answer.
+  if (type == kUE_Projectile) {
+    return;
+  }
   if (type == kUE_EventStart) {
     switch (mCurrentAttack) {
     case 8:

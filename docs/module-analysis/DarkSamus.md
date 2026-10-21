@@ -712,3 +712,31 @@ transition enters it.
   0xCD0 arm would need a dive stage without +0x59; none was seen in the two surveyed encounters.
 - Next: MissileJump 177BC, MeleeAttack 17BC0, BoostBallInto B164 and SweepBeam CA0C are the
   traps that end dive runs.
+
+## Slice 15 (2026-10-21): the melee states
+
+- 16418 (IsPlayerAimLineClear) is not always-true: it matches the asm (fn_10_164C0 with the
+  (0, 0, 5) offset and the player's aim position) and the real static ray test. No change.
+- Ported: MissileJump 177BC, MeleeAttack 17BC0, MeleeDash 17ABC, the melee command runner
+  RunMeleeAttackCmd 8764, the melee contact record's Reset EA08 (0x9A4: only +0x38/+0x3A on the
+  host), and DoUserAnimEvent's kUE_Projectile arm (0x0001C134). That arm never reaches the base;
+  its callees 13AB4/1353C/133D0/9164/5840 are not ported, so for now the melee and missile events
+  do nothing. Before this, the base's LaunchProjectile crashed on the null ProjectileInfo the
+  first time MeleeAttack's animation fired the event.
+- Reaching them on Agon (damage 570, Activate; `/tmp` harness run_m.sh teleports the player on
+  each TravelToCoverPoints entry): MeleeAttack in band 0 (close); MeleeDash only with a morphed
+  player (1A278) 8.6-16 from her (141BC: 0.7-1.3 x 12.33); MissileJump with an unmorphed player
+  26.4-32 away (0.9-3.0 x 29.34, inside band 1). Each exits by AnimOver to Dash.
+- Runs: MeleeAttack 3x, MeleeDash 2x, MissileJump 10x; 0 caught.
+
+| body | arm | ran |
+| --- | --- | --- |
+| 17BC0 | Activate (contact reset) / Update / Deactivate (0xC00, 0xC24) | yes / yes / yes |
+| 17ABC | Activate / Update / Deactivate (0xC00, 0x9DC) | yes / yes / yes |
+| 177BC | branch-free | yes |
+| EA08 | branch-free | yes |
+| 8764 | Activate / Update retry true / Update retry false / Deactivate | yes / **no** / yes / yes |
+
+- Marked: 17BC0, 17ABC, 177BC, EA08. 8764 stays unmarked (its retry arm).
+- Note: run_m.sh runs hit `DebugDrawAABox`, a reach stub reached from CGunTurretBase.cpp:636,
+  not Dark Samus. The run_r2.sh runs never hit it.
