@@ -176,7 +176,7 @@ offset	size	fn	kind	class	port	callers	owner	note
 0xB690	0xDC	fn_9_B690	fsm-trigger	H	ported	data:lbl_9_data_F0	commando-lane	ShouldDodge
 0xB76C	0x90	fn_9_B76C	fsm-trigger	H	ported	data:lbl_9_data_E4	commando-lane	TooClose
 0xB7FC	0x1C	fn_9_B7FC	fsm-trigger	B	ported	data:lbl_9_data_D8	commando-lane	AttackPatternOver
-0xB818	0xE8	fn_9_B818	fsm-trigger	B	ported	data:lbl_9_data_CC	commando-lane	IsFacingTarget
+0xB818	0xE8	fn_9_B818	fsm-trigger	B	marked	data:lbl_9_data_CC	commando-lane	IsFacingTarget
 0xB900	0x58	fn_9_B900	fsm-trigger	B	ported	data:lbl_9_data_C0	commando-lane	HasAttackPattern
 0xB958	0x38	fn_9_B958	fsm-trigger	B	marked	data:lbl_9_data_B4	commando-lane	IsOffPath
 0xB990	0x48	fn_9_B990	fsm-trigger	T	ported	data:lbl_9_data_A8	commando-lane	PathOver
@@ -193,7 +193,7 @@ offset	size	fn	kind	class	port	callers	owner	note
 0xBBC8	0xF0	fn_9_BBC8	fsm-trigger	B	ported	data:lbl_9_data_24	commando-lane	ShouldFireEGrenade
 0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	H	ported	data:lbl_9_data_18	commando-lane	ShouldMeleeAttack
 0xBD98	0x34	fn_9_BD98	fsm-trigger	T	ported	data:lbl_9_data_C	commando-lane	ShouldWarpIn
-0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	ported	data:lbl_9_data_0	commando-lane	StateOver
+0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	marked	data:lbl_9_data_0	commando-lane	StateOver
 0xBDE0	0x6C	fn_9_BDE0	vtable-override	B	marked	data:lbl_9_data_828	cpcore	
 0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	ported	data:lbl_9_data_828	cpcore	
 0xBF44	0x2B0	fn_9_BF44	vtable-override	B	not-port	data:lbl_9_data_828	cpcore	

@@ -16,6 +16,8 @@ import time
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 4846
 OUT = open(sys.argv[2], "w") if len(sys.argv) > 2 else sys.stdout
+# The console's layer (the Cliff's commandoes live in the layer 3).
+LAYER = sys.argv[3] if len(sys.argv) > 3 else None
 
 
 def log(msg):
@@ -84,6 +86,9 @@ def state_of(cid):
 
 def main():
     wait_frame(200)
+    if LAYER is not None:
+        log("layer %s: %s" % (LAYER, cmd("layer %s" % LAYER)))
+        wait_frame(frame() + 20)
     ids = commandos()
     log("commandos %s (frame %d)" % (ids, frame()))
     for target in ids:
