@@ -432,9 +432,10 @@ with a position comment (`guest 0x11EE bit 2`).
 
 ## h. The unmarked functions: what each one is
 
-`tools/port_progress.py` counts 204 of the module's 318 functions as marked, so 114 are
-unmarked. Every one of them is either the REL's own copy of code the host's C++ already does
-or compiler output; this section says which is which, so the number stops being a mystery.
+`tools/port_progress.py` counted 204 of the module's 318 functions as marked (206 after this
+slice), so 114 were unmarked. Every one of them is either the REL's own copy of code the host's
+C++ already does or compiler output; this section says which is which, so the number stops
+being a mystery.
 
 A **REL copy of host/DOL code** never gets a marker: the host's own C++ (or the compiler) does
 the work, and a marker would claim a function the port does not implement. Where the same
