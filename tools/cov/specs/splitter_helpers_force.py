@@ -111,6 +111,8 @@ BODIES = {
                'the target at 0xF02 is the chassis: the cast to a CBeamProjectile fails'),
     'LOOKATN': ('184C LookAtTarget', 'CSplitterCommandModule::PortLookAtTarget(',
                 'there is no target at 0xF02: the body ends at once'),
+    'DESPAWN': ('1790 DespawnProjectile', 'CSplitterCommandModule::PortDespawnProjectile(',
+                'the base is dead: the effect states do not update'),
 }
 # the head's own members, written through $this (the spec's CLASS is the head's class).
 HEAD = '((CSplitterCommandModule*)$rdi)'
@@ -233,6 +235,10 @@ elif WHICH == 'E87C':
     # the possession flag (the second argument, in esi) is set and the command module's id at
     # 0xC6C is the head u0531's: the head is looked up and told it is possessed.
     FORCE = [(_label, _where, [], ['$esi = 1', CH + '->mCommandModuleId.value = 0x531'], 1, _what)]
+elif WHICH == 'DESPAWN':
+    # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
+    # update (asm 0x1820).
+    FORCE = [(_label, _where, [], ['$this->mAlive = 0'], 0, _what)]
 elif WHICH == 'LOOKAT':
     # the target id at 0xF02 is the chassis u0532: the cast to a CBeamProjectile fails.
     FORCE = [(_label, _where, [], ['$this->mLookAtTargetId.value = 0x532'], 0, _what)]
@@ -244,6 +250,10 @@ elif WHICH == 'E87CN':
 elif WHICH == 'E87C2':
     FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'],
               ['$esi = 1', CH + '->mCommandModuleId.value = 0x520'], 0, _what)]
+elif WHICH == 'DESPAWN':
+    # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
+    # update (asm 0x1820).
+    FORCE = [(_label, _where, [], ['$this->mAlive = 0'], 0, _what)]
 elif WHICH == 'LOOKAT':
     # the target id at 0xF02 is the chassis u0532: the cast to a CBeamProjectile fails.
     FORCE = [(_label, _where, [], ['$this->mLookAtTargetId.value = 0x532'], 0, _what)]

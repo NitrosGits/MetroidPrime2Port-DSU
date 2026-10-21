@@ -423,11 +423,29 @@ The five functions the audit could not diff in depth were read against the asm:
 
 | function | the result |
 |---|---|
-| `fn_75_1974` (the laser shot) | **fixed**: the projectile's attributes are 0x1002 (asm 0x1A70 `addi r0, r4, 0x1000` with r4 = 2, the weapon type, stored at 0x1A9C), not the 0x21000 the port passed |
+| `fn_75_1974` (the laser shot) | right: the attributes are 0x21000 - `lis r4, 0x2` loads 0x2 << 16 (asm 0x1A68) and `addi r0, r4, 0x1000` (asm 0x1A70) makes 0x21000, stored at 0x1A9C |
 | `fn_75_10D0` (the module's transform) | right: the copy (asm 0x10E0), the "Beam_LCTR" locator (rodata 0x293), the operator* (asm 0x1140) and the result's translation (asm 0x1154) |
 | `fn_75_11884` / `fn_75_11804` (the beam effect's ctor and dtor) | right: the CActor's arguments, the kMT_NoStepLogic material list, the texture (kTF_IA8, 4 wide, one mip), the closed angle, the random seed 99 and the texture's scheduled deletion |
 | `fn_75_3460` (the collision actor manager) | right: the "Skeleton_Root" joint (the radius 3.0f and the mass 1000.0f), the manager's replacement, the walk and the "Beam_LCTR" compare |
-| `fn_75_6B08` (the head's constructor) | **fixed**: both material lists are 64-bit and their high word is 1 (asm 0x6E40 and 0x6E50), which is the material 32 (kMT_Player); the port's lists held only the low word |
+| `fn_75_6B08` (the head's constructor) | right: the include list is 1 << 59 (kMT_Solid, lbl_75_data_428) and the exclude list 1 << 47 | 1 << 33 (kMT_CollisionActor and kMT_Character, lbl_75_data_42C and lbl_75_data_430) - the `li r3, 0; li r4, 1` before each `__shl2i` is the input (the value 1) and r5 the shift count from the data table |
+
+### 3.10 The two reverts and the audit's last stand-ins
+
+- **fn_75_1974 and fn_75_6B08 were right as they were.**  The decode rule that settles both:
+  `lis rN, X` loads X << 16, so `lis r4, 0x2` (asm 0x1A68) is 0x20000 and the attributes word is
+  0x21000 (the port's value); and before each `__shl2i` the `li r3, 0; li r4, 1` is the input
+  (the 64-bit value 1) with r5 the shift count from the data table, so the material lists are
+  1 << 59 and 1 << 47 | 1 << 33, exactly the port's line.  Both "fixes" were reverted
+  (e344342ca, dfb73355a) and this section says so.
+- **fn_75_1790 (the projectile's despawn) fixed** (7952bcfdc): the retail tests the base's flag
+  byte at 0x420 with `extrwi. r0, r0, 1, 25` (asm 0x1820), which is the word's bit 25 - the
+  byte's 0x40 bit, the host's alive flag; the port asked GetFlag26 (the word's bit 26).
+- **fn_75_3004 (the collision update) ported** (2098bbec8): the shield effect's virtual at the
+  vtable word 0x4C (asm 0x3034-0x3044) is CParticleGenInfo::SetModulationColor with the
+  module's flash colour at 0xF04, and the DOL's CSfxManager::UpdateEmitter (asm 0x3048-0x3078)
+  gets the handle at 0xF60, the module's position at 0x54 and its transform's Y column (0x28,
+  0x38 and 0x48) with the volume 0x7F - the host's CSfxManager::UpdateEmitter has the same
+  signature.  Both stand-ins are gone.
 
 ## 4. What is left, and why
 

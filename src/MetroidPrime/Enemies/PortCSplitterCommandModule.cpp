@@ -1959,12 +1959,13 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   PortAutoDestructTimer(dt);
 }
 
-// Arms: all ran but a projectile that is not a CBeamProjectile, dead: the head only fires its
-// laser sweep beam through this path.
+// Arms: all ran - the base's alive flag's two sides are forced (the base is dead,
+// tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=DESPAWN); a projectile that is not
+// a CBeamProjectile is dead: the head only fires its laser sweep beam through this path.
 // @ fn_75_1790
 // The head's laser-pulse projectile despawn (0x1790-0x184C): the projectile's id at 0xF02 is
-// looked up (0x17BC ObjectById) and, when it is there, its virtual at the vtable word 0x24 is
-// called with the manager and false (0x17C8-0x17DC), the sound handle at 0xF5C is removed
+// looked up (0x17BC ObjectById) and, when it is there, its virtual at the vtable word 0x90 is
+// called with the manager and false (0x17D4, 0x17C8-0x17DC), the sound handle at 0xF5C is removed
 // (0x17EC RemoveEmitter) and the object is deleted (0x1800 DeleteObjectRequest). Then the id
 // at 0xF02 is cleared (0x1814), the handle at 0xF5C is zeroed (0x1818) and, when the base's
 // flag byte at 0x420 has its 0x40 bit (the word's bit 25, asm 0x1820 `extrwi. r0, r0, 1, 25`)
