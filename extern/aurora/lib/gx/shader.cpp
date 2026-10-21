@@ -1634,6 +1634,14 @@ std::string build_shader_source(const ShaderConfig& config) noexcept {
   if constexpr (EnableNormalVisualization) {
     fragmentFn += "\n    prev = vec4f(in.nrm, prev.a);";
   }
+  if (config.dualSrcAlpha) {
+    // Port: the colour blend reads the TEV alpha from blend source 1 (Src1Alpha); source 0 carries
+    // 1.0, so the {Constant, Zero} alpha blend writes exactly dstAlpha/255 (ShaderConfig::dualSrcAlpha).
+    fragmentFn +=
+        "\n    // Destination alpha under a source-alpha blend: TEV alpha to blend source 1"
+        "\n    let tev_alpha = prev.a;"
+        "\n    prev.a = 1.0;";
+  }
   // GXSetDstAlpha forces the alpha written to the EFB; the console does not multiply it by the TEV
   // alpha. The alpha blend below is {srcFactor Constant, dstFactor Zero}, so feeding it 1.0 makes
   // the written alpha exactly dstAlpha/255 whatever the material's TEV alpha was.
@@ -1641,7 +1649,7 @@ std::string build_shader_source(const ShaderConfig& config) noexcept {
       "\n    // Destination alpha (GXSetDstAlpha) replaces the TEV alpha"
       "\n    prev.a = select(prev.a, 1.0, imm.force_dst_alpha != 0u);";
 
-  const auto shaderSource = fmt::format(R"""(
+  const auto shaderSource = fmt::format(R"""({9}
 fn bswap32(v: u32, le: bool) -> u32 {{
   if (le) {{
     return v;
@@ -2006,12 +2014,21 @@ fn vs_main(
 }}
 
 @fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4f {{{6}{5}
-    return prev;
+fn fs_main(in: VertexOutput) -> {10} {{{6}{5}
+    return {11};
 }}
 )""",
                                         uniBufAttrs, texBindings, vtxOutAttrs, vtxInAttrs, vtxXfrAttrs, fragmentFn,
-                                        fragmentFnPre, vtxXfrAttrsPre, uniformPre);
+                                        fragmentFnPre, vtxXfrAttrsPre, uniformPre,
+                                        config.dualSrcAlpha ? "enable dual_source_blending;\n\n"
+                                                              "struct FragmentOutput {\n"
+                                                              "    @location(0) @blend_src(0) color: vec4f,\n"
+                                                              "    @location(0) @blend_src(1) blend: vec4f,\n"
+                                                              "};\n"
+                                                            : "",
+                                        config.dualSrcAlpha ? "FragmentOutput" : "@location(0) vec4f",
+                                        config.dualSrcAlpha ? "FragmentOutput(prev, vec4f(0.0, 0.0, 0.0, tev_alpha))"
+                                                            : "prev");
   if (EnableDebugPrints) {
     Log.info("Generated shader (hash {:x}): {}", hash, shaderSource);
   }

@@ -1,0 +1,244 @@
+offset	fn	size	class	marked	what	callers
+0x00000	fn_79_0	0x8	H	no		-
+0x00008	fn_79_8	0x3C	H	no		-
+0x00044	fn_79_44	0x10	H	no	`TakeDamage`	-
+0x00054	fn_79_54	0x8	H	no		-
+0x0005C	fn_79_5C	0x8	H	no		-
+0x00064	fn_79_64	0x8	H	no		-
+0x0006C	fn_79_6C	0x8	H	no		-
+0x00074	fn_79_74	0x10	H	no		-
+0x00084	fn_79_84	0xC	H	no		-
+0x00090	fn_79_90	0xC	H	no		-
+0x0009C	fn_79_9C	0x8	H	no		-
+0x000A4	fn_79_A4	0x8	H	no		-
+0x000AC	fn_79_AC	0x8	H	no		-
+0x000B4	fn_79_B4	0x1C	H	no		-
+0x000D0	fn_79_D0	0x2C	H	no		-
+0x000FC	RELExit	0x24	H	no		-
+0x00120	RELMain	0x20	H	no		-
+0x00140	fn_79_140	0x30	H	no		RELMain
+0x00170	fn_79_170	0x2F0	H	no	`PortLoadSwampBossStage2`, `RELMain`/`RELExit`	-
+0x00460	fn_79_460	0x40	H	no		fn_79_170 fn_79_A59C fn_79_CBF4
+0x004A0	fn_79_4A0	0x20	H	no		fn_79_460 fn_79_69A4
+0x004C0	fn_79_4C0	0x28	H	no		fn_79_4A0
+0x004E8	fn_79_4E8	0x13C	H	no		fn_79_4C0
+0x00624	fn_79_624	0x6C	H	no		-
+0x00690	fn_79_690	0x54	H	no		-
+0x006E4	fn_79_6E4	0x64	H	no		-
+0x00748	fn_79_748	0x60	H	no		-
+0x007A8	fn_79_7A8	0x88	H	no		-
+0x00830	fn_79_830	0x150	H	no		fn_79_170
+0x00980	fn_79_980	0x8A8	H	no		fn_79_170
+0x01228	fn_79_1228	0x124	H	no		fn_79_170 fn_79_7A8 fn_79_B8D4
+0x0134C	fn_79_134C	0x23C	H	no		fn_79_830
+0x01588	fn_79_1588	0x150	H	no		fn_79_980
+0x016D8	fn_79_16D8	0x3C	H	no		fn_79_1228
+0x01714	fn_79_1714	0x78	H	no		fn_79_134C
+0x0178C	fn_79_178C	0x2D8	H	no		fn_79_980
+0x01A64	fn_79_1A64	0x3C	H	no		fn_79_1228
+0x01AA0	fn_79_1AA0	0x98	H	no		fn_79_134C
+0x01B38	fn_79_1B38	0x10C	B	no	an additive flinch with no caller	-
+0x01C44	fn_79_1C44	0x3C	H	no		-
+0x01C80	fn_79_1C80	0x184	H	no		fn_79_1B38 fn_79_5AE4
+0x01E04	fn_79_1E04	0x3C	H	no		-
+0x01E40	fn_79_1E40	0x1CC	B	yes	`StartBubbleTelegraph`	fn_79_A838
+0x0200C	fn_79_200C	0x78	H	no		-
+0x02084	fn_79_2084	0x54	H	no		-
+0x020D8	fn_79_20D8	0x84	B	yes		fn_79_755C fn_79_76EC fn_79_7870 fn_79_9A3C fn_79_A838
+0x0215C	fn_79_215C	0x230	B	yes		fn_79_AFB4
+0x0238C	fn_79_238C	0x154	B	yes		fn_79_8958
+0x024E0	fn_79_24E0	0xE0	B	yes		fn_79_7870
+0x025C0	fn_79_25C0	0xD0	B	yes	`Activate`	fn_79_B3CC
+0x02690	fn_79_2690	0x74	B	yes	`GetScannableObjectInfo`	-
+0x02704	fn_79_2704	0x1D0	H	no		fn_79_BE3C
+0x028D4	fn_79_28D4	0x54	H	no		-
+0x02928	fn_79_2928	0x15C	B	yes		fn_79_AFB4
+0x02A84	fn_79_2A84	0x19C	B	yes	`SpawnShockWave`	fn_79_A838
+0x02C20	fn_79_2C20	0xCC	H	no		fn_79_2A84
+0x02CEC	fn_79_2CEC	0x50	H	no		-
+0x02D3C	fn_79_2D3C	0x58	H	no		fn_79_2A84 fn_79_3578 fn_79_3774 fn_79_3900
+0x02D94	fn_79_2D94	0x54	H	no		fn_79_2D3C
+0x02DE8	fn_79_2DE8	0x94	B	yes		fn_79_4324 fn_79_4C1C fn_79_4D20
+0x02E7C	fn_79_2E7C	0x8	T	no		fn_79_60A0
+0x02E84	fn_79_2E84	0x33C	B	yes	`PickSwoopTarget`	fn_79_9754
+0x031C0	fn_79_31C0	0x100	H	no		fn_79_2E84 fn_79_50AC fn_79_543C
+0x032C0	fn_79_32C0	0x54	H	no		fn_79_2E84 fn_79_50AC fn_79_543C fn_79_B3CC fn_79_B8D4
+0x03314	fn_79_3314	0x40	H	no		fn_79_2E84
+0x03354	fn_79_3354	0x3C	B	yes		fn_79_AFB4
+0x03390	fn_79_3390	0x2C	B	yes		fn_79_9A3C
+0x033BC	fn_79_33BC	0x9C	B	yes	`DecayDamageMemory`	fn_79_AFB4
+0x03458	fn_79_3458	0x74	B	yes		fn_79_9754 fn_79_9A3C
+0x034CC	fn_79_34CC	0x58	B	yes		fn_79_3458
+0x03524	fn_79_3524	0x54	B	yes		fn_79_2928 fn_79_7308 fn_79_7870 fn_79_8BB4 fn_79_91A4 fn_79_9534 fn_79_9754 fn_79_9A3C fn_79_A838
+0x03578	fn_79_3578	0x1FC	B	yes	`SpawnWindEffect`	fn_79_7E24
+0x03774	fn_79_3774	0x18C	B	yes	the wing-damage burst	fn_79_61C4
+0x03900	fn_79_3900	0x550	B	yes		fn_79_91A4 fn_79_AFB4
+0x03E50	fn_79_3E50	0x5C	H	no		fn_79_3900
+0x03EAC	fn_79_3EAC	0x48	H	no		-
+0x03EF4	fn_79_3EF4	0x3C	H	no		-
+0x03F30	fn_79_3F30	0x160	B	yes		fn_79_B3CC
+0x04090	fn_79_4090	0x190	B	yes		fn_79_9A3C fn_79_A838
+0x04220	fn_79_4220	0x104	B	yes		fn_79_2E84 fn_79_4090 fn_79_A0C8 fn_79_A838
+0x04324	fn_79_4324	0x34C	B	yes		fn_79_A838
+0x04670	fn_79_4670	0x48	H	no		fn_79_4324
+0x046B8	fn_79_46B8	0xB4	H	no		fn_79_4670 fn_79_4A1C
+0x0476C	fn_79_476C	0x40	H	no		fn_79_46B8
+0x047AC	fn_79_47AC	0x20	H	no		fn_79_476C fn_79_4AA8
+0x047CC	fn_79_47CC	0x28	H	no		fn_79_47AC
+0x047F4	fn_79_47F4	0x80	H	no		fn_79_47CC
+0x04874	fn_79_4874	0x6C	H	no		-
+0x048E0	fn_79_48E0	0x3C	H	no		-
+0x0491C	fn_79_491C	0x3C	H	no		-
+0x04958	fn_79_4958	0x5C	H	no		fn_79_4670 fn_79_4A1C fn_79_4BC8
+0x049B4	fn_79_49B4	0x20	H	no		fn_79_4958
+0x049D4	fn_79_49D4	0x48	H	no		fn_79_49B4
+0x04A1C	fn_79_4A1C	0x8C	H	no		fn_79_4324
+0x04AA8	fn_79_4AA8	0x38	H	no		fn_79_4A1C
+0x04AE0	fn_79_4AE0	0x70	H	no		-
+0x04B50	fn_79_4B50	0x78	H	no		fn_79_4A1C
+0x04BC8	fn_79_4BC8	0x54	H	no		fn_79_4324
+0x04C1C	fn_79_4C1C	0x8C	B	yes		fn_79_4324
+0x04CA8	fn_79_4CA8	0x78	B	yes		fn_79_4324
+0x04D20	fn_79_4D20	0x268	B	yes		fn_79_A838
+0x04F88	fn_79_4F88	0xA8	B	no	`SendDecrement`	-
+0x05030	fn_79_5030	0x7C	B	yes		fn_79_55B0
+0x050AC	fn_79_50AC	0x1D0	B	yes		fn_79_50AC fn_79_5830
+0x0527C	fn_79_527C	0x1C0	B	yes		fn_79_55B0
+0x0543C	fn_79_543C	0x174	B	yes		fn_79_4D20 fn_79_543C
+0x055B0	fn_79_55B0	0x280	B	yes		fn_79_A838
+0x05830	fn_79_5830	0xC0	B	yes		fn_79_B3CC
+0x058F0	fn_79_58F0	0x1F4	B	yes		fn_79_AFB4
+0x05AE4	fn_79_5AE4	0xE4	B	yes		fn_79_BE3C
+0x05BC8	fn_79_5BC8	0xAC	B	yes	`SetGrowthTargetEffects`	fn_79_7870
+0x05C74	fn_79_5C74	0x8C	B	yes		fn_79_24E0 fn_79_25C0 fn_79_7870 fn_79_AFB4
+0x05D00	fn_79_5D00	0x40	B	yes		fn_79_5C74 fn_79_61C4
+0x05D40	fn_79_5D40	0xFC	B	no	`GetIngSnatchingPoint`	-
+0x05E3C	fn_79_5E3C	0x88	B	yes		-
+0x05EC4	fn_79_5EC4	0x190	B	yes		fn_79_7870
+0x06054	fn_79_6054	0x4C	B	yes		fn_79_238C fn_79_2A84 fn_79_2E84 fn_79_527C fn_79_5EC4 fn_79_7308 fn_79_7870 fn_79_9754 fn_79_A838
+0x060A0	fn_79_60A0	0x68	B	yes		fn_79_238C fn_79_8958 fn_79_8A3C fn_79_8BB4 fn_79_8D90 fn_79_9754 fn_79_9A3C fn_79_A13C
+0x06108	fn_79_6108	0x2C	B	yes		fn_79_7870 fn_79_8958 fn_79_8A3C fn_79_8BB4 fn_79_8D90 fn_79_9754 fn_79_9A3C
+0x06134	fn_79_6134	0x90	B	yes		fn_79_8BB4 fn_79_8D90 fn_79_91A4 fn_79_9754 fn_79_9A3C
+0x061C4	fn_79_61C4	0x458	B	yes	`ProcessDamage` (collision damage)	fn_79_B3CC
+0x0661C	fn_79_661C	0x28	B	yes		fn_79_61C4
+0x06644	fn_79_6644	0x98	H	no		fn_79_661C
+0x066DC	fn_79_66DC	0x78	B	yes	`CollisionActorPosition`	fn_79_AFB4
+0x06754	fn_79_6754	0x50	B	yes		fn_79_20D8 fn_79_58F0 fn_79_5D00 fn_79_66DC fn_79_6B78
+0x067A4	fn_79_67A4	0x1D0	B	yes	`InitGrowths`	fn_79_BE3C
+0x06974	fn_79_6974	0x30	H	no		fn_79_67A4
+0x069A4	fn_79_69A4	0x48	H	no		fn_79_6974
+0x069EC	fn_79_69EC	0xC4	H	no		fn_79_69A4
+0x06AB0	fn_79_6AB0	0xC8	H	no		fn_79_69EC
+0x06B78	fn_79_6B78	0x1C8	B	yes	the second half of `SetupCollisionManager` (the per-joint vulnerability, health and materials)	fn_79_6E68
+0x06D40	fn_79_6D40	0x5C	H	no		fn_79_6B78
+0x06D9C	fn_79_6D9C	0xC0	H	no		fn_79_6D40
+0x06E5C	fn_79_6E5C	0xC	T	no		fn_79_6D9C
+0x06E68	fn_79_6E68	0x1DC	B	yes		fn_79_25C0
+0x07044	fn_79_7044	0x38	H	no		fn_79_6E68
+0x0707C	fn_79_707C	0x20	H	no		fn_79_7044 fn_79_D480
+0x0709C	fn_79_709C	0x28	H	no		fn_79_707C
+0x070C4	fn_79_70C4	0xC0	H	no		fn_79_6E68 fn_79_709C
+0x07184	fn_79_7184	0x5C	H	no		-
+0x071E0	fn_79_71E0	0x84	H	no		fn_79_6E68
+0x07264	fn_79_7264	0x38	H	no		fn_79_71E0
+0x0729C	fn_79_729C	0x60	H	no		fn_79_7264
+0x072FC	fn_79_72FC	0xC	B	no	`ResetAttackPhase`	-
+0x07308	fn_79_7308	0x1B0	B	yes		-
+0x074B8	fn_79_74B8	0x5C	H	no		-
+0x07514	fn_79_7514	0x48	H	no		-
+0x0755C	fn_79_755C	0x134	B	yes		-
+0x07690	fn_79_7690	0x5C	H	no		-
+0x076EC	fn_79_76EC	0x184	B	yes		-
+0x07870	fn_79_7870	0x314	B	yes		-
+0x07B84	fn_79_7B84	0x5C	H	no		-
+0x07BE0	fn_79_7BE0	0x1E8	B	yes		-
+0x07DC8	fn_79_7DC8	0x5C	H	no		-
+0x07E24	fn_79_7E24	0x438	B	yes	the `Blow` state	-
+0x0825C	fn_79_825C	0x5C	H	no		-
+0x082B8	fn_79_82B8	0x6A0	B	yes		-
+0x08958	fn_79_8958	0xE4	B	yes		-
+0x08A3C	fn_79_8A3C	0x11C	B	yes		-
+0x08B58	fn_79_8B58	0x5C	H	no		-
+0x08BB4	fn_79_8BB4	0x1DC	B	yes		-
+0x08D90	fn_79_8D90	0x1C0	B	yes		-
+0x08F50	fn_79_8F50	0x5C	H	no		-
+0x08FAC	fn_79_8FAC	0x19C	B	yes		-
+0x09148	fn_79_9148	0x5C	H	no		-
+0x091A4	fn_79_91A4	0x334	B	yes		-
+0x094D8	fn_79_94D8	0x5C	H	no		-
+0x09534	fn_79_9534	0x220	B	yes		-
+0x09754	fn_79_9754	0x2E8	B	yes		-
+0x09A3C	fn_79_9A3C	0x510	B	yes	`Lurk`	-
+0x09F4C	fn_79_9F4C	0x30	B	yes		-
+0x09F7C	fn_79_9F7C	0x28	B	yes	-	-
+0x09FA4	fn_79_9FA4	0x30	B	yes		-
+0x09FD4	fn_79_9FD4	0x70	B	yes		-
+0x0A044	fn_79_A044	0x20	B	yes		-
+0x0A064	fn_79_A064	0x28	B	yes	-	-
+0x0A08C	fn_79_A08C	0x3C	B	yes		-
+0x0A0C8	fn_79_A0C8	0x74	B	yes	0xA0EC, 0xA11C	-
+0x0A13C	fn_79_A13C	0x1D4	B	yes		-
+0x0A310	fn_79_A310	0xC	B	yes		-
+0x0A31C	fn_79_A31C	0xC	B	yes		-
+0x0A328	fn_79_A328	0x28	B	yes		-
+0x0A350	fn_79_A350	0x28	B	yes		-
+0x0A378	fn_79_A378	0x28	B	yes		-
+0x0A3A0	fn_79_A3A0	0x38	B	yes		-
+0x0A3D8	fn_79_A3D8	0x20	B	yes	-	-
+0x0A3F8	fn_79_A3F8	0x20	B	yes		-
+0x0A418	fn_79_A418	0x20	B	yes	-	-
+0x0A438	fn_79_A438	0x60	B	yes		-
+0x0A498	fn_79_A498	0x14	B	yes	-	-
+0x0A4AC	fn_79_A4AC	0x8	T	no		-
+0x0A4B4	fn_79_A4B4	0x8C	B	yes	`SetupStateMachine`	-
+0x0A540	fn_79_A540	0x5C	B	yes	`GetAimPosition`	-
+0x0A59C	fn_79_A59C	0x1D0	B	yes	`AddToRenderer`	-
+0x0A76C	fn_79_A76C	0x20	B	yes		-
+0x0A78C	fn_79_A78C	0xAC	B	yes		-
+0x0A838	fn_79_A838	0x77C	B	yes	`DoUserAnimEvent`	-
+0x0AFB4	fn_79_AFB4	0x3BC	B	yes	`Think`	-
+0x0B370	fn_79_B370	0x5C	H	no		-
+0x0B3CC	fn_79_B3CC	0x42C	B	yes	`AcceptScriptMsg`	-
+0x0B7F8	fn_79_B7F8	0xB0	H	no		fn_79_B3CC
+0x0B8A8	fn_79_B8A8	0xC	T	no		fn_79_B7F8
+0x0B8B4	fn_79_B8B4	0x20	H	no		-
+0x0B8D4	fn_79_B8D4	0x29C	H	no	dtor	-
+0x0BB70	fn_79_BB70	0x1E4	H	no		fn_79_B8D4
+0x0BD54	fn_79_BD54	0x94	H	no		fn_79_BB70
+0x0BDE8	fn_79_BDE8	0x54	H	no		fn_79_B8D4
+0x0BE3C	fn_79_BE3C	0x850	B	yes	ctor	fn_79_170
+0x0C68C	fn_79_C68C	0x84	H	no		fn_79_BE3C
+0x0C710	fn_79_C710	0x3C	H	no		-
+0x0C74C	fn_79_C74C	0x5C	H	no		fn_79_BE3C
+0x0C7A8	fn_79_C7A8	0x54	H	no		-
+0x0C7FC	fn_79_C7FC	0x130	H	no		fn_79_C74C
+0x0C92C	fn_79_C92C	0x78	H	no		-
+0x0C9A4	fn_79_C9A4	0x58	H	no		-
+0x0C9FC	fn_79_C9FC	0x5C	H	no		-
+0x0CA58	fn_79_CA58	0x3C	H	no		-
+0x0CA94	fn_79_CA94	0x9C	H	no		-
+0x0CB30	fn_79_CB30	0x38	H	no		fn_79_BE3C
+0x0CB68	fn_79_CB68	0x6C	H	no		fn_79_CB30
+0x0CBD4	fn_79_CBD4	0x20	H	no		fn_79_CB68
+0x0CBF4	fn_79_CBF4	0x28	H	no		fn_79_CBD4
+0x0CC1C	fn_79_CC1C	0x3C	H	no		-
+0x0CC58	fn_79_CC58	0x58	H	no		-
+0x0CCB0	fn_79_CCB0	0x3E4	H	no		fn_79_BE3C
+0x0D094	fn_79_D094	0x64	H	no		fn_79_CCB0
+0x0D0F8	fn_79_D0F8	0x7C	H	no		fn_79_CCB0
+0x0D174	fn_79_D174	0xA4	H	no		fn_79_50AC fn_79_B7F8
+0x0D218	fn_79_D218	0x98	H	no		fn_79_6D9C
+0x0D2B0	fn_79_D2B0	0x3C	H	no		fn_79_D218
+0x0D2EC	fn_79_D2EC	0x98	H	no		fn_79_50AC
+0x0D384	fn_79_D384	0x3C	H	no		fn_79_D2EC
+0x0D3C0	fn_79_D3C0	0xC0	H	no		fn_79_6E68
+0x0D480	fn_79_D480	0x68	H	no		fn_79_D3C0
+0x0D4E8	fn_79_D4E8	0x3C	H	no		fn_79_8
+0x0D524	fn_79_D524	0x74	H	no		fn_79_33BC
+0x0D598	fn_79_D598	0x74	H	no		fn_79_B8D4
+0x0D60C	fn_79_D60C	0x550	H	no		-
+0x0DB5C	_unresolved	0xC4	H	no		-
+0x0DC20	_epilog	0x24	H	no		-
+0x0DC44	_prolog	0x24	H	no		-
+0x0DC68	ModuleDestructors	0x4C	H	no		-
+0x0DCB4	ModuleConstructors	0x4C	H	no		-

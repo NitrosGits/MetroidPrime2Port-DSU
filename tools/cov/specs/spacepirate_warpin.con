@@ -1,0 +1,7 @@
+# Agon 08_sand_casualpirates layer 3: warp 003600fa (u04d0) in twice, for spacepirate_force.py
+@f30 layer 3
+@f160 send u04d0 Activate
+@f400 objs spacepirate
+@f600 fsm u04d0 WarpIn
+@f1200 fsm u04d0 WarpIn
+@f1800 status

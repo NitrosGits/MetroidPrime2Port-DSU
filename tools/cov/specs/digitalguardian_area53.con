@@ -1,0 +1,16 @@
+# DigitalGuardian area 53 (Sanctuary Fortress 09_cliff_temple_dark): the guardian's layers (3
+# and 11) hold the body (u054e) and the head module (u051b); both are woken, the body gets
+# the "XRDG" message (fn_14_5644), the player morphs (fn_14_38BC's morphed arm) and the head
+# is deleted at the end (fn_14_11EA8 and fn_14_11F7C).
+@f30 layer 3
+@f60 layer 11
+@f100 objs Guardian
+@f140 send u054e Activate; send u051b Activate
+@f400 objs Guardian
+@f900 send u054e ResistedDamage
+@f910 send u054e ResistedDamage
+@f1300 press x 30
+@f1400 boost
+@f1600 objs Guardian
+@f2000 objs Guardian
+@f2400 send u051b Delete

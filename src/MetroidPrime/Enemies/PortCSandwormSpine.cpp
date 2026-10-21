@@ -282,6 +282,65 @@ void CSandworm::SpineHelperC828(CStateManager& mgr) {
   }
 }
 
+// The joint-list search: walk the spine path back from the last joint and take the first point
+// that is farther from the reference than the radius, pushed out to exactly the radius.
+// fn_56_10110 (ported, unreferenced in retail)
+// Unreferenced in retail: no 'bl fn_56_10110' in the module and no table entry, so nothing calls
+// it - the body is here for completeness and is never marked.
+void CSandworm::UnreferencedMath10110(CVector3f* out, int* outIndex, int count, float radius) {
+  const CVector3f* joints = x99C_joints.data();
+  const CVector3f ref = joints[count]; // 0x10164..0x1016C
+  for (int i = count - 1; i >= 0; --i) {
+    const CVector3f d = joints[i] - ref;
+    if (d.MagSquared() <= radius * radius) { // 0x101B4..0x101B8
+      continue;
+    }
+    *outIndex = i; // 0x101BC
+    CVector3f dir = d;
+    dir.Normalize(); // 0x101C4
+    *out = ref + dir * radius; // 0x101F8..0x10200
+    return;
+  }
+  *outIndex = 0; // 0x10214..0x10218
+  *out = joints[0]; // 0x1021C..0x10230
+}
+
+// The segment sweep: for the last spine segment that starts farther from the point than the
+// radius, walk the segment from its start to its end and return where it leaves the sphere.
+// fn_56_10268 (ported, unreferenced in retail)
+// Unreferenced in retail: no 'bl fn_56_10268' in the module and no table entry, so nothing calls
+// it - the body is here for completeness and is never marked.
+void CSandworm::UnreferencedMath10268(SSandwormSweepOut* out, const SSandwormSweepIn& in,
+                                     float radius) {
+  const CVector3f* joints = x99C_joints.data();
+  const CVector3f ref = in.vec;
+  for (int i = in.count - 1; i >= 0; --i) {
+    if ((joints[i] - ref).Magnitude() <= radius) { // 0x10350..0x10358
+      continue;
+    }
+    float t = 0.f; // rodata_150
+    CVector3f p;
+    for (;;) {
+      const float w = 1.f - t; // rodata_128, 0x103C4
+      p = joints[i] * t + joints[i + 1] * w; // 0x103D0..0x103F0
+      if ((p - ref).Magnitude() > radius) { // 0x10414..0x1041C
+        break;
+      }
+      t += 0.02f; // rodata_244, 0x10420
+      if (t >= 1.f) { // 0x10424..0x1042C
+        break;
+      }
+    }
+    out->index = i; // 0x10430
+    out->next = i + 1; // 0x10434
+    out->point = p; // 0x10438..0x10440
+    return;
+  }
+  out->index = 0; // 0x10468
+  out->next = 0; // 0x1046C
+  out->point = joints[0]; // 0x10470..0x10478
+}
+
 // Index of the joint reached by walking `t` units from the front of the spine path.
 // @ fn_56_106D4
 int CSandworm::SpineHelper106D4(float t) const {

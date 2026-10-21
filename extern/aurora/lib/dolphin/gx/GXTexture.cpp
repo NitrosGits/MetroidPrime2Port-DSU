@@ -1,6 +1,7 @@
 #include "gx.hpp"
 #include "__gx.h"
 
+#include "../../gfx/perf.hpp"
 #include "../../gfx/texture.hpp"
 #include "dolphin/gx/GXAurora.h"
 
@@ -62,6 +63,7 @@ void init_texobj_common(GXTexObj_& obj, const void* data, u16 width, u16 height,
   obj.tlut = GX_TLUT0;
   obj.flags = 2;
   obj.texObjId = next_tex_obj_id();
+  aurora::perf::count(AURORA_PERF_TEX_INIT);
   obj.texDataVersion = 1;
 
   SET_REG_FIELD(0, obj.mode0, 2, 0, wrapS);
@@ -156,6 +158,7 @@ void GXInitTexObjData(GXTexObj* obj_, const void* data) {
   auto* obj = reinterpret_cast<GXTexObj_*>(obj_);
   obj->data = data;
   ++obj->texDataVersion;
+  aurora::perf::count(AURORA_PERF_TEX_INIT_DATA);
 }
 
 void GXInitTexObjWrapMode(GXTexObj* obj_, GXTexWrapMode wrapS, GXTexWrapMode wrapT) {

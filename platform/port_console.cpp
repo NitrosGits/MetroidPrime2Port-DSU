@@ -60,6 +60,7 @@
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
+#include <aurora/perf.h>
 
 #include <atomic>
 #include <cctype>
@@ -119,6 +120,15 @@ struct SQueued {
 
 std::mutex sQueueMutex;
 std::deque< SQueued > sQueue;
+
+// `at <update> <command>`: commands waiting for a game update (game thread only, no lock).
+struct SDeferred {
+  unsigned update;
+  std::string line;
+  unsigned generation;
+};
+std::vector< SDeferred > sDeferred;
+unsigned sExecutingGeneration = 0;
 
 // macOS has no MSG_NOSIGNAL; SO_NOSIGPIPE is set on the client socket instead.
 #ifdef MSG_NOSIGNAL
@@ -540,6 +550,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
+      "at <update> <command>       run one command on that game update (`frame`), not on arrival,\n"
+      "                            so runs at different speeds act on the same tick\n"
       "help                        this list\n"
       "a; b; c                     run several commands in the same game tick (one reply each)\n";
 }
@@ -664,6 +676,33 @@ void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
                   stats != nullptr ? stats->lastVertSize : 0u,
                   stats != nullptr && stats->drawCallCount < 40 ? "  <- almost nothing drawn" : "");
     out += line;
+    // Per-frame work counters (aurora/perf.h): render pass breaks by reason (each one is a full
+    // colour+depth store and reload on a tiled GPU), GXCopyTex calls by caller (module offsets,
+    // addr2line -f -e metroid_prime2_port <offset>), texture cache traffic, extra draws.
+    if (const AuroraPerfFrame* perf = aurora_perf_last_frame(); perf != nullptr) {
+      const uint32_t* b = perf->passBreaks;
+      const uint32_t* c = perf->counters;
+      std::snprintf(line, sizeof(line),
+                    "perf breaks copy %u depthsnap %u encoder %u offscreen %u resolve %u | copytex %u"
+                    " | tex hit %u miss %u hash %u upload %u init %u initdata %u | dstalphadup %u"
+                    " bindinval %u\n",
+                    b[AURORA_PERF_BREAK_COPY], b[AURORA_PERF_BREAK_DEPTH_SNAPSHOT],
+                    b[AURORA_PERF_BREAK_ENCODER_TASK], b[AURORA_PERF_BREAK_OFFSCREEN],
+                    b[AURORA_PERF_BREAK_RESOLVE], c[AURORA_PERF_COPY_TEX], c[AURORA_PERF_TEX_OBJ_HIT],
+                    c[AURORA_PERF_TEX_OBJ_MISS], c[AURORA_PERF_TEX_HASH], c[AURORA_PERF_TEX_UPLOAD],
+                    c[AURORA_PERF_TEX_INIT], c[AURORA_PERF_TEX_INIT_DATA], c[AURORA_PERF_DST_ALPHA_DUP],
+                    c[AURORA_PERF_BIND_INVALIDATE]);
+      out += line;
+      if (perf->copySiteCount != 0) {
+        out += "copy sites";
+        for (uint32_t i = 0; i < perf->copySiteCount && i < AURORA_PERF_MAX_COPY_SITES; ++i) {
+          std::snprintf(line, sizeof(line), " %#llx:%u",
+                        static_cast< unsigned long long >(perf->copySiteOffset[i]), perf->copySiteHits[i]);
+          out += line;
+        }
+        out += "\n";
+      }
+    }
   }
 }
 
@@ -1545,6 +1584,21 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
 // game time rather than wall time (con.py's `@f<n>`), which a fast harness run does not keep.
 void CmdFrame(CStateManager&, const Args&, std::string& out) {
   out += "frame " + std::to_string(PortHarness::GameUpdates()) + '\n';
+}
+
+// at <update> <command>: hold the command until the game update count reaches <update>; its reply
+// arrives then. One command per `at` (a `;` ends it).
+void CmdAt(CStateManager&, const Args& args, std::string& out) {
+  const int update = args.size() < 3 ? -1 : ArgToInt(args[1], -1);
+  if (update < 0) {
+    Fail("usage: at <update> <command>");
+    return;
+  }
+  const char* begin = args[2].data();
+  const std::string line(begin, args.back().data() + args.back().size() - begin);
+  sDeferred.push_back({static_cast< unsigned >(update), line, sExecutingGeneration});
+  out += "queued for update " + std::to_string(update) + " (now " + std::to_string(PortHarness::GameUpdates()) +
+         "): " + line + '\n';
 }
 
 // fsm <id> <state>: put a patterned actor's state machine in a named state, through the machine's
@@ -2455,6 +2509,7 @@ constexpr SCommand kCommands[] = {
     {"screenshot", CmdScreenshot, true},
     {"overlay", CmdOverlay, true},
     {"state", CmdState, true},
+    {"at", CmdAt, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
@@ -2539,6 +2594,20 @@ void Tick(CStateManager& mgr) {
   if (!sEnabled) {
     return;
   }
+  for (size_t i = 0; i < sDeferred.size();) {
+    if (sDeferred[i].update > PortHarness::GameUpdates()) {
+      ++i;
+      continue;
+    }
+    const SDeferred deferred = std::move(sDeferred[i]);
+    sDeferred.erase(sDeferred.begin() + static_cast< std::ptrdiff_t >(i));
+    std::string out = "[at " + std::to_string(deferred.update) + "] > " + deferred.line + '\n';
+    sExecutingGeneration = deferred.generation;
+    Execute(mgr, deferred.line, out);
+    // The client may have moved on or left; the log keeps the reply.
+    std::fputs(out.c_str(), stderr);
+    SendRaw(deferred.generation, out);
+  }
   for (;;) {
     SQueued queued;
     {
@@ -2555,6 +2624,7 @@ void Tick(CStateManager& mgr) {
     for (;;) {
       const size_t sep = queued.line.find(';', start);
       std::string out;
+      sExecutingGeneration = queued.generation;
       Execute(mgr, queued.line.substr(start, sep == std::string::npos ? std::string::npos : sep - start), out);
       SendRaw(queued.generation, out);
       if (sep == std::string::npos) {

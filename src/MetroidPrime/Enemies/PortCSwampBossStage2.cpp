@@ -35,6 +35,7 @@
 #include "MetaRender/CCubeRenderer.hpp"
 
 #include <float.h>
+
 namespace {
 // rodata: collision actors are kept at this HP and damage is read as the shortfall.
 const float kCollisionActorHP = 500.f;
@@ -1344,6 +1345,8 @@ void CSwampBossStage2::ProcessDamage(CStateManager& mgr, TUniqueId colActorId) {
 // --------------------------------------------------------------------------------------------
 // Triggers
 
+// @ fn_79_A498: the animation is over (retail: the animation state id at 0x6b4 == 3, which is
+// the host's kAS_Over).
 bool CSwampBossStage2::StateOver(CStateManager& mgr, const CTriggerData&) const {
   return mAnimationState.IsOver();
 }
@@ -1358,13 +1361,20 @@ bool CSwampBossStage2::AllGrowthsDead(CStateManager& mgr, const CTriggerData&) c
   return true;
 }
 
+// @ fn_79_A418: the ovipositor's health (0xc50) is zero or less (retail: the compare with
+// rodata_9C, the zero float, at 0xA424).
 bool CSwampBossStage2::OvipositorDead(CStateManager& mgr, const CTriggerData&) const {
   return mOvipositorHealth <= 0.f;
 }
 
+// @ fn_79_A3D8: retail compares the phase (0xc94) with the field at 0x8cc - the loader's
+// unknown_0x96ce7897 (the loader struct sits at 0x7c0, so 0x8cc is its 0x10c) - as
+// "field < phase" (0xA3E0-0xA3F0: the doubling keeps the signed compare from overflowing).
+// The arm that fires was reached with the loader's field forced to 0 (gdb: `set var
+// this->mData.unknown_0x96ce7897 = 0` at the trigger's entry), so the compare takes its true
+// side.
 bool CSwampBossStage2::ZeroHealth(CStateManager& mgr, const CTriggerData&) const {
-  // TODO(uncertain): retail compares the phase index against unknown_0x96ce7897.
-  return mPhase >= mData.unknown_0x96ce7897;
+  return mData.unknown_0x96ce7897 < mPhase;
 }
 
 // @ fn_79_A3F8
@@ -1408,6 +1418,10 @@ bool CSwampBossStage2::CircleOver(CStateManager& mgr, const CTriggerData&) const
   return GetBodyController()->GetCurrentStateId() == pas::kAS_Locomotion || mCircleDone;
 }
 
+// @ fn_79_A064: the attack is ready and it is the blow (the attack type 6) - retail: xc75_80
+// (the attack ready) at 0xA06C and the type at 0xA078.  The arm that fires was reached with
+// the attack ready and the type 6 forced (gdb: `set var this->mAttackReady = 1`,
+// `set var this->mAttackType = 6` at the trigger's entry).
 bool CSwampBossStage2::ShouldBlow(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 6;
 }
@@ -1430,6 +1444,10 @@ bool CSwampBossStage2::IsLevel(CStateManager& mgr, const CTriggerData&) const {
          CMath::FastCosR(0.034906585f);
 }
 
+// @ fn_79_A0C8: the wind node (0xf00) is not the chain node nearest the player - retail: the
+// wind node at 0xA0EC and the compare at 0xA11C.  The trigger is in the module's trigger table
+// but no state's transition list uses it (the note's 6: the asset's edges), so the function is
+// never called: its only arm is dead, and the shipped data scan is the proof.
 bool CSwampBossStage2::SwitchedPlatform(CStateManager& mgr, const CTriggerData&) const {
   return mWindNode != NearestNodeToPlayer(mgr);
 }
@@ -1449,6 +1467,8 @@ bool CSwampBossStage2::OneGrowthDead(CStateManager& mgr, const CTriggerData&) co
   return mGrowthDestroyed && mGrowthDeadTime > 0.3f;
 }
 
+// @ fn_79_9F7C: the attack is ready and it is the flyer drop (the attack type 5) - retail:
+// xc75_80 (the attack ready) at 0x9F84 and the type at 0x9F90.
 bool CSwampBossStage2::ShouldDropFlyer(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 5;
 }
@@ -1982,6 +2002,9 @@ void CSwampBossStage2::DropFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_79_72FC: the code node resets the attack index (retail: `li r0, 0; stw r0, 0xc98`).
+// Not marked: the code node is in the asset's code list but no state transitions into it (the
+// note's 6), so the body never runs.
 void CSwampBossStage2::ResetAttackPhase(CStateManager& mgr, float dt) { mAttackIndex = 0; }
 
 // --------------------------------------------------------------------------------------------

@@ -38,6 +38,10 @@ public:
   void ForceSyncARAM();
 
   void* GetMRAMSafe();
+#ifdef TARGET_PC
+  // The MRAM copy if it is resident, without loading it.
+  void* GetMRAMIfResident() const { return mStatus == kS_One ? mMramPtr : nullptr; }
+#endif
 
 private:
   EStatus mStatus;

@@ -1478,3 +1478,31 @@ trigger's entry, one per hit, from gdb convenience variables).
   ported, so the FreezeBeam state keeps that stand-in and keeps no marker (its 0xAB0 >= 1 arm
   and its 0xAB8 bit 0x40 arm did not run either). The Arrived trigger (fn_10_62B4) still has no
   arms: the fight never evaluates it and the state that would evaluate it has not been found.
+
+## FSM2 lane slice 7 (2026-10-21): the anim-event handler, nine marks
+
+- **fn_10_1BEFC (DoUserAnimEvent) ported in full, unmarked.** The jump table
+  (jumptable_10_data_FB4, `cmplwi r31, 0x2e` at 0x0001BF28): cases 0, 8, 9, 12, 17, 18, 27, 28,
+  33, 34 return without the base (0x0001C6A0); every other type ends in
+  CPatterned::DoUserAnimEvent. Type 43 is not in EUserEventType (static_cast; 0xD24 = 0.9f). The
+  vtable 0x14C call at 0x0001C050 is slot 83 = fn_10_1BB08 (AnyIncomingMissiles, CTriggerData(0)).
+  Stand-in callees keep it unmarked: 13998, 13AB4, 1353C, 133D0 (helpers2 lane), 9164, 5840,
+  77B8, 9E00 (helpers lane). Case 19 writes 0xE38 as a halfword (the boost ball uid) though the
+  header also names a float mGuestE38 there: check when 9E00 lands.
+- **Marked:** 1BDF0 (GetMeleeReach = 2.5f + 0x3DC), 1BE04 / 1BE80 (FadeEnvFxOut/In: FadeDensity
+  0/1 over 4000, then 'EXIT'/'ENTR'), 16B48 (BreakFreezeBeam: 0xAB8 & 0x80, written by Landing
+  0x100000 at 0x0001C350), 14284, BB78, BBE4, 11158 (ShouldReact), 1BB08 (AnyIncomingMissiles).
+  A natural Landing with attack 0x40 arrives in the fight, so BreakNormalMissile goes true unforced.
+- **Forcing keys** (tools/cov/specs/darksamus_uevent.{py,con}, darksamus_react.{py,con}): the
+  attack by the `uevent` dt; no stage by writing mBattleStageUid = 0xffff at
+  `CDarkSamus::GetBattleStage(` (an out-of-line call, so the entry-only force works there); the
+  stage's flags at `TCastToPtr<CDarkSamusBattleStage>(CEntity*)` ($rdi = the entity). The missile
+  float +0x24 is both CanMissileDeflect's "< 0" and the reflect chance, so AnyIncomingMissiles is
+  made true by forcing CanReflectProjectile's type `$rcx = -1` and a `shoot`.
+- **Not covered in 1BEFC:** BeginAction's deflect slow-down (a missile in flight past 28 units),
+  Landing's dive bounce, type 46 with dash steps left.
+- **PreRender 18AB8 / Render 18964 blocked** (left as stand-ins): unported callees 18238 (0x1B0),
+  183E8 (0x1E4), 1890C (0x58; needs 185CC, 1863C), 10864 (0x17C; needs 10A20, 109E0), 12DD0
+  (0xC0; needs 8F50), and unmapped members 0xDE8 (an alpha float Render gates the body on), 0xDED
+  bits 0x40/0x80 (echo/dark visor), 0xE64, 0x90C bit 0x20, CActor 0x44C..0x44F, the model flags
+  at 0xFC. A partial Render risks an invisible boss.

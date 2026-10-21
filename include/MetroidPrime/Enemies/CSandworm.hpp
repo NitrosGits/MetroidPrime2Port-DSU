@@ -187,6 +187,20 @@ private:
   SSandwormGlow& operator=(const SSandwormGlow&);
 };
 
+// fn_56_10268's argument struct (retail layout): the joint count at +0, the point at +8.
+struct SSandwormSweepIn {
+  int count;
+  CVector3f vec;
+};
+
+// fn_56_10268's result struct (retail layout): the segment index at +0, the next index at +4 and
+// the point at +8.
+struct SSandwormSweepOut {
+  int index;
+  int next;
+  CVector3f point;
+};
+
 #endif // TARGET_PC
 
 
@@ -469,8 +483,9 @@ public:
   CVector3f SpineHelperFFBC(int index) const;                    // fn_56_FFBC
   CVector3f SpineHelper10038() const;                            // fn_56_10038
   CVector3f GetSegmentPosition(int index) const;                 // fn_56_10090
-  void UnreferencedMath10110();                                  // fn_56_10110 (unreferenced)
-  void UnreferencedMath10268();                                  // fn_56_10268 (unreferenced)
+  void UnreferencedMath10110(CVector3f* out, int* outIndex, int count, float radius); // fn_56_10110
+  void UnreferencedMath10268(SSandwormSweepOut* out, const SSandwormSweepIn& in,
+                             float radius); // fn_56_10268
   CVector3f SpineHelper10510(float t) const;                     // fn_56_10510
   int SpineHelper106D4(float t) const;                           // fn_56_106D4
   float SpineHelper107E8() const;                                // fn_56_107E8
