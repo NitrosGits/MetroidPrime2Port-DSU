@@ -1838,9 +1838,8 @@ void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
 // 0x40 of 0xAB8 set (0x00016DEC..0x00016DF4) the actor turns toward the player (fn_10_16B64 at
 // 0x00016E1C, the rate lbl_10_rodata_454 = 0.017453292 radians a degree times
 // lbl_10_bss_118 = 160.0f, the module's own turn speed) and dodges (fn_10_1707C at 0x00016E3C,
-// with lbl_10_bss_11C = 22.0f and lbl_10_bss_120 = 0.5f - a stateless one the helper lanes
-// port). Then fn_10_8870 (0x00016E8C) - the state's command, a stateless one the helper lanes
-// port.
+// with lbl_10_bss_11C = 22.0f and lbl_10_bss_120 = 0.5f - the port's UpdateDodge). Then
+// fn_10_8870 (0x00016E8C) - the state's command, the port's RunLoopAttackCmd.
 void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("FreezeBeam", msg);
   UpdateCurrentAttack(0x10, mgr, msg); // 0x00016D18
@@ -1856,8 +1855,11 @@ void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
     BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x00016DD0
   }
   if ((mGuestAB8 & 0x40) != 0) { // 0x00016DF0 (the bit 0x40 of 0xAB8)
-    TurnTowardPlayer(mgr, dt, 0.017453292f * mBss118); // 0x00016E1C
-    FsmStandIn("fn_10_1707C", "state FreezeBeam's dodge step"); // 0x00016E3C
+    TurnTowardPlayer(mgr, dt, 0.017453292f * mBss118); // 0x00016E1C (lbl_10_rodata_454 times
+                                                              // lbl_10_bss_118 = 160.0f)
+    // 0x00016E3C: fn_10_1707C - the dodge step, with lbl_10_bss_11C = 22.0f (the impulse) and
+    // lbl_10_bss_120 = 0.5f (the dodge's time), the port's UpdateDodge.
+    UpdateDodge(mgr, dt, 22.f, 0.5f); // 0x00016E3C
   }
   // 0x00016E40..0x00016E88: the loop attack command - the vtable lbl_10_data_1B0 (the base
   // lbl_10_data_1D4), the id 7 = kBSC_LoopAttack (0x00016E70), the type 4 = pas::kLAT_Four

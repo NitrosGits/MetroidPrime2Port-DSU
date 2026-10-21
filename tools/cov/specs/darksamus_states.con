@@ -21,6 +21,7 @@
 @f2400 fsm u04f7 EnragedTravel
 @f2400 statecall u04f7 FreezeBeam 0
 @f2450 statecall u04f7 FreezeBeam 1
-@f2500 statecall u04f7 FreezeBeam 2
+@f2460 statecall u04f7 FreezeBeam 1
+@f2470 statecall u04f7 FreezeBeam 2
 @f2600 fsm u04f7 FadeIn
 @f2900 objs darksamus

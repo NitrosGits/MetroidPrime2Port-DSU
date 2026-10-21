@@ -26,6 +26,9 @@ DR_SET = ('($dk == 1 ? ($this->mBoostBallUid.value = 0xffff) : '
           ' $this->mGuestEB8 = 0.0))))))))')
 # the Pause state: the second Activate runs without a fight stage (the battle stage's uid is
 # invalidated), which is the arm the retail's own null check at 0x00010770 takes.
+FB_K = '($_isvoid($fk) ? ($fk = 0) : ($fk = $fk + 1))'
+FB_SET = ('($rdx == 1 ? ($fk == 1 ? ($this->mGuestAB0 = 1) : '
+          '($fk == 2 ? ($this->mGuestAB8 = $this->mGuestAB8 | 0x40) : 0)) : 0)')
 PAUSE_K = '($rdx == 0 ? ($_isvoid($pk) ? ($pk = 0) : ($pk = $pk + 1)) : 0)'
 PAUSE_SET = ('($pk == 1 ? ($this->mBattleStageUid.value = 0xffff) : 0)')
 SPEC = [
@@ -39,7 +42,10 @@ SPEC = [
     ('F86C FallFromTheAir', 'CDarkSamus::FallFromTheAir(', ['$rdx'], 'calls'),
     ('7A14 EnrageHitReact', 'CDarkSamus::EnrageHitReact(', ['$rdx'], 'calls'),
     ('6E38 EnragedTravel', 'CDarkSamus::EnragedTravel(', ['$rdx'], 'calls'),
-    ('16CDC FreezeBeam', 'CDarkSamus::FreezeBeam(', ['$rdx'], 'calls'),
+    # the FreezeBeam: the counter 0xAB0 (the exit state command) and the bit 0x40 of 0xAB8 (the
+    # turn and the dodge) are written at the Update's entry, one per Update (the Activate clears
+    # both, 0x00016D5C and 0x00016D6C).
+    ('16CDC FreezeBeam', 'CDarkSamus::FreezeBeam(', [FB_K, FB_SET, '$rdx'], 'calls'),
     # the helpers of slice 27
     ('99B8 StopBoostBallParticles', 'CDarkSamus::StopBoostBallParticles(', [], 'calls'),
     ('6DAC UpdateShieldFromHealth', 'CDarkSamus::UpdateShieldFromHealth(', ['$rdx'], 'calls'),
