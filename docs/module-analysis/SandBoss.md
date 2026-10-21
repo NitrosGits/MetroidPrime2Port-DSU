@@ -1002,3 +1002,36 @@ of the worm - both are the forced arms of `fn_55_C1CC`.
 | `fn_55_C1CC` | the null-player guard | dead: retail dereferences the player at 0xC1E4 without a check, and the game always has a player in this area |
 | `fn_55_10C18` | the deleting destructor (vtable reset, base destructor, free) | natural: the end of the triple-charge volley (fn_55_31E8) deletes the beams, sb1 |
 | `fn_55_11184` | the three table fills | natural: the module's static tables are built when the module loads, in every run |
+
+### 7.6 `fn_55_8C` (IsOnGround) - the caveat resolved [proven]
+
+The port's `CSandBoss::IsOnGround()` returns `CPatterned::IsOnGround()`; the caveat was that the
+host's `mOnGround` might not be the flag retail reads. It is the same flag:
+
+- Retail's `fn_55_8C` is the DOL's own `CPatterned::IsOnGround` (0x80073C90) copied verbatim:
+  `lbz r0, 0x34c(r3); extrwi r3, r0, 1, 28` - bit 28 of the word at 0x34C, i.e. **bit 4 of the
+  byte** (the earlier "bit 3 of the byte" reading in the port's comment was off by one).
+- The DOL's `CPatterned::AcceptScriptMsg` (0x80079568) writes that bit in its two ground
+  branches, with the message ids as four-character codes:
+  - `kSM_Landed` ("XLND", 0x584C4E44): zero the momentum (0x80079720), add the ground-collider
+    material (0x80079734) and **set** bit 28 (0x80079740);
+  - `kSM_OffGround` ("XOFF", 0x584F4646): the gravity momentum and the removal of the material
+    (0x80079780..0x8007979C) and **clear** bit 28 (0x800797AC).
+  The DOL's `Landed` trigger reads the same bit (0x80151D68) and clears bit 30 next to it.
+- The host's `CPatterned::mOnGround` is written in exactly those two branches
+  (`src/MetroidPrime/Enemies/CPatterned.cpp:284` and `:291`, with the same momentum and material
+  side effects) and read by `CPatterned::IsOnGround()`
+  (`include/MetroidPrime/Enemies/CPatterned.hpp:184`).
+
+The rest of retail's byte at 0x34C matches the host's neighbouring flags the same way, which
+confirms the pairing rather than leaving it a coincidence: retail bit 25 gates the
+momentum/material work (`mVerticalMovement`), bit 29 is set by the `kSM_LandedOnStaticGround`
+branch ("LSG", 0x800796F0) and read by `fn_80073F58` (0x80073F58) - the host's
+`mOnStaticGround` - and bit 30 is the "was on ground" flag the DOL's `Landed` trigger stores
+before clearing it (0x80151D80) - the host's `mPrevOnGround`
+(`src/MetroidPrime/Enemies/CPatternedAiFunctions.cpp:185`).
+
+So the port's override returns the same flag as retail, and the port's comment now says
+[proven] instead of [inferred]. The function stays unmarked: no run in this fight reaches the
+virtual (the physics never asks a worm whether it is on the ground), and the marker rule wants
+a run.

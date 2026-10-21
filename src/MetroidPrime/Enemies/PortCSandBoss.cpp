@@ -235,8 +235,17 @@ CRagDoll* CSandBoss::GetRagDoll() const { return nullptr; }
 TUniqueId CSandBoss::GetAttackTarget() const { return kInvalidUniqueId; }
 
 // fn_55_8C (ported, not exercised yet)
-// Retail reads bit 3 of the byte at 0x34c, the on-ground bit CPatterned's own accessor returns
-// [inferred: same bit].
+// IsOnGround: the REL's body is the DOL's own CPatterned::IsOnGround
+// (IsOnGround__10CPatternedCFv, the three instructions at the head of CPatterned.s) copied
+// verbatim - `lbz r0, 0x34c(r3); extrwi r3, r0, 1, 28` - so it reads bit 28 of the word at
+// 0x34C (bit 4 of the byte; the earlier "bit 3 of the byte" reading was off by one). The DOL's
+// CPatterned::AcceptScriptMsg sets that bit in its kSM_Landed branch (the one next to the
+// zeroed momentum and the added ground-collider material) and clears it in its kSM_OffGround
+// branch, and the DOL's Landed trigger reads the same bit. The host's CPatterned::mOnGround is
+// written in exactly those two branches (src/MetroidPrime/Enemies/CPatterned.cpp:284 and
+// :291) and read by CPatterned::IsOnGround()
+// (include/MetroidPrime/Enemies/CPatterned.hpp:184), so this override returns the same flag
+// [proven]. The DOL's exact addresses are in docs/module-analysis/SandBoss.md section 7.6.
 bool CSandBoss::IsOnGround() const { return CPatterned::IsOnGround(); }
 
 // fn_55_98 (ported, not exercised yet)
