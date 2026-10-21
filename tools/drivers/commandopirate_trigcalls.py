@@ -24,7 +24,8 @@ def log(msg):
 
 
 def connect():
-    for _ in range(240):
+    # a world load under gdb takes minutes, so the loop waits long.
+    for _ in range(900):
         try:
             return socket.create_connection(("127.0.0.1", PORT), timeout=10)
         except OSError:
