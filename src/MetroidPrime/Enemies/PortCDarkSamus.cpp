@@ -14,8 +14,13 @@
 // they are real rather than stand-ins.
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.hpp"
@@ -56,7 +61,75 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mPathFindSearch(nullptr, 0x401, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0,
                   CPFRegion::kRP_Center) // 0x0001FB44: fn_8013E6A0, the CPathFindSearch at 0x7C0
 , mData(data)
-, mGuestCD0(0) {
+, mGuestCD0(0)
+, mFlags90C(0)
+, mTurnDone(0)
+, mPissedOff(0)
+, mFadeOut(0)
+, mBattleStageUid(kInvalidUniqueId)
+, mStageCount(0)
+, mFirstBattleStageUid(kInvalidUniqueId)
+, mLastAttackerUid(kInvalidUniqueId)
+, mAttackerCount(0)
+, mAttackerUids{kInvalidUniqueId, kInvalidUniqueId}
+, mPickedAttack(0xFFFF)
+, mCurrentAttack(0xFFFF)
+, mAttackHistory{0, 0, 0}
+, mAttackHistoryCount(0)
+, mAccumulatedDamage(0.f)
+, mLastHealth(-1.f)
+, mDamageDecay(1.f)
+, mDamageThreshold(data.mDamageInterruptThreshold)
+, mStillTime(0.f)
+, mStillPosition(CVector3f(0.f, 0.f, 0.f))
+, mLastWallHitTime(0.f)
+, mElapsedTime(0.f)
+, mPathFindDestination(CVector3f(0.f, 0.f, 0.f))
+, mAdditiveAnim(-1)
+, mGlideSfxId(data.mGlideSound == -1 ? CSfxManager::kInternalInvalidSfxId
+                                    : static_cast< ushort >(data.mGlideSound))
+, mGlideSfx()
+, mSavedSpeed(0.f)
+, mDash()
+, mGuestC00(0.f)
+, mSafePos(CVector3f(0.f, 0.f, 0.f))
+, mHasSafePos(0)
+, mSeparationDir(CVector3f(0.f, 0.f, 0.f))
+, mContactTime(0.f)
+, mContactPoint(CVector3f(0.f, 0.f, 0.f))
+, mLastMeleeTime(0.f)
+, mAttackMask(0)
+, mWeightedPick(0xFFFF)
+, mPickCount(0)
+, mLastPickTime(-1000.f)   // lbl_10_rodata_410, `lfs f0` at 0x0001FC9C, stored at 0x0001FCF0
+, mNextActionTime(-1000.f) // the same f0, 0x0001FCF4
+, mAttackOrbitPos(CVector3f(0.f, 0.f, 0.f))
+, mAttackAimPos(CVector3f(0.f, 0.f, 0.f))
+, mScatterLineStart(CVector3f(0.f, 0.f, 0.f)) // fn_10_215FC, 0x00021660..0x000216A4
+, mScatterAim(CVector3f(0.f, 0.f, 0.f))
+, mScatterLineEnd(CVector3f(0.f, 0.f, 0.f))
+, mScatterShotCount(0)
+, mScatterStartTime(0.f)
+, mScatterTimer(0.f)
+, mScatterFiring(0)
+, mScatterChance(data.mUnknown378285B9)         // 0x000216C4
+, mScatterRate(data.mScatterShotProjectilesPerSecond) // 0x000216C8
+, mScatterProjectileUid(kInvalidUniqueId)      // 0x000216D0
+, mScatterSide(0)                               // 0x000216B4
+, mScatterUseSecondInfo(0)                      // 0x000216BC
+, mGunLctrXf(CTransform4f::Identity()) {        // 0x0001FBC0
+  // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
+  // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
+  // (0x000216E4), both with scatterShotDamage, each only for a valid asset and locked after.
+  if (data.mScatterShotProjectile != kInvalidAssetId) {
+    mScatterShotInfo = CProjectileInfo(data.mScatterShotProjectile, data.mScatterShotDamage);
+    mScatterShotInfo.data().Token().Lock();
+  }
+  if (data.mScatterShotProjectile2 != kInvalidAssetId) {
+    mScatterShotInfo2 = CProjectileInfo(data.mScatterShotProjectile2, data.mScatterShotDamage);
+    mScatterShotInfo2.data().Token().Lock();
+  }
+  mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
   // loaded at 0x0001FB38) and its root position kRP_Center (`li r8, 0x0` at 0x0001FB5C); the area
@@ -69,31 +142,41 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   // Everything else it builds - the identity transform at 0x8CC, the 'SCAN' token at 0x92C, the
   // sixteen sub-objects at 0x94C..0x1064 and the CMdl/Cskr token pair at 0xD64 - belongs to the
   // state machine and the render paths this milestone does not enter.
+  //
+  // The scalars the three TravelToCoverPoints triggers read are set to retail's defaults: the
+  // attack words at 0x980 and 0x984 are 0xFFFF (0x0001FCE4/0x0001FCE8), the count at 0x994 is 0
+  // (0x0001FCF8), the accumulated damage at 0xCC0 is 0.0f (0x0001FF58), the last health at 0xCC4
+  // is -1.0f (0x0001FF5C), the damage threshold at 0xCC8 is the constructor's 8th float argument
+  // (0x0001FF60 - the loader's damageInterruptThreshold, the property id 0x8f70d3f2), the damage
+  // decay at 0xCCC is 1.0f (0x0001FF64), the still timer at 0x964 is 0.0f (0x0001FCB0) and its
+  // reference position at 0x958/0x95C/0x960 is the zero vector (0x0001FC64..0x0001FC74), the wall
+  // collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed time at 0x8B0 is 0.0f
+  // (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
 }
 
 CDarkSamus::~CDarkSamus() {}
-
-// A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
-// ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say
-// where retail activates it, so the port activates on kSM_Create and, as the other patterned
-// actors in this port do, again on demand in every entry point that can run first.
-void CDarkSamus::EnsureBodyActive(CStateManager& mgr) {
-  if (BodyController() != nullptr && !BodyController()->GetIsActive()) {
-    BodyController()->Activate(mgr, pas::kAS_Invalid);
-  }
-}
 
 // vtable slot 5 = fn_10_1B1FC (0x27C). Retail runs the state machine's own tick first (it asks
 // the machine for a state through the vtable slot 0x28), then aims at the player (the vector at
 // 0x6E0), then runs CPatterned::Think and afterwards the module's own AI.
 void CDarkSamus::Think(float dt, CStateManager& mgr) {
   StandIn("fn_10_1B1FC", "vtable slot 5, Think");
+  // 0x0001B2DC: retail grows the elapsed time at 0x8B0 by dt in every Think, also while the
+  // actor is inactive, so the port grows it before the active check.
+  mElapsedTime += dt;
   if (!GetActive()) {
     return;
   }
-  EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
+  // 0x0001B2E4: the module's own AI runs only while the actor is alive (the guest's 0x420 bit 6,
+  // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the attack pick
+  // (fn_10_1954C, the call at 0x0001B314); the stage advance before it (fn_10_193A0, 0x0001B308)
+  // and the twelve after it (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a
+  // stand-in rather than a retail-order Think.
+  if (GetAlive()) {
+    UpdateAttackPick(mgr);
+  }
 }
 
 // vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch. The four-character codes it
@@ -101,18 +184,68 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
 // 'ACTV' (0x0001E908), 'ALRT' (0x0001E8F4), 'DCTV' (0x0001E8E0), 'XALD' (0x0001E930), 'XDEL'
 // (0x0001E8B8), 'XDMG' (0x0001E968), 'XLAU' (0x0001E958), 'XLND' (0x0001E944), 'XLSG'
 // (0x0001E98C) and 'XOFF' (0x0001E978).
+// fn_10_1E864 (0x0001E864, 0x38 bytes): the path search's area - the actor's area (the guest's
+// this+4) in the world's area list (the state manager's 0x1604, the list at 0x24 and the entry's
+// +4 at 0x0001E884), its post-constructed data (+0x104) and that data's path area (+0xEC), stored
+// into the search (the guest's 0x7C0, 0x0001E890).
+// @ fn_10_1E864
+void CDarkSamus::SetPathSearchArea(CStateManager& mgr) {
+  mPathFindSearch.SetArea(
+      mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
+}
+
 void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   StandIn("fn_10_1E89C", "vtable slot 6, AcceptScriptMsg");
-  CPatterned::AcceptScriptMsg(mgr, msg);
+  // The 'XCRT' arm (0x58435254, the host's kSM_Create; the compare at 0x0001E91C) loads the body
+  // controller (this+0x48C at 0x0001E99C), passes -1 for the animation state (0x0001E9A0) and
+  // calls CBodyController::Activate (0x0001E9A4). Every arm then falls into the common tail,
+  // which forwards the message to CPatterned (the call at 0x0001EE2C), so the message is
+  // forwarded here too - after the activation, in retail's order.
   if (msg.GetMessage() == kSM_Create) {
-    EnsureBodyActive(mgr);
+    BodyController()->Activate(mgr, pas::kAS_Invalid);
   }
+  // The 'XALD' arm (0x58414C44, kSM_AreaLoaded; the compare at 0x0001E938) links the fight
+  // script's object: the object connected with the state 'IS05' (kSS_InternalState5, the lis/addi
+  // at 0x0001EB60/0x0001EB70) and any message (-1, 0x0001EB74). When the uid is valid (the cmplw
+  // at 0x0001EB8C) and the object is a CScriptDarkSamusBattleStage (the cast at 0x0001EBA4, the
+  // null test at 0x0001EBA8), its uid goes to 0x974 and to 0xD50 and the stage count becomes 1
+  // (0x0001EBB8..0x0001EBC4). Then the path search's area (fn_10_1E864 at 0x0001EBD0); the
+  // collision primitive (0x0001EBE0..), the boss parameters (0x0001ECDC) and the material filter
+  // (0x0001ED50) after it are not in the port yet.
+  if (msg.GetMessage() == kSM_AreaLoaded) {
+    const TUniqueId stageUid =
+        FindConnectedObject(mgr, kSS_InternalState5, kSM_None);
+    if (stageUid != kInvalidUniqueId) {
+      if (const CDarkSamusBattleStage* stage =
+              TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(stageUid))) {
+        mBattleStageUid = stage->GetUniqueId();
+        mFirstBattleStageUid = mBattleStageUid;
+        mStageCount = 1;
+      }
+    }
+    SetPathSearchArea(mgr);
+  }
+  CPatterned::AcceptScriptMsg(mgr, msg);
+}
+
+// The state machine's setup (vtable slot 60 stays CPatterned::SetupStateMachine, so this is the
+// module's own hook). Retail's fn_10_18D78 - called from the first Think (fn_10_1B1FC, when the
+// machine has no state yet) - calls CPatterned's InitializeStateMachine and then hands the machine
+// its own two tables: lbl_10_data_450 with the 49 triggers and lbl_10_data_964 with the 43 states.
+// The host's machine asks for the tables through this virtual (CPatterned::InitializeStateMachine
+// calls it), so the module's tables go in here, after the base's own.
+void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
+  CPatterned::SetupStateMachine(mgr);
+  InstallStateMachineFunctions();
 }
 
 // vtable slot 9 = fn_10_18AB8 (0x2C0): the pre-render pass (the locator-driven effect setup).
 void CDarkSamus::PreRender(CStateManager& mgr) {
   StandIn("fn_10_18AB8", "vtable slot 9, PreRender");
   CPatterned::PreRender(mgr);
+  // 0x00018C18: the gun locator's transform the scatter shot fires from (0x8CC). The rest of the
+  // pass (the effects and the colour lerps around it) is not in the port yet.
+  mGunLctrXf = GetLctrTransform(rstl::string_l("GUN_Particle_LCTR"));
 }
 
 // vtable slot 10 = fn_10_17F04 (0x2D8).
@@ -171,6 +304,24 @@ EWeaponCollisionResponseTypes CDarkSamus::GetCollisionResponseType(const CVector
 void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
                                  float dt) {
   StandIn("fn_10_1BEFC", "vtable slot 28, DoUserAnimEvent");
+  // The switch on the event type (`cmplwi r31, 0x2e` at 0x0001BF28, jumptable_10_data_FB4).
+  // kUE_EventStart (case 27, 0x0001C1F0) switches on the current attack 0x980 and never reaches
+  // the base: the scatter shots start (fn_10_11814) with side 0 for 8 (0x0001C25C) and the byte
+  // 0xBAC for 0x10 (0x0001C268). Its 0x100 (0xA84 = 1), 0x100000 (0xAB8 bit 0x40) and 0x400000
+  // (fn_10_6118, fn_10_8178) arms are not in the port yet.
+  if (type == kUE_EventStart) {
+    switch (mCurrentAttack) {
+    case 8:
+      StartScatterShotFire(mgr, 0);
+      break;
+    case 0x10:
+      StartScatterShotFire(mgr, mScatterSide);
+      break;
+    default:
+      break;
+    }
+    return;
+  }
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
@@ -216,8 +367,21 @@ CVector3f CDarkSamus::GetOrigin(const CStateManager& mgr, const CTeamAiRole& rol
 
 // vtable slot 55 = fn_10_1C6C8 (0xB0): the projectile info the attacks launch.
 CProjectileInfo* CDarkSamus::ProjectileInfo() {
-  StandIn("fn_10_1C6C8", "vtable slot 55, ProjectileInfo");
-  return CPatterned::ProjectileInfo();
+  // The switch on the current attack 0x980: the scatter shots 8 and 0x10 (0x0001C718) take the
+  // second info 0xBB0 when 0xBAE is 1, the first 0xB50 otherwise. The missiles' 0x40/0x80
+  // (0xA0C), 0x100 (0xA4C) and 0x800000 (0xF80 / 0x1064 by 0xFB8) infos are not in the port yet,
+  // so those arms answer null as the default does (0x0001C770). Port limit: an info whose asset
+  // was invalid is never built on the host, so it answers null too.
+  switch (mCurrentAttack) {
+  case 8:
+  case 0x10:
+    if (mScatterUseSecondInfo == 1) {
+      return mScatterShotInfo2 ? &mScatterShotInfo2.data() : nullptr;
+    }
+    return mScatterShotInfo ? &mScatterShotInfo.data() : nullptr;
+  default:
+    return nullptr;
+  }
 }
 
 // vtable slot 73 = fn_10_CE94 (0x8): it returns this+0x754, the base class's own member.
