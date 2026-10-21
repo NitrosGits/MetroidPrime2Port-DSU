@@ -2182,6 +2182,11 @@ void CMinorIng::MassiveDeath(CStateManager& mgr) {
   CPatterned::MassiveDeath(mgr);
 }
 
+// The projectile's impact visor effect: fn_44_65C4 (asm 0x6418) is the REL's copy of
+// CImpactVisorEffect::None() - three empty parts, the invalid forced visor - and fn_44_64AC
+// (0x645C) its destructor; 6748/6720/6700/66C0/660C/657C/655C/6500 are the copies of its
+// optional members' copy, assign and destroy. The host's CImpactVisorEffect::None() is the same
+// effect, so they are cited, not marked.
 // @ fn_44_6384
 void CMinorIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                 EUserEventType type, float dt) {
