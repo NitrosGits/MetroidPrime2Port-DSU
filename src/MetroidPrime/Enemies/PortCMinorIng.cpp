@@ -2251,6 +2251,10 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
 // checked against the REL id by id: it reads all 20 and fn_44_9B4's packing gives each bool its
 // bit. The check finds the retail's loop (37 calls, 43 conditions) against the generated reader:
 // a tool limit, not a mismatch (the ids and their order were checked by hand).
+// The retail's loader copies the model data it read (asm 0x51C): fn_44_10D4 -> fn_44_1114 ->
+// fn_44_1134 -> fn_44_115C is the REL's own copy of CModelData (the three model slots, the scale
+// and the id; the copy clears the source's byte at +0x0c). The host's CModelData owns its copy,
+// so the body is the class's own.
 // @ fn_44_D54
 // The retail copy moves a whole CIngSpotData from the source to the destination: the blob
 // effect, the three damage infos, the vulnerability and the floats at +0x00..+0x2c, the sounds

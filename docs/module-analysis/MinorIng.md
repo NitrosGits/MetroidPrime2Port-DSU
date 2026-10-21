@@ -5,7 +5,7 @@ The MinorIng REL's host body: `src/MetroidPrime/Enemies/PortCMinorIng.cpp`,
 and module 44 `MinorIng` together) is in `IngFamily.md`; this note is the MinorIng
 half: what is ported, what is not, and the layout facts the port depends on.
 
-## Status (2026-10-20)
+## Status (2026-10-21)
 
 - 114/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
   registration), `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info
@@ -19,6 +19,10 @@ half: what is ported, what is not, and the layout facts the port depends on.
 - Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=7000 GODMODE=1
   MP2_DEBUG_MINORING=1 DISPLAY_NUM=:93 SECS=240 tools/run_gameplay.sh` (area 13 of
   63, Agon Wastes). 0 `[port] caught`, 0 `[reach-stub]`.
+- The thirteen "unported chain" functions are classified: they are the host's own type members
+  (the CModelData, CDamageInfo and CIngSpotData copies, the members' destructors) or bodies the
+  host already has (`fn_44_4DDC`, `fn_44_204C`), so they take no marker and are cited where the
+  retail calls them (the note has the table).
 
 ## The stand-ins the host names
 
@@ -203,37 +207,62 @@ The two branches that are not reachable on the host are the failed allocation (a
 failed constructor (asm 0x74D4).
 
 
+## The thirteen unmarked chains are the host's own types
+
+The functions the "unported chain" class of `/tmp/opencode/mi_unmarked.tsv` holds are not MinorIng
+behaviour the host lacks: each is the REL's own copy of a host type's member function (a copy
+constructor, an assignment or a destructor) or a body the host already has. They take no marker
+(the retail's body is compiler output the host's C++ already does); each is cited where the retail
+calls it.
+
+| retail function | size | what it is | the host's part | called from |
+|---|---|---|---|---|
+| `fn_44_1134` | 0x28 | the REL's copy of CModelData (the null-checked wrapper) | the host's `CModelData` owns its copy | `fn_44_1114` |
+| `fn_44_115C` | 0x13C | the REL's copy of CModelData (the three model slots, the scale, the id; the source's byte at +0x0c cleared) | the host's `CModelData` owns its copy | `fn_44_1134` |
+| `fn_44_2EF4` | 0x30 | the REL's copy of CDamageInfo (the assignment that returns the destination) | the host's `CDamageInfo` owns its copy | `fn_44_2CD8` |
+| `fn_44_2F24` | 0x8C | the REL's copy of CDamageInfo (the mode, the four floats, the three ids; the flag byte at +0x1c) | the host's `CDamageInfo` owns its copy | `fn_44_2EF4` |
+| `fn_44_2FB0` | 0x54 | the REL's copy of CDamageInfo (the null-guarded body of fn_44_2F24) | the host's `CDamageInfo` owns its copy | `fn_44_2F24` |
+| `fn_44_2930` | 0x54 | the REL's copy of a member's destructor (CMemory::Free of the pointer at +0x0c, then of the block) | the host's `CEntityInfo` owns its destruction | `fn_44_28D8` |
+| `fn_44_9B24` | 0x94 | the REL's copy of a member's destructor (the vtable restore, the CToken at +0x04) | the host's members own their destruction | `fn_44_9940` |
+| `fn_44_9C10` | 0x58 | the REL's copy of a member's destructor (the member at +0x00) | the host's members own their destruction | `fn_44_9BB8` |
+| `fn_44_9C68` | 0x58 | the REL's copy of a member's destructor (the member at +0x18) | the host's members own their destruction | `fn_44_9C10` |
+| `fn_44_9CC0` | 0x98 | the REL's copy of a member's destructor (the two-bit counter in the byte at +0x00, its bit 5 the "alive" flag, the release of the pointer at +0x0c) | the host's members own their destruction | `fn_44_9C68` |
+| `fn_44_4DDC` | 0xA8 | the target's aim position (the id at 0xcce, the vtable's 0x54 slot with dt 0) | the host's `TargetAimPosition` | `fn_44_4E84` |
+| `fn_44_EB8` | 0x130 | the REL's copy of the ing spot's vector member (it allocates the array and copies the 12-byte entries) | the host's `CIngSpotData` owns its copy | `fn_44_E08` |
+| `fn_44_204C` | 0x15C | the lure point on the nav mesh (the search's flags 3 for the height query, 0x301 after it) | the host's `PortIngLuredMeshPoint` | `fn_44_21A8`, `fn_44_22B0` |
+
+`fn_44_115C`'s three optional model slots and `fn_44_2F24`'s layout are the ones that name the
+types: the host's `CModelData` holds the three model slots as `rstl::optional_object` (the retail's
+copy locks the source's token and takes its refcount) and the host's `CDamageInfo` is 0x1c bytes
+with the mode, the four floats, the three sound ids and the two flag bits, so the retail's copy of
+it (asm 0x2F24) moves exactly the host's fields.
+
+
 ## The functions that are still not ported
 
 `tools/port_progress.py` counts 103 of the module's 217 functions as unmarked.
 The table lists each with its retail size and the module functions that call it
 (the call graph is read from the REL's disassembly, so "called from" is the retail
 call, not the host's). The ones the live cycle reaches are the ctor/dtor/loader
-chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
+chain and the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 `fn_44_66C0` -> `fn_44_6700` -> `fn_44_6720` -> `fn_44_6748` and `fn_44_64AC` ->
-`fn_44_6500` -> `fn_44_655C` -> `fn_44_657C`), the damage relay
+`fn_44_6500` -> `fn_44_655C` -> `fn_44_657C`); the damage relay
 (`fn_44_25E4` -> `fn_44_28D8` -> `fn_44_2930`, `fn_44_2CD8` -> `fn_44_2EF4` ->
-`fn_44_2F24` -> `fn_44_2FB0`) and the cover scan (`fn_44_4E84` -> `fn_44_4DDC`).
+`fn_44_2F24` -> `fn_44_2FB0`) and the cover scan (`fn_44_4E84` -> `fn_44_4DDC`)
+are the chains the classification above covers, so they are not in the tables.
 
 ### Over 0x80 bytes (the stand-in size line)
 
 | retail function | size | called from |
 |---|---|---|
-| `fn_44_2F24` | 0x8C | fn_44_2EF4 |
 | `fn_44_51D8` | 0x8C | - |
 | `fn_44_A840` | 0x8C | - |
-| `fn_44_9B24` | 0x94 | fn_44_9940 |
-| `fn_44_9CC0` | 0x98 | fn_44_9C68 |
-| `fn_44_4DDC` | 0xA8 | fn_44_4E84 |
 | `fn_44_5A04` | 0xB4 | - |
 | `fn_44_660C` | 0xB4 | fn_44_65C4 |
 | `fn_44_141C` | 0xBC | - |
 | `_unresolved` | 0xC4 | - |
 | `fn_44_16C4` | 0x108 | fn_44_14D8 |
 | `fn_44_1830` | 0x11C | fn_44_14D8 |
-| `fn_44_EB8` | 0x130 | fn_44_E08 |
-| `fn_44_115C` | 0x13C | fn_44_1134 |
-| `fn_44_204C` | 0x15C | fn_44_21A8, fn_44_22B0 |
 | `fn_44_97E4` | 0x15C | - |
 | `fn_44_A680` | 0x184 | fn_44_9D58 |
 | `fn_44_14D8` | 0x188 | fn_44_110 |
@@ -276,11 +305,9 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `RELExit` | 0x24 | - |
 | `_epilog` | 0x24 | - |
 | `_prolog` | 0x24 | - |
-| `fn_44_1134` | 0x28 | fn_44_1114 |
 | `fn_44_6720` | 0x28 | fn_44_6700 |
 | `fn_44_70` | 0x2C | - |
 | `fn_44_6FA0` | 0x2C | - |
-| `fn_44_2EF4` | 0x30 | fn_44_2CD8 |
 | `fn_44_2C9C` | 0x3C | - |
 | `fn_44_6888` | 0x3C | - |
 | `fn_44_68C4` | 0x3C | - |
@@ -300,16 +327,12 @@ chain, the projectile's spawn parameters (`fn_44_65C4` -> `fn_44_660C` ->
 | `fn_44_2984` | 0x50 | - |
 | `fn_44_E64` | 0x54 | - |
 | `fn_44_1304` | 0x54 | - |
-| `fn_44_2930` | 0x54 | fn_44_28D8 |
-| `fn_44_2FB0` | 0x54 | fn_44_2F24 |
 | `fn_44_64AC` | 0x54 | fn_44_6384 |
 | `fn_44_6834` | 0x54 | - |
 | `fn_44_107C` | 0x58 | - |
 | `fn_44_28D8` | 0x58 | fn_44_25E4, fn_44_7058 |
 | `fn_44_9700` | 0x58 | - |
 | `fn_44_9BB8` | 0x58 | fn_44_97E4 |
-| `fn_44_9C10` | 0x58 | fn_44_9BB8 |
-| `fn_44_9C68` | 0x58 | fn_44_9C10 |
 | `__destroy_global_chain` | 0x58 | - |
 | `fn_44_E08` | 0x5C | fn_44_D54 |
 | `fn_44_6500` | 0x5C | fn_44_64AC, fn_44_65C4 |
