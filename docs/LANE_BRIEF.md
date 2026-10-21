@@ -26,7 +26,8 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   `damage <id> <n> [weapon|powerbomb|annihilator|darkburst|sunburst|sonicboom]`, `send <id> <msg>`,
   `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` takes no
   argument (it kills the player).
-- Kill only pids you launched (bracketed `pgrep -f` names) and any Xvfb you started. Delete your run
+- Kill only pids you launched (save `$!`, `kill <pid>`) and any Xvfb you started. Never `pkill`/`killall`
+  the game binary, gdb or Xvfb: a dozen lanes run them at once and you kill their runs. Delete your run
   outputs from `/tmp` (a 31 GB tmpfs).
 
 ## Coverage without probes
