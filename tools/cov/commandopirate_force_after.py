@@ -39,9 +39,15 @@ class WriteOnReturn(gdb.FinishBreakpoint):
         try:
             gdb.execute('set var ((CCommandoPirate*)0x%x)->mKnockBackController'
                         '.mActiveParameters.mFlags = 3' % self.actor)
+            back = int(gdb.parse_and_eval('((CCommandoPirate*)0x%x)->mKnockBackController'
+                                          '.mActiveParameters.mFlags' % self.actor))
+            addr = int(gdb.parse_and_eval('((CCommandoPirate*)0x%x)->mKnockBackController'
+                                          '.mActiveParameters.mFlags' % self.actor))
             with open(TABLE, 'a') as fh:
                 fh.write('%-40s %-30s %s\n' % (self.label, '(on return)', 'FORCED'))
-            log('%s: the knock-back flags written to 3 on the base\'s return' % self.label)
+            log('%s: the knock-back flags written to 3 on the base\'s return '
+                '(the actor 0x%x, the field at 0x%x, the value reads back as %d)'
+                % (self.label, self.actor, addr, back))
         except gdb.error as e:
             log('%s: the write failed: %s' % (self.label, str(e)[:60]))
         return False
@@ -72,6 +78,21 @@ class BaseKnockBackBp(gdb.Breakpoint):
         return False
 
 
+class ArmReadBp(gdb.Breakpoint):
+    """The override's own read of the flags: the "cmpl $0x3,0x6f8(%rbx)" at +0xa2."""
+
+    def stop(self):
+        frame = gdb.newest_frame()
+        try:
+            actor = int(gdb.parse_and_eval('(unsigned long)$rbx'))
+            flags = int(gdb.parse_and_eval('*(unsigned int*)(%d + 0x6f8)' % actor))
+            log('the arm reads the flags: the actor 0x%x, the field at 0x%x, the value %d'
+                % (actor, actor + 0x6f8, flags))
+        except gdb.error as e:
+            log('the arm read failed: %s' % str(e)[:60])
+        return False
+
+
 def find(prefix):
     import subprocess
     nm = os.environ.get('COV_NM', '')
@@ -88,4 +109,12 @@ def find(prefix):
 
 for addr in find('CPatterned::KnockBack('):
     BaseKnockBackBp('*' + addr, 'C300 flags on return')
+
+try:
+    _own = int(gdb.parse_and_eval(
+        '&_ZN15CCommandoPirate9KnockBackER13CStateManagerRK14CKnockBackInfo'))
+    ArmReadBp('*(%d + 0xa2)' % _own)
+    log('the arm\'s own read is watched')
+except (gdb.error, ValueError) as e:
+    log('the arm read breakpoint failed: %s' % str(e)[:60])
 log('commandopirate_force_after: the base\'s KnockBack is watched')
