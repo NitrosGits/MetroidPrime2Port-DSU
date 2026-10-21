@@ -1253,6 +1253,7 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
                                    cone.addColor2, cone.cloudScale, cone.fadeOffSize,
                                    cone.openSpeed);
     mgr.AddObject(beam);
+    // 0x13BC-0x13CC: the sound word at 0x890, its low half (clrlwi r4, r0, 16).
     mBeamSfxHandle = CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundScanning & 0xFFFF),
                                              GetTranslation(), 0x7F, GetCurrentAreaId().Value(),
                                              true, true, CSfxManager::kMedPriority);
