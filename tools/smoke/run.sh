@@ -130,6 +130,12 @@ mkdir -p "$OUT" || exit 2
 [ -x "$BUILD/metroid_prime2_port" ] || { echo "[smoke] no game in $BUILD" >&2; exit 2; }
 
 echo "[smoke] out=$OUT build=$BUILD jobs=$JOBS save=$SAVE families=${FAMS[*]}"
+# A coverage build (CMake option MP_PORT_COVERAGE) writes its .gcda files per family, under
+# <out>/gcov_<family>/gcov: the families run concurrently and would otherwise write over each
+# other. fam.sh sets it; nothing changes for a normal build.
+if nm -g "$BUILD/metroid_prime2_port" 2>/dev/null | grep -q '__gcov_dump'; then
+  echo "[smoke] coverage build: the profiles land in $OUT/gcov_<family>/gcov"
+fi
 
 run_one() {   # <tag>: one family; its own display, port, card copy and cache dir
   local tag=$1 rc

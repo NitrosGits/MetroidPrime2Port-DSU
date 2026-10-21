@@ -27,6 +27,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 BUILD=${BUILD:-$ROOT/build-port-link}
+# A coverage build (CMake option MP_PORT_COVERAGE) writes its .gcda files into the run's own
+# directory, so two runs of the same build do not write over each other. Nothing changes for a
+# normal build. See tools/cov/gcov_env.sh.
+. "$ROOT/tools/cov/gcov_env.sh"
+gcov_env "$BUILD" "$OUT"
 # Without DISPLAY_NUM/COV_PORT a run holds a slot (a flock kept for the script's life) that picks
 # its own display and console port, so concurrent lanes never share an X display or a port.
 if [ -z "${DISPLAY_NUM:-}" ] || [ -z "${COV_PORT:-}" ]; then

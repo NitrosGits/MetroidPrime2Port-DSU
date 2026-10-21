@@ -94,22 +94,6 @@ extern "C" void reachstub_135() { mpReachStub("_ZN18CTransitionManagerD1Ev", "CT
 extern "C" void reachstub_136() asm("_ZN20CDamageVulnerabilityC1ERK23SLdrDamageVulnerability");
 extern "C" void reachstub_136() { mpReachStub("_ZN20CDamageVulnerabilityC1ERK23SLdrDamageVulnerability", "CDamageVulnerability::CDamageVulnerability(SLdrDamageVulnerability const&)"); }
 
-// TStateMachineStateBase<CPatterned>::~TStateMachineStateBase()
-extern "C" void reachstub_143() asm("_ZN22TStateMachineStateBaseI10CPatternedED2Ev");
-extern "C" void reachstub_143() { mpReachStub("_ZN22TStateMachineStateBaseI10CPatternedED2Ev", "TStateMachineStateBase<CPatterned>::~TStateMachineStateBase()"); }
-
-// TStateMachineStateBase<CPlayerGun>::~TStateMachineStateBase()
-extern "C" void reachstub_144() asm("_ZN22TStateMachineStateBaseI10CPlayerGunED2Ev");
-extern "C" void reachstub_144() { mpReachStub("_ZN22TStateMachineStateBaseI10CPlayerGunED2Ev", "TStateMachineStateBase<CPlayerGun>::~TStateMachineStateBase()"); }
-
-// TStateMachineStateBase<CGrappleArm>::~TStateMachineStateBase()
-extern "C" void reachstub_145() asm("_ZN22TStateMachineStateBaseI11CGrappleArmED2Ev");
-extern "C" void reachstub_145() { mpReachStub("_ZN22TStateMachineStateBaseI11CGrappleArmED2Ev", "TStateMachineStateBase<CGrappleArm>::~TStateMachineStateBase()"); }
-
-// TStateMachineStateBase<CPlayerBodyController>::~TStateMachineStateBase()
-extern "C" void reachstub_146() asm("_ZN22TStateMachineStateBaseI21CPlayerBodyControllerED2Ev");
-extern "C" void reachstub_146() { mpReachStub("_ZN22TStateMachineStateBaseI21CPlayerBodyControllerED2Ev", "TStateMachineStateBase<CPlayerBodyController>::~TStateMachineStateBase()"); }
-
 // rstl::operator==(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, char const*)
 extern "C" void reachstub_178() asm("_ZN4rstleqERKNS_12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEEPKc");
 extern "C" void reachstub_178() { mpReachStub("_ZN4rstleqERKNS_12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEEPKc", "rstl::operator==(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, char const*)"); }
