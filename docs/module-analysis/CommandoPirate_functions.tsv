@@ -85,9 +85,9 @@ offset	size	fn	kind	class	port	note
 0x4D7C	0x8	fn_9_4D7C	data-thunk	T	not-port	
 0x4D84	0x228	fn_9_4D84	behaviour	B	marked	
 0x4FAC	0x5C	fn_9_4FAC	host-copy	H	not-port	
-0x5008	0x2B4	fn_9_5008	behaviour	B	not-port	
-0x52BC	0x154	fn_9_52BC	behaviour	B	not-port	
-0x5410	0x370	fn_9_5410	behaviour	B	stand-in	
+0x5008	0x2B4	fn_9_5008	behaviour	B	ported	E-grenade launch solve
+0x52BC	0x154	fn_9_52BC	behaviour	B	ported	E-grenade aim point
+0x5410	0x370	fn_9_5410	behaviour	B	ported	CreateEGrenade; run: cov4 area 59
 0x5780	0x20	fn_9_5780	host-copy	H	not-port	
 0x57A0	0x598	fn_9_57A0	behaviour	B	marked	
 0x5D38	0x3C	fn_9_5D38	host-copy	H	not-port	
@@ -229,14 +229,14 @@ offset	size	fn	kind	class	port	note
 0xE9E8	0x3C	fn_9_E9E8	host-copy	H	not-port	
 0xEA24	0x160	fn_9_EA24	behaviour	B	not-port	
 0xEB84	0x104	fn_9_EB84	behaviour	B	not-port	
-0xEC88	0x7C	fn_9_EC88	behaviour	B	not-port	
+0xEC88	0x7C	fn_9_EC88	behaviour	B	ported	grenade block copy (the host copy ctor)
 0xED04	0xBC	fn_9_ED04	behaviour	B	not-port	
 0xEDC0	0x1C0	fn_9_EDC0	behaviour	B	not-port	
 0xEF80	0x178	fn_9_EF80	behaviour	B	not-port	
-0xF0F8	0x198	fn_9_F0F8	behaviour	B	not-port	
-0xF290	0x84	fn_9_F290	behaviour	B	not-port	
+0xF0F8	0x198	fn_9_F0F8	behaviour	B	ported	E-grenade Think
+0xF290	0x84	fn_9_F290	behaviour	B	ported	E-grenade dtor
 0xF314	0x104	fn_9_F314	host-copy	H	not-port	
-0xF418	0xF4	fn_9_F418	behaviour	B	not-port	
+0xF418	0xF4	fn_9_F418	behaviour	B	ported	E-grenade ctor
 0xF50C	0x80	fn_9_F50C	behaviour	B	not-port	
 0xF58C	0x110	fn_9_F58C	host-copy	H	ported	shield effect factory; invalid-id arm unrun
 0xF69C	0x40	fn_9_F69C	behaviour	B	not-port	
