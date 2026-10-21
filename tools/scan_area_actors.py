@@ -13,6 +13,7 @@ SLdrSpacePirate (0xa64ab9b8 flags, 0x9579b1f2 aggressiveness, 0xf89ab419 cover c
 0x647670ac the equipped weapon) and SLdrCoverPoint (0x969de5ff the flags, 0x8001c3be the
 crouch flag).
 """
+import math
 import struct
 import sys
 import pathlib
@@ -72,6 +73,24 @@ def equipped(block):
     return 0
 
 
+def position(body):
+    """The editor properties' transform position (the property 0x5846524d) of an object."""
+    try:
+        magic, _size, count = struct.unpack_from(">IHH", body, 0)
+        if magic != 0xFFFFFFFF:
+            return None
+        p = 8
+        for _ in range(count):
+            pid, size = struct.unpack_from(">IH", body, p)
+            data = body[p + 6:p + 6 + size]
+            p += 6 + size
+            if pid == 0x5846524D and size >= 36:
+                return struct.unpack_from(">3f", data, 0)
+    except struct.error:
+        pass
+    return None
+
+
 def cover_flags(body):
     """(flags, crouch) of a cover point."""
     flags = 0
@@ -118,26 +137,44 @@ def main():
                     counts = {"AJMP": 0, "AIWP": 0, "TMAI": 0}
                     for t4, eid, body in ed.scly_objects(sec):
                         if t4 == fourcc:
-                            pirates.append((eid, props_of(body)))
+                            pirates.append((eid, props_of(body), position(body)))
                         elif t4 == "COVR":
-                            covers.append((eid,) + cover_flags(body))
+                            covers.append((eid,) + cover_flags(body) + (position(body),))
                         elif t4 in counts:
                             counts[t4] += 1
                     if not pirates and not covers and not any(counts.values()):
                         continue
                     print(f"{nm}/{iname} L{li}: {fourcc}={len(pirates)} COVR={len(covers)} "
                           f"AJMP={counts['AJMP']} AIWP={counts['AIWP']} TMAI={counts['TMAI']}")
-                    for eid, p in pirates:
+                    for eid, p, pos in pirates:
                         print(f"    {fourcc} eid=0x{eid:04x} flags=0x{p.get('flags', 0):08x} "
                               f"aggr={p.get('aggr', 0)} cover={p.get('cover', 0)} "
                               f"search={p.get('search', 0)} hearing={p.get('hearing', 0)} "
-                              f"weapon={p.get('weapon', 0)}")
+                              f"weapon={p.get('weapon', 0)} pos={pos}")
+                    for eid, flags, cr, cpos in covers:
+                        tag = "wall-hang" if (flags >> 4) & 1 else ("crouch" if cr else "")
+                        print(f"    COVR eid=0x{eid:04x} {tag} pos={cpos}")
                     hang = [c for c in covers if (c[1] >> 4) & 1]
                     crouch = [c for c in covers if c[2]]
-                    for eid, flags, cr in hang:
-                        print(f"    COVR eid=0x{eid:04x} wall-hang")
-                    for eid, flags, cr in crouch:
-                        print(f"    COVR eid=0x{eid:04x} crouch")
+                    for eid, flags, cr, cpos in hang:
+                        print(f"    COVR eid=0x{eid:04x} wall-hang pos={cpos}")
+                    for eid, flags, cr, cpos in crouch:
+                        print(f"    COVR eid=0x{eid:04x} crouch pos={cpos}")
+                    # the pairs that could work: a pirate whose cover search radius reaches a
+                    # cover point at nearly the same height (|dz| < 3).
+                    for eid, p, pos in pirates:
+                        if pos is None:
+                            continue
+                        for ceid, cflags, ccr, cpos in covers:
+                            if cpos is None:
+                                continue
+                            d = math.dist(pos, cpos)
+                            dz = abs(pos[2] - cpos[2])
+                            radius = p.get("search", 0.0)
+                            if d <= radius and dz < 3.0:
+                                print(f"    PAIR {fourcc} eid=0x{eid:04x} cover=0x{ceid:04x} "
+                                      f"dist={d:.1f} dz={dz:.1f} radius={radius} "
+                                      f"crouch={ccr} wallhang={(cflags >> 4) & 1}")
     return 0
 
 
