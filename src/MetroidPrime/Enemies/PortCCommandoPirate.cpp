@@ -3344,6 +3344,8 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
       // 0x00007CC4: the loop-attack command; the guest's payload is the loop attack type 4, no
       // wait for the animation and the skip-into flag clear.
       BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Four, false));
+      // The guest calls the manager without a test; the host's test covers the window before
+      // the kSM_Create case has built it (the host limit named here).
       if (mCollisionShield.get() != nullptr) {
         mCollisionShield->SetActive(mgr, true);  // 0x00007D0C
       }
@@ -3382,6 +3384,8 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
     filter.ExcludeList().Remove(kMT_Ceiling);  // the data word 0x1D at lbl_9_data_7F0
     filter.ExcludeList().Remove(kMT_Wall);     // the data word 0x1E at lbl_9_data_7F4
     SetMaterialFilter(filter);                 // 0x00007F90
+    // The guest calls the manager without a test; the host's test covers the window before the
+    // kSM_Create case has built it (the host limit named here).
     if (mCollisionShield.get() != nullptr) {
       mCollisionShield->SetActive(mgr, false);  // 0x00007FA0
     }
