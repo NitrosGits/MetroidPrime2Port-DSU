@@ -266,6 +266,7 @@ static void UnlockImpactParticle(SImpactVisorEffect* effect);
 static void UnlockImpactParticleEntry(SImpactVisorEffect* effect);
 static void DestroyImpactVisorEffect(SImpactVisorEffect* effect, int free);
 static void FreeImpactVisorEffect(SImpactVisorEffect* effect, int free);
+static void BuildImpactVisorEffect(SImpactVisorEffect* effect);
 
 // @ fn_44_6748
 // The retail copies the particle effect's token, its sound id and its collide flag into the
@@ -365,6 +366,25 @@ static void FreeImpactVisorEffect(SImpactVisorEffect* effect, int free) {
       delete effect;                       // asm 0x64E0
     }
   }
+}
+
+// @ fn_44_65C4
+// The retail builds the empty impact visor effect the projectile carries (asm 0x65C4-0x6608):
+// the three empty sources (asm 0x65DC/0x65E4/0x65E8), the assignment (asm 0x65EC) and the
+// teardown of the empty particle source (asm 0x65F0-0x65F8).
+static void BuildImpactVisorEffect(SImpactVisorEffect* effect) {
+  SImpactVisorEffect particle;  // the empty source (asm 0x65DC)
+  SImpactVisorEffect blur;      // the empty source (asm 0x65E4)
+  SImpactVisorEffect lowPass;   // the empty source (asm 0x65E8)
+  AssignImpactVisorEffect(effect, &particle, &blur, &lowPass);  // asm 0x65EC
+  DestroyImpactVisorEffect(&particle, -1);                       // asm 0x65F0-0x65F8
+}
+
+// The finished effect: the host's CImpactVisorEffect takes the three parts, and it always has
+// the invalid forced visor with a zero duration - what the retail's chain sets (asm 0x669C and
+// asm 0x66A4).
+static CImpactVisorEffect ToImpactVisorEffect(const SImpactVisorEffect& effect) {
+  return CImpactVisorEffect(effect.mParticleEffect, effect.mBlurEffect, effect.mLowPassFilter);
 }
 
 
@@ -2311,13 +2331,20 @@ void CMinorIng::MassiveDeath(CStateManager& mgr) {
 }
 
 // @ fn_44_6384
+// The retail spawns the projectile with the impact visor effect its own chain builds: the effect
+// on the stack (asm 0x6414-0x6418), the spawn with the effect as the seventh argument
+// (asm 0x6430-0x6450) and the effect's teardown (asm 0x6454-0x645C).
 void CMinorIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                 EUserEventType type, float dt) {
   if (type == kUE_Projectile) {
     const CTransform4f lctr = GetLctrTransform(node.GetLocatorName());
+    const CTransform4f xf =
+        CTransform4f::LookAt(lctr.GetTranslation(), mTargetPos, CVector3f::Up());
+    SImpactVisorEffect effect;
+    BuildImpactVisorEffect(&effect);  // fn_44_65C4 (asm 0x6418)
     const CEnergyProjectile* shot = LaunchProjectile(
-        CTransform4f::LookAt(lctr.GetTranslation(), mTargetPos, CVector3f::Up()), mgr, 1,
-        CWeapon::kPA_None, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+        xf, mgr, 1, CWeapon::kPA_None, false, ToImpactVisorEffect(effect), CVector3f(1.f, 1.f, 1.f));
+    FreeImpactVisorEffect(&effect, -1);  // fn_44_64AC (asm 0x645C)
     if (DebugMinorIng()) {
       fprintf(stderr, "[minoring] %04x projectile %s\n", GetUniqueId().Value(),
               shot != nullptr ? "launched" : "not launched");
