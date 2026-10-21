@@ -133,7 +133,26 @@ def main():
     print('driver: %d pirates: %s' % (len(ps), [(hex(p[0]), hex(p[4])) for p in ps]), flush=True)
     for p in ps:
         c.cmd('send u%04x Activate' % p[0])
+    def team_phase(c, far):
+        """Put the layer's other pirates near (or far from) the first one, so the squad's
+        range test takes both ways."""
+        ps = pirates(c.cmd('objs spacepirate'))
+        if len(ps) < 2:
+            return
+        a = ps[0]
+        px, py, pz = a[1], a[2] - 6.0, a[3]
+        c.cmd('tp %.2f %.2f %.2f' % (px, py, pz))
+        for i, q in enumerate(ps[1:]):
+            off = 120.0 if far else 3.0 * i
+            c.cmd('place u%04x %.2f %.2f %.2f' % (q[0], px + off, py, pz))
+        yaw, pitch = aim_at(px, py, pz, a[1], a[2], a[3] + 1.5)
+        c.cmd('aim %.1f %.1f' % (yaw, pitch))
+        c.cmd('press a 12')
+        print('driver: team phase, the others %s a' % ('far from' if far else 'next to'), flush=True)
+        time.sleep(4)
     delete_at = int(os.environ.get('SP_DELETE_TEAM', '-1'))
+    if os.environ.get('SP_TEAM_PHASE'):
+        team_phase(c, False)
     for r in range(rounds):
         if r == delete_at:
             for m in TEAM.finditer(c.cmd('objs teamai')):
@@ -151,16 +170,32 @@ def main():
         c.cmd('press a 12')
         print('driver: round %d at u%04x' % (r, uid), flush=True)
         time.sleep(3)
+    if os.environ.get('SP_TEAM_PHASE'):
+        team_phase(c, True)
     ps = pirates(c.cmd('objs spacepirate'))
     want = os.environ.get('SP_FORCE_EID', '').lower()
     ps = [p for p in ps if '%08x' % p[4] == want] or ps
-    if ps:
+    if ps and not os.environ.get('SP_NO_FORCE'):
         uid = ps[0][0]
         print('driver: forcing u%04x %08x' % (uid, ps[0][4]), flush=True)
         for st in FORCED:
             print('driver: forced %s -> %s' % (st, c.cmd('fsm u%04x %s' % (uid, st)).splitlines()[-1:]),
                   flush=True)
             time.sleep(4)
+    # SP_TEAM_PHASE=1: the squad helpers (ChooseTeamTarget EFD4, SquadJoin DFD4) need two team
+    # members near each other and then far apart, so the pirates are put together and apart.
+    # SP_SETZERO=<n>: send the kSM_SetToZero message n times to one pirate, so the helpers the
+    # message reaches (TrooperWarpOut 51C8) run.  The forcing spec writes the members that take
+    # the arm it wants on each call.
+    nzero = int(os.environ.get('SP_SETZERO', '0'))
+    if nzero:
+        ps = pirates(c.cmd('objs spacepirate'))
+        if ps:
+            uid = ps[0][0]
+            for i in range(nzero):
+                print('driver: SetToZero u%04x -> %s' % (uid, c.cmd('send u%04x SetToZero' % uid).splitlines()[-1:]),
+                      flush=True)
+                time.sleep(0.4)
     for p in pirates(c.cmd('objs spacepirate'))[1:3]:
         print('driver: kill u%04x %s' % (p[0], c.cmd('damage u%04x 1000' % p[0]).splitlines()[-1:]), flush=True)
         time.sleep(4)

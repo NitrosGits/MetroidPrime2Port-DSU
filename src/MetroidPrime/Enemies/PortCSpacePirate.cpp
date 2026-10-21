@@ -645,6 +645,8 @@ void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
 // out of range, and a squad id whose manager is gone (150 hits: `send <team> Delete`, then the player
 // deactivated with `send <player> Deactivate` so ChooseTarget falls back to ChooseTeamTarget).
 // @ fn_72_EFD4
+// @ fn_72_EFD4
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
   if (xba0_teamAiMgrId != kInvalidUniqueId) {
     CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
@@ -1223,6 +1225,8 @@ void CSpacePirate::SquadRemove(CStateManager& mgr) {
 }
 
 // Retail fn_72_51C8: a live trooper with no warp point and no pending warp enters "WarpOut".
+// @ fn_72_51C8
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::TrooperWarpOut(CStateManager& mgr, bool flag) {
   if (mAlive && !x8fa_25_ && xc04_warpPoint == -1 && x8f6_24_trooper) {
     mStateMachine->SetState(mgr, *this, rstl::string_l("WarpOut"));
