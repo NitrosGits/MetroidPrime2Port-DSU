@@ -32,6 +32,36 @@ void shutdown();
 void begin_frame() noexcept;
 void end_frame() noexcept;
 
+// Port: AURORA_RENDER_EVERY=<n> renders one frame in n (1, the default, renders every frame).
+// A frame that is not rendered records no draw: the command stream is still walked, so the
+// register state survives, but no vertex data is copied and no draw command is built.
+void set_frame_rendered(bool rendered) noexcept;
+bool frame_rendered() noexcept;
+// Port: a frame that holds an EFB copy is rendered in full, whatever the counter said: the copy's
+// texture would otherwise never be produced (a one-shot copy at an area load would stay blank for
+// good). The copy path raises the flag before the pass that carries the copy is sealed, so the
+// rest of the frame is recorded and encoded too.
+enum class FrameRenderReason : uint8_t {
+  Copy,     // a copy of the EFB into a texture the game keeps (GXCopyTex)
+  Readback, // a read-back of the EFB the game asks for (the spare buffer, the scan target)
+};
+void force_frame_rendered(FrameRenderReason reason) noexcept;
+// How many frames were raised this way (logged at shutdown), and how many of them were read-backs.
+uint32_t frames_forced_rendered() noexcept;
+uint32_t frames_forced_by_readback() noexcept;
+
+// Port: AURORA_RENDERSKIP_COPYDEST: a GXCopyTex destination (the game's destination address, the
+// copied size and format) and the frame it was last copied in. A copy into a destination that was
+// copied within the last N frames can be skipped: the texture still holds a fresh-enough image (a
+// lag of up to N frames). A new or one-shot destination (a render-to-texture at an area load) has
+// to be produced, so the frame that carries it is rendered in full.
+void note_copy_destination(uint64_t address, uint32_t width, uint32_t height, uint32_t format) noexcept;
+// How many copies were skipped because their destination was fresh enough.
+uint32_t copies_skipped() noexcept;
+// The render interval (AURORA_RENDER_EVERY): the default limit on how stale a copy's texture may
+// be before its frame is rendered in full.
+void set_render_interval(uint32_t interval) noexcept;
+
 // Whether a frame is currently being recorded, i.e. publish() will be honored.
 bool frame_active() noexcept;
 
