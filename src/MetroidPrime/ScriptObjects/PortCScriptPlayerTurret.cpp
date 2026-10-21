@@ -436,7 +436,9 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
     mPlayerId = msg.GetOriginator();
     CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
     // 0x1DC8: the player's health is the float at + 4 of its CHealthInfo (the guest's CHealthInfo
-    // starts with the initial health), and a dead player cannot enter the turret.
+    // starts with the initial health), and a dead player cannot enter the turret.  The null test
+    // is the guest's own (0x1DC0: the TCastToPtr<CPlayer> result is tested before the health is
+    // read).
     if (player != nullptr && player->GetHealthInfo()->GetHP() <= 0.f) {
       // 0x1DEC: the guest returns here - the rest of the case and CActor::AcceptScriptMsg are
       // both skipped.
