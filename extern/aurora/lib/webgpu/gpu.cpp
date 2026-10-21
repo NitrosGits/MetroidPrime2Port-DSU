@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <span>
 #include <string>
 #include <string_view>
@@ -71,6 +72,7 @@ wgpu::AdapterInfo g_adapterInfo;
 static const void* g_surfaceWindow = nullptr;
 static wgpu::SurfaceCapabilities g_surfaceCapabilities;
 bool g_hasCoreFeatures = false;
+bool g_dualSourceBlendingSupported = false;
 bool g_bcTexturesSupported = false;
 bool g_astcTexturesSupported = false;
 bool g_textureComponentSwizzleSupported = false;
@@ -945,13 +947,18 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
     g_bcTexturesSupported = false;
     g_astcTexturesSupported = false;
     g_textureComponentSwizzleSupported = false;
+    g_dualSourceBlendingSupported = false;
+    // AURORA_DUAL_SOURCE=0 keeps the two-draw fallback (A/B checks of ShaderConfig::dualSrcAlpha).
+    const char* dualSourceEnv = std::getenv("AURORA_DUAL_SOURCE");
+    const bool dualSourceDisabled = dualSourceEnv != nullptr && std::string_view(dualSourceEnv) == "0";
     wgpu::SupportedFeatures supportedFeatures;
     g_adapter.GetFeatures(&supportedFeatures);
     for (size_t i = 0; i < supportedFeatures.featureCount; ++i) {
       const auto feature = supportedFeatures.features[i];
       if (feature == wgpu::FeatureName::CoreFeaturesAndLimits || feature == wgpu::FeatureName::TextureCompressionBC ||
           feature == wgpu::FeatureName::TextureCompressionASTC ||
-          feature == wgpu::FeatureName::TextureComponentSwizzle) {
+          feature == wgpu::FeatureName::TextureComponentSwizzle ||
+          (feature == wgpu::FeatureName::DualSourceBlending && !dualSourceDisabled)) {
         if (feature == wgpu::FeatureName::CoreFeaturesAndLimits) {
           g_hasCoreFeatures = true;
         } else if (feature == wgpu::FeatureName::TextureCompressionBC) {
@@ -960,6 +967,10 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
           g_astcTexturesSupported = true;
         } else if (feature == wgpu::FeatureName::TextureComponentSwizzle) {
           g_textureComponentSwizzleSupported = true;
+        } else if (feature == wgpu::FeatureName::DualSourceBlending) {
+          // Port: lets a blended draw under GXSetDstAlpha write the constant alpha in one draw
+          // (gx::populate_pipeline_config, ShaderConfig::dualSrcAlpha).
+          g_dualSourceBlendingSupported = true;
         }
         requiredFeatures.push_back(feature);
       }

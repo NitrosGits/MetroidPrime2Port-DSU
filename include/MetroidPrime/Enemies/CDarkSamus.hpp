@@ -22,6 +22,7 @@ class CBCProjectileAttackCmd;
 // The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
+class CParticleSwoosh;
 class CEnergyProjectile;
 class CScriptAIHint;
 struct SLdrDSStageInfo;
@@ -950,12 +951,20 @@ private:
                                    // fn_10_1B658 stores the elapsed time 0x8B0 (0x0001B8D4)
   float mGuestC0C;                 // guest 0xC0C, the elapsed time of the last hit (the damage
                                    // arm of AcceptScriptMsg, 0x0001EAF8); the constructor writes
-                                   // lbl_10_rodata_3EC = -1.0f (0x0001FEE4)
+                                   // lbl_10_rodata_3FC = 0.0f (0x0001FEE4)
   float mGuestC20;                 // guest 0xC20, the elapsed time of the last heavy hit (the
                                    // HeavyHit state's Deactivate, 0x00010F4C); the constructor
                                    // writes lbl_10_rodata_410 = -1000.0f (0x0001FF04)
   ushort mRicochetSfxId;           // guest 0xC50, the loader's missileRicochetSound (its 0x928;
                                    // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
+  uchar mGuestA40;                 // guest 0xA40, the normal missile's record byte; the
+                                   // BreakNormalMissile trigger (fn_10_16B5C) reads it
+  uchar mGuestA80;                 // guest 0xA80, the super missile's record byte; the
+                                   // BreakSuperMissile trigger (fn_10_16B54) reads it
+  uchar mGuestAB8;                 // guest 0xAB8, the freeze beam's record byte; the
+                                   // BreakFreezeBeam trigger (fn_10_16B48) reads its bit 0x80
+  float mGuestC30;                 // guest 0xC30, the time of the last pause; the BreakPause
+                                   // trigger (fn_10_106F8) compares it with the elapsed time
   // guest 0x10A8: the reflect chance cache. The count (a word) and ten 12-byte entries from
   // 0x10AC: the projectile's uid (a u16 in the guest) and the two rolls fn_10_F100 and fn_10_F298
   // put in. The constructor writes the count 0 (0x00020270); the entries are written at run time
@@ -974,9 +983,140 @@ private:
                                     // (the XDMG arm, 0x0001EA98)
   CVector3f mHitDirectionFlat;     // guest 0xC10/0xC14/0xC18, the same direction flattened
                                     // (its z 0.0f) and normalized (0x0001EB04..0x0001EB30)
+  // fsm2: the members the second FSM lane's states touch (PortCDarkSamusFsm2.cpp). The names are
+  // the guest offsets (the loader does not name them); the initialisers are the constructor's.
+  CVector3f GetPhazonWaypoint(CStateManager& mgr, int type);     // fn_10_65CC
+  float GetIncomingProjectileDistance(CStateManager& mgr) const; // fn_10_1BC58
+  int mGuestA38 = 0;                 // guest 0xA38, the normal missiles fired (fn_10_1BEFC counts)
+  int mGuestA3C = 0;                 // guest 0xA3C, the normal missiles to fire (fn_10_17448)
+  int mGuestA78 = 0;                 // guest 0xA78, the super missiles fired (fn_10_1BEFC counts)
+  int mGuestA7C = 0;                 // guest 0xA7C, the super missiles to fire (fn_10_16ECC)
+  uchar mGuestA84 = 0;               // guest 0xA84, the super missile's dodge byte (fn_10_1BEFC)
+  int mGuestBE8 = 0xB;               // guest 0xBE8, the taunt type (0x0001FE8C)
+  bool mGuestBFC80 = true;           // guest 0xBFC bit 0x80, the deflect's severity (0x0001FEBC)
+  float mGuestC04 = 0.f;             // guest 0xC04, the deflect's slow-down time (0x0001FEDC)
+  int mGuestC1C = 0;                 // guest 0xC1C, the heavy hit's step direction (0x0001FF00)
+  float mGuestF10 = 0.f;             // guest 0xF10, the phazon attack's range (fn_10_81D4)
+  CVector3f mGuestF14 = CVector3f::Zero(); // guest 0xF14, the gun's forward (fn_10_81D4)
+  CVector3f mGuestF20 = CVector3f::Zero(); // guest 0xF20, the phazon beam's emitter position
+  signed char mGuestF48 = 0;         // guest 0xF48, the phazon attack's shots (fn_10_81D4 reads)
+  int mGuestF4C = 0;                 // guest 0xF4C, the phazon attack's shots to fire
+  float mGuestF58 = 0.f;             // guest 0xF58, the height PhazonSuck starts at
+  bool mGuestF5C40 = false;          // guest 0xF5C bit 0x40 (fn_10_81D4 reads)
+  float mGuestF64 = 0.f;             // guest 0xF64, the phazon go-to time (fn_10_6460, 652C)
+  float mGuestFB0 = 0.f;             // guest 0xFB0, the enrage's timer (fn_10_7BC0)
+  int mGuestFB4 = 0;                 // guest 0xFB4, the phazon volley's missiles (fn_10_67B8)
+  int mGuestFB8 = 1;                 // guest 0xFB8, the phazon volley is a single (0x00020FA0 writes 1)
+  int mGuestFBC = 0;                 // guest 0xFBC, the phazon volley pattern index
+  float mGuestFC0 = 0.f;             // guest 0xFC0, the phazon blend in [0, 1]
+  float mGuestFC4 = 0.f;             // guest 0xFC4, the health the enrage started at
+  CAABox mGuest102C = CAABox::MakeNullBox(); // guest 0x102C, the base box (mskNullBox, 0x00020FE4)
+  bool mGuest1044 = false;           // guest 0x1044 bit 0x80, 0x102C is kept
+  int mGuest1058 = 0;                // guest 0x1058, the phazon volleys to fire (0x00020218)
+  int mGuest105C = 0;                // guest 0x105C, the phazon volleys fired (0x0002021C)
+#ifdef TARGET_PC
+  // The stateless helpers of the module (the ones below 0xA000). Their bodies live in
+  // src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp; docs/module-analysis/DarkSamus_helpers.md
+  // has the function map and the arm tables.
+  bool HasBoostBall() const; // fn_10_9624: the boost ball's uid (0xE38) is not kInvalidUniqueId
+  // The helpers below 0xA000 that the FSM states call (the module's own members, which the host
+  // class did not have). The bodies are in src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp;
+  // docs/module-analysis/DarkSamus_helpers.md has the caller map.
+  float GetGuest314() const;   // fn_10_2EFC: the float at guest 0x314
+  bool GetGuest318Bit6() const; // fn_10_2F04: bit 0x40 of the byte at guest 0x318
+  void DeleteGuestActor(CStateManager& mgr);        // fn_10_4868: the actor at guest 0xF78
+  void DeleteGuestActorIfExpired(CStateManager& mgr); // fn_10_48C8: ... when 0xF7C has expired
+  void StopGuestSfx();           // fn_10_812C: the sfx handle at guest 0xF60
+  void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
+  void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
+  void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
+                             float dt); // fn_10_6F90: the path find to the destination
+  void DeleteGuestUids(CStateManager& mgr); // fn_10_69C0: the uids at guest 0x934 are deleted
+  void FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg); // fn_10_6374
+  // The module's own members whose guest offsets the helpers below 0xA000 touch. The host class
+  // had none of them; the names are the guest offsets because the loader does not name them.
+  int mGuest930 = 0;                 // guest 0x930, the number of uids in 0x934 (the ctor writes 0)
+  ushort mGuest934[18] = {};          // guest 0x934, the uids fn_10_69C0 deletes (TUniqueId)
+  // The phazon enrage (the 0xF80 sub-object, fn_10_20F50; the 0xEF0 one, fn_10_45F8; the 0xF68
+  // visor effect token, fn_10_21104). The sphere's asset (0x1020) and contact damage (0x1000) are
+  // mData's mPhazonEnrageSphere / mPhazonEnrageSphereContactDamage, which the ctor copies.
+  void UpdatePhazonEnrage(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_7F98
+  void GrowPhazonScale(CStateManager& mgr, float dt);   // fn_10_7538
+  void ShrinkPhazonScale(CStateManager& mgr, float dt); // fn_10_746C
+  void SetPhazonScale(const CVector3f& scale, CStateManager& mgr); // fn_10_7304
+  void UpdatePhazonSphere(float dt);                    // fn_10_7610
+  CVector3f GetPhazonSpherePos() const;                 // fn_10_7780
+  void CreatePhazonSphere();                            // fn_10_786C
+  void TouchPhazonSphere(CStateManager& mgr);           // fn_10_7D00
+  void StartPhazonVisorEffect(CStateManager& mgr, float duration); // fn_10_490C
+  void ResetPhazonAttack();                             // fn_10_452C (on 0xEF0)
+  static rstl::optional_object< TToken< CGenDescription > > PhazonVisorToken(CAssetId id);
+  float mGuestFAC = 0.f;             // guest 0xFAC, the z scale the phazon scale started at
+  float mGuestFC8 = -1000.f;         // guest 0xFC8, when the phazon volley started (fn_10_7610)
+  float mGuestFCC = -1000.f;         // guest 0xFCC (fn_10_7F98 lowers it, lbl_10_rodata_410)
+  float mGuest101C = -1000.f;        // guest 0x101C, the sphere's last contact (fn_10_7D00)
+  rstl::auto_ptr< CElementGen > mGuest1028; // guest 0x1024/0x1028, the enrage sphere (fn_10_786C)
+  float mGuestF50 = 0.f;             // guest 0xF50 (fn_10_452C clears it)
+  float mGuestF54 = -1000.f;         // guest 0xF54 (fn_10_452C: lbl_10_rodata_140)
+  bool mGuestF5C80 = false;          // guest 0xF5C bit 0x80 (fn_10_452C clears it)
+  // guest 0xF6C, the visor effect's particle (mData.mPartE701DAEA, fn_10_21104)
+  rstl::optional_object< TToken< CGenDescription > > mGuestF6C =
+      PhazonVisorToken(mData.mPartE701DAEA);
+  float mGuestD14 = 0.f;             // guest 0xD14 (fn_10_9E00)
+  float mGuestD1C = 0.f;             // guest 0xD1C, a copy of the module's bss_128[1] (fn_10_6DAC)
+  float mGuestD20 = 0.f;             // guest 0xD20, a copy of the module's bss_128[2] (fn_10_6DAC)
+  float mGuestE2C = 0.f;             // guest 0xE2C (fn_10_9E00)
+  float mGuestE30 = 0.f;             // guest 0xE30 (fn_10_9E00)
+  float mGuestE34 = 0.f;             // guest 0xE34 (fn_10_9E00)
+  float mGuestE38 = 0.f;             // guest 0xE38 (fn_10_9E00)
+  uchar mGuestE6A = 0;               // guest 0xE6A, a flag byte (fn_10_9E00)
+  CVector3f mGuestEE4 = CVector3f::Zero(); // guest 0xEE4, the path find's fallback destination
+  float mGuest314;               // guest 0x314 (fn_10_2EFC)
+  uchar mGuest318;               // guest 0x318 (fn_10_2F04)
+  TUniqueId mGuestF78 = kInvalidUniqueId; // guest 0xF78 (fn_10_4868, fn_10_48C8)
+  float mGuestF7C;               // guest 0xF7C (fn_10_48C8)
+  CSfxHandle mGuestF60;          // guest 0xF60 (fn_10_812C)
+  // The phazon beam (the 0xEF0 sub-object, fn_10_45F8, whose ctor arguments are the loader's
+  // pART_0x908b06e9 into 0xEF0, pART_0x494de4a4 into 0xEFC (its locked token 0xF00), damageInfo
+  // copied to 0xF2C and sound into 0xF5E): the generator 0xEF4/0xEF8 and its collision effects.
+  // The host reads the three from mData, which nothing writes after the loader.
+  void CreatePhazonBeam();                             // fn_10_6118
+  void ReleasePhazonBeam();                            // fn_10_58C0
+  void StartPhazonBeamSfx();                           // fn_10_8178
+  void UpdatePhazonBeam(CStateManager& mgr, float dt); // fn_10_5974
+  static rstl::optional_object< TLockedToken< CGenDescription > > PhazonBeamHitToken(CAssetId id);
+  rstl::auto_ptr< CElementGen > mGuestEF8; // guest 0xEF4/0xEF8, the beam (fn_10_6118, fn_10_58C0)
+  // guest 0xF00, the beam's hit effect (mData.mPart494DE4A4, fn_10_45F8 at 0x00004644)
+  rstl::optional_object< TLockedToken< CGenDescription > > mGuestF00 =
+      PhazonBeamHitToken(mData.mPart494DE4A4);
+  // The render pass (fn_10_17F04) and what it reads.
+  void ConstructPhazonBeam();   // fn_10_45F8, the 0xEF0 sub-object's ctor (the scalars)
+  bool HasPhazonBeam() const;   // fn_10_4AA8: the beam 0xEF8 is not null
+  float GetFadeFactor() const;  // fn_10_185CC: 1, then down to 0 over fn_10_18628's window
+  // guest 0xE3C / 0xE4C, the boost ball's two swooshes (fn_10_9B24 builds them, fn_10_99B8
+  // deletes them). The host builds neither yet, so both stay null; they are not owned.
+  CParticleSwoosh* mBoostBallSwooshE3C = nullptr;
+  CParticleSwoosh* mBoostBallSwooshE4C = nullptr;
+#endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
+  // helpers2: the bodies this lane ported (the REL's functions at 0xA000 and up).
+#ifdef TARGET_PC
+  uint GetStageCount() const;   // fn_10_17E48 (0x00017E48, 0x8 bytes): the guest's 0x978
+#endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 7: the anim-event handler's (fn_10_1BEFC) helpers and the members it writes.
+  float GetMeleeReach() const;            // fn_10_1BDF0
+  void FadeEnvFxOut(CStateManager& mgr);  // fn_10_1BE04
+  void FadeEnvFxIn(CStateManager& mgr);   // fn_10_1BE80
+  int mGuestAB0 = 0;                      // guest 0xAB0, the freeze beam shots fired (fn_10_1BEFC)
+  bool mBoostBallFlag20 = false;          // guest 0xEBC bit 0x20 (fn_10_1BEFC clears it)
+  bool mBoostBallFlag80 = false;          // guest 0xEBC bit 0x80 (fn_10_1BEFC clears it)
+  float mGuestEA8 = 0.f;                  // guest 0xEA8, the boost ball's start time (fn_10_1BEFC)
+  CVector3f mGuestEAC = CVector3f::Zero(); // guest 0xEAC, the actor's position then
+  float mGuestEB8 = 0.f;                  // guest 0xEB8, the player's distance then
+#endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

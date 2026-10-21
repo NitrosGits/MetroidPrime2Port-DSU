@@ -47,6 +47,7 @@ struct LatestSnapshot {
   uint32_t width = 0;
   uint32_t height = 0;
   std::vector<uint32_t> data;
+  Clock::time_point time;
 };
 
 enum class SlotState : uint8_t {
@@ -296,6 +297,7 @@ void complete_slot(size_t slotIdx, wgpu::MapAsyncStatus status, wgpu::StringView
       g_latest.width = slot.width;
       g_latest.height = slot.height;
       g_latest.data.assign(mapped, mapped + valueCount);
+      g_latest.time = Clock::now();
     }
     slot.readbackBuffer.Unmap();
   } else if (status != wgpu::MapAsyncStatus::CallbackCancelled && status != wgpu::MapAsyncStatus::Aborted) {
@@ -340,15 +342,30 @@ bool read_latest(uint16_t x, uint16_t y, uint32_t& z) noexcept {
   return true;
 }
 
+bool read_region(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t* out, uint32_t maxAgeMs) noexcept {
+  std::lock_guard lock{g_mutex};
+  if (g_latest.data.empty() || x + w > g_latest.width || y + h > g_latest.height ||
+      Clock::now() - g_latest.time > std::chrono::milliseconds{maxAgeMs}) {
+    return false;
+  }
+  for (uint32_t row = 0; row < h; ++row) {
+    const uint32_t* src = g_latest.data.data() + static_cast<size_t>(y + row) * g_latest.width + x;
+    for (uint32_t col = 0; col < w; ++col) {
+      out[row * w + col] = src[col] & 0x00ffffffu;
+    }
+  }
+  return true;
+}
+
 void encode_frame_snapshot(const wgpu::CommandEncoder& cmd, const wgpu::TextureView& depthView,
-                           wgpu::Extent3D sourceSize, uint32_t msaaSamples) noexcept {
+                           wgpu::Extent3D sourceSize, uint32_t msaaSamples, bool forced) noexcept {
   if (!g_enabled) {
     return;
   }
 
   ZoneScoped;
   const auto now = Clock::now();
-  {
+  if (!forced) {
     std::lock_guard lock{g_mutex};
     if (!g_snapshotRequested || now < g_nextSnapshotTime) {
       return;

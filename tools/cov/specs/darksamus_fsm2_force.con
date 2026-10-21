@@ -1,0 +1,28 @@
+# the forced arms of darksamus_fsm2_force.py: five Interrupt messages, Taunt activations (alternating with Interrupt),
+# a NormalMissileAttack and a SuperMissileAttack long enough for their exit arms, and a PhazonSuck (its taunt command).
+@f600 send u04f7 Activate
+@f700 fsm u04f7 Taunt
+@f730 fsm u04f7 Interrupt
+@f760 fsm u04f7 Interrupt
+@f800 fsm u04f7 Taunt
+@f820 fsm u04f7 Interrupt
+@f840 fsm u04f7 Taunt
+@f855 fsm u04f7 Interrupt
+@f875 fsm u04f7 Taunt
+@f890 fsm u04f7 Interrupt
+@f910 fsm u04f7 Taunt
+@f925 fsm u04f7 Interrupt
+@f945 fsm u04f7 Taunt
+@f960 fsm u04f7 Interrupt
+@f980 fsm u04f7 Taunt
+@f995 fsm u04f7 Interrupt
+@f1015 fsm u04f7 Taunt
+@f1030 fsm u04f7 Interrupt
+@f1050 fsm u04f7 Taunt
+@f1065 fsm u04f7 Interrupt
+@f1085 fsm u04f7 Taunt
+@f1100 fsm u04f7 NormalMissileAttack
+@f1300 fsm u04f7 SuperMissileAttack
+@f1600 fsm u04f7 Taunt
+@f1650 fsm u04f7 PhazonSuck
+@f1700 objs dark

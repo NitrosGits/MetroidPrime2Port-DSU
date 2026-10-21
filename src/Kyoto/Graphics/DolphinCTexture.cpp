@@ -115,7 +115,18 @@ CTexture::CTexture(CInputStream& in, EAutoMipmap automip, EBlackKey blackKey)
   PPCSync();
 }
 
+#ifdef TARGET_PC
+CTexture::~CTexture() {
+  UncountMemory();
+  // Drop the EFB copy Aurora keeps for this bitmap's address (the copy-target textures: flares, scan
+  // panes, filters); MP2 never destroys copies, so each freed one stayed cached for good.
+  if (void* buf = mARAMToken.GetMRAMIfResident()) {
+    GXDestroyCopyTex(buf);
+  }
+}
+#else
 CTexture::~CTexture() { UncountMemory(); }
+#endif
 
 void CTexture::InitTextureObjects() {
   mIsPowerOfTwo =

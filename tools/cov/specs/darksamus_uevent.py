@@ -1,0 +1,62 @@
+# DarkSamus anim-event handler (fn_10_1BEFC) and its helpers 1BDF0, 1BE04, 1BE80; the triggers its
+# Landing arms feed (16B5C, 16B54, 16B48) and the no-stage arms of 14284, BB78, BBE4. A forcing run
+# on the coverage build: the console's `uevent <id> <type> <dt>` (darksamus_uevent.con) delivers
+# each event, and the current attack 0x980 its arms switch on is written at the handler's entry,
+# keyed by the dt less 100:
+#   30 every member saved                      99 every member put back (each driver line ends so)
+#   1, 2, 3, 4 the attack 1..4    5 0x40    6 0x80    7 0x100    8 0x20000    9 0x100000
+#   10 0x800000    11 0x1000    12 0x40000    13 0x400000    14 0x80000    19 no attack (0)
+#   15 0x10000
+#   60 the next fight-script lookups (GetBattleStage) answer no object: its uid is written
+#      kInvalidUniqueId there until key 99 puts it back (the no-stage arms of the triggers)
+#   61 the stage's fade-out flag (its info's +0x31) reads 1 at the next lookups (written where
+#      GetBattleStage casts the object, TCastToPtr<CDarkSamusBattleStage>); 62 puts it back to 0,
+#      the shipped value (ShouldFadeIn answers true with the stage before the run forces it)
+# The trigger answers are the console's `trigcall ... = true/false` lines in the game log.
+# Run: BUILD=build-port-cov tools/cov/force.sh tools/cov/specs/darksamus_uevent.py <out>
+#      "1baa96c2,10_cliff_rooftop" --con tools/cov/specs/darksamus_uevent.con --fast --frames 800
+#      then tools/cov/gcov_report.py build-port-cov <out>/gcov --module DarkSamus
+CLASS = 'CDarkSamus'
+
+
+def k(v):
+    return '($xmm0.v4_float[0] == %d)' % (100 + v)
+
+
+def keep(var, member):
+    return '%s = %s ? %s : ($_isvoid(%s) ? 0 : %s)' % (var, k(30), member, var, var)
+
+
+def put(member, var, *pairs):
+    expr = member
+    for v, val in reversed(pairs + ((99, var),)):
+        expr = '%s ? %s : (%s)' % (k(v), val, expr)
+    return '%s = %s' % (member, expr)
+
+
+MEMBERS = [('$dsk_ca', '$this->mCurrentAttack'), ('$dsk_a40', '$this->mGuestA40'),
+           ('$dsk_a80', '$this->mGuestA80'), ('$dsk_ab8', '$this->mGuestAB8'),
+           ('$dsk_a84', '$this->mGuestA84'), ('$dsk_a38', '$this->mGuestA38'),
+           ('$dsk_a78', '$this->mGuestA78'), ('$dsk_ab0', '$this->mGuestAB0'),
+           ('$dsk_fo', '$this->mFadeOut'), ('$dsk_sc', '$this->mStageChanged'),
+           ('$dsk_c00', '$this->mGuestC00'), ('$dsk_d24', '$this->mGuestD24'),
+           ('$dsk_f5c', '$this->mGuestF5C40'), ('$dsk_uid', '$this->mBattleStageUid.value')]
+V = dict((m, v) for v, m in MEMBERS)
+ATTACKS = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 0x40), (6, 0x80), (7, 0x100), (8, 0x20000), (9, 0x100000),
+           (10, 0x800000), (11, 0x1000), (12, 0x40000), (13, 0x400000), (14, 0x80000), (15, 0x10000), (19, 0)]
+SETS = [keep(v, m) for v, m in MEMBERS] + [
+    put('$this->mCurrentAttack', V['$this->mCurrentAttack'], *ATTACKS),
+    '$dsk_ns = %s ? 1 : (%s || %s ? 0 : ($_isvoid($dsk_ns) ? 0 : $dsk_ns))' % (k(60), k(99), k(30)),
+    '$dsk_ff = %s ? 1 : (%s ? 2 : (%s ? 0 : ($_isvoid($dsk_ff) ? 0 : $dsk_ff)))' % (k(61), k(62), k(30))] + [
+    put(m, v) for v, m in MEMBERS[1:]]
+STAGE = ['$this->mBattleStageUid.value = $dsk_ns == 1 ? 0xffff : $this->mBattleStageUid.value']
+FLAG = '((CDarkSamusBattleStage*)$rdi)->mStageInfo.unknown_0x49b9936d'
+STAGEFLAG = ['%s = $dsk_ff == 1 ? 1 : ($dsk_ff == 2 ? 0 : %s)' % (FLAG, FLAG),
+             '$dsk_ff = $dsk_ff == 2 ? 0 : $dsk_ff']
+FORCE = [
+    ('1BEFC entry', 'CDarkSamus::DoUserAnimEvent(', ['$xmm0.v4_float[0]', '(int)$rcx', '$this->mCurrentAttack'],
+     SETS, 0, 'the attack by the dt key'),
+    ('GetBattleStage', 'CDarkSamus::GetBattleStage(', ['$dsk_ns'], STAGE, 0, 'no stage after key 60'),
+    ('stage cast', 'CDarkSamusBattleStage* TCastToPtr<CDarkSamusBattleStage>(CEntity*)', ['$dsk_ff', FLAG],
+     STAGEFLAG, 0, 'the fade-out flag after keys 61, 62'),
+]

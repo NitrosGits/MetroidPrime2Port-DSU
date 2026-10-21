@@ -1,0 +1,15 @@
+# darksamus_uevent.py's driver (25 frames apart). `uevent <id> <type> <dt>`: the dt is the key; each
+# line starts with the save (130) and ends with the put-back (199), both on DamageOff (9), which
+# returns at once. Types: 0 Projectile, 8 DamageOn, 12 Landing, 14 FadeIn, 15 FadeOut, 16
+# ScreenShake, 18 EndAction, 19 BecomeRagDoll, 27 EventStart, 28 EventStop, 33 EffectOn, 34
+# EffectOff, 37, 38, 43, 46, 3 (a type the switch leaves to the base).
+@f600 send u04f7 Activate; god 1
+@f625 uevent u04f7 9 130; trigcall u04f7 BreakNormalMissile; trigcall u04f7 BreakSuperMissile; trigcall u04f7 BreakFreezeBeam; uevent u04f7 12 105; trigcall u04f7 BreakNormalMissile; uevent u04f7 12 107; trigcall u04f7 BreakSuperMissile; uevent u04f7 12 109; trigcall u04f7 BreakFreezeBeam; uevent u04f7 12 119; uevent u04f7 9 199; trigcall u04f7 BreakFreezeBeam
+@f650 uevent u04f7 9 130; uevent u04f7 14 112; uevent u04f7 14 113; uevent u04f7 14 119; uevent u04f7 15 114; uevent u04f7 15 113; uevent u04f7 15 119; uevent u04f7 9 199
+@f675 uevent u04f7 9 130; place u04f7 player 1; uevent u04f7 8 101; uevent u04f7 8 102; uevent u04f7 8 104; uevent u04f7 8 103; uevent u04f7 8 119; place u04f7 player 60; uevent u04f7 8 101; uevent u04f7 9 199
+@f700 uevent u04f7 9 130; uevent u04f7 33 101; uevent u04f7 33 103; uevent u04f7 33 111; uevent u04f7 33 119; uevent u04f7 34 119; uevent u04f7 18 105; uevent u04f7 18 107; uevent u04f7 18 109; uevent u04f7 18 119; uevent u04f7 27 107; uevent u04f7 27 109; uevent u04f7 28 119; uevent u04f7 9 199
+@f725 uevent u04f7 9 130; uevent u04f7 0 101; uevent u04f7 0 105; uevent u04f7 0 107; uevent u04f7 0 108; uevent u04f7 0 110; uevent u04f7 0 119; uevent u04f7 43 119; uevent u04f7 38 119; uevent u04f7 37 119; uevent u04f7 46 119; uevent u04f7 16 119; uevent u04f7 19 108; uevent u04f7 19 119; uevent u04f7 3 119; uevent u04f7 9 199
+@f750 uevent u04f7 9 130; uevent u04f7 9 160; trigcall u04f7 ShouldFadeIn; trigcall u04f7 ShouldFadeOut; trigcall u04f7 CanMissileDeflect; uevent u04f7 9 199; trigcall u04f7 ShouldFadeIn; trigcall u04f7 ShouldFadeOut; trigcall u04f7 CanMissileDeflect
+@f775 uevent u04f7 9 130; uevent u04f7 9 161; trigcall u04f7 ShouldFadeIn; uevent u04f7 14 112; trigcall u04f7 ShouldFadeOut; uevent u04f7 15 114; trigcall u04f7 ShouldFadeOut; uevent u04f7 9 162; trigcall u04f7 ShouldFadeIn; uevent u04f7 9 199; trigcall u04f7 ShouldFadeIn
+@f800 uevent u04f7 9 130; uevent u04f7 17 115; uevent u04f7 18 115; uevent u04f7 17 102; uevent u04f7 17 119; uevent u04f7 9 199
+@f825 status

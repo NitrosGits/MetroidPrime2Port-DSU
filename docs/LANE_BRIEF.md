@@ -44,7 +44,10 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
 rebuild, any `build-port-link` binary. A spec (`tools/cov/specs/<module>.py`) sets `CLASS = 'CSandworm'`
 and `SPEC = [(label, where, [exprs], flags)]`: `where` is a demangled-name prefix (`'CSandworm::CanAttack('`)
 or `'loc:File.cpp:<line>'` (lines of the *built* source); `exprs` are gdb expressions on the entry registers
-(`$this->x8C0_flags & 0x10`, `$rdx` = a state's EStateMsg); flags `ret` (bool result), `retp` (pointer
+(`$this->x8C0_flags & 0x10`, `$rdx` = a state's EStateMsg; the host is x86-64 SysV, not PPC: integer
+args in rdi(this) rsi rdx rcx r8 r9, floats in xmm0..; an argument written at entry may already be copied,
+so force members through `$this` or break where the value is read; `$al`/`$sp`/`$fp`/`$fs` are registers,
+so name gdb scratch variables with a prefix, e.g. `$ds_alive`); flags `ret` (bool result), `retp` (pointer
 non-null), `calls` (count every call/jmp site in the body by callee - the way to see arms that end in a
 call, tail calls included; `caller=` misses tail calls), `max=<n>` (hits per breakpoint, default 400: raise
 it for per-frame functions or later arms never show). `<out>/cov.txt` lists per entry its hits and the
@@ -55,7 +58,10 @@ display and console port; set `COV_PORT`/`DISPLAY_NUM` only to override, a busy 
 `tools/cov/force.sh` is the same run with arms forced: the gdb side (`tools/cov/force.py`,
 `COV_GDB_SCRIPT`) writes the members the spec's `FORCE` list names at the entry of a body and logs
 what it forced, so an arm the fight cannot reach can be taken; the module-specific part (the class
-and the forced members) lives in the spec, the script itself has no module in it.
+and the forced members) lives in the spec, the script itself has no module in it. To force on a
+game the driver has already set up (the console does not answer while gdb boots it), start the
+game with `MP2_ALLOW_PTRACE=1` and run `tools/cov/force.sh --attach <pid> <spec.py> <out dir>`;
+without that variable the attach fails with "ptrace: Inappropriate ioctl" (yama scope 1).
 
 Compiler coverage replaces the per-function gdb spec when the question is "which arms of *every*
 body ran": a coverage build (`-DMP_PORT_COVERAGE=ON`, its own build dir `build-port-cov`)

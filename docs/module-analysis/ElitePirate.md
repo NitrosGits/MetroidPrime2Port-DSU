@@ -611,7 +611,7 @@ wholesale) and **behaviour** (the module's own game logic - the only class a mar
 | `fn_15_40F4` | 0x040F4 | 0x0058 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
 | `fn_15_414C` | 0x0414C | 0x0054 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
 | `fn_15_4410` | 0x04410 | 0x0078 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
-| `fn_15_4488` | 0x04488 | 0x0020 | 0 | **behaviour** | the module's own logic |
+| `fn_15_4488` | 0x04488 | 0x0020 | 0 | **behaviour** | the shield name; dead in retail (no call site), no marker (section 8.6) |
 | `fn_15_47DC` | 0x047DC | 0x006C | 1 | **behaviour** | the module's own logic |
 | `fn_15_4848` | 0x04848 | 0x0074 | 1 | **behaviour** | the module's own logic |
 | `fn_15_4A3C` | 0x04A3C | 0x005C | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
@@ -639,7 +639,7 @@ wholesale) and **behaviour** (the module's own game logic - the only class a mar
 | `fn_15_9A74` | 0x09A74 | 0x003C | 0 | host copy | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
 | `fn_15_9AB0` | 0x09AB0 | 0x0184 | 1 | compiler-generated | body identical to DOL `__ct__16CPASAnimParmDataFQ23pas15EAnimationStateRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParm` @ 0x80079a60 |
 | `fn_15_9C34` | 0x09C34 | 0x003C | 0 | host copy | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
-| `fn_15_9C70` | 0x09C70 | 0x01A4 | 0 | **behaviour** | the module's own logic |
+| `fn_15_9C70` | 0x09C70 | 0x01A4 | 0 | **behaviour** | the class destructor (section 8.5) |
 | `fn_15_9E14` | 0x09E14 | 0x01E4 | 1 | compiler-generated | body identical to DOL `__dt__10CPatternedFv` @ 0x80073978 |
 | `fn_15_9FF8` | 0x09FF8 | 0x0094 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
 | `fn_15_A08C` | 0x0A08C | 0x0104 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
@@ -743,7 +743,7 @@ shares a `case` for.
 |---|---|---|
 | (none - the body is branch free) | (b) ran | probe `[ep-probe] 1B50 1` 1232 times (the damage path) and `[ep-probe] 1B50 0` twice (the Alert deactivate) over the two fights |
 
-### 8.2 `fn_15_BAF8` / `fn_15_BC04` / `fn_15_BD10` - the three TryCommand copies
+### 8.2 `fn_15_BAF8` / `fn_15_BC04` / `fn_15_BD10` - the three TryCommand copies: **marked**
 
 Retail has one copy of the template per command type: `fn_15_BAF8` (melee, called from
 `fn_15_48BC`), `fn_15_BC04` (projectile, from `fn_15_4AE0` and `fn_15_4D18`) and `fn_15_BD10`
@@ -762,14 +762,22 @@ Activate   (0xBB38)  stw 1, 0x6b4(r3)                  ; the CTryCommand state =
                      bl DeliverCmd__16CBodyStateCmdMgrF13EBodyStateCmd (0x800ee0a0)
                      copy the command payload into 0x180..0x194
 Update     (0xBB88)  r3 = &this->0x6b4, r4 = this->0x48c (the body controller), r5 = the anim state
-                     bl ShouldRetry__11CTryCommandFRC15CBodyControlleri (0x801b73e4)
-0xBB94           clrlwi. r3,24
+                     bl CanIssueCommand__15CAnimationStateFRC15CBodyControllerQ23pas15EAnimationState (0x801b73e4)
+0xBB94           rlwinm. r0, r3, 0, 24, 31            ; r0 = r3 & 0xff
 0xBB98           beq -> return (no re-delivery)
                      DeliverCmd + copy the payload
 Deactivate (0xBBE4) stw 0, 0x6b4(r3)                  ; the CTryCommand state = "not ready"
 ```
 
-The DOL's `ShouldRetry` (0x801b73e4) is the host's `CAnimationState::CanIssueCommand`, field
+**The 0xBB94 test is a boolean test.** The word is `54 60 06 3F` = `rlwinm. r0,r3,0,24,31`: MB=24 and
+ME=31 count from the MSB, so the mask is the low byte (0xff) - the same word the DOL uses the same
+way at 0x801BCA98, where it tests the bool `CVector3f::CanBeNormalized` (0x801BCA94) and branches
+when the call returned 0. `CanIssueCommand` returns 0 or 1, so the re-delivery happens exactly when
+it returned 1. (The earlier reading of this note - "clrlwi r3,24", a bit-24 test - was wrong: with
+that reading the arm would be dead code, since the call never returns more than 1, and the
+re-delivery could never happen.)
+
+The DOL's `CanIssueCommand` (0x801b73e4) is the host's `CAnimationState::CanIssueCommand`, field
 for field: `state == controller->0x37c` (the body's current state) -> the command's state becomes
 2 ("repeat") and no re-delivery; else the command's state 1 ("ready") -> re-deliver and keep
 "ready"; else the command's state becomes 3 ("over"). The host's `CAnimationState` has exactly
@@ -778,36 +786,37 @@ three-way test, so the port's `TryCommand` template is retail's body.
 
 The three copies differ only in the payload they copy into the body state cmd manager: the melee
 command into 0x180..0x194, the projectile command into 0x19c..0x1b0, the loop-attack command
-into 0x1b8..0x1c4. The host's `CBodyStateCmdMgr::DeliverCmd(const CBodyStateCmd&)` stores the
-command for all three (it keeps the base part only - a host-wide difference shared with every
-other module, not this one). The port keeps one template for the three, so one body carries the
-three markers.
+into 0x1b8..0x1c4. Each copy writes the command's own fields (the vtable pointer and the command
+id stay where they are), which is what the host's typed `DeliverCmd` does
+(`CBodyStateCmdMgr::DeliverCmd(const CBCMeleeAttackCmd&)` and its two siblings keep the whole
+command). The port keeps one template for the three, so one body carries the three markers.
 
 | branch | status | evidence |
 |---|---|---|
-| 0xBB00/0xBB18 (Update), 0xBC0C/0xBC24, 0xBD18/0xBD30 | (b) ran | `[ep-probe] TC update ...` 3321 times over the two fights (1818 + 1503) |
-| 0xBB38 (Activate), 0xBC44, 0xBD50 | (b) ran | `[ep-probe] TC activate` 13 times |
-| 0xBBE4 (Deactivate), 0xBCF0, 0xBDDC | (b) ran | `[ep-probe] TC deactivate` 11 times |
+| 0xBB00/0xBB18 (Update), 0xBC0C/0xBC24, 0xBD18/0xBD30 | (b) ran | probe `TC update` 2110 times: 1209 `cmd=18 body=18 m=2`, 732 `cmd=7 body=7 m=2`, 6 `cmd=7/18 body=5 m=3` (the "over" path) |
+| 0xBB38 (Activate), 0xBC44, 0xBD50 | (b) ran | probe `TC activate` 12 times (7 melee, 4 projectile, 1 loop) |
+| 0xBBE4 (Deactivate), 0xBCF0, 0xBDDC | (b) ran | probe `TC deactivate` 11 times (6 melee, 4 projectile, 1 loop) |
 | 0xBB28 (r4 < 0) and 0xBB30 (r4 >= 3) | (c) unreachable | `EStateMsg` has exactly three values (Activate 0, Update 1, Deactivate 2; `include/MetroidPrime/StateMachineCommon.hpp`), and the FSM only ever sends those three |
-| 0xBB94/0xBB98 (the re-delivery) | (d) reachable but not run | see below |
+| 0xBB94/0xBB98 (the re-delivery) | (b) ran (forced) | probe `TC update ... can=1` 163 times: 72 `cmd=9 body=7 m=1` (the loop copy), 61 `cmd=7 body=18 m=1` (the melee copy), 30 `cmd=18 body=7 m=1` (the projectile copy) |
 
-Two fights were run (the 150 s one and a 170 s one that also knocks the target back with a
-`damage u04ff 1 150` every poll, to get the body into a state that ignores the command). Over
-3321 update samples of the three copies the body was in the command's own animation state in
-3316 of them; the five samples where it was not (body 5 = locomotion, command 18 or 7) all had
-the command's state already at 2 ("repeat") or 3 ("over"), never 1 ("ready"), and the six samples
-with the command still "ready" all had the body in the command's state. The re-delivery arm
-needs the body controller to *not* be in the command's animation state when the FSM updates. The probe prints the body's current state, the command's state and the command's
-own state: `TC update body=7 cmd=7 m=2` (the body is in the melee state, so the DOL's
-`ShouldRetry` takes the "repeat" path), `body=18 cmd=18 m=2` (the projectile attack) and
-`body=5 cmd=7 m=2` (the body already left the melee state, so the "over" path). The only sample
-with the command still "ready" (`m=1`) already had the body in the command's state
-(`body=7 cmd=7 m=1`), because the body controller consumes the delivered command in the frame it
-arrives (`CBSLocomotion`, `CBSAttack`, `CBSLoopAttack`, `CBSLoopReaction` and `CBSStep` all
-check the delivered command and switch state), so the FSM's first update always finds the body in
-the command's state. The arm is therefore reachable in principle (the body would have to be in a
-state that ignores the command, e.g. the knock-back state) but did not run in the fight: **the
-three copies get no marker** until a run hits it.
+**How the re-delivery is reached.** The body controller consumes a command in the frame it arrives
+(`CBSLocomotion` switches to the attack state when it sees one), so the FSM's first update after
+an Activate normally finds the body in the command's own animation state - that is the "repeat"
+path. The re-delivery needs a command that arrives while the body is busy with *another* attack
+animation: the body states only look for their own command, so a command that arrives while the
+body is in the melee animation is ignored, the body stays where it is and the FSM's update
+re-delivers it (the command's own state is still 1 = "ready").
+
+The lane's run forced that with the console (`tools/drivers/ep_retry.py`): two `fsm <uid> <state>`
+commands in consecutive game ticks - the first puts the body into its attack animation, the second
+is delivered while the body is still in it. The console drains its queue once per game update, so
+the driver waits past one update between the two commands. The pairs that hit the arm:
+`MeleeAttack` -> `ProjectileAttack` (the loop command arrives while the body is in the melee
+animation), `ProjectileAttack` -> `MeleeAttack` and `MeleeAttack` -> `Shockwave` (the projectile
+command arrives while the body is in the melee animation). The run was the Sanctuary Fortress
+area 4 Ingsmasher chamber (world 1baa96c2, area b666b655, layer 3), the Elite Pirate `u04ff`, and
+the fight was started with `send u04ff Activate` / `send u04ff Alert` (the FSM's `SelectTarget` code
+needs the player as the target: without one the shockwave state never issues its command).
 
 ### 8.3 `fn_15_47DC` (+ `fn_15_4848`) - the attack-kind history: **marked**
 
@@ -841,5 +850,116 @@ mAttackKind = 0;`.
 ### 8.4 What this lane marked
 
 `fn_15_1B50`, `fn_15_47DC` and `fn_15_4848` (the last two share the marked body of
-`fn_15_4790`). The three TryCommand copies stay unmarked: their re-delivery arm did not run
-(8.2).
+`fn_15_4790`) from the first slice; `fn_15_BAF8`, `fn_15_BC04` and `fn_15_BD10` (one body: the
+`TryCommand` template, 8.2) and `fn_15_9C70` (the destructor, 8.5) from the second;
+`fn_15_0`, `fn_15_4C`, `fn_15_8`, `fn_15_AC` and `fn_15_1A0C` (the REL's own one-line virtual
+overrides, 9.1) from the third. `fn_15_4488` stays unmarked: it is dead code in retail (8.6).
+
+### 8.5 `fn_15_9C70` - the class destructor: **marked**
+
+`fn_15_9C70` (0x9C70, 0x1A4) is the destructor the REL's own vtable (`lbl_15_data_634`) points at
+in slot 2. Its body is the generated teardown of the class:
+
+```
+0x9C88  mr. r30, r3                  ; the deleting-dtor flag
+0x9C90  stw lbl_15_data_634, 0(r30)  ; the vtable
+0x9CA4  the token at 0xcd0           ; __dt__6CTokenFv
+0x9CC0  the 0xc58 block              ; fn_15_A08C
+0x9CCC  the FSM2 token at 0xc30      ; __dt__6CTokenFv (its valid byte at 0xc38)
+0x9CF4  the attack-kind vector at 0xc14
+0x9D50  the optional at 0x9e8        ; __dt__6CTokenFv (its valid byte at 0x9f4)
+0x9D7C  the collidable box at 0x9c0  ; __dt__16CCollidableAABoxFv
+0x9D88  the collision manager at 0x9b8 ; __dt__22CCollisionActorManagerFv
+0x9D9C  the data block at 0x828      ; the two SLdrShockWaveInfo at 0x93c and 0x90c
+0x9DBC  the collision manager at 0x7f4
+0x9DD0  the vulnerability at 0x7c4   ; __dt__20CDamageVulnerabilityFv
+0x9DDC  the base destructor          ; fn_15_9E14 (= the DOL's __dt__10CPatternedFv)
+0x9DE8  extsh. r0, r31 ; 0x9DF0 Free__7CMemoryFPCv   ; the deleting destructor frees the object
+```
+
+The port's class holds those objects at the same offsets
+(`include/MetroidPrime/Enemies/CElitePirate.hpp`), so their destructors are that body; the port's
+`CElitePirate::~CElitePirate() {}` is the marker line's body, the same shape as the other modules'
+marked destructors (`fn_83_208C` over `CWallCrawler::~CWallCrawler() {}`, `fn_56_1223C` over
+`CSandworm::~CSandworm() {}`).
+
+| branch | status | evidence |
+|---|---|---|
+| 0x9C88/0x9DF8 (the deleting-dtor flag) | (b) ran | the run's `damage u04ff 5000` killed the pirate: the actor was deleted and the destructor ran (probe `[ep-probe] dtor`) |
+| 0x9DE8/0x9DF0 (the free) | (b) ran | the port deletes the actor with `delete` (the deleting destructor), which is retail's flag-1 path |
+| 0x9CA0/0x9CB0 (the token's null/valid checks) | (a) compiler-generated | a token is either null or valid; the check is the token's own guard |
+| 0x9CDC/0x9CE4 and 0x9D5C/0x9D60 (the valid bytes) | (a) compiler-generated | the same guard on the FSM2 token and on the optional |
+| 0x9D10/0x9D48 (the vector's loop) | (a) compiler-generated | the vector's own destructor loop over its elements |
+
+### 8.6 `fn_15_4488` - the shield name: dead in retail, **not marked**
+
+`fn_15_4488` (0x4488, 0x20) is a one-liner that returns the shield's name:
+
+```
+0x4488  lwz r0, 0xc6c(r3)            ; mShieldPolarity
+0x448C  lis r3, lbl_15_rodata_198@ha ; 0x4490 addi r4, r3, lbl_15_rodata_198@l
+0x4494  cmpwi r0, 0
+0x4498  addi r3, r4, 0x3b9            ; "BodyShield_light" (rodata 0x551)
+0x449C  bnelr
+0x44A0  addi r3, r4, 0x3a9            ; "BodyShield_dark" (rodata 0x541)
+```
+
+The REL never calls it: there is no `bl fn_15_4488` in the REL's text and no 0x4488 in its data
+section, so it is not in the vtable either - in retail it is dead code (the DOL's own
+`CElitePirate` class has the same member and its own copy of this helper, but that class is not
+the one the port runs). A marker means the body is retail's *and ran*, and this one never runs in
+the REL, so it gets none; the port does not need it either (the shield is drawn from the port's
+own shield model, `mShieldModel`, not from an animation effect state).
+
+| branch | status | evidence |
+|---|---|---|
+| 0x449C/0x44A0 (polarity 0 -> "BodyShield_dark") | (c) dead in retail | the function has no caller in the REL (no `bl`, no data reference) |
+| 0x4498/0x449C (polarity 1 -> "BodyShield_light") | (c) dead in retail | the same |
+
+## 9. Every function of the REL, classified (2026-10-21)
+
+`docs/module-analysis/ElitePirate_functions.tsv` has one row per function of the REL: 241 rows =
+the 241 `type:function` symbols of `config/G2ME01/rels/ElitePirate/symbols.txt`. The columns are
+the offset, the size, the name (the symbol and the C++ name), the kind, the class, the retail
+callers (the `bl` sites, and the `.data` tables that point at the function - the vtable
+`lbl_15_data_634` and the FSM tables), the port's marker and the reason.
+
+The classes:
+
+- **B** - the module's own body: the game logic (the FSM's 21 states, 31 triggers and 2 codes, the
+  class's own methods, its virtual overrides). 128 rows, 116 of them carry a marker.
+- **H** - host code: the REL's copy of a DOL function (the body is identical to a DOL function), a
+  compiler-generated helper (the class's own ctors/dtors, the rstl/CMemory helpers, the host-class
+  glue the REL compiles itself) or the REL's boilerplate (the entry/exit, the prolog/epilog). The
+  port uses the host's. 106 rows.
+- **T** - trivial or dead: a one-line copy of a base-class virtual whose body the host already has
+  (the port leaves it inherited) or a body retail never calls. 7 rows: `fn_15_D8`, `fn_15_10`,
+  `fn_15_BC`, `fn_15_5C`, `fn_15_84`, `fn_15_9C` (the REL's copy only calls the base) and
+  `fn_15_4488` (the shield name, dead in retail - 8.6).
+
+### 9.1 The REL's own one-line virtual overrides (this lane)
+
+The REL overrides a dozen base-class virtuals with bodies of its own. The port implements all
+twelve (the bodies are in `include/MetroidPrime/Enemies/CElitePirate.hpp`), and five of them ran in
+a fight, so they are marked; the other seven are never called for this class, so they get no
+marker (a marker means the body is retail's *and ran*).
+
+| fn | slot | the REL's body | class | marker | evidence |
+|---|---|---|---|---|---|
+| `fn_15_0` | 56 GetSearchPath | `addi r3, r3, 0xa50` (0x0000) | B | marked | probe 1144 calls in the fight (the path finding) |
+| `fn_15_4C` | 41 TakeDamage | `stfs f0, 0x448(r3)` (skDamageHitTime, 0x004C) | B | marked | probe 26 calls (the player shot it) |
+| `fn_15_8` | 31 GetCollisionPrimitive | `addi r3, r3, 0x9c0` (0x0008) | B | marked | probe 31042 calls (the collision setup) |
+| `fn_15_AC` | 43 IsListening | `li r3, 0` (0x00AC) | B | marked | probe 5122 calls (the AI checks it) |
+| `fn_15_1A0C` | 63 CanBeUnPossessed | `li r3, 0` (0x1A0C) | B | marked | probe 1 call (the Ing possession) |
+| `fn_15_64` | 57 GetPointSearchPath | `li r3, 0` (0x0064) | B | - | never called: the REL's own path finding uses its CPathFindSearch (0xa50), and only the Ing's spot navigation asks the base |
+| `fn_15_6C` | 61 GetRagDoll | `li r3, 0` (0x006C) | B | - | never called: only a projectile's *game object* collision asks it, and the Ingsmasher is hit through its collision primitives (CGameProjectile::CanCollideWithComplexCollision) |
+| `fn_15_74` | 67 GetAttackTarget | writes kInvalidUniqueId (0x0074) | B | - | only the Ing that snatches a pirate asks it (CIngSnatchingSwarm) - not in this fight |
+| `fn_15_90` | 69 GetGravityConstant | kDefaultGravityAccel (0x0090) | B | - | the host's physics uses the world's constant, not the virtual |
+| `fn_15_A4` | 42 CanBeShot | `li r3, 1` (0x00A4) | B | - | the same game-object collision path as `fn_15_6C` |
+| `fn_15_B4` | 44 Listen | `li r3, 0` (0x00B4) | B | - | `fn_15_AC` (IsListening = false) keeps the Ingsmasher out of the state manager's listening list, so `InformListeners` never reaches it |
+| `fn_15_52C8` | 55 ProjectileInfo | `addi r3, r3, 0xcd0` (0x52C8) | B | - | the REL's own rocket launch reads 0xcd0 directly (fn_15_728C), so nothing calls the virtual |
+
+The run: Sanctuary Fortress area 4 (world 1baa96c2, area b666b655, layer 3), the Elite Pirate
+`u04ff`, with `tools/drivers/ep_slots.py` (the fight, then `shoot` and `noise` at the pirate). The
+probe counted the calls of the twelve one-liners; the seven that never ran are listed above with
+the caller that would ask them.
