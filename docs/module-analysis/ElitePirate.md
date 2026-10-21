@@ -519,3 +519,327 @@ once-logging shell to say). The reachable ones, with their sizes from
 `fn_15_2E04` was the one reachable helper whose port body is retail's (the three bounds floats at
 the collision actor's 0x35c/0x360/0x364, 0x2E70/0x2E74/0x2E78), and it is now marked; the retail
 calls it with this+0x9fc and this+0xa10, the port does both lists in one call.
+
+## 7. Every unmarked function, classified (2026-10-21)
+
+The module has 241 functions; 104 carry a `// @` marker, so 137 are unmarked. This section
+classifies all 137, so the next lane does not have to re-derive it. Method (all reproducible from
+the build tree):
+
+- **Call graph**: the REL's own disassembly (`build/G2ME01/ElitePirate/asm/auto_00_*_text.s`,
+  241 `.fn` blocks) gives every call site, so the "call sites" column is the number of `bl` sites
+  in the REL and "callers" is the number of distinct caller functions.
+- **DOL addresses**: the DOL keeps a **CElitePirate vtable at 0x803b2458** in `.data` (the REL's
+  own vtable `lbl_15_data_634` is the same table with the REL's own functions in the overridden
+  slots). 52 of the REL vtable's 53 base-class slots name a DOL symbol, and the DOL's word at
+  that slot is that symbol's address, so **every base virtual the REL overrides has a known DOL
+  address** (e.g. slot 15 = `GetHealthInfo__6CActorCFRC13CStateManager` @ 0x8000b900, slot 18 =
+  `GetTouchBounds__10CPatternedCFv` @ 0x80073bf0). The REL's copies of those are the "host
+  accessor" rows.
+- **Body identity**: each REL body was compared (call targets masked) with all 24580 DOL
+  functions; an identical body is cited with the DOL function's address, which is the strongest
+  evidence that a REL function is a copy of host code and not new behaviour.
+
+Classes: **host accessor** (the REL's copy of a base-class one-liner; the DOL address is in the
+last column), **host copy** (a body identical to a DOL function, or code of a host class the REL
+compiles itself: rstl, CToken, CJointCollisionDescription, CCollisionActorManager,
+CGameProjectile), **compiler-generated** (the module's own struct ctors/dtors and the weakly
+linked C++ helpers), **REL runtime** (entry/exit, prolog/epilog, the module ctor/dtor table),
+**loader/ctor machinery** (the loader and the data/FSM-table builders the port replaces
+wholesale) and **behaviour** (the module's own game logic - the only class a marker may go on).
+
+| fn | REL off | size | call sites | class | DOL address / evidence |
+|---|---|---|---|---|---|
+| `fn_15_0` | 0x00000 | 0x0008 | 0 | host accessor | DOL `GetSearchPath__10CPatternedFv` @ 0x80073c74 (vtable slot 56) |
+| `fn_15_8` | 0x00008 | 0x0008 | 0 | host accessor | DOL `GetCollisionPrimitive__13CPhysicsActorCFv` @ 0x800ea1b8 (vtable slot 31) |
+| `fn_15_10` | 0x00010 | 0x003C | 0 | host accessor | DOL `GetTouchBounds__10CPatternedCFv` @ 0x80073bf0 (vtable slot 18) |
+| `fn_15_4C` | 0x0004C | 0x0010 | 0 | host accessor | DOL `TakeDamage__10CPatternedFRC9CVector3ff` @ 0x80073c58 (vtable slot 41) |
+| `fn_15_5C` | 0x0005C | 0x0008 | 0 | host accessor | DOL `GetModelAlphau8__10CPatternedCFRC13CStateManager` @ 0x80073c64 (vtable slot 50) |
+| `fn_15_64` | 0x00064 | 0x0008 | 0 | host accessor | DOL `(CPatterned::GetPointSearchPath)` @ 0x80073c7c (vtable slot 57) |
+| `fn_15_6C` | 0x0006C | 0x0008 | 0 | host accessor | DOL `GetRagDoll__10CPatternedCFv` @ 0x800358e0 (vtable slot 61) |
+| `fn_15_74` | 0x00074 | 0x0010 | 0 | host accessor | DOL `GetAttackTarget__10CPatternedCFv` @ 0x80073c84 (vtable slot 67) |
+| `fn_15_84` | 0x00084 | 0x000C | 0 | host accessor | DOL `IsOnGround__10CPatternedFv` @ 0x80073c90 (vtable slot 68) |
+| `fn_15_90` | 0x00090 | 0x000C | 0 | host accessor | DOL `GetGravityConstant__10CPatternedCFv` @ 0x80073c9c (vtable slot 69) |
+| `fn_15_9C` | 0x0009C | 0x0008 | 0 | host accessor | DOL `GetDeathExplosionParticle__10CPatternedCFv` @ 0x80073ca4 (vtable slot 73) |
+| `fn_15_A4` | 0x000A4 | 0x0008 | 0 | host accessor | DOL `CanBeShot__3CAiFRC13CStateManageri` @ 0x800358d8 (vtable slot 42) |
+| `fn_15_AC` | 0x000AC | 0x0008 | 0 | host accessor | DOL `IsListening__3CAiCFv` @ 0x80073cac (vtable slot 43) |
+| `fn_15_B4` | 0x000B4 | 0x0008 | 0 | host accessor | DOL `Listen__3CAiFRC9CVector3f16EListenNoiseType` @ 0x8003c59c (vtable slot 44) |
+| `fn_15_BC` | 0x000BC | 0x001C | 0 | host accessor | DOL `GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f` @ 0x80073cb4 (vtable slot 45) |
+| `fn_15_D8` | 0x000D8 | 0x002C | 0 | host accessor | DOL `GetHealthInfo__6CActorCFRC13CStateManager` @ 0x8000b900 (vtable slot 15) |
+| `RELExit` | 0x00104 | 0x0024 | 0 | REL runtime | REL entry/exit, prolog/epilog, module ctor/dtor table |
+| `RELMain` | 0x00128 | 0x0020 | 0 | REL runtime | REL entry/exit, prolog/epilog, module ctor/dtor table |
+| `fn_15_148` | 0x00148 | 0x0030 | 1 | REL runtime | REL entry/exit, prolog/epilog, module ctor/dtor table |
+| `fn_15_178` | 0x00178 | 0x0ACC | 0 | loader/ctor machinery | the port replaces it wholesale (PortLoadElitePirate / the FSM table install) |
+| `fn_15_C44` | 0x00C44 | 0x0064 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_CA8` | 0x00CA8 | 0x0040 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_CE8` | 0x00CE8 | 0x0020 | 1 | compiler-generated | body identical to DOL `AddChildWidget__10CGuiWidgetFP10CGuiWidgetbb` @ 0x8027d930 |
+| `fn_15_D08` | 0x00D08 | 0x0028 | 1 | compiler-generated | body identical to DOL `"construct_impl<Q218CLayoutDescription24CScaledLayoutDescription>__4rstlFPvRCQ218CLayoutDescription24CScaledLayoutDescription"` @ 0x802b1490 |
+| `fn_15_D30` | 0x00D30 | 0x013C | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_E6C` | 0x00E6C | 0x006C | 0 | compiler-generated | body identical to DOL `"__dt__Q24rstl48optional_object<29TLockedToken<13COBBTreeGroup>>Fv"` @ 0x80070cf4 |
+| `fn_15_ED8` | 0x00ED8 | 0x0054 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_F2C` | 0x00F2C | 0x0064 | 0 | compiler-generated | body identical to DOL `"__dt__Q24rstl27auto_ptr<15CCharLayoutInfo>Fv"` @ 0x802ac5ec |
+| `fn_15_F90` | 0x00F90 | 0x0060 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_FF0` | 0x00FF0 | 0x00D0 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_10C0` | 0x010C0 | 0x0268 | 1 | loader/ctor machinery | the port replaces it wholesale (PortLoadElitePirate / the FSM table install) |
+| `fn_15_1A0C` | 0x01A0C | 0x0008 | 0 | host accessor | DOL `(CPatterned Ing-possession virtual)` @ 0x80074774 (vtable slot 63) |
+| `fn_15_1A84` | 0x01A84 | 0x00CC | 2 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_1B50` | 0x01B50 | 0x0010 | 5 | **behaviour** | the module's own logic |
+| `fn_15_2284` | 0x02284 | 0x00C0 | 1 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_2344` | 0x02344 | 0x0050 | 0 | host copy | body identical to DOL `__dt__10CMemorySysFv` @ 0x802ce648 |
+| `fn_15_2730` | 0x02730 | 0x0058 | 3 | host copy | body identical to DOL `"__dt__Q24rstl107pair<Ui,Q24rstl89vector<Q224CSpawnSystemKeyframeData24CSpawnSystemKeyframeInfo,Q24rstl17rmemory_allocator>>Fv"` @ 0x802f2ed0 |
+| `fn_15_2788` | 0x02788 | 0x0054 | 1 | host copy | body identical to DOL `"__dt__Q24rstl46vector<P9CGuiLight,Q24rstl17rmemory_allocator>Fv"` @ 0x8027608c |
+| `fn_15_2B08` | 0x02B08 | 0x005C | 2 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_2B64` | 0x02B64 | 0x0054 | 0 | host copy | body identical to DOL `"__dt__Q24rstl46vector<P9CGuiLight,Q24rstl17rmemory_allocator>Fv"` @ 0x8027608c |
+| `fn_15_2BB8` | 0x02BB8 | 0x0130 | 1 | host copy | body identical to DOL `"__ct__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>"` @ 0x8001c6e4 |
+| `fn_15_2ECC` | 0x02ECC | 0x0044 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_2FC8` | 0x02FC8 | 0x0028 | 4 | host copy | body identical to DOL `"__eq__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>CFRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>"` @ 0x8004985c |
+| `fn_15_2FF0` | 0x02FF0 | 0x007C | 1 | host copy | body identical to DOL `fn_8027CCCC` @ 0x8027cccc |
+| `fn_15_306C` | 0x0306C | 0x0114 | 1 | host copy | body identical to DOL `"internal_compare<Q24rstl127const_linear_iterator<c,Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>>__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>FQ24rstl127const_linear_iterator<c,Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl127const_linear_iterator<c,Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl127const_linear_iterator<c,Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl127const_linear_iterator<c,Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>"` @ 0x800210f0 |
+| `fn_15_3180` | 0x03180 | 0x0108 | 1 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_3288` | 0x03288 | 0x0038 | 3 | host copy | body identical to DOL `"push_back_unsafe__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>FRC26CJointCollisionDescription"` @ 0x80137004 |
+| `fn_15_32C0` | 0x032C0 | 0x0020 | 2 | host copy | body identical to DOL `AddChildWidget__10CGuiWidgetFP10CGuiWidgetbb` @ 0x8027d930 |
+| `fn_15_32E0` | 0x032E0 | 0x0028 | 1 | host copy | body identical to DOL `"construct_impl<Q218CLayoutDescription24CScaledLayoutDescription>__4rstlFPvRCQ218CLayoutDescription24CScaledLayoutDescription"` @ 0x802b1490 |
+| `__ct__26CJointCollisionDescriptionFRC26CJointCollisionDescription` | 0x03308 | 0x00C0 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_33C8` | 0x033C8 | 0x005C | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_3424` | 0x03424 | 0x0150 | 2 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_3AE0` | 0x03AE0 | 0x0060 | 1 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_3B40` | 0x03B40 | 0x0038 | 2 | host copy | body identical to DOL `"destroy<Q24rstl399pointer_iterator<Q24rstl144pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl53vector<16CEffectComponent,Q24rstl17rmemory_allocator>>,Q24rstl189vector<Q24rstl144pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl53vector<16CEffectComponent,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>>__4rstlFQ24rstl399pointer_iterator<Q24rstl144pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl53vector<16CEffectComponent,Q24rstl17rmemory_allocator>>,Q24rstl189vector<Q24rstl144pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl53vector<16CEffectComponent,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl399pointer_iterator<Q24rstl144pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl53vector<16CEffectComponent,Q24rstl17rmemory_allocator>>,Q24rstl189vector<Q24rstl144pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl53vector<16CEffectComponent,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>"` @ 0x802925c4 |
+| `fn_15_3B78` | 0x03B78 | 0x0060 | 1 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_3BD8` | 0x03BD8 | 0x0084 | 1 | host copy | body identical to DOL `"__dt__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fv"` @ 0x80136318 |
+| `fn_15_3FC0` | 0x03FC0 | 0x00C8 | 2 | host copy | body identical to DOL `"__as__Q24rstl40optional_object<21TLockedToken<6CModel>>FRCQ24rstl40optional_object<21TLockedToken<6CModel>>"` @ 0x8004f3cc |
+| `fn_15_4088` | 0x04088 | 0x006C | 0 | host copy | body identical to DOL `"__dt__Q24rstl48optional_object<29TLockedToken<13COBBTreeGroup>>Fv"` @ 0x80070cf4 |
+| `fn_15_40F4` | 0x040F4 | 0x0058 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_414C` | 0x0414C | 0x0054 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_4410` | 0x04410 | 0x0078 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_4488` | 0x04488 | 0x0020 | 0 | **behaviour** | the module's own logic |
+| `fn_15_47DC` | 0x047DC | 0x006C | 1 | **behaviour** | the module's own logic |
+| `fn_15_4848` | 0x04848 | 0x0074 | 1 | **behaviour** | the module's own logic |
+| `fn_15_4A3C` | 0x04A3C | 0x005C | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_4A98` | 0x04A98 | 0x0048 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_4CBC` | 0x04CBC | 0x005C | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_526C` | 0x0526C | 0x005C | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_52C8` | 0x052C8 | 0x0008 | 0 | host accessor | DOL `ProjectileInfo__10CPatternedFv` @ 0x80073c6c (vtable slot 55) |
+| `fn_15_5450` | 0x05450 | 0x005C | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_776C` | 0x0776C | 0x0048 | 1 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_77B4` | 0x077B4 | 0x00B4 | 1 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_7868` | 0x07868 | 0x0040 | 1 | host copy | body identical to DOL `"__ct__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>FRCQ24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>"` @ 0x8003607c |
+| `fn_15_78A8` | 0x078A8 | 0x0020 | 1 | host copy | body identical to DOL `AddChildWidget__10CGuiWidgetFP10CGuiWidgetbb` @ 0x8027d930 |
+| `fn_15_78C8` | 0x078C8 | 0x0028 | 1 | host copy | body identical to DOL `"construct_impl<Q218CLayoutDescription24CScaledLayoutDescription>__4rstlFPvRCQ218CLayoutDescription24CScaledLayoutDescription"` @ 0x802b1490 |
+| `fn_15_78F0` | 0x078F0 | 0x0080 | 1 | host copy | body identical to DOL `__ct__Q218CImpactVisorEffect15SParticleEffectFRCQ218CImpactVisorEffect15SParticleEffect` @ 0x80036104 |
+| `fn_15_7970` | 0x07970 | 0x003C | 0 | host copy | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
+| `fn_15_79AC` | 0x079AC | 0x003C | 0 | host copy | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
+| `fn_15_79E8` | 0x079E8 | 0x005C | 2 | host copy | body identical to DOL `"__dt__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>Fv"` @ 0x80032d0c |
+| `fn_15_7A44` | 0x07A44 | 0x0020 | 1 | host copy | body identical to DOL `AddChildWidget__10CGuiWidgetFP10CGuiWidgetbb` @ 0x8027d930 |
+| `fn_15_7A64` | 0x07A64 | 0x0048 | 1 | host copy | body identical to DOL `"destroy<Q218CImpactVisorEffect15SParticleEffect>__4rstlFPQ218CImpactVisorEffect15SParticleEffect"` @ 0x80032d88 |
+| `fn_15_7AAC` | 0x07AAC | 0x0054 | 1 | host copy | body identical to DOL `__dt__21CAllFormatsAnimSourceFv` @ 0x802b2f74 |
+| `fn_15_955C` | 0x0955C | 0x003C | 0 | host copy | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
+| `fn_15_98CC` | 0x098CC | 0x0068 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_9934` | 0x09934 | 0x0054 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_9988` | 0x09988 | 0x00EC | 3 | host copy | the animation setup the ctor calls: it uses the DOL's `FindBestAnimation__12CPASDatabaseCFRC16CPASAnimParmDatai` @ 0x80298d04, `NoParameter__12CPASAnimParmFv` @ 0x80297248 and `FromEnum__12CPASAnimParmFi` @ 0x80297150 |
+| `fn_15_9A74` | 0x09A74 | 0x003C | 0 | host copy | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
+| `fn_15_9AB0` | 0x09AB0 | 0x0184 | 1 | compiler-generated | body identical to DOL `__ct__16CPASAnimParmDataFQ23pas15EAnimationStateRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParm` @ 0x80079a60 |
+| `fn_15_9C34` | 0x09C34 | 0x003C | 0 | host copy | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
+| `fn_15_9C70` | 0x09C70 | 0x01A4 | 0 | **behaviour** | the module's own logic |
+| `fn_15_9E14` | 0x09E14 | 0x01E4 | 1 | compiler-generated | body identical to DOL `__dt__10CPatternedFv` @ 0x80073978 |
+| `fn_15_9FF8` | 0x09FF8 | 0x0094 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_A08C` | 0x0A08C | 0x0104 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_A9D8` | 0x0A9D8 | 0x00C8 | 1 | host copy | body identical to DOL `"__as__Q24rstl40optional_object<21TLockedToken<6CModel>>FRCQ24rstl40optional_object<21TLockedToken<6CModel>>"` @ 0x8004f3cc |
+| `fn_15_AAA0` | 0x0AAA0 | 0x006C | 0 | compiler-generated | body identical to DOL `"__dt__Q24rstl48optional_object<29TLockedToken<13COBBTreeGroup>>Fv"` @ 0x80070cf4 |
+| `fn_15_AB0C` | 0x0AB0C | 0x0054 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AB60` | 0x0AB60 | 0x0058 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_ABB8` | 0x0ABB8 | 0x0048 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AC00` | 0x0AC00 | 0x0074 | 1 | compiler-generated | body identical to DOL `"__ct__21TToken<11CRasterFont>FP11CRasterFont"` @ 0x80023368 |
+| `fn_15_AC74` | 0x0AC74 | 0x0090 | 0 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_AD04` | 0x0AD04 | 0x0078 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AD7C` | 0x0AD7C | 0x0090 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AE0C` | 0x0AE0C | 0x005C | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AE68` | 0x0AE68 | 0x0048 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AEB0` | 0x0AEB0 | 0x0054 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AF04` | 0x0AF04 | 0x0058 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AF5C` | 0x0AF5C | 0x0058 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_AFB4` | 0x0AFB4 | 0x0070 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_B024` | 0x0B024 | 0x005C | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_B080` | 0x0B080 | 0x0064 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_B0E4` | 0x0B0E4 | 0x0064 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_B148` | 0x0B148 | 0x0090 | 0 | compiler-generated | body identical to DOL `__dt__Q211CSfxManager11CSfxChannelFv` @ 0x802a00ec |
+| `fn_15_B1D8` | 0x0B1D8 | 0x008C | 0 | compiler-generated | body identical to DOL `"__dt__Q24rstl49reserved_vector<Q212CMidiManager12CMidiWrapper,3>Fv"` @ 0x8031562c |
+| `fn_15_B264` | 0x0B264 | 0x003C | 0 | compiler-generated | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
+| `fn_15_B2A0` | 0x0B2A0 | 0x003C | 0 | compiler-generated | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
+| `fn_15_B2DC` | 0x0B2DC | 0x003C | 0 | compiler-generated | body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0 |
+| `fn_15_B318` | 0x0B318 | 0x0048 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_B360` | 0x0B360 | 0x021C | 1 | loader/ctor machinery | the port replaces it wholesale (PortLoadElitePirate / the FSM table install) |
+| `fn_15_B57C` | 0x0B57C | 0x0064 | 4 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_B5E0` | 0x0B5E0 | 0x0094 | 2 | compiler-generated | body identical to DOL `__ct__16CActorParametersFRC16CActorParameters` @ 0x800dfe98 |
+| `fn_15_B674` | 0x0B674 | 0x007C | 1 | compiler-generated | body identical to DOL `__ct__16CLightParametersFRC16CLightParameters` @ 0x800dff2c |
+| `fn_15_B6F0` | 0x0B6F0 | 0x0058 | 0 | compiler-generated | body identical to DOL `"__dt__Q24rstl84single_ptr<Q24rstl63vector<Q219CCollisionPrimitive4Type,Q24rstl17rmemory_allocator>>Fv"` @ 0x802836f8 |
+| `fn_15_B748` | 0x0B748 | 0x0084 | 1 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_B7CC` | 0x0B7CC | 0x0060 | 0 | compiler-generated | ctor/dtor of a module struct (rstl/CMemory), no game logic |
+| `fn_15_B82C` | 0x0B82C | 0x02CC | 1 | loader/ctor machinery | the port replaces it wholesale (PortLoadElitePirate / the FSM table install) |
+| `fn_15_BAF8` | 0x0BAF8 | 0x010C | 1 | **behaviour** | the TryCommand copy for the melee command (section 8.2) |
+| `fn_15_BC04` | 0x0BC04 | 0x010C | 2 | **behaviour** | the TryCommand copy for the projectile command (section 8.2) |
+| `fn_15_BD10` | 0x0BD10 | 0x00EC | 1 | **behaviour** | the TryCommand copy for the loop-attack command (section 8.2) |
+| `fn_15_BF6C` | 0x0BF6C | 0x00C0 | 1 | host copy | body identical to DOL `"reserve__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fi"` @ 0x801374c4 |
+| `fn_15_C02C` | 0x0C02C | 0x0068 | 1 | host copy | body identical to DOL `"uninitialized_copy<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P26CJointCollisionDescription>__4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P26CJointCollisionDescription"` @ 0x80137584 |
+| `fn_15_C094` | 0x0C094 | 0x003C | 1 | host copy | host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile) |
+| `fn_15_C0D0` | 0x0C0D0 | 0x0808 | 0 | loader/ctor machinery | the port replaces it wholesale (PortLoadElitePirate / the FSM table install) |
+| `_unresolved` | 0x0C8D8 | 0x00C4 | 0 | REL runtime | REL entry/exit, prolog/epilog, module ctor/dtor table |
+| `_epilog` | 0x0C99C | 0x0024 | 0 | REL runtime | REL entry/exit, prolog/epilog, module ctor/dtor table |
+| `_prolog` | 0x0C9C0 | 0x0024 | 0 | REL runtime | REL entry/exit, prolog/epilog, module ctor/dtor table |
+| `ModuleDestructors` | 0x0C9E4 | 0x004C | 0 | REL runtime | REL entry/exit, prolog/epilog, module ctor/dtor table |
+| `ModuleConstructors` | 0x0CA30 | 0x004C | 0 | REL runtime | REL entry/exit, prolog/epilog, module ctor/dtor table |
+
+
+## 8. The five most-called unmarked behaviour functions (2026-10-21)
+
+Metric: the REL's own call graph. "call sites" is the number of `bl` sites in the REL, "callers"
+the number of distinct caller functions. Under the classes of section 7 the behaviour functions
+are the module's own game logic; the most called are:
+
+| fn | call sites | callers | what it is |
+|---|---|---|---|
+| `fn_15_1B50` | 5 | 3 (`5340`, `578C`, `8580`) | the XDamaged flag bit |
+| `fn_15_BC04` | 2 | 2 (`4AE0`, `4D18`) | TryCommand, projectile command |
+| `fn_15_BAF8` | 1 | 1 (`48BC`) | TryCommand, melee command |
+| `fn_15_BD10` | 1 | 1 (`50BC`) | TryCommand, loop-attack command |
+| `fn_15_47DC` (+`fn_15_4848`) | 1 | 1 (`4790`) | the attack-kind history push (+ its erase) |
+
+The launcher group (`776C`, `77B4`, `7868`, `78A8`, `78C8`, `78F0`, `79E8`, `7A44`, `7A64`,
+`7AAC`) has 2 call sites each, but they are one internal chain of the REL's launcher class
+(`776C` -> `77B4` -> `7868` -> ...), i.e. one caller each, and they are the CGameProjectile glue
+the port covers with the host's projectile launch; the same goes for `2FC8`/`2FF0`/`306C`,
+`3180`/`3288`/`32C0`/`3424`/`3AE0`/`3B40`/`3B78`/`3BD8` (the collision managers) and
+`1A84`/`3FC0`/`2B08` (the host's shock wave, particle and vulnerability code).
+
+### 8.1 `fn_15_1B50` - the XDamaged flag: **marked**
+
+Retail (0x1B50, four instructions, no branch):
+
+```
+lbz      r0, 0xc10(r3)        ; the flags byte
+rlwimi   r0, r4, 6, 25, 25    ; bit 6 (0x40) of the byte <- bit 6 of r4
+stb      r0, 0xc10(r3)
+blr
+```
+
+`rlwimi` with SH=6, MB=ME=25 is the mask `1 << (31-25)` = **0x40**, so the function sets or
+clears **bit 0x40 of the byte at 0xc10** (the XDamaged/ShotAt flag) from the bool in r4 - the
+DOL's own `PowerPC bit N is 1u << (31-N)` rule, not `1u << N`.
+
+The port: `CElitePirate::SetXDamaged(bool)` (`include/MetroidPrime/Enemies/CElitePirate.hpp`),
+`mXDamaged = xdamaged`, where `mXDamaged` is the host's `bool mXDamaged : 1` for that bit of the
+same flags byte (the header lists the byte's bits: 0x80 event 8, **0x40 XDamaged**, 0x20
+alerted, 0x10, 0x08 alerted 2, 0x04, 0x02 launcher Ing-possessed, 0x01). Field by field the two
+agree: same byte, same bit, same set/clear from a bool.
+
+Call sites, retail vs port: `fn_15_5340` (Alert) and `fn_15_578C` (TargetPatrol) clear it
+(`li r4,0` at 0x5410 and 0x587C); `fn_15_8580` (AcceptScriptMsg) sets it (`li r4,1`) in three
+places - ReflectedDamage (0x8AA4), ResistedDamage (0x8D48) and the damage path (0x8CC8). The
+port clears it in Alert and TargetPatrol (`PortCElitePirateMove.cpp:255` and `:311`) and sets it
+in AcceptScriptMsg for ResistedDamage/ReflectedDamage (`PortCElitePirate.cpp:838`) and in the
+damage path (`:888`) - the same three messages, two call sites for the two messages the port
+shares a `case` for.
+
+| branch | status | evidence |
+|---|---|---|
+| (none - the body is branch free) | (b) ran | probe `[ep-probe] 1B50 1` 1232 times (the damage path) and `[ep-probe] 1B50 0` twice (the Alert deactivate) over the two fights |
+
+### 8.2 `fn_15_BAF8` / `fn_15_BC04` / `fn_15_BD10` - the three TryCommand copies
+
+Retail has one copy of the template per command type: `fn_15_BAF8` (melee, called from
+`fn_15_48BC`), `fn_15_BC04` (projectile, from `fn_15_4AE0` and `fn_15_4D18`) and `fn_15_BD10`
+(loop attack, from `fn_15_50BC`). All three are the same shape (`fn_15_BAF8`, 0xBAF8, 0x10C):
+
+```
+0xBAF8  stwu r1,-0x10(r1) ; mflr r0
+0xBB00  cmpwi r4,1        ; kStateMsg_Update
+0xBB18  beq  -> Update arm
+0xBB1C  bge              ; r4 >= 2
+0xBB2C  cmpwi r4,3 ; 0xBB30 bge -> return      (r4 >= 3: no state message)
+0xBB34  b -> 0xBBE4                            (r4 == 2: Deactivate)
+0xBB20  cmpwi r4,0 ; 0xBB24 bge -> Activate arm (0xBB38)
+0xBB28  b -> return                            (r4 < 0: no state message)
+Activate   (0xBB38)  stw 1, 0x6b4(r3)                  ; the CTryCommand state = "ready"
+                     bl DeliverCmd__16CBodyStateCmdMgrF13EBodyStateCmd (0x800ee0a0)
+                     copy the command payload into 0x180..0x194
+Update     (0xBB88)  r3 = &this->0x6b4, r4 = this->0x48c (the body controller), r5 = the anim state
+                     bl ShouldRetry__11CTryCommandFRC15CBodyControlleri (0x801b73e4)
+0xBB94           clrlwi. r3,24
+0xBB98           beq -> return (no re-delivery)
+                     DeliverCmd + copy the payload
+Deactivate (0xBBE4) stw 0, 0x6b4(r3)                  ; the CTryCommand state = "not ready"
+```
+
+The DOL's `ShouldRetry` (0x801b73e4) is the host's `CAnimationState::CanIssueCommand`, field
+for field: `state == controller->0x37c` (the body's current state) -> the command's state becomes
+2 ("repeat") and no re-delivery; else the command's state 1 ("ready") -> re-deliver and keep
+"ready"; else the command's state becomes 3 ("over"). The host's `CAnimationState` has exactly
+these four states (`kAS_NotReady` 0, `kAS_Ready` 1, `kAS_Repeat` 2, `kAS_Over` 3) and the same
+three-way test, so the port's `TryCommand` template is retail's body.
+
+The three copies differ only in the payload they copy into the body state cmd manager: the melee
+command into 0x180..0x194, the projectile command into 0x19c..0x1b0, the loop-attack command
+into 0x1b8..0x1c4. The host's `CBodyStateCmdMgr::DeliverCmd(const CBodyStateCmd&)` stores the
+command for all three (it keeps the base part only - a host-wide difference shared with every
+other module, not this one). The port keeps one template for the three, so one body carries the
+three markers.
+
+| branch | status | evidence |
+|---|---|---|
+| 0xBB00/0xBB18 (Update), 0xBC0C/0xBC24, 0xBD18/0xBD30 | (b) ran | `[ep-probe] TC update ...` 3321 times over the two fights (1818 + 1503) |
+| 0xBB38 (Activate), 0xBC44, 0xBD50 | (b) ran | `[ep-probe] TC activate` 13 times |
+| 0xBBE4 (Deactivate), 0xBCF0, 0xBDDC | (b) ran | `[ep-probe] TC deactivate` 11 times |
+| 0xBB28 (r4 < 0) and 0xBB30 (r4 >= 3) | (c) unreachable | `EStateMsg` has exactly three values (Activate 0, Update 1, Deactivate 2; `include/MetroidPrime/StateMachineCommon.hpp`), and the FSM only ever sends those three |
+| 0xBB94/0xBB98 (the re-delivery) | (d) reachable but not run | see below |
+
+Two fights were run (the 150 s one and a 170 s one that also knocks the target back with a
+`damage u04ff 1 150` every poll, to get the body into a state that ignores the command). Over
+3321 update samples of the three copies the body was in the command's own animation state in
+3316 of them; the five samples where it was not (body 5 = locomotion, command 18 or 7) all had
+the command's state already at 2 ("repeat") or 3 ("over"), never 1 ("ready"), and the six samples
+with the command still "ready" all had the body in the command's state. The re-delivery arm
+needs the body controller to *not* be in the command's animation state when the FSM updates. The probe prints the body's current state, the command's state and the command's
+own state: `TC update body=7 cmd=7 m=2` (the body is in the melee state, so the DOL's
+`ShouldRetry` takes the "repeat" path), `body=18 cmd=18 m=2` (the projectile attack) and
+`body=5 cmd=7 m=2` (the body already left the melee state, so the "over" path). The only sample
+with the command still "ready" (`m=1`) already had the body in the command's state
+(`body=7 cmd=7 m=1`), because the body controller consumes the delivered command in the frame it
+arrives (`CBSLocomotion`, `CBSAttack`, `CBSLoopAttack`, `CBSLoopReaction` and `CBSStep` all
+check the delivered command and switch state), so the FSM's first update always finds the body in
+the command's state. The arm is therefore reachable in principle (the body would have to be in a
+state that ignores the command, e.g. the knock-back state) but did not run in the fight: **the
+three copies get no marker** until a run hits it.
+
+### 8.3 `fn_15_47DC` (+ `fn_15_4848`) - the attack-kind history: **marked**
+
+Retail `fn_15_47DC` (0x47DC) pushes the kind onto the three-deep history at 0xc14 and calls
+`fn_15_4848` (0x4848, the erase) when it is full; `fn_15_4790` (0x4790, the marked caller)
+chooses the branch on the message (`cmpwi r5,2` = Deactivate) and resets 0xc2c afterwards.
+
+```
+0x47F8  lwz r0, 0x0(r3)      ; the count
+0x47FC  cmpwi r0,3 ; 0x4800 bne -> skip the erase
+0x4804  addi r4, r30,4 ; 0x4808 bl fn_15_4848     ; erase the oldest
+0x480C  lwz r0, 0x0(r30) ; slwi r0,r0,2 ; add r3,r30,r0 ; addic. r3,r3,4
+0x481C  beq -> skip the store (the element pointer is never null)
+0x4820  stw r31, 0x0(r3)   ; the new element
+0x4824  lwz r3, 0x0(r30) ; addi r0,r3,1 ; stw r0, 0x0(r30)   ; count++
+```
+
+`fn_15_4848` (0x4848) is the vector erase: it checks the iterator against the begin and the end
+(0x4850 `cmplw r4,r0` / 0x4868 `bge`), then shifts the elements down (the loop at 0x4878) and
+decrements the count (0x4898). The port's `SetAttackKind` does the same with
+`rstl::reserved_vector<int,3>`: `if (size()==3) erase(begin()); push_back(mAttackKind);
+mAttackKind = 0;`.
+
+| branch | status | evidence |
+|---|---|---|
+| 0x47FC/0x4800 (the history is not full) | (b) ran | `[ep-probe] 47DC push (size 0)`, `(size 1)`, `(size 2)` |
+| 0x4804/0x4808 -> `fn_15_4848` (the history is full) | (b) ran | `[ep-probe] 47DC erase (full)` 14 times |
+| 0x481C (the null element pointer) | (a) compiler-generated | the element address of a reserved vector is never null; the store is skipped only for a null pointer the compiler cannot prove absent |
+| 0x4850/0x4868 (`fn_15_4848`'s range check) | (a) compiler-generated | the erase is always of `begin()`, so the iterator is never out of range; the check is the vector's own bounds guard |
+
+### 8.4 What this lane marked
+
+`fn_15_1B50`, `fn_15_47DC` and `fn_15_4848` (the last two share the marked body of
+`fn_15_4790`). The three TryCommand copies stay unmarked: their re-delivery arm did not run
+(8.2).
