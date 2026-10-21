@@ -412,6 +412,8 @@ private:
   // fn_10_12F60: fires one scatter shot projectile (a CEnergyProjectile stands in for the
   // module's CScattershotProjectile).
   void FireScatterShotProjectile(CStateManager& mgr);
+  // fn_10_21DF8: the step command driven by the animation state.
+  void DoStepCmd(EStateMsg msg, pas::EAnimationState state, const CBCStepCmd& cmd);
   // fn_10_21F14: the projectile-attack command driven by the animation state.
   void DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state,
                              const CBCProjectileAttackCmd& cmd);

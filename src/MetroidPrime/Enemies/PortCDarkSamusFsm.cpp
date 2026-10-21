@@ -1355,9 +1355,37 @@ void CDarkSamus::MissileJump(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("MissileJump", msg);
 }
 
-void CDarkSamus::MovingScatterShot(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_11AD8", "state MovingScatterShot");
+// fn_10_11AD8 (0x00011AD8, 0x17C bytes): the MovingScatterShot state, the scatter shot fired
+// from a side step. Activate (0x00011B2C) clears the start time (0xBA4 = lbl_10_rodata_3FC = 0.0f),
+// the firing byte 0xBAD and the shot count 0xBA0 and forgets the projectile (0xBE4 =
+// kInvalidUniqueId); Deactivate (0x00011B54) only forgets the projectile. Every message then turns
+// toward the player at lbl_10_rodata_434 = 1.7453293f rad/s (fn_10_16B64, 0x00011B78), runs the fire
+// timer (fn_10_11974, 0x00011B88) and the attack bookkeeping with id 0x10 (`li r4, 0x10`,
+// fn_10_1B478 at 0x00011B9C), and last the step command (fn_10_21DF8 at 0x00011C14,
+// pas::kAS_Step = `li r5, 0x3`): a break-dodge step (`li r7, 0x2`) to the right (`li r9, 0x3`)
+// unless the side byte 0xBAC is set (`cmplwi r0, 0x0` at 0x00011BA8), then to the left (0x2).
+// The shots start from DoUserAnimEvent's kUE_EventStart arm with the side 0xBAC (0x0001C264).
+// @ fn_10_11AD8
+void CDarkSamus::MovingScatterShot(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("MovingScatterShot", msg);
+  switch (msg) {
+  case kStateMsg_Activate:
+    mScatterStartTime = 0.f;
+    mScatterFiring = 0;
+    mScatterShotCount = 0;
+    mScatterProjectileUid = kInvalidUniqueId;
+    break;
+  case kStateMsg_Update:
+    break;
+  case kStateMsg_Deactivate:
+    mScatterProjectileUid = kInvalidUniqueId;
+    break;
+  }
+  TurnTowardPlayer(mgr, dt, 1.7453293f);
+  UpdateScatterShotFire(mgr, dt);
+  UpdateCurrentAttack(0x10, mgr, msg);
+  DoStepCmd(msg, pas::kAS_Step,
+            CBCStepCmd(mScatterSide != 0 ? pas::kSD_Left : pas::kSD_Right, pas::kStep_BreakDodge));
 }
 
 void CDarkSamus::NormalMissileAttack(CStateManager&, EStateMsg msg, float) {
@@ -2218,6 +2246,7 @@ void CDarkSamus::TurnTowardPlayer(CStateManager& mgr, float dt, float rate) {
 // lbl_10_rodata_478 = 6.5f to either side of the aim (the perpendicular (y, -x), 0x000118E0..
 // 0x00011908; z = aim z + 0.0f). Side 1 (`cmplwi r0, 0x1` at 0x000118EC) starts the line on the
 // (y, -x) side, any other side on the (-y, x) side.
+// @ fn_10_11814
 void CDarkSamus::StartScatterShotFire(CStateManager& mgr, uchar side) {
   mScatterStartTime = mElapsedTime;
   mScatterFiring = 1;
@@ -2247,6 +2276,7 @@ void CDarkSamus::StartScatterShotFire(CStateManager& mgr, uchar side) {
 // (0xB94 - 0xB7C), jittered by the state manager's random (0x16E4): x and y by
 // lbl_10_rodata_3E0 = 2.0f * (lbl_10_rodata_408 = 4.0f * rand) - 4.0f (0x000132F0..0x0001334C), z
 // by lbl_10_rodata_4B4 = 9.0f * rand + lbl_10_rodata_4B0 = -1.5f (0x00013350..0x00013378).
+// @ fn_10_13230
 CVector3f CDarkSamus::GetScatterShotAimPoint(CStateManager& mgr) const {
   float t = (mElapsedTime - mScatterStartTime) / (mCurrentAttack == 8 ? 0.47f : 0.67f);
   if (t > 1.f) {
@@ -2345,6 +2375,31 @@ void CDarkSamus::UpdateScatterShotFire(CStateManager& mgr, float dt) {
   while (mScatterTimer > interval) {
     mScatterTimer -= interval;
     FireScatterShotProjectile(mgr);
+  }
+}
+
+// fn_10_21DF8 (0x00021DF8, 0x11C bytes): the step command, the same shape as fn_10_21F14. Activate
+// (0x00021E38) sets the animation state 0x6B4 to 1 (kAS_Ready) and delivers the command (DeliverCmd
+// at 0x00021E50, the step slot copy at 0x00021E54..0x00021E88); Update (0x00021E90) delivers it
+// again while CanIssueCommand(state) answers true (0x00021E98); Deactivate (0x00021EF4) sets the
+// animation state to 0 (kAS_NotReady).
+// @ fn_10_21DF8
+void CDarkSamus::DoStepCmd(EStateMsg msg, pas::EAnimationState state, const CBCStepCmd& cmd) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(cmd);
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), state)) {
+      BodyController()->CommandMgr().DeliverCmd(cmd);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
   }
 }
 
