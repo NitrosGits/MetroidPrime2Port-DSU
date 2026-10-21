@@ -24,6 +24,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 BUILD=${BUILD:-$ROOT/build-port-link}
+# a coverage build (MP_PORT_COVERAGE) writes its .gcda files into the run's own directory:
+# the gcov counters of this run then merge with the other runs' (tools/cov/gcov_report.py).
+. "$ROOT/tools/cov/gcov_env.sh"
+gcov_env "$BUILD" "$OUT"
 mkdir -p /tmp/opencode/locks; SLOT=
 for s in $(seq 1 16); do
   exec {SLOTFD}>"/tmp/opencode/locks/cov-slot.$s"
