@@ -479,8 +479,9 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
   // The switch on the event type (`cmplwi r31, 0x2e` at 0x0001BF28, jumptable_10_data_FB4).
   // kUE_EventStart (case 27, 0x0001C1F0) switches on the current attack 0x980 and never reaches
   // the base: the scatter shots start (fn_10_11814) with side 0 for 8 (0x0001C25C) and the byte
-  // 0xBAC for 0x10 (0x0001C268). Its 0x100 (0xA84 = 1), 0x100000 (0xAB8 bit 0x40) and 0x400000
-  // (fn_10_6118, fn_10_8178) arms are not in the port yet.
+  // 0xBAC for 0x10 (0x0001C268), and the phazon beam with its sound for 0x400000 (fn_10_6118,
+  // fn_10_8178 at 0x0001C270). Its 0x100 (0xA84 = 1) and 0x100000 (0xAB8 bit 0x40) arms are not
+  // in the port yet.
   // kUE_Projectile (case 0, 0x0001C134) switches on the current attack 0x980 and never reaches
   // the base either: the melee hit fn_10_13AB4 for 1..4 except 3 (0x0001C15C/0x0001C168,
   // 0x0001C1B8), the missile fn_10_1353C for 0x40/0x80 (0x0001C1C8), fn_10_133D0 for 0x100
@@ -499,6 +500,10 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     case 0x10:
       StartScatterShotFire(mgr, mScatterSide);
       break;
+    case 0x400000:
+      CreatePhazonBeam();   // fn_10_6118 at 0x0001C270
+      StartPhazonBeamSfx(); // fn_10_8178 at 0x0001C278
+      break;
     default:
       break;
     }
@@ -507,8 +512,9 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
   // kUE_BeginAction (case 17, 0x0001C004) and kUE_EndAction (case 18, 0x0001C0A0) switch on the
   // current attack 0x980 and never reach the base: the sweep beam (0x10000, `lis r0, 0x1` at
   // 0x0001C008 / 0x0001C0A4) starts its effect (fn_10_C85C at 0x0001C098) and releases it
-  // (fn_10_C798 at 0x0001C11C). BeginAction's 0x2 arm (0x0001C018) and EndAction's 0x40, 0x100,
-  // 0x100000 counters (0xA38/0xA78/0xAB0) and 0x400000 arm are not in the port yet.
+  // (fn_10_C798 at 0x0001C11C); EndAction counts the phazon attack's shots 0xF48 for 0x400000
+  // (0x0001C124). BeginAction's 0x2 arm (0x0001C018) and EndAction's 0x40, 0x100, 0x100000
+  // counters (0xA38/0xA78/0xAB0) are not in the port yet.
   if (type == kUE_BeginAction) {
     if (mCurrentAttack == 0x10000) {
       StartSweepBeam();
@@ -518,13 +524,29 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
   if (type == kUE_EndAction) {
     if (mCurrentAttack == 0x10000) {
       StopSweepBeam();
+    } else if (mCurrentAttack == 0x400000) {
+      ++mGuestF48; // 0x0001C124..0x0001C12C
     }
+    return;
+  }
+  // kUE_EventStop (case 28, 0x0001C280) never reaches the base either: it clears 0xA84, 0xAB8 bit
+  // 0x40, the scatter byte 0xBAD and its start time 0xBA4 (lbl_10_rodata_3FC = 0.0f), then
+  // releases the phazon beam (fn_10_58C0), the guest actor (fn_10_4868) and its sfx (fn_10_812C).
+  if (type == kUE_EventStop) {
+    mGuestA84 = 0;
+    mGuestAB8 &= ~0x40;
+    mScatterFiring = 0;
+    mScatterStartTime = 0.f;
+    ReleasePhazonBeam(); // 0x0001C2A4
+    DeleteGuestActor(mgr); // 0x0001C2B0
+    StopGuestSfx(); // 0x0001C2B8
     return;
   }
   // kUE_Landing (case 12, 0x0001C2C0) switches on the current attack too; the dive's arm
   // (0x20, 0x0001C384) starts the landing (0x10) and, after a bounce (0x0001C3A0), puts the actor
-  // on the ground (fn_10_18FCC with 1), resets the dive record and ends it (0x40 and 0x80). Its
-  // 0x40, 0x100, 0x100000 and 0x400000 arms are not in the port yet.
+  // on the ground (fn_10_18FCC with 1), resets the dive record and ends it (0x40 and 0x80); the
+  // phazon attack's (0x400000, 0x0001C3D4) sets 0xF5C bit 0x80. Its 0x40, 0x100 and 0x100000 arms
+  // are not in the port yet.
   if (type == kUE_Landing && mCurrentAttack == 0x20) {
     mDive.mLanding = true;
     if (mDive.mBounced == true) {
@@ -533,6 +555,10 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
       mDive.mLaunched = true;
       mDive.mDone = true;
     }
+    return;
+  }
+  if (type == kUE_Landing && mCurrentAttack == 0x400000) {
+    mGuestF5C80 = true;
     return;
   }
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);

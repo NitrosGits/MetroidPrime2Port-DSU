@@ -1036,12 +1036,12 @@ private:
   float mGuestFB0 = 0.f;             // guest 0xFB0, the enrage's timer (fn_10_7BC0); the
                                     // EnrageHitReact state (fn_10_7A14) writes its random time
   int mGuestFB4 = 0;                 // guest 0xFB4, the phazon volley's missiles (fn_10_67B8)
-  int mGuestFB8 = 0;                 // guest 0xFB8, the phazon volley is a single (fn_10_67B8)
+  int mGuestFB8 = 1;                 // guest 0xFB8, the phazon volley is a single (0x00020FA0 writes 1)
   int mGuestFBC = 0;                 // guest 0xFBC, the phazon volley pattern index
   float mGuestFC0 = 0.f;             // guest 0xFC0, the phazon blend in [0, 1]
   float mGuestFC4 = 0.f;             // guest 0xFC4, the health the enrage started at; the
                                     // EnrageHitReact state (fn_10_7A14) writes the health
-  CAABox mGuest102C = CAABox(CVector3f::Zero(), CVector3f::Zero()); // guest 0x102C, the base box
+  CAABox mGuest102C = CAABox::MakeNullBox(); // guest 0x102C, the base box (mskNullBox, 0x00020FE4)
   bool mGuest1044 = false;           // guest 0x1044 bit 0x80, 0x102C is kept
   int mGuest1058 = 0;                // guest 0x1058, the phazon volleys to fire (0x00020218);
                                     // the EnrageHitReact state (fn_10_7A14) reads it as the
@@ -1073,12 +1073,31 @@ private:
   // had none of them; the names are the guest offsets because the loader does not name them.
   int mGuest930 = 0;                 // guest 0x930, the number of uids in 0x934 (the ctor writes 0)
   ushort mGuest934[18] = {};          // guest 0x934, the uids fn_10_69C0 deletes (TUniqueId)
-  float mGuestFAC = 0.f;             // guest 0xFAC, the scale fn_10_746C compares with
-  float mGuestFC8 = 0.f;             // guest 0xFC8 (fn_10_7610)
-  float mGuestFCC = 0.f;             // guest 0xFCC (fn_10_7F98)
-  float mGuest1020 = 0.f;            // guest 0x1020 (fn_10_786C)
-  float mGuest1024 = 0.f;            // guest 0x1024 (fn_10_786C)
-  float mGuest1028 = 0.f;            // guest 0x1028 (fn_10_7610, fn_10_786C)
+  // The phazon enrage (the 0xF80 sub-object, fn_10_20F50; the 0xEF0 one, fn_10_45F8; the 0xF68
+  // visor effect token, fn_10_21104). The sphere's asset (0x1020) and contact damage (0x1000) are
+  // mData's mPhazonEnrageSphere / mPhazonEnrageSphereContactDamage, which the ctor copies.
+  void UpdatePhazonEnrage(CStateManager& mgr, EStateMsg msg, float dt); // fn_10_7F98
+  void GrowPhazonScale(CStateManager& mgr, float dt);   // fn_10_7538
+  void ShrinkPhazonScale(CStateManager& mgr, float dt); // fn_10_746C
+  void SetPhazonScale(const CVector3f& scale, CStateManager& mgr); // fn_10_7304
+  void UpdatePhazonSphere(float dt);                    // fn_10_7610
+  CVector3f GetPhazonSpherePos() const;                 // fn_10_7780
+  void CreatePhazonSphere();                            // fn_10_786C
+  void TouchPhazonSphere(CStateManager& mgr);           // fn_10_7D00
+  void StartPhazonVisorEffect(CStateManager& mgr, float duration); // fn_10_490C
+  void ResetPhazonAttack();                             // fn_10_452C (on 0xEF0)
+  static rstl::optional_object< TToken< CGenDescription > > PhazonVisorToken(CAssetId id);
+  float mGuestFAC = 0.f;             // guest 0xFAC, the z scale the phazon scale started at
+  float mGuestFC8 = -1000.f;         // guest 0xFC8, when the phazon volley started (fn_10_7610)
+  float mGuestFCC = -1000.f;         // guest 0xFCC (fn_10_7F98 lowers it, lbl_10_rodata_410)
+  float mGuest101C = -1000.f;        // guest 0x101C, the sphere's last contact (fn_10_7D00)
+  rstl::auto_ptr< CElementGen > mGuest1028; // guest 0x1024/0x1028, the enrage sphere (fn_10_786C)
+  float mGuestF50 = 0.f;             // guest 0xF50 (fn_10_452C clears it)
+  float mGuestF54 = -1000.f;         // guest 0xF54 (fn_10_452C: lbl_10_rodata_140)
+  bool mGuestF5C80 = false;          // guest 0xF5C bit 0x80 (fn_10_452C clears it)
+  // guest 0xF6C, the visor effect's particle (mData.mPartE701DAEA, fn_10_21104)
+  rstl::optional_object< TToken< CGenDescription > > mGuestF6C =
+      PhazonVisorToken(mData.mPartE701DAEA);
   float mGuestD14 = 0.f;             // guest 0xD14 (fn_10_9E00)
   float mGuestD1C = 0.f;             // guest 0xD1C, a copy of the module's bss_128[1] (fn_10_6DAC)
   float mGuestD20 = 0.f;             // guest 0xD20, a copy of the module's bss_128[2] (fn_10_6DAC)
@@ -1093,6 +1112,19 @@ private:
   TUniqueId mGuestF78 = kInvalidUniqueId; // guest 0xF78 (fn_10_4868, fn_10_48C8)
   float mGuestF7C;               // guest 0xF7C (fn_10_48C8)
   CSfxHandle mGuestF60;          // guest 0xF60 (fn_10_812C)
+  // The phazon beam (the 0xEF0 sub-object, fn_10_45F8, whose ctor arguments are the loader's
+  // pART_0x908b06e9 into 0xEF0, pART_0x494de4a4 into 0xEFC (its locked token 0xF00), damageInfo
+  // copied to 0xF2C and sound into 0xF5E): the generator 0xEF4/0xEF8 and its collision effects.
+  // The host reads the three from mData, which nothing writes after the loader.
+  void CreatePhazonBeam();                             // fn_10_6118
+  void ReleasePhazonBeam();                            // fn_10_58C0
+  void StartPhazonBeamSfx();                           // fn_10_8178
+  void UpdatePhazonBeam(CStateManager& mgr, float dt); // fn_10_5974
+  static rstl::optional_object< TLockedToken< CGenDescription > > PhazonBeamHitToken(CAssetId id);
+  rstl::auto_ptr< CElementGen > mGuestEF8; // guest 0xEF4/0xEF8, the beam (fn_10_6118, fn_10_58C0)
+  // guest 0xF00, the beam's hit effect (mData.mPart494DE4A4, fn_10_45F8 at 0x00004644)
+  rstl::optional_object< TLockedToken< CGenDescription > > mGuestF00 =
+      PhazonBeamHitToken(mData.mPart494DE4A4);
 #endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
