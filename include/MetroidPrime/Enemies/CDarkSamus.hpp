@@ -363,6 +363,17 @@ private:
   // fn_10_1E2E8: the oldest uid is dropped and the rest move one down.
   void EraseFirstAttacker();
 
+  // fn_10_1E360: the player's aim position the cover points are scored against.
+  CVector3f GetPlayerAimPosition(CStateManager& mgr) const;
+
+  // fn_10_1E3C0: the uid of the best-scoring active cover point in the actor's area, or
+  // kInvalidUniqueId.
+  TUniqueId FindBestCoverPoint(CStateManager& mgr) const;
+
+  // fn_10_1E4C4: the score of a cover point against `target` (recent attackers, the attack
+  // ranges and the angles to the actor and its facing).
+  float ScoreCoverPoint(const CScriptCoverPoint& cover, const CVector3f& target) const;
+
   // fn_10_1E740: should the actor forget the uid of the attacker that hit it last (the guest's
   // 0xC24)? True when the path to the attacker is shagged, when the path find is over, when the
   // attacker has no cover point, or when the attacker's cover point is within 2 units.

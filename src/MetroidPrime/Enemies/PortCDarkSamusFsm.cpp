@@ -476,6 +476,92 @@ void CDarkSamus::EraseFirstAttacker() {
   mAttackerCount--;
 }
 
+// fn_10_1E360 (0x0001E360, 0x60 bytes): the point on the player the cover points are scored
+// against - the player's aim position (the state manager's 0x14FC and its vtable slot 0x54) a
+// lbl_10_rodata_55C = 0.65f ahead.
+CVector3f CDarkSamus::GetPlayerAimPosition(CStateManager& mgr) const {
+  return mgr.GetPlayer(0)->GetAimPosition(mgr, 0.65f);
+}
+
+// fn_10_1E3C0 (0x0001E3C0, 0x104 bytes): the best cover point to travel to.
+//
+// The AI waypoint list (the state manager's 0x838, its first index at 0x2008) is walked
+// (0x0001E41C..0x0001E4A0): each cover point (the TCastToPtr at 0x0001E428) that is active (the
+// byte at 0x20's bit 7, 0x0001E434) and in the actor's area (0x0001E458) is scored against the
+// player's aim position (fn_10_1E360 at 0x0001E3F8, fn_10_1E4C4 at 0x0001E46C); the best score
+// above lbl_10_rodata_410 = -1000.0f (the fcmpo at 0x0001E470, strict) wins. No cover point
+// answers kInvalidUniqueId (the lhz at 0x0001E3E8).
+TUniqueId CDarkSamus::FindBestCoverPoint(CStateManager& mgr) const {
+  TUniqueId best = kInvalidUniqueId;
+  float bestScore = -1000.f;
+  const CVector3f target = GetPlayerAimPosition(mgr);
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptCoverPoint* cover = TCastToPtr< CScriptCoverPoint >(list[i]);
+    if (cover == nullptr || cover->GetActive() != true ||
+        cover->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const float score = ScoreCoverPoint(*cover, target);
+    if (score > bestScore) { // 0x0001E470
+      bestScore = score;
+      best = cover->GetUniqueId();
+    }
+  }
+  return best;
+}
+
+// fn_10_1E4C4 (0x0001E4C4, 0x27C bytes): how good a cover point is against `target`.
+//
+// The score starts at lbl_10_rodata_404 = 10.0f and loses 10 for each recent attacker uid (the
+// guest's 0xC28 count, the uids at 0xC2C) that is this cover point (0x0001E510..0x0001E528). A
+// cover point between the attack ranges (the 3D distance to the target, Magnitude at
+// 0x0001E588, strictly above 0x3DC and below 0x3E0) gains lbl_10_rodata_40C = 5.0f. The flat
+// (z = lbl_10_rodata_3FC = 0.0f) directions from the target to the cover point and to the actor
+// (each normalized when it can be, 0x0001E5B4/0x0001E610) more than lbl_10_rodata_43C = pi / 2
+// apart (the fcmpo at 0x0001E63C) lose lbl_10_rodata_4C8 = 15.0f, and the flat forward axis (the
+// guest's 0x28/0x38/0x48) and the flat direction from the actor to the cover point more than
+// pi / 2 apart (0x0001E704) lose 10.
+float CDarkSamus::ScoreCoverPoint(const CScriptCoverPoint& cover, const CVector3f& target) const {
+  float score = 10.f;
+  for (uint i = 0; i < mAttackerCount; ++i) {
+    if (mAttackerUids[i] == cover.GetUniqueId()) { // 0x0001E518
+      score -= 10.f;
+    }
+  }
+  const CVector3f toCover = cover.GetTranslation() - target;
+  CVector3f flatToCover(toCover.GetX(), toCover.GetY(), 0.f);
+  const float dist = toCover.Magnitude();
+  if (dist > mMinAttackRange && dist < mMaxAttackRange) { // 0x0001E590/0x0001E59C
+    score += 5.f;
+  }
+  if (flatToCover.CanBeNormalized()) {
+    flatToCover.Normalize();
+  }
+  const CVector3f toSelf = GetTranslation() - target;
+  CVector3f flatToSelf(toSelf.GetX(), toSelf.GetY(), 0.f);
+  if (flatToSelf.CanBeNormalized()) {
+    flatToSelf.Normalize();
+  }
+  if (CVector3f::GetAngleDiff(flatToCover, flatToSelf) > 1.5707964f) { // 0x0001E63C
+    score -= 15.f;
+  }
+  const CVector3f forward = GetTransform().GetForward();
+  CVector3f flatForward(forward.GetX(), forward.GetY(), 0.f);
+  if (flatForward.CanBeNormalized()) {
+    flatForward.Normalize();
+  }
+  const CVector3f selfToCover = cover.GetTranslation() - GetTranslation();
+  CVector3f flatSelfToCover(selfToCover.GetX(), selfToCover.GetY(), 0.f);
+  if (flatSelfToCover.CanBeNormalized()) {
+    flatSelfToCover.Normalize();
+  }
+  if (CVector3f::GetAngleDiff(flatForward, flatSelfToCover) > 1.5707964f) { // 0x0001E704
+    score -= 10.f;
+  }
+  return score;
+}
+
 // fn_10_1E740 (0x0001E740, 0x120 bytes): should the actor forget the uid of the attacker that hit
 // it last (the guest's 0xC24)?
 //
