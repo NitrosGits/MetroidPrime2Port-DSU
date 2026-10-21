@@ -53,15 +53,21 @@ class RetBp(gdb.FinishBreakpoint):
 
 class ForceBp(gdb.Breakpoint):
     def __init__(self, spec, label, exprs, sets, skip, what, ret):
-        # internal: the breakpoint must not stop the game (the coverage harness's own
-        # breakpoints are internal too, and a visible breakpoint at the same address
-        # swallows the coverage counter and stops the game on every hit).
         super().__init__(spec, internal=True)
         self.label, self.exprs, self.sets = label, exprs, sets
         self.skip, self.what, self.n, self.ret = skip, what, 0, ret
 
     def stop(self):
         self.n += 1
+        if self.n > self.skip:
+            for s in self.sets:
+                try:
+                    s = s.strip()
+                    if s.startswith('set var '):
+                        s = s[len('set var '):]  # a spec's `sets` are expressions; tolerate the prefix
+                    gdb.execute('set var ' + s.replace('$this', '((%s*)$rdi)' % CLASS))
+                except gdb.error:
+                    pass
         key = ', '.join(str(ev(e)) for e in self.exprs) if self.exprs else '(entry)'
         if self.ret:
             try:
@@ -72,14 +78,6 @@ class ForceBp(gdb.Breakpoint):
             fh.write('%-40s %-30s %s\n' % (self.label, key, 'FORCED' if self.n > self.skip else ''))
         if self.n <= self.skip:
             return False
-        for s in self.sets:
-            try:
-                expr = s.strip()
-                if expr.startswith('set var '):
-                    expr = expr[len('set var '):]  # a spec's `sets` are expressions; tolerate the prefix
-                gdb.execute('set var ' + expr.replace('$this', '((%s*)$rdi)' % CLASS))
-            except gdb.error:
-                pass
         if self.n <= self.skip + 3:
             with open(LOG, 'a') as fh:
                 fh.write('%s hit %d: %s\n' % (self.label, self.n, self.what))
@@ -90,6 +88,10 @@ for label, where, exprs, sets, skip, what in FORCE:
     ret = label.endswith('|ret')
     if ret:
         label = label[:-4]
+    if where.startswith('loc:'):
+        # an arm line: it only records (the forcing happens at the body's entry)
+        ForceBp(where[4:], label, exprs, sets, skip, what, ret)
+        continue
     hits = [m for m, d in syms if d.startswith(where) and '.cold' not in d and 'clone' not in d]
     if not hits:
         with open(LOG, 'a') as fh:

@@ -1026,6 +1026,10 @@ private:
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
+  // helpers2: the bodies this lane ported (the REL's functions at 0xA000 and up).
+#ifdef TARGET_PC
+  uint GetStageCount() const;   // fn_10_17E48 (0x00017E48, 0x8 bytes): the guest's 0x978
+#endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

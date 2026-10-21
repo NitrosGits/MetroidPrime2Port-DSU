@@ -784,6 +784,7 @@ set(MP_MODULE_DarkSamus_SOURCES
     src/MetroidPrime/Enemies/PortCDarkSamus.cpp
     src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp
     src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp
+    src/MetroidPrime/Enemies/PortCDarkSamusHelpers2.cpp
 )
 set(MP_MODULE_DigitalGuardian_SOURCES
     src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
