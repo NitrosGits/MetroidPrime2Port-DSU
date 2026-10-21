@@ -664,6 +664,50 @@ A run that reaches state 3 (the belly accumulator over 50, or over 5 at min heal
 all of them: `fn_78_35DC` and `fn_78_3320` from the `LightHit`/`HeavyHit` triggers, and
 `fn_78_9A44` from the player touching a joint while the tongue pulls.
 
+### Stage1: forcing state 3, the branch tables and the next three (2026-10-21)
+
+`git merge port` brought the fast harness (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` runs the
+game ~3.5x faster) and the console's `fsm`/`place`/`frame`. The live-aim driver is now
+`tools/drivers/swampboss1_aim.py`.
+
+**Forcing state 3.** `fsm <boss> ExposeBelly` does enter the state (the port's
+`CGenericFSM2State::SetState` takes the name), but the console's reply says "not entered" for
+every state, because the machine leaves the state again inside the same update: the reply
+compares the name after `SetState` with the one asked for, and the FSM2 evaluates the state's
+own transitions in that update. So the reply is not evidence either way - the heartbeat
+(`st=` in the probe) and the function probes are.
+
+The state does not stay long enough for the hit-react triggers: `fsm <boss> ExposeBelly` followed
+by `damage <boss> 40` (the LightHit trigger needs the HP under the snapshot taken at the
+activation) leaves the state before the damage lands, and the damage before the forcing takes
+the snapshot after it, so neither order fires the trigger. Pushing the accumulator with
+`damage <joint> <n>` does not work either: the port's `ApplyDamageMsg` only counts a hit that
+came from a projectile (`proj` is the joint's last toucher), and a console `damage` has the
+player as the toucher.
+
+**The branch tables** (the arms, with the retail branch addresses; a run of the traced fight and
+of the forced-state runs):
+
+| fn | arm | retail branch | probe count | verdict |
+|---|---|---|---|---|
+| `fn_78_35DC` | the `msg == 1` branch (RetractTongue, UpdateTongueTip, HeadWeightDown, UpdateHeadTurn) | `cmpwi r31, 0x1` at 0x3620 | 0 | **not marked** - the function was never entered (state 3 unreached) |
+| `fn_78_35DC` | the other messages | `bne .L_00003670` at 0x3624 | 0 | not marked |
+| `fn_78_3320` | the Activate `DeliverCmd(CBCAdditiveReactionCmd)` | `cmpwi r31, 0x0` at 0x3340 | 0 | **not marked** - never entered |
+| `fn_78_3320` | the shared body | `bl fn_78_35DC` at 0x333C | 0 | not marked |
+| `fn_78_348C` | the Activate branch (SetJointsActive(kAllJoints, 0xa) and `DeliverCmd(CBodyStateCmd)`) | `cmpwi r31, 0x0` at 0x34B8 | 0 | **not marked** - never entered |
+| `fn_78_348C` | the shared body and the taunt | `bl fn_78_35DC` at 0x3508, `bl fn_78_B9D0` | 0 | not marked |
+| `fn_78_9A44` | the state-5 branch (the `kMT_SeekerTarget` walk) | `cmpwi r0, 0x5` at 0x9A54 | 0 | **not marked** - no joint touch during a tongue pull |
+| `fn_78_9A44` | the base call | the tail of the function | 0 | not marked |
+
+**The next three unmarked functions by static call count** (the ones after the five above; all
+three are the REL's copies of base behaviour, so they are cited, not ported):
+
+| fn | call sites | retail | note |
+|---|---|---|---|
+| `fn_78_21C8` | 0 (a vtable slot) | `bl OnScanStateChange__6CActorF...` | `CActor::OnScanStateChange` - the port does not override it (the "Non-overridden / dropped virtuals" list) |
+| `fn_78_69AC` | 0 (a vtable slot) | `bl GetAimPosition__10CPatternedCFRC13CStateManagerf` | `CPatterned::GetAimPosition` - the base's |
+| `fn_78_69D8` | 0 (a vtable slot) | `bl GetDamageVulnerability__10CPatternedCFv` | `CPatterned::GetDamageVulnerability` - the base's |
+
 ## Stage2 (module 79) — verified
 
 Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata
