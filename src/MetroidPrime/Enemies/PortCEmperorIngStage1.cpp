@@ -1325,8 +1325,10 @@ void CEmperorIngStage1::LookAtPlayer(CStateManager& mgr) {
 
 // fn_16_2DDC (0x2DDC..0x2E1C, 0x40): the cross product of two vectors. The X is
 // a.y * b.z - b.y * a.z (the fmsubs at 0x2DFC), the Y is b.z * a.x - a.z * b.x (0x2E04) and the Z
-// is b.x * a.y - a.x * b.y (0x2E0C).
-// @ fn_16_2DDC
+// is b.x * a.y - a.x * b.y (0x2E0C). The REL's own copy of the DOL's
+// Cross__9CVector3fFRC9CVector3fRC9CVector3f (0x8001994C, 0x40 bytes - the same body, branch
+// free), so it is the host's function and is not marked; the host's CVector3f::Cross is the
+// same code.
 static CVector3f CrossProduct(const CVector3f& a, const CVector3f& b) {
   return CVector3f(a.GetY() * b.GetZ() - b.GetY() * a.GetZ(),
                    b.GetZ() * a.GetX() - a.GetZ() * b.GetX(),
@@ -2150,7 +2152,11 @@ void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
 // 0x7D8 + index * 0x48 + 0x24 = 0x7FC, read at 0x7F1C) has its bit 27 clear - the extrwi at 0x7F20
 // takes one bit at the bit 27, the bit 4 of the byte, so the mask is 1u << (31 - 27) = 0x10. Only
 // then does the base's own handling run (the call at 0x7F6C).
-// Area 11 cannot reach fn_16_7EA8's early return: no sound event comes from a tentacle's locator there.
+// Both arms run in area 11 (2026-10-21, the boss activated with `send u<uid> Activate`): the
+// early return was taken 5627 times (the tentacle index 0..5, the joint's flag byte 0x00, 0x60
+// or 0x80 - the tentacle is not shootable, so its locator's sound is swallowed) and the base's
+// own handling ran 11838 times.
+// @ fn_16_7EA8
 void CEmperorIngStage1::ProcessSoundEvent(int sfxId, float weight, int flags, float fallOff,
                                           float maxDist, const CSegId& locator, ushort pitchStart,
                                           ushort pitchEnd, float pitchDuration, uchar minVol,
@@ -2185,8 +2191,11 @@ void CEmperorIngStage1::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   stateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
-  // The host's FSM1 does not dispatch code nodes yet (TStateMachineState::SetCodeFunctions is
-  // empty), so this only records the table retail registers.
+  // The actor's machine is an FSM2 one (the host's CPatterned picks the FSM2 runtime when the
+  // patterned info has a second machine id, and the run's probe of GetType() gives 1), so the
+  // codes are dispatched: the FSM2's CGenericFSM2State::CallCode runs them. The host's FSM1
+  // (TStateMachineState::SetCodeFunctions, an empty body like the DOL's fn_80194BF0) is not
+  // used here.
   stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
@@ -3011,7 +3020,10 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
 // CStateManager+0x16E4) asked for Range(0.0f, 100.0f) at 0x497C, with 0.0f from
 // lbl_16_rodata_380 and 100.0f from lbl_16_rodata_3D4 - against 50.0f (lbl_16_rodata_3BC): in
 // mode 0 the roll picks 0 or 1, in mode 1 it picks 1 or 2, and every other mode takes 2.
-// Area 11 cannot reach fn_16_4954's body: the host's FSM1 does not dispatch code nodes.
+// The FSM2 machine's code node "ChooseRandomTentacleCount" hangs off the "HeartStageOver"
+// trigger of the "HeartStage" state (the machine has 10 states, 4 codes and 12 triggers), so
+// the body only runs once the fight reaches the heart stage - the area-11 scenario never does
+// (the tentacles are not destroyed, so the FSM stays in TrackPlayer/Attack).
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
   const float roll = mgr.Random()->Range(0.f, 100.f);
   if (x7c0_ == 1) {
