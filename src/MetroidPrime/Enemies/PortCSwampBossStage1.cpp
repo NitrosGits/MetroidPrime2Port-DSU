@@ -771,6 +771,9 @@ void CSwampBossStage1::KnockPlayer(CStateManager& mgr, const CVector3f& velocity
 // `stfs f0, 0x1c4(r31)` at 0x3AA4 stores the force's y.
 // `stfs f1, 0x1c8(r31)` at 0x3AA8 stores its z.
 // `li r4, 0x4` at 0x3A9C is the movement state of the call at 0x3AAC (kMS_FallingMorphed).
+// The CanBeNormalized arm that is never taken: fn_78_44CC passes the player's position plus a
+// normalized direction times dt * 7.5 (dt > 0), so the difference is never zero - 12 calls in a
+// run measured 0.084..0.106 units. The other arm is unreachable in the shipped data.
 void CSwampBossStage1::PullMorphedPlayer(CStateManager& mgr, const CVector3f& pos) {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f dir(pos.GetX() - player->GetTranslation().GetX(),
@@ -937,6 +940,10 @@ void CSwampBossStage1::ReleaseOrbitMessage(CStateManager& mgr) {
 // `extrwi r0, r5, 1, 24` at 0x3974 tests its bit 7 (the orbit message flag).
 // `rlwimi r5, r0, 7, 24, 24` at 0x3988 sets that bit, stored by `stb r5, 0xce4(r3)` at 0x3990.
 // `addi r4, r6, 0x3130` at 0x3998 is the "IS10" state sent by the call at 0x39AC.
+// The "already sent" arm is never taken: the flag is cleared again by the matching IS11 message
+// (fn_78_390C, the port's ReleaseOrbitMessage, which ran once with the flag set) when the pull
+// ends, so every activation sees it clear - one call in a run, with the flag clear. The other
+// arm is unreachable in the shipped data.
 void CSwampBossStage1::SendOrbitMessage(CStateManager& mgr) {
   if (!xce4_orbitMsg) {
     xce4_orbitMsg = true;

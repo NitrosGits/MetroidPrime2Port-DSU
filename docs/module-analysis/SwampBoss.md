@@ -396,6 +396,8 @@ lists, `obj <uid>` in the console):
 So the activation is **layer driven**: the layer controller's "Arrived" (the port's
 `CScriptLayerController::Think` sends it when the layer it watches reaches `kLP_Ready`) opens the
 switch, the switch's "on Open" starts the relay chain, and the last relay activates the boss.
+(The recipe that drives this chain from the console is in "the marked functions' arms, the
+activation recipe, the charged shot" below.)
 Above it sit CScriptLayerController 002001c5 ("Arrived" -> "Increment" -> 002001d7) and the
 switch cascade the four CScriptDamageableTrigger objects 002003e1/e9/ea/ec feed (they die ->
 the counter 002003eb -> relays -> switches 00200226/002001e4).
@@ -410,22 +412,23 @@ never fires. In the retail game the player walks into the arena, a trigger start
 timers, the layer controllers increment, the layers load, "Arrived" opens the switch and the
 relay chain activates the boss; `send u05bb Activate` is the equivalent shortcut.
 
-### Stage1: the charged shot never charges (2026-10-21)
+### Stage1: the charged shot (2026-10-21, first pass - corrected below)
 
-The charge is **not** driven by the fire button: `CPlayerGunBase::ProcessInput`
-(src/MetroidPrime/Player/CPlayerGunBase.cpp:76-83) sets the gun's input bit 4 from
-`CPlayer::ChargeBeamHeld` (the `CControlMapper::kC_ChargeBeam` control), and only that bit
-starts the charge (`CPlayerGun.cpp:631`) and releases it (`CPlayerGun::ButtonRelease`,
-CPlayerGun.cpp:557). The harness held **A** (fire), which fires the normal shot (`mag 2.0` in
-the `MP2_DEBUG_BEAM=1` log) and - with the loaded tweak's auto-fire on the same button - fires
-it again every cooldown; every shot calls `ResetCharge`, so the charge never completes and the
-release fires an uncharged shot. **This is a harness problem (the wrong button), not a port
-bug**: the charge state machine is the upstream retail code (`kCP_ChargeRequested` ->
-`kCP_Charging` -> `kCP_ChargeFx` -> `kCP_Charged`, the factor growing at 1/1.8 per second,
-`CPlayerState::GetMissileComboChargeFactor`) and the port only adds the `TARGET_PC`
-rapid-charge option on top.
+The charge is driven by `CPlayerGunBase::ProcessInput`
+(src/MetroidPrime/Player/CPlayerGunBase.cpp:76-83), which sets the gun's input bit 4 from
+`CPlayer::ChargeBeamHeld` (the `CControlMapper::kC_ChargeBeam` control); only that bit starts
+the charge (`CPlayerGun.cpp:631`) and releases it (`CPlayerGun::ButtonRelease`,
+CPlayerGun.cpp:557). The charge state machine is the upstream retail code
+(`kCP_ChargeRequested` -> `kCP_Charging` -> `kCP_ChargeFx` -> `kCP_Charged`, the factor growing
+at 1/1.8 per second, `CPlayerState::GetMissileComboChargeFactor`) and the port only adds the
+`TARGET_PC` rapid-charge option on top.
 
-### Stage1: the next five most-called unmarked functions (2026-10-21)
+This first pass concluded from the `MP2_DEBUG_BEAM=1` log that the charged shot "never fires
+charged"; that was a misreading - the line prints the beam's ray magnitude, not the damage. See
+"the marked functions' arms, the activation recipe, the charged shot" below for the corrected
+measurement.
+
+### Stage1: the five most-called unmarked functions of the first pass (2026-10-21)
 
 | fn | retail call sites | port body | verdict |
 |---|---|---|---|
@@ -462,6 +465,97 @@ parked in the arena's AI hint and morphed with the X button):
 | `fn_78_39C0` | 35x | the CanBeNormalized arm (the other needs a zero-length direction) |
 | `fn_78_3964` | 2x (`msg=0`) | the "not sent yet" arm (the flag is cleared by the matching IS11 message when the pull ends) |
 | `fn_78_35DC`, `fn_78_3320` | 0x | no run reached state 3 |
+
+### Stage1: the marked functions' arms, the activation recipe, the charged shot (2026-10-21)
+
+**The arms of the marked functions** (one temporary probe per function, never committed):
+
+| fn | calls | arm that ran | the other arm |
+|---|---|---|---|
+| `fn_78_39C0` | 12 | `CanBeNormalized` true, with a difference of 0.084..0.106 units | **unreachable in shipped data**: `fn_78_44CC` passes the player's position plus a normalized direction times `dt * 7.5` (`dt > 0`), so the difference is never zero. Commented at the marker; the marker stays. |
+| `fn_78_3964` | 1 | the flag was clear, so the "IS10" message went out | **unreachable in shipped data**: the flag is cleared again by the matching IS11 message (`fn_78_390C`, the port's `ReleaseOrbitMessage`, which ran once with the flag set) when the pull ends, so every activation sees it clear. Commented at the marker; the marker stays. |
+| `fn_78_35DC` | 0 | - | **not marked**: state 3 is unreachable in the harness runs, so the function was never entered. |
+| `fn_78_3320` | 0 | - | **not marked**: never entered either. |
+
+**Why state 3 (`ExposeBelly`) is unreachable.** The `ShouldExposeBelly` trigger needs `xd10` (the
+belly accumulator) over 50 (over 5 at min health), and `xd10` only grows in the port's
+`ApplyDamageMsg` (fn_78_9B74, ported) when a joint takes a hit - the harness's shots do not land,
+so the accumulator stayed at 0.0 in every run. This is neither shipped data (the disc's FSM2 has
+the edge `ShouldExposeBelly -> ExposeBelly`, and the writer is ported) nor an unported writer, so
+`fn_78_35DC` and `fn_78_3320` stay unmarked. The arm of `fn_78_35DC` that did not run is its
+`msg == 1` branch (`RetractTongue`, `UpdateTongueTip`, `HeadWeightDown`, `UpdateHeadTurn`); the
+function was never entered at all, so its other arm did not run either. `fn_78_3320` was never
+entered either, so neither of its arms ran (the `DeliverCmd(CBCAdditiveReactionCmd)` on Activate
+and the no-op otherwise).
+
+**Activating the boss through the area's own chain.** The area's script objects (read with
+`obj <uid>` in the console) are the only thing that activates it; the chain is
+
+| step | object (editor id) | connection |
+|---|---|---|
+| the activator | CScriptRelay 002000a2 (`u05ba`) | `on Zero send Activate -> 002001c1` (the boss) |
+| its trigger | CScriptRelay 002001d0 (`u044f`) | `on Zero send SetToZero -> 002000a2` |
+| the switch | CScriptSwitch 002001e0 (`u044d`) | `on Open send SetToZero -> 002001d0` |
+| ... | CScriptSwitch 00200226 (`u043e`) | `on Open send SetToZero -> 002001e0` |
+| ... | CScriptRelay 00200228 (`u0476`) | `on Zero send Open -> 00200226` + `on Zero send SetToZero -> 00200226` |
+| ... | CScriptSwitch 002001e4 (`u04b6`) | `on Open send SetToZero -> 0020022a` + `on Open send SetToZero -> 00200227` + `on Open send Play -> 002001c5` |
+| ... | CScriptRelay 002001fc (`u0443`) | `on Zero send SetToZero -> 002001e4` |
+| the root | CScriptCounter 002003eb | `on MaxReached send SetToZero -> 002001fc` - the four CScriptDamageableTrigger objects 002003e1/e9/ea/ec dying |
+| the openers | CScriptLayerController 002001c5 / 002001d7 | `on Arrived send Open -> 002001e4` / `-> 002001e0` |
+
+**The recipe the harness uses** (the area's own script messages; only the layer controllers'
+"Arrived" and the counter's "MaxReached" are stood in for):
+
+    send u044d Open        # the switch 002001e0 open - the message the layer controller 002001d7
+                           # sends on "Arrived"
+    send u0476 SetToZero   # the relay 00200228 - where the switch 002001e4's "on Open" lands
+
+Those two commands make the area's own relays and switches do the rest and the boss activates
+(`fsm Bob`): 00200228 "on Zero" opens the switch 00200226 and sets it to zero, 00200226 "on Open"
+sets 002001e0 to zero, 002001e0 "on Open" sets the relay 002001d0 to zero, 002001d0 "on Zero" sets
+the relay 002000a2 to zero, and 002000a2 "on Zero" sends the Activate.
+
+The two links the harness cannot drive:
+
+- the layer controllers 002001c5/002001d7 never send "Arrived": the port's
+  `CScriptLayerController::Think` only sends it for a **dynamic** layer it was told to load, and
+  `send u04ce Increment` / `send u0454 Increment` (the controllers' own Load/Increment messages)
+  load no layer (the log shows no `[layer] area 32 layer N activated` after them).
+- the counter 002003eb never reaches its maximum: the four CScriptDamageableTrigger objects are
+  inactive, so killing them (`hurt u05a0 500` and the rest, which drives their HP to -500) does
+  not send their "Dead" message and the counter does not increment.
+
+**The charged shot.** The loaded tweak data binds the charge to the same button as the fire
+(probed from `CTweakPlayerControls::GetMapping`: `fire=15 auto=0 charge=15 charge2=15 morph=17
+morph2=17`, so the charge is the A button and there is no auto-fire), so the harness input is
+`press a 0` ... `stick 0 0 0`. The charge does build: with A held the factor grows 0.009, 0.102,
+... 1.000 (the rate is 1/1.8 per second) and the shot leaves when the charge completes. My
+earlier note ("the charged shot never fires charged") was wrong - the `MP2_DEBUG_BEAM=1` line
+prints the beam's ray magnitude, not the damage, and the shots that landed were the press shots.
+What is still true is that the charged shots do not reach the boss's joints: the aim has to be
+set ~1.8 s before the shot leaves and the player falls in the water, so the belly accumulator
+stayed at 0.0 and state 3 was never reached.
+
+### Stage1: five more of the most-called unmarked functions (2026-10-21)
+
+| fn | retail call sites | port body | verdict |
+|---|---|---|---|
+| `fn_78_35DC` | 4 (3320, 348C) | `HitReactBody` | compared, **not marked** (state 3 unreachable) |
+| `fn_78_3320` | 0 (an FSM state) | `LightHitReact` | compared, **not marked** (state 3 unreachable) |
+| `fn_78_348C` | 0 (an FSM state) | `HeavyHitReact` | compared, **not marked** (state 3 unreachable) |
+| `fn_78_5784` | 0 (an FSM state) | `SlideIntoWater` | compared, **not marked** (the state is never reached) |
+| `fn_78_9A44` | 0 (a vtable slot) | `CollidedWith` | compared, **not marked** (its own work needs a joint touch during a tongue pull) |
+
+- **`fn_78_348C` (`HeavyHitReact`)** - the retail sets the joints to `kAllJoints` with
+  `RemoveTarget|Reflect` on Activate, sends `CBodyStateCmd(kBSC_NextState)`, calls the shared
+  hit-react body and then the taunt with type 4; the port does the same in the same order.
+- **`fn_78_5784` (`SlideIntoWater`)** - the retail records state 6 and, on Activate, sets the
+  joints to `kAllJoints` with `RemoveTarget|Reflect` (0xa), rumbles and stops the tongue; the
+  port does the same.
+- **`fn_78_9A44` (`CollidedWith`)** - the retail only does its own work while the state is 5
+  (TonguePull): it walks the collision list for `kMT_SeekerTarget` (bit 0 of the word at
+  collision-info+0x30) and sets the "player touched" flag, and then calls the base. The port
+  does the same.
 
 ## Stage2 (module 79) — verified
 
