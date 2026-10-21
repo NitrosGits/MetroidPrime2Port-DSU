@@ -1613,10 +1613,9 @@ void CSplitterMainChassis::SpawnDrop(CStateManager& mgr, EStateMsg msg, float) {
 // there is one, takes its snatched shield (0xC958 fn_75_5B28). Update (0xC960): once the id at
 // 0xCBC is no longer a CIngSnatchingSwarm (0xC974) it is cleared. Deactivate (0xC990): the head's
 // shield is reset (0xC9B4 fn_75_5D50), the id at 0xCBC is cleared and the spin penalty timer at
-// 0xD14 is the data's spin attack interval penalty (0x874).
+// 0xD14 is the data's spin attack interval (0x874; the penalty is 0x878).
 // Arms: every arm ran in 09_cliff_temple (6c363cd4; the swarm from GENR 82500e1) - with a head,
 // and without one after `kill <head>`; swarm gone and still there both ran.
-// @ fn_75_C8F4
 void CSplitterMainChassis::WaitForSnatch(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1636,7 +1635,7 @@ void CSplitterMainChassis::WaitForSnatch(CStateManager& mgr, EStateMsg msg, floa
       head->PortResetShield(mgr);
     }
     mSnatcherId = kInvalidUniqueId;
-    mSpinPenaltyTimer = mData.mSpinAttackIntervalPenalty;
+    mSpinPenaltyTimer = mData.mSpinAttackInterval;
     break;
   default:
     break;
