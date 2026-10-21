@@ -951,10 +951,17 @@ bool CSpacePirate::FireProjectile(float dt, CStateManager& mgr) {
   return fired;
 }
 
-// Squad bookkeeping and the burst-fire pattern. Retail's switch has a second case (an inert
-// pirate that only counts its attack timer down) that no state reaches.
+// Squad bookkeeping and the burst-fire pattern. Retail switches on the equipped weapon (0x2920
+// lwz 0x888 = data +0xc8): 0 runs the burst fire below; 1 (the grenade launcher) only counts the
+// attack timer down (0x2E60-0x2E70); any other weapon does nothing (0x2E74).
 // @ fn_72_28F0
 void CSpacePirate::UpdateAttacks(float dt, CStateManager& mgr) {
+  if (mData.mEquippedWeapon != 0) {
+    if (mData.mEquippedWeapon == 1) {
+      mAttackRemTime -= dt;
+    }
+    return;
+  }
   bool reset = true;
   const bool canShoot =
       !mAlive || (BodyController()->GetBodyStateInfo().GetCurrentState()->CanShoot() &&
@@ -1016,8 +1023,15 @@ void CSpacePirate::UpdateAttacks(float dt, CStateManager& mgr) {
       }
       FireProjectile(dt, mgr);
       mBurstFire.SetAvoidAccuracy(false);
-      mBurstFire.SetTimeToNextShot(mData.mIntraBurstVariation * (mgr.Random()->Float() - 0.5f) +
-                                   mData.mIntraBurstTime);
+      // 0x2D80: an Ing-possessed pirate uses its own intra-burst time and variation (data +0x94/+0x98).
+      if (IsIngPossessed()) {
+        mBurstFire.SetTimeToNextShot(mData.mIngIntraBurstVariation *
+                                         (mgr.Random()->Float() - 0.5f) +
+                                     mData.mIngIntraBurstTime);
+      } else {
+        mBurstFire.SetTimeToNextShot(mData.mIntraBurstVariation * (mgr.Random()->Float() - 0.5f) +
+                                     mData.mIntraBurstTime);
+      }
     } else if (!mBurstFire.IsBurstSet()) {
       reset = true;
     }
@@ -1104,8 +1118,11 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       mOnGround = false;
     }
     if (message == kSM_Activate && x8f6_24_trooper) {
-      // TODO(fn_72_E498): retail also stores an alpha into the colour byte here when the trooper
-      // is still inactive with no warp point; the value is lost in the pseudocode.
+      // 0xE674-0xE69C: a trooper still inactive with no warp point (xc04 == -1) starts invisible
+      // (colour alpha byte 0x44f = rodata B9C 0.f, quantized).
+      if (!GetActive() && xc04_warpPoint == -1) {
+        mColor.SetAlpha(static_cast< uchar >(0));
+      }
       x8fa_26_ = true;
     }
   }
@@ -1173,7 +1190,8 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     mBurstFire.SetBurstType(3);
     break;
   case kSM_Launching:
-    if (BodyController()->GetCurrentStateId() != pas::kAS_Jump) {
+    // 0xEB10: skipped while the body is hurled (kAS_Hurled, 0xE).
+    if (BodyController()->GetCurrentStateId() != pas::kAS_Hurled) {
       CScriptMsg offGround(msg.GetSenderId(), kInvalidUniqueId, kSM_OffGround);
       CPatterned::AcceptScriptMsg(mgr, offGround);
       SetMomentumWR(CVector3f(0.f, 0.f, -GetGravityConstant() * GetMass()));
@@ -1214,7 +1232,9 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Delete:
   case kSM_Deactivate:
     SquadRemove(mgr);
-    // TODO(fn_72_E498): retail also drops the pirate from the module's charge-player list.
+    // 0xED6C: fn_72_9E64 = remove(uid) on the module's charge-player list (bss_40): fn_72_9EB0
+    // erases every node holding this pirate's id.
+    mChargePlayerList.remove(GetUniqueId());
     break;
   case kSM_Start:
     x8f9_26_started = false;
@@ -1761,6 +1781,8 @@ static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEn
   data.mImpactSfx = static_cast< ushort >(sldrThis.sound_Impact);
   data.mIntraBurstTime = sldrThis.intraBurstShotTime;
   data.mIntraBurstVariation = sldrThis.intraBurstShotVariation;
+  data.mIngIntraBurstTime = sldrThis.unknown_0x5080162a;
+  data.mIngIntraBurstVariation = sldrThis.unknown_0xc78b40e0;
   data.mAlertSfx = static_cast< ushort >(sldrThis.sound_Alert);
   data.mGunTrackDelay = sldrThis.gunTrackDelay;
   data.mFirstBurstCount = static_cast< uint >(sldrThis.unknown_0x1b454a27);
