@@ -430,7 +430,7 @@ void CSplitterMainChassis::FindBestStabLeg(CStateManager& mgr, float) {
 // filter that includes kMT_Solid (lbl_75_data_CA4, 0x3B) and excludes kMT_CollisionActor
 // (lbl_75_data_CA8, 0x2F) RayCollideWorld must answer true (0x9190-0x9198, the ray is clear) and
 // the end must be on the path search's mesh (0x91A4 OnPath at 0xB7C, kR_Success).
-// @ fn_75_909C
+// fn_75_909C (not marked, the 19-run gcov of 2026-10-21: no run reached it, 0/7 lines)
 bool CSplitterMainChassis::PortDodgeIsClear(CStateManager& mgr, const CVector3f& dir,
                                             float length) {
   const CVector3f start = GetBoundingBox().GetCenterPoint();
@@ -1115,7 +1115,8 @@ void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
 // (0x00008F78-0x00008FB4); a safe-magnitude result (0x00008FD4) is normalized and summed and the
 // count (lbl_75_rodata_390, 0.0f) goes up by 1.0f (lbl_75_rodata_364). A count above 0.0f
 // (0x0000903C fcmpo, 0x00009040 ble) divides the sum by it (0x0000904C fdivs).
-// @ fn_75_8EC8
+// fn_75_8EC8 (not marked, the 19-run gcov of 2026-10-21: a null cast never came up in the
+// listening-AI walk; not proven dead)
 CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
@@ -1226,6 +1227,8 @@ void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
 // (0x0000A8D0). The four masks are the data words 0x3B, 0x2F, 0x1C and 0x20 shifted into the
 // list (0x0000A858 and the three after it); the data word 0x3B is the include mask on its own
 // (0x0000A8B4) and the other three the exclude mask.
+// Arms: all ran; the null actor arm is dead (every index names an actor the manager just made);
+// the delete's null test is the compiler's, not a retail arm.
 // @ fn_75_A4E4
 void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
   const CAnimData* anim = GetModelData()->GetAnimationData();
@@ -1288,6 +1291,7 @@ void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
 // looked up and cast (0x0000A3C8, 0x0000A3CC); one that is there gets the chassis's health info
 // (the vtable's 0x3C GetHealthInfo, copied by fn_75_A490 into its 0x38 HealthInfo,
 // 0x0000A3D8-0x0000A458).
+// Arms: the copy ran; the null actor arm is dead, as in fn_75_A4E4.
 // @ fn_75_A37C
 void CSplitterMainChassis::PortCopyHealthToCollisionActors(CStateManager& mgr) {
   for (uint i = 0; i < mCollisionActorManager->GetNumCollisionActors(); ++i) {
@@ -1495,7 +1499,8 @@ void CSplitterMainChassis::Activate(CStateManager&, EStateMsg msg, float) {
 // dodge direction at 0xD04 with type 1 (kStep_Dodge), no target position. Deactivate (0xD778):
 // kAS_NotReady (0), the dodge timer at 0xD1C is the data's min dodge interval (0x848), 0xD41's 0x10
 // bit is cleared and the head's shield is reset (0xD7B8 fn_75_5D50).
-// @ fn_75_D61C
+// fn_75_D61C (not marked, the 19-run gcov of 2026-10-21: the headless dodge-direction-5 arm, the
+// failed head cast at 0xD690, never ran)
 void CSplitterMainChassis::Dodge(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1562,7 +1567,8 @@ void CSplitterMainChassis::HoldingTube(CStateManager&, EStateMsg msg, float) {
 // state at 0x6B4 is kAS_Ready (1), the counter at 0xD00 is 3 and the locomotion type kLT_Combat
 // (3). A ray from the chassis's position straight down (sDownVector, 1000.0f lbl_75_rodata_3AC)
 // against the static world, including kMT_Solid and kMT_Floor (lbl_75_data_C80 0x3B,
-// lbl_75_data_C84 0x1F, 0xCD80-0xCDE8), gives the landing point at 0xCCC: the hit (position +
+// lbl_75_data_C84 0x1F, 0xCD80-0xCDA4; an include filter: the exclude words are 0 and the type
+// word 1, kFT_Include, 0xCDDC-0xCDE4), gives the landing point at 0xCCC: the hit (position +
 // time * down) or, with no hit, the position (0xCDF8-0xCE60); the spin vector at 0xCD8 is zeroed.
 // Update (0xCE84): once the chassis is no more than 10.0f (lbl_75_rodata_38C) above the landing
 // point the animation state is kAS_Over (3). Deactivate (0xCEB0): kAS_NotReady (0) and the base's
@@ -1991,8 +1997,9 @@ void CSplitterMainChassis::PortUpdateTimers(CStateManager& mgr, float dt) {
   }
 }
 
-// fn_75_9520 (not marked: the area-4 run never reached the fade-down branch, which needs the
-// scan timer at 0xD28 above zero - see the module note)
+// Arms: every arm ran in the 04_cliff_contraption (914f1381) runs: fade down to the clamp with
+// the animation deleted, fade up to the clamp.
+// @ fn_75_9520
 // The chassis's fade (0x9520-0x963C), the Think's call at 0x0000F180. The id at 0xCC0
 // (0x00009540 lhz) picks the rate: a valid id gives lbl_75_rodata_39C (0.25f) (0x00009558) and
 // the invalid one lbl_75_rodata_364 (1.0f) (0x00009564), and the step is the frame time divided
@@ -2036,7 +2043,8 @@ void CSplitterMainChassis::PortUpdateConnectedObjects(CStateManager& mgr) {
   mFollowObjectId = GetConnectedObject(mgr, kSS_Retreat, kSM_Follow);
 }
 
-// @ fn_75_8D50
+// fn_75_8D50 (not marked, the 19-run gcov of 2026-10-21: a team that no longer lists the chassis
+// never came up)
 // The chassis's team exit (0x8D50-0x8DF8): the team id at 0xCBE is looked up (0x8D90
 // ObjectById) and cast to a CScriptTeamAiMgr (0x8D94); when the cast fails (0x8D9C) or the
 // actor is not in that team (0x8DB0 IsPartOfTeam, 0x8DB4) nothing happens, else the actor
@@ -2053,6 +2061,8 @@ void CSplitterMainChassis::PortLeaveTeam(CStateManager& mgr) {
   mTeamId = kInvalidUniqueId;
 }
 
+// Arms: the no-hint return and the release ran (04_cliff_contraption 914f1381). The player null
+// test is the port's (the retail reads the player's id through 0x14FC at 0xAB2C with no test).
 // @ fn_75_AAC4
 // The chassis's player-hint release (0xAAC4-0xAB8C): the hint's id at 0xCC4 is looked up
 // (0xAAF0 ObjectById) and cast to a CScriptPlayerHint (0xAAF4); when the cast fails (0xAAF8)
@@ -2199,6 +2209,8 @@ void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
   }
 }
 
+// Arms: the remaining arm ran; the 0x40000000 and 0x80000000 arms are dead in shipped data (the
+// chassis flag words are 0x6E, 0x76, 0x7C and 0x7D; tools/scan_splitter_props.py).
 // @ fn_75_AA68
 // The chassis's locomotion type (0xAA68-0xAAC4): the data's flag word at 0x828 decides it. The
 // word's bit 30 (the byte's 0x40, 0x0000AA78 rlwinm) gives kLT_Lurk (2, 0x0000AA88), the word's
@@ -2215,7 +2227,8 @@ void CSplitterMainChassis::PortSetLocomotionType() {
   }
 }
 
-// @ fn_75_F1C0
+// fn_75_F1C0 (not marked, the 19-run gcov of 2026-10-21: the Damage (XCMG) case and a Deactivate of
+// an inactive chassis never ran)
 // The main chassis's script-message handler (0xF1C0-0xF560): the base's call (0x0000F1F4) and
 // then a switch on the message's four-character code (0x0000F1F8-0x0000F33C). The retail's
 // cases: XCRT (the locomotion type and the body controller's activation), XDEL (the collision
@@ -2223,10 +2236,10 @@ void CSplitterMainChassis::PortSetLocomotionType() {
 // manager's activation), AUDT (its physics), ALRT (the base's flag byte), STRT (the flag byte
 // at 0xD41), ACTN (the scan timer at 0xD28), XAND, XCMG, XRDG, XXDG, XHIT, XLND, IM00 and IM01.
 void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  CPatterned::AcceptScriptMsg(mgr, msg);
   // 0x0000F1E0-0x0000F1F0: the byte at 0x20's 0x80 bit (the word's bit 24) is the actor's
-  // active flag.
+  // active flag, read before the base's call (0x0000F1F4) changes it for ACTV and DCVT.
   const bool active = GetActive();
+  CPatterned::AcceptScriptMsg(mgr, msg);
   switch (msg.GetMessage()) {
   case kSM_Create: { // "XCRT" (0x0000F2C8)
     // 0x0000F328-0x0000F33C: the locomotion type (fn_75_AA68) and the body controller's
@@ -2620,14 +2633,14 @@ void CSplitterMainChassis::SetIngPossessed(bool possessed, CStateManager& mgr) {
   }
 }
 
-// @ fn_75_E87C
+// fn_75_E87C (not marked, the 19-run gcov of 2026-10-21: the possessed-with-head arm never ran -
+// the forced calls found no docked head)
 // vtable slot 0x104 (0x90). The base call (0xE8A0) and then, when the possession flag is set
 // (0xE8A4 clrlwi. r0, r30, 24 - the flag's low byte), the command module's id (the u16 at
 // 0xC6C, 0xE8AC lhz) is looked up (0xE8BC ObjectById, 0xE8C0 the CSplitterCommandModule cast)
 // and told that it is possessed: the command module's vtable slot 0x104 is the DOL's
 // SetIngPossessed(bool, float, CStateManager&) (0xE8CC-0xE8EC: true, mgr,
-// &lbl_75_rodata_390 (0.0f), 0.0f). The id is still the invalid one - the state machine's
-// writers of 0xC6C are missing from the port - so the lookup finds nothing.
+// &lbl_75_rodata_390 (0.0f), 0.0f).
 void CSplitterMainChassis::SetIngPossessed(bool possessed, float duration, CStateManager& mgr) {
   CPatterned::SetIngPossessed(possessed, duration, mgr);
   if (possessed) {

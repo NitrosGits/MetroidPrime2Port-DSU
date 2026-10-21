@@ -433,7 +433,8 @@ and **0x39** for the head (movement 1 / collider 1 / body 7 - it flies), both wi
 `fn_75_8` projectile info, `fn_75_EF24` the pass-through vulnerability, `fn_75_6174` the head's empty
 `KnockBack`); the rest forward to `CPatterned` behind the once-only `[splitter] ... is a port
 stand-in` log. The module's table is registered with {SPLL loader, SPLU loader, auto-destruct}; the
-auto-destruct is a **documented stand-in** - `fn_75_5A54`'s body is still unknown (§j). The run:
+chassis table's auto-destruct entry is a **documented stand-in** (§j); `fn_75_5A54` itself is
+ported as the head's `PortAutoDestruct` (2026-10-21, below). The run:
 `0q_cliff_hall` (layer 0, live on load) lists 8 objects - 5 `CSplitterMainChassis` and 3
 `CSplitterCommandModule` - and they think; `09_cliff_temple_dark`'s layer 10 ('Boss Stage 2
 Splitters') loads no robot, so the boss-stage actors come from the area script, not from the layer.
@@ -468,7 +469,10 @@ triggers (module 14) are the integration test.
   {loader, loader, 0, 0xFFFFFFFF, fn_75_5A54}, but the port's struct has 3 members and the DOL's
   `AutoDestruct__20CSplitterMainChassisFf` reads one of them. Which word the DOL calls, and what
   `fn_75_5A54` (which touches offsets up to 0xF6A, only valid for the **command module**) is for,
-  is **unknown**.
+  is **unknown**. The body itself is known (2026-10-21): a live module (0x420's 0x40 bit, 0x5A58)
+  whose 0xF6A 0x04 bit is clear sets the bit (0x5A70) and stores the time as the death timer at
+  0xEF0 (0x5A78); `fn_75_32F4` counts it down and calls `Death` at zero. Ported as
+  `CSplitterCommandModule::PortAutoDestruct`; the chassis table's entry stays the stand-in.
 - `fn_75_5A54` is called from `fn_75_21FC` (the command module's Think helper) — so the auto-destruct
   is the head's, not the body's. The body has no auto-destruct in the REL.
 - `fn_75_7C80` (0x578) and `fn_75_FED0` (0x8A8) are the module's **static initialisers** (the
@@ -1587,5 +1591,25 @@ docks to u0532).
 | E62C, E58C, E530, E494, BBC0 | | not reachable in shipped data (above) → unmarked |
 | 5864 / 57D4, 3FE0 | true arm / all | dead in shipped data (no CONN/FOLW); 5864's false arm never evaluated → unmarked |
 
-CCF0's ray (Solid+Floor include, 1000 down) missed in every natural run; worth a check against
-retail's filter.
+CCF0's ray (Solid+Floor include, 1000 down) missed in every natural run. Retail's filter is the
+same (2026-10-21): include (1<<59 kMT_Solid)|(1<<31 kMT_Floor) built by `__shl2i` from
+lbl_75_data_C80/C84, exclude 0, type 1 (kFT_Include) at 0xCDDC-0xCDE4, 1000.0f along
+sDownVector.
+
+### gcov re-check (2026-10-21, port merged at 939a4df7c)
+
+19 runs on build-port-cov, merged with gcov-tool: natural r0n (a4d81547), rt9/rt9k (6c363cd4),
+rt9d (a92f00b3, `tools/drivers/splitter_t9d_relays.py`), rs914 and rd1-rd8 (914f1381), and six
+gdb-forced runs of the same areas; every run caught=0. 98 markers checked:
+
+| result | bodies |
+|---|---|
+| ALL-ARMS | 20 marked bodies, plus the no-branch ones |
+| untaken edges are not retail arms (switch `default`, the last `else if (Deactivate)`, `delete`'s null test) | 11804, 42F8, D3E0, D2A0, D13C, CF44, D0A4, DDF8, BEEC, the FSM states' `switch` |
+| untaken edges forced earlier / dead in shipped data (cited in the comments) | 55B0, 5568, 4138, 3BEC, 31A8, 4864, 4AC0, 3B34, 1790, 3460, 654C, E0B0, 8DF8, B57C, B1D8, B104, 963C, D7D4, DA38, A4E4, A37C, E4DC, CCF0, C8F4, C9E4, C51C, C034, AAC4, AB8C, 9FA8, 9B9C, AA68, E99C, E810 |
+| unmarked (an arm never ran, not proven dead) | 32F4, 1188, 23F0, 270C, 909C, 8EC8, D61C, 8D50, F1C0, E87C |
+| newly marked (ALL-ARMS, no stand-in callee) | 2154 (teleport forced), 3D20, 9520 |
+
+ALL-ARMS but not marked: the two constructors (6B08, F5F8 keep only part of the retail state) and
+PortTargetDistanceSq (an inlined helper, no retail body). The F1C0 port read `active` after the
+base's AcceptScriptMsg; retail reads it first (0xF1E0-0xF1F4), fixed.

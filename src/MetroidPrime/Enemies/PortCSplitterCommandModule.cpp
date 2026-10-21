@@ -576,6 +576,9 @@ void CSplitterCommandModule::Hover(CStateManager& mgr, EStateMsg msg, float dt) 
 // the head's own position (0x54, 0x58 and 0x5C - 0x2190-0x21BC) is moved through the head's
 // transform (0x21B0 the transform at 0x24, 0x21CC TransposeRotate) and the result moves the
 // head in one frame (0x21DC MoveInOneFrameOR).
+// Arms: the move ran in every head run; the teleport (the timer above 0) forced under gdb (the
+// 0xEF4 timer set to 10.0f in a 914f1381 run).
+// @ fn_75_2154
 void CSplitterCommandModule::PortMoveTo(const CVector3f& dest, float dt) {
   if (mAutoDestructTimer > 0.f) {
     SetTranslation(dest);
@@ -940,10 +943,19 @@ void CSplitterCommandModule::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
-// The module's auto-destruct (fn_75_5A54). Its body is not understood yet (the module note's
-// section j), so it logs once and does nothing else.
+// fn_75_5A54 (the module's auto-destruct, 0x5A54-0x5A80): only for a live module (the base's flag
+// byte at 0x420, the word's bit 25 - the byte's 0x40, 0x5A58 extrwi.) whose 0xF6A 0x04 bit is still
+// clear (0x5A64 extrwi.) the bit is set (0x5A70 rlwimi) and the death timer at 0xEF0 is the time
+// (0x5A78 stfs); fn_75_32F4 counts it down and kills the module at zero.
 void CSplitterCommandModule::PortAutoDestruct(float time) {
-  StandIn("fn_75_5A54 (the module's auto-destruct)");
+  if (!GetAlive()) {
+    return;
+  }
+  if ((mAutoDestructFlags & 0x4) != 0) {
+    return;
+  }
+  mAutoDestructFlags |= 0x4;
+  mDeathTimer = time;
 }
 
 // The module's own calls in the command module's chassis check: both are over 0x80, so each
@@ -1156,7 +1168,9 @@ void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
   BodyController()->SetLocomotionType(pas::kLT_Relaxed);
 }
 
-// @ fn_75_32F4
+// fn_75_32F4 (not marked, the 19-run gcov of 2026-10-21: the dead-module arm with the 0x04 bit set
+// and the death timer still above 0 never ran - the only call of PortAutoDestruct in the runs is
+// fn_75_21FC's with 0.0f)
 // The command module's flash and death (0x32F4-0x3460): three timers are counted down (0xF10 at
 // 0x332C, 0xF0C at 0x333C and 0xF14 at 0x3344) and two counted up (0xF18 at 0x3354 and 0xF1C at
 // 0x3360). While the flash weight 0xF08 is above zero (0x336C-0x3370) it is counted down and
@@ -1189,6 +1203,8 @@ void CSplitterCommandModule::PortUpdateFlashAndDeath(CStateManager& mgr, float d
   }
 }
 
+// Arms: all ran but the 0x8-clear arm of the data word 0x7C0, dead in shipped data: every SPLU
+// placement has 0xB there (tools/scan_splitter_props.py).
 // @ fn_75_31A8
 // The command module's chassis check (0x31A8-0x32F4): the id at 0xEFA (0x31D8 lhz) is looked up
 // (0x31E8 GetObjectById) and cast to the main chassis (0x31EC); a null cast or a chassis whose
@@ -1296,7 +1312,8 @@ bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
   return chassis->GetScanTimer() > 0.f;
 }
 
-// @ fn_75_1188
+// fn_75_1188 (not marked, the 19-run gcov of 2026-10-21: the detection range <= 0 arm and its cone
+// edges never ran; not proven dead)
 // The head's beam-effect spawner (0x1188-0x14CC). The beam effect's id (0xF68) is looked up
 // (0x11B0 ObjectById), the module's own transform (fn_75_10D0, 0x11C0) is built and copied
 // (0x11CC) and set on the beam effect (0x11E0 SetTransform), and the gate (fn_75_58E8, 0x1200)
@@ -1509,7 +1526,8 @@ void CSplitterCommandModule::PortTurnUpright(float dt) {
 // (0x2480-0x249C) gives the steering separation (0x24DC) from its position with 5.0f
 // (lbl_75_rodata_58) times the model data's scale x; safe ones (0x24FC) are normalized and summed
 // and counted; a count above 0.0f (0x2564) divides the sum (0x2574).
-// @ fn_75_23F0
+// fn_75_23F0 (not marked, the 19-run gcov of 2026-10-21: a null cast and an AI in another area
+// never came up in the listening-AI walk; not proven dead)
 CVector3f CSplitterCommandModule::PortSeparationVector(CStateManager& mgr) const {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
@@ -1580,6 +1598,9 @@ void CSplitterCommandModule::ResetAttackTimes(CStateManager& mgr, float) {
 // (0x3D8C GetObjectById) the destination is its aim position (0x3DE4, vtable 0x54 with 0.0f)
 // plus 4.0f (lbl_75_rodata_5C) up and the 0x80 bit is set (0x3E14). The path finder at 0x6F4
 // takes the destination (0x3E24 SetDestination) and the target as its face target (0x3E2C, 0x718).
+// Arms: the target arm ran in the 04_cliff_contraption (914f1381) runs; no target ran in the
+// scripted 914f1381 run (u0521 deactivated and reactivated).
+// @ fn_75_3D20
 void CSplitterCommandModule::SetTargetDest(CStateManager& mgr, float) {
   CVector3f dest = GetTranslation();
   mAutoDestructFlags &= ~0x80;
@@ -1766,7 +1787,8 @@ void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
 // (right, 0x2958) or -1 (0x2768).
 // The near-AI arms and -1 ran forced (place): the other chassis parked beside the head. The left
 // pick ran forced (fsm): the head sent back into LaserPulse until the random bit picked it.
-// @ fn_75_270C
+// fn_75_270C (not marked, the 19-run gcov of 2026-10-21: the walk's null and other-area arms and
+// the both-sides-open pick never ran on this build)
 int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
   const float dist = mDodgeDistance;
   const CVector3f pos = GetTranslation();
@@ -1894,6 +1916,8 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   PortAutoDestructTimer(dt);
 }
 
+// Arms: all ran but a projectile that is not a CBeamProjectile, dead: the head only fires its
+// laser sweep beam through this path.
 // @ fn_75_1790
 // The head's laser-pulse projectile despawn (0x1790-0x184C): the projectile's id at 0xF02 is
 // looked up (0x17BC ObjectById) and, when it is there, its virtual at the vtable word 0x24 is
@@ -1920,6 +1944,8 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   }
 }
 
+// Arms: all ran; a joint that is not a collision actor and the Beam_LCTR arm are dead (the head's
+// only joint is "Skeleton_Root"); the delete's null test is the compiler's, not a retail arm.
 // @ fn_75_3460
 // The head's collision actor manager (0x3460-0x3674): the head's one joint sphere - the
 // "Skeleton_Root" locator (rodata 0x0) with the radius 3.0f (rodata 0x4) and the mass 1000.0f
@@ -1974,6 +2000,8 @@ void CSplitterCommandModule::PortStartFlashIfTarget(const CScriptMsg& msg) {
 
 // vtable slot 0x18 = fn_75_654C (0x24C): it calls the base class's AcceptScriptMsg and then
 // switches on the script message's four-character code.
+// Arms: every case the runs sent ran; the null collision actor manager arms are dead: the
+// manager is made at XCRT and never cleared.
 // @ fn_75_654C
 // The command module's script-message handler (0x654C-0x6798): the base's call (0x6578) and a
 // switch on the message's four-character code. The retail's cases: XCRT (the body controller's
