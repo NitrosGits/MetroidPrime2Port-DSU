@@ -1695,3 +1695,27 @@ away for two more), under `tools/cov/run.sh` with `tools/cov/specs/commandopirat
 coverage run: the helper was called nine times, no probe, no rebuild) and under
 `tools/cov/force.sh` with `tools/cov/specs/commandopirate_force.py` (the two forced arms, one
 gdb write each). `grep -c '[port] caught|reach-stub'` on the run log is 0.
+
+### 6.2 `fn_9_3900` - the jump-back velocity: **marked** (2026-10-22)
+
+The module's jump-back velocity (fn_9_3900, 0x15c) runs only from the module's own launching
+message - the kSM_Launching case of the message switch (fn_9_CB40), the call at 0x0000D040 - which
+the area 59 run does not send.  The console's `send <id> <msg>` takes a number, though, so the
+module's message (the fourcc 0x584C4155) can be delivered to the commando:
+
+    send <id> 0x584c4155
+
+The driver `tools/drivers/commandopirate_launch.py` sends it four times in a row: the helper sets
+the 0x08 bit of the flag byte at guest this+0xC63 (0x00003A24) and the module's landed message
+clears it again (0x0000D054), so the sends have to follow each other for the helper's early out
+(0x0000393C) to run.  The cov spec `tools/cov/specs/commandopirate_launch.py` counts the helper's
+entries.  The coverage run in area 59 (build-port-cov, `tools/cov/run.sh`, 8000 frames, game exit
+code 0, no caught/reach-stub) gives the helper 15/15 lines and 2/2 branches, so the body is
+marked.
+
+The helper's formula is the guest's: `f31` is the gravity the vtable call at 0x00003974 returns in
+`f1` (0x00003988), the apex is the float at guest this+0xBEC over the higher of the two heights
+(0x00003994..0x000039A4), the z velocity is `sqrt(2 * g * (apex - pos.z))` (0x000039A8..0x000039BC,
+`rodata_44C` = 2.0), the time is `zVelocity / g + sqrt(2 * (apex - target.z) / g)`
+(0x000039C8..0x000039EC) and the velocity is `(dx / time, dy / time, zVelocity)`
+(0x00003A00..0x00003A14).
