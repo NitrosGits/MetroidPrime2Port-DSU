@@ -1517,3 +1517,33 @@ game (retail math; not natural).
 | D7D4 | far + unsafe steering | not run (needs a target >10 straight above/below with no separation; a forced vertical place kept a separation) → unmarked |
 | ECA4 | non-CAi object without health / damaged by the spin | not run (wall, steep, floor, CAi, immune ran) → unmarked |
 | 9B9C, 9FA8 | dead-chassis returns | not reached: `damage u0532 99999` leaves hp 10/10 (pass-through vulnerability) → unmarked |
+
+## Chassis and head stand-ins (2026-10-21)
+
+Ported every remaining stand-in. Chassis: IsIntact `E62C`, HasHead `E58C`, CanReachTarget `E530`,
+PathShagged `E4DC`, PathOver `E494`, ShouldDeploy `E028`, DeployPathOver `E00C`, Idle `DFE4`, Inactive
+`DF88`, Activate `DDF8`, Dodge `D61C`, SetRetreatDest `BBC0`, HoldingTube `CC98`, SpawnDrop `CCF0`,
+WaitForSnatch `C8F4`, WaitForDocking `C9E4`, FollowDeployPath `C51C`, DeploymentLanding `C034`. Head:
+HasDockingPath `5864`, DockingPathOver `57D4`, PathOver `55B0`, PathShagged `5568`, SpawnIdle `5498`,
+SeekMainChassis `4138`, FollowDockingPath `3FE0`, SetDockingDest `3BEC`, PortDodgeShield `5CC4`,
+PortSnatchShield `5B28`. C51C and C034 keep retail's radians-vs-degrees turn-limit compare.
+
+Runs (914f1381 layer 2, probes on every if/return/case): d1 `fsm` forcing, d2-d4 under gdb
+(`gdb -x` launching the game; Python breakpoints). `default:` arms are dead: EStateMsg has three values.
+
+| fn | arm | result |
+|---|---|---|
+| DFE4 / DF88 / CC98 | body / both | forced (fsm u0532 Idle / Inactive / HoldingTube) → marked |
+| DDF8 | issue / no issue, generate / not | forced (fsm u0532 Activate, also right after fsm Dodge) → marked |
+| D61C | dir 5 with head / headless | forced (gdb: mDodgeDirection = 5 at Dodge's Activate; fsm u0532 / u0521 Dodge, u0520 killed) → marked |
+| D61C | step issue / not, deactivate head / headless | forced (fsm u0532 Dodge, fsm u0521 Dodge) → marked |
+| 5CC4 / 5B28 | both / body | ran (Dodge dir 5 / fsm WaitForSnatch) → marked |
+| 9B9C, 9FA8 | dead-chassis returns | forced (gdb: mAlive = 0 for one call mid-spin, restored by a FinishBreakpoint) → marked |
+| D7D4 | far + unsafe steering | forced (gdb: offset (0,0,20) at the far test, steering zeroed; MoveInOneFrameOR ran) → marked |
+| CCF0, 5498 | all | not in the shipped FSM2 graphs (`fsm` finds no SpawnDrop/SpawnIdle in any sub-machine) → unmarked |
+| C8F4 | no swarm snatcher (9 F) | not run: the area has no CIngSnatchingSwarm → unmarked |
+| C9E4, 3FE0, 4138, 3BEC, 5864, 57D4, 55B0, 5568 | head coming / detached head arms | not run: the chassis can't be killed (reflect vulnerability; hp 0 under gdb raised no death) → unmarked |
+| C51C | spin vector set (18 T, 20) | not run: no Patrol/ATTK destination in this area → unmarked |
+| C034 | tilted Y column (21 F, 25, 30) | not run → unmarked |
+| E62C, E58C, E530, E494, E028 T, E00C F, E4DC T | | never evaluated on the reached transitions → unmarked |
+| BBC0 | | not run → unmarked |

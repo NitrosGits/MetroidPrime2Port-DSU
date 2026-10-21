@@ -203,6 +203,8 @@ public:
   int GetLaserSweepStage() const { return mLaserSweepStage; }  // guest 0xF34
   // guest 0xEFA: the chassis the head is docked in (the chassis's fn_75_8EC8 reads it, 0x00008F68).
   TUniqueId GetChassisId() const { return mChassisId; }
+  // guest 0xEFC: the chassis the head is checking (the chassis's WaitForDocking reads it).
+  TUniqueId GetCheckedChassisId() const { return mCheckedChassisId; }
 
   // The retail's fn_75_2994 (the head's turn upright), fn_75_23F0 (its separation from other
   // undocked AIs) and fn_75_2280 (the search for a free chassis).
@@ -217,6 +219,10 @@ public:
   void PortResetShield(CStateManager& mgr);
   // The retail's fn_75_5DDC: the head's spin shield (the chassis's SetupSpinAttack calls it).
   void PortSpinShield(CStateManager& mgr);
+  // The retail's fn_75_5CC4 (the chassis's Dodge state's shield) and fn_75_5B28 (its WaitForSnatch
+  // state's).
+  void PortDodgeShield(CStateManager& mgr);
+  void PortSnatchShield(CStateManager& mgr);
 
 private:
   void EnsureBodyActive(CStateManager& mgr);

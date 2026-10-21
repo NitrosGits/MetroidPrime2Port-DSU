@@ -331,35 +331,125 @@ void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
   }
 }
 
-// The state machine names that are not ported yet: each stands in for the retail
-// function the REL's initialiser puts in the table and logs it once, so the log
-// says which retail body the state machine asked for.
-#define SPLITTER_TRIGGER_STANDIN(name, fn)                                       \
-  bool CSplitterCommandModule::name(CStateManager&, const CTriggerData&) const {  \
-    StandIn(#fn " (the head's " #name " trigger)");                            \
-    return false;                                                                  \
-  }
-#define SPLITTER_STATE_STANDIN(name, fn)                                          \
-  void CSplitterCommandModule::name(CStateManager&, EStateMsg, float) {             \
-    StandIn(#fn " (the head's " #name " state)");                                \
-  }
-#define SPLITTER_CODE_STANDIN(name, fn)                                           \
-  void CSplitterCommandModule::name(CStateManager&, float) {                        \
-    StandIn(#fn " (the head's " #name " code)");                                 \
-  }
-SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
-SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
-SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
-SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
-SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
-SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
-SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
-SPLITTER_CODE_STANDIN(SetDockingDest, fn_75_3BEC)
-#undef SPLITTER_TRIGGER_STANDIN
-#undef SPLITTER_STATE_STANDIN
-#undef SPLITTER_CODE_STANDIN
+// Every state machine name the REL's initialiser installs is ported.
 
 // The state machine entries the area-4 run reaches, whose retail body is ported here.
+
+// fn_75_5864 (the head's HasDockingPath trigger, 0x5864-0x58BC): the "CONN"/"FOLW" connected
+// object (0x588C GetConnectedObject) is valid.
+bool CSplitterCommandModule::HasDockingPath(CStateManager& mgr, const CTriggerData&) const {
+  return GetConnectedObject(mgr, kSS_Connect, kSM_Follow) != kInvalidUniqueId;
+}
+
+// fn_75_57D4 (the head's DockingPathOver trigger, 0x57D4-0x57F0): the waypoint navigation's
+// destination at 0x6C0 is kInvalidUniqueId (cntlzw/srwi by 5).
+bool CSplitterCommandModule::DockingPathOver(CStateManager&, const CTriggerData&) const {
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
+}
+
+// fn_75_55B0 (the head's PathOver trigger, 0x55B0-0x55F8): with the flag byte 0xF6A's 0x80 bit
+// (SetDockingDest found the chassis) set the base's PathOver decides (0x55C4 extrwi with the
+// word's bit 24, 0x55D0); without it the path is over.
+bool CSplitterCommandModule::PathOver(CStateManager& mgr, const CTriggerData& data) const {
+  return (mAutoDestructFlags & 0x80) == 0 || CPatterned::PathOver(mgr, data);
+}
+
+// fn_75_5568 (the head's PathShagged trigger, 0x5568-0x55B0): true when 0xF6A's 0x40 bit is set
+// (0x557C extrwi with the word's bit 25), else the base's PathShagged (0x5588).
+bool CSplitterCommandModule::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
+  return (mAutoDestructFlags & 0x40) != 0 || CPatterned::PathShagged(mgr, data);
+}
+
+// fn_75_5498 (the head's SpawnIdle state, 0x5498-0x5538). Activate (0x54C8): the vector at 0xF24
+// is zeroed (sZeroVector). Update (0x54E8): while the checked chassis id at 0xEFC is invalid it
+// becomes the "CONN"/"ATCH" connected object (0x5518 FindConnectedObject).
+void CSplitterCommandModule::SpawnIdle(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mEditorProperties = CVector3f::Zero();
+  } else if (msg == kStateMsg_Update) {
+    if (mCheckedChassisId == kInvalidUniqueId) {
+      mCheckedChassisId = FindConnectedObject(mgr, kSS_Connect, kSM_Attach);
+    }
+  }
+}
+
+// fn_75_4138 (the head's SeekMainChassis state, 0x4138-0x42F8). Activate (0x4184): the animation
+// state is kAS_Ready (1), the locomotion type kLT_Combat (3) and 0xF6A's 0x08 bit is cleared.
+// Update (0x41AC): without a CSplitterMainChassis at 0xEFC (0x41C0) the animation state is kAS_Over
+// (3). With one, its head attach point (fn_75_E68C) is the goal: while the goal is farther than dt
+// * the data's max linear velocity (0x7C4, squared, 0x4234) and the offset is safe the head moves
+// that far toward it (0x42A0 fn_75_2154); otherwise it is put on the goal (0x42B0 SetTranslation)
+// and the animation state is kAS_Over. Deactivate (0x42CC): kAS_NotReady (0).
+void CSplitterCommandModule::SeekMainChassis(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    mAutoDestructFlags &= ~0x8;
+    break;
+  case kStateMsg_Update:
+    if (const CSplitterMainChassis* chassis =
+            TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mCheckedChassisId))) {
+      const CVector3f goal = chassis->PortHeadAttachPoint();
+      const CVector3f offset = goal - GetTranslation();
+      const float step = dt * mData.mMaxLinearVelocity;
+      if (offset.MagSquared() > step * step && offset.IsMagnitudeSafe()) {
+        PortMoveTo(GetTranslation() + step * offset.AsNormalized(), dt);
+      } else {
+        SetTranslation(goal);
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_3FE0 (the head's FollowDockingPath state, 0x3FE0-0x4138). Every message first runs the
+// waypoint navigation's Patrol (0x6B8, 0x4020). Activate (0x403C): the destination at 0x6C0 is the
+// "CONN"/"FOLW" connected object (0x4058) and the locomotion type kLT_Combat (3). Update (0x407C):
+// with a safe body command move vector the head moves by it times dt * the data's max linear
+// velocity (0x7C4, 0x40F8 fn_75_2154) and faces it (0x4108 FaceDirection).
+void CSplitterCommandModule::FollowDockingPath(CStateManager& mgr, EStateMsg msg, float dt) {
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);
+  if (msg == kStateMsg_Activate) {
+    mWaypointNavigation.SetDestination(GetConnectedObject(mgr, kSS_Connect, kSM_Follow));
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+  } else if (msg == kStateMsg_Update) {
+    const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
+    const float step = dt * mData.mMaxLinearVelocity;
+    if (move.IsMagnitudeSafe()) {
+      PortMoveTo(GetTranslation() + step * move, dt);
+      BodyController()->FaceDirection(move, dt);
+    }
+  }
+}
+
+// fn_75_3BEC (the head's SetDockingDest code, 0x3BEC-0x3D20): the destination starts as the
+// head's own position and 0xF6A's 0x80 bit is cleared (0x3C40-0x3C48). A CSplitterMainChassis at
+// 0xEFC (0x3C58) makes it 4.0f (lbl_75_rodata_5C) above the chassis's head attach point
+// (fn_75_E68C), sets the bit and sets the chassis's base 0x420 0x80 bit (the host's
+// mHitByPlayerProjectile, 0x3CCC-0x3CD4). The base's path navigation (0x6F4) gets the destination
+// and its face target (0x718) kInvalidUniqueId.
+void CSplitterCommandModule::SetDockingDest(CStateManager& mgr, float) {
+  CVector3f dest = GetTranslation();
+  mAutoDestructFlags &= ~0x80;
+  if (CSplitterMainChassis* chassis =
+          TCastToPtr< CSplitterMainChassis >(mgr.ObjectById(mCheckedChassisId))) {
+    dest = chassis->PortHeadAttachPoint() + 4.f * CVector3f::Up();
+    mAutoDestructFlags |= 0x80;
+    chassis->SetHitByPlayerProjectile(true);
+  }
+  mPathFindNavigation.SetDestination(dest);
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
+}
+
 
 // fn_75_5564 (the head's Start state, 0x4 bytes): the body is a single return, so the state
 // does nothing.
@@ -1293,6 +1383,31 @@ void CSplitterCommandModule::PortSpinShield(CStateManager& mgr) {
   mOwnVulnerability = CDamageVulnerability::ReflectVulnerabilty();
   SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
   mShieldState = 2;
+  mCountupTimerA = 0.f;
+  PortUpdateEffectStates(mgr);
+}
+
+// fn_75_5CC4 (0x5CC4-0x5D50): as fn_75_5DDC, but the shield state at 0xEDC is 1 (0x5D1C-0x5D28)
+// and, when it was 2, the timer at 0xF1C is zeroed first (0x5D00-0x5D14).
+// @ fn_75_5CC4
+void CSplitterCommandModule::PortDodgeShield(CStateManager& mgr) {
+  mOwnVulnerability = CDamageVulnerability::ReflectVulnerabilty();
+  SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
+  if (mShieldState == 2) {
+    mCountupTimerB = 0.f;
+  }
+  mShieldState = 1;
+  mCountupTimerA = 0.f;
+  PortUpdateEffectStates(mgr);
+}
+
+// fn_75_5B28 (0x5B28-0x5B9C): the reflecting vulnerability as in fn_75_5DDC, but the head is made
+// not orbitable (0x5B60 SetVisorOrbitableFlags 0xF, false) and the shield state at 0xEDC is 3.
+// @ fn_75_5B28
+void CSplitterCommandModule::PortSnatchShield(CStateManager& mgr) {
+  mOwnVulnerability = CDamageVulnerability::ReflectVulnerabilty();
+  SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), false);
+  mShieldState = 3;
   mCountupTimerA = 0.f;
   PortUpdateEffectStates(mgr);
 }

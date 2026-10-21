@@ -30,6 +30,7 @@
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
+#include "MetroidPrime/Enemies/CIngSnatchingSwarm.hpp"
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -167,43 +168,7 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 
 } // namespace
 
-// The state machine names that are not ported yet: each stands in for the retail
-// function the REL's initialiser puts in the table and logs it once, so the log
-// says which retail body the state machine asked for.
-#define SPLITTER_TRIGGER_STANDIN(name, fn)                                       \
-  bool CSplitterMainChassis::name(CStateManager&, const CTriggerData&) const {    \
-    StandIn(#fn " (the chassis's " #name " trigger)");                            \
-    return false;                                                                  \
-  }
-#define SPLITTER_STATE_STANDIN(name, fn)                                          \
-  void CSplitterMainChassis::name(CStateManager&, EStateMsg, float) {               \
-    StandIn(#fn " (the chassis's " #name " state)");                              \
-  }
-#define SPLITTER_CODE_STANDIN(name, fn)                                           \
-  void CSplitterMainChassis::name(CStateManager&, float) {                          \
-    StandIn(#fn " (the chassis's " #name " code)");                               \
-  }
-SPLITTER_TRIGGER_STANDIN(IsIntact, fn_75_E62C)
-SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
-SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
-SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_E4DC)
-SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_E494)
-SPLITTER_TRIGGER_STANDIN(ShouldDeploy, fn_75_E028)
-SPLITTER_TRIGGER_STANDIN(DeployPathOver, fn_75_E00C)
-SPLITTER_STATE_STANDIN(Idle, fn_75_DFE4)
-SPLITTER_STATE_STANDIN(Inactive, fn_75_DF88)
-SPLITTER_STATE_STANDIN(Activate, fn_75_DDF8)
-SPLITTER_STATE_STANDIN(Dodge, fn_75_D61C)
-SPLITTER_STATE_STANDIN(SpawnDrop, fn_75_CCF0)
-SPLITTER_STATE_STANDIN(HoldingTube, fn_75_CC98)
-SPLITTER_STATE_STANDIN(WaitForDocking, fn_75_C9E4)
-SPLITTER_STATE_STANDIN(WaitForSnatch, fn_75_C8F4)
-SPLITTER_STATE_STANDIN(FollowDeployPath, fn_75_C51C)
-SPLITTER_STATE_STANDIN(DeploymentLanding, fn_75_C034)
-SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
-#undef SPLITTER_TRIGGER_STANDIN
-#undef SPLITTER_STATE_STANDIN
-#undef SPLITTER_CODE_STANDIN
+// Every state machine name the REL's initialiser installs is ported.
 
 // The state machine entries the area-4 run reaches, whose retail body is ported here.
 
@@ -869,9 +834,10 @@ void CSplitterMainChassis::PortSpinMove(const CVector3f& velocity, float dt) {
 // 0xD9E4) with dt * the data's linear velocity (0x864) * the normalized steering; otherwise it
 // moves by the spin vector at 0xCD8 in its own frame (0xD9F8 TransposeRotate, 0xDA08
 // MoveInOneFrameOR). Deactivate (0xDA10): kAS_NotReady (0).
-// Not marked: the far-target arm with an unsafe steering (a target more than 10 units straight
-// above or below with no separation) never ran. The dt and no-target arms are dead (the engine's dt
-// is above 0.0f; 0xCC0 is always the player's id here).
+// The far-target arm with an unsafe steering (a target more than 10 units straight above or below
+// with no separation) was forced under gdb. The dt and no-target arms are dead (the engine's dt is
+// above 0.0f; 0xCC0 is always the player's id here).
+// @ fn_75_D7D4
 void CSplitterMainChassis::SpinAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1414,6 +1380,408 @@ bool CSplitterMainChassis::PrepareForDocking(CStateManager&, const CTriggerData&
 }
 
 
+// fn_75_E62C (the chassis's IsIntact trigger, 0xE62C-0xE64C) and fn_75_E58C (its HasHead
+// trigger, 0xE58C-0xE5AC) are the same body: the command module id at 0xC6C against
+// kInvalidUniqueId (subf both ways, or, srwi by 31 - true when they differ).
+bool CSplitterMainChassis::IsIntact(CStateManager&, const CTriggerData&) const {
+  return mCommandModuleId != kInvalidUniqueId;
+}
+
+bool CSplitterMainChassis::HasHead(CStateManager&, const CTriggerData&) const {
+  return mCommandModuleId != kInvalidUniqueId;
+}
+
+// fn_75_E530 (the chassis's CanReachTarget trigger, 0xE530-0xE54C): the timer at 0xD3C (counted up
+// while the target is valid and the counter at 0xC48 is not zero, fn_75_AFE8) below 3.0f
+// (lbl_75_rodata_378, fcmpo/mfcr lt).
+bool CSplitterMainChassis::CanReachTarget(CStateManager&, const CTriggerData&) const {
+  return mTimerD3C < 3.f;
+}
+
+// fn_75_E4DC (the chassis's PathShagged trigger, 0xE4DC-0xE52C): true when 0xD40's 0x10 bit is set
+// (0xE4F0 extrwi with the word's bit 27), else the base's PathShagged (0xE4FC).
+bool CSplitterMainChassis::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
+  return (mFlagsD40 & 0x10) != 0 || CPatterned::PathShagged(mgr, data);
+}
+
+// fn_75_E494 (the chassis's PathOver trigger, 0xE494-0xE4DC): with 0xD40's 0x20 bit (the
+// destination is the target's, SetTargetDest/SetRetreatDest) set the base's PathOver decides
+// (0xE4A8 extrwi with the word's bit 26, 0xE4B4); without it the path is over.
+bool CSplitterMainChassis::PathOver(CStateManager& mgr, const CTriggerData& data) const {
+  return (mFlagsD40 & 0x20) == 0 || CPatterned::PathOver(mgr, data);
+}
+
+// fn_75_E028 (the chassis's ShouldDeploy trigger, 0xE028-0xE034): 0xD41's 0x04 bit (the STRT
+// message's, 0xE02C extrwi with the word's bit 29).
+bool CSplitterMainChassis::ShouldDeploy(CStateManager&, const CTriggerData&) const {
+  return (mFlagsD41 & 0x4) != 0;
+}
+
+// fn_75_E00C (the chassis's DeployPathOver trigger, 0xE00C-0xE028): the waypoint navigation's
+// destination at 0x6C0 is kInvalidUniqueId (cntlzw/srwi by 5), as in PatrolPathOver.
+bool CSplitterMainChassis::DeployPathOver(CStateManager&, const CTriggerData&) const {
+  return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
+}
+
+// fn_75_DFE4 (the chassis's Idle state): a lone blr.
+// @ fn_75_DFE4
+void CSplitterMainChassis::Idle(CStateManager&, EStateMsg, float) {}
+
+// fn_75_DF88 (the chassis's Inactive state, 0xDF88-0xDFE4). Activate only (0xDFA4 cmpwi/beq): the
+// body controller's locomotion type is kLT_Crouch (0, 0xDFB8) and kMT_Orbit (0x29) is removed
+// from the chassis's materials (0xDFC8).
+// @ fn_75_DF88
+void CSplitterMainChassis::Inactive(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    BodyController()->SetLocomotionType(pas::kLT_Crouch);
+    RemoveMaterial(kMT_Orbit, mgr);
+  }
+}
+
+// fn_75_DDF8 (the chassis's Activate state, 0xDDF8-0xDF88). Activate (0xDE30): the animation state
+// at 0x6B4 is kAS_Ready (1) and 0xD41's 0x08 bit is set. Update (0xDE48): when
+// CTryCommand::ShouldRetry (the host's CAnimationState::CanIssueCommand) allows body state 12
+// (kAS_Generate) a generate command goes out (lbl_75_data_E18, command 15, 0xDE60-0xDF2C) with
+// type 0, no target position, anim -1 and its three flag bits clear; otherwise, once the body is in
+// kAS_Generate (the body controller's 0x37C, 0xDF34-0xDF40), the locomotion type is kLT_Relaxed
+// (1, 0xDF48). Deactivate (0xDF50): kAS_NotReady (0), kLT_Relaxed and 0xD41's 0x08 bit cleared.
+// @ fn_75_DDF8
+void CSplitterMainChassis::Activate(CStateManager&, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mFlagsD41 |= 0x8;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Generate)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCGenerateCmd(pas::kGType_Zero, -1));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_Generate) {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    mFlagsD41 &= ~0x8;
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_D61C (the chassis's Dodge state, 0xD61C-0xD7D4). Activate (0xD65C): the animation state at
+// 0x6B4 is kAS_Ready (1) and 0xD41's 0x10 bit is set; for dodge direction 5 (FindBestDodgeDirection's
+// missile-free pick, 0xD670-0xD678) the head, when there is one (0xC6C, TCastToPtr at 0xD690),
+// raises its dodge shield (0xD6A0 fn_75_5CC4). Update (0xD6A8): when CTryCommand::ShouldRetry allows
+// body state 3 (kAS_Step) a step command goes out (lbl_75_data_5A0, command 1, 0xD6C0-0xD770) in the
+// dodge direction at 0xD04 with type 1 (kStep_Dodge), no target position. Deactivate (0xD778):
+// kAS_NotReady (0), the dodge timer at 0xD1C is the data's min dodge interval (0x848), 0xD41's 0x10
+// bit is cleared and the head's shield is reset (0xD7B8 fn_75_5D50).
+// @ fn_75_D61C
+void CSplitterMainChassis::Dodge(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mFlagsD41 |= 0x10;
+    if (mDodgeDirection == 5) {
+      if (CSplitterCommandModule* head =
+              TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId))) {
+        head->PortDodgeShield(mgr);
+      }
+    }
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(
+          static_cast< pas::EStepDirection >(mDodgeDirection), pas::kStep_Dodge));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mDodgeTimer = mData.mMinDodgeInterval;
+    mFlagsD41 &= ~0x10;
+    if (CSplitterCommandModule* head =
+            TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId))) {
+      head->PortResetShield(mgr);
+    }
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_BBC0 (the chassis's SetRetreatDest code, 0xBBC0-0xBC70): the destination starts as the
+// chassis's own position and 0xD40's 0x20 bit is cleared (0xBBF8-0xBC00); the follow object at
+// 0xCC6, when it is a CScriptWaypoint (0xBC10), gives its position and sets the bit
+// (0xBC1C-0xBC40). The base's path navigation (0x6F4) gets the destination (0xBC4C) and its face
+// target (0x718) kInvalidUniqueId.
+void CSplitterMainChassis::SetRetreatDest(CStateManager& mgr, float) {
+  CVector3f dest = GetTranslation();
+  mFlagsD40 &= ~0x20;
+  if (const CScriptWaypoint* wp = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(mFollowObjectId))) {
+    dest = wp->GetTranslation();
+    mFlagsD40 |= 0x20;
+  }
+  mPathFindNavigation.SetDestination(dest);
+  mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
+}
+
+// fn_75_CC98 (the chassis's HoldingTube state, 0xCC98-0xCCF0). Activate only: the counter at 0xD00
+// is 1, the locomotion type kLT_Lurk (2, 0xCCC4) and the base's vertical-movement bit (0x34C's
+// 0x40) is set.
+// @ fn_75_CC98
+void CSplitterMainChassis::HoldingTube(CStateManager&, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mLandedCount = 1;
+    BodyController()->SetLocomotionType(pas::kLT_Lurk);
+    mVerticalMovement = true;
+  }
+}
+
+// fn_75_CCF0 (the chassis's SpawnDrop state, 0xCCF0-0xCEE8). Activate (0xCD38): the animation
+// state at 0x6B4 is kAS_Ready (1), the counter at 0xD00 is 3 and the locomotion type kLT_Combat
+// (3). A ray from the chassis's position straight down (sDownVector, 1000.0f lbl_75_rodata_3AC)
+// against the static world, including kMT_Solid and kMT_Floor (lbl_75_data_C80 0x3B,
+// lbl_75_data_C84 0x1F, 0xCD80-0xCDE8), gives the landing point at 0xCCC: the hit (position +
+// time * down) or, with no hit, the position (0xCDF8-0xCE60); the spin vector at 0xCD8 is zeroed.
+// Update (0xCE84): once the chassis is no more than 10.0f (lbl_75_rodata_38C) above the landing
+// point the animation state is kAS_Over (3). Deactivate (0xCEB0): kAS_NotReady (0) and the base's
+// 0x420 0x80 bit (the host's mHitByPlayerProjectile) set.
+void CSplitterMainChassis::SpawnDrop(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mLandedCount = 3;
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    const CVector3f pos = GetTranslation();
+    const CRayCastResult result = mgr.RayStaticIntersection(
+        pos, CVector3f::Down(), 1000.f,
+        CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Floor)));
+    if (result.IsValid()) {
+      mLandingPoint = pos + result.GetTime() * CVector3f::Down();
+    } else {
+      mLandingPoint = pos;
+    }
+    mSpinVector = CVector3f::Zero();
+    break;
+  }
+  case kStateMsg_Update:
+    if (GetTranslation().GetZ() - mLandingPoint.GetZ() <= 10.f) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    SetHitByPlayerProjectile(true);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_C8F4 (the chassis's WaitForSnatch state, 0xC8F4-0xC9E4). Activate (0xC934): the head, when
+// there is one, takes its snatched shield (0xC958 fn_75_5B28). Update (0xC960): once the id at
+// 0xCBC is no longer a CIngSnatchingSwarm (0xC974) it is cleared. Deactivate (0xC990): the head's
+// shield is reset (0xC9B4 fn_75_5D50), the id at 0xCBC is cleared and the spin penalty timer at
+// 0xD14 is the data's spin attack interval penalty (0x874).
+void CSplitterMainChassis::WaitForSnatch(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (CSplitterCommandModule* head =
+            TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId))) {
+      head->PortSnatchShield(mgr);
+    }
+    break;
+  case kStateMsg_Update:
+    if (TCastToConstPtr< CIngSnatchingSwarm >(mgr.GetObjectById(mSnatcherId)) == nullptr) {
+      mSnatcherId = kInvalidUniqueId;
+    }
+    break;
+  case kStateMsg_Deactivate:
+    if (CSplitterCommandModule* head =
+            TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId))) {
+      head->PortResetShield(mgr);
+    }
+    mSnatcherId = kInvalidUniqueId;
+    mSpinPenaltyTimer = mData.mSpinAttackIntervalPenalty;
+    break;
+  default:
+    break;
+  }
+}
+
+
+// The head linked at 0xC6E is coming to dock: WaitForDocking's test (0xCA28-0xCA68 and
+// 0xCB48-0xCB88) - a CSplitterCommandModule there, no head of its own at 0xC6C and the head's
+// checked chassis at 0xEFC this chassis.
+static bool PortDockingHeadComing(CStateManager& mgr, TUniqueId linkId, TUniqueId headId,
+                                  TUniqueId self) {
+  const CSplitterCommandModule* head =
+      TCastToConstPtr< CSplitterCommandModule >(mgr.GetObjectById(linkId));
+  return head != nullptr && headId == kInvalidUniqueId && head->GetCheckedChassisId() == self;
+}
+
+// fn_75_C9E4 (the chassis's WaitForDocking state, 0xC9E4-0xCC3C). Activate (0xCA28): with the
+// docking head coming (above) the animation state at 0x6B4 is kAS_Ready (1) and the collision
+// actors' vulnerability is the base's for "target_LCTR" and the reflecting one for the rest (0xCA94
+// fn_75_9AF8); otherwise kAS_Over (3). Update (0xCAA8): when CTryCommand::ShouldRetry allows body
+// state 9 (kAS_LoopAttack) a loop attack command (lbl_75_data_E0C, command 7) of type 1 goes out
+// (0xCAC0-0xCB44); then, once the head is no longer coming, an exit-state command (command 10,
+// 0xCB8C-0xCBB8). Deactivate (0xCBC0): kAS_NotReady (0), an exit-state command and every
+// collision actor reflecting (0xCC00-0xCC1C).
+void CSplitterMainChassis::WaitForDocking(CStateManager& mgr, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (PortDockingHeadComing(mgr, mSecondLinkId, mCommandModuleId, GetUniqueId())) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      PortSetCollisionVulnerability(mgr, *CPatterned::GetDamageVulnerability(),
+                                    CDamageVulnerability::ReflectVulnerabilty());
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLoopAttackCmd(static_cast< pas::ELoopAttackType >(1)));
+    }
+    if (!PortDockingHeadComing(mgr, mSecondLinkId, mCommandModuleId, GetUniqueId())) {
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    PortSetCollisionVulnerability(mgr, CDamageVulnerability::ReflectVulnerabilty(),
+                                  CDamageVulnerability::ReflectVulnerabilty());
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_C51C (the chassis's FollowDeployPath state, 0xC51C-0xC898). Every message first runs the
+// waypoint navigation's Patrol (0x6B8, 0xC574), keeps the body command manager's move vector and
+// clears its locomotion commands (0xC578-0xC594). Activate (0xC5BC): the destination at 0x6C0 is
+// the "ATTK"/"FOLW" connected object (0xC5D8), the spin vector at 0xCD8 is zeroed, a generate
+// command of type 9 goes out (lbl_75_data_E18, command 15, no target, anim -1), the locomotion
+// type is kLT_Combat (3), the turn speed 180.0f (lbl_75_rodata_3C8) and the counter at 0xD00 is 2.
+// Update (0xC708), for dt above 0.0f: a safe move vector, normalized, turned from the spin vector
+// by at most dt * the data's spin attack turn speed (0x870; the angle test compares that degree
+// value with GetAngleDiff's radians, the Slerp converts it with lbl_75_rodata_3A0), becomes the
+// spin vector scaled by dt * the data's deployment speed (0x850); the chassis then moves by the
+// spin vector in its own frame (0xC7FC) and faces it on the surface against its negated Z column
+// (0xC840). Deactivate (0xC848): the turn speed is the patterned info's again (0xCB0).
+void CSplitterMainChassis::FollowDeployPath(CStateManager& mgr, EStateMsg msg, float dt) {
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);
+  const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
+  BodyController()->CommandMgr().ClearLocomotionCmds();
+  switch (msg) {
+  case kStateMsg_Activate:
+    mWaypointNavigation.SetDestination(GetConnectedObject(mgr, kSS_Attack, kSM_Follow));
+    mSpinVector = CVector3f::Zero();
+    BodyController()->CommandMgr().DeliverCmd(
+        CBCGenerateCmd(static_cast< pas::EGenerateType >(9), -1));
+    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    BodyController()->SetTurnSpeed(180.f);
+    mLandedCount = 2;
+    break;
+  case kStateMsg_Update:
+    if (dt > 0.f) {
+      if (move.IsMagnitudeSafe()) {
+        CVector3f dir = move.AsNormalized();
+        if (mSpinVector.IsMagnitudeSafe()) {
+          const float maxAngle = dt * mData.mSpinAttackTurnSpeed;
+          if (CVector3f::GetAngleDiff(mSpinVector, dir) > maxAngle) {
+            dir = CVector3f::Slerp(mSpinVector.AsNormalized(), dir,
+                                   CRelAngle::FromRadians(0.017453292f * maxAngle));
+          }
+        }
+        mSpinVector = dt * (mData.mDeploymentSpeed * dir);
+      }
+      MoveInOneFrameOR(GetTransform().TransposeRotate(mSpinVector), dt);
+      BodyController()->FaceDirectionOnSurface(mSpinVector, -GetTransform().GetColumn(kDZ), dt);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    BodyController()->SetTurnSpeed(mBaseTurnSpeed);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_C034 (the chassis's DeploymentLanding state, 0xC034-0xC3A8). Activate (0xC090): the
+// animation state at 0x6B4 is kAS_Ready (1), the base's vertical-movement bit (0x34C's 0x40) is
+// cleared, the counter at 0xD00 is 4 and the base's animation-delta bits (0x422's 0x30, the host's
+// mDisabledAnimationDeltas) are cleared. Update (0xC0C0): when CTryCommand::ShouldRetry allows body
+// state 13 (kAS_Jump) a jump command (lbl_75_data_E24, command 17, built by fn_75_C4A0 and
+// delivered by fn_75_C3A8) goes to one unit below the chassis with type 2, initial state 2,
+// variant 0 and facing flags 2; otherwise the locomotion type is kLT_Relaxed (1). Unless the counter
+// at 0xD00 is 5 the chassis then moves by the spin vector in its own frame (0xC18C) and, when its
+// Y column's z is at least 0.00001f off zero (lbl_75_rodata_3C4) and the column flattened to the
+// ground plane is safe, turns toward the flattened column by at most 180.0f * dt degrees
+// (lbl_75_rodata_3C8; the same degree/radian test as C51C) with a look-at transform about the up
+// vector (0xC290-0xC2A8). Deactivate (0xC2B0): kAS_NotReady (0), the counter at 0xD00 is 5, the
+// animation-delta bits are cleared, kLT_Relaxed, Stop, and the chassis faces its flattened Y column
+// outright under the same z test (0xC2E0-0xC370).
+void CSplitterMainChassis::DeploymentLanding(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mVerticalMovement = false;
+    mLandedCount = 4;
+    mDisabledAnimationDeltas = 0;
+    break;
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCJumpCmd(GetTranslation() + CVector3f::Down(), static_cast< pas::EJumpType >(2),
+                     static_cast< pas::EJumpState >(2), 0, 2));
+    } else {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    }
+    if (mLandedCount == 5) {
+      break;
+    }
+    MoveInOneFrameOR(GetTransform().TransposeRotate(mSpinVector), dt);
+    const CVector3f forward = GetTransform().GetColumn(kDY);
+    if (CMath::AbsF(forward.GetZ() - 0.f) < 0.00001f) {
+      break;
+    }
+    const CVector3f flat(forward.GetX(), forward.GetY(), 0.f);
+    if (!flat.IsMagnitudeSafe()) {
+      break;
+    }
+    const float maxAngle = 180.f * dt;
+    CVector3f dir = flat;
+    if (CVector3f::GetAngleDiff(forward, flat) > maxAngle) {
+      dir = CVector3f::Slerp(forward, flat, CRelAngle::FromRadians(0.017453292f * maxAngle));
+    }
+    const CVector3f pos = GetTranslation();
+    SetTransform(CTransform4f::LookAt(pos, pos + dir, CVector3f::Up()));
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mLandedCount = 5;
+    mDisabledAnimationDeltas = 0;
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    Stop();
+    const CVector3f forward = GetTransform().GetColumn(kDY);
+    if (CMath::AbsF(forward.GetZ() - 0.f) >= 0.00001f) {
+      const CVector3f pos = GetTranslation();
+      SetTransform(CTransform4f::LookAt(
+          pos, pos + CVector3f(forward.GetX(), forward.GetY(), 0.f), CVector3f::Up()));
+    }
+    break;
+  }
+  default:
+    break;
+  }
+}
+
+
 // The command module's loader lives in PortCSplitterCommandModule.cpp (the two files are the one
 // REL's body).
 CEntity* PortLoadSplitterCommandModule(CStateManager& mgr, CInputStream& input,
@@ -1460,6 +1828,9 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
   const CPASAnimParmData stepParms(pas::kAS_Step, CPASAnimParm::FromEnum(3),
                                    CPASAnimParm::FromEnum(1));
   mStepDistance = GetModelData()->GetScale().GetX() * GetAnimationDistance(stepParms);
+  // fn_75_F5F8 @0x0000F7D8: guest 0xCB0 is the patterned info's turn speed (its 0x8), which
+  // FollowDeployPath's Deactivate (fn_75_C51C, 0xC84C) restores; CPatterned keeps the same copy.
+  mBaseTurnSpeed = mTurnSpeed;
   // The retail constructor also builds the parameter block's converted forms (fn_75_FB30), the
   // possession data (fn_75_77C0), the line-of-sight tracker at 0xc70 and the derived state at
   // 0xa50..0xb7b. They belong to the state machine and the render paths this milestone does not
@@ -1704,8 +2075,9 @@ static bool PortIsBoosting(const CPlayer& player) {
 // CCollisionActor::GetLastTouchedObject) is a boosting player (0xA020-0xA058) advances the spin
 // counter at 0xCFC by the data's 0x888 (0xA05C-0xA06C) and sets 0xD40's 0x2 bit (0xA070-0xA078).
 // Then the player hint is taken (0xA084 fn_75_AB8C).
-// Not marked: the dead-chassis return (0x9FC8) never ran; the spinning, boosting-player arm ran
-// naturally (spin from PathFind, contact forced by place + boost).
+// The dead-chassis return (0x9FC8) was forced under gdb (mAlive clear for one call); the spinning,
+// boosting-player arm ran naturally (spin from PathFind, contact forced by place + boost).
+// @ fn_75_9FA8
 void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive) {  // 0x9FC8-0x9FCC
     return;
@@ -1739,8 +2111,9 @@ void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId send
 // - Anything else, while 0xD41's 0x80 bit is set (0x9ED0-0x9ED8) and the object is not a CAi
 //   (0x9EEC-0x9EF8), takes the spin attack damage the same way (lbl_75_data_CA0, 0x3B; 0x9F84),
 //   without the wait.
-// Not marked: the dead or 0xD40-0x40 return (0x9BC8-0x9BD8) never ran. The spin arms ran with a
-// natural spin (0x9D20 player, 0x9ED0 CAi and non-CAi), the boost and leg stab arms forced.
+// The dead return (0x9BC8-0x9BD8) was forced under gdb (mAlive clear for one call). The spin arms ran
+// with a natural spin (0x9D20 player, 0x9ED0 CAi and non-CAi), the boost and leg stab arms forced.
+// @ fn_75_9B9C
 void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive || (mFlagsD40 & 0x40) != 0) {  // 0x9BC8-0x9BD8
     return;

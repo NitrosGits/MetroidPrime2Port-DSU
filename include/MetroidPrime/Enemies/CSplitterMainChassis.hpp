@@ -108,6 +108,9 @@ public:
   bool PortReserveDock(TUniqueId head);
   void PortReleaseDock(TUniqueId head);
   TUniqueId GetSyncId() const { return mSyncId; }
+  // The retail's fn_75_E68C: the translation of the "attach_LCTR" locator (0xCC8) - where a
+  // docking head goes (the head's SeekMainChassis and SetDockingDest ask).
+  CVector3f PortHeadAttachPoint() const { return GetLctrTransform(mLocatorSegment).GetTranslation(); }
 
 #ifdef TARGET_PC
   // The retail's fn_75_E6E4: the chassis accepts a head (the head's fn_75_3EEC asks). It is
@@ -296,6 +299,11 @@ private:
   // guest 0xCD8: the spin vector SetupSpinAttack zeroes (fn_75_BAA8, 0xBAD8-0xBAF4); the spin
   // states and bounces (fn_75_963C, B104, B1D8, C51C, CCF0, D13C) read it.
   CVector3f mSpinVector = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xCCC: the landing point the SpawnDrop state (fn_75_CCF0, 0xCE38-0xCE60) casts down for
+  // and its Update compares the chassis's height with.
+  CVector3f mLandingPoint = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xCB0: the patterned info's turn speed (the constructor, 0x0000F7D8).
+  float mBaseTurnSpeed = 0.f;
   // guest 0xCE4: the normal of the geometry the spin hit - CollidedWith (fn_75_ECA4, 0xEE00 and
   // 0xEEF0) is its only writer, BounceOffGeometry (fn_75_B104) reads it.
   CVector3f mCollisionNormal = CVector3f(0.f, 0.f, 0.f);
