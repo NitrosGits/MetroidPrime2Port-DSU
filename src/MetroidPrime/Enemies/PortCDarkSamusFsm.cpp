@@ -1082,7 +1082,9 @@ bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
 
 // fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C).
 // NormalMissileAttack (fn_10_17448) clears it on Activate; the only writer of a non-zero value is
-// the anim-event handler (fn_10_1BEFC, 0x0001C30C), still a stand-in, so only the false arm runs.
+// the anim-event handler (fn_10_1BEFC, 0x0001C30C), still a stand-in.
+// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA40 forced (the natural true needs fn_10_1BEFC).
+// @ fn_10_16B5C
 bool CDarkSamus::BreakNormalMissile(CStateManager&, const CTriggerData&) const {
   return mGuestA40 != 0;
 }
@@ -1105,13 +1107,17 @@ bool CDarkSamus::BreakPhazonAttack(CStateManager&, const CTriggerData&) const {
 
 // fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54).
 // SuperMissileAttack (fn_10_16ECC) clears it on Activate; the only writer of a non-zero value is
-// the anim-event handler (fn_10_1BEFC, 0x0001C31C), still a stand-in, so only the false arm runs.
+// the anim-event handler (fn_10_1BEFC, 0x0001C31C), still a stand-in.
+// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA80 forced (the natural true needs fn_10_1BEFC).
+// @ fn_10_16B54
 bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
   return mGuestA80 != 0;
 }
 
 // fn_10_10634 (0x00010634, 0x24 bytes): fn_10_17D50 with the attack 1 (the melee, `li r5, 0x1`
 // at 0x0001063C), the port's IsAttackEnabled.
+// Run (darksamus_triggers2.py, `trigcall`): ran (true); no branch of its own.
+// @ fn_10_10634
 bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
   return IsAttackEnabled(mgr, 1);
 }
@@ -1148,6 +1154,8 @@ bool CDarkSamus::DoneTurning(CStateManager&, const CTriggerData&) const {
 
 // fn_10_142CC (0x000142CC, 0x28 bytes): fn_10_142F4 with lbl_10_rodata_4C4 = 0.17453292f
 // (10 degrees, the lfs at 0x000142DC), the port's IsPlayerInFront.
+// Run (darksamus_triggers2.py, `trigcall`): ran (true); no branch of its own.
+// @ fn_10_142CC
 bool CDarkSamus::FacingPlayer(CStateManager& mgr, const CTriggerData&) const {
   return IsPlayerInFront(mgr, 0.17453292f);
 }
@@ -1163,6 +1171,8 @@ bool CDarkSamus::HitDuringEnrage(CStateManager&, const CTriggerData&) const {
 // fn_10_17CB8 (0x00017CB8, 0x34 bytes): fn_10_17CEC (the distance to the player) against
 // lbl_10_rodata_460 = 30.0f (the lfs at 0x00017CCC); the extrwi at 0x00017CD8 takes the
 // compare's "greater than" bit.
+// Run (darksamus_triggers2.py, `trigcall`): both answers, the player placed 60 and 1 away.
+// @ fn_10_17CB8
 bool CDarkSamus::OutOfMeleeRange(CStateManager& mgr, const CTriggerData&) const {
   return GetDistanceToPlayer(mgr) > 30.f;
 }
@@ -1177,9 +1187,9 @@ bool CDarkSamus::PickedBoostBall(CStateManager&, const CTriggerData&) const {
 }
 
 // fn_10_11760 (0x00011760): the word at 0x984 against 0x100000, the id of the freeze beam. The
-// body is the cntlzw/srwi idiom over `lis r0,0x10` (0x100000) (0x00011764..0x00011774). Not
-// marked: the freeze beam is not one of the TravelToCoverPoints state's transitions, so the body
-// did not run in the walk.
+// body is the cntlzw/srwi idiom over `lis r0,0x10` (0x100000) (0x00011764..0x00011774).
+// Run (darksamus_triggers2.py, `trigcall`): both answers, 0x984 forced.
+// @ fn_10_11760
 bool CDarkSamus::PickedFreezeBeam(CStateManager&, const CTriggerData&) const {
   return mPickedAttack == 0x100000;
 }
@@ -1227,6 +1237,8 @@ bool CDarkSamus::PickedMovingSShot(CStateManager&, const CTriggerData&) const {
 // fn_10_117A0 (0x000117A0): the byte at 0xDEC (the fade flag) first - when it is 1 the
 // trigger answers for the id 0x200000 (the compare at 0x000117B0, `lis r0,0x20`), otherwise
 // for the normal missile's id 0x40 (the compare at 0x000117C4).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xDEC and 0x984 forced.
+// @ fn_10_117A0
 bool CDarkSamus::PickedNormalMissile(CStateManager&, const CTriggerData&) const {
   if (mFadeOut == 1) {
     return mPickedAttack == 0x200000;
@@ -1293,6 +1305,8 @@ bool CDarkSamus::PickedTaunt(CStateManager&, const CTriggerData&) const {
 }
 
 // fn_10_112E8 (0x000112E8, 0x20 bytes): fn_10_11308, the port's IsPlayerMorphed.
+// Run (darksamus_triggers2.py, `trigcall`): ran (false); no branch of its own.
+// @ fn_10_112E8
 bool CDarkSamus::PlayerIsMorphball(CStateManager& mgr, const CTriggerData&) const {
   return IsPlayerMorphed(mgr);
 }
@@ -1360,6 +1374,8 @@ bool CDarkSamus::ShouldFadeOut(CStateManager& mgr, const CTriggerData&) const {
 // pass) test it together with the frozen and the visible flags, so it is the alive flag
 // the host keeps in GetAlive(). The byte at 0xD58 is the flag the PissedOff state clears
 // (fn_10_F930) and the fight script sets.
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xD58 and the alive flag forced.
+// @ fn_10_FD30
 bool CDarkSamus::ShouldGetPissedOff(CStateManager&, const CTriggerData&) const {
   if (GetAlive()) {
     return mPissedOff != 0;
@@ -1469,6 +1485,8 @@ bool CDarkSamus::StartsInTheAir(CStateManager&, const CTriggerData&) const {
 // the last id of the history (the word at 0x998 + (count - 1) * 4, the slwi/add at
 // 0x000106BC..0x000106C8) must not be 0x8000 either (the copy at 0x000106CC and the cmplwi at
 // 0x000106D0).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0x980, the history and the damage forced.
+// @ fn_10_10698
 bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
   if (mCurrentAttack == 0x8000) {
     return false;
@@ -1486,6 +1504,8 @@ bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
 // lbl_10_rodata_428 = 0.2f against the elapsed time at 0x8B0: the fadds at 0x0000F82C, the
 // fcmpo at 0x0000F830 and the extrwi at 0x0000F838, which takes the CR0 bit 1 - the "greater
 // than" of an fcmpo).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0x964 and 0xC44 forced.
+// @ fn_10_F800
 bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
   if (mStillTime > 1.2f) {
     return true;
@@ -1497,6 +1517,8 @@ bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
 // must not be 0.0f (the fcmpu at 0x000112B8) and lbl_10_rodata_46C = 0.3f plus it must be
 // past the actor's elapsed time 0x8B0 (the fcmpo at 0x000112D8, whose "greater than" bit the
 // extrwi at 0x000112E0 takes).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xC0C forced (0, now, now - 1).
+// @ fn_10_112AC
 bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
   if (mGuestC0C == 0.f) {
     return false;

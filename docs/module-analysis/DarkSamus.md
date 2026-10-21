@@ -1195,3 +1195,27 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   time. The random range is the state manager's own CRandom16 (r29+0x16E4, the Range call at
   0x000107A0), the stage's +0x18 and +0x1C are the loader's pauseDurationMin and pauseDurationMax
   (the SLdrDSStageInfo layout: +0x00..+0x20 are the nine floats).
+
+## FSM2 lane slice 6 (2026-10-21): the CBSLoopReaction crash, twelve triggers
+
+- **The crash** (decomp/darksamus2 0473a8b4e's coverage run `/tmp/opencode/covg`, frame ~3600:
+  `CBSLoopReaction::Start` -> `LoopBestAnimation` with the animation 1798152516): its gcov shows
+  FreezeBeam (16CDC) ran once and its fn_10_8870 call delivered once, right before the fault. That
+  8870 delivered a plain `CBodyStateCmd(kBSC_LoopHitReaction)`. The retail call is a loop
+  attack: at 0x00016E40..0x00016E88 the object at r1+0x10 is the vtable lbl_10_data_1B0
+  (CBCLoopAttackCmd's, its base lbl_10_data_1D4), +0x4 the id 7 = kBSC_LoopAttack
+  (0x00016E70), +0x8 the type 4 (0x00016E80), +0xC the wait flag 0 (0x00016E84), and +0x10 the
+  byte with bit 0x80 (skip-into) cleared (`rlwimi r0, r7, 7, 24, 24` at 0x00016E54). The `li r5,
+  0x9` (0x00016E78) is 8870's animation-state argument, pas::kAS_LoopAttack, not a command id. So
+  FreezeBeam's call is `CBCLoopAttackCmd(pas::kLAT_Four, false)` through the typed DeliverCmd,
+  the same shape SuperMissileAttack (type 0), NormalMissileAttack (type 1) and the 0x85DC caller
+  (type 3) already inline. No port-only class is needed. Neither this branch nor 0473a8b4e
+  crashes on the link build with the lane's own driver (the drive.log replayed) or with
+  darksamus_fsm2{,_force2}.con and darksamus_phazon.con.
+- **Marked** with `trigcall` (tools/cov/specs/darksamus_triggers2.{py,con}): 16B5C, 16B54, 112AC,
+  11760, 117A0, FD30, 10698, F800 (each ALL-ARMS or no branches, the members forced at the
+  trigger's entry by key) and the wrappers 17CB8, 142CC, 10634, 112E8 (callees already marked).
+  16B5C/16B54 are true only when forced: their natural writer is the anim-event handler
+  fn_10_1BEFC, still a stand-in.
+- Unmarked: 14284, BB78, BBE4 (their no-stage arm needs fn_10_17E14 to return null, which an
+  entry-only force on the -O2 cov build can't do), 11158, 1BB08.
