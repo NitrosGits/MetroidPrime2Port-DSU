@@ -133,6 +133,17 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mGuestE04(0.f) // not written by the constructor; fn_10_18628 is the only writer
 , mGuestE08(0.f)
 , mGuestE0C(0.f)
+, mBoostBallUid(kInvalidUniqueId)                  // 0x000089FC
+, mBoostBallRollSfxId(data.mBoostBallRollSound == -1 // 0x00008978
+                          ? CSfxManager::kInternalInvalidSfxId
+                          : static_cast< ushort >(data.mBoostBallRollSound))
+, mBoostBallRollSfx()                                // 0x00008A50
+, mBoostBallFlag40(false)
+, mBoostHintUid(kInvalidUniqueId)                    // 0x0002011C
+, mBoostHintDist(1000.f)                             // 0x0002012C
+, mGuestEC8(0)                                       // 0x00020138
+, mGuestECC(CVector3f(0.f, 0.f, 0.f))                // 0x00020140
+, mBoostHintValue(1.f)                               // 0x00020154
 , mDodgeTime(0.f)                               // 0x00020248
 , mDodgeDir(CVector3f::Zero())                  // 0x00020254..0x00020264
 , mGunLctrXf(CTransform4f::Identity()) {        // 0x0001FBC0

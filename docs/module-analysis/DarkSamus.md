@@ -740,3 +740,36 @@ transition enters it.
 - Marked: 17BC0, 17ABC, 177BC, EA08. 8764 stays unmarked (its retry arm).
 - Note: run_m.sh runs hit `DebugDrawAABox`, a reach stub reached from CGunTurretBase.cpp:636,
   not Dark Samus. The run_r2.sh runs never hit it.
+
+## Slice 16 (2026-10-21): BoostBallInto
+
+- Ported: BoostBallInto B164 with the boost hint search B6C4, the arrived hint B458, the chain test
+  BA38 (15 steps), the ball actor 9920 and the ball/emitter update A06C. New members: the 0xE10
+  sub-object's 0xE38 ball uid, 0xE68 roll sound ([probable] boostBallRollSound, by fn_10_895C's
+  argument order), 0xE6C handle, 0xEBC bit 0x40, and 0xEC0..0xED8 (hint uid, distance, 0xEC8,
+  0xECC, clamped value). B570/B670 are the rstl vector copy/dtor around FindConnectedObjects.
+- Reach: `fsm <id> BoostBallInto` (drivers `tools/drivers/darksamus_boost.con` on Agon,
+  `darksamus_boost_rooftop.con` on the rooftop, `MP2_WORLD="1baa96c2,10_cliff_rooftop"`,
+  `LAYER2@400`, boss u04f7, 1500 hp). Natural picks reach it too (PickedBoostBall seen on the
+  rooftop). It exits by AnimOver to BoostBallRoll (fn_10_A3B0, a stand-in, which traps the run).
+  Agon's boss has no kSS_InternalState6 links (no hint) and no roll sound; the rooftop's links 37
+  type-0x11 hints, all active from the start, with value parameters 0.74-0.95.
+
+| body | arm | ran |
+| --- | --- | --- |
+| B164 | Activate / Update / Deactivate | yes / yes / yes |
+| B164 | no start hint (Agon) / start, arrived hint found (rooftop) / start, no arrived hint | yes / yes / **no** |
+| B164 | value > 0 in 0..2 / value <= 0 / value > 2 (`0.f > value` is dead behind `> 0`) | yes / **no** / **no** |
+| B164 | turn to player / turn to hint actor / hint uid not an actor | yes / yes / no (hints are actors) |
+| B6C4 | null cast / inactive / not 0x11 / outside radius / not nearer / BA38 true / kept | no / **no** / **no** / yes / yes / **no** / yes |
+| BA38 | no hint / inactive 0x11 next (true) / 15 steps (false) | **no** / **no** / yes |
+| B458 | no hint / inactive skipped / active found / none | **no** / **no** / yes / **no** |
+| A06C | ball actor / roll emitter | **no** (0xE38 is set by BoostBallRoll/Fire paths) / yes |
+| 9920 | invalid uid / ball | yes / **no** |
+
+- None marked. `send <hint> Deactivate` on a chain hint would force the inactive arms of B6C4, BA38
+  and B458 (forced (send)); the value arms need a hint with value <= 0 or > 2 (none on the rooftop;
+  Temple and 0j_cliff_hall_loop not surveyed).
+- Not started: SweepBeam CA0C (needs C2B0 beam aim + C470 ray/decal/collision response, C104 with
+  BE18 near-list damage, C798 the 0xD78 effect release, and the 0xD74 sub-object), 1B658, 138A4,
+  11FA4's two open arms.

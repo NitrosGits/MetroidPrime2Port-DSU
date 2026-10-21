@@ -531,6 +531,17 @@ private:
   TUniqueId GetNextBattleStage(CStateManager& mgr) const;
   void ActivateHintChains(CStateManager& mgr);
   void AdvanceBattleStage(CStateManager& mgr);
+  // fn_10_B6C4 / B458 / BA38: the boost ball's hints. The nearest active type-0x11 hint the
+  // actor links with kSS_InternalState6 whose radius holds the actor; the first active hint a
+  // hint links with kSS_Arrived; whether a type-0x11 hint chain from a hint reaches an inactive
+  // type-0x11 hint within 15 steps.
+  const CScriptAIHint* FindBoostBallHint(CStateManager& mgr) const;
+  static CScriptAIHint* FindArrivedHint(CStateManager& mgr, TUniqueId uid);
+  bool BoostChainHasInactiveHint(CStateManager& mgr, TUniqueId uid) const;
+  // fn_10_9920 / A06C: the boost ball actor (the 0xE10 sub-object's uid, 0xE38); the ball's
+  // transform under the actor and the roll emitter's position (BoostBallInto's Update).
+  CActor* GetBoostBallActor(CStateManager& mgr) const;
+  void UpdateBoostBallAtActor(CStateManager& mgr);
 
   // fn_10_1D794: the still timer (the guest's 0x964) and the position it measures from (the
   // guest's 0x958). kStateMsg_Activate clears the timer and moves the reference position to the
@@ -841,6 +852,26 @@ private:
   float mGuestE04;                 // guest 0xE04, the elapsed time at fn_10_18628
   float mGuestE08;                 // guest 0xE08, fn_10_18628's first float
   float mGuestE0C;                 // guest 0xE0C, fn_10_18628's second float
+  // The boost ball sub-object at 0xE10 (fn_10_895C, built at 0x000200F8): the host keeps only
+  // the members BoostBallInto (fn_10_B164) reads.
+  TUniqueId mBoostBallUid;         // guest 0xE38 (+0x28), the ball actor; kInvalidUniqueId
+                                   // (0x000089FC)
+  ushort mBoostBallRollSfxId;      // guest 0xE68 (+0x58), the roll sound (0x00008A2C; -1 is
+                                   // kInternalInvalidSfxId). [probable] the loader's
+                                   // boostBallRollSound: fn_10_895C's stack arguments follow
+                                   // the data order (the r9 token is the 'SWHC' trail swoosh,
+                                   // then the two sounds +0x58 / +0x5A)
+  CSfxHandle mBoostBallRollSfx;    // guest 0xE6C (+0x5C), the roll emitter; 0 (0x00008A50)
+  bool mBoostBallFlag40 : 1;       // 0xebc 0x40 (+0xAC); BoostBallInto clears it
+                                   // (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4)
+  TUniqueId mBoostHintUid;         // guest 0xEC0, the hint the ball rolls to; kInvalidUniqueId
+                                   // (0x0002011C)
+  float mBoostHintDist;            // guest 0xEC4, the distance to it; lbl_10_rodata_558 =
+                                   // 1000.0f (0x0002012C)
+  uchar mGuestEC8;                 // guest 0xEC8, 0 (0x00020138)
+  CVector3f mGuestECC;             // guest 0xECC, the zero vector (0x00020140..0x00020150)
+  float mBoostHintValue;           // guest 0xED8, the hint's value parameter clamped to 0..2,
+                                   // lbl_10_rodata_3E8 = 1.0f (0x00020154)
   float mDodgeTime;                // guest 0x1090, the dodge's time left (fn_10_1707C)
   CVector3f mDodgeDir;             // guest 0x1094, the dodge's direction (fn_10_1707C)
   CTransform4f mGunLctrXf;         // guest 0x8CC, identity (0x0001FBC0); PreRender (fn_10_18AB8)

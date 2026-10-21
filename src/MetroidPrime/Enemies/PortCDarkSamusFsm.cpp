@@ -1372,9 +1372,188 @@ void CDarkSamus::BoostBallFire(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("BoostBallFire", msg);
 }
 
-void CDarkSamus::BoostBallInto(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_B164", "state BoostBallInto");
+// fn_10_B164 (0x0000B164, 0x2F4 bytes): the BoostBallInto state, the morph into the boost ball.
+// The shield flag (fn_10_105F4 at 0x0000B1A4) and the collision failsafe (fn_10_1AEC0 at
+// 0x0000B1B0) run first. Activate (`cmpwi r31, 0x0` at 0x0000B1C0) starts the roll emitter at the
+// actor (AddEmitter with mBoostBallRollSfxId 0xE68 in the actor's area, not looped at
+// 0x0000B1E8, with acoustics at 0x0000B1EC, kMedPriority, the handle to 0xE6C at 0x0000B204), clears 0xEC8 and
+// the hint 0xEC0 and looks for the hint to roll to: the nearest boost hint (fn_10_B6C4,
+// `cmplwi r3, 0x0` at 0x0000B220) and the first active hint it arrives at (fn_10_B458,
+// 0x0000B244). With one, 0xECC is the zero vector, 0xEC0 its uid, 0xEC4 the distance to it and
+// 0xED8 its value parameter clamped to lbl_10_rodata_25C = 0.0f .. lbl_10_rodata_27C = 2.0f when
+// above 0.0f (`fcmpo` at 0x0000B2C8, 0x0000B2E0, 0x0000B2F4), else lbl_10_rodata_264 = 1.0f
+// (0x0000B314). Update (`cmpwi r31, 0x1` at 0x0000B1B4) moves the ball and the emitter
+// (fn_10_A06C). Every message then runs the attack bookkeeping with id 0x20000 (`lis r4, 0x2`,
+// fn_10_1B478 at 0x0000B338) and turns: toward the player at lbl_10_rodata_2B4 = 1.7453293f
+// rad/s with no hint (`cmplw r4, r0` at 0x0000B348, fn_10_16B64), else toward the hint actor at
+// lbl_10_rodata_2B8 = 3.4906585f (`mr. r5, r3` at 0x0000B388, fn_10_16B8C). It clears 0xEBC
+// bit 0x40 (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4) and runs the melee attack command with
+// severity 7 (0x0000B3E0; pas::kAS_MeleeAttack = 7 at 0x0000B3F8; fn_10_8764 at
+// 0x0000B414).
+void CDarkSamus::BoostBallInto(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallInto", msg);
+  UpdateShieldFlag(msg);
+  RunCollisionFailsafe(mgr);
+  if (msg == kStateMsg_Update) {
+    UpdateBoostBallAtActor(mgr);
+  } else if (msg == kStateMsg_Activate) {
+    mBoostBallRollSfx = CSfxManager::AddEmitter(mBoostBallRollSfxId, GetTranslation(),
+                                                GetCurrentAreaId().Value(), false, true,
+                                                CSfxManager::kMedPriority);
+    mGuestEC8 = 0;
+    mBoostHintUid = kInvalidUniqueId;
+    const CScriptAIHint* start = FindBoostBallHint(mgr);
+    if (start != nullptr) { // 0x0000B220
+      CScriptAIHint* hint = FindArrivedHint(mgr, start->GetUniqueId());
+      if (hint != nullptr) { // 0x0000B244
+        mGuestECC = CVector3f::Zero();
+        mBoostHintUid = hint->GetUniqueId();
+        mBoostHintDist = (hint->GetTranslation() - GetTranslation()).Magnitude();
+        if (hint->GetValueParm() > 0.f) { // 0x0000B2C8
+          const float value = hint->GetValueParm();
+          float clamped;
+          if (0.f > value) { // 0x0000B2E0
+            clamped = 0.f;
+          } else if (2.f >= value) { // 0x0000B2F4
+            clamped = value;
+          } else {
+            clamped = 2.f;
+          }
+          mBoostHintValue = clamped;
+        } else {
+          mBoostHintValue = 1.f; // 0x0000B310
+        }
+      }
+    }
+  }
+  UpdateCurrentAttack(0x20000, mgr, msg);
+  if (mBoostHintUid == kInvalidUniqueId) { // 0x0000B348
+    TurnTowardPlayer(mgr, dt, 1.7453293f);
+  } else if (const CActor* act = TCastToConstPtr< CActor >(mgr.GetObjectById(mBoostHintUid))) {
+    TurnTowardPoint(dt, act->GetTranslation(), 3.4906585f); // 0x0000B388
+  }
+  mBoostBallFlag40 = false; // 0x0000B3B4
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Seven));
+}
+
+// fn_10_B6C4 (0x0000B6C4, 0x1A8 bytes): the hints the actor links with kSS_InternalState6 (`lis
+// r6, 0x4953` at 0x0000B6EC, any message) and keeps the nearest by squared distance (from
+// lbl_10_rodata_2BC = FLT_MAX, `fcmpo cr0, f30, f31` at 0x0000B7E8) that is active (the 0x20
+// bit 0x80, `cmplwi r0, 0x1` at 0x0000B768), of type 0x11 (`cmpwi r0, 0x11` at 0x0000B774),
+// whose radius 0x15C holds the actor (`fcmpo cr0, f30, f0` at 0x0000B7E0: not beyond it) and
+// whose chain fn_10_BA38 does not answer true for (`clrlwi. r0, r3, 24` at 0x0000B80C).
+const CScriptAIHint* CDarkSamus::FindBoostBallHint(CStateManager& mgr) const {
+  const rstl::vector< TUniqueId > links = FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
+  float best = 3.4028235e38f; // lbl_10_rodata_2BC (0x0000B728)
+  const CScriptAIHint* found = nullptr;
+  for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+    const CScriptAIHint* hint = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(*it));
+    if (hint == nullptr) { // 0x0000B750
+      continue;
+    }
+    if (hint->GetActive() != true) { // 0x0000B768
+      continue;
+    }
+    if (static_cast< int >(hint->GetHintType()) != 0x11) { // 0x0000B774
+      continue;
+    }
+    const CVector3f delta = hint->GetTranslation() - GetTranslation();
+    const float distSq = delta.MagSquared();
+    const float radius = hint->GetRadius();
+    if (distSq > radius * radius) { // 0x0000B7E4
+      continue;
+    }
+    if (!(distSq < best)) { // 0x0000B7EC
+      continue;
+    }
+    if (BoostChainHasInactiveHint(mgr, hint->GetUniqueId())) { // 0x0000B80C
+      continue;
+    }
+    best = distSq;
+    found = hint;
+  }
+  return found;
+}
+
+// fn_10_B458 (0x0000B458, 0x118 bytes): null when uid is no hint (0x0000B48C);
+// else the first active hint (`cmplwi r0, 0x1` at 0x0000B50C) among its kSS_Arrived
+// links (`lis r6, 0x4152` at 0x0000B49C, any message), null when there is none (0x0000B550).
+CScriptAIHint* CDarkSamus::FindArrivedHint(CStateManager& mgr, TUniqueId uid) {
+  const CScriptAIHint* from = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(uid));
+  if (from == nullptr) { // 0x0000B48C
+    return nullptr;
+  }
+  const rstl::vector< TUniqueId > links = from->FindConnectedObjects(mgr, kSS_Arrived, kSM_None);
+  for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+    CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
+    if (hint == nullptr) { // 0x0000B4F4
+      continue;
+    }
+    if (hint->GetActive() == true) { // 0x0000B50C
+      return hint;
+    }
+  }
+  return nullptr;
+}
+
+// fn_10_BA38 (0x0000BA38, 0x140 bytes): follows a hint chain for at most 15 steps (`cmpwi r29,
+// 0xf` at 0x0000BB4C). A step that finds no hint at uid answers false (`cmplwi r3, 0x0` at
+// 0x0000BA80); else the first of its kSS_Arrived links (`lis r31, 0x4152` at 0x0000BA4C) that is a
+// hint of type 0x11 (`cmpwi r0, 0x11` at 0x0000BAEC) answers true when it is inactive (the 0x20
+// bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BAF8) and is the next step's uid when active. A
+// step with no such link repeats the same uid; after 15 steps the answer is false (0x0000BB54).
+bool CDarkSamus::BoostChainHasInactiveHint(CStateManager& mgr, TUniqueId uid) const {
+  for (int step = 0; step < 15; ++step) { // 0x0000BB4C
+    const CScriptAIHint* from = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(uid));
+    if (from == nullptr) { // 0x0000BA80
+      return false;
+    }
+    const rstl::vector< TUniqueId > links =
+        from->FindConnectedObjects(mgr, kSS_Arrived, kSM_None);
+    for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+      const CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
+      if (hint == nullptr) { // 0x0000BAE0
+        continue;
+      }
+      if (static_cast< int >(hint->GetHintType()) != 0x11) { // 0x0000BAEC
+        continue;
+      }
+      if (!hint->GetActive()) { // 0x0000BAF8
+        return true;
+      }
+      uid = hint->GetUniqueId(); // 0x0000BB18
+      break;
+    }
+  }
+  return false;
+}
+
+// fn_10_9920 (0x00009920, 0x4C bytes): null when the ball's uid 0xE38 is kInvalidUniqueId
+// (`cmplw r6, r0` at 0x00009938), else the actor it names.
+CActor* CDarkSamus::GetBoostBallActor(CStateManager& mgr) const {
+  if (mBoostBallUid == kInvalidUniqueId) { // 0x00009938
+    return nullptr;
+  }
+  return TCastToPtr< CActor >(mgr.ObjectById(mBoostBallUid));
+}
+
+// fn_10_A06C (0x0000A06C, 0xE8 bytes): with a ball actor (`mr. r31, r3` at 0x0000A088) its
+// transform moves to the actor's position offset by (lbl_10_rodata_25C = 0.0f, 0.0f,
+// lbl_10_rodata_290 = -0.45f) with the actor's rotation (0x0000A0E0..0x0000A0F8); with a roll
+// emitter (`cmplwi r0, 0x0` at 0x0000A100) the emitter moves to the actor along its forward
+// vector (0x28/0x38/0x48) at volume 0x7F (`li r6, 0x7f` at 0x0000A120).
+void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
+  if (CActor* ball = GetBoostBallActor(mgr)) { // 0x0000A088
+    CTransform4f xf(ball->GetTransform());
+    const CVector3f& pos = GetTranslation();
+    xf.SetTranslation(CVector3f(pos.GetX() + 0.f, pos.GetY() + 0.f, pos.GetZ() + -0.45f));
+    xf.SetRotation(GetTransform().GetRotation());
+    ball->SetTransform(xf);
+  }
+  if (mBoostBallRollSfx) { // 0x0000A100
+    CSfxManager::UpdateEmitter(mBoostBallRollSfx, GetTranslation(), GetTransform().GetForward(),
+                               0x7F);
+  }
 }
 
 void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
