@@ -1441,7 +1441,7 @@ The port's state per function (the `port` column): 41 marked, 73 ported but not 
 stand-in, 142 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
 helpers, which the host's classes already have).
 
-**The unmarked B list** (the B functions the port does not mark, 109 of them): the stand-in first -
+**The unmarked B list** (the B functions the port does not mark, 100 of them): the stand-in first -
 `fn_9_5410` (the E-grenade's creator) - and then the ported ones whose every arm has not run yet
 (the table above names them). The
 full list is the `class`/`port` columns of `CommandoPirate_functions.tsv`.

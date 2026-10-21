@@ -20,8 +20,8 @@ STATES = [
     "SetPathMeshDest", "PathFind", "CoverFind", "JumpPointFind", "Ambush", "BreakAmbush",
     "Cover", "CoverAttack", "SetCoverDest", "SetJumpDest", "SetRetreatDest", "WallHang",
     "WallDetach", "Crouch", "GetUp", "JumpBack", "RestoreOrientation", "Dodge", "Dead",
-    "ArmShield", "ScriptedShieldCharge", "ShieldCharge", "EGrenadeAttack",
-    "PostEGrenadeAttack", "MeleeAttack", "JetBoost", "WarpIn", "WarpOut", "PostWarpOut",
+    "ArmShield", "ScriptedShieldCharge", "ShieldCharge",
+    "MeleeAttack", "JetBoost", "WarpIn", "WarpOut", "PostWarpOut",
     "FollowAttackPattern", "AbortSeekCover",
 ]
 

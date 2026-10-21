@@ -511,7 +511,6 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   x3E1C_UpdateRagDoll(mgr, dt);               // 0x0000CAA4
 }
 
-// @ fn_9_4BC0
 // fn_9_4BC0 (0xe4 bytes): the module's two sound emitters. The handle at guest this+0xC04 is
 // updated while it is playing or queued (the IsPlaying and IsQueued calls at 0x00004BEC and
 // 0x00004C04); when it is neither, the handle is cleared (the store at 0x00004C4C). The
@@ -872,7 +871,6 @@ bool CCommandoPirate::x57A0_FireShot(CStateManager& mgr, float dt) {
   return fired;
 }
 
-// @ fn_9_3090
 // fn_9_3090 (0x2a8 bytes): the module's drowning. It runs from the module's Think (the call at
 // 0x0000CA34) and ends the commando when its head is under water.
 //
@@ -2648,6 +2646,9 @@ void CCommandoPirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   xc64_ |= 0x10;
 }
 
+// run: area 59 (05_temple_federationsite_dark), the gdb spec tools/cov/specs/commandopirate_triggers.py,
+// 2026-10-21: the state is forced with the console's `fsm` and both its arms run (the activate
+// 202 times, the update 2 times).
 // @ fn_9_ADA0
 // fn_9_ADA0 (0x34 bytes): the Ambush state. Only the activate message (the guest's test of 0 at
 // 0x0000ADA8) does anything: the body controller's locomotion type becomes the crouch one (the
@@ -2918,7 +2919,6 @@ void CCommandoPirate::SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float d
 
 // fn_9_A110 (PostEGrenadeAttack): PortCCommandoPirateCore.cpp.
 
-// @ fn_9_9F24
 // fn_9_9F24 (0x1ec bytes): the JumpPointFind state. Only the activate message (the guest's test
 // of 0 at 0x00009F44) does anything: the jump point id (guest this+0xBD0) is cleared (the store
 // at 0x00009F64), the timer at guest this+0xB78 has to be at least 2.0f (lbl_9_rodata_44C, the
@@ -3621,6 +3621,9 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// run: the Swamp (05_swamp_timber!), the attack pattern with the area's own waypoints, 2026-10-21:
+// the state runs in the normal flow (the ShouldBoost trigger answers true on the waypoint's 0x20
+// flag) and all its arms are taken.
 // @ fn_9_8028
 // fn_9_8028 (0x68c bytes): the shield-charge state - the commando charges at its target with
 // the shield up.
