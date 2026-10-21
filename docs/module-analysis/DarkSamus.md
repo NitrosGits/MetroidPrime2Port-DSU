@@ -1038,7 +1038,8 @@ be audited:
   port overrides, the trivial FSM handlers whose body is a single flag) and the functions
   nothing calls.
 - **B - module behaviour** (405 functions, 0x1E418 bytes): real behaviour - these are the port
-  bodies. 112 of them carry a `// @ fn_10_` marker.
+  bodies. 109 of them carry a `// @ fn_10_` marker (slice 25 dropped the three Break* markers whose
+  writer is still a stand-in).
 
 | class | functions | .text bytes |
 |---|---|---|
@@ -1173,8 +1174,10 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   | 0xA80 | fn_10_1BEFC (the anim-event handler) | 0x0001C31C |
   | 0xAB8 | fn_10_16CDC (the FreezeBeam state) | 0x00016D70 and 0x00016D80: the bit 0x40 cleared and the bit 0x80 set to the old bit 0x40 (0x00016D6C and 0x00016D7C) |
   | 0xAB8 | fn_10_1BEFC (the anim-event handler) | 0x0001C250 and 0x0001C298 (the bit 0x80) |
-- The three states' writes are ported where they are the whole write (the Pause state's), the
-  anim-event handler (fn_10_1BEFC) is still a stand-in, so the bytes it alone sets stay 0.
+- Only the Pause state's write is ported (it is the one whose value the trigger reads); the
+  NormalMissileAttack's and the SuperMissileAttack's Activate writes still sit in stand-in
+  states (they only clear bytes that are 0 anyway), and the anim-event handler (fn_10_1BEFC)
+  is still a stand-in, so the bytes it alone sets stay 0.
 - **The triggers:** fn_10_16B48 (BreakFreezeBeam), fn_10_16B54 (BreakSuperMissile) and
   fn_10_16B5C (BreakNormalMissile) read the bytes the anim-event handler writes, so they go
   back to their FsmStandIn bodies (unmarked); their members (mGuestA40, mGuestA80, mGuestAB8) stay
@@ -1185,4 +1188,10 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   `tools/cov/specs/darksamus.py` and `tools/cov/specs/darksamus_pause.con` (the rooftop, the
   boss, `fsm u04f7 Pause`) - `106F8 BreakPause: 101 hits, key 0 -> ret 0 (100), key 1 -> ret 1
   (1)`; `10710 Pause: 211 hits, -> CRandom16::Range 1` (the pause's duration drawn once).
-- The Pause state's own body is still a stand-in apart from its 0xC30 write.
+- The Pause state's own body is still a stand-in apart from its 0xC30 write, so fn_10_10710 keeps
+  no marker; the module's markers went from 112 to 109 (the three Break* markers were dropped).
+- The retail's null check is kept: fn_10_17E14's result is tested at 0x00010770 (cmplwi r3, 0) and
+  the branch at 0x00010774 skips the rest, so with no stage the 0xC30 write stays at the elapsed
+  time. The random range is the state manager's own CRandom16 (r29+0x16E4, the Range call at
+  0x000107A0), the stage's +0x18 and +0x1C are the loader's pauseDurationMin and pauseDurationMax
+  (the SLdrDSStageInfo layout: +0x00..+0x20 are the nine floats).

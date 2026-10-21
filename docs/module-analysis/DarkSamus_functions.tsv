@@ -343,9 +343,9 @@ offset	size	class	kind	name	callers	marked	state
 0x16ADC	0x8	B	method	fn_10_16ADC	2	yes	
 0x16AE4	0x38	H	host-copy	fn_10_16AE4	0	no	
 0x16B1C	0x2C	B	method	fn_10_16B1C	5	no	
-0x16B48	0xC	T	fsm-thunk	fn_10_16B48	0	yes	BreakFreezeBeam
-0x16B54	0x8	T	fsm-thunk	fn_10_16B54	0	yes	BreakSuperMissile
-0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	yes	BreakNormalMissile
+0x16B48	0xC	T	fsm-thunk	fn_10_16B48	0	no	BreakFreezeBeam
+0x16B54	0x8	T	fsm-thunk	fn_10_16B54	0	no	BreakSuperMissile
+0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	no	BreakNormalMissile
 0x16B64	0x28	B	method	fn_10_16B64	11	yes	
 0x16B8C	0x150	B	method	fn_10_16B8C	5	no	
 0x16CDC	0x1F0	B	fsm-state	fn_10_16CDC	0	no	FreezeBeam
