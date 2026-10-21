@@ -622,7 +622,7 @@ void CIng::CollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
   health->SetHP(hp - amount);
 
   // The hit comes from the weapon the actor last touched, or from the player (morph ball).
-  CVector3f direction = CVector3f::Zero();
+  CVector3f direction = GetTransform().GetForward(); // 0x27A0: the Ing's own forward
   TUniqueId attacker = kInvalidUniqueId;
   CDamageInfo damage = IngDefaultDamageInfo(); // fn_29_2AE0 (asm 0x2744)
   if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
@@ -914,10 +914,14 @@ void CIng::UpdateLoopSfx() {
 
 // @ fn_29_2194 (asm 0x2194): the sounds stop.
 void CIng::StopSfx() {
-  for (int i = 0; i < 2; ++i) {
-    if (mLoopSfx[i]) {
-      CSfxManager::SfxStop(mLoopSfx[i]);
-      mLoopSfx[i] = CSfxHandle();
+  // 0x21A8-0x2250: every looping emitter is removed and cleared, in this order: 0xd58, 0xd60,
+  // 0xd64, 0xd00, 0xd04.
+  CSfxHandle* handles[] = {&mBodyProjectileSfx, &mLoopSfx[0], &mLoopSfx[1], &mSuckSfx,
+                           &mGrappleSfx};
+  for (int i = 0; i < 5; ++i) {
+    if (*handles[i]) {
+      CSfxManager::RemoveEmitter(*handles[i]);
+      *handles[i] = CSfxHandle();
     }
   }
 }
@@ -1007,11 +1011,12 @@ bool CIng::IsControllingHost(CStateManager&, const CTriggerData&) const {
 
 // @ fn_29_B0E0
 bool CIng::IsFacingTarget(CStateManager& mgr, const CTriggerData&) const {
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (target == nullptr) {
+  // 0xB124: the target's aim position (fn_29_4468, prediction 0); no target counts as facing.
+  CVector3f aim = CVector3f::Zero();
+  if (!const_cast< CIng* >(this)->TargetAimPosition(mgr, aim, 0.f)) {
     return true;
   }
-  CVector3f delta = target->GetTranslation() - GetTranslation();
+  CVector3f delta = aim - GetTranslation();
   delta = CVector3f(delta.GetX(), delta.GetY(), 0.f);
   return CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= kFacingAngle;
 }
@@ -1103,7 +1108,12 @@ bool CIng::IsLuredBySafeZone(CStateManager&, const CTriggerData&) const {
          (mForm == kForm_Corporeal || mForm == kForm_IngSpot);
 }
 
-// fn_29_AC78 (not yet exercised in a run)
+// @ fn_29_AC78 (0x20, asm 0x0000AC78-0x0000AD54): the lure zone id (0xd78) against
+// kInvalidUniqueId. One comparison, two arms: the id is invalid (false) and it is set (true).
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark, with the console's
+// `noise 6` repeated at the safe zone nearest the Ing and a probe in the body): the id invalid
+// (404 calls) and the id set (404 calls) - the lure zone is set and cleared again as the noise
+// repeats. Both arms ran, so the body is marked.
 bool CIng::StillLuredBySafeZone(CStateManager&, const CTriggerData&) const {
   return mLureSafeZoneId != kInvalidUniqueId;
 }
@@ -1165,9 +1175,9 @@ bool CIng::ShouldEvaporate(CStateManager&, const CTriggerData&) const {
 // above zero". One comparison, two arms:
 //   - the count is zero: false;
 //   - the count is not zero: true.
-// The runs of 2026-10-21 (area 57 and the Agon Wastes, which has 24 safe zones) never changed
-// the count - the player teleporting into a safe zone does not raise the XENZ message - so the
-// body is not marked.
+// The trigger never ran in the runs of 2026-10-21 (area 57 and the Agon Wastes, which has 23
+// safe zones): the count only changes with the XENZ message (the player entering a safe zone),
+// and the console's `noise 6` informs the listeners without changing the count. Not marked.
 bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
   return mSafeZoneCount > 0;
 }
@@ -1296,12 +1306,14 @@ bool CIng::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
 }
 
 // fn_29_A4E0 (0xC, asm 0x0000A4E0-0x0000A4EC): the byte at 0xe5c's bit 3 (the asm's extrwi index
-// 28) - the port's mFoundMovementPos. One bit, one arm.
+// 28) - the port's mFoundMovementPos. One bit, one arm:
 //   - the flag is set: true;
 //   - the flag is clear: false.
 // The FSM2 graph puts this trigger in the SetLuredDest code function's trigger list only (the
-// Ing's lure), so it needs an Ing that is lured by a safe zone. The runs of 2026-10-21 (area 57
-// and the Agon Wastes 01_sand_entrance_dark) never lured one, so the body is not marked.
+// Ing's lure), so it needs an Ing that is lured by a safe zone. The Agon Wastes run of
+// 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing) lured one - the lure
+// code functions ran 64 and 44 times - and the trigger was evaluated with the flag clear; the
+// "the flag is set" arm did not run, so the body is not marked.
 bool CIng::FoundMovementPos(CStateManager&, const CTriggerData&) const {
   return mFoundMovementPos;
 }
@@ -1809,7 +1821,12 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8FE8 (not yet exercised in a run)
+// fn_29_8FE8 (0x464, asm 0x00008FE8-0x0000944C): the BecomeWallProjectile state. The arms: the
+// message (asm 0x00009014, 0x00009024, 0x00009028, 0x00009034 and 0x00009038), the cross
+// product's magnitude (asm 0x000090CC) and the body command (asm 0x000091BC and 0x000091E4).
+// The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing>
+// BecomeWallProjectile`) ran the three messages (the probe's keys 0, 5 and 9, four calls
+// each); the cross product and the body command arms did not run. Not marked.
 void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1891,7 +1908,12 @@ void CIng::Alert(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8CF4 (not yet exercised in a run)
+// fn_29_8CF4 (0x1A0, asm 0x00008CF4-0x00008E94): the SafeZoneReaction state. The arms: the
+// message (asm 0x00008CFC, 0x00008D10, 0x00008D14 and 0x00008D20), the harmful zone and the
+// evaporating flag (asm 0x00008D64 and 0x00008D70) and the state time against a second
+// (asm 0x00008D88). The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm
+// <ing> SafeZoneReaction`) ran the three messages (the probe's keys 0, 8 and 16, four calls
+// each); the zone and the time arms did not run. Not marked.
 void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("SafeZoneReaction");
@@ -2050,7 +2072,12 @@ void CIng::IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   MoveOnSurface(move, speed, dt);
 }
 
-// fn_29_84A4 (not yet exercised in a run)
+// @ fn_29_84A4 (0xDC, asm 0x000084A4-0x00008580): the Ing walks its patrol path. The message
+// arms are the state's own: the Activate (asm 0x000084E0) sets the steering blend mode and the
+// speed range, and the other messages only run the waypoint navigation's patrol.
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark, with a probe in the
+// body and the state forced with `fsm <ing> Patrol`): the Activate (the probe's key 0) and the
+// other two messages (the keys 1 and 2) - four calls each. Both arms ran, so the body is marked.
 void CIng::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Patrol");
@@ -2066,7 +2093,23 @@ void CIng::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
-// fn_29_82D4 (not yet exercised in a run)
+// @ fn_29_82D4 (0x1D0, asm 0x000082D4-0x000084A4): the Ing walks its attack pattern. The message
+// arms are the state's own (the Activate, the Update and the Deactivate), the ing-spot form walks
+// the waypoint's own speed (0x158) over the ing spot's maximum speed (0x87c) and the waypoint's
+// flags (0x164) pick the form the Ing changes to (0x40 or 0x80 the ing spot, 0x100 the
+// corporeal one).
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark - the area whose Ings
+// have the "ATTK"/"FOLW" attack pattern - with a probe in the body):
+//   - the message: the Activate (asm 0x000083AC), the Update (asm 0x00008410) and the Deactivate
+//     (asm 0x00008468): all three ran;
+//   - the ing-spot form (asm 0x00008310) and the other forms: both ran;
+//   - the waypoint (the navigation's destination at 0x6c0) is cast to CScriptAIWaypoint
+//     (asm 0x00008428) before its flags are read: the cast never succeeds in the shipped data -
+//     every attack pattern's target is a WAYP, never an AIWP (tools/scan_ing_pattern.py) - so
+//     the flag arms are dead and the "the waypoint is not an AI waypoint" arm is the only live one.
+//   - the resume id (0xd70, asm 0x000083B0) and the "ATTK"/"FOLW" connection: both ran, the
+//     Deactivate stores the destination into the resume id (asm 0x00008478) and the next Activate
+//     takes it.
 void CIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   // 0x00008310: in the ing-spot form the Ing walks the waypoint's own speed (0x158) over the ing
@@ -2311,7 +2354,12 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_75C0 (not yet exercised in a run)
+// fn_29_75C0 (0xF8, asm 0x000075C0-0x000076B8): the SeekWallPoint state. The arms: the
+// message (asm 0x000075DC and 0x000075E8), the cover hint (asm 0x000075F8), the delta's
+// magnitude (asm 0x00007650) and its length against the wall speed (asm 0x00007640). The run
+// of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing> SeekWallPoint`) ran
+// the three messages (the probe's keys 0, 16 and 32, four calls each); the hint, the magnitude
+// and the length arms did not run (the forced state leaves before the Ing moves). Not marked.
 void CIng::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("SeekWallPoint");
@@ -2917,7 +2965,14 @@ void CIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_5C28 (not yet exercised in a run)
+// fn_29_5C28 (0x88, asm 0x00005C28-0x00005CB0): the Evaporate state. The arms: the message
+// (the Activate at asm 0x00005C48, the Update at asm 0x00005C54, the Deactivate at
+// asm 0x00005C4C) and the state time against two seconds (asm 0x00005C84). The run of
+// 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing> Evaporate`) ran the three
+// messages (the probe's keys 0, 4 and 8, four calls each); the "the state time is over two
+// seconds" arm (the death delete) and the "the message is below zero" arm did not run - the
+// state machine never sends a message below zero, so that one is dead, but the two-second arm
+// needs the state to live for two seconds. Not marked.
 void CIng::Evaporate(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Evaporate");
@@ -3033,7 +3088,7 @@ void CIng::SetPointCoverDest(CStateManager& mgr, float) {
   }
 }
 
-// fn_29_5714 (not yet exercised in a run): the point-graph route to the cover hint. Two closest-point
+// fn_29_5714 (0x10C, asm 0x00005714-0x00005820): the point-graph route to the cover hint. Two closest-point
 // queries - the Ing's own position with filter (20, 0, -1) (asm 0x00005758-0x00005768), then the
 // hint's position with filter (20, 0, from) (asm 0x00005778-0x000057A0) - and a point-graph search
 // between the two results (asm 0x000057CC-0x000057EC). It sets no destination: mFoundMovementPos is
@@ -3099,7 +3154,7 @@ void CIng::SetExitHostDest(CStateManager& mgr, float) {
   mTargetPos = bestPos; // 0xdc8
 }
 
-// fn_29_53E0 (not yet exercised in a run): the lure point is the nav-mesh point below the lure safe
+// fn_29_53E0 (the lure point is the nav-mesh point below the lure safe
 // zone (fn_29_1C98, the shared PortIngLuredDest does it); the path search's flags go to 1 for the
 // mesh-path query and back to 0x301 after it (asm 0x00005458-0x000054B8). Only when that path
 // exists does the lure point become the destination and mFoundMovementPos get set (0xe5c bit 3);
@@ -3113,11 +3168,15 @@ void CIng::SetLuredDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId); // 0x718, asm 0x000054C8
 }
 
-// fn_29_51D0 (not yet exercised in a run): the point-graph route to the lure point - the flag-1
+// fn_29_51D0 (the point-graph route to the lure point - the flag-1
 // point nearest the Ing that the graph connects to the Ing's own point and that has a mesh path to
 // the lure point (asm 0x000052BC-0x0000531C), then the point search between the two (asm
 // 0x00005350-0x0000536C). The shared PortIngLuredPointDest is the same routine as the MinorIng's
 // copy (fn_44_22B0), whose asm matches this one field for field.
+// The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing)
+// reached this code function 44 times with the lure zone set; the arms of the retail's body (the
+// flag-1 point, the graph link and the mesh path) are inside the shared helper, so the body is
+// not marked yet.
 void CIng::SetLuredPointDest(CStateManager& mgr, float) {
   LogState("SetLuredPointDest");
   mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
@@ -3127,12 +3186,18 @@ void CIng::SetLuredPointDest(CStateManager& mgr, float) {
 // fn_29_5190 (not yet exercised in a run): the Ing starts a projectile attack on its own team: the
 // attack type 1 (kAT_Projectile), the team id at 0xd6a and the Ing's own id (asm 0x000051A4-0x000051B8).
 void CIng::StartRangedAttack(CStateManager& mgr, float) {
+
   CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
 }
 
-// fn_29_514C (not yet exercised in a run): the team attack ends, but the Ing keeps its team role:
-// retail's last argument to EndAttack is 0 (asm 0x00005154), not a role clear.
+// @ fn_29_514C (0x44, asm 0x0000514C-0x00005190): the team attack ends, but the Ing keeps its
+// team role: retail's last argument to EndAttack is 0 (asm 0x00005154), not a role clear. The
+// attack type is 1 (kAT_Projectile, asm 0x00005170), the team id is the halfword at 0xd6a and
+// the second id is the Ing's own (asm 0x00005164).
+// The arms: the body has no branch (one call) - the run of 2026-10-21 (the Agon Wastes area
+// 01_sand_entrance_dark) evaluated it once, so the body is marked.
 void CIng::EndRangedAttack(CStateManager& mgr, float) {
+
   CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
                               false);
 }
@@ -3300,7 +3365,16 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
   switch (msg.GetMessage()) {
   case kSM_Create:
-    // fn_29_4C88
+    // @ fn_29_4C88 (0x90, asm 0x00004C88-0x00004D18): the create handler. The data flag byte
+    // 0x9d0's bit 7 (asm 0x00004CAC, the guest copy at 0xe5d's bit 5 is seeded from the same flag
+    // in the ctor) picks the form: the flag set gives the ing spot (the form 3) and the flag clear
+    // the corporeal Ing (the form 2); the flag set also sets the locomotion type 0 and aligns the
+    // Ing near its position (asm 0x00004CBC-0x00004CFC).
+    // The arms (the coverage run of 2026-10-21 with tools/cov, the key is the flag word
+    // $this->mData.mFlags210): the flag set (the top bit, 180 hits) and the flag clear (0, 2820
+    // hits - the Ing 0x101c01c3 of the Great Temple's 06_swamp_boostballguardian_dark, the one
+    // placement the disc scan found without the flag). The create branch's own calls ran too (the
+    // collision actor manager, the blob and the light). Both arms ran, so the body is marked.
     EnsureBodyActive(mgr);
     // 0x00004CA4: the data flag byte 0x9d0 bit 0x80, not the guest copy at 0xe5d bit 5 (the ctor
     // seeds that from the same flag, 0x0000E368, but the states rewrite it).
@@ -3519,10 +3593,19 @@ void CIng::Render(const CStateManager& mgr) const {
   }
 }
 
-// fn_29_BF20 (0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile
+// @ fn_29_BF20 (0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile
 // (4) takes the base class's own table, the ing spot (3) takes the grapple's table while the ball
 // is held (the byte at 0xe5d, bit 0) and the ing spot's own table otherwise, and every other form
 // takes the trigger table at CIngData+0x3c (0x7fc).
+// The arms:
+//   - the form 4 (asm 0x0000BF34): the base class's table - the Agon Wastes run of 2026-10-21
+//     (`fsm <ing> BecomeBodyProjectile` and a hit on the Ing) - the probe's key 8;
+//   - the form 3 and the ball is held (asm 0x0000BF50): the grapple's table - the Agon Wastes
+//     morph-ball run of 2026-10-21 (2 calls, the Ing with the ball in it);
+//   - the form 3 (asm 0x0000BF64): the ing spot's table - that run (the key 6);
+//   - every other form (asm 0x0000BF6C): the trigger's table - that run (the keys 0, 2, 4, 12
+//     and 14: the forms 0, 1, 2, 6 and 7).
+// All four arms ran, so the body is marked.
 // The arms:
 //   - the form 4 (asm 0x0000BF34): the base class's table - **open**, only the body projectile
 //     asks for it and the area 57 run of 2026-10-21 never reached that form;
@@ -3766,10 +3849,14 @@ void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 // (0x448 = lbl_8041AAB8, CPatterned::skDamageHitTime = 0.33). The base class does exactly that
 // store, so the port's early return plus the base call is retail's body.
 // The arms:
-//   - the forms 0, 1 and 5 (asm 0x0000B894-0x0000B8AC): the early return - **open**, the area 57
-//     run of 2026-10-21 never damaged an Ing in its host phases;
-//   - every other form (asm 0x0000B8B0): the base class's store - the forms 2, 3 and 6 in that
-//     run.
+//   - the forms 0, 1 and 5 (asm 0x0000B894-0x0000B8AC): the early return - **still open**. The
+//     Agon Wastes run of 2026-10-21 put the Ing in the host (`fsm <ing> SuckEnergy`, the form 0)
+//     and in the evaporating form (the form 5) and hit it: the damage reached the vulnerability
+//     lookup (the probe's keys 0 and 10) but not TakeDamage, because the trigger table takes
+//     nothing from the light beam. The arm needs a hit the Ing's own table accepts, or a joint
+//     shot that lands (the joints carry the base table, the one the light beam does hurt);
+//   - every other form (asm 0x0000B8B0): the base class's store - the forms 3 and 4 in the Agon
+//     Wastes run of 2026-10-21 (the probe's keys 3 and 4).
 void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
     return;
@@ -3810,7 +3897,9 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
     return true;
   }
   if (type == kLNT_SafeZone) {
-    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone
+    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone.
+    // The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the
+    // Ing) reached it: the lure zone was set and the lure code functions ran 64 and 44 times.
     // (0xd78), unless the Ing already has one that is nearer. The retail returns false here.
     if (distSq >= mData.mHearingRadius * mData.mHearingRadius) {
       return false;

@@ -5,12 +5,17 @@
 # that has been given a real body.
 WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 CommandoPirate;src/MetroidPrime/Enemies/PortCCommandoPirate.cpp
+CommandoPirate;src/MetroidPrime/Enemies/PortCCommandoPirateCore.cpp
 DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamus.cpp
 DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp
+DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamusFsm2.cpp
+DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp
+DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamusHelpers2.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianKneeArmor.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianEchoTarget.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianHead.cpp
+DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianHelpers.cpp
 ElitePirate;src/MetroidPrime/Enemies/PortCElitePirate.cpp
 EmperorIngStage1;src/MetroidPrime/Enemies/PortCEmperorIngStage1.cpp
 EmperorIngStage3;src/MetroidPrime/Enemies/PortCEmperorIngStage3.cpp
@@ -46,6 +51,7 @@ SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirateTriggers.cpp
 SpacePirate;src/MetroidPrime/Enemies/PortCSpacePirateHelpers.cpp
 Splitter;src/MetroidPrime/Enemies/PortCSplitterMainChassis.cpp
 Splitter;src/MetroidPrime/Enemies/PortCSplitterCommandModule.cpp
+Splitter;src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp
 SwampBossStage1;src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp
 SwampBossStage2;src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp
 WallCrawlerSwarm;src/MetroidPrime/PortModuleStubs.cpp

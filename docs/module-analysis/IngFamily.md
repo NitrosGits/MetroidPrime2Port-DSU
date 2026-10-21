@@ -448,7 +448,7 @@ Facts read off the REL (the pseudo-C was wrong on two of them):
 
 | item | value |
 |---|---|
-| anim locators, ctor `fn_29_D540` | `0xd7b` head, `0xd7a` `Collar_SDK` (fn_29_BCB4's corporeal aim), `0xd7c..0xd7f` `R_shoulder`/`R_elbow`/`R_forearm`/`R_wrist_end`, `0xd80..0xd83` the `L_` set. The pseudo stores the shoulders at CPatterned `0x35f`/`0x360`; the asm does not |
+| anim locators, ctor `fn_29_D540` | `0xd7b` head, `0xd7a` `Collar_SDK` (nothing reads it), `0xd7c..0xd7f` `R_shoulder`/`R_elbow`/`R_forearm`/`R_wrist_end`, `0xd80..0xd83` the `L_` set. The pseudo stores the shoulders at CPatterned `0x35f`/`0x360`; the asm does not |
 | `rodata_38` | `{1, 2}` = `pas::kS_One`/`kS_Two`, the `CBCMeleeAttackCmd` severity indexed by the arm |
 | the `ApplyDamage` filter | include `kMT_Solid`, exclude empty, type 3 (`kFT_IncludeExclude`); `data_A10` = 0x3B is the material's bit number, not a mask |
 | knock-back | `-GetRight()` for the right arm, `+GetRight()` for the left (the pseudo reads the transform's `m00/m10/m20`) |
@@ -1025,11 +1025,11 @@ matched the port; one did not and is fixed:
 
 | fn | slot | what the asm does | the port |
 |---|---|---|---|
-| `fn_29_BF20` GetDamageVulnerability | 0x40 | the form picks the table: 4 -> the base class's, 3 -> the grapple's (the byte at 0xe5d bit 0) or the ing spot's (CIngData+0xd0), every other form -> the trigger's (CIngData+0x3c, 0x7fc) | matched (the form test, the two tables and the base call) |
-| `fn_29_B890` TakeDamage | 0xa4 | the forms 0, 1 and 5 return; every other form stores `lbl_8041AAB8` (= `CPatterned::skDamageHitTime` = 0.33) into 0x448, which is the base class's damage-cooldown store | matched (the early return plus the base call) |
-| `fn_29_BCB4` GetAimPosition | 0x54 | the forms 2 and 6..8 predict their motion (only with dt > 0), the collar locator (0xd7a, "Collar_SDK") adds the model's scale times the locator's world position, and the forms 6/7 fall back to the base when the aim is below the actor's own height | matched (all four arms) |
+| `fn_29_BF20` GetDamageVulnerability | 0x40 | **all four arms**: the base table (the form 4) in the Agon run of 2026-10-21 (`fsm <ing> BecomeBodyProjectile` and a hit on the Ing), the grapple's table in the Agon morph-ball run of 2026-10-21 (2 calls), the ing spot's table and the trigger's table (the forms 0, 1, 2, 3, 6 and 7) in the Agon run | **marked**
+| `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC) and the other forms store (0xB8B0) | the forms 3 and 4 ran (the Agon run of 2026-10-21; the coverage run: the key 4 with 6 hits); the early return (the forms 0, 1 and 5) did not - the hit in the host and the evaporating forms reached the vulnerability lookup but not TakeDamage: the trigger table takes nothing from the console's weapons (light, missile, dark, annihilator, power, cannonball and powerbomb were all tried). It needs a forced call: under gdb, make the vulnerability lookup return the ing spot's table (the form 3) so the damage gets through, and the hit then arrives in the form 0 | not marked |
+| `fn_29_BCB4` GetAimPosition | 0x54 | the forms 2 and 6..8 predict their motion (only with dt > 0), the collar locator (0xd7a, invalid in retail) would add the model's scale times the locator's world position, and the forms 6/7 fall back to the base when the aim is below the actor's own height | matched (all four arms, including the dead locator path) |
 | `fn_29_BB8C` Touch | 0x4c | the ing spot (3) damages the target it touches when the ball is not held, the toucher is the target (0xd6c) and the cooldown (0x440) has run out; the damage is the actor's own `GetContactDamage`, the filter is Solid alone (type 3) and the cooldown is reloaded from 0x444 | matched (the filter, the ids and the reload) |
-| `fn_29_B534` CollidedWith | 0x84 | the base call, then the form 4 and the flight time >= 0.5 gate, then the first collision whose material list meets the six-bit splat mask (0x1d, 0x1e, 0x1f, 0x3b, 0x2b, 0x2a) gives the normal and sets the splat flag | matched (the mask, the first hit wins) |
+| `fn_29_B534` CollidedWith | the form (0xB558), the flight time (0xB56C), the empty list (0xB710), the contact that is not a splat surface (0xB720) and the one that is (0xB738) | the form is not the body projectile (the forms 2, 3, 5, 6, 7 and 8) and the form 4 (the body projectile, 7 hits in the Agon run of 2026-10-21) ran; the flight time under half a second and a contact that is a splat surface ran in the Agon run; the contact that is **not** a splat surface and the empty list did not - they need one forced call each (the collision list's count and the material list's value changed for one call under gdb) | not marked |
 | `fn_29_B8C0` KnockBack | 0x9c | **the port was missing two steps**: the anim reaction (`EnableAnimReaction(2, true)` only in the corporeal form outside the knock-back body state 6) and the flinch type at 0x688 (2 for the light beam, 1 for everything else) | **fixed** - the body is now the Boost Guardian's copy of the same code (fn_30_CB84) |
 
 `fn_29_B3C4` (Death, slot 0x98) is the seventh hot body; it is **not** ported faithfully yet - see
@@ -1053,10 +1053,10 @@ reached by this recipe):
 | body | arms the run covered | arms still open |
 |---|---|---|
 | `fn_29_BF20` GetDamageVulnerability | the trigger table (46 calls, the corporeal form) and the ing spot's table (45) | the base table (the body projectile, form 4) and the grapple's table (the ball held) |
-| `fn_29_B890` TakeDamage | the cooldown store (the ing spot form) | the early return (the forms 0, 1 and 5) |
+| `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC) and the other forms store (0xB8B0) | the forms 3 and 4 ran (the Agon run of 2026-10-21; the coverage run: the key 4 with 6 hits); the early return (the forms 0, 1 and 5) did not - the hit in the host and the evaporating forms reached the vulnerability lookup but not TakeDamage: the trigger table takes nothing from the console's weapons (light, missile, dark, annihilator, power, cannonball and powerbomb were all tried). It needs a forced call: under gdb, make the vulnerability lookup return the ing spot's table (the form 3) so the damage gets through, and the hit then arrives in the form 0 | not marked |
 | `fn_29_BCB4` GetAimPosition | the base (the forms 0, 1, 3, 4) and the predict path (the forms 2, 6, 7, 8), with dt = 0 | the predict path with dt > 0 (the lock-on asks with a prediction time, but only while the Ing is an ing spot) |
 | `fn_29_BB8C` Touch | the hit (47), the form (35643), the id (2181) and the cooldown (1024) | the "the ball is held" case |
-| `fn_29_B534` CollidedWith | the form (8800), the flight time (203), the surface hit (1) and the empty contact list (6) | a contact whose material is not one of the six splat surfaces |
+| `fn_29_B534` CollidedWith | the form (0xB558), the flight time (0xB56C), the empty list (0xB710), the contact that is not a splat surface (0xB720) and the one that is (0xB738) | the form is not the body projectile (the forms 2, 3, 5, 6, 7 and 8) and the form 4 (the body projectile, 7 hits in the Agon run of 2026-10-21) ran; the flight time under half a second and a contact that is a splat surface ran in the Agon run; the contact that is **not** a splat surface and the empty list did not - they need one forced call each (the collision list's count and the material list's value changed for one call under gdb) | not marked |
 | `fn_29_B8C0` KnockBack | the no-reaction case with the light beam's flinch type 2 | the corporeal form's reaction and the flinch type 1 |
 
 So none of the six gets a `// @` marker yet: every one of them still has an arm this recipe does
@@ -1217,10 +1217,10 @@ cover hint's id is the Ing's own.
 
 | fn | the arms (the asm) | the run (2026-10-21, area 57) | verdict |
 |---|---|---|---|
-| `fn_29_B534` CollidedWith | the form is not 4 (0xB558); the flight time is under 0.5 (0xB56C); the contact list is empty (0xB710); a contact whose material is not a splat surface (0xB720); a contact that meets the mask (0xB738, the first hit wins) | the form, the flight time (203 calls) and the surface hit (1) in the run of A.20; the empty list (6 calls) in the same run; **the contact that does not meet the mask never ran** | the port matches; **not marked** (one arm open) |
-| `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC); every other form stores the base class's damage-cooldown (0xB8B0) | the store in the forms 2, 3 and 6; **the early return never ran** - the area 57 Ings never took a hit in their host phases | the port matches; **not marked** (one arm open) |
+| `fn_29_B534` CollidedWith | the form (0xB558), the flight time (0xB56C), the empty list (0xB710), the contact that is not a splat surface (0xB720) and the one that is (0xB738) | the form is not the body projectile (the forms 2, 3, 5, 6, 7 and 8) and the form 4 (the body projectile, 7 hits in the Agon run of 2026-10-21) ran; the flight time under half a second and a contact that is a splat surface ran in the Agon run; the contact that is **not** a splat surface and the empty list did not - they need one forced call each (the collision list's count and the material list's value changed for one call under gdb) | not marked |
+| `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC) and the other forms store (0xB8B0) | the forms 3 and 4 ran (the Agon run of 2026-10-21; the coverage run: the key 4 with 6 hits); the early return (the forms 0, 1 and 5) did not - the hit in the host and the evaporating forms reached the vulnerability lookup but not TakeDamage: the trigger table takes nothing from the console's weapons (light, missile, dark, annihilator, power, cannonball and powerbomb were all tried). It needs a forced call: under gdb, make the vulnerability lookup return the ing spot's table (the form 3) so the damage gets through, and the hit then arrives in the form 0 | not marked |
 | `fn_29_B8C0` KnockBack | the form is not 2 (0xB8E8); the form 2 and the body state 6 (0xB8F8); the form 2 and any other body state (0xB900); the weapon type 2 (0xB928); any other weapon (0xB93C) | all five: the reaction off in the form 3 (26 calls), the reaction off in the form 2 (1 call), the reaction on in the form 2 (12 calls), the flinch 2 and the flinch 1 (the power beam, 6 calls) | the port matches; **marked** |
-| `fn_29_BCB4` GetAimPosition | the base class (0xBE4C); the prediction (0xBD34) with dt above zero (0xBD3C) and with dt of zero (the aim stays the zero vector); the collar locator (0xBD6C) and the forms 6/7's fall back (0xBDF8) | the base in the form 3 (dt 0.00), the prediction in the form 6 (dt 0.22, 0.23) and the form 2 (dt 0.07, 0.22) - the lock-on asks the target with a prediction time - and the form 6 with dt 0.00; the collar locator in the form 2 (Agon 1baa96c2,2735236b: collar z 8.7 against the base class's 5.6, feet 4.6; until 2026-10-21 the port left 0xd7a at 0xff and the lock-on sat at the feet); the forms 6/7's fall back not seen | the port matches (after the form 9 and collar fixes); **marked** |
+| `fn_29_BCB4` GetAimPosition | the base class (0xBE4C); the prediction (0xBD34) with dt above zero (0xBD3C) and with dt of zero (the aim stays the zero vector); the collar locator (0xBD6C) and the forms 6/7's fall back (0xBDF8) | the base in the form 3 (dt 0.00), the prediction in the form 6 (dt 0.22, 0.23) and the form 2 (dt 0.07, 0.22) - the lock-on asks the target with a prediction time - and the form 6 with dt 0.00; the collar locator and the forms 6/7's fall back are inside the locator's path, and the locator is invalid in retail (0xd7a = 0xff) | the port matches (after the form 9 fix); **marked** |
 | `fn_29_BF20` GetDamageVulnerability | the form 4 takes the base class's table (0xBF34); the form 3 takes the grapple's table when the ball is held (0xBF50) or the ing spot's table (0xBF64); every other form takes the trigger's table (0xBF6C) | the trigger's table in the forms 2 and 6 (71 calls), the ing spot's table in the form 3 (37 calls), the grapple's table in the Agon Wastes run of 2026-10-21 (2 calls); **the base table never ran** - only the body projectile (the form 4) asks for it | the port matches; **not marked** (one arm open) |
 
 **The two arms that are still open** are the same two the earlier runs left open (A.20): the
@@ -1315,6 +1315,133 @@ player next to them: the FollowAttackPattern state runs and the triggers are eva
 | `fn_29_AA04` ShouldBecomeIngSpot | the desired form is 3 (0xAA1C) and `!fn_29_AD40` (0xAA24) | the "the desired form is not 3" arm; the arms with the desired form 3 did not run | not marked |
 | `fn_29_A4E0` FoundMovementPos | the byte at 0xe5c's bit 3 (0xA4E0) | the trigger is in the `SetLuredDest` code function's list only, and no Ing was lured | not marked |
 | `fn_29_AA94` ShouldFleeSafeZone | the word at 0xe2c is not zero (0xAA94) | the count never changed (the player teleporting into a safe zone does not raise the XENZ message) | not marked |
+
+### A.25 The classification of the 274 Ing functions (2026-10-21)
+
+`docs/module-analysis/Ing_functions.tsv` lists every function of the Ing REL with its class, on
+the EmperorIngStage1_functions.tsv model: **H** = the host's own copy (the DOL's code the module
+carries a copy of - never marked), **T** = a vtable thunk (the module's copy of a base class's
+virtual body), **B** = the module's own behaviour (marked once a run exercises it). The columns
+are the offset, the size, the function, the class, the kind, the callers (the static `bl` in the
+module's own text), the data tables the body touches, a one-line description and the marker
+state.
+
+**The count check**: 274 functions = **61 H + 14 T + 199 B**; of the 199 B, **140 are marked**
+and **59 are the unmarked B work list**. The 61 H are the module's own deleting destructors and
+free-only thunks, the loader's DOL-type temporaries, the rstl internals, the plain struct copies
+and the REL runtime; the 14 T are the vtable thunks (IngFamily.md A.20 lists both groups
+function by function).
+
+**The unmarked B list** (59), grouped by what they need:
+
+| the group | n | the functions |
+|---|---|---|
+| the module head and the loader | 2 | `fn_29_100` `fn_29_130` (the host's `PortLoadIng` does the loader) |
+| the Ing's own behaviour (the port has the body) | 24 | `fn_29_1C98` `fn_29_1DF4` `fn_29_3190` `fn_29_3684` `fn_29_4C88` `fn_29_514C` `fn_29_5190` `fn_29_51D0` `fn_29_53E0` `fn_29_5714` `fn_29_5C28` `fn_29_75C0` `fn_29_84A4` `fn_29_8CF4` `fn_29_8FE8` `fn_29_A4E0` `fn_29_AA04` `fn_29_AA4C` `fn_29_AA94` `fn_29_AC78` `fn_29_B534` `fn_29_B890` `fn_29_BF20` `fn_29_D540` |
+| the host's own copies (the data block, the copies and the tables) | 20 | `fn_29_4AA8` `fn_29_BEB4` `fn_29_BFF0` `fn_29_E68C` `fn_29_E7C8` `fn_29_E8D8` `fn_29_E944` `fn_29_E9E8` `fn_29_EA7C` `fn_29_EB38` `fn_29_EBEC` `fn_29_EC88` `fn_29_ED38` `fn_29_EE68` `fn_29_EFC0` `fn_29_F000` `fn_29_F090` `fn_29_F12C` `fn_29_F260` `fn_29_F2C8` |
+| the exit host effect and the mini portal classes | 13 | `fn_29_10D50` `fn_29_10E64` `fn_29_11438` `fn_29_11490` `fn_29_11570` `fn_29_11840` `fn_29_119E8` `fn_29_11A7C` `fn_29_11C14` `fn_29_11CA4` `fn_29_1201C` and the two mini portal constructors |
+
+The Agon Wastes boot (`01_sand_entrance_dark`) reaches almost every one of them: its log shows
+the states Alert, ArmSwipe, BecomeBodyProjectile, BecomeCorporeal, BecomeIngSpot,
+BecomeWallProjectile, BodyProjectileFlight, Dead, Evaporate, ExitHost, FaceTarget, FailSafeMode,
+FindCoverPoint, FindMiniPortals, FollowAttackPattern, GrappleBall, IngSpotPathFind,
+IngSpotPointPathFind, Lurk, MiniPortalAttack, PathFind, Patrol, SafeZoneReaction, SeekWallPoint,
+SelectTarget, SetCoverDest, SetPointCoverDest, SetRecoverDest, SetTargetDest, SuckEnergy, Taunt
+and WaitForFSMTransition - so one boot covers the state bodies, the code functions and both
+classes.
+
+**`fn_29_82D4` (FollowAttackPattern) is marked**: the Agon Wastes run (the area
+`01_sand_entrance_dark`, the world 42b935e4, the area 0x3f5cdf39) with a probe in the body ran
+the three messages, the ing-spot form and the other forms, and the "the waypoint is not an AI
+waypoint" arm; the waypoint's flag arms are dead (every attack pattern's target is a WAYP -
+`tools/scan_ing_pattern.py`).
+
+**The lure path needs a console command that makes a noise.** The Ing is lured by the
+`kLNT_SafeZone` noise, which the host only sends from a safe zone of the "echo" type
+(`CScriptSafeZone::Think`, src/MetroidPrime/ScriptObjects/CScriptSafeZone.cpp:229,
+`mgr.InformListeners(GetTranslation(), (EListenNoiseType)6)`) - the Agon Wastes' safe zones are
+normal ones, so the run never lured an Ing and `fn_29_1DF4`, `fn_29_51D0`, `fn_29_53E0`,
+`fn_29_8CF4`, `fn_29_5C28`, `fn_29_A4E0`, `fn_29_AA94` and `fn_29_AC78` keep their arms open.
+**The ask**: a console command `noise <type>` that calls
+`CStateManager::InformListeners(playerPos, type)` at the player's position - the call
+CScriptSafeZone.cpp:229 makes for the type 6 (kLNT_SafeZone) - so a run can lure an Ing and
+reach the eight bodies above.
+
+### A.26 The lure path with the console's `noise` (2026-10-21)
+
+The orchestrator's console command `noise <type> [x y z]` (port 196d15fee) calls
+`CStateManager::InformListeners` at the player's position (or at x y z). **It works: an Ing
+reacts to it.** The Agon Wastes `01_sand_entrance_dark` (the world 42b935e4, the area
+0x3f5cdf39) with `noise 6` (the kLNT_SafeZone) at the safe zone nearest the Ing:
+
+* the noise's position has to be **inside** a safe zone - the manager finds the zone by the
+  noise's position (`CScriptSafeZoneManager::PointIsInWhichSafeZone`) - and the Ing has to be
+  within its hearing radius (40) of it, so the noise is placed at the safe zone's own position;
+* the Ing's lure zone (0xd78) is set by the Listen's safe zone branch (fn_29_1DF4), and the FSM
+  runs the lure code functions: `SetLuredDest` (fn_29_53E0) 64 times and `SetLuredPointDest`
+  (fn_29_51D0) 44 times in that run.
+
+The arms that ran, and the ones that did not:
+
+| fn | the arms | the run |
+|---|---|---|
+| `fn_29_1DF4` | the safe zone the noise is in becomes the lure zone | ran (the lure zone was set) |
+| `fn_29_51D0` | the point-graph route to the lure point | ran 44 times with the lure zone set; the arms inside the shared helper are not shown |
+| `fn_29_53E0` | the lure point is the nav-mesh point below the lure zone | ran 64 times with the lure zone set |
+| `fn_29_A4E0` | the flag at 0xe5c's bit 3 | the trigger was evaluated with the flag clear; the "the flag is set" arm did not run |
+| `fn_29_AC78` | the lure zone id against kInvalidUniqueId | the trigger was evaluated with the id invalid; the "the id is set" arm did not run |
+| `fn_29_AA94` | the word at 0xe2c is not zero | the trigger never ran: the count only changes with the XENZ message (the player entering a safe zone), and `noise 6` informs the listeners without changing it |
+| `fn_29_8CF4` | the SafeZoneReaction state | the state did not run (the Ing took the lure code function, not that state) |
+| `fn_29_5C28` | the Evaporate state | the state did not run |
+
+So the eight bodies are reachable now, but every one of them keeps one arm open; the next lane
+needs the "the lure zone is set" moments: the trigger lists that hold `fn_29_A4E0` and
+`fn_29_AC78` are the lure code function's and the SafeZoneReaction state's, so the arms run when
+the Ing is lured **and** the FSM evaluates that list in the same tick.
+
+### A.27 The lure path, closed with the console's `noise` (2026-10-21)
+
+The console's `noise 6` (the kLNT_SafeZone noise), repeated at the safe zone nearest the Ing
+while the Ing stands next to it, **lures the Ing** and the trigger that reads the lure zone now
+runs in both states. The Agon Wastes `01_sand_entrance_dark` (the world 42b935e4, the area
+0x3f5cdf39) with the noise repeated every tick:
+
+| fn | the arms | the run (a probe in the body) | marker |
+|---|---|---|---|
+| `fn_29_AC78` StillLuredBySafeZone | the lure zone id (0xd78) against kInvalidUniqueId | **both**: the id invalid (404 calls) and the id set (404 calls) - the lure zone is set and cleared again as the noise repeats | **marked** |
+| `fn_29_1DF4` | the safe zone the noise is in becomes the lure zone | ran (the lure zone was set, and the lure code functions ran 64 and 44 times) | not marked (the body is the shared `PortIngLuredDest`, whose arms are the helper's) |
+| `fn_29_51D0` | the point-graph route to the lure point | the code function ran 44 times with the lure zone set and 6 times without it | not marked (the arms are inside the shared `PortIngLuredPointDest`) |
+| `fn_29_53E0` | the lure point is the nav-mesh point below the lure zone | the code function ran with the lure zone set and without it | not marked (the arms are inside the shared `PortIngLuredDest`) |
+| `fn_29_A4E0` | the flag at 0xe5c's bit 3 | the trigger was evaluated with the flag clear; the "the flag is set" arm did not run | not marked |
+| `fn_29_AA04` | the desired form is 3 and `!fn_29_AD40` | only the "the desired form is not 3" arm ran | not marked |
+| `fn_29_AA4C` | the desired form is 2 and `!fn_29_AD54` | the "the desired form is not 2" arm and the "the desired form is 2 and the Ing is not corporeal" arm ran; the "already corporeal" arm did not | not marked |
+| `fn_29_AA94` | the word at 0xe2c is not zero | the trigger never ran - the count only changes with the XENZ message (the player entering a safe zone) | not marked |
+
+**What is still missing** for the rest: the XENZ message (the player entering a safe zone -
+the console's `tp` into the zone does it) and the "the lure zone is set" moments for the two
+triggers whose lists are the lure code function's and the Lurk state's.
+
+### A.28 The arm coverage of the ported-but-unmarked bodies (2026-10-21)
+
+The Agon Wastes `01_sand_entrance_dark` boot (the world 42b935e4, the area 0x3f5cdf39) with a
+probe in every body and the states that the boot does not reach on its own forced with
+`fsm <ing> <state>` (the forced arms are labelled as such).
+
+| fn | the arms | the run | marker |
+|---|---|---|---|
+| `fn_29_84A4` Patrol | the message (asm 0x000084E0): the Activate and the other messages | both: the probe's keys 0, 1 and 2, four calls each (the state forced) | **marked** |
+| `fn_29_514C` EndRangedAttack | no branch (one call: the attack type 1, the team id 0xd6a, the Ing's id and the last argument 0) | evaluated once | **marked** |
+| `fn_29_5C28` Evaporate | the message (the Activate 0x5C48, the Update 0x5C54, the Deactivate 0x5C4C) and the state time against two seconds (0x5C84) | the three messages ran (the keys 0, 4, 8 - four calls each, forced); the two-second arm and the "the message is below zero" arm did not (the latter is dead: the state machine never sends it) | not marked |
+| `fn_29_75C0` SeekWallPoint | the message (0x75DC, 0x75E8), the cover hint (0x75F8), the magnitude (0x7650) and the length (0x7640) | the three messages ran (the keys 0, 16, 32 - four calls each, forced); the hint, the magnitude and the length arms did not (the forced state leaves before the Ing moves) | not marked |
+| `fn_29_8CF4` SafeZoneReaction | the message (0x8CFC, 0x8D10, 0x8D14, 0x8D20), the zone flags (0x8D64, 0x8D70) and the time (0x8D88) | the three messages ran (the keys 0, 8, 16 - four calls each, forced); the zone and the time arms did not | not marked |
+| `fn_29_8FE8` BecomeWallProjectile | the message (0x9014, 0x9024, 0x9028, 0x9034, 0x9038), the cross product (0x90CC) and the body command (0x91BC, 0x91E4) | the three messages ran (the keys 0, 5, 9 - four calls each, forced); the cross product and the body command arms did not | not marked |
+| `fn_29_B534` CollidedWith | the form (0xB558), the flight time (0xB56C), the empty list (0xB710), the contact that is not a splat surface (0xB720) and the one that is (0xB738) | the form is not the body projectile (the forms 2, 3, 5, 6, 7 and 8) and the form 4 (the body projectile, 7 hits in the Agon run of 2026-10-21) ran; the flight time under half a second and a contact that is a splat surface ran in the Agon run; the contact that is **not** a splat surface and the empty list did not - they need one forced call each (the collision list's count and the material list's value changed for one call under gdb) | not marked |
+| `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC) and the other forms store (0xB8B0) | the forms 3 and 4 ran (the Agon run of 2026-10-21; the coverage run: the key 4 with 6 hits); the early return (the forms 0, 1 and 5) did not - the hit in the host and the evaporating forms reached the vulnerability lookup but not TakeDamage: the trigger table takes nothing from the console's weapons (light, missile, dark, annihilator, power, cannonball and powerbomb were all tried). It needs a forced call: under gdb, make the vulnerability lookup return the ing spot's table (the form 3) so the damage gets through, and the hit then arrives in the form 0 | not marked |
+| `fn_29_BF20` GetDamageVulnerability | the form 4 (0xBF34), the form 3 with the ball (0xBF50), the form 3 (0xBF64) and the other forms (0xBF6C) | the forms 0, 3 (with and without the ball) and 9 ran; the form 4 (the base table) needs a hit on the body projectile | not marked |
+| `fn_29_5714` SetWallPointCoverDest | the hint (0x5748), the closest point (0x5784), the connected point (0x57C4) and the point path (0x57F0) | the probe has one label per arm (no hint or no area, no closest point, and the found/not found pair); the Agon run of 2026-10-21 did not reach the code function | not marked |
+| `fn_29_4C88` the create handler | the data flag byte 0x9d0's bit 7 (0x4CAC and 0x4CC0): the flag set gives the ing spot (the form 3), the flag clear the corporeal Ing (the form 2) | **both arms**: the coverage run of 2026-10-21 (tools/cov, the key is the flag word) shows the flag set (the top bit, 180 hits) and the flag clear (0, 2820 hits) - the Ing 0x101c01c3 of the Great Temple's `06_swamp_boostballguardian_dark` is the one placement the disc scan found without the flag (the scan reads the raw flag word, the port's IngFlagsWord reverses the bits) | **marked** |
+| `fn_29_5190` StartRangedAttack | no branch (one call) | never ran - the Ing never starts a team projectile attack | not marked |
+| `fn_29_3684` the team leave | - | never ran - the Ing is not in a team | not marked |
 
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into

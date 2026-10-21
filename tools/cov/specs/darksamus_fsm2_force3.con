@@ -1,0 +1,27 @@
+# the forced arms of darksamus_fsm2_force3.py. The twelve AI hints of area 65 get the types the
+# phazon states look up (`hint`): all type 6 (12 active: the count limit 10), a second lookup (the
+# hint the first one took is in use), one deactivated; then all type 7 for GoToPhazonEnrage (one
+# moved to another area for the call: the area arm; then back, 11 active: the type-7 count limit);
+# then one type-7 hint for PhazonRise's move, and the hint and the actor on one spot (no flat
+# direction); three shots in flight as MissileDeflect starts, far/near/far (fn_10_1BC58: a farther
+# one after the nearest in either near-list order).
+@f600 send u04f7 Activate
+@f650 objs AIHint
+@f700 hint u066d 6; hint u066c 6; hint u066b 6; hint u066a 6; hint u0668 6; hint u0667 6; hint u0665 6; hint u0664 6; hint u0663 6; hint u064d 6; hint u064b 6; hint u064a 6
+@f704 statecall u04f7 GoToPhazonAttack 0
+@f708 statecall u04f7 GoToPhazonAttack 0
+@f712 send u064a Deactivate
+@f716 statecall u04f7 GoToPhazonAttack 0
+@f720 hint u066d 7; hint u066c 7; hint u066b 7; hint u066a 7; hint u0668 7; hint u0667 7; hint u0665 7; hint u0664 7; hint u0663 7; hint u064d 7; hint u064b 7; hint u064a 7
+@f722 hint u0663 area 99
+@f724 statecall u04f7 GoToPhazonEnrage 0
+@f726 hint u0663 area 65
+@f728 statecall u04f7 GoToPhazonEnrage 0
+@f730 hint u066d 0; hint u066c 0; hint u066b 0; hint u066a 0; hint u0668 0; hint u0667 0; hint u0665 0; hint u0664 0; hint u0663 0; hint u064d 0; hint u064b 0; hint u064a 0; hint u066d 7; hint u066d
+@f740 fsm u04f7 PhazonRise
+@f840 place u04f7 player 0; place u066d player 0
+@f860 fsm u04f7 Interrupt
+@f900 statecall u04f7 GetUp 0; statecall u04f7 GetUp 2; statecall u04f7 GetUp 1
+@f1000 shoot u04f7 30; shoot u04f7 12; shoot u04f7 30; fsm u04f7 MissileDeflect
+@f1100 fsm u04f7 Interrupt
+@f1200 objs dark

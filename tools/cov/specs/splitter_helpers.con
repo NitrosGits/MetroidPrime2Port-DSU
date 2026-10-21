@@ -1,0 +1,15 @@
+# 04_cliff_contraption (area 914f1381) layer 2: the Splitter fight - the chassis u0532, its head
+# u0531, the second chassis u0521 and its head u0520. The helpers lane's run: the head's alive
+# gate (fn_75_6310, 633C, 6368), the head's Listen (fn_75_5F18: the noise type and the distance)
+# and the chassis's own flags (fn_75_E99C: the IM00 message sets 0xD41's 0x80 bit).
+@f30 layer 2
+@f120 objs
+@f160 send u0532 Activate; send u0531 Activate
+@f300 place u0531 player 5
+@f360 noise 4
+@f420 noise 3
+@f480 noise 4 0 0 0
+@f560 send u0532 0x494d3030
+@f640 send u0521 Activate; send u0520 Activate
+@f900 objs
+@f1200 status

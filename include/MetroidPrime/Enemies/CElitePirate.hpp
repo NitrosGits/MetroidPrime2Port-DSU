@@ -127,10 +127,15 @@ public:
                        float dt) override;
 
   // CAi
-  // fn_15_4C stores skDamageHitTime into the cooldown, the base class's body.
+  // The REL's own copy of the base's body: it stores skDamageHitTime into the cooldown at 0x448
+  // (asm 0x004C: `lfs f0, skDamageHitTime` + `stfs f0, 0x448(r3)`).
+  // @ fn_15_4C
   void TakeDamage(const CVector3f&, float) override { mDamageCooldownTimer = skDamageHitTime; }
   // The three one-line accessors below are the REL's own bodies (vtable slot -> function).
   bool CanBeShot(const CStateManager&, int) override { return true; } // slot 42, fn_15_A4
+  // The REL's own copy: `li r3, 0` (asm 0x00AC). It keeps the Ingsmasher out of the state
+  // manager's listening list, so the REL's Listen (fn_15_B4) is never called for it.
+  // @ fn_15_AC
   bool IsListening() const override { return false; }                 // slot 43, fn_15_AC
   bool Listen(CStateManager&, const CVector3f&, EListenNoiseType) override { // slot 44, fn_15_B4
     return false;
@@ -139,12 +144,18 @@ public:
   // CPatterned
   CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; } // slot 55, fn_15_52C8
   using CPatterned::GetSearchPath;
+  // The REL's own copy: `addi r3, r3, 0xa50` (asm 0x0000) - its own path search, not the base's.
+  // @ fn_15_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; } // slot 56, fn_15_0
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // slot 57, fn_15_64
   CRagDoll* GetRagDoll() const override { return nullptr; }              // slot 61, fn_15_6C
   TUniqueId GetAttackTarget() const override { return kInvalidUniqueId; } // slot 67, fn_15_74
   float GetGravityConstant() const override { return 24.525f; }          // fn_15_90
+  // The REL's own copy: `li r3, 0` (asm 0x1A0C) - the Ing cannot be pushed out of it.
+  // @ fn_15_1A0C
   bool CanBeUnPossessed(CStateManager&) const override { return false; } // fn_15_1A0C
+  // The REL's own copy: `addi r3, r3, 0x9c0` (asm 0x0008) - its own AABB, not the base's.
+  // @ fn_15_8
   const CCollisionPrimitive* GetCollisionPrimitive() const override { return &mCollidableBox; } // fn_15_8
   void RenderIngSnatchingTransition(const CStateManager& mgr) const override; // fn_15_800C
   // Slots the REL overrides with the base class's own behaviour, so the port leaves them
@@ -225,9 +236,9 @@ private:
 #ifdef TARGET_PC
   // Helpers (retail function on each; shared by Think, AcceptScriptMsg and the FSM states).
   bool IsShieldUp() const;                                         // fn_15_2CE8
-  // @ fn_15_1B50
   // 0x1B54 rlwimi r0, r4, 6, 25, 25: mask 0x40 (xc10 = (xc10 & ~0x40) | (a1 -> 0x40)), stored to
   // xc10 at 0x1B58 - the XDamaged bit of the flags byte, set or cleared from the bool.
+  // @ fn_15_1B50
   void SetXDamaged(bool xdamaged) { mXDamaged = xdamaged; }        // fn_15_1B50
   CPFArea* GetPathArea(CStateManager& mgr) const;                  // fn_15_1598
   void ReleaseClaimedRegion(CStateManager& mgr);                   // fn_15_1328

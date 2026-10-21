@@ -35,6 +35,7 @@
 #include "MetaRender/CCubeRenderer.hpp"
 
 #include <float.h>
+
 namespace {
 // rodata: collision actors are kept at this HP and damage is read as the shortfall.
 const float kCollisionActorHP = 500.f;
@@ -306,7 +307,7 @@ CVector3f CSwampBossStage2::CenterPosition(const CStateManager& mgr) const {
 
 // @ fn_79_60A0: the point the states steer at. fn_79_2E7C is its mSwoopTarget branch.
 CVector3f CSwampBossStage2::TargetPoint(const CStateManager& mgr) const {
-  if (mDashing) {
+  if (mHeadMode) { // 0x60B4: xc74 & 0x80
     return mSwoopTarget;
   }
   const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSwoopNode));
@@ -447,16 +448,6 @@ void CSwampBossStage2::Activate(CStateManager& mgr) {
   SetGrowthsActive(mgr, false);
   mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetHP(),
                     gpStringTable->GetStringIndex("BossSwampBossStage2"));
-}
-
-void CSwampBossStage2::SetHeadVulnerable(CStateManager& mgr, bool vulnerable) {
-  // TODO(uncertain): retail swaps the head collision actor's vulnerability between the light and
-  // dark tables; reconstructed from the material/vulnerability writes only.
-  CCollisionActor* head = CollisionActor(mgr, kHeadActor);
-  if (head) {
-    head->SetDamageVulnerability(vulnerable ? mLightVulnerability
-                                            : CDamageVulnerability::ImmuneVulnerabilty());
-  }
 }
 
 // @ fn_79_5BC8
@@ -1344,6 +1335,8 @@ void CSwampBossStage2::ProcessDamage(CStateManager& mgr, TUniqueId colActorId) {
 // --------------------------------------------------------------------------------------------
 // Triggers
 
+// @ fn_79_A498: the animation is over (retail: the animation state id at 0x6b4 == 3, which is
+// the host's kAS_Over).
 bool CSwampBossStage2::StateOver(CStateManager& mgr, const CTriggerData&) const {
   return mAnimationState.IsOver();
 }
@@ -1358,13 +1351,21 @@ bool CSwampBossStage2::AllGrowthsDead(CStateManager& mgr, const CTriggerData&) c
   return true;
 }
 
+// @ fn_79_A418: the ovipositor's health (0xc50) is zero or less (retail: the compare with
+// rodata_9C, the zero float, at 0xA424).
 bool CSwampBossStage2::OvipositorDead(CStateManager& mgr, const CTriggerData&) const {
   return mOvipositorHealth <= 0.f;
 }
 
+// @ fn_79_A3D8: retail compares the phase (0xc94) with the field at 0x8cc - the loader's
+// unknown_0x96ce7897 (the loader struct sits at 0x7c0, so 0x8cc is its 0x10c) - as
+// "2 * field <= phase": `slwi r0, r4, 1` doubles the field, then subfc/adde with the sign bits
+// (`extrwi` takes the doubled value's sign, `srawi` the phase's) is MWCC's signed `<=`
+// (0xA3E0-0xA3F0). The arm that fires was reached with the loader's field forced to 0 (gdb:
+// `set var this->mData.unknown_0x96ce7897 = 0` at the trigger's entry), so the compare takes
+// its true side.
 bool CSwampBossStage2::ZeroHealth(CStateManager& mgr, const CTriggerData&) const {
-  // TODO(uncertain): retail compares the phase index against unknown_0x96ce7897.
-  return mPhase >= mData.unknown_0x96ce7897;
+  return mData.unknown_0x96ce7897 * 2 <= mPhase;
 }
 
 // @ fn_79_A3F8
@@ -1408,6 +1409,10 @@ bool CSwampBossStage2::CircleOver(CStateManager& mgr, const CTriggerData&) const
   return GetBodyController()->GetCurrentStateId() == pas::kAS_Locomotion || mCircleDone;
 }
 
+// @ fn_79_A064: the attack is ready and it is the blow (the attack type 6) - retail: xc75_80
+// (the attack ready) at 0xA06C and the type at 0xA078.  The arm that fires was reached with
+// the attack ready and the type 6 forced (gdb: `set var this->mAttackReady = 1`,
+// `set var this->mAttackType = 6` at the trigger's entry).
 bool CSwampBossStage2::ShouldBlow(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 6;
 }
@@ -1430,6 +1435,10 @@ bool CSwampBossStage2::IsLevel(CStateManager& mgr, const CTriggerData&) const {
          CMath::FastCosR(0.034906585f);
 }
 
+// @ fn_79_A0C8: the wind node (0xf00) is not the chain node nearest the player - retail: the
+// wind node at 0xA0EC and the compare at 0xA11C.  The trigger is in the module's trigger table
+// but no state's transition list uses it (the note's 6: the asset's edges), so the function is
+// never called: its only arm is dead, and the shipped data scan is the proof.
 bool CSwampBossStage2::SwitchedPlatform(CStateManager& mgr, const CTriggerData&) const {
   return mWindNode != NearestNodeToPlayer(mgr);
 }
@@ -1449,6 +1458,8 @@ bool CSwampBossStage2::OneGrowthDead(CStateManager& mgr, const CTriggerData&) co
   return mGrowthDestroyed && mGrowthDeadTime > 0.3f;
 }
 
+// @ fn_79_9F7C: the attack is ready and it is the flyer drop (the attack type 5) - retail:
+// xc75_80 (the attack ready) at 0x9F84 and the type at 0x9F90.
 bool CSwampBossStage2::ShouldDropFlyer(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 5;
 }
@@ -1584,7 +1595,7 @@ void CSwampBossStage2::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
     mSwoopCount = mAttackType == 4 ? mSwoopCount + 1 : 0;
     mDashing = mgr.Random()->Float() < phase.dashChance;
     mDashTimer = RandomRange(mgr, phase.unknown_0x29e6ead6, phase.unknown_0x1753225e);
-    SetHeadVulnerable(mgr, true);
+    SetBodyVulnerable(mgr, true); // fn_79_20D8 (0x9C70)
     PickSpitNode(mgr);
   } else if (msg == kStateMsg_Update) {
     BodyController()->FaceDirection(DirectionToPlayerAim(mgr), dt);
@@ -1634,7 +1645,7 @@ void CSwampBossStage2::DarkLurk(CStateManager& mgr, EStateMsg msg, float dt) {
         // Close enough while diving: switch the queued attack to the flyer drop.
         if (mAttackType == 3 &&
             (player->GetTranslation() - GetTranslation()).Magnitude() <
-                mData.unknown_0x9e116385) {
+                mData.unknown_0x5a844633) { // 0x99FC: guest 0x91c
           mAttackType = 5;
         }
       }
@@ -1982,6 +1993,9 @@ void CSwampBossStage2::DropFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_79_72FC: the code node resets the attack index (retail: `li r0, 0; stw r0, 0xc98`).
+// Not marked: the code node is in the asset's code list but no state transitions into it (the
+// note's 6), so the body never runs.
 void CSwampBossStage2::ResetAttackPhase(CStateManager& mgr, float dt) { mAttackIndex = 0; }
 
 // --------------------------------------------------------------------------------------------
@@ -2051,7 +2065,13 @@ void CSwampBossStage2::Think(float dt, CStateManager& mgr) {
     }
   }
   UpdateWater(mgr, mSplashPos, mLastHeadSplash);
-  // TODO(uncertain): retail also clears the player's riding-platform state while in water.
+  // 0xB100: a player standing on a platform (CPlayer+0x124c) is not in the water.
+  if (mPlayerInWater) {
+    const CPlayer* player = mgr.GetPlayer(0);
+    if (player && player->GetRidingPlatform() != kInvalidUniqueId) {
+      mPlayerInWater = false;
+    }
+  }
   DecayDamageMemory(dt);
   if (mHeadMode) {
     mHeadBlend = rstl::min_val(mHeadBlend + dt, 1.f);

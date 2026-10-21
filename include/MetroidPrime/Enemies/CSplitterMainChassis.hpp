@@ -108,6 +108,9 @@ public:
   bool PortReserveDock(TUniqueId head);
   void PortReleaseDock(TUniqueId head);
   TUniqueId GetSyncId() const { return mSyncId; }
+  // The retail's fn_75_E68C: the translation of the "attach_LCTR" locator (0xCC8) - where a
+  // docking head goes (the head's SeekMainChassis and SetDockingDest ask).
+  CVector3f PortHeadAttachPoint() const { return GetLctrTransform(mLocatorSegment).GetTranslation(); }
 
 #ifdef TARGET_PC
   // The retail's fn_75_E6E4: the chassis accepts a head (the head's fn_75_3EEC asks). It is
@@ -132,7 +135,6 @@ public:
   const CHealthInfo* GetHealthInfo() const override;
   const CDamageVulnerability* GetDamageVulnerability() const override;
   rstl::optional_object< CAABox > GetTouchBounds() const override;
-  CAABox GetSortingBounds(const CStateManager& mgr) const override;
 
   // CAi
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
@@ -296,6 +298,21 @@ private:
   // guest 0xCD8: the spin vector SetupSpinAttack zeroes (fn_75_BAA8, 0xBAD8-0xBAF4); the spin
   // states and bounces (fn_75_963C, B104, B1D8, C51C, CCF0, D13C) read it.
   CVector3f mSpinVector = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xCCC: the landing point the SpawnDrop state (fn_75_CCF0, 0xCE38-0xCE60) casts down for
+  // and its Update compares the chassis's height with.
+  CVector3f mLandingPoint = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xCB0: the patterned info's turn speed (the constructor, 0x0000F7D8).
+  float mBaseTurnSpeed = 0.f;
+  // guest 0xCE4: the normal of the geometry the spin hit - CollidedWith (fn_75_ECA4, 0xEE00 and
+  // 0xEEF0) is its only writer, BounceOffGeometry (fn_75_B104) reads it.
+  CVector3f mCollisionNormal = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xCF0: the bounce direction BounceOffPlayer and BounceOffGeometry (fn_75_B1D8,
+  // fn_75_B104) write and SpinBounce (fn_75_D13C, 0xD184) turns into the spin vector.
+  CVector3f mBounceVector = CVector3f(0.f, 0.f, 0.f);
+  // guest 0xD24: how long SpinBounce lasts (0.5f or 0.75f, written by fn_75_B1D8/B104).
+  float mBounceTime = 0.f;
+  // The retail's fn_75_963C: the steered spin move SpinAttack (fn_75_D7D4) asks for.
+  void PortSpinMove(const CVector3f& velocity, float dt);
   // guest 0xD40 / 0xD41: the flag bytes (the IM00 and IM01 script messages set 0xD40's 0x80
   // bit, the STRT message sets 0xD41's 0x04 bit and IM00 tests 0xD41's 0x80 bit).
   uchar mFlagsD40 = 0;
@@ -313,7 +330,7 @@ private:
   TUniqueId mSnatcherId = kInvalidUniqueId;
   // guest 0xD10-0xD1C: the four timers fn_75_8EA4 copies.
   float mLegStabTimer = 0.f;     // 0xD10 (the data's leg stab interval, 0x82C)
-  float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval penalty, 0x874)
+  float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval, 0x874)
   float mLaserSweepTimer = 0.f;   // 0xD18 (the data's laser sweep interval, 0x858)
   float mDodgeTimer = 0.f;        // 0xD1C (the data's min dodge interval, 0x848)
   // guest 0xD04: the dodge direction FindBestDodgeDirection (fn_75_B2A0) picks, -1 for none
@@ -375,6 +392,21 @@ private:
   void PortCopyHealthToCollisionActors(CStateManager& mgr);
   // guest 0xCC2: the id of the "target_LCTR" collision actor (fn_75_A4E4, 0x0000A7E8).
   TUniqueId mTargetActorId = kInvalidUniqueId;
+
+  // -------------------------------------------------------------------------------------------
+  // helpers (this lane's half): the module's stateless helper bodies, ported from the REL's asm
+  // (src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp). Append-only: the FSM lane's own members
+  // are above. The retail function each one stands for is named on it.
+  // (The chassis's own three - fn_75_E99C, fn_75_E90C and fn_75_E810 - are the FSM lane's: they
+  // live in this class's own bodies, above.)
+  // The retail's fn_75_EFA4 is the chassis's DoUserAnimEvent (the REL's vtable slot 0x70 - the
+  // DOL's slot 0x70, not the GetSortingBounds at 0x6C; the note's section f row was off by one
+  // slot).  The port had no override, so the DOL's own DoUserAnimEvent ran.  The body is in
+  // src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp.
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  void PortDoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                           float dt);
 #endif
 };
 #else

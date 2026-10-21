@@ -44,6 +44,11 @@ AIWP_SPEED = 0x6392404E
 POSITION = 0x5846524D
 # The Ing's own form bits in the waypoint's flag word (fn_29_82D4, asm 0x00008410).
 ING_FORM_BITS = 0x40 | 0x80 | 0x100
+# The Ing's own data flags (SLdrIng::ingFlagsIng, the property id 0x092fbad0): the top bit is the
+# start-as-an-ing-spot flag (kFlag_StartAsIngSpot, 0x80000000) - it picks the form the create
+# handler (fn_29_4C88, asm 0x00004CAC) gives the Ing.
+ING_FLAGS = 0x092FBAD0
+ING_START_AS_ING_SPOT = 0x80000000
 
 
 def properties(body):
@@ -168,7 +173,15 @@ def main():
                     print(f"{nm}/{iname} L{li}: INGS={len(ings)} AIWP={len(wayps)} "
                           f"SAFE={len(safes)}  (world 0x{mid:08x}, mrea 0x{a['mrea']:08x})")
                     for t4, eid, conns, props in ings:
-                        print(f"    INGS eid=0x{eid:04x} pos={position(props)}")
+                        # The flag word is big-endian on the disc and the port's IngFlagsWord
+                        # swaps it (CIng.hpp: the retail's flag word, the most significant byte
+                        # first), so the bytes are swapped here too.
+                        raw = u32(props, ING_FLAGS) or 0
+                        flags = struct.unpack(">I", struct.pack("<I", raw))[0]
+                        spot = "starts as an ing spot" if flags & ING_START_AS_ING_SPOT else \
+                               "starts as a corporeal Ing"
+                        print(f"    INGS eid=0x{eid:04x} pos={position(props)} flags=0x{flags:08x} "
+                              f"({spot})")
                         for state, msg, obj in conns:
                             tag = ""
                             if state == ATTK and msg == FOLW:

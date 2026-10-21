@@ -27,6 +27,10 @@ public:
   float GetMoveSpeed() const { return mMoveSpeed; }            // Guessed name.
   void SetMoveSpeed(float speed) { mMoveSpeed = speed; }       // Guessed name.
   bool IsMoving() const { return mPatrolState == kPS_Moving; } // Guessed name.
+#ifdef TARGET_PC
+  // The Dark Samus's Patrol (fn_10_1142C) writes the face vector (the navigation's +0x28).
+  void SetFaceVector(const CVector3f& v) { mFaceVector = v; }
+#endif
 
 private:
   void ApplyWobbleSteering(CVector3f& movement) const;

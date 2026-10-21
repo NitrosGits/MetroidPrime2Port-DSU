@@ -41,6 +41,7 @@
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CEntity.hpp"
@@ -48,10 +49,13 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "Collision/CMaterialFilter.hpp"
+#include "Collision/CRayCastResult.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/CGenericFSM2State.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
@@ -493,7 +497,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
       "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
-      "                            sunburst, sonicboom; kb = knockback power)\n"
+      "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
@@ -528,12 +532,15 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
+      "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
+      "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
+      "ray <x> <y> <z> [len]       static surfaces and the world hit straight below the point\n"
       "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"
       "aim <yaw> <pitch>          point the view outright, in degrees; negative pitch looks down\n"
       "items                       power-up amounts and capacities\n"
@@ -1509,7 +1516,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
     Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
-         "annihilator|powerbomb|darkburst|sunburst|sonicboom]");
+         "annihilator|powerbomb|darkburst|sunburst|sonicboom|supermissile]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
@@ -1547,9 +1554,12 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     } else if (args[i] == "sonicboom") {
       weapon = kWT_Annihilator;
       comboed = true;
+    } else if (args[i] == "supermissile") {
+      weapon = kWT_Power;
+      comboed = true;
     } else {
       Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
-           "darkburst, sunburst or sonicboom");
+           "darkburst, sunburst, sonicboom or supermissile");
       return;
     }
   }
@@ -1648,6 +1658,134 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
     return;
   }
   out += "fsm " + before + " -> " + after + " [" + where + "]\n";
+}
+
+// The state/trigger function the actor's own table registered under `name`, from either machine
+// type: the FSM2 (GetType() 1, CGenericFSM2State) or the AFSM (0, TStateMachineState).
+CPatterned::StateMachine::StateFunc PortFindStateFunction(CPatterned& patterned, const char* name) {
+  TStateMachineStateBase< CPatterned >* machine = &patterned.StateMachineState();
+  if (machine->GetType() == 1) {
+    return static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(name);
+  }
+  return static_cast< TStateMachineState< CPatterned >* >(machine)->PortFindStateFunction(name);
+}
+
+CPatterned::StateMachine::TriggerFunc PortFindTriggerFunction(CPatterned& patterned,
+                                                              const char* name) {
+  TStateMachineStateBase< CPatterned >* machine = &patterned.StateMachineState();
+  if (machine->GetType() == 1) {
+    return static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindTriggerFunction(name);
+  }
+  return static_cast< TStateMachineState< CPatterned >* >(machine)->PortFindTriggerFunction(name);
+}
+
+// statecall <id> <state> <msg> [dt]: run one state body of a patterned actor (FSM2 or AFSM) once with a message (0
+// Activate, 1 Update, 2 Deactivate) and dt (default 1/60), outside the machine: the machine's state
+// does not change. The body is looked up in the actor's whole state table, so a state the shipped
+// FSM2 has no node for (unreachable by `fsm`) can still be run for coverage.
+void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float msgArg = 0.f;
+  float dt = 1.f / 60.f;
+  if (args.size() < 4 || args.size() > 5 || !ParseFloat(args[3], msgArg) ||
+      (args.size() == 5 && !ParseFloat(args[4], dt))) {
+    Fail("usage: statecall <id> <state name> <msg 0..2> [dt]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  const int msg = static_cast< int >(msgArg);
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::StateFunc fn = PortFindStateFunction(*patterned, wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no state function '" + wanted + "'");
+    return;
+  }
+  (patterned->*fn)(mgr, static_cast< EStateMsg >(msg), dt);
+  out += "statecall " + wanted + " msg " + std::to_string(msg) + "\n";
+}
+
+// trigcall <id> <trigger> [arg]: evaluate one trigger of an FSM2 actor once with its argument
+// (default 0) and print the answer, outside the machine, like `statecall` for the states.
+void CmdTrigCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float arg = 0.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], arg))) {
+    Fail("usage: trigcall <id> <trigger name> [arg]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::TriggerFunc fn =
+      PortFindTriggerFunction(*patterned, wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no trigger function '" + wanted + "'");
+    return;
+  }
+  const bool answer = (patterned->*fn)(mgr, CTriggerData(arg));
+  out += "trigcall " + wanted + " = " + (answer ? "true" : "false") + "\n";
+}
+
+// hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
+// setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
+// phazon waypoints) finds one the area lacks, or skips one of another area.
+void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
+  float type = -1.f;
+  float area = -1.f;
+  bool ok = args.size() >= 2;
+  for (size_t i = 2; ok && i < args.size(); ++i) {
+    if (args[i] == "area" && i + 1 < args.size()) {
+      ok = ParseFloat(args[++i], area);
+    } else {
+      ok = ParseFloat(args[i], type);
+    }
+  }
+  if (!ok) {
+    Fail("usage: hint <id> [type] [area <n>]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CScriptAIHint* hint = ent != nullptr ? TCastToPtr< CScriptAIHint >(ent) : nullptr;
+  if (hint == nullptr) {
+    Fail("not an AI hint");
+    return;
+  }
+  if (type >= 0.f) {
+    hint->PortSetHintType(static_cast< CScriptAIHint::EHintType >(static_cast< int >(type)));
+  }
+  if (area >= 0.f) {
+    hint->SetCurrentAreaId(TAreaId(static_cast< int >(area)));
+  }
+  out += "hint " + std::string(args[1]) + " type " +
+         std::to_string(static_cast< int >(hint->GetHintType())) + " area " +
+         std::to_string(hint->GetCurrentAreaId().Value()) + " active " +
+         std::to_string(hint->GetActive() ? 1 : 0) + " radius " + std::to_string(hint->GetRadius()) +
+         "\n";
+}
+
+// uevent <id> <type> [dt]: deliver a user anim event (EUserEventType, e.g. 27 EventStart, 28
+// EventStop, 18 EndAction, 12 Landing) to an actor's DoUserAnimEvent with an empty POI node, for
+// the event arms an animation never fires on the host.
+void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
+  float type = 0.f;
+  float dt = 0.f;
+  CEntity* ent = args.size() >= 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr || !ParseFloat(args[2], type) ||
+      (args.size() >= 4 && !ParseFloat(args[3], dt))) {
+    Fail("usage: uevent <id> <type> [dt]   (id must be an actor)");
+    return;
+  }
+  actor->DoUserAnimEvent(mgr, CInt32POINode(),
+                         static_cast< EUserEventType >(static_cast< int >(type)), dt);
+  out += "uevent " + std::string(args[1]) + " " + std::to_string(static_cast< int >(type)) + "\n";
 }
 
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
@@ -1883,6 +2021,54 @@ void CmdBeam(CStateManager& mgr, const Args& args, std::string& out) {
   char line[64];
   std::snprintf(line, sizeof(line), "beam -> %s\n", choice->name);
   out += line;
+}
+
+// ray <x> <y> <z> [len]: cast straight down from the point and list every static surface the ray
+// crosses (point, normal, material bits, hex), then the first hit of the world ray (static plus
+// actors) and the actor it belongs to. For collision bugs: what holds the player up, and where.
+void CmdRay(CStateManager& mgr, const Args& args, std::string& out) {
+  float x = 0.f;
+  float y = 0.f;
+  float z = 0.f;
+  float len = 100.f;
+  if (args.size() < 4 || !ParseFloat(args[1], x) || !ParseFloat(args[2], y) ||
+      !ParseFloat(args[3], z) || (args.size() > 4 && !ParseFloat(args[4], len))) {
+    Fail("usage: ray <x> <y> <z> [len]");
+    return;
+  }
+  const CVector3f down(0.f, 0.f, -1.f);
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  char line[192];
+  CVector3f start(x, y, z);
+  float left = len;
+  for (int i = 0; i < 16 && left > 0.f; ++i) {
+    const CRayCastResult hit = CGameCollision::RayStaticIntersection(mgr, start, down, left, filter);
+    if (!hit.IsValid()) {
+      break;
+    }
+    const CVector3f& pt = hit.GetPoint();
+    const CVector3f n = hit.GetPlane().GetNormal();
+    std::snprintf(line, sizeof(line), "static %.3f %.3f %.3f  normal %.2f %.2f %.2f  mat %016llx\n",
+                  pt.GetX(), pt.GetY(), pt.GetZ(), n.GetX(), n.GetY(), n.GetZ(),
+                  static_cast< unsigned long long >(hit.GetMaterial().GetValue()));
+    out += line;
+    start = CVector3f(x, y, pt.GetZ() - 0.01f);
+    left = len - (z - start.GetZ());
+  }
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CVector3f(x, y, z), down, len, filter, nullptr);
+  TUniqueId id = kInvalidUniqueId;
+  const CRayCastResult hit =
+      mgr.RayWorldIntersection(id, CVector3f(x, y, z), down, len, filter, nearList);
+  if (hit.IsValid()) {
+    const CEntity* ent = id == kInvalidUniqueId ? nullptr : mgr.GetObjectById(id);
+    std::snprintf(line, sizeof(line), "world %.3f %.3f %.3f  id %04x %s (near %d)\n",
+                  hit.GetPoint().GetX(), hit.GetPoint().GetY(), hit.GetPoint().GetZ(), id.Value(),
+                  ent != nullptr ? ClassName(*ent).c_str() : "static", int(nearList.size()));
+    out += line;
+  } else {
+    out += "world: no hit\n";
+  }
 }
 
 void CmdTp(CStateManager& mgr, const Args& args, std::string& out) {
@@ -2358,12 +2544,17 @@ constexpr SCommand kCommands[] = {
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
+    {"statecall", CmdStateCall, true},
+    {"trigcall", CmdTrigCall, true},
+    {"hint", CmdHint, true},
+    {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
     {"shoot", CmdShoot, true},
     {"visor", CmdVisor, true},
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},
+    {"ray", CmdRay, true},
     {"items", CmdItems, true},
     {"world", CmdWorld, true},
     {"worlds", CmdWorlds, true},

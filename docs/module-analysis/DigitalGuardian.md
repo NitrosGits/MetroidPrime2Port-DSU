@@ -1447,3 +1447,28 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 
 - Marked: 9070, 9164, 8E44, 76D0, 4838, 173AC. Unmarked: 9260, 3674 (need A468 + 3300, 4E00,
   458C, 73D4: a follow-up slice), 34E8, 39CC, 3DA8, 4D54, 4878, 775C, CE1C, 9E88, 15284.
+
+## 2026-10-21: DoUserAnimEvent, runs 420-423
+
+- Ported: fn_14_A468 DoUserAnimEvent and its handlers fn_14_3300 (vortex drift), fn_14_4E00
+  (locator camera shake), fn_14_458C (toe shock wave) with fn_14_20E4 (leg from locator), and
+  fn_14_73D4 SelectMeleeAttackRange (the A468 type-3 handler). New members 0x11D8/0x11DC (-1).
+- `dg_steps_vortex.sh` with `SHOOT=1` runs `shoot <body>` on each poll (`obj` shows only the root
+  state, so the polls cannot tell the vortex sub-state).
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| A468 | 5, 12, 13 (vortex), 16, 17 | 420, 423, forced (`fsm <body> VortexAttack`) | ran |
+| A468 | 3, 27, 13 outside the vortex, other types (CPatterned) | - | not run: no such event in the vortex animations; 3/27 come from the melee/jump states (stand-ins) |
+| 9260 | drift (0x128D 0x80) | 420, 423 | ran: every arm has run, marked |
+| 3674 | no 0x40, pull | 420, 423 | ran |
+| 3674 | 0x128C 0x04 | - | not run: only fn_14_4F2C (XHIT helper, stand-in) and the ctor set it |
+| 3674 | player beyond max distance | - | not run |
+| 3300 | object, time > 0 | 420, 423 | ran; no-object and take-off/landing-span arms not run |
+| 4E00 | Attach, Action, shaker | 423 | ran; no-shaker arm not run |
+| 9E88 | 0x11B8 set | 423, forced (`shoot <body>`) | ran: every arm has run, marked |
+| 458C, 20E4, 73D4 | - | - | not run (melee/jump states are stand-ins; 0x11D8 stays -1) |
+| 15284 | no platform | 421 | not run: aborted at the 32 MiB staging window too (33555040 bytes, frame 35700) |
+| 775C, 3DA8 off, CE1C off | - | - | not run: no natural vortex entry in these runs |
+
+- Marked: 9260, 9E88.

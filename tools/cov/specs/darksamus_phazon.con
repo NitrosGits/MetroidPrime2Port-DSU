@@ -1,0 +1,38 @@
+# darksamus_phazon.py: the phazon enrage helpers by statecall. PhazonRise's Activate first keeps the
+# base box 0x102C the scaled collision box is made from. The sphere sits at the root locator, which
+# PreRender reads: so the actor is placed 3 units in front (in view), grown to a sphere that reaches
+# the player, and the statecall comes 3 frames after the place. dt 0 first (every dt <= 0 arm), the
+# frame with no sphere, the sphere made and kept, two volley Activates (the second has 0xFB8 clear:
+# the pulse window), the type-8 waypoint (u066d), contact unmorphed (the visor effect made, then
+# kept), gated, far, morphed, the absorbed-shots force (dt 0.0123), the null tweak (0.0124), growth past 5 and the shrink
+# (partial, clamped, at the floor), a dt of -10 (PhazonEnraged's blend under 0), and PhazonAttack's reset with and without an emitter.
+@f600 send u04f7 Activate; god 1
+@f640 statecall u04f7 PhazonRise 0
+@f650 statecall u04f7 PhazonMissiles 1 0; statecall u04f7 PhazonFall 1 0
+@f652 statecall u04f7 PhazonMissiles 1 0.016; statecall u04f7 PhazonFall 1 0.016
+@f654 statecall u04f7 PhazonEnraged 0; statecall u04f7 PhazonEnraged 0
+@f656 statecall u04f7 PhazonMissiles 0; statecall u04f7 PhazonMissiles 0; statecall u04f7 PhazonMissiles 0
+@f658 hint u066d 8; statecall u04f7 PhazonMissiles 1 0.016; statecall u04f7 PhazonMissiles 2 0.016
+@f760 statecall u04f7 PhazonMissiles 1 0.016
+@f780 statecall u04f7 PhazonMissiles 1 0.0124
+@f790 statecall u04f7 PhazonEnraged 1 1.5
+@f800 place u04f7 player 3
+@f803 statecall u04f7 PhazonMissiles 1 0.016
+@f806 place u04f7 player 3
+@f809 statecall u04f7 PhazonMissiles 1 0.016
+@f850 place u04f7 player 3
+@f853 statecall u04f7 PhazonMissiles 1 0.016
+@f900 place u04f7 90 400 165
+@f903 statecall u04f7 PhazonMissiles 1 0.016
+@f910 press X 8
+@f1000 place u04f7 player 3
+@f1003 statecall u04f7 PhazonMissiles 1 0.016; status
+@f1010 press X 8
+@f1060 statecall u04f7 PhazonEnraged 1 0.0123; statecall u04f7 PhazonEnraged 1 0.016
+@f1100 statecall u04f7 PhazonEnraged 1 6; statecall u04f7 PhazonEnraged 1 0.016
+@f1110 statecall u04f7 PhazonEnraged 1 -10; statecall u04f7 PhazonEnraged 1 0.016
+@f1150 statecall u04f7 PhazonFall 1 0.5; statecall u04f7 PhazonFall 1 10; statecall u04f7 PhazonFall 1 0.016
+@f1200 statecall u04f7 PhazonAttack 0 0.016; statecall u04f7 PhazonAttack 2 0.016
+@f1220 statecall u04f7 PhazonAttack 0 0.0123; statecall u04f7 PhazonAttack 2 0.016
+@f1300 fsm u04f7 Interrupt
+@f1400 objs dark

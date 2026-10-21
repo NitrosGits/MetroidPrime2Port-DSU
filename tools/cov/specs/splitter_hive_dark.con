@@ -1,0 +1,10 @@
+# 09_cliff_temple_dark (a92f00b3, the Hive Temple) layer 10: the generated SPLL/SPLU (the
+# Splitter) through the relays SRLY 28350006/11/28 - every CScriptRelay of the layer is sent
+# SetToZero, which is what the note's runs do.
+@f30 layer 10
+@f120 objs
+@f300 send u054d SetToZero; send u054b SetToZero; send u0549 SetToZero; send u0544 SetToZero
+@f340 send u0541 SetToZero; send u0537 SetToZero; send u0521 SetToZero; send u051f SetToZero
+@f380 send u0512 SetToZero
+@f600 objs splitter
+@f900 objs

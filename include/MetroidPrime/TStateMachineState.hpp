@@ -110,6 +110,26 @@ public:
   const CState* GetCurrentState() const { return mState; } // Guessed name
   void SetCodeTrigger() { mCodeTrigger = true; }
   const CState* GetState() const { return mState; }
+#ifdef TARGET_PC
+  // Port console (`statecall`/`trigcall`): the function the owner's table gave under `name`,
+  // whether or not the machine has a state or trigger of that name. Same as CGenericFSM2State's.
+  StateFunc PortFindStateFunction(const char* name) const {
+    for (int i = 0; i < mPortStateFunctionCount; ++i) {
+      if (strcmp(mPortStateFunctions[i].mName, name) == 0) {
+        return mPortStateFunctions[i].mFunction;
+      }
+    }
+    return StateFunc();
+  }
+  TriggerFunc PortFindTriggerFunction(const char* name) const {
+    for (int i = 0; i < mPortTriggerFunctionCount; ++i) {
+      if (strcmp(mPortTriggerFunctions[i].mName, name) == 0) {
+        return mPortTriggerFunctions[i].mFunction;
+      }
+    }
+    return TriggerFunc();
+  }
+#endif
 
 private:
   void CallState(const CState& state, CStateManager& mgr, T& owner, EStateMsg msg, float arg);
@@ -124,6 +144,12 @@ private:
   float mDelay;
   float mFixedRandom;
   bool mCodeTrigger : 1;
+#ifdef TARGET_PC
+  const SStateFunction* mPortStateFunctions = nullptr; // the last table SetStateFunctions got
+  int mPortStateFunctionCount = 0;
+  const STriggerFunction* mPortTriggerFunctions = nullptr; // the last table SetTriggerFunctions got
+  int mPortTriggerFunctionCount = 0;
+#endif
 };
 
 template < class T >
@@ -272,6 +298,10 @@ void TStateMachineState< T >::SetStateFunction(const rstl::string& name, StateFu
 
 template < class T >
 void TStateMachineState< T >::SetStateFunctions(const SStateFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortStateFunctions = functions;
+  mPortStateFunctionCount = count;
+#endif
   if (functions != nullptr) {
     for (int i = 0; i < count; ++i) {
       SetStateFunction(functions[i].mName, functions[i].mFunction);
@@ -281,6 +311,10 @@ void TStateMachineState< T >::SetStateFunctions(const SStateFunction* functions,
 
 template < class T >
 void TStateMachineState< T >::SetTriggerFunctions(const STriggerFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortTriggerFunctions = functions;
+  mPortTriggerFunctionCount = count;
+#endif
   if (functions != nullptr) {
     for (int i = 0; i < count; ++i) {
       SetTriggerFunction(functions[i].mName, functions[i].mFunction);

@@ -1,0 +1,11 @@
+# darksamus_render.py's driver: the beam made and updated in front of the player (25 frames apart:
+# the driver polls about every 24 frames and drops lines in between).
+@f600 send u04f7 Activate; god 1
+@f625 place u04f7 player 10
+@f650 statecall u04f7 PhazonAttack 0 0.016; uevent u04f7 27
+@f675 place u04f7 player 10; statecall u04f7 PhazonAttack 1 0.05
+@f700 place u04f7 player 10; statecall u04f7 PhazonAttack 1 0.05
+@f725 place u04f7 player 10; statecall u04f7 PhazonAttack 1 0.05
+@f750 place u04f7 player 10; statecall u04f7 PhazonAttack 1 0.05
+@f775 place u04f7 player 10; statecall u04f7 PhazonAttack 1 0.05
+@f800 status

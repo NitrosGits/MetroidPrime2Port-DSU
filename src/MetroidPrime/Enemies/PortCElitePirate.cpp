@@ -252,6 +252,14 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
   }
 }
 
+// @ fn_15_9C70
+// The class destructor (vtable slot 2). Retail's body is the generated teardown: the vtable
+// pointer (0x9C90), the token at 0xcd0 (0x9CA4), the 0xc58 block (0x9CC0), the FSM2 token at
+// 0xc30 (0x9CCC), the attack-kind vector at 0xc14 (0x9CF4), the optional at 0x9e8 (0x9D50), the
+// collidable box at 0x9c0 (0x9D7C), the collision managers at 0x9b8 and 0x7f4 (0x9D88, 0x9DBC),
+// the data block (0x9D9C), the vulnerability at 0x7c4 (0x9DD0), the base destructor (0x9DDC) and
+// the deleting-dtor free (0x9DF0). The port's members are those objects, so their destructors
+// are that body.
 CElitePirate::~CElitePirate() {}
 
 // @ fn_15_1A48
@@ -989,12 +997,15 @@ void CElitePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   bool handled = false;
   switch (static_cast< int >(type)) {
   case 0:
+    // 0x7C48: only kinds 7, 2 and 8 handle the event; any other kind falls through to
+    // CPatterned's projectile (0x7C60/0x7C68 -> 0x7EB4 with r31 = 0).
     if (mAttackKind == 7) {
       CreateShockWave(mgr, node);
+      handled = true;
     } else if (mAttackKind == 2 || mAttackKind == 8) {
       FireRocket(mgr);
+      handled = true;
     }
-    handled = true;
     break;
   case 7:
     mEvent7 = true;

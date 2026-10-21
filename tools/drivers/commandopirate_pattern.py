@@ -147,11 +147,23 @@ def main():
             if i % 5 == 0:
                 log("frame %d: %s" % (frame(), st))
         # the small states the port has now: the console forces each of them, so one boot covers
-        # them all (the area's own state machine does not go there).
+        # them all (the area's own state machine does not go there). The cover and jump point
+        # searches run first, so the dest states have a point to find.
+        for name in ("CoverFind", "JumpPointFind"):
+            log("fsm %s: %s" % (name, cmd("fsm %s %s" % (target, name))))
+            wait_frame(frame() + 20)
         for name in ("Ambush", "Dead", "WallDetach", "SetCoverDest", "SetJumpDest",
                      "SetRetreatDest", "BreakCover", "Cover"):
             log("fsm %s: %s" % (name, cmd("fsm %s %s" % (target, name))))
             wait_frame(frame() + 20)
+        # the Dead state's shield effect needs the knock-back helper to run with the shield up:
+        # the console's `damage` on the commando (the shield is up after the ArmShield state).
+        log("fsm ArmShield: %s" % cmd("fsm %s ArmShield" % target))
+        wait_frame(frame() + 20)
+        log("damage: %s" % cmd("damage %s 5" % target))
+        wait_frame(frame() + 20)
+        log("fsm Dead: %s" % cmd("fsm %s Dead" % target))
+        wait_frame(frame() + 20)
     log("commando: %s" % cmd("objs commando"))
 
 
