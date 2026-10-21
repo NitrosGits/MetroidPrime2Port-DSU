@@ -481,7 +481,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
       "heal | kill                 refill energy, or kill the player (a respawn test)\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
-      "                            cannonball, dark or light; kb = knockback power)\n"
+      "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
+      "                            sunburst, sonicboom; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -1388,12 +1389,16 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float amount = 0.f;
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
-    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light]");
+    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
+         "annihilator|powerbomb|darkburst|sunburst|sonicboom]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
   // only a missile or the cannon ball may break cannot be tested with the default power beam.
+  // The charge combos (darkburst, sunburst, sonicboom) are their beam with the combo flag, which is
+  // what a knockback rule set tells them apart by (the Ing's death follow-ups, for instance).
   EWeaponType weapon = kWT_Power;
+  bool comboed = false;
   for (size_t i = 3; i < args.size(); ++i) {
     float number = 0.f;
     if (ParseFloat(args[i], number)) {
@@ -1410,8 +1415,22 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
       weapon = kWT_Light;
     } else if (args[i] == "power") {
       weapon = kWT_Power;
+    } else if (args[i] == "annihilator") {
+      weapon = kWT_Annihilator;
+    } else if (args[i] == "powerbomb") {
+      weapon = kWT_PowerBomb;
+    } else if (args[i] == "darkburst") {
+      weapon = kWT_Dark;
+      comboed = true;
+    } else if (args[i] == "sunburst") {
+      weapon = kWT_Light;
+      comboed = true;
+    } else if (args[i] == "sonicboom") {
+      weapon = kWT_Annihilator;
+      comboed = true;
     } else {
-      Fail("damage: weapon is power, missile, cannonball, dark or light");
+      Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
+           "darkburst, sunburst or sonicboom");
       return;
     }
   }
@@ -1423,7 +1442,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     return;
   }
   const float before = actor->GetHealthInfo()->GetHP();
-  const CDamageInfo info(CWeaponMode(weapon), amount, 0.f, knockback);
+  const CDamageInfo info(CWeaponMode(weapon, false, comboed), amount, 0.f, knockback);
   const CVector3f direction = actor->GetTranslation() - player->GetTranslation();
   mgr.ApplyDamage(player->GetUniqueId(), actor->GetUniqueId(), player->GetUniqueId(), info,
                   CMaterialFilter::GetPassEverything(), direction);
