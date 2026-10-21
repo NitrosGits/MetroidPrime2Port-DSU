@@ -1180,6 +1180,21 @@ private:
   // guest 0xE60/0xE64: the boost ball's element generator (fn_10_9B24, unported: always null).
   rstl::auto_ptr< CElementGen > mBoostBallElementGen;
 #endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 11: PreRender's two calls and Think's head aim.
+  void UpdateHeadAim(CStateManager& mgr);                        // fn_10_10A64
+  void TwistHead();                                              // fn_10_10864
+  void UpdateMeleePulseAndEffects(CStateManager& mgr, float dt); // fn_10_12DD0
+  void UpdateBoostBallEffects(CStateManager& mgr, float dt);     // fn_10_8F50
+  // guest 0xD40: the head's yaw toward the player in degrees, clamped to -30..30 (fn_10_10A64);
+  // the constructor writes lbl_10_rodata_3FC = 0.0f (0x0001FFE8).
+  float mHeadYaw = 0.f;
+  // guest 0xD44: the "Head_1" bone (GetSegIdFromString at 0x0001FFCC, the byte at 0x0001FFF0).
+  CSegId mHeadSegId;
+  // guest 0xD48: the elapsed time 0x8B0 of the last twist; the constructor writes
+  // lbl_10_rodata_410 = -1000.0f (0x0001FFF4).
+  float mHeadTwistTime = -1000.f;
+#endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

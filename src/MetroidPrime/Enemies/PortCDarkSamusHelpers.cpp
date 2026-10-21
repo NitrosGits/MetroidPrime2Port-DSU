@@ -30,6 +30,10 @@
 #include "MetroidPrime/CPhysicsActor.hpp"
 #include <stdio.h>
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "Kyoto/Particles/CParticleSwoosh.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
+#include "MetroidPrime/TCastTo.hpp"
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
@@ -949,4 +953,112 @@ void CDarkSamus::SpawnBoostBall(CStateManager& mgr) {
   ball->SetCalculateLighting(true);
   mgr.AddObject(ball);
   SpawnStandIn(sStandIn9B24, "fn_10_9B24", "SpawnBoostBall (0x0000A03C)");
+}
+
+// fn_10_10A64 (0x00010A64, 0x158 bytes), Think's (0x0001B330): the head's yaw toward the player.
+// The forward (the transform's second column, 0x28/0x38/0x48) and the player's offset from the
+// position 0x54 (the player 0x14FC, 0x00010ABC..0x00010ACC), both with z = 0.0f (0x00010ADC,
+// 0x00010AE0), normalized when they can be (0x00010AF0, 0x00010B0C); the angle between them
+// (GetAngleDiff at 0x00010B20) is negative when their cross's z is below 0.0f (fn_10_1B24 at
+// 0x00010B34, `bge` at 0x00010B48, lbl_10_rodata_3EC = -1.0f); 0xD40 is it in degrees
+// (lbl_10_rodata_458 = 57.295776f, 0x00010B6C) clamped to lbl_10_rodata_45C = -30.0f (0x00010B78)
+// and lbl_10_rodata_460 = 30.0f (0x00010B94).
+void CDarkSamus::UpdateHeadAim(CStateManager& mgr) {
+  CVector3f forward = GetTransform().GetForward();
+  forward.SetZ(0.f);
+  const CVector3f& playerPos = mgr.GetPlayer(0)->GetTranslation();
+  CVector3f toPlayer(playerPos.GetX() - GetTranslation().GetX(),
+                     playerPos.GetY() - GetTranslation().GetY(), 0.f);
+  if (forward.CanBeNormalized()) { // 0x00010AF0
+    forward.Normalize();
+  }
+  if (toPlayer.CanBeNormalized()) { // 0x00010B0C
+    toPlayer.Normalize();
+  }
+  float angle = CVector3f::GetAngleDiff(forward, toPlayer);   // 0x00010B20
+  if (CVector3f::Cross(forward, toPlayer).GetZ() < 0.f) {      // 0x00010B48
+    angle *= -1.f;                                             // 0x00010B54
+  }
+  mHeadYaw = 57.295776f * angle; // 0x00010B6C
+  if (mHeadYaw < -30.f) {        // 0x00010B78
+    mHeadYaw = -30.f;
+  } else if (mHeadYaw > 30.f) {  // 0x00010B94
+    mHeadYaw = 30.f;
+  }
+}
+
+// fn_10_10864 (0x00010864, 0x17C bytes), PreRender's (0x00018C7C): the head twist. Alive only
+// (0x420 bit 0x40, `extrwi.` at 0x00010884) and once per elapsed time (0x8B0 == 0xD48, `fcmpu` at
+// 0x00010894): the "Head_1" node's rotation in the pose builder (the anim data 0x2F4, fn_10_10A20
+// at 0x000108B8) times an X rotation of lbl_10_rodata_450 = 0.2617994f (15 degrees, 0x000108F4)
+// times a Z rotation of 0xD40 degrees (lbl_10_rodata_454 = 0.017453292f, 0x00010938) goes back
+// into the node (the products at 0x00010968/0x00010978, fn_10_109E0 at 0x000109A8); the anim
+// data's pose-built bit (0x2AC bit 0x2) is cleared (0x000109B4) and 0xD48 takes 0x8B0 (0x000109C0).
+void CDarkSamus::TwistHead() {
+  if (!GetAlive()) { // 0x00010888
+    return;
+  }
+  if (mElapsedTime == mHeadTwistTime) { // 0x00010898
+    return;
+  }
+  CAnimData* anim = ModelData()->AnimationData();
+  CHierarchyPoseBuilder& builder = anim->PoseBuilder();
+  const CQuaternion rot = builder.GetSegRotation(mHeadSegId);
+  const CQuaternion pitch = CQuaternion::XRotation(CRelAngle::FromRadians(0.2617994f));
+  const CQuaternion yaw = CQuaternion::ZRotation(CRelAngle::FromRadians(0.017453292f * mHeadYaw));
+  builder.Insert(mHeadSegId, rot * pitch * yaw);
+  anim->SetPoseBuilt(false);
+  mHeadTwistTime = mElapsedTime;
+}
+
+// fn_10_12DD0 (0x00012DD0, 0xC0 bytes), PreRender's (0x00018D04, dt 0.0f): the melee pulse
+// explosion 0x9DC follows the root 0x8FC/0x900 at its own height (0x5C; SetTranslation at
+// 0x00012E5C); a uid that is no longer a CExplosion (TCastToPtr at 0x00012E24) is cleared
+// (0x00012E38). Then the boost ball's effects (fn_10_8F50 at 0x00012E6C).
+void CDarkSamus::UpdateMeleePulseAndEffects(CStateManager& mgr, float dt) {
+  if (mMeleeContact.mHitUid != kInvalidUniqueId) { // 0x00012E0C
+    CExplosion* explosion = TCastToPtr< CExplosion >(mgr.ObjectById(mMeleeContact.mHitUid));
+    if (explosion == nullptr) {                    // 0x00012E2C
+      mMeleeContact.mHitUid = kInvalidUniqueId;    // 0x00012E38
+    } else {
+      explosion->SetTranslation(CVector3f(mRootPos.GetX(), mRootPos.GetY(),
+                                          explosion->GetTranslation().GetZ())); // 0x00012E5C
+    }
+  }
+  UpdateBoostBallEffects(mgr, dt);
+}
+
+// fn_10_8F50 (0x00008F50, 0x214 bytes): the boost ball's effects at the position plus
+// (lbl_10_rodata_25C = 0.0f, 0.0f, lbl_10_rodata_268 = 0.625f) (0x00008F88..0x00008FA4). The
+// generator 0xE64 (when set, 0x00008FB0) is turned to the transform's rotation, moved there and
+// updated (vtable 0x14/0x18/0xC, 0x00008FD4..0x00009004). With the swoosh 0xE3C (0x00009010):
+// alive (0x420 bit 0x40, 0x0000902C) and without 0xEBC bit 0x40 (0x00009038) it and the swoosh
+// 0xE4C, when set (0x00009058), move there (vtable 0x18, 0x0000904C/0x0000906C); 0xE3C is scaled by
+// lbl_10_rodata_26C = 1.25f (vtable 0x24, 0x000090B4) and updated (0x000090CC); 0xE4C, when set
+// (0x000090D8), is scaled by (lbl_10_rodata_270 = 0.2f, 0.2f, 1.25f) (0x00009108), tinted white
+// (vtable 0x30, 0x00009128) and updated (0x00009140).
+// Unmarked: the host builds none of the three (fn_10_9B24 is a stand-in), so only the null arms run.
+void CDarkSamus::UpdateBoostBallEffects(CStateManager& mgr, float dt) {
+  const CVector3f pos = GetTranslation() + CVector3f(0.f, 0.f, 0.625f);
+  if (CElementGen* gen = mBoostBallElementGen.get()) { // 0x00008FB0
+    gen->SetOrientation(GetTransform().GetRotation());
+    gen->SetTranslation(pos);
+    gen->Update(dt);
+  }
+  if (mBoostBallSwooshE3C == nullptr) { // 0x00009010
+    return;
+  }
+  if (GetAlive() && !mBoostBallFlag40) { // 0x0000902C, 0x00009038
+    mBoostBallSwooshE3C->SetTranslation(pos);
+    if (mBoostBallSwooshE4C != nullptr) { // 0x00009058
+      mBoostBallSwooshE4C->SetTranslation(pos);
+    }
+  }
+  mBoostBallSwooshE3C->SetGlobalScale(CVector3f::One() * 1.25f); // 0x000090B4
+  mBoostBallSwooshE3C->Update(dt);                               // 0x000090CC
+  if (mBoostBallSwooshE4C != nullptr) {                          // 0x000090D8
+    mBoostBallSwooshE4C->SetGlobalScale(CVector3f(0.2f, 0.2f, 1.25f)); // 0x00009108
+    mBoostBallSwooshE4C->SetModulationColor(CColor::White());          // 0x00009128
+    mBoostBallSwooshE4C->Update(dt);                                   // 0x00009140
+  }
 }
