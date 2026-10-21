@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Splitter (REL 75) gameplay driver: plans S/H/C/D/K/E/F/G, timed in wall seconds (run at
+"""Splitter (REL 75) gameplay driver: plans S/H/C/D/K/E/F/G/N, timed in wall seconds (run at
 normal speed). usage: MP2_CONSOLE=<port> splitter_drv.py <game log> <duration> <after>"""
 import collections
 import math
@@ -169,7 +169,7 @@ PLANS = {
          + [(14, "sweepbomb:0521:067e:90")] + ring(30, 0, 15, 2.5) + ring(35, 0, 35, 2.5) + ring(28, 8, 55, 2.5)
          + ring(30, 0, 75, 2.5) + [(104, "pick:0532"), (105, "sweepbomb:0532:0678:90")]
          + ring(30, 0, 106, 2.5) + ring(35, 0, 126, 2.5) + ring(28, 8, 146, 2.5) + ring(30, 0, 166, 2.5)
-         + [(196, "dump:objs splitter")],
+         + [(212, "dump:objs splitter"), (214, "damage u0531 200 0 power"), (216, "dump:objs splitter")],
     "F": [(1, "pick:0532"), (2, "give MorphBall 1"), (2.5, "give MorphBallBombs 1"), (3, "sweepbomb:0532:0678:120")]
          + ring(30, 0, 4, 2.5) + ring(35, 0, 24, 2.5) + ring(28, 8, 44, 2.5) + ring(30, 0, 64, 2.5)
          + ring(20, 0, 84, 2.5) + ring(12, 4, 104, 2.5) + [(125, "dump:objs splitter")]
@@ -181,6 +181,16 @@ PLANS = {
          + [(150 + 0.5 * k, "damage u0520 25 0 power") for k in range(7)] + [(156, "dump:obj u0521")]
          + [(165 + k, "damage u0521 %d 0 %s" % (4, ("power", "missile", "cannonball", "bomb")[k % 4])) for k in range(8)]
          + [(175, "dump:obj u0521"), (176, "dump:objs splitter")],
+    # N: kill the 0532 chassis with bombs, then circle its undocked head (pick:0531) and park the
+    # 0521 chassis on the head's right (flank R) or left (flank L) side, to block one dodge side;
+    # from 146 s also hold the head at a fixed height above its nav area (lift) for the dodge's
+    # OnPath test; every third 20 s block leaves both sides open. At 214 s a shot kills the head.
+    "N": [(1, "pick:0532"), (2, "give MorphBall 1"), (2.5, "give MorphBallBombs 1"), (3, "sweepbomb:0532:0678:76")]
+         + ring(30, 0, 4, 2.5) + ring(35, 0, 24, 2.5) + ring(28, 8, 44, 2.5) + ring(30, 0, 64, 2.5)
+         + [(79, "pick:0531")] + [(80 + 4.0 * k, "tp:%.1f:%.1f:1" % (14 * math.sin(math.radians(45 * k)), 14 * math.cos(math.radians(45 * k)))) for k in range(33)]
+         + [(81 + 0.8 * k, "flank:0531:0521:%s" % "RL"[(k // 25) % 3]) for k in range(160) if (k // 25) % 3 < 2]
+         + [(146 + 0.8 * k, "lift:0531:-60") for k in range(80)]
+         + [(212, "dump:objs splitter"), (214, "damage u0531 200 0 power"), (216, "dump:objs splitter")],
     "D": [(2, "dump:objs collision"), (3, "dump:objs splitter"), (4, "dump:obj u%s" % "0532")],
     "T": ring(10, 0, 10) + ring(30, 0, 36) + ring(25, 12, 62) + missiles(88, 6) + [(101, "tp:0:20:0")]
          + missiles(102, 6) + [(115, "tp:20:0:0")] + missiles(116, 6) + [(129, "tp:-20:0:0")]
@@ -196,11 +206,13 @@ def chassis_all(con):
 PICK = [None]
 SWEEP = [None]
 SWK = [0]
+LAST_TP = [(0.0, 1.0)]
 
 def chassis_pos(con):
     out = con.cmd("objs splitter", timeout=12.0)
     for m in OBJ_RE.finditer(out):
-        if m.group(3) == "CSplitterMainChassis" and m.group(5) and PICK[0] in (None, m.group(1)):
+        if m.group(3) in ("CSplitterMainChassis", "CSplitterCommandModule") and m.group(5) \
+                and (PICK[0] == m.group(1) or (PICK[0] is None and m.group(3) == "CSplitterMainChassis")):
             return float(m.group(5)), float(m.group(6)), float(m.group(7))
     return None
 
@@ -267,6 +279,22 @@ def main():
                 elif act.startswith("sweepbomb:"):
                     _, cu, au, dur = act.split(":")
                     SWEEP[0] = (cu, au, el() + float(dur), "bomb")
+                elif act.startswith("flank:") or act.startswith("lift:"):
+                    parts = act.split(":")
+                    out = con.cmd("objs splitter", timeout=12.0)
+                    for m in OBJ_RE.finditer(out):
+                        if m.group(1) != parts[1] or m.group(5) is None:
+                            continue
+                        x, y, z = float(m.group(5)), float(m.group(6)), float(m.group(7))
+                        if parts[0] == "lift":
+                            con.act("place u%s %.2f %.2f %s" % (parts[1], x, y, parts[2]))
+                            continue
+                        # The head faces the player, who stands at the last tp offset from it; its
+                        # right (transform X) is forward x up = (fy, -fx).
+                        fx, fy = LAST_TP[0]
+                        n = math.hypot(fx, fy) or 1.0
+                        side = 1.6 if parts[3] == "R" else -1.6
+                        con.act("place u%s %.2f %.2f %.2f" % (parts[2], x + side * fy / n, y - side * fx / n, z))
                 elif act.startswith("forcekill:"):
                     _, cu, au = act.split(":")
                     log("FORCED fsm u%s LaserSweepAttack; damage u%s" % (cu, au))
@@ -297,6 +325,7 @@ def main():
                     p = chassis_pos(con)
                     if p:
                         cx, cy, cz = p
+                        LAST_TP[0] = (ox, oy)
                         con.act("tp %.2f %.2f %.2f" % (cx + ox, cy + oy, cz + 0.5 + oz))
                         con.act("face %.1f" % math.degrees(math.atan2(-ox, -oy)))
                 else:
