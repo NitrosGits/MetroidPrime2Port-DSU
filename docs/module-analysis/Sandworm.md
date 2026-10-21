@@ -5,7 +5,7 @@ the full function classification (section g), the upstream-class check (section 
 canonical port order (section i).
 
 **The module is ported.** The bodies live in `src/MetroidPrime/Enemies/PortCSandworm*.cpp`;
-247 of the 266 module-behaviour functions carry a `// @ fn_56_` marker (262 markers in
+253 of the 262 module-behaviour functions carry a `// @ fn_56_` marker (268 markers in
 total; the other 15 sit on the thunks and the inline command helpers). The
 `docs/modules.tsv` row for Sandworm still says `status=entry-stub`, which is stale bookkeeping:
 the row was written before the port, and `tools/rel_manifest.py` derives the status from
@@ -322,29 +322,27 @@ Everything else is in the AFSM.
 
 Three classes, applied by rule so the table can be audited:
 
-- **H - host copy** (97 functions, 0x2A04 bytes): the body is a copy of something the host
+- **H - host copy** (101 functions, 0x2BF8 bytes): the body is a copy of something the host
   already has, so the port writes no body for it. The last column names the DOL/upstream
-  function it copies. Four sources: the crtexe REL runtime (7 symbols), compiler-emitted
-  destructors that exist only for exception handling (36 `weak-dtor`), rstl / inline template
-  code (29 `template`, 6 `inline-hdr`) and DOL class members copied inline (19 `inline-dol`).
+  function it copies. Five sources: the crtexe REL runtime (7 symbols), compiler-emitted
+  destructors (36 `weak-dtor` for the exception tables + 3 `compiler-dtor` for the module's own
+  structs), rstl / inline template code (30 `template`, 6 `inline-hdr`), DOL class members copied
+  inline (19 `inline-dol`).
 - **T - data / vtable thunk** (20 functions, 0x110 bytes): the body only returns a constant, a
   member address or a flag. The port writes it as one line in the vtable.
-- **B - module behaviour** (266 functions, 0x12F94 bytes): real behaviour - these are the port
+- **B - module behaviour** (262 functions, 0x12DA0 bytes): real behaviour - these are the port
   bodies. The last column says whether the body carries a `// @ fn_56_` marker.
 
 | class | functions | .text bytes |
 |---|---|---|
-| H host copy | 97 | 0x2A04 (10,756) |
+| H host copy | 101 | 0x2BF8 (11,256) |
 | T data / vtable thunk | 20 | 0x110 (272) |
-| B module behaviour | 266 | 0x12F94 (77,716) |
+| B module behaviour | 262 | 0x12DA0 (77,216) |
 | **total** | **383** | **0x15AA8 (88,744)** |
 
-Breakdown by the note's own `kind` column: 157 `method`, 37 `fsm-trigger`, 36 `weak-dtor`,
-34 `virtual`, 29 `template`, 24 `fsm-state`, 19 `inline-dol`, 12 `member-ctor`, 7 REL runtime,
-6 `inline-hdr`, 5 `member-dtor`, 5 `unreferenced`, 3 `rel-entry`, 3 `ctor`, 2 `dtor`, 2 `radar`,
-1 `loader`, 1 `static-init` (= 383).
+Breakdown by the note's own `kind` column: 156 `method`, 37 `fsm-trigger`, 36 `weak-dtor`, 34 `virtual`, 30 `template`, 24 `fsm-state`, 19 `inline-dol`, 12 `member-ctor`, 7 `runtime`, 6 `inline-hdr`, 5 `unreferenced`, 3 `compiler-dtor`, 3 `ctor`, 3 `rel-entry`, 2 `dtor`, 2 `member-dtor`, 2 `radar`, 1 `loader`, 1 `static-init` (= 383).
 
-### g.1 H - host copy (97)
+### g.1 H - host copy (101)
 
 | id | size | what it is | callers | DOL / upstream counterpart |
 |---|---|---|---|---|
@@ -370,6 +368,7 @@ Breakdown by the note's own `kind` column: 157 `method`, 37 `fsm-trigger`, 36 `w
 | `fn_56_2268` | 0x38 | [?] material test (x68 & 0x200) inline HasMaterial | 321C | CMaterialList::HasMaterial (inline) |
 | `fn_56_263C` | 0x68 | [?] SMoverData ctor (inline) | 2434 | [?] SMoverData::SMoverData |
 | `fn_56_26A4` | 0x20 | CModelData::CModelDataNull (inline) | 2434 | CModelData::CModelDataNull |
+| `fn_56_285C` | 0x94 | SAttackHistory::~SAttackHistory (x1490) | 1223C | - |
 | `fn_56_2908` | 0x8C | [?] weak/EH-only destructor (no REL caller; Free/~CToken body) | - | [?] compiler-emitted dtor |
 | `fn_56_343C` | 0x48 | ~CBodyStateCmd (data_878, REL copy) | data_880 | CBodyStateCmd::~CBodyStateCmd |
 | `fn_56_3590` | 0x5C | ~CBCTauntCmd (data_86C, REL copy) | data_874 | CBCTauntCmd::~CBCTauntCmd |
@@ -409,9 +408,12 @@ Breakdown by the note's own `kind` column: 157 `method`, 37 `fsm-trigger`, 36 `w
 | `fn_56_D5D4` | 0x68 | [?] weak/EH-only destructor (no REL caller; Free/~CToken body) | - | [?] compiler-emitted dtor |
 | `fn_56_D63C` | 0x54 | [?] weak/EH-only destructor (no REL caller; Free/~CToken body) | - | [?] compiler-emitted dtor |
 | `fn_56_EF50` | 0x3C | [?] weak/EH-only destructor (no REL caller; Free/~CToken body) | - | [?] compiler-emitted dtor |
+| `fn_56_F328` | 0x40 | [?] EF8C helper | EF8C | - |
 | `fn_56_10F54` | 0x3C | [?] weak/EH-only destructor (no REL caller; Free/~CToken body) | - | [?] compiler-emitted dtor |
 | `fn_56_12474` | 0x1E4 | ~CPatterned body (REL copy) | 1223C | CPatterned::~CPatterned |
 | `fn_56_12658` | 0x94 | [?] dtor of x620 member (vtable data_844) | 12474 | [?] CAiKnockBack-type member dtor |
+| `fn_56_126EC` | 0x94 | ~x1528 (CProjectileInfo+extras) | 1223C | - |
+| `fn_56_12780` | 0x8C | ~SPincers (x1770) | 1223C | - |
 | `fn_56_12B64` | 0x30 | [?] model holder assign chain (template) | 128B0 | [?] |
 | `fn_56_12B94` | 0x48 | [?] model holder assign chain (template) | 12B64 | [?] |
 | `fn_56_12BDC` | 0xC4 | [?] model holder assign chain (template) | 12B94 | [?] |
@@ -471,17 +473,16 @@ Breakdown by the note's own `kind` column: 157 `method`, 37 `fsm-trigger`, 36 `w
 | `fn_56_14B34` | 0x8 | Listen [slot 0xB0] -> false | data_934 | no marker |
 | `fn_56_14B3C` | 0x1C | GetOrigin [slot 0xB4] | data_938 | no marker |
 
-### g.3 B - module behaviour (266)
+### g.3 B - module behaviour (262)
 
-`port` column: **marked** = the body carries a `// @ fn_56_` marker; **no marker** = the
-body is in the tree but carries none (a compiler-generated member destructor, a dead slot, or a
-body the port folded into a neighbour); **no body** = the port has none (the two unreferenced math
-helpers the port skipped and the REL's static init, which the host does not need).
+`port` column: **marked** = the body carries a `// @ fn_56_` marker; **no marker** = the body is
+in the tree but carries none (a data-gated body, a dead slot, or a body the port folded into a
+neighbour); **no body** = the port has none (the two unreferenced math helpers the port skipped and
+the REL's static init, which the host does not need).
 
-The 27 **no marker** rows are the 20 bodies section j lists as not exercised (12 module-behaviour
-+ 8 thunks) plus 7 more the port emits without a marker: the compiler-generated member destructors
-`fn_56_285C`, `fn_56_126EC`, `fn_56_12780`, the inlined `CVector3f::Cross` `fn_56_F328` and the
-three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
+The 17 **no marker** rows are the 9 B functions section j lists as not
+exercised (three of them without a body at all) and the 8 dead virtual slots of T. Section l
+has the per-arm table for every one of them.
 
 | id | size | what it is | callers | port |
 |---|---|---|---|---|
@@ -508,7 +509,6 @@ three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
 | `fn_56_2718` | 0x58 | [?] Descend helper | B320 | marked |
 | `fn_56_2770` | 0x78 | [?] BeginAttack helper | B85C | marked |
 | `fn_56_27E8` | 0x74 | [?] BeginAttack helper | 2770 | marked |
-| `fn_56_285C` | 0x94 | SAttackHistory::~SAttackHistory (x1490) | 1223C | no marker |
 | `fn_56_28F0` | 0x18 | SAttackHistory::SAttackHistory (x1490) | 12D68 14010 | marked |
 | `fn_56_2994` | 0x29C | RenderIngSnatchingTransition [slot 0x144] | data_9C8 | marked |
 | `fn_56_2C30` | 0xBC | GetOrbitPosition [slot 0x50] (eye-based) | data_8D4 | marked |
@@ -520,7 +520,7 @@ three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
 | `fn_56_321C` | 0x188 | GetAimPosition [slot 0x54] (eye-based) | data_8D8 | marked |
 | `fn_56_33A4` | 0x98 | Interrupt [slot 0x238, FSM extra state] | data_ABC | marked |
 | `fn_56_3484` | 0x10C | EyeKilledReaction [state slot 0x1fc] | data_A80 | marked |
-| `fn_56_35EC` | 0xC | HitDuringWindUp [trigger slot 0x188] | data_A0C | no marker |
+| `fn_56_35EC` | 0xC | HitDuringWindUp [trigger slot 0x188] | data_A0C | marked |
 | `fn_56_35F8` | 0xA8 | OneEyeKilled [trigger slot 0x19c] | data_A20 | marked |
 | `fn_56_36A0` | 0xB0 | [?] AnyEyeDead / eye-state query | 11374 3484 3B24 441C 4AD8 74B8 AC80 E340 | marked |
 | `fn_56_3750` | 0x14 | PickedBombFountain [trigger slot 0x1a0] | data_A24 | marked |
@@ -608,13 +608,13 @@ three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
 | `fn_56_8190` | 0x328 | ChargePlayer [state slot 0x1e8] | data_A6C | marked |
 | `fn_56_84B8` | 0xFC | [?] LaunchSpitProjectile | 8AAC | marked |
 | `fn_56_8AAC` | 0x3E4 | [?] FireSpit (anim event) | 646C | marked |
-| `fn_56_8E90` | 0x1A0 | [?] BombToss spawn | 646C | no marker |
+| `fn_56_8E90` | 0x1A0 | [?] BombToss spawn | 646C | marked |
 | `fn_56_9030` | 0x1A4 | [?] SpawnBouncingBomb (new 0x218) | 8E90 91D4 | marked |
 | `fn_56_91D4` | 0x194 | [?] BombFountain spawn | 646C | marked |
 | `fn_56_9368` | 0xD8 | [?] AttachHeldBomb | 9660 B8B8 BC8C | marked |
 | `fn_56_9440` | 0x104 | [?] ReleaseHeldBomb | 646C | marked |
 | `fn_56_9590` | 0x50 | [?] GetHeldBomb (TCastToPtr<CBouncingBomb>) | 9368 9440 | marked |
-| `fn_56_95E0` | 0x60 | [?] DeleteHeldBomb | 11374 646C B8B8 BC8C | no marker |
+| `fn_56_95E0` | 0x60 | [?] DeleteHeldBomb | 11374 646C B8B8 BC8C | marked |
 | `fn_56_9640` | 0x8 | GetBombExplodeSfx (x1832) | 3BAC 9030 9660 | marked |
 | `fn_56_9648` | 0x8 | GetBombBounceSfx (x1830) | 3BAC 9030 9660 | marked |
 | `fn_56_9650` | 0x10 | GetInvalidSfx | 3BAC 9030 9660 | marked |
@@ -646,7 +646,7 @@ three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
 | `fn_56_B50C` | 0x1D0 | Rise [state slot 0x220] | data_AA4 | marked |
 | `fn_56_B6DC` | 0x124 | SpitAttack [state slot 0x228] | data_AAC | marked |
 | `fn_56_B85C` | 0x5C | [?] BeginAttack (common) | 6FA0 74B8 8190 B6DC B8B8 BAB8 BC8C BF44 | marked |
-| `fn_56_B8B8` | 0x200 | BombFountainAttack [state slot 0x1dc] | data_A60 | no marker |
+| `fn_56_B8B8` | 0x200 | BombFountainAttack [state slot 0x1dc] | data_A60 | marked |
 | `fn_56_BAB8` | 0x1D4 | BombSpreadAttack [state slot 0x1e0] | data_A64 | marked |
 | `fn_56_BC8C` | 0x218 | BombTossAttack [state slot 0x1e4] | data_A68 | marked |
 | `fn_56_BEA4` | 0x94 | StopGrabAttack [state slot 0x22c] | data_AB0 | marked |
@@ -663,7 +663,7 @@ three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
 | `fn_56_C600` | 0x104 | [?] spine/segment chain helper | F5B0 F77C | marked |
 | `fn_56_C704` | 0xF0 | [?] spine/segment chain helper | C600 E764 | marked |
 | `fn_56_C7F4` | 0x34 | [?] spine/segment chain helper | C704 | marked |
-| `fn_56_C828` | 0x16C | [?] spine/segment chain helper | AC24 | no marker |
+| `fn_56_C828` | 0x16C | [?] spine/segment chain helper | AC24 | marked |
 | `fn_56_C994` | 0x15C | [?] spine/segment chain helper | B138 C828 F77C FC94 | marked |
 | `fn_56_CAF0` | 0xC4 | [?] SetEyeCollisionVulnerability | 4AD8 | marked |
 | `fn_56_CBB4` | 0xD8 | [?] spine/segment chain helper | D350 | marked |
@@ -693,7 +693,6 @@ three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
 | `fn_56_E764` | 0x7BC | [?] spine/segment chain helper | F5B0 | marked |
 | `fn_56_EF20` | 0x30 | [?] spine/segment chain helper | E764 | marked |
 | `fn_56_EF8C` | 0x39C | [?] RotateBodyForBombAttack (GetRotation/SetTransform) | BAB8 BC8C | marked |
-| `fn_56_F328` | 0x40 | [?] EF8C helper | EF8C | no marker |
 | `fn_56_F368` | 0x1C | [?] spine/segment chain helper | F5B0 | marked |
 | `fn_56_F384` | 0x22C | [?] spine/segment chain helper | F5B0 | marked |
 | `fn_56_F5B0` | 0x160 | [?] spine/segment chain helper | 9CD8 F77C | marked |
@@ -715,7 +714,7 @@ three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
 | `fn_56_1080C` | 0xB0 | [?] spine/segment chain helper | 107E8 FA30 | marked |
 | `fn_56_108BC` | 0xB0 | [?] spine/segment chain helper | D350 | marked |
 | `fn_56_1096C` | 0xB4 | [?] GetLocatorPosition(i) | 5938 A04C A348 B138 D350 F384 F5B0 | marked |
-| `fn_56_10A20` | 0x48 | [?] GetLctrTransform wrapper | 108BC 1096C | no marker |
+| `fn_56_10A20` | 0x48 | [?] GetLctrTransform wrapper | 108BC 1096C | marked |
 | `fn_56_10A68` | 0x70 | [?] unreferenced (SetSteeringSpeedRange) | - | no marker |
 | `fn_56_10AD8` | 0x110 | [?] UpdateTimers (Think) | 110C0 | marked |
 | `fn_56_10BE8` | 0xBC | [?] UpdateFade (Think) | 110C0 | marked |
@@ -735,8 +734,6 @@ three with no body (`fn_56_10110`, `fn_56_10268`, `fn_56_14FA8`).
 | `fn_56_11FAC` | 0x22C | [?] SpawnScriptedFx/SendScriptMsgs | 10F90 441C 5D80 | marked |
 | `fn_56_121D8` | 0x64 | [?] post-ctor helper | 128B0 | marked |
 | `fn_56_1223C` | 0x238 | ~CSandworm [slot 0x08] | data_88C | marked |
-| `fn_56_126EC` | 0x94 | ~x1528 (CProjectileInfo+extras) | 1223C | no marker |
-| `fn_56_12780` | 0x8C | ~SPincers (x1770) | 1223C | no marker |
 | `fn_56_1280C` | 0xA4 | ~SBombParams (x1944) | 1223C | marked |
 | `fn_56_128B0` | 0x2B4 | [?] FinishConstruction (pincer models, seg ids, clamp impulses) | 12D68 14010 | marked |
 | `fn_56_12D68` | 0x834 | CSandworm::CSandworm (Sandigger/Alpha form) | DC | marked |
@@ -860,10 +857,11 @@ There is **no** upstream `CWorm*` class: the worm's class is `CSandworm`, the ey
 3. **The REL-local body-command copies.** The REL's `CBCTauntCmd` is 0xC bytes and its second word
    is lost on the host (the DOL's `CBCTauntCmd` does not carry it). The port uses the DOL's classes
    instead of porting the copies, so the taunt's second parameter is not reproduced.
-4. **The Bomb Guardian's own bodies.** Four bodies are data-gated (the prefab's `SLdrSandwormStruct`
-   kinds never pick attack 7): `fn_56_B8B8` (BombFountainAttack), `fn_56_8E90` (SpawnBombToss),
-   `fn_56_35EC` (HitDuringWindUp), `fn_56_95E0` (DeleteHeldBomb's picked-7 branch). They are ported
-   but cannot run in this build.
+4. **The Bomb Guardian's own bodies.** Four bodies the prefab's own attack pick never reaches (its
+   `SLdrSandwormStruct` kinds never pick attack 7): `fn_56_B8B8` (BombFountainAttack),
+   `fn_56_8E90` (SpawnBombToss), `fn_56_35EC` (HitDuringWindUp), `fn_56_95E0` (DeleteHeldBomb's
+   picked-7 branch). **Corrected 2026-10-21:** they are not unreachable - the prefab's AFSM has the
+   BombFountainAttack state, and forcing it with the console runs all four (section l).
 5. **Thirteen dead slots** and `fn_56_C828` are unreachable for the same reason as in section j
    (prefab data or no caller in the tree); they are ported and annotated, not missing.
 
@@ -950,6 +948,21 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
 
 ## j. Port status (2026-10-19, updated 2026-10-21)
 
+- 2026-10-21 (third pass): the two bodies that still had a retail caller are marked now -
+  `fn_56_95E0` (both arms: the breakpoint printed the held bomb's id 1523/1547 for the delete
+  arm and -1 for the early-out) and `fn_56_10A20` (68174 calls; the port's two spine helpers
+  now call the wrapper, as retail does). The seven that are left are cited with proof in
+  section l: `fn_56_C350` and `fn_56_C3D0` are vtable entries no FSM2 asset asks for (the
+  disc scan is in l.2), and `fn_56_2210`, `534C`, `6324`, `10A68` (plus `10110`, `10268`,
+  `14FA8`) have no caller in the retail module at all.
+- 2026-10-21 (second pass, code + note): the four bodies that the old note called
+  "data-gated" ran after all - the Bomb Guardian's AFSM *has* the BombFountainAttack state,
+  and forcing it with the console (`fsm u048f BombFountainAttack`, plus `send u048f Activate`)
+  runs the picked-7 chain that the prefab's own attack pick never chooses. `fn_56_35EC`
+  (478 trigger calls), `fn_56_8E90` (27), `fn_56_B8B8` (481) and `fn_56_C828` (1, forced
+  `fsm u048f Null`) are marked now; `fn_56_95E0` ran 3 times but only its delete arm, so it
+  stays unmarked. Section l has the per-arm table for all 15 unmarked B functions, the three
+  bodies without one and the answers to the three `tools/asmcheck.py` findings.
 - 2026-10-21 (this pass, docs only): the note gained the classification of all **383** function
   symbols (section g: 97 host copies, 20 thunks, 266 module behaviour), the upstream-class check
   (section h) and the canonical port order in 27 slices of ~10 (section i). `Sandworm_functions.tsv`
@@ -1031,10 +1044,13 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
   them, the kinds at `x968_` 1/2 are 5 and fall into `default` → -1, which resets `x968_`. Stepping hp
   down the bands (console `damage u048f`, 20-25 s dwell each, beam fire in between) ran
   `BombSpreadAttack` (`BAB8`), `BombTossAttack` (`BC8C`) and the whole held-bomb chain (`9660` `9368`
-  `9590` `9440`), plus `EF8C`/`F328` and the spawn/sfx trio. Kind 4 never appears, so picked 7 is
-  unreachable: `B8B8` (`BombFountainAttack`), `8E90` (`SpawnBombToss`), `35EC` (`HitDuringWindUp`, the
-  picked-7 wind-up flag branch) and `95E0` (`DeleteHeldBomb`'s picked-7 branch) are **data-gated**, not
-  port gaps — annotated as such in the source, and they count as unreachable (bucket E) for this build.
+  `9590` `9440`), plus `EF8C`/`F328` and the spawn/sfx trio. Kind 4 never appears in the prefab's
+  own pick, so picked 7 is not chosen by play: `B8B8` (`BombFountainAttack`), `8E90`
+  (`SpawnBombToss`), `35EC` (`HitDuringWindUp`, the picked-7 wind-up flag branch) and `95E0`
+  (`DeleteHeldBomb`'s picked-7 branch) are **data-gated**, not port gaps — annotated as such in the
+  source, and they count as unreachable (bucket E) for this build. **Corrected 2026-10-21:** the
+  prefab's AFSM *does* have the BombFountainAttack state, and a forced state (`fsm u048f
+  BombFountainAttack`) runs all four (section l).
 - That area also ran four bucket-D bodies: `321C` (`GetAimPosition`), `F710` (`Primed`), `F754`
   (`Prime`) and `F77C` (`SpineHelperF77C`) — `Prime` runs there because this prefab's `Null`
   path has the underground bit clear. `14AEC`/`14B24` still need a projectile to reach the worm
@@ -1113,6 +1129,118 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
 2. The exact layout of the 0x84-byte spit block at x1528 (`CProjectileInfo` plus visor effect).
 3. The meaning of `unknown_0x06dee4c5` (x8C0 b7, BeginUnderground) and of the SLdrSandwormStruct ints.
 4. The names of vtable slot 0x23C and of the x620 member class (`data_844`).
-5. The DoUserAnimEvent event-type → action mapping (`jumptable data_790`); it needs a per-case read in WP4.
+5. The DoUserAnimEvent event-type → action mapping (`jumptable data_790`); the projectile case (0) is read (section l), the others still need a per-case read.
 6. The `CSandwormEye` base mismatch with the repo header (`CActor` versus `CPhysicsActor`).
+7. The `bss_54` triple (0.0, 0.0, 1.5) the REL's static init writes (section l.2): the host uses the same
+   constants inline, but nothing in the tree reads them yet.
 
+## l. The unmarked functions: who calls them in retail, and which arms ran
+
+### l.0 How "who calls it" was established
+
+Three independent scans over the module (the REL's own asm in the archive tree,
+`<archive>/build/G2ME01/Sandworm/asm`):
+
+1. **Direct calls.** `grep 'bl fn_56_XXXX'` over the module's `.text` gives the call sites.
+2. **Table references.** The module's `.data` (the archive's `auto_04_00000000_data.s`) holds the
+   vtables and the FSM registration tables; a function named there (as a symbolic `.4byte
+   fn_56_XXXX` or as its raw `.text` offset) is called *through* that table. The CSandworm's vtable
+   is `lbl_56_data_884`, the eye's is `lbl_56_data_6F8`.
+3. **The FSM assets.** A trigger or a state runs only when the FSM2 asset asks for it by name. The
+   146 `FSM2` assets of the 20 paks were read with `tools/echoes_disc.py` and searched for the
+   names - they are stored as plain strings, so the scan is exact (l.2).
+
+### l.1 The callers and the arms
+
+| id | retail caller | arms | evidence | decision |
+|---|---|---|---|---|
+| `fn_56_95E0` DeleteHeldBomb | four call sites: the anim event `fn_56_646C` (case 26), the fountain state's exit `fn_56_B8B8` (0xB9A8), the toss state's exit `fn_56_BC8C` (0xBD3C) and the worm's XDMG handler `fn_56_11374` (0x11B64) | the bomb id test: delete a live bomb / early-out | run 2026-10-21: the breakpoint printed the held id - 1523 and 1547 (a live bomb, the delete arm) and -1 (no bomb, the early-out). The early-out comes from the XDMG path: the fountain attack's exit had already deleted the bomb, so the id was invalid when the eyes were shot | **marked** |
+| `fn_56_10A20` GetLctrTransformWrapper | `fn_56_108BC` (0x1094C) and `fn_56_1096C` (0x10A00) | none (a straight copy of the translation, 0x10A48..0x10A50) | run 2026-10-21: 68174 calls, one per spine update. The port now calls the wrapper from those two helpers, as retail does (the port used to inline `GetLctrTransform(segId).GetTranslation()`) | **marked** |
+| `fn_56_C350` InAttackRange | the CSandworm vtable (`data_884`): the FSM asks for the trigger by name | two compares (0xC3AC, 0xC3B8) | **never asked** - of the 146 FSM2 assets only the Metroid's (`1870596557`) names "InAttackRange"; the worm's own two assets do not (l.2) | cited, not marked |
+| `fn_56_C3D0` Activated | the CSandworm vtable (`data_884`) | one test (the actor's active flag, 0xC3D0) | **never asked** - no FSM2 asset in the game names "Activated" (0 of 146) | cited, not marked |
+| `fn_56_2210` CSandwormEye::GetX2E8 | **none**: no `bl`, and not in any table (not in the eye's vtable `data_6F8` either) | none (a straight copy) | dead code in the retail module | cited, not marked |
+| `fn_56_534C` CountScriptActors | **none** (no `bl`, not in any table) | the GRNT/NEXT test, the CActor cast test | dead code in the retail module | cited, not marked |
+| `fn_56_6324` Unreferenced6324 | **none** (no `bl`, not in any table) | the CONN/FOLW test | dead code in the retail module | cited, not marked |
+| `fn_56_10A68` SetSteeringSpeedRange | **none** (no `bl`, not in any table) | the 1.2 s test (rodata_1C8) | dead code in the retail module | cited, not marked |
+
+The four dead ones are the same class as `fn_56_10110` and `fn_56_10268` (l.3): the retail module
+carries them, nothing in the module calls them, and the DOL can only reach the module through
+`RELMain`, `RELExit`, the loader and the two radar callbacks - none of which reaches them.
+
+### l.2 The FSM2 assets: which trigger is asked where
+
+The scan (`tools/echoes_disc.py`, 20 paks, 146 `FSM2` assets) lists the assets that name a worm
+trigger or state:
+
+| FSM2 asset | size | the worm names it uses |
+|---|---|---|
+| `1922004252` (Metroid3.pak) | 2048 | triggers: BeginUnderground, CanAttack, CanCharge, CanDescend, CanGrabMorphball, CanSpitAgain, CanMeleeAgain, ChargeOver, DoneLurking, DoneStraightening, DoneSulking, ForceUnderground, GrabAttackFinished, **HitDuringWindUp**, InSpitRange, MeleeAttackRange, OneEyeKilled, PickedBombFountain, PlayerHiding, PlayerIsMorphball, PlayerIsOnPathMesh, Primed, ReadyToCharge, SequenceAttack, ShouldSulk, SnatchStarted, SnatchEnded, SpitAngleOK. states: BombFountainAttack, ChargePlayer, ChargeWindUp, Deactivate, Dead, Descend, EyeKilledReaction, GrabAttack, LurkUnderground, MeleeAttack, Null, Patrol, PickMediumAttack, Prime, Pursue, Rise, Snatch, StopGrabAttack, Straighten, Sulk |
+| `3519817736` (Metroid3.pak) | 288 | triggers: PickedBombFountain, PickedBombToss, PickedBombSpread, PickedSpitAttack. states: BombFountainAttack, BombSpreadAttack, BombTossAttack, PickMediumAttack, SpitAttack (the Bomb Guardian's own machine) |
+| `1870596557` (Metroid1/2/3.pak) | 3264 | the Metroid's machine: it names **InAttackRange** (and FacingPlayer) - the only asset in the game that asks for the worm's `InAttackRange` trigger |
+
+So the two triggers that no AFSM asks are gated by the shipped data, not by the port:
+
+- **`fn_56_C350` InAttackRange** is the *Metroid* boss's trigger (the same name in the Metroid's
+  FSM2). The worm's own two machines never ask it, so the worm's copy never runs.
+- **`fn_56_C3D0` Activated** is asked by no FSM2 asset in the game (0 of 146), so the worm's copy
+  never runs.
+
+The eight dead virtual slots of T stay unmarked for the reasons in section j.
+
+### l.3 The three bodies without one
+
+- **`fn_56_10110`** (0x158 bytes) walks the joint list at `this + 0x9A0` (12-byte entries) from
+  `count - 1` down to 0, and for the first entry whose squared distance from `entry[count]` exceeds
+  `radius²` writes the index and returns `entry[count] + radius * normalise(entry[i] -
+  entry[count])` (the compares at 0x101B4, the normalise at 0x101C4, the stores at 0x101F8..0x10204).
+  When no entry is far enough it writes 0 and returns `entry[0]` (0x10214..0x10230).
+- **`fn_56_10268`** (0x2A8 bytes) takes the same list and sweeps the segment `i → i + 1`: it lerps
+  from `entry[i]` to `entry[i+1]` with `t` from rodata_150 in steps of rodata_244 (0.02) up to
+  rodata_128 (1.0) and returns the first point whose distance to the given point exceeds the radius
+  (the magnitude test at 0x10418), with the index pair and the point in the out struct (0x10430).
+  When no segment crosses the radius it returns 0, 0 and `entry[0]` (0x10458..0x10478).
+- Both are **dead code in the retail module**: `grep 'bl fn_56_10110'` and `grep 'bl
+  fn_56_10268'` over the module's asm return nothing, and the module's only external entries are
+  the script loader, the two radar callbacks and the REL entry points - none of them reaches them.
+  The port therefore keeps the declarations (`UnreferencedMath10110`, `UnreferencedMath10268`)
+  without a body, and this note records what they did.
+
+### l.4 `fn_56_14FA8`: the module's static init
+
+The REL's `.ctors` entry (0x14FA8, 0x8E8 bytes) does three things, all at module load:
+
+1. **0x14FB4..0x14FDC** builds a global `rstl::basic_string` in `bss_C` from the literal at
+   rodata_6D9, which is **"Sandworm.rel"** (the same rodata object holds "Interrupt",
+   "Sandworm Eye Head" and "Sandworm Eye Tail"). The eye's `x2F8` (`CRELFileToken`) keeps the REL
+   loaded with that name.
+2. **0x14FDC..0x14FEC** calls `__register_global_object(fn_56_5250, bss_0)`, so the string's
+   destructor (`fn_56_5250`, which dereferences the string and frees it) goes on the global
+   destructor chain.
+3. **0x14FF8..0x15890** copies the *relocated* 3-word groups of the small `.data` tables
+   (`data_4` … `data_1B4`, `data_410` … `data_518`, `data_694`) into the matching 0x10-byte entry of
+   the three FSM registration tables: the trigger table `data_1C0` (37 entries), the state table
+   `data_524` (23) and the extras table `data_6A0` (1). The REL's linker puts the trigger and state
+   function pointers in their own tables, and the static init copies them into the tables
+   `fn_56_D548` hands to the FSM. It also writes `bss_54` = {rodata_150, rodata_150, rodata_1AC} =
+   {0.0, 0.0, 1.5} (0x15060, 0x150D0, 0x150D4).
+
+**Where the host does the same:** the host never runs the REL, so there is no static init and no
+global destructor chain. (1) has no host equivalent - `CSandwormEye::x2F8_relToken` keeps a
+`CRELFileToken` whose name the host cannot resolve, and the port leaves it empty. (3) is replaced
+by the port's own static tables: `skTriggers`, `skStates` and `skCodeFuncs` in
+`src/MetroidPrime/Enemies/PortCSandworm.cpp` (the same 37/23/1 entries, with the names the REL
+registers - `Activated` … `SpitAngleOK`, `BombFountainAttack` … `Sulk`), handed to the FSM by
+`CSandworm::InitStateMachine` (`fn_56_D548`, port body). Because the host's tables are C++ arrays
+of function pointers, no copy step and no relocation is needed. (2) `bss_54` has no host
+counterpart either: the port uses the same constants inline (rodata_150 = 0.0, rodata_1AC = 1.5).
+
+### l.5 The asmcheck findings
+
+`tools/asmcheck.py check Sandworm <file> --only MASK,XBIT,CROP,XCMP,XSTORE,OFFS` over all seven
+`PortCSandworm*.cpp` files: 279 functions checked, **3 findings**, all answered here.
+
+| finding | answer |
+|---|---|
+| `XCMP fn_56_128B0 0x12924`: the C++ compares `x1770_pincers` (0x1770), the asm never compares it | **false positive of the tool, and a real difference in the test.** The asm compares the *value* loaded from 0x1770: `addis r0, r6, 1; cmplwi r0, 0xffff` (0x12928, 0x1292C) - the module's "asset id == -1" idiom (the same one as `fn_56_1A38` at 0x1A4C and `fn_56_138F0` at 0x13944). The tool cannot model the `addis` (it keeps the value opaque), so it does not see the compare. The port's `x1770_pincers.x0_left != kInvalidAssetId` is the project's reading of that idiom (see `include/MetroidPrime/Enemies/CDarkSamus.hpp:819` and `src/MetroidPrime/Enemies/PortCDarkSamus.cpp:174`). The residual difference: the retail's test only looks at the low 16 bits, so an asset id like 0x0000FFFF would be "invalid" for retail and valid for the port; no such id is reachable from the loader (the ids are 0xFFFFFFFF or small numbers), so the port keeps the clearer C++. |
+| `XCMP fn_56_128B0 0x129A0`: the same for `x1774_right` | the same, the second pincer model (0x129A4, 0x129A8). |
+| `XCMP fn_56_3D64 0x3DD0`: the C++ compares `x1850_` (0x1850), the asm never compares it | **false positive.** The asm *loads* the byte (`lbz r3, 0x1850(r31)`, 0x3DD0) and returns it; the byte only ever holds 0 or 1 (`li r0, 1; stb` at 0x3DB0, `li r0, 0; stb` at 0x3DBC), so the compiler can skip the normalisation and the port's `x1850_ != 0` is the same value. The tool has no rule for "the C++ compares, the asm returns the byte". |

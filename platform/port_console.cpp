@@ -480,12 +480,14 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "warp <slot|id|name>         load an area of the current world (what MP2_TELEPORT takes)\n"
       "nextarea | prevarea         the next or previous existing area of this world\n"
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
-      "heal | kill                 refill energy, or kill the player (a respawn test)\n"
+      "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
       "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
       "                            sunburst, sonicboom; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
+      "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
+      "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
@@ -497,6 +499,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
       "boost                       boost-ball release on the morphed player\n"
+      "noise <type> [x y z]        InformListeners at the player (6 = safe-zone noise)\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
@@ -715,12 +718,33 @@ void CmdDoor(CStateManager&, const Args&, std::string&) { PortWarp::Door(); }
 void CmdDock(CStateManager&, const Args&, std::string&) { PortWarp::Dock(); }
 void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station(); }
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
-void CmdKill(CStateManager&, const Args& args, std::string&) {
-  if (args.size() > 1) {
-    Fail("usage: kill   (kills the player; for an actor use `damage <id> <amount>`)");
+const CEntity* ResolveObject(CStateManager& mgr, std::string_view text);
+
+// kill [id]: no id kills the player; an id zeroes a patterned actor's health and runs its Death the
+// way ApplyDamage does (kSS_DeathRattle), so an actor that reflects every weapon (the Splitter's
+// chassis) can still be killed.
+void CmdKill(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() > 2) {
+    Fail("usage: kill [id]   (no id: the player)");
     return;
   }
-  PortWarp::Kill();
+  if (args.size() == 1) {
+    PortWarp::Kill();
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr || patterned->GetHealthInfo() == nullptr) {
+    Fail("not a patterned actor with health");
+    return;
+  }
+  const_cast< CHealthInfo* >(patterned->GetHealthInfo())->SetHP(0.f);
+  CVector3f direction = CVector3f::Zero();
+  if (const CPlayer* player = mgr.GetPlayer(0)) {
+    direction = patterned->GetTranslation() - player->GetTranslation();
+  }
+  patterned->Death(mgr, direction, kSS_DeathRattle);
+  out += "killed\n";
 }
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
@@ -909,6 +933,41 @@ void CmdBoost(CStateManager& mgr, const Args&, std::string& out) {
   }
   player->GetMorphBall()->EnterBoosting(mgr, false);
   out += "boosting\n";
+}
+
+// noise: CStateManager::InformListeners at the player (or at x y z) with a listen-noise type, so
+// lanes reach a listener's noise arms without the object that makes it (e.g. type 6, the safe-zone
+// noise only an "echo" safe zone sends, lures an Ing).
+void CmdNoise(CStateManager& mgr, const Args& args, std::string& out) {
+  const int type = args.size() < 2 ? -1 : ArgToInt(args[1], -1);
+  if (type < 0) {
+    Fail("usage: noise <type 0..6> [<x> <y> <z>] (0 fire, 1 bomb, 2 projectile, 3 scream, "
+         "4 path, 6 safe zone)");
+    return;
+  }
+  CVector3f pos;
+  if (args.size() >= 5) {
+    float x = 0.f;
+    float y = 0.f;
+    float z = 0.f;
+    if (!ParseFloat(args[2], x) || !ParseFloat(args[3], y) || !ParseFloat(args[4], z)) {
+      Fail("noise: bad position");
+      return;
+    }
+    pos = CVector3f(x, y, z);
+  } else {
+    const CPlayer* player = mgr.GetPlayer(0);
+    if (player == nullptr) {
+      Fail("no player");
+      return;
+    }
+    pos = player->GetTranslation();
+  }
+  mgr.InformListeners(pos, static_cast< EListenNoiseType >(type));
+  char line[96];
+  std::snprintf(line, sizeof(line), "noise %d at (%.1f, %.1f, %.1f)\n", type, pos.GetX(),
+                pos.GetY(), pos.GetZ());
+  out += line;
 }
 
 void CmdSpringBall(CStateManager&, const Args& args, std::string& out) {
@@ -2147,6 +2206,34 @@ void CmdScreenshot(CStateManager&, const Args&, std::string& out) {
       "names the file (relative to the run's working directory)\n";
 }
 
+// overlay <page|off>: open the F1 window on a page (a name prefix: `overlay save`), for screenshots.
+void CmdOverlay(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2 || !PortOverlay::ShowPage(std::string(args[1]))) {
+    Fail("usage: overlay <page name prefix|off>");
+    return;
+  }
+  out += args[1] == "off" ? std::string("overlay closed\n") : "overlay open on " + std::string(args[1]) + "\n";
+}
+
+// state save|load <slot>: the F5/F9 save states (slot 0 is the undo slot, load only).
+void CmdState(CStateManager&, const Args& args, std::string& out) {
+  const int slot = args.size() < 3 ? -1 : ArgToInt(args[2], -1);
+  const bool save = args.size() >= 2 && args[1] == "save";
+  const bool load = args.size() >= 2 && args[1] == "load";
+  if ((!save && !load) || slot < (save ? 1 : PortSaveState::kUndoSlot) ||
+      slot > PortSaveState::kSlotCount) {
+    Fail("usage: state save <1..8> | state load <0..8>");
+    return;
+  }
+  if (save) {
+    PortSaveState::RequestSave(slot);
+  } else {
+    PortSaveState::RequestLoad(slot);
+  }
+  out += std::string(save ? "save" : "load") + " of slot " + std::to_string(slot) +
+         " requested (the log's [savestate] lines say how it went)\n";
+}
+
 void CmdItems(CStateManager& mgr, const Args&, std::string& out) {
   const CPlayerState* state = mgr.GetPlayerState(0);
   if (state == nullptr) {
@@ -2194,6 +2281,7 @@ constexpr SCommand kCommands[] = {
     {"skipcine", CmdSkipCine, true},
     {"fastmorph", CmdFastMorph, true},
     {"boost", CmdBoost, true},
+    {"noise", CmdNoise, true},
     {"springball", CmdSpringBall, true},
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},
@@ -2236,6 +2324,8 @@ constexpr SCommand kCommands[] = {
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
     {"screenshot", CmdScreenshot, true},
+    {"overlay", CmdOverlay, true},
+    {"state", CmdState, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {

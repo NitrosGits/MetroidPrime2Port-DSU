@@ -448,7 +448,7 @@ Facts read off the REL (the pseudo-C was wrong on two of them):
 
 | item | value |
 |---|---|
-| anim locators, ctor `fn_29_D540` | `0xd7b` head, `0xd7a` `Collar_SDK` (nothing reads it), `0xd7c..0xd7f` `R_shoulder`/`R_elbow`/`R_forearm`/`R_wrist_end`, `0xd80..0xd83` the `L_` set. The pseudo stores the shoulders at CPatterned `0x35f`/`0x360`; the asm does not |
+| anim locators, ctor `fn_29_D540` | `0xd7b` head, `0xd7a` `Collar_SDK` (fn_29_BCB4's corporeal aim), `0xd7c..0xd7f` `R_shoulder`/`R_elbow`/`R_forearm`/`R_wrist_end`, `0xd80..0xd83` the `L_` set. The pseudo stores the shoulders at CPatterned `0x35f`/`0x360`; the asm does not |
 | `rodata_38` | `{1, 2}` = `pas::kS_One`/`kS_Two`, the `CBCMeleeAttackCmd` severity indexed by the arm |
 | the `ApplyDamage` filter | include `kMT_Solid`, exclude empty, type 3 (`kFT_IncludeExclude`); `data_A10` = 0x3B is the material's bit number, not a mask |
 | knock-back | `-GetRight()` for the right arm, `+GetRight()` for the left (the pseudo reads the transform's `m00/m10/m20`) |
@@ -1027,7 +1027,7 @@ matched the port; one did not and is fixed:
 |---|---|---|---|
 | `fn_29_BF20` GetDamageVulnerability | 0x40 | the form picks the table: 4 -> the base class's, 3 -> the grapple's (the byte at 0xe5d bit 0) or the ing spot's (CIngData+0xd0), every other form -> the trigger's (CIngData+0x3c, 0x7fc) | matched (the form test, the two tables and the base call) |
 | `fn_29_B890` TakeDamage | 0xa4 | the forms 0, 1 and 5 return; every other form stores `lbl_8041AAB8` (= `CPatterned::skDamageHitTime` = 0.33) into 0x448, which is the base class's damage-cooldown store | matched (the early return plus the base call) |
-| `fn_29_BCB4` GetAimPosition | 0x54 | the forms 2 and 6..8 predict their motion (only with dt > 0), the collar locator (0xd7a, invalid in retail) would add the model's scale times the locator's world position, and the forms 6/7 fall back to the base when the aim is below the actor's own height | matched (all four arms, including the dead locator path) |
+| `fn_29_BCB4` GetAimPosition | 0x54 | the forms 2 and 6..8 predict their motion (only with dt > 0), the collar locator (0xd7a, "Collar_SDK") adds the model's scale times the locator's world position, and the forms 6/7 fall back to the base when the aim is below the actor's own height | matched (all four arms) |
 | `fn_29_BB8C` Touch | 0x4c | the ing spot (3) damages the target it touches when the ball is not held, the toucher is the target (0xd6c) and the cooldown (0x440) has run out; the damage is the actor's own `GetContactDamage`, the filter is Solid alone (type 3) and the cooldown is reloaded from 0x444 | matched (the filter, the ids and the reload) |
 | `fn_29_B534` CollidedWith | 0x84 | the base call, then the form 4 and the flight time >= 0.5 gate, then the first collision whose material list meets the six-bit splat mask (0x1d, 0x1e, 0x1f, 0x3b, 0x2b, 0x2a) gives the normal and sets the splat flag | matched (the mask, the first hit wins) |
 | `fn_29_B8C0` KnockBack | 0x9c | **the port was missing two steps**: the anim reaction (`EnableAnimReaction(2, true)` only in the corporeal form outside the knock-back body state 6) and the flinch type at 0x688 (2 for the light beam, 1 for everything else) | **fixed** - the body is now the Boost Guardian's copy of the same code (fn_30_CB84) |
@@ -1220,7 +1220,7 @@ cover hint's id is the Ing's own.
 | `fn_29_B534` CollidedWith | the form is not 4 (0xB558); the flight time is under 0.5 (0xB56C); the contact list is empty (0xB710); a contact whose material is not a splat surface (0xB720); a contact that meets the mask (0xB738, the first hit wins) | the form, the flight time (203 calls) and the surface hit (1) in the run of A.20; the empty list (6 calls) in the same run; **the contact that does not meet the mask never ran** | the port matches; **not marked** (one arm open) |
 | `fn_29_B890` TakeDamage | the forms 0, 1 and 5 return (0xB894-0xB8AC); every other form stores the base class's damage-cooldown (0xB8B0) | the store in the forms 2, 3 and 6; **the early return never ran** - the area 57 Ings never took a hit in their host phases | the port matches; **not marked** (one arm open) |
 | `fn_29_B8C0` KnockBack | the form is not 2 (0xB8E8); the form 2 and the body state 6 (0xB8F8); the form 2 and any other body state (0xB900); the weapon type 2 (0xB928); any other weapon (0xB93C) | all five: the reaction off in the form 3 (26 calls), the reaction off in the form 2 (1 call), the reaction on in the form 2 (12 calls), the flinch 2 and the flinch 1 (the power beam, 6 calls) | the port matches; **marked** |
-| `fn_29_BCB4` GetAimPosition | the base class (0xBE4C); the prediction (0xBD34) with dt above zero (0xBD3C) and with dt of zero (the aim stays the zero vector); the collar locator (0xBD6C) and the forms 6/7's fall back (0xBDF8) | the base in the form 3 (dt 0.00), the prediction in the form 6 (dt 0.22, 0.23) and the form 2 (dt 0.07, 0.22) - the lock-on asks the target with a prediction time - and the form 6 with dt 0.00; the collar locator and the forms 6/7's fall back are inside the locator's path, and the locator is invalid in retail (0xd7a = 0xff) | the port matches (after the form 9 fix); **marked** |
+| `fn_29_BCB4` GetAimPosition | the base class (0xBE4C); the prediction (0xBD34) with dt above zero (0xBD3C) and with dt of zero (the aim stays the zero vector); the collar locator (0xBD6C) and the forms 6/7's fall back (0xBDF8) | the base in the form 3 (dt 0.00), the prediction in the form 6 (dt 0.22, 0.23) and the form 2 (dt 0.07, 0.22) - the lock-on asks the target with a prediction time - and the form 6 with dt 0.00; the collar locator in the form 2 (Agon 1baa96c2,2735236b: collar z 8.7 against the base class's 5.6, feet 4.6; until 2026-10-21 the port left 0xd7a at 0xff and the lock-on sat at the feet); the forms 6/7's fall back not seen | the port matches (after the form 9 and collar fixes); **marked** |
 | `fn_29_BF20` GetDamageVulnerability | the form 4 takes the base class's table (0xBF34); the form 3 takes the grapple's table when the ball is held (0xBF50) or the ing spot's table (0xBF64); every other form takes the trigger's table (0xBF6C) | the trigger's table in the forms 2 and 6 (71 calls), the ing spot's table in the form 3 (37 calls), the grapple's table in the Agon Wastes run of 2026-10-21 (2 calls); **the base table never ran** - only the body projectile (the form 4) asks for it | the port matches; **not marked** (one arm open) |
 
 **The two arms that are still open** are the same two the earlier runs left open (A.20): the
@@ -1240,6 +1240,81 @@ byte use `extrwi` (0x22A0, 0x4684, 0xB1E8), so the compiler does have a bit-test
 the three places are marked functions (`fn_29_BB8C`, `fn_29_2E8C`), so this is a decision for the
 orchestrator, not for a lane: if the strict reading is the right one, those two bodies and
 `fn_29_BF20` have to test the whole byte.
+
+### A.23 The death body's burning arm and the next five triggers (2026-10-21)
+
+**`fn_29_B3C4` (the death body) is now marked.** The one arm that was open - the Ing burning when
+it dies (asm 0x0000B474: the byte at 0x421's bits 1 and 2) - runs with the power bomb: the
+console's `damage <ing> 100 powerbomb` applies the knock-back whose follow-up is
+`kFU_LaggedBurnDeath`, the follow-up burns the Ing, and the death then runs with the lagged bit
+set. The recipe (from the shared lane): `send <ing> Activate; place <ing> player 8; damage <ing>
+100 powerbomb`. The run of 2026-10-21 (area 57) shows the death body three times: `alive 1
+burning 0 lagged 1 form 3` (the burn arm), `alive 1 burning 0 lagged 0 form 6` and `alive 0
+burning 0 lagged 0 form 2` (the not-alive arm and the form 2's death body command). The two
+arms that cannot run are cited: the machine always has a state (the constructor sets it up) and
+the Ing's death always carries a real state (the damage path's `kSS_DeathRattle`), so the "no
+message" arm is unreachable.
+
+**The next five unmarked behaviour functions** are the triggers the FSM2 graph puts in the state
+lists; each was read against the REL and probed in the area 57 run of 2026-10-21 (the probes are
+not committed). None of them is marked: the arms that need the attack pattern's waypoint or a
+safe zone did not run.
+
+| fn | the arms (the asm) | the run | verdict |
+|---|---|---|---|
+| `fn_29_A4E0` FoundMovementPos | the byte at 0xe5c's bit 3 (0xA4E0) | the trigger is only in the `SetLuredDest` code function's list, and the lure never ran | the port matches; not marked |
+| `fn_29_A340` AttackPatternOver | the attack path flag (0xA348) and the waypoint destination against `kInvalidUniqueId` (0xA35C) | the true arm (the path is followed and the destination is gone) ran with the state forced (`fsm <ing> FollowAttackPattern`); the two false arms did not | the port matches; not marked |
+| `fn_29_AA04` ShouldBecomeIngSpot | the desired form is 3 (0xAA1C) and `!fn_29_AD40` (0xAA24) | the "the desired form is not 3" arm and both of the `IsIngSpot` variants ran (forced); the arms with the desired form set did not - the desired form is only set by the attack pattern's waypoint (0x00008310) | the port matches; not marked |
+| `fn_29_AA4C` ShouldBecomeCorporeal | the desired form is 2 (0xAA64) and `!fn_29_AD54` (0xAA6C) | the "the desired form is not 2" arm only | the port matches; not marked |
+| `fn_29_AA94` ShouldFleeSafeZone | the word at 0xe2c is not zero (0xAA94, the neg/andc/srwi idiom) | the trigger never ran - the area 57 run has no safe zone | the port matches; not marked |
+
+The port's `mSafeZoneCount > 0` is the retail's "the count is not zero" for every count the
+module can hold (the XENZ/XEXZ messages only add and remove one).
+
+### A.24 The Ing attack patterns and the safe zones in the shipped data (2026-10-21)
+
+`tools/scan_ing_pattern.py` (new, on the CommandoPirate lane's `tools/scan_commando_pattern.py`
+model) reads the user's own disc - every world's MLVL, every area's MREA and every SCLY layer -
+and lists the script objects that the module's open triggers need: the Ings (the `INGS` object)
+with their script connections, the AI waypoints (`AIWP`) with their flag word and the safe zones
+(`SAFE`).
+
+**The attack pattern.** The module's FollowAttackPattern state (fn_29_82D4) takes the attack
+pattern from the connection in the `ATTK` state (0x4154544B) with the `FOLW` message
+(0x464f4c57) - the same fourCCs the CommandoPirate uses. Nine of the 95 areas have an Ing with
+such a connection:
+
+| world | area (MREA) | the Ings with the pattern | the safe zones |
+|---|---|---|---|
+| 0x3bfa3eff (Temple Grounds) | `01_temple_landingsite_dark` (0x16e116b4) | 4 | 3 |
+| 0x3bfa3eff | `04_temple_unknownenemies_dark` (0xfc8fc0a4) | 2 | 0 |
+| 0x42b935e4 (Agon Wastes) | `01_sand_entrance_dark` (0x3f5cdf39) | 3 | 7 |
+| 0x42b935e4 | `02_sand_sandfalls_dark` (0x6b77f9bd) | 2 | 9 |
+| 0x42b935e4 | `05_portalpuzzle_dark` (0xbf7f572c) | 2 | 7 |
+| 0x42b935e4 | `06_sand_alamofront_dark` (0xea79522c) | 4 | 6 |
+| 0x42b935e4 | `07_sand_alamoportalobservation_dark` (0xa49f8a6d) | 2 | 9 |
+| 0x42b935e4 | `0m_sand_hall_dark` (0xf2ccc41e) | 1 | 3 |
+| 0x3dfd2249 (Great Temple) | `06_swamp_boostballguardian_dark` (0xa49a572f) | 2 | 2 |
+
+**The waypoint the Ing follows is a `WAYP`, never an `AIWP`.** The scan prints the target of
+every `ATTK`/`FOLW` connection with its type: in every area it is a `CScriptWaypoint` (the base
+class, 0x158 bytes). The retail's fn_29_82D4 casts the navigation's destination to
+`CScriptAIWaypoint` before it reads the flags at +0x164 (asm 0x00008428) - and the port does the
+same - so the cast fails there too, and the desired form (0x9d8) is never taken from the attack
+pattern. The form change comes from the other writers of 0x9d8 (the states that want a form
+change), which is why the desired form does change in a run.
+
+**The run.** The Agon Wastes `01_sand_entrance_dark` (the world 42b935e4, the area 0x3f5cdf39, the
+layers 1..8 loaded with the console's `layer`), the Ings woken with `send <id> Activate` and the
+player next to them: the FollowAttackPattern state runs and the triggers are evaluated.
+
+| fn | the arms | the run (a probe in the body) | marker |
+|---|---|---|---|
+| `fn_29_A340` AttackPatternOver | the attack path flag (0xA348) and the destination against `kInvalidUniqueId` (0xA35C) | all three: the flag is not followed (the destination invalid and not), it is followed and the destination is there, it is followed and the destination is gone | **marked** |
+| `fn_29_AA4C` ShouldBecomeCorporeal | the desired form is 2 (0xAA64) and `!fn_29_AD54` (0xAA6C) | the "the desired form is not 2" arm and the "the desired form is 2 and the Ing is not corporeal" arm; the "already corporeal" arm did not run | not marked |
+| `fn_29_AA04` ShouldBecomeIngSpot | the desired form is 3 (0xAA1C) and `!fn_29_AD40` (0xAA24) | the "the desired form is not 3" arm; the arms with the desired form 3 did not run | not marked |
+| `fn_29_A4E0` FoundMovementPos | the byte at 0xe5c's bit 3 (0xA4E0) | the trigger is in the `SetLuredDest` code function's list only, and no Ing was lured | not marked |
+| `fn_29_AA94` ShouldFleeSafeZone | the word at 0xe2c is not zero (0xAA94) | the count never changed (the player teleporting into a safe zone does not raise the XENZ message) | not marked |
 
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into

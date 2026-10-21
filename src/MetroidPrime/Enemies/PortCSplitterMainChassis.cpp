@@ -101,10 +101,10 @@ CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(ShouldSpinAttack),
     SPLITTER_TRIGGER(ShouldLaserSweep),
     SPLITTER_TRIGGER(ShouldDodge),
-    SPLITTER_TRIGGER(IsSpinAttackOver),
+    SPLITTER_TRIGGER_PORTED(IsSpinAttackOver),
     SPLITTER_TRIGGER(SpunIntoPlayer),
     SPLITTER_TRIGGER(SpunIntoGeometry),
-    SPLITTER_TRIGGER(BreakOutOfSpin),
+    SPLITTER_TRIGGER_PORTED(BreakOutOfSpin),
     SPLITTER_TRIGGER(TooManyBounces),
     SPLITTER_TRIGGER_PORTED(DeployFromHoldingTube),
     SPLITTER_TRIGGER(ShouldDeploy),
@@ -126,7 +126,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
     SPLITTER_STATE(LaserSweepAttack),
     SPLITTER_STATE(SpinCollisionReaction),
     SPLITTER_STATE(SpinBounce),
-    SPLITTER_STATE(SpinTelegraph),
+    SPLITTER_STATE_PORTED(SpinTelegraph),
     SPLITTER_STATE(SpinToIdle),
     SPLITTER_STATE(SpawnDrop),
     SPLITTER_STATE(HoldingTube),
@@ -187,10 +187,8 @@ SPLITTER_TRIGGER_STANDIN(HasHead, fn_75_E58C)
 SPLITTER_TRIGGER_STANDIN(CanReachTarget, fn_75_E530)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_E4DC)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_E494)
-SPLITTER_TRIGGER_STANDIN(IsSpinAttackOver, fn_75_E084)
 SPLITTER_TRIGGER_STANDIN(SpunIntoPlayer, fn_75_E078)
 SPLITTER_TRIGGER_STANDIN(SpunIntoGeometry, fn_75_E06C)
-SPLITTER_TRIGGER_STANDIN(BreakOutOfSpin, fn_75_E060)
 SPLITTER_TRIGGER_STANDIN(TooManyBounces, fn_75_E040)
 SPLITTER_TRIGGER_STANDIN(ShouldDeploy, fn_75_E028)
 SPLITTER_TRIGGER_STANDIN(DeployPathOver, fn_75_E00C)
@@ -201,7 +199,6 @@ SPLITTER_STATE_STANDIN(SpinAttack, fn_75_D7D4)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_D61C)
 SPLITTER_STATE_STANDIN(SpinCollisionReaction, fn_75_D2A0)
 SPLITTER_STATE_STANDIN(SpinBounce, fn_75_D13C)
-SPLITTER_STATE_STANDIN(SpinTelegraph, fn_75_D0A4)
 SPLITTER_STATE_STANDIN(SpinToIdle, fn_75_CF44)
 SPLITTER_STATE_STANDIN(SpawnDrop, fn_75_CCF0)
 SPLITTER_STATE_STANDIN(HoldingTube, fn_75_CC98)
@@ -210,8 +207,6 @@ SPLITTER_STATE_STANDIN(WaitForSnatch, fn_75_C8F4)
 SPLITTER_STATE_STANDIN(FollowDeployPath, fn_75_C51C)
 SPLITTER_STATE_STANDIN(DeploymentLanding, fn_75_C034)
 SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
-SPLITTER_CODE_STANDIN(SetupSpinAttack, fn_75_BAA8)
-SPLITTER_CODE_STANDIN(EndSpinAttack, fn_75_B9B0)
 SPLITTER_CODE_STANDIN(BounceOffPlayer, fn_75_B1D8)
 SPLITTER_CODE_STANDIN(BounceOffGeometry, fn_75_B104)
 #undef SPLITTER_TRIGGER_STANDIN
@@ -290,6 +285,20 @@ bool CSplitterMainChassis::ShouldLegStab(CStateManager& mgr, const CTriggerData&
   }
   return distSq >= mData.mLegStabMinAttackRange * mData.mLegStabMinAttackRange &&
          distSq <= mData.mLegStabMaxAttackRange * mData.mLegStabMaxAttackRange;
+}
+
+// fn_75_E084 (the chassis's IsSpinAttackOver trigger, 0xE084-0xE098): true when 0xD41's 0x80
+// bit (the spin bit SetupSpinAttack sets and EndSpinAttack clears) is clear (0xE088-0xE090).
+// @ fn_75_E084
+bool CSplitterMainChassis::IsSpinAttackOver(CStateManager&, const CTriggerData&) const {
+  return (mFlagsD41 & 0x80) == 0;  // 0xE088 extrwi bit 24, 0xE08C-0xE090 cntlzw/srwi
+}
+
+// fn_75_E060 (the chassis's BreakOutOfSpin trigger, 0xE060-0xE06C): 0xD40's 0x2 bit (a boosting
+// player hit the spinning chassis, fn_75_9FA8 0xA070-0xA078) (0xE064 extrwi).
+// @ fn_75_E060
+bool CSplitterMainChassis::BreakOutOfSpin(CStateManager&, const CTriggerData&) const {
+  return (mFlagsD40 & 0x2) != 0;  // 0xE064 extrwi bit 30
 }
 
 // fn_75_E1D0 (the chassis's ShouldSpinAttack trigger, 0xE1D0-0xE2F0): false unless 0xD40's 0x80
@@ -646,6 +655,57 @@ void CSplitterMainChassis::SetupLaserSweep(CStateManager& mgr, float) {
   CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
 }
 
+// fn_75_BAA8 (the chassis's SetupSpinAttack code, 0xBAA8-0xBBC0): the spin vector at 0xCD8 is
+// zeroed (sZeroVector, 0xBAD4-0xBAF4), the spin counter at 0xCFC is 0 (0xBAF8) and the spin
+// timer at 0xD2C 0.0f (lbl_75_rodata_390, 0xBAFC); 0xD41's 0x80 bit is set (0xBB00-0xBB08) and
+// 0xD40's 0x8, 0x4 and 0x2 bits cleared (0xBB0C-0xBB2C). The locomotion type is 8 (0xBAE4,
+// 0xBB34 SetLocomotionType), every collision actor gets the data's spin attack vulnerability
+// (0x7F8 for both, 0xBB38-0xBB48 fn_75_9AF8), the head at 0xC6C (0xBB4C-0xBB68) raises its spin
+// shield (0xBB70 fn_75_5DDC), the damage wait at 0x440 is 0.0f (0xBB8C) and the team's melee
+// attack starts (0xBB88 li r3 0, 0xBBA4 StartAttack: the team at 0xCBE, this actor).
+// The head-null arm is not reached: a headless PathFind leaves through !HasHead (fn_75_E58C)
+// for SetRetreatDest, never ShouldSpinAttack.
+// @ fn_75_BAA8
+void CSplitterMainChassis::SetupSpinAttack(CStateManager& mgr, float) {
+  mSpinVector = CVector3f(0.f, 0.f, 0.f);
+  mSpinCounter = 0;
+  mSpinTimer = 0.f;
+  mFlagsD41 |= 0x80;
+  mFlagsD40 &= ~(0x8 | 0x4 | 0x2);
+  BodyController()->SetLocomotionType(pas::kLT_Internal8);
+  PortSetCollisionVulnerability(mgr, mData.mSpinAttackVulnerability, mData.mSpinAttackVulnerability);
+  if (CSplitterCommandModule* head =
+          TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId))) {  // 0xBB64-0xBB68
+    head->PortSpinShield(mgr);
+  }
+  mCurDamageRemTime = 0.f;
+  CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId, GetUniqueId());
+}
+
+// fn_75_B9B0 (the chassis's EndSpinAttack code, 0xB9B0-0xBAA8): 0xD41's 0x80 bit (0xB9D4-0xB9E0)
+// and 0xD40's 0x8, 0x4 and 0x2 bits (0xB9E4-0xBA04) are cleared, the spin penalty timer at 0xD14
+// gets the data's spin attack interval (0x874, 0xBA08-0xBA0C), the locomotion type is
+// kLT_Relaxed (1, 0xB9C8; 0xBA14), every collision actor gets the DOL's
+// ImmuneRicochetVulnerability (the host's ReflectVulnerabilty; 0xBA18-0xBA34 fn_75_9AF8), the head
+// at 0xC6C (0xBA38-0xBA54) resets its shield (0xBA5C fn_75_5D50) and the team's melee attack ends
+// (0xBA74 li r3 0, 0xBA78 li r7 0, 0xBA88 EndAttack: the team at 0xCBE, this actor, false).
+// Not marked: never reached - the spin sub-machine past BreakOutOfSpin (SpinCollisionReaction
+// fn_75_D2A0, SpinBounce fn_75_D13C, SpinAttack fn_75_D7D4, BounceOffPlayer fn_75_B1D8 and the
+// SpunIntoPlayer/TooManyBounces/SpunIntoGeometry triggers) is still stand-ins.
+void CSplitterMainChassis::EndSpinAttack(CStateManager& mgr, float) {
+  mFlagsD41 &= ~0x80;
+  mFlagsD40 &= ~(0x8 | 0x4 | 0x2);
+  mSpinPenaltyTimer = mData.mSpinAttackInterval;
+  BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+  PortSetCollisionVulnerability(mgr, CDamageVulnerability::ReflectVulnerabilty(),
+                                CDamageVulnerability::ReflectVulnerabilty());
+  if (CSplitterCommandModule* head =
+          TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId))) {  // 0xBA50-0xBA54
+    head->PortResetShield(mgr);
+  }
+  CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Melee, mgr, mTeamId, GetUniqueId(), false);
+}
+
 // fn_75_9AF8 (0x9AF8-0x9B98): every collision actor of the manager at 0xC68 (0x9B28
 // GetCollisionDescFromIndex, to GetNumCollisionActors at 0x9B7C) that casts to a CCollisionActor
 // (0x9B44-0x9B4C) gets the first vulnerability when it is the "target_LCTR" actor at 0xCC2
@@ -702,6 +762,31 @@ void CSplitterMainChassis::LaserSweepAttack(CStateManager& mgr, EStateMsg msg, f
     mFlagsD41 &= ~0x40;
     CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
                                 false);
+  }
+}
+
+// fn_75_D0A4 (the chassis's SpinTelegraph state, 0xD0A4-0xD13C). Activate (0xD0DC): the
+// animation state at 0x6B4 is kAS_Ready (1). Update (0xD0E8): once the state machine's time
+// (0x350, its vtable slot 0x30) is past the data's spin attack telegraph time (0x87C, fcmpo/ble at
+// 0xD100-0xD104) the animation state is kAS_Over (3, 0xD108-0xD10C). Deactivate (0xD114): the
+// animation state is kAS_NotReady (0) and the spin timer at 0xD2C 0.0f (lbl_75_rodata_390).
+// @ fn_75_D0A4
+void CSplitterMainChassis::SpinTelegraph(CStateManager&, EStateMsg msg, float) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    break;
+  case kStateMsg_Update:
+    if (mStateMachine->GetTime() > mData.mSpinAttackTelegraphTime) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mSpinTimer = 0.f;
+    break;
+  default:
+    break;
   }
 }
 
@@ -837,6 +922,7 @@ void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
 // (0x00008F78-0x00008FB4); a safe-magnitude result (0x00008FD4) is normalized and summed and the
 // count (lbl_75_rodata_390, 0.0f) goes up by 1.0f (lbl_75_rodata_364). A count above 0.0f
 // (0x0000903C fcmpo, 0x00009040 ble) divides the sum by it (0x0000904C fdivs).
+// @ fn_75_8EC8
 CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
@@ -1175,11 +1261,11 @@ void CSplitterMainChassis::PreThink(float dt, CStateManager& mgr) {
 
 // fn_75_8EA4 (not marked: the run never reached the copy)
 // The chassis copies four of its data's timers into its derived state (0x8EA4-0x8EC8): the leg
-// stab interval (0x82C) to 0xD10, the spin attack interval penalty (0x874) to 0xD14, the laser
+// stab interval (0x82C) to 0xD10, the spin attack interval (0x874) to 0xD14, the laser
 // sweep interval (0x858) to 0xD18 and the min dodge interval (0x848) to 0xD1C.
 void CSplitterMainChassis::PortCopyTimers() {
   mLegStabTimer = mData.mLegStabAttackInterval;
-  mSpinPenaltyTimer = mData.mSpinAttackIntervalPenalty;
+  mSpinPenaltyTimer = mData.mSpinAttackInterval;
   mLaserSweepTimer = mData.mLaserSweepInterval;
   mDodgeTimer = mData.mMinDodgeInterval;
 }
@@ -1356,6 +1442,9 @@ void CSplitterMainChassis::PortReleasePlayerHint(CStateManager& mgr) {
 // morphed (its 0x38C in 0..1; 0xABDC-0xABF0): the hint's actor id becomes this actor's (0xABF4)
 // and the hint gets an "INCR" message (0xAC4C DeliverScriptMsg: this actor the sender, the player
 // the originator).
+// The no-hint arm ran forced (send <hint> Delete), the mid-morph return forced (press x + place);
+// the morph state is never below kMS_Unmorphed (the enum's 0..3).
+// @ fn_75_AB8C
 void CSplitterMainChassis::PortTakePlayerHint(CStateManager& mgr) {
   CScriptPlayerHint* hint = TCastToPtr< CScriptPlayerHint >(mgr.ObjectById(mConnectedObjectId));
   if (hint == nullptr || hint->GetActorId() == GetUniqueId()) {  // 0xABC0-0xABD4
@@ -1388,6 +1477,8 @@ static bool PortIsBoosting(const CPlayer& player) {
 // CCollisionActor::GetLastTouchedObject) is a boosting player (0xA020-0xA058) advances the spin
 // counter at 0xCFC by the data's 0x888 (0xA05C-0xA06C) and sets 0xD40's 0x2 bit (0xA070-0xA078).
 // Then the player hint is taken (0xA084 fn_75_AB8C).
+// Not marked: the dead-chassis return (0x9FC8) never ran; the spinning, boosting-player arm ran
+// naturally (spin from PathFind, contact forced by place + boost).
 void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive) {  // 0x9FC8-0x9FCC
     return;
@@ -1421,6 +1512,8 @@ void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId send
 // - Anything else, while 0xD41's 0x80 bit is set (0x9ED0-0x9ED8) and the object is not a CAi
 //   (0x9EEC-0x9EF8), takes the spin attack damage the same way (lbl_75_data_CA0, 0x3B; 0x9F84),
 //   without the wait.
+// Not marked: the dead or 0xD40-0x40 return (0x9BC8-0x9BD8) never ran. The spin arms ran with a
+// natural spin (0x9D20 player, 0x9ED0 CAi and non-CAi), the boost and leg stab arms forced.
 void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive || (mFlagsD40 & 0x40) != 0) {  // 0x9BC8-0x9BD8
     return;
@@ -1698,7 +1791,7 @@ void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueI
 // body state 6 (kAS_KnockBack, 0xBF48-0xBF54) a knock-back command along the chassis's Y column
 // (the transform's 0x28, 0x38, 0x48) with severity 8 goes out (lbl_75_data_5B8, 0xBF58-0xBFB8).
 // Deactivate (0xC010): the animation state is kAS_NotReady and the spin penalty timer at 0xD14
-// restarts with the data's spin attack interval penalty (0x874, 0xC018-0xC01C).
+// restarts with the data's spin attack interval (0x874, 0xC018-0xC01C).
 // @ fn_75_BEEC
 void CSplitterMainChassis::HeadExplosion(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
@@ -1711,7 +1804,7 @@ void CSplitterMainChassis::HeadExplosion(CStateManager& mgr, EStateMsg msg, floa
     }
   } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    mSpinPenaltyTimer = mData.mSpinAttackIntervalPenalty;
+    mSpinPenaltyTimer = mData.mSpinAttackInterval;
   }
 }
 

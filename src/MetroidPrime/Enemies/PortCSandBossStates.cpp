@@ -221,10 +221,21 @@ bool CSandBoss::ShouldDestroySphere(CStateManager& mgr, const CTriggerData&) con
   return mAttachedToSphere && CountAttachedSiblings(mgr) == 1;
 }
 
-// fn_55_C1CC (ported, not exercised yet)
+// @ fn_55_C1CC
 // IsFacingPlayer: the player is inside 20 degrees of the forward axis (the local Y column, this
 // +0x28/0x38/0x48), measured in three dimensions against the player's translation (player
 // +0x54..0x5C). The constant is lbl_55_rodata_134 = 0.34906584.
+//
+// Retail (fn_55_C1CC): 0xC1D8 loads the player (mgr + 0x14FC), 0xC1E0..0xC1FC subtracts the two
+// translations (this +0x54/0x58/0x5C minus player +0x54/0x58/0x5C), 0xC210..0xC218 reads the
+// facing column (this +0x48 / +0x38 / +0x28) and 0xC22C calls GetAngleDiff with it, 0xC234
+// loads lbl_55_rodata_134 (0.34906584) and 0xC238..0xC244 turns the compare into "<=" (the
+// `cror eq, lt, eq` at 0xC23C keeps the less-than-or-equal bit).
+// The trigger sits in the FSM table (lbl_55_data_AC) but the shipped asset references it in no
+// transition (§6 of the note), so the only way to run it is a direct call: the port's run does
+// that (forced arm, see docs/module-analysis/SandBoss.md §7.4). The null-player guard has no
+// retail counterpart - retail dereferences the player at 0xC1E4 without a check - and is dead:
+// the game always has a player in this area.
 bool CSandBoss::IsFacingPlayer(CStateManager& mgr, const CTriggerData&) const {
   const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
   if (player == nullptr) {
