@@ -205,13 +205,15 @@ def run_gcov(build, gcda_dirs):
     docs = []
     with tempfile.TemporaryDirectory(prefix="gcov-report-") as tmp:
         tmp = pathlib.Path(tmp)
+        n = 0
         for prefix, gcdas in gcda_dirs:
             for gcda in gcdas:
                 gcno = gcno_for(build, gcda, prefix)
                 if gcno is None:
                     log(f"no .gcno for {gcda} (looked in {build})")
                     continue
-                work = tmp / f"w{len(docs)}"
+                n += 1  # one scratch dir per .gcda (docs does not grow when gcov fails on one)
+                work = tmp / f"w{n}"
                 work.mkdir()
                 # gcov reads the .gcda and the .gcno from the same directory (-o), so both are
                 # linked into a scratch directory: the run's own tree stays untouched.
