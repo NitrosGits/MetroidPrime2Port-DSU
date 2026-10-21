@@ -990,6 +990,95 @@ loader prints them (`[ing] load: light beam spot x2.00 trigger x0.00 base x1.00`
 So the 300->260 and the 300->180 of the smoke are the same base table with two and six beam ticks
 that landed, not two per-form vulnerabilities.
 
+### A.20 The unmarked functions: the REL's copies of host code, and the six hot vtable bodies (2026-10-21)
+
+The module has 274 functions; 128 carry a `// @ fn_29_<off>` marker (the 127 `tools/port_progress.py`
+reports plus `fn_29_3424`, whose marker sits inside a shared comment line). The other **146** split
+in two: **76 are the REL's own copies of host/DOL code** (never markable - the host's C++ already
+does them) and **70 are the module's own behaviour**.
+
+**Group 1 - the REL's copies of host/DOL code (76).** Every one of them was read in the asm; the
+host does the same work in its own C++:
+
+| what | n | functions | the evidence |
+|---|---|---|---|
+| the vtable thunks | 14 | 0x0, 0x8, 0x10, 0x18, 0x24, 0x2C, 0x34, 0x3C, 0x4C, 0x58, 0x64, 0x6C, 0x74, 0x90 | 2..11 instructions and **no call at all**: `addi r3, r3, 0x9dc; blr` (the search path, slot 56), `addi r3, r3, 0xac8; blr` (the point search, slot 57), `li r3, 0x1; blr` (CanBeShot slot 42, IsListening slot 43), `li r3, 0x0; blr` (ProjectileInfo slot 55, GetRagDoll slot 61), the two float constants (rodata_64 = 1.0, the DOL's lbl_8041B758), the byte at 0x44f (slot 50), the byte at 0x34c bit 3 (slot 68), `this+0x754` (slot 73), the actor's translation (GetOrigin, slot 45) and the slot-0x38 call (GetHealthInfo, slot 15) |
+| the loader's DOL-type temporaries | 12 | 0x118C, 0x11E4, 0x123C, 0x1294, 0x12D4, 0x12F4, 0x131C, 0x1458, 0x14C4, 0x1518, 0x157C, 0x15DC | the optional<CModelData> move (0x1294) and the ctors/dtors of CToken (0x131C), CAnimData (0x1518), CModelData (0x157C), CDamageVulnerability (0x11E4, 0x123C) and the SLdr blocks (0x118C, 0x15DC); the host's loader (`PortLoadIng`) and the generated `SLdrIng` do the same |
+| the compiler-generated destructors and the new/free wrappers | 33 | 0x2098, 0x20F0, 0x10F8, 0x114B0, 0x5104, 0x6158, 0x6D44, 0x71B8, 0x7D10, 0x7D60, 0x7DC8, 0x8C98, 0x8E94, 0x944C, 0x9A18, 0xAFA8, 0xBB50, 0xC5E0, 0xCEB8, 0xCF10, 0xCF64, 0xD128, 0xD30C, 0xD3A0, 0xD3F8, 0xD450, 0xD4A8, 0xE650, 0xE68C, 0xE6F8, 0xE750, 0xE78C, 0xECE4 | every one of them is the deleting-destructor shape `mr. r31, r3 / beq / extsh. r0, r4 / ble / bl Free__7CMemoryFPCv`, with the vtable reset and the DOL's own `__dt__` calls; the host's member destructors and `rs_new` do the same |
+| the rstl internals | 4 | 0x2144, 0x350C, 0x35EC, 0x3624 | the module's static string's destructor (0x2144, the "Grenchler.rel" string) and the joint vector's destroy/copy helpers |
+| the plain struct copies | 3 | 0x94A8, 0xBA4C, 0xBAB4 | the DOL's cross product (0x94A8), the bounding-box copy (0xBA4C) and the optional<CAABox> copy (0xBAB4) |
+| the REL runtime | 10 | RELMain, RELExit, 0x121F4, __destroy_global_chain, __register_global_object, _unresolved, _epilog, _prolog, ModuleConstructors, ModuleDestructors | the module's entry points and the linker's support; 0x121F4 is the static initializer that fills the BSS string |
+
+**Group 2 - the module's own behaviour (70).** `0x100` (the loader's head), `0x130` (the loader),
+`0x1C98`, `0x1DF4`, `0x3190`, `0x3684`, `0x3948`, `0x426C`, `0x45BC`, `0x4604`, `0x4AA8`, `0x4C88`,
+`0x514C`, `0x5190`, `0x51D0`, `0x53E0`, `0x5714`, `0x5C28`, `0x75C0`, `0x82D4`, `0x84A4`, `0x8CF4`,
+`0x8FE8`, `0xA340`, `0xA4E0`, `0xAA04`, `0xAA4C`, `0xAA94`, `0xAC78`, `0xB1C8`, `0xB1E8`, `0xB3C4`,
+`0xB534`, `0xB890`, `0xB8C0`, `0xBB8C`, `0xBCB4`, `0xBEB4`, `0xBF20`, `0xBFF0`, `0xD540` (the ctor),
+`0xE7C8`, `0xE8D8`, `0xE944`, `0xE9E8`, `0xEA7C`, `0xEB38`, `0xEBEC`, `0xEC88`, `0xED38`, `0xEE68`,
+`0xEFC0`, `0xF000`, `0xF090`, `0xF12C`, `0xF260`, `0xF2C8` (the FSM tables), `0x10D50`, `0x10E64`,
+`0x11438`, `0x11490`, `0x11570`, `0x11840`, `0x119E8`, `0x11A7C`, `0x11C14`, `0x11CA4`, `0x11E8C`,
+`0x1201C`, `0x12100` (the mini-portal class).
+
+**The six hot vtable bodies, read against the asm.** They are the module's own overrides of the
+engine's per-frame and per-event slots, so they are the most-called of the unmarked group. Five
+matched the port; one did not and is fixed:
+
+| fn | slot | what the asm does | the port |
+|---|---|---|---|
+| `fn_29_BF20` GetDamageVulnerability | 0x40 | the form picks the table: 4 -> the base class's, 3 -> the grapple's (the byte at 0xe5d bit 0) or the ing spot's (CIngData+0xd0), every other form -> the trigger's (CIngData+0x3c, 0x7fc) | matched (the form test, the two tables and the base call) |
+| `fn_29_B890` TakeDamage | 0xa4 | the forms 0, 1 and 5 return; every other form stores `lbl_8041AAB8` (= `CPatterned::skDamageHitTime` = 0.33) into 0x448, which is the base class's damage-cooldown store | matched (the early return plus the base call) |
+| `fn_29_BCB4` GetAimPosition | 0x54 | the forms 2 and 6..8 predict their motion (only with dt > 0), the collar locator (0xd7a, invalid in retail) would add the model's scale times the locator's world position, and the forms 6/7 fall back to the base when the aim is below the actor's own height | matched (all four arms, including the dead locator path) |
+| `fn_29_BB8C` Touch | 0x4c | the ing spot (3) damages the target it touches when the ball is not held, the toucher is the target (0xd6c) and the cooldown (0x440) has run out; the damage is the actor's own `GetContactDamage`, the filter is Solid alone (type 3) and the cooldown is reloaded from 0x444 | matched (the filter, the ids and the reload) |
+| `fn_29_B534` CollidedWith | 0x84 | the base call, then the form 4 and the flight time >= 0.5 gate, then the first collision whose material list meets the six-bit splat mask (0x1d, 0x1e, 0x1f, 0x3b, 0x2b, 0x2a) gives the normal and sets the splat flag | matched (the mask, the first hit wins) |
+| `fn_29_B8C0` KnockBack | 0x9c | **the port was missing two steps**: the anim reaction (`EnableAnimReaction(2, true)` only in the corporeal form outside the knock-back body state 6) and the flinch type at 0x688 (2 for the light beam, 1 for everything else) | **fixed** - the body is now the Boost Guardian's copy of the same code (fn_30_CB84) |
+
+`fn_29_B3C4` (Death, slot 0x98) is the seventh hot body; it is **not** ported faithfully yet - see
+the finding (2) below.
+
+**The run** (`/tmp/opencode/ing_lane/ing_run.sh` + `ing_con.py`, rebuilt from A.5/A.6 after the
+old scripts were lost): Temple Grounds world 1baa96c2, area 57 (`0i_cliff_hall_dark`, MREA
+2735236b), the two Ings activated over the console, the light beam given, the player teleported
+to 58.4 356 9 and firing every 2 s. The log carries the new arm lines (`[ing] <uid> vuln: ...`,
+`damage: ...`, `aim: ...`, `knockback: ...`, `touch: ...`, `collide: ...`), which is how the arms
+that ran are told apart. Three runs: the plain one (`ing_run.log`, 20000 frames), the light-beam
+one (`ing_light.log`, 9000) and the long one (`ing_long.log`, 30000); all three exit 0 with 0
+`[port] caught` and 0 `[reach-stub]`.
+
+What the runs prove, per body (an arm that did not run is *not* unreachable - it is simply not
+reached by this recipe):
+
+| body | arms the run covered | arms still open |
+|---|---|---|
+| `fn_29_BF20` GetDamageVulnerability | the trigger table (46 calls, the corporeal form) and the ing spot's table (45) | the base table (the body projectile, form 4) and the grapple's table (the ball held) |
+| `fn_29_B890` TakeDamage | the cooldown store (the ing spot form) | the early return (the forms 0, 1 and 5) |
+| `fn_29_BCB4` GetAimPosition | the base (the forms 0, 1, 3, 4) and the predict path (the forms 2, 6, 7, 8), with dt = 0 | the predict path with dt > 0 (the lock-on asks with a prediction time, but only while the Ing is an ing spot) |
+| `fn_29_BB8C` Touch | the hit (47), the form (35643), the id (2181) and the cooldown (1024) | the "the ball is held" case |
+| `fn_29_B534` CollidedWith | the form (8800), the flight time (203), the surface hit (1) and the empty contact list (6) | a contact whose material is not one of the six splat surfaces |
+| `fn_29_B8C0` KnockBack | the no-reaction case with the light beam's flinch type 2 | the corporeal form's reaction and the flinch type 1 |
+
+So none of the six gets a `// @` marker yet: every one of them still has an arm this recipe does
+not reach. Two **branch-free** bodies do get one, because the run evaluated them (an entry-only
+log proves a body with no arm): `fn_29_B1E8` (IsAlert - the run entered the Alert state, whose
+`!HasTarget` branch evaluates the trigger) and `fn_29_B1C8` (IsControllingHost - the run entered
+the SuckEnergy state, whose outgoing trigger list is "->IsControllingHost ->TargetInSafeZone").
+
+**Two findings for the next slice.** (1) The module's flag bytes are counted **from the top of the
+byte**: the asm's `extrwi`/`rlwimi` index I is the byte's natural bit (I - 24) and the port's flag
+names use the reverse order (the port's bit k = the natural bit 7 - k). The proof is the Lurk
+state: the retail sets the byte at 0xe5d's natural bit 5 (asm 0x00008A8C, the index 29) and the
+IsAlert trigger reads exactly that bit (fn_29_B1E8, the index 29) - the same flag, and the port's
+`mAlert` is it. The GrappleBall sets the natural bit 7 (asm 0x000065E8, the index 31) and the
+Touch and GetDamageVulnerability read it with `clrlwi r0, r0, 31` (the byte's bit 7) - again the
+same flag, the port's `mGrappled`. Every flag the port names for 0xe5c/0xe5d/0xe5e is consistent
+with that reading. (2) `fn_29_B3C4` (Death, slot 0x98) is **not** ported faithfully: the retail's
+body does not call `CPatterned::Death` at all - it sets the body controller's time scale (0x5c8 =
+1.0), sets the *animation* effect state "Dead" (rodata_120+0x45c) instead of the FSM's "Dead"
+state, removes the material 0x25, clears the alive bit (0x420 bit 6) and the byte at 0x34c
+(unless the burn flags at 0x421 are set), issues the death body command only in the forms 2 and
+6..9, and sends the script messages itself. The host's base class does the shared part but also
+the parts the Ing's body replaces, so porting it needs the anim data's vtable slot 0x28 (the test
+before the effect state) mapped first - left open, and `fn_29_B3C4` stays unmarked.
+
 ## B. MinorIng.rel (module 44)
 
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
