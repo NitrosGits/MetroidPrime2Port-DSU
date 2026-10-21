@@ -11,6 +11,7 @@
 #include "tex_palette_conv.hpp"
 #include "texture_replacement.hpp"
 #include "../gx/gx.hpp"
+#include "../gx/fifo.hpp"
 #ifdef AURORA_ENABLE_RMLUI
 #include "../rmlui/pipeline.hpp"
 #endif
@@ -521,6 +522,11 @@ void initialize() {
 }
 
 void shutdown() {
+  // Port: AURORA_RENDER_EVERY: how much of the render skipping the EFB copies took back.
+  Log.info("AURORA_RENDER_EVERY: {} frames were rendered in full because they hold an EFB copy "
+           "({} of them a read-back), {} copies were skipped because their destination was fresh",
+           gx::fifo::frames_forced_rendered(), gx::fifo::frames_forced_by_readback(),
+           gx::fifo::copies_skipped());
   render_worker::synchronize();
   render_worker::shutdown();
   g_processEventsQueued.store(false, std::memory_order_release);
@@ -675,6 +681,10 @@ void end_frame(EndFrameCallback callback) {
   ++g_frameIndex;
 
   const size_t stagingSlot = frame.stagingBuffer;
+  // Port: AURORA_RENDER_EVERY: the frame's work is enqueued as a whole now, so the frame's
+  // decision is final: a frame that holds an EFB copy (raised to "rendered" while it was
+  // recorded) is encoded in full, and a frame that is not rendered is not encoded at all.
+  detail::enqueue_frame_ops(frame);
   render_worker::enqueue_end_frame(frameId, [frameSlot, stagingSlot, callback = std::move(callback)]() mutable {
     auto& packet = g_framePackets[frameSlot];
     g_stagingBuffers[stagingSlot].Unmap();
