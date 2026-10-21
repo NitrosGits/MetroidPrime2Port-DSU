@@ -46,6 +46,7 @@ def cmd(c):
             break
         line = line.rstrip("\n")
         if line.startswith("=> "):
+            lines.append(line)
             break
         lines.append(line)
     return "\n".join(lines)
@@ -87,6 +88,14 @@ def main():
         for name in TRIGGERS:
             log("trigcall %s: %s" % (name, cmd("trigcall %s %s" % (target, name))))
             wait_frame(frame() + 2)
+        # the knock-back: a small damage on the live commando, so the module's KnockBack
+        # override (fn_9_C300) is entered and reads the reaction flags.
+        log("darkburst: %s" % cmd("damage %s 5 darkburst" % target))
+        wait_frame(frame() + 10)
+        log("damage: %s" % cmd("damage %s 1" % target))
+        wait_frame(frame() + 10)
+        log("damage: %s" % cmd("damage %s 1" % target))
+        wait_frame(frame() + 10)
         for name, msg in STATES:
             log("statecall %s %d: %s" % (name, msg, cmd("statecall %s %s %d" % (target, name, msg))))
             wait_frame(frame() + 2)

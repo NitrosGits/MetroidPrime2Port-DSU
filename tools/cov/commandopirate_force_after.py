@@ -13,7 +13,10 @@ import gdb
 # The usual sides first: tools/cov/force.py (the spec's FORCE list) and tools/cov/gdb_cov.py (its
 # SPEC list, the arm counts), each in its own namespace - the same as tools/cov/cov_force.py.
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else 'tools/cov'
-for name in ('force.py', 'gdb_cov.py'):
+# Only tools/cov/force.py here: gdb_cov.py's 'ret' handling (a FinishBreakpoint) fails in an
+# attached gdb ("end_pc should be greater than or equal to start_pc"), and the arm counts are not
+# needed in a forcing run - the forced log is the evidence.
+for name in ('force.py',):
     path = os.path.join(HERE, name)
     exec(compile(open(path).read(), path, 'exec'), {'__name__': '__main__', '__file__': path})
 
@@ -79,7 +82,7 @@ class BaseKnockBackBp(gdb.Breakpoint):
 
 
 class ArmReadBp(gdb.Breakpoint):
-    """The override's own read of the flags: the "cmpl $0x3,0x6f8(%rbx)" at +0xa2."""
+    """The override's own read of the flags: the "cmpl $0x3,0x6f8(%rbx)" at +0xa8."""
 
     def stop(self):
         frame = gdb.newest_frame()
@@ -113,7 +116,7 @@ for addr in find('CPatterned::KnockBack('):
 try:
     _own = int(gdb.parse_and_eval(
         '&_ZN15CCommandoPirate9KnockBackER13CStateManagerRK14CKnockBackInfo'))
-    ArmReadBp('*(%d + 0xa2)' % _own)
+    ArmReadBp('*(%d + 0xa8)' % _own)
     log('the arm\'s own read is watched')
 except (gdb.error, ValueError) as e:
     log('the arm read breakpoint failed: %s' % str(e)[:60])
