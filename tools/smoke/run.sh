@@ -44,6 +44,23 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# Concurrent runs (lanes, batch gates) each hold a slot, a flock kept for the script's life, and
+# shift their displays and console ports by 20 per slot, so two runs never share an X display or a
+# console port. Slot 0 (the bare table) is left to copies of this script that predate the slots.
+# An explicit --display-base / SMOKE_DISPLAY_BASE keeps the old fixed numbering.
+PORTOFF=0
+if [ "$LIST" = 0 ] && [ -z "${SMOKE_DISPLAY_BASE:-}" ] && [ "$DISPBASE" = 760 ]; then
+  mkdir -p /tmp/opencode/locks
+  for slot in $(seq 1 16); do
+    exec {SLOTFD}>"/tmp/opencode/locks/smoke-slot.$slot"
+    if flock -n "$SLOTFD"; then
+      DISPBASE=$((760 + slot * 20)); PORTOFF=$((slot * 20)); break
+    fi
+    exec {SLOTFD}>&-
+  done
+  [ "$PORTOFF" = 0 ] && { echo "[smoke] no free slot (16 runs at once?)" >&2; exit 2; }
+fi
+
 # The family table: the world to boot into, the game updates to run, the backstop, the console
 # port, the command file, the input file, the console driver and extra environment.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
@@ -120,9 +137,9 @@ run_one() {   # <tag>: one family; its own display, port, card copy and cache di
   read -ra extra <<< "${X[$tag]:-}"
   [ -n "${C[$tag]:-}" ] && cmd="$HERE/${C[$tag]}"
   [ -n "${I[$tag]:-}" ] && inp="$HERE/${I[$tag]}"
-  echo "[smoke] $tag start $(date +%T) display=:$((DISPBASE + IDX[$tag])) port=${P[$tag]}"
+  echo "[smoke] $tag start $(date +%T) display=:$((DISPBASE + IDX[$tag])) port=$((P[$tag] + PORTOFF))"
   SMOKE_OUT="$OUT" SMOKE_BUILD="$BUILD" SMOKE_DISPLAY=":$((DISPBASE + IDX[$tag]))" \
-    SMOKE_PORT="${P[$tag]}" SMOKE_WORLD="${W[$tag]}" SMOKE_FRAMES="${F[$tag]}" SMOKE_SECS="${S[$tag]}" \
+    SMOKE_PORT="$((P[$tag] + PORTOFF))" SMOKE_WORLD="${W[$tag]}" SMOKE_FRAMES="${F[$tag]}" SMOKE_SECS="${S[$tag]}" \
     SMOKE_CMD="$cmd" SMOKE_INPUT="$inp" SMOKE_DRIVER="${V[$tag]:-generic}" SMOKE_SAVE="$SAVE" \
     "$HERE/fam.sh" "$tag" ${extra[@]+"${extra[@]}"} > "$OUT/$tag.run.log" 2>&1
   rc=$?

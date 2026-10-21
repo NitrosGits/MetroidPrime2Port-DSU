@@ -1163,8 +1163,9 @@ bool CIng::ShouldEvaporate(CStateManager&, const CTriggerData&) const {
 // above zero". One comparison, two arms:
 //   - the count is zero: false;
 //   - the count is not zero: true.
-// The area 57 run of 2026-10-21 never evaluated it (the area has no safe zone), so the body is
-// not marked.
+// The runs of 2026-10-21 (area 57 and the Agon Wastes, which has 24 safe zones) never changed
+// the count - the player teleporting into a safe zone does not raise the XENZ message - so the
+// body is not marked.
 bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
   return mSafeZoneCount > 0;
 }
@@ -1174,9 +1175,10 @@ bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
 //   - the desired form is not 2 (asm 0x0000AA68): false;
 //   - it is 2 and the Ing is already corporeal (fn_29_AD54): false;
 //   - it is 2 and the Ing is not: true.
-// The area 57 run of 2026-10-21 (a probe in the body, the state forced with
-// `fsm <ing> FollowAttackPattern`) only ran the "the desired form is not 2" arm - the desired
-// form is only set by the attack pattern's waypoint (0x00008310), so the body is not marked.
+// The Agon Wastes run of 2026-10-21 (area 01_sand_entrance_dark, the area whose Ings have the
+// "ATTK"/"FOLW" attack pattern, so the FollowAttackPattern state runs) ran the "the desired
+// form is not 2" arm and the "the desired form is 2 and the Ing is not corporeal" arm; the
+// "the Ing is already corporeal" arm did not run, so the body is not marked.
 bool CIng::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_Corporeal && !IsCorporeal(mgr, data);
 }
@@ -1186,10 +1188,10 @@ bool CIng::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) c
 //   - the desired form is not 3 (asm 0x0000AA20): false;
 //   - it is 3 and the Ing is already an ing spot (fn_29_AD40): false;
 //   - it is 3 and the Ing is not: true.
-// The area 57 run of 2026-10-21 (a probe in the body, the state forced with
-// `fsm <ing> FollowAttackPattern`) ran the "the desired form is not 3" arm and both of the
-// IsIngSpot variants, but not the arms with the desired form set (the desired form is only set
-// by the attack pattern's waypoint, 0x00008310), so the body is not marked.
+// The Agon Wastes run of 2026-10-21 (area 01_sand_entrance_dark, the area whose Ings have the
+// "ATTK"/"FOLW" attack pattern) ran the "the desired form is not 3" arm; the arms with the
+// desired form 3 did not run (the Ing never wanted to be an ing spot there), so the body is not
+// marked.
 bool CIng::ShouldBecomeIngSpot(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_IngSpot && !IsIngSpot(mgr, data);
 }
@@ -1295,8 +1297,9 @@ bool CIng::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
 // 28) - the port's mFoundMovementPos. One bit, one arm.
 //   - the flag is set: true;
 //   - the flag is clear: false.
-// The run of 2026-10-21 (area 57, the trigger is in the SetLuredDest code function's trigger list
-// only) never evaluated it, so the body is not marked.
+// The FSM2 graph puts this trigger in the SetLuredDest code function's trigger list only (the
+// Ing's lure), so it needs an Ing that is lured by a safe zone. The runs of 2026-10-21 (area 57
+// and the Agon Wastes 01_sand_entrance_dark) never lured one, so the body is not marked.
 bool CIng::FoundMovementPos(CStateManager&, const CTriggerData&) const {
   return mFoundMovementPos;
 }
@@ -1333,15 +1336,16 @@ bool CIng::HasAttackPattern(CStateManager& mgr, const CTriggerData&) const {
          kInvalidUniqueId;
 }
 
-// fn_29_A340 (0xE4, asm 0x0000A340-0x0000A424): over once the attack path is being followed
+// @ fn_29_A340 (0xE4, asm 0x0000A340-0x0000A424): over once the attack path is being followed
 // (0x0000A348: 0xE5D 0x08) and the waypoint navigation has no destination left (0x0000A35C:
 // this+0x6c0 against kInvalidUniqueId). It stores nothing.
-// The arms (the area 57 run of 2026-10-21, a probe in the body):
-//   - the attack path is not followed (asm 0x0000A34C): false;
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark - the area whose Ings
+// have the "ATTK"/"FOLW" attack pattern - with a probe in the body):
+//   - the attack path is not followed (asm 0x0000A34C): false - the destination is invalid and
+//     it is not;
 //   - it is followed and the destination is still there (asm 0x0000A35C): false;
-//   - it is followed and the destination is gone: true - that arm ran (the state was forced:
-//     `fsm <ing> FollowAttackPattern`).
-// The two false arms did not run, so the body is not marked.
+//   - it is followed and the destination is gone: true.
+// All three ran, so the body is marked.
 bool CIng::AttackPatternOver(CStateManager&, const CTriggerData&) const {
   return mFollowingAttackPath && mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }

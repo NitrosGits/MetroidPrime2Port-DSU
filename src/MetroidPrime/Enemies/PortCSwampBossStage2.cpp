@@ -35,7 +35,6 @@
 #include "MetaRender/CCubeRenderer.hpp"
 
 #include <float.h>
-
 namespace {
 // rodata: collision actors are kept at this HP and damage is read as the shortfall.
 const float kCollisionActorHP = 500.f;
@@ -113,7 +112,7 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mClampHealth(true)
 , mPlayerInWater(false)
 , mAttackReady(false)
-, mLightFlyer(true)
+, mLightFlyer(false) // the retail's ctor clears the flag (0xC0E8, mask 0x1 of the byte at 0xc76)
 , mMoveRequested(false)
 , mSwoopSide(false)
 , mCircleDone(false)
@@ -2301,11 +2300,17 @@ CVector3f CSwampBossStage2::GetAimPosition(const CStateManager& mgr, float dt) c
 
 // @ fn_79_2690
 CScannableObjectInfo* CSwampBossStage2::GetScannableObjectInfo() const {
-  // TODO(uncertain): retail picks the light or dark scan by flyer form.
-  const rstl::optional_object< TLockedToken< CScannableObjectInfo > >& scan =
-      mLightFlyer ? mScanLight : mScanDark;
-  if (scan) {
-    return const_cast< CScannableObjectInfo* >(*scan.data());
+  // Retail picks the scan by the phase, not by a flag (0x26A0-0x26F0): the phase 0 and 2 use
+  // the light scan (0xe04), the phase 1 and 3 the dark one (0xe08) and the phase 4 and up the
+  // base's scan.
+  if (mPhase == 2 || mPhase == 0) {
+    if (mScanLight) {
+      return const_cast< CScannableObjectInfo* >(*mScanLight.data());
+    }
+  } else if (mPhase >= 4) {
+    return CPatterned::GetScannableObjectInfo();
+  } else if (mScanDark) {
+    return const_cast< CScannableObjectInfo* >(*mScanDark.data());
   }
   return CPatterned::GetScannableObjectInfo();
 }
