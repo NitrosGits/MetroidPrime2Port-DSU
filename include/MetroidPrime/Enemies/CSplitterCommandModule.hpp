@@ -225,6 +225,8 @@ public:
   void PortSnatchShield(CStateManager& mgr);
 
 private:
+  // The chassis's AutoDestruct table entry is this class's fn_75_5A54 (PortAutoDestruct).
+  friend class CSplitterMainChassis;
   void EnsureBodyActive(CStateManager& mgr);
 
   // Host layout (retail's object is 0xF70, CPatterned is 0x7C0; the guest offsets are the REL's
