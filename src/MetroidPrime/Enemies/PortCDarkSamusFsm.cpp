@@ -1603,7 +1603,8 @@ bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
 // ---- the state bodies (stand-ins) --------------------------------------------------------------
 
 // fn_10_9724 (0x00009724, 0xDC bytes): the BoostBallFire state. Every message runs the attack
-// bookkeeping with id 2 (fn_10_1B478 at 0x00009760). Activate (0x00009764) removes the roll
+// bookkeeping with id 0x20000 (`lis r4, 0x2` at 0x00009758, the call at 0x00009760). Activate
+// (0x00009764) removes the roll
 // emitter (0x00009778) and clears its handle (0x00009784), turns the actor around (fn_10_9644
 // at 0x00009788), takes 0xD24 = lbl_10_rodata_284 = 0.5f (0x000097AC) and sets the boost ball's
 // bit 0x40 of 0xEBC (`rlwimi r3, r4, 6, 25, 25` at 0x000097B4, the PowerPC bit 25 being
@@ -1826,7 +1827,8 @@ void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
 }
 
 // fn_10_16CDC (0x00016CDC, 0x1F0 bytes): the FreezeBeam state. Every message runs the attack
-// bookkeeping with id 0x10 (fn_10_1B478 at 0x00016D18), the collision failsafe (fn_10_1AEC0 at
+// bookkeeping with id 0x100000 (`lis r4, 0x10` at 0x00016D10, the call at 0x00016D18), the
+// collision failsafe (fn_10_1AEC0 at
 // 0x00016D24), the shield flag (fn_10_105F4 at 0x00016D38) and the ground collision
 // (fn_10_18F90 at 0x00016D48). Activate (0x00016D4C) clears the beam's counter 0xAB0
 // (0x00016D5C), clears the bits 0x40 and 0x80 of 0xAB8 (the `rlwimi` at 0x00016D6C clears the
@@ -1838,7 +1840,8 @@ void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
 // 0x40 of 0xAB8 set (0x00016DEC..0x00016DF4) the actor turns toward the player (fn_10_16B64 at
 // 0x00016E1C, the rate lbl_10_rodata_454 = 0.017453292 radians a degree times
 // lbl_10_bss_118 = 160.0f, the module's own turn speed) and dodges (fn_10_1707C at 0x00016E3C,
-// with lbl_10_bss_11C = 22.0f and lbl_10_bss_120 = 0.5f - the port's UpdateDodge). Then
+// with lbl_10_bss_11C = 22.0f and lbl_10_bss_120 = 0.5f - the module's init fn_10_CDB8 writes
+// them at 0x0000CE38 and 0x0000CE3C - the port's UpdateDodge). Then
 // fn_10_8870 (0x00016E8C) - the state's command, the port's RunLoopAttackCmd.
 // The arms: the Activate (0x00016D4C), the Update, the Deactivate and the exit state command
 // (the counter 0xAB0 at least 1, 0x00016DA8) and the turn and the dodge (the bit 0x40 of 0xAB8,
@@ -1864,7 +1867,8 @@ void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
     TurnTowardPlayer(mgr, dt, 0.017453292f * mBss118); // 0x00016E1C (lbl_10_rodata_454 times
                                                               // lbl_10_bss_118 = 160.0f)
     // 0x00016E3C: fn_10_1707C - the dodge step, with lbl_10_bss_11C = 22.0f (the impulse) and
-    // lbl_10_bss_120 = 0.5f (the dodge's time), the port's UpdateDodge.
+    // lbl_10_bss_120 = 0.5f (the dodge's time) - the module's init fn_10_CDB8 writes them at
+    // 0x0000CE38 and 0x0000CE3C - the port's UpdateDodge.
     UpdateDodge(mgr, dt, 22.f, 0.5f); // 0x00016E3C
   }
   // 0x00016E40..0x00016E88: the loop attack command - the vtable lbl_10_data_1B0 (the base
@@ -2735,7 +2739,8 @@ void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_10_BD40 (0x0000BD40, 0xDC bytes): the FadeIn state. Every message runs the attack
-// bookkeeping with id 4 (fn_10_1B478 at 0x0000BD70), the ground collision (fn_10_18F90 at
+// bookkeeping with id 0x40000 (`lis r4, 0x4` at 0x0000BD60, the call at 0x0000BD70), the ground
+// collision (fn_10_18F90 at
 // 0x0000BD80) and the melee attack command (fn_10_8764 at 0x0000BDE0, the severity 4 =
 // pas::kS_Four, the target position the zero vector and no target).
 // @ fn_10_BD40
@@ -2747,7 +2752,8 @@ void CDarkSamus::FadeIn(CStateManager& mgr, EStateMsg msg, float) {
 }
 
 // fn_10_BC54 (0x0000BC54, 0xDC bytes): the FadeOut state. Every message runs the attack
-// bookkeeping with id 8 (fn_10_1B478 at 0x0000BC84), the ground collision (fn_10_18F90 at
+// bookkeeping with id 0x80000 (`lis r4, 0x8` at 0x0000BC74, the call at 0x0000BC84), the ground
+// collision (fn_10_18F90 at
 // 0x0000BC94), the shield flag (fn_10_105F4 at 0x0000BCA8, with the zero vector) and the melee
 // attack command (fn_10_8764 at 0x0000BD08, the severity 3 = pas::kS_Three).
 // @ fn_10_BC54
