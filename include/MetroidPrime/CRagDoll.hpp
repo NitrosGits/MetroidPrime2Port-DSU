@@ -33,6 +33,14 @@ public:
   void UpdateRenderBounds();
   CProjectileTouchResult ProjectileCollision(const CGameProjectile& projectile, TUniqueId actorId);
 
+#ifdef TARGET_PC
+  // The retail's CRagDoll has an impulse (its 0xb8, 0xbc and 0xc0) that a force field adds to
+  // (the SpacePirate's fn_72_E3D8, asm 0xE44C-0xE47C: the ragdoll's 0xb8, 0xbc and 0xc0 take the
+  // trigger's 0x190, 0x194 and 0x198).  The host's ragdoll is a rewrite without that member, so
+  // the port keeps the value here.
+  void AddImpulse(const CVector3f& impulse) { mImpulse += impulse; }
+  const CVector3f& GetImpulse() const { return mImpulse; }
+#endif
   bool IsPrimed() const { return mPrimed; }
   bool IsRenderBoundsValid() const { return mRenderBoundsValid; } // Guessed name
   const CAABox& GetCachedRenderBounds() const { return mRenderBounds; } // Guessed name
@@ -203,6 +211,9 @@ protected:
   float mImpactVel;
   CVector3f mAverageVel;
   rstl::vector< CRagDollParticle > mParticles;
+#ifdef TARGET_PC
+  CVector3f mImpulse;
+#endif
 };
 CHECK_SIZEOF(CRagDoll, 0xa0)
 NESTED_CHECK_SIZEOF(CRagDoll, CRagDollParticle, 0x44)

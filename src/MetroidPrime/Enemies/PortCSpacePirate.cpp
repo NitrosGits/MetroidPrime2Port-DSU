@@ -22,7 +22,9 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/CRagDoll.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTrigger.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTargetingPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -1374,15 +1376,42 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
 // Retail fn_72_E3D8 adds a force-field trigger's push to the ragdoll's torso impulse once the
 // ragdoll is primed; with no ragdoll (xb30_ is never set) it is CPatterned::Touch.
 // Retail fn_72_E3D8 (0xC0): the base class's touch first, then a force-field trigger's push
-// onto the ragdoll's torso impulse. The ragdoll pointer at 0xb30 is never set in this port, so
-// that whole branch stays a comment (asm 0xE3F8-0xE47C): the ragdoll's own flag byte 0x70 has
-// to carry bit 0x40 (asm 0xE408), the other actor has to be a CScriptTrigger (asm 0xE414) whose
-// flag byte 0x20 carries bit 0x80 (asm 0xE424) and whose word 0x1a0 carries bit 0x10000 (asm
-// 0xE430), and the trigger's float 0x19c has to be above zero (asm 0xE444); the ragdoll's
-// 0xb8, 0xbc and 0xc0 then take the trigger's 0x190, 0x194 and 0x198.
+// onto the ragdoll's torso impulse (asm 0xE3F8-0xE47C).  The conditions, each one a branch that
+// skips the push:
+//   0xE3FC-0xE400: the ragdoll (0xb30) is there,
+//   0xE404-0xE40C: the ragdoll's flag byte 0x70 carries 0x40 (the ragdoll has stopped - the
+//     host's CRagDoll keeps that as IsOver()),
+//   0xE410-0xE41C: the other actor is a CScriptTrigger,
+//   0xE420-0xE428: the trigger's flag byte 0x20 carries 0x80 (the CEntity's flag byte's bit 7 -
+//     the host's CEntity keeps that as GetUpdateDuringCinematicSkip()),
+//   0xE42C-0xE434: the trigger's word 0x1a0 carries 0x10000 (the host's GetTriggerFlags()),
+//   0xE438-0xE448: the trigger's float 0x19c is above zero (the host's GetForceMagnitude()),
+// and then the ragdoll's 0xb8, 0xbc and 0xc0 take the trigger's 0x190, 0x194 and 0x198 (the
+// host's force field, added to the ragdoll's impulse).
 void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   TraceCall(*this, "Touch", 0);
   CPatterned::Touch(actor, mgr);
+  CRagDoll* ragdoll = static_cast< CRagDoll* >(xb30_);
+  if (ragdoll == nullptr) {
+    return; // 0xE3FC-0xE400
+  }
+  if (!ragdoll->IsOver()) {
+    return; // 0xE404-0xE40C
+  }
+  CScriptTrigger* trigger = TCastToPtr< CScriptTrigger >(&actor);
+  if (trigger == nullptr) {
+    return; // 0xE410-0xE41C
+  }
+  if (!trigger->GetUpdateDuringCinematicSkip()) {
+    return; // 0xE420-0xE428
+  }
+  if ((trigger->GetTriggerFlags() & 0x10000) == 0) {
+    return; // 0xE42C-0xE434
+  }
+  if (trigger->GetForceMagnitude() <= 0.f) {
+    return; // 0xE438-0xE448
+  }
+  ragdoll->AddImpulse(trigger->GetForceField()); // 0xE44C-0xE47C
 }
 
 // Retail fn_72_C538.
