@@ -618,6 +618,52 @@ The blocker for all five is the same: state 3 needs the belly accumulator over 5
 harness's hit rate (37 hits in 330 charged shots, the accumulator reset by `BeachWait` between
 the beach cycles) does not get there.
 
+### Stage1: the belly accumulator, the hit rate and fn_78_5784 (2026-10-21)
+
+**The belly accumulator (`xd10`) never decays.** The retail writes it in three places only:
+
+| asm | function | what |
+|---|---|---|
+| 0x52C0 | fn_78_5268 (`BeachWait`) | `xd10 = 0` - the reset |
+| 0x53C0 | fn_78_5374 (`Dive`) | `xd10 = 0` - the reset |
+| 0xA3AC / 0xA3D8 | fn_78_9B74 (`AcceptScriptMsg`, the port's `ApplyDamageMsg`) | the cap (`xd10 = threshold * 0.5` while no tongue has been launched) and the increment |
+
+The port matches all three (`BeachWait` and `Dive` zero it, `ApplyDamageMsg` grows it), and the
+trigger `fn_78_6458` reads it against 5.0 at min health and 50.0 otherwise. So the accumulator
+only climbs between a `BeachWait`/`Dive` and the next one - the hits have to land in that window,
+in a state where the port adds to it (0 Beach, 4 PlatformReady, 5 TonguePull, 9 TongueLoop,
+10 Vomit).
+
+**The hit rate is the blocker, not the decay.** With the live-aim driver (the charge input is
+the A button, so the shot leaves ~1.8 s after the press and the aim has to be refreshed while
+the charge runs) a long run landed 37 hits in 330 charged shots - 11% - and the accumulator
+reached 21.58 before the next `Dive` reset it. The 21.58 is 43% of the 50 the trigger wants
+(and 4x the 5 it wants at min health), so the remaining gap is the hit rate and the resets,
+not a decay.
+
+**`fn_78_5784` (`SlideIntoWater`) is marked.** The retail records state 6 and, on Activate only,
+sets the joints to `kAllJoints` with `RemoveTarget|Reflect`, rumbles and stops the tongue; every
+message falls through to the body part. The port does the same, and a run exercised every arm:
+
+| arm | retail branch | probe count |
+|---|---|---|
+| the joints and the rumble (Activate only) | `cmpwi r31, 0x0` at 0x57B0 -> 0x57B8 (`li r5, 0x3` at 0x57C0, `li r6, 0xa` at 0x57C4, `bl fn_78_9744` at 0x57C8, `bl fn_78_511C` at 0x57D4) | 9 x Activate |
+| the tongue stop (Activate only) | `cmpwi r31, 0x0` at 0x57D8 -> 0x57E0 (`bl fn_78_6BEC` at 0x57E4) | 9 x Activate |
+| the body part (every message) | the fall-through at 0x57E8 | 909 x Update, 9 x Deactivate |
+
+**The other four stay unmarked**, each with the arm that did not run:
+
+| fn | arm that did not run |
+|---|---|
+| `fn_78_35DC` | the `msg == 1` branch (`cmpwi r31, 0x1` at 0x3620 -> the four calls); the function was never entered (state 3 needs the accumulator over 50) |
+| `fn_78_3320` | the `DeliverCmd(CBCAdditiveReactionCmd)` on Activate (`cmpwi r31, 0x0` at 0x3340); the function was never entered |
+| `fn_78_348C` | the Activate branch (`cmpwi r31, 0x0` at 0x34B8 -> `bl fn_78_9744` at 0x34C4 and `bl DeliverCmd` at 0x34E8); the function was never entered |
+| `fn_78_9A44` | the state-5 branch (`cmpwi r0, 0x5` at 0x9A54 -> the `kMT_SeekerTarget` walk); no run had a joint touch during a tongue pull |
+
+A run that reaches state 3 (the belly accumulator over 50, or over 5 at min health) would open
+all of them: `fn_78_35DC` and `fn_78_3320` from the `LightHit`/`HeavyHit` triggers, and
+`fn_78_9A44` from the player touching a joint while the tongue pulls.
+
 ## Stage2 (module 79) — verified
 
 Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata

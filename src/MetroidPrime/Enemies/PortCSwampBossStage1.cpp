@@ -1434,6 +1434,18 @@ void CSwampBossStage1::Dive(CStateManager& mgr, EStateMsg msg, float) {
   BodyMelee(mgr, msg, 0xb);
 }
 
+// @ fn_78_5784: the larva slides into the water. On Activate the joints go to kAllJoints with
+// RemoveTarget|Reflect, the boss rumbles and the tongue stops; every message falls through to the
+// body part.
+// `li r4, 0x6` at 0x57A0 is the state the call at 0x57AC records.
+// `cmpwi r31, 0x0` at 0x57B0 is the Activate test for the joint and rumble branch.
+// `li r5, 0x3` at 0x57C0 is the joint type (kAllJoints).
+// `li r6, 0xa` at 0x57C4 is the flags (RemoveTarget|Reflect).
+// `bl fn_78_9744` at 0x57C8 is the SetJointsActive call.
+// `bl fn_78_511C` at 0x57D4 is the rumble.
+// `cmpwi r31, 0x0` at 0x57D8 is the Activate test for the tongue.
+// `bl fn_78_6BEC` at 0x57E4 stops the tongue.
+// A run exercised every arm: 9 x Activate, 909 x Update, 9 x Deactivate.
 void CSwampBossStage1::SlideIntoWater(CStateManager& mgr, EStateMsg msg, float) {
   RecordState(6, msg);
   if (msg == kStateMsg_Activate) {
