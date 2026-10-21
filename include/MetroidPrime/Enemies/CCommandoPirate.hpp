@@ -477,6 +477,7 @@ private:
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
+  TUniqueId xbd6_;                       // 0xbd6, the waypoint the WallHang state finds
   TUniqueId xbd8_;                       // 0xbd8, the id the delete case asks to delete
   // Guest this+0x6C0 is the waypoint navigation's own destination field (the navigation sits at
   // guest this+0x6B8 and its destination is at +0x8), so the port uses the host's
@@ -491,10 +492,19 @@ private:
   CSegId mLocatorRWrist;                  // 0xc60, "R_wrist" (fn_9_D904 @0x0000E36C)
   CSegId mLocatorRElbow;                  // 0xc61, "R_elbow" (fn_9_D904 @0x0000E3A0)
   CSegId mLocatorLWrist;                  // 0xc62, "L_wrist" (fn_9_D904 @0x0000E3D4)
+  float xc58_;                            // 0xc58, the animation time the WarpOut fade divides by
   uchar xc63_;                            // 0xc63, cleared by the ctor; the states set its bits
   uchar xc64_;                            // 0xc64, cleared (fn_9_D904 @0x0000E150)
   uchar xc65_;                            // 0xc65, 0x80 (fn_9_D904 @0x0000E1B0)
   uchar xc66_;                            // 0xc66, cleared (fn_9_D904 @0x0000E1E8)
+  // core (append-only; PortCCommandoPirateCore.cpp)
+  int xc54_;                              // 0xc54, the melee attack index; -1 (fn_9_D904 @0x0000E0CC)
+
+public:
+  // vtable slot 0xc8 = fn_9_68, slot 0xb4 = fn_9_AC (PortCCommandoPirateCore.cpp)
+  uchar GetModelAlphau8(const CStateManager& mgr) const override;
+  CVector3f GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
+                      const CVector3f& aimPos) const override;
 #else
   uchar x7c0_[0xc68 - 0x7c0];
 #endif

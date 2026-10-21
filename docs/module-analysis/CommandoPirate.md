@@ -70,7 +70,7 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0x40 | `GetDamageVulnerability` | `fn_9_C2CC` (0x34) | host (the +0xC65 test) |
 | 0x70 | `DoUserAnimEvent` | `fn_9_C798` (0x1ac) | host (the module's switch; the arms natural play does not reach are listed in section 4) |
 | 0x84 | `CollidedWith` | `fn_9_BF44` (0x2b0) | host (the module's own handling; the arms natural play does not reach are listed in section 4) |
-| 0x9C | `KnockBack` | `fn_9_C300` (0x1fc) | stand-in |
+| 0x9C | `KnockBack` | `fn_9_C300` (0x1fc) | host (the module's own: the reaction, the base's knock-back, the "GetUp" state and the two sounds; the rag-doll branch is dead) |
 | 0xA8 | `CanBeShot` | `fn_9_A4` | host (true) |
 | 0xAC | `IsListening` | `fn_9_8` | host (true) |
 | 0xB0 | `Listen` | `fn_9_BE4C` (0xf8) | stand-in |
@@ -179,7 +179,9 @@ at 0x0000FF34..0x000103C4). `fn_9_F9F8` is the module's .ctors builder.
 | 16 | FollowAttackPattern | `fn_9_961C` | 0x78A |
 | 17 | WarpIn | `fn_9_9064` | 0x79E |
 | 18 | WarpOut | `fn_9_8DF0` | 0x7A5 |
-| 19 | PostWarpOut | `fn_9_8D28` | 0x7AD |
+| 19 | WallHang | `fn_9_7358` | 0x6E6 | on activate: the 0x02 bit of the flag byte at guest this+0xC65 is set, the 0x40 bit of the byte at guest this+0xC66 is cleared, the module's word at guest this+0x924 becomes 0 and the animation state becomes "ready"; then the cover point the module holds (guest this+0xBD2) is looked up - when there is none the state stops there - and the connected waypoint ("ARRV" on "NEXT") is looked for (its id goes to guest this+0xBD6) while the cover point's forward vector goes to guest this+0xBA0. On update: the burst fire's own type is cleared and the word at guest this+0x924 picks the block - 0: the angle between the actor's facing and the cover point's forward (10 degrees, rodata_498) makes the word 1 or delivers the locomotion command that looks at the cover point; 1: the wall-hang command goes to the body controller when the animation state lets it through, and while the body is in the wall-hang state the direction from the actor to the target's aim position goes into the body controller's own vector at +0x34 | the guest's wall-hang command carries the module's own animation object and the waypoint id and the guest keeps them in the base's fields at guest this+0x2F4 and +0x2F8; the host's command has no room for either, so the port delivers the host's kBSC_WallHang. The host's body controller has no member for the retail's +0x34 vector |
+| WarpOut | `fn_9_8DF0` | 0x7BA | on activate only: the animation state becomes "ready", the module's state word (guest this+0x920) becomes 1, the 0x40 bit of the flag byte at guest this+0xC65 is cleared and the cover point the module holds (guest this+0xBD2) is released. On update: the animation state is asked whether the generate command may be issued (the guest's command id 0xc = 12 = kAS_Generate) and, when it may, the generate command goes to the body controller (the type 1 = pas::kGType_One, the zero target vector, the animation id -1 and the flags clear); when it may not, the fade runs while the body's own state is the generate state (12): the first time the 0x40 bit of the flag byte at guest this+0xC65 is set and the body's remaining animation time is kept at guest this+0xC58, and after that the ratio of the remaining time to the kept one is clamped to 1.0 and scaled by 255.0 to make the alpha byte at guest this+0x44F | the guest's command carries the module's own animation object (lbl_9_data_A2C) and the guest copies the command into the base's field at guest this+0x20C; the host's command has no room for either, so the port delivers the host's CBCGenerateCmd (the type 1, the id -1) and the host's command manager keeps the command. The guest writes the *low byte of the float's bits* into the alpha byte (it puts the float on the stack and reads its low byte, 0x00008FC4..0x00008FC8) - the retail's own bit pun, which the port reproduces |
+| PostWarpOut | `fn_9_8D28` | 0x7AD |
 | 20 | JumpBack | `fn_9_8B70` | 0x7B9 |
 | 21 | Dodge | `fn_9_8934` | 0x7C2 |
 | 22 | ArmShield | `fn_9_86B4` | 0x7C8 |
@@ -304,6 +306,7 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 | FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's own helper `fn_9_3CBC` asks the target for its aim position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the animation state's own command test, the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` is the base's animation state, so the port calls `mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)` (the guest's command id 8) |
 | SetTargetDest | `fn_9_AA20` | 0x6FC | on activate only: the destination starts as the actor's own position (guest this+0x54) and the 0x80 bit of the flag byte at guest this+0xC65 is cleared; the target (the id at guest this+0xBCA) is looked up and, when it is there and either the flag byte at +0xC64 has its 0x40 bit or the byte at +0xAE8 does not have its 0x80 bit, the destination becomes the target's position and the 0x80 bit of +0xC65 is set; then the path find navigation's destination is set, its face target id (guest this+0x718, the navigation's own member at +0x24) is cleared and the module's helper `fn_9_19D8` is called | `fn_9_19D8` is 0xc4 bytes, over the 0x80 limit, so it is a named stand-in; the guest reads the target's position without a cast, so the port casts to CActor (the host's CEntity has no position) |
 | SetPathMeshDest | `fn_9_A838` | 0x725 | on activate: the 0x80 bit of the flag byte at guest this+0xC65 is cleared, the path find search (guest this+0x928) looks for the closest reachable point to the actor's own position (the out point starts as the zero vector) and the path find navigation (guest this+0x6F4) takes that point as its destination; when the search finds no point the navigation takes the actor's own position and the flag byte's 0x80 bit stays clear; the navigation's face target id (guest this+0x718) is cleared either way | the host's `CPathFindSearch::FindClosestReachablePoint` takes the same two arguments as the guest's (the source and the out point) |
+| PostWarpOut | `fn_9_8D28` | 0x7AD | on activate only: when the byte at guest this+0xC63 has no 0x20 bit (the guest's `extrwi. r0, r0, 1, 26` at 0x00008D54 takes the bit 26 from the MSB, which is the LSB bit 5, and the branch at 0x00008D58 skips the message when it is set) the commando tells the world it leaves - a script message whose sender is the actor's own id (the id at guest this+0x8, 0x00008D60) and whose message is `kSM_Deactivate` (0x44435456, 0x00008D70); then the module's state word (guest this+0x920) goes back to -1 (0x00008DAC..0x00008DB0) and, when the same byte has its 0x10 bit (the `extrwi. r0, r0, 1, 27` at 0x00008DB8 - the bit 27 from the MSB, the LSB bit 4), the actor asks to be deleted (0x00008DC0..0x00008DD4) | the guest builds the message struct on the stack (0x00008D78..0x00008DA4); the port uses the host's `CScriptMsg` |
 
 The player id the guest takes (its state manager's +0x14FC, the id at +8 of it, 0x0000AB4C) has no
 member at that offset in the host's state manager, so the port uses the player actor's id.
@@ -650,7 +653,7 @@ armed cases are:
 
 | function | arms that ran | arms that did not run |
 |---|---|---|
-| `fn_9_C798` | the default arm only: the base's own `DoUserAnimEvent` for `kUE_LoopedSoundStop` (67 times in the run) | `kUE_Projectile` (the E-grenade's throw, the grenade state `fn_9_A2EC` is a stand-in), `kUE_DamageOn` (the melee's damage event, the melee state `fn_9_A4BC` is a stand-in), `kUE_DeGenerate` and `kUE_BecomeRagDoll` (the death animations, the Dead state `fn_9_69C8` is a stand-in), `kUE_Landing` and `kUE_TakeOff` (the jump animations, the JetBoost state `fn_9_9BB4` is a stand-in), `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` (the shield's animations; the ArmShield state `fn_9_86B4` is ported since 2026-10-21, but area 59's own state machine gives its trigger no target state, so the state is only reached through the console's `fsm` - see the per-branch table) |
+| `fn_9_C798` | the default arm only: the base's own `DoUserAnimEvent` for `kUE_LoopedSoundStop` (67 times in the run) | `kUE_Projectile` (the E-grenade's throw, the grenade state `fn_9_A2EC` is a stand-in), `kUE_DamageOn` (the melee's damage event, the melee state `fn_9_A4BC` is a stand-in), `kUE_DeGenerate` and `kUE_BecomeRagDoll` (the death animations, the Dead state `fn_9_69C8` was a stand-in then - it is ported since 2026-10-21), `kUE_Landing` and `kUE_TakeOff` (the jump animations, the JetBoost state `fn_9_9BB4` is a stand-in), `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` (the shield's animations; the ArmShield state `fn_9_86B4` is ported since 2026-10-21, but area 59's own state machine gives its trigger no target state, so the state is only reached through the console's `fsm` - see the per-branch table) |
 | `fn_9_BF44` | the early return (the flag byte at guest this+0xC65 has no 0x04 bit - the shield is not up), 1152 calls in the run | the shield's own arms: the damage to an object that is not a player, the 0x02 bit of the flag byte at guest this+0xC64 and the walk over the collision list (the filter hit, the steep normal and the kMT_Floor entry) - all of them need the 0x04 bit of the byte at guest this+0xC65, which only the shield's states set |
 
 So the two functions get their `// @` markers when the states that play those animations are
@@ -1195,6 +1198,36 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_786C` (the RestoreOrientation state) | the activate (0x000078B0) and the deactivate (0x00007A00..0x00007A78) | b | four of each per run (the state is forced with the console's `fsm`, **forced (fsm)** - the commando only reaches it after a warp) |
 | | the update's "the commando stands upright" arm (0x000078F0..0x000078F4) | b | four times per run: the commando is upright, so the animation state goes "over" at once |
 | | the update's angle arm (0x00007918..0x00007924) and its turn (0x00007938..0x000079E0) | d | both need a commando that is tipped over, and nothing in the shipped flow tips it (the WarpOut and PostWarpOut states, which do, are still stand-ins) |
+| `fn_9_8DF0` (the WarpOut state) | the activate (0x00008E30) | b | forced (fsm): the animation state becomes "ready", the module's state word at guest this+0x920 becomes 1, the 0x40 bit of the byte at guest this+0xC65 is cleared and the cover point is released |
+| | the update's generate command (0x00008E68..0x00008EF0) | b | forced (fsm): the animation state lets the generate command through and the body controller takes it |
+| | the update's "the body is not in the generate state" exit (0x00008F4C..0x00008F54) | b | forced (fsm): twice in the run |
+| | the update's fade start (0x00008F5C..0x00008F78) | b | forced (fsm): the body's state is the generate state (12) and the 0x40 bit of the byte at guest this+0xC65 is clear, so the flag is set and the remaining animation time is kept at guest this+0xC58 |
+| | the update's fade (0x00008F8C..0x00008FCC) | b | forced (fsm): 118 times in the run, the ratio of the remaining time to the kept one |
+| | the update's epsilon guard (0x00008F8C..0x00008F90) | d | the kept time (guest this+0xC58) is written by the WarpOut's own fade start (0x00008F78) and nowhere else in the state - the WarpIn's write (0x0000949C) and the constructor's (0x0000E0D0) are the module's other two - and the WarpOut always writes it before the guard is reached, because the 0x40 bit of the byte at guest this+0xC65 is only set by that same fade start. The value is the body's remaining animation time while the body is in the generate state, so it is the length of the generate animation the state itself started |
+| | the deactivate (0x00008FD4) | b | forced (fsm): the state machine's own transition out of the state |
+| `fn_9_8D28` (the PostWarpOut state) | the activate (0x00008D48..0x00008D50) | b | forced (fsm): the state machine's own transition from the WarpOut state enters it |
+| | the deactivate message (0x00008D54..0x00008DA8) | b | forced (fsm): the byte at guest this+0xC63 has no 0x20 bit. Its only writer is the kSM_Activate case (0x0000CD7C), which is behind the block's flag at guest this+0x91D, and no shipped CommandoPirate has that flag, so the bit is clear on the shipped data and the message always goes out |
+| | the delete request (0x00008DB4..0x00008DD4) | d | the only writer of the 0x10 bit of the byte at guest this+0xC63 is the module's warp-out helper fn_9_3D64 (0x00003DF4), and the helper returns early when the block's flag at guest this+0x91D is clear - the "sound" property's bit 6 (the loader's mFlags1). None of the nine shipped CommandoPirate placements has it (the scan of every CMDO in the disc), so the bit is never set and the commando is never deleted here |
+| `fn_9_7358` (the WallHang state) | the activate (0x0000739C) | b | forced (fsm): the 0x02 bit of the byte at guest this+0xC65 is set, the 0x40 bit of the byte at guest this+0xC66 is cleared, the module's word at guest this+0x924 becomes 0 and the animation state becomes "ready" |
+| | the activate's "there is no cover point" exit (0x000073D4..0x000073D8) | b | forced (fsm): the commando holds no cover point - the CoverFind state finds none in the Swamp's timber area |
+| | the activate's cover point path (0x000073DC..0x00007470) | d | the commando has to hold a cover point. The scan of the disc puts the nine CommandoPirate placements in three areas - the Temple's 05_temple_federationsite_dark, the Swamp's 05_swamp_timber! and the Cliff's 01_cliff_entrance - and only the last two have cover points (eleven and four). The CoverFind state (fn_9_709C) finds none of them, and the Cliff's run says why: the block's search radius is 50 units (the block's +0x54) and the three cover points nearest the commando are 62, 97 and 108 units away, so the radius rules them out; the two that were inside it fail the path find's reach (the guest's PathExists at 0x0000720C). The radius is the reason - a wider one would reach the cover points |
+| | the update's angle test, the "the commando faces the cover point" arm (0x000074BC..0x00007528) | b | forced (fsm): twice in the run |
+| | the update's locomotion command (0x000074D0..0x00007520) | d | it wants the angle over 10 degrees, which takes the cover point's forward - the commando holds no cover point, so the vector at guest this+0xBA0 is the zero vector and the angle stays under it. It needs the cover point path above |
+| | the update's wall-hang command (0x00007534..0x00007588) | b | forced (fsm): twice in the run |
+| | the update's "the body is in the wall-hang state" arm (0x000075B8..0x00007628) | b | forced (fsm): 196 times in the run - the wall-hang command puts the body in the wall-hang state |
+| | the deactivate (0x00007630) | b | forced (fsm) |
+| `fn_9_728C` (the WallDetach state) | the activate (0x000072C4) and the deactivate (0x00007330) | b | forced (fsm) |
+| | the update's "the body is not in the wall-hang state" arm (0x00007318..0x00007328) | b | forced (fsm): once in the run, before the body was in the wall hang |
+| | the update's "the body is in the wall-hang state" arm (0x00007318) | b | forced (fsm): 96 times in the run - the WallHang state's own command put the body in the wall-hang state |
+| `fn_9_BDCC` (the StateOver trigger) | the true arm (the animation state is "over") and the false arm | b | area 59: the trigger answers true 7 times and false 196 times in the run (tools/cov/run.sh with tools/cov/specs/commandopirate_triggers.py) |
+| `fn_9_B818` (the IsFacingTarget trigger) | the early return (the target has no aim position, 0x0000B860) | b | forced (gdb): the trigger's target id (the id at guest this+0xBCA, the port's xbca_) is written to an invalid id at the trigger's entry, so the module's helper x3CBC_ fails (tools/cov/force.sh with tools/cov/specs/commandopirate_isfacing.py) |
+| | the angle arm (the compare at 0x0000B8D4) - true and false | b | area 59: the trigger answers true 435 times and false 5 times in the run |
+| `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) | d | the branch wants the block's flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest this+0xBFC to be there; the rag doll is always null (the constructor stores 0 there, 0x0000DC18, and the module's GetRagDoll returns null, fn_9_78), so the guest never takes it |
+| | the knock-back itself (0x0000C3C0..0x0000C3EC) | b | the area 59 boot: the console's `damage` reaches the module's override through the module's own helper fn_9_2D0C (the call at 0x00002EF0) |
+| | the alive branch (0x0000C3F0..0x0000C404) | b | twice in the run - the commando is alive when the damage lands, even after the Dead state (the byte at guest this+0x420's 0x40 bit) |
+| | the alive branch's "the reaction flags are 3" arm (0x0000C3FC) | b | forced (gdb): the flags are 16 after the area 59 damage, so the run set the knock-back manager's active reaction flags (the word at guest this+0x630, the manager's +0x10) to 3 at the KnockBack's own line (gdb: "the knock-back flags 16 -> 3") - then the state machine goes to the "GetUp" state and the block's hurled sound plays |
+| | the dead branch (0x0000C47C..0x0000C484) | d | the commando has to be dead when the damage lands - the console's `kill` does that (it zeroes the health and runs the actor's Death, which clears the alive flag at guest this+0x420) - and the flags have to be 3 in the same call. The kill run only reached the KnockBack (the flags were 1 there) and the gdb breakpoint was on the wrong line; the arm is live, not dead |
+| | the follow-up check and the death sound (0x0000C48C..0x0000C4D4) | d | behind the dead branch |
 | `fn_9_ADA0` (the Ambush state) | the activate (0x0000ADA8) and the other messages (0x0000ADB4) | b | the state is forced with the console's `fsm` (**forced (fsm)**): the activate sets the crouch locomotion, the update does nothing |
 | `fn_9_6BCC` (the BreakCover state) | the activate (0x00006BEC) and the other messages (0x00006BF0) | b | forced (fsm): the exit-state command, the cover point's release and the byte at guest this+0xC66 |
 | `fn_9_728C` (the WallDetach state) | the activate (0x000072C4), the update (0x000072DC) and the deactivate (0x00007330) | b | forced (fsm): all three messages ran |
@@ -1241,6 +1274,39 @@ reach there, both in the shipped data and not in the port's code:
   word's 0x20 bit, and the FollowAttackPattern state's own flag test (0x00009788, 0x00009790)
   wants its 0x02 or 0x04 bit, so neither can pass with this waypoint. The scripted charge
   (fn_9_7A98) is therefore unreachable in area 59 with the shipped data.
+
+### The Swamp's timber area and the cover, jump and retreat points (2026-10-21)
+
+The only area in the shipped data with a commando that has an attack pattern is
+`04_Swamp_World/05_swamp_timber!` (the layer "1st Pass": two CMDO placements with `ATTK` and
+`FOLW` connections; area 59's commando has only `MDDY` and `FOLW`, and the cliff area's six
+commandos have no attack pattern at all). The driver `tools/drivers/commandopirate_pattern.py`
+boots that area (`MP2_WORLD="swamp,05_swamp_timber!"`), forces the module's own states with the
+console's `fsm` and now runs the two point searches (`CoverFind` and `JumpPointFind`) before the
+destination states, so that the destination states have a point to find.
+
+The run of 2026-10-21 (60000 frames, exit=0, no caught/reach-stub) shows that the shipped data
+does not give the arms the port waits for:
+
+- the cover and jump point searches find nothing: `SetCoverDest` (`fn_9_A7A8`), `SetJumpDest`
+  (`fn_9_A8E8`) and `SetRetreatDest` (`fn_9_A97C`) run their activate, but the "the point is
+  there" arms never fire - the layer has no free cover point and no jump point, so the searches
+  leave the ids at guest this+0xBD2 and +0xBD0 invalid.
+- the WallDetach state's "the body is in the wall hang" arm (`fn_9_728C`) needs the body's state
+  20 (`pas::kAS_WallHang`), which only the unported WallHang state (`fn_9_7358`) can give.
+- the Dead state's shield effect (`fn_9_69C8`) needs the 0x20 bit of the byte at guest
+  this+0xC66, and that bit is only set by the module's own knock-back helper, which the game
+  reaches through the vtable slot 0x9C (`fn_9_C300`, `CCommandoPirate::KnockBack`) - a stand-in.
+  The console's `damage` works (the commando's hp goes from 225 to 220 in the run) but it calls
+  the base's knock-back, not the module's, so the bit stays clear. The call to port is
+  `fn_9_C300`.
+- the PostWarpOut state (`fn_9_8D28`, ported on 2026-10-21) never runs either: the module never
+  warps out, because the WarpOut state (`fn_9_8DF0`) is still a stand-in and no script message
+  of the shipped data reaches it.
+
+So the only new markers the Swamp run gives are the two the previous slice already had
+(`fn_9_ADA0` and `fn_9_6BCC`, both forced with the console's `fsm`); the other eight bodies of
+that slice keep one arm each.
 
 ### The attack pattern in the shipped data (2026-10-21)
 
@@ -1369,16 +1435,18 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 15 marked, 44 ported but not marked, 23
-stand-ins, 174 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
+The port's state per function (the `port` column): 22 marked, 50 ported but not marked, 11
+stand-ins, 173 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
 helpers, which the host's classes already have).
 
-**The unmarked B list** (the B functions the port does not mark, 121 of them): the stand-ins first -
-`fn_9_5410`, `fn_9_69C8`, `fn_9_6A40`, `fn_9_6BCC`, `fn_9_6C68`, `fn_9_6DBC`, `fn_9_728C`, `fn_9_7358`, `fn_9_7724`, `fn_9_8D28`, `fn_9_8DF0`, `fn_9_9064`, `fn_9_9BB4`, `fn_9_A110`, `fn_9_A2EC`, `fn_9_A4BC`, `fn_9_A7A8`, `fn_9_A8E8`, `fn_9_A97C`, `fn_9_ADA0`, `fn_9_AFD4`, `fn_9_B114`, `fn_9_B168` - and then the ported ones whose every arm has not run yet (the table above names them). The
+**The unmarked B list** (the B functions the port does not mark, 114 of them): the stand-ins first -
+`fn_9_5410`, `fn_9_6A40`, `fn_9_6C68`, `fn_9_6DBC`, `fn_9_7724`, `fn_9_9064`, `fn_9_9BB4`, `fn_9_A110`, `fn_9_A2EC`, `fn_9_A4BC`, `fn_9_AFD4` - and then the ported ones whose every arm has not run yet (the table above names them). The
 full list is the `class`/`port` columns of `CommandoPirate_functions.tsv`.
 
 **The markers.** `fn_9_8028` (the charge state), `fn_9_86B4` (the ArmShield state), `fn_9_ADA0`
-(the Ambush state) and `fn_9_6BCC` (the BreakCover state) are marked:
+(the Ambush state), `fn_9_6BCC` (the BreakCover state), `fn_9_8DF0` (the WarpOut state),
+`fn_9_8D28` (the PostWarpOut state) and `fn_9_728C` (the WallDetach state) are marked, and so are
+`fn_9_BDCC` (the StateOver trigger) and `fn_9_B818` (the IsFacingTarget trigger):
 every message arm of both ran - the charge state in the normal flow, the ArmShield state through
 the console's `fsm` (**forced (fsm)**). `fn_9_B1E0` (ShouldBoost) is marked too: its two arms that
 ran (the 0x20 flag test and the true arm) ran in the Swamp's timber area, and its three other arms
@@ -1496,13 +1564,14 @@ not run.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
-- The state machine's other bodies: the two tables (34 triggers, 36 states) are registered,
-  thirty of the triggers and nine of the states are host code (the sections above), but every
-  other function they point at is a stand-in that logs the retail function it stands in for and
-  returns the neutral value. The triggers that are still stand-ins are `ShouldBoost`
-  (fn_9_B1E0, 0x70), `ShouldCrouch` (fn_9_B168, 0x40),
-  `ShouldWallHang` (fn_9_B114, 0x54) and `CoverBlown` (fn_9_AFD4, 0xe0); the JumpBack state
-  (fn_9_8B70, 0x1b8) is a stand-in too.
+- The state machine's other bodies: the two tables (34 triggers, 36 states) are registered and
+  most of the functions they point at are ported, but thirteen are still stand-ins that log the
+  retail function they stand in for and return the neutral value: the states `fn_9_5410` (the
+  E-grenade's creator, 0x370), `fn_9_6A40` (GetUp, 0x130), `fn_9_6C68` (CoverAttack, 0x154),
+  `fn_9_6DBC` (Cover, 0x284), `fn_9_7358` (WallHang, 0x310), `fn_9_7724` (Crouch, 0x148),
+  `fn_9_8DF0` (WarpOut, 0x218), `fn_9_9064` (WarpIn, 0x528), `fn_9_9BB4` (JetBoost, 0x1fc),
+  `fn_9_A110` (PostEGrenadeAttack, 0x1dc), `fn_9_A2EC` (EGrenadeAttack, 0x174) and
+  `fn_9_A4BC` (MeleeAttack, 0x290), plus the trigger `fn_9_AFD4` (CoverBlown, 0xe0).
 - The guest's `CVisualKnowledge` (this+0xAB0): the host has no class for it, so the call that
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
@@ -1535,3 +1604,68 @@ renderables, so those two remain named stand-ins and the function is not marked.
 ran in the area 59 run (the stand-in log is gone); the two renderables and the warp's draw did not
 (the module's state word is not 0 or 1 in the run, and the actor's alpha is 1.0, which makes the
 sine 0).
+
+## 6. The stateless helpers (2026-10-21, the helpers lane)
+
+`CommandoPirate_functions.tsv` has one row per function of the REL (256 rows = the 256
+`type:function` symbols of `config/G2ME01/rels/CommandoPirate/symbols.txt`). Beside the class
+(H = host copy, T = data / vtable thunk, B = module behaviour) and the port's state, each row now
+carries the **callers** (the `bl` sites in the REL and the `.data` tables that point at the
+function - the vtable `lbl_9_data_828`, the FSM tables, the jump table) and the **owner**:
+`cpcore` for the states and overrides the core lane ported (Listen, CoverBlown, MeleeAttack,
+EGrenadeAttack, PostEGrenadeAttack, JetBoost, WarpIn, Crouch, Cover, CoverAttack, GetUp, the
+vtable overrides and the E-grenade chain), `commando-lane` for the other rows of the FSM2 tables
+(`lbl_9_data_198` and `lbl_9_data_568`, the 34 triggers and 34 states), `cphelpers` for the rest
+(the stateless helpers, the loader and the constructor).
+
+The stateless helpers live in the core lane's files (the states and the overrides it ported) and
+in the ones this lane adds. The port's own file may only call them where a stand-in call site was
+one line.
+
+Which of the 77 unmarked B functions are the helpers lane's: the module's loader and constructor
+cluster (`fn_9_168`, `fn_9_D904` and their helpers - the host's classes have them), the host
+glue the REL compiles itself (the collision manager's arrays, the memory blocks), and the
+stateless helpers. Of the latter, only the ones the port's own code reaches are portable now:
+the rest are called from the FSM states and triggers (the CommandoPirate lane's) or need the
+"Commando E-Grenade" script object, which the host has no class for.
+
+### 6.1 `fn_9_BE4C` - what the actor hears (vtable slot 0xb0): **marked**
+
+The port had it as a named stand-in that forwarded to the base's `Listen`; the module's own body
+is the core lane's now (`CCommandoPirate::Listen` in
+`src/MetroidPrime/Enemies/PortCCommandoPirateCore.cpp`, the same body this lane wrote in
+`PortCCommandoPirateHelpers.cpp` before the two branches merged - the marker is on that body).
+
+Retail's body (0x0000BE4C..0x0000BF3C):
+
+```
+0x0000BE4C  lbz r0, 0x420(r3)        ; the base's flag byte
+            extrwi. r0, r0, 1, 25    ; its 0x40 bit (the host's mAlive)
+            beq -> return 0          ; not alive: the actor hears nothing
+            cmpwi r6, 4 / 0          ; the noise type: a path noise (4) or a shot (0)
+0x0000BE7C  the squared distance against 1600.0f (rodata_4E4); inside it the 0x80 bit of the
+            module's byte at guest this+0xc63 is set (0x0000BEFC..0x0000BEC0)
+0x0000BEC8  the squared distance against the hearing radius (the data block's field at guest
+            this+0x81c), then the base's height range at guest this+0x3d4 against 0.0f
+            (rodata_494): the height range wins the tie, otherwise the noise's own height
+            distance decides (0x0000BF20..0x0000BF38)
+0x0000BF2C  the constant 0.0f is written to the module's float at guest this+0xb60
+```
+
+| branch | status | evidence |
+|---|---|---|
+| 0x0000BE4C (the actor is not alive) | (b) ran (forced) | forced under gdb: the alive flag (the base's byte at guest this+0x420, its 0x40 bit) is cleared at the body's entry (`tools/cov/specs/commandopirate_force.py`), so the early-out runs - in the game the flag's only writer is the module's area-load death case (the port's `kSM_AreaLoaded`, 0x0000CE40), which sets the HP to -1 as well (0x0000CE5C) and deletes the actor in the same update |
+| 0x0000BE7C (a path noise, too far) | (b) ran | coverage: the far path noise (the driver puts the commando 80 m from the player) returned 0 |
+| 0x0000BF0C (a path noise, heard) | (b) ran | coverage: 1 hit, the return value 1 |
+| 0x0000BEF4 (a shot, too far) | (b) ran | coverage: the far shot returned 0 |
+| 0x0000BF20 (the height range) | (b) ran (forced) | forced under gdb: the base's height range at guest this+0x3d4 is written to 0.05 at the body's entry and the driver raises the noise by 5 cm, so the noise's height distance is over the range and the arm runs - in the game area 59's commando has the range at 0, so the tie arm runs instead |
+| 0x0000BF34 (a shot, heard) | (b) ran | coverage: 3 hits, the return value 1 |
+| 0x0000BF3C (another noise type) | (b) ran | coverage: 3 hits (the noises 1, 2 and 3), the return value 0 |
+
+The runs: Temple Grounds 05_temple_federationsite_dark (area 59), the CommandoPirate lane's driver
+`tools/drivers/commandopirate_warpout.py` (it wakes the commando, puts the player five metres in
+front of it, makes the five noise types, raises one noise by 5 cm and then moves the commando 80 m
+away for two more), under `tools/cov/run.sh` with `tools/cov/specs/commandopirate.py` (the
+coverage run: the helper was called nine times, no probe, no rebuild) and under
+`tools/cov/force.sh` with `tools/cov/specs/commandopirate_force.py` (the two forced arms, one
+gdb write each). `grep -c '[port] caught|reach-stub'` on the run log is 0.
