@@ -2718,8 +2718,8 @@ void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
     if (CVector3f::Dot(d, d) > 16.f) { // 0x00006EF8 (the squared distance)
       FindPathToDestination(mgr, aim, dt); // fn_10_6F90, 0x00006F10
     }
-    // 0x00006F30: the player's halfword at its +8 goes to 0x718; the port has no counterpart.
-    // 0x00006F34: the path find (the guest's CPathFindNavigation at 0x6F4); not in the port.
+    mPathFindNavigation.SetFaceTarget(mgr.GetPlayer(0)->GetUniqueId()); // 0x718, 0x00006F30
+    mPathFindNavigation.PathFind(mgr, msg, dt, *this);                  // 0x6F4, 0x00006F34
     Separate(mgr); // fn_10_1DD14, 0x00006F40
   }
   UpdateShieldFromHealth(msg); // fn_10_6DAC, 0x00006F4C
