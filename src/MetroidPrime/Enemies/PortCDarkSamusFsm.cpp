@@ -2745,7 +2745,7 @@ void CDarkSamus::FadeIn(CStateManager& mgr, EStateMsg msg, float) {
 // @ fn_10_BC54
 void CDarkSamus::FadeOut(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("FadeOut", msg);
-  UpdateCurrentAttack(8, mgr, msg); // 0x0000BC84
+  UpdateCurrentAttack(0x80000, mgr, msg); // `lis r4, 0x8` at 0x0000BC74, the call at 0x0000BC84
   UpdateGroundCollision(mgr, msg); // 0x0000BC94
   UpdateShieldFlag(msg);           // 0x0000BCA8
   RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Three)); // 0x0000BD08
