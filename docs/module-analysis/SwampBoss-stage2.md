@@ -685,18 +685,20 @@ again before the commit):
 | 0x7F74 | the blow window is closed (the flag bit 29) -> no window, no push and no damage | (b) both sides: `[arm] 33 7E24 blow block entered`, `[arm] 40 7E24 the blow block is closed` |
 | 0x801C | the player's aim point is not in front of the head (the forward dot) | (b) the skip side: `[arm] 37 7E24 outside: the forward dot` |
 | 0x8040 | the aim point is more than 18 model scales to the side (the right dot) | (b) the skip side: `[arm] 47 7E24 outside: the right dot` |
-| 0x804C | the player is grappling (`mGrappleTime` at +0xd8c is not 0) | (d) not reached: the console has no grapple beam and the lock-on does not pick a script object, so a driver run cannot put the player on a grapple point |
+| 0x804C | the player is grappling (`mGrappleTime` at +0xd8c is not 0) | (d) not reached, and it is an **unported harness path**, not an unreachable arm: the console's `beam` offers only power/dark/light/annihilator and the `give` item list has no grapple beam, and the lock-on does not make a `CScriptGrapplePoint` the player's orbit target (a run with the lock-on on and the player 8 units from the grapple point in front of the boss left `mGrappleTime` at 0.00) |
 | 0x8058 | the player is already being blown -> no new push setup | (b) the other side of the same bit: `[arm] 35 7E24 push setup` and `[arm] 38 7E24 the blow damage` (the bit is set in the frames that follow the first) |
 | 0x80AC | the weak push (the member at +0x9a8 instead of +0x9ac) | (c) the block is only entered while the flag bit 29 is set (0x7F74) and the flag is read again here, so the weak value is dead code in the shipped flow |
 | 0x8110 | the player is not being blown -> no blow damage | (b) both sides: `[arm] 38 7E24 the blow damage`, `[arm] 39 7E24 no blow damage` |
 | 0x81B8, 0x81C0 | the sustained damage is popped when the blow ends | (b) the pop side: `[arm] 41 7E24 the sustained damage is popped` |
 | 0x81E4 | the wind effect is waiting (the flag bit 30) -> fn_79_3578 | (b) both sides: `[arm] 42 7E24 the wind effect`, `[arm] 43 7E24 no wind effect` |
-| 0x8214 | the deactivate pops the sustained damage | (d) not reached: the blow's update clears `mBlowing` first (the cleanup at 0x81B8), so the deactivate rarely finds it set |
+| 0x8214 | the deactivate pops the sustained damage | (d) not reached: the FSM2 evaluates a state's transitions **after** that state's update (the port's `CGenericFSM2State::Update`: `ExecuteState(update)` then `EvaluateTransitions`), so the update's cleanup (0x81B8) has already popped the sustained damage and cleared `mBlowing` whenever the blow window (the anim event 0x2b) closed first - and it did in every run (`[arm] 41`). The arm is only reachable if the state is left while the window is still open; the driver could not land a transition inside that window (a console `damage u06d9 9999` in the dark phase left the boss's HP alone) |
 
 **`fn_79_7E24` is therefore not marked**: its body is retail's (every branch above is matched to
 the port's code), but two real arms - "the player is grappling" (0x804C) and "the deactivate pops
 the sustained damage" (0x8214) - did not run, and the rule is that a marker means every arm ran.
-The arms that did run are in the table with their probe lines; the probe is gone again.
+The arms that did run are in the table with their probe lines; the probe is gone again. The two
+open arms need harness work, not more port work: 0x804C needs a grapple beam (the console has
+none) and 0x8214 needs a transition that fires while the blow window is open.
 
 ### 7.13 The module's remaining unmarked functions, by call count (2026-10-21, seventh lane pass)
 
@@ -714,3 +716,19 @@ Counted from the retail asm (the `bl` call sites inside the module):
 The next three behaviour functions to take are `fn_79_55B0` and `fn_79_50AC` (the chain walk, which
 also needs `fn_79_5030`/`fn_79_527C`) and `fn_79_6B78` (the second half of
 `SetupCollisionManager`, which the port merges into the marked `fn_79_6E68`).
+
+
+### 7.14 fn_79_6B78: the per-joint setup, split out of `SetupCollisionManager` (2026-10-21, eighth lane pass)
+
+The retail builds the collision actors in `fn_79_6E68` and then sets each joint up in
+`fn_79_6B78`; the port did both in one body, so the second half is now its own
+`SetupCollisionJoints` (marked). Its branches:
+
+| branch | what | class |
+|---|---|---|
+| 0x6BE8 | the collision actor is gone -> the walk ends | (c) the manager creates all ten actors, so the shipped area never takes it (the port now ends the walk with `break`, as the retail does) |
+| 0x6CF8 | the joint is not one of the four growths -> no orbit and seeker materials | (b) both sides: `[arm] 50 6B78 a growth joint gets the orbit and seeker materials` and `[arm] 51 6B78 a plain joint gets no materials` |
+| 0x6D20 | the walk's condition | (a) a loop condition |
+
+The body runs when the boss activates (`Activate` -> `SetupCollisionManager`), so every run that
+reaches the fight exercises it.

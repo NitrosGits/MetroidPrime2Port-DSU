@@ -409,16 +409,26 @@ void CSwampBossStage2::SetupCollisionManager(CStateManager& mgr) {
   // fn_79_6B78: light phase uses the patterned vulnerability, dark phase the Ing-possessed one.
   mLightVulnerability = *GetDamageVulnerability();
   mDarkVulnerability = LdrToDamageVulnerability(mIngPossessionData.ingVulnerability);
+  SetupCollisionJoints(mgr);
+  // The body itself collides with nothing; only its joints do.
+  AddMaterial(kMT_Unknown54, kMT_Scannable, mgr);
+  SetMaterialFilter(CMaterialFilter(CMaterialList(), CMaterialList(0x00000000FFFFFFFF),
+                                    CMaterialFilter::kFT_Never));
+}
+
+// @ fn_79_6B78: the per-joint setup: every joint copies the boss's health info, keeps the light
+// phase's vulnerability, holds the collision actor HP (500) and excludes the platforms
+// (data_418); the four growth joints are also orbitable and seeker targets. It runs when the
+// boss activates, so every run that reaches the fight exercises it.
+void CSwampBossStage2::SetupCollisionJoints(CStateManager& mgr) {
   for (int i = 0; i < mCollisionMgr->GetNumCollisionActors(); ++i) {
     CCollisionActor* act = CollisionActor(mgr, i);
     if (!act) {
-      continue;
+      break;
     }
     act->SetDamageVulnerability(mLightVulnerability);
     *act->HealthInfo() = *HealthInfo();
     act->HealthInfo()->SetHP(mCollisionActorHP);
-    // fn_79_6B78: each joint keeps its own filter and also excludes platforms (data_418); the four
-    // growths are orbitable and seeker targets.
     CMaterialFilter filter = act->GetMaterialFilter();
     filter.ExcludeList().Add(kMT_Platform);
     act->SetMaterialFilter(filter);
@@ -426,10 +436,6 @@ void CSwampBossStage2::SetupCollisionManager(CStateManager& mgr) {
       act->AddMaterial(kMT_Orbit, kMT_SeekerTarget, mgr);
     }
   }
-  // The body itself collides with nothing; only its joints do.
-  AddMaterial(kMT_Unknown54, kMT_Scannable, mgr);
-  SetMaterialFilter(CMaterialFilter(CMaterialList(), CMaterialList(0x00000000FFFFFFFF),
-                                    CMaterialFilter::kFT_Never));
 }
 
 // @ fn_79_25C0
