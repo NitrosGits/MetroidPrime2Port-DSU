@@ -15,6 +15,7 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
+#include "Kyoto/Animation/CAnimTreeNode.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CGameArea.hpp"
@@ -23,6 +24,7 @@
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
+#include "MetroidPrime/Enemies/CEmperorIngLightSwarm.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CSwarmBasics.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -31,6 +33,7 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage3.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptEffect.hpp"
 
 #include "Collision/CCollisionPrimitive.hpp"
 #include "Collision/CRayCastResult.hpp"
@@ -159,10 +162,12 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 #undef EMP3_STATE
 #undef EMP3_CODE
 
+// @ fn_18_39A0
 // fn_18_39A0 (0x3C): the cross product of two vectors: the result is (a.y*b.z - a.z*b.y,
 // a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x) (0x39CC..0x39D0).
 CVector3f Cross3f(const CVector3f& a, const CVector3f& b) { return CVector3f::Cross(a, b); }
 
+// @ fn_18_3AC
 // fn_18_3AC (0x20): the copy of the ray's result. The host's CRayCastResult is copyable, so the
 // copy is the assignment; the byte the retail reads at +0x28 is the result's mValid.
 CRayCastResult CopyRayResult(const CRayCastResult& result) { return result; }
@@ -178,9 +183,18 @@ static rstl::optional_object< TLockedToken< CGenDescription > > PortalPart(CAsse
       TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
 }
 
+// @ fn_18_9A8C
+// @ fn_18_A884
+// @ fn_18_A8D8
+// @ fn_18_A794
+// @ fn_18_A6B8
+// @ fn_18_A2EC
+// @ fn_18_A3B8
 // fn_18_9A8C. The base call is the retail one: EPatternedAI 0x0F (`li r4, 0xf` at 0x9AF0),
 // flavor 0 (`li r7, 0x0` at 0x9AC8), movement 0 / collider 1 / body 1 (the constants stored
 // to the stack arguments at 0x9AD8..0x9AE8 - kMT_Ground, kCT_One and kBT_BiPedal).
+// Cited rstl copies: the lists' reserve fn_18_ADF8/DE2C/DEE4; fn_18_A988 the vector copy inside
+// CDamageVulnerability's copy (fn_18_A8D8).
 CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
                                      const CEntityInfo& info, const CTransform4f& xf,
                                      const CModelData& modelData,
@@ -218,10 +232,10 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX810_(0.f)                                             // guest 0x810
 , mX86c_(CDamageVulnerability::ImmuneVulnerabilty())     // guest 0x86C
 , mX8c0_(0xffff)                                          // guest 0x8C0
-, x8c2_(kInvalidUniqueId.Value())                          // guest 0x8C2
-, x8c4_(kInvalidUniqueId.Value())                          // guest 0x8C4
-, x8c6_(kInvalidUniqueId.Value())                          // guest 0x8C6
-, x8c8_(kInvalidUniqueId.Value())                          // guest 0x8C8
+, x8c2_(kInvalidUniqueId.value)                            // guest 0x8C2
+, x8c4_(kInvalidUniqueId.value)                            // guest 0x8C4
+, x8c6_(kInvalidUniqueId.value)                            // guest 0x8C6
+, x8c8_(kInvalidUniqueId.value)                            // guest 0x8C8
 , mX8ec_(0.f)                                             // guest 0x8EC
 , mX8f0_(0.f)                                             // guest 0x8F0
 , mX8f4_(0.f)                                             // guest 0x8F4
@@ -230,7 +244,8 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX864_(0.f)                                             // guest 0x864
 , mX868_(-1)                                              // guest 0x868 (0x9CB4)
 , x8a4_(-1)                                               // guest 0x8A4
-, mX7d8_(0.f)                                             // guest 0x7D8 (0x9B58)
+, mX7d8_(100000.f)                                        // guest 0x7D8 (0x9B58, rodata 0x324)
+, mX7dc_(100000.f)                                        // guest 0x7DC (0x9B5C, rodata 0x324)
 , mX89c_(0)                                               // guest 0x89C (0x9CD0)
 , mX8a0_(0)                                               // guest 0x8A0 (0x9CE0)
 , x8a8_(-1)                                               // guest 0x8A8 (0x9CF8)
@@ -241,10 +256,10 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mX860_(0.f)                                             // guest 0x860 (0x9CAC)
 , mX8e8_(0.f)                                             // guest 0x8E8
 , mX8dc_(0.f)                                             // guest 0x8DC
-, mBeamId(kInvalidUniqueId.Value())                       // guest 0x8AC
+, mBeamId(kInvalidUniqueId.value)                          // guest 0x8AC
 , mBeamSfx()                                              // guest 0x8B0
 , mX8b4_(CVector3f::Zero())                               // guest 0x8B4 (0x9D0C)
-, mShockWaveId(kInvalidUniqueId.Value())                  // guest 0x90C
+, mShockWaveId(kInvalidUniqueId.value)                     // guest 0x90C
 , mShockWaveSfx()                                         // guest 0x908
 , mJumpAttackShockWave(data.jumpAttackShockWaveInfo)      // guest 0xE90 (fn_18_A2EC)
 , mJumpAttackSound(static_cast< u16 >(data.sound))        // guest 0xECC
@@ -265,17 +280,24 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
 , mVulnerableTime(data.vulnerableTime)                    // guest 0xB4C
 , mVulnerableDamageThresholdReset(data.vulnerableDamageThreshold) // guest 0xB50
 , mBaseTurnSpeed(mTurnSpeed)                              // guest 0xE5C (0xA258)
+, mLightSwarmEffect(data.lightSwarmEffect)                // guest 0xB48 (0xA008)
+, mLightSwarmData(LdrToBasicSwarmData(data.lightSwarmProperties)) // guest 0xD7C (0xA23C)
+, mLightSwarmDeathSound(data.lightSwarmDeathSound)        // guest 0xE60 (0xA25C..0xA280)
+, mLightSwarmExpireSound(data.audioPlaybackParms)         // guest 0xE78 (0xA284..0xA2B0)
 
 {
-  // The rest of the retail constructor belongs to the attacks and the state machine: the two beam
-  // infos (0xA88 and 0xAFC), the projectile infos (0xA60 and 0xAD4), the four stage records
-  // (0xB54, 0xBC0, 0xC2C, 0xC98), the light swarm (0xD34) and the portal data (0xE90). The
-  // constructor ends with SetDrawShadow(this, 0) (0xA2D0).
+  // Every retail call has its member above: the bits 0..17 of the word at 0x824 cleared one by one
+  // (0x9B94..0x9C78), fn_18_A8D8 the vulnerability copy (0x86C, 0x960..0x9C0), fn_18_A884 the
+  // health copy, fn_18_A794 the beam info copy (0xA88, 0xAFC, 0xD34), fn_18_A3B8 the swarm data
+  // copy (0xD7C), fn_18_A2EC the shock wave copy (0xE90); the portal token branches are
+  // PortalPart. The word at 0x7EC is mActionHistory's count, 0x8D0..0x8D8 the portal vector.
+  // The constructor ends with SetDrawShadow(this, 0) (0xA2D0).
   // The three lists reserve sixteen entries each (fn_18_ADF8 with 0x10, 0x9C84..0x9C9C).
   mX830_.reserve(0x10);
   mX840_.reserve(0x10);
   mX850_.reserve(0x10);
-  // The four stage records (0xB54, 0xBC0, 0xC2C, 0xC98) are copies of the data's stage1..4.
+  // The four stage records (0xB54, 0xBC0, 0xC2C, 0xC98) are copies of the data's stage1..4
+  // (fn_18_A6B8, 0xA01C..0xA040; retail copies them before the portal token, no side effects).
   mStages[0] = data.stage1;
   mStages[1] = data.stage2;
   mStages[2] = data.stage3;
@@ -283,7 +305,22 @@ CEmperorIngStage3::CEmperorIngStage3(TUniqueId uid, const rstl::string& name,
   SetDrawShadow(false);
 }
 
-// The collision actor manager at guest 0x7C0 is owned by the actor.
+// @ fn_18_94C8
+// fn_18_94C8 (0x220, the vtable's destructor slot): the collision actor manager at guest 0x7C0 is
+// owned by the actor (fn_801362C4 with 1, 0x96A4); the rest is the members' destructors in reverse
+// order (0x9C0..0xE78) and ~CPatterned (0x96B8), which the host's implicit member destructors do.
+// The weak copies it calls are cited, not marked: fn_18_96E8 is CPatterned's destructor (its
+// knock-back member at guest 0x620 is fn_18_98CC), fn_18_9960/fn_18_99B4 the three lists'
+// rstl::vector< SEmperorIngListEntry > destructor and fn_18_9A38 the portal list's
+// rstl::vector< SEmperorIngPortal > destructor.
+// The module's other weak destructors are cited, not marked: the body-command classes' (fn_18_311C
+// CBodyStateCmd itself, lbl_18_data_78C; fn_18_30C0/33EC/4E58/518C/555C/55B8/61FC/663C/717C, the
+// vtables lbl_18_data_780..720), empty classes' deleting forms (fn_18_27A0/5E74/6034/6070/846C),
+// an rstl::string holder (fn_18_890), rstl::vector (fn_18_A934), rstl::reserved_vector
+// (fn_18_AAB8), tokens and optional tokens (fn_18_A5A0/A5F4/A660/A828/C860/C8CC), owning pointers
+// (fn_18_AB44/C190/C920), rstl::optional_object< CModelData > (fn_18_C984), a beam attack record
+// (fn_18_98C) and a vulnerability holder (fn_18_A548); fn_18_4314 is an unreferenced weak inline
+// returning true.
 CEmperorIngStage3::~CEmperorIngStage3() { delete x7c0_; }
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
@@ -299,17 +336,16 @@ void CEmperorIngStage3::EnsureBodyActive(CStateManager& mgr) {
   }
 }
 
+// @ fn_18_47D4
+// @ fn_18_3B64
 // vtable slot 3 = fn_18_47D4 (0x3E4): retail's Think. The base class's Think runs first
-// (0x4818), then the module's own work: the stampede-react check (0x481C..0x4928), the timers
-// (0x492C..0x4984), the module's per-frame calls (0x4988..0x4A20) and the ing's sound
-// (0x4A28..0x4BB8, a stand-in).
+// (0x4818), then the module's own work with no active test: the stampede-react check
+// (0x481C..0x4928), the timers (0x492C..0x4984), the module's per-frame calls (0x4988..0x4A20),
+// the player knock-back (0x4A24..0x4A6C) and the shock wave's sound (0x4A70..0x4B78).
 void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
-  StandIn("CEmperorIngStage3::Think (vtable slot 3, fn_18_47D4)");
-  if (!GetActive()) {
-    return;
-  }
+  // Port guard, not retail: kSM_Create activates the body (0x7BE8); this covers a Think first.
   EnsureBodyActive(mgr);
-  CPatterned::Think(dt, mgr);
+  CPatterned::Think(dt, mgr); // 0x4818
 
   // The stampede-react check (0x481C): only while the flag at guest 0x825 is clear, and only
   // when the player is below the ing's head: the vector from the ing's "head" locator (rodata
@@ -361,7 +397,7 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   CheckList(mgr);         // fn_18_1978 (0xDC)
   SteerBeam(mgr, dt);     // fn_18_1370 (0x1C0)
   WatchObject(mgr);       // fn_18_125C (0x68)
-  StandInFn("fn_18_E40");  // 0x41C
+  UpdateLightSwarm(mgr, dt); // fn_18_E40 (0x41C)
 
   // The player knock-back (0x4A24..0x4A6C): while the timer MeleeContact set (guest 0x8F8) is
   // above zero (rodata 0x258) it runs down by the frame time and the player is pushed along
@@ -377,7 +413,7 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   // wave (guest 0x90C) exists, the sound sits on the wave's ring on the player's side: the flat
   // (z zeroed, rodata 0x258) direction from the wave to the player, scaled by the wave's radius
   // (wave+0x1C0), at full volume (0xFF). Retail reads the object without a cast.
-  if (mShockWaveSfx && mShockWaveId != kInvalidUniqueId.Value() &&
+  if (mShockWaveSfx && mShockWaveId != kInvalidUniqueId.value &&
       CSfxManager::IsPlaying(mShockWaveSfx)) {
     const CShockWave* wave =
         static_cast< const CShockWave* >(mgr.GetObjectById(TUniqueId(mShockWaveId)));
@@ -393,6 +429,7 @@ void CEmperorIngStage3::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_18_125C
 // fn_18_125C (0x68): the module watches the object its id at guest 0x8C0 names; when the
 // object is gone the id is cleared (0x12AC).
 void CEmperorIngStage3::WatchObject(CStateManager& mgr) {
@@ -404,6 +441,59 @@ void CEmperorIngStage3::WatchObject(CStateManager& mgr) {
   }
 }
 
+// @ fn_18_E40
+// fn_18_E40 (0x41C): the object-drop timer (guest 0x8DC, which kUE_ObjectDrop sets to 1.5)
+// runs down and the light-swarm timer (guest 0x7DC) up. While the drop timer runs, the
+// INTERNAL_STATE_01/PLAY effect (guest 0x8C4) emits and the INTERNAL_STATE_00 swarm (guest
+// 0x8C2) is activated and counted up; after it, the effect stops and the swarm counts down.
+// While that swarm has no active boid the dark-flier timer (guest 0x7D8) grows. The
+// INTERNAL_STATE_02 actors follow the "mainHeart_SDK" locator (rodata 0xBC -> 0x340): the
+// DEACTIVATE one (guest 0x8C8) shows once the light swarm has been gone 20 seconds (rodata
+// 0x270), the ACTIVATE ones (guest 0x8CC) until then, each at its own offset.
+void CEmperorIngStage3::UpdateLightSwarm(CStateManager& mgr, float dt) {
+  mX8dc_ -= dt;
+  mX7dc_ += dt;
+  if (CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(TUniqueId(x8c4_)))) {
+    if (mX8dc_ > 0.f) {
+      if (!effect->IsEmitting()) { // guest effect+0x2C8, 0x80
+        effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), effect->GetUniqueId(), kSM_Activate));
+      }
+    } else if (effect->IsEmitting()) {
+      effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), effect->GetUniqueId(), kSM_Deactivate));
+    }
+  }
+  if (CSwarmBasics* swarm = TCastToPtr< CSwarmBasics >(mgr.ObjectById(TUniqueId(x8c2_)))) {
+    if (swarm->EvaluateActiveBoidCount() == 0) { // fn_80_1280
+      mX7d8_ += dt;
+    }
+    if (CEntity* shown = mgr.ObjectById(TUniqueId(x8c8_))) {
+      shown->SetActive(mX7dc_ > 20.f);
+    }
+    if (mX8dc_ > 0.f) {
+      if (!swarm->GetActive()) { // guest swarm+0x20, 0x80
+        swarm->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), TUniqueId(x8c2_), kSM_Activate));
+      }
+      swarm->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), TUniqueId(x8c2_), kSM_Increment));
+    } else {
+      swarm->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), TUniqueId(x8c2_), kSM_Decrement));
+    }
+  }
+  const CTransform4f xf =
+      GetTransform() * GetScaledLocatorTransform(rstl::string_l("mainHeart_SDK")); // 0x1138
+  if (CActor* actor = TCastToPtr< CActor >(mgr.ObjectById(TUniqueId(x8c8_)))) {
+    actor->SetTransform(xf);
+  }
+  for (int i = 0; i < x8cc_.size(); ++i) { // stride 0x34
+    if (CActor* actor = TCastToPtr< CActor >(mgr.ObjectById(x8cc_[i].mId))) {
+      actor->SetTransform(xf * x8cc_[i].mXf);
+      actor->SetActive(mX7dc_ < 20.f);
+    }
+  }
+}
+
+// @ fn_18_7B14
+// @ fn_18_DB28
+// @ fn_18_3B8C
 // vtable slot 4 = fn_18_7B14 (0x668): retail's message switch. The base class's message
 // handler runs first (0x7B50) and then the module's own cases, one per message: the constants
 // are 0x58444D47 (kSM_Damage, 0x7B60), 0x58435254 (kSM_Create, 0x7B74), 0x58414C44
@@ -411,9 +501,9 @@ void CEmperorIngStage3::WatchObject(CStateManager& mgr) {
 // 0x7BAC), 0x58484954 (kSM_HitObject, 0x7BC0) and 0x584F4646 (kSM_OffGround, 0x7BD4). Each
 // case says whether it is ported; the bodies are the module's own work (the collision actor
 // list, the id lists, the boss parameters, the launch jump).
+// Cited: fn_18_DF28 is rstl::vector< SEmperorIngPortal >::reserve (weak copy).
 void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CEmperorIngStage3::AcceptScriptMsg (vtable slot 4, fn_18_7B14)");
-  CPatterned::AcceptScriptMsg(mgr, msg);
+  CPatterned::AcceptScriptMsg(mgr, msg); // 0x7B50
   switch (msg.GetMessage()) {
   case kSM_Create: // 0x7BE0, 0x14
     // The module's body controller is activated with the invalid animation state (0x7BE8).
@@ -430,10 +520,12 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     break;
   case kSM_AreaLoaded: { // 0x7C18..0x7F48 (0x330)
     // The INTERNAL_STATE_00 connection, any message (`li r7, -0x1`, 0x7C2C).
-    x8c2_ = FindConnectedObject(mgr, kSS_InternalState0, kSM_None).Value();
+    x8c2_ = FindConnectedObject(mgr, kSS_InternalState0, kSM_None).value;
     const rstl::vector< SConnection >& conns = GetConnectionList();
     // INTERNAL_STATE_01: the first id of the connection's list - PLAY to guest 0x8C4, ACTIVATE
-    // to guest 0x8C6.
+    // to guest 0x8C6. Data-limited: the empty-list skips (both loops) and an INTERNAL_STATE_01
+    // message other than PLAY/ACTIVATE never run with the game's data (the module's only spawn,
+    // area 11 layer 4); the marker stands on every other branch.
     for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {
       if (it->state != kSS_InternalState1) {
         continue;
@@ -444,10 +536,10 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
       }
       switch (it->msg) {
       case kSM_Activate:
-        x8c6_ = ids.first->second.Value();
+        x8c6_ = ids.first->second.value;
         break;
       case kSM_Play:
-        x8c4_ = ids.first->second.Value();
+        x8c4_ = ids.first->second.value;
         break;
       default:
         break;
@@ -472,7 +564,7 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
           x8cc_.push_back(SEmperorIngPortal(id, areaXf.GetInverse() * actor->GetTransform()));
         }
       } else if (it->msg == kSM_Deactivate) {
-        x8c8_ = ids.first->second.Value();
+        x8c8_ = ids.first->second.value;
       }
     }
     SetupCollisionActors(mgr); // fn_18_3BB0
@@ -489,12 +581,12 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     // fn_18_36BC (0x88): the damage's source id is compared with the id each heart's collision
     // actor carries (0x36E8 and 0x3708) and a match sets the flag byte 0x824's bit 0 (the mask
     // 0x01, 0x3718).
-    OnDamage(mgr, msg.GetSenderId().Value());
+    OnDamage(mgr, msg.GetSenderId().value);
     break;
   case kSM_HitObject: // 0x7F6C, 0x20
     // fn_18_2D50 (0x1B4): the contact damage to the player the hit collision actor last
     // touched.
-    OnHitObject(mgr, msg.GetSenderId().Value());
+    OnHitObject(mgr, msg.GetSenderId().value);
     break;
   case kSM_OffGround: // 0x7F8C, 0x38
     // The off-ground force: the actor's gravity constant (the vtable slot 0x114) times the
@@ -507,22 +599,25 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
     // actor's id, 0x7FC4..0x8014) - CPatterned's handler, not this one - and the off-ground
     // force is written as in kSM_OffGround (mass times gravity along the down vector).
     CPatterned::AcceptScriptMsg(mgr, CScriptMsg(msg.GetSenderId(), GetUniqueId(), kSM_OffGround));
-    const float gravity = GetGravityConstant();
-    SetConstantForceWR(CVector3f(0.f, 0.f, -(GetMass() * gravity)));
+    // The force is sDownVector times the gravity constant (slot 0x114), times the mass (0x8030).
+    const float mass = GetMass();
+    SetConstantForceWR((CVector3f(CVector3f::Down()) * GetGravityConstant()) * mass);
     // The jump to the launch target (guest 0x910): the apex is 7.5 (rodata 0x304) above the
     // higher of the actor and the target; the upward speed reaches it, and the flight time is
     // the rise plus the fall to the target's height (0x80D4..0x811C). The flat speed covers the
-    // flat distance in that time (0x8130..0x8138).
+    // flat distance in that time (0x8130..0x8138). Retail reads the gravity constant again
+    // (slot 0x114, 0x80AC).
     const CVector3f& mine = GetTranslation();
     const float dx = mX910_.GetX() - mine.GetX();
     const float dy = mX910_.GetY() - mine.GetY();
+    const float gravity = GetGravityConstant();
     float top = mX910_.GetZ();
     if (mine.GetZ() >= top) {
       top = mine.GetZ();
     }
-    const float apex = 7.5f + top;
+    const float apex = 7.5f + top; // rodata 0x304
     const float up = CMath::SqrtF(2.f * gravity * (apex - mine.GetZ())); // rodata 0x274
-    const float time = up / gravity + CMath::SqrtF(2.f * (apex - mX910_.GetZ()) / gravity);
+    const float time = up / gravity + CMath::SqrtF(2.f * (apex - mX910_.GetZ()) / gravity); // 0x274
     const float inverse = 1.f / time; // rodata 0x264
     SetVelocityWR(CVector3f(inverse * dx, inverse * dy, up));
     break;
@@ -532,39 +627,82 @@ void CEmperorIngStage3::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
   }
 }
 
-// vtable slot 7 = fn_18_4650: the base's pre-render and then the damage flash (the model colour
-// lerped between black and CPatterned's damage colour by the damage timer).
+// @ fn_18_4650
+// fn_18_4650 (vtable slot 7, 0x164): the base's pre-render, then the draw flags (this+0xFC).
+// While the base's damage cooldown (guest 0x448) or the heart hit timer (0x860) is above zero
+// (rodata 0x258) the model draws with blend mode 2 and depth test/update in a colour lerped from
+// black to CPatterned::skDamageColor by the cooldown (clamped at zero) or, failing that, to
+// skHitsWithoutDamageColor by the hit timer, either over skDamageHitTime; otherwise it is opaque
+// white (rodata 0x264).
 void CEmperorIngStage3::PreRender(CStateManager& mgr) {
-  StandIn("CEmperorIngStage3::PreRender (vtable slot 7, fn_18_4650)");
   CPatterned::PreRender(mgr);
+  if (mDamageCooldownTimer > 0.f || mX860_ > 0.f) {
+    CColor color;
+    if (mDamageCooldownTimer > 0.f) {
+      color = CColor::Lerp(CColor::Black(), skDamageColor,
+                           rstl::max_val(mDamageCooldownTimer, 0.f) / skDamageHitTime);
+    } else {
+      color = CColor::Lerp(CColor::Black(), skHitsWithoutDamageColor, mX860_ / skDamageHitTime);
+    }
+    SetModelFlags(CModelFlags(CModelFlags::kT_Two, color)); // 0x4714
+  } else {
+    SetModelFlags(CModelFlags(CModelFlags::kT_Opaque, 1.f)); // 0x473C
+  }
 }
 
-// vtable slot 9 = fn_18_47B4: retail's render path.
-void CEmperorIngStage3::Render(const CStateManager& mgr) const {
-  StandIn("CEmperorIngStage3::Render (vtable slot 9, fn_18_47B4)");
-  CPatterned::Render(mgr);
-}
+// @ fn_18_47B4
+// fn_18_47B4 (vtable slot 9, 0x20): the base's render and nothing else.
+void CEmperorIngStage3::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_18_B4
 // vtable slot 15 = fn_18_B4: a call through the vtable slot 0x38, i.e. CActor::HealthInfo().
 const CHealthInfo* CEmperorIngStage3::GetHealthInfo() const {
   return const_cast< CEmperorIngStage3* >(this)->HealthInfo();
 }
 
+// @ fn_18_8
 // vtable slot 18 = fn_18_8: the actor's own bounding box, in an optional.
+// Cited: fn_18_DAEC is rstl::optional_object< CAABox >'s copy.
 rstl::optional_object< CAABox > CEmperorIngStage3::GetTouchBounds() const {
   return GetBoundingBox();
 }
 
-// vtable slot 21 = fn_18_8E84: retail's aim position.
+// @ fn_18_8E84
+// @ fn_18_3A84
+// fn_18_8E84 (vtable slot 21, 0x1C0): the active heart's pivot joint - the second heart's when its
+// collision actor (fn_18_3A84) is active (the byte at +0x20, bit 7), else the first's (the
+// description's CSegId at +0x8, fn_18_3B14) - at the current animation's elapsed time (the tree's
+// steady-state duration, vtable slot 0x18, less its time remaining, slot 0x14), through the
+// unscaled CAnimData locator and the actor's transform. With neither heart active it is the zero
+// vector (the CSegId 0xFF test at 0x8F4C).
 CVector3f CEmperorIngStage3::GetAimPosition(const CStateManager& mgr, float param) const {
-  StandIn("CEmperorIngStage3::GetAimPosition (vtable slot 21, fn_18_8E84)");
-  return CPatterned::GetAimPosition(mgr, param);
+  if (x7c0_ == nullptr) {
+    return CVector3f::Zero(); // port guard: no collision actors before kSM_AreaLoaded
+  }
+  const CEntity* first = mgr.GetObjectById(HeartRecord(0)->GetCollisionActorId());  // fn_18_3A84
+  const CEntity* second = mgr.GetObjectById(HeartRecord(1)->GetCollisionActorId()); // fn_18_3A84
+  CSegId pivot(static_cast< uchar >(0xFF));
+  if (second->GetActive()) {
+    pivot = HeartRecord(1)->GetPivotId(); // 0x8F18
+  } else if (first->GetActive()) {
+    pivot = HeartRecord(0)->GetPivotId(); // 0x8F3C
+  }
+  if (pivot == CSegId(static_cast< uchar >(0xFF))) {
+    return CVector3f::Zero();
+  }
+  const CAnimData* animData = GetModelData()->GetAnimationData();
+  const rstl::ncrc_ptr< CAnimTreeNode >& tree = animData->GetAnimationTree();
+  const CCharAnimTime elapsed(tree->VGetSteadyStateAnimInfo().GetDuration().GetSeconds() -
+                              tree->VGetTimeRemaining().GetSeconds());
+  return (GetTransform() * animData->GetLocatorTransform(pivot, &elapsed)).GetTranslation();
 }
 
-// vtable slot 27 = fn_18_45B4: retail's sorting bounds.
+// @ fn_18_45B4
+// fn_18_45B4 (vtable slot 27, 0x9C): a box one unit (sOneVector) either side of the centre of
+// CActor's sorting bounds (0x45CC).
 CAABox CEmperorIngStage3::GetSortingBounds(const CStateManager& mgr) const {
-  StandIn("CEmperorIngStage3::GetSortingBounds (vtable slot 27, fn_18_45B4)");
-  return CPatterned::GetSortingBounds(mgr);
+  const CVector3f center = CActor::GetSortingBounds(mgr).GetCenterPoint();
+  return CAABox(center - CVector3f(1.f, 1.f, 1.f), center + CVector3f(1.f, 1.f, 1.f));
 }
 
 // @ fn_18_9048
@@ -648,7 +786,7 @@ void CEmperorIngStage3::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
     SetHeartsImmune(mgr); // fn_18_1C34
     break;
   case kUE_Unknown39: {
-    mShockWaveId = mgr.AllocateUniqueId().Value(); // 0x9288
+    mShockWaveId = mgr.AllocateUniqueId().value; // 0x9288
     mgr.AddObject(rs_new CShockWave(TUniqueId(mShockWaveId), rstl::string_l("Shockwave"),
                                     CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
                                     GetTransform(), GetUniqueId(), mJumpAttackShockWave,
@@ -664,16 +802,20 @@ void CEmperorIngStage3::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode&
   }
 }
 
+// @ fn_18_9044
 // vtable slot 41 = fn_18_9044: the retail body is a single `blr` - the boss takes its damage in
 // the state machine, not here.
 void CEmperorIngStage3::TakeDamage(const CVector3f& direction, float magnitude) {}
 
+// @ fn_18_90
 // vtable slot 42 = fn_18_90: `li r3, 0x1` - the actor can be shot.
 bool CEmperorIngStage3::CanBeShot(const CStateManager&, int) { return true; }
 
+// @ fn_18_0
 // vtable slot 43 = fn_18_0: `li r3, 0x1` - the actor listens for noises.
 bool CEmperorIngStage3::IsListening() const { return true; }
 
+// @ fn_18_8E50
 // vtable slot 44 = fn_18_8E50: a player fire (the noise type 0) sets the flag byte at guest
 // 0x824 (its bit 30, the mask 0x02) and the actor says it heard it; every other noise is
 // ignored.
@@ -686,41 +828,58 @@ bool CEmperorIngStage3::Listen(CStateManager& mgr, const CVector3f& position,
   return true;
 }
 
-// vtable slot 45 = fn_18_98: retail returns a vector the manager holds at +0x54; the base class's
-// origin (the actor's own translation) is close enough for this milestone.
+// @ fn_18_98
+// fn_18_98 (vtable slot 45, 0x1C): the actor's own translation (this+0x54..0x5C, r4 is `this`
+// after the return slot).
 CVector3f CEmperorIngStage3::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                        const CVector3f& aimPos) const {
-  StandIn("CEmperorIngStage3::GetOrigin (vtable slot 45, fn_18_98)");
-  return CPatterned::GetOrigin(mgr, role, aimPos);
+  return GetTranslation();
 }
 
+// @ fn_18_44
 // vtable slot 50 = fn_18_44: the model alpha byte at guest 0x44F, CPatterned::mColor's alpha
 // (CColor at 0x44C; the module never writes it).
 uchar CEmperorIngStage3::GetModelAlphau8(const CStateManager& mgr) const { return mColor.GetAlphau8(); }
 
+// @ fn_18_4C
 // vtable slot 55 = fn_18_4C: `li r3, 0x0` - the actor has no projectile info.
 CProjectileInfo* CEmperorIngStage3::ProjectileInfo() { return nullptr; }
 
+// @ fn_18_54
 // vtable slot 56 = fn_18_54: `li r3, 0x0` - the actor has no path search.
 CPathFindSearch* CEmperorIngStage3::GetSearchPath() { return nullptr; }
 
+// @ fn_18_5C
 // vtable slot 57 = fn_18_5C: `li r3, 0x0` - the actor has no point path search.
 CPathFindPointSearch* CEmperorIngStage3::GetPointSearchPath() { return nullptr; }
 
+// @ fn_18_64
 // vtable slot 61 = fn_18_64: `li r3, 0x0` - the actor has no rag doll.
 CRagDoll* CEmperorIngStage3::GetRagDoll() const { return nullptr; }
 
+// @ fn_18_6C
 // vtable slot 66 = fn_18_6C: stores kInvalidUniqueId, i.e. the actor never reports an attack
 // target through this accessor.
 TUniqueId CEmperorIngStage3::GetAttackTarget() const { return kInvalidUniqueId; }
 
+// @ fn_18_7C
 // vtable slot 68 = fn_18_7C: the on-ground bit of the byte at guest 0x34C, which is what the base
 // class keeps in mOnGround.
 bool CEmperorIngStage3::IsOnGround() const { return CPatterned::IsOnGround(); }
 
+// @ fn_18_8E78
 // vtable slot 69 = fn_18_8E78: the gravity constant, rodata 0x2A4 = 200.0f.
 float CEmperorIngStage3::GetGravityConstant() const { return 200.f; }
 
+// vtable slot 73 = fn_18_88: `addi r3, r3, 0x754` - CPatterned's death explosion particle (the
+// same body as fn_55_A4 and fn_56_14B1C).
+const rstl::optional_object< TCachedToken< CGenDescription > >&
+// @ fn_18_88
+CEmperorIngStage3::GetDeathExplosionParticle() const {
+  return mDeathExplosionParticle;
+}
+
+// @ fn_18_943C
 // vtable slot 60 = fn_18_943C: CPatterned's own setup first (the call at 0x9450), then the
 // module's three name tables are handed to the state machine - the triggers (lbl_18_data_34C, 21
 // entries) through the machine's vtable slot +0x18 (0x9470), the states (lbl_18_data_100, 21
@@ -736,6 +895,7 @@ void CEmperorIngStage3::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
+// @ fn_18_F8
 // fn_18_F8 (0x11C): the module's look check. The parameter is the angle in degrees the player
 // may be off the actor's facing by. Retail: the vector from the actor's "DarkBeam_LCTR_SDK"
 // locator (fn_18_DBC) to the player, normalised (0x170) and flattened to the XY plane (the
@@ -758,6 +918,7 @@ bool CEmperorIngStage3::RandomCheck(CStateManager& mgr, float maxAngleDeg) const
   return degrees < maxAngleDeg;
 }
 
+// @ fn_18_DBC
 // fn_18_DBC (0x40): the actor's "DarkBeam_LCTR_SDK" locator (rodata 0xA8) in world space: the
 // actor's transform times the model's scaled locator transform, and the translation of the
 // product (0xE08..0xE20).
@@ -766,6 +927,7 @@ CVector3f CEmperorIngStage3::DarkBeamLocatorPosition() const {
   return (GetTransform() * locator).GetTranslation();
 }
 
+// @ fn_18_2298
 // fn_18_2298 (0x24): the average (fn_18_AB9C) over the taunt list at guest 0x840 (`addi r3,
 // r3, 0x840` at 0x22A0), the list AddTauntEntry (fn_18_2B68) fills.
 float CEmperorIngStage3::TauntAverage() const { return ListAverage(mX840_); }
@@ -890,6 +1052,7 @@ void CEmperorIngStage3::ChargeContact(CStateManager& mgr) {
   x824_ &= ~0x20; // 0x277C
 }
 
+// @ fn_18_1A54
 // fn_18_1A54 (0xE0): the look along the actor's facing. The ray starts at the furthest point of
 // the actor's collision box along the facing (the actor's own transform, 0x1AE0) and runs the
 // length the caller gives; the answer is "the way is clear", true when the ray hit nothing:
@@ -911,6 +1074,7 @@ bool CEmperorIngStage3::LineOfSight(CStateManager& mgr, const CVector3f& facing,
   return !copy.IsValid();              // 0x1B5C: the byte the copy has at +0x28
 }
 
+// @ fn_18_3804
 // fn_18_3804 (0x25C): the turn towards a position. The facing at guest 0x818 is cleared first
 // (0x382C, 0x3840, 0x3848) and only written at the end (0x3970..0x3980): the angle between
 // the actor's facing and the direction to the target (0x38A4), snapped to the nearest 45
@@ -939,6 +1103,7 @@ void CEmperorIngStage3::FaceTarget(const CVector3f& target) {
   mX818_ = turn4f * facing;                                                            // 0x3968
 }
 
+// @ fn_18_3744
 // fn_18_3744 (0xC0): the angle snapped to the nearest 45 degrees. The table at rodata 0x244
 // holds 0, pi/4, pi/2, 3pi/4 and pi, and the entry nearest the angle is the answer.
 float CEmperorIngStage3::SnapAngleTo45(float angle) const {
@@ -956,16 +1121,17 @@ float CEmperorIngStage3::SnapAngleTo45(float angle) const {
   return kAngles[index];
 }
 
+// @ fn_18_36BC
 // fn_18_36BC (0x88): the damage's source id against the two hearts' collision actor ids; a
 // match sets the flag byte 0x824's bit 0 (the mask 0x01).
 void CEmperorIngStage3::OnDamage(CStateManager& mgr, u16 sourceId) {
   const CCollisionActor* first = HeartCollisionActor(mgr, 0);
-  if (first != nullptr && first->GetUniqueId().Value() == sourceId) {
+  if (first != nullptr && first->GetUniqueId().value == sourceId) {
     x824_ |= 0x80; // 0x3718, the bit 24
     return;
   }
   const CCollisionActor* second = HeartCollisionActor(mgr, 1);
-  if (second != nullptr && second->GetUniqueId().Value() == sourceId) {
+  if (second != nullptr && second->GetUniqueId().value == sourceId) {
     x824_ |= 0x80; // 0x3718, the bit 24
   }
 }
@@ -1072,11 +1238,14 @@ static void SetExternalParamTree(CElementGen* gen, uint index, float value) {
 }
 
 // @ fn_18_3448
+// @ fn_18_3648
 // fn_18_3448 (0x1AC): the heart damage update (fn_18_2F04), then the heart effect of the heart
 // that is on (guest 0x868: 0 "EnragedHeart", 1 "DarkHeart", 2 "LightHeart"; none past two) gets
 // the growth (guest 0x82C) as param 0, and params 2 and 3 at one past 0.49 / 0.74 (rodata
 // 0x2C0, 0x2C4), else zero. The generator is the effect's system (fn_18_3648 copies its
 // reference at +0x78).
+// Cited, not marked: fn_18_DFC8 is rstl::ncrc_ptr< CParticleGen >'s weak destructor (fn_18_35F4
+// and fn_18_366C its deleting forms).
 void CEmperorIngStage3::UpdateHearts(CStateManager& mgr, float dt) {
   UpdateHeartDamage(mgr, dt); // fn_18_2F04
   rstl::string name;
@@ -1148,14 +1317,14 @@ const CCollisionActor* CEmperorIngStage3::HeartCollisionActorById(CStateManager&
   return nullptr;
 }
 
+// @ fn_18_3B14
 // fn_18_3B14 (0x4C): the heart's description: the manager's description 0xA (the first heart,
 // "mainHeart_SDK", the index at 0x3B2C) or 0xB (the second, "tentacle_6_1", 0x3B44); any other
 // heart is no heart (0x3B50). Retail reads the manager without a test; the port's guard covers
-// a lookup before kSM_AreaLoaded made it.
+// a lookup before kSM_AreaLoaded made it (no collision actors yet).
 const CJointCollisionDescription* CEmperorIngStage3::HeartRecord(int heart) const {
   if (x7c0_ == nullptr) {
-    StandIn("heart lookup before kSM_AreaLoaded (no collision actors yet)");
-    return nullptr;
+    return nullptr; // port guard
   }
   if (heart == 0) {
     return &x7c0_->GetCollisionDescFromIndex(0xA);
@@ -1166,6 +1335,7 @@ const CJointCollisionDescription* CEmperorIngStage3::HeartRecord(int heart) cons
   return nullptr; // 0x3B50: any other heart is no heart
 }
 
+// @ fn_18_3ACC
 // fn_18_3ACC (0x48): the heart's collision actor: the description's collision actor id (+0x3C,
 // read at 0x3AE8) looked up in the state manager (0x3AFC).
 CCollisionActor* CEmperorIngStage3::HeartCollisionActor(CStateManager& mgr, int heart) const {
@@ -1204,6 +1374,8 @@ const SEmperorIng3Sphere skSpheres[3] = {
 
 } // namespace
 
+// @ fn_18_3BB0
+// @ fn_18_4080
 // fn_18_3BB0 (0x450): the collision actors. The vector reserves 0xD (0x3BDC); the ten leg boxes
 // (OBBAutoSizeCollision, fn_80137338: the two locators' segments on the actor's own animation
 // data, a cube of the extent, kOT_BetweenJoints (`li r7, 0x1`, 0x3CE8), the name from + "->"
@@ -1211,6 +1383,9 @@ const SEmperorIng3Sphere skSpheres[3] = {
 // fn_80137460: the locator's segment, no offset, the radius, the locator's name, mass 10.0). The
 // manager (fn_80136434, 0x3E9C) belongs to this actor, in its area, active as the actor is (the
 // byte at +0x20, extrwi bit 24, 0x3E70); the old one is deleted first (fn_801362C4, 0x3EAC).
+// Cited rstl copies: rstl::vector< CJointCollisionDescription > push_back fn_18_4000/4038/4058,
+// reserve fn_18_DD04/DDC4, destructor fn_18_41F8/427C/42B4; fn_18_4140 the description's deleting
+// destructor; fn_18_419C rstl::string's operator+.
 void CEmperorIngStage3::SetupCollisionActors(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > descs;
   descs.reserve(0xD);
@@ -1258,6 +1433,7 @@ void CEmperorIngStage3::SetHeartActive(CStateManager& mgr, int heart, bool activ
   }
 }
 
+// @ fn_18_39E0
 // fn_18_39E0 (0xA4): while either heart's collision actor (fn_18_3A84, the const lookup) is
 // active (the byte at +0x20, bit 7) the actor is a target - kMT_Target (0x28), kMT_Orbit (0x29)
 // and kMT_SeekerTarget (0x3F) are added; otherwise they are removed.
@@ -1271,10 +1447,12 @@ void CEmperorIngStage3::UpdateTargetMaterials(CStateManager& mgr) {
   RemoveMaterial(kMT_Target, kMT_Orbit, kMT_SeekerTarget, mgr);
 }
 
+// @ fn_18_22BC
 // fn_18_22BC (0x24): the module's average (fn_18_AB9C) over the list at guest 0x830 (`addi r3,
 // r3, 0x830` at 0x22C4).
 float CEmperorIngStage3::BoneAverage() const { return ListAverage(mX830_); }
 
+// @ fn_18_AB9C
 // fn_18_AB9C (0x64): the weighted average over a list: every entry counts its weight times
 // what is left of its threshold (one minus the timer over the threshold, capped at one).
 float CEmperorIngStage3::ListAverage(const SEmperorIngList& list) const {
@@ -1290,6 +1468,7 @@ float CEmperorIngStage3::ListAverage(const SEmperorIngList& list) const {
   return total;
 }
 
+// @ fn_18_AC44
 // fn_18_AC44 (0xB4): the list walk: every entry's timer grows by the given time, and an entry
 // whose timer is past its threshold is erased (fn_18_ACF8 / fn_18_AD44, the vector's erase).
 void CEmperorIngStage3::UpdateList(SEmperorIngList& list, float dt) {
@@ -1340,6 +1519,7 @@ void CEmperorIngStage3::AddListEntry(int kind) {
   }
 }
 
+// @ fn_18_1978
 // fn_18_1978 (0xDC): the module's flag check over the list at guest 0x850. While the list's
 // average is below one (rodata 0x264) the player far away (over fifty units, rodata 0x290)
 // sets the flag byte 0x824's bit 29 (the mask 0x04), and otherwise a random draw (0.0 to
@@ -1365,6 +1545,7 @@ void CEmperorIngStage3::CheckList(CStateManager& mgr) {
   }
 }
 
+// @ fn_18_2D1C
 // fn_18_2D1C (0x34): the vector from the actor to the first player, flattened to the XY plane
 // (the zero at rodata 0x258).
 CVector3f CEmperorIngStage3::PlayerDirection(CStateManager& mgr) const {
@@ -1373,6 +1554,7 @@ CVector3f CEmperorIngStage3::PlayerDirection(CStateManager& mgr) const {
   return CVector3f(theirs.GetX() - mine.GetX(), theirs.GetY() - mine.GetY(), 0.f);
 }
 
+// @ fn_18_2CB8
 // fn_18_2CB8 (0x64): the distance from the actor to the player (the vector flattened to the
 // XY plane, the zero at rodata 0x258).
 float CEmperorIngStage3::PlayerDistance(CStateManager& mgr) const {
@@ -1408,7 +1590,7 @@ void CEmperorIngStage3::StopBeam(CStateManager& mgr) {
   }
   beam->ResetBeam(mgr, false);
   mgr.DeleteObjectRequest(TUniqueId(mBeamId));
-  mBeamId = kInvalidUniqueId.Value();
+  mBeamId = kInvalidUniqueId.value;
   if (mBeamSfx) {
     CSfxManager::RemoveEmitter(mBeamSfx);
     mBeamSfx = CSfxHandle();
@@ -1501,10 +1683,42 @@ void CEmperorIngStage3::EggLayEvent(CStateManager& mgr, float dt) {
   mgr.AddObject(attackObj);
 }
 
-// fn_18_BB8 (0x204): spawns a module object (fn_18_817C/fn_18_BD84); not read yet.
-void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) { StandInFn("fn_18_BB8"); }
+// @ fn_18_BB8
+// fn_18_BB8 (0x204): the light swarm (PortCEmperorIngLightSwarm.cpp). While none is out (guest
+// 0x8C0 invalid) one is spawned at the "Swarm_LCTR_SDK" locator (fn_18_817C), drawn after the
+// Ing (its next draw node, 0xD84). Its only connection is a copy of the Ing's first
+// INTERNAL_STATE_03 connection with the state changed to DEAD (0xC28..0xC9C), so the swarm's
+// death sends the Ing's IS03 message.
+// Cited: fn_18_DB5C/DBF4 rstl::vector< SConnection >::reserve; fn_18_8E0 ~CEntityInfo and fn_18_938
+// ~rstl::vector< SConnection > (weak; also in fn_18_4D0 and fn_18_9048).
+void CEmperorIngStage3::BeginActionEvent(CStateManager& mgr) {
+  if (mX8c0_ != kInvalidUniqueId.value) {
+    return;
+  }
+  mX8c0_ = mgr.AllocateUniqueId().value;
+  rstl::vector< SConnection > conns;
+  conns.reserve(1); // fn_18_DB5C
+  const rstl::vector< SConnection >& own = GetConnectionList();
+  for (rstl::vector< SConnection >::const_iterator it = own.begin(); it != own.end(); ++it) {
+    if (it->state == kSS_InternalState3) {
+      SConnection conn = *it;
+      conn.state = kSS_Dead;
+      conns.push_back(conn);
+      break;
+    }
+  }
+  CEmperorIngLightSwarm* swarm = rs_new CEmperorIngLightSwarm(
+      TUniqueId(mX8c0_), CEntityInfo(GetCurrentAreaId(), conns, true, kInvalidEditorId),
+      CActorParameters(), mLightSwarmData, mLightSwarmEffect, GetUniqueId(),
+      EmperorIngSwarmLocator(*this), mLightSwarmDeathSound, mLightSwarmExpireSound);
+  if (swarm != nullptr) {
+    swarm->SetNextDrawNode(GetUniqueId());
+    mgr.AddObject(swarm);
+  }
+}
 
 // @ fn_18_1530
+// @ fn_18_18E4
 // fn_18_1530 (0x3B4): the beam start. The light beam with 0x80 of guest 0x825, else the dark one:
 // its beam info (guest 0xAFC / 0xA88, TLdrToBeamInfo with 0x301 and the copy fn_18_18E4) and its
 // projectile info's damage (0xAE0 / 0xA6C) with the amount zeroed - the amount becomes the beam's
@@ -1545,15 +1759,17 @@ void CEmperorIngStage3::StartBeam(CStateManager& mgr) {
   parms.mSfxId = light ? mLightBeamSound : mDarkBeamSound;
   mBeamSfx = CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true,
                                      CSfxManager::kMedPriority);
-  mBeamId = uid.Value();
+  mBeamId = uid.value;
 }
 
+// @ fn_18_2C98
 // fn_18_2C98 (0x20): the actor's facing (the transform's Y column), flattened to the XY plane.
 CVector3f CEmperorIngStage3::FlatFacing() const {
   const CVector3f facing = GetTransform().GetColumn(kDY);
   return CVector3f(facing.GetX(), facing.GetY(), 0.f);
 }
 
+// @ fn_18_1BD8
 // fn_18_1BD8 (0x5C): both hearts get the module's vulnerability (guest 0x86C). Retail has no
 // tests; the port's only cover the guard in HeartRecord (no collision actors before
 // kSM_AreaLoaded).
@@ -1568,9 +1784,13 @@ void CEmperorIngStage3::SetHeartVulnerability(CStateManager& mgr) const {
   }
 }
 
+// @ fn_18_1C34
+// @ fn_18_1CCC
 // fn_18_1C34 (0x98): the first heart's vulnerability is saved at guest 0x86C (fn_18_1CCC, the
 // CDamageVulnerability copy) and both hearts turn immune (fn_800DBB60). Retail has no tests;
 // the port's match fn_18_1BD8's (no collision actors before kSM_AreaLoaded).
+// Cited: fn_18_1D28/1DE8/DC30/DCC8, the vector assignment inside CDamageVulnerability's operator=
+// (fn_18_1CCC).
 void CEmperorIngStage3::SetHeartsImmune(CStateManager& mgr) {
   CCollisionActor* first = HeartCollisionActor(mgr, 0); // fn_18_3ACC
   if (first != nullptr) {
@@ -1602,10 +1822,12 @@ void CEmperorIngStage3::AddTauntEntry(int kind) {
   }
 }
 
+// @ fn_18_1BB0
 // fn_18_1BB0 (0x28): the heart switch with the heart that is on (guest 0x868) and no
 // vulnerability change.
 void CEmperorIngStage3::SetCurrentHeart(CStateManager& mgr) { SetHeartState(mgr, mX868_, false); }
 
+// @ fn_18_8C4C
 // fn_18_8C4C (0x13C): "ShouldMeleeAttack". The module's time since the last attack (guest
 // 0x7D0) has to be at least 2.0 (rodata 0x274), the module's average over the bone list runs
 // (fn_18_22BC) and the time has to be at least 10.0 (rodata 0x294). The vector to the player
@@ -1632,6 +1854,7 @@ bool CEmperorIngStage3::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData
   return CVector3f::Dot(facing, toPlayer) > CMath::FastCosR(1.3089969f); // rodata 0x318
 }
 
+// @ fn_18_8ACC
 // fn_18_8ACC (0x180): "ShouldGroundPound". The module's time since the last attack (guest
 // 0x7D0) has to be at least 2.0 (rodata 0x274). The vector from the ing's "head" locator
 // (rodata 0x704) to the player has to be normalisable, and the player has to be below the ing:
@@ -1723,6 +1946,7 @@ void CEmperorIngStage3::EyeShut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_18_1DF4
 // fn_18_1DF4 (0x4A0): the heart switch. Heart 0 is the enraged heart: the two hearts get the
 // yellow health (guest 0x920, 0x1E8C) and the "EnragedHeart" effect; heart 1 the dark
 // heart: the actor's own health (the vtable slot 0x3C, 0x1F80) and the "DarkHeart" effect;
@@ -1791,6 +2015,7 @@ void CEmperorIngStage3::SetHeartState(CStateManager& mgr, int heart, bool applyV
   AnimationData()->SetEffectState(rstl::string_l("DarkHeart"), dark, mgr);       // 0x2278
 }
 
+// @ fn_18_8DA4
 // The module's state machine functions. The eleven triggers whose retail body is small enough
 // are ported; the rest are stand-ins that log the retail function they stand in for and return the
 // neutral value (false for a trigger, nothing for a state or a code).
@@ -1798,23 +2023,26 @@ void CEmperorIngStage3::SetHeartState(CStateManager& mgr, int heart, bool applyV
 // 2.0 (rodata 0x274) and the player then has to be nearer than 20 units (rodata 0x270). A vector
 // that cannot be normalized counts as too close.
 // fn_18_2D1C (0x34) is the vector from the actor to the first player, flattened to the XY plane;
-// fn_18_2C98 (0x20) copies a vector the retail then never reads, so it is left out.
+// fn_18_2C98 (0x20), the flat facing, is called next (0x8E04) but its result is never read.
 bool CEmperorIngStage3::TooClose(CStateManager& mgr, const CTriggerData& data) const {
   if (mX7d4_ < 2.f) { // rodata 0x274
     return false;
   }
   const CVector3f toPlayer = PlayerDirection(mgr); // fn_18_2D1C
+  (void)FlatFacing();                              // fn_18_2C98, 0x8E04: unused
   if (!toPlayer.CanBeNormalized()) {
     return true;
   }
   return toPlayer.Magnitude() < 20.f; // rodata 0x270
 }
 
+// @ fn_18_8D88
 // fn_18_8D88 (0x8D88): the attack timer (guest 0x7E4) against zero (rodata 0x258).
 bool CEmperorIngStage3::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mAttackTimer < 0.f;
 }
 
+// @ fn_18_8A4C
 // fn_18_8A4C (0x8A4C): "ShouldTaunt". The look check has to pass (rodata 0x2E4 = 60.0f),
 // the module's taunt average runs and has to be above 50.0 (rodata 0x290), and the taunt
 // timer (guest 0x7C8) has to be past the taunt frequency (guest 0x91C).
@@ -1828,21 +2056,25 @@ bool CEmperorIngStage3::ShouldTaunt(CStateManager& mgr, const CTriggerData& data
   return mX7c8_ > mTauntFrequency;
 }
 
+// @ fn_18_897C
 // fn_18_897C (0x897C): the action (guest 0x7E8) is 0.
 bool CEmperorIngStage3::ShouldStampede(CStateManager& mgr, const CTriggerData& data) const {
   return mAction == 0;
 }
 
+// @ fn_18_8A34
 // fn_18_8A34 (0x8A34): the flag byte at guest 0x824, the bit 28 (the mask 0x08).
 bool CEmperorIngStage3::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
   return (x824_ & 0x08) != 0;
 }
 
+// @ fn_18_8A20
 // fn_18_8A20 (0x8A20): the vulnerability state (guest 0x7C4) is 1.
 bool CEmperorIngStage3::ShouldChangeVulnerabilityToVulnerable(CStateManager& mgr, const CTriggerData& data) const {
   return mVulnerabilityState == 1;
 }
 
+// @ fn_18_898C
 // fn_18_898C (0x898C): "ShouldChangeVulnerabilityToInvulnerable". The look check has to pass
 // (rodata 0x2CC = 90.0f); in the vulnerable state (3) the trigger is true, in the invulnerable
 // state (2) it needs the damage taken while vulnerable (guest 0x810) or the vulnerable damage
@@ -1864,11 +2096,13 @@ bool CEmperorIngStage3::ShouldChangeVulnerabilityToInvulnerable(CStateManager& m
   return mVulnerableDamageThreshold < 1.1920929e-07f; // rodata 0x310
 }
 
+// @ fn_18_8968
 // fn_18_8968 (0x8968): the action (guest 0x7E8) is 3.
 bool CEmperorIngStage3::ShouldDarkBeamAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mAction == 3;
 }
 
+// @ fn_18_8954
 // fn_18_8954 (0x8954): the action (guest 0x7E8) is 4.
 bool CEmperorIngStage3::ShouldLightBeamAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mAction == 4;
@@ -1916,16 +2150,19 @@ bool CEmperorIngStage3::ShouldGenerateDarkFliers(CStateManager& mgr, const CTrig
   return mAction == 6;
 }
 
+// @ fn_18_8678
 // fn_18_8678 (0x8678): the action (guest 0x7E8) is 5.
 bool CEmperorIngStage3::ShouldPortalAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mAction == 5;
 }
 
+// @ fn_18_8664
 // fn_18_8664 (0x8664): the action (guest 0x7E8) is 1.
 bool CEmperorIngStage3::ShouldJumpSlideAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mAction == 1;
 }
 
+// @ fn_18_8648
 // fn_18_8648 (0x8648): the vulnerable damage threshold (guest 0x814) against rodata
 // 0x310 (1.1920929e-07f).
 bool CEmperorIngStage3::ShouldGrowHeart(CStateManager& mgr, const CTriggerData& data) const {
@@ -1939,6 +2176,7 @@ bool CEmperorIngStage3::JumpSlideAttackOver(CStateManager& mgr, const CTriggerDa
   return (x825_ & 0x40) != 0 && AnimOver(mgr, data);
 }
 
+// @ fn_18_85A4
 // fn_18_85A4 (0x85A4): "ShouldEyeShut". The look check has to pass (rodata 0x2CC = 90.0f) and
 // the eye-shut timer (guest 0x7CC) has to be above 8.0 (rodata 0x2A8): the retail takes the
 // compare's GT bit (the mfcr and the extrwi at 0x85E0), so the timer has to have grown past
@@ -1950,11 +2188,13 @@ bool CEmperorIngStage3::ShouldEyeShut(CStateManager& mgr, const CTriggerData& da
   return mX7cc_ > 8.f; // rodata 0x2A8
 }
 
+// @ fn_18_858C
 // fn_18_858C (0x858C): the flag byte at guest 0x825, the bit 29 (the mask 0x04).
 bool CEmperorIngStage3::AbortedJumpSlide(CStateManager& mgr, const CTriggerData& data) const {
   return (x825_ & 0x04) != 0;
 }
 
+// @ fn_18_8518
 // fn_18_8518 (0x8518): "ShouldJumpAttack". The look check has to pass (rodata 0x30C = 35.0f),
 // the jump-attack timer (guest 0x7E0) has to be at least 2.5 (rodata 0x298) and the flag byte at
 // guest 0x824 has to have its bit 29 (the mask 0x04) set.
@@ -1968,11 +2208,13 @@ bool CEmperorIngStage3::ShouldJumpAttack(CStateManager& mgr, const CTriggerData&
   return (x824_ & 0x04) != 0;
 }
 
+// @ fn_18_8500
 // fn_18_8500 (0x8500): the flag byte at guest 0x825, the bit 0 (the mask 0x01).
 bool CEmperorIngStage3::ShouldStampedeReact(CStateManager& mgr, const CTriggerData& data) const {
   return (x825_ & 0x01) != 0;
 }
 
+// @ fn_18_7ADC
 // fn_18_7ADC (0x7ADC): the "Start" state. On the deactivation message it hands over to
 // fn_18_1DF4 with the enraged heart (0) and the flag set (0x7AF8..0x7B00).
 void CEmperorIngStage3::Start(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1982,6 +2224,7 @@ void CEmperorIngStage3::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   SetHeartState(mgr, 0, true); // fn_18_1DF4
 }
 
+// @ fn_18_788C
 // fn_18_788C (0x250): the "Idle" state.
 //  - Activate (0x78D0): the timer at guest 0x864 is set to the biggest float (rodata 0x2C8)
 //    and the body's steering is set up: the walk speed over the run speed (the two
@@ -2340,24 +2583,151 @@ void CEmperorIngStage3::EyeShutResetVulnerability(CStateManager& mgr, EStateMsg 
   }
 }
 
+// @ fn_18_6904
+// fn_18_6904 (0x13C): the "DarkBeamAttack" state. Activate (0x693C) sets the
+// animation state to `kAS_Ready` and the dark-beam flag (0x01 of 0x824); Update (0x6954) issues the
+// projectile attack (severity 0, a zero target, no blend) while the body can take one (state
+// 0x12) - the beam starts on the animation's event (fn_18_1530); Deactivate (0x6A14) stops the
+// beam (fn_18_12C4), clears the flag and resets the animation state.
 void CEmperorIngStage3::DarkBeamAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6904");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // the value one
+    x824_ |= 0x01; // 0x6948: the dark-beam flag
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_Zero, CVector3f::Zero(), false)); // 0x69C4
+    }
+    break;
+  case kStateMsg_Deactivate:
+    StopBeam(mgr); // fn_18_12C4
+    x824_ &= ~0x01; // 0x6A20
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // the value zero
+    break;
+  default:
+    break;
+  }
 }
 
+// @ fn_18_67C0
+// fn_18_67C0 (0x144): the "LightBeamAttack" state, DarkBeamAttack with the
+// light-beam flag (0x80 of 0x825, rlwimi 7,24) and severity 3 (0x6850).
 void CEmperorIngStage3::LightBeamAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_67C0");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // the value one
+    x825_ |= 0x80; // 0x6804: the light-beam flag, which StartBeam reads
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_Three, CVector3f::Zero(), false)); // 0x6888
+    }
+    break;
+  case kStateMsg_Deactivate:
+    StopBeam(mgr); // fn_18_12C4
+    x825_ &= ~0x80; // 0x68E4
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // the value zero
+    break;
+  default:
+    break;
+  }
 }
 
+// @ fn_18_6698
+// fn_18_6698 (0x128): the "LightSwarmAttack" state, PortalAttack's shape with severity 11. The
+// attack animation's kUE_BeginAction event spawns the light swarm (BeginActionEvent, fn_18_BB8).
+// Activate (0x66D0) readies the animation state; Update (0x66DC) issues the projectile attack
+// (severity 11, a zero target, no blend) while the body can take one (state 0x12); Deactivate
+// (0x67A4) un-readies it.
 void CEmperorIngStage3::LightSwarmAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6698");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x66D4, the value one
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_Eleven, CVector3f::Zero(), false)); // 0x6750
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x67A8, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
+// @ fn_18_6390
+// fn_18_6390 (0x2AC): the "GroundPound" state. Activate (0x63D0) readies the animation state.
+// Update (0x63DC) issues the melee attack (severity 2) while the body can take one (state 7);
+// otherwise, once the pound's animation event has set 0x10 of 0x824 (extrwi 1,27) and the player
+// has touch bounds (vtable slot 0x48), a box ten units (rodata 0x294) around the actor's
+// translation that overlaps them deals the ground-pound damage (guest 0xA44, a solid-only
+// filter) and clears the flag. Deactivate (0x6610) clears the flag and un-readies the state.
 void CEmperorIngStage3::GroundPound(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6390");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x63D4, the value one
+    break;
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_Two)); // 0x6454
+      break;
+    }
+    CPlayer& player = *mgr.Player(0);
+    const rstl::optional_object< CAABox > touch = player.GetTouchBounds(); // vtable slot 0x48
+    if ((x824_ & 0x10) == 0 || !touch) {                                   // 0x64FC, 0x6508
+      break;
+    }
+    const CVector3f& pos = GetTranslation();
+    const CAABox box(CVector3f(pos.GetX() - 10.f, pos.GetY() - 10.f, pos.GetZ() - 10.f),
+                     CVector3f(pos.GetX() + 10.f, pos.GetY() + 10.f, pos.GetZ() + 10.f));
+    if (box.DoBoundsOverlap(*touch)) { // 0x6570
+      mgr.ApplyDamage(GetUniqueId(), player.GetUniqueId(), GetUniqueId(), mGroundPoundDamage,
+                      CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid),
+                                                          CMaterialList()),
+                      CVector3f::Zero()); // fn_8003E25C
+      x824_ &= ~0x10;                     // 0x6604
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    x824_ &= ~0x10;                                           // 0x6618
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6620, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
+// @ fn_18_6258
+// fn_18_6258 (0x138): the "GenerateDarkFliers" state. Activate (0x6290) readies the animation
+// state; Update (0x629C) issues the projectile attack (severity 1, a zero target, no blend) while
+// the body can take one (state 0x12); Deactivate (0x6364) clears the dark-flier timer (guest
+// 0x7D8) and the light-swarm time (0x7DC, both rodata 0x258) and un-readies the animation state.
 void CEmperorIngStage3::GenerateDarkFliers(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_6258");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6294, the value one
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCProjectileAttackCmd(pas::kS_One, CVector3f::Zero(), false)); // 0x6314
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mX7d8_ = 0.f;                                             // 0x6370
+    mX7dc_ = 0.f;                                             // 0x6374
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6378, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 // @ fn_18_60AC
@@ -2388,6 +2758,8 @@ void CEmperorIngStage3::PortalAttack(CStateManager& mgr, EStateMsg msg, float dt
 }
 
 // @ fn_18_5844
+// @ fn_18_E0
+// @ fn_18_5EB0
 // fn_18_5844 (0x630): the "JumpSlideAttack" state. Activate (0x5898) sets the animation state to
 // `kAS_Ready`, clears 0x10/0x40/0x01/0x04/0x08 of guest 0x825 and 0x80/0x40 of 0x826, and the
 // slide's end time (guest 0x828) to FLT_MAX (rodata 0x2C8). Update (0x5908): a set 0x10 of 0x825
@@ -2565,12 +2937,17 @@ void CEmperorIngStage3::GrowHeart(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_18_4EB4
+// @ fn_18_51E8
+// @ fn_18_50F0
 // fn_18_4EB4 (0x23C): the "JumpAttack" state. Its activate path (0x4F0C) sets the flag at guest
 // 0x6B4 and picks the jump target: the player's position, or - when the player is over fifty
 // units away (rodata 0x290) - a point thirty-five percent (rodata 0x2F0) of the way along the
 // direction to the player, starting at the actor's own position. The update path (0x500C) jumps
 // at the player while the body can take a jump (fn_18_51E8 builds the CBCJumpCmd: the player's
-// position, kJT_Normal, kJS_IntoJump, variant 0, facing flags 2; fn_18_50F0 delivers it) and
+// position, kJT_Normal, kJS_IntoJump, variant 0, facing flags 2; fn_18_50F0 delivers it; both
+// are the module's weak copies of the header's inline CBCJumpCmd ctor and
+// CBodyStateCmdMgr::DeliverCmd(const CBCJumpCmd&), stores checked field by field) and
 // otherwise aims the body at the player. The deactivate path (0x50A0) clears the flag, the
 // jump-attack timer (guest 0x7E0) and the flag byte 0x824's bit 29 (the mask 0x04).
 void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -2615,8 +2992,33 @@ void CEmperorIngStage3::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
+// @ fn_18_4CC8
+// fn_18_4CC8 (0x190): the "StampedeReact" state. Activate (0x4D08) readies the animation state.
+// Update (0x4D14): for the state's first 1.2 seconds (the state machine's time, rodata 0x2EC) the
+// actor turns towards the player (fn_18_3804) and stands, facing guest 0x818 at weight one
+// (rodata 0x264); after that it taunts (type 3) while the body can take one (state 0x10).
+// Deactivate (0x4E38) un-readies the animation state.
 void CEmperorIngStage3::StampedeReact(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_18_4CC8");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x4D0C, the value one
+    break;
+  case kStateMsg_Update:
+    if (mStateMachine->GetTime() < 1.2f) { // rodata 0x2EC
+      const CVector3f theirs = mgr.GetPlayer(0)->GetTranslation();
+      FaceTarget(theirs); // fn_18_3804
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCLocomotionCmd(CVector3f::Zero(), mX818_, 1.f)); // 0x4DB0
+    } else if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_Three)); // 0x4E08
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x4E3C, the value zero
+    break;
+  default:
+    break;
+  }
 }
 
 // @ fn_18_4C3C
@@ -2679,14 +3081,14 @@ bool CEmperorIngStage3::CanPortalAttack(CStateManager& mgr) const {
 // fn_18_4468 (0x5C): the light swarm needs heart 2 (guest 0x868), no watched object (guest
 // 0x8C0) and the look check at 90 degrees (rodata 0x2CC).
 bool CEmperorIngStage3::CanLightSwarm(CStateManager& mgr) const {
-  return mX868_ == 2 && mX8c0_ == kInvalidUniqueId.Value() && RandomCheck(mgr, 90.f);
+  return mX868_ == 2 && mX8c0_ == kInvalidUniqueId.value && RandomCheck(mgr, 90.f);
 }
 
 // @ fn_18_44C4
 // fn_18_44C4 (0x64): the light beam needs no watched object, heart 2 and the look check at 40
 // degrees (rodata 0x2E0).
 bool CEmperorIngStage3::CanLightBeam(CStateManager& mgr) const {
-  if (mX8c0_ != kInvalidUniqueId.Value()) {
+  if (mX8c0_ != kInvalidUniqueId.value) {
     return false;
   }
   return mX868_ == 2 && RandomCheck(mgr, 40.f);
@@ -2696,7 +3098,7 @@ bool CEmperorIngStage3::CanLightBeam(CStateManager& mgr) const {
 // fn_18_4528 (0x64): the dark beam needs no watched object, heart 1 and the look check at 40
 // degrees (rodata 0x2E0).
 bool CEmperorIngStage3::CanDarkBeam(CStateManager& mgr) const {
-  if (mX8c0_ != kInvalidUniqueId.Value()) {
+  if (mX8c0_ != kInvalidUniqueId.value) {
     return false;
   }
   return mX868_ == 1 && RandomCheck(mgr, 40.f);
@@ -2788,6 +3190,33 @@ void CEmperorIngStage3::ChoseAction(CStateManager& mgr, float dt) {
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_18_C380) and entry points.
 
+// @ fn_18_C380
+// @ fn_18_CA60
+// @ fn_18_CE70
+// @ fn_18_CFAC
+// @ fn_18_D09C
+// @ fn_18_D1B8
+// @ fn_18_D21C
+// @ fn_18_D33C
+// @ fn_18_D42C
+// @ fn_18_D490
+// @ fn_18_D58C
+// @ fn_18_D794
+// @ fn_18_D840
+// @ fn_18_D8C0
+// @ fn_18_D9BC
+// @ fn_18_D9F8
+// fn_18_C380: the property switch reads the four ids 0x255A4580 / 0xB3774750 / 0x7E397FED /
+// 0x30DE1A5B (0xC41C..0xC498) and skips the rest with ReadBytes(nullptr, size) (0xC4E4); the
+// SLdr ctor's extra defaults are in SLdrEmperorIngStage3.hpp. The data block's loader, ctor and
+// dtor (CA60 / CFAC / CE70) and their typedef copies (stage D58C/D840/D794, action
+// D8C0/D9F8/D9BC, beam D09C/D490/D1B8, portal D33C/D21C/D42C) are the generated SLdr inlines.
+// Cited REL runtime: RELMain fn_18_C330 calls fn_18_C350, which registers this loader
+// (fn_8022EBC8 with bss 0x30); RELExit fn_18_C30C unregisters it; _prolog fn_18_E8EC runs .ctors
+// (fn_18_E95C, the static initialiser fn_18_E180) and _epilog fn_18_E8C8 runs .dtors (fn_18_E910);
+// fn_18_E804 is _unresolved. The port's module registry does all of it. fn_18_C9E4 is
+// SLdrEmperorIngStage3's weak deleting destructor and fn_18_C69C/C6DC/C6FC/C724 the rstl copies of
+// its token (fn_18_C724 TLockedToken's copy).
 static CEntity* PortLoadEmperorIngStage3(CStateManager& mgr, CInputStream& input,
                                           CEntityInfo& info) {
   SLdrEmperorIngStage3 sldrThis;

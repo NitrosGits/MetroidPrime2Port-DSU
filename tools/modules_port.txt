@@ -11,6 +11,7 @@ DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianKneeArmor.cpp
 ElitePirate;src/MetroidPrime/Enemies/PortCElitePirate.cpp
 EmperorIngStage1;src/MetroidPrime/Enemies/PortCEmperorIngStage1.cpp
 EmperorIngStage3;src/MetroidPrime/Enemies/PortCEmperorIngStage3.cpp
+EmperorIngStage3;src/MetroidPrime/Enemies/PortCEmperorIngLightSwarm.cpp
 Ing;src/MetroidPrime/Enemies/PortCIng.cpp
 Ing;src/MetroidPrime/Enemies/PortCIngMiniPortalAttack.cpp
 Ing;src/MetroidPrime/Enemies/PortCIngExitHostEffect.cpp
