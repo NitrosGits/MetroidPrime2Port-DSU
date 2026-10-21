@@ -379,7 +379,7 @@ void CSandBoss::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     break;
   case kSM_Create:
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // li r4, 0 at 0xD9AC: buried
     BodyController()->Activate(mgr, static_cast< pas::EAnimationState >(-1));
     SetupCollisionActors(mgr);
     break;

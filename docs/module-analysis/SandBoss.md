@@ -823,6 +823,21 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   reached are `HandleScreenShake` (4C60) and 528C; the FSM never evaluates an attack trigger, so the
   volleys (3ACC 3F44) and the beam itself stay unexercised. At `SECS=460` a loaded host only reached
   3000 of 6000 frames (exit 124).
+- Phase-1 bug fixes (2026-10-21, `tools/drivers/sandboss_fight.py`, no probes, real charged shots):
+  (a) `Stampede` (98FC) sets/clears bit 0x40 of the byte at 0x34C (`rlwimi 25,25` at 0x99A0 / 0x9B2C).
+  CW allocates the `CPhysicsActor` flags MSB-first (0x80 mInPosition, 0x40 mVerticalMovement, 0x20
+  Solid, 0x10 Blocking, 0x08 mOnGround — what `fn_55_8C` reads, 0x04 OnStatic, 0x02 PrevOnGround), so
+  the bit is `mVerticalMovement`; the port set `mPrevOnGround`, which dropped the leap's vertical root
+  motion (z stayed at -5.3; now -5.1 -> 12.1 -> -5.1 per leap). (b) `RemovePlayerCollision` /
+  `RestorePlayerCollision` (952C / 9438) edit each collision actor's own filter (`GetMaterialFilter` on
+  the cast collider; `ori 1` / `and -2` on the exclude high word = bit 32, `kMT_Player`). The port copied
+  the boss's filter (which excludes Player/Character) into every joint with `kMT_NoStepLogic`, so after
+  the first SuckBall no joint took a player shot: phase 2 stampedes never ended ("invincible"). Run r9:
+  phase 1 -> DestroySphere -> two worms stampede, break and attach -> DestroySphere -> all three
+  stampede. Only one worm in phase 1 is retail: `CanStartNewRound` (CA1C) needs `commandIndex <= mRound`.
+  (c) kSM_Create (D8BC) starts the body in `kLT_Crouch` (`li r4, 0` at 0xD9AC), not Relaxed. (d) The
+  player's 0x1144 mask 0x80 (`rlwimi 7,24,24`) is `mCanStartUnmorphTransition`: SuckBall (B658) clears it
+  (`EnableLeaveMorphBall(false)`), HandleObjectDrop (5FEC) and RestorePlayerCollision (9438) set it.
 - Not tested: ASAN, the intro cinema path, `IsFacingPlayer` (C1CC — the FSM asset never references it,
   so only a direct call could run it), and the getter/render slots no probe calls
   (64 6C 74 7C 8C 98 A4 AC BC). The scan-visor pair `CB30`/`CC84` with `8740`/`88D0`/`89E8` behind
