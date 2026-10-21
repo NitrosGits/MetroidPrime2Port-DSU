@@ -294,7 +294,6 @@ B4 GetOrigin, D0 GetHealthInfo.
   - 4324 spit radius.
   - ZeroHealth index field.
   - Riding-platform clear in water.
-  - 5830 chain walk.
   - Scan by form.
   - Actor +0x150 draw gate.
   - AddParticleGen slot.
@@ -333,8 +332,8 @@ manager's copies).
 
 | fn | what | why it is not marked |
 |---|---|---|
-| 55B0, 50AC, 5830 | the platform-chain walk: 55B0 wakes the chain, 5830 finds the "PLTR/FOLL" node and 50AC recurses over the "ARRV/NEXT" connections | not ported: the port's `LaunchPlatformChain` is an approximation and `AcceptScriptMsg`'s chain walk is still a `TODO(uncertain)` (the `5830 chain walk` in §6) |
-| 5030, 527C | put the chain nodes on their recorded positions / swing them about the chain origin | the port has the two bodies (`PlaceChainNodes`, `SwingChainNodes`) but they are reached only through 55B0, which is not ported, so a run cannot exercise them |
+| 55B0, 50AC, 5830 | the platform-chain walk: 55B0 wakes the chain, 5830 finds the "PLTR/FOLL" node and 50AC recurses over the "ARRV/NEXT" connections | **marked** (7.15, 7.17, 7.18): the port has all four bodies (`LaunchPlatformChain`, `CollectChainNodes`, `WalkChainNodes`, `PlaceChainNodes`, `SwingChainNodes`) and every arm of them ran |
+| 5030, 527C | put the chain nodes on their recorded positions / swing them about the chain origin | **marked** (7.17, 7.18): the port has the two bodies (`PlaceChainNodes`, `SwingChainNodes`); the chain launch reaches them |
 | 7E24 | the `Blow` state | the port's `Blow` is partial (it keeps the blow damage and the wind flag, the rest is still open) |
 | 1B38 | an additive flinch with no caller | documented no-op, like 4F88 |
 | 4F88 | `SendDecrement` | no caller anywhere in the module |
@@ -710,7 +709,7 @@ Counted from the retail asm (the `bl` call sites inside the module):
 | `fn_79_1228`, `fn_79_178C`, `fn_79_1A64`, `fn_79_1AA0`, `fn_79_2D3C`, `fn_79_6974`, `fn_79_B7F8`, `fn_79_D0F8` | 8 each | the loader's own constructors/copies and the loader's string helper (7.1) |
 | `fn_79_31C0` | 6 | the loader's `rstl::vector` copy (7.1) |
 | `fn_79_460`, `fn_79_4958`, `fn_79_6AB0` | 6 each | loader/host copies (7.1) |
-| `fn_79_50AC`, `fn_79_55B0` | 4 each | the platform-chain walk - **not ported** (the port's `LaunchPlatformChain` is an approximation) |
+| `fn_79_50AC`, `fn_79_55B0` | 4 each | the platform-chain walk - **marked** (7.15, 7.17, 7.18) |
 | `fn_79_7E24` | 3 | the `Blow` state - verified against the asm in 7.12, **not marked** because two of its arms did not run |
 
 The next three behaviour functions to take are `fn_79_55B0` and `fn_79_50AC` (the chain walk, which
@@ -756,9 +755,9 @@ approximate.
 | branch | what | class |
 |---|---|---|
 | 0x52D0 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
-| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (d) not reached: the body never runs (see 5030) |
+| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (b) it ran: the chain launch leaves a node 83.3 units from the centre, past the 54.9 unit edge radius (7.18) |
 | 0x541C | the walk's condition | (a) a loop condition |
-| - | the body itself | (d) it never ran (see 5030) |
+| - | the body itself | (b) it ran (7.18) |
 
 **fn_79_55B0** (the port's `LaunchPlatformChain`): the retail's body is the same three steps (the
 chain actor, the patrol node on the "FOLL" connection, the next node on the "ARRV/NEXT"
@@ -768,3 +767,193 @@ branches (0x55FC, 0x56F0, 0x5740: the chain actor, the patrol node and the next 
 gone) are the port's own null guards, all (c) - the chain's nodes are actors.
 
 **fn_79_50AC**: not ported (the recursion over the chain's connections), not marked.
+
+### 7.16 The chain walk ported: fn_79_5830 and fn_79_50AC (2026-10-21, tenth lane pass)
+
+The retail's chain walk is two bodies the port did not have: `fn_79_5830` (the chain actor's
+"PTRL/FOLW" node, then the walk) and `fn_79_50AC` (the recursion over the "ARRV/NEXT"
+connections). Both are ported now (`CollectChainNodes`, `WalkChainNodes`) and the retail's
+`fn_79_B3CC` call site is wired: the `kSM_AreaLoaded` case collects the light chain
+(`mChainANodes`/`mChainAPositions`) and the dark chain (`mChainBNodes`/`mChainBPositions`),
+which is what the retail's `fn_79_B3CC` does (0xB6F8 and 0xB73C, the "IS02" and "IS07"
+connections).
+
+Both are **not marked**: the bodies have not run (see the classes below).
+
+**fn_79_5830** (`CollectChainNodes`)
+
+| branch | what | class |
+|---|---|---|
+| 0x5878 | the chain actor does not cast to `CActor` -> the walk ends | (c) the chain is an actor |
+| 0x58B8 | the "PTRL/FOLW" node does not cast to `CActor` -> the walk ends | (c) the chain's node is an actor |
+| - | the body | (b) it ran: the engine's own `kSM_AreaLoaded` at the area load drives it (7.18) |
+
+**fn_79_50AC** (`WalkChainNodes`)
+
+| branch | what | class |
+|---|---|---|
+| 0x5224 | the "ARRV/NEXT" node does not cast to `CActor` -> it is skipped | (c) the chain's nodes are actors |
+| 0x51F0 | the connection is the node's own -> it is skipped | (c) the chain's nodes do not link to themselves |
+| 0x524C | the walk's condition | (a) a loop condition |
+| - | the body | (b) it ran with fn_79_5830 (7.18) |
+
+The retail's `fn_79_55B0` (the anim event's chain launch: the chain actor, the "PTRL/FOLW" node,
+`fn_79_5030` for the recorded positions, the "ARRV/NEXT" node, the heading difference, the
+rotation and `fn_79_527C` for the swing) is what the port's `LaunchPlatformChain` does, so that
+body is the port's `LaunchPlatformChain` - it is not marked, because the anim event 0x1b that
+calls it never fires in a driver run (the chain walk is the anim event's job, not the script
+message's) and the retail's 55B0 also does not run the recursion.
+
+### 7.17 The chain walk, the anim event 0x1b and the grapple (2026-10-21, eleventh lane pass)
+
+The driver is committed: `tools/drivers/swampboss2_chain.py` (the console part) and
+`tools/drivers/swampboss2_run.sh` (it starts the port with `MP2_CONSOLE` and
+`MP2_TICKS_PER_FRAME=8` and runs the driver). It waits for the boss in the `objs` list, sends it
+the `kSM_AreaLoaded` message and forces the boss's AI states with `fsm <id> <state>`.
+
+**The anim event 0x1b** (the chain launch) is carried by the **light phase's `Lurk` state's
+animation**: a probe on the port's `DoUserAnimEvent` case 0x1b printed the state at the moment
+the event fired - `[probe] the chain launch in the state Lurk` - and the chain launch then ran
+(`fn_79_55B0` -> `fn_79_5030` -> `fn_79_527C`). It is not forced: `Lurk` is a sub-machine state,
+so `fsm <id> Lurk` cannot enter it by name (the console says "state 'Lurk' not entered"), and the
+launch happened in the state the boss reaches on its own.
+
+**fn_79_5030** (the port's `PlaceChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x5078 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x5094 | the walk's condition | (a) a loop condition |
+| - | the body | (b) `[arm] 60 5030 a chain node is put on its recorded position` (the light phase's `Lurk`, no forcing) |
+
+**fn_79_527C** (the port's `SwingChainNodes`) - **not marked** (the edge-radius arm 0x53B0 was not
+reached: the swung node stayed inside the edge radius, so the driver would have to `place` a chain
+node outside it - forced (place))
+
+| branch | what | class |
+|---|---|---|
+| 0x52D0 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (d) it did not run: the swung nodes stayed inside the edge radius |
+| 0x541C | the walk's condition | (a) a loop condition |
+| - | the body | (b) `[arm] 63 527C a chain node is swung` |
+
+**fn_79_55B0** (the port's `LaunchPlatformChain`) - **marked**: the retail's body makes two
+virtual calls on the chain actor (the vtable slot +0x18 = `CEntity::AcceptScriptMsg`, at 0x5654
+and 0x56B0, each with a message id in a `CScriptMsg`; the second one's id is the "DECR" fourcc
+built at 0x5668-0x5670, the first is the activation) - so the port's two script messages are the
+retail's, not extra ones. The rest of the body matches step for step (the chain actor, the
+"PTRL/FOLW" node, `fn_79_5030`, the "ARRV/NEXT" node, the two `atan2`s, the rotation,
+`fn_79_527C`, the patrol's position), and it ran (it is what calls `fn_79_5030` and
+`fn_79_527C`: `[arm] 60`, `[arm] 63`). Its three null guards are (c): the chain actor, the patrol
+node and the next node are all actors in the shipped area.
+
+**fn_79_5830 / fn_79_50AC** (the chain's node list and the ARRV/NEXT recursion) - **marked**
+(7.18): the message *does* arrive on its own, and the per-arm probe ran. A temporary probe as
+the first line of `CSwampBossStage2::AcceptScriptMsg` printed the message and the uid it went
+to, and a second probe inside the case printed that the case ran:
+
+    [probe] msg 58414c44 to u0673              (0x58414c44 = kSM_AreaLoaded)
+    [probe] the kSM_AreaLoaded case ran on u0673
+
+The engine delivers it itself at the area load (CScriptObjectLoaderHelper sends `kSM_AreaLoaded`
+to every object it loads) and the console's `send <boss uid> AreaLoaded` (the driver does it once
+the boss is in the `objs` list) delivers a second one - so the chain walk is reached without any
+forcing (7.18 repeats this with a run that forces nothing).
+
+**The grapple (fn_79_7E24's 0x804C) is blocked by shared host code, not by the module**
+
+- `src/MetroidPrime/ScriptObjects/CScriptGrapplePoint.cpp:68` - the grapple point only gets
+  `kMT_Orbit` when it is activated; it never gets `kMT_Target`.
+- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1004` - the lock-on's near list is built with
+  `CMaterialFilter::MakeInclude(CMaterialList(kMT_Target))`, so a grapple point is not in it.
+- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1070` - `ValidateAimTargetId` rejects a target without
+  `kMT_Target`.
+- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1478,1492,1506` - `BeginGrapple` is reached from the
+  *orbit* target, which is the same aim target, so the grapple needs the same material.
+- Retail: the grapple points are `CScriptGrapplePoint`s that the arm's beam connects to
+  (`fn_79_7E24`'s window test is on `mGrappleTime`, +0xd8c); the port's `CPlayer::BeginGrapple`
+  (CPlayerOrbit.cpp:1361) is the same path.
+
+With the grapple beam owned (`give grappleBeam 1` - `CPlayerState::kIT_GrappleBeam` = 0x17, and
+`CPlayerState::ShouldDrawGrapple` needs it) and the point woken (`send u066b Activate`), the point
+still never becomes the player's orbit target, so `mGrappleTime` stayed at 0.00 in every run.
+The fix belongs in the shared `CScriptGrapplePoint`/`CPlayerOrbit` code, not here.
+
+### 7.18 The chain walk's arms (2026-10-21, twelfth lane pass)
+
+**The "stale module object" was the probe's own dead code.** The module object in
+`build-port-link/modules/SwampBossStage2.o` was never stale: `$T/ninja -C build-port-link
+metroid_prime2_port` rebuilds `CMakeFiles/mp_mod_SwampBossStage2.dir/src/MetroidPrime/Enemies/
+PortCSwampBossStage2.cpp.o`, re-scopes it into `modules/SwampBossStage2.o` and relinks the
+binary, and a probe string in the module source is in all three. What the earlier lane saw was
+its own probe: the once-per-arm helper was
+
+    static bool sArmSeen[64];
+    static void PortArm(int id, const char* name) {
+      if (id >= 0 && id < 64 && !sArmSeen[id]) { ... std::fprintf(stderr, "[arm] %d %s\n", ...); }
+    }
+
+and the arm ids it used (70..77) were **outside the array**, so the guard was always false, the
+compiler dropped every call *and its strings*, and `strings` on the object found no probe at
+all. The build was fine; the probe was dead. With the bound raised to 128 the same source
+produces the strings in the object, in `modules/SwampBossStage2.o` and in the binary (the module
+the game loads: the run log prints `metroid_prime2_port: init compiled module SwampBossStage2`).
+
+**fn_79_5830** (the port's `CollectChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x5878 | the chain actor does not cast to `CActor` -> the walk ends | (c) the chain is an actor |
+| 0x58B8 | the "PTRL/FOLW" node does not cast to `CActor` -> the walk ends | (c) the chain's node is an actor |
+| - | the body | (b) `[arm] 72 5830 the chain walk starts` |
+
+**fn_79_50AC** (the port's `WalkChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x5224 | the "ARRV/NEXT" node does not cast to `CActor` -> it is skipped | (c) the chain's nodes are actors |
+| 0x51F0 | the connection is the node's own -> it is skipped | (c) the chain's nodes do not link to themselves |
+| 0x524C | the walk's condition | (a) a loop condition |
+| 0x50E4, 0x5130 | the two `rstl::vector` growth checks (the REL's own `fn_79_D2EC` / `fn_79_D174`) | (a) the host's `rstl::vector` does the same (7.1) |
+| 0x5188, 0x5194 | the REL's own vector copy and free (`fn_79_31C0` / `fn_79_32C0`) | (a) the host's `rstl::vector` does the same (7.1) |
+| - | the body | (b) `[arm] 73 50AC the walk visits a node` |
+
+**fn_79_527C** (the port's `SwingChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x52D0 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (b) `[arm] 77 527C the node is pulled back inside the edge radius` |
+| 0x541C | the walk's condition | (a) a loop condition |
+| - | the body | (b) `[arm] 76 527C a chain node is swung` |
+
+**How the arms were reached.** Three runs, all in `04_swamp_temple_dark` (world 3dfd2249) with
+layer 6, `MP2_GODMODE=1`, `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`:
+
+1. **The chain walk, with nothing forced** (`--no-send --no-states`): the engine's own
+   `kSM_AreaLoaded` at the area load drives `fn_79_5830` -> `fn_79_50AC`
+   (`[arm] 72`, `[arm] 73`).  The light chain has 6 nodes, the dark chain 82.
+2. **The swing** (the driver forces the boss's AI states, `fsm <boss> <state>`): the light
+   phase's Lurk animation carries the anim event 0x1b, the chain launch
+   (`fn_79_55B0` -> `fn_79_5030` -> `fn_79_527C`) runs, and **the edge arm runs on its own**:
+   the swung node ends up 83.3 units from the centre while the edge radius is 54.9
+   (`[probe] 527C pull back: d 83.31 edge 54.89`).  `fn_79_527C`'s edge arm therefore needs no
+   forcing at all.
+3. **The edge arm with a `place`d node** (forced (place)): the driver puts the last node of
+   each chain far outside the edge radius (`place u0638 333.78 -123.72 139.60`) and sends
+   `kSM_AreaLoaded` again, so the far position becomes the node's recorded position
+   (`fn_79_5030` puts every node back on its recorded position before the swing, so without the
+   re-record the placement would be undone).  The pulled-back node then ends up 495.7 units from
+   the centre (`[probe] 527C pull back: d 495.69 edge 54.89`).
+
+The driver is `tools/drivers/swampboss2_chain2.py` (the console part) with
+`tools/drivers/swampboss2_run.sh` (it starts the port with `MP2_CONSOLE` and the console
+driver).  It waits for the area to be loaded before it asks for layer 6 (a layer request that
+arrives during the boot never finishes), then waits for the boss, and it can force the chain
+walk (`send <boss> AreaLoaded`), the states (`fsm`) and the placement (`place`).
+
+**The chain's own numbers** (measured, for the note): the centre actor is at
+(-166.22, -123.72, 65.98), the edge radius 50.0 (54.9 after the second area load), the light
+chain 6 nodes and the dark chain 82.  The chain's node list grows with every `kSM_AreaLoaded`
+message - the retail appends to the two vectors as well (its `fn_79_5830` has no clear), so the
+light chain had 12 entries after the second message and the dark chain 164.

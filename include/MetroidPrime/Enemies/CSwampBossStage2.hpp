@@ -156,6 +156,10 @@ protected:
                         const CVector3f& from);
   void PlaceChainNodes(CStateManager& mgr, const rstl::vector< TUniqueId >& nodes,
                        const rstl::vector< CVector3f >& positions) const;
+  void CollectChainNodes(CStateManager& mgr, TUniqueId chain, rstl::vector< TUniqueId >& nodes,
+                         rstl::vector< CVector3f >& positions);
+  void WalkChainNodes(CStateManager& mgr, CActor* node, rstl::vector< TUniqueId >& nodes,
+                      rstl::vector< CVector3f >& positions);
   void SwingChainNodes(CStateManager& mgr, const rstl::vector< TUniqueId >& nodes,
                        const CVector3f& origin, const CTransform4f& rotation) const;
   void PlaceChainSegment(CStateManager& mgr, CActor& chain, const CVector3f& origin,
