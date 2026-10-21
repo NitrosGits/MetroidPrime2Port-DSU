@@ -478,6 +478,7 @@ private:
   TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
   TUniqueId xbd8_;                       // 0xbd8, the id the delete case asks to delete
   TUniqueId x6c0_;                       // 0x6c0, the AI waypoint the module follows
+  TUniqueId xbda_;                       // 0xbda, the waypoint the commando is at
   CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
   CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)

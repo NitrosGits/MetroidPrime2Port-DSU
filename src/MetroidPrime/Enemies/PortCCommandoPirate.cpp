@@ -254,6 +254,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
 , xbd8_(kInvalidUniqueId)                          // 0xbd8, the id the delete case deletes
 , x6c0_(kInvalidUniqueId)                          // 0x6c0, the AI waypoint the module follows
+, xbda_(kInvalidUniqueId)                          // 0xbda, the waypoint the commando is at
 , mLocatorHead(CSegId::Invalid())                 // 0xc5c, fn_9_D904 @0x0000E29C
 , mLocatorMidLaunch(CSegId::Invalid())            // 0xc5d, fn_9_D904 @0x0000E2D0
 , mLocatorGun(CSegId::Invalid())                  // 0xc5e, fn_9_D904 @0x0000E304
@@ -3282,8 +3283,120 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
+// fn_9_7A98 (0x590 bytes): the scripted shield charge - the commando walks its waypoint path
+// with the shield up and charges at the waypoints.
+//
+// On activate (the guest's message 0, 0x00007B24) the byte at guest this+0xC65 gets its 0x04
+// bit (the shield is up, 0x00007B2C), the byte at guest this+0xC66 loses its 0x20 bit
+// (0x00007B48), the byte at guest this+0xC64 loses its 0x08 and its 0x04 bit (0x00007B54 and
+// 0x00007B60), the timer at guest this+0xB84 is zeroed (0x00007B68), the animation state goes
+// "ready" (guest this+0x6B4 = 1, 0x00007B6C) and the counter at guest this+0xB54 takes the counter
+// at guest this+0xB50 plus one (0x00007B70..0x00007B78). Then the module's waypoint picker
+// (fn_9_2A98) takes the waypoint (0x00007B7C); when it fails the animation state goes "over"
+// (0x00007C34). The actor's own material filter gets kMT_Ceiling and kMT_Wall in its exclude list
+// (the data words 0x1D and 0x1E at lbl_9_data_7E8 and lbl_9_data_7EC, 0x00007B94..0x00007C10) and the
+// module's push vector (guest this+0xBB8) is cleared (0x00007C14..0x00007C2C).
+//
+// On update (the guest's message 1, 0x00007C40) the loop-attack command may be issued (the
+// guest's ShouldRetry with the command id 9, 0x00007C40..0x00007C4C): then the actor's vertical
+// movement flag (the byte at guest this+0x34C's 0x40 bit, 0x00007C58..0x00007C68) is set, the
+// ground collider material is removed (0x00007C74), the loop-attack command is delivered
+// (0x00007CC4) and the shield's collision actor manager goes active (0x00007D0C). When the
+// command may not be issued and the body is in the loop attack (0x00007D18..0x00007D20) the timer
+// at guest this+0xB84 is zeroed (0x00007D2C) and, while the byte at guest this+0xC64 has no
+// 0x04 bit, the commando either has reached the waypoint (the waypoint is behind it or inside
+// the actor's own bounding box - 0x00007E70..0x00007DF0) and takes the next one (fn_9_2A98 with
+// the third argument set, 0x00007E00; when that fails the body is told to leave the state, the
+// command id 0xa, 0x00007E2C) or it turns towards the waypoint (fn_9_2474, 0x00007E54).
+//
+// On deactivate (the guest's message 2, 0x00007E5C) the animation state goes "not ready"
+// (0x00007E60), the body is told to leave the state (the command id 0xa, 0x00007E84) - and, when
+// the byte at guest this+0xC64 has its 0x04 bit, the abort command (the id 0xd) instead
+// (0x00007EC8) - the waypoint the commando is at goes to guest this+0xBDA (0x00007ED8), the actor's
+// vertical movement flag is cleared (0x00007EF0..0x00007EF8), the ground collider material is
+// added (0x00007EFC), the actor's own material filter loses kMT_Ceiling and kMT_Wall again (the
+// data words 0x1D and 0x1E at lbl_9_data_7F0 and lbl_9_data_7F4, 0x00007F04..0x00007F90), the shield's
+// collision actor manager goes inactive (0x00007FA0), the module's own activate helper (fn_9_1EF8)
+// runs (0x00007FA8) and the bytes at guest this+0xC64 and this+0xC65 lose their 0x08 and their
+// 0x04 bit (0x00007FB4 and 0x00007FC0).
 void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_7A98");
+  switch (msg) {
+  case kStateMsg_Activate: {
+    xc65_ |= 0x04;                    // 0x00007B2C (the shield is up)
+    xc66_ &= ~0x20;                   // 0x00007B48
+    xc64_ &= ~0x08;                   // 0x00007B54
+    xc64_ &= ~0x04;                   // 0x00007B60
+    xb84_ = 0.f;                      // 0x00007B68
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x00007B6C
+    xb54_ = xb50_ + 1;                // 0x00007B70..0x00007B78
+    if (!x2A98_PickWaypoint(mgr, false)) {  // 0x00007B7C
+      mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x00007C34
+      break;
+    }
+    CMaterialFilter filter = GetMaterialFilter();
+    filter.ExcludeList().Add(kMT_Ceiling);  // the data word 0x1D at lbl_9_data_7E8
+    filter.ExcludeList().Add(kMT_Wall);     // the data word 0x1E at lbl_9_data_7EC
+    SetMaterialFilter(filter);              // 0x00007C10
+    xbb8_ = CVector3f::Zero();               // 0x00007C14..0x00007C2C
+    break;
+  }
+  case kStateMsg_Update: {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      // 0x00007C58: the vertical movement flag (the byte at guest this+0x34C's 0x40 bit).
+      mVerticalMovement = true;
+      RemoveMaterial(kMT_GroundCollider, mgr);  // 0x00007C74
+      // 0x00007CC4: the loop-attack command; the guest's payload is the loop attack type 4, no
+      // wait for the animation and the skip-into flag clear.
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Four, false));
+      if (mCollisionShield.get() != nullptr) {
+        mCollisionShield->SetActive(mgr, true);  // 0x00007D0C
+      }
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
+      xb84_ = 0.f;  // 0x00007D2C
+      if ((xc64_ & 0x04) != 0) {  // 0x00007D34
+        BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00007E3C (the id 0xa)
+      } else {
+        // 0x00007E70: the commando has reached the waypoint when the waypoint is behind it or
+        // inside the actor's own bounding box.
+        const CVector3f delta = xb94_ - GetTranslation();
+        const CAABox box = GetBoundingBox();
+        const float height = box.GetMaxPoint().GetZ() - box.GetMinPoint().GetZ();
+        const float along = CVector3f::Dot(GetTransform().GetForward(), delta);
+        if (along <= 0.f || delta.MagSquared() <= height * height) {  // 0x00007DDC..0x00007DF0
+          if (!x2A98_PickWaypoint(mgr, true)) {  // 0x00007E00
+            BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00007E2C (the id 0xa)
+          }
+        } else if ((xc64_ & 0x08) == 0) {  // 0x00007E40..0x00007E48
+          x2474_TurnToWaypoint(mgr, dt);  // 0x00007E54
+        }
+      }
+    }
+    break;
+  }
+  case kStateMsg_Deactivate: {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);  // 0x00007E60
+    BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00007E84 (the id 0xa)
+    if ((xc64_ & 0x04) != 0) {  // 0x00007EA0..0x00007EA4
+      BodyController()->CommandMgr().DeliverCmd(kBSC_AbortScripted);  // 0x00007EC8 (the id 0xd)
+    }
+    xbda_ = x6c0_;  // 0x00007ED8..0x00007EE8
+    mVerticalMovement = false;  // 0x00007EF0..0x00007EF8
+    AddMaterial(kMT_GroundCollider, mgr);  // 0x00007EFC
+    CMaterialFilter filter = GetMaterialFilter();
+    filter.ExcludeList().Remove(kMT_Ceiling);  // the data word 0x1D at lbl_9_data_7F0
+    filter.ExcludeList().Remove(kMT_Wall);     // the data word 0x1E at lbl_9_data_7F4
+    SetMaterialFilter(filter);                 // 0x00007F90
+    if (mCollisionShield.get() != nullptr) {
+      mCollisionShield->SetActive(mgr, false);  // 0x00007FA0
+    }
+    x1EF8_Activate();  // 0x00007FA8
+    xc64_ &= ~0x08;    // 0x00007FB4
+    xc65_ &= ~0x04;    // 0x00007FC0
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, float dt) {
