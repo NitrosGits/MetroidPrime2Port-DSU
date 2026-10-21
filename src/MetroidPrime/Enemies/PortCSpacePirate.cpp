@@ -635,6 +635,10 @@ void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
 // fn_72_EFD4 (0xCC): a squad (0xba0 != kInvalidUniqueId, asm 0xF00C) that still resolves (asm
 // 0xF028) and has this member within 20 units (rodata B74 = 20.0, asm 0xF040-0xF04C) picks the
 // best individual target (asm 0xF060); every other case falls to ChoosePlayer (asm 0xF068-0xF07C).
+// All four arms ran (tools/cov, 06_sand_alamofront L2, 2026-10-21): no squad, in range (2 hits) and
+// out of range, and a squad id whose manager is gone (150 hits: `send <team> Delete`, then the player
+// deactivated with `send <player> Deactivate` so ChooseTarget falls back to ChooseTeamTarget).
+// @ fn_72_EFD4
 TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
   if (xba0_teamAiMgrId != kInvalidUniqueId) {
     CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));

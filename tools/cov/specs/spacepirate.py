@@ -24,7 +24,11 @@ SPEC = [
     # because the capped entry above fills long before a forced WallHang
     ('689C AnimOver: in wall hang', 'CSpacePirate::AnimOver(', ['$this->x8f7_29_inWallHang'], 'max=1000000'),
     ('69AC WallHang', 'CSpacePirate::WallHang(', ['$rdx'], ''),
-    ('7078 WarpIn', 'CSpacePirate::WarpIn(', ['$rdx'], ''),
+    # msg, warp point, 0x8fa bit 0x08 (fade armed), cached time > FLT_EPSILON (rodata BDC); 'calls'
+    # splits case 0 (DetectDynamicCollisionBoolean vs AddMaterial) and case 1 (DeliverCmd vs fade)
+    ('7078 WarpIn', 'CSpacePirate::WarpIn(',
+     ['$rdx', '$this->xc04_warpPoint', '$this->x8fa_28_', '$this->xbd0_ > 1.2e-7', '$this->mColor.mA'],
+     'calls max=20000'),
     ('77D0 ShouldWarpIn', 'CSpacePirate::ShouldWarpIn(',
      ['$this->xc04_warpPoint', '$this->x8f6_24_trooper', '$this->x8fa_26_'], 'ret'),
     ('8464 TurnAround', 'CSpacePirate::TurnAround(', ['$rdx'], ''),
@@ -53,8 +57,8 @@ SPEC = [
     # DE5C/DFD4/EFD4 end in tail calls (jmp), so their arms are read off the call sites ('calls'):
     # the cast-null arm is the TCastToPtr count minus the count of the call that follows it
     ('DE5C UpdateTeamTarget', 'CSpacePirate::UpdateTeamTarget(', ['$this->xba0_teamAiMgrId.value != 0xffff'], 'calls max=20000'),
-    ('DFD4 SquadJoin', 'CSpacePirate::SquadJoin(', ['$this->xba0_teamAiMgrId.value != 0xffff', '$this->x8f4_27_melee'], 'calls'),
-    ('EFD4 ChooseTeamTarget', 'CSpacePirate::ChooseTeamTarget(', ['$this->xba0_teamAiMgrId.value != 0xffff'], 'calls'),
+    ('DFD4 SquadJoin', 'CSpacePirate::SquadJoin(', ['$this->xba0_teamAiMgrId.value != 0xffff', '$this->x8f4_27_melee', '$this->mUniqueId.value & 0x3ff'], 'calls max=20000'),
+    ('EFD4 ChooseTeamTarget', 'CSpacePirate::ChooseTeamTarget(', ['$this->xba0_teamAiMgrId.value != 0xffff', '$this->mUniqueId.value & 0x3ff'], 'calls max=20000'),
     ('E090 GetOrigin', 'CSpacePirate::GetOrigin(', [], ''),
     ('E3D8 Touch', 'CSpacePirate::Touch(', [], ''),
     ('EDEC ChooseTarget', 'CSpacePirate::ChooseTarget(', [], ''),

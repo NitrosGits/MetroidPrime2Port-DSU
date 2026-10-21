@@ -769,6 +769,10 @@ bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
 // fn_72_686C (0x30): true unless the 0x8f4 byte's bit 28 (mask 0x08, the data flag 0x10; asm
 // 0x6874 `extrwi.`) is set; with it set, true once the hold-position time (0xbac) is above 6
 // (rodata BE8 = 6.0, asm 0x6880-0x688C `fcmpo` + `ble`).
+// All three arms ran (tools/cov, 2026-10-21): bit clear (06_sand_alamofront L2, 400 hits), bit set
+// with the hold time <= 6 and > 6 (08_sand_casualpirates L3 0036013d/003600fa, console `fsm Attack`/
+// `fsm Lurk` and 12 s held, then `fsm JumpBack`: 246 hits with the time > 6).
+// @ fn_72_686C
 bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
   return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
 }
@@ -791,12 +795,14 @@ bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) con
 }
 
 // Retail fn_72_77D0 (0x34): the warp point (0xc04) has to be -1 and the 0x8f6 byte's bit 24 (mask
-// 0x80, the data flag 0x10000) and the 0x8fa byte's bit 26 (mask 0x20, the data flag 0x04000000)
-// have to be set (asm 0x77D8-0x77F8). The trace's argument is the arm: 1 = the warp point is not
-// -1, 2 = not a trooper, 3 = the data flag 0x04000000 is missing, 4 = all three hold. The last
-// arm needs a placement with the data flag 0x04000000, which no shipped SpacePirate placement
-// carries (the scan of all 65 placements, tools/scan_pirt_props.py), so the other three arms are
-// all the run can reach.
+// 0x80, the data flag 0x40000 - the trooper) and the 0x8fa byte's bit 26 (mask 0x20) have to be set
+// (asm 0x77D8-0x77F8). Bit 26 is not a data flag: the kSM_Activate handler sets it at run time for a
+// trooper (fn_72_E498, asm 0xE38C). The trace's argument is the arm: 1 = the warp point is not -1,
+// 2 = not a trooper, 3 = the trooper has not been activated, 4 = all three hold.
+// All four arms ran (tools/cov, 2026-10-21): 1 in 07_sand_alamoportalobservation L3 (a trooper that
+// warped out, 0xc04 = 1), 2 for the non-troopers, 3 and 4 for the troopers before and after their
+// activation message.
+// @ fn_72_77D0
 bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
   const int arm = xc04_warpPoint != -1 ? 1 : (!x8f6_24_trooper ? 2 : (!x8fa_26_ ? 3 : 4));
   TraceCall(*this, "ShouldWarpIn trigger", arm);

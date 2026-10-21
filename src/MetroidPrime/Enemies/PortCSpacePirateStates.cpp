@@ -61,6 +61,7 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x70D4
     mColor.SetAlpha(0.f);
     mAlphaDelta = 0.f;
     xc04_warpPoint = 0;
@@ -90,14 +91,20 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
         SetTransform(
             CQuaternion::FromMatrix(wp->GetTransform()).BuildTransform4f(GetTranslation()));
       }
+      // +/-10 (rodata B58, 0x72B0-0x7318) around the pirate, filtered to the materials of data
+      // 8AC/8B0/8B4 = 0x3b/0x20/0x21 (Solid, Player, Character; 0x724C-0x72A4).
       const CVector3f extent(10.f, 10.f, 10.f);
       const CAABox bounds(GetTranslation() - extent, GetTranslation() + extent);
       const CMaterialFilter filter =
           CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Player, kMT_Character));
       rstl::reserved_vector< TUniqueId, 1024 > nearList;
       mgr.BuildNearList(nearList, bounds, filter, this);
+      // A clear box (0x735C-0x7360) moves the warp point to 1 (0x7364-0x736C) and puts back
+      // Character/Solid/Target (0x21/0x3b/0x28, 0x7374-0x7380); Orbit waits for Deactivate.
       if (!CGameCollision::DetectDynamicCollisionBoolean(*GetCollisionPrimitive(), GetTransform(),
                                                          nearList, mgr)) {
+        xc04_warpPoint = 1;
+        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, mgr);
       }
       break;
     }
@@ -137,6 +144,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x6EB4
     xc04_warpPoint = 1;
     x8fa_28_ = false;
     break;
@@ -961,6 +969,13 @@ void CSpacePirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
 // (asm 0xE02C) or one that is no CScriptTeamAiMgr (asm 0xE04C) ends it. The role is the 0x8f4 byte's
 // melee bit (bit 27, asm 0xE060): set 1 = kTAR_Melee (asm 0xE068), clear 2 = kTAR_Projectile (asm
 // 0xE05C); then 3 = kTAR_Unknown (asm 0xE06C) and -1 = kTAR_Invalid (asm 0xE070).
+// Every live arm ran (tools/cov, 2026-10-21): no team found (melee pirates, 08_sand_casualpirates L3),
+// found and joined (07_sand_alamoportalobservation L3), already valid and joined again (368 entries,
+// 06_sand_alamofront L2, console `fsm Taunt` then `fsm Generate`), already valid but the manager gone
+// (226 casts that failed after `send <team> Delete`). The melee role (asm 0xE068) is data-dead: all
+// three melee placements (data flag 0x8: alamofront 001d000f, casual 0036013d/003600fa) ran SquadJoin
+// and GetAssociatedTeamId found no team for any of them.
+// @ fn_72_DFD4
 void CSpacePirate::SquadJoin(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     xba0_teamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -1182,6 +1197,7 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x69F8
     x8f7_29_inWallHang = true;
     if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
       const TUniqueId id = cover->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next);
@@ -1253,6 +1269,7 @@ void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0xB420
     SquadReset(mgr); // fn_72_DEDC
     xbb0_leashTimer = 0.f;
     x8fa_25_ = true;
@@ -1551,6 +1568,7 @@ void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6b4 = 1, asm 0x535C
     xbb0_leashTimer = 0.f;
     break;
   case kStateMsg_Update:
