@@ -33,6 +33,23 @@ it the runner warns "has no USA/" and falls back to the front end):
 run ends: don't start one by hand. A script that launches the game itself must kill the Xvfb it
 started (the orchestrator's watcher reaps client-less ones older than 30 min).
 
+`PRESENT_EVERY=<n>` (default 6) shows one frame in n on the Xvfb, and `RENDER_EVERY=<n>` (default:
+`PRESENT_EVERY`) builds one frame in n: the frames in between are dropped before they are recorded,
+so the game spends no CPU on the frames it never shows (a sandworm smoke run: 29.1 s of game CPU
+with `RENDER_EVERY=1` against 8.6 s with the default 6). A frame that is not rendered keeps the last
+rendered frame's EFB, so the read-backs (`GXPeekZ`, the EFB copy) return the last drawn values, and
+a screenshot always comes from a rendered frame (the frame it is taken in and the one after it are
+both rendered).
+
+An EFB copy (`GXCopyTex`) is the one thing that still costs a frame: a copy into a destination that
+was copied within the last N frames (N = the render interval, `AURORA_RENDERSKIP_COPYDEST_N`
+overrides it) keeps its texture and is skipped with the frame, so its image lags by up to N frames;
+a new or one-shot destination (a render-to-texture at an area load) is rendered in full, so the
+texture is produced. `AURORA_RENDERSKIP_COPYDEST=0` turns that off: every copy then renders its
+frame. The log says how much the copies cost at shutdown (`AURORA_RENDER_EVERY: N frames were
+rendered in full because they hold an EFB copy (M of them a read-back), K copies were skipped
+because their destination was fresh`).
+
 ## Fast runs and console scripts
 
 `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=<1..16>` runs exactly that many fixed 1/60 s ticks per loop
@@ -75,4 +92,41 @@ console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Re
 `/tmp/opencode/smoke-<git hash>` by default (the card copied per family is `--save`, default
 `/tmp/opencode/mi_u`), and `tools/smoke/compare.py <new out> <old out>` prints exit, caught,
 reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
+
+## Branch coverage of the port module bodies (gcov)
+
+The decomp lanes prove "every arm of a ported body ran" with gdb breakpoints, one spec per
+function (`tools/cov/`). A coverage build answers the same question for *every* body at once: it
+compiles the port's REL module bodies (the sources `tools/modules_port.txt` lists) with gcov, and
+one ordinary run then reports the branch coverage of all of them.
+
+    T=$PWD/../MetroidPrimePort/build/review-tools/bin      # no system cmake/ninja
+    $T/cmake -S . -B build-port-cov -G Ninja -DCMAKE_MAKE_PROGRAM=$T/ninja \
+      -DMP_SDK_HEADERS_ONLY=OFF -DMP_PORT_COVERAGE=ON \
+      -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_LINKER_TYPE=MOLD
+    $T/ninja -C build-port-cov metroid_prime2_port
+
+`MP_PORT_COVERAGE` is off by default and the normal build (`build-port-link`) is unchanged by it:
+with the option off no flag is added and no source is compiled differently. The coverage build is
+its own directory because a coverage build is not the port (the counters cost time and the code is
+instrumented).
+
+A run writes its profile (the `.gcda` files) into its own directory: the run scripts set
+`GCOV_PREFIX` (and `GCOV_PREFIX_STRIP`, which drops the build directory's own path components so
+the tree under the prefix mirrors the build tree) when the binary is a coverage build, so
+concurrent runs do not write over each other. The game flushes the counters however the run ends -
+a clean quit, the harness's `timeout` (SIGTERM) or a Ctrl-C (SIGINT) - through the hook in
+`platform/port_coverage.cpp`, so a killed run still leaves a profile.
+
+    BUILD=$PWD/build-port-cov tools/smoke/run.sh --build $PWD/build-port-cov --out /tmp/opencode/cov \
+      --jobs 4 sandworm
+    tools/cov/gcov_report.py $PWD/build-port-cov /tmp/opencode/cov/gcov_sandworm/gcov --module Sandworm
+
+`tools/cov/gcov_report.py <build dir> <gcov prefix dir>... [--module <Name>] [--fn fn_10_1D794]`
+prints one row per body: the retail id, the C++ name, the lines hit, the branches taken, the lines
+whose branch was never taken, and `ALL-ARMS` when every branch of the body was taken. Several
+prefix dirs may be given: their counters are merged, so the arms of a natural run and of a forced
+one add up. The id of a body is the `// @ fn_<mod>_<hex>` marker above it (or the id its comment
+block names). gdb is still what forces an arm no run reaches (`tools/cov/force.sh`): coverage says
+which arm is missing, not how to reach it.
 
