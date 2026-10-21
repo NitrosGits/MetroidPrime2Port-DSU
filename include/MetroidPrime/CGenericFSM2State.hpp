@@ -49,6 +49,12 @@ public:
   int PortFindStateDepth(const rstl::string& name, int maxDepth) const;
   int PortSetStateDeep(CStateManager& mgr, T& owner, const rstl::string& name, const char** path,
                        int maxDepth);
+  // Port console (`statecall`): the function SetStateFunctions was given under `name`, whether or
+  // not a node of the asset uses it (so a state the shipped FSM never enters can still run), or
+  // null.
+  StateFunc PortFindStateFunction(const char* name) const;
+  // Port console (`trigcall`): the same for the trigger table SetTriggerFunctions was given.
+  TriggerFunc PortFindTriggerFunction(const char* name) const;
 #endif
 
 private:
@@ -83,6 +89,12 @@ private:
   const CState2* mState;
   float mTime;
   float mDelay;
+#ifdef TARGET_PC
+  const SStateFunction* mPortStateFunctions = nullptr; // the last table SetStateFunctions got
+  int mPortStateFunctionCount = 0;
+  const STriggerFunction* mPortTriggerFunctions = nullptr; // the last table SetTriggerFunctions got
+  int mPortTriggerFunctionCount = 0;
+#endif
 };
 
 #endif // _CGENERICFSM2STATE

@@ -344,7 +344,8 @@ Three vtables; all start with two zero words (offset-to-top + null RTTI), so slo
 | 0x3C / 0x48 / 0x84 | `GetHealthInfo` / `GetTouchBounds` / `CollidedWith` | `fn_75_D0` / `fn_75_18` / `fn_75_6178` | `fn_75_D0` / `fn_75_18` / `fn_75_ECA4` |
 | 0x40 | `GetDamageVulnerability() const` | `fn_75_616C` | `fn_75_EF24` |
 | 0x54 | `GetAimPosition(const CStateManager&, float) const` | `fn_75_5F8C` | inherited |
-| 0x70 | `GetSortingBounds(const CStateManager&) const` | `fn_75_6394` | `fn_75_EFA4` |
+| 0x6C | `GetSortingBounds(const CStateManager&) const` | inherited | inherited |
+| 0x70 | `DoUserAnimEvent(CStateManager&, const CInt32POINode&, EUserEventType, float)` (CPatterned's slot; not GetSortingBounds) | `fn_75_6394` | `fn_75_EFA4` |
 | 0x98 | `Death(CStateManager&, const CVector3f&, EScriptObjectState)` | inherited | `fn_75_EB04` |
 | 0x9C | `KnockBack(CStateManager&, const CKnockBackInfo&)` | `fn_75_6174` | `fn_75_EBF4` |
 | 0xA8 / 0xC8 | `CanBeShot` / `GetModelAlphau8` | `fn_75_AC` / `fn_75_64` | `fn_75_AC` / `fn_75_64` |
@@ -383,7 +384,7 @@ local overrides are 0x08 `fn_75_11804` (dtor), 0x14 `fn_75_10DC4` (Think), 0x24 
 | 0x0FC-0x4AB | **SPLU (command module) loader** `fn_75_FC` (0x370) + its helpers: `fn_75_46C` (copies the animation set into a `CModelData`), `fn_75_4AC`, `fn_75_4F4` (a `CToken` copy), `fn_75_630` (the `SLdrUnknownStruct42` loader, 0x1BC) |
 | 0x4AC-0x5497 | behaviour bodies of the command module (its FSM states/triggers/codes); the exact split is **unknown** |
 | 0x5498-0x5A9F | the destructors of the `CMemory` vtables that live in `.data` (e.g. `.data:0x0` → `fn_75_5A40`, `.data:0xCAC` → `fn_75_5A54` = the auto-destruct starter) |
-| 0x5AA0-0x7BDB | command-module class: `SetupStateMachine` `fn_75_5E8C`, `Listen` `fn_75_5F18`, `GetAimPosition` `fn_75_5F8C` (0x1E0), `CollidedWith` `fn_75_6178`, `GetSortingBounds` `fn_75_6394`, `Think` `fn_75_6490`, `PreThink` `fn_75_654C` (0x24C), dtor `fn_75_6798`/`fn_75_6890`, `fn_75_6A74`, **ctor `fn_75_6B08`** (0x414); `LdrTo*` converters `fn_75_70A0`..`fn_75_7888`; SPLU runtime builder `fn_75_791C` |
+| 0x5AA0-0x7BDB | command-module class: `SetupStateMachine` `fn_75_5E8C`, `Listen` `fn_75_5F18`, `GetAimPosition` `fn_75_5F8C` (0x1E0), `CollidedWith` `fn_75_6178`, `DoUserAnimEvent` `fn_75_6394`, `Think` `fn_75_6490`, `PreThink` `fn_75_654C` (0x24C), dtor `fn_75_6798`/`fn_75_6890`, `fn_75_6A74`, **ctor `fn_75_6B08`** (0x414); `LdrTo*` converters `fn_75_70A0`..`fn_75_7888`; SPLU runtime builder `fn_75_791C` |
 | 0x7C80-0x81F7 | `fn_75_7C80` (0x578, jump table — own dump `auto_fn_75_7C80_text.s`): a big dispatch body; role **unknown** |
 | 0x8200-0x824F | `fn_75_8200` (returns 1), `fn_75_8208` (returns 0): the main chassis' `IsListening` / `ProjectileInfo` |
 | 0x8254-0x82AF | `fn_75_8254`: fills and registers the loader table (§0) |
@@ -433,7 +434,8 @@ and **0x39** for the head (movement 1 / collider 1 / body 7 - it flies), both wi
 `fn_75_8` projectile info, `fn_75_EF24` the pass-through vulnerability, `fn_75_6174` the head's empty
 `KnockBack`); the rest forward to `CPatterned` behind the once-only `[splitter] ... is a port
 stand-in` log. The module's table is registered with {SPLL loader, SPLU loader, auto-destruct}; the
-auto-destruct is a **documented stand-in** - `fn_75_5A54`'s body is still unknown (§j). The run:
+chassis table's auto-destruct entry is a **documented stand-in** (§j); `fn_75_5A54` itself is
+ported as the head's `PortAutoDestruct` (2026-10-21, below). The run:
 `0q_cliff_hall` (layer 0, live on load) lists 8 objects - 5 `CSplitterMainChassis` and 3
 `CSplitterCommandModule` - and they think; `09_cliff_temple_dark`'s layer 10 ('Boss Stage 2
 Splitters') loads no robot, so the boss-stage actors come from the area script, not from the layer.
@@ -468,7 +470,13 @@ triggers (module 14) are the integration test.
   {loader, loader, 0, 0xFFFFFFFF, fn_75_5A54}, but the port's struct has 3 members and the DOL's
   `AutoDestruct__20CSplitterMainChassisFf` reads one of them. Which word the DOL calls, and what
   `fn_75_5A54` (which touches offsets up to 0xF6A, only valid for the **command module**) is for,
-  is **unknown**.
+  is **unknown**. The body itself is known (2026-10-21): a live module (0x420's 0x40 bit, 0x5A58)
+  whose 0xF6A 0x04 bit is clear sets the bit (0x5A70) and stores the time as the death timer at
+  0xEF0 (0x5A78); `fn_75_32F4` counts it down and calls `Death` at zero. Ported as
+  `CSplitterCommandModule::PortAutoDestruct`. The DOL facade calls the table's {0, -1, fn_75_5A54}
+  member pointer on the object it is given (`__ptmf_scall`); nothing calls the facade. The host's
+  `CSplitterMainChassis::PortAutoDestruct` forwards to the module's port when the object's
+  EPatternedAI is 0x39 (a command module) and does nothing for a chassis.
 - `fn_75_5A54` is called from `fn_75_21FC` (the command module's Think helper) — so the auto-destruct
   is the head's, not the body's. The body has no auto-destruct in the REL.
 - `fn_75_7C80` (0x578) and `fn_75_FED0` (0x8A8) are the module's **static initialisers** (the
@@ -1486,3 +1494,130 @@ state without running SetupSpinAttack (codes run only on transitions).
 | 9B9C | spin, player (0x9D20) / CAi return / non-CAi damage (0x9ED0) | ran (s4 / s4 / s5); dead return unrun → unmarked |
 | 9FA8 | spinning, boosting player (0xA070) | ran (s5); dead return unrun → unmarked |
 | B9B0, 5D50 state 2 | | not reached: SpinCollisionReaction D2A0, SpinBounce D13C, SpinAttack D7D4, BounceOffPlayer B1D8, SpunIntoPlayer E078, TooManyBounces E040, SpunIntoGeometry E06C are stand-ins |
+
+## Spin sub-machine (2026-10-21)
+
+Ported: SpinAttack `D7D4`, the steered spin move `963C` (`PortSpinMove`), SpinCollisionReaction
+`D2A0`, SpinBounce `D13C`, SpinToIdle `CF44`, BounceOffPlayer `B1D8`, BounceOffGeometry `B104`,
+TooManyBounces `E040` (unsigned `0xCFC >= 0x888`), SpunIntoGeometry `E06C` (0xD40 0x04),
+SpunIntoPlayer `E078` (0xD40 0x08) and CollidedWith `ECA4` (the 0x04 bit's only writer). New fields:
+0xCE4 `mCollisionNormal`, 0xCF0 `mBounceVector`, 0xD24 `mBounceTime`. A natural spin now goes
+SpinAttack → SpinCollisionReaction/SpinBounce (bounces off the player and walls) → SpinToIdle →
+EndSpinAttack → the head's PortResetShield (state 2).
+
+Runs (914f1381 layer 2, real speed, `/tmp/opencode/spl/rdrv.py` reactive driver): s7, s11 natural
+(Alert, then IM01 + `place u0532 player 18` until the spin; s11 without godmode); s8 forced (`place`
+±18 every update); s10 forced (90° `place` flips from the telegraph on, `place u0532 player 3; boost`
+in the spin, `send u0531 Delete` in the spin). A 180° flip (s9) makes 963C's Slerp NaN and hangs the
+game (retail math; not natural).
+
+| fn | arm | result |
+|---|---|---|
+| E040 / E06C / E078 | true, false | ran (s7) → marked |
+| B1D8 | plain / boosted | ran (s7) / forced (boost, s10); no-target dead (0xCC0 is the player) → marked |
+| B104 | reflected | ran (s7); unsafe normal dead (0x04 is set with a unit normal) → marked |
+| 963C | turn, slerp, accel, decel, max clamp / speed ≤ 0 clamp | ran (s7) / forced (90° place flips, s10); dt, unsafe velocity dead (one caller) → marked |
+| D2A0 | sev 2, sev 5 / no issue | ran (s7) / ran (s8) → marked |
+| D13C | safe bounce, over, move / unsafe bounce | ran (s7) / forced (place ±18, s8) → marked |
+| CF44 | type 3, no issue / type 5 | ran (s7) / forced (boost, s10) → marked |
+| B9B0 | head / no head | ran (s7) / forced (send u0531 Delete, s10) → marked |
+| 5D50 | shield state 2 (0x5D90) | ran (s7) → marked |
+| D7D4 | far + unsafe steering | not run (needs a target >10 straight above/below with no separation; a forced vertical place kept a separation) → unmarked |
+| ECA4 | non-CAi object without health / damaged by the spin | not run (wall, steep, floor, CAi, immune ran) → unmarked |
+| 9B9C, 9FA8 | dead-chassis returns | not reached: `damage u0532 99999` leaves hp 10/10 (pass-through vulnerability) → unmarked |
+
+## Chassis and head stand-ins (2026-10-21)
+
+Ported every remaining stand-in. Chassis: IsIntact `E62C`, HasHead `E58C`, CanReachTarget `E530`,
+PathShagged `E4DC`, PathOver `E494`, ShouldDeploy `E028`, DeployPathOver `E00C`, Idle `DFE4`, Inactive
+`DF88`, Activate `DDF8`, Dodge `D61C`, SetRetreatDest `BBC0`, HoldingTube `CC98`, SpawnDrop `CCF0`,
+WaitForSnatch `C8F4`, WaitForDocking `C9E4`, FollowDeployPath `C51C`, DeploymentLanding `C034`. Head:
+HasDockingPath `5864`, DockingPathOver `57D4`, PathOver `55B0`, PathShagged `5568`, SpawnIdle `5498`,
+SeekMainChassis `4138`, FollowDockingPath `3FE0`, SetDockingDest `3BEC`, PortDodgeShield `5CC4`,
+PortSnatchShield `5B28`. C51C and C034 keep retail's radians-vs-degrees turn-limit compare.
+
+Runs (914f1381 layer 2, probes on every if/return/case): d1 `fsm` forcing, d2-d4 under gdb
+(`gdb -x` launching the game; Python breakpoints). `default:` arms are dead: EStateMsg has three values.
+
+| fn | arm | result |
+|---|---|---|
+| DFE4 / DF88 / CC98 | body / both | forced (fsm u0532 Idle / Inactive / HoldingTube) → marked |
+| DDF8 | issue / no issue, generate / not | forced (fsm u0532 Activate, also right after fsm Dodge) → marked |
+| D61C | dir 5 with head / headless | forced (gdb: mDodgeDirection = 5 at Dodge's Activate; fsm u0532 / u0521 Dodge, u0520 killed) → marked |
+| D61C | step issue / not, deactivate head / headless | forced (fsm u0532 Dodge, fsm u0521 Dodge) → marked |
+| 5CC4 / 5B28 | both / body | ran (Dodge dir 5 / fsm WaitForSnatch) → marked |
+| 9B9C, 9FA8 | dead-chassis returns | forced (gdb: mAlive = 0 for one call mid-spin, restored by a FinishBreakpoint); 9B9C also ran after `kill u0532` (e1) → marked |
+| 9B9C | 0xD40 0x40 return, null collision actor, non-boosting player with 0xD40 0x2 | forced (gdb, e1: the bit / sender kInvalidUniqueId / the bit for one call) → marked |
+| 9B9C | plain contact damage, damage wait above 0 | ran (e1: `place u0532 player 1` while idle) → marked |
+| 9FA8 | not spinning, touched not a boosting player / sender not a collision actor | ran (e1: shots before and in the spin) / forced (gdb: sender kInvalidUniqueId in the spin, e1) → marked |
+| D7D4 | far + unsafe steering | forced (gdb: offset (0,0,20) at the far test, steering zeroed; MoveInOneFrameOR ran) → marked |
+| C9E4 | head coming / not, loop attack issue / not, exit | ran (e1, e2: `kill u0532`, head u0531 docks to the headless u0521) → marked |
+| C9E4 | head of its own, head checking another chassis | forced (gdb: 0xC6C / the head's 0xEFC set to 0x1234 for one Update, e2) → marked |
+| 4138 | chassis, moving / on the goal; no chassis; far + unsafe | ran (e2 docking); forced (gdb: 0xEFC invalid for one Update, e4); forced (gdb: head x = -inf for one Update, e11; IsMagnitudeSafe needs length² ≥ 1e-28 and finite) → marked |
+| 3BEC | chassis / none | ran (e1) / forced (gdb: 0xEFC invalid for the call, e3) → marked |
+| CCF0, 5498, C8F4, C51C, C034, E028, E00C, E4DC, 55B0, 5568, E99C, E90C, E810 | | see "Shipped spawns, snatch and deploy" below → marked |
+| E62C, E58C, E530, E494, BBC0, 3FE0, 5864, 57D4 | | not reachable in shipped data (below) → unmarked |
+
+`kill <id>` (port cc6400712) works on the chassis: `kill u0532` gives hp 0/10, fsm Dead, and the head goes LostChassisReaction → PathFind → docks.
+
+## Shipped spawns, snatch and deploy (2026-10-21)
+
+Ported the chassis stand-ins E99C CanBeIngPossessed (false while 0xD41 0x80/0x40 or 0xD40 0x1),
+E90C SetIngPossessed (base, then tells the head) and E810 SetAttackTarget (keeps a snatching
+swarm's id at 0xCBC, sets 0x420's 0x80; no base call). The snatch path needs E810.
+
+Disc scan (`echoes_disc`, every MLVL's SCLY layers plus the SCGN generated-object section):
+SpawnDrop is in chassis FSM2 350dfc00 and SpawnIdle in head FSM2 aaaff18a; both are used only by
+the generated SPLL/SPLU in 09_cliff_temple_dark (a92f00b3, Hive Temple), spawned by GENR
+28350045/42/4a (layer 10) through SRLY 28350006/11/28. 09_cliff_temple (6c363cd4) spawns a
+snatching swarm (SCGN ISSW 82500e5) from GENR 82500e1 on TIMR 82500e4. No Splitter has a
+CONN/FOLW (docking path) or RTRT/FOLW (retreat point) link. The AttackLogic sub-machine
+(f548e6e4, dumped at run time) tests HasHead, CanReachTarget, PathOver only under HasRetreatPoint
+or in PathFind #7/#8, which only SetRetreatDest enters; no shipped FSM2 names IsIntact.
+
+Runs (probe build, `[arm]` lines once per arm; gdb forcing flips one probed condition): n2/fq1/fq2
+0n_cliff_hall (a4d81547) with `send <chassis> Start`; t9/fqB 09_cliff_temple (timer started,
+fqB kills a head first); t9d/fqC 09_cliff_temple_dark (layer 10, relays sent SetToZero);
+fqA/fqD/fqE 914f1381 (IM01 + `place` spin approach, then `kill u0521; kill u0531` so head u0520
+docks to u0532).
+
+| fn | arm | result |
+|---|---|---|
+| E028 / E00C | true, false | ran (n2) → marked |
+| C51C | activate, update arms, deactivate / dt ≤ 0, slerp | ran (n2) / forced under gdb (fq1) → marked |
+| C034 | jump / relaxed, landed, deactivate tilted / level, level-Y | ran (n2, fq1, fq2) → marked |
+| C034 | airborne update, tilted Y, unsafe flat, slerp | forced under gdb (fq1) → marked |
+| E5D0, C8F4 | all; headless activate/deactivate | ran (t9; fqB after `kill <head>`) → marked |
+| E99C / E90C / E810 | base, possessed+head, headless, not possessed, swarm target / flag set, non-swarm | ran (t9, fqB, fqA) / forced under gdb (fqB) → marked |
+| CCF0 | ray miss, landed, activate/deactivate / ray hit, still falling | ran (t9d) / forced under gdb (fqC) → marked |
+| 5498 | all | ran (t9d) → marked |
+| E4DC, 55B0, 5568 | false arms / true arms | ran (fqA) / forced under gdb (fqA, fqD, fqE) → marked |
+| E62C, E58C, E530, E494, BBC0 | | not reachable in shipped data (above) → unmarked |
+| 5864 / 57D4, 3FE0 | true arm / all | dead in shipped data (no CONN/FOLW); 5864's false arm never evaluated → unmarked |
+
+CCF0's ray (Solid+Floor include, 1000 down) missed in every natural run. Retail's filter is the
+same (2026-10-21): include (1<<59 kMT_Solid)|(1<<31 kMT_Floor) built by `__shl2i` from
+lbl_75_data_C80/C84, exclude 0, type 1 (kFT_Include) at 0xCDDC-0xCDE4, 1000.0f along
+sDownVector.
+
+### gcov re-check (2026-10-21, port merged at 939a4df7c)
+
+19 runs on build-port-cov, merged with gcov-tool: natural r0n (a4d81547), rt9/rt9k (6c363cd4),
+rt9d (a92f00b3, `tools/drivers/splitter_t9d_relays.py`), rs914 and rd1-rd8 (914f1381), and six
+gdb-forced runs of the same areas; every run caught=0. 98 markers checked:
+
+| result | bodies |
+|---|---|
+| ALL-ARMS | 20 marked bodies, plus the no-branch ones |
+| untaken edges are not retail arms (switch `default`, the last `else if (Deactivate)`, `delete`'s null test) | 11804, 42F8, D3E0, D2A0, D13C, CF44, D0A4, DDF8, BEEC, the FSM states' `switch` |
+| untaken edges forced earlier / dead in shipped data (cited in the comments) | 55B0, 5568, 4138, 3BEC, 31A8, 4864, 4AC0, 3B34, 1790, 3460, 654C, E0B0, 8DF8, B57C, B1D8, B104, 963C, D7D4, DA38, A4E4, A37C, E4DC, CCF0, C8F4, C9E4, C51C, C034, AAC4, AB8C, 9FA8, 9B9C, E99C, E810 |
+| unmarked (an arm never ran, not proven dead) | 32F4, 1188, 23F0, 270C, 909C, 8EC8, D61C, E87C |
+| newly marked (ALL-ARMS, no stand-in callee) | 2154 (teleport forced), 3D20, 9520; slice 3 (2026-10-21, two more forced 914f1381 runs, `send u0532 Damage`/`AIUpdateDisabled` and a double Deactivate in cov/scn_f914): AA68 (crouch forced), F1C0 (null manager arms forced), 8D50 (not-in-team forced), the constructors 6B08 and F5F8 (now port every retail store; F5F8's flag-word 0x1 arm forced) |
+
+ALL-ARMS but not marked: PortTargetDistanceSq (an inlined helper, no retail body). The F1C0 port read `active` after the
+base's AcceptScriptMsg; retail reads it first (0xF1E0-0xF1F4), fixed. AA68 tested the flag word
+at 0x828 with its two top bits; retail's `rlwinm. 30,30` and `clrlwi. 31` are 0x2 (lurk) and
+0x1 (crouch), fixed: lurk ran in a4d81547, relaxed in 914f1381, crouch (0x7D) forced.
+The constructors now keep the retail's initial state: the chassis starts with 0xD00 = 5 and
+0xD40's 0x80 set for the shipped flag word 0x7C (bits 0x1 and 0x8 of the word, F5F8 0xF7EC/0xF86C),
+the head with 0xF6A = 0x92 and the chassis timer 0xF14 = 3.0f.

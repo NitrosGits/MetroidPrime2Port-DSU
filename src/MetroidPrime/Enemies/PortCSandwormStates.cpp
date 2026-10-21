@@ -43,7 +43,10 @@ float WobbleStrength(const CSandworm& self) {
 
 // @ fn_56_3EF4
 void CSandworm::UpdateEmitter(CSfxHandle& handle) {
-  if (handle && !CSfxManager::IsPlaying(handle) && !CSfxManager::IsQueued(handle)) {
+  if (!handle) { // 0x3F18: no emitter, nothing to update
+    return;
+  }
+  if (!CSfxManager::IsPlaying(handle) && !CSfxManager::IsQueued(handle)) {
     CSfxManager::RemoveEmitter(handle);
     handle = CSfxHandle();
   } else {
@@ -195,7 +198,7 @@ void CSandworm::EyeKilledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   SetBodyCmdRequest(3, 0xd);
   x1520_flags |= 0x80;
   // Retail CBCTauntCmd carries a second word (0 here); the port command only has the type.
-  IssueTauntCmd(msg, pas::kAS_Taunt, CBCTauntCmd(pas::ETauntType(0x15)));
+  IssueTauntCmd(msg, pas::kAS_Taunt, CBCTauntCmd(pas::kTT_Zero));
   if (msg == kStateMsg_Deactivate && AnyEyeDead(mgr)) {
     x14D4_ = 1;
     if (!IsBombGuardian(*this)) {
@@ -596,7 +599,7 @@ void CSandworm::Snatch(CStateManager& mgr, EStateMsg msg, float dt) {
   } else if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
       // Retail CBCTauntCmd carries a second word (1 here); the port command only has the type.
-      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::ETauntType(0x15)));
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_One));
     } else if (mAnimationState.GetState() == CAnimationState::kAS_Over) {
       mSpeed = 1.f;
     }

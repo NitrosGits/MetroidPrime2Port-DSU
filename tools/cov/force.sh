@@ -5,6 +5,7 @@
 # and console port, the driver's .con file, and the same environment.
 #
 #   tools/cov/force.sh <spec.py> <out dir> <world,area> --con <cmdfile> | --driver '<cmd>' [--frames n] [--fast]
+#   tools/cov/force.sh --attach <pid> <spec.py> <out dir>   (the game is already running)
 #   (--driver as in tools/cov/run.sh: `{port}` becomes the console port; COV_GDB_SCRIPT=tools/cov/cov_force.py
 #   also counts the spec's SPEC arms, as run.sh does, with the forced members already written)
 #
@@ -12,6 +13,33 @@
 # is $COV_GDB_SCRIPT (default tools/cov/force.py) and the class is the spec's CLASS.
 set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+# force.sh changes into the build dir before gdb sources the script: make a relative path absolute.
+[ -n "${COV_GDB_SCRIPT:-}" ] && COV_GDB_SCRIPT=$(realpath "$COV_GDB_SCRIPT")
+
+# The attach mode: the game runs on its own (no gdb at the start, so the boot is not slowed
+# down), the driver plays, and gdb takes the running process to write the forced members.  It
+# needs the game started with MP2_ALLOW_PTRACE=1 (yama ptrace_scope 1 here: platform/main.cpp
+# opts in with PR_SET_PTRACER_ANY), or CAP_SYS_PTRACE; where that
+# is not granted, the normal mode below (gdb boots the game) is the way.
+if [ "${1:-}" = "--attach" ]; then
+  PID=$2; SPEC=$(realpath "$3"); OUT=$(realpath -m "$4"); shift 4
+  BUILD=${BUILD:-$ROOT/build-port-link}
+  mkdir -p "$OUT"
+  nm "$BUILD/metroid_prime2_port" > "$OUT/nm.raw"
+  nm -C "$BUILD/metroid_prime2_port" | cut -d' ' -f3- > "$OUT/nm.dem"
+  paste "$OUT/nm.raw" "$OUT/nm.dem" > "$OUT/nm.txt"
+  rm -f "$OUT/nm.raw" "$OUT/nm.dem"
+  COV_SPEC="$SPEC" COV_NM="$OUT/nm.txt" COV_OUT="$OUT" \
+    timeout -k 10 "${SECS:-900}" gdb -q -batch -nx -p "$PID" \
+      -ex 'set pagination off' -ex 'set confirm off' \
+      -ex 'handle SIGPIPE SIGUSR1 SIGUSR2 SIG32 SIG33 nostop noprint pass' \
+      -ex "source ${COV_GDB_SCRIPT:-$ROOT/tools/cov/force.py}" \
+      -ex 'continue' -ex 'quit' > "$OUT/gdb.log" 2>&1
+  echo "attached to $PID, the forced log:"
+  cat "$OUT/forced.log" 2>/dev/null | head -20
+  exit 0
+fi
+
 SPEC=$(realpath "$1"); OUT=$(realpath -m "$2"); WORLD=$3; shift 3
 CON=; DRIVER=; FRAMES=6000; EXTRA=()
 while [ $# -gt 0 ]; do
@@ -66,6 +94,8 @@ env DISPLAY="$DISP" SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dum
 GDB=$!
 trap 'kill -TERM "$GDB" 2>/dev/null' TERM INT
 wait "$GDB"; RC=$?
+# gdb -batch returns 1 when its trailing `bt` finds no stack, i.e. after a normal exit.
+grep -q "^\[Inferior 1 (process [0-9]*) exited normally\]" "$OUT/game.log" && RC=0
 [ -n "$DRV" ] && kill "$DRV" 2>/dev/null
 echo "game rc=$RC"
 echo "caught/reach-stub: $(grep -a -c '\[port\] caught\|reach-stub' "$OUT/game.log")"

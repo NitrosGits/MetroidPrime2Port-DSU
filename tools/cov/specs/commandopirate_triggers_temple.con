@@ -1,0 +1,19 @@
+# area 59 (Temple Grounds, 05_temple_federationsite_dark): the commando is woken and the module's
+# own states are forced one after the other, so every trigger is evaluated at least once.
+@f30 objs commando
+@f60 send u065a Activate
+@f120 fsm u065a CoverFind
+@f160 fsm u065a JumpPointFind
+@f200 fsm u065a Ambush
+@f240 fsm u065a Dead
+@f280 fsm u065a WallDetach
+@f320 fsm u065a SetCoverDest
+@f360 fsm u065a SetJumpDest
+@f400 fsm u065a SetRetreatDest
+@f440 fsm u065a BreakCover
+@f480 fsm u065a Cover
+@f520 fsm u065a ArmShield
+@f560 fsm u065a Lurk
+@f600 fsm u065a WarpOut
+@f640 fsm u065a PostWarpOut
+@f680 objs commando

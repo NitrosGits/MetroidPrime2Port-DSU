@@ -70,9 +70,15 @@ public:
     bool mConstantIndirectUV;
     SUVElementSet mUV;
     SUVElementSet mIndirectUV;
+#ifdef TARGET_PC
+    bool mPortScreenCopied; // the system's one viewport copy for its indirect particles
+#endif
 
     SModelRenderState() : mConstantUV(true), mConstantIndirectUV(true) {
       mModulateAlpha = false;
+#ifdef TARGET_PC
+      mPortScreenCopied = false;
+#endif
       mUV.xMax = 1.f;
       mUV.yMax = 1.f;
       mUV.xMin = 0.f;

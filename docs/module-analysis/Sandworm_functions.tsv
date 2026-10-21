@@ -374,7 +374,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x14E4C	0x34	CTransform4f	CTransform4f copy (inline)	inline-dol	H	12D68 14010	CTransform4f::CTransform4f(const&)	-
 0x14E80	0xC0	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	H	CC8C	rstl::vector<CJointCollisionDescription>	-
 0x14F40	0x68	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	H	14E80	rstl::vector<CJointCollisionDescription>	-
-0x14FA8	0x8E8	module	Module static init (.ctors): builds the global rstl::string (the REL file name in bss_C), registers fn_56_5250 as its global destructor, copies the static FSM trigger/state tables into .data	static-init	B	.ctors table (REL loader)	-	-
+0x14FA8	0x8E8	module	Module static init (.ctors): builds the global rstl::string (the REL file name in bss_C), registers fn_56_5250 as its global destructor, copies the static FSM trigger/state tables into .data	runtime	H	.ctors table (REL loader)	-	-
 0x15890	0x58	REL runtime	__destroy_global_chain: walks __global_destructor_chain, calling each registered dtor	runtime	H	.dtors$10 (REL loader)	crtexe global destructor chain	-
 0x158E8	0x1C	REL runtime	__register_global_object: pushes (object, dtor, cookie) on __global_destructor_chain	runtime	H	14FA8	crtexe global object registry	-
 0x15904	0xC4	REL runtime	_unresolved: unresolved-symbol trap; OSReport + stack walk, never returns	runtime	H	REL loader (PLC)	crtexe unresolved-symbol handler	-
