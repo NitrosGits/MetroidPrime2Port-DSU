@@ -33,7 +33,8 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   the game binary, gdb or Xvfb: a dozen lanes run them at once and you kill their runs. Delete your run
   outputs from `/tmp` (a 31 GB tmpfs).
 - Never end your turn with a run in flight: nothing wakes you. Wait for it in the foreground
-  (`timeout`), or on a background command you are notified for. Run independent runs
+  (`timeout`, or `wait <pids>` in one foreground command); background-shell notifications do not
+  reliably wake a lane whose turn has ended. Your last message is always the report. Run independent runs
   concurrently (each cov/smoke run takes its own slot) instead of one after another.
 
 ## Coverage without probes
