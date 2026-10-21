@@ -29,6 +29,101 @@ constexpr uint32_t kDrawBatchSize = 1;
 
 bool sFrameActive = false;
 uint32_t sPendingDraws = 0;
+// Port: AURORA_RENDER_EVERY: whether the frame being recorded is rendered at all.
+std::atomic_bool sFrameRendered{true};
+// Port: how many frames were raised to "rendered" because they hold an EFB copy, and how many of
+// them were raised by a read-back rather than by a copy into a texture.
+std::atomic_uint32_t sFramesForcedRendered{0};
+std::atomic_uint32_t sFramesForcedByReadback{0};
+
+namespace {
+// Port: AURORA_RENDERSKIP_COPYDEST: the GXCopyTex destinations and the frame each was last copied
+// in. The table is small: the game copies into a handful of buffers (the scan visor's window, the
+// spare buffer, the cloaks).
+struct CopyDestination {
+  uint64_t address = 0;
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint32_t format = 0;
+  uint64_t lastCopiedFrame = 0;
+  bool used = false;
+};
+constexpr size_t MaxCopyDestinations = 32;
+CopyDestination sCopyDestinations[MaxCopyDestinations];
+// The frame the game is recording (the FIFO's frame boundary).
+uint64_t sFrameNumber = 0;
+// The render interval: the default limit on how stale a copy's texture may be.
+uint32_t sRenderInterval = 1;
+std::atomic_uint32_t sCopiesSkipped{0};
+
+// AURORA_RENDERSKIP_COPYDEST=1 turns the destination rule on, 0 turns it off.
+bool copy_destination_rule_enabled() {
+  static const bool enabled = [] {
+    const char* env = std::getenv("AURORA_RENDERSKIP_COPYDEST");
+    if (env != nullptr) {
+      return std::strcmp(env, "0") != 0;
+    }
+    return true;
+  }();
+  return enabled;
+}
+
+// How many frames a copy's texture may lag behind: the render interval, or
+// AURORA_RENDERSKIP_COPYDEST_N when that is set.
+uint32_t copy_age_limit() {
+  static const uint32_t limit = [] {
+    const char* env = std::getenv("AURORA_RENDERSKIP_COPYDEST_N");
+    if (env != nullptr) {
+      const long v = std::strtol(env, nullptr, 10);
+      if (v > 0) {
+        return static_cast<uint32_t>(v);
+      }
+    }
+    return 0u; // 0: the render interval
+  }();
+  return limit != 0 ? limit : sRenderInterval;
+}
+
+CopyDestination* find_copy_destination(uint64_t address, uint32_t width, uint32_t height,
+                                        uint32_t format) noexcept {
+  for (auto& candidate : sCopyDestinations) {
+    if (candidate.used && candidate.address == address && candidate.width == width &&
+        candidate.height == height && candidate.format == format) {
+      return &candidate;
+    }
+  }
+  return nullptr;
+}
+
+CopyDestination* add_copy_destination(uint64_t address, uint32_t width, uint32_t height,
+                                       uint32_t format) noexcept {
+  CopyDestination* slot = nullptr;
+  for (auto& candidate : sCopyDestinations) {
+    if (!candidate.used) {
+      slot = &candidate;
+      break;
+    }
+  }
+  if (slot == nullptr) {
+    // The table is full: reuse the oldest entry.
+    slot = &sCopyDestinations[0];
+    for (auto& candidate : sCopyDestinations) {
+      if (candidate.lastCopiedFrame < slot->lastCopiedFrame) {
+        slot = &candidate;
+      }
+    }
+  }
+  *slot = CopyDestination{
+      .address = address,
+      .width = width,
+      .height = height,
+      .format = format,
+      .lastCopiedFrame = 0,
+      .used = true,
+  };
+  return slot;
+}
+} // namespace
 std::atomic<uint64_t> sPublished{0};
 std::atomic<uint64_t> sProcessed{0};
 uint64_t sStreamBase = 0;
@@ -142,12 +237,64 @@ void init() {
 
 void shutdown() { stop_worker(); }
 
-void begin_frame() noexcept { sFrameActive = true; }
+void begin_frame() noexcept {
+  sFrameActive = true;
+  sFrameRendered.store(true, std::memory_order_release);
+  ++sFrameNumber;
+}
 
 void end_frame() noexcept {
   sFrameActive = false;
   clear_draw_cache(); // command_processor
 }
+
+void set_frame_rendered(bool rendered) noexcept { sFrameRendered.store(rendered, std::memory_order_release); }
+
+bool frame_rendered() noexcept { return sFrameRendered.load(std::memory_order_acquire); }
+
+void force_frame_rendered(FrameRenderReason reason) noexcept {
+  if (!sFrameRendered.exchange(true, std::memory_order_acq_rel)) {
+    sFramesForcedRendered.fetch_add(1, std::memory_order_acq_rel);
+    if (reason == FrameRenderReason::Readback) {
+      sFramesForcedByReadback.fetch_add(1, std::memory_order_acq_rel);
+    }
+  }
+}
+
+uint32_t frames_forced_rendered() noexcept { return sFramesForcedRendered.load(std::memory_order_acquire); }
+
+uint32_t frames_forced_by_readback() noexcept { return sFramesForcedByReadback.load(std::memory_order_acquire); }
+
+void set_render_interval(uint32_t interval) noexcept { sRenderInterval = interval; }
+
+void note_copy_destination(uint64_t address, uint32_t width, uint32_t height, uint32_t format) noexcept {
+  const uint64_t frame = sFrameNumber;
+  CopyDestination* entry = find_copy_destination(address, width, height, format);
+  bool force = true;
+  if (copy_destination_rule_enabled() && entry != nullptr) {
+    // The destination holds an image that was copied at most N frames ago: a copy into it can be
+    // skipped (the texture lags by up to N frames), so the frame does not have to be rendered.
+    const uint64_t age = frame - entry->lastCopiedFrame;
+    force = age > copy_age_limit();
+  }
+  if (force) {
+    // A new or one-shot destination (a render-to-texture at an area load) has to be produced, so
+    // the frame that carries the copy is rendered in full.
+    force_frame_rendered(FrameRenderReason::Copy);
+  }
+  if (frame_rendered()) {
+    // The copy is made in this frame.
+    if (entry == nullptr) {
+      entry = add_copy_destination(address, width, height, format);
+    }
+    entry->lastCopiedFrame = frame;
+    return;
+  }
+  // The copy was skipped: the texture keeps the image of the last frame that was rendered.
+  sCopiesSkipped.fetch_add(1, std::memory_order_relaxed);
+}
+
+uint32_t copies_skipped() noexcept { return sCopiesSkipped.load(std::memory_order_acquire); }
 
 bool frame_active() noexcept { return sFrameActive; }
 

@@ -24,10 +24,14 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   wall-timed plans) and `tools/drivers/con.py` `@f<n>` scripts; drivers go in `tools/drivers/`.
 - Console (`help` lists all): `fsm <id> <state>` (reaches FSM2 sub-machines), `place <id> player [d]`,
   `damage <id> <n> [weapon|powerbomb|annihilator|darkburst|sunburst|sonicboom]`, `send <id> <msg>`,
-  `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` takes no
-  argument (it kills the player).
-- Kill only pids you launched (bracketed `pgrep -f` names) and any Xvfb you started. Delete your run
+  `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` alone kills the
+  player; `kill <id>` zeroes a patterned actor's health and runs its Death (actors that reflect every weapon).
+- Kill only pids you launched (save `$!`, `kill <pid>`) and any Xvfb you started. Never `pkill`/`killall`
+  the game binary, gdb or Xvfb: a dozen lanes run them at once and you kill their runs. Delete your run
   outputs from `/tmp` (a 31 GB tmpfs).
+- Never end your turn with a run in flight: nothing wakes you. Wait for it in the foreground
+  (`timeout`), or on a background command you are notified for. Run independent runs
+  concurrently (each cov/smoke run takes its own slot) instead of one after another.
 
 ## Coverage without probes
 
@@ -44,6 +48,23 @@ count per key tuple (also `cov.json`; both rewritten every 15 s, so a killed run
 never shows is an arm that never ran. Label entries with the retail offset; put layer switches and
 `fsm`/`place`/`send` steps in the driver (example: `specs/sandworm_temple.con`). Each run takes a free slot (its own
 display and console port; set `COV_PORT`/`DISPLAY_NUM` only to override, a busy port fails fast), stop a run by killing `run.sh`, delete `<out>` after.
+`tools/cov/force.sh` is the same run with arms forced: the gdb side (`tools/cov/force.py`,
+`COV_GDB_SCRIPT`) writes the members the spec's `FORCE` list names at the entry of a body and logs
+what it forced, so an arm the fight cannot reach can be taken; the module-specific part (the class
+and the forced members) lives in the spec, the script itself has no module in it.
+
+Compiler coverage replaces the per-function gdb spec when the question is "which arms of *every*
+body ran": a coverage build (`-DMP_PORT_COVERAGE=ON`, its own build dir `build-port-cov`)
+compiles the port's REL module bodies - the sources `tools/modules_port.txt` lists - with gcov, so
+one ordinary run reports the branch coverage of all of them at once. `tools/cov/gcov_report.py
+<build dir> <gcov prefix dir> [--module <Name>] [--fn fn_10_1D794 ...]` prints one row per body:
+the retail id, the C++ name, the lines hit, the branches taken, the lines whose branch was never
+taken, and `ALL-ARMS` when every branch was taken. The run scripts set `GCOV_PREFIX` and
+`GCOV_PREFIX_STRIP` when the binary is a coverage build, so concurrent runs write into their own
+directory, and the game's flush hook (`platform/port_coverage.cpp`) writes the counters on a clean
+quit, on SIGTERM and on SIGINT. Several prefix dirs may be given: their counters add up, so the
+arms of a natural run and of a forced one merge into one profile. gdb stays the tool for the arms
+no run reaches (`tools/cov/force.sh`): coverage says which arm is missing, not how to reach it.
 
 ## Gates (one line each in the report)
 

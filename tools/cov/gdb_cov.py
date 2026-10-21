@@ -42,9 +42,12 @@ results = {}
 last_dump = [time.time()]
 
 
-def record(label, key):
+def record(label, key, hit=False):
+    # `hit` is the entry breakpoint only: the call-site and the return-value records are arms of
+    # that entry, not new hits, so the table's hit count is the number of times the body ran.
     r = results.setdefault(label, {'hits': 0, 'arms': {}})
-    r['hits'] += 1
+    if hit:
+        r['hits'] += 1
     k = ', '.join(str(v) for v in key) if key else '(entry)'
     r['arms'][k] = r['arms'].get(k, 0) + 1
     if time.time() - last_dump[0] > 15:  # a killed run still leaves its table
@@ -95,13 +98,12 @@ class EntryBp(gdb.Breakpoint):
             self.enabled = False
             return False
         key = tuple(ev(e) for e in self.exprs)
+        record(self.label, key, hit=True)
         if self.ret:
             try:
                 RetBp(gdb.newest_frame(), self.label, key, self.ret)
             except (gdb.error, ValueError):
                 record(self.label, key + ('%s=nofinish' % self.ret,))
-        else:
-            record(self.label, key)
         return False
 
 
@@ -122,15 +124,21 @@ class SiteBp(gdb.Breakpoint):
 SITE = re.compile(r'\b(call|jmp)\s+(?:q\s+)?0x([0-9a-f]+)\s+<([^>]*)>')
 
 
-def call_sites(mangled, label, cap):
+def call_sites(mangled, label, cap, extent=None):
     start = int(gdb.parse_and_eval('(long)&\'%s\'' % mangled))
     block = gdb.block_for_pc(start)
     while block is not None and block.function is None:
         block = block.superblock
     if block is None:
         return
+    end = block.end - 1
+    # The DWARF's end of a function can reach past its own code (the .cold part and the next
+    # function share the section), and a site outside the body would count another function's
+    # calls: clamp the range to the symbol's own extent (the next symbol's address).
+    if extent is not None:
+        end = min(end, extent - 1)
     arch = gdb.selected_inferior().architecture()
-    for insn in arch.disassemble(start, block.end - 1):
+    for insn in arch.disassemble(start, end):
         m = SITE.search(insn['asm'])
         if not m:
             continue
@@ -145,24 +153,39 @@ def call_sites(mangled, label, cap):
 def install():
     gdb.execute('set print asm-demangle on')
     syms = []
+    addrs = []
     for ln in open(os.environ['COV_NM']):
         parts = ln.rstrip('\n').split('\t')
         if len(parts) == 2:
             f = parts[0].split()
             if len(f) == 3 and f[1] in 'tTW':
                 syms.append((f[2], parts[1]))
+                addrs.append(int(f[0], 16))
+    # the symbol table, sorted by address: a symbol's extent ends where the next one starts
+    order = sorted(range(len(syms)), key=lambda i: addrs[i])
+
+    def extent_of(mangled):
+        for i in order:
+            if syms[i][0] == mangled:
+                return addrs[order[i + 1]] if i + 1 < len(order) else None
+        return None
     for label, where, exprs, flags in SPEC:
         results[label] = {'hits': 0, 'arms': {}, 'where': where, 'exprs': exprs}
         if where.startswith('loc:'):
             EntryBp(where[4:], label, exprs, flags)
             continue
-        hits = [m for m, d in syms if d.startswith(where) and '.cold' not in d and 'clone' not in d]
+        # the .cold part of a function has the same demangled name (only the mangled one has the
+        # '.cold'), so it has to be filtered on the mangled name too: its code is a separate
+        # region and its call sites are not the body's.
+        hits = [m for m, d in syms
+                if d.startswith(where) and '.cold' not in d and 'clone' not in d
+                and '.cold' not in m and 'clone' not in m]
         if not hits:
             results[label]['note'] = 'no symbol'
         for m in hits:
             bp = EntryBp('*' + m, label, exprs, flags)
             if 'calls' in flags.split():
-                call_sites(m, label, bp.max)
+                call_sites(m, label, bp.max, extent_of(m))
 
 
 def dump(code):
