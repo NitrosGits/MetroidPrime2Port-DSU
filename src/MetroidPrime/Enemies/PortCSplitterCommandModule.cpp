@@ -35,6 +35,7 @@
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
 #include "Kyoto/CRandom16.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Graphics/CTexture.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CModelData.hpp"
@@ -348,24 +349,12 @@ void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
   }
 SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
 SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
-SPLITTER_TRIGGER_STANDIN(InHoverRange, fn_75_570C)
-SPLITTER_TRIGGER_STANDIN(InLaserPulseRange, fn_75_565C)
-SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_5644)
-SPLITTER_TRIGGER_STANDIN(ShouldAttack, fn_75_5624)
-SPLITTER_TRIGGER_STANDIN(ShouldFireAgain, fn_75_5610)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
-SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
-SPLITTER_STATE_STANDIN(PathFind, fn_75_4E90)
-SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
-SPLITTER_STATE_STANDIN(LaserPulse, fn_75_4864)
 SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
 SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
-SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_3D20)
 SPLITTER_CODE_STANDIN(SetDockingDest, fn_75_3BEC)
-SPLITTER_CODE_STANDIN(FindBestDodgeDirection, fn_75_3B34)
-SPLITTER_CODE_STANDIN(ResetAttackTimes, fn_75_3ADC)
 #undef SPLITTER_TRIGGER_STANDIN
 #undef SPLITTER_STATE_STANDIN
 #undef SPLITTER_CODE_STANDIN
@@ -816,6 +805,11 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
   SetMaterialFilter(CMaterialFilter(CMaterialList(kMT_Solid),
                                     CMaterialList(kMT_CollisionActor, kMT_Character),
                                     CMaterialFilter::kFT_IncludeExclude));
+  // fn_75_6B08 @0x00006E60-0x00006EF8: the dodge distance at 0xEE8 is the model's scale x times
+  // the animation distance of a right (3) dodge (1) step (body state 3, fn_75_6F1C).
+  mDodgeDistance = GetModelData()->GetScale().GetX() *
+                   GetAnimationDistance(CPASAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(3),
+                                                         CPASAnimParm::FromEnum(1)));
   // The retail constructor also builds the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
   // at 0xa7c..0xd6b. They belong to the state machine and the render paths this milestone does
   // not enter, so the port keeps the parameter block only.
@@ -841,7 +835,6 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 
 // The module's own calls in the command module's chassis check: both are over 0x80, so each
 // stays a named once-logging shell.
-void StandInFn_75_2280() { StandIn("fn_75_2280 (0x170)"); }
 
 // The vtable word 0x4C of the object fn_75_2BE0 returns. The port has no name for that DOL
 // virtual yet, so it stays a shell. The CCollisionActor's virtual at the vtable word 0x38 (the
@@ -1113,7 +1106,7 @@ void CSplitterCommandModule::PortUpdateChassis(CStateManager& mgr) {
   }
   if ((mData.mUnknownBD80FD94 & 0x8) != 0 && mChassisTimer <= 0.f &&
       mCheckedChassisId == kInvalidUniqueId) {
-    StandInFn_75_2280();
+    PortFindChassis(mgr);
     mChassisTimer = 3.f;
   }
   if (mCheckedChassisId != kInvalidUniqueId) {
@@ -1308,22 +1301,385 @@ void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
 
 // fn_75_42F8 (the head's LostChassisReaction state, 0x42F8-0x4438). Activate (0x4330): the
 // animation state is kAS_Ready (0x4334) and the flag byte 0xF6A's 0x20 bit is set (0x433C rlwimi).
-// Update (0x4348): the head turns (fn_75_2994, still a stand-in) and, when CTryCommand::ShouldRetry
+// Update (0x4348): the head turns upright (fn_75_2994) and, when CTryCommand::ShouldRetry
 // (the host's CAnimationState::CanIssueCommand) allows body state 6 (kAS_KnockBack, 0x4354-0x4360),
-// a knock-back command along the head's translation with severity 2 goes out
-// (lbl_75_data_5B8, 0x4364-0x43C4). Deactivate (0x441C): the animation state is kAS_NotReady.
-void CSplitterCommandModule::LostChassisReaction(CStateManager& mgr, EStateMsg msg, float) {
+// a knock-back command along the head's Y column (the transform's 0x28, 0x38, 0x48) with
+// severity 2 goes out (lbl_75_data_5B8, 0x4364-0x43C4). Deactivate (0x441C): the animation state is kAS_NotReady.
+// @ fn_75_42F8
+void CSplitterCommandModule::LostChassisReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
     mAutoDestructFlags |= 0x20;
   } else if (msg == kStateMsg_Update) {
-    StandIn("fn_75_2994 (the head's turn, 0x24C)");
+    PortTurnUpright(dt);
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
-      BodyController()->CommandMgr().DeliverCmd(CBCKnockBackCmd(GetTranslation(), pas::kS_Two));
+      BodyController()->CommandMgr().DeliverCmd(CBCKnockBackCmd(GetTransform().GetColumn(kDY), pas::kS_Two));
     }
   } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
   }
+}
+
+// fn_75_2994 (the head's turn upright, 0x2994-0x2BE0): only with the flag byte 0xF6A's 0x20 bit
+// (0x29BC-0x29C8). The turn is the frame time times 2 pi (lbl_75_rodata_7C). With the Z column
+// (0x2C, 0x3C, 0x4C) within it of the up vector (0x2A38 GetAngleDiff, 0x2A3C-0x2A44) and the Y
+// column's x or y non-zero (0x2A48-0x2A7C) the head looks along its flat Y column (0x2AC0
+// LookAt, 0x2ACC SetTransform) and the 0x20 bit is cleared (0x2AD8). Otherwise the Z column is
+// slerped toward the up vector by the turn (0x2B10) and the rotation arc from the Z column to it
+// (0x2B38) is applied after the head's rotation (0x2B64 FromMatrix, 0x2B74 operator*,
+// 0x2BA4 BuildTransform4f at the translation, 0x2BB0 SetTransform).
+void CSplitterCommandModule::PortTurnUpright(float dt) {
+  if ((mAutoDestructFlags & 0x20) == 0) {  // 0x29BC-0x29C8
+    return;
+  }
+  const CVector3f pos = GetTranslation();
+  const float turn = 6.2831855f * dt;
+  const CVector3f up = CVector3f::Up();
+  const CVector3f zColumn = GetTransform().GetColumn(kDZ);
+  const CVector3f yColumn = GetTransform().GetColumn(kDY);
+  if (CVector3f::GetAngleDiff(up, zColumn) <= turn &&
+      (yColumn.GetX() != 0.f || yColumn.GetY() != 0.f)) {
+    SetTransform(CTransform4f::LookAt(
+        pos, CVector3f(pos.GetX() + yColumn.GetX(), pos.GetY() + yColumn.GetY(), pos.GetZ()), up));
+    mAutoDestructFlags &= ~0x20;
+    return;
+  }
+  const CVector3f toward =
+      CVector3f::Slerp(zColumn.AsNormalized(), up.AsNormalized(), CRelAngle::FromRadians(turn));
+  const CQuaternion arc = CQuaternion::ShortestRotationArc(zColumn, toward);
+  SetTransform((GetRotation() * arc).BuildTransform4f(pos));
+}
+
+// fn_75_23F0 (the head's separation, 0x23F0-0x25C4): the chassis's fn_75_8EC8 with the head's
+// radius - the listening-AI list at 0x830 walked from 0x2008 (0x2448) to -1; every CPatterned
+// (0x245C) other than the head (0x2468) in its area (0x2470-0x247C) that is not a docked head
+// (0x2480-0x249C) gives the steering separation (0x24DC) from its position with 5.0f
+// (lbl_75_rodata_58) times the model data's scale x; safe ones (0x24FC) are normalized and summed
+// and counted; a count above 0.0f (0x2564) divides the sum (0x2574).
+CVector3f CSplitterCommandModule::PortSeparationVector(CStateManager& mgr) const {
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  CVector3f sum = CVector3f::Zero();
+  float count = 0.f;
+  for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
+    const CPatterned* other = TCastToConstPtr< CPatterned >(list[idx]);
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {  // 0x2460, 0x2468, 0x2470-0x247C
+      continue;
+    }
+    const CSplitterCommandModule* head = TCastToConstPtr< CSplitterCommandModule >(other);
+    if (head != nullptr && head->GetChassisId() != kInvalidUniqueId) {  // 0x2484-0x249C
+      continue;
+    }
+    const CVector3f separation = mSteeringBehaviors.Separation(
+        *this, other->GetTranslation(), 5.f * GetModelData()->GetScale().GetX());
+    if (separation.IsMagnitudeSafe()) {
+      sum += separation.AsNormalized();
+      count += 1.f;
+    }
+  }
+  if (count > 0.f) {
+    sum *= 1.f / count;
+  }
+  return sum;
+}
+
+// fn_75_2280 (the head's chassis search, 0x2280-0x23F0): the listening-AI list at 0x830 is walked
+// (0x22D8 lha 0x2008, to -1); a main chassis (0x22EC) in the head's area (0x22F8-0x2304) that
+// takes the head's reservation (0x2318 fn_75_E788) and is nearer than the best so far (squared,
+// from FLT_MAX lbl_75_rodata_88; 0x2324-0x234C) releases the old pick's reservation (0x2350-0x2380
+// ObjectById, cast, fn_75_E768) and becomes the pick at 0xEFC (0x238C).
+void CSplitterCommandModule::PortFindChassis(CStateManager& mgr) {
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  const CVector3f pos = GetTranslation();
+  float best = 3.4028235e38f;
+  for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
+    CSplitterMainChassis* chassis = TCastToPtr< CSplitterMainChassis >(list[idx]);
+    if (chassis == nullptr || chassis->GetCurrentAreaId() != GetCurrentAreaId()) {  // 0x22EC cast, 0x22F8-0x2304
+      continue;
+    }
+    if (!chassis->PortReserveDock(GetUniqueId())) {
+      continue;
+    }
+    const float distSq = (chassis->GetTranslation() - pos).MagSquared();
+    if (distSq >= best) {
+      continue;
+    }
+    if (CSplitterMainChassis* old =
+            TCastToPtr< CSplitterMainChassis >(mgr.ObjectById(mCheckedChassisId))) {
+      old->PortReleaseDock(GetUniqueId());
+    }
+    best = distSq;
+    mCheckedChassisId = chassis->GetUniqueId();
+  }
+}
+
+// fn_75_3ADC (the head's ResetAttackTimes code, 0x3ADC-0x3B20): the countdown at 0xF0C takes the
+// data's minimum laser pulse attack time (0x7D0) and the shot count at 0xF20 a random 1 to the
+// data's maximum laser pulse shots (0x7DC; 0x3B04 CRandom16::Range on the manager's 0x16E4).
+// @ fn_75_3ADC
+void CSplitterCommandModule::ResetAttackTimes(CStateManager& mgr, float) {
+  mCountdownTimerB = mData.mMinLaserPulseAttackTime;
+  mLaserPulseShots = mgr.Random()->Range(1, mData.mMaxLaserPulseShots);
+}
+
+// fn_75_3D20 (the head's SetTargetDest code, 0x3D20-0x3E60): the destination starts at the head's
+// position and the flag byte 0xF6A's 0x80 bit is cleared (0x3D7C). With the target at 0xEFE
+// (0x3D8C GetObjectById) the destination is its aim position (0x3DE4, vtable 0x54 with 0.0f)
+// plus 4.0f (lbl_75_rodata_5C) up and the 0x80 bit is set (0x3E14). The path finder at 0x6F4
+// takes the destination (0x3E24 SetDestination) and the target as its face target (0x3E2C, 0x718).
+void CSplitterCommandModule::SetTargetDest(CStateManager& mgr, float) {
+  CVector3f dest = GetTranslation();
+  mAutoDestructFlags &= ~0x80;
+  if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId))) {
+    // The id is the chassis's target (0xCC0), always an actor; retail does no cast.
+    dest = target->GetAimPosition(mgr, 0.f) + CVector3f::Up() * 4.f;
+    mAutoDestructFlags |= 0x80;
+  }
+  mPathFindNavigation.SetDestination(dest);
+  mPathFindNavigation.SetFaceTarget(mSyncedId);
+}
+
+// fn_75_4E90 (the head's PathFind state, 0x4E90-0x50B0): with 0xF6A's 0x80 bit the path finder at
+// 0x6F4 runs first (0x4EEC CPathFindNavigation::PathFind). Activate (0x4F14): the 0x40 bit is
+// cleared. Update (0x4F28): the body's move vector (the body controller's command manager, its
+// 0x4) plus the separation (0x4F50 fn_75_23F0) must be IsMagnitudeSafe (0x4F88); it is scaled by
+// the frame time times the data's maximum linear velocity (0x7C4) and the head moves there
+// (0x4FE4 fn_75_2154). The facing is that step, or with the path finder's face target (0x718,
+// 0x5008 GetObjectById) the flat offset to it (z 0.0f; 0x5014-0x504C); the body faces it
+// (0x505C FaceDirection). Deactivate (0x5064): the 0x80 bit is set.
+void CSplitterCommandModule::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
+  if ((mAutoDestructFlags & 0x80) != 0) {  // 0x4EC8-0x4ED8
+    mPathFindNavigation.PathFind(mgr, msg, dt, *this);
+  }
+  if (msg == kStateMsg_Activate) {
+    mAutoDestructFlags &= ~0x40;
+  } else if (msg == kStateMsg_Update) {
+    const CVector3f move =
+        BodyController()->CommandMgr().GetMoveVector() + PortSeparationVector(mgr);
+    if (!move.IsMagnitudeSafe()) {
+      return;
+    }
+    const CVector3f step = move * (dt * mData.mMaxLinearVelocity);
+    const CVector3f pos = GetTranslation();
+    PortMoveTo(pos + step, dt);
+    CVector3f face = step;
+    if (const CActor* target = static_cast< const CActor* >(
+            mgr.GetObjectById(mPathFindNavigation.GetFaceTarget()))) {
+      const CVector3f delta = target->GetTranslation() - GetTranslation();
+      face = CVector3f(delta.GetX(), delta.GetY(), 0.f);
+    }
+    BodyController()->FaceDirection(face, dt);
+  } else if (msg == kStateMsg_Deactivate) {
+    mAutoDestructFlags |= 0x80;
+  }
+}
+
+// fn_75_5624 (the head's ShouldAttack trigger, 0x5624-0x5644): the countdown at 0xF0C is at or
+// below 0.0f (0x5630 fcmpo, 0x5634 cror lt|eq).
+// @ fn_75_5624
+bool CSplitterCommandModule::ShouldAttack(CStateManager&, const CTriggerData&) const {
+  return mCountdownTimerB <= 0.f;
+}
+
+// fn_75_4864 (the head's LaserPulse state, 0x4864-0x4A5C). Activate (0x48B0): the animation
+// state is kAS_Ready (0x48B8), the dodge count at 0xEEC is 0 (0x48BC) and the shot count at 0xF20
+// drops by one (0x48C0-0x48C8). Update (0x48D0): when CTryCommand::ShouldRetry (the host's
+// CAnimationState::CanIssueCommand) allows body state 0x12 (kAS_ProjectileAttack, 0x48D8-0x48E4)
+// a projectile attack command (lbl_75_data_5AC, kind 6) with severity 1 (0x4914) at the position
+// plus the Y column (0x48E8-0x4930) without horizon blending (0x4918) goes out (0x4958).
+// Otherwise, with a positive frame time (0x49B0 fcmpo against 0.0f lbl_75_rodata_40) and the
+// target at 0xEFE (0x49C8 GetObjectById, 0x49CC), the head faces the flat offset (z 0.0f, 0x4A2C)
+// to the target's aim position (0x49F8, vtable 0x54 with 0.0f; 0x4A34 FaceDirection).
+// Deactivate (0x4A3C): the animation state is kAS_NotReady.
+void CSplitterCommandModule::LaserPulse(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mDodgeCount = 0;
+    --mLaserPulseShots;
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_One, GetTranslation() + GetTransform().GetColumn(kDY), false));
+    } else if (dt > 0.f) {
+      if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId))) {
+        // The id is the chassis's target (0xCC0), always an actor; retail does no cast.
+        const CVector3f aim = target->GetAimPosition(mgr, 0.f);
+        BodyController()->FaceDirection(
+            CVector3f(aim.GetX() - GetTranslation().GetX(), aim.GetY() - GetTranslation().GetY(), 0.f),
+            dt);
+      }
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
+}
+
+// fn_75_5448 (the head's Dead state, 0x5448-0x5498): Activate only (0x5450-0x5468): the laser
+// pulse projectile despawns (0x5470 fn_75_1790) and the head is deleted (0x547C
+// CPatterned::DeathDelete).
+void CSplitterCommandModule::Dead(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    PortDespawnProjectile(mgr);
+    DeathDelete(mgr);
+  }
+}
+
+// fn_75_4AC0 (the head's Dodge state, 0x4AC0-0x4CA8). Activate (0x4B0C): the animation state is
+// kAS_Ready (0x4B10) and the flag byte 0xF6A gets its 0x10 bit (0x4B14-0x4B1C rlwimi). Update
+// (0x4B24): when CTryCommand::ShouldRetry (CAnimationState::CanIssueCommand) allows body state 3
+// (kAS_Step, 0x4B2C-0x4B38) a step command (lbl_75_data_5A0, kind 1) in the dodge direction at
+// 0xF30 (0x4B4C) of type 1 (kStep_Dodge, 0x4B54) goes out (0x4B9C). Otherwise, with a positive
+// frame time (0x4BFC fcmpo against 0.0f) and the target at 0xEFE (0x4C14 GetObjectById, 0x4C18),
+// the head faces the flat offset (z 0.0f, 0x4C64) to the target's position (0x4C20-0x4C54;
+// 0x4C6C FaceDirection). Deactivate (0x4C74): kAS_NotReady and the 0x10 bit cleared.
+void CSplitterCommandModule::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mAutoDestructFlags |= 0x10;
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(
+          static_cast< pas::EStepDirection >(mDodgeDirection), pas::kStep_Dodge));
+    } else if (dt > 0.f) {
+      if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId))) {
+        // The id is the chassis's target (0xCC0), always an actor; retail does no cast.
+        const CVector3f delta = target->GetTranslation() - GetTranslation();
+        BodyController()->FaceDirection(CVector3f(delta.GetX(), delta.GetY(), 0.f), dt);
+      }
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mAutoDestructFlags &= ~0x10;
+  }
+}
+
+// fn_75_5610 (the head's ShouldFireAgain trigger, 0x5610-0x5624): the shot count at 0xF20 is
+// above 0 (0x5614-0x561C neg/andc/srwi).
+// @ fn_75_5610
+bool CSplitterCommandModule::ShouldFireAgain(CStateManager&, const CTriggerData&) const {
+  return mLaserPulseShots > 0;
+}
+
+// fn_75_5644 (the head's ShouldDodge trigger, 0x5644-0x565C): the dodge direction at 0xF30 is not
+// -1 (0x5648-0x5654 subfic/addi/or/srwi).
+// @ fn_75_5644
+bool CSplitterCommandModule::ShouldDodge(CStateManager&, const CTriggerData&) const {
+  return mDodgeDirection != -1;
+}
+
+// fn_75_3B34 (the head's FindBestDodgeDirection code, 0x3B34-0x3BEC): the dodge direction at 0xF30
+// is -1 (0x3B54). With the data word 0x7C0's 0x2 bit (0x3B5C) and the dodge count at 0xEEC below
+// the data's maximum dodges (0x7F8, 0x3B6C): below the minimum dodges (0x7F4, 0x3B78) or a roll of
+// 0.0f to 100.0f (lbl_75_rodata_40/64, 0x3B98) at or below the dodge chance (0x7FC, 0x3BA0-0x3BA8)
+// picks a direction (0x3BB4 fn_75_270C) and counts the dodge (0x3BC0); otherwise the count goes
+// to the maximum (0x3BCC-0x3BD0).
+void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
+  mDodgeDirection = -1;
+  if ((mData.mUnknownBD80FD94 & 0x2) == 0 || mDodgeCount >= mData.mMaxDodges) {  // 0x3B5C, 0x3B6C
+    return;
+  }
+  if (mDodgeCount < mData.mMinDodges || mgr.Random()->Range(0.f, 100.f) <= mData.mDodgeChance) {
+    mDodgeDirection = PortDodgeDirection(mgr);
+    ++mDodgeCount;
+  } else {
+    mDodgeCount = mData.mMaxDodges;
+  }
+}
+
+// fn_75_270C (the dodge direction pick, 0x270C-0x2994): the right (the X column, 0x24/0x34/0x44)
+// and left sides start open. The listening-AI list at 0x830 is walked (0x2780 lha 0x2008, to -1);
+// every entry (0x2794) other than the head (0x279C) in its area (0x27A4-0x27B0) nearer than the
+// dodge distance at 0xEE8 (squared, 0x27EC) closes the side it lies on: a dot with the X column
+// at or above 0.0f (0x2814-0x281C) closes the right within 60 degrees of it (lbl_75_rodata_8C,
+// 0x2830-0x2840), below it the left within 60 degrees of -X (0x2874-0x2884). An open side needs a
+// clear dodge path (0x28C8 / 0x290C fn_75_25C4). With both open a random bit 0x4000 (0x2928
+// CRandom16::Next, 0x292C) keeps the right, else the left. The result is 2 (left, 0x2948), 3
+// (right, 0x2958) or -1 (0x2768).
+int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
+  const float dist = mDodgeDistance;
+  const CVector3f pos = GetTranslation();
+  const CVector3f right = GetTransform().GetColumn(kDX);
+  bool leftOpen = true;
+  bool rightOpen = true;
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
+    // The list holds AIs, always actors; retail reads the position with no cast (0x27B4).
+    const CActor* other = static_cast< const CActor* >(list[idx]);
+    // 0x2794 (null), 0x279C (the head itself), 0x27A4-0x27B0 (the area).
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f delta = other->GetTranslation() - pos;
+    if (delta.MagSquared() >= dist * dist) {
+      continue;
+    }
+    if (CVector3f::Dot(delta, right) >= 0.f) {
+      if (rightOpen && CVector3f::GetAngleDiff(right, delta) < 1.0471976f) {
+        rightOpen = false;
+      }
+    } else if (leftOpen && CVector3f::GetAngleDiff(-right, delta) < 1.0471976f) {
+      leftOpen = false;
+    }
+  }
+  if (rightOpen) {
+    rightOpen = PortDodgeClear(mgr, right, mDodgeDistance);
+  }
+  if (leftOpen) {
+    leftOpen = PortDodgeClear(mgr, -right, mDodgeDistance);
+  }
+  if (leftOpen && rightOpen) {
+    if ((mgr.Random()->Next() & 0x4000) != 0) {  // 0x2928-0x292C
+      leftOpen = false;
+    } else {
+      rightOpen = false;
+    }
+  }
+  if (leftOpen) {
+    return pas::kSD_Left;
+  }
+  if (rightOpen) {
+    return pas::kSD_Right;
+  }
+  return pas::kSD_Invalid;
+}
+
+// fn_75_25C4 (a clear dodge path, 0x25C4-0x270C): from the bounding box's center (0x2600-0x260C)
+// to the center plus the direction times the distance (0x2610-0x2664), a ray with the solid
+// material (lbl_75_data_440, 0x3B) included and the collision actor one (lbl_75_data_444, 0x2F)
+// excluded (type 3) hits no world (0x26B8 RayCollideWorld, 0x26C0) and the end lies on the path
+// search at 0xD6C (0x26CC OnPath, 0x26D0 against kR_Success).
+bool CSplitterCommandModule::PortDodgeClear(CStateManager& mgr, const CVector3f& dir, float dist) {
+  const CVector3f center = GetBoundingBox().GetCenterPoint();
+  const CVector3f end = center + dir * dist;
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor));
+  return mgr.RayCollideWorld(center, end, filter, this) &&
+         mPathFindSearch.OnPath(end) == CPathFindSearch::kR_Success;
+}
+
+// fn_75_565C (the head's InLaserPulseRange trigger, 0x565C-0x570C): with the target at 0xEFE
+// (0x5680) its squared distance (0x568C-0x56CC) lies between the data's minimum (0x7D4) and
+// maximum (0x7D8) laser pulse ranges squared (0x56D0-0x56E4).
+bool CSplitterCommandModule::InLaserPulseRange(CStateManager& mgr, const CTriggerData&) const {
+  const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId));
+  if (target == nullptr) {  // 0x5684-0x5688
+    return false;
+  }
+  const float distSq = (target->GetTranslation() - GetTranslation()).MagSquared();
+  return distSq >= mData.mMinLaserPulseRange * mData.mMinLaserPulseRange &&
+         distSq <= mData.mMaxLaserPulseRange * mData.mMaxLaserPulseRange;
+}
+
+// fn_75_570C (the head's InHoverRange trigger, 0x570C-0x57B4): with the target at 0xEFE (0x5730)
+// its squared distance is within half (lbl_75_rodata_44) the sum of the two laser pulse ranges,
+// squared (0x573C-0x5794).
+bool CSplitterCommandModule::InHoverRange(CStateManager& mgr, const CTriggerData&) const {
+  const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId));
+  if (target == nullptr) {  // 0x5734
+    return false;
+  }
+  const float distSq = (target->GetTranslation() - GetTranslation()).MagSquared();
+  const float range = 0.5f * (mData.mMinLaserPulseRange + mData.mMaxLaserPulseRange);
+  return distSq <= range * range;
 }
 
 // fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the

@@ -1,0 +1,5 @@
+@22 tp 0 -27 11
+@32 status
+@42 objs turret
+@54 status
+@66 objs turret

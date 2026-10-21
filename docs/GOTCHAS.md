@@ -154,3 +154,7 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   `muzzleend_LCTR` (0x00003788); reading the BSS as zero bytes gave the port an empty locator
   name and a muzzle transform off the base actor. The initializer is a separate asm file:
   `grep -n bss_X auto_fn_*_text.s` finds the function that fills it.
+- **Other vendored-Aurora additions** to keep on re-vendor: the partial `GXCopyTex` clear
+  (`recording.cpp`, from upstream aurora 9c0bf66f1e), the dstAlpha alpha-only pass
+  (`command_processor.cpp` `push_gx_draw`, `67f337a57`) and `AURORA_PRESENT_EVERY` (`aurora.cpp`
+  end_frame).
