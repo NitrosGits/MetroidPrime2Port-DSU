@@ -1295,6 +1295,12 @@ void CSplitterCommandModule::PortAutoDestructTimer(float dt) {
 // The DOL's CEntity virtual the projectile's despawn calls (the vtable word 0x24, 0x17C8-0x17DC
 // of fn_75_1790): the port has no name for it, so the call stays a once-logging shell.
 
+// Arms: there is no target at 0xF02 (the body ends at once), the target is there but it is not a
+// CBeamProjectile (the cast fails) and the target is the laser sweep beam (the virtual is
+// called and the sound is moved).  The fight only ever puts the laser sweep beam at 0xF02, so
+// the first two arms are forced (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=
+// LOOKATN writes the id invalid, LOOKAT writes the chassis's id).  The coverage build's merged
+// profile of those runs and the natural run says 13/13 lines and 4/4 branches, ALL-ARMS.
 // @ fn_75_184C
 // The command module's look-at (0x184C-0x1974): the target id (the u16 at 0xF02, 0x1874 lhz) is
 // looked up (0x1888 ObjectById) and, when it is there, the module's locator transform (the
