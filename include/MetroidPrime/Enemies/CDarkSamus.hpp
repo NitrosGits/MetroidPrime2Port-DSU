@@ -356,6 +356,13 @@ private:
   // find itself.
   void SetPathFindDestination(CStateManager& mgr, const CVector3f& destination, float dt);
 
+  // fn_10_1E26C: the uid of the last attacker (the guest's 0xC24) and the two uids before it
+  // (the count at 0xC28, the uids at 0xC2C).
+  void PushAttacker(TUniqueId uid);
+
+  // fn_10_1E2E8: the oldest uid is dropped and the rest move one down.
+  void EraseFirstAttacker();
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
@@ -378,6 +385,15 @@ private:
                                    // helper fn_10_17DE0 looks it up in the state manager and
                                    // casts it to CScriptDarkSamusBattleStage. The constructor
                                    // writes kInvalidUniqueId to it (the lhz/sth at 0x0001FCC0)
+  TUniqueId mLastAttackerUid;       // guest 0xC24, the uid of the attacker that hit the actor
+                                   // last: fn_10_1DF74 clears it and fn_10_1E740 sets it (neither
+                                   // is in the port yet); the constructor writes
+                                   // kInvalidUniqueId to it (0x0001FF08)
+  uint mAttackerCount;              // guest 0xC28, the number of uids in mAttackerUids; the
+                                   // constructor writes 0 to it (0x0001FF14)
+  TUniqueId mAttackerUids[2];       // guest 0xC2C, the uids of the attackers that hit the actor
+                                   // (at most two): fn_10_1E26C pushes the last attacker's uid
+                                   // here and drops the oldest when there are two
   int mPickedAttack;               // guest 0x984, the word the fight script writes and the
                                    // Picked* triggers compare: the picked attack's id (1 melee,
                                    // 4 melee dash, 8 scatter shot, 0x10 moving scatter shot,

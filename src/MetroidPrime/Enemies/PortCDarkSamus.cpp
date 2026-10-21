@@ -62,6 +62,9 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mPissedOff(0)
 , mFadeOut(0)
 , mBattleStageUid(kInvalidUniqueId)
+, mLastAttackerUid(kInvalidUniqueId)
+, mAttackerCount(0)
+, mAttackerUids{kInvalidUniqueId, kInvalidUniqueId}
 , mPickedAttack(0xFFFF)
 , mCurrentAttack(0xFFFF)
 , mAttackHistory{0, 0, 0}

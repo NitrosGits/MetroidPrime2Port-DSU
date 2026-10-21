@@ -437,6 +437,33 @@ void CDarkSamus::SetPathFindDestination(CStateManager& mgr, const CVector3f& des
   mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this);
 }
 
+// fn_10_1E26C (0x0001E26C, 0xDC bytes): the uid of the attacker that hit the actor last (the
+// guest's 0xC24) and the two uids before it (the count at 0xC28, the uids at 0xC2C).
+//
+// The uid is stored (0x0001E288) and an invalid one ends the function (the cmplw against
+// kInvalidUniqueId at 0x0001E294). When there are two uids already the oldest is dropped
+// (fn_10_1E2E8 at 0x0001E2B0: it shifts the rest one down and counts one less), and then the uid
+// is appended (0x0001E2C4) and the count grows (0x0001E2D0).
+void CDarkSamus::PushAttacker(TUniqueId uid) {
+  mLastAttackerUid = uid;
+  if (mLastAttackerUid == kInvalidUniqueId) {
+    return;
+  }
+  if (mAttackerCount >= 2) {
+    EraseFirstAttacker();
+  }
+  mAttackerUids[mAttackerCount] = mLastAttackerUid;
+  mAttackerCount++;
+}
+
+// fn_10_1E2E8 (0x0001E2E8, 0xDC bytes): the oldest uid is dropped and the rest move one down -
+// the guest's loop copies every uid one slot down (the lhz/sth at 0x0001E318/0x0001E31C) and the
+// count grows one less (0x0001E33C/0x0001E344).
+void CDarkSamus::EraseFirstAttacker() {
+  mAttackerUids[0] = mAttackerUids[1];
+  mAttackerCount--;
+}
+
 // fn_10_1E178 (0x0001E178, 0xF0 bytes): the damage the actor has taken (the guest's 0xCC0).
 //
 // The health info's current health (the base's GetHealthInfo - the vtable slot 0x3C - and the
