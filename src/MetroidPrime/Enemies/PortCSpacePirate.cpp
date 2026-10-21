@@ -1187,7 +1187,8 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     mBurstFire.SetBurstType(3);
     break;
   case kSM_Launching:
-    if (BodyController()->GetCurrentStateId() != pas::kAS_Jump) {
+    // 0xEB10: skipped while the body is hurled (kAS_Hurled, 0xE).
+    if (BodyController()->GetCurrentStateId() != pas::kAS_Hurled) {
       CScriptMsg offGround(msg.GetSenderId(), kInvalidUniqueId, kSM_OffGround);
       CPatterned::AcceptScriptMsg(mgr, offGround);
       SetMomentumWR(CVector3f(0.f, 0.f, -GetGravityConstant() * GetMass()));
