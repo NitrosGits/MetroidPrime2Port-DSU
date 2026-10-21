@@ -409,7 +409,9 @@ void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
 // 1.5f and "target_LCTR" with the radius 0.38f) and 0x31C the four leg cylinders (the knee and
 // the ankle of each leg, the radius 0.05f) - the mass is 1000.0f (the rodata at 0x3AC) and the
 // manager is made with them (0x0000A754), the old one deleted (0x0000A764) and the new one kept
-// at 0xC68. Then every collision actor of the manager is walked (0x0000A774): the actor named
+// at 0xC68. The retail's cylinder builder takes the radius as a vector and the word 1 (the
+// between-joints orientation); the host's takes a radius and a max separation, so the port gives
+// it the radius 0.05f, the max separation 0.0f and the between-joints orientation. Then every collision actor of the manager is walked (0x0000A774): the actor named
 // "target_LCTR" (the rodata string at 0x34C) gives its id to the chassis's 0xCC2 (0x0000A7E8)
 // and the reflected vulnerability (0x0000A814); the retail also scales the actor (the model
 // data's 0x0, 0x4 and 0x8 times the rodata's 1.5f), which the host has no setter for. The
@@ -440,7 +442,7 @@ void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
   for (int i = 0; i < 4; ++i) {
     joints.push_back_unsafe(CJointCollisionDescription::SphereSubdivideCollision(
         anim->GetLocatorSegId(rstl::string_l(sLegs[i].mKnee)),
-        anim->GetLocatorSegId(rstl::string_l(sLegs[i].mAnkle)), 0.05f, 1.f,
+        anim->GetLocatorSegId(rstl::string_l(sLegs[i].mAnkle)), 0.05f, 0.f,
         CJointCollisionDescription::kOT_BetweenJoints, rstl::string_l(sLegs[i].mKnee), 1000.f));
   }
   CCollisionActorManager* manager =
