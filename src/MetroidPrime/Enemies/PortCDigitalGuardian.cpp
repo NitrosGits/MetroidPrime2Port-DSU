@@ -434,7 +434,6 @@ void CDigitalGuardian::PreThink(float dt, CStateManager& mgr) {
 // 3000 frames, the coverage build (tools/cov/gcov_report.py: 4/4 branches, ALL-ARMS).
 // @ fn_14_A5BC
 void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
-  StandIn("CDigitalGuardian::Think (vtable slot 5, fn_14_A5BC)");
   if (!GetActive()) {
     return;
   }
