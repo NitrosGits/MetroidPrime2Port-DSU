@@ -1,0 +1,7 @@
+@18 objs spacepirate
+@24 tp 372.4 -284.1 1.8
+@27 face 270
+@31 press a 2
+@36 press a 2
+@41 press a 2
+@48 objs spacepirate

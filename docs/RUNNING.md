@@ -66,3 +66,13 @@ with "[warp] area -1 does not exist in this world". **Give the world and the are
 request**: `MP2_WORLD="1baa96c2,2735236b"` (the world, a comma, the area) or
 `MP2_WORLD="42b935e4,01_sand_entrance_dark"` (the area's MLVL name). The area can also be the
 area index, but the index is the one of the world being loaded, so the name is safer.
+
+## Batch smoke (every family, in parallel)
+
+`tools/smoke/run.sh [--build <dir>] [--out <dir>] [--jobs N] [family ...]` boots every family area
+(one game each, on its own X display, console port, card copy and cache dir) and drives it with the
+console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Results land in
+`/tmp/opencode/smoke-<git hash>` by default (the card copied per family is `--save`, default
+`/tmp/opencode/mi_u`), and `tools/smoke/compare.py <new out> <old out>` prints exit, caught,
+reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
+
