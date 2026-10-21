@@ -567,3 +567,22 @@ MovingScatterShot fn_10_11AD8 = ScatterShot's Activate/Deactivate without the fa
 11974 + 1B478(0x10) on every message, then the step command fn_10_21DF8 (kAS_Step, BreakDodge,
 right unless 0xBAC, then left). 0xBAC is set only by the unported picker collector fn_10_19B64
 (0x0001A020/0x0001A0D0). 0x9E0..0xA08 is CDarkSamusDash (fn_10_15348; 0x9FC was mGuest9FC).
+
+**Slice 9** (2026-10-21): the Dash chain. Dash fn_10_150DC (double-dash roll: Range(0,100) <
+the stage info's +0x20 = `chanceToDoubleDash`), the slot pick fn_10_154FC (eight slots, the end
+point = the step animation's distance along fn_10_EB90's direction, slot -> step direction table
+fn_10_EDE0 {0,1,2,3,6,7,8,9}), the path clearance fn_10_16048 (three rays, 0.49 off per blocked
+side ray), the stuck blast fn_10_14A00 (guest 0x968 = `mDashStuckCount`, radius 15 + count, 100
+damage, instant kill), the double dash fn_10_14D14 with 14FE0 (pick, no target), 14C50 (next step)
+and 14E5C (step anim, advanced 0.3 s), and the step 12CE0/12C2C (attack id 0x8000). The
+CDarkSamusDash members are named: 9E0 `mSlot`, 9E4 `mDestination`, 9F0 `mStartPosition`, 9FC
+`mLastSlot`, A00 `mWeight`, A04 `mStepsLeft`, A08 0x80 `mBlocked`, 0x40 `mDoubleDash`. Runs (pick
+forced to 8, reverted hooks; z 9.43 -> 4.12 floor, no falls; 0 caught/reach-stub): 15 single
+dashes (step ~16-18.7 u, one blocked pick of weight 0 -> BreakDash), and with the double dash
+forced 13 double dashes (two picks each, the second with the last slot and its opposite zeroed,
+weights = squared distance gained). Unmarked: 150DC/14FE0 (the stuck arm, still > 1.2 s, never
+ran; no natural double-dash roll on this stage), 154FC (the failed-height and still >= 1.2 s
+clearance arms), 16048 (the centre ray's static vs dynamic block not told apart), 14A00 (never
+ran), 14D14 (blocked arm). Next: fn_10_19B64 (sets 0xBAC) is a tree, not one slice: 17CEC/1A980
+are in; new are 16418 (-> 164C0, 0x140), 16600 (-> 166AC 0x1B4, 16ADC), 12B38, 141BC, 13E2C
+(-> 13EE0), 16B1C, 145E4 (-> 1444C 0x198). SideDash fn_10_153EC also calls 154FC/12CE0.
