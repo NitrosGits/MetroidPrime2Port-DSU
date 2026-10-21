@@ -1543,17 +1543,49 @@ Runs (914f1381 layer 2, probes on every if/return/case): d1 `fsm` forcing, d2-d4
 | 9B9C | plain contact damage, damage wait above 0 | ran (e1: `place u0532 player 1` while idle) → marked |
 | 9FA8 | not spinning, touched not a boosting player / sender not a collision actor | ran (e1: shots before and in the spin) / forced (gdb: sender kInvalidUniqueId in the spin, e1) → marked |
 | D7D4 | far + unsafe steering | forced (gdb: offset (0,0,20) at the far test, steering zeroed; MoveInOneFrameOR ran) → marked |
-| CCF0, 5498 | all | not in the shipped FSM2 graphs (`fsm` finds no SpawnDrop/SpawnIdle in any sub-machine) → unmarked |
-| C8F4 | no swarm snatcher (9 F) | not run: the area has no CIngSnatchingSwarm → unmarked |
 | C9E4 | head coming / not, loop attack issue / not, exit | ran (e1, e2: `kill u0532`, head u0531 docks to the headless u0521) → marked |
 | C9E4 | head of its own, head checking another chassis | forced (gdb: 0xC6C / the head's 0xEFC set to 0x1234 for one Update, e2) → marked |
 | 4138 | chassis, moving / on the goal; no chassis; far + unsafe | ran (e2 docking); forced (gdb: 0xEFC invalid for one Update, e4); forced (gdb: head x = -inf for one Update, e11; IsMagnitudeSafe needs length² ≥ 1e-28 and finite) → marked |
 | 3BEC | chassis / none | ran (e1) / forced (gdb: 0xEFC invalid for the call, e3) → marked |
-| 3FE0, 5864, 57D4 | docking path | not run: the area's heads have no Follow (docking path) link; docking runs PathFind → unmarked |
-| 55B0, 5568 | | only false arms ran (e2: 55B0 true too) → unmarked |
-| C51C | spin vector set (18 T, 20) | not run: no Patrol/ATTK destination in this area → unmarked |
-| C034 | tilted Y column (21 F, 25, 30) | not run → unmarked |
-| E62C, E58C, E530, E494, E028 T, E00C F, E4DC T | | never evaluated on the reached transitions → unmarked |
-| BBC0 | | not run → unmarked |
+| CCF0, 5498, C8F4, C51C, C034, E028, E00C, E4DC, 55B0, 5568, E99C, E90C, E810 | | see "Shipped spawns, snatch and deploy" below → marked |
+| E62C, E58C, E530, E494, BBC0, 3FE0, 5864, 57D4 | | not reachable in shipped data (below) → unmarked |
 
 `kill <id>` (port cc6400712) works on the chassis: `kill u0532` gives hp 0/10, fsm Dead, and the head goes LostChassisReaction → PathFind → docks.
+
+## Shipped spawns, snatch and deploy (2026-10-21)
+
+Ported the chassis stand-ins E99C CanBeIngPossessed (false while 0xD41 0x80/0x40 or 0xD40 0x1),
+E90C SetIngPossessed (base, then tells the head) and E810 SetAttackTarget (keeps a snatching
+swarm's id at 0xCBC, sets 0x420's 0x80; no base call). The snatch path needs E810.
+
+Disc scan (`echoes_disc`, every MLVL's SCLY layers plus the SCGN generated-object section):
+SpawnDrop is in chassis FSM2 350dfc00 and SpawnIdle in head FSM2 aaaff18a; both are used only by
+the generated SPLL/SPLU in 09_cliff_temple_dark (a92f00b3, Hive Temple), spawned by GENR
+28350045/42/4a (layer 10) through SRLY 28350006/11/28. 09_cliff_temple (6c363cd4) spawns a
+snatching swarm (SCGN ISSW 82500e5) from GENR 82500e1 on TIMR 82500e4. No Splitter has a
+CONN/FOLW (docking path) or RTRT/FOLW (retreat point) link. The AttackLogic sub-machine
+(f548e6e4, dumped at run time) tests HasHead, CanReachTarget, PathOver only under HasRetreatPoint
+or in PathFind #7/#8, which only SetRetreatDest enters; no shipped FSM2 names IsIntact.
+
+Runs (probe build, `[arm]` lines once per arm; gdb forcing flips one probed condition): n2/fq1/fq2
+0n_cliff_hall (a4d81547) with `send <chassis> Start`; t9/fqB 09_cliff_temple (timer started,
+fqB kills a head first); t9d/fqC 09_cliff_temple_dark (layer 10, relays sent SetToZero);
+fqA/fqD/fqE 914f1381 (IM01 + `place` spin approach, then `kill u0521; kill u0531` so head u0520
+docks to u0532).
+
+| fn | arm | result |
+|---|---|---|
+| E028 / E00C | true, false | ran (n2) → marked |
+| C51C | activate, update arms, deactivate / dt ≤ 0, slerp | ran (n2) / forced under gdb (fq1) → marked |
+| C034 | jump / relaxed, landed, deactivate tilted / level, level-Y | ran (n2, fq1, fq2) → marked |
+| C034 | airborne update, tilted Y, unsafe flat, slerp | forced under gdb (fq1) → marked |
+| E5D0, C8F4 | all; headless activate/deactivate | ran (t9; fqB after `kill <head>`) → marked |
+| E99C / E90C / E810 | base, possessed+head, headless, not possessed, swarm target / flag set, non-swarm | ran (t9, fqB, fqA) / forced under gdb (fqB) → marked |
+| CCF0 | ray miss, landed, activate/deactivate / ray hit, still falling | ran (t9d) / forced under gdb (fqC) → marked |
+| 5498 | all | ran (t9d) → marked |
+| E4DC, 55B0, 5568 | false arms / true arms | ran (fqA) / forced under gdb (fqA, fqD, fqE) → marked |
+| E62C, E58C, E530, E494, BBC0 | | not reachable in shipped data (above) → unmarked |
+| 5864 / 57D4, 3FE0 | true arm / all | dead in shipped data (no CONN/FOLW); 5864's false arm never evaluated → unmarked |
+
+CCF0's ray (Solid+Floor include, 1000 down) missed in every natural run; worth a check against
+retail's filter.

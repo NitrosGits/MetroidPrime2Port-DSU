@@ -337,12 +337,16 @@ void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
 
 // fn_75_5864 (the head's HasDockingPath trigger, 0x5864-0x58BC): the "CONN"/"FOLW" connected
 // object (0x588C GetConnectedObject) is valid.
+// The true arm is dead in shipped data: no Splitter head has a CONN/FOLW link in any SCLY or SCGN
+// layer (disc scan); the false arm was not evaluated in any run. No marker.
 bool CSplitterCommandModule::HasDockingPath(CStateManager& mgr, const CTriggerData&) const {
   return GetConnectedObject(mgr, kSS_Connect, kSM_Follow) != kInvalidUniqueId;
 }
 
 // fn_75_57D4 (the head's DockingPathOver trigger, 0x57D4-0x57F0): the waypoint navigation's
 // destination at 0x6C0 is kInvalidUniqueId (cntlzw/srwi by 5).
+// Not reachable in shipped data: entered after HasDockingPath (fn_75_5864), whose true arm is
+// dead (no CONN/FOLW link). No marker.
 bool CSplitterCommandModule::DockingPathOver(CStateManager&, const CTriggerData&) const {
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
@@ -350,12 +354,18 @@ bool CSplitterCommandModule::DockingPathOver(CStateManager&, const CTriggerData&
 // fn_75_55B0 (the head's PathOver trigger, 0x55B0-0x55F8): with the flag byte 0xF6A's 0x80 bit
 // (SetDockingDest found the chassis) set the base's PathOver decides (0x55C4 extrwi with the
 // word's bit 24, 0x55D0); without it the path is over.
+// Arms: both false ran (04_cliff_contraption 914f1381, the head docking to another chassis after
+// `kill` of a chassis and a head); the 0x80-clear and base true arms forced under gdb.
+// @ fn_75_55B0
 bool CSplitterCommandModule::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return (mAutoDestructFlags & 0x80) == 0 || CPatterned::PathOver(mgr, data);
 }
 
 // fn_75_5568 (the head's PathShagged trigger, 0x5568-0x55B0): true when 0xF6A's 0x40 bit is set
 // (0x557C extrwi with the word's bit 25), else the base's PathShagged (0x5588).
+// Arms: both false ran (the same 914f1381 docking run); the 0x40 and base true arms forced under
+// gdb.
+// @ fn_75_5568
 bool CSplitterCommandModule::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
   return (mAutoDestructFlags & 0x40) != 0 || CPatterned::PathShagged(mgr, data);
 }
@@ -363,6 +373,8 @@ bool CSplitterCommandModule::PathShagged(CStateManager& mgr, const CTriggerData&
 // fn_75_5498 (the head's SpawnIdle state, 0x5498-0x5538). Activate (0x54C8): the vector at 0xF24
 // is zeroed (sZeroVector). Update (0x54E8): while the checked chassis id at 0xEFC is invalid it
 // becomes the "CONN"/"ATCH" connected object (0x5518 FindConnectedObject).
+// Arms: every arm ran in 09_cliff_temple_dark (a92f00b3 layer 10, the generated SpawnIdle heads).
+// @ fn_75_5498
 void CSplitterCommandModule::SpawnIdle(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mEditorProperties = CVector3f::Zero();
@@ -422,6 +434,8 @@ void CSplitterCommandModule::SeekMainChassis(CStateManager& mgr, EStateMsg msg, 
 // "CONN"/"FOLW" connected object (0x4058) and the locomotion type kLT_Combat (3). Update (0x407C):
 // with a safe body command move vector the head moves by it times dt * the data's max linear
 // velocity (0x7C4, 0x40F8 fn_75_2154) and faces it (0x4108 FaceDirection).
+// Not reachable in shipped data: entered only through HasDockingPath (fn_75_5864); no Splitter head
+// has a CONN/FOLW link. No marker.
 void CSplitterCommandModule::FollowDockingPath(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   if (msg == kStateMsg_Activate) {

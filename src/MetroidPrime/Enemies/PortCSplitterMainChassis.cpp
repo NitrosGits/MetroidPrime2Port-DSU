@@ -1368,6 +1368,9 @@ bool CSplitterMainChassis::LostHead(CStateManager&, const CTriggerData&) const {
 // (0xE5E8 lhz, 0xE5F0 cmplw) and, when it is invalid, the base's IsBeingSnatched (0xE5F8) decides
 // (0xE5FC clrlwi with the word's bit 24 - the byte's 0xFF): the trigger is true when either of
 // the two says so.
+// Arms: the snatcher-id, IsBeingSnatched and false arms ran in 09_cliff_temple (6c363cd4, TIMR
+// 82500e4 -> GENR 82500e1 spawns the snatching swarm 82500e5).
+// @ fn_75_E5D0
 bool CSplitterMainChassis::ShouldWaitForSnatch(CStateManager&, const CTriggerData&) const {
   return mSnatcherId != kInvalidUniqueId || IsBeingSnatched();
 }
@@ -1383,10 +1386,14 @@ bool CSplitterMainChassis::PrepareForDocking(CStateManager&, const CTriggerData&
 // fn_75_E62C (the chassis's IsIntact trigger, 0xE62C-0xE64C) and fn_75_E58C (its HasHead
 // trigger, 0xE58C-0xE5AC) are the same body: the command module id at 0xC6C against
 // kInvalidUniqueId (subf both ways, or, srwi by 31 - true when they differ).
+// Not reachable in shipped data: no shipped FSM2 names IsIntact (disc scan of every FSM2). No marker.
 bool CSplitterMainChassis::IsIntact(CStateManager&, const CTriggerData&) const {
   return mCommandModuleId != kInvalidUniqueId;
 }
 
+// Not reachable in shipped data: AttackLogic (FSM2 f548e6e4) tests it only under HasRetreatPoint
+// and in PathFind #7/#8, which only SetRetreatDest enters; no Splitter in any SCLY or SCGN layer has an RTRT/FOLW link, so HasRetreatPoint (fn_75_E56C) is
+// always false in shipped data. No marker.
 bool CSplitterMainChassis::HasHead(CStateManager&, const CTriggerData&) const {
   return mCommandModuleId != kInvalidUniqueId;
 }
@@ -1394,12 +1401,17 @@ bool CSplitterMainChassis::HasHead(CStateManager&, const CTriggerData&) const {
 // fn_75_E530 (the chassis's CanReachTarget trigger, 0xE530-0xE54C): the timer at 0xD3C (counted up
 // while the target is valid and the counter at 0xC48 is not zero, fn_75_AFE8) below 3.0f
 // (lbl_75_rodata_378, fcmpo/mfcr lt).
+// Not reachable in shipped data: the same HasRetreatPoint / PathFind #8 gate as HasHead
+// (fn_75_E58C). No marker.
 bool CSplitterMainChassis::CanReachTarget(CStateManager&, const CTriggerData&) const {
   return mTimerD3C < 3.f;
 }
 
 // fn_75_E4DC (the chassis's PathShagged trigger, 0xE4DC-0xE52C): true when 0xD40's 0x10 bit is set
 // (0xE4F0 extrwi with the word's bit 27), else the base's PathShagged (0xE4FC).
+// Arms: both false ran (04_cliff_contraption 914f1381, IM01 + `place` spin approach); the 0xD40
+// 0x10 true and the base true arms forced under gdb (one call each).
+// @ fn_75_E4DC
 bool CSplitterMainChassis::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
   return (mFlagsD40 & 0x10) != 0 || CPatterned::PathShagged(mgr, data);
 }
@@ -1407,18 +1419,24 @@ bool CSplitterMainChassis::PathShagged(CStateManager& mgr, const CTriggerData& d
 // fn_75_E494 (the chassis's PathOver trigger, 0xE494-0xE4DC): with 0xD40's 0x20 bit (the
 // destination is the target's, SetTargetDest/SetRetreatDest) set the base's PathOver decides
 // (0xE4A8 extrwi with the word's bit 26, 0xE4B4); without it the path is over.
+// Not reachable in shipped data: tested only in PathFind #7, which only SetRetreatDest enters
+// (see HasHead, fn_75_E58C). No marker.
 bool CSplitterMainChassis::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return (mFlagsD40 & 0x20) == 0 || CPatterned::PathOver(mgr, data);
 }
 
 // fn_75_E028 (the chassis's ShouldDeploy trigger, 0xE028-0xE034): 0xD41's 0x04 bit (the STRT
 // message's, 0xE02C extrwi with the word's bit 29).
+// Arms: false (HoldingTube) and true (after STRT) ran in 0n_cliff_hall (a4d81547) after `send <chassis> Start`.
+// @ fn_75_E028
 bool CSplitterMainChassis::ShouldDeploy(CStateManager&, const CTriggerData&) const {
   return (mFlagsD41 & 0x4) != 0;
 }
 
 // fn_75_E00C (the chassis's DeployPathOver trigger, 0xE00C-0xE028): the waypoint navigation's
 // destination at 0x6C0 is kInvalidUniqueId (cntlzw/srwi by 5), as in PatrolPathOver.
+// Arms: false and true ran in 0n_cliff_hall (a4d81547) after `send <chassis> Start`.
+// @ fn_75_E00C
 bool CSplitterMainChassis::DeployPathOver(CStateManager&, const CTriggerData&) const {
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
@@ -1515,6 +1533,8 @@ void CSplitterMainChassis::Dodge(CStateManager& mgr, EStateMsg msg, float) {
 // 0xCC6, when it is a CScriptWaypoint (0xBC10), gives its position and sets the bit
 // (0xBC1C-0xBC40). The base's path navigation (0x6F4) gets the destination (0xBC4C) and its face
 // target (0x718) kInvalidUniqueId.
+// Not reachable in shipped data: entered only through HasRetreatPoint; no Splitter in any SCLY or SCGN layer has an RTRT/FOLW link, so HasRetreatPoint (fn_75_E56C) is
+// always false in shipped data. No marker.
 void CSplitterMainChassis::SetRetreatDest(CStateManager& mgr, float) {
   CVector3f dest = GetTranslation();
   mFlagsD40 &= ~0x20;
@@ -1547,6 +1567,10 @@ void CSplitterMainChassis::HoldingTube(CStateManager&, EStateMsg msg, float) {
 // Update (0xCE84): once the chassis is no more than 10.0f (lbl_75_rodata_38C) above the landing
 // point the animation state is kAS_Over (3). Deactivate (0xCEB0): kAS_NotReady (0) and the base's
 // 0x420 0x80 bit (the host's mHitByPlayerProjectile) set.
+// Arms: Activate with a ray miss, Update at the landing height, Deactivate ran in
+// 09_cliff_temple_dark (a92f00b3, layer 10: SRLY 28350006/11/28 -> GENR 28350045/42/4a spawn the
+// SpawnDrop/SpawnIdle Splitters); the ray hit and the still-falling Update forced under gdb.
+// @ fn_75_CCF0
 void CSplitterMainChassis::SpawnDrop(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1584,6 +1608,9 @@ void CSplitterMainChassis::SpawnDrop(CStateManager& mgr, EStateMsg msg, float) {
 // 0xCBC is no longer a CIngSnatchingSwarm (0xC974) it is cleared. Deactivate (0xC990): the head's
 // shield is reset (0xC9B4 fn_75_5D50), the id at 0xCBC is cleared and the spin penalty timer at
 // 0xD14 is the data's spin attack interval penalty (0x874).
+// Arms: every arm ran in 09_cliff_temple (6c363cd4; the swarm from GENR 82500e1) - with a head,
+// and without one after `kill <head>`; swarm gone and still there both ran.
+// @ fn_75_C8F4
 void CSplitterMainChassis::WaitForSnatch(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1675,6 +1702,9 @@ void CSplitterMainChassis::WaitForDocking(CStateManager& mgr, EStateMsg msg, flo
 // spin vector scaled by dt * the data's deployment speed (0x850); the chassis then moves by the
 // spin vector in its own frame (0xC7FC) and faces it on the surface against its negated Z column
 // (0xC840). Deactivate (0xC848): the turn speed is the patterned info's again (0xCB0).
+// Arms: Activate, Update (safe move, safe and zero spin vector, within the turn limit) and
+// Deactivate ran in 0n_cliff_hall (a4d81547) after `send <chassis> Start`; dt <= 0 and the slerp arm forced under gdb.
+// @ fn_75_C51C
 void CSplitterMainChassis::FollowDeployPath(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   const CVector3f move = BodyController()->CommandMgr().GetMoveVector();
@@ -1728,6 +1758,10 @@ void CSplitterMainChassis::FollowDeployPath(CStateManager& mgr, EStateMsg msg, f
 // vector (0xC290-0xC2A8). Deactivate (0xC2B0): kAS_NotReady (0), the counter at 0xD00 is 5, the
 // animation-delta bits are cleared, kLT_Relaxed, Stop, and the chassis faces its flattened Y column
 // outright under the same z test (0xC2E0-0xC370).
+// Arms: Activate, Update (jump issued / not, landed), Deactivate (tilted and level) ran in
+// 0n_cliff_hall (a4d81547) after `send <chassis> Start`; the airborne Update forced under gdb (count 4 for one call), then the level-Y arm ran;
+// the tilted-Y, unsafe flat and slerp arms forced under gdb.
+// @ fn_75_C034
 void CSplitterMainChassis::DeploymentLanding(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -2556,14 +2590,34 @@ void CSplitterMainChassis::SetupStateMachine(CStateManager& mgr) {
   mStateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
-// vtable slot 0xF8 = fn_75_E99C: the Ing-possession gate, which reads the object's own flag bytes.
+// vtable slot 0xF8 = fn_75_E99C (0xE99C-0xE9E4): false while 0xD41's 0x80 bit (the spin attack,
+// 0xE9AC extrwi with the word's bit 24), 0xD40's 0x1 bit (the leg stab, 0xE9B8 clrlwi) or 0xD41's
+// 0x40 bit (the laser sweep, 0xE9C0 extrwi with bit 25) is set; otherwise the base's (0xE9C8).
+// Arms: the base arm ran (09_cliff_temple, the swarm picking targets); the flag arm forced under
+// gdb.
+// @ fn_75_E99C
 bool CSplitterMainChassis::CanBeIngPossessed(CStateManager& mgr) const {
-  return PortCanBeIngPossessed(mgr);
+  if ((mFlagsD41 & 0x80) != 0 || (mFlagsD40 & 0x1) != 0 || (mFlagsD41 & 0x40) != 0) {
+    return false;
+  }
+  return CPatterned::CanBeIngPossessed(mgr);
 }
 
-// vtable slot 0x100 = fn_75_E90C.
+// vtable slot 0x100 = fn_75_E90C (0xE90C-0xE99C): the base call (0xE930) and then, when the
+// possession flag is set (0xE934), the command module at 0xC6C (0xE94C ObjectById, 0xE950 the
+// CSplitterCommandModule cast) is told it is possessed through its vtable slot 0x104 (true,
+// 0.0f lbl_75_rodata_390, mgr) - the same tail as fn_75_E87C below.
+// Arms: possessed with a head ran (09_cliff_temple snatch) and headless ran (after `kill <head>`);
+// not possessed ran (04_cliff_contraption 914f1381).
+// @ fn_75_E90C
 void CSplitterMainChassis::SetIngPossessed(bool possessed, CStateManager& mgr) {
-  PortSetIngPossessed(possessed, mgr);
+  CPatterned::SetIngPossessed(possessed, mgr);
+  if (possessed) {
+    if (CSplitterCommandModule* module =
+            TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId))) {
+      module->SetIngPossessed(true, 0.f, mgr);
+    }
+  }
 }
 
 // @ fn_75_E87C
@@ -2584,9 +2638,17 @@ void CSplitterMainChassis::SetIngPossessed(bool possessed, float duration, CStat
   }
 }
 
-// vtable slot 0x108 = fn_75_E810.
+// vtable slot 0x108 = fn_75_E810 (0xE810-0xE87C), the snatching swarm's call (no base call): a
+// CIngSnatchingSwarm at the target id (0xE83C GetObjectById, 0xE840 the cast) becomes the snatcher
+// at 0xCBC (0xE850); either way the base's 0x420 0x80 bit (the host's mHitByPlayerProjectile) is
+// set (0xE854-0xE860).
+// Arms: a swarm target ran (09_cliff_temple snatch); a non-swarm target forced under gdb.
+// @ fn_75_E810
 void CSplitterMainChassis::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
-  PortSetAttackTarget(mgr, target);
+  if (TCastToConstPtr< CIngSnatchingSwarm >(mgr.GetObjectById(target)) != nullptr) {
+    mSnatcherId = target;
+  }
+  SetHitByPlayerProjectile(true);
 }
 
 // The module's auto-destruct starter (retail fn_75_5A54). The DOL reaches it through

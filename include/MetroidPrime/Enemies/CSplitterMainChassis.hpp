@@ -398,9 +398,8 @@ private:
   // helpers (this lane's half): the module's stateless helper bodies, ported from the REL's asm
   // (src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp). Append-only: the FSM lane's own members
   // are above. The retail function each one stands for is named on it.
-  bool PortCanBeIngPossessed(CStateManager& mgr) const;                     // fn_75_E99C
-  void PortSetAttackTarget(CStateManager& mgr, TUniqueId target);           // fn_75_E810
-  void PortSetIngPossessed(bool possessed, CStateManager& mgr);              // fn_75_E90C
+  // (The chassis's own three - fn_75_E99C, fn_75_E90C and fn_75_E810 - are the FSM lane's: they
+  // live in this class's own bodies, above.)
 #endif
 };
 #else
