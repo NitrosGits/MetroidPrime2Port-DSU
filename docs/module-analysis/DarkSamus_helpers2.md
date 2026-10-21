@@ -1,0 +1,104 @@
+# Dark Samus helpers at 0xA000 and up (the helpers2 lane)
+
+The slice: the unmarked class-B rows of `DarkSamus_functions.tsv` with an empty `state` column and
+an offset at 0xA000 or above - 160 functions, the boss's helpers (the stand-ins, the path find's
+helpers, the hint chain's helpers, the render helpers, the reflect path). The FSM handlers and the
+triggers below 0xA000 belong to the other lanes.
+
+## 1. The sort of the 160
+
+| bucket | n | what it means |
+| --- | --- | --- |
+| ported (a body exists) | 51 | the port already has the body; mark it when every live arm ran |
+| missing (no body) | 105 | port from the asm; 43 of them are called by the ported code, the other 62 hang under a stand-in or under a missing body |
+| dead (no caller, no body) | 4 | fn_10_CEB4, fn_10_1BEFC, fn_10_1C7FC, fn_10_1EF38 - vtable slots the REL never fills |
+
+The 51 ported ones are (REL fn -> the port's name): fn_10_A06C UpdateBoostBallAtActor,
+fn_10_B458 FindArrivedHint, fn_10_B6C4 FindBoostBallHint, fn_10_B86C ActivateHintChains,
+fn_10_BA38 BoostChainHasInactiveHint, fn_10_C104 SweepBeamDamage, fn_10_C2B0 UpdateSweepBeamAim,
+fn_10_C470 UpdateSweepBeamEnd, fn_10_EFC8 IsInUnsafeSpot, fn_10_F40C GetScannableObjectInfo,
+fn_10_F488 TakeDamage, fn_10_F5C0 GetTouchBounds (stand-in), fn_10_FF20 DamageVulnerability,
+fn_10_100DC GetDamageVulnerability, fn_10_10210 GetAimPosition (stand-in),
+fn_10_10358 GetOrbitPosition (stand-in), fn_10_11334 UpdateGlideEmitter,
+fn_10_11974 UpdateScatterShotFire, fn_10_11C60 UpdateDiveFlight, fn_10_11DDC SendDiveAttack,
+fn_10_11EB8 UpdateDiveStuck, fn_10_128D8 UpdateSafePosition, fn_10_12960 FindDiveLanding,
+fn_10_12F60 FireScatterShotProjectile, fn_10_1444C IsLineOnMesh, fn_10_14A00 ApplyDashStuckBlast,
+fn_10_14D14 UpdateDoubleDash, fn_10_14FE0 PickNextDash, fn_10_154FC PickDash,
+fn_10_16B8C TurnTowardPoint, fn_10_1707C UpdateDodge, fn_10_17F04 AddToRenderer (stand-in),
+fn_10_18964 Render (stand-in), fn_10_18AB8 PreRender (stand-in), fn_10_18D78 SetupStateMachine,
+fn_10_19B64 CollectReachAttacks, fn_10_1AAC4 GetCollisionPrimitive (stand-in),
+fn_10_1B1FC Think (stand-in), fn_10_1C6C8 ProjectileInfo, fn_10_1CDD0 BounceDive,
+fn_10_1D860 UpdateAdditiveAnimation, fn_10_1D9A4 GetRepulsionPoint, fn_10_1DD14 Separate,
+fn_10_1E178 AccumulateDamage, fn_10_1E26C PushAttacker, fn_10_1E2E8 EraseFirstAttacker,
+fn_10_1E3C0 FindBestCoverPoint, fn_10_1E4C4 ScoreCoverPoint, fn_10_1E740 ShouldForgetLastAttacker,
+fn_10_1E89C AcceptScriptMsg (stand-in), fn_10_1EE4C CanReflectHit.
+
+Of the 105 missing ones, only these 20 are called by a body the port has (the rest wait for their
+callers): fn_10_10010, fn_10_100D0, fn_10_13FFC, fn_10_16048, fn_10_17E48, fn_10_19014, fn_10_1AFB4,
+fn_10_1B00C, fn_10_1B05C, fn_10_1B938, fn_10_1B9B0, fn_10_1C778, fn_10_1D794, fn_10_21F14,
+fn_10_220EC, fn_10_22184, fn_10_B570, fn_10_B670, fn_10_EDB8, fn_10_FFB4.
+
+## 2. What this slice marked
+
+Two bodies, both proven arm by arm with a temporary probe (the probe is not committed):
+
+| fn | the port's body | the arms |
+| --- | --- | --- |
+| fn_10_1D794 | `CDarkSamus::UpdateStillTimer` (0x0001D794, 0xC8 bytes) | **activate** (the timer cleared, the reference position set - the guest's argument r4 against 0, 0x0001D7B0), **still** (the timer grows by dt - the ble at 0x0001D80C), **moved** (the timer cleared, the reference position moved - 0x0001D810). All three ran. |
+| fn_10_18D78 | `CDarkSamus::SetupStateMachine` (0x00018D78, 0x6C bytes) | no branch in the REL's body (the `InitializeStateMachine__10CPatternedFR13CStateManager` call at 0x00018D8C and the two table calls at 0x00018DAC/0x00018DCC); the body ran once, from the first Think. |
+
+## 3. What is ported but still unmarked, and why
+
+The probe (an entry log plus one log per arm) ran in the rooftop fight; these are the arms that
+did **not** run:
+
+- **fn_10_11334** `UpdateGlideEmitter`: the "no emitter" arms (the update after a deactivate, the
+  deactivate without an emitter). They hang off the invalid sfx id (0xC48, the loader's argument,
+  valid in every instance - proven by the four successful `AddEmitter` calls), so they are dead on
+  shipped data except for an update that follows a deactivate - which the state machine's message
+  order never produced.
+- **fn_10_16B8C** `TurnTowardPoint`: the "the forward vector is not normalisable" arm (dead: the
+  transform's forward is a unit vector) and the "the point is at the actor's own x/y" arm.
+- **fn_10_1D860** `UpdateAdditiveAnimation`: the "no additive animation was found" arm and the
+  "deactivate without one" arm (they come as a pair).
+- **fn_10_1DD14** `Separate`: the "the contact time is fresh" arm (0x0001DE5C), the "the repulsion
+  is strong" arm (0x0001DE78) and the "the separation is not normalisable" arm.
+- **fn_10_1E178** `AccumulateDamage`: the "the health is gone and it counts" arm (the health has to
+  drop **after** the activate; in the run the health changed twice, both times with the activate
+  message).
+- **fn_10_1E26C** `PushAttacker`: the "the uid is invalid" arm (the caller hands it the uid it read
+  from 0xC24, which is invalid until an attacker is known - the port's caller skips the call then).
+- **fn_10_1E2E8** `EraseFirstAttacker`: the REL's body shifts the uid list down in a loop with two
+  bounds checks (0x0001E2F0/0x0001E308); the port's body only does the two-entry case.
+- **fn_10_100DC** `GetDamageVulnerability`: the enrage arm (the phazon states).
+
+## 4. What this slice ported
+
+`src/MetroidPrime/Enemies/PortCDarkSamusHelpers2.cpp` (new) holds **fn_10_17E48** (0x00017E48,
+0x8 bytes): the stage count - the guest's 0x978, one load (`lwz` at 0x00017E48) and a `blr`. Its
+only caller is fn_10_FD4C (`WatchStageChange`), which compares the count with the one it saw last
+(0xD54). The port's fn_10_FD4C reads the member directly, so the new body does not run yet and
+carries no marker; it will when the caller uses it.
+
+The other cheap ones of the 105, for the next slice, with what they need:
+
+- fn_10_100D0 (0xC) and fn_10_10010/220EC/22184: the damage-vulnerability container (a 12-byte
+  entry list) - the host's `CDamageVulnerability` has no such container yet.
+- fn_10_EDB8 (0x14): `lbl_10_rodata_3BC[index]`, a float table; its caller fn_10_153EC is the
+  SideDash state, which the FSM2 has no node for.
+- fn_10_19014 (0x48): sets two bits of the byte at 0x34C (a base-class member the port does not
+  map) and calls `RemoveMaterial(0x25, mgr)`.
+- fn_10_1B00C/1B05C/1B938/1B9B0: the reflect path (fn_10_1B9B0 is the note's "still unmarked on
+  purpose" one).
+- fn_10_B570/B670: the hint chain's helpers - they free a chain object the port does not have.
+- fn_10_1C778 (0x84): the path find's destination (0x8B4/0x8B8/0x8BC) - the note says it is
+  ported; the port's body is missing.
+
+## 5. The run
+
+Sanctuary `10_cliff_rooftop` (world `1baa96c2`), layer 2 (`MP2_INPUT="LAYER2@400"`), boss `u04f7`,
+5600 game updates at `MP2_TICKS_PER_FRAME=8`: `send u04f7 Activate`, `place u04f7 player 3`, 67
+`press Y 45` (the missiles), `damage u04f7 130` x3, then the states `BoostBallInto`, `Taunt`,
+`TravelToCoverPoints`, `Dash`, `DiveAttack`, `MissileJump` forced one after the other. 0 caught,
+0 reach-stub, exit 0. The probe counted: UpdateStillTimer 178 entries (4 activate, 123 still, 51
+moved), SetupStateMachine 1, and the arms of the eight other probed bodies as listed above.

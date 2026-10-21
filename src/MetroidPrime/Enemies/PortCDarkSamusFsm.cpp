@@ -537,6 +537,7 @@ void CDarkSamus::AdvanceBattleStage(CStateManager& mgr) {
 // Magnitude at 0x0001D7FC): when it is more than 0.6 (lbl_10_rodata_424, the ble at 0x0001D80C) the
 // actor has walked away, so the timer is cleared and the reference position becomes the actor's
 // position again (0x0001D810); when it is not, the timer grows by dt (0x0001D838).
+// @ fn_10_1D794
 void CDarkSamus::UpdateStillTimer(EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mStillTime = 0.f;

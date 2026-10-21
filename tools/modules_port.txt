@@ -7,6 +7,7 @@ WallCrawler;src/MetroidPrime/Enemies/PortCWallCrawler.cpp
 CommandoPirate;src/MetroidPrime/Enemies/PortCCommandoPirate.cpp
 DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamus.cpp
 DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamusFsm.cpp
+DarkSamus;src/MetroidPrime/Enemies/PortCDarkSamusHelpers2.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianKneeArmor.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianEchoTarget.cpp
