@@ -209,6 +209,9 @@ public:
   void PortTurnUpright(float dt);
   CVector3f PortSeparationVector(CStateManager& mgr) const;
   void PortFindChassis(CStateManager& mgr);
+  // The retail's fn_75_270C (the dodge direction pick) and fn_75_25C4 (a clear dodge path).
+  int PortDodgeDirection(CStateManager& mgr);
+  bool PortDodgeClear(CStateManager& mgr, const CVector3f& dir, float dist);
   // The retail's fn_75_5D50: the head's shield reset (the chassis's Death and its spin, dodge and
   // docking states call it).
   void PortResetShield(CStateManager& mgr);
@@ -270,6 +273,9 @@ private:
   TUniqueId mChassisId = kInvalidUniqueId;       // guest 0xEFA (the chassis it looks up)
   TUniqueId mSyncedId = kInvalidUniqueId;        // guest 0xEFE (the copy of the chassis's 0xCC0)
   int mLaserPulseShots = 0;  // guest 0xF20 (ResetAttackTimes, fn_75_3ADC)
+  float mDodgeDistance = 0.f;  // guest 0xEE8 (the constructor, 0x6EEC-0x6EF8)
+  int mDodgeCount = -1;        // guest 0xEEC (the constructor's -1, 0x6C18/0x6C30)
+  int mDodgeDirection = -1;    // guest 0xF30 (FindBestDodgeDirection, fn_75_3B34)
   TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
   TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
   // guest 0xF34: the laser sweep stage. The constructor leaves -1 (0x6CA0, 0x6CE4), fn_75_5AD8

@@ -35,6 +35,7 @@
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
 #include "Kyoto/CRandom16.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Graphics/CTexture.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CModelData.hpp"
@@ -348,18 +349,14 @@ void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
   }
 SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
 SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
-SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_5644)
-SPLITTER_TRIGGER_STANDIN(ShouldFireAgain, fn_75_5610)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
 SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
-SPLITTER_STATE_STANDIN(LaserPulse, fn_75_4864)
 SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
 SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
 SPLITTER_CODE_STANDIN(SetDockingDest, fn_75_3BEC)
-SPLITTER_CODE_STANDIN(FindBestDodgeDirection, fn_75_3B34)
 #undef SPLITTER_TRIGGER_STANDIN
 #undef SPLITTER_STATE_STANDIN
 #undef SPLITTER_CODE_STANDIN
@@ -810,6 +807,11 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
   SetMaterialFilter(CMaterialFilter(CMaterialList(kMT_Solid),
                                     CMaterialList(kMT_CollisionActor, kMT_Character),
                                     CMaterialFilter::kFT_IncludeExclude));
+  // fn_75_6B08 @0x00006E60-0x00006EF8: the dodge distance at 0xEE8 is the model's scale x times
+  // the animation distance of a right (3) dodge (1) step (body state 3, fn_75_6F1C).
+  mDodgeDistance = GetModelData()->GetScale().GetX() *
+                   GetAnimationDistance(CPASAnimParmData(pas::kAS_Step, CPASAnimParm::FromEnum(3),
+                                                         CPASAnimParm::FromEnum(1)));
   // The retail constructor also builds the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
   // at 0xa7c..0xd6b. They belong to the state machine and the render paths this milestone does
   // not enter, so the port keeps the parameter block only.
@@ -1478,6 +1480,140 @@ void CSplitterCommandModule::PathFind(CStateManager& mgr, EStateMsg msg, float d
 // @ fn_75_5624
 bool CSplitterCommandModule::ShouldAttack(CStateManager&, const CTriggerData&) const {
   return mCountdownTimerB <= 0.f;
+}
+
+// fn_75_4864 (the head's LaserPulse state, 0x4864-0x4A5C). Activate (0x48B0): the animation
+// state is kAS_Ready (0x48B8), the dodge count at 0xEEC is 0 (0x48BC) and the shot count at 0xF20
+// drops by one (0x48C0-0x48C8). Update (0x48D0): when CTryCommand::ShouldRetry (the host's
+// CAnimationState::CanIssueCommand) allows body state 0x12 (kAS_ProjectileAttack, 0x48D8-0x48E4)
+// a projectile attack command (lbl_75_data_5AC, kind 6) with severity 1 (0x4914) at the position
+// plus the Y column (0x48E8-0x4930) without horizon blending (0x4918) goes out (0x4958).
+// Otherwise, with a positive frame time (0x49B0 fcmpo against 0.0f lbl_75_rodata_40) and the
+// target at 0xEFE (0x49C8 GetObjectById, 0x49CC), the head faces the flat offset (z 0.0f, 0x4A2C)
+// to the target's aim position (0x49F8, vtable 0x54 with 0.0f; 0x4A34 FaceDirection).
+// Deactivate (0x4A3C): the animation state is kAS_NotReady.
+void CSplitterCommandModule::LaserPulse(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mDodgeCount = 0;
+    --mLaserPulseShots;
+  } else if (msg == kStateMsg_Update) {
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_One, GetTranslation() + GetTransform().GetColumn(kDY), false));
+    } else if (dt > 0.f) {
+      if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId))) {
+        // The id is the chassis's target (0xCC0), always an actor; retail does no cast.
+        const CVector3f aim = target->GetAimPosition(mgr, 0.f);
+        BodyController()->FaceDirection(
+            CVector3f(aim.GetX() - GetTranslation().GetX(), aim.GetY() - GetTranslation().GetY(), 0.f),
+            dt);
+      }
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
+}
+
+// fn_75_5610 (the head's ShouldFireAgain trigger, 0x5610-0x5624): the shot count at 0xF20 is
+// above 0 (0x5614-0x561C neg/andc/srwi).
+bool CSplitterCommandModule::ShouldFireAgain(CStateManager&, const CTriggerData&) const {
+  return mLaserPulseShots > 0;
+}
+
+// fn_75_5644 (the head's ShouldDodge trigger, 0x5644-0x565C): the dodge direction at 0xF30 is not
+// -1 (0x5648-0x5654 subfic/addi/or/srwi).
+bool CSplitterCommandModule::ShouldDodge(CStateManager&, const CTriggerData&) const {
+  return mDodgeDirection != -1;
+}
+
+// fn_75_3B34 (the head's FindBestDodgeDirection code, 0x3B34-0x3BEC): the dodge direction at 0xF30
+// is -1 (0x3B54). With the data word 0x7C0's 0x2 bit (0x3B5C) and the dodge count at 0xEEC below
+// the data's maximum dodges (0x7F8, 0x3B6C): below the minimum dodges (0x7F4, 0x3B78) or a roll of
+// 0.0f to 100.0f (lbl_75_rodata_40/64, 0x3B98) at or below the dodge chance (0x7FC, 0x3BA0-0x3BA8)
+// picks a direction (0x3BB4 fn_75_270C) and counts the dodge (0x3BC0); otherwise the count goes
+// to the maximum (0x3BCC-0x3BD0).
+void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
+  mDodgeDirection = -1;
+  if ((mData.mUnknownBD80FD94 & 0x2) == 0 || mDodgeCount >= mData.mMaxDodges) {
+    return;
+  }
+  if (mDodgeCount < mData.mMinDodges || mgr.Random()->Range(0.f, 100.f) <= mData.mDodgeChance) {
+    mDodgeDirection = PortDodgeDirection(mgr);
+    ++mDodgeCount;
+  } else {
+    mDodgeCount = mData.mMaxDodges;
+  }
+}
+
+// fn_75_270C (the dodge direction pick, 0x270C-0x2994): the right (the X column, 0x24/0x34/0x44)
+// and left sides start open. The listening-AI list at 0x830 is walked (0x2780 lha 0x2008, to -1);
+// every entry (0x2794) other than the head (0x279C) in its area (0x27A4-0x27B0) nearer than the
+// dodge distance at 0xEE8 (squared, 0x27EC) closes the side it lies on: a dot with the X column
+// at or above 0.0f (0x2814-0x281C) closes the right within 60 degrees of it (lbl_75_rodata_8C,
+// 0x2830-0x2840), below it the left within 60 degrees of -X (0x2874-0x2884). An open side needs a
+// clear dodge path (0x28C8 / 0x290C fn_75_25C4). With both open a random bit 0x4000 (0x2928
+// CRandom16::Next, 0x292C) keeps the right, else the left. The result is 2 (left, 0x2948), 3
+// (right, 0x2958) or -1 (0x2768).
+int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
+  const float dist = mDodgeDistance;
+  const CVector3f pos = GetTranslation();
+  const CVector3f right = GetTransform().GetColumn(kDX);
+  bool leftOpen = true;
+  bool rightOpen = true;
+  CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
+  for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
+    // The list holds AIs, always actors; retail reads the position with no cast (0x27B4).
+    const CActor* other = static_cast< const CActor* >(list[idx]);
+    if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    const CVector3f delta = other->GetTranslation() - pos;
+    if (delta.MagSquared() >= dist * dist) {
+      continue;
+    }
+    if (CVector3f::Dot(delta, right) >= 0.f) {
+      if (rightOpen && CVector3f::GetAngleDiff(right, delta) < 1.0471976f) {
+        rightOpen = false;
+      }
+    } else if (leftOpen && CVector3f::GetAngleDiff(-right, delta) < 1.0471976f) {
+      leftOpen = false;
+    }
+  }
+  if (rightOpen) {
+    rightOpen = PortDodgeClear(mgr, right, mDodgeDistance);
+  }
+  if (leftOpen) {
+    leftOpen = PortDodgeClear(mgr, -right, mDodgeDistance);
+  }
+  if (leftOpen && rightOpen) {
+    if ((mgr.Random()->Next() & 0x4000) != 0) {
+      leftOpen = false;
+    } else {
+      rightOpen = false;
+    }
+  }
+  if (leftOpen) {
+    return pas::kSD_Left;
+  }
+  if (rightOpen) {
+    return pas::kSD_Right;
+  }
+  return pas::kSD_Invalid;
+}
+
+// fn_75_25C4 (a clear dodge path, 0x25C4-0x270C): from the bounding box's center (0x2600-0x260C)
+// to the center plus the direction times the distance (0x2610-0x2664), a ray with the solid
+// material (lbl_75_data_440, 0x3B) included and the collision actor one (lbl_75_data_444, 0x2F)
+// excluded (type 3) hits no world (0x26B8 RayCollideWorld, 0x26C0) and the end lies on the path
+// search at 0xD6C (0x26CC OnPath, 0x26D0 against kR_Success).
+bool CSplitterCommandModule::PortDodgeClear(CStateManager& mgr, const CVector3f& dir, float dist) {
+  const CVector3f center = GetBoundingBox().GetCenterPoint();
+  const CVector3f end = center + dir * dist;
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor));
+  return mgr.RayCollideWorld(center, end, filter, this) &&
+         mPathFindSearch.OnPath(end) == CPathFindSearch::kR_Success;
 }
 
 // fn_75_565C (the head's InLaserPulseRange trigger, 0x565C-0x570C): with the target at 0xEFE
