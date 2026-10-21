@@ -68,6 +68,11 @@ extern void* gPortGameHeapHi;
 #include "port_build_info.h"
 #include "port_console.h"
 #include "port_entry.h"
+#ifdef MP_PORT_COVERAGE
+// The gcov flush hook of a coverage build (CMake option MP_PORT_COVERAGE). The normal build does
+// not define the macro, so it does not see this file at all.
+#include "port_coverage.h"
+#endif
 #include "port_env.h"
 #include "port_breadcrumb.h"
 #include "port_logfile.h"
@@ -734,6 +739,13 @@ int main(int argc, char** argv) {
   // is the only place a device run leaves a record. A no-op on the desktop.
   PortLogBegin();
 
+#ifdef MP_PORT_COVERAGE
+  // A coverage run must leave its .gcda behind however it ends: the clean quit, the harness's
+  // SIGTERM, a Ctrl-C. The handler dumps the counters and re-raises, so the exit status still
+  // says which signal ended the run. See platform/port_coverage.cpp.
+  PortCoverageInstall();
+#endif
+
 #if defined(__ANDROID__)
   // `signal(2)` never hands the handler the fault address, so Android installs the
   // handler that can take one. Nothing else about the registration differs.
@@ -989,6 +1001,11 @@ int main(int argc, char** argv) {
 
   aurora_dvd_close();
   aurora_shutdown();
+#ifdef MP_PORT_COVERAGE
+  // The shutdown path's own dump: the run does not depend on the exit hook to leave a profile
+  // behind. The counters are out by now, so this is the last write.
+  PortCoverageDump();
+#endif
   // The game has returned; nothing else will write to fd 1 or 2, so the last lines are
   // handed to logcat before this thread ends.
   PortLogDrain();

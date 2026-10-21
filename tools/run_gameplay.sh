@@ -62,6 +62,14 @@ else
 fi
 cd "$BUILD" || exit 1
 
+# A coverage build (CMake option MP_PORT_COVERAGE) writes its .gcda files next to the objects
+# unless GCOV_PREFIX says otherwise, and two runs of the same build would write over each other.
+# The caller's own GCOV_PREFIX wins (the smoke suite gives every family its own).
+if [ -z "${GCOV_PREFIX:-}" ]; then
+  . "$ROOT/tools/cov/gcov_env.sh"
+  gcov_env "$BUILD" "$CACHEDIR"
+fi
+
 rm -f "$LOG"
 WORLD_DESC=${WORLD:-the-save-world}
 echo "run: tag=${RUNTAG:-run} log=$LOG build=$BUILD secs=${SECS:-460} display=$DISPLAY_NUM world=$WORLD_DESC frames=${FRAMES:-16000} input=$(printf '%s' "$IN" | wc -c) bytes user=$USERDIR at $(date +%T)" > "$LOG.info"
