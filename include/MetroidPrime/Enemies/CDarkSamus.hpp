@@ -485,6 +485,12 @@ private:
   // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
   const CDarkSamusBattleStage* GetBattleStage(CStateManager& mgr) const;
+  // fn_10_17E90 / 194AC / B86C / 193A0: the health in percent; the next stage (its kSS_Connect
+  // link); the AI hint chains the actor wakes; the stage advance and the 0x97C flags.
+  float GetHealthPercent() const;
+  TUniqueId GetNextBattleStage(CStateManager& mgr) const;
+  void ActivateHintChains(CStateManager& mgr);
+  void AdvanceBattleStage(CStateManager& mgr);
 
   // fn_10_1D794: the still timer (the guest's 0x964) and the position it measures from (the
   // guest's 0x958). kStateMsg_Activate clears the timer and moves the reference position to the
@@ -580,6 +586,11 @@ private:
   uint mStageCount;                 // guest 0x978, the stages the actor has had: the 'XALD' arm
                                    // writes 1 (0x0001EBC4), fn_10_193A0 adds 1 (0x0001941C); the
                                    // constructor writes 0 (0x0001FCC8)
+  // guest 0x97C, two flags fn_10_193A0 copies from the stage info (0x00019470/0x0001948C); the
+  // constructor writes 0 / 1 (0x0001FCD0/0x0001FCDC)
+  bool mUseAltScan;                 // 0x80, usesAlternateScannableInfo; fn_10_F40C reads it
+  bool mCanDie;                     // 0x40, the info's +0x32 not 1; fn_10_F488 keeps the health
+                                    // at 1.0f while it is clear (0x0000F4F4)
   TUniqueId mFirstBattleStageUid;   // guest 0xD50, the stage the 'XALD' arm linked (0x0001EBC0);
                                    // fn_10_FD4C reads it (0x0000FD88); the constructor writes
                                    // kInvalidUniqueId (0x00020018)

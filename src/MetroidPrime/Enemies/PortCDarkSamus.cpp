@@ -68,6 +68,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mFadeOut(0)
 , mBattleStageUid(kInvalidUniqueId)
 , mStageCount(0)
+, mUseAltScan(false)                            // 0x0001FCD0
+, mCanDie(true)                                 // 0x0001FCDC
 , mFirstBattleStageUid(kInvalidUniqueId)
 , mLastAttackerUid(kInvalidUniqueId)
 , mAttackerCount(0)
@@ -171,11 +173,12 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
   }
   CPatterned::Think(dt, mgr);
   // 0x0001B2E4: the module's own AI runs only while the actor is alive (the guest's 0x420 bit 6,
-  // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the attack pick
-  // (fn_10_1954C, the call at 0x0001B314); the stage advance before it (fn_10_193A0, 0x0001B308)
-  // and the twelve after it (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a
-  // stand-in rather than a retail-order Think.
+  // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the stage
+  // advance (fn_10_193A0, 0x0001B308) and the attack pick (fn_10_1954C, 0x0001B314); the twelve
+  // after them (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a stand-in rather
+  // than a retail-order Think.
   if (GetAlive()) {
+    AdvanceBattleStage(mgr);
     UpdateAttackPick(mgr);
   }
 }

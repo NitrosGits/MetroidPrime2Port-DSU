@@ -422,6 +422,101 @@ const CDarkSamusBattleStage* CDarkSamus::GetBattleStage(CStateManager& mgr) cons
   return TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(mBattleStageUid));
 }
 
+// fn_10_17E90 (0x00017E90, 0x74 bytes): the health left in percent: lbl_10_rodata_3F0 = 100.0f
+// times the health info's +4 (the health) over its +0 (the initial health), both through the
+// vtable slot 0x3C (0x00017EB0/0x00017EC8).
+// @ fn_10_17E90
+float CDarkSamus::GetHealthPercent() const {
+  const CHealthInfo* health = GetHealthInfo();
+  return 100.f * (health->GetHP() / health->GetInitialHP());
+}
+
+// fn_10_194AC (0x000194AC, 0xA0 bytes): the stage after the current one: the stage object's first
+// kSS_Connect link, any message (FindConnectedObject at 0x00019508). No stage object (0x000194E0)
+// or no link (0x0001951C) answers the current stage's uid 0x974.
+// @ fn_10_194AC
+TUniqueId CDarkSamus::GetNextBattleStage(CStateManager& mgr) const {
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (stage == nullptr) {
+    return mBattleStageUid;
+  }
+  const TUniqueId next = stage->FindConnectedObject(mgr, kSS_Connect, kSM_None);
+  if (next != kInvalidUniqueId) {
+    return next;
+  }
+  return mBattleStageUid;
+}
+
+// fn_10_B86C (0x0000B86C, 0x1CC bytes): walks the AI hint chains the actor links with
+// kSS_InternalState6 (FindConnectedObjects at 0x0000B89C, any message). A chain starts at a hint of
+// type 0x11 (0x158, `cmpwi r0, 0x11` at 0x0000B8E4) and each hint on it is activated (the vtable
+// slot 0x1C, SetActive(true), at 0x0000B908) before the next is looked for among its kSS_Arrived
+// links (0x0000B928): the first that is a hint. An active next hint whose 0x15C (the radius) is
+// lbl_10_rodata_25C = 0.0f counts up (0x0000B99C), an inactive one resets the count (0x0000B9A4);
+// four (`cmpwi r29, 0x4` at 0x0000B9CC) or no next hint ends the chain.
+void CDarkSamus::ActivateHintChains(CStateManager& mgr) {
+  const rstl::vector< TUniqueId > starts =
+      FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
+  for (rstl::vector< TUniqueId >::const_iterator it = starts.begin(); it != starts.end(); ++it) {
+    CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
+    if (hint == nullptr || static_cast< int >(hint->GetHintType()) != 0x11) {
+      continue;
+    }
+    int count = 0;
+    while (hint != nullptr) {
+      hint->SetActive(true);
+      CScriptAIHint* next = nullptr;
+      const rstl::vector< TUniqueId > arrived =
+          hint->FindConnectedObjects(mgr, kSS_Arrived, kSM_None);
+      for (rstl::vector< TUniqueId >::const_iterator a = arrived.begin(); a != arrived.end();
+           ++a) {
+        CScriptAIHint* other = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*a));
+        if (other == nullptr) {
+          continue;
+        }
+        if (other->GetActive() == true) {
+          if (0.f == other->GetRadius()) {
+            ++count;
+          }
+        } else {
+          count = 0;
+        }
+        next = other;
+        break;
+      }
+      if (count >= 4) {
+        break;
+      }
+      hint = next;
+    }
+  }
+}
+
+// fn_10_193A0 (0x000193A0, 0x10C bytes): the stage advance. A stage (fn_10_17E14, 0x000193C4) with
+// an advance threshold above lbl_10_rodata_3FC = 0.0f (its info's +0x0, 0x000193DC) that the
+// health percent (fn_10_17E90) has fallen below (`bge` at 0x000193F0) gives way to the next stage
+// (fn_10_194AC; the uid to 0x974 at 0x00019410, 0x978 counts up at 0x0001941C), and a next stage
+// whose info's +0x35 is 1 (0x00019440) wakes the hint chains (fn_10_B86C). Then, with a stage
+// (0x0001945C), 0x97C takes its flags: 0x80 = the info's +0x34 (usesAlternateScannableInfo),
+// 0x40 = its +0x32 is not 1 (the subfic/subi/or at 0x0001947C).
+// @ fn_10_193A0
+void CDarkSamus::AdvanceBattleStage(CStateManager& mgr) {
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (stage != nullptr && stage->GetStageInfo().unknown_0xb5af7831 > 0.f &&
+      GetHealthPercent() < stage->GetStageInfo().unknown_0xb5af7831) {
+    mBattleStageUid = GetNextBattleStage(mgr);
+    ++mStageCount;
+    if (GetBattleStage(mgr) != nullptr &&
+        GetBattleStage(mgr)->GetStageInfo().unknown_0xaa85c885 == true) {
+      ActivateHintChains(mgr);
+    }
+  }
+  if (const CDarkSamusBattleStage* now = GetBattleStage(mgr)) {
+    mUseAltScan = now->GetStageInfo().usesAlternateScannableInfo;
+    mCanDie = now->GetStageInfo().unknown_0xc96b8223 != true;
+  }
+}
+
 // fn_10_1D794 (0x0001D794, 0xC8 bytes): the still timer (the guest's 0x964) and the position it
 // measures from (the guest's 0x958/0x95C/0x960).
 //
@@ -1552,9 +1647,41 @@ void CDarkSamus::ScatterShot(CStateManager& mgr, EStateMsg msg, float dt) {
                                                false));
 }
 
-void CDarkSamus::SideDash(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_153EC", "state SideDash");
+// fn_10_EDB8 (0x0000EDB8, 0x14 bytes): the side dash's weight of a slot, lbl_10_rodata_3BC[slot]:
+// 0.6f, 0.7f, 1.0f, 1.0f, 0.8f, 0.8f, 0.9f, 0.9f (slots 2/3 first, the forward slots 0/1 last).
+static float GetSideDashWeight(int slot) {
+  static const float kWeights[8] = {0.6f, 0.7f, 1.f, 1.f, 0.8f, 0.8f, 0.9f, 0.9f};
+  return kWeights[slot];
+}
+
+// fn_10_153EC (0x000153EC, 0x110 bytes): the SideDash state. Activate (`mr. r31, r5` at
+// 0x000153FC) clears the dash record in place - the start and the destination to the zero vector,
+// both slots to -1, the weight to lbl_10_rodata_3FC = 0.0f and the 0x80 / 0x40 flags (0x0001540C..
+// 0x00015478; the steps-left word 0xA04 is left alone) - and picks a dash with no target (fn_10_154FC
+// at 0x000154A8, `li r6, 0x0`) over fn_10_EDB8's weights (the loop at 0x0001547C); a pick of weight
+// 0.0f (`fcmpu` at 0x000154B4) blocks the dash (0x80 at 0x000154C4). Every message, unless blocked
+// (`extrwi.` at 0x000154D0), runs the dash step (fn_10_12CE0 at 0x000154E4).
+void CDarkSamus::SideDash(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("SideDash", msg);
+  if (msg == kStateMsg_Activate) {
+    mDash.mStartPosition = CVector3f::Zero();
+    mDash.mDestination = mDash.mStartPosition;
+    mDash.mLastSlot = -1;
+    mDash.mSlot = -1;
+    mDash.mWeight = 0.f;
+    mDash.mBlocked = false;
+    mDash.mDoubleDash = false;
+    float weights[8];
+    for (int i = 0; i < 8; ++i) {
+      weights[i] = GetSideDashWeight(i);
+    }
+    if (0.f == PickDash(mgr, weights, nullptr)) {
+      mDash.mBlocked = true;
+    }
+  }
+  if (mDash.mBlocked == false) {
+    UpdateDashStep(mgr, msg);
+  }
 }
 
 // The base's Start body is empty, so it stands in for the module's until that one is ported.
