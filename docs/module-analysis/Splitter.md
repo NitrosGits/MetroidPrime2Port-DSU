@@ -1299,3 +1299,19 @@ Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projecti
 (in-cone, random tie-break), B2A0 (dodge timer still running, non-missile projectile), B678
 (head missing, unsafe offset), 5AD8 (undocked), 44DC (zero dt, unsafe flat), EA70 (dead),
 9B9C/9FA8/AB8C (boosting player, spin damage, morph-transition gate), 1790 (flag 26).
+
+## Beam effect actor (2026-10-21)
+
+- `fn_75_11884` builds a 0x1A0-byte model-less CActor (`CSplitterBeamEffect` in
+  `PortCSplitterCommandModule.cpp`, vtable `lbl_75_data_E34`): dtor 11804, Think 10DC4,
+  PreRender 10F1C, AddToRenderer 10EF0, Render 10778, PreRenderAllViewports 1167C; slot
+  `fn_75_D0` is the REL copy of `CActor::GetHealthInfo`. The head (1188) spawns it, opens it
+  while the chassis scans, closes it and deletes it once its open fraction is 0.
+- PreRender (EFB copy into a kTF_IA8 4x64 texture) and Render (the textured cone) are still
+  once-logging stand-ins, so the cone doesn't draw yet.
+- Run `04_cliff_contraption` L2 (chassis u0532 (-112.7, 130.3, -127.0), u0521 (-76.0, 114.2,
+  -127.0)): ctor, dtor, all four Think open/close arms, 1188 closing/closed ran. Unmarked:
+  Think's inactive arm (never inactive in the run), AddToRenderer's clipped arm and
+  PreRenderAllViewports' clean-bounds arm (not recorded by the probes).
+- The same run's morph-ball boost (X morph, A holds) never hit the chassis (9B9C/9FA8 unreached),
+  `damage u0532 30` left hp at 10.0, and no dodge reached 91E4: those arms still need a setup.

@@ -34,6 +34,11 @@
 #include "MetroidPrime/ScriptLoader/SLdrSplitterCommandModule.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 
+#include "Kyoto/CRandom16.hpp"
+#include "Kyoto/Graphics/CTexture.hpp"
+#include "MetroidPrime/CActorParameters.hpp"
+#include "MetroidPrime/CModelData.hpp"
+
 #include <math.h>
 #include <stdio.h>
 
@@ -149,25 +154,181 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
 
-// The DOL's CSfxManager::RemoveEmitter (the beam effect's sound).
-void StandInSfxRemoveEmitter() { StandIn("the DOL's CSfxManager::RemoveEmitter"); }
-
-// The retail's beam effect actor (0x1A0 bytes, a CActor) has no host class yet, so its creation
-// (fn_75_11884) and the manager's add stay a once-logging shell. The values the retail would
-// build are passed in, so the log says what was skipped.
-void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float angle) {
-  static bool sLogged = false;
-  if (sLogged) {
-    return;
-  }
-  sLogged = true;
-  fprintf(stderr,
-          "[splitter] fn_75_11884 (0x208) would create the beam effect actor '%s' in area %d "
-          "with a %.4f rad rotation; the host has no class for it\n",
-          name.c_str(), info.GetAreaId().Value(), angle);
-}
 
 } // namespace
+
+// The head's beam effect (0x1A0 bytes; the REL has no type name for it, so the name is a guess):
+// a CActor with no model whose vtable (lbl_75_data_E34) keeps the CActor slots except the
+// dtor (fn_75_11804), Think (fn_75_10DC4), PreRender (fn_75_10F1C), AddToRenderer
+// (fn_75_10EF0), Render (fn_75_10778) and PreRenderAllViewports (fn_75_1167C). The slot after
+// HealthInfo is fn_75_D0, the REL's copy of the DOL's CActor::GetHealthInfo (not ported here).
+// A cone opens from 1 degree to the data's angle in front of the head while the head scans.
+class CSplitterBeamEffect : public CActor {
+public:
+  CSplitterBeamEffect(TUniqueId uid, const CEntityInfo& info, const rstl::string& name,
+                      const CTransform4f& xf, short textureHeight, float angle, float length,
+                      const CColor& cloudColor1, const CColor& cloudColor2,
+                      const CColor& addColor1, const CColor& addColor2, float cloudScale,
+                      float fadeOffSize, float openSpeed);
+  ~CSplitterBeamEffect() override;
+
+  void Think(float dt, CStateManager& mgr) override;
+  void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  void Render(const CStateManager& mgr) const override;
+  void PreRenderAllViewports(CStateManager& mgr) override;
+
+  void SetOpening(bool opening) { mOpening = opening; }
+  bool IsOpening() const { return mOpening; }
+  float GetOpenFraction() const { return mOpenFraction; }
+
+private:
+  float mMaxAngle;        // 0x158
+  float mLength;          // 0x15C
+  CColor mCloudColor1;    // 0x160
+  CColor mCloudColor2;    // 0x164
+  CColor mAddColor1;      // 0x168
+  CColor mAddColor2;      // 0x16C
+  float mCloudScale;      // 0x170
+  float mFadeOffSize;     // 0x174
+  float mOpenSpeed;       // 0x178
+  CTexture* mTexture;     // 0x17C
+  float mAngle;           // 0x180
+  int mUnknown184;        // 0x184
+  float mOpenFraction;    // 0x188
+  CRandom16 mRandom;      // 0x18C
+  float mUnknown190;      // 0x190
+  float mUnknown194;      // 0x194
+  bool mOpening;          // 0x198
+};
+
+namespace {
+// lbl_75_bss_38, set by the REL's static initialiser fn_75_11AAC from lbl_75_rodata_884: the
+// cone's closed angle, one degree in radians.
+const float kBeamEffectClosedAngle = 0.017453292f;
+
+// The wrap both the head (0x12F4-0x1330) and the beam (0x10E9C-0x10ECC) do: x minus whole turns
+// (fctiwz of x / 2pi, lbl_75_rodata_78 / 7C), plus a turn when that is below 0.0f.
+float PortWrapTurn(float x) {
+  float r = x - static_cast< float >(static_cast< int >(x * 0.15915494f)) * 6.2831855f;
+  if (r < 0.f) {
+    r += 6.2831855f;
+  }
+  return r;
+}
+
+void StandInBeamEffect(const char* what) {
+  static const char* sLogged[4];
+  static int sCount;
+  for (int i = 0; i < sCount; ++i) {
+    if (sLogged[i] == what) {
+      return;
+    }
+  }
+  if (sCount < 4) {
+    sLogged[sCount++] = what;
+  }
+  fprintf(stderr, "[splitter] %s is a port stand-in (see PortCSplitterCommandModule.cpp)\n", what);
+}
+} // namespace
+
+// @ fn_75_11884
+// The ctor (0x11884-0x11A8C): a CActor (0x1197C) with an empty model (fn_75_11A8C, the
+// CModelData default ctor), the material list holding the material lbl_75_data_E30 names (0,
+// kMT_NoStepLogic; 0x11910-0x11954), default CActorParameters (0x11908) and no next draw node
+// (0x118F8-0x11904). The fields take the arguments (0x11990-0x119DC); a kTF_IA8 texture of width 4
+// and the given height with one mip is made (0x119A8-0x119FC); the angle starts closed
+// (lbl_75_bss_38, 0x11A04-0x11A24), the open fraction and 0x184 at 0.0f/0 (0x11A2C-0x11A30), the
+// random source is seeded with 99 (0x11A34), 0x190/0x194 are 0.0f and the cone opens (0x11A54).
+CSplitterBeamEffect::CSplitterBeamEffect(TUniqueId uid, const CEntityInfo& info,
+                                         const rstl::string& name, const CTransform4f& xf,
+                                         short textureHeight, float angle, float length,
+                                         const CColor& cloudColor1, const CColor& cloudColor2,
+                                         const CColor& addColor1, const CColor& addColor2,
+                                         float cloudScale, float fadeOffSize, float openSpeed)
+: CActor(uid, name, info, 0, xf, CModelData(), CMaterialList(kMT_NoStepLogic), CActorParameters(),
+         kInvalidUniqueId)
+, mMaxAngle(angle)
+, mLength(length)
+, mCloudColor1(cloudColor1)
+, mCloudColor2(cloudColor2)
+, mAddColor1(addColor1)
+, mAddColor2(addColor2)
+, mCloudScale(cloudScale)
+, mFadeOffSize(fadeOffSize)
+, mOpenSpeed(openSpeed)
+, mTexture(new CTexture(kTF_IA8, 4, textureHeight, 1))
+, mAngle(kBeamEffectClosedAngle)
+, mUnknown184(0)
+, mOpenFraction(0.f)
+, mRandom(99)
+, mUnknown190(0.f)
+, mUnknown194(0.f)
+, mOpening(true) {}
+
+// @ fn_75_11804
+// The dtor (0x11804-0x11884): the texture is scheduled for deletion (0x11834) and freed
+// (0x11848), then the CActor dtor runs (0x11854).
+CSplitterBeamEffect::~CSplitterBeamEffect() {
+  mTexture->ScheduleDeletion();
+  delete mTexture;
+}
+
+// fn_75_10DC4 (Think, 0x10DC4-0x10EF0): after CActor::Think (0x10DE4), an active beam
+// (0x10DE8-0x10DF0) moves its open fraction by dt times the open speed toward 1.0f while opening
+// (lbl_75_rodata_848, 0x10E00-0x10E24) or toward 0.0f otherwise (lbl_75_rodata_85C,
+// 0x10E2C-0x10E50), and its angle becomes the closed angle lerped to the full one by that
+// fraction, wrapped to one turn (0x10E54-0x10ED0).
+void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
+  CActor::Think(dt, mgr);
+  if (!GetActive()) {
+    return;
+  }
+  if (mOpening) {
+    const float open = dt * mOpenSpeed + mOpenFraction;
+    mOpenFraction = 1.f < open ? 1.f : open;
+  } else {
+    const float open = mOpenFraction - dt * mOpenSpeed;
+    mOpenFraction = 0.f < open ? open : 0.f;
+  }
+  mAngle = PortWrapTurn((mMaxAngle - kBeamEffectClosedAngle) * mOpenFraction +
+                        kBeamEffectClosedAngle);
+}
+
+// fn_75_10F1C (PreRender, 0x10F1C-0x1167C): draws the visible area geometry and the near actors
+// flat into the EFB and copies it into the texture (GXCopyTex) for the cone's distortion. Not
+// ported yet: a once-logging stand-in.
+void CSplitterBeamEffect::PreRender(CStateManager&) { StandInBeamEffect("fn_75_10F1C (the beam effect's PreRender, 0x760)"); }
+
+// fn_75_10EF0 (AddToRenderer, 0x10EF0-0x10F1C): unless the actor is out of the frustum (0x150's
+// low bit, 0x10EFC-0x10F04) it is rendered (0x10F08 EnsureRendered).
+void CSplitterBeamEffect::AddToRenderer(const CStateManager& mgr) const {
+  if (!GetPreRenderClipped()) {
+    EnsureRendered(mgr);
+  }
+}
+
+// fn_75_10778 (Render, 0x10778-0x10DC4): the cone as a textured fan with the cloud and add
+// colours. Not ported yet: a once-logging stand-in.
+void CSplitterBeamEffect::Render(const CStateManager&) const { StandInBeamEffect("fn_75_10778 (the beam effect's Render, 0x64C)"); }
+
+// fn_75_1167C (PreRenderAllViewports, 0x1167C-0x11804): the bounds start at the translation
+// (0x116A4-0x116CC) and take the two cone edges, (0, length, +-length * tan(angle / 2))
+// (lbl_75_rodata_840 0.5f, 0x116D0-0x11754) through the transform; they are both the render
+// bounds (0xCC) and the other bounds (0xE4) (0x11758-0x117B4). With render bounds dirty
+// (0x117B8-0x117C0) the portal state is updated and the flag cleared (0x117CC-0x117DC).
+void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
+  CAABox bounds(GetTranslation(), GetTranslation());
+  const float half = mLength * static_cast< float >(tan(0.5f * mAngle));
+  bounds.AccumulateBounds(GetTransform() * CVector3f(0.f, mLength, half));
+  bounds.AccumulateBounds(GetTransform() * CVector3f(0.f, mLength, -half));
+  SetRenderBounds(bounds);
+  SetOtherBounds(bounds);
+  if (GetRenderBoundsDirty()) {
+    UpdatePortalSystemState(mgr);
+    SetRenderBoundsDirty(false);
+  }
+}
 
 // The state machine names that are not ported yet: each stands in for the retail
 // function the REL's initialiser puts in the table and logs it once, so the log
@@ -1040,55 +1201,67 @@ bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
 // 0x1A0-byte beam effect actor is created (0x1258), built (0x12A0 the CEntityInfo, 0x12B8 the
 // name, 0x12C4-0x1334 the rotation) and added to the manager (0x13B4 AddObject).
 void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
-  // 0x11A4-0x11B4: the beam effect's id (0xF68) is looked up.
-  CEntity* beam = mgr.ObjectById(mBeamEffectId);
-  // 0x11B8-0x11E0: the module's own transform (fn_75_10D0) is built and copied and, when the
-  // beam effect is there, set on it. The retail casts the object to a CActor without a check;
-  // the port's beam effect is never created (fn_75_11884 is a shell), so the cast is the only
-  // way to keep the call safe here.
+  // 0x11A4-0x11B4: the beam effect's id (0xF68) is looked up; the id only ever holds the beam
+  // effect, so the retail's unchecked use as one is kept.
+  CSplitterBeamEffect* beam = static_cast< CSplitterBeamEffect* >(mgr.ObjectById(mBeamEffectId));
+  // 0x11B8-0x11E0: the module's own transform (fn_75_10D0) is built and set on the beam.
   CTransform4f moduleTransform = GetTransform();
   PortModuleTransform(moduleTransform);
-  if (CActor* beamActor = TCastToPtr< CActor >(beam)) {
-    beamActor->SetTransform(moduleTransform);
+  if (beam != nullptr) {  // port limit: the retail calls SetTransform (0x11E0) with no test
+    beam->SetTransform(moduleTransform);
   }
   // 0x1200-0x1208: the gate (fn_75_58E8) decides whether the body runs.
   if (!PortChassisTimerRunning(mgr)) {
-    if (beam == nullptr) {
-      // 0x1494-0x14B4: with no beam effect there, the retail clears the id at 0xF68 (0x14A0),
-      // removes the sound emitter (0x14AC) and clears its handle at 0xF64 (0x14B4).
+    if (beam == nullptr) {  // 0x1434-0x1438
+      // 0x1494-0x14B4: the id at 0xF68 is cleared and the sound removed, its handle cleared.
       mBeamEffectId = kInvalidUniqueId;
-      StandInSfxRemoveEmitter();
+      CSfxManager::RemoveEmitter(mBeamSfxHandle);
+      mBeamSfxHandle = CSfxHandle();
+      return;
     }
-    // 0x143C-0x1490: with a beam effect there, the retail clears the beam's byte at 0x198
-    // (0x1440) and, when the beam's own float at 0x188 is zero, asks the manager to delete the
-    // object at 0xF68 (0x1480 DeleteObjectRequest). The port has no class for the beam effect
-    // actor, so it cannot read that float and the delete stays out.
+    // 0x143C-0x1490: the beam closes (0x198 cleared, 0x1440); once it is fully closed (its
+    // 0x188 is 0.0f, lbl_75_rodata_40, 0x1450-0x1460) it is deleted and the id cleared.
+    beam->SetOpening(false);
+    if (!beam->IsOpening() && beam->GetOpenFraction() == 0.f) {
+      mgr.DeleteObjectRequest(mBeamEffectId);
+      mBeamEffectId = kInvalidUniqueId;
+    }
     return;
   }
-  if (beam != nullptr) {
-    // 0x13EC-0x142C: the beam effect is already there: its byte at 0x198 is set (0x13F8) and
-    // the sound emitter is updated (0x142C).
-    StandInSfxUpdateEmitter();
-    return;
+  if (beam == nullptr) {  // 0x120C-0x1210
+    // 0x1214-0x1224: the base's field at 0x3D0 (its copy of the patterned info's detection
+    // range) must be above zero.
+    if (GetDetectionRange() <= 0.f) {
+      return;
+    }
+    // 0x1230-0x1244: a fresh id, kept at 0xF68. 0x1248-0x1380: the beam effect is built with the
+    // CEntityInfo the retail makes at 0x12A0 (the area id, NullConnectionList, true and
+    // kInvalidEditorId), the name (0x12B8, the rodata string at 0xA0 + 0x230), the module
+    // transform, a texture height of 0x40 (0x136C), the data's angle (0x864) in radians wrapped
+    // to one turn (0x12C4-0x1334), the detection range as the length (0x1370) and the data's
+    // colours (0x868-0x874), cloud scale, fade-off size and open speed (0x878-0x880). It is
+    // added to the manager (0x13B4 AddObject) and its looped sound (the data's 0x890) starts at
+    // the head (0x13B8-0x13E8: volume 0x7F, the area, acoustics, looped, medium priority).
+    mBeamEffectId = mgr.AllocateUniqueId();
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                           kInvalidEditorId);
+    const rstl::string name = rstl::string_l("Splitter Beam Effect");
+    const SLdrUnknownStruct42& cone = mData.mUnknown9EC51FE4;
+    beam = new CSplitterBeamEffect(mBeamEffectId, info, name, moduleTransform, 0x40,
+                                   PortWrapTurn(cone.angle * 0.017453292f), GetDetectionRange(),
+                                   cone.cloudColor1, cone.cloudColor2, cone.addColor1,
+                                   cone.addColor2, cone.cloudScale, cone.fadeOffSize,
+                                   cone.openSpeed);
+    mgr.AddObject(beam);
+    mBeamSfxHandle = CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundScanning & 0xFFFF),
+                                             GetTranslation(), 0x7F, GetCurrentAreaId().Value(),
+                                             true, true, CSfxManager::kMedPriority);
   }
-  // 0x1214-0x1224: the base's field at 0x3D0 (its copy of the patterned info's detection range)
-  // must be above zero.
-  if (GetDetectionRange() <= 0.f) {
-    return;
-  }
-  // port limit: the retail allocates a fresh id here (0x1230) and keeps it at 0xF68 (0x1244)
-  // before it creates the actor. The host has no class for that actor, so the port allocates no
-  // id: an id with no object behind it would be allocated again every frame and would eat the
-  // manager's object ids.
-  // 0x1248-0x13B4: the beam effect actor (0x1A0 bytes) is created with the CEntityInfo the
-  // retail builds at 0x12A0 (the area id, NullConnectionList, true and kInvalidEditorId), the
-  // name (0x12B8, the rodata string at 0xA0 + 0x230) and the rotation (0x12C4-0x1334: the
-  // data's angle at 0x864 times one degree in radians), and it is added to the manager. The host
-  // has no class for that actor, so the creation and the add stay a once-logging shell.
-  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId);
-  const rstl::string name = rstl::string_l("Splitter Beam Effect");
-  const float angle = mData.mUnknown9EC51FE4.angle * 0.017453292f;
-  StandInFn_75_11884(info, name, angle);
+  // 0x13EC-0x142C: the beam opens (0x198 set, 0x13F8) and the sound follows the head, facing
+  // along its Y column (0x13FC-0x142C UpdateEmitter, volume 0x7F).
+  beam->SetOpening(true);
+  CSfxManager::UpdateEmitter(mBeamSfxHandle, GetTranslation(), GetTransform().GetColumn(kDY),
+                             0x7F);
 }
 
 // fn_75_1578 (the head's effect-state update, 0x1578-0x178C): the anim data (the model data at
