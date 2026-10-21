@@ -1456,7 +1456,8 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
 // the ground; the projectile reflect (0x000125CC..0x000125F0) and, before the launch, the dodge
 // (0x00012608..0x00012644). Deactivate (0x0001266C) stops the actor, clears the animation state
 // and 0xC00, delivers kBSC_NextState and turns the bubble off.
-// @ fn_10_11FA4
+// Unmarked: the jump re-issue (0x0001239C) and the static wall hit (0x00012534) arms have not
+// run yet.
 void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveAttack", msg);
   UpdateCurrentAttack(0x20, mgr, msg);
@@ -1606,7 +1607,7 @@ void CDarkSamusDive::Reset() {
 // lbl_10_rodata_3FC = 0.0f while within lbl_10_rodata_414 = 8.0f (`fcmpo; cror` at 0x00012AC4);
 // the first point with a clear ring path (fn_10_16600 with lbl_10_rodata_3E8 = 1.0f and
 // lbl_10_rodata_4A4 = 1.7f, 0x00012A60) becomes the target.
-// @ fn_10_12960
+// Unmarked: the arm whose flat line cannot be normalized has not run yet.
 bool CDarkSamus::FindDiveLanding(CStateManager& mgr, CVector3f* target) const {
   CVector3f dir = GetTranslation() - *target;
   dir.SetZ(0.f);
@@ -1643,7 +1644,7 @@ void CDarkSamus::DoDiveJumpCmd() {
 // (normalized when it can be, 0x00011CD8); below lbl_10_rodata_418 = 50.0f * scale of speed
 // (`fcmpo; bge` at 0x00011CF8) the velocity becomes 50 * scale along it, else below
 // lbl_10_rodata_480 = 80.0f * scale (0x00011D60) an impulse of lbl_10_rodata_484 = 800.0f * scale.
-// @ fn_10_11C60
+// Unmarked: the arm whose line cannot be normalized has not run yet.
 void CDarkSamus::UpdateDiveFlight(float scale) {
   CVector3f dir = mDive.mTarget - mDive.mStart;
   if (dir.CanBeNormalized() == true) {
@@ -1663,7 +1664,7 @@ void CDarkSamus::UpdateDiveFlight(float scale) {
 // which the host CActor lacks). The bounce direction is the flat normal with z
 // lbl_10_rodata_3E0 = 2.0f, normalized (0x0001CF20); then vertical movement on, off the ground
 // and off static ground (0x0001CF48..0x0001CF60).
-// @ fn_10_1CDD0
+// Unmarked: the arm with no flat normal (the wall hit and stuck callers) has not run yet.
 void CDarkSamus::BounceDive(CStateManager& mgr, const CVector3f& normal) {
   mDive.mBounced = true;
   StopDiveBubble(mgr);
@@ -1686,7 +1687,7 @@ void CDarkSamus::BounceDive(CStateManager& mgr, const CVector3f& normal) {
 // fn_10_11EB8 (0x00011EB8, 0xEC bytes): a move of more than lbl_10_rodata_428 = 0.2f since the
 // last position (`fcmpo; ble` at 0x00011F20) restarts the stuck timer there; otherwise the timer
 // runs and past lbl_10_rodata_3E4 = 0.5f (0x00011F68) the actor bounces with no normal.
-// @ fn_10_11EB8
+// Unmarked: the stuck bounce (past 0.5 s) has not run yet.
 void CDarkSamus::UpdateDiveStuck(CStateManager& mgr, float dt) {
   if ((mDive.mLastPos - GetTranslation()).Magnitude() > 0.2f) {
     mDive.mLastPos = GetTranslation();
@@ -1703,7 +1704,9 @@ void CDarkSamus::UpdateDiveStuck(CStateManager& mgr, float dt) {
 // (0x00011E2C) and the 0x04 bit; then, unbounced (0x00011E44) on a stage (the null test at
 // 0x00011E5C) whose +0x59 is set (0x00011E70), fn_10_18628 with lbl_10_rodata_3FC = 0.0f and
 // lbl_10_rodata_258 = 5.0f; otherwise the shield byte 0xCD0 is cleared (0x00011E9C).
-// @ fn_10_11DDC
+// Unmarked: the 0xCD0 arm has not run: a landing dive is never bounced, and every dive stage of
+// the two surveyed encounters (Agon, rooftop) sets +0x59; 0j_cliff_hall_loop and
+// 12_temple_finalgate_dark are not surveyed.
 void CDarkSamus::SendDiveAttack(CStateManager& mgr) {
   if (mDive.mAttackSent == true) {
     return;
@@ -1768,7 +1771,7 @@ void CDarkSamus::SetGrounded(CStateManager& mgr, bool onGround) {
 // (Range at 0x000172E4), right first (0x00017344) then left (0x0001736C), whose gun line to the
 // aim is clear becomes the direction, and the timer starts at time (0x000173A8). While it runs
 // (`ble` at 0x000173BC) the impulse mass * impulse along it (0x00017410).
-// @ fn_10_1707C
+// Unmarked: no dodge has started yet (only the idle, clear-line arm ran).
 void CDarkSamus::UpdateDodge(CStateManager& mgr, float dt, float impulse, float time) {
   if (mDodgeTime > 0.f) {
     mDodgeTime -= dt;
@@ -1818,7 +1821,7 @@ void CDarkSamus::UpdateDodge(CStateManager& mgr, float dt, float impulse, float 
 // 0x0001CBF8). Second pass (0x0001CCE8): a contact with no platform (C30) and floor or player
 // (C40/C44) lands the dive (0x08, 0x0001CDA8), hitting the player first when it is the player
 // (C48) and the dive has not hit yet (0x20, 0x0001CD8C).
-// @ fn_10_1C99C
+// Unmarked: the arm where the collider's vulnerability lets the dive's weapon hit it has not run yet.
 void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
                                     const CCollisionInfoList& list) {
   if (mCurrentAttack != 0x20 || mDive.mLaunched != true || mDive.mBounced || mDive.mLanding ||
