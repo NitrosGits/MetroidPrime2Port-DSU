@@ -61,6 +61,10 @@ void CGenericFSM2State< T >::SetTriggerFunctions(const STriggerFunction* functio
 
 template < class T >
 void CGenericFSM2State< T >::SetCodeFunctions(const SCodeFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortCodeFunctions = functions;
+  mPortCodeFunctionCount = count;
+#endif
   for (int i = 0; i < mSubMachines.size(); ++i) {
     mSubMachines[i].mMachine->SetCodeFunctions(functions, count);
   }
@@ -459,6 +463,23 @@ CGenericFSM2State< T >::PortFindTriggerFunction(const char* name) const {
     }
   }
   return TriggerFunc();
+}
+
+template < class T >
+typename CGenericFSM2State< T >::CodeFunc
+CGenericFSM2State< T >::PortFindCodeFunction(const char* name) const {
+  for (int i = 0; i < mPortCodeFunctionCount; ++i) {
+    const char* a = mPortCodeFunctions[i].mName;
+    const char* b = name;
+    while (*a != '\0' && *a == *b) {
+      ++a;
+      ++b;
+    }
+    if (*a == *b) {
+      return mPortCodeFunctions[i].mFunction;
+    }
+  }
+  return CodeFunc();
 }
 #endif
 

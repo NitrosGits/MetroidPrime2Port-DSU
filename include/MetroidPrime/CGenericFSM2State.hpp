@@ -55,6 +55,8 @@ public:
   StateFunc PortFindStateFunction(const char* name) const;
   // Port console (`trigcall`): the same for the trigger table SetTriggerFunctions was given.
   TriggerFunc PortFindTriggerFunction(const char* name) const;
+  // Port console (`codecall`): the same for the code table SetCodeFunctions was given.
+  CodeFunc PortFindCodeFunction(const char* name) const;
 #endif
 
 private:
@@ -94,6 +96,8 @@ private:
   int mPortStateFunctionCount = 0;
   const STriggerFunction* mPortTriggerFunctions = nullptr; // the last table SetTriggerFunctions got
   int mPortTriggerFunctionCount = 0;
+  const SCodeFunction* mPortCodeFunctions = nullptr; // the last table SetCodeFunctions got
+  int mPortCodeFunctionCount = 0;
 #endif
 };
 

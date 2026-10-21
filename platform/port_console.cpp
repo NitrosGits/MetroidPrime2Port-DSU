@@ -531,6 +531,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
+      "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
@@ -1720,6 +1721,36 @@ void CmdTrigCall(CStateManager& mgr, const Args& args, std::string& out) {
   out += "trigcall " + wanted + " = " + (answer ? "true" : "false") + "\n";
 }
 
+// codecall <id> <code> [dt]: run one code function of an FSM2 actor once with dt (default 1/60),
+// outside the machine, like `statecall` for the states (a code runs on a transition).
+void CmdCodeCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float dt = 1.f / 60.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], dt))) {
+    Fail("usage: codecall <id> <code name> [dt]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  if (machine->GetType() != 1) {
+    Fail("not an FSM2 machine");
+    return;
+  }
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::CodeFunc fn =
+      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindCodeFunction(wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no code function '" + wanted + "'");
+    return;
+  }
+  (patterned->*fn)(mgr, dt);
+  out += "codecall " + wanted + "\n";
+}
+
 // hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
 // setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
 // phazon waypoints) finds one the area lacks, or skips one of another area.
@@ -2485,6 +2516,7 @@ constexpr SCommand kCommands[] = {
     {"fsm", CmdFsm, true},
     {"statecall", CmdStateCall, true},
     {"trigcall", CmdTrigCall, true},
+    {"codecall", CmdCodeCall, true},
     {"hint", CmdHint, true},
     {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},

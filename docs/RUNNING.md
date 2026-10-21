@@ -64,6 +64,7 @@ an FSM2 sub-machine is entered through it, and the reply names the machine), `pl
 from d units, travelling along dir, for modules that only count projectile hits on a joint).
 `statecall <id> <state> <msg> [dt]` runs one FSM2 state body once (msg 0 Activate, 1 Update, 2
 Deactivate) outside the machine, from the actor's whole state table: states the FSM2 has no node for.
+`codecall <id> <code> [dt]` does the same for a code function (codes otherwise run only on transitions).
 `a; b; c` on one line runs all of them in the same game tick (a one-frame window); one reply each.
 `grapple <id> [d]` (ids from `objs grapple`) wakes a grapple point, stands the player d (8) units
 from it and holds L: with `give grappleBeam 1` the player locks on and grapples (`status`: orbit 5).
