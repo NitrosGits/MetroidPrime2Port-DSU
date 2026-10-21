@@ -2649,9 +2649,13 @@ void Start() {
 
 bool Enabled() { return sEnabled; }
 
-void Tick(CStateManager& mgr) {
-  // Save states share this game-thread hook (CStateManager::PortWarpTick) and run without the console.
-  PortSaveState::Tick(mgr);
+namespace {
+
+// Set by Tick (the state manager's update ran) and cleared by IdleTick, so IdleTick knows whether
+// this frame's commands have already been served.
+bool sTickedSinceIdle = false;
+
+void RunCommands(CStateManager& mgr) {
 #ifndef _WIN32
   if (!sEnabled) {
     return;
@@ -2698,6 +2702,23 @@ void Tick(CStateManager& mgr) {
 #else
   (void)mgr;
 #endif
+}
+
+} // namespace
+
+void Tick(CStateManager& mgr) {
+  // Save states share this game-thread hook (CStateManager::PortWarpTick) and run without the console.
+  PortSaveState::Tick(mgr);
+  sTickedSinceIdle = true;
+  RunCommands(mgr);
+}
+
+void IdleTick(CStateManager& mgr) {
+  if (sTickedSinceIdle) {
+    sTickedSinceIdle = false;
+    return;
+  }
+  RunCommands(mgr);
 }
 
 } // namespace PortConsole
