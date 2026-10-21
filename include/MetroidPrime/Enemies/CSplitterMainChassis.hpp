@@ -257,9 +257,9 @@ private:
   // joint collision descriptions belong to the state machine.
   CCollisionActorManager* mCollisionActorManager = nullptr;
   TUniqueId mCommandModuleId;
-  // guest 0xCC0: the id the command module copies into its own 0xEFE (fn_75_31A8, 0x320C).
-  // The retail writes it at 0xBE54 and in its constructor (0xF764); what it names is not
-  // established, so the port keeps it invalid.
+  // guest 0xCC0: the chassis's target - the SelectTarget code (fn_75_BE28, 0xBE54) writes the
+  // player's id, the HasTarget trigger (fn_75_E54C) tests it, the constructor (0xF764) clears it
+  // and the command module copies it into its own 0xEFE (fn_75_31A8, 0x320C).
   TUniqueId mSyncId = kInvalidUniqueId;
   // guest 0xC70: the retail's CVisualKnowledge, whose Update the Think calls (the DOL's
   // fn_801F55F0). The host's CLineOfSightTracker is the same thing.
@@ -275,7 +275,13 @@ private:
   // fn_75_AAC4 (the player-hint release).
   void PortUpdateConnectedObjects(CStateManager& mgr);
   void PortLeaveTeam(CStateManager& mgr);
+  // The retail's fn_75_8DF8 (the team join SetTargetDest ends with).
+  void PortJoinTeam(CStateManager& mgr);
   void PortReleasePlayerHint(CStateManager& mgr);
+  void PortTakePlayerHint(CStateManager& mgr);                       // fn_75_AB8C
+  void PortResistedDamage(CStateManager& mgr, TUniqueId sender);     // fn_75_9FA8
+  void PortCollisionActorDamage(CStateManager& mgr, TUniqueId sender);  // fn_75_A0A0
+  void PortHitObject(CStateManager& mgr, TUniqueId sender);          // fn_75_9B9C
   // guest 0xD00: the counter the XLND script message sets to 5 (fn_75_F1C0, 0x0000F4F0).
   int mLandedCount = 0;
   // guest 0xD2C: the timer the IM00 script message advances by the data's spin attack max time
@@ -304,6 +310,22 @@ private:
   float mSpinPenaltyTimer = 0.f;  // 0xD14 (the data's spin attack interval penalty, 0x874)
   float mLaserSweepTimer = 0.f;   // 0xD18 (the data's laser sweep interval, 0x858)
   float mDodgeTimer = 0.f;        // 0xD1C (the data's min dodge interval, 0x848)
+  // guest 0xD04: the dodge direction FindBestDodgeDirection (fn_75_B2A0) picks, -1 for none
+  // (the constructor, 0x0000F800-0x0000F80C); the ShouldDodge trigger (fn_75_E098) tests it.
+  int mDodgeDirection = -1;
+  // guest 0xD08: the leg the LegStabAttack state (fn_75_DA38) stabs with, 0-4 (the severity it
+  // sends), -1 for none: FindBestStabLeg (fn_75_B57C) and SetMorphballStabLeg (fn_75_B66C) pick
+  // it.
+  int mStabLeg = -1;
+  // guest 0xD38: the step distance (the constructor, 0x0000FB08); FindBestDodgeDirection's
+  // helpers (fn_75_91E4, fn_75_909C) use it as the dodge range and length.
+  float mStepDistance = 0.f;
+  // The retail's fn_75_91E4 and fn_75_909C.
+  int PortFindDodgeDirection(CStateManager& mgr, const CVector3f& away);
+  bool PortDodgeIsClear(CStateManager& mgr, const CVector3f& dir, float length);
+  // The retail's fn_75_9AF8: the "target_LCTR" collision actor's and the others' vulnerability.
+  void PortSetCollisionVulnerability(CStateManager& mgr, const CDamageVulnerability& target,
+                                     const CDamageVulnerability& other);
   // The retail's fn_75_AFE8 (the chassis's timers) and fn_75_9520 (its fade), the Think's
   // calls at 0x0000F164 and 0x0000F180.
   void PortUpdateTimers(CStateManager& mgr, float dt);
@@ -342,6 +364,9 @@ private:
   // The retail's fn_75_A4E4: the chassis's collision actor manager (the Think's call at
   // 0x0000F130).
   void PortCreateCollisionActorManager(CStateManager& mgr);
+  // The retail's fn_75_A37C: the chassis's health info copied to its collision actors
+  // (fn_75_A4E4's call at 0x0000A840).
+  void PortCopyHealthToCollisionActors(CStateManager& mgr);
   // guest 0xCC2: the id of the "target_LCTR" collision actor (fn_75_A4E4, 0x0000A7E8).
   TUniqueId mTargetActorId = kInvalidUniqueId;
 #endif
