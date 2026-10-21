@@ -5,6 +5,7 @@
 #include "../internal.hpp"
 #include "dolphin/gd/GDGeometry.h"
 #include "dolphin/gx/GXAurora.h"
+#include "fifo.hpp"
 #include "gx.hpp"
 #include "pipeline.hpp"
 #include "regs.hpp"
@@ -628,6 +629,17 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader& 
   if (totalVtxBytes > reader.remaining())
     UNLIKELY { handle_draw_overrun(totalVtxBytes, reader); }
 
+  // Port: AURORA_RENDER_EVERY: a frame that is not rendered drops its draws. The vertex data is
+  // consumed (the stream has to stay in step) but not copied into the staging buffer, and no draw
+  // command is built, so the FIFO processor does the register work only. The state itself has to
+  // be kept: the game sets the viewport, the projection and the copy-clear outside its per-frame
+  // setup, so a frame whose commands were dropped entirely would leave the next rendered frame
+  // drawing with a stale state.
+  if (!frame_rendered()) {
+    reader.take(totalVtxBytes);
+    return;
+  }
+
   const bool cleanState = g_gxState.dirty == 0 && fmt == sDrawCache.lastDrawFmt && sDrawCache.lineMode == 0 &&
                           prim != GX_LINES && prim != GX_LINESTRIP && prim != GX_POINTS;
   auto* lastDraw = cleanState ? gfx::get_last_draw_command<DrawData>() : nullptr;
@@ -904,7 +916,6 @@ void handle_aurora(ByteReader& reader) noexcept {
     const size_t idxBytes = static_cast<size_t>(indexCount) * sizeof(u16);
     // Index data is always host-endian; push it to the GPU buffer as-is
     const auto indexData = reader.take(idxBytes);
-    const gfx::Range idxRange = gfx::push_indices(indexData.data(), indexData.size(), 4);
     u32 vtxSize;
     if (g_gxState.lastVtxFmt == fmt) {
       vtxSize = g_gxState.lastVtxSize;
@@ -912,6 +923,12 @@ void handle_aurora(ByteReader& reader) noexcept {
       vtxSize = calc_vtx_size(fmt);
     }
     const u32 totalVtxBytes = vtxCount * vtxSize;
+    // Port: AURORA_RENDER_EVERY: a frame that is not rendered records no draw (see draw_prim).
+    if (!frame_rendered()) {
+      reader.take(totalVtxBytes);
+      return;
+    }
+    const gfx::Range idxRange = gfx::push_indices(indexData.data(), indexData.size(), 4);
     const auto vertexData = reader.take(totalVtxBytes);
     const gfx::Range vertRange = gfx::push_verts(vertexData.data(), vertexData.size(), 4);
     if (indexCount != 0) {

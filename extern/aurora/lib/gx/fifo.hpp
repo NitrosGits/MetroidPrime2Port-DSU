@@ -32,6 +32,12 @@ void shutdown();
 void begin_frame() noexcept;
 void end_frame() noexcept;
 
+// Port: AURORA_RENDER_EVERY=<n> renders one frame in n (1, the default, renders every frame).
+// A frame that is not rendered records no draw: the command stream is still walked, so the
+// register state survives, but no vertex data is copied and no draw command is built.
+void set_frame_rendered(bool rendered) noexcept;
+bool frame_rendered() noexcept;
+
 // Whether a frame is currently being recorded, i.e. publish() will be honored.
 bool frame_active() noexcept;
 

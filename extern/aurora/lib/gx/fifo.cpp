@@ -29,6 +29,8 @@ constexpr uint32_t kDrawBatchSize = 1;
 
 bool sFrameActive = false;
 uint32_t sPendingDraws = 0;
+// Port: AURORA_RENDER_EVERY: whether the frame being recorded is rendered at all.
+std::atomic_bool sFrameRendered{true};
 std::atomic<uint64_t> sPublished{0};
 std::atomic<uint64_t> sProcessed{0};
 uint64_t sStreamBase = 0;
@@ -142,12 +144,19 @@ void init() {
 
 void shutdown() { stop_worker(); }
 
-void begin_frame() noexcept { sFrameActive = true; }
+void begin_frame() noexcept {
+  sFrameActive = true;
+  sFrameRendered.store(true, std::memory_order_release);
+}
 
 void end_frame() noexcept {
   sFrameActive = false;
   clear_draw_cache(); // command_processor
 }
+
+void set_frame_rendered(bool rendered) noexcept { sFrameRendered.store(rendered, std::memory_order_release); }
+
+bool frame_rendered() noexcept { return sFrameRendered.load(std::memory_order_acquire); }
 
 bool frame_active() noexcept { return sFrameActive; }
 

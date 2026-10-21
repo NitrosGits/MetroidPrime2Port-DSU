@@ -33,6 +33,14 @@ it the runner warns "has no USA/" and falls back to the front end):
 run ends: don't start one by hand. A script that launches the game itself must kill the Xvfb it
 started (the orchestrator's watcher reaps client-less ones older than 30 min).
 
+`PRESENT_EVERY=<n>` (default 6) shows one frame in n on the Xvfb, and `RENDER_EVERY=<n>` (default:
+`PRESENT_EVERY`) builds one frame in n: the frames in between are dropped before they are recorded,
+so the game spends no CPU on the frames it never shows (a sandworm smoke run: 30.4 s of game CPU
+with `RENDER_EVERY=1` vs 10.8 s with the default 6). A frame that is not rendered keeps the last
+rendered frame's EFB, so the read-backs (`GXPeekZ`, the EFB copy) return the last drawn values, and
+a screenshot always comes from a rendered frame (the frame it is taken in and the one after it are
+both rendered).
+
 ## Fast runs and console scripts
 
 `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=<1..16>` runs exactly that many fixed 1/60 s ticks per loop

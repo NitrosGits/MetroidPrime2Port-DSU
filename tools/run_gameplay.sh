@@ -97,8 +97,12 @@ if [ "${SLOTS:-1}" != 0 ] && [ -x "$HOME/.cache/mp3-orch/slotrun.sh" ]; then
 fi
 # PRESENT_EVERY=<n> (default 6): show one frame in n on the Xvfb; each present is a CPU copy there.
 # Screenshots taken by the game (F12, console `screenshot`) are unaffected; 1 for x11grab videos.
+# RENDER_EVERY=<n> (default: PRESENT_EVERY): build one frame in n; the frames in between are
+# dropped before they are recorded, so the game spends no CPU on the frames it never shows.
+PRESENT_EVERY_VALUE=${PRESENT_EVERY:-6}
 DISPLAY=$DISPLAY_NUM SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dummy \
-  AURORA_PRESENT_EVERY=${PRESENT_EVERY:-6} env "${envs[@]}" "${SLOT[@]}" timeout -k 10 "${SECS:-460}" ./metroid_prime2_port > "$LOG" 2>&1 &
+  AURORA_PRESENT_EVERY=$PRESENT_EVERY_VALUE AURORA_RENDER_EVERY=${RENDER_EVERY:-$PRESENT_EVERY_VALUE} \
+  env "${envs[@]}" "${SLOT[@]}" timeout -k 10 "${SECS:-460}" ./metroid_prime2_port > "$LOG" 2>&1 &
 GAME=$!
 # STOP_ON_STALL=1: a paused game (a save screen with nothing to answer it, the ending's "Save
 # progress?" prompt in Temple Grounds 58) never reaches MP2_FRAMES, so only the timeout would end

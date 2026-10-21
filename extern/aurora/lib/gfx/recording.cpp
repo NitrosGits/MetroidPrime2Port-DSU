@@ -517,6 +517,13 @@ void enqueue_op(FramePacket& frame, uint32_t opIndex) {
   if (opIndex >= frame.ops.size() || g_recorder.suppressRenderWorker) {
     return;
   }
+  // Port: AURORA_RENDER_EVERY: a frame that is not rendered records no GPU work, so the render
+  // worker does not encode it and the frame is never submitted. The EFB and the depth buffer keep
+  // the last rendered frame's contents, which is what the read-backs (GXPeekZ, the EFB copy)
+  // return for a frame that was not drawn.
+  if (!gx::fifo::frame_rendered()) {
+    return;
+  }
   auto op = frame.ops[opIndex];
   render_worker::enqueue_encode_pass(frame.frameId, opIndex, [packet = &frame, op = std::move(op)] {
     if (op.renderPass == nullptr && op.textureCopy == nullptr && op.encoderTask == nullptr) {
