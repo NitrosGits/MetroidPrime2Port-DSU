@@ -226,6 +226,8 @@ private:
   // Helpers (retail function on each; shared by Think, AcceptScriptMsg and the FSM states).
   bool IsShieldUp() const;                                         // fn_15_2CE8
   // @ fn_15_1B50
+  // 0x1B54 rlwimi r0, r4, 6, 25, 25: mask 0x40 (xc10 = (xc10 & ~0x40) | (a1 -> 0x40)), stored to
+  // xc10 at 0x1B58 - the XDamaged bit of the flags byte, set or cleared from the bool.
   void SetXDamaged(bool xdamaged) { mXDamaged = xdamaged; }        // fn_15_1B50
   CPFArea* GetPathArea(CStateManager& mgr) const;                  // fn_15_1598
   void ReleaseClaimedRegion(CStateManager& mgr);                   // fn_15_1328
