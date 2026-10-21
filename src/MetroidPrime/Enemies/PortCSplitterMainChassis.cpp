@@ -416,9 +416,11 @@ void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
 // and the reflected vulnerability (0x0000A814); the retail also scales the actor (the model
 // data's 0x0, 0x4 and 0x8 times the rodata's 1.5f), which the host has no setter for. The
 // module's own call (fn_75_A37C, 0x0000A840) stays a shell and the material filter (the
-// include mask with the bit 59 - kMT_Solid - the exclude mask with the bits 47, 60 and 32 -
-// kMT_CollisionActor, kMT_NoPlatformCollision and kMT_Player - and the type 3) is set at the
-// end (0x0000A8D0).
+// include mask with the bit 59 - kMT_Solid - and the exclude mask with the bits 47, 28 and 32 -
+// kMT_CollisionActor, kMT_AIPassthrough and kMT_Player - and the type 3) is set at the end
+// (0x0000A8D0). The four masks are the data words 0x3B, 0x2F, 0x1C and 0x20 shifted into the
+// list (0x0000A858 and the three after it); the data word 0x3B is the include mask on its own
+// (0x0000A8B4) and the other three the exclude mask.
 void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
   const CAnimData* anim = GetModelData()->GetAnimationData();
   rstl::vector< CJointCollisionDescription > joints;
@@ -465,7 +467,7 @@ void CSplitterMainChassis::PortCreateCollisionActorManager(CStateManager& mgr) {
   }
   StandInFn_75_A37C();
   SetMaterialFilter(CMaterialFilter(CMaterialList(0x0800000000000000ull),
-                                    CMaterialList(0x1000800100000000ull),
+                                    CMaterialList(0x0000801100000000ull),
                                     CMaterialFilter::kFT_IncludeExclude));
 }
 
