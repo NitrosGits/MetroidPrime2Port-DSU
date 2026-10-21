@@ -8,6 +8,7 @@
 @f140 send u054e Activate; send u051b Activate
 @f400 objs Guardian
 @f900 send u054e ResistedDamage
+@f910 send u054e ResistedDamage
 @f1300 press x 30
 @f1400 boost
 @f1600 objs Guardian

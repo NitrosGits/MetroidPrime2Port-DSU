@@ -85,11 +85,13 @@ Every bit test, mask, compare and constant carries the retail asm offset it came
 | `fn_14_11F7C` | 0x70 | the echo targets are deleted | head | **yes** |
 | `fn_14_137A8` | 0x88 | the head's armour model | head | no |
 
-Three stand-in call sites now call them instead of logging: the body's "XRDG" case
+Four call sites now call them instead of logging: the body's "XRDG" case
 (`PortCDigitalGuardian.cpp`, the `StandInFn("fn_14_5644 ...")` line), the head's "XDEL" case
-(`PortCDigitalGuardianHead.cpp`, the two `StandInFn` lines for `fn_14_11EA8` and `fn_14_11F7C`)
-and the body's Think (`fn_14_A5BC`, which the retail ends with the four calls for `fn_14_6E04`,
-`fn_14_2358`, `fn_14_38BC` and `fn_14_3F90`; the port's Think had them missing).
+(`PortCDigitalGuardianHead.cpp`, the two `StandInFn` lines for `fn_14_11EA8` and `fn_14_11F7C`),
+the body's Think (`fn_14_A5BC`, which the retail ends with the four calls for `fn_14_6E04`,
+`fn_14_2358`, `fn_14_38BC` and `fn_14_3F90`; the port's Think had them missing) and the head's
+constructor (`fn_14_18264`, which the retail ends with the call for `fn_14_137A8` at 0x18E60; the
+port's constructor had it missing).
 
 ### 3.1 The runs
 
@@ -635,3 +637,69 @@ listed so the lane can write the states against them (the bodies are in the port
 | `_prolog` | 0x24 | T | 0: - | no body |
 | `ModuleDestructors` | 0x4C | T | 0: - | no body |
 | `ModuleConstructors` | 0x4C | T | 0: - | no body |
+
+### 3.4 The gcov profile (the coverage build)
+
+The compiler coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`) gives the branch
+coverage of every port body at once. The run:
+
+    BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/digitalguardian.py /tmp/opencode/dg_gcov1 \
+      1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_area53.con --fast --frames 3000
+    BUILD=build-port-cov COV_GDB_SCRIPT=tools/cov/force_cov.py tools/cov/force.sh \
+      tools/cov/specs/digitalguardian_force.py /tmp/opencode/dg_gcov2 1baa96c2,09_cliff_temple_dark \
+      --con tools/cov/specs/digitalguardian_area53.con --fast --frames 3000
+    tools/cov/gcov_report.py build-port-cov /tmp/opencode/dg_gcov1/gcov /tmp/opencode/dg_gcov2/gcov \
+      --module DigitalGuardian
+
+| id | the gcov branches | the untaken edges | what the edges are |
+|---|---|---|---|
+| `fn_14_6CB0` | **8/8 ALL-ARMS** | - | - |
+| `fn_14_11F7C` | **2/2 ALL-ARMS** | - | - |
+| `fn_14_6C74` | 2/4 | 52, 55 | the two forced arms (the vortex mode, the flag byte's bit 6) |
+| `fn_14_3F90` | 4/6 | 72, 76 | the two forced arms (an invalid knee id, a knee that is gone) |
+| `fn_14_2358` | 5/10 | 124, 132, 136 | the three forced arms (no emitter, a positive timer, a toe target that does not flinch) |
+| `fn_14_6C24` | 1/2 | 206 | the forced arm (the body state is 0) |
+| `fn_14_11EA8` | 3/4 | 353 | the forced arm (a bomb slot with a sound) |
+| `fn_14_38BC` | 1/10 | 97, 101, 104, 106, 108 | the profile of this body is not usable (the natural arms are missing too) |
+| `fn_14_6E04` | 7/12 | 290 | the arm that needs the head's projectile attack |
+| `fn_14_5644` | 1/24 | 157, 160, 164, 167, 170, 173, 174, 176, 178, 181, 187, 193 | the arms past the first early-out |
+| `fn_14_37FC` | 0/6 | 35, 36, 37 | the body has no caller yet |
+| `fn_14_10120` | 0/10 | 309, 312, 315 | the body has no caller yet |
+| `fn_14_F374` | 0/2 | 339 | the body has no caller yet |
+| `fn_14_137A8` | 2/3 | 447 | the forced arm (the armour id is 0xFFFE) |
+| `fn_14_83C0` | 0/0 | - | the body has no caller yet |
+
+**The gcov profile of the forced arms is missing, and that is a tooling gap, not a code fact.**
+In the coverage build the gdb breakpoints on the *body's* helper entries do not fire (the force
+run's `cov.txt` shows 0 hits for `x3F90_`, `x6C74_`, `x38BC_`, `x2358_`, `x5644_`, `x6C24_`,
+`x6CB0_`, `x6E04_`, `x11EA8_` and `x11F7C_`, and its `forced.log` has only the head's
+`fn_14_137A8` line), so the forced members were never written in that build and the profile is
+the plain run's. The forced arms are therefore proven by the gdb force run on `build-port-link`
+(the keys and the call-site counts in section 3.2), and the gcov rows above show exactly which
+edges the plain run leaves out. The two bodies the gcov confirms outright (`fn_14_6CB0` and
+`fn_14_11F7C`) are ALL-ARMS.
+
+## 7. The unmarked bodies that are one run away (for the FSM lane)
+
+`tools/cov/gcov_report.py build-port-cov <the prefix dirs> --module DigitalGuardian` prints the
+branch coverage of every body of the module; the unmarked bodies that are already ALL-ARMS or
+one edge short are the ones the lane can mark with one more run:
+
+| retail id | the body | branches | missing edges | the note |
+|---|---|---|---|---|
+| `fn_14_A5BC` | `CDigitalGuardian::Think(float, CStateManager&)` | 4/4 | ALL-ARMS |
+| `fn_14_95B8` | `CDigitalGuardian::Idle(CStateManager&, EStateMsg, fl` | 3/3 | ALL-ARMS |
+| `fn_14_12314` | `CDigitalGuardianHead::x12314_(CStateManager&)` | 13/14 | one edge short: untaken @ 737 |
+| `fn_14_1B8` | `PortLoadDigitalGuardian(CStateManager&, CInputStream` | 10/11 | one edge short: untaken @ 2539 |
+| `fn_14_DF7C` | `PortLoadDigitalGuardianHead(CStateManager&, CInputSt` | 9/10 | one edge short: untaken @ 1487 |
+| `fn_14_D664` | `CDigitalGuardian::xD664_(unsigned int)` | 4/5 | one edge short: untaken @ 1136 |
+| `fn_14_1994` | `CDigitalGuardian::x1994_(CStateManager const&, CTran` | 3/4 | one edge short: untaken @ 1019 |
+| `fn_14_173CC` | `CDigitalGuardianHead::ShouldProjectileAttack(CStateM` | 1/2 | one edge short: untaken @ 890 |
+| `fn_14_177C8` | `CDigitalGuardianHead::GetScannableObjectInfo() const` | 1/2 | one edge short: untaken @ 851 |
+| `fn_14_2578` | `CDigitalGuardian::x2578_(CTransform4f&, CTransform4f` | 1/2 | one edge short: untaken @ 1119 |
+| `fn_14_3974` | `CDigitalGuardian::x3974_(CStateManager&, bool)` | 1/2 | one edge short: untaken @ 628 |
+| `fn_14_9930` | `CDigitalGuardian::ShouldVortexAttack(CStateManager&,` | 1/2 | one edge short: untaken @ 1480 |
+| `fn_14_9994` | `CDigitalGuardian::ShouldProtectKnees(CStateManager&,` | 1/2 | one edge short: untaken @ 1468 |
+
+The module has 13 such bodies (not 20): the other unmarked bodies are further away (the head's
+states and codes, the sub-actor constructors, the effect helpers).

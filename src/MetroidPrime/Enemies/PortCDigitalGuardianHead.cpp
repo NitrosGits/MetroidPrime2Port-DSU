@@ -215,7 +215,10 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   // 0x18D28 / 0x18D5C: the balls' locators (.rodata 0x954's names) at 0xDCC / 0xDCD.
   const CAnimData* anim = GetModelData()->GetAnimationData();
   xDCC_[0] = anim->GetLocatorSegId(rstl::string_l("L_ball_LCTR"));
-  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));
+  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
+  // at 0x18E60).
+  x137A8_();
+
 }
 
 CDigitalGuardianHead::~CDigitalGuardianHead() {}

@@ -21,6 +21,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 BUILD=${BUILD:-$ROOT/build-port-link}
+# A coverage build writes its .gcda files into the run's own directory.
+. "$ROOT/tools/cov/gcov_env.sh"
 mkdir -p /tmp/opencode/locks; SLOT=
 for s in $(seq 1 16); do
   exec {SLOTFD}>"/tmp/opencode/locks/cov-slot.$s"
@@ -32,6 +34,7 @@ DISP=${DISPLAY_NUM:-:$((1100 + SLOT))}
 PORT=${COV_PORT:-$((50100 + SLOT))}
 DISC=${MP2_DISC:-/run/media/odran/Leo/Portable/roms/gc/Metroid Prime 2 - Echoes.iso}
 mkdir -p "$OUT/c"
+gcov_env "$BUILD" "$OUT"
 rm -rf "$OUT/u" && cp -r "${COV_SAVE:-/tmp/opencode/mi_u}" "$OUT/u"
 nm "$BUILD/metroid_prime2_port" > "$OUT/nm.raw"
 nm -C "$BUILD/metroid_prime2_port" | cut -d' ' -f3- > "$OUT/nm.dem"
