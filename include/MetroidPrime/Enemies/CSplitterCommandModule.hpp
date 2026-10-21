@@ -195,6 +195,10 @@ public:
 
   // guest 0xF24-0xF2C: the vector the chassis's fn_75_ACEC adds to the position it looks from.
   const CVector3f& GetEditorProperties() const { return mEditorProperties; }
+  // The retail's fn_75_5A80 (the laser origin) and fn_75_5AD8 (the sweep start), which the
+  // chassis's SetupLaserSweep (fn_75_B678) calls.
+  CVector3f PortLaserOrigin(CStateManager& mgr) const;
+  void PortStartLaserSweep(const CVector3f& first, const CVector3f& second);
   // guest 0xEFA: the chassis the head is docked in (the chassis's fn_75_8EC8 reads it, 0x00008F68).
   TUniqueId GetChassisId() const { return mChassisId; }
 
@@ -259,6 +263,10 @@ private:
   // sets 0 for a docked head (0x5AF4), the LaserSweep state (fn_75_44DC) advances and ends it,
   // and the ShouldLaserSweep trigger (fn_75_55F8) tests it against -1.
   int mLaserSweepStage = -1;
+  // guest 0xF38 / 0xF44: the laser sweep's two ends (fn_75_5AD8 keeps them; LaserSweep,
+  // fn_75_44DC, swaps them and turns toward each in turn).
+  CVector3f mLaserSweepStart = CVector3f::Zero();
+  CVector3f mLaserSweepEnd = CVector3f::Zero();
   // The retail's fn_75_3EEC: the head's "dock to the chassis". The id at 0xEFC (the connected
   // object the XAND message found) is the chassis; when the chassis accepts this head the id
   // moves to 0xEFA - the id the beam-effect gate (fn_75_58E8) and the chassis check (fn_75_31A8)

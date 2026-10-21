@@ -12,6 +12,7 @@
 #include "MetroidPrime/Enemies/CSplitterMainChassis.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
@@ -213,7 +214,6 @@ SPLITTER_STATE_STANDIN(HeadExplosion, fn_75_BEEC)
 SPLITTER_CODE_STANDIN(SetRetreatDest, fn_75_BBC0)
 SPLITTER_CODE_STANDIN(SetupSpinAttack, fn_75_BAA8)
 SPLITTER_CODE_STANDIN(EndSpinAttack, fn_75_B9B0)
-SPLITTER_CODE_STANDIN(SetupLaserSweep, fn_75_B678)
 SPLITTER_CODE_STANDIN(BounceOffPlayer, fn_75_B1D8)
 SPLITTER_CODE_STANDIN(BounceOffGeometry, fn_75_B104)
 #undef SPLITTER_TRIGGER_STANDIN
@@ -586,6 +586,53 @@ void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
     }
     return;
   }
+}
+
+// fn_75_B678 (the chassis's SetupLaserSweep code, 0xB678-0xB9AC): only with the head at 0xC6C
+// (0xB6E0-0xB6EC TCastToPtr<CSplitterCommandModule>). The sweep starts at the head's laser
+// origin (0xB6F8 fn_75_5A80) and aims 30.0f (lbl_75_rodata_384) along the chassis's Y column, or
+// at the target's (0xCC0) aim position (0xB774, the CActor vtable word 0x54, with 0.0f). The
+// offset and its flat form (z 0.0f) must both be IsMagnitudeSafe (0xB7B4-0xB7CC). An offset that
+// climbs more than 45 degrees (lbl_75_rodata_3BC, 0.7853982f; z above 0.0f) - or drops more than
+// 15 degrees (lbl_75_rodata_3C0, 0.2617994f) - is clamped to that angle from the flat direction
+// (Slerp of the normalized flat and offset, times the offset's length; 0xB7F8-0xB8B8). The two
+// sweep ends are the offset turned -45 and +45 degrees about z (FastCosR/FastSinR of 45 degrees,
+// 0xB8BC-0xB92C) from the origin; the head takes them (0xB930 fn_75_5AD8) and the team starts a
+// projectile attack (0xB958 StartAttack with 1).
+void CSplitterMainChassis::SetupLaserSweep(CStateManager& mgr, float) {
+  CSplitterCommandModule* head =
+      TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
+  if (head == nullptr) {
+    return;
+  }
+  const CVector3f origin = head->PortLaserOrigin(mgr);
+  CVector3f aim = origin + 30.f * GetTransform().GetColumn(kDY);
+  if (const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncId))) {
+    aim = target->GetAimPosition(mgr, 0.f);
+  }
+  const CVector3f offset = aim - origin;
+  const CVector3f flat(offset.GetX(), offset.GetY(), 0.f);
+  if (!offset.IsMagnitudeSafe() || !flat.IsMagnitudeSafe()) {
+    return;
+  }
+  const float angle = CVector3f::GetAngleDiff(offset, flat);
+  CVector3f dir = offset;
+  const float limit = offset.GetZ() > 0.f ? 0.7853982f : 0.2617994f;
+  if (angle > limit) {
+    dir = CVector3f::Slerp(flat.AsNormalized(), offset.AsNormalized(),
+                           CRelAngle::FromRadians(limit)) *
+          offset.Magnitude();
+  }
+  const float c = CMath::FastCosR(0.7853982f);
+  const float sn = CMath::FastSinR(0.7853982f);
+  const CVector3f first(origin.GetX() + (c * dir.GetX() + sn * dir.GetY()),
+                        origin.GetY() + (c * dir.GetY() - sn * dir.GetX()),
+                        origin.GetZ() + dir.GetZ());
+  const CVector3f second(origin.GetX() + (c * dir.GetX() - sn * dir.GetY()),
+                         origin.GetY() + (c * dir.GetY() + sn * dir.GetX()),
+                         origin.GetZ() + dir.GetZ());
+  head->PortStartLaserSweep(first, second);
+  CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
 }
 
 // fn_75_DA38 (the chassis's LegStabAttack state, 0xDA38-0xDBA8). Activate (0xDA70): with a stab

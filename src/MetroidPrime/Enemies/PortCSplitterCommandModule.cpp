@@ -196,7 +196,6 @@ SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
 SPLITTER_STATE_STANDIN(PathFind, fn_75_4E90)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
 SPLITTER_STATE_STANDIN(LaserPulse, fn_75_4864)
-SPLITTER_STATE_STANDIN(LaserSweep, fn_75_44DC)
 SPLITTER_STATE_STANDIN(LostChassisReaction, fn_75_42F8)
 SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
 SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
@@ -454,6 +453,89 @@ void CSplitterCommandModule::FaceTarget(CStateManager& mgr, EStateMsg msg, float
   } else {
     mEditorProperties =
         CVector3f::Slerp(forward, offset.AsNormalized(), CRelAngle::FromRadians(turn));
+  }
+}
+
+// fn_75_5A80 (0x5A80-0x5AD8): the head's laser origin - the translation of the locator at
+// 0xEF8 (0x5A9C GetLctrTransform, 0x5AAC-0x5AC0).
+// @ fn_75_5A80
+CVector3f CSplitterCommandModule::PortLaserOrigin(CStateManager&) const {
+  return GetLctrTransform(mLookAtSegment).GetTranslation();
+}
+
+// fn_75_5AD8 (0x5AD8-0x5B24): only for a docked head (the chassis id at 0xEFA valid,
+// 0x5ADC-0x5AE8) the laser sweep stage at 0xF34 is 0 and the two sweep ends are kept at 0xF38
+// and 0xF44 (0x5AEC-0x5B20).
+void CSplitterCommandModule::PortStartLaserSweep(const CVector3f& first, const CVector3f& second) {
+  if (mChassisId == kInvalidUniqueId) {
+    return;
+  }
+  mLaserSweepStage = 0;
+  mLaserSweepStart = first;
+  mLaserSweepEnd = second;
+}
+
+// fn_75_44DC (the head's LaserSweep state, 0x44DC-0x4864). Activate (0x4528): the look-at
+// vector at 0xF50 becomes the transform's Y column; with the target at 0xEFE (0x4550) the sweep
+// ends swap when the end at 0xF44 is closer in angle to that vector than the start at 0xF38
+// (0x455C-0x4600, both offsets from the head's position); then the data's laser charge-up sound
+// (0x888) plays from the head (0x462C AddEmitter: volume 0x7F, the area at 0x4, acoustics,
+// not looped, kMedPriority). Update (0x4634), only with a frame time above 0.0f: the current
+// end (0xF38 for stage 0, else 0xF44) is offset from the locator at 0xEF8 (0x4680
+// GetLctrTransform); its flat form (z 0.0f) must be IsMagnitudeSafe, else the stage ends (-1,
+// 0x482C). The turn is the frame time times the data's laser sweep turn speed (0x808) in degrees
+// (lbl_75_rodata_74). Within it of the Y column (0x4710 GetAngleDiff) the vector at 0xF24 is the
+// normalized flat offset and 0xF50 the normalized offset; stage 0 then moves to 1 and fires
+// (0x4790 fn_75_1974, the laser shot at that end), any other stage ends (-1). Otherwise both
+// vectors Slerp toward those by the turn (0x47A4-0x4824). Deactivate (0x4838): the projectile
+// despawns (fn_75_1790) and the stage ends (-1).
+void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    mLookAtOffset = GetTransform().GetColumn(kDY);
+    if (mgr.GetObjectById(mSyncedId) != nullptr) {
+      const float startAngle =
+          CVector3f::GetAngleDiff(mLookAtOffset, mLaserSweepStart - GetTranslation());
+      if (CVector3f::GetAngleDiff(mLookAtOffset, mLaserSweepEnd - GetTranslation()) <
+          startAngle) {
+        const CVector3f start = mLaserSweepStart;
+        mLaserSweepStart = mLaserSweepEnd;
+        mLaserSweepEnd = start;
+      }
+    }
+    CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundLaserChargeUp & 0xFFFF),
+                            GetTranslation(), 0x7F, GetCurrentAreaId().Value(), true, false,
+                            CSfxManager::kMedPriority);
+  } else if (msg == kStateMsg_Update) {
+    if (dt <= 0.f) {
+      return;
+    }
+    const CVector3f end = mLaserSweepStage == 0 ? mLaserSweepStart : mLaserSweepEnd;
+    const CVector3f offset = end - GetLctrTransform(mLookAtSegment).GetTranslation();
+    const CVector3f flat(offset.GetX(), offset.GetY(), 0.f);
+    if (!flat.IsMagnitudeSafe()) {
+      mLaserSweepStage = -1;
+      return;
+    }
+    const CVector3f forward = GetTransform().GetColumn(kDY);
+    const float turn = 0.017453292f * (dt * mData.mLaserSweepTurnSpeed);
+    if (CVector3f::GetAngleDiff(forward, flat) < turn) {
+      mEditorProperties = flat.AsNormalized();
+      mLookAtOffset = offset.AsNormalized();
+      if (mLaserSweepStage == 0) {
+        mLaserSweepStage = 1;
+        StandIn("fn_75_1974 (the head's laser shot, 0x298)");
+      } else {
+        mLaserSweepStage = -1;
+      }
+    } else {
+      mEditorProperties =
+          CVector3f::Slerp(forward, flat.AsNormalized(), CRelAngle::FromRadians(turn));
+      mLookAtOffset = CVector3f::Slerp(mLookAtOffset.AsNormalized(), offset.AsNormalized(),
+                                       CRelAngle::FromRadians(turn));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    PortDespawnProjectile(mgr);
+    mLaserSweepStage = -1;
   }
 }
 
