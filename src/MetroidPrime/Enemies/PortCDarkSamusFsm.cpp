@@ -2733,7 +2733,7 @@ void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
 // @ fn_10_BD40
 void CDarkSamus::FadeIn(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("FadeIn", msg);
-  UpdateCurrentAttack(4, mgr, msg); // 0x0000BD70
+  UpdateCurrentAttack(0x40000, mgr, msg); // `lis r4, 0x4` at 0x0000BD60, the call at 0x0000BD70
   UpdateGroundCollision(mgr, msg); // 0x0000BD80
   RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Four)); // 0x0000BDE0
 }
