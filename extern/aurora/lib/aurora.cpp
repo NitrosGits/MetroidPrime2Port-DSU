@@ -443,6 +443,9 @@ bool begin_frame() noexcept {
   // Port: AURORA_RENDER_EVERY: the frame is recorded as usual, but a frame that is not rendered
   // records no draw (gx::fifo::set_frame_rendered tells the FIFO processor and the recorder).
   gx::fifo::set_frame_rendered(render_this_frame());
+  // Port: AURORA_RENDERSKIP_COPYDEST: the render interval is the default limit on how stale a
+  // copy's texture may be before its frame is rendered in full.
+  gx::fifo::set_render_interval(render_every());
 #endif
   return true;
 }

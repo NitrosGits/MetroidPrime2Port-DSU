@@ -35,14 +35,20 @@ started (the orchestrator's watcher reaps client-less ones older than 30 min).
 
 `PRESENT_EVERY=<n>` (default 6) shows one frame in n on the Xvfb, and `RENDER_EVERY=<n>` (default:
 `PRESENT_EVERY`) builds one frame in n: the frames in between are dropped before they are recorded,
-so the game spends no CPU on the frames it never shows (a sandworm smoke run: 30.4 s of game CPU
-with `RENDER_EVERY=1` vs 10.8 s with the default 6). A frame that is not rendered keeps the last
+so the game spends no CPU on the frames it never shows (a sandworm smoke run: 29.1 s of game CPU
+with `RENDER_EVERY=1` against 8.6 s with the default 6). A frame that is not rendered keeps the last
 rendered frame's EFB, so the read-backs (`GXPeekZ`, the EFB copy) return the last drawn values, and
 a screenshot always comes from a rendered frame (the frame it is taken in and the one after it are
-both rendered). A frame that holds an EFB copy (`GXCopyTex`, an EFB read-back) is rendered in full
-whatever the counter said: the copy's texture would otherwise never be produced. The log says how
-many frames that was at shutdown (`AURORA_RENDER_EVERY: N frames were rendered in full because
-they hold an EFB copy`).
+both rendered).
+
+An EFB copy (`GXCopyTex`) is the one thing that still costs a frame: a copy into a destination that
+was copied within the last N frames (N = the render interval, `AURORA_RENDERSKIP_COPYDEST_N`
+overrides it) keeps its texture and is skipped with the frame, so its image lags by up to N frames;
+a new or one-shot destination (a render-to-texture at an area load) is rendered in full, so the
+texture is produced. `AURORA_RENDERSKIP_COPYDEST=0` turns that off: every copy then renders its
+frame. The log says how much the copies cost at shutdown (`AURORA_RENDER_EVERY: N frames were
+rendered in full because they hold an EFB copy (M of them a read-back), K copies were skipped
+because their destination was fresh`).
 
 ## Fast runs and console scripts
 

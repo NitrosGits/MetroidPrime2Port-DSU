@@ -538,21 +538,6 @@ void enqueue_pass(FramePacket& frame, uint32_t passIndex) {
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::RenderPass, passIndex));
 }
-
-// Port: AURORA_RENDER_EVERY: does the recorded frame hold a copy of the EFB (a GXCopyTex resolve
-// target, an EFB read-back) or a copy op? Such a frame has to be rendered in full: the copy's
-// texture would otherwise never be produced.
-bool frame_holds_efb_copy(const FramePacket& frame) {
-  if (!frame.textureCopies.empty()) {
-    return true;
-  }
-  for (const auto& pass : frame.renderPasses) {
-    if (pass.resolveTarget || pass.efbCpuCopy.has_value() || pass.scanPeek.has_value()) {
-      return true;
-    }
-  }
-  return false;
-}
 } // namespace
 
 namespace detail {
@@ -833,12 +818,6 @@ PipelineRef pipeline_ref(const clear::PipelineConfig& config) {
 
 void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
                        Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat) {
-  // Port: AURORA_RENDER_EVERY: this is a GXCopyTex - the EFB is copied into a texture the game
-  // keeps. A frame that is not rendered would never produce that texture, so a one-shot copy (a
-  // render-to-texture at an area load, an effect texture) would stay blank for good. The frame is
-  // therefore rendered in full, whatever the counter said. The flag is raised before the pass that
-  // carries the copy is sealed below, so the whole frame is recorded and encoded.
-  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Copy);
   // Resolve current render pass
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
   prevPass.resolveTarget = std::move(texture);
@@ -1194,12 +1173,6 @@ void finish() {
     frame.uniforms.append_zeroes(gx::MaxUniformSize);
     auto& pass = frame.renderPasses[g_recorder.currentRenderPass];
     pass.captureDepthSnapshot = true;
-    // Port: AURORA_RENDER_EVERY: the backstop for a copy that did not go through one of the
-    // paths that raise the flag (a copy op in the recorded frame). The frame is rendered in full
-    // when it holds one, so the copy's texture is produced.
-    if (!gx::fifo::frame_rendered() && frame_holds_efb_copy(frame)) {
-      gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Copy);
-    }
     enqueue_pass(frame, g_recorder.currentRenderPass);
     g_recorder.currentRenderPass = UINT32_MAX;
   }

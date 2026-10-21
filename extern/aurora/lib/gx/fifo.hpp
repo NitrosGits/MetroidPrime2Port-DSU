@@ -50,6 +50,18 @@ void force_frame_rendered(FrameRenderReason reason) noexcept;
 uint32_t frames_forced_rendered() noexcept;
 uint32_t frames_forced_by_readback() noexcept;
 
+// Port: AURORA_RENDERSKIP_COPYDEST: a GXCopyTex destination (the game's destination address, the
+// copied size and format) and the frame it was last copied in. A copy into a destination that was
+// copied within the last N frames can be skipped: the texture still holds a fresh-enough image (a
+// lag of up to N frames). A new or one-shot destination (a render-to-texture at an area load) has
+// to be produced, so the frame that carries it is rendered in full.
+void note_copy_destination(uint64_t address, uint32_t width, uint32_t height, uint32_t format) noexcept;
+// How many copies were skipped because their destination was fresh enough.
+uint32_t copies_skipped() noexcept;
+// The render interval (AURORA_RENDER_EVERY): the default limit on how stale a copy's texture may
+// be before its frame is rendered in full.
+void set_render_interval(uint32_t interval) noexcept;
+
 // Whether a frame is currently being recorded, i.e. publish() will be honored.
 bool frame_active() noexcept;
 

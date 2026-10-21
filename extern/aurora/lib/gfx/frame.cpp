@@ -524,8 +524,9 @@ void initialize() {
 void shutdown() {
   // Port: AURORA_RENDER_EVERY: how much of the render skipping the EFB copies took back.
   Log.info("AURORA_RENDER_EVERY: {} frames were rendered in full because they hold an EFB copy "
-           "({} of them a read-back)",
-           gx::fifo::frames_forced_rendered(), gx::fifo::frames_forced_by_readback());
+           "({} of them a read-back), {} copies were skipped because their destination was fresh",
+           gx::fifo::frames_forced_rendered(), gx::fifo::frames_forced_by_readback(),
+           gx::fifo::copies_skipped());
   render_worker::synchronize();
   render_worker::shutdown();
   g_processEventsQueued.store(false, std::memory_order_release);
