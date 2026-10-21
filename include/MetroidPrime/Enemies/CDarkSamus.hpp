@@ -363,6 +363,11 @@ private:
   // fn_10_1E2E8: the oldest uid is dropped and the rest move one down.
   void EraseFirstAttacker();
 
+  // fn_10_1E740: should the actor forget the uid of the attacker that hit it last (the guest's
+  // 0xC24)? True when the path to the attacker is shagged, when the path find is over, when the
+  // attacker has no cover point, or when the attacker's cover point is within 2 units.
+  bool ShouldForgetLastAttacker(CStateManager& mgr) const;
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.

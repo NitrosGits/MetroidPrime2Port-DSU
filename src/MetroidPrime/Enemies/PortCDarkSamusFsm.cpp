@@ -24,6 +24,8 @@
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -462,6 +464,37 @@ void CDarkSamus::PushAttacker(TUniqueId uid) {
 void CDarkSamus::EraseFirstAttacker() {
   mAttackerUids[0] = mAttackerUids[1];
   mAttackerCount--;
+}
+
+// fn_10_1E740 (0x0001E740, 0x120 bytes): should the actor forget the uid of the attacker that hit
+// it last (the guest's 0xC24)?
+//
+// Without an attacker there is nothing to forget (the lhz against kInvalidUniqueId at
+// 0x0001E760..0x0001E774). A shagged path (PathShagged at 0x0001E788, its result's low byte
+// against 1 at 0x0001E78C..0x0001E794) forgets the attacker, and so does a path find that is
+// over: the guest's 0x888 - the search's current waypoint - against the guest's 0x7C4 - the
+// search's waypoint count - minus one (0x0001E798..0x0001E7A8). An attacker without a cover
+// point forgets it too (the null check at 0x0001E7CC). Otherwise the distance between the cover
+// point and the actor (the three fsubs at 0x0001E7DC..0x0001E804) is squared (the three fmuls
+// at 0x0001E810..0x0001E828) and compared with lbl_10_rodata_408 = 4.0f (the fcmpo at
+// 0x0001E840); the mfcr/srwi at 0x0001E844..0x0001E848 keeps the compare's "less than" bit, so
+// the attacker is forgotten once it is within 2 units.
+bool CDarkSamus::ShouldForgetLastAttacker(CStateManager& mgr) const {
+  if (mLastAttackerUid == kInvalidUniqueId) {
+    return false;
+  }
+  if (PathShagged(mgr, CTriggerData(0.f))) {
+    return true;
+  }
+  const CPathFindSearch* search = GetSearchPath();
+  if (search->GetCurrentWaypoint() >= search->GetWaypoints().size() - 1) {
+    return true;
+  }
+  const CScriptCoverPoint* cover = GetCoverPoint(mgr, mLastAttackerUid);
+  if (cover == nullptr) {
+    return true;
+  }
+  return (cover->GetTranslation() - GetTranslation()).MagSquared() < 4.0f;
 }
 
 // fn_10_1E178 (0x0001E178, 0xF0 bytes): the damage the actor has taken (the guest's 0xCC0).
