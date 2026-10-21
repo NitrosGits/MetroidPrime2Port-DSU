@@ -473,13 +473,12 @@ private:
   CSfxHandle mBodyProjectileSfx;             // 0xd58: the body projectile's looping flight sound
   CSfxHandle mLoopSfx[2];                    // 0xd60/0xd64: idle, move
   CSegId mEyeSegId;                          // 0xd7b: the "head" locator, the ctor copies it to 0xd8a
-  CSegId mCollarSegId;                       // 0xd7a: the collar locator; the ctor writes 0xff (invalid)
-                                            // and nothing else ever writes it, so fn_29_BCB4's
-                                            // locator path is dead in retail too
+  CSegId mCollarSegId;                       // 0xd7a: the "Collar_SDK" locator, the corporeal aim
+                                            // (fn_29_BCB4); the ctor's lookup at asm 0x0000E448
   // fn_29_6A88's arm locators, looked up by the ctor's GetLocatorSegId calls (the names are in
   // rodata 0x68E: "R_shoulder" at +0x632, "R_elbow" at +0x55c, "R_forearm" at +0x63d,
   // "R_wrist_end" at +0x647, "L_shoulder" at +0x653, "L_elbow" at +0x554, "L_forearm" at +0x65e,
-  // "L_wrist_end" at +0x668). 0xd7a is "Collar_SDK"; nothing reads it.
+  // "L_wrist_end" at +0x668). 0xd7a is "Collar_SDK" (GetAimPosition).
   CSegId mRightShoulderSegId;                // 0xd7c
   CSegId mRightElbowSegId;                   // 0xd7d
   CSegId mRightForearmSegId;                 // 0xd7e
