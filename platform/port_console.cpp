@@ -495,7 +495,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
       "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
-      "                            sunburst, sonicboom; kb = knockback power)\n"
+      "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
@@ -1513,7 +1513,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
     Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
-         "annihilator|powerbomb|darkburst|sunburst|sonicboom]");
+         "annihilator|powerbomb|darkburst|sunburst|sonicboom|supermissile]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
@@ -1551,9 +1551,12 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     } else if (args[i] == "sonicboom") {
       weapon = kWT_Annihilator;
       comboed = true;
+    } else if (args[i] == "supermissile") {
+      weapon = kWT_Power;
+      comboed = true;
     } else {
       Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
-           "darkburst, sunburst or sonicboom");
+           "darkburst, sunburst, sonicboom or supermissile");
       return;
     }
   }
