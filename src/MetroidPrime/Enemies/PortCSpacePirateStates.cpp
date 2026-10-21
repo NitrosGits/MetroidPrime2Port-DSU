@@ -172,7 +172,7 @@ void CSpacePirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_9F1C is MP1's CSpacePirate::Attack with Echoes' own members. Activate stores
+// @ fn_72_9F1C (0x39C): MP1's CSpacePirate::Attack with Echoes' own members. Activate stores
 // kAS_Ready and combat locomotion, caches GetTargetPos (CB30) in xbc4_ and the delta from that point
 // to the actor's own bounding-box centre in x908, zeroes the steering speed (rodata 0xB9C) and
 // clears the melee bit; the close test is TooClose with a zero CTriggerData, and only enables the
@@ -668,7 +668,7 @@ void CSpacePirate::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_7DFC is MP1's CSpacePirate::Dodge with TryCommand(TryDodge/TryRollingDodge/
+// @ fn_72_7DFC (0x4D4): MP1's CSpacePirate::Dodge with TryCommand(TryDodge/TryRollingDodge/
 // TryBreakDodge) replaced by a direct CBCStepCmd; the asm's three deliveries are the step types
 // 1/3/2 at 0x7FC4/0x80A8/0x8158 and all sit behind CAnimationState::CanIssueCommand(kAS_Step) at
 // fn_801B73E4. Activate clears the break-dodge bit (0x7E50 rlwimi over 0x8f9 bit 0x04) and then,
@@ -739,7 +739,7 @@ void CSpacePirate::UpdateLeashTimer(float dt) {
   }
 }
 
-// Retail fn_72_D720: how long the target has stayed put; ShouldJumpBack reads the timer.
+// @ fn_72_D720 (0xE0): how long the target has stayed put; ShouldJumpBack reads the timer.
 void CSpacePirate::UpdateHeldPosition(CStateManager& mgr, float dt) {
   const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
   if (player == nullptr) {
@@ -1409,6 +1409,8 @@ void CSpacePirate::DoubleSnap(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_72_63C8 (0x448): the JumpBack state - it opens with ShouldJumpBack and returns on
+// false, and its helper CantJumpBack (fn_72_D2A0) decides the jump.
 void CSpacePirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   if (!ShouldJumpBack(mgr, CTriggerData(0.f))) {
     return;
@@ -1525,7 +1527,7 @@ void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_5310: Activate arms the animation state and zeroes the leash timer. Update delivers
+// @ fn_72_5310 (0x108): Activate arms the animation state and zeroes the leash timer. Update delivers
 // the loop jump towards mDestPos (as built by fn_72_5510: 0x11 kBSC_Jump, jump type 0, variant 0,
 // waypoint2 = zero vector, initial state 2 = kJS_Loop, facing flags 2 = kFF_AmbushJump, no wall
 // jump) once the animation allows kAS_Jump, sets 0x8f7 bit 0x02, and feeds the leash timer.

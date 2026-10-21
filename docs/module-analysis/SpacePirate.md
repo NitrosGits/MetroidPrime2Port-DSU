@@ -437,6 +437,29 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
   SpawnGrenade, Touch, Listen (no grenade launcher data, no team AI and no CMetroid in the area, and
   the pirate never touches the player). The loader `140` stays unmarked as well (asmcheck's 15
   findings on it are the property reader's own calls).
+- **The pirates fight (2026-07-20, this session): 8 more of the 32 marked.** A console script
+  (`/tmp/opencode/sp_fight_con.py`) arms the player (the beam, the missile and the bombs), activates
+  every pirate, teleports next to each one and shoots it; the pirates then engage. The run's state
+  lines show `TargetPlayer -> Attack` (38), `Attack -> Lurk` (37), `PathFind -> Dodge` (28),
+  `Dodge -> Lurk` (28), `Attack -> JumpBack` (7), `JumpBack -> Lurk` (7), `PathFind -> Jump` and
+  `Jump -> Lurk` (1 each) and `state (none) -> WarpIn` (2), and its trigger lines show
+  `CoverFind trigger 0` (1822). Marked: `9F1C` (0x39C, Attack), `7DFC` (0x4D4, Dodge), `63C8`
+  (0x448, JumpBack - the state had no retail id in its comment at all), `5310` (0x108, Jump),
+  `7078` (0x528, WarpIn), `D720` (0xE0, UpdateHeldPosition - Lurk's update runs it every
+  message), `ABC0` (0x1F4, CoverFind) and `CB30` (0x150, GetTargetPos - the cover search calls it
+  for every candidate). The marked count is now 75. **No real mismatch was found**: the remaining
+  asmcheck findings on the eight are the known false positives (the retail's own helpers called
+  from C++ - `CB30`, `5510`, `5418`, `10D38`, `75DC` - `GetObjectById`, the 0x8f9 break-dodge
+  bitfield and the member-hash comparisons on x902/x914).
+  **24 stay unmarked** because the run still does not reach them: the states Crouch, Cover,
+  CoverAttack, Halt, Shuffle, TurnAround, SquadJoin, TargetCover, Approach, WallHang, GetUp,
+  Generate, DoubleSnap, Bounce, PathFindEx, Deactivate, LaunchGrenade and Captured (the pirates
+  take cover only when a cover point is near, the wall hang needs a wall-hang point, the grenade
+  launcher needs a launcher, the ambush needs an ambush connection), the triggers CoverBlown,
+  CoverNearlyBlown, CoveringFire, ShouldAttack, GetStrafeDir and BounceFind (the live cycle does
+  not list them and `ShouldMove`/`ShouldAttack` are evaluated 0 times), and the main file's
+  EnsureBodyActive, SpawnGrenade, Touch and Listen (no launcher data, no team AI and no CMetroid in
+  the area, and the pirate never touches the player - the player is teleported, not walked into).
 - Open with the user: whether this work moves to a `decomp/spacepirate` branch as DECOMP_WORKFLOW
   expects.
 
