@@ -102,3 +102,35 @@ Sanctuary `10_cliff_rooftop` (world `1baa96c2`), layer 2 (`MP2_INPUT="LAYER2@400
 `TravelToCoverPoints`, `Dash`, `DiveAttack`, `MissileJump` forced one after the other. 0 caught,
 0 reach-stub, exit 0. The probe counted: UpdateStillTimer 178 entries (4 activate, 123 still, 51
 moved), SetupStateMachine 1, and the arms of the eight other probed bodies as listed above.
+
+
+## 6. The coverage run (tools/cov, no probes)
+
+`tools/cov/specs/darksamus_helpers2.py` covers the 51 ported bodies of this slice plus the five
+ids the DarkSamus2 lane dropped; the labels carry the retail offsets. The driver
+`tools/cov/specs/darksamus_rooftop.con` is the rooftop fight (Sanctuary 10_cliff_rooftop, layer 2,
+boss u04f7: activate, the player next to it, 67 missiles, four direct damages, then the states
+BoostBallInto, Taunt, TravelToCoverPoints, Dash, DiveAttack, MissileJump, SweepBeam, ScatterShot,
+MovingScatterShot, MeleeAttack and HeavyHit). The run: 6400 updates, 0 caught, 0 reach-stub.
+
+The arms the fight cannot reach were forced with `tools/cov/force.sh` and
+`tools/cov/specs/darksamus_helpers2_force.py` (the gdb side is `tools/cov/force_ds2.py`: it writes
+the members at the entry of the body and logs what it forced). Those arms are **forced**.
+
+| fn | the port's body | the arms |
+| --- | --- | --- |
+| fn_10_11334 | UpdateGlideEmitter | the activate adds the emitter (3), the update with the emitter (164), the update without an emitter (2, **forced**), the deactivate with the emitter (3), the deactivate without an emitter (2, **forced**); the "the sfx id is invalid" arm is dead on shipped data (the loader's id, the four AddEmitter calls) |
+| fn_10_11974 | UpdateScatterShotFire | not firing (152), firing (179); the "the rate is zero" arm is dead on shipped data (the rate comes from the loader's mScatterShotProjectilesPerSecond and is above zero in every hit) |
+| fn_10_128D8 | UpdateSafePosition | the flag is set (4), the flag is clear (1: the unsafe-spot test answered false) |
+| fn_10_14FE0 | PickNextDash | no dash to take (4), the actor stood still (**forced**), the dash is stuck (**forced**) |
+| fn_10_1A554 | CollectFadeAttacks | not fading (259), fading out (266, **forced**) |
+| fn_10_1E178 | AccumulateDamage | the health is the same (135), the health changed and it does not count (2), the health changed and it counts (**forced**), the damage decays below zero (133, the earlier probe run) |
+| fn_10_1E26C | PushAttacker | the uid is invalid (**forced**), the list has two entries (5), the list has room (2) |
+| fn_10_16418 | IsPlayerAimLineClear | the aim line is clear (20), the aim line is blocked (4) |
+| fn_10_164C0 | IsGunLineClear | the ray found nothing, the ray found something (the caller fn_10_16418 answered false four times, and it is the same test) |
+
+Dropped again: **fn_10_16B1C** (IsOnPath) - the coverage run saw only the "on the path" outcome
+(82 hits, 82 returns), so the provisional marker of the DarkSamus2 lane does not stand.
+**fn_10_1905C** (ClassifyLineToPlayer) keeps its marker: the return-value data of that run is
+incomplete for it (275 of 3315 hits), so the re-check could not disprove the earlier lane's
+evidence (DarkSamus.md, slice 23).
