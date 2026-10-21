@@ -140,6 +140,12 @@ enum EGetupType { kGetup_Invalid = -1, kGetup_Zero = 0, kGetup_One = 1, kGetup_T
 enum ELoopState { kLS_Invalid = -1, kLS_Begin, kLS_Loop, kLS_End };
 
 enum ELoopAttackType { kLAT_Invalid = -1, kLAT_Zero, kLAT_One, kLAT_Two, kLAT_Three, kLAT_Four };
+#ifdef TARGET_PC
+// Port: MP2 modules issue loop attack types past kLAT_Four (CommandoPirate fn_9_2474, asm
+// 0x00002748/0x000027D4).
+const ELoopAttackType kLAT_Five = static_cast< ELoopAttackType >(5);
+const ELoopAttackType kLAT_Six = static_cast< ELoopAttackType >(6);
+#endif
 
 enum EGenerateType {
   kGType_Invalid = -1,

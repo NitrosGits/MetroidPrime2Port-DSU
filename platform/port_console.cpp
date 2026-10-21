@@ -52,6 +52,7 @@
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
@@ -511,7 +512,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
-      "shoot <id> [charged] [d]    fire the beam in hand at an actor from d (3) units: a real projectile\n"
+      "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
+      "                            (travelling along dir; default from the player): a real projectile\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
@@ -523,10 +525,12 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "strg <id|name> [index]      a string table as the game loads it\n"
       "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
+      "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
-      "help                        this list\n";
+      "help                        this list\n"
+      "a; b; c                     run several commands in the same game tick (one reply each)\n";
 }
 
 void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
@@ -1472,8 +1476,8 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   out += "fsm " + before + " -> " + after + '\n';
 }
 
-// shoot <id> [charged] [dist]: fire the player's current beam from dist units (default 3) away
-// straight at an actor's aim position (a joint collision actor's own position), homing on it. The
+// shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
+// away, travelling along dir (default: from the player), straight at an actor's aim position (a joint collision actor's own position), homing on it. The
 // shot is a real CEnergyProjectile with the beam's damage, so a module that only counts projectile
 // hits (a weak-spot joint's last toucher) sees it, unlike `damage`.
 void CmdShoot(CStateManager& mgr, const Args& args, std::string& out) {
@@ -1489,16 +1493,21 @@ void CmdShoot(CStateManager& mgr, const Args& args, std::string& out) {
   }
   CPlayerState::EChargeStage stage = CPlayerState::kCS_Normal;
   float dist = 3.f;
+  const CVector3f target = actor->GetAimPosition(mgr, 0.f);
+  CVector3f dir = target - player->GetTranslation();
   for (size_t i = 2; i < args.size(); ++i) {
+    float x = 0.f, y = 0.f, z = 0.f;
     if (args[i] == "charged") {
       stage = CPlayerState::kCS_Charged;
+    } else if (args[i] == "dir" && i + 3 < args.size() && ParseFloat(args[i + 1], x) &&
+               ParseFloat(args[i + 2], y) && ParseFloat(args[i + 3], z)) {
+      dir = CVector3f(x, y, z); // the shot's travel direction, e.g. `dir 0 0 1` comes from below
+      i += 3;
     } else if (!ParseFloat(args[i], dist) || dist <= 0.f) {
-      Fail("shoot: options are `charged` and a distance > 0");
+      Fail("shoot: options are `charged`, a distance > 0 and `dir <x> <y> <z>`");
       return;
     }
   }
-  const CVector3f target = actor->GetAimPosition(mgr, 0.f);
-  CVector3f dir = target - player->GetTranslation();
   dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, 1.f, 0.f);
   const CVector3f start = target - dir * dist;
   TUniqueId shot = kInvalidUniqueId;
@@ -1854,6 +1863,57 @@ void CmdPress(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// grapple <id> [dist]: the lock-on a grapple needs, set up in one go. A lock-on press takes
+// CPlayer's next orbit target, which comes from candidate lists rebuilt only every 20 updates, so a
+// press right after a teleport finds no target and a held L never presses again; and a player put
+// in the air falls out of the orbit zone in ~15 updates. This wakes the point (kSM_Activate, which
+// also restores kMT_Orbit), puts the player dist units away with the eye level with the point,
+// facing it (along the point's axis when it is axis-constrained), has the lists rebuilt on the next
+// update and holds L from the update after that (`press` or `stick` ends the hold).
+void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
+  const CEntity* ent = args.size() >= 2 ? ResolveObject(mgr, args[1]) : nullptr;
+  const CScriptGrapplePoint* point =
+      ent != nullptr ? TCastToConstPtr< CScriptGrapplePoint >(ent) : nullptr;
+  float dist = 8.f;
+  if (point == nullptr || (args.size() > 2 && (!ParseFloat(args[2], dist) || !(dist > 2.f)))) {
+    Fail("usage: grapple <grapple point id> [dist > 2]   (`objs grapple` lists them)");
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  CPlayerState* state = mgr.PlayerState(0);
+  if (player == nullptr || state == nullptr) {
+    Fail("no player");
+    return;
+  }
+  const bool woken = !point->GetActive();
+  if (woken) {
+    mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, point->GetUniqueId(), kSM_Activate));
+  }
+  const CVector3f target = point->GetTranslation();
+  CVector3f dir = player->GetTranslation() - target;
+  if (point->GetGrappleParameters().GetConstrainToAxis()) {
+    const CVector3f axis = point->GetTransform().GetForward();
+    dir = CVector3f::Dot(axis, dir) < 0.f ? -axis : axis;
+  }
+  dir.SetZ(0.f);
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, -1.f, 0.f);
+  const float eyeHeight = player->GetEyePosition().GetZ() - player->GetTranslation().GetZ();
+  CVector3f pos = target + dir * dist;
+  pos.SetZ(target.GetZ() - eyeHeight);
+  player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
+  player->PortRefreshOrbitCandidates();
+  PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, 0, 2);
+  char line[192];
+  std::snprintf(line, sizeof(line),
+                "grapple u%04x at (%.1f, %.1f, %.1f)%s: player at (%.1f, %.1f, %.1f), L held from "
+                "2 updates on%s\n",
+                point->GetUniqueId().value, target.GetX(), target.GetY(), target.GetZ(),
+                woken ? " (woken)" : "", pos.GetX(), pos.GetY(), pos.GetZ(),
+                state->HasPowerUp(CPlayerState::kIT_GrappleBeam) ? ""
+                                                                 : "; no grapple beam (`give grappleBeam 1`)");
+  out += line;
+}
+
 // stick <x> <y> [updates]: hold the main stick, -127..127 (0 holds until the next press/stick).
 void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
   (void)mgr;
@@ -2102,6 +2162,7 @@ constexpr SCommand kCommands[] = {
     {"give", CmdGiveAdd, true},
     {"take", CmdGiveTake, true},
     {"press", CmdPress, true},
+    {"grapple", CmdGrapple, true},
     {"stick", CmdStick, true},
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
@@ -2200,9 +2261,19 @@ void Tick(CStateManager& mgr) {
       queued = std::move(sQueue.front());
       sQueue.pop_front();
     }
-    std::string out;
-    Execute(mgr, queued.line, out);
-    SendRaw(queued.generation, out);
+    // `a; b; c` runs every command in this one tick, so a forced arm can land inside a one-frame
+    // window (separate lines can arrive a frame apart).
+    size_t start = 0;
+    for (;;) {
+      const size_t sep = queued.line.find(';', start);
+      std::string out;
+      Execute(mgr, queued.line.substr(start, sep == std::string::npos ? std::string::npos : sep - start), out);
+      SendRaw(queued.generation, out);
+      if (sep == std::string::npos) {
+        break;
+      }
+      start = sep + 1;
+    }
   }
 #else
   (void)mgr;
