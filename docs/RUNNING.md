@@ -44,6 +44,9 @@ Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entere
 `send`, `damage` (direct, no projectile) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
 from d units, travelling along dir, for modules that only count projectile hits on a joint).
 `a; b; c` on one line runs all of them in the same game tick (a one-frame window); one reply each.
+`grapple <id> [d]` (ids from `objs grapple`) wakes a grapple point, stands the player d (8) units
+from it and holds L: with `give grappleBeam 1` the player locks on and grapples (`status`: orbit 5).
+A bare `tp` + `press l` misses: the lock-on press needs the orbit candidate lists, rebuilt every 20 updates.
 
 ## Area regression sweep (63 Temple Grounds areas, 4 shards, START-free)
 
