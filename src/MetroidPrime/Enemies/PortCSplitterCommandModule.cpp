@@ -23,6 +23,8 @@
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
@@ -1153,9 +1155,12 @@ void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
     break;
   }
   case kSM_AreaLoaded: { // "XAND" (0x65CC)
-    // 0x6724-0x6758: the value the retail reads out of the manager's area list is written to
-    // 0xD6C (the port has no name for that list, so the write stays out) and the module's own
-    // call runs (0x6758 fn_75_3A8C, ported).
+    // 0x6724-0x6754: the path area of the head's current area (the world at the manager's
+    // 0x1604, its area list at 0x24 indexed by the area id at 0x4, the area's post-constructed
+    // data at 0x104 and its path area at 0xEC) goes into the path search at 0xD6C; then the
+    // module's own call runs (0x6758 fn_75_3A8C, ported).
+    mPathFindSearch.SetArea(
+        mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
     PortUpdateConnectedObject(mgr);
     break;
   }

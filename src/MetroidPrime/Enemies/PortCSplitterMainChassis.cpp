@@ -19,6 +19,8 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Enemies/CSplitterCommandModule.hpp"
@@ -1113,9 +1115,13 @@ void CSplitterMainChassis::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     break;
   }
   case kSM_AreaLoaded: { // "XAND" (0x0000F290)
-    // 0x0000F434-0x0000F468: the value the retail reads out of the manager's area list is
-    // written to 0xB7C and the module's own call runs (0x0000F468 fn_75_AC68). The port has no
-    // name for that list, so the write stays out.
+    // 0x0000F434-0x0000F464: the path area of the chassis's current area (the world at the
+    // manager's 0x1604, its area list at 0x24 indexed by the area id at 0x4, the area's
+    // post-constructed data at 0x104 and its path area at 0xEC) goes into the path search at
+    // 0xB7C - without it every Search fails and PathFind never moves the chassis. Then the
+    // module's own call runs (0x0000F468 fn_75_AC68).
+    mPathFindSearch.SetArea(
+        mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
     PortUpdateConnectedObjects(mgr);
     break;
   }
