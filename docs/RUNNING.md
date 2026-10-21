@@ -46,3 +46,13 @@ units, for modules that only count projectile hits on a joint).
     python3 tools/sweep_report.py '/tmp/opencode/log_<tag>_*.log'
 
 Parallel software-Vulkan shards can lose the device; confirm verdicts with lone runs.
+
+## Booting into a world and an area
+
+`MP2_WORLD` and `MP2_TELEPORT` take a hex asset id or a name, but they share one slot, and
+`MP2_TELEPORT` is applied second, so it wins - and with the fast harness the separate teleport is
+served *before* the world is loaded, so the area is looked up in the old world and the run ends
+with "[warp] area -1 does not exist in this world". **Give the world and the area in one
+request**: `MP2_WORLD="1baa96c2,2735236b"` (the world, a comma, the area) or
+`MP2_WORLD="42b935e4,01_sand_entrance_dark"` (the area's MLVL name). The area can also be the
+area index, but the index is the one of the world being loaded, so the name is safer.

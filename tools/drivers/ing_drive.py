@@ -84,6 +84,29 @@ def ings(console):
     return found
 
 
+def joints(console, ing, radius=4.0):
+    """The Ing's joint collision actors: the CCollisionActor objects near it.
+
+    They carry the Ing's own health and the base damage table (fn_29_3014), so a hit on one is
+    what takes HP off a corporeal Ing - the console's `damage` on the Ing itself does not (the
+    Ing's own table is the trigger table, and it takes nothing from the power beam).
+    """
+    out = console.cmd("objs Collision")
+    found = []
+    for line in out.splitlines():
+        if "CCollisionActor" not in line:
+            continue
+        uid = line.split()[0]
+        pos = line[line.rfind("(") + 1: line.rfind(")")]
+        try:
+            x, y, z = (float(v) for v in pos.split(","))
+        except ValueError:
+            continue
+        if (x - ing[0]) ** 2 + (y - ing[1]) ** 2 + (z - ing[2]) ** 2 <= radius * radius:
+            found.append((uid, x, y, z))
+    return found
+
+
 def states(logpath, n=200000):
     """The latest state of every Ing in the log: tag -> (state, form)."""
     try:
@@ -123,7 +146,8 @@ def setup(console):
 def kill(console, logpath, rounds):
     setup(console)
     # The Dark visor is one of the arms of the valid-target body (fn_29_426C).
-    console.cmd("visor dark")
+    print("visor:", console.cmd("give darkVisor 1").replace("\n", " | "), flush=True)
+    print("visor:", console.cmd("visor dark").replace("\n", " | "), flush=True)
     woken = set()
     for _ in range(rounds):
         spots = ings(console)
@@ -150,10 +174,15 @@ def kill(console, logpath, rounds):
             for cuid, cx, cy, cz in spots:
                 if (int(cuid.lstrip("u"), 16) & 0x3FF) != int(tag, 16):
                     continue
-                for _ in range(3):
-                    console.cmd(f"damage {cuid} 100")
-                    time.sleep(0.3)
-                print(f"hit {cuid} in the state {state} at ({cx:.1f}, {cy:.1f}, {cz:.1f})", flush=True)
+                # The hit goes to the joint collision actors: they carry the Ing's health, and
+                # the Ing's own table would take nothing from the console's damage.
+                for juid, jx, jy, jz in joints(console, (cx, cy, cz)):
+                    # A real beam projectile at the joint: the console's `damage` does not
+                    # reach the projectile-only hit path that carries the damage to the Ing.
+                    for _ in range(3):
+                        console.cmd(f"shoot {juid} charged 1")
+                        time.sleep(0.3)
+                    print(f"shot {juid} (a joint of {cuid}) in the state {state}", flush=True)
     return 0
 
 

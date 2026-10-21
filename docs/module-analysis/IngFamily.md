@@ -1141,18 +1141,28 @@ the Ing is corporeal (the ing-spot form takes no damage, A.19), and the driver's
 log prints the unique id without its version bits, the console with them: `0x400 | tag`).
 
 **`fn_29_B3C4` is not marked yet** (the run of 2026-10-21, the probe in the death body): the
-run killed **both** Ings of area 57 and the death body ran, with these arms: alive, the machine has
-a state, not burning, the form 3 (no death body command) and the script messages. The arms that
-are still open: **the death in the corporeal form (2) or a form change (6..9), which issues the
-death body command** - the console's `damage` goes to the Ing itself, and the Ing's own table
-(the trigger table) takes nothing from it, so the corporeal Ing only dies from a shot that lands
-on its joint collision actors (they carry the base table, A.19) - and **the burning arm** (the
-byte at 0x421's bits 1 and 2: the Ing has to be on fire when it dies, which is a lava scenario).
-The arms that cannot run: "not alive" (the Ing dies once), "the machine has no state" (the state
-machine is set up in the constructor) and "no messages" (the state argument is a real one).
+run killed **both** Ings of area 57 and the death body ran with these arms: alive, not alive
+(the second death), the machine has a state, not burning, **the form 2 - the death body command**
+(the death in the corporeal form, through a real beam at the joint collision actors), the form 3
+(no command) and the script messages. Two arms are open:
+- **the burning arm** (the byte at 0x421's bits 1 and 2: the Ing has to be on fire when it dies).
+  The host has no fire that burns a patterned actor - only `COctapedeSegment` calls
+  `CPatterned::Burn` (src/MetroidPrime/Enemies/COctapedeSegment.cpp:267,650,657) and the fluid
+  plane never does, so the arm is **blocked by unported shared code**, not unreachable. Request
+  for the orchestrator: the fire plane should call `Burn` on the patterned actors it sets on fire
+  (the Ing's area list in docs/modules.tsv is the Agon Wastes, which has lava);
+- **"no messages"** (the state argument -1): the Ing's death always comes with a real state (the
+  damage path's kSS_DeathRattle), so this arm cannot run in the shipped data.
 
 **The ing spot does die** - the earlier note that it cannot was wrong: the run of 2026-10-21 shows
 the death body with the form 3 ("form 3, no command"), and the ing spot's HP does go down.
+
+**The corporeal death needs a real beam at the joint collision actors.** The console's `damage`
+goes to the Ing itself, and the Ing's own table (the trigger table) takes nothing from the power
+beam, so the corporeal Ing never loses HP that way. The joints carry the Ing's health and the
+base table (fn_29_3014), so the driver's `shoot <joint uid> charged 1` (a real beam projectile
+from one unit away, at the joint's aim position) is what kills it - the run of 2026-10-21 killed
+both Ings that way and the death body ran with the form 2.
 
 **The four hot bodies' branches** (the count is from the asm; the "run" column is what the area
 57 run of 2026-10-21 reached, with a probe in each body):
@@ -1160,8 +1170,8 @@ the death body with the form 3 ("form 3, no command"), and the ing spot's HP doe
 | fn | branches | arms | the run |
 |---|---|---|---|
 | `fn_29_45BC` GetCoverHint | 1 | the id is invalid -> null; the id is valid -> the lookup | **both ran** (2 and 4145 calls) -> **marked** |
-| `fn_29_4604` the blob align | 3 | the blob is gone -> nothing; the align flag is 0 -> nothing; the align flag is 1 -> the look along the normal, with the up vector (the normal's z < 0.95) or the right one (z >= 0.95) | the align flag 0 (2604 calls) and 1 (4789), the up vector and the right vector; the "the blob is gone" arm cannot run (the blob is made in the create branch and deleted in the delete branch) -> **marked** |
-| `fn_29_426C` the valid target | 3 | the forms 0/1 -> false; the forms 3/5 with the Dark visor -> the byte at 0x9d0's bit 0; the forms 3/5 with another visor -> true; the other forms -> true | "always a target" (the forms 2 and up, 2137 calls) and "another visor, the flag 0" (the forms 3/5, 2624); the forms 0/1 (the host form) and the Dark visor are still open -> **not marked** |
+| `fn_29_4604` the blob align | 3 | the blob is gone -> nothing; the align flag is 0 -> nothing; the align flag is 1 -> the look along the normal, with the up vector (the normal's z < 0.95) or the right one (z >= 0.95) | the align flag 0 (the forms 0, 1, 2, 4, 6, 7, 8) and 1 (the forms 3, 6, 7), the up vector and the right vector; the "the blob is gone" arm cannot run (the blob is made in the create branch and deleted in the delete branch) -> **marked** (the two steps the retail's body has and the port had not - GeomBlobV2's fn_25_256C and the blob's flag byte at 0x154 - are ported now: the host's `CCollisionTracker::SetParticleEmissionRateScalar` and its new `SetOwnerDamaged`) |
+| `fn_29_426C` the valid target | 3 | the forms 0/1 -> false; the forms 3/5 with the Dark visor -> the byte at 0x9d0's bit 0; the forms 3/5 with another visor -> true; the other forms -> true | **all four ran** ("always a target" 7166, "another visor" 21, "never a target" 2277 - the host form - and "the Dark visor" 9292, with the console's `give darkVisor` and `visor dark`) -> **marked** |
 | `fn_29_3948` MoveOnSurface | 2 | the parallel part is below 0.6 of the move -> the perpendicular part; the move is not magnitude-safe -> the zero vector; else the normalised move | **all three ran** (3369, 37 and 311 calls) -> **marked** |
 
 **The Agon Wastes recipe** (A.12) is the other way in: there the Ings are ing spots that the

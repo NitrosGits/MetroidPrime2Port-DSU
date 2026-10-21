@@ -790,9 +790,12 @@ void CIng::UpdateTimers(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_29_426C (CIng::Think's call at asm 0x0000C7A0). The forms: the two host forms (0, 1) are
+// @ fn_29_426C: CIng::Think's call at asm 0x0000C7A0. The forms: the two host forms (0, 1) are
 // never valid targets, the ing-spot and evaporating forms (3, 5) follow the Dark visor and the
-// actor's own byte 0x9d0 bit 0, every other form is always a valid target.
+// actor's own byte 0x9d0 bit 0, every other form is always a valid target. All four arms ran in
+// the area 57 run of 2026-10-21: "always a target" (7166 calls), "another visor, the flag 0"
+// (21), "never a target" (2277, the host form) and "the Dark visor, the flag 0" (9292, with the
+// console's `give darkVisor` and `visor dark`).
 void CIng::UpdateValidTarget(CStateManager& mgr) {
   switch (mForm) {
   case kForm_Host:            // 0
