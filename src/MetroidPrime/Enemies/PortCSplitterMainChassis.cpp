@@ -1693,6 +1693,27 @@ void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueI
   PortTakePlayerHint(mgr);
 }
 
+// fn_75_E788 (0xE788-0xE810): a living (the base's 0x420 0x40 bit, 0xE788-0xE790), active (the
+// entity's 0x20 0x80 bit, 0xE794-0xE79C) chassis with no head (0xC6C, 0xE7A4-0xE7B4) and no
+// reservation (0xC6E, 0xE7B8-0xE7C0), landed (0xD00 at 5 or 0, 0xE7C4-0xE7D4), with 0xD41's 0x80
+// and 0xD40's 0x01 bits clear (0xE7D8-0xE7EC) takes the head's reservation (0xE7F4); the result
+// is whether the reservation is that head's (0xE7F8-0xE808).
+bool CSplitterMainChassis::PortReserveDock(TUniqueId head) {
+  if (mAlive && GetActive() && mCommandModuleId == kInvalidUniqueId &&
+      mSecondLinkId == kInvalidUniqueId && (mLandedCount == 5 || mLandedCount == 0) &&
+      (mFlagsD41 & 0x80) == 0 && (mFlagsD40 & 0x1) == 0) {
+    mSecondLinkId = head;
+  }
+  return mSecondLinkId == head;
+}
+
+// fn_75_E768 (0xE768-0xE788): the reservation at 0xC6E is cleared when it is that head's.
+void CSplitterMainChassis::PortReleaseDock(TUniqueId head) {
+  if (mSecondLinkId == head) {
+    mSecondLinkId = kInvalidUniqueId;
+  }
+}
+
 // vtable slot 0x98 = fn_75_EB04 (0xEB04-0xEBF4): the base's Death (0xEB28), then every
 // collision actor of the manager at 0xC68 (0xEB3C GetCollisionDescFromIndex, to
 // GetNumCollisionActors at 0xEB80) that casts to a CCollisionActor takes the chassis's material
