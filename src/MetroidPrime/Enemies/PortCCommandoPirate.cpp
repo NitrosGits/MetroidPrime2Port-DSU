@@ -2204,9 +2204,9 @@ bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& dat
 // (fn_9_BB10) and the dodge picker (fn_9_3678) call. The ray starts at the actor's bounding
 // box centre (the GetBoundingBox call at 0x00003374 and the GetCenterPoint call at
 // 0x00003380) and ends at the point that distance along the given vector (the adds at
-// 0x000033B0..0x000033D8); the end point must not hit the world (the RayCollideWorld call at
-// 0x0000342C - the answer is false when it does) and must be on the path (the OnPath call at
-// 0x00003440 - the answer is true when it returns 0).
+// 0x000033B0..0x000033D8); the end point must be clear of the world (the RayCollideWorld call at
+// 0x0000342C - the answer is false when the ray is blocked) and must be on the path (the OnPath
+// call at 0x00003440 - the answer is true when it returns 0).
 bool CCommandoPirate::x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f& dir,
                                            float distance) const {
   const CVector3f center = GetBoundingBox().GetCenterPoint();  // 0x00003374, 0x00003380
@@ -2217,8 +2217,11 @@ bool CCommandoPirate::x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f&
   // kFT_IncludeExclude (the word 3 at 0x0000341C).
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor));  // 0x000033DC, 0x000033F8
-  if (mgr.RayCollideWorld(center, end, filter, this)) {
-    return false;                                                // 0x00003430
+  // The guest's answer is false when the ray is blocked (the branch at 0x00003434 takes the false
+  // path when the ray's answer is false); the path check runs only when the ray is clear
+  // (0x00003438..0x00003440).
+  if (!mgr.RayCollideWorld(center, end, filter, this)) {
+    return false;                                                // 0x00003430..0x00003434
   }
   return mPathFindSearch.OnPath(end) == CPathFindSearch::kR_Success;  // 0x00003440
 }
