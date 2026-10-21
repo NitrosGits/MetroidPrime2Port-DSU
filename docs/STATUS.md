@@ -34,7 +34,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 |---|---|---|---|
 | BoostGuardian (Opus) | — (done) | boostguardian @ `673fbcb56` (204/318; 103 cited, 2 folded; loaders hand-checked, isEchoEmitter + 19 sound ids -1 defaults; 12AB0 compares correct) | merge in batch 6; 9 fns between tsv 309 and 318 unexplained |
 | EmperorIng3 (Opus) | — (done) | emperoring3 @ `43eb8312e` (182/270; 88 cited, 0 todo; matching build OK) | module complete: merge in batch 6 |
-| DigitalGuardian (Opus) | `ses_ea412f7a1ffesQ3Z1Tv0QKRd76` | sandboss @ `c753a5c2b` (balls 12818/126C8, Dead 1561C, SetVulnerable 13F0C marked; XRDG 12D98 ported; head dies by real bombs) | SelectRetreatPlatform 13C6C (12818 marker hinges on it), XRDG beam arm, slice-3 stand-ins, exit-13 check |
+| DigitalGuardian (Opus) | `ses_ea3c7c778ffenorrkp5OG8bwsm` | sandboss @ `c56aff752` (SelectRetreatPlatform 13C6C ported; 12818 unmarked; 41 markers; exit 13 did not recur in 2 runs) | why beams never hit the root collider u0574 (likely port bug), XRDG damage arm, retreat → 12818/15284 platform arms, then slice-3 stand-ins |
 | Splitter (Opus) | `ses_ea3d90e6bffeORXuhNhzKlvC7z` | splitter @ `271fd8961` (filter fixed to retail; patrol still stalls since A4E4 a346e6551) — not accepted until fixed | root-cause + fix the stall, then mark A4E4/986C/ACEC |
 | CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
