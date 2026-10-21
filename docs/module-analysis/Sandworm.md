@@ -5,7 +5,7 @@ the full function classification (section g), the upstream-class check (section 
 canonical port order (section i).
 
 **The module is ported.** The bodies live in `src/MetroidPrime/Enemies/PortCSandworm*.cpp`;
-247 of the 262 module-behaviour functions carry a `// @ fn_56_` marker (262 markers in
+251 of the 262 module-behaviour functions carry a `// @ fn_56_` marker (266 markers in
 total; the other 15 sit on the thunks and the inline command helpers). The
 `docs/modules.tsv` row for Sandworm still says `status=entry-stub`, which is stale bookkeeping:
 the row was written before the port, and `tools/rel_manifest.py` derives the status from
@@ -480,7 +480,7 @@ in the tree but carries none (a data-gated body, a dead slot, or a body the port
 neighbour); **no body** = the port has none (the two unreferenced math helpers the port skipped and
 the REL's static init, which the host does not need).
 
-The 23 **no marker** rows are the 15 B functions section j lists as not
+The 19 **no marker** rows are the 11 B functions section j lists as not
 exercised (three of them without a body at all) and the 8 dead virtual slots of T. Section l
 has the per-arm table for every one of them.
 
@@ -520,7 +520,7 @@ has the per-arm table for every one of them.
 | `fn_56_321C` | 0x188 | GetAimPosition [slot 0x54] (eye-based) | data_8D8 | marked |
 | `fn_56_33A4` | 0x98 | Interrupt [slot 0x238, FSM extra state] | data_ABC | marked |
 | `fn_56_3484` | 0x10C | EyeKilledReaction [state slot 0x1fc] | data_A80 | marked |
-| `fn_56_35EC` | 0xC | HitDuringWindUp [trigger slot 0x188] | data_A0C | no marker |
+| `fn_56_35EC` | 0xC | HitDuringWindUp [trigger slot 0x188] | data_A0C | marked |
 | `fn_56_35F8` | 0xA8 | OneEyeKilled [trigger slot 0x19c] | data_A20 | marked |
 | `fn_56_36A0` | 0xB0 | [?] AnyEyeDead / eye-state query | 11374 3484 3B24 441C 4AD8 74B8 AC80 E340 | marked |
 | `fn_56_3750` | 0x14 | PickedBombFountain [trigger slot 0x1a0] | data_A24 | marked |
@@ -608,7 +608,7 @@ has the per-arm table for every one of them.
 | `fn_56_8190` | 0x328 | ChargePlayer [state slot 0x1e8] | data_A6C | marked |
 | `fn_56_84B8` | 0xFC | [?] LaunchSpitProjectile | 8AAC | marked |
 | `fn_56_8AAC` | 0x3E4 | [?] FireSpit (anim event) | 646C | marked |
-| `fn_56_8E90` | 0x1A0 | [?] BombToss spawn | 646C | no marker |
+| `fn_56_8E90` | 0x1A0 | [?] BombToss spawn | 646C | marked |
 | `fn_56_9030` | 0x1A4 | [?] SpawnBouncingBomb (new 0x218) | 8E90 91D4 | marked |
 | `fn_56_91D4` | 0x194 | [?] BombFountain spawn | 646C | marked |
 | `fn_56_9368` | 0xD8 | [?] AttachHeldBomb | 9660 B8B8 BC8C | marked |
@@ -646,7 +646,7 @@ has the per-arm table for every one of them.
 | `fn_56_B50C` | 0x1D0 | Rise [state slot 0x220] | data_AA4 | marked |
 | `fn_56_B6DC` | 0x124 | SpitAttack [state slot 0x228] | data_AAC | marked |
 | `fn_56_B85C` | 0x5C | [?] BeginAttack (common) | 6FA0 74B8 8190 B6DC B8B8 BAB8 BC8C BF44 | marked |
-| `fn_56_B8B8` | 0x200 | BombFountainAttack [state slot 0x1dc] | data_A60 | no marker |
+| `fn_56_B8B8` | 0x200 | BombFountainAttack [state slot 0x1dc] | data_A60 | marked |
 | `fn_56_BAB8` | 0x1D4 | BombSpreadAttack [state slot 0x1e0] | data_A64 | marked |
 | `fn_56_BC8C` | 0x218 | BombTossAttack [state slot 0x1e4] | data_A68 | marked |
 | `fn_56_BEA4` | 0x94 | StopGrabAttack [state slot 0x22c] | data_AB0 | marked |
@@ -663,7 +663,7 @@ has the per-arm table for every one of them.
 | `fn_56_C600` | 0x104 | [?] spine/segment chain helper | F5B0 F77C | marked |
 | `fn_56_C704` | 0xF0 | [?] spine/segment chain helper | C600 E764 | marked |
 | `fn_56_C7F4` | 0x34 | [?] spine/segment chain helper | C704 | marked |
-| `fn_56_C828` | 0x16C | [?] spine/segment chain helper | AC24 | no marker |
+| `fn_56_C828` | 0x16C | [?] spine/segment chain helper | AC24 | marked |
 | `fn_56_C994` | 0x15C | [?] spine/segment chain helper | B138 C828 F77C FC94 | marked |
 | `fn_56_CAF0` | 0xC4 | [?] SetEyeCollisionVulnerability | 4AD8 | marked |
 | `fn_56_CBB4` | 0xD8 | [?] spine/segment chain helper | D350 | marked |
@@ -1133,8 +1133,8 @@ Shared helpers belong to WP1 and are declared in `CSandworm.hpp`. WP3 and WP4 al
 `PortCSandworm*.cpp` files checked 279 functions and found three hits (l.3). The classification of
 section g moved four functions from B to H: `fn_56_285C`, `fn_56_126EC` and `fn_56_12780` are the
 compiler-generated destructors of the module's own structs and `fn_56_F328` is the inlined
-`CVector3f::Cross`, so the host needs no body for them. B is therefore 262 functions, of which 247
-carry a `// @ fn_56_` marker and 15 do not; those 15 are listed here with the arm of each.
+`CVector3f::Cross`, so the host needs no body for them. B is therefore 262 functions, of which 251
+carry a `// @ fn_56_` marker and 11 do not; those 11 are listed here with the arm of each.
 
 The run that produced the evidence: **03_sand_temple L2** (world `sand_world`, area `03_sand_temple`,
 `MP2_TELEPORT`), `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`, the Bomb Guardian `u048f` (editor id
