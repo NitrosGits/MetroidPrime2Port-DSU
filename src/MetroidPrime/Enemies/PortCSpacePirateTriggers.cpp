@@ -754,12 +754,17 @@ bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) con
   return x8f4_24_pendingAmbush;
 }
 
-// Retail fn_72_77D0 (0x34): the warp point (0xc04) has to be -1 and the 0x8f6 byte's bit 24
-// (mask 0x80, the data flag 0x10000) and the 0x8fa byte's bit 26 (mask 0x20, the data flag
-// 0x04000000) have to be set (asm 0x77D8-0x77F8). The "all three set" arm needs a placement
-// with the data flag 0x04000000, which no shipped SpacePirate placement carries.
+// Retail fn_72_77D0 (0x34): the warp point (0xc04) has to be -1 and the 0x8f6 byte's bit 24 (mask
+// 0x80, the data flag 0x10000) and the 0x8fa byte's bit 26 (mask 0x20, the data flag 0x04000000)
+// have to be set (asm 0x77D8-0x77F8). The trace's argument is the arm: 1 = the warp point is not
+// -1, 2 = not a trooper, 3 = the data flag 0x04000000 is missing, 4 = all three hold. The last
+// arm needs a placement with the data flag 0x04000000, which no shipped SpacePirate placement
+// carries (the scan of all 65 placements, tools/scan_pirt_props.py), so the other three arms are
+// all the run can reach.
 bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
-  return xc04_warpPoint == -1 && x8f6_24_trooper && x8fa_26_;
+  const int arm = xc04_warpPoint != -1 ? 1 : (!x8f6_24_trooper ? 2 : (!x8fa_26_ ? 3 : 4));
+  TraceCall(*this, "ShouldWarpIn trigger", arm);
+  return arm == 4;
 }
 
 // @ fn_72_779C (0x2C): the launcher block's +0x00 is 1 - the loadout is the grenade launcher -

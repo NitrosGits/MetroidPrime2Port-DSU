@@ -529,13 +529,17 @@ bool CSpacePirate::LineOfSightTest(CStateManager& mgr, const CVector3f& start,
   return mgr.RayCollideWorld(start, end, filter, this);
 }
 
-// Retail fn_72_2F4C (0x2D4), called from the Think (fn_72_1980, asm 0x1B74) once per frame.
+// @ fn_72_2F4C (0x2D4), called from the Think (fn_72_1980, asm 0x1B74) once per frame.
 // Shadow pirates fade in and out; the cloak alpha lives in the actor's colour. The first test is
 // the shadow bit (0x8f5 mask 0x10, asm 0x2F88 `extrwi. 1,27`) and a pirate without it leaves at
-// once (asm 0x2F8C) - the rest of the body is the cloak itself. The alpha byte at 0x44f is
+// once (asm 0x2F8C). The rest of the body is the cloak itself: the alpha byte at 0x44f is
 // scaled by rodata 0xBB4 = 1/255 (asm 0x3178), the re-arm of the step timer is rodata 0xBBC =
 // 0.08 times (1 - the random draw) (asm 0x3150-0x315C) and the frozen test compares against
 // rodata 0xB54 = 1.0 (asm 0x3048).
+// The shadow arm is unreachable in the shipped data: the scan of all 65 SpacePirate placements
+// in the disc (tools/scan_pirt_props.py) finds none with the data flag 0x2000, so the only arm
+// that runs is the early exit - 9116 calls in the 2026-10-21 area run, every one of them out
+// at the shadow test (the trace's argument).
 void CSpacePirate::UpdateCloak(float dt, CStateManager& mgr) {
   TraceCall(*this, "UpdateCloak", x8f5_27_shadowPirate ? 1 : 0);
   if (!x8f5_27_shadowPirate) {
@@ -1578,6 +1582,11 @@ void CSpacePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
 }
 
 // Retail fn_72_E318.
+// Retail fn_72_E318 (0xC0): a live pirate hears a noise inside the data's hearing radius (0x7d4)
+// and inside the detection height range (0x3d4, the squared test at asm 0xE384), which sets the
+// 0x8f6 mask 0x40 bit; a player-fire noise (type 0) also sets the 0x8f7 mask 0x20 bit and
+// remembers the noise position in 0xbb4/0xbb8/0xbbc (asm 0xE3A8-0xE3C8). Verified against the
+// asm; the "the pirate is dead" and "the height range is set" arms did not run in the area run.
 bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
   bool heard = false;
   if (mAlive) {
