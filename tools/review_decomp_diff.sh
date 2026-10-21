@@ -6,6 +6,8 @@
 #   STUB   stub/stand-in/TODO/forwarding text added next to ported code
 #   MASK   bit tests (& 0x.., rlwinm-derived) - re-derive each mask from the asm, not the selftest
 #   MARK   new `// @` markers - check the body really is the function and its callees are ported
+#   DEL    code lines removed per file - each removal needs a reason
+#   DOCS   a docs/note/tsv commit that changes C++ code lines
 # Prints "<tag> <file>:<line>: <text>" and a count per tag. A hit is a question, not a verdict.
 set -u
 base=${1:?usage: review_decomp_diff.sh <base> [head]}
@@ -26,6 +28,20 @@ awk '
   function hit(tag) { printf "%s %s:%d: %s\n", tag, f, ln, t; n[tag]++ }
   END { for (k in n) printf "== %s %d\n", k, n[k] }
 '
+# DEL: code lines (not comments/blank) removed per file - a rewrite removes lines too, but a removal
+# nobody mentions is how 8a5800003 lost seven SpacePirate lines.
+git diff -U0 "$base" "$head" -- 'src/*.cpp' 'src/*.hpp' 'include/*.hpp' 'platform/*.cpp' |
+awk '/^--- a\// { f = substr($0, 7); next }
+     /^-[^-]/ { t = substr($0, 2); if (t !~ /^[ \t]*(\/\/|$)/) d[f]++ }
+     END { for (k in d) printf "DEL %s: %d code lines removed\n", k, d[k] }'
+# DOCS: a commit whose subject says docs but whose diff changes C++ code lines.
+for c in $(git rev-list --no-merges "$base..$head"); do
+  s=$(git log -1 --format=%s "$c")
+  case $s in docs*|*" docs"*|*note*|*tsv*) ;; *) continue ;; esac
+  k=$(git show --format= -U0 "$c" -- 'src/*.cpp' 'src/*.hpp' 'include/*.hpp' 'platform/*.cpp' |
+      grep -E '^[-+][^-+]' | grep -c -v -E '^[-+][ \t]*(//|$)')
+  [ "$k" -gt 0 ] && echo "DOCS $(git log -1 --format='%h %s' "$c" | cut -c1-90): $k C++ code lines changed"
+done
 # Structure check (tools/asmcheck.py) on every changed Port*.cpp at <head>, correctness tags only.
 # The module is the one whose fn ids the file cites most (docs/modules.tsv id column). A hit here
 # means an Opus audit before merge; run `asmcheck.py check` with all tags before any `// @`.
