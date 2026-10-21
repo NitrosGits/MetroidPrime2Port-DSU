@@ -1437,12 +1437,13 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 24 marked, 48 ported but not marked, 11
-stand-ins, 173 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
+The port's state per function (the `port` column): 41 marked, 73 ported but not marked, 1
+stand-in, 142 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
 helpers, which the host's classes already have).
 
-**The unmarked B list** (the B functions the port does not mark, 112 of them): the stand-ins first -
-`fn_9_5410`, `fn_9_6A40`, `fn_9_6C68`, `fn_9_6DBC`, `fn_9_7724`, `fn_9_9064`, `fn_9_9BB4`, `fn_9_A110`, `fn_9_A2EC`, `fn_9_A4BC`, `fn_9_AFD4` - and then the ported ones whose every arm has not run yet (the table above names them). The
+**The unmarked B list** (the B functions the port does not mark, 109 of them): the stand-in first -
+`fn_9_5410` (the E-grenade's creator) - and then the ported ones whose every arm has not run yet
+(the table above names them). The
 full list is the `class`/`port` columns of `CommandoPirate_functions.tsv`.
 
 **The markers.** `fn_9_8028` (the charge state), `fn_9_86B4` (the ArmShield state), `fn_9_ADA0`

@@ -36,6 +36,9 @@ def connect():
 
 
 sock = connect()
+# A world load under gdb (a forcing run) can hold the console for longer than the connect
+# timeout (the same fix as the core lane's driver).
+sock.settimeout(300)
 stream = sock.makefile("rw")
 
 

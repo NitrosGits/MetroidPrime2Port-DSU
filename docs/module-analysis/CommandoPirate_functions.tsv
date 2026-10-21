@@ -167,7 +167,7 @@ offset	size	fn	kind	class	port	note
 0xB0F4	0x20	fn_9_B0F4	fsm-trigger	T	ported	ShouldCover
 0xB114	0x54	fn_9_B114	fsm-trigger	B	ported	ShouldWallHang
 0xB168	0x40	fn_9_B168	fsm-trigger	B	ported	ShouldCrouch
-0xB1A8	0x20	fn_9_B1A8	fsm-trigger	T	ported	FoundJumpPoint
+0xB1A8	0x20	fn_9_B1A8	fsm-trigger	T	marked	FoundJumpPoint
 0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	ported	IsAggressive
 0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	ported	AbortShieldCharge
 0xB1E0	0x70	fn_9_B1E0	fsm-trigger	B	marked	ShouldBoost
@@ -184,10 +184,10 @@ offset	size	fn	kind	class	port	note
 0xBA20	0x58	fn_9_BA20	fsm-trigger	B	ported	HasNewTarget
 0xBA78	0x3C	fn_9_BA78	fsm-trigger	H	marked	HasTarget
 0xBAB4	0x1C	fn_9_BAB4	fsm-trigger	T	ported	HeardShot
-0xBAD0	0x1C	fn_9_BAD0	fsm-trigger	T	ported	UnderFire
-0xBAEC	0xC	fn_9_BAEC	fsm-trigger	T	ported	HasLineOfSight
-0xBAF8	0xC	fn_9_BAF8	fsm-trigger	T	ported	BreakAmbush
-0xBB04	0xC	fn_9_BB04	fsm-trigger	T	ported	ShouldAmbush
+0xBAD0	0x1C	fn_9_BAD0	fsm-trigger	T	marked	UnderFire
+0xBAEC	0xC	fn_9_BAEC	fsm-trigger	T	marked	HasLineOfSight
+0xBAF8	0xC	fn_9_BAF8	fsm-trigger	T	marked	BreakAmbush
+0xBB04	0xC	fn_9_BB04	fsm-trigger	T	marked	ShouldAmbush
 0xBB10	0x6C	fn_9_BB10	fsm-trigger	B	ported	ShouldJumpBack
 0xBB7C	0x4C	fn_9_BB7C	fsm-trigger	T	ported	ShouldRetreat
 0xBBC8	0xF0	fn_9_BBC8	fsm-trigger	B	ported	ShouldFireEGrenade

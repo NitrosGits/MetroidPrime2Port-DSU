@@ -2196,6 +2196,11 @@ bool CCommandoPirate::x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f&
 // r3, r0, 1, 24 at 0x0000BB08). That byte is the loader's mFlags0 - the "sound" property's bits
 // 14, 11, 8, 5, 2, 31, 28 and 25 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
 // - so the flag is script-supplied.
+// run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
+// tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
+// the block's flag byte at guest this+0x91C (the loader's mFlags0) has its 0x80 bit clear in
+// every shipped CommandoPirate (the "sound" property's bit 14, the scan of the nine placements).
+// @ fn_9_BB04
 bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const {
   return (mData.mFlags0 & 0x80) != 0;
 }
@@ -2204,12 +2209,21 @@ bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data)
 // r3, r0, 1, 25 at 0x0000BAFC). That byte is the loader's mFlags0 - the "sound" property's bits
 // 14, 11, 8, 5, 2, 31, 28 and 25 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
 // - so the flag is script-supplied.
+// run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
+// tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
+// the block's flag byte at guest this+0x91C (the loader's mFlags0) has its 0x40 bit clear in
+// every shipped CommandoPirate (the "sound" property's bit 11, the scan of the nine placements).
+// @ fn_9_BAF8
 bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
   return (mData.mFlags0 & 0x40) != 0;
 }
 
 // fn_9_BAEC: the module's byte at guest this+0xAE8 has its 0x80 bit set (extrwi r3, r0, 1, 24
 // at 0x0000BAF0). Nothing in the module writes that byte, so the bit is clear.
+// run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
+// tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
+// nothing in the module writes the byte at guest this+0xAE8, so its 0x80 bit is clear.
+// @ fn_9_BAEC
 bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
   return (xae8_ & 0x80) != 0;
 }
@@ -2218,6 +2232,11 @@ bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& dat
 // (lbl_9_rodata_4E0, loaded at 0x0000BAD8). The compare is fcmpo cr0, f1, f0 (0x0000BADC) and the
 // return takes cr0.LT (mfcr r0 at 0x0000BAE0, srwi r3, r0, 31 at 0x0000BAE4). The constructor
 // sets that member to 0.75f, so the test is false until something lowers it.
+// run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
+// tools/cov/run.sh (the false answer) and tools/cov/force.sh with
+// tools/cov/specs/commandopirate_forced.py (the true answer, the float at guest this+0xB64 is
+// written below 0.75), 2026-10-21.
+// @ fn_9_BAD0
 bool CCommandoPirate::UnderFire(CStateManager& mgr, const CTriggerData& data) const {
   return xb64_ < 0.75f;
 }
@@ -2524,6 +2543,11 @@ bool CCommandoPirate::IsAggressive(CStateManager& mgr, const CTriggerData& data)
 // not kInvalidUniqueId. The guest's test is "subf r3, r5, r0; subf r0, r0, r5; or r0, r3, r0"
 // (0x0000B1B4..0x0000B1BC) and keeps the top bit (srwi r3, r0, 31 at 0x0000B1C0): one iff the
 // two differ. The constructor leaves the id kInvalidUniqueId (0x0000DBC0).
+// run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
+// tools/cov/run.sh (the false answer) and tools/cov/force.sh with
+// tools/cov/specs/commandopirate_forced.py (the true answer, the jump point id at guest
+// this+0xBD0 is written valid), 2026-10-21.
+// @ fn_9_B1A8
 bool CCommandoPirate::FoundJumpPoint(CStateManager& mgr, const CTriggerData& data) const {
   return xbd0_ != kInvalidUniqueId;
 }
