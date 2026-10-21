@@ -48,6 +48,12 @@ SandBossChargeBeam::SandBossChargeBeam(const TToken< CWeaponDescription >& descr
   SetDamageDuration(1.f); // retail stores 1.0 in the weapon's duration field after construction
 }
 
+// @ fn_55_10C18
+// The deleting destructor: 0x10C38 resets the vtable to lbl_55_data_9AC (the SandBossChargeBeam
+// vtable), 0x10C48 runs the base destructor (fn_55_108E4) and 0x10C4C..0x10C58 frees the object
+// when the deleting flag is set. The host's C++ destructor does all three, so the body is empty.
+// A charge-beam volley reaches it: fn_55_31E8 ends the volley with a delete request for every
+// beam, and the game's object list destroys it (see docs/module-analysis/SandBoss.md §7.4).
 SandBossChargeBeam::~SandBossChargeBeam() {} // fn_55_108E4 / fn_55_10C18
 
 // @ fn_55_1027C

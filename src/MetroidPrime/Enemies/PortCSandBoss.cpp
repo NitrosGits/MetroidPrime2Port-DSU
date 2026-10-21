@@ -977,6 +977,12 @@ namespace {
 #define SB_CODE(label, name)                                                                       \
   { label, static_cast< CPatterned::StateMachine::CodeFunc >(&CSandBoss::name) }
 
+// @ fn_55_11184
+// The module's static initialiser: it fills the 21 trigger, 20 state and 25 code name tables
+// (the name strings in lbl_55_rodata_144..554) and the three pointer arrays
+// (lbl_55_data_100 / lbl_55_data_340 / lbl_55_data_5AC) that fn_55_CAA4 hands to the state
+// machine (0xCAB8..0xCB18). The tables below are the same 66 functions in the same order and
+// carry the same names, so the port's static tables are the initialiser's result.
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SB_TRIGGER(StateOver),          SB_TRIGGER(IsUnderGround),
     SB_TRIGGER(IsRecovered),        SB_TRIGGER(CanStartNewRound),

@@ -596,10 +596,14 @@ private:
   // fn_10_1B658 / 138A4: the projectile reflect and the dive's hit on the player (stand-ins).
   void ReflectProjectiles(CStateManager& mgr);
   // fn_10_1B9B0: whether the projectile may be sent back (type -1 = any weapon type).
-  bool CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj, int type);
+  bool CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj, int type) const;
   // fn_10_F298 / F210: the reflect chance roll and the cache's erase.
-  float RollReflectChance(CStateManager& mgr, TUniqueId uid);
-  void EraseReflectChance(uint index);
+  float RollReflectChance(CStateManager& mgr, TUniqueId uid) const;
+  void EraseReflectChance(uint index) const;
+  // fn_10_F100: the cache's other roll, the one the hit arm (fn_10_1EE4C) uses.
+  float RollReflectChanceForHit(CStateManager& mgr, TUniqueId uid) const;
+  // fn_10_1EE4C: the hit's damage may be sent back.
+  bool CanReflectHit(CStateManager& mgr, const CDamageInfo& damage, TUniqueId uid) const;
   void HitPlayerWithDive(CStateManager& mgr);
   // fn_10_1382C: the player's orbit target cleared.
   void ClearPlayerOrbitTarget(CStateManager& mgr);
@@ -962,8 +966,14 @@ private:
     float mChance;    // +0x04, the roll fn_10_F298's lookup answers and 1B9B0 compares
     float mRoll;      // +0x08, the roll fn_10_F100's lookup answers
   };
-  uint mReflectChanceCount;        // guest 0x10A8, the number of entries in the cache
-  SReflectChance mReflectChances[10]; // guest 0x10AC, the ten entries
+  // The cache is mutable because the trigger fn_10_1BB08 fills it through the const
+  // CanReflectProjectile, as the retail's trigger does.
+  mutable uint mReflectChanceCount;        // guest 0x10A8, the number of entries in the cache
+  mutable SReflectChance mReflectChances[10]; // guest 0x10AC, the ten entries
+  CVector3f mHitDirection;         // guest 0x8C0/0x8C4/0x8C8, the direction of the last hit
+                                    // (the XDMG arm, 0x0001EA98)
+  CVector3f mHitDirectionFlat;     // guest 0xC10/0xC14/0xC18, the same direction flattened
+                                    // (its z 0.0f) and normalized (0x0001EB04..0x0001EB30)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

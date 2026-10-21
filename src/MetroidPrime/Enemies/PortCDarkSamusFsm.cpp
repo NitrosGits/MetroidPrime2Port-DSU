@@ -968,9 +968,14 @@ void CDarkSamus::AccumulateDamage(EStateMsg msg, float dt) {
 
 // ---- the trigger bodies (stand-ins) ------------------------------------------------------------
 
+// fn_10_F840 (0x0000F840, 0xC bytes): the flag byte 0x90C's bit 7 - the extrwi at 0x0000F844
+// keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24) = 0x80). The
+// flag is set by AcceptScriptMsg's 'ALRT' arm (0x0001EA1C), so both outcomes come: the
+// TravelToCoverPoints node of the FSM2 evaluates this trigger (the MP2_DS_FSM dump) and the
+// 'ALRT' message (the console's `send <id> Alert`) sets the bit.
+// @ fn_10_F840
 bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_F840", "trigger Alerted");
-  return false;
+  return (mFlags90C & 0x80) != 0;
 }
 
 bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
@@ -978,8 +983,35 @@ bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::AnyIncomingMissiles(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_1BB08", "trigger AnyIncomingMissiles");
+// fn_10_1BB08 (0x0001BB08, 0x100 bytes): the AnyIncomingMissiles trigger. The near list (the
+// box of half-size lbl_10_rodata_3F0 = 100.0f around the actor, 0x0001BB30..0x0001BB7C) with
+// the default filter and the actor itself (BuildNearList at 0x0001BBB8); every entry is cast to
+// a CEnergyProjectile (0x0001BBDC) and fn_10_1B9B0 with the weapon type 6 (kWT_Missile,
+// 0x0001BBF4) must let it through (0x0001BBFC) and fn_10_145E4 must find the line to the
+// projectile's position on the mesh (0x0001BC10) for the trigger to answer true (0x0001BC20).
+// The trigger itself has no transition in the FSM2 (the MP2_DS_FSM dump lists it only in the
+// machine's 92 triggers), but the module's own ShouldReact (fn_10_11158) calls it (0x00011210)
+// and the FSM2 uses ShouldReact, so the body does run in retail.
+bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) const {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
+  const CVector3f min(pos.GetX() - 100.f, pos.GetY() - 100.f, pos.GetZ() - 100.f);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    // The retail casts the entry and hands it to fn_10_1B9B0, which answers false for a
+    // null projectile (the `mr.` test at 0x0001B9C0), so the cast's result is used as it is.
+    const CEnergyProjectile* proj =
+        TCastToConstPtr< CEnergyProjectile >(mgr.ObjectById(*it));
+    if (!CanReflectProjectile(mgr, proj, 6)) { // kWT_Missile, 0x0001BBF4
+      continue;
+    }
+    if (!CanWalkToPoint(proj->GetTranslation())) { // fn_10_145E4, 0x0001BC10
+      continue;
+    }
+    return true; // 0x0001BC20
+  }
   return false;
 }
 
@@ -1028,9 +1060,10 @@ bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::CanMeleeAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_10634", "trigger CanMeleeAttack");
-  return false;
+// fn_10_10634 (0x00010634, 0x24 bytes): fn_10_17D50 with the attack 1 (the melee, `li r5, 0x1`
+// at 0x0001063C), the port's IsAttackEnabled.
+bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
+  return IsAttackEnabled(mgr, 1);
 }
 
 // fn_10_14284 (0x00014284): the fight script's object (fn_10_17E14) - without one the trigger
@@ -1063,9 +1096,10 @@ bool CDarkSamus::DoneTurning(CStateManager&, const CTriggerData&) const {
   return mTurnDone != 0;
 }
 
-bool CDarkSamus::FacingPlayer(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_142CC", "trigger FacingPlayer");
-  return false;
+// fn_10_142CC (0x000142CC, 0x28 bytes): fn_10_142F4 with lbl_10_rodata_4C4 = 0.17453292f
+// (10 degrees, the lfs at 0x000142DC), the port's IsPlayerInFront.
+bool CDarkSamus::FacingPlayer(CStateManager& mgr, const CTriggerData&) const {
+  return IsPlayerInFront(mgr, 0.17453292f);
 }
 
 bool CDarkSamus::HitDuringEnrage(CStateManager&, const CTriggerData&) const {
@@ -1073,9 +1107,11 @@ bool CDarkSamus::HitDuringEnrage(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::OutOfMeleeRange(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_17CB8", "trigger OutOfMeleeRange");
-  return false;
+// fn_10_17CB8 (0x00017CB8, 0x34 bytes): fn_10_17CEC (the distance to the player) against
+// lbl_10_rodata_460 = 30.0f (the lfs at 0x00017CCC); the extrwi at 0x00017CD8 takes the
+// compare's "greater than" bit.
+bool CDarkSamus::OutOfMeleeRange(CStateManager& mgr, const CTriggerData&) const {
+  return GetDistanceToPlayer(mgr) > 30.f;
 }
 
 // fn_10_116F8 (0x000116F8): the word at 0x984 - the fight script's picked attack id - against
@@ -1203,14 +1239,17 @@ bool CDarkSamus::PickedTaunt(CStateManager&, const CTriggerData&) const {
   return mPickedAttack == 0x200;
 }
 
-bool CDarkSamus::PlayerIsMorphball(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_112E8", "trigger PlayerIsMorphball");
-  return false;
+// fn_10_112E8 (0x000112E8, 0x20 bytes): fn_10_11308, the port's IsPlayerMorphed.
+bool CDarkSamus::PlayerIsMorphball(CStateManager& mgr, const CTriggerData&) const {
+  return IsPlayerMorphed(mgr);
 }
 
-bool CDarkSamus::PlayerTooClose(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_10658", "trigger PlayerTooClose");
-  return false;
+// fn_10_10658 (0x00010658, 0x40 bytes): fn_10_17CEC (the distance to the player) against the
+// actor's own minimum attack range 0x3DC (the lfs at 0x0001066C); the srwi at 0x0001067C takes
+// the compare's "less than" bit.
+// @ fn_10_10658
+bool CDarkSamus::PlayerTooClose(CStateManager& mgr, const CTriggerData&) const {
+  return GetDistanceToPlayer(mgr) < mMinAttackRange;
 }
 
 // fn_10_FAF4 (0x0000FAF4, 0x98 bytes): no area hint of type 0xE (fn_10_FC64, 0x0000FB14) is
@@ -1231,14 +1270,19 @@ bool CDarkSamus::ReadyForMissiles(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::ShouldEnragedMelee(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6B78", "trigger ShouldEnragedMelee");
-  return false;
+// fn_10_6B78 (0x00006B78, 0x28 bytes): fn_10_1AA6C, the port's GetPlayerRangeBand: the
+// trigger answers when the player is inside the attack range (the band 1; the module's note
+// says the FSM2 reads the trigger's low byte and compares it with 1).
+bool CDarkSamus::ShouldEnragedMelee(CStateManager& mgr, const CTriggerData&) const {
+  return GetPlayerRangeBand(mgr) == 1;
 }
 
-bool CDarkSamus::ShouldFadeIn(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_BB78", "trigger ShouldFadeIn");
-  return false;
+// fn_10_BB78 (0x0000BB78, 0x6C bytes): the fight script's object (fn_10_17E14) - without one
+// the trigger answers true (the beq at 0x0000BBA4) - and its byte at the stage info's +0x31
+// (the lbz at 0x0000BBB4), which must be 0.
+bool CDarkSamus::ShouldFadeIn(CStateManager& mgr, const CTriggerData&) const {
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  return stage == nullptr || !stage->GetFadeOutFlag();
 }
 
 // fn_10_BBE4 (0x0000BBE4): the fight script's object (fn_10_17E14) - without one the trigger
@@ -1366,9 +1410,15 @@ bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
   return (0.2f + mLastWallHitTime) > mElapsedTime;
 }
 
-bool CDarkSamus::WasHeavyHit(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_112AC", "trigger WasHeavyHit");
-  return false;
+// fn_10_112AC (0x000112AC, 0x3C bytes): the elapsed time of the last hit (the guest's 0xC0C)
+// must not be 0.0f (the fcmpu at 0x000112B8) and lbl_10_rodata_46C = 0.3f plus it must be
+// past the actor's elapsed time 0x8B0 (the fcmpo at 0x000112D8, whose "greater than" bit the
+// extrwi at 0x000112E0 takes).
+bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
+  if (mGuestC0C == 0.f) {
+    return false;
+  }
+  return 0.3f + mGuestC0C > mElapsedTime;
 }
 
 // ---- the state bodies (stand-ins) --------------------------------------------------------------
@@ -1995,10 +2045,11 @@ void CDarkSamus::ReflectProjectiles(CStateManager& mgr) {
 // (`cmpwi r6, -0x1` at 0x0001BA98) passes; a given type is compared with the stage's chance: the
 // stage (fn_10_17E14 at 0x0001BAA8, null passes at 0x0001BAB0) and fn_10_F298's roll for the uid
 // against the stage info's +0x24 (`fcmpo` at 0x0001BAD4). Only fn_10_1B658 calls it in the port,
-// always with -1; the typed caller (0x0001BBF8, AnyIncomingMissiles fn_10_1BB08) is outside the
-// port, so the roll below runs only when the typed path is reached.
+// always with -1; the typed caller (0x0001BBF8, AnyIncomingMissiles fn_10_1BB08, ported in
+// Slice 21) is behind the module's own ShouldReact, which the shipped stages do not let
+// through (Slice 21), so the roll below runs only when the typed path is reached.
 bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj,
-                                      int type) {
+                                      int type) const {
   if (proj == nullptr || proj->GetOwnerId() == GetUniqueId() || proj->HasExploded()) {
     return false;
   }
@@ -2033,7 +2084,7 @@ bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectil
 // (0x0001F27C). The guest's range test (0x0001F218 and 0x0001F230) has no host counterpart:
 // the only caller erases the first entry of a full table.
 // @ fn_10_F210
-void CDarkSamus::EraseReflectChance(uint index) {
+void CDarkSamus::EraseReflectChance(uint index) const {
   for (uint i = index + 1; i < mReflectChanceCount; ++i) {
     mReflectChances[i - 1] = mReflectChances[i];
   }
@@ -2051,7 +2102,7 @@ void CDarkSamus::EraseReflectChance(uint index) {
 // 0x0001F39C). The uid and the two rolls go into the next entry (0x0001F3C8..0x0001F3D4) and the
 // count rises (0x0001F3E0). The second roll answers.
 // @ fn_10_F298
-float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) {
+float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) const {
   for (uint i = 0; i < mReflectChanceCount; ++i) {
     if (mReflectChances[i].mUid == uid) {
       return mReflectChances[i].mChance; // 0x0001F2F0
@@ -2075,6 +2126,58 @@ float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) {
   mReflectChances[mReflectChanceCount].mRoll = roll; // 0x0001F3D4
   ++mReflectChanceCount; // 0x0001F3E0
   return chance;
+}
+
+// fn_10_F100 (0x0000F100, 0x110 bytes): the reflect chance for a projectile's uid, the cache's
+// other writer (the hit arm's). The cache is walked (0x0000F14C..0x0000F164) and the entry's
+// +0x08 answers when the uid is in it (0x0000F158). Otherwise, with ten entries (0x0000F168) the
+// first one is erased (fn_10_F210, 0x0000F178) and two rolls are made (Range(0.0f,
+// lbl_10_rodata_3F0 = 100.0f), 0x0000F194 and 0x0000F1B0); the uid and the two rolls go into
+// the next entry (0x0000F1CC..0x0000F1D4) and the count rises (0x0000F1E4). The second roll
+// answers.
+// @ fn_10_F100
+float CDarkSamus::RollReflectChanceForHit(CStateManager& mgr, TUniqueId uid) const {
+  for (uint i = 0; i < mReflectChanceCount; ++i) {
+    if (mReflectChances[i].mUid == uid) {
+      return mReflectChances[i].mRoll; // 0x0000F158
+    }
+  }
+  if (mReflectChanceCount == 10) { // 0x0000F168
+    EraseReflectChance(0);          // fn_10_F210, 0x0000F178
+  }
+  const float first = mgr.Random()->Range(0.f, 100.f);  // 0x0000F194
+  const float second = mgr.Random()->Range(0.f, 100.f); // 0x0000F1B0
+  mReflectChances[mReflectChanceCount].mUid = uid;    // 0x0000F1CC
+  mReflectChances[mReflectChanceCount].mChance = second; // 0x0000F1D0
+  mReflectChances[mReflectChanceCount].mRoll = first;    // 0x0000F1D4
+  ++mReflectChanceCount; // 0x0000F1E4
+  return second;
+}
+
+// fn_10_1EE4C (0x0001EE4C, 0xE4 bytes): the damage that hit the actor may be sent back. The
+// time since the last hit or heavy hit (the larger of guest 0xC0C and 0xC20, 0x0001EE74 and
+// 0x0001EE78) plus lbl_10_rodata_438 = 3.0f must be past the elapsed time 0x8B0
+// (0x0001EE90), the damage's weapon type must be 6 (kWT_Missile, 0x0001EEA8) and the stage
+// must exist (0x0001EEB8). Then fn_10_F100's roll (0x0001EED8) is compared with the stage
+// info's +0x2C (the third missile float) when the damage info's flag bit 0x40 is set
+// (0x0001EEDC) and with its +0x28 (the second missile float, 0x0001EF0C) otherwise.
+bool CDarkSamus::CanReflectHit(CStateManager& mgr, const CDamageInfo& damage, TUniqueId uid) const {
+  const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0001EE74, 0x0001EE78
+  if (3.f + since > mElapsedTime) { // lbl_10_rodata_438, 0x0001EE8C
+    return false;
+  }
+  if (damage.GetWeaponMode().GetType() != kWT_Missile) { // 0x0001EEA8
+    return false;
+  }
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (stage == nullptr) { // the retail's own null test, 0x0001EEBC
+    return false;
+  }
+  const float roll = RollReflectChanceForHit(mgr, uid); // fn_10_F100, 0x0001EED8
+  if (damage.ShouldApplyRadiusDamage()) { // the damage info's +2 bit 0x40, 0x0001EEDC
+    return roll < stage->GetStageInfo().missiles.unknown_0x1e2debc6; // the stage info's +0x2C
+  }
+  return roll < stage->GetStageInfo().missiles.unknown_0xbfb7ca5c; // the stage info's +0x28
 }
 
 // fn_10_138A4 (0x000138A4, 0xF4 bytes): the dive's hit on the player. The dive record's 0x20 is
@@ -2353,9 +2456,17 @@ void CDarkSamus::GoToPhazonEnrage(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("GoToPhazonEnrage", msg);
 }
 
+// fn_10_10C9C (0x00010C9C, 0x2C8 bytes): the HeavyHit state. The Deactivate arm
+// (`cmpwi r31, 0x2` at 0x00010F28) clears 0xC0C (lbl_10_rodata_3FC = 0.0f, 0x00010F44) and takes
+// the elapsed time 0x8B0 into 0xC20 (0x00010F4C) - the two floats fn_10_F298 and fn_10_1EE4C
+// compare to keep the reflect chance low for a while after a heavy hit.
 void CDarkSamus::HeavyHit(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_10C9C", "state HeavyHit");
   DsStateEntered("HeavyHit", msg);
+  if (msg == kStateMsg_Deactivate) { // 0x00010F28
+    mGuestC0C = 0.f;                // 0x00010F44
+    mGuestC20 = mElapsedTime;       // 0x00010F4C
+  }
 }
 
 void CDarkSamus::Interrupt(CStateManager&, EStateMsg msg, float) {
@@ -3268,7 +3379,9 @@ bool CDarkSamus::IsPlayerMorphed(CStateManager& mgr) {
 }
 
 // fn_10_17CEC (0x00017CEC, 0x64 bytes): the distance from the player (0x14FC) to the actor
-// (the fsubs of 0x54/0x58/0x5C and Magnitude at 0x00017D3C).
+// (the fsubs of 0x54/0x58/0x5C and Magnitude at 0x00017D3C). It has no branch, and it runs in
+// every fight (the attack pick and the triggers call it).
+// @ fn_10_17CEC
 float CDarkSamus::GetDistanceToPlayer(CStateManager& mgr) const {
   return (GetTranslation() - mgr.GetPlayer(0)->GetTranslation()).Magnitude();
 }

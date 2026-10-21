@@ -1,0 +1,43 @@
+# Dark Samus: the reflect path's hit arm (fn_10_1EE4C -> fn_10_F100). Sanctuary 10_cliff_rooftop
+# layer 2, boss u04f7. The missile is the Y button (the tweak's default useItem): `give missile 30`
+# and `press Y 45` charges and fires it at the boss. Sixteen of the thirty-four missiles hit her:
+# the 'XDMG' arm of AcceptScriptMsg runs, fn_10_1EE4C rolls and fn_10_F100 fills the cache until
+# it holds ten entries and the next roll erases the first.
+@f600 send u04f7 Activate
+@f700 give missile 90
+@f720 aim -2 0
+@f740 press Y 45
+@f790 press Y 45
+@f840 press Y 45
+@f890 press Y 45
+@f940 press Y 45
+@f990 press Y 45
+@f1040 press Y 45
+@f1090 press Y 45
+@f1140 press Y 45
+@f1190 press Y 45
+@f1240 press Y 45
+@f1290 press Y 45
+@f1340 press Y 45
+@f1390 press Y 45
+@f1440 press Y 45
+@f1490 press Y 45
+@f1540 press Y 45
+@f1590 press Y 45
+@f1640 press Y 45
+@f1690 press Y 45
+@f1740 press Y 45
+@f1790 press Y 45
+@f1840 press Y 45
+@f1890 press Y 45
+@f1940 press Y 45
+@f1990 press Y 45
+@f2040 press Y 45
+@f2090 press Y 45
+@f2140 press Y 45
+@f2190 press Y 45
+@f2240 press Y 45
+@f2290 press Y 45
+@f2340 press Y 45
+@f2390 press Y 45
+@f2440 objs darksamus

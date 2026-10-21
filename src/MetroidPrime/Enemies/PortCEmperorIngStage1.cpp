@@ -123,6 +123,7 @@ void StandInFn(const char* fn) {
 #define EMP1_CODE(name)                                                                             \
   { #name, reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CEmperorIngStage1::name) }
 
+// @ fn_16_BF88
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     EMP1_TRIGGER(AllTentaclesRetracted),
     EMP1_TRIGGER(HeartStageOver),
@@ -1079,6 +1080,7 @@ void CEmperorIngStage1::SetupTentacleAnimations(CStateManager& mgr) {
 // fn_16_3094 (0x3094..0x30C8): the actor connected on CONNECT/'PLAY' (the id at guest 0xA1E).
 // fn_16_3060 (0x3060..0x3094) has the same body, so its callers use this one too.
 // @ fn_16_3094
+// @ fn_16_3060
 CActor* CEmperorIngStage1::GetPlayActor(CStateManager& mgr) const {  // fn_16_3060: the 'PLAY' actor - the twin of fn_16_3094
   return TCastToPtr< CActor >(mgr.ObjectById(xa1e_));
 }
@@ -3088,6 +3090,7 @@ void CEmperorIngStage1::SetTentacleFlags(uint flag) {
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_16_A2A0) and entry points.
 
+// @ fn_16_A2A0
 static CEntity* PortLoadEmperorIngStage1(CStateManager& mgr, CInputStream& input,
                                          CEntityInfo& info) {
   SLdrEmperorIngStage1 sldrThis;
@@ -3127,9 +3130,12 @@ static SEmperorIngStage1_FuncPtrs REL_loader_EmperorIngStage1;
 // Retail's RELMain calls fn_16_A270, which stores the loader fn_16_A2A0 into lbl_16_bss_0 (the
 // module's SEmperorIngStage1_FuncPtrs) and calls the DOL's SetSEmperorIngStage1_FuncPtrs. The
 // proxy in SEmperorIngStage1_FuncPtrs.cpp calls through it.
+// @ fn_16_A250
+// @ fn_16_A270
 void RELMain() {
   REL_loader_EmperorIngStage1.mLoader = PortLoadEmperorIngStage1;
   SetSEmperorIngStage1_FuncPtrs(&REL_loader_EmperorIngStage1);
 }
 
+// @ fn_16_A22C
 void RELExit() { SetSEmperorIngStage1_FuncPtrs(nullptr); }

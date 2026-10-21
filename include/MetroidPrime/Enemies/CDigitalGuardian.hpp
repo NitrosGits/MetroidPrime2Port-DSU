@@ -301,10 +301,14 @@ private:
   uchar x1013_;     // 0x1013: the flag byte the "IM05"/"IM06" messages set (fn_14_A6A8)
   TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
   TUniqueId x116A_; // 0x116A: the IS05/Follow object (fn_14_5910)
-  int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
-  TUniqueId x11C0_; // 0x11C0: the IS00/Attach object (fn_14_5910)
+  int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1); the vortex mode: 1 in
+                    // VortexAttack, 2 in VortexRetreat, 0 in ExitVortexAttack/SetNormalAttackMode
+  float x11BC_;     // 0x11BC: the exit vortex speed, 0.0f (the store at 0xB65C; fn_14_34E8)
+  TUniqueId x11C0_; // 0x11C0: the IS00/Attach object (fn_14_5910), the vortex's camera shaker
+  int x11C4_;       // 0x11C4: the camera shake id, -1 (the store at 0xB66C; fn_14_4D54)
   float x11C8_;     // 0x11C8: the vortex's health (data +0x100, the store at 0xB674; fn_14_5384
                     // takes damage from it, fn_14_9638 reads it)
+  CVector3f x11CC_; // 0x11CC: the vortex's drift velocity, zero (0xB67C; fn_14_3300 sets it)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
   int x11E8_;       // 0x11E8: s32, 1 (the store at 0xB6A0; the reaction states clear it,
@@ -312,7 +316,10 @@ private:
   float x1274_;     // 0x1274: f32, 0 (fn_14_9994 compares it with 0.0f)
   CVector3f x1278_; // 0x1278: the face target's position, zero (fn_14_9A60 reads x, y and z)
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
+  float x1288_;     // 0x1288: the base speed, CPatterned's speed at the ctor's end (0xBA28)
   uchar x128C_;     // 0x128C: the flag byte; bit 7 = "is idle" (fn_14_9A9C reads bit 7)
+  uchar x128D_;     // 0x128D: the vortex flags; 0x80 = drift (fn_14_3300 sets it, user event 12
+                    // clears it), 0x40 = pull the player (user event 17 sets it)
 
   // The five models the module's AddToRenderer (fn_14_A004) draws, and the state they read.
   // The guest offsets are the REL's (docs/module-analysis/DigitalGuardian.md section e); the
@@ -451,6 +458,20 @@ private:
 
   // fn_14_3974 (0x58 bytes): the object with the id at guest 0x1080 gets its active flag set.
   void x3974_(CStateManager& mgr, bool active);
+  // fn_14_39CC (0x68 bytes): the toe target colliders (0x1078, count 0x1074) get a vulnerability.
+  void x39CC_(CStateManager& mgr, const CDamageVulnerability& vuln);
+  // fn_14_3DA8 (0x84 bytes): the four knee armours (0xFB0) orbitable or not (fn_14_CE1C).
+  void x3DA8_(CStateManager& mgr, bool orbitable);
+  // fn_14_34E8 (0x18C bytes): a step towards the exit vortex waypoint (0x1168); true while the
+  // step falls short of it.
+  bool x34E8_(CStateManager& mgr, float dt, float minDist);
+  // fn_14_3674 (0x164 bytes): the vortex pulls the player.
+  void x3674_(CStateManager& mgr, float dt);
+  // fn_14_4D54 / fn_14_4878 / fn_14_4838: the vortex camera shake (0x11C0's shaker, id 0x11C4)
+  // is added, moved to the body, removed.
+  void x4D54_(CStateManager& mgr);
+  void x4878_(CStateManager& mgr);
+  void x4838_(CStateManager& mgr);
 
   // fn_14_676C (0xF8 bytes): the collision actor managers' builder, and the three builders it
   // calls: fn_14_61DC (0x590 bytes, the manager at 0xE60), fn_14_5C30 (0x2F4 bytes, the manager
