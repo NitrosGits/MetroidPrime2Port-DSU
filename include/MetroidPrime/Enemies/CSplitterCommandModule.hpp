@@ -2,6 +2,7 @@
 #define _CSPLITTERCOMMANDMODULE
 
 class CCollisionActorManager;
+class CParticleGenInfo;
 
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -10,6 +11,8 @@ class CCollisionActorManager;
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSplitterCommandModule.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+
+#include "Kyoto/Audio/CSfxHandle.hpp"
 
 #include "REL/REL_Setup.h"
 
@@ -136,8 +139,62 @@ public:
   void SetupStateMachine(CStateManager& mgr) override;
   bool CanBeIngPossessed(CStateManager& mgr) const override;
 
+  // The head's state machine names. The REL's table entry is 16 bytes
+  // {const char* name, 0, 0xFFFFFFFF, fn}: the module's static initialiser
+  // (fn_75_7C80, in the REL's .ctors) copies the three-word records of .data
+  // 0x0..0x2D0 into the three tables, so the retail function of each name is that
+  // record's third word (docs/module-analysis/Splitter.md section b). The ported ones are
+  // the IsScanning trigger (fn_75_58E8), the IsInitiallyDocked (fn_75_58DC), the IsDocked
+  // (fn_75_58BC), the HasDockingTarget (fn_75_57F0) and the HasTarget (fn_75_57B4)
+  // triggers, the Start state (fn_75_5564), the NotifyDocking code (fn_75_3EEC) and the
+  // RaiseShields code (fn_75_3B20); the rest stand in for the retail function and log it
+  // once when the state machine runs them.
+  bool StateOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5A40
+  bool InDetectionRange(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5944
+  bool IsScanning(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_58E8
+  bool IsInitiallyDocked(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_58DC
+  bool IsDocked(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_58BC
+  bool HasDockingPath(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5864
+  bool HasDockingTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_57F0
+  bool DockingPathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_57D4
+  bool HasTarget(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_57B4
+  bool InHoverRange(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_570C
+  bool InLaserPulseRange(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_565C
+  bool ShouldDodge(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5644
+  bool ShouldAttack(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5624
+  bool ShouldFireAgain(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5610
+  bool ShouldLaserSweep(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_55F8
+  bool PathOver(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_55B0
+  bool PathShagged(CStateManager& mgr, const CTriggerData& data) const;  // fn_75_5568
+
+  void Start(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_5564
+  void Idle(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_5538
+  void SpawnIdle(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_5498
+  void Dead(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_5448
+  void Scanning(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_523C
+  void FaceTarget(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_50B0
+  void PathFind(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4E90
+  void Hover(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4D04
+  void Dodge(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4AC0
+  void LaserPulse(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4864
+  void LaserSweep(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_44DC
+  void LostChassisReaction(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_42F8
+  void SeekMainChassis(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_4138
+  void FollowDockingPath(CStateManager& mgr, EStateMsg msg, float dt);  // fn_75_3FE0
+
+  void NotifyDocking(CStateManager& mgr, float dt);  // fn_75_3EEC
+  void SelectTarget(CStateManager& mgr, float dt);  // fn_75_3E60
+  void SetTargetDest(CStateManager& mgr, float dt);  // fn_75_3D20
+  void SetDockingDest(CStateManager& mgr, float dt);  // fn_75_3BEC
+  void FindBestDodgeDirection(CStateManager& mgr, float dt);  // fn_75_3B34
+  void RaiseShields(CStateManager& mgr, float dt);  // fn_75_3B20
+  void ResetAttackTimes(CStateManager& mgr, float dt);  // fn_75_3ADC
+
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
+
+  // guest 0xF24-0xF2C: the vector the chassis's fn_75_ACEC adds to the position it looks from.
+  const CVector3f& GetEditorProperties() const { return mEditorProperties; }
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
@@ -159,8 +216,9 @@ private:
   void PortAutoDestruct(float time);
   void PortAutoDestructTimer(float dt);
 
-  // guest 0xF6A: the auto-destruct flag byte; the retail's fn_75_21FC tests its 0x01 (the
-  // word's bit 31) and clears it.
+  // guest 0xF6A: the flag byte; the retail's fn_75_21FC tests its 0x01 (the
+  // word's bit 31) and clears it, and the retail's RaiseShields code (fn_75_3B20) sets its
+  // 0x08 (the word's bit 28).
   uchar mAutoDestructFlags = 0;
   // guest 0xEF4: the auto-destruct timer the same function advances.
   float mAutoDestructTimer = 0.f;
@@ -174,12 +232,33 @@ private:
   CVector3f mLookAtOffset;                       // guest 0xF50, 0xF54, 0xF58
   int mLookAtSfxHandle = 0;                      // guest 0xF5C (the sound handle)
 
+  // guest 0xF24-0xF2C: the editor-properties vector - the retail's constructor copies the
+  // editor's three floats into it (fn_75_6B08) and the head's states overwrite it; the Idle
+  // state (fn_75_5538) puts the transform's Y column there.
+  CVector3f mEditorProperties;
+
+  // The retail's fn_75_1578: the head's two effect states ("AlertEye" and "LaserMuzzle").
+  // guest 0xEDC is the counter the four shield functions set (0, 1, 2 or 3); with 1 or 2 both
+  // effects are off.
+  void PortUpdateEffectStates(CStateManager& mgr);
+  uint mShieldState = 0;  // guest 0xEDC
+
+  // The retail's fn_75_2154: the head's own move. With the auto-destruct timer running the
+  // head is teleported to the destination, otherwise it moves towards it in one frame.
+  void PortMoveTo(const CVector3f& dest, float dt);
+
   // The fields the retail's fn_75_31A8 touches.
   void PortUpdateChassis(CStateManager& mgr);
   TUniqueId mChassisId = kInvalidUniqueId;       // guest 0xEFA (the chassis it looks up)
   TUniqueId mSyncedId = kInvalidUniqueId;        // guest 0xEFE (the copy of the chassis's 0xCC0)
   TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
   TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
+  // The retail's fn_75_3EEC: the head's "dock to the chassis". The id at 0xEFC (the connected
+  // object the XAND message found) is the chassis; when the chassis accepts this head the id
+  // moves to 0xEFA - the id the beam-effect gate (fn_75_58E8) and the chassis check (fn_75_31A8)
+  // read. The retail calls this from its state machine, whose tables hold names only, so the
+  // port calls it from the Think.
+  void PortDockToChassis(CStateManager& mgr);
   float mChassisTimer = 0.f;                     // guest 0xF14 (set to 3.0f at 0x3230)
 
   // The fields the retail's fn_75_32F4 touches.
@@ -194,10 +273,38 @@ private:
 
   // The fields the retail's fn_75_3004 touches.
   void PortUpdateCollision(CStateManager& mgr);
-  uint mSoundHandle = 0;                        // guest 0xF60 (the sound handle, 0x306C)
+  CSfxHandle mSoundHandle;                       // guest 0xF60 (the sound handle, 0x306C)
   TUniqueId mSoundTargetId = kInvalidUniqueId;  // guest 0xF00 (the id it looks up, 0x3078)
   int mCollisionState = 0;                      // guest 0xEE0 (the state, 0x30C4)
   int mPreviousCollisionState = 0;              // guest 0xEE4 (the previous state, 0x315C)
+
+  // The retail's fn_75_2CE0: the head's shield. It applies the state at 0xEE0 to the beam
+  // collision actor (the id at 0xF00): the materials, the damage vulnerability, the two effect
+  // states and the shield's sound emitter (the handle at 0xF60). The flag is the "a shield goes
+  // up" one: it plays the shield-on sound (the sound id at 0x89C).
+  void PortUpdateShield(CStateManager& mgr, bool shieldUp);
+  // The retail's fn_75_2BE0: the shield's particle effect. The state at 0xEE0 picks the name
+  // (1 gives "LightShield", any other state "DarkShield", the state 0 nothing) and the body
+  // returns the animation data's first particle effect with that name.
+  CParticleGenInfo* PortGetShieldEffect();
+  // The retail's fn_75_10D0: the module's own transform - the actor's own transform with the
+  // "Beam_LCTR" locator's translation moved through it.
+  void PortModuleTransform(CTransform4f& out) const;
+
+  // The retail's fn_75_1188 (the head's beam-effect spawner) and the gate it asks first
+  // (fn_75_58E8: the chassis must be there and its scan timer must run).
+  void PortSpawnBeamEffect(CStateManager& mgr);
+  bool PortChassisTimerRunning(CStateManager& mgr) const;
+  // guest 0xF68: the id of the spawned beam effect. The retail looks it up at the start of
+  // fn_75_1188 and keeps the id of the actor it creates in it.
+  TUniqueId mBeamEffectId = kInvalidUniqueId;
+  // The retail's fn_75_3A8C (the connected-object lookup) and fn_75_2CC0 (the flash start).
+  void PortUpdateConnectedObject(CStateManager& mgr);
+  void PortStartFlashIfTarget(const CScriptMsg& msg);
+  // The retail's fn_75_1790: the laser-pulse projectile's despawn.
+  void PortDespawnProjectile(CStateManager& mgr);
+  // The retail's fn_75_3460: the head's collision actor manager.
+  void PortCreateCollisionActorManager(CStateManager& mgr);
 };
 
 #endif // _CSPLITTERCOMMANDMODULE
