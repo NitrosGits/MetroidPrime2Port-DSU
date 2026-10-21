@@ -352,7 +352,7 @@ ones the port does have a body for - 2A84, 3578 and 33BC (2 call sites each).
 
 | fn | port body | verdict |
 |---|---|---|
-| 66DC | `CollisionActorPosition` | **fixed and marked**: the fallback when the collision actor is gone is the **zero vector** (0x6724 loads `sZeroVector`), not the boss's own position; the port returned `GetTranslation()`. The run calls it three times a frame from `Think` (5487 calls in one run), so the body is fully exercised; the "no actor" arm cannot fire while the collision manager and its actors exist. `asmcheck.py check` on it: 0 findings |
+| 66DC | `CollisionActorPosition` | **fixed and marked**: the fallback when the collision actor is gone is the **zero vector** (0x6724 loads `sZeroVector`), not the boss's own position; the port returned `GetTranslation()`. The run calls it three times a frame from `Think` (5487 calls in one run), so the body is fully exercised; the "no actor" arm cannot fire while the collision manager and its actors exist. `asmcheck.py check` on it: 0 findings. A traced run (both arms instrumented) shows 11250 hits on the "actor found" arm and 0 on the zero-vector fallback, so the fallback is commented in the code instead of being exercised |
 | 1E40 | `StartBubbleTelegraph` | **fixed, not marked**: the generator's *global* translation is set (vtable +0x20 = `CParticleGen::SetGlobalTranslation`, index 8 of the particle-gen vtable), not the local one; the old generator is deleted (vtable +0x08 = the deleting destructor, 0x1F40) as the port's `single_ptr` assignment already does. The anim event that calls it (0x07/0x28) never fired in the reachable run, so the body is not marked |
 | 2E84 | `PickSwoopTarget` | **fixed, not marked**: the candidate score is measured **from the boss** (0x30F0), not from the player, and the "too close" filter is measured **from the node nearest the player** (0x30AC), not from the node the walk picked. It is called from `DarkLurk` only, and the reachable run never reached the dark phase |
 | 2A84 | `SpawnShockWave` | **verified, not marked**: the transform keeps the boss's rotation and takes the new translation (0x2AC0, 0x2AF0); the name is `SwampBossStage2 ShockWave` (rodata 0x2C9); the launch id is the boss's own unique id. It is called from the anim event 0x23, which the reachable run never produced |
@@ -388,3 +388,33 @@ executes them**, and a marker means the body ran.
 The dark phase still needs a real beam hit on a growth (the growth branch of `ProcessDamage`
 needs a `CWeapon` whose forward has dot > 0 with the boss's and `mGrowthsVulnerable`), which is
 the same gap §6 lists for `Blow`/`Flinch`.
+
+### 7.5 The dark phase and the swoop (2026-10-21, second lane pass)
+
+- **The light phase's swoop is reachable.** With the player on dry land and *no* console damage
+  (the damage pulls the boss into `Reel`, whose `Deactivate` resets the attack index, so the
+  attack cycle never reaches its fourth slot), the boss walks the light phase's attack slots
+  0, 1, 2, 4 - traced as `atk=4 idx=4` - so the `ShouldSwoop` edge is reachable.
+- **The dark phase is not reachable without a code hook.** The growth branch of `ProcessDamage`
+  (fn_79_61C4, 0x62C4..0x6338) needs three things at once: the hit must be on one of the four
+  growth joints, the joint's last-touched object must be a `CWeapon` whose forward has dot > 0
+  with the boss's, and `mGrowthsVulnerable` must be set (only the `Reel` state sets it). In the
+  host the joint's last-touched object is the *damager* of the damage message
+  (`CStateManager::ApplyDamage` sends `kSM_Damage` with the damager as the sender,
+  `CStateManager.cpp:2982`), and every player weapon spawns a projectile that is the damager
+  (`CGameProjectile::ApplyDamageToOneActor` passes `GetUniqueId()`), so retail's
+  `TCastToPtr<CWeapon>` on that id fails and the growth's health never drops. The first pass hit
+  the same wall and used a "test-only bypass" of the weapon/same-toucher checks (§6); that is a
+  code hook, so the dark phase stays out of reach here.
+  The beam has to hit a radius-3 sphere 50 units up and 50 to the side of the player as well:
+  several hundred `aim` + `press a` volleys never landed on a joint, so even the message path
+  above was never entered.
+- **Consequence for the slice:** fn_79_2E84 is called only from `DarkLurk` (fn_79_9754) and
+  fn_79_3578 only from the `Blow` state (fn_79_7E24), so both stay unrunnable while the dark
+  phase is out of reach; fn_79_1E40/2A84 hang off the light phase's anim events 0x07/0x23/0x28
+  (the swoop's splash) and fn_79_33BC needs a hit the run never landed. All four stay
+  compared-and-fixed but unmarked.
+- **fn_79_7E24 (Blow) is not ported in this pass:** it is the dark phase's blow (540
+  instructions of state body plus its callees) and the dark phase cannot be reached in the port,
+  so the port's `Blow` stays the partial body it was. It needs a port-side decision on the
+  weapon/same-toucher checks first.

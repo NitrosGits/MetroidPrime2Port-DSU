@@ -283,6 +283,10 @@ CCollisionActor* CSwampBossStage2::CollisionActor(CStateManager& mgr, int idx) c
 
 // @ fn_79_66DC: the collision actor's position. Retail reads CActor::mPosition (+0x54) and
 // falls back to the zero vector (0x6724 loads sZeroVector), not to the boss's own position.
+// The zero-vector arm is retail's "the collision actor is gone" case: the manager and its ten
+// actors are built with the boss (fn_79_6E68) and live as long as it does, and every id in the
+// manager's descriptions resolves, so no shipped case reaches it - a run only ever takes the
+// arm that copies the actor's position.
 CVector3f CSwampBossStage2::CollisionActorPosition(const CStateManager& mgr, int idx) const {
   if (mCollisionMgr.null() || idx >= mCollisionMgr->GetNumCollisionActors()) {
     return CVector3f::Zero();
