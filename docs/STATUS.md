@@ -34,7 +34,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 |---|---|---|---|
 | BoostGuardian (Opus) | `ses_ea41a5a32ffe2IcoCG89vP6xKe` | boostguardian @ `5bff6d1d6` (193/318; HP drops: beam 1000→994, bombs off-puddle 10 each; dtor E5EC + F78 marked; 83 cited) | audit 12AB0 compares (Ball.cpp:516), 30 loader rows 130/1988/20A0/2344/2CCC/10C24 |
 | EmperorIng3 (Opus) | — (done) | emperoring3 @ `43eb8312e` (182/270; 88 cited, 0 todo; matching build OK) | module complete: merge in batch 6 |
-| DigitalGuardian (Opus) | `ses_ea45ad902ffeFmjnji3eLDppq5` | digitalguardian @ `d503a8674` (echo targets, XDMG; hook-free cycle reaches Stage3Start with run11.sh) | 12818/126C8 balls, Dead 1561C, XRDG 12D98, cycle stand-ins |
+| DigitalGuardian (Opus) | `ses_ea412f7a1ffesQ3Z1Tv0QKRd76` | sandboss @ `c753a5c2b` (balls 12818/126C8, Dead 1561C, SetVulnerable 13F0C marked; XRDG 12D98 ported; head dies by real bombs) | SelectRetreatPlatform 13C6C (12818 marker hinges on it), XRDG beam arm, slice-3 stand-ins, exit-13 check |
 | Splitter (worker) | `ses_ea456296affeAdkCwq7sVdpywE` | splitter @ `2cf00edf3` (IsDocked, Scanning, SelectTarget, Patrol, Hover) | head Idle 5538, shells 1578/2154/986C, ACEC, A4E4, AFE8/9520 re-check |
 | CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
