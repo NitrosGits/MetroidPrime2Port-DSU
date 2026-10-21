@@ -31,6 +31,7 @@ constexpr int kUndoSlot = 0;  // written before every load
 struct Info {
   bool exists = false;
   uint32_t worldId = 0;
+  int areaIndex = -1;
   std::string room;     // the area's internal name, or "Area N"
   double playTime = 0.0; // in-game seconds
   int64_t savedAt = 0;   // Unix seconds

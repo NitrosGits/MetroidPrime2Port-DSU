@@ -518,6 +518,13 @@ void enqueue_op(FramePacket& frame, uint32_t opIndex) {
   if (opIndex >= frame.ops.size() || g_recorder.suppressRenderWorker) {
     return;
   }
+  // Port: AURORA_RENDER_EVERY: a frame that is not rendered records no GPU work, so the render
+  // worker does not encode it and the frame is never submitted. The EFB and the depth buffer keep
+  // the last rendered frame's contents, which is what the read-backs (GXPeekZ, the EFB copy)
+  // return for a frame that was not drawn.
+  if (!gx::fifo::frame_rendered()) {
+    return;
+  }
   auto op = frame.ops[opIndex];
   render_worker::enqueue_encode_pass(frame.frameId, opIndex, [packet = &frame, op = std::move(op)] {
     if (op.renderPass == nullptr && op.textureCopy == nullptr && op.encoderTask == nullptr) {
@@ -531,7 +538,6 @@ void enqueue_pass(FramePacket& frame, uint32_t passIndex) {
   seal_pass(frame, passIndex);
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::RenderPass, passIndex));
-  enqueue_op(frame, opIndex);
 }
 } // namespace
 
@@ -544,6 +550,19 @@ namespace detail {
 // A repeat returns the earlier range: the uniform buffer is append-only within a frame, so the range
 // still holds those bytes. The table is cleared at each frame's begin_recording.
 static absl::flat_hash_map<uint64_t, Range> g_uniformDedup;
+
+// Port: AURORA_RENDER_EVERY: the frame's work is enqueued as a whole, at the end of the frame:
+// the frame's decision is final then (a frame that holds an EFB copy was raised to "rendered"
+// while it was recorded), so a frame that is rendered is encoded in full and a frame that is not
+// rendered is not encoded at all.
+void enqueue_frame_ops(FramePacket& frame) {
+  if (g_recorder.suppressRenderWorker) {
+    return;
+  }
+  for (size_t i = 0; i < frame.ops.size(); ++i) {
+    enqueue_op(frame, static_cast<uint32_t>(i));
+  }
+}
 
 void begin_recording(FramePacket& packet, size_t frameSlot) {
   CHECK(!g_recorder.active(), "A recording session is already active");
@@ -701,7 +720,6 @@ void queue_texture_copy(wgpu::TexelCopyTextureInfo src, wgpu::TexelCopyTextureIn
   });
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::TextureCopy, copyIndex));
-  enqueue_op(frame, opIndex);
 }
 
 void begin_color_pass(const ColorPassDescriptor& desc) {
@@ -913,6 +931,9 @@ void queue_scan_peek(scan_peek::Request req) {
     Log.warn("Scan peek request dropped: pass {} already has one", g_recorder.currentRenderPass);
     return;
   }
+  // Port: AURORA_RENDER_EVERY: the peek reads the EFB, so the frame that carries it is rendered in
+  // full (see resolve_pass_into).
+  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Readback);
   renderPass.scanPeek = std::move(req);
 }
 
@@ -926,6 +947,9 @@ void queue_efb_cpu_copy(efb_copy::Request req) {
     Log.warn("EFB copy read-back dropped: pass {} already has one", g_recorder.currentRenderPass);
     return;
   }
+  // Port: AURORA_RENDER_EVERY: the copy reads the EFB, so the frame that carries it is rendered in
+  // full (see resolve_pass_into).
+  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Readback);
   renderPass.efbCpuCopy = std::move(req);
 }
 
@@ -1119,7 +1143,6 @@ bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSi
   }
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::EncoderTask, taskIndex));
-  enqueue_op(frame, opIndex);
 
   resume_efb_pass_loading(prevPass);
   return true;

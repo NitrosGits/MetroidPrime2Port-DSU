@@ -379,7 +379,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 // fn_29_D540 @0x0000E110: the tracker gets the "head" locator (0xd7b) and rodata 0x118/0x11c,
 // 0.1f and 0.05f.
 , mEyeSegId(PortHeadSegId(modelData))
-, mCollarSegId(CSegId::Invalid()) // 0xd7a: the ctor writes 0xff and nothing else does
+, mCollarSegId(PortArmSegId(modelData, "Collar_SDK")) // 0xd7a, asm 0x0000E41C-0x0000E448
 // The ctor's arm locators: R_shoulder/R_elbow/R_forearm/R_wrist_end, then the L_ set. The pseudo-C
 // puts the shoulders at CPatterned's 0x35f/0x360; the asm stores them here (0x0000E47C/0x0000E54C).
 , mRightShoulderSegId(PortArmSegId(modelData, "R_shoulder")) // 0xd7c
@@ -825,11 +825,11 @@ void CIng::UpdateValidTarget(CStateManager& mgr) {
 // @ fn_29_BCB4: CIng's GetAimPosition - CPhysicsActor's vtable slot 0x54. Retail works out the
 // aim position from the form: the corporeal form (2) and the three form-change forms (6..8)
 // predict their motion first, and the collar locator (0xd7a) then decides between the locator's
-// aim and the base class's. The ctor writes 0xff (invalid) to 0xd7a and nothing else in the
-// module ever writes it (asm 0x0000E170/0x0000E448), so retail's locator path is dead and the
-// aim is always the base class's - the port keeps the structure anyway. (Grepped over the whole
-// module: only the ctor's two stores at asm 0x0000E170/0x0000E448 write 0xd7a, and it is outside
-// the loader's data block - CIngData covers 0x7c0..0x9d3.)
+// aim and the base class's. The ctor looks 0xd7a up by name: "Collar_SDK" (rodata 0x747, asm
+// 0x0000E41C-0x0000E448; the 0xff at asm 0x0000E170 is only the default it overwrites), so the
+// corporeal Ing aims (and is locked on, CPatterned::GetOrbitPosition) at its collar. The base
+// class is no substitute: the Ing's model has no "lockon_target_LCTR", so its aim is the centre
+// of the 2-unit bounding box, one unit above the feet (the run of 2026-10-21 below).
 //
 // The arms (the area 57 run of 2026-10-21, a probe in the body):
 //   - the base class (the forms 0, 1, 3, 4, 5 and 9 - asm 0x0000BE4C): the form 3 with dt 0.00
@@ -839,9 +839,11 @@ void CIng::UpdateValidTarget(CStateManager& mgr) {
 //     with a prediction time);
 //   - the same forms with dt of zero or less (asm 0x0000BD3C-0x0000BD40: the aim stays the zero
 //     vector): the form 6 with dt 0.00;
-//   - the collar locator (0xd7a) and the forms 6/7's fall back to the base class when the aim
-//     is below the actor's own height (0x5c, asm 0x0000BDF8): unreachable, they are inside the
-//     collar locator's path, and the locator is invalid in retail.
+//   - the collar locator (asm 0x0000BD90): the form 2 in Agon Wastes 1baa96c2,2735236b
+//     (2026-10-21, a probe): Ing u0022 at z 4.60, its collar at z 8.69..8.79 (seg 2), the base
+//     class's aim at z 5.60 (bounding box z 4.60..6.60, no lockon_target_LCTR);
+//   - the forms 6/7's fall back to the base class when the aim is below the actor's own height
+//     (0x5c, asm 0x0000BDF8): not seen (the collar is above the feet).
 CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
   CVector3f aim = CVector3f::Zero(); // asm 0x0000BCFC: sZeroVector
   // asm 0x0000BD04-0x0000BD40: the corporeal form and the forms 6..8 predict; the prediction
@@ -1163,8 +1165,9 @@ bool CIng::ShouldEvaporate(CStateManager&, const CTriggerData&) const {
 // above zero". One comparison, two arms:
 //   - the count is zero: false;
 //   - the count is not zero: true.
-// The area 57 run of 2026-10-21 never evaluated it (the area has no safe zone), so the body is
-// not marked.
+// The runs of 2026-10-21 (area 57 and the Agon Wastes, which has 24 safe zones) never changed
+// the count - the player teleporting into a safe zone does not raise the XENZ message - so the
+// body is not marked.
 bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
   return mSafeZoneCount > 0;
 }
@@ -1174,9 +1177,10 @@ bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
 //   - the desired form is not 2 (asm 0x0000AA68): false;
 //   - it is 2 and the Ing is already corporeal (fn_29_AD54): false;
 //   - it is 2 and the Ing is not: true.
-// The area 57 run of 2026-10-21 (a probe in the body, the state forced with
-// `fsm <ing> FollowAttackPattern`) only ran the "the desired form is not 2" arm - the desired
-// form is only set by the attack pattern's waypoint (0x00008310), so the body is not marked.
+// The Agon Wastes run of 2026-10-21 (area 01_sand_entrance_dark, the area whose Ings have the
+// "ATTK"/"FOLW" attack pattern, so the FollowAttackPattern state runs) ran the "the desired
+// form is not 2" arm and the "the desired form is 2 and the Ing is not corporeal" arm; the
+// "the Ing is already corporeal" arm did not run, so the body is not marked.
 bool CIng::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_Corporeal && !IsCorporeal(mgr, data);
 }
@@ -1186,10 +1190,10 @@ bool CIng::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) c
 //   - the desired form is not 3 (asm 0x0000AA20): false;
 //   - it is 3 and the Ing is already an ing spot (fn_29_AD40): false;
 //   - it is 3 and the Ing is not: true.
-// The area 57 run of 2026-10-21 (a probe in the body, the state forced with
-// `fsm <ing> FollowAttackPattern`) ran the "the desired form is not 3" arm and both of the
-// IsIngSpot variants, but not the arms with the desired form set (the desired form is only set
-// by the attack pattern's waypoint, 0x00008310), so the body is not marked.
+// The Agon Wastes run of 2026-10-21 (area 01_sand_entrance_dark, the area whose Ings have the
+// "ATTK"/"FOLW" attack pattern) ran the "the desired form is not 3" arm; the arms with the
+// desired form 3 did not run (the Ing never wanted to be an ing spot there), so the body is not
+// marked.
 bool CIng::ShouldBecomeIngSpot(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_IngSpot && !IsIngSpot(mgr, data);
 }
@@ -1295,8 +1299,9 @@ bool CIng::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
 // 28) - the port's mFoundMovementPos. One bit, one arm.
 //   - the flag is set: true;
 //   - the flag is clear: false.
-// The run of 2026-10-21 (area 57, the trigger is in the SetLuredDest code function's trigger list
-// only) never evaluated it, so the body is not marked.
+// The FSM2 graph puts this trigger in the SetLuredDest code function's trigger list only (the
+// Ing's lure), so it needs an Ing that is lured by a safe zone. The runs of 2026-10-21 (area 57
+// and the Agon Wastes 01_sand_entrance_dark) never lured one, so the body is not marked.
 bool CIng::FoundMovementPos(CStateManager&, const CTriggerData&) const {
   return mFoundMovementPos;
 }
@@ -1333,15 +1338,16 @@ bool CIng::HasAttackPattern(CStateManager& mgr, const CTriggerData&) const {
          kInvalidUniqueId;
 }
 
-// fn_29_A340 (0xE4, asm 0x0000A340-0x0000A424): over once the attack path is being followed
+// @ fn_29_A340 (0xE4, asm 0x0000A340-0x0000A424): over once the attack path is being followed
 // (0x0000A348: 0xE5D 0x08) and the waypoint navigation has no destination left (0x0000A35C:
 // this+0x6c0 against kInvalidUniqueId). It stores nothing.
-// The arms (the area 57 run of 2026-10-21, a probe in the body):
-//   - the attack path is not followed (asm 0x0000A34C): false;
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark - the area whose Ings
+// have the "ATTK"/"FOLW" attack pattern - with a probe in the body):
+//   - the attack path is not followed (asm 0x0000A34C): false - the destination is invalid and
+//     it is not;
 //   - it is followed and the destination is still there (asm 0x0000A35C): false;
-//   - it is followed and the destination is gone: true - that arm ran (the state was forced:
-//     `fsm <ing> FollowAttackPattern`).
-// The two false arms did not run, so the body is not marked.
+//   - it is followed and the destination is gone: true.
+// All three ran, so the body is marked.
 bool CIng::AttackPatternOver(CStateManager&, const CTriggerData&) const {
   return mFollowingAttackPath && mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }

@@ -1638,3 +1638,84 @@ lookup they call (the DOL's `ObjectById` for fn_16_3060 and `GetObjectById` for 
 the same lookup in the host, src/MetroidPrime/CStateManager.cpp:616), so a second marker on the
 same port function would be wrong.  The module's own remaining unmarked functions are all (a)
 (section 11.2), so the module is decompiled as far as the host's shared code allows.
+
+## 21. The function classification (all 241 symbols)
+
+Three classes, applied by rule so the table can be audited (the machine-readable copy is
+`docs/module-analysis/EmperorIngStage1_functions.tsv`, one row per function, with the class, the
+callers and the tables that reference it):
+
+- **H - host copy** (126 functions, 0x3C38 bytes): the body is a copy of something the host
+  already has - a shared class body, a compiler-emitted destructor, rstl / template code, inlined
+  DOL math or the REL runtime - so the port writes no body for it.
+- **T - data / vtable thunk** (17 functions, 0x108 bytes): no retail caller: the function is a
+  vtable entry the port writes as one line in the table (the host's own body) or it is dead.
+- **B - module behaviour** (98 functions, 0x8708 bytes): the port writes a body for it. **All 98
+  carry a `// @` marker** - there is no unmarked behaviour function left in the module.
+
+| class | functions | .text bytes | marked |
+|---|---|---|---|
+| H host copy | 126 | 0x3C38 (15,416) | 0 |
+| T data / vtable thunk | 17 | 0x108 (264) | 0 |
+| B module behaviour | 98 | 0x8708 (34,568) | 98 |
+| **total** | **241** | **0xE448 (58,248)** | **98** |
+
+- **69** - the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6): `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_89B8` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BB3C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BF14`
+
+- **24** - the rstl / compiler-generated helper - the host's rstl provides it: `fn_16_FF4` `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `push_back_unsafe__28CEmperorIngStage1JointVectorFRC26CJointCollisionDescription` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C`
+
+- **13** - the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it: `fn_16_9700` `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A980` `fn_16_ABD0` `fn_16_AEDC` `fn_16_AF7C` `fn_16_B014` `fn_16_B1D8` `fn_16_B434` `fn_16_B5C8` `fn_16_B6EC`
+
+- **7** - the visor effect's particle descriptor copy - the host's CImpactVisorEffect::ParticleEffect does it: `fn_16_853C` `fn_16_85C8` `fn_16_867C` `fn_16_86BC` `fn_16_86DC` `fn_16_8704` `fn_16_8980`
+
+- **5** - the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it: `fn_16_60` `fn_16_18E8` `fn_16_6898` `fn_16_B958` `fn_16_BA30`
+
+- **5** - the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it: `_unresolved` `_epilog` `_prolog` `ModuleDestructors` `ModuleConstructors`
+
+- **2** - a struct copy - the host's copy constructor / LdrToDamageVulnerability does it: `fn_16_9610` `fn_16_98D0`
+
+- **1** - the DOL's inline code copied into the REL - the host has the same function (the DOL's Cross__9CVector3fFRC9CVector3fRC9CVector3f, 0x8001994C): `fn_16_2DDC`
+
+- **T** (the vtable entries the port writes as a line; the host's own body): `fn_16_B994` `fn_16_B9A4` `fn_16_B9AC` `fn_16_B9B4` `fn_16_B9BC` `fn_16_B9C4` `fn_16_B9CC` `fn_16_B9DC` `fn_16_B9E8` `fn_16_B9F4` `fn_16_BA0C` `fn_16_BA14` `fn_16_BE98` `fn_16_BE9C` `fn_16_BEA4` `fn_16_BEB0` `fn_16_BEB8`
+
+### 21.1 The six behaviour functions that were unmarked until now
+
+| fn | what the port writes | the marker |
+|---|---|---|
+| `fn_16_3060` | the 'PLAY' actor lookup - the port's `GetPlayActor` (already marked `fn_16_3094`; the two retail bodies differ only in the DOL's `ObjectById` vs `GetObjectById`, the same lookup in the host) | a second marker on `GetPlayActor` (`// @ fn_16_3060`); the tool counts a marker per retail function, so both are counted |
+| `fn_16_A2A0` | the module's loader - the port's `PortLoadEmperorIngStage1` (it reads the SLdr block, builds the model and constructs the object, as the retail's loader does) | `// @ fn_16_A2A0` |
+| `fn_16_A250` | the REL's entry point - the port's `RELMain` | `// @ fn_16_A250` |
+| `fn_16_A270` | the REL's registration - the body of the port's `RELMain` (it stores the loader and calls the DOL's `SetSEmperorIngStage1_FuncPtrs`, 0x8022756C) | `// @ fn_16_A270` (a second marker on `RELMain`) |
+| `fn_16_A22C` | the REL's exit - the port's `RELExit` | `// @ fn_16_A22C` |
+| `fn_16_BF88` | the static initialiser of the three FSM tables - the port's `skTriggers` / `skStates` / `skCodes` (the retail's 24 records each) | `// @ fn_16_BF88` above the table |
+
+None of them has a live arm of its own that a run could miss: `fn_16_3060` is branch free (13
+instructions) and ran 421 times during the heart stage (the probe of the last slice), the loader
+and the entry points run at the module's load, and the tables are static data.  The loader's
+`asmcheck` findings are the ones the note's section 11.2 lists as (a): the REL's own reader
+chain (fn_16_ABD0, fn_16_AEDC, ...) is the host's generated `SLdrEmperorIngStage1.inc` in the
+port, so the C++ never names it.
+
+### 21.2 Count check
+
+Every function id of the module's symbol list appears exactly once in the table:
+
+```
+$ python3 - <<'PY'
+import re, pathlib, collections
+sym = pathlib.Path('config/G2ME01/rels/EmperorIngStage1/symbols.txt').read_text()
+ids = re.findall(r'^(\S+) = \.text:0x[0-9A-Fa-f]+; // type:function', sym, re.M)
+rows = [l.split('\t') for l in pathlib.Path('docs/module-analysis/EmperorIngStage1_functions.tsv').read_text().split('\n')[1:] if l.strip()]
+print('symbols:', len(ids), 'rows:', len(rows))
+print(collections.Counter(r[2] for r in rows))
+PY
+symbols: 241 rows: 241
+Counter({'H': 126, 'B': 98, 'T': 17})
+```
+
+The machine-readable copy has one row per function:
+
+```
+$ awk -F'\t' 'NR>1{print $1}' docs/module-analysis/EmperorIngStage1_functions.tsv | sort -u | wc -l
+241
+```
