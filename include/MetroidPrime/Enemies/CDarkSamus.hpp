@@ -384,18 +384,19 @@ private:
                                    // enrage). The constructor writes 0xFFFF to it (0x0001FCE8),
                                    // which is "no attack picked"
   uint mCurrentAttack;             // guest 0x980, the word the module writes when an attack starts
-                                   // (fn_10_1B478, not ported yet) and reads in ShouldReact and
-                                   // TooMuchDamage: the id of the attack the actor is performing
-                                   // (the same id space as mPickedAttack; 0xFFFF = none). The
-                                   // constructor writes 0xFFFF to it (0x0001FCE4)
+                                   // (fn_10_1B478, which the port does not have yet) and reads in
+                                   // ShouldReact and TooMuchDamage: the id of the attack the actor
+                                   // is performing (the same id space as mPickedAttack; 0xFFFF =
+                                   // none). The constructor writes 0xFFFF to it (0x0001FCE4)
   uint mAttackHistory[3];          // guest 0x998, the ids of the attacks the actor has finished:
                                    // fn_10_1B478 pushes the current attack here and trims the
-                                   // oldest entry when there are three (not ported yet)
+                                   // oldest entry when there are three (that function is not in
+                                   // the port yet)
   uint mAttackHistoryCount;        // guest 0x994, the number of ids in mAttackHistory; the
                                    // constructor writes 0 to it (0x0001FCF8)
   float mAccumulatedDamage;        // guest 0xCC0, the damage the actor has taken: fn_10_1E178 adds
-                                   // the health that is gone and decays it (not ported yet); the
-                                   // constructor writes 0.0f to it (0x0001FF58)
+                                   // the health that is gone and decays it; the constructor writes
+                                   // 0.0f to it (0x0001FF58)
   float mLastHealth;               // guest 0xCC4, the health at the last damage check: fn_10_1E178
                                    // compares it with the health info's current health; the
                                    // constructor writes lbl_10_rodata_3EC = -1.0f to it (0x0001FF5C)
@@ -414,8 +415,9 @@ private:
                                    // when the actor walks away; the constructor writes the zero
                                    // vector to it (0x0001FC64..0x0001FC74)
   float mLastWallHitTime;          // guest 0xC44 (inside the 0xB50 sub-object), the time of the
-                                   // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it (not
-                                   // ported yet); the constructor writes 0.0f to it (0x0001FF38)
+                                   // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it
+                                   // (neither is in the port yet); the constructor writes 0.0f to
+                                   // it (0x0001FF38)
   float mElapsedTime;              // guest 0x8B0, the time since the actor was created: the Think
                                    // (fn_10_1B1FC) adds dt to it (0x0001B2DC); the constructor
                                    // writes 0.0f to it (0x0001FB88)

@@ -408,12 +408,15 @@ const CDarkSamusBattleStage* CDarkSamus::GetBattleStage(CStateManager& mgr) cons
 // so the timer is cleared and the reference position becomes the actor's position again
 // (0x0001D810); when it is not, the timer grows by dt (0x0001D838).
 void CDarkSamus::UpdateStillTimer(bool reset, float dt) {
-  if (!reset) {
-    const CVector3f delta = GetTranslation() - mStillPosition;
-    if (delta.Magnitude() <= 0.6f) {
-      mStillTime += dt;
-      return;
-    }
+  if (reset) {
+    mStillTime = 0.f;
+    mStillPosition = GetTranslation();
+    return;
+  }
+  const CVector3f delta = GetTranslation() - mStillPosition;
+  if (delta.Magnitude() <= 0.6f) {
+    mStillTime += dt;
+    return;
   }
   mStillTime = 0.f;
   mStillPosition = GetTranslation();

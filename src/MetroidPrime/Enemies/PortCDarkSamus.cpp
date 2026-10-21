@@ -106,12 +106,13 @@ CDarkSamus::~CDarkSamus() {}
 // 0x6E0), then runs CPatterned::Think and afterwards the module's own AI.
 void CDarkSamus::Think(float dt, CStateManager& mgr) {
   StandIn("fn_10_1B1FC", "vtable slot 5, Think");
+  // 0x0001B2DC: retail grows the elapsed time at 0x8B0 by dt in every Think, also while the
+  // actor is inactive, so the port grows it before the active check.
+  mElapsedTime += dt;
   if (!GetActive()) {
     return;
   }
   CPatterned::Think(dt, mgr);
-  // 0x0001B2DC: the elapsed time at 0x8B0 grows by dt, right after the base's Think.
-  mElapsedTime += dt;
 }
 
 // vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch. The four-character codes it

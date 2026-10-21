@@ -96,7 +96,9 @@ Size [proven]: the loader's `__nw__FUlPCcPCc` is `li r3, 0x1128` at 0x0000DA78. 
 |---|---|---|
 | 0x7C0 | **`CPathFindSearch` (0xEC)** | `fn_8013E6A0(this+0x7C0, null, 0x401, pInfo+0xEC, 1.0f, 1.0f, 0, 0)`; `fn_10_CE4C` returns this+0x7C0. The flags are `li r5, 0x401` (0x0001FB54), the index the patterned info's pathfinding index (`lwz r6, 0xec(r30)`, 0x0001FB40), the two radii `lbl_10_rodata_3E8` = 1.0f (0x0001FB38/0x0001FB48), the area null (0x0001FB50) and the root position 0 = `kRP_Center` (0x0001FB5C) |
 | 0x8AC | int = −1 | `stw r0(-1), 0x8ac` |
-| 0x8B0..0x8C8 | seven zeroed floats | `sZeroVector` twice |
+| 0x8B0 | **the elapsed time**: the Think adds dt to it | the constructor writes 0.0f (`stfs f0, 0x8b0` at 0x0001FB88, f0 = `lbl_10_rodata_3FC`); `fn_10_1B1FC` grows it by dt (0x0001B2DC) [proven] |
+| 0x8B4 / 0x8B8 / 0x8BC | a position | the constructor writes the zero vector; `fn_10_1C778` writes a vector into it (0x0001C7A4..0x0001C7BC) [proven] |
+| 0x8C0 / 0x8C4 / 0x8C8 | three zeroed floats | `sZeroVector` |
 | 0x8CC | **`CTransform4f` = identity (0x30)** | `__ct__12CTransform4fFRC12CTransform4f(sIdentity)` at 0x0001FBC0 |
 | 0x8FC / 0x900 / 0x904 | three zeroed floats | |
 | 0x908 | float = the ctor's first float argument | `stfs f24, 0x908` (0x0001FBF0) |
@@ -106,17 +108,20 @@ Size [proven]: the loader's `__nw__FUlPCcPCc` is `li r3, 0x1128` at 0x0000DA78. 
 | 0x92C | **`CToken`** | `fn_10_21D14(this+0x94C, ...)` builds the object at 0x94C; the token at 0x92C is the 'SCAN' tag [probable] |
 | 0x930 | int 0 | |
 | 0x94C | sub-object built by `fn_10_21D14` | [proven] call |
-| 0x958 / 0x95C / 0x960 / 0x964 | floats | 0x960/0x964 are the ctor's float arguments |
+| 0x958 / 0x95C / 0x960 | the position the still timer measures from | the constructor writes the zero vector (`stfs` at 0x0001FC64..0x0001FC74); `fn_10_1D794` moves it to the actor's position when the actor walks away [proven] |
+| 0x964 | the still timer: how long the actor has stood still | the constructor writes 0.0f (`stfs f2, 0x964` at 0x0001FCB0, f2 = `lbl_10_rodata_3FC`); `fn_10_1D794` adds dt to it while the actor stays within 0.6 of 0x958 [proven] |
 | 0x968 | byte 0 | |
 | 0x96C | float | |
 | 0x970 | int = −1 | |
 | 0x974 | `TUniqueId` = `kInvalidUniqueId` | `lhz`/`sth` at 0x0001FCC0/0x0001FCC4 |
 | 0x978 | int 0 | |
 | 0x97C | flag byte | two `rlwimi`s (bits 24, 25) at 0x0001FCD0/0x0001FCE0 |
-| 0x980 / 0x984 | int 0 ×2 | |
+| 0x980 | **the attack the actor is performing** (the same id space as 0x984), 0xFFFF = none | the constructor writes 0xFFFF (`stw r10, 0x980` at 0x0001FCE4, r10 = 0xFFFF); `fn_10_1B478` writes the attack id into it (0x0001B4CC) and 0xFFFF into it when the attack ends (0x0001B5A8) [proven: the call sites pass the ids, e.g. `lis r4, 0x2` = 0x20000 = the boost ball at 0x00009758 in `fn_10_9724`, and `lis r4, 0x40` = 0x400000 = the phazon attack at 0x00008210 in `fn_10_81D4`] |
+| 0x984 | the attack the fight script picked | the constructor writes 0xFFFF (`stw r10, 0x984` at 0x0001FCE8); the Picked* triggers compare it [proven] |
 | 0x988 | int 0 | |
-| 0x98C / 0x990 | floats | |
-| 0x994 | int 0 | |
+| 0x98C / 0x990 | floats | 0x98C/0x990 = `lbl_10_rodata_410` = −1000.0f (0x0001FCF0/0x0001FCF4); 0x990 is the time the current attack started (`fn_10_1B478` adds the elapsed time to it at 0x0001B5B8) [proven] |
+| 0x994 | the number of ids in 0x998 | the constructor writes 0 (`stw r9, 0x994` at 0x0001FCF8); `fn_10_1B478` counts the finished attacks up (0x0001B5A4) [proven] |
+| 0x998 | the ids of the attacks the actor has finished (at most three) | `fn_10_1B478` pushes the current attack here (0x0001B590) and trims the oldest entry when there are three (`fn_10_1B5E4` at 0x0001B574) [proven] |
 | 0x9A4 | sub-object built by `fn_10_EA24` | [proven] call |
 | 0x9E0 | sub-object built by `fn_10_15348` | [proven] call |
 | 0xA0C | sub-object built by `fn_10_21A14` | [proven] call |
@@ -124,6 +129,14 @@ Size [proven]: the loader's `__nw__FUlPCcPCc` is `li r3, 0x1128` at 0x0000DA78. 
 | 0xA88 | sub-object built by `fn_10_217FC` | [proven] call |
 | 0xAC0 | sub-object built by `fn_10_E784` | [proven] call |
 | 0xB50 | sub-object built by `fn_10_215FC` | [proven] call |
+| 0xC24 | a `TUniqueId` | the constructor writes `kInvalidUniqueId` (0x0001FF08); `fn_10_1E26C` writes a uid into it (0x0001E288) [proven] |
+| 0xC28 | the number of uids in 0xC2C | the constructor writes 0 (0x0001FF14); `fn_10_1E26C` counts them up (0x0001E2D0) [proven] |
+| 0xC2C | the uids (at most two) | `fn_10_1E26C` pushes a uid here (0x0001E2C4) and trims the oldest when there are two (`fn_10_1E2E8` at 0x0001E2B0) [proven] |
+| 0xC44 | **the time of the last wall collision** (inside the 0xB50 sub-object) | the constructor writes 0.0f (0x0001FF38); `fn_10_1CF84` (0x0001D02C/0x0001D074) and `fn_10_1DF74` (0x0001E0BC) write it [proven] |
+| 0xCC0 | the damage the actor has taken | the constructor writes 0.0f (0x0001FF58); `fn_10_1E178` adds the health that is gone and decays it (0x0001E200/0x0001E238) [proven] |
+| 0xCC4 | the health at the last damage check | the constructor writes `lbl_10_rodata_3EC` = −1.0f (0x0001FF5C); `fn_10_1E178` compares it with the health info's current health (the vtable slot 0x3C, `GetHealthInfo`, and the float at its +4) [proven] |
+| 0xCC8 | the threshold `TooMuchDamage` compares the damage with | the constructor writes its 8th float argument (0x0001FF60), which is the loader's `damageInterruptThreshold` (the property id 0x8f70d3f2) [proven: the loader's dispatch compares the property id at 0x0000D00C] |
+| 0xCCC | the rate the damage decays at | the constructor writes `lbl_10_rodata_3E8` = 1.0f (0x0001FF64); `fn_10_1E178` subtracts it times dt (0x0001E22C) [proven] |
 | 0xCD0 | sub-object built by `fn_10_E560`; **its first byte** is what `fn_10_F84C` and `fn_10_FF20` test | [proven] |
 | 0xD64 | the CMdl/Cskr token pair built by `fn_10_20600` | [probable: the 'CMdl'/'Cskr' tag is read at 0x000202E8/0x0002033C] |
 | 0xD74 | sub-object built by `fn_10_8DB4` | [proven] call |
@@ -356,10 +369,51 @@ and are fixed.
 same one-word comparison (the ids 0x10000, 0x400000 and 0x800000). The DOL's copies are not in the
 port's sources, so the port implements the bodies itself against the host's member.
 
-**Next**: the rest of the `TravelToCoverPoints` triggers. `ShouldReact` (`fn_10_11158`, 0x154
-bytes) and `TooMuchDamage` (`fn_10_10698`: the word at 0x980 - a TUniqueId - the count at 0x994
-and the array at 0x998, and the two floats at 0xCC0/0xCC8) are the module's own fields.
-`WallCollision` (`fn_10_F800`) needs the three floats at 0x964, 0xC44 and 0x8B0.
+**The three ported triggers** (2026-10-21): `ShouldReact` (`fn_10_11158`, 0x154 bytes),
+`TooMuchDamage` (`fn_10_10698`) and `WallCollision` (`fn_10_F800`). Two corrections to the earlier
+reading of them:
+
+- **The word at 0x980 is the attack the actor is performing, not a `TUniqueId`.** The constructor
+  writes 0xFFFF to it (0x0001FCE4) and `fn_10_1B478` writes the attack id into it when an attack
+  starts (0x0001B4CC) and 0xFFFF when it ends (0x0001B5A8); the call sites pass the ids of the
+  module's own attacks (0x20000 the boost ball at 0x00009758, 0x400000 the phazon attack at
+  0x00008210). The array at 0x998 with the count at 0x994 holds the **finished** attack ids, not
+  uids. `TooMuchDamage`'s `cmplwi` against 0x8000 therefore compares the low half of the attack
+  id with 0x8000 (what that id means is not established).
+- **`clrlwi rD, rS, 24` clears the HIGH 24 bits and keeps the low byte** (the mask is `& 0xFF`,
+  not `& 0xFFFFFF`). `ShouldReact` reads the four trigger answers that way: the byte against 1
+  (0x00011190, 0x000111C0, 0x000111E4, 0x00011210).
+
+`ShouldReact` reads the four module triggers through the handler table the vptr points at: the
+word at 0x208 is `WasHeavyHit` (`fn_10_112AC`) and answers the trigger at once, and then the
+words at 0x174 (`CanMissileDeflect`), 0x184 (`FacingPlayer`) and 0x14C (`AnyIncomingMissiles`)
+must all answer true; the switch over the attack id answers true for 0x8, 0x40, 0x200, 0x400,
+0x10000 and 0x200000, the fade flag at 0xDEC for 0xFFFF and false otherwise. `TooMuchDamage`
+answers when the damage at 0xCC0 is above the threshold at 0xCC8 (the `extrwi` takes the CR0 bit
+1, the "greater than" of an `fcmpo`), unless the current or the last finished attack id is
+0x8000. `WallCollision` answers when the actor has stood still for more than 1.2 seconds (the
+timer at 0x964) or when less than 0.2 seconds have passed since the last wall collision (the
+time at 0xC44 against the elapsed time at 0x8B0).
+
+**The two ported helpers** (2026-10-21): `fn_10_1D794` (the still timer at 0x964 and the
+position it measures from at 0x958) and `fn_10_1E178` (the damage at 0xCC0, the health at 0xCC4
+and the decay rate at 0xCCC). Both are called from `fn_10_1DF74` (the `TravelToCoverPoints`
+state) and, for `fn_10_1D794`, also from `fn_10_FB8C` (`TravelToPissedOff`).
+
+**The walk** (2026-10-21, with the three triggers ported): `Start` -> `TurnToFacePlayer` ->
+`TravelToCoverPoints` -> `Dash`. The last step is `WallCollision` (the FSM2 dump: the trigger
+`WallCollision` of `TravelToCoverPoints` leads to `Dash`), and it fires because the wall
+collision time at 0xC44 is 0.0f after the constructor and the elapsed time at 0x8B0 is still
+below 0.2 seconds - the port grows the elapsed time only while the actor is active, while
+retail's `fn_10_1B1FC` grows it in every Think, also while the actor is inactive.
+
+**Next**: the rest of the `TravelToCoverPoints` state. `fn_10_1DF74` calls ten module helpers
+of its own (`fn_10_1D860`, `fn_10_128D8`, `fn_10_11334`, `fn_10_1E740`, `fn_10_1E3C0`,
+`fn_10_1E26C`, `fn_10_1C778`, `fn_10_1DD14`, `fn_10_1E178`, `fn_10_1D794`), so it is a chain of
+slices, not one body. The next ones, smallest first: `fn_10_1E26C` (0xDC bytes: the uid at
+0xC24, the count at 0xC28 and the uids at 0xC2C), `fn_10_1C778` (0xDC bytes: the position at
+0x8B4/0x8B8/0x8BC and the path find navigation at 0x6F4), `fn_10_1E3C0`, `fn_10_1E740`,
+`fn_10_11334`, `fn_10_128D8`, `fn_10_1D860`, `fn_10_1DD14` and then `fn_10_1DF74` itself.
 
 **The fight script's object** (2026-10-21): the helper `fn_10_17E14` gets it from the uid at
 0x974 (`fn_10_17DE0`: the lhz at 0x00017DEC, `GetObjectById` at 0x00017DFC and the cast to
