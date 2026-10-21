@@ -164,7 +164,7 @@ void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {  // 7, 0x0000A5BC..0x0000A5CC
       BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(
           static_cast< pas::ESeverity >(skMeleeAttacks[xc54_].mSeverity)));  // rodata_408, 0x0000A5D0..0x0000A640
-      if (mCollisionBlade.get() != nullptr) {
+      if (mCollisionBlade.get() != nullptr) {  // host guard: the guest calls through (0x0000A690)
         mCollisionBlade->SetActive(mgr, true);                         // 0x0000A668..0x0000A698
       }
     } else {
@@ -178,7 +178,7 @@ void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);           // 0x0000A704
     CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Melee, mgr, xbc4_teamId, GetUniqueId(),
                                 false);                                // 0x0000A6F8..0x0000A71C
-    if (mCollisionBlade.get() != nullptr) {
+    if (mCollisionBlade.get() != nullptr) {  // host guard: the guest calls through (0x0000A720)
       mCollisionBlade->SetActive(mgr, false);                          // 0x0000A728..0x0000A72C
     }
     break;
