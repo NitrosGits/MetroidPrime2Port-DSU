@@ -504,6 +504,7 @@ void CBoostBallGuardianBall::Roll(float dt, CStateManager& mgr) {
     if (vel.GetZ() != 0.f) {
       float speed = mRollSpeed;
       const float mag = vel.Magnitude();
+      // 0x00012B2C fcmpo + bge: strict `<`; equal or NaN keeps mRollSpeed.
       if (mag < speed) {
         speed = mag;
       }
@@ -513,6 +514,7 @@ void CBoostBallGuardianBall::Roll(float dt, CStateManager& mgr) {
         SetVelocityWR(vel * speed);
       }
     }
+    // 0x00012B98 fcmpo + ble: strict `>`; equal or NaN skips the clamp.
     if (GetVelocityWR().Magnitude() > mRollSpeed) {
       const CVector3f cur = GetVelocityWR();
       if (cur.CanBeNormalized()) {
