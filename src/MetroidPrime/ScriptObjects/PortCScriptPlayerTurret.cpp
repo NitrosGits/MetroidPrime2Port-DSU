@@ -55,7 +55,11 @@ const char* const kMuzzleLocator = "muzzleend_LCTR";
 // 0x000037A4 as CColor(0.5, 0, 0, 1).
 const CColor kTurretFlashColor(0.5f, 0.f, 0.f, 1.f);
 
-// The guest turns -1 into the invalid sfx id before storing it (fn_63_144 at 0x000004A0).
+// The guest turns -1 into the invalid sfx id before storing it (fn_63_144 at 0x000004A0; the
+// five tests are at 0x4A4, 0x4BC, 0x4D8, 0x4F0 and 0x50C).  The -1 arm does not run in the
+// shipped data: all three shipped turrets (the shooting gallery, the Agon Wastes and the
+// Sanctuary Fortress) have real sound ids - a once-per-arm probe of the run in each area printed
+// "144_sfx_id_valid" and never "144_sfx_id_is_minus_one".
 ushort TranslateSfx(int id) {
   return CSfxManager::TranslateSFXID(id == -1 ? CSfxManager::kInternalInvalidSfxId
                                              : static_cast< ushort >(id));
@@ -162,7 +166,9 @@ CScriptPlayerTurret::CScriptPlayerTurret(TUniqueId uid, const rstl::string& name
 // destructor runs.
 // fn_63_3070 (0x78): the destructor - the vtable is reset, the token at 0x1E8 is destroyed
 // and CActor's destructor runs.  The host's own destructor chain does all three (the members are
-// destroyed by it and the pool frees the object), so the body is empty.
+// destroyed by it and the pool frees the object), so the body is empty.  The guest's three
+// branches are the compiler's own: the "delete this" test (0x308C), the placement-new test of
+// the token's address (0x30A0) and the free's "is it a heap block" test (0x30C0).
 // @ fn_63_3070
 CScriptPlayerTurret::~CScriptPlayerTurret() {}
 
@@ -619,7 +625,9 @@ void CScriptPlayerTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
 void CScriptPlayerTurret::AddSolidToTopActor(CStateManager& mgr) {
   // 0x14CC: the top actor's id.
   CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
-  // 0x14E0
+  // 0x14E0: the top actor (0x19A) is the turret's own ATCL connection, and it resolves in the
+  // shipped turrets, so the "no top actor" arm is unreachable in the shipped data; the probe
+  // printed "14B4_top_actor_ok" and never "14B4_no_top_actor".
   if (top != nullptr) {
     // 0x14EC: the material is 0x3b (kMT_Solid).
     top->AddMaterial(kMT_Solid, mgr);
@@ -659,6 +667,10 @@ void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
   CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
   // 0x161C: the base actor's animation data; the guest reads the model pointer without a test
   // (a port limit: the host allows an actor without a model).
+  // 0x1614: the base actor (0x198) is the turret's own ATOB connection and it resolves in all
+  // three shipped turrets (the shooting gallery, the Agon Wastes and the Sanctuary Fortress), so
+  // the "no base actor" and "no animation data" arms are unreachable in the shipped data; the
+  // probe of the run in each area printed "15B0_hull_ok" and never "15B0_no_hull".
   CAnimData* animData = base != nullptr && base->GetModelData() != nullptr
                            ? base->AnimationData()
                            : nullptr;
@@ -794,7 +806,9 @@ void CScriptPlayerTurret::ExitTurret(CStateManager& mgr) {
 void CScriptPlayerTurret::RemoveSolidFromTopActor(CStateManager& mgr) {
   // 0x1478: the top actor's id.
   CActor* top = TCastToPtr< CActor >(mgr.ObjectById(mTopActorId));
-  // 0x148C
+  // 0x148C: the top actor (0x19A) is the turret's own ATCL connection, and it resolves in the
+  // shipped turrets, so the "no top actor" arm is unreachable in the shipped data; the probe
+  // printed "1460_top_actor_ok" and never "1460_no_top_actor".
   if (top != nullptr) {
     // 0x1498: the material is 0x3b (kMT_Solid).
     top->RemoveMaterial(kMT_Solid, mgr);
@@ -890,6 +904,9 @@ CTransform4f CScriptPlayerTurret::GetMuzzleTransform(CStateManager& mgr) {
   CTransform4f turret = GetTransform();
   // 0x1538: the base actor (0x198).
   CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  // 0x1554: the base actor (0x198) is the turret's own ATOB connection and it resolves in all
+  // three shipped turrets, so the "no base actor" arm is unreachable in the shipped data; the
+  // probe printed "1508_base_actor_ok" and never "1508_no_base_actor".
   if (base == nullptr) {
     return turret;
   }
@@ -907,10 +924,17 @@ void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
   const CTransform4f xf = GetMuzzleTransform(mgr);
   // 0x880: the player in the turret.
   CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));
+  // 0x89C: the player is always there - the shot is only fired from ProcessInput, which returns
+  // early when the player is missing (fn_63_1134's own test at 0x1168).  The arm is unreachable
+  // in the shipped data; a once-per-arm probe printed "84C_player_ok" and never
+  // "84C_player_null".
   if (player == nullptr) {
     return;
   }
-  // 0x8A0: the turret's own token (0x1E8) is the weapon description and has to be loaded.
+  // 0x8A0: the turret's own token (0x1E8) is the weapon description and has to be loaded.  The
+  // token is loaded by the kSM_Create case at the area load (fn_63_1BE8, 0x1C9C), before any
+  // shot, so the "not loaded" arm is unreachable in the shipped data; the probe printed
+  // "84C_token_loaded" and never "84C_token_not_loaded".
   if (mToken.null() || !mToken->IsLoaded()) {
     return;
   }
@@ -932,6 +956,10 @@ void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
   mgr.AddObject(projectile);
   // 0x9E4: the base actor (0x198) plays the shot animation (0x1A4).
   CActor* base = TCastToPtr< CActor >(mgr.ObjectById(mBaseActorId));
+  // 0xA00: the base actor (0x198) is the turret's own ATOB connection, resolved at the area load
+  // (fn_63_15B0); it resolves in all three shipped turrets, so the "no base actor" arm is
+  // unreachable in the shipped data (the probe printed "84C_base_and_anim_ok" and never
+  // "84C_base_or_anim_null").
   if (base != nullptr && base->GetModelData() != nullptr &&
       base->GetModelData()->GetAnimationData() != nullptr) {
     CAnimData* animData = base->AnimationData();
@@ -941,7 +969,12 @@ void CScriptPlayerTurret::FireTurretShot(CStateManager& mgr) {
     // 0xA4C: the animation id (0x1A4), -1, the weight 1.0 and "animating".
     animData->SetAnimation(CAnimPlaybackParms(mUnknown1A4, -1, 1.f, true), false);
   }
-  // 0xA84: the shot's sound.
+  // 0xA84: the shot's sound.  The multiplayer arm is unreachable in the shipped data: a
+  // multiplayer session needs the retail's online lobby (Prime 2's Connection - a service, not
+  // shipped data, and not a ported module); the port's game mode comes from the card's save
+  // (CGameState::GetGameModeType reads the save's previous game results, 'SNGL'), so
+  // IsMultiplayer() is false in every run this port can produce.  The probe printed
+  // "84C_single_player_sound" and never "84C_multiplayer_sound".
   if (mgr.IsMultiplayer()) {
     // 0xA94: the multi-player projectile sound (0x22A) at the player's sound pan.
     CSfxManager::SfxStart(mSfxMultiPlayerProjectile, 0x7f,

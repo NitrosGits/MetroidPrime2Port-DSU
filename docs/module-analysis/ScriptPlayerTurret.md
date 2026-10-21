@@ -539,3 +539,105 @@ its `XCALL` (`TranslateSfx` is the port's helper for the guest's inline `-1` tes
 `fn_63_84C`'s `fn_63_B18`/`fn_63_F18` (the host's `CImpactVisorEffect::None()` and the token
 copy); `fn_63_3070`'s `Free` (the host's pool frees the object) and `fn_63_30E8`'s `fn_63_374C`
 (the host's `CModelData()`).
+
+## 15. Every conditional branch of the seven marked functions (2026-10-21)
+
+The marker means "the body is retail's and ran", so every branch of a marked function has to be
+accounted for. The classes are: **(a)** compiler-generated (the null test after `operator new`, an
+inlined host helper) - it needs no run; **(b)** a real arm that ran - the once-per-arm probe line
+is shown; **(c)** a real arm unreachable in the shipped data - the evidence is in the port's
+comment at the branch; **(d)** a real reachable arm that did not run - the marker goes.
+
+The probe was a temporary once-per-arm flag array in the port (one flag per arm, printed at
+exit); it is not in the committed tree. Three runs: the shooting gallery (the turret in use),
+the Agon Wastes (`sand_world,06_sand_alamofront` + `layer 3`) and the Sanctuary Fortress
+(`cliff_world,01_cliff_entrance` + `layer 6`) - the last two only load the area and the turrets,
+so their lines are the loader's and the hull's.
+
+### fn_63_144 (the loader, 35 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x1A8..0x304: the property dispatch tree (18 `beq` on the property id + 12 `bge` on the binary search) | (a) | the generated property switch - the upstream's `SLdrPlayerTurret.inc` is the same generated code the REL was built from |
+| 0x47C/0x480: the property loop | (a) | the generated loop of the same file |
+| 0x49C: the allocation returned null | (a) | the null test after `operator new` (the guest allocates 0x230 bytes at 0x494) |
+| 0x4A4, 0x4BC, 0x4D8, 0x4F0, 0x50C: the five sound ids are -1 | (c) | all three shipped turrets have real sound ids: the probe printed `[arm] 144_sfx_id_valid` in the shooting gallery, the Agon Wastes and the Sanctuary Fortress, and never `[arm] 144_sfx_id_is_minus_one`; the comment is at the port's `TranslateSfx` |
+
+### fn_63_84C (the shot, 8 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x89C: the player is missing | (c) | the shot is only fired from `ProcessInput`, which returns early when the player is missing (fn_63_1134's own test at 0x1168); the probe printed `[arm] 84C_player_ok`, never `84C_player_null` |
+| 0x8AC: the token is not loaded | (c) | the token is loaded by the `kSM_Create` case at the area load (0x1C9C), before any shot; the probe printed `[arm] 84C_token_loaded`, never `84C_token_not_loaded` |
+| 0x8CC: the allocation returned null | (a) | the null test after `operator new` |
+| 0x9A0: the impact visor effect's flag | (a) | the flag is the literal 1 the code sets at 0x8EC, so the test is on a constant; the port's `CImpactVisorEffect::None()` carries the same flag |
+| 0x9B4: the projectile is missing | (a) | the null test after the placement new |
+| 0xA00/0xA10: the base actor or its animation data is missing | (c) | the base actor is the turret's own ATOB connection, resolved at the area load (fn_63_15B0); it resolves in all three shipped turrets; the probe printed `[arm] 84C_base_and_anim_ok`, never `84C_base_or_anim_null` |
+| 0xA90: the multiplayer sound | (c) | a multiplayer session needs the retail's online lobby (Prime 2's Connection - a service, not shipped data, and not a ported module); the port's game mode comes from the card's save ('SNGL'), so `IsMultiplayer()` is false in every run the port can produce; the probe printed `[arm] 84C_single_player_sound`, never `84C_multiplayer_sound` |
+
+### fn_63_3070 (the destructor, 3 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x308C: `this` is null | (a) | the compiler's "delete this" test |
+| 0x30A0: the token's address is null | (a) | the compiler's placement-new test |
+| 0x30C0: the block is not a heap block | (a) | the compiler's free test (`Free__7CMemoryFPCv` needs the block's size) |
+
+### fn_63_15B0 (the hull actors, 2 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x1614: the base actor is missing | (c) | the ATOB connection resolves in all three shipped turrets; the probe printed `[arm] 15B0_hull_ok` in the shooting gallery, the Agon Wastes and the Sanctuary Fortress, never `15B0_no_hull` |
+| 0x1624: the animation data is missing | (c) | the same connection's model carries the animation database in all three shipped turrets (the same probe line) |
+
+### fn_63_14B4 (the top actor becomes solid, 1 branch)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x14E0: the top actor is missing | (c) | the ATCL connection resolves in the shipped turrets (the gallery's turret rides it); the probe printed `[arm] 14B4_top_actor_ok`, never `14B4_no_top_actor` |
+
+### fn_63_1460 (the top actor loses solid, 1 branch)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x148C: the top actor is missing | (c) | the same ATCL connection; the probe printed `[arm] 1460_top_actor_ok`, never `1460_no_top_actor` |
+
+### fn_63_1508 (the muzzle transform, 1 branch)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x1554: the base actor is missing | (c) | the ATOB connection resolves in all three shipped turrets; the probe printed `[arm] 1508_base_actor_ok`, never `1508_no_base_actor` |
+
+### The probe's lines (the shooting gallery run)
+
+    [arm] 144_sfx_id_valid
+    [arm] 84C_player_ok
+    [arm] 84C_token_loaded
+    [arm] 84C_base_and_anim_ok
+    [arm] 84C_single_player_sound
+    [arm] 15B0_hull_ok
+    [arm] 14B4_top_actor_ok
+    [arm] 1460_top_actor_ok
+    [arm] 1508_base_actor_ok
+    [arm] fn_144_entered
+    [arm] fn_84C_entered
+    [arm] fn_3070_entered
+    [arm] fn_15B0_entered
+    [arm] fn_14B4_entered
+    [arm] fn_1460_entered
+    [arm] fn_1508_entered
+    [arm] fn_19B0_entered
+
+and in the Agon Wastes and the Sanctuary Fortress runs:
+
+    [arm] 144_sfx_id_valid
+    [arm] 15B0_hull_ok
+    [arm] fn_144_entered
+    [arm] fn_3070_entered
+    [arm] fn_15B0_entered
+    [arm] fn_19B0_entered
+
+No branch is (d), so all seven markers stand. The one judgement call is fn_63_84C's multiplayer
+arm: it is classified (c) because the port cannot start a multiplayer session at all (the game
+mode comes from the card's save and the retail's online lobby is not shipped data and not a
+ported module).
