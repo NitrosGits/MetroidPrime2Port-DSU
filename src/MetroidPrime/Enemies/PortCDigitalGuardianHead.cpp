@@ -1239,25 +1239,26 @@ DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 // time (76 frames), Update at it (Over) and Deactivate all ran, five telegraphs in one fight.
 // @ fn_14_16F74
 void CDigitalGuardianHead::ProjectileTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
-  switch (msg) {
+  switch (msg) { // the cmpwi chain at 0x16F98..0x16FBC
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
-    x10F4_ |= 0x20;
-    x1028_ = x13B38_();
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // stw 1 -> 0x6B4 at 0x16FCC
+    x10F4_ |= 0x20;                                        // rlwimi 5, 26, 26 at 0x16FD8
+    x1028_ = x13B38_();                                    // 0x16FE0, stores 0x16FE8..0x16FF8
     break;
   case kStateMsg_Update: {
-    const SLdrDigitalGuardianHeadStruct* attack = x10120_(mgr);
-    if (mStateMachine->GetTime() < attack->projectileTelegraphTime) {
-      x11D64_(mgr, dt);
+    const SLdrDigitalGuardianHeadStruct* attack = x10120_(mgr); // 0x17000
+    if (mStateMachine->GetTime() >= attack->projectileTelegraphTime) { // vtable 0x30 of 0x350 at
+                                                                       // 0x17014, +4, fcmpo/bge 0x17020
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x1703C
     } else {
-      mAnimationState.SetState(CAnimationState::kAS_Over);
+      x11D64_(mgr, dt); // 0x17034
     }
     break;
   }
   case kStateMsg_Deactivate:
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    x10F4_ &= ~0x20;
-    x1028_ = CVector3f::Zero();
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x17050
+    x10F4_ &= ~0x20;                                          // 0x17058
+    x1028_ = CVector3f::Zero();                               // sZeroVector, 0x17060..0x17074
     break;
   default:
     break;
@@ -1276,39 +1277,48 @@ void CDigitalGuardianHead::ProjectileTelegraph(CStateManager& mgr, EStateMsg msg
 // with no platform only (0x1038 is set by SelectRetreatPlatform, which had not run); the
 // platform arms (STRT/STOP, the rider test, the ride and its end by time) have not run.
 void CDigitalGuardianHead::FollowRetreatPath(CStateManager& mgr, EStateMsg msg, float dt) {
-  switch (msg) {
+  switch (msg) { // the cmpwi chain at 0x156A4..0x156DC
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // stw 1 -> 0x6B4 at 0x156EC
+    // ObjectById(0x1038) at 0x156FC, TCastToPtr<CScriptPlatform> at 0x15700, null test 0x15704
     if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
-      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Start));
+      // the message at 0x1570C..0x15738: sender and originator the head (0x5C, 0x5E), id the
+      // platform (0x60), STRT (0x64), state -1 (0x68); AcceptScriptMsg (vtable 0x18) at 0x15760
+      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Start,
+                                            GetUniqueId()));
     }
-    x103A_ = kInvalidUniqueId;
-    BodyController()->SetLocomotionType(pas::kLT_Internal5);
+    x103A_ = kInvalidUniqueId;                                  // 0x15770
+    BodyController()->SetLocomotionType(pas::kLT_Internal5);    // li 5 at 0x15768, 0x15778
     break;
   case kStateMsg_Update: {
+    // GetObjectById(0x1038) at 0x15790, the cast at 0x15794, null test (mr.) at 0x15798
     const CScriptPlatform* plat = TCastToConstPtr< CScriptPlatform >(mgr.GetObjectById(x1038_));
     if (plat == nullptr) {
-      mAnimationState.SetState(CAnimationState::kAS_Over);
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15840
       break;
     }
+    // IsRider(the player at mgr+0x14FC) at 0x157B4, bne 0x157BC; bit 0x80 of 0x10F5 at 0x157C4
     if (plat->IsRider(mgr.GetPlayer(0)->GetUniqueId()) || (x10F5_ & 0x80) != 0) {
-      BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // li 1 at 0x157D0
     } else {
-      BodyController()->SetLocomotionType(pas::kLT_Internal5);
+      BodyController()->SetLocomotionType(pas::kLT_Internal5); // li 5 at 0x157E0
     }
-    const float limit = xF374_();
-    if (mStateMachine->GetTime() <= limit) {
-      SetTransform(plat->GetTransform());
+    const float limit = xF374_(); // 0x157F0
+    if (mStateMachine->GetTime() <= limit) { // vtable 0x30 of 0x350 at 0x15808, fcmpo/cror 0x1580C
+      SetTransform(plat->GetTransform()); // the platform's +0x24 at 0x1581C, 0x1582C
     } else {
-      mAnimationState.SetState(CAnimationState::kAS_Over);
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15834
     }
     break;
   }
   case kStateMsg_Deactivate:
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    BodyController()->SetLocomotionType(pas::kLT_Combat);
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);   // 0x15854
+    BodyController()->SetLocomotionType(pas::kLT_Combat);      // li 3 at 0x15850, 0x1585C
+    // ObjectById(0x1038) at 0x15870, the cast at 0x15874, null test 0x15878
     if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
-      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Stop));
+      // as at Activate with STOP (0x5354_4F50, 0x1588C); the call at 0x158D4
+      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Stop,
+                                            GetUniqueId()));
     }
     break;
   default:
@@ -1434,10 +1444,10 @@ DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
 // Both arms ran in the area-53 head-stun runs (local probes): splitters alive and all dead.
 // @ fn_14_15598
 void CDigitalGuardianHead::ResetProjectileAttackTimes(CStateManager& mgr, float dt) {
-  if (AllSplittersDead(mgr, CTriggerData(0.f))) {
-    x10D4_ = x10120_(mgr)->projectileAttackTime;
+  if (AllSplittersDead(mgr, CTriggerData(0.f))) { // 0.0 at 0x155C0, 0x155C4, bne at 0x155CC
+    x10D4_ = x10120_(mgr)->projectileAttackTime;  // 0x155E8, +8 at 0x155EC, 0x155F0
   } else {
-    x10D4_ = 6.f;
+    x10D4_ = 6.f; // .rodata 0x990 at 0x155D4, 0x155D8
   }
 }
 
@@ -1450,28 +1460,31 @@ void CDigitalGuardianHead::ResetProjectileAttackTimes(CStateManager& mgr, float 
 // Unmarked: the area-53 runs made one pick each, the first shot (knee count 4 against the ctor's
 // -1, firstShotType 0); the random arms need a second pick with the knee count unchanged.
 void CDigitalGuardianHead::SelectProjectileAttack(CStateManager& mgr, float dt) {
-  const SLdrDigitalGuardianHeadStruct* odds = x10120_(mgr);
+  const SLdrDigitalGuardianHeadStruct* odds = x10120_(mgr); // 0x1546C
+  // GetObjectById(0x1034) at 0x15484, the cast at 0x15488, null test 0x1548C, else 0 (0x154A0)
   const CDigitalGuardian* body = TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_));
-  const int knees = body != nullptr ? body->x705C_() : 0;
+  const int knees = body != nullptr ? body->x705C_() : 0; // 0x15494
+  // cmpw with 0x10DC at 0x154A8 (beq); firstShotType (+0) cmpwi 4 at 0x154B4 (beq)
   if (knees != x10DC_ && odds->firstShotType != 4) {
-    x10D0_ = odds->firstShotType;
+    x10D0_ = odds->firstShotType; // 0x154BC
   } else {
+    // Range(mgr+0x16E4, 0 (.rodata 0x960), ((+0xC + +0x10) + +0x14) + +0x18) at 0x154F0
     const float r = mgr.Random()->Range(0.f, odds->annihilatorPulseOdds +
                                                   odds->annihilatorChargeOdds +
                                                   odds->machineGunOdds + odds->lockOnMissilesOdds);
-    float bound = odds->annihilatorPulseOdds;
-    if (r <= bound) {
-      x10D0_ = 0;
-    } else if (r <= (bound += odds->annihilatorChargeOdds)) {
-      x10D0_ = 1;
-    } else if (r <= bound + odds->lockOnMissilesOdds) {
-      x10D0_ = 2;
+    float bound = odds->annihilatorPulseOdds; // +0xC at 0x154F4
+    if (r <= bound) {                         // fcmpo/cror/bne at 0x154F8..0x15500
+      x10D0_ = 0;                             // 0x15508
+    } else if (r <= (bound += odds->annihilatorChargeOdds)) { // +0x10, 0x15514..0x15520
+      x10D0_ = 1;                                              // 0x15528
+    } else if (r <= bound + odds->lockOnMissilesOdds) {        // +0x18, 0x15534..0x15540
+      x10D0_ = 2;                                              // 0x15548
     } else {
-      x10D0_ = 3;
+      x10D0_ = 3; // 0x15554
     }
   }
-  x10DC_ = knees;
-  x10D8_ = x10D0_ == 0 ? 3 : 0;
+  x10DC_ = knees;               // 0x15558
+  x10D8_ = x10D0_ == 0 ? 3 : 0; // cntlzw/extrwi 1, 26/neg/and at 0x15564..0x15574
 }
 DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
 DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
