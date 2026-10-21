@@ -301,11 +301,15 @@ static void CopyImpactParticleEntry(SImpactVisorEffect* dest, const SImpactVisor
 // The retail copies the particle effect's engaged flag (asm 0x66CC/0x66DC) and, when the source
 // has a particle effect, the effect itself (asm 0x66E4).
 static void CopyImpactParticleEffect(SImpactVisorEffect* dest, const SImpactVisorEffect* src) {
-  if (src->mParticleEffect) {                 // the engaged flag byte at +0x14 (asm 0x66CC)
-    dest->mParticleEffect.prepare_emplace();  // the flag byte at +0x14 (asm 0x66DC)
-    CopyImpactParticleEntry(dest, src);       // asm 0x66E4
+  if (src->mParticleEffect) {  // the engaged flag byte at +0x14 (asm 0x66CC)
+    // The flag byte at +0x14 (asm 0x66DC). The retail writes the flag and then the copy, and the
+    // host's particle effect has no default constructor, so the destination's part is built empty
+    // before the copy fills it.
+    dest->mParticleEffect =
+        CImpactVisorEffect::SParticleEffect(rstl::optional_object_null(), 0, false);
+    CopyImpactParticleEntry(dest, src);  // asm 0x66E4
   } else {
-    dest->mParticleEffect.clear();            // the flag byte at +0x14 (asm 0x66DC)
+    dest->mParticleEffect.clear();  // the flag byte at +0x14 (asm 0x66DC)
   }
 }
 
