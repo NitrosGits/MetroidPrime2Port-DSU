@@ -7,13 +7,17 @@ half: what is ported, what is not, and the layout facts the port depends on.
 
 ## Status (2026-10-21)
 
-- 114/217 functions marked (was 103). The new ones: `fn_44_E0` (the module
-  registration), `fn_44_2550` (the cover-hint claim), `fn_44_D00` (the health-info
-  copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the ray the snap to the floor
-  uses), `fn_44_3614` (the copy of the ray result), `fn_44_FE8` (the grenade data
-  the loader builds), `fn_44_C44` (the copy of it into the data), `fn_44_D54` (the
-  copy of the ing spot into the data), `fn_44_9B4` (the data build) and `fn_44_AB78`
-  (the best animation for a parm).
+- 128/217 functions marked (was 126). The new ones: `fn_44_4DDC` (the target's aim
+  position) and `fn_44_204C` (the lure point on the nav mesh), plus (from the earlier
+  slices) `fn_44_E0` (the module registration), `fn_44_2550` (the cover-hint claim),
+  `fn_44_D00` (the health-info copy), `fn_44_5894` (the team leave), `fn_44_34B0` (the
+  ray the snap to the floor uses), `fn_44_3614` (the copy of the ray result),
+  `fn_44_FE8` (the grenade data the loader builds), `fn_44_C44` (the copy of it into
+  the data), `fn_44_D54` (the copy of the ing spot into the data), `fn_44_9B4` (the
+  data build) and `fn_44_AB78` (the best animation for a parm).
+- `fn_44_204C`'s third branch (the height query succeeds) does not run in area 13: the
+  nav mesh query returns `kR_NoSourcePoint` there for the lure point, for the player and
+  with the search's flags at 3 and at 0x301, so the area has no region under either point.
 - `tools/asmcheck.py check MinorIng src/MetroidPrime/Enemies/PortCMinorIng.cpp
   --root .` reports no correctness finding (MASK/XBIT/CROP/XCMP/XSTORE/OFFS).
 - Run: `USERDIR=/tmp/opencode/mi_u WORLD=3bfa3eff,686f5a1b FRAMES=7000 GODMODE=1
@@ -251,7 +255,7 @@ copies, so the host has no counterpart and needs no code.
 
 ## The functions that are still not ported
 
-`tools/port_progress.py` counts 103 of the module's 217 functions as unmarked.
+`tools/port_progress.py` counts 89 of the module's 217 functions as unmarked.
 The table lists each with its retail size and the module functions that call it
 (the call graph is read from the REL's disassembly, so "called from" is the retail
 call, not the host's). The ones the live cycle reaches are the ctor/dtor/loader
