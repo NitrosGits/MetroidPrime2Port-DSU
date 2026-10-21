@@ -577,10 +577,10 @@ void CDarkSamus::StopBoostBallParticles() {}
 // (the vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is
 // not above lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 -
 // the `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 =
-// 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to the zero vector (lbl_10_bss_128,
+// 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 (
 // 0x00006E10..0x00006E20). lbl_10_bss_128 is the module's static vector: the module's data
 // initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the
-// actor's 0xD18 (0x0000E5C8), so the port's mGuestD18 (CVector3f::Zero) is the same value.
+// actor's 0xD18 (0x0000E5C8), = (0.3, 0.6, 1.0): rodata 46C/424/3E8 at 0x0002224C..0x000222A8.
 // Unmarked: the coverage run never reaches the Deactivate arm (the EnragedTravel state's
 // Deactivate did not run in it), so the body is not proved arm by arm.
 void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
@@ -594,7 +594,7 @@ void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
   }
   mGuestD24 = 1.f;               // 0x00006DFC
   mGuestCD0 = 1;                 // 0x00006E08
-  mGuestD18 = CVector3f::Zero(); // 0x00006E10..0x00006E20
+  mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128, 0x00006E0C..0x00006E20
 }
 
 // fn_10_8870 (0x00008870, 0xE0 bytes): the loop attack command over a state's messages. The

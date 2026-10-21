@@ -3022,14 +3022,14 @@ const CScriptAIHint* CDarkSamus::FindAreaHint(CStateManager& mgr, int type) cons
 }
 
 // fn_10_105F4 (0x000105F4, 0x40 bytes): Activate sets the 0xCD0 byte (0x00010604) and copies
-// lbl_10_bss_128 (a zero vector) to 0xD18 (0x0001060C..0x00010618); Deactivate (the `cmpwi r4,
+// lbl_10_bss_128 = (0.3, 0.6, 1.0) to 0xD18 (0x0001060C..0x00010618); Deactivate (the `cmpwi r4,
 // 0x2` at 0x00010620) clears the byte (0x0001062C). The byte picks the shielded collision response
 // (fn_10_F84C) and the 0xCD4 vulnerability (fn_10_100DC, still a stand-in).
 // @ fn_10_105F4
 void CDarkSamus::UpdateShieldFlag(EStateMsg msg) {
   if (msg == kStateMsg_Activate) {
     mGuestCD0 = 1;
-    mGuestD18 = CVector3f::Zero();
+    mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128 (fn_10_221C0: rodata 46C/424/3E8)
   } else if (msg == kStateMsg_Deactivate) {
     mGuestCD0 = 0;
   }
