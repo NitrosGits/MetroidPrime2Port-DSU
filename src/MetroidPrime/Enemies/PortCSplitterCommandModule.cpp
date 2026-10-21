@@ -360,7 +360,6 @@ SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
 SPLITTER_STATE_STANDIN(PathFind, fn_75_4E90)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
 SPLITTER_STATE_STANDIN(LaserPulse, fn_75_4864)
-SPLITTER_STATE_STANDIN(LostChassisReaction, fn_75_42F8)
 SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
 SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
 SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_3D20)
@@ -1304,6 +1303,26 @@ void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
   mShieldState = 0;
   mCountupTimerA = 0.f;
   PortUpdateEffectStates(mgr);
+}
+
+// fn_75_42F8 (the head's LostChassisReaction state, 0x42F8-0x4438). Activate (0x4330): the
+// animation state is kAS_Ready (0x4334) and the flag byte 0xF6A's 0x20 bit is set (0x433C rlwimi).
+// Update (0x4348): the head turns (fn_75_2994, still a stand-in) and, when CTryCommand::ShouldRetry
+// (the host's CAnimationState::CanIssueCommand) allows body state 6 (kAS_KnockBack, 0x4354-0x4360),
+// a knock-back command along the head's translation with severity 2 goes out
+// (lbl_75_data_5B8, 0x4364-0x43C4). Deactivate (0x441C): the animation state is kAS_NotReady.
+void CSplitterCommandModule::LostChassisReaction(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mAutoDestructFlags |= 0x20;
+  } else if (msg == kStateMsg_Update) {
+    StandIn("fn_75_2994 (the head's turn, 0x24C)");
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCKnockBackCmd(GetTranslation(), pas::kS_Two));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
