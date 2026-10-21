@@ -1574,7 +1574,7 @@ bool CSplitterCommandModule::ShouldDodge(CStateManager&, const CTriggerData&) co
 // to the maximum (0x3BCC-0x3BD0).
 void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
   mDodgeDirection = -1;
-  if ((mData.mUnknownBD80FD94 & 0x2) == 0 || mDodgeCount >= mData.mMaxDodges) {
+  if ((mData.mUnknownBD80FD94 & 0x2) == 0 || mDodgeCount >= mData.mMaxDodges) {  // 0x3B5C, 0x3B6C
     return;
   }
   if (mDodgeCount < mData.mMinDodges || mgr.Random()->Range(0.f, 100.f) <= mData.mDodgeChance) {
@@ -1604,6 +1604,7 @@ int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
   for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
     // The list holds AIs, always actors; retail reads the position with no cast (0x27B4).
     const CActor* other = static_cast< const CActor* >(list[idx]);
+    // 0x2794 (null), 0x279C (the head itself), 0x27A4-0x27B0 (the area).
     if (other == nullptr || other == this || other->GetCurrentAreaId() != GetCurrentAreaId()) {
       continue;
     }
@@ -1626,7 +1627,7 @@ int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
     leftOpen = PortDodgeClear(mgr, -right, mDodgeDistance);
   }
   if (leftOpen && rightOpen) {
-    if ((mgr.Random()->Next() & 0x4000) != 0) {
+    if ((mgr.Random()->Next() & 0x4000) != 0) {  // 0x2928-0x292C
       leftOpen = false;
     } else {
       rightOpen = false;
