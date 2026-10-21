@@ -168,6 +168,25 @@ CPortalTransition::CPortalTransition(
   mSuitSkin = gpSimplePool->GetObj(SObjectTag('CSKR', character.GetSkinRulesId()));
   mSuitSkin->Lock();
 
+#ifdef TARGET_PC
+  // Retail (0x80231608, 0x802316C8) passes only the rotation as the orientation: with the
+  // full transform the translation is applied twice and the dissolve particles spawn far
+  // from Samus, so she just flashes white and vanishes.
+  if (mFirstEffectDescription) {
+    mFirstEffect = CElementGen::ConstructChildParticleSystem(
+        *mFirstEffectDescription, mFirstEffectDescription->GetTag().GetType(), 0,
+        CElementGen::kOSF_One, false, true, firstEffectTransform.GetTranslation(),
+        firstEffectTransform.GetRotation(), CVector3f::Zero(), CTransform4f::Identity(),
+        firstEffectScale, CColor::White(), CVector3f::One());
+  }
+  if (mSecondEffectDescription) {
+    mSecondEffect = CElementGen::ConstructChildParticleSystem(
+        *mSecondEffectDescription, mSecondEffectDescription->GetTag().GetType(), 0,
+        CElementGen::kOSF_One, false, true, CVector3f::Zero(), CTransform4f::Identity(),
+        secondEffectTransform.GetTranslation(), secondEffectTransform.GetRotation(),
+        secondEffectScale, CColor::White(), CVector3f::One());
+  }
+#else
   if (mFirstEffectDescription) {
     mFirstEffect = CElementGen::ConstructChildParticleSystem(
         *mFirstEffectDescription, mFirstEffectDescription->GetTag().GetType(), 0,
@@ -182,6 +201,7 @@ CPortalTransition::CPortalTransition(
         secondEffectTransform.GetTranslation(), secondEffectTransform, secondEffectScale,
         CColor::White(), CVector3f::One());
   }
+#endif
   if (firstPassCamera != nullptr) {
     mCameraPass = kCP_First;
     mFirstPassCamera = *firstPassCamera;
