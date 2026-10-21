@@ -1402,3 +1402,30 @@ rooftop run over it give the branch coverage of every module body at once
 the fight cannot reach are forced from the coverage spec's own expressions
 (`tools/cov/specs/darksamus.py`: the DoneRolling trigger's eight arms are written at the
 trigger's entry, one per hit, from gdb convenience variables).
+
+## Slice 28 (2026-10-21): the fsm2 merge, fn_10_8870's command, and the crash
+
+- **The merge** (`decomp/darksamus-fsm2` af6729d14): the conflicts were in the header (the
+  mGuestFC4/mGuest102C block) and in the helpers file (their new bodies against my appended
+  ones). Their text is kept for their own bodies and members, mine follow theirs. The link check
+  reports no duplicate definition and no undefined symbol (tools/link_check.sh).
+- **fn_10_8870 (the freeze beam's command)** now delivers the host's loop hit reaction with the
+  retail's type. The retail's command is the module's own class (its vtable lbl_10_data_1B0):
+  the id 0x9 = 9 = kBSC_LoopHitReaction (0x00016E70) and the payload 7, 4 and the byte 0
+  (0x00016E80..0x00016E88). The host's body reads the command through the command manager:
+  `CBSLoopReaction::Start` asks for `GetCmd(kBSC_LoopHitReaction)` and reads the reaction type
+  out of it (`CBCLoopHitReactionCmd::GetReactionType`), which is the first word of the retail's
+  payload - so the host reads the same field the module's payload puts first and the port
+  delivers `CBCLoopHitReactionCmd` with the type 7. The module's other two payload words (4 and
+  the byte 0) are copied over the slot's tail in the retail and nothing reads them, so the port
+  drops them; **no change to a shared BodyState file is needed**.
+- **The crash is gone.** Delivering the plain `CBodyStateCmd(kBSC_LoopHitReaction)` left the
+  command manager's slot with no type, and the body's loop reaction then read a garbage
+  animation index (1798152516) and died in `CBSLoopReaction::Start`. The rooftop run after the
+  merge (the coverage driver, the normal build) ends with the game's exit code 0 and no
+  SIGSEGV in the log.
+- **Still open.** fn_10_1707C (the freeze beam's dodge step, 0x0001707C, 0x1F4 bytes) is not
+  ported, so the FreezeBeam state keeps that stand-in and keeps no marker (its arms did not run
+  in the run either - the state was not entered). The Arrived trigger (fn_10_62B4) still has no
+  arms: the fight never evaluates it (0 hits, 0/7 lines in the gcov report) and the state that
+  would evaluate it has not been found, so neither `statecall` nor force.sh can reach it.
