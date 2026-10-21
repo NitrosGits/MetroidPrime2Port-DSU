@@ -301,6 +301,7 @@ private:
   uchar x1013_;     // 0x1013: the flag byte the "IM05"/"IM06" messages set (fn_14_A6A8)
   TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
   TUniqueId x116A_; // 0x116A: the IS05/Follow object (fn_14_5910)
+  CDamageInfo x116C_; // 0x116C: vortexDamage (data +0xE8, LdrToDamageInfo at 0xB5C4; fn_14_4F2C)
   int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1); the vortex mode: 1 in
                     // VortexAttack, 2 in VortexRetreat, 0 in ExitVortexAttack/SetNormalAttackMode
   float x11BC_;     // 0x11BC: the exit vortex speed, 0.0f (the store at 0xB65C; fn_14_34E8)
@@ -434,6 +435,8 @@ private:
   void x5384_(CStateManager& mgr, TUniqueId sender);
   // fn_14_5274 (0x100 bytes): the head collider (the beacon) hit (from fn_14_5838).
   void x5274_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_4F2C (0x214 bytes): the "XHIT" case - a collider the player touched damages the player.
+  void x4F2C_(CStateManager& mgr, TUniqueId sender);
   // fn_14_266C (0x264 bytes): the beacon is destroyed.
   void x266C_(CStateManager& mgr);
   // fn_14_2E60 (0x234 bytes): the beacon is hit and survives.
