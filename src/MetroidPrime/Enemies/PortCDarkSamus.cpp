@@ -129,6 +129,12 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mScatterProjectileUid(kInvalidUniqueId)      // 0x000216D0
 , mScatterSide(0)                               // 0x000216B4
 , mScatterUseSecondInfo(0)                      // 0x000216BC
+, mDive(data.mDiveAttackDamage)                 // fn_10_E784 at 0x0001FE64
+, mGuestE04(0.f) // not written by the constructor; fn_10_18628 is the only writer
+, mGuestE08(0.f)
+, mGuestE0C(0.f)
+, mDodgeTime(0.f)                               // 0x00020248
+, mDodgeDir(CVector3f::Zero())                  // 0x00020254..0x00020264
 , mGunLctrXf(CTransform4f::Identity()) {        // 0x0001FBC0
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
   // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
@@ -244,6 +250,30 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       }
     }
     SetPathSearchArea(mgr);
+  }
+  // The 'XLAU' arm (kSM_Launching, 0x0001ED58): the base first takes a kSM_OffGround from the
+  // same sender (0x0001EDA0), then the dive is in flight (0x40, 0x0001EDAC) from the actor's
+  // position and the bubble comes on (fn_10_12EF8 at 0x0001EDD4); the original message goes to
+  // the base in the common tail.
+  if (msg.GetMessage() == kSM_Launching) {
+    CPatterned::AcceptScriptMsg(mgr, CScriptMsg(msg.GetSenderId(), GetUniqueId(), kSM_OffGround,
+                                                kInvalidUniqueId,
+                                                static_cast< EScriptObjectState >(-1)));
+    mDive.mLaunched = true;
+    mDive.mStart = GetTranslation();
+    StartDiveBubble(mgr);
+  }
+  // The 'XLND' arm (kSM_Landed, 0x0001EDDC): in the dive (0x20, 0x0001EDE4), after a bounce
+  // (0x0001EDF4) the dive is done and vertical movement off (0x0001EE00/0x0001EE0C); the message
+  // reaches the base only when the dive is done (`extrwi. 1,24` at 0x0001EE18).
+  if (msg.GetMessage() == kSM_Landed && mCurrentAttack == 0x20) {
+    if (mDive.mBounced == true) {
+      mDive.mDone = true;
+      mVerticalMovement = false;
+    }
+    if (!mDive.mDone) {
+      return;
+    }
   }
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
@@ -365,6 +395,20 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
     }
     return;
   }
+  // kUE_Landing (case 12, 0x0001C2C0) switches on the current attack too; the dive's arm
+  // (0x20, 0x0001C384) starts the landing (0x10) and, after a bounce (0x0001C3A0), puts the actor
+  // on the ground (fn_10_18FCC with 1), resets the dive record and ends it (0x40 and 0x80). Its
+  // 0x40, 0x100, 0x100000 and 0x400000 arms are not in the port yet.
+  if (type == kUE_Landing && mCurrentAttack == 0x20) {
+    mDive.mLanding = true;
+    if (mDive.mBounced == true) {
+      SetGrounded(mgr, true);
+      mDive.Reset();
+      mDive.mLaunched = true;
+      mDive.mDone = true;
+    }
+    return;
+  }
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
@@ -390,6 +434,10 @@ const CCollisionPrimitive* CDarkSamus::GetCollisionPrimitive() const {
 void CDarkSamus::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                               CStateManager& mgr) {
   StandIn("fn_10_1C7FC", "vtable slot 33, CollidedWith");
+  // The dive's arm (fn_10_1C99C at 0x0001C85C) with the collider cast to an actor
+  // (0x0001C838); fn_10_1D0A0 before it and fn_10_1CF84, fn_10_A734 and fn_10_1D194 after it are
+  // not in the port yet, so the base takes the rest.
+  CheckDiveCollision(mgr, TCastToPtr< CActor >(mgr.ObjectById(id)), list);
   CPatterned::CollidedWith(id, list, mgr);
 }
 

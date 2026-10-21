@@ -186,6 +186,33 @@ struct CDarkSamusDash {
   bool mDoubleDash : 1; // 0x28 mask 0x40, fn_10_150DC rolled the stage's chanceToDoubleDash
 };
 
+// The dive record at the guest's 0xAC0..0xB28 (fn_10_E784 builds it from the data's
+// diveAttackDamage, the constructor's call at 0x0001FE64). Not on the host: the +0x4C float
+// (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f), the +0x50/+0x54 floats (the constructor's
+// f26/f27) and the CCollidableAABox at +0x68 (fn_10_E784 at 0x0000E8A8) - no ported reader uses
+// them.
+struct CDarkSamusDive {
+  explicit CDarkSamusDive(const CDamageInfo& damage); // fn_10_E784
+  void Reset();                                       // fn_10_E910
+
+  CVector3f mTarget;     // +0x00 (0xAC0), where the dive lands (fn_10_12B38 / fn_10_12960)
+  CVector3f mStart;      // +0x0C (0xACC), the actor's position at the launch ('XLAU')
+  CVector3f mBounceDir;  // +0x18 (0xAD8), the direction fn_10_1CDD0 bounces the actor along
+  CVector3f mLastPos;    // +0x24 (0xAE4), the position the stuck timer measures from
+  CDamageInfo mDamage;   // +0x30 (0xAF0), the data's diveAttackDamage (0x0000E83C..0x0000E85C)
+  float mBounceTime;     // +0x58 (0xB18), the time since the bounce
+  float mStuckTime;      // +0x5C (0xB1C), the time the actor has not moved 0.2 in flight
+  // +0x60 (0xB20), flags, LSB-first (`clrlwi 31` is 0x01, `extrwi 1,30` 0x02 ... `extrwi 1,24` 0x80)
+  bool mFromBoost : 1;   // 0x01, the dive starts from the boost ball (the jump type 3)
+  bool mBounced : 1;     // 0x02, fn_10_1CDD0 bounced the actor off a wall
+  bool mAttackSent : 1;  // 0x04, fn_10_11DDC sent kSS_Attack
+  bool mHitFloor : 1;    // 0x08, fn_10_1C99C saw the floor or the player
+  bool mLanding : 1;     // 0x10, the landing has started
+  bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4, not in the port yet)
+  bool mLaunched : 1;    // 0x40, 'XLAU' came: the actor is in the air
+  bool mDone : 1;        // 0x80, the dive is over
+};
+
 class REL_EXPORT CDarkSamus : public CPatterned {
 public:
 #ifdef TARGET_PC
@@ -498,6 +525,33 @@ private:
   // actor's own position.
   void UpdateStillTimer(EStateMsg msg, float dt);
 
+  // The dive (fn_10_11FA4). fn_10_12960: moves *target up to 8 back toward the actor until the
+  // ring path to it is clear. fn_10_12B00: the body's target vector to the dive target.
+  // fn_10_1285C + fn_10_12764: the jump command toward it.
+  bool FindDiveLanding(CStateManager& mgr, CVector3f* target) const;
+  void SetDiveTargetVector();
+  void DoDiveJumpCmd();
+  // fn_10_11C60 / 1CDD0 / 11EB8 / 11DDC: the flight push; the bounce off a wall; the stuck
+  // timer; the landing's attack message.
+  void UpdateDiveFlight(float scale);
+  void BounceDive(CStateManager& mgr, const CVector3f& normal);
+  void UpdateDiveStuck(CStateManager& mgr, float dt);
+  void SendDiveAttack(CStateManager& mgr);
+  // fn_10_12E90 / 12EF8: the "DiveBubble" effect off / on.
+  void StopDiveBubble(CStateManager& mgr);
+  void StartDiveBubble(CStateManager& mgr);
+  // fn_10_1C99C: CollidedWith's dive arm (a wall bounces, the floor or the player lands).
+  void CheckDiveCollision(CStateManager& mgr, CActor* collider, const CCollisionInfoList& list);
+  // fn_10_1B658 / 138A4: the projectile reflect and the dive's hit on the player (stand-ins).
+  void ReflectProjectiles(CStateManager& mgr);
+  void HitPlayerWithDive(CStateManager& mgr);
+  // fn_10_18628: the three floats at 0xE04 (the elapsed time, a, b).
+  void SetGuestE04(float a, float b);
+  // fn_10_18FCC: vertical movement off, on the ground as given, kMT_GroundCollider back.
+  void SetGrounded(CStateManager& mgr, bool onGround);
+  // fn_10_1707C: the side dodge away from the player's line of fire.
+  void UpdateDodge(CStateManager& mgr, float dt, float impulse, float time);
+
   // fn_10_1E178: the damage the actor has taken (the guest's 0xCC0). The health that is gone is
   // only added to the damage on a message other than kStateMsg_Activate.
   void AccumulateDamage(EStateMsg msg, float dt);
@@ -766,6 +820,12 @@ private:
   // (0x00020C78 / 0x00021704).
   rstl::optional_object< CProjectileInfo > mScatterShotInfo;
   rstl::optional_object< CProjectileInfo > mScatterShotInfo2;
+  CDarkSamusDive mDive;            // guest 0xAC0..0xB28, fn_10_E784 at 0x0001FE64
+  float mGuestE04;                 // guest 0xE04, the elapsed time at fn_10_18628
+  float mGuestE08;                 // guest 0xE08, fn_10_18628's first float
+  float mGuestE0C;                 // guest 0xE0C, fn_10_18628's second float
+  float mDodgeTime;                // guest 0x1090, the dodge's time left (fn_10_1707C)
+  CVector3f mDodgeDir;             // guest 0x1094, the dodge's direction (fn_10_1707C)
   CTransform4f mGunLctrXf;         // guest 0x8CC, identity (0x0001FBC0); PreRender (fn_10_18AB8)
                                    // stores GetLctrTransform("GUN_Particle_LCTR") (0x00018C24)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0

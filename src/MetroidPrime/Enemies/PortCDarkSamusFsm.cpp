@@ -1438,9 +1438,416 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-void CDarkSamus::DiveAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_11FA4", "state DiveAttack");
+// fn_10_11FA4 (0x00011FA4, 0x764 bytes): the DiveAttack state, a jump at the player that lands
+// on the dive target and bounces off walls. Every message runs the attack bookkeeping with id 0x20
+// (fn_10_1B478 at 0x00011FEC), the shield flag (fn_10_105F4, 0x00012000) and the ground collision
+// (fn_10_18F90, 0x00012010), and the collision failsafe unless the dive starts from the boost ball
+// (`clrlwi.` at 0x00012018). The jump type is 3 from the boost ball, else 0 (0x00012038).
+// Activate (0x00012068) resets the dive record (fn_10_E910), takes the position for the stuck
+// timer, sets the animation state to 1 (kAS_Ready, 0x00012098), picks the target (fn_10_12B38,
+// fn_10_12960), aims the body at it (fn_10_12B00) and delivers the jump (0x000120FC).
+// Update (0x0001211C, the stage fn_10_17E14): after a bounce (0x00012138) the actor falls along
+// the bounce direction and nothing else runs; before the launch (0x000122E8) the target follows
+// the player and the actor turns to it; the jump is re-delivered while CanIssueCommand(kAS_Jump)
+// answers true (0x0001239C); the animation's end (0x000123F0) or the floor (0x00012420) ends the
+// flight; in flight (0x00012488..0x0001249C) the push toward the target, then a wall bounces
+// (0x0001252C) or the stuck timer runs; the landing (0x00012568) sends the attack and stops on
+// the ground; the projectile reflect (0x000125CC..0x000125F0) and, before the launch, the dodge
+// (0x00012608..0x00012644). Deactivate (0x0001266C) stops the actor, clears the animation state
+// and 0xC00, delivers kBSC_NextState and turns the bubble off.
+// @ fn_10_11FA4
+void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveAttack", msg);
+  UpdateCurrentAttack(0x20, mgr, msg);
+  UpdateShieldFlag(msg);
+  UpdateGroundCollision(mgr, msg);
+  if (mDive.mFromBoost != true) { // 0x0001201C
+    RunCollisionFailsafe(mgr);
+  }
+  switch (msg) {
+  case kStateMsg_Activate:
+    mDive.Reset();
+    mDive.mLastPos = GetTranslation();
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mDive.mTarget = GetDiveTarget(mgr);
+    FindDiveLanding(mgr, &mDive.mTarget);
+    SetDiveTargetVector();
+    DoDiveJumpCmd();
+    break;
+  case kStateMsg_Update: {
+    const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+    if (mDive.mBounced == true) { // 0x00012138
+      mDive.mBounceTime += dt;
+      if (mDive.mDone) { // 0x0001214C
+        return;
+      }
+      BodyController()->CommandMgr().DeliverCmd(kBSC_Unknown19); // `li r4, 0x13` at 0x0001217C
+      CVector3f vel(0.f, 0.f, -1.f * GetGravityConstant()); // lbl_10_rodata_3EC, 0x000121D8
+      if (mDive.mBounceTime < 0.6f) { // lbl_10_rodata_424, `fcmpo; bge` at 0x000121EC
+        // lbl_10_rodata_3E8 = 1.0f, lbl_10_rodata_488 = 45.0f
+        vel += 45.f * ((1.f - mDive.mBounceTime) * mDive.mBounceDir);
+      } else {
+        vel.SetZ(vel.GetZ() * 1.4f); // lbl_10_rodata_48C, 0x00012254
+        CVector3f flat(mDive.mBounceDir.GetX(), mDive.mBounceDir.GetY(), 0.f);
+        if (flat.CanBeNormalized() == true) { // 0x00012280
+          vel += 10.f * flat.AsNormalized(); // lbl_10_rodata_404
+        }
+      }
+      SetVelocityWR(vel);
+      return;
+    }
+    if (!mDive.mLaunched) { // 0x000122E8
+      CVector3f target = GetDiveTarget(mgr);
+      if (FindDiveLanding(mgr, &target) == true) { // 0x0001232C
+        mDive.mTarget = target;
+      }
+      SetDiveTargetVector();
+      // the stage null test at 0x00012358, its +0x58 at 0x00012364: lbl_10_rodata_490 /
+      // lbl_10_rodata_494
+      const float rate =
+          stage != nullptr && stage->GetStageInfo().unknown_0xb2c1e4fa == true ? 3.8397243f
+                                                                               : 2.0943952f;
+      TurnTowardPoint(dt, mDive.mTarget, rate);
+    }
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) { // `li r5, 0xd`
+      DoDiveJumpCmd();
+    }
+    if (mAnimationState.GetState() == CAnimationState::kAS_Over) { // `cmpwi r0, 0x3` at 0x000123F0
+      const float stuckTime = mDive.mStuckTime;
+      mDive.Reset();
+      mDive.mStuckTime = stuckTime;
+      mDive.mDone = true;
+    } else if (mDive.mHitFloor == true) { // 0x00012420
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // `li r0, 0xa`
+      mDive.mLanding = true;
+      mDive.mHitFloor = false;
+    }
+    if (mDive.mLaunched == true && !mDive.mDone && !mDive.mLanding) { // 0x0001248C..0x0001249C
+      // the stage null test at 0x000124A8: lbl_10_rodata_498 = 1.15f, else lbl_10_rodata_3E8
+      UpdateDiveFlight(stage != nullptr && stage->GetStageInfo().unknown_0xb2c1e4fa == true
+                           ? 1.15f
+                           : 1.f);
+      // lbl_10_data_CB4 = 0x1E (kMT_Wall), include-only (`li r5, 0x1` at 0x000124E8)
+      if (CGameCollision::DetectStaticCollisionBoolean(
+              mgr, *GetCollisionPrimitive(), GetTransform(),
+              CMaterialFilter::MakeInclude(CMaterialList(kMT_Wall))) == true) { // 0x00012534
+        BounceDive(mgr, CVector3f::Zero());
+        return;
+      }
+      UpdateDiveStuck(mgr, dt);
+    }
+    if (mDive.mLanding == true) { // 0x0001256C
+      SendDiveAttack(mgr);
+      StopDiveBubble(mgr);
+      SetGrounded(mgr, false);
+      SetVelocityWR(CVector3f(0.f, 0.f, -20.f)); // lbl_10_rodata_49C
+    }
+    if (mDive.mAttackSent == true && !mDive.mBounced && // 0x000125D0, 0x000125D8
+        stage != nullptr && stage->GetStageInfo().unknown_0xf5cf3c0f == true) { // 0x000125E0/EC
+      mGuestC00 = mMinAttackRange;
+      ReflectProjectiles(mgr);
+    }
+    if (!mDive.mDone && !mDive.mLanding && !mDive.mAttackSent && !mDive.mLaunched &&
+        !mDive.mBounced && // 0x0001260C..0x0001262C
+        stage != nullptr && stage->GetStageInfo().unknown_0xb2c1e4fa == true) { // 0x00012634/40
+      UpdateDodge(mgr, dt, 30.f, 0.35f); // lbl_10_rodata_460, lbl_10_rodata_4A0
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    SetVelocityWR(CVector3f::Zero());
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    mGuestC00 = 0.f;
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState)); // `li r0, 0xc`
+    StopDiveBubble(mgr);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_10_E784 (0x0000E784, 0x18C bytes): the vectors to zero, the damage copied to +0x30
+// (0x0000E83C..0x0000E85C), the boost-ball bit cleared (0x0000E86C) and fn_10_E910 (0x0000E8F0).
+CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage)
+: mTarget(CVector3f::Zero())
+, mStart(CVector3f::Zero())
+, mBounceDir(CVector3f::Zero())
+, mLastPos(CVector3f::Zero())
+, mDamage(damage)
+, mBounceTime(0.f)
+, mStuckTime(0.f)
+, mFromBoost(false) {
+  Reset();
+}
+
+// fn_10_E910 (0x0000E910, 0xF8 bytes): every flag but the boost-ball bit cleared (the rlwimi
+// chain 0x0000E918..0x0000E990 copies a cleared 0x02 down to 0x80), the four vectors to zero and
+// both timers to lbl_10_rodata_3FC = 0.0f (0x0000E9E4/0x0000E9E8).
+// @ fn_10_E910
+void CDarkSamusDive::Reset() {
+  mBounced = false;
+  mAttackSent = false;
+  mHitFloor = false;
+  mLanding = false;
+  mHitPlayer = false;
+  mLaunched = false;
+  mDone = false;
+  mBounceDir = CVector3f::Zero();
+  mStart = mBounceDir;
+  mTarget = mStart;
+  mStuckTime = 0.f;
+  mBounceTime = 0.f;
+  mLastPos = CVector3f::Zero();
+}
+
+// fn_10_12960 (0x00012960, 0x1A0 bytes): the flat line from the target back to the actor
+// (normalized when it can be, 0x000129F0), stepped by lbl_10_rodata_3E4 = 0.5f from
+// lbl_10_rodata_3FC = 0.0f while within lbl_10_rodata_414 = 8.0f (`fcmpo; cror` at 0x00012AC4);
+// the first point with a clear ring path (fn_10_16600 with lbl_10_rodata_3E8 = 1.0f and
+// lbl_10_rodata_4A4 = 1.7f, 0x00012A60) becomes the target.
+// @ fn_10_12960
+bool CDarkSamus::FindDiveLanding(CStateManager& mgr, CVector3f* target) const {
+  CVector3f dir = GetTranslation() - *target;
+  dir.SetZ(0.f);
+  if (dir.CanBeNormalized() == true) {
+    dir.Normalize();
+  }
+  for (float f = 0.f; f <= 8.f; f += 0.5f) {
+    const CVector3f candidate = *target + f * dir;
+    if (IsRingPathClear(mgr, candidate, 1.f, 1.7f) == true) {
+      *target = candidate;
+      return true;
+    }
+  }
+  return false;
+}
+
+// fn_10_12B00 (0x00012B00, 0x38 bytes): SetTargetVector(target - translation).
+// @ fn_10_12B00
+void CDarkSamus::SetDiveTargetVector() {
+  BodyController()->CommandMgr().SetTargetVector(mDive.mTarget - GetTranslation());
+}
+
+// fn_10_1285C (0x0001285C, 0x7C bytes) builds the CBCJumpCmd - the dive target, the jump type
+// (0 or 3), kJS_IntoJump (`li r6, 0x0`), animation variant 0 (`li r7, 0x0`) and facing flags 2
+// (`li r8, 0x2`) - and fn_10_12764 copies it into the command manager's jump slot after
+// DeliverCmd(kBSC_Jump), which is DeliverCmd(const CBodyStateCmd&) on the host.
+void CDarkSamus::DoDiveJumpCmd() {
+  BodyController()->CommandMgr().DeliverCmd(
+      CBCJumpCmd(mDive.mTarget, mDive.mFromBoost == true ? pas::kJT_Three : pas::kJT_Normal,
+                 pas::kJS_IntoJump, 0, 2));
+}
+
+// fn_10_11C60 (0x00011C60, 0x17C bytes): the direction from the launch point to the target
+// (normalized when it can be, 0x00011CD8); below lbl_10_rodata_418 = 50.0f * scale of speed
+// (`fcmpo; bge` at 0x00011CF8) the velocity becomes 50 * scale along it, else below
+// lbl_10_rodata_480 = 80.0f * scale (0x00011D60) an impulse of lbl_10_rodata_484 = 800.0f * scale.
+// @ fn_10_11C60
+void CDarkSamus::UpdateDiveFlight(float scale) {
+  CVector3f dir = mDive.mTarget - mDive.mStart;
+  if (dir.CanBeNormalized() == true) {
+    dir.Normalize();
+  }
+  if (GetVelocityWR().Magnitude() < 50.f * scale) {
+    SetVelocityWR(scale * (50.f * dir));
+  } else if (GetVelocityWR().Magnitude() < 80.f * scale) {
+    ApplyImpulseWR(scale * (800.f * dir), CAxisAngle::Identity());
+  }
+}
+
+// fn_10_1CDD0 (0x0001CDD0, 0x1B4 bytes): the bounce (0x02 at 0x0001CDF8), the bubble off
+// (fn_10_12E90), kBSC_Unknown19 (`li r4, 0x13` at 0x0001CE2C); a flat normal that can be
+// normalized (0x0001CE90) turns the actor to face away from it (LookAt of lbl_10_rodata_3EC =
+// -1.0f times it, 0x0001CEE4; the host's SetTransform stands in for retail's SetTransformAlt,
+// which the host CActor lacks). The bounce direction is the flat normal with z
+// lbl_10_rodata_3E0 = 2.0f, normalized (0x0001CF20); then vertical movement on, off the ground
+// and off static ground (0x0001CF48..0x0001CF60).
+// @ fn_10_1CDD0
+void CDarkSamus::BounceDive(CStateManager& mgr, const CVector3f& normal) {
+  mDive.mBounced = true;
+  StopDiveBubble(mgr);
+  BodyController()->CommandMgr().DeliverCmd(kBSC_Unknown19);
+  CVector3f dir(normal.GetX(), normal.GetY(), 0.f);
+  if (dir.CanBeNormalized() == true) {
+    dir.Normalize();
+    SetTransform(CQuaternion::FromMatrix(
+                     CTransform4f::LookAt(CVector3f::Zero(), -1.f * dir, CVector3f::Up()))
+                     .BuildTransform4f(GetTranslation()));
+  }
+  dir.SetZ(2.f);
+  dir.Normalize();
+  mDive.mBounceDir = dir;
+  mVerticalMovement = true;
+  mOnGround = false;
+  mOnStaticGround = false;
+}
+
+// fn_10_11EB8 (0x00011EB8, 0xEC bytes): a move of more than lbl_10_rodata_428 = 0.2f since the
+// last position (`fcmpo; ble` at 0x00011F20) restarts the stuck timer there; otherwise the timer
+// runs and past lbl_10_rodata_3E4 = 0.5f (0x00011F68) the actor bounces with no normal.
+// @ fn_10_11EB8
+void CDarkSamus::UpdateDiveStuck(CStateManager& mgr, float dt) {
+  if ((mDive.mLastPos - GetTranslation()).Magnitude() > 0.2f) {
+    mDive.mLastPos = GetTranslation();
+    mDive.mStuckTime = 0.f;
+  } else {
+    mDive.mStuckTime += dt;
+    if (mDive.mStuckTime > 0.5f) {
+      BounceDive(mgr, CVector3f::Zero());
+    }
+  }
+}
+
+// fn_10_11DDC (0x00011DDC, 0xDC bytes): once (0x04, 0x00011E00): kSS_Attack to the links
+// (0x00011E2C) and the 0x04 bit; then, unbounced (0x00011E44) on a stage (the null test at
+// 0x00011E5C) whose +0x59 is set (0x00011E70), fn_10_18628 with lbl_10_rodata_3FC = 0.0f and
+// lbl_10_rodata_258 = 5.0f; otherwise the shield byte 0xCD0 is cleared (0x00011E9C).
+// @ fn_10_11DDC
+void CDarkSamus::SendDiveAttack(CStateManager& mgr) {
+  if (mDive.mAttackSent == true) {
+    return;
+  }
+  SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, static_cast< EScriptObjectMessage >(-1));
+  mDive.mAttackSent = true;
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (!mDive.mBounced && stage != nullptr && stage->GetStageInfo().unknown_0xf5cf3c0f == true) {
+    SetGuestE04(0.f, 5.f);
+  } else {
+    mGuestCD0 = 0;
+  }
+}
+
+// fn_10_12E90 (0x00012E90, 0x68 bytes) / fn_10_12EF8 (0x00012EF8, 0x68 bytes): SetEffectState of
+// "DiveBubble" (lbl_10_rodata_560 + 0x52F) false / true.
+// @ fn_10_12E90
+void CDarkSamus::StopDiveBubble(CStateManager& mgr) {
+  AnimationData()->SetEffectState(rstl::string_l("DiveBubble"), false, mgr);
+}
+
+// @ fn_10_12EF8
+void CDarkSamus::StartDiveBubble(CStateManager& mgr) {
+  AnimationData()->SetEffectState(rstl::string_l("DiveBubble"), true, mgr);
+}
+
+// fn_10_1B658: the projectile reflect around the actor (the near list, the CEnergyProjectile
+// fields, lbl_10_data_F298's 0x10A8 table, the vtable call at 0x8C). Not in the port yet.
+void CDarkSamus::ReflectProjectiles(CStateManager&) {
+  FsmStandIn("fn_10_1B658", "projectile reflect");
+}
+
+// fn_10_138A4: the dive's hit on the player (the damage, fn_10_1382C and fn_10_13750's knock
+// back). Not in the port yet.
+void CDarkSamus::HitPlayerWithDive(CStateManager&) {
+  FsmStandIn("fn_10_138A4", "dive hits the player");
+}
+
+// fn_10_18628 (0x00018628, 0x10 bytes): 0xE04 = the elapsed time 0x8B0, 0xE08 = a, 0xE0C = b.
+// @ fn_10_18628
+void CDarkSamus::SetGuestE04(float a, float b) {
+  mGuestE04 = mElapsedTime;
+  mGuestE08 = a;
+  mGuestE0C = b;
+}
+
+// fn_10_18FCC (0x00018FCC, 0x48 bytes): vertical movement off (0x00018FE0), on the ground as given
+// (0x00018FF8) and kMT_GroundCollider (`li r4, 0x25`) added (0x00019000).
+// @ fn_10_18FCC
+void CDarkSamus::SetGrounded(CStateManager& mgr, bool onGround) {
+  mVerticalMovement = false;
+  mOnGround = onGround;
+  AddMaterial(kMT_GroundCollider, mgr);
+}
+
+// fn_10_1707C (0x0001707C, 0x3CC bytes): the dodge timer 0x1090 runs down (`ble` at 0x000170CC)
+// and at 0 (`cror` at 0x000170E0) the direction 0x1094 clears. With no dodge (`fcmpu` at
+// 0x00017118) the flat line to the player's aim position (vtable 0x54, dt 0.0f) that can be
+// normalized (0x0001719C): far enough (lbl_10_rodata_500 = 4.5f, `blt` at 0x00017204) with both
+// gun lines lbl_10_rodata_3E4 = 0.5f to either side clear (fn_10_164C0 at 0x00017240/0x0001728C)
+// needs no dodge; otherwise a side lbl_10_rodata_438 = 3.0f..lbl_10_rodata_47C = 6.0f away
+// (Range at 0x000172E4), right first (0x00017344) then left (0x0001736C), whose gun line to the
+// aim is clear becomes the direction, and the timer starts at time (0x000173A8). While it runs
+// (`ble` at 0x000173BC) the impulse mass * impulse along it (0x00017410).
+// @ fn_10_1707C
+void CDarkSamus::UpdateDodge(CStateManager& mgr, float dt, float impulse, float time) {
+  if (mDodgeTime > 0.f) {
+    mDodgeTime -= dt;
+    if (mDodgeTime <= 0.f) {
+      mDodgeTime = 0.f;
+      mDodgeDir = CVector3f::Zero();
+    }
+  }
+  if (0.f == mDodgeTime) {
+    const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
+    CVector3f delta = aim - GetTranslation();
+    delta.SetZ(0.f);
+    if (delta.CanBeNormalized() == true) {
+      const float distance = delta.Magnitude();
+      delta.Normalize();
+      const CVector3f right(0.5f * delta.GetY(), -(0.5f * delta.GetX()), 0.f);
+      const CVector3f left(-(0.5f * delta.GetY()), 0.5f * delta.GetX(), 0.f);
+      if (distance < 4.5f || !IsGunLineClear(mgr, right, aim + right) ||
+          !IsGunLineClear(mgr, left, aim + left)) {
+        const float r = mgr.Random()->Range(3.f, 6.f);
+        const CVector3f sideRight = r * CVector3f(delta.GetY(), -delta.GetX(), 0.f);
+        const CVector3f sideLeft = r * CVector3f(-delta.GetY(), delta.GetX(), 0.f);
+        const CVector3f* side = nullptr;
+        if (IsGunLineClear(mgr, sideRight, aim) == true) {
+          side = &sideRight;
+        } else if (IsGunLineClear(mgr, sideLeft, aim) == true) {
+          side = &sideLeft;
+        }
+        if (side != nullptr) { // 0x00017380
+          mDodgeDir = *side;
+          mDodgeDir.Normalize();
+          mDodgeTime = time;
+        }
+      }
+    }
+  }
+  if (mDodgeTime > 0.f) {
+    ApplyImpulseWR(GetMass() * (impulse * mDodgeDir), CAxisAngle::Identity());
+  }
+}
+
+// fn_10_1C99C (0x0001C99C, 0x434 bytes): only in the dive (0x980 == 0x20, 0x0001C9C4) in flight
+// (0x40, 0x0001C9D4) and not bounced, landing or done (0x0001C9DC..0x0001C9EC). First pass
+// (0x0001CB84): a contact with ceiling or wall (lbl_10_data_C34/C38) and no floor (C3C) bounces
+// the actor off its normal (fn_10_1CDD0 at 0x0001CC14) - unless the collider is an actor (the
+// null test at 0x0001CBD8) whose vulnerability lets the dive's weapon hit it (WeaponHits at
+// 0x0001CBF8). Second pass (0x0001CCE8): a contact with no platform (C30) and floor or player
+// (C40/C44) lands the dive (0x08, 0x0001CDA8), hitting the player first when it is the player
+// (C48) and the dive has not hit yet (0x20, 0x0001CD8C).
+// @ fn_10_1C99C
+void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
+                                    const CCollisionInfoList& list) {
+  if (mCurrentAttack != 0x20 || mDive.mLaunched != true || mDive.mBounced || mDive.mLanding ||
+      mDive.mDone) {
+    return;
+  }
+  for (const CCollisionInfo* it = list.Begin(); it != list.End(); ++it) {
+    const CMaterialList& mat = it->GetMaterialLeft();
+    if ((mat.HasMaterial(kMT_Ceiling) || mat.HasMaterial(kMT_Wall)) &&
+        !mat.HasMaterial(kMT_Floor)) {
+      if (collider != nullptr &&
+          collider->GetDamageVulnerability()->WeaponHits(mDive.mDamage.GetWeaponMode(), 0) ==
+              true) {
+        return;
+      }
+      BounceDive(mgr, it->GetNormalLeft());
+      return;
+    }
+  }
+  for (const CCollisionInfo* it = list.Begin(); it != list.End(); ++it) {
+    const CMaterialList& mat = it->GetMaterialLeft();
+    if (!mat.HasMaterial(kMT_Platform) &&
+        (mat.HasMaterial(kMT_Floor) || mat.HasMaterial(kMT_Player))) {
+      if (mat.HasMaterial(kMT_Player) && !mDive.mHitPlayer) {
+        HitPlayerWithDive(mgr);
+      }
+      mDive.mHitFloor = true;
+      return;
+    }
+  }
 }
 
 void CDarkSamus::DiveFromBoost(CStateManager&, EStateMsg msg, float) {
