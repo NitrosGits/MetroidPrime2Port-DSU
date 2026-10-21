@@ -308,9 +308,13 @@ CGameProjectile::RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& s
       if (sDebugNear != 0) {
         const CWeaponTypeVulnerability& v =
             actor->GetDamageVulnerability()->GetVulnerability(mCurDamageInfo.GetWeaponMode());
-        std::fprintf(stderr, "[proj]   near %04x vulnEffect %d touch %04x\n",
+        const CWeaponMode& mode = mCurDamageInfo.GetWeaponMode();
+        std::fprintf(stderr,
+                     "[proj]   near %04x vulnEffect %d x%.2f touch %04x (weapon %d%s%s)\n",
                      actor->GetUniqueId().Value(), static_cast< int >(v.mEffect),
-                     touch.GetActorId().Value());
+                     static_cast< double >(v.mDamageMultiplier), touch.GetActorId().Value(),
+                     mode.GetRawType(), mode.IsCharged() ? " charged" : "",
+                     mode.IsComboed() ? " comboed" : "");
       }
 #endif
       if (touch.GetActorId() == kInvalidUniqueId) {
