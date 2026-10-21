@@ -1603,3 +1603,38 @@ branched on in DoAdvance), while the host splits it into `mLoop` (the script dat
 CAnimData.cpp:100) and `mAnimating` (:460) and branches on `mLoop` (:467).  For this actor both
 are 1, so the branches agree; they would differ for an actor with isLoop = 0 that plays an
 animation with the parms' byte 1.  Reported, not changed (shared code).
+
+## 20. The heart stage on its own, and the functions it reaches
+
+**The natural path works** (2026-10-21): with the 'PLAY' actor activated (the area's script does
+that in the game; the console cannot run it, so the driver does -
+`tools/drivers/emperoring1_heartstage.py`, and the smoke family's `tools/smoke/cmd_emp1.txt` now
+sends it the message too), the FSM walks
+
+    "BeginHeartStage" -> "HeartStage" (7 polls, 12 s) -> "EndHeartStage" -> "Taunt" -> ...
+
+on its own: the tentacles are killed with a hit on their health-bearing collision actor
+(section 13), "AllTentaclesRetracted" fires, the heart stage's timer runs out, the
+"HeartStageOver" trigger fires and the **"ChooseRandomTentacleCount" code node runs** - no `fsm`
+anywhere.  The beam fires 694 times during the heart stage (the probe on `FireBeam`).
+
+**The functions the heart stage and the stage after it reach** (the transitive closure of the
+REL's own calls from fn_16_774C and fn_16_71BC): 18 functions, 16 of them already marked.  The
+two that are not, and the next five unmarked functions in this note's order:
+
+| fn | calls | class | the branches |
+|---|---|---|---|
+| `fn_16_FF4` | 1 (from fn_16_CD0) | (a) the 0x48-byte `CBeamInfo` copy (the DOL's `CBeamInfo` copy assignment; the retail copies the info the `TLdrToBeamInfo` built at 0xD34 into the projectile's slot at 0xD40) | branch free (37 instructions) - it ran 694 times with the beam |
+| `fn_16_3060` | 5 | (b) the 'PLAY' actor lookup | branch free (13 instructions); it ran (the probe counted 421 calls during the heart stage) |
+| `fn_16_BD6C` | 6 | (a) the counted reference release (the host's `ncrc_ptr`) | 0xBD90 `bgt` (the count is above 1), 0xBD9C `beq` (the count is 0 -> only the free) |
+| `fn_16_337C` | 6 | (a) the `CPASAnimParmData`'s parm list (the host's constructor) | branch free (97 instructions) |
+| `fn_16_BDD0` | 5 | (a) the counted reference release | 0xBDF4 `bgt`, 0xBE00 `beq` |
+| `fn_16_98D0` | 4 | (a) the `SLdrDamageVulnerability` copy (the DOL's `LdrToDamageVulnerability`, 0x8023ACFC) | branch free (23 instructions) |
+
+**No new marker**: four of the six are (a) - copies of host/DOL code, which are never marked -
+and `fn_16_3060` is the only (b) one, but the port has **one** function for it and for
+`fn_16_3094` (`GetPlayActor`, marked `fn_16_3094`): the two retail bodies differ only in the
+lookup they call (the DOL's `ObjectById` for fn_16_3060 and `GetObjectById` for fn_16_3094 -
+the same lookup in the host, src/MetroidPrime/CStateManager.cpp:616), so a second marker on the
+same port function would be wrong.  The module's own remaining unmarked functions are all (a)
+(section 11.2), so the module is decompiled as far as the host's shared code allows.
