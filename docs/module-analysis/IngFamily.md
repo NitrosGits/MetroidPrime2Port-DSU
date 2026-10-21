@@ -1116,6 +1116,31 @@ cannot die) and the state argument -1 (no script messages). The death run itself
 (`/tmp/opencode/ing_lane/ing_death.sh`, the driver's `damage u<uid> 100` x3 after the log shows
 form 2) exits 0 with 0 `[port] caught` and 0 `[reach-stub]`, so the new body does not fault.
 
+**The four hot bodies' branches** (the count is from the asm; the "run" column is what the area
+57 runs reached - the runs there keep the Ings in the ing-spot form, so the corporeal arms stay
+open):
+
+| fn | branches | arms | the run |
+|---|---|---|---|
+| `fn_29_45BC` GetCoverHint | 1 | the id is invalid -> null; the id is valid -> the lookup | the null arm (before a hint is picked) and the lookup arm (the runs show "state FindCoverPoint" and "state SetCoverDest", so a hint was picked and the cover triggers then ask for it) |
+| `fn_29_4604` the blob align | 3 | the blob is gone -> nothing; the align flag is 0 -> nothing; the align flag is 1 -> the look along the normal, with the up vector (the normal's z < 0.95) or the right one (z >= 0.95) | the ing-spot form (the align flag 1) and the floor normal (the right vector); the "the blob is gone" and the "align 0" arms need the corporeal form |
+| `fn_29_426C` the valid target | 3 | the forms 0/1 -> false; the forms 3/5 with the Dark visor -> the byte at 0x9d0's bit 0; the forms 3/5 with another visor -> true; the other forms -> true | the forms 3/5 (the visor path) and the "another visor" case; the forms 0/1 and 2 need the host and the corporeal forms |
+| `fn_29_3948` MoveOnSurface | 2 | the parallel part is below 0.6 of the move -> the perpendicular part; the move is not magnitude-safe -> the zero vector; else the normalised move | the ing-spot path states (the move) and the strip case; the "not magnitude-safe" arm needs a degenerate move |
+
+**The driver's recipe for the corporeal form (2026-10-21, still not working in area 57).** The
+wake-up is a *heard shot*: the port's `CIng::Listen` (fn_29_B294) only answers the noise type 0
+(`kLNT_PlayerFire`) inside the hearing radius, and the shot has to land on the Ing for the noise
+to be registered where the Ing is. The runs in area 57 keep both Ings in the ing-spot form: the
+log shows "state Start form 3 / BecomeIngSpot form 3 / Lurk form 3" and the probe's "touch: form
+3, 0400, skipped (the id)" - the player stands on the puddle, the shot noise is not heard, and the
+Ing never leaves the ing-spot form. The driver (`/tmp/opencode/ing_lane/ing_drive.py`, the
+`kill` mode) does what A.5's recipe does - activate both Ings, give the light beam and the ammo,
+stand six units off the Ing, aim at it with the pitch and fire - and the Ing still does not wake
+here, so the ing-spot form is where the area 57 Ings live (the data's `kFlag_StartAsIngSpot`).
+The Agon Wastes recipe (A.12) is the other way in: there the Ings are ing spots that the player
+morphs into a ball next to, and the Ing grabs it - that is the run the "the ball" arms of
+`fn_29_BB8C` and `fn_29_BF20` need.
+
 **The next five hot behaviour bodies** (by the module's own call sites and by how often a run
 calls them), each read field by field against the REL - all five match the port:
 
