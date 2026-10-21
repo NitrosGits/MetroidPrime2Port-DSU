@@ -534,3 +534,26 @@ void RELMain() {
 }
 
 void RELExit() { SetSIngBoostBallGuardian_FuncPtrs(nullptr); }
+
+// Module copies of generic code, the host's own templates and runtime (cited, no markers):
+// fn_30_90: CActor's const HealthInfo() weak inline, forwarding to vslot 12 (0x000000A0).
+// fn_30_9E0, fn_30_A24, fn_30_A8C, fn_30_AAC, fn_30_F30: rstl vector<phase> copy/construct chain (-> fn_30_F78).
+// fn_30_B84, fn_30_CB4, fn_30_D60, fn_30_10E04, fn_30_10EA8, fn_30_10F40, fn_30_1105C: rstl vector allocate/copy/reserve.
+// fn_30_4C10, fn_30_4C30, fn_30_4DF8, fn_30_4E30, fn_30_37E0, fn_30_3838, fn_30_890C, fn_30_E4E0: rstl construct/destroy/clear.
+// fn_30_136B0, fn_30_136FC: rstl vector insert (the ball's near list).
+// fn_30_B30, fn_30_FEC, fn_30_18B4, fn_30_C46C, fn_30_CE14, fn_30_101A8, fn_30_104F4, fn_30_10530: weak deleting dtors.
+// fn_30_1078 (vulnerability + SLdr), fn_30_1049C (CCollisionActorManager), fn_30_1360 (CAnimData), fn_30_13C4 (CModelData),
+//   fn_30_D8D8 (SLdrPlasmaBeamInfo): unreferenced weak deleting dtors.
+// fn_30_12A0, fn_30_130C, fn_30_946C, fn_30_94D4, fn_30_E540, fn_30_E598, fn_30_101E4: weak CToken-holder deleting dtors.
+// fn_30_3790, fn_30_4D18 (string), fn_30_941C (wstring): weak rstl string deleting dtors.
+// fn_30_6B74, fn_30_7D00, fn_30_84C4, fn_30_A308, fn_30_A8C0, fn_30_AFE0: compiler deleting dtors of the state functors
+//   (vtables lbl_30_data_BF0 base, BE4/BD8/BCC/BC0/BB4).
+// fn_30_15FF4, fn_30_16088, fn_30_160A8: unreferenced weak code in the ball's section.
+// fn_30_4028: an unreferenced accessor (lwz 0x254); fn_30_5260: unreferenced Separation steering (no .text/.data
+//   reference), dead in retail; the host's ApplySeparation is the live one.
+// fn_30_100: the REL runtime's RELMain installer (above).
+// fn_30_E854 (CPatterned teardown), fn_30_EA38 (its token member), fn_30_EACC, fn_30_EB24, fn_30_EB7C, fn_30_EBD4
+//   (the CSurfaceAlignmentHelper chain): inline dtors of DOL classes, the host's own.
+// fn_30_33B0 (CRayCastResult, fn_30_324C), fn_30_388C (CHealthInfo, fn_30_3478/fn_30_4924), fn_30_6710 (CLight,
+//   fn_30_65C8), fn_30_161D0 (CMotionState from zero vectors and identity CAxisAngles, ball ctor): DOL class copies.
+// fn_30_11DF0, fn_30_127C0: weak deleting dtors (ball section); fn_30_1642C: rstl vector reserve (Ball.cpp).
