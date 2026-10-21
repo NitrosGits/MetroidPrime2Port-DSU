@@ -59,6 +59,12 @@ class ForceBp(gdb.Breakpoint):
 
     def stop(self):
         self.n += 1
+        if self.n > self.skip:
+            for s in self.sets:
+                try:
+                    gdb.execute('set var ' + s.replace('$this', '((%s*)$rdi)' % CLASS))
+                except gdb.error:
+                    pass
         key = ', '.join(str(ev(e)) for e in self.exprs) if self.exprs else '(entry)'
         if self.ret:
             try:
@@ -69,11 +75,6 @@ class ForceBp(gdb.Breakpoint):
             fh.write('%-40s %-30s %s\n' % (self.label, key, 'FORCED' if self.n > self.skip else ''))
         if self.n <= self.skip:
             return False
-        for s in self.sets:
-            try:
-                gdb.execute('set var ' + s.replace('$this', '((%s*)$rdi)' % CLASS))
-            except gdb.error:
-                pass
         if self.n <= self.skip + 3:
             with open(LOG, 'a') as fh:
                 fh.write('%s hit %d: %s\n' % (self.label, self.n, self.what))
@@ -84,6 +85,10 @@ for label, where, exprs, sets, skip, what in FORCE:
     ret = label.endswith('|ret')
     if ret:
         label = label[:-4]
+    if where.startswith('loc:'):
+        # an arm line: it only records (the forcing happens at the body's entry)
+        ForceBp(where[4:], label, exprs, sets, skip, what, ret)
+        continue
     hits = [m for m, d in syms if d.startswith(where) and '.cold' not in d and 'clone' not in d]
     if not hits:
         with open(LOG, 'a') as fh:
