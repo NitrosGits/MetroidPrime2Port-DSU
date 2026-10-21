@@ -1611,10 +1611,12 @@ sine 0).
 `type:function` symbols of `config/G2ME01/rels/CommandoPirate/symbols.txt`). Beside the class
 (H = host copy, T = data / vtable thunk, B = module behaviour) and the port's state, each row now
 carries the **callers** (the `bl` sites in the REL and the `.data` tables that point at the
-function - the vtable `lbl_9_data_828`, the FSM tables, the jump table) and the **owner**: the 34
-triggers and 34 states of the FSM2 tables (`lbl_9_data_198` and `lbl_9_data_568`) are the
-CommandoPirate lane's; the rest (the stateless helpers, the loader and the constructor) is the
-helpers lane's.
+function - the vtable `lbl_9_data_828`, the FSM tables, the jump table) and the **owner**:
+`cpcore` for the states and overrides the core lane ported (Listen, CoverBlown, MeleeAttack,
+EGrenadeAttack, PostEGrenadeAttack, JetBoost, WarpIn, Crouch, Cover, CoverAttack, GetUp, the
+vtable overrides and the E-grenade chain), `commando-lane` for the other rows of the FSM2 tables
+(`lbl_9_data_198` and `lbl_9_data_568`, the 34 triggers and 34 states), `cphelpers` for the rest
+(the stateless helpers, the loader and the constructor).
 
 The stateless helpers live in the core lane's files (the states and the overrides it ported) and
 in the ones this lane adds. The port's own file may only call them where a stand-in call site was
