@@ -1006,8 +1006,10 @@ void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
   }
 }
 
-// fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
-// Not marked: the swing ran, but the "pull it back to the edge radius" arm (0x53B0) did not.
+// @ fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
+// The arm that pulls a node back inside the edge radius (0x53B0) ran: the chain launch in the
+// light phase's Lurk leaves a node 83 units from the centre, past the 54.9 unit edge radius
+// (a `place`d node ends up 495 units out).
 void CSwampBossStage2::SwingChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const CVector3f& origin,
@@ -1049,10 +1051,9 @@ void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
   --mChainDepth;
 }
 
-// fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk. Not marked
-// yet: the walk is reached (the engine delivers the boss's kSM_AreaLoaded at the area load, and a
-// probe in the port's kSM_AreaLoaded case printed that it runs), but the per-arm probe for these
-// two bodies has not been run, so their arms are not proved.
+// @ fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk. The engine
+// delivers the boss's kSM_AreaLoaded at the area load, so the walk runs without any forcing
+// (the console's `send <boss> AreaLoaded` only adds a second one).
 void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
                                          rstl::vector< TUniqueId >& nodes,
                                          rstl::vector< CVector3f >& positions) {
@@ -1068,9 +1069,8 @@ void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
   WalkChainNodes(mgr, node, nodes, positions);
 }
 
-// fn_79_50AC: the chain walk's recursion: the node's position and uid go on the lists and the
-// walk follows the node's "ARRV/NEXT" connections. Not marked, for the same reason as
-// fn_79_5830 above (reached, but the arms are not proved yet).
+// @ fn_79_50AC: the chain walk's recursion: the node's position and uid go on the lists and the
+// walk follows the node's "ARRV/NEXT" connections. It runs with fn_79_5830 above.
 void CSwampBossStage2::WalkChainNodes(CStateManager& mgr, CActor* node,
                                       rstl::vector< TUniqueId >& nodes,
                                       rstl::vector< CVector3f >& positions) {
