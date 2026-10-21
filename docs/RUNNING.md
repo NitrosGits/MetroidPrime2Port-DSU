@@ -29,6 +29,10 @@ it the runner warns "has no USA/" and falls back to the front end):
       tools/run_gameplay.sh &        # SKIP_INTRO=0 leaves the intro cinematic playing (default 1)
     tools/shot.sh 86 /tmp/opencode/pc.png 50          # timed to the log's phase lines
 
+`run_gameplay.sh` starts an Xvfb on `DISPLAY_NUM` when none is running there and stops it when the
+run ends: don't start one by hand. A script that launches the game itself must kill the Xvfb it
+started (the orchestrator's watcher reaps client-less ones older than 30 min).
+
 ## Fast runs and console scripts
 
 `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=<1..16>` runs exactly that many fixed 1/60 s ticks per loop
@@ -37,8 +41,9 @@ took 7.4 s at 8 vs 26 s capped (2026-10-21). `MP2_FRAMES` still counts ticks. Co
 `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines `@f<n> <cmd>` (after game
 update n, polled with `frame`; a few updates late at high tick counts) or `@<secs> <cmd>`.
 Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`), `place`,
-`send`, `damage` (direct, no projectile) and `shoot <id> [charged] [d]` (a real beam projectile from d
-units, for modules that only count projectile hits on a joint).
+`send`, `damage` (direct, no projectile) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
+from d units, travelling along dir, for modules that only count projectile hits on a joint).
+`a; b; c` on one line runs all of them in the same game tick (a one-frame window); one reply each.
 
 ## Area regression sweep (63 Temple Grounds areas, 4 shards, START-free)
 
