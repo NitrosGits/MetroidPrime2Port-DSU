@@ -1491,3 +1491,150 @@ Why the trigger does not fire in the port's area-11 scenario (2026-10-21, probe 
 So the natural heart stage is still one step away: the tentacles are killed and the FSM walks
 into "BeginHeartStage" on its own (section 15), but the state's "AnimOver" trigger needs the
 'PLAY' actor's named animation to end, which the host cannot answer.
+
+## 17. The 'PLAY' actor's "Whole Body" animation never ends: it loops
+
+Probe on the state (2026-10-21, the 'PLAY' actor = the CScriptActor u04e8, the editor id
+000b0016, the boss u04e3):
+
+| every 20 ticks | value |
+|---|---|
+| the actor's active flag | 1 (the driver sends it `Activate`; the area's script does that in the game) |
+| `GetModelData()->GetIsLoop()` | **1** |
+| `IsAnimating()` | 1 |
+| the current animation | 2 (= the module's xa24_) |
+| the anim root's `VGetTimeRemaining()` | 2.650 -> 2.317 -> 1.983 -> ... -> 0.317 -> **2.650 again** |
+
+So the animation plays and advances, but it **loops**: the model data's loop flag is 1
+(`CModelData::GetIsLoop` -> `CAnimData::GetIsLoop` -> `mLoop`), the anim root is a loop node and
+its remaining time wraps back to the duration instead of resting at 0.  The module's test
+(`IsAnimTimeRemaining(dt, "Whole Body")` on the 'PLAY' actor, the retail's call at 0x7A60) then
+never answers false and the boss's own animation state never becomes kAS_Over, so the state's
+"AnimOver" trigger (the DOL's `CPatterned::GetAnimOver`, 0x80151990, the actor's own word at
++0x6B4) never fires.
+
+The host is faithful here, twice over:
+* `CAnimData::IsAnimTimeRemaining` (src/MetroidPrime/CAnimData.cpp:668) is the retail's
+  `IsAnimTimeRemaining__9CAnimDataCFfRCQ24rstl66basic_string...` (0x80029084): it reads the anim
+  root at +0x278 and compares its `VGetTimeRemaining()` with the tolerance, and the name is not
+  read.
+* `CScriptActor::Think` (src/MetroidPrime/ScriptObjects/CScriptActor.cpp:89) is the retail's
+  `Think__12CScriptActorFfR13CStateManager` (0x800701EC): the same `IsAnimTimeRemaining`
+  (0x800702B8), the same loop flag (`CModelData::GetIsLoop`, 0x800702CC) and the same "only stop
+  a non-looping animation" rule, so a looping animation is never stopped on either side.
+
+So the module's "the 'PLAY' actor's animation has ended" test can only ever see the end of a
+**non-looping** animation, and the 'PLAY' actor's model loops.  What makes the retail's heart
+stage end is still open: either the retail's 'PLAY' actor plays a non-looping animation (the
+script's own animation setup, which the console cannot reproduce), or the loop flag differs
+between the two.  The next lane should look at the 'PLAY' actor's script data (its init
+animation and its loop flag) and at the CScriptActor's "play once" path.
+
+## 18. The script objects around the 'PLAY' actor (u04e8, the editor id 000b0016)
+
+Dumped from the running game (a probe over the state manager's object list, 2026-10-21) and
+cross-checked with the console's `obj` (which prints an object's own connection list).
+
+**Who is connected to the 'PLAY' actor** (the module's CONNECT/'PLAY' target, 000b0016):
+
+| sender | class | state | message | meaning |
+|---|---|---|---|---|
+| 000b0003 (the boss) | CEmperorIngStage1 | "CONN" | "PLAY" | the module's own lookup (fn_16_3094) |
+| 000b0011 (u04e5) | CScriptRelay | "ZERO" (0x5A45524F) | "ACTV" (0x41435456) | the relay sends kSM_Activate in the kSS_Zero state to the 'PLAY' actor; the host's CScriptRelay sends kSS_Zero when it gets kSM_SetToZero (src/MetroidPrime/ScriptObjects/CScriptRelay.cpp:26) |
+
+**The boss's own connections** (the console's `obj u04e3`) include
+`on InternalState0 send Action -> 000b0194 CScriptActorKeyframe` - the module's IS00 (sent by
+fn_16_78AC at 0x7920) reaches that keyframe.  But the keyframe's **only** connection is
+`(state "PLAY", msg "PLAY") -> 000b0015`, a *different* CScriptActor (the boss's "Attach"
+actor), so it never animates the 'PLAY' actor.  The probe agrees: the 'PLAY' actor's animation
+and loop flag are the same before and after the IS00 (loop=1, anim=1), and the module's own
+SetAnimation(xa24_) (0x799C) is what gives it its animation.
+
+**So the 'PLAY' actor's animation is the module's own and it loops**: the model data's loop flag
+is 1 (section 17), so the anim root's remaining time wraps and the "Whole Body has ended" test
+(the retail's IsAnimTimeRemaining at 0x7A60) can never be true.  Nothing in area 11's script
+layers (the SCLY layers of the MREA, read with tools/echoes_disc.py) targets 000b0011, 000b0015
+or 000b0016 - these are **placed actors** (the area's actor list, which the MLVL reader skips),
+and the relay's kSM_SetToZero must come from the level's script objects, which the console
+cannot run.  The next lane should read the area's *actor list* (the placed entities and their
+script data: the 'PLAY' actor's own init animation and loop flag, the relay's script data and
+the keyframe's "passive"/"use originator" flags) to find what gives the 'PLAY' actor its
+one-shot animation in the retail.
+
+## 19. The 'PLAY' actor's animation: the shipped data loops, and the host's loop flag is the wrong one
+
+**The disc says the 'PLAY' actor loops.**  The area-11 MREA's SCLY layers hold the placed actors
+as objects whose editor id is the *layer* id | the entity id; the 'PLAY' actor is the layer-2
+object **0x080b0016** (the area 0x00b = 11, the entity id 0x0016 - the runtime editor id
+0x000b0016) and its property 0xc08d1b93 (**isLoop**) is **1**.  The port reads it correctly
+(the runtime's `CModelData::GetIsLoop()` is 1), so the loop is the shipped data's.
+
+**The host keeps the animation alive because of that flag, and the retail does not.**  The host's
+`CAnimData` has a `mLoop` member (src/MetroidPrime/CAnimData.cpp:100, from the constructor's
+bool) and `DoAdvance` branches on it (src/MetroidPrime/CAnimData.cpp:467 `if (mLoop) {`): the
+loop branch advances the tree again and again, so the anim root's `VGetTimeRemaining()` wraps
+(2.650 -> 2.317 -> ... -> 0.317 -> 2.650) and the module's "Whole Body has ended" test (the
+retail's IsAnimTimeRemaining at 0x7A60) can never be true.  The script data's isLoop reaches
+that member through `CScriptActor`'s constructor (src/MetroidPrime/ScriptObjects/CScriptActor.cpp:55
+`ModelData()->EnableLooping(looping)`; the loader passes `sldrThis.isLoop` at
+src/MetroidPrime/ScriptObjects/CScriptActor.cpp:320 and :338).
+
+The DOL's `CAnimData` has **no such flag**: its `SetAnimation`
+(build/G2ME01/asm/MetroidPrime/CAnimData.s:4434, 0x80029904) writes only the playback parms'
+byte 0x21 into `this + 0x2AC` (0x80029AA8) and its `DoAdvance` (CAnimData.s:4746) branches on
+**that** byte (0x80029F44 `lbz r0, 0x2ac(r26)` / 0x80029F4C `beq .L_8002A06C`) - the flag the
+animation was set with, not the script data's isLoop.  The host keeps the two apart (`mAnimating`
+at src/MetroidPrime/CAnimData.cpp:460/:567 and `mLoop` at :100) and branches on the wrong one
+for this case.
+
+**Correction (the same evening): the loop flag is *not* what blocked the heart stage.**  The
+module's test fires on the tick where the looping animation's remaining time passes 0 (the
+probe that sampled every 20 ticks had missed that one tick), and a clean run of the committed
+build - with the driver sending the 'PLAY' actor its `Activate` (the area's script, which does
+that in the game, cannot run under the console) - walks the FSM
+**"BeginHeartStage" -> "HeartStage" (12 s) -> "EndHeartStage"** on its own: the "HeartStageOver"
+trigger fires and the "ChooseRandomTentacleCount" code node runs.  Sections 17-18 had the cause
+wrong: the blocker was the **inactive** 'PLAY' actor (its animation did not advance at all), not
+the loop.
+
+What is left from this section is a reconstruction difference in shared code: the DOL's
+`CAnimData` has one flag byte at +0x2AC (written by SetAnimation from the parms' byte 0x21 and
+branched on in DoAdvance), while the host splits it into `mLoop` (the script data's isLoop,
+CAnimData.cpp:100) and `mAnimating` (:460) and branches on `mLoop` (:467).  For this actor both
+are 1, so the branches agree; they would differ for an actor with isLoop = 0 that plays an
+animation with the parms' byte 1.  Reported, not changed (shared code).
+
+## 20. The heart stage on its own, and the functions it reaches
+
+**The natural path works** (2026-10-21): with the 'PLAY' actor activated (the area's script does
+that in the game; the console cannot run it, so the driver does -
+`tools/drivers/emperoring1_heartstage.py`, and the smoke family's `tools/smoke/cmd_emp1.txt` now
+sends it the message too), the FSM walks
+
+    "BeginHeartStage" -> "HeartStage" (7 polls, 12 s) -> "EndHeartStage" -> "Taunt" -> ...
+
+on its own: the tentacles are killed with a hit on their health-bearing collision actor
+(section 13), "AllTentaclesRetracted" fires, the heart stage's timer runs out, the
+"HeartStageOver" trigger fires and the **"ChooseRandomTentacleCount" code node runs** - no `fsm`
+anywhere.  The beam fires 694 times during the heart stage (the probe on `FireBeam`).
+
+**The functions the heart stage and the stage after it reach** (the transitive closure of the
+REL's own calls from fn_16_774C and fn_16_71BC): 18 functions, 16 of them already marked.  The
+two that are not, and the next five unmarked functions in this note's order:
+
+| fn | calls | class | the branches |
+|---|---|---|---|
+| `fn_16_FF4` | 1 (from fn_16_CD0) | (a) the 0x48-byte `CBeamInfo` copy (the DOL's `CBeamInfo` copy assignment; the retail copies the info the `TLdrToBeamInfo` built at 0xD34 into the projectile's slot at 0xD40) | branch free (37 instructions) - it ran 694 times with the beam |
+| `fn_16_3060` | 5 | (b) the 'PLAY' actor lookup | branch free (13 instructions); it ran (the probe counted 421 calls during the heart stage) |
+| `fn_16_BD6C` | 6 | (a) the counted reference release (the host's `ncrc_ptr`) | 0xBD90 `bgt` (the count is above 1), 0xBD9C `beq` (the count is 0 -> only the free) |
+| `fn_16_337C` | 6 | (a) the `CPASAnimParmData`'s parm list (the host's constructor) | branch free (97 instructions) |
+| `fn_16_BDD0` | 5 | (a) the counted reference release | 0xBDF4 `bgt`, 0xBE00 `beq` |
+| `fn_16_98D0` | 4 | (a) the `SLdrDamageVulnerability` copy (the DOL's `LdrToDamageVulnerability`, 0x8023ACFC) | branch free (23 instructions) |
+
+**No new marker**: four of the six are (a) - copies of host/DOL code, which are never marked -
+and `fn_16_3060` is the only (b) one, but the port has **one** function for it and for
+`fn_16_3094` (`GetPlayActor`, marked `fn_16_3094`): the two retail bodies differ only in the
+lookup they call (the DOL's `ObjectById` for fn_16_3060 and `GetObjectById` for fn_16_3094 -
+the same lookup in the host, src/MetroidPrime/CStateManager.cpp:616), so a second marker on the
+same port function would be wrong.  The module's own remaining unmarked functions are all (a)
+(section 11.2), so the module is decompiled as far as the host's shared code allows.
