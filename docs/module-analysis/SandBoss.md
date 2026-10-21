@@ -835,6 +835,9 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   the first SuckBall no joint took a player shot: phase 2 stampedes never ended ("invincible"). Run r9:
   phase 1 -> DestroySphere -> two worms stampede, break and attach -> DestroySphere -> all three
   stampede. Only one worm in phase 1 is retail: `CanStartNewRound` (CA1C) needs `commandIndex <= mRound`.
+  (c) kSM_Create (D8BC) starts the body in `kLT_Crouch` (`li r4, 0` at 0xD9AC), not Relaxed. (d) The
+  player's 0x1144 mask 0x80 (`rlwimi 7,24,24`) is `mCanStartUnmorphTransition`: SuckBall (B658) clears it
+  (`EnableLeaveMorphBall(false)`), HandleObjectDrop (5FEC) and RestorePlayerCollision (9438) set it.
 - Not tested: ASAN, the intro cinema path, `IsFacingPlayer` (C1CC — the FSM asset never references it,
   so only a direct call could run it), and the getter/render slots no probe calls
   (64 6C 74 7C 8C 98 A4 AC BC). The scan-visor pair `CB30`/`CC84` with `8740`/`88D0`/`89E8` behind

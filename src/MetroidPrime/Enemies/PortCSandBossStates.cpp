@@ -443,8 +443,9 @@ void CSandBoss::SuckBall(CStateManager& mgr, EStateMsg msg, float dt) {
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
     BodyController()->SetLocomotionType(pas::kLT_Internal5); // 5
-    // Retail also clears bit 7 of the player's byte at 0x1144. CPlayer.hpp only names the two
-    // morph-transition bits of that byte, so the store is left out until the bit is identified.
+    // 0x1144 mask 0x80 (`rlwimi r0, r3, 7, 24, 24` at 0xB6BC, r3 = 0) is the first bitfield
+    // there, mCanStartUnmorphTransition: the held ball cannot unmorph.
+    player->EnableLeaveMorphBall(false);
     player->RemoveMaterial(kMT_Solid, mgr); // 0x3B
   } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
@@ -986,8 +987,8 @@ void CSandBoss::RestorePlayerCollision(CStateManager& mgr, float) {
       colAct->SetMaterialFilter(filter);
     }
   }
-  // Retail also sets bit 7 of the byte at 0x1144 of the player. CPlayer.hpp only names the two
-  // morph-transition bits of that byte, so the store is left out until the bit is identified.
+  // 0x1144 mask 0x80 (`rlwimi r0, r4, 7, 24, 24` at 0x9504, r4 = 1): the player may unmorph again.
+  mgr.GetPlayer(0)->EnableLeaveMorphBall(true); // mgr 0x14FC
 }
 
 // @ fn_55_920C
