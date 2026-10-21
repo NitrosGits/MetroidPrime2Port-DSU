@@ -11,6 +11,7 @@
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "MetroidPrime/CRagDoll.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -51,4 +52,22 @@ void CSpacePirate::UpdateSfxEmitter() {
 // @ fn_72_1854
 rstl::optional_object< CAABox > CSpacePirate::GetActorTouchBounds() const {
   return GetBoundingBox();
+}
+
+// Retail fn_72_17A0 (0x28): the ragdoll (0xb30) is returned only while it is live: the ragdoll's
+// flag byte 0x70 has to carry 0x40 (asm 0x17B0-0x17B4) and 0x80 (asm 0x17B8-0x17BC), else null
+// (asm 0x17C0).  The host's CRagDoll keeps the two flags as IsOver() and IsPrimed(); the port's
+// 0xb30 is never set (the ragdoll is not in this port), so the body is the null arm in every run.
+CRagDoll* CSpacePirate::GetRagDoll() const {
+  CRagDoll* ragdoll = static_cast< CRagDoll* >(xb30_);
+  if (ragdoll == nullptr) {
+    return nullptr; // 0x17A4-0x17A8
+  }
+  if (!ragdoll->IsOver()) {
+    return nullptr; // 0x17AC-0x17B4 (the flag byte 0x70's 0x40)
+  }
+  if (!ragdoll->IsPrimed()) {
+    return nullptr; // 0x17B8-0x17BC (the flag byte 0x70's 0x80)
+  }
+  return ragdoll;
 }
