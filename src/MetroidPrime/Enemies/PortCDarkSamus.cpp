@@ -35,6 +35,7 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "Kyoto/Particles/CParticleSwoosh.hpp"
+#include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -286,6 +287,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   // (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
   ConstructPhazonBeam(); // fn_10_45F8 at 0x000201B4
+  mHeadSegId = GetModelData()->GetAnimationData()->GetCharLayoutInfo()->GetSegIdFromString(
+      rstl::string_l("Head_1")); // lbl_10_rodata_572, 0x0001FFB4..0x0001FFF0
   // 0x0002048C: a valid alternate scannable info is locked into 0x92C (`addis r0, r29, 0x1;
   // cmplwi r0, 0xffff`, i.e. the id is not -1).
   if (mData.mAlternateScannableInfo != kInvalidAssetId) {
@@ -310,14 +313,25 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
   // 0x0001B2E4: the module's own AI runs only while the actor is alive (the guest's 0x420 bit 6,
   // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the stage
-  // advance (fn_10_193A0, 0x0001B308) and the attack pick (fn_10_1954C, 0x0001B314) and the stage
-  // watch (fn_10_FD4C, 0x0001B33C); the eleven others (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a stand-in rather
-  // than a retail-order Think.
+  // advance (fn_10_193A0, 0x0001B308), the attack pick (fn_10_1954C, 0x0001B314), the head aim
+  // (fn_10_10A64, 0x0001B330) and the stage watch (fn_10_FD4C, 0x0001B33C); the ten others
+  // (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a stand-in rather than a
+  // retail-order Think.
   if (GetAlive()) {
     AdvanceBattleStage(mgr);
     UpdateAttackPick(mgr);
-    WatchStageChange(mgr); // 0x0001B33C (fn_10_1ACA0 and fn_10_10A64 before it are not ported)
+    UpdateHeadAim(mgr);    // fn_10_10A64 at 0x0001B330 (fn_10_1ACA0 before it is not ported)
+    WatchStageChange(mgr); // 0x0001B33C
   }
+  // 0x0001B3DC: alive or not, the visibility fade, the env fx faded out while not fading
+  // (0xDEC == 0, 0x0001B3F0) and alive (0x0001B40C), the targetability, and the melee pulse and
+  // the boost ball's effects with dt.
+  UpdateFade(dt);                                  // fn_10_1D6CC at 0x0001B3E4
+  if (mFadeOut == 0 && GetAlive()) {
+    mgr.EnvFxManager()->FadeDensity(0.f, 4000);    // lbl_10_rodata_3FC, lbl_10_rodata_254 (0x0001B42C)
+  }
+  UpdateTargetable(mgr);                           // fn_10_1D5C4 at 0x0001B438
+  UpdateMeleePulseAndEffects(mgr, dt);             // fn_10_12DD0 at 0x0001B448
 }
 
 // vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch. The four-character codes it
@@ -454,7 +468,9 @@ void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
 // `rlwimi r0, r4, 6, 25, 25` at 0x00018CF0), fn_10_12DD0 (0x00018D04), and with 0xFC0 above 0.0f
 // (0x00018D18) the colour's red, green and blue bytes 0x44C..0x44E from Lerp(Black, White, 0xFC0)
 // (0x00018D38..0x00018D50).
-// Unmarked: fn_10_10864 and fn_10_12DD0 are stand-ins.
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every retail arm (key 78 a boost ball); the one
+// untaken branch is CStateManager::GetPlayerState's host-only fallback (TARGET_PC).
+// @ fn_10_18AB8
 void CDarkSamus::PreRender(CStateManager& mgr) {
   if (mGuestD14 > 0.f) { // 0x00018AF0
     mFlags90C |= 0x20;   // 0x00018AFC
@@ -475,14 +491,14 @@ void CDarkSamus::PreRender(CStateManager& mgr) {
   }
   mGunLctrXf = GetLctrTransform(rstl::string_l("GUN_Particle_LCTR"));
   mRootPos = GetLctrTransform(rstl::string_l("Skeleton_Root")).GetTranslation();
-  StandIn("fn_10_10864", "PreRender's 0x00018C7C");
+  TwistHead(); // fn_10_10864 at 0x00018C7C
   if (mGuestDE8 > 0.f) { // 0x00018C90
     Shadow()->Calculate(GetModelData()->GetBounds(), GetTransform(), mgr);
   }
   const CPlayerState::EPlayerVisor visor = mgr.GetPlayerState()->GetActiveVisor(mgr);
   mDarkVisorDED80 = visor == CPlayerState::kPV_Dark; // 0x00018CC4..0x00018CD8
   mEchoVisorDED40 = visor == CPlayerState::kPV_Echo; // 0x00018CD0..0x00018CF0
-  StandIn("fn_10_12DD0", "PreRender's 0x00018D04");
+  UpdateMeleePulseAndEffects(mgr, 0.f); // fn_10_12DD0 at 0x00018D04, dt lbl_10_rodata_3FC (0x00018CF4)
   if (mGuestFC0 > 0.f) { // 0x00018D18
     const CColor lerped = CColor::Lerp(CColor::Black(), CColor::White(), mGuestFC0);
     mColor.SetRed(lerped.GetRedu8());     // 0x00018D48

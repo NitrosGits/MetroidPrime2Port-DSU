@@ -1712,3 +1712,36 @@ trigger's entry, one per hit, from gdb convenience variables).
   - fn_10_F100 (RollReflectChanceForHit): the fight does not reach the function (0 hits - the
     reflect chance is only rolled for a projectile that comes at the boss), so its two arms (the
     cache miss and the cache hit) were not run and **the marker is removed**.
+
+## Slice 11 (dsfsm2, 2026-10-21)
+
+- Ported: 10A64 UpdateHeadAim (Think 0x0001B330), 10864 TwistHead and 12DD0
+  UpdateMeleePulseAndEffects (PreRender's two former stand-ins), 1D6CC UpdateFade, 1D5C4
+  UpdateTargetable; Think's tail after the alive block now runs retail's order (0x0001B3DC..0x0001B448:
+  1D6CC, `FadeDensity(0, 4000)` while not fading and alive, 1D5C4, 12DD0 with dt). 8F50
+  UpdateBoostBallEffects is ported but unmarked (the host builds none of 0xE64/0xE3C/0xE4C).
+- New members (appended TARGET_PC blocks): 0xD40 mHeadYaw, 0xD44 mHeadSegId ("Head_1", ctor),
+  0xD48 mHeadTwistTime (-1000).
+- Marks (run `dsfsm2-runs/s11/u8`): 10A64, 10864, 12DD0, 1D6CC, 1D5C4, 1890C, 18AB8 (PreRender: its
+  one untaken branch is the TARGET_PC GetPlayerState fallback); F298 cites u8 too; 13AB4 cites s11/a1.
+- F298/F210 citations fixed: 0x0001F2xx/0x0001F3xx → 0x0000Fxxx.
+- Keys 61/62 are uid-guarded like 63. New keys:
+
+  | key | forces | arm |
+  |---|---|---|
+  | 23 | attack 0x8000 | 1D5C4's first arm |
+  | 65 | reflect cache count 10 | F298's erase |
+  | 66 / 67 | C0C, C20 at elapsed / elapsed - 6 | F298's 4 s / 8 s windows |
+  | 68 | RenderFlash's texture invalid once | 1890C no texture |
+  | 69 / 71 / 72 | no forward and on the player / forward ±90° (one UpdateHeadAim) | 10A64 normalize and clamps |
+  | 73 / 74 | dead / 0xD48 = elapsed at the next TwistHead | 10864's returns |
+  | 75 / 76 | fading held / dead from UpdateFade to UpdateTargetable | 1D6CC, Think's FadeDensity |
+  | 77 | stage +0x33 reads 0 (it is 1 there naturally) | 1D5C4's stage arm |
+  | 78 | boost ball uid reads 1 for one PreRender | PreRender's alpha 0 |
+
+- Forcing artefact fixed: key 99 restored the saved 0xFFFF over an attack the FSM had started in a
+  held window, so its Deactivate pushed 0xFFFF into the history and CollectHistoryPenalties wrote
+  `weights[0xFFFF]`. `$dsk_fa` now tracks the forced attack; 99 restores only while it still holds.
+  Retail pushes unconditionally too, so the port is unchanged.
+- Open: Think 313 (dead at the alive check) not forced; Think stays a stand-in (fn_10_1ACA0 ..
+  fn_10_1B154 unported).
