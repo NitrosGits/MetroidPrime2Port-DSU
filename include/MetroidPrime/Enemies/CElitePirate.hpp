@@ -104,6 +104,7 @@ public:
 // override it). Only the passive half is implemented here: the loader, the constructor and the
 // methods that let the actor load, think, stand and render. The state machine (fn_15_C0D0, 0x808),
 // the shields, the shock waves, the rockets and the melee attack are later milestones.
+
 class REL_EXPORT CElitePirate : public CPatterned {
 public:
 #ifdef TARGET_PC
@@ -127,10 +128,15 @@ public:
                        float dt) override;
 
   // CAi
-  // fn_15_4C stores skDamageHitTime into the cooldown, the base class's body.
+  // @ fn_15_4C
+  // The REL's own copy of the base's body: it stores skDamageHitTime into the cooldown at 0x448
+  // (asm 0x004C: `lfs f0, skDamageHitTime` + `stfs f0, 0x448(r3)`).
   void TakeDamage(const CVector3f&, float) override { mDamageCooldownTimer = skDamageHitTime; }
   // The three one-line accessors below are the REL's own bodies (vtable slot -> function).
   bool CanBeShot(const CStateManager&, int) override { return true; } // slot 42, fn_15_A4
+  // @ fn_15_AC
+  // The REL's own copy: `li r3, 0` (asm 0x00AC). It keeps the Ingsmasher out of the state
+  // manager's listening list, so the REL's Listen (fn_15_B4) is never called for it.
   bool IsListening() const override { return false; }                 // slot 43, fn_15_AC
   bool Listen(CStateManager&, const CVector3f&, EListenNoiseType) override { // slot 44, fn_15_B4
     return false;
@@ -139,12 +145,18 @@ public:
   // CPatterned
   CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; } // slot 55, fn_15_52C8
   using CPatterned::GetSearchPath;
+  // @ fn_15_0
+  // The REL's own copy: `addi r3, r3, 0xa50` (asm 0x0000) - its own path search, not the base's.
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; } // slot 56, fn_15_0
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // slot 57, fn_15_64
   CRagDoll* GetRagDoll() const override { return nullptr; }              // slot 61, fn_15_6C
   TUniqueId GetAttackTarget() const override { return kInvalidUniqueId; } // slot 67, fn_15_74
   float GetGravityConstant() const override { return 24.525f; }          // fn_15_90
+  // @ fn_15_1A0C
+  // The REL's own copy: `li r3, 0` (asm 0x1A0C) - the Ing cannot be pushed out of it.
   bool CanBeUnPossessed(CStateManager&) const override { return false; } // fn_15_1A0C
+  // @ fn_15_8
+  // The REL's own copy: `addi r3, r3, 0x9c0` (asm 0x0008) - its own AABB, not the base's.
   const CCollisionPrimitive* GetCollisionPrimitive() const override { return &mCollidableBox; } // fn_15_8
   void RenderIngSnatchingTransition(const CStateManager& mgr) const override; // fn_15_800C
   // Slots the REL overrides with the base class's own behaviour, so the port leaves them
