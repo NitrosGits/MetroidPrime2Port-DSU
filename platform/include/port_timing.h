@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 namespace PortTiming {
 // Accumulates wall-clock time and releases whole fixed-size simulation steps.
@@ -42,6 +43,18 @@ private:
   double mPeriod = kPeriod;
   double mRemainder = 0.0;
 };
+
+// MP2_TICKS_PER_FRAME=k (1..16; harness only, with MP2_FRAME_LIMIT=0): every loop iteration runs
+// exactly k ticks whatever the wall clock says, so a run goes as fast as the machine allows. Each
+// tick is still the fixed 1/60 s step; only wall time changes. 0 = off (the wall-clock clock).
+inline unsigned FixedTicksPerFrame() {
+  static const unsigned value = [] {
+    const char* env = std::getenv("MP2_TICKS_PER_FRAME");
+    const int k = env != nullptr ? std::atoi(env) : 0;
+    return k >= 1 && k <= 16 ? static_cast<unsigned>(k) : 0u;
+  }();
+  return value;
+}
 
 // MP1's CActor::PortBeginTickSnapshot/PortTickGeneration: bumped once per simulation tick, so a
 // snapshot written in a tick can tell whether it is still that tick's (PortSnapshotFresh). Never 0.
