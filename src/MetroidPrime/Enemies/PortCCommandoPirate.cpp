@@ -412,33 +412,33 @@ void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
   }
   xb68_ += dt;                                 // 0x000066D0
   if (xb68_ >= 2.f) {                          // 0x000066E8
-    if ((xc64_ & 0x40) == 0) {                // 0x000066F8
-      // 0x00006710: the roll is against the data byte at +0x58, the block's dodge check
-      // (mDodgeCheck) - not the cover check.
-      const bool roll = mData.mDodgeCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x00006710, 0x00006718
-      xc63_ = (xc63_ & ~0x04) | (roll ? 0x04 : 0);  // 0x0000673C
-    }
+    // 0x000066F4..0x000066FC: when the byte at guest this+0xC64 has its 0x40 bit the retail
+    // takes r4 = 0 (0x00006730) and writes the flag as 0 (the rlwimi at 0x0000673C) - the flag
+    // is cleared, not left alone.
+    const bool roll = (xc64_ & 0x40) == 0 &&
+                      mData.mDodgeCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x00006710, 0x00006718
+    xc63_ = (xc63_ & ~0x04) | (roll ? 0x04 : 0);  // 0x0000673C
     xb68_ = 0.f;                               // 0x00006748
   }
   xb6c_ += dt;                                 // 0x0000674C
   if (xb6c_ >= 5.f) {                          // 0x00006764
-    if ((xc64_ & 0x40) == 0) {                // 0x00006774
-      // 0x0000678C: the roll is against the data byte at +0x50, the block's cover check
-      // (mCoverCheck) - not the search radius.
-      const bool roll = mData.mCoverCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x0000678C, 0x00006794
-      xc63_ = (xc63_ & ~0x01) | (roll ? 0x01 : 0);  // 0x000067B8
-    }
+    // 0x00006764..0x0000676C: the same for the cover flag - the retail takes r4 = 0 at
+    // 0x000067AC and writes the flag as 0 at 0x000067B8.
+    const bool roll = (xc64_ & 0x40) == 0 &&
+                      mData.mCoverCheck >= mgr.Random()->Range(0.f, 100.f);  // 0x0000678C, 0x00006794
+    xc63_ = (xc63_ & ~0x01) | (roll ? 0x01 : 0);  // 0x000067B8
     xb6c_ = 0.f;                               // 0x000067C4
   }
   xb74_ += dt;                                 // 0x000067C8
   if (sEgrenadeObjectCount > 0) {              // 0x000067D8
     xb74_ = 0.f;                               // 0x000067EC
   } else if (xb74_ >= mData.mGrenade.mGrenadeMinAttackInterval) {  // 0x000067F8
-    if ((xc64_ & 0x40) == 0) {                // 0x0000680C
-      const bool roll = mData.mGrenade.mGrenadeAttackChance >=
-                        mgr.Random()->Range(0.f, 100.f);  // 0x0000682C
-      xc63_ = (xc63_ & ~0x02) | (roll ? 0x02 : 0);  // 0x00006850
-    }
+    // 0x000067F8..0x00006804: the same for the grenade flag - the retail takes r4 = 0 at
+    // 0x00006844 and writes the flag as 0 at 0x00006850.
+    const bool roll = (xc64_ & 0x40) == 0 &&
+                      mData.mGrenade.mGrenadeAttackChance >=
+                          mgr.Random()->Range(0.f, 100.f);  // 0x0000682C
+    xc63_ = (xc63_ & ~0x02) | (roll ? 0x02 : 0);  // 0x00006850
     xb74_ = 0.f;                               // 0x0000685C
   }
   if ((xc64_ & 0x02) != 0) {                   // 0x00006864
