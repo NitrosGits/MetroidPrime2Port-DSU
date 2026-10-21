@@ -527,7 +527,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
-      "help                        this list\n";
+      "help                        this list\n"
+      "a; b; c                     run several commands in the same game tick (one reply each)\n";
 }
 
 void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
@@ -2206,9 +2207,19 @@ void Tick(CStateManager& mgr) {
       queued = std::move(sQueue.front());
       sQueue.pop_front();
     }
-    std::string out;
-    Execute(mgr, queued.line, out);
-    SendRaw(queued.generation, out);
+    // `a; b; c` runs every command in this one tick, so a forced arm can land inside a one-frame
+    // window (separate lines can arrive a frame apart).
+    size_t start = 0;
+    for (;;) {
+      const size_t sep = queued.line.find(';', start);
+      std::string out;
+      Execute(mgr, queued.line.substr(start, sep == std::string::npos ? std::string::npos : sep - start), out);
+      SendRaw(queued.generation, out);
+      if (sep == std::string::npos) {
+        break;
+      }
+      start = sep + 1;
+    }
   }
 #else
   (void)mgr;
