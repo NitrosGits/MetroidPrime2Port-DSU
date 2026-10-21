@@ -1843,7 +1843,7 @@ void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
 // port.
 void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("FreezeBeam", msg);
-  UpdateCurrentAttack(0x10, mgr, msg); // 0x00016D18
+  UpdateCurrentAttack(0x100000, mgr, msg); // `lis r4, 0x10` at 0x00016D10, the call at 0x00016D18
   RunCollisionFailsafe(mgr);           // 0x00016D24
   UpdateShieldFlag(msg);              // 0x00016D38
   UpdateGroundCollision(mgr, msg);    // 0x00016D48
