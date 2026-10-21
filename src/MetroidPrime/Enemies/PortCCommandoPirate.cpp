@@ -1506,9 +1506,10 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
 //
 // Then the commando looks for the ground under itself: a ray from its own position plus the up
 // vector six units down (rodata_49C) with the module's own material filter - the include list
-// kMT_Solid (the data word 0x3B at lbl_9_data_814) and the exclude list kMT_Character,
-// kMT_CollisionActor and kMT_Platform (the data words 0x21, 0x2F and 0x31 at lbl_9_data_818,
-// lbl_9_data_81C and lbl_9_data_824), the type 3 = kFT_IncludeExclude.
+// kMT_Solid (the data word 0x3B at lbl_9_data_814) and the exclude list kMT_Player,
+// kMT_Character, kMT_CollisionActor and kMT_Platform (the data words 0x20, 0x21, 0x2F and 0x31
+// at lbl_9_data_81C, lbl_9_data_818, lbl_9_data_820 and lbl_9_data_824), the type 3 =
+// kFT_IncludeExclude.
 //
 // When the ray is clear, the module's own float at guest this+0xC00 takes
 // 0.01f (rodata_4A0), the commando dies with the script object state "RATL" (kSS_DeathRattle)
@@ -1554,7 +1555,8 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
   const CVector3f start = GetTranslation() + CVector3f::Up();
   const CVector3f end = start + CVector3f::Down() * 6.f;
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Solid), CMaterialList(kMT_Character, kMT_CollisionActor, kMT_Platform));
+      CMaterialList(kMT_Solid),
+      CMaterialList(kMT_Player, kMT_Character, kMT_CollisionActor, kMT_Platform));
   if (mgr.RayCollideWorld(start, end, filter, this)) {  // 0x00002FC4
     xc00_ = 0.01f;                                        // rodata_4A0, 0x00002FF0
     Death(mgr, GetTransform().GetForward(), kSS_DeathRattle);  // 0x00003018
