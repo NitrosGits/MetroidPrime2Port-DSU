@@ -26,6 +26,12 @@
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptRepulsor.hpp"
+#include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/CGameArea.hpp"
+#include "MetroidPrime/PathFinding/CPathFindArea.hpp"
+#include "MetroidPrime/PathFinding/CPathFindRegion.hpp"
+#include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -495,6 +501,119 @@ bool CDarkSamus::ShouldForgetLastAttacker(CStateManager& mgr) const {
     return true;
   }
   return (cover->GetTranslation() - GetTranslation()).MagSquared() < 4.0f;
+}
+
+// fn_10_1D9A4 (0x0001D9A4, 0x370 bytes): the point the actor is pushed away from.
+//
+// The actor's connections are walked (the begin/end at 0x1C/0x14, 0x0001D9CC/0x0001DB2C): each
+// one's editor id is resolved (GetIdForScript at 0x0001D9F8, the invalid uid skipped at
+// 0x0001DA0C) and cast to a repulsor (0x0001DA20). An active repulsor (the byte at 0x20's bit 7,
+// the extrwi at 0x0001DA30) in the actor's area (0x0001DA40) without the repel-player flag (the
+// flags at 0x164 & 1, 0x0001DA4C) is measured: the offset from the actor to it (0x0001DA54..),
+// with the height dropped for a cylinder (the shape against 1 at 0x0001DA88, lbl_10_rodata_3FC =
+// 0.0f), squared against the radius squared (the fcmpo at 0x0001DAD4; a point outside is
+// skipped). A repulsor that holds the actor answers its position (0x0001DB0C), and `strength`,
+// when not null (0x0001DADC), gets 1 - distance / radius (lbl_10_rodata_3E8 = 1.0f, 0x0001DB04).
+//
+// Without one, the area's path find area (the world's area of the actor's area id, its post
+// constructed data's 0xEC, 0x0001DB44..0x0001DB68) is looked at; without a path area the answer
+// is zero (0x0001DB6C). The actor's position lifted by lbl_10_rodata_3E4 = 0.5f (and
+// lbl_10_rodata_3FC = 0.0f on x and y) is taken into the area's frame (the translation at
+// 0x1C8/0x1D8/0x1E8 subtracted, TransposeRotate at 0x0001DBF4) and the regions there are found
+// with the search's region flags and creature mask (0x0001DC1C..0x0001DC44, the last argument
+// true); the first region with kPFO_Unknown2 obstructions (GetObstructionCount(2) > 0 at
+// 0x0001DC60) answers its centroid (the region's 0x28, 0x0001DC6C). Otherwise the last contact
+// point answers for lbl_10_rodata_46C = 0.3 seconds after the contact (0x0001DCAC..0x0001DCB4)
+// and the zero vector after that (0x0001DCD4).
+CVector3f CDarkSamus::GetRepulsionPoint(CStateManager& mgr, float* strength) const {
+  const rstl::vector< SConnection >& connections = GetConnectionList();
+  for (rstl::vector< SConnection >::const_iterator it = connections.begin();
+       it != connections.end(); ++it) {
+    const TUniqueId uid = mgr.GetIdForScript(it->objId);
+    if (uid == kInvalidUniqueId) {
+      continue;
+    }
+    const CScriptRepulsor* repulsor = TCastToConstPtr< CScriptRepulsor >(mgr.GetObjectById(uid));
+    if (repulsor == nullptr || !repulsor->GetActive() ||
+        repulsor->GetCurrentAreaId() != GetCurrentAreaId() ||
+        (repulsor->GetFlags() & CScriptRepulsor::kF_RepelPlayer) != 0) { // 0x0001DA4C
+      continue;
+    }
+    CVector3f delta = repulsor->GetTranslation() - GetTranslation();
+    if (repulsor->GetShape() == CScriptRepulsor::kS_Cylinder) { // 0x0001DA88
+      delta.SetZ(0.f);
+    }
+    const float radius = repulsor->GetRadius();
+    if (delta.MagSquared() > repulsor->GetRadius() * radius) { // 0x0001DAD4
+      continue;
+    }
+    if (strength != nullptr) { // 0x0001DADC
+      *strength = 1.f - delta.Magnitude() / repulsor->GetRadius();
+    }
+    return repulsor->GetTranslation();
+  }
+
+  CPFArea* area =
+      mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea;
+  if (area == nullptr) { // 0x0001DB6C
+    return CVector3f::Zero();
+  }
+  const CTransform4f& areaXf = area->GetTransform();
+  const CVector3f position = GetTranslation() + CVector3f(0.f, 0.f, 0.5f);
+  const CVector3f local = areaXf.TransposeRotate(position - areaXf.GetTranslation());
+  rstl::reserved_vector< CPFRegion*, 8 > regions;
+  const uint creatureMask = mPathFindSearch.GetCreatureMask();
+  area->FindRegions(regions, local, mPathFindSearch.GetRegionFlags(), creatureMask, true);
+  for (int i = 0; i < regions.size(); ++i) {
+    CPFRegion* region = regions[i];
+    if (region->GetObstructionCount(kPFO_Unknown2) > 0) { // 0x0001DC64
+      return region->GetCentroid();
+    }
+  }
+  if (0.3f + mContactTime > mElapsedTime) { // 0x0001DCB0
+    return mContactPoint;
+  }
+  return CVector3f::Zero();
+}
+
+// fn_10_1DD14 (0x0001DD14, 0x260 bytes): the separation.
+//
+// The steering direction (the guest's 0x910) is cleared (0x0001DD50..0x0001DD68) and the
+// repulsion point is asked for with the strength 0 (lbl_10_rodata_3FC, 0x0001DD6C); the zero
+// vector ends the function (the three fcmpu at 0x0001DD8C..0x0001DDB0). The point is taken at
+// the actor's height (0x0001DDD4). Retail then builds the flat direction from the actor to its
+// path find navigation's target (the guest's 0x700, the navigation's mPathTarget) or, when that
+// cannot be normalized, the actor's forward axis (0x0001DDC4..0x0001DE3C), but no later
+// instruction reads it (the stack slot at 0x3C is dead), so the port leaves it out. The speed is
+// lbl_10_rodata_408 = 4.0f, lbl_10_rodata_414 = 8.0f for 0.3 seconds after the last contact
+// (0x0001DE5C), and scales with the strength below lbl_10_rodata_46C = 0.3 (0x0001DE78..). The
+// base's steering separation from the point (the radius lbl_10_rodata_448 = 12.0f, 0x0001DEA4)
+// is flattened (0x0001DEC4) and, when it can be normalized (0x0001DED8), becomes a locomotion
+// command (its direction normalized, the zero face vector and the speed, 0x0001DF38) and the
+// steering direction (0x0001DF40..0x0001DF50).
+void CDarkSamus::Separate(CStateManager& mgr) {
+  mSeparationDir = CVector3f::Zero();
+  float strength = 0.f;
+  CVector3f point = GetRepulsionPoint(mgr, &strength);
+  if (point == CVector3f::Zero()) {
+    return;
+  }
+  point.SetZ(GetTranslation().GetZ());
+  float speed = 4.f;
+  if (0.3f + mContactTime > mElapsedTime) { // 0x0001DE5C
+    speed = 8.f;
+  }
+  if (strength < 0.3f) { // 0x0001DE78
+    speed *= strength / 0.3f;
+  }
+  CVector3f separation = mSteeringBehaviors.Separation(*this, point, 12.f);
+  separation.SetZ(0.f);
+  if (separation.CanBeNormalized()) { // 0x0001DED8
+    separation.Normalize();
+    BodyController()->CommandMgr().DeliverCmd(
+        CBCLocomotionCmd(separation.AsNormalized(), CVector3f::Zero(), speed));
+    mSeparationDir = separation;
+  }
 }
 
 // fn_10_1E178 (0x0001E178, 0xF0 bytes): the damage the actor has taken (the guest's 0xCC0).

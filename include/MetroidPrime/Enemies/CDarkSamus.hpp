@@ -368,6 +368,17 @@ private:
   // attacker has no cover point, or when the attacker's cover point is within 2 units.
   bool ShouldForgetLastAttacker(CStateManager& mgr) const;
 
+  // fn_10_1D9A4: the point the actor is pushed away from - an active repulsor of the actor's
+  // connections in the actor's area that holds the actor inside its radius (`strength`, when not
+  // null, gets 1 - distance / radius), else the centroid of an obstructed path find region the
+  // actor stands in, else the last contact point (mContactPoint) for 0.3 seconds after the
+  // contact, else the zero vector.
+  CVector3f GetRepulsionPoint(CStateManager& mgr, float* strength) const;
+
+  // fn_10_1DD14: the separation - the actor steers away from GetRepulsionPoint's point
+  // (mSeparationDir is the direction it steers along, or zero).
+  void Separate(CStateManager& mgr);
+
   // Host layout (retail's object is 0x1128, CHECK_SIZEOF below; CPatterned is 0x7c0). The guest
   // offsets are the REL's, read from the constructor fn_10_1FA14 and the module's one-line
   // accessors; the host layout is its own.
@@ -449,6 +460,15 @@ private:
   CVector3f mPathFindDestination;  // guest 0x8B4/0x8B8/0x8BC, the destination of the path find:
                                    // fn_10_1C778 writes it (0x0001C7A4..0x0001C7BC); the
                                    // constructor writes the zero vector to it (0x0001FB94..)
+  CVector3f mSeparationDir;        // guest 0x910/0x914/0x918, the direction fn_10_1DD14 steers
+                                   // the actor along to get away from a repulsor (zero when it
+                                   // does not); the constructor writes the zero vector to it
+                                   // (0x0001FC20..)
+  float mContactTime;              // guest 0xC34, the elapsed time (mElapsedTime) of the last
+                                   // contact fn_10_1D0A0 records (0x0001D154; not in the port
+                                   // yet, so it stays at the constructor's 0.0f, 0x0001FF1C)
+  CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
+                                   // constructor writes the zero vector to it (0x0001FF24..)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
