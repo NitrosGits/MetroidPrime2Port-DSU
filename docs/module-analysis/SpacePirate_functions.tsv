@@ -84,7 +84,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x4E40	0x54	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4E40
 0x4E94	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4E94
 0x4ED0	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4ED0
-0x4F0C	0x1C	CSpacePirate	ProjectileInfo -> &xbd4	virtual	B	data_8D8	-	unmarked	fn_72_4F0C
+0x4F0C	0x1C	CSpacePirate	ProjectileInfo -> &xbd4	virtual	B	data_8D8	-	marked	fn_72_4F0C
 0x4F28	0x9C	CSpacePirate	InitLauncherModel	method	B	F49C	-	marked	fn_72_4F28
 0x4FC4	0x30	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4F28	rstl::optional_object assign	unmarked	fn_72_4FC4
 0x4FF4	0x48	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4FC4	rstl::optional_object assign	unmarked	fn_72_4FF4
@@ -99,7 +99,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x5510	0x7C	CBCJumpCmd	CBCJumpCmd ctor (type 0x11, vtable data_B08)	inline-dol	H	5310 63C8 8A90 C1A4	CBCJumpCmd ctor (header inline)	unmarked	fn_72_5510
 0x558C	0x2C	CSpacePirate	Landed (trigger)	fsm-trigger	B	data_178	-	marked	fn_72_558C
 0x55B8	0x58	CSpacePirate	OffLine (trigger)	fsm-trigger	B	data_16C	-	marked	fn_72_55B8
-0x5610	0x26C	CSpacePirate	Captured (state)	fsm-state	B	data_5EC	-	unmarked	fn_72_5610
+0x5610	0x26C	CSpacePirate	Captured (state)	fsm-state	B	data_5EC	-	marked	fn_72_5610
 0x587C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AFC	CBodyStateCmd subclass dtor	unmarked	fn_72_587C
 0x58D8	0x254	CSpacePirate	LaunchGrenade (state)	fsm-state	B	data_5E0	-	unmarked	fn_72_58D8
 0x5B2C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AF0	CBodyStateCmd subclass dtor	unmarked	fn_72_5B2C
@@ -110,28 +110,28 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x5E28	0x7C	CSpacePirate	Bounce helper (only caller 5D0C)	method	T	5D0C	only caller is the T state 5D0C	unmarked	fn_72_5E28
 0x5EA4	0x188	CSpacePirate	PathFindEx (state)	fsm-state	T	data_5B0	not a state of AFSM 0x5652a12f/0x7b49526b	unmarked	fn_72_5EA4
 0x602C	0x2FC	CSpacePirate	BounceFind (trigger)	fsm-trigger	T	data_160	not named by AFSM 0x5652a12f/0x7b49526b (the only two PIRT FSMs)	unmarked	fn_72_602C
-0x6328	0xC	CSpacePirate	BreakAttack (trigger)	fsm-trigger	B	data_148	-	unmarked	fn_72_6328
+0x6328	0xC	CSpacePirate	BreakAttack (trigger)	fsm-trigger	B	data_148	-	marked	fn_72_6328
 0x6334	0x28	CSpacePirate	StartAttack (trigger)	fsm-trigger	T	data_13C	not named by AFSM 0x5652a12f/0x7b49526b (the only two PIRT FSMs)	unmarked	fn_72_6334
 0x635C	0x30	CSpacePirate	LostInterest (trigger)	fsm-trigger	T	data_154	not named by AFSM 0x5652a12f/0x7b49526b (the only two PIRT FSMs)	unmarked	fn_72_635C
 0x638C	0x3C	CSpacePirate	ShouldSpecialAttack (trigger)	fsm-trigger	T	data_130	not named by AFSM 0x5652a12f/0x7b49526b (the only two PIRT FSMs)	unmarked	fn_72_638C
 0x63C8	0x448	CSpacePirate	JumpBack (state)	fsm-state	B	data_598	-	marked	fn_72_63C8
 0x6810	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AE4	CBodyStateCmd subclass dtor	unmarked	fn_72_6810
-0x686C	0x30	CSpacePirate	ShouldJumpBack (trigger)	fsm-trigger	B	63C8 data_184	-	unmarked	fn_72_686C
-0x689C	0x48	CSpacePirate	AnimOver (trigger)	fsm-trigger	B	data_118	-	unmarked	fn_72_689C
+0x686C	0x30	CSpacePirate	ShouldJumpBack (trigger)	fsm-trigger	B	63C8 data_184	-	marked	fn_72_686C
+0x689C	0x48	CSpacePirate	AnimOver (trigger)	fsm-trigger	B	data_118	-	marked	fn_72_689C
 0x68E4	0xC8	CSpacePirate	WallDetach (state)	fsm-state	B	data_55C	-	marked	fn_72_68E4
 0x69AC	0x33C	CSpacePirate	WallHang (state)	fsm-state	B	data_550	-	unmarked	fn_72_69AC
 0x6CE8	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AC8	CBodyStateCmd subclass dtor	unmarked	fn_72_6CE8
 0x6D44	0x60	CValidEntityPredicate (weak)	deleting dtor (vtable data_AD4)	weak-dtor	H	data_AD4	compiler-emitted dtor	unmarked	fn_72_6D44
 0x6DA4	0xC8	CSpacePirate	PostWarpOut (state)	fsm-state	B	data_46C	-	marked	fn_72_6DA4
 0x6E6C	0x20C	CSpacePirate	WarpOut (state)	fsm-state	B	data_460	-	marked	fn_72_6E6C
-0x7078	0x528	CSpacePirate	WarpIn (state)	fsm-state	B	data_454	-	unmarked	fn_72_7078
+0x7078	0x528	CSpacePirate	WarpIn (state)	fsm-state	B	data_454	-	marked	fn_72_7078
 0x75A0	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_75A0
 0x75DC	0x54	(weak)	local dtor (from 7078)	weak-dtor	H	7078	compiler-emitted dtor	unmarked	fn_72_75DC
 0x7630	0x4C	CSpacePirate	Ambushing (state)	fsm-state	B	data_448	-	marked	fn_72_7630
 0x767C	0x54	CSpacePirate	ShouldWallHang (trigger)	fsm-trigger	B	data_10C	-	marked	fn_72_767C
 0x76D0	0xCC	CSpacePirate	InProjectileRange (trigger)	fsm-trigger	B	data_1CC	-	marked	fn_72_76D0
 0x779C	0x34	CSpacePirate	ShouldLaunchGrenade (trigger)	fsm-trigger	B	data_1C0	-	marked	fn_72_779C
-0x77D0	0x34	CSpacePirate	ShouldWarpIn (trigger)	fsm-trigger	B	data_1B4	-	unmarked	fn_72_77D0
+0x77D0	0x34	CSpacePirate	ShouldWarpIn (trigger)	fsm-trigger	B	data_1B4	-	marked	fn_72_77D0
 0x7804	0xC	CSpacePirate	IsAmbushing (trigger)	fsm-trigger	B	data_1A8	-	marked	fn_72_7804
 0x7810	0x58	CSpacePirate	HasAttackPattern (trigger)	fsm-trigger	B	data_19C	-	marked	fn_72_7810
 0x7868	0x74	CSpacePirate	TargetPlayer (state)	fsm-state	B	data_538	-	marked	fn_72_7868
@@ -143,8 +143,8 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x7C28	0x1D4	CSpacePirate	ShouldRetreat (trigger)	fsm-trigger	B	data_B8	-	marked	fn_72_7C28
 0x7DFC	0x4D4	CSpacePirate	Dodge (state)	fsm-state	B	data_4F0	-	marked	fn_72_7DFC
 0x82D0	0x194	CSpacePirate	ShouldDodge (trigger)	fsm-trigger	B	data_AC	-	marked	fn_72_82D0
-0x8464	0x20C	CSpacePirate	TurnAround (state)	fsm-state	B	data_4E4	-	unmarked	fn_72_8464
-0x8670	0x3D4	CSpacePirate	Shuffle (state)	fsm-state	B	data_4D8	-	unmarked	fn_72_8670
+0x8464	0x20C	CSpacePirate	TurnAround (state)	fsm-state	B	data_4E4	-	marked	fn_72_8464
+0x8670	0x3D4	CSpacePirate	Shuffle (state)	fsm-state	B	data_4D8	-	marked	fn_72_8670
 0x8A44	0x40	CVector3f	CVector3f::Cross inline	inline-dol	H	8670 D800	CVector3f::Cross	unmarked	fn_72_8A44
 0x8A84	0xC	CSpacePirate	InRange (trigger)	fsm-trigger	B	data_C4	-	marked	fn_72_8A84
 0x8A90	0x8E8	CSpacePirate	PathFind (state)	fsm-state	B	data_4B4	-	marked	fn_72_8A90
@@ -153,7 +153,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x9478	0x58	CSpacePirate	Approach (state)	fsm-state	B	data_544	-	marked	fn_72_9478
 0x94D0	0x13C	CSpacePirate	Skid (state)	fsm-state	B	data_580	-	marked	fn_72_94D0
 0x960C	0x2CC	CSpacePirate	ShouldStrafe (trigger)	fsm-trigger	B	data_124	-	marked	fn_72_960C
-0x98D8	0xCC	CSpacePirate	Crouch (state)	fsm-state	B	data_484	-	unmarked	fn_72_98D8
+0x98D8	0xCC	CSpacePirate	Crouch (state)	fsm-state	B	data_484	-	marked	fn_72_98D8
 0x99A4	0x4C	CSpacePirate	ShouldCrouch (trigger)	fsm-trigger	B	data_D0	-	marked	fn_72_99A4
 0x99F0	0x418	CSpacePirate	DoubleSnap (state)	fsm-state	B	data_58C	-	unmarked	fn_72_99F0
 0x9E08	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_ABC	CBodyStateCmd subclass dtor	unmarked	fn_72_9E08
@@ -162,11 +162,11 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x9F1C	0x39C	CSpacePirate	Attack (state)	fsm-state	B	data_478	-	marked	fn_72_9F1C
 0xA2B8	0x58	CSpacePirate	Enraged (state)	fsm-state	B	data_5BC	-	marked	fn_72_A2B8
 0xA310	0xB0	CSpacePirate	CoverAttack (state)	fsm-state	B	data_490	-	marked	fn_72_A310
-0xA3C0	0x300	CSpacePirate	Cover (state)	fsm-state	B	data_514	-	unmarked	fn_72_A3C0
+0xA3C0	0x300	CSpacePirate	Cover (state)	fsm-state	B	data_514	-	marked	fn_72_A3C0
 0xA6C0	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AB0	CBodyStateCmd subclass dtor	unmarked	fn_72_A6C0
 0xA71C	0x1B4	CSpacePirate	ShouldAttack (trigger)	fsm-trigger	B	data_7C	-	unmarked	fn_72_A71C
-0xA8D0	0xB8	CSpacePirate	CoveringFire (trigger)	fsm-trigger	B	data_70	-	unmarked	fn_72_A8D0
-0xA988	0xDC	CSpacePirate	CoverNearlyBlown (trigger)	fsm-trigger	B	data_64	-	unmarked	fn_72_A988
+0xA8D0	0xB8	CSpacePirate	CoveringFire (trigger)	fsm-trigger	B	data_70	-	marked	fn_72_A8D0
+0xA988	0xDC	CSpacePirate	CoverNearlyBlown (trigger)	fsm-trigger	B	data_64	-	marked	fn_72_A988
 0xAA64	0x15C	CSpacePirate	CoverBlown (trigger)	fsm-trigger	B	data_58	-	unmarked	fn_72_AA64
 0xABC0	0x1F4	CSpacePirate	CoverFind (trigger)	fsm-trigger	B	data_4C	-	marked	fn_72_ABC0
 0xADB4	0xC	CSpacePirate	CoverCheck (trigger)	fsm-trigger	B	data_40	-	marked	fn_72_ADB4
@@ -174,7 +174,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xAEB8	0x28	rstl::list<TUniqueId>	list push_back (from ADC0)	template	H	ADC0	rstl::list::push_back	unmarked	fn_72_AEB8
 0xAEE0	0x90	rstl::list<TUniqueId>	list push_back (from ADC0)	template	H	AEB8	rstl::list::push_back	unmarked	fn_72_AEE0
 0xAF70	0x464	CSpacePirate	Lurk (state)	fsm-state	B	data_4FC	-	marked	fn_72_AF70
-0xB3D4	0x16C	CSpacePirate	GetUp (state)	fsm-state	B	data_568	-	unmarked	fn_72_B3D4
+0xB3D4	0x16C	CSpacePirate	GetUp (state)	fsm-state	B	data_568	-	marked	fn_72_B3D4
 0xB540	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AA4	CBodyStateCmd subclass dtor	unmarked	fn_72_B540
 0xB59C	0x3AC	CSpacePirate	Taunt (state)	fsm-state	B	data_508	-	marked	fn_72_B59C
 0xB948	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_A98	CBodyStateCmd subclass dtor	unmarked	fn_72_B948
@@ -188,7 +188,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xBC94	0x1C	CSpacePirate	PatternOver (trigger)	fsm-trigger	B	data_94	-	marked	fn_72_BC94
 0xBCB0	0x31C	CSpacePirate	TargetPatrol (state)	fsm-state	B	data_4CC	-	marked	fn_72_BCB0
 0xBFCC	0x1D8	CSpacePirate	Patrol (state)	fsm-state	B	data_4C0	-	marked	fn_72_BFCC
-0xC1A4	0x2C4	CSpacePirate	Generate (state)	fsm-state	B	data_574	-	unmarked	fn_72_C1A4
+0xC1A4	0x2C4	CSpacePirate	Generate (state)	fsm-state	B	data_574	-	marked	fn_72_C1A4
 0xC468	0x20	CSpacePirate	PatternShagged (trigger)	fsm-trigger	B	data_10	-	marked	fn_72_C468
 0xC488	0xB0	CSpacePirate	Stuck (trigger)	fsm-trigger	B	data_4	-	marked	fn_72_C488
 0xC538	0xF0	CSpacePirate	Death	virtual	B	data_8D8	-	marked	fn_72_C538
@@ -206,10 +206,10 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xD800	0x348	CSpacePirate	UpdateGuardPosition	method	B	8464 8A90 98D8 99F0 9F1C A310 A3C0 AF70 BFCC	-	marked	fn_72_D800
 0xDB48	0x8C	CSpacePirate	LineOfSightRay	method	B	45F8 D800	-	marked	fn_72_DB48
 0xDBD4	0x288	CSpacePirate	CheckForProjectiles	method	B	1980	-	marked	fn_72_DBD4
-0xDE5C	0x80	CSpacePirate	UpdateTeamTarget	method	B	1980 7970 AF70 B59C CB30 E120 E498	-	unmarked	fn_72_DE5C
+0xDE5C	0x80	CSpacePirate	UpdateTeamTarget	method	B	1980 7970 AF70 B59C CB30 E120 E498	-	marked	fn_72_DE5C
 0xDEDC	0x50	CSpacePirate	SquadReset	method	B	28F0 5C10 B3D4	-	marked	fn_72_DEDC
 0xDF2C	0xA8	CSpacePirate	SquadAdd (team membership)	method	B	E498	-	marked	fn_72_DF2C
-0xDFD4	0xBC	CSpacePirate	SquadJoin	method	B	B59C C1A4	-	unmarked	fn_72_DFD4
+0xDFD4	0xBC	CSpacePirate	SquadJoin	method	B	B59C C1A4	-	marked	fn_72_DFD4
 0xE090	0x1C	CSpacePirate	GetOrigin	virtual	B	data_8D8	-	marked	fn_72_E090
 0xE0AC	0x2C	CSpacePirate	DetachActorFromPirate (PMF)	method	B	data_8CC	-	marked	fn_72_E0AC
 0xE0D8	0x48	CSpacePirate	AttachActorToPirate (PMF)	method	B	data_8C0	-	marked	fn_72_E0D8
@@ -223,7 +223,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xEDDC	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	unmarked	fn_72_EDDC
 0xEDE4	0x8	(module)	returns 1, no reference anywhere	unreferenced	T	-	-	unmarked	fn_72_EDE4
 0xEDEC	0x1E8	CSpacePirate	ChooseTarget	method	B	1980	-	unmarked	fn_72_EDEC
-0xEFD4	0xCC	CSpacePirate	ChooseTeamTarget	method	B	7970 AF70 B59C CB30 E498 EDEC	-	unmarked	fn_72_EFD4
+0xEFD4	0xCC	CSpacePirate	ChooseTeamTarget	method	B	7970 AF70 B59C CB30 E498 EDEC	-	marked	fn_72_EFD4
 0xF0A0	0x6C	CSpacePirate	SetupStateMachine	virtual	B	data_8D8	-	marked	fn_72_F0A0
 0xF10C	0xC0	CSpacePirate	~CSpacePirate (deleting, slot 2)	dtor	H	data_8D8	compiler-generated member dtors	unmarked	fn_72_F10C
 0xF1CC	0x1E4	CSpacePirate	~CSpacePirate body / member dtors	member-dtor	H	F10C	compiler-generated member dtors	unmarked	fn_72_F1CC

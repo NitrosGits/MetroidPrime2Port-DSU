@@ -4764,6 +4764,15 @@ void CDarkSamus::StartNextDashStep(CStateManager& mgr) {
 // `extrwi.` at 0x00014DD8) the step command (fn_10_12C2C) and, while a step is left and the base's
 // GetAnimOver answers (CTriggerData(0.0f), 0x00014E14), the next step (fn_10_14C50). Deactivate
 // (`cmpwi r31, 0x2` at 0x00014E30) clears the steps left.
+// fn_10_14D14 (0x00014D14, 0x148 bytes): the double dash. Arms: the activate (the dash's
+// state is reset and the next dash is picked, 0x00014D44), the deactivate (the step counter is
+// cleared, 0x00014D8C), the dash is not blocked (the step command) and the dash is blocked,
+// and the dash has a step left and the animation is over (the next dash step,
+// 0x00014DA4).
+// The coverage run (tools/cov/run.sh with tools/cov/specs/darksamus_helpers2_loc.py, the
+// rooftop fight: 109 calls) showed all of them: the activate 3, the deactivate 3, the step
+// command 108 (the dash is blocked once), the next dash step 1.
+// @ fn_10_14D14
 void CDarkSamus::UpdateDoubleDash(CStateManager& mgr, EStateMsg msg) {
   UpdateCurrentAttack(0x8000, mgr, msg);
   if (msg == kStateMsg_Activate) {

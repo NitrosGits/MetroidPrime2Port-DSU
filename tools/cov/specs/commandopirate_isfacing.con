@@ -1,0 +1,5 @@
+# area 59: the commando is woken and the IsFacingTarget trigger is evaluated with a target.
+@f3000 objs commando
+@f3200 send u065a Activate
+@f3600 place u065a player 5
+@f4000 objs commando

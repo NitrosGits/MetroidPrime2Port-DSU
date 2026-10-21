@@ -1,0 +1,22 @@
+# 01_cliff_entrance (the world 1baa96c2), the layer 3 holds the six commandoes and the four cover
+# points; the same states are forced one after the other.
+@f30 layer 3
+@f120 objs commando
+@f160 send u05df Activate
+@f200 place u05df player 5
+@f260 fsm u05df CoverFind
+@f320 fsm u05df WallHang
+@f420 fsm u05df WallDetach
+@f480 fsm u05df JumpPointFind
+@f520 fsm u05df Ambush
+@f560 fsm u05df Dead
+@f600 fsm u05df SetCoverDest
+@f640 fsm u05df SetJumpDest
+@f680 fsm u05df SetRetreatDest
+@f720 fsm u05df BreakCover
+@f760 fsm u05df Cover
+@f800 fsm u05df ArmShield
+@f840 fsm u05df Lurk
+@f880 fsm u05df WarpOut
+@f920 fsm u05df PostWarpOut
+@f960 objs commando

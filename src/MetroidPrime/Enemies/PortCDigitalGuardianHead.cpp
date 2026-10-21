@@ -215,7 +215,10 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   // 0x18D28 / 0x18D5C: the balls' locators (.rodata 0x954's names) at 0xDCC / 0xDCD.
   const CAnimData* anim = GetModelData()->GetAnimationData();
   xDCC_[0] = anim->GetLocatorSegId(rstl::string_l("L_ball_LCTR"));
-  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));
+  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
+  // at 0x18E60).
+  x137A8_();
+
 }
 
 CDigitalGuardianHead::~CDigitalGuardianHead() {}
@@ -438,9 +441,9 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     if (xD70_ != nullptr) {
       xD70_->Destroy(mgr);
     }
-    StandInFn("fn_14_11EA8 (head XDEL)");
+    x11EA8_(); // fn_14_11EA8
     StandInFn("fn_14_FAEC (head XDEL)");
-    StandInFn("fn_14_11F7C (head XDEL)");
+    x11F7C_(mgr); // fn_14_11F7C
     break;
   case kSM_Activate: // "ACTV", 0x17E9C
     if (!active && xD70_ != nullptr) {
@@ -725,6 +728,11 @@ void CDigitalGuardianHead::xF424_(CStateManager& mgr) {
 // (li r6, 0) at locator 1 times its offset, solid, orbit, target and seeker-target (.data
 // 0xEA4..0xEB0: 59, 41, 40, 63), with the echo-target vulnerability (data +0x454), this head as
 // its owner and the parameter block; its id goes to 0xF34.
+// The arms: the echo target asset id is invalid -> nothing is built, else the three echo targets
+// are built. The run: area 53 (Sanctuary Fortress 09_cliff_temple_dark), 3000 frames; the
+// "invalid" arm was forced (the asset id set to kInvalidAssetId at the entry, tools/cov/force.sh
+// with /tmp/opencode/dgclose_12314.py).
+// @ fn_14_12314
 void CDigitalGuardianHead::x12314_(CStateManager& mgr) {
   xF40_[0] = CTransform4f::RotateX(CRelAngle::FromRadians(1.5707964f));
   xF40_[1] = CTransform4f::RotateX(CRelAngle::FromRadians(-1.5707964f)) *
@@ -844,6 +852,11 @@ const CDamageVulnerability* CDigitalGuardianHead::GetDamageVulnerability() const
 // final one at 0xD7C, else 0x40 set: the stunned one at 0xD78, else the shield one at 0xD74);
 // otherwise, or with no token, the base's. The tokens are not built yet, so the head's answer is
 // always the base's; the ctor sets 0x08, so that is also retail's answer until the head moves.
+// The arms: the head's flag byte's bit 3 (head+0x10F4) is clear -> the scannable info of the
+// head's model, else the one of the base. The run: area 53 (Sanctuary Fortress
+// 09_cliff_temple_dark), 3000 frames; the "the bit is set" arm was forced (the flag byte's bit 3
+// set at the entry, tools/cov/force.sh with /tmp/opencode/dgclose_177C8.py).
+// @ fn_14_177C8
 CScannableObjectInfo* CDigitalGuardianHead::GetScannableObjectInfo() const {
   if ((x10F4_ & 0x08) == 0) {
     StandInFn("fn_14_177C8 'SCAN' tokens (0xD74..0xD7C)");

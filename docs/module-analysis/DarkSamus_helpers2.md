@@ -177,3 +177,119 @@ body ran and the arms are the keys under it.
 - The call sites are the body's own now: fn_10_12F60's table lists only what its body calls
   (GetScatterShotAimPoint, LookAt, ObjectById, the cast, UpdateCurrentAttack, TurnTowardPlayer,
   the collision failsafe ...), checked against the asm.
+
+
+## 9. The per-arm measurement ('loc:' breakpoints)
+
+`tools/cov/specs/darksamus_helpers2_loc.py` puts a 'loc:' breakpoint on every arm line of the
+thirteen open bodies (the lines of the source the binary was built from) and counts the call
+sites of each body as well. The run: the rooftop fight, 6400 updates, 0 caught, 0 reach-stub.
+
+**What the two kinds of measurement are worth**: a call site is exact (each call site is its own
+code), a line breakpoint is not - at -O2 the compiler merges the code and gdb moves the
+breakpoint to the nearest line that has code ("No compiled code for line 613 in file
+PortCDarkSamus.cpp" for the lines the switch of fn_10_1C6C8 ended up in). So the call sites are
+the evidence, the line breakpoints are a hint.
+
+**Marked**: **fn_10_14D14** (UpdateDoubleDash) - every arm ran (the activate 3, the deactivate 3,
+the step command 108 with the dash blocked once, the next dash step 1).
+
+**Still open, with the arm that is missing**:
+
+| fn | the missing arm | why it is hard |
+| --- | --- | --- |
+| fn_10_1DD14 | the contact time is fresh, the weak/strong repulsion, the separation is not normalisable | the strength and the separation are locals |
+| fn_10_16B8C | the forward is not normalisable, the point is not normalisable | the flat forward is zero only when the actor looks straight up; the point is at the actor's own x/y |
+| fn_10_1D860 | no additive animation was found, deactivate without one | the first is the random pick of FindBestAnimation |
+| fn_10_1E740 | the path find is over, the attacker has no cover point, the distance test | the waypoint count and the cover point are locals |
+| fn_10_EFC8 | the hint is skipped, the hint is in the radius, no hint is close | the shipped fight script has no type-0x1C hint in the radius |
+| fn_10_1444C | the height is out of the band, the line is on the mesh | the mesh height under the point |
+| fn_10_1E3C0 | no cover point was better | the cover points of the fight script |
+| fn_10_1C6C8 | the second scatter info, the scatter info, no info | the switch has no line info at -O2 |
+| fn_10_1EE4C | the hit is too recent, the weapon is not a missile, there is no stage, the radius damage | the merged returns hide which early out fired |
+| fn_10_19B64 | the bits 0x100, 0x4, 0x80, the player cannot be walked to, the bit 0x20, the bit 0x10 | the attack bits come from the stage's shipped data |
+| fn_10_1905C | the direction is not normalisable, no hit, the hit is nearer, the hit is farther | the ray and the distances |
+| fn_10_154FC | most of its arms | the path clearance and the slots |
+
+**The forced calls** (`tools/cov/specs/darksamus_helpers2_loc_force.py`, one per arm that a
+member write can reach). The forced run (the same fight, the members written at the entry):
+- **fn_10_1DD14**: the contact-time arm - the key "the contact time is fresh" 181 (forced) against
+  1 natural. The arm ran, but the strength arm is still unmeasured (a local), so the body stays
+  unmarked.
+- **fn_10_1D860**: the deactivate-without-an-animation arm - the key (the message is not the
+  activate, the animation id is -1) 189 (forced). The other arm of the body ("no additive
+  animation was found") is still unmeasured (the random pick), so the body stays unmarked.
+- **fn_10_1C6C8**: the second-scatter-info arm was forced (the flag), but the switch has no line
+  info at -O2, so there is nothing to read the arm from: the body stays unmarked.
+
+The rest of the missing arms need the world (the mesh, the ray, the cover points) or a call with
+different arguments, so they stay open.
+
+**The merged profile** (the natural run and the forced one, `tools/cov/gcov_report.py build-port-cov
+<run1>/gcov <force>/gcov --module DarkSamus`) shows what the force closed: fn_10_1E740's "the
+attacker has no cover point" (only the "the path is shagged" is left), fn_10_1DD14's "the contact
+time is fresh" (the strength and the "the separation is not normalisable" are left),
+fn_10_1D860's "deactivate without an animation" (the "no additive animation was found" is left)
+and fn_10_1EE4C's "the hit is too recent" (the weapon type, the stage and the radius damage are
+left). fn_10_1C6C8's force reached the scatter shot's case but the arm it opens (the optional
+that holds the info) is never cached, so it stays open; fn_10_154FC's fight covered four of its
+thirteen arms on its own (the fight is not the same every run). No body of the twelve is
+ALL-ARMS yet, so no new marker was added.
+
+
+## 10. The gcov branch coverage (the exact arms)
+
+A coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`, the same cmake line as
+build-port-link plus the option) compiles the port's REL module bodies with gcov, so one ordinary
+run reports the branch coverage of every body of the module at once, and the branch counts are
+exact at -O2 (unlike the line breakpoints of the 'loc:' measurement of §9).
+
+The run: the rooftop fight (tools/cov/specs/darksamus_rooftop.con), 6400 updates, 0 caught, 0
+reach-stub; the report: `tools/cov/gcov_report.py build-port-cov <run>/gcov --module DarkSamus`.
+
+**All-arms**: fn_10_14D14 (UpdateDoubleDash) - the marker of the last slice stands (10/10
+branches, 19/19 lines).
+
+**The twelve open bodies, with the exact untaken branch** (the line of the branch whose direction
+never happened):
+
+| fn | the untaken branches | the arm |
+| --- | --- | --- |
+| fn_10_1C6C8 | 609, 613, 615 | the switch: the scatter shot's info, the second info, no info |
+| fn_10_1D860 | 855, 860 | no additive animation was found; deactivate without one |
+| fn_10_1DD14 | 819, 821, 824, 829 | the point is zero; the contact time is fresh; the repulsion is weak; the separation is not normalisable |
+| fn_10_16B8C | 4169, 4174 | the forward is not normalisable; the point is not normalisable |
+| fn_10_1905C | 3606, 3622, 3624, 3629, 3632 | the direction is not normalisable; the ray hit; the hit is nearer than the player minus eight; no hit; the hit is nearer than the player |
+| fn_10_19B64 | 3927, 3930, 3939, 3943, 3947, 3951, 3955, 3969 | the attack bits 0x1, 0x100, 0x20 (the ring path), 0x4, 0x80, 0x10 and the two inner tests |
+| fn_10_1E3C0 | 629, 630 | the cover point is skipped (the null, the inactive and the wrong area) |
+| fn_10_1E740 | 710, 718 | the path is shagged; the attacker has no cover point |
+| fn_10_1EE4C | 2204, 2207, 2211, 2215 | the hit is too recent; the weapon is not a missile; there is no stage; the radius damage |
+| fn_10_1444C | 3892, 3896 | the height query failed; the height is out of the band |
+| fn_10_EFC8 | 876, 882, 883, 890 | the safe position is too low; the hint is skipped; the hint is of another type; the hint is in the radius |
+| fn_10_154FC | 4554, 4565, 4573, 4575, 4612, 4619, 4620, 4628, 4636, 4640, 4643, 4645, 4661 | the facing, the slots, the clearance and the end distances |
+
+**Every one of these untaken branches is a retail arm** (checked against the REL's asm): the two
+CanBeNormalized tests of fn_10_16B8C are the retail's (the `bl CanBeNormalized` at 0x00016BF4 and
+0x00016C50, each with its `bne` over the Normalize), and the four tests of fn_10_1DD14 are the
+retail's (the point's three fcmpu at 0x0001DD8C..0x0001DDB4, the contact time at 0x0001DE5C, the
+strength at 0x0001DE78 and the separation's CanBeNormalized at 0x0001DED4). So no body of the
+twelve is marked because of an edge the retail does not have.
+
+**The forced calls** (`tools/cov/specs/darksamus_helpers2_gcov_force.py`, one per arm a member
+write can reach; the run's gcov counters are merged with the natural run's by the report tool):
+fn_10_1DD14's contact-time arm, fn_10_1D860's deactivate-without-an-animation arm, fn_10_1E740's
+attacker-has-no-cover-point arm, fn_10_1EE4C's too-recent and no-stage arms and fn_10_1C6C8's
+second-scatter-info arm. The arms that need the world (the mesh, the ray, the cover points, the
+stage's attack bits) or an argument the caller does not pass (the weapon type, the damage info)
+stay open.
+
+**The merged profile** (the natural run and the forced one, `tools/cov/gcov_report.py build-port-cov
+<run1>/gcov <force>/gcov --module DarkSamus`) shows what the force closed: fn_10_1E740's "the
+attacker has no cover point" (only the "the path is shagged" is left), fn_10_1DD14's "the contact
+time is fresh" (the strength and the "the separation is not normalisable" are left),
+fn_10_1D860's "deactivate without an animation" (the "no additive animation was found" is left)
+and fn_10_1EE4C's "the hit is too recent" (the weapon type, the stage and the radius damage are
+left). fn_10_1C6C8's force reached the scatter shot's case but the arm it opens (the optional
+that holds the info) is never cached, so it stays open; fn_10_154FC's fight covered four of its
+thirteen arms on its own (the fight is not the same every run). No body of the twelve is
+ALL-ARMS yet, so no new marker was added.

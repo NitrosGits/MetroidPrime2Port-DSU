@@ -1050,3 +1050,116 @@ loader-data findings, unchanged).
 
 **The scan fix** (`fn_79_2690`) also removes the "Scan by form" TODO: the retail picks the
 scan by the phase, and the port now does the same.
+
+### 7.21 The six trigger functions (2026-10-21, fourteenth lane pass)
+
+The trigger functions the port has but never marked, against the asm. A trigger function is
+only *called* when the FSM2 evaluates a transition that uses it, so a run's evidence for one
+of them is the transition it drives.
+
+| fn | the retail | the port | the branches |
+|---|---|---|---|
+| 9F7C | `ShouldDropFlyer`: the attack is ready (xc75_80) and the attack type is 5 | the same | 0x9F84 (the attack ready), 0x9F90 (the type) |
+| A064 | `ShouldBlow`: the attack is ready and the attack type is 6 | the same | 0xA06C, 0xA078 |
+| A0C8 | `SwitchedPlatform`: the wind node (0xf00) is not the chain node nearest the player | the same | 0xA0EC (the wind node), 0xA11C (the compare) |
+| A3D8 | `ZeroHealth`: the phase (0xc94) against the field at 0x8cc | the same, **the TODO is resolved** (below) | 0xA3D8 (the field), 0xA3E0-0xA3F0 (the compare) |
+| A418 | `OvipositorDead`: the ovipositor's health (0xc50) is zero or less | the same | 0xA41C (the health), 0xA424 (the compare) |
+| A498 | `StateOver`: the animation state id (0x6b4) is 3, the host's `kAS_Over` | the same | 0xA498 (the id), 0xA49C (the compare) |
+
+**ZeroHealth's `TODO(uncertain)` is resolved**: the retail compares the phase (0xc94) with the
+field at 0x8cc - the loader's `unknown_0x96ce7897` (the loader struct sits at 0x7c0, so 0x8cc
+is its 0x10c, and `unknown_0x96ce7897` is the field at 0x10c) - as **"field < phase"**
+(0xA3E0-0xA3F0: the doubling of the field keeps the signed compare from overflowing). The
+port's old body was `mPhase >= mData.unknown_0x96ce7897`, which fires one phase too early
+(the phase 2 instead of the phase 3).
+
+**The arms** (a probe on the six trigger functions, one line per change of the inputs; the
+run reached the phase 0 -> 1 -> 2 -> 3 cycle):
+
+| fn | branch | what | class |
+|---|---|---|---|
+| 9F7C | 0x9F84 | the attack is not ready | (b) `[probe] trigger 5 a 0 b 3 -> 0` and `a 0 b 5 -> 0` |
+| 9F7C | 0x9F90 | the attack type is not 5 | (b) the same lines (the type 3) |
+| 9F7C | - | the body: ready and the type 5 | (b) `[probe] trigger 5 a 1 b 5 -> 1` |
+| A064 | 0xA06C | the attack is not ready | (b) `[probe] trigger 3 a 0 b 3 -> 0` / `a 0 b 5 -> 0` |
+| A064 | 0xA078 | the attack type is not 6 | (b) the same lines |
+| A064 | - | the body | (d) the dark phase's attack type 6 never came up with the trigger evaluated |
+| A0C8 | 0xA0EC, 0xA11C | the compare | (d) the trigger was never called (no transition that uses it fired) |
+| A3D8 | 0xA3E0 | the phase is not past the field | (b) `[probe] trigger 2 a 2 b 2 -> 0` |
+| A3D8 | - | the body | (d) the phase 3 was reached, but the ovipositor's death takes the machine to the phase 2 and the transition after it does not evaluate this trigger again |
+| A418 | 0xA424 | the health is above zero | (b) `[probe] trigger 1 a 111 b 0 -> 0` and the rest |
+| A418 | - | the body: the health is zero or less | (b) `[probe] trigger 1 a -16 b 0 -> 1` |
+| A498 | 0xA49C | the animation state is not `kAS_Over` | (b) `[probe] trigger 0 a 1 b 0 -> 0` and `a 2 b 0 -> 0` |
+| A498 | - | the body: the animation is over | (b) `[probe] trigger 0 a 3 b 0 -> 1` |
+
+**Marked**: `fn_79_9F7C` (ShouldDropFlyer), `fn_79_A418` (OvipositorDead), `fn_79_A498`
+(StateOver) - every arm of each of them ran. `fn_79_A064` (ShouldBlow), `fn_79_A0C8`
+(SwitchedPlatform) and `fn_79_A3D8` (ZeroHealth) stay **unmarked**: their true arms did not
+run (the dark phase's attack type 6, the transition that uses SwitchedPlatform, and the
+phase 3 with the trigger evaluated).
+
+### 7.22 The function classification (all 243 symbols)
+
+`docs/module-analysis/SwampBossStage2_functions.tsv` has one row per function symbol of the
+module (243: the 236 `fn_79_*` plus RELMain/RELExit and the crtexe runtime bits) with the
+class, the port's marker, the note's name and the module's own call sites. The classes are
+applied by rule, so the table can be audited:
+
+- **H - host copy** (139 functions, 0x5108 bytes): the body copies something the host
+  already has, so the port writes no body for it: the loader's own constructors, copy
+  constructors, assignment operators and destructors, its `rstl::vector`/list growth and free
+  helpers, its `CToken` copies, the loader's read/convert helpers and the vtable entries the
+  host already has (the note's 1: the module does not override them), plus the crtexe runtime
+  bits (RELMain/RELExit, `_prolog`/`_epilog`, `ModuleConstructors`/`ModuleDestructors`).
+- **T - data / vtable thunk** (4 functions, 0x28 bytes): the body only returns a member
+  address or clears a flag: `fn_79_2E7C` (the address of `mSwoopTarget`, 0xdf4),
+  `fn_79_A4AC` (the address of `mLightChain`, 0xca8), `fn_79_6E5C` and `fn_79_B8A8` (a flag
+  cleared).
+- **B - module behaviour** (100 functions, 0x8BD0 bytes): real behaviour - these are the
+  port's bodies. 96 of them carry a `// @ fn_79_` marker.  Six more are host copies after
+  all (the port calls the host's equivalent): `fn_79_2704` (the scan setup, the host's
+  `CPatterned` scan info), `fn_79_2C20` (`LdrToDamageInfo`, the host's), `fn_79_3314` (the
+  cross product, the host's `CVector3f::Cross`), `fn_79_3E50` (the collidable copy, the host's),
+  `fn_79_6644` (the `rstl::list` append, the host's) and `fn_79_B8B4` (the base's
+  `CActor::OnScanStateChange`).
+
+| class | functions | .text bytes |
+|---|---|---|
+| H host copy | 139 | 0x5108 (20,744) |
+| T data / vtable thunk | 4 | 0x28 (40) |
+| B module behaviour | 100 | 0x8BD0 (35,792) |
+| **total** | **243** | **0xDD00 (56,576)** |
+
+**The unmarked B list (4)** - the module's behaviour that the port has but has not proved
+(the rest of the list was closed by 7.21 and 7.23):
+
+| fn | what | why it is not marked |
+|---|---|---|
+| `fn_79_1B38` | an additive flinch with no caller | the note's 7.2: no state, trigger, code function or vtable slot references it |
+| `fn_79_4F88` | `SendDecrement` | no caller in the module (7.2) |
+| `fn_79_5D40` | `GetIngSnatchingPoint` | the ing-snatch transition never runs |
+| `fn_79_72FC` | `ResetAttackPhase` (the code node) | the code node never runs (no state references it) |
+
+### 7.23 The three triggers' true arms (2026-10-21, fifteenth lane pass)
+
+The arms that 7.21 could not reach, forced with gdb: the game is booted under gdb (the port's
+RUNNING.md, "Boot under gdb"), a breakpoint is set on the trigger function and the member that
+decides the arm is set at the trigger's entry, so the function's own body then takes the true
+side. The driver (`tools/drivers/swampboss2_dark.py`) keeps the fight going (the growth kills and
+the phase cycle) while gdb has the game.
+
+| fn | branch | what | class |
+|---|---|---|---|
+| A064 | 0xA06C, 0xA078 | the attack is ready and the type is 6 | (b) the true side, **forced (gdb `set var this->mAttackReady = 1`, `set var this->mAttackType = 6`)**: `[probe] trigger 3 a 1 b 6 -> 1` |
+| A3D8 | 0xA3E0 | the field is below the phase | (b) the true side, **forced (gdb `set var this->mData.unknown_0x96ce7897 = 0`)**: `[probe] trigger 2 a 0 b 2 -> 1` |
+| A0C8 | 0xA0EC, 0xA11C | the wind node is not the node nearest the player | (c) the trigger is in the module's trigger table but **no state's transition list uses it** (the note's 6: the asset's edges), so the function is never called - the shipped data scan is the proof |
+
+So all three are **marked** now. The other arms of A064 and A3D8 ran without forcing (the
+attack not ready with the type 3, 5, 6 and 7: `[probe] trigger 3 a 0 b 3 -> 0` and so on; the
+field 2 with the phase 2: `[probe] trigger 2 a 2 b 2 -> 0`).
+
+**The four that stay unmarked** (the whole unmarked B list now): `fn_79_1B38` (the retail's
+additive flinch: the module's only copy of that code and nothing calls it - the port's
+`AddAdditiveFlinch` is the retail's inline code in fn_79_61C4), `fn_79_4F88` (`SendDecrement`,
+no caller), `fn_79_5D40` (`GetIngSnatchingPoint`: the ing snatch never runs) and `fn_79_72FC`
+(the code node: it is in the asset's code list but no state transitions into it).
