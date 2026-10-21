@@ -349,6 +349,8 @@ void CCommandoPirate::EnsureBodyActive(CStateManager& mgr) {
 // (0x0000DC18) - so the guest's tests (the rag doll is there at 0x0000CAF0, its byte at +0x70
 // has its 0x40 bit, the primed flag, at 0x0000CAFC) always take the bone tracking's branch (the
 // call at 0x0000CB10); the base's PreThink follows (0x0000CB20).
+// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// @ fn_9_CAC8
 void CCommandoPirate::PreThink(float dt, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   mBoneTracking.PreThink(*AnimationData());  // 0x0000CB10
@@ -1587,6 +1589,8 @@ void CCommandoPirate::x3900_JumpBackVelocity(CStateManager& mgr) {
 // call at 0x0000C77C) follows with the model's scale (the three floats at the model data's +0,
 // loaded at 0x0000C754..0x0000C770), the actor's transform (guest this+0x24) and the body
 // controller (guest this+0x48c).
+// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// @ fn_9_C6D4
 void CCommandoPirate::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);  // 0x0000C728
   mBoneTracking.PreRender(mgr, *AnimationData(), GetTransform(), GetModelData()->GetScale(),
@@ -1641,6 +1645,8 @@ void CCommandoPirate::Render(const CStateManager& mgr) const {
 // is always null - the constructor stores 0 there (0x0000DC18) - so the guest's rag-doll branch
 // (the CRagDoll::PreRenderAllViewports call at 0x0000C560 with lbl_9_rodata_458 = 0.2f, then the
 // portal system state) is dead here and the base's PreRenderAllViewports runs (0x0000C57C).
+// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// @ fn_9_C51C
 void CCommandoPirate::PreRenderAllViewports(CStateManager& mgr) {
   CPatterned::PreRenderAllViewports(mgr);  // 0x0000C57C
 }
@@ -1648,6 +1654,9 @@ void CCommandoPirate::PreRenderAllViewports(CStateManager& mgr) {
 // vtable slot 0x40 = fn_9_C2CC (0x34): the shield's damage vulnerability while the flag byte at
 // guest +0xc65 has its 0x04 bit set (the guest tests it with extrwi at 0x0000C2DC), the actor's
 // own vulnerability otherwise.
+// Run: force2, 05_swamp_timber! (2026-10-21): both arms; the shield arm forced (tools/cov/force.sh,
+// FORCE "C2CC shield bit": xc65_ |= 0x04 from the 301st call).
+// @ fn_9_C2CC
 const CDamageVulnerability* CCommandoPirate::GetDamageVulnerability() const {
   if (xc65_ & 0x04) {
     return &mShieldVulnerability;

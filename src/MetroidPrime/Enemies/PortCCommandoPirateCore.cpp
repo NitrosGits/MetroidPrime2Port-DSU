@@ -426,6 +426,10 @@ void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
 // degrees off the actor's (lbl_9_rodata_4B4, 0x000077D0..0x000077E0) the actor turns to it (a
 // locomotion command, weight 1.f lbl_9_rodata_43C, 0x00007840).
 // Deactivate: combat locomotion (3, 0x0000784C..0x00007850).
+// Runs: cov2 (no cover point) and force2, 05_swamp_timber! (2026-10-21): every arm; the cover
+// point forced (tools/cov/force.sh, FORCE "7724 Crouch cover": xbd2_ = u05c8 from the 3rd call),
+// both sides of the 20-degree test with it (GetAngleDiff 22 calls, DeliverCmd 13).
+// @ fn_9_7724
 void CCommandoPirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:                                             // 0x00007760
