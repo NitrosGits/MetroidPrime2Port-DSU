@@ -872,15 +872,17 @@ transition enters it.
   state, DiveAttack (fn_10_11FA4). The boost dive *is* the dive.
 - Reach: `fsm <id> DiveFromBoost`. The FSM2 has no transition into the node (no state lists the
   DiveAfterBoost trigger, fn_10_95A8), so the console is the only way in. The dive launches
-  about 167 ticks after the state change and the flight lasts about 20 ticks (the dive lands
-  on the player, who stands close).
+  167 to 200 ticks after the state change (the jump's XLAU event) and the flight lasts about
+  20 ticks (the dive lands on the player, who stands close), so the placement has to be
+  repeated every 10 ticks to land in the flight.
 - The static wall hit (0x00012534) ran: the boost bit skips the collision failsafe (the
   `clrlwi.` at 0x00012018), so an actor placed inside a wall stays there and the static
   collision test (kMT_Wall only, `li r5, 0x1` at 0x000124E8) finds the wall and the dive
   bounces off it (fn_10_1CDD0 with the zero normal, 0x0001254C). Without the bit the boss
   placed in the wall was returned to its safe position (Slice 18). The wall is at
   (68.59, 466.5, 164.3); the driver is `tools/drivers/darksamus_boost_dive.con` (rooftop u04f7,
-  the placement 172 ticks after the state change).
+  the placement every 10 ticks from 160 ticks after the state change). The boss ends the run
+  against the wall instead of at the player.
 
 | body | arm | ran |
 | --- | --- | --- |

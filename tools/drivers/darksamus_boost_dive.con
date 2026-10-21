@@ -2,14 +2,24 @@
 # (fn_10_11FA4 at 0x00012534). Sanctuary 10_cliff_rooftop layer 2, boss u04f7.
 #
 # Run it at the game's real speed (MP2_FRAME_LIMIT=1, no MP2_TICKS_PER_FRAME): the dive
-# launches about 167 ticks after the state change and the flight lasts about 20 ticks, so the
-# placement has to land in that window. The boost bit 0x01 (the dive record's 0xB20) is what
-# skips the collision failsafe (0x00012018), which would otherwise put an actor placed in a
-# wall back at its safe position before the static collision test runs.
+# launches 167 to 200 ticks after the state change (the jump's XLAU event), and the placement
+# has to land in the tick the dive is in flight, so the boss is put back into the wall every
+# 10 ticks. The boost bit 0x01 (the dive record's 0xB20) is what skips the collision failsafe
+# (0x00012018), which would otherwise put an actor placed in a wall back at its safe position
+# before the static collision test runs. The wall is at (68.59, 466.5, 164.3): the boss ends
+# the run there, against the wall, instead of at the player.
 @f600 send u04f7 Activate
 @f700 fsm u04f7 DiveFromBoost
-@f872 place u04f7 68.59 466.5 164.3
-@f880 objs darksamus
-@f900 objs darksamus
-@f940 objs darksamus
+@f860 place u04f7 68.59 466.5 164.3
+@f870 place u04f7 68.59 466.5 164.3
+@f880 place u04f7 68.59 466.5 164.3
+@f890 place u04f7 68.59 466.5 164.3
+@f900 place u04f7 68.59 466.5 164.3
+@f910 place u04f7 68.59 466.5 164.3
+@f920 place u04f7 68.59 466.5 164.3
+@f930 place u04f7 68.59 466.5 164.3
+@f940 place u04f7 68.59 466.5 164.3
+@f950 place u04f7 68.59 466.5 164.3
+@f960 place u04f7 68.59 466.5 164.3
 @f980 objs darksamus
+@f1000 objs darksamus
