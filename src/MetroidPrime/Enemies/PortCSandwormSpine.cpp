@@ -65,7 +65,8 @@ CVector3f CSandworm::SpineHelper108BC(int idx) const {
   } else {
     segId = GetAnimationData()->GetLocatorSegId(rstl::string_l(skSpineJoints[idx].name));
   }
-  return GetLctrTransform(segId).GetTranslation();
+  // Retail calls the wrapper (0x1094C), which returns the locator transform's translation.
+  return GetLctrTransformWrapper(segId);
 }
 
 // @ fn_56_F710
@@ -118,14 +119,17 @@ CVector3f CSandworm::GetLocatorPosition(int idx) const {
   } else {
     segId = GetAnimationData()->GetLocatorSegId(rstl::string_l(skSpineJoints[idx + 1].name));
   }
-  return GetLctrTransform(segId).GetTranslation();
+  // Retail calls the wrapper (0x10A00), which returns the locator transform's translation.
+  return GetLctrTransformWrapper(segId);
 }
 
 // Retail returns the translation only: it calls GetLctrTransform (0x10A38) and copies the three
 // translation floats of the returned transform (0x10A48..0x10A50) into the return slot, so the
 // return type is a CVector3f, not a CTransform4f.
-// fn_56_10A20 (ported, not exercised yet)
-// Dead slot: no caller in the tree (the spine helpers call GetLctrTransform directly).
+// @ fn_56_10A20
+// Run 2026-10-21 (03_sand_temple L2): the wrapper runs on every spine update (68174 calls). Its two
+// retail callers - fn_56_108BC (0x1094C) and fn_56_1096C (0x10A00) - call it, and the port now
+// calls it too instead of inlining GetLctrTransform(segId).GetTranslation().
 CVector3f CSandworm::GetLctrTransformWrapper(const CSegId& id) const {
   return GetLctrTransform(id).GetTranslation();
 }

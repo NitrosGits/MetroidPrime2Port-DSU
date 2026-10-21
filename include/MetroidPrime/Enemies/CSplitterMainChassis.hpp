@@ -293,6 +293,9 @@ private:
   // guest 0xCFC: the counter the IM00 script message advances by the data's
   // unknown_0xd5f34476 (fn_75_F1C0, 0x0000F528-0x0000F534).
   int mSpinCounter = 0;
+  // guest 0xCD8: the spin vector SetupSpinAttack zeroes (fn_75_BAA8, 0xBAD8-0xBAF4); the spin
+  // states and bounces (fn_75_963C, B104, B1D8, C51C, CCF0, D13C) read it.
+  CVector3f mSpinVector = CVector3f(0.f, 0.f, 0.f);
   // guest 0xD40 / 0xD41: the flag bytes (the IM00 and IM01 script messages set 0xD40's 0x80
   // bit, the STRT message sets 0xD41's 0x04 bit and IM00 tests 0xD41's 0x80 bit).
   uchar mFlagsD40 = 0;

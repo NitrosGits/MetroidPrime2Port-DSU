@@ -796,7 +796,8 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
 // fn_75_6B08 @0x00006BD8-0x00006BEC: the second CProjectileInfo at 0xe84, built from the laser
 // sweep beam's weapon system (data +0x60, the beam info's second word) and a default damage
 // (fn_75_722C: weapon -1, every amount 0.0f, the sounds 0xFFFF); fn_75_1974 fires it.
-, mLaserSweepProjectileInfo(data.mLaserSweepBeamInfo.weaponSystem, CDamageInfo()) {
+, mLaserSweepProjectileInfo(data.mLaserSweepBeamInfo.weaponSystem, CDamageInfo())
+, mOwnVulnerability(*CPatterned::GetDamageVulnerability()) {
   // fn_75_6B08 @0x00006DEC-0x00006E5C: the material filter - the include mask is the data word
   // 0x3B (lbl_75_data_428, kMT_Solid), the exclude mask the data words 0x2F and 0x21
   // (lbl_75_data_42C and lbl_75_data_430, kMT_CollisionActor and kMT_Character) and the type 3
@@ -1282,16 +1283,30 @@ void CSplitterCommandModule::PortUpdateEffectStates(CStateManager& mgr) {
   AnimationData()->SetEffectState(rstl::string_l("LaserMuzzle"), laserMuzzle, mgr);
 }
 
+// fn_75_5DDC (0x5DDC-0x5E4C): the head's own vulnerability copy at 0xEAC becomes the DOL's
+// ImmuneRicochetVulnerability (0x5DF8, the host's ReflectVulnerabilty; 0x5E04 fn_75_5B9C), the
+// head becomes orbitable (0x5E14 SetVisorOrbitableFlags 0xF, true), the shield state at 0xEDC is
+// 2 (0x5E1C-0x5E28), the timer at 0xF18 is zeroed (0.0f lbl_75_rodata_40, 0x5E30) and the effect
+// states are updated (0x5E34 fn_75_1578).
+// @ fn_75_5DDC
+void CSplitterCommandModule::PortSpinShield(CStateManager& mgr) {
+  mOwnVulnerability = CDamageVulnerability::ReflectVulnerabilty();
+  SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
+  mShieldState = 2;
+  mCountupTimerA = 0.f;
+  PortUpdateEffectStates(mgr);
+}
+
 // fn_75_5D50 (0x5D50-0x5DE0): the head's own vulnerability copy at 0xEAC takes the base's again
 // (0x5D6C GetDamageVulnerability, 0x5D78 fn_75_5B9C, the REL copy of the CDamageVulnerability
-// assignment); the port keeps no copy, the head's vulnerability slot (fn_75_616C) returns the
-// base's, so there is nothing to copy. The head becomes orbitable (0x5D88
+// assignment). The head becomes orbitable (0x5D88
 // SetVisorOrbitableFlags 0xF, true); with the shield state at 0xEDC at 2 (0x5D90 cmpwi) the timer
 // at 0xF1C is zeroed (0x5DA0); the shield state and the timer at 0xF18 are zeroed (0x5DB4,
 // 0x5DBC) and the effect states are updated (0x5DC0 fn_75_1578).
-// Not marked: shield state 2 is written only by fn_75_5DDC (0x5E28), whose one caller is the
-// chassis's SetupSpinAttack (fn_75_BAA8, 0xBB70), still a stand-in.
+// Not marked: the shield-state-2 arm (0x5D90) needs EndSpinAttack (fn_75_B9B0, 0xBA5C), which the
+// spin sub-machine's stand-in states never reach.
 void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
+  mOwnVulnerability = *CPatterned::GetDamageVulnerability();
   SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
   if (mShieldState == 2) {
     mCountupTimerB = 0.f;
@@ -1932,7 +1947,7 @@ const CHealthInfo* CSplitterCommandModule::GetHealthInfo() const {
 // vtable slot 0x40 = fn_75_616C: it returns the object's own copy of the base class's damage
 // vulnerability (the ctor copies it into 0xeac with fn_75_70A0).
 const CDamageVulnerability* CSplitterCommandModule::GetDamageVulnerability() const {
-  return CPatterned::GetDamageVulnerability();
+  return &mOwnVulnerability;
 }
 
 // vtable slot 0x48 = fn_75_18: it takes the actor's bounding box and copies it into the optional

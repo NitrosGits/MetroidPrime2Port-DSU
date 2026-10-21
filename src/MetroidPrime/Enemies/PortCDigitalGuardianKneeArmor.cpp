@@ -153,6 +153,19 @@ rstl::optional_object< CAABox > CDigitalGuardianKneeArmor::GetTouchBounds() cons
   return x164_;
 }
 
+// fn_14_CE1C: with the flag (the clrlwi. at 0xCE28) the orbit material (0x29 = kMT_Orbit) is
+// added (0xCE48); without it, it is removed (0xCE58) and the player is asked to break any orbit
+// on this armour (request 8, kOR_ActivateOrbitSource, the li at 0xCE68 and the call at 0xCE78).
+void CDigitalGuardianKneeArmor::SetOrbitable(CStateManager& mgr, bool orbitable) {
+  if (orbitable) {
+    AddMaterial(kMT_Orbit, mgr);
+  } else {
+    RemoveMaterial(kMT_Orbit, mgr);
+    mgr.GetPlayer(0)->SetOrbitRequestForTarget(GetUniqueId(), CPlayer::kOR_ActivateOrbitSource,
+                                               mgr);
+  }
+}
+
 void CDigitalGuardianKneeArmor::SetArmored(CStateManager& mgr, bool armored) {
   if (x19C_24_armored_ == armored) {
     return;
