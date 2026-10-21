@@ -1927,10 +1927,47 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
 }
 
 // vtable slot 0x9c = fn_9_C300 (0x1fc).
+// fn_9_C300 (0x1fc bytes): the KnockBack override (the vtable slot 0x9C).
+//
+// The guest's first branch (0x0000C324..0x0000C3AC) is the rag-doll one: it wants the block's
+// flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest
+// this+0xBFC to be there. The rag doll is always null here (the constructor stores 0 there and
+// the module's GetRagDoll returns null), so the guest always takes the path below and the impulse
+// it would give the rag doll never happens.
+//
+// The knock-back itself (0x0000C3C0..0x0000C3EC): the module's own IsOnGround (the vtable slot
+// 0x110, fn_9_90 - the bit 3 of the byte at guest this+0x34C) enables the knock-back reaction
+// (the reaction 2 = kAR_KnockBack) and the base's own KnockBack runs.
+//
+// Then the sounds (0x0000C3F0..0x0000C4D4): while the actor is alive (the byte at guest
+// this+0x420's 0x40 bit) and the knock-back manager's active reaction flags (the word at guest
+// this+0x630, the manager's +0x10) are 3 (kAR_Hurled), the state machine goes to the "GetUp"
+// state (the guest's string at rodata_504 + 0x352) and the block's "hurled" sound (the halfword
+// at guest this+0x7C2) is played. When the actor is dead the block's "death" sound (the halfword
+// at guest this+0x7C4) is played instead, unless the knock-back manager's follow-up (the word at
+// guest this+0x634, the manager's +0x14) is one of the four death follow-ups (7, 8, 9 and 10).
 void CCommandoPirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  StandIn("CCommandoPirate::KnockBack (vtable slot 0x9c, fn_9_C300)");
-  CPatterned::KnockBack(mgr, info);
+  KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, IsOnGround());  // 0x0000C3D4..0x0000C3DC
+  CPatterned::KnockBack(mgr, info);                                                        // 0x0000C3EC
+  if (GetAlive()) {                                                                        // 0x0000C3F0..0x0000C3F8
+    if (KnockBackController().GetActiveReactionFlags() == 3) {                              // 0x0000C3FC..0x0000C404
+      StateMachineState().SetState(mgr, *this, rstl::string_l("GetUp"));                 // 0x0000C40C..0x0000C43C
+      xc04_ = CSfxManager::AddEmitter(mData.mSoundHurled, GetTranslation(), 0x7f,           // 0x0000C448..0x0000C46C
+                                      GetCurrentAreaId().Value(), true, false,
+                                      CSfxManager::kMedPriority);
+    }
+  } else if (KnockBackController().GetActiveReactionFlags() == 3) {                         // 0x0000C47C..0x0000C484
+    const CKnockBackMgr::EFollowUp followUp = KnockBackController().GetFollowUp();          // 0x0000C48C
+    if (followUp != CKnockBackMgr::kFU_ExplodeDeath &&                                      // 0x0000C490..0x0000C4AC
+        followUp != CKnockBackMgr::kFU_IceDeath && followUp != CKnockBackMgr::kFU_BurnDeath &&
+        followUp != CKnockBackMgr::kFU_LaggedBurnDeath) {
+      xc04_ = CSfxManager::AddEmitter(mData.mSoundDeath, GetTranslation(), 0x7f,             // 0x0000C4B0..0x0000C4D4
+                                      GetCurrentAreaId().Value(), true, false,
+                                      CSfxManager::kMedPriority);
+    }
+  }
 }
+
 // vtable slot 0xa8 = fn_9_A4 (0x8): `li r3, 0x1`, so the actor can always be shot.
 bool CCommandoPirate::CanBeShot(const CStateManager& mgr, int attributes) { return true; }
 

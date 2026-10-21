@@ -70,7 +70,7 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0x40 | `GetDamageVulnerability` | `fn_9_C2CC` (0x34) | host (the +0xC65 test) |
 | 0x70 | `DoUserAnimEvent` | `fn_9_C798` (0x1ac) | host (the module's switch; the arms natural play does not reach are listed in section 4) |
 | 0x84 | `CollidedWith` | `fn_9_BF44` (0x2b0) | host (the module's own handling; the arms natural play does not reach are listed in section 4) |
-| 0x9C | `KnockBack` | `fn_9_C300` (0x1fc) | stand-in |
+| 0x9C | `KnockBack` | `fn_9_C300` (0x1fc) | host (the module's own: the reaction, the base's knock-back, the "GetUp" state and the two sounds; the rag-doll branch is dead) |
 | 0xA8 | `CanBeShot` | `fn_9_A4` | host (true) |
 | 0xAC | `IsListening` | `fn_9_8` | host (true) |
 | 0xB0 | `Listen` | `fn_9_BE4C` (0xf8) | stand-in |
@@ -653,7 +653,7 @@ armed cases are:
 
 | function | arms that ran | arms that did not run |
 |---|---|---|
-| `fn_9_C798` | the default arm only: the base's own `DoUserAnimEvent` for `kUE_LoopedSoundStop` (67 times in the run) | `kUE_Projectile` (the E-grenade's throw, the grenade state `fn_9_A2EC` is a stand-in), `kUE_DamageOn` (the melee's damage event, the melee state `fn_9_A4BC` is a stand-in), `kUE_DeGenerate` and `kUE_BecomeRagDoll` (the death animations, the Dead state `fn_9_69C8` is a stand-in), `kUE_Landing` and `kUE_TakeOff` (the jump animations, the JetBoost state `fn_9_9BB4` is a stand-in), `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` (the shield's animations; the ArmShield state `fn_9_86B4` is ported since 2026-10-21, but area 59's own state machine gives its trigger no target state, so the state is only reached through the console's `fsm` - see the per-branch table) |
+| `fn_9_C798` | the default arm only: the base's own `DoUserAnimEvent` for `kUE_LoopedSoundStop` (67 times in the run) | `kUE_Projectile` (the E-grenade's throw, the grenade state `fn_9_A2EC` is a stand-in), `kUE_DamageOn` (the melee's damage event, the melee state `fn_9_A4BC` is a stand-in), `kUE_DeGenerate` and `kUE_BecomeRagDoll` (the death animations, the Dead state `fn_9_69C8` was a stand-in then - it is ported since 2026-10-21), `kUE_Landing` and `kUE_TakeOff` (the jump animations, the JetBoost state `fn_9_9BB4` is a stand-in), `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` (the shield's animations; the ArmShield state `fn_9_86B4` is ported since 2026-10-21, but area 59's own state machine gives its trigger no target state, so the state is only reached through the console's `fsm` - see the per-branch table) |
 | `fn_9_BF44` | the early return (the flag byte at guest this+0xC65 has no 0x04 bit - the shield is not up), 1152 calls in the run | the shield's own arms: the damage to an object that is not a player, the 0x02 bit of the flag byte at guest this+0xC64 and the walk over the collision list (the filter hit, the steep normal and the kMT_Floor entry) - all of them need the 0x04 bit of the byte at guest this+0xC65, which only the shield's states set |
 
 So the two functions get their `// @` markers when the states that play those animations are
@@ -1219,6 +1219,12 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_728C` (the WallDetach state) | the activate (0x000072C4) and the deactivate (0x00007330) | b | forced (fsm) |
 | | the update's "the body is not in the wall-hang state" arm (0x00007318..0x00007328) | b | forced (fsm): once in the run, before the body was in the wall hang |
 | | the update's "the body is in the wall-hang state" arm (0x00007318) | b | forced (fsm): 96 times in the run - the WallHang state's own command put the body in the wall-hang state |
+| `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) | d | the branch wants the block's flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest this+0xBFC to be there; the rag doll is always null (the constructor stores 0 there, 0x0000DC18, and the module's GetRagDoll returns null, fn_9_78), so the guest never takes it |
+| | the knock-back itself (0x0000C3C0..0x0000C3EC) | b | the area 59 boot: the console's `damage` reaches the module's override through the module's own helper fn_9_2D0C (the call at 0x00002EF0) |
+| | the alive branch (0x0000C3F0..0x0000C404) | b | twice in the run - the commando is alive when the damage lands, even after the Dead state (the byte at guest this+0x420's 0x40 bit) |
+| | the "the reaction flags are 3" arm (0x0000C3FC and 0x0000C47C) | d | the knock-back manager's active reaction flags (the word at guest this+0x630, the manager's +0x10) are 16 after the area 59 damage, not 3 |
+| | the dead branch (0x0000C47C..0x0000C484) | d | behind the flags arm, and the commando is alive when the damage lands |
+| | the follow-up check and the death sound (0x0000C48C..0x0000C4D4) | d | behind the flags arm |
 | `fn_9_ADA0` (the Ambush state) | the activate (0x0000ADA8) and the other messages (0x0000ADB4) | b | the state is forced with the console's `fsm` (**forced (fsm)**): the activate sets the crouch locomotion, the update does nothing |
 | `fn_9_6BCC` (the BreakCover state) | the activate (0x00006BEC) and the other messages (0x00006BF0) | b | forced (fsm): the exit-state command, the cover point's release and the byte at guest this+0xC66 |
 | `fn_9_728C` (the WallDetach state) | the activate (0x000072C4), the update (0x000072DC) and the deactivate (0x00007330) | b | forced (fsm): all three messages ran |
@@ -1426,8 +1432,8 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 20 marked, 51 ported but not marked, 11
-stand-ins, 174 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
+The port's state per function (the `port` column): 20 marked, 52 ported but not marked, 11
+stand-ins, 173 not ported at all (the H and T ones, and the module's own loader/ctor/dtor
 helpers, which the host's classes already have).
 
 **The unmarked B list** (the B functions the port does not mark, 116 of them): the stand-ins first -
