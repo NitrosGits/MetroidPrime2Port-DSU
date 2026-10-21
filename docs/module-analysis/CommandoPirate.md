@@ -70,10 +70,10 @@ Slots follow `docs/module-analysis/vtable-offsets.md` (the CEntity -> CActor -> 
 | 0x40 | `GetDamageVulnerability` | `fn_9_C2CC` (0x34) | host (the +0xC65 test) |
 | 0x70 | `DoUserAnimEvent` | `fn_9_C798` (0x1ac) | host (the module's switch; the arms natural play does not reach are listed in section 4) |
 | 0x84 | `CollidedWith` | `fn_9_BF44` (0x2b0) | host (the module's own handling; the arms natural play does not reach are listed in section 4) |
-| 0x9C | `KnockBack` | `fn_9_C300` (0x1fc) | host (the module's own: the reaction, the base's knock-back, the "GetUp" state and the two sounds; the rag-doll branch is dead) |
+| 0x9C | `KnockBack` | `fn_9_C300` (0x1fc) | host, **marked** (the module's own: the reaction, the base's knock-back, the "GetUp" state and the two sounds; the rag-doll branch is dead) |
 | 0xA8 | `CanBeShot` | `fn_9_A4` | host (true) |
 | 0xAC | `IsListening` | `fn_9_8` | host (true) |
-| 0xB0 | `Listen` | `fn_9_BE4C` (0xf8) | stand-in |
+| 0xB0 | `Listen` | `fn_9_BE4C` (0xf8) | host, **marked** (section 6.1) |
 | 0xB4 | `GetOrigin` | `fn_9_AC` | host (the translation) |
 | 0xC8 | `GetModelAlphau8` | `fn_9_68` | host (the base's alpha byte) |
 | 0xDC | `ProjectileInfo` | `fn_9_D474` (0x8) | host (this+0xA14) |
@@ -1238,10 +1238,10 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_3900` (the jump-back velocity) | the flag byte at guest this+0xC63 (0x0000393C) and the ballistic velocity (0x000039A8..0x00003A18) | d | the helper runs from the module's launching message (the call at 0x0000D040), which the area 59 run does not send |
 | `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) | d | the branch wants the block's flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest this+0xBFC to be there; the rag doll is always null (the constructor stores 0 there, 0x0000DC18, and the module's GetRagDoll returns null, fn_9_78), so the guest never takes it |
 | | the knock-back itself (0x0000C3C0..0x0000C3EC) | b | the area 59 boot: the console's `damage` reaches the module's override through the module's own helper fn_9_2D0C (the call at 0x00002EF0) |
-| | the alive branch (0x0000C3F0..0x0000C404) | b | twice in the run - the commando is alive when the damage lands, even after the Dead state (the byte at guest this+0x420's 0x40 bit) |
-| | the alive branch's "the reaction flags are 3" arm (0x0000C3FC) | b | the flags are 3 when the commando is frozen: the frozen reaction's rules (the retail's UNFZ and STFR) set the flags 1|2, and the run freezes the commando with the dark beam (`damage <id> 5 darkburst`) before the damage. Then the state machine goes to the "GetUp" state and the block's hurled sound plays (the cov run: the "GetUp" line is hit once) |
-| | the dead branch (0x0000C47C..0x0000C484) | d | the commando has to be dead when the damage lands - the console's `kill` does that (it zeroes the health and runs the actor's Death, which clears the alive flag at guest this+0x420) - and the flags have to be 3 in the same call. The kill run reaches the KnockBack (the dead branch's test runs) but the flags are not 3 there: the death takes the frozen state with it, so the knock-back on the dead actor is not the frozen reaction |
-| | the follow-up check and the death sound (0x0000C48C..0x0000C4D4) | d | behind the dead branch |
+| | the alive branch (0x0000C3F0..0x0000C404) | b | the coverage run (build-port-cov, tools/cov/run.sh with tools/cov/specs/commandopirate_c300.py and tools/drivers/commandopirate_c300.py, area 59): 190 of the 200 calls land on the live commando |
+| | the alive branch's "the reaction is kAR_Hurled" arm (0x0000C3FC, `lwz r0,0x630` + `cmpwi r0,3`) | b | the guest's +0x630 is the knock-back manager (+0x620) +0x10, `SReactionParameters::mReaction` (the CRuleSetEvaluator base is 0x10 bytes; the reaction flags are +0x20, the DOL's ExecuteAction `ori`s them at 0x801BD9BC) - the port read the flags before 2026-10-21. The rule set gives kAR_Hurled to the console's `damage <id> 1 60 supermissile` (forced (damage)): once in the run, the state machine goes to "GetUp" and the hurled sound plays |
+| | the dead branch (0x0000C47C..0x0000C484) | b | forced (kill + damage): the driver's `kill <id>` and its eleven `damage` lines in the same tick land on the dead commando (10 calls); 8 of them have the reaction kAR_Hurled |
+| | the follow-up check and the death sound (0x0000C48C..0x0000C4D4) | b | the same run: the death sound twice, a death follow-up (7..10) six times. The host compiles the four compares into one range test, so gcov's 2/2 there does not say which of 7, 8, 9 and 10 ran |
 | `fn_9_ADA0` (the Ambush state) | the activate (0x0000ADA8) and the other messages (0x0000ADB4) | b | the state is forced with the console's `fsm` (**forced (fsm)**): the activate sets the crouch locomotion, the update does nothing |
 | `fn_9_6BCC` (the BreakCover state) | the activate (0x00006BEC) and the other messages (0x00006BF0) | b | forced (fsm): the exit-state command, the cover point's release and the byte at guest this+0xC66 |
 | `fn_9_728C` (the WallDetach state) | the activate (0x000072C4), the update (0x000072DC) and the deactivate (0x00007330) | b | forced (fsm): all three messages ran |
@@ -1309,11 +1309,9 @@ does not give the arms the port waits for:
 - the WallDetach state's "the body is in the wall hang" arm (`fn_9_728C`) needs the body's state
   20 (`pas::kAS_WallHang`), which only the unported WallHang state (`fn_9_7358`) can give.
 - the Dead state's shield effect (`fn_9_69C8`) needs the 0x20 bit of the byte at guest
-  this+0xC66, and that bit is only set by the module's own knock-back helper, which the game
-  reaches through the vtable slot 0x9C (`fn_9_C300`, `CCommandoPirate::KnockBack`) - a stand-in.
-  The console's `damage` works (the commando's hp goes from 225 to 220 in the run) but it calls
-  the base's knock-back, not the module's, so the bit stays clear. The call to port is
-  `fn_9_C300`.
+  this+0xC66, and that bit is only set by the module's own knock-back helper (`fn_9_2D0C`), which
+  runs only while the byte at guest this+0xC65 has its 0x04 or 0x08 bit (the message switch,
+  0x0000D0A0). (`fn_9_C300` itself is ported and marked since 2026-10-21.)
 - the PostWarpOut state (`fn_9_8D28`, ported on 2026-10-21) never runs either: the module never
   warps out, because the WarpOut state (`fn_9_8DF0`) is still a stand-in and no script message
   of the shipped data reaches it.
@@ -1449,11 +1447,11 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 52 marked, 63 ported but not marked, 141
+The port's state per function (the `port` column): 53 marked, 62 ported but not marked, 141
 not ported at all (the H and T ones, and the module's own loader/ctor/dtor helpers, which the
 host's classes already have).
 
-**The unmarked B list** (the B functions the port does not mark, 100 of them): the stand-in first -
+**The unmarked B list** (the B functions the port does not mark, 98 of them): the stand-in first -
 `fn_9_5410` (the E-grenade's creator) - and then the ported ones whose every arm has not run yet
 (the table above names them). The
 full list is the `class`/`port` columns of `CommandoPirate_functions.tsv`.
@@ -1468,7 +1466,9 @@ the console's `fsm` (**forced (fsm)**). `fn_9_B1E0` (ShouldBoost) is marked too:
 ran (the 0x20 flag test and the true arm) ran in the Swamp's timber area, and its three other arms
 are unreachable in the shipped data (the class-**c** rows above). `fn_9_3338` (the jump-back
 helper) is marked too: the coverage run in area 59 gives it 7/7 lines and 2/2 branches - the ray
-and the path finder answered both ways. The four functions of the first
+and the path finder answered both ways. `fn_9_C300` (the KnockBack override) is marked: 15/15
+lines and 11/11 branches with tools/drivers/commandopirate_c300.py (forced (damage), forced (kill +
+damage); the rag-doll branch is dead). The four functions of the first
 slice (`fn_9_7A98`, `fn_9_2474`, `fn_9_2A98` and `fn_9_B1E0`) and the FollowAttackPattern state
 (`fn_9_961C`) are not marked: each of them still has a class-**d** arm (the charge's abort and
 0x08 bits, the turn helper's push vector, the picker's 0x20-clear and next-gone arms and the
