@@ -1212,7 +1212,7 @@ bool CDarkSamus::PlayerTooClose(CStateManager&, const CTriggerData&) const {
 // @ fn_10_FAF4
 bool CDarkSamus::ReachedPissedOff(CStateManager& mgr, const CTriggerData&) const {
   const CScriptAIHint* hint = FindAreaHint(mgr, 0xE);
-  if (hint == nullptr) {
+  if (hint == nullptr) { // 0x0000FB14
     return true;
   }
   const CVector3f delta = GetTranslation() - hint->GetTranslation();
@@ -1668,7 +1668,7 @@ const CScriptAIHint* CDarkSamus::FindAreaHint(CStateManager& mgr, int type) cons
   CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     const CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
-    if (hint == nullptr || hint->GetActive() != true ||
+    if (hint == nullptr || hint->GetActive() != true || // 0x0000FCA0/0x0000FCC4
         hint->GetCurrentAreaId() != GetCurrentAreaId()) {
       continue;
     }
@@ -1724,7 +1724,7 @@ void CDarkSamus::WatchStageChange(CStateManager& mgr) {
   mStageChanged = 0;
   const CDarkSamusBattleStage* seen =
       TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(mSeenStageUid));
-  if (seen != nullptr) {
+  if (seen != nullptr) { // 0x0000FD9C
     if (seen->GetStageInfo().unknown_0x911a2476 == true) {
       mPissedOff = 1;
     } else {
