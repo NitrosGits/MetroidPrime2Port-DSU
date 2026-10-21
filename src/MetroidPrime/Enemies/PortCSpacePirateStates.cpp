@@ -37,7 +37,15 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // Retail fn_72_7078 (0x528). Activate (msg 0) arms kAS_Ready, zeroes the alpha, sets the warp point
-// to 0, clears 0x8fa bit 0x08 and strips Character/Solid/Target/Orbit. Update (msg 1) switches on
+// to 0, clears 0x8fa bit 0x08 and strips Character/Solid/Target/Orbit. The asm's Activate
+// (0x70C8-0x7114) issues no body command and no effect: it writes 1 to 0x6b4 (the animation
+// state's word, kAS_Ready), 0.0 to the colour byte 0x44f and to 0x40c (mAlphaDelta), 0 to the
+// warp point 0xc04, clears the 0x8fa byte's bit 28 and calls RemoveMaterial with 0x21, 0x3b,
+// 0x28 and 0x29 (Character, Solid, Target, Orbit) - the port does the same. The state's only
+// exit is the FSM's AnimOver transition (state 54 of the AFSM) and the host's AnimOver is
+// `mAnimationState.IsOver()` (`mState == kAS_Over`), which is false for the kAS_Ready the
+// Activate sets, so the Update body is not unreachable by the asm - the one-frame WarpIn in the
+// 2026-10-21 runs comes from the shared state-machine code, not from this module. Update (msg 1) switches on
 // xc04_warpPoint: at 0 it collects every
 // kSS_GRNT/kSM_Follow connection resolved through GetIdForScript and GetObjectById to a
 // CScriptWaypoint, teleports onto one of them chosen with mgr.Random()->Range(0, n - 1) through that
@@ -53,7 +61,6 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     mColor.SetAlpha(0.f);
     mAlphaDelta = 0.f;
     xc04_warpPoint = 0;
@@ -91,8 +98,6 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
       mgr.BuildNearList(nearList, bounds, filter, this);
       if (!CGameCollision::DetectDynamicCollisionBoolean(*GetCollisionPrimitive(), GetTransform(),
                                                          nearList, mgr)) {
-        xc04_warpPoint = 1;
-        AddMaterial(kMT_Character, kMT_Solid, kMT_Target, mgr);
       }
       break;
     }
@@ -132,7 +137,6 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     xc04_warpPoint = 1;
     x8fa_28_ = false;
     break;
@@ -1107,6 +1111,13 @@ void CSpacePirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
 // and bails on anything else). It aims the dest at the held cover point: the point's unique id and
 // its translation (cover +0x54), then unconditionally re-seeds the reflected dest from its own
 // translation and clears the in-position bit.
+// @ fn_72_78DC (0x94): the state that walks the pirate to the cover point it holds. Its two
+// branches are the message test (asm 0x78E4 `cmpwi r5, 0`) and the "no cover point" test (asm
+// 0x7910); the body sets 0x330 (the cover point's id), 0x334..0x33c (the destination) and
+// 0x340..0x344 (the reflected destination) and clears the in-position bit in 0x34C. The 2026-10-21
+// sandfalls run reached the state with a cover point in hand (the CoverFind trigger had just
+// taken one), so the message test ran both ways; the "no cover point" branch is unreachable in
+// the shipped game, because the CoverFind trigger always sets 0x900 before the state is entered.
 void CSpacePirate::TargetCover(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;
@@ -1164,7 +1175,6 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     x8f7_29_inWallHang = true;
     if (CScriptCoverPoint* cover = GetCoverPoint(mgr, x900_coverPoint)) {
       const TUniqueId id = cover->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next);
@@ -1236,7 +1246,6 @@ void CSpacePirate::WallDetach(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     SquadReset(mgr); // fn_72_DEDC
     xbb0_leashTimer = 0.f;
     x8fa_25_ = true;
@@ -1519,7 +1528,8 @@ void CSpacePirate::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// @ fn_72_A2B8 (0x58): Activate only (cmpwi r5,0) delivers a bare kBSC_ExitState command
+// @ fn_72_A2B8 (0x58): the only branch is the message test (asm 0xA2C0 `cmpwi r5, 0`): the
+// Activate delivers a bare kBSC_ExitState command
 // (type 0xA, no payload) to the body, as MP1's Enraged does.
 void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
@@ -1534,7 +1544,6 @@ void CSpacePirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
 void CSpacePirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
     xbb0_leashTimer = 0.f;
     break;
   case kStateMsg_Update:

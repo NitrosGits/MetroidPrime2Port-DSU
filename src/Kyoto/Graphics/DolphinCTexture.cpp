@@ -8,6 +8,7 @@
 #include "dolphin/gx/GXStruct.h"
 #include "dolphin/gx/GXTexture.h"
 #ifdef TARGET_PC
+#include "dolphin/gx/GXExtra.h"
 #include "dolphin/gx/GXManage.h"
 #include "port_breadcrumb.h"
 #endif
@@ -129,6 +130,13 @@ void CTexture::InitTextureObjects() {
   short height = mHeight;
   void* buf = mARAMToken.GetMRAMSafe();
   CountMemory();
+#ifdef TARGET_PC
+  // Aurora maps every GXCopyTex destination address to its EFB copy until GXDestroyCopyTex, which
+  // MP2 never calls, and binds that copy for any texture whose data sits at the address. This is
+  // fresh memory (a new or reloaded bitmap), so a copy left mapped there by a freed buffer is stale:
+  // a font reloaded onto an old scan-visor copy address drew the copy instead, and all text vanished.
+  GXDestroyCopyTex(buf);
+#endif
 
   if (IsCITextureFormat(mTexelFormat)) {
     GXInitTexObjCI(&mTexObj, buf, width, height, mNativeCIFormat, wrap, wrap, hasMips, 0);

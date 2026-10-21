@@ -158,6 +158,10 @@ public:
   pas::ELoopAttackType GetAttackType() const { return mType; }
   int WaitForAnimOver() const { return mWaitForAnimOver; }
   bool SkipInto() const { return mSkipInto; }
+#ifdef TARGET_PC
+  // Port: the guest sets the flag byte's 0x80 bit directly (CommandoPirate fn_9_2474, 0x00002740).
+  void SetSkipInto(bool skipInto) { mSkipInto = skipInto; }
+#endif
 
 private:
   pas::ELoopAttackType mType;
