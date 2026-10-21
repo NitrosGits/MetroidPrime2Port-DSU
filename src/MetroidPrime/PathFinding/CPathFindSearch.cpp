@@ -29,7 +29,13 @@ CPathFindSearch::CPathFindSearch(CPFArea* area, uint flags, int index, float chR
 , mFlags(flags)
 , mIndexMask(1 << index)
 , mAvoidanceFilter(avoidanceFilter)
-, mRootPosition(rootPosition) {}
+, mRootPosition(rootPosition) {
+#ifdef TARGET_PC
+  // The DOL leaves the result unset until the first search; its fresh arena reads 0 (kR_Success).
+  // The host heap isn't zeroed, so stale bytes made PathShagged true before any search.
+  mResult = kR_Success;
+#endif
+}
 
 CPathFindSearch::EResult CPathFindSearch::Search(const CVector3f& source,
                                                  const CVector3f& destination) {
