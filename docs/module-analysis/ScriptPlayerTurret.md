@@ -342,3 +342,306 @@ asmcheck findings, all explained: x20 bit 0x80 is `GetActive()`; the 0x28F8 comp
 `in-turret 1`, the camera turns from (0, -24.05) to (-2.10, -24.92) around the turret, the shot
 spawns at (9.8, -26.7, 17.6) (aimed right), `B` gets off (`in-turret 0`); 4000 updates, `exit=0`,
 0 `[port] caught`/`reach-stub`; screenshots `/tmp/opencode/pt_think/grid.png`.
+
+## 13. The function inventory (2026-10-21) and the six most-called functions
+
+The module has 59 functions. One was marked before this slice (`fn_63_23C0`). The other 58 split
+into the module's own code (18, listed below) and 40 copies of host/DOL or compiler-generated code
+that must never carry a marker.
+
+### 13.1 The copies of host/DOL code (cited, never marked)
+
+| fn | size | what it is |
+|---|---|---|
+| `RELMain`, `RELExit` | 0x20, 0x24 | the REL's entry and exit (they call `fn_63_70` / `SetSPlayerTurret_FuncPtrs(nullptr)`) |
+| `fn_63_70` | 0xD4 | the REL's setup: the five pointers-to-member are copied into `lbl_63_bss_20` and the DOL's `SetSPlayerTurret_FuncPtrs` is called (the port does this in `RELMain`) |
+| `_prolog`, `_epilog` | 0x24, 0x24 | the REL linker's own entry/exit (`ModuleConstructors`/`ModuleDestructors` + `RELMain`/`RELExit`) |
+| `ModuleConstructors`, `ModuleDestructors` | 0x4C, 0x4C | the REL linker's `_ctors`/`_dtors` walkers |
+| `__register_global_object`, `__destroy_global_chain` | 0x1C, 0x58 | the REL linker's global-object registry |
+| `_unresolved` | 0xC4 | the REL linker's "unlinked function called" report |
+| `fn_63_376C` | 0x90 | the module's static initializer (the `.ctors` entry): it builds `lbl_63_bss_C` ("muzzleend_LCTR"), registers `lbl_63_bss_0` and builds `lbl_63_bss_1C`, the module's damage colour `CColor(0.5, 0, 0, 1)` (0x000037A4) |
+| `fn_63_3618`, `fn_63_36A8`, `fn_63_3704` | 0x90, 0x5C, 0x48 | the generated owner file `CScriptPlayerTurretObjOwner.cpp`: its constructor and its two destructors |
+| `fn_63_3510`, `fn_63_35A0` | 0x90, 0x78 | the same owner's destructor family (the `CMemory`/refcount ones) |
+| `fn_63_0` | 0x2C | the vtable slot 15 (`GetHealthInfo`): a forwarder through the vtable + 0x38, the DOL's `HealthInfo` |
+| `fn_63_610`, `fn_63_674`, `fn_63_72C` | 0x64, 0xB8, 0x114 | `SLdrEditorProperties`' destructor, constructor and a second property reader (unreachable from this module's loader) |
+| `fn_63_B18`, `fn_63_B60` | 0x48, 0xB4 | `CImpactVisorEffect`'s constructor - the projectile's visor effect (the host's `CImpactVisorEffect::None()` is the same empty effect) |
+| `fn_63_C14`, `fn_63_C54`, `fn_63_C74`, `fn_63_C9C`, `fn_63_D1C`, `fn_63_D88`, `fn_63_DDC`, `fn_63_E18`, `fn_63_E54`, `fn_63_EB0`, `fn_63_ED0`, `fn_63_F18` | 0x40..0x5C | the `CToken`/`CMemory` copy-constructor and destructor family the compiler emitted (the guest's token is ref-counted) |
+| `fn_63_1020` | 0x50 | the `rstl::string` global's destructor (registered by `__register_global_object`) |
+| `fn_63_1974`, `fn_63_1B34`, `fn_63_236C` | 0x3C, 0x3C, 0x54 | the `CMemory` destructors (`Free__7CMemoryFPCv` wrappers) the compiler emitted for the placement news |
+| `fn_63_349C` | 0x74 | `CToken(IObj* null)`, the turret's empty token (the host's `rstl::single_ptr< CToken >` with `nullptr` is the same thing) |
+| `fn_63_374C` | 0x20 | `CModelData`'s default constructor (the turret has no model of its own) |
+| `fn_63_2D28` | 0x40 | `CVector3f::Cross`, the guest's inline (the host's `CVector3f::Cross`) |
+
+### 13.2 The module's own functions
+
+`fn_63_144` (the loader), `fn_63_840`, `fn_63_84C` (the shot), `fn_63_F6C`, `fn_63_1070`,
+`fn_63_1134`, `fn_63_1460`, `fn_63_14B4`, `fn_63_1508`, `fn_63_15B0`, `fn_63_19B0`, `fn_63_1B70`,
+`fn_63_1BE8`, `fn_63_23C0`, `fn_63_2D68`, `fn_63_3034`, `fn_63_3070` (the destructor), `fn_63_30E8`
+(the constructor).
+
+### 13.3 The six most-called ones
+
+The counts are the runtime calls of one natural run (06_ShootingGallery, the player enters the
+turret, fires and aims): `fn_63_3034` 7277, `fn_63_F6C` 4849, `fn_63_23C0` 2880 (already marked),
+`fn_63_1070` 2425, `fn_63_2D68` 2423, `fn_63_840` 2304, `fn_63_1134` 2303. The next ones are far
+behind (`fn_63_84C` 1, `fn_63_1BE8` 6), so the six below are the ones a run can really cover.
+
+| fn | verdict | what the run proved |
+|---|---|---|
+| `fn_63_3034` | **marked** | branch-free (the guest copies the box at 0x158 and sets the optional's flag); 7277 calls |
+| `fn_63_F6C` | **marked** | the base actor is found (4849 calls); the other arm (no base actor) is a guard the game's flow cannot reach: the hull's connections are set at the area load, before the camera ever asks for the turret's transform |
+| `fn_63_1070` | **marked** | branch-free: the guest's `LookAt(position, position + (forward.x, forward.y, forward.z + 0.0), Up)` - the z term is `lbl_63_rodata_8` = 0.0, so the port's `position.GetZ() + 0.f` is retail's; 2425 calls |
+| `fn_63_840` | **marked** | branch-free (`lhz 0x19A`): 2304 calls |
+| `fn_63_1134` | **marked** | every arm the game's flow can produce ran: the reload timer (61), the "Whole Body" animation block (3), the shot (3), the pitch below zero (60) and above (2420), and the inverted-Y arm (2303, the game's invert-stick option on). The arms left are the two null guards, the "not active" arm (the DOL only calls `ProcessInput` while the turret state is 3) and the `|difference| > 1` clamp (the turn axes are mutually exclusive, so the difference cannot exceed 1) - retail cannot reach them either |
+| `fn_63_2D68` | **fixed, not marked** | three behaviour differences fixed (below); the damage-flash arm (0x2E9C) needs a `kSM_Damage` message, and the port's damage path only sends that message to the object that was damaged (`CStateManager::ApplyDamage`), never to the turret script object - the arm is unreachable in the port, and covering it would need a forced `send` |
+
+### 13.4 The three differences fn_63_2D68 had
+
+1. **The copy the guest works on** (0x2DAC): the guest starts from the turret's *own* saved flags
+   (the guest's 0x1D4..0x1DC, the copy `fn_63_15B0` took from the base actor at the area load),
+   not from the base actor's flags as they are now.
+2. **The white flags** (0x2E6C..0x2E94): the flags half (the guest's 0x102) is `(3 & ~3) | 1`, so
+   only the depth compare (0x1) is set and the depth update (0x2) is off (`clrrwi` at 0x2E74
+   clears the low two bits, `ori` at 0x2E7C sets bit 0). The port set 3.
+3. **The flash colour** (0x2F48): the module's own `lbl_63_bss_1C` is `CColor(0.5, 0, 0, 1)`, not
+   `CColor::Red()` (`CColor(1, 0, 0, 1)`).
+
+A fourth difference, in the same function's condition (0x2DF4), was the important one: the guest
+compares `mgr + 0x24DC` with `MaskUIdNumPlayers(mPlayerId)`. `mgr + 0x24DC` is
+`CStateManager::mCurrentRenderPlayerIndex` (`CFrustumPlanes` is 0x64 bytes at 0x2478, so the index
+lands on 0x24DC), not the player count: the port's `mgr.GetNumPlayers() == mgr.MaskUIdNumPlayers(...)`
+was `1 == 0` in single player, so **the turret's hull light never came on**. With
+`GetCurrentRenderPlayerIndex()` the white case runs on every frame the player is in the turret.
+
+### 13.5 Runtime check (2026-10-21)
+
+`WORLD=M06_ShootingGallery,06_ShootingGallery FRAMES=3000 GODMODE=1 MP2_CONSOLE=<port>
+tools/run_gameplay.sh` with the console's `tp 0 -27 11` (the player enters the turret),
+`press A 20` (the turret fires), `stick 127 0 60`, `stick 0 127 60`, `stick -127 0 60`,
+`stick 0 -127 60` (the aim) and `hurt u040d 10` / `hurt u0418 10`. The run's own log:
+
+    [harness] gameplay reached at 12.5 s (frame 489)
+    [harness] the frame limit is up at 51.4 s: world 7e19ed26, area 0 of 1
+    exit=0
+
+`grep -c '^\[port\] caught'` = 0 and `grep -c reach-stub` = 0. The console's `status` printed
+`in-turret 1` and the camera moved around the turret with the stick, so `fn_63_1070`,
+`fn_63_F6C`, `fn_63_840`, `fn_63_1134` and `fn_63_2D68` all ran.
+
+An instrumented build of the same inputs (the counters are not in the committed tree) gave the
+per-function call counts and the arm coverage of section 13.3: `call_3034 7277`, `call_F6C 4849`,
+`call_1070 2425`, `call_2D68 2423`, `call_840 2304`, `call_1134 2303`, `arm_2D68_white 2423`,
+`arm_1134_reloadTimer 61`, `arm_1134_animBlock 3`, `arm_1134_fire 3`,
+`arm_1134_invertY 2303`, `arm_1134_pitchNeg 60`, `arm_1134_pitchPos 2243`.
+
+The inverted-Y arm needs the game's "invert stick aim Y" option. The port keeps the game's
+options in `<user>/settings.cfg` as the `game_options` blob (the bit stream `CGameOptions::PutTo`
+writes); the option is bit 87 (byte 10, mask 0x01 - the flags are written after 85 bits: the magic
+32, the sound mode 2, the brightness 4, the two offsets 6 each, the stretch 5, the two volumes 7
+each and the two alphas 8 each).
+
+asmcheck (`tools/asmcheck.py check ScriptPlayerTurret
+src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp fn_63_3034 fn_63_1070 fn_63_F6C
+fn_63_840 fn_63_1134 fn_63_2D68`) reports no correctness tag; the six findings are completeness
+ones: `TCastToPtr<6CActor>` (the port uses the const cast), the two `rstl` string calls (the port
+uses a literal) and the `x1d0` compare (the tool tracked the local difference back to
+`mYawTarget`; the guest compares the difference of the two analog inputs, which the port clamps).
+
+## 14. The remaining module functions (2026-10-21): the damage arm and the twelve functions
+
+### 14.1 Who sends kSM_Damage to a player turret? Nobody.
+
+The turret's flash arm (the damage case of `fn_63_1BE8`, 0x224C, and the red branch of
+`fn_63_2D68`, 0x2E9C) needs a `kSM_Damage` message addressed to the turret. In the shipped game
+there is no such sender:
+
+- **The turret is not damageable.** `CActor::HealthInfo()` returns `nullptr` (the DOL's code, the
+  upstream's `src/MetroidPrime/CActor.cpp:518`), so the turret has no health info, and
+  `CStateManager::ApplyDamage` returns early for an actor without one (`CStateManager.cpp:2941`).
+  The console confirms it: `hurt u040d 10` prints no hp line, while the hull (`u0418`) prints
+  `hp -5/5`.
+- **The hull is damageable but does not forward it.** The hull is a `CScriptActor`
+  (`u0418`, at (0, -27, 10)); its `AcceptScriptMsg` has no `kSM_Damage` case
+  (`CScriptActor.cpp:129`) and `CEntity::AcceptScriptMsg` only handles
+  activate/deactivate/toggle (`CEntity.cpp:43`), so a hit on the hull never reaches the turret.
+- **Nothing else sends it.** The only `kSM_Damage` senders in the tree are
+  `CStateManager::ApplyDamage` (to the damaged object), `CScriptSafeZoneCrystal` (to itself) and
+  two ported modules' relays; the shooting gallery has neither.
+
+So the arm is unreachable in retail as well - it is a relic of the REL. The port keeps retail's
+case and says so in a comment at both places (the `kSM_Damage` case of `AcceptScriptMsg` and the
+red branch of `PreRender`), and `fn_63_2D68` is marked with the white arm (the one a run reaches)
+exercised.
+
+### 14.2 The twelve remaining module functions
+
+| fn | verdict | evidence |
+|---|---|---|
+| `fn_63_30E8` (the ctor) | **marked** (one difference fixed) | the turret's construction at the area load |
+| `fn_63_3070` (the dtor) | **marked** | the world teardown at the end of the run (the host's destructor chain does retail's vtable reset, token and `~CActor`; the pool frees the object) |
+| `fn_63_144` (the loader) | **marked** | the area load; the property loop is the upstream's generated `SLdrPlayerTurret.inc`, the same code retail's REL was built from |
+| `fn_63_15B0` (the hull actors) | **marked** (three differences fixed) | the area load |
+| `fn_63_19B0` (the anim parameters) | **marked** | five calls from `fn_63_15B0` |
+| `fn_63_14B4` (the top actor becomes solid) | **marked** | the `kSM_Start` case |
+| `fn_63_1460` (the top actor loses solid) | **marked** | `fn_63_1B70` when the player leaves |
+| `fn_63_1508` (the muzzle transform) | **marked** | every shot |
+| `fn_63_84C` (the shot) | **fixed, not marked** | `press A` in the turret; the multiplayer sound arm (0xA90) is an unported path (15) |
+| `fn_63_1B70` (ExitTurret) | **marked** | `press B` in the turret |
+| `fn_63_2D68` (PreRender) | **marked** | every frame the player is in the turret (the white arm) |
+| `fn_63_1BE8` (AcceptScriptMsg) | **fixed, not marked** | five of the seven cases ran (Create, AreaLoaded, Activate, Start, Deactivate); the `kSM_Stop` case (0x2008) is only sent by the gallery's own script when the round ends - neither the hull's destruction (`hurt u0418 100`, hp -95/5) nor the player's death (`kill`) produces it - and the `kSM_Damage` case is unreachable (14.1) |
+
+### 14.3 The differences this slice fixed
+
+1. **The three animation lookups** (`fn_63_15B0`, 0x1634..0x18E8): only the two getup lookups pass
+   a parameter (the guest's `FromEnum(0)` at 0x1670 and `FromEnum(1)` at 0x1704); the step, death
+   and locomotion lookups pass **eight empty** parameters (the guest's eight `NoParameter` calls
+   at 0x175C..0x18B4). The port passed `FromEnum(3)`, `FromEnum(4)` and `FromEnum(5)`, so the
+   three animation ids could be the wrong ones. `BuildAnimParmData` now takes the guest's eight
+   slots and the three lookups pass none.
+2. **The dead player** (`fn_63_1BE8`, 0x1DEC): when the player that enters has no health left the
+   guest returns from the whole function - the rest of the `kSM_Activate` case *and*
+   `CActor::AcceptScriptMsg` are skipped. The port ran on and called the base handler.
+3. **The weapon damage's sound** (`fn_63_30E8`, 0x3444): after copying the loader's damage info
+   the guest overwrites its damage sound id with `0x2812`
+   (`SFXsa2_r_hitheavy_00_oneshot`, `include/MetroidPrime/SFX/SamusImpact_MP.h`). The host's
+   `CDamageInfo` had no setter for that field; it has one now, under `TARGET_PC`.
+
+### 14.4 Runtime check (2026-10-21)
+
+`WORLD=M06_ShootingGallery,06_ShootingGallery FRAMES=3000 GODMODE=1 MP2_CONSOLE=<port>
+tools/run_gameplay.sh` with the console's `tp 0 -27 11` (the player enters the turret), `press A`
+(the turret fires), `tp -40 -20 20` and `tp 0 -27 11` again (the trigger deactivates and
+activates), `press B` (the player leaves) and `objs`:
+
+    [harness] the frame limit is up at 59.9 s: world 7e19ed26, area 0 of 1
+    exit=0
+
+`grep -c '^\[port\] caught'` = 0 and `grep -c reach-stub` = 0. The console's `status` printed
+`in-turret 1` three times and `in-turret 0` after the `press B`.
+
+An instrumented build of the same inputs (the counters are not in the committed tree) counted:
+`call_144 1`, `call_84C 1`, `call_1460 1`, `call_14B4 1`, `call_1508 1`, `call_15B0 1`,
+`call_19B0 5`, `call_1B70 1`, `call_2D68 1350`, `call_3070 1`, `call_30E8 1`, `case_Create 1`,
+`case_Activate 1`, `case_Deactivate 1`, `case_Start 1`, `case_AreaLoaded 1`, `arm_white 1286`.
+A second run of 12000 updates (the player stays in the turret) counted `call_3070 1` - the
+destructor runs when the world is torn down at the end of the run.
+
+asmcheck (`tools/asmcheck.py check ScriptPlayerTurret
+src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp fn_63_144 fn_63_84C fn_63_1460
+fn_63_14B4 fn_63_1508 fn_63_15B0 fn_63_19B0 fn_63_1B70 fn_63_2D68 fn_63_3070 fn_63_30E8`) reports no
+correctness tag for any of them. The completeness findings: the loader's `BRANCH`/`CALLS` (the
+property loop is the upstream's generated `.inc`, an include the tool cannot parse) and its
+`CALL`s (`fn_63_674` is the properties' constructor, `LoadTypedefEditorProperties`,
+`ReadFloat`, `LoadTypedefDamageInfo` and `ReadBytes` are the generated loop, `AllocateUniqueId`,
+`LdrToDamageInfo`, `LdrToTransform4f` and `LdrToEntityInfo` are the host's names for the guest's),
+its `XCALL` (`TranslateSfx` is the port's helper for the guest's inline `-1` test at 0x4A4);
+`fn_63_15B0`'s `NoParameter` call (the port's default arguments live in the header) and `CALLS`;
+`fn_63_84C`'s `fn_63_B18`/`fn_63_F18` (the host's `CImpactVisorEffect::None()` and the token
+copy); `fn_63_3070`'s `Free` (the host's pool frees the object) and `fn_63_30E8`'s `fn_63_374C`
+(the host's `CModelData()`).
+
+## 15. Every conditional branch of the marked functions (2026-10-21)
+
+The marker means "the body is retail's and ran", so every branch of a marked function has to be
+accounted for. The classes are: **(a)** compiler-generated (the null test after `operator new`, an
+inlined host helper) - it needs no run; **(b)** a real arm that ran - the once-per-arm probe line
+is shown; **(c)** a real arm unreachable in the shipped data - the evidence is in the port's
+comment at the branch; **(d)** a real reachable arm that did not run - the marker goes.
+
+Seven functions were checked. One of them, `fn_63_84C`, lost its marker over its multiplayer
+sound arm (its row in the table below).
+
+The probe was a temporary once-per-arm flag array in the port (one flag per arm, printed at
+exit); it is not in the committed tree. Three runs: the shooting gallery (the turret in use),
+the Agon Wastes (`sand_world,06_sand_alamofront` + `layer 3`) and the Sanctuary Fortress
+(`cliff_world,01_cliff_entrance` + `layer 6`) - the last two only load the area and the turrets,
+so their lines are the loader's and the hull's.
+
+### fn_63_144 (the loader, 35 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x1A8..0x304: the property dispatch tree (18 `beq` on the property id + 12 `bge` on the binary search) | (a) | the generated property switch - the upstream's `SLdrPlayerTurret.inc` is the same generated code the REL was built from |
+| 0x47C/0x480: the property loop | (a) | the generated loop of the same file |
+| 0x49C: the allocation returned null | (a) | the null test after `operator new` (the guest allocates 0x230 bytes at 0x494) |
+| 0x4A4, 0x4BC, 0x4D8, 0x4F0, 0x50C: the five sound ids are -1 | (c) | all three shipped turrets have real sound ids: the probe printed `[arm] 144_sfx_id_valid` in the shooting gallery, the Agon Wastes and the Sanctuary Fortress, and never `[arm] 144_sfx_id_is_minus_one`; the comment is at the port's `TranslateSfx` |
+
+### fn_63_84C (the shot, 8 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x89C: the player is missing | (c) | the shot is only fired from `ProcessInput`, which returns early when the player is missing (fn_63_1134's own test at 0x1168); the probe printed `[arm] 84C_player_ok`, never `84C_player_null` |
+| 0x8AC: the token is not loaded | (c) | the token is loaded by the `kSM_Create` case at the area load (0x1C9C), before any shot; the probe printed `[arm] 84C_token_loaded`, never `84C_token_not_loaded` |
+| 0x8CC: the allocation returned null | (a) | the null test after `operator new` |
+| 0x9A0: the impact visor effect's flag | (a) | the flag is the literal 1 the code sets at 0x8EC, so the test is on a constant; the port's `CImpactVisorEffect::None()` carries the same flag |
+| 0x9B4: the projectile is missing | (a) | the null test after the placement new |
+| 0xA00/0xA10: the base actor or its animation data is missing | (c) | the base actor is the turret's own ATOB connection, resolved at the area load (fn_63_15B0); it resolves in all three shipped turrets; the probe printed `[arm] 84C_base_and_anim_ok`, never `84C_base_or_anim_null` |
+| 0xA90: the multiplayer sound | **(d)** | Echoes' multiplayer is local split-screen for 2-4 players on one console and it ships on the disc (the M0x_* worlds, M06_ShootingGallery among them, are multiplayer arenas), so the arm is reachable - but the port cannot start a match: there is no console command and no environment variable for it, the front end's VS flow is what creates one (CScriptGuiScreen's deathmatch/coin switches, `CGameState`'s `CGMDeathMatch`/`CGMCoin`), and the harness skips the front end and sets the single-player mode itself (`PortSkipFrontEnd.cpp:313`), driving pad 0 only.  The arm did not run (the probe printed `[arm] 84C_single_player_sound`, never `84C_multiplayer_sound`), so **`fn_63_84C` is not marked** |
+
+### fn_63_3070 (the destructor, 3 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x308C: `this` is null | (a) | the compiler's "delete this" test |
+| 0x30A0: the token's address is null | (a) | the compiler's placement-new test |
+| 0x30C0: the block is not a heap block | (a) | the compiler's free test (`Free__7CMemoryFPCv` needs the block's size) |
+
+### fn_63_15B0 (the hull actors, 2 branches)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x1614: the base actor is missing | (c) | the ATOB connection resolves in all three shipped turrets; the probe printed `[arm] 15B0_hull_ok` in the shooting gallery, the Agon Wastes and the Sanctuary Fortress, never `15B0_no_hull` |
+| 0x1624: the animation data is missing | (c) | the same connection's model carries the animation database in all three shipped turrets (the same probe line) |
+
+### fn_63_14B4 (the top actor becomes solid, 1 branch)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x14E0: the top actor is missing | (c) | the ATCL connection resolves in the shipped turrets (the gallery's turret rides it); the probe printed `[arm] 14B4_top_actor_ok`, never `14B4_no_top_actor` |
+
+### fn_63_1460 (the top actor loses solid, 1 branch)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x148C: the top actor is missing | (c) | the same ATCL connection; the probe printed `[arm] 1460_top_actor_ok`, never `1460_no_top_actor` |
+
+### fn_63_1508 (the muzzle transform, 1 branch)
+
+| branch | class | evidence |
+|---|---|---|
+| 0x1554: the base actor is missing | (c) | the ATOB connection resolves in all three shipped turrets; the probe printed `[arm] 1508_base_actor_ok`, never `1508_no_base_actor` |
+
+### The probe's lines (the shooting gallery run)
+
+    [arm] 144_sfx_id_valid
+    [arm] 84C_player_ok
+    [arm] 84C_token_loaded
+    [arm] 84C_base_and_anim_ok
+    [arm] 84C_single_player_sound
+    [arm] 15B0_hull_ok
+    [arm] 14B4_top_actor_ok
+    [arm] 1460_top_actor_ok
+    [arm] 1508_base_actor_ok
+    [arm] fn_144_entered
+    [arm] fn_84C_entered
+    [arm] fn_3070_entered
+    [arm] fn_15B0_entered
+    [arm] fn_14B4_entered
+    [arm] fn_1460_entered
+    [arm] fn_1508_entered
+    [arm] fn_19B0_entered
+
+and in the Agon Wastes and the Sanctuary Fortress runs:
+
+    [arm] 144_sfx_id_valid
+    [arm] 15B0_hull_ok
+    [arm] fn_144_entered
+    [arm] fn_3070_entered
+    [arm] fn_15B0_entered
+    [arm] fn_19B0_entered
+
+One branch is (d) - `fn_63_84C`'s multiplayer sound - so that function's marker was removed and
+the other six markers stand.  The port's multiplayer machinery is there (`CGMDeathMatch`,
+`CGMCoin`, the front end's VS screens), but nothing in the port can start a match: the console has
+no command for it, there is no environment variable for it, and the harness's boot path sets the
+single-player mode itself.  The arm is therefore an unported path, not an unreachable one.

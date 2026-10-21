@@ -195,6 +195,18 @@ public:
 
   // guest 0xF24-0xF2C: the vector the chassis's fn_75_ACEC adds to the position it looks from.
   const CVector3f& GetEditorProperties() const { return mEditorProperties; }
+  // The retail's fn_75_5A80 (the laser origin) and fn_75_5AD8 (the sweep start), which the
+  // chassis's SetupLaserSweep (fn_75_B678) calls.
+  CVector3f PortLaserOrigin(CStateManager& mgr) const;
+  void PortStartLaserSweep(const CVector3f& first, const CVector3f& second);
+  void PortFireLaserSweep(CStateManager& mgr, const CVector3f& end);  // fn_75_1974
+  int GetLaserSweepStage() const { return mLaserSweepStage; }  // guest 0xF34
+  // guest 0xEFA: the chassis the head is docked in (the chassis's fn_75_8EC8 reads it, 0x00008F68).
+  TUniqueId GetChassisId() const { return mChassisId; }
+
+  // The retail's fn_75_5D50: the head's shield reset (the chassis's Death and its spin, dodge and
+  // docking states call it).
+  void PortResetShield(CStateManager& mgr);
 
 private:
   void EnsureBodyActive(CStateManager& mgr);
@@ -205,6 +217,7 @@ private:
   CSplitterCommandModuleData mData; // guest 0x7C0 (the parameter block fn_75_72BC copies in)
   CPathFindSearch mPathFindSearch;  // guest 0xD6C (fn_75_0 returns this+0xD6C)
   CProjectileInfo mProjectileInfo;  // guest 0xE5C (fn_75_8 returns this+0xE5C)
+  CProjectileInfo mLaserSweepProjectileInfo;  // guest 0xE84 (the laser sweep beam, fn_75_1974)
   // guest 0xE58: the retail's collision actor manager (the command module's Think updates it
   // at 0x64C8). It holds the head's joint collision descriptions, which belong to the state
   // machine, so the port starts it empty.
@@ -230,7 +243,7 @@ private:
   TUniqueId mLookAtTargetId = kInvalidUniqueId;  // guest 0xF02 (the u16 the retail keeps here)
   CSegId mLookAtSegment;                         // guest 0xEF8 (the locator)
   CVector3f mLookAtOffset;                       // guest 0xF50, 0xF54, 0xF58
-  int mLookAtSfxHandle = 0;                      // guest 0xF5C (the sound handle)
+  CSfxHandle mLookAtSfxHandle;                      // guest 0xF5C (the sound handle)
 
   // guest 0xF24-0xF2C: the editor-properties vector - the retail's constructor copies the
   // editor's three floats into it (fn_75_6B08) and the head's states overwrite it; the Idle
@@ -253,6 +266,14 @@ private:
   TUniqueId mSyncedId = kInvalidUniqueId;        // guest 0xEFE (the copy of the chassis's 0xCC0)
   TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
   TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
+  // guest 0xF34: the laser sweep stage. The constructor leaves -1 (0x6CA0, 0x6CE4), fn_75_5AD8
+  // sets 0 for a docked head (0x5AF4), the LaserSweep state (fn_75_44DC) advances and ends it,
+  // and the ShouldLaserSweep trigger (fn_75_55F8) tests it against -1.
+  int mLaserSweepStage = -1;
+  // guest 0xF38 / 0xF44: the laser sweep's two ends (fn_75_5AD8 keeps them; LaserSweep,
+  // fn_75_44DC, swaps them and turns toward each in turn).
+  CVector3f mLaserSweepStart = CVector3f::Zero();
+  CVector3f mLaserSweepEnd = CVector3f::Zero();
   // The retail's fn_75_3EEC: the head's "dock to the chassis". The id at 0xEFC (the connected
   // object the XAND message found) is the chassis; when the chassis accepts this head the id
   // moves to 0xEFA - the id the beam-effect gate (fn_75_58E8) and the chassis check (fn_75_31A8)
@@ -298,6 +319,8 @@ private:
   // guest 0xF68: the id of the spawned beam effect. The retail looks it up at the start of
   // fn_75_1188 and keeps the id of the actor it creates in it.
   TUniqueId mBeamEffectId = kInvalidUniqueId;
+  // guest 0xF64: the beam effect's looped sound (the data's 0x890, AddEmitter at 0x13E0).
+  CSfxHandle mBeamSfxHandle;
   // The retail's fn_75_3A8C (the connected-object lookup) and fn_75_2CC0 (the flash start).
   void PortUpdateConnectedObject(CStateManager& mgr);
   void PortStartFlashIfTarget(const CScriptMsg& msg);

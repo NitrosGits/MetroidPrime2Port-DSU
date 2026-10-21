@@ -9,6 +9,18 @@ Read a lane's result with the openchamber tool (`session.messages`, `lastAssista
 `tools/review_decomp_diff.sh <base>` from its worktree, accept, then send the same session its next slice.
 Worktrees: `~/.local/share/opencode/worktree/3e7f972e5f2a67a4bf166b19e99a591913d8d4a4/wt-mp2-*`.
 
+**Next-slice preamble (2026-10-21; send with each lane's next slice until all have had it):** first
+`git merge port` (brings `8721dda7e`); fast runs `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` with
+`tools/drivers/con.py` `@f<n>` scripts; reach states with console `fsm <id> <state>` / `place <id> player [d]`
+/ `damage` / `send` (forced arms count when the branch table says `forced (<cmd>)`, see
+DECOMP_WORKFLOW.md); put drivers in `tools/drivers/`; ask for missing console commands and shared-header
+accessors in the report; also write the final report to `/tmp/opencode/reports/<lane>.md`.
+Batch 7 (branch `batch7` in `../wt-mp2-batch5`, head `07d7159e1`, 10 heads from the table; host/link/matching
+green 12:13) merged into port `54e8498b0`: 1785 markers, 15.21% fns / 20.13% bytes. smoke7 (`/tmp/opencode/smoke7`)
+vs smoke6: 0 new errors, 17/17 rc 0; sandboss stalled once at frame 240 (rc 124, blank frame), passed solo: watch it.
+Parallel smoke runner (3-4 Xvfb displays + ticks-per-frame + `@f`) next, checked against smoke7.
+Lane watcher: `~/.cache/mp2-orch/watch.sh` (lanes file beside it), detached loop logs events to `events.log` there.
+
 Batch 5 merged into port `3bb8177db` (via branch `batch5`, worktree `../wt-mp2-batch5`): playerturret
 `c377344ed`, ing `8855b1674`, spacepirate-vt `c42d82fce`, emperoring `542d6c9b8`, emperoring3 `f786b983e`,
 boostguardian `da45064c5`, digitalguardian `227e42fb1`, commandopirate `cf9eb1995`, splitter `b17910bb4`
