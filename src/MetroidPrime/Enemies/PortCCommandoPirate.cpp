@@ -1499,10 +1499,10 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
 // otherwise the weapon is the sender itself (0x00002D98..0x00002DA8).
 //
 // The knock-back: the info (the weapon's own forward column, its id, its owner id, its current
-// damage info and the direct flag - 0x00002DB8..0x00002ED4), the knock-back manager's anim
-// reaction range when the flag byte at guest this+0xC64 has its 0x01 bit (0x00002ED8..0x00002EE4),
-// the knock-back itself (the vtable slot 0x9C, 0x00002EF0) and the module's own flag byte
-// (0x00002F08..0x00002F1C).
+// damage info and the direct flag - 0x00002DB8..0x00002E00), the knock-back manager's anim
+// reaction range when the flag byte at guest this+0xC64 has its 0x01 bit (0x00002E04..0x00002E1C),
+// the knock-back itself (the vtable slot 0x9C, 0x00002E38), the reaction range the guest restores
+// right after it (0x00002E3C..0x00002E48) and the module's own flag byte (0x00002E4C..0x00002E8C).
 //
 // Then the commando looks for the ground under itself: a ray from its own position plus the up
 // vector six units down (rodata_49C) with the module's own material filter - the include list
@@ -1530,20 +1530,23 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
   if (weapon != nullptr) {
     const CKnockBackInfo info(weapon->GetTransform().GetForward(), weapon->GetUniqueId(),
                               weapon->GetOwnerId(), weapon->GetCurrentDamageInfo(),
-                              true);  // 0x00002DB8..0x00002ED4
-    if ((xc64_ & 0x01) != 0) {  // 0x00002ED8..0x00002EE4
+                              true);  // 0x00002DB8..0x00002E00
+    if ((xc64_ & 0x01) != 0) {  // 0x00002E04..0x00002E1C
       KnockBackController().SetAnimReactionRange(CKnockBackMgr::kAR_Hurled, CKnockBackMgr::kAR_Fall);
     }
-    KnockBack(mgr, info);  // 0x00002EF0 (the module's own override, fn_9_C300)
+    KnockBack(mgr, info);  // 0x00002E38 (the vtable slot 0x9C, the module's own override, fn_9_C300)
+    // The guest restores the reaction range right after the knock-back (0x00002E3C..0x00002E48).
+    KnockBackController().SetAnimReactionRange(CKnockBackMgr::kAR_None, CKnockBackMgr::kAR_Fall);
   }
-  // The module's flag byte: the 0x04 bit is set when the knock-back manager's reaction flags are
-  // between 2 and 4 (the guest's word at guest this+0x630, the manager's own flags at its +0x10,
-  // 0x00002E4C..0x00002E74); otherwise the 0x01 bit is folded into the 0x04 bit (0x00002E78).
-  const uint reactionFlags = KnockBackController().GetActiveReactionFlags();
-  if (reactionFlags >= 2 && reactionFlags < 5) {
-    xc64_ |= 0x04;
+  // The module's flag byte: the 0x04 bit is set when the knock-back manager's reaction is between
+  // 2 and 4 (the guest's word at guest this+0x630, the manager's own mReaction at its +0x10, the
+  // compares at 0x00002E50 and 0x00002E58); otherwise the byte keeps the bit
+  // (0x00002E78..0x00002E8C).
+  const uint reaction = KnockBackController().GetActiveReaction();
+  if (reaction >= 2 && reaction < 5) {
+    xc64_ |= 0x04;                                         // 0x00002E64..0x00002E70
   } else {
-    xc64_ = (xc64_ & ~0x04) | ((xc64_ & 0x04) | (xc64_ & 0x01));
+    xc64_ = (xc64_ & ~0x04) | (xc64_ & 0x04);               // 0x00002E78..0x00002E8C
   }
   // The ray under the commando: from its own position plus the up vector six units down.
   const CVector3f start = GetTranslation() + CVector3f::Up();
