@@ -136,7 +136,8 @@ and one call each, the command in brackets.
 | `CA94` SetCinematicCollision | no branch (asm 0xCA94-0xCAF0) | forced (gdb `p ...->SetCinematicCollision(mgr)`) |
 | `2EA8` UpdateSfxEmitter | the handle at 0xc00 is 0 (asm 0x2EC0) 11468 entries; the handle plays (asm 0x2ED4) 45; the handle is queued but silent (asm 0x2EEC) 3; the handle is neither (asm 0x2EF4 -> 0x2F30) 1 - the handle is cleared | the handle is the retail's own: the KnockBack stores the hurled / death sound's handle at 0xc00 (asm 0xC944 / 0xC9B8) - the port drops it (section 5), so the playing / queued entries are forced (gdb: `CSfxManager::AddEmitter` of the pirate's hurled sound into 0xc00) and the dead handle is forced (gdb: a bogus handle 0x3039 into 0xc00) |
 
-Marked: 8 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, `2EA8`).
+Marked: 8 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, `2EA8`) - the module goes
+105 -> 113 of 262 marked (`tools/port_progress.py`).
 
 Not marked, and why:
 
