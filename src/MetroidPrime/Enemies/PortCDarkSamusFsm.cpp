@@ -3239,18 +3239,20 @@ void CDarkSamus::SweepBeam(CStateManager& mgr, EStateMsg msg, float dt) {
 // (`li r4, 0x1` at 0x0000C9C8, vtable slot 0x2C) and sets 0xDC8 bit 0x40
 // (`rlwimi r0, r3, 6, 25, 25` at 0x0000C9E4).
 // Host guard: Agon's boss (10_sand_alamostorage) leaves sweepSwoosh unset (kInvalidAssetId), and a
-// forced SweepBeam there built the effect from that id and crashed in CElementGen's constructor;
-// with no beam asset the host makes no beam (no effect, no damage rays).
+// forced SweepBeam there built the effect from that id and crashed in CElementGen's constructor.
+// The guard stays around the CElementGen only: the retail builds the effect whatever the id is
+// and sets 0xDC8 bit 0x40 (0x0000C9E4) with no test of it, so the damage rays (fn_10_C104, the
+// part test at 0x0000C130) and the collision response (fn_10_C470, the same bit at 0x0000C5C4)
+// run as in the retail - the ray code tolerates a null generator (0x0000C32C).
 // @ fn_10_C85C
 void CDarkSamus::StartSweepBeam() {
   StopSweepBeam();
-  if (mSweepBeamPart == kInvalidAssetId) {
-    return;
+  if (mSweepBeamPart != kInvalidAssetId) {
+    mSweepBeamGen = new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', mSweepBeamPart)),
+                                    CElementGen::kMOT_Normal, CElementGen::kOSF_One);
+    mSweepBeamGen->SetParticleEmission(true); // 0x0000C9C8
   }
-  mSweepBeamGen = new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', mSweepBeamPart)),
-                                  CElementGen::kMOT_Normal, CElementGen::kOSF_One);
-  mSweepBeamGen->SetParticleEmission(true); // 0x0000C9C8
-  mSweepBeamOn = true;                      // 0x0000C9E4
+  mSweepBeamOn = true; // 0x0000C9E4
 }
 
 // fn_10_C798 (0x0000C798, 0xC4 bytes): the effect 0xD78 reset to null (the auto_ptr's
