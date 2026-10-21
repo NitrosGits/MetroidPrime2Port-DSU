@@ -121,6 +121,8 @@ public:
   const CTransform4f& GetGunWorldTransform() const { return mGunWorldXf; }
   const CTransform4f& GetBeamLocalTransform() const { return mBeamLocalXf; }
 #ifdef TARGET_PC
+  // Port: the beam in hand, for the console's `shoot` (a harness shot that is a real projectile).
+  CGunWeapon* PortCurrentBeam() const { return mCurrentBeam; }
   // Port: pointer aim's hit point (MP1's PortSetPointerAimPoint), set by
   // CPlayer::UpdateGunTransform every tick: while valid, a shot heads from its own start to it.
   void PortSetPointerAimPoint(bool valid, const CVector3f& point) {

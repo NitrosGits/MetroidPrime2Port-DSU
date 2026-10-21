@@ -1,0 +1,41 @@
+#ifndef _CVISUALKNOWLEDGE
+#define _CVISUALKNOWLEDGE
+
+#include "types.h"
+
+#include "Collision/CMaterialFilter.hpp"
+#include "Kyoto/Animation/CSegId.hpp"
+#include "MetroidPrime/TGameTypes.hpp"
+
+class CStateManager;
+
+// Port-only: the DOL's CVisualKnowledge (0x801F55F0..0x801F59D0; upstream has no source). An
+// owner's line of sight to a target, re-tested by a world ray at random intervals.
+class CVisualKnowledge {
+public:
+  // 0x801F5888.
+  CVisualKnowledge(TUniqueId owner, CSegId locator, float minInterval, float randomInterval);
+  // 0x801F55F0.
+  void Update(CStateManager& mgr, float dt);
+  // 0x801F585C.
+  void SetVisualTarget(TUniqueId target);
+
+  TUniqueId GetVisualTarget() const { return x20_target; }
+  bool IsTargetVisible() const { return x38_visible; }
+  float GetVisibleTime() const { return x30_visibleTime; }
+  float GetHiddenTime() const { return x34_hiddenTime; }
+
+private:
+  TUniqueId x0_owner;
+  CSegId x2_locator;        // the ray starts at this owner locator; CSegId::Null() for the aim point
+  CMaterialFilter x8_filter;
+  TUniqueId x20_target;
+  float x24_minInterval;    // the ray is cast every minInterval + randomInterval * Float()
+  float x28_randomInterval;
+  float x2C_timer;
+  float x30_visibleTime;
+  float x34_hiddenTime;
+  bool x38_visible : 1;     // bit 0x80 of 0x38
+};
+
+#endif // _CVISUALKNOWLEDGE
