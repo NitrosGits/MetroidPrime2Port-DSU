@@ -24,11 +24,14 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   wall-timed plans) and `tools/drivers/con.py` `@f<n>` scripts; drivers go in `tools/drivers/`.
 - Console (`help` lists all): `fsm <id> <state>` (reaches FSM2 sub-machines), `place <id> player [d]`,
   `damage <id> <n> [weapon|powerbomb|annihilator|darkburst|sunburst|sonicboom]`, `send <id> <msg>`,
-  `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` takes no
-  argument (it kills the player).
+  `shoot`, `boost` (morphed), `noise <type> [x y z]` (InformListeners; 6 = safe zone), `grapple <id> [d]`, `objs <type>`, `status`. `a; b; c` runs in one tick. `kill` alone kills the
+  player; `kill <id>` zeroes a patterned actor's health and runs its Death (actors that reflect every weapon).
 - Kill only pids you launched (save `$!`, `kill <pid>`) and any Xvfb you started. Never `pkill`/`killall`
   the game binary, gdb or Xvfb: a dozen lanes run them at once and you kill their runs. Delete your run
   outputs from `/tmp` (a 31 GB tmpfs).
+- Never end your turn with a run in flight: nothing wakes you. Wait for it in the foreground
+  (`timeout`), or on a background command you are notified for. Run independent runs
+  concurrently (each cov/smoke run takes its own slot) instead of one after another.
 
 ## Coverage without probes
 
