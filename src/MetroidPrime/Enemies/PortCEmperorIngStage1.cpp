@@ -3022,8 +3022,17 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
 // mode 0 the roll picks 0 or 1, in mode 1 it picks 1 or 2, and every other mode takes 2.
 // The FSM2 machine's code node "ChooseRandomTentacleCount" hangs off the "HeartStageOver"
 // trigger of the "HeartStage" state (the machine has 10 states, 4 codes and 12 triggers), so
-// the body only runs once the fight reaches the heart stage - the area-11 scenario never does
-// (the tentacles are not destroyed, so the FSM stays in TrackPlayer/Attack).
+// the body only runs once the fight reaches the heart stage.  The area-11 scenario cannot play
+// there (the tentacles never leave the state 1 - their out animation never ends - so
+// AllTentaclesRetracted stays false), so the state is forced with the console's
+// `fsm <uid> HeartStage` (tools/drivers/emperoring1_heartstage.py): the heart-stage timer
+// (16 s) then runs out and the code node fires.  The mode (guest 0x7C0) is stepped by the
+// heart's health (fn_16_51D4), so the heart's collision actor is damaged between the runs to
+// get the mode 1 and mode 2 arms.  Every arm ran: the mode 0 rolls 38.68/42.64/42.90/51.87/
+// 78.90/98.61 and the mode 1 rolls 0.36/16.96/91.60/96.93 (both sides of 50), the mode 2
+// rolls 75.89/85.46/91.38 (the mode's own arm).  The mode is never below 0, so the arm at
+// 0x4998 is unreachable.
+// @ fn_16_4954
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
   const float roll = mgr.Random()->Range(0.f, 100.f);
   if (x7c0_ == 1) {

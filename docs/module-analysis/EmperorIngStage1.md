@@ -1299,7 +1299,7 @@ module - marked once a run exercises it.
 | (a) the loader's readers and the model's copies | `fn_16_A2A0` `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A980` `fn_16_ABD0` `fn_16_AEDC` `fn_16_AF7C` `fn_16_B014` `fn_16_B1D8` `fn_16_B434` `fn_16_B5C8` `fn_16_B6EC` `fn_16_9700` |
 | (a) the base classes' own bodies | `fn_16_60` (`CActor::GetHealthInfo` - a thunk to the base's slot 12), `fn_16_B958` (`CActor::GetTouchBounds` - the base's `GetBoundingBox` in an `optional`), `fn_16_BA30` (that `optional`'s builder), `fn_16_18E8` (the `SMoverData` copy constructor), `fn_16_6898` (the `CRayCastResult` copy) |
 | (a) the REL runtime | `fn_16_A270`, `fn_16_BF88` (the static initialiser of the three FSM tables), `fn_16_C3B0` (`ModuleDestructors`), `fn_16_C3FC` (`ModuleConstructors`), `fn_16_469C` (`push_back_unsafe`), `RELMain`, `RELExit` |
-| (b) the module's behaviour functions | `fn_16_3060` (the 'PLAY' actor - the same body as the marked `fn_16_3094`), `fn_16_7EA8` (`ProcessSoundEvent` - **marked now**, both arms ran), `fn_16_4954` (`ChooseRandomTentacleCount` - reachable in the shipped data, not run yet) |
+| (b) the module's behaviour functions | `fn_16_3060` (the 'PLAY' actor - the same body as the marked `fn_16_3094`), `fn_16_7EA8` (`ProcessSoundEvent` - **marked now**, both arms ran), `fn_16_4954` (`ChooseRandomTentacleCount` - **marked now**, section 12) |
 
 ### 11.3 The branch tables of the five most-called unmarked functions
 
@@ -1345,15 +1345,81 @@ probe stood on.
 | 0x7F10 | `beq .L_00007F28` (the tentacle index is -1) | (b) ran - the base's own `ProcessSoundEvent` (11838 calls) |
 | 0x7F24 | `beq .L_00007F70` (the joint's flag byte has its bit 27 clear) | (b) ran - 5627 early returns (the tentacle index 0..5, the flag byte 0x00, 0x60, 0x80) |
 
-#### fn_16_4954 - (b) `ChooseRandomTentacleCount`: reachable, not run
+#### fn_16_4954 - (b) `ChooseRandomTentacleCount`: marked (section 12)
 
 | retail offset | the retail's test | class |
 |---|---|---|
-| 0x4988 | `beq .L_000049C4` (the mode is 1) | (d) reachable but not run |
-| 0x498C | `bge .L_000049E8` (the mode is 2 or more) | (d) reachable but not run |
-| 0x4994 | `bge .L_000049A0` (the mode is 0) | (d) reachable but not run |
-| 0x4998 | `b .L_000049E8` (the mode is below 0) | (d) reachable but not run |
-| 0x49AC | `bge .L_000049B8` (the roll is 50 or more) | (d) reachable but not run |
-| 0x49B4 | `b .L_000049BC` (the roll is below 50) | (d) reachable but not run |
-| 0x49D0 | `bge .L_000049DC` (the roll is 50 or more) | (d) reachable but not run |
-| 0x49D8 | `b .L_000049E0` (the roll is below 50) | (d) reachable but not run |
+| 0x4988 | `beq .L_000049C4` (the mode is 1) | (b) ran (forced) |
+| 0x498C | `bge .L_000049E8` (the mode is 2 or more) | (b) ran (forced) |
+| 0x4994 | `bge .L_000049A0` (the mode is 0) | (b) ran (forced) |
+| 0x4998 | `b .L_000049E8` (the mode is below 0) | (c) unreachable in shipped data |
+| 0x49AC | `bge .L_000049B8` (the roll is 50 or more) | (b) ran (forced) |
+| 0x49B4 | `b .L_000049BC` (the roll is below 50) | (b) ran (forced) |
+| 0x49D0 | `bge .L_000049DC` (the roll is 50 or more) | (b) ran (forced) |
+| 0x49D8 | `b .L_000049E0` (the roll is below 50) | (b) ran (forced) |
+
+## 12. fn_16_4954 (ChooseRandomTentacleCount) is marked
+
+The code node is the FSM2 machine's, hanging off the "HeartStageOver" trigger of the
+"HeartStage" state (section 10), so it runs when the heart-stage timer (guest 0xA3C, 16 s -
+`heartExposedTime`, the value the probe read at the state's activate) runs out.  The area-11
+play cannot get there: the tentacles never leave the state 1 (their out animation never ends, so
+fn_16_26B8's 0x2884 test never fires), so "AllTentaclesRetracted" stays false and the FSM never
+enters "BeginHeartStage".  The state is therefore **forced** with the console's
+`fsm <uid> HeartStage` (`tools/drivers/emperoring1_heartstage.py`, which also damages the
+heart's collision actor between the runs so the mode steps).  The mode (guest 0x7C0) is stepped
+by the heart's health in fn_16_51D4 (0x527C: 0 -> 1 below 466 hp, 0x5294: 1 -> 2 below 233 hp),
+so the heart's collision actor is hit 100 hp at a time between the cycles.
+
+Every arm ran (2026-10-21, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
+`send u<uid> Activate`, `fsm u<uid> HeartStage`): the mode 0 rolls 38.68, 42.64, 42.90, 51.87,
+78.90 and 98.61, the mode 1 rolls 0.36, 16.96, 91.60 and 96.93, the mode 2 rolls 75.89, 85.46
+and 91.38.
+
+| retail offset | the retail's test | class |
+|---|---|---|
+| 0x4988 | `beq .L_000049C4` (the mode is 1) | (b) ran (forced) - the mode 1 rolls |
+| 0x498C | `bge .L_000049E8` (the mode is 2 or more) | (b) ran (forced) - the mode 2 rolls |
+| 0x4994 | `bge .L_000049A0` (the mode is 0) | (b) ran (forced) - the mode 0 rolls |
+| 0x4998 | `b .L_000049E8` (the mode is below 0) | (c) unreachable in shipped data: the mode is 0, 1 or 2 (fn_16_51D4 only steps it up, the constructor clears it) |
+| 0x49AC | `bge .L_000049B8` (the roll is 50 or more, the mode 0) | (b) ran (forced) - the rolls 51.87, 78.90, 98.61 |
+| 0x49B4 | `b .L_000049BC` (the roll is below 50, the mode 0) | (b) ran (forced) - the rolls 38.68, 42.64, 42.90 |
+| 0x49D0 | `bge .L_000049DC` (the roll is 50 or more, the mode 1) | (b) ran (forced) - the rolls 91.60, 96.93 |
+| 0x49D8 | `b .L_000049E0` (the roll is below 50, the mode 1) | (b) ran (forced) - the rolls 0.36, 16.96 |
+
+## 13. Why a hit on the collision actors does not destroy the tentacles
+
+The tentacle's health is on **the tentacle's own collision actor**: the manager at guest 0x7C8
+holds five descriptions per tentacle and fn_16_3AA8 takes the last of them (4 + index * 5,
+0x3AB4/0x3AC0), fn_16_1E6C copies the module's tentacle health (guest 0xAAC, 40 hp) into it
+(0x1EB8..0x1F04) and fn_16_2524 reads it back (0x2584), compares it with the joint's last health
+(+0x20) and, at 0 or below, clears the joint's shootable flag (0x10), sets the tentacle's state
+to 3 and calls fn_16_3BC4 (the IS03 message).  The other four boxes of each tentacle (the
+segments) have **no health info at all** - `obj` prints no hp for 32 of the 40 boxes - so a hit
+on them does nothing, which is what made "hurt the collision actors" look broken.  The tentacle
+also only watches its health while the joint's flag 0x10 is set (fn_16_1FC0 sets it when the
+tentacle comes out and clears it when it dies), and a hit **before** the tentacle is out is
+undone: fn_16_1FC0 restores the health to the initial 40 while the flag is clear.  Only the
+tentacles of the current sub-stage (the first four, fn_16_2F70) have the flag set, so a hit on
+the fifth tentacle's box does nothing either.  The retail sends no message for the damage: the
+module polls the collision actor's health itself; the only message is the IS03 of the dead
+tentacle.  A run (2026-10-21) that hit all eight boxes killed exactly the three tentacles of
+the live sub-stage whose flag was set ("tentacle 0/1/2 dead" in the probe log) and left the
+others at 40 hp.
+
+## 14. The branch tables of the five most-called unmarked functions
+
+The call counts are the static `bl` counts in the REL's own text; the class is (a) a copy of
+host/DOL code, (b) the module's own behaviour, (c) unreachable in the shipped data, (d)
+reachable but not run.
+
+| fn | calls | class | branches |
+|---|---|---|---|
+| `fn_16_BD6C` | 6 | (a) the counted reference release (the host's `ncrc_ptr`) | 0xBD90 `bgt` (the count is above 1), 0xBD9C `beq` (the count is 0 -> only the free) |
+| `fn_16_337C` | 6 | (a) the CPASAnimParmData's parm list (the host's constructor fills it) | none - branch free |
+| `fn_16_BDD0` | 5 | (a) the counted reference release | 0xBDF4 `bgt`, 0xBE00 `beq` |
+| `fn_16_3060` | 5 | (b) the 'PLAY' actor - the same body as the marked `fn_16_3094`, so no second marker | none - branch free (a lookup and a cast) |
+| `fn_16_98D0` | 4 | (a) the damage vulnerability copy (the DOL's `LdrToDamageVulnerability`, 0x8023ACFC) | none - branch free |
+| `fn_16_471C` | 4 | (a) the `CJointCollisionDescription`'s copy constructor | none - branch free |
+| `fn_16_6844` | 4 | (a) the connection list's destructor | none - branch free |
+| `fn_16_4640` | 2 | (a) the description's name (a string copy and an append) | none - branch free |
