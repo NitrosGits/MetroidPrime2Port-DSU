@@ -9,6 +9,31 @@ Read a lane's result with the openchamber tool (`session.messages`, `lastAssista
 `tools/review_decomp_diff.sh <base>` from its worktree, accept, then send the same session its next slice.
 Worktrees: `~/.local/share/opencode/worktree/3e7f972e5f2a67a4bf166b19e99a591913d8d4a4/wt-mp2-*`.
 
+**Next-slice preamble (2026-10-21; send with each lane's next slice until all have had it):** first
+`git merge port` (brings `8721dda7e`); fast runs `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` with
+`tools/drivers/con.py` `@f<n>` scripts; reach states with console `fsm <id> <state>` / `place <id> player [d]`
+/ `damage` / `send` (forced arms count when the branch table says `forced (<cmd>)`, see
+DECOMP_WORKFLOW.md); put drivers in `tools/drivers/`; ask for missing console commands and shared-header
+accessors in the report; also write the final report to `/tmp/opencode/reports/<lane>.md`.
+Batch 7 (branch `batch7` in `../wt-mp2-batch5`, head `07d7159e1`, 10 heads from the table; host/link/matching
+green 12:13) merged into port `54e8498b0`: 1785 markers, 15.21% fns / 20.13% bytes. smoke7 (`/tmp/opencode/smoke7`)
+vs smoke6: 0 new errors, 17/17 rc 0; sandboss stalled once at frame 240 (rc 124, blank frame), passed solo: watch it.
+Parallel smoke runner (3-4 Xvfb displays + ticks-per-frame + `@f`) next, checked against smoke7.
+Orchestrator queue: grapple points never become the orbit target (CScriptGrapplePoint.cpp:68 only kMT_Orbit vs
+CPlayerOrbit.cpp:1004/1070 kMT_Target only; SwampBoss-stage2.md §7.17), a shared-code bug to fix on port.
+Lane watcher: `~/.cache/mp2-orch/watch.sh` (lanes file beside it), detached loop (`loop.sh`) logs events to `events.log` there.
+
+**Accepted since batch 7 (batch 8 candidates, 2026-10-21 13:56):** CommandoPirate `ed504da00` (86B4 forced, 8028),
+DarkSamus `482a38568`+`4154642ea`+`5d31354a9` (C85C, C798, BE18), SwampBoss2 `1fb9cf495` (5030), SwampBoss1
+`46aeee651` (docs/driver), EmperorIngStage1 `6386fff8f` (4954 forced), Ing `329c5a27c` minus the fn_29_4604 marker
+(rework sent: port GeomBlobV2 fn_25_256C call + byte 0x154 store). Port gained console `shoot <id> [charged] [d]
+[dir x y z]` (`ae2161442`, `3fb4fa815`) and the fsm FSM2 reply fix; lanes told to `git merge port`.
+**Reports waiting for review** (`/tmp/opencode/reports/<lane>.md` + `session.messages lastAssistant`): ing (13:35),
+digitalguardian (13:39), swampboss2 (13:44), commandopirate (13:44), swampboss1 (13:46), splitter (13:48).
+emperoring1 got its slice at 13:55 (tentacle state 1→2 out-animation bug). DarkSamus (`ses_ea1ed1e2cffegrXDwaC2UuwA6a`,
+slice 1B658/138A4/11FA4) was a subagent of the old orchestrator: its result lands there, so read it with
+`session.messages`. ElitePirate, bg2: not checked since their first slices.
+
 Batch 5 merged into port `3bb8177db` (via branch `batch5`, worktree `../wt-mp2-batch5`): playerturret
 `c377344ed`, ing `8855b1674`, spacepirate-vt `c42d82fce`, emperoring `542d6c9b8`, emperoring3 `f786b983e`,
 boostguardian `da45064c5`, digitalguardian `227e42fb1`, commandopirate `cf9eb1995`, splitter `b17910bb4`
@@ -16,7 +41,15 @@ boostguardian `da45064c5`, digitalguardian `227e42fb1`, commandopirate `cf9eb199
 green, smoke5 17/17 clean (`/tmp/opencode/smoke5/`), 1159 markers. Upstream build must run before the
 port build in a fresh worktree (writes `build/G2ME01/include/*.inc`; needs `extern/musyx` checked out).
 
-Done on lane branches since, not yet merged (next batch: review, then merge these tips):
+Batch 6 (2026-10-21, merged into port as `3b2effc06`, 1677 markers): merged emperoring3
+`43eb8312e`, emperoring `5a594830e`, boostguardian `673fbcb56`, minoring `c8d342614`, spacepirate-vt
+`33291f63c` (conflict in PortCSpacePirateStates.cpp: kept port's WarpIn fix `4d6c4d036`, dropped the
+stale fn_72_7078 marker), wallcrawler2 `036ca13db`, commandopirate `6ea58f47a`, digitalguardian
+`c56aff752`, splitter `29e4bf6aa`, darksamus2 `f0de7edab`. Matching 87 OK + sha1 OK, host + link green
+(07:05). smoke6 17/17 clean (rc 0, 0 caught, 0 reach-stub; stand-ins down in boostg, digig, emp1,
+emp3, ep). Batch 7 = lane commits after these bases, merged by hash.
+
+Older list (superseded by batch 6):
 spacepirate-vt `33291f63c` (8 combat marks); wallcrawler2 `036ca13db` (obstruction scan, 3 marks);
 emperoring `bd4c2c25a` (7EA8, 7F8C cases, 1D38, Render 531C); splitter `b1f682ff7` (1188/58E8, F1C0,
 654C, 1790, AC68, 8D50, AAC4); commandopirate `843ebf292` (4D84); boostguardian `999b51bdf` (D4F8 events,
@@ -34,13 +67,22 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 |---|---|---|---|
 | BoostGuardian (Opus) | — (done) | boostguardian @ `673fbcb56` (204/318; 103 cited, 2 folded; loaders hand-checked, isEchoEmitter + 19 sound ids -1 defaults; 12AB0 compares correct) | merge in batch 6; 9 fns between tsv 309 and 318 unexplained |
 | EmperorIng3 (Opus) | — (done) | emperoring3 @ `43eb8312e` (182/270; 88 cited, 0 todo; matching build OK) | module complete: merge in batch 6 |
-| DigitalGuardian (Opus) | `ses_ea3c7c778ffenorrkp5OG8bwsm` | sandboss @ `c56aff752` (SelectRetreatPlatform 13C6C ported; 12818 unmarked; 41 markers; exit 13 did not recur in 2 runs) | why beams never hit the root collider u0574 (likely port bug), XRDG damage arm, retreat → 12818/15284 platform arms, then slice-3 stand-ins |
-| Splitter (Opus) | `ses_ea3c28ce8ffe1FSm9kH6HSgpCQ` | splitter @ `29e4bf6aa` (stall fixed: ctor 0xCC8 = attach_LCTR seg, head no longer inside chassis; exclude bit 28; old baseline was a fall through the world) | jump/fall at frame ~900, shells A37C/8EC8 + actor scaling, 0xCC9/0xC72, then mark A4E4/986C/ACEC |
-| CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
+| DigitalGuardian (Opus) | `ses_ea312bc93ffdb6liLXfqe2O49p` | sandboss @ `f4626cd11` (accepted for batch 7: port-only CVisualKnowledge (DOL 0x801F55F0..; shared files.cmake/gen_files_cmake.py line — orchestrator merges); A138/9E88 ported; 10/10C cited as DOL copies (unmarked); marked 17C98 171F8 1524C) | unmorph SIGSEGV CPlayer::Render→CTexture::Load; long fight → 14470, IsDead/IsIdle, 15284, A138/9E88 arms |
+| Splitter (Opus) | `ses_ea312bc7fffemfIq7YQeApP3b6` | elitepirate @ `fcf5b7329` (accepted for batch 7: head undocks on chassis Death (EB04 clears 0xC6C; chassis dies only via A0A0 cannonball damage in LaserSweep); ported EB04 5D50 A0A0 42F8; marked 5AD8; boost = B) | undocked head 2994, PathFind 4E90, 3ADC 3D20 2280 565C 570C; HeadExplosion BEEC; real cannonball kill; beam render later |
+| CommandoPirate (worker) | `ses_ea2c75221ffeCKO3r32cSZZVdR` | commandopirate @ `a0f626797` (0 markers; accepted for batch 7: CKnockBackMgr accessor in TARGET_PC (87 OK), ShieldCharge 8028 ported, branch table; charge band 10-20 check at 0xB370 failed) | drive band 10-20 → full shield cycle; port 7A98 + 2048 null-test skeleton |
+| SpacePirate (PARKED) | `ses_ea3206eb3ffeIXL6w8JDRAddQp` | spacepirate @ `8a5800003` (84/262; accepted for batch 7: WarpIn summary corrected, case-0 materials right (0x7374 vs Deactivate 0x7528), 7078 a/b/c/d table; open: GRNT/FOLW and blocked-box arms) | parked: remaining bodies gated by shipped data |
+| SwampBossStage1 (worker) | `ses_ea3206eafffeTqAzGkbdyimVXR` | swampboss @ `b209619df` (114/251; accepted: arena chain mapped (LAYER3 warp pre-loads → no Arrived; recipe send u044d Open + u0476 SetToZero); charge = A, 19.9 dmg; live-aim driver 37/330 hits, belly 21.58/50) | xd10 decay check; better hit rate → ExposeBelly; mark 35DC 3320 348C 5784 9A44 |
+| SwampBossStage2 (worker) | `ses_ea2c7e7d2ffejX82iejJ2M25fe` | swampboss-s2 @ `475d1886b` (accepted: 5030/527C match but never run (anim event 0x1b never fires); give grappleBeam works, lock-on won't take the grapple point; Blow stun-in-window fires but window not caught) | port 50AC recursion + 55B0; why event 0x1b never fires; grapple lock-on condition |
+| EmperorIngStage1 (worker) | `ses_ea24d8402ffe9XMGEDPkZNQs0q` | emp1b (decomp/emperoring1b) @ `1c654bc31` (91/241) | classify the 8 unexplained fns; 4954 FSM1 code-node dispatch gap; next 5 with branch tables |
+| IngBoostBallGuardian (worker) | `ses_ea21cc6d0ffec8C8RnDduH1WKJ` | bg2 (decomp/boostguardian2) @ `1c654bc31` (204/318) | classify unmarked fns (host copies vs behaviour); next 5 with branch tables |
+| ElitePirate (worker) | `ses_ea2119ceeffe01muX6hLQf0aFV` | ep2 (decomp/elitepirate2) @ `1c654bc31` (104/241) | classify unmarked fns; next 5 with branch tables |
+| WallCrawler (worker) | — (done) | wallcrawler @ `d156dd4b3` (25/57, 32 cited; 1310 constrained arm ran: PillBug planarConstraint 1/2 in Agon 0b/0d_sand_hall; constraint 3 has no shipped instance) | module complete: merge in batch 7 |
+| ScriptPlayerTurret (worker) | — (done) | playerturret @ `f679121be` (16/59 marked, 40 cited; 84C unmarked: split-screen MP unported in the harness; 1BE8 unmarked: kSM_Stop never sent) | module complete: merge in batch 7 |
+| Ing (worker) | `ses_ea2a5b996ffep8QSEsdcQ7an9k` | ingfam (decomp/ing2) @ `67b20dbfb` (129/274; accepted: A.21 branch tables for 45BC 4604 426C 3948; area-57 Ings stay ing spots (StartAsIngSpot) in 9 runs) | diagnose ing-spot wake-up triggers vs asm; kill corporeal Ing → B3C4; Agon grapple |
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
-| DarkSamus (Opus) | `ses_ea3b57acbffe8DxXPKhg6PSdGR` | darksamus2 @ `f0de7edab` (28 markers: MovingScatterShot 11AD8, 21DF8, 11814, 13230, Dash record 15348, BreakDash 149B4; short shot life = world hits, not a bug) | Dash chain 12CE0, 14D14, 14A00, 154FC, state 150DC; then 19B64 tree |
+| DarkSamus (Opus) | `ses_ea2935cc8ffeCvp1QjKlpVMOxG` | darksamus2 @ `ef73b3963` (62 markers; accepted for batch 7: DiveAttack 11FA4 + helpers, BreakDiveAttack 11C54, 100DC/FF20 ported; marked E910 12B00 12E90 12EF8 18628 18FCC 11C54; dive recipe: damage u0732 570 → final stage) | IsPlayerAimLineClear always true; stand-ins MissileJump 177BC, MeleeAttack 17BC0, BoostBallInto B164, SweepBeam CA0C, 1B658, 138A4; 11FA4 open arms |
 
 ## 2026-10-20 (thirtieth session): the scan visor's highlights flashed - one shared copy destination
 

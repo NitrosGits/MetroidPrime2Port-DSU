@@ -334,6 +334,7 @@ private:
   // 0x11EC (0x4c, valid flag 0x1238): the transmission beacon's model, built by fn_14_6864 and
   // drawn by fn_14_17DC at the neck locator.
   rstl::optional_object< CModelData > x11EC_;
+  uchar x10B8_;      // 0x10B8: the "Head_1" locator segment id (fn_14_9E88)
   uchar x10B9_;      // 0x10B9: the neck locator segment id (fn_14_2578)
   uchar x10C0_;      // 0x10C0: the first leg locator segment id (fn_14_1994, fn_14_18B4)
   uchar x10C1_;      // 0x10C1: the second leg locator segment id

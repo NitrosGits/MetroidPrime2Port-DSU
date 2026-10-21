@@ -2815,7 +2815,10 @@ class Checker:
                     if '..' in q.group(1):
                         continue
                     qa = canon_insn(q.group(1))
-                    if not qa or qa[0].rstrip('.') != canon_insn(ins.text)[0].rstrip('.'):
+                    ia = canon_insn(ins.text)
+                    if not ia:
+                        continue
+                    if not qa or qa[0].rstrip('.') != ia[0].rstrip('.'):
                         # quoted op is for another offset on the line unless it is the only citation
                         if len(re.findall(r'0x[0-9A-Fa-f]{4,}', text)) == 1 and qa and \
                                 re.fullmatch(r'[a-z]+\.?', qa[0]) and qa[0] in ('rlwinm', 'rlwinm.', 'rlwimi', 'rlwimi.'):

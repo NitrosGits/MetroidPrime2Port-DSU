@@ -92,7 +92,13 @@ enum {
   kJF_RemoveRadar = 0x20,
 };
 
-// fn_78_9A1C
+// @ fn_78_9A1C: either side being kAllJoints matches everything; otherwise the joint's type
+// must equal the requested type.
+// `cmpwi r4, 0x3` at 0x9A1C tests the joint's own type against kAllJoints.
+// `cmpwi r5, 0x3` at 0x9A24 tests the requested type against kAllJoints.
+// `subf r0, r4, r5` at 0x9A34 is the difference of the two types.
+// `cntlzw r0, r0` at 0x9A38 counts that difference's leading zeros.
+// `srwi r3, r0, 5` at 0x9A3C turns the count into the equality flag.
 bool JointMatches(int jointType, int type) {
   if (jointType == kAllJoints || type == kAllJoints) {
     return true;
@@ -144,6 +150,20 @@ float XYDistance(const CVector3f& a, const CVector3f& b) {
   return CVector3f(a.GetX() - b.GetX(), a.GetY() - b.GetY(), 0.f).Magnitude();
 }
 } // namespace
+
+// @ fn_78_A5B4: the splash locomotion is 11 when the alt-animation flag is set, 10 otherwise.
+// `lwz r0, 0xb6c(r3)` at 0xA5B4 loads xb6c.
+// `cmpwi r0, 0x0` at 0xA5BC tests it.
+// `li r3, 0xb` at 0xA5B8 is the alt-animation locomotion.
+// `li r3, 0xa` at 0xA5C4 is the plain one.
+int CSwampBossStage1::SplashLocomotion() const { return xb6c_altAnims ? 11 : 10; }
+
+// @ fn_78_A5CC: the rise locomotion is 14 when the alt-animation flag is set, 1 otherwise.
+// `lwz r0, 0xb6c(r3)` at 0xA5CC loads xb6c.
+// `cmpwi r0, 0x0` at 0xA5D4 tests it.
+// `li r3, 0xe` at 0xA5D0 is the alt-animation locomotion.
+// `li r3, 0x1` at 0xA5DC is the plain one.
+int CSwampBossStage1::RiseLocomotion() const { return xb6c_altAnims ? 14 : 1; }
 
 // @ fn_78_AA50
 CSwampBossStage1::CSwampBossStage1(TUniqueId uid, const rstl::string& name,
@@ -739,6 +759,21 @@ void CSwampBossStage1::KnockPlayer(CStateManager& mgr, const CVector3f& velocity
   Rumble(mgr);
 }
 
+// @ fn_78_39C0: the morphed player is dragged to the tongue at 30 units/s and floats.
+// `lfs f3, 0x4(r5)` at 0x39F8 reads the target's y.
+// `lfs f1, 0x0(r5)` at 0x3A08 reads the target's x.
+// `lfs f1, 0x8(r5)` at 0x39EC reads its z, which the store at 0x3A24 replaces with 0.0.
+// `bl CanBeNormalized__9CVector3fCFv` at 0x3A28 guards the whole body.
+// `lfs f3, lbl_78_rodata_184@l(r3)` at 0x3A48 is the 30 units/s the direction is scaled by.
+// `bl SetVelocityWR__13CPhysicsActorFRC9CVector3f` at 0x3A74 takes that velocity.
+// `bl GetGravity__7CPlayerCFv` at 0x3A80 and `fmuls f1, f31, f1` at 0x3A88 give mass * gravity.
+// `stfs f0, 0x1c0(r31)` at 0x3AA0 stores the force's x.
+// `stfs f0, 0x1c4(r31)` at 0x3AA4 stores the force's y.
+// `stfs f1, 0x1c8(r31)` at 0x3AA8 stores its z.
+// `li r4, 0x4` at 0x3A9C is the movement state of the call at 0x3AAC (kMS_FallingMorphed).
+// The CanBeNormalized arm that is never taken: fn_78_44CC passes the player's position plus a
+// normalized direction times dt * 7.5 (dt > 0), so the difference is never zero - 12 calls in a
+// run measured 0.084..0.106 units. The other arm is unreachable in the shipped data.
 void CSwampBossStage1::PullMorphedPlayer(CStateManager& mgr, const CVector3f& pos) {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f dir(pos.GetX() - player->GetTranslation().GetX(),
@@ -900,6 +935,15 @@ void CSwampBossStage1::ReleaseOrbitMessage(CStateManager& mgr) {
   }
 }
 
+// @ fn_78_3964: the orbit message goes out once, the first time the tongue grabs a morphed player.
+// `lbz r5, 0xce4(r3)` at 0x3970 reads the flag byte.
+// `extrwi r0, r5, 1, 24` at 0x3974 tests its bit 7 (the orbit message flag).
+// `rlwimi r5, r0, 7, 24, 24` at 0x3988 sets that bit, stored by `stb r5, 0xce4(r3)` at 0x3990.
+// `addi r4, r6, 0x3130` at 0x3998 is the "IS10" state sent by the call at 0x39AC.
+// The "already sent" arm is never taken: the flag is cleared again by the matching IS11 message
+// (fn_78_390C, the port's ReleaseOrbitMessage, which ran once with the flag set) when the pull
+// ends, so every activation sees it clear - one call in a run, with the flag clear. The other
+// arm is unreachable in the shipped data.
 void CSwampBossStage1::SendOrbitMessage(CStateManager& mgr) {
   if (!xce4_orbitMsg) {
     xce4_orbitMsg = true;
@@ -1037,6 +1081,10 @@ bool CSwampBossStage1::Wait(CStateManager&, const CTriggerData& data) const {
 // --------------------------------------------------------------------------------------------
 // Code functions
 
+// @ fn_78_25F4: the miss counter goes up and the tongue's state becomes 3 (not out).
+// `lwz r4, 0xbfc(r3)` at 0x25F4 loads the miss counter.
+// `addi r4, r4, 0x1` at 0x25FC and `stw r4, 0xbfc(r3)` at 0x2600 are the increment.
+// `li r0, 0x3` at 0x25F8 is the value stored by `stw r0, 0xc34(r3)` at 0x2604.
 void CSwampBossStage1::IncrementMisses(CStateManager&, float) {
   ++xbfc_misses;
   // Retail writes 3 here; the reads only distinguish 0/1/2 and TongueMissed counts anything but

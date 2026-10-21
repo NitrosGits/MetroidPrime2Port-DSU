@@ -9,11 +9,13 @@
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/SObjectTag.hpp"
 #include "MetroidPrime/CBoneTracking.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "rstl/single_ptr.hpp"
 
 // The E-grenade half of the REL's parameter block (guest data+0x68, 0x70 bytes). The guest block
 // is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
@@ -338,6 +340,24 @@ private:
   // and this+0xC38 follow the actor.
   void x4BC0_UpdateEmitters();
 
+  // fn_9_1C0C: the module's renderable driver - it advances the module's own scale and drives
+  // the module's two own renderables.
+  void x1C0C_UpdateRenderables(CStateManager& mgr, float dt);
+
+  // fn_9_3E1C: the module's rag-doll driver - with no rag doll it runs the drowning timer.
+  void x3E1C_UpdateRagDoll(CStateManager& mgr, float dt);
+
+  // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper. Not ported (the
+  // port does not create the "Commando E-Grenade" script object), so it stays a stand-in.
+  void x5410_CreateEGrenade();
+
+  // fn_9_1F88: the kUE_EventStart event's helper - the shield's sound emitter and the module's
+  // state word and scale.
+  void x1F88_EventStart();
+
+  // fn_9_1EF8: the kUE_Activate event's helper - the counterpart of fn_9_1F88.
+  void x1EF8_Activate();
+
   // fn_9_57A0: the module's shot - the burst fire's projectile, aimed at the target.
   bool x57A0_FireShot(CStateManager& mgr, float dt);
 
@@ -355,29 +375,60 @@ private:
   // listening AIs of the same area.
   void x1A9C_AvoidActors(CStateManager& mgr);
 
+  // fn_9_45A4: the module's own collision actor managers - the shield's (guest 0xA3C, the
+  // "Shield_CollisionActor") and the blade's (guest 0xA40, the "Blade_CollisionActor"). The
+  // guest builds them in its kSM_Create case; the host class CCollisionActorManager covers it.
+  void x45A4_CreateCollisionActors(CStateManager& mgr);
+
+  // fn_9_1930: the module's team helper - it leaves the team the commando joined.
+  void x1930_LeaveTeam(CStateManager& mgr);
+
+  // fn_9_3D64: the module's "warp out" helper - it enters the WarpOut state of the state
+  // machine and sets the module's flag byte's 0x10 bit.
+  void x3D64_SetWarpOut(CStateManager& mgr, bool warpOut);
+
+  // fn_9_2D0C: the module's knock-back helper (0x384 bytes) - the shield's and the blade's
+  // damage and knock-back.
+  void x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg);
+
+  // fn_9_3A5C: the module's hit-object helper (0x260 bytes) - the shield's damage on the
+  // player that touched it, and the blade's damage when the blade is out.
+  void x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg);
+
+  // fn_9_3900: the module's jump-back velocity helper (0x15c bytes) - the ballistic velocity
+  // towards the module's own jump target.
+  void x3900_JumpBackVelocity(CStateManager& mgr);
+
   // fn_9_6390: the module's burst-fire helper - the shot timer, the burst fire and the
   // intra-burst shot time.
   void x6390_UpdateBurstFire(CStateManager& mgr, float dt);
 
   // Host layout. The guest offsets are the REL's; the host layout is its own and does not need to
   // match (host objects outgrow retail). A raw member is named after the offset it stands for
-  // (x6b4_ is guest +0x6B4), a structured one after its role; every comment carries the guest
-  // offset. The guest member map is in the analysis note.
+  // (the module's own members are the ones from guest +0x7C0 on; the base's members - the
+  // animation state at guest +0x6B4, the body controller, the colour - are the base's own), a
+  // structured one after its role; every comment carries the guest offset. The guest member map is
+  // in the analysis note.
 #ifdef TARGET_PC
   CCommandoPirateData mData;             // 0x7c0 (0x15e), the loader's parameter block
   int x920_;                              // 0x920, -1 from the ctor; the module's states rewrite it
   int x924_;                              // 0x924, -1 (fn_9_D904 @0x0000D9A4)
   CPathFindSearch mPathFindSearch;        // 0x928 (fn_9_D904 @0x0000D990)
   CProjectileInfo mProjectileInfo;        // 0xa14 (fn_9_D904 @0x0000D9B8)
-  int xa3c_;                              // 0xa3c, 0 (fn_9_D904 @0x0000D9D0)
-  int xa40_;                              // 0xa40, 0 (fn_9_D904 @0x0000D9D8)
+  // The module's two collision actor managers (fn_9_45A4): the shield's at guest 0xA3C and the
+  // blade's at guest 0xA40. The guest's constructor leaves both null (fn_9_D904 @0x0000D9D0 and
+  // @0x0000D9D8); its kSM_Create case builds them.
+  rstl::single_ptr< CCollisionActorManager > mCollisionShield; // 0xa3c, "Shield_CollisionActor"
+  rstl::single_ptr< CCollisionActorManager > mCollisionBlade;  // 0xa40, "Blade_CollisionActor"
   CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
   CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
   uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
   CBurstFire mBurstFire;                  // 0xaf0, the module's burst fire (fn_9_D904 @0x0000DA78)
   float xb7c_;                            // 0xb7c, the cooldown since the last melee attack
+  float xb80_;                            // 0xb80, the shield's arm timer; fn_9_86B4 advances it
   float xb5c_;                            // 0xb5c, 0.f from the ctor (fn_9_D904 @0x0000DABC)
-  uint xb50_;                             // 0xb50, a counter; fn_9_6390 raises it
+  uint xb50_;                             // 0xb50, the number of shots; fn_9_6390 raises it
+  uint xb54_;                             // 0xb54, the number of shield charges; the charge states raise it
   uint xb58_;                             // 0xb58, a counter; fn_9_6390 raises it
   float xb60_;                            // 0xb60, 1.5f from the ctor (fn_9_D904 @0x0000DACC)
   float xb64_;                            // 0xb64, 0.75f (rodata_4E0) from the ctor; Dead rewrites
@@ -390,11 +441,19 @@ private:
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
+  CVector3f xba0_;                         // 0xba0, the charge direction; fn_9_8028 sets it
+  CVector3f xbb8_;                         // 0xbb8, the fourth vector; fn_9_BF44 stores a normal
+  float xbec_;                            // 0xbec, a float of the jump-back helper fn_9_3900
+  CVector3f xbf0_;                         // 0xbf0, the jump-back target; fn_9_3900 reads it
   int xc4c_;                               // 0xc4c, the module's own state word; -1 when unset
+  float xc44_;                            // 0xc44, the module's own scale; fn_9_1F88 starts it
+  float xc48_;                            // 0xc48, the scale's target; fn_9_1F88 sets it
   float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
   float xc00_;                            // 0xc00, a float; fn_9_3090 sets 0.01f
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
+  TUniqueId xbc6_;                       // 0xbc6, the shield collision actor's id; fn_9_45A4 sets it
+  TUniqueId xbc8_;                       // 0xbc8, the blade collision actor's id; fn_9_45A4 sets it
   TUniqueId xbcc_;                       // 0xbcc, the id HasNewTarget compares with; kInvalid
   TUniqueId xbce_;                       // 0xbce, the id ShouldRetreat compares with; kInvalid
   int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
@@ -403,6 +462,7 @@ private:
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
+  TUniqueId xbd8_;                       // 0xbd8, the id the delete case asks to delete
   CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
   CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)

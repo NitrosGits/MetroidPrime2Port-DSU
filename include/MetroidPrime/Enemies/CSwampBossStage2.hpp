@@ -127,6 +127,7 @@ protected:
   void InitGrowths();
   void InitAdditiveAnim();
   void SetupCollisionManager(CStateManager& mgr);
+  void SetupCollisionJoints(CStateManager& mgr);
   void Activate(CStateManager& mgr);
   void SetHeadVulnerable(CStateManager& mgr, bool vulnerable);
   void SetGrowthTargetEffects(CStateManager& mgr, bool on);
@@ -209,15 +210,17 @@ protected:
   bool mSwooping : 1;
   bool mCircleCounting : 1;
   bool mSwoopSelected : 1;
-  // 0xc77
-  bool mBigHit : 1;
-  bool mReelEffect : 1;
-  bool mSuppressWaterSfx : 1;
-  bool mBlowPushed : 1;
-  bool mBlowing : 1;
-  bool mWindPending : 1;
-  bool mBubbleCreated : 1;
-  bool mBubbleTelegraphed : 1; // one-shot for anim event 7 (fn_79_A838 -> fn_79_1E40)
+  // 0xc77: the retail's eight flags, with the bit numbers of the word at +0xc74 (the byte's
+  // bit 0 is the word's bit 24). The names say what the retail's bits do; see
+  // docs/module-analysis/SwampBoss-stage2.md 7.11.
+  bool mUnusedC77Bit0 : 1;       // bit 24: never read or written by the retail
+  bool mReelEffect : 1;          // bit 25: a growth was hit (ProcessDamage) - the flinch sound
+  bool mTargetEffectsOn : 1;     // bit 26: the growth target effects are on (Reel)
+  bool mDarkFlyerForm : 1;       // bit 27: the boss is a dark flyer (BecomeDarkFlyer)
+  bool mBlowing : 1;             // bit 28: the player is being blown (Blow)
+  bool mBlowWindowOpen : 1;      // bit 29: the blow window is open (anim event 0x2a)
+  bool mWindEffectPending : 1;   // bit 30: the wind effect is waiting (anim event -> Blow)
+  bool mBubbleTelegraphed : 1;   // bit 31: one-shot for anim event 7 (fn_79_A838 -> fn_79_1E40)
   int mAdditiveAnim;                                          // 0xc78
   float mAdditiveWeight;                                      // 0xc7c
   float mAdditiveRate;                                        // 0xc80

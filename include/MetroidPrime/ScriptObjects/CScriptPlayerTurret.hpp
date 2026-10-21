@@ -70,8 +70,18 @@ private:
   void LoadHullActors(CStateManager& mgr);           // fn_63_15B0 (0x3C4): only the connections
   void FireTurretShot(CStateManager& mgr);           // fn_63_84C (0x184): the turret's shot
   CTransform4f GetMuzzleTransform(CStateManager& mgr); // fn_63_1508 (0x68)
-  // fn_63_19B0 (0x184): the animation parameters the lookup takes.
-  CPASAnimParmData BuildAnimParmData(pas::EAnimationState state, const CPASAnimParm& parm);
+  // fn_63_19B0 (0x184): the animation parameters the lookup takes - the state id and the eight
+  // parameter slots. Only the first two lookups pass a parameter (the guest's FromEnum at
+  // 0x1670 and 0x1704); the other three pass eight empty ones (0x175C..0x18B4).
+  CPASAnimParmData BuildAnimParmData(
+      pas::EAnimationState state, const CPASAnimParm& p0 = CPASAnimParm::NoParameter(),
+      const CPASAnimParm& p1 = CPASAnimParm::NoParameter(),
+      const CPASAnimParm& p2 = CPASAnimParm::NoParameter(),
+      const CPASAnimParm& p3 = CPASAnimParm::NoParameter(),
+      const CPASAnimParm& p4 = CPASAnimParm::NoParameter(),
+      const CPASAnimParm& p5 = CPASAnimParm::NoParameter(),
+      const CPASAnimParm& p6 = CPASAnimParm::NoParameter(),
+      const CPASAnimParm& p7 = CPASAnimParm::NoParameter());
 
   // Host layout, in the guest's order. The guest offsets are in the comments.
   CAABox mBounds;                     // 0x158: a one-unit box around the actor's position

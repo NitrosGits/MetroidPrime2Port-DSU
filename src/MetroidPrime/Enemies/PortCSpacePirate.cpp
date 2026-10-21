@@ -529,8 +529,19 @@ bool CSpacePirate::LineOfSightTest(CStateManager& mgr, const CVector3f& start,
   return mgr.RayCollideWorld(start, end, filter, this);
 }
 
-// Shadow pirates fade in and out; the cloak alpha lives in the actor's colour.
+// @ fn_72_2F4C (0x2D4), called from the Think (fn_72_1980, asm 0x1B74) once per frame.
+// Shadow pirates fade in and out; the cloak alpha lives in the actor's colour. The first test is
+// the shadow bit (0x8f5 mask 0x10, asm 0x2F88 `extrwi. 1,27`) and a pirate without it leaves at
+// once (asm 0x2F8C). The rest of the body is the cloak itself: the alpha byte at 0x44f is
+// scaled by rodata 0xBB4 = 1/255 (asm 0x3178), the re-arm of the step timer is rodata 0xBBC =
+// 0.08 times (1 - the random draw) (asm 0x3150-0x315C) and the frozen test compares against
+// rodata 0xB54 = 1.0 (asm 0x3048).
+// The shadow arm is unreachable in the shipped data: the scan of all 65 SpacePirate placements
+// in all 12 worlds of the disc (tools/scan_pirt_props.py; every MLVL in every pak parses) finds
+// none with the data flag 0x2000, so the only arm that runs is the early exit - 9120 calls in
+// the 2026-10-21 area run, every one of them out at the shadow test (the trace's argument).
 void CSpacePirate::UpdateCloak(float dt, CStateManager& mgr) {
+  TraceCall(*this, "UpdateCloak", x8f5_27_shadowPirate ? 1 : 0);
   if (!x8f5_27_shadowPirate) {
     return;
   }
@@ -581,13 +592,27 @@ void CSpacePirate::UpdateCloak(float dt, CStateManager& mgr) {
   }
 }
 
-bool CSpacePirate::CheckTargetable(CStateManager& mgr) { return GetModelAlphau8(mgr) > 127; }
+// @ fn_72_E2DC (0x38): the pirate can be aimed at while its model is more than half opaque.
+// Retail calls the vtable slot 0xC8 (GetModelAlphau8, fn_72_3AE8) and compares the byte with
+// 127 - the `clrlwi`/`subfic`/`srwi` triple at asm 0xE2F8 is that comparison. The body has no
+// branch, so every call does the same work and the area run's calls prove all of it.
+bool CSpacePirate::CheckTargetable(CStateManager& mgr) {
+  const bool targetable = GetModelAlphau8(mgr) > 127;
+  TraceCall(*this, "CheckTargetable", targetable ? 1 : 0);
+  return targetable;
+}
 
-// Ends the pirate's claim on a squad attack slot.
+// @ fn_72_DEDC (0x50): the pirate gives up its squad attack slot. The attack type comes from the
+// melee bit (the 0x8f4 byte's bit 27, mask 0x10 in that byte, asm 0xDF0C `extrwi. 1,27`): the
+// bit clear is 1 = kAT_Projectile and the bit set is 0 = kAT_Melee, the enum's own order (asm
+// 0xDF14 `srwi` inverts the bit). The team is the id at 0xba0 and the member is the pirate's own
+// id (asm 0xDEF4/0xDEFC). The last argument is a plain 1 (asm 0xDEE4 `li r7, 0x1`), so the team
+// role is cleared for a melee pirate too.
 void CSpacePirate::SquadReset(CStateManager& mgr) {
+  TraceCall(*this, "SquadReset", x8f4_27_melee ? 1 : 0);
   CScriptTeamAiMgr::EndAttack(x8f4_27_melee ? CScriptTeamAiMgr::kAT_Melee
                                             : CScriptTeamAiMgr::kAT_Projectile,
-                              mgr, xba0_teamAiMgrId, GetUniqueId(), !x8f4_27_melee);
+                              mgr, xba0_teamAiMgrId, GetUniqueId(), true);
 }
 
 // Tells the squad manager who this member is shooting at.
@@ -684,13 +709,25 @@ CVector3f CSpacePirate::GetTargetPos(CStateManager& mgr) {
 }
 
 // Sets x8f7_27_inProjectilePath when a shot is flying at the pirate.
+// @ fn_72_DBD4 (0x288): the body runs only while the 0x8f7 mask 0x20 bit (a player fired) is
+// set; the near list is built over the box 0xbb4/0xbb8/0xbbc +- rodata 0xB78 = 5.0 around the
+// noise position and the projectile's travel has to point at the pirate's box centre (rodata
+// 0xC1C = 0.939, asm 0xDDF0). The trace's argument is the arm that ran: 0 = the early-out,
+// 1 = the body ran and no projectile was in the near list, 2 = the projectile was at the box
+// centre (the delta's magnitude is not safe), 3 = the projectile was not in front of the
+// pirate, 4 = the projectile had not moved, 5 = the projectile was not heading at the pirate,
+// 6 = the projectile was heading at the pirate (the flag is set). Arms 1, 3, 5 and 6 ran in the
+// 2026-10-21 area run; arms 2 and 4 need a zero-length vector - a projectile exactly at the
+// box centre, or one that never left its spawn point - which no natural shot produces.
 void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
   if (!x8f7_26_hearPlayerFire) {
+    TraceCall(*this, "CheckForProjectiles", 0);
     return;
   }
   const CVector3f extent(5.f, 5.f, 5.f);
   const CAABox bounds(xbb4_ - extent, xbb4_ + extent);
   x8f7_27_inProjectilePath = false;
+  int arm = 1;
   rstl::reserved_vector< TUniqueId, 1024 > nearList;
   mgr.BuildNearList(nearList, bounds, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),
                     nullptr);
@@ -703,6 +740,7 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
     CVector3f delta = GetBoundingBox().GetCenterPoint() - projectile->GetTranslation();
     if (!delta.IsMagnitudeSafe()) {
       x8f7_27_inProjectilePath = true;
+      arm = 2;
     } else if (CVector3f::Dot(GetTransform().GetForward(), delta) < 0.f) {
       delta.Normalize();
       CVector3f travel = projectile->GetTranslation() - projectile->GetPreviousPos();
@@ -710,10 +748,18 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
         travel.Normalize();
         if (CVector3f::Dot(travel, delta) > 0.939f) {
           x8f7_27_inProjectilePath = true;
+          arm = 6;
+        } else {
+          arm = 5;
         }
+      } else {
+        arm = 4;
       }
+    } else {
+      arm = 3;
     }
   }
+  TraceCall(*this, "CheckForProjectiles", arm);
   x8f7_26_hearPlayerFire = false;
 }
 
@@ -1266,7 +1312,17 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
 
 // Retail fn_72_E3D8 adds a force-field trigger's push to the ragdoll's torso impulse once the
 // ragdoll is primed; with no ragdoll (xb30_ is never set) it is CPatterned::Touch.
-void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) { CPatterned::Touch(actor, mgr); }
+// Retail fn_72_E3D8 (0xC0): the base class's touch first, then a force-field trigger's push
+// onto the ragdoll's torso impulse. The ragdoll pointer at 0xb30 is never set in this port, so
+// that whole branch stays a comment (asm 0xE3F8-0xE47C): the ragdoll's own flag byte 0x70 has
+// to carry bit 0x40 (asm 0xE408), the other actor has to be a CScriptTrigger (asm 0xE414) whose
+// flag byte 0x20 carries bit 0x80 (asm 0xE424) and whose word 0x1a0 carries bit 0x10000 (asm
+// 0xE430), and the trigger's float 0x19c has to be above zero (asm 0xE444); the ragdoll's
+// 0xb8, 0xbc and 0xc0 then take the trigger's 0x190, 0x194 and 0x198.
+void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
+  TraceCall(*this, "Touch", 0);
+  CPatterned::Touch(actor, mgr);
+}
 
 // Retail fn_72_C538.
 // @ fn_72_C538
@@ -1526,6 +1582,16 @@ void CSpacePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
 }
 
 // Retail fn_72_E318.
+// @ fn_72_E318 (0xC0): a live pirate hears a noise inside the data's hearing radius (0x7d4)
+// and inside the detection height range (0x3d4, the squared test at asm 0xE384), which sets the
+// 0x8f6 mask 0x40 bit; a player-fire noise (type 0) also sets the 0x8f7 mask 0x20 bit and
+// remembers the noise position in 0xbb4/0xbb8/0xbbc (asm 0xE3A8-0xE3C8). The trace's argument is
+// the arm: 0 = the pirate is dead, 1 = the noise is out of the hearing radius, 2 = the height
+// range test failed, 3 = heard. The 2026-10-21 runs proved 0 (`hurt u04d0 100` kills the pirate
+// and the next shot reaches it), 1 and 3 (the awake trooper of 06_sand_alamofront, with its
+// 100-unit radius, hears the player's shot). Arm 2 needs a pirate whose detection height range
+// is set, and none of the 65 shipped SpacePirate placements has one (tools/scan_pirt_props.py
+// reads the patterned block's property 0x513f04b8: all 65 are 0.0), so that arm is unreachable.
 bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
   bool heard = false;
   if (mAlive) {
@@ -1541,6 +1607,11 @@ bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListen
       x8f7_26_hearPlayerFire = true;
       xbb4_ = position;
     }
+    // The trace's argument is the arm: 0 = the pirate is dead, 1 = the noise is out of the
+    // hearing radius, 2 = the height range test failed, 3 = heard.
+    TraceCall(*this, "Listen", heard ? 3 : 1);
+  } else {
+    TraceCall(*this, "Listen", 0);
   }
   return heard;
 }
