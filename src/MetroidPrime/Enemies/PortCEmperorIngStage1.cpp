@@ -2023,6 +2023,8 @@ void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
     SetActive(false);        // 0x11E0
   }
   // 0x11EC: the model data and its animation data have to be there.
+  // The retail's arm at 0x11F8 (the animation data is null) cannot be taken in the port: the
+  // portal is always built with the attack tip's model and its animation data.
   if (ModelData() != nullptr && ModelData()->AnimationData() != nullptr) {  // 0x11F4, 0x1200
     // 0x1214: the "Whole Body" animation is over?
     if (!AnimationData()->IsAnimTimeRemaining(dt - 0.00000011920929f,

@@ -1113,3 +1113,102 @@ expression (`&&`, `||`), so they are not instrumented separately.
 | 0x9E10 | extsb. r0, r26 | the C++ condition at L1906 (a short-circuit arm) | n/a |
 
 The arms that did not come up: fn_16_0: none; fn_16_9C0: 0x09F4; fn_16_A64: 0x0AA8, 0x0AC0; fn_16_CD0: none; fn_16_71BC: none; fn_16_774C: 0x777C; fn_16_1150: 0x11F8; fn_16_1A50: 0x1A78, 0x1B18; fn_16_1950: 0x19D8; fn_16_9BE8: none.
+
+## 9. The branch table (the ten functions with conditional branches)
+
+The once-logs (temporary, reverted) sat at the end of every arm of the C++ conditions; the
+retail's offsets come from the asm. `L<n>` is the C++ line the arm's log stood on. The
+retail's extra branches are the short-circuit arms of a C++ condition that is one
+expression (`&&`, `||`), so they are not instrumented separately.
+
+### fn_16_0 (2 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x001C | stw r30, 0x8(r1) | the C++ condition at L0 (a short-circuit arm) | n/a |
+| 0x0038 | extsh. r0, r31 | the C++ condition at L0 (a short-circuit arm) | n/a |
+
+### fn_16_9C0 (1 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x09F4 | cmplwi r3, 0x0 | L1478 then | yes |
+
+### fn_16_A64 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x0AA8 | sth r0, 0x8(r1) | L1450 then | yes |
+| 0x0AC0 | lbz r0, 0x20(r31) | L1455 then | yes |
+| 0x0AD4 | fcmpo cr0, f1, f0 | L1464 then | yes |
+| 0x0BEC | fsubs f1, f2, f1 | the C++ condition at L1464 (a short-circuit arm) | n/a |
+
+### fn_16_CD0 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x0D24 | mr r30, r4 | L1407 then | yes |
+| 0x0DD4 | stb r6, 0x76(r1) | L1423 then | yes |
+| 0x0EAC | extsb. r0, r28 | the C++ condition at L1423 (a short-circuit arm) | n/a |
+| 0x0EBC | cmplwi r31, 0x0 | the C++ condition at L1423 (a short-circuit arm) | n/a |
+
+### fn_16_71BC (10 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x7204 | mr r28, r3 | L2403 then | yes |
+| 0x7208 | mr r28, r3 | L2423 then | yes |
+| 0x7210 | cmpwi r27, 0x0 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x721C | cmpwi r27, 0x3 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x7354 | addi r3, r29, 0x6b4 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x7360 | cmpwi r0, 0x1 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x7364 | cmpwi r0, 0x1 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x736C | cmpwi r0, 0x0 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x7378 | cmpwi r0, 0x3 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+| 0x763C | addi r3, r1, 0x20 | the C++ condition at L2423 (a short-circuit arm) | n/a |
+
+### fn_16_774C (8 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x7778 | mr r31, r4 | L2346 then | yes |
+| 0x777C | mr r31, r4 | L2351 then | yes |
+| 0x7784 | cmpwi r5, 0x0 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x7790 | cmpwi r5, 0x3 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x77D8 | fcmpo cr0, f2, f0 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x77E4 | fcmpo cr0, f2, f0 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x7820 | lhz r0, kInvalidUniqueId@l(r3) | the C++ condition at L2351 (a short-circuit arm) | n/a |
+| 0x7834 | fcmpo cr0, f1, f0 | the C++ condition at L2351 (a short-circuit arm) | n/a |
+
+### fn_16_1150 (13 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x11D0 | fcmpo cr0, f1, f0 | L2022 then | yes |
+| 0x11F8 | cmplwi r4, 0x0 | L2026 then | no |
+| 0x1204 | cmplwi r0, 0x0 | L2043 then | yes |
+| 0x1210 | cmplwi r0, 0x0 | L2048 then | yes |
+| 0x1254 | addi r3, r1, 0x90 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x128C | sth r0, 0x38(r1) | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1298 | lbz r0, 0x20(r29) | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x132C | fcmpo cr0, f1, f0 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1368 | cmplwi r0, 0x0 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1390 | stb r0, 0x120(r1) | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x13CC | cmplwi r0, 0x0 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1494 | addi r4, r1, 0xf0 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+| 0x1530 | cmpwi r28, 0x7 | the C++ condition at L2048 (a short-circuit arm) | n/a |
+
+### fn_16_1A50 (3 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x1A78 | cmpwi r0, 0x0 | L1926 then | yes |
+| 0x1ACC | lhz r0, kInvalidUniqueId@l(r3) | L1932 then | yes |
+| 0x1B18 | sth r0, 0x18(r1) | L1939 then | yes |
+
+### fn_16_1950 (1 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x19D8 | cmplwi r3, 0x0 | L2137 then | yes |
+
+### fn_16_9BE8 (4 branches)
+| retail offset | the retail's test | the C++ arm | ran |
+|---|---|---|---|
+| 0x9CD4 | addi r4, r3, 0x60b | L1907 then | yes |
+| 0x9DEC | extsb. r0, r24 | the C++ condition at L1907 (a short-circuit arm) | n/a |
+| 0x9DFC | extsb. r0, r25 | the C++ condition at L1907 (a short-circuit arm) | n/a |
+| 0x9E10 | extsb. r0, r26 | the C++ condition at L1907 (a short-circuit arm) | n/a |
+
+The arms that did not come up: fn_16_0: none; fn_16_9C0: none; fn_16_A64: none; fn_16_CD0: none; fn_16_71BC: none; fn_16_774C: none; fn_16_1150: 0x11F8; fn_16_1A50: none; fn_16_1950: none; fn_16_9BE8: none.
