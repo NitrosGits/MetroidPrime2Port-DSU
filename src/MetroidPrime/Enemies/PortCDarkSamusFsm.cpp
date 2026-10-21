@@ -1983,11 +1983,12 @@ void CDarkSamus::ReflectProjectiles(CStateManager& mgr) {
 
 // fn_10_1B9B0 (0x0001B9B0, 0x158 bytes): a projectile may be sent back unless it is null
 // (`mr.` at 0x0001B9C0), the actor's own (its owner 0x15C against the uid 0x8, 0x0001B9E4), already
-// exploded (0x562 `extrwi r0, r0, 1, 26` at 0x0001B9F0), of another weapon type than a given one
+// exploded (0x562 `extrwi r3, r0, 1, 26` at 0x0001B9F0), of another weapon type than a given one
 // (`cmpwi r6, -0x1` at 0x0001BA10, its 0x160 at 0x0001BA1C) or already sent back (the walk over
 // 0xBF0 at 0x0001BA48..0x0001BA58). During attack 0x800000 (`subis r0, r3, 0x80` at 0x0001BA70)
-// phazon and cannon-ball projectiles (the damage's weapon type 0x19C: `cmpwi r0, 0xa` at
-// 0x0001BA80 and `cmpwi r0, 0x8` at 0x0001BA88) are not; any other is. Outside it any weapon type
+// phazon and cannon-ball projectiles (the damage's weapon type 0x19C:
+// `cmpwi r0, 0xa` at 0x0001BA80,
+// `cmpwi r0, 0x8` at 0x0001BA88) are not; any other is. Outside it any weapon type
 // (`cmpwi r6, -0x1` at 0x0001BA98) passes; a given type is compared with the stage's chance: the
 // stage (fn_10_17E14 at 0x0001BAA8, null passes at 0x0001BAB0) and fn_10_F298's roll for the uid
 // against the stage info's +0x24 (`fcmpo` at 0x0001BAD4). Only fn_10_1B658 calls it in the port,
@@ -2065,8 +2066,8 @@ void CDarkSamus::PushPlayer(CStateManager& mgr, float horizontal, float vertical
 // times its mass 0x158 (0x000136A8..0x000136C0) with no turn (CAxisAngle::Identity, the call at
 // 0x000136E0), moves to state 2 (kMS_ApplyJump: `li r4, 0x2` at 0x000136EC, SetMoveState at
 // 0x000136F0) and its rumble manager (0x152C by MaskUIdNumPlayers, 0x00013708) plays effect 6
-// (`li r5, 0x6` at 0x00013728) at lbl_10_rodata_3E8 = 1.0f with priority 2 (`li r6, 0x2` at
-// 0x0001372C).
+// (`li r5, 0x6` at 0x00013728) at lbl_10_rodata_3E8 = 1.0f with priority 2
+// (`li r6, 0x2` at 0x0001372C).
 // @ fn_10_1367C
 void CDarkSamus::KnockPlayer(CStateManager& mgr, const CVector3f& impulse) {
   CPlayer* player = mgr.GetPlayer(0);
