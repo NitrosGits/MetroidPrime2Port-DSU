@@ -3040,21 +3040,23 @@ void CCommandoPirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   StandInFn("fn_9_8D28");
 }
 
-// fn_9_8B70 (0x1b8 bytes): the JumpBack state - the commando jumps away from its target.
+// fn_9_8B70 (0x1b8 bytes): the JumpBack state - the commando steps back away from its target.
 //
 // On activate (the guest's message 0, 0x00008BA8) the animation state goes "ready" (guest
 // this+0x6B4 = 1, 0x00008BB0) and the module's helper fn_9_3CBC (the call at 0x00008BBC) has to
 // find the target: when it does not, the state ends right there (0x00008BC0..0x00008BC4). The
-// jump's own target is then the actor's position plus the transform's second column (guest
+// step's own target is then the actor's position plus the transform's second column (guest
 // this+0x28, 0x38 and 0x48 - the loads at 0x00008BC8..0x00008BF4), stored at guest this+0xB94.
 //
-// On update (the guest's message 1, 0x00008BFC) the jump command is issued when the animation
-// state may issue it (the CanIssueCommand call at 0x00008C08 asks for the animation state 3): the
-// command's payload is the type 1, the variant 0, the waypoint (0,0,0) and the flag byte 0
-// (0x00008C14..0x00008C6C). When the command may not be issued and the body is in the state 3
-// (the compare at 0x00008CD0), the body's target vector (the body controller's +0x34, the
-// command manager's fifth CVector3f) takes the jump target minus the position
-// (0x00008CD8..0x00008D04).
+// On update (the guest's message 1, 0x00008BFC) the step command is issued when the animation
+// state may issue it (the CanIssueCommand call at 0x00008C08 asks for the animation state 3 =
+// kAS_Step): the command the guest delivers is the id 1 = kBSC_Step, with the direction 1
+// (0x00008C2C = kSD_Backward) and the type 0 (0x00008C30 = kStep_Normal); the guest also builds
+// the command's data on the stack (0x00008C18..0x00008C6C) and copies it into the command
+// manager's slot (0x00008C74..0x00008CBC). When the command may not be issued and the body is in
+// the state 3 (the compare at 0x00008CD0), the body's target vector (the body controller's +0x34,
+// the command manager's fifth CVector3f) takes the step target minus the position
+// (0x00008CD8..0x00008D04) - the host's step state faces that vector (CBSStep.cpp:36).
 //
 // On deactivate (the guest's message 2, 0x00008D0C) the animation state goes "not ready".
 void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -3070,19 +3072,13 @@ void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   }
   case kStateMsg_Update: {  // the guest's message 1
-    if (BodyController()->GetCurrentStateId() != pas::kAS_Jump &&
-        mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {  // 0x00008C08
-      // 0x00008C14..0x00008C6C: the jump command - the type 1 (0x00008C2C), the variant 0
-      // (0x00008C30) and the flag byte 0 (0x00008C6C). The guest's payload leaves the
-      // command's own waypoint at zero (0x00008C60) and puts the jump's target in the body's
-      // target vector instead (0x00008CF8..0x00008D04) - but the host's jump state takes the
-      // destination from the command, so the port hands it the target here. The port also issues
-      // the jump once: the host's jump state applies the actor's velocity as a constant force
-      // (the launch), so a jump issued every update (the guest's: the animation state stays
-      // "ready") would send the commando off the map.
-      BodyController()->CommandMgr().DeliverCmd(
-          CBCJumpCmd(xb94_, pas::kJT_One, pas::kJS_IntoJump, 0, 0));
-      mAnimationState.SetState(CAnimationState::kAS_Over);
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {  // 0x00008C08
+      // 0x00008C14..0x00008C70: the command the guest delivers is the id 1 - kBSC_Step - with
+      // the direction 1 (0x00008C2C) and the type 0 (0x00008C30); the guest also builds the
+      // command's data on the stack (0x00008C18..0x00008C6C) and copies it into the command
+      // manager's slot (0x00008C74..0x00008CBC), but the id it delivers is the step's. The
+      // animation state it asks for is the step's too (3 = kAS_Step).
+      BodyController()->CommandMgr().DeliverCmd(CBCStepCmd(pas::kSD_Backward, pas::kStep_Normal));
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Step) {  // 0x00008CD0
       // the body's target vector: the jump target minus the position (0x00008CD8..0x00008D04)
       BodyController()->CommandMgr().SetTargetVector(xb94_ - GetTranslation());
@@ -3562,7 +3558,7 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
           if (!x2A98_PickWaypoint(mgr, true)) {  // 0x00007E00
             BodyController()->CommandMgr().DeliverCmd(kBSC_ExitState);  // 0x00007E2C (the id 0xa)
           }
-        } else if ((xc64_ & 0x08) != 0) {
+        } else if ((xc64_ & 0x08) != 0) {  // 0x00007E44..0x00007E48
           // 0x00007E40..0x00007E54: the turn helper runs while the byte at guest this+0xC64 has
           // its 0x08 bit - the module's user-event handler sets it when the shield's charge
           // animation takes off (fn_9_C798, 0x0000C868) and clears it when it lands

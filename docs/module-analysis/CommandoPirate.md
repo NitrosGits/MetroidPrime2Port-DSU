@@ -1189,7 +1189,7 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the speed at or below zero (0x00002AD0) | c | the area's block gives the charge speed 55 |
 | | the 0x20 flag clear (0x00002B00) and the next waypoint gone (0x00002B80) | d | the module's waypoint always has the 0x20 flag in this run, and the chain's waypoints all have a successor |
 | `fn_9_8B70` (the JumpBack state) | the activate (0x00008BA8) and the target (0x00008BBC..0x00008BF4) | b | one activate per run (the state is entered on its own); the target was there |
-| | the update (0x00008BFC) and the jump command (0x00008C08..0x00008C70) | b | 993 updates per run; the jump command is issued |
+| | the update (0x00008BFC) and the step command (0x00008C08..0x00008C70) | b | 993 updates per run; the step command is issued (the id 1 = kBSC_Step, the direction 1 = kSD_Backward and the type 0 = kStep_Normal) |
 | | the deactivate (0x00008D0C) | b | once per run |
 | | the target gone (0x00008BC0..0x00008BC4) and the body in the state 3 (0x00008CD0..0x00008D04) | d | the target is always there, and the jump command is issued on every update, so the "the body is in the state 3" arm is not reached (the guest's structure is the same) |
 | `fn_9_786C` (the RestoreOrientation state) | the activate (0x000078B0) and the deactivate (0x00007A00..0x00007A78) | b | four of each per run (the state is forced with the console's `fsm`, **forced (fsm)** - the commando only reaches it after a warp) |
@@ -1290,6 +1290,18 @@ instead of 600 units away.
 
 The charge's loop-attack command also carries the guest's flag byte's 0x80 bit (the skip-into,
 0x00007C90), which the port did not set.
+
+**The JumpBack state is a *step*, not a jump.** The command the guest delivers (0x00008C70) has the
+id 1 - `kBSC_Step` - with the direction 1 (`kSD_Backward`, 0x00008C2C) and the type 0
+(`kStep_Normal`, 0x00008C30); the animation state it asks for is the step's too (3 = `kAS_Step`,
+0x00008C08) and the "the body is in the state 3" arm (0x00008CD0) is the step's. The guest's
+command data is built on the stack (0x00008C18..0x00008C6C) and copied into the command manager's
+slot (0x00008C74..0x00008CBC) - the target (0,0,0) and the has-target flag 0 - and the jump's own
+target goes into the body's target vector instead (0x00008CF8..0x00008D04), which the host's step
+state faces (CBSStep.cpp:36). A jump command here would have made the commando leave the map: the
+host's jump state applies the actor's velocity as a constant force (CBSJump.cpp:150), which the DOL's
+CBSJump has no counterpart for (the DOL's file has no SetConstantForceWR at all - its only velocity
+write is the wall bounce's SetVelocityWR at 0x800FCA14).
 
 **The loop attack types and the skip-into flag.** The turn helper's command is the host's
 `pas::kLAT_Five` / `pas::kLAT_Six` (the guest's 5 and 6, 0x000027D8 and 0x00002748) and
