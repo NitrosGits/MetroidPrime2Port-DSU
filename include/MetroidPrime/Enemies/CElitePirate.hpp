@@ -104,7 +104,6 @@ public:
 // override it). Only the passive half is implemented here: the loader, the constructor and the
 // methods that let the actor load, think, stand and render. The state machine (fn_15_C0D0, 0x808),
 // the shields, the shock waves, the rockets and the melee attack are later milestones.
-
 class REL_EXPORT CElitePirate : public CPatterned {
 public:
 #ifdef TARGET_PC
