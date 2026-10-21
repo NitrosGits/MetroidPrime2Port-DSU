@@ -1587,14 +1587,19 @@ animation was set with, not the script data's isLoop.  The host keeps the two ap
 at src/MetroidPrime/CAnimData.cpp:460/:567 and `mLoop` at :100) and branches on the wrong one
 for this case.
 
-**The proof, from a probe**: forcing the host's flag off on that actor
-(`body->AnimationData()->EnableLooping(false)` right after the module's own SetAnimation) makes
-the natural path work - the console's `obj` shows the FSM walk
-**"BeginHeartStage" -> "HeartStage" (seven polls, 14 s) -> "EndHeartStage"**, i.e. the
-"HeartStageOver" trigger fired and the "ChooseRandomTentacleCount" code node ran, with no
-`fsm` anywhere.  With the shipped flag the 'PLAY' actor's animation never ends and the heart
-stage is only reachable by forcing it.
+**Correction (the same evening): the loop flag is *not* what blocked the heart stage.**  The
+module's test fires on the tick where the looping animation's remaining time passes 0 (the
+probe that sampled every 20 ticks had missed that one tick), and a clean run of the committed
+build - with the driver sending the 'PLAY' actor its `Activate` (the area's script, which does
+that in the game, cannot run under the console) - walks the FSM
+**"BeginHeartStage" -> "HeartStage" (12 s) -> "EndHeartStage"** on its own: the "HeartStageOver"
+trigger fires and the "ChooseRandomTentacleCount" code node runs.  Sections 17-18 had the cause
+wrong: the blocker was the **inactive** 'PLAY' actor (its animation did not advance at all), not
+the loop.
 
-**This is shared code** (CAnimData / CScriptActor), so it is reported and not changed here: the
-host's `CAnimData::DoAdvance` should take its branch from the same byte the DOL's does (the
-animation state the parms set), not from the script data's isLoop.
+What is left from this section is a reconstruction difference in shared code: the DOL's
+`CAnimData` has one flag byte at +0x2AC (written by SetAnimation from the parms' byte 0x21 and
+branched on in DoAdvance), while the host splits it into `mLoop` (the script data's isLoop,
+CAnimData.cpp:100) and `mAnimating` (:460) and branches on `mLoop` (:467).  For this actor both
+are 1, so the branches agree; they would differ for an actor with isLoop = 0 that plays an
+animation with the parms' byte 1.  Reported, not changed (shared code).
