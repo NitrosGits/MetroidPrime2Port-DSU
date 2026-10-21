@@ -838,7 +838,7 @@ transition enters it.
 | 138A4 | unmorphed push / morphed | yes / yes |
 | 1382C, 13750, 1367C | single path | yes |
 | 11FA4 | jump re-issue | forced (fsm MeleeAttack, then DiveAttack) |
-| 11FA4 | static wall hit | **no** (needs 9424) |
+| 11FA4 | static wall hit | yes (Slice 19: forced, fsm DiveFromBoost then place into the wall) |
 
 - Marked: 1B658 (its not-normalizable arm is dead: a unit forward plus an offset of at most
   |(0.4, 0.4, 0.55)|, squared 0.6225 < 1, is never zero), 138A4, 1382C, 13750, 1367C.
@@ -856,3 +856,45 @@ transition enters it.
   Repeat from CanIssueCommand, so the earlier attack's animation keeps playing with that
   animation's events. Agon's sweepSwoosh is also kInvalidAssetId, so that fight has no sweep beam
   at all.
+
+## Slice 19 (2026-10-21): the dive out of the boost ball
+
+- Ported: DiveFromBoost fn_10_9424 with fn_10_9644 (the turn around) and fn_10_9AC4 (the boost
+  ball's deletion). Only Activate runs the body (`mr. r31, r5` at 0x00009444, `bne .L_0000954C`
+  at 0x00009454): the dive record's boost bit 0x01 (the byte 0xB20, `rlwimi r0, r3, 0, 31, 31`
+  at 0x00009460), the roll emitter removed (0x00009474) and its handle cleared (0x00009480),
+  fn_10_9644 (0x00009484), 0xD24 = lbl_10_rodata_284 = 0.5f (0x000094A8), 0xEBC bit 0x40
+  (0x000094B0), fn_10_9AC4 (0x0000953C) and fn_10_99B8 (0x00009548). Deactivate (`cmpwi r31,
+  0x2` at 0x0000956C) clears the boost bit again (0x0000957C).
+- The state's base call is the vtable's word 136 (`lwz r12, 0x220(r12)` at 0x00009560): the REL's
+  vtable lbl_10_data_CBC holds the actor's vtable (words 0..81) and the 92 handlers (words
+  82..173), the 49 triggers take 82..130 and the 43 states 131..173 - so word 136 is the sixth
+  state, DiveAttack (fn_10_11FA4). The boost dive *is* the dive.
+- Reach: `fsm <id> DiveFromBoost`. The FSM2 has no transition into the node (no state lists the
+  DiveAfterBoost trigger, fn_10_95A8), so the console is the only way in. The dive launches
+  about 167 ticks after the state change and the flight lasts about 20 ticks (the dive lands
+  on the player, who stands close).
+- The static wall hit (0x00012534) ran: the boost bit skips the collision failsafe (the
+  `clrlwi.` at 0x00012018), so an actor placed inside a wall stays there and the static
+  collision test (kMT_Wall only, `li r5, 0x1` at 0x000124E8) finds the wall and the dive
+  bounces off it (fn_10_1CDD0 with the zero normal, 0x0001254C). Without the bit the boss
+  placed in the wall was returned to its safe position (Slice 18). The wall is at
+  (68.59, 466.5, 164.3); the driver is `tools/drivers/darksamus_boost_dive.con` (rooftop u04f7,
+  the placement 172 ticks after the state change).
+
+| body | arm | ran |
+| --- | --- | --- |
+| 9424 | the Activate body / the other messages | yes / yes |
+| 9424 | Deactivate clears the boost bit | yes |
+| 9644 | the turn around | yes (the "cannot be normalized" arm is dead: the transform's Y column is a unit vector) |
+| 9AC4 | no boost ball / a boost ball to delete | yes / **no** (the uid 0xE38 is set by the BoostBallRoll (fn_10_A3B0) and BoostBallFire (fn_10_9724) paths, which are outside the port) |
+| 11FA4 | static wall hit | forced (fsm DiveFromBoost, then place into the wall) |
+
+- Marked: 11FA4 (every arm ran: the jump re-issue was forced in Slice 18, the static wall hit
+  here), 9644.
+- Unmarked: 9424 - fn_10_99B8, which stops the boost ball's particle effects, is outside the
+  port: the two swooshes (guest 0xE3C / 0xE4C) and the element generator (guest 0xE60 / 0xE64)
+  are never built (fn_10_9B24 has no host counterpart and the loader's swoosh tokens are not in
+  the host), so its "stop the old effect" calls (0x000099F4, 0x00009A20, 0x00009A68) and
+  fn_10_9424's (0x000094EC) have nothing to stop. 9AC4 is unmarked for the arm above.
+

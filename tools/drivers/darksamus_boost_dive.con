@@ -1,0 +1,15 @@
+# Dark Samus: the dive out of the boost ball (fn_10_9424) and the dive's static wall hit
+# (fn_10_11FA4 at 0x00012534). Sanctuary 10_cliff_rooftop layer 2, boss u04f7.
+#
+# Run it at the game's real speed (MP2_FRAME_LIMIT=1, no MP2_TICKS_PER_FRAME): the dive
+# launches about 167 ticks after the state change and the flight lasts about 20 ticks, so the
+# placement has to land in that window. The boost bit 0x01 (the dive record's 0xB20) is what
+# skips the collision failsafe (0x00012018), which would otherwise put an actor placed in a
+# wall back at its safe position before the static collision test runs.
+@f600 send u04f7 Activate
+@f700 fsm u04f7 DiveFromBoost
+@f872 place u04f7 68.59 466.5 164.3
+@f880 objs darksamus
+@f900 objs darksamus
+@f940 objs darksamus
+@f980 objs darksamus
