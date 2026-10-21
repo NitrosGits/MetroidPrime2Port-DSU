@@ -1315,3 +1315,32 @@ Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projecti
   PreRenderAllViewports' clean-bounds arm (not recorded by the probes).
 - The same run's morph-ball boost (X morph, A holds) never hit the chassis (9B9C/9FA8 unreached),
   `damage u0532 30` left hp at 10.0, and no dodge reached 91E4: those arms still need a setup.
+
+## Head undock, boost, beam render (2026-10-21)
+
+- The head undocks when its chassis dies: the chassis's Death (fn_75_EB04, vtable 0x98) resets
+  the head's shield (fn_75_5D50) and clears the head id at 0xC6C; the head's chassis check
+  (fn_75_31A8) then sees it is no longer held and moves to LostChassisReaction (fn_75_42F8).
+  There is no health threshold or script message. The chassis dies only through
+  fn_75_A0A0 (kSM_Damage from a collision actor): just the "target_LCTR" actor (chassis u0532:
+  u0678) is vulnerable, and only during LaserSweepAttack (fn_75_D3E0 Activate gives it the base
+  vulnerability, which takes cannonball, not power or missile).
+- Ported: EB04, 5D50, A0A0, 42F8 (its turn, fn_75_2994, stays a stand-in). Marked: 5AD8 (the
+  undocked return ran after the kill; the docked arm is the only writer of stage 0).
+- Run 04_cliff_contraption L2 (PLAN=S, `damage u0678 5 0 cannonball` x5 while u0532 is in
+  LaserSweepAttack): chassis hp 10 -> 0 at 51.9 s, Death ran, head u0531 went FaceTarget ->
+  LostChassisReaction -> PathFind (fn_75_4E90, stand-in). The undocked head next needs PathFind,
+  3ADC, 3D20, 2280, 565C, 570C and 2994, all stand-ins.
+- Unmarked: EB04 (null collision actor; no head - killing head u0520 first sends chassis u0521
+  to HeadExplosion, fn_75_BEEC, a stand-in that never dies), A0A0 (CWeapon last-touched arm;
+  console damage has none), 5D50 (shield state 2: nothing ported sets it), 42F8 (calls 2994).
+- Boost (PLAN=H, chassis u0521): the boost is B, not A (X morphs, B held 50 updates, stick
+  forward after `tp`+`face`). 65 boosting contacts landed (target actor 0x27e among them), so
+  9B9C's boost and target arms ran; its null actor, 0xD41 0x80 and Ai arms did not, 9FA8's
+  boost arm did not and AB8C's grant arm is unrecorded: none marked.
+- Beam PreRender 10F1C / Render 10778: their GX calls are GXSetTexCopySrc/Dst, GXCopyTex,
+  GXPixModeSync, then GXInitTexObj(+LOD)/GXLoadTexObj on the copy's CTexture bitmap after
+  DCInvalidateRange, GXLoadTexMtxImm, CGX TEV/blend/z state, CCubeRenderer::DrawVisibleAreaGeometry
+  and CModel::DolphinDrawFlat. Aurora has all of them: GXCopyTex resolves into a texture keyed by
+  the destination pointer, and binding that same pointer samples it (PortEfbCopy, GOTCHAS). No
+  Aurora feature is missing; they stay stand-ins only because of size (0x760 + 0x64C).

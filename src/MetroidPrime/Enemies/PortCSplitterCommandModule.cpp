@@ -629,6 +629,7 @@ CVector3f CSplitterCommandModule::PortLaserOrigin(CStateManager&) const {
 // fn_75_5AD8 (0x5AD8-0x5B24): only for a docked head (the chassis id at 0xEFA valid,
 // 0x5ADC-0x5AE8) the laser sweep stage at 0xF34 is 0 and the two sweep ends are kept at 0xF38
 // and 0xF44 (0x5AEC-0x5B20).
+// @ fn_75_5AD8
 void CSplitterCommandModule::PortStartLaserSweep(const CVector3f& first, const CVector3f& second) {
   if (mChassisId == kInvalidUniqueId) {
     return;
