@@ -74,7 +74,10 @@ class ForceBp(gdb.Breakpoint):
             return False
         for s in self.sets:
             try:
-                gdb.execute('set var ' + s.replace('$this', '((%s*)$rdi)' % CLASS))
+                expr = s.strip()
+                if expr.startswith('set var '):
+                    expr = expr[len('set var '):]  # a spec's `sets` are expressions; tolerate the prefix
+                gdb.execute('set var ' + expr.replace('$this', '((%s*)$rdi)' % CLASS))
             except gdb.error:
                 pass
         if self.n <= self.skip + 3:
