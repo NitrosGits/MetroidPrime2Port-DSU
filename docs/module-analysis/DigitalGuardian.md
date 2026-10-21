@@ -1251,3 +1251,22 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 - The player must morph after the stage-3 cinematic (`press x` before it does nothing).
 - XRDG fn_14_12D98: bombs touching the root collider (vulnerable after SetVulnerableToDamage) fail
   its WeaponHits test, so the gravity repulsor (0x10E0) only drops on beam hits; not yet exercised.
+
+## 2026-10-21: root hits, part 3 codes
+
+- Harness: the boss intro (camera chain 0297..027d, ~35 s) and later cinematics set
+  `IsInCinematicCamera()`, which blocks all player input. Wait for the cinematic id to return to
+  `03ff` before firing. `press a` needs at least 40 updates, because shorter holds end while the
+  gun is still drawing.
+- With that done, beams from 12 m reach root collider u0574. XRDG (fn_14_12D98) ran 72 times
+  (armour bit set, sender = root) and found the touching CWeapon each time. After
+  SetVulnerableToDamage (fn_14_13F0C, once), `WeaponHits` was false for power, dark, light and
+  annihilator alike. The damage arm never ran, 0x10E0 stayed full, ShouldRetreat never fired, and
+  SetImmuneToDamage / SelectRetreatPlatform / the platform arms stayed unreached. Next suspect:
+  the head's own CPatterned vulnerability as the port loads it.
+- Ported (unmarked, no run evidence yet): DropShields 15054, RaiseShields 14F74,
+  EndSplitterDeployment 14B60, SelectDeathHeadAttack 14470 (block 6 at data +0x2DC; new 0x10DC),
+  GrabPlayerHintControl 13F70 (CScriptPlayerHint::SetActorId, TARGET_PC). The ctor now locks
+  dropShieldsFx (data +0x48) into 0xEF4.
+- SeekLineOfSight 1524C stays a stand-in. SetVisualTarget only writes 0xDA0/0xDB8/0xDAC..0xDB4,
+  but CVisualKnowledge::Update is unported, so HasLineOfSight would stay false.
