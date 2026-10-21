@@ -41,7 +41,7 @@ def emit(s):
 
 t0 = time.time()
 s = None
-while s is None and time.time() - t0 < 120:
+while s is None and time.time() - t0 < 600:  # the game may wait for a run slot
     try:
         s = socket.create_connection(('127.0.0.1', port), timeout=5)
     except OSError:
@@ -54,10 +54,15 @@ f = s.makefile('rw')
 
 
 def request(c):
-    """Send one command; return its reply lines (without the final '=> ...'), and that line."""
+    """Send one command; return its reply lines (without the final '=> ...'), and that line.
+
+    `a; b` runs both in one game tick and answers once per command: the earlier '=> ' lines stay
+    in the reply lines, and the first error (else the last result) is returned."""
     f.write(c + '\n')
     f.flush()
     lines = []
+    pending = c.count(';') + 1
+    first_err = None
     s.settimeout(60)
     while True:
         l = f.readline()
@@ -65,7 +70,11 @@ def request(c):
             return lines, '[con] eof'
         l = l.rstrip()
         if l.startswith('=> '):
-            return lines, l
+            pending -= 1
+            if first_err is None and l.startswith('=> err'):
+                first_err = l
+            if pending == 0:
+                return lines, first_err or l
         lines.append(l)
 
 
