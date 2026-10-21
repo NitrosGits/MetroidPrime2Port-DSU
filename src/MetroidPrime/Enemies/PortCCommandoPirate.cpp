@@ -946,8 +946,9 @@ void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
 // | ALRT | kSM_Alert | the base's flag byte (0x0000D088) |
 // | ZERO | kSM_SetToZero | the module's warp-out helper (0x0000CEF8) |
 //
-// The three module helpers this case calls that are not ported yet (fn_9_2D0C, the knock-back;
-// fn_9_3A5C, the hit-object damage; fn_9_3900, the jump-back velocity) are named stand-ins.
+// Two of the module helpers this case calls are not ported yet (fn_9_2D0C, the knock-back, and
+// fn_9_3900, the jump-back velocity); they are named stand-ins. The third (fn_9_3A5C, the
+// hit-object damage) is ported as x3A5C_HitObject.
 void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);  // 0x0000CB84

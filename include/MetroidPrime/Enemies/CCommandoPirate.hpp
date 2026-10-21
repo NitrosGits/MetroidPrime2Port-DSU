@@ -392,7 +392,7 @@ private:
   void x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg);
 
   // fn_9_3A5C: the module's hit-object helper (0x260 bytes) - the shield's damage on the
-  // player that touched it. Not ported yet, so it stays a named stand-in.
+  // player that touched it, and the blade's damage when the blade is out.
   void x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg);
 
   // fn_9_3900: the module's jump-back velocity helper (0x15c bytes). Not ported yet, so it
