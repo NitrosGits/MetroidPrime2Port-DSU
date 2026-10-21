@@ -467,7 +467,7 @@ retail's `TCastToPtr<CWeapon>` on the joint's last-touched object:
   their joints (and the six body spheres) move with the boss. That is the expected consequence of
   retail's own rule: `UpdatePlayerSideMaterials` (fn_79_24E0) takes the dot of (player - boss)
   with the transform's forward column (0x28/0x38/0x48) against rodata_9C, `srwi r31,r0,31`
-  (0x2530) makes the "playerBehind" flag, and that flag goes straight to fn_79_5C74: it activates
+  (0x255C) makes the "playerBehind" flag, and that flag goes straight to fn_79_5C74: it activates
   each live growth only while the player is behind the boss and deactivates all of them when it
   is clear. An inactive collision actor is neither moved by `CCollisionActorManager::Update` nor
   in the object space the beam collides against, so while the player stands in front the growth

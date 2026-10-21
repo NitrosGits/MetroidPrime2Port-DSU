@@ -482,7 +482,7 @@ void CSwampBossStage2::SetGrowthActive(CStateManager& mgr, int idx, bool active)
 // @ fn_79_24E0: the growths are only targetable while the player is BEHIND the boss, and the boss
 // itself gains or drops its orbit/target/seeker materials with that side. Retail takes the dot of
 // (player - boss) with the transform's forward column (0x28/0x38/0x48) and compares it with
-// rodata_9C; `srwi r31,r0,31` (0x2530) turns that into the "playerBehind" flag, which goes
+// rodata_9C; `srwi r31,r0,31` (0x255C) turns that into the "playerBehind" flag, which goes
 // straight to fn_79_5C74: it activates each live growth while the flag is set and deactivates all
 // of them when it is clear, and the material removal follows the same flag. Retail calls this
 // from Reel (fn_79_7870) only.
