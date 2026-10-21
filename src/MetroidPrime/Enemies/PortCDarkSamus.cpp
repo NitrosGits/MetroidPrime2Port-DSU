@@ -730,10 +730,13 @@ const CDamageVulnerability* CDarkSamus::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability(); // 0x000101F0
 }
 
-// vtable slot 18 = fn_10_F5C0 (0x2C): it builds the box from CPhysicsActor::GetBoundingBox.
+// vtable slot 18 = fn_10_F5C0 (0x2C) only calls fn_10_F5EC (0x0000F5D4), which fills the
+// optional with CPhysicsActor::GetBoundingBox (0x0000F604) and sets its valid byte
+// (`li r0, 0x1; stb r0, 0x18(r31)` at 0x0000F608): the touch bounds are always the bounding box.
+// @ fn_10_F5C0
+// @ fn_10_F5EC
 rstl::optional_object< CAABox > CDarkSamus::GetTouchBounds() const {
-  StandIn("fn_10_F5C0", "vtable slot 18, GetTouchBounds");
-  return CPatterned::GetTouchBounds();
+  return GetBoundingBox();
 }
 
 // vtable slot 20 = fn_10_10358 (0x12C).
