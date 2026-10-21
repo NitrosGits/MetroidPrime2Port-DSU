@@ -27,11 +27,26 @@ BODIES = {
              'the head is dead: the base class is not called'),
     '5F18': ('5F18 Listen', 'CSplitterCommandModule::PortListen(',
              'the head is not alive: the Listen returns false without asking the distance'),
+    '6394': ('6394 DoUserAnimEvent', 'CSplitterCommandModule::PortDoUserAnimEvent(',
+             'the event is a projectile one: the head shoots at the player'),
+    'EFA4': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+             'the event is a break-lock one: the chassis asks the player for the orbit'),
+    'EFA4M': ('EFA4 DoUserAnimEvent', 'CSplitterMainChassis::PortDoUserAnimEvent(',
+              'the event is a material one: the chassis reflects its vulnerability'),
 }
 _label, _where, _what = BODIES[WHICH]
 FORCE = [
     (_label, _where, [], ['$this->mAlive = 0'], 1, _what),
 ]
+# The two DoUserAnimEvent bodies are forced with the event type in the register (r6) instead of
+# the alive flag: the fight does not play the head's projectile event, and the chassis's own
+# DoUserAnimEvent is not reached at all.
+if WHICH == '6394':
+    FORCE = [(_label, _where, [], ['$r6 = 0'], 1, _what)]
+elif WHICH == 'EFA4':
+    FORCE = [(_label, _where, [], ['$r6 = 0x16'], 1, _what)]
+elif WHICH == 'EFA4M':
+    FORCE = [(_label, _where, [], ['$r6 = 0x5'], 1, _what)]
 SPEC = [
     # fn_75_6310: the head's AddToRenderer runs the base class's call only while the actor is
     # alive (the base's flag byte at 0x420, its 0x40 bit).

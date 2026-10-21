@@ -247,7 +247,34 @@ The bodies that ran but whose arms did not all run are the queue's next work: th
 names the exact lines and branches each one still misses, so the lane can take them one at a
 time (`gdb` forces what no run reaches).
 
-### 3.4 The head's DoUserAnimEvent (fn_75_6394) - ported, the mark waits for fn_75_1CA0
+### 3.4 The two DoUserAnimEvent bodies (fn_75_6394, fn_75_EFA4) and fn_75_1CA0 - ported, the marks wait for the arms
+
+**How the bodies are reached.** The override is a member of the class, so the REL's vtable slot
+0x70 runs it: `CSplitterCommandModule::DoUserAnimEvent` (declared in the helpers block of
+`CSplitterCommandModule.hpp`) calls `CSplitterCommandModule::PortDoUserAnimEvent`, and the
+override is what the engine's vtable calls - so the body behind the marker runs whenever the
+head's animation plays a user event. The same for the chassis:
+`CSplitterMainChassis::DoUserAnimEvent` -> `CSplitterMainChassis::PortDoUserAnimEvent`.
+
+**fn_75_1CA0 is ported for real** (the head's projectile aim): the alive gate (the base's flag
+byte at 0x420, its 0x40 bit), the entity at 0xEFE, the node's locator transform, the entity's
+own aim position (its vtable slot 0x54) and the look-at, then the launch (the transform, the
+manager, 6 max projectiles, 0 attributes, no homing, the impact visor effect and the scale
+1.0, 1.0, 1.0 - the rodata constant lbl_75_rodata_34). Every offset is cited in the body.
+
+**But none of the three is marked yet**, because the coverage profile of the run still misses
+arms:
+- `fn_75_6394`'s body: 5/13 lines, 2/10 branches - the kUE_BreakLockOn case ran, the
+  kUE_Projectile case did not (the fight does not play it; the force that takes it - the event
+  type in r6 set to 0 - is in the spec, `SPLITTER_FORCE=6394`).
+- `fn_75_1CA0`: 0/15 lines in the natural run; the forced run takes the kUE_Projectile case
+  (the run's `forced.log` names the forced hit) but its "the head is dead" and the "there is no
+  player" arms are still untaken.
+- `fn_75_EFA4` (the chassis's DoUserAnimEvent): 0/3 lines - the chassis's animation plays no
+  user event in this fight, so the body is not reached at all (and a force cannot reach a body
+  that is never entered).
+
+### 3.5 The head's DoUserAnimEvent (fn_75_6394) - the slot, the mapping and the port
 
 `fn_75_6394` is the head's **DoUserAnimEvent** (vtable slot 0x70), not its GetSortingBounds:
 the REL's own vtable (`lbl_75_data_448`) has the DOL's
@@ -283,7 +310,7 @@ profile of the run (04_cliff_contraption, the area that plays the head's anim ev
 `fn_75_6394`'s override 3/3 lines, the body 5/13 lines and 2/10 branches - the kUE_BreakLockOn
 case ran, the kUE_Projectile case did not.
 
-### 3.5 The queue's next step: the chassis's DoUserAnimEvent
+### 3.6 The queue's next step: the chassis's DoUserAnimEvent
 
 The queue rows whose retail caller ran in the coverage runs are four, and three of them are
 host copies (the loader's own helpers `fn_75_E60` and `fn_75_F00`, and the destructor

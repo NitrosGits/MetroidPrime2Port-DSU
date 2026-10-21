@@ -400,6 +400,14 @@ private:
   // are above. The retail function each one stands for is named on it.
   // (The chassis's own three - fn_75_E99C, fn_75_E90C and fn_75_E810 - are the FSM lane's: they
   // live in this class's own bodies, above.)
+  // The retail's fn_75_EFA4 is the chassis's DoUserAnimEvent (the REL's vtable slot 0x70 - the
+  // DOL's slot 0x70, not the GetSortingBounds at 0x6C; the note's section f row was off by one
+  // slot).  The port had no override, so the DOL's own DoUserAnimEvent ran.  The body is in
+  // src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp.
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  void PortDoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                           float dt);
 #endif
 };
 #else
