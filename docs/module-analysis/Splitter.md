@@ -344,7 +344,8 @@ Three vtables; all start with two zero words (offset-to-top + null RTTI), so slo
 | 0x3C / 0x48 / 0x84 | `GetHealthInfo` / `GetTouchBounds` / `CollidedWith` | `fn_75_D0` / `fn_75_18` / `fn_75_6178` | `fn_75_D0` / `fn_75_18` / `fn_75_ECA4` |
 | 0x40 | `GetDamageVulnerability() const` | `fn_75_616C` | `fn_75_EF24` |
 | 0x54 | `GetAimPosition(const CStateManager&, float) const` | `fn_75_5F8C` | inherited |
-| 0x70 | `GetSortingBounds(const CStateManager&) const` | `fn_75_6394` | `fn_75_EFA4` |
+| 0x6C | `GetSortingBounds(const CStateManager&) const` | inherited | inherited |
+| 0x70 | `DoUserAnimEvent(CStateManager&, const CInt32POINode&, EUserEventType, float)` | `fn_75_6394` | `fn_75_EFA4` |
 | 0x98 | `Death(CStateManager&, const CVector3f&, EScriptObjectState)` | inherited | `fn_75_EB04` |
 | 0x9C | `KnockBack(CStateManager&, const CKnockBackInfo&)` | `fn_75_6174` | `fn_75_EBF4` |
 | 0xA8 / 0xC8 | `CanBeShot` / `GetModelAlphau8` | `fn_75_AC` / `fn_75_64` | `fn_75_AC` / `fn_75_64` |

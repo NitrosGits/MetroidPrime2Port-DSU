@@ -361,6 +361,17 @@ private:
   void PortRender(const CStateManager& mgr) const;         // fn_75_6368
   bool PortCanBeIngPossessed(CStateManager& mgr) const;   // fn_75_5E50
   bool PortListen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type);  // fn_75_5F18
+  // The retail's fn_75_6394 is the head's DoUserAnimEvent (the REL's vtable slot 0x70 - the DOL's
+  // slot 0x70, not the GetSortingBounds at 0x6C; the note's section f row was off by one slot).
+  // The port had no override, so the DOL's own DoUserAnimEvent ran.  The body is in
+  // src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp.
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  void PortDoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                           float dt);
+  // The retail's fn_75_1CA0 (the head's projectile aim, the callee of fn_75_6394's kUE_Projectile
+  // case) is not ported yet: it is a shell that logs.
+  void PortHeadProjectileAim(CStateManager& mgr, const rstl::string& locatorName);
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

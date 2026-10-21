@@ -247,7 +247,43 @@ The bodies that ran but whose arms did not all run are the queue's next work: th
 names the exact lines and branches each one still misses, so the lane can take them one at a
 time (`gdb` forces what no run reaches).
 
-### 3.4 The queue's next step: the head's DoUserAnimEvent
+### 3.4 The head's DoUserAnimEvent (fn_75_6394) - ported, the mark waits for fn_75_1CA0
+
+`fn_75_6394` is the head's **DoUserAnimEvent** (vtable slot 0x70), not its GetSortingBounds:
+the REL's own vtable (`lbl_75_data_448`) has the DOL's
+`GetSortingBounds__6CActorCFRC13CStateManager` at slot **0x6C** and the module's
+`fn_75_6394` at slot **0x70**, and `docs/module-analysis/vtable-offsets.md` names the DOL's
+slot 0x70 `DoUserAnimEvent(CStateManager&, const CInt32POINode&, EUserEventType, float)` -
+which is exactly `fn_75_6394`'s signature (r4 the manager, r5 the node, r6 the type, f1 the
+dt). The chassis's slot 0x70 is `fn_75_EFA4` (the same shape: r31 = r6 the type, f31 = f1 the
+dt), so **both** classes' "GetSortingBounds" stand-ins in the port are misnamed: the retail
+overrides DoUserAnimEvent, not GetSortingBounds, and GetSortingBounds is inherited.
+
+The head's override is now in the port (`CSplitterCommandModule::DoUserAnimEvent`, declared
+in the helpers block of `CSplitterCommandModule.hpp`, the body in
+`PortCSplitterHelpers.cpp`): the type 0x16 (kUE_BreakLockOn) case asks the player for an
+orbit request and the type 0 (kUE_Projectile) case calls the head's own `fn_75_1CA0`, and the
+base class's own DoUserAnimEvent runs after a case was taken (asm 0x644C-0x6468).
+
+The **host's `CPlayer::SetOrbitRequestForTarget` takes one argument fewer** than the
+retail's: the retail's mangled name is
+`SetOrbitRequestForTarget__7CPlayerF9TUniqueIdQ27CPlayer19EPlayerOrbitRequestR13CStateManager`
+(the target, a `CPlayer*` by value, the request and the manager) and the host's is
+`SetOrbitRequestForTarget(TUniqueId, EPlayerOrbitRequest, CStateManager&)` - the `CPlayer*`
+(the mangled name's `Q27CPlayer`) has no slot, so the host drops it and the player itself is
+the one that is asked. The retail's call is at asm 0x6434 (the request 8 =
+`kOR_ActivateOrbitSource` at asm 0x6428).
+
+`fn_75_1CA0` (the head's projectile aim, 0x1CA0-0x1E37) is **not ported yet**: the body is
+the alive gate, the player at 0xEFE, the node's locator transform, the head's own
+GetAimPosition (the vtable slot 0x54) and the look-at that follows - the port has a
+once-logging shell for it (`PortHeadProjectileAim`), so `fn_75_6394` stays **unmarked** (its
+kUE_Projectile arm is a shell) and `fn_75_1CA0` has no body to mark. The coverage build's
+profile of the run (04_cliff_contraption, the area that plays the head's anim events) says:
+`fn_75_6394`'s override 3/3 lines, the body 5/13 lines and 2/10 branches - the kUE_BreakLockOn
+case ran, the kUE_Projectile case did not.
+
+### 3.5 The queue's next step: the chassis's DoUserAnimEvent
 
 The queue rows whose retail caller ran in the coverage runs are four, and three of them are
 host copies (the loader's own helpers `fn_75_E60` and `fn_75_F00`, and the destructor
@@ -264,11 +300,10 @@ The body switches on the type (asm 0x63B4 `cmpwi r31, 0x16`): the type 0x16 asks
 (the id at 0xEFE) for an orbit request, the type 0 calls `fn_75_1CA0`, and either way the
 base class's own `DoUserAnimEvent` runs (asm 0x6468).
 
-So the port's head has **no** DoUserAnimEvent override (the retail's is fn_75_6394) and its
-`GetSortingBounds` override names the wrong retail function (the head does not override
-GetSortingBounds at all - the DOL's at 0x6C is used). Porting `fn_75_6394` therefore means a
-**new override** in the FSM lane's class, not a stand-in call site swap, and it needs
-`fn_75_1CA0` first; that is the next slice, and the note's section f wants the row corrected.
+The next one is the chassis's own `fn_75_EFA4` (the chassis's DoUserAnimEvent, the same
+slot): its body switches on the type 0x16 and the type 0x5 (asm 0xEFC0, 0xEFDC). It is a
+stand-in in the port today (the chassis's `GetSortingBounds`), and the port's chassis has no
+DoUserAnimEvent override at all, so the DOL's runs there too.
 
 ## 4. What is left, and why
 
