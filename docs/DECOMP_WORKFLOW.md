@@ -87,6 +87,8 @@ tool: `tools/asmcheck_regress.sh` must stay all PASS.
 
 ## Lane briefs
 
+- The standing part (start, rules, console, gates, report) is `docs/LANE_BRIEF.md`; a brief says
+  "read docs/LANE_BRIEF.md first" and gives only the slice.
 - Every bit test, mask, flag set, compare and rodata constant a lane writes carries the asm offset
   it came from (`// 0xCE2C`); copy the annotator's comment (`asmcheck.py annotate`) where there
   is one. Code with no offset
