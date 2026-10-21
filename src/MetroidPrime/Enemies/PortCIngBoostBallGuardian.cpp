@@ -422,9 +422,62 @@ CEntity* CIngBoostBallGuardian::TypesMatch(int typeId) const {
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_30_130) and entry points.
 
+// fn_30_130. Its property switch reads the five ids of the generated .inc (0x255a4580 editor,
+// 0xb3774750 patterned, 0x7e397fed actor, 0x22e574aa -> fn_30_2344, 0x78656d1e -> fn_30_1988),
+// unknown ids skipped by size. The block's default constructor is fn_30_1540: the editor/
+// patterned/actor constructors, fn_30_2CCC (Ing block, SLdr+0x2F8) and fn_30_160C (boost block,
+// SLdr+0x594), then the patterned overrides the generated constructor also makes (turnSpeed 360
+// 0x00001598, minAttackRange 0 0x000015B0, health 150 / knockback resistance 2 0x000015C0/
+// 0x000015C8, creatureSize 1 0x000015D0), the actor's ambient white (0x000015F0) and visor flags
+// 0xF (0x000015F4), which are already the struct defaults, and isEchoEmitter (below). The
+// constructors' floats and ints agree with the generated header field for field (checked
+// against rodata); the differences are set below.
+// The three property readers are the generated header's inline LoadTypedef* functions, checked id
+// by id against the REL's switch trees (ids, store offset order and reader type all agree):
+// fn_30_2344 = LoadTypedefIngBoostBallGuardianData (55 ids), fn_30_1988 =
+// LoadTypedefBoostBallGuardianData (31 ids; the spline case is CMayaSpline(input, size) plus the
+// assignment fn_30_1F08/1FB4/2094) and fn_30_20A0 = LoadTypedefIngBoostBallGuardianStruct (14 ids).
+// The data the loader then builds: fn_30_10C24 (Ing block: fn_30_10694 copies SLdr+0..0xEF, then
+// vulnerability SLdr+0x140, damage infos +0xE0/+0x88/+0x98, the flag byte = PackBgDataFlags) and
+// fn_30_748 (boost block, from the args at 0x0000039C-0x00000468; its field order differs from
+// the host's - trail/shield/charge-up at data+0xA8/0xAC/0xB0 - but every value lands in the
+// field named for its property; unknown_0x7b21e31a, SLdr+0x7C, is never passed). The phases are
+// fn_30_18F0 -> fn_30_194C, the 14 fields in declaration order, which is the `phase` lambda.
+// @ fn_30_130
+// @ fn_30_1540
+// @ fn_30_2CCC
+// @ fn_30_160C
 static CEntity* PortLoadIngBoostBallGuardian(CStateManager& mgr, CInputStream& input,
                                              CEntityInfo& info) {
   SLdrIngBoostBallGuardian sldrThis;
+  // fn_30_1540 0x000015DC: stb 1 at SLdr+0x26C = patterned+0x230, echoParameters.isEchoEmitter
+  // (the generated SLdrEchoParameters default is false).
+  sldrThis.patterned.echoParameters.isEchoEmitter = true;
+  // The sound ids default to -1 (no sound, 0xffff in the data's ushorts), not the header's 0:
+  // fn_30_2CCC stores li -1 at Ing SLdr+0x2C..0x3C (0x00002CF8-0x00002D08), +0x60..0x70
+  // (0x00002D1C-0x00002D2C), +0xC4/+0xC8 (0x00002D48/0x00002D4C) and +0xDC (0x00002D54);
+  // fn_30_160C at boost SLdr+0x90..0xA4 (0x0000166C-0x00001680). As in PortLoadIng.
+  SLdrIngBoostBallGuardianData& ingDefaults = sldrThis.guardianProperties;
+  ingDefaults.sound_IngSpotIdle = -1;
+  ingDefaults.sound_IngSpotMove = -1;
+  ingDefaults.sound_HitNormalDamage = -1;
+  ingDefaults.sound_HitHeavyDamage = -1;
+  ingDefaults.sound_IngSpotDeath = -1;
+  ingDefaults.sound_SwarmMove = -1;
+  ingDefaults.sound_InsideHost = -1;
+  ingDefaults.sound_ExitHost = -1;
+  ingDefaults.sound_ExitHostSafeZone = -1;
+  ingDefaults.sound = -1;
+  ingDefaults.sound_BodyProjectile = -1;
+  ingDefaults.sound_BodyProjectileSplatWall = -1;
+  ingDefaults.sound_MiniPortal = -1;
+  SLdrBoostBallGuardianData& boostDefaults = sldrThis.boostBallGuardian;
+  boostDefaults.sound_Bounce = -1;
+  boostDefaults.sound_IntoBall = -1;
+  boostDefaults.sound_OutofBall = -1;
+  boostDefaults.sound = -1;
+  boostDefaults.sound_Boost = -1;
+  boostDefaults.sound_Rolling = -1;
 #include "MetroidPrime/ScriptLoader/SLdrIngBoostBallGuardian.inc"
 
   rstl::optional_object< CModelData > modelData(LdrToModelData(
