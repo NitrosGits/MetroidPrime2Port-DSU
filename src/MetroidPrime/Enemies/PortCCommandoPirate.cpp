@@ -245,6 +245,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbdc_(-1)                                    // 0xbdc, the dodge id; fn_9_8934 sets it
 , xbe0_(0.f)                                    // 0xbe0, the jump-back distance
 , xbe4_(0.f)                                    // 0xbe4, a distance
+, xbe8_(0.f)                                    // 0xbe8, the jump distance
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
@@ -303,6 +304,12 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
     const CPASAnimParmData backStep(pas::kAS_Step, CPASAnimParm::FromEnum(1),
                                     CPASAnimParm::FromEnum(2));
     xbe0_ = scale.GetY() * GetAnimationDistance(backStep);
+    // The jump distance (0x0000E4D4): the jump animation's travel distance (the state id 13 =
+    // kAS_Jump with the parms (0, 0, 0), the parm data fn_9_5D74 builds at 0x0000E49C) times the
+    // model's scale Y (the model's scale's second float, the load at 0x0000E4B0).
+    const CPASAnimParmData jumpParm(pas::kAS_Jump, CPASAnimParm::FromEnum(0),
+                                    CPASAnimParm::FromEnum(0), CPASAnimParm::FromEnum(0));
+    xbe8_ = scale.GetY() * GetAnimationDistance(jumpParm);
   }
 }
 
@@ -1372,8 +1379,9 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
 // (0x000024B4..0x000024B8) or the helper does nothing. The direction to the waypoint (the vector
 // at guest this+0xB94, the delta at 0x00002534..0x0000253C) is normalized when it is magnitude
 // safe (0x0000254C..0x00002564) and the actor's own forward column otherwise
-// (0x0000256C..0x00002584). The time to the waypoint is the direction's length over the charge
-// speed (0x000025A4).
+// (0x0000256C..0x00002584). The time to the waypoint is the *raw* delta's length over the charge
+// speed (0x000025A4): the guest's Magnitude call takes the delta at its own stack slot (the
+// `addi r3, r1, 0xd4` at 0x0000258C), not the copy of the direction it made at sp+0xC8.
 //
 // The new rotation: the actor's position and the direction give a look-at transform (with the
 // waypoint's forward column as the up vector, 0x000025EC), the target's quaternion comes from it
@@ -1409,7 +1417,10 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
   } else {
     dir = GetTransform().GetForward();  // 0x0000256C (guest this+0x28, 0x38 and 0x48)
   }
-  const float time = dir.Magnitude() / speed;  // 0x000025A4
+  // 0x000025A4: the guest's Magnitude call takes the raw delta (sp+0xD4, the `addi r3, r1, 0xd4`
+  // at 0x0000258C) - the normalized copy at sp+0xC8 is the direction the look-at uses, not the
+  // one the time comes from.
+  const float time = delta.Magnitude() / speed;  // 0x000025A4
   const CTransform4f lookAt = CTransform4f::LookAt(pos, pos + dir, xbac_);  // 0x000025EC
   const CQuaternion current = CQuaternion::FromMatrix(GetTransform());  // 0x000024DC
   const CQuaternion target = CQuaternion::FromMatrix(lookAt);  // 0x00002604
@@ -1431,6 +1442,8 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
   MoveInOneFrameOR(local * (speed * dt), dt);
   if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {  // 0x0000291C..0x00002948
     const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00002964
+    // 0x000029A4: the push is scaled by the charge speed and the frame time, like the movement
+    // above (the two fmuls chains at 0x0000297C..0x00002994).
     MoveInOneFrameOR(push * (speed * dt), dt);  // 0x000029A4
     xbb8_ = CVector3f::Zero();  // 0x000029A8..0x000029C0
   }
@@ -2882,8 +2895,118 @@ void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
+// fn_9_961C (0x350 bytes): the FollowAttackPattern state - the commando walks the attack
+// pattern's waypoints and, at the end of the chain, goes for the target.
+//
+// The guest's own waypoint navigation patrols first (the call at 0x00009658, the navigation at
+// guest this+0x6B8) and the state's own work follows.
+//
+// On activate (the guest's message 0, 0x00009680) the module's waypoint is the one it is at (the
+// id at guest this+0xBDA, the load at 0x00009684) or, when that is kInvalidUniqueId, the object
+// connected in the "ATTK"/"FOLW" state (the GetConnectedObject call at 0x000096B8); the id goes to
+// guest this+0x6C0 (0x000096CC). Then the waypoint (a CScriptWaypoint, the cast at 0x000096E0)
+// is looked up: when it is behind the commando (the delta's projection on the actor's forward
+// column - the loads at 0x000096EC..0x0000972C - is zero or less, the compare with rodata_494 =
+// 0 at 0x00009730) the navigation's "in position" flag (the byte at guest this+0x6F0, the
+// bitfield byte of the navigation at guest this+0x6B8) gets its 0x80 bit (0x0000973C..0x00009748).
+// The byte at guest this+0xC66 gets its 0x80 bit too (0x0000974C..0x00009758) - the bit the
+// ShouldBoost trigger reads (0x0000B1F0).
+//
+// On update (the guest's message 1, 0x00009760) the AI waypoint the module follows (the id at
+// guest this+0x6C0) is looked up. When it is there and its flags (the word at its +0x164) have
+// their 0x02 bit (the rlwinm at 0x00009788) or their 0x04 bit (the rlwinm at 0x00009790), the
+// commando's reach is the body's max speed (the GetMaxSpeed call at 0x000097A0) times
+// (0.1f + 1.5f * dt) (rodata_42C and rodata_47C) times the model's scale Y (the model data at
+// guest this+0x60, the load at 0x000097C0) plus the module's jump distance (the float at guest
+// this+0xBE8, the load at 0x000097CC); when the commando is nearer to the waypoint than that (the
+// squared distance at 0x000097D0..0x00009828) the navigation's in-position flag is set
+// (0x00009830..0x0000983C) and the float at guest this+0xBEC takes 3 (rodata_448) when the
+// waypoint's flags have their 0x02 bit and 0 (rodata_494) when they do not
+// (0x00009840..0x00009860).
+//
+// Then, when the body is in the jump state (the body's state id 13, the compare at 0x0000986C)
+// and the waypoint has no successor (its "ARRV"/"NEXT" connection, the CheckConnectedObject call
+// at 0x0000989C, is kInvalidUniqueId - the same chain the host's waypoint navigation walks), the
+// target's aim position (the module's helper fn_9_3CBC, the call at 0x000098D8) becomes the
+// body's target vector (the delta to the position, the stores at 0x0000990C..0x00009914).
+//
+// Finally the navigation's destination position (guest this+0x6D4..0x6DC) is copied to the
+// module's jump-back target (guest this+0xBF0, 0x00009918..0x0000992C).
+//
+// On deactivate (the guest's message 2, 0x00009934) the byte at guest this+0xC66 loses its 0x80
+// bit (0x0000993C..0x00009940).
 void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_9_961C");
+  mWaypointNavigation.Patrol(mgr, msg, dt, *this);  // 0x00009654..0x00009658
+  switch (msg) {
+  case kStateMsg_Activate: {  // the guest's message 0
+    TUniqueId id = xbda_;  // 0x00009684
+    if (xbda_ == kInvalidUniqueId) {  // 0x0000968C..0x00009690
+      id = GetConnectedObject(mgr, kSS_Attack, kSM_Follow);  // 0x000096B8
+    }
+    x6c0_ = id;  // 0x000096CC
+    // The guest's guest this+0x6C0 is the waypoint navigation's own destination field (the
+    // navigation sits at guest this+0x6B8 and its destination is at +0x8), so the host's
+    // navigation gets it too: the AttackPatternOver trigger reads the destination there
+    // (0x0000B800) and the state has to stay when it is set.
+    mWaypointNavigation.SetDestination(id);
+    const CScriptWaypoint* waypoint =
+        TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id));  // 0x000096DC..0x000096E8
+    if (waypoint != nullptr) {
+      // the delta to the waypoint and the actor's forward column (guest this+0x28, 0x38, 0x48)
+      const CVector3f delta = waypoint->GetTranslation() - GetTranslation();  // 0x000096EC..0x00009720
+      if (CVector3f::Dot(GetTransform().GetForward(), delta) <= 0.f) {  // rodata_494, 0x00009730
+        mWaypointNavigation.SetInPosition(true);  // 0x0000973C..0x00009748
+      }
+    }
+    xc66_ |= 0x80;  // 0x0000974C..0x00009758
+    break;
+  }
+  case kStateMsg_Update: {  // the guest's message 1
+    const CScriptAIWaypoint* waypoint =
+        TCastToPtr< CScriptAIWaypoint >(mgr.ObjectById(x6c0_));  // 0x00009774..0x00009780
+    if (waypoint != nullptr) {
+      const uint flags = waypoint->GetFlags();  // the word at the waypoint's +0x164
+      if ((flags & 0x02) != 0 || (flags & 0x04) != 0) {  // 0x00009788, 0x00009790
+        const float maxSpeed = BodyController()->BodyStateInfo().GetMaxSpeed();  // 0x000097A0
+        const float scaleY = GetModelData()->GetScale().GetY();  // guest this+0x60, 0x000097C0
+        // rodata_42C = 0.1f, rodata_47C = 1.5f, the module's jump distance at guest this+0xBE8
+        const float reach = maxSpeed * ((0.1f + 1.5f * dt) * scaleY) + xbe8_;  // 0x000097AC..0x000097DC
+        const CVector3f delta =
+            GetTranslation() - waypoint->GetTranslation();  // 0x000097D0..0x000097F4
+        if (delta.MagSquared() < reach * reach) {  // 0x00009824..0x0000982C
+          mWaypointNavigation.SetInPosition(true);  // 0x00009830..0x0000983C
+          xbec_ = (flags & 0x02) != 0 ? 3.f : 0.f;  // rodata_448 / rodata_494, 0x00009840..0x00009860
+        }
+      }
+    }
+    // the body's state: the jump state (the id 13, the compare at 0x0000986C)
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Jump) {
+      // the chain: the waypoint's "ARRV"/"NEXT" connection (0x0000989C); a waypoint without one
+      // is the end of the pattern.
+      bool endOfPattern = (waypoint == nullptr);
+      if (waypoint != nullptr) {
+        endOfPattern =
+            waypoint->CheckConnectedObject(mgr, kSS_Arrived, kSM_Next) == kInvalidUniqueId;
+      }
+      if (endOfPattern) {
+        if (x3CBC_(mgr, xb94_, 0.f)) {  // 0x000098D8 (fn_9_3CBC with rodata_494 = 0.f)
+          // the body's target vector (the command manager's fifth CVector3f, the body
+          // controller's +0x34, the stores at 0x0000990C..0x00009914)
+          BodyController()->CommandMgr().SetTargetVector(xb94_ - GetTranslation());
+        }
+      }
+    }
+    // the navigation's destination position becomes the module's jump-back target
+    xbf0_ = mWaypointNavigation.GetDestinationPosition();  // 0x00009918..0x0000992C
+    break;
+  }
+  case kStateMsg_Deactivate: {  // the guest's message 2
+    xc66_ &= ~0x80;  // 0x0000993C..0x00009940
+    break;
+  }
+  default:
+    break;
+  }
 }
 
 void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {

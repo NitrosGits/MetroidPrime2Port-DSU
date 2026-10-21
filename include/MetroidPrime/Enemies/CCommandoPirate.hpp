@@ -473,6 +473,7 @@ private:
   int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
   float xbe0_;                           // 0xbe0, the jump-back distance; fn_9_D904 @0x0000E61C
   float xbe4_;                           // 0xbe4, a distance; fn_9_D904 @0x0000E56C
+  float xbe8_;                           // 0xbe8, the jump distance; fn_9_D904 @0x0000E4D4
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
