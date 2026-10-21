@@ -593,10 +593,10 @@ private:
   int mPickCount;                  // guest 0x988, the picks fn_10_1954C made (0x00019640); the
                                    // constructor writes 0 (0x0001FCEC)
   float mLastPickTime;             // guest 0x98C, the elapsed time of the last pick (0x00019678);
-                                   // 0.0f (0x0001FCF0)
+                                   // lbl_10_rodata_410 = -1000.0f (0x0001FC9C, 0x0001FCF0)
   float mNextActionTime;           // guest 0x990, the earliest time of the next pick: fn_10_1B478
                                    // writes it when an attack ends (0x0001B558/0x0001B5B8, not in
-                                   // the port yet); 0.0f (0x0001FCF4)
+                                   // the port yet); -1000.0f (0x0001FCF4)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

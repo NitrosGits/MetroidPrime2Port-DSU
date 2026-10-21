@@ -101,8 +101,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mAttackMask(0)
 , mWeightedPick(0xFFFF)
 , mPickCount(0)
-, mLastPickTime(0.f)
-, mNextActionTime(0.f) {
+, mLastPickTime(-1000.f)   // lbl_10_rodata_410, `lfs f0` at 0x0001FC9C, stored at 0x0001FCF0
+, mNextActionTime(-1000.f) { // the same f0, 0x0001FCF4
   mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
