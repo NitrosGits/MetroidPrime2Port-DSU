@@ -238,6 +238,17 @@ with the mode, the four floats, the three sound ids and the two flag bits, so th
 it (asm 0x2F24) moves exactly the host's fields.
 
 
+## The functions the REL never calls
+
+The list's "truly unreferenced" rows are dead in the REL: the module's own text never calls them
+and none of its tables names them (the vtables, the FSM tables, the ctor/dtor lists and the
+relocations were all searched). Three of them are named by address and are live: the module's
+static constructor and the two destructors it registers. The rest are the retail's own unused
+copies, so the host has no counterpart and needs no code.
+
+| retail function | size | what it is |
+|---|---|---|
+
 ## The functions that are still not ported
 
 `tools/port_progress.py` counts 103 of the module's 217 functions as unmarked.
@@ -255,11 +266,7 @@ are the chains the classification above covers, so they are not in the tables.
 
 | retail function | size | called from |
 |---|---|---|
-| `fn_44_51D8` | 0x8C | - |
-| `fn_44_A840` | 0x8C | - |
-| `fn_44_5A04` | 0xB4 | - |
 | `fn_44_660C` | 0xB4 | fn_44_65C4 |
-| `fn_44_141C` | 0xBC | - |
 | `_unresolved` | 0xC4 | - |
 | `fn_44_16C4` | 0x108 | fn_44_14D8 |
 | `fn_44_1830` | 0x11C | fn_44_14D8 |
@@ -273,7 +280,6 @@ are the chains the classification above covers, so they are not in the tables.
 | `fn_44_7058` | 0x654 | - |
 | `fn_44_110` | 0x844 | - |
 | `fn_44_9D58` | 0x878 | fn_44_110 |
-| `fn_44_ABCC` | 0x8B8 | - |
 
 ### 0x80 bytes and under
 
@@ -287,12 +293,10 @@ are the chains the classification above covers, so they are not in the tables.
 | `fn_44_60` | 0x8 | - |
 | `fn_44_68` | 0x8 | - |
 | `fn_44_5AB8` | 0x8 | - |
-| `fn_44_6F98` | 0x8 | - |
 | `fn_44_48` | 0xC | - |
 | `fn_44_54` | 0xC | - |
 | `fn_44_18` | 0x10 | - |
 | `fn_44_38` | 0x10 | - |
-| `fn_44_24C0` | 0x14 | - |
 | `fn_44_59E8` | 0x1C | - |
 | `__register_global_object` | 0x1C | - |
 | `RELMain` | 0x20 | - |
@@ -308,15 +312,6 @@ are the chains the classification above covers, so they are not in the tables.
 | `fn_44_6720` | 0x28 | fn_44_6700 |
 | `fn_44_70` | 0x2C | - |
 | `fn_44_6FA0` | 0x2C | - |
-| `fn_44_2C9C` | 0x3C | - |
-| `fn_44_6888` | 0x3C | - |
-| `fn_44_68C4` | 0x3C | - |
-| `fn_44_8AFC` | 0x3C | - |
-| `fn_44_A644` | 0x3C | - |
-| `fn_44_A804` | 0x3C | - |
-| `fn_44_A8CC` | 0x3C | - |
-| `fn_44_A908` | 0x3C | - |
-| `fn_44_A944` | 0x3C | - |
 | `fn_44_10D4` | 0x40 | fn_44_110 |
 | `fn_44_66C0` | 0x40 | fn_44_660C |
 | `fn_44_657C` | 0x48 | fn_44_655C |
@@ -324,14 +319,8 @@ are the chains the classification above covers, so they are not in the tables.
 | `fn_44_7918` | 0x48 | - |
 | `ModuleDestructors` | 0x4C | - |
 | `ModuleConstructors` | 0x4C | - |
-| `fn_44_2984` | 0x50 | - |
-| `fn_44_E64` | 0x54 | - |
-| `fn_44_1304` | 0x54 | - |
 | `fn_44_64AC` | 0x54 | fn_44_6384 |
-| `fn_44_6834` | 0x54 | - |
-| `fn_44_107C` | 0x58 | - |
 | `fn_44_28D8` | 0x58 | fn_44_25E4, fn_44_7058 |
-| `fn_44_9700` | 0x58 | - |
 | `fn_44_9BB8` | 0x58 | fn_44_97E4 |
 | `__destroy_global_chain` | 0x58 | - |
 | `fn_44_E08` | 0x5C | fn_44_D54 |
@@ -339,16 +328,7 @@ are the chains the classification above covers, so they are not in the tables.
 | `fn_44_78BC` | 0x5C | - |
 | `fn_44_8404` | 0x5C | - |
 | `fn_44_87E0` | 0x5C | - |
-| `fn_44_A980` | 0x5C | - |
-| `fn_44_954` | 0x60 | - |
-| `fn_44_13BC` | 0x60 | - |
-| `fn_44_1358` | 0x64 | - |
-| `fn_44_1660` | 0x64 | - |
-| `fn_44_17CC` | 0x64 | - |
-| `fn_44_1298` | 0x6C | - |
-| `fn_44_67C8` | 0x6C | - |
 | `fn_44_A5D0` | 0x74 | fn_44_9D58 |
-| `fn_44_57C4` | 0x80 | - |
 | `fn_44_6748` | 0x80 | fn_44_6720 |
 
 ## Layout facts the port depends on (all read from the REL's disassembly)

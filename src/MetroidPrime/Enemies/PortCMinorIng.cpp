@@ -62,6 +62,9 @@ typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 
 // Retail data_1A8 (34 triggers), data_47C (15 states) and data_5A8 (5 code functions), installed
 // by fn_44_9758; the names are the REL's own strings.
+// The REL's module constructor (fn_44_ABCC, the REL's .ctors entry) announces those names as
+// global objects and builds the tables; fn_44_2984 is the destructor it registers with them. The
+// host's own tables carry the names, so the body is the class's own.
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"PathShagged", static_cast< TriggerFunc >(&CMinorIng::PathShagged)},
     {"ShouldMoveUnderBall", static_cast< TriggerFunc >(&CMinorIng::ShouldMoveUnderBall)},
@@ -1526,6 +1529,9 @@ bool CMinorIng::TargetAimPosition(CStateManager& mgr, CVector3f& out) const {
 }
 
 // @ fn_44_4E84
+// The retail's cover scan keeps its four best candidates in a global list, and fn_44_51D8 is
+// that list's destructor (it frees the array and then the block). The host's keeps the four on
+// the stack, so the list's teardown is the host's own.
 void CMinorIng::FindCoverPoint(CStateManager& mgr, float) {
   ReleaseCoverHint(mgr, mCoverHintId, false);
   if (!TargetAimPosition(mgr, mTargetPos)) {
