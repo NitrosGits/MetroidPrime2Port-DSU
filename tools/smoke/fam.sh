@@ -72,6 +72,12 @@ trap cleanup EXIT
 
 export MP2_CONSOLE=$PORT
 
+# A coverage build (CMake option MP_PORT_COVERAGE) writes its .gcda files next to the objects
+# unless GCOV_PREFIX says otherwise, and the families run concurrently: every family gets its own
+# prefix directory under the suite's output dir. Nothing changes for a normal build.
+. "$ROOT/tools/cov/gcov_env.sh"
+gcov_env "$BUILD" "$OUT/gcov_$TAG"
+
 case "$KIND" in
   generic)
     # tools/drivers/con.py sends the command file's lines and answers when the game is up.

@@ -110,6 +110,68 @@ if(MP_BOOT_STUBS)
     target_sources(mp_game PRIVATE src/MetroidPrime/PortReachStubs.cpp)
 endif()
 
+# ---------------------------------------------------------------------------
+# MP_PORT_COVERAGE: compiler branch coverage for the port's REL module bodies.
+#
+# The decomp lanes prove "every arm of a ported body ran" with gdb breakpoints, one spec per
+# function (tools/cov). This option replaces that with compiler coverage: the module bodies are
+# compiled with gcov, and one ordinary run then reports the branch coverage of every port module
+# body at once - no probe, no rebuild per function.
+#
+# Off by default, and the normal build stays byte-identical: with the option off no flag is added
+# and no source is compiled differently (the gate is `ninja -C build-port-link` with the same
+# compile lines as before).
+#
+# Only the module bodies are instrumented: the sources tools/modules_port.txt lists and the
+# sibling Port<Class>*.cpp files of the same class. The rest of the game is upstream code, and
+# its coverage is not what the lanes ask about. The build goes in its own directory
+# (build-port-cov), because a coverage build is not the port.
+#
+# See docs/LANE_BRIEF.md, "Coverage without probes", and tools/cov/gcov_report.py.
+# ---------------------------------------------------------------------------
+option(MP_PORT_COVERAGE
+    "Instrument the port's REL module bodies with gcov branch coverage. A separate build \
+directory; the normal build is unaffected. See docs/LANE_BRIEF.md, 'Coverage without probes'."
+    OFF)
+
+if(MP_PORT_COVERAGE)
+    # "ModuleName;source path" per line: the port's own module bodies.
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/tools/modules_port.txt" _mp_port_module_lines)
+    set(MP_PORT_COVERAGE_SOURCES)
+    foreach(_line IN LISTS _mp_port_module_lines)
+        string(STRIP "${_line}" _line)
+        if(_line STREQUAL "" OR _line MATCHES "^#")
+            continue()
+        endif()
+        string(REGEX REPLACE "^[^;]*;(.*)$" "\\1" _src "${_line}")
+        string(STRIP "${_src}" _src)
+        if(_src STREQUAL "" OR NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_src}")
+            continue()
+        endif()
+        list(APPEND MP_PORT_COVERAGE_SOURCES "${_src}")
+        # The siblings of the same class: PortCSandworm.cpp brings PortCSandwormStates.cpp and
+        # the rest of that class' bodies with it, whether or not tools/modules_port.txt lists
+        # them (it lists them today; this keeps the class together if that changes).
+        get_filename_component(_dir "${_src}" DIRECTORY)
+        get_filename_component(_stem "${_src}" NAME_WE)
+        file(GLOB _siblings "${CMAKE_CURRENT_SOURCE_DIR}/${_dir}/${_stem}*.cpp")
+        foreach(_sib IN LISTS _siblings)
+            file(RELATIVE_PATH _rel "${CMAKE_CURRENT_SOURCE_DIR}" "${_sib}")
+            list(APPEND MP_PORT_COVERAGE_SOURCES "${_rel}")
+        endforeach()
+    endforeach()
+    list(REMOVE_DUPLICATES MP_PORT_COVERAGE_SOURCES)
+    list(LENGTH MP_PORT_COVERAGE_SOURCES _mp_port_cov_count)
+    message(STATUS "MP_PORT_COVERAGE=ON: gcov branch coverage on ${_mp_port_cov_count} "
+        "module body sources.")
+    foreach(_src IN LISTS MP_PORT_COVERAGE_SOURCES)
+        # --coverage is the counters; -fprofile-update=atomic makes the counter updates atomic,
+        # so a thread that is running when the run ends does not lose (or tear) its counts.
+        set_source_files_properties("${_src}" PROPERTIES
+            COMPILE_OPTIONS "--coverage;-fprofile-update=atomic")
+    endforeach()
+endif()
+
 mp_signed_char(mp_game)
 # Include order is deliberate: `include/` (the decompilation's own headers) is
 # searched *after* Aurora, because Echoes' `include/dolphin/` tree is the partial
@@ -277,6 +339,14 @@ target_include_directories(mp_platform PRIVATE
 target_compile_definitions(mp_platform PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC
     MUSY_VERSION_MAJOR=2 MUSY_VERSION_MINOR=0 MUSY_VERSION_PATCH=3)
 
+# The gcov flush hook of a coverage build: a run must leave its .gcda behind however it ends (a
+# clean quit, the harness's SIGTERM, a Ctrl-C). It is compiled only into a coverage build, so
+# the normal build does not even see the file. See platform/port_coverage.cpp.
+if(MP_PORT_COVERAGE)
+    target_sources(mp_platform PRIVATE platform/port_coverage.cpp)
+    target_compile_definitions(mp_platform PRIVATE MP_PORT_COVERAGE=1)
+endif()
+
 # The process entry point. It is compiled but not linked: it builds the OS
 # context and memory system the game's entry takes, and those constructors
 # are still upstream work (see PORT_NOTES.md).
@@ -299,6 +369,11 @@ target_include_directories(mp_port_entry PRIVATE
     include)
 target_compile_definitions(mp_port_entry PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC
     MUSY_VERSION_MAJOR=2 MUSY_VERSION_MINOR=0 MUSY_VERSION_PATCH=3)
+
+# The entry point installs the coverage hook and asks for the shutdown dump (platform/main.cpp).
+if(MP_PORT_COVERAGE)
+    target_compile_definitions(mp_port_entry PRIVATE MP_PORT_COVERAGE=1)
+endif()
 
 if(MP_SDK_HEADERS_ONLY)
     # Aurora sets these on its own targets; the header-only build has to state them.
@@ -501,6 +576,11 @@ target_include_directories(metroid_prime2_port PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_compile_definitions(metroid_prime2_port PRIVATE TARGET_PC AURORA)
 mp_signed_char(metroid_prime2_port)
+
+# A coverage build links libgcov: the counters' writer, and __gcov_dump() for the flush hook.
+if(MP_PORT_COVERAGE)
+    target_link_options(metroid_prime2_port PRIVATE --coverage)
+endif()
 
 # aurora_core (webgpu/gpu.cpp) and aurora_gx reference each other; group them so the
 # linker rescans and resolves the cycle. Same construct, same reason, as the Prime 1 port.
