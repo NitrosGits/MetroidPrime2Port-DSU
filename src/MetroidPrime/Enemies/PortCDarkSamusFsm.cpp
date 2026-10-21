@@ -1948,3 +1948,100 @@ bool CDarkSamus::CanWalkToPlayer(CStateManager& mgr) const {
   }
   return true;
 }
+
+// fn_10_19B64 (0x00019B64, 0x670 bytes): the reach checks of the melee, the super missile, the
+// dive, the dashes, the missile jump, the scatter shots and the taunt/pause (fn_10_14648 and
+// fn_10_16418, 16600, 141BC, 16B1C, 145E4, 13E2C under it). Not ported yet: the stand-in clears
+// nothing, so every attack the other collectors leave stays pickable.
+void CDarkSamus::CollectReachAttacks(CStateManager&, SAttackWeights&, uint*) const {
+  FsmStandIn("fn_10_19B64", "picker collector, reach checks");
+}
+
+// fn_10_197D8 (0x000197D8, 0x140 bytes): the visible picker. An empty weight list and mask
+// (0x000197E4), then the collectors in retail's order (fn_10_1A5BC, 1A554, 1A278, 1A440, 1A34C,
+// 1A1D4, 19B64, 19A1C), the copy of the weights into 0xC54/0xC58 (0x000198C0..0x000198DC), the
+// mask into 0xCB8 (0x000198F0) and the weighted pick (fn_10_19918) into 0xCBC (0x000198FC),
+// which it answers.
+int CDarkSamus::PickVisibleAttack(CStateManager& mgr) {
+  SAttackWeights weights;
+  weights.count = 0;
+  uint mask = 0;
+  CollectStageWeights(mgr, weights, &mask);
+  CollectFadeAttacks(mgr, weights, &mask);
+  CollectMorphballAttacks(mgr, weights, &mask);
+  CollectRangeAttacks(mgr, weights, &mask);
+  CollectHistoryPenalties(mgr, weights, &mask);
+  CollectFacingAttacks(mgr, weights, &mask);
+  CollectReachAttacks(mgr, weights, &mask);
+  CollectLineAttacks(mgr, weights, &mask);
+  mAttackWeights = weights;
+  mAttackMask = mask;
+  mWeightedPick = PickWeightedAttack(mgr, weights, mask);
+  return mWeightedPick;
+}
+
+// fn_10_1969C (0x0001969C, 0x13C bytes): the faded picker - fn_10_1A5BC, 1A554, 1A440, 1A34C and
+// 1A1D4, then a player the actor cannot walk to (fn_10_14648 false) takes away the boost ball
+// and the sweep beam (fn_10_1A980 with 0x20000, 0x10000); the copy and the pick as in
+// fn_10_197D8.
+int CDarkSamus::PickFadedAttack(CStateManager& mgr) {
+  SAttackWeights weights;
+  weights.count = 0;
+  uint mask = 0;
+  CollectStageWeights(mgr, weights, &mask);
+  CollectFadeAttacks(mgr, weights, &mask);
+  CollectRangeAttacks(mgr, weights, &mask);
+  CollectHistoryPenalties(mgr, weights, &mask);
+  CollectFacingAttacks(mgr, weights, &mask);
+  if (CanWalkToPlayer(mgr) == false) {
+    SetAttackBits(&mask, 0, 0x20000, 0x10000, 0xFFFF, 0xFFFF);
+  }
+  mAttackWeights = weights;
+  mAttackMask = mask;
+  mWeightedPick = PickWeightedAttack(mgr, weights, mask);
+  return mWeightedPick;
+}
+
+// fn_10_1954C (0x0001954C, 0x150 bytes): nothing while an attack runs (0x980 not 0xFFFF, the
+// whole-word compare at 0x00019574), within lbl_10_rodata_530 = 0.25f of the last pick
+// (0x00019594) or while the fight script holds the actor (0xD58 == 1, 0x000195A0). Out of close
+// range (fn_10_1AA6C nonzero, 0x000195B0) the pick waits for 0x990 (0x000195C0); close by, it may
+// come lbl_10_rodata_424 = 0.6f of the stage's shortest action gap early (the stage's +0x4,
+// faded its +0xC, 0x00019604/0x00019618; no stage lbl_10_rodata_3E8 = 1.0f; the fnmsubs at
+// 0x0001962C). A pick counts (0x988, 0x00019640), runs the faded picker when 0xDEC is set
+// (0x00019648), stores the attack in 0x984 and the time in 0x98C (0x00019678).
+void CDarkSamus::UpdateAttackPick(CStateManager& mgr) {
+  if (mCurrentAttack != 0xFFFF) {
+    return;
+  }
+  if (0.25f + mLastPickTime > mElapsedTime) {
+    return;
+  }
+  if (mPissedOff == 1) {
+    return;
+  }
+  if (GetPlayerRangeBand(mgr) != 0) {
+    if (mNextActionTime > mElapsedTime) {
+      return;
+    }
+  } else {
+    float gap = 1.f;
+    if (GetBattleStage(mgr) != nullptr) {
+      if (mFadeOut == 1) {
+        gap = GetBattleStage(mgr)->GetStageInfo().minTimeBetweenActionsWhenInvisible;
+      } else {
+        gap = GetBattleStage(mgr)->GetStageInfo().minTimeBetweenActions;
+      }
+    }
+    if (-(0.6f * gap - mNextActionTime) > mElapsedTime) {
+      return;
+    }
+  }
+  mPickCount++;
+  if (mFadeOut == 0) {
+    mPickedAttack = PickVisibleAttack(mgr);
+  } else {
+    mPickedAttack = PickFadedAttack(mgr);
+  }
+  mLastPickTime = mElapsedTime;
+}

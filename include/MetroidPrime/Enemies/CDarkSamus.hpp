@@ -377,6 +377,15 @@ private:
   void CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
   // fn_10_14648: can the actor walk the straight line to the player on the path mesh?
   bool CanWalkToPlayer(CStateManager& mgr) const;
+  // fn_10_19B64: the collector for the attacks' own reach checks (not ported yet: a stand-in).
+  void CollectReachAttacks(CStateManager& mgr, SAttackWeights& weights, uint* mask) const;
+  // fn_10_197D8 / fn_10_1969C: the visible and the faded pickers - the collectors' weights and
+  // mask go to mAttackWeights/mAttackMask and the weighted pick to mWeightedPick, which they
+  // answer.
+  int PickVisibleAttack(CStateManager& mgr);
+  int PickFadedAttack(CStateManager& mgr);
+  // fn_10_1954C: picks the next attack into mPickedAttack when none runs and its time has come.
+  void UpdateAttackPick(CStateManager& mgr);
 
   // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).
@@ -569,13 +578,25 @@ private:
                                    // yet, so it stays at the constructor's 0.0f, 0x0001FF1C)
   CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
                                    // constructor writes the zero vector to it (0x0001FF24..)
-  float mLastMeleeTime;            // guest 0x9C0, the elapsed time fn_10_17C9C stores (0x00017C9C,
-                                   // not in the port yet); fn_10_1A34C reads it (0x0001A3E0). The
-                                   // guest constructor does not write it (the host zeroes it)
+  float mLastMeleeTime;            // guest 0x9C0, the elapsed time the MeleeAttack state
+                                   // fn_10_17BC0 stores (0x00017C9C, not in the port yet), its only
+                                   // writer in the module; fn_10_1A34C reads it (0x0001A3E0) only
+                                   // when the newest finished attack is the melee, i.e. after
+                                   // MeleeAttack ran. Neither the constructor (its stores run
+                                   // 0x8AC..0xD58 with no 0x9C0) nor the game heap clears it, so
+                                   // retail leaves it unset until the first melee; the host's 0
+                                   // stands in for that never-read value
   SAttackWeights mAttackWeights;   // guest 0xC54/0xC58, the pickers' last weights; the
                                    // constructor writes the count 0 (0x0001FF4C)
   uint mAttackMask;                // guest 0xCB8, the pickers' last attack mask; 0 (0x0001FF50)
   int mWeightedPick;               // guest 0xCBC, fn_10_19918's last pick; 0xFFFF (0x0001FF54)
+  int mPickCount;                  // guest 0x988, the picks fn_10_1954C made (0x00019640); the
+                                   // constructor writes 0 (0x0001FCEC)
+  float mLastPickTime;             // guest 0x98C, the elapsed time of the last pick (0x00019678);
+                                   // 0.0f (0x0001FCF0)
+  float mNextActionTime;           // guest 0x990, the earliest time of the next pick: fn_10_1B478
+                                   // writes it when an attack ends (0x0001B558/0x0001B5B8, not in
+                                   // the port yet); 0.0f (0x0001FCF4)
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

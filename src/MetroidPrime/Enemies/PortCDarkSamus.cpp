@@ -99,7 +99,10 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mContactPoint(CVector3f(0.f, 0.f, 0.f))
 , mLastMeleeTime(0.f)
 , mAttackMask(0)
-, mWeightedPick(0xFFFF) {
+, mWeightedPick(0xFFFF)
+, mPickCount(0)
+, mLastPickTime(0.f)
+, mNextActionTime(0.f) {
   mAttackWeights.count = 0;
   // The path search's flags are 0x401 (`li r5, 0x401` at 0x0001FB54), its index the patterned
   // info's pathfinding index (`lwz r6, 0xec(r30)` at 0x0001FB40), its radii 1.0f (lbl_10_rodata_3E8,
@@ -140,6 +143,14 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
     return;
   }
   CPatterned::Think(dt, mgr);
+  // 0x0001B2E4: the module's own AI runs only while the actor is alive (the guest's 0x420 bit 6,
+  // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the attack pick
+  // (fn_10_1954C, the call at 0x0001B314); the stage advance before it (fn_10_193A0, 0x0001B308)
+  // and the twelve after it (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a
+  // stand-in rather than a retail-order Think.
+  if (GetAlive()) {
+    UpdateAttackPick(mgr);
+  }
 }
 
 // vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch. The four-character codes it
