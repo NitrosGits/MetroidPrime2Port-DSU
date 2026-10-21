@@ -1393,7 +1393,7 @@ void CSplitterMainChassis::PortResistedDamage(CStateManager& mgr, TUniqueId send
   if (!mAlive) {  // 0x9FC8-0x9FCC
     return;
   }
-  if ((mFlagsD41 & 0x80) != 0) {
+  if ((mFlagsD41 & 0x80) != 0) {  // 0x9FD0-0x9FD8
     if (const CCollisionActor* actor = TCastToConstPtr< CCollisionActor >(mgr.ObjectById(sender))) {
       const CPlayer* player =
           TCastToConstPtr< CPlayer >(mgr.GetObjectById(actor->GetLastTouchedObject()));
@@ -1439,11 +1439,11 @@ void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
         player->GetMorphBall()->ApplyBoostBallDamage(mgr, mTargetActorId,
                                                      gpTweakBall->GetBoostBallDamage(), 0.f);
       }
-    } else if ((mFlagsD40 & 0x2) == 0) {
+    } else if ((mFlagsD40 & 0x2) == 0) {  // 0x9C5C-0x9C64
       CDamageInfo damage = GetContactDamage();
-      if ((mFlagsD40 & 0x1) != 0) {
+      if ((mFlagsD40 & 0x1) != 0) {  // 0x9CC8-0x9CD0
         damage = mData.mLegStabDamage;
-      } else if ((mFlagsD41 & 0x80) != 0) {
+      } else if ((mFlagsD41 & 0x80) != 0) {  // 0x9D20-0x9D28
         damage = mData.mSpinAttackDamage;
         mFlagsD40 |= 0x8;
       }
@@ -1453,7 +1453,7 @@ void CSplitterMainChassis::PortHitObject(CStateManager& mgr, TUniqueId sender) {
       }
     }
     PortTakePlayerHint(mgr);
-  } else if ((mFlagsD41 & 0x80) != 0) {
+  } else if ((mFlagsD41 & 0x80) != 0) {  // 0x9ED0-0x9ED8
     // 0x9EF0 TCastToPtr<CAi>: the host has no such cast, so the type test is spelled out.
     const CEntity* object = mgr.GetObjectById(touched);
     if (object != nullptr && object->TypesMatch(kET_Ai) != nullptr) {  // 0x9EF4-0x9EF8
