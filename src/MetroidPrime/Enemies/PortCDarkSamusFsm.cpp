@@ -1299,7 +1299,7 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mDash.mDoubleDash = false;
     const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
-    if (stage != nullptr &&
+    if (stage != nullptr && // `mr. r28, r3; beq` at 0x0001511C/0x00015120
         mgr.Random()->Range(0.f, 100.f) < stage->GetStageInfo().chanceToDoubleDash) {
       mDash.mDoubleDash = true;
     }
@@ -2555,7 +2555,7 @@ void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
        it != nearList.end(); ++it) {
     // The near list holds actors only; retail passes the entity on as one.
     CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it));
-    if (actor != nullptr) {
+    if (actor != nullptr) { // `mr. r6, r3; beq` at 0x00014BE4/0x00014BE8
       mgr.ApplyRadiusDamage(*this, GetTranslation(), *actor, GetUniqueId(), info);
     }
   }
@@ -2743,7 +2743,7 @@ float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* 
     if (endDistSq < playerDistSq) {
       weight = weight * 0.5f;
     }
-    if (target != nullptr) {
+    if (target != nullptr) { // `cmplwi r25, 0x0; beq` at 0x00015D6C/0x00015D70
       const float dist = (*target - end).Magnitude();
       if (dist < mMaxAttackRange) {
         weight = weight * (1.f - dist / mMaxAttackRange);
