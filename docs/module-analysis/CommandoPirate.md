@@ -1175,10 +1175,11 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the body's jump state (0x0000986C), the chain's end (0x0000989C), the target's aim position (0x000098D8) and the body's target vector (0x0000990C) | c | unreachable in the shipped data: the jump state comes from the waypoint navigation's jump command, which needs the same 0x02 flag |
 | | the jump-back target (0x00009918) and the deactivate (0x00009934) | b | the update's copy ran every update, the deactivate 4 times |
 | `fn_9_7A98` (the scripted charge) | the activate (0x00007B24), the waypoint picker (0x00007B7C), the material filter (0x00007B94) and the push vector (0x00007C14) | b | 4 activates per run; the picker answered true every time |
+| | the loop-attack command (0x00007CC4), the body in the loop attack (0x00007D18), the waypoint reached (0x00007DDC) and the next waypoint (0x00007E00) | b | 31700 updates per run, 3 of them "the waypoint is reached" |
 | | the loop-attack command (0x00007CC4), the body in the loop attack (0x00007D18), the waypoint reached (0x00007DDC), the next waypoint (0x00007E00) and the turn (0x00007E54) | b | 402 updates per run: 17 "the waypoint is reached" and the turn the other times |
 | | the abort (0x00007E3C, the 0x04 bit of guest this+0xC64) and the 0x08 bit (0x00007E40) | d | the module's states that set those bits are not reached in this run |
 | | the deactivate (0x00007E5C) | b | 4 times |
-| `fn_9_2474` (the turn helper) | the speed test (0x000024B4), the normalized direction (0x00002560), the time (0x000025A4) and the movement (0x00002918) | b | 2285 calls per run |
+| `fn_9_2474` (the turn helper) | the speed test (0x000024B4), the normalized direction (0x00002560), the time (0x000025A4) and the movement (0x00002918) | d | the scripted charge calls it only while the byte at guest this+0xC64 has its 0x08 bit (0x00007E44..0x00007E48) - the module's user-event handler sets that bit when the shield's charge animation takes off (fn_9_C798, 0x0000C868) and the shield is up (the 0x04 bit of guest this+0xC65), and no shipped run has the shield up during the charge, so the helper does not run |
 | | the loop attack type 4 (0x00002840), 5 (0x000027B0) and 6 (0x00002720) | b | all three ran: the type 6 arm once (the second commando's chain runs the other way), the type 4 arm once, the type 5 arm the rest |
 | | the actor's forward column instead of the delta (0x0000256C) | c | unreachable in the flow: the scripted charge's own "the waypoint is reached" test (0x00007DDC) catches a delta of zero first, and the turn helper is only called when it did not |
 | | the push vector (0x0000291C..0x000029A4) | d | the push vector is the shield's collision normal (fn_9_BF44); the commando's shield never hits a wall in this run |
@@ -1187,6 +1188,13 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the waypoint gone (0x00002AF8) | b | twice per run (the charge's activate, before the navigation has advanced the destination) |
 | | the speed at or below zero (0x00002AD0) | c | the area's block gives the charge speed 55 |
 | | the 0x20 flag clear (0x00002B00) and the next waypoint gone (0x00002B80) | d | the module's waypoint always has the 0x20 flag in this run, and the chain's waypoints all have a successor |
+| `fn_9_8B70` (the JumpBack state) | the activate (0x00008BA8) and the target (0x00008BBC..0x00008BF4) | b | one activate per run (the state is entered on its own); the target was there |
+| | the update (0x00008BFC) and the jump command (0x00008C08..0x00008C70) | b | 993 updates per run; the jump command is issued |
+| | the deactivate (0x00008D0C) | b | once per run |
+| | the target gone (0x00008BC0..0x00008BC4) and the body in the state 3 (0x00008CD0..0x00008D04) | d | the target is always there, and the jump command is issued on every update, so the "the body is in the state 3" arm is not reached (the guest's structure is the same) |
+| `fn_9_786C` (the RestoreOrientation state) | the activate (0x000078B0) and the deactivate (0x00007A00..0x00007A78) | b | four of each per run (the state is forced with the console's `fsm`, **forced (fsm)** - the commando only reaches it after a warp) |
+| | the update's "the commando stands upright" arm (0x000078F0..0x000078F4) | b | four times per run: the commando is upright, so the animation state goes "over" at once |
+| | the update's angle arm (0x00007918..0x00007924) and its turn (0x00007938..0x000079E0) | d | both need a commando that is tipped over, and nothing in the shipped flow tips it (the WarpOut and PostWarpOut states, which do, are still stand-ins) |
 | `fn_9_B1E0` (ShouldBoost) | the byte at guest this+0xC66 (0x0000B1F0), the byte at guest this+0xC64 (0x0000B1FC) and the AI waypoint (0x0000B218) | b | 162 calls per run: the state sets the 0x80 bit of guest this+0xC66 and the trigger is evaluated every tick of the state |
 | | the 0x20 flag test (0x0000B22C) | b | 158 calls with the waypoint's flags word 0 and 4 with the word 0x20 |
 | | the true arm (0x0000B234) | b | 4 times: the scripted charge starts |
@@ -1259,6 +1267,30 @@ the port searched the *commando's* connections, so the "take the next waypoint" 
 answered "no waypoint" and the scripted charge never advanced along the chain. It is
 `waypoint->FindConnectedObject_if(...)` now (0x00002B44).
 
+### The scripted charge's end condition (2026-10-21)
+
+The scripted charge (fn_9_7A98) has **no distance or time test of its own**: its update
+(0x00007C40..0x00007E58) only asks whether the loop-attack command may be issued, whether the body
+is in the loop attack, whether the byte at guest this+0xC64 has its 0x04 bit (the abort, the
+exit-state command at 0x00007E3C), whether the commando has reached the waypoint (the delta's
+projection on the transform's second column is zero or less, or the squared distance is at most the
+bounding box's height squared - 0x00007D70..0x00007DF0) and whether the byte at guest this+0xC64
+has its **0x08 bit** (0x00007E44..0x00007E48) - the turn helper (fn_9_2474) and with it the
+charge's own movement run only while that bit is set. The bit is the module's "the charge is
+airborne" flag: the user-event handler (fn_9_C798) sets it when the shield's charge animation takes
+off (0x0000C868) and clears it when it lands (0x0000C88C), both only while the shield is up (the
+0x04 bit of guest this+0xC65).
+
+**The port had that test inverted** (`== 0` instead of `!= 0`), so the commando charged at every
+update of the charge state - whether or not it was in the air - and the charge's impulse
+(`MoveInOneFrameOR`, 0x00002918) added up until the commando left the map (the run ended with it
+tens of thousands of units away). With the guest's polarity the commando stays where the retail's
+condition says it should: in the Swamp run (2026-10-21) it ends 2 units from where it started
+instead of 600 units away.
+
+The charge's loop-attack command also carries the guest's flag byte's 0x80 bit (the skip-into,
+0x00007C90), which the port did not set.
+
 **The loop attack types and the skip-into flag.** The turn helper's command is the host's
 `pas::kLAT_Five` / `pas::kLAT_Six` (the guest's 5 and 6, 0x000027D8 and 0x00002748) and
 `pas::kLAT_Four` (4, 0x00002868) now, and the command's skip-into flag is set (the guest's flag
@@ -1299,7 +1331,8 @@ The module's remaining stand-ins, smallest first, with their retail sizes: the s
 FollowAttackPattern state. The FollowAttackPattern state `fn_9_961C` (0x350), the scripted shield
 charge `fn_9_7A98` (0x590), its turn helper `fn_9_2474` (0x580), the charge state `fn_9_8028`
 (0x68c), the ArmShield state `fn_9_86B4` (0x280), the shield effect `fn_9_2048` (0x330), the
-trigger `fn_9_B1E0` (ShouldBoost, 0x70) and the waypoint picker `fn_9_2A98` (0x214) are host code
+trigger `fn_9_B1E0` (ShouldBoost, 0x70), the waypoint picker `fn_9_2A98` (0x214), the JumpBack
+state `fn_9_8B70` (0x1b8) and the RestoreOrientation state `fn_9_786C` (0x22c) are host code
 since 2026-10-21.
 
 ### The FollowAttackPattern state (fn_9_961C, 2026-10-21)
