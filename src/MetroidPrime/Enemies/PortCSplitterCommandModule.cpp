@@ -380,8 +380,11 @@ void CSplitterCommandModule::SpawnIdle(CStateManager& mgr, EStateMsg msg, float)
 // * the data's max linear velocity (0x7C4, squared, 0x4234) and the offset is safe the head moves
 // that far toward it (0x42A0 fn_75_2154); otherwise it is put on the goal (0x42B0 SetTranslation)
 // and the animation state is kAS_Over. Deactivate (0x42CC): kAS_NotReady (0).
-// Arms: both ran (no chassis with a forced `fsm u0531 SeekMainChassis`; the real docking after
-// `kill u0532`). The far but unsafe offset is dead: a squared length above step * step > 0 is safe.
+// Arms (probed; head u0531 docking to u0521 after `kill u0532`): chassis, far and safe (moving) and
+// near (put on the goal) ran. No chassis forced under gdb (0xEFC kInvalidUniqueId for the first
+// Update, e4). Far but unsafe forced under gdb (the head's x set to -inf for one Update, e11: the
+// offset is not finite, so IsMagnitudeSafe fails; the head is then put on the goal). A finite
+// unsafe offset needs a squared length below 1e-28, not reachable at these coordinates.
 // @ fn_75_4138
 void CSplitterCommandModule::SeekMainChassis(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {

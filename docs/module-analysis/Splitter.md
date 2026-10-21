@@ -1547,7 +1547,7 @@ Runs (914f1381 layer 2, probes on every if/return/case): d1 `fsm` forcing, d2-d4
 | C8F4 | no swarm snatcher (9 F) | not run: the area has no CIngSnatchingSwarm → unmarked |
 | C9E4 | head coming / not, loop attack issue / not, exit | ran (e1, e2: `kill u0532`, head u0531 docks to the headless u0521) → marked |
 | C9E4 | head of its own, head checking another chassis | forced (gdb: 0xC6C / the head's 0xEFC set to 0x1234 for one Update, e2) → marked |
-| 4138 | no chassis / chassis, on the goal / moving | ran (d1 `fsm u0531 SeekMainChassis`; e2 docking); far unsafe offset dead (length² > step² > 0) → marked |
+| 4138 | chassis, moving / on the goal; no chassis; far + unsafe | ran (e2 docking); forced (gdb: 0xEFC invalid for one Update, e4); forced (gdb: head x = -inf for one Update, e11; IsMagnitudeSafe needs length² ≥ 1e-28 and finite) → marked |
 | 3BEC | chassis / none | ran (e1) / forced (gdb: 0xEFC invalid for the call, e3) → marked |
 | 3FE0, 5864, 57D4 | docking path | not run: the area's heads have no Follow (docking path) link; docking runs PathFind → unmarked |
 | 55B0, 5568 | | only false arms ran (e2: 55B0 true too) → unmarked |
