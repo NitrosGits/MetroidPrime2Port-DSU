@@ -1315,16 +1315,19 @@ void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
   }
   xc64_ |= 0x01;              // 0x00002074
   const CTransform4f xf = GetLctrTransform(mLocatorLWrist);  // 0x00002088
-  if (xc4c_ == 1) {           // 0x0000209C (the charge)
-    // The guest builds the explosion and clears it again (the call at 0x000021A4), so the
-    // charge's effect never reaches the world.
-    return;
-  }
-  if (xc4c_ != 0) {           // 0x000021BC
+  // 0x00002098..0x000020AC: the state word at guest this+0x0C4C picks the effect - 1 is the
+  // charge (the guest's own token at guest this+0x0C08, used when the byte at guest this+0x0C14
+  // says it is loaded) and 0 is the armed shield (the token at guest this+0x18, used when the
+  // byte at guest this+0x0C24 says it is loaded); every other value does nothing (0x000021BC).
+  // Both effects reach the world (the AddObject at 0x000022E8) and the sound plays
+  // (0x00002324) - the charge's effect is built and its token cleared first (0x000021A4).
+  const CAssetId effectId = xc4c_ == 1 ? mData.mShield.mChargeEffect    // 0x0000216C (this+0x0C08)
+                          : xc4c_ == 0 ? mData.mShield.mExplodeEffect   // 0x0000228C (this+0x18)
+                                       : kInvalidAssetId;
+  if (effectId == kInvalidAssetId) {  // 0x000021BC..0x000021C0
     return;
   }
   rstl::optional_object< TCachedToken< CGenDescription > > effect;
-  const CAssetId effectId = mData.mShield.mExplodeEffect;
   if (effectId != kInvalidAssetId) {
     effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
   }
