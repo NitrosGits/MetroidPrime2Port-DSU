@@ -11,9 +11,13 @@ void shutdown();
 
 void request_snapshot() noexcept;
 bool read_latest(uint16_t x, uint16_t y, uint32_t& z) noexcept;
+// Copies a w x h region of the latest snapshot (z24 per texel, row-major) into `out`. False when
+// there is none, it is older than `maxAgeMs`, or the region is outside it.
+bool read_region(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t* out, uint32_t maxAgeMs) noexcept;
 
+// `forced`: snapshot regardless of a request and of the 30 Hz throttle.
 void encode_frame_snapshot(const wgpu::CommandEncoder& cmd, const wgpu::TextureView& depthView,
-                           wgpu::Extent3D sourceSize, uint32_t msaaSamples) noexcept;
+                           wgpu::Extent3D sourceSize, uint32_t msaaSamples, bool forced = false) noexcept;
 void after_submit() noexcept;
 
 namespace testing {

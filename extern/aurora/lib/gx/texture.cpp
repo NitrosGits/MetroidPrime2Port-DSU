@@ -683,11 +683,6 @@ gfx::TextureHandle resolve_static_texture(const GXTexObj_& obj) {
   if (!obj.has_data()) {
     return {};
   }
-  if (!texture_source_is_mapped(obj)) {
-    log_invalid_texture_source(obj, "resolve_static_texture");
-    return {};
-  }
-
   if (obj.texObjId != 0) {
     if (const auto it = s_textureObjectCaches.find(obj.texObjId); it != s_textureObjectCaches.end()) {
       auto& entry = it->second;
@@ -697,6 +692,13 @@ gfx::TextureHandle resolve_static_texture(const GXTexObj_& obj) {
         return entry.handle;
       }
     }
+  }
+
+  // After the object-cache hit, which never reads the source: one mincore per page per draw
+  // was the FIFO thread's top self cost.
+  if (!texture_source_is_mapped(obj)) {
+    log_invalid_texture_source(obj, "resolve_static_texture");
+    return {};
   }
 
   gfx::TextureHandle handle;
@@ -741,11 +743,6 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
   if (!obj.has_data()) {
     return {};
   }
-  if (!texture_source_is_mapped(obj)) {
-    log_invalid_texture_source(obj, "resolve_static_palette_texture");
-    return {};
-  }
-
   if (obj.texObjId != 0) {
     if (const auto it = s_textureObjectCaches.find(obj.texObjId); it != s_textureObjectCaches.end()) {
       auto& entry = it->second;
@@ -759,6 +756,13 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
         return entry.handle;
       }
     }
+  }
+
+  // After the object-cache hit, which never reads the source: one mincore per page per draw
+  // was the FIFO thread's top self cost.
+  if (!texture_source_is_mapped(obj)) {
+    log_invalid_texture_source(obj, "resolve_static_palette_texture");
+    return {};
   }
 
   gfx::TextureHandle handle;

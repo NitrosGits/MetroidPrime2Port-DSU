@@ -1088,6 +1088,21 @@ bool resolve_pass(const ResolveDesc& desc, ResolvedTargets& out) {
   return true;
 }
 
+void split_pass_for_depth_snapshot() {
+  ZoneScoped;
+  if (!g_recorder.active() || g_recorder.currentRenderPass == UINT32_MAX || g_recorder.inOffscreen) {
+    return;
+  }
+  auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
+  if (prevPass.msaaSamples > 1) {
+    return; // depth_peek reads single-sampled depth only
+  }
+  prevPass.forceDepthSnapshot = true;
+  prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
+  enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
+  resume_efb_pass_loading(prevPass);
+}
+
 bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSize) {
   if (type == InvalidEncoderTask) {
     Log.warn("push_encoder_task: invalid encoder task type");

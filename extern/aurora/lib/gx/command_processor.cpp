@@ -834,6 +834,8 @@ void handle_aurora(ByteReader& reader) noexcept {
     g_gxState.texCopyDest = reinterpret_cast<const void*>(reader.read<u64>());
   } else if (subCmd == GX_AURORA_REQUEST_DEPTH_SNAPSHOT) {
     gfx::depth_peek::request_snapshot();
+  } else if (subCmd == GX_AURORA_SNAPSHOT_DEPTH) {
+    gfx::split_pass_for_depth_snapshot();
   } else if (subCmd == GX_AURORA_REQUEST_SCAN_PEEK) {
     const s32 left = static_cast<s32>(reader.read<u32>());
     const s32 top = static_cast<s32>(reader.read<u32>());
