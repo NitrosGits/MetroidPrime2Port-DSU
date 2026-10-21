@@ -19,14 +19,25 @@
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
+#include "MetroidPrime/Weapons/CBeamInfo.hpp"
+#include "MetroidPrime/Weapons/CPlasmaProjectile.hpp"
+#include "MetroidPrime/CWorld.hpp"
+#include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrSplitterCommandModule.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
+
+#include "Kyoto/CRandom16.hpp"
+#include "Kyoto/Graphics/CTexture.hpp"
+#include "MetroidPrime/CActorParameters.hpp"
+#include "MetroidPrime/CModelData.hpp"
 
 #include <math.h>
 #include <stdio.h>
@@ -56,8 +67,8 @@ void StandIn(const char* what) {
 // three-word records of .data 0x0..0x2D0, so the retail function of each name is
 // known (docs/module-analysis/Splitter.md section b). The ported ones are the IsScanning
 // trigger (fn_75_58E8), the IsInitiallyDocked (fn_75_58DC), the IsDocked (fn_75_58BC), the
-// HasDockingTarget (fn_75_57F0) and the HasTarget (fn_75_57B4) triggers, the Start state
-// (fn_75_5564), the NotifyDocking code (fn_75_3EEC) and the RaiseShields code (fn_75_3B20);
+// HasDockingTarget (fn_75_57F0), the HasTarget (fn_75_57B4) and the InDetectionRange
+// (fn_75_5944) triggers, the Start (fn_75_5564) and the Scanning (fn_75_523C) states, the NotifyDocking code (fn_75_3EEC) and the RaiseShields code (fn_75_3B20);
 // the rest are once-logging shells for the retail function they name.
 #define SPLITTER_TRIGGER(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
@@ -77,7 +88,7 @@ void StandIn(const char* what) {
 
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(StateOver),
-    SPLITTER_TRIGGER(InDetectionRange),
+    SPLITTER_TRIGGER_PORTED(InDetectionRange),
     SPLITTER_TRIGGER_PORTED(IsScanning),
     SPLITTER_TRIGGER_PORTED(IsInitiallyDocked),
     SPLITTER_TRIGGER_PORTED(IsDocked),
@@ -100,7 +111,7 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
     SPLITTER_STATE_PORTED(Idle),
     SPLITTER_STATE(SpawnIdle),
     SPLITTER_STATE(Dead),
-    SPLITTER_STATE(Scanning),
+    SPLITTER_STATE_PORTED(Scanning),
     SPLITTER_STATE(FaceTarget),
     SPLITTER_STATE(PathFind),
     SPLITTER_STATE_PORTED(Hover),
@@ -143,25 +154,181 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
 
-// The DOL's CSfxManager::RemoveEmitter (the beam effect's sound).
-void StandInSfxRemoveEmitter() { StandIn("the DOL's CSfxManager::RemoveEmitter"); }
-
-// The retail's beam effect actor (0x1A0 bytes, a CActor) has no host class yet, so its creation
-// (fn_75_11884) and the manager's add stay a once-logging shell. The values the retail would
-// build are passed in, so the log says what was skipped.
-void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float angle) {
-  static bool sLogged = false;
-  if (sLogged) {
-    return;
-  }
-  sLogged = true;
-  fprintf(stderr,
-          "[splitter] fn_75_11884 (0x208) would create the beam effect actor '%s' in area %d "
-          "with a %.4f rad rotation; the host has no class for it\n",
-          name.c_str(), info.GetAreaId().Value(), angle);
-}
 
 } // namespace
+
+// The head's beam effect (0x1A0 bytes; the REL has no type name for it, so the name is a guess):
+// a CActor with no model whose vtable (lbl_75_data_E34) keeps the CActor slots except the
+// dtor (fn_75_11804), Think (fn_75_10DC4), PreRender (fn_75_10F1C), AddToRenderer
+// (fn_75_10EF0), Render (fn_75_10778) and PreRenderAllViewports (fn_75_1167C). The slot after
+// HealthInfo is fn_75_D0, the REL's copy of the DOL's CActor::GetHealthInfo (not ported here).
+// A cone opens from 1 degree to the data's angle in front of the head while the head scans.
+class CSplitterBeamEffect : public CActor {
+public:
+  CSplitterBeamEffect(TUniqueId uid, const CEntityInfo& info, const rstl::string& name,
+                      const CTransform4f& xf, short textureHeight, float angle, float length,
+                      const CColor& cloudColor1, const CColor& cloudColor2,
+                      const CColor& addColor1, const CColor& addColor2, float cloudScale,
+                      float fadeOffSize, float openSpeed);
+  ~CSplitterBeamEffect() override;
+
+  void Think(float dt, CStateManager& mgr) override;
+  void PreRender(CStateManager& mgr) override;
+  void AddToRenderer(const CStateManager& mgr) const override;
+  void Render(const CStateManager& mgr) const override;
+  void PreRenderAllViewports(CStateManager& mgr) override;
+
+  void SetOpening(bool opening) { mOpening = opening; }
+  bool IsOpening() const { return mOpening; }
+  float GetOpenFraction() const { return mOpenFraction; }
+
+private:
+  float mMaxAngle;        // 0x158
+  float mLength;          // 0x15C
+  CColor mCloudColor1;    // 0x160
+  CColor mCloudColor2;    // 0x164
+  CColor mAddColor1;      // 0x168
+  CColor mAddColor2;      // 0x16C
+  float mCloudScale;      // 0x170
+  float mFadeOffSize;     // 0x174
+  float mOpenSpeed;       // 0x178
+  CTexture* mTexture;     // 0x17C
+  float mAngle;           // 0x180
+  int mUnknown184;        // 0x184
+  float mOpenFraction;    // 0x188
+  CRandom16 mRandom;      // 0x18C
+  float mUnknown190;      // 0x190
+  float mUnknown194;      // 0x194
+  bool mOpening;          // 0x198
+};
+
+namespace {
+// lbl_75_bss_38, set by the REL's static initialiser fn_75_11AAC from lbl_75_rodata_884: the
+// cone's closed angle, one degree in radians.
+const float kBeamEffectClosedAngle = 0.017453292f;
+
+// The wrap both the head (0x12F4-0x1330) and the beam (0x10E9C-0x10ECC) do: x minus whole turns
+// (fctiwz of x / 2pi, lbl_75_rodata_78 / 7C), plus a turn when that is below 0.0f.
+float PortWrapTurn(float x) {
+  float r = x - static_cast< float >(static_cast< int >(x * 0.15915494f)) * 6.2831855f;
+  if (r < 0.f) {
+    r += 6.2831855f;
+  }
+  return r;
+}
+
+void StandInBeamEffect(const char* what) {
+  static const char* sLogged[4];
+  static int sCount;
+  for (int i = 0; i < sCount; ++i) {
+    if (sLogged[i] == what) {
+      return;
+    }
+  }
+  if (sCount < 4) {
+    sLogged[sCount++] = what;
+  }
+  fprintf(stderr, "[splitter] %s is a port stand-in (see PortCSplitterCommandModule.cpp)\n", what);
+}
+} // namespace
+
+// @ fn_75_11884
+// The ctor (0x11884-0x11A8C): a CActor (0x1197C) with an empty model (fn_75_11A8C, the
+// CModelData default ctor), the material list holding the material lbl_75_data_E30 names (0,
+// kMT_NoStepLogic; 0x11910-0x11954), default CActorParameters (0x11908) and no next draw node
+// (0x118F8-0x11904). The fields take the arguments (0x11990-0x119DC); a kTF_IA8 texture of width 4
+// and the given height with one mip is made (0x119A8-0x119FC); the angle starts closed
+// (lbl_75_bss_38, 0x11A04-0x11A24), the open fraction and 0x184 at 0.0f/0 (0x11A2C-0x11A30), the
+// random source is seeded with 99 (0x11A34), 0x190/0x194 are 0.0f and the cone opens (0x11A54).
+CSplitterBeamEffect::CSplitterBeamEffect(TUniqueId uid, const CEntityInfo& info,
+                                         const rstl::string& name, const CTransform4f& xf,
+                                         short textureHeight, float angle, float length,
+                                         const CColor& cloudColor1, const CColor& cloudColor2,
+                                         const CColor& addColor1, const CColor& addColor2,
+                                         float cloudScale, float fadeOffSize, float openSpeed)
+: CActor(uid, name, info, 0, xf, CModelData(), CMaterialList(kMT_NoStepLogic), CActorParameters(),
+         kInvalidUniqueId)
+, mMaxAngle(angle)
+, mLength(length)
+, mCloudColor1(cloudColor1)
+, mCloudColor2(cloudColor2)
+, mAddColor1(addColor1)
+, mAddColor2(addColor2)
+, mCloudScale(cloudScale)
+, mFadeOffSize(fadeOffSize)
+, mOpenSpeed(openSpeed)
+, mTexture(new CTexture(kTF_IA8, 4, textureHeight, 1))
+, mAngle(kBeamEffectClosedAngle)
+, mUnknown184(0)
+, mOpenFraction(0.f)
+, mRandom(99)
+, mUnknown190(0.f)
+, mUnknown194(0.f)
+, mOpening(true) {}
+
+// @ fn_75_11804
+// The dtor (0x11804-0x11884): the texture is scheduled for deletion (0x11834) and freed
+// (0x11848), then the CActor dtor runs (0x11854).
+CSplitterBeamEffect::~CSplitterBeamEffect() {
+  mTexture->ScheduleDeletion();
+  delete mTexture;
+}
+
+// fn_75_10DC4 (Think, 0x10DC4-0x10EF0): after CActor::Think (0x10DE4), an active beam
+// (0x10DE8-0x10DF0) moves its open fraction by dt times the open speed toward 1.0f while opening
+// (lbl_75_rodata_848, 0x10E00-0x10E24) or toward 0.0f otherwise (lbl_75_rodata_85C,
+// 0x10E2C-0x10E50), and its angle becomes the closed angle lerped to the full one by that
+// fraction, wrapped to one turn (0x10E54-0x10ED0).
+void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
+  CActor::Think(dt, mgr);
+  if (!GetActive()) {
+    return;
+  }
+  if (mOpening) {
+    const float open = dt * mOpenSpeed + mOpenFraction;
+    mOpenFraction = 1.f < open ? 1.f : open;
+  } else {
+    const float open = mOpenFraction - dt * mOpenSpeed;
+    mOpenFraction = 0.f < open ? open : 0.f;
+  }
+  mAngle = PortWrapTurn((mMaxAngle - kBeamEffectClosedAngle) * mOpenFraction +
+                        kBeamEffectClosedAngle);
+}
+
+// fn_75_10F1C (PreRender, 0x10F1C-0x1167C): draws the visible area geometry and the near actors
+// flat into the EFB and copies it into the texture (GXCopyTex) for the cone's distortion. Not
+// ported yet: a once-logging stand-in.
+void CSplitterBeamEffect::PreRender(CStateManager&) { StandInBeamEffect("fn_75_10F1C (the beam effect's PreRender, 0x760)"); }
+
+// fn_75_10EF0 (AddToRenderer, 0x10EF0-0x10F1C): unless the actor is out of the frustum (0x150's
+// low bit, 0x10EFC-0x10F04) it is rendered (0x10F08 EnsureRendered).
+void CSplitterBeamEffect::AddToRenderer(const CStateManager& mgr) const {
+  if (!GetPreRenderClipped()) {
+    EnsureRendered(mgr);
+  }
+}
+
+// fn_75_10778 (Render, 0x10778-0x10DC4): the cone as a textured fan with the cloud and add
+// colours. Not ported yet: a once-logging stand-in.
+void CSplitterBeamEffect::Render(const CStateManager&) const { StandInBeamEffect("fn_75_10778 (the beam effect's Render, 0x64C)"); }
+
+// fn_75_1167C (PreRenderAllViewports, 0x1167C-0x11804): the bounds start at the translation
+// (0x116A4-0x116CC) and take the two cone edges, (0, length, +-length * tan(angle / 2))
+// (lbl_75_rodata_840 0.5f, 0x116D0-0x11754) through the transform; they are both the render
+// bounds (0xCC) and the other bounds (0xE4) (0x11758-0x117B4). With render bounds dirty
+// (0x117B8-0x117C0) the portal state is updated and the flag cleared (0x117CC-0x117DC).
+void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
+  CAABox bounds(GetTranslation(), GetTranslation());
+  const float half = mLength * static_cast< float >(tan(0.5f * mAngle));
+  bounds.AccumulateBounds(GetTransform() * CVector3f(0.f, mLength, half));
+  bounds.AccumulateBounds(GetTransform() * CVector3f(0.f, mLength, -half));
+  SetRenderBounds(bounds);
+  SetOtherBounds(bounds);
+  if (GetRenderBoundsDirty()) {
+    UpdatePortalSystemState(mgr);
+    SetRenderBoundsDirty(false);
+  }
+}
 
 // The state machine names that are not ported yet: each stands in for the retail
 // function the REL's initialiser puts in the table and logs it once, so the log
@@ -179,8 +346,6 @@ void StandInFn_75_11884(const CEntityInfo& info, const rstl::string& name, float
   void CSplitterCommandModule::name(CStateManager&, float) {                        \
     StandIn(#fn " (the head's " #name " code)");                                 \
   }
-SPLITTER_TRIGGER_STANDIN(StateOver, fn_75_5A40)
-SPLITTER_TRIGGER_STANDIN(InDetectionRange, fn_75_5944)
 SPLITTER_TRIGGER_STANDIN(HasDockingPath, fn_75_5864)
 SPLITTER_TRIGGER_STANDIN(DockingPathOver, fn_75_57D4)
 SPLITTER_TRIGGER_STANDIN(InHoverRange, fn_75_570C)
@@ -188,18 +353,13 @@ SPLITTER_TRIGGER_STANDIN(InLaserPulseRange, fn_75_565C)
 SPLITTER_TRIGGER_STANDIN(ShouldDodge, fn_75_5644)
 SPLITTER_TRIGGER_STANDIN(ShouldAttack, fn_75_5624)
 SPLITTER_TRIGGER_STANDIN(ShouldFireAgain, fn_75_5610)
-SPLITTER_TRIGGER_STANDIN(ShouldLaserSweep, fn_75_55F8)
 SPLITTER_TRIGGER_STANDIN(PathOver, fn_75_55B0)
 SPLITTER_TRIGGER_STANDIN(PathShagged, fn_75_5568)
 SPLITTER_STATE_STANDIN(SpawnIdle, fn_75_5498)
 SPLITTER_STATE_STANDIN(Dead, fn_75_5448)
-SPLITTER_STATE_STANDIN(Scanning, fn_75_523C)
-SPLITTER_STATE_STANDIN(FaceTarget, fn_75_50B0)
 SPLITTER_STATE_STANDIN(PathFind, fn_75_4E90)
 SPLITTER_STATE_STANDIN(Dodge, fn_75_4AC0)
 SPLITTER_STATE_STANDIN(LaserPulse, fn_75_4864)
-SPLITTER_STATE_STANDIN(LaserSweep, fn_75_44DC)
-SPLITTER_STATE_STANDIN(LostChassisReaction, fn_75_42F8)
 SPLITTER_STATE_STANDIN(SeekMainChassis, fn_75_4138)
 SPLITTER_STATE_STANDIN(FollowDockingPath, fn_75_3FE0)
 SPLITTER_CODE_STANDIN(SetTargetDest, fn_75_3D20)
@@ -349,6 +509,255 @@ void CSplitterCommandModule::NotifyDocking(CStateManager& mgr, float) {
   PortDockToChassis(mgr);
 }
 
+// fn_75_5944 (the head's InDetectionRange trigger, 0x5944-0x5A3C): false unless the IsScanning
+// trigger (0x5968 fn_75_58E8) and the base's InDetectionRange (0x5980) both answer true. Then
+// the player (the manager's 0x14FC) less the head's position, with z set to 0.0f (0x598C-0x59D0),
+// is dotted with the head's transform's Y column (0x28, 0x38 and 0x48 - 0x59D8-0x5A04) and the
+// answer is that dot above the distance times the base's detection cosine at 0x3D8
+// (0x59EC-0x5A18: fcmpo and the cr0 gt bit).
+// The shipped head's detection angle is 180 degrees (the cosine at 0x3D8 reads -1.0, area 5 run
+// 2026-10-21). The dot is never below -dist, so the cone can fail only for a player exactly
+// behind the head; that arm is unreachable in shipped data and never ran. The other two false
+// arms ran: the timer off, and the timer on with the base range false (the player 41 units away).
+// @ fn_75_5944
+bool CSplitterCommandModule::InDetectionRange(CStateManager& mgr, const CTriggerData& data) const {
+  if (!PortChassisTimerRunning(mgr) || !CPatterned::InDetectionRange(mgr, data)) {
+    return false;
+  }
+  CVector3f delta = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
+  delta.SetZ(0.f);
+  const float dist = delta.Magnitude();
+  return CVector3f::Dot(delta, GetTransform().GetColumn(kDY)) > dist * mDetectionAngle;
+}
+
+// fn_75_523C (the head's Scanning state, 0x523C-0x5444). The message picks the arm
+// (0x5260-0x5288): 0 (activate, 0x528C) clears the base's flag byte 0x420's 0x80 bit (the
+// host's hit-by-player-projectile flag, 0x528C-0x5298), zeroes the vector at 0xF24-0xF2C
+// (0x529C-0x52B4, sZeroVector) and runs the effect-state update (0x52B8 fn_75_1578); 2
+// (deactivate, 0x5420) runs only the update; 1 (update, 0x52C0) does the scan; others return.
+// The scan: the chassis at 0xEFA is looked up and cast (0x52C0-0x52D8); with one, the head's own
+// 0x80 bit set (0x52E0-0x52E8) or the InDetectionRange trigger with the value 0.0f
+// (0x52EC-0x5310, fn_75_5944) sets the chassis's 0x80 bit (0x5314-0x5320), which its ShotAt
+// trigger (fn_75_E5B8) reads. Then, chassis or not, the turn is the frame time times the data's
+// scanning turn speed at 0x7CC (0x5324-0x5334), and the head's Y and X columns flattened to z
+// 0.0f (0x28/0x38 and 0x24/0x34 - 0x5324-0x53A4) must both be IsMagnitudeSafe (0x53A8-0x53C0);
+// the vector at 0xF24 becomes Slerp(Y normalized, X normalized, turn * 0.017453292f)
+// (0x53C4-0x5418, the degrees to radians constant lbl_75_rodata_74).
+// Not marked (2026-10-21), three arms never ran:
+// - The own-0x80 shortcut. Only the head's ALRT case (0x6710) sets the bit, plus the base's
+//   Damage/Touch with a player projectile. Shots reach the head through its collision actors,
+//   so the sender is never a projectile. Area 5 has no Alert link to the head, but a DOL sender
+//   isn't ruled out.
+// - The null chassis. Reachable: the parent's IsDocked check runs after this update, and the
+//   chassis can die while the head is docked.
+// - The unsafe-axis guard. Not proven unreachable.
+void CSplitterCommandModule::Scanning(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    SetHitByPlayerProjectile(false);
+    mEditorProperties = CVector3f::Zero();
+    PortUpdateEffectStates(mgr);
+    break;
+  case kStateMsg_Update: {
+    CSplitterMainChassis* chassis = TCastToPtr< CSplitterMainChassis >(mgr.ObjectById(mChassisId));
+    if (chassis != nullptr &&
+        (GetHitByPlayerProjectile() || InDetectionRange(mgr, CTriggerData(0.f)))) {
+      chassis->SetHitByPlayerProjectile(true);
+    }
+    const float turn = dt * mData.mScanningTurnSpeed;
+    const CVector3f yAxis = GetTransform().GetColumn(kDY);
+    const CVector3f xAxis = GetTransform().GetColumn(kDX);
+    const CVector3f forward(CVector2f(yAxis.GetX(), yAxis.GetY()), 0.f);
+    const CVector3f right(CVector2f(xAxis.GetX(), xAxis.GetY()), 0.f);
+    if (forward.IsMagnitudeSafe() && right.IsMagnitudeSafe()) {
+      mEditorProperties = CVector3f::Slerp(forward.AsNormalized(), right.AsNormalized(),
+                                           CRelAngle::FromRadians(turn * 0.017453292f));
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    PortUpdateEffectStates(mgr);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_75_50B0 (the head's FaceTarget state, 0x50B0-0x523C). Activate (0x50E8): the vector at
+// 0xF24 becomes the head's transform's Y column (0x28, 0x38 and 0x48). Update (0x5104), only
+// with a frame time above 0.0f (0x510C ble): the target at 0xEFE is looked up (0x5124); the
+// offset to it with z set to 0.0f (0x5130-0x516C) must be IsMagnitudeSafe (0x5170). The turn
+// is the frame time times the data's max turn speed (0x7C8, 0x519C-0x51A0) in degrees
+// (lbl_75_rodata_74, 0.017453292f): with the angle between the Y column and the offset
+// (0x51A4 GetAngleDiff) below it the vector at 0xF24 is the offset normalized (0x51BC-0x51DC),
+// else the Slerp from the Y column toward the normalized offset by the turn (0x51E4-0x521C).
+// Deactivate and other messages do nothing.
+void CSplitterCommandModule::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    mEditorProperties = GetTransform().GetColumn(kDY);
+    return;
+  }
+  if (msg != kStateMsg_Update || dt <= 0.f) {
+    return;
+  }
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncedId));
+  if (target == nullptr) {
+    return;
+  }
+  CVector3f offset = target->GetTranslation() - GetTranslation();
+  offset.SetZ(0.f);
+  if (!offset.IsMagnitudeSafe()) {
+    return;
+  }
+  const CVector3f forward = GetTransform().GetColumn(kDY);
+  const float turn = 0.017453292f * (dt * mData.mMaxTurnSpeed);
+  if (CVector3f::GetAngleDiff(forward, offset) < turn) {
+    mEditorProperties = offset.AsNormalized();
+  } else {
+    mEditorProperties =
+        CVector3f::Slerp(forward, offset.AsNormalized(), CRelAngle::FromRadians(turn));
+  }
+}
+
+// fn_75_5A80 (0x5A80-0x5AD8): the head's laser origin - the translation of the locator at
+// 0xEF8 (0x5A9C GetLctrTransform, 0x5AAC-0x5AC0).
+// @ fn_75_5A80
+CVector3f CSplitterCommandModule::PortLaserOrigin(CStateManager&) const {
+  return GetLctrTransform(mLookAtSegment).GetTranslation();
+}
+
+// fn_75_5AD8 (0x5AD8-0x5B24): only for a docked head (the chassis id at 0xEFA valid,
+// 0x5ADC-0x5AE8) the laser sweep stage at 0xF34 is 0 and the two sweep ends are kept at 0xF38
+// and 0xF44 (0x5AEC-0x5B20).
+// @ fn_75_5AD8
+void CSplitterCommandModule::PortStartLaserSweep(const CVector3f& first, const CVector3f& second) {
+  if (mChassisId == kInvalidUniqueId) {
+    return;
+  }
+  mLaserSweepStage = 0;
+  mLaserSweepStart = first;
+  mLaserSweepEnd = second;
+}
+
+// fn_75_44DC (the head's LaserSweep state, 0x44DC-0x4864). Activate (0x4528): the look-at
+// vector at 0xF50 becomes the transform's Y column; with the target at 0xEFE (0x4550) the sweep
+// ends swap when the end at 0xF44 is closer in angle to that vector than the start at 0xF38
+// (0x455C-0x4600, both offsets from the head's position); then the data's laser charge-up sound
+// (0x888) plays from the head (0x462C AddEmitter: volume 0x7F, the area at 0x4, acoustics,
+// not looped, kMedPriority). Update (0x4634), only with a frame time above 0.0f: the current
+// end (0xF38 for stage 0, else 0xF44) is offset from the locator at 0xEF8 (0x4680
+// GetLctrTransform); its flat form (z 0.0f) must be IsMagnitudeSafe, else the stage ends (-1,
+// 0x482C). The turn is the frame time times the data's laser sweep turn speed (0x808) in degrees
+// (lbl_75_rodata_74). Within it of the Y column (0x4710 GetAngleDiff) the vector at 0xF24 is the
+// normalized flat offset and 0xF50 the normalized offset; stage 0 then moves to 1 and fires
+// (0x4790 fn_75_1974, the laser shot at that end), any other stage ends (-1). Otherwise both
+// vectors Slerp toward those by the turn (0x47A4-0x4824). Deactivate (0x4838): the projectile
+// despawns (fn_75_1790) and the stage ends (-1).
+void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float dt) {
+  if (msg == kStateMsg_Activate) {
+    mLookAtOffset = GetTransform().GetColumn(kDY);
+    if (mgr.GetObjectById(mSyncedId) != nullptr) {  // 0x4554-0x4558
+      const float startAngle =
+          CVector3f::GetAngleDiff(mLookAtOffset, mLaserSweepStart - GetTranslation());
+      if (CVector3f::GetAngleDiff(mLookAtOffset, mLaserSweepEnd - GetTranslation()) <
+          startAngle) {
+        const CVector3f start = mLaserSweepStart;
+        mLaserSweepStart = mLaserSweepEnd;
+        mLaserSweepEnd = start;
+      }
+    }
+    CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundLaserChargeUp & 0xFFFF),
+                            GetTranslation(), 0x7F, GetCurrentAreaId().Value(), true, false,
+                            CSfxManager::kMedPriority);
+  } else if (msg == kStateMsg_Update) {
+    if (dt <= 0.f) {
+      return;
+    }
+    const CVector3f end = mLaserSweepStage == 0 ? mLaserSweepStart : mLaserSweepEnd;
+    const CVector3f offset = end - GetLctrTransform(mLookAtSegment).GetTranslation();
+    const CVector3f flat(offset.GetX(), offset.GetY(), 0.f);
+    if (!flat.IsMagnitudeSafe()) {
+      mLaserSweepStage = -1;
+      return;
+    }
+    const CVector3f forward = GetTransform().GetColumn(kDY);
+    const float turn = 0.017453292f * (dt * mData.mLaserSweepTurnSpeed);
+    if (CVector3f::GetAngleDiff(forward, flat) < turn) {
+      mEditorProperties = flat.AsNormalized();
+      mLookAtOffset = offset.AsNormalized();
+      if (mLaserSweepStage == 0) {
+        mLaserSweepStage = 1;
+        PortFireLaserSweep(mgr, end);
+      } else {
+        mLaserSweepStage = -1;
+      }
+    } else {
+      mEditorProperties =
+          CVector3f::Slerp(forward, flat.AsNormalized(), CRelAngle::FromRadians(turn));
+      mLookAtOffset = CVector3f::Slerp(mLookAtOffset.AsNormalized(), offset.AsNormalized(),
+                                       CRelAngle::FromRadians(turn));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    PortDespawnProjectile(mgr);
+    mLaserSweepStage = -1;
+  }
+}
+
+// fn_75_1974 (the head's laser shot, 0x1974-0x1C0C): the laser sweep beam's info (data 0x81C)
+// becomes a CBeamInfo with the attributes 0x91 (0x199C fn_80239B64, the DOL's TLdrToBeamInfo;
+// 0x19A8 fn_75_1C0C copies it). A new id (0x19B4 AllocateUniqueId) gets the 0x6A8-byte
+// CPlasmaProjectile "LaserSweepBeam" (lbl_75_rodata_A0 + 0x245; 0x19D8 new, 0x1AA0 ctor): the
+// weapon at 0xE84, weapon type 2, the identity transform, material 0x14 (kMT_ProjectilePassthrough),
+// the converted sweep damage at 0xCF0, the area at 0x4, this actor as owner, a default
+// CWeaponAssetInfo (8 entries of -1, 0x19E4-0x1A20), not drawn owner first and the attributes
+// 0x21000. When it exists (0x1AB8): it fires (the vtable word 0x94, Fire with false; 0x1B2C) along
+// LookAt from the locator at 0xEF8 (0x1ACC GetLctrTransform) toward the given end with the up
+// vector (0x1B08), takes the chassis id at 0xEFA as its next draw node (its 0x12A, 0x1B48) and is
+// added (0x1B4C AddObject). Then the data's laser sweep sound (0x884) loops from the beam's
+// collision point (its 0x444-0x44C, CBeamProjectile::GetCurrentPos) with the 3D parameters 150.0f
+// and 0.1f (lbl_75_rodata_2C / lbl_75_rodata_48), flags 1, volume 0x7F and priority 0x23, the up
+// vector as direction, the area at 0x4, acoustics on and looped (0x1BD8 AddEmitter); its handle
+// goes to 0xF5C and the beam's id to 0xF02 (0x1BDC-0x1BE8). Last the effect states update
+// (0x1BF4 fn_75_1578), with or without the beam.
+// @ fn_75_1974
+void CSplitterCommandModule::PortFireLaserSweep(CStateManager& mgr, const CVector3f& end) {
+  const CBeamInfo beamInfo = TLdrToBeamInfo(mData.mLaserSweepBeamInfo, 0x91);
+  const TUniqueId beamId = mgr.AllocateUniqueId();
+  CPlasmaProjectile* beam = rs_new CPlasmaProjectile(
+      mLaserSweepProjectileInfo.Token(), rstl::string_l("LaserSweepBeam"), EWeaponType(2),
+      beamInfo, CTransform4f::Identity(), kMT_ProjectilePassthrough, mData.mLaserSweepDamage,
+      beamId, GetCurrentAreaId(), GetUniqueId(), CWeaponAssetInfo(), false, 0x21000);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (beam != nullptr) {  // 0x1AB8-0x1ABC
+    beam->Fire(CTransform4f::LookAt(GetLctrTransform(mLookAtSegment).GetTranslation(), end,
+                                    CVector3f::Up()),
+               mgr, false);
+    beam->SetNextDrawNode(mChassisId);
+    mgr.AddObject(*beam);
+    CAudioSys::C3DEmitterParmData parms(150.f, 0.1f, 1, 0x7F, 0x23);
+    parms.mPos = beam->GetCurrentPos();
+    parms.mDir = CVector3f::Up();
+    parms.mSfxId = static_cast< ushort >(mData.mSoundLaserSweep & 0xFFFF);  // 0x1BD0-0x1BD4
+    mLookAtSfxHandle = CSfxManager::AddEmitter(parms, GetCurrentAreaId().Value(), true, true,
+                                               CSfxManager::kMedPriority);
+    mLookAtTargetId = beamId;
+  }
+  PortUpdateEffectStates(mgr);
+}
+
+// fn_75_5A40 (the head's StateOver trigger, 0x5A40-0x5A50): a REL copy of the DOL's
+// CPatterned::GetAnimOver (0x80151990) - the animation state at 0x6B4 is kAS_Over (3).
+bool CSplitterCommandModule::StateOver(CStateManager& mgr, const CTriggerData& data) const {
+  return GetAnimOver(mgr, data);
+}
+
+// fn_75_55F8 (the head's ShouldLaserSweep trigger, 0x55F8-0x5610): the laser sweep stage at
+// 0xF34 is not -1 (0x55FC-0x5608: subfic -1, addi 1, or, srwi 31).
+// @ fn_75_55F8
+bool CSplitterCommandModule::ShouldLaserSweep(CStateManager&, const CTriggerData&) const {
+  return mLaserSweepStage != -1;
+}
+
 // The head's own effect-state update (fn_75_1578, 0x218) is ported as
 // CSplitterCommandModule::PortUpdateEffectStates.
 
@@ -394,9 +803,20 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
 , mPathFindSearch(nullptr, 3, pInfo.GetPathfindingIndex(), 1.f, 1.f, 0, CPFRegion::kRP_Center)
 // fn_75_6B08 @0x00006BC4: the CProjectileInfo (0x28) at 0xe5c, built from the data's laser pulse
 // projectile (+0x20) and damage (+0x514 of the runtime struct); fn_75_8 returns it.
-, mProjectileInfo(data.mLaserPulseProjectile, data.mLaserPulseDamage) {
-  // The retail constructor also builds the second CProjectileInfo at 0xe84 (its asset id is
-  // unknown), the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
+, mProjectileInfo(data.mLaserPulseProjectile, data.mLaserPulseDamage)
+// fn_75_6B08 @0x00006BD8-0x00006BEC: the second CProjectileInfo at 0xe84, built from the laser
+// sweep beam's weapon system (data +0x60, the beam info's second word) and a default damage
+// (fn_75_722C: weapon -1, every amount 0.0f, the sounds 0xFFFF); fn_75_1974 fires it.
+, mLaserSweepProjectileInfo(data.mLaserSweepBeamInfo.weaponSystem, CDamageInfo()) {
+  // fn_75_6B08 @0x00006DEC-0x00006E5C: the material filter - the include mask is the data word
+  // 0x3B (lbl_75_data_428, kMT_Solid), the exclude mask the data words 0x2F and 0x21
+  // (lbl_75_data_42C and lbl_75_data_430, kMT_CollisionActor and kMT_Character) and the type 3
+  // (0x00006E3C, the include/exclude one). Excluding kMT_Character keeps the docked head out of
+  // the chassis's collider list (CSortedListManager asks both actors' filters).
+  SetMaterialFilter(CMaterialFilter(CMaterialList(kMT_Solid),
+                                    CMaterialList(kMT_CollisionActor, kMT_Character),
+                                    CMaterialFilter::kFT_IncludeExclude));
+  // The retail constructor also builds the shield vulnerability at 0xeac (a copy of the base class's) and the derived state
   // at 0xa7c..0xd6b. They belong to the state machine and the render paths this milestone does
   // not enter, so the port keeps the parameter block only.
 }
@@ -730,7 +1150,6 @@ void StandInCEntityVirtual0x8C() { StandIn("the DOL's CEntity virtual at the vta
 
 // The DOL's CEntity virtual the projectile's despawn calls (the vtable word 0x24, 0x17C8-0x17DC
 // of fn_75_1790): the port has no name for it, so the call stays a once-logging shell.
-void StandInCEntityVirtual0x24() { StandIn("the DOL's CEntity virtual at the vtable word 0x24"); }
 
 // @ fn_75_184C
 // The command module's look-at (0x184C-0x1974): the target id (the u16 at 0xF02, 0x1874 lhz) is
@@ -782,55 +1201,68 @@ bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
 // 0x1A0-byte beam effect actor is created (0x1258), built (0x12A0 the CEntityInfo, 0x12B8 the
 // name, 0x12C4-0x1334 the rotation) and added to the manager (0x13B4 AddObject).
 void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
-  // 0x11A4-0x11B4: the beam effect's id (0xF68) is looked up.
-  CEntity* beam = mgr.ObjectById(mBeamEffectId);
-  // 0x11B8-0x11E0: the module's own transform (fn_75_10D0) is built and copied and, when the
-  // beam effect is there, set on it. The retail casts the object to a CActor without a check;
-  // the port's beam effect is never created (fn_75_11884 is a shell), so the cast is the only
-  // way to keep the call safe here.
+  // 0x11A4-0x11B4: the beam effect's id (0xF68) is looked up; the id only ever holds the beam
+  // effect, so the retail's unchecked use as one is kept.
+  CSplitterBeamEffect* beam = static_cast< CSplitterBeamEffect* >(mgr.ObjectById(mBeamEffectId));
+  // 0x11B8-0x11E0: the module's own transform (fn_75_10D0) is built and set on the beam.
   CTransform4f moduleTransform = GetTransform();
   PortModuleTransform(moduleTransform);
-  if (CActor* beamActor = TCastToPtr< CActor >(beam)) {
-    beamActor->SetTransform(moduleTransform);
+  if (beam != nullptr) {  // port limit: the retail calls SetTransform (0x11E0) with no test
+    beam->SetTransform(moduleTransform);
   }
   // 0x1200-0x1208: the gate (fn_75_58E8) decides whether the body runs.
   if (!PortChassisTimerRunning(mgr)) {
-    if (beam == nullptr) {
-      // 0x1494-0x14B4: with no beam effect there, the retail clears the id at 0xF68 (0x14A0),
-      // removes the sound emitter (0x14AC) and clears its handle at 0xF64 (0x14B4).
+    if (beam == nullptr) {  // 0x1434-0x1438
+      // 0x1494-0x14B4: the id at 0xF68 is cleared and the sound removed, its handle cleared.
       mBeamEffectId = kInvalidUniqueId;
-      StandInSfxRemoveEmitter();
+      CSfxManager::RemoveEmitter(mBeamSfxHandle);
+      mBeamSfxHandle = CSfxHandle();
+      return;
     }
-    // 0x143C-0x1490: with a beam effect there, the retail clears the beam's byte at 0x198
-    // (0x1440) and, when the beam's own float at 0x188 is zero, asks the manager to delete the
-    // object at 0xF68 (0x1480 DeleteObjectRequest). The port has no class for the beam effect
-    // actor, so it cannot read that float and the delete stays out.
+    // 0x143C-0x1490: the beam closes (0x198 cleared, 0x1440); once it is fully closed (its
+    // 0x188 is 0.0f, lbl_75_rodata_40, 0x1450-0x1460) it is deleted and the id cleared.
+    beam->SetOpening(false);
+    if (!beam->IsOpening() && beam->GetOpenFraction() == 0.f) {
+      mgr.DeleteObjectRequest(mBeamEffectId);
+      mBeamEffectId = kInvalidUniqueId;
+    }
     return;
   }
-  if (beam != nullptr) {
-    // 0x13EC-0x142C: the beam effect is already there: its byte at 0x198 is set (0x13F8) and
-    // the sound emitter is updated (0x142C).
-    StandInSfxUpdateEmitter();
-    return;
+  if (beam == nullptr) {  // 0x120C-0x1210
+    // 0x1214-0x1224: the base's field at 0x3D0 (its copy of the patterned info's detection
+    // range) must be above zero.
+    if (GetDetectionRange() <= 0.f) {
+      return;
+    }
+    // 0x1230-0x1244: a fresh id, kept at 0xF68. 0x1248-0x1380: the beam effect is built with the
+    // CEntityInfo the retail makes at 0x12A0 (the area id, NullConnectionList, true and
+    // kInvalidEditorId), the name (0x12B8, the rodata string at 0xA0 + 0x230), the module
+    // transform, a texture height of 0x40 (0x136C), the data's angle (0x864) in radians wrapped
+    // to one turn (0x12C4-0x1334), the detection range as the length (0x1370) and the data's
+    // colours (0x868-0x874), cloud scale, fade-off size and open speed (0x878-0x880). It is
+    // added to the manager (0x13B4 AddObject) and its looped sound (the data's 0x890) starts at
+    // the head (0x13B8-0x13E8: volume 0x7F, the area, acoustics, looped, medium priority).
+    mBeamEffectId = mgr.AllocateUniqueId();
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true,
+                           kInvalidEditorId);
+    const rstl::string name = rstl::string_l("Splitter Beam Effect");
+    const SLdrUnknownStruct42& cone = mData.mUnknown9EC51FE4;
+    beam = new CSplitterBeamEffect(mBeamEffectId, info, name, moduleTransform, 0x40,
+                                   PortWrapTurn(cone.angle * 0.017453292f), GetDetectionRange(),
+                                   cone.cloudColor1, cone.cloudColor2, cone.addColor1,
+                                   cone.addColor2, cone.cloudScale, cone.fadeOffSize,
+                                   cone.openSpeed);
+    mgr.AddObject(beam);
+    // 0x13BC-0x13CC: the sound word at 0x890, its low half (clrlwi r4, r0, 16).
+    mBeamSfxHandle = CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundScanning & 0xFFFF),
+                                             GetTranslation(), 0x7F, GetCurrentAreaId().Value(),
+                                             true, true, CSfxManager::kMedPriority);
   }
-  // 0x1214-0x1224: the base's field at 0x3D0 (its copy of the patterned info's detection range)
-  // must be above zero.
-  if (GetDetectionRange() <= 0.f) {
-    return;
-  }
-  // port limit: the retail allocates a fresh id here (0x1230) and keeps it at 0xF68 (0x1244)
-  // before it creates the actor. The host has no class for that actor, so the port allocates no
-  // id: an id with no object behind it would be allocated again every frame and would eat the
-  // manager's object ids.
-  // 0x1248-0x13B4: the beam effect actor (0x1A0 bytes) is created with the CEntityInfo the
-  // retail builds at 0x12A0 (the area id, NullConnectionList, true and kInvalidEditorId), the
-  // name (0x12B8, the rodata string at 0xA0 + 0x230) and the rotation (0x12C4-0x1334: the
-  // data's angle at 0x864 times one degree in radians), and it is added to the manager. The host
-  // has no class for that actor, so the creation and the add stay a once-logging shell.
-  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId);
-  const rstl::string name = rstl::string_l("Splitter Beam Effect");
-  const float angle = mData.mUnknown9EC51FE4.angle * 0.017453292f;
-  StandInFn_75_11884(info, name, angle);
+  // 0x13EC-0x142C: the beam opens (0x198 set, 0x13F8) and the sound follows the head, facing
+  // along its Y column (0x13FC-0x142C UpdateEmitter, volume 0x7F).
+  beam->SetOpening(true);
+  CSfxManager::UpdateEmitter(mBeamSfxHandle, GetTranslation(), GetTransform().GetColumn(kDY),
+                             0x7F);
 }
 
 // fn_75_1578 (the head's effect-state update, 0x1578-0x178C): the anim data (the model data at
@@ -855,6 +1287,43 @@ void CSplitterCommandModule::PortUpdateEffectStates(CStateManager& mgr) {
   }
   AnimationData()->SetEffectState(rstl::string_l("AlertEye"), alertEye, mgr);
   AnimationData()->SetEffectState(rstl::string_l("LaserMuzzle"), laserMuzzle, mgr);
+}
+
+// fn_75_5D50 (0x5D50-0x5DE0): the head's own vulnerability copy at 0xEAC takes the base's again
+// (0x5D6C GetDamageVulnerability, 0x5D78 fn_75_5B9C, the REL copy of the CDamageVulnerability
+// assignment); the port keeps no copy, the head's vulnerability slot (fn_75_616C) returns the
+// base's, so there is nothing to copy. The head becomes orbitable (0x5D88
+// SetVisorOrbitableFlags 0xF, true); with the shield state at 0xEDC at 2 (0x5D90 cmpwi) the timer
+// at 0xF1C is zeroed (0x5DA0); the shield state and the timer at 0xF18 are zeroed (0x5DB4,
+// 0x5DBC) and the effect states are updated (0x5DC0 fn_75_1578).
+void CSplitterCommandModule::PortResetShield(CStateManager& mgr) {
+  SetVisorOrbitableFlags(static_cast< CVisorParameters::EVisorOrbitableFlags >(0xF), true);
+  if (mShieldState == 2) {
+    mCountupTimerB = 0.f;
+  }
+  mShieldState = 0;
+  mCountupTimerA = 0.f;
+  PortUpdateEffectStates(mgr);
+}
+
+// fn_75_42F8 (the head's LostChassisReaction state, 0x42F8-0x4438). Activate (0x4330): the
+// animation state is kAS_Ready (0x4334) and the flag byte 0xF6A's 0x20 bit is set (0x433C rlwimi).
+// Update (0x4348): the head turns (fn_75_2994, still a stand-in) and, when CTryCommand::ShouldRetry
+// (the host's CAnimationState::CanIssueCommand) allows body state 6 (kAS_KnockBack, 0x4354-0x4360),
+// a knock-back command along the head's translation with severity 2 goes out
+// (lbl_75_data_5B8, 0x4364-0x43C4). Deactivate (0x441C): the animation state is kAS_NotReady.
+void CSplitterCommandModule::LostChassisReaction(CStateManager& mgr, EStateMsg msg, float) {
+  if (msg == kStateMsg_Activate) {
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    mAutoDestructFlags |= 0x20;
+  } else if (msg == kStateMsg_Update) {
+    StandIn("fn_75_2994 (the head's turn, 0x24C)");
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCKnockBackCmd(GetTranslation(), pas::kS_Two));
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  }
 }
 
 // fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
@@ -905,12 +1374,16 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
 void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   CEntity* projectile = mgr.ObjectById(mLookAtTargetId);
   if (projectile != nullptr) {
-    StandInCEntityVirtual0x24();
-    StandInSfxRemoveEmitter();
+    // The vtable word 0x90 with false (0x17C8-0x17DC): the DOL's CPlasmaProjectile::ResetBeam, a
+    // host virtual. The id only ever holds the laser sweep beam (fn_75_1974).
+    if (CBeamProjectile* beam = TCastToPtr< CBeamProjectile >(projectile)) {
+      beam->ResetBeam(mgr, false);
+    }
+    CSfxManager::RemoveEmitter(mLookAtSfxHandle);
     mgr.DeleteObjectRequest(mLookAtTargetId);
   }
   mLookAtTargetId = kInvalidUniqueId;
-  mLookAtSfxHandle = 0;
+  mLookAtSfxHandle.Clear();
   if (GetFlag26()) {
     PortUpdateEffectStates(mgr);
   }
@@ -1031,9 +1504,12 @@ void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
     break;
   }
   case kSM_AreaLoaded: { // "XAND" (0x65CC)
-    // 0x6724-0x6758: the value the retail reads out of the manager's area list is written to
-    // 0xD6C (the port has no name for that list, so the write stays out) and the module's own
-    // call runs (0x6758 fn_75_3A8C, ported).
+    // 0x6724-0x6754: the path area of the head's current area (the world at the manager's
+    // 0x1604, its area list at 0x24 indexed by the area id at 0x4, the area's post-constructed
+    // data at 0x104 and its path area at 0xEC) goes into the path search at 0xD6C; then the
+    // module's own call runs (0x6758 fn_75_3A8C, ported).
+    mPathFindSearch.SetArea(
+        mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
     PortUpdateConnectedObject(mgr);
     break;
   }

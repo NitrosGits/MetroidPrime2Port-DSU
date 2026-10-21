@@ -75,15 +75,17 @@ protected:
   float x854_;
   float x858_;
   float x85c_;
-  bool mAlignToFloor : 1;
-  bool mHasAlignSurface : 1;
-  bool mPlayerObstructed : 1;
-  bool mDisableMove : 1;
-  bool x860_27_ : 1;
-  bool x860_28_ : 1;
-  bool x860_29_ : 1;
-  bool x860_30_ : 1;
-  bool x861_24_ : 1;
+  // The retail's flag bytes 0x860/0x861 (big-endian, 0x860 is the word's high byte). The masks are
+  // the retail's (docs/module-analysis/WallCrawler.md); a bit N of a word is 1u << (31 - N).
+  bool mAlignToFloor : 1;     // 0x860 0x80
+  bool mHasAlignSurface : 1;  // 0x860 0x40
+  bool mPlayerObstructed : 1; // 0x860 0x20
+  bool mDisableMove : 1;      // 0x860 0x10
+  bool x860_28_ : 1;          // 0x860 0x08 tumbling: no align surface, rolling forward
+  bool x860_29_ : 1;          // 0x860 0x04 on a surface, but up is still off its normal
+  bool x860_30_ : 1;          // 0x860 0x02 the kART_Six additive reaction is playing
+  bool x860_31_ : 1;          // 0x860 0x01 the kART_Five additive reaction is playing
+  bool x861_24_ : 1;          // 0x861 0x80 bending enabled (the ctor sets it)
 #ifdef TARGET_PC
   // CCollisionSurface::GetPlane returns by value, so GetConstraintPlane's reference needs storage
   // that outlives the call (returning the temporary compiled to a null reference).

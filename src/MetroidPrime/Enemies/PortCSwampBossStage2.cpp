@@ -120,13 +120,13 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mSwooping(false)
 , mCircleCounting(false)
 , mSwoopSelected(false)
-, mBigHit(false)
+, mUnusedC77Bit0(false)
 , mReelEffect(false)
-, mSuppressWaterSfx(false)
-, mBlowPushed(false)
+, mTargetEffectsOn(false)
+, mDarkFlyerForm(false)
 , mBlowing(false)
-, mWindPending(false)
-, mBubbleCreated(false)
+, mBlowWindowOpen(false)
+, mWindEffectPending(false)
 , mBubbleTelegraphed(false)
 , mAdditiveAnim(-1)
 , mAdditiveWeight(0.f)
@@ -281,13 +281,22 @@ CCollisionActor* CSwampBossStage2::CollisionActor(CStateManager& mgr, int idx) c
       mgr.ObjectById(mCollisionMgr->GetCollisionDescFromIndex(idx).GetCollisionActorId()));
 }
 
+// @ fn_79_66DC: the collision actor's position. Retail reads CActor::mPosition (+0x54) and
+// falls back to the zero vector (0x6724 loads sZeroVector), not to the boss's own position.
+// The zero-vector arm is retail's "the collision actor is gone" case: the manager and its ten
+// actors are built with the boss (fn_79_6E68) and live as long as it does, and every id in the
+// manager's descriptions resolves, so no shipped case reaches it - a run only ever takes the
+// arm that copies the actor's position.
 CVector3f CSwampBossStage2::CollisionActorPosition(const CStateManager& mgr, int idx) const {
   if (mCollisionMgr.null() || idx >= mCollisionMgr->GetNumCollisionActors()) {
-    return GetTranslation();
+    return CVector3f::Zero();
   }
   const CActor* act = TCastToConstPtr< CActor >(
       mgr.GetObjectById(mCollisionMgr->GetCollisionDescFromIndex(idx).GetCollisionActorId()));
-  return act ? act->GetTranslation() : GetTranslation();
+  if (!act) {
+    return CVector3f::Zero();
+  }
+  return act->GetTranslation();
 }
 
 // @ fn_79_6054: the centre actor's position, or the origin when the chain has none.
@@ -400,16 +409,26 @@ void CSwampBossStage2::SetupCollisionManager(CStateManager& mgr) {
   // fn_79_6B78: light phase uses the patterned vulnerability, dark phase the Ing-possessed one.
   mLightVulnerability = *GetDamageVulnerability();
   mDarkVulnerability = LdrToDamageVulnerability(mIngPossessionData.ingVulnerability);
+  SetupCollisionJoints(mgr);
+  // The body itself collides with nothing; only its joints do.
+  AddMaterial(kMT_Unknown54, kMT_Scannable, mgr);
+  SetMaterialFilter(CMaterialFilter(CMaterialList(), CMaterialList(0x00000000FFFFFFFF),
+                                    CMaterialFilter::kFT_Never));
+}
+
+// @ fn_79_6B78: the per-joint setup: every joint copies the boss's health info, keeps the light
+// phase's vulnerability, holds the collision actor HP (500) and excludes the platforms
+// (data_418); the four growth joints are also orbitable and seeker targets. It runs when the
+// boss activates, so every run that reaches the fight exercises it.
+void CSwampBossStage2::SetupCollisionJoints(CStateManager& mgr) {
   for (int i = 0; i < mCollisionMgr->GetNumCollisionActors(); ++i) {
     CCollisionActor* act = CollisionActor(mgr, i);
     if (!act) {
-      continue;
+      break;
     }
     act->SetDamageVulnerability(mLightVulnerability);
     *act->HealthInfo() = *HealthInfo();
     act->HealthInfo()->SetHP(mCollisionActorHP);
-    // fn_79_6B78: each joint keeps its own filter and also excludes platforms (data_418); the four
-    // growths are orbitable and seeker targets.
     CMaterialFilter filter = act->GetMaterialFilter();
     filter.ExcludeList().Add(kMT_Platform);
     act->SetMaterialFilter(filter);
@@ -417,10 +436,6 @@ void CSwampBossStage2::SetupCollisionManager(CStateManager& mgr) {
       act->AddMaterial(kMT_Orbit, kMT_SeekerTarget, mgr);
     }
   }
-  // The body itself collides with nothing; only its joints do.
-  AddMaterial(kMT_Unknown54, kMT_Scannable, mgr);
-  SetMaterialFilter(CMaterialFilter(CMaterialList(), CMaterialList(0x00000000FFFFFFFF),
-                                    CMaterialFilter::kFT_Never));
 }
 
 // @ fn_79_25C0
@@ -470,9 +485,16 @@ void CSwampBossStage2::SetGrowthActive(CStateManager& mgr, int idx, bool active)
   }
 }
 
-// @ fn_79_24E0: growths are only targetable while the player is in front of the boss, and the boss
-// itself gains or drops its orbit/target/seeker materials with that side. Retail calls this from
-// Reel (fn_79_7870) only.
+// @ fn_79_24E0: the growths are only targetable while the player is BEHIND the boss, and the boss
+// itself gains or drops its orbit/target/seeker materials with that side. Retail takes the dot of
+// (player - boss) with the transform's forward column (0x28/0x38/0x48) and compares it with
+// rodata_9C; `srwi r31,r0,31` (0x255C) turns that into the "playerBehind" flag, which goes
+// straight to fn_79_5C74: it activates each live growth while the flag is set and deactivates all
+// of them when it is clear, and the material removal follows the same flag. Retail calls this
+// from Reel (fn_79_7870) only.
+// Port limit: the retail reads the player straight out of the state manager (mgr+0x14FC) with no
+// null test, but the host's GetPlayer(0) can be null in a frame without a player, so the port
+// keeps the guard.
 void CSwampBossStage2::UpdatePlayerSideMaterials(CStateManager& mgr) {
   const CPlayer* player = mgr.GetPlayer(0);
   if (!player) {
@@ -613,7 +635,7 @@ void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
   if (heightAboveWater > 0.f) {
     if (heightAboveWater < 4.f) {
       // Hovering just over the water: start the splash sounds (the second one loops and is kept).
-      if (!hasEmitter && !mBlowPushed) {
+      if (!hasEmitter && !mDarkFlyerForm) {
         const CVector3f forward = GetTransform().GetForward();
         PlayCustomSound(pos, forward, mData.audioPlaybackParms, false);
         mWaterSfx = PlayCustomSound(pos, forward, mData.audioPlaybackParms_0x2b3c923a, true);
@@ -665,12 +687,12 @@ void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
     // Left the surface: stop the loop and splash out.
     CSfxManager::RemoveEmitter(mWaterSfx);
     mWaterSfx = CSfxHandle::NullHandle();
-    if (!mBlowPushed) {
+    if (!mDarkFlyerForm) {
       PlayCustomSound(pos, GetTransform().GetForward(), mData.audioPlaybackParms_0xc05d5c7a,
                       false);
     }
   }
-  if (mBlowPushed && mWaterSfx) {
+  if (mDarkFlyerForm && mWaterSfx) {
     CSfxManager::RemoveEmitter(mWaterSfx);
     mWaterSfx = CSfxHandle::NullHandle();
   }
@@ -699,7 +721,12 @@ void CSwampBossStage2::AddAdditiveFlinch(float amount) {
   mPendingFlinch = rstl::max_val(mPendingFlinch, rstl::min_val(amount / 20.f, 1.f));
 }
 
-// fn_79_1E40: (re)create the bubble telegraph generator and put it at the water surface.
+// @ fn_79_1E40: (re)create the bubble telegraph generator and put it at the water surface. The
+// position keeps the caller's X/Y and takes the water height as Z (0x1FC8); the generator's
+// *global* translation is set (vtable +0x20 = CParticleGen::SetGlobalTranslation), and the old
+// generator is deleted (vtable +0x08 = the deleting destructor, 0x1F40).
+// A run that reached the dark phase (the anim event 0x28) took the body; the asset guard is the
+// "this area has no bubble effect" case, which the shipped area never takes.
 void CSwampBossStage2::StartBubbleTelegraph(CStateManager& mgr, const CVector3f& pos) {
   if (mData.bubbleTelegraphEffect == kInvalidAssetId) {
     return;
@@ -708,11 +735,14 @@ void CSwampBossStage2::StartBubbleTelegraph(CStateManager& mgr, const CVector3f&
       gpSimplePool->GetObj(SObjectTag('PART', mData.bubbleTelegraphEffect)),
       CElementGen::kMOT_Normal, CElementGen::kOSF_One);
   mBubbleGen->SetParticleEmission(true);
-  mBubbleGen->SetTranslation(CVector3f(pos.GetX(), pos.GetY(), mWaterZ));
+  mBubbleGen->SetGlobalTranslation(CVector3f(pos.GetX(), pos.GetY(), mWaterZ));
 }
 
-// fn_79_2A84: the splash shockwave, on the locator's X/Y at the centre actor's height. The
+// @ fn_79_2A84: the splash shockwave, on the locator's X/Y at the centre actor's height. The
 // CShockWaveInfo is the phase's splashShockWave loader struct (fn_79_2C20 is that conversion).
+// The transform keeps the boss's rotation and takes the new translation (0x2AC0, 0x2AF0).
+// A run that reached the dark phase (the anim event 0x23) took the body; the asset guard is the
+// "this area has no shock wave" case, which the shipped area never takes.
 void CSwampBossStage2::SpawnShockWave(CStateManager& mgr, const CVector3f& pos) {
   if (mData.splashShockWave.shockWaveEffect == kInvalidAssetId) {
     return;
@@ -727,7 +757,10 @@ void CSwampBossStage2::SpawnShockWave(CStateManager& mgr, const CVector3f& pos) 
   mgr.AddObject(wave);
 }
 
-// fn_79_3578
+// @ fn_79_3578: the wind effect on the wind node. The direction is flat (the Z component is the
+// constant 0 of rodata_9C, 0x35E8) and the effect sits 50 units short of the node (0x3614).
+// The dark phase's Blow state calls it four times in a run; the wind node is there, so the body
+// runs and the "no wind node" arm is the one the shipped area never takes.
 void CSwampBossStage2::SpawnWindEffect(CStateManager& mgr) {
   const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mWindNode));
   if (!node) {
@@ -750,7 +783,10 @@ void CSwampBossStage2::SpawnWindEffect(CStateManager& mgr) {
   mgr.AddObject(explosion);
 }
 
-// fn_79_3774: the wing damage burst, on the growth's own locator (rodata_50) at model scale.
+// @ fn_79_3774: the wing damage burst, on the growth's own locator (rodata_50) at model scale.
+// The burst runs when a growth dies, which a beam hit on a growth did four times in a run.
+// The index guard is a port limit (the host indexes a C array; the retail trusts the growth
+// slot) and never fires.
 void CSwampBossStage2::SpawnWingDamageEffect(CStateManager& mgr, int idx) {
   if (idx < 0 || idx >= ARRAY_SIZE(kGrowthLocators)) {
     return;
@@ -788,17 +824,23 @@ void CSwampBossStage2::ReadWaterAndNodes(CStateManager& mgr) {
   }
 }
 
-// fn_79_2E84: pick the chain node to swoop at. Retail crosses the player-to-centre line with up
+// @ fn_79_2E84: pick the chain node to swoop at. The dark phase's DarkLurk calls it every frame
+// it steers: a run took both the dive arm (attack 5) and the plain arm, and the "too close to
+// the node nearest the player" skip (0x30AC) as well.
+// Retail crosses the player-to-centre line with up
 // (fn_79_3314, the host's CVector3f::Cross) to walk the chain round to the far side, then keeps the
-// connected node that is farthest from the player with a random spread.
+// connected node that is farthest from the boss with a random spread (0x30F0: the distance is
+// measured from the boss, not from the player). While diving, a candidate closer to the node
+// nearest the player than the threshold is skipped (0x30AC, threshold 0x924 = the loader's
+// unknown_0x9e116385).
 void CSwampBossStage2::PickSwoopTarget(CStateManager& mgr) {
   const CPlayer* player = mgr.GetPlayer(0);
   if (!player) {
     return;
   }
+  const CActor* nearest = TCastToConstPtr< CActor >(mgr.GetObjectById(NearestNodeToPlayer(mgr)));
   CActor* origin = nullptr;
   if (mAttackType == 5) {
-    const CActor* nearest = TCastToConstPtr< CActor >(mgr.GetObjectById(NearestNodeToPlayer(mgr)));
     const CVector3f centre = CenterPosition(mgr);
     const CVector3f across =
         CVector3f::Cross(player->GetTranslation() - centre, CVector3f::Up());
@@ -832,13 +874,14 @@ void CSwampBossStage2::PickSwoopTarget(CStateManager& mgr) {
     if (!node) {
       continue;
     }
-    // rodata: while diving, nodes too close to the current one are not worth swooping at.
-    if (mAttackType == 5 &&
-        (node->GetTranslation() - origin->GetTranslation()).Magnitude() <
+    // rodata: while diving, nodes too close to the node nearest the player are not worth
+    // swooping at (0x30AC).
+    if (mAttackType == 5 && nearest &&
+        (node->GetTranslation() - nearest->GetTranslation()).Magnitude() <
             mData.unknown_0x9e116385) {
       continue;
     }
-    const float score = (player->GetTranslation() - node->GetTranslation()).Magnitude() +
+    const float score = (GetTranslation() - node->GetTranslation()).Magnitude() +
                         mNodeSpacing * 0.5f * mgr.Random()->Float();
     if (score > bestScore) {
       mSwoopTarget = node->GetTranslation();
@@ -1115,6 +1158,9 @@ float CSwampBossStage2::RecentDamage() const {
   return sum;
 }
 
+// @ fn_79_33BC: the damage memory ages by dt; an entry that reaches zero is erased (0x3410).
+// A run that hit the boss with the beam filled the memory and the entries then reached zero and
+// were erased, so both arms ran.
 void CSwampBossStage2::DecayDamageMemory(float dt) {
   rstl::list< SDamageMemory >::iterator it = mDamageMemory.begin();
   while (it != mDamageMemory.end()) {
@@ -1432,10 +1478,10 @@ void CSwampBossStage2::BecomeDarkFlyer(CStateManager& mgr, EStateMsg msg, float 
     mBubbleTelegraphed = false;
     mOvipositorHealth = CurrentPhase().health;
     mPendingFlinch = 0.f;
-    mBlowPushed = true;
+    mDarkFlyerForm = true;
   } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    mBlowPushed = false;
+    mDarkFlyerForm = false;
   }
 }
 
@@ -1712,7 +1758,7 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
       BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(pas::kS_One));
     }
-    if (mWindPending) {
+    if (mBlowWindowOpen) {
       if (CPlayer* player = mgr.GetPlayer(0)) {
         const CVector3f rel = player->GetAimPosition(mgr, 0.f) - mHeadPos;
         const CVector3f forward = GetTransform().GetForward();
@@ -1727,7 +1773,7 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
             player->DisableControls(mgr, 0xe2, GetUniqueId(), 1.f, CGameHint::kBHT_None);
           }
           // Retail tests the pending flag again here, so the push is always the blow push.
-          const float push = mWindPending ? mData.blowPush : mData.breakStunDamage;
+          const float push = mBlowWindowOpen ? mData.blowPush : mData.breakStunDamage;
           player->ApplyImpulseWR(forward * (push * player->GetMass()), CAxisAngle::Identity());
         }
         if (mBlowing) {
@@ -1740,20 +1786,20 @@ void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
         }
       }
     }
-    if (mBlowing && !mWindPending) {
+    if (mBlowing && !mBlowWindowOpen) {
       if (CPlayer* player = mgr.GetPlayer(0)) {
         player->PopSustainedDamage();
       }
       mBlowing = false;
     }
-    if (mBubbleCreated) {
+    if (mWindEffectPending) {
       SpawnWindEffect(mgr);
-      mBubbleCreated = false;
+      mWindEffectPending = false;
     }
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
-    mBubbleCreated = false;
-    mWindPending = false;
+    mWindEffectPending = false;
+    mBlowWindowOpen = false;
     mBlowing = false;
   } else if (msg == kStateMsg_Deactivate) {
     if (mBlowing) {
@@ -1802,9 +1848,9 @@ void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
     RequestMove(CenterPosition(mgr));
     UpdatePlayerSideMaterials(mgr);
     // The same bit also holds the target effects on; they come up a second into the reel.
-    if (!mSuppressWaterSfx && StateMachineState().GetTime() > 1.f) {
+    if (!mTargetEffectsOn && StateMachineState().GetTime() > 1.f) {
       SetGrowthTargetEffects(mgr, true);
-      mSuppressWaterSfx = true;
+      mTargetEffectsOn = true;
     }
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1817,7 +1863,7 @@ void CSwampBossStage2::Reel(CStateManager& mgr, EStateMsg msg, float dt) {
     BodyController()->SetTurnSpeed(BodyController()->GetTurnSpeed() * 0.125f);
     SendScriptMsgs(kSS_InternalState10, mgr, kInvalidUniqueId, kSM_None);
     mRepeller.SetActive(false);
-    mSuppressWaterSfx = false;
+    mTargetEffectsOn = false;
     for (int i = 0; i < mGrowthBroken.size(); ++i) {
       mGrowthBroken[i] = false;
     }
@@ -2158,13 +2204,13 @@ void CSwampBossStage2::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& 
     }
     break;
   case 0x29:
-    mBubbleCreated = true;
+    mWindEffectPending = true;
     break;
   case 0x2a:
-    mWindPending = true;
+    mBlowWindowOpen = true;
     break;
   case 0x2b:
-    mWindPending = false;
+    mBlowWindowOpen = false;
     break;
   case 0x2d: { // flinch / stun sounds at this locator
     const CVector3f forward = GetTransform().GetForward();

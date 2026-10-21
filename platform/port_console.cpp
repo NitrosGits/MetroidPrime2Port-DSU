@@ -37,8 +37,10 @@
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
+#include "MetroidPrime/Weapons/CGunWeapon.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CEntity.hpp"
 #include "MetroidPrime/CEntityInfo.hpp"
@@ -509,6 +511,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
+      "shoot <id> [charged] [d]    fire the beam in hand at an actor from d (3) units: a real projectile\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
@@ -1454,13 +1457,58 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   const std::string before = machine->HasState() && machine->GetName() != nullptr ? machine->GetName() : "?";
   machine->SetState(mgr, *patterned, rstl::string_l(std::string(args[2]).c_str()));
   const char* after = machine->HasState() ? machine->GetName() : nullptr;
-  // An unknown name leaves the machine where it was; say so rather than report a no-op.
+  // An unknown name leaves the machine where it was; say so rather than report a no-op. An FSM2
+  // evaluates the new state's transitions inside SetState, so a state that was entered and left
+  // at once reads as another, new name: report that as entered.
+  if (after != nullptr && std::string_view(after) != args[2] && before != after) {
+    out += "fsm " + before + " -> " + Str(args[2]) + " (entered; now " + after + ")\n";
+    return;
+  }
   if (after == nullptr || std::string_view(after) != args[2]) {
     Fail("state '" + Str(args[2]) + "' not entered (unknown name?); now " +
          (after != nullptr ? after : "?"));
     return;
   }
   out += "fsm " + before + " -> " + after + '\n';
+}
+
+// shoot <id> [charged] [dist]: fire the player's current beam from dist units (default 3) away
+// straight at an actor's aim position (a joint collision actor's own position), homing on it. The
+// shot is a real CEnergyProjectile with the beam's damage, so a module that only counts projectile
+// hits (a weak-spot joint's last toucher) sees it, unlike `damage`.
+void CmdShoot(CStateManager& mgr, const Args& args, std::string& out) {
+  CEntity* ent = args.size() >= 2 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  CPlayer* player = mgr.GetPlayer(0);
+  CGunWeapon* beam = player != nullptr && player->GetPlayerGun() != nullptr
+                         ? player->GetPlayerGun()->PortCurrentBeam()
+                         : nullptr;
+  if (actor == nullptr || beam == nullptr) {
+    Fail("usage: shoot <id> [charged] [dist]   (id must be an actor; the player needs a beam)");
+    return;
+  }
+  CPlayerState::EChargeStage stage = CPlayerState::kCS_Normal;
+  float dist = 3.f;
+  for (size_t i = 2; i < args.size(); ++i) {
+    if (args[i] == "charged") {
+      stage = CPlayerState::kCS_Charged;
+    } else if (!ParseFloat(args[i], dist) || dist <= 0.f) {
+      Fail("shoot: options are `charged` and a distance > 0");
+      return;
+    }
+  }
+  const CVector3f target = actor->GetAimPosition(mgr, 0.f);
+  CVector3f dir = target - player->GetTranslation();
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, 1.f, 0.f);
+  const CVector3f start = target - dir * dist;
+  TUniqueId shot = kInvalidUniqueId;
+  beam->Fire(beam->GetProjectileToken(stage), false, 0.f, stage,
+             CTransform4f::LookAt(start, target, CVector3f::Up()), mgr, actor->GetUniqueId(), 0,
+             CSfxManager::kInternalInvalidSfxId, &shot, nullptr, 1.f, 1.f);
+  char line[128];
+  std::snprintf(line, sizeof(line), "shot u%04x at u%04x from %.1f units%s\n", shot.value,
+                actor->GetUniqueId().value, dist, stage == CPlayerState::kCS_Charged ? " (charged)" : "");
+  out += line;
 }
 
 // place <id> <x> <y> <z> | place <id> player [dist]: move an actor (keeping its rotation), to a
@@ -2041,6 +2089,7 @@ constexpr SCommand kCommands[] = {
     {"fsm", CmdFsm, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
+    {"shoot", CmdShoot, true},
     {"visor", CmdVisor, true},
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},

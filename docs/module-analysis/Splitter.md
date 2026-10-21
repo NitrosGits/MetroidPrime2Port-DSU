@@ -991,6 +991,8 @@ the log's.
 
 **What the collision actor manager changes (2026-10-21)**: with fn_75_A4E4 ported the patrol stalled because the head sat inside the chassis: the port left the segment at 0xCC8 at 0, so fn_75_ACEC put the head (a solid actor) at the chassis's origin and the chassis's move collided with it every frame (before A4E4 the same overlap shoved the chassis down through the world, which only looked like a walk). The retail ctor sets 0xCC8 to the segment of "attach_LCTR" (0x0000F98C) and 0xCC9 to "target_LCTR" (0x0000F9C0), and copies 0xCC8 to 0xC72 (0x0000F9D0); with 0xCC8 set the chassis walks its waypoints on the floor and fn_75_8EC8, fn_75_523C and fn_75_11884 run again.
 
+**The chassis's slide through the floor (2026-10-21)**: with 0xCC8 set the chassis still left the floor around frame 900 of the area-5 run (z -142 to -1749 in ~240 frames, velocity z 0, on the ground): the ground mover resolved it out of its own docked head (0286) every frame - the head was in the chassis's collider list because the port's head kept the flyer's default filter. The retail head ctor sets its filter at 0x00006DEC-0x00006E5C: include the data word 0x3B (kMT_Solid), exclude 0x2F and 0x21 (kMT_CollisionActor, kMT_Character), type 3; `CSortedListManager::BuildNearList` asks both filters, so the head's exclusion of kMT_Character keeps it out. With it the chassis stays at z -142.21 for 7400 frames and patrols 0291, 029e, 029a, 0294, 0288, 0281, 0298, 0287. Waypoint 0281 is an ordinary patrol point (no message reaches the chassis from it); it is not a retail teleport.
+
 #### The chassis's Patrol state, fn_75_DCFC (0xDCFC-0xDDF8) - ported 2026-10-21
 
 | what | retail | port |
@@ -1046,13 +1048,11 @@ yet (0x0000F11C-0x0000F130).
 | the collision actors | every collision actor of the manager is walked (0x0000A774) and looked up; the one named "target_LCTR" (the rodata string at 0x34C) gives its id to the chassis's 0xCC2 (0x0000A7E8) and the reflected vulnerability (0x0000A814) | the same: `mTargetActorId` and `SetDamageVulnerability` |
 | the material filter | the include mask has the bit 59 (`kMT_Solid`), the exclude mask the bits 47, 28 and 32 (`kMT_CollisionActor`, `kMT_AIPassthrough` and `kMT_Player`) and the type is 3 (the include/exclude one) (0x0000A844-0x0000A8D0) | the same: `SetMaterialFilter` with the two masks |
 
-**The port's own limits in this body**: the retail also scales the "target_LCTR" collision actor
-(the model data's 0x0, 0x4 and 0x8 times the rodata's 1.5f, 0x0000A7F0-0x0000A810) and the host
-has no setter for the collision actor's scale, so that part is out. The module's own call
-(fn_75_A37C, 0x0000A840) stays a shell. The retail's cylinder builder takes the radius as a
-vector and one more argument (the word 1) that the host's `SphereSubdivideCollision` does not
-have; the port gives it the radius 0.05f, the max separation 1.0f and the between-joints
-orientation.
+**Corrected 2026-10-21** (marked `// @ fn_75_A4E4`): the four legs are **OBB boxes**, not sphere chains - each is `OBBAutoSizeCollision` (0x0000A6A8) from the knee to the ankle with the bounds (0.8f, 0.8f, 0.8f) (the table's third word 0x3F4CCCCD, 0x0000A68C-0x0000A6A0), the orientation 1 (`kOT_BetweenJoints`) and the knee's name; the earlier "radius 0.05f" was a misread. Every collision actor (not only "target_LCTR") gets `ImmuneRicochetVulnerability` (0x0000A814, the host's `ReflectVulnerabilty`); the name test (fn_75_3678, the REL's `rstl::string ==`) only adds the id at 0xCC2 and the "target_LCTR" actor's 0x35C-0x364 = the model data's scale times 1.5f (0x0000A7EC-0x0000A810, the host's `SetExtendedTouchBounds`). REL copies cited, not ported: fn_75_7B1C (vector reserve), fn_75_38B0 (description copy), fn_75_3830 (push_back), fn_75_3970 (vector dtor).
+
+**fn_75_A37C (0x114) - ported 2026-10-21, marked**: every collision actor of 0xC68 that casts gets the chassis's health info (vtable 0x3C `GetHealthInfo` copied by fn_75_A490, the REL's `CHealthInfo` copy, into the actor's vtable 0x38 `HealthInfo`).
+
+Run (area-5 harness `/tmp/opencode/smoke/split853_run.sh`, 7440 chassis Thinks, 0 caught/reach-stub): one manager build, 6 actors given the vulnerability and the health, "target_LCTR" found once; the casts' null arms (the retail's own) do not run for actors the manager just made. The chassis holds z -142.21 the whole run with the OBB legs.
 
 #### The chassis's head placement, fn_75_ACEC (0xACEC-0xAFE8) - ported 2026-10-21
 
@@ -1083,11 +1083,7 @@ The retail's Patrol state calls this body (0x0000DDB8) with the chassis and the 
 | the face vector | with a safe magnitude (0x0000994C `IsMagnitudeSafe`) and a step direction other than 0 (0x00009958) the vector becomes the face vector - the step direction 1 negates it (0x000099A0), 2 negates its x (0x000099E8) and 3 negates its y (0x000099C8) - and the steering speed range becomes 1.0f and 1.0f (0x00009A04) | the same: `kSD_Backward` negates the vector, `kSD_Left` negates its x and `kSD_Right` negates its y, and `SetSteeringSpeedRange(1.f, 1.f)` |
 | the commands | the locomotion command with the move vector, the normalized face vector and the weight 1.0f (0x00009A1C-0x00009A70); otherwise the steering speed range becomes the chassis's 0xD0C (0x00009A78) and the command has the move vector, a zero face vector and the weight 1.0f (0x00009A8C-0x00009ADC) | the same: `CBCLocomotionCmd(move, face.AsNormalized(), 1.f)` and, in the other branch, `CBCLocomotionCmd(move, CVector3f::Zero(), 1.f)` with `SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed)` |
 
-**The port's own limit in this body**: the separation steering (fn_75_8EC8, 0x8EC8-0x915C) is
-still a shell. Its object list walk (the state manager's list at 0x830), the head's own check
-(the command module's chassis id at 0xEFA) and the DOL's `CSteeringBehaviors::Separation` (whose
-retail signature takes a radius vector the host's does not) are not ported, so the separation
-vector is zero and the first command of the body is never delivered.
+**fn_75_8EC8 (0x1D4) - ported 2026-10-21** (`PortSeparationVector`): the state manager's list at 0x830 is `kOL_ListeningAi` (the fifth `auto_ptr` of 0x808); every `CPatterned` other than the chassis in its area (the entity's 0x4), except a command module whose 0xEFA is valid (a docked head), gives `CSteeringBehaviors::Separation(*this, other's translation, 6.5f * scale.x)` (the mangled DOL name takes a float radius, the same as the host's); safe results are normalized and averaged. In the area-5 run the walk runs ~7 objects per call and skips the docked head every call, but no actor is ever inside the radius, so the sum/average arms and fn_75_986C's 0.5-weight command never run: **not marked**. fn_75_986C's `kSD_Left`/`kSD_Right` arms and fn_75_ACEC's no-head, head-gone, slerp and plain `SetTransform` arms also never ran (ACEC took the `LookAt` arm every frame): neither is marked.
 
 #### The head's own move, fn_75_2154 (0x2154-0x21FC) - ported 2026-10-21
 
@@ -1140,3 +1136,211 @@ Scanning and Patrol states were ported): neither gap closed. The run's scan time
 stays at zero - nothing in the module sends ACTN, the AFSM script does - so `fn_75_9520` keeps
 counting the fade up. The flag byte 0xD41's 0x01 bit is still unset, because only the shell
 `fn_75_ACEC` sets it, so `fn_75_AFE8` keeps the death timer idle. Both bodies stay unmarked.
+
+#### Detection and target selection: fn_75_523C, fn_75_5944, fn_75_E54C, fn_75_BE28 - ported 2026-10-21
+
+The head's Scanning state (fn_75_523C), its InDetectionRange trigger (fn_75_5944) and the
+chassis's HasTarget trigger (fn_75_E54C) and SelectTarget code (fn_75_BE28) were the live
+stand-ins that kept the fight in Scanning/Patrol. With them ported, the area-5 run goes
+head Scanning -> FaceTarget and chassis Patrol -> PathFind once the player comes into the
+head's cone. The path: Scanning's update asks InDetectionRange (the chassis's scan timer at
+0xD28 running, the base's range check, then a flattened dot with the head's Y column above the
+distance times the base's detection cosine); a hit, or the head's own 0x420 0x80 bit (set by ALRT),
+sets the chassis's 0x80 bit, which its ShotAt trigger reads. SelectTarget stores the player's
+id at 0xCC0 (so that field is the chassis's **target**, not a "sync" id; the header's name
+`mSyncId` stays), hands it to the line-of-sight tracker, starts the alerted sound when a head
+is docked, copies the four timers (fn_75_8EA4) and sends ATTK.
+
+Run evidence (three area-5 runs with temporary probes): every block of 523C ran (activate,
+update with the chassis alert and the slerp, deactivate); 5944 gave the early false (timer not
+running) and the true cone; E54C answered true; BE28 ran with a head only. Edges not seen:
+the head's own-flag shortcut (`hurt` on the head does not set the 0x80 bit; only ALRT does),
+the null-chassis and unsafe-column guards, 5944's false cone and its base-range false
+while the timer runs (the timer only starts once the player is close and in front). BE28's
+headless arm needs a detached head (the head's FaceTarget and later states are still stand-ins),
+so BE28 is not marked.
+
+What the next stand-ins are, in the order the run reaches them: the chassis's SetTargetDest
+(fn_75_BC70) and PathFind (fn_75_DC08), its Should* triggers (E2F0, E3A4, E098, E1D0, E0B0) and
+HasRetreatPoint (E56C), FindBestDodgeDirection (B2A0), and the head's FaceTarget (fn_75_50B0)
+and ShouldLaserSweep (fn_75_55F8). The separation (8EC8), steering (986C) and placement (ACEC)
+arms still unreached all need the head undocked, which is behind them.
+
+The most-called unmarked bodies are not the next targets: fn_75_70A0/fn_75_5B9C are REL copies
+of `CDamageVulnerability`'s assignment (cite), fn_75_8B74/fn_75_E60 are the loaders' compiler
+dtors, and fn_75_9AF8 (the per-collision-actor vulnerability) and fn_75_5D50 (the head's shields
+off) are only called from chassis/head states that are still stand-ins.
+
+### Marker review and the shipped FSM2 graphs (2026-10-21)
+
+- `fn_75_5944` keeps its marker. The shipped head's detection angle is 180 degrees (cosine
+  -1.0 at 0x3D8), so the false cone needs a player exactly behind the head. That arm is unreachable.
+  Both other false arms ran: the timer off, and the timer on with the base range false at 41 units.
+- `fn_75_523C` is unmarked. None of these three arms ran:
+  - The own-0x80 shortcut. Its writers are the ALRT case (0x6710) and the base's Damage/Touch.
+    Shots arrive from collision actors, not projectiles, area 5 has no Alert link to the head, and
+    the REL sends no ALRT.
+  - The null chassis. Reachable: a sub-state updates before its parent's IsDocked transition.
+  - The unsafe-axis guard. Not proven unreachable.
+- ACTN to the chassis comes from the patrol waypoints' `Arrived` links: a 3 s scan timer per waypoint.
+- FSM2 graphs, dumped from the loader. Head (machine 14): IntactMode exits on !IsDocked to
+  LostChassisReaction; DetachedMode covers HasDockingTarget, SeekMainChassis,
+  FollowDockingPath/PathFind and NotifyDocking. The intact sub-machine (11) runs
+  Scanning, FaceTarget (on HasTarget), LaserSweep (ShouldLaserSweep) and Idle (!IsScanning).
+  Chassis (machine 9):
+  - Patrol and Scanning go to SelectTarget, then HasTarget, then SetTargetDest, then PathFind.
+  - PathFind tries ShouldMorphballStab, ShouldLegStab, FindBestDodgeDirection, HasRetreatPoint,
+    ShouldSpinAttack and ShouldLaserSweep, then Delay.
+  - The headless PathFind goes !HasHead to SetRetreatDest.
+
+### Chassis PathFind and its triggers, head FaceTarget (2026-10-21)
+
+Ported: SetTargetDest `fn_75_BC70`, the team join `fn_75_8DF8` (`PortJoinTeam`), PathFind
+`fn_75_DC08`, HasRetreatPoint `E56C`, ShouldDodge `E098`, HasLineOfSight `E524`,
+ShouldMorphballStab `E2F0`, ShouldLegStab `E3A4`, ShouldSpinAttack `E1D0`, ShouldLaserSweep
+`E0B0`, the head's FaceTarget `fn_75_50B0` and ShouldLaserSweep `fn_75_55F8`. New fields: the
+chassis's dodge direction 0xD04 (`mDodgeDirection`, -1) and the head's laser sweep stage 0xF34
+(`mLaserSweepStage`, -1). All of them have dropped out of the area-5 stand-in log.
+
+Arms seen in area-5 runs (temporary probes, plan F: the player at 2-70 units):
+- **Marked** (branchless, ran): E56C, E098, E524 and 55F8.
+- **BC70:** ran no-line-of-sight and no-role. Not run: the projectile-role arms (area 5 has no
+  team AI manager: `8DF8` only took the no-team arm) and the null target.
+- **DC08:** ran activate/update with a destination, and deactivate. Not run: the no-destination
+  arms, which need a null target or the projectile role near the target.
+- **E2F0/E3A4:** both distance outcomes ran.
+  - The null-target arm is unreachable: 0xCC0 is written only by the constructor (invalid) and
+    SelectTarget (the player). The PathFind that runs these triggers comes after HasTarget.
+  - The flag-off arm (the data word 0x828 bit 0x4; area 5's word is 124, which has it set) was
+    not split from the timer-running arm, and other rooms' instances are unchecked.
+- **E1D0/E0B0:** only the first gate ran (0xD40's 0x80 bit is off, and so is the laser-sweep
+  flag or timer). The team and distance arms never ran.
+- **50B0:** ran activate, snap and Slerp. Not run: zero frame time, the null target, the unsafe
+  offset, and deactivate (the head stays in FaceTarget).
+- **55F8:** only false: 0xF34 stays -1 until the chassis's SetupLaserSweep (`fn_75_B678`) has
+  the head's `fn_75_5AD8` set it to 0.
+
+The next stand-ins the run reaches: FindBestDodgeDirection `fn_75_B2A0` (0x2A0, which calls
+`fn_75_91E4` (0x33C)), FindBestStabLeg `fn_75_B57C`, LegStabAttack `fn_75_DA38` and StateOver
+`fn_75_E64C`. The head reaches LaserSweep (`fn_75_44DC`, 0x388) only through the chassis's
+SetupLaserSweep.
+
+### Chassis stab, dodge and laser-sweep setup, head laser sweep (2026-10-21)
+
+0x6B4 is the shared `CPatterned::mAnimationState`: the DOL's constructor writes it (`fn_801B7420`)
+and `CPatterned::GetAnimOver` reads it. The REL's TryCommand writers use `SetState`, and the REL
+calls to `CTryCommand::ShouldRetry` (`fn_801B73E4`) use the host's `CAnimationState::CanIssueCommand`,
+which matches the DOL's code. StateOver `E64C` (chassis) and `5A40` (head) are REL copies of
+`GetAnimOver`: cited, not marked.
+
+Ported: SetMorphballStabLeg `B66C`, FindBestStabLeg `B57C`, LegStabAttack `DA38`,
+FindBestDodgeDirection `B2A0` and its helpers `91E4`/`909C` (`PortFindDodgeDirection`,
+`PortDodgeIsClear`), SetupLaserSweep `B678`, plus the head's `5A80` (`PortLaserOrigin`), `5AD8`
+(`PortStartLaserSweep`) and LaserSweep `44DC`. New fields: the stab leg 0xD08 (`mStabLeg`), the step
+distance 0xD38 (`mStepDistance`, from the constructor at 0xFA70-0xFB08), and the head's sweep ends
+0xF38/0xF44. LaserSweep's laser shot `fn_75_1974` (0x298, the CPlasmaProjectile) is still a stand-in.
+
+What area-5 plan-F runs showed (temporary probes):
+- **Marked:** `B66C` (no branches; ran).
+- **B57C:** ran behind-left and behind-right; ahead ran in an earlier run, but its side was not
+  split. The null-target arm is unreachable, because PathFind follows HasTarget and 0xCC0 is never cleared.
+- **DA38:** ran activate with a valid leg, update delivering the melee command, and deactivate.
+  The invalid-leg arm (kAS_Over) needs B57C's null target, so it is unreachable. The
+  CanIssueCommand-false update was not probed, so the body is unmarked.
+- **B2A0:** only the 0xD34 gate. 0xD34 counts up in `fn_75_AFE8` and is cleared only by the
+  chassis's Listen (`fn_75_EA70`, vtable 0xB0, still a stand-in) when it hears noise type 4 or 0.
+  Until Listen is ported, the dodge roll, `91E4` and `909C` never run.
+- **E0B0** returns true now (the pass gate and in-range distance coincide), but SetupLaserSweep
+  `B678` never ran. So `5A80`, `5AD8` and `44DC` never ran: something on the FSM path between
+  ShouldLaserSweep and SetupLaserSweep (LaserSweepAttack `D3E0` is a stand-in) still blocks it.
+- **Recheck now that the chassis moves:** no new arms for BC70/8DF8 (no team in area 5), DC08
+  (no bit-0x20-clear arm), E2F0/E3A4 (flag-off not seen), E1D0 (only flag-off) or 50B0 (no
+  dt/null/unsafe/deactivate arms).
+
+Next: the chassis's Listen `fn_75_EA70` (unblocks the dodge path), LaserSweepAttack `fn_75_D3E0`
+(unblocks SetupLaserSweep and the head's sweep), then the laser shot `fn_75_1974`.
+
+### Listen, laser sweep attack and laser shot (2026-10-21)
+
+Ported the chassis's Listen (EA70), LaserSweepAttack (D3E0) with its per-collision-actor
+vulnerability (9AF8), and the head's laser shot (1974, the CPlasmaProjectile "LaserSweepBeam"
+from the projectile info at 0xE84; its looped sound handle at 0xF5C is now a real CSfxHandle, so
+the despawn 1790 removes the emitter). The area-5 run (plan G: stab quadrants, sweep range, lock-on
+missiles) reached every new body.
+
+- Marked: D3E0 (CanIssueCommand false and true, exit and deactivate all ran), DA38 (the
+  CanIssueCommand-false update ran; the invalid-leg arm is unreachable), 5A80, 1974 (its null arm
+  is an allocation failure).
+- Unmarked: EA70 (the dead and path-obstruction arms never ran: area 5 sends no type 4),
+  9AF8 (the non-collision-actor skip), 909C (the ray-blocked side is unsplit), 91E4 (left/default
+  axes, the in-cone and random tie-break arms), B2A0 (the dodge-chance miss, timer and flag-off
+  gates, the non-missile skip), B57C (ahead-left), B678 (head missing, unsafe offset, above, clamp),
+  5AD8 (undocked), 44DC (zero dt, unsafe flat).
+- Still stand-ins: the CEntity vtable word 0x24 call in 1790; 11884, 9B9C, 9FA8.
+
+### Damage handlers, hint grant, placements and team run (2026-10-21)
+
+Ported: hit-object `fn_75_9B9C` (`PortHitObject`), resisted damage `fn_75_9FA8`
+(`PortResistedDamage`), hint grant `fn_75_AB8C` (`PortTakePlayerHint`). 1790's vtable word 0x90 is
+the DOL's `CPlasmaProjectile::ResetBeam` (cited, host virtual). `fn_75_11884` builds a whole
+beam-effect actor class (own vtable, Think, render): left as the logging shell, needs its own slice.
+
+Placements (disc scan of every SPLL/SPLU, `tools/echoes_disc.py`): world 1baa96c2, areas
+02_cliff_reactorcore L3 (4a6cf295, no team link), 03_cliff_chicane L3/L6 and 04_cliff_contraption
+L2 (914f1381) and 09_cliff_temple L2 (team: `ACTV>PLAY:TMAI`), 0q/0n/0g_cliff_hall,
+06_cliff_spiderballguardian L6. No Splitter area holds a PMCT, SAFE or SFZC, so Listen's
+path-obstruction (type 4) arm has no sender. Every placement's dodge chance is 100.0f and its flag
+word (0x6E/0x76/0x7C/0x7D) has the 0x20 and 0x40 bits.
+
+Runs: `WORLD=1baa96c2,914f1381` + `layer 2` (two chassis, a CScriptTeamAiMgr) and
+`WORLD=1baa96c2,4a6cf295` + `layer 3`, scripted teleports around the chassis (rings at 15-40 m,
+above and level), missile lock-on volleys and beam shots. Marked: 909C, B57C, 8DF8, E0B0.
+Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projectile role), 91E4
+(in-cone, random tie-break), B2A0 (dodge timer still running, non-missile projectile), B678
+(head missing, unsafe offset), 5AD8 (undocked), 44DC (zero dt, unsafe flat), EA70 (dead),
+9B9C/9FA8/AB8C (boosting player, spin damage, morph-transition gate), 1790 (flag 26).
+
+## Beam effect actor (2026-10-21)
+
+- `fn_75_11884` builds a 0x1A0-byte model-less CActor (`CSplitterBeamEffect` in
+  `PortCSplitterCommandModule.cpp`, vtable `lbl_75_data_E34`): dtor 11804, Think 10DC4,
+  PreRender 10F1C, AddToRenderer 10EF0, Render 10778, PreRenderAllViewports 1167C; slot
+  `fn_75_D0` is the REL copy of `CActor::GetHealthInfo`. The head (1188) spawns it, opens it
+  while the chassis scans, closes it and deletes it once its open fraction is 0.
+- PreRender (EFB copy into a kTF_IA8 4x64 texture) and Render (the textured cone) are still
+  once-logging stand-ins, so the cone doesn't draw yet.
+- Run `04_cliff_contraption` L2 (chassis u0532 (-112.7, 130.3, -127.0), u0521 (-76.0, 114.2,
+  -127.0)): ctor, dtor, all four Think open/close arms, 1188 closing/closed ran. Unmarked:
+  Think's inactive arm (never inactive in the run), AddToRenderer's clipped arm and
+  PreRenderAllViewports' clean-bounds arm (not recorded by the probes).
+- The same run's morph-ball boost (X morph, A holds) never hit the chassis (9B9C/9FA8 unreached),
+  `damage u0532 30` left hp at 10.0, and no dodge reached 91E4: those arms still need a setup.
+
+## Head undock, boost, beam render (2026-10-21)
+
+- The head undocks when its chassis dies: the chassis's Death (fn_75_EB04, vtable 0x98) resets
+  the head's shield (fn_75_5D50) and clears the head id at 0xC6C; the head's chassis check
+  (fn_75_31A8) then sees it is no longer held and moves to LostChassisReaction (fn_75_42F8).
+  There is no health threshold or script message. The chassis dies only through
+  fn_75_A0A0 (kSM_Damage from a collision actor): just the "target_LCTR" actor (chassis u0532:
+  u0678) is vulnerable, and only during LaserSweepAttack (fn_75_D3E0 Activate gives it the base
+  vulnerability, which takes cannonball, not power or missile).
+- Ported: EB04, 5D50, A0A0, 42F8 (its turn, fn_75_2994, stays a stand-in). Marked: 5AD8 (the
+  undocked return ran after the kill; the docked arm is the only writer of stage 0).
+- Run 04_cliff_contraption L2 (PLAN=S, `damage u0678 5 0 cannonball` x5 while u0532 is in
+  LaserSweepAttack): chassis hp 10 -> 0 at 51.9 s, Death ran, head u0531 went FaceTarget ->
+  LostChassisReaction -> PathFind (fn_75_4E90, stand-in). The undocked head next needs PathFind,
+  3ADC, 3D20, 2280, 565C, 570C and 2994, all stand-ins.
+- Unmarked: EB04 (null collision actor; no head - killing head u0520 first sends chassis u0521
+  to HeadExplosion, fn_75_BEEC, a stand-in that never dies), A0A0 (CWeapon last-touched arm;
+  console damage has none), 5D50 (shield state 2: nothing ported sets it), 42F8 (calls 2994).
+- Boost (PLAN=H, chassis u0521): the boost is B, not A (X morphs, B held 50 updates, stick
+  forward after `tp`+`face`). 65 boosting contacts landed (target actor 0x27e among them), so
+  9B9C's boost and target arms ran; its null actor, 0xD41 0x80 and Ai arms did not, 9FA8's
+  boost arm did not and AB8C's grant arm is unrecorded: none marked.
+- Beam PreRender 10F1C / Render 10778: their GX calls are GXSetTexCopySrc/Dst, GXCopyTex,
+  GXPixModeSync, then GXInitTexObj(+LOD)/GXLoadTexObj on the copy's CTexture bitmap after
+  DCInvalidateRange, GXLoadTexMtxImm, CGX TEV/blend/z state, CCubeRenderer::DrawVisibleAreaGeometry
+  and CModel::DolphinDrawFlat. Aurora has all of them: GXCopyTex resolves into a texture keyed by
+  the destination pointer, and binding that same pointer samples it (PortEfbCopy, GOTCHAS). No
+  Aurora feature is missing; they stay stand-ins only because of size (0x760 + 0x64C).
