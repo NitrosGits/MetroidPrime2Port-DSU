@@ -964,12 +964,15 @@ void CIng::AlignBlobToSurface(CStateManager& mgr) {
     const CVector3f look = pos + normal;    // asm 0x00004770-0x00004788
     blob->SetTransform(CTransform4f::LookAt(pos, look, up)); // asm 0x0000478C/0x00004798
     // asm 0x0000479C-0x000047E0: the blob's draw flags (0xfc..0x104): blend mode 2, material set 0,
-    // depth compare|update, and the Ing's damage colour (0x44c..0x44e) at full alpha.
+    // depth compare|update, and the Ing's hit-flash colour at full alpha. 0x44c..0x44e is
+    // CPatterned's mColor (the word after mDamageCooldownTimer at 0x448, read at 0x47F4), black
+    // until a hit lerps it toward the red mDamageColor (0x450) - not mDamageColor itself, which
+    // tinted the blob solid red.
     blob->SetModelFlags(CModelFlags(CModelFlags::kT_Two, 0,
                                     static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
                                                                        CModelFlags::kF_DepthUpdate),
-                                    CColor(mDamageColor.GetRedu8(), mDamageColor.GetGreenu8(),
-                                           mDamageColor.GetBlueu8(), 0xff)));
+                                    CColor(mColor.GetRedu8(), mColor.GetGreenu8(),
+                                           mColor.GetBlueu8(), 0xff)));
   }
   CCollisionTracker* tracker = static_cast< CCollisionTracker* >(blob);
   tracker->SetParticleEmissionRateScalar(align); // asm 0x000047EC: GeomBlobV2's fn_25_256C
@@ -3463,11 +3466,17 @@ void CIng::Render(const CStateManager& mgr) const {
     // The forms 3 and 5 (asm 0xC1A4-0xC210): the ing spot draws only while the body-state-5 timer
     // (0xe40) is below rodata_C8 (2.5f) and the actor draws particles (the bit 0 of the byte at
     // 0x421).
-    if (mBodyState5Time < 2.5f && mDrawParticles) {
-      // The retail draws no model in this form: the ing spot's visible body is the separate blob
-      // object (0xd5c) that module 25's class spawns (fn_29_4830), and the host has no blob, so
-      // the model's draw is kept here (with its own particles) to keep the ing spot visible.
-      CPatterned::Render(mgr);
+    // The retail draws no model in this form: the ing spot's visible body is the separate blob
+    // object (0xd5c, fn_29_4830's CCollisionTracker), and the Ing itself only draws its animation's
+    // particle systems straight from the particle database (the model data 0x60, its animation
+    // data 0x10, the database 0x178), with the POI check.
+    if (mBodyState5Time < 2.5f && mDrawParticles) { // asm 0xC1A4-0xC1C0
+      uint mask = 0;
+      uint target = 0;
+      mgr.GetCharacterRenderMaskAndTarget(mask, target); // asm 0xC1DC
+      const CParticleDatabase& db = GetModelData()->GetAnimationData()->GetParticleDB();
+      db.RenderSystemsToBeDrawnFirstPOICheck(mask, target); // asm 0xC1F4
+      db.RenderSystemsToBeDrawnLastPOICheck(mask, target);  // asm 0xC20C
     }
   }
 }
