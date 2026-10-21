@@ -74,7 +74,10 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mPhazonHealthMark(0.f)                        // 0x00020214
 , mPhazonPhase(false)                           // 0x00020224
 , mGuestD24(0.f)                                // 0x0000E5DC
-, mFirstBattleStageUid(kInvalidUniqueId)
+, mSeenStageUid(kInvalidUniqueId)
+, mSeenStageCount(1)                            // 0x0002001C
+, mStageChanged(0)                              // 0x00020028
+, mGuestD18(CVector3f::Zero())                  // 0x0000E5C8 (lbl_10_bss_128)
 , mLastAttackerUid(kInvalidUniqueId)
 , mAttackerCount(0)
 , mAttackerUids{kInvalidUniqueId, kInvalidUniqueId}
@@ -184,12 +187,13 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
   // 0x0001B2E4: the module's own AI runs only while the actor is alive (the guest's 0x420 bit 6,
   // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the stage
-  // advance (fn_10_193A0, 0x0001B308) and the attack pick (fn_10_1954C, 0x0001B314); the twelve
-  // after them (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a stand-in rather
+  // advance (fn_10_193A0, 0x0001B308) and the attack pick (fn_10_1954C, 0x0001B314) and the stage
+  // watch (fn_10_FD4C, 0x0001B33C); the eleven others (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a stand-in rather
   // than a retail-order Think.
   if (GetAlive()) {
     AdvanceBattleStage(mgr);
     UpdateAttackPick(mgr);
+    WatchStageChange(mgr); // 0x0001B33C (fn_10_1ACA0 and fn_10_10A64 before it are not ported)
   }
 }
 
@@ -233,7 +237,7 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       if (const CDarkSamusBattleStage* stage =
               TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(stageUid))) {
         mBattleStageUid = stage->GetUniqueId();
-        mFirstBattleStageUid = mBattleStageUid;
+        mSeenStageUid = mBattleStageUid;
         mStageCount = 1;
       }
     }

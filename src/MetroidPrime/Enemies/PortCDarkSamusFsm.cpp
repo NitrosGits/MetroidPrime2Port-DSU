@@ -1206,9 +1206,17 @@ bool CDarkSamus::PlayerTooClose(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
-bool CDarkSamus::ReachedPissedOff(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_FAF4", "trigger ReachedPissedOff");
-  return false;
+// fn_10_FAF4 (0x0000FAF4, 0x98 bytes): no area hint of type 0xE (fn_10_FC64, 0x0000FB14) is
+// "reached"; otherwise the flat distance (z = lbl_10_rodata_3FC = 0.0f, 0x0000FB5C) from the hint
+// to the actor below lbl_10_rodata_438 = 3.0f (the fcmpo at 0x0000FB6C, strict).
+// @ fn_10_FAF4
+bool CDarkSamus::ReachedPissedOff(CStateManager& mgr, const CTriggerData&) const {
+  const CScriptAIHint* hint = FindAreaHint(mgr, 0xE);
+  if (hint == nullptr) {
+    return true;
+  }
+  const CVector3f delta = GetTranslation() - hint->GetTranslation();
+  return CVector3f(delta.GetX(), delta.GetY(), 0.f).Magnitude() < 3.f;
 }
 
 bool CDarkSamus::ReadyForMissiles(CStateManager&, const CTriggerData&) const {
@@ -1604,9 +1612,129 @@ void CDarkSamus::PhazonSuck(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("PhazonSuck", msg);
 }
 
-void CDarkSamus::PissedOff(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_F930", "state PissedOff");
+// fn_10_F930 (0x0000F930, 0x1C4 bytes): the PissedOff state. Activate (`mr. r31, r5` at
+// 0x0000F950) clears 0xD59 and 0xD58 (0x0000F96C/0x0000F97C), sends kSS_InternalState0 ('IS00',
+// 0x0000F994) and puts the actor on the area hint of type 0xE (fn_10_FC64, SetTranslation at
+// 0x0000F9B8); Deactivate (0x0000F9C4) sends kSS_InternalState1 ('IS01', 0x0000F9EC). Every
+// message runs the attack bookkeeping with 0x1000 (fn_10_1B478, 0x0000FA00), the shield flag
+// (fn_10_105F4, 0x0000FA14) and the ground collision (fn_10_18F90, 0x0000FA24), turns toward the
+// hint of type 0xF at lbl_10_rodata_430 = 5.2359877f rad/s (fn_10_16B8C, 0x0000FA58) or, with
+// none, toward the player at lbl_10_rodata_434 = 1.7453293f (fn_10_16B64, 0x0000FA78), and runs
+// the taunt command with taunt type 1 (fn_10_8698 with pas::kAS_Taunt = 0x10, the command
+// {0x15 = kBSC_Taunt, 1} at 0x0000FA88..0x0000FAB4; see TurnToFacePlayer for the host form).
+// @ fn_10_F930
+void CDarkSamus::PissedOff(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("PissedOff", msg);
+  if (msg == kStateMsg_Activate) {
+    mStageChanged = 0;
+    mPissedOff = 0;
+    SendScriptMsgs(kSS_InternalState0, mgr, kInvalidUniqueId, kSM_None);
+    if (const CScriptAIHint* hint = FindAreaHint(mgr, 0xE)) { // 0x0000F9AC
+      SetTranslation(hint->GetTranslation());
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    SendScriptMsgs(kSS_InternalState1, mgr, kInvalidUniqueId, kSM_None);
+  }
+  UpdateCurrentAttack(0x1000, mgr, msg);
+  UpdateShieldFlag(msg);
+  UpdateGroundCollision(mgr, msg);
+  if (const CScriptAIHint* face = FindAreaHint(mgr, 0xF)) { // 0x0000FA3C
+    TurnTowardPoint(dt, face->GetTranslation(), 5.2359877f);
+  } else {
+    TurnTowardPlayer(mgr, dt, 1.7453293f);
+  }
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_One));
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Taunt)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCTauntCmd(pas::kTT_One));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  }
+}
+
+// fn_10_FC64 (0x0000FC64, 0xCC bytes): the first area hint of `type` - the AI waypoint list (the
+// state manager's 0x838, its first index at 0x2008) is walked for an active (the byte at 0x20's
+// bit 7, 0x0000FCC4) CScriptAIHint (the cast at 0x0000FCA0) in the actor's area (0x0000FCD4)
+// whose hint type (0x158) is `type` (0x0000FCE0). None answers null (0x0000FD0C).
+// @ fn_10_FC64
+const CScriptAIHint* CDarkSamus::FindAreaHint(CStateManager& mgr, int type) const {
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
+    if (hint == nullptr || hint->GetActive() != true ||
+        hint->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    if (static_cast< int >(hint->GetHintType()) == type) {
+      return hint;
+    }
+  }
+  return nullptr;
+}
+
+// fn_10_105F4 (0x000105F4, 0x40 bytes): Activate sets the 0xCD0 byte (0x00010604) and copies
+// lbl_10_bss_128 (a zero vector) to 0xD18 (0x0001060C..0x00010618); Deactivate (the `cmpwi r4,
+// 0x2` at 0x00010620) clears the byte (0x0001062C). The byte picks the shielded collision response
+// (fn_10_F84C) and the 0xCD4 vulnerability (fn_10_100DC, still a stand-in).
+// @ fn_10_105F4
+void CDarkSamus::UpdateShieldFlag(EStateMsg msg) {
+  if (msg == kStateMsg_Activate) {
+    mGuestCD0 = 1;
+    mGuestD18 = CVector3f::Zero();
+  } else if (msg == kStateMsg_Deactivate) {
+    mGuestCD0 = 0;
+  }
+}
+
+// fn_10_18F90 (0x00018F90, 0x3C bytes): Activate (0x00018FA0) runs fn_10_19014 - vertical
+// movement on, off the ground and no kMT_GroundCollider (0x0001902C/0x00019040/0x00019048);
+// Deactivate (0x00018FB0) runs fn_10_18FCC with 1 - vertical movement off, on the ground and the
+// material back (0x00018FE0/0x00018FF8/0x00019000).
+// @ fn_10_18F90
+void CDarkSamus::UpdateGroundCollision(CStateManager& mgr, EStateMsg msg) {
+  if (msg == kStateMsg_Activate) {
+    mVerticalMovement = true;
+    mOnGround = false;
+    RemoveMaterial(kMT_GroundCollider, mgr);
+  } else if (msg == kStateMsg_Deactivate) {
+    mVerticalMovement = false;
+    mOnGround = true;
+    AddMaterial(kMT_GroundCollider, mgr);
+  }
+}
+
+// fn_10_FD4C (0x0000FD4C, 0xCC bytes): a stage count (fn_10_17E48, 0x978) other than the one last
+// seen (0xD54, the beq at 0x0000FD74) clears 0xD59 (0x0000FD80) and reads the last seen stage
+// (0xD50): its info's +0x84 (unknown_0x911a2476, 0x0000FDB4) set gets the actor pissed off (0xD58
+// = 1, 0x0000FDBC), clear - or no stage (0x0000FD9C) or no info (0x0000FDA8, the accessor is a
+// member address and is never null) - sets 0xD59 (0x0000FDC8/0x0000FDEC). The current stage and
+// count become the seen ones (0x0000FDD4..0x0000FDDC, 0x0000FDF4..0x0000FDFC).
+// @ fn_10_FD4C
+void CDarkSamus::WatchStageChange(CStateManager& mgr) {
+  if (mStageCount == mSeenStageCount) {
+    return;
+  }
+  mStageChanged = 0;
+  const CDarkSamusBattleStage* seen =
+      TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(mSeenStageUid));
+  if (seen != nullptr) {
+    if (seen->GetStageInfo().unknown_0x911a2476 == true) {
+      mPissedOff = 1;
+    } else {
+      mStageChanged = 1;
+    }
+  } else {
+    mStageChanged = 1;
+  }
+  mSeenStageUid = mBattleStageUid;
+  mSeenStageCount = mStageCount;
 }
 
 // fn_10_175AC (0x000175AC, 0x1B4 bytes): the ScatterShot state. Every message runs the aim
@@ -1771,9 +1899,26 @@ void CDarkSamus::TravelToCoverPoints(CStateManager& mgr, EStateMsg msg, float dt
   UpdateStillTimer(msg, dt);
 }
 
-void CDarkSamus::TravelToPissedOff(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_FB8C", "state TravelToPissedOff");
+// fn_10_FB8C (0x0000FB8C, 0xD8 bytes): the TravelToPissedOff state: the attack bookkeeping with
+// 0x2000 (fn_10_1B478, 0x0000FBC4), the shield flag (fn_10_105F4, 0x0000FBD8), then the path to
+// the area hint of type 0xE (fn_10_FC64, 0x0000FBE8): Activate (0x0000FBF8) sets the destination
+// (fn_10_1C778, 0x0000FC0C), every other message faces the hint (the uid to the navigation's face
+// target 0x718, 0x0000FC24) and runs the path find (0x0000FC30). No hint skips the path. Last the
+// still timer (fn_10_1D794, 0x0000FC40).
+// @ fn_10_FB8C
+void CDarkSamus::TravelToPissedOff(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("TravelToPissedOff", msg);
+  UpdateCurrentAttack(0x2000, mgr, msg);
+  UpdateShieldFlag(msg);
+  if (const CScriptAIHint* hint = FindAreaHint(mgr, 0xE)) {
+    if (msg == kStateMsg_Activate) {
+      SetPathFindDestination(mgr, hint->GetTranslation(), dt);
+    } else {
+      mPathFindNavigation.SetFaceTarget(hint->GetUniqueId());
+      mPathFindNavigation.PathFind(mgr, msg, dt, *this);
+    }
+  }
+  UpdateStillTimer(msg, dt);
 }
 
 // fn_10_FE18: the TurnToFacePlayer state. The activate half (0x0000FE40) sets the flag byte's

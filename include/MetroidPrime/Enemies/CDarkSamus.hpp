@@ -18,6 +18,7 @@ class CBCProjectileAttackCmd;
 // The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
+class CScriptAIHint;
 struct SLdrDSStageInfo;
 
 // Host copy of the properties the DarkSamus loader reads (fn_10_CF44 reads the module's 63
@@ -503,6 +504,10 @@ private:
 
   // fn_10_1C778: the destination of the path find (the guest's 0x8B4/0x8B8/0x8BC) and the path
   // find itself.
+  const CScriptAIHint* FindAreaHint(CStateManager& mgr, int type) const; // fn_10_FC64
+  void UpdateShieldFlag(EStateMsg msg);                                   // fn_10_105F4
+  void UpdateGroundCollision(CStateManager& mgr, EStateMsg msg);          // fn_10_18F90
+  void WatchStageChange(CStateManager& mgr);                              // fn_10_FD4C
   void SetPathFindDestination(CStateManager& mgr, const CVector3f& destination, float dt);
 
   // fn_10_1E26C: the uid of the last attacker (the guest's 0xC24) and the two uids before it
@@ -602,9 +607,17 @@ private:
   // guest 0x92C, the alternate 'SCAN' (the data's alternateScannableInfo, locked by the
   // constructor at 0x0002048C..0x00020538 when it is valid); fn_10_F40C answers it
   rstl::single_ptr< TLockedToken< CScannableObjectInfo > > mAltScanInfo;
-  TUniqueId mFirstBattleStageUid;   // guest 0xD50, the stage the 'XALD' arm linked (0x0001EBC0);
-                                   // fn_10_FD4C reads it (0x0000FD88); the constructor writes
+  TUniqueId mSeenStageUid;          // guest 0xD50, the stage fn_10_FD4C last saw: the 'XALD' arm
+                                   // writes the first stage (0x0001EBC0), fn_10_FD4C the current
+                                   // one (0x0000FDD4/0x0000FDF4); the constructor writes
                                    // kInvalidUniqueId (0x00020018)
+  uint mSeenStageCount;             // guest 0xD54, the stage count fn_10_FD4C last saw
+                                   // (0x0000FDDC/0x0000FDFC); the constructor writes 1 (0x0002001C)
+  uchar mStageChanged;              // guest 0xD59, a stage change with no pissed-off reaction
+                                   // (fn_10_FD4C at 0x0000FDC8/0x0000FDEC); the PissedOff state
+                                   // clears it (0x0000F96C); fn_10_F710 and fn_10_1BEFC read it
+  CVector3f mGuestD18;              // guest 0xD18, the 0xCD0 sub-object's +0x48: fn_10_105F4
+                                   // copies lbl_10_bss_128 (0x0001060C); fn_10_F654 tests it
   TUniqueId mLastAttackerUid;       // guest 0xC24, the uid of the attacker that hit the actor
                                    // last: fn_10_1DF74 clears it and fn_10_1E740 sets it (neither
                                    // is in the port yet); the constructor writes
