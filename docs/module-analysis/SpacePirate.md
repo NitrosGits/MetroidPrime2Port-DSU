@@ -519,6 +519,14 @@ BounceFind 602C, Bounce 5D0C or PathFindEx 5EA4 (those names only appear in othe
 `0x7a71739a`/`0x7d9a41a2`/`0x214e18eb`/`0x68a7f573`); 5E28 is only called from 5D0C; 2EA0, EDDC and EDE4 have no
 reference at all. 686C ShouldJumpBack stays B: JumpBack 63C8 calls it directly.
 
+**gcov pass (2026-10-21)**: `build-port-cov`, seven runs (three area drivers, an
+07_sand_alamoportalobservation L3 default run, and force specs `spacepirate_force.py`, `_force2.py`,
+`_force3.py`), merged with `tools/cov/gcov_report.py ... --module SpacePirate`. The earlier markers hold
+(their untaken edges are the cited dead ones: switch defaults, WarpIn's GRNT arms, GetUp's never-2
+Search, SquadJoin's melee). Newly marked: Shuffle 8670 (all natural), Cover A3C0 and Generate C1A4 (one
+forced call each). The pass found Generate's Activate and Update bodies swapped against retail
+(asm 0xC1E8 / 0xC32C): a generating pirate never jumped; fixed.
+
 **Coverage without probes**: the shared harness `tools/cov/run.sh` (docs/LANE_BRIEF.md, "Coverage without
 probes") with the spec `tools/cov/specs/spacepirate.py` and the driver `tools/drivers/spacepirate_drive.py`:
 

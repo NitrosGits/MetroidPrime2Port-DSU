@@ -609,6 +609,10 @@ CVector3f ShuffleRandomVector(CStateManager& mgr, float minLen, float maxLen) {
 // set to the state manager's player (+0x14fc, +0x54) minus this translation, also for every
 // message; only then does the second switch avoid the other actors on Update (fn_72_D40C) and
 // clear x8f6 bit 0x02 on Deactivate.
+// Every arm ran (gcov, build-port-cov, 2026-10-21): bit 0x08 set (07_sand_alamoportalobservation),
+// TooClose true (08_sand_casualpirates L3, `place 0036013d player 1; fsm Shuffle`) and false; the
+// null-player guard's skip is the port's own and never runs.
+// @ fn_72_8670
 void CSpacePirate::Shuffle(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);
@@ -1087,6 +1091,11 @@ void CSpacePirate::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
 // TryCommand(mgr, pas::kAS_Cover, &CPatterned::TryCover, x79c_coverDir); Update repeats it, then
 // unconditionally aims the body at the negated cover forward (body +0x34/0x38/0x3c) and always runs
 // D800. Deactivate stores kAS_NotReady into x6b4.
+// Every arm ran (gcov, 2026-10-21) bar two dead edges: the switch default (no fourth EStateMsg) and
+// Activate's CanIssueCommand(kAS_Cover) false - it runs right after kAS_Ready is stored (asm 0xA454) on a
+// body that is not in kAS_Cover (0xA41C), so it is always true. The bail on a body already in
+// kAS_Cover was forced once (tools/cov/specs/spacepirate_force3.py: body state id = 0x13).
+// @ fn_72_A3C0
 void CSpacePirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1315,36 +1324,25 @@ void CSpacePirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// Retail fn_72_C1A4 (0x2C4): Activate delivers the jump built by fn_72_5510 towards
-// xafc_patrolDestPos - jump type kJT_Ambush when 0x8f4 bit 0x40 is set, else kJT_Normal, initial
-// state kJS_IntoJump, variant 0, ambush facing flag. The ceiling variant (0x8f4 bit 0x40) aims one
-// unit below the pirate and zeroes xaf8_jumpHeight; otherwise the kSS_Attack/kSM_Follow object's
-// translation is the target with jumpHeight 3 (rodata B5C) and kAS_Over the fallback. Then kLT_Combat
-// when the animation state word is 2 (kAS_Repeat) and always a target vector of GetTargetPos minus
-// the translation with z = 0. Update sets 0x8f7 bit 0x40, aborts scripted animations, re-joins the
-// squad, sends kSS_Attack/kSM_None once, arms kAS_Ready and repeats the target/jumpHeight selection
-// (ceiling variant: one unit below, jumpHeight 0). Deactivate restores kLT_Combat, jumpHeight 3,
-// clears 0x8f4 bit 0x40 and re-enables bone tracking on the attack target.
+// Retail fn_72_C1A4 (0x2C4). Activate (msg 0, asm 0xC1E8): sets 0x8f7 bit 0x40 (mEnableAim), aborts
+// scripted animations, joins the squad (DFD4), sends kSS_Attack/kSM_None once (0x8f9 bit 0x01), arms
+// kAS_Ready (0x6b4 = 1, 0xC250) and picks the destination: the ceiling variant (0x8f4 bit 0x40) one unit
+// below the pirate with xaf8_jumpHeight = 0 (rodata B9C), otherwise the kSS_Attack/kSM_Follow object's
+// translation with jumpHeight 3 (rodata B5C) and kAS_Over (0xC314) when there is none, then kLT_Combat.
+// Update (msg 1, asm 0xC32C): CanIssueCommand(13 = kAS_Jump) delivers the jump built by fn_72_5510 towards
+// xafc_patrolDestPos (type 2 = kJT_Ambush for the ceiling variant, else 0), kLT_Combat while the
+// animation state word is 2 (kAS_Repeat), and always a target vector of GetTargetPos minus the
+// translation with z = 0 (B9C). Deactivate (asm 0xC3F8) restores kLT_Combat, jumpHeight 3, clears 0x8f4
+// bit 0x40 and re-enables bone tracking on the attack target. The port had Activate and Update swapped
+// (the jump was only tried on entry, before the state was armed, so a generating pirate never jumped).
+// Every arm ran (gcov, 2026-10-21) bar the switch default: the jump and its kAS_Repeat locomotion, both
+// destinations and kAS_Over (06_sand_alamofront `fsm Taunt` then `fsm Generate`, 08_sand_casualpirates);
+// forced once (spacepirate_force3.py): x8f9_31_sentAttackMsg cleared (the message) with
+// x8f4_25_ceilingAmbush set (the ceiling destination and the kJT_Ambush jump).
+// @ fn_72_C1A4
 void CSpacePirate::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) {
-      BodyController()->CommandMgr().DeliverCmd(
-          CBCJumpCmd(xafc_patrolDestPos,
-                     x8f4_25_ceilingAmbush ? pas::kJT_Ambush : pas::kJT_Normal,
-                     pas::kJS_IntoJump, 0, CBCJumpCmd::kFF_AmbushJump));
-    }
-    if (mAnimationState.GetState() == CAnimationState::kAS_Repeat) {
-      BodyController()->SetLocomotionType(pas::kLT_Combat);
-    }
-    {
-      const CVector3f target = GetTargetPos(mgr);
-      BodyController()->CommandMgr().SetTargetVector(
-          CVector3f(target.GetX() - GetTranslation().GetX(),
-                    target.GetY() - GetTranslation().GetY(), 0.f));
-    }
-    break;
-  case kStateMsg_Update:
     mEnableAim = true;
     BodyController()->AbortScriptedAnimations();
     SquadJoin(mgr);
@@ -1368,6 +1366,23 @@ void CSpacePirate::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
         mAnimationState.SetState(CAnimationState::kAS_Over);
       }
       BodyController()->SetLocomotionType(pas::kLT_Combat);
+    }
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Jump)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCJumpCmd(xafc_patrolDestPos,
+                     x8f4_25_ceilingAmbush ? pas::kJT_Ambush : pas::kJT_Normal,
+                     pas::kJS_IntoJump, 0, CBCJumpCmd::kFF_AmbushJump));
+    }
+    if (mAnimationState.GetState() == CAnimationState::kAS_Repeat) {
+      BodyController()->SetLocomotionType(pas::kLT_Combat);
+    }
+    {
+      const CVector3f target = GetTargetPos(mgr);
+      BodyController()->CommandMgr().SetTargetVector(
+          CVector3f(target.GetX() - GetTranslation().GetX(),
+                    target.GetY() - GetTranslation().GetY(), 0.f));
     }
     break;
   case kStateMsg_Deactivate:
