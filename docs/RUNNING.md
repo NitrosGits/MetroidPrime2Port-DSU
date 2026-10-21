@@ -37,8 +37,8 @@ took 7.4 s at 8 vs 26 s capped (2026-10-21). `MP2_FRAMES` still counts ticks. Co
 `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines `@f<n> <cmd>` (after game
 update n, polled with `frame`; a few updates late at high tick counts) or `@<secs> <cmd>`.
 Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`), `place`,
-`send`, `damage` (direct, no projectile) and `shoot <id> [charged] [d]` (a real beam projectile from d
-units, for modules that only count projectile hits on a joint).
+`send`, `damage` (direct, no projectile) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
+from d units, travelling along dir, for modules that only count projectile hits on a joint).
 
 ## Area regression sweep (63 Temple Grounds areas, 4 shards, START-free)
 
