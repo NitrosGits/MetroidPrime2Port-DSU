@@ -1,0 +1,27 @@
+# the Dark Samus's states of slice 26, each forced in turn. Sanctuary 10_cliff_rooftop, boss
+# u04f7. The frames are the game's updates (MP2_TICKS_PER_FRAME=8 runs 8 ticks a frame). The
+# boost ball's roll is forced again and again (the DoneRolling trigger is evaluated rarely and
+# its forced arms answer true, which leaves the state) and the Pause state is entered twice
+# (the second time without a fight stage).
+@f300 send u04f7 Alert
+@f400 fsm u04f7 Pause
+@f600 fsm u04f7 BoostBallFire
+@f800 fsm u04f7 BoostBallRoll
+@f900 fsm u04f7 BoostBallRoll
+@f1000 fsm u04f7 BoostBallRoll
+@f1100 fsm u04f7 BoostBallRoll
+@f1200 fsm u04f7 Pause
+@f1300 fsm u04f7 BoostBallRoll
+@f1400 fsm u04f7 BoostBallRoll
+@f1500 fsm u04f7 BoostBallRoll
+@f1600 fsm u04f7 FadeIn
+@f1800 fsm u04f7 FadeOut
+@f2000 fsm u04f7 FallFromTheAir
+@f2200 fsm u04f7 EnrageHitReact
+@f2400 fsm u04f7 EnragedTravel
+@f2400 statecall u04f7 FreezeBeam 0
+@f2450 statecall u04f7 FreezeBeam 1
+@f2460 statecall u04f7 FreezeBeam 1
+@f2470 statecall u04f7 FreezeBeam 2
+@f2600 fsm u04f7 FadeIn
+@f2900 objs darksamus

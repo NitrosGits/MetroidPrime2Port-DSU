@@ -932,6 +932,11 @@ private:
                                    // SweepBeam keeps the base's speed 0x3C8 here
   bool mSweepBeamHitPlayer : 1;    // 0xdc8 0x80 (+0x54), false (0x00008EBC)
   bool mSweepBeamOn : 1;           // 0xdc8 0x40, false (0x00008EC8)
+  // lbl_10_bss_114: the module's weapon mode, a word the module's init fn_10_CDB8 writes at
+  // 0x0000CE30 (0x000A0000: the guest's CWeaponMode keeps the type in the high half, so the type
+  // is 10 = kWT_Phazon and the flags are 0). The sweep beam's "any other hit" damage uses it
+  // (fn_10_BE18, the read at 0x0000C024 and the store at 0x0000C05C).
+  CWeaponMode mSweepBeamWeaponMode;
   TLockedToken< CCollisionResponseData > mSweepBeamResponse; // guest 0xDCC (+0x58), 'CRSC'
                                    // (`lis r4, 0x4352` at 0x00008E10), r6
   ushort mSweepBeamSfxId;          // guest 0xDD8 (+0x64), r7 (0x00008F18)
@@ -957,10 +962,29 @@ private:
                                    // writes lbl_10_rodata_410 = -1000.0f (0x0001FF04)
   ushort mRicochetSfxId;           // guest 0xC50, the loader's missileRicochetSound (its 0x928;
                                    // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
+  // guest 0xA40 / 0xA80 / 0xAB8: the record bytes of the missile attacks and the freeze beam.
+  // fn_10_62B4 (the Arrived trigger) reads the shield flag byte 0xCD0 and the float 0xF64 (the
+  // time offset the trigger adds to its 6.0f and 20.0f tests - the fsm2 lane's member) and the
+  // point 0xEE4/0xEE8 (the helpers branch's mGuestEE4, the path find's fallback destination).
+  // fn_10_9314 (the DoneRolling trigger) reads the float 0xEA4 (the roll's time), 0xEA8 (the
+  // roll's other time), the point 0xEAC/0xEB0/0xEB4 and the radius 0xEB8, all in the boost
+  // ball's record (the 0xE10 sub-object's +0x9C..+0xA8). Nothing in the port writes them yet.
+  float mGuestEA4;                 // guest 0xEA4, the roll's time
   uchar mGuestA40;                 // guest 0xA40, the normal missile's record byte; the
                                    // BreakNormalMissile trigger (fn_10_16B5C) reads it
   uchar mGuestA80;                 // guest 0xA80, the super missile's record byte; the
                                    // BreakSuperMissile trigger (fn_10_16B54) reads it
+  int mGuest9FC;                   // guest 0x9FC, the EnragedTravel state's target (-1 = none,
+                                    // 0x00006EC4)
+  float mGuest1048;                // guest 0x1048, the EnragedTravel state's point x
+  float mGuest104C;                // guest 0x104C, the EnragedTravel state's point y
+  float mGuest1050;                // guest 0x1050, the EnragedTravel state's point z
+  // fn_10_CDB8 (the module's init, 0x0000CDB8) writes the module's own globals:
+  // lbl_10_bss_118 = lbl_10_rodata_320 = 160.0f (the turn speed in degrees a second, the
+  // FreezeBeam's turn rate is lbl_10_rodata_454 = 0.017453292 radians a degree times it),
+  // lbl_10_bss_11C = lbl_10_rodata_328 = 22.0f, lbl_10_bss_120 = lbl_10_rodata_32C = 0.5f and
+  // lbl_10_bss_124 = lbl_10_rodata_324 = 1.9f.
+  float mBss118;                   // lbl_10_bss_118, the module's turn speed (160.0f)
   uchar mGuestAB8;                 // guest 0xAB8, the freeze beam's record byte; the
                                    // BreakFreezeBeam trigger (fn_10_16B48) reads its bit 0x80
   float mGuestC30;                 // guest 0xC30, the time of the last pause; the BreakPause
@@ -1003,17 +1027,23 @@ private:
   int mGuestF4C = 0;                 // guest 0xF4C, the phazon attack's shots to fire
   float mGuestF58 = 0.f;             // guest 0xF58, the height PhazonSuck starts at
   bool mGuestF5C40 = false;          // guest 0xF5C bit 0x40 (fn_10_81D4 reads)
-  float mGuestF64 = 0.f;             // guest 0xF64, the phazon go-to time (fn_10_6460, 652C)
-  float mGuestFB0 = 0.f;             // guest 0xFB0, the enrage's timer (fn_10_7BC0)
+  float mGuestF64 = 0.f;             // guest 0xF64, the phazon go-to time (fn_10_6460, 652C); the
+                                    // Arrived trigger (fn_10_62B4) reads it as its time offset
+  float mGuestFB0 = 0.f;             // guest 0xFB0, the enrage's timer (fn_10_7BC0); the
+                                    // EnrageHitReact state (fn_10_7A14) writes its random time
   int mGuestFB4 = 0;                 // guest 0xFB4, the phazon volley's missiles (fn_10_67B8)
   int mGuestFB8 = 1;                 // guest 0xFB8, the phazon volley is a single (0x00020FA0 writes 1)
   int mGuestFBC = 0;                 // guest 0xFBC, the phazon volley pattern index
   float mGuestFC0 = 0.f;             // guest 0xFC0, the phazon blend in [0, 1]
-  float mGuestFC4 = 0.f;             // guest 0xFC4, the health the enrage started at
+  float mGuestFC4 = 0.f;             // guest 0xFC4, the health the enrage started at; the
+                                    // EnrageHitReact state (fn_10_7A14) writes the health
   CAABox mGuest102C = CAABox::MakeNullBox(); // guest 0x102C, the base box (mskNullBox, 0x00020FE4)
   bool mGuest1044 = false;           // guest 0x1044 bit 0x80, 0x102C is kept
-  int mGuest1058 = 0;                // guest 0x1058, the phazon volleys to fire (0x00020218)
-  int mGuest105C = 0;                // guest 0x105C, the phazon volleys fired (0x0002021C)
+  int mGuest1058 = 0;                // guest 0x1058, the phazon volleys to fire (0x00020218);
+                                    // the EnrageHitReact state (fn_10_7A14) reads it as the
+                                    // multiplier of its step (the `mulhw` at 0x00007A8C)
+  int mGuest105C = 0;                // guest 0x105C, the phazon volleys fired (0x0002021C); the
+                                    // EnrageHitReact state adds its step to it (0x00007A9C)
 #ifdef TARGET_PC
   // The stateless helpers of the module (the ones below 0xA000). Their bodies live in
   // src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp; docs/module-analysis/DarkSamus_helpers.md
@@ -1029,6 +1059,9 @@ private:
   void StopGuestSfx();           // fn_10_812C: the sfx handle at guest 0xF60
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
+  void StopBoostBallParticles();                  // fn_10_99B8: the boost ball's old effects
+  void RunLoopAttackCmd(EStateMsg msg, const CBCLoopAttackCmd& attack); // fn_10_8870
+  void UpdateShieldFromHealth(EStateMsg msg);     // fn_10_6DAC: the shield flag and direction
   void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
                              float dt); // fn_10_6F90: the path find to the destination
   void DeleteGuestUids(CStateManager& mgr); // fn_10_69C0: the uids at guest 0x934 are deleted
@@ -1110,11 +1143,20 @@ private:
   float GetMeleeReach() const;            // fn_10_1BDF0
   void FadeEnvFxOut(CStateManager& mgr);  // fn_10_1BE04
   void FadeEnvFxIn(CStateManager& mgr);   // fn_10_1BE80
-  int mGuestAB0 = 0;                      // guest 0xAB0, the freeze beam shots fired (fn_10_1BEFC)
+  int mGuestAB0 = 0;                      // guest 0xAB0, the freeze beam shots fired (fn_10_1BEFC);
+                                          // the FreezeBeam state (fn_10_16CDC) uses it as its
+                                          // counter: at least 1 makes it deliver the exit state
+                                          // command (0x00016DA8)
   bool mBoostBallFlag20 = false;          // guest 0xEBC bit 0x20 (fn_10_1BEFC clears it)
-  bool mBoostBallFlag80 = false;          // guest 0xEBC bit 0x80 (fn_10_1BEFC clears it)
-  float mGuestEA8 = 0.f;                  // guest 0xEA8, the boost ball's start time (fn_10_1BEFC)
-  CVector3f mGuestEAC = CVector3f::Zero(); // guest 0xEAC, the actor's position then
+  bool mBoostBallFlag80 = false;          // guest 0xEBC bit 0x80 (fn_10_1BEFC clears it); the
+                                          // DoneRolling trigger reads it (`extrwi r0, r0, 1, 24` at
+                                          // 0x00009378, the PowerPC bit 24 being
+                                          // 1u << (31 - 24) = 0x80)
+  float mGuestEA8 = 0.f;                  // guest 0xEA8, the boost ball's start time (fn_10_1BEFC);
+                                          // the DoneRolling trigger reads it as the roll's other
+                                          // time (0x00009390)
+  CVector3f mGuestEAC = CVector3f::Zero(); // guest 0xEAC, the actor's position then; the
+                                          // DoneRolling trigger measures to it (0x000093B8)
   float mGuestEB8 = 0.f;                  // guest 0xEB8, the player's distance then
 #endif
 #ifdef TARGET_PC
