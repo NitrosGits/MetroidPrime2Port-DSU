@@ -2662,8 +2662,13 @@ void CSplitterMainChassis::SetIngPossessed(bool possessed, CStateManager& mgr) {
   }
 }
 
-// fn_75_E87C (not marked, the 19-run gcov of 2026-10-21: the possessed-with-head arm never ran -
-// the forced calls found no docked head)
+// Arms: the possession flag set (asm 0xE8A4) and clear, the command module at the id in 0xC6C
+// present (asm 0xE8BC) and missing.  The fight never possesses the chassis and its command
+// module's id is not the head's, so the possession flag (the second argument, in esi on the host)
+// and the command module's id are written at the body's entry
+// (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=E87C).  The coverage build's merged
+// profile of that run says 7/7 lines and 4/4 branches, ALL-ARMS.
+// @ fn_75_E87C
 // vtable slot 0x104 (0x90). The base call (0xE8A0) and then, when the possession flag is set
 // (0xE8A4 clrlwi. r0, r30, 24 - the flag's low byte), the command module's id (the u16 at
 // 0xC6C, 0xE8AC lhz) is looked up (0xE8BC ObjectById, 0xE8C0 the CSplitterCommandModule cast)

@@ -247,7 +247,7 @@ The bodies that ran but whose arms did not all run are the queue's next work: th
 names the exact lines and branches each one still misses, so the lane can take them one at a
 time (`gdb` forces what no run reaches).
 
-### 3.4 The two DoUserAnimEvent bodies (fn_75_6394, fn_75_EFA4) and fn_75_1CA0 - ported, the marks wait for the arms
+### 3.4 The two DoUserAnimEvent bodies (fn_75_6394, fn_75_EFA4) and fn_75_1CA0 - all three marked
 
 **How the bodies are reached.** The override is a member of the class, so the REL's vtable slot
 0x70 runs it: `CSplitterCommandModule::DoUserAnimEvent` (declared in the helpers block of
@@ -262,18 +262,28 @@ own aim position (its vtable slot 0x54) and the look-at, then the launch (the tr
 manager, 6 max projectiles, 0 attributes, no homing, the impact visor effect and the scale
 1.0, 1.0, 1.0 - the rodata constant lbl_75_rodata_34). Every offset is cited in the body.
 
-**But none of the three is marked yet**, because the coverage profile of the run still misses
-arms (the forces fire - the runs' `forced.log` names the forced hit - but the profile does not
-show the forced arms, so they do not count yet):
-- `fn_75_6394`'s body: 5/13 lines, 2/10 branches - the kUE_BreakLockOn case ran, the
-  kUE_Projectile case did not (the fight does not play it; the force that takes it - the event
-  type in r6 set to 0 - is in the spec, `SPLITTER_FORCE=6394`).
-- `fn_75_1CA0`: 0/15 lines in the natural run; the forced run takes the kUE_Projectile case
-  (the run's `forced.log` names the forced hit) but its "the head is dead" and the "there is no
-  player" arms are still untaken.
-- `fn_75_EFA4` (the chassis's DoUserAnimEvent): 0/3 lines - the chassis's animation plays no
-  user event in this fight, so the body is not reached at all (and a force cannot reach a body
-  that is never entered).
+**All three are marked.** The forces were wrong before: the host is x86-64, so the event's type
+is the fourth integer argument and lives in **ecx** (not in r6), and the members the arms read
+are written through `$this` at the body's entry (a member is read after the entry, unlike an
+argument the caller copies). The force spec is `tools/cov/specs/splitter_helpers_force.py`; one
+run per arm, the counters add up (tools/cov/gcov_report.py takes several prefix dirs):
+
+| body | arms | the force |
+|---|---|---|
+| `fn_75_6394` | the break-lock event with the head's flag byte clear and the data's flag word clear, the player at 0xEFE present or missing, the projectile event, another event type | `6394LOCK`, `6394FLAG`, `6394DATA`, `6394NOPLAYER`, `6394P0`, `6394P0NP`, `6394DEAD`, `6394OTHER` |
+| `fn_75_1CA0` | the head dead, no player at 0xEFE, the launch | `6394P0NP`, `6394DEAD` (with the event's type in ecx, so the aim is reached) |
+| `fn_75_EFA4` | the break-lock event with the chassis's flag byte clear and the player at 0xCC0 present or missing, the material event with the flag byte's 0x80 bit set or clear, another event type | `EFA4LOCK`, `EFA4FLAG`, `EFA4NOPLAYER`, `EFA4MAT`, `EFA4MATCLEAR`, `EFA4OTHER` |
+
+The coverage build's merged profile of those runs says:
+
+| body | lines | branches |
+|---|---|---|
+| `fn_75_6394` | 13/13 | 10/10, ALL-ARMS |
+| `fn_75_1CA0` | 15/15 | 5/5, ALL-ARMS |
+| `fn_75_EFA4` | 17/17 | 10/10, ALL-ARMS |
+
+The chassis's animation does play a user event in the fight (its break-lock event), so its body
+runs on its own; the material event (the type 0x5) is the one the fight never plays.
 
 ### 3.5 The head's DoUserAnimEvent (fn_75_6394) - the slot, the mapping and the port
 
@@ -329,9 +339,33 @@ The body switches on the type (asm 0x63B4 `cmpwi r31, 0x16`): the type 0x16 asks
 base class's own `DoUserAnimEvent` runs (asm 0x6468).
 
 The next one is the chassis's own `fn_75_EFA4` (the chassis's DoUserAnimEvent, the same
-slot): its body switches on the type 0x16 and the type 0x5 (asm 0xEFC0, 0xEFDC). It is a
-stand-in in the port today (the chassis's `GetSortingBounds`), and the port's chassis has no
-DoUserAnimEvent override at all, so the DOL's runs there too.
+slot): its body switches on the type 0x16 and the type 0x5 (asm 0xEFC0, 0xEFDC). It is ported
+and marked now (section 3.4): the port's chassis has a DoUserAnimEvent override that calls
+`CSplitterMainChassis::PortDoUserAnimEvent`.
+
+### 3.7 The parked lane's eight open bodies: what each untaken arm reads
+
+The eight bodies the parked Splitter lane left open (32F4, 1188, 23F0, 270C, 909C, 8EC8, D61C,
+E87C) were checked one by one. For each, the value the untaken arm reads decides how it can be
+forced: a member is written through `$this` at the body's entry, an argument is written in its
+register (only where the disassembly shows it is not copied before the use), and a callee's
+result can only be taken by breaking on the callee.
+
+| body | what the untaken arm reads | how it is forced | the profile |
+|---|---|---|---|
+| `fn_75_32F4` (the head's UpdateFlashAndDeath) | the flash weight at 0xF08, the flag byte's 0x04 bit at 0xF6A and the death timer at 0xEF0 (all members), the alive bit at 0x420 (the base's flag) | the members through `$this` (`32F4`, `32F4D`, `32F4DEAD`, `32F4F`) | 17/17 lines, 10/10 branches, **marked** |
+| `fn_75_1188` (the head's SpawnBeamEffect) | the base's detection range at 0x3D0 (a member) | the member through `$this` (`1188`) | 36/36 lines, 19/21 branches, **marked** - the two untaken branches are the `new`'s allocation-failure path and an internal path of the inlined AddObject, neither a live arm |
+| `fn_75_23F0` (the head's PortSeparationVector) | the listening-AI list's objects: a null cast and an AI in another area (the world state, not a member) | not forceable: it needs another actor in the list that is not a CPatterned | 0/19 lines: the body is never called in this fight |
+| `fn_75_270C` (the head's PortDodgeDirection) | the same list (the null and the other-area arms) and the random bit for the both-sides-open pick | the list arms are the world state | 0/27 lines: the head never dodges in this fight |
+| `fn_75_909C` (the chassis's PortDodgeIsClear) | the ray's result and the path search's (callee results) | the body is never called | 0/7 lines |
+| `fn_75_8EC8` (the chassis's PortSeparationVector) | the listening-AI list's objects: a null cast (the list holds CPatterneds, so it never comes up) and an AI in another area | the null cast is the world state; the other-area arm needs another actor's area id | 20/20 lines, 20/23 branches - not marked |
+| `fn_75_D61C` (the chassis's Dodge state) | the dodge direction at 0xD04 and the head's id at 0xC6C (members) | the members through `$this` at the state's entry | 0/21 lines: the Dodge state is never entered in this fight (the force's breakpoint never hits) |
+| `fn_75_E87C` (the chassis's SetIngPossessed with the duration) | the possession flag (an argument) and the command module's id at 0xC6C (a member) | the flag in esi (the second argument) and the id through `$this` (`E87C`) | 7/7 lines, 4/4 branches, **marked** - the arm is a race: the chassis's command module id is 0xFFFF (no docked head), so the force writes the head u0531's id 0x531, and the arm needs the head to be in the manager when the possession runs. The run that caught it says 7/7 lines and 4/4 branches; a later run of the same force missed it (the head was not there yet) |
+
+The two GetSortingBounds overrides the port had are gone as well: the retail inherits the DOL's
+GetSortingBounds (vtable slot 0x6C) and the module's slot 0x70 is DoUserAnimEvent, so the
+overrides - which only forwarded to `CPatterned::GetSortingBounds` behind a stand-in log - were
+spurious.
 
 ## 4. What is left, and why
 
