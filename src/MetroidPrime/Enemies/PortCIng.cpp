@@ -1158,17 +1158,38 @@ bool CIng::ShouldEvaporate(CStateManager&, const CTriggerData&) const {
          (mForm == kForm_Corporeal || mForm == kForm_IngSpot || mForm == kForm_Evaporate);
 }
 
-// fn_29_AA94 (not yet exercised in a run)
+// fn_29_AA94 (0x18, asm 0x0000AA94-0x0000AAAC): the word at 0xe2c (the safe zone count) is not
+// zero - the neg/andc/srwi idiom, so the arm is "the count is not zero", not "the count is
+// above zero". One comparison, two arms:
+//   - the count is zero: false;
+//   - the count is not zero: true.
+// The area 57 run of 2026-10-21 never evaluated it (the area has no safe zone), so the body is
+// not marked.
 bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
   return mSafeZoneCount > 0;
 }
 
-// fn_29_AA4C (not yet exercised in a run): 0x9d8 == 2 and not fn_29_AD54 (asm 0x0000AA6C).
+// fn_29_AA4C (0x54, asm 0x0000AA4C-0x0000AAA0): the desired form (0x9d8) is 2 and the Ing is
+// not corporeal yet (fn_29_AD54, asm 0x0000AA6C). The arms:
+//   - the desired form is not 2 (asm 0x0000AA68): false;
+//   - it is 2 and the Ing is already corporeal (fn_29_AD54): false;
+//   - it is 2 and the Ing is not: true.
+// The area 57 run of 2026-10-21 (a probe in the body, the state forced with
+// `fsm <ing> FollowAttackPattern`) only ran the "the desired form is not 2" arm - the desired
+// form is only set by the attack pattern's waypoint (0x00008310), so the body is not marked.
 bool CIng::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_Corporeal && !IsCorporeal(mgr, data);
 }
 
-// fn_29_AA04 (not yet exercised in a run): 0x9d8 == 3 and not fn_29_AD40 (asm 0x0000AA24).
+// fn_29_AA04 (0x4C, asm 0x0000AA04-0x0000AA50): the desired form (0x9d8) is 3 and the Ing is
+// not an ing spot yet (fn_29_AD40, asm 0x0000AA24). The arms:
+//   - the desired form is not 3 (asm 0x0000AA20): false;
+//   - it is 3 and the Ing is already an ing spot (fn_29_AD40): false;
+//   - it is 3 and the Ing is not: true.
+// The area 57 run of 2026-10-21 (a probe in the body, the state forced with
+// `fsm <ing> FollowAttackPattern`) ran the "the desired form is not 3" arm and both of the
+// IsIngSpot variants, but not the arms with the desired form set (the desired form is only set
+// by the attack pattern's waypoint, 0x00008310), so the body is not marked.
 bool CIng::ShouldBecomeIngSpot(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_IngSpot && !IsIngSpot(mgr, data);
 }
@@ -1270,7 +1291,12 @@ bool CIng::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
   return CAABox(pos - half, pos + half).DoBoundsOverlap(target->GetBoundingBox());
 }
 
-// fn_29_A4E0 (not yet exercised in a run)
+// fn_29_A4E0 (0xC, asm 0x0000A4E0-0x0000A4EC): the byte at 0xe5c's bit 3 (the asm's extrwi index
+// 28) - the port's mFoundMovementPos. One bit, one arm.
+//   - the flag is set: true;
+//   - the flag is clear: false.
+// The run of 2026-10-21 (area 57, the trigger is in the SetLuredDest code function's trigger list
+// only) never evaluated it, so the body is not marked.
 bool CIng::FoundMovementPos(CStateManager&, const CTriggerData&) const {
   return mFoundMovementPos;
 }
@@ -1307,9 +1333,15 @@ bool CIng::HasAttackPattern(CStateManager& mgr, const CTriggerData&) const {
          kInvalidUniqueId;
 }
 
-// fn_29_A340 (not yet exercised in a run): over once the attack path is being followed
+// fn_29_A340 (0xE4, asm 0x0000A340-0x0000A424): over once the attack path is being followed
 // (0x0000A348: 0xE5D 0x08) and the waypoint navigation has no destination left (0x0000A35C:
 // this+0x6c0 against kInvalidUniqueId). It stores nothing.
+// The arms (the area 57 run of 2026-10-21, a probe in the body):
+//   - the attack path is not followed (asm 0x0000A34C): false;
+//   - it is followed and the destination is still there (asm 0x0000A35C): false;
+//   - it is followed and the destination is gone: true - that arm ran (the state was forced:
+//     `fsm <ing> FollowAttackPattern`).
+// The two false arms did not run, so the body is not marked.
 bool CIng::AttackPatternOver(CStateManager&, const CTriggerData&) const {
   return mFollowingAttackPath && mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
@@ -3649,13 +3681,27 @@ void CIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserE
   }
 }
 
-// fn_29_B3C4 (0x170, asm 0x0000B3C4-0x0000B530): the Ing's own death body. It *replaces*
+// @ fn_29_B3C4 (0x170, asm 0x0000B3C4-0x0000B530): the Ing's own death body. It *replaces*
 // CPatterned::Death - the retail never calls the base class here - so the base's massive-death
 // logic, the dark-visor highlight and the unpossess step are not part of the Ing's death. The
 // body: the body controller's time scale, the FSM's "Dead" state (only when the state machine
 // has one), the ground collider's material, the vertical movement flag (unless the Ing burns),
 // the alive bit, the death body command in the forms 2 and 6..9 - and the script messages, which
 // the retail sends whether the Ing was alive or not.
+//
+// The arms (the area 57 runs of 2026-10-21, a probe in the body):
+//   - the Ing is alive (asm 0x0000B3F0: the byte at 0x420's bit 1) and it is not (the same body
+//     after the alive bit is cleared): both ran;
+//   - the machine has a state (asm 0x0000B420): yes - the "no state" arm cannot run, the machine
+//     is set up in the constructor;
+//   - the Ing does not burn (asm 0x0000B474: the byte at 0x421's bits 1 and 2) and it does: the
+//     power bomb's follow-up (kFU_LaggedBurnDeath) burns the Ing, so the death runs with the
+//     lagged bit set - `send <ing> Activate; place <ing> player 8; damage <ing> 100 powerbomb`;
+//   - the death body command in the form 2 and the form changes 6..9 (asm 0x0000B4A8) and no
+//     command in the form 3 (asm 0x0000B4C4): all three ran;
+//   - the script messages (asm 0x0000B4E4: the state argument is not -1) and no message (the
+//     state is -1): the messages ran; the "no message" arm cannot run, the Ing's death always
+//     carries a real state (the damage path's kSS_DeathRattle).
 void CIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   EnsureBodyActive(mgr);
   if (GetAlive()) {
