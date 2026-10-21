@@ -1044,6 +1044,45 @@ void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
   --mChainDepth;
 }
 
+// @ fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk.
+void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
+                                         rstl::vector< TUniqueId >& nodes,
+                                         rstl::vector< CVector3f >& positions) {
+  CActor* chainActor = TCastToPtr< CActor >(mgr.ObjectById(chain));
+  if (!chainActor) {
+    return;
+  }
+  const TUniqueId nodeId = chainActor->FindConnectedObject(mgr, kSS_Patrol, kSM_Follow);
+  CActor* node = TCastToPtr< CActor >(mgr.ObjectById(nodeId));
+  if (!node) {
+    return;
+  }
+  WalkChainNodes(mgr, node, nodes, positions);
+}
+
+// @ fn_79_50AC: the chain walk's recursion: the node's position and uid go on the lists and the
+// walk follows the node's "ARRV/NEXT" connections.
+void CSwampBossStage2::WalkChainNodes(CStateManager& mgr, CActor* node,
+                                      rstl::vector< TUniqueId >& nodes,
+                                      rstl::vector< CVector3f >& positions) {
+  ++mChainDepth;
+  positions.push_back(node->GetTranslation());
+  nodes.push_back(node->GetUniqueId());
+  const rstl::vector< TUniqueId > connected =
+      node->FindConnectedObjects(mgr, kSS_Arrived, kSM_Next);
+  for (const TUniqueId& uid : connected) {
+    if (uid == node->GetUniqueId()) {
+      continue;
+    }
+    CActor* next = TCastToPtr< CActor >(mgr.ObjectById(uid));
+    if (!next) {
+      continue;
+    }
+    WalkChainNodes(mgr, next, nodes, positions);
+  }
+  --mChainDepth;
+}
+
 // @ fn_79_4D20: take a random spit platform, walk its NEXT chain to the first active node, then swing
 // that whole segment towards the predicted intercept of the player.
 void CSwampBossStage2::AimSpitPlatforms(CStateManager& mgr,
@@ -2058,8 +2097,10 @@ void CSwampBossStage2::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     mPlatformsB = FindConnectedObjects(mgr, kSS_InternalState4, kSM_None);
     mWater = FindConnectedObject(mgr, kSS_InternalState12, kSM_None);
     mLightChain = FindConnectedObject(mgr, kSS_InternalState2, kSM_None);
-    // TODO(uncertain): fn_79_5830 walks each chain into its node/position lists.
+    // fn_79_5830: each chain walks into its own node and position lists.
+    CollectChainNodes(mgr, mLightChain, mChainANodes, mChainAPositions);
     mDarkChain = FindConnectedObject(mgr, kSS_InternalState7, kSM_None);
+    CollectChainNodes(mgr, mDarkChain, mChainBNodes, mChainBPositions);
     ReadWaterAndNodes(mgr);
     break;
   case kSM_Delete:

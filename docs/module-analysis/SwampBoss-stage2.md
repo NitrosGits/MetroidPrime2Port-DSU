@@ -768,3 +768,37 @@ branches (0x55FC, 0x56F0, 0x5740: the chain actor, the patrol node and the next 
 gone) are the port's own null guards, all (c) - the chain's nodes are actors.
 
 **fn_79_50AC**: not ported (the recursion over the chain's connections), not marked.
+
+### 7.16 The chain walk ported: fn_79_5830 and fn_79_50AC (2026-10-21, tenth lane pass)
+
+The retail's chain walk is two bodies the port did not have: `fn_79_5830` (the chain actor's
+"PTRL/FOLW" node, then the walk) and `fn_79_50AC` (the recursion over the "ARRV/NEXT"
+connections). Both are ported now (`CollectChainNodes`, `WalkChainNodes`) and the retail's
+`fn_79_B3CC` call site is wired: the `kSM_AreaLoaded` case collects the light chain
+(`mChainANodes`/`mChainAPositions`) and the dark chain (`mChainBNodes`/`mChainBPositions`),
+which is what the retail's `fn_79_B3CC` does (0xB6F8 and 0xB73C, the "IS02" and "IS07"
+connections).
+
+**fn_79_5830** (`CollectChainNodes`)
+
+| branch | what | class |
+|---|---|---|
+| 0x5878 | the chain actor does not cast to `CActor` -> the walk ends | (c) the chain is an actor |
+| 0x58B8 | the "PTRL/FOLW" node does not cast to `CActor` -> the walk ends | (c) the chain's node is an actor |
+| - | the body | (d) it did not run: the walk is driven by the boss's `kSM_AreaLoaded` message, and the harness creates the boss with the layer (so it never gets that message) - the console can send it (`send <boss uid> AreaLoaded`) but the run that did so sent it before the boss existed |
+
+**fn_79_50AC** (`WalkChainNodes`)
+
+| branch | what | class |
+|---|---|---|
+| 0x5224 | the "ARRV/NEXT" node does not cast to `CActor` -> it is skipped | (c) the chain's nodes are actors |
+| 0x51F0 | the connection is the node's own -> it is skipped | (c) the chain's nodes do not link to themselves |
+| 0x524C | the walk's condition | (a) a loop condition |
+| - | the body | (d) it did not run (see 5830) |
+
+The retail's `fn_79_55B0` (the anim event's chain launch: the chain actor, the "PTRL/FOLW" node,
+`fn_79_5030` for the recorded positions, the "ARRV/NEXT" node, the heading difference, the
+rotation and `fn_79_527C` for the swing) is what the port's `LaunchPlatformChain` does, so that
+body is the port's `LaunchPlatformChain` - it is not marked, because the anim event 0x1b that
+calls it never fires in a driver run (the chain walk is the anim event's job, not the script
+message's) and the retail's 55B0 also does not run the recursion.
