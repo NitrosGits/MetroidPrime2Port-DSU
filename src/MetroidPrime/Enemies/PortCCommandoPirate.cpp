@@ -2211,10 +2211,12 @@ bool CCommandoPirate::x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f&
                                            float distance) const {
   const CVector3f center = GetBoundingBox().GetCenterPoint();  // 0x00003374, 0x00003380
   const CVector3f end = center + distance * dir;                // 0x000033B0..0x000033D8
-  // The guest's material filter comes from the module's own static lists (the .data words at
-  // lbl_9_data_810 and lbl_9_data_80C, the two __shl2i calls at 0x000033DC and 0x000033F8);
-  // the port uses the solid material list, the filter a collision ray needs.
-  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  // The guest's material filter (the two __shl2i calls at 0x000033DC and 0x000033F8) includes
+  // the material 59 (kMT_Solid - the module's .data word at lbl_9_data_80C) and excludes the
+  // material 47 (kMT_CollisionActor - the .data word at lbl_9_data_810); its type is
+  // kFT_IncludeExclude (the word 3 at 0x0000341C).
+  const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor));  // 0x000033DC, 0x000033F8
   if (mgr.RayCollideWorld(center, end, filter, this)) {
     return false;                                                // 0x00003430
   }
