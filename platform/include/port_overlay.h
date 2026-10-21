@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 // The F1 debug overlay: a small ImGui window with the port's live settings and the warp
 // buttons, so the knobs do not need environment variables and the game can be driven around
@@ -29,6 +30,12 @@ void SyncGameOptions();
 // before the restart replaces it. `world` is null when there is none; the pages then say so
 // instead of drawing an empty list.
 void SetGameState(uint32_t worldId, int areaId, CWorld* world);
+// "Temple Grounds - Landing Site": the English world and room names, as far as they are known
+// (rooms only for the current world, once their name tables have loaded); empty when the room's is not.
+std::string RoomName(uint32_t worldId, int areaIndex);
+// Opens the window on the first page whose name starts with `name` (case-insensitive: "save"
+// is Save states), or closes it for "off"; false when no page matches (console `overlay`).
+bool ShowPage(const std::string& name);
 // Toggles the window; safe to call from the event loop (F1).
 void Toggle();
 // Scrolls the open window by `steps` rows: the phone's two-finger drag, since a finger cannot turn

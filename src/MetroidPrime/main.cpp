@@ -232,6 +232,8 @@ void CMain::InitializeSubsystems() {
 bool PortPumpEvents();
 // Port: MP1's 60 FPS cap, in platform/port_events.cpp: sleeps to the next 60 Hz deadline.
 void PortPaceFrame();
+// Port: re-arms pad 0's input before each game tick's PADRead (platform/port_events.cpp).
+void PortRearmPad0();
 // Port: runs the registered AI DMA callback until the host stream is topped up
 // (platform/ai_dma.cpp).
 extern "C" void AIPortPoll(void);
@@ -396,6 +398,7 @@ bool CGameArchitectureSupport::UpdateTicks() {
     for (unsigned tick = 0; tick < ticks; ++tick) {
       PortTiming::BeginTick();
       PortMouse::BeginTick();
+      PortRearmPad0();
       if (!mInputGenerator.Update(1.f / 60.f, mArchQueue)) {
         result = true;
       }
@@ -423,6 +426,7 @@ bool CGameArchitectureSupport::UpdateTicks() {
 #ifdef TARGET_PC
     PortTiming::BeginTick();
     PortMouse::BeginTick();
+    PortRearmPad0();
 #endif
     if (!mInputGenerator.Update(1.f / 60.f, mArchQueue)) {
       result = true;

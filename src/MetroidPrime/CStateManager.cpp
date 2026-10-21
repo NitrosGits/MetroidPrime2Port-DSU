@@ -5138,6 +5138,13 @@ void CStateManager::PortWarpToLayer(TAreaId aid, int layer) {
     return;
   }
   layers.SetLayerActive(aid, id, true);
+  // An area that is not loaded has no layer phases yet (LoadLayerDynamic indexes them unchecked);
+  // the active flag is enough there, the area's own load streams its active layers in.
+  if (!area->IsLoaded()) {
+    std::fprintf(stderr, "[layer] area %d is not loaded: layer %d marked active for its load\n",
+                 aid.Value(), layer);
+    return;
+  }
   area->LoadLayerDynamic(*this, id);
   mPortLayerArea = aid;
   mPortLayer = id;

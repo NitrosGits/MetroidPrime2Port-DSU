@@ -177,6 +177,7 @@ struct SRoomEntry {
   std::string label;
   bool real;
   TToken< CStringTable >* nameTable; // pending name load, freed once read
+  std::string english;               // the English name alone, empty until it has loaded
 };
 std::vector< SRoomEntry > sRooms;
 uint32_t sRoomsWorld = 0; // the asset id the entries were taken from, 0 before any world
@@ -186,6 +187,14 @@ void ClearRooms() {
     delete room.nameTable;
   }
   sRooms.clear();
+}
+
+// A page the console's `overlay <page>` asked for, taken by the next frame's window (-1: none).
+std::atomic< int > sShowPage{-1};
+int TakeShowPage() {
+  const int jump = PortOverlaySearch::TakeJumpPage();
+  const int shown = sShowPage.exchange(-1);
+  return jump >= 0 ? jump : shown;
 }
 
 // Frames per second, averaged over a second, from the presented-frame clock.
@@ -367,7 +376,11 @@ void DrawSaveStates() {
     if (info.exists) {
       const int t = static_cast< int >(info.playTime);
       ImGui::SameLine();
-      ImGui::Text("%s  %d:%02d:%02d%s", info.room.c_str(), t / 3600, t / 60 % 60, t % 60,
+      std::string room = PortOverlay::RoomName(info.worldId, info.areaIndex);
+      if (room.empty()) {
+        room = info.room;
+      }
+      ImGui::Text("%s  %d:%02d:%02d%s", room.c_str(), t / 3600, t / 60 % 60, t % 60,
                   info.morphed ? "  (ball)" : "");
     } else if (slot != PortSaveState::kUndoSlot) {
       ImGui::SameLine();
@@ -417,6 +430,9 @@ void DrawSaveStatesSection() {
 void DrawDebugSection() {
   ImGui::SeparatorText("Game");
   ImGui::Text("world %08X  area %d", sWorldId, sAreaId);
+  if (const std::string room = PortOverlay::RoomName(sWorldId, sAreaId); !room.empty()) {
+    ImGui::TextUnformatted(room.c_str());
+  }
   ImGui::Text("game updates: %u", PortHarness::GameUpdates());
   PortUi::Help("MP2_CONSOLE=<port> serves the debug console over TCP (tools/mp2con.py -p <port> "
                "help); MP2_INPUT drives the pad from a script");
@@ -529,6 +545,9 @@ void DrawRandomizerSection() {
 void DrawGameSection() {
   ImGui::SeparatorText("Game");
   ImGui::Text("world %08X  area %d", sWorldId, sAreaId);
+  if (const std::string room = PortOverlay::RoomName(sWorldId, sAreaId); !room.empty()) {
+    ImGui::TextUnformatted(room.c_str());
+  }
 
   if (ImGui::Button("Previous area")) {
     PortWarp::CycleArea(-1);
@@ -1512,7 +1531,7 @@ void DrawControlsSection() {
     DrawSearchField();
 
     static int sPage = 0;
-    if (const int jumpPage = TakeJumpPage(); jumpPage >= 0) {
+    if (const int jumpPage = TakeShowPage(); jumpPage >= 0) {
       sPage = jumpPage;
     }
     float listWidth = 0.f;
@@ -1582,7 +1601,7 @@ void DrawControlsSection() {
       ImGui::EndChild();
     } else {
       if (ImGui::BeginTabBar("##overlay_tabs", ImGuiTabBarFlags_FittingPolicyScroll)) {
-        const int jumpPage = TakeJumpPage();
+        const int jumpPage = TakeShowPage();
         for (int i = 0; i < kPageCount; ++i) {
           if (ImGui::BeginTabItem(kPages[i].name, nullptr,
                                   i == jumpPage ? ImGuiTabItemFlags_SetSelected : 0)) {
@@ -1765,6 +1784,7 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
         char text[160];
         std::snprintf(text, sizeof(text), "%d  %s", i, name.c_str());
         room.name = text;
+        room.english = name;
       }
       delete room.nameTable;
       room.nameTable = nullptr;
@@ -1795,8 +1815,31 @@ void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
       nameTable = rs_new TToken< CStringTable >(gpSimplePool->GetObj(SObjectTag('STRG', strg)));
       nameTable->Lock();
     }
-    sRooms.push_back(SRoomEntry{label, label, real, nameTable});
+    sRooms.push_back(SRoomEntry{label, label, real, nameTable, std::string()});
   }
+}
+
+std::string RoomName(uint32_t worldId, int areaIndex) {
+  std::string world;
+  if (gpMemoryCard != nullptr) {
+    const rstl::vector< CMemoryCard::MemoryWorld >& worlds = gpMemoryCard->GetMemoryWorlds();
+    for (int i = 0; i < worlds.size(); ++i) {
+      if (static_cast< uint32_t >(worlds[i].first) == worldId) {
+        world = PlainWorldName(worlds[i].second.GetFrontEndName());
+        break;
+      }
+    }
+  }
+  // Only the current world's rooms are named (the room picker's list); another world's keep the
+  // saved label.
+  std::string room;
+  if (worldId == sRoomsWorld && areaIndex >= 0 && areaIndex < static_cast< int >(sRooms.size())) {
+    room = sRooms[areaIndex].english;
+  }
+  if (world.empty() || room.empty()) {
+    return room;
+  }
+  return world + " - " + room;
 }
 
 void Toggle() {
@@ -1810,6 +1853,26 @@ void Toggle() {
     io.AddFocusEvent(false);
     io.AddFocusEvent(true);
   }
+}
+
+bool ShowPage(const std::string& name) {
+  if (name == "off") {
+    if (sVisible) {
+      Toggle();
+    }
+    return true;
+  }
+  for (int i = 0; i < PortOverlaySearch::kPageCount; ++i) {
+    const char* page = PortOverlaySearch::kPages[i].name;
+    if (!name.empty() && SDL_strncasecmp(page, name.c_str(), name.size()) == 0) {
+      sShowPage.store(i);
+      if (!sVisible) {
+        Toggle();
+      }
+      return true;
+    }
+  }
+  return false;
 }
 
 // Called on the UI thread (the two-finger scroll), but ImGui's input queue is only safe on the game
