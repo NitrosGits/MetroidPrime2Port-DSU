@@ -75,8 +75,30 @@ envs=(
 [ -n "${WORLD:-}" ] && envs+=("MP2_WORLD=$WORLD")
 [ -n "${TELEPORT:-}" ] && envs+=("MP2_TELEPORT=$TELEPORT")
 
+# The run owns its X server: with no server on DISPLAY_NUM it starts an Xvfb there and stops it when
+# the run ends, so no caller has to start one (callers that did left 110 idle servers behind, ~3 GB).
+# A server that was already up is left running for whoever started it.
+XVFB_PID=
+if ! xdpyinfo -display "$DISPLAY_NUM" >/dev/null 2>&1; then
+  Xvfb "$DISPLAY_NUM" -screen 0 1280x720x24 -ac > "$LOG.xvfb" 2>&1 &
+  XVFB_PID=$!
+  trap 'kill "$XVFB_PID" 2>/dev/null; rm -f "$LOG.xvfb"' EXIT
+  for _ in $(seq 1 50); do
+    xdpyinfo -display "$DISPLAY_NUM" >/dev/null 2>&1 && break
+    sleep 0.1
+  done
+fi
+
+# The game waits for one of the machine-wide game-run slots shared with MP3 (~/.cache/mp3-orch/slotrun.sh,
+# flocks on ~/.cache/mp3-orch/slots/1..10); the timeout starts once it has one. SLOTS=0 skips the cap.
+SLOT=()
+if [ "${SLOTS:-1}" != 0 ] && [ -x "$HOME/.cache/mp3-orch/slotrun.sh" ]; then
+  SLOT=("$HOME/.cache/mp3-orch/slotrun.sh")
+fi
+# PRESENT_EVERY=<n> (default 6): show one frame in n on the Xvfb; each present is a CPU copy there.
+# Screenshots taken by the game (F12, console `screenshot`) are unaffected; 1 for x11grab videos.
 DISPLAY=$DISPLAY_NUM SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dummy \
-  env "${envs[@]}" timeout -k 10 "${SECS:-460}" ./metroid_prime2_port > "$LOG" 2>&1 &
+  AURORA_PRESENT_EVERY=${PRESENT_EVERY:-6} env "${envs[@]}" "${SLOT[@]}" timeout -k 10 "${SECS:-460}" ./metroid_prime2_port > "$LOG" 2>&1 &
 GAME=$!
 # STOP_ON_STALL=1: a paused game (a save screen with nothing to answer it, the ending's "Save
 # progress?" prompt in Temple Grounds 58) never reaches MP2_FRAMES, so only the timeout would end

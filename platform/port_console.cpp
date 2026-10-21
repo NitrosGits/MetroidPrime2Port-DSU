@@ -50,8 +50,10 @@
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/CGenericFSM2State.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
@@ -479,7 +481,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
       "heal | kill                 refill energy, or kill the player (a respawn test)\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
-      "                            cannonball, dark or light; kb = knockback power)\n"
+      "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
+      "                            sunburst, sonicboom; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -509,7 +512,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
-      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it)\n"
+      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
@@ -524,10 +527,12 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "strg <id|name> [index]      a string table as the game loads it\n"
       "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
+      "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
-      "help                        this list\n";
+      "help                        this list\n"
+      "a; b; c                     run several commands in the same game tick (one reply each)\n";
 }
 
 void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
@@ -708,7 +713,13 @@ void CmdDoor(CStateManager&, const Args&, std::string&) { PortWarp::Door(); }
 void CmdDock(CStateManager&, const Args&, std::string&) { PortWarp::Dock(); }
 void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station(); }
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
-void CmdKill(CStateManager&, const Args&, std::string&) { PortWarp::Kill(); }
+void CmdKill(CStateManager&, const Args& args, std::string&) {
+  if (args.size() > 1) {
+    Fail("usage: kill   (kills the player; for an actor use `damage <id> <amount>`)");
+    return;
+  }
+  PortWarp::Kill();
+}
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
   if (args.size() < 2) {
@@ -1384,12 +1395,16 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float amount = 0.f;
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
-    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light]");
+    Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
+         "annihilator|powerbomb|darkburst|sunburst|sonicboom]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
   // only a missile or the cannon ball may break cannot be tested with the default power beam.
+  // The charge combos (darkburst, sunburst, sonicboom) are their beam with the combo flag, which is
+  // what a knockback rule set tells them apart by (the Ing's death follow-ups, for instance).
   EWeaponType weapon = kWT_Power;
+  bool comboed = false;
   for (size_t i = 3; i < args.size(); ++i) {
     float number = 0.f;
     if (ParseFloat(args[i], number)) {
@@ -1406,8 +1421,22 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
       weapon = kWT_Light;
     } else if (args[i] == "power") {
       weapon = kWT_Power;
+    } else if (args[i] == "annihilator") {
+      weapon = kWT_Annihilator;
+    } else if (args[i] == "powerbomb") {
+      weapon = kWT_PowerBomb;
+    } else if (args[i] == "darkburst") {
+      weapon = kWT_Dark;
+      comboed = true;
+    } else if (args[i] == "sunburst") {
+      weapon = kWT_Light;
+      comboed = true;
+    } else if (args[i] == "sonicboom") {
+      weapon = kWT_Annihilator;
+      comboed = true;
     } else {
-      Fail("damage: weapon is power, missile, cannonball, dark or light");
+      Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
+           "darkburst, sunburst or sonicboom");
       return;
     }
   }
@@ -1419,7 +1448,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     return;
   }
   const float before = actor->GetHealthInfo()->GetHP();
-  const CDamageInfo info(CWeaponMode(weapon), amount, 0.f, knockback);
+  const CDamageInfo info(CWeaponMode(weapon, false, comboed), amount, 0.f, knockback);
   const CVector3f direction = actor->GetTranslation() - player->GetTranslation();
   mgr.ApplyDamage(player->GetUniqueId(), actor->GetUniqueId(), player->GetUniqueId(), info,
                   CMaterialFilter::GetPassEverything(), direction);
@@ -1456,13 +1485,33 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   }
   TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
   const std::string before = machine->HasState() && machine->GetName() != nullptr ? machine->GetName() : "?";
-  machine->SetState(mgr, *patterned, rstl::string_l(std::string(args[2]).c_str()));
+  // string_l borrows the characters: keep the std::string alive for every use of `name`.
+  const std::string wanted(args[2]);
+  const rstl::string name = rstl::string_l(wanted.c_str());
+  // An FSM2's SetState looks only at its own top-level states; a state inside one of its
+  // sub-machines is entered the way a transition into that sub-machine would enter it.
+  std::string where = "top machine";
+  if (machine->GetType() == 1) {
+    const char* path[8] = {};
+    const int depth = static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortSetStateDeep(
+        mgr, *patterned, name, path, 8);
+    if (depth > 0) {
+      where = "sub-machine ";
+      for (int i = 0; i < depth; ++i) {
+        where += (i != 0 ? "/" : "");
+        where += path[i] != nullptr ? path[i] : "?";
+      }
+    }
+  } else {
+    machine->SetState(mgr, *patterned, name);
+  }
   const char* after = machine->HasState() ? machine->GetName() : nullptr;
   // An unknown name leaves the machine where it was; say so rather than report a no-op. An FSM2
   // evaluates the new state's transitions inside SetState, so a state that was entered and left
   // at once reads as another, new name: report that as entered.
   if (after != nullptr && std::string_view(after) != args[2] && before != after) {
-    out += "fsm " + before + " -> " + Str(args[2]) + " (entered; now " + after + ")\n";
+    out += "fsm " + before + " -> " + Str(args[2]) + " [" + where + "] (entered; now " + after +
+           ")\n";
     return;
   }
   if (after == nullptr || std::string_view(after) != args[2]) {
@@ -1470,7 +1519,7 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
          (after != nullptr ? after : "?"));
     return;
   }
-  out += "fsm " + before + " -> " + after + '\n';
+  out += "fsm " + before + " -> " + after + " [" + where + "]\n";
 }
 
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
@@ -1860,6 +1909,57 @@ void CmdPress(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// grapple <id> [dist]: the lock-on a grapple needs, set up in one go. A lock-on press takes
+// CPlayer's next orbit target, which comes from candidate lists rebuilt only every 20 updates, so a
+// press right after a teleport finds no target and a held L never presses again; and a player put
+// in the air falls out of the orbit zone in ~15 updates. This wakes the point (kSM_Activate, which
+// also restores kMT_Orbit), puts the player dist units away with the eye level with the point,
+// facing it (along the point's axis when it is axis-constrained), has the lists rebuilt on the next
+// update and holds L from the update after that (`press` or `stick` ends the hold).
+void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
+  const CEntity* ent = args.size() >= 2 ? ResolveObject(mgr, args[1]) : nullptr;
+  const CScriptGrapplePoint* point =
+      ent != nullptr ? TCastToConstPtr< CScriptGrapplePoint >(ent) : nullptr;
+  float dist = 8.f;
+  if (point == nullptr || (args.size() > 2 && (!ParseFloat(args[2], dist) || !(dist > 2.f)))) {
+    Fail("usage: grapple <grapple point id> [dist > 2]   (`objs grapple` lists them)");
+    return;
+  }
+  CPlayer* player = mgr.GetPlayer(0);
+  CPlayerState* state = mgr.PlayerState(0);
+  if (player == nullptr || state == nullptr) {
+    Fail("no player");
+    return;
+  }
+  const bool woken = !point->GetActive();
+  if (woken) {
+    mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, point->GetUniqueId(), kSM_Activate));
+  }
+  const CVector3f target = point->GetTranslation();
+  CVector3f dir = player->GetTranslation() - target;
+  if (point->GetGrappleParameters().GetConstrainToAxis()) {
+    const CVector3f axis = point->GetTransform().GetForward();
+    dir = CVector3f::Dot(axis, dir) < 0.f ? -axis : axis;
+  }
+  dir.SetZ(0.f);
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, -1.f, 0.f);
+  const float eyeHeight = player->GetEyePosition().GetZ() - player->GetTranslation().GetZ();
+  CVector3f pos = target + dir * dist;
+  pos.SetZ(target.GetZ() - eyeHeight);
+  player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
+  player->PortRefreshOrbitCandidates();
+  PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, 0, 2);
+  char line[192];
+  std::snprintf(line, sizeof(line),
+                "grapple u%04x at (%.1f, %.1f, %.1f)%s: player at (%.1f, %.1f, %.1f), L held from "
+                "2 updates on%s\n",
+                point->GetUniqueId().value, target.GetX(), target.GetY(), target.GetZ(),
+                woken ? " (woken)" : "", pos.GetX(), pos.GetY(), pos.GetZ(),
+                state->HasPowerUp(CPlayerState::kIT_GrappleBeam) ? ""
+                                                                 : "; no grapple beam (`give grappleBeam 1`)");
+  out += line;
+}
+
 // stick <x> <y> [updates]: hold the main stick, -127..127 (0 holds until the next press/stick).
 void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
   (void)mgr;
@@ -2108,6 +2208,7 @@ constexpr SCommand kCommands[] = {
     {"give", CmdGiveAdd, true},
     {"take", CmdGiveTake, true},
     {"press", CmdPress, true},
+    {"grapple", CmdGrapple, true},
     {"stick", CmdStick, true},
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
@@ -2206,9 +2307,19 @@ void Tick(CStateManager& mgr) {
       queued = std::move(sQueue.front());
       sQueue.pop_front();
     }
-    std::string out;
-    Execute(mgr, queued.line, out);
-    SendRaw(queued.generation, out);
+    // `a; b; c` runs every command in this one tick, so a forced arm can land inside a one-frame
+    // window (separate lines can arrive a frame apart).
+    size_t start = 0;
+    for (;;) {
+      const size_t sep = queued.line.find(';', start);
+      std::string out;
+      Execute(mgr, queued.line.substr(start, sep == std::string::npos ? std::string::npos : sep - start), out);
+      SendRaw(queued.generation, out);
+      if (sep == std::string::npos) {
+        break;
+      }
+      start = sep + 1;
+    }
   }
 #else
   (void)mgr;

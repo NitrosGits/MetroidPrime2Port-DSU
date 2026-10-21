@@ -19,7 +19,23 @@ Batch 7 (branch `batch7` in `../wt-mp2-batch5`, head `07d7159e1`, 10 heads from 
 green 12:13) merged into port `54e8498b0`: 1785 markers, 15.21% fns / 20.13% bytes. smoke7 (`/tmp/opencode/smoke7`)
 vs smoke6: 0 new errors, 17/17 rc 0; sandboss stalled once at frame 240 (rc 124, blank frame), passed solo: watch it.
 Parallel smoke runner (3-4 Xvfb displays + ticks-per-frame + `@f`) next, checked against smoke7.
-Lane watcher: `~/.cache/mp2-orch/watch.sh` (lanes file beside it), detached loop logs events to `events.log` there.
+Orchestrator queue: grapple points never become the orbit target (CScriptGrapplePoint.cpp:68 only kMT_Orbit vs
+CPlayerOrbit.cpp:1004/1070 kMT_Target only; SwampBoss-stage2.md §7.17), a shared-code bug to fix on port.
+Lane watcher: `~/.cache/mp2-orch/watch.sh` (lanes file beside it), detached loop (`loop.sh`) logs events to `events.log` there.
+
+**Accepted since batch 7 (batch 8 candidates, 2026-10-21 14:15):** CommandoPirate `ed504da00` + `24fca504f`
+(2474/7A98 ported unmarked), DarkSamus `482a38568`+`4154642ea`+`5d31354a9` + darksamus2 `c9eb05d69` (1B658 138A4 1382C 13750 1367C), SwampBoss2 `1fb9cf495` + `26715ee9c`
+(55B0), SwampBoss1 `46aeee651` + `23a9594eb` (belly cap fix, 35DC 3320 348C), EmperorIngStage1 `6386fff8f` + `527356dac` (tentacle anim search order),
+Ing `329c5a27c`..`15b1c9b33` + orchestrator `9f7134a47` + `04abccad1` (B8C0 BCB4; aim form-9 fix) (fn_29_4604's three missing steps; the lane twice
+claimed them ported without the code), DigitalGuardian `6c6eae0c7` (incl. shared fix `e403a065e`
+DolphinCModel UnlockTextures), Splitter `601ceaac7`, bg2 `6c8bfd383` + `396e8ec01` (module done: only copies left unmarked), ep2 `ef9806f4a`,
+CommandoPirate `d72c5d88a` (961C ported, 2474 time fix), SwampBoss2 `83d44d889` (5830 50AC 527C). New lane: Sandworm
+(`../wt-mp2-sandworm`, classification first). Console `fsm` sub-machines + `damage ... powerbomb` merged `d272a3f96`; Ing lane next: `damage <ing> 100 powerbomb` for fn_29_B3C4's burning arm.
+**Lane sessions were deleted from the DB (14:05)**: fresh lanes spawned as subagents of this orchestrator; ids in
+`~/.cache/mp2-orch/lanes` (the table's session column is stale). Surviving old sessions: Splitter (re-sent),
+EmperorIng1 (busy), DarkSamus (busy, old orchestrator's child). Shared asks queued for port: ELoopAttackType 5/6
++ CBCLoopAttackCmd skip-into setter (CommandoPirate), `;`-separated console commands per poll (Splitter),
+fluid plane `Burn` on patterned actors (Ing fn_29_B3C4 burning arm). Grapple/orbit: not a bug (L pressed before the 20-update candidate rebuild); console `grapple <id> [d]` merged `cc780b874`.
 
 Batch 5 merged into port `3bb8177db` (via branch `batch5`, worktree `../wt-mp2-batch5`): playerturret
 `c377344ed`, ing `8855b1674`, spacepirate-vt `c42d82fce`, emperoring `542d6c9b8`, emperoring3 `f786b983e`,
