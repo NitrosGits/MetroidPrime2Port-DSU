@@ -1154,6 +1154,18 @@ void CSwampBossStage1::TongueLoop(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_78_35DC: the hit-react body the light and heavy react states share. It records state 3
+// and the locomotion 5, and on Update it retracts the tongue, updates the tip, drops the head
+// weight and turns the head; the other messages do nothing else.
+// `li r4, 0x3` at 0x360C is the state the call at 0x3610 records.
+// `li r4, 0x5` at 0x3618 is the locomotion the call at 0x361C sets.
+// `cmpwi r31, 0x1` at 0x3620 is the Update test.
+// `bne .L_00003670` at 0x3624 skips the body for the other messages.
+// `bl fn_78_729C` at 0x3634 retracts the tongue.
+// `bl fn_78_716C` at 0x3650 updates the tip.
+// `bl fn_78_7224` at 0x365C drops the head weight.
+// `bl fn_78_2E38` at 0x366C turns the head.
+// A run exercised every arm: 1 x Activate, 104 x Update, 1 x Deactivate.
 void CSwampBossStage1::HitReactBody(CStateManager& mgr, EStateMsg msg, float dt) {
   RecordState(3, msg);
   SetLocomotion(5);
@@ -1165,6 +1177,13 @@ void CSwampBossStage1::HitReactBody(CStateManager& mgr, EStateMsg msg, float dt)
   }
 }
 
+// @ fn_78_3320: the light hit react - the shared hit-react body plus, on Activate, the additive
+// reaction command.
+// `bl fn_78_35DC` at 0x333C is the shared body.
+// `cmpwi r31, 0x0` at 0x3340 is the Activate test.
+// `bne .L_000033D0` at 0x3344 skips the command for the other messages.
+// `bl DeliverCmd__16CBodyStateCmdMgrF13EBodyStateCmd` at 0x3394 is the additive reaction.
+// A run exercised every arm: 8 x Activate, 56 x Update, 8 x Deactivate.
 void CSwampBossStage1::LightHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
   HitReactBody(mgr, msg, dt);
   if (msg == kStateMsg_Activate) {
@@ -1173,6 +1192,14 @@ void CSwampBossStage1::LightHitReact(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_78_348C: the heavy hit react - on Activate the joints go to kAllJoints with
+// RemoveTarget|Reflect and the body gets the next state command, then the shared hit-react body
+// and the taunt.
+// `bne .L_000034F8` at 0x34B8 is the Activate test.
+// `bl fn_78_9744` at 0x34C4 sets the joints.
+// `bl DeliverCmd__16CBodyStateCmdMgrFRC13CBodyStateCmd` at 0x34E8 is the next state command.
+// `bl fn_78_35DC` at 0x3508 is the shared body.
+// A run exercised every arm: 1 x Activate, 104 x Update, 1 x Deactivate.
 void CSwampBossStage1::HeavyHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     SetJointsActive(mgr, kAllJoints, kJF_RemoveTarget | kJF_Reflect);
@@ -1874,8 +1901,12 @@ bool CSwampBossStage1::ApplyDamageMsg(CStateManager& mgr, const CScriptMsg& msg)
     case 9:
     case 10:
       xd10_bellyAccum += dmg;
-      if (xc00_tongues < 1 && xd10_bellyAccum > x7c0_data.unknown_0x78755da3 * 0.5f) {
-        xd10_bellyAccum = x7c0_data.unknown_0x78755da3 * 0.5f;
+      // The cap is half the *min health* threshold: the retail reads it from 0x824
+      // (`lfs f1, 0x824(r31)` at 0xA3C0 and `fmuls f1, f2, f1` at 0xA3CC with the 0.5 of
+      // lbl_78_rodata_1E0), which is the field the ShouldExposeBelly trigger compares against at
+      // min health - not the 50.0 threshold.
+      if (xc00_tongues < 1 && xd10_bellyAccum > x7c0_data.unknown_0x74e1a041 * 0.5f) {
+        xd10_bellyAccum = x7c0_data.unknown_0x74e1a041 * 0.5f;
       }
       break;
     default:

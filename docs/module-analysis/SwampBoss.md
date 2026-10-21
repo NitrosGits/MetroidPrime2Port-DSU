@@ -740,6 +740,55 @@ The `fsm` reply is now honest ("entered; now B"), which confirms the forced entr
 remaining problem is only that the state does not survive long enough for the `LightHit` and
 `HeavyHit` triggers to fire on the next frame.
 
+### Stage1: state 3 reached, and the accumulator cap was wrong (2026-10-21)
+
+**The cap was a port bug.** The retail's `fn_78_9B74` caps the belly accumulator at half the
+**min health** threshold: `lfs f1, 0x824(r31)` at 0xA3C0 and `fmuls f1, f2, f1` at 0xA3CC (with
+the 0.5 of `lbl_78_rodata_1E0`), i.e. 5.0 * 0.5 = **2.5**, and only while no tongue has been
+launched (`lwz r0, 0xc00(r31)` at 0xA3B0, `cmpwi r0, 0x1` at 0xA3B4, `bge` at 0xA3B8 skips the
+cap). The port capped at the *50.0* threshold's half (25), so it let the accumulator grow ten
+times too far before a tongue had been launched. **Fixed**: the cap now uses the 0x824 field
+(`x7c0_data.unknown_0x74e1a041`).
+
+The rest of the retail's rules match the port: the accumulator only grows in the states
+`xb14 == 9` (0xA380), `5` (0xA384), `0` (0xA38C), `10` (0xA394) and `4` (0xA39C) - the
+increment is `xd10 += dmg` at 0xA3A4-0xA3AC - and it is reset to 0 by `BeachWait`
+(`stfs f0, 0xd10(r29)` at 0x52C0) and by `Dive` (0x53C0).
+
+**State 3, naturally.** The console's `shoot <id> [charged] [d] [dir x y z]` fires a real beam
+projectile, and `dir 0 0 1` reaches the weak joint `L_middle2_boob_LCTR` from below (the spine
+joints shield it from the player's side). A run that charged the head joint and the belly joint
+repeatedly, with the player parked in the arena's AI hint so the tongue attack runs, climbed the
+accumulator over the threshold in a tongue state:
+
+    dmg st=9 weak=0 dmg=25.00 orig=50.00 acc=2.50 tong=1
+    dmg st=5 weak=0 dmg=25.00 orig=50.00 acc=27.50 tong=1
+    dmg st=5 weak=0 dmg=25.00 orig=50.00 acc=52.50 tong=1
+
+52.50 is over the 50.0 threshold, so `fn_78_6458` fired and the FSM entered `ExposeBelly`
+(the heartbeat shows `st=3` 22 times) - no forcing, the trigger did it.
+
+**The branch tables** (the arms, the retail branch addresses and the probe counts; the
+`fn_78_35DC`/`fn_78_3320` counts are from the run that reached state 3, the `fn_78_348C` counts
+from the run that hit the weak joint in it):
+
+| fn | arm | retail branch | probe count | verdict |
+|---|---|---|---|---|
+| `fn_78_35DC` | Activate | `cmpwi r31, 0x1` at 0x3620, `bne .L_00003670` at 0x3624 | 1 | **marked** |
+| `fn_78_35DC` | Update (the four calls) | 0x3620 taken | 104 | **marked** |
+| `fn_78_35DC` | Deactivate | 0x3624 | 1 | **marked** |
+| `fn_78_3320` | Activate (`DeliverCmd(CBCAdditiveReactionCmd)`) | `cmpwi r31, 0x0` at 0x3340, `bne .L_000033D0` at 0x3344 | 8 | **marked** |
+| `fn_78_3320` | Update (the shared body) | `bl fn_78_35DC` at 0x333C | 56 | **marked** |
+| `fn_78_3320` | Deactivate | 0x3344 | 8 | **marked** |
+| `fn_78_348C` | Activate (the joints and the next state command) | `bne .L_000034F8` at 0x34B8, `bl fn_78_9744` at 0x34C4, `bl DeliverCmd` at 0x34E8 | 1 | **marked** |
+| `fn_78_348C` | Update (the shared body) | `bl fn_78_35DC` at 0x3508 | 104 | **marked** |
+| `fn_78_348C` | Deactivate | 0x34B8 | 1 | **marked** |
+| `fn_78_9A44` | the state-5 branch (the `kMT_SeekerTarget` walk) | `cmpwi r0, 0x5` at 0x9A54 | 0 | **not marked** - no run had the player touch a joint while the tongue pulled (the `place player` at a joint's position registers no touch) |
+
+`fn_78_9A44` stays unmarked: its own branch needs a collision between the player and a joint
+while the state is 5, and the harness could not produce one (the `place` command moves the player
+but the collision system's touch is not generated for a teleport).
+
 ## Stage2 (module 79) — verified
 
 Function map, member layout (ctor `fn_79_BE3C`), decoded-but-unported behaviour and rodata
