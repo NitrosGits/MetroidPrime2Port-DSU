@@ -1038,7 +1038,8 @@ be audited:
   port overrides, the trivial FSM handlers whose body is a single flag) and the functions
   nothing calls.
 - **B - module behaviour** (405 functions, 0x1E418 bytes): real behaviour - these are the port
-  bodies. 112 of them carry a `// @ fn_10_` marker.
+  bodies. 109 of them carry a `// @ fn_10_` marker (slice 25 dropped the three Break* markers whose
+  writer is still a stand-in).
 
 | class | functions | .text bytes |
 |---|---|---|
@@ -1061,7 +1062,7 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   fn_10_17CB8 (OutOfMeleeRange: the distance to the player against lbl_10_rodata_460 = 30.0f),
   fn_10_112E8 (PlayerIsMorphball: fn_10_11308), fn_10_10658 (PlayerTooClose: the distance
   against the actor's own minimum attack range 0x3DC), fn_10_6B78 (ShouldEnragedMelee:
-  fn_10_1AA6C, the range band 1), fn_10_BB78 (ShouldFadeIn: no fight script, or the stage info's
+  fn_10_1AA6C, the range band 0: `cntlzw; srwi 5` is "== 0"), fn_10_BB78 (ShouldFadeIn: no fight script, or the stage info's
   +0x31 is 0) and fn_10_112AC (WasHeavyHit: the last hit's elapsed time 0xC0C is not 0.0f and
   lbl_10_rodata_46C = 0.3f plus it is past the actor's elapsed time 0x8B0), plus fn_10_F840
   (Alerted: the flag byte 0x90C's bit 0x80).
@@ -1119,3 +1120,130 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
 - The run: Sanctuary 10_cliff_rooftop, boss u04f7, 2200 frames - the boss next to the player,
   the missiles at it, the 'Alert' message, and the dive, the boost ball and the taunt states
   forced one after the other. 0 caught, 0 reach-stub, exit 0.
+
+## Slice 24 (2026-10-21): the marking rule - the gdb re-check, the Break* triggers
+
+- The 28 bodies of slice 23 were re-checked under gdb (no probes in the source): the game ran
+  under gdb with a breakpoint on every body, each hit printing its arguments and its result
+  (`$al` for the booleans, `$eax` for the integers) and the program continuing. The driver
+  (`/tmp` only) sent the boss after the player and far away, morphed the player
+  (`fastmorph 1`, `press X 8`), fired the missiles and forced the states.
+- **Dropped (their live arms did not all show up):**
+  - fn_10_16418 / 164C0 (IsPlayerAimLineClear): the body never ran - its only caller is the
+    reach collector fn_10_19B64, which is still a stand-in.
+  - fn_10_1905C (ClassifyLineToPlayer): only the class 0 was seen.
+  - fn_10_16B1C (IsOnPath): only the "on the path" answer was seen.
+  - fn_10_1A554 (CollectFadeAttacks): the faded arm needs the fade state, which the fight never
+    reaches.
+- **Kept (both arms seen in the run):** fn_10_11308 (the player morphed and not), 142F4 (the
+  player in front and not), 17D50 (the attack on and off), 1AA6C (the three range bands), 14648
+  (walkable and not), 1AA5C (the bit 2 and the others), 10BBC (the bit indices; the "no bit" arm
+  is dead by arithmetic), 17E14 / 17DE0 (a stage and none), 166AC / 16600 (clear and blocked),
+  17CEC (the distances), 1A6C4 (the 23 attack weights), 1A980 / 1A8F8 / 1AA30 (the set flag
+  and the bits), 1A5BC / 1A278 / 1A440 / 1A1D4 / 19A1C / 1A34C (the collectors), 1954C /
+  197D8 / 1969C / 19918 (the picks), 1B478 / 1B5E4 (the attack ids and the messages), 12B38
+  (the dive target), 1285C / 12764 (the jump command).
+- **New: the four Break* triggers**, with the bytes the retail reads as new members (the port has
+  no writer for them yet): fn_10_16B48 (BreakFreezeBeam: the byte 0xAB8's bit 0x80),
+  fn_10_16B54 (BreakSuperMissile: the byte 0xA80), fn_10_16B5C (BreakNormalMissile: the byte
+  0xA40) and fn_10_106F8 (BreakPause: the float 0xC30 against the elapsed time 0x8B0). Their
+  arms ran with the bytes forced under gdb (`set var this->mGuestAB8 = 0x80` and so on,
+  alternating), the states that use the triggers forced with `fsm`; the arms are labelled
+  forced in the table below.
+- The DarkSamus module is split: the other lane (branch decomp/darksamus-helpers) takes the
+  unmarked class-B rows with an empty `state` column and an offset below 0xA000; this note and
+  `DarkSamus_functions.tsv` stay here.
+
+| body | arm | ran |
+| --- | --- | --- |
+| 16B48 | the byte 0xAB8's bit 0x80 set / clear | forced (gdb `set var`), yes |
+| 16B54 | the byte 0xA80 set / clear | forced (gdb `set var`), yes |
+| 16B5C | the byte 0xA40 set / clear | forced (gdb `set var`), yes |
+| 106F8 | 0xC30 below the elapsed time / not | forced (gdb `set var`), yes |
+
+## Slice 25 (2026-10-21): the reflect record bytes - their writers, and the Break* triggers
+
+- **Every writer of the guest's 0xA40, 0xA80, 0xAB8 and 0xC30 in the REL** (the rel_pseudo
+  dumps; the stores and the bit writes):
+  | byte | writer | what it writes |
+  |---|---|---|
+  | 0xC30 | fn_10_10710 (the Pause state) | 0x00010768: the elapsed time 0x8B0; 0x000107AC: that plus the stage's pause duration (+0x18..+0x1C, the random range at 0x000107A0) - the time the pause ends |
+  | 0xA40 | fn_10_17448 (the NormalMissileAttack state) | 0x000174A0: 0 (with 0xA38 and 0xA3C, 0x00017498/0x0001749C) on Activate |
+  | 0xA40 | fn_10_1BEFC (the anim-event handler) | 0x0001C30C |
+  | 0xA80 | fn_10_16ECC (the SuperMissileAttack state) | 0x00016F54: 0 (with 0xA78 and 0xA7C, 0x00016F50/0x00016F4C) on Activate |
+  | 0xA80 | fn_10_1BEFC (the anim-event handler) | 0x0001C31C |
+  | 0xAB8 | fn_10_16CDC (the FreezeBeam state) | 0x00016D70 and 0x00016D80: the bit 0x40 cleared and the bit 0x80 set to the old bit 0x40 (0x00016D6C and 0x00016D7C) |
+  | 0xAB8 | fn_10_1BEFC (the anim-event handler) | 0x0001C250 and 0x0001C298 (the bit 0x80) |
+- Only the Pause state's write is ported (it is the one whose value the trigger reads); the
+  NormalMissileAttack's and the SuperMissileAttack's Activate writes still sit in stand-in
+  states (they only clear bytes that are 0 anyway), and the anim-event handler (fn_10_1BEFC)
+  is still a stand-in, so the bytes it alone sets stay 0.
+- **The triggers:** fn_10_16B48 (BreakFreezeBeam), fn_10_16B54 (BreakSuperMissile) and
+  fn_10_16B5C (BreakNormalMissile) read the bytes the anim-event handler writes, so they go
+  back to their FsmStandIn bodies (unmarked); their members (mGuestA40, mGuestA80, mGuestAB8) stay
+  for the writers. fn_10_106F8 (BreakPause) reads 0xC30, which the Pause state writes, so it
+  stays ported: with the Pause state's write ported the trigger is false while the pause runs and
+  true when it ends.
+- The arms ran with natural writes (no gdb forcing): tools/cov with
+  `tools/cov/specs/darksamus.py` and `tools/cov/specs/darksamus_pause.con` (the rooftop, the
+  boss, `fsm u04f7 Pause`) - `106F8 BreakPause: 101 hits, key 0 -> ret 0 (100), key 1 -> ret 1
+  (1)`; `10710 Pause: 211 hits, -> CRandom16::Range 1` (the pause's duration drawn once).
+- The Pause state's own body is still a stand-in apart from its 0xC30 write, so fn_10_10710 keeps
+  no marker; the module's markers went from 112 to 109 (the three Break* markers were dropped).
+- The retail's null check is kept: fn_10_17E14's result is tested at 0x00010770 (cmplwi r3, 0) and
+  the branch at 0x00010774 skips the rest, so with no stage the 0xC30 write stays at the elapsed
+  time. The random range is the state manager's own CRandom16 (r29+0x16E4, the Range call at
+  0x000107A0), the stage's +0x18 and +0x1C are the loader's pauseDurationMin and pauseDurationMax
+  (the SLdrDSStageInfo layout: +0x00..+0x20 are the nine floats).
+
+## FSM2 lane slice 6 (2026-10-21): the CBSLoopReaction crash, twelve triggers
+
+- **The crash** (decomp/darksamus2 0473a8b4e's coverage run `/tmp/opencode/covg`, frame ~3600:
+  `CBSLoopReaction::Start` -> `LoopBestAnimation` with the animation 1798152516): its gcov shows
+  FreezeBeam (16CDC) ran once and its fn_10_8870 call delivered once, right before the fault. That
+  8870 delivered a plain `CBodyStateCmd(kBSC_LoopHitReaction)`. The retail call is a loop
+  attack: at 0x00016E40..0x00016E88 the object at r1+0x10 is the vtable lbl_10_data_1B0
+  (CBCLoopAttackCmd's, its base lbl_10_data_1D4), +0x4 the id 7 = kBSC_LoopAttack
+  (0x00016E70), +0x8 the type 4 (0x00016E80), +0xC the wait flag 0 (0x00016E84), and +0x10 the
+  byte with bit 0x80 (skip-into) cleared (`rlwimi r0, r7, 7, 24, 24` at 0x00016E54). The `li r5,
+  0x9` (0x00016E78) is 8870's animation-state argument, pas::kAS_LoopAttack, not a command id. So
+  FreezeBeam's call is `CBCLoopAttackCmd(pas::kLAT_Four, false)` through the typed DeliverCmd,
+  the same shape SuperMissileAttack (type 0), NormalMissileAttack (type 1) and the 0x85DC caller
+  (type 3) already inline. No port-only class is needed. Neither this branch nor 0473a8b4e
+  crashes on the link build with the lane's own driver (the drive.log replayed) or with
+  darksamus_fsm2{,_force2}.con and darksamus_phazon.con.
+- **Marked** with `trigcall` (tools/cov/specs/darksamus_triggers2.{py,con}): 16B5C, 16B54, 112AC,
+  11760, 117A0, FD30, 10698, F800 (each ALL-ARMS or no branches, the members forced at the
+  trigger's entry by key) and the wrappers 17CB8, 142CC, 10634, 112E8 (callees already marked).
+  16B5C/16B54 are true only when forced: their natural writer is the anim-event handler
+  fn_10_1BEFC, still a stand-in.
+- Unmarked: 14284, BB78, BBE4 (their no-stage arm needs fn_10_17E14 to return null, which an
+  entry-only force on the -O2 cov build can't do), 11158, 1BB08.
+
+## FSM2 lane slice 7 (2026-10-21): the anim-event handler, nine marks
+
+- **fn_10_1BEFC (DoUserAnimEvent) ported in full, unmarked.** The jump table
+  (jumptable_10_data_FB4, `cmplwi r31, 0x2e` at 0x0001BF28): cases 0, 8, 9, 12, 17, 18, 27, 28,
+  33, 34 return without the base (0x0001C6A0); every other type ends in
+  CPatterned::DoUserAnimEvent. Type 43 is not in EUserEventType (static_cast; 0xD24 = 0.9f). The
+  vtable 0x14C call at 0x0001C050 is slot 83 = fn_10_1BB08 (AnyIncomingMissiles, CTriggerData(0)).
+  Stand-in callees keep it unmarked: 13998, 13AB4, 1353C, 133D0 (helpers2 lane), 9164, 5840,
+  77B8, 9E00 (helpers lane). Case 19 writes 0xE38 as a halfword (the boost ball uid) though the
+  header also names a float mGuestE38 there: check when 9E00 lands.
+- **Marked:** 1BDF0 (GetMeleeReach = 2.5f + 0x3DC), 1BE04 / 1BE80 (FadeEnvFxOut/In: FadeDensity
+  0/1 over 4000, then 'EXIT'/'ENTR'), 16B48 (BreakFreezeBeam: 0xAB8 & 0x80, written by Landing
+  0x100000 at 0x0001C350), 14284, BB78, BBE4, 11158 (ShouldReact), 1BB08 (AnyIncomingMissiles).
+  A natural Landing with attack 0x40 arrives in the fight, so BreakNormalMissile goes true unforced.
+- **Forcing keys** (tools/cov/specs/darksamus_uevent.{py,con}, darksamus_react.{py,con}): the
+  attack by the `uevent` dt; no stage by writing mBattleStageUid = 0xffff at
+  `CDarkSamus::GetBattleStage(` (an out-of-line call, so the entry-only force works there); the
+  stage's flags at `TCastToPtr<CDarkSamusBattleStage>(CEntity*)` ($rdi = the entity). The missile
+  float +0x24 is both CanMissileDeflect's "< 0" and the reflect chance, so AnyIncomingMissiles is
+  made true by forcing CanReflectProjectile's type `$rcx = -1` and a `shoot`.
+- **Not covered in 1BEFC:** BeginAction's deflect slow-down (a missile in flight past 28 units),
+  Landing's dive bounce, type 46 with dash steps left.
+- **PreRender 18AB8 / Render 18964 blocked** (left as stand-ins): unported callees 18238 (0x1B0),
+  183E8 (0x1E4), 1890C (0x58; needs 185CC, 1863C), 10864 (0x17C; needs 10A20, 109E0), 12DD0
+  (0xC0; needs 8F50), and unmapped members 0xDE8 (an alpha float Render gates the body on), 0xDED
+  bits 0x40/0x80 (echo/dark visor), 0xE64, 0x90C bit 0x20, CActor 0x44C..0x44F, the model flags
+  at 0xFC. A partial Render risks an invisible boss.

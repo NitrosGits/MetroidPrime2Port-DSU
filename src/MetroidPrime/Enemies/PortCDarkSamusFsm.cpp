@@ -1028,6 +1028,9 @@ bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
 // The trigger itself has no transition in the FSM2 (the MP2_DS_FSM dump lists it only in the
 // machine's 92 triggers), but the module's own ShouldReact (fn_10_11158) calls it (0x00011210)
 // and the FSM2 uses ShouldReact, so the body does run in retail.
+// Run (darksamus_react.py, `trigcall ShouldReact`): no projectile, a shot the walk check takes and one from
+// above it refuses (`shoot`), the filter asked with the type -1 (forced) for the shots.
+// @ fn_10_1BB08
 bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) const {
   const CVector3f& pos = GetTranslation();
   const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
@@ -1051,9 +1054,15 @@ bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) co
   return false;
 }
 
+// fn_10_16B48 (0x00016B48, 0xC bytes): the byte at guest 0xAB8's bit 7 - the extrwi at
+// 0x00016B4C keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24)).
+// The only writer of that bit is the anim-event handler's Landing for the freeze beam
+// (fn_10_1BEFC, 0x0001C350).
+// Run (darksamus_uevent.py, `trigcall`): false, true after `uevent 12` with the freeze beam (the attack forced),
+// false after the key 99 put the byte back.
+// @ fn_10_16B48
 bool CDarkSamus::BreakFreezeBeam(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B48", "trigger BreakFreezeBeam");
-  return false;
+  return (mGuestAB8 & 0x80) != 0;
 }
 
 // fn_10_149B4 (0x000149B4, 0x4C bytes): the dash record's flag 0x80 (0xA08's
@@ -1076,28 +1085,46 @@ bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
   return mDive.mDone;
 }
 
+// fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C).
+// NormalMissileAttack (fn_10_17448) clears it on Activate; the only writer of a non-zero value is
+// the anim-event handler's Landing (fn_10_1BEFC, 0x0001C30C).
+// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA40 forced; darksamus_uevent.py: true after the
+// fight's own Landing event with the normal missile (dt 0, attack 0x40) and after `uevent 12`.
+// @ fn_10_16B5C
 bool CDarkSamus::BreakNormalMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B5C", "trigger BreakNormalMissile");
-  return false;
+  return mGuestA40 != 0;
 }
 
+// fn_10_106F8 (0x000106F8, 0x1C bytes): the float at guest 0xC30 against the actor's elapsed
+// time 0x8B0 (the lfs at 0x000106FC, the fcmpo at 0x00010700); the srwi at 0x00010708 takes
+// the compare's "less than" bit.
+// @ fn_10_106F8
 bool CDarkSamus::BreakPause(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_106F8", "trigger BreakPause");
-  return false;
+  return mGuestC30 < mElapsedTime;
 }
 
+// fn_10_4ABC (0x00004ABC, 0xC bytes): the byte at guest 0xF5C's bit 0x80 (`extrwi 1,24`), which
+// the attack animation's Landing event sets (DoUserAnimEvent) and fn_10_452C clears.
+// Run (darksamus_triggers.py, `trigcall`): false, then true after `uevent 12`.
+// @ fn_10_4ABC
 bool CDarkSamus::BreakPhazonAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_4ABC", "trigger BreakPhazonAttack");
-  return false;
+  return mGuestF5C80;
 }
 
+// fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54).
+// SuperMissileAttack (fn_10_16ECC) clears it on Activate; the only writer of a non-zero value is
+// the anim-event handler's Landing (fn_10_1BEFC, 0x0001C31C).
+// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA80 forced; darksamus_uevent.py: true after
+// `uevent 12` with the super missile (the attack forced).
+// @ fn_10_16B54
 bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B54", "trigger BreakSuperMissile");
-  return false;
+  return mGuestA80 != 0;
 }
 
 // fn_10_10634 (0x00010634, 0x24 bytes): fn_10_17D50 with the attack 1 (the melee, `li r5, 0x1`
 // at 0x0001063C), the port's IsAttackEnabled.
+// Run (darksamus_triggers2.py, `trigcall`): ran (true); no branch of its own.
+// @ fn_10_10634
 bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
   return IsAttackEnabled(mgr, 1);
 }
@@ -1107,6 +1134,9 @@ bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
 // 0x000142A8) against zero (lbl_10_rodata_3FC): the trigger answers when the float is below
 // zero (the fcmpo at 0x000142B0 and the extrwi at 0x000142B8, which keeps the compare's "less
 // than" bit).
+// Run (darksamus_uevent.py with darksamus_react.py): no stage (the uid forced invalid), the shipped float 45.0f, and -1.0f
+// (forced).
+// @ fn_10_14284
 bool CDarkSamus::CanMissileDeflect(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr) {
@@ -1134,18 +1164,25 @@ bool CDarkSamus::DoneTurning(CStateManager&, const CTriggerData&) const {
 
 // fn_10_142CC (0x000142CC, 0x28 bytes): fn_10_142F4 with lbl_10_rodata_4C4 = 0.17453292f
 // (10 degrees, the lfs at 0x000142DC), the port's IsPlayerInFront.
+// Run (darksamus_triggers2.py, `trigcall`): ran (true); no branch of its own.
+// @ fn_10_142CC
 bool CDarkSamus::FacingPlayer(CStateManager& mgr, const CTriggerData&) const {
   return IsPlayerInFront(mgr, 0.17453292f);
 }
 
+// fn_10_7B68 (0x00007B68, 0x58 bytes): the health (vtable 0x3C, its +4) plus lbl_10_rodata_14C =
+// 1.0f below the health the enrage started at, 0xFC4 (the fcmpo at 0x00007BA0, `srwi 31` its
+// "less than" bit). Run (darksamus_triggers.py, `trigcall`): both answers, 0xFC4 forced.
+// @ fn_10_7B68
 bool CDarkSamus::HitDuringEnrage(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_7B68", "trigger HitDuringEnrage");
-  return false;
+  return 1.f + GetHealthInfo()->GetHP() < mGuestFC4;
 }
 
 // fn_10_17CB8 (0x00017CB8, 0x34 bytes): fn_10_17CEC (the distance to the player) against
 // lbl_10_rodata_460 = 30.0f (the lfs at 0x00017CCC); the extrwi at 0x00017CD8 takes the
 // compare's "greater than" bit.
+// Run (darksamus_triggers2.py, `trigcall`): both answers, the player placed 60 and 1 away.
+// @ fn_10_17CB8
 bool CDarkSamus::OutOfMeleeRange(CStateManager& mgr, const CTriggerData&) const {
   return GetDistanceToPlayer(mgr) > 30.f;
 }
@@ -1160,9 +1197,9 @@ bool CDarkSamus::PickedBoostBall(CStateManager&, const CTriggerData&) const {
 }
 
 // fn_10_11760 (0x00011760): the word at 0x984 against 0x100000, the id of the freeze beam. The
-// body is the cntlzw/srwi idiom over `lis r0,0x10` (0x100000) (0x00011764..0x00011774). Not
-// marked: the freeze beam is not one of the TravelToCoverPoints state's transitions, so the body
-// did not run in the walk.
+// body is the cntlzw/srwi idiom over `lis r0,0x10` (0x100000) (0x00011764..0x00011774).
+// Run (darksamus_triggers2.py, `trigcall`): both answers, 0x984 forced.
+// @ fn_10_11760
 bool CDarkSamus::PickedFreezeBeam(CStateManager&, const CTriggerData&) const {
   return mPickedAttack == 0x100000;
 }
@@ -1210,6 +1247,8 @@ bool CDarkSamus::PickedMovingSShot(CStateManager&, const CTriggerData&) const {
 // fn_10_117A0 (0x000117A0): the byte at 0xDEC (the fade flag) first - when it is 1 the
 // trigger answers for the id 0x200000 (the compare at 0x000117B0, `lis r0,0x20`), otherwise
 // for the normal missile's id 0x40 (the compare at 0x000117C4).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xDEC and 0x984 forced.
+// @ fn_10_117A0
 bool CDarkSamus::PickedNormalMissile(CStateManager&, const CTriggerData&) const {
   if (mFadeOut == 1) {
     return mPickedAttack == 0x200000;
@@ -1276,6 +1315,8 @@ bool CDarkSamus::PickedTaunt(CStateManager&, const CTriggerData&) const {
 }
 
 // fn_10_112E8 (0x000112E8, 0x20 bytes): fn_10_11308, the port's IsPlayerMorphed.
+// Run (darksamus_triggers2.py, `trigcall`): ran (false); no branch of its own.
+// @ fn_10_112E8
 bool CDarkSamus::PlayerIsMorphball(CStateManager& mgr, const CTriggerData&) const {
   return IsPlayerMorphed(mgr);
 }
@@ -1301,21 +1342,27 @@ bool CDarkSamus::ReachedPissedOff(CStateManager& mgr, const CTriggerData&) const
   return CVector3f(delta.GetX(), delta.GetY(), 0.f).Magnitude() < 3.f;
 }
 
+// fn_10_6A40 (0x00006A40, 0x20 bytes): the enrage's timer 0xFB0 at or below lbl_10_rodata_13C =
+// 0.0f (the fcmpo at 0x00006A4C, `cror eq, lt, eq`).
+// Run (darksamus_triggers.py, `trigcall`): both answers, 0xFB0 forced.
+// @ fn_10_6A40
 bool CDarkSamus::ReadyForMissiles(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6A40", "trigger ReadyForMissiles");
-  return false;
+  return mGuestFB0 <= 0.f;
 }
 
-// fn_10_6B78 (0x00006B78, 0x28 bytes): fn_10_1AA6C, the port's GetPlayerRangeBand: the
-// trigger answers when the player is inside the attack range (the band 1; the module's note
-// says the FSM2 reads the trigger's low byte and compares it with 1).
+// fn_10_6B78 (0x00006B78, 0x28 bytes): fn_10_1AA6C, the port's GetPlayerRangeBand, is 0 (the
+// player closer than the attack range): `cntlzw; srwi 5` at 0x00006B88 is "== 0" (the port had
+// "== 1"). Run (darksamus_triggers.py, `trigcall`): the player placed 1 and 60 away.
+// @ fn_10_6B78
 bool CDarkSamus::ShouldEnragedMelee(CStateManager& mgr, const CTriggerData&) const {
-  return GetPlayerRangeBand(mgr) == 1;
+  return GetPlayerRangeBand(mgr) == 0;
 }
 
 // fn_10_BB78 (0x0000BB78, 0x6C bytes): the fight script's object (fn_10_17E14) - without one
 // the trigger answers true (the beq at 0x0000BBA4) - and its byte at the stage info's +0x31
 // (the lbz at 0x0000BBB4), which must be 0.
+// Run (darksamus_uevent.py, `trigcall`): no stage (the uid forced invalid), the shipped flag 0, the flag 1 (forced).
+// @ fn_10_BB78
 bool CDarkSamus::ShouldFadeIn(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   return stage == nullptr || !stage->GetFadeOutFlag();
@@ -1325,6 +1372,9 @@ bool CDarkSamus::ShouldFadeIn(CStateManager& mgr, const CTriggerData&) const {
 // answers false (the cmplwi at 0x0000BC04) - its byte at the stage info's +0x31 (the lbz at
 // 0x0000BC18), which must be 1 (the cmplwi at 0x0000BC1C), and then the actor's own fade flag
 // (the guest's 0xDEC, the lbz at 0x0000BC24), which must be 0.
+// Run (darksamus_uevent.py, `trigcall`): no stage, the shipped flag 0, the flag 1 (forced) with 0xDEC 0 and 1 (the
+// FadeIn / FadeOut events).
+// @ fn_10_BBE4
 bool CDarkSamus::ShouldFadeOut(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr || !stage->GetFadeOutFlag()) {
@@ -1339,6 +1389,8 @@ bool CDarkSamus::ShouldFadeOut(CStateManager& mgr, const CTriggerData&) const {
 // pass) test it together with the frozen and the visible flags, so it is the alive flag
 // the host keeps in GetAlive(). The byte at 0xD58 is the flag the PissedOff state clears
 // (fn_10_F930) and the fight script sets.
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xD58 and the alive flag forced.
+// @ fn_10_FD30
 bool CDarkSamus::ShouldGetPissedOff(CStateManager&, const CTriggerData&) const {
   if (GetAlive()) {
     return mPissedOff != 0;
@@ -1346,9 +1398,20 @@ bool CDarkSamus::ShouldGetPissedOff(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_6A60 (0x00006A60, 0x88 bytes): false while the enrage's timer 0xFB0 is above
+// lbl_10_rodata_13C = 0.0f (0x00006A84) or the health (vtable 0x3C, its +4) below
+// lbl_10_rodata_19C = 65.0f (0x00006AB0); else the volleys to fire 0x1058 at most the volleys
+// fired 0x105C (the signed `srawi; srwi; subfc; adde` at 0x00006AC4).
+// Run (darksamus_triggers.py, `trigcall`): every arm, the timer, health and volleys forced.
+// @ fn_10_6A60
 bool CDarkSamus::ShouldLeaveSphere(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6A60", "trigger ShouldLeaveSphere");
-  return false;
+  if (mGuestFB0 > 0.f) {
+    return false;
+  }
+  if (GetHealthInfo()->GetHP() < 65.f) {
+    return false;
+  }
+  return mGuest1058 <= mGuest105C;
 }
 
 // fn_10_11158 (0x00011158, 0x154 bytes): the trigger's switch over the attack the actor is
@@ -1369,6 +1432,9 @@ bool CDarkSamus::ShouldLeaveSphere(CStateManager&, const CTriggerData&) const {
 // 0x400 the pause, 0x10000 the sweep beam and 0x200000 the fade variant of the normal missile
 // answer true (0x0001127C), 0xFFFF (no attack) answers the fade flag at 0xDEC (0x00011284) and
 // everything else answers false.
+// Run (darksamus_react.py, `trigcall`): a heavy hit; no deflect (the shipped float 45.0f); facing away (`place
+// player -20`); every attack arm with the float forced to -1.0f and a shot in the near list.
+// @ fn_10_11158
 bool CDarkSamus::ShouldReact(CStateManager& mgr, const CTriggerData& data) const {
   if (WasHeavyHit(mgr, data)) {
     return true;
@@ -1392,14 +1458,29 @@ bool CDarkSamus::ShouldReact(CStateManager& mgr, const CTriggerData& data) const
   }
 }
 
+// fn_10_6AE8 (0x00006AE8, 0x90 bytes): the health (vtable 0x3C, its +4) at most
+// lbl_10_rodata_1A0 = 61.0f (0x00006B1C), else at most the phazon phase's starting health 0x1054
+// less lbl_10_rodata_1A4 = 58.0f (0x00006B58).
+// Run (darksamus_triggers.py, `trigcall`): every arm, the health and 0x1054 forced.
+// @ fn_10_6AE8
 bool CDarkSamus::ShouldRiseAgain(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6AE8", "trigger ShouldRiseAgain");
-  return false;
+  if (GetHealthInfo()->GetHP() <= 61.f) {
+    return true;
+  }
+  return GetHealthInfo()->GetHP() <= mPhazonHealthMark - 58.f;
 }
 
-bool CDarkSamus::SkipPhazonAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_110E0", "trigger SkipPhazonAttack");
-  return false;
+// fn_10_110E0 (0x000110E0, 0x3C bytes): fn_10_1A5BC (the stage's weights) into an empty list and
+// mask (the stores at 0x000110F8/0x000110FC), then the mask's phazon attack bit 0x800000
+// (`extrwi 1,8` at 0x00011108).
+// Run (darksamus_triggers.py, `trigcall`): ran (false in the rooftop fight); no branch of its own.
+// @ fn_10_110E0
+bool CDarkSamus::SkipPhazonAttack(CStateManager& mgr, const CTriggerData&) const {
+  SAttackWeights weights;
+  weights.count = 0;
+  uint mask = 0;
+  CollectStageWeights(mgr, weights, &mask);
+  return (mask & 0x800000) != 0;
 }
 
 // fn_10_F924: the trigger is the flag byte's bit 6 - the extrwi at 0x0000F928 keeps the byte's
@@ -1422,6 +1503,8 @@ bool CDarkSamus::StartsInTheAir(CStateManager&, const CTriggerData&) const {
 // the last id of the history (the word at 0x998 + (count - 1) * 4, the slwi/add at
 // 0x000106BC..0x000106C8) must not be 0x8000 either (the copy at 0x000106CC and the cmplwi at
 // 0x000106D0).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0x980, the history and the damage forced.
+// @ fn_10_10698
 bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
   if (mCurrentAttack == 0x8000) {
     return false;
@@ -1439,6 +1522,8 @@ bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
 // lbl_10_rodata_428 = 0.2f against the elapsed time at 0x8B0: the fadds at 0x0000F82C, the
 // fcmpo at 0x0000F830 and the extrwi at 0x0000F838, which takes the CR0 bit 1 - the "greater
 // than" of an fcmpo).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0x964 and 0xC44 forced.
+// @ fn_10_F800
 bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
   if (mStillTime > 1.2f) {
     return true;
@@ -1450,6 +1535,8 @@ bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
 // must not be 0.0f (the fcmpu at 0x000112B8) and lbl_10_rodata_46C = 0.3f plus it must be
 // past the actor's elapsed time 0x8B0 (the fcmpo at 0x000112D8, whose "greater than" bit the
 // extrwi at 0x000112E0 takes).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xC0C forced (0, now, now - 1).
+// @ fn_10_112AC
 bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
   if (mGuestC0C == 0.f) {
     return false;
@@ -2487,39 +2574,6 @@ void CDarkSamus::FallFromTheAir(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("FallFromTheAir", msg);
 }
 
-void CDarkSamus::GetUp(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_18EAC", "state GetUp");
-  DsStateEntered("GetUp", msg);
-}
-
-void CDarkSamus::GoToPhazonAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_652C", "state GoToPhazonAttack");
-  DsStateEntered("GoToPhazonAttack", msg);
-}
-
-void CDarkSamus::GoToPhazonEnrage(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_6460", "state GoToPhazonEnrage");
-  DsStateEntered("GoToPhazonEnrage", msg);
-}
-
-// fn_10_10C9C (0x00010C9C, 0x2C8 bytes): the HeavyHit state. The Deactivate arm
-// (`cmpwi r31, 0x2` at 0x00010F28) clears 0xC0C (lbl_10_rodata_3FC = 0.0f, 0x00010F44) and takes
-// the elapsed time 0x8B0 into 0xC20 (0x00010F4C) - the two floats fn_10_F298 and fn_10_1EE4C
-// compare to keep the reflect chance low for a while after a heavy hit.
-void CDarkSamus::HeavyHit(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_10C9C", "state HeavyHit");
-  DsStateEntered("HeavyHit", msg);
-  if (msg == kStateMsg_Deactivate) { // 0x00010F28
-    mGuestC0C = 0.f;                // 0x00010F44
-    mGuestC20 = mElapsedTime;       // 0x00010F4C
-  }
-}
-
-void CDarkSamus::Interrupt(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_10FF4", "state Interrupt");
-  DsStateEntered("Interrupt", msg);
-}
-
 // fn_10_17BC0 (0x00017BC0, 0xF8 bytes): the MeleeAttack state. The attack bookkeeping with id 1
 // (`li r4, 0x1`, fn_10_1B478 at 0x00017BEC); Activate (0x00017BF0) resets the melee contact
 // (fn_10_EA08 on 0x9A4); the melee attack command with severity 1 (`li r7, 0x1` at 0x00017C28,
@@ -2561,11 +2615,6 @@ void CDarkSamus::MeleeDash(CStateManager& mgr, EStateMsg msg, float) {
     mGuestC00 = 0.f;
     mMeleeContact.mHitUid = kInvalidUniqueId;
   }
-}
-
-void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_178E4", "state MissileDeflect");
-  DsStateEntered("MissileDeflect", msg);
 }
 
 // fn_10_177BC (0x000177BC, 0x128 bytes): the MissileJump state. The attack bookkeeping with id
@@ -2655,11 +2704,6 @@ void CDarkSamus::MovingScatterShot(CStateManager& mgr, EStateMsg msg, float dt) 
             CBCStepCmd(mScatterSide != 0 ? pas::kSD_Left : pas::kSD_Right, pas::kStep_BreakDodge));
 }
 
-void CDarkSamus::NormalMissileAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17448", "state NormalMissileAttack");
-  DsStateEntered("NormalMissileAttack", msg);
-}
-
 void CDarkSamus::Null(CStateManager&, EStateMsg msg, float) {
   FsmStandIn("fn_10_14448", "state Null");
   DsStateEntered("Null", msg);
@@ -2673,47 +2717,22 @@ void CDarkSamus::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Dead(mgr, msg, dt);
 }
 
-// The base's Patrol body is the host's waypoint patrol; it stands in for the module's until
-// that one is ported.
-void CDarkSamus::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
-  FsmStandIn("fn_10_1142C", "state Patrol");
-  DsStateEntered("Patrol", msg);
-  CPatterned::Patrol(mgr, msg, dt);
-}
-
-void CDarkSamus::Pause(CStateManager&, EStateMsg msg, float) {
+// fn_10_10710 (0x00010710, 0x154 bytes): the Pause state. The rest of its body is still a
+// stand-in, but its write of the guest's 0xC30 is ported: on Activate (0x00010754) 0xC30 takes
+// the elapsed time 0x8B0 (0x00010768) and then the stage's pause duration (the stage's +0x18
+// and +0x1C, the random range at 0x000107A0) is added (0x000107AC) - 0xC30 is the time the
+// pause ends, which the BreakPause trigger (fn_10_106F8) compares with the elapsed time.
+void CDarkSamus::Pause(CStateManager& mgr, EStateMsg msg, float) {
   FsmStandIn("fn_10_10710", "state Pause");
   DsStateEntered("Pause", msg);
-}
-
-void CDarkSamus::PhazonAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_81D4", "state PhazonAttack");
-  DsStateEntered("PhazonAttack", msg);
-}
-
-void CDarkSamus::PhazonEnraged(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_7BC0", "state PhazonEnraged");
-  DsStateEntered("PhazonEnraged", msg);
-}
-
-void CDarkSamus::PhazonFall(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_6BA0", "state PhazonFall");
-  DsStateEntered("PhazonFall", msg);
-}
-
-void CDarkSamus::PhazonMissiles(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_67B8", "state PhazonMissiles");
-  DsStateEntered("PhazonMissiles", msg);
-}
-
-void CDarkSamus::PhazonRise(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_7054", "state PhazonRise");
-  DsStateEntered("PhazonRise", msg);
-}
-
-void CDarkSamus::PhazonSuck(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_4AC8", "state PhazonSuck");
-  DsStateEntered("PhazonSuck", msg);
+  if (msg == kStateMsg_Activate) {
+    mGuestC30 = mElapsedTime; // 0x00010768
+    const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+    if (stage != nullptr) {
+      mGuestC30 += mgr.Random()->Range(stage->GetStageInfo().pauseDurationMin,
+                                       stage->GetStageInfo().pauseDurationMax); // 0x000107A0
+    }
+  }
 }
 
 // fn_10_F930 (0x0000F930, 0x1C4 bytes): the PissedOff state. Activate (`mr. r31, r5` at
@@ -2924,11 +2943,6 @@ void CDarkSamus::SideDash(CStateManager& mgr, EStateMsg msg, float) {
 void CDarkSamus::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("Start", msg);
   CPatterned::Start(mgr, msg, dt);
-}
-
-void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_16ECC", "state SuperMissileAttack");
-  DsStateEntered("SuperMissileAttack", msg);
 }
 
 // fn_10_CA0C (0x0000CA0C, 0x394 bytes): the SweepBeam state. Every message first runs the attack
@@ -3176,11 +3190,6 @@ void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float le
     const CDamageInfo info(CWeaponMode(kWT_Power), 1000.f, 0.f, 0.f, true); // 0x0000C034
     mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), info, damageFilter, CVector3f::Zero());
   }
-}
-
-void CDarkSamus::Taunt(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_11544", "state Taunt");
-  DsStateEntered("Taunt", msg);
 }
 
 // fn_10_1DF74 (0x0001DF74, 0x204 bytes): the state that glides the actor from cover point to
@@ -3601,7 +3610,6 @@ int CDarkSamus::PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, 
 // 0x000191C8). The nearest hit (from the unshifted start) that is not 8 short of the player
 // (the blt at 0x000192F0) is kept (lbl_10_rodata_3EC = -1.0f = none, 0x00019300); none is 0
 // (0x0001932C), short of the player 1 (0x0001933C), else 2.
-// @ fn_10_1905C
 int CDarkSamus::ClassifyLineToPlayer(CStateManager& mgr) const {
   CVector3f dir = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
   dir.SetZ(0.f);

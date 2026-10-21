@@ -1,0 +1,28 @@
+# the Dark Samus's FSM part two: every state of PortCDarkSamusFsm2.cpp, forced in turn; an
+# attack state before each Interrupt leaves its id in the attack history.
+@f600 send u04f7 Activate
+@f700 fsm u04f7 Patrol
+@f900 fsm u04f7 MeleeAttack
+@f1000 fsm u04f7 Interrupt
+@f1100 fsm u04f7 Taunt
+@f1300 fsm u04f7 Interrupt
+@f1400 fsm u04f7 NormalMissileAttack
+@f1600 fsm u04f7 Interrupt
+@f1700 fsm u04f7 SuperMissileAttack
+@f1900 fsm u04f7 Interrupt
+@f2000 fsm u04f7 MissileDeflect
+@f2200 fsm u04f7 Interrupt
+@f2300 fsm u04f7 HeavyHit
+@f2450 fsm u04f7 GetUp
+@f2600 fsm u04f7 Taunt
+@f2750 fsm u04f7 HeavyHit
+@f2900 fsm u04f7 PhazonSuck
+@f3050 fsm u04f7 GoToPhazonAttack
+@f3150 fsm u04f7 PhazonAttack
+@f3350 fsm u04f7 GoToPhazonEnrage
+@f3450 fsm u04f7 PhazonFall
+@f3600 fsm u04f7 PhazonRise
+@f3750 fsm u04f7 PhazonEnraged
+@f3900 fsm u04f7 PhazonMissiles
+@f4100 fsm u04f7 Patrol
+@f4300 objs dark

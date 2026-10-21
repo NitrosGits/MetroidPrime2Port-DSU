@@ -29,6 +29,10 @@ void CGenericFSM2State< T >::Reset(CStateManager& mgr, T& owner) {
 
 template < class T >
 void CGenericFSM2State< T >::SetStateFunctions(const SStateFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortStateFunctions = functions;
+  mPortStateFunctionCount = count;
+#endif
   for (int i = 0; i < mSubMachines.size(); ++i) {
     mSubMachines[i].mMachine->SetStateFunctions(functions, count);
   }
@@ -41,6 +45,10 @@ void CGenericFSM2State< T >::SetStateFunctions(const SStateFunction* functions, 
 
 template < class T >
 void CGenericFSM2State< T >::SetTriggerFunctions(const STriggerFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortTriggerFunctions = functions;
+  mPortTriggerFunctionCount = count;
+#endif
   for (int i = 0; i < mSubMachines.size(); ++i) {
     mSubMachines[i].mMachine->SetTriggerFunctions(functions, count);
   }
@@ -417,6 +425,40 @@ int CGenericFSM2State< T >::PortSetStateDeep(CStateManager& mgr, T& owner,
     return depth >= 0 ? depth + 1 : -1;
   }
   return -1;
+}
+
+template < class T >
+typename CGenericFSM2State< T >::StateFunc
+CGenericFSM2State< T >::PortFindStateFunction(const char* name) const {
+  for (int i = 0; i < mPortStateFunctionCount; ++i) {
+    const char* a = mPortStateFunctions[i].mName;
+    const char* b = name;
+    while (*a != '\0' && *a == *b) {
+      ++a;
+      ++b;
+    }
+    if (*a == *b) {
+      return mPortStateFunctions[i].mFunction;
+    }
+  }
+  return StateFunc();
+}
+
+template < class T >
+typename CGenericFSM2State< T >::TriggerFunc
+CGenericFSM2State< T >::PortFindTriggerFunction(const char* name) const {
+  for (int i = 0; i < mPortTriggerFunctionCount; ++i) {
+    const char* a = mPortTriggerFunctions[i].mName;
+    const char* b = name;
+    while (*a != '\0' && *a == *b) {
+      ++a;
+      ++b;
+    }
+    if (*a == *b) {
+      return mPortTriggerFunctions[i].mFunction;
+    }
+  }
+  return TriggerFunc();
 }
 #endif
 

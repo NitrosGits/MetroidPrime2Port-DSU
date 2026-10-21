@@ -67,11 +67,11 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_43A8` | 0xC0 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_4468` | 0x68 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_452C` | 0xCC | method | blocked - it resets the 0xEF0 sub-object's members (0xF10..0xF5C), which are not modelled yet |
-| `fn_10_45F8` | 0x270 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
+| `fn_10_45F8` | 0x270 | method | 1 | ported body | **marked** - ConstructPhazonBeam (the scalars) + PhazonBeamHitToken (the token); the ids are mData's |
 | `fn_10_4868` | 0x60 | method | **ported** |
 | `fn_10_48C8` | 0x44 | method | **ported** |
 | `fn_10_490C` | 0x19C | method | 2 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_4AA8` | 0x14 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
+| `fn_10_4AA8` | 0x14 | method | 1 | ported body | **marked** - HasPhazonBeam (AddToRenderer's beam test) |
 | `fn_10_4C40` | 0x15C | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_4D9C` | 0x54 | method | 4 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_4DF0` | 0x5C | method | 2 | missing | missing body (the caller is a state or a helper the port does not have yet) |
@@ -85,11 +85,11 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_5038` | 0x80 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_50B8` | 0x788 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_5840` | 0x80 | method | 1 | cited | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
-| `fn_10_58C0` | 0xB4 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_5974` | 0x7A4 | method | blocked - the 0xEF0 sub-object's members (0xEF8, 0xF10..0xF58) are not modelled yet |
-| `fn_10_6118` | 0x19C | method | 1 | ported body | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
-| `fn_10_6374` | 0xEC | method | **ported** (the lane's fn_10_1DD14 / 1D860 / 11334 stand in) |
-| `fn_10_65CC` | 0x1EC | method | to port - the base class's members only; the host's names are known, the body is 0x1EC bytes |
+| `fn_10_58C0` | 0xB4 | method | 1 | **ported** | the beam's release (kUE_EventStop) |
+| `fn_10_5974` | 0x7A4 | method | 1 | **ported** | the phazon beam's update (UpdatePhazonBeam) |
+| `fn_10_6118` | 0x19C | method | 1 | **ported** | the phazon beam (kUE_EventStart of 0x400000) |
+| `fn_10_6374` | 0xEC | method | **ported** (fixed in the FSM2 lane: Activate also reaches 1D860/11334; shagged re-sets the destination) |
+| `fn_10_65CC` | 0x1EC | method | **ported** in PortCDarkSamusFsm2.cpp (`GetPhazonWaypoint`) |
 | `fn_10_69C0` | 0x80 | method | **ported** |
 | `fn_10_6DAC` | 0x8C | method | blocked - the values it copies come from the module's global bss_128, which the host has no member for |
 | `fn_10_6F90` | 0xC4 | method | **ported** (the guest's 0x6F4/0x1048 map to the host's CPathFindNavigation) |
@@ -103,7 +103,7 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_7D00` | 0x298 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_7F98` | 0x17C | method | blocked - it calls the lane's fn_10_1B478 / 1AEC0 / 18F90 and this half's fn_10_7538 / 7610 / 7D00 |
 | `fn_10_812C` | 0x4C | method | **ported** |
-| `fn_10_8178` | 0x5C | method | 1 | ported body | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
+| `fn_10_8178` | 0x5C | method | 1 | **ported** | the phazon beam's sound |
 | `fn_10_8698` | 0xCC | method | **ported** (the guest's command words become the host's CBCTauntCmd + mAnimationState) |
 | `fn_10_8764` | 0x10C | method | the port already has the host form (the lane's `RunMeleeAttackCmd`) |
 | `fn_10_8870` | 0xEC | method | blocked - its command words (0x1B8/0x1C0/0x1C4) map to a host CBC*Cmd that is not identified yet |
@@ -179,16 +179,16 @@ the lane's order, so a state can be written against them:
 | `fn_10_7F98` | 0x17C | 7A14 @0x7AC8, 67B8 @0x68B4, 7BC0 @0x7CCC | blocked - it calls the lane's fn_10_1B478 / 1AEC0 / 18F90 and this half's fn_10_7538 / 7610 / 7D00 |
 | `fn_10_6F90` | 0xC4 | 6E38 @0x6EBC, 6E38 @0x6F10 | **ported** (the guest's 0x6F4/0x1048 map to the host's CPathFindNavigation) |
 | `fn_10_6DAC` | 0x8C | 6E38 @0x6F4C | blocked - the values it copies come from the module's global bss_128, which the host has no member for |
-| `fn_10_65CC` | 0x1EC | 6460 @0x64A4, 652C @0x6570, 7054 @0x7190 | to port - the base class's members only; the host's names are known, the body is 0x1EC bytes |
-| `fn_10_6374` | 0xEC | 6460 @0x64F0, 652C @0x65A4 | **ported** (the lane's fn_10_1DD14 / 1D860 / 11334 stand in) |
+| `fn_10_65CC` | 0x1EC | 6460 @0x64A4, 652C @0x6570, 7054 @0x7190 | **ported** in PortCDarkSamusFsm2.cpp (`GetPhazonWaypoint`) |
+| `fn_10_6374` | 0xEC | 6460 @0x64F0, 652C @0x65A4 | **ported**, wired into both states |
 | `fn_10_69C0` | 0x80 | 67B8 @0x68A0 | **ported** |
 | `fn_10_746C` | 0xCC | 6BA0 @0x6C04 | blocked - it calls fn_10_7304 (this half, not ported yet) |
 | `fn_10_7610` | 0x170 | 6BA0 @0x6C10 | blocked - it calls fn_10_8D30 and fn_10_9E00 (this half, not ported yet) |
 | `fn_10_4868` | 0x60 | 6BA0 @0x6D30 | **ported** |
 | `fn_10_8698` | 0xCC | 6BA0 @0x6D6C, 7054 @0x72C4, 4AC8 @0x4B54 | **ported** (the guest's command words become the host's CBCTauntCmd + mAnimationState) |
 | `fn_10_786C` | 0x1A8 | 7BC0 @0x7C58 | blocked - it calls fn_10_7F98 (this half, not ported yet) |
-| `fn_10_452C` | 0xCC | 81D4 @0x8298 | blocked - it resets the 0xEF0 sub-object's members (0xF10..0xF5C), which are not modelled yet |
-| `fn_10_5974` | 0x7A4 | 81D4 @0x8340 | blocked - the 0xEF0 sub-object's members (0xEF8, 0xF10..0xF58) are not modelled yet |
+| `fn_10_452C` | 0xCC | 81D4 @0x8298 | **ported** |
+| `fn_10_5974` | 0x7A4 | 81D4 @0x8340 | **ported** |
 | `fn_10_48C8` | 0x44 | 81D4 @0x834C | **ported** |
 | `fn_10_812C` | 0x4C | 81D4 @0x858C | **ported** |
 | `fn_10_8870` | 0xEC | 81D4 @0x85DC | blocked - its command words (0x1B8/0x1C0/0x1C4) map to a host CBC*Cmd that is not identified yet |
@@ -213,7 +213,7 @@ lane's states are what will call them.
 | `fn_10_812C` | the sfx handle at guest 0xF60 is removed and cleared (0x00008158, 0x00008160); a null handle is left alone (0x00008148) |
 | `fn_10_9624` | the boost ball's uid (guest 0xE38) is not kInvalidUniqueId (the subf/or/srwi idiom at 0x00009630..0x00009640) |
 | `fn_10_69C0` | the uids at guest 0x934 are deleted from the state manager (0x00006A0C) and the slot cleared (0x00006A14); a kInvalidUniqueId slot is left alone (0x000069F4). The loop runs over the count at guest 0x930 (0x00006A20) |
-| `fn_10_6374` | the path find along the waypoints: with the message 0 the destination is the module's vector at guest 0xEE4 (0x00006418), otherwise the path find runs with that message (0x000063BC); then the separation (the lane's fn_10_1DD14, 0x000063C8), the path check (0x000063E8) and, when the path is not shagged and the actor is on the last waypoint (0x000063F8..0x00006408), the destination is set again (0x0000641C) |
+| `fn_10_6374` | the path find along the waypoints: with the message 0 the path find starts toward the module's vector at guest 0xEE4 (fn_10_1C778 at 0x000063AC); otherwise the path find runs with that message (0x000063BC), then the separation (fn_10_1DD14, 0x000063C8) and, when the path is shagged (0x000063F4) or the actor is on the last waypoint (0x000063F8..0x00006408), the destination is set again (0x0000641C); every message ends with fn_10_1D860 (0x0000642C) and fn_10_11334 (0x00006438) |
 | `fn_10_8698` | the taunt command over a state's messages: Activate stores 1 (kAS_Ready) to the animation state 0x6B4 and delivers the command (0x000086E0, 0x000086F0), Update re-delivers it when the DOL's ShouldRetry answers true (0x00008710, the host's `CAnimationState::CanIssueCommand`), Deactivate stores 0 (kAS_NotReady) (0x00008750) |
 | `fn_10_6F90` | the path find to the destination: the path find itself is `fn_10_1C778` (the host's `SetPathFindDestination`, 0x00006FC0); when the path is shagged (0x00006FE0) the navigation's destination is set again (0x00006FF8 - the guest's 0x1048 is the navigation's own destination, which the host keeps in `CPathFindNavigation`) and the path find runs again (0x00007010) |
 

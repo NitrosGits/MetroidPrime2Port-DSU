@@ -1,0 +1,9 @@
+# darksamus_triggers2.py's driver (25 frames apart: the driver polls about every 24 frames). Each
+# line ends with the key 99 call, which puts every forced member back before the fight runs again.
+@f600 send u04f7 Activate; god 1
+@f625 trigcall u04f7 BreakNormalMissile 130; trigcall u04f7 BreakNormalMissile 131; trigcall u04f7 BreakNormalMissile 132; trigcall u04f7 BreakSuperMissile 133; trigcall u04f7 BreakSuperMissile 134; trigcall u04f7 WasHeavyHit 135; trigcall u04f7 WasHeavyHit 136; trigcall u04f7 WasHeavyHit 137; trigcall u04f7 WallCollision 199
+@f650 trigcall u04f7 PickedFreezeBeam 138; trigcall u04f7 PickedFreezeBeam 139; trigcall u04f7 PickedNormalMissile 140; trigcall u04f7 PickedNormalMissile 141; trigcall u04f7 ShouldGetPissedOff 142; trigcall u04f7 ShouldGetPissedOff 143; trigcall u04f7 ShouldGetPissedOff 144; trigcall u04f7 ShouldGetPissedOff 145; trigcall u04f7 WallCollision 199
+@f675 trigcall u04f7 TooMuchDamage 146; trigcall u04f7 TooMuchDamage 147; trigcall u04f7 TooMuchDamage 148; trigcall u04f7 TooMuchDamage 149; trigcall u04f7 WallCollision 150; trigcall u04f7 WallCollision 151; trigcall u04f7 WallCollision 152; trigcall u04f7 WallCollision 199
+@f700 place u04f7 player 60; trigcall u04f7 OutOfMeleeRange; trigcall u04f7 FacingPlayer; trigcall u04f7 CanMeleeAttack; trigcall u04f7 PlayerIsMorphball
+@f725 place u04f7 player 1; trigcall u04f7 OutOfMeleeRange; trigcall u04f7 FacingPlayer
+@f750 status
