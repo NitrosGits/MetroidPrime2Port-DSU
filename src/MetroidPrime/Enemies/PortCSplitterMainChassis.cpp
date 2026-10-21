@@ -228,6 +228,9 @@ void CSplitterMainChassis::Start(CStateManager&, EStateMsg, float) {}
 // The squared distance from the chassis to its target (the id at 0xCC0), or -1.0f without one.
 // The Should* triggers below each look the target up (GetObjectById, the null test) and build
 // it inline from the two actors' positions (0x54, 0x58 and 0x5C).
+// The -1 (no target) answer is unreachable from the chassis's triggers: they all run from
+// PathFind, which the FSM only enters after SelectTarget (fn_75_BE28) stored the player's id at
+// 0xCC0, the one writer of that id, and the player is never deleted.
 static float PortTargetDistanceSq(const CSplitterMainChassis& self, const CStateManager& mgr) {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(self.GetSyncId()));
   if (target == nullptr) {
@@ -317,7 +320,9 @@ bool CSplitterMainChassis::ShouldSpinAttack(CStateManager& mgr, const CTriggerDa
 // most 0.0f (0xE0D8-0xE0EC); in a team (0xCBE valid) the team must let a projectile attack start
 // (0xE124 CanStartAttack with 1). Then the target at 0xCC0 must be there at a squared distance
 // from the square of the data's laser sweep min range (0x85C) to the square of its max range
-// (0x860), both ends included (0xE190-0xE1A4).
+// (0x860), both ends included (0xE190-0xE1A4). Every shipped placement sets the 0x40 bit (the
+// flag words are 0x6E, 0x76, 0x7C and 0x7D), so only the timer half of the first test runs.
+// @ fn_75_E0B0
 bool CSplitterMainChassis::ShouldLaserSweep(CStateManager& mgr, const CTriggerData&) const {
   if ((mData.mUnknownCEF5C2FE & 0x40) == 0 || mLaserSweepTimer > 0.f) {
     return false;
@@ -378,7 +383,9 @@ void CSplitterMainChassis::SetTargetDest(CStateManager& mgr, float) {
 // (0x8E1C-0x8E28) the associated team is asked for (0x8E38 GetAssociatedTeamId) and kept at
 // 0xCBE (0x8E44); when that is valid (0x8E48-0x8E54) and casts to a CScriptTeamAiMgr
 // (0x8E68-0x8E74) the chassis joins it with the roles 1, 2 and -1 (0x8E78-0x8E88 JoinTeam:
-// kTAR_Melee, kTAR_Projectile, kTAR_Invalid).
+// kTAR_Melee, kTAR_Projectile, kTAR_Invalid). The cast cannot fail: GetAssociatedTeamId only
+// answers ids its CTeamAiPredicate just cast to a CScriptTeamAiMgr.
+// @ fn_75_8DF8
 void CSplitterMainChassis::PortJoinTeam(CStateManager& mgr) {
   if (mTeamId != kInvalidUniqueId) {
     return;
@@ -434,6 +441,9 @@ void CSplitterMainChassis::SetMorphballStabLeg(CStateManager&, float) { mStabLeg
 // with the transform's Y column (0x28, 0x38 and 0x48; 0xB5CC-0xB5FC) and X column (0x24, 0x34
 // and 0x44; 0xB60C-0xB614 / 0xB634-0xB63C), each against 0.0f (lbl_75_rodata_390, fcmpo with
 // ble): ahead and right is leg 1, ahead and left 2, behind and right 3, behind and left 4.
+// The null-target arm is unreachable: the state follows ShouldLegStab, which needs the target,
+// and the target id is only ever the player's (see PortTargetDistanceSq).
+// @ fn_75_B57C
 void CSplitterMainChassis::FindBestStabLeg(CStateManager& mgr, float) {
   mStabLeg = -1;
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncId));
@@ -455,6 +465,7 @@ void CSplitterMainChassis::FindBestStabLeg(CStateManager& mgr, float) {
 // filter that includes kMT_Solid (lbl_75_data_CA4, 0x3B) and excludes kMT_CollisionActor
 // (lbl_75_data_CA8, 0x2F) RayCollideWorld must answer true (0x9190-0x9198, the ray is clear) and
 // the end must be on the path search's mesh (0x91A4 OnPath at 0xB7C, kR_Success).
+// @ fn_75_909C
 bool CSplitterMainChassis::PortDodgeIsClear(CStateManager& mgr, const CVector3f& dir,
                                             float length) {
   const CVector3f start = GetBoundingBox().GetCenterPoint();
@@ -557,6 +568,8 @@ void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
   if ((mData.mUnknownCEF5C2FE & 0x30) == 0 || mTimerD34 >= 1.f || mDodgeTimer > 0.f) {
     return;
   }
+  // Every shipped placement has a dodge chance of 100.0f (0x47be3298) and the flag bits 0x30
+  // set, so neither this arm nor the flag half of the test above runs.
   if (mgr.Random()->Range(0.f, 100.f) > mData.mDodgeChance) {
     mDodgeTimer = mData.mMinDodgeInterval;
     return;

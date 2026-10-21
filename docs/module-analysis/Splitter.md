@@ -1277,3 +1277,25 @@ missiles) reached every new body.
   gates, the non-missile skip), B57C (ahead-left), B678 (head missing, unsafe offset, above, clamp),
   5AD8 (undocked), 44DC (zero dt, unsafe flat).
 - Still stand-ins: the CEntity vtable word 0x24 call in 1790; 11884, 9B9C, 9FA8.
+
+### Damage handlers, hint grant, placements and team run (2026-10-21)
+
+Ported: hit-object `fn_75_9B9C` (`PortHitObject`), resisted damage `fn_75_9FA8`
+(`PortResistedDamage`), hint grant `fn_75_AB8C` (`PortTakePlayerHint`). 1790's vtable word 0x90 is
+the DOL's `CPlasmaProjectile::ResetBeam` (cited, host virtual). `fn_75_11884` builds a whole
+beam-effect actor class (own vtable, Think, render): left as the logging shell, needs its own slice.
+
+Placements (disc scan of every SPLL/SPLU, `tools/echoes_disc.py`): world 1baa96c2, areas
+02_cliff_reactorcore L3 (4a6cf295, no team link), 03_cliff_chicane L3/L6 and 04_cliff_contraption
+L2 (914f1381) and 09_cliff_temple L2 (team: `ACTV>PLAY:TMAI`), 0q/0n/0g_cliff_hall,
+06_cliff_spiderballguardian L6. No Splitter area holds a PMCT, SAFE or SFZC, so Listen's
+path-obstruction (type 4) arm has no sender. Every placement's dodge chance is 100.0f and its flag
+word (0x6E/0x76/0x7C/0x7D) has the 0x20 and 0x40 bits.
+
+Runs: `WORLD=1baa96c2,914f1381` + `layer 2` (two chassis, a CScriptTeamAiMgr) and
+`WORLD=1baa96c2,4a6cf295` + `layer 3`, scripted teleports around the chassis (rings at 15-40 m,
+above and level), missile lock-on volleys and beam shots. Marked: 909C, B57C, 8DF8, E0B0.
+Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projectile role), 91E4
+(in-cone, random tie-break), B2A0 (dodge timer still running, non-missile projectile), B678
+(head missing, unsafe offset), 5AD8 (undocked), 44DC (zero dt, unsafe flat), EA70 (dead),
+9B9C/9FA8/AB8C (boosting player, spin damage, morph-transition gate), 1790 (flag 26).
