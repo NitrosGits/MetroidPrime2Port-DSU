@@ -22,6 +22,7 @@ class CBCProjectileAttackCmd;
 // The fight script's object (the guest's CScriptDarkSamusBattleStage), whose stage info the
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
+class CEnergyProjectile;
 class CScriptAIHint;
 struct SLdrDSStageInfo;
 
@@ -191,12 +192,12 @@ struct CDarkSamusDash {
 };
 
 // The dive record at the guest's 0xAC0..0xB28 (fn_10_E784 builds it from the data's
-// diveAttackDamage, the constructor's call at 0x0001FE64). Not on the host: the +0x4C float
-// (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f), the +0x50/+0x54 floats (the constructor's
-// f26/f27) and the CCollidableAABox at +0x68 (fn_10_E784 at 0x0000E8A8) - no ported reader uses
-// them.
+// diveAttackDamage and its two impulses, the constructor's call at 0x0001FE64). Not on the host:
+// the +0x4C float (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f) and the CCollidableAABox at +0x68
+// (fn_10_E784 at 0x0000E8A8) - no ported reader uses them.
 struct CDarkSamusDive {
-  explicit CDarkSamusDive(const CDamageInfo& damage); // fn_10_E784
+  CDarkSamusDive(const CDamageInfo& damage, float impulseHorizontal,
+                 float impulseVertical); // fn_10_E784
   void Reset();                                       // fn_10_E910
 
   CVector3f mTarget;     // +0x00 (0xAC0), where the dive lands (fn_10_12B38 / fn_10_12960)
@@ -204,6 +205,10 @@ struct CDarkSamusDive {
   CVector3f mBounceDir;  // +0x18 (0xAD8), the direction fn_10_1CDD0 bounces the actor along
   CVector3f mLastPos;    // +0x24 (0xAE4), the position the stuck timer measures from
   CDamageInfo mDamage;   // +0x30 (0xAF0), the data's diveAttackDamage (0x0000E83C..0x0000E85C)
+  float mImpulseHorizontal; // +0x50 (0xB10), diveAttackImpulseHorizontal (f1, 0x0000E860; the
+                            // loader's 0x964 is the constructor's f4, 0x0000DD70)
+  float mImpulseVertical;   // +0x54 (0xB14), diveAttackImpulseVertical (f2, 0x0000E864; the
+                            // loader's 0x960 is the constructor's f5, 0x0000DD74)
   float mBounceTime;     // +0x58 (0xB18), the time since the bounce
   float mStuckTime;      // +0x5C (0xB1C), the time the actor has not moved 0.2 in flight
   // +0x60 (0xB20), flags, LSB-first (`clrlwi 31` is 0x01, `extrwi 1,30` 0x02 ... `extrwi 1,24` 0x80)
@@ -212,7 +217,7 @@ struct CDarkSamusDive {
   bool mAttackSent : 1;  // 0x04, fn_10_11DDC sent kSS_Attack
   bool mHitFloor : 1;    // 0x08, fn_10_1C99C saw the floor or the player
   bool mLanding : 1;     // 0x10, the landing has started
-  bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4, not in the port yet)
+  bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4)
   bool mLaunched : 1;    // 0x40, 'XLAU' came: the actor is in the air
   bool mDone : 1;        // 0x80, the dive is over
 };
@@ -586,7 +591,15 @@ private:
   void CheckDiveCollision(CStateManager& mgr, CActor* collider, const CCollisionInfoList& list);
   // fn_10_1B658 / 138A4: the projectile reflect and the dive's hit on the player (stand-ins).
   void ReflectProjectiles(CStateManager& mgr);
+  // fn_10_1B9B0: whether the projectile may be sent back (type -1 = any weapon type).
+  bool CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj, int type) const;
   void HitPlayerWithDive(CStateManager& mgr);
+  // fn_10_1382C: the player's orbit target cleared.
+  void ClearPlayerOrbitTarget(CStateManager& mgr);
+  // fn_10_13750: the player pushed away from the actor (flat), up by the vertical impulse.
+  void PushPlayer(CStateManager& mgr, float horizontal, float vertical);
+  // fn_10_1367C: the impulse (times the player's mass) on the stopped player, with a rumble.
+  void KnockPlayer(CStateManager& mgr, const CVector3f& impulse);
   // fn_10_18628: the three floats at 0xE04 (the elapsed time, a, b).
   void SetGuestE04(float a, float b);
   // fn_10_18FCC: vertical movement off, on the ground as given, kMT_GroundCollider back.
@@ -915,6 +928,15 @@ private:
   CVector3f mDodgeDir;             // guest 0x1094, the dodge's direction (fn_10_1707C)
   CTransform4f mGunLctrXf;         // guest 0x8CC, identity (0x0001FBC0); PreRender (fn_10_18AB8)
                                    // stores GetLctrTransform("GUN_Particle_LCTR") (0x00018C24)
+  CVector3f mRootPos;              // guest 0x8FC/0x900/0x904, the zero vector (0x0001FBDC..);
+                                   // PreRender stores GetLctrTransform("Skeleton_Root")'s
+                                   // translation (lbl_10_rodata_560 + 0x551, 0x00018C64..)
+  rstl::reserved_vector< TUniqueId, 5 > mReflectedUids; // guest 0xBEC (count, 0 at 0x0001FE9C)
+                                   // and 0xBF0 (five uids): the projectiles fn_10_1B658 sent back
+  float mLastReflectTime;          // guest 0xC08, lbl_10_rodata_410 = -1000.0f (0x0001FEE0);
+                                   // fn_10_1B658 stores the elapsed time 0x8B0 (0x0001B8D4)
+  ushort mRicochetSfxId;           // guest 0xC50, the loader's missileRicochetSound (its 0x928;
+                                   // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.

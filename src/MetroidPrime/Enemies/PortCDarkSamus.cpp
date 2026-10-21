@@ -129,7 +129,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mScatterProjectileUid(kInvalidUniqueId)      // 0x000216D0
 , mScatterSide(0)                               // 0x000216B4
 , mScatterUseSecondInfo(0)                      // 0x000216BC
-, mDive(data.mDiveAttackDamage)                 // fn_10_E784 at 0x0001FE64
+, mDive(data.mDiveAttackDamage, data.mDiveAttackImpulseHorizontal,
+        data.mDiveAttackImpulseVertical)         // fn_10_E784 at 0x0001FE64
 , mGuestE04(0.f) // not written by the constructor; fn_10_18628 is the only writer
 , mGuestE08(0.f)
 , mGuestE0C(0.f)
@@ -166,7 +167,13 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mSweepBeamEndSfx()
 , mDodgeTime(0.f)                               // 0x00020248
 , mDodgeDir(CVector3f::Zero())                  // 0x00020254..0x00020264
-, mGunLctrXf(CTransform4f::Identity()) {        // 0x0001FBC0
+, mGunLctrXf(CTransform4f::Identity())          // 0x0001FBC0
+, mRootPos(CVector3f(0.f, 0.f, 0.f))             // 0x0001FBDC..0x0001FBEC
+, mReflectedUids()                               // 0x0001FE9C
+, mLastReflectTime(-1000.f)                      // lbl_10_rodata_410, 0x0001FEE0
+, mRicochetSfxId(data.mMissileRicochetSound == -1 // 0x0000DA94, stored at 0x0001FF48
+                     ? CSfxManager::kInternalInvalidSfxId
+                     : static_cast< ushort >(data.mMissileRicochetSound)) {
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
   // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
   // (0x000216E4), both with scatterShotDamage, each only for a valid asset and locked after.
@@ -324,9 +331,12 @@ void CDarkSamus::SetupStateMachine(CStateManager& mgr) {
 void CDarkSamus::PreRender(CStateManager& mgr) {
   StandIn("fn_10_18AB8", "vtable slot 9, PreRender");
   CPatterned::PreRender(mgr);
-  // 0x00018C18: the gun locator's transform the scatter shot fires from (0x8CC). The rest of the
-  // pass (the effects and the colour lerps around it) is not in the port yet.
+  // 0x00018C18: the gun locator's transform the scatter shot fires from (0x8CC), then the root
+  // bone's position (lbl_10_rodata_560 + 0x551, 0x00018C50) the projectile reflect measures from
+  // (0x8FC, 0x00018C64..0x00018C6C). The rest of the pass (the effects and the colour lerps around
+  // it) is not in the port yet.
   mGunLctrXf = GetLctrTransform(rstl::string_l("GUN_Particle_LCTR"));
+  mRootPos = GetLctrTransform(rstl::string_l("Skeleton_Root")).GetTranslation();
 }
 
 // vtable slot 10 = fn_10_17F04 (0x2D8).
