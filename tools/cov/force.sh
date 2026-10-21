@@ -66,6 +66,8 @@ env DISPLAY="$DISP" SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dum
 GDB=$!
 trap 'kill -TERM "$GDB" 2>/dev/null' TERM INT
 wait "$GDB"; RC=$?
+# gdb -batch returns 1 when its trailing `bt` finds no stack, i.e. after a normal exit.
+grep -q "^\[Inferior 1 (process [0-9]*) exited normally\]" "$OUT/game.log" && RC=0
 [ -n "$DRV" ] && kill "$DRV" 2>/dev/null
 echo "game rc=$RC"
 echo "caught/reach-stub: $(grep -a -c '\[port\] caught\|reach-stub' "$OUT/game.log")"
