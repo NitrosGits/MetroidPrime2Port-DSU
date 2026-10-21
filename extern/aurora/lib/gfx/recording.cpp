@@ -31,6 +31,7 @@
 #include <vector>
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
 #include <magic_enum.hpp>
 #include <tracy/Tracy.hpp>
 
@@ -536,6 +537,14 @@ void enqueue_pass(FramePacket& frame, uint32_t passIndex) {
 
 namespace detail {
 
+// Port: a frame's uniform blocks are deduplicated by content. Every GX draw pushes its whole block
+// (~3.3 KB: all position/normal/texture matrices, lights, colours), mostly unchanged since the last
+// draw, so the area-53 cinematic (a skinned CScriptPlayerActor drawn twice, plus projected shadows;
+// ~19.5k draws) asked for 33 MB of the 32 MiB uniform window from ~240 distinct blocks (0.6 MB).
+// A repeat returns the earlier range: the uniform buffer is append-only within a frame, so the range
+// still holds those bytes. The table is cleared at each frame's begin_recording.
+static absl::flat_hash_map<uint64_t, Range> g_uniformDedup;
+
 void begin_recording(FramePacket& packet, size_t frameSlot) {
   CHECK(!g_recorder.active(), "A recording session is already active");
   g_recorder.packet = &packet;
@@ -544,6 +553,7 @@ void begin_recording(FramePacket& packet, size_t frameSlot) {
   g_recorder.drawCallCount = 0;
   g_recorder.mergedDrawCallCount = 0;
   g_recorder.suspendedEfbPass.reset();
+  g_uniformDedup.clear(); // Port: see push_uniform
 
   current_render_passes().emplace_back();
   auto& pass = current_render_passes()[0];
@@ -1175,6 +1185,17 @@ Range push_uniform(const uint8_t* data, size_t length) {
   ZoneScoped;
   if (!check_recording("push_uniform")) {
     return {};
+  }
+  if (length != 0) {
+    auto& uniforms = current_frame_packet().uniforms;
+    const uint64_t key = absl::HashOf(std::string_view(reinterpret_cast<const char*>(data), length));
+    if (const auto it = g_uniformDedup.find(key); it != g_uniformDedup.end() && it->second.size == length &&
+                                                  std::memcmp(uniforms.data() + it->second.offset, data, length) == 0) {
+      return it->second;
+    }
+    const Range range = push(uniforms, data, length, resources().limits.minUniformBufferOffsetAlignment);
+    g_uniformDedup[key] = range;
+    return range;
   }
   return push(current_frame_packet().uniforms, data, length, resources().limits.minUniformBufferOffsetAlignment);
 }
