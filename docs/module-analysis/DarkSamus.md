@@ -686,3 +686,29 @@ transition enters it.
   hint (F930 player turn), and FD4C's no-stage arm. Only Agon 0198 sets +0x84, and Agon has both hints.
 - When the stage advances during a stand-in state (MissileJump), she never gets back to
   TravelToCoverPoints, so the reaction waits on those stand-ins.
+
+## Slice 14 (2026-10-21): the dive
+
+- Ported (`8feff8481`, `a55d1351d`): DiveAttack 11FA4 with FindDiveLanding 12960,
+  SetDiveTargetVector 12B00, DoDiveJumpCmd 1285C/12764, UpdateDiveFlight 11C60, BounceDive 1CDD0,
+  UpdateDiveStuck 11EB8, SendDiveAttack 11DDC, the bubble 12E90/12EF8, 18628, 18FCC, UpdateDodge
+  1707C, CheckDiveCollision 1C99C (from CollidedWith), the dive record (ctor E784, Reset E910),
+  BreakDiveAttack 11C54, and the XLAU/XLND and UE Landing arms. Also `d06bbbb92`: 100DC/FF20
+  (unmarked; the enrage arm needs the phazon-enrage states). Stand-ins: 1B658 (reflect), 138A4 (the
+  dive's hit on the player).
+- Reaching the dive: damage before the first pick lands her in the final stage. A stage with
+  melee, boost ball, sweep beam or missile jump soon traps her in a stand-in state with no exit;
+  the dive also needs an unmorphed player in band 1 whom she can walk to. The Agon harness
+  (damage 570, `stick 0 127` held into a wall, then a jump or a sideways teleport about 0.8 s
+  into each dive) gave 3 and 10 dives, wall bounces among them. Rooftop runs (no teleports)
+  covered the 0x58 = 1 sides (fast turn, 1.15 flight, dodge call).
+- Ran: every DiveAttack arm except the jump re-issue (0x0001239C) and the static wall hit
+  (0x00012534); bounce (both sides of 0.6 s, flat normal); morph target (12B38's morph arm,
+  slice 10); landing found/none; flight set/impulse/fast; stuck moved/still; collision
+  wall/floor/player; UE Landing (both arms); XLND (both arms).
+- Marked: E910, 12B00, 12E90, 12EF8, 18628, 18FCC, 11C54 (all branch-free, all ran). Left unmarked,
+  with a note above each: 11FA4, 12960 and 11C60 (their non-normalizable lines), 1CDD0 (no
+  normal), 11EB8 (stuck bounce), 1707C (no dodge started), and 1C99C (WeaponHits arm). 11DDC's
+  0xCD0 arm would need a dive stage without +0x59; none was seen in the two surveyed encounters.
+- Next: MissileJump 177BC, MeleeAttack 17BC0, BoostBallInto B164 and SweepBeam CA0C are the
+  traps that end dive runs.

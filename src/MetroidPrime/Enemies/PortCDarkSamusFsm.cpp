@@ -1832,7 +1832,7 @@ void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
     const CMaterialList& mat = it->GetMaterialLeft();
     if ((mat.HasMaterial(kMT_Ceiling) || mat.HasMaterial(kMT_Wall)) &&
         !mat.HasMaterial(kMT_Floor)) {
-      if (collider != nullptr &&
+      if (collider != nullptr && // 0x0001CBD8
           collider->GetDamageVulnerability()->WeaponHits(mDive.mDamage.GetWeaponMode(), 0) ==
               true) {
         return;
