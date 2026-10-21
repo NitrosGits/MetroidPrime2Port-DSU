@@ -1167,17 +1167,30 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the true arm (0x0000B5F4) | b | once to three times per run - the charge starts |
 | | the flag bytes (0x0000B2C0, 0x0000B2CC) and the target (0x0000B2F8) and the second ray (0x0000B598) | d | they need the script's flags to forbid the charge, the target to be gone or the second ray to be blocked |
 | `fn_9_961C` (the FollowAttackPattern state) | the message dispatch (0x0000965C..0x00009678) | a | the compiler's own dispatch |
-| | the activate (0x00009680), the waypoint lookup (0x000096DC) and the "the waypoint is behind" test (0x00009730) | b | 5 activates per forced run, both arms of the test ran (the commando faces the waypoint and turns away from it). **forced (fsm)**: area 59's commando has no "ATTK"/"FOLW" connection, so the asset's HasAttackPattern trigger is false and the state is never entered on its own |
+| | the activate (0x00009680) and its two waypoint sources (0x00009684 and 0x000096B8) | b | 4 activates per run: the first takes the "ATTK"/"FOLW" connection, the later ones the waypoint the scripted charge left at guest this+0xBDA. **forced (fsm)**: the area's own route into the state goes through the RestoreOrientation state, which is still a port stand-in, so the state is only entered when the console forces it |
+| | the waypoint lookup (0x000096DC) and the "the waypoint is behind" test (0x00009730) | b | the waypoint was found every time and the test answered "in front" (the commando faces the waypoint it charges at) |
 | | the byte at guest this+0xC66 (0x00009754) | b | the 0x80 bit is set on every activate |
-| | the update (0x00009760) and the AI waypoint lookup (0x00009778) | b | 137 updates per forced run |
-| | the AI waypoint's flag test (0x00009788, 0x00009790), the reach (0x000097A0..0x0000982C) and the float at guest this+0xBEC (0x00009860) | d | area 59's only AI waypoint (the one the commando is connected to) has the word at its +0x164 equal to zero, so the 0x02/0x04 test never passes |
-| | the body's jump state (0x0000986C), the chain's end (0x0000989C), the target's aim position (0x000098D8) and the body's target vector (0x0000990C) | d | the commando is never in the jump state in area 59 |
-| | the jump-back target (0x00009918) and the deactivate (0x00009934) | b | the update's copy ran every update, the deactivate 5 times |
-| `fn_9_7A98` (the scripted charge) | all three messages and all their branches | d | the state is not reached: the `ShouldBoost` trigger's true arm needs the AI waypoint's 0x20 flag, and area 59's only AI waypoint has the flags word zero (the state itself is ported and its stand-in log is gone) |
-| `fn_9_2474` (the turn helper) | all its branches | d | the scripted charge, its only caller, does not run |
-| `fn_9_2A98` (the waypoint picker) | all its branches | d | the scripted charge, its only caller, does not run |
-| `fn_9_B1E0` (ShouldBoost) | the byte at guest this+0xC66 (0x0000B1F0), the byte at guest this+0xC64 (0x0000B1FC) and the AI waypoint (0x0000B218) | b | 132 calls per forced run: the state sets the 0x80 bit of guest this+0xC66 and the trigger is evaluated every tick |
-| | the 0x20 flag test (0x0000B22C) and the true arm (0x0000B234) | d | area 59's only AI waypoint has the word at its +0x164 equal to zero, so the 0x20 bit is clear |
+| | the update (0x00009760) and the AI waypoint lookup (0x00009778) | b | 162 updates per run |
+| | the AI waypoint's flag test (0x00009788, 0x00009790), the reach (0x000097A0..0x0000982C) and the float at guest this+0xBEC (0x00009860) | c | unreachable in the shipped data: the 0x02/0x04 test wants the jump flags, and the only area with an attack-pattern commando (the Swamp's timber) has no AI waypoint with either bit (its waypoints carry 0x20 or 0). 26 AI waypoints in the game carry the 0x02 bit, but none of them is in an area with a commando that has an "ATTK"/"FOLW" connection |
+| | the body's jump state (0x0000986C), the chain's end (0x0000989C), the target's aim position (0x000098D8) and the body's target vector (0x0000990C) | c | unreachable in the shipped data: the jump state comes from the waypoint navigation's jump command, which needs the same 0x02 flag |
+| | the jump-back target (0x00009918) and the deactivate (0x00009934) | b | the update's copy ran every update, the deactivate 4 times |
+| `fn_9_7A98` (the scripted charge) | the activate (0x00007B24), the waypoint picker (0x00007B7C), the material filter (0x00007B94) and the push vector (0x00007C14) | b | 4 activates per run; the picker answered true every time |
+| | the loop-attack command (0x00007CC4), the body in the loop attack (0x00007D18), the waypoint reached (0x00007DDC), the next waypoint (0x00007E00) and the turn (0x00007E54) | b | 402 updates per run: 17 "the waypoint is reached" and the turn the other times |
+| | the abort (0x00007E3C, the 0x04 bit of guest this+0xC64) and the 0x08 bit (0x00007E40) | d | the module's states that set those bits are not reached in this run |
+| | the deactivate (0x00007E5C) | b | 4 times |
+| `fn_9_2474` (the turn helper) | the speed test (0x000024B4), the normalized direction (0x00002560), the time (0x000025A4) and the movement (0x00002918) | b | 2285 calls per run |
+| | the loop attack type 4 (0x00002840), 5 (0x000027B0) and 6 (0x00002720) | b | all three ran: the type 6 arm once (the second commando's chain runs the other way), the type 4 arm once, the type 5 arm the rest |
+| | the actor's forward column instead of the delta (0x0000256C) | c | unreachable in the flow: the scripted charge's own "the waypoint is reached" test (0x00007DDC) catches a delta of zero first, and the turn helper is only called when it did not |
+| | the push vector (0x0000291C..0x000029A4) | d | the push vector is the shield's collision normal (fn_9_BF44); the commando's shield never hits a wall in this run |
+| `fn_9_2A98` (the waypoint picker) | the speed test (0x00002AD0), the waypoint lookup (0x00002AD8) and the 0x20 flag test (0x00002B00) | b | 19 calls per run; the speed is 55 and the waypoint always has the 0x20 flag |
+| | the "the next waypoint" branch (0x00002B08..0x00002BA8) and the "keep the waypoint" branch (0x00002C0C) | b | 15 "next" calls and 4 "keep" calls per run |
+| | the waypoint gone (0x00002AF8) | b | twice per run (the charge's activate, before the navigation has advanced the destination) |
+| | the speed at or below zero (0x00002AD0) | c | the area's block gives the charge speed 55 |
+| | the 0x20 flag clear (0x00002B00) and the next waypoint gone (0x00002B80) | d | the module's waypoint always has the 0x20 flag in this run, and the chain's waypoints all have a successor |
+| `fn_9_B1E0` (ShouldBoost) | the byte at guest this+0xC66 (0x0000B1F0), the byte at guest this+0xC64 (0x0000B1FC) and the AI waypoint (0x0000B218) | b | 162 calls per run: the state sets the 0x80 bit of guest this+0xC66 and the trigger is evaluated every tick of the state |
+| | the 0x20 flag test (0x0000B22C) | b | 158 calls with the waypoint's flags word 0 and 4 with the word 0x20 |
+| | the true arm (0x0000B234) | b | 4 times: the scripted charge starts |
+| | the 0x80 bit of guest this+0xC66 clear, the 0x01 bit of guest this+0xC64 set and the AI waypoint gone | c | unreachable: the FollowAttackPattern state sets the 0x80 bit and the waypoint on its activate (0x000096CC and 0x00009754) and this trigger is only evaluated while that state is current; nothing in the module ever sets the 0x01 bit of guest this+0xC64 (the constructor clears it at 0x0000E1AC and every store to that byte sets another bit) |
 
 **The states the area's asset cannot reach.** Area 59's own state machine gives the
 `ShouldArmShield` trigger no target state (`PathFind : ShouldArmShield -> (null)`), so the
@@ -1207,15 +1220,59 @@ reach there, both in the shipped data and not in the port's code:
   wants its 0x02 or 0x04 bit, so neither can pass with this waypoint. The scripted charge
   (fn_9_7A98) is therefore unreachable in area 59 with the shipped data.
 
+### The attack pattern in the shipped data (2026-10-21)
+
+`tools/scan_commando_pattern.py` (new in this slice) reads every world's MREA script layers
+straight from the disc (`tools/echoes_disc.py`'s readers) and lists the CommandoPirate placements
+(the "CMDO" script object), their script connections and the AI waypoints ("AIWP") of the layer
+with their flag word (the property 0xc6705a00, the word at the waypoint's +0x164). The whole game
+has **three** areas with commandoes and **two** commandoes with an attack pattern:
+
+| area | layer | commando | its "ATTK"/"FOLW" connection | the chain's waypoints |
+|---|---|---|---|---|
+| 04_Swamp_World / 05_swamp_timber! | the MREA's third script layer (the game's layer 2, "1st Pass") | 0018001e | 00180077 (flags 0) | 00180086, 00180084, 0018001f, 00180089, 00180083, 00180087, 00180088 (all 0x20) |
+| | | 00180082 | 0018009b (flags 0) | 0018008e (0), 00180095, 0018008a, 00180090, 00180099, 0018008b, 0018008d, 0018009d, 00180007 (all 0x20) |
+| 01_Temple_Hub / 05_temple_federationsite_dark (area 59) | 0 | 003b010e | none - the only connection is "Modify"/"Follow" | 003b0112 (flags 0) |
+| 05_Cliff_World / 01_cliff_entrance | 3 | six commandoes | none | no AI waypoint in the layer |
+
+So the Swamp's timber area is the one place where the module's attack pattern exists: the
+commando's first waypoint has the flags word 0 and the chain's next ones have the 0x20 bit - the
+bit the `ShouldBoost` trigger (fn_9_B1E0) wants. The waypoints' chain is the "ARRV"/"NEXT"
+connection the guest's FollowAttackPattern state checks at 0x0000989C and that the waypoint
+navigation walks.
+
+The run there (`tools/run_gameplay.sh` with `MP2_WORLD="swamp,05_swamp_timber!"`, the card in
+/tmp/opencode/u_cop2, `MP2_GODMODE=1`, `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` and the driver
+`tools/drivers/commandopirate_pattern.py`): the area's actor is inactive in this harness (the
+room's own layer script does not run), so the driver wakes it with the console's `send <id>
+Activate`, and it forces the FollowAttackPattern state with the console's `fsm` - the area's own
+route into that state goes through the RestoreOrientation state, which is still a port stand-in.
+Then the module's own code runs: the navigation walks the chain, the `ShouldBoost` trigger answers
+true and the scripted shield charge runs. The run ends with exit=0 and `grep -c '[port]
+caught|reach-stub'` = 0; the stand-ins are the Listen, the CVisualKnowledge's Update and
+SetVisualTarget and the RestoreOrientation state (fn_9_786C).
+
+**The picker's connection search had the wrong entity.** The guest's waypoint picker (fn_9_2A98)
+searches the **waypoint's** own connections for the "ARRV"/"NEXT" one (its r4 at the
+FindConnectedObject_if call, 0x00002AF4..0x00002B44, is the waypoint the flags were read from);
+the port searched the *commando's* connections, so the "take the next waypoint" branch always
+answered "no waypoint" and the scripted charge never advanced along the chain. It is
+`waypoint->FindConnectedObject_if(...)` now (0x00002B44).
+
+**The loop attack types and the skip-into flag.** The turn helper's command is the host's
+`pas::kLAT_Five` / `pas::kLAT_Six` (the guest's 5 and 6, 0x000027D8 and 0x00002748) and
+`pas::kLAT_Four` (4, 0x00002868) now, and the command's skip-into flag is set (the guest's flag
+byte's 0x80 bit, 0x00002740, 0x000027D0 and 0x00002860) with the host's `SetSkipInto`.
+
 **The markers.** `fn_9_8028` (the charge state) and `fn_9_86B4` (the ArmShield state) are marked:
 every message arm of both ran - the charge state in the normal flow, the ArmShield state through
-the console's `fsm` (**forced (fsm)**). The five functions the task names are not marked: every
-one of them still has a class-**d** arm. The four functions of this slice (`fn_9_7A98`,
-`fn_9_2474`, `fn_9_2A98` and `fn_9_B1E0`) are not marked either: the scripted charge is not
-reached, because the `ShouldBoost` trigger's true arm needs the AI waypoint's 0x20 flag and
-area 59's only AI waypoint has the flags word zero. The FollowAttackPattern state (fn_9_961C) is
-not marked either: it runs (through the console's `fsm`, **forced (fsm)**), but its arms that
-need the AI waypoint's 0x02/0x04 flags and the body's jump state did not run.
+the console's `fsm` (**forced (fsm)**). `fn_9_B1E0` (ShouldBoost) is marked too: its two arms that
+ran (the 0x20 flag test and the true arm) ran in the Swamp's timber area, and its three other arms
+are unreachable in the shipped data (the class-**c** rows above). The four functions of the first
+slice (`fn_9_7A98`, `fn_9_2474`, `fn_9_2A98` and `fn_9_B1E0`) and the FollowAttackPattern state
+(`fn_9_961C`) are not marked: each of them still has a class-**d** arm (the charge's abort and
+0x08 bits, the turn helper's push vector, the picker's 0x20-clear and next-gone arms and the
+state's "the waypoint is behind" arm).
 
 ### The shield's own bits (2026-10-21)
 
@@ -1283,9 +1340,14 @@ uses the host's `CWaypointNavigation::SetInPosition` (the host's class keeps the
 order: mMoveSpeed, mPauseRemainingTime, mDestination, mLastDestination, mPatrolState,
 mSegmentStart, mDestinationPosition at +0x1C = guest this+0x6D4, mFaceVector, mWobbleSteering and
 the flag byte at +0x38 = guest this+0x6F0). Guest this+0x6C0 is the same navigation's
-**destination** field (+0x8), so the port writes it both as its own member `x6c0_` and as the
-host's navigation destination (`SetDestination`): the `AttackPatternOver` trigger (fn_9_B7FC)
-reads the host's navigation destination, and the state has to stay when it is set.
+**destination** field (+0x8), so the port uses the host's navigation destination for it
+(`GetDestination`/`SetDestination`) and has no member of its own: the guest's field is one field
+that the navigation advances on its own (its `UpdateDest` walks the "ARRV"/"NEXT" chain when the
+in-position flag is set), so a second copy of it in the port would go stale. Every place the
+guest reads or writes guest this+0x6C0 - the waypoint picker (fn_9_2A98, 0x00002AD8 and
+0x00002B8C), the `ShouldBoost` trigger (fn_9_B1E0, 0x0000B204), the FollowAttackPattern state
+(fn_9_961C, 0x000096CC and 0x00009760) and the scripted charge's deactivate (0x00007ED8) - goes
+through the host's navigation. The `AttackPatternOver` trigger (fn_9_B7FC) already did.
 
 **The turn helper's time (fn_9_2474).** The guest's `Magnitude` call at 0x000025A4 takes the raw
 delta at its own stack slot (sp+0xD4, the `addi r3, r1, 0xd4` at 0x0000258C), not the copy of the
