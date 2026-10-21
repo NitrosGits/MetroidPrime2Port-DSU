@@ -408,10 +408,10 @@ void CIngBoostBallGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
     }
     break;
   case kSM_AIUpdateDisabled:
-    if (mCollisionActorManager0 != nullptr) {
+    if (mCollisionActorManager0.get() != nullptr) {
       mCollisionActorManager0->SetPhysicsActive(mgr, false);
     }
-    if (mCollisionActorManager1 != nullptr) {
+    if (mCollisionActorManager1.get() != nullptr) {
       mCollisionActorManager1->SetPhysicsActive(mgr, false); // 0x0000E2EC
     }
     break;

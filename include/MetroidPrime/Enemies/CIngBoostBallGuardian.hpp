@@ -21,6 +21,7 @@
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrPlasmaBeamInfo.hpp"
 #include "rstl/optional_object.hpp"
+#include "rstl/single_ptr.hpp"
 
 class CCollisionActorManager;
 class CGenDescription;
@@ -492,14 +493,13 @@ private:
   int mDesiredForm;                                      // guest 0xAE8, -1 (CIng: 0x9D8)
   CPathFindSearch mPathFindSearch;                       // guest 0xAEC
   CPathFindPointSearch mPointPathFindSearch;             // guest 0xBD8
-  CCollisionActorManager* mCollisionActorManager0;       // guest 0xD60
-  CCollisionActorManager* mCollisionActorManager1;       // guest 0xD64
+  // Owning pointers, as retail: the dtor (fn_30_E5EC) deletes them as members, 0xD64 then 0xD60
+  // (0x0000E7E4/0x0000E7F8), after the boost data and the surface helper.
+  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager0; // guest 0xD60
+  rstl::single_ptr< CCollisionActorManager > mCollisionActorManager1; // guest 0xD64
   CSurfaceAlignmentHelper mSurfaceAlignment;             // guest 0xD68
   CIngSpotPathFindNavigation mIngSpotPathFindNavigation; // guest 0xDC0
   CBoostBallGuardianData mBoost;                         // guest 0xDEC (0x110)
-  // guest 0x1178: every weapon resisted; the boost puddle's colliders take it (fn_30_30E4), so
-  // their hits arrive as kSM_ResistedDamage (fn_30_4324).
-  CDamageVulnerability mVulnerability;
   // The Ing half's members, under the Ing REL's names (the guest offsets are in
   // docs/module-analysis/BoostGuardian.md section e; the host layout is its own).
   rstl::optional_object< CAABox > mTouchBox;            // CIng: 0xCC0
@@ -586,6 +586,9 @@ private:
   rstl::vector< TUniqueId > mModifyTargets;
   CVector3f mBoostAimPos;                                // guest 0x1160 (fn_30_340C)
   CVector3f mBoostSpawnPos;                              // guest 0x116C (fn_30_324C)
+  // guest 0x1178 (declared here so it is built after 0x116C and destroyed first, as retail): every weapon resisted; the boost puddle's colliders take it (fn_30_30E4), so
+  // their hits arrive as kSM_ResistedDamage (fn_30_4324).
+  CDamageVulnerability mVulnerability;
   TUniqueId mBoostNavPointId;                            // guest 0x1096: the retreat's first point
   TUniqueId mBoostNavPointId2;                           // guest 0x1098: the retreat's second point
   float mBoostTimer;                                     // guest 0x11DC

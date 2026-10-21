@@ -13,6 +13,7 @@
 #include "MetroidPrime/Enemies/CIngBoostBallGuardian.hpp"
 
 #include "Collision/CCollisionInfoList.hpp"
+#include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CGenericFSM2.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
@@ -215,8 +216,6 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mSurfaceAlignment()                    // 0x0000ED44
 , mIngSpotPathFindNavigation()           // 0x0000ED4C
 , mBoost(boost) // guest 0xDEC, fn_30_10250 (0x0000ED98): a memberwise copy, the host's implicit one
-, mVulnerability(CWeaponTypeVulnerability(100.f, CWeaponTypeVulnerability::kE_Immune,
-                                          false)) // 0x0000FCC0-0x0000FD48: rodata_CC, 3, 0
 , mTouchBox(CAABox::MakeNullBox()) // 0x0000ED58..0x0000ED94: guest 0xDD0 = mskNullBox, 0xDE8 = 1
 , mHostId(kInvalidUniqueId)
 , mPossessedEffectId(kInvalidUniqueId)
@@ -286,6 +285,8 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
 , mHitLightId(kInvalidUniqueId)
 , mBoostAimPos(CVector3f::Zero())   // ctor 0x0000FD10
 , mBoostSpawnPos(CVector3f::Zero()) // ctor 0x0000FD28
+, mVulnerability(CWeaponTypeVulnerability(100.f, CWeaponTypeVulnerability::kE_Immune,
+                                          false)) // 0x0000FCC0-0x0000FD48: rodata_CC, 3, 0
 , mBoostNavPointId(kInvalidUniqueId)
 , mBoostNavPointId2(kInvalidUniqueId)
 , mBoostTimer(0.f)
@@ -351,11 +352,14 @@ CIngBoostBallGuardian::CIngBoostBallGuardian(TUniqueId uid, const rstl::string& 
   }
 }
 
-// The guest's dtor deletes both managers (0x0000E7E4 for 0xD64, then 0xD60).
-CIngBoostBallGuardian::~CIngBoostBallGuardian() {
-  delete mCollisionActorManager1;
-  delete mCollisionActorManager0;
-}
+// fn_30_E5EC: no body of its own, only the member teardown, last-declared first: the
+// vulnerability at 0x1178 (0x0000E620), the connected-ids vector at 0x109C (0x0000E62C, fn_30_E4EC),
+// the nine optional tokens 0x1060 down to 0xFDC (0x0000E658..0x0000E7B8), the boost data at 0xDEC
+// (0x0000E7C4, fn_30_5E4), the surface helper at 0xD68 (0x0000E7D0, fn_30_EACC), the managers
+// 0xD64 then 0xD60 (0x0000E7E4/0x0000E7F8, single_ptr), the data at 0x7C0 (0x0000E80C/0x0000E818),
+// then CPatterned (0x0000E824, fn_30_E854). The host header declares the members in that order, so
+// the implicit teardown is retail's; the rest (path searches, line of sight, ids) is trivial in both.
+CIngBoostBallGuardian::~CIngBoostBallGuardian() {}
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say

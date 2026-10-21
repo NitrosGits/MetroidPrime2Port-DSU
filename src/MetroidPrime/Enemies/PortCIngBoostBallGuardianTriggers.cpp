@@ -87,9 +87,8 @@ void CIngBoostBallGuardian::CreateCollisionActorManager(CStateManager& mgr) {
   }
   CCollisionActorManager* manager =
       rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
-  delete mCollisionActorManager0;
-  mCollisionActorManager0 = manager;
-  SetupManagerActors(mgr, mCollisionActorManager0);
+  mCollisionActorManager0 = manager; // single_ptr: deletes the previous one
+  SetupManagerActors(mgr, mCollisionActorManager0.get());
   AddMaterial(kMT_Unknown54, kMT_ProjectilePassthrough, mgr);
   // 0x000050F4: the vector's destructor runs at scope end
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude( // fn_30_4D74
@@ -110,10 +109,9 @@ void CIngBoostBallGuardian::CreateIngSpotManager(CStateManager& mgr) {
       root, CVector3f(5.f, 5.f, 1.5f), rstl::string_l("PuddleCollisionActor"), 1000.f));
   CCollisionActorManager* manager =
       rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, false);
-  delete mCollisionActorManager1;
-  mCollisionActorManager1 = manager;
+  mCollisionActorManager1 = manager; // single_ptr: deletes the previous one
   // 0x00004BB8: the vector's destructor runs at scope end
-  SetupManagerActors(mgr, mCollisionActorManager1); // fn_30_4D74
+  SetupManagerActors(mgr, mCollisionActorManager1.get()); // fn_30_4D74
 }
 
 // fn_30_4924: the Ing REL's fn_29_3014 for a given manager; the vulnerability call is the
