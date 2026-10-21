@@ -66,8 +66,9 @@ class ForceBp(gdb.Breakpoint):
                     if s.startswith('set var '):
                         s = s[len('set var '):]  # a spec's `sets` are expressions; tolerate the prefix
                     gdb.execute('set var ' + s.replace('$this', '((%s*)$rdi)' % CLASS))
-                except gdb.error:
-                    pass
+                except gdb.error as e:
+                    with open(LOG, 'a') as fh:
+                        fh.write('%s: set failed (%s): %s\n' % (self.label, s, str(e)[:60]))
         key = ', '.join(str(ev(e)) for e in self.exprs) if self.exprs else '(entry)'
         if self.ret:
             try:

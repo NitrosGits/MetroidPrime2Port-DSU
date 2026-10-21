@@ -14,6 +14,7 @@ DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardian.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianKneeArmor.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianEchoTarget.cpp
 DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianHead.cpp
+DigitalGuardian;src/MetroidPrime/Enemies/PortCDigitalGuardianHelpers.cpp
 ElitePirate;src/MetroidPrime/Enemies/PortCElitePirate.cpp
 EmperorIngStage1;src/MetroidPrime/Enemies/PortCEmperorIngStage1.cpp
 EmperorIngStage3;src/MetroidPrime/Enemies/PortCEmperorIngStage3.cpp
