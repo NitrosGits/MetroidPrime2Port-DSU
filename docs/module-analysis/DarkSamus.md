@@ -556,3 +556,14 @@ walk: ScatterShot -> 5 shots from the gun locator, each gone after 0.15..0.45 s 
 fn_10_154FC (0x600 bytes, the dash path), 14A00, 14D14 (with 12C2C/14C50/14FE0, calls 1B478),
 12CE0 (21DF8/EDE0, calls 1B478); 0xA08 bits 0x40 (Range(0,100) < stage+0x20) and 0x80
 (BreakDash fn_10_149B4: 0x80 set -> true, else 0xA04 > 0 -> false, else GetAnimOver).
+
+**Slice 8** (2026-10-21): the stand-in shots are not killed by the boss: the player stood on a
+ledge ~15 units above the boss (z 19 vs 4), shots fly ~72 u/s along the right line to the
+jittered aim (player z -1.5..+7.5) and hit static render geometry (ledge lip / walls, material
+0x1B/0x1D00002000000000) after 0.2..0.55 s; no hit on the first frame, none on the owner.
+Retail's CScattershotProjectile is a plain CWeapon (no CGameProjectile ray/WPSC flight): its
+ctor (fn_10_2AD0) stores 45.0f at 0x1D4 and seeds shots via fn_10_C98 with 0.5/2.0 parameters.
+MovingScatterShot fn_10_11AD8 = ScatterShot's Activate/Deactivate without the failsafe, turn +
+11974 + 1B478(0x10) on every message, then the step command fn_10_21DF8 (kAS_Step, BreakDodge,
+right unless 0xBAC, then left). 0xBAC is set only by the unported picker collector fn_10_19B64
+(0x0001A020/0x0001A0D0). 0x9E0..0xA08 is CDarkSamusDash (fn_10_15348; 0x9FC was mGuest9FC).
