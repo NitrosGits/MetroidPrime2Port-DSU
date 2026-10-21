@@ -1,9 +1,9 @@
 # DigitalGuardian (module 14): the coverage spec with the forcing mechanism (tools/cov/force.py,
-# copied from decomp/darksamus-helpers2) - the labels are the retail offsets of the helpers this
-# lane ports.  The FORCE entries write the members that take the arms the fight cannot reach;
-# the gdb side is tools/cov/force_cov.py (the coverage harness plus the forcing).
+# copied from the decomp/darksamus-helpers2 branch) - the labels are the retail offsets of the
+# helpers this lane ports.  The FORCE entries write the members that take the arms the fight
+# cannot reach; the gdb side is tools/cov/cov_force.py (the coverage harness plus the forcing).
 #
-# Run: COV_GDB_SCRIPT=tools/cov/force_cov.py tools/cov/force.sh \
+# Run: COV_GDB_SCRIPT=tools/cov/cov_force.py tools/cov/force.sh \
 #        tools/cov/specs/digitalguardian_force.py <out> 1baa96c2,09_cliff_temple_dark \
 #        --con tools/cov/specs/digitalguardian_area53.con --fast --frames 3000
 CLASS = 'CDigitalGuardian'
@@ -53,13 +53,17 @@ FORCE = [
     # fn_14_6C74: the vortex mode (the arm at 0x6C78)
     ('6C74 the vortex mode', 'CDigitalGuardian::x6C74_(', [], ['$this->x11B8_ = 1'], 100,
      'sets the vortex mode (x11B8_) to 1'),
-    # fn_14_6C74: the flag byte's bit 6 (the arm at 0x6C90)
+    # fn_14_6C74: the flag byte's bit 6 (the arm at 0x6C90). The vortex mode has to be cleared
+    # again, or the first arm would win.
     ('6C74 the flag bit', 'CDigitalGuardian::x6C74_(', [], ['$this->x11B8_ = 0',
                                                         '$this->x128C_ = $this->x128C_ | 0x40'], 200,
      "clears the vortex mode and sets the flag byte's bit 6 (x128C_)"),
-    # fn_14_2358: a toe target in the flinch state (the arm at 0x247C)
-    ('2358 the flinch', 'CDigitalGuardian::x2358_(', [], ['$this->x10DC_[0] = 2'], 100,
-     "sets the first toe target's state word (x10DC_) to 2 (the flinch)"),
+    # fn_14_2358: the first toe target has no sound emitter (the else arm at 0x23C4), its hit
+    # timer is still positive (the else arm at 0x2450) and it is not flinching (the else arm at
+    # 0x247C).
+    ('2358 the first toe target', 'CDigitalGuardian::x2358_(', [],
+     ['$this->x10F0_[0] = 0', '$this->x1158_[0] = 100.f', '$this->x10DC_[0] = 1'], 100,
+     "clears the first toe target's sound handle and sets its timer and state word"),
     # fn_14_6E04: no head (the arm at 0x6E40)
     ('6E04 no head', 'CDigitalGuardian::x6E04_(', [], ['$this->x1082_ = 0xffff'], 100,
      "clears the head's id (x1082_)"),
@@ -80,15 +84,10 @@ FORCE = [
     ('11EA8 a bomb slot with a sound', 'CDigitalGuardianHead::x11EA8_()', [],
      ['((CDigitalGuardianHead*)$rdi)->xF28_[0] = 1'], 0,
      'writes a sound handle into the first bomb slot (xF28_)'),
-    # fn_14_2358: the first toe target has no sound emitter (the else arm at 0x23C4), its hit
-    # timer is still positive (the else arm at 0x2450) and it is not flinching (the else arm at
-    # 0x247C).
-    ('2358 the first toe target', 'CDigitalGuardian::x2358_(', [],
-     ['$this->x10F0_[0] = 0', '$this->x1158_[0] = 100.f', '$this->x10DC_[0] = 1'], 100,
-     "clears the first toe target's sound handle and sets its timer and state word"),
-    # fn_14_137A8: the armour id is 0xFFFE, so no model is built (the else arm at 0x137C4).
-    ('137A8 no armour', 'CDigitalGuardianHead::x137A8_()', [], ['((CDigitalGuardianHead*)$rdi)->mData.headArmor = 0xfffe'],
-     0, "sets the armour's asset id (mData.headArmor) to 0xFFFE"),
+    # fn_14_137A8: the armour id is 0xFFFE, so no model is built (the else arm at 0x137C4)
+    ('137A8 no armour', 'CDigitalGuardianHead::x137A8_()', [],
+     ['((CDigitalGuardianHead*)$rdi)->mData.headArmor = 0xfffe'], 0,
+     "sets the armour's asset id (mData.headArmor) to 0xFFFE"),
     # fn_14_37FC: the five values of the table, one call each (the arms at 0x381C, 0x383C,
     # 0x385C, 0x387C and 0x389C). The calls hang on at fn_14_3E88's entry, which the "ACTV"
     # message reaches once.
@@ -102,41 +101,11 @@ FORCE = [
     # fn_14_F374: the head's lives left are 2 (the first arm at 0xF378) and 1 (the else arm).
     ('F374 the lives left', 'CDigitalGuardianHead::x11F7C_(', [],
      ['$tmp = ((CDigitalGuardianHead*)$rdi)->xF374_()',
-      'set var ((CDigitalGuardianHead*)$rdi)->x10E4_ = 1',
+      '((CDigitalGuardianHead*)$rdi)->x10E4_ = 1',
       '$tmp = ((CDigitalGuardianHead*)$rdi)->xF374_()'], 0,
      "calls fn_14_F374 with two lives left and with one"),
     # fn_14_5644: the sender is a toe target collider (the arms past the first early-out). The
-    # other arms need their own run: a member written here would stay written.
-    ('5644 a toe target collider', 'CDigitalGuardian::x5644_(', [],
-     ['$rdx = ((CDigitalGuardian*)$rdi)->x1078_[0]'], 1,
-     "points the message's sender at the first toe target collider"),
-]    # fn_14_2358: the first toe target has no sound emitter (the else arm at 0x23C4), its hit
-    # timer is still positive (the else arm at 0x2450) and it is not flinching (the else arm at
-    # 0x247C).
-    ('2358 the first toe target', 'CDigitalGuardian::x2358_(', [],
-     ['$this->x10F0_[0] = 0', '$this->x1158_[0] = 100.f', '$this->x10DC_[0] = 1'], 100,
-     "clears the first toe target's sound handle and sets its timer and state word"),
-    # fn_14_137A8: the armour id is 0xFFFE, so no model is built (the else arm at 0x137C4).
-    ('137A8 no armour', 'CDigitalGuardianHead::x137A8_()', [], ['((CDigitalGuardianHead*)$rdi)->mData.headArmor = 0xfffe'],
-     0, "sets the armour's asset id (mData.headArmor) to 0xFFFE"),
-    # fn_14_37FC: the five values of the table, one call each (the arms at 0x381C, 0x383C,
-    # 0x385C, 0x387C and 0x389C). The calls hang on at fn_14_3E88's entry, which the "ACTV"
-    # message reaches once.
-    ('37FC the five values', 'CDigitalGuardian::x3E88_(', [],
-     ['$tmp = ((CDigitalGuardian*)$rdi)->x37FC_(0.f)',
-      '$tmp = ((CDigitalGuardian*)$rdi)->x37FC_(0.7853982f)',
-      '$tmp = ((CDigitalGuardian*)$rdi)->x37FC_(1.5707964f)',
-      '$tmp = ((CDigitalGuardian*)$rdi)->x37FC_(2.3561945f)',
-      '$tmp = ((CDigitalGuardian*)$rdi)->x37FC_(3.1415927f)'], 0,
-     'calls fn_14_37FC with the five table values'),
-    # fn_14_F374: the head's lives left are 2 (the first arm at 0xF378) and 1 (the else arm).
-    ('F374 the lives left', 'CDigitalGuardianHead::x11F7C_(', [],
-     ['$tmp = ((CDigitalGuardianHead*)$rdi)->xF374_()',
-      'set var ((CDigitalGuardianHead*)$rdi)->x10E4_ = 1',
-      '$tmp = ((CDigitalGuardianHead*)$rdi)->xF374_()'], 0,
-     "calls fn_14_F374 with two lives left and with one"),
-    # fn_14_5644: the sender is a toe target collider (the arms past the first early-out). The
-    # other arms need their own run: a member written here would stay written.
+    # other arms need their own run: a member written here stays written.
     ('5644 a toe target collider', 'CDigitalGuardian::x5644_(', [],
      ['$rdx = ((CDigitalGuardian*)$rdi)->x1078_[0]'], 1,
      "points the message's sender at the first toe target collider"),
