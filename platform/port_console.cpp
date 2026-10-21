@@ -41,6 +41,7 @@
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CEntity.hpp"
@@ -1671,6 +1672,24 @@ void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
          "\n";
 }
 
+// uevent <id> <type> [dt]: deliver a user anim event (EUserEventType, e.g. 27 EventStart, 28
+// EventStop, 18 EndAction, 12 Landing) to an actor's DoUserAnimEvent with an empty POI node, for
+// the event arms an animation never fires on the host.
+void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
+  float type = 0.f;
+  float dt = 0.f;
+  CEntity* ent = args.size() >= 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr || !ParseFloat(args[2], type) ||
+      (args.size() >= 4 && !ParseFloat(args[3], dt))) {
+    Fail("usage: uevent <id> <type> [dt]   (id must be an actor)");
+    return;
+  }
+  actor->DoUserAnimEvent(mgr, CInt32POINode(),
+                         static_cast< EUserEventType >(static_cast< int >(type)), dt);
+  out += "uevent " + std::string(args[1]) + " " + std::to_string(static_cast< int >(type)) + "\n";
+}
+
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
 // away, travelling along dir (default: from the player), straight at an actor's aim position (a joint collision actor's own position), homing on it. The
 // shot is a real CEnergyProjectile with the beam's damage, so a module that only counts projectile
@@ -2381,6 +2400,7 @@ constexpr SCommand kCommands[] = {
     {"fsm", CmdFsm, true},
     {"statecall", CmdStateCall, true},
     {"hint", CmdHint, true},
+    {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
     {"shoot", CmdShoot, true},

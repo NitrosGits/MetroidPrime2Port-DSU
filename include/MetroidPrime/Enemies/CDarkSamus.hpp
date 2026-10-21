@@ -1075,6 +1075,19 @@ private:
   TUniqueId mGuestF78 = kInvalidUniqueId; // guest 0xF78 (fn_10_4868, fn_10_48C8)
   float mGuestF7C;               // guest 0xF7C (fn_10_48C8)
   CSfxHandle mGuestF60;          // guest 0xF60 (fn_10_812C)
+  // The phazon beam (the 0xEF0 sub-object, fn_10_45F8, whose ctor arguments are the loader's
+  // pART_0x908b06e9 into 0xEF0, pART_0x494de4a4 into 0xEFC (its locked token 0xF00), damageInfo
+  // copied to 0xF2C and sound into 0xF5E): the generator 0xEF4/0xEF8 and its collision effects.
+  // The host reads the three from mData, which nothing writes after the loader.
+  void CreatePhazonBeam();                             // fn_10_6118
+  void ReleasePhazonBeam();                            // fn_10_58C0
+  void StartPhazonBeamSfx();                           // fn_10_8178
+  void UpdatePhazonBeam(CStateManager& mgr, float dt); // fn_10_5974
+  static rstl::optional_object< TLockedToken< CGenDescription > > PhazonBeamHitToken(CAssetId id);
+  rstl::auto_ptr< CElementGen > mGuestEF8; // guest 0xEF4/0xEF8, the beam (fn_10_6118, fn_10_58C0)
+  // guest 0xF00, the beam's hit effect (mData.mPart494DE4A4, fn_10_45F8 at 0x00004644)
+  rstl::optional_object< TLockedToken< CGenDescription > > mGuestF00 =
+      PhazonBeamHitToken(mData.mPart494DE4A4);
 #endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the

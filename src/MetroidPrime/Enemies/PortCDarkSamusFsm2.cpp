@@ -3,11 +3,9 @@
 // 6460, 652C, 67B8, 6BA0, 7054, 7BC0, 81D4). The tables and the rest of the machine are in
 // PortCDarkSamusFsm.cpp.
 //
-// The one module helper these states call that is not ported yet (fn_10_5974, which needs the
-// beam generator 0xEF8 that only fn_10_6118 makes) is a stand-in call: Fsm2StandIn logs the first
-// call, and PhazonAttack (81D4) stays unmarked. fn_10_65CC and fn_10_1BC58 are ported here; the
-// helpers below 0xA000 (6374, 69C0, 4868, 48C8, 812C, 8698, the phazon enrage tree 7F98 and
-// 452C) are in PortCDarkSamusHelpers.cpp. The loop attack (fn_10_8870) and the
+// fn_10_65CC and fn_10_1BC58 are ported here; the helpers below 0xA000 (6374, 69C0, 4868, 48C8,
+// 812C, 8698, the phazon enrage tree 7F98, 452C and the phazon beam 5974) are in
+// PortCDarkSamusHelpers.cpp. The loop attack (fn_10_8870) and the
 // getup (fn_10_22020) commands are the same three-message switch as fn_10_8698, written inline.
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 
@@ -35,21 +33,6 @@
 #include "types.h"
 
 namespace {
-
-// The once-only log of a stand-in call: one line per retail function, the first time it runs.
-void Fsm2StandIn(const char* fn, const char* what) {
-  static const char* sSeen[32] = {};
-  static int sCount = 0;
-  for (int i = 0; i < sCount; ++i) {
-    if (sSeen[i] == fn) {
-      return;
-    }
-  }
-  if (sCount < 32) {
-    sSeen[sCount++] = fn;
-  }
-  fprintf(stderr, "[darksamus] fsm stand-in %s (%s)\n", fn, what);
-}
 
 // The state change log of PortCDarkSamusFsm.cpp's DsStateEntered (MP2_DS_FSM).
 void DsStateEntered(const char* name, EStateMsg msg) {
@@ -704,6 +687,10 @@ void CDarkSamus::PhazonEnraged(CStateManager& mgr, EStateMsg msg, float dt) {
 // vector (0x00008514), moves to 0xF20 (0x00008534); with the shots 0xF48 at least 0xF4C
 // (0x00008548) the kBSC_ExitState command (0x0000856C) ends the call. Deactivate (0x00008588):
 // fn_10_812C. Then the loop attack command with type 3 (fn_10_8870 at 0x000085DC).
+// Run (darksamus_phazonbeam.py): every arm by statecall and keyed forces (0xF5C bit 0x40, the
+// forward straight up, the player on the actor, a fake emitter 0xF60, CanIssueCommand's yes); the
+// switch defaults are no retail message (Activate, Update, Deactivate only).
+// @ fn_10_81D4
 void CDarkSamus::PhazonAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("PhazonAttack", msg);
   UpdateCurrentAttack(0x400000, mgr, msg);
@@ -725,7 +712,7 @@ void CDarkSamus::PhazonAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   }
   case kStateMsg_Update: {
-    Fsm2StandIn("fn_10_5974", "phazon attack update");
+    UpdatePhazonBeam(mgr, dt); // fn_10_5974 at 0x00008340
     DeleteGuestActorIfExpired(mgr); // fn_10_48C8 at 0x0000834C
     const CVector3f fwd = GetTransform().GetForward();
     CVector3f flatFwd(fwd.GetX(), fwd.GetY(), 0.f);

@@ -15,6 +15,10 @@
 #include "MetroidPrime/ScriptObjects/CHUDBillboardEffect.hpp"
 #include "MetroidPrime/Tweaks/CTweakPlayerGun.hpp"
 #include "Collision/CCollidableAABox.hpp"
+#include "Collision/CMaterialFilter.hpp"
+#include "Collision/CRayCastResult.hpp"
+#include "Kyoto/Math/CCylinder.hpp"
+#include "MetroidPrime/CExplosion.hpp"
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
@@ -145,6 +149,8 @@ void CDarkSamus::FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg)
 
 // fn_10_21104 (0x00021104): the visor effect's particle token at guest 0xF6C, made from the asset id
 // at 0xF68 when it is a real one (`addis r0, r4, 0x1; cmplwi r0, 0xffff` at 0x00021114), else empty.
+// Run: the empty arm forced (the id kInvalidAssetId, darksamus_phazonbeam_invalid.py).
+// @ fn_10_21104
 rstl::optional_object< TToken< CGenDescription > > CDarkSamus::PhazonVisorToken(CAssetId id) {
   if (id == kInvalidAssetId) {
     return rstl::optional_object< TToken< CGenDescription > >();
@@ -315,8 +321,9 @@ void CDarkSamus::TouchPhazonSphere(CStateManager& mgr) {
   if (!bounds) {
     return;
   }
-  // Host guard: retail reads the sphere's vtable unchecked (the enrage made it first); a forced
-  // phazon state with no sphere would crash here.
+  // Host-only guard, not a retail arm: retail reads the pointer 0x1028 (the sphere's vtable)
+  // unchecked, since the enrage made the sphere first; a forced phazon state with no sphere would
+  // crash here.
   if (mGuest1028.get() == nullptr) {
     return;
   }
@@ -366,5 +373,160 @@ void CDarkSamus::UpdatePhazonEnrage(CStateManager& mgr, EStateMsg msg, float dt)
       mgr.GetPlayer(0)->GetPlayerGun()->GetAbsorbedPhazonShots() >=
           gpTweakPlayerGun->GetMaxAbsorbedPhazonShots()) {
     mGuestFCC -= 3.5f * dt;
+  }
+}
+
+// fn_10_45F8's token at 0x00004644: the beam's hit effect at guest 0xF00, locked, from the asset id
+// at 0xEFC when it is a real one (`addis r0, r5, 0x1; cmplwi r0, 0xffff` at 0x00004604), else empty.
+rstl::optional_object< TLockedToken< CGenDescription > > CDarkSamus::PhazonBeamHitToken(CAssetId id) {
+  if (id == kInvalidAssetId) {
+    return rstl::optional_object< TLockedToken< CGenDescription > >();
+  }
+  return rstl::optional_object< TLockedToken< CGenDescription > >(
+      TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
+}
+
+// fn_10_6118 (0x00006118, 0x19C bytes): the phazon beam. A CElementGen of the asset 0xEF0
+// (mData.mPart908B06E9) with the orientation kMOT_Normal and the system flags 1 (0x000061B8)
+// replaces the auto_ptr 0xEF4/0xEF8 (the old one deleted, 0x0000620C), and it emits (vtable 0x2C
+// with 1, 0x00006290). The kUE_EventStart event of the 0x400000 attack calls it (0x0001C270).
+// Run: `uevent u04f7 27` (darksamus_phazonbeam.con), a beam made and one replaced.
+// @ fn_10_6118
+void CDarkSamus::CreatePhazonBeam() {
+  mGuestEF8 = rs_new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', mData.mPart908B06E9)),
+                                 CElementGen::kMOT_Normal, CElementGen::kOSF_One);
+  mGuestEF8->SetParticleEmission(true);
+}
+
+// fn_10_58C0 (0x000058C0, 0xB4 bytes): an empty auto_ptr into 0xEF4/0xEF8, which deletes the beam
+// (0x00005918). The kUE_EventStop event calls it (0x0001C2A4). Run: `uevent u04f7 28`.
+// @ fn_10_58C0
+void CDarkSamus::ReleasePhazonBeam() {
+  mGuestEF8 = rstl::auto_ptr< CElementGen >();
+}
+
+// fn_10_8178 (0x00008178, 0x5C bytes): the beam's sound. The emitter 0xF60 is stopped
+// (fn_10_812C) and a new one of the sfx 0xF5E (mData.mSound, kInternalInvalidSfxId for -1: the
+// ctor's 0x000201A8) at the actor's position, volume 0x7F, the actor's area, no acoustics, not
+// looped, kMedPriority (0x000081B4) is kept in 0xF60. Run: both sound arms forced (the data's -1
+// in darksamus_phazonbeam_invalid.py, 1 in darksamus_phazonbeam.py).
+// @ fn_10_8178
+void CDarkSamus::StartPhazonBeamSfx() {
+  StopGuestSfx();
+  const ushort sfx = mData.mSound == -1 ? CSfxManager::kInternalInvalidSfxId
+                                        : static_cast< ushort >(mData.mSound);
+  mGuestF60 = CSfxManager::AddEmitter(sfx, GetTranslation(), 0x7F, GetCurrentAreaId().Value(),
+                                      false, false, CSfxManager::kMedPriority);
+}
+
+// fn_10_5974 (0x00005974, 0x7A4 bytes): the phazon beam's update, PhazonAttack's Update
+// (0x00008340). Without a beam 0xEF8 nothing (0x000059C0). The beam sits at the gun locator 0x8CC
+// (vtable 0x20, 0x000059EC). The player's offset from the actor, its z the height
+// lbl_10_rodata_14C = 1.0f + 0xF58 less the actor's z, must be normalizable (0x00005A48); the
+// angle between it and the actor's forward is kept. The beam's reach 0xF10: within
+// lbl_10_rodata_170 = 20 degrees (0x00005A9C) it follows the flat distance to the player by at most
+// lbl_10_rodata_174 = 22 * dt either way (0x00005AC0..0x00005ADC). The beam looks from the locator
+// at the actor's position + forward * reach at that height (LookAt at 0x00005B64); 0xF14 = its
+// forward (0x00005B8C), the generator gets its rotation (0x1C), scale one (0x24) and dt (0x0C).
+// With 0xF14 normalizable (0x00005BF8): the player's position, eye or aim position (vtable 0x54,
+// dt 0) inside the cylinder of radius lbl_10_rodata_178 = 2.2 along it (0x00005C58/0x00005C7C/
+// 0x00005CBC) and the angle under lbl_10_rodata_17C = 90 degrees (0x00005CD8): the damage 0xF2C
+// with its amount * dt goes to the player (solid include-exclude filter, 0x00005DA4), 0xF54 = the
+// elapsed time and the visor effect for lbl_10_rodata_180 = 0.25 s (fn_10_490C). Then 0xF50 gains
+// dt and every lbl_10_rodata_184 = 0.07 s of it (0x000060D8) casts a ray of lbl_10_rodata_18C =
+// 100 along 0xF14 from a random point on the beam's 2.2 ring (Range(0, 2 pi), 0x00005E54) against
+// solid and AI-block (0x00005EFC); a hit sets the emitter position 0xF20 (the hit less the ring
+// offset, 0x00005F58) and adds a "Phazon Attack Collision" CExplosion of 0xF00 at the hit, facing
+// the player's eye (0x00006098).
+// Run (darksamus_phazonbeam.py, _invalid.py): every arm by a keyed force (the zero offset, the
+// turn, the reach clamps, each cylinder test, a NaN locator for the unnormalizable 0xF14, a ray
+// too short to hit, the empty hit token). The CExplosion allocation's null/throw edges have no
+// host counterpart (rs_new does not return null).
+// @ fn_10_5974
+void CDarkSamus::UpdatePhazonBeam(CStateManager& mgr, float dt) {
+  if (mGuestEF8.get() == nullptr) {
+    return;
+  }
+  mGuestEF8->SetGlobalTranslation(mGunLctrXf.GetTranslation());
+  CTransform4f beamXf = mGunLctrXf;
+  CPlayer* player = mgr.GetPlayer(0);
+  const float height = 1.f + mGuestF58;
+  const CVector3f& pos = GetTranslation();
+  CVector3f toPlayer(player->GetTranslation().GetX() - pos.GetX(),
+                     player->GetTranslation().GetY() - pos.GetY(), height - pos.GetZ());
+  if (!toPlayer.CanBeNormalized()) {
+    return;
+  }
+  const CVector3f fwd = GetTransform().GetForward();
+  const float angle = CVector3f::GetAngleDiff(fwd, toPlayer.AsNormalized());
+  toPlayer.SetZ(0.f);
+  float reach = mGuestF10;
+  if (angle < 0.34906584f) {
+    const float dist = toPlayer.Magnitude();
+    const float step = 22.f * dt;
+    const float lo = mGuestF10 - step;
+    const float hi = mGuestF10 + step;
+    if (lo > dist) {
+      reach = lo;
+    } else if (hi < dist) {
+      reach = hi;
+    } else {
+      reach = dist;
+    }
+  }
+  CVector3f target = fwd * reach + pos;
+  target.SetZ(height);
+  beamXf = CTransform4f::LookAt(beamXf.GetTranslation(), target, CVector3f::Up());
+  mGuestF10 = reach;
+  mGuestF14 = beamXf.GetForward();
+  mGuestEF8->SetGlobalOrientation(beamXf.GetRotation());
+  mGuestEF8->SetGlobalScale(CVector3f::One());
+  mGuestEF8->Update(dt);
+  if (!mGuestF14.CanBeNormalized()) {
+    return;
+  }
+  mGuestF14.Normalize();
+  const CVector3f axis = mGuestF14.AsNormalized();
+  const CCylinder beam(CLine(mGunLctrXf.GetTranslation(),
+                             CUnitVector3f(axis.GetX(), axis.GetY(), axis.GetZ())),
+                       2.2f);
+  if ((beam.PointInside(player->GetTranslation()) || beam.PointInside(player->GetEyePosition()) ||
+       beam.PointInside(player->GetAimPosition(mgr, 0.f))) &&
+      angle < 1.5707964f) {
+    CDamageInfo damage(mData.mDamageInfo);
+    damage.SetDamage(dt * mData.mDamageInfo.GetDamage());
+    mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), damage,
+                    CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList()),
+                    CVector3f::Zero());
+    mGuestF54 = mElapsedTime;
+    StartPhazonVisorEffect(mgr, 0.25f);
+  }
+  mGuestF50 += dt;
+  while (mGuestF50 > 0.07f) {
+    mGuestF50 -= 0.07f;
+    CVector3f origin = beamXf.GetTranslation();
+    const float a = mgr.Random()->Range(0.f, 6.2831855f);
+    const float ringY = 2.2f * CMath::FastSinR(a);
+    const float ringX = 2.2f * CMath::FastCosR(a);
+    origin = CVector3f(origin.GetX() + ringX, origin.GetY() + ringY, origin.GetZ() + 0.f);
+    const CRayCastResult hit = mgr.RayStaticIntersection(
+        origin, mGuestF14, 100.f,
+        CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_AIBlock)));
+    if (!hit.IsValid()) {
+      continue;
+    }
+    const CVector3f& point = hit.GetPoint();
+    mGuestF20 = CVector3f(point.GetX() - ringX, point.GetY() - ringY, point.GetZ() - 0.f);
+    const CTransform4f xf = CTransform4f::LookAt(point, player->GetEyePosition(), CVector3f::Up());
+    // Host-only guard: retail passes 0xF00 unchecked (an absent pART_0x494de4a4 leaves the
+    // optional empty, and retail would read its storage as a token).
+    if (!mGuestF00) {
+      continue;
+    }
+    const rstl::string name = rstl::string_l("Phazon Attack Collision");
+    const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId);
+    const TUniqueId uid = mgr.AllocateUniqueId();
+    mgr.AddObject(rs_new CExplosion(*mGuestF00, uid, info, name, xf, 0, CVector3f::One() * 1.f,
+                                    CColor::White(), -1));
   }
 }

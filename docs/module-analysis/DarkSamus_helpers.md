@@ -85,9 +85,9 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_5038` | 0x80 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_50B8` | 0x788 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_5840` | 0x80 | method | 1 | cited | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
-| `fn_10_58C0` | 0xB4 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
-| `fn_10_5974` | 0x7A4 | method | blocked - the 0xEF0 sub-object's members (0xEF8, 0xF10..0xF58) are not modelled yet |
-| `fn_10_6118` | 0x19C | method | 1 | ported body | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
+| `fn_10_58C0` | 0xB4 | method | 1 | **ported** | the beam's release (kUE_EventStop) |
+| `fn_10_5974` | 0x7A4 | method | 1 | **ported** | the phazon beam's update (UpdatePhazonBeam) |
+| `fn_10_6118` | 0x19C | method | 1 | **ported** | the phazon beam (kUE_EventStart of 0x400000) |
 | `fn_10_6374` | 0xEC | method | **ported** (fixed in the FSM2 lane: Activate also reaches 1D860/11334; shagged re-sets the destination) |
 | `fn_10_65CC` | 0x1EC | method | **ported** in PortCDarkSamusFsm2.cpp (`GetPhazonWaypoint`) |
 | `fn_10_69C0` | 0x80 | method | **ported** |
@@ -103,7 +103,7 @@ Three scans, all over the module's own build in the archive tree
 | `fn_10_7D00` | 0x298 | method | 1 | missing | missing body (the caller is a state or a helper the port does not have yet) |
 | `fn_10_7F98` | 0x17C | method | blocked - it calls the lane's fn_10_1B478 / 1AEC0 / 18F90 and this half's fn_10_7538 / 7610 / 7D00 |
 | `fn_10_812C` | 0x4C | method | **ported** |
-| `fn_10_8178` | 0x5C | method | 1 | ported body | the anim event's melee/missile arm: the attacks have no ProjectileInfo in the port yet |
+| `fn_10_8178` | 0x5C | method | 1 | **ported** | the phazon beam's sound |
 | `fn_10_8698` | 0xCC | method | **ported** (the guest's command words become the host's CBCTauntCmd + mAnimationState) |
 | `fn_10_8764` | 0x10C | method | the port already has the host form (the lane's `RunMeleeAttackCmd`) |
 | `fn_10_8870` | 0xEC | method | blocked - its command words (0x1B8/0x1C0/0x1C4) map to a host CBC*Cmd that is not identified yet |
@@ -187,8 +187,8 @@ the lane's order, so a state can be written against them:
 | `fn_10_4868` | 0x60 | 6BA0 @0x6D30 | **ported** |
 | `fn_10_8698` | 0xCC | 6BA0 @0x6D6C, 7054 @0x72C4, 4AC8 @0x4B54 | **ported** (the guest's command words become the host's CBCTauntCmd + mAnimationState) |
 | `fn_10_786C` | 0x1A8 | 7BC0 @0x7C58 | blocked - it calls fn_10_7F98 (this half, not ported yet) |
-| `fn_10_452C` | 0xCC | 81D4 @0x8298 | blocked - it resets the 0xEF0 sub-object's members (0xF10..0xF5C), which are not modelled yet |
-| `fn_10_5974` | 0x7A4 | 81D4 @0x8340 | blocked - the 0xEF0 sub-object's members (0xEF8, 0xF10..0xF58) are not modelled yet |
+| `fn_10_452C` | 0xCC | 81D4 @0x8298 | **ported** |
+| `fn_10_5974` | 0x7A4 | 81D4 @0x8340 | **ported** |
 | `fn_10_48C8` | 0x44 | 81D4 @0x834C | **ported** |
 | `fn_10_812C` | 0x4C | 81D4 @0x858C | **ported** |
 | `fn_10_8870` | 0xEC | 81D4 @0x85DC | blocked - its command words (0x1B8/0x1C0/0x1C4) map to a host CBC*Cmd that is not identified yet |
