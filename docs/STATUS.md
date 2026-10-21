@@ -16,7 +16,15 @@ boostguardian `da45064c5`, digitalguardian `227e42fb1`, commandopirate `cf9eb199
 green, smoke5 17/17 clean (`/tmp/opencode/smoke5/`), 1159 markers. Upstream build must run before the
 port build in a fresh worktree (writes `build/G2ME01/include/*.inc`; needs `extern/musyx` checked out).
 
-Done on lane branches since, not yet merged (next batch: review, then merge these tips):
+Batch 6 (2026-10-21, branch `batch6` in `../wt-mp2-batch5`, not yet in port): merged emperoring3
+`43eb8312e`, emperoring `5a594830e`, boostguardian `673fbcb56`, minoring `c8d342614`, spacepirate-vt
+`33291f63c` (conflict in PortCSpacePirateStates.cpp: kept port's WarpIn fix `4d6c4d036`, dropped the
+stale fn_72_7078 marker), wallcrawler2 `036ca13db`, commandopirate `6ea58f47a`, digitalguardian
+`c56aff752`, splitter `29e4bf6aa`, darksamus2 `f0de7edab`. Matching 87 OK + sha1 OK, host + link green
+(07:05). Smoke lane `ses_ea326356effehZRU1nxriGRnEo` → `/tmp/opencode/smoke6/`; then
+`port_progress --record`, merge into port.
+
+Older list (superseded by batch 6):
 spacepirate-vt `33291f63c` (8 combat marks); wallcrawler2 `036ca13db` (obstruction scan, 3 marks);
 emperoring `bd4c2c25a` (7EA8, 7F8C cases, 1D38, Render 531C); splitter `b1f682ff7` (1188/58E8, F1C0,
 654C, 1790, AC68, 8D50, AAC4); commandopirate `843ebf292` (4D84); boostguardian `999b51bdf` (D4F8 events,
@@ -36,7 +44,7 @@ each, every frame) are dropped: Aurora draws both from the copy textures (A/B id
 | EmperorIng3 (Opus) | — (done) | emperoring3 @ `43eb8312e` (182/270; 88 cited, 0 todo; matching build OK) | module complete: merge in batch 6 |
 | DigitalGuardian (Opus) | `ses_ea3c7c778ffenorrkp5OG8bwsm` | sandboss @ `c56aff752` (SelectRetreatPlatform 13C6C ported; 12818 unmarked; 41 markers; exit 13 did not recur in 2 runs) | why beams never hit the root collider u0574 (likely port bug), XRDG damage arm, retreat → 12818/15284 platform arms, then slice-3 stand-ins |
 | Splitter (Opus) | `ses_ea3c28ce8ffe1FSm9kH6HSgpCQ` | splitter @ `29e4bf6aa` (stall fixed: ctor 0xCC8 = attach_LCTR seg, head no longer inside chassis; exclude bit 28; old baseline was a fall through the world) | jump/fall at frame ~900, shells A37C/8EC8 + actor scaling, 0xCC9/0xC72, then mark A4E4/986C/ACEC |
-| CommandoPirate (worker) | `ses_ea4812828ffeMW6FRPl2p0FEP1` | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
+| CommandoPirate (worker) | `ses_ea328681cfferVtp6Dt5onjmgs` (retry; first lane died silently) | commandopirate @ `6ea58f47a` (57A0 LOS fix, 3090, C1F4; Render C598 ported unmarked) | reached: C798, BF44, 1C0C, 3E1C, B250 |
 | EmperorIng1 (worker) | — (done) | emperoring @ `5a594830e` (91/241; 140 cited; 4954 needs FSM1 code-node dispatch, 7EA8 no tentacle sound event; 8 fns between survey 233 and port_progress 241 unexplained) | merge in batch 6 |
 | MinorIng (worker) | — (done) | minoring @ `c8d342614` (128/217; 28 dead, rest cited; 204C query-success arm never ran: path query returns kR_NoSourcePoint in area 13, check it is not a port bug) | merge in batch 6 |
 | Inglet fix (claude) | `ses_ea4b8efdcffeJYrVuvmgGX4q6a` | merged to port as `2294724f1` (CFoldySurface byte-swap) + `67f337a57` (Aurora dstAlpha alpha pass) | done; the Aurora pass touches every blended dstAlpha draw: include in the next smoke. Puddles are unscannable in retail too |
