@@ -1554,12 +1554,14 @@ void CSplitterCommandModule::Dodge(CStateManager& mgr, EStateMsg msg, float dt) 
 
 // fn_75_5610 (the head's ShouldFireAgain trigger, 0x5610-0x5624): the shot count at 0xF20 is
 // above 0 (0x5614-0x561C neg/andc/srwi).
+// @ fn_75_5610
 bool CSplitterCommandModule::ShouldFireAgain(CStateManager&, const CTriggerData&) const {
   return mLaserPulseShots > 0;
 }
 
 // fn_75_5644 (the head's ShouldDodge trigger, 0x5644-0x565C): the dodge direction at 0xF30 is not
 // -1 (0x5648-0x5654 subfic/addi/or/srwi).
+// @ fn_75_5644
 bool CSplitterCommandModule::ShouldDodge(CStateManager&, const CTriggerData&) const {
   return mDodgeDirection != -1;
 }

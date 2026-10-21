@@ -1699,6 +1699,7 @@ void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueI
 // (the transform's 0x28, 0x38, 0x48) with severity 8 goes out (lbl_75_data_5B8, 0xBF58-0xBFB8).
 // Deactivate (0xC010): the animation state is kAS_NotReady and the spin penalty timer at 0xD14
 // restarts with the data's spin attack interval penalty (0x874, 0xC018-0xC01C).
+// @ fn_75_BEEC
 void CSplitterMainChassis::HeadExplosion(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1756,6 +1757,12 @@ void CSplitterMainChassis::Death(CStateManager& mgr, const CVector3f& direction,
   RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
   CSplitterCommandModule* head =
       TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
+  // The head-null return is not reached in play: the chassis's hp only drops through A0A0 on
+  // target_LCTR, which is vulnerable only inside LaserSweepAttack (fn_75_D3E0 Activate); a dead
+  // head is deleted by its Dead state (fn_75_5448, 0x547C DeathDelete), then PortPlaceHead
+  // clears 0xC6C (0xAD50), LaserSweepAttack exits without a head (0xD510-0xD548) and its
+  // Deactivate makes every collision actor immune again (0xD59C-0xD5B8), and a headless PathFind
+  // leaves for SetRetreatDest through !HasHead (fn_75_E58C), never LaserSweepAttack.
   if (head == nullptr) {  // 0xEBB8-0xEBBC
     return;
   }
