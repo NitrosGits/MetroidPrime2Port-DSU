@@ -52,6 +52,7 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/CGenericFSM2State.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
@@ -519,6 +520,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
+      "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
@@ -1632,6 +1634,43 @@ void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
   out += "statecall " + wanted + " msg " + std::to_string(msg) + "\n";
 }
 
+// hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
+// setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
+// phazon waypoints) finds one the area lacks, or skips one of another area.
+void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
+  float type = -1.f;
+  float area = -1.f;
+  bool ok = args.size() >= 2;
+  for (size_t i = 2; ok && i < args.size(); ++i) {
+    if (args[i] == "area" && i + 1 < args.size()) {
+      ok = ParseFloat(args[++i], area);
+    } else {
+      ok = ParseFloat(args[i], type);
+    }
+  }
+  if (!ok) {
+    Fail("usage: hint <id> [type] [area <n>]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CScriptAIHint* hint = ent != nullptr ? TCastToPtr< CScriptAIHint >(ent) : nullptr;
+  if (hint == nullptr) {
+    Fail("not an AI hint");
+    return;
+  }
+  if (type >= 0.f) {
+    hint->PortSetHintType(static_cast< CScriptAIHint::EHintType >(static_cast< int >(type)));
+  }
+  if (area >= 0.f) {
+    hint->SetCurrentAreaId(TAreaId(static_cast< int >(area)));
+  }
+  out += "hint " + std::string(args[1]) + " type " +
+         std::to_string(static_cast< int >(hint->GetHintType())) + " area " +
+         std::to_string(hint->GetCurrentAreaId().Value()) + " active " +
+         std::to_string(hint->GetActive() ? 1 : 0) + " radius " + std::to_string(hint->GetRadius()) +
+         "\n";
+}
+
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
 // away, travelling along dir (default: from the player), straight at an actor's aim position (a joint collision actor's own position), homing on it. The
 // shot is a real CEnergyProjectile with the beam's damage, so a module that only counts projectile
@@ -2341,6 +2380,7 @@ constexpr SCommand kCommands[] = {
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
     {"statecall", CmdStateCall, true},
+    {"hint", CmdHint, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
     {"shoot", CmdShoot, true},
