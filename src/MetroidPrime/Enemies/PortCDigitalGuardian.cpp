@@ -393,6 +393,8 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   // asset (guest 0x950, the data block's mTransmissionBeaconFx).
   x123C_ = xD664_(mData.mTransmissionBeaconFx);
 
+  mDamageColor = skHitsWithoutDamageColor; // 0x450 at 0xC010..0xC018
+
   // The beacon's echo emitter (0xC01C..0xC074): with the beacon's model (0x1238, 0x11EC's valid
   // flag), enabled, over the model's bounds at fn_14_2578's transform of the actor's (0x24), with
   // the beacon's echo parameters (0x954, the data block's +0x194).
