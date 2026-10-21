@@ -407,8 +407,12 @@ bool CSpacePirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) cons
   return result;
 }
 
-// Retail 0xb24/0xb28 are time-since counters (Think zeroes them when a player projectile hits the
-// pirate, or is in its path); the trigger's argument is the window, 0.5 s when it is 0.
+// @ fn_72_7BA0 (0x34): the same shape as `7B6C` - the trigger's float argument, or rodata
+// 0xB44 = 0.5 when it is 0, against 0xb28 (`xb28_lowHealthFrenzyTimer`, which the Think zeroes
+// when a player projectile is in the pirate's path), the comparison being `timer < window`
+// (asm 0x7BC0-0x7BD0). Both arms ran on 2026-10-21 in 06_sand_alamofront: the false one
+// while the pirate attacked and no shot had passed it in the last 0.5 s, the true one right
+// after a shot that did.
 bool CSpacePirate::ShotAt(CStateManager& mgr, const CTriggerData& data) const {
   const float window = data.GetFloat() != 0.f ? data.GetFloat() : 0.5f;
   const bool result = xb28_lowHealthFrenzyTimer < window;

@@ -65,7 +65,10 @@ def parse(data):
                 tname = name()
                 targ = f32()
                 target = u32() if k == 0 else None
-                trigs.append((tname, targ, targ))
+                # the state's slot holds the last transition of the entry; the chain (the
+                # "and" links) runs from there back to the first, which owns the target state.
+                trigs.append((tname, targ, states[target] if target is not None and
+                              target < len(states) else "AND"))
         out.append((sname, trigs))
     return out
 
@@ -77,7 +80,7 @@ def main():
         print("no such asset", file=sys.stderr)
         return 1
     for sname, trigs in parse(data):
-        names = [t[0].lstrip("!#0123456789") for t in trigs]
+        names = ["%s->%s" % (t[0].lstrip("!#0123456789"), t[2]) for t in trigs]
         print(f"{sname}: {', '.join(names)}")
     return 0
 
