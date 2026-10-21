@@ -1,0 +1,9 @@
+# Agon 03_sand_temple: layer 2 holds the Bomb Guardian (u048f) and a Sandigger (u04e9)
+@f30 layer 2
+@f120 objs sandworm
+@f160 send u048f Activate; send u04e9 Activate
+@f200 place u04e9 player 10
+@f600 objs sandworm
+@f900 place u048f player 12
+@f1600 objs sandworm
+@f2400 status
