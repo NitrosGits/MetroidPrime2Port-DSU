@@ -395,6 +395,13 @@ private:
   // CPASAnimParmData constructor), kStateMsg_Deactivate removes it.
   void UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg);
 
+  // fn_10_EFC8: is the actor more than 10 units below its safe position (mSafePos), or inside an
+  // active type 0x1C AI hint of its area?
+  bool IsInUnsafeSpot(CStateManager& mgr) const;
+
+  // fn_10_128D8: keeps the actor's position as mSafePos the first time it is not unsafe.
+  void UpdateSafePosition(CStateManager& mgr);
+
   // fn_10_11334: the looping glide emitter at the actor (mGlideSfxId, the handle mGlideSfx) -
   // kStateMsg_Activate starts it, kStateMsg_Update starts it when it is not running and moves
   // it to the actor, kStateMsg_Deactivate removes it.
@@ -491,6 +498,11 @@ private:
                                    // at 0x0001FF3C
   CSfxHandle mGlideSfx;            // guest 0xC4C, the handle of the glide emitter fn_10_11334
                                    // runs; the constructor writes 0 to it (0x0001FF44)
+  CVector3f mSafePos;              // guest 0x91C/0x920/0x924, the first position fn_10_128D8
+                                   // found the actor safe at; the guest constructor leaves it
+                                   // unset (the host zeroes it)
+  uchar mHasSafePos;               // guest 0x928, set once mSafePos is; the constructor clears it
+                                   // (0x0001FC34)
   CVector3f mSeparationDir;        // guest 0x910/0x914/0x918, the direction fn_10_1DD14 steers
                                    // the actor along to get away from a repulsor (zero when it
                                    // does not); the constructor writes the zero vector to it

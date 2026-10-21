@@ -25,6 +25,7 @@
 #include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptRepulsor.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -736,6 +737,36 @@ void CDarkSamus::UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg) {
   }
 }
 
+// fn_10_EFC8 (0x0000EFC8, 0x138 bytes): is the actor where it must not take cover?
+//
+// With a safe position (the guest's 0x928 against 1 at 0x0000EFF0) the actor is when it is more
+// than lbl_10_rodata_404 = 10.0f below it (the fcmpo at 0x0000F00C, strict). Otherwise the AI
+// waypoint list (the state manager's 0x838) is walked (0x0000F028..0x0000F0D4): an active AI hint
+// (the TCastToPtr at 0x0000F034, the byte at 0x20's bit 7) in the actor's area (0x0000F054) of
+// type 0x1C (the word at 0x158, 0x0000F060) whose radius (0x15C) holds the actor (the 3D
+// distance, Magnitude at 0x0000F0A0, strictly less) says it is.
+bool CDarkSamus::IsInUnsafeSpot(CStateManager& mgr) const {
+  if (mHasSafePos == 1 && GetTranslation().GetZ() < mSafePos.GetZ() - 10.f) { // 0x0000F00C
+    return true;
+  }
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
+    if (hint == nullptr || !hint->GetActive() ||
+        hint->GetCurrentAreaId() != GetCurrentAreaId()) {
+      continue;
+    }
+    // 0x1C is not in CScriptAIHint::EHintType yet.
+    if (static_cast< int >(hint->GetHintType()) != 0x1C) { // 0x0000F060
+      continue;
+    }
+    if ((GetTranslation() - hint->GetTranslation()).Magnitude() < hint->GetRadius()) {
+      return true; // 0x0000F0A4
+    }
+  }
+  return false;
+}
+
 // fn_10_11334 (0x00011334, 0xF8 bytes): the looping glide emitter at the actor.
 //
 // kStateMsg_Activate (0x00011354) starts it unless the sound is kInternalInvalidSfxId (the
@@ -776,6 +807,23 @@ void CDarkSamus::UpdateGlideEmitter(EStateMsg msg) {
   default:
     break;
   }
+}
+
+// fn_10_128D8 (0x000128D8, 0x88 bytes): the first position the actor is safe at.
+//
+// Nothing happens once there is one (the guest's 0x928 at 0x000128F0) or while the actor is
+// unsafe (fn_10_EFC8 at 0x000128F8). Otherwise the actor's position is kept (0x91C/0x920/0x924)
+// and the flag is set (0x0001292C); the guest checks the flag again (0x0001290C) and keeps the
+// position without setting it when it is already set, which the first check makes unreachable.
+void CDarkSamus::UpdateSafePosition(CStateManager& mgr) {
+  if (mHasSafePos != 0) {
+    return;
+  }
+  if (IsInUnsafeSpot(mgr)) {
+    return;
+  }
+  mSafePos = GetTranslation();
+  mHasSafePos = 1;
 }
 
 // fn_10_1E178 (0x0001E178, 0xF0 bytes): the damage the actor has taken (the guest's 0xCC0).

@@ -83,6 +83,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mGlideSfxId(data.mGlideSound == -1 ? CSfxManager::kInternalInvalidSfxId
                                     : static_cast< ushort >(data.mGlideSound))
 , mGlideSfx()
+, mSafePos(CVector3f(0.f, 0.f, 0.f))
+, mHasSafePos(0)
 , mSeparationDir(CVector3f(0.f, 0.f, 0.f))
 , mContactTime(0.f)
 , mContactPoint(CVector3f(0.f, 0.f, 0.f)) {
