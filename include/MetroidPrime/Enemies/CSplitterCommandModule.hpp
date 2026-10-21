@@ -193,6 +193,9 @@ public:
   // CEntity
   CEntity* TypesMatch(int typeId) const override;
 
+  // guest 0xF24-0xF2C: the vector the chassis's fn_75_ACEC adds to the position it looks from.
+  const CVector3f& GetEditorProperties() const { return mEditorProperties; }
+
 private:
   void EnsureBodyActive(CStateManager& mgr);
 

@@ -1031,6 +1031,26 @@ and fn_75_5DDC, which set the counter to 3, 1, 0 and 2) and from the SelectTarge
 despawn (fn_75_1790, 0x00001830). The three shield functions are still shells, so the port's
 counter stays 0 and the body always takes the second branch.
 
+#### The chassis's head placement, fn_75_ACEC (0xACEC-0xAFE8) - ported 2026-10-21
+
+The chassis's Think calls this body (0x0000F174) with the chassis, the state manager and the
+frame time.
+
+| what | retail | port |
+|---|---|---|
+| no head | the head's id at 0xC6C (0x0000AD18 `lhz`) is invalid, so the second link at 0xC6E (0x0000AF8C) is looked up and cast to a command module; an object that is not one clears the id (0x0000AFC0) | the same: `mSecondLinkId` is cleared when the object is not a `CSplitterCommandModule` |
+| the head is gone | the head's id at 0xC6C is looked up (0x0000AD40) and cast (0x0000AD44); with no object the id is cleared (0x0000AF74), the flag byte 0xD41's 0x02 bit is set (0x0000AF7C `rlwimi` with the word's bit 30) and the materials 0x28 and 0x29 (`kMT_Target` and `kMT_Orbit`) are added (0x0000AF84) | the same |
+| the placement | the chassis's locator transform (the segment id at 0xCC8, 0x0000AD58 `GetLctrTransform`) gives the position (the transform's translation) and its Z column | the same: `GetLctrTransform(mLocatorSegment)`, `GetTranslation()` and `GetColumn(kDZ)` |
+| the path | the flag byte 0xD41's 0x80 (0x0000AD88 `extrwi` with the word's bit 24) and 0x08 (0x0000AD90, the word's bit 28) bits, the counter at 0xD00 (0x0000AD98) and the head's editor offset (0xF24-0xF2C, 0x0000ADA8-0x0000ADD0) pick it: with the bits clear, the counter at 5 and a non-zero offset the head looks at the position plus that offset (0x0000AEDC, 0x0000AF34 `LookAt`) | the same |
+| the other path | the head's Y column is slerped toward the chassis's (0x0000AE30 `GetAngleDiff`, 0x0000AE60 `Slerp` with the turn rate 12.566371 rad/s) when the counter at 0xD00 is 5 and the angle is at least the turn rate times the frame time (0x0000AE34 `fcmpo`, 0x0000AE38 `bge`); the head then gets the chassis's transform (0x0000AE44 `SetTransform`) | the same: `GetColumn(kDY)`, `CVector3f::Slerp` and `SetTransform` |
+
+**The port's own limits in this body**: the segment id at 0xCC8 is the retail's constructor
+value 0 (0x0000F780) - the host's `CSegId(0)` is the same number, but the retail's `CSegId` is
+two bytes wide and the host's is an int, so the mapping is the closest one available. The head's
+editor offset (the head's 0xF24-0xF2C) is the vector the head's Idle state (fn_75_5538) fills
+with the head's transform's Y column, so it is not zero in the run and the `LookAt` path is the
+one that runs.
+
 #### The chassis's own path update, fn_75_986C (0x986C-0x9AF8) - ported 2026-10-21
 
 The retail's Patrol state calls this body (0x0000DDB8) with the chassis and the state manager.

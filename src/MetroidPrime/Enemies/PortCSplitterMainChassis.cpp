@@ -11,6 +11,8 @@
 // and the retail function each stands in for is named on it.
 #include "MetroidPrime/Enemies/CSplitterMainChassis.hpp"
 
+#include "Kyoto/Math/CRelAngle.hpp"
+
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/BodyState/CBodyStateInfo.hpp"
 #include "MetroidPrime/CAnimData.hpp"
@@ -149,7 +151,6 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // are not in the module, so they carry none). They are the docking link, the line-of-sight
 // tracker and the derived state.
 void StandInFn_75_A4E4() { StandIn("fn_75_A4E4 (0x418)"); }
-void StandInFn_75_ACEC() { StandIn("fn_75_ACEC (0x2FC)"); }
 
 // The chassis's own path update (fn_75_986C, 0x28C) is ported as
 // CSplitterMainChassis::PortUpdatePath.
@@ -337,6 +338,69 @@ CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager&) {
   return CVector3f::Zero();
 }
 
+// fn_75_ACEC (the chassis's head placement, 0xACEC-0xAFE8): the head's id at 0xC6C (0x0000AD18
+// lhz) decides. With no head id the body looks at the second link at 0xC6E (0x0000AF8C): an
+// object that is not a command module clears it (0x0000AFC0). With a head id the head is looked
+// up (0x0000AD40 ObjectById) and cast (0x0000AD44); with no head object the id at 0xC6C is
+// cleared (0x0000AF74), the flag byte 0xD41's 0x02 bit is set (0x0000AF7C rlwimi with the word's
+// bit 30) and the materials 0x28 and 0x29 (kMT_Target and kMT_Orbit) are added (0x0000AF84).
+// With the head there the chassis's locator transform (the segment id at 0xCC8, 0x0000AD58
+// GetLctrTransform) gives the position (the transform's translation) and the Z column, and the
+// flag byte 0xD41's 0x80 (0x0000AD88 extrwi with the word's bit 24) and 0x08 (0x0000AD90, the
+// word's bit 28) bits, the counter at 0xD00 (0x0000AD98) and the head's editor offset (0xF24-0xF2C,
+// 0x0000ADA8-0x0000ADD0) pick the path: with the bits clear, the counter at 5 and a non-zero
+// offset the head looks at the position plus that offset (0x0000AEDC, 0x0000AF34 LookAt);
+// otherwise the head's Y column is slerped toward the chassis's (0x0000AE30 GetAngleDiff,
+// 0x0000AE60 Slerp with the turn rate 12.566371 rad/s) and the head gets the chassis's
+// transform (0x0000AE44 SetTransform).
+void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
+  if (mCommandModuleId == kInvalidUniqueId) {
+    if (mSecondLinkId == kInvalidUniqueId) {
+      return;
+    }
+    CEntity* entity = mgr.ObjectById(mSecondLinkId);
+    if (TCastToConstPtr< CSplitterCommandModule >(entity) != nullptr) {
+      return;
+    }
+    mSecondLinkId = kInvalidUniqueId;
+    return;
+  }
+  CSplitterCommandModule* head =
+      TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
+  if (head == nullptr) {
+    mCommandModuleId = kInvalidUniqueId;
+    mFlagsD41 |= 0x2;
+    AddMaterial(kMT_Target, kMT_Orbit, mgr);
+    return;
+  }
+  const CTransform4f locator = GetLctrTransform(mLocatorSegment);
+  const CVector3f position = locator.GetTranslation();
+  const CVector3f zColumn = locator.GetColumn(kDZ);
+  const CVector3f offset = head->GetEditorProperties();
+  const bool offsetIsZero =
+      offset.GetX() == 0.f && offset.GetY() == 0.f && offset.GetZ() == 0.f;
+  if ((mFlagsD41 & 0x80) == 0 && (mFlagsD41 & 0x8) == 0 && mLandedCount == 5 && !offsetIsZero) {
+    // 0x0000AEDC: the head looks at the position plus the head's editor offset.
+    head->SetTransform(CTransform4f::LookAt(position, position + offset, zColumn));
+    return;
+  }
+  // 0x0000ADE0: the head's Y column is slerped toward the chassis's, but only when the counter
+  // at 0xD00 is 5 and the angle between them is at least the turn rate times the frame time
+  // (0x0000AE34 fcmpo, 0x0000AE38 bge); otherwise the head takes the chassis's transform.
+  if (mLandedCount == 5) {
+    const CVector3f headColumn = head->GetTransform().GetColumn(kDY);
+    const CVector3f chassisColumn = locator.GetColumn(kDY);
+    const float turn = 12.566371f * dt;
+    if (CVector3f::GetAngleDiff(headColumn, chassisColumn) >= turn) {
+      const CVector3f slerped =
+          CVector3f::Slerp(headColumn, chassisColumn, CRelAngle::FromRadians(turn));
+      head->SetTransform(CTransform4f::LookAt(position, position + slerped, zColumn));
+      return;
+    }
+  }
+  head->SetTransform(locator);
+}
+
 // fn_75_E620 (the chassis's IsDisabled trigger, 0xE620-0xE62C): the flag byte at 0xD40 gets its
 // 0x40 bit tested (0xE624 extrwi with the word's bit 25 - the byte's 0x40).
 bool CSplitterMainChassis::IsDisabled(CStateManager&, const CTriggerData&) const {
@@ -509,7 +573,7 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   }
   mVisualKnowledge.Update(dt, mgr);
   PortUpdateTimers(mgr, dt);
-  StandInFn_75_ACEC();
+  PortPlaceHead(mgr, dt);
   PortUpdateFade(dt);
 }
 
