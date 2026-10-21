@@ -1,0 +1,8 @@
+# Dark Samus BoostBallInto: Agon 10_sand_alamostorage layer 6 (LAYER6@400), boss u0732.
+@f600 send u0732 Activate
+@f700 fsm u0732 BoostBallInto
+@f900 obj u0732
+@f1000 place u0732 player 4
+@f1010 fsm u0732 BoostBallInto
+@f1300 fsm u0732 BoostBallInto
+@f1600 obj u0732

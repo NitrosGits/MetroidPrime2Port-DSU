@@ -577,6 +577,32 @@ and then charges with it; its deactivate (0x0000859C) takes the shield down agai
 0x04 bit, 0x00008678) and ends the team's attack. The per-branch table above has the evidence of
 what the run reaches.
 
+### The trigger that enters the scripted charge (fn_9_B1E0, 0x70)
+
+The ShouldBoost trigger is host code since 2026-10-21: the byte at guest this+0xC66's 0x80 bit
+(0x0000B1F0) and the byte at guest this+0xC64's 0x01 bit (0x0000B1FC) have to be right and the
+AI waypoint the module follows (the id at guest this+0x6C0) has to allow the boost - the flags of
+the waypoint (the word at its +0x164) have to have their 0x20 bit (0x0000B22C).
+
+### The waypoint picker (fn_9_2A98, 0x214)
+
+The waypoint picker is host code since 2026-10-21: the charge speed (the block's +0x12C) has to
+be above zero (0x00002AD0), the AI waypoint has to be there and allow the boost (0x00002B00), and
+the module's own connection search finds the waypoint's "arrived" connection (0x00002B44: the
+state kSS_Arrived, the message kSM_Next and the module's own waypoint predicate), whose waypoint
+becomes the module's waypoint (0x00002B8C) with its position (0x00002B90) and its forward column
+(0x00002BAC) as the module's own vectors. The module's time to the waypoint (the float at guest
+this+0xB88) is the distance over the charge speed (0x00002BF8).
+
+### The shield effect (fn_9_2048, 0x330)
+
+The shield effect is host code since 2026-10-21: the byte at guest this+0xC64's 0x01 bit stops
+it (0x00002064), the module's state word at guest this+0xC4C picks the effect (the charge at 1,
+the armed shield at 0) and the armed shield's effect puts its explosion into the world, starts the
+block's explode sound and resets the module's state word. The guest's two CGenDescription tokens
+(the ones at guest this+0xC08 and this+0xC0C, which the constructor fills from the block) are the
+block's charge effect and its explode effect; the port reads the same two asset ids.
+
 ### The module's collision actor managers (fn_9_45A4, 0x304)
 
 fn_9_45A4 is the module's own helper, called by its kSM_Create case. It builds two managers, each
@@ -624,7 +650,7 @@ armed cases are:
 
 | function | arms that ran | arms that did not run |
 |---|---|---|
-| `fn_9_C798` | the default arm only: the base's own `DoUserAnimEvent` for `kUE_LoopedSoundStop` (67 times in the run) | `kUE_Projectile` (the E-grenade's throw, the grenade state `fn_9_A2EC` is a stand-in), `kUE_DamageOn` (the melee's damage event, the melee state `fn_9_A4BC` is a stand-in), `kUE_DeGenerate` and `kUE_BecomeRagDoll` (the death animations, the Dead state `fn_9_69C8` is a stand-in), `kUE_Landing` and `kUE_TakeOff` (the jump animations, the JetBoost state `fn_9_9BB4` is a stand-in), `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` (the shield's animations, the ArmShield state `fn_9_86B4` is a stand-in) |
+| `fn_9_C798` | the default arm only: the base's own `DoUserAnimEvent` for `kUE_LoopedSoundStop` (67 times in the run) | `kUE_Projectile` (the E-grenade's throw, the grenade state `fn_9_A2EC` is a stand-in), `kUE_DamageOn` (the melee's damage event, the melee state `fn_9_A4BC` is a stand-in), `kUE_DeGenerate` and `kUE_BecomeRagDoll` (the death animations, the Dead state `fn_9_69C8` is a stand-in), `kUE_Landing` and `kUE_TakeOff` (the jump animations, the JetBoost state `fn_9_9BB4` is a stand-in), `kUE_BreakLockOn`, `kUE_EventStart` and `kUE_Activate` (the shield's animations; the ArmShield state `fn_9_86B4` is ported since 2026-10-21, but area 59's own state machine gives its trigger no target state, so the state is only reached through the console's `fsm` - see the per-branch table) |
 | `fn_9_BF44` | the early return (the flag byte at guest this+0xC65 has no 0x04 bit - the shield is not up), 1152 calls in the run | the shield's own arms: the damage to an object that is not a player, the 0x02 bit of the flag byte at guest this+0xC64 and the walk over the collision list (the filter hit, the steep normal and the kMT_Floor entry) - all of them need the 0x04 bit of the byte at guest this+0xC65, which only the shield's states set |
 
 So the two functions get their `// @` markers when the states that play those animations are
@@ -686,7 +712,7 @@ and the commando still walks to the player.
 
 The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_ADA0` (the
 Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHang, 0x54),
-`fn_9_B1E0` (ShouldBoost, 0x70), `fn_9_69C8` (the Dead state, 0x78), `fn_9_A7A8` (SetCoverDest,
+`fn_9_69C8` (the Dead state, 0x78), `fn_9_A7A8` (SetCoverDest,
 0x90), `fn_9_A8E8` (SetJumpDest, 0x94), `fn_9_6BCC` (BreakCover, 0x9c), `fn_9_A97C`
 (SetRetreatDest, 0xa4), `fn_9_8D28` (PostWarpOut, 0xc8), `fn_9_728C` (WallDetach, 0xcc),
 `fn_9_AFD4` (CoverBlown, 0xe0), `fn_9_6A40`
@@ -694,13 +720,15 @@ Ambush state, 0x34), `fn_9_B168` (ShouldCrouch, 0x40), `fn_9_B114` (ShouldWallHa
 (EGrenadeAttack, 0x174), `fn_9_8B70` (the JumpBack state, 0x1b8), `fn_9_A110`
 (PostEGrenadeAttack, 0x1dc), `fn_9_9BB4` (JetBoost, 0x1fc), `fn_9_8DF0` (WarpOut, 0x218),
 `fn_9_786C`
-(RestoreOrientation, 0x22c), `fn_9_86B4` (ArmShield, 0x280), `fn_9_6DBC` (Cover, 0x284),
+(RestoreOrientation, 0x22c), `fn_9_6DBC` (Cover, 0x284),
 `fn_9_A4BC` (MeleeAttack, 0x290),
-`fn_9_7358` (WallHang, 0x310), `fn_9_961C` (FollowAttackPattern, 0x350),
-`fn_9_9064` (WarpIn, 0x528), `fn_9_7A98`
-(ScriptedShieldCharge, 0x590) and `fn_9_8028` (ShieldCharge, 0x68c). The three the area 59 run
+`fn_9_7358` (WallHang, 0x310),
+`fn_9_9064` (WarpIn, 0x528) and `fn_9_8028` (ShieldCharge, 0x68c). The ones the area 59 run
 reached - `fn_9_1C0C`, `fn_9_3E1C` and `fn_9_B250` - are host code since 2026-10-21 (the
-paragraphs above); the rest of that list still stands in.
+paragraphs above), and so are `fn_9_B1E0` (ShouldBoost, 0x70), `fn_9_961C`
+(FollowAttackPattern, 0x350), `fn_9_7A98` (ScriptedShieldCharge, 0x590), `fn_9_2474` (the turn
+helper, 0x580), `fn_9_2A98` (the waypoint picker, 0x214) and `fn_9_86B4` (the ArmShield state,
+0x280); the rest of that list still stands in.
 
 `fn_9_4BC0` (the module's two sound emitters, 0xe4), `fn_9_9F24` (the JumpPointFind state, 0x1ec)
 and `fn_9_709C` (the CoverFind state, 0x1f0) are host code since 2026-10-20: the emitters follow
@@ -1079,68 +1107,115 @@ gives it:
 
 - **a** - the branch is compiler-generated (the switch's dispatch, the prologue's own tests).
 - **b** - the branch ran; the probe's line is the line of the temporary probe in the instrumented
-  build (the probes are not committed - the file below is the clean one).
+  build (the probes are not committed - the committed file is the clean one).
 - **c** - the branch is unreachable with the shipped data; the evidence is in the table.
 - **d** - the branch did not run, so the body gets no `// @ fn_9_<hex>` marker.
 
-The runs that the table draws on are the area 59 runs of 2026-10-21 (`tools/run_gameplay.sh`,
+The runs the table draws on are the area 59 runs of 2026-10-21 (`tools/run_gameplay.sh`,
 `TELEPORT=05_temple_federationsite_dark`, the card in /tmp/opencode/u_ds9, `MP2_GODMODE=1`, the
-console's `tp 75.9 371.6 -47.1` over `MP2_CONSOLE` and the console's `face` plus `press a` towards
-the commando's live position, read over the console with `objs commando`). The console has no
-`aim <yaw> <pitch>` command - `face <yaw>` is the flat equivalent, and the commando stands at the
-player's height, so the shot is horizontal.
+driver `tools/drivers/commandopirate_shield.py` (the console's `tp` relative to the commando's live
+position, the console's `aim` and `press a`, and the console's `fsm` for the states area 59's asset
+cannot reach), `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8` for the fast runs. The console has no
+`aim <yaw> <pitch>` in older trees; the merged port has it, and the driver uses it.
+
+**The charge needs the player 10 to 20 units away.** The commando's block says so: the charge band
+is 10.0 to 20.0 units (the block's +0x124 and +0x128), the charge speed is 55.0 (the block's
++0x12C), the arm chance is 75.0 (the block's +0x140) and the aggressiveness is 25.0 (the block's
++0x4C) - the port prints all four from its constructor. The commando walks to about two units
+from the player, so the band check only passes while it approaches, and the aggressiveness bit (the
+0x40 bit of the byte at guest this+0xC64, set by the module's timer helper fn_9_662C) has to be
+set during that window. The driver steps the player back to thirteen units every round, which keeps
+the commando crossing the band until the roll wins: the module's charge state (fn_9_8028) then
+runs its activate, its updates and its deactivate, and the trigger answers true.
 
 | function | branch | class | evidence |
 |---|---|---|---|
 | `fn_9_CB40` | the switch's binary search (0x0000CB88..0x0000CCC8) | a | the compiler's own dispatch |
-| | `kSM_Create` (0x0000CCCC) | b | the probe at the port's line 965, once per run |
-| | `kSM_AreaLoaded` (0x0000CE04) | b | the probe at the port's line 1015, once per run |
-| | `kSM_Landed` (0x0000D048) | b | the probe at the port's line 1055 (595-826 per run) |
-| | `kSM_Damage` (0x0000D09C) | b | the probe at the port's line 1061 (6-12 per run) |
-| | `kSM_ResistedDamage` (0x0000D164) | b | the probe at the port's line 1096 (2-3 per run) |
-| | `kSM_OffGround` (0x0000CF54) | b | the probe at the port's line 1116 (97-122 per run) |
-| | `kSM_Launching` (0x0000CFA4) | b | the probe at the port's line 1084, once per run |
-| | `kSM_Delete` (0x0000CCEC) | b | the probe at the port's line 995, at the end of the run |
-| | the default arm (0x0000D278) | b | the probe at the port's line 1137 (1425-5761 per run) |
-| | `kSM_Deactivate` (0x0000CD88) | d | no script connection of this actor sends it in area 59 |
-| | `kSM_Activate` (0x0000CD3C) | d | as above |
-| | `kSM_Escape` (0x0000CF2C) | d | as above |
-| | `kSM_Start` (0x0000D060) | d | as above |
-| | `kSM_Stop` (0x0000D074) | d | as above |
-| | `kSM_AIUpdateDisabled` (0x0000CDD0) | d | as above |
-| | `kSM_HitObject` (0x0000D25C) | c | no host code sends `kSM_HitObject` to an enemy (only the enemies' own handlers read it) and the level's connections for this actor do not either |
-| | `kSM_Alert` (0x0000D088) | d | no script connection of this actor sends it in area 59 |
-| | `kSM_SetToZero` (0x0000CEF8) | d | as above |
+| | `kSM_Create` (0x0000CCCC) | b | once per run |
+| | `kSM_AreaLoaded` (0x0000CE04) | b | once per run |
+| | `kSM_Landed` (0x0000D048) | b | 5204-10926 per run |
+| | `kSM_Damage` (0x0000D09C) | b | 3-12 per run (the runs where the shots land) |
+| | `kSM_ResistedDamage` (0x0000D164) | b | 17-47 per run |
+| | `kSM_HitObject` (0x0000D25C) | b | 272-600 per run (the shield's own hit) |
+| | `kSM_OffGround` (0x0000CF54) | b | 19-122 per run |
+| | `kSM_Launching` (0x0000CFA4) | b | once per run |
+| | `kSM_Delete` (0x0000CCEC) | b | once per run (at the end) |
+| | the default arm (0x0000D278) | b | 4365-21853 per run |
+| | `kSM_Deactivate` (0x0000CD88), `kSM_Activate` (0x0000CD3C), `kSM_Escape` (0x0000CF2C), `kSM_Start` (0x0000D060), `kSM_Stop` (0x0000D074), `kSM_AIUpdateDisabled` (0x0000CDD0), `kSM_Alert` (0x0000D088), `kSM_SetToZero` (0x0000CEF8) | d | no script connection of this actor sends them in area 59 |
+| | `fn_9_3A5C` (the hit-object helper) | b | 272-600 per run |
 | `fn_9_C798` | the jump table (0x0000C8FC) | a | the compiler's own dispatch |
-| | the default arm | b | the probe at the port's line 1514 (11-235 per run) |
-| | `kUE_BecomeRagDoll` (and `kUE_DeGenerate`, the same case) | b | the probe at the port's line 1471, three times in the run where the shots kill the commando |
+| | the default arm | b | 113-390 per run |
+| | `kUE_Activate` (the entry 29) | b | once in the run where the shield's animation played |
+| | `kUE_BecomeRagDoll` (and `kUE_DeGenerate`, the same case) | b | three times in the run where the shots kill the commando |
 | | `kUE_Projectile` | d | the E-grenade's animation is played by the module's unported grenade state |
-| | `kUE_DamageOn` | d | the base's damage animation can fire it, but the shots that reach the commando do not start that animation in the port |
+| | `kUE_DamageOn` | d | the base's damage animation can fire it, but the commando's own flinch does not in the port (the commando takes damage - `kSM_Damage` runs - and the event never does) |
 | | `kUE_Landing`, `kUE_TakeOff` | d | the module's jump animations come from its unported jet-boost state |
 | | `kUE_BreakLockOn` | d | the shield's lock-on animation comes from the module's unported shield states |
-| | `kUE_EventStart`, `kUE_Activate` | d | the shield's animations come from the module's ArmShield state, which needs the arm chance roll to win |
-| `fn_9_BF44` | the shield's arms (0x0000BF90, 0x0000BFB0, 0x0000C03C, 0x0000C050, 0x0000C134, 0x0000C170, 0x0000C1A4) | d | they need the 0x04 bit of the byte at guest this+0xC65, which only the charge state (fn_9_8028, now ported) sets - and the charge never starts in the run, see below |
-| | the early return (0x0000BF7C) | b | the probe at the port's line 1710 (586-24036 per run) |
-| `fn_9_1C0C` | the early return (0x00001C34) | b | the probe at the port's line 1552 (300-11167 per run) |
-| | the frozen branch (0x00001C3C), the scale (0x00001CB4, 0x00001CE4, 0x00001CEC), the state-1 branch (0x00001D14) and the state-0 block (0x00001E04) | d | they need the module's state word at guest this+0xC4C, which only the shield's animation events (fn_9_1F88, fn_9_1EF8) set, and those need the shield's bits |
-| `fn_9_B250` | the first gate (0x0000B2B8) | b | the probe at the port's line 2152 (10-1377 per run) |
-| | the charge band (0x0000B370) | b | the probe at the port's line 2192 (20-398 per run) |
-| | the flag bytes (0x0000B2C0, 0x0000B2CC), the counter (0x0000B2D4), the target (0x0000B2F8), the height (0x0000B324) and the three rays (0x0000B548, 0x0000B598, 0x0000B5E8) | d | they are only reached when the aggressiveness bit is set, and then the commando has to stand 10 to 20 units from the player - the commando closes to about 2 units, so the band check fails every time (the probe at the port's line 2192) |
-| | the true arm (0x0000B5F4) | d | the band check never passes in the run |
+| | `kUE_EventStart` | d | the shield's animation event - the module's animation that carries it comes from the unported shield states |
+| `fn_9_BF44` | the early return (0x0000BF7C) | b | 3943-11571 per run |
+| | the shield's object hit (0x0000BF90) and the charge damage (0x0000BFB0) and the flag byte (0x0000C03C) | b | 12-47 per run, while the shield is up |
+| | the collision list (0x0000C050) and the floor entry (0x0000C1A4) | b | 2-18 per run |
+| | the filter hit (0x0000C134) and the steep normal (0x0000C170) | d | the commando's shield has to hit a wall or a ceiling. The driver walks the player into a wall with the console's `stick` and puts the commando next to it, but the sphere on the commando's left wrist never reaches the wall surface: the charge stops two units short of the player and the commando's own collision list only ever reports the floor |
+| `fn_9_1C0C` | the early return (0x00001C34) | b | 2885-14885 per run |
+| | the frozen branch (0x00001C3C), the scale (0x00001CB4, 0x00001CE4, 0x00001CEC), the state-1 branch (0x00001D14) and the state-0 block (0x00001E04) | d | they need the module's state word at guest this+0xC4C, which only the shield's animation events (fn_9_1F88, fn_9_1EF8) set, and those need the module's unported shield animations |
+| `fn_9_B250` | the first gate (0x0000B2B8) | b | 856-5663 per run |
+| | the counter (0x0000B2D4) | b | 18-156 per run (after the charges, the counter catches up) |
+| | the height (0x0000B324) | b | 14-681 per run |
+| | the charge band (0x0000B370) | b | 24-461 per run (the commando is inside or outside the band) |
+| | the first ray (0x0000B548) | b | 10-872 per run (the way to the target is blocked) |
+| | the third ray (0x0000B5E8) | b | 38 per run (the third ray is blocked) |
+| | the true arm (0x0000B5F4) | b | once to three times per run - the charge starts |
+| | the flag bytes (0x0000B2C0, 0x0000B2CC) and the target (0x0000B2F8) and the second ray (0x0000B598) | d | they need the script's flags to forbid the charge, the target to be gone or the second ray to be blocked |
+| `fn_9_961C` (the FollowAttackPattern state) | the message dispatch (0x0000965C..0x00009678) | a | the compiler's own dispatch |
+| | the activate (0x00009680), the waypoint lookup (0x000096DC) and the "the waypoint is behind" test (0x00009730) | b | 5 activates per forced run, both arms of the test ran (the commando faces the waypoint and turns away from it). **forced (fsm)**: area 59's commando has no "ATTK"/"FOLW" connection, so the asset's HasAttackPattern trigger is false and the state is never entered on its own |
+| | the byte at guest this+0xC66 (0x00009754) | b | the 0x80 bit is set on every activate |
+| | the update (0x00009760) and the AI waypoint lookup (0x00009778) | b | 137 updates per forced run |
+| | the AI waypoint's flag test (0x00009788, 0x00009790), the reach (0x000097A0..0x0000982C) and the float at guest this+0xBEC (0x00009860) | d | area 59's only AI waypoint (the one the commando is connected to) has the word at its +0x164 equal to zero, so the 0x02/0x04 test never passes |
+| | the body's jump state (0x0000986C), the chain's end (0x0000989C), the target's aim position (0x000098D8) and the body's target vector (0x0000990C) | d | the commando is never in the jump state in area 59 |
+| | the jump-back target (0x00009918) and the deactivate (0x00009934) | b | the update's copy ran every update, the deactivate 5 times |
+| `fn_9_7A98` (the scripted charge) | all three messages and all their branches | d | the state is not reached: the `ShouldBoost` trigger's true arm needs the AI waypoint's 0x20 flag, and area 59's only AI waypoint has the flags word zero (the state itself is ported and its stand-in log is gone) |
+| `fn_9_2474` (the turn helper) | all its branches | d | the scripted charge, its only caller, does not run |
+| `fn_9_2A98` (the waypoint picker) | all its branches | d | the scripted charge, its only caller, does not run |
+| `fn_9_B1E0` (ShouldBoost) | the byte at guest this+0xC66 (0x0000B1F0), the byte at guest this+0xC64 (0x0000B1FC) and the AI waypoint (0x0000B218) | b | 132 calls per forced run: the state sets the 0x80 bit of guest this+0xC66 and the trigger is evaluated every tick |
+| | the 0x20 flag test (0x0000B22C) and the true arm (0x0000B234) | d | area 59's only AI waypoint has the word at its +0x164 equal to zero, so the 0x20 bit is clear |
 
-The commando's own data (the module's block) is what the charge needs, and the port prints it
-from the constructor: the shield's arm chance 75.0, the charge band 10.0 to 20.0, the charge
-speed 55.0 and the aggressiveness 25.0. The aggressiveness bit (the 0x40 bit of the byte at guest
-this+0xC64) is set by the module's timer helper (fn_9_662C) when a roll against it wins, so the
-charge needs the commando to be 10 to 20 units away during one of those windows. In the runs
-above the commando walks to about 2 units, so the window and the band rarely meet: the charge
-trigger answered true in one area 59 run of the earlier slice (the module's ShieldCharge state
-logged its stand-in then), which is why the charge state is reachable with the shipped data and
-why fn_9_8028 is ported.
+**The states the area's asset cannot reach.** Area 59's own state machine gives the
+`ShouldArmShield` trigger no target state (`PathFind : ShouldArmShield -> (null)`), so the
+ArmShield state (fn_9_86B4) is only reachable when the console forces it: the driver sends
+`fsm <uid> ArmShield` and the state runs its activate, its updates and its deactivate
+(**forced (fsm)**). The same asset enters the scripted charge (fn_9_7A98) through the
+`ShouldBoost` trigger of its FollowAttackPattern state (`FollowAttackPattern : ShouldBoost ->
+ScriptedShieldCharge`), so the scripted charge is reachable once that trigger is ported.
 
-None of the five bodies is marked: every one of them still has a branch in class **d** that the
-port can reach (the shield's own arms, the charge's own arms, the module's own animations and the
-script messages).
+**What area 59's own asset has (2026-10-21).** The FollowAttackPattern state (fn_9_961C) is host
+code since 2026-10-21, and the area 59 run shows two things that keep the scripted charge out of
+reach there, both in the shipped data and not in the port's code:
+
+* the commando of area 59 has exactly one script connection: `on Modify send Follow -> 003b0112
+  CScriptAIWaypoint` (the console's `obj` prints it). The guest's state looks for the connection
+  in the **"ATTK"** state (0x4154544b, `kSS_Attack`) with the "FOLW" message (0x464f4c57,
+  `kSM_Follow`) - the fourCCs it builds at 0x0000969C..0x000096B4, the same pair its
+  `HasAttackPattern` trigger (fn_9_B900) uses at 0x0000B908..0x0000B924. The area's "MDDY"
+  ("Modify", 0x4d444659) connection is a different state, so the guest's lookup finds nothing and
+  the waypoint at guest this+0x6C0 stays kInvalidUniqueId. The state therefore leaves at once
+  (the `AttackPatternOver` trigger, fn_9_B7FC, answers true) and the asset's own
+  `HasAttackPattern` trigger is false, so the state is never entered without the console's `fsm`.
+* the area's only AI waypoint (003b0112, the one the commando is connected to) has the word at
+  its +0x164 (the host's `CScriptAIWaypoint::GetFlags`, the retail's "flags" property) equal to
+  **zero**. The `ShouldBoost` trigger's own test (fn_9_B1E0, the rlwinm at 0x0000B22C) wants that
+  word's 0x20 bit, and the FollowAttackPattern state's own flag test (0x00009788, 0x00009790)
+  wants its 0x02 or 0x04 bit, so neither can pass with this waypoint. The scripted charge
+  (fn_9_7A98) is therefore unreachable in area 59 with the shipped data.
+
+**The markers.** `fn_9_8028` (the charge state) and `fn_9_86B4` (the ArmShield state) are marked:
+every message arm of both ran - the charge state in the normal flow, the ArmShield state through
+the console's `fsm` (**forced (fsm)**). The five functions the task names are not marked: every
+one of them still has a class-**d** arm. The four functions of this slice (`fn_9_7A98`,
+`fn_9_2474`, `fn_9_2A98` and `fn_9_B1E0`) are not marked either: the scripted charge is not
+reached, because the `ShouldBoost` trigger's true arm needs the AI waypoint's 0x20 flag and
+area 59's only AI waypoint has the flags word zero. The FollowAttackPattern state (fn_9_961C) is
+not marked either: it runs (through the console's `fsm`, **forced (fsm)**), but its arms that
+need the AI waypoint's 0x02/0x04 flags and the body's jump state did not run.
 
 ### The shield's own bits (2026-10-21)
 
@@ -1163,10 +1238,84 @@ In the area 59 run the commando never armed its shield, so the state did not run
 arms stayed out of reach. The shield's "up" bit (0x04) comes only from the charge states, which
 are still stand-ins.
 
-The module's remaining stand-ins, smallest first, with their retail sizes: `fn_9_2048` (the
-shield's own effect, 0x330 - the message switch's knock-back helper calls it) and the scripted
-shield charge `fn_9_7A98` (0x590). The charge state `fn_9_8028` (0x68c) and the ArmShield state
-`fn_9_86B4` (0x280) are host code since 2026-10-21.
+The module's remaining stand-ins, smallest first, with their retail sizes: the states below the
+FollowAttackPattern state. The FollowAttackPattern state `fn_9_961C` (0x350), the scripted shield
+charge `fn_9_7A98` (0x590), its turn helper `fn_9_2474` (0x580), the charge state `fn_9_8028`
+(0x68c), the ArmShield state `fn_9_86B4` (0x280), the shield effect `fn_9_2048` (0x330), the
+trigger `fn_9_B1E0` (ShouldBoost, 0x70) and the waypoint picker `fn_9_2A98` (0x214) are host code
+since 2026-10-21.
+
+### The FollowAttackPattern state (fn_9_961C, 2026-10-21)
+
+The state is host code (the port's `FollowAttackPattern`):
+
+* the guest's own waypoint navigation patrols first (the call at 0x00009658, the navigation at
+  guest this+0x6B8);
+* the activate (0x00009680) takes the module's waypoint: the id at guest this+0xBDA when it is
+  not kInvalidUniqueId (0x00009684..0x00009694), else the object connected in the "ATTK"/"FOLW"
+  state (0x0000969C..0x000096B8); the id goes to guest this+0x6C0 (0x000096CC). The waypoint (a
+  CScriptWaypoint) is then looked up (0x000096DC) and, when it is behind the commando (the delta's
+  projection on the actor's forward column, guest this+0x28/0x38/0x48, is zero or less -
+  rodata_494 = 0, 0x00009730), the navigation's "in position" flag gets its 0x80 bit
+  (0x0000973C..0x00009748). The byte at guest this+0xC66 always gets its 0x80 bit
+  (0x0000974C..0x00009758) - the bit the `ShouldBoost` trigger reads (0x0000B1F0);
+* the update (0x00009760) looks the AI waypoint up (0x00009774) and, when the word at its +0x164
+  has its 0x02 bit (0x00009788) or its 0x04 bit (0x00009790), the commando's reach is the body's
+  max speed (0x000097A0) times (0.1f + 1.5f * dt) (rodata_42C, rodata_47C) times the model's
+  scale Y (the model data at guest this+0x60, 0x000097C0) plus the module's jump distance (the
+  float at guest this+0xBE8, 0x000097CC); when the commando is nearer than that (0x00009824) the
+  navigation's in-position flag is set (0x00009830) and the float at guest this+0xBEC takes 3
+  (rodata_448) when the waypoint's flags have their 0x02 bit and 0 (rodata_494) when they do not
+  (0x00009840..0x00009860);
+* then, when the body is in the jump state (the body's state id 13, 0x0000986C) and the waypoint
+  has no successor (its "ARRV"/"NEXT" connection, 0x0000989C, is kInvalidUniqueId - the chain the
+  host's waypoint navigation walks), the target's aim position (the module's helper fn_9_3CBC,
+  0x000098D8) becomes the body's target vector (the command manager's fifth CVector3f, the body
+  controller's +0x34, 0x0000990C..0x00009914);
+* the navigation's destination position (guest this+0x6D4..0x6DC) is copied to the module's
+  jump-back target (guest this+0xBF0, 0x00009918..0x0000992C), and the deactivate (0x00009934)
+  clears the 0x80 bit of the byte at guest this+0xC66 (0x0000993C..0x00009940).
+
+**Two guest fields the port now names.** The byte at guest this+0x6F0 is the bitfield byte of the
+waypoint navigation (the navigation sits at guest this+0x6B8 and its flags are at +0x38, the last
+word of it): the 0x80 bit MWCC allocates first is the navigation's "in position" flag, so the port
+uses the host's `CWaypointNavigation::SetInPosition` (the host's class keeps the same member
+order: mMoveSpeed, mPauseRemainingTime, mDestination, mLastDestination, mPatrolState,
+mSegmentStart, mDestinationPosition at +0x1C = guest this+0x6D4, mFaceVector, mWobbleSteering and
+the flag byte at +0x38 = guest this+0x6F0). Guest this+0x6C0 is the same navigation's
+**destination** field (+0x8), so the port writes it both as its own member `x6c0_` and as the
+host's navigation destination (`SetDestination`): the `AttackPatternOver` trigger (fn_9_B7FC)
+reads the host's navigation destination, and the state has to stay when it is set.
+
+**The turn helper's time (fn_9_2474).** The guest's `Magnitude` call at 0x000025A4 takes the raw
+delta at its own stack slot (sp+0xD4, the `addi r3, r1, 0xd4` at 0x0000258C), not the copy of the
+direction the helper made at sp+0xC8 (the normalized delta or the actor's own forward column).
+The port had the direction's length there (always 1 after the normalize), so its time to the
+waypoint was 1 / the charge speed; it is now the delta's length over the charge speed, the same
+value the waypoint picker stores at guest this+0xB88 (fn_9_2A98, 0x00002BF8..0x00002C04). The
+slerp factor (0x00002634..0x00002678) is then 1 - the time / the module's time to the waypoint:
+0 while the commando is as far from the waypoint as it was when the waypoint was picked, and
+rising to 1 as it closes in - the retail's "turn harder the closer it gets" behaviour, which the
+port's old value (always ~1) did not have. The push vector (guest this+0xBB8) is scaled by the
+charge speed and the frame time, exactly like the movement above it (the two fmuls chains at
+0x0000297C..0x00002994, the `MoveInOneFrameOR` call at 0x000029A4) - the port already did that.
+
+**The jump distance at guest this+0xBE8** is ported too: the constructor's store at 0x0000E4D4 is
+the jump animation's travel distance (the parm data fn_9_5D74 builds at 0x0000E49C: the state id
+13 = kAS_Jump with the parms (0, 0, 0)) times the model's scale Y (the load at 0x0000E4B0). It is
+the term the FollowAttackPattern state's reach adds (0x000097CC).
+
+**The run (2026-10-21).** The area 59 run with the ported state (`tools/run_gameplay.sh`,
+`TELEPORT=05_temple_federationsite_dark`, `FRAMES=16000`, the card in /tmp/opencode/u_cop1 - the
+note's card /tmp/opencode/u_ds9 was gone - `MP2_GODMODE=1`, `MP2_FRAME_LIMIT=0
+MP2_TICKS_PER_FRAME=8`, the driver `tools/drivers/commandopirate_shield.py` and, after it, the
+console's `fsm <uid> FollowAttackPattern`) ends with exit=0 and `grep -c '[port] caught|reach-stub'`
+= 0. The run's stand-ins are three (the CVisualKnowledge's Update and SetVisualTarget and the
+JumpBack state fn_9_8B70); the `fn_9_961C` stand-in log is gone. The FollowAttackPattern state
+runs only when the console forces it (**forced (fsm)**): 5 activates, 137 updates and 5
+deactivates per forced run, and the `ShouldBoost` trigger is evaluated 132 times - it stops at
+its 0x20 flag test, so the scripted charge (fn_9_7A98) and the turn helper (fn_9_2474) still do
+not run.
 
 ## 5. What is not ported yet (milestone 2 and forward)
 
@@ -1181,21 +1330,19 @@ shield charge `fn_9_7A98` (0x590). The charge state `fn_9_8028` (0x68c) and the 
   uses it is a stand-in.
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
   animation state answers it (`mAnimationState.CanIssueCommand`).
-- The module's own shield effect (fn_9_2048, 0x330): the knock-back helper calls it when the
-  byte at guest this+0xC66 has its 0x20 bit, and it is a named stand-in.
-- The scripted shield charge (fn_9_7A98, 0x590): the charge state (fn_9_8028) is host code
-  since 2026-10-21, but the scripted variant - the one a script connection enters - is still a
-  stand-in.
-- The shield's own effect (fn_9_2048, 0x330): it builds the shield's explosion out of the
-  module's two CGenDescription tokens (guest this+0xC08 and this+0xC0C), and the retail's
-  constructor leaves both null, so the port keeps the call a named stand-in.
+- The FollowAttackPattern state (fn_9_961C, 0x350) is host code since 2026-10-21: it sets the
+  waypoint at guest this+0x6C0 and the 0x80 bit of the byte at guest this+0xC66, which the
+  ShouldBoost trigger reads. The scripted shield charge (fn_9_7A98) is still not entered in
+  area 59: the area's commando has no "ATTK"/"FOLW" connection and the area's only AI waypoint
+  has the flags word at its +0x164 equal to zero (the section above).
 - The melee (`MeleeAttack`, the blade's collision actor and its damage), the E-grenade (the
   `Commando E-Grenade` script object), the shield (arm, charge, the mould) and the burst fire.
 - The three `CToken` pairs (the script objects at this+0x8F0, +0x90C and +0x7C8) and the two
   `CElementGen` effects.
-- The animation distances at +0xBE0 and +0xBE4 are ported (the ctor's two step distances, the
-  scale's Y times the parms (1, 2) and the scale's X times the parms (3, 2)); +0xBE8 (the jump
-  distance) and the locomotion-speed term at +0xB90 are not.
+- The animation distances at +0xBE0, +0xBE4 and +0xBE8 are ported (the ctor's two step
+  distances, the scale's Y times the parms (1, 2) and the scale's X times the parms (3, 2), and
+  the jump distance, the scale's Y times the kAS_Jump parms (0, 0, 0)); the locomotion-speed term
+  at +0xB90 is not.
 - The CVisualKnowledge at +0xAB0 (the host has no such class yet).
 
 `fn_9_C598` (0x13c, the actor's render - the vtable slot 0x2c) is ported (2026-10-21, the port's
