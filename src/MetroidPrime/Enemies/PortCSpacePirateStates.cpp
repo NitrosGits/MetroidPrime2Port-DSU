@@ -36,13 +36,16 @@ void CSpacePirate::Ambushing(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// @ fn_72_7078 (0x528). Activate (msg 0) arms kAS_Ready, zeroes the alpha, sets the warp point
-// to 0, clears 0x8fa bit 0x08 and strips Character/Solid/Target/Orbit. The Update body is
-// unreachable in the shipped data: the state's only exit is the FSM's AnimOver transition (state
-// 54 of the AFSM, tools/fsm_state_triggers.py) and the Activate leaves the animation state at
-// kAS_Ready, so that transition fires on the first update - every WarpIn in the 2026-10-21
-// sandfalls runs lasted exactly one frame (WarpIn -> Patrol) and the Activate and Deactivate arms
-// both ran. Update (msg 1) switches on
+// Retail fn_72_7078 (0x528). Activate (msg 0) arms kAS_Ready, zeroes the alpha, sets the warp point
+// to 0, clears 0x8fa bit 0x08 and strips Character/Solid/Target/Orbit. The asm's Activate
+// (0x70C8-0x7114) issues no body command and no effect: it writes 1 to 0x6b4 (the animation
+// state's word, kAS_Ready), 0.0 to the colour byte 0x44f and to 0x40c (mAlphaDelta), 0 to the
+// warp point 0xc04, clears the 0x8fa byte's bit 28 and calls RemoveMaterial with 0x21, 0x3b,
+// 0x28 and 0x29 (Character, Solid, Target, Orbit) - the port does the same. The state's only
+// exit is the FSM's AnimOver transition (state 54 of the AFSM) and the host's AnimOver is
+// `mAnimationState.IsOver()` (`mState == kAS_Over`), which is false for the kAS_Ready the
+// Activate sets, so the Update body is not unreachable by the asm - the one-frame WarpIn in the
+// 2026-10-21 runs comes from the shared state-machine code, not from this module. Update (msg 1) switches on
 // xc04_warpPoint: at 0 it collects every
 // kSS_GRNT/kSM_Follow connection resolved through GetIdForScript and GetObjectById to a
 // CScriptWaypoint, teleports onto one of them chosen with mgr.Random()->Range(0, n - 1) through that
