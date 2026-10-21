@@ -13,6 +13,8 @@
 # is $COV_GDB_SCRIPT (default tools/cov/force.py) and the class is the spec's CLASS.
 set -u
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+# force.sh changes into the build dir before gdb sources the script: make a relative path absolute.
+[ -n "${COV_GDB_SCRIPT:-}" ] && COV_GDB_SCRIPT=$(realpath "$COV_GDB_SCRIPT")
 
 # The attach mode: the game runs on its own (no gdb at the start, so the boot is not slowed
 # down), the driver plays, and gdb takes the running process to write the forced members.  It
