@@ -87,6 +87,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mSeenStageCount(1)                            // 0x0002001C
 , mStageChanged(0)                              // 0x00020028
 , mGuestD18(CVector3f::Zero())                  // 0x0000E5C8 (lbl_10_bss_128)
+, mSweepBeamWeaponMode(CWeaponMode(kWT_Phazon))       // lbl_10_bss_114 (fn_10_CDB8, 0x0000CE30)
 , mLastAttackerUid(kInvalidUniqueId)
 , mAttackerCount(0)
 , mAttackerUids{kInvalidUniqueId, kInvalidUniqueId}

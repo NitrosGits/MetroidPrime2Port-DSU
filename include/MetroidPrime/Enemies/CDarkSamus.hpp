@@ -932,6 +932,11 @@ private:
                                    // SweepBeam keeps the base's speed 0x3C8 here
   bool mSweepBeamHitPlayer : 1;    // 0xdc8 0x80 (+0x54), false (0x00008EBC)
   bool mSweepBeamOn : 1;           // 0xdc8 0x40, false (0x00008EC8)
+  // lbl_10_bss_114: the module's weapon mode, a word the module's init fn_10_CDB8 writes at
+  // 0x0000CE30 (0x000A0000: the guest's CWeaponMode keeps the type in the high half, so the type
+  // is 10 = kWT_Phazon and the flags are 0). The sweep beam's "any other hit" damage uses it
+  // (fn_10_BE18, the read at 0x0000C024 and the store at 0x0000C05C).
+  CWeaponMode mSweepBeamWeaponMode;
   TLockedToken< CCollisionResponseData > mSweepBeamResponse; // guest 0xDCC (+0x58), 'CRSC'
                                    // (`lis r4, 0x4352` at 0x00008E10), r6
   ushort mSweepBeamSfxId;          // guest 0xDD8 (+0x64), r7 (0x00008F18)

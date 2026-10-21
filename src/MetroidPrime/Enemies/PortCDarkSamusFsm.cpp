@@ -3408,7 +3408,10 @@ void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float le
                     CVector3f::Zero());
     mSweepBeamHitPlayer = true; // 0x0000BFF8
   } else if (hit != kInvalidUniqueId) { // 0x0000C00C
-    const CDamageInfo info(CWeaponMode(kWT_Power), 1000.f, 0.f, 0.f, true); // 0x0000C034
+    // 0x0000C018/0x0000C024: the module's weapon mode (lbl_10_bss_114, the type 10 =
+    // kWT_Phazon - the guest keeps the type in the high half of the word) and the store into
+    // the damage info at 0x0000C05C.
+    const CDamageInfo info(mSweepBeamWeaponMode, 1000.f, 0.f, 0.f, true); // 0x0000C034
     mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), info, damageFilter, CVector3f::Zero());
   }
 }
