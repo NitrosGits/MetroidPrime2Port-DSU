@@ -1289,9 +1289,6 @@ void CSplitterCommandModule::PortAutoDestructTimer(float dt) {
   }
 }
 
-// The DOL's CEntity virtual the projectile's despawn calls (the vtable word 0x24, 0x17C8-0x17DC
-// of fn_75_1790): the port has no name for it, so the call stays a once-logging shell.
-
 // Arms: there is no target at 0xF02 (the body ends at once), the target is there but it is not a
 // CBeamProjectile (the cast fails) and the target is the laser sweep beam (the virtual is
 // called and the sound is moved).  The fight only ever puts the laser sweep beam at 0xF02, so
@@ -1968,8 +1965,8 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
 // called with the manager and false (0x17C8-0x17DC), the sound handle at 0xF5C is removed
 // (0x17EC RemoveEmitter) and the object is deleted (0x1800 DeleteObjectRequest). Then the id
 // at 0xF02 is cleared (0x1814), the handle at 0xF5C is zeroed (0x1818) and, when the base's
-// flag byte at 0x420 has its 0x20 bit (the word's bit 25, 0x1820 extrwi) set, the module's own
-// call runs (0x1830 fn_75_1578).
+// flag byte at 0x420 has its 0x40 bit (the word's bit 25, asm 0x1820 `extrwi. r0, r0, 1, 25`)
+// set, the module's own call runs (0x1830 fn_75_1578).
 void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   CEntity* projectile = mgr.ObjectById(mLookAtTargetId);
   if (projectile != nullptr) {
@@ -1983,7 +1980,9 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   }
   mLookAtTargetId = kInvalidUniqueId;
   mLookAtSfxHandle.Clear();
-  if (GetFlag26()) {
+  // asm 0x1820 `extrwi. r0, r0, 1, 25`: the base's flag byte at 0x420 has its 0x40 bit set -
+  // the host's alive flag.
+  if (GetAlive()) {
     PortUpdateEffectStates(mgr);
   }
 }
