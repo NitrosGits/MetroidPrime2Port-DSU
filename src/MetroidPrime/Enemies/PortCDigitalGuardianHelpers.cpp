@@ -234,7 +234,8 @@ bool CDigitalGuardian::x6C24_(CDigitalGuardianHead& head) {
 void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf,
                              CVector3f& outForward, CVector3f& outUp) {
   const bool usable = x6C24_(head); // the call at 0x6CD4
-  if ((x128C_ & 0x02) == 0 && !usable) { // the extrwi at 0x6CE0 (1 bit at 30 -> the byte's bit 1)
+  // The clrlwi. / beq at 0x6CE8: the offset is taken when the aim becomes usable.
+  if ((x128C_ & 0x02) == 0 && usable) { // the extrwi at 0x6CE0 (1 bit at 30 -> the byte's bit 1)
     const CVector3f dir = head.x13B38_();           // fn_14_13B38
     const CVector3f local = GetTransform().TransposeRotate(dir); // the call at 0x6D08
     x1088_ = CTransform4f::LookAt(CVector3f::Zero(), local, CVector3f::Up()); // the call at 0x6D3C
