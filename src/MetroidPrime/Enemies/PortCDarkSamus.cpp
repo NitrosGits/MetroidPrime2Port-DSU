@@ -171,9 +171,13 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mRootPos(CVector3f(0.f, 0.f, 0.f))             // 0x0001FBDC..0x0001FBEC
 , mReflectedUids()                               // 0x0001FE9C
 , mLastReflectTime(-1000.f)                      // lbl_10_rodata_410, 0x0001FEE0
+, mGuestC0C(-1.f)                                // lbl_10_rodata_3EC, 0x0001FEE4
+, mGuestC20(-1000.f)                             // lbl_10_rodata_410, 0x0001FF04
 , mRicochetSfxId(data.mMissileRicochetSound == -1 // 0x0000DA94, stored at 0x0001FF48
                      ? CSfxManager::kInternalInvalidSfxId
-                     : static_cast< ushort >(data.mMissileRicochetSound)) {
+                     : static_cast< ushort >(data.mMissileRicochetSound))
+, mReflectChanceCount(0)                         // 0x00020270
+, mReflectChances() {
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
   // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
   // (0x000216E4), both with scatterShotDamage, each only for a valid asset and locked after.

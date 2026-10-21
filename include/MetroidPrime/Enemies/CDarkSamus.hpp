@@ -596,7 +596,10 @@ private:
   // fn_10_1B658 / 138A4: the projectile reflect and the dive's hit on the player (stand-ins).
   void ReflectProjectiles(CStateManager& mgr);
   // fn_10_1B9B0: whether the projectile may be sent back (type -1 = any weapon type).
-  bool CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj, int type) const;
+  bool CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj, int type);
+  // fn_10_F298 / F210: the reflect chance roll and the cache's erase.
+  float RollReflectChance(CStateManager& mgr, TUniqueId uid);
+  void EraseReflectChance(uint index);
   void HitPlayerWithDive(CStateManager& mgr);
   // fn_10_1382C: the player's orbit target cleared.
   void ClearPlayerOrbitTarget(CStateManager& mgr);
@@ -705,10 +708,12 @@ private:
                                    // writes 1 (0x0001EBC4), fn_10_193A0 adds 1 (0x0001941C); the
                                    // constructor writes 0 (0x0001FCC8)
   // guest 0x97C, two flags fn_10_193A0 copies from the stage info (0x00019470/0x0001948C); the
-  // constructor writes 0 / 1 (0x0001FCD0/0x0001FCDC)
-  bool mUseAltScan;                 // 0x80, usesAlternateScannableInfo; fn_10_F40C reads it
-  bool mCanDie;                     // 0x40, the info's +0x32 not 1; fn_10_F488 keeps the health
-                                    // at 1.0f while it is clear (0x0000F4F4)
+  // constructor writes 0 / 1 (0x0001FCD0/0x0001FCDC). The guest packs both into the byte
+  // 0x97C (the rlwimi at 0x0001946C sets bit 0x80, the one at 0x00019488 bit 0x40); the host
+  // keeps two bools, so the comment names the byte first and the bit after it.
+  bool mUseAltScan;                 // 0x97C, bit 0x80: usesAlternateScannableInfo; fn_10_F40C reads it
+  bool mCanDie;                     // 0x97C, bit 0x40: the info's +0x32 not 1; fn_10_F488 keeps the
+                                    // health at 1.0f while it is clear (0x0000F4F4)
   float mPhazonHealthMark;          // guest 0x1054, the health the phazon phase started at
                                     // (fn_10_6BA0 at 0x00006D20); the constructor writes 0.0f
                                     // (0x00020214)
@@ -939,8 +944,26 @@ private:
                                    // and 0xBF0 (five uids): the projectiles fn_10_1B658 sent back
   float mLastReflectTime;          // guest 0xC08, lbl_10_rodata_410 = -1000.0f (0x0001FEE0);
                                    // fn_10_1B658 stores the elapsed time 0x8B0 (0x0001B8D4)
+  float mGuestC0C;                 // guest 0xC0C, the elapsed time of the last hit (the damage
+                                   // arm of AcceptScriptMsg, 0x0001EAF8); the constructor writes
+                                   // lbl_10_rodata_3EC = -1.0f (0x0001FEE4)
+  float mGuestC20;                 // guest 0xC20, the elapsed time of the last heavy hit (the
+                                   // HeavyHit state's Deactivate, 0x00010F4C); the constructor
+                                   // writes lbl_10_rodata_410 = -1000.0f (0x0001FF04)
   ushort mRicochetSfxId;           // guest 0xC50, the loader's missileRicochetSound (its 0x928;
                                    // -1 is kInternalInvalidSfxId, 0x0000DA94); 0x0001FF48
+  // guest 0x10A8: the reflect chance cache. The count (a word) and ten 12-byte entries from
+  // 0x10AC: the projectile's uid (a u16 in the guest) and the two rolls fn_10_F100 and fn_10_F298
+  // put in. The constructor writes the count 0 (0x00020270); the entries are written at run time
+  // by fn_10_F100 (0x0001F1CC) and fn_10_F298 (0x0001F3C8) and erased by fn_10_F210 (0x0001F27C).
+  struct SReflectChance {
+    SReflectChance() : mUid(kInvalidUniqueId), mChance(0.f), mRoll(0.f) {}
+    TUniqueId mUid;   // +0x00 (0x10AC), the projectile's uid
+    float mChance;    // +0x04, the roll fn_10_F298's lookup answers and 1B9B0 compares
+    float mRoll;      // +0x08, the roll fn_10_F100's lookup answers
+  };
+  uint mReflectChanceCount;        // guest 0x10A8, the number of entries in the cache
+  SReflectChance mReflectChances[10]; // guest 0x10AC, the ten entries
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
   // host's CAnimationState mAnimationState, which CPatterned::GetAnimOver reads.
