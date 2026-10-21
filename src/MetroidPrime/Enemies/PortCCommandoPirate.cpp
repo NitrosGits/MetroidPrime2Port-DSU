@@ -3542,7 +3542,8 @@ void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
 //
 // On activate (the guest's message 0, 0x00008704) the module's flag byte at guest this+0xC65 gets
 // its 0x08 bit, the byte at guest this+0xC66 loses its 0x20 bit, the animation state goes "ready"
-// (guest this+0x6B4 = 1), the body's locomotion type becomes 1 (pas::kLT_Relaxed), the shield's
+// (guest this+0x6B4 = 1), the body's locomotion type becomes 2 (pas::kLT_Lurk, the guest's
+// li r4,0x2 at 0x00008718), the shield's
 // arm timer at guest this+0xB80 takes the block's arm time (the block's +0x144 = guest this+0x904)
 // plus a random fraction of the arm time variation (the block's +0x148 = guest this+0x908), the
 // flag byte at guest this+0xC64 loses its 0x04 bit and the module's shield collision actor manager
@@ -3566,7 +3567,8 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
     xc65_ |= 0x08;                                   // 0x0000870C
     xc66_ &= ~0x20;                                  // 0x00008720
     mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x00008728
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);  // 0x00008730 (the guest's 1)
+    // 0x00008718: the guest's locomotion type is 2 - pas::kLT_Lurk - not the relaxed one.
+    BodyController()->SetLocomotionType(pas::kLT_Lurk);  // 0x00008718, 0x00008730
     xb80_ = mData.mShield.mArmTime +
             mgr.Random()->Float() * mData.mShield.mArmTimeVariation;  // 0x00008744
     xc64_ &= ~0x04;                                  // 0x0000875C
