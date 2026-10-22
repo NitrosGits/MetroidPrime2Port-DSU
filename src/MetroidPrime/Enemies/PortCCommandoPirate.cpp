@@ -1934,7 +1934,7 @@ void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noR
     return;
   }
   xc00_ -= dt;                                                     // 0x00004008..0x0000400C
-  if (xc00_ > 0.f) {                                               // 0x00004010..0x0000401C
+  if (!(xc00_ <= 0.f)) {  // 0x00004010..0x0000401C `cror eq, lt, eq; bne`: NaN returns too
     return;
   }
   if (xbfc_ragDoll.get() == nullptr) {                             // 0x00004020..0x00004028
