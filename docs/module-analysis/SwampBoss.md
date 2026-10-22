@@ -203,6 +203,15 @@ read the boss's own list and tested the bit that list happens to carry; the reta
 *other* side's list and tests `kMT_Player`. The corrected constant therefore moves the flag from
 "the player touched the boss" to "the boss's body hit the player" - the retail's meaning.
 
+**A consequence in the port.** The boss's body box is octree-cached dynamic geometry owned by the
+boss's uid (`CGameCollisionPackedCache.cpp:222-232`, the owner's material list is cached with the
+geometry), and the octree's collision info puts the *tree's* material in the second
+`CMaterialList` argument (`CMetroidAreaCollider.cpp:499-502`), i.e. in slot 0x30. So a player
+walking into the boss's cached body also sees the **boss's own** flyer list at 0x30 and does not
+set the flag with the corrected mask - the flag can only be set from the boss-as-mover near-list
+path, where slot 0x30 holds the player's list. The retail's mask behaves the same way; the port
+now matches it.
+
 ### Stage1 runtime status (2026-10-20, second pass)
 
 Traced runs in `04_swamp_temple_dark` with `LAYER3@200+4` (forced layer), MP2_GODMODE, a temporary
