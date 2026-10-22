@@ -820,11 +820,16 @@ void CDigitalGuardian::x4E00_(CStateManager& mgr, const rstl::string& locator) {
 // fn_14_20E4: the leg whose ankle (.rodata 0x20) or toe collider locator (.rodata 0x10) is the
 // name (fn_14_21A0, the string compare), the ankles first (0x2120, 0x2154); -1 when none of the
 // four matches (the cmpwi 4 at 0x217C, 0x2188).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 6/6 branches, ALL-ARMS.
+// @ fn_14_20E4
 int CDigitalGuardian::x20E4_(const rstl::string& name) const {
   static const char* const kAnkleLocators[4] = {"L_front_ankle", "L_back_ankle", "R_front_ankle",
                                                 "R_back_ankle"};
   for (int i = 0; i < 4; ++i) {
-    if (name == rstl::string_l(kAnkleLocators[i]) || name == rstl::string_l(skToeLocators[i])) {
+    if (name == rstl::string_l(kAnkleLocators[i])) {
+      return i;
+    }
+    if (name == rstl::string_l(skToeLocators[i])) {
       return i;
     }
   }
@@ -837,6 +842,8 @@ int CDigitalGuardian::x20E4_(const rstl::string& name) const {
 // (CTransform4f::Translate, 0x46B0), the body as its parent, the data's shockWaveInfo (guest
 // 0x864, fn_14_476C) and 2.8f / 0.4f (.rodata 0x2B8 / 0x2BC); sound_ShockWave (guest 0x84C) plays
 // there (0x4740) and the toe target goes to state 1 (fn_14_1A68, 0x4754).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 12/12 branches, ALL-ARMS.
+// @ fn_14_458C
 void CDigitalGuardian::x458C_(CStateManager& mgr, const rstl::string& locator) {
   const int leg = x20E4_(locator);
   if (leg == -1 || x10DC_[leg] == 3) {
@@ -844,11 +851,15 @@ void CDigitalGuardian::x458C_(CStateManager& mgr, const rstl::string& locator) {
   }
   const CVector3f lctr = GetLctrTransform(locator).GetTranslation();
   const CVector3f pos(lctr.GetX(), lctr.GetY(), GetTranslation().GetZ());
-  mgr.AddObject(rs_new CShockWave(
-      mgr.AllocateUniqueId(), rstl::string_l("Shock Wave"),
-      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
-      CTransform4f::Translate(pos), GetUniqueId(), CShockWaveInfo(mData.mShockWaveInfo), 2.8f,
-      0.4f));
+  // The retail's order: the info (fn_14_476C, 0x4608) before the new (0x4628), then the entity
+  // info (0x4674), the name (0x468C), the id (0x469C) and the transform (0x46B0). They are locals
+  // here, not temporaries of the new expression, so no conditional-destruction flags.
+  const CShockWaveInfo waveInfo(mData.mShockWaveInfo);
+  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true);
+  const rstl::string name = rstl::string_l("Shock Wave");
+  const TUniqueId id = mgr.AllocateUniqueId();
+  const CTransform4f xf = CTransform4f::Translate(pos);
+  mgr.AddObject(rs_new CShockWave(id, name, info, xf, GetUniqueId(), waveInfo, 2.8f, 0.4f));
   PlayCustomSound(pos, CVector3f::Up(), mData.mSoundShockWave, false);
   x1A68_(mgr, leg, 1); // fn_14_1A68
 }
@@ -1477,6 +1488,8 @@ CVector3f CDigitalGuardian::GetAimPosition(const CStateManager& mgr, float dt) c
 // the locator (node +0x30, 0xA544). 27 EventStart (+0xE8): fn_14_458C with the locator (0xA554).
 // 17 BeginAction (+0xF8): bit 6 of 0x128D set (the rlwimi at 0xA568). Every other type: CPatterned
 // (0xA590).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 10/10 branches, ALL-ARMS.
+// @ fn_14_A468
 void CDigitalGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                        EUserEventType type, float dt) {
   switch (type) {
@@ -2271,6 +2284,8 @@ void CDigitalGuardian::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
 // face and weight 1.0f (.rodata 0x270, 0x9560), DeliverCmd at 0x9588 - when 0x1278's magnitude
 // is safe (0x9520); otherwise the state is over (0x6B4 = 3, 0x9594). Deactivate (2): not ready
 // (0x6B4 = 0, 0x95A0). Other messages do nothing.
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 8/8 branches, ALL-ARMS.
+// @ fn_14_94BC
 void CDigitalGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -2481,6 +2496,8 @@ void CDigitalGuardian::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) 
 // state 0x37C == 9, 0x88C0), it exits the state (kBSC_ExitState = 10, 0x88F8, DeliverCmd at
 // 0x8914) unless the head is there with its flag 0x20 (head+0x10F4, the extrwi. at 0x88EC).
 // Deactivate (2): not ready (0x6B4 = 0, 0x8930) and the exit command (0x8938, 0x8950).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 16/16 branches, ALL-ARMS.
+// @ fn_14_8794
 void CDigitalGuardian::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -2631,6 +2648,8 @@ void CDigitalGuardian::Crippled(CStateManager& mgr, EStateMsg msg, float dt) {
 // GetStringIndexByName at 0x7C50; the host's CStringTable has GetStringIndex) for that object's
 // id (SetBossParams at 0x7C64). Then IS09 (0x49533039, 0x7C6C/0x7C7C) is sent with no message
 // (-1, 0x7C84; SendScriptMsgs at 0x7C8C).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 2/2 branches, ALL-ARMS.
+// @ fn_14_7BD4
 void CDigitalGuardian::SetupBossEnergyBar(CStateManager& mgr, float dt) {
   if (CEntity* counter = mgr.ObjectById(x10CE_)) {
     const CActor* actor = static_cast< const CActor* >(counter);
@@ -2720,16 +2739,16 @@ bool CDigitalGuardian::x70B4_() const {
 // With a zero sum: a random angle in [pi/2, pi] (.rodata 0x2D0/0x2D4, Range at 0x7A5C), the side
 // is local . the transform's first column (0x24/0x34/0x44, 0x7A6C..0x7A7C) above 0.0f (0x7A80),
 // and 0x1278 the same rotation (0x7AA4..0x7AF4).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 14/14 branches, ALL-ARMS.
+// @ fn_14_77EC
 void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
-  static const CVector3f kKneeDirections[4] = {
-      CVector3f(-1.f, 1.f, 0.f), CVector3f(-1.f, -1.f, 0.f),
-      CVector3f(1.f, 1.f, 0.f), CVector3f(1.f, -1.f, 0.f)};
+  static const float kKneeDirections[4][2] = {{-1.f, 1.f}, {-1.f, -1.f}, {1.f, 1.f}, {1.f, -1.f}};
   x1278_ = CVector3f::Zero();
   const u16 knees[4] = {xFB0_, xFB2_, xFB4_, xFB6_};
   CVector3f sum = CVector3f::Zero();
   for (int i = 0; i < 4; ++i) {
     if (knees[i] != kInvalidUniqueId.value && mgr.ObjectById(TUniqueId(knees[i])) != nullptr) {
-      sum += kKneeDirections[i];
+      sum += CVector3f(kKneeDirections[i][0], kKneeDirections[i][1], 0.f);
     }
   }
   const CVector3f local =
@@ -2816,8 +2835,26 @@ void CDigitalGuardian::SelectExitVortexTarget(CStateManager& mgr, float dt) {
   x1168_ = x308C_(mgr, player);
 }
 
+// fn_14_7504: 0x11D8 is -1 (0x7544); then the leg whose locator (0x10C8 + i, GetLctrTransform at
+// 0x7578) is nearest the player (0x14FC, its x and y at +0x54/+0x58) on the xy plane (the square
+// sum plus 0.0f, .rodata 0x264): a sum below the best so far (FLT_MAX, .rodata 0x2AC; the fcmpo
+// and bge at 0x75A4) takes it (0x75B0). Four legs (the cmpwi 4 at 0x75BC).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 8/8 branches, ALL-ARMS.
+// @ fn_14_7504
 void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7504");
+  x11D8_ = -1;
+  float best = FLT_MAX;
+  const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
+  for (int i = 0; i < 4; ++i) {
+    const CVector3f foot = GetLctrTransform(x10C8_[i]).GetTranslation();
+    const float dx = player.GetX() - foot.GetX();
+    const float dy = player.GetY() - foot.GetY();
+    const float distSq = 0.f + (dx * dx + dy * dy);
+    if (!(distSq >= best)) {
+      best = distSq;
+      x11D8_ = i;
+    }
+  }
 }
 
 // fn_14_73D4: 0x11DC is -1 (0x740C), and with no melee leg (0x11D8 == -1, 0x7414) stays so. With
@@ -2826,6 +2863,8 @@ void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
 // fcmpo at 0x7488), 0 (0x7494); otherwise 0 when the player is within the data's
 // nearLegStabRange (guest 0x7C4, squared) of the locator (0x74B8), else 1 (0x74CC).
 // dt is unused (fn_14_A468 passes 0.0f, .rodata 0x264).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 10/10 branches, ALL-ARMS.
+// @ fn_14_73D4
 void CDigitalGuardian::SelectMeleeAttackRange(CStateManager& mgr, float dt) {
   x11DC_ = -1;
   if (x11D8_ == -1) {
