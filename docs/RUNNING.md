@@ -66,6 +66,10 @@ from d units, travelling along dir, for modules that only count projectile hits 
 of the player; both take an optional rotation after the point: `place <id> <x> <y> <z> <yaw> [pitch
 [roll]]` in degrees (the yaw about the world's up, the pitch about the right one, the roll about the
 forward one) - without it the actor keeps its rotation.
+`material <id> [+|-]<m> ...` prints an actor's material list and adds (`+`, the default) or removes
+(`-`) materials, by name without `kMT_` (any case) or bit number: `material u0400 -solid` takes
+kMT_Solid off the player the way entering a turret does, so a line-of-sight ray ending at its aim
+point (ElitePirate ShouldFire) can come back clear.
 `bodystate <id> <n>` sets a patterned actor's body controller state directly (n is the
 `pas::EAnimationState` index: 0 ready, 2 lie on ground, 19 cover, 20 wall hang); the state machine
 reaches only some of the body states, and the coverage runs need the others.
