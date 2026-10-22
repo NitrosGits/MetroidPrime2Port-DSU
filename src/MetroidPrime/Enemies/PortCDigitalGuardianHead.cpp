@@ -54,6 +54,17 @@
 
 namespace {
 
+// The head's render flag (lbl_14_bss_18): the head's render (fn_14_17B28) sets it while it
+// renders, and its RenderSystemsToBeDrawnLast (fn_14_17A64) only draws while it is set. It is
+// separate from the body's flag (lbl_14_bss_0).
+uchar sHeadRendering = 0;
+
+// The retail's GenerateParticlePOIMask (the call at 0x17B6C) is the host's
+// CStateManager::GetCharacterRenderMaskAndTarget (as in PortCDigitalGuardian.cpp).
+void GenerateParticlePOIMask(const CStateManager& mgr, uint& mask, uint& target) {
+  mgr.GetCharacterRenderMaskAndTarget(mask, target);
+}
+
 // Reports a stand-in the first time it runs, so a log lists what the head still lacks. The
 // message names the retail function the entry stands in for.
 void StandInFn(const char* fn) {
@@ -295,7 +306,10 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   }
 }
 
-CDigitalGuardianHead::~CDigitalGuardianHead() {}
+// fn_14_17F64: the collision actor manager (0xD70) is deleted (the null test addic. at 0x18208,
+// the dtor with r4 = 1 at 0x18218); the rest is the members' own dtors.
+// @ fn_14_17F64
+CDigitalGuardianHead::~CDigitalGuardianHead() { delete xD70_; }
 
 // The body controller is activated by "XCRT" in retail; the port also activates it before the
 // first Think, which can run first (docs/GOTCHAS.md, patterned actors).
@@ -962,6 +976,100 @@ void CDigitalGuardianHead::PreRender(CStateManager& mgr) {
 void CDigitalGuardianHead::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
   CPatterned::Render(mgr);
+}
+
+// fn_14_17B28 (vtable slot 11, Render): the head's render flag (lbl_14_bss_18) is set (0x17B48)
+// and cleared (0x17BA4) around the head's own RenderSystemsToBeDrawnLast (the virtual call through
+// vtable 0xBC at 0x17B94, fn_14_17A64). The mask and target start at zero (0x17B4C, 0x17B50) and
+// are only filled with mDrawParticles (the byte at 0x421, clrlwi. at 0x17B58). The base's Render
+// is not called.
+// @ fn_14_17B28
+void CDigitalGuardianHead::Render(const CStateManager& mgr) const {
+  sHeadRendering = 1;
+  uint mask = 0;
+  uint target = 0;
+  if (mDrawParticles) {
+    GenerateParticlePOIMask(mgr, mask, target);
+  }
+  RenderSystemsToBeDrawnLast(mgr, mask, target);
+  sHeadRendering = 0;
+}
+
+// fn_14_17A64 (vtable 0xBC): nothing unless the head's render flag is set (lbz/beq at 0x17A94).
+// With 0x10F4 bit 0x10 clear (extrwi. 1, 27 / bne at 0x17AA4) and the armour model there (0xEF0,
+// 0x17AAC), the armour (0xEA4) is drawn at the "segment 1" locator (GetLctrTransform at 0x17ACC)
+// with the actor's lights (0xBC) and draw flags (0xFC), 0x17AF0. Then the base's (0x17B04).
+// @ fn_14_17A64
+void CDigitalGuardianHead::RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint mask,
+                                                      uint target) const {
+  if (sHeadRendering == 0) {
+    return;
+  }
+  if ((x10F4_ & 0x10) == 0 && xEA4_.valid()) {
+    const CTransform4f xf = GetLctrTransform(CSegId(1));
+    xEA4_.data().Render(mgr, xf, GetActorLights(), GetModelFlags());
+  }
+  CPatterned::RenderSystemsToBeDrawnLast(mgr, mask, target);
+}
+
+// fn_14_17840 (vtable 0xDC): the projectile attack 0x10D0 picks the weapon: 1 the charge (0xE2C),
+// 2 the missiles (0xE54), 3 the gun (0xE7C); 0, negative and >= 4 the pulse (0xE04, the addi at
+// 0x17844; cmpwi 2/0/4 at 0x1784C, 0x17858, 0x17864).
+// @ fn_14_17840
+CProjectileInfo* CDigitalGuardianHead::ProjectileInfo() {
+  switch (x10D0_) {
+  case 1:
+    return &xE2C_;
+  case 2:
+    return &xE54_;
+  case 3:
+    return &xE7C_;
+  default:
+    return &xE04_;
+  }
+}
+
+// fn_14_17890 (vtable 0x54): the "segment 1" locator's translation (GetLctrTransform at 0x17918),
+// plus, for dt > 0.0f (.rodata 0x960, fcmpo/ble at 0x178E4), the predicted motion's translation
+// (PredictMotion at 0x178EC, the CMotionState copy fn_14_17974); else the zero vector.
+// @ fn_14_17890
+CVector3f CDigitalGuardianHead::GetAimPosition(const CStateManager& mgr, float dt) const {
+  CVector3f offset = CVector3f::Zero();
+  if (dt > 0.f) {
+    offset = PredictMotion(dt).GetTranslation();
+  }
+  return GetLctrTransform(CSegId(1)).GetTranslation() + offset;
+}
+
+// fn_14_17638 (vtable 0x11C): the anim data's vertex bounds through Translate(-translation) *
+// the transform (0x24) * Scale(the model's scale), as the body's fn_14_1570.
+// @ fn_14_17638
+CAABox CDigitalGuardianHead::GetScanVisorRenderBounds(const CStateManager& mgr) const {
+  const CAABox verts = GetModelData()->GetAnimationData()->CalcBoundingBoxFromModelVerts();
+  const CTransform4f xf = CTransform4f::Translate(-GetTranslation()) * GetTransform() *
+                          CTransform4f::Scale(GetModelData()->GetScale());
+  return verts.GetTransformedAABox(xf);
+}
+
+// fn_14_174F4 (vtable 0x120): the transform (0x24) and draw flags (0xFC) are swapped for xf and
+// flags (0x17520..0x17580), the base's Render runs (0x17584), and with 0x10F4 bit 0x10 clear
+// (extrwi. 1, 27 at 0x1758C) and the armour there (0xEF0, 0x17594) the armour is drawn at xf * the
+// "segment 1" scaled locator (0x175B0, 0x175C0) with the actor's lights and the given flags
+// (0x175EC). The transform and flags are put back (0x175F0..0x17620).
+// @ fn_14_174F4
+void CDigitalGuardianHead::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
+                                           const CModelFlags& flags) const {
+  const CTransform4f savedXf = GetTransform();
+  const CModelFlags savedFlags = GetModelFlags();
+  PortRawTransform() = xf;
+  const_cast< CDigitalGuardianHead* >(this)->SetModelFlags(flags);
+  CPatterned::Render(mgr);
+  if ((x10F4_ & 0x10) == 0 && xEA4_.valid()) {
+    const CTransform4f armourXf = xf * GetScaledLocatorTransform(CSegId(1));
+    xEA4_.data().Render(mgr, armourXf, GetActorLights(), flags);
+  }
+  PortRawTransform() = savedXf;
+  const_cast< CDigitalGuardianHead* >(this)->SetModelFlags(savedFlags);
 }
 
 // fn_14_179E0: the pass-through vulnerability.
@@ -2019,6 +2127,13 @@ bool CDigitalGuardianHead::PortConsoleVar(CEntity& ent, const char* name, const 
       head->mData.maxStunnedLinearVelocity = static_cast< float >(*value);
     }
     current = static_cast< int >(head->mData.maxStunnedLinearVelocity);
+    return true;
+  }
+  // Host: calls ProjectileInfo (fn_14_17840) and reports which weapon it picked (0 pulse 0xE04,
+  // 1 charge 0xE2C, 2 missiles 0xE54, 3 gun 0xE7C).
+  if (strcmp(name, "dghd.projinfo") == 0) {
+    const CProjectileInfo* info = head->ProjectileInfo();
+    current = info == &head->xE2C_ ? 1 : info == &head->xE54_ ? 2 : info == &head->xE7C_ ? 3 : 0;
     return true;
   }
   return false;
