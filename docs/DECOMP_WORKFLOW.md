@@ -127,6 +127,11 @@ patch, run `tools/review_decomp_diff.sh <lane-base>` and answer every hit:
   names, rodata floats missing from the file, branch-count/size shape, and `nan` (fcmpo + plain
   `blt/ble/bge/bgt` needs a C `<`/`>`; `cror` needs `<=`/`>=`; negation flips the NaN arm with the
   sense, so `!(a <= b)` is wrong for a plain `ble`). Leads only: answer each like the hits above.
+- **mathdiff** - after any Kyoto/Math or CMath.hpp change, run `tools/mathdiff.py` (~5 s with build;
+  `[ADDR|#idx ...] [--seed N] [--n N] [--strict] [--verbose] [--rebuild]`). It runs retail
+  (`tools/ppc_run.py`, unicorn on `orig/G2ME01/sys/main.dol`) and the port's units
+  (`tools/mathdiff/harness.cpp`, one case line per function) on random inputs incl. NaN/inf, tol
+  2e-6 rel. Only MISMATCH fails; `inf-edge`/`rounding`/`known` are soft (`--strict` fails them too).
 - Lanes never run `git reset --hard`, `git clean`, `git stash`, `git checkout -- <path>` or `rm -rf`
   on a path held in a variable; reject a patch made that way and re-brief.
 
