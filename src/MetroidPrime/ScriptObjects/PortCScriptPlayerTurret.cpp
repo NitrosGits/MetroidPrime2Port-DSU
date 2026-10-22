@@ -704,9 +704,9 @@ CPASAnimParmData CScriptPlayerTurret::BuildAnimParmData(pas::EAnimationState sta
 // animation database gives the five additive animation ids (0x19C..0x1AC) and the light colour
 // (0x1D4..0x1DC).
 //
-// Only the two connections are ported here: the animation lookup is 0x2B4 bytes of it and stays a
-// stand-in. The connections have to be real, because the DOL's turret HUD (CTurretHud::
-// UpdateEnergy) reads the hull actor's id and dereferences the actor it names.
+// The five animation lookups go through fn_63_19B0 (BuildAnimParmData). The connections have to
+// be real, because the DOL's turret HUD (CTurretHud::UpdateEnergy) reads the hull actor's id and
+// dereferences the actor it names.
 // @ fn_63_15B0
 void CScriptPlayerTurret::LoadHullActors(CStateManager& mgr) {
   // 0x15E4: the base actor is the turret's "AttachedAnimatedObject" connection.
