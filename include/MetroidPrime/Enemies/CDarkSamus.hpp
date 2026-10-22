@@ -16,6 +16,7 @@
 #include "Kyoto/TToken.hpp"
 #include "Weapons/CCollisionResponseData.hpp"
 #include "rstl/auto_ptr.hpp"
+#include "Collision/CCollidableAABox.hpp"
 
 class CBCProjectileAttackCmd;
 
@@ -193,9 +194,8 @@ struct CDarkSamusDash {
 };
 
 // The dive record at the guest's 0xAC0..0xB28 (fn_10_E784 builds it from the data's
-// diveAttackDamage and its two impulses, the constructor's call at 0x0001FE64). Not on the host:
-// the +0x4C float (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f) and the CCollidableAABox at +0x68
-// (fn_10_E784 at 0x0000E8A8) - no ported reader uses them.
+// diveAttackDamage and its two impulses, the constructor's call at 0x0001FE64). The +0x4C float
+// (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f) has no reader.
 struct CDarkSamusDive {
   CDarkSamusDive(const CDamageInfo& damage, float impulseHorizontal,
                  float impulseVertical); // fn_10_E784
@@ -224,6 +224,12 @@ struct CDarkSamusDive {
   bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4)
   bool mLaunched : 1;    // 0x40, 'XLAU' came: the actor is in the air
   bool mDone : 1;        // 0x80, the dive is over
+  // +0x68 (0xB28), the CCollidableAABox fn_10_E784 builds (0x0000E8A8, the null box). Both
+  // writers replace its material list and box whole before it is handed out: 'XALD'
+  // (fn_10_1E89C, 0x0001EC38..0x0001EC68, the animation's bounds) and GetCollisionPrimitive
+  // (fn_10_1AAC4, 0x0001AC3C..0x0001AC68, the bounds grown for the dive). Mutable because
+  // GetCollisionPrimitive is const on the host.
+  mutable CCollidableAABox mCollidable{CAABox::MakeNullBox(), CMaterialList()};
 };
 
 // The melee contact record at the guest's 0x9A4..0x9E0 (fn_10_EA24 builds it, the constructor's
@@ -593,6 +599,15 @@ private:
   void StartDiveBubble(CStateManager& mgr);
   // fn_10_1C99C: CollidedWith's dive arm (a wall bounces, the floor or the player lands).
   void CheckDiveCollision(CStateManager& mgr, CActor* collider, const CCollisionInfoList& list);
+  // CollidedWith's other helpers (PortCDarkSamus.cpp): fn_10_1D0A0 the platform contact,
+  // fn_10_1CF84 the wall / ceiling hit time, fn_10_A734 the boost ball's wall flag, fn_10_1D194
+  // the platform crush.
+  void RecordPlatformContact(const CCollisionInfoList& list);
+  void RecordWallHit(const TUniqueId& id, const CCollisionInfoList& list);
+  void CheckBoostBallWallHit(CStateManager& mgr, const CCollisionInfoList& list);
+  void CrushPlatform(CStateManager& mgr, const TUniqueId& id, const CCollisionInfoList& list);
+  // fn_10_10484: the phazon volley's bob added to an orbit / aim position's z.
+  void AddPhazonBob(CVector3f& pos) const;
   // fn_10_9644: the actor turned around (its facing negated).
   void TurnAround();
   // fn_10_9AC4: the boost ball actor deleted.
@@ -806,9 +821,8 @@ private:
                                    // when the actor walks away; the constructor writes the zero
                                    // vector to it (0x0001FC64..0x0001FC74)
   float mLastWallHitTime;          // guest 0xC44 (inside the 0xB50 sub-object), the time of the
-                                   // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it
-                                   // (fn_10_1CF84 is not in the port yet); the constructor
-                                   // writes 0.0f to it (0x0001FF38)
+                                   // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it;
+                                   // the constructor writes 0.0f to it (0x0001FF38)
   float mElapsedTime;              // guest 0x8B0, the time since the actor was created: the Think
                                    // (fn_10_1B1FC) adds dt to it (0x0001B2DC); the constructor
                                    // writes 0.0f to it (0x0001FB88)
@@ -840,8 +854,8 @@ private:
                                    // does not); the constructor writes the zero vector to it
                                    // (0x0001FC20..)
   float mContactTime;              // guest 0xC34, the elapsed time (mElapsedTime) of the last
-                                   // contact fn_10_1D0A0 records (0x0001D154; not in the port
-                                   // yet, so it stays at the constructor's 0.0f, 0x0001FF1C)
+                                   // platform contact fn_10_1D0A0 records (0x0001D154); the
+                                   // constructor writes 0.0f (0x0001FF1C)
   CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
                                    // constructor writes the zero vector to it (0x0001FF24..)
   float mLastMeleeTime;            // guest 0x9C0, the elapsed time the MeleeAttack state
