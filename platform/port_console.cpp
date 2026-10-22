@@ -39,6 +39,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "Kyoto/SObjectTag.hpp"
 #include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
+#include "MetroidPrime/Cameras/CFirstPersonCamera.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
@@ -552,6 +553,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
       "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
+      "orbit [id]                  lock-on state; with id: orbit position, ValidateOrbitTargetId\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
@@ -1510,6 +1512,43 @@ namespace {
 
 // scaninfo <id>: the 'SCAN' asset an actor answers GetScannableObjectInfo with (what the scan
 // visor would show), or none; a module's override runs without scanning it.
+// `orbit [id]`: why the lock-on takes or skips an actor: the player's orbit state and targets,
+// and for the actor its orbit position, ValidateOrbitTargetId's verdict (0 OK, 1 extreme angle,
+// 2 not ready / visor, 3 through door, 4 invalid, ...), screen position (-1..1) and distance.
+void CmdOrbit(CStateManager& mgr, const Args& args, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr) {
+    Fail("orbit: no player");
+    return;
+  }
+  char line[256];
+  std::snprintf(line, sizeof(line), "  orbit state %d target %04x next %04x max dist %.1f\n",
+                static_cast< int >(player->GetOrbitState()), player->GetOrbitTargetId().Value(),
+                player->GetOrbitNextTargetId().Value(), player->GetOrbitMaxTargetDistance());
+  out += line;
+  if (args.size() < 2) {
+    return;
+  }
+  const CActor* act = TCastToConstPtr< CActor >(ResolveObject(mgr, args[1]));
+  if (act == nullptr) {
+    Fail("orbit: not an actor");
+    return;
+  }
+  const CVector3f pos = act->GetOrbitPosition(mgr);
+  const CVector3f eye = player->GetEyePosition();
+  const CVector3f scr =
+      player->GetCameraManager()->GetFirstPersonCamera()->ConvertToScreenSpace(pos);
+  std::snprintf(line, sizeof(line),
+                "  %04x orbit pos (%.1f, %.1f, %.1f) dist %.1f screen (%.2f, %.2f, %.2f) "
+                "validate %d visorflags %d disttest %d\n",
+                act->GetUniqueId().Value(), pos.GetX(), pos.GetY(), pos.GetZ(),
+                (pos - eye).Magnitude(), scr.GetX(), scr.GetY(), scr.GetZ(),
+                player->ValidateOrbitTargetId(act->GetUniqueId(), mgr),
+                static_cast< int >(act->GetTargetableVisorFlags()),
+                act->GetDoTargetDistanceTest() ? 1 : 0);
+  out += line;
+}
+
 void CmdScanInfo(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() != 2) {
     Fail("usage: scaninfo <id>");
@@ -3078,6 +3117,7 @@ constexpr SCommand kCommands[] = {
     {"aspect", CmdAspect, true},
     {"objs", CmdObjs, true},
     {"scaninfo", CmdScanInfo, true},
+    {"orbit", CmdOrbit, true},
     {"obj", CmdObj, true},
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
