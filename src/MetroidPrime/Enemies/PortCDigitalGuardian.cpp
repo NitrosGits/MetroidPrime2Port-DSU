@@ -617,6 +617,8 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
 // 0x3ED0) and its active flag is set (the CEntity::SetActive call through the
 // vtable slot 0x1C at 0x3EE4) to the flag the message carries (the clrlwi at 0x3EA4, the low
 // byte of the third argument).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_3E88
 void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
   const u16 ids[4] = {xFB0_, xFB2_, xFB4_, xFB6_};
   for (int i = 0; i < 4; ++i) {
@@ -1662,11 +1664,13 @@ bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData
 // with it in the horizontal plane; the squared distance (the fsubs/fmuls/fmadds at
 // 0x98B0..0x98C8) must be below the far leg stab range squared (guest this+0x7C8 = the data
 // block's +0x08, the fmuls at 0x9884).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_97F0
 bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (HeadFlag20_(mgr)) {
     return false;
   }
-  if (x11E0_ > 0.0f) {
+  if (!(x11E0_ <= 0.0f)) { // the cror/bne at 0x986C: a NaN answers false too
     return false;
   }
   const float range = mData.mFarLegStabRange;
@@ -1676,7 +1680,9 @@ bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&
     const CVector3f locator = GetLctrTransform(x10C8_[i]).GetTranslation();
     const float dx = player.GetX() - locator.GetX();
     const float dy = player.GetY() - locator.GetY();
-    if (dx * dx + dy * dy < rangeSq) {
+    // 0.0f (.rodata 0x264) + dx * dx + dy * dy (0x98C4/0x98C8); the bge at 0x98D0 skips only an
+    // ordered >=, so a NaN distance answers true.
+    if (!(0.0f + (dx * dx + dy * dy) >= rangeSq)) {
       return true;
     }
   }
@@ -2235,6 +2241,8 @@ void CDigitalGuardian::x14F8_() {
 
 // fn_14_705C: how many of the four knee ids (guest this+0xFB0, 0xFB2, 0xFB4 and 0xFB6) are not
 // kInvalidUniqueId (the four lhz/cmplw pairs at 0x7060..0x709C).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_705C
 int CDigitalGuardian::x705C_() const {
   int count = 0;
   if (xFB0_ != kInvalidUniqueId.value) {
