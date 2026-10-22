@@ -79,24 +79,25 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [emp3]="863fcd72,07_temple_mothlordsanctuary_dark"
                [turret]="M06_ShootingGallery,06_ShootingGallery"
                [agon54]="42b935e4,08_sand_casualpirates"
-               [darksamus]="42b935e4,10_sand_alamostorage" )
+               [darksamus]="42b935e4,10_sand_alamostorage"
+               [splitter]="1baa96c2,0q_cliff_hall" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
-               [darksamus]=4000 )
+               [darksamus]=4000 [splitter]=2000 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280
-               [darksamus]=280 )
+               [darksamus]=280 [splitter]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709
                [boostg_fsm]=49710 [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714
-               [ep]=49715 [darksamus]=49716 [plain]=49717 )
+               [ep]=49715 [darksamus]=49716 [plain]=49717 [splitter]=49718 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
                [spacepirate]=cmd_spacepirate.txt [emp3]=cmd_emp3.txt [turret]=cmd_turret.txt
-               [agon54]=cmd_agon54.txt )
+               [agon54]=cmd_agon54.txt [splitter]=cmd_splitter.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=1"
@@ -104,7 +105,7 @@ declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=
 
 # The order fixes each family's X display, so two runs of the suite never share one.
 ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spacepirate
-     ing ep plain emp3 turret agon54 darksamus)
+     ing ep plain emp3 turret agon54 darksamus splitter)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 
