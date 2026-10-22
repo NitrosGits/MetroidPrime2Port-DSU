@@ -100,7 +100,7 @@ offset	fn	size	class	marked	what	callers
 0x04C1C	fn_79_4C1C	0x8C	B	yes		fn_79_4324
 0x04CA8	fn_79_4CA8	0x78	B	yes		fn_79_4324
 0x04D20	fn_79_4D20	0x268	B	yes		fn_79_A838
-0x04F88	fn_79_4F88	0xA8	B	no	`SendDecrement`	-
+0x04F88	fn_79_4F88	0xA8	B	yes	`SendDecrement`	-
 0x05030	fn_79_5030	0x7C	B	yes		fn_79_55B0
 0x050AC	fn_79_50AC	0x1D0	B	yes		fn_79_50AC fn_79_5830
 0x0527C	fn_79_527C	0x1C0	B	yes		fn_79_55B0
