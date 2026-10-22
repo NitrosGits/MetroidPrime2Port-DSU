@@ -503,16 +503,18 @@ int CSplitterMainChassis::PortFindDodgeDirection(CStateManager& mgr, const CVect
       continue;
     }
     const CVector3f offset = other->GetTranslation() - GetTranslation();
-    // 0x9378 fcmpo, 0x937C bge: only an actor nearer than the step distance blocks (a NaN
-    // distance skips).
-    if (!(offset.MagSquared() < rangeSq)) {
+    // 0x9378 fcmpo, 0x937C bge: an actor at or beyond the step distance is skipped (a NaN
+    // distance falls through and is tested).
+    if (offset.MagSquared() >= rangeSq) {
       continue;
     }
+    // 0x93A0 fcmpo, 0x93A4 cror eq, gt, eq, 0x93A8 bne: a NaN dot takes the opposite side.
     if (CVector3f::Dot(offset, axis) >= 0.f) {
-      if (axisOpen && CVector3f::GetAngleDiff(axis, offset) < 1.0471976f) {
+      // 0x93C8 fcmpo, 0x93CC bge: the side stays open only at 60 degrees or more (NaN closes it).
+      if (axisOpen && !(CVector3f::GetAngleDiff(axis, offset) >= 1.0471976f)) {
         axisOpen = false;
       }
-    } else if (oppositeOpen && CVector3f::GetAngleDiff(-axis, offset) < 1.0471976f) {
+    } else if (oppositeOpen && !(CVector3f::GetAngleDiff(-axis, offset) >= 1.0471976f)) {  // 0x940C-0x9410
       oppositeOpen = false;
     }
   }
@@ -1958,7 +1960,14 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
   KnockBackController().EnableKnockBackPhysics(false);
 }
 
-CSplitterMainChassis::~CSplitterMainChassis() {}
+// vtable slot 0x08 = fn_75_F560 (0xF560-0xF5F8): the collision actor manager 0xC68 is deleted
+// (0xF594 lwz, 0xF59C bl __dt__22CCollisionActorManager with r4 = 1), then the parameter block's
+// members (0xF5B0 fn_75_8B74 on 0x828, 0xF5BC the vulnerability 0x7F8), the base's (0xF5C8
+// fn_75_6890) and, with the delete flag (0xF5CC extsh., ble), CMemory::Free (0xF5D8). The
+// member-address tests (0xF584, 0xF5A0 addic.) are the compiler's, never null. The host's implicit
+// member destructors do the rest; the manager is a raw pointer, so it is deleted here.
+// @ fn_75_F560
+CSplitterMainChassis::~CSplitterMainChassis() { delete mCollisionActorManager; }
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say

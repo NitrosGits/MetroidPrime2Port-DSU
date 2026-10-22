@@ -290,11 +290,13 @@ void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
     return;
   }
   if (mOpening) {
+    // 0x10E14 fcmpo 1.0f, open; bge: the sum is kept when 1.0f >= it (a NaN sum gives 1.0f).
     const float open = dt * mOpenSpeed + mOpenFraction;
-    mOpenFraction = 1.f < open ? 1.f : open;
+    mOpenFraction = 1.f >= open ? open : 1.f;
   } else {
+    // 0x10E40 fcmpo 0.0f, open; bge: 0.0f when 0.0f >= the difference (a NaN one is kept).
     const float open = mOpenFraction - dt * mOpenSpeed;
-    mOpenFraction = 0.f < open ? open : 0.f;
+    mOpenFraction = 0.f >= open ? 0.f : open;
   }
   mAngle = PortWrapTurn((mMaxAngle - kBeamEffectClosedAngle) * mOpenFraction +
                         kBeamEffectClosedAngle);
@@ -563,7 +565,8 @@ void CSplitterCommandModule::Hover(CStateManager& mgr, EStateMsg msg, float dt) 
   if (msg != kStateMsg_Update) {
     return;
   }
-  if (dt <= 0.f) {
+  // 0x4D64 fcmpo dt, 0.0f; ble: only a frame time above zero goes on (a NaN one returns).
+  if (!(dt > 0.f)) {
     return;
   }
   // The retail calls the vtable's word 0x54 on the entity it looked up (0x4D90-0x4DAC); the
@@ -579,10 +582,14 @@ void CSplitterCommandModule::Hover(CStateManager& mgr, EStateMsg msg, float dt) 
       CVector3f(aim.GetX() - pos.GetX(), aim.GetY() - pos.GetY(), 0.f), dt);
   const float dz = aim.GetZ() - pos.GetZ();
   const float step = dt * mData.mMaxLinearVelocity;
-  if (fabsf(dz) <= step) {
+  // 0x4E08 fcmpo |dz|, step; ble: only a height difference above the step moves (a NaN one
+  // returns).
+  if (!(fabsf(dz) > step)) {
     return;
   }
-  PortMoveTo(CVector3f(pos.GetX(), pos.GetY(), pos.GetZ() + (dz > 0.f ? step : -step)), dt);
+  // 0x4E18 fcmpo dz, 0.0f; ble: up by the step when dz > 0.0f, else down (0x4E28 fneg); the
+  // position plus (0.0f, 0.0f, step) (0x4E3C-0x4E54 fadds, x and y plus 0.0f).
+  PortMoveTo(pos + CVector3f(0.f, 0.f, dz > 0.f ? step : -step), dt);
 }
 
 // fn_75_2154 (the head's own move, 0x2154-0x21FC): the auto-destruct timer at 0xEF4 (0x2170
@@ -980,7 +987,15 @@ CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string
                                                          CPASAnimParm::FromEnum(1)));
 }
 
-CSplitterCommandModule::~CSplitterCommandModule() {}
+// vtable slot 0x08 = fn_75_6798 (0x6798-0x6890): the members' destructors in reverse order -
+// the vulnerability 0xEAC (0x67CC), the two projectile infos' tokens 0xE84/0xE5C (0x67F0,
+// 0x6814), the collision actor manager 0xE58 (0x6820 lwz, 0x6828 bl __dt__22CCollisionActorManager
+// with r4 = 1: deleted), the parameter block 0x7C0 (0x683C-0x6854) - then the base's (0x6860
+// fn_75_6890) and, with the delete flag (0x6864 extsh., ble), CMemory::Free (0x6870). The
+// member-address tests (0x67D0-0x682C addic.) are the compiler's, never null. The host's implicit
+// member destructors do the rest; the manager is a raw pointer, so it is deleted here.
+// @ fn_75_6798
+CSplitterCommandModule::~CSplitterCommandModule() { delete mCollisionActorManager; }
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove all dereference the current state. The analysis does not say where retail
