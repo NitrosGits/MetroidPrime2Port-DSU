@@ -482,7 +482,8 @@ void TraceState(CSpacePirate& self, const char* name) {
 }
 } // namespace
 
-// @ fn_72_1980
+// fn_72_1980 (unmarked: retail's tail at 0x1F08..0x2030 decrements xb2c and calls fn_50_1938 to
+// create the rag doll; that path waits for the rag doll port)
 void CSpacePirate::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;

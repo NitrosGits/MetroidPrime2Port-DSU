@@ -33,7 +33,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x1854	0x68	CSpacePirate	GetTouchBounds helper: actor bounding box	method	B	17C8	the touch-bounds helper, ported 2026-10-21 (asm 0x1854)	marked	fn_72_1854
 0x18BC	0x74	CSpacePirate	TryToBeCaptured	virtual	B	data_8D8	-	marked	fn_72_18BC
 0x1930	0x50	rstl::string	static string dtor (registered by 10E50)	template	H	10E50(addr)	rstl::basic_string dtor	not-port	fn_72_1930
-0x1980	0x6E0	CSpacePirate	Think	virtual	B	data_8D8	-	marked	fn_72_1980
+0x1980	0x6E0	CSpacePirate	Think	virtual	B	data_8D8	-	blocked: ragdoll tail 0x1F08	fn_72_1980
 0x2060	0x48	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	1980	rstl::vector dtor	not-port	fn_72_2060
 0x20A8	0xB8	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2060 F444	rstl::vector dtor	not-port	fn_72_20A8
 0x2160	0x94	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	20A8	rstl::vector dtor	not-port	fn_72_2160
