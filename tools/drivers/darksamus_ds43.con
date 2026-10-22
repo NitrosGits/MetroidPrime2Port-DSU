@@ -1,0 +1,45 @@
+# ds43: the ds40 drive plus the GetUp state (fn_10_22020's three messages; GetUp has no FSM2 node)
+@f600 send u04f7 Activate; god 1; status
+@f650 fsm u04f7 EnragedTravel
+@f700 tp 0 0 0
+@f760 status; obj u04f7
+@f800 fsm u04f7 EnragedTravel
+@f900 fsm u04f7 Patrol
+@f950 fsm u04f7 GoToPhazonAttack
+@f1350 fsm u04f7 GoToPhazonEnrage
+@f1750 fsm u04f7 EnrageHitReact
+@f1900 fsm u04f7 Dash
+@f2050 fsm u04f7 SideDash
+@f2200 fsm u04f7 SweepBeam
+@f2450 fsm u04f7 ScatterShot
+@f2650 fsm u04f7 MovingScatterShot
+@f2850 fsm u04f7 BoostBallInto
+@f2860 statecall u04f7 BoostBallInto 0 0.016; statecall u04f7 BoostBallInto 0 0.016; statecall u04f7 BoostBallInto 0 0.016; statecall u04f7 BoostBallInto 0 0.016; statecall u04f7 BoostBallInto 0 0.016; statecall u04f7 BoostBallInto 0 0.016; statecall u04f7 BoostBallInto 0 0.016; statecall u04f7 BoostBallInto 0 0.016
+@f2900 fsm u04f7 Patrol
+@f2910 fsm u04f7 BoostBallInto
+@f2920 fsm u04f7 Patrol
+@f2930 fsm u04f7 BoostBallInto
+@f2940 fsm u04f7 Patrol
+@f2950 fsm u04f7 BoostBallInto
+@f3000 fsm u04f7 BoostBallFire
+@f3150 fsm u04f7 BoostBallRoll
+@f3350 fsm u04f7 DiveAttack
+@f3550 fsm u04f7 TravelToCoverPoints
+@f3750 fsm u04f7 MeleeDash
+@f3900 fsm u04f7 MissileJump
+@f4050 fsm u04f7 TravelToPissedOff
+@f4250 fsm u04f7 PissedOff
+@f4400 fsm u04f7 TurnToFacePlayer
+@f4500 fsm u04f7 FreezeBeam
+@f4700 fsm u04f7 PhazonSuck
+@f4850 fsm u04f7 PhazonAttack
+@f4870 statecall u04f7 PhazonAttack 0 0.016; statecall u04f7 PhazonAttack 1 0.0135; uevent u04f7 27; uevent u04f7 27
+@f5050 fsm u04f7 PhazonEnraged
+@f5200 fsm u04f7 PhazonMissiles
+@f5400 fsm u04f7 Patrol
+@f5450 send u066a Deactivate; hint u066d area 7; hint u066b area 7
+@f5460 hint u066c 28 radius 20; place u04f7 68.0 401.4 164.6
+@f5470 status; obj u04f7
+@f5600 objs darksamus
+@f5650 statecall u04f7 GetUp 0 0.016; statecall u04f7 GetUp 1 0.016; statecall u04f7 GetUp 1 0.016; statecall u04f7 GetUp 2 0.016; statecall u04f7 GetUp 1 0.016
+@f5700 fsm u04f7 Patrol

@@ -468,6 +468,9 @@ TUniqueId CDarkSamus::GetNextBattleStage(CStateManager& mgr) const {
 // links (0x0000B928): the first that is a hint. An active next hint whose 0x15C (the radius) is
 // lbl_10_rodata_25C = 0.0f counts up (0x0000B99C), an inactive one resets the count (0x0000B9A4);
 // four (`cmpwi r29, 0x4` at 0x0000B9CC) or no next hint ends the chain.
+// Unmarked (ds43): one forced call (the rooftop never advances to a stage whose info +0x35 is 1)
+// ran the chain walk, but five arms are still short (gcov 2026-10-22: the start tests, the
+// arrived-link loop and its null test).
 void CDarkSamus::ActivateHintChains(CStateManager& mgr) {
   const rstl::vector< TUniqueId > starts =
       FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
@@ -630,6 +633,9 @@ CVector3f CDarkSamus::GetPlayerAimPosition(CStateManager& mgr) const {
 // player's aim position (fn_10_1E360 at 0x0001E3F8, fn_10_1E4C4 at 0x0001E46C); the best score
 // above lbl_10_rodata_410 = -1000.0f (the fcmpo at 0x0001E470, strict) wins. No cover point
 // answers kInvalidUniqueId (the lhz at 0x0001E3E8).
+// Arms: the fight, plus a scored cover point made inactive and moved to another area (ds43 gdb
+// calls).
+// @ fn_10_1E3C0
 TUniqueId CDarkSamus::FindBestCoverPoint(CStateManager& mgr) const {
   TUniqueId best = kInvalidUniqueId;
   float bestScore = -1000.f;
@@ -862,6 +868,9 @@ void CDarkSamus::Separate(CStateManager& mgr) {
 // AddAdditiveAnimation at 0x0001D958). kStateMsg_Deactivate (the r5 against 2 at 0x0001D960)
 // removes the animation when there is one (the index against -1, 0x0001D96C/0x0001D970;
 // DelAdditiveAnimation at 0x0001D980) and forgets it (0x0001D988). kStateMsg_Update does nothing.
+// Arms: the fight, plus a FindBestAnimation score forced to 0 and Deactivate with no animation
+// (ds43).
+// @ fn_10_1D860
 void CDarkSamus::UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg) {
   if (msg == kStateMsg_Activate) {
     const CPASAnimParmData parms(pas::kAS_AdditiveReaction, CPASAnimParm::FromEnum(5));
@@ -1741,6 +1750,9 @@ void CDarkSamus::BoostBallInto(CStateManager& mgr, EStateMsg msg, float dt) {
 // bit 0x80, `cmplwi r0, 0x1` at 0x0000B768), of type 0x11 (`cmpwi r0, 0x11` at 0x0000B774),
 // whose radius 0x15C holds the actor (`fcmpo cr0, f30, f0` at 0x0000B7E0: not beyond it) and
 // whose chain fn_10_BA38 does not answer true for (`clrlwi. r0, r3, 24` at 0x0000B80C).
+// Arms: the fight, plus the first hint inactive / of another type / with a chain answering true,
+// and no object for any uid (ds43 gdb calls).
+// @ fn_10_B6C4
 const CScriptAIHint* CDarkSamus::FindBoostBallHint(CStateManager& mgr) const {
   const rstl::vector< TUniqueId > links = FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
   float best = 3.4028235e38f; // lbl_10_rodata_2BC (0x0000B728)
@@ -1762,7 +1774,7 @@ const CScriptAIHint* CDarkSamus::FindBoostBallHint(CStateManager& mgr) const {
     if (distSq > radius * radius) { // 0x0000B7E4
       continue;
     }
-    if (!(distSq < best)) { // 0x0000B7EC
+    if (!(distSq < best)) { // `bge` at 0x0000B7EC: a NaN distance is skipped too
       continue;
     }
     if (BoostChainHasInactiveHint(mgr, hint->GetUniqueId())) { // 0x0000B80C
@@ -2277,6 +2289,9 @@ void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
 // runs the collision failsafe (0x000152C4). Then the stuck count as in fn_10_14FE0
 // (0x000152C8..0x00015308). Every message, unless blocked (`extrwi.` at 0x00015310), runs the dash
 // step (fn_10_12CE0 at 0x00015324).
+// Arms: the fight, plus no stage, a double dash, stuck once/twice, no cover point and a pick of
+// weight 0 (ds43 gdb calls).
+// @ fn_10_150DC
 void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("Dash", msg);
   if (msg == kStateMsg_Activate) {
@@ -2500,7 +2515,9 @@ void CDarkSamusDive::Reset() {
 // lbl_10_rodata_3FC = 0.0f while within lbl_10_rodata_414 = 8.0f (`fcmpo; cror` at 0x00012AC4);
 // the first point with a clear ring path (fn_10_16600 with lbl_10_rodata_3E8 = 1.0f and
 // lbl_10_rodata_4A4 = 1.7f, 0x00012A60) becomes the target.
-// Unmarked: the arm whose flat line cannot be normalized has not run yet.
+// Arms: the target on the actor (no flat line), every ring path blocked, a clear path (ds43 gdb
+// calls).
+// @ fn_10_12960
 bool CDarkSamus::FindDiveLanding(CStateManager& mgr, CVector3f* target) const {
   CVector3f dir = GetTranslation() - *target;
   dir.SetZ(0.f);
@@ -2561,7 +2578,8 @@ void CDarkSamus::UpdateDiveFlight(float scale) {
 // which the host CActor lacks). The bounce direction is the flat normal with z
 // lbl_10_rodata_3E0 = 2.0f, normalized (0x0001CF20); then vertical movement on, off the ground
 // and off static ground (0x0001CF48..0x0001CF60).
-// Unmarked: the arm with no flat normal (the wall hit and stuck callers) has not run yet.
+// Arms: no normal (via 11EB8) and a flat normal (ds43 gdb calls).
+// @ fn_10_1CDD0
 void CDarkSamus::BounceDive(CStateManager& mgr, const CVector3f& normal) {
   mDive.mBounced = true;
   StopDiveBubble(mgr);
@@ -2584,7 +2602,8 @@ void CDarkSamus::BounceDive(CStateManager& mgr, const CVector3f& normal) {
 // fn_10_11EB8 (0x00011EB8, 0xEC bytes): a move of more than lbl_10_rodata_428 = 0.2f since the
 // last position (`fcmpo; ble` at 0x00011F20) restarts the stuck timer there; otherwise the timer
 // runs and past lbl_10_rodata_3E4 = 0.5f (0x00011F68) the actor bounces with no normal.
-// Unmarked: the stuck bounce (past 0.5 s) has not run yet.
+// Arms: moved, still under 0.5 s, stuck past 0.5 s (ds43 gdb calls).
+// @ fn_10_11EB8
 void CDarkSamus::UpdateDiveStuck(CStateManager& mgr, float dt) {
   if ((mDive.mLastPos - GetTranslation()).Magnitude() > 0.2f) {
     mDive.mLastPos = GetTranslation();
@@ -2601,9 +2620,8 @@ void CDarkSamus::UpdateDiveStuck(CStateManager& mgr, float dt) {
 // (0x00011E2C) and the 0x04 bit; then, unbounced (0x00011E44) on a stage (the null test at
 // 0x00011E5C) whose +0x59 is set (0x00011E70), fn_10_18628 with lbl_10_rodata_3FC = 0.0f and
 // lbl_10_rodata_258 = 5.0f; otherwise the shield byte 0xCD0 is cleared (0x00011E9C).
-// Unmarked: the 0xCD0 arm has not run: a landing dive is never bounced, and every dive stage of
-// the two surveyed encounters (Agon, rooftop) sets +0x59; 0j_cliff_hall_loop and
-// 12_temple_finalgate_dark are not surveyed.
+// Arms: already sent, bounced, no stage, +0x59 clear, +0x59 set (ds43 gdb calls).
+// @ fn_10_11DDC
 void CDarkSamus::SendDiveAttack(CStateManager& mgr) {
   if (mDive.mAttackSent == true) {
     return;
@@ -2794,9 +2812,8 @@ float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) const {
 // lbl_10_rodata_3F0 = 100.0f), 0x0000F194 and 0x0000F1B0); the uid and the two rolls go into
 // the next entry (0x0000F1CC..0x0000F1D4) and the count rises (0x0000F1E4). The first roll (f31,
 // 0x0000F1DC) answers, the value a cache hit returns.
-// Unmarked: the fight does not reach the function (the coverage run: 0 hits - the reflect chance
-// is only rolled for a projectile that comes at the boss), so its two arms (the cache miss and
-// the cache hit) were not run.
+// Arms: eleven new uids (the eleventh erases the first) and a cache hit (ds43 gdb calls).
+// @ fn_10_F100
 float CDarkSamus::RollReflectChanceForHit(CStateManager& mgr, TUniqueId uid) const {
   for (uint i = 0; i < mReflectChanceCount; ++i) {
     if (mReflectChances[i].mUid == uid) {
@@ -2822,6 +2839,9 @@ float CDarkSamus::RollReflectChanceForHit(CStateManager& mgr, TUniqueId uid) con
 // must exist (0x0001EEB8). Then fn_10_F100's roll (0x0001EED8) is compared with the stage
 // info's +0x2C (the third missile float) when the weapon is comboed (the super missile; the
 // weapon mode's byte 2 bit 0x40, `lbz r0, 0x2(r29)` + `extrwi r3, r0, 1, 25`, 0x0001EEDC) and with its +0x28 (the second missile float, 0x0001EF0C) otherwise.
+// Arms: too soon, not a missile, no stage, plain and comboed missiles under/over the stage chances
+// (ds43 gdb calls).
+// @ fn_10_1EE4C
 bool CDarkSamus::CanReflectHit(CStateManager& mgr, const CDamageInfo& damage, TUniqueId uid) const {
   const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0001EE74, 0x0001EE78
   if (3.f + since > mElapsedTime) { // lbl_10_rodata_438, 0x0001EE8C
@@ -3720,6 +3740,9 @@ void CDarkSamus::StopSweepBeam() {
 // (`cmplwi r0, 0x1` at 0x0000C3E4). With an end sound
 // (`cmplwi r0, 0x0` at 0x0000C3F8) it moves to the end point along lbl_10_rodata_288 = -1.0f times
 // the actor's forward vector (0x0000C410) at volume 0x7F (`li r6, 0x7f` at 0x0000C42C).
+// Arms: the fight, plus a gun facing straight up (no normalize) and an end sound handle (ds43 gdb
+// calls).
+// @ fn_10_C2B0
 void CDarkSamus::UpdateSweepBeamAim(CStateManager& mgr, float dt) {
   UpdateSweepBeamEnd(mgr);
   const CVector3f gunPos = mGunLctrXf.GetTranslation();
@@ -3794,6 +3817,9 @@ void CDarkSamus::UpdateSweepBeamEnd(CStateManager& mgr) {
 // rays i = 1..n-1 (`cmpw r26, r27` at 0x0000C258) run along last * (lbl_10_rodata_264 = 1.0f - i/n)
 // + this * i/n for the length 0xDC0 (fn_10_BE18 at 0x0000C250). Then the ray along this direction
 // (0x0000C270), and this direction becomes the last (0x0000C274..0x0000C288).
+// Arms: the fight, plus no beam asset (ds43 gdb call). Retail interpolates with fmadds (fused); the
+// host multiplies and adds (a known fma knife-edge, as the mathdiff ruling).
+// @ fn_10_C104
 void CDarkSamus::SweepBeamDamage(CStateManager& mgr) {
   if (mSweepBeamPart == 0) { // 0x0000C130
     return;
@@ -5115,6 +5141,9 @@ void CDarkSamus::UpdateDashStep(CStateManager& mgr, EStateMsg msg) {
 // (ObjectById, the null test at 0x00014BE4) takes the radius damage from the actor's position
 // with the actor's uid (ApplyRadiusDamage at 0x00014C0C). Last the collision failsafe
 // (0x00014C30).
+// Arms: the fight and the stuck-twice Dash call (ds43); the null arm (`mr. r6, r3` at 0x00014BE4)
+// is dead: the uids come from BuildNearList in the same frame and deletions are deferred.
+// @ fn_10_14A00
 void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
   const float radius = 15.f + static_cast< float >(mDashStuckCount);
   const CDamageInfo info(CWeaponMode(kWT_UnknownSource, false, false, true), 100.f, radius, 0.f,

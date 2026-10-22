@@ -777,6 +777,8 @@ const CHealthInfo* CDarkSamus::GetHealthInfo() const { return CPatterned::GetHea
 // (attack 0x800000) every weapon but phazon does nothing: the patterned vulnerability is copied
 // to 0xFD0 (fn_10_FFB4, its operator=, 0x00010128) and every normal type but kWT_Phazon, every
 // charged and every combo slot is set to (lbl_10_rodata_3FC = 0.0f, kE_Normal, false).
+// Arms: 0xCD0 = 1, the enrage attack 0x800000, neither (ds43 gdb calls).
+// @ fn_10_100DC
 const CDamageVulnerability* CDarkSamus::GetDamageVulnerability() const {
   if (mGuestCD0 == 1) { // 0x000100FC
     return &mGuestCD4;
@@ -1316,6 +1318,9 @@ CDamageVulnerability* CDarkSamus::DamageVulnerability() {
 // 0x80, 0x0000F508). In the phazon phase (0x0000F538) a health below 0x1054 -
 // lbl_10_rodata_E4 = 60.0f (0x0000F568) is set to that mark - lbl_10_rodata_41C = 0.1f, the
 // 0xCD0 byte to 1 and 0xD24 to 1.0f (0x0000F598..0x0000F5A0).
+// Arms: inactive; dying allowed / held at 1; phazon phase below and above the mark (ds43 gdb
+// calls).
+// @ fn_10_F488
 void CDarkSamus::TakeDamage(const CVector3f& direction, float magnitude) {
   CPatterned::TakeDamage(direction, magnitude);
   if (GetActive() != true) {
