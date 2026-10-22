@@ -203,6 +203,10 @@ CPatterned::StateMachine::SStateFunction skStates[] = {
 // arguments at 0x0000DA50..0x0000DA5C). The path search is fn_9_D904's own call at 0x0000D9B4:
 // CPFArea null, flags 1, the patterned info's pathfinding index (+0xEC), radii 1.0f (rodata_43C)
 // and no avoidance filter, root position 0 (kRP_Center).
+// Run: cp4 2026-10-22 (m59/msw/c59, tools/cov/specs/commandopirate_cp4.py): every guest arm; the
+// helpers' invalid PART id and zero back-up speed forced; the untaken arms are the host's
+// exception-unwind landing pads (no retail behaviour).
+// @ fn_9_D904
 CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                  const CTransform4f& xf, const CModelData& modelData,
                                  const CActorParameters& actParms, const CPatternedInfo& pInfo,
@@ -345,6 +349,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
   // @0x0000D9D4 copies the block's +0xF4) and ends as the actor's own vulnerability with the
   // ignore radius: fn_9_E6D0 (@0x0000E638) copies GetDamageVulnerability(this)->MakeIgnoreRadius()
   // over it. That is the copy GetDamageVulnerability returns while the shield is up.
+  // (gcov: the temporary's untaken arms here are exception-unwind landing pads.)
   mShieldVulnerability = CPatterned::GetDamageVulnerability()->MakeIgnoreRadius();
 
   // The charge time from the back-up locomotion speed (kLA_BackUp = 3, 0x0000E654).
@@ -355,7 +360,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
   const CAABox bb = GetBoundingBox();
   mPathFindSearch.SetCharacterRadius(bb.GetMaxPoint().GetX() - bb.GetMinPoint().GetX());
   mPathFindSearch.SetCharacterHeight(bb.GetMaxPoint().GetZ() - bb.GetMinPoint().GetZ());
-}
+} // (gcov: the members' untaken unwind arms on this brace are exception landing pads.)
 
 // fn_9_D904's three token blocks (0x0000DC24..0x0000E080): each tests the id against -1 and only
 // then builds a TLockedToken from gpSimplePool->GetObj('PART', id). Run: every actor's ctor; the
@@ -2049,9 +2054,8 @@ void CCommandoPirate::x1EF8_Activate() {
 }
 
 // vtable slot 0x84 = fn_9_BF44 (0x2b0): what the blade and the shield hit.
-// The run in area 59 (2026-10-21) reaches only the early return: the shield's own arms need the
-// 0x04 bit of the byte at guest this+0xC65, and the module's ArmShield state (fn_9_86B4) and its
-// shield-charge states are what set it - until those are ported, this body is not marked.
+// A natural run reaches only the early return: the shield's own arms need the 0x04 bit of the
+// byte at guest this+0xC65, which only the module's shield-charge states set (so it is forced).
 //
 // fn_9_BF44 (0x2b0 bytes) runs the base's own CollidedWith first (the call at 0x0000BF70) and then
 // the module's own: while the flag byte at guest this+0xC65 has its 0x04 bit (the test at
@@ -2076,6 +2080,9 @@ void CCommandoPirate::x1EF8_Activate() {
 // and an entry whose left material list has kMT_Floor (bit 31, the mask the load at 0x0000C108
 // builds, against the list's low word at +0x34, the test at 0x0000C1A8..0x0000C1C8) only stores
 // the normal.
+// Run: cp4 2026-10-22 (c59, tools/cov/specs/commandopirate_cp4.py): every arm; the +0xC65 0x04
+// bit outside a charge, the player's id, the up axis turned over and no floor bit forced.
+// @ fn_9_BF44
 void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                    CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr);                       // 0x0000BF70
@@ -2109,9 +2116,8 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
     }
     const float steep =
         CVector3f::Dot(GetTransform().GetColumn(kDZ), info.GetNormalLeft());  // 0x0000C158..0x0000C16C
-    // fcmpo/bge at 0x0000C170..0x0000C174: only steep >= 0.707f falls through, so NaN takes
-    // this arm.
-    if (!(steep >= 0.707f)) {                                     // rodata_4E8, 0x0000C170..0x0000C174
+    // fcmpo/bge at 0x0000C170..0x0000C174: bge is taken on a NaN, so a NaN skips this arm.
+    if (steep < 0.707f) {                                         // rodata_4E8, 0x0000C170..0x0000C174
       xc64_ |= 0x02;                                              // 0x0000C178..0x0000C184
       xbb8_ = info.GetNormalLeft();                               // 0x0000C184..0x0000C19C
       return;
@@ -2615,8 +2621,9 @@ bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) 
   if (CVector3f::Dot(delta, GetTransform().GetForward()) <= 0.f) {
     return false;                                   // 0x0000B71C
   }
-  // 0x0000B748 is bge to "false": a NaN +0xB60 falls through to true.
-  return xb64_ < 0.75f || !(xb60_ >= 1.5f);         // 0x0000B730, 0x0000B744
+  // 0x0000B734 blt / 0x0000B748 bge to "false": a NaN takes neither blt nor falls past bge, so
+  // a NaN +0xB64 tests +0xB60 and a NaN +0xB60 returns false.
+  return xb64_ < 0.75f || xb60_ < 1.5f;             // 0x0000B730, 0x0000B744
 }
 
 // fn_9_B660: the commando arms its shield when its flag byte at guest this+0xC64 has its 0x80
@@ -3008,9 +3015,9 @@ void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
       // 0x0000AC6C..0x0000AC80: the actor's facing is the transform's forward column
       // (GetTransform().GetForward()); the guest's three loads are its 0x28, 0x38 and 0x48.
       const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), delta);
-      // 0x0000AC94 ble to "over": a NaN angle falls through to "ready".
-      mAnimationState.SetState(!(angle <= 0.34906584f) ? CAnimationState::kAS_Ready
-                                                       : CAnimationState::kAS_Over);
+      // 0x0000AC94 ble to "over": ble is taken on a NaN, so a NaN angle is "over".
+      mAnimationState.SetState(angle > 0.34906584f ? CAnimationState::kAS_Ready
+                                                   : CAnimationState::kAS_Over);
     } else {
       // 0x0000ACB0: no target, so the animation is over.
       mAnimationState.SetState(CAnimationState::kAS_Over);
