@@ -1,0 +1,60 @@
+offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
+0x0	0x2C	CScriptPlayerTurret	-	virtual	B	lbl_63_data_40+3C	the vtable's slot 15 (`GetHealthInfo`): the module's own thunk, now a body of its own (section 20)	marked	fn_63_0
+0x2C	0x24	REL runtime	RELExit	runtime	T	_epilog	the REL linker's exit (the `_epilog` calls it) (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	RELExit
+0x50	0x20	REL runtime	RELMain	runtime	T	_prolog	the REL's entry (the `_prolog` calls it) (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	RELMain
+0x70	0xD4	CScriptPlayerTurret	-	func	B	RELMain	the REL's setup (called by `RELMain`): it stores the loader and the five pointers-to-member - the port's `RELMain` is that body (section 20)	marked	fn_63_70
+0x144	0x4CC	CScriptPlayerTurret	-	func	B	fn_63_70	the loader: `fn_63_70` stores it at `lbl_63_bss_20`+0 (0x98)	marked	fn_63_144
+0x610	0x64	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it	not-port	fn_63_610
+0x674	0xB8	CScriptPlayerTurret	-	func	H	fn_63_144	`SLdrEditorProperties`' constructor - the generated property class (the loader calls it at 0x238)	not-port	fn_63_674
+0x72C	0x114	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it (the second property reader)	not-port	fn_63_72C
+0x840	0xC	CScriptPlayerTurret	-	virtual	B	lbl_63_data_34+8	the PMF table `lbl_63_data_34`: the DOL calls it	marked	fn_63_840
+0x84C	0x2CC	CScriptPlayerTurret	-	func	B	fn_63_1134	`fn_63_1134` calls it (0x12C8): the turret's shot	marked	fn_63_84C
+0xB18	0x48	CScriptPlayerTurret	-	func	H	fn_63_84C	`CImpactVisorEffect`'s constructor (a host copy)	not-port	fn_63_B18
+0xB60	0xB4	CScriptPlayerTurret	-	func	H	fn_63_B18	`CImpactVisorEffect`'s copy constructor (a host copy)	not-port	fn_63_B60
+0xC14	0x40	CScriptPlayerTurret	-	func	H	fn_63_B60	the `CToken`/`CMemory` copy chain the compiler emitted	not-port	fn_63_C14
+0xC54	0x20	CScriptPlayerTurret	-	func	H	fn_63_C14	the same chain	not-port	fn_63_C54
+0xC74	0x28	CScriptPlayerTurret	-	func	H	fn_63_C54	the same chain	not-port	fn_63_C74
+0xC9C	0x80	CScriptPlayerTurret	-	func	H	fn_63_C74	the same chain	not-port	fn_63_C9C
+0xD1C	0x6C	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it	not-port	fn_63_D1C
+0xD88	0x54	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it	not-port	fn_63_D88
+0xDDC	0x3C	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it	not-port	fn_63_DDC
+0xE18	0x3C	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it	not-port	fn_63_E18
+0xE54	0x5C	CScriptPlayerTurret	-	func	H	fn_63_B18 fn_63_F18	the `CToken`/`CMemory` copy chain	not-port	fn_63_E54
+0xEB0	0x20	CScriptPlayerTurret	-	func	H	fn_63_E54	the same chain	not-port	fn_63_EB0
+0xED0	0x48	CScriptPlayerTurret	-	func	H	fn_63_EB0	the same chain	not-port	fn_63_ED0
+0xF18	0x54	CScriptPlayerTurret	-	func	H	fn_63_84C	`CImpactVisorEffect`'s destructor (a host copy; `fn_63_84C` calls it at 0x9AC)	not-port	fn_63_F18
+0xF6C	0xB4	CScriptPlayerTurret	-	virtual	B	fn_63_1070 lbl_63_data_10+8	the PMF table `lbl_63_data_10`: the DOL calls it	marked	fn_63_F6C
+0x1020	0x50	CScriptPlayerTurret	-	func	H	fn_63_376C	the global string's destructor (registered by `fn_63_376C` at 0x379C)	not-port	fn_63_1020
+0x1070	0xC4	CScriptPlayerTurret	-	virtual	B	lbl_63_data_4+8	the PMF table `lbl_63_data_04`: the DOL calls it	marked	fn_63_1070
+0x1134	0x32C	CScriptPlayerTurret	-	virtual	B	lbl_63_data_28+8	the PMF table `lbl_63_data_28`: the DOL calls it	marked	fn_63_1134
+0x1460	0x54	CScriptPlayerTurret	-	func	B	fn_63_1B70	`fn_63_1B70` calls it (0x1BC8)	marked	fn_63_1460
+0x14B4	0x54	CScriptPlayerTurret	-	func	B	fn_63_1BE8	`fn_63_1BE8` calls it (0x1FF0)	marked	fn_63_14B4
+0x1508	0xA8	CScriptPlayerTurret	-	func	B	fn_63_84C	`fn_63_84C` calls it (0x870)	marked	fn_63_1508
+0x15B0	0x3C4	CScriptPlayerTurret	-	func	B	fn_63_1BE8	`fn_63_1BE8` calls it (0x2244)	marked	fn_63_15B0
+0x1974	0x3C	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it (a `CMemory` destructor)	not-port	fn_63_1974
+0x19B0	0x184	CScriptPlayerTurret	-	func	B	fn_63_15B0	`fn_63_15B0` calls it five times (the five animation lookups)	marked	fn_63_19B0
+0x1B34	0x3C	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it (a `CMemory` destructor)	not-port	fn_63_1B34
+0x1B70	0x78	CScriptPlayerTurret	-	virtual	B	lbl_63_data_1C+8	the PMF table `lbl_63_data_1C`: the DOL calls it	marked	fn_63_1B70
+0x1BE8	0x784	CScriptPlayerTurret	-	virtual	B	lbl_63_data_40+18	the vtable's slot 6 (`lbl_63_data_40`)	marked	fn_63_1BE8
+0x236C	0x54	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it (a `CMemory` destructor)	not-port	fn_63_236C
+0x23C0	0x968	CScriptPlayerTurret	-	virtual	B	lbl_63_data_40+14	the vtable's slot 5	marked	fn_63_23C0
+0x2D28	0x40	CScriptPlayerTurret	-	func	H	fn_63_23C0	`CVector3f::Cross`, the guest's inline (`fn_63_23C0` calls it at 0x2684)	not-port	fn_63_2D28
+0x2D68	0x2CC	CScriptPlayerTurret	-	virtual	B	lbl_63_data_40+24	the vtable's slot 9	marked	fn_63_2D68
+0x3034	0x3C	CScriptPlayerTurret	-	virtual	B	lbl_63_data_40+48	the vtable's slot 18	marked	fn_63_3034
+0x3070	0x78	CScriptPlayerTurret	-	virtual	B	lbl_63_data_40+8	the vtable's slot 2 (the destructor)	marked	fn_63_3070
+0x30E8	0x3B4	CScriptPlayerTurret	-	func	B	fn_63_144	`fn_63_144` calls it (the `rs_new 0x230` at 0x494)	marked	fn_63_30E8
+0x349C	0x74	CScriptPlayerTurret	-	func	H	fn_63_30E8	`CToken(IObj* null)`, the host's empty token (a host copy; `fn_63_30E8` calls it at 0x3384)	not-port	fn_63_349C
+0x3510	0x90	CScriptPlayerTurret	-	virtual	T	lbl_63_data_D4+8	the generated owner's table (`auto_04_00000000_data.s`): a table entry, no retail caller	not-port	fn_63_3510
+0x35A0	0x78	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it (the owner's destructor)	not-port	fn_63_35A0
+0x3618	0x90	CScriptPlayerTurret	-	func	H	fn_63_349C	the generated owner's constructor (`fn_63_349C` calls it)	not-port	fn_63_3618
+0x36A8	0x5C	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it (the owner's destructor)	not-port	fn_63_36A8
+0x3704	0x48	CScriptPlayerTurret	-	func	T	-	dead: no `bl` and no table names it (the owner's destructor)	not-port	fn_63_3704
+0x374C	0x20	CScriptPlayerTurret	-	func	H	fn_63_30E8	`CModelData`'s default constructor (a host copy; `fn_63_30E8` calls it at 0x3268)	not-port	fn_63_374C
+0x376C	0x90	CScriptPlayerTurret	-	static-init	H	-	the module's static initializer (the `.ctors` entry): compiler-generated	not-port	fn_63_376C
+0x37FC	0x58	REL runtime	__destroy_global_chain	runtime	T	__destroy_global_chain_reference+0	the REL linker's global-object registry (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	__destroy_global_chain
+0x3854	0x1C	REL runtime	__register_global_object	runtime	T	fn_63_376C	the REL linker's global-object registry (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	__register_global_object
+0x3870	0xC4	REL runtime	_unresolved	runtime	T	-	the REL linker's "unlinked function called" report (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	_unresolved
+0x3934	0x24	REL runtime	_epilog	runtime	T	-	the REL linker's exit (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	_epilog
+0x3958	0x24	REL runtime	_prolog	runtime	T	-	the REL linker's entry (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	_prolog
+0x397C	0x4C	REL runtime	ModuleDestructors	runtime	T	_epilog	the REL linker's `_dtors` walker (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	ModuleDestructors
+0x39C8	0x4C	REL runtime	ModuleConstructors	runtime	T	_prolog	the REL linker's `_ctors` walker (ScriptPlayerTurret.md 16.2 had H; REL runtime is T per the B/H/T rules)	not-port	ModuleConstructors
