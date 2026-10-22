@@ -1,6 +1,8 @@
 # 04_cliff_contraption (914f1381) layer 2: split22's fight (the two chassis u0532/u0521 and their
 # heads u0531/u0520), then missiles at a locked-on chassis (the dodge search fn_75_91E4), damage
-# messages to the chassis (fn_75_A0A0) and the dead chassis's head in FaceTarget (fn_75_50B0).
+# messages to chassis u0521 from its collision actors (fn_75_A0A0), head u0520 in FaceTarget
+# (fn_75_50B0), and after u0532 dies (f6000) and u0520 dies (f6400) head u0531 seeks and docks
+# with the free u0521 (fn_75_57F0, fn_75_E68C).
 @f60 layer 2
 @f200 objs splitter
 @f205 objs collision
@@ -17,7 +19,20 @@
 @f2000 place u0521 player 10
 @f2100 noise 4
 @f2150 shoot
+@f2296 shoot u067d 80
+@f2298 shoot u067e 80
 @f2300 send u0521 Damage
+@f2302 send u0521 Damage from u067d
+@f2304 send u0521 Damage from u067e
+@f2306 send u0521 Damage from u067d
+@f2308 send u0521 Damage from u067e
+@f2310 send u0521 Damage from u067d
+@f2320 send u0521 Damage from u067d
+@f2340 send u0521 Damage from u067e
+@f2360 damage u067d 5
+@f2380 damage u067e 5
+@f2400 shoot u067d
+@f2420 shoot u067e
 @f2600 place u0532 player 25
 @f3200 place u0532 player 6
 @f3400 place u0521 player 14
@@ -31,9 +46,29 @@
 @f3640 press l+y 4
 @f3700 press l 0
 @f3760 press l+y 4
-@f3800 press l 4
+@f3800 press l 0
+@f3860 press l+y 4
+@f3900 press l 0
+@f3960 press l+y 4
+@f4000 press l 4
 @f4200 objs splitter
+@f4400 fsm u0520 FaceTarget
+@f4800 fsm u0520 FaceTarget
 @f6000 kill u0532
 @f6300 fsm u0531 FaceTarget
-@f7000 fsm u0531 FaceTarget
+@f6400 kill u0520
+@f6500 obj u0531
+@f7600 obj u0531
 @f8800 objs splitter
+@f8996 shoot u067f 80
+@f8998 shoot u0680 80
+@f9000 send u0521 Damage from u067f
+@f9002 send u0521 Damage from u0680
+@f9004 send u0521 Damage from u067f
+@f9006 send u0521 Damage from u0680
+@f9008 send u0521 Damage from u067f
+@f9010 send u0521 Damage from u0680
+@f9020 damage u067f 99999
+@f9040 send u0521 Damage from u0680
+@f10500 obj u0531
+@f11800 objs splitter

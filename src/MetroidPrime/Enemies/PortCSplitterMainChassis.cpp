@@ -271,6 +271,9 @@ bool CSplitterMainChassis::BreakOutOfSpin(CStateManager&, const CTriggerData&) c
 // let a melee attack start (0xE244 CanStartAttack with 0). Then the target at 0xCC0 must be there
 // (0xE250-0xE268) at a squared distance from the square of the data's spin attack min range
 // (0x880) to the square of its max range (0x884), both ends included (0xE2B0-0xE2C4).
+// Arms: ALL-ARMS; the bit, timer and range arms ran, the no-team arm (0xCBE invalid) and the team's yes
+// (CanStartAttack overridden) forced (split23 force_ret, splitter_split23.py).
+// @ fn_75_E1D0
 bool CSplitterMainChassis::ShouldSpinAttack(CStateManager& mgr, const CTriggerData&) const {
   // 0xE1F0 extrwi. bit 24 (0x80); 0xE204 fcmpo, 0xE208 cror eq,lt,eq, 0xE20C bne: a NaN timer
   // gives false.
@@ -1096,6 +1099,9 @@ void CSplitterMainChassis::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 // steering speed range becomes the chassis's 0xD0C (0x00009A78) and the command manager gets
 // the locomotion command with the move vector, a zero face vector and the weight 1.0f
 // (0x00009A8C-0x00009ADC).
+// Arms: ALL-ARMS; the shipped fight's separation and forward/side steps ran; each step answer (0-4, -1),
+// a separation with only y or only z and an unsafe move vector forced (split23 force_ret, splitter_split23.py).
+// @ fn_75_986C
 void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
   CBodyStateCmdMgr& cmdMgr = BodyController()->CommandMgr();
   const CVector3f separation = PortSeparationVector(mgr);
@@ -2535,6 +2541,10 @@ void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInf
 // dies (0xA2CC, vtable 0x98 Death with kSS_DeathRattle) and records the actor as the cause
 // (0xA2F4 UpdateHealthCause); it is knocked back (0xA320-0xA33C) and the actor's health is
 // re-armed (0xA340). With or without the actor the hint grant follows (0xA34C fn_75_AB8C).
+// Arms: ALL-ARMS; the con's `send u0521 Damage [from <collision actor>]` ran the null-actor and plain
+// hits; a dead chassis, a live weapon as the last touched object (CCollisionActor::GetLastTouchedObject
+// overridden) and a lethal hit (health 0.0f) forced (split23 force_ret, splitter_split23.py).
+// @ fn_75_A0A0
 void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive) {  // 0xA0D4-0xA0D8
     return;

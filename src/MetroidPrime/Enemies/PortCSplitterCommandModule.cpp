@@ -523,6 +523,9 @@ bool CSplitterCommandModule::HasTarget(CStateManager&, const CTriggerData&) cons
 // one that is not active (0x582C lbz, 0x5830 extrwi with the word's bit 24 - the byte's 0x80,
 // the host's GetActive). What is left is the chassis's own command module id (0xC6C, 0x583C lhz):
 // the trigger is true when the chassis has no command module yet (0x5848 bne).
+// Arms: ALL-ARMS; the docking chassis ran (after `kill u0532`); the invalid id, a non-chassis id, a
+// headless, an inactive and a dead chassis forced (split23 force_ret, splitter_split23.py).
+// @ fn_75_57F0
 bool CSplitterCommandModule::HasDockingTarget(CStateManager& mgr, const CTriggerData&) const {
   const CSplitterMainChassis* chassis =
       TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mCheckedChassisId));
@@ -712,6 +715,9 @@ void CSplitterCommandModule::Scanning(CStateManager& mgr, EStateMsg msg, float d
 // (0x51A4 GetAngleDiff) below it the vector at 0xF24 is the offset normalized (0x51BC-0x51DC),
 // else the Slerp from the Y column toward the normalized offset by the turn (0x51E4-0x521C).
 // Deactivate and other messages do nothing.
+// Arms: ALL-ARMS; the turn ran (`fsm u0520 FaceTarget`); no target, a zero offset (the head as its
+// own target) and a zero dt forced (split23 force_ret, splitter_split23.py).
+// @ fn_75_50B0
 void CSplitterCommandModule::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mEditorProperties = GetTransform().GetColumn(kDY);
@@ -1150,6 +1156,8 @@ void CSplitterCommandModule::PortModuleTransform(CTransform4f& out) const {
 // actor's health (0x30E8-0x3100) is above zero. With any other state, the flag set and the timer
 // at zero or below the state goes to 1, or 2 after a 1 (0x3138-0x3170), and fn_75_2CE0 runs
 // with 1 (0x3174-0x3188).
+// Arms: ALL-ARMS; states 0-3 with the bit set or clear, no actor, no manager and a shield actor at
+// 0.0f health (CCollisionActor::HealthInfo overridden) forced (split23 force_ret, splitter_split23.py).
 // @ fn_75_3004
 void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
   CParticleGenInfo* effect = PortGetShieldEffect();
