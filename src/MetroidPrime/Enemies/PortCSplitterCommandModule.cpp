@@ -2220,11 +2220,45 @@ CVector3f CSplitterCommandModule::GetAimPosition(const CStateManager& mgr, float
 }
 
 
-// vtable slot 0x84 = fn_75_6178.
+// The REL's data words at 0x434, 0x438 and 0x43C: the materials the head collides with (the
+// wall, the floor and the ceiling).  The port's SLdrSplitterCommandModuleData does not carry
+// them, so the REL's initialized values are used.
+static const EMaterialTypes kSplitterCollisionMaterials[] = {kMT_Wall, kMT_Floor, kMT_Ceiling};
+// The REL's two globals: the flag that says the material list is built (lbl_75_bss_0) and the
+// list itself (lbl_75_bss_8).
+static bool sSplitterCollisionMaterialsBuilt = false;
+static CMaterialList sSplitterCollisionMaterialList;
+
+// vtable slot 0x84 = fn_75_6178 (0x6178-0x6310): the head's collision.  The base's own
+// collision runs first (asm 0x619C); then the flag byte at 0xF6A's 0x01 bit must be clear (asm
+// 0x61A0-0x61A8) and the collided id must be invalid (asm 0x61B0-0x61BC).  The material list
+// is built once (asm 0x61C0-0x6290: the three data words, the flag set at 0x6284) and every
+// collision info's material (asm 0x62B8, 0x62C0) is matched against it (asm 0x62D4): a match
+// sets the flag byte's 0x01 bit (asm 0x62E0-0x62E4) and ends the walk (asm 0x62E8).
 void CSplitterCommandModule::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                            CStateManager& mgr) {
-  StandIn("CSplitterCommandModule::CollidedWith (vtable slot 0x84, fn_75_6178)");
   CPatterned::CollidedWith(id, list, mgr);
+  if ((mAutoDestructFlags & 0x1) != 0) {  // 0x61A0-0x61A8
+    return;
+  }
+  if (id != kInvalidUniqueId) {  // 0x61B0-0x61BC
+    return;
+  }
+  if (!sSplitterCollisionMaterialsBuilt) {  // 0x61C0-0x61CC
+    CMaterialList materials;
+    for (EMaterialTypes material : kSplitterCollisionMaterials) {
+      materials.Add(material);
+    }
+    sSplitterCollisionMaterialList = materials;
+    sSplitterCollisionMaterialsBuilt = true;  // 0x6284
+  }
+  for (uint i = 0; i < list.GetCount(); ++i) {  // 0x629C-0x62F0
+    if ((sSplitterCollisionMaterialList.GetValue() &
+         list[i].GetMaterialLeft().GetValue()) != 0) {  // 0x62C0-0x62D4
+      mAutoDestructFlags |= 0x1;  // 0x62E0-0x62E4
+      break;  // 0x62E8
+    }
+  }
 }
 
 // vtable slot 0x9C = fn_75_6174: the REL's whole body is a single `blr`, so the head ignores a
