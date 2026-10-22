@@ -2276,7 +2276,7 @@ bool CCommandoPirate::StateOver(CStateManager& mgr, const CTriggerData& data) co
 // +0x920 is -1, cmpwi r0, -0x1 at 0x0000BDA0), the block's flag byte at +0x15D (guest this+0x91D)
 // has its 0x80 bit set (extrwi. r0, r0, 1, 24 at 0x0000BDAC) and the module's flag byte at +0xC63
 // has its 0x20 bit set (extrwi. r0, r0, 1, 26 at 0x0000BDB8).
-// The block's +0x15D is the loader's mFlags1 - the "sound" property's bits 6, 3, 0 and 29 (the
+// The block's +0x15D is the loader's mFlags1 - the "sound" property's bits 8, 9, 10 and 11 (the
 // data ctor fn_9_EDC0 packs them at 0x0000EF34..0x0000EF60) - so the flag is script-supplied.
 // Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
 // arm; owner word and +0xC63 0x20 forced.
@@ -2427,13 +2427,13 @@ bool CCommandoPirate::x3338_IsJumpBackClear(CStateManager& mgr, const CVector3f&
 
 // fn_9_BB04: the block's flag byte at +0x15C (guest this+0x91C) has its 0x80 bit set (extrwi
 // r3, r0, 1, 24 at 0x0000BB08). That byte is the loader's mFlags0 - the "sound" property's bits
-// 14, 11, 8, 5, 2, 31, 28 and 25 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
+// 0..7 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
 // - so the flag is script-supplied.
 // run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
 // tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
-// the block's flag byte at guest this+0x91C (the loader's mFlags0, the "sound" property's bit 14)
+// the block's flag byte at guest this+0x91C (the loader's mFlags0, the "sound" property's bit 0)
 // has its 0x80 bit clear in every shipped CommandoPirate - the scan of the nine placements gives
-// the sound words 0x80, 0x300, 0x114 and 0x104, and none of them has bit 14 set.  The byte comes
+// the sound words 0x80, 0x300, 0x114 and 0x104, and none of them has bit 0 set.  The byte comes
 // only from the loader (the module never writes it), so the true arm is dead.
 // @ fn_9_BB04
 bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data) const {
@@ -2442,13 +2442,13 @@ bool CCommandoPirate::ShouldAmbush(CStateManager& mgr, const CTriggerData& data)
 
 // fn_9_BAF8: the block's flag byte at +0x15C (guest this+0x91C) has its 0x40 bit set (extrwi
 // r3, r0, 1, 25 at 0x0000BAFC). That byte is the loader's mFlags0 - the "sound" property's bits
-// 14, 11, 8, 5, 2, 31, 28 and 25 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
+// 0..7 (the data ctor fn_9_EDC0 packs them at 0x0000EED4..0x0000EF30)
 // - so the flag is script-supplied.
 // run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
 // tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
-// the block's flag byte at guest this+0x91C (the loader's mFlags0, the "sound" property's bit 11)
+// the block's flag byte at guest this+0x91C (the loader's mFlags0, the "sound" property's bit 1)
 // has its 0x40 bit clear in every shipped CommandoPirate - the scan of the nine placements gives
-// the sound words 0x80, 0x300, 0x114 and 0x104, and none of them has bit 11 set.  The byte comes
+// the sound words 0x80, 0x300, 0x114 and 0x104, and none of them has bit 1 set.  The byte comes
 // only from the loader (the module never writes it), so the true arm is dead.
 // @ fn_9_BAF8
 bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) const {
@@ -4803,17 +4803,19 @@ static CEntity* PortLoadCommandoPirate(CStateManager& mgr, CInputStream& input,
       shield.armShieldEffect, static_cast< ushort >(shield.sound_ShieldTurnOn),
       static_cast< ushort >(shield.sound_ShieldTurnOff));
 
-  // The block's last two bytes (fn_9_EDC0 @0x0000EED4..0x0000EF60) hold eight and four bits of
-  // the "sound" property, taken in the guest's order: 0x80 <- bit 14, 0x40 <- bit 11, 0x20 <- bit
-  // 8, 0x10 <- bit 5, 0x08 <- bit 2, 0x04 <- bit 31, 0x02 <- bit 28, 0x01 <- bit 25; the second
-  // byte 0x80 <- bit 6, 0x40 <- bit 3, 0x20 <- bit 0, 0x10 <- bit 29.
+  // The block's last two bytes (fn_9_EDC0 @0x0000EED4..0x0000EF60) hold the "sound" property's
+  // bits 0..7 and 8..11, lowest bit first from the top: rlwimi rotates left, so
+  // `rlwimi r0,r31,7,24,24` (0xEED4) puts value bit 0 at 0x80, `rlwimi r0,r31,31,28,28` (0xEF08)
+  // bit 4 at 0x08, and `rlwimi r0,r31,31,24,24` (0xEF38) bit 8 at the second byte's 0x80.
   const uint sound = static_cast< uint >(sldrThis.sound);
-  const uchar flags0 = static_cast< uchar >(
-      (((sound >> 14) & 1) << 7) | (((sound >> 11) & 1) << 6) | (((sound >> 8) & 1) << 5) |
-      (((sound >> 5) & 1) << 4) | (((sound >> 2) & 1) << 3) | (((sound >> 31) & 1) << 2) |
-      (((sound >> 28) & 1) << 1) | ((sound >> 25) & 1));
-  const uchar flags1 = static_cast< uchar >((((sound >> 6) & 1) << 7) | (((sound >> 3) & 1) << 6) |
-                                             ((sound & 1) << 5) | (((sound >> 29) & 1) << 4));
+  uchar flags0 = 0;
+  for (int i = 0; i < 8; ++i) {
+    flags0 |= static_cast< uchar >(((sound >> i) & 1) << (7 - i));
+  }
+  uchar flags1 = 0;
+  for (int i = 0; i < 4; ++i) {
+    flags1 |= static_cast< uchar >(((sound >> (8 + i)) & 1) << (7 - i));
+  }
 
   const CCommandoPirateData data(
       static_cast< ushort >(sldrThis.sound_Impact), static_cast< ushort >(sldrThis.sound_Hurled),
