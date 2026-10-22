@@ -36,6 +36,7 @@
 #include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
+#include "MetroidPrime/Enemies/CPirateRagDoll.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Enemies/CPatternedInfo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -339,15 +340,15 @@ void CCommandoPirate::EnsureBodyActive(CStateManager& mgr) {
 }
 
 // vtable slot 0x10 = fn_9_CAC8 (0x78): the bone tracking's own PreThink and then the base's.
-// The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
-// (0x0000DC18) - so the guest's tests (the rag doll is there at 0x0000CAF0, its byte at +0x70
-// has its 0x40 bit, the primed flag, at 0x0000CAFC) always take the bone tracking's branch (the
-// call at 0x0000CB10); the base's PreThink follows (0x0000CB20).
-// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// The bone tracking's PreThink (the call at 0x0000CB10) runs unless the module's rag doll (guest
+// this+0xBFC, the null test at 0x0000CAF0) is primed (its byte at +0x70 has its 0x40 bit, the
+// test at 0x0000CAFC); the base's PreThink follows (0x0000CB20).
 // @ fn_9_CAC8
 void CCommandoPirate::PreThink(float dt, CStateManager& mgr) {
   EnsureBodyActive(mgr);
-  mBoneTracking.PreThink(*AnimationData());  // 0x0000CB10
+  if (xbfc_ragDoll.get() == nullptr || !xbfc_ragDoll->IsPrimed()) {  // 0x0000CAEC..0x0000CB00
+    mBoneTracking.PreThink(*AnimationData());  // 0x0000CB10
+  }
   CPatterned::PreThink(dt, mgr);             // 0x0000CB20
 }
 
@@ -475,8 +476,9 @@ void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
 
 // vtable slot 0x14 = fn_9_C944 (0x184): the actor's Think. The guest leaves everything out when
 // the entity is not active (the entity's flag byte at guest this+0x20, the mask 0x80, the test at
-// 0x0000C96C) - the port's GetActive() check is that test. The guest's rag-doll branches (the rag
-// doll at guest this+0xBFC) are dead here, so the body is the base's Think (0x0000C9A4), the two
+// 0x0000C96C) - the port's GetActive() check is that test. With a primed rag doll (guest
+// this+0xBFC, its flag byte's 0x40 bit) only the actor's own Think and the fade run (0x0000CA3C..
+// 0x0000CA78); otherwise the body is the base's Think (0x0000C9A4), the two
 // collision actor managers' updates (the module's own at guest this+0xA3C and +0xA40, the calls at
 // 0x0000C9B8 and 0x0000C9CC - the port has no such managers, they are created by the melee and
 // grenade states), the bone tracking's Think (the call at 0x0000C9E8, which the guest makes only
@@ -491,28 +493,40 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
     return;                                    // 0x0000C96C
   }
   EnsureBodyActive(mgr);
-  CPatterned::Think(dt, mgr);                  // 0x0000C9A4
-  // The module's two collision actor managers are updated with the object-space option (the
-  // guest's r5 = 0 at 0x0000C9B4 and 0x0000C9C8). The guest loads the pointers and calls without
-  // a test; the host's test covers the window before the kSM_Create case has built them (the
-  // host limit named here).
-  if (mCollisionShield.get() != nullptr) {
-    mCollisionShield->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);  // 0x0000C9B8
+  const bool noRagDoll = xbfc_ragDoll.get() == nullptr;  // cntlzw/srwi, 0x0000C978..0x0000C984
+  if (!noRagDoll && xbfc_ragDoll->IsPrimed()) {          // +0x70 0x40, 0x0000C988..0x0000C994
+    // A primed rag doll: the actor's own Think only, the fade, the hit-damage timer and no
+    // frozen body (0x0000CA3C..0x0000CA78).
+    CActor::Think(dt, mgr);                      // 0x0000CA3C
+    UpdateAlphaDelta(mgr, dt);                   // 0x0000CA4C
+    UpdateHitDamageTime(dt);                     // vtable +0xec, 0x0000CA64
+    if (BodyController()->IsFrozen()) {          // +0x594 0x20, 0x0000CA6C..0x0000CA74
+      BodyController()->UnFreeze();              // 0x0000CA78
+    }
+  } else {
+    CPatterned::Think(dt, mgr);                  // 0x0000C9A4
+    // The module's two collision actor managers are updated with the object-space option (the
+    // guest's r5 = 0 at 0x0000C9B4 and 0x0000C9C8). The guest loads the pointers and calls without
+    // a test; the host's test covers the window before the kSM_Create case has built them (the
+    // host limit named here).
+    if (mCollisionShield.get() != nullptr) {
+      mCollisionShield->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);  // 0x0000C9B8
+    }
+    if (mCollisionBlade.get() != nullptr) {
+      mCollisionBlade->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);  // 0x0000C9CC
+    }
+    if (!BodyController()->IsFrozen()) {
+      mBoneTracking.Think(dt);                   // 0x0000C9E8
+    }
+    StandIn("CVisualKnowledge::Update (guest this+0xab0)");  // 0x0000C9F8
+    x6390_UpdateBurstFire(mgr, dt);                     // 0x0000CA08
+    x4D84_UpdateAim(mgr);                     // 0x0000CA18
+    x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
+    x3090_Drown(mgr);                             // 0x0000CA34
   }
-  if (mCollisionBlade.get() != nullptr) {
-    mCollisionBlade->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);  // 0x0000C9CC
-  }
-  if (!BodyController()->IsFrozen()) {
-    mBoneTracking.Think(dt);                   // 0x0000C9E8
-  }
-  StandIn("CVisualKnowledge::Update (guest this+0xab0)");  // 0x0000C9F8
-  x6390_UpdateBurstFire(mgr, dt);                     // 0x0000CA08
-  x4D84_UpdateAim(mgr);                     // 0x0000CA18
-  x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
-  x3090_Drown(mgr);                             // 0x0000CA34
   x1C0C_UpdateRenderables(mgr, dt);              // 0x0000CA88
   x4BC0_UpdateEmitters();                     // 0x0000CA8C
-  x3E1C_UpdateRagDoll(mgr, dt);               // 0x0000CAA4
+  x3E1C_UpdateRagDoll(mgr, dt, noRagDoll);    // 0x0000CAA0..0x0000CAA4
 }
 
 // fn_9_4BC0 (0xe4 bytes): the module's two sound emitters. The handle at guest this+0xC04 is
@@ -558,10 +572,9 @@ void CCommandoPirate::x4BC0_UpdateEmitters() {
 // 0x00004F5C), the module delivers an additive idle command instead (the guest's command id
 // 0x1a = 26 = kBSC_AdditiveIdle, the DeliverCmd call at 0x00004F84).
 void CCommandoPirate::x4D84_UpdateAim(CStateManager& mgr) {
-  if (GetAlive()) {                                     // 0x00004DA0..0x00004DA8
-    if (!x4CA4_CanAim()) {                             // 0x00004DB8..0x00004DC0
-      return;
-    }
+  // Dead, with a rag doll (guest this+0xBFC, 0x00004DAC..0x00004DB4) or when the gate says no
+  // (0x00004DB8..0x00004DC0), the guest goes to the idle branch at 0x00004F4C.
+  if (GetAlive() && xbfc_ragDoll.get() == nullptr && x4CA4_CanAim()) {  // 0x00004DA0..0x00004DC0
     CVector3f aim;
     if (!x3CBC_(mgr, aim, 0.f)) {                       // 0x00004DFC..0x00004E04
       return;
@@ -915,7 +928,7 @@ void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
   if (water == nullptr) {
     return;
   }
-  if ((water->GetTriggerFlags() & 0x80) == 0) {                 // 0x00003108..0x00003110
+  if (!water->GetActive()) {                                     // +0x20 0x80, 0x00003108..0x00003110
     return;
   }
   const CAABox bounds = water->GetTriggerBoundsWR();            // 0x0000311C
@@ -1599,18 +1612,23 @@ void CCommandoPirate::x3900_JumpBackVelocity(CStateManager& mgr) {
 }
 
 // vtable slot 0x24 = fn_9_C6D4 (0xc4): the base's PreRender and then the bone tracking's own.
-// The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
-// (0x0000DC18) - so the guest's rag-doll call (the vtable slot 0x10 call at 0x0000C718) is dead
-// here and only the base's PreRender runs (0x0000C728). The bone tracking's own PreRender (the
-// call at 0x0000C77C) follows with the model's scale (the three floats at the model data's +0,
-// loaded at 0x0000C754..0x0000C770), the actor's transform (guest this+0x24) and the body
-// controller (guest this+0x48c).
-// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// With a primed rag doll (guest this+0xBFC, the null tests at 0x0000C6F4 and 0x0000C730, its
+// byte at +0x70's 0x40 bit at 0x0000C700 and 0x0000C73C) the rag doll poses the model first (its
+// vtable slot 0x10, PreRender, with the actor's translation at guest this+0x54, the call at
+// 0x0000C718) and the bone tracking is skipped. The base's PreRender (0x0000C728) runs either
+// way; the bone tracking's own PreRender (the call at 0x0000C77C) takes the model's scale (the
+// three floats at the model data's +0, loaded at 0x0000C754..0x0000C770), the actor's transform
+// (guest this+0x24) and the body controller (guest this+0x48c).
 // @ fn_9_C6D4
 void CCommandoPirate::PreRender(CStateManager& mgr) {
+  if (xbfc_ragDoll.get() != nullptr && xbfc_ragDoll->IsPrimed()) {   // 0x0000C6F0..0x0000C704
+    xbfc_ragDoll->PreRender(GetTranslation(), *ModelData());        // vtable +0x10, 0x0000C718
+  }
   CPatterned::PreRender(mgr);  // 0x0000C728
-  mBoneTracking.PreRender(mgr, *AnimationData(), GetTransform(), GetModelData()->GetScale(),
-                          *BodyController());  // 0x0000C77C
+  if (xbfc_ragDoll.get() == nullptr || !xbfc_ragDoll->IsPrimed()) {   // 0x0000C72C..0x0000C740
+    mBoneTracking.PreRender(mgr, *AnimationData(), GetTransform(), GetModelData()->GetScale(),
+                            *BodyController());  // 0x0000C77C
+  }
 }
 
 // @ fn_9_C4FC
@@ -1660,14 +1678,18 @@ void CCommandoPirate::Render(const CStateManager& mgr) const {
   }
 }
 
-// vtable slot 0x34 = fn_9_C51C (0x7c): the base's own. The guest's rag doll (guest this+0xBFC)
-// is always null - the constructor stores 0 there (0x0000DC18) - so the guest's rag-doll branch
-// (the CRagDoll::PreRenderAllViewports call at 0x0000C560 with lbl_9_rodata_458 = 0.2f, then the
-// portal system state) is dead here and the base's PreRenderAllViewports runs (0x0000C57C).
-// Run: force2, 05_swamp_timber! (2026-10-21): the body has no arm of its own (the rag-doll arm is dead, above).
+// vtable slot 0x34 = fn_9_C51C (0x7c). With a primed rag doll (guest this+0xBFC, the null test
+// at 0x0000C53C, its byte at +0x70's 0x40 bit at 0x0000C548) the rag doll's own
+// PreRenderAllViewports (the call at 0x0000C560 with lbl_9_rodata_458 = 0.2f) and the portal
+// system state (0x0000C56C) run; otherwise the base's PreRenderAllViewports (0x0000C57C).
 // @ fn_9_C51C
 void CCommandoPirate::PreRenderAllViewports(CStateManager& mgr) {
-  CPatterned::PreRenderAllViewports(mgr);  // 0x0000C57C
+  if (xbfc_ragDoll.get() != nullptr && xbfc_ragDoll->IsPrimed()) {  // 0x0000C538..0x0000C54C
+    xbfc_ragDoll->PreRenderAllViewports(*this, 0.2f);              // rodata_458, 0x0000C560
+    UpdatePortalSystemState(mgr);                                  // 0x0000C56C
+  } else {
+    CPatterned::PreRenderAllViewports(mgr);  // 0x0000C57C
+  }
 }
 
 // vtable slot 0x40 = fn_9_C2CC (0x34): the shield's damage vulnerability while the flag byte at
@@ -1842,36 +1864,79 @@ void CCommandoPirate::x1C0C_DriveEffect(CElementGen& effect, float dt) {
 // fn_9_3E1C (0x324 bytes): the module's rag-doll driver, called from the actor's Think (the
 // call at 0x0000CAA4). Its third argument says whether the rag doll is gone: the guest's Think
 // computes it from the rag doll pointer at guest this+0xBFC (the cntlzw/srwi pair at
-// 0x0000C97C..0x0000C984 gives one when the pointer is null) and passes it at 0x0000CAA0. That
-// is the guest's null test for the rag doll here (0x00003E3C..0x00003E4C); the same pointer is
-// tested for null in the guest's PreThink (0x0000CAEC..0x0000CAF4).
+// 0x0000C97C..0x0000C984 gives one when the pointer is null) and passes it at 0x0000CAA0.
 //
-// With a rag doll the guest drives it: the rag doll's own flag byte at +0x70 decides between the
-// water check (its 0x40 bit at 0x00003E58, the InFluidId calls at 0x00003ED4 and 0x00003EF4, the
-// water script object's own flag byte at 0x00003F1C and its trigger bounds at 0x00003F2C) and
-// the "rigid" path (the rag doll's own update at 0x00003E6C, the identity transform at
-// 0x00003E9C and the body's playback rate at 0x00003EB8). The retail's own GetRagDoll (fn_9_78)
-// answers null and the port keeps that, so the host has no rag doll for this actor and that whole
-// part is a stand-in.
+// With a rag doll (module 50's CPirateRagDoll) the guest drives it. Not yet primed (its flag
+// byte at +0x70 without the 0x40 bit, 0x00003E58) it is primed from the actor's transform and
+// model (its vtable slot 0x8, 0x00003E74), the actor's rotation is dropped (the identity
+// transform at 0x00003E9C, the translation put back at 0x00003EA8) and the body stops animating
+// (playback rate rodata_494 = 0.f, 0x00003EB8). Primed, it is stepped (its vtable slot 0xc,
+// 0x00003F68) by the frame time times the death time scale (this vtable +0x128) with the top of
+// the active water the actor is in (the InFluidId calls at 0x00003ED4 and 0x00003EF4, the water's
+// entity flag byte +0x20 0x80 at 0x00003F1C, the trigger bounds' max z at 0x00003F30; no water:
+// rodata_4A8 = -2^127), and the model's particles advance (0x00003F7C). Either way, once the rag
+// doll is over (+0x70 0x01, 0x00003F88) and does not keep making small movements (+0x70 0x20,
+// 0x00003F90) the actor starts its fade once (CPatterned::mFadeToDeath, guest this+0x420 0x10,
+// 0x00003F9C..0x00003FBC): the alpha delta rodata_4AC = -1/3, the material 0x14
+// (kMT_ProjectilePassthrough), no momentum (guest this+0x1C0..0x1C8) and Stop.
 //
-// Without a rag doll the guest runs the drowning timer: the module's float at guest this+0xC00
-// falls by the frame time while it is above zero (0x00003FF8..0x0000401C); when it reaches zero
-// the guest creates the rag doll (0x00004020..0x0000410C) and clears the timer
-// (0x00004110..0x00004118). The host cannot create the retail's rag doll, so that is a
-// stand-in too.
-void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt) {
-  if (GetRagDoll() != nullptr) {                                   // 0x00003E3C..0x00003E4C
-    StandIn("the module's rag doll (fn_9_3E1C)");                  // 0x00003E50..0x00003FF0
-    return;
+// Then, rag doll or not, the drowning timer: the module's float at guest this+0xC00 falls by the
+// frame time while it is above zero (0x00003FF8..0x0000401C); when it reaches zero the guest
+// creates the rag doll if there is none (0x00004020..0x0000410C) and clears the timer
+// (0x00004110..0x00004118). The rag doll takes the block's impact sound (guest this+0x7C0), the
+// flags 3 when the block's flag byte at guest this+0x91C has its 0x01 bit (else 0), the module's
+// gravity (vtable +0x114, fn_9_10 = 50.f), the floating gravity rodata_404 = -3.f and the 14
+// particle radii at rodata_3C8; the actor stops being orbitable and targetable (the materials
+// 0x29 and 0x28).
+static const float skCommandoRagDollRadii[14] = {
+    0.45f, 0.52f, 0.35f, 0.1f,  0.15f, 0.35f, 0.1f,
+    0.15f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f,
+};  // lbl_9_rodata_3C8 (0x38 bytes)
+
+void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noRagDoll) {
+  if (!noRagDoll) {                                                // 0x00003E3C, 0x00003E4C
+    CPirateRagDoll* ragDoll = xbfc_ragDoll.get();                  // 0x00003E50
+    if (!ragDoll->IsPrimed()) {                                    // +0x70 0x40, 0x00003E54..0x00003E5C
+      ragDoll->Prime(mgr, GetTransform(), *ModelData());           // vtable +0x8, 0x00003E60..0x00003E74
+      const CVector3f translation = GetTranslation();              // 0x00003E78..0x00003E98
+      SetTransform(CTransform4f::Identity());                      // 0x00003E9C
+      SetTranslation(translation);                                 // 0x00003EA8
+      BodyController()->SetPlaybackRate(0.f);                      // rodata_494, 0x00003EB8
+    } else {
+      float waterTop = -1.7014118e38f;                             // rodata_4A8 (-2^127), 0x00003ED0
+      if (InFluidId() != kInvalidUniqueId) {                       // 0x00003ED4..0x00003EE8
+        CScriptWater* water = TCastToPtr< CScriptWater >(mgr.ObjectById(InFluidId()));  // 0x00003EF4..0x00003F0C
+        if (water != nullptr && water->GetActive()) {              // 0x00003F10..0x00003F20 (+0x20 0x80)
+          waterTop = water->GetTriggerBoundsWR().GetMaxPoint().GetZ();  // 0x00003F2C..0x00003F30
+        }
+      }
+      ragDoll->Update(mgr, dt * GetDeathTimeScale(), waterTop);    // +0x128, +0xc, 0x00003F34..0x00003F68
+      ModelData()->AdvanceParticles(GetTransform(), dt, mgr);      // 0x00003F7C
+    }
+    if (ragDoll->IsOver() && !ragDoll->WillContinueSmallMovements() &&  // +0x70 0x01 / 0x20, 0x00003F80..0x00003F94
+        !mFadeToDeath) {                                           // 0x420 0x10, 0x00003F98..0x00003FA0
+      mFadeToDeath = true;                                         // 0x00003FA4..0x00003FBC
+      mAlphaDelta = -0.33333334f;                                  // rodata_4AC, 0x00003FC8
+      AddMaterial(kMT_ProjectilePassthrough, mgr);                 // 0x14, 0x00003FC4..0x00003FCC
+      SetMomentumWR(CVector3f::Zero());                            // 0x1c0..0x1c8, 0x00003FD0..0x00003FEC
+      Stop();                                                      // 0x00003FF0
+    }
   }
-  if (xc00_ <= 0.f) {                                              // 0x00003FF8..0x00004000
+  if (xc00_ <= 0.f) {                                              // 0x00003FF8..0x00004004
     return;
   }
   xc00_ -= dt;                                                     // 0x00004008..0x0000400C
   if (xc00_ > 0.f) {                                               // 0x00004010..0x0000401C
     return;
   }
-  StandIn("the module's rag doll (fn_9_3E1C)");                    // 0x00004020..0x0000410C
+  if (xbfc_ragDoll.get() == nullptr) {                             // 0x00004020..0x00004028
+    const rstl::reserved_vector< float, 14 > radii(
+        skCommandoRagDollRadii, skCommandoRagDollRadii + 14);      // rodata_3C8, 0x0000402C..0x0000406C
+    const uint flags = (mData.mFlags0 & 0x01) != 0 ? 3 : 0;        // 0x00004090..0x000040C0
+    xbfc_ragDoll = rs_new CPirateRagDoll(mgr, this, mData.mSoundImpact, flags,  // 0x00004074..0x000040E8
+                                         GetGravityConstant(), -3.f, radii);  // +0x114, rodata_404
+    RemoveMaterial(kMT_Orbit, kMT_Target, mgr);                    // 0x29, 0x28, 0x000040FC..0x0000410C
+  }
   xc00_ = 0.f;                                                     // 0x00004110..0x00004118
 }
 
@@ -1999,9 +2064,9 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
 //
 // The guest's first branch (0x0000C324..0x0000C3AC) is the rag-doll one: it wants the block's
 // flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest
-// this+0xBFC to be there. The rag doll is always null here (the constructor stores 0 there and
-// the module's GetRagDoll returns null), so the guest always takes the path below and the impulse
-// it would give the rag doll never happens.
+// this+0xBFC to be there; it pushes the rag doll's torso and nothing else runs. With a rag doll
+// and without that bit the whole body is skipped (0x0000C3B0..0x0000C3B8). The module creates
+// the rag doll after the death (fn_9_3E1C), so both arms only see a dead commando.
 //
 // The knock-back itself (0x0000C3C0..0x0000C3EC): the module's own IsOnGround (the vtable slot
 // 0x110, fn_9_90 - the bit 3 of the byte at guest this+0x34C) enables the knock-back reaction
@@ -2021,9 +2086,21 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
 // and tools/drivers/commandopirate_c300.py in area 59 (05_temple_federationsite_dark): 15/15 lines,
 // 11/11 branches. The hurled arm ran once alive (the console's `damage <id> 1 60 supermissile`), and
 // eight times dead (`kill <id>` and the damage in the same tick): twice the death sound, six times a
-// death follow-up. The rag-doll branch is dead (the rag doll at guest this+0xBFC is always null).
+// death follow-up. The rag-doll arms (0x0000C324..0x0000C3B8) are the cpragdoll slice's (2026-10-22).
 // @ fn_9_C300
 void CCommandoPirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
+  if ((mData.mFlags0 & 0x01) != 0 && xbfc_ragDoll.get() != nullptr) {  // 0x0000C324..0x0000C338
+    // The rag doll's torso impulse (CPirateRagDoll +0xb8, the stores at 0x0000C390..0x0000C3A8):
+    // the knock-back direction times rodata_4EC (200000.f) times the damage's knock-back power
+    // against the actor's vulnerability (vtable +0x40) at distance rodata_494 (0.f).
+    const float power =
+        info.GetDamageInfo().GetKnockBackPower(*GetDamageVulnerability(), 0.f);  // 0x0000C348..0x0000C35C
+    xbfc_ragDoll->TorsoImpulse() += info.GetDirection() * (200000.f * power);  // 0x0000C360..0x0000C3A8
+    return;
+  }
+  if (xbfc_ragDoll.get() != nullptr) {                                      // 0x0000C3B0..0x0000C3B8
+    return;
+  }
   KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, IsOnGround());  // 0x0000C3D4..0x0000C3DC
   CPatterned::KnockBack(mgr, info);                                                        // 0x0000C3EC
   if (GetAlive()) {                                                                        // 0x0000C3F0..0x0000C3F8
