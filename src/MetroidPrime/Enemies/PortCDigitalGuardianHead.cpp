@@ -226,6 +226,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , x10C4_(-1)
 , x10C8_(0.f)
 , x10CC_(0.f)
+, xFE4_(mTurnSpeed) // 0x18A8C..0x18A9C: the CPatternedInfo turn speed (pInfo +0x8)
 {
   xE04_.Token().Lock(); // 0x18CD8
   xE2C_.Token().Lock(); // 0x18CE0
@@ -1534,14 +1535,115 @@ void CDigitalGuardianHead::x101E0_(CStateManager& mgr, const CVector3f& dir) {
   }
 }
 
-#define DGHD_STATE_STANDIN(name, fn)                                                               \
-  void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
-    StandInFn(#fn " (head state " #name ")");                                                      \
+// fn_14_1633C: the head rides the body (the cmpwi chain at 0x16344..0x16360). Activate (0):
+// relaxed locomotion (li r4 1, SetLocomotionType at 0x16370), the turn direction from fn_14_13B38
+// (0x1637C, stores 0x16388..0x16398) and flag 0x08 (rlwimi r0,r3,3,28,28 at 0x163A0). Update (1):
+// the head turns (fn_14_11D64 at 0x163AC), then the turn direction is flattened (z 0.0f, .rodata
+// 0x960) when that is safe (IsMagnitudeSafe at 0x163D0, beq at 0x163D8; stores 0x163E0..0x163F0),
+// not normalised. Deactivate (2) and any other message do nothing.
+// @ fn_14_1633C
+void CDigitalGuardianHead::AttachedToBody(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x16370
+    x1028_ = x13B38_();                                     // 0x1637C
+    x10F4_ |= 0x08;                                         // 0x163A0
+    break;
+  case kStateMsg_Update: {
+    x11D64_(mgr, dt); // 0x163AC
+    const CVector3f flat(x1028_.GetX(), x1028_.GetY(), 0.f); // .rodata 0x960, 0x163C4..0x163CC
+    if (flat.IsMagnitudeSafe()) {                            // 0x163D0
+      x1028_ = flat;                                         // 0x163E0..0x163F0
+    }
+    break;
   }
-DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
-DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
-DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
-#undef DGHD_STATE_STANDIN
+  default:
+    break;
+  }
+}
+
+// fn_14_15CE8: the bomb's knock-back (the cmpwi chain at 0x15CF0..0x15D18). Activate (0): Ready
+// (0x6B4 = 1, 0x15D24). Update (1): when a knock-back may be issued (CanIssueCommand with 6 =
+// kAS_KnockBack, 0x15D38) one is sent (DeliverCmd 4 at 0x15DA4) along the Y column
+// (0x28/0x38/0x48) with severity 2 (li r6 2 at 0x15D64), no anim (-1) and no restart (stb 0).
+// Deactivate (2): NotReady (0x6B4 = 0, 0x15E00). Messages 3+ do nothing (bge at 0x15D18).
+// @ fn_14_15CE8
+void CDigitalGuardianHead::BombedReaction(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x15D24
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) { // 0x15D38
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(GetTransform().GetColumn(kDY), pas::kS_Two)); // 0x15DA4
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x15E00
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_158F8: the head flies to the retreat platform (0x1038) and lines up with it (the cmpwi
+// chain at 0x1592C..0x1594C). Activate (0): Ready (0x6B4 = 1, 0x1595C); with the platform
+// (ObjectById at 0x1596C, TCastToPtr<CScriptPlatform> at 0x15970, null test 0x15978) and a speed
+// above 1.1920929e-07f (.rodata 0x9E4; data +0x1C maxStunnedLinearVelocity at 0x7DC; fcmpo/ble at
+// 0x159D0, so a NaN speed goes on) the turn speed (SetTurnSpeed at 0x15A30) is
+// 1.1f (.rodata 0x9E8) * 57.295776f (.rodata 0x9EC) * the angle between the head's Y column and the
+// platform's (GetAngleDiff at 0x159F8) over the flight time |platform - head| / speed (Magnitude at
+// 0x15A04, fdivs at 0x15A14 / 0x15A2C). Update (1): with the platform (0x15A48..0x15A54) the step
+// is speed * dt; when it reaches the platform (fcmpo/bge at 0x15AB0) the state is Over (0x15B14)
+// and the head is put on it (SetTranslation at 0x15B1C), else it moves one step toward it in its
+// own frame (AsNormalized 0x15AC0, TransposeRotate 0x15AF4, MoveInOneFrameOR 0x15B04); then it
+// faces the platform's Y column (FaceDirection at 0x15B44). Deactivate (2): NotReady (0x15B50)
+// and the turn speed back to the ctor's (0xFE4, SetTurnSpeed at 0x15B5C).
+// @ fn_14_158F8
+void CDigitalGuardianHead::SeekMotionPath(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x1595C
+    const CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_)); // 0x15970
+    if (plat == nullptr) {
+      break;
+    }
+    const float speed = mData.maxStunnedLinearVelocity; // 0x7DC
+    if (!(speed <= 1.1920929e-07f)) {                   // 0x159D0..0x159D4
+      const CVector3f delta = plat->GetTranslation() - GetTranslation(); // 0x159D8..0x159F4
+      const float angle = CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY),
+                                                  plat->GetTransform().GetColumn(kDY)); // 0x159F8
+      const float time = delta.Magnitude() / speed;                                   // 0x15A14
+      BodyController()->SetTurnSpeed(1.1f * (57.295776f * angle) / time);             // 0x15A30
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    const CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_)); // 0x15A4C
+    if (plat == nullptr) {
+      break;
+    }
+    const CTransform4f xf = plat->GetTransform(); // 0x15A6C
+    const CVector3f delta = xf.GetTranslation() - GetTranslation();
+    const float step = mData.maxStunnedLinearVelocity * dt; // 0x15AA8
+    if (step >= delta.Magnitude()) {                        // 0x15AB0..0x15AB4
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15B14
+      SetTranslation(xf.GetTranslation());                 // 0x15B1C
+    } else {
+      MoveInOneFrameOR(GetTransform().TransposeRotate(delta.AsNormalized() * step), dt); // 0x15B04
+    }
+    BodyController()->FaceDirection(xf.GetColumn(kDY), dt); // 0x15B44
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x15B50
+    BodyController()->SetTurnSpeed(xFE4_);                    // 0x15B5C
+    break;
+  default:
+    break;
+  }
+}
 
 // fn_14_16A50: the state message picks the work (the cmpwi chain at 0x16A74..0x16A9C).
 // Activate (0): ready (0x6B4 = 1, 0x16AA8), flag 0x20 (the rlwimi at 0x16AB4) and the turn
@@ -1865,6 +1967,14 @@ bool CDigitalGuardianHead::PortConsoleVar(CEntity& ent, const char* name, const 
       head->x1090_ = static_cast< float >(*value);
     }
     current = static_cast< int >(head->x1090_);
+    return true;
+  }
+  // data +0x1C (0x7DC): SeekMotionPath's flight speed, StunnedReaction's drift speed.
+  if (strcmp(name, "dghd.stunspeed") == 0) {
+    if (value != nullptr) {
+      head->mData.maxStunnedLinearVelocity = static_cast< float >(*value);
+    }
+    current = static_cast< int >(head->mData.maxStunnedLinearVelocity);
     return true;
   }
   return false;

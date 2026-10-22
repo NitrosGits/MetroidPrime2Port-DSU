@@ -315,8 +315,11 @@ private:
   float x10C8_;     // 0x10C8: the time in the phase
   float x10CC_;     // 0x10CC: the time to the next bullet
 
+  // SeekMotionPath (fn_14_158F8) restores the turn speed on Deactivate.
+  float xFE4_; // 0xFE4: the turn speed (the CPatternedInfo's, the ctor's 0x18A9C)
+
 public:
-  // Host: the console's `var <id> dghd.attack|flags|sweeptime [value]` (platform/port_console.cpp).
+  // Host: the console's `var <id> dghd.attack|flags|sweeptime|stunspeed [value]` (platform/port_console.cpp).
   static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
 
 private:
