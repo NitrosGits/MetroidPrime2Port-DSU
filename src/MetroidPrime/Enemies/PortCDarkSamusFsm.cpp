@@ -1183,6 +1183,8 @@ bool CDarkSamus::CanMissileDeflect(CStateManager& mgr, const CTriggerData&) cons
 // stage info (fn_10_17E14, 0x000095DC; null answers false at 0x000095E4) answers with its byte
 // +0x78 (`lbz r0, 0x78(r3)` at 0x000095F4, `cmplwi r0, 0x1` at 0x000095F8): the bool
 // unknown_0x2d7551e6, the one after the boostBall float (+0x74) in SLdrDSStageInfo.
+// Run (darksamus_dsfsm.py, `trigcall`): the bit set and no stage forced; the byte 0 natural (the
+// shipped value), 1 forced (true).
 // @ fn_10_95A8
 bool CDarkSamus::DiveAfterBoost(CStateManager& mgr, const CTriggerData&) const {
   if (mBoostBallFlag20) { // 0x000095C8
@@ -3257,7 +3259,8 @@ void CDarkSamus::MovingScatterShot(CStateManager& mgr, EStateMsg msg, float dt) 
 }
 
 // fn_10_14448 (0x00014448, 4 bytes): the Null state, a bare `blr`. DsStateEntered is the port's
-// state log.
+// state log. No arm to run: the rooftop FSM2 has no node named Null (`fsm u04f7 Null` finds
+// none), so the handler is never entered there.
 // @ fn_10_14448
 void CDarkSamus::Null(CStateManager&, EStateMsg msg, float) {
   DsStateEntered("Null", msg);
@@ -3270,6 +3273,10 @@ void CDarkSamus::Null(CStateManager&, EStateMsg msg, float) {
 // fades to lbl_10_rodata_3FC = 0.0f over lbl_10_rodata_254 = 0xFA0 = 4000 (the manager at 0x1630,
 // SetDensity__13CEnvFxManagerFfi = the host's FadeDensity, 0x00014418) and bit 0x20 of 0x90C is
 // cleared (`rlwimi r0, r3, 5, 26, 26` with r3 = 0 at 0x00014424, the store at 0x00014428).
+// asmcheck's three findings are names: x90c_20 is mFlags90C's 0x20, SetDensity the host's
+// FadeDensity and fn_80152820 CPatterned::Dead (symbols.txt).
+// Run (darksamus_dsfsm.py, darksamus_dsfsm.con / _dead.con): Activate with the roll emitter
+// (after BoostBallInto) and without it, Update and Deactivate - every arm natural.
 // @ fn_10_143A8
 void CDarkSamus::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("Dead", msg);

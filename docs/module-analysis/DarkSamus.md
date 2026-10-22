@@ -2061,3 +2061,24 @@ platform casts and the dash arms of CollidedWith.
   four conditions are the deleting-destructor wrapper; ImmuneRicochetVulnerability is the retail
   name of ReflectVulnerabilty (both 0x800DBB40); internal_dereference in 31E4 / A3B0 is a temporary
   string's destructor.
+
+## Slice dsfsm (2026-10-22): the FsmStandIns (95A8, 14448, 143A8, 7F98 call, C98 blocked)
+
+- Spec `tools/cov/specs/darksamus_dsfsm.py` (force.sh + cov_force.py, command in its header), drivers
+  `tools/drivers/darksamus_dsfsm.con` (Dead during BoostBallInto) and `darksamus_dsfsm_dead.con`
+  (Dead without the roll). Rooftop, 1100 fast frames, 0 caught / reach-stub.
+
+| fn | arms | run |
+|---|---|---|
+| 95A8 DiveAfterBoost | 0xEBC 0x20 set -> false | forced (key 110) |
+| | no stage -> false | forced (key 112, uid 0xFFFF) |
+| | stage +0x78 = 0 -> false | natural (shipped 0) |
+| | stage +0x78 = 1 -> true | forced (key 113, DiveAfterBoost+30, host offset 0xAC) |
+| 143A8 Dead | Activate with roll emitter (RemoveEmitter) / without; Update; Deactivate | natural |
+| 14448 Null | `blr`, no arm | never entered: the rooftop FSM2 has no Null node |
+| 7A14 EnrageHitReact | calls UpdatePhazonEnrage (7F98, marked earlier) on every message | natural |
+
+- fn_10_C98 (CScattershotProjectile add shot) stays a stand-in: it appends a 0x20-byte shot record
+  to the projectile's own list at +0x22C (cap 0x12C = 300, `cmpwi r9, 0x12c`; flag byte 4, | 8 every
+  17th, | 0x10 every 13th, | 0x20 every 5th shot; fn_10_DC8 / fn_10_E10), so it needs the
+  CScattershotProjectile class (vtable lbl_10_data_40, 0x0..0x44D0) ported first.
