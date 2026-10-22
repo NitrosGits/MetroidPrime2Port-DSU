@@ -1814,6 +1814,15 @@ trigger's entry, one per hit, from gdb convenience variables).
   (0x0000A18C); when the actor is close enough (0x0000A1B0) the roll's time 0xEA4 grows by dt
   (0x0000A1B4), else the ball's target becomes the actor's position (0x0000A194..0x0000A1A4) and
   the time is reset to 0.0f (0x0000A1A8).
+- **The coverage run** (the rooftop, the coverage build, the BoostBallRoll state in it):
+  fn_10_A154 (RollBoostBallToPosition) is 10/10 lines, 6/6 branches, **ALL-ARMS** - it is
+  marked. fn_10_2F04 (GetGuest318Bit6) is 1/1 line and no branches - the state calls it
+  (0x0000A4FC), so it is marked too. fn_10_2EFC (GetGuest314) and fn_10_E5C
+  (EnsureRenderedActor) still have 0 lines: the bit 0x40 of 0x318 is clear in the run, so the
+  Update arm's body (the getter's only caller) never runs, and the EnsureRendered call is behind
+  the fade factor and the dark visor. fn_10_A3B0 itself has no row in the report (its body is in
+  PortCDarkSamusFsm.cpp, which the coverage build does not instrument) and it keeps no marker
+  anyway: fn_10_A1C0, fn_10_AA04 and fn_10_A06C are stand-ins.
 - **The callees that are not ported** (their calls stay stand-ins, so the state keeps no marker):
   fn_10_A1C0 (0x1F0 bytes - it picks the roll's hint and the roll's parameters), fn_10_AA04
   (0x760 bytes - the roll to the hint) and fn_10_A06C (0xE8 bytes - the ball's transform and the

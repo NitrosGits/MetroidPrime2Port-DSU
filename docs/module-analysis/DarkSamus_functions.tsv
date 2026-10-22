@@ -32,7 +32,7 @@ offset	size	class	kind	name	callers	marked	state
 0x2E44	0x20	B	method	fn_10_2E44	2	no	
 0x2E64	0x98	H	host-copy	fn_10_2E64	0	no	
 0x2EFC	0x8	B	method	fn_10_2EFC	1	no	
-0x2F04	0xC	B	method	fn_10_2F04	1	no	
+0x2F04	0xC	B	method	fn_10_2F04	1	yes	
 0x2F10	0xF8	B	method	fn_10_2F10	1	no	
 0x3008	0x16C	H	host-copy	fn_10_3008	0	no	
 0x3174	0x70	H	host-copy	fn_10_3174	0	no	
@@ -139,7 +139,7 @@ offset	size	class	kind	name	callers	marked	state
 0x9B24	0x2DC	B	method	fn_10_9B24	1	no	
 0x9E00	0x26C	B	method	fn_10_9E00	2	no	
 0xA06C	0xE8	B	method	fn_10_A06C	2	no	
-0xA154	0x6C	B	method	fn_10_A154	1	no	
+0xA154	0x6C	B	method	fn_10_A154	1	yes	
 0xA1C0	0x1F0	B	method	fn_10_A1C0	1	no	
 0xA3B0	0x384	B	fsm-state	fn_10_A3B0	0	no	BoostBallRoll
 0xA734	0xE0	B	method	fn_10_A734	1	no	

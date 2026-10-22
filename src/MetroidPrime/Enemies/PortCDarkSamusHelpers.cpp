@@ -52,9 +52,9 @@ float CDarkSamus::GetGuest314() const { return mGuest314; }
 
 // fn_10_2F04 (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 - the `lbz` at
 // 0x00002F04 and the `extrwi` at 0x00002F08 take the bit 25, which is 1u << (31 - 25) = 0x40.
-// Unmarked: the fight does not reach it (the coverage run: 0 hits - its
-// only caller is the BoostBallRoll state, fn_10_A3B0, which is still a
-// stand-in), so there is no ALL-ARMS run to cite.
+// The coverage run (the rooftop, the BoostBallRoll state in it): 3 hits, the body has no
+// branches, so every arm ran.
+// @ fn_10_2F04
 bool CDarkSamus::GetGuest318Bit6() const { return (mGuest318 & 0x40) != 0; }
 
 // fn_10_4868 (0x00004868, 0x60 bytes): the actor whose uid is at guest 0xF78 is deleted
