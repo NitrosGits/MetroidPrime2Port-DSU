@@ -1536,7 +1536,7 @@ void CDarkSamus::RollBoostBallToPosition(float dt) {
   const float dx = pos.GetX() - mBoostBallPos.GetX();
   const float dy = pos.GetY() - mBoostBallPos.GetY();
   const float distSq = dx * dx + dy * dy; // 0x0000A180..0x0000A188
-  if (distSq <= 4) {                    // 0x0000A18C
+  if (!(distSq > 4)) {                  // 0x0000A18C (`ble`: NaN takes the close arm)
     mGuestEA4 += dt;                    // 0x0000A1B4
   } else {
     mBoostBallPos = pos;                // 0x0000A194..0x0000A1A4

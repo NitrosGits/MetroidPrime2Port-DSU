@@ -926,8 +926,8 @@ private:
                                    // [probable] the loader's boostBallHitPlayerSound (the data
                                    // order, as above); fn_10_9E00 passes it to the ball (`lhz`)
   CSfxHandle mBoostBallRollSfx;    // guest 0xE6C (+0x5C), the roll emitter; 0 (0x00008A50)
-  CVector3f mBoostBallPos;          // guest 0xE98/0x9C/0xA0, where the boost ball rolls to
-                                    // (fn_10_A3B0, 0x0000A4B0..0x0000A4CC)
+  CVector3f mBoostBallPos = CVector3f::Zero(); // guest 0xE98/0x9C/0xA0, where the boost ball rolls to
+                                    // (fn_10_A3B0, 0x0000A4B0..0x0000A4CC); zero (fn_10_895C, +0x88..0x90)
   bool mBoostBallFlag40 : 1;       // 0xebc 0x40 (+0xAC); BoostBallInto clears it
                                    // (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4)
   TUniqueId mBoostHintUid;         // guest 0xEC0, the hint the ball rolls to; kInvalidUniqueId
@@ -998,8 +998,6 @@ private:
                                    // BreakNormalMissile trigger (fn_10_16B5C) reads it
   uchar mGuestA80;                 // guest 0xA80, the super missile's record byte; the
                                    // BreakSuperMissile trigger (fn_10_16B54) reads it
-  int mGuest9FC;                   // guest 0x9FC, the EnragedTravel state's target (-1 = none,
-                                    // 0x00006EC4)
   float mGuest1048;                // guest 0x1048, the EnragedTravel state's point x
   float mGuest104C;                // guest 0x104C, the EnragedTravel state's point y
   float mGuest1050;                // guest 0x1050, the EnragedTravel state's point z
@@ -1200,7 +1198,8 @@ private:
                                           // DoneRolling trigger reads it (`extrwi r0, r0, 1, 24` at
                                           // 0x00009378, the PowerPC bit 24 being
                                           // 1u << (31 - 24) = 0x80)
-  float mGuestEA8 = 0.f;                  // guest 0xEA8, the boost ball's start time (fn_10_1BEFC);
+  float mGuestEA8 = -1000.f;              // guest 0xEA8, the boost ball's start time (fn_10_1BEFC);
+                                          // -1000.0f at construction (fn_10_895C +0x98, rodata_260);
                                           // the DoneRolling trigger reads it as the roll's other
                                           // time (0x00009390)
   CVector3f mGuestEAC = CVector3f::Zero(); // guest 0xEAC, the actor's position then; the

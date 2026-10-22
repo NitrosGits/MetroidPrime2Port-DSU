@@ -2208,3 +2208,7 @@ platform casts and the dash arms of CollidedWith.
 - 895C left unmarked: it is not a body but the CDarkSamus.hpp member initializers
   (mBoostBallSwooshTokenE40/E50, mBoostBallGlowPart, mBoostBallCollisionToken, ...); marking it
   needs a body or a tsv class change (orchestrator).
+- review23: 895C is class H (the host's member initializers). Checked word by word against
+  the asm; it set 0xEA8 = -1000.0f (rodata_260, +0x98) and zeroed 0xE98 (+0x88..0x90), now the
+  initializers too. Its copies (damage info +0x00, model words 0xE2C..0xE34, collision sounds
+  +0x70) the port reads from mData instead.
