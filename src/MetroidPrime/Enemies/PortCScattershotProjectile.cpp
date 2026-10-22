@@ -516,8 +516,8 @@ void BillboardAxes(float size, float degrees, CVector3f& right, CVector3f& up) {
 // built once (lbl_10_bss_0/_4, fn_10_1B64); stage 1 passes through, depth test LEqual without write,
 // no culling, alpha > 0. Every live shot draws, at its position plus the offset turned by the
 // actor's rotation with the shot's direction as its second column: the B1 and B2 billboards
-// (blend source alpha to one with the description's +0x66 bit 0x4 / 0x2, `extrwi` at 0x00001370 /
-// 0x00001614, else inverse source alpha) and the trail (bit 0x1, 0x00001858): a quad
+// (blend source alpha to one with the description's RB1A / RB2A bit of +0x66, else inverse source
+// alpha) and the trail (RTLA): a quad
 // TSZE * 0.5f wide across the view (the cross of the view ray and the direction, fn_10_1B24) and
 // TLEN * TSZE long behind the shot, TSCL at the head and TECL at the tail. Culling back to front
 // and the normal matrix on at the end (0x00001AD0).
@@ -597,7 +597,7 @@ void CScattershotProjectile::Render(const CStateManager& mgr) const {
     if (desc->mB1TX != nullptr) {
       CGraphics::SetModelMatrix(CTransform4f::Translate(shot.mPos + xf.Rotate(mB1Offset)));
       CGraphics::SetBlendMode(kBM_Blend, kBF_SrcAlpha,
-                              (desc->mRB1A ? kBF_One : kBF_InvSrcAlpha), kLO_Clear); // 0x00001370
+                              (desc->mRB1A ? kBF_One : kBF_InvSrcAlpha), kLO_Clear); // +0x66 0x4: 0x00001370
       CVector3f right, up;
       BillboardAxes(mB1Size, b1Rot, right, up);
       TLockedToken< CTexture > tex = desc->mB1TX->GetValueTexture(0);
@@ -607,7 +607,7 @@ void CScattershotProjectile::Render(const CStateManager& mgr) const {
     if (desc->mB2TX != nullptr) {
       CGraphics::SetModelMatrix(CTransform4f::Translate(shot.mPos + xf.Rotate(mB2Offset)));
       CGraphics::SetBlendMode(kBM_Blend, kBF_SrcAlpha,
-                              (desc->mRB2A ? kBF_One : kBF_InvSrcAlpha), kLO_Clear); // 0x00001614
+                              (desc->mRB2A ? kBF_One : kBF_InvSrcAlpha), kLO_Clear); // +0x66 0x2: 0x00001614
       CVector3f right, up;
       BillboardAxes(mB2Size, b2Rot, right, up);
       TLockedToken< CTexture > tex = desc->mB2TX->GetValueTexture(0);
@@ -616,7 +616,7 @@ void CScattershotProjectile::Render(const CStateManager& mgr) const {
     }
     if (desc->mTTEX != nullptr) {
       CGraphics::SetBlendMode(kBM_Blend, kBF_SrcAlpha,
-                              (desc->mRTLA ? kBF_One : kBF_InvSrcAlpha), kLO_Clear); // 0x00001858
+                              (desc->mRTLA ? kBF_One : kBF_InvSrcAlpha), kLO_Clear); // +0x66 0x1: 0x00001858
       CGraphics::SetModelMatrix(CTransform4f::Translate(shot.mPos + xf.Rotate(mTrailOffset)));
       {
         TLockedToken< CTexture > tex = desc->mTTEX->GetValueTexture(0);
