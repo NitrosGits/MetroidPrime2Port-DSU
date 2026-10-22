@@ -67,8 +67,8 @@ struct CSpacePirateData {
   CAssetId mGrenadeEffect;       // +0x104 (grenade data +0x34) grenadeEffect
   ushort mGrenadeBounceSfx;      // +0x108 (grenade data +0x38) sound_GrenadeBounce
   ushort mGrenadeExplodeSfx;     // +0x10a (grenade data +0x3a) sound_GrenadeExplode
-  float mGrenadeSfxFalloff;      // +0x10c (grenade data +0x3c) = grenadeMinAttackDist in the loader
-  float mGrenadeSfxMaxDist;      // +0x110 (grenade data +0x40) = grenadeMaxAttackDist in the loader
+  float mGrenadeSfxFalloff;      // +0x10c (grenade data +0x3c) constant 0.1 (rodata B3C, fn_72_140 0x880)
+  float mGrenadeSfxMaxDist;      // +0x110 (grenade data +0x40) constant 150 (rodata B40, fn_72_140 0x874)
   float mGrenadeX44;             // +0x114 (grenade data +0x44) constant 0.1 (rodata B3C)
   float mGrenadeX48;             // +0x118 (grenade data +0x48) constant 150 (rodata B40)
   bool mGrenadeX4c;              // +0x11c (grenade data +0x4c) constant true
