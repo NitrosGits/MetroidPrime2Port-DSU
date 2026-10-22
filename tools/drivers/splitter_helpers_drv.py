@@ -226,6 +226,12 @@ PLANS = {
     # E4: the chassis's laser sweep; its beam's collision actor is the chassis itself, so the
     # chassis takes the damage and fn_75_EBF4's knock-back runs.
     "E4": [(1, "pick:0532"), (2, "tp:0:9:0"), (4, "fsm u0532 LaserSweepAttack")],
+    # K3 (the helpers lane): kill the 0532 chassis, so the 0531 head loses its chassis (its
+    # LostChassisReaction state turns it upright, fn_75_2994) and re-docks to the 0521 chassis
+    # (its SeekMainChassis state moves it, fn_75_2154, and the chassis reserves the head,
+    # fn_75_E788).
+    "K3": [(1, "pick:0532"), (2, "dump:objs splitter"), (3, "kill u0532"), (6, "dump:objs splitter"),
+           (12, "dump:objs splitter"), (20, "dump:objs splitter")],
     "D": [(2, "dump:objs collision"), (3, "dump:objs splitter"), (4, "dump:obj u%s" % "0532")],
     "T": ring(10, 0, 10) + ring(30, 0, 36) + ring(25, 12, 62) + missiles(88, 6) + [(101, "tp:0:20:0")]
          + missiles(102, 6) + [(115, "tp:20:0:0")] + missiles(116, 6) + [(129, "tp:-20:0:0")]

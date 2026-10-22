@@ -569,13 +569,33 @@ the head is docked in the shipped spawns), the manager's descriptions only hold 
 actors the manager made - so the cast to a CCollisionActor never fails - and the shipped flag
 word has no 0x1 bit, so the counter at 0xD00 is always 5.
 
+### 3.18 The head's move to and the chassis's dock reserve and release
+
+The next three rows of section 2, the ones the head's docking chain touches.  The chain is
+reached by killing the 0532 chassis: the 0531 head loses it (its LostChassisReaction state,
+fn_75_42F8), looks for another chassis (fn_75_31A8 gates fn_75_2280, the head's chassis search)
+and reserves it (fn_75_E788) - the driver's plan K3 does that with the console's `kill u0532`.
+Each body was read against the REL's asm (`tools/asmcheck.py annotate Splitter fn_75_<off>`) and
+the coverage build's merged profile (the natural run of the plan K3 and the forced runs of the
+force spec) says:
+
+| body | the diff | the profile |
+|---|---|---|
+| `fn_75_2154` (the head's move to) | right: the timer at 0xEF4 is compared with 0.0f (asm 0x2180 `fcmpo cr0, f2, f0`, 0x2184 `ble` - the move is skipped when the timer is at or below zero) and the teleport is SetTranslation (asm 0x2188); otherwise the difference is moved through the transform (asm 0x21CC TransposeRotate) into MoveInOneFrameOR (asm 0x21DC) | 6/6 lines, 2/2 branches, **ALL-ARMS** - **marked**; the teleport was forced (`SPLITTER_FORCE=MOVE` writes the head's mAutoDestructTimer) |
+| `fn_75_E788` (the chassis's dock reserve) | right: the alive bit (asm 0xE78C, 0xE790), the active bit (asm 0xE798, 0xE79C), the head id at 0xC6C (asm 0xE7B0, 0xE7B4), the reservation at 0xC6E (asm 0xE7BC, 0xE7C0), the landed count at 0xD00 (asm 0xE7C8, 0xE7CC, 0xE7D0, 0xE7D4), the flag byte at 0xD41's 0x80 bit (asm 0xE7DC, 0xE7E0) and the flag byte at 0xD40's 0x01 bit (asm 0xE7E8, 0xE7EC) all gate the reservation (asm 0xE7F4), and the result is whether the reservation is that head's (asm 0xE808) | 6/6 lines, 16/16 branches, **ALL-ARMS** - **marked**; every condition's other arm was forced (`SPLITTER_FORCE=RESA`, `RESB`, `RESC`, `RESD`, `RESE1`, `RESE2`, `RESE3`, `RESF`, `RESG` write the alive bit, the active bit, the head id, the reservation, the landed count and the two flag bits) |
+| `fn_75_E768` (the chassis's dock release) | right: the reservation at 0xC6E is compared with the head's id (asm 0xE770 `cmplw r5, r0`, 0xE774 `bnelr`) and the invalid id is stored when they are equal (asm 0xE780) | 4/4 lines, 2/2 branches, **ALL-ARMS** - **marked**; both arms were forced (`SPLITTER_FORCE=RELO`, `RELO2`, `RELO3` write the head's checked chassis id at 0xEFC and the chassis's reservation) |
+
+The armed arm of `fn_75_E768` is not reachable in the fight: the head's search (fn_75_2280) only
+runs when the id at 0xEFC is invalid (fn_75_31A8, 0x327C-0x3280), so the old pick it releases
+(0x2350-0x2380) is never a live chassis - the force gives the head an old pick to release.
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
   shipped spawns reach: section 3.3 lists them with the lines and the branches each one still
-  misses. The next ones are `fn_75_2CE0` (the head's shield: 5/34 lines), `fn_75_E768` (the
-  head's dock release: 0/4 lines), `fn_75_E788` (the dock reserve: 0/6) and `fn_75_2154` (the
-  head's move to: 0/6) - the smallest gaps.
+  misses. The next ones are `fn_75_2994` (the head's turn upright: 14/18 lines, 4/12 branches),
+  `fn_75_2CE0` (the head's shield: 5/34 lines) and `fn_75_ACEC` (the chassis's head placement:
+  26/34 lines, 24/32 branches) - the smallest gaps.
 - **The queue's rows with no body at all** are the module's own helpers that the FSM lane's
   states and codes call (the beam effect's actor, the laser-pulse shot, the collision actor
   managers' joint helpers) and the ones the two classes' constructors build. They are listed in
