@@ -1812,3 +1812,34 @@ Left unmarked:
   13248 loops to a fixed 2 (retail reads 0xDC0, only written by the ctor's 2 at 0x18340).
 - 18264 ctor (76 asmcheck completeness findings), 12818/12D98 (documented unreachable arms).
 - 19908: no C++ body; it is the module's copy of ~CEnergyProjectile, which the host takes from the DOL class.
+
+## 2026-10-22: dg26's leftover head bodies (dg27); gcov runs dg27 r1-r4 + f1 + f2
+
+- Marked (ALL-ARMS over the merged profile, asmcheck reviewed): SelectDeathHeadAttack 14470, the
+  DGHD loader DF7C, RetractEchoTargets 14DA0, x13248_ 13248, x12B04_ 12B04. All runs:
+  `build-port-cov`, area `1baa96c2,09_cliff_temple_dark`, `--fast`, 0 caught/reach-stub.
+- 14DA0: the arm dg26 missed is `state == kS_Extended` (gcov 932 branch 3), not Extending: dg26
+  retracted at most 80 frames after an extract, inside the 4 s extension. `tools/drivers/dg27_retract.py`
+  retracts 600 frames after.
+- 13248/12B04: the dg26 forces never fired because that spec's per-frame breakpoints (Think,
+  AcceptScriptMsg) slowed the run until the ball left its slot. `digitalguardian_dg27_force.py` has
+  no per-frame breakpoint; the bomb kill then works under gdb.
+- asmcheck findings, all explained: 14470 XCMP 0x14570 is the `cntlzw; extrwi 1,26; neg; and 3`
+  idiom (x10D0_ == 0 ? 3 : 0); DF7C CALL/BRANCH are the generated reader in the `.inc` (the tool
+  does not read includes); 12B04 fn_14_1FE8 / internal_dereference are the CEntityInfo and string dtors.
+- 18264 ctor (left unmarked): asmcheck parses no body for it (CALLS "C++ body 0"), so its 76
+  findings are the init list, unread; checked by hand against the asm. Ported in dg27:
+  EnableAllAnimReactions(false) at 0x18CFC and the visual knowledge's locator = 0x1088 (0x18DE8;
+  rebuilt with the ctor's arguments, no setter). Missing: the visual knowledge's filter
+  (0x18DEC..0x18E5C: include 1<<0x3B kMT_Solid, exclude 1<<0x21|1<<0x20 kMT_Character/kMT_Player,
+  type 3), which needs a `CVisualKnowledge` filter setter (shared header). Its gcov-untaken arms
+  are the token/SCAN asset-unset arms (data-dead) and the closing-brace unwind edges.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 14470 | splitters / first shot / pick 0-3 | dg26 driver a (r1) | ran |
+| 14470 | first shot skipped for type 4 | forced (dg27_force: x10DC_ 1, firstShotType 4 at entry) | ran |
+| DF7C | model / no model | r1 / forced (dg27_noload: ANCS 0xffffffff at 2728) | ran |
+| 14DA0 | null, extended, extending, other | r1 (dg26 a) + r2 (dg27_retract) | ran |
+| 13248 | ball 0 / ball 1 / -1 | r1, r4 (dg26 c) / forced (dg27_force: second hit id 0xffff) | ran |
+| 12B04 | idx -1; token unset; IS04 there / gone; loop sound set / not | forced (dg27_force) / r4 (c) / r1, r3 (b) | ran |

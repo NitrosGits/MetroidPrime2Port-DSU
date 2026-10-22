@@ -17,11 +17,11 @@ _MSG = ('(msg.m_msg == kSM_Delete || msg.m_msg == kSM_Activate || msg.m_msg == k
 FORCE = [
     ('11FEC no effect token', 'CDigitalGuardianHead::x11FEC_(', [],
      ['$dg26_h1 = $rdi', '$this->xFD0_.m_valid = 0'], 0, 'clears xFD0_.m_valid'),
-    ('11FEC token back', 'loc:PortCDigitalGuardianHead.cpp:2820', [],
+    ('11FEC token back', 'loc:PortCDigitalGuardianHead.cpp:2831', [],
      ['((CDigitalGuardianHead*)$dg26_h1)->xFD0_.m_valid = 1'], 0, 'sets xFD0_.m_valid'),
     ('12B04 no effect token', 'CDigitalGuardianHead::x12B04_(', [],
      ['$dg26_h2 = $rdi', '$this->xF14_.m_valid = 0'], 0, 'clears xF14_.m_valid'),
-    ('12B04 token back', 'loc:PortCDigitalGuardianHead.cpp:2858', [],
+    ('12B04 token back', 'loc:PortCDigitalGuardianHead.cpp:2870', [],
      ['((CDigitalGuardianHead*)$dg26_h2)->xF14_.m_valid = 1'], 0, 'sets xF14_.m_valid'),
     ('13248 no ball', 'CDigitalGuardianHead::x13248_(', [], ['$rsi = 0xffff'], 1,
      'the id (si) becomes 0xffff'),
