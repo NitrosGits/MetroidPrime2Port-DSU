@@ -1210,7 +1210,7 @@ void CDarkSamusBoostBall::Think(float dt, CStateManager& mgr) {
   mCollisionManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   UpdateAnimation(2.f * dt, mgr, true);
   mHitCooldown -= dt;
-  if (mHitCooldown < 0.f) { // 0x00003B94
+  if (!(mHitCooldown >= 0.f)) { // 0x00003B94 `bge`: NaN clamps too
     mHitCooldown = 0.f;
   }
 }
