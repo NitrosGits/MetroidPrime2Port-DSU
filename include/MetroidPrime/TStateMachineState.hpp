@@ -173,6 +173,7 @@ int TStateMachineState< T >::GetType() const {
   return 0;
 }
 
+#ifdef TARGET_PC
 template < class T >
 void TStateMachineState< T >::PortCollectStateNames(rstl::vector< rstl::string >& out,
                                                    int maxDepth) const {
@@ -186,6 +187,7 @@ void TStateMachineState< T >::PortCollectStateNames(rstl::vector< rstl::string >
     out.push_back(rstl::string(mPortStateFunctions[i].mName));
   }
 }
+#endif
 
 template < class T >
 void TStateMachineState< T >::Setup(const CStateMachine* machine) {
