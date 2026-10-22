@@ -1293,8 +1293,8 @@ module - marked once a run exercises it.
 
 | class | the functions |
 |---|---|
-| (a) the module's own deleting destructors and the free-only thunks | `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BB3C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BE98` `fn_16_BE9C` `fn_16_BEA4` `fn_16_BEB0` `fn_16_BEB8` `fn_16_BF14` |
-| (a) the rstl and compiler-generated helpers | `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C` `fn_16_FF4` |
+| (a) the module's own deleting destructors and the free-only thunks | `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BE98` `fn_16_BE9C` `fn_16_BEA4` `fn_16_BEB0` `fn_16_BEB8` `fn_16_BF14` |
+| (a) the rstl and compiler-generated helpers | `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C` `fn_16_BB3C` `fn_16_FF4` |
 | (a) the loader's readers and the model's copies | `fn_16_A2A0` `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A980` `fn_16_ABD0` `fn_16_AEDC` `fn_16_AF7C` `fn_16_B014` `fn_16_B1D8` `fn_16_B434` `fn_16_B5C8` `fn_16_B6EC` `fn_16_9700` |
 | (a) the base classes' own bodies | `fn_16_60` (`CActor::GetHealthInfo` - a thunk to the base's slot 12), `fn_16_B958` (`CActor::GetTouchBounds` - the base's `GetBoundingBox` in an `optional`), `fn_16_BA30` (that `optional`'s builder), `fn_16_18E8` (the `SMoverData` copy constructor), `fn_16_6898` (the `CRayCastResult` copy) |
 | (a) the REL runtime | `fn_16_A270`, `fn_16_BF88` (the static initialiser of the three FSM tables), `fn_16_C3B0` (`ModuleDestructors`), `fn_16_C3FC` (`ModuleConstructors`), `fn_16_469C` (`push_back_unsafe`), `RELMain`, `RELExit` |
@@ -1669,9 +1669,9 @@ callers and the tables that reference it):
 | B module behaviour | 98 | 0x8708 (34,568) | 98 |
 | **total** | **241** | **0xE448 (58,248)** | **98** |
 
-- **69** - the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6): `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_89B8` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BB3C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BF14`
+- **68** - the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6): `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_89B8` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BF14`
 
-- **24** - the rstl / compiler-generated helper - the host's rstl provides it: `fn_16_FF4` `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `push_back_unsafe__28CEmperorIngStage1JointVectorFRC26CJointCollisionDescription` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C`
+- **25** - the rstl / compiler-generated helper - the host's rstl provides it: `fn_16_BB3C` (a byte vector's reserve: allocate, the byte copy loop at 0xBBAC, Free of the old buffer at 0xBC1C) `fn_16_FF4` `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `push_back_unsafe__28CEmperorIngStage1JointVectorFRC26CJointCollisionDescription` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C`
 
 - **13** - the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it: `fn_16_9700` `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A980` `fn_16_ABD0` `fn_16_AEDC` `fn_16_AF7C` `fn_16_B014` `fn_16_B1D8` `fn_16_B434` `fn_16_B5C8` `fn_16_B6EC`
 
@@ -1704,6 +1704,22 @@ and the entry points run at the module's load, and the tables are static data.  
 `asmcheck` findings are the ones the note's section 11.2 lists as (a): the REL's own reader
 chain (fn_16_ABD0, fn_16_AEDC, ...) is the host's generated `SLdrEmperorIngStage1.inc` in the
 port, so the C++ never names it.
+
+### 21.1a The T rows are the DOL's own bodies (2026-10-22)
+
+Each T entry was compared instruction by instruction with the DOL body at the same vtable
+entry (`EmperorIngStage1_functions.tsv` column "what" has the name and address): the twelve in
+the boss's vtable (lbl_16_data_3C8) are the entries where the DOL's CPatterned vtable
+(lbl_803B2458) has an inline body - `CPatterned::TakeDamage` 0x80073C58, `GetModelAlphau8`
+0x80073C64, `ProjectileInfo` 0x80073C6C, `GetSearchPath` 0x80073C74, `fn_80073c7c` 0x80073C7C,
+`GetRagDoll` 0x800358E0, `GetAttackTarget` 0x80073C84, `IsOnGround` 0x80073C90,
+`GetGravityConstant` 0x80073C9C, `GetDeathExplosionParticle` 0x80073CA4, `CAi::Listen`
+0x8003C59C, `CAi::GetOrigin` 0x80073CB4 - and every one is byte-identical (the REL loads the
+globals through `@ha/@l` where the DOL uses `@sda21`).  lbl_16_data_510 is a copy of
+`__vt__12CParticleGen` (its entries 11/12/20/22/23 against the DOL's `SetGeneratorRate`
+0x800534B0, `SetDrawFlags` 0x800534B4, `GetGeneratorRate` 0x800534BC, `GetDrawFlags`
+0x800534C4, `ShouldDraw` 0x800534CC; the other entries are DOL relocations).  None of them is a
+module override, so none is marked; the host's CPatterned / CParticleGen bodies are the code.
 
 ### 21.2 Count check
 

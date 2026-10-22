@@ -205,34 +205,34 @@ offset	size	class	kind	callers	tables	what	marker
 0x0000B86C	0x88	H	host-copy	fn_16_AEDC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
 0x0000B8F4	0x64	H	host-copy	fn_16_AF7C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
 0x0000B958	0x3C	H	host-copy	-	auto_04_00000000_data.s	the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it	no
-0x0000B994	0x10	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9A4	0x8	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9AC	0x8	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9B4	0x8	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9BC	0x8	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9C4	0x8	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9CC	0x10	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9DC	0xC	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9E8	0xC	T	vtable	-	auto_04_00000000_data.s		no
-0x0000B9F4	0x8	T	vtable	-	auto_04_00000000_data.s		no
+0x0000B994	0x10	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::TakeDamage (0x80073C58), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9A4	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::GetModelAlphau8 (0x80073C64), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9AC	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::ProjectileInfo (0x80073C6C), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9B4	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::GetSearchPath (0x80073C74), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9BC	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::fn_80073c7c (0x80073C7C), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9C4	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::GetRagDoll (0x800358E0), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9CC	0x10	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::GetAttackTarget (0x80073C84), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9DC	0xC	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::IsOnGround (0x80073C90), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9E8	0xC	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::GetGravityConstant (0x80073C9C), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000B9F4	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CPatterned::GetDeathExplosionParticle (0x80073CA4), the same entry of the CPatterned vtable lbl_803B2458	no
 0x0000B9FC	0x8	B	behaviour	-	auto_04_00000000_data.s		yes
 0x0000BA04	0x8	B	behaviour	-	auto_04_00000000_data.s		yes
-0x0000BA0C	0x8	T	vtable	-	auto_04_00000000_data.s		no
-0x0000BA14	0x1C	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BA0C	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CAi::Listen (0x8003C59C), the same entry of the CPatterned vtable lbl_803B2458	no
+0x0000BA14	0x1C	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CAi::GetOrigin (0x80073CB4), the same entry of the CPatterned vtable lbl_803B2458	no
 0x0000BA30	0x3C	H	host-copy	fn_16_B958	-	the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it	no
 0x0000BA6C	0xB0	H	host-copy	fn_16_2204	-	the rstl / compiler-generated helper - the host's rstl provides it	no
 0x0000BB1C	0x20	H	host-copy	fn_16_BA6C	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
-0x0000BB3C	0x108	H	host-copy	fn_16_3C58	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
+0x0000BB3C	0x108	H	host-copy	fn_16_3C58	-	the rstl / compiler-generated helper - a byte vector's reserve (allocate, the byte copy loop, Free of the old buffer); the host's rstl provides it	no
 0x0000BC44	0xC0	H	host-copy	fn_16_3EAC	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
 0x0000BD04	0x68	H	host-copy	fn_16_BC44	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
 0x0000BD6C	0x64	H	host-copy	fn_16_26B8,fn_16_2A68,fn_16_2AB8	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
 0x0000BDD0	0x64	H	host-copy	fn_16_4C0C,fn_16_4DF0,fn_16_4E68,fn_16_68F4	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
 0x0000BE34	0x64	H	host-copy	-	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
-0x0000BE98	0x4	T	vtable	-	auto_04_00000000_data.s		no
-0x0000BE9C	0x8	T	vtable	-	auto_04_00000000_data.s		no
-0x0000BEA4	0xC	T	vtable	-	auto_04_00000000_data.s		no
-0x0000BEB0	0x8	T	vtable	-	auto_04_00000000_data.s		no
-0x0000BEB8	0x5C	T	vtable	-	auto_04_00000000_data.s		no
+0x0000BE98	0x4	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CParticleGen::SetGeneratorRate (0x800534B0), the same entry of the CParticleGen vtable (lbl_16_data_510 is a copy)	no
+0x0000BE9C	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CParticleGen::SetDrawFlags (0x800534B4), the same entry of the CParticleGen vtable (lbl_16_data_510 is a copy)	no
+0x0000BEA4	0xC	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CParticleGen::GetGeneratorRate (0x800534BC), the same entry of the CParticleGen vtable (lbl_16_data_510 is a copy)	no
+0x0000BEB0	0x8	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CParticleGen::GetDrawFlags (0x800534C4), the same entry of the CParticleGen vtable (lbl_16_data_510 is a copy)	no
+0x0000BEB8	0x5C	T	vtable	-	auto_04_00000000_data.s	the base body: byte-identical to the DOL's CParticleGen::ShouldDraw (0x800534CC), the same entry of the CParticleGen vtable (lbl_16_data_510 is a copy)	no
 0x0000BF14	0x74	H	host-copy	fn_16_BE34	-	the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6)	no
 0x0000BF88	0x31C	B	behaviour	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	yes
 0x0000C2A4	0xC4	H	host-copy	-	-	the REL runtime - the host's platform/rel.cpp and the crtexe glue provide it	no
