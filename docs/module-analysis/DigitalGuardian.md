@@ -1664,3 +1664,30 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 | 19784 | no target (flag 0x01), unmorphed, spawned morph (`var player spawnmorph 1`, forced), morphed no boost, boost shield | cs1 (`tools/cov/specs/digitalguardian_chargeshot.con`) | 10/10, marked |
 | 19838 | no branches | cs1 | ran, marked |
 | 10CA0 | all; TryCache false forced | cs1 + shots1 + force1 | 23/23, marked |
+
+## 2026-10-22: the head's pulse, missiles and machine gun states (dg22); gcov runs dg22_gun2 + dg22_force2
+
+- Ported (head): PulseAttack fn_14_16D64 (severity 0, burst count 0x10D8 - 1 on Activate),
+  MissileAttack fn_14_167EC (severity 1), MachineGunAttack fn_14_16408 (side from Range(0,100) <= 50,
+  phase 0 charge / 1 sweep), the sweep's ends fn_14_10798 and one bullet fn_14_101E0.
+- New head members (TARGET_PC block after xE7C_): 0x10A4 the gun's locator (a second
+  "T_lazor_LCTR", .rodata 0x94C; ctor 0x18D70..0x18D9C), 0x10A8/0x10B4 sweep start/end, 0x10C0 side,
+  0x10C4 phase (ctor -1), 0x10C8 phase time, 0x10CC bullet timer. Data: +0x228 sound_MachineGun,
+  +0x240..+0x24C machineGun HalfSweepDist / SweepDuration / ChargeDuration / FireTime.
+- 101E0 builds a plain CEnergyProjectile (not CGuardianProjectile), limit CanCreateProjectile(uid,
+  kWT_AI, 64); the sound plays only when the projectile is built.
+- Drivers: `tools/cov/specs/digitalguardian_gun.con` (natural, `--frames 1150`; 70 pulse uevents in
+  one line fill the 64-projectile limit), `digitalguardian_gun_force.py` + `digitalguardian_gun_force.con`
+  (`--frames 300`, head placed on the player).
+- asmcheck reports 16A50 MISSING: its parser swallows the definition after the DGHD_STATE_STANDIN
+  calls (predates dg22; the new bodies sit above the macro block for that reason).
+
+| Function | Arm | How | Result |
+|---|---|---|---|
+| 16D64 | act / update issue or not / deact in or out of 0x12 / msg 3 | gun2 | 10/10, marked |
+| 167EC | same arms | gun2 | 10/10, marked |
+| 16408 | sides 0/1, phase 0 charge / start sweep, phase 1 sweep / over, timer fire / wait, other phase, deact | gun2 | 19/19, marked |
+| 10798 | side 0/1, axis safe; X-column fallback | gun2; forced (force.sh, locator 0x10A4 invalid) | 6/6, marked |
+| 101E0 | built, CanCreate false (70 pulses out); TryCache false | gun2; forced (force.sh, weapon uncached) | 9/9, marked |
+
+- Marked: 16D64, 167EC, 16408, 10798, 101E0.

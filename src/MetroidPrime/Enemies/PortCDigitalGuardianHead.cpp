@@ -1327,15 +1327,6 @@ void CDigitalGuardianHead::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   MassiveDeath(mgr);
 }
 
-#define DGHD_STATE_STANDIN(name, fn)                                                               \
-  void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
-    StandInFn(#fn " (head state " #name ")");                                                      \
-  }
-DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
-DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
-DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
-#undef DGHD_STATE_STANDIN
-
 // fn_14_16D64: the annihilator pulse. The cmpwi chain at 0x16D88..0x16DB0 picks the message.
 // Activate (0): Ready (0x6B4 = 1, 0x16DBC), flag 0x20 (rlwimi at 0x16DC8), the turn direction
 // from fn_14_13B38 (0x16DD0, stores 0x16DD8..0x16DE8) and one burst fewer (0x10D8 - 1, 0x16DF4).
@@ -1345,6 +1336,8 @@ DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 // turns either way (fn_14_11D64 at 0x16ED8). Deactivate (2): NotReady (0x16EE4); while the body
 // is in the projectile attack (0x37C == 0x12, 0x16EF0) it is aborted (0xD, DeliverCmd at 0x16F14);
 // flag 0x20 clears (0x16F2C) and the turn direction is sZeroVector (0x16F38..0x16F4C).
+// Every arm ran (dg22_gun2: uevents and statecalls 0/1/2, in and out of the projectile attack).
+// @ fn_14_16D64
 void CDigitalGuardianHead::PulseAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1380,6 +1373,8 @@ void CDigitalGuardianHead::PulseAttack(CStateManager& mgr, EStateMsg msg, float 
 // 0x168BC), then the turn (fn_14_11D64 at 0x16958); Deactivate (2) NotReady (0x16964), the abort
 // while the body is in state 0x12 (0x16970, DeliverCmd 0xD at 0x16994), flag 0x20 cleared
 // (0x169AC) and the turn direction zeroed (0x169B8..0x169CC).
+// Every arm ran (dg22_gun2: statecalls 0/1/2, in and out of the projectile attack).
+// @ fn_14_167EC
 void CDigitalGuardianHead::MissileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1425,6 +1420,8 @@ void CDigitalGuardianHead::MissileAttack(CStateManager& mgr, EStateMsg msg, floa
 // does nothing. Deactivate (2): NotReady (0x16760), the abort while the body is in state 0x12
 // (0x1676C, DeliverCmd 0xD at 0x16790), flag 0x20 cleared (0x167A8), the turn direction zeroed
 // (0x167B4..0x167C8).
+// Every arm ran (dg22_gun2: both sides, phases 0/1/other, sweep end, bullet timer).
+// @ fn_14_16408
 void CDigitalGuardianHead::MachineGunAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1488,6 +1485,8 @@ void CDigitalGuardianHead::MachineGunAttack(CStateManager& mgr, EStateMsg msg, f
 // AsNormalized at 0x10914), else the head's X column (0x24/0x34/0x44, 0x10920); times
 // machineGunHalfSweepDist (data +0x240, 0x1093C) and negated for side 1 (cmpwi/bne at 0x10940).
 // The start is the centre minus it, the end the centre plus it (0x109A8..0x109C8).
+// Every arm ran (dg22_gun2; the X-column fallback forced (force.sh, locator invalid)).
+// @ fn_14_10798
 void CDigitalGuardianHead::x10798_(CStateManager& mgr, int side) {
   const CPlayer& player = *mgr.GetPlayer(0);
   const CVector3f o = GetLctrTransform(x10A4_).GetTranslation();             // 0x10810
@@ -1513,25 +1512,36 @@ void CDigitalGuardianHead::x10798_(CStateManager& mgr, int side) {
 // player, no visor effect (fn_14_1047C), false, true, false, 1.0f, 4.0f, 4.0f (.rodata
 // 0x96C/0x998). When built it is added (AddObject at 0x1040C) and sound_MachineGun (data +0x228)
 // plays at the shot's position along its Y column, not looped (PlayCustomSound at 0x10458).
+// Every arm ran (dg22_gun2 incl. CanCreate false; TryCache false forced (force.sh)).
+// @ fn_14_101E0
 void CDigitalGuardianHead::x101E0_(CStateManager& mgr, const CVector3f& dir) {
-  if (!xE7C_.Token().TryCache()) {
+  if (!xE7C_.Token().TryCache()) { // 0x1020C..0x10258
     return;
   }
   if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 64)) { // 0x1027C
     return;
   }
-  const CVector3f pos = GetLctrTransform(x10A4_).GetTranslation();
-  const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
+  const CVector3f pos = GetLctrTransform(x10A4_).GetTranslation();             // 0x10294
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up()); // 0x102E8
   CEnergyProjectile* projectile = rs_new CEnergyProjectile(
       true, xE7C_.Token(), kWT_AI, xf, kMT_Character, xE7C_.GetDamage(), mgr.AllocateUniqueId(),
       GetCurrentAreaId(), GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), 0, false,
-      CVector3f::One(), CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f);
+      CVector3f::One(), CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f); // 0x103E0
   // The null arm is an allocation failure only (rs_new); it never happens in a run.
   if (projectile != nullptr) {
     mgr.AddObject(projectile);                                                       // 0x1040C
     PlayCustomSound(xf.GetTranslation(), xf.GetColumn(kDY), mData.sound_MachineGun, false); // 0x10458
   }
 }
+
+#define DGHD_STATE_STANDIN(name, fn)                                                               \
+  void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
+    StandInFn(#fn " (head state " #name ")");                                                      \
+  }
+DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
+DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
+DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
+#undef DGHD_STATE_STANDIN
 
 // fn_14_16A50: the state message picks the work (the cmpwi chain at 0x16A74..0x16A9C).
 // Activate (0): ready (0x6B4 = 1, 0x16AA8), flag 0x20 (the rlwimi at 0x16AB4) and the turn
