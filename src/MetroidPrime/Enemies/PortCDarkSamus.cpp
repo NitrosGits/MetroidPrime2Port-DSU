@@ -584,7 +584,7 @@ void CDarkSamus::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
-// fn_10_E5C (0x0000E5C, 0xDC bytes): the base's EnsureRendered - the host's
+// fn_10_E5C (0x00000E5C, 0x20 bytes): the base's EnsureRendered - the host's
 // CActor::EnsureRendered(const CStateManager&), which the module's own copy calls.
 // Unmarked: the fight does not reach it (the coverage run: 0 hits - the
 // call is behind the fade factor and the dark visor), so there is no

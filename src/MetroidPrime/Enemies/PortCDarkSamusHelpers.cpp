@@ -1018,7 +1018,7 @@ void CDarkSamus::FirePhazonSuperMissile(CStateManager& mgr) {
 
 namespace {
 
-// fn_10_1B24 (0x00001B24, 0xDC bytes): the cross product of two vectors - the x is
+// fn_10_1B24 (0x00001B24, 0x40 bytes): the cross product of two vectors - the x is
 // a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C)
 // and the z a.x * b.y - b.x * a.y (0x00001B54); the host's CVector3f::Cross is the same
 // formula.
