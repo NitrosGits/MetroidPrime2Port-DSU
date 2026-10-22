@@ -1871,26 +1871,33 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
       FsmStandIn("fn_10_A1C0", "BoostBallRoll's roll pick"); // 0x0000A514
       mGuestCD0 = 0;                                     // 0x0000A520
       // 0x0000A524..0x0000A538: the health (the vtable's slot 0x3C, the float at its +4) and
-      // 0x0000A544: the health - 1.0f (lbl_10_rodata_264); 0x0000A548: the float at 0x314
-      // (fn_10_2EFC). 0x0000A54C..0x0000A558: the damage is the health - 1.0f unless the
-      // compare is unordered, when it is the float at 0x314.
+      // 0x0000A544: the health - 1.0f (lbl_10_rodata_264). 0x0000A548: the float at 0x314
+      // (fn_10_2EFC, the call's result in f1). 0x0000A54C..0x0000A558: the `fcmpo` of that
+      // value with the health - 1.0f - `bge` takes the health - 1.0f, the other way the float at
+      // 0x314 (the unordered case too): the damage is min(the float at 0x314, the health - 1.0f).
       const float health = GetHealthInfo()->GetHP();
       const float healthMinusOne = health - 1.f;
-      const float damage = (health >= healthMinusOne) ? healthMinusOne : mGuest314;
-      // 0x0000A564..0x0000A5EC: the damage info - the weapon mode word 0x13 with the bits 16,
-      // 17, 18, 24 and 25 cleared (the `rlwimi` chain), the damage, the radius damage amount
-      // (the same value), the damage radius 0.0f, the knockback 0.0f, the three sound ids 0 and
-      // the flags byte with its bit 0x80 cleared. The host's CWeaponMode carries only the type
-      // (0 = kWT_Power) and CDamageInfo's sound ids default to 0xffff.
-      const CDamageInfo info(CWeaponMode(kWT_Power), damage, 0.f, 0.f, true);
-      // 0x0000A630..0x0000A650: the filter - the actor's own uid in the include and the exclude
-      // lists; the host's filter carries the material types, so the port uses the same filter as
-      // its other damage calls.
+      const float rollDamage = mGuest314;
+      const float damage = (rollDamage >= healthMinusOne) ? healthMinusOne : rollDamage;
+      // 0x0000A564..0x0000A5EC: the damage info - the weapon mode word 0x13 in the high half
+      // (the `li r0, 0x13` and the `rlwimi` at 0x0000A560/0x0000A564) with the low half and the
+      // bits 16, 17, 18, 24 and 25 cleared, so the type is 0x13 = 19 = kWT_UnknownSource and the
+      // mode's flags (the charged, the comboed, the instant-kill) are all false; the damage, the
+      // radius damage amount (the same value, 0x0000A568), the damage radius 0.0f, the knockback
+      // 0.0f, the three sound ids 0 and the flags byte with its bit 0x80 cleared. The host's
+      // CDamageInfo defaults the sound ids to 0xffff.
+      const CDamageInfo info(CWeaponMode(kWT_UnknownSource, false, false, false), damage, 0.f, 0.f,
+                             true);
+      // 0x0000A5B4..0x0000A5F0: the filter - the include list is the material bit 1 << 0x3B
+      // (lbl_10_data_1E0 = 0x3B through the `__shl2i` at 0x0000A5F0), which is 59 =
+      // kMT_Solid, the exclude list is empty and the type is 3 = kFT_IncludeExclude
+      // (0x0000A5F8/0x0000A62C).
       const CMaterialFilter filter(CMaterialList(kMT_Solid), CMaterialList(),
-                                   CMaterialFilter::kFT_IncludeExclude); // 0x0000A5B4
-      CActor* ball = GetBoostBallActor(mgr);
-      mgr.ApplyDamage(GetUniqueId(), ball->GetUniqueId(), GetUniqueId(), info, filter,
-                      CVector3f::Zero()); // 0x0000A654
+                                   CMaterialFilter::kFT_IncludeExclude);
+      // 0x0000A630..0x0000A650: all three uids are this actor's own (`lhz 0x8(r30)`), so the
+      // retail damages the Dark Samus herself; the ball's actor is not used.
+      mgr.ApplyDamage(GetUniqueId(), GetUniqueId(), GetUniqueId(), info, filter,
+                      CVector3f::Zero()); // 0x0000A654 (sZeroVector, 0x0000A600)
       mBoostBallFlag20 = true; // 0x0000A660 (the `rlwimi` at 0x0000A660 sets the bit 0x20 of 0xEBC)
       mGuestCD0 = 1;            // 0x0000A668
     }
