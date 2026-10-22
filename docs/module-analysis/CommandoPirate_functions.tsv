@@ -110,7 +110,7 @@ offset	size	fn	kind	class	port	note
 0x6354	0x3C	fn_9_6354	host-copy	H	not-port	
 0x6390	0x29C	fn_9_6390	behaviour	B	marked	
 0x662C	0x39C	fn_9_662C	vtable-override	B	marked	timers; cov: every guest arm (forced)
-0x69C8	0x78	fn_9_69C8	fsm-trigger	B	ported	Dead
+0x69C8	0x78	fn_9_69C8	fsm-trigger	B	marked	Dead
 0x6A40	0x130	fn_9_6A40	fsm-trigger	B	ported	GetUp
 0x6B70	0x5C	fn_9_6B70	host-copy	H	not-port	
 0x6BCC	0x9C	fn_9_6BCC	fsm-trigger	B	marked	BreakCover

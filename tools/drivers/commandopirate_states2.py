@@ -41,18 +41,24 @@ stream = sock.makefile("rw")
 
 
 def cmd(c):
-    stream.write(c + "\n")
-    stream.flush()
-    lines = []
-    while True:
-        line = stream.readline()
-        if not line:
-            break
-        line = line.rstrip("\n")
-        if line.startswith("=> "):
-            break
-        lines.append(line)
-    return "\n".join(lines)
+    # A command that does not answer must not stall the whole run: the console goes quiet when
+    # the game is busy, so a timeout ends the command instead of the driver.
+    try:
+        stream.write(c + "\n")
+        stream.flush()
+        lines = []
+        while True:
+            line = stream.readline()
+            if not line:
+                break
+            line = line.rstrip("\n")
+            if line.startswith("=> "):
+                break
+            lines.append(line)
+        return "\n".join(lines)
+    except (socket.timeout, OSError) as e:
+        log("command %r failed: %s" % (c, e))
+        return ""
 
 
 def frame():
@@ -117,6 +123,27 @@ def main():
         log("=== commando %s ===" % cid)
         step(cid, "send %s Activate", 30)
         step(cid, "place %s player 5", 20)
+        # The Dead state first: the kill at the end deletes the actor, so the state has to run
+        # while the commando is still there.
+        step(cid, "fsm %s Dead", 60)
+        # and once more (with another state in between, so the state is entered again): the first
+        # entry runs the Dead state's arms with the byte's 0x20 bit clear, the second with it set.
+        step(cid, "fsm %s Lurk", 10)
+        step(cid, "fsm %s Dead", 60)
+        # The body states the state machine does not reach: the body's own state is written with
+        # the console's `bodystate` (the pas::EAnimationState index).
+        step(cid, "bodystate %s 20", 5)   # kAS_WallHang
+        step(cid, "fsm %s WallHang", 60)
+        step(cid, "bodystate %s 19", 5)   # kAS_Cover
+        step(cid, "fsm %s Cover", 60)
+        step(cid, "bodystate %s 2", 5)    # kAS_LieOnGround
+        step(cid, "fsm %s GetUp", 60)
+        # The commando tipped over (a pitch of 90 degrees) for the RestoreOrientation's angle arms.
+        p = pos_of(cid)
+        if p is not None:
+            step(cid, "place %%s %f %f %f 0 90 0" % p, 20)
+        step(cid, "fsm %s RestoreOrientation", 60)
+        step(cid, "fsm %s ScriptedShieldCharge", 120)
         for cov in covers:
             p = pos_of(cov)
             if p is None:
@@ -126,19 +153,10 @@ def main():
             step(cid, "place %s player 6", 10)
             step(cid, "fsm %s CoverFind", 20)
             step(cid, "fsm %s Cover", 60)
-            step(cid, "fsm %s WallHang", 60)
             step(cid, "fsm %s CoverAttack", 60)
             step(cid, "fsm %s Cover", 60)
-        # the states that need no cover point
-        step(cid, "fsm %s WallHang", 60)
-        step(cid, "fsm %s RestoreOrientation", 60)
-        step(cid, "fsm %s ScriptedShieldCharge", 120)
-        step(cid, "fsm %s GetUp", 60)
-        step(cid, "fsm %s ScriptedShieldCharge", 30)
-        # the Dead state before any kill: the kill deletes the actor, so the state has to run
-        # while the commando is still there (the state's own activate ends it).
-        step(cid, "fsm %s Dead", 60)
         step(cid, "fsm %s Lurk", 10)
+        step(cid, "kill %s", 30)
 
 
 main()

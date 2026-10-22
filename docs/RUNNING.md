@@ -62,6 +62,13 @@ an FSM2 sub-machine is entered through it, and the reply names the machine), `pl
 `send`, `damage` (direct, no projectile; also the combos `darkburst`/`sunburst`/`sonicboom` and
 `powerbomb`, which knockback rule sets tell apart) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
 from d units, travelling along dir, for modules that only count projectile hits on a joint).
+`place <id> <x> <y> <z>` moves an actor and `place <id> player [d]` puts it d (6) units in front
+of the player; both take an optional rotation after the point: `place <id> <x> <y> <z> <yaw> [pitch
+[roll]]` in degrees (the yaw about the world's up, the pitch about the right one, the roll about the
+forward one) - without it the actor keeps its rotation.
+`bodystate <id> <n>` sets a patterned actor's body controller state directly (n is the
+`pas::EAnimationState` index: 0 ready, 2 lie on ground, 19 cover, 20 wall hang); the state machine
+reaches only some of the body states, and the coverage runs need the others.
 `statecall <id> <state> <msg> [dt]` runs one FSM2 state body once (msg 0 Activate, 1 Update, 2
 Deactivate) outside the machine, from the actor's whole state table: states the FSM2 has no node for.
 `codecall <id> <code> [dt]` does the same for a code function (codes otherwise run only on transitions).
