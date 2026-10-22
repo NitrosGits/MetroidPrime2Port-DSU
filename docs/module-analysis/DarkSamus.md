@@ -2241,3 +2241,33 @@ platform casts and the dash arms of CollidedWith.
   enters and leaves at once; 0 calls).
 - Left unmarked: CEB4 GetOrigin, 0 calls: only CScriptTeamAiMgr and CMetroid ask it, and the boss
   is in no team.
+
+## Slice ds42 (2026-10-22): the next 44 B rows (3 marked, 41 H)
+
+- Marked: F40C GetScannableObjectInfo, FF20 DamageVulnerability, 1C6C8 ProjectileInfo; the port
+  bodies already matched the asm (F40C: 0x420 bit 0x40 at 0x0000F41C, 0x20 bit 0x80 at 0x0000F438,
+  0x97C bit 0x80 at 0x0000F454, the 0x92C null test at 0x0000F464, the token's +8 at 0x0000F46C,
+  else fn_8007427C; FF20: 0xCD0 == 1, 0x980 == 0x800000 by subis/cmplwi at 0x0000FF4C, FFB4 copy
+  of fn_800742F8 then SetComboVulnerability(3, (0.0f, kE_Normal, false)) via 0x800DB550 /
+  0x800DC02C, else CAi; 1C6C8: the switch as commented). 1C6C8 port limit unchanged: retail
+  answers the optional's address even when invalid, the host null for an unbuilt info.
+- Run: `build-port-link`, rooftop, boss u04f7 activated at f600, fast; gdb boots the game and
+  stops at the 1500th `CDarkSamus::Think`, then forces each arm by writing the members and
+  calling the body (gdb call), restoring every member after. 0 caught / reach-stub.
+
+| fn | forced arms (gdb call) | returned |
+|---|---|---|
+| F40C | alt 0 / alt 1 + token / alt 1 + token + inactive / + dead / alt 1 + null token (fake calloc'd TLockedToken, mItem 0x1234) | base, 0x1234, base, base, base |
+| FF20 | 0xCD0 = 1 / 0x980 = 0x800000 / 0x980 = 0x20 | &mGuestCD4, &mEnrageVulnerability (combo slot 3 = index 4), the CAi member |
+| 1C6C8 | 8 and 0x10 with 0xBAE 0/1, 0x40, 0x80, 0x100, 0x800000 with 0xFB8 0/1/2/-1, 0x20, 0 | sc1, sc2, missile, missile, super, phazon, phazon super, null x4 |
+
+- H (host copy; the tsv state names each, 41 rows): the CDarkSamus dtor's member dtors (1F534
+  1F588 1F5DC 1F650 1F9C0 1F928 1F87C E4DC 1F6A4 1F4B0) and 1F41C (CPatterned 0x620 knockback
+  manager, from 1F238); temporaries and containers (2040 2098 B670 1AFB4 1B05C 4D9C 4DF0 3628 36E4
+  4468 220EC 10010 1B938); header ctors / copies / assigns (A08 2C8 A60 3744 FFB4 3F70 207BC 20938
+  5038 4EFC 20DA0 20CC4 8D30 EED8 1B64). 20C2C: valid=0 at 0x00020C4C and assign + Lock only when
+  the asset != -1 (0x00020C38), which the host ctor (PortCDarkSamus.cpp:192-240) does; no struct
+  fix needed. 21D14: the 'FSM2' (0x46534D32) TToken of the typedef's stateMachine2 (+0x1E4) into
+  0x94C, which host CAi (CAi.cpp:24-29) loads.
+- Follow-up: the tsv calls E7C "unreferenced", but it is the scattershot Render vtable entry (1B64's
+  caller).
