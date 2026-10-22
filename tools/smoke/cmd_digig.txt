@@ -2,7 +2,10 @@
 @f800 objs digital
 @f960 layer 3
 @f1100 layer 11
-@f1290 send u054d Activate
+# The guardian is woken by editor id, never by unique id: the body's uid moves between runs
+# (u054e here) and u054d named a CScriptRelay, so the Activate went nowhere. e00350060 = the body,
+# e0035000f = the head (the same ids tools/drivers/dg26_slots.py and dg29_body.py send to).
+@f1290 send e00350060 Activate; send e0035000f Activate
 @f1460 objs digital
-@f1570 obj u054d
+@f1570 obj e00350060
 @f1850 objs digital
