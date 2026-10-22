@@ -584,6 +584,9 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
 // collider, downward.
 // Area-53 runs ran every arm but zero damage, which is data-dead (every entry WeaponHurts accepts
 // here has multiplier 0.5..2.0, effect 3) and was forced in dg33 (ble at 0x12E90).
+// review26 restored `> 0` / `> 25` (the ble is taken on NaN, so a NaN hit is skipped); the arm set
+// is unchanged, so dg33's coverage stands (re-marked in batch31).
+// @ fn_14_12D98
 void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   if ((x10F4_ & 0x10) == 0 || sender != xE00_) {
     return;
