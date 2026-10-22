@@ -350,9 +350,9 @@ bool CDigitalGuardianHead::x13284_(const rstl::string& name, const TUniqueId& id
 // at 0x1345C); every collider (the loop at 0x13490) gets the include list's high word | 0x4000000
 // (material 58) first, then a ball the pass-through vulnerability and the exclude bits of .data
 // 0xE64..0xE74 (33, 47, 49, 60, 32), the root the immune-ricochet one and the bits of 0xE78..0xE84
-// (33, 47, 49, 60) and its id at 0xE00; then the knockback resistance .rodata 0x96C (1, the
-// HealthInfo slot at 0x13690). The head's own filter (0x136C0): include .data 0xE88 (59), exclude
-// 0xE8C..0xE9C (33, 32, 47, 49, 60), type 3. __shl2i(0, 1, n) is the 64-bit 1 << n.
+// (33, 47, 49, 60) and its id at 0xE00; then the health (HealthInfo +4, 0x136A8) is .rodata 0x96C
+// (1, the HealthInfo slot at 0x13690). The head's own filter (0x136C0): include .data 0xE88 (59),
+// exclude 0xE8C..0xE9C (33, 32, 47, 49, 60), type 3. __shl2i(0, 1, n) is the 64-bit 1 << n.
 void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(3); // fn_14_D7DC
@@ -395,7 +395,7 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
       xE00_ = id;
     }
     actor->SetMaterialFilter(filter);
-    actor->HealthInfo()->SetKnockbackResistance(1.f);
+    actor->HealthInfo()->SetHP(1.f); // stfs f0, 0x4(r3) at 0x136A8: +4 is mHealth
   }
   CMaterialList exclude;
   exclude.Add(kMT_Character);
