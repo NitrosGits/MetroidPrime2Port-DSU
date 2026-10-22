@@ -1,5 +1,6 @@
-@20 objs boostball
-@26 send u052b Activate
-@36 objs boostball
-@46 obj u052b
-@58 objs boostball
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2000, last check f1850.
+@f800 objs boostball
+@f960 send u052b Activate
+@f1240 objs boostball
+@f1520 obj u052b
+@f1850 objs boostball

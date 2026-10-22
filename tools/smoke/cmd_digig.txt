@@ -1,7 +1,8 @@
-@20 objs digital
-@26 layer 3
-@31 layer 11
-@38 send u054d Activate
-@44 objs digital
-@48 obj u054d
-@58 objs digital
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2000, last check f1850.
+@f800 objs digital
+@f960 layer 3
+@f1100 layer 11
+@f1290 send u054d Activate
+@f1460 objs digital
+@f1570 obj u054d
+@f1850 objs digital

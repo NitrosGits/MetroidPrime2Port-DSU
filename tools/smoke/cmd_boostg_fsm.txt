@@ -1,4 +1,5 @@
-@20 objs boostball
-@26 layer 5
-@36 objs boostball
-@50 objs boostball
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2000, last check f1850.
+@f880 objs boostball
+@f1080 layer 5
+@f1400 objs boostball
+@f1850 objs boostball
