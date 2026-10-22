@@ -46,14 +46,21 @@ void Wheel(float steps);
 // story beats along with the intro.
 bool SkipCinematics();
 void SetSkipCinematics(bool skip);
+// Show / Skip with A or Start / Off, for the two settings below (F1 > Game > Cutscenes).
+const int kScreen_Show = 0;
+const int kScreen_Skippable = 1;
+const int kScreen_Off = 2;
 // The health warning and the Nintendo, Retro and Dolby logos at launch (CSplashScreen,
-// `MP2_BOOT_LOGOS=show|skip|off`, F1 > Game > Cutscenes): Skippable ends the current one with its
-// 0.5 s fade on A or Start; Off goes straight from the progressive check to the front end.
-const int kBootLogos_Show = 0;
-const int kBootLogos_Skippable = 1;
-const int kBootLogos_Off = 2;
+// `MP2_BOOT_LOGOS=show|skip|off`): Skippable ends the current one with its 0.5 s fade on A or
+// Start; Off goes straight from the progressive check to the front end.
 int BootLogos();
 void SetBootLogos(int mode);
+// The world-name card while a game loads (CMFGameLoader/CWorldTransManager,
+// `MP2_WORLD_NAME=show|skip|off`): Skippable types it out at once on A or Start, so it fades as
+// soon as the load is done; Off loads behind the plain black transition. The first boot's intro
+// text keeps the game's own rule (Start skips it once seen).
+int WorldNameCard();
+void SetWorldNameCard(int mode);
 // Cheat (`MP2_GODMODE=1`, F1 > Cheats): the player takes no damage, so a hazard cannot end a
 // test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
 bool GodMode();

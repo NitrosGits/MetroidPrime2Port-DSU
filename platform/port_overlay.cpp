@@ -62,7 +62,8 @@
 namespace PortOverlayState {
 
 bool sSkipCinematics = false;
-int sBootLogos = PortOverlay::kBootLogos_Skippable;
+int sBootLogos = PortOverlay::kScreen_Skippable;
+int sWorldNameCard = PortOverlay::kScreen_Skippable;
 // `MP2_LOG_FILE`: whether stdout and stderr also go to a file (F1 > Testing, console `logfile`).
 // PortLogFile::Start reads it before Aurora comes up, so the row only reports the state the next
 // launch will take.
@@ -619,7 +620,16 @@ void DrawGameSection() {
   if (PortUi::Combo("Boot logos", &bootLogos, "Show\0" "Skip with A or Start\0" "Off\0",
                     "MP2_BOOT_LOGOS=show|skip|off",
                     "the health warning and the Nintendo, Retro and Dolby logos at launch")) {
-    sBootLogos = std::clamp(bootLogos, PortOverlay::kBootLogos_Show, PortOverlay::kBootLogos_Off);
+    sBootLogos = std::clamp(bootLogos, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off);
+    Changed(true);
+  }
+  // Read by CMFGameLoader, so a change applies from the next load.
+  int worldName = sWorldNameCard;
+  if (PortUi::Combo("World name on load", &worldName, "Show\0" "Skip with A or Start\0" "Off\0",
+                    "MP2_WORLD_NAME=show|skip|off",
+                    "the world's name typed out while a save loads; the first boot's intro text "
+                    "is not affected")) {
+    sWorldNameCard = std::clamp(worldName, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off);
     Changed(true);
   }
 }
@@ -1909,24 +1919,40 @@ void SetSkipCinematics(bool skip) {
   Persist();
 }
 
-int BootLogos() {
-  ReadEnv();
-  const char* env = port::EnvString("MP2_BOOT_LOGOS");
+// A kScreen_* setting: `show|skip|off` (or 0..2) in the variable wins over the saved value.
+static int EnvScreenMode(const char* name, int value) {
+  const char* env = port::EnvString(name);
   if (env != nullptr && std::strcmp(env, "show") == 0) {
-    return kBootLogos_Show;
+    return kScreen_Show;
   }
   if (env != nullptr && std::strcmp(env, "skip") == 0) {
-    return kBootLogos_Skippable;
+    return kScreen_Skippable;
   }
   if (env != nullptr && std::strcmp(env, "off") == 0) {
-    return kBootLogos_Off;
+    return kScreen_Off;
   }
-  return EnvIntIn("MP2_BOOT_LOGOS", sBootLogos, kBootLogos_Show, kBootLogos_Off);
+  return EnvIntIn(name, value, kScreen_Show, kScreen_Off);
+}
+
+int BootLogos() {
+  ReadEnv();
+  return EnvScreenMode("MP2_BOOT_LOGOS", sBootLogos);
 }
 
 void SetBootLogos(int mode) {
   ReadEnv();
-  sBootLogos = std::clamp(mode, kBootLogos_Show, kBootLogos_Off);
+  sBootLogos = std::clamp(mode, kScreen_Show, kScreen_Off);
+  Persist();
+}
+
+int WorldNameCard() {
+  ReadEnv();
+  return EnvScreenMode("MP2_WORLD_NAME", sWorldNameCard);
+}
+
+void SetWorldNameCard(int mode) {
+  ReadEnv();
+  sWorldNameCard = std::clamp(mode, kScreen_Show, kScreen_Off);
   Persist();
 }
 

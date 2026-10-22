@@ -13,6 +13,7 @@ namespace PortOverlayState {
 
 extern bool sSkipCinematics;
 extern int sBootLogos;
+extern int sWorldNameCard;
 extern bool sLogFile;
 extern bool sFastMorph;
 extern bool sSpringBall;

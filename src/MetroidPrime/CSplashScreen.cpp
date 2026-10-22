@@ -140,7 +140,7 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
       std::fprintf(stderr, "[splash] %d ended at %.1f s\n", static_cast< int >(mSplash),
                    PortHarness::Seconds());
       // Port: boot logos Off ends the chain after the progressive check.
-      if (PortOverlay::BootLogos() == PortOverlay::kBootLogos_Off) {
+      if (PortOverlay::BootLogos() == PortOverlay::kScreen_Off) {
         return kMR_RemoveIOWinAndExit;
       }
 #endif
@@ -189,7 +189,7 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
     // usual fade out.
     if (mSplash != kSplashScreen_ProgressiveCheck && mProgressivePhase == kPP_Complete &&
         (input.PA() || input.PStart()) && mSplashTimeout > 0.5f &&
-        PortOverlay::BootLogos() == PortOverlay::kBootLogos_Skippable) {
+        PortOverlay::BootLogos() == PortOverlay::kScreen_Skippable) {
       mSplashTimeout = 0.5f;
     }
 #endif

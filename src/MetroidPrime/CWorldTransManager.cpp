@@ -854,6 +854,20 @@ void CWorldTransManager::StartTextFadeOut() {
   mStopSoon = true;
 }
 
+#ifdef TARGET_PC
+void CWorldTransManager::PortSkipText() {
+  if (mTransType != kTT_Text || mIntroText || mTextDirty || mTextData.null()) {
+    return;
+  }
+  // UpdateText finishes once the elapsed time passes the typing time plus the end delay and a
+  // second, then fades for one more second after the load asked it to stop.
+  const float total = mTextData->GetTotalAnimationTime();
+  mTextStartTime = rstl::min_val(mTextStartTime, mCurTime);
+  mTextData->Update(total + 0.1f);
+  mTextElapsedTime = rstl::max_val(mTextElapsedTime, mTextEndDelay + 1.f + total + 0.01f);
+}
+#endif
+
 void CWorldTransManager::CheckIntroTextSeen() {
   const CEnvironmentVariable* seen =
       gpGameState->SystemOptions().EnvVars().FindEnvironmentVariable("SeenIntroText");
