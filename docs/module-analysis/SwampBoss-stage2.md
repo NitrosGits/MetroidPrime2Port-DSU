@@ -335,7 +335,7 @@ manager's copies).
 | 5030, 527C | put the chain nodes on their recorded positions / swing them about the chain origin | **marked** (7.17, 7.18): the port has the two bodies (`PlaceChainNodes`, `SwingChainNodes`); the chain launch reaches them |
 | 7E24 | the `Blow` state | **marked** (7.12, 7.19): the port's body is retail's and every arm of it ran |
 | 1B38 | an additive flinch with no caller | documented no-op, like 4F88 |
-| 4F88 | `SendDecrement` | no caller anywhere in the module |
+| 4F88 | `SendDecrement` | **marked** (7.26): the body is the retail's and both of its arms ran - the retail has no caller, so it was forced |
 | 5D40 | `GetIngSnatchingPoint` | **marked** (7.25): the ing-snatch transition does run - the head-mode anim event (0x0e) makes the boss ing-possessed |
 | 3774 | the wing-damage burst | the port has the body; it needs a growth to die, which needs a real beam hit |
 | 6B78 | the second half of `SetupCollisionManager` (the per-joint vulnerability, health and materials) | the port merges it into `SetupCollisionManager` (marked `fn_79_6E68`); it deserves its own body |
@@ -1096,7 +1096,7 @@ applied by rule, so the table can be audited:
   `fn_79_A4AC` (the address of `mLightChain`, 0xca8), `fn_79_6E5C` and `fn_79_B8A8` (a flag
   cleared).
 - **B - module behaviour** (100 functions, 0x8BD0 bytes): real behaviour - these are the
-  port's bodies. 97 of them carry a `// @ fn_79_` marker.  Six more are host copies after
+  port's bodies. 98 of them carry a `// @ fn_79_` marker.  Six more are host copies after
   all (the port calls the host's equivalent): `fn_79_2704` (the scan setup, the host's
   `CPatterned` scan info), `fn_79_2C20` (`LdrToDamageInfo`, the host's), `fn_79_3314` (the
   cross product, the host's `CVector3f::Cross`), `fn_79_3E50` (the collidable copy, the host's),
@@ -1110,13 +1110,12 @@ applied by rule, so the table can be audited:
 | B module behaviour | 100 | 0x8BD0 (35,792) |
 | **total** | **243** | **0xDD00 (56,576)** |
 
-**The unmarked B list (3)** - the module's behaviour that the port has but has not proved
+**The unmarked B list (2)** - the module's behaviour that the port has but has not proved
 (the rest of the list was closed by 7.21 and 7.23):
 
 | fn | what | why it is not marked |
 |---|---|---|
 | `fn_79_1B38` | an additive flinch with no caller | the note's 7.2: no state, trigger, code function or vtable slot references it |
-| `fn_79_4F88` | `SendDecrement` | no caller in the module (7.2) |
 | `fn_79_72FC` | `ResetAttackPhase` (the code node) | the code node never runs (no state references it) |
 
 ### 7.23 The three triggers' true arms (2026-10-21, fifteenth lane pass)
@@ -1137,11 +1136,11 @@ So all three are **marked** now. The other arms of A064 and A3D8 ran without for
 attack not ready with the type 3, 5, 6 and 7: `[probe] trigger 3 a 0 b 3 -> 0` and so on; the
 field 2 with the phase 2: `[probe] trigger 2 a 2 b 2 -> 0`).
 
-**The three that stay unmarked** (the whole unmarked B list now): `fn_79_1B38` (the retail's
+**The two that stay unmarked** (the whole unmarked B list now): `fn_79_1B38` (the retail's
 additive flinch: the module's only copy of that code and nothing calls it - the port's
-`AddAdditiveFlinch` is the retail's inline code in fn_79_61C4), `fn_79_4F88` (`SendDecrement`,
-no caller) and `fn_79_72FC` (the code node: it is in the asset's code list but no state
-transitions into it).  `fn_79_5D40` left the list with 7.25.
+`AddAdditiveFlinch` is the retail's inline code in fn_79_61C4) and `fn_79_72FC` (the code node:
+it is in the asset's code list but no state transitions into it).  `fn_79_5D40` left the list
+with 7.25 and `fn_79_4F88` with 7.26.
 
 ### 7.24 The anim event 0x1b and the grapple lock-on, probe-free (2026-10-22, sb2grapple lane)
 
@@ -1245,3 +1244,43 @@ coverage spec's `Force` breakpoint) enters the body but hangs the game: gdb's ca
 the inferior and the port's allocator does not survive it.  The natural path above needs no such
 help.  And the layer request must not be sent while the area is still loading: the boss then never
 appears (`tools/drivers/swampboss2_ing.py` waits for 1200 updates first).
+
+### 7.26 fn_79_4F88 (`SendDecrement`): the body is the retail's, and the retail never runs it (2026-10-22, swamp2h lane)
+
+**The body was a stand-in; now it is the retail's.** The port had
+`void CSwampBossStage2::SendDecrement(CStateManager&) { (void)mgr; }`. The retail's body
+(0x4F88..0x5030) looks the light chain actor up with `mgr.ObjectById(mLightChain)` (the uid from
+0xca4, the `ObjectById` call at 0x4FB4), leaves when the lookup fails (the test at 0x4FB8-0x4FBC)
+and otherwise sends the message (the vcall at 0x5014, the vtable slot +0x18 =
+`CEntity::AcceptScriptMsg`): the sender is the boss's own uid (0x8), the message id is
+mLightChain, the message is the fourcc 0x44454352 (`lis r4,0x4445` / `addi r6,r4,0x4352` at
+0x4FD4-0x4FD8, `kSM_Decrement`) and the state is -1 (0x4FCC, `kSS_InvalidState`). The port's body
+is exactly that, and `tools/asmcheck.py check SwampBossStage2
+src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp fn_79_4F88 --all` finds nothing.
+
+**Nothing calls it.** The only reference to 0x4F88 in the retail's .text is its own definition
+(the module's asm has the function header and one unrelated `addi r3,r1,0x4c`), it is not in the
+module's vtable (`lbl_79_data_424`), it is not in the asset's code list (`lbl_79_data_3F4`, which
+holds only `fn_79_72FC`) and no state, trigger or code function names it. So the body is dead
+code in the retail: only a forced call can run it.
+
+**The run** (`tools/cov/run.sh tools/cov/specs/swampboss2_decrement.py`, the coverage build
+`build-port-cov`, `3dfd2249,04_swamp_temple_dark`, layer 6, 6000 updates, the driver
+`tools/drivers/swampboss2_decrement.py`): the driver puts the boss on layer 6 and sends it the
+area-loaded message, which fills `mLightChain` with the light chain actor's uid
+(`FindConnectedObject(mgr, kSS_InternalState2, kSM_None)`).
+
+- **forced (temporary caller)**: the run's binary carried one temporary line in
+  `CSwampBossStage2::Think` (`SendDecrement(mgr);`), removed again before the commit - the retail
+  has no caller, so the body needs one to run. 49 calls with the chain there.
+- **forced (gdb `set var this->mLightChain.value = 0xffff`)**: the other side of the body, the
+  early return at 0x4FBC. 1 call.
+
+| body | lines | branches | arms |
+|---|---|---|---|
+| `fn_79_4F88` (`SendDecrement`) | 4/4 | 2/2 | **ALL-ARMS** (50 calls: 49 with the chain, 1 with the uid forced invalid) |
+
+So `fn_79_4F88` is **marked**: the port's body is the retail's and both of its arms ran, even
+though the retail itself never runs it. A gdb `call` of the body on the live boss enters it (1
+hit) and then hangs the game - gdb's call allocates in the inferior, which the port's allocator
+does not survive - so the coverage used a temporary caller and a memory write instead.

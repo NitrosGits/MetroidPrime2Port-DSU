@@ -1182,11 +1182,20 @@ void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
   patrol->SetTranslation(from);
 }
 
-// fn_79_4F88 SendDecrement (sends kSM_Decrement to mLightChain) is left out: nothing in the module
-// calls it (no state, trigger, code function or vtable slot references it), so it cannot be
-// exercised, and the port does not invent a caller.
+// @ fn_79_4F88: send the "DECR" message to the light chain actor. The retail looks the actor up
+// by mLightChain (0xca4) with ObjectById (0x4FB4), leaves when it is not there (0x4FBC) and
+// otherwise sends the message (the vcall at 0x5014, the vtable slot +0x18 =
+// CEntity::AcceptScriptMsg): the sender is the boss itself (its uid at 0x8), the message id is
+// mLightChain, the message is the fourcc 0x44454352 (0x4FD4-0x4FD8, kSM_Decrement) and the
+// state is -1 (0x4FCC, kSS_InvalidState).
+// Nothing in the module calls it - the only reference to 0x4F88 in the retail's .text is its own
+// definition - so the body was exercised from a temporary caller (the note's 7.26).
 void CSwampBossStage2::SendDecrement(CStateManager& mgr) {
-  (void)mgr;
+  CEntity* chain = mgr.ObjectById(mLightChain);
+  if (chain == nullptr) {
+    return;
+  }
+  chain->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), mLightChain, kSM_Decrement));
 }
 
 // @ fn_79_3390: total damage still inside the memory window.
