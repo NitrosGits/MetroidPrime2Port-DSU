@@ -326,8 +326,11 @@ void CSplitterMainChassis::PortDoUserAnimEvent(CStateManager& mgr, const CInt32P
   } else if (type == kUE_ChangeMaterial) {
     // asm 0xF054-0xF05C: the flag byte at 0xD41.
     if ((mFlagsD41 & 0x80) != 0) {
-      // asm 0xF060-0xF080: the reflected vulnerability and the collision actors'.
-      const CDamageVulnerability& vuln = *GetDamageVulnerability();
+      // asm 0xF060-0xF080: the reflected vulnerability and the collision actors'. 0xF06C is a
+      // direct `bl GetDamageVulnerability__10CPatternedCFv`: the chassis's own override returns
+      // the pass-through vulnerability, which resists the boost ball, so the stunned body never
+      // took boost damage.
+      const CDamageVulnerability& vuln = *CPatterned::GetDamageVulnerability();
       PortSetCollisionVulnerability(mgr, vuln, CDamageVulnerability::ReflectVulnerabilty());
       // asm 0xF084-0xF0A8: the head (0xC6C) resets its shield.
       if (CSplitterCommandModule* head =
