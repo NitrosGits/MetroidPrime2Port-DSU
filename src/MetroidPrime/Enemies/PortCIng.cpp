@@ -315,12 +315,14 @@ CMaterialFilter SolidFilter() {
 }
 
 // @ fn_29_3D74: the box between two points, three units taller at each end (retail's double 3.0).
+// The six fcmpo/bge at 0x3D7C..0x3DF4 take a's value when the compare is >= or unordered, so
+// a NaN picks a: Min(b, a) and Max(b, a) in CMath's shapes.
 CAABox PortSegmentBox(const CVector3f& a, const CVector3f& b) {
   return CAABox(
-      CVector3f(CMath::Min(a.GetX(), b.GetX()), CMath::Min(a.GetY(), b.GetY()),
-                CMath::Min(a.GetZ(), b.GetZ()) - 3.f),
-      CVector3f(CMath::Max(a.GetX(), b.GetX()), CMath::Max(a.GetY(), b.GetY()),
-                CMath::Max(a.GetZ(), b.GetZ()) + 3.f));
+      CVector3f(CMath::Min(b.GetX(), a.GetX()), CMath::Min(b.GetY(), a.GetY()),
+                CMath::Min(b.GetZ(), a.GetZ()) - 3.f),
+      CVector3f(CMath::Max(b.GetX(), a.GetX()), CMath::Max(b.GetY(), a.GetY()),
+                CMath::Max(b.GetZ(), a.GetZ()) + 3.f));
 }
 
 // @ fn_29_421C: which arm swings; true is the left (0xd80..), false the right (0xd7c..).
@@ -621,7 +623,8 @@ void CIng::CollisionActorHitPlayer(CStateManager& mgr, TUniqueId sender) {
     return;
   }
   // xE5C_1 (0xe5c bit 1) suppresses the contact damage; fn_29_6A88 owns that bit.
-  if (mCurDamageRemTime > 0.f || xE5C_1) {
+  // 0x2F44..0x2F4C fcmpo, cror eq,lt,eq, bne to the return: a NaN returns too.
+  if (!(mCurDamageRemTime <= 0.f) || xE5C_1) {
     return;
   }
   mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), GetContactDamage(),
@@ -663,8 +666,9 @@ void CIng::IngSpotDamage(CStateManager& mgr, TUniqueId sender) {
   if (weapon == nullptr) {
     return;
   }
+  // 0x2BDC..0x2BE4 fcmpo, cror eq,gt,eq, bne to the light arm: a NaN damage is light.
   const bool heavy =
-      !(weapon->GetCurrentDamageInfo().GetDamage(mData.mIngSpot.GetVulnerability()) < 25.f);
+      weapon->GetCurrentDamageInfo().GetDamage(mData.mIngSpot.GetVulnerability()) >= 25.f;
   if (DebugIng()) {
     // What a run cannot otherwise see: the spot form has no health of its own, so a landed shot
     // shows only as this line plus the effect it spawns.
@@ -1349,7 +1353,8 @@ bool CIng::ShouldBodyProjectile(CStateManager& mgr, const CTriggerData&) const {
 bool CIng::ShouldOpenMiniPortal(CStateManager& mgr, const CTriggerData&) const {
   // Same team gate as fn_29_A780/A8CC: retail asks CanStartAttack only when mTeamId is set
   // (asm 0x0000A788, the compare that skips to .L_0000A6E0).
-  if ((mData.mFlags210 & kFlag_NoMiniPortal) != 0 || mFormTime < mData.mUnknownC620 ||
+  // 0xA694..0xA69C cror eq,gt,eq, bne to false: a NaN form time answers false too.
+  if ((mData.mFlags210 & kFlag_NoMiniPortal) != 0 || !(mFormTime >= mData.mUnknownC620) ||
       (mTeamId != kInvalidUniqueId &&
        !CScriptTeamAiMgr::CanStartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId,
                                          GetUniqueId()))) {
@@ -1820,7 +1825,7 @@ void CIng::UpdateLight(CStateManager& mgr, float dt) {
   if (GetAlive() && mForm == kForm_Corporeal) {
     mLightBlend = CMath::Min(1.f, mLightBlend + dt);
   } else {
-    mLightBlend = CMath::Max(0.f, mLightBlend - dt);
+    mLightBlend = CMath::Max(mLightBlend - dt, 0.f); // 0x49C8 bge to the fmr of 0 (NaN too)
   }
   CGameLight* light = TCastToPtr< CGameLight >(mgr.ObjectById(mLightId));
   if (light == nullptr) {
@@ -2007,7 +2012,7 @@ void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
       // 0x8E48-0x8E68: `lwz r3, 0x350(r31)` (0x8E48) + vtable 0x30 (GetTime), the state
       // machine's time against rodata_64 = 1.0 (ble skips) - not the host's mStateTime, which
       // LogState clears.
-      if (!(mStateMachine->GetTime() <= 1.f)) { // 0x8E64-0x8E68 `ble`: NaN goes in
+      if (mStateMachine->GetTime() > 1.f) { // 0x8E64-0x8E68 `ble` (taken on a NaN: it skips)
         mAnimationState.SetState(CAnimationState::kAS_Over);
       }
     } else if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
@@ -2384,7 +2389,8 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   }
   case kStateMsg_Update: {
-    if (StateMachineState().GetTime() > mData.mBodyProjectile.mSuckTime) { // 0x864
+    // 0x7AEC..0x7AF4 fcmpo, cror eq,gt,eq, bne past the release: the release is time >= 0x864.
+    if (StateMachineState().GetTime() >= mData.mBodyProjectile.mSuckTime) { // 0x864
       mHostId = kInvalidUniqueId; // 0xcdc
       break;
     }
@@ -2457,7 +2463,7 @@ void CIng::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   const CVector3f delta = hint->GetTranslation() - GetTranslation();
   const float maxWall = mData.mIngSpot.GetMaxWallSpeed(); // 0x880
   // 0x7640: Magnitude() <= dt * 0x880 (ble), then 0x7650: !IsMagnitudeSafe() - retail's order.
-  if (delta.Magnitude() <= dt * maxWall || !delta.IsMagnitudeSafe()) {
+  if (!(delta.Magnitude() > dt * maxWall) || !delta.IsMagnitudeSafe()) { // ble: a NaN stops
     mMoving = false; // 0x0000768C: 0xe5d bit 1
   } else {
     MoveOnSurface(delta.AsNormalized(), maxWall, dt); // 0x00007674: the direction is normalised
@@ -2844,8 +2850,9 @@ void CIng::GrappleBall(CStateManager& mgr, EStateMsg msg, float dt) {
   case kStateMsg_Update: {
     // The voice follows the Ing: its position, its forward as the emitter's direction.
     CSfxManager::UpdateEmitter(mGrappleSfx, GetTranslation(), GetTransform().GetForward(), 0x7f);
-    if (StateMachineState().GetTime() > mData.mGrapple.mMaxHoldTime || // 0x8f4
-        mHitReactionTime < 0.f) {
+    // 0x66D4..0x66DC cror eq,lt,eq / 0x66EC..0x66F4 cror eq,gt,eq, bne to the 3: NaN ends too.
+    if (!(StateMachineState().GetTime() <= mData.mGrapple.mMaxHoldTime) || // 0x8f4
+        !(mHitReactionTime >= 0.f)) {
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x6b4 = 3
       break;
     }
@@ -3066,8 +3073,8 @@ void CIng::Evaporate(CStateManager& mgr, EStateMsg msg, float) {
     mForm = kForm_Evaporate; // 0x00005C5C: 0x9d4 = 5
   } else if (msg == kStateMsg_Update) {
     // 0x00005C80: rodata_74 = 2.0f.
-    // 0x00005C88 ble skips the delete: a NaN time falls through to it.
-    if (!(mStateMachine->GetTime() <= 2.f)) {
+    // 0x00005C88 ble skips the delete (a NaN time too).
+    if (mStateMachine->GetTime() > 2.f) {
       DeathDelete(mgr); // 0x00005C94
     }
   }
@@ -3632,7 +3639,7 @@ void CIng::UpdateHitDamageTime(float dt) {
   // skDamageColor lerp by the timer over skDamageHitTime, and the flag bit 5 of the byte at 0x154
   // follows the timer.
   float timer = mDamageCooldownTimer - dt;
-  if (timer <= 0.f) {
+  if (!(0.f < timer)) { // 0xB7B8 fcmpo 0, v; bge to the fmr of 0: a NaN becomes 0
     timer = 0.f;
   }
   mDamageCooldownTimer = timer;
@@ -4030,9 +4037,10 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
       return false;
     }
     // The retail also rejects the noise when dz squared (0xB35C) reaches 0x3d4 squared (asm
-    // 0xB378-0xB390, bge); 0x3d4 is CPatterned's mCurPlayerLeashTime, 0 disables the test.
+    // 0xB378-0xB390, bge, taken on a NaN too); 0x3d4 is CPatterned's mCurPlayerLeashTime, 0
+    // (the fcmpu at 0xB384) disables the test.
     if (mCurPlayerLeashTime != 0.f &&
-        delta.GetZ() * delta.GetZ() >= mCurPlayerLeashTime * mCurPlayerLeashTime) {
+        !(delta.GetZ() * delta.GetZ() < mCurPlayerLeashTime * mCurPlayerLeashTime)) {
       return false;
     }
     mHeardShotTime = 0.f; // 0xe30
@@ -4056,7 +4064,7 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
         TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mLureSafeZoneId));
     if (zone) {
       const float zoneDistSq = (zone->GetTranslation() - GetTranslation()).MagSquared();
-      if (distSq >= zoneDistSq) {
+      if (!(distSq < zoneDistSq)) { // 0x1EE4/0x1EE8 bge to the return (a NaN too)
         return false; // the Ing keeps the nearer zone
       }
     }

@@ -232,7 +232,7 @@ void CIngMiniPortalAttack::AimAtTarget(CStateManager& mgr, const CActor& target)
     mAimPoint = translation + forward;
     return;
   }
-  if (CVector3f::GetAngleDiff(forward, delta) <= kMaxAimTurn) { // 0x11750
+  if (!(CVector3f::GetAngleDiff(forward, delta) > kMaxAimTurn)) { // 0x11750 ble (a NaN too)
     mAimPoint = blended;
     return;
   }

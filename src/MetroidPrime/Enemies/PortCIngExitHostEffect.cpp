@@ -156,7 +156,7 @@ void CIngExitHostEffect::Fly(float dt, CStateManager& mgr) {
     if (t > 0.f) {
       const float along = mX28c / t;
       point = CMath::GetBezierPoint(mBezier[0], mBezier[1], mBezier[2], mBezier[3],
-                                    along < 1.f ? along : 1.f);
+                                    1.f < along ? 1.f : along); // 0x10838 bge: NaN keeps it
       if (along >= 1.f) {
         BuildBezier(mgr); // the next leg
       }
@@ -167,7 +167,7 @@ void CIngExitHostEffect::Fly(float dt, CStateManager& mgr) {
 
   const CVector3f delta = mDest - pos;
   const float reach = dt * mX290;
-  if (delta.MagSquared() <= reach * reach) {
+  if (!(delta.MagSquared() > reach * reach)) { // 0x108D4 ble to the arrival (a NaN too)
     SetTranslation(mDest);
     mFlags |= 0x80;
   } else {
