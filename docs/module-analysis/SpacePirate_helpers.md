@@ -224,6 +224,26 @@ The `calls` counts of the harness are polluted on this build (the call-site brea
 label also count the calls of the neighbouring functions), so the arm counts of the emitter were
 read from a run whose spec has that one entry only.
 
+## 4b. The reconciled `SpacePirate_functions.tsv`
+
+One row per REL function (262), the module session's columns kept (offset, size, owner, name, kind,
+class, callers, counterpart_or_proof, port, symbol) and the `port` column reconciled with the
+`// @` markers that are actually in the sources:
+
+- **marked** (126): the sources carry the marker `// @ fn_72_<off>` - the same set
+  `tools/port_progress.py` counts (SpacePirate 126/262).
+- **ported** (22): the port has the body, without a marker - the helpers this lane ported and the
+  few the module lane left unmarked (the grenade group, `CE30`, `3220`, `EDEC`, `E3D8` and the ones
+  the shipped data leaves dead).
+- **not-port** (114): the port has nothing of its own for the row - the host's copies of the
+  retail's weak/inline/template code (the `weak-dtor`, `template`, `inline-dol`, `inline-hdr`,
+  `member-ctor`, `member-dtor`, `ctor` and `dtor` kinds), the REL runtime and the rel-entry glue,
+  the three unreferenced stubs and `fn_72_E314` (the empty function the port does not need as a
+  symbol).
+
+The `owner` column keeps the retail's owner (the class the function belongs to); what this lane
+did with the rows it touched is in the `counterpart_or_proof` column and in this note's arm tables.
+
 ## 5. Three gaps in the module's own files (reported, not changed)
 
 All three are in `PortCSpacePirate.cpp` / `PortCSpacePirateStates.cpp`, the module session's files,
