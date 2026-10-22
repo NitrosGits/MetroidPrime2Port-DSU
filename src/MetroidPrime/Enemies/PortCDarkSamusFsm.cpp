@@ -20,6 +20,7 @@
 // tables, the names and the name-to-function mapping are retail's; the behaviour is not yet.
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
 #include "MetroidPrime/Enemies/CDarkSamusBoostBall.hpp"
+#include "MetroidPrime/Enemies/CScattershotProjectile.hpp"
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CEnvFxManager.hpp"
@@ -4868,23 +4869,17 @@ CVector3f CDarkSamus::GetScatterShotAimPoint(CStateManager& mgr) const {
 // 0x000131DC: the info's token, kWT_AI = `li r5, 0xb`, the transform, the info's damage at +0xC,
 // the uid, the area 0x4, the owner 0x8 and lbl_10_rodata_488 = 45.0f) is added (0x000131F4), or
 // 0xBE4 is cleared when the allocation fails (0x00013204).
-//
-// Port limit: CScattershotProjectile is the module's own CWeapon subclass (its vtable is
-// lbl_10_data_40, its ~57 functions fill 0x0..0x44D0) and the port does not have it yet. The
-// host's CEnergyProjectile stands in for it with the same description, weapon type, transform,
-// damage, uid, area and owner (the impact arguments are CPatterned::LaunchProjectile's); it is one
-// shot rather than a swarm, so fn_10_C98's added shots are a stand-in and the next projectile
-// spawns once the current one is gone.
+// CScattershotProjectile is src/MetroidPrime/Enemies/PortCScattershotProjectile.cpp.
 void CDarkSamus::FireScatterShotProjectile(CStateManager& mgr) {
   const CVector3f aim = GetScatterShotAimPoint(mgr);
   const CTransform4f xf = CTransform4f::LookAt(mGunLctrXf.GetTranslation(), aim, mGunLctrXf.GetUp());
   if (mScatterProjectileUid != kInvalidUniqueId) {
-    if (TCastToPtr< CEnergyProjectile >(mgr.ObjectById(mScatterProjectileUid)) == nullptr) {
-      mScatterProjectileUid = kInvalidUniqueId;
-    } else {
-      FsmStandIn("fn_10_C98", "CScattershotProjectile add shot");
+    if (CScattershotProjectile* scatter =
+            TCastToPtr< CScattershotProjectile >(mgr.ObjectById(mScatterProjectileUid))) {
+      scatter->AddShot(mGunLctrXf.GetTranslation(), xf.GetColumn(kDY)); // 0x0001308C
       return;
     }
+    mScatterProjectileUid = kInvalidUniqueId;
   }
   float chance = mScatterChance;
   if (chance > 1.f) {
@@ -4896,11 +4891,9 @@ void CDarkSamus::FireScatterShotProjectile(CStateManager& mgr) {
     return;
   }
   mScatterProjectileUid = mgr.AllocateUniqueId();
-  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
-      true, ProjectileInfo()->Token(), kWT_AI, xf, kMT_Character, ProjectileInfo()->GetDamage(),
-      mScatterProjectileUid, GetCurrentAreaId(), GetUniqueId(), kInvalidUniqueId,
-      CWeapon::kPA_None, false, CVector3f(1.f, 1.f, 1.f), CImpactVisorEffect::None(), false, true,
-      false, 1.f, 4.f, 4.f);
+  CScattershotProjectile* projectile = rs_new CScattershotProjectile(
+      ProjectileInfo()->Token(), kWT_AI, xf, ProjectileInfo()->GetDamage(), mScatterProjectileUid,
+      GetCurrentAreaId(), GetUniqueId(), 45.f); // lbl_10_rodata_488
   if (projectile != nullptr) {
     mgr.AddObject(projectile);
     return;
