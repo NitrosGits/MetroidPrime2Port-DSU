@@ -34,18 +34,25 @@ namespace {
 
 // The ctor's asset-to-token step, inlined twice in retail: the resource type comes from the loader,
 // then the pool hands back a token. It stays a plain CToken because asset A is an SRSC and asset B a
-// PART; fn_29_10D50 converts.
+// PART; ConstructEffect converts.
 CToken LoadAssetToken(CAssetId asset) {
   return gpSimplePool->GetObj(SObjectTag(gpResourceFactory->GetResourceTypeById(asset), asset));
 }
 
-// fn_29_10D50 (not yet exercised in a run)
 // Builds the effect from a token and a scale: CElementGen::ConstructChildParticleSystem with the
-// token's own reference type (retail reads `token.mObjRef->mObjTag.type`), seed 0, kOSF_One, no
-// model lights, emitting, the actor's translation (retail 0x54), identity orientation, zero global
-// translation, the scale, white and a unit local scale. Its result's sign is the "created" byte in
-// retail, i.e. just whether this is non-null; a token with no reference is the one case where
-// retail would fault, so the host skips it.
+// token's own reference type (retail reads `token.mObjRef->mObjTag.type`: 0x10D60 `lwz r31, 0x0(r6)`
+// and
+// 0x10DC4 `lwz r4, 0xc(r31)`), seed 0 (0x10D9C), flags 0x1 (0x10DA8), no model
+// lights, emitting, the actor's
+// translation (retail's r9, the caller's 5th argument at 0x10D8C), identity orientation, zero
+// global translation, the scale (retail's r4, 0x10D78/0x10DB0), white and a unit local scale.
+// The body has no branch at all (asm 0x10D50-0x10DC8: one CColor::White call, one
+// ConstructChildParticleSystem call, one return), so the `HasReference` test below is the host's
+// only: retail dereferences the token's reference with no null test and would fault on an empty
+// token, and the host returns a null effect instead (the Think, the destructor and Render all test
+// the pointers). Its false arm is the only one a run can take, since the ctor's two tokens come
+// from the pool.
+// @ fn_29_10D50
 CParticleGen* ConstructEffect(CToken& token, const CVector3f& scale, const CVector3f& translation) {
   if (!token.HasReference()) {
     return nullptr;
@@ -366,9 +373,19 @@ void CIngExitHostEffect::AddToRenderer(const CStateManager&) const {
   }
 }
 
-// fn_29_10E64 (not yet exercised in a run: the class has no model, so CStateManager never queues it
-// for RenderActorQueue - the two particle gens draw themselves through AddToRenderer)
-// vtable 0x2C: B then A, and no CActor::Render.
+// fn_29_10E64 (0x50, asm 0x00010E64-0x00010F40): vtable 0x2C, effect B (0x2c0) then A (0x2b0), each
+// through CParticleGen's render (slot 0x10, asm 0x10E80/0x10E94), and no CActor::Render. Like
+// fn_29_10D50 it has no branch in retail - the two weak-pointer bytes 0x2ac/0x2bc are *not* tested
+// here (contrast fn_29_10DEC, which tests both at asm 0x10E04/0x10E2C), so the null tests below are
+// the host's, standing in for the fault retail would take on an effect its ctor could not build.
+//
+// Dead on the host, so no arm can be marked: an actor's Render runs only from
+// CStateManager::RenderActorQueue, whose queues are filled by `CActor`-derived classes that call
+// mgr.RenderLast* - and CActor::AddToRenderer (src/MetroidPrime/CActor.cpp:387) reaches Render only
+// when HasModelData(). This class is built with CModelData() (ctor, asm 0x11200) and its own
+// AddToRenderer (fn_29_10DEC) never calls the base: it submits the two particle gens and nothing
+// else. A coverage run that spawns the effect (fsm ExitHost) confirms it: AddToRenderer runs,
+// Render does not.
 void CIngExitHostEffect::Render(const CStateManager&) const {
   if (mEffectB != nullptr) {
     mEffectB->Render();

@@ -2001,12 +2001,24 @@ void CIng::Alert(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8CF4 (0x1A0, asm 0x00008CF4-0x00008E94): the SafeZoneReaction state. The arms: the
-// message (asm 0x00008CFC, 0x00008D10, 0x00008D14 and 0x00008D20), the harmful zone and the
-// evaporating flag (asm 0x00008D64 and 0x00008D70) and the state time against a second
-// (asm 0x00008D88). The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm
-// <ing> SafeZoneReaction`) ran the three messages (the probe's keys 0, 8 and 16, four calls
-// each); the zone and the time arms did not run. Not marked.
+// fn_29_8CF4 (0x1A0, asm 0x00008CF4-0x00008E94): the SafeZoneReaction state.
+// The message switch (asm 0x8CFC cmpwi r5,1 / 0x8D10 bge / 0x8D14 cmpwi r5,0 / 0x8D20 cmpwi r5,3):
+// 0 Activate, 1 Update, 2 Deactivate, a negative or >= 3 falls through to the return (0x8D1C/0x8D24).
+// Activate (0x8D2C-0x8D5C): the animation state ready (0x6b4 = 1, asm 0x8D2C/0x8D34) and the safe
+// zone's sound (0x9c8) at the Ing's translation, volume 0x7f, its area id (0x4), acoustics on
+// (r8 = 1), no loop (r9 = 0), kMedPriority (0x8D30).
+// Update (0x8D60): 0xe5e bit 4 (the hurtful zone, extrwi 1,27) or 0xe5c bit 7 (evaporating,
+// extrwi 1,24) issues the knock-back - CanIssueCommand(0x6b4, body controller at 0x48c, 6) gates it
+// (0x8D84-0x8D8C), and the command is the actor's forward (0x28/0x38/0x48 = GetForward), severity 1
+// (0x20 = 1), animation -1 (0x24) and no force-restart (0x28) - otherwise the state machine's own
+// time (0x350, vtable 0x30 GetTime, 0x8E48) over one second (rodata_64 = 1.0, `ble` at 0x8E68 skips,
+// a NaN too) sets the animation state to 3 (0x8E6C/0x8E70).
+// Deactivate (0x8E78): the animation state 0 (0x6b4 = 0).
+// Two arms need the animation state to be Ready at that instant: CanIssueCommand answers true only
+// while 0x6b4 == kAS_Ready (CAnimationState::CanIssueCommand), so the knock-back arm follows an
+// Activate (which sets it) rather than a long Update run (whose time arm sets 3); a second Update in
+// the same tick then finds the body already in KnockBack and answers no.
+// @ fn_29_8CF4
 void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("SafeZoneReaction");
@@ -3204,11 +3216,19 @@ void CIng::SetPointCoverDest(CStateManager& mgr, float) {
   }
 }
 
-// fn_29_5714 (0x10C, asm 0x00005714-0x00005820): the point-graph route to the cover hint. Two closest-point
-// queries - the Ing's own position with filter (20, 0, -1) (asm 0x00005758-0x00005768), then the
-// hint's position with filter (20, 0, from) (asm 0x00005778-0x000057A0) - and a point-graph search
-// between the two results (asm 0x000057CC-0x000057EC). It sets no destination: mFoundMovementPos is
-// what IngSpotPathFind reads.
+// fn_29_5714 (0x10C, asm 0x00005714-0x00005820): the point-graph route to the cover hint. Two
+// closest-point queries - the Ing's own position with filter (20, 0, -1) (asm 0x00005758-0x00005768),
+// then the hint's position with filter (20, 0, from) (asm 0x00005778-0x000057A0) - and a point-graph
+// search between the two results (asm 0x000057CC-0x000057EC). It sets no destination:
+// mFoundMovementPos is what IngSpotPathFind reads.
+// The arms, all on the flag at 0xe5c bit 3 (asm 0x5730-0x5738 clears it, 0x57F8-0x5804 sets it):
+// fn_29_45BC returns no hint (0x5744/0x5748 beq), no closest point to the Ing (0x5784/0x5788 beq),
+// no point for the hint (0x57C4/0x57C8 beq), and the point search's answer (0x57F0/0x57F4 bne:
+// Search == 0 sets the bit). Retail reads the point array from the point search itself
+// 0x57D4 `lwz r5, 0xac8(r31)` and
+// 0x57DC `lwz r6, 0x190(r5)`, i.e. the same CPFArea the host builds
+// mPointPathFindSearch with; the host's mPathArea is that pointer, and the extra null test on it is
+// the host's (retail dereferences it - the Ing always has a path area once its area loaded).
 void CIng::SetWallPointCoverDest(CStateManager& mgr, float) {
   LogState("SetWallPointCoverDest");
   mFoundMovementPos = false;
@@ -3270,11 +3290,15 @@ void CIng::SetExitHostDest(CStateManager& mgr, float) {
   mTargetPos = bestPos; // 0xdc8
 }
 
-// fn_29_53E0 (the lure point is the nav-mesh point below the lure safe
-// zone (fn_29_1C98, the shared PortIngLuredDest does it); the path search's flags go to 1 for the
-// mesh-path query and back to 0x301 after it (asm 0x00005458-0x000054B8). Only when that path
-// exists does the lure point become the destination and mFoundMovementPos get set (0xe5c bit 3);
-// otherwise the destination stays the Ing's own position (asm 0x00005414-0x000054C4).
+// fn_29_53E0 (0x108, asm 0x000053E0-0x000054E8), the code function SetLuredDest: the lure point is
+// the nav-mesh point below the lure safe zone (fn_29_1C98, which the shared PortIngLuredDest does);
+// the path search's flags go to 1 for the mesh-path query and back to 0x301 after it (asm
+// 0x00005458-0x000054B8; the flags word is at 0xdc of the search the 0xe0 vtable slot returns,
+// i.e. mPathFindSearch at 0x9dc). Only when that path exists (PathExists == kR_Success == 0, asm
+// 0x5470/0x5474 bne) does the lure point become the destination and mFoundMovementPos get set
+// (0xe5c bit 3, asm 0x5494-0x549C); otherwise the destination stays the Ing's own position (asm
+// 0x00005414-0x000054C4 clears that bit first).
+// @ fn_29_53E0
 void CIng::SetLuredDest(CStateManager& mgr, float) {
   LogState("SetLuredDest");
   CVector3f dest;
@@ -4073,28 +4097,10 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
     return true;
   }
   if (type == kLNT_SafeZone) {
-    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone
-    // (0xd78), unless the Ing already has one that is nearer. The retail returns false here.
-    // asm 0x1E58-0x1E60: fcmpo distSq, 0x7c0 squared; cror eq,lt,eq; bne - a noise exactly on the
-    // hearing radius is still heard (the exit is distSq > radius squared).
-    if (!(distSq <= mData.mHearingRadius * mData.mHearingRadius)) { // NaN exits too
-      return false;
-    }
-    const TUniqueId zoneId =
-        mgr.GetSafeZoneManager()->PointIsInWhichSafeZone(mgr, position);
-    if (mLureSafeZoneId == kInvalidUniqueId) {
-      mLureSafeZoneId = zoneId;
-      return false;
-    }
-    const CScriptSafeZone* zone =
-        TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mLureSafeZoneId));
-    if (zone) {
-      const float zoneDistSq = (zone->GetTranslation() - GetTranslation()).MagSquared();
-      if (!(distSq < zoneDistSq)) { // 0x1EE4/0x1EE8 bge to the return (a NaN too)
-        return false; // the Ing keeps the nearer zone
-      }
-    }
-    mLureSafeZoneId = zoneId;
+    // fn_29_1DF4 (asm 0x1DF4-0x1EF4, called at 0xB3A8): the safe zone the noise is in becomes the
+    // Ing's lure zone (0xd78), unless the Ing already holds one that is nearer. The body is the
+    // shared helper (PortIngShared.hpp), which cites the arm addresses; it answers false.
+    PortIngSafeZoneNoise(mgr, position, mData.mHearingRadius, GetTranslation(), mLureSafeZoneId);
   }
   return false;
 }

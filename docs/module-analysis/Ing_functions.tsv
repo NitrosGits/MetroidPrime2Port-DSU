@@ -34,7 +34,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00001A80	0x1AC	fn_29_1A80	B	behaviour	fn_29_9A74	lbl_29_rodata_6C		yes
 0x00001C2C	0x6C	fn_29_1C2C	B	behaviour	fn_29_C654		, asm 0x0000C7CC	yes
 0x00001C98	0x15C	fn_29_1C98	B	behaviour	fn_29_51D0,fn_29_53E0	lbl_29_rodata_6C,lbl_29_rodata_98		yes
-0x00001DF4	0x128	fn_29_1DF4	B	behaviour	fn_29_B294		asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone	no
+0x00001DF4	0x128	fn_29_1DF4	B	behaviour	fn_29_B294		the safe zone the noise is in becomes the Ing's lure zone (0x1DF4-0x1EF4)	yes
 0x00001F1C	0x17C	fn_29_1F1C	B	behaviour	fn_29_9D68	lbl_29_rodata_120		yes
 0x00002098	0x58	fn_29_2098	H	host-copy	fn_29_11A7C,fn_29_1F1C,fn_29_2414,fn_29_2B70,fn_29_4F14,fn_29_5CB0,fn_29_9D68,fn_29_C228		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x000020F0	0x54	fn_29_20F0	H	host-copy	fn_29_2098		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
@@ -85,9 +85,9 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x0000514C	0x44	fn_29_514C	B	behaviour			not yet exercised in a run): the team attack ends, but the Ing keeps its team role	yes
 0x00005190	0x40	fn_29_5190	B	behaviour			StartRangedAttack: CScriptTeamAiMgr::StartAttack(kAT_Projectile)	yes
 0x000051D0	0x210	fn_29_51D0	B	behaviour		lbl_29_rodata_94,lbl_29_rodata_EC	not yet exercised in a run): the point-graph route to the lure point - the flag-1	no
-0x000053E0	0x108	fn_29_53E0	B	behaviour			not yet exercised in a run): the lure point is the nav-mesh point below the lure safe	no
+0x000053E0	0x108	fn_29_53E0	B	behaviour			the lure point is the nav-mesh point below the lure safe zone when the mesh path exists (0x53E0-0x54E8)	yes
 0x000054E8	0x22C	fn_29_54E8	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_F0		yes
-0x00005714	0x10C	fn_29_5714	B	behaviour		lbl_29_rodata_94	not yet exercised in a run): the point-graph route to the cover hint. Two closest-point	no
+0x00005714	0x10C	fn_29_5714	B	behaviour		lbl_29_rodata_94	the point-graph route to the cover hint: two closest-point queries 20 apart, then the point search (0x5714-0x5820)	no
 0x00005820	0x1B0	fn_29_5820	B	behaviour		lbl_29_rodata_94,lbl_29_rodata_F0		yes
 0x000059D0	0xF4	fn_29_59D0	B	behaviour		lbl_29_rodata_94		yes
 0x00005AC4	0x9C	fn_29_5AC4	B	behaviour				yes
@@ -119,7 +119,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00008A2C	0x180	fn_29_8A2C	B	behaviour		lbl_29_rodata_6C,lbl_29_rodata_A4		yes
 0x00008BAC	0xEC	fn_29_8BAC	B	behaviour		lbl_29_data_C2C,lbl_29_data_C50		yes
 0x00008C98	0x5C	fn_29_8C98	H	host-copy		lbl_29_data_C2C,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
-0x00008CF4	0x1A0	fn_29_8CF4	B	behaviour		lbl_29_data_C20,lbl_29_data_C50,lbl_29_rodata_64	not yet exercised in a run	no
+0x00008CF4	0x1A0	fn_29_8CF4	B	behaviour		lbl_29_data_C20,lbl_29_data_C50,lbl_29_rodata_64	the SafeZoneReaction state: the zone sound, the knock-back and the one-second end (0x8CF4-0x8E94)	yes
 0x00008E94	0x5C	fn_29_8E94	H	host-copy		lbl_29_data_C20,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x00008EF0	0xF8	fn_29_8EF0	B	behaviour		lbl_29_data_C2C,lbl_29_data_C50,lbl_29_rodata_6C		yes
 0x00008FE8	0x464	fn_29_8FE8	B	behaviour		lbl_29_data_C14,lbl_29_data_C50,lbl_29_rodata_104,lbl_29_rodata_40,lbl_29_rodata_6C	not yet exercised in a run	no
@@ -247,9 +247,9 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x0001065C	0x120	fn_29_1065C	B	behaviour	fn_29_10154	lbl_29_rodata_798,lbl_29_rodata_7B4,lbl_29_rodata_7B8,lbl_29_rodata_7BC		yes
 0x0001077C	0x1C8	fn_29_1077C	B	behaviour	fn_29_10F58	lbl_29_rodata_798,lbl_29_rodata_7A8		yes
 0x00010944	0x40C	fn_29_10944	B	behaviour	fn_29_10F58	lbl_29_rodata_798,lbl_29_rodata_7A8,lbl_29_rodata_7C0,lbl_29_rodata_7C4		yes
-0x00010D50	0x9C	fn_29_10D50	B	behaviour	fn_29_1105C			no
+0x00010D50	0x9C	fn_29_10D50	B	behaviour	fn_29_1105C		the child-particle-system builder both exit-host tokens go through (0x10D50-0x10DEC)	yes
 0x00010DEC	0x78	fn_29_10DEC	B	behaviour				yes
-0x00010E64	0x50	fn_29_10E64	B	behaviour				no
+0x00010E64	0x50	fn_29_10E64	B	behaviour			the exit-host effect's Render: dead on the host, nothing queues the actor (0x10E64-0x10EB4)	no
 0x00010EB4	0xA4	fn_29_10EB4	B	behaviour				yes
 0x00010F58	0x104	fn_29_10F58	B	behaviour		lbl_29_rodata_798		yes
 0x0001105C	0x3DC	fn_29_1105C	B	behaviour	fn_29_9D68	lbl_29_data_C60,lbl_29_rodata_798,lbl_29_rodata_7A8,lbl_29_rodata_7C8		yes
