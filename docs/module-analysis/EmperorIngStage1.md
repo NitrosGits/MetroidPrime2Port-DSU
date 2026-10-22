@@ -1419,14 +1419,18 @@ fn_16_1088 6/6 lines (no branches); fn_16_1150 34/34 lines, 20/25 branches.
 | 0x11D0 | timer > 0.75f | both |
 | 0x11F8 / 0x1204 | the model data / the animation data is null | no - dead: the only constructor call (0x6660) passes the "Attack Tip" CAnimRes model (0x62B0..) |
 | 0x1254 | the animation is over | both |
-| 0x128C | the effect is gone | **no** |
-| 0x1298 | the effect is inactive (CEntity +0x20 bit 0x80) | **no** - DCTV only stops emission (MP2's CScriptEffect handles it), so the effect stays active and the arm repeats each frame until 5.0f, as in retail |
+| 0x128C | the effect is gone | forced (gdb, `tools/cov/specs/emperoring1_portal_force.py`: the effect id reads invalid while the timer is in 3.5..4.5, then is restored) - 1004 hits |
+| 0x1298 | the effect is inactive (CEntity +0x20 bit 0x80) | forced (gdb, same spec: the portal's own DCTV also clears its effect's active bit) - 1908 hits. Naturally DCTV only stops emission (MP2's CScriptEffect handles it), so the effect stays active and the active arm repeats each frame until 5.0f, as in retail |
 | 0x132C | timer > 5.0f | both |
 | 0x1368 | already hit | both |
-| 0x13CC | the player has no touch bounds | **no** |
+| 0x13CC | the player has no touch bounds | dead: CPlayer::GetTouchBounds (CPlayer.cpp) returns a box in both its arms |
 | 0x1494 / 0x1530 | the box overlaps / the loop | both |
 
-fn_16_1150 is therefore unmarked (its old marker certified the mis-decoded body); 1088 keeps its marker.
+The forced run (2026-10-22, emp1d, coverage build, `tools/cov/force.sh` with the spec above, `BUILD=build-port-cov`,
+same area, `emperoring1_heartstage.py cycles 0 0 0 0 250 0`, 14000 updates, fast, 16 portals, 0
+`[port] caught`/`reach-stub`): fn_16_1150 35/35 lines, 24/27 branches; the three untaken are the
+dead 0x11F8/0x1204 and 0x13CC. The stab locator is read straight from the animation data
+(0x13F0..0x1404, `li r6,0x0` the CCharAnimTime pointer), as retail does. fn_16_1150 is marked; 1088 keeps its marker.
 
 ## 13. Why a hit on the collision actors does not destroy the tentacles
 

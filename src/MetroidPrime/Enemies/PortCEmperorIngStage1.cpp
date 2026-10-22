@@ -2033,8 +2033,10 @@ CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;  // fn_16
 //     the seven "eight_Spine_*" locators (0x13E4), each 2.0f around the locator's world position
 //     (0x1408), and the stab damage (the guest 0x2DC, 0x151C).
 // Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
-// Not marked: the natural run never takes the effect-is-gone (0x128C), effect-inactive (0x1298) and
-// no-touch-bounds (0x13CC) arms (module note §12a).
+// The effect-is-gone (0x128C) and effect-inactive (0x1298) arms are forced by gdb
+// (tools/cov/specs/emperoring1_portal_force.py); the null model / animation data (0x11F8, 0x1204)
+// and no-touch-bounds (0x13CC) arms are dead (module note §12a).
+// @ fn_16_1150
 void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
   AnimationData()->SetIsAnimating(true);  // 0x1194..0x11AC
   CActor::Think(dt, mgr);  // 0x11B0
@@ -2069,13 +2071,17 @@ void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
     UpdateAnimation(dt, mgr, true);  // 0x135C
   }
   // 0x1360: the portal hits the player only once.
-  if (mHit == 0) {
+  if (mHit == 0) {  // 0x1368
     const rstl::optional_object< CAABox > bounds = mgr.GetPlayer(0)->GetTouchBounds();  // 0x136C
+    // 0x13CC: dead against the player - CPlayer::GetTouchBounds returns a box in both its arms.
     if (bounds) {
-      for (int i = 0; i < 7; ++i) {  // 0x13E4
-        const CVector3f pos = GetTransform() * GetLocatorTransform(
-                                                    rstl::string_l(skWarpPortalStabLocators[i]))
-                                                  .GetTranslation();  // 0x1408
+      for (int i = 0; i < 7; ++i) {  // 0x13E4, 0x152C: cmpwi r28,0x7; blt
+        // 0x13F0..0x1404: the animation data's own locator (the guest 0x60 -> 0x10, no null test,
+        // the CCharAnimTime pointer null: `li r6,0x0` at 0x13FC).
+        const CVector3f pos = GetTransform() * AnimationData()
+                                                   ->GetLocatorTransform(rstl::string_l(
+                                                       skWarpPortalStabLocators[i]), nullptr)
+                                                   .GetTranslation();  // 0x1408
         const CAABox box(pos - CVector3f(2.f, 2.f, 2.f), pos + CVector3f(2.f, 2.f, 2.f));
         if (box.DoBoundsOverlap(*bounds)) {  // 0x148C
           mHit = 1;                           // 0x14A0
