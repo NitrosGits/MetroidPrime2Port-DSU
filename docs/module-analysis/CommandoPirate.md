@@ -2161,3 +2161,107 @@ dead: the predicate keeps only ids that cast to the manager (CScriptTeamAiMgr.cp
 
 B progress: the eight H rows leave the B denominator (122 -> 114), the marked count is unchanged
 (75), so `tools/port_progress.py` reads CommandoPirate at 75/114 = 65.8%.
+
+## tail12: flag readers after the review26 decode fix
+
+Slice tail12 (2026-10-23), base cc09bf834. Analysis only: no port source changed. review26
+(f6f13d702) fixed the loader's packing of the `sound` property (0x7abed4ce) into the block's two
+flag bytes: `mFlags0` (+0x15C) holds the word's bits 0..7, bit i at `0x80>>i`, `mFlags1` (+0x15D)
+its bits 8..11 (asm 0xEED4..0xEF5C, PortCCommandoPirate.cpp:4806). Every reader of those bytes
+was re-checked against the asm with the new values.
+
+### The shipped instances
+
+`tools/scan_commando_pattern.py`'s readers over the disc (MREA/SCLY, the `CMDO` script object, the
+property 0x7abed4ce) list nine placements in three areas and four distinct words:
+
+| area (layer) | editor id | sound word | mFlags0 | mFlags1 |
+|---|---|---|---|---|
+| 01_Temple_Hub/05_temple_federationsite_dark (L0) | 0x3b010e | 0x00000080 | 0x01 | 0x00 |
+| 04_Swamp_World/05_swamp_timber! (L2) | 0x818001e | 0x00000300 | 0x00 | 0xC0 |
+| 04_Swamp_World/05_swamp_timber! (L2) | 0x8180082 | 0x00000300 | 0x00 | 0xC0 |
+| 05_Cliff_World/01_cliff_entrance (L3) | 0xc020372 | 0x00000114 | 0x28 | 0x80 |
+| 05_Cliff_World/01_cliff_entrance (L3) | 0xc020374 | 0x00000114 | 0x28 | 0x80 |
+| 05_Cliff_World/01_cliff_entrance (L3) | 0xc02025c | 0x00000104 | 0x20 | 0x80 |
+| 05_Cliff_World/01_cliff_entrance (L3) | 0xc02024f | 0x00000104 | 0x20 | 0x80 |
+| 05_Cliff_World/01_cliff_entrance (L3) | 0xc02025b | 0x00000104 | 0x20 | 0x80 |
+| 05_Cliff_World/01_cliff_entrance (L3) | 0xc0202bc | 0x00000104 | 0x20 | 0x80 |
+
+So the bits the shipped data can set are flags0 0x01, 0x08, 0x20 and flags1 0x80, 0x40; flags0
+0x02, 0x04, 0x10, 0x40, 0x80 and flags1 0x10, 0x20 are clear in every instance.
+
+### The readers
+
+Every `mData.mFlags0`/`mFlags1` read in `PortCCommandoPirate.cpp` (22 lines, 20 functions). The
+asm column is the test instruction in the archive asm (`auto_00_00000000_text.s`); mask and sense
+were re-derived from it (extrwi bit N = value bit 31-N, so `extrwi 1,24/25/26/27/28/29/30` are
+0x80/0x40/0x20/0x10/0x08/0x04/0x02).
+
+| line | function | marker | asm | test | shipped arms | port vs asm |
+|---|---|---|---|---|---|---|
+| 314 | ctor | fn_9_D904 | 0xE258 `extrwi 1,29` + cntlzw/srwi, call 0xE264 | 0x04 -> `EnableKnockBackPhysics(!bit)` | clear only (needs forcing for the false argument) | matches |
+| 670 | `x4D84_UpdateAim` | fn_9_4D84 | 0x4F5C `extrwi. 1,27`; `bne` 0x4F60 | 0x10 -> return | clear only (force) | matches |
+| 699 | `x4CA4_CanAim` | fn_9_4CA4 | 0x4CEC `extrwi. 1,27`; `bne` 0x4CF0 | 0x10 -> return false | clear only (force) | matches |
+| 1102 | `AcceptScriptMsg` kSM_Activate | fn_9_CB40 | 0xCD40 `extrwi. 1,24`; `beq` 0xCD44 | 0x80 (flags1) -> the body | both (0x114/0x104 set) | matches |
+| 1128 | `AcceptScriptMsg` kSM_AreaLoaded | fn_9_CB40 | 0xCE08 `clrlwi. 31`; `beq` 0xCE0C | 0x01 -> the death block | both (the Temple word sets it) | matches |
+| 1334 | `x3D64_SetWarpOut` | **unmarked** (fn_9_3D64) | 0x3DB0 `extrwi. 1,24`; `beq` 0x3DB4 | 0x80 (flags1) -> needs set | both (0x114/0x104 set) | matches |
+| 2022 | `x3E1C_UpdateRagDoll` | fn_9_3E1C | 0x4090 `clrlwi 31`, 0x40A0 | 0x01 -> the rag doll's flags 3:0 | both (the Temple word sets it) | matches |
+| 2182 | `KnockBack` | fn_9_C300 | 0xC328 `clrlwi. 31`; `beq` 0xC32C | 0x01 -> the torso arm | both (the Temple word sets it) | matches |
+| 2289 | `ShouldWarpIn` | fn_9_BD98 | 0xBDAC `extrwi. 1,24`; `beq` 0xBDB0 | 0x80 (flags1) | both | matches |
+| 2310 | `ShouldMeleeAttack` | fn_9_BCB8 | 0xBCD0 `extrwi. 1,30`; `bne` 0xBCD4 | 0x02 -> return false | clear only (force) | matches |
+| 2354 | `ShouldFireEGrenade` | fn_9_BBC8 | 0xBBFC `extrwi. 1,27`; `bne` 0xBC00 | 0x10 (flags1) -> return false | clear only (force) | matches |
+| 2382 | `ShouldRetreat` | fn_9_BB7C | 0xBB8C `extrwi. 1,24`; `bne` 0xBB90 | 0x80 (flags1) -> needs clear | both | matches |
+| 2383 | `ShouldRetreat` | fn_9_BB7C | 0xBB98 `extrwi. 1,28`; `bne` 0xBB9C | 0x08 -> needs clear | both (0x114 sets it) | matches |
+| 2395 | `ShouldJumpBack` | fn_9_BB10 | 0xBB20 `extrwi. 1,28`; `bne` 0xBB24 | 0x08 -> return false | both (0x114 sets it) | matches |
+| 2444 | `ShouldAmbush` | fn_9_BB04 | 0xBB08 `extrwi 1,24` (returned) | 0x80 -> the result | clear only (force) | matches |
+| 2459 | `BreakAmbush` | fn_9_BAF8 | 0xBAFC `extrwi 1,25` (returned) | 0x40 -> the result | clear only (force) | matches |
+| 2627 | `ShouldDodge` | fn_9_B690 | 0xB6A8 `extrwi. 1,26`; `bne` 0xB6AC | 0x20 -> return false | both (0x114/0x104 set) | matches |
+| 2658 | `ShouldArmShield` | fn_9_B660 | 0xB674 `extrwi. 1,26`; `bne` 0xB678 | 0x20 (flags1) -> needs clear | clear only (force) | matches |
+| 2699 | `ShouldShieldCharge` | **unmarked** (fn_9_B250) | 0xB2C4 `extrwi. 1,25`; `bne` 0xB2C8 | 0x40 (flags1) -> return false | both (the Swamp word sets it) | matches |
+| 2868 | `ShouldCover` | fn_9_B0F4 | 0xB0F8 `extrwi. 1,28`; `beq` 0xB0FC | 0x08 -> needs clear | both (0x114 sets it) | matches |
+| 3308 | `x19D8_JoinTeam` | fn_9_19D8 | 0x1A10 `extrwi. 1,30` (0x02, beq), 0x1A1C `extrwi. 1,25` (0x40, bne) | both bits -> return early | 0x02 never; 0x40 only in the Swamp word (force 0x02) | matches |
+| 3356 | `PathFind` | fn_9_9AAC | 0x9B58 `extrwi. 1,28`; `bne` 0x9B5C | 0x08 -> needs clear | both (0x114 sets it) | matches |
+
+No reader's mask or sense disagrees with the asm. Two findings for the orchestrator (not fixed):
+`x3D64_SetWarpOut` (reader at 1334) carries no `// @ fn_9_3D64` marker - the marker above it
+(fn_9_1930) is `x1930_LeaveTeam`'s - and `ShouldShieldCharge` (2699) sits under fn_9_B660's
+marker, so it reads as "inside ShouldArmShield"; its retail id is fn_9_B250 (the comment's
+"fn_9_B250 (0x410 bytes)" at 2661). Neither function is marked, so neither is a marking error -
+but a reader scan keyed on the nearest marker attributes both to the wrong body.
+
+### Run (one game, both arms of every marked reader)
+
+`tools/cov/specs/commandopirate_tail12.py` + `tools/drivers/commandopirate_tail12.py`
+(`COV_GDB_SCRIPT=tools/cov/force_ret.py`, area `1baa96c2,01_cliff_entrance`, the Cliff's entrance
+holds the six commandos, `--fast --frames 1200`): game exit 0, `caught`/`reach-stub` 0. The spec
+toggles each reader's flag bits on alternate calls (force_ret restores them at the call's return),
+so the bits the shipped data cannot set run too; the forced hits are in `<out>/forced.txt`, the
+flag value at every body entry and every return value in `<out>/cov.txt`.
+
+| reader | hits | flag value(s) at the body (forced where marked) | arms |
+|---|---|---|---|
+| 314 ctor | 6 | flags0 0x04 clear 6 (all six Cliff instances) | the set argument was not forced (the tooling writes at a body's entry, before `mData` is built) - named, not taken |
+| 670/699 | 1105/1952 | 0x10 clear 602/1025+226, set 277/701 (forced) | both values with the +0xC64 0x10 precondition; the port's arm lines (671/673, 700/702) do not map in this build's line table, so the arm counts come from the flag value |
+| 1102 | 1421 (AcceptScriptMsg) | flags1 0x80 clear 355, set 1066 (forced) | kSM_Activate body: forced 0x80 hits run the +0xC63 0x20 arm; a second run (tail12-run1) recorded the body 8x (0x80) and the clear path 8x -> both |
+| 1128 | as above (flags0 0x01 set 356 forced, clear 1065) | 0x01 | kSM_AreaLoaded death block 2x and the waypoint path 8x (run1) -> both |
+| 1334 `x3D64_SetWarpOut` | 0 | - | **not reached**: the Escape message was sent after Activate, whose forced 0x80 arm sets +0xC63 0x20 (the helper's own guard); the arm pair stays unproven in this run |
+| 2022 | 1674 | 0x01 with a rag doll 570 (forced), 0x01 without 267, clear 837 | rag doll created with flags 3 (flag set at the creation call, key `1,0` 267) and with 0 |
+| 2182 | 2 | 0x01 clear, rag doll null both hits | **torso arm not reached**: the corpse's knock-back saw no rag doll (the cpragdoll slice's swamp run forced it); the rag-doll-only exit ran 5x in run1 |
+| 2289 | 2 | x920 -1, flags1 0x80, +0xC63 0x20 -> ret 1 both | true arm only |
+| 2310 | 16 | 0x02 clear 12 (natural) / set 4 (forced) | ret 0 forced 4, ret 1 natural 1 -> both |
+| 2354 | 12 | 0x10 clear 9 (natural) / set 3 (forced) | ret 0 both -> the early exit taken with the bit set |
+| 2382/2383 | 16 | (0xC63 0x40, 0x80, 0x08) = (0,128,0) 9, (64,128,8) 4 forced, (64,0,0) 3 forced | all three combinations, ret 0 each -> both flag arms |
+| 2395 | 1 | 0x08 set (forced) | ret 0 |
+| 2444 | 2 | 0x80 set (forced) 1 / clear 1 | ret 1 forced, ret 0 natural -> both |
+| 2459 | 1 | 0x40 set (forced) | ret 1; the clear arm ran in run1 (ret 0 6x) |
+| 2627 | 16 | 0x20 set 12 (natural) / clear 4 | ret 0 both -> the flag arm and the rest |
+| 2658 | 15 | +0xC64 0x80 with 0x20 set 4 (forced, ret 0) / clear 4 (ret 1) / +0xC64 clear 7 | both |
+| 2699 | 15 | +0xC64 0x40 with 0x40 set 4 (forced) / clear 4 | ret 0 both |
+| 2868 | 11 | 0x08 clear 8 / set 3 (forced) with +0xC63 0x01 | ret 1 (clear) 3, ret 0 8 -> both |
+| 3308 | 10 | (0x02,0x40) = (2,64) 3 forced, (0,0) 5, (2,0) 2 | the early-return arm 3x, the lookup arm 5x -> both |
+| 3356 | 439 | 0x08 clear 329, set 110 (forced) | the path find runs with the flag clear; the forced hits skip it (the 0x114/0x104 words set the bit naturally too) |
+
+Named as not taken: the ctor's `EnableKnockBackPhysics(false)` argument (no body-entry hook can
+write `mData` before it is built), `x3D64_SetWarpOut`'s pair (the Escape guard), and `KnockBack`'s
+torso arm (no rag doll in the Cliff entrance's corpse knock-backs). The `+0xC63 0x20` bit the
+Escape path needs can be cleared with a `!`-write in a follow-up spec if the arm pair matters.
