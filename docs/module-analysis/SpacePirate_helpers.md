@@ -225,6 +225,39 @@ The `calls` counts of the harness are polluted on this build (the call-site brea
 label also count the calls of the neighbouring functions), so the arm counts of the emitter were
 read from a run whose spec has that one entry only.
 
+## 4a. The six 'ported' rows: the asm diff and the gcov profile
+
+The 22 rows the table marks "ported" (the body is in the port, no marker) in TSV order; the first
+six are `0x140` (the loader), `0xC0C` (BuildGrenadeData), `0x17A0` (GetRagDoll), `0x3220`
+(ShouldFrenzy), `0x3D7C` (SolveGrenadeLaunch) and `0x4030` (GetGrenadeAimPoint).  Each was read
+against the REL's asm with `tools/asmcheck.py annotate SpacePirate fn_72_XXXX`:
+
+| row | the retail's body | the port's body | verdict |
+|---|---|---|---|
+| `140` the loader | the property switch (the ids 0xf0cf5dd7, 0xda1122eb, ... at asm 0x1BC-0x268) | the host's SLdrSpacePirate reader (the same property ids, read by the generated reader) | equal in behaviour; asmcheck's "asm makes 49 calls, C++ body 12 / asm has 67 conditions, C++ 1" is the known false positive of the host's reader |
+| `C0C` BuildGrenadeData | the SLdr weapon data copied into a CBouncyGrenadeData (asm 0xC0C-0xC98, the flag byte's 0x80 bit at 0xC94) | the header's `BuildGrenadeData()` (the same fields, the flag bit as the constant true) | equal |
+| `17A0` GetRagDoll | the ragdoll (0xb30) with its flag byte 0x70's 0x40 (asm 0x17B0) and 0x80 (asm 0x17B8) set | the reviewer's body (IsPrimed / the render-bounds flag) | equal; the body is never called (the port has no ragdoll) |
+| `3220` ShouldFrenzy | the pending bit (asm 0x3248), the charge-player list (0x329C), the morphed target (0x32CC), the low-health path (0x3304, 0x3334, 0x3348) | the module lane's body (all four) | equal |
+| `3D7C` SolveGrenadeLaunch | the candidate loop (0.07853982 rad per step, pi/4 from above), the accept and closest-miss paths (asm 0x3EB8-0x3F90) | the port's body (the same constants and the same two paths) | equal |
+| `4030` GetGrenadeAimPoint | the eye height (0.5) for an unmorphed player (asm 0x40A4-0x40C4) and the pull-back (70 %, the aim at most 2 m above the pirate, asm 0x40DC-0x4110) | the port's body (the same) | equal |
+
+So none of the six needed a fix - the differences the earlier rounds found (the E3D8 push, the
+17A0 flags, the EDEC team flag, the 3220 charge list, the KnockBack handle) are the module lane's
+and the reviewer's, and they are in this branch.
+
+The gcov profile of the coverage build (the natural run and the forced runs of 2026-10-22 merged)
+says how far each of the six got:
+
+| row | profile | why it is not ALL-ARMS |
+|---|---|---|
+| `140` the loader | 65/65 lines, 13/16 branches | the three untaken edges are data-dead: the model's null (asm 0x1788's `if (!modelData)`) and the grenade damage's type (the two `LdrToDamageInfo` edges at 0x1833) - the shipped placements carry one type |
+| `C0C` BuildGrenadeData | no row of its own (it is an inline in the header) | it only runs with a grenade spawn |
+| `17A0` GetRagDoll | 0/6 lines | the body is never called: the port has no ragdoll, so 0xb30 is never set |
+| `3220` ShouldFrenzy | 0/15 lines | the body is called from UpdateAttacks, and the coverage runs' pirates never attacked (the GPU stalls of the machine make the console-driven fight unreliable) |
+| `3D7C` / `4030` | 0/35, 0/8 lines | the grenade never spawned in the coverage runs (the state that owns the spawn is not entered in a normal fight) |
+
+No new marker: the rule is to mark only the bodies the profile shows ALL-ARMS.
+
 ## 4b. The reconciled `SpacePirate_functions.tsv`
 
 One row per REL function (262), the module session's columns kept (offset, size, owner, name, kind,

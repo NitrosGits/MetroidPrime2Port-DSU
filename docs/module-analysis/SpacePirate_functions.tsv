@@ -13,8 +13,8 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x90	0x24	(module)	RELExit	rel-entry	B	-	-	not-port	RELExit
 0xB4	0x20	(module)	RELMain	rel-entry	B	-	-	not-port	RELMain
 0xD4	0x6C	(module)	RegisterFuncPtrs (SSpacePirate_FuncPtrs)	rel-entry	B	RELMain	-	not-port	fn_72_D4
-0x140	0xACC	(module)	LoadSpacePirate	loader	B	D4(addr)	-	ported	fn_72_140
-0xC0C	0x94	CSpacePirateData	BuildGrenadeData: CBouncyGrenadeData ctor from SLdr weapon data	method	B	140	-	ported	fn_72_C0C
+0x140	0xACC	(module)	LoadSpacePirate	loader	B	D4(addr)	the loader: the host's SLdr reader, equal to the retail's property switch (asm 0x1BC-0x268); the profile: 65/65 lines, 13/16 branches (the three untaken edges are data-dead)	ported	fn_72_140
+0xC0C	0x94	CSpacePirateData	BuildGrenadeData: CBouncyGrenadeData ctor from SLdr weapon data	method	B	140	BuildGrenadeData: equal to the retail's copy of the weapon data (asm 0xC0C-0xC98); it runs only with a grenade spawn	ported	fn_72_C0C
 0xCA0	0x40	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	140	rstl/TToken copy (header inline)	not-port	fn_72_CA0
 0xCE0	0x20	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	4FF4 CA0	rstl/TToken copy (header inline)	not-port	fn_72_CE0
 0xD00	0x28	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	CE0	rstl/TToken copy (header inline)	not-port	fn_72_D00
@@ -63,8 +63,8 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x3AB4	0x34	CSpacePirate	GetDamageVulnerability()	virtual	B	data_8D8	-	marked	fn_72_3AB4
 0x3AE8	0x40	CSpacePirate	GetModelAlphau8	virtual	B	data_8D8	-	marked	fn_72_3AE8
 0x3B28	0x254	CSpacePirate	DoUserAnimEvent	virtual	B	data_8D8 jumptable_72_data_A20	-	marked	fn_72_3B28
-0x3D7C	0x2B4	CSpacePirate	SolveGrenadeLaunch	method	B	4174	-	ported	fn_72_3D7C
-0x4030	0x144	CSpacePirate	GetGrenadeAimPoint	method	B	4174	-	ported	fn_72_4030
+0x3D7C	0x2B4	CSpacePirate	SolveGrenadeLaunch	method	B	4174	SolveGrenadeLaunch: equal to the asm (the candidate loop and the accept / closest-miss paths, 0x3EB8-0x3F90); it runs only with a grenade spawn	ported	fn_72_3D7C
+0x4030	0x144	CSpacePirate	GetGrenadeAimPoint	method	B	4174	GetGrenadeAimPoint: equal to the asm (the eye height, the pull-back, 0x40A4-0x4110); it runs only with a grenade spawn	ported	fn_72_4030
 0x4174	0x3B8	CSpacePirate	SpawnGrenade	method	B	3B28	-	ported	fn_72_4174
 0x452C	0x20	CModelData	CModelData() default ctor	inline-dol	H	4174	CModelData::CModelData()	not-port	fn_72_452C
 0x454C	0x58	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	4174	compiler-emitted dtor	not-port	fn_72_454C
