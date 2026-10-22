@@ -230,7 +230,10 @@ bool CSandworm::PlayerReachable(CStateManager& mgr, const CTriggerData& data) co
 }
 
 // Retail fn_56_3D64 is the (mgr, data) trigger body; it searches from the worm to the player at
-// most once a second and caches the result.
+// most once a second (0x3D8C: `fcmpo` of 1.0 + 0x1854 against 0x8B0, `bge` skips the body) and
+// caches the result in the byte at 0x1850 (`stb` of 1/0 at 0x3DB4/0x3DC0). The return is that
+// byte, loaded with `lbz r3, 0x1850(r31)` at 0x3DD0 and returned as it stands - the retail never
+// tests it, so the member is a bool and the return is a plain copy.
 // @ fn_56_3D64
 bool CSandworm::PathReachable(CStateManager& mgr, const CVector3f& pos) const {
   CSandworm& self = const_cast< CSandworm& >(*this);
@@ -239,7 +242,7 @@ bool CSandworm::PathReachable(CStateManager& mgr, const CVector3f& pos) const {
         self.x1858_search2.Search(GetTranslation(), pos) == CPathFindSearch::kR_Success ? 1 : 0;
     self.x1854_ = x8B0_activeTime;
   }
-  return x1850_ != 0;
+  return x1850_; // 0x3DD0: `lbz r3, 0x1850(r31)`, no compare (was `x1850_ != 0`)
 }
 
 // @ fn_56_3E1C

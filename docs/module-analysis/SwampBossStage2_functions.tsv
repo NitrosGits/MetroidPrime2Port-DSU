@@ -37,7 +37,7 @@ offset	fn	size	class	marked	what	callers
 0x0178C	fn_79_178C	0x2D8	H	no		fn_79_980
 0x01A64	fn_79_1A64	0x3C	H	no		fn_79_1228
 0x01AA0	fn_79_1AA0	0x98	H	no		fn_79_134C
-0x01B38	fn_79_1B38	0x10C	B	no	an additive flinch with no caller	-
+0x01B38	fn_79_1B38	0x10C	T	no	an additive flinch, dead code: no `bl`, no table/vtable/code-list entry and no data word references it anywhere in the module	-
 0x01C44	fn_79_1C44	0x3C	H	no		-
 0x01C80	fn_79_1C80	0x184	H	no		fn_79_1B38 fn_79_5AE4
 0x01E04	fn_79_1E04	0x3C	H	no		-
@@ -142,7 +142,7 @@ offset	fn	size	class	marked	what	callers
 0x071E0	fn_79_71E0	0x84	H	no		fn_79_6E68
 0x07264	fn_79_7264	0x38	H	no		fn_79_71E0
 0x0729C	fn_79_729C	0x60	H	no		fn_79_7264
-0x072FC	fn_79_72FC	0xC	B	no	`ResetAttackPhase`	-
+0x072FC	fn_79_72FC	0xC	B	yes	`ResetAttackPhase` (the code list lbl_79_data_3F4, installed by fn_79_D60C at 0xDAE4)	code list lbl_79_data_3F4 / fn_79_D60C
 0x07308	fn_79_7308	0x1B0	B	yes		-
 0x074B8	fn_79_74B8	0x5C	H	no		-
 0x07514	fn_79_7514	0x48	H	no		-
