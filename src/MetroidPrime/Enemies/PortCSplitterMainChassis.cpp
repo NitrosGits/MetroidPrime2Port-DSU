@@ -180,7 +180,7 @@ void CSplitterMainChassis::Start(CStateManager&, EStateMsg, float) {}
 // The Should* triggers below each look the target up (GetObjectById, the null test) and build
 // it inline from the two actors' positions (0x54, 0x58 and 0x5C).
 // The -1 (no target) answer is unreachable from the chassis's triggers: they all run from
-// PathFind, which the FSM only enters after SelectTarget (fn_75_BE28) stored the player's id at
+// PathFind, which the FSM only enters after SelectTarget (0xBE28) stored the player's id at
 // 0xCC0, the one writer of that id, and the player is never deleted.
 static float PortTargetDistanceSq(const CSplitterMainChassis& self, const CStateManager& mgr) {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(self.GetSyncId()));
@@ -330,7 +330,7 @@ bool CSplitterMainChassis::ShouldLaserSweep(CStateManager& mgr, const CTriggerDa
 // navigation (0x6F4) gets the destination (0xBDEC SetDestination) and its face target (0x718)
 // kInvalidUniqueId (0xBDF0-0xBE04), and the team join runs (0xBE08 fn_75_8DF8).
 // The retail reads the object's position without a cast (0xBCCC mr.); the port's CActor cast is
-// the same answer: 0xCC0's only writer is SelectTarget (fn_75_BE28, the player's id).
+// the same answer: 0xCC0's only writer is SelectTarget (0xBE28, the player's id).
 // Arms: 10/10, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): no
 // target and no line of sight in play; with line of sight a null role, a melee role and a
 // projectile role near and far forced (CScriptTeamAiMgr::GetTeamAiRole answering a calloc'd
@@ -785,7 +785,7 @@ bool CSplitterMainChassis::SpunIntoPlayer(CStateManager&, const CTriggerData&) c
 // the target-to-chassis offset (0xB22C-0xB258); its z is 0.0f (lbl_75_rodata_390, 0xB264). The
 // bounce time at 0xD24 is 0.75f (lbl_75_rodata_3B4) when 0xD40's 0x02 bit (the boost break-out)
 // is set, else 0.5f (lbl_75_rodata_3A8, 0xB268-0xB288). The no-target arm is dead: 0xCC0's one
-// writer (fn_75_BE28) stores the player's id, and the spin needs it (ShouldSpinAttack).
+// writer (SelectTarget, 0xBE28) stores the player's id, and the spin needs it (ShouldSpinAttack).
 // @ fn_75_B1D8
 void CSplitterMainChassis::BounceOffPlayer(CStateManager& mgr, float) {
   mBounceVector = -mSpinVector;
