@@ -62,19 +62,3 @@ void FreeLockedCache(void* ptr) {
 }
 
 void* GetLockedCacheAllocationBase() { return sAllocationBase; }
-
-#ifdef TARGET_PC
-#include "rstl/locked_cache_allocator.hpp"
-
-// Upstream declares this but has no definition yet. Host objects are larger than retail ones,
-// so the 0x4000-byte cache fills sooner: always fall back to the heap rather than return null.
-void rstl::locked_cache_allocator::Allocate(void*& out, int size) {
-  mPreviousHeapAllocation = mHeapAllocation;
-  out = mPreferHeap ? nullptr : AllocateLockedCache32(size);
-  mHeapAllocation = out == nullptr;
-  if (mHeapAllocation) {
-    out = CMemory::Alloc(size);
-  }
-  ++mAllocationCount;
-}
-#endif

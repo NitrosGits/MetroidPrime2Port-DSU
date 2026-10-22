@@ -83,7 +83,7 @@ offset	size	class	kind	name	callers	marked	state
 0x58C0	0xB4	B	method	fn_10_58C0	1	no	
 0x5974	0x7A4	B	method	fn_10_5974	1	no	
 0x6118	0x19C	B	method	fn_10_6118	1	no	
-0x62B4	0xC0	B	fsm-trigger	fn_10_62B4	0	no	Arrived
+0x62B4	0xC0	B	fsm-trigger	fn_10_62B4	0	yes	Arrived
 0x6374	0xEC	B	method	fn_10_6374	2	no	
 0x6460	0xCC	B	fsm-state	fn_10_6460	0	no	GoToPhazonEnrage
 0x652C	0xA0	B	fsm-state	fn_10_652C	0	no	GoToPhazonAttack
@@ -126,7 +126,7 @@ offset	size	class	kind	name	callers	marked	state
 0x8DB4	0x19C	B	method	fn_10_8DB4	1	no	
 0x8F50	0x214	B	method	fn_10_8F50	1	no	
 0x9164	0x1B0	B	method	fn_10_9164	1	no	
-0x9314	0x110	B	fsm-trigger	fn_10_9314	0	no	DoneRolling
+0x9314	0x110	B	fsm-trigger	fn_10_9314	0	yes	DoneRolling
 0x9424	0x184	B	fsm-state	fn_10_9424	0	no	DiveFromBoost
 0x95A8	0x7C	B	fsm-trigger	fn_10_95A8	0	no	DiveAfterBoost
 0x9624	0x20	B	method	fn_10_9624	6	no	
@@ -154,8 +154,8 @@ offset	size	class	kind	name	callers	marked	state
 0xBA38	0x140	B	method	fn_10_BA38	1	no	
 0xBB78	0x6C	B	fsm-trigger	fn_10_BB78	0	no	ShouldFadeIn
 0xBBE4	0x70	B	fsm-trigger	fn_10_BBE4	0	no	ShouldFadeOut
-0xBC54	0xEC	B	fsm-state	fn_10_BC54	0	no	FadeOut
-0xBD40	0xD8	B	fsm-state	fn_10_BD40	0	no	FadeIn
+0xBC54	0xEC	B	fsm-state	fn_10_BC54	0	yes	FadeOut
+0xBD40	0xD8	B	fsm-state	fn_10_BD40	0	yes	FadeIn
 0xBE18	0x2EC	B	method	fn_10_BE18	2	yes	
 0xC104	0x1AC	B	method	fn_10_C104	1	no	
 0xC2B0	0x1C0	B	method	fn_10_C2B0	1	no	
@@ -207,7 +207,7 @@ offset	size	class	kind	name	callers	marked	state
 0xEED8	0x84	B	method	fn_10_EED8	1	no	
 0xEF5C	0x6C	H	host-copy	fn_10_EF5C	0	no	
 0xEFC8	0x138	B	method	fn_10_EFC8	2	no	
-0xF100	0x110	B	method	fn_10_F100	1	yes	
+0xF100	0x110	B	method	fn_10_F100	1	no	
 0xF210	0x88	B	method	fn_10_F210	2	yes	
 0xF298	0x174	B	method	fn_10_F298	1	yes	
 0xF40C	0x7C	B	virtual	fn_10_F40C	0	no	
@@ -220,7 +220,7 @@ offset	size	class	kind	name	callers	marked	state
 0xF840	0xC	T	fsm-thunk	fn_10_F840	0	yes	Alerted
 0xF84C	0x18	T	virtual-thunk	fn_10_F84C	0	no	
 0xF864	0x8	T	fsm-thunk	fn_10_F864	0	yes	DoneTurning
-0xF86C	0xB4	B	fsm-state	fn_10_F86C	0	no	FallFromTheAir
+0xF86C	0xB4	B	fsm-state	fn_10_F86C	0	yes	FallFromTheAir
 0xF920	0x4	T	fsm-thunk	fn_10_F920	0	yes	Start
 0xF924	0xC	T	fsm-thunk	fn_10_F924	0	yes	StartsInTheAir
 0xF930	0x1C4	B	fsm-state	fn_10_F930	0	yes	PissedOff
@@ -244,7 +244,7 @@ offset	size	class	kind	name	callers	marked	state
 0x10658	0x40	B	fsm-trigger	fn_10_10658	0	yes	PlayerTooClose
 0x10698	0x60	B	fsm-trigger	fn_10_10698	0	no	TooMuchDamage
 0x106F8	0x18	T	fsm-thunk	fn_10_106F8	0	yes	BreakPause
-0x10710	0x154	B	fsm-state	fn_10_10710	0	no	Pause
+0x10710	0x154	B	fsm-state	fn_10_10710	0	yes	Pause
 0x10864	0x17C	B	method	fn_10_10864	1	no	
 0x109E0	0x40	B	method	fn_10_109E0	1	no	
 0x10A20	0x44	B	method	fn_10_10A20	1	no	
@@ -348,7 +348,7 @@ offset	size	class	kind	name	callers	marked	state
 0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	no	BreakNormalMissile
 0x16B64	0x28	B	method	fn_10_16B64	11	yes	
 0x16B8C	0x150	B	method	fn_10_16B8C	5	no	
-0x16CDC	0x1F0	B	fsm-state	fn_10_16CDC	0	no	FreezeBeam
+0x16CDC	0x1F0	B	fsm-state	fn_10_16CDC	0	yes	FreezeBeam
 0x16ECC	0x1B0	B	fsm-state	fn_10_16ECC	0	no	SuperMissileAttack
 0x1707C	0x3CC	B	method	fn_10_1707C	3	no	
 0x17448	0x164	B	fsm-state	fn_10_17448	0	no	NormalMissileAttack

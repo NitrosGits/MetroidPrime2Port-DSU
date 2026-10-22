@@ -516,8 +516,8 @@ void CSpacePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // @ fn_72_BCB0 (0x31C). Every message forwards to CPatterned::Patrol first (asm 0xBCE4). Activate
 // takes the kSS_Attack/kSM_Follow connected waypoint as the nav destination and, when the dot of the
-// forward axis with (waypoint - translation) is exactly zero (asm 0xBD90: fcmpo/cror/bne), marks the
-// nav in-position; Update
+// forward axis with (waypoint - translation) is <= 0, i.e. the waypoint is not ahead (asm 0xBDB8:
+// fcmpo, cror eq,lt,eq, bne), marks the nav in-position; Update
 // marks it in-position and sets the jump height when the AI waypoint's flags bit1/bit2 ask for a
 // jump/drop and the pirate is within a body-length, aims the cmd-manager target at the player while
 // the body state is kAS_Jump and the waypoint has no kSS_Arrived/kSM_Next connection, then caches
@@ -533,7 +533,7 @@ void CSpacePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
     if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id))) {
       mWaypointNavigation.SetDestination(id);
       if (CVector3f::Dot(GetTransform().GetForward(),
-                         waypoint->GetTranslation() - GetTranslation()) == 0.f) {
+                         waypoint->GetTranslation() - GetTranslation()) <= 0.f) {
         mWaypointNavigation.SetInPosition(true);
       }
     }
@@ -1001,8 +1001,6 @@ void CSpacePirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
 // three melee placements (data flag 0x8: alamofront 001d000f, casual 0036013d/003600fa) ran SquadJoin
 // and GetAssociatedTeamId found no team for any of them.
 // @ fn_72_DFD4
-// @ fn_72_DFD4
-// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::SquadJoin(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     xba0_teamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -1237,8 +1235,8 @@ public:
 // sets the combat bit, switches bone tracking off and sets 0x8fa bit 0x02. Update skips the hung
 // command while the body still has to turn (more than 15 degrees, rodata 0xBF8) towards that axis;
 // the turn is the usual zero move vector with the axis as the face vector and speed 1 (rodata 0xB54).
-// Only once the body state is kAS_WallHang does it read the state's vtable slot 0x28 and store the
-// negation of its byte into 0x8fa bit 0x02, and it always ends by setting the burst type to 1.
+// Only once the body state is kAS_WallHang does it read the state's vtable slot 0x28 (CanShoot) and
+// store its negation into 0x8fa bit 0x02, and it always ends by setting the burst type to 1.
 // gcov 2026-10-21: every arm but the switch default. The hung arms run naturally in 02_sand_sandfalls
 // L3 (cover point 000a0186); the no-cover-point arm is the first forced Activate of
 // spacepirate_force4.py, whose second Activate takes the cover arm.
@@ -1276,7 +1274,9 @@ void CSpacePirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
       BodyController()->CommandMgr().DeliverCmd(CBCWallHangCmd(mDestObj));
     }
     if (BodyController()->GetCurrentStateId() == pas::kAS_WallHang) {
-      x8fa_30_ = !BodyController()->GetBodyStateInfo().GetCurrentState()->UnkVtable2C();
+      // Vtable slot 0x28 (0x6C64) is CanShoot (CBSWallHang: in the hung sub-state), so the aim
+      // block (UpdateAimBodyState's !x8fa_30_) opens once the pirate hangs.
+      x8fa_30_ = !BodyController()->GetBodyStateInfo().GetCurrentState()->CanShoot();
     }
     mBurstFire.SetBurstType(1);
     break;

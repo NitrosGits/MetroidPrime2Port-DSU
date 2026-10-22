@@ -345,17 +345,18 @@ SLdrDigitalGuardianHeadStruct* CDigitalGuardianHead::x10120_(CStateManager& mgr)
 // Unmarked: the port has no caller for it yet (the head's codes call it).
 
 
-// fn_14_F374 (0x1C bytes): the head's retreat speed. While the head has more than one life left
-// (head+0x10E4, the cmpwi at 0xF378) the first speed of the parameter block is used (the data
-// block's +0x24, guest 0x7E4); else the second one (the data block's +0x28, guest 0x7E8).
+// fn_14_F374 (0x1C bytes): the retreat ride's time limit (FollowRetreatPath, fn_14_1569C). With
+// two or more lives left (head+0x10E4) the data block's +0x24 (guest 0x7E4), else its +0x28
+// (guest 0x7E8).
+// Both arms ran under FollowRetreatPath (area 53): 0x10E4 = 2 naturally, 1 forced at the entry.
+// @ fn_14_F374
 float CDigitalGuardianHead::xF374_() const {
-  if (x10E4_ >= 2) { // the cmpwi at 0xF378
-    return mData.unknown_0x8a83a097; // guest 0x7E4 (the data block's +0x24)
+  if (x10E4_ >= 2) {                 // cmpwi 2 / bge at 0xF378..0xF37C
+    return mData.unknown_0x8a83a097; // lfs 0x7E4 at 0xF388 (the data block's +0x24)
   }
-  return mData.unknown_0xd919fb13; // guest 0x7E8 (the data block's +0x28)
+  return mData.unknown_0xd919fb13; // lfs 0x7E8 at 0xF380 (the data block's +0x28)
 }
 //
-// Unmarked: its one caller, the head's FollowRetreatPath (fn_14_1569C), has not run yet.
 
 
 // fn_14_11EA8 (0x88 bytes): the destroyed bomb slots' looping sounds are stopped. Every handle

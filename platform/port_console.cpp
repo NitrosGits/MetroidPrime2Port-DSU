@@ -26,6 +26,8 @@
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
+
+extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CWorld.hpp"
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/CSimplePool.hpp"
@@ -41,6 +43,7 @@
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
 #include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
@@ -500,6 +503,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
+      "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"
       "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
       "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
@@ -533,6 +537,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
+      "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
+      "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
@@ -743,6 +749,13 @@ void CmdAreas(CStateManager& mgr, const Args&, std::string& out) {
         std::snprintf(line, sizeof(line), " %d", area->GetAttachedAreaId(k).Value());
         out += line;
       }
+      // The world-space AABB CGroundMovement::CheckFalling tests the player against: outside every
+      // alive area's box the standing player is held up (retail 0x8012C5C8).
+      const CAABox& b = area->GetAABB();
+      std::snprintf(line, sizeof(line), "  aabb (%.1f %.1f %.1f)-(%.1f %.1f %.1f)",
+                    b.GetMinPoint().GetX(), b.GetMinPoint().GetY(), b.GetMinPoint().GetZ(),
+                    b.GetMaxPoint().GetX(), b.GetMaxPoint().GetY(), b.GetMaxPoint().GetZ());
+      out += line;
     }
     out += '\n';
   }
@@ -921,6 +934,13 @@ void CmdGod(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::GodMode() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetGodMode(enabled);
   out += enabled ? "god mode on\n" : "god mode off\n";
+}
+
+// `mpforce <0|1>`: CStateManager::IsMultiplayer reports true, so multiplayer-only arms run in
+// single player. The game mode itself stays single player (no score, no split screen).
+void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
+  gPortForceMultiplayer = args.size() < 2 ? !gPortForceMultiplayer : ArgToInt(args[1], 1) != 0;
+  out += gPortForceMultiplayer ? "forced multiplayer on\n" : "forced multiplayer off\n";
 }
 
 void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
@@ -1449,6 +1469,29 @@ struct PortConsoleDoor {
 namespace PortConsole {
 namespace {
 
+// scaninfo <id>: the 'SCAN' asset an actor answers GetScannableObjectInfo with (what the scan
+// visor would show), or none; a module's override runs without scanning it.
+void CmdScanInfo(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() != 2) {
+    Fail("usage: scaninfo <id>");
+    return;
+  }
+  const CEntity* ent = ResolveObject(mgr, args[1]);
+  const CActor* actor = ent != nullptr ? TCastToConstPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr) {
+    Fail("not an actor");
+    return;
+  }
+  const CScannableObjectInfo* info = actor->GetScannableObjectInfo();
+  char buf[64];
+  if (info != nullptr) {
+    snprintf(buf, sizeof(buf), "scaninfo %08X\n", static_cast< unsigned >(info->GetScannableObjectId()));
+  } else {
+    snprintf(buf, sizeof(buf), "scaninfo none\n");
+  }
+  out += buf;
+}
+
 void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() < 2) {
     Fail("usage: obj <id>");
@@ -1731,6 +1774,36 @@ void CmdTrigCall(CStateManager& mgr, const Args& args, std::string& out) {
   }
   const bool answer = (patterned->*fn)(mgr, CTriggerData(arg));
   out += "trigcall " + wanted + " = " + (answer ? "true" : "false") + "\n";
+}
+
+// codecall <id> <code> [dt]: run one code function of an FSM2 actor once with dt (default 1/60),
+// outside the machine, like `statecall` for the states (a code runs on a transition).
+void CmdCodeCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float dt = 1.f / 60.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], dt))) {
+    Fail("usage: codecall <id> <code name> [dt]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  if (machine->GetType() != 1) {
+    Fail("not an FSM2 machine");
+    return;
+  }
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::CodeFunc fn =
+      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindCodeFunction(wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no code function '" + wanted + "'");
+    return;
+  }
+  (patterned->*fn)(mgr, dt);
+  out += "codecall " + wanted + "\n";
 }
 
 // hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
@@ -2516,6 +2589,7 @@ constexpr SCommand kCommands[] = {
     {"damage", CmdDamage, true},
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
+    {"mpforce", CmdMpForce, true},
     {"freecam", CmdFreeCam, true},
     {"photo", CmdPhoto, true},
     {"skipcine", CmdSkipCine, true},
@@ -2540,12 +2614,14 @@ constexpr SCommand kCommands[] = {
     {"interp", CmdInterp, true},
     {"aspect", CmdAspect, true},
     {"objs", CmdObjs, true},
+    {"scaninfo", CmdScanInfo, true},
     {"obj", CmdObj, true},
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
     {"statecall", CmdStateCall, true},
     {"trigcall", CmdTrigCall, true},
+    {"codecall", CmdCodeCall, true},
     {"hint", CmdHint, true},
     {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},

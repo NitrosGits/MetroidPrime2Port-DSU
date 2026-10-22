@@ -1196,6 +1196,234 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   0x000107A0), the stage's +0x18 and +0x1C are the loader's pauseDurationMin and pauseDurationMax
   (the SLdrDSStageInfo layout: +0x00..+0x20 are the nine floats).
 
+## Slice 26 (2026-10-21): the FSM handlers in the tsv's order
+
+Ten handlers ported from the REL's asm, each with the offsets of its branches and its calls.
+
+| fn | the REL's body | the port | marker |
+|---|---|---|---|
+| fn_10_10710 | 0x00010710, 0x154 bytes | the Pause state | **marked** |
+| fn_10_62B4 | 0x000062B4, 0xDC bytes | the Arrived trigger | not marked (the fight never evaluates it) |
+| fn_10_9724 | 0x00009724, 0xDC bytes | the BoostBallFire state | not marked (fn_10_99B8 is still a stand-in) |
+| fn_10_9314 | 0x00009314, 0xDC bytes | the DoneRolling trigger | **marked** |
+| fn_10_7A14 | 0x00007A14, 0xDC bytes | the EnrageHitReact state | not marked (fn_10_7F98) |
+| fn_10_6E38 | 0x00006E38, 0xDC bytes | the EnragedTravel state | not marked (fn_10_6DAC) |
+| fn_10_BD40 | 0x0000BD40, 0xDC bytes | the FadeIn state | **marked** |
+| fn_10_BC54 | 0x0000BC54, 0xDC bytes | the FadeOut state | **marked** |
+| fn_10_F86C | 0x0000F86C, 0xDC bytes | the FallFromTheAir state | **marked** |
+| fn_10_16CDC | 0x00016CDC, 0x1F0 bytes | the FreezeBeam state | not marked (fn_10_1707C, fn_10_8870) |
+
+The five unmarked ones call a helper the other lanes port: fn_10_99B8 (the boost ball's
+particle effects), fn_10_7F98 (the enrage helper), fn_10_6DAC, fn_10_1707C (the dodge step) and
+fn_10_8870 (the freeze beam's command). Each of those calls is a `FsmStandIn` in the port, so
+the bodies are the states' own work but not the whole function.
+
+### The bodies
+
+- **fn_10_10710 (the Pause state).** The attack bookkeeping with id 0x400 (0x00010750).
+  Activate (0x00010754): 0xC30 takes the elapsed time 0x8B0 (0x00010768) and the stage's pause
+  duration (the stage info's +0x18 and +0x1C, the random range at 0x000107A0, the sum at
+  0x000107AC). Deactivate (0x000107B4): 0xC24 = kInvalidUniqueId (0x000107C4). Then the damage
+  (fn_10_1E178 at 0x000107D4), the turn toward the player (fn_10_16B64 at 0x000107F0, the rate
+  lbl_10_rodata_44C = 1.3962634f) and the locomotion command (fn_800EE3C4 at 0x00010838, the
+  CBCLocomotionCmd with the zero move and face vectors and the weight 1.0f).
+- **fn_10_62B4 (the Arrived trigger).** The shield flag byte 0xCD0 (0x000062C0) short-circuits
+  the time test: with it set the trigger is the distance test alone (0x0000630C). Without it the
+  float 0xF64 plus lbl_10_rodata_190 = 6.0f against the elapsed time (0x000062D0..0x000062E4)
+  answers false (0x000062E8) and lbl_10_rodata_194 = 20.0f plus the same offset
+  (0x000062F0..0x00006300) answers true (0x00006304). Otherwise the distance to the point
+  0xEE4/0xEE8 (the helpers branch's mGuestEE4, the path find's fallback destination) in the XY
+  plane - the z is lbl_10_rodata_13C = 0.0f, the store at 0x00006348 overwrites the z difference
+  - against lbl_10_rodata_15C = 3.0f decides (the magnitude at 0x0000634C, the compare at
+  0x00006358).
+- **fn_10_9724 (the BoostBallFire state).** The attack bookkeeping with id 2 (0x00009760).
+  Activate (0x00009764): the roll emitter removed (0x00009778) and its handle cleared
+  (0x00009784), the turn around (fn_10_9644 at 0x00009788), 0xD24 = lbl_10_rodata_284 = 0.5f
+  (0x000097AC) and the boost ball's bit 0x40 of 0xEBC (0x000097B4, the PowerPC bit 25 being
+  1u << (31 - 25) = 0x40). Update (0x0000983C): the boost ball deleted (fn_10_9AC4 at
+  0x0000984C). Deactivate (0x00009854): fn_10_99B8 (0x00009864) - a stand-in, the port has no
+  particle effects. Then the turn toward the player (0x00009880, lbl_10_rodata_28C =
+  5.2359877f) and the melee attack command (fn_10_8764 at 0x000098E0, the severity 8 =
+  pas::kS_Eight).
+- **fn_10_9314 (the DoneRolling trigger).** Without the boost ball actor (the uid 0xE38,
+  0x0000932C) the trigger answers false (0x0000933C). With it the roll's time 0xEA4 against
+  lbl_10_rodata_27C = 2.0f (0x00009350) answers true when it is over (0x00009358). With a boost
+  hint (the uid 0xEC0, 0x00009360) the hint's byte 0xEC8 (0x0000936C) answers. With the bit
+  0x80 of 0xEBC (`extrwi r0, r0, 1, 24` at 0x00009378, the PowerPC bit 24 being
+  1u << (31 - 24) = 0x80) the trigger answers true (0x00009384). With the roll's other time
+  0xEA8 plus lbl_10_rodata_274 = 5.0f against the elapsed time (0x0000939C) it answers true
+  (0x000093A8). Otherwise the distance to the point 0xEAC/0xEB0/0xEB4 against
+  lbl_10_rodata_280 = 12.0f plus the radius 0xEB8 decides (the magnitude at 0x000093F0, the
+  compare at 0x00009404, the "greater than" bit `extrwi r3, r0, 1, 1`).
+- **fn_10_7A14 (the EnrageHitReact state).** Every message sets the body's locomotion type 10
+  (pas::kLT_Internal10, 0x00007A4C). Deactivate (0x00007A50): the time 0xFB0 from
+  lbl_10_rodata_1CC = 0.2f and lbl_10_rodata_1D0 = 4.5f (0x00007A70), the guest's own random
+  stepped (the `mulhw` with 0x55555556 at 0x00007A8C: 0x105C grows by the high word of
+  0x55555556 * 0x1058 and its carry bit) and the health stored (0xFC4, 0x00007AB0). Then
+  fn_10_7F98 (0x00007AC8, a stand-in) and the melee attack command (0x00007B28, the severity 8).
+- **fn_10_6E38 (the EnragedTravel state).** Every message reads the player's aim position (the
+  state manager's player at 0x14FC, the vtable's slot 0x54 at 0x00006E78; the guest's extra
+  argument &lbl_10_rodata_1AC = 0.5f has no host counterpart, the dt is 0.5f). Activate
+  (0x00006E90): the travel (fn_10_6F90, the helpers branch's FindPathToDestination) and the
+  target forgotten (0x9FC = -1, 0x00006EC4). The other messages measure the aim position against
+  the point 0x1048/0x104C/0x1050 (the squared distance at 0x00006EEC..0x00006EF4 against
+  lbl_10_rodata_1B0 = 16.0f at 0x00006EF8) and run the travel when it is bigger (0x00006F10);
+  then the player's halfword at its +8 goes to 0x718 (0x00006F30 - the host's player has no
+  counterpart) and the separation runs (fn_10_1DD14 at 0x00006F40). Every message then runs
+  fn_10_6DAC (0x00006F4C, a stand-in), the additive animation (fn_10_1D860 at 0x00006F5C) and the
+  glide emitter (fn_10_11334 at 0x00006F68).
+- **fn_10_BD40 (the FadeIn state).** The attack bookkeeping with id 4 (0x0000BD70), the ground
+  collision (fn_10_18F90 at 0x0000BD80) and the melee attack command (fn_10_8764 at 0x0000BDE0,
+  the severity 4 = pas::kS_Four).
+- **fn_10_BC54 (the FadeOut state).** The attack bookkeeping with id 8 (0x0000BC84), the ground
+  collision (0x0000BC94), the shield flag (fn_10_105F4 at 0x0000BCA8, with the zero vector) and
+  the melee attack command (0x0000BD08, the severity 3 = pas::kS_Three).
+- **fn_10_F86C (the FallFromTheAir state).** The attack bookkeeping with id 0x4000
+  (0x0000F89C), the ground collision (0x0000F8AC) and the taunt command (fn_10_8698 at
+  0x0000F8E8: the command id 0x15 = 21 = kBSC_Taunt, the taunt type 0 = pas::kTT_Zero, the
+  animation state 0x10 = pas::kAS_Taunt) - the helpers branch's RunTauntCmd.
+- **fn_10_16CDC (the FreezeBeam state).** The attack bookkeeping with id 0x10 (0x00016D18), the
+  collision failsafe (0x00016D24), the shield flag (0x00016D38) and the ground collision
+  (0x00016D48). Activate (0x00016D4C): the beam's counter 0xAB0 cleared (0x00016D5C), the bits
+  0x40 and 0x80 of 0xAB8 cleared (the `rlwimi` at 0x00016D6C clears the bit 0x40 - the PowerPC
+  bit 25 - and the one at 0x00016D7C sets the bit 0x80 - the PowerPC bit 24 - to the bit 0x40's
+  value, which the first one just cleared) and the dodge record zeroed (0x1090 = 0.0f at
+  0x00016D9C, the direction 0x1094..0x109C at 0x00016D88..0x00016D98). The other messages deliver
+  the exit state command (fn_800EE45C at 0x00016DD0, the command id 0xA = 10 = kBSC_ExitState)
+  when the counter 0xAB0 is at least 1 (0x00016DA8). With the bit 0x40 of 0xAB8 set
+  (0x00016DEC..0x00016DF4) the actor turns toward the player (0x00016E1C, the rate
+  lbl_10_rodata_454 = 0.017453292 radians a degree times lbl_10_bss_118 = 160.0f, the module's
+  own turn speed) and dodges (fn_10_1707C at 0x00016E3C, with lbl_10_bss_11C = 22.0f and
+  lbl_10_bss_120 = 0.5f - a stand-in). Then fn_10_8870 (0x00016E8C - a stand-in).
+
+### The new members
+
+- guest 0xF64 (the Arrived trigger's time offset), 0xEA4/0xEA8 (the DoneRolling trigger's two
+  times), 0xEAC/0xEB0/0xEB4 (its point) and 0xEB8 (its radius) - the boost ball's record; the
+  helpers branch's mGuestEE4 (0xEE4) is the Arrived trigger's point.
+- guest 0xAB0 (the FreezeBeam's counter), 0x9FC (the EnragedTravel's target), 0x1048/0x104C/
+  0x1050 (the EnragedTravel's point), 0xFB0 and 0xFC4 (the EnrageHitReact's time and health) and
+  the guest's own random pair 0x1058/0x105C.
+- lbl_10_bss_118 = 160.0f: fn_10_CDB8 (the module's init, 0x0000CDB8) writes it from
+  lbl_10_rodata_320; it is the freeze beam's turn speed in degrees a second (the rate is
+  lbl_10_rodata_454 = 0.017453292 radians a degree times it). The init also writes
+  lbl_10_bss_11C = lbl_10_rodata_328 = 22.0f, lbl_10_bss_120 = lbl_10_rodata_32C = 0.5f and
+  lbl_10_bss_124 = lbl_10_rodata_324 = 1.9f (the first two are the dodge step's arguments, which
+  the port does not run yet).
+- The boost ball's bit 0x80 of 0xEBC (the DoneRolling trigger reads it).
+
+### The runs
+
+- The coverage run (tools/cov/run.sh with `tools/cov/specs/darksamus.py` and
+  `tools/cov/specs/darksamus_states.con`, the rooftop, the boss u04f7, `fsm <boss> <state>` for
+  each state): every state ran with all three messages - the Activate (0), the Update (1) and
+  the Deactivate (2) - and the BreakPause trigger's two arms (the key 0 -> ret 0 and the key 1
+  -> ret 1).
+- The forcing run (the same fight with the members written at the trigger's entry, the arms
+  cycling over the hits): the DoneRolling trigger's eight arms, seven of them forced (the first
+  one, no boost ball, is the natural one):
+  | arm | the members written | the answer |
+  |---|---|---|
+  | no boost ball (the uid 0xE38 is invalid) | the natural one | false |
+  | the roll's time 0xEA4 is over | mBoostBallUid = 1, mGuestEA4 = 3.0 | true |
+  | a boost hint and its byte 0xEC8 is set | mBoostBallUid = 1, mGuestEA4 = 0, mBoostHintUid = 2, mGuestEC8 = 1 | true |
+  | a boost hint and its byte 0xEC8 is clear | the same with mGuestEC8 = 0 | false |
+  | the bit 0x80 of 0xEBC | mBoostBallUid = 1, mGuestEA4 = 0, mBoostHintUid = invalid, mBoostBallFlag80 = 1 | true |
+  | the roll's other time 0xEA8 is over | the same with mGuestEA8 = -1000.0 | true |
+  | the distance test, the point at the origin | the same with mGuestEA8 = 1000.0 and the point 0 | true |
+  | the distance test, the point at the actor | the same with the point at the actor | false |
+- The Arrived trigger is not evaluated by the fight (the coverage run: 0 hits), so its arms were
+  not run and it keeps no marker.
+
+## Slice 27 (2026-10-21): the helpers behind the states' stand-ins, and the gcov coverage
+
+### The helpers
+
+- **fn_10_99B8 (0x000099B8, 0xDC bytes) - `StopBoostBallParticles`.** The boost ball's old
+  particle effects are stopped and forgotten: the two swoosh handles at 0xE3C and 0xE4C are
+  cleared and their objects told to stop (the vtable's word 2 with the argument 1, 0x000099F4
+  and 0x00009A20) and the element generator's record at 0xE60/0xE64 is cleared
+  (0x00009A68..0x00009A80). The port has no counterpart for any of them - the module's own
+  swooshes (fn_10_9B24) and the generator are not in the port - so the pointers are always null
+  and the body does nothing.
+- **fn_10_6DAC (0x00006DAC, 0xDC bytes) - `UpdateShieldFromHealth`.** Deactivate (0x00006DB4)
+  clears the shield flag byte 0xCD0 (0x00006DCC). The other messages read the health (the
+  vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is not above
+  lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 - the
+  `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 = 1.0f
+  (0x00006DFC) and the direction 0xD18..0xD20 to the zero vector (lbl_10_bss_128,
+  0x00006E10..0x00006E20).
+- **fn_10_8870 (0x00008870, 0xE0 bytes) - `RunFreezeBeamCmd`.** Activate (0x000088B0) stores 1
+  (kAS_Ready) to the animation state 0x6B4, delivers the command (0x000088C8) and copies it into
+  the command manager's slot at 0x1B8 (0x000088D4..0x000088E8); Update (0x000088F0) re-delivers
+  it while the DOL's ShouldRetry answers true (0x000088F8, the animation state 0x9 =
+  pas::kAS_LoopAttack); Deactivate (0x0000893C) stores 0 (kAS_NotReady). The command is the
+  loop hit reaction (the id 0x9 = 9 = kBSC_LoopHitReaction, 0x00016E70); the retail's command
+  carries three more words (7, 4 and the byte 0, 0x00016E80..0x00016E88) that the host's command
+  class does not model.
+
+The fourth helper behind a stand-in, fn_10_1707C (0x0001707C, 0x1F4 bytes - the freeze beam's
+dodge step), is not ported in this slice, so the FreezeBeam state keeps its stand-in for it and
+keeps no marker.
+
+### The states
+
+The BoostBallFire state's Deactivate arm (0x00009854) now calls fn_10_99B8 and the EnragedTravel
+state's every-message arm (0x00006F4C) calls fn_10_6DAC, so both states are whole again; the
+FreezeBeam state's command (0x00016E8C) calls fn_10_8870, but its dodge step (0x00016E3C) is
+still a stand-in.
+
+### The gcov coverage (the marker gate)
+
+The coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`) and the rooftop run over it
+give the branch coverage of every module body at once
+(`tools/cov/gcov_report.py build-port-cov <run's gcov dir> --module DarkSamus`). The marked
+bodies and their verdict:
+
+| fn | the verdict |
+|---|---|
+| fn_10_10710 (the Pause state) | 16/16 lines, 6/6 branches, **ALL-ARMS** - the "no fight stage" arm (the retail's own null check at 0x00010770) is forced by the coverage spec (the second Activate invalidates the battle stage's uid) |
+| fn_10_9314 (the DoneRolling trigger) | 10/10 lines, 10/10 branches, **ALL-ARMS** - the eight arms are written at the trigger's entry from the coverage spec's expressions (one per hit) |
+| fn_10_BD40 (the FadeIn state) | 6/6 lines, no branches - ALL-ARMS |
+| fn_10_BC54 (the FadeOut state) | 7/7 lines, no branches - ALL-ARMS |
+| fn_10_F86C (the FallFromTheAir state) | 6/6 lines, no branches - ALL-ARMS |
+| fn_10_99B8 (the boost ball's old effects) | 1/1 line, no branches, but **unmarked**: the virtual calls on the particle objects have no host counterpart, so the body is not the whole function |
+| fn_10_6DAC (the shield flag from the health) | 4/6 branches - **unmarked**: the Deactivate arm was not reached in the run |
+| fn_10_9724 (the BoostBallFire state) | 5/6 branches - not marked: the Deactivate arm did not run |
+| fn_10_6E38 (the EnragedTravel state) | 4/6 branches - not marked: the "the aim is far" arm (0x00006EF8) did not run |
+| fn_10_16CDC (the FreezeBeam state) | 4/6 branches - not marked: fn_10_1707C is still a stand-in |
+| fn_10_62B4 (the Arrived trigger) | 0/7 lines - not marked: the fight never evaluates it |
+
+### The coverage
+
+The compiler coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`) and the ordinary
+rooftop run over it give the branch coverage of every module body at once
+(`tools/cov/gcov_report.py build-port-cov <run's gcov dir> --module DarkSamus`); the arms that
+the fight cannot reach are forced from the coverage spec's own expressions
+(`tools/cov/specs/darksamus.py`: the DoneRolling trigger's eight arms are written at the
+trigger's entry, one per hit, from gdb convenience variables).
+
+## Slice 28 (2026-10-21): the fsm2 merge, fn_10_8870's command, and the crash
+
+- **The merge** (`decomp/darksamus-fsm2` af6729d14): the conflicts were in the header (the
+  mGuestFC4/mGuest102C block) and in the helpers file (their new bodies against my appended
+  ones). Their text is kept for their own bodies and members, mine follow theirs. The link check
+  reports no duplicate definition and no undefined symbol (tools/link_check.sh).
+- **fn_10_8870 (the loop attack command)** - corrected in slice 29: the retail's fn_10_8870 is
+  generic (the message in r4, the animation state in r5, the command in r6) and the FreezeBeam's
+  caller builds a **loop attack** command, not a loop hit reaction (see slice 29).
+
+- **The crash is gone.** Delivering the plain `CBodyStateCmd(kBSC_LoopHitReaction)` left the
+  command manager's slot with no type, and the body's loop reaction then read a garbage
+  animation index (1798152516) and died in `CBSLoopReaction::Start`. The rooftop run after the
+  merge (the coverage driver, the normal build) ends with the game's exit code 0 and no
+  SIGSEGV in the log.
+- **Still open.** fn_10_1707C (the freeze beam's dodge step, 0x0001707C, 0x1F4 bytes) is not
+  ported, so the FreezeBeam state keeps that stand-in and keeps no marker (its arms did not run
+  in the run either - the state was not entered). The Arrived trigger (fn_10_62B4) still has no
+  arms: the fight never evaluates it (0 hits, 0/7 lines in the gcov report) and the state that
+  would evaluate it has not been found, so neither `statecall` nor force.sh can reach it.
+
 ## FSM2 lane slice 6 (2026-10-21): the CBSLoopReaction crash, twelve triggers
 
 - **The crash** (decomp/darksamus2 0473a8b4e's coverage run `/tmp/opencode/covg`, frame ~3600:
@@ -1219,6 +1447,37 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   fn_10_1BEFC, still a stand-in.
 - Unmarked: 14284, BB78, BBE4 (their no-stage arm needs fn_10_17E14 to return null, which an
   entry-only force on the -O2 cov build can't do), 11158, 1BB08.
+
+## Slice 29 (2026-10-21): fn_10_8870 is the loop attack command
+
+- **The merge** (`decomp/darksamus-fsm2` 0c5f871dc, twelve triggers marked with `trigcall`):
+  the only conflict was this note; both sides' sections are kept.
+- **fn_10_8870 (0x00008870, 0xE0 bytes)** is generic: the message in r4, the animation state for
+  the DOL's ShouldRetry in r5 (0x000088F8) and the command in r6. The id at cmd+4 is delivered
+  (0x000088B4, 0x00008908) and cmd+4..+0x10 is copied into the command manager's slot
+  (0x000088D4..0x000088E8, 0x0000891C..0x00008934). Activate (0x000088B0) stores 1
+  (kAS_Ready) to the animation state 0x6B4, Update (0x000088F0) re-delivers the command while
+  ShouldRetry answers true, and Deactivate (0x0000893C) stores 0 (kAS_NotReady).
+  The port's helper is `RunLoopAttackCmd(msg, attack)` - the shape the fsm2 lane's states already
+  use inline (PortCDarkSamusFsm2.cpp, the SuperMissileAttack, the NormalMissileAttack and the
+  0x85DC caller).
+- **The FreezeBeam's command** (0x00016E40..0x00016E88) is a **loop attack**: the vtable
+  lbl_10_data_1B0 (the base lbl_10_data_1D4), the id 7 = kBSC_LoopAttack (0x00016E70), the type
+  4 = pas::kLAT_Four (0x00016E80), the wait flag 0 (0x00016E84) and the byte with its bit 0x80
+  (the skip-into) cleared (`rlwimi r0, r7, 7, 24, 24` at 0x00016E54). The `li r5, 0x9` at
+  0x00016E78 is fn_10_8870's animation-state argument (pas::kAS_LoopAttack), not a command id.
+  So the port delivers `CBCLoopAttackCmd(pas::kLAT_Four, false)` through the typed DeliverCmd -
+  **no port-only command class and no change to a shared BodyState file are needed**. (Slice 28
+  read it as a loop hit reaction; that was wrong.)
+- **The rooftop run** (the coverage driver, the normal build): the game's exit code 0, **no
+  SIGSEGV**, no reach stub. The FreezeBeam state is run with the console's `statecall` (it has
+  no node in the shipped FSM2): `statecall u04f7 FreezeBeam 0/1/2` runs the Activate, the Update
+  and the Deactivate, and `RunLoopAttackCmd` runs in all three - the loop attack plays, without
+  the crash.
+- **Still open**: fn_10_1707C (the freeze beam's dodge step, 0x0001707C, 0x1F4 bytes) is not
+  ported, so the FreezeBeam state keeps that stand-in and keeps no marker (its 0xAB0 >= 1 arm
+  and its 0xAB8 bit 0x40 arm did not run either). The Arrived trigger (fn_10_62B4) still has no
+  arms: the fight never evaluates it and the state that would evaluate it has not been found.
 
 ## FSM2 lane slice 7 (2026-10-21): the anim-event handler, nine marks
 
@@ -1247,6 +1506,63 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   (0xC0; needs 8F50), and unmapped members 0xDE8 (an alpha float Render gates the body on), 0xDED
   bits 0x40/0x80 (echo/dark visor), 0xE64, 0x90C bit 0x20, CActor 0x44C..0x44F, the model flags
   at 0xFC. A partial Render risks an invisible boss.
+
+## Slice 30 (2026-10-21): the port merge, the Arrived trigger's arms, and fn_10_1707C's reading
+
+- **The merge** (`port`, with the fsm2 lane's ddac9d34b): the only conflict was this note, both
+  sides' sections are kept. The merge brought the members mGuestAB0, mBoostBallFlag80,
+  mGuestEA8, mGuestEAC and mGuestEB8 a second time; the fsm2 lane's declarations stay (their
+  mGuestEAC is the 0xEAC/0xEB0/0xEB4 vector and their mGuestEB8 the radius - the same bytes the
+  DoneRolling trigger reads) and the DoneRolling trigger now reads their vector. The link check
+  reports 0 duplicate definitions and 0 undefined symbols.
+- **The Arrived trigger (fn_10_62B4) is marked.** The module's FSM2 dump (the port's
+  `MP2_DS_FSM` probe) shows which state evaluates it: `state 43 GoToPhazonAttack -> trigger
+  Arrived -> state PhazonSuck` (and `state 44 GoToPhazonEnrage -> trigger Arrived -> state
+  PhazonRise`), so the fight calls it when the boss is put in that state (`fsm u04f7
+  GoToPhazonAttack`). The forcing run (the members written at the trigger's entry, the arms
+  cycling over the hits) ran all five arms:
+  | arm | the members written | the answer |
+  |---|---|---|
+  | the shield flag 0xCD0 is set, the distance test (the point is the origin) | mGuestCD0 = 1, mGuestEE4 = 0 | false |
+  | the shield flag is set, the distance test (the point is the actor) | mGuestCD0 = 1, mGuestEE4 = the actor's position | true |
+  | the pause is still running | mGuestCD0 = 0, mGuestF64 = 100000.0 | false |
+  | the pause is long over | mGuestCD0 = 0, mGuestF64 = -100000.0 | true |
+  | the distance test after the pause | mGuestCD0 = 0, mGuestF64 = the elapsed time - 10.0 | false |
+- **fn_10_1707C (the freeze beam's dodge step) is still not ported.** Its reading, for the next
+  slice: the dodge timer 0x1090 loses dt (0x000170D0) and is cleared with the direction
+  0x1094..0x109C when it reaches zero (0x000170E8..0x00017104); the body runs only when the
+  timer is zero (0x00017118). It reads the player's aim position (the vtable's slot 0x54 at
+  0x00017134, the dt 0.5f), takes the direction from the actor to the aim flattened (the z is
+  0.0f, 0x00017174..0x0001718C) and normalizes it (0x00017190..0x000171B0); the step side is
+  the perpendicular of that direction times lbl_10_rodata_3E4 = 0.5f (0x000171D4..0x00017200) and
+  the other side is tried when the first is blocked (the line check fn_10_164C0 at 0x00017240 and
+  0x0001728C); the step's length is Range(lbl_10_rodata_438, lbl_10_rodata_47C) (0x000172E4) and
+  the direction that is clear becomes 0x1094..0x109C, normalized (0x00017388..0x000173A4), with
+  the timer 0x1090 set to the weight (0x000173A8); the impulse is the direction times the speed
+  0x158 times the rate (f2 = lbl_10_bss_11C = 22.0f) (0x000173C0..0x000173FC) and it is applied
+  with ApplyImpulseWR and an identity axis angle (0x00017400..0x00017410).
+- The FreezeBeam state keeps its stand-in for fn_10_1707C and keeps no marker.
+
+## Slice 31 (2026-10-21): the FreezeBeam's dodge step and its arms
+
+- **The merge** (`port`): the only conflict was this note, both sides' sections are kept; the
+  link check reports 0 duplicate definitions and 0 undefined symbols.
+- **fn_10_1707C was already ported** - the port's `UpdateDodge` (PortCDarkSamusFsm.cpp, whose own
+  comment gives the reading) - so the FreezeBeam's stand-in for it is replaced by the call the
+  retail makes at 0x00016E3C, with lbl_10_bss_11C = 22.0f (the impulse) and lbl_10_bss_120 = 0.5f
+  (the dodge's time): `UpdateDodge(mgr, dt, 22.f, 0.5f);` - the same shape the fsm2 lane's
+  SuperMissileAttack uses (0x00016FF0).
+- **The FreezeBeam state (fn_10_16CDC) is marked.** Its arms all ran in the coverage run (the
+  state's Activate, Update and Deactivate with `statecall u04f7 FreezeBeam 0/1/2`, the state's
+  command fn_10_8870 in all three, the exit state command with the counter 0xAB0 at least 1 and
+  the turn and the dodge with the bit 0x40 of 0xAB8 set). The last two need the members written
+  at the Update's entry, because the Activate clears both (0x00016D5C and 0x00016D6C): the
+  coverage spec's expression writes the counter 0xAB0 = 1 on the first Update and the bit 0x40 of
+  0xAB8 on the second (`tools/cov/specs/darksamus.py`, the FreezeBeam entry's expressions). The
+  run: 4 hits of the state, `CBodyStateCmdMgr::DeliverCmd` 3, `TurnTowardPlayer` 2,
+  `UpdateDodge` 2, the game's exit code 0 and no SIGSEGV.
+- fn_10_1707C itself keeps no marker: its own arms (a dodge that starts, the side that is
+  chosen) did not all run - the coverage build's gcov report would say which.
 
 ## Slice 8 (dsfsm2, 2026-10-21)
 
@@ -1330,6 +1646,72 @@ order follows the FSM: the 62 unmarked handlers first (by the state's name), the
   port converts at use, which gives the same value.
 - Open: RollReflectChance F298 (14/18 lines); DE8 fades in Think (1D5C4/1D6CC) unported; the
   stage-cast breakpoint's pre-existing FLAG writes (keys 61/62) are not uid-guarded like key 63.
+## Slice 32 (2026-10-21): the review fixes, the port merge and the sweep beam's damage mode
+
+- **The merges**: `review12/darksamus2` (e824da91d) and then `port` (batch 12, with the dsfsm2
+  lane's b5dec578a). The port merge conflicted in PortCDarkSamusHelpers.cpp and in this note;
+  both sides' functions are kept (the link check reports 0 duplicate definitions and 0 undefined
+  symbols).
+- **The attack ids** are the `lis` (X << 16) ones: the BoostBallFire 0x20000 (`lis r4, 0x2` at
+  0x00009758), the FadeIn 0x40000 (0x0000BD60), the FadeOut 0x80000 (0x0000BC74) and the
+  FreezeBeam 0x100000 (0x00016D10). The other states use the `li` ids (the Pause 0x400 at
+  0x00010748, the FallFromTheAir 0x4000 at 0x0000F88C, the DiveAttack 0x20 at 0x00011FE4, the
+  MeleeDash 0x4 at 0x00017AE4, the SideDash 0x80 at 0x000177F0, the ScatterShot 0x8 at 0x000175EC),
+  so the comments that said "id 2/4/8" are fixed.
+- **The FreezeBeam returns after the exit state command** (the branch to the epilogue at
+  0x00016DE8): the turn and the dodge (0x00016DF0) no longer run in the same Update as the
+  command.
+- **The EnragedTravel** sets the navigation's face target and runs the path find (0x00006F30 and
+  0x00006F34).
+- **The EnrageHitReact** divides signed by 3 (0x00007A8C): `mulhw` is the signed high word and
+  `srwi r0, r4, 31` is the logical shift (the sign bit), so the step is the signed division by 3
+  rounding to zero.
+- **The module's globals**: lbl_10_bss_128 is the module's static vector - the module's data
+  initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the actor's
+  0xD18 (0x0000E5C8), so the port's mGuestD18 (CVector3f::Zero) is the same value and fn_10_6DAC's
+  direction write (0x00006E10..0x00006E20) matches it. lbl_10_bss_11C = 22.0f and lbl_10_bss_120 =
+  0.5f are written by the module's init fn_10_CDB8 at 0x0000CE38 and 0x0000CE3C (the freeze beam's
+  dodge step takes them as its impulse and its time).
+- **The audit's two findings**:
+  - fn_10_C85C (StartSweepBeam): the guard around the CElementGen stays (the pool has no object
+    for an invalid 'PART' id), but 0xDC8 bit 0x40 is set either way (0x0000C9E4), so the damage
+    rays (fn_10_C104) and the collision response (fn_10_C470) run as in the retail - the ray code
+    tolerates a null generator (0x0000C32C).
+  - fn_10_BE18 (SweepBeamRay): the "any other hit" damage uses the module's weapon mode
+    lbl_10_bss_114 (the read at 0x0000C024, the store into the damage info at 0x0000C05C). The
+    module's init fn_10_CDB8 writes it at 0x0000CE30 as 0x000A0000 - the guest's CWeaponMode keeps
+    the type in the high half, so the type is 10 = kWT_Phazon and the flags are 0. The port keeps
+    it in mSweepBeamWeaponMode.
+- **The FreezeBeam's arms on the merged code**: the coverage run (the coverage driver, the
+  normal build) - 4 hits of the state, the Activate, two Updates and the Deactivate; the first
+  Update (the counter 0xAB0 = 1, written by the coverage spec's expression) delivers the exit
+  state command and returns (no turn, no dodge), the second (the bit 0x40 of 0xAB8) turns and
+  dodges. The game's exit code 0 and no SIGSEGV. The coverage build's report agrees: fn_10_16CDC
+  is 20/20 lines, 6/6 branches, **ALL-ARMS** (fn_10_10710 and fn_10_9314 are ALL-ARMS too).
+
+## Slice 33 (2026-10-22): the port merge, the dive record's +0x4C, and two unmarked functions
+
+- **The merge** (`port`, with the DarkSamus-A audit fixes f5802a210): no conflict - the CanMissileDeflect
+  trigger (fn_10_14284) is now `GetMissileDeflectTime() > 0.f` (the `extrwi r3, r0, 1, 1` at
+  0x000142B8 takes the "greater than" bit) and fn_10_F100 (RollReflectChanceForHit) answers the
+  first roll (the `fmr f1, f31` at 0x0000F1DC).
+- **fn_10_E910 (CDarkSamusDive::Reset)**: the record's float +0x4C (0xB0C) takes
+  lbl_10_rodata_3EC = -1.0f (the store at 0x0000E9E0). The constructor leaves the field alone
+  (the guest's damage info ends at +0x1B, so +0x4C is the dive record's own float) and the REL
+  reads it nowhere else, so the port keeps it in mGuestD18's neighbour mGuest4C.
+- **The re-runs**:
+  - the Arrived trigger (fn_10_62B4) on the merged code: all five arms ran again (the forcing run
+    with the members written at the trigger's entry, the arms cycling over the hits) - the shield
+    flag set with the distance test (the point at the origin -> false, the point at the actor ->
+    true), the pause still running (false), the pause long over (true) and the distance test after
+    the pause (false). Its marker stands.
+  - fn_10_14284 (CanMissileDeflect): only the shipped arm ran (the deflect time 45.0f or 50.0f, the
+    trigger answers true - 1267 hits). The other arm (a deflect time below zero) could not be run:
+    gdb cannot call the port's GetBattleStage to write the stage's info ("Cannot resolve method
+    CDarkSamus::GetBattleStage"), so **the marker is removed**.
+  - fn_10_F100 (RollReflectChanceForHit): the fight does not reach the function (0 hits - the
+    reflect chance is only rolled for a projectile that comes at the boss), so its two arms (the
+    cache miss and the cache hit) were not run and **the marker is removed**.
 
 ## Slice 11 (dsfsm2, 2026-10-21)
 

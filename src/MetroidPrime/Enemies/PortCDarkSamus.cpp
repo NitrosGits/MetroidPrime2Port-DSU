@@ -94,7 +94,8 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mSeenStageUid(kInvalidUniqueId)
 , mSeenStageCount(1)                            // 0x0002001C
 , mStageChanged(0)                              // 0x00020028
-, mGuestD18(CVector3f::Zero())                  // 0x0000E5C8 (lbl_10_bss_128)
+, mGuestD18(0.3f, 0.6f, 1.f)                  // 0x0000E5C8 (lbl_10_bss_128)
+, mSweepBeamWeaponMode(CWeaponMode(kWT_Phazon))       // lbl_10_bss_114 (fn_10_CDB8, 0x0000CE30)
 , mLastAttackerUid(kInvalidUniqueId)
 , mAttackerCount(0)
 , mAttackerUids{kInvalidUniqueId, kInvalidUniqueId}
@@ -195,6 +196,12 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mGuestA80(0)
 , mGuestAB8(0)
 , mGuestC30(0.f)
+, mGuestEA4(0.f)
+, mGuest9FC(0)
+, mGuest1048(0.f)
+, mGuest104C(0.f)
+, mGuest1050(0.f)
+, mBss118(160.f)
 , mReflectChanceCount(0)                         // 0x00020270
 , mReflectChances() {
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first

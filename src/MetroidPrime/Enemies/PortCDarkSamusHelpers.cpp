@@ -114,16 +114,21 @@ void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
 
 // fn_10_6F90 (0x00006F90, 0xC4 bytes): the path find to the destination. The path find itself is
 // fn_10_1C778 (the host's SetPathFindDestination, 0x00006FC0); when the path is shagged
-// (0x00006FE0) the navigation's destination is set again (0x00006FF8 - the guest's 0x1048 is the
-// navigation's own destination, which the host keeps in CPathFindNavigation) and the path find
-// runs again (0x00007010).
+// (0x00006FE0) the navigation goes back to the last good destination (guest 0x1048, 0x00006FF8)
+// and the path find runs again (0x00007010); otherwise the destination is kept in 0x1048
+// (0x00007018..0x0000702C).
 // fn_10_6F90 (ported, unreferenced in the port: the states call the path find inline)
 void CDarkSamus::FindPathToDestination(CStateManager& mgr, const CVector3f& destination, float dt) {
   SetPathFindDestination(mgr, destination, dt); // fn_10_1C778 at 0x00006FC0
   if (PathShagged(mgr, CTriggerData(0.f))) {    // 0x00006FE0
-    // 0x00006FF8: the guest's SetDestination(nav, 0x1048) writes the navigation's own
-    // destination, which the host's SetPathFindDestination has already set to the same value.
+    // 0x00006FF8: back to the last destination that was not shagged (guest 0x1048, a member of
+    // its own: fn_10_1C778 writes 0x8B4, not 0x1048).
+    mPathFindNavigation.SetDestination(CVector3f(mGuest1048, mGuest104C, mGuest1050));
     mPathFindNavigation.PathFind(mgr, kStateMsg_Activate, dt, *this); // 0x00007010
+  } else {
+    mGuest1048 = destination.GetX(); // 0x00007018..0x0000702C
+    mGuest104C = destination.GetY();
+    mGuest1050 = destination.GetZ();
   }
 }
 
@@ -559,6 +564,66 @@ void CDarkSamus::UpdatePhazonBeam(CStateManager& mgr, float dt) {
     const TUniqueId uid = mgr.AllocateUniqueId();
     mgr.AddObject(rs_new CExplosion(*mGuestF00, uid, info, name, xf, 0, CVector3f::One() * 1.f,
                                     CColor::White(), -1));
+  }
+}
+
+// fn_10_99B8 (0x000099B8, 0xDC bytes): the boost ball's old particle effects are stopped and
+// forgotten: the two swoosh handles at 0xE3C and 0xE4C are cleared and their objects told to
+// stop (the vtable's word 2 with the argument 1, 0x000099F4 and 0x00009A20) and the element
+// generator's record at 0xE60/0xE64 is cleared (0x00009A68..0x00009A80). The port has no
+// counterpart for any of them - the module's own swooshes (fn_10_9B24) and the generator are
+// not in the port - so the pointers are always null and the body does nothing.
+// Unmarked: the virtual calls on those objects (the vtable's word 2) have no host counterpart,
+// so the body is not the whole function.
+void CDarkSamus::StopBoostBallParticles() {}
+
+// fn_10_6DAC (0x00006DAC, 0xDC bytes): the shield flag 0xCD0 and the direction it points.
+// Deactivate (0x00006DB4) clears the flag (0x00006DCC). The other messages read the health
+// (the vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is
+// not above lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 -
+// the `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 =
+// 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 (
+// 0x00006E10..0x00006E20). lbl_10_bss_128 is the module's static vector: the module's data
+// initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the
+// actor's 0xD18 (0x0000E5C8), = (0.3, 0.6, 1.0): rodata 46C/424/3E8 at 0x0002224C..0x000222A8.
+// Unmarked: the coverage run never reaches the Deactivate arm (the EnragedTravel state's
+// Deactivate did not run in it), so the body is not proved arm by arm.
+void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
+  if (msg == kStateMsg_Deactivate) {
+    mGuestCD0 = 0; // 0x00006DCC
+    return;
+  }
+  const float health = GetHealthInfo()->GetHP(); // 0x00006DE0
+  if (health > 1.f) {                             // 0x00006DF0
+    return;                                       // 0x00006DF8
+  }
+  mGuestD24 = 1.f;               // 0x00006DFC
+  mGuestCD0 = 1;                 // 0x00006E08
+  mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128, 0x00006E0C..0x00006E20
+}
+
+// fn_10_8870 (0x00008870, 0xE0 bytes): the loop attack command over a state's messages. The
+// function is generic: the message is in r4, the animation state for the DOL's ShouldRetry in r5
+// (0x000088F8) and the command in r6 - the id at cmd+4 (0x000088B4, 0x00008908) is delivered
+// and cmd+4..+0x10 is copied into the command manager's slot (0x000088D4..0x000088E8,
+// 0x0000891C..0x00008934). Activate (0x000088B0) stores 1 (kAS_Ready) to the animation state
+// 0x6B4, Update (0x000088F0) re-delivers the command while ShouldRetry answers true, and
+// Deactivate (0x0000893C) stores 0 (kAS_NotReady).
+// @ fn_10_8870
+void CDarkSamus::RunLoopAttackCmd(EStateMsg msg, const CBCLoopAttackCmd& attack) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(attack);
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(attack);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
   }
 }
 

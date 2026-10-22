@@ -451,6 +451,9 @@ private:
   void x17DC_(const CStateManager& mgr, const CTransform4f& xf) const;
   void x1700_(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& flags) const;
 
+  // fn_14_1570 (0x190 bytes): the model's vertex bounds, rotated and scaled about the origin.
+  CAABox x1570_() const;
+
   // fn_14_2578 (0xF4 bytes): the echo emitter's transform.
   void x2578_(CTransform4f& out, const CTransform4f& xf) const;
 
