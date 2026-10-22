@@ -1200,3 +1200,24 @@ void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
     RemoveMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
   }
 }
+
+// fn_10_A154 (0x0000A154, 0x6C bytes): the boost ball's roll: the actor's position (0x54/0x58) is
+// measured against the ball's target (0xE98/0xE9C) in the XY plane (the squares at 0x0000A180
+// and 0x0000A184, the sum at 0x0000A188) and compared with lbl_10_rodata_278 = 4 (0x0000A18C);
+// when the actor is close enough (0x0000A1B0) the roll's time 0xEA4 grows by dt (0x0000A1B4),
+// else the ball's target becomes the actor's position (0x0000A194..0x0000A1A4) and the time is
+// reset to 0.0f (0x0000A1A8).
+// @ fn_10_A154
+void CDarkSamus::RollBoostBallToPosition(float dt) {
+  const CVector3f pos = GetTranslation();
+  const float dx = pos.GetX() - mBoostBallPos.GetX();
+  const float dy = pos.GetY() - mBoostBallPos.GetY();
+  const float distSq = dx * dx + dy * dy; // 0x0000A180..0x0000A188
+  if (distSq <= 4) {                    // 0x0000A18C
+    mGuestEA4 += dt;                    // 0x0000A1B4
+  } else {
+    mBoostBallPos = pos;                // 0x0000A194..0x0000A1A4
+    mGuestEA4 = 0.f;                    // 0x0000A1A8
+  }
+}
+
