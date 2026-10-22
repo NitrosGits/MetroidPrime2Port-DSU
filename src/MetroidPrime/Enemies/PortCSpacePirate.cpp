@@ -178,6 +178,7 @@ void StandIn(const char* what) { PortSpacePirateStandIn(what); }
 // DoubleSnap's Activate drops the pirate from it.
 rstl::list< TUniqueId > CSpacePirate::mChargePlayerList;
 
+// @ fn_72_F49C
 CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CTransform4f& xf, const CModelData& modelData,
                            const CActorParameters& actParms, const CPatternedInfo& pInfo,
@@ -851,8 +852,8 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
 
   float startAngle = 0.f;
   float angleStep = 0.07853982f; // pi/40
-  // The negated compares keep retail's NaN arms (0x3EC4 ble, 0x3F2C ble, 0x3F60 ble, 0x3F74 bge).
-  if (!(target.GetZ() <= origin.GetZ())) {
+  // Plain compares: 0x3EC4/0x3F2C/0x3F60 ble and 0x3F74 bge are taken on NaN, as C's > / < are.
+  if (target.GetZ() > origin.GetZ()) {
     startAngle = 0.7853982f; // pi/4
     angleStep = -angleStep;
   }
@@ -868,15 +869,15 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
     const float sine = CMath::FastSinR(candidate);
     // Retail's fmsubs leaves the terms in this order: distance*(cos*sin) - height*cos^2.
     const float denominator = distance * (cosine * sine) - heightDelta * (cosine * cosine);
-    if (!(denominator <= 1.1920929e-7f)) {
+    if (denominator > 1.1920929e-7f) {
       const float speedSq = lhs / denominator;
       if (speedSq >= minSpeedSq && speedSq <= maxSpeedSq) {
         bestAngle = candidate;
         bestSpeed = CMath::SqrtF(speedSq);
         break; // retail branches straight past the loop counter here
       }
-      const float error = !(speedSq <= maxSpeedSq) ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
-      if (!(error >= bestError)) {
+      const float error = speedSq > maxSpeedSq ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
+      if (error < bestError) {
         bestAngle = candidate;
         bestSpeed = CMath::SqrtF(speedSq);
         bestError = error;
@@ -906,6 +907,7 @@ static CVector3f GetGrenadeAimPoint(const CActor& target, const CStateManager& m
 
 // Retail fn_72_4174: launches one bouncy grenade from the gun locator, aimed by fn_72_4030 and
 // fn_72_3D7C, with retail's default model / actor parameters and 5 m player-explode distance.
+// @ fn_72_4174
 void CSpacePirate::SpawnGrenade(CStateManager& mgr) {
   --xc58_;
   const CTransform4f gunXf = GetLctrTransform(xa86_gunSeg);
@@ -925,8 +927,7 @@ void CSpacePirate::SpawnGrenade(CStateManager& mgr) {
   flat.SetZ(0.f);
   const CVector3f forward = gunXf.GetForward();
   CVector3f horizontal = flat.CanBeNormalized() ? flat.AsNormalized() : forward;
-  // 0x42F0 fcmpo + 0x42F4 ble skips the clamp: a NaN angle takes the slerp.
-  if (!(CVector3f::GetAngleDiff(forward, horizontal) <= 0.7853982f)) {
+  if (CVector3f::GetAngleDiff(forward, horizontal) > 0.7853982f) {
     horizontal = CVector3f::Slerp(forward, horizontal, CRelAngle::FromRadians(0.7853982f));
   }
   const CVector3f launchDir =
