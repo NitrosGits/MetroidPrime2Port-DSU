@@ -490,6 +490,11 @@ void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
 // advances the module's timers, including the melee cooldown at guest this+0xB7C) and fn_9_3090
 // (0x0000CA34), then the tail: fn_9_1C0C (0x0000CA88), fn_9_4BC0 (0x0000CA8C) and fn_9_3E1C
 // (0x0000CAA0).
+// run (area 59, tools/cov/specs/commandopirate_vis*.py, 2026-10-22): every guest arm ran - the
+// inactive return (the console's Deactivate), no rag doll, a primed and an unprimed rag doll, the
+// frozen body (forced, both paths). The host's two collision-manager null tests are dead: the only
+// writer is the kSM_Create case, which CStateManager::AddObject delivers before the first Think.
+// @ fn_9_C944
 void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;                                    // 0x0000C96C
@@ -509,8 +514,8 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
     CPatterned::Think(dt, mgr);                  // 0x0000C9A4
     // The module's two collision actor managers are updated with the object-space option (the
     // guest's r5 = 0 at 0x0000C9B4 and 0x0000C9C8). The guest loads the pointers and calls without
-    // a test; the host's test covers the window before the kSM_Create case has built them (the
-    // host limit named here).
+    // a test; the host keeps a null test whose null arm is dead (kSM_Create builds both before the
+    // first Think).
     if (mCollisionShield.get() != nullptr) {
       mCollisionShield->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);  // 0x0000C9B8
     }
@@ -2898,6 +2903,7 @@ void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
 // 0x0000AB40..0x0000AB48). It then points the bone tracking at that target (0x0000AB74 and
 // 0x0000AB88), tells the script that the attack connection changed (0x0000ABB4, the message is
 // the host's kSM_None, the guest's -1) and switches to the combat locomotion (0x0000ABC0).
+// @ fn_9_AB08
 void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;

@@ -1,0 +1,10 @@
+# area 59 (05_temple_federationsite_dark): Think's inactive early return (fn_9_C944, 0x0000C970..
+# 0x0000C974): the commando (u0417 in this build; `objs commando` lists it) is woken, deactivated
+# for 200 frames and woken again.
+@f300 objs commando
+@f320 send u0417 Activate
+@f340 place u0417 player 5
+@f400 send u0417 Deactivate
+@f600 objs commando
+@f620 send u0417 Activate
+@f800 objs commando
