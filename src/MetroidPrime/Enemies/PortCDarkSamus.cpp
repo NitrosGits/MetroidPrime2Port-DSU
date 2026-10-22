@@ -189,6 +189,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mBss118(160.f)
 , mReflectChanceCount(0)                         // 0x00020270
 , mReflectChances() {
+  mBoostBallFlag20 = false; // 0xEBC bit 0x20: the retail heap is zeroed, the host's is not
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
   // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
   // (0x000216E4), both with scatterShotDamage, each only for a valid asset and locked after.

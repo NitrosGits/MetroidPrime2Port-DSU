@@ -1005,6 +1005,12 @@ void CrossProduct(CVector3f& out, const CVector3f& a, const CVector3f& b) {
 
 // ---- dsball: the module's boost ball actor (vtable lbl_10_data_104, 0x358 bytes) ----
 
+namespace {
+// lbl_10_bss_5C: the module's name, built by its static initializer fn_10_44D0 (0x000044EC) from
+// lbl_10_rodata_A4 + 0x2A; the ball's CRELFileToken (0x34C) holds it.
+const rstl::string skRELName = rstl::string_l("DarkSamus.rel");
+} // namespace
+
 // fn_10_3FD8 (0x00003FD8, 0x390 bytes) and fn_10_3BC4 (0x00003BC4, 0x3AC bytes): the
 // CPhysicsActor "Dark Samus BoostBall" (lbl_10_rodata_A4 + 0x15) with the materials kMT_Character /
 // Target / Orbit / RadarObject (lbl_10_data_E4..F0), the box (-0.2, 0.2) (lbl_10_rodata_9C / 98),
@@ -1014,6 +1020,11 @@ void CrossProduct(CVector3f& out, const CVector3f& a, const CVector3f& b) {
 // 0.0f, 0x354 null and the bit 0x40 of 0x318 clear (0x00003ED0 / 0x000042D0). fn_10_3FD8 has the
 // colour Black and the fade 0.0f (lbl_10_rodata_7C) with the bit 0x80 clear (0x000042C4);
 // fn_10_3BC4 takes the fade and the colour and sets the bit 0x80 (the `rlwimi` at 0x00003EC4).
+// The CRELFileToken at 0x34C takes "DarkSamus.rel" (lbl_10_bss_5C) with the mode 0 (0x00003EEC /
+// 0x000042EC). The inlined helpers: fn_10_4368 is CActorParameters().HotInThermal(true),
+// fn_10_3F70 the SMoverData constructor (CAxisAngle::Identity at 0x00003D60 / 0x00004164 is its
+// angular velocity), fn_10_2040 / fn_10_2098 the CEntityInfo temporary's destructor (its
+// connection vector) and internal_dereference the name string's.
 // Both end with the default animation set looping (0x00003F40 / 0x00004340) and EnableLooping.
 // Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): both ctors (the
 // fn_10_9E00 0xD14 key 1 and 0, the 0.5 forced on the first spawn in run 3).
@@ -1029,8 +1040,9 @@ CDarkSamusBoostBall::CDarkSamusBoostBall(TUniqueId uid, TAreaId area, const CTra
                 CEntityInfo(area, CEntity::NullConnectionList, true, kInvalidEditorId), 0, xf,
                 model, CMaterialList(kMT_Character, kMT_Target, kMT_Orbit, kMT_RadarObject),
                 CAABox(CVector3f(-0.2f, -0.2f, -0.2f), CVector3f(0.2f, 0.2f, 0.2f)),
-                SMoverData(0.75f), CActorParameters().HotInThermal(true),
-                CPhysicsActor::skDefaultStepData)
+                SMoverData(0.75f),                      // fn_10_3F70
+                CActorParameters().HotInThermal(true),  // fn_10_4368
+                CPhysicsActor::skDefaultStepData)       // fn_10_2040, fn_10_2098
 , mBounds(bounds)
 , mSilhouetteColor(silhouette ? color : CColor::Black())
 , mSilhouetteFade(silhouette ? fade : 0.f)
@@ -1038,9 +1050,10 @@ CDarkSamusBoostBall::CDarkSamusBoostBall(TUniqueId uid, TAreaId area, const CTra
 , mDamage(damage)
 , mHitCooldown(0.f)
 , mDamageTaken(0.f)
-, mSilhouette(silhouette)
-, mDamaged(false)
-, mVulnerability(vulnerability)
+, mSilhouette(silhouette) // 0x318 0x80: `rlwimi` at 0x00003EC4 sets it, 0x000042C4 clears it
+, mDamaged(false)        // 0x318 0x40: cleared at 0x00003ED0 / 0x000042D0
+, mVulnerability(vulnerability) // fn_10_3744
+, mRelToken(skRELName, 0)       // 0x00003EEC / 0x000042EC
 , mCollisionManager(nullptr) {
   if (CAnimData* anim = AnimationData()) {
     anim->SetAnimation(CAnimPlaybackParms(defaultAnim, -1, 1.f, true), false); // 0x00004340
@@ -1048,8 +1061,11 @@ CDarkSamusBoostBall::CDarkSamusBoostBall(TUniqueId uid, TAreaId area, const CTra
   }
 }
 
-// fn_10_2E64 (0x00002E64, 0x98 bytes): the collision manager is deleted (0x00002E9C), then the
-// members and the base.
+// fn_10_2E64 (0x00002E64, 0x98 bytes): the collision manager is deleted (its deleting destructor
+// at 0x00002EA8; the two `addic.` at 0x00002E88 / 0x00002E98 test the member's address, inlined
+// from its owning pointer's destructor), then the CRELFileToken (0x00002EB4), the vulnerability
+// and the base. The other two conditions (this null at 0x00002E80, the delete flag at 0x00002ED0)
+// and CMemory::Free (0x00002EDC) are the compiler's deleting-destructor wrapper.
 // Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): 18 hits, no
 // branch.
 // @ fn_10_2E64
@@ -1143,19 +1159,23 @@ void CDarkSamusBoostBall::PreRender(CStateManager& mgr) {
 // branch but the loop.
 // @ fn_10_31E4
 void CDarkSamusBoostBall::CreateCollisionActors(CStateManager& mgr) {
-  CDamageVulnerability vuln(CDamageVulnerability::ReflectVulnerabilty());
+  // ImmuneRicochetVulnerability (0x00003208) is the retail name of ReflectVulnerabilty (both
+  // 0x800DBB40); the copy is fn_10_3744.
+  CDamageVulnerability vuln(CDamageVulnerability::ReflectVulnerabilty()); // fn_10_3744
   const CWeaponTypeVulnerability normal(1.f, CWeaponTypeVulnerability::kE_Normal, false);
   for (int i = 0; i < 4; ++i) { // 0x00003270
     vuln.SetChargedVulnerability(i, normal);
     vuln.SetComboVulnerability(i, normal);
   }
   rstl::vector< CJointCollisionDescription > joints;
-  joints.reserve(1);
-  joints.push_back(CJointCollisionDescription::SphereCollision(
+  joints.reserve(1); // fn_10_43A8
+  // push_back is fn_10_34E8, the description's copy in it fn_10_3568.
+  joints.push_back(CJointCollisionDescription::SphereCollision( // fn_10_34E8, fn_10_3568
       GetModelData()->GetAnimationData()->GetLocatorSegId(rstl::string_l("Skeleton_Root")),
       CVector3f::Zero(), 2.3f, rstl::string_l("Skeleton_Root"), 100000.f));
   CCollisionActorManager* manager =
       rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, true);
+  // The two "Skeleton_Root" strings' destructors are internal_dereference (0x000032C0).
   delete mCollisionManager;
   mCollisionManager = manager;
   // The cast's result is used unchecked (0x000033C0): the manager always makes the actor.
@@ -1172,7 +1192,7 @@ void CDarkSamusBoostBall::CreateCollisionActors(CStateManager& mgr) {
   mCollisionManager->SetActive(mgr, true);                             // 0x00003434
   CMaterialFilter filter = colAct->GetMaterialFilter();
   filter.ExcludeList().Add(kMT_Platform); // 0x00003464
-  colAct->SetMaterialFilter(filter);
+  colAct->SetMaterialFilter(filter); // then fn_10_3628, the joints' destructor (0x000034B8)
 }
 
 // fn_10_3B08 (0x00003B08, 0xBC bytes): the base's Think; the collision actor is built on the first

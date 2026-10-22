@@ -10,6 +10,7 @@
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CPhysicsActor.hpp"
+#include "MetroidPrime/CRELFileToken.hpp"
 
 class CCollisionActorManager;
 class CModelData;
@@ -44,11 +45,10 @@ private:
   CDamageInfo mDamage;                // 0x2F4
   float mHitCooldown;                 // 0x310
   float mDamageTaken;                 // 0x314
-  bool mSilhouette;                   // 0x318 bit 0x80
-  bool mDamaged;                      // 0x318 bit 0x40
+  bool mSilhouette : 1;               // 0x318 0x80 (`rlwimi` at 0x00003EC4, `extrwi r0, r0, 1, 24`)
+  bool mDamaged : 1;                  // 0x318 0x40 (`rlwimi` at 0x00003ED0, `extrwi r3, r0, 1, 25`)
   CDamageVulnerability mVulnerability; // 0x31C (copied, never read)
-  // 0x34C, the module's own CRELFileToken (lbl_10_bss_5C, mode 0) is not kept: the port links the
-  // module in, nothing loads it at run time.
+  CRELFileToken mRelToken;            // 0x34C, "DarkSamus.rel" (lbl_10_bss_5C), mode 0
   CCollisionActorManager* mCollisionManager; // 0x354
 };
 

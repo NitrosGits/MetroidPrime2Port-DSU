@@ -1194,7 +1194,8 @@ private:
                                           // the FreezeBeam state (fn_10_16CDC) uses it as its
                                           // counter: at least 1 makes it deliver the exit state
                                           // command (0x00016DA8)
-  bool mBoostBallFlag20 = false;          // guest 0xEBC bit 0x20 (fn_10_1BEFC clears it)
+  bool mBoostBallFlag20 : 1;              // 0xebc 0x20; the ctor and fn_10_1BEFC clear it,
+                                          // fn_10_A3B0 tests it at 0x0000A4DC, sets it at 0x0000A660
   bool mBoostBallFlag80 = false;          // guest 0xEBC bit 0x80 (fn_10_1BEFC clears it); the
                                           // DoneRolling trigger reads it (`extrwi r0, r0, 1, 24` at
                                           // 0x00009378, the PowerPC bit 24 being

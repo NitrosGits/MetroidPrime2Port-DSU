@@ -2033,8 +2033,9 @@ platform casts and the dash arms of CollidedWith.
 
 - `CDarkSamusBoostBall` (`include/MetroidPrime/Enemies/CDarkSamusBoostBall.hpp`, bodies in
   `PortCDarkSamusHelpers.cpp`; vtable lbl_10_data_104) replaces CDarkSamusBoostBallPortStub. 0x318
-  bits: 0x80 = `mSilhouette`, 0x40 = `mDamaged`; 0x314 = damage taken; the CRELFileToken at 0x34c is
-  omitted (the port has no REL token to hold). New DS member 0xE6A `mBoostBallHitPlayerSfxId`; the
+  bits: 0x80 = `mSilhouette`, 0x40 = `mDamaged` (bitfields with stated positions); 0x314 = damage
+  taken; 0x34C = `mRelToken`, CRELFileToken("DarkSamus.rel", 0) (lbl_10_bss_5C, built by fn_10_44D0).
+  `mBoostBallFlag20` (0xEBC 0x20) is a bitfield too, cleared in the ctor body. New DS member 0xE6A `mBoostBallHitPlayerSfxId`; the
   `mGuest314/318/E6A` stand-ins are gone. A3B0 now reads the ball through 2F04/2EFC.
 - Spec `tools/cov/specs/darksamus_ball.py` + driver `tools/drivers/darksamus_ball.con` (gdb force.sh,
   command in the spec header), 0 caught / reach-stub:
@@ -2054,3 +2055,9 @@ platform casts and the dash arms of CollidedWith.
 - Marks: 3FD8 3BC4 2E64 2EFC 2F04 2F10 3008 3174 31E4 3B08 3998 3934 38D0 9E00 A3B0.
 - Driver uids u0702 (ball) / u0703 (its collision actor) are the first ball's in every run so far.
   XDMG adds `100000 - HP` per message, as retail does.
+- asmcheck (rework): 21 findings remain, all explained in the comments. The ctors' inlined helpers
+  (4368 / 3F70 / 2040 / 2098, CAxisAngle::Identity, the name string's internal_dereference, the
+  CRELFileToken ctor) sit in the init list, which the tool does not read; 2E64's CMemory::Free and
+  four conditions are the deleting-destructor wrapper; ImmuneRicochetVulnerability is the retail
+  name of ReflectVulnerabilty (both 0x800DBB40); internal_dereference in 31E4 / A3B0 is a temporary
+  string's destructor.
