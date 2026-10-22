@@ -6,7 +6,7 @@
 CLASS = 'CDigitalGuardian'
 SPEC = []
 FORCE = [
-    ('1B8 empty model', 'loc:PortCDigitalGuardian.cpp:3251', [],
+    ('1B8 empty model', 'loc:PortCDigitalGuardian.cpp:3254', [],
      ['sldrThis.patterned.animationInformation.ancs = 0xffffffff'], 0,
      'no ANCS (the model id is already invalid): LdrToModelData is empty'),
 ]

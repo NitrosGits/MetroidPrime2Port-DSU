@@ -603,12 +603,13 @@ void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   }
   const float damage =
       weapon->GetCurrentDamageInfo().GetVulnerableDamage(*col->GetDamageVulnerability());
-  if (damage > 0.f) {
+  // 0x12E8C / 0x12F04 fcmpo damage, 0 (25); ble skips: a NaN damage is taken (and flinches).
+  if (!(damage <= 0.f)) {
     TakeDamage(GetTransform().GetColumn(kDY), damage);
     if (EchoEmitter() != nullptr) {
       EchoEmitter()->SetAutoReducingYellowDamage(CPatterned::skDamageHitTime);
     }
-    if (TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched)) && damage > 25.f) {
+    if (TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched)) && !(damage <= 25.f)) {
       BodyController()->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f));
     }
   }
