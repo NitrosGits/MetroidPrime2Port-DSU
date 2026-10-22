@@ -529,12 +529,14 @@ bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const 
   return CPatterned::AnimOver(mgr, data);
 }
 
-// fn_72_CE30. Unmarked: ShouldStrafe never enters the branch that calls it in the 208 cycle
-// (the 0.66 s shot windows and the lost-LOS branch never open there).
+// gcov 2026-10-22 (sp22, ALL-ARMS): `trigcall <trooper> ShouldStrafe` with the other trooper put
+// around it (tools/drivers/spacepirate_strafe.py, 07_sand_alamoportalobservation L3); forced: the
+// other-area skip (spacepirate_force9.py, this pirate read as area 77 for one call in ten).
 // Retail's step-direction picker for the strafe trigger: a side is dropped when another pirate of
 // the same area is that way (dot against the transform's right axis, in the squared-distance frame
 // MP1 uses), then the survivors must be on the path find mesh and have a clear dynamic ray. Both
 // sides clear is a coin flip on CRandom16 bit 0x4000. Returns pas::EStepDirection.
+// @ fn_72_CE30
 int CSpacePirate::GetStrafeDir(CStateManager& mgr, float dist) {
   const float distSquared = dist * dist;
   bool canStrafeLeft = true;
