@@ -493,7 +493,7 @@ the rest are the same base-class symbols as the body's inherited list.
 | 0x17A64-0x18264 | head overrides: `fn_14_17A00` AddToRenderer, `fn_14_17A44` PreRender, `fn_14_17A64` RenderSystemsToBeDrawnLast, `fn_14_17B28` Render, `fn_14_17BBC` DoUserAnimEvent, `fn_14_17C98` Think, `fn_14_17D38` AcceptScriptMsg, `fn_14_17F64` head dtor |
 | 0x18264-0x190E0 | **`fn_14_18264` head ctor** (0xE7C) |
 | 0x1912C-0x196F0 | **`fn_14_1912C`** — the 0x5B0-byte head-data copy (0x5C4) |
-| 0x196F0-0x1A698 | projectile class: `fn_14_19784` PreThink, `fn_14_19838` ctor, `fn_14_19908`/`1998C`/`19A08`/`19B70`/`19CE0`/`19DF8`/`19F18`/`19FD0`/`1A12C`/`1A168`/`1A1F8`/`1A430` — the `CEnergyProjectile` overrides |
+| 0x196F0-0x1A698 | charge-shot projectile `CGuardianProjectile` (dg21): `fn_14_19784` Think, `fn_14_19838` ctor, `fn_14_19908`/`fn_14_1998C` the module's copies of ~CEnergyProjectile/~CGameProjectile (called from its dtor `fn_14_1AAC4`); `fn_14_19A08`…`fn_14_1A430` are not in its vtable (`fn_14_1A430` is in `lbl_14_data_10D0`) |
 | 0x1A5F4-0x1AA44 | `fn_14_1A5F4` echo-target dtor, **`fn_14_1A698` echo-target ctor** (0x3AC) |
 | 0x1AAC4-0x1AD2C | `fn_14_1AAC4` projectile dtor, `fn_14_1AC14`, `fn_14_1ACB8` |
 | 0x1AD2C-0x1B6F8 | **`fn_14_1AD2C` — the head's static table initialiser** (`.ctors`) |
@@ -1646,3 +1646,21 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 | F6A4 | all but the no-laser return: dead (only call 0x16BDC behind bne 0x16BBC) | shots1/2 | 27/28, marked |
 
 - Marked: 16A50, 17BBC, FA50, 111E0, 10A2C, F6A4.
+
+## 2026-10-22: the charge shot's projectile class (dg21); gcov runs dg21_cs1 + shots1 + force1
+
+- `CGuardianProjectile` (guessed name; file-local in PortCDigitalGuardianHead.cpp), 0x568 bytes,
+  no own members. `lbl_14_data_1034` slots (after the RTTI pair): 2 dtor `fn_14_1AAC4` (base dtors
+  only), 5 Think `fn_14_19784`, 15 GetHealthInfo `fn_14_10C` (CActor inline), 38 GetImpactParticle
+  `fn_14_1AB24` (empty optional), 39 GetExplosionNormal `fn_14_1AB30` (sUpVector); every other slot
+  a base symbol. Only Think differs from CEnergyProjectile.
+- Ctor `fn_14_19838`: CEnergyProjectile with false, true, false, 1.0f (0x96C), 4.0f, 4.0f (0x998).
+- Think: a homing target (+0x3F0) that is the morphed player (spawned state 0 then transition
+  state 1) with the boost shield up is dropped; then CEnergyProjectile::Think.
+- 10CA0 now builds it (marked: every arm ran with the real class).
+
+| fn | arms | run | result |
+|---|---|---|---|
+| 19784 | no target (flag 0x01), unmorphed, spawned morph (`var player spawnmorph 1`, forced), morphed no boost, boost shield | cs1 (`tools/cov/specs/digitalguardian_chargeshot.con`) | 10/10, marked |
+| 19838 | no branches | cs1 | ran, marked |
+| 10CA0 | all; TryCache false forced | cs1 + shots1 + force1 | 23/23, marked |

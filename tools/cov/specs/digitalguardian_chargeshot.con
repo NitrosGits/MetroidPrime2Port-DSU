@@ -1,0 +1,29 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark), dg21: the charge shot's own
+# projectile (CGuardianProjectile, fn_14_19838) and its Think (fn_14_19784): shots homing on the
+# unmorphed player, on a spawned morph state (`var player spawnmorph`), on the morph ball without
+# and with the boost shield, and with no homing target (head flag 0x01, dghd.flags).
+# Run: BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/digitalguardian_states.py <out>
+#   1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_chargeshot.con --fast --frames 420
+@f30 layer 3
+@f60 layer 11; god 1; give morphBall; give boostBall
+@f150 send e00350060 Activate; send e0035000f Activate
+@f152 place e0035000f player 20; var e0035000f dghd.flags 0
+# the unmorphed player, then a spawned morph state while the shots fly
+@f154 var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR
+@f157 var player spawnmorph 1
+@f159 var player spawnmorph 0
+@f160 fastmorph 1; press x 30
+@f190 status
+# the morph ball, no boost
+@f200 var e0035000f dghd.flags 0; var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR
+@f204 uevent e0035000f 0 0 T_lazor_LCTR
+# the boost shield up while shots fly
+@f248 var e0035000f dghd.flags 0; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR
+@f250 boost
+@f251 var e0035000f dghd.flags 0; uevent e0035000f 0 0 T_lazor_LCTR
+@f253 uevent e0035000f 0 0 T_lazor_LCTR; status
+@f256 uevent e0035000f 0 0 T_lazor_LCTR
+# no homing target (flag 0x01)
+@f300 var e0035000f dghd.flags 1; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR
+@f340 objs Energy; var e0035000f dghd.flags
+@f400 send e0035000f Delete
