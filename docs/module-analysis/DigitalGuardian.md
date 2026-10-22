@@ -1619,3 +1619,30 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 | 3E88 97F0 705C 37FC A3A4 7B90 775C 7648 | all | arms2 (arms spec) | ALL-ARMS, marked |
 
 - Marked: FAEC, FB70, FE14, 3E88, 97F0, 705C, 37FC, A3A4, 7B90, 775C, 7648 (port_progress 155/420).
+
+## 2026-10-22: the projectile spawners and ChargeAttack's lock-on ring (dg20); gcov runs dg20_shots1/2, dg20_force1
+
+- Ported (head): fn_14_111E0 (pulse), fn_14_10CA0 (charge shot), fn_14_10A2C (missiles), with
+  four new host CProjectileInfos built and locked in the ctor (0x183A4..0x18408, 0x18CD8..0x18CF0):
+  0xE04 pulse (data +0x184/+0x188), 0xE2C charge (+0x198/+0x19C), 0xE54 missiles (+0x200/+0x204),
+  0xE7C machine gun (+0x214/+0x218). 17BBC calls them with the node's locator name.
+- 16A50's lock-on ring (0x16BF0..0x16C8C, 0x16D30..0x16D3C) through a TARGET_PC
+  `CPlayer::SetEnemyLockOn(TUniqueId, char)`. A count over 3 is dead (v <= 1 at 0x16C24).
+- 10CA0 builds a plain CEnergyProjectile; retail builds the module's subclass (ctor fn_14_19838,
+  vtable lbl_14_data_1034, overrides 0x19784..0x1A430). Follow-up: port that subclass, then mark.
+- Console: `var <id> <name> [n]` (PortConsole::RegisterVar): `dghd.attack` (0x10D0),
+  `dghd.flags` (0x10F4), `dghd.sweeptime` (0x1090); `var player spawnmorph [n]`.
+- Drivers: `tools/cov/specs/digitalguardian_shots.con` (natural run) and
+  `digitalguardian_shots_force.py` (forced, same .con, `--frames 420`); gcov of the runs merged.
+
+| Function | Arm | How | Result |
+|---|---|---|---|
+| 16A50 | every arm incl. msg 3, ring flag 0x01 / count clamps | shots2 | 16/16, marked |
+| 17BBC | attacks 0..3, other attack, non-projectile event | shots1 | 6/6, marked |
+| FA50 | lasers found / one deleted / none | shots1 | 4/4, marked |
+| 111E0 | flat unsafe + slerp (head placed on the player) | shots2 | 10/10, marked |
+| 10CA0 | all; CanCreate false (20 missiles out); TryCache false forced | shots2 + force1 | 23/23, unmarked (subclass) |
+| 10A2C | all; TryCache false forced | shots1 + force1 | 9/9, marked |
+| F6A4 | all but the no-laser return: dead (only call 0x16BDC behind bne 0x16BBC) | shots1/2 | 27/28, marked |
+
+- Marked: 16A50, 17BBC, FA50, 111E0, 10A2C, F6A4.

@@ -1,5 +1,6 @@
 #pragma once
 
+class CEntity;
 class CStateManager;
 
 // The debug command console: with `MP2_CONSOLE=<port>` (1 = 4780) the port listens on
@@ -27,5 +28,11 @@ void Tick(CStateManager& mgr);
 // call, i.e. while the flow state skips the state manager's update (portal transitions, cinematic
 // skips, pause), so the console keeps answering there. Save states stay on `Tick` only.
 void IdleTick(CStateManager& mgr);
+
+// A module's settable fields for `var <id> <name> [value]`: the handler answers true when ent is
+// its class and it knows name, after storing *value (when not null) and reading the field into
+// current. Modules register one at static init (PortCDigitalGuardianHead.cpp); returns true.
+typedef bool (*VarHandler)(CEntity& ent, const char* name, const int* value, int& current);
+bool RegisterVar(VarHandler handler);
 
 } // namespace PortConsole
