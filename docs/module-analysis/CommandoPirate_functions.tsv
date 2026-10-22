@@ -42,7 +42,7 @@ offset	size	fn	kind	class	port	note
 0x1C0C	0x2EC	fn_9_1C0C	behaviour	B	marked	shield effects driver; cov: every guest arm
 0x1EF8	0x90	fn_9_1EF8	behaviour	B	marked	
 0x1F88	0xC0	fn_9_1F88	behaviour	B	marked	
-0x2048	0x330	fn_9_2048	behaviour	B	ported	
+0x2048	0x330	fn_9_2048	behaviour	B	marked	shield effect; effect tokens 0xC08/0xC18, SfxStart vol/pan, name fixed (cp8)
 0x2378	0x58	fn_9_2378	behaviour	H	not-port	~CEntityInfo (vector<SConnection> at +4 freed via fn_9_23D0; temporaries in 2048/3090/5410); host implicit dtor. Not a string dtor (cp7)
 0x23D0	0x54	fn_9_23D0	host-copy	H	not-port	
 0x2424	0x50	fn_9_2424	host-copy	H	not-port	

@@ -37,3 +37,17 @@ SPEC.append(('E30 sounds: impact hurled death projectile bounce explode shieldex
               '$this->mData.mSoundProjectile', '$this->mData.mGrenade.mSoundGrenadeBounce',
               '$this->mData.mGrenade.mSoundGrenadeExplode', '$this->mData.mShield.mSoundExplode',
               '$this->mData.mShield.mSoundTurnOn', '$this->mData.mShield.mSoundTurnOff'], 'max=20'))
+# fn_9_2048 (the shield effect), driver section `effect`: the Dead state (fn_9_69C8) entered with
+# `fsm`, the byte's bits (cp.c64 0x01 cleared, cp.c66 0x20 set) and the state word (cp.c4c) written
+# with the console's `var` before each entry. Forced: the two effect tokens' optionals cleared
+# (m_valid = 0, put back at the return) on calls 0 mod 4 (xc08) and 2 mod 4 (xc18).
+FORCE_RET += [
+    ('2048 no xc08', 'CCommandoPirate::x2048_ShieldEffect(', 4,
+     [(0, [('$this->xc08_explodeEffect.m_valid', '0')]),
+      (2, [('$this->xc18_armExplodeEffect.m_valid', '0')])],
+     'the optionals at guest this+0xC14 (call 0 mod 4) / 0xC24 (call 2 mod 4) cleared'),
+]
+SPEC.append(('2048 entry: c64&1, c4c, xc08 valid, xc18 valid, c38 set',
+             'CCommandoPirate::x2048_ShieldEffect(',
+             ['$this->xc64_ & 1', '$this->xc4c_', '$this->xc08_explodeEffect.m_valid',
+              '$this->xc18_armExplodeEffect.m_valid', H('xc38_')], 'calls max=400'))

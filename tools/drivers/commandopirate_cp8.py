@@ -6,6 +6,8 @@ shield: the ArmShield state (fn_9_86B4) and the shield charge (fn_9_8028) forced
   exit runs fn_9_1EF8; the turn-on sound's handle (guest this+0xC38) feeds fn_9_4BC0.
 hits: alive hits with the knock-back powers of the c300 driver (kAR_Hurled: the hurled sound,
   guest this+0xC04), waited out so fn_9_4BC0 sees the handle playing, queued and over.
+effect: the shield effect (fn_9_2048) from the Dead state (fn_9_69C8): cp.c64's 0x01 bit cleared,
+  cp.c66's 0x20 bit set and the state word cp.c4c written, then `fsm Dead` (Lurk in between).
 dead: the console's `kill` and hits in the same tick (the death sound, also guest this+0xC04).
 
 usage: commandopirate_cp8.py <port> [outfile|-] [sections, e.g. shield,hits,dead (default: all)]
@@ -127,6 +129,28 @@ def cp8(cid, last):
             wait(200)
             run("place %s player 6" % cid)
             wait(60)
+    if want("effect"):
+        for i, (c4c, c64) in enumerate([(1, 0), (0, 0), (1, 0), (0, 0), (2, 0), (-1, 0), (1, 1),
+                                        (1, 0), (0, 0), (1, 0), (0, 0)]):
+            run("fsm %s Lurk" % cid)
+            wait(20)
+            if i % 2 == 0:
+                # the shield's turn-on sound (guest this+0xC38): fn_9_1F88 (the shield animation's
+                # kUE_Activate) starts it and sets cp.c66's 0x20 bit, so the bit is cleared first
+                # and the Dead entry follows the frame the bit comes back
+                run("var %s cp.c66 %d" % (cid, var(cid, "c66") & ~0x20 & 0xff))
+                run("fsm %s ArmShield" % cid)
+                for _ in range(300):
+                    if var(cid, "c66") & 0x20:
+                        break
+                    wait(1)
+                log("shield on at frame %d" % frame())
+            # the state word is reset between ticks (0x00001D0C), so all in the Dead entry's tick
+            tick("var %s cp.c64 %d" % (cid, (var(cid, "c64") & ~1 & 0xff) | c64),
+                 "var %s cp.c66 %d" % (cid, var(cid, "c66") | 0x20),
+                 "var %s cp.c4c %d" % (cid, c4c), "fsm %s Dead" % cid)
+            wait(40)
+            log("c4c after: %s" % var(cid, "c4c"))
     if want("hits"):
         for hit in ALIVE_HITS:
             run("damage %s %s" % (cid, hit))

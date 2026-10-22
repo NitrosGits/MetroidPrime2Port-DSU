@@ -1382,71 +1382,56 @@ void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg)
   mCurDamageRemTime = mDamageWaitTime;              // guest this+0x444, 0x00003C9C
 }
 
+// @ fn_9_2048
 // fn_9_2048 (0x330 bytes): the module's shield effect - the explosion and the sound that play
-// when the shield takes a hit.
+// when the shield takes a hit (the callers: the knock-back helper fn_9_2D0C at 0x00002D90 and
+// the shield's damage counter at 0x00006A20).
 //
 // The byte at guest this+0xC64's 0x01 bit stops it (the clrlwi at 0x00002064); otherwise the bit
 // is set (0x00002074) and the effect is built at the module's left-wrist locator (the
 // GetLctrTransform call at 0x00002088, the locator id at guest this+0xC62).
 //
-// Which effect it is depends on the module's state word at guest this+0xC4C: 1 is the charge (the
-// compare at 0x0000209C), which needs the effect the guest's token at guest this+0xC08 holds to
-// be loaded (the test at 0x000020A8) and builds an explosion it clears again (the call at
-// 0x000021A4), so the charge's effect never reaches the world; 0 is the armed shield (the compare
-// at 0x000021BC), which needs the effect the guest's token at guest this+0xC0C holds to be loaded
-// (the test at 0x000021C8) and puts its explosion into the world (the AddObject call at
-// 0x000022E8), starts the block's explode sound (the SfxStart call at 0x00002324, the sound id at
-// guest this+0x8F4 = the block's +0x134) and removes the module's own second sound emitter (the
-// RemoveEmitter call at 0x00002340, the handle at guest this+0xC38) before it resets the module's
-// state word and its two scale floats (0x0000234C..0x00002360).
-//
-// The guest's two tokens are the block's two effect asset ids: the port reads the charge effect
-// (the block's +0x78) for the charge and the explode effect (the block's +0x58, the one the
-// explode sound at the block's +0x5C belongs to) for the armed shield.
+// Which effect it is depends on the module's state word at guest this+0xC4C: 1 (`cmpwi r3,0x1`
+// 0x0000209C) takes the locked token at guest this+0xC08 (`addi r4,r30,0xc08` 0x0000216C; the
+// ctor fills it from the shield's explode effect, guest +0x8F0, 0x0000DC24) when its optional is
+// present (`lbz r0,0xc14(r30)` 0x000020A4); 0 (`cmpwi r3,0x0` 0x000021BC) takes the token at guest
+// this+0xC18 (`addi r4,r30,0xc18` 0x0000228C; the arm-explode effect, guest +0x90C, 0x0000DD8C)
+// when its optional is present (`lbz r0,0xc24(r30)` 0x000021C4). Either explosion (0x180 bytes,
+// "Commando Explosion Fx" = "StateOver" + 0x364, the model's scale from guest this+0x60, white,
+// flags 0, -1) is put into the world (the AddObject at 0x000022E8), the block's explode sound
+// starts (SfxStart 0x00002324: the id at guest this+0x8F4, volume kMaxVolume 0x00002308, pan
+// 0x40 0x00002318, kAllAreas, false, false, kMedPriority) and the module's second sound emitter
+// goes (0x00002328..0x00002348). The state word and the two scale floats are reset on every
+// path past the 0x01 test (0x0000234C..0x00002360). fn_9_2378 (0x000021A4/0x000022C4) is the
+// temporary CEntityInfo's destructor.
 void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
   if ((xc64_ & 0x01) != 0) {  // 0x00002064
     return;
   }
   xc64_ |= 0x01;              // 0x00002074
   const CTransform4f xf = GetLctrTransform(mLocatorLWrist);  // 0x00002088
-  // 0x00002098..0x000020AC: the state word at guest this+0x0C4C picks the effect - 1 is the
-  // charge (the guest's own token at guest this+0x0C08, used when the byte at guest this+0x0C14
-  // says it is loaded) and 0 is the armed shield (the token at guest this+0x18, used when the
-  // byte at guest this+0x0C24 says it is loaded); every other value does nothing (0x000021BC).
-  // Both effects reach the world (the AddObject at 0x000022E8) and the sound plays
-  // (0x00002324); the guest destroys its temporary copy of the token on the way (0x000021A4).
-  const CAssetId effectId = xc4c_ == 1 ? mData.mShield.mChargeEffect    // 0x0000216C (this+0x0C08)
-                          : xc4c_ == 0 ? mData.mShield.mExplodeEffect   // 0x0000228C (this+0x18)
-                                       : kInvalidAssetId;
-  // 0x000021BC..0x000021C0: a state word that is neither 0 nor 1 reaches 0x000022D8 with no
-  // explosion at all - the port takes the invalid id, so no token is loaded and the three fields
-  // at the end are reset like the guest's.
-  // 0x000020A8 (the charge) and 0x000021C8 (the armed shield): the guest's own test of the
-  // token's "loaded" flag (the bytes at guest this+0xC14 and this+0xC24); the port's token's
-  // validity stands in for it.  When the token is not there the guest reaches 0x000022D8 with no
-  // explosion, so nothing is added and no sound plays - but the three fields at the end are
-  // reset either way (0x0000234C..0x00002360).
-  CExplosion* explosion = nullptr;
-  rstl::optional_object< TCachedToken< CGenDescription > > effect;
-  if (effectId != kInvalidAssetId) {
-    effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
+  const rstl::optional_object< TLockedToken< CGenDescription > >* effect = nullptr;
+  if (xc4c_ == 1 && xc08_explodeEffect) {             // 0x0000209C, 0x000020A4..0x000020AC
+    effect = &xc08_explodeEffect;                     // 0x0000216C
+  } else if (xc4c_ == 0 && xc18_armExplodeEffect) {   // 0x000021BC, 0x000021C4..0x000021CC
+    effect = &xc18_armExplodeEffect;                  // 0x0000228C
   }
-  if (effect.valid()) {  // 0x000021C8 (the guest's test of the flag at guest this+0xC24)
+  CExplosion* explosion = nullptr;
+  if (effect != nullptr) {
     explosion = rs_new CExplosion(
-        TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
+        **effect, mgr.AllocateUniqueId(),
         CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
-        rstl::string_l("CommandExplosion F"), xf, 0, GetModelData()->GetScale(), CColor::White(),
-        -1);
-    // 0x000021A4: the guest destroys its temporary copy of the token here - nothing is cleared
-    // from the explosion itself.
+        rstl::string_l("Commando Explosion Fx"), xf, 0, GetModelData()->GetScale(),
+        CColor::White(), -1);  // 0x0000218C / 0x000022AC
   }
   if (explosion != nullptr) {  // 0x000022D8..0x000022DC
     mgr.AddObject(explosion);  // 0x000022E8
-    CSfxManager::SfxStart(mData.mShield.mSoundExplode, 0x40, 0, CSfxManager::kAllAreas, false, false,
+    CSfxManager::SfxStart(mData.mShield.mSoundExplode, CAudioSys::kMaxVolume, 0x40,
+                          CSfxManager::kAllAreas, false, false,
                           CSfxManager::kMedPriority);  // 0x00002324
-    if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002344
-      CSfxManager::RemoveEmitter(xc38_);
-      xc38_ = CSfxHandle::NullHandle();
+    if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002330
+      CSfxManager::RemoveEmitter(xc38_);      // 0x00002340
+      xc38_ = CSfxHandle::NullHandle();       // 0x00002348
     }
   }
   xc4c_ = -1;   // 0x00002354
@@ -4638,7 +4623,7 @@ float CCommandoPirate::GetGravityConstant() const { return 50.f; }
 // waypoint, cp.team, cp.xbd0 the jump point), the charge speed (cp.chargespeed, 1/1000), the state
 // machine's time in its state (cp.fsmtime, ms), the push vector (cp.bb8x/bb8y/bb8z, 1/1000), the
 // charge target set d/1000 units along the facing (cp.b94ahead; reads the target's distance along
-// it), the words x920 (cp.x920), the timers xb78 and xc58 (cp.xb78, cp.xc58, ms) and the base's
+// it), the words x920 (cp.x920) and xc4c (cp.c4c, the module's state word), the timers xb78 and xc58 (cp.xb78, cp.xc58, ms) and the base's
 // pending death (cp.pendingdeath).
 bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* value,
                                      int& current) {
@@ -4695,6 +4680,13 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
       cp->x920_ = *value;
     }
     current = cp->x920_;
+    return true;
+  }
+  if (strcmp(name, "c4c") == 0) {
+    if (value != nullptr) {
+      cp->xc4c_ = *value;
+    }
+    current = cp->xc4c_;
     return true;
   }
   if (strcmp(name, "pendingdeath") == 0) {

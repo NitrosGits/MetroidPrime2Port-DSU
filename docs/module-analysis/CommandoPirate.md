@@ -2165,3 +2165,20 @@ grenade-bounce sound is 0xFFFF (the guest's default or the data's -1; with the h
 it would have been sound 0 if the property is absent). The same generator default (0 for sound
 ids) is in every generated SLdr header (shared; not changed here). fn_9_120C/fn_9_10B8 stay H rows
 (their other stores agree; their sounds are written by the same helper).
+
+**`2048` (0x330), the shield effect: marked, three fixes.** (1) The effect: state word 1
+(`cmpwi r3,0x1` 0x209C) takes the token at guest this+0xC08 (`addi r4,r30,0xc08` 0x216C; ctor fills
+it from the shield block's +0x8F0, 0xDC24) when its optional is set (`lbz r0,0xc14` 0x20A4), 0
+(0x21BC) the one at 0xC18 (0x228C; +0x90C, 0xDD8C; flag `lbz r0,0xc24` 0x21C4); the old body used
+the charge/explode effects. (2) SfxStart (0x2324) gets volume kMaxVolume (0x2308) and pan 0x40
+(0x2318); the old call passed 0x40, 0. (3) The explosion's name is "Commando Explosion Fx"
+("StateOver" + 0x364 = rodata 0x868). fn_9_2378 (0x21A4/0x22C4) is the temporary CEntityInfo's
+dtor, not an explosion reset (old comment wrong). Run (force.sh cp8 spec, Swamp
+`05_swamp_timber!`, driver section `effect`, 0 caught): 12 calls - c64&1 set (return) 2; state
+word 1 with 0xC08 present 4 / absent 2; 0 with 0xC18 present 3 / absent 1; 2 once, -1 once (no
+effect); 7 explosions (CExplosion, AddObject, SfxStart 7), RemoveEmitter 1 (c38 set: the Dead
+entry the frame after fn_9_1F88 started the turn-on sound; the other 6 with c38 null). Forced: the
+Dead state with `fsm`, cp.c64/c66/c4c (new console var) written in the Dead entry's tick (the state
+word is reset between ticks, 0x1D0C), the two optionals cleared on calls 0/2 mod 4. The spec's c38
+key read 0 on every entry, but `CSfxManager::RemoveEmitter` is only called from 2048 in this
+extent (its other Kyoto callers go to `S3dRemoveEmitter`), so the call count is the evidence.
