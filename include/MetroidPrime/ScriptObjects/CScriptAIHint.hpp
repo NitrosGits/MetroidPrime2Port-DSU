@@ -47,6 +47,8 @@ public:
 #ifdef TARGET_PC
   // The port console's `hint <id> <type>`: a hint type the area does not ship, for coverage runs.
   void PortSetHintType(EHintType type) { mHintType = type; }
+  // `hint <id> radius <r>`: a radius that holds a placed actor.
+  void PortSetRadius(float radius) { mRadius = radius; }
 #endif
 
 private:

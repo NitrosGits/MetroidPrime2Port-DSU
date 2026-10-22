@@ -80,6 +80,9 @@ void CDarkSamus::DeleteGuestActorIfExpired(CStateManager& mgr) {
 
 // fn_10_812C (0x0000812C, 0x4C bytes): the sfx handle at guest 0xF60 is removed (0x00008158)
 // and cleared (0x00008160); a null handle is left alone (0x00008148).
+// Arms: the live handle forced (the rooftop's beam sound is -1, so no emitter;
+// darksamus_ds40_force.py).
+// @ fn_10_812C
 void CDarkSamus::StopGuestSfx() {
   if (mGuestF60 == CSfxHandle()) { // 0x00008148
     return;

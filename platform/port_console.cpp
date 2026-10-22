@@ -2053,22 +2053,25 @@ void CmdVar(CStateManager& mgr, const Args& args, std::string& out) {
   Fail("no var '" + name + "' on that object");
 }
 
-// hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
-// setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
-// phazon waypoints) finds one the area lacks, or skips one of another area.
+// hint <id> [type] [area <n>] [radius <r>]: print an AI hint's type, area, active flag and radius,
+// after setting its type, area and/or radius, so a module that looks hints up by type and area
+// (DarkSamus's phazon waypoints) finds one the area lacks, or skips one of another area.
 void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
   float type = -1.f;
   float area = -1.f;
+  float radius = -1.f;
   bool ok = args.size() >= 2;
   for (size_t i = 2; ok && i < args.size(); ++i) {
     if (args[i] == "area" && i + 1 < args.size()) {
       ok = ParseFloat(args[++i], area);
+    } else if (args[i] == "radius" && i + 1 < args.size()) {
+      ok = ParseFloat(args[++i], radius);
     } else {
       ok = ParseFloat(args[i], type);
     }
   }
   if (!ok) {
-    Fail("usage: hint <id> [type] [area <n>]");
+    Fail("usage: hint <id> [type] [area <n>] [radius <r>]");
     return;
   }
   CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
@@ -2082,6 +2085,9 @@ void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
   }
   if (area >= 0.f) {
     hint->SetCurrentAreaId(TAreaId(static_cast< int >(area)));
+  }
+  if (radius >= 0.f) {
+    hint->PortSetRadius(radius);
   }
   out += "hint " + std::string(args[1]) + " type " +
          std::to_string(static_cast< int >(hint->GetHintType())) + " area " +
