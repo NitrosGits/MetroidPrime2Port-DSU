@@ -1011,20 +1011,15 @@ void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
   xc00_ = 0.01f;                                                // rodata_4A0, 0x0000316C
   HealthInfo()->SetHP(0.f);                                     // the guest's +0x04, 0x0000319C
   Death(mgr, GetTransform().GetForward(), kSS_DeathRattle);     // 0x000031C8 (the FourCC 0x5241544C)
-  // The guest's drowning effect: the particle it keeps at guest this+0xC28 (the copy at
-  // 0x0000DFF0) comes from the asset id in the block's +0x08 (the guest's own +0x7C8, the load at
-  // 0x0000DF08); the guest's "is it loaded" byte is at +0xC34 (the test at 0x000031CC).
-  const CAssetId effectId(static_cast< uint >(mData.mAlwaysFF2));
-  rstl::optional_object< TCachedToken< CGenDescription > > effect;
-  if (effectId != kInvalidAssetId) {
-    effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
-  }
-  if (effect.valid()) {
+  // The guest's drowning effect is the ctor's locked token at guest this+0xC28 (filled from the
+  // block's mAlwaysFF2, guest +0x7C8, by fn_9_D904); its "present" byte is at +0xC34 (the test at
+  // 0x000031CC..0x000031D4) and the token itself is passed to the CExplosion ctor (0x00003294).
+  if (xc28_drownEffect) {
     // fn_9_2378 - the guest releases its own CEntityInfo here (the call at 0x000032CC) and its
     // string (the call at 0x000032DC); the host's CEntityInfo and the temporary string are
     // released at the end of the statement.
     CExplosion* explosion = rs_new CExplosion(
-        TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
+        *xc28_drownEffect, mgr.AllocateUniqueId(),
         CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
         rstl::string_l("Commando Drowning Fx"), GetTransform(), 0, GetModelData()->GetScale(),
         CColor::White(), -1);                                    // 0x000032B4
@@ -3486,12 +3481,9 @@ void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, flo
     if (xbda_ == kInvalidUniqueId) {  // 0x0000968C..0x00009690
       id = GetConnectedObject(mgr, kSS_Attack, kSM_Follow);  // 0x000096B8
     }
-    mWaypointNavigation.SetDestination(id);  // 0x000096CC (guest this+0x6C0)
-    // The guest's guest this+0x6C0 is the waypoint navigation's own destination field (the
-    // navigation sits at guest this+0x6B8 and its destination is at +0x8), so the host's
-    // navigation gets it too: the AttackPatternOver trigger reads the destination there
-    // (0x0000B800) and the state has to stay when it is set.
-    mWaypointNavigation.SetDestination(id);
+    // guest this+0x6C0 is the waypoint navigation's own destination field (the navigation sits
+    // at guest this+0x6B8, its destination at +0x8); AttackPatternOver reads it (0x0000B800).
+    mWaypointNavigation.SetDestination(id);  // 0x000096CC
     const CScriptWaypoint* waypoint =
         TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id));  // 0x000096DC..0x000096E8
     if (waypoint != nullptr) {
