@@ -752,6 +752,7 @@ private:
 // 0.5f, rodata_440, 0x0000530C..0x00005314), half the eye height lower for an unmorphed player
 // (the player's +0x38c is 0, 0x00005334..0x00005360), and 3 units (rodata_448) towards the
 // actor when it is more than 6 (rodata_49C) away (0x0000538C..0x000053CC).
+// @ fn_9_52BC
 CVector3f CCommandoPirate::x52BC_GetGrenadeTarget(const CStateManager& mgr,
                                                   const CActor& target) const {
   CVector3f aim = target.GetAimPosition(mgr, 0.5f);                 // 0x00005314

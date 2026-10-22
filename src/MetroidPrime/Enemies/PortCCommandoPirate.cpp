@@ -89,10 +89,18 @@ namespace {
 class CCommandoPirateWaypointPredicate : public CValidEntityPredicate {
 public:
   ~CCommandoPirateWaypointPredicate() override {}
-  bool IsValid(const CStateManager& mgr, TUniqueId id) const override {
-    return TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id)) != nullptr;
-  }
+  bool IsValid(const CStateManager& mgr, TUniqueId id) const override;
 };
+
+// fn_9_F6DC (lbl_9_data_A84, the waypoint picker fn_9_2A98 and XALD) and fn_9_F69C
+// (lbl_9_data_A50, WallHang fn_9_7358) are the same 0x40-byte body: GetObjectById, then
+// TCastToPtr<CScriptWaypoint> and `neg; or; srwi 31` (!= 0, 0x0000F6B4..0x0000F6C8 /
+// 0x0000F6F4..0x0000F708); the port's one predicate serves both vtables.
+// @ fn_9_F6DC
+// @ fn_9_F69C
+bool CCommandoPirateWaypointPredicate::IsValid(const CStateManager& mgr, TUniqueId id) const {
+  return TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id)) != nullptr;
+}
 
 static const CCommandoPirateWaypointPredicate skWaypointPredicate;
 
