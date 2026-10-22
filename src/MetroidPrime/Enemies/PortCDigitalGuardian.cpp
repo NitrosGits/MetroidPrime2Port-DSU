@@ -50,6 +50,9 @@
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/CRandom16.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardian.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -2261,8 +2264,35 @@ void CDigitalGuardian::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_14_94BC: the state message picks the work (the cmpwi chain at 0x94C4..0x94EC).
+// Activate (0): ready (0x6B4 = 1, 0x94F8) and 0x11E8 = 1 (0x94FC). Update (1): when a turn can be
+// issued (CanIssueCommand with 8 = kAS_Turn, 0x9510) the body turns to the face direction 0x1278
+// - a locomotion command with no move (sZeroVector, 0x9540), 0x1278 normalised (0x9534) as the
+// face and weight 1.0f (.rodata 0x270, 0x9560), DeliverCmd at 0x9588 - when 0x1278's magnitude
+// is safe (0x9520); otherwise the state is over (0x6B4 = 3, 0x9594). Deactivate (2): not ready
+// (0x6B4 = 0, 0x95A0). Other messages do nothing.
 void CDigitalGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_94BC");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x11E8_ = 1;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
+      if (x1278_.IsMagnitudeSafe()) {
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCLocomotionCmd(CVector3f::Zero(), x1278_.AsNormalized(), 1.f));
+      } else {
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
 }
 
 // fn_14_9260: the state message picks the work (the cmpwi chain at 0x9280..0x92A4).
@@ -2442,8 +2472,45 @@ void CDigitalGuardian::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) 
   StandInFn("fn_14_89D4");
 }
 
+// fn_14_8794: the state message picks the work (the cmpwi chain at 0x879C..0x87CC).
+// Activate (0): ready (0x6B4 = 1, 0x87D8) and 0x11E8 = 1 (0x87DC). Update (1): when a loop attack
+// can be issued (CanIssueCommand with 9 = kAS_LoopAttack, 0x87F0) it is sent (DeliverCmd at
+// 0x8878, kBSC_LoopAttack = 7): type 1 when the head (0x1082) is there and its projectile attack
+// (head+0x10D0) is 2, the missiles (the cmpwi at 0x8824), else 0 (0x8808); no wait (0x8870),
+// skip-into clear (the rlwimi at 0x8848). Otherwise, while the body is in the loop attack (body
+// state 0x37C == 9, 0x88C0), it exits the state (kBSC_ExitState = 10, 0x88F8, DeliverCmd at
+// 0x8914) unless the head is there with its flag 0x20 (head+0x10F4, the extrwi. at 0x88EC).
+// Deactivate (2): not ready (0x6B4 = 0, 0x8930) and the exit command (0x8938, 0x8950).
 void CDigitalGuardian::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_8794");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x11E8_ = 1;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      pas::ELoopAttackType type = pas::kLAT_Zero;
+      const CDigitalGuardianHead* head =
+          TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_));
+      if (head != nullptr && head->x10D0_ == 2) {
+        type = pas::kLAT_One;
+      }
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(type, false));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
+      const CDigitalGuardianHead* head =
+          TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_));
+      if (head == nullptr || (head->x10F4_ & 0x20) == 0) {
+        BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    break;
+  default:
+    break;
+  }
 }
 
 void CDigitalGuardian::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -2557,8 +2624,21 @@ void CDigitalGuardian::Crippled(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // The 13 codes of lbl_14_data_380 (.data 0x380; fn_14_D904's stores at 0xDEBC..0xE00C).
+
+// fn_14_7BD4: when the IS04/Activate object (0x10CE, ObjectById at 0x7C0C) is there (0x7C14),
+// the boss bar shows its initial health (GetHealthInfo, vtable +0x3C at 0x7C24, the float at +0
+// read at 0x7C30) under the name "BossCliffsideBoss" (.rodata 0x2F4 + 0x614 = 0x908,
+// GetStringIndexByName at 0x7C50; the host's CStringTable has GetStringIndex) for that object's
+// id (SetBossParams at 0x7C64). Then IS09 (0x49533039, 0x7C6C/0x7C7C) is sent with no message
+// (-1, 0x7C84; SendScriptMsgs at 0x7C8C).
 void CDigitalGuardian::SetupBossEnergyBar(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7BD4");
+  if (CEntity* counter = mgr.ObjectById(x10CE_)) {
+    const CActor* actor = static_cast< const CActor* >(counter);
+    const float health = actor->GetHealthInfo()->GetInitialHP();
+    mgr.SetBossParams(counter->GetUniqueId(), health,
+                      gpStringTable->GetStringIndex("BossCliffsideBoss"));
+  }
+  SendScriptMsgs(kSS_InternalState9, mgr, GetUniqueId(), kSM_None);
 }
 
 // fn_14_7B90: the number of knees that are set (fn_14_705C, the call at 0x7BA4) picks the
@@ -2626,8 +2706,58 @@ bool CDigitalGuardian::x70B4_() const {
   return x1268_ == 2 || x1268_ == 1;
 }
 
+// fn_14_77EC: the face direction 0x1278 is cleared (sZeroVector, 0x7818..0x7848). The knee
+// directions (guest 0xFC8, 12 bytes each, the ctor's pushes at 0xBD7C..0xBE3C: (-1, 1, 0),
+// (-1, -1, 0), (1, 1, 0), (1, -1, 0) with -1.0f = .rodata 0x2E8, 1.0f = .rodata 0x270) of the knees
+// whose armour id (0xFB0 + 2i) is valid (the cmplw at 0x786C) and names an object (0x788C) are
+// summed (the loop's cmpwi 4 at 0x78C8). The body-from-player vector (the positions at +0x54,
+// 0x78F4..0x7904) goes into the body's frame (TransposeRotate at 0x7914).
+// With a non-zero sum (the three fcmpu with 0.0f, .rodata 0x264, at 0x7934..0x7958): the angle
+// between the two (GetAngleDiff at 0x7974) snapped to 45 degrees (fn_14_37FC, 0x797C); only when
+// it is above 0.0f (0x798C) the side - local.x * sum.y - local.y * sum.x + local.z * sum.z above
+// 0.0f (0x79B8) - picks pi/2 (.rodata 0x2D0) minus (0x79C8) or plus (0x79D8) it, and 0x1278 is the
+// body's rotation of (cos, sin, 0) of that angle (0x79E0..0x7A2C).
+// With a zero sum: a random angle in [pi/2, pi] (.rodata 0x2D0/0x2D4, Range at 0x7A5C), the side
+// is local . the transform's first column (0x24/0x34/0x44, 0x7A6C..0x7A7C) above 0.0f (0x7A80),
+// and 0x1278 the same rotation (0x7AA4..0x7AF4).
 void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_77EC");
+  static const CVector3f kKneeDirections[4] = {
+      CVector3f(-1.f, 1.f, 0.f), CVector3f(-1.f, -1.f, 0.f),
+      CVector3f(1.f, 1.f, 0.f), CVector3f(1.f, -1.f, 0.f)};
+  x1278_ = CVector3f::Zero();
+  const u16 knees[4] = {xFB0_, xFB2_, xFB4_, xFB6_};
+  CVector3f sum = CVector3f::Zero();
+  for (int i = 0; i < 4; ++i) {
+    if (knees[i] != kInvalidUniqueId.value && mgr.ObjectById(TUniqueId(knees[i])) != nullptr) {
+      sum += kKneeDirections[i];
+    }
+  }
+  const CVector3f local =
+      GetTransform().TransposeRotate(GetTranslation() - mgr.GetPlayer(0)->GetTranslation());
+  float angle;
+  if (sum.IsNonZero()) {
+    const float snapped = x37FC_(CVector3f::GetAngleDiff(local, sum));
+    if (!(snapped > 0.f)) {
+      return;
+    }
+    if (local.GetX() * sum.GetY() - local.GetY() * sum.GetX() + local.GetZ() * sum.GetZ() > 0.f) {
+      angle = 1.5707964f - snapped;
+    } else {
+      angle = 1.5707964f + snapped;
+    }
+  } else {
+    const CVector3f right = GetTransform().GetRight();
+    const float offset = mgr.Random()->Range(1.5707964f, 3.1415927f);
+    if (local.GetX() * right.GetX() + local.GetY() * right.GetY() + local.GetZ() * right.GetZ() >
+        0.f) {
+      angle = 1.5707964f - offset;
+    } else {
+      angle = 1.5707964f + offset;
+    }
+  }
+  const float s = CMath::FastSinR(angle);
+  const float c = CMath::FastCosR(angle);
+  x1278_ = GetTransform().Rotate(CVector3f(c, s, 0.f));
 }
 
 // fn_14_775C: bit 5 of 0x128C set (fn_14_3D2C with 1, 0x777C), the knees' vulnerabilities
