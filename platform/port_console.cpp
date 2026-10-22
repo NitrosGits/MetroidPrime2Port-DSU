@@ -66,6 +66,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
@@ -1550,6 +1551,16 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   // make only virtual calls; the state's own data is touched only on the AFSM type.
   if (const CScriptDoor* door = TCastToConstPtr< CScriptDoor >(ent)) {
     ::PortConsoleDoor::Describe(*door, mgr, out);
+  }
+  // A water's volume (DescribeObject prints no position for it: the cast to CActor fails on the
+  // trigger types), so a driver can put an actor in it: bounds <min x y z> <max x y z>.
+  if (const CScriptWater* water = TCastToConstPtr< CScriptWater >(ent)) {
+    const CAABox box = water->GetTriggerBoundsWR();
+    char line[160];
+    std::snprintf(line, sizeof(line), "  bounds %.2f %.2f %.2f %.2f %.2f %.2f\n",
+                  box.GetMinPoint().GetX(), box.GetMinPoint().GetY(), box.GetMinPoint().GetZ(),
+                  box.GetMaxPoint().GetX(), box.GetMaxPoint().GetY(), box.GetMaxPoint().GetZ());
+    out += line;
   }
   const CPatterned* patterned = TCastToConstPtr< CPatterned >(ent);
   if (patterned != nullptr) {

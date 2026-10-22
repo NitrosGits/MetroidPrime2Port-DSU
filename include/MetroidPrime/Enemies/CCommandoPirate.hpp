@@ -18,6 +18,8 @@
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "rstl/single_ptr.hpp"
 
+class CPirateRagDoll;
+
 // The E-grenade half of the REL's parameter block (guest data+0x68, 0x70 bytes). The guest block
 // is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
 // floats on top); the guest offsets are the REL's and the host layout is its own. The four
@@ -358,8 +360,10 @@ private:
   // the module's two own renderables.
   void x1C0C_UpdateRenderables(CStateManager& mgr, float dt);
 
-  // fn_9_3E1C: the module's rag-doll driver - with no rag doll it runs the drowning timer.
-  void x3E1C_UpdateRagDoll(CStateManager& mgr, float dt);
+  // fn_9_3E1C: the module's rag-doll driver - with a rag doll it primes and steps it, then it
+  // runs the drowning timer, which creates the rag doll when it runs out. The Think passes
+  // whether the rag doll was null when it started (the guest's third argument).
+  void x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noRagDoll);
 
   // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper
   // (PortCCommandoPirateCore.cpp).
@@ -478,6 +482,9 @@ private:
   float xc48_;                            // 0xc48, the scale's target; fn_9_1F88 sets it
   float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
   float xc00_;                            // 0xc00, a float; fn_9_3090 sets 0.01f
+  // 0xbfc: the module's own rag doll, module 50's CPirateRagDoll (0x11c bytes); fn_9_3E1C
+  // creates it, the constructor leaves it null (0x0000DC18).
+  rstl::single_ptr< CPirateRagDoll > xbfc_ragDoll;
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
   TUniqueId xbc6_;                       // 0xbc6, the shield collision actor's id; fn_9_45A4 sets it
