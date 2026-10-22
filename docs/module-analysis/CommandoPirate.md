@@ -1265,6 +1265,8 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the retreat point found (0x0000A9C4..0x0000A9CC) | d | the module's retreat point id (guest this+0xBCE) is kInvalidUniqueId in this area |
 | `fn_9_69C8` (the Dead state) | the base's dead handler (0x000069EC), the activate (0x000069F0) and the other messages (0x000069F8) | b | forced (fsm) |
 | | the byte at guest this+0xC66 with its 0x20 bit (0x00006A0C..0x00006A14) | d | that bit is set by the knock-back helper when the shield is up; the commando is not hit with the shield up in this run |
+| `fn_9_6A40` (the GetUp state) | the activate (0x00006A78), the update's "the commando lies on the ground" arm (0x00006AA0..0x00006AC4) and the getup command (0x00006ACC..0x00006B18) | b | the coverage run in area 59 with the core driver (tools/cov/run.sh with tools/cov/specs/commandopirate.py and tools/drivers/commandopirate_core.py, 8000 frames, game exit code 0, no caught/reach-stub): 16/17 lines and 8/10 branches - the arm that sets the pending death (the commando on the ground and the path find with no source point) did not run, so the body gets no marker |
+| `fn_9_6DBC` (the Cover state) | the activate (0x00006E08..0x00006E2C), the cover point (0x00006E34..0x00006E48) and the cover command (0x00006E5C..0x00006EE8) | b | the same run: 14/23 lines and 5/14 branches - the cover arms need a cover point and the commando holds none in area 59, so the body gets no marker |
 | `fn_9_B168` (ShouldCrouch) and `fn_9_B114` (ShouldWallHang) | the cover point missing (0x0000B184..0x0000B194 and 0x0000B134..0x0000B138) | b | the Cover state's triggers run when the console forces that state (forced (fsm)) |
 | | the cover point's own answer (0x0000B18C and 0x0000B140) | d | the commando holds no cover point in this area |
 | `fn_9_B1E0` (ShouldBoost) | the byte at guest this+0xC66 (0x0000B1F0), the byte at guest this+0xC64 (0x0000B1FC) and the AI waypoint (0x0000B218) | b | 162 calls per run: the state sets the 0x80 bit of guest this+0xC66 and the trigger is evaluated every tick of the state |
@@ -1748,3 +1750,22 @@ The helper's body, with the guest's addresses:
   0x00002F20..0x00002FC4) and, when the ray is clear, the death (0x00003018), the zeroed health
   (0x0000302C), the recorded damage source (0x00003044..0x00003068) and the byte's 0x04 bit
   (0x0000306C..0x00003078).
+
+### 6.4 The six FSM states checked against the asm (2026-10-22)
+
+`tools/asmcheck.py check CommandoPirate` (with `--all`, since the bodies are unmarked) finds no
+difference in the six states: `fn_9_69C8` (the Dead state) and `fn_9_786C` (the
+RestoreOrientation state) are clean, and the other four only raise the host-API findings:
+
+- `fn_9_6A40` (the GetUp state) and `fn_9_7A98` (the ScriptedShieldCharge state) raise
+  NOPOS: the base's bitfields `mPendingDeath` and `mVerticalMovement` have no stated bit
+  position for the module, so the tool leaves their masks unchecked.  The guest's
+  `mPendingDeath` is the byte at guest this+0x421's bit 3 (`lbz r0, 0x421` and
+  `rlwimi r0, r3, 4, 27, 27` at 0x00006AB8..0x00006AC4) - the members live in the shared
+  base class (include/MetroidPrime/Enemies/CPatterned.hpp), which this lane does not edit.
+- the CALL findings name `CTryCommand::ShouldRetry` where the asm calls
+  `CAnimationState::CanIssueCommand` (0x00006AD8, 0x00006E6C, 0x00007540, 0x00007C4C - the
+  animation state ids 1 = kAS_Getup, 0x13 = kAS_Cover, 0x14 = kAS_WallHang and 9 =
+  kAS_LoopAttack, which are the host's values too) and `CEntity::CheckConnectedObject_if`
+  where the port calls `CEntity::FindConnectedObject_if` (0x00007414) - the host's two
+  functions have the same body (src/MetroidPrime/CEntity.cpp:124 and 198).
