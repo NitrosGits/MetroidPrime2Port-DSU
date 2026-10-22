@@ -663,7 +663,7 @@ CVector3f CDigitalGuardianHead::x11C08_(const CVector3f& dir) const {
   if (dir.IsMagnitudeSafe() && flat.IsMagnitudeSafe()) {
     const CVector3f dirN = dir.AsNormalized();
     const CVector3f flatN = flat.AsNormalized();
-    if (CVector3f::GetAngleDiff(flatN, dirN) > 0.9599311f) {
+    if (!(CVector3f::GetAngleDiff(flatN, dirN) <= 0.9599311f)) { // fcmpo/ble 0x11CE8: NaN slerps
       return CVector3f::Slerp(flatN, dirN, CRelAngle::FromRadians(0.9599311f));
     }
     return dirN;
@@ -924,7 +924,8 @@ void CDigitalGuardianHead::ExtractAntenna(CStateManager& mgr, float) {
 
 // fn_14_14DA0: every extended or extending echo target starts retracting (fn_14_19DF8 with 2) and
 // ignores damage (+0x78C bit 0x80); bits 0x40 and 0x02 are cleared, the deployment time (0x10F0)
-// becomes data +0x20 and bit 0x04 is set.
+// grows by data +0x20 (lfs 0x10F0 / lfs 0x7E0 / fadds / stfs at 0x14E48..0x14E54) and bit 0x04
+// is set.
 // @ fn_14_14DA0
 void CDigitalGuardianHead::RetractEchoTargets(CStateManager& mgr, float) {
   for (int i = 0; i < xF34_.size(); ++i) {
@@ -938,7 +939,7 @@ void CDigitalGuardianHead::RetractEchoTargets(CStateManager& mgr, float) {
   }
   x10F4_ &= ~0x40;
   x10F4_ &= ~0x02;
-  x10F0_ = mData.maxStage2StunnedTime;
+  x10F0_ += mData.maxStage2StunnedTime;
   x10F4_ |= 0x04;
 }
 
@@ -1798,7 +1799,7 @@ void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
 // 0x1120C) at the player's aim position (vtable 0x54 with 0.0f, .rodata 0x960; 0x1124C). The
 // direction's horizontal part (z 0.0f, 0x11298) normalised, or the head's facing (fn_14_13B38,
 // 0x112C4) when it is not safe (0x112A4), is the reference; a direction more than 0.9599311f
-// (.rodata 0x9B8) from it (fcmpo/ble at 0x112FC, so a NaN angle keeps it) is the reference slerped
+// (.rodata 0x9B8) from it (fcmpo/ble at 0x112FC, so a NaN angle is slerped too) is the reference slerped
 // toward the normalised direction by that angle (0x11320). LookAt from the locator along it
 // (0x11380). No cache or projectile-count test. The 0x568-byte CEnergyProjectile (ctor at 0x11478):
 // active (li r4 1), the pulse's weapon (0xE04), kWT_AI (li r6 0xB), material 0x21 (kMT_Character,
@@ -1815,7 +1816,7 @@ void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locat
   CVector3f dir = player.GetAimPosition(mgr, 0.f) - pos;
   const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
   const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
-  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) {
+  if (!(CVector3f::GetAngleDiff(dir, ref) <= 0.9599311f)) {
     dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
   }
   const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
@@ -1912,7 +1913,7 @@ void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locat
   CVector3f dir = x1098_ - pos;
   const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
   const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
-  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) { // 0x10E10
+  if (!(CVector3f::GetAngleDiff(dir, ref) <= 0.9599311f)) { // 0x10E10, fcmpo/ble: NaN slerps
     dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
   }
   const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
@@ -2723,6 +2724,8 @@ void CDigitalGuardianHead::SelectRetreatPlatform(CStateManager& mgr, float dt) {
 // @ fn_14_DF7C
 CEntity* PortLoadDigitalGuardianHead(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDigitalGuardianHead sldrThis;
+  // Retail's loader default the generated SLdr ctor lacks: stb 1 to patterned +0x230 (0xE01C).
+  sldrThis.patterned.echoParameters.isEchoEmitter = true;
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardianHead.inc"
 
   rstl::optional_object< CModelData > modelData(
