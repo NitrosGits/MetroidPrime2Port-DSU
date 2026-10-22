@@ -19,7 +19,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x138	0x24	REL runtime	RELExit	runtime	T	_epilog	REL exit (called by _epilog)	not-port	RELExit
 0x15C	0x20	REL runtime	RELMain	runtime	T	_prolog	REL entry (called by _prolog)	not-port	RELMain
 0x17C	0x3C	CDigitalGuardian	-	func	T	RELMain	RegisterFuncPtrs-style REL setup (only caller RELMain)	not-port	fn_14_17C
-0x1B8	0x330	CDigitalGuardian	-	func	B	fn_14_17C	module loader (SpacePirate LoadSpacePirate precedent)	not-port	fn_14_1B8
+0x1B8	0x330	CDigitalGuardian	-	func	B	fn_14_17C	marked	marked	fn_14_1B8
 0x4E8	0x40	CDigitalGuardian	-	func	H	fn_14_1B8 fn_14_DF7C	same body as EmperorIngStage1 0xa5bc (the loader's reader / the model's copy - the host's ScriptLoaderRel and the gene)	not-port	fn_14_4E8
 0x528	0x20	CDigitalGuardian	-	func	H	fn_14_4E8 fn_14_6A50	same body as EmperorIngStage1 0x22b0 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_528
 0x548	0x28	CDigitalGuardian	-	func	H	fn_14_528	same body as EmperorIngStage1 0x39ec (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_548
@@ -51,14 +51,14 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x24E4	0x94	CDigitalGuardian	-	func	B	fn_14_8090 fn_14_A6A8	marked	marked	fn_14_24E4
 0x2578	0xF4	CDigitalGuardian	-	func	B	fn_14_17DC fn_14_9ABC fn_14_A138 fn_14_B100	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_2578
 0x266C	0x264	CDigitalGuardian	-	func	B	fn_14_5274	marked	marked	fn_14_266C
-0x28D0	0x158	CDigitalGuardian	-	func	B	fn_14_2CC4	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_28D0
+0x28D0	0x158	CDigitalGuardian	-	func	B	fn_14_2CC4	marked	marked	fn_14_28D0
 0x2A28	0x29C	CDigitalGuardian	-	func	B	fn_14_2CC4	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_2A28
-0x2CC4	0x19C	CDigitalGuardian	-	func	B	fn_14_7CB4	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_2CC4
+0x2CC4	0x19C	CDigitalGuardian	-	func	B	fn_14_7CB4	marked	marked	fn_14_2CC4
 0x2E60	0x22C	CDigitalGuardian	-	func	B	fn_14_5274	marked	marked	fn_14_2E60
-0x308C	0x120	CDigitalGuardian	-	func	B	fn_14_7208 fn_14_7600 fn_14_9678	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_308C
+0x308C	0x120	CDigitalGuardian	-	func	B	fn_14_7208 fn_14_7600 fn_14_9678	marked	marked	fn_14_308C
 0x31AC	0x100	CDigitalGuardian	-	func	H	fn_14_119E4 fn_14_308C	same body as IngBoostBallGuardian 0x160d0 (the template inline the compiler emitted out of line)	not-port	fn_14_31AC
 0x32AC	0x54	CDigitalGuardian	-	func	H	fn_14_119E4 fn_14_13830 fn_14_17F64 fn_14_308C	same body as EmperorIngStage1 0x6844 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_32AC
-0x3300	0x1E8	CDigitalGuardian	-	func	B	fn_14_A468	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_3300
+0x3300	0x1E8	CDigitalGuardian	-	func	B	fn_14_A468	port body (dg33: max_val(0, span) NaN sense at 0x3430); unmarked: never called in runs (DoUserAnimEvent TakeOff in the vortex; GetTimeOfUserEventForAnimation never finds TakeOff on the host)	not-port	fn_14_3300
 0x34E8	0x18C	CDigitalGuardian	-	func	B	fn_14_9070	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_34E8
 0x3674	0x188	CDigitalGuardian	-	func	B	fn_14_9260	marked	marked	fn_14_3674
 0x37FC	0xC0	CDigitalGuardian	-	func	B	fn_14_7208 fn_14_77EC	marked	marked	fn_14_37FC
@@ -195,7 +195,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xAB98	0x2F0	CDigitalGuardian	-	virtual	B	lbl_14_data_484+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_AB98
 0xAE88	0x1E4	CDigitalGuardian	-	func	H	fn_14_17F64 fn_14_AB98	same body as EmperorIngStage1 0x8d40 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_AE88
 0xB06C	0x94	CDigitalGuardian	-	func	H	fn_14_AE88	same body as EmperorIngStage1 0x8f24 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_B06C
-0xB100	0xF90	CDigitalGuardian	-	func	B	fn_14_1B8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_B100
+0xB100	0xF90	CDigitalGuardian	-	func	B	fn_14_1B8	marked	marked	fn_14_B100
 0xC090	0x54	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C090
 0xC0E4	0x6C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C0E4
 0xC150	0x54	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C150
@@ -226,7 +226,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xD7BC	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_694+40	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_D7BC
 0xD7DC	0xC0	CDigitalGuardian	-	func	H	fn_14_13318 fn_14_5C30 fn_14_61DC	same body as EmperorIngStage1 0xbc44 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_D7DC
 0xD89C	0x68	CDigitalGuardian	-	func	H	fn_14_D7DC	same body as EmperorIngStage1 0xbd04 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_D89C
-0xD904	0x668	CDigitalGuardian	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_14_D904
+0xD904	0x668	CDigitalGuardian	-	static-init	B	-	marked	marked	fn_14_D904
 0xDF6C	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_EB4+AC	same body in 3 other modules (EmperorIngStage1,Sporb,SwarmBasics)	not-port	fn_14_DF6C
 0xDF74	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_EB4+118	same body in 3 other modules (EmperorIngStage1,Sporb,SwarmBasics)	not-port	fn_14_DF74
 0xDF7C	0x344	CDigitalGuardian	-	func	B	fn_14_17C	module loader for the head (SpacePirate LoadSpacePirate precedent)	marked	fn_14_DF7C
@@ -282,9 +282,9 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x1223C	0xD8	CDigitalGuardian	-	func	B	fn_14_17C98	marked	marked	fn_14_1223C
 0x12314	0x3B4	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_12314
 0x126C8	0x150	CDigitalGuardian	-	func	B	fn_14_12818	marked	marked	fn_14_126C8
-0x12818	0x2EC	CDigitalGuardian	-	func	B	fn_14_17C98	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_12818
+0x12818	0x2EC	CDigitalGuardian	-	func	B	fn_14_17C98	marked	marked	fn_14_12818
 0x12B04	0x294	CDigitalGuardian	-	func	B	fn_14_1303C	marked	marked	fn_14_12B04
-0x12D98	0x248	CDigitalGuardian	-	func	B	fn_14_17D38	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_12D98
+0x12D98	0x248	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_12D98
 0x12FE0	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_1018+8	same body as DarkSamus 0x4b9c (fn_10_4B9C)	not-port	fn_14_12FE0
 0x1303C	0x20C	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_1303C
 0x13248	0x3C	CDigitalGuardian	-	func	B	fn_14_1303C	marked	marked	fn_14_13248
@@ -413,7 +413,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x1ABE0	0x34	CDigitalGuardian	-	func	H	fn_14_18264	compiler copy (dg32): CTransform4f copy (six lfd/stfd), called by the head ctor's 3-iteration loop at 0x188EC for xF40_; the host's CTransform4f copy	not-port	fn_14_1ABE0
 0x1AC14	0xA4	CDigitalGuardian	-	func	H	fn_14_139C4	same body in 2 other modules (Blogg,Sporb)	not-port	fn_14_1AC14
 0x1ACB8	0x74	CDigitalGuardian	-	func	H	fn_14_19908	same body as EmperorIngStage1 0xbf14 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_1ACB8
-0x1AD2C	0x9CC	CDigitalGuardian	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_14_1AD2C
+0x1AD2C	0x9CC	CDigitalGuardian	-	static-init	B	-	marked	marked	fn_14_1AD2C
 0x1B6F8	0xC4	REL runtime	_unresolved	runtime	T	-	REL runtime (crtexe) unresolved-symbol trap	not-port	_unresolved
 0x1B7BC	0x24	REL runtime	_epilog	runtime	T	-	REL runtime (crtexe) module exit	not-port	_epilog
 0x1B7E0	0x24	REL runtime	_prolog	runtime	T	-	REL runtime (crtexe) module entry	not-port	_prolog

@@ -1989,3 +1989,38 @@ Left unmarked:
 | 17F64 AB98 | null members | forced (dg32_noarmour: ptrs = 0 before the dtor) | own arms ran |
 | 17A64 17840 | (all arms) | natural (driver scans + `dghd.projinfo`) | ALL-ARMS |
 | 17638 97A4 13B08 13B30 | (no branches) | natural | ran |
+
+## 2026-10-23: loader, static inits, beacon update/arrival/waypoint, head damage/touch, ctor (dg33); gcov runs noload, beacon, beacon2, fight, head, ctor, nat
+
+- Runs (build-port-cov at 2c73b6159, then f1f784f55 for ctor/nat; all 0 caught/reach-stub):
+  `tools/cov/force.sh tools/cov/specs/digitalguardian_dg33_{noload,beacon,head,ctor}.py <out>
+  1baa96c2,09_cliff_temple_dark --fast --frames 600` (beacon: `--con tools/cov/specs/digitalguardian_dg33_beacon.con`;
+  head: `--driver 'python3 tools/drivers/dg33_head.py {port}'`; ctor: `--con tools/smoke/cmd_digig.txt`).
+- Marked: 1B8 D904 1AD2C 28D0 2CC4 308C B100; head 12818 12D98. 3300 fixed but left unmarked.
+- Fixes: 2CC4 clamps with `min_val(x1264_ + dt, 1)` (fcmpo/bge at 0x2D28: NaN takes the clamp);
+  3300 with `max_val(0, span)` (0x3430); 12D98 takes a NaN damage (`!(d <= 0)`, `!(d <= 25)`: ble at
+  0x12E90/0x12F08 falls through on NaN); B100 stores `CColor::Black()` at 0x1270 (0xB9C8/0xB9DC,
+  was 0) and starts a built beacon generator with emission off and the model's scale as its
+  global scale (0xBEF8..0xBF48, vtable 0x2C/0x24).
+- B100's 0xFC4 knee directions are the host's kKneeDirections (fn_14_77EC); the 0xFF8 angles
+  (.data 0x45C..0x468) are never read by the REL: documented, not ported.
+- Blocked: 3300 runs only from DoUserAnimEvent's TakeOff in the vortex (x11B8_ == 1);
+  `CAnimData::GetTimeOfUserEventForAnimation` (src/MetroidPrime/CAnimData.cpp:935) never finds
+  TakeOff on the host, so it is never called. Next: fix that lookup or force with a gdb `call`.
+- Tool findings, all explained: asmcheck 1B8/B100 counts (the tool doesn't parse loader/ctor
+  bodies); 2CC4 x977 "bits" (the clrlwi at 0x2E10 is the low byte of the 0x974 word); 308C
+  31AC/32AC (rstl vector inlines, H) and the TCastToPtr spelling; retail_diff's 12D98 nan note
+  (the ble falls through to the body on NaN, as the port's `!(d <= x)`).
+- Host-only branches not counted: the inlined GetPlayerState fallback (CStateManager.hpp:591),
+  exception edges (B100's closing brace 16/16, B100's 426:*), float-compare parity.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 1B8 | empty model (no ANCS) | forced (dg33_noload: ancs = -1) | ALL-ARMS |
+| D904 1AD2C | (no branches) | natural (static init) | ran |
+| 308C | not a waypoint | forced (dg33_beacon: waypoint = 0, skip 4) | ALL-ARMS |
+| 28D0 2CC4 | states 2/3/other, flag 0x08, both visors | natural (beacon/beacon2/fight) | every real arm |
+| 12818 | inactive ball / null ball | natural 88 hits / forced (dg33_head: ball = 0, skip 2900) | every real arm |
+| 12D98 | zero damage | forced (dg33_head: damage = 0, skip 2); col-null dead (the sender is the live root collider) | every real arm |
+| B100 | five asset ids -1, null generator, no beacon model | forced (dg33_ctor: data ids -1 at entry, x6864_ models -1) | 115/118 lines, 84/100 br; untaken = EH edges only |
+| 3300 | - | never called (TakeOff lookup) | not run |
