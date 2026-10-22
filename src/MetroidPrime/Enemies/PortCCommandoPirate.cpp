@@ -3946,6 +3946,12 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
 // run: the Swamp (05_swamp_timber!), the attack pattern with the area's own waypoints, 2026-10-21:
 // the state runs in the normal flow (the ShouldBoost trigger answers true on the waypoint's 0x20
 // flag) and all its arms are taken.
+// Run: cp5 2026-10-22 (s2: tools/drivers/commandopirate_cp5.py states2 in the Swamp, every message
+// through `statecall`, tools/cov/specs/commandopirate_cp5.py CP5_MODE=states): every arm but
+// the switch's default (no state message beyond 2) and the shield manager's null test (kSM_Create
+// always builds it); forced, each put back in the same tick: no team / no target, the target
+// on the actor, the facing (a yaw sweep), the body state LoopAttack, +0xC64 0x04/0x08, the charge
+// target behind, the state time, no charge speed, the push on each axis.
 // @ fn_9_8028
 // fn_9_8028 (0x68c bytes): the shield-charge state - the commando charges at its target with
 // the shield up.
@@ -4134,6 +4140,12 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
 // collision actor manager goes inactive (0x00007FA0), the module's own activate helper (fn_9_1EF8)
 // runs (0x00007FA8) and the bytes at guest this+0xC64 and this+0xC65 lose their 0x08 and their
 // 0x04 bit (0x00007FB4 and 0x00007FC0).
+// Run: cp5 2026-10-22 (s2: tools/drivers/commandopirate_cp5.py states2 in the Swamp, every message
+// through `statecall`, tools/cov/specs/commandopirate_cp5.py CP5_MODE=states): every arm but
+// the switch's default (no state message beyond 2) and the shield manager's null test (kSM_Create
+// always builds it); forced, each put back in the same tick: the body state
+// LoopAttack, +0xC64 0x04/0x08, the waypoint behind or inside the box.
+// @ fn_9_7A98
 void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -4334,6 +4346,13 @@ void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, floa
 // Deactivate (0x00007630): the animation state goes back to "not ready" (0x00007638), the 0x02
 // bit of the flag byte at guest this+0xC65 is cleared (0x00007640) and the module's word at
 // guest this+0x924 goes back to -1 (0x00007648).
+// Run: cp5 2026-10-22 (s2: tools/drivers/commandopirate_cp5.py states2 in the Swamp, every message
+// through `statecall`, tools/cov/specs/commandopirate_cp5.py CP5_MODE=states): every arm but
+// the switch's default (no state message beyond 2) and the shield manager's null test (kSM_Create
+// always builds it); forced, each put back in the same tick: no cover point (+0xBD2), the
+// ARRV/NEXT search's answer (a Swamp waypoint: no commando has the link), the facing (a yaw sweep),
+// the body state WallHang, no aim target (+0xBCA), the aim position ahead/behind.
+// @ fn_9_7358
 void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
     case kStateMsg_Activate: {                                       // 0x0000739C
@@ -4602,7 +4621,7 @@ float CCommandoPirate::GetGravityConstant() const { return 50.f; }
 // Port console vars (`var <id> cp.<name> [value]`; no guest code): the flag bytes (cp.c63..c66),
 // x924 (cp.x924), the ids (cp.xbca the target, cp.xbd2 the cover point, cp.xbd6 the wall-hang
 // waypoint, cp.team), the charge speed (cp.chargespeed, 1/1000), the state machine's time in its
-// state (cp.fsmtime, ms), the push vector's x (cp.bb8x, 1/1000) and the charge target set d/1000
+// state (cp.fsmtime, ms), the push vector (cp.bb8x/bb8y/bb8z, 1/1000) and the charge target set d/1000
 // units along the facing (cp.b94ahead; reads the target's distance along it).
 bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* value,
                                      int& current) {
@@ -4667,13 +4686,17 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
     current = static_cast< int >(cp->StateMachineState().GetTime() * 1000.f);
     return true;
   }
-  if (strcmp(name, "bb8x") == 0) {
-    if (value != nullptr) {
-      cp->xbb8_ = CVector3f(static_cast< float >(*value) / 1000.f, cp->xbb8_.GetY(),
-                            cp->xbb8_.GetZ());
+  for (int i = 0; i < 3; ++i) {
+    static const char* const kPush[3] = {"bb8x", "bb8y", "bb8z"};
+    if (strcmp(name, kPush[i]) == 0) {
+      float xyz[3] = {cp->xbb8_.GetX(), cp->xbb8_.GetY(), cp->xbb8_.GetZ()};
+      if (value != nullptr) {
+        xyz[i] = static_cast< float >(*value) / 1000.f;
+        cp->xbb8_ = CVector3f(xyz[0], xyz[1], xyz[2]);
+      }
+      current = static_cast< int >(xyz[i] * 1000.f);
+      return true;
     }
-    current = static_cast< int >(cp->xbb8_.GetX() * 1000.f);
-    return true;
   }
   if (strcmp(name, "b94ahead") == 0) {
     const CVector3f forward = cp->GetTransform().GetForward();

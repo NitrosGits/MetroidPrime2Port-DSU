@@ -167,5 +167,34 @@ if gdb is not None:
                     _log('no WeaponHurts return: %s' % str(e)[:60])
             return False
 
-    MsgBp('CCommandoPirate::AcceptScriptMsg', internal=True)
-    HurtsBp('CDamageVulnerability::WeaponHurts(CWeaponMode const&) const', internal=True)
+    class WaypointRet(gdb.FinishBreakpoint):
+        def __init__(self, frame, uid):
+            super().__init__(frame, internal=True)
+            self.uid = uid
+
+        def stop(self):
+            gdb.execute('set $rax = %d' % self.uid)
+            _log('WallHang ARRV/NEXT waypoint forced %d' % self.uid)
+            return False
+
+    class WaypointBp(gdb.Breakpoint):
+        def stop(self):
+            older = gdb.newest_frame().older()
+            if older is None or 'WallHang' not in (older.name() or ''):
+                return False
+            STATE['wp'] = STATE.get('wp', 0) + 1
+            path = os.path.join(os.environ['COV_OUT'], 'waypoint.txt')
+            if STATE['wp'] % 2 == 0 and os.path.exists(path):
+                try:
+                    WaypointRet(gdb.newest_frame(), int(open(path).read()))
+                except (gdb.error, ValueError) as e:
+                    _log('no waypoint return: %s' % str(e)[:60])
+            return False
+
+    if os.environ.get('CP5_MODE', 'msg') == 'msg':
+        MsgBp('CCommandoPirate::AcceptScriptMsg', internal=True)
+        HurtsBp('CDamageVulnerability::WeaponHurts(CWeaponMode const&) const', internal=True)
+    else:
+        # CP5_MODE=states (the driver's states2): WallHang's ARRV/NEXT search (0x000073E8..
+        # 0x00007414) answers a real waypoint on every other call.
+        WaypointBp('CEntity::FindConnectedObject_if', internal=True)

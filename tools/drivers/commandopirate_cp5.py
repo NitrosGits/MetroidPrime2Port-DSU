@@ -46,18 +46,18 @@ sock.settimeout(300)
 stream = sock.makefile("rw")
 
 
-def cmd(c):
+def cmd(c, replies=1):
     stream.write(c + "\n")
     stream.flush()
     lines = []
-    while True:
+    while replies > 0:
         line = stream.readline()
         if not line:
             break
         line = line.rstrip("\n")
         lines.append(line)
         if line.startswith("=> "):
-            break
+            replies -= 1
     return " | ".join(lines)
 
 
@@ -199,7 +199,7 @@ def var(cid, name, value=None):
 
 def tick(*cmds):
     """several commands in one game tick (the console's `a; b; c`)."""
-    log("%s: %s" % ("; ".join(cmds), cmd("; ".join(cmds))))
+    log("%s: %s" % ("; ".join(cmds), cmd("; ".join(cmds), len(cmds))))
 
 
 def pos_of(uid, kind):
@@ -244,17 +244,15 @@ def states2(cid, kind, player):
     # -- ShieldCharge (fn_9_8028)
     log("team %s xbca %s" % (var(cid, "team"), var(cid, "xbca")))
     tick(sc + " 0", sc + " 1")
+    forced(cid, "team", 0xffff, sc + " 0")                 # no team (0x80F0)
     forced(cid, "xbca", 0xffff, sc + " 0")                 # no target (0x8228)
     forced(cid, "xbca", int(player[1:], 16), sc + " 0")    # the player
     for o in others:
         forced(cid, "xbca", int(o[1:], 16), sc + " 0")     # another commando's direction
-    pp = pos_of(player, "player")
-    if pp is not None:                                      # the target straight above/below
-        me = pos_of(cid, kind)
-        tick("place %s %.3f %.3f %.3f" % (cid, pp[0], pp[1], pp[2] + 3.0),
-             "var %s cp.xbca %d" % (cid, int(player[1:], 16)), sc + " 0")
-        if me is not None:
-            run("place %s %.3f %.3f %.3f" % (cid, me[0], me[1], me[2]))
+    me = pos_of(cid, kind)                                  # on the target: no direction
+    tick("place %s player 0" % cid, "var %s cp.xbca %d" % (cid, int(player[1:], 16)), sc + " 0")
+    if me is not None:
+        run("place %s %.3f %.3f %.3f" % (cid, me[0], me[1], me[2]))
     forced(cid, "xbca", int(player[1:], 16), sc + " 0")
     face_sweep(cid, "ShieldCharge", kind)
     tick("var %s cp.x924 1" % cid, sc + " 1")              # the loop command (mState ready)
@@ -264,16 +262,21 @@ def states2(cid, kind, player):
         tick(*body)
     loop = "bodystate %s 9" % cid
     tick(loop, "var %s cp.x924 1" % cid, sc + " 1")
-    bits(cid, "c64", 0x04, True, loop, sc + " 1")           # c64 0x04: the exit
-    bits(cid, "c64", 0x08, False, loop, "var %s cp.b94ahead -2000" % cid, sc + " 1")  # behind
-    forced(cid, "fsmtime", 100000, loop, "var %s cp.b94ahead 20000" % cid, sc + " 1")
-    forced(cid, "chargespeed", 0, loop, "var %s cp.b94ahead 20000" % cid, sc + " 1")
-    bits(cid, "c64", 0x08, True, loop, "var %s cp.b94ahead 20000" % cid,
-         "var %s cp.fsmtime 0" % cid, sc + " 1")
-    bits(cid, "c64", 0x08, True, loop, "var %s cp.b94ahead 20000" % cid,
-         "var %s cp.fsmtime 0" % cid, "var %s cp.bb8x 500" % cid, sc + " 1")
-    bits(cid, "c64", 0x08, False, loop, "var %s cp.b94ahead 20000" % cid,
-         "var %s cp.fsmtime 0" % cid, sc + " 1")
+    c64 = var(cid, "c64")
+    ahead = "var %s cp.b94ahead 20000" % cid
+    t0 = "var %s cp.fsmtime 0" % cid
+    forced(cid, "c64", c64 | 0x04, loop, ahead, sc + " 1")             # c64 0x04: the exit
+    forced(cid, "c64", c64 & 0xf3, loop, "var %s cp.b94ahead -2000" % cid, sc + " 1")  # behind
+    forced(cid, "c64", c64 & 0xf3, loop, ahead, "var %s cp.fsmtime 100000" % cid, sc + " 1")
+    for speed in (0, var(cid, "chargespeed")):                         # no charge speed / its own
+        tick("var %s cp.chargespeed %d" % (cid, speed))
+        forced(cid, "c64", (c64 & 0xf3) | 0x08, loop, ahead, t0, sc + " 1")
+    for axis in ("bb8x", "bb8y", "bb8z"):                             # the push, one axis each
+        forced(cid, "c64", (c64 & 0xf3) | 0x08, loop, ahead, t0,
+               "var %s cp.%s 500" % (cid, axis), sc + " 1")
+    forced(cid, "c64", c64 & 0xf3, loop, ahead, t0, sc + " 1")         # not taken off
+    tick(loop, "var %s cp.x924 1" % cid, sc + " 1",       # not ready (Repeat), not looping
+         "bodystate %s 5" % cid, sc + " 1")
     tick("var %s cp.x924 7" % cid, sc + " 1")              # neither 0 nor 1
     bits(cid, "c64", 0x04, True, sc + " 2")
     tick(sc + " 2")
@@ -290,13 +293,20 @@ def states2(cid, kind, player):
         bits(cid, "c64", 0x04, False, *(loop9 + ["var %s cp.b94ahead %d" % (cid, ahead), ssc + " 1"]))
     bits(cid, "c64", 0x08, True, *(loop9 + ["var %s cp.b94ahead 30000" % cid, ssc + " 1"]))
     bits(cid, "c64", 0x08, False, *(loop9 + ["var %s cp.b94ahead 30000" % cid, ssc + " 1"]))
-    run("bodystate %s 5" % cid)
-    tick(ssc + " 1")                                        # not ready, not looping
+    tick(loop, ssc + " 1", "bodystate %s 5" % cid, ssc + " 1")  # not ready, not looping
     bits(cid, "c64", 0x04, True, ssc + " 2")
     tick(ssc + " 2")
     wait(10)
     # -- WallHang (fn_9_7358)
     forced(cid, "xbd2", 0xffff, wh + " 0", wh + " 2")      # no cover point (0x73D4)
+    # the spec (CP5_MODE=states) answers every other ARRV/NEXT search of WallHang's Activate with
+    # this waypoint (no commando here has that link).
+    wps = list(objs_of("Waypoint", "Waypoint"))
+    if wps and OUT is not sys.stdout:
+        import os
+        with open(os.path.join(os.path.dirname(OUT.name), "waypoint.txt"), "w") as fh:
+            fh.write("%d\n" % int(wps[0][1:], 16))
+    log("waypoints %s" % wps[:4])
     covers = list(objs_of("Cover", "Cover"))
     log("cover points %s" % covers)
     for c in covers[:3]:
@@ -306,13 +316,14 @@ def states2(cid, kind, player):
         face_sweep(cid, "WallHang", kind)
     tick("var %s cp.x924 1" % cid, wh + " 1")              # the wall-hang command
     wait(4)
-    for _ in range(3):
-        tick("bodystate %s 20" % cid, "var %s cp.x924 1" % cid, wh + " 1")
-        run("place %s player 8" % cid)
-        tick("bodystate %s 20" % cid, "var %s cp.x924 1" % cid, wh + " 1")
-        wait(5)
-    run("bodystate %s 5" % cid)
-    tick("var %s cp.x924 1" % cid, wh + " 1")              # not ready, not hanging
+    for ahead in (20000, -20000, 0, 3000):                  # the aim test (x3CBC_) both ways
+        tick("bodystate %s 20" % cid, "var %s cp.x924 1" % cid,
+             "var %s cp.b94ahead %d" % (cid, ahead), wh + " 1")
+        wait(3)
+    forced(cid, "xbca", 0xffff, "bodystate %s 20" % cid, "var %s cp.x924 1" % cid,
+           wh + " 1")                                       # no aim target (x3CBC_ false)
+    tick("bodystate %s 20" % cid, "var %s cp.x924 1" % cid, wh + " 1",  # not ready, not hanging
+         "bodystate %s 5" % cid, wh + " 1")
     tick("var %s cp.x924 7" % cid, wh + " 1", wh + " 2")
     wait(10)
 
