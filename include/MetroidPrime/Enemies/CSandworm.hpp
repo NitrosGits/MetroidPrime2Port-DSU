@@ -608,7 +608,7 @@ public:
   TUniqueId x1848_;
   TUniqueId x184A_;
   int x184C_;
-  int x1850_;
+  bool x1850_; // path-search result byte (fn_56_3D64 stores `stb` 1/0, returns `lbz`)
   float x1854_;
   CPathFindSearch x1858_search2;
   SSandwormBombs x1944_bombs;

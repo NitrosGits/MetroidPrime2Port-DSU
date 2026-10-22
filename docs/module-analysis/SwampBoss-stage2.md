@@ -131,9 +131,8 @@ B4 GetOrigin, D0 GetHealthInfo.
 
 ## 6. Runtime status (2026-10-20)
 
-- **Ported:** every state and helper in sections 1 and 3 except 4F88 SendDecrement (no caller
-  anywhere in the module: no state, trigger, code function or vtable slot references it, so it
-  stays a documented no-op) and 1B38 (an additive flinch with no caller found). 3354
+- **Ported:** every state and helper in sections 1 and 3 (1B38 turned out to be class **T**, dead
+  code no reference reaches - 7.27 - so it needs no port body). 3354
   PlayerOnGrapplePoint is ported (the player's orbit target casts to CScriptGrapplePoint) and runs
   from Think every frame.
 - **Verified in `04_swamp_temple_dark` with LAYER6 forced:** 0 `[port] caught`, 0 `reach-stub`,
@@ -334,7 +333,7 @@ manager's copies).
 | 55B0, 50AC, 5830 | the platform-chain walk: 55B0 wakes the chain, 5830 finds the "PLTR/FOLL" node and 50AC recurses over the "ARRV/NEXT" connections | **marked** (7.15, 7.17, 7.18): the port has all four bodies (`LaunchPlatformChain`, `CollectChainNodes`, `WalkChainNodes`, `PlaceChainNodes`, `SwingChainNodes`) and every arm of them ran |
 | 5030, 527C | put the chain nodes on their recorded positions / swing them about the chain origin | **marked** (7.17, 7.18): the port has the two bodies (`PlaceChainNodes`, `SwingChainNodes`); the chain launch reaches them |
 | 7E24 | the `Blow` state | **marked** (7.12, 7.19): the port's body is retail's and every arm of it ran |
-| 1B38 | an additive flinch with no caller | documented no-op, like 4F88 |
+| 1B38 | an additive flinch with no reference | **class T** (7.27): no `bl`, no data word, no vtable or code-list entry - there is no port body and none is needed |
 | 4F88 | `SendDecrement` | **marked** (7.26): the body is the retail's and both of its arms ran - the retail has no caller, so it was forced |
 | 5D40 | `GetIngSnatchingPoint` | **marked** (7.25): the ing-snatch transition does run - the head-mode anim event (0x0e) makes the boss ing-possessed |
 | 3774 | the wing-damage burst | the port has the body; it needs a growth to die, which needs a real beam hit |
@@ -1106,14 +1105,15 @@ applied by rule, so the table can be audited:
 | class | functions | .text bytes |
 |---|---|---|
 | H host copy | 139 | 0x5108 (20,744) |
-| T data / vtable thunk | 4 | 0x28 (40) |
-| B module behaviour | 100 | 0x8BD0 (35,792) |
+| T dead code / data / vtable thunk | 5 | 0x134 (308) |
+| B module behaviour | 99 | 0x8AC4 (35,524) |
 | **total** | **243** | **0xDD00 (56,576)** |
 
-**The unmarked B list (2)** - the module's behaviour that the port has but has not proved
-(the rest of the list was closed by 7.21 and 7.23):
+**The unmarked B list (0)** - 7.27 closed the last two rows: `fn_79_1B38` left it as class **T**
+(dead code, so there is no port body to mark) and `fn_79_72FC` was marked on its forced
+`codecall`. What it looked like before 7.27:
 
-| fn | what | why it is not marked |
+| fn | what | why it was not marked |
 |---|---|---|
 | `fn_79_1B38` | an additive flinch with no caller | the note's 7.2: no state, trigger, code function or vtable slot references it |
 | `fn_79_72FC` | `ResetAttackPhase` (the code node) | the code node never runs (no state references it) |
@@ -1136,11 +1136,11 @@ So all three are **marked** now. The other arms of A064 and A3D8 ran without for
 attack not ready with the type 3, 5, 6 and 7: `[probe] trigger 3 a 0 b 3 -> 0` and so on; the
 field 2 with the phase 2: `[probe] trigger 2 a 2 b 2 -> 0`).
 
-**The two that stay unmarked** (the whole unmarked B list now): `fn_79_1B38` (the retail's
-additive flinch: the module's only copy of that code and nothing calls it - the port's
-`AddAdditiveFlinch` is the retail's inline code in fn_79_61C4) and `fn_79_72FC` (the code node:
-it is in the asset's code list but no state transitions into it).  `fn_79_5D40` left the list
-with 7.25 and `fn_79_4F88` with 7.26.
+**The two that stayed unmarked after this pass:** `fn_79_1B38` (the retail's additive flinch:
+the module's only copy of that code and nothing calls it - the port's `AddAdditiveFlinch` is the
+retail's inline code in fn_79_61C4) and `fn_79_72FC` (the code node: it is in the asset's code
+list but no state transitions into it).  `fn_79_5D40` left the list with 7.25, `fn_79_4F88` with
+7.26 and both of these with 7.27 (one to T, one marked on a forced call).
 
 ### 7.24 The anim event 0x1b and the grapple lock-on, probe-free (2026-10-22, sb2grapple lane)
 
@@ -1284,3 +1284,33 @@ So `fn_79_4F88` is **marked**: the port's body is the retail's and both of its a
 though the retail itself never runs it. A gdb `call` of the body on the live boss enters it (1
 hit) and then hangs the game - gdb's call allocates in the inferior, which the port's allocator
 does not survive - so the coverage used a temporary caller and a memory write instead.
+
+### 7.27 The last two class-B rows: 1B38 is dead code, 72FC is the code node (2026-10-22, tail2 lane)
+
+**`fn_79_1B38` -> T (dead code, no port body).** The body (0x1B38..0x1C44) is self-contained: it
+builds a CPASAnimParmData for document 0x19 (seven `bl NoParameter__12CPASAnimParmFv`, the
+`li r4, 0` FromEnum at 0x1B88, rodata_7C as the real32 at 0x1B98), runs FindBestAnimation at
+0x1BF0 and, when the result's time is above rodata_9C (`fcmpo` / `ble .L_00001C2C` at
+0x1C04-0x1C08), calls AddAdditiveAnimation at 0x1C28. Nothing references it: the module's .text
+holds no `bl fn_79_1B38` and no other mention (0x1B38 appears only in its own `.fn` header and
+in the next-address column of the 0x1A74 instruction), the .data/.rodata hold no word for it,
+and neither the vtable (`lbl_79_data_424`) nor the code list (`lbl_79_data_3F4`) lists it. So
+the retail never runs it and the port has no body for it (the flinch the port does play is
+fn_79_61C4's inline clamp at 0x65BC-0x65F8: mPendingFlinch 0xf10 = max(0xf10, min(1,
+damage / 20)), then Think's CBCAdditiveFlinchCmd). The tsv row moves B -> T; no marker, no code.
+
+**`fn_79_72FC` -> marked, on a forced call.** The body is one store (`li r0, 0` at 0x72FC, `stw
+r0, 0xc98(r3)` at 0x7300 = the port's mAttackIndex at 0xc98). It *is* referenced: it is the only
+entry of the module's code list lbl_79_data_3F4 (.data 0x3F4 = `{0x0, 0xFFFFFFFF, fn_79_72FC}`),
+which fn_79_D60C installs (`lis r3, lbl_79_data_3F4@ha` / `addi r5, r3, lbl_79_data_3F4@l` at
+0xDAE4-0xDAE8, the words landing at 0xe4.. of the object it fills). The fight never reaches it -
+the asset's only edge out of that code node is `code ResetAttackPhase -> state:Taunt` and no
+state's transition list names the code node (6) - so the marker rests on a forced run:
+
+| body | forced arm | run |
+|---|---|---|
+| `fn_79_72FC` (`ResetAttackPhase`) | `forced (codecall u06d9 ResetAttackPhase)`: the console runs the body through the port's own code table (`CGenericFSM2State::PortFindCodeFunction`), and `tools/drivers/swampboss2_codecall.py` sends it once the boss is on layer 6 | `3dfd2249,04_swamp_temple_dark`, 4000 updates, a lane-local gdb spec on `CSwampBossStage2::ResetAttackPhase(` (no probe): `exit=0`, 0 caught/reach-stub, **1 hit**, `$this->mAttackIndex` = 1 at entry (the attack chain had advanced it), 0 after |
+
+The body is the retail's (`li r0, 0; stw r0, 0xc98; blr`) and `tools/asmcheck.py check
+SwampBossStage2 src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp fn_79_72FC --all` finds
+nothing. Both rows leave the unmarked B list: the module is 99 of 99 B rows marked.

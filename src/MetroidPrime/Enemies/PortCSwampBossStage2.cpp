@@ -1,6 +1,12 @@
 // Host body for REL module SwampBossStage2 (module 79): Chykka's adult form (light flyer with
 // wing growths, dark flyer with ovipositor). Ported from the retail REL pseudocode; see
 // docs/module-analysis/SwampBoss-stage2.md for the function map and retail offsets.
+//
+// One retail body has no port body on purpose: fn_79_1B38 (0x1B38..0x1C44), the standalone
+// "play the additive animation the PAS search returns" player. Nothing references it - the
+// module's .text holds no `bl` for it, the .data/.rodata hold no word for it, and neither the
+// vtable (lbl_79_data_424) nor the code list (lbl_79_data_3F4) lists it - so it is class T
+// (dead code) and re-deriving it would add code no path can reach (the note's 7.27).
 
 #include "MetroidPrime/Enemies/CSwampBossStage2.hpp"
 
@@ -707,6 +713,10 @@ void CSwampBossStage2::UpdateHealthFraction(CStateManager& mgr) {
   HealthInfo()->SetHP((static_cast< float >(3 - mPhase) + fraction) * 0.25f * initialHealth);
 }
 
+// The port's flinch helper: retail's inline clamp in the collision-damage body (0x65BC..0x65F8,
+// mPendingFlinch at 0xf10 = max(0xf10, min(rodata_8C = 1, damage / rodata_84 = 20))), fed to
+// Think's CBCAdditiveFlinchCmd. The module's separate additive-animation player is dead code
+// and has no host body: see the file header.
 void CSwampBossStage2::AddAdditiveFlinch(float amount) {
   mPendingFlinch = rstl::max_val(mPendingFlinch, rstl::min_val(amount / 20.f, 1.f));
 }
@@ -2002,9 +2012,14 @@ void CSwampBossStage2::DropFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_72FC: the code node resets the attack index (retail: `li r0, 0; stw r0, 0xc98`).
-// Not marked: the code node is in the asset's code list but no state transitions into it (the
-// note's 6), so the body never runs.
+// @ fn_79_72FC: the code node resets the attack index (retail: `li r0, 0` at 0x72FC, `stw r0,
+// 0xc98(r3)` at 0x7300; the port's mAttackIndex is at 0xc98).
+// It IS referenced, by the module's code list: lbl_79_data_3F4 (.data 0x3F4) is
+// `{0x0, 0xFFFFFFFF, fn_79_72FC}` and fn_79_D60C installs it (`lis`/`addi r5,
+// lbl_79_data_3F4@l` at 0xDAE4-0xDAE8). No state's transition list names the code node, so the
+// fight never runs it: the marker rests on **forced (codecall <id> ResetAttackPhase)**, the
+// console running it through the port's own code table - 1 hit in
+// `3dfd2249,04_swamp_temple_dark` (note's 7.27).
 void CSwampBossStage2::ResetAttackPhase(CStateManager& mgr, float dt) { mAttackIndex = 0; }
 
 // --------------------------------------------------------------------------------------------
