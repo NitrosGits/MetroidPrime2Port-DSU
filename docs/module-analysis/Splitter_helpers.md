@@ -485,6 +485,17 @@ shield effect - 2/4 lines), `fn_75_9AF8` (the collision vulnerability - 7/8 line
 `fn_75_986C` (the chassis's path update - 25/25 lines, 12/14 branches: the separation's z is
 never above zero and the switch's default is the forward step, which returns earlier).
 
+### 3.13 The next six unmarked bodies
+
+The next six unmarked rows of section 2 that the port has a body for, each read against the REL's
+asm (`tools/asmcheck.py annotate Splitter` for the same decoding):
+
+| body | the diff | the profile / why |
+|---|---|---|
+| `fn_75_1C0C`, `fn_75_1E38`, `fn_75_1F50`, `fn_75_1F98` | no separate body: the port inlines them into the marked `fn_75_1CA0` (the beam info's copy, the impact visor effect's construction and its destruction), so their code was checked there - the beam info's copy (the six words and the two floats, asm 0x1C0C-0x1C2C), the effect's three optionals cleared (asm 0x1F68) and the calls (asm 0x1DD0 to `fn_75_1F50`, asm 0x1E14 to `fn_75_1E38`) | covered by `fn_75_1CA0`: 15/15 lines, 5/5 branches, ALL-ARMS |
+| `fn_75_2280` (the head's chassis search) | right: the areas must be equal (asm 0x22F8-0x2304), the reservation (asm 0x2318) must succeed (asm 0x2320) and the squared distance must be below the best (asm 0x234C, `bge` skips) before the old pick is released (asm 0x2350-0x2380) and the new one is kept (asm 0x238C) | 17/19 lines, 10/14 branches - not marked: the null cast (the listening-AI list holds no other kind of actor) and the failed reservation cannot be forced |
+| `fn_75_2994` (the head's turn upright) | right: the flag byte's 0x20 bit (asm 0x29BC, the word's bit 26) must be set, the angle test is the `<=` of the turn (asm 0x2A38-0x2A44, `cror eq,lt,eq`) and the Y column's x or y must not be zero (asm 0x2A48-0x2A7C) | 18/18 lines, 9/12 branches - not marked: the three untaken branches are inside the inlined GetAngleDiff |
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
