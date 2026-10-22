@@ -43,11 +43,14 @@ bool CDarkSamus::HasBoostBall() const {
   return mBoostBallUid != kInvalidUniqueId;
 }
 
-// fn_10_2EFC (0x00002EFC, 8 bytes): the float at guest 0x314 (0x00002EFC).
+// fn_10_2EFC (0x00002EFC, 8 bytes): the float at guest 0x314 (the `lfs f1, 0x314(r3)` at
+// 0x00002EFC).
+// @ fn_10_2EFC
 float CDarkSamus::GetGuest314() const { return mGuest314; }
 
-// fn_10_2F04 (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 - the extrwi at
-// 0x00002F08 takes the bit 25, which is 1u << (31 - 25) = 0x40.
+// fn_10_2F04 (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 - the `lbz` at
+// 0x00002F04 and the `extrwi` at 0x00002F08 take the bit 25, which is 1u << (31 - 25) = 0x40.
+// @ fn_10_2F04
 bool CDarkSamus::GetGuest318Bit6() const { return (mGuest318 & 0x40) != 0; }
 
 // fn_10_4868 (0x00004868, 0x60 bytes): the actor whose uid is at guest 0xF78 is deleted
@@ -951,6 +954,17 @@ void CDarkSamus::FirePhazonSuperMissile(CStateManager& mgr) {
 
 namespace {
 
+// fn_10_1B24 (0x00001B24, 0xDC bytes): the cross product of two vectors - the x is
+// a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C)
+// and the z a.x * b.y - b.x * a.y (0x00001B54); the host's CVector3f::Cross is the same
+// formula.
+// @ fn_10_1B24
+void CrossProduct(CVector3f& out, const CVector3f& a, const CVector3f& b) {
+  out = CVector3f::Cross(a, b);
+}
+
+
+
 // Port stand-in for the module's boost ball actor (vtable lbl_10_data_104, 0x358 bytes; ctors
 // fn_10_3FD8 and fn_10_3BC4, which adds a fade 0.5 and the tint fn_10_181E0). Only the
 // construction is ported: the CPhysicsActor "Dark Samus BoostBall" (lbl_10_rodata_A4 + 0x15) with
@@ -1045,7 +1059,9 @@ void CDarkSamus::UpdateHeadAim(CStateManager& mgr) {
     toPlayer.Normalize();
   }
   float angle = CVector3f::GetAngleDiff(forward, toPlayer);   // 0x00010B20
-  if (CVector3f::Cross(forward, toPlayer).GetZ() < 0.f) {      // 0x00010B48
+  CVector3f cross;
+  CrossProduct(cross, forward, toPlayer);                      // fn_10_1B24, 0x00010B34
+  if (cross.GetZ() < 0.f) {                                    // 0x00010B48
     angle *= -1.f;                                             // 0x00010B54
   }
   mHeadYaw = 57.295776f * angle; // 0x00010B6C
