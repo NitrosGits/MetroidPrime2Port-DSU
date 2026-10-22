@@ -1874,10 +1874,6 @@ trigger's entry, one per hit, from gdb convenience variables).
   the two swooshes at 0xE3C/0xE4C are deleted (0x000099F4, 0x00009A20) and the element
   generator's auto_ptr at 0xE60/0xE64 takes an empty one (0x00009A68..0x00009A7C).
 - **The BoostBallRoll's Update arm** (fn_10_A3B0, 0x0000A524..0x0000A668) is now whole:
-  - the health (the vtable's slot 0x3C, the float at its +4, 0x0000A524..0x0000A538) and the
-    health - 1.0f (lbl_10_rodata_264, 0x0000A544); the float at 0x314 (fn_10_2EFC, 0x0000A548);
-    the damage is the health - 1.0f unless the compare is unordered, when it is the float at
-    0x314 (0x0000A54C..0x0000A558);
   - the damage value (0x0000A54C..0x0000A558): the `fcmpo` of the float at 0x314 (fn_10_2EFC,
     the call's result in f1) with the health - 1.0f - `bge` takes the health - 1.0f, the other
     way the float at 0x314 (the unordered case too): the damage is min(the float at 0x314, the
