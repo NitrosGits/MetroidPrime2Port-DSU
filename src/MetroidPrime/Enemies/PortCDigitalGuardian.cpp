@@ -426,6 +426,7 @@ void CDigitalGuardian::EnsureBodyActive(CStateManager& mgr) {
 // fn_14_A688 (vtable slot 4): the base's PreThink (the call at 0xA694) and nothing else. The
 // port keeps the body activation the base's PreThink does not do (CPatterned::PreThink only
 // forwards to CEntity::PreThink), so the guardian still thinks.
+// @ fn_14_A688
 void CDigitalGuardian::PreThink(float dt, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   CPatterned::PreThink(dt, mgr);
@@ -1042,22 +1043,23 @@ void CDigitalGuardian::x59BC_(CStateManager& mgr) {
 // fn_14_676C (0xF8 bytes): the collision actor managers' builder, in retail order: fn_14_61DC
 // (the call at 0x678C), fn_14_5C30 (0x6798), fn_14_59BC (0x67A4), fn_14_3974 (0x67B4, with the
 // third argument 0) and the material filter (the SetMaterialFilter call at 0x6844).
+// @ fn_14_676C
 void CDigitalGuardian::x676C_(CStateManager& mgr) {
   x61DC_(mgr);
   x5C30_(mgr);
   x59BC_(mgr);
   x3974_(mgr, false);
-  // The material filter: the retail builds it from the four .rodata words 0x470 (0x2F), 0x474
-  // (0x1C), 0x478 (0x20) and 0x46C (0x3B) with the MWCC helper __shl2i (the DOL's runtime
-  // shift helper), which for the call shape (0, 1, word) returns 1 << (word & 31) in both halves
-  // of the 64-bit pair. The include list is the fourth word's shift (0x08000000 in both halves)
-  // and the exclude list is the or of the first three (0x10008001 in both halves); the type
-  // word is 3, kFT_IncludeExclude.
-  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(CMaterialList(0x0800000008000000ULL),
-                                                        CMaterialList(0x1000800110008001ULL)));
+  // The material filter: each list is 1ull << a .data word (li r3,0; li r4,1; lwz r5; bl __shl2i,
+  // a 64-bit shift): exclude 1 << 0x2F (.data 0x470, 0x67CC) | 1 << 0x1C (0x474, 0x67E8) |
+  // 1 << 0x20 (0x478, 0x6804), include 1 << 0x3B (0x46C, 0x6820); type 3 (li r0,0x3 at 0x6824),
+  // kFT_IncludeExclude; CActor::SetMaterialFilter at 0x6844.
+  SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid),
+      CMaterialList(kMT_CollisionActor, kMT_AIPassthrough, kMT_Player)));
 }
 
 // fn_14_A384 (vtable slot 9): the base's PreRender (the call at 0xA390) and nothing else.
+// @ fn_14_A384
 void CDigitalGuardian::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
 }
@@ -1069,7 +1071,8 @@ void CDigitalGuardian::PreRender(CStateManager& mgr) {
 // it is not -1 (the call at 0xA068). Then the module's own models are drawn (the calls at 0xA0A0,
 // 0xA0B4, 0xA0E8 and 0xA0FC), the GX register colour goes back to black (the Black() call at
 // 0xA0B8 and the renderer call at 0xA0BC), and the alpha is pushed again (the call at 0xA108; the
-// cmpwi at 0xA100 skips it when the alpha is -1).
+// cmpwi at 0xA100 skips it when the alpha is -1), and the end turns the destination alpha off
+// again (0xA118: vtable 0x12C = DisableDestinationAlpha; 0x128 at 0xA07C is SetDestinationAlpha).
 //
 // The four module calls, by size and by what their pseudo-C does:
 //   fn_14_1994 (0xD4): if the flag byte at guest this+0xEB8 is set, every locator id in the
@@ -1086,6 +1089,7 @@ void CDigitalGuardian::PreRender(CStateManager& mgr) {
 //
 // The four calls get the actor's transform (guest this+0x24, the CActor's mTransform) and the
 // actor's draw flags (guest this+0xFC, the CActor's mDrawFlags) - the retail's r5 and r6.
+// @ fn_14_A004
 void CDigitalGuardian::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
   gpRender->SetGXRegister1Color(sGXRegister1Color);
@@ -1103,8 +1107,8 @@ void CDigitalGuardian::AddToRenderer(const CStateManager& mgr) const {
   x17DC_(mgr, GetTransform());
   // fn_14_1700 (0xA0FC): the module's toe model render.
   x1700_(mgr, GetTransform(), GetModelFlags());
-  if (alpha != -1) {
-    gpRender->SetDestinationAlpha(alpha);
+  if (alpha != -1) { // cmpwi r29,-0x1 at 0xA100
+    gpRender->DisableDestinationAlpha(); // 0xA118: gpRender vtable 0x12C, no argument
   }
 }
 
@@ -1448,14 +1452,15 @@ const CHealthInfo* CDigitalGuardian::GetHealthInfo() const { return CPatterned::
 
 // fn_14_9FE4 (vtable slot 16): the "pass through" vulnerability (the call at 0x9FF0) is the
 // answer - the guardian is not hurt by anything, the shots pass through it.
+// @ fn_14_9FE4
 const CDamageVulnerability* CDigitalGuardian::GetDamageVulnerability() const {
   return &CDamageVulnerability::PassThroughVulnerabilty();
 }
 
 // fn_14_10 (vtable slot 18): the actor's bounding box (the GetBoundingBox call at 0x28) is the
 // touch bounds, and the optional is always valid (the byte at 0x18 is set to 1 at 0x30). A REL
-// copy of the DOL's CPatterned::GetTouchBounds (0x80073BF0, the same 26 instructions), so it is
-// cited, not marked.
+// copy of the DOL's CPatterned::GetTouchBounds (0x80073BF0, the same 26 instructions).
+// @ fn_14_10
 rstl::optional_object< CAABox > CDigitalGuardian::GetTouchBounds() const {
   return rstl::optional_object< CAABox >(GetBoundingBox());
 }
@@ -1587,6 +1592,7 @@ void CDigitalGuardian::SetupStateMachine(CStateManager& mgr) {
 // fn_14_9AA8: the base's animation state id (guest this+0x6B4) with 3. The asm tests it with
 // "subfic r0, r0, 3; cntlzw r0, r0; srwi r3, r0, 5" (0x9AAC..0x9AB4), i.e. the answer is true
 // when the id is 3 - the host enum's kAS_Over (the ctor's state id 0 is "not ready").
+// @ fn_14_9AA8
 bool CDigitalGuardian::StateOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimationState.GetState() == CAnimationState::kAS_Over;
 }
@@ -1610,6 +1616,7 @@ bool CDigitalGuardian::HasFaceTarget(CStateManager& mgr, const CTriggerData& dat
 // and keeps its top bit ("srwi r3, r0, 31" at 0x9A58). That bit is clear only when the value
 // is -1 (0xFFFFFFFF): ~(-1) is 0 and (-1) + 1 is 0, and for every other value one of the two
 // terms has its top bit set. So the answer is "the knee index is set".
+// @ fn_14_9A48
 bool CDigitalGuardian::KneeDestroyed(CStateManager& mgr, const CTriggerData& data) const {
   return x1284_ != -1;
 }
@@ -2265,6 +2272,7 @@ int CDigitalGuardian::x705C_() const {
 // The 14 states of lbl_14_data_204 (.data 0x204; fn_14_D904's stores at 0xDCD0..0xDEB8).
 
 // fn_14_9634: the body is empty (the single blr at 0x9634), like CPatterned::Start.
+// @ fn_14_9634
 void CDigitalGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 // fn_14_95B8: the state message picks the work (the cmpwi chain at 0x95C0..0x95E8): on Activate
@@ -2799,6 +2807,7 @@ void CDigitalGuardian::ResetProtectKneesTime(CStateManager& mgr, float dt) {
 // fn_14_7B84: the jump timer (the float at guest this+0x938 = the data block's +0x178,
 // mJumpTimer, the load at 0x7B84) is copied into the member at guest this+0x11E4 (the store at
 // 0x7B88).
+// @ fn_14_7B84
 void CDigitalGuardian::ResetJumpTime(CStateManager& mgr, float dt) {
   x11E4_ = mData.mJumpTimer;
 }
@@ -3052,6 +3061,7 @@ void CDigitalGuardian::SetJumpFaceTarget(CStateManager& mgr, float dt) {
 // fn_14_1570: the anim data's vertex bounds (0x15CC) through Translate(-translation) (the fnegs
 // at 0x1630..0x1638, 0x1654) * the transform (0x24, 0x1664) * Scale(the model's scale, 0x1648;
 // 0x1674), GetTransformedAABox at 0x1684. The translation cancels: the box is about the origin.
+// @ fn_14_1570
 CAABox CDigitalGuardian::x1570_() const {
   const CAABox verts = GetModelData()->GetAnimationData()->CalcBoundingBoxFromModelVerts();
   const CTransform4f xf = CTransform4f::Translate(-GetTranslation()) * GetTransform() *
