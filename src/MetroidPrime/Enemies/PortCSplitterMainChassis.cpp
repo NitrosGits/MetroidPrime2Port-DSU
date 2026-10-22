@@ -2744,6 +2744,23 @@ void CSplitterMainChassis::PortAutoDestruct(float time) {
   }
 }
 
+// fn_75_E660 (0xE660-0xE68C; its caller is the Digital Guardian head's fn_14_14C24): when the
+// chassis is alive (0x420's 0x40 bit, extrwi. 1,25 / beqlr at 0xE664) and 0xD41's 0x01 bit is
+// clear (clrlwi. 31 / bnelr at 0xE670), the bit is set (rlwimi 0,31,31 at 0xE67C) and the death
+// timer 0xD20 is the given time (stfs f1 at 0xE684). PortUpdateTimers counts it down. Every arm
+// ran from the head's 14C24 (the bit clear, already set, and a chassis just killed).
+// @ fn_75_E660
+void CSplitterMainChassis::PortStartDeathTimer(float time) {
+  if (!GetAlive()) { // 0xE664
+    return;
+  }
+  if ((mFlagsD41 & 0x1) != 0) { // 0xE670
+    return;
+  }
+  mFlagsD41 |= 0x1; // 0xE67C
+  mTimerD20 = time; // 0xE684
+}
+
 // ---------------------------------------------------------------------------------------------
 // The module's loaders (fn_75_82B0 for the main chassis, fn_75_FC for the command module) and
 // entry points.
