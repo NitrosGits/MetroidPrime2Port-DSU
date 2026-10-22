@@ -1158,22 +1158,22 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
 // fn_9_45A4 (0x304 bytes): the module's own collision actor managers, built by its kSM_Create
 // case. The guest makes two managers, each with one sphere joint:
 //   - the shield's (guest this+0xA3C): a sphere on the left wrist (guest this+0xC62), radius
-//     1.0f (rodata_43C), mass 1000.0f (rodata_4B0), named "Shield_CollisionActor" (the module's
+//     1.5f (rodata_47C), mass 1000.0f (rodata_4B0), named "Shield_CollisionActor" (the module's
 //     rodata at 0x893). Its collision actor gets the shield's charge vulnerability (the block's
 //     +0xF4 = guest this+0x8B4) and the response type 0x12 = 18 = kWCR_EnemyShielded
 //     (0x000046EC..0x000046F4). The actor's id goes to guest this+0xBC6.
 //   - the blade's (guest this+0xA40): a sphere on the second gun locator (guest this+0xC5F),
-//     the same radius and mass, named "Blade_CollisionActor" (the module's rodata at 0x8A9). Its
-//     collision actor gets the pass-through vulnerability (0x00004814..0x00004820). The actor's
-//     id goes to guest this+0xBC8.
+//     radius 1.0f (rodata_43C) and the same mass, named "Blade_CollisionActor" (the module's
+//     rodata at 0x8A9). Its collision actor gets the pass-through vulnerability
+//     (0x00004814..0x00004820). The actor's id goes to guest this+0xBC8.
 // The guest then adds the bit 0x8000 (the material 15, kMT_Glass) to the actor's own material
 // filter's exclude list (0x00004830..0x0000487C).
 void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
   {
     rstl::vector< CJointCollisionDescription > descriptions;
     descriptions.push_back(CJointCollisionDescription::SphereCollision(
-        mLocatorLWrist, CVector3f::Zero(), 1.f, rstl::string_l("Shield_CollisionActor"),
-        1000.f));  // 0x00004610..0x00004620
+        mLocatorLWrist, CVector3f::Zero(), 1.5f, rstl::string_l("Shield_CollisionActor"),
+        1000.f));  // 0x00004604 (the radius rodata_47C), 0x0000460C (the mass rodata_4B0)
     mCollisionShield = rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(),
                                                       descriptions, false);  // 0x00004694
     xbc6_ = mCollisionShield->GetCollisionDescFromIndex(0).GetCollisionActorId();  // 0x000046B8
@@ -1186,7 +1186,7 @@ void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
     rstl::vector< CJointCollisionDescription > descriptions;
     descriptions.push_back(CJointCollisionDescription::SphereCollision(
         mLocatorGun2, CVector3f::Zero(), 1.f, rstl::string_l("Blade_CollisionActor"),
-        1000.f));  // 0x00004744
+        1000.f));  // 0x00004728 (the radius rodata_43C), 0x00004730 (the mass rodata_4B0)
     mCollisionBlade = rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(),
                                                      descriptions, false);  // 0x000047C8
     xbc8_ = mCollisionBlade->GetCollisionDescFromIndex(0).GetCollisionActorId();  // 0x000047E8
@@ -1248,24 +1248,23 @@ void CCommandoPirate::x3D64_SetWarpOut(CStateManager& mgr, bool warpOut) {
 // that touched it, and the blade's damage when the blade is out. With the shield up (the byte
 // at guest this+0xC65's 0x04 bit) the sender has to be the shield's collision actor (guest
 // this+0xBC6) and the damage is the shield's charge damage (the block's +0xD8 = guest this+0x898);
-// with the blade out (the 0x20 bit) the sender has to be the blade's collision actor (guest
-// this+0xBC8) and the damage is the blade's damage (the block's +0x0C = guest this+0x7CC). The
+// a sender that is not the shield's actor falls into the blade's path (0x00003A90), so the blade's
+// damage runs with the shield up too. With the blade out (the 0x20 bit) the sender has to be the
+// blade's collision actor (guest this+0xBC8) and the damage is the blade's damage (the block's
+// +0x0C = guest this+0x7CC). The
 // touched object has to be the player, the module's damage timer (guest this+0x440) has to be at
 // or below zero, and the damage is applied with the module's own material filter (its data word
 // 0x3B = kMT_Solid, the type 3 = kFT_IncludeExclude) and the actor's forward direction.
 void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg) {
   TUniqueId actorId = kInvalidUniqueId;
   const CDamageInfo* damage = nullptr;
-  if ((xc65_ & 0x04) != 0) {  // 0x00003A78..0x00003A80, the shield is up
-    if (msg.GetSenderId() != xbc6_) {  // 0x00003A84..0x00003A90
-      return;
-    }
+  // The guest's first path (the shield, the 0x04 bit of the byte at guest this+0xC65) falls into
+  // the second one (the blade) when the sender is not the shield's collision actor (0x00003A90),
+  // so the blade's damage still runs with the shield up.
+  if ((xc65_ & 0x04) != 0 && msg.GetSenderId() == xbc6_) {  // 0x00003A78..0x00003A90
     actorId = xbc6_;
     damage = &mData.mShield.mChargeDamage;  // guest this+0x898
-  } else if ((xc65_ & 0x20) != 0) {         // 0x00003B90..0x00003B98, the blade is out
-    if (msg.GetSenderId() != xbc8_) {        // 0x00003B9C..0x00003BA8
-      return;
-    }
+  } else if ((xc65_ & 0x20) != 0 && msg.GetSenderId() == xbc8_) {  // 0x00003B90..0x00003BA8
     actorId = xbc8_;
     damage = &mData.mBladeDamage;  // guest this+0x7CC
   } else {
@@ -1500,20 +1499,23 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
 // otherwise the weapon is the sender itself (0x00002D98..0x00002DA8).
 //
 // The knock-back: the info (the weapon's own forward column, its id, its owner id, its current
-// damage info and the direct flag - 0x00002DB8..0x00002ED4), the knock-back manager's anim
-// reaction range when the flag byte at guest this+0xC64 has its 0x01 bit (0x00002ED8..0x00002EE4),
-// the knock-back itself (the vtable slot 0x9C, 0x00002EF0) and the module's own flag byte
-// (0x00002F08..0x00002F1C).
+// damage info and the direct flag - 0x00002DB8..0x00002E00), the knock-back manager's anim
+// reaction range when the flag byte at guest this+0xC64 has its 0x01 bit (0x00002E04..0x00002E1C),
+// the knock-back itself (the vtable slot 0x9C, 0x00002E38), the reaction range the guest restores
+// right after it (0x00002E3C..0x00002E48) and the module's own flag byte (0x00002E4C..0x00002E8C).
 //
 // Then the commando looks for the ground under itself: a ray from its own position plus the up
 // vector six units down (rodata_49C) with the module's own material filter - the include list
-// kMT_Solid (the data word 0x3B at lbl_9_data_814) and the exclude list kMT_Character,
-// kMT_CollisionActor and kMT_Platform (the data words 0x21, 0x2F and 0x31 at lbl_9_data_818,
-// lbl_9_data_81C and lbl_9_data_824), the type 3 = kFT_IncludeExclude. When the ray hits, the
-// module's own float at guest this+0xC00 takes 0.01f (rodata_4A0), the commando dies with the
-// script object state "RATL" (kSS_DeathRattle) and its own forward direction (the vtable slot
-// 0x98, 0x00003018), its health is zeroed (the vtable slot 0x38, 0x0000302C) and the health cause
-// is updated (0x00003068).
+// kMT_Solid (the data word 0x3B at lbl_9_data_814) and the exclude list kMT_Player,
+// kMT_Character, kMT_CollisionActor and kMT_Platform (the data words 0x20, 0x21, 0x2F and 0x31
+// at lbl_9_data_81C, lbl_9_data_818, lbl_9_data_820 and lbl_9_data_824), the type 3 =
+// kFT_IncludeExclude.
+//
+// When the ray is clear, the module's own float at guest this+0xC00 takes
+// 0.01f (rodata_4A0), the commando dies with the script object state "RATL" (kSS_DeathRattle)
+// and its own forward direction (the vtable slot 0x98, 0x00003018), its health is zeroed (the
+// vtable slot 0x38, 0x0000302C), the damage source is recorded (0x00003044..0x00003068) and the
+// module's flag byte takes its 0x04 bit (0x0000306C..0x00003078).
 void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   const CWeapon* weapon = nullptr;
@@ -1531,44 +1533,48 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
   if (weapon != nullptr) {
     const CKnockBackInfo info(weapon->GetTransform().GetForward(), weapon->GetUniqueId(),
                               weapon->GetOwnerId(), weapon->GetCurrentDamageInfo(),
-                              true);  // 0x00002DB8..0x00002ED4
-    if ((xc64_ & 0x01) != 0) {  // 0x00002ED8..0x00002EE4
+                              true);  // 0x00002DB8..0x00002E00
+    if ((xc64_ & 0x01) != 0) {  // 0x00002E04..0x00002E1C
       KnockBackController().SetAnimReactionRange(CKnockBackMgr::kAR_Hurled, CKnockBackMgr::kAR_Fall);
     }
-    KnockBack(mgr, info);  // 0x00002EF0 (the module's own override, fn_9_C300)
+    KnockBack(mgr, info);  // 0x00002E38 (the vtable slot 0x9C, the module's own override, fn_9_C300)
+    // The guest restores the reaction range right after the knock-back (0x00002E3C..0x00002E48).
+    KnockBackController().SetAnimReactionRange(CKnockBackMgr::kAR_None, CKnockBackMgr::kAR_Fall);
   }
-  // The module's flag byte: the 0x04 bit is set when the knock-back manager's reaction flags are
-  // between 2 and 4 (the guest's word at guest this+0x630, the manager's own flags at its +0x10,
-  // 0x00002E4C..0x00002E74); otherwise the 0x01 bit is folded into the 0x04 bit (0x00002E78).
-  const uint reactionFlags = KnockBackController().GetActiveReactionFlags();
-  if (reactionFlags >= 2 && reactionFlags < 5) {
-    xc64_ |= 0x04;
+  // The module's flag byte: the 0x04 bit is set when the knock-back manager's reaction is between
+  // 2 and 4 (the guest's word at guest this+0x630, the manager's own mReaction at its +0x10, the
+  // compares at 0x00002E50 and 0x00002E58); otherwise the 0x04 bit becomes 0x04 | 0x01 (the extrwi
+  // 1,29 = 0x04 and clrlwi 31 = 0x01 or-ed and put back by rlwimi 2,29,29, 0x00002E78..0x00002E8C).
+  const uint reaction = KnockBackController().GetActiveReaction();
+  if (reaction >= 2 && reaction < 5) {
+    xc64_ |= 0x04;                                         // 0x00002E64..0x00002E70
   } else {
-    xc64_ = (xc64_ & ~0x04) | ((xc64_ & 0x04) | (xc64_ & 0x01));
+    xc64_ |= (xc64_ & 0x01) << 2;                          // 0x00002E78..0x00002E8C
   }
   // The ray under the commando: from its own position plus the up vector six units down.
   const CVector3f start = GetTranslation() + CVector3f::Up();
   const CVector3f end = start + CVector3f::Down() * 6.f;
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Solid), CMaterialList(kMT_Character, kMT_CollisionActor, kMT_Platform));
+      CMaterialList(kMT_Solid),
+      CMaterialList(kMT_Player, kMT_Character, kMT_CollisionActor, kMT_Platform));
   if (mgr.RayCollideWorld(start, end, filter, this)) {  // 0x00002FC4
     xc00_ = 0.01f;                                        // rodata_4A0, 0x00002FF0
     Death(mgr, GetTransform().GetForward(), kSS_DeathRattle);  // 0x00003018
     HealthInfo()->SetHP(0.f);                              // 0x0000302C..0x0000303C
-    // The guest's CStateManager::UpdateHealthCause (the DOL's fn at 0x8003DD88): the health
-    // info's last-damage record, and its cause of death when the actor is frozen.
-    const bool frozen = BodyController()->IsFrozen();
-    if (frozen) {
-      HealthInfo()->SetCauseOfDeathWeapon(weapon != nullptr
-                                              ? weapon->GetCurrentDamageInfo().GetWeaponMode()
-                                              : CWeaponMode(),
-                                          weapon != nullptr ? weapon->GetOwnerId() : senderId,
-                                          weapon != nullptr ? weapon->GetUniqueId() : senderId,
-                                          frozen, false);
+    // The guest records the damage source when there is a weapon (the call at 0x00003068).
+    if (weapon != nullptr) {
+      mgr.RecordDamageSource(*this, weapon->GetUniqueId(), weapon->GetCurrentDamageInfo(), true,
+                             false);                       // 0x00003044..0x00003068
     }
+    xc64_ |= 0x04;                                         // 0x0000306C..0x00003078
   }
 }
 
+// Run: cov 2026-10-21 (area 59, 05_temple_federationsite_dark, the launching driver): every arm -
+// the gcov report gives 15/15 lines and 2/2 branches.  The driver sends the module's own
+// launching message (0x584C4155) four times in a row, so the helper's early out (the 0x08 bit of
+// the flag byte at guest this+0xC63, 0x0000393C) runs after the first call set it (0x00003A24).
+// @ fn_9_3900
 // fn_9_3900 (0x15c bytes): the module's jump-back velocity helper - the ballistic velocity that
 // carries the commando to its own jump target (the vector at guest this+0xBF0, the float at guest
 // this+0xBEC). It runs only while the flag byte at guest this+0xC63 has no 0x08 bit

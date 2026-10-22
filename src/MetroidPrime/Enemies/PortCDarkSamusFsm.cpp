@@ -4040,7 +4040,6 @@ static int GetRingRayCount() { return 8; }
 // lbl_10_data_C54 / C58 (0x3B kMT_Solid, 0x30 kMT_AIBlock) and excluding C5C (0x31 kMT_Platform).
 // A valid hit (`cmplwi r0, 0x1` at 0x00016828) answers false, anything else true.
 // @ fn_10_166AC
-// @ fn_10_16600
 bool CDarkSamus::IsRingRayClear(CStateManager& mgr, const CVector3f& dest, int i, float reach,
                                 float radius) const {
   const CVector3f offset = radius * GetRingRayOffset(i);

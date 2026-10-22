@@ -194,11 +194,15 @@ try:
             # kSM_Start case sets the player's turret state to kTS_Active).
             run('send %s Start' % uid)
             wait_frames(20)
-            # The turret fires with A - twice, with the reload timer (the guest's 0x1B8, the
-            # fire rate at 0x194) run out in between, so both shots are taken.
-            run('press A 20')
-            wait_frames(3000)
-            run('press A 20')
+            # The turret fires with A.  The second press is short and comes while the reload
+            # timer (the guest's 0x1B8, the fire rate at 0x194) is still positive, so the shot is
+            # skipped - the guest's arm at 0x12BC.  The stick command releases the button: the
+            # console's `press` holds it, and a held button has no second press event.
+            run('press A 1')
+            wait_frames(1)
+            run('stick 0 0 1')
+            wait_frames(1)
+            run('press A 1')
             wait_frames(40)
             run('status')
             run('send %s Damage' % uid)

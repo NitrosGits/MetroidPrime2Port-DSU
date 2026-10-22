@@ -59,3 +59,40 @@
 @f1445 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 155; visor dark
 @f1460 visor combat; uevent u04f7 9 199
 @f1470 status
+@f1480 uevent u04f7 9 130; uevent u04f7 9 180
+@f1485 uevent u04f7 9 181
+@f1490 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 182; place u04f7 player 1; uevent u04f7 9 101
+@f1493 uevent u04f7 9 102
+@f1496 uevent u04f7 9 103
+@f1499 uevent u04f7 9 104
+@f1502 uevent u04f7 9 105
+@f1505 uevent u04f7 9 119
+@f1508 uevent u04f7 9 101; place u04f7 player 60
+@f1511 uevent u04f7 9 183; place u04f7 player 1
+@f1514 uevent u04f7 9 199
+@f1520 uevent u04f7 9 130; uevent u04f7 9 184
+@f1525 uevent u04f7 9 185
+@f1530 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 186; place u04f7 player 60
+@f1533 place u04f7 player 1
+@f1534 uevent u04f7 9 196; place u04f7 player 1
+@f1535 place u04f7 player 1
+@f1536 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 186
+@f1537 uevent u04f7 9 140; place u04f7 player 1
+@f1539 uevent u04f7 9 187; place u04f7 player 1
+@f1560 uevent u04f7 9 195; place u04f7 player 1
+@f1565 place u04f7 player 1
+@f1570 uevent u04f7 9 199
+@f1580 uevent u04f7 9 130; uevent u04f7 9 188
+@f1585 uevent u04f7 9 190; uevent u04f7 9 150
+@f1600 uevent u04f7 9 160
+@f1605 uevent u04f7 9 199; uevent u04f7 9 189
+@f1610 uevent u04f7 9 130; uevent u04f7 9 191; uevent u04f7 9 152
+@f1625 uevent u04f7 9 192
+@f1635 uevent u04f7 9 199
+@f1640 uevent u04f7 9 130; uevent u04f7 9 193
+@f1645 uevent u04f7 9 194
+@f1650 uevent u04f7 9 199
+@f1655 uevent u04f7 9 130; uevent u04f7 9 177
+@f1660 uevent u04f7 9 160
+@f1665 uevent u04f7 9 164; uevent u04f7 9 199
+@f1680 status

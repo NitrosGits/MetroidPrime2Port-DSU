@@ -1,0 +1,9 @@
+# DigitalGuardian area 53, the second run for fn_14_A6A8: "XDEL" (0x5844454C) before the guardian's
+# first Think, so both collision managers (0xE60, 0xE64) are null and no beacon sound plays. A
+# delete request delivers "XDEL" (kSM_Delete) and then removes the guardian.
+@f30 layer 3
+@f60 layer 11
+@f145 obj e00350060
+@f150 send e00350060 Delete
+@f170 objs Guardian
+@f180 covdump

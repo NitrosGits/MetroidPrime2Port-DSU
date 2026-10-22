@@ -987,7 +987,6 @@ void SpawnStandIn(bool& seen, const char* fn, const char* what) {
   }
 }
 
-bool sStandIn99B8 = false;
 bool sStandIn9B24 = false;
 
 } // namespace
@@ -999,11 +998,10 @@ bool sStandIn9B24 = false;
 // data's mBoostBallModel), the actor's model scale and looping (0x00009EB8). 0xD14 == 0.0f picks
 // the ctor fn_10_3FD8 (0x00009ED0), else fn_10_3BC4; both are the stub above. Then lighting on
 // (0x0000A024), AddObject (0x0000A030) and the swooshes fn_10_9B24 (0x0000A03C).
-// Port limits: fn_10_99B8 is the darksamus2 lane's StopBoostBallParticles (613d2cbfb, not merged
-// here; the merge swaps the call in) and fn_10_9B24 is not in the port, so both stay stand-ins.
+// Port limits: fn_10_9B24 (the swooshes) is not in the port, so it stays a stand-in.
 void CDarkSamus::SpawnBoostBall(CStateManager& mgr) {
-  DeleteBoostBall(mgr); // fn_10_9AC4
-  SpawnStandIn(sStandIn99B8, "fn_10_99B8", "SpawnBoostBall (0x00009E30)");
+  DeleteBoostBall(mgr); // fn_10_9AC4, 0x00009E24
+  StopBoostBallParticles(); // fn_10_99B8, 0x00009E30
   mBoostBallUid = mgr.AllocateUniqueId();
   CTransform4f xf = GetTransform();
   xf.SetColumn(kDZ, CVector3f(0.f, 0.f, 1.f));
@@ -1180,4 +1178,132 @@ void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
   } else {
     RemoveMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
   }
+}
+
+// fn_10_1ACA0 (0x0001ACA0, 0x168 bytes): the dive's contact with the player. Only while the dive
+// is launched (0xB20 bit 0x40, `extrwi. r0, r0, 1, 25` at 0x0001ACC0) and the actor has touch
+// bounds (vtable 0x48 at 0x0001ACDC, its valid byte at 0x0001AD28): the player's touch bounds
+// (the same slot at 0x0001AD40; retail reads the box without its valid byte) grown by
+// lbl_10_rodata_41C = 0.1f on every side (0x0001AD5C..0x0001AD84) must overlap the actor's
+// (DoBoundsOverlap at 0x0001ADAC). Then the first contact hits the player (the dive's hit bit
+// 0x20 clear, `extrwi. r0, r3, 1, 26` at 0x0001ADC0: fn_10_138A4), and a later one after a
+// bounce (bit 0x02, `extrwi r0, r3, 1, 30` at 0x0001ADD8) pushes it (fn_10_13868).
+// Unmarked: the arm with the hit already made, no bounce and an overlap has not run yet.
+void CDarkSamus::UpdateDiveContact(CStateManager& mgr) {
+  if (!mDive.mLaunched) {
+    return;
+  }
+  const rstl::optional_object< CAABox > bounds = GetTouchBounds();
+  if (!bounds.valid()) {
+    return;
+  }
+  const rstl::optional_object< CAABox > playerBounds = mgr.GetPlayer(0)->GetTouchBounds();
+  const CAABox& box = playerBounds.data();
+  const CAABox grown(CVector3f(box.GetMinPoint().GetX() - 0.1f, box.GetMinPoint().GetY() - 0.1f,
+                               box.GetMinPoint().GetZ() - 0.1f),
+                     CVector3f(box.GetMaxPoint().GetX() + 0.1f, box.GetMaxPoint().GetY() + 0.1f,
+                               box.GetMaxPoint().GetZ() + 0.1f));
+  if (!bounds.data().DoBoundsOverlap(grown)) {
+    return;
+  }
+  if (!mDive.mHitPlayer) {
+    HitPlayerWithDive(mgr); // 0x0001ADD0
+  } else if (mDive.mBounced) {
+    PushPlayerAfterBounce(mgr); // 0x0001ADEC
+  }
+}
+
+// fn_10_13868 (0x00013868, 0x3C bytes): unless the player is morphed (its 0x38C, `cmpwi r0, 0x1`
+// at 0x0001387C), fn_10_13750 pushes it with the dive's horizontal impulse 0xB10 and no vertical
+// one (lbl_10_rodata_3FC = 0.0f, 0x00013884..0x0001388C).
+// @ fn_10_13868
+void CDarkSamus::PushPlayerAfterBounce(CStateManager& mgr) {
+  if (mgr.GetPlayer(0)->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    PushPlayer(mgr, mDive.mImpulseHorizontal, 0.f);
+  }
+}
+
+// fn_10_F710 (0x0000F710, 0xF0 bytes): the silhouette fade 0xD14. It rises at
+// lbl_10_rodata_420 = 1.6 per second (0x0000F780) while the stage's first bool (its info's +0x30,
+// `lbz r0, 0x30(r3)` at 0x0000F758) is 1 and the stage changed without a reaction (0xD59, read at
+// 0x0000F764); otherwise, also with no stage (0x0000F748), it falls at lbl_10_rodata_424 = 0.6
+// (0x0000F7A0). Then it is clamped to [0, 1] (0x0000F7B4 / 0x0000F7C8).
+// @ fn_10_F710
+void CDarkSamus::UpdateSilhouetteFade(CStateManager& mgr, float dt) {
+  uchar rise = 0;
+  if (GetBattleStage(mgr) != nullptr && GetBattleStage(mgr)->GetStageInfo().unknown_0x3ff87a8c == 1) {
+    rise = mStageChanged;
+  }
+  if (rise == 1) {
+    mGuestD14 += 1.6f * dt;
+  } else {
+    mGuestD14 -= 0.6f * dt;
+  }
+  mGuestD14 = CMath::Clamp(0.f, mGuestD14, 1.f);
+}
+
+// fn_10_F654 (0x0000F654, 0xBC bytes): the invulnerable model's fade 0xD24. It rises at
+// lbl_10_rodata_420 = 1.6 per second (0x0000F6B0) while the 0xCD0 sub-object is on (its first
+// byte 1, 0x0000F658) and its vector 0xD18 is not the zero vector (the three fcmpu at
+// 0x0000F670..0x0000F690); otherwise it falls at lbl_10_rodata_424 = 0.6 (0x0000F6CC). Then it is
+// clamped to [0, 1] (0x0000F6E4 / 0x0000F6F8).
+// @ fn_10_F654
+void CDarkSamus::UpdateInvulnerableFade(float dt) {
+  if (mGuestCD0 == 1 && mGuestD18 != CVector3f::Zero()) {
+    mGuestD24 += 1.6f * dt;
+  } else {
+    mGuestD24 -= 0.6f * dt;
+  }
+  mGuestD24 = CMath::Clamp(0.f, mGuestD24, 1.f);
+}
+
+// fn_10_1AE08 (0x0001AE08, 0xB8 bytes): the melee hit. While the melee window 0xC00 is open
+// (above lbl_10_rodata_3FC = 0.0f, `cror eq, lt, eq` at 0x0001AE3C), the contact has not hit yet
+// (0x9DE, `cmplwi r0, 0x1` at 0x0001AE48) and the player is within the melee reach (fn_10_17CEC
+// against fn_10_1BDF0, `bgt` at 0x0001AE6C), the attacks 1, 2 and 4 (the switch at
+// 0x0001AE74..0x0001AE90: 3, >= 5 and < 1 leave) apply the melee damage (fn_10_13998).
+// @ fn_10_1AE08
+void CDarkSamus::UpdateMeleeHit(CStateManager& mgr) {
+  if (mGuestC00 <= 0.f) {
+    return;
+  }
+  if (mMeleeContact.mHit == 1) {
+    return;
+  }
+  const float reach = GetMeleeReach();
+  if (GetDistanceToPlayer(mgr) > reach) {
+    return;
+  }
+  const int attack = static_cast< int >(mCurrentAttack);
+  if (attack == 1 || attack == 2 || attack == 4) {
+    ApplyMeleeDamage(mgr); // 0x0001AE9C
+  }
+}
+
+// fn_10_1B0E0 (0x0001B0E0, 0x74 bytes): while the stage's fourth bool (its info's +0x33,
+// `lbz r0, 0x33(r3)` at 0x0001B114) is 1, the flash window restarts every Think: fn_10_18628
+// with lbl_10_rodata_3FC = 0.0f and lbl_10_rodata_3E8 = 1.0f (0x0001B12C..0x0001B138). No stage
+// (0x0001B104) does nothing.
+// @ fn_10_1B0E0
+void CDarkSamus::UpdateStageFlash(CStateManager& mgr) {
+  if (GetBattleStage(mgr) != nullptr && GetBattleStage(mgr)->GetUnknown53FDCB5B() == 1) {
+    SetGuestE04(0.f, 1.f);
+  }
+}
+
+// fn_10_1B154 (0x0001B154, 0xA8 bytes): once (0x10A4, set at 0x0001B1E0), when the threshold
+// 0x10A0 is above lbl_10_rodata_3FC = 0.0f (0x0001B180) and the health (vtable 0x3C, its +4 at
+// 0x0001B1A0) drops below it (`bge` at 0x0001B1AC), the actor sends kSS_AILogicState1
+// ('AIS1', `addi r4, r4, 0x5331` at 0x0001B1C8) with kInvalidUniqueId and kSM_None (-1).
+// @ fn_10_1B154
+void CDarkSamus::CheckHealthThreshold(CStateManager& mgr) {
+  const float threshold = mData.mUnknown72EDEB7D;
+  if (threshold <= 0.f || mHealthThresholdSent) {
+    return;
+  }
+  if (GetHealthInfo()->GetHP() >= threshold) {
+    return;
+  }
+  SendScriptMsgs(kSS_AILogicState1, mgr, kInvalidUniqueId, kSM_None);
+  mHealthThresholdSent = true;
 }
