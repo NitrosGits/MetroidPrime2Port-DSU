@@ -1247,8 +1247,9 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
 //     radius 1.0f (rodata_43C) and the same mass, named "Blade_CollisionActor" (the module's
 //     rodata at 0x8A9). Its collision actor gets the pass-through vulnerability
 //     (0x00004814..0x00004820). The actor's id goes to guest this+0xBC8.
-// The guest then adds the bit 0x8000 (the material 15, kMT_Glass) to the actor's own material
-// filter's exclude list (0x00004830..0x0000487C).
+// The guest then adds the bit 0x8000 of the exclude list's high word (the filter's +0x08, the or
+// at 0x0000485C) - the material 47, kMT_CollisionActor - to the actor's own material filter, so
+// the commando does not collide with its own shield and blade spheres (0x00004830..0x0000487C).
 void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
   {
     rstl::vector< CJointCollisionDescription > descriptions;
@@ -1277,7 +1278,7 @@ void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
     }
   }
   CMaterialFilter filter = GetMaterialFilter();  // 0x00004834
-  filter.ExcludeList().Add(kMT_Glass);           // the bit 0x8000, 0x0000485C..0x0000487C
+  filter.ExcludeList().Add(kMT_CollisionActor);  // high word 0x8000, 0x0000485C..0x0000487C
   SetMaterialFilter(filter);                     // 0x0000487C
 }
 
