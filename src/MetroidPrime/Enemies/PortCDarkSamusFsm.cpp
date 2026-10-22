@@ -59,6 +59,8 @@
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "MetroidPrime/CDecalManager.hpp"
 #include "Weapons/CCollisionResponseData.hpp"
+#include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CModelData.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1845,9 +1847,6 @@ void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
 // Every message then rolls the ball to the hint: with a hint (the uid 0xEC0, 0x0000A66C)
 // fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
 // (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
-// Port limits: fn_10_A1C0 (0x1F0 bytes, it picks the roll's hint and the roll's parameters),
-// fn_10_AA04 (0x760 bytes, the roll to the hint) and fn_10_A06C (0xE8 bytes, the ball's
-// transform and the roll emitter) are not ported, so their calls stay stand-ins.
 void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallRoll", msg);
   UpdateCurrentAttack(0x20000, mgr, msg);                  // 0x0000A3F4
@@ -1869,7 +1868,7 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
         GetGuest318Bit6() == true) {            // 0x0000A4FC (fn_10_2F04: the bit 0x40 of the
                                               // byte 0x318, the `clrlwi` at 0x0000A500
                                               // takes the bool's low byte)
-      FsmStandIn("fn_10_A1C0", "BoostBallRoll's roll pick"); // 0x0000A514
+      StartBoostBallRoll(mgr); // fn_10_A1C0, 0x0000A514
       mGuestCD0 = 0;                                     // 0x0000A520
       // 0x0000A524..0x0000A538: the health (the vtable's slot 0x3C, the float at its +4) and
       // 0x0000A544: the health - 1.0f (lbl_10_rodata_264). 0x0000A548: the float at 0x314
@@ -1911,12 +1910,224 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   }
   if (mBoostHintUid != kInvalidUniqueId) { // 0x0000A66C (the uid 0xEC0)
-    FsmStandIn("fn_10_AA04", "BoostBallRoll's roll to the hint"); // 0x0000A68C
+    RollToBoostHint(mgr, dt); // fn_10_AA04, 0x0000A68C
   } else {
     MoveInOneFrameOR(CVector3f(0.f, 1.25f, 0.f), dt); // 0x0000A6BC
   }
-  FsmStandIn("fn_10_A06C", "BoostBallRoll's ball update"); // 0x0000A6C8
+  UpdateBoostBallAtActor(mgr); // fn_10_A06C, 0x0000A6C8
   RollBoostBallToPosition(dt); // fn_10_A154, 0x0000A6D4
+}
+
+// fn_10_A1C0 (0x0000A1C0, 0x1F0 bytes): the roll's start. The hint 0xEC0 is cleared
+// (kInvalidUniqueId, 0x0000A1EC); the DoneRolling trigger's record takes the elapsed time 0x8B0
+// (0xEA8, 0x0000A1FC), the actor's position (0xEAC/0xEB0/0xEB4, 0x0000A204..0x0000A214) and the
+// radius lbl_10_rodata_294 = 1000.0f (0xEB8, 0x0000A218). The direction from the actor to the
+// player (mgr+0x14FC, 0x0000A21C) with z = lbl_10_rodata_25C = 0.0f (0x0000A238), normalized
+// when it can be (`clrlwi r0, r3, 24; cmplwi r0, 0x1` at 0x0000A258/0x0000A25C), is reversed
+// (lbl_10_rodata_288 = -1.0f, 0x0000A274..0x0000A28C): the actor turns away from the player.
+// The turn: LookAt from the facing (the transform's Y column 0x28/0x38/0x48) to it with the
+// limit lbl_10_rodata_298 = 6.2831855f (0x0000A2E8), its vector part taken into the actor's frame
+// (TransposeRotate at 0x0000A318), the matrix's quaternion times it (0x0000A344, 0x0000A354), the
+// forces cleared (0x0000A37C) and the transform rebuilt at the position 0x54 (0x0000A38C,
+// SetTransform at 0x0000A398). No arm but the Normalize test.
+void CDarkSamus::StartBoostBallRoll(CStateManager& mgr) {
+  mBoostHintUid = kInvalidUniqueId; // 0x0000A1EC
+  mGuestEA8 = mElapsedTime;         // 0x0000A1FC
+  mGuestEAC = GetTranslation();     // 0x0000A204..0x0000A214
+  mGuestEB8 = 1000.f;               // lbl_10_rodata_294, 0x0000A218
+  CVector3f away = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
+  away.SetZ(0.f);                      // lbl_10_rodata_25C, 0x0000A238
+  if (away.CanBeNormalized() == true) { // 0x0000A25C
+    away.Normalize();                  // 0x0000A268
+  }
+  away = -1.f * away; // lbl_10_rodata_288, 0x0000A274..0x0000A28C
+  const CVector3f fwd = GetTransform().GetForward(); // guest 0x28/0x38/0x48
+  const CQuaternion look = CQuaternion::LookAt(
+      CUnitVector3f(fwd.GetX(), fwd.GetY(), fwd.GetZ()),
+      CUnitVector3f(away.GetX(), away.GetY(), away.GetZ()),
+      CRelAngle::FromRadians(6.2831855f)); // lbl_10_rodata_298, 0x0000A2E8
+  const CQuaternion local(look.GetScalar(),
+                          GetTransform().TransposeRotate(look.GetVector())); // 0x0000A318
+  const CQuaternion rot = CQuaternion::FromMatrix(GetTransform()) * local; // 0x0000A344/0x0000A354
+  ClearForcesAndTorques();                                  // 0x0000A37C
+  SetTransform(rot.BuildTransform4f(GetTranslation()));     // 0x0000A38C, 0x0000A398
+}
+
+// fn_10_A814 (0x0000A814, 0x1F0 bytes): the boost ball's collision at a hint. The one-shot
+// collision sound (guest 0xE80, `addi r7, r30, 0xe80`) plays at the actor's position 0x54 toward
+// lbl_10_rodata_288 = -1.0f times sForwardVector (0x0000A84C..0x0000A870), not looped (`li r8,
+// 0x0`, PlayCustomSound at 0x0000A874). With the collision 'PART' (the valid byte 0xE7C,
+// `cmplwi r0, 0x0` at 0x0000A87C) a CExplosion (`new 0x180` at 0x0000A8F8) named
+// "Dark Samus Boost Collision" (lbl_10_rodata_2E4 + 0x13, 0x0000A918) is made at the actor's
+// transform whose translation is the position + (lbl_10_rodata_25C = 0.0f, 0.0f,
+// lbl_10_rodata_29C = 1.8f) (0x0000A8A4..0x0000A8D8), scaled by lbl_10_rodata_27C = 2.0f
+// (ScaleBy at 0x0000A8DC), in the actor's area (0x4) with the null connection list, active (`li
+// r6, 0x1`) and kInvalidEditorId (0x0000A96C), a new uid (0x0000A97C), the flags 0 (`li r9,
+// 0x0`), the model's scale (0x60, 0x0000A904..0x0000A92C), white (0x0000A988) and the player
+// index -1 (`li r0, -0x1` at 0x0000A990), and added to the state manager (0x0000A9EC).
+void CDarkSamus::PlayBoostBallCollision(CStateManager& mgr) {
+  PlayCustomSound(GetTranslation(), -1.f * CVector3f::Forward(),
+                  mData.mBoostBallCollisionSoundOneShot, false); // 0x0000A874
+  if (mBoostBallCollisionToken.valid()) { // 0x0000A87C (the byte 0xE7C)
+    CTransform4f xf(GetTransform());      // 0x0000A88C
+    const CVector3f& pos = GetTranslation();
+    xf.SetTranslation(CVector3f(pos.GetX() + 0.f, pos.GetY() + 0.f,
+                                pos.GetZ() + 1.8f)); // 0x0000A8A4..0x0000A8D8
+    xf.ScaleBy(2.f);                                 // lbl_10_rodata_27C, 0x0000A8DC
+    mgr.AddObject(rs_new CExplosion(
+        *mBoostBallCollisionToken, mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        rstl::string_l("Dark Samus Boost Collision"), xf, 0, GetModelData()->GetScale(),
+        CColor::White(), -1)); // 0x0000A9B8, 0x0000A9EC
+  }
+}
+
+// fn_10_AA04 (0x0000AA04, 0x760 bytes): the roll along the boost hints. Nothing without a hint
+// at 0xEC0 (`mr. r31, r3` at 0x0000AA48). The hint's direction from the actor in the XY plane
+// (z = lbl_10_rodata_25C = 0.0f, 0x0000AAA4) gives the squared distance (0x0000AA80..0x0000AAA0)
+// and, normalized when it can be (0x0000AAB0), the turn: LookAt from the facing at the rate
+// lbl_10_rodata_2A0 = 0.017453292f times lbl_10_rodata_2A4 = 935.99994f times dt
+// (0x0000AAD8/0x0000AAF0, 0x0000AB28), its vector part in the actor's frame (0x0000AB58), by
+// RotateInOneFrameOR (0x0000AB88). The actor moves forward by lbl_10_rodata_26C = 1.25f times
+// lbl_10_rodata_2A8 = 60.0f times dt times the hint value 0xED8 (0x0000ABA4..0x0000ABCC,
+// MoveInOneFrameOR at 0x0000ABD0).
+// The path direction: the zero vector (0x0000ABD4..0x0000ABFC) plus the XY direction from the
+// hint to the next active Arrived hint (fn_10_B458 at 0x0000AC08, `mr. r30, r3` at 0x0000AC0C;
+// normalized when it can be, 0x0000AC60) plus the XY direction from the last hint 0xECC to the
+// hint unless 0xECC is the zero vector (the `fcmpu` chain at 0x0000ACB0..0x0000ACD0, normalized
+// at 0x0000AD2C), normalized when it can be (0x0000AD7C). A zero sum sets 0xEC8 = 1 and ends
+// (0x0000ADC8..0x0000ADD4).
+// Arrived (r29): within lbl_10_rodata_2AC = 25.0f squared (`fcmpo cr0, f31, f0; bge` at
+// 0x0000ADE4/0x0000ADE8), past the plane through the hint minus k times the direction - k is
+// lbl_10_rodata_284 = 0.5f, or lbl_10_rodata_264 = 1.0f when the hint's second value is below
+// 0.5f (0x0000AE04/0x0000AE08) - (dot(dir, pos) >= dot(dir, hint - k dir): `cror eq, gt, eq` at
+// 0x0000AE6C, EQ at 0x0000AE74). Not arrived but the bit 0x80 of 0xEBC set (`extrwi r0, r4, 1, 24`
+// at 0x0000AE90, the PowerPC bit 24 = 1u << (31 - 24) = 0x80): arrived when within the 25.0f
+// squared (0x0000AEA8), else the bit is cleared (`rlwimi r4, r0, 7, 24, 24` at 0x0000AEB8).
+// On arrival (0x0000AEC8): the hint is deactivated (the vtable's slot 0x1C = SetActive(false),
+// 0x0000AEE0) and sends kSS_Arrived (`lis r4, 0x4152; addi r4, r4, 0x5256` = 0x41525256 at
+// 0x0000AEE8/0x0000AEF8) with the player's uid (0x0000AEF4) and the message -1 (0x0000AF0C).
+// Without a next hint 0xEC8 = 1 (0x0000B12C); with one (0x0000AF14) it becomes the hint 0xEC0
+// (0x0000AF20), the last hint 0xECC is the old one's position (0x0000AF24..0x0000AF38) and the
+// value 0xED8 is its value parameter clamped to lbl_10_rodata_2B0 = 0.1f .. lbl_10_rodata_27C =
+// 2.0f when above 0.0f (`fcmpo` at 0x0000AF48, 0x0000AF60, 0x0000AF74), else 1.0f (0x0000AF94).
+// When its second value is above 0.5f (0x0000AFA8/0x0000AFAC) the collision plays (fn_10_A814 at
+// 0x0000AFB8) and the actor faces the next hint at once (the XY direction normalized at
+// 0x0000B008, LookAt with lbl_10_rodata_298 = 6.2831855f at 0x0000B070, TransposeRotate at
+// 0x0000B0A0, FromMatrix * it at 0x0000B0CC/0x0000B0DC, ClearForcesAndTorques at 0x0000B104,
+// SetTransform at 0x0000B120). Every arrival ends with the bit 0x80 of 0xEBC cleared
+// (`rlwimi r0, r3, 7, 24, 24` at 0x0000B138).
+void CDarkSamus::RollToBoostHint(CStateManager& mgr, float dt) {
+  CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(mBoostHintUid));
+  if (hint == nullptr) { // 0x0000AA48
+    return;
+  }
+  CVector3f toHint = hint->GetTranslation() - GetTranslation();
+  toHint.SetZ(0.f);                         // lbl_10_rodata_25C, 0x0000AAA4
+  const float distSq = toHint.MagSquared(); // 0x0000AA80..0x0000AAA0 (z = 0.0f squared)
+  if (toHint.CanBeNormalized() == true) {   // 0x0000AAB0
+    toHint.Normalize();                     // 0x0000AABC
+  }
+  const CVector3f fwd = GetTransform().GetForward(); // guest 0x28/0x38/0x48
+  const CQuaternion turn = CQuaternion::LookAt(
+      CUnitVector3f(fwd.GetX(), fwd.GetY(), fwd.GetZ()),
+      CUnitVector3f(toHint.GetX(), toHint.GetY(), toHint.GetZ()),
+      CRelAngle::FromRadians(0.017453292f * (935.99994f * dt))); // lbl_10_rodata_2A0/2A4, 0x0000AB28
+  RotateInOneFrameOR(CQuaternion(turn.GetScalar(),
+                                 GetTransform().TransposeRotate(turn.GetVector())), // 0x0000AB58
+                     dt); // 0x0000AB88
+  MoveInOneFrameOR(CVector3f(0.f, mBoostHintValue * (1.25f * (60.f * dt)), 0.f),
+                   dt); // lbl_10_rodata_26C/2A8, 0x0000ABD0
+
+  CVector3f dir = CVector3f::Zero(); // 0x0000ABD4..0x0000ABFC
+  CScriptAIHint* next = FindArrivedHint(mgr, mBoostHintUid); // fn_10_B458, 0x0000AC08
+  if (next != nullptr) {                                      // 0x0000AC0C
+    CVector3f toNext = next->GetTranslation() - hint->GetTranslation();
+    toNext.SetZ(0.f);                       // 0x0000AC54
+    if (toNext.CanBeNormalized() == true) { // 0x0000AC60
+      toNext.Normalize();
+    }
+    dir += toNext; // 0x0000AC70..0x0000AC9C
+  }
+  if (mGuestECC != CVector3f::Zero()) { // 0x0000ACB0..0x0000ACE0
+    CVector3f fromLast = hint->GetTranslation() - mGuestECC;
+    fromLast.SetZ(0.f);                       // 0x0000AD20
+    if (fromLast.CanBeNormalized() == true) { // 0x0000AD2C
+      fromLast.Normalize();
+    }
+    dir += fromLast; // 0x0000AD3C..0x0000AD68
+  }
+  if (dir.CanBeNormalized() == true) { // 0x0000AD7C
+    dir.Normalize();
+  }
+  if (dir == CVector3f::Zero()) { // 0x0000AD98..0x0000ADC8
+    mGuestEC8 = 1;                // 0x0000ADD0
+    return;
+  }
+
+  bool arrived = false;
+  if (distSq < 25.f) { // lbl_10_rodata_2AC, 0x0000ADE8
+    float back = 0.5f; // lbl_10_rodata_284, 0x0000ADF4
+    if (hint->GetValueParm2() < 0.5f) { // 0x0000AE04/0x0000AE08
+      back = 1.f;                       // lbl_10_rodata_264, 0x0000AE10
+    }
+    const CVector3f plane = hint->GetTranslation() - back * dir; // 0x0000AE14..0x0000AE58
+    if (CVector3f::Dot(dir, GetTranslation()) >= CVector3f::Dot(plane, dir)) { // 0x0000AE6C
+      arrived = true; // 0x0000AE80
+    }
+  }
+  if (!arrived && mBoostBallFlag80 == true) { // 0x0000AE88, 0x0000AE90 (the bit 0x80 of 0xEBC)
+    if (distSq < 25.f) {                      // 0x0000AEA8
+      arrived = true;                         // 0x0000AEAC
+    } else {
+      mBoostBallFlag80 = false; // 0x0000AEB8
+    }
+  }
+  if (arrived != true) { // 0x0000AEC8
+    return;
+  }
+  hint->SetActive(false); // the vtable's slot 0x1C, 0x0000AEE0
+  hint->SendScriptMsgs(kSS_Arrived, mgr, mgr.GetPlayer(0)->GetUniqueId(),
+                       static_cast< EScriptObjectMessage >(-1)); // 0x0000AF0C
+  if (next == nullptr) { // 0x0000AF14
+    mGuestEC8 = 1;       // 0x0000B12C
+  } else {
+    mBoostHintUid = next->GetUniqueId(); // 0x0000AF20
+    mGuestECC = hint->GetTranslation();  // 0x0000AF24..0x0000AF38
+    if (next->GetValueParm() > 0.f) {    // 0x0000AF48/0x0000AF4C
+      const float value = next->GetValueParm();
+      float clamped;
+      if (!(0.1f <= value)) { // lbl_10_rodata_2B0, 0x0000AF60/0x0000AF64
+        clamped = 0.1f;
+      } else if (2.f >= value) { // lbl_10_rodata_27C, 0x0000AF74/0x0000AF78
+        clamped = value;
+      } else {
+        clamped = 2.f;
+      }
+      mBoostHintValue = clamped; // 0x0000AF84
+    } else {
+      mBoostHintValue = 1.f; // lbl_10_rodata_264, 0x0000AF94
+    }
+    if (next->GetValueParm2() > 0.5f) { // lbl_10_rodata_284, 0x0000AFA8/0x0000AFAC
+      PlayBoostBallCollision(mgr);      // fn_10_A814, 0x0000AFB8
+      CVector3f toNext = next->GetTranslation() - GetTranslation();
+      toNext.SetZ(0.f);                       // 0x0000AFFC
+      if (toNext.CanBeNormalized() == true) { // 0x0000B008
+        toNext.Normalize();
+      }
+      const CVector3f face = GetTransform().GetForward(); // guest 0x28/0x38/0x48
+      const CQuaternion look = CQuaternion::LookAt(
+          CUnitVector3f(face.GetX(), face.GetY(), face.GetZ()),
+          CUnitVector3f(toNext.GetX(), toNext.GetY(), toNext.GetZ()),
+          CRelAngle::FromRadians(6.2831855f)); // lbl_10_rodata_298, 0x0000B070
+      const CQuaternion local(look.GetScalar(),
+                              GetTransform().TransposeRotate(look.GetVector())); // 0x0000B0A0
+      const CQuaternion rot = CQuaternion::FromMatrix(GetTransform()) * local; // 0x0000B0DC
+      ClearForcesAndTorques();                              // 0x0000B104
+      SetTransform(rot.BuildTransform4f(GetTranslation())); // 0x0000B114, 0x0000B120
+    }
+  }
+  mBoostBallFlag80 = false; // 0x0000B138
 }
 
 // fn_10_16CDC (0x00016CDC, 0x1F0 bytes): the FreezeBeam state. Every message runs the attack
