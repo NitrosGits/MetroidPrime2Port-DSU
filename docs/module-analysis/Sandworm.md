@@ -5,7 +5,7 @@ the full function classification (section g), the upstream-class check (section 
 canonical port order (section i).
 
 **The module is ported.** The bodies live in `src/MetroidPrime/Enemies/PortCSandworm*.cpp`;
-253 of the 261 module-behaviour functions carry a `// @ fn_56_` marker (268 markers in
+253 of the 253 module-behaviour functions carry a `// @ fn_56_` marker (268 markers in
 total; the other 15 sit on the thunks and the inline command helpers). The
 `docs/modules.tsv` row for Sandworm still says `status=entry-stub`, which is stale bookkeeping:
 the row was written before the port, and `tools/rel_manifest.py` derives the status from
@@ -1129,8 +1129,8 @@ Three independent scans over the module (the REL's own asm in the archive tree,
 | `fn_56_10A20` GetLctrTransformWrapper | B | `fn_56_108BC` (0x1094C) and `fn_56_1096C` (0x10A00) | none (a straight copy of the translation, 0x10A48..0x10A50) | run 2026-10-21: 68174 calls, one per spine update; the port's two spine helpers call the wrapper now, as retail does | **marked** |
 | `fn_56_10110` the joint-list search | B | **none**: no `bl`, no table entry | the distance test; the not-found path | ported 2026-10-21 from the asm (0x10164..0x10230), `asmcheck.py` clean; nothing calls it, so it is never marked - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
 | `fn_56_10268` the segment sweep | B | **none**: no `bl`, no table entry | the magnitude test; the lerp loop | ported 2026-10-21 from the asm (0x10310..0x10478), `asmcheck.py` clean; nothing calls it, so it is never marked | cited |
-| `fn_56_C350` InAttackRange | B (vtable entry) | the CSandworm vtable (`data_884`): the FSM asks for the trigger by name | two compares (0xC3AC, 0xC3B8) | **never asked** - of the 146 FSM2 assets only the Metroid's (`1870596557`) names "InAttackRange"; the worm's own two assets do not (l.2) - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
-| `fn_56_C3D0` Activated | B (vtable entry) | the CSandworm vtable (`data_884`) | one test (the actor's active flag, 0xC3D0) | **never asked** - no FSM2 asset in the game names "Activated" (0 of 146) - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
+| `fn_56_C350` InAttackRange | T (vtable entry, no FSM2 asset asks it) | the CSandworm vtable (`data_884`): the FSM asks for the trigger by name | two compares (0xC3AC, 0xC3B8) | **never asked** - of the 146 FSM2 assets only the Metroid's (`1870596557`) names "InAttackRange"; the worm's own two assets do not (l.2) - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
+| `fn_56_C3D0` Activated | T (vtable entry, no FSM2 asset asks it) | the CSandworm vtable (`data_884`) | one test (the actor's active flag, 0xC3D0) | **never asked** - no FSM2 asset in the game names "Activated" (0 of 146) - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
 | `fn_56_2210` CSandwormEye::GetX2E8 | B | **none**: no `bl`, and not in any table (not in the eye's vtable `data_6F8` either) | none (a straight copy) | dead code in the retail module - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
 | `fn_56_534C` CountScriptActors | B | **none** (no `bl`, not in any table) | the GRNT/NEXT test, the CActor cast test | dead code in the retail module - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
 | `fn_56_6324` Unreferenced6324 | B | **none** (no `bl`, not in any table) | the CONN/FOLW test | dead code in the retail module - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
@@ -1239,7 +1239,7 @@ carry one.**
 |---|---|---|
 | H host copies | 99 | the crtexe REL runtime (8), the compiler-emitted destructors (39), the rstl/inline template code (36) and the DOL class members copied inline (19): the port writes no body, so there is nothing to mark (3 of the 39 - `fn_56_14B58`, `14C24`, `14D40` - are marked because the port does write them) |
 | T dead virtual slots | 8 | no caller reaches them (l.1) |
-| B dead bodies | 8 | `fn_56_2210`, `534C`, `6324`, `10A68` (no caller in the retail module), `fn_56_C350`, `C3D0` (no FSM2 asset asks for them) and `fn_56_10110`, `10268` (ported, but nothing calls them) |
+| T dead bodies | 8 | `fn_56_2210`, `534C`, `6324`, `10A68` (no caller in the retail module), `fn_56_C350`, `C3D0` (no FSM2 asset asks for them) and `fn_56_10110`, `10268` (ported, but nothing calls them): class T in the tsv since 2026-10-22 (tail1, section l.7); the port bodies stay, unmarked |
 
 A new marker would need a caller the retail code does not have, so the next slice for this module
 is not more markers but the *quality* of what is already marked: `tools/asmcheck.py` with the
@@ -1271,6 +1271,11 @@ The coverage run is the gdb spec `tools/cov/specs/sandworm_helpers.py` (new) in 
 **None of the six is marked**: the arms of a body that is never entered cannot all run, so none of
 them is ALL-ARMS ✓. The run turns the static "no `bl`, no table entry" scan of l.1 into a runtime
 fact ✓ (0 entries in a full fight ✓).
+
+Bookkeeping (2026-10-22, tail1): the eight B rows of l.7 are now class `T` in
+`Sandworm_functions.tsv` (B 253, all marked; T 28, H 102), so the module's B progress reads
+253/253 and no row claims a body a run cannot enter. The port bodies stay (they are the
+retail bodies, byte-checked against the asm above) with the reason on the line above each.
 
 One finding for the shared code: `asmcheck.py` cannot place the bit of `mActive`
 (`include/MetroidPrime/CActor.hpp:422` and `:438` ✓) - the REL's copy reads the flag as the bit

@@ -46,8 +46,10 @@ void CSandwormEye::SetDead() { x2F4_flags |= 0x40; }
 // @ fn_56_2204
 bool CSandwormEye::IsDead() const { return (x2F4_flags & 0x40) != 0; }
 
-// fn_56_2210 (ported, not exercised yet)
-// Dead slot: SetX2E8 has callers, GetX2E8 has none.
+// class T (fn_56_2210): the copy of x2E8_pos itself (lfs/stfs of 0x2E8..0x2F0). Unreferenced in
+// retail - no 'bl fn_56_2210' in the module's asm and no table entry or relocation for it (its
+// neighbour SetX2E8 has two, at 0x4944 and 0x498C), so nothing calls it. No marker
+// (Sandworm_functions.tsv, class T).
 CVector3f CSandwormEye::GetX2E8() const { return x2E8_pos; }
 
 // @ fn_56_222C

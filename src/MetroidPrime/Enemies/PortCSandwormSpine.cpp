@@ -284,9 +284,9 @@ void CSandworm::SpineHelperC828(CStateManager& mgr) {
 
 // The joint-list search: walk the spine path back from the last joint and take the first point
 // that is farther from the reference than the radius, pushed out to exactly the radius.
-// fn_56_10110 (ported, unreferenced in retail)
-// Unreferenced in retail: no 'bl fn_56_10110' in the module and no table entry, so nothing calls
-// it - the body is here for completeness and is never marked.
+// class T (fn_56_10110): unreferenced in retail - no 'bl fn_56_10110' in the module's asm and no
+// table entry or relocation for it, so nothing calls it. The body is here for completeness and
+// carries no marker (docs/module-analysis/Sandworm_functions.tsv, class T).
 void CSandworm::UnreferencedMath10110(CVector3f* out, int* outIndex, int count, float radius) {
   const CVector3f* joints = x99C_joints.data();
   const CVector3f ref = joints[count]; // 0x10164..0x1016C
@@ -307,9 +307,9 @@ void CSandworm::UnreferencedMath10110(CVector3f* out, int* outIndex, int count, 
 
 // The segment sweep: for the last spine segment that starts farther from the point than the
 // radius, walk the segment from its start to its end and return where it leaves the sphere.
-// fn_56_10268 (ported, unreferenced in retail)
-// Unreferenced in retail: no 'bl fn_56_10268' in the module and no table entry, so nothing calls
-// it - the body is here for completeness and is never marked.
+// class T (fn_56_10268): unreferenced in retail - no 'bl fn_56_10268' in the module's asm and no
+// table entry or relocation for it, so nothing calls it. The body is here for completeness and
+// carries no marker (docs/module-analysis/Sandworm_functions.tsv, class T).
 void CSandworm::UnreferencedMath10268(SSandwormSweepOut* out, const SSandwormSweepIn& in,
                                      float radius) {
   const CVector3f* joints = x99C_joints.data();
