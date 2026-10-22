@@ -1135,23 +1135,21 @@ void CDarkSamusBoostBall::CreateCollisionActors(CStateManager& mgr) {
       rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), joints, true);
   delete mCollisionManager;
   mCollisionManager = manager;
-  if (CCollisionActor* colAct = TCastToPtr< CCollisionActor >(
-          mgr.ObjectById(manager->GetCollisionDescFromIndex(0).GetCollisionActorId()))) {
-    colAct->HealthInfo()->SetKnockbackResistance(100000.f); // 0x000033DC
-    colAct->HealthInfo()->SetHP(100000.f);                  // 0x000033E0
-    colAct->SetDamageVulnerability(vuln);
-    const CTransform4f& xf = GetTransform();
-    const CVector3f& pos = GetTranslation();
-    colAct->SetTranslation(CVector3f(pos.GetX() + -10.f * xf.Get01(),
-                                     pos.GetY() + -10.f * xf.Get11(),
-                                     pos.GetZ() + -10.f * xf.Get21())); // 0x00003424
-    mCollisionManager->SetActive(mgr, true);                             // 0x00003434
-    CMaterialFilter filter = colAct->GetMaterialFilter();
-    filter.ExcludeList().Add(kMT_Platform); // 0x00003464
-    colAct->SetMaterialFilter(filter);
-  } else {
-    mCollisionManager->SetActive(mgr, true);
-  }
+  // The cast's result is used unchecked (0x000033C0): the manager always makes the actor.
+  CCollisionActor* colAct = TCastToPtr< CCollisionActor >(
+      mgr.ObjectById(manager->GetCollisionDescFromIndex(0).GetCollisionActorId()));
+  colAct->HealthInfo()->SetKnockbackResistance(100000.f); // 0x000033DC (vtable 0x38)
+  colAct->HealthInfo()->SetHP(100000.f);                  // 0x000033E0
+  colAct->SetDamageVulnerability(vuln);
+  const CTransform4f& xf = GetTransform();
+  const CVector3f& pos = GetTranslation();
+  colAct->SetTranslation(CVector3f(pos.GetX() + -10.f * xf.Get01(),
+                                   pos.GetY() + -10.f * xf.Get11(),
+                                   pos.GetZ() + -10.f * xf.Get21())); // 0x00003424
+  mCollisionManager->SetActive(mgr, true);                             // 0x00003434
+  CMaterialFilter filter = colAct->GetMaterialFilter();
+  filter.ExcludeList().Add(kMT_Platform); // 0x00003464
+  colAct->SetMaterialFilter(filter);
 }
 
 // fn_10_3B08 (0x00003B08, 0xBC bytes): the base's Think; the collision actor is built on the first
@@ -1196,7 +1194,7 @@ void CDarkSamusBoostBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
   case kSM_Damage: // 0x000039D0
     mDamaged = true; // 0x00003A80
     if (CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(msg.GetSenderId()))) {
-      mDamageTaken += 100000.f - colAct->HealthInfo()->GetHP(); // 0x00003AD4
+      mDamageTaken += 100000.f - colAct->GetHealthInfo()->GetHP(); // 0x00003AD4 (vtable 0x3C)
     }
     break;
   default:
