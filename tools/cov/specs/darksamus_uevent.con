@@ -32,7 +32,7 @@
 @f1170 screenshot
 @f1185 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 156; uevent u04f7 9 155; uevent u04f7 9 154; uevent u04f7 9 150; visor dark
 @f1200 screenshot
-@f1205 uevent u04f7 9 163
+@f1205 uevent u04f7 9 163; uevent u04f7 9 168
 @f1225 screenshot
 @f1230 visor combat
 @f1250 uevent u04f7 9 164; visor echo
@@ -41,4 +41,21 @@
 @f1275 visor combat; uevent u04f7 9 199
 @f1285 uevent u04f7 9 130; uevent u04f7 9 144; uevent u04f7 19 108; uevent u04f7 9 199
 @f1300 screenshot
-@f1310 status
+@f1310 uevent u04f7 9 130; uevent u04f7 9 119; place u04f7 player 20; uevent u04f7 9 142; uevent u04f7 9 166; shoot u04f7 40; trigcall u04f7 AnyIncomingMissiles; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 167; shoot u04f7 40; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 165; shoot u04f7 40; trigcall u04f7 AnyIncomingMissiles; uevent u04f7 9 199
+@f1320 uevent u04f7 9 130; uevent u04f7 9 169
+@f1325 uevent u04f7 9 171
+@f1330 uevent u04f7 9 172
+@f1335 uevent u04f7 9 173
+@f1340 uevent u04f7 9 123
+@f1345 uevent u04f7 9 174; uevent u04f7 9 178
+@f1350 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 175
+@f1365 uevent u04f7 9 154
+@f1375 give DarkVisor 1; give EchoVisor 1; visor dark
+@f1385 visor echo
+@f1395 visor dark; uevent u04f7 9 177
+@f1405 uevent u04f7 9 160
+@f1415 visor combat; uevent u04f7 9 199; uevent u04f7 9 164; uevent u04f7 9 130; uevent u04f7 9 175; uevent u04f7 9 176
+@f1430 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 176
+@f1445 uevent u04f7 9 199; uevent u04f7 9 130; uevent u04f7 9 155; visor dark
+@f1460 visor combat; uevent u04f7 9 199
+@f1470 status
