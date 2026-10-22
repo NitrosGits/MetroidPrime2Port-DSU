@@ -78,11 +78,11 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00004960	0x148	fn_29_4960	B	behaviour	fn_29_C654	lbl_29_rodata_64,lbl_29_rodata_6C	, asm 0x0000C7C0	yes
 0x00004AA8	0xA4	fn_29_4AA8	H	host-copy	fn_29_4960		plain field copy (0x4D bytes)	no
 0x00004B4C	0x13C	fn_29_4B4C	B	behaviour	fn_29_C9A4	lbl_29_rodata_120,lbl_29_rodata_6C	, asm 0xCBA8	yes
-0x00004C88	0x90	fn_29_4C88	B	behaviour	fn_29_C9A4	lbl_29_rodata_64		no
+0x00004C88	0x90	fn_29_4C88	B	behaviour	fn_29_C9A4	lbl_29_rodata_64		yes
 0x00004D18	0x1FC	fn_29_4D18	B	behaviour		lbl_29_data_0,lbl_29_rodata_6C,lbl_29_rodata_E8		yes
 0x00004F14	0x1F0	fn_29_4F14	B	behaviour		lbl_29_data_C50,lbl_29_rodata_120,lbl_29_rodata_64		yes
 0x00005104	0x48	fn_29_5104	H	host-copy		lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
-0x0000514C	0x44	fn_29_514C	B	behaviour			not yet exercised in a run): the team attack ends, but the Ing keeps its team role	no
+0x0000514C	0x44	fn_29_514C	B	behaviour			not yet exercised in a run): the team attack ends, but the Ing keeps its team role	yes
 0x00005190	0x40	fn_29_5190	B	behaviour			StartRangedAttack: CScriptTeamAiMgr::StartAttack(kAT_Projectile)	yes
 0x000051D0	0x210	fn_29_51D0	B	behaviour		lbl_29_rodata_94,lbl_29_rodata_EC	not yet exercised in a run): the point-graph route to the lure point - the flag-1	no
 0x000053E0	0x108	fn_29_53E0	B	behaviour			not yet exercised in a run): the lure point is the nav-mesh point below the lure safe	no
@@ -112,7 +112,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00007DC8	0x68	fn_29_7DC8	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x00007E30	0x4A4	fn_29_7E30	B	behaviour		lbl_29_bss_10,lbl_29_bss_14,lbl_29_bss_20,lbl_29_bss_24,lbl_29_data_C50,lbl_29_rodata_6C,lbl_29_rodata_90,lbl_29_rodata_B4,lbl_29_rodata_C0		yes
 0x000082D4	0x1D0	fn_29_82D4	B	behaviour		lbl_29_rodata_64		yes
-0x000084A4	0xCC	fn_29_84A4	B	behaviour			not yet exercised in a run	no
+0x000084A4	0xCC	fn_29_84A4	B	behaviour			not yet exercised in a run	yes
 0x00008570	0x114	fn_29_8570	B	behaviour		lbl_29_rodata_100		yes
 0x00008684	0x184	fn_29_8684	B	behaviour		lbl_29_rodata_6C	asm 0x0000858C-0x000086A8); the speed blends from the safe-zone-or-maximum base to	yes
 0x00008808	0x224	fn_29_8808	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_6C		yes
@@ -159,7 +159,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x0000AB7C	0x4C	fn_29_AB7C	B	behaviour				yes
 0x0000ABC8	0x58	fn_29_ABC8	B	behaviour	fn_29_6DA0			yes
 0x0000AC20	0x58	fn_29_AC20	B	behaviour	fn_29_9D68			yes
-0x0000AC78	0x20	fn_29_AC78	B	behaviour			not yet exercised in a run	no
+0x0000AC78	0x20	fn_29_AC78	B	behaviour			not yet exercised in a run	yes
 0x0000AC98	0x48	fn_29_AC98	B	behaviour				yes
 0x0000ACE0	0xC	fn_29_ACE0	B	behaviour				yes
 0x0000ACEC	0x28	fn_29_ACEC	B	behaviour				yes
@@ -196,7 +196,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x0000BB8C	0x128	fn_29_BB8C	B	behaviour		lbl_29_data_0,lbl_29_rodata_6C		yes
 0x0000BCB4	0x200	fn_29_BCB4	B	behaviour		lbl_29_rodata_6C		yes
 0x0000BEB4	0x6C	fn_29_BEB4	H	host-copy	fn_29_BCB4		float copy of the PredictMotion result	no
-0x0000BF20	0x60	fn_29_BF20	B	behaviour			0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile	no
+0x0000BF20	0x60	fn_29_BF20	B	behaviour			0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile	yes
 0x0000BF80	0x70	fn_29_BF80	B	behaviour		lbl_29_rodata_C8	asm 0xBF8C-0xBFE0) and fn_29_C010 (asm 0xC024-0xC07C) gate the draw on the form the	yes
 0x0000BFF0	0x20	fn_29_BFF0	H	host-copy			thunk: CPatterned::PreRenderAllViewports only	no
 0x0000C010	0xA4	fn_29_C010	B	behaviour		lbl_29_rodata_C8		yes
