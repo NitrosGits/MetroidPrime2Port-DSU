@@ -1112,6 +1112,7 @@ void CDarkSamus::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, 
 // 0x0000F430), active (0x20 bit 0x80, 0x0000F44C), on a stage that asks for it (0x97C bit 0x80,
 // 0x0000F45C) and with the token at 0x92C (0x0000F468) the actor answers that token's object
 // (+0x8, 0x0000F46C); otherwise CPatterned::GetScannableObjectInfo (0x0000F474).
+// @ fn_10_F40C
 CScannableObjectInfo* CDarkSamus::GetScannableObjectInfo() const {
   if (GetAlive() == true && GetActive() == true && mUseAltScan == true &&
       !mAltScanInfo.null()) {
@@ -1294,6 +1295,7 @@ void CDarkSamus::CrushPlatform(CStateManager& mgr, const TUniqueId& id,
 // sub-object at 0xCD4 when the byte at 0xCD0 is 1; during the phazon enrage the patterned
 // vulnerability copied to 0xFD0 with combo slot 3 set to (0.0f, kE_Normal, false); the CAi one
 // otherwise.
+// @ fn_10_FF20
 CDamageVulnerability* CDarkSamus::DamageVulnerability() {
   if (mGuestCD0 == 1) { // 0x0000FF38
     return &mGuestCD4;
@@ -1345,6 +1347,7 @@ CVector3f CDarkSamus::GetOrigin(const CStateManager& mgr, const CTeamAiRole& rol
 }
 
 // vtable slot 55 = fn_10_1C6C8 (0xB0): the projectile info the attacks launch.
+// @ fn_10_1C6C8
 CProjectileInfo* CDarkSamus::ProjectileInfo() {
   // The switch on the current attack 0x980: the scatter shots 8 and 0x10 (0x0001C718) take the
   // second info 0xBB0 when 0xBAE is 1, the first 0xB50 otherwise; the missiles 0x40/0x80 the
