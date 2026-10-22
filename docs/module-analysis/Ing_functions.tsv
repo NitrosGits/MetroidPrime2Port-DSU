@@ -52,7 +52,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00003190	0x23C	fn_29_3190	B	behaviour	fn_29_C9A4	lbl_29_data_A14,lbl_29_data_A18,lbl_29_data_A1C,lbl_29_data_A20,lbl_29_rodata_0,lbl_29_rodata_120,lbl_29_rodata_C4	's seven joint spheres: Ing.rel's own rodata_0 table, seven (locator, radius) pairs.	no
 0x000033CC	0x38	fn_29_33CC	B	behaviour	fn_29_3190			yes
 0x00003404	0x20	fn_29_3404	B	behaviour	fn_29_33CC,fn_29_F260			yes
-0x00003424	0x28	fn_29_3424	H	host-copy	fn_29_3404		rstl placement construct: null check + copy ctor (fn_29_3404)	no
+0x00003424	0x28	fn_29_3424	H	host-copy	fn_29_3404		rstl placement construct: null check + copy ctor (fn_29_344C, bl at 0x3438)	no
 0x0000344C	0xC0	fn_29_344C	B	behaviour	fn_29_3190,fn_29_3424			yes
 0x0000350C	0x5C	fn_29_350C	H	host-copy			the rstl internals - the host's own code does the same	no
 0x00003568	0x84	fn_29_3568	B	behaviour	fn_29_3190		0x84) destroys it. The host's rstl::vector of CJointCollisionDescription is the	yes

@@ -2214,7 +2214,7 @@ bool CCommandoPirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data)
 // fn_9_BCB8: the commando melees when the target is inside its attack band. The block's flag
 // byte at +0x15C (guest this+0x91C) must not have its 0x02 bit (extrwi at 0x0000BCCC), and the
 // module's own cooldown timer at guest this+0xB7C (the time since the last melee ended, which
-// the module's per-frame helper fn_9_662C advances at 0x000068E8 and fn_9_A60C clears at
+// the module's per-frame helper fn_9_662C advances at 0x000068E8 and fn_9_A4BC clears at
 // 0x0000A700) must be above 1.0f (rodata_43C, the compare at 0x0000BCE4). Then the target (the id
 // at guest this+0xBCA, the lookup at 0x0000BCFC) must be inside the base's attack band: the
 // squared distance must not be below the minimum attack range (guest this+0x3DC, the compare at
@@ -2245,10 +2245,11 @@ bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& 
   }
   const CVector3f delta = actor->GetTranslation() - GetTranslation();
   const float distSq = delta.MagSquared();
-  if (distSq < mMinAttackRange * mMinAttackRange) {
+  // cror ge/bne and cror le/bne: a NaN distance fails both tests and returns false.
+  if (!(distSq >= mMinAttackRange * mMinAttackRange)) {
     return false;                                   // 0x0000BD48
   }
-  if (distSq > mMaxAttackRange * mMaxAttackRange) {
+  if (!(distSq <= mMaxAttackRange * mMaxAttackRange)) {
     return false;                                   // 0x0000BD54
   }
   return fabsf(delta.GetZ()) < 3.f;                  // 0x0000BD70
@@ -2281,10 +2282,11 @@ bool CCommandoPirate::ShouldFireEGrenade(CStateManager& mgr, const CTriggerData&
   }
   const CVector3f delta = aim - GetTranslation();
   const float distSq = delta.MagSquared();
-  if (distSq < mData.mGrenade.mGrenadeMinAttackDist * mData.mGrenade.mGrenadeMinAttackDist) {
+  // cror ge/bne and cror le/bne: a NaN distance fails both tests and returns false.
+  if (!(distSq >= mData.mGrenade.mGrenadeMinAttackDist * mData.mGrenade.mGrenadeMinAttackDist)) {
     return false;                                   // 0x0000BC80
   }
-  if (distSq > mData.mGrenade.mGrenadeMaxAttackDist * mData.mGrenade.mGrenadeMaxAttackDist) {
+  if (!(distSq <= mData.mGrenade.mGrenadeMaxAttackDist * mData.mGrenade.mGrenadeMaxAttackDist)) {
     return false;                                   // 0x0000BC8C
   }
   return true;
@@ -2562,7 +2564,8 @@ bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) 
   if (CVector3f::Dot(delta, GetTransform().GetForward()) <= 0.f) {
     return false;                                   // 0x0000B71C
   }
-  return xb64_ < 0.75f || xb60_ < 1.5f;             // 0x0000B730, 0x0000B744
+  // 0x0000B748 is bge to "false": a NaN +0xB60 falls through to true.
+  return xb64_ < 0.75f || !(xb60_ >= 1.5f);         // 0x0000B730, 0x0000B744
 }
 
 // fn_9_B660: the commando arms its shield when its flag byte at guest this+0xC64 has its 0x80
@@ -2944,6 +2947,9 @@ void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
     // 0x0000AC1C: the guest's own helper asks the target for its aim position (fn_9_3CBC) with
     // 0.5f (lbl_9_rodata_440) and stores it at guest this+0xB94.
     if (x3CBC_(mgr, xb94_, 0.5f)) {
+      // 0x0000AC2C..0x0000AC38: the aim point is flattened to the actor's own height
+      // (lfs 0x5c(r31); stfs 0xb9c(r31)), so both arms below turn in the horizontal plane.
+      xb94_.SetZ(GetTranslation().GetZ());
       // 0x0000AC2C..0x0000AC84: the direction to the target and the angle between it and the
       // actor's facing (the guest's three-argument GetAngleDiff has no host counterpart; the
       // host's takes the facing and the direction).
@@ -2951,8 +2957,9 @@ void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
       // 0x0000AC6C..0x0000AC80: the actor's facing is the transform's forward column
       // (GetTransform().GetForward()); the guest's three loads are its 0x28, 0x38 and 0x48.
       const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), delta);
-      mAnimationState.SetState(angle > 0.34906584f ? CAnimationState::kAS_Ready
-                                                   : CAnimationState::kAS_Over);
+      // 0x0000AC94 ble to "over": a NaN angle falls through to "ready".
+      mAnimationState.SetState(!(angle <= 0.34906584f) ? CAnimationState::kAS_Ready
+                                                       : CAnimationState::kAS_Over);
     } else {
       // 0x0000ACB0: no target, so the animation is over.
       mAnimationState.SetState(CAnimationState::kAS_Over);
@@ -3760,9 +3767,9 @@ void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
       BodyController()->CommandMgr().DeliverCmd(
           CBCStepCmd(static_cast< pas::EStepDirection >(xbdc_), pas::kStep_BreakDodge));  // 0x00008A10
     } else if (BodyController()->GetCurrentStateId() == pas::kAS_Step) {  // 0x00008A6C
-      CVector3f aim;
-      if (x3CBC_(mgr, aim, 0.f)) {                     // 0x00008A90
-        const CVector3f delta = aim - GetTranslation();
+      // 0x00008A8C: the aim lands in guest this+0xB94 (addi r5, r31, 0xb94), not a local.
+      if (x3CBC_(mgr, xb94_, 0.f)) {                   // 0x00008A90
+        const CVector3f delta = xb94_ - GetTranslation();
         BodyController()->CommandMgr().SetTargetVector(delta);  // 0x00008AC4..0x00008ACC
       }
     }

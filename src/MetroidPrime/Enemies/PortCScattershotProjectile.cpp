@@ -129,7 +129,7 @@ void CScattershotProjectile::Think(float dt, CStateManager& mgr) {
   UpdateShots(mgr, dt);
   CheckNewShots(mgr);
   CheckPlayerHit(mgr);
-  if (mLifetime > 10.f) { // 0x000029A0
+  if (!(mLifetime <= 10.f)) { // `ble` at 0x000029A0: a NaN lifetime deletes too
     mgr.DeleteObjectRequest(GetUniqueId());
   }
 }
