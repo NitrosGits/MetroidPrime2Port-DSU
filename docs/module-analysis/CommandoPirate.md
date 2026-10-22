@@ -1791,6 +1791,34 @@ is up).  The run: the coverage build with
 | `fn_9_6A40` (the GetUp) | 15/17 | 5/10 | the message switch's default (0x00006A78..0x00006A7C) and the update's "the commando lies on the ground" arm (0x00006A90..0x00006AC4) - it needs the body in the lie-on-ground state and the path find with no source point |
 | `fn_9_69C8` (the Dead) | 0/6 | 0/4 | the state did not run: the console's `kill` deletes the actor, so the `fsm Dead` after it finds nothing |
 
-So none of the six can be marked yet - each still has a live arm that no run reaches.  The arms
-that need the body's own animation state (the wall-hang, the lie-on-ground and the cover state)
-need a forcing of the body controller, which the cov tooling does not write.
+### 6.6 The message switch's default arm is dead (2026-10-22, slice 31)
+
+`EStateMsg` has three values (include/MetroidPrime/StateMachineCommon.hpp:4-8:
+`kStateMsg_Activate`, `kStateMsg_Update`, `kStateMsg_Deactivate`), and the state machine never
+sends anything else: the only senders are the FSM2's own `ExecuteState` and `ExecuteSubflow`
+calls, and they pass exactly those three -
+include/MetroidPrime/CGenericFSM2StateImpl.hpp:21 (`kStateMsg_Deactivate`), :85 and :337
+(`kStateMsg_Activate`), :96 and :101 (`kStateMsg_Update`) and :370 and :374
+(`kStateMsg_Deactivate`).  The module runs on the FSM2 (its machine's type is 1), so the default
+arm of a state's message switch is **dead** (class **c**), not untaken: the six bodies' untaken
+"3/4" switch arms are that arm.
+
+### 6.7 What the six states still need (2026-10-22, slice 31)
+
+The forcing run of slice 31 (`tools/cov/force.sh` with
+`tools/cov/specs/commandopirate_states2.py` and `tools/drivers/commandopirate_states2.py`, the
+Swamp's 05_swamp_timber!, 8000 frames, game exit code 0, no caught/reach-stub) gives:
+
+| body | lines | branches | the live arms that did not run |
+|---|---|---|---|
+| `fn_9_7358` (the WallHang) | 30/39 | 10/22 | the cover point's forward, the update's angle test, the wall-hang command's `CanIssueCommand` and the body's own state - the last two need the body controller in the wall-hang state |
+| `fn_9_786C` (the RestoreOrientation) | 17/29 | 9/14 | the update's angle arms - they need a commando that is tipped over |
+| `fn_9_7A98` (the ScriptedShieldCharge) | 55/60 | 23/30 | the activate's arm and the update's arms - the charge's abort and waypoint arms need the module's shield-charge states |
+| `fn_9_6DBC` (the Cover) | 19/23 | 8/14 | the "the body is already in the cover state" arm, the cover's attack direction, the cover command's `CanIssueCommand` and the "the body cannot shoot" arm |
+| `fn_9_6A40` (the GetUp) | 15/17 | 5/10 | the update's "the commando lies on the ground" arm - it needs the body in the lie-on-ground state and the path find with no source point |
+| `fn_9_69C8` (the Dead) | 0/6 | 0/4 | the state did not run in that run |
+
+So none of the six can be marked yet.  The blocker for the body-state arms is the forcing
+itself: the spec writes `$this->mBodyController->mBodyStateInfo.mState`, but the body controller
+is an `rstl::single_ptr` (include/MetroidPrime/Enemies/CPatterned.hpp:409) and gdb reports "Could
+not find operator->" for it - the write needs the pointer's target reached another way.

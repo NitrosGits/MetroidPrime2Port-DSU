@@ -134,14 +134,11 @@ def main():
         step(cid, "fsm %s RestoreOrientation", 60)
         step(cid, "fsm %s ScriptedShieldCharge", 120)
         step(cid, "fsm %s GetUp", 60)
-        # an unknown fourcc: the GetUp state's message switch has a default arm
-        step(cid, "send %s 0x11223344", 10)
-        # the same for the ScriptedShieldCharge's switch, and the kill for the Dead state
         step(cid, "fsm %s ScriptedShieldCharge", 30)
-        step(cid, "send %s 0x11223344", 10)
+        # the Dead state before any kill: the kill deletes the actor, so the state has to run
+        # while the commando is still there (the state's own activate ends it).
+        step(cid, "fsm %s Dead", 60)
         step(cid, "fsm %s Lurk", 10)
-        step(cid, "kill %s", 30)
-        step(cid, "fsm %s Dead", 30)
 
 
 main()
