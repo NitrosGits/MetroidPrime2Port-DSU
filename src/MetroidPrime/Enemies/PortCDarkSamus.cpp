@@ -447,10 +447,10 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
   case kSM_Launching: // 'XLAU', 0x0001E960
     // The base first takes a 'XOFF' (kSM_OffGround, 0x0001ED6C/0x0001ED70) from the message's
-    // sender to this actor, originator kInvalidUniqueId, state -1 (0x0001ED74..0x0001ED9C;
-    // 0x0001EDA0). Then the dive is in flight (0xB20 bit 0x40, `rlwimi r0, r3, 6, 25, 25` at
-    // 0x0001EDAC) from the actor's position (0xACC..0xAD4, 0x0001EDC0..0x0001EDD0) and the bubble
-    // comes on (fn_10_12EF8 at 0x0001EDD4).
+    // sender to this actor, originator kInvalidUniqueId, state -1 (built at 0x0001ED74..
+    // 0x0001ED9C, the call at 0x0001EDA0). Then the dive is in flight (0xB20 bit 0x40,
+    // `rlwimi r0, r3, 6, 25, 25` at 0x0001EDAC) from the actor's position (0xACC..0xAD4,
+    // 0x0001EDC0..0x0001EDD0) and the bubble comes on (fn_10_12EF8 at 0x0001EDD4).
     CPatterned::AcceptScriptMsg(mgr, CScriptMsg(msg.GetSenderId(), GetUniqueId(), kSM_OffGround,
                                                 kInvalidUniqueId,
                                                 static_cast< EScriptObjectState >(-1)));
@@ -461,10 +461,10 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Landed:               // 'XLND', 0x0001E950
   case kSM_LandedOnStaticGround: // 'XLSG', 0x0001E994
     // Only in the dive (0x980 == 0x20, 0x0001EDE0/0x0001EDE4): after a bounce (0xB20 bit 0x02,
-    // `extrwi r0, r4, 1, 30` + `cmplwi 0x1` at 0x0001EDEC/0x0001EDF0) the dive is done (bit 0x80,
-    // `rlwimi r4, r0, 7, 24, 24` at 0x0001EE00) and the vertical movement off (0x34C bit 0x40
-    // cleared, `rlwimi r0, r3, 6, 25, 25` at 0x0001EE0C); the base is skipped while the dive is
-    // not done (`extrwi. r0, r0, 1, 24` + `beq` at 0x0001EE18/0x0001EE1C).
+    // `extrwi r0, r4, 1, 30` at 0x0001EDEC, `cmplwi r0, 0x1` at 0x0001EDF0) the dive is done
+    // (bit 0x80, `rlwimi r4, r0, 7, 24, 24` at 0x0001EE00) and the vertical movement off (0x34C
+    // bit 0x40 cleared, `rlwimi r0, r3, 6, 25, 25` at 0x0001EE0C); the base is skipped while the
+    // dive is not done (`extrwi. r0, r0, 1, 24` + `beq` at 0x0001EE18/0x0001EE1C).
     if (mCurrentAttack == 0x20) {
       if (mDive.mBounced == true) {
         mDive.mDone = true;
@@ -1131,7 +1131,7 @@ const CCollisionPrimitive* CDarkSamus::GetCollisionPrimitive() const {
 // fn_10_1D0A0 (0x0001C848), the dive's arm fn_10_1C99C (0x0001C85C), fn_10_1CF84 (0x0001C86C) and
 // fn_10_A734 (0x0001C87C). In the attacks 0x80 or 0x4 (0x0001C884/0x0001C890), with a boost ball
 // (fn_10_9624, 0x0001C8A4) or in the dive (0x20, 0x0001C8AC) in flight (0xB20 bit 0x40,
-// `extrwi r0, r0, 1, 25` + `cmplwi 0x1` at 0x0001C8B8/0x0001C8BC) the platform crush runs
+// `extrwi r0, r0, 1, 25` at 0x0001C8B8, `cmplwi r0, 0x1` at 0x0001C8BC) the platform crush runs
 // (fn_10_1D194 at 0x0001C8D4), and the base is skipped while the actor is nearer the dive's start
 // (0xACC) than its target (0xAC0) is (the two Magnitudes at 0x0001C930/0x0001C93C, `blt` out at
 // 0x0001C944). Then more than two stuck dashes (0x968 > 2, `cmplwi r0, 0x2` + `ble` at
