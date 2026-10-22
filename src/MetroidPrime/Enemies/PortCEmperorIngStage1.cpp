@@ -2011,53 +2011,63 @@ CEmperorIngStage1WarpPortal::CEmperorIngStage1WarpPortal(
 CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;  // fn_16_0: the destructor - the vtable back and the base's own
 
 // fn_16_1150 (0x1150..0x1574, 0x424): the portal's think.
-//   0x1194: the model's animation data gets its flag byte's bit 24 (the byte's 0x80) set; the
-//     host's CAnimData has no member for that byte, so the port leaves it out.
+//   0x1194: the model's animation data (the guest 0x60 -> 0x10, no null test) is set animating:
+//     `lbz r0,0x2ac(r5); rlwimi r0,r6,7,24,24` (r6 = 1) at 0x11A4..0x11AC sets the byte's 0x80,
+//     CAnimData::mAnimating - the DOL's CModelData::EnableLooping sets the same bit with the same
+//     rlwimi (0x800E53E8) and CModelData::IsAnimating reads it (0x800E5C3C). Without it the
+//     "Whole Body" animation never advances (its time remaining stays 1.2 s).
 //   0x11B0: the base's own think.
-//   0x11B4: the portal's timer (the guest 0x2D0) counts up and past 0.75f (lbl_16_rodata_3A4,
-//     0x11CC) the portal goes inactive (0x11E0).
+//   0x11B4: the portal's timer (the guest 0x2D0) counts up; until it is past 0.75f
+//     (lbl_16_rodata_3A4, the `ble` at 0x11D0 to the epilogue 0x1534) nothing else runs. Past it
+//     the portal is made active (SetActive, vtable 0x1C, with `li r4,0x1` at 0x11D8) - the
+//     portal is created inactive (0x65DC), so this is what lets it render (fn_16_1088).
 //   0x1214: while the "Whole Body" animation is still running (IsAnimTimeRemaining with the
-//     tolerance dt - 0.00000011920929f, lbl_16_rodata_3A8) the portal does nothing more; when
-//     it is over the portal goes inactive (0x1258) and its effect (the guest 0x2D4) gets the
-//     emitter for the second warp sound (the guest 0x2FA, 0x135C) and the "ACTV" message
-//     (0x12C0) - but only while the effect is active (the byte at the effect's +0x20, 0x1290).
+//     tolerance dt - 0.00000011920929f, lbl_16_rodata_3A8) the portal goes on to 0x131C; when
+//     it is over the portal goes inactive (0x1258, `li r4,0x0`) and its effect (the guest 0x2D4)
+//     gets the emitter for the second warp sound (the guest 0x2FA, 0x12BC) and "DCTV"
+//     (kSM_Deactivate: `lis r3,0x4443; addi r6,r3,0x5456` at 0x12D4 = 0x44435456, 0x1318) -
+//     but only while the effect is active (the byte at the effect's +0x20, 0x1294).
 //   0x131C: past 5.0f (lbl_16_rodata_3AC) the portal asks to be deleted.
 //   0x1348: the animation is updated.
 //   0x1360: the portal hits the player once: the player's touch bounds against the boxes around
 //     the seven "eight_Spine_*" locators (0x13E4), each 2.0f around the locator's world position
 //     (0x1408), and the stab damage (the guest 0x2DC, 0x151C).
 // Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
-// @ fn_16_1150
+// Not marked: the natural run never takes the effect-is-gone (0x128C), effect-inactive (0x1298) and
+// no-touch-bounds (0x13CC) arms (module note §12a).
 void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
+  AnimationData()->SetIsAnimating(true);  // 0x1194..0x11AC
   CActor::Think(dt, mgr);  // 0x11B0
   mTimer += dt;             // 0x11B4
-  if (mTimer > 0.75f) {     // 0x11CC, lbl_16_rodata_3A4
-    SetActive(false);        // 0x11E0
+  if (mTimer <= 0.75f) {    // 0x11CC, lbl_16_rodata_3A4: `ble` to the epilogue (0x1534)
+    return;
   }
-  // 0x11EC: the model data and its animation data have to be there.
+  SetActive(true);  // 0x11E0 (li r4,0x1 at 0x11D8)
+  // 0x11EC: the model data and its animation data have to be there; without them the retail
+  // goes straight to the stab (0x1210 beq 0x1360).
   // The retail's arm at 0x11F8 (the animation data is null) cannot be taken in the port: the
   // portal is always built with the attack tip's model and its animation data.
   if (ModelData() != nullptr && ModelData()->AnimationData() != nullptr) {  // 0x11F4, 0x1200
     // 0x1214: the "Whole Body" animation is over?
     if (!AnimationData()->IsAnimTimeRemaining(dt - 0.00000011920929f,
                                               rstl::string_l("Whole Body"))) {
-      SetActive(false);  // 0x1258
+      SetActive(false);  // 0x1258 (li r4,0x0 at 0x125C)
       // 0x1270: the portal's effect (the guest 0x2D4).
       CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(mEffectId));
       if (effect != nullptr && effect->GetActive()) {  // 0x128C, 0x1290: the retail's own tests
-        // 0x135C: the emitter for the second warp sound at the effect's own place.
+        // 0x12BC: the emitter for the second warp sound at the effect's own place.
         CSfxManager::AddEmitter(mWarpSound2, effect->GetTranslation(),
                                 effect->GetCurrentAreaId().Value(), true, false,
                                 CSfxManager::kMedPriority);
-        // 0x12C0: the effect gets the "ACTV" message.
-        effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), mEffectId, kSM_Activate));
+        // 0x1318: the effect gets "DCTV" (0x44435456, 0x12D4..0x12D8).
+        effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), mEffectId, kSM_Deactivate));
       }
     }
+    if (mTimer > 5.f) {  // 0x131C, lbl_16_rodata_3AC
+      mgr.DeleteObjectRequest(GetUniqueId());  // 0x1344
+    }
+    UpdateAnimation(dt, mgr, true);  // 0x135C
   }
-  if (mTimer > 5.f) {  // 0x131C, lbl_16_rodata_3AC
-    mgr.DeleteObjectRequest(GetUniqueId());  // 0x1344
-  }
-  UpdateAnimation(dt, mgr, true);  // 0x1348
   // 0x1360: the portal hits the player only once.
   if (mHit == 0) {
     const rstl::optional_object< CAABox > bounds = mgr.GetPlayer(0)->GetTouchBounds();  // 0x136C
@@ -2130,7 +2140,8 @@ void CEmperorIngStage1WarpPortal::AcceptScriptMsg(CStateManager& mgr, const CScr
 // constant (0x10C4..0x111C); the model data's world space portal plane takes it (0x1128) and
 // the base's own render follows (0x1134). The retail's first call (the renderer's vtable slot
 // 16 with the transform, 0x10A8) is the base's own work.
-// The warp portal actor is created in area 11 (fn_16_1720 runs in the natural heart-stage cycles), but its Render never ran there (gcov 0 of 6 lines). A temporary hook drove it (see the module note).
+// It runs in area 11's natural heart-stage cycles (gcov 6/6, module note §12a): the portal is
+// created inactive (0x65DC) and renders once its think activates it past 0.75f (0x11E0).
 // @ fn_16_1088
 void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
   const CVector3f normal = GetTransform().GetColumn(kDY);  // 0x10C4
