@@ -1,0 +1,421 @@
+offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
+0x0	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+AC	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_14_0
+0x8	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+118	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_14_8
+0x10	0x68	CDigitalGuardian	-	virtual	B	lbl_14_data_484+48 lbl_14_data_EB4+48	marked	marked	fn_14_10
+0x78	0x10	CDigitalGuardian	-	virtual	H	lbl_14_data_484+A4 lbl_14_data_EB4+A4	same body as EmperorIngStage1 0xb994 (the base body: byte-identical to the DOL's CPatterned::TakeDamage (0x80073C58), )	not-port	fn_14_78
+0x88	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+C8 lbl_14_data_EB4+C8	same body as EmperorIngStage1 0xb9a4 (the base body: byte-identical to the DOL's CPatterned::GetModelAlphau8 (0x80073C)	not-port	fn_14_88
+0x90	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+DC	same body as EmperorIngStage1 0xb9ac (the base body: byte-identical to the DOL's CPatterned::ProjectileInfo (0x80073C6)	not-port	fn_14_90
+0x98	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+E0 lbl_14_data_EB4+E0	same body as EmperorIngStage1 0xb9ac (the base body: byte-identical to the DOL's CPatterned::ProjectileInfo (0x80073C6)	not-port	fn_14_98
+0xA0	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+E4 lbl_14_data_EB4+E4	same body as EmperorIngStage1 0xb9ac (the base body: byte-identical to the DOL's CPatterned::ProjectileInfo (0x80073C6)	not-port	fn_14_A0
+0xA8	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+F4 lbl_14_data_EB4+F4	same body as EmperorIngStage1 0xb9ac (the base body: byte-identical to the DOL's CPatterned::ProjectileInfo (0x80073C6)	not-port	fn_14_A8
+0xB0	0x10	CDigitalGuardian	-	virtual	H	lbl_14_data_484+10C lbl_14_data_EB4+10C	same body as EmperorIngStage1 0xb9cc (the base body: byte-identical to the DOL's CPatterned::GetAttackTarget (0x80073C)	not-port	fn_14_B0
+0xC0	0xC	CDigitalGuardian	-	virtual	H	lbl_14_data_484+110 lbl_14_data_EB4+110	same body as EmperorIngStage1 0xb9dc (the base body: byte-identical to the DOL's CPatterned::IsOnGround (0x80073C90), )	not-port	fn_14_C0
+0xCC	0xC	CDigitalGuardian	-	virtual	H	lbl_14_data_484+114 lbl_14_data_EB4+114	same body as EmperorIngStage1 0xb9e8 (the base body: byte-identical to the DOL's CPatterned::GetGravityConstant (0x800)	not-port	fn_14_CC
+0xD8	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+124 lbl_14_data_EB4+124	same body as EmperorIngStage1 0xb9f4 (the base body: byte-identical to the DOL's CPatterned::GetDeathExplosionParticle)	not-port	fn_14_D8
+0xE0	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+A8 lbl_14_data_EB4+A8	same body in 3 other modules (EmperorIngStage1,Sporb,SwarmBasics)	not-port	fn_14_E0
+0xE8	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_484+B0 lbl_14_data_EB4+B0	same body as EmperorIngStage1 0xb9ac (the base body: byte-identical to the DOL's CPatterned::ProjectileInfo (0x80073C6)	not-port	fn_14_E8
+0xF0	0x1C	CDigitalGuardian	-	virtual	H	lbl_14_data_484+B4 lbl_14_data_EB4+B4	same body as EmperorIngStage1 0xba14 (the base body: byte-identical to the DOL's CAi::GetOrigin (0x80073CB4), the same)	not-port	fn_14_F0
+0x10C	0x2C	CDigitalGuardian	-	virtual	H	lbl_14_data_1034+3C lbl_14_data_10D0+3C lbl_14_data_484+3C lbl_14_data_694+3C lbl_14_data_EB4+3C	same body as EmperorIngStage1 0x60 (the base class's own body - the host's CActor / CPhysicsActor / CModelData provi)	not-port	fn_14_10C
+0x138	0x24	REL runtime	RELExit	runtime	T	_epilog	REL exit (called by _epilog)	not-port	RELExit
+0x15C	0x20	REL runtime	RELMain	runtime	T	_prolog	REL entry (called by _prolog)	not-port	RELMain
+0x17C	0x3C	CDigitalGuardian	-	func	T	RELMain	RegisterFuncPtrs-style REL setup (only caller RELMain)	not-port	fn_14_17C
+0x1B8	0x330	CDigitalGuardian	-	func	B	fn_14_17C	module loader (SpacePirate LoadSpacePirate precedent)	not-port	fn_14_1B8
+0x4E8	0x40	CDigitalGuardian	-	func	H	fn_14_1B8 fn_14_DF7C	same body as EmperorIngStage1 0xa5bc (the loader's reader / the model's copy - the host's ScriptLoaderRel and the gene)	not-port	fn_14_4E8
+0x528	0x20	CDigitalGuardian	-	func	H	fn_14_4E8 fn_14_6A50	same body as EmperorIngStage1 0x22b0 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_528
+0x548	0x28	CDigitalGuardian	-	func	H	fn_14_528	same body as EmperorIngStage1 0x39ec (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_548
+0x570	0x13C	CDigitalGuardian	-	func	H	fn_14_548	same body as EmperorIngStage1 0xa644 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_570
+0x6AC	0x6C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_6AC
+0x718	0x54	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_718
+0x76C	0x64	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_76C
+0x7D0	0x60	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_7D0
+0x830	0x7C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_830
+0x8AC	0x82C	CDigitalGuardian	-	func	H	fn_14_1B8	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrDigitalGuardian*.hpp): the port reads properties through the upstream SLdr class	not-port	fn_14_8AC
+0x10D8	0x148	CDigitalGuardian	-	func	H	fn_14_1B8 fn_14_830 fn_14_AB98	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrDigitalGuardian*.hpp): the port reads properties through the upstream SLdr class	not-port	fn_14_10D8
+0x1220	0x21C	CDigitalGuardian	-	func	H	fn_14_1B8	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrDigitalGuardian*.hpp): the port reads properties through the upstream SLdr class	not-port	fn_14_1220
+0x143C	0xBC	CDigitalGuardian	-	func	B	fn_14_5140 fn_14_5470 fn_14_5644	marked	marked	fn_14_143C
+0x14F8	0x78	CDigitalGuardian	-	func	B	fn_14_8090 fn_14_8580 fn_14_8E44 fn_14_A6A8	marked	marked	fn_14_14F8
+0x1570	0x190	CDigitalGuardian	-	func	B	fn_14_9CA4	marked	marked	fn_14_1570
+0x1700	0xDC	CDigitalGuardian	-	func	B	fn_14_9ABC fn_14_A004	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_1700
+0x17DC	0xD8	CDigitalGuardian	-	func	B	fn_14_A004	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_17DC
+0x18B4	0xE0	CDigitalGuardian	-	func	B	fn_14_9ABC fn_14_A004	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_18B4
+0x1994	0xD4	CDigitalGuardian	-	func	B	fn_14_9ABC fn_14_A004	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_1994
+0x1A68	0x580	CDigitalGuardian	-	func	B	fn_14_2358 fn_14_24E4 fn_14_458C fn_14_5140 fn_14_5644 fn_14_7D8C fn_14_8580 fn_14_89D4 fn_14_8CCC	marked	marked	fn_14_1A68
+0x1FE8	0x58	CDigitalGuardian	-	func	H	fn_14_11FEC fn_14_12314 fn_14_12B04 fn_14_15054 fn_14_1A68 fn_14_266C fn_14_2E60 fn_14_4080 fn_14_458C fn_14_F424	same body as EmperorIngStage1 0x67ec (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_1FE8
+0x2040	0x54	CDigitalGuardian	-	func	H	fn_14_1FE8	same body as EmperorIngStage1 0x6844 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_2040
+0x2094	0x50	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_2094
+0x20E4	0xBC	CDigitalGuardian	-	func	B	fn_14_458C	marked	marked	fn_14_20E4
+0x21A0	0x28	CDigitalGuardian	-	func	H	fn_14_13284 fn_14_20E4 fn_14_4464 fn_14_44F8 fn_14_59BC fn_14_61DC	same body in 1 other modules (DarkSamus)	not-port	fn_14_21A0
+0x21C8	0x7C	CDigitalGuardian	-	func	H	fn_14_21A0	same body as EmperorIngStage1 0x231c (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_21C8
+0x2244	0x114	CDigitalGuardian	-	func	H	fn_14_21C8	same body as EmperorIngStage1 0x2398 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_2244
+0x2358	0x18C	CDigitalGuardian	-	func	B	fn_14_A5BC	marked	marked	fn_14_2358
+0x24E4	0x94	CDigitalGuardian	-	func	B	fn_14_8090 fn_14_A6A8	marked	marked	fn_14_24E4
+0x2578	0xF4	CDigitalGuardian	-	func	B	fn_14_17DC fn_14_9ABC fn_14_A138 fn_14_B100	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_2578
+0x266C	0x264	CDigitalGuardian	-	func	B	fn_14_5274	marked	marked	fn_14_266C
+0x28D0	0x158	CDigitalGuardian	-	func	B	fn_14_2CC4	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_28D0
+0x2A28	0x29C	CDigitalGuardian	-	func	B	fn_14_2CC4	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_2A28
+0x2CC4	0x19C	CDigitalGuardian	-	func	B	fn_14_7CB4	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_2CC4
+0x2E60	0x22C	CDigitalGuardian	-	func	B	fn_14_5274	marked	marked	fn_14_2E60
+0x308C	0x120	CDigitalGuardian	-	func	B	fn_14_7208 fn_14_7600 fn_14_9678	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_308C
+0x31AC	0x100	CDigitalGuardian	-	func	H	fn_14_119E4 fn_14_308C	same body as IngBoostBallGuardian 0x160d0 (the template inline the compiler emitted out of line)	not-port	fn_14_31AC
+0x32AC	0x54	CDigitalGuardian	-	func	H	fn_14_119E4 fn_14_13830 fn_14_17F64 fn_14_308C	same body as EmperorIngStage1 0x6844 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_32AC
+0x3300	0x1E8	CDigitalGuardian	-	func	B	fn_14_A468	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_3300
+0x34E8	0x18C	CDigitalGuardian	-	func	B	fn_14_9070	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_34E8
+0x3674	0x188	CDigitalGuardian	-	func	B	fn_14_9260	marked	marked	fn_14_3674
+0x37FC	0xC0	CDigitalGuardian	-	func	B	fn_14_7208 fn_14_77EC	marked	marked	fn_14_37FC
+0x38BC	0xB8	CDigitalGuardian	-	func	B	fn_14_A5BC	marked	marked	fn_14_38BC
+0x3974	0x58	CDigitalGuardian	-	func	B	fn_14_676C fn_14_9260	marked	marked	fn_14_3974
+0x39CC	0x78	CDigitalGuardian	-	func	B	fn_14_9260	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_39CC
+0x3A44	0x108	CDigitalGuardian	-	func	B	fn_14_76D0 fn_14_775C fn_14_7D8C fn_14_8090 fn_14_8580 fn_14_A468 fn_14_A6A8	marked	marked	fn_14_3A44
+0x3B4C	0x5C	CDigitalGuardian	-	func	H	fn_14_18264 fn_14_1A698 fn_14_3A44 fn_14_B100	same body as EmperorIngStage1 0x98d0 (a struct copy - the host's copy constructor / LdrToDamageVulnerability does it)	not-port	fn_14_3B4C
+0x3BA8	0x54	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_3BA8
+0x3BFC	0x130	CDigitalGuardian	-	func	H	fn_14_3B4C	same body as EmperorIngStage1 0x9980 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_3BFC
+0x3D2C	0x7C	CDigitalGuardian	-	func	B	fn_14_76D0 fn_14_775C fn_14_7D8C fn_14_8090 fn_14_8580 fn_14_A468	marked	marked	fn_14_3D2C
+0x3DA8	0x84	CDigitalGuardian	-	func	B	fn_14_775C fn_14_8E44	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_3DA8
+0x3E2C	0x5C	CDigitalGuardian	-	func	B	fn_14_5838	marked	marked	fn_14_3E2C
+0x3E88	0x8C	CDigitalGuardian	-	func	B	fn_14_A6A8	marked	marked	fn_14_3E88
+0x3F14	0x7C	CDigitalGuardian	-	func	B	fn_14_A6A8	marked	marked	fn_14_3F14
+0x3F90	0xF0	CDigitalGuardian	-	func	B	fn_14_A5BC	marked	marked	fn_14_3F90
+0x4080	0x274	CDigitalGuardian	-	func	B	fn_14_A6A8	marked	marked	fn_14_4080
+0x42F4	0x5C	CDigitalGuardian	-	func	B	fn_14_4080 fn_14_5C30 fn_14_61DC	marked	marked	fn_14_42F4
+0x4350	0x5C	CDigitalGuardian	-	func	B	fn_14_5140 fn_14_5644	marked	marked	fn_14_4350
+0x43AC	0x5C	CDigitalGuardian	-	func	B	fn_14_5644 fn_14_5838 fn_14_59BC	marked	marked	fn_14_43AC
+0x4408	0x5C	CDigitalGuardian	-	func	B	fn_14_59BC	marked	marked	fn_14_4408
+0x4464	0x94	CDigitalGuardian	-	func	B	fn_14_61DC	marked	marked	fn_14_4464
+0x44F8	0x94	CDigitalGuardian	-	func	B	fn_14_61DC	marked	marked	fn_14_44F8
+0x458C	0x1E0	CDigitalGuardian	-	func	B	fn_14_A468	marked	marked	fn_14_458C
+0x476C	0xCC	CDigitalGuardian	-	func	H	fn_14_458C	same body as EmperorIngStage1 0x9700 (the loader's reader / the model's copy - the host's ScriptLoaderRel and the gene)	not-port	fn_14_476C
+0x4838	0x40	CDigitalGuardian	-	func	B	fn_14_9260	marked	marked	fn_14_4838
+0x4878	0x98	CDigitalGuardian	-	func	B	fn_14_9260	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_4878
+0x4910	0x70	CDigitalGuardian	-	func	H	fn_14_19908 fn_14_4878 fn_14_4D54 fn_14_4E00	same body in 1 other modules (Sporb)	not-port	fn_14_4910
+0x4980	0x58	CDigitalGuardian	-	func	H	fn_14_4910	same body as EmperorIngStage1 0xa1d4 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_4980
+0x49D8	0x54	CDigitalGuardian	-	func	H	fn_14_4980	same body as EmperorIngStage1 0x6844 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_49D8
+0x4A2C	0xAC	CDigitalGuardian	-	func	H	fn_14_4878 fn_14_4D54 fn_14_4E00	same body in 1 other modules (MediumIng)	not-port	fn_14_4A2C
+0x4AD8	0xAC	CDigitalGuardian	-	func	H	fn_14_4A2C	same body as EmperorIngStage1 0x9f04 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_4AD8
+0x4B84	0x1D0	CDigitalGuardian	-	func	H	fn_14_4AD8	same body as EmperorIngStage1 0xa004 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_4B84
+0x4D54	0xAC	CDigitalGuardian	-	func	B	fn_14_9260	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_4D54
+0x4E00	0x12C	CDigitalGuardian	-	func	B	fn_14_A468	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_4E00
+0x4F2C	0x214	CDigitalGuardian	-	func	B	fn_14_A6A8	marked	marked	fn_14_4F2C
+0x5140	0x134	CDigitalGuardian	-	func	B	fn_14_5384	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_5140
+0x5274	0x110	CDigitalGuardian	-	func	B	fn_14_5838	marked	marked	fn_14_5274
+0x5384	0xEC	CDigitalGuardian	-	func	B	fn_14_5838	marked	marked	fn_14_5384
+0x5470	0x1D4	CDigitalGuardian	-	func	B	fn_14_5838	marked	marked	fn_14_5470
+0x5644	0x1F4	CDigitalGuardian	-	func	B	fn_14_A6A8	marked	marked	fn_14_5644
+0x5838	0xD8	CDigitalGuardian	-	func	B	fn_14_A6A8	marked	marked	fn_14_5838
+0x5910	0xAC	CDigitalGuardian	-	func	B	fn_14_A6A8	marked	marked	fn_14_5910
+0x59BC	0x274	CDigitalGuardian	-	func	B	fn_14_676C	marked	marked	fn_14_59BC
+0x5C30	0x2F4	CDigitalGuardian	-	func	B	fn_14_676C	marked	marked	fn_14_5C30
+0x5F24	0x38	CDigitalGuardian	-	func	H	fn_14_13318 fn_14_5C30 fn_14_61DC	same body in 1 other modules (Blogg)	not-port	fn_14_5F24
+0x5F5C	0x20	CDigitalGuardian	-	func	H	fn_14_5F24 fn_14_D89C	same body as EmperorIngStage1 0x22b0 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_5F5C
+0x5F7C	0x28	CDigitalGuardian	-	func	H	fn_14_5F5C	same body as EmperorIngStage1 0x39ec (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_5F7C
+0x5FA4	0xC0	CDigitalGuardian	-	func	H	fn_14_13318 fn_14_5C30 fn_14_5F7C fn_14_61DC	same body as ElitePirate 0x3308 (fn_15_3308)	not-port	fn_14_5FA4
+0x6064	0x5C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_6064
+0x60C0	0x84	CDigitalGuardian	-	func	H	fn_14_13318 fn_14_5C30 fn_14_61DC	same body as EmperorIngStage1 0x4838 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_60C0
+0x6144	0x38	CDigitalGuardian	-	func	H	fn_14_60C0	same body as EmperorIngStage1 0x48bc (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_6144
+0x617C	0x60	CDigitalGuardian	-	func	H	fn_14_6144	same body as EmperorIngStage1 0x48f4 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_617C
+0x61DC	0x590	CDigitalGuardian	-	func	B	fn_14_676C	marked	marked	fn_14_61DC
+0x676C	0xF8	CDigitalGuardian	-	func	B	fn_14_A5BC	marked	marked	fn_14_676C
+0x6864	0x1BC	CDigitalGuardian	-	func	B	fn_14_B100	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_6864
+0x6A20	0x30	CDigitalGuardian	-	func	H	fn_14_137A8 fn_14_6864	same body as IngBoostBallGuardian 0x15fc4 (the REL's own copy of a DOL / host class member)	not-port	fn_14_6A20
+0x6A50	0x48	CDigitalGuardian	-	func	H	fn_14_6A20	only called from H rows fn_14_6A20	not-port	fn_14_6A50
+0x6A98	0xC4	CDigitalGuardian	-	func	H	fn_14_6A50	only called from H rows fn_14_6A50	not-port	fn_14_6A98
+0x6B5C	0xC8	CDigitalGuardian	-	func	H	fn_14_6A98	only called from H rows fn_14_6A98	not-port	fn_14_6B5C
+0x6C24	0x50	CDigitalGuardian	-	func	B	fn_14_6CB0	marked	marked	fn_14_6C24
+0x6C74	0x3C	CDigitalGuardian	-	func	B	fn_14_6E04	marked	marked	fn_14_6C74
+0x6CB0	0x154	CDigitalGuardian	-	func	B	fn_14_6E04	marked	marked	fn_14_6CB0
+0x6E04	0x258	CDigitalGuardian	-	func	B	fn_14_A5BC	marked	marked	fn_14_6E04
+0x705C	0x58	CDigitalGuardian	-	func	B	fn_14_10120 fn_14_14F8 fn_14_15448 fn_14_38BC fn_14_6E04 fn_14_7B90 fn_14_9A0C	marked	marked	fn_14_705C
+0x70B4	0x30	CDigitalGuardian	-	func	B	fn_14_17244	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_70B4
+0x70E4	0x84	CDigitalGuardian	-	func	B	fn_14_16160 fn_14_6E04	marked	marked	fn_14_70E4
+0x7168	0xA0	CDigitalGuardian	-	func	B	fn_14_13830	marked	marked	fn_14_7168
+0x7208	0x1CC	CDigitalGuardian	-	virtual	B	lbl_14_data_374+8	marked	marked	fn_14_7208
+0x73D4	0x130	CDigitalGuardian	-	virtual	B	fn_14_A468 lbl_14_data_368+8	marked	marked	fn_14_73D4
+0x7504	0xFC	CDigitalGuardian	-	virtual	B	lbl_14_data_35C+8	marked	marked	fn_14_7504
+0x7600	0x48	CDigitalGuardian	-	virtual	B	lbl_14_data_350+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_7600
+0x7648	0x44	CDigitalGuardian	-	virtual	B	lbl_14_data_344+8	marked	marked	fn_14_7648
+0x768C	0x44	CDigitalGuardian	-	virtual	B	lbl_14_data_338+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_768C
+0x76D0	0x8C	CDigitalGuardian	-	virtual	B	lbl_14_data_32C+8	marked	marked	fn_14_76D0
+0x775C	0x90	CDigitalGuardian	-	virtual	B	lbl_14_data_320+8	marked	marked	fn_14_775C
+0x77EC	0x338	CDigitalGuardian	-	virtual	B	lbl_14_data_314+8	marked	marked	fn_14_77EC
+0x7B24	0x60	CDigitalGuardian	-	virtual	B	fn_14_7168 fn_14_A6A8 lbl_14_data_308+8	marked	marked	fn_14_7B24
+0x7B84	0xC	CDigitalGuardian	-	virtual	B	lbl_14_data_2FC+8	marked	marked	fn_14_7B84
+0x7B90	0x44	CDigitalGuardian	-	virtual	B	lbl_14_data_2F0+8	marked	marked	fn_14_7B90
+0x7BD4	0xE0	CDigitalGuardian	-	virtual	B	lbl_14_data_2E4+8	marked	marked	fn_14_7BD4
+0x7CB4	0xD8	CDigitalGuardian	-	virtual	B	lbl_14_data_1F8+8	marked	marked	fn_14_7CB4
+0x7D8C	0x260	CDigitalGuardian	-	virtual	B	lbl_14_data_1EC+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_7D8C
+0x7FEC	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_67C+8	same body as DarkSamus 0x4b9c (fn_10_4B9C)	not-port	fn_14_7FEC
+0x8048	0x48	CDigitalGuardian	-	virtual	H	lbl_14_data_688+8	same body as DarkSamus 0x4bf8 (fn_10_4BF8)	not-port	fn_14_8048
+0x8090	0x298	CDigitalGuardian	-	virtual	B	lbl_14_data_1E0+8	marked	marked	fn_14_8090
+0x8328	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_670+8	same body as DarkSamus 0x4b9c (fn_10_4B9C)	not-port	fn_14_8328
+0x8384	0x3C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_8384
+0x83C0	0x184	CDigitalGuardian	-	func	H	fn_14_8090	same body as EmperorIngStage1 0x337c (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_83C0
+0x8544	0x3C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_8544
+0x8580	0x1B8	CDigitalGuardian	-	virtual	B	lbl_14_data_1D4+8	marked	marked	fn_14_8580
+0x8738	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_664+8	same body as DarkSamus 0x4b9c (fn_10_4B9C)	not-port	fn_14_8738
+0x8794	0x1E4	CDigitalGuardian	-	virtual	B	lbl_14_data_1C8+8	marked	marked	fn_14_8794
+0x8978	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_658+8	same body as DarkSamus 0x4b9c (fn_10_4B9C)	not-port	fn_14_8978
+0x89D4	0x29C	CDigitalGuardian	-	virtual	B	lbl_14_data_1BC+8	marked	marked	fn_14_89D4
+0x8C70	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_64C+8	same body as DarkSamus 0x4b9c (fn_10_4B9C)	not-port	fn_14_8C70
+0x8CCC	0x178	CDigitalGuardian	-	virtual	B	lbl_14_data_1B0+8	marked	marked	fn_14_8CCC
+0x8E44	0x1D0	CDigitalGuardian	-	virtual	B	lbl_14_data_1A4+8	marked	marked	fn_14_8E44
+0x9014	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_640+8	same body as DarkSamus 0x4b9c (fn_10_4B9C)	not-port	fn_14_9014
+0x9070	0xF4	CDigitalGuardian	-	virtual	B	lbl_14_data_198+8	marked	marked	fn_14_9070
+0x9164	0xFC	CDigitalGuardian	-	virtual	B	lbl_14_data_18C+8	marked	marked	fn_14_9164
+0x9260	0x25C	CDigitalGuardian	-	virtual	B	lbl_14_data_180+8	marked	marked	fn_14_9260
+0x94BC	0xFC	CDigitalGuardian	-	virtual	B	lbl_14_data_174+8	marked	marked	fn_14_94BC
+0x95B8	0x7C	CDigitalGuardian	-	virtual	B	lbl_14_data_168+8	marked	marked	fn_14_95B8
+0x9634	0x4	CDigitalGuardian	-	virtual	B	lbl_14_data_15C+8	marked	marked	fn_14_9634
+0x9638	0x34	CDigitalGuardian	-	virtual	B	lbl_14_data_90+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_9638
+0x966C	0xC	CDigitalGuardian	-	virtual	B	lbl_14_data_84+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_966C
+0x9678	0x12C	CDigitalGuardian	-	virtual	B	lbl_14_data_78+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_9678
+0x97A4	0x4C	CDigitalGuardian	-	virtual	B	lbl_14_data_6C+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_97A4
+0x97F0	0x140	CDigitalGuardian	-	virtual	B	lbl_14_data_60+8	marked	marked	fn_14_97F0
+0x9930	0x64	CDigitalGuardian	-	virtual	B	lbl_14_data_54+8	marked	marked	fn_14_9930
+0x9994	0x78	CDigitalGuardian	-	virtual	B	lbl_14_data_48+8	marked	marked	fn_14_9994
+0x9A0C	0x3C	CDigitalGuardian	-	virtual	B	lbl_14_data_3C+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_9A0C
+0x9A48	0x18	CDigitalGuardian	-	virtual	B	lbl_14_data_30+8	marked	marked	fn_14_9A48
+0x9A60	0x3C	CDigitalGuardian	-	virtual	B	lbl_14_data_24+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_9A60
+0x9A9C	0xC	CDigitalGuardian	-	virtual	B	lbl_14_data_18+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_9A9C
+0x9AA8	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_C+8	marked	marked	fn_14_9AA8
+0x9ABC	0x1E8	CDigitalGuardian	-	virtual	B	lbl_14_data_484+120	marked	marked	fn_14_9ABC
+0x9CA4	0x118	CDigitalGuardian	-	virtual	B	lbl_14_data_484+11C	marked	marked	fn_14_9CA4
+0x9DBC	0x40	CDigitalGuardian	-	virtual	B	lbl_14_data_484+74	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_9DBC
+0x9DFC	0x8C	CDigitalGuardian	-	virtual	B	lbl_14_data_484+F0	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_9DFC
+0x9E88	0x15C	CDigitalGuardian	-	virtual	B	lbl_14_data_484+54	marked	marked	fn_14_9E88
+0x9FE4	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_484+40	marked	marked	fn_14_9FE4
+0xA004	0x134	CDigitalGuardian	-	virtual	B	lbl_14_data_484+28	marked	marked	fn_14_A004
+0xA138	0x210	CDigitalGuardian	-	virtual	B	lbl_14_data_484+34	marked	marked	fn_14_A138
+0xA348	0x3C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_A348
+0xA384	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_484+24	marked	marked	fn_14_A384
+0xA3A4	0x30	CDigitalGuardian	-	virtual	B	lbl_14_data_484+BC	marked	marked	fn_14_A3A4
+0xA3D4	0x94	CDigitalGuardian	-	virtual	B	lbl_14_data_484+2C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_A3D4
+0xA468	0x154	CDigitalGuardian	-	virtual	B	lbl_14_data_484+70	marked	marked	fn_14_A468
+0xA5BC	0xCC	CDigitalGuardian	-	virtual	B	lbl_14_data_484+14	marked	marked	fn_14_A5BC
+0xA688	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_484+10	marked	marked	fn_14_A688
+0xA6A8	0x4F0	CDigitalGuardian	-	virtual	B	lbl_14_data_484+18	marked	marked	fn_14_A6A8
+0xAB98	0x2F0	CDigitalGuardian	-	virtual	B	lbl_14_data_484+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_AB98
+0xAE88	0x1E4	CDigitalGuardian	-	func	H	fn_14_17F64 fn_14_AB98	same body as EmperorIngStage1 0x8d40 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_AE88
+0xB06C	0x94	CDigitalGuardian	-	func	H	fn_14_AE88	same body as EmperorIngStage1 0x8f24 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_B06C
+0xB100	0xF90	CDigitalGuardian	-	func	B	fn_14_1B8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_B100
+0xC090	0x54	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C090
+0xC0E4	0x6C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C0E4
+0xC150	0x54	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C150
+0xC1A4	0x6C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C1A4
+0xC210	0x58	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C210
+0xC268	0x8C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C268
+0xC2F4	0x8C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C2F4
+0xC380	0x3C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C380
+0xC3BC	0x3C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C3BC
+0xC3F8	0x3C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C3F8
+0xC434	0x3C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C434
+0xC470	0x3C	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C470
+0xC4AC	0x78	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C4AC
+0xC524	0x58	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C524
+0xC57C	0x94	CDigitalGuardian	-	func	H	fn_14_B100	same body in 1 other modules (MediumIng)	not-port	fn_14_C57C
+0xC610	0x7C	CDigitalGuardian	-	func	H	fn_14_C57C	same body in 2 other modules (MediumIng,ScriptCannonBall)	not-port	fn_14_C610
+0xC68C	0x470	CDigitalGuardian	-	func	B	fn_14_B100	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_C68C
+0xCAFC	0x2BC	CDigitalGuardian	-	func	B	fn_14_1912C fn_14_C68C	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_CAFC
+0xCDB8	0x64	CDigitalGuardian	-	func	B	fn_14_C68C	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_CDB8
+0xCE1C	0x78	CDigitalGuardian	-	func	B	fn_14_3DA8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_CE1C
+0xCE94	0x100	CDigitalGuardian	-	func	B	fn_14_3A44	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_CE94
+0xCF94	0x38C	CDigitalGuardian	-	virtual	B	lbl_14_data_694+14	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_CF94
+0xD320	0x140	CDigitalGuardian	-	virtual	B	lbl_14_data_694+18	marked	marked	fn_14_D320
+0xD460	0x70	CDigitalGuardian	-	virtual	B	lbl_14_data_694+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_D460
+0xD4D0	0x194	CDigitalGuardian	-	func	B	fn_14_4080	marked	marked	fn_14_D4D0
+0xD664	0x110	CDigitalGuardian	-	func	B	fn_14_B100	marked	marked	fn_14_D664
+0xD774	0x48	CDigitalGuardian	-	virtual	B	lbl_14_data_694+48	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_D774
+0xD7BC	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_694+40	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_D7BC
+0xD7DC	0xC0	CDigitalGuardian	-	func	H	fn_14_13318 fn_14_5C30 fn_14_61DC	same body as EmperorIngStage1 0xbc44 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_D7DC
+0xD89C	0x68	CDigitalGuardian	-	func	H	fn_14_D7DC	same body as EmperorIngStage1 0xbd04 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_D89C
+0xD904	0x668	CDigitalGuardian	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_14_D904
+0xDF6C	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_EB4+AC	same body in 3 other modules (EmperorIngStage1,Sporb,SwarmBasics)	not-port	fn_14_DF6C
+0xDF74	0x8	CDigitalGuardian	-	virtual	H	lbl_14_data_EB4+118	same body in 3 other modules (EmperorIngStage1,Sporb,SwarmBasics)	not-port	fn_14_DF74
+0xDF7C	0x344	CDigitalGuardian	-	func	B	fn_14_17C	module loader for the head (SpacePirate LoadSpacePirate precedent)	marked	fn_14_DF7C
+0xE2C0	0x920	CDigitalGuardian	-	func	H	fn_14_DF7C	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrDigitalGuardian*.hpp): the port reads properties through the upstream SLdr class	not-port	fn_14_E2C0
+0xEBE0	0x190	CDigitalGuardian	-	func	H	fn_14_17F64 fn_14_1A5F4 fn_14_DF7C	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrDigitalGuardian*.hpp): the port reads properties through the upstream SLdr class	not-port	fn_14_EBE0
+0xED70	0x348	CDigitalGuardian	-	func	H	fn_14_DF7C	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrDigitalGuardian*.hpp): the port reads properties through the upstream SLdr class	not-port	fn_14_ED70
+0xF0B8	0x180	CDigitalGuardian	-	func	H	fn_14_E2C0	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrDigitalGuardian*.hpp): the port reads properties through the upstream SLdr class	not-port	fn_14_F0B8
+0xF238	0x3C	CDigitalGuardian	-	func	H	fn_14_EBE0	same body as EmperorIngStage1 0x48c (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_F238
+0xF274	0x44	CDigitalGuardian	-	func	H	fn_14_ED70	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrDigitalGuardian*.hpp): the port reads properties through the upstream SLdr class	not-port	fn_14_F274
+0xF2B8	0xBC	CDigitalGuardian	-	func	B	fn_14_1303C	marked	marked	fn_14_F2B8
+0xF374	0x1C	CDigitalGuardian	-	func	B	fn_14_1569C	marked	marked	fn_14_F374
+0xF390	0x94	CDigitalGuardian	-	func	B	fn_14_14B98	marked	marked	fn_14_F390
+0xF424	0x280	CDigitalGuardian	-	func	B	fn_14_15E18	marked	marked	fn_14_F424
+0xF6A4	0x3AC	CDigitalGuardian	-	func	B	fn_14_16A50	marked	marked	fn_14_F6A4
+0xFA50	0x9C	CDigitalGuardian	-	func	B	fn_14_17BBC	marked	marked	fn_14_FA50
+0xFAEC	0x84	CDigitalGuardian	-	func	B	fn_14_16A50 fn_14_17D38 fn_14_FB70	marked	marked	fn_14_FAEC
+0xFB70	0x2A4	CDigitalGuardian	-	func	B	fn_14_16A50	marked	marked	fn_14_FB70
+0xFE14	0x1E8	CDigitalGuardian	-	func	B	fn_14_FB70	marked	marked	fn_14_FE14
+0xFFFC	0x90	CDigitalGuardian	-	func	H	fn_14_18264 fn_14_FE14	same body in 1 other modules (Sporb)	not-port	fn_14_FFFC
+0x1008C	0x94	CDigitalGuardian	-	func	H	fn_14_FE14	same body as EmperorIngStage1 0xff4 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_1008C
+0x10120	0xC0	CDigitalGuardian	-	func	B	fn_14_15448 fn_14_15598 fn_14_16F74	marked	marked	fn_14_10120
+0x101E0	0x29C	CDigitalGuardian	-	func	B	fn_14_16408	marked	marked	fn_14_101E0
+0x1047C	0x48	CDigitalGuardian	-	func	H	fn_14_101E0 fn_14_10A2C fn_14_111E0	same body in 3 other modules (DarkSamus,ScriptPlayerTurret,Sporb)	not-port	fn_14_1047C
+0x104C4	0xB4	CDigitalGuardian	-	func	H	fn_14_1047C fn_14_11170	same body as EmperorIngStage1 0x85c8 (the visor effect's particle descriptor copy - the host's CImpactVisorEffect::Par)	not-port	fn_14_104C4
+0x10578	0x40	CDigitalGuardian	-	func	H	fn_14_104C4 fn_14_110CC	same body as EmperorIngStage1 0x867c (the visor effect's particle descriptor copy - the host's CImpactVisorEffect::Par)	not-port	fn_14_10578
+0x105B8	0x20	CDigitalGuardian	-	func	H	fn_14_10578	same body as EmperorIngStage1 0x22b0 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_105B8
+0x105D8	0x28	CDigitalGuardian	-	func	H	fn_14_105B8	same body as EmperorIngStage1 0x39ec (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_105D8
+0x10600	0x80	CDigitalGuardian	-	func	H	fn_14_105D8	same body as EmperorIngStage1 0x8704 (the visor effect's particle descriptor copy - the host's CImpactVisorEffect::Par)	not-port	fn_14_10600
+0x10680	0x5C	CDigitalGuardian	-	func	H	fn_14_1047C fn_14_10744 fn_14_11170	same body as EmperorIngStage1 0x88bc (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_10680
+0x106DC	0x20	CDigitalGuardian	-	func	H	fn_14_10680	same body as EmperorIngStage1 0x22b0 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_106DC
+0x106FC	0x48	CDigitalGuardian	-	func	H	fn_14_106DC	same body as EmperorIngStage1 0x8938 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_106FC
+0x10744	0x54	CDigitalGuardian	-	func	H	fn_14_101E0 fn_14_10A2C fn_14_10CA0 fn_14_111E0 fn_14_1998C	same body as EmperorIngStage1 0x8aa0 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_10744
+0x10798	0x294	CDigitalGuardian	-	func	B	fn_14_16408	marked	marked	fn_14_10798
+0x10A2C	0x274	CDigitalGuardian	-	func	B	fn_14_17BBC	marked	marked	fn_14_10A2C
+0x10CA0	0x3A4	CDigitalGuardian	-	func	B	fn_14_17BBC	marked	marked	fn_14_10CA0
+0x11044	0x24	CDigitalGuardian	-	func	B	fn_14_10CA0	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_11044
+0x11068	0x64	CDigitalGuardian	-	func	B	fn_14_11044	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_11068
+0x110CC	0xA4	CDigitalGuardian	-	func	H	fn_14_10CA0	same body in 1 other modules (Blogg)	not-port	fn_14_110CC
+0x11170	0x70	CDigitalGuardian	-	func	H	fn_14_10CA0	same body in 1 other modules (Blogg)	not-port	fn_14_11170
+0x111E0	0x2E8	CDigitalGuardian	-	func	B	fn_14_17BBC	marked	marked	fn_14_111E0
+0x114C8	0x1D0	CDigitalGuardian	-	func	B	fn_14_14254	marked	marked	fn_14_114C8
+0x11698	0xF0	CDigitalGuardian	-	func	B	fn_14_118B0 fn_14_143D8 fn_14_15284	marked	marked	fn_14_11698
+0x11788	0x128	CDigitalGuardian	-	func	B	fn_14_118B0 fn_14_143D8 fn_14_15284	marked	marked	fn_14_11788
+0x118B0	0x134	CDigitalGuardian	-	func	B	fn_14_14254	marked	marked	fn_14_118B0
+0x119E4	0x1C4	CDigitalGuardian	-	func	B	fn_14_13830	marked	marked	fn_14_119E4
+0x11BA8	0x60	CDigitalGuardian	-	virtual	B	lbl_14_data_1024+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_11BA8
+0x11C08	0x15C	CDigitalGuardian	-	func	B	fn_14_11D64 fn_14_16408	marked	marked	fn_14_11C08
+0x11D64	0x144	CDigitalGuardian	-	func	B	fn_14_15B94 fn_14_1633C fn_14_167EC fn_14_16A50 fn_14_16D64 fn_14_16F74 fn_14_1709C	marked	marked	fn_14_11D64
+0x11EA8	0x88	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_11EA8
+0x11F30	0x4C	CDigitalGuardian	-	func	B	fn_14_1303C	marked	marked	fn_14_11F30
+0x11F7C	0x70	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_11F7C
+0x11FEC	0x250	CDigitalGuardian	-	func	B	fn_14_1303C	marked	marked	fn_14_11FEC
+0x1223C	0xD8	CDigitalGuardian	-	func	B	fn_14_17C98	marked	marked	fn_14_1223C
+0x12314	0x3B4	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_12314
+0x126C8	0x150	CDigitalGuardian	-	func	B	fn_14_12818	marked	marked	fn_14_126C8
+0x12818	0x2EC	CDigitalGuardian	-	func	B	fn_14_17C98	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_12818
+0x12B04	0x294	CDigitalGuardian	-	func	B	fn_14_1303C	marked	marked	fn_14_12B04
+0x12D98	0x248	CDigitalGuardian	-	func	B	fn_14_17D38	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_12D98
+0x12FE0	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_1018+8	same body as DarkSamus 0x4b9c (fn_10_4B9C)	not-port	fn_14_12FE0
+0x1303C	0x20C	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_1303C
+0x13248	0x3C	CDigitalGuardian	-	func	B	fn_14_1303C	marked	marked	fn_14_13248
+0x13284	0x94	CDigitalGuardian	-	func	B	fn_14_13318	marked	marked	fn_14_13284
+0x13318	0x490	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_13318
+0x137A8	0x88	CDigitalGuardian	-	func	B	fn_14_18264	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_137A8
+0x13830	0x194	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_13830
+0x139C4	0xB0	CDigitalGuardian	-	func	B	fn_14_13830	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_139C4
+0x13A74	0xC	CDigitalGuardian	-	func	H	fn_14_139C4	same body in 1 other modules (Sporb)	not-port	fn_14_13A74
+0x13A80	0x60	CDigitalGuardian	-	virtual	B	lbl_14_data_1008+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_13A80
+0x13AE0	0x28	CDigitalGuardian	-	func	B	fn_14_17C98	marked	marked	fn_14_13AE0
+0x13B08	0x28	CDigitalGuardian	-	func	B	fn_14_7B24	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_13B08
+0x13B30	0x8	CDigitalGuardian	-	func	B	fn_14_70E4 fn_14_7168 fn_14_7648 fn_14_768C fn_14_76D0 fn_14_775C	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_13B30
+0x13B38	0xE4	CDigitalGuardian	-	func	B	fn_14_10A2C fn_14_10CA0 fn_14_111E0 fn_14_11C08 fn_14_11D64 fn_14_16160 fn_14_1633C fn_14_167EC fn_14_16A50 fn_14_16D64 fn_14_16F74 fn_14_1709C fn_14_6CB0	marked	marked	fn_14_13B38
+0x13C1C	0x50	CDigitalGuardian	-	virtual	B	lbl_14_data_C74+8	marked	marked	fn_14_13C1C
+0x13C6C	0x24C	CDigitalGuardian	-	virtual	B	lbl_14_data_C68+8	marked	marked	fn_14_13C6C
+0x13EB8	0x54	CDigitalGuardian	-	virtual	B	lbl_14_data_C5C+8	marked	marked	fn_14_13EB8
+0x13F0C	0x64	CDigitalGuardian	-	virtual	B	lbl_14_data_C50+8	marked	marked	fn_14_13F0C
+0x13F70	0xE8	CDigitalGuardian	-	virtual	B	lbl_14_data_C44+8	marked	marked	fn_14_13F70
+0x14058	0x1F0	CDigitalGuardian	-	virtual	B	lbl_14_data_C38+8	marked	marked	fn_14_14058
+0x14248	0xC	CDigitalGuardian	-	virtual	B	lbl_14_data_C2C+8	marked	marked	fn_14_14248
+0x14254	0x184	CDigitalGuardian	-	virtual	B	lbl_14_data_C20+8	marked	marked	fn_14_14254
+0x143D8	0x98	CDigitalGuardian	-	virtual	B	lbl_14_data_C14+8	marked	marked	fn_14_143D8
+0x14470	0x134	CDigitalGuardian	-	virtual	B	lbl_14_data_C08+8	marked	marked	fn_14_14470
+0x145A4	0x60	CDigitalGuardian	-	virtual	B	lbl_14_data_BFC+8	marked	marked	fn_14_145A4
+0x14604	0x60	CDigitalGuardian	-	virtual	B	lbl_14_data_BF0+8	marked	marked	fn_14_14604
+0x14664	0x1C4	CDigitalGuardian	-	virtual	B	lbl_14_data_BE4+8	marked	marked	fn_14_14664
+0x14828	0x1D0	CDigitalGuardian	-	virtual	B	lbl_14_data_BD8+8	marked	marked	fn_14_14828
+0x149F8	0x168	CDigitalGuardian	-	virtual	B	lbl_14_data_BCC+8	marked	marked	fn_14_149F8
+0x14B60	0x38	CDigitalGuardian	-	virtual	B	lbl_14_data_BC0+8	marked	marked	fn_14_14B60
+0x14B98	0x8C	CDigitalGuardian	-	virtual	B	lbl_14_data_BB4+8	marked	marked	fn_14_14B98
+0x14C24	0xD0	CDigitalGuardian	-	virtual	B	lbl_14_data_BA8+8	marked	marked	fn_14_14C24
+0x14CF4	0xAC	CDigitalGuardian	-	virtual	B	lbl_14_data_B90+8	marked	marked	fn_14_14CF4
+0x14DA0	0xD8	CDigitalGuardian	-	virtual	B	lbl_14_data_B9C+8	marked	marked	fn_14_14DA0
+0x14E78	0xFC	CDigitalGuardian	-	virtual	B	lbl_14_data_B84+8	marked	marked	fn_14_14E78
+0x14F74	0xE0	CDigitalGuardian	-	virtual	B	lbl_14_data_B78+8	marked	marked	fn_14_14F74
+0x15054	0x1F8	CDigitalGuardian	-	virtual	B	lbl_14_data_B6C+8	marked	marked	fn_14_15054
+0x1524C	0x38	CDigitalGuardian	-	virtual	B	lbl_14_data_B60+8	marked	marked	fn_14_1524C
+0x15284	0x14C	CDigitalGuardian	-	virtual	B	lbl_14_data_B54+8	marked	marked	fn_14_15284
+0x153D0	0x78	CDigitalGuardian	-	virtual	B	lbl_14_data_B48+8	marked	marked	fn_14_153D0
+0x15448	0x150	CDigitalGuardian	-	virtual	B	lbl_14_data_B3C+8	marked	marked	fn_14_15448
+0x15598	0x74	CDigitalGuardian	-	virtual	B	fn_14_13B08 lbl_14_data_B30+8	marked	marked	fn_14_15598
+0x1560C	0x10	CDigitalGuardian	-	virtual	B	lbl_14_data_B24+8	marked	marked	fn_14_1560C
+0x1561C	0x80	CDigitalGuardian	-	virtual	B	lbl_14_data_A08+8	marked	marked	fn_14_1561C
+0x1569C	0x25C	CDigitalGuardian	-	virtual	B	lbl_14_data_9FC+8	marked	marked	fn_14_1569C
+0x158F8	0x29C	CDigitalGuardian	-	virtual	B	lbl_14_data_9F0+8	marked	marked	fn_14_158F8
+0x15B94	0x154	CDigitalGuardian	-	virtual	B	lbl_14_data_9E4+8	marked	marked	fn_14_15B94
+0x15CE8	0x130	CDigitalGuardian	-	virtual	B	lbl_14_data_9D8+8	marked	marked	fn_14_15CE8
+0x15E18	0x124	CDigitalGuardian	-	virtual	B	lbl_14_data_9CC+8	marked	marked	fn_14_15E18
+0x15F3C	0x224	CDigitalGuardian	-	virtual	B	lbl_14_data_9C0+8	marked	marked	fn_14_15F3C
+0x16160	0x1DC	CDigitalGuardian	-	virtual	B	lbl_14_data_9B4+8	marked	marked	fn_14_16160
+0x1633C	0xCC	CDigitalGuardian	-	virtual	B	lbl_14_data_9A8+8	marked	marked	fn_14_1633C
+0x16408	0x3E4	CDigitalGuardian	-	virtual	B	lbl_14_data_99C+8	marked	marked	fn_14_16408
+0x167EC	0x208	CDigitalGuardian	-	virtual	B	lbl_14_data_990+8	marked	marked	fn_14_167EC
+0x169F4	0x5C	CDigitalGuardian	-	virtual	H	lbl_14_data_FFC+8	vtable dtor: same body as DarkSamus 0x4B9C (DigitalGuardian_helpers.md old class F; host base-class dtor)	not-port	fn_14_169F4
+0x16A50	0x314	CDigitalGuardian	-	virtual	B	lbl_14_data_984+8	marked	marked	fn_14_16A50
+0x16D64	0x210	CDigitalGuardian	-	virtual	B	lbl_14_data_978+8	marked	marked	fn_14_16D64
+0x16F74	0x128	CDigitalGuardian	-	virtual	B	lbl_14_data_96C+8	marked	marked	fn_14_16F74
+0x1709C	0x98	CDigitalGuardian	-	virtual	B	lbl_14_data_960+8	marked	marked	fn_14_1709C
+0x17134	0x4C	CDigitalGuardian	-	virtual	B	lbl_14_data_954+8	marked	marked	fn_14_17134
+0x17180	0x4	CDigitalGuardian	-	virtual	B	lbl_14_data_948+8	marked	marked	fn_14_17180
+0x17184	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_7FC+8	marked	marked	fn_14_17184
+0x17198	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_7F0+8	marked	marked	fn_14_17198
+0x171B8	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_7E4+8	marked	marked	fn_14_171B8
+0x171D8	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_7D8+8	marked	marked	fn_14_171D8
+0x171EC	0xC	CDigitalGuardian	-	virtual	B	lbl_14_data_7CC+8	marked	marked	fn_14_171EC
+0x171F8	0x4C	CDigitalGuardian	-	virtual	B	lbl_14_data_7C0+8	marked	marked	fn_14_171F8
+0x17244	0x48	CDigitalGuardian	-	virtual	B	lbl_14_data_7B4+8	marked	marked	fn_14_17244
+0x1728C	0xC	CDigitalGuardian	-	virtual	B	lbl_14_data_7A8+8	marked	marked	fn_14_1728C
+0x17298	0xA0	CDigitalGuardian	-	virtual	B	fn_14_14470 fn_14_14B98 fn_14_15598 fn_14_15E18 lbl_14_data_79C+8	marked	marked	fn_14_17298
+0x17338	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_790+8	marked	marked	fn_14_17338
+0x1734C	0x10	CDigitalGuardian	-	virtual	B	lbl_14_data_784+8	marked	marked	fn_14_1734C
+0x1735C	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_778+8	marked	marked	fn_14_1735C
+0x17370	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_76C+8	marked	marked	fn_14_17370
+0x17384	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_760+8	marked	marked	fn_14_17384
+0x17398	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_754+8	marked	marked	fn_14_17398
+0x173AC	0xC	CDigitalGuardian	-	virtual	B	lbl_14_data_748+8	marked	marked	fn_14_173AC
+0x173B8	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_73C+8	marked	marked	fn_14_173B8
+0x173CC	0x3C	CDigitalGuardian	-	virtual	B	lbl_14_data_730+8	marked	marked	fn_14_173CC
+0x17408	0x4C	CDigitalGuardian	-	virtual	B	lbl_14_data_724+8	marked	marked	fn_14_17408
+0x17454	0x14	CDigitalGuardian	-	virtual	B	lbl_14_data_718+8	marked	marked	fn_14_17454
+0x17468	0x8C	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+F0	marked	marked	fn_14_17468
+0x174F4	0x144	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+120	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_174F4
+0x17638	0x190	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+11C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_17638
+0x177C8	0x78	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+74	marked	marked	fn_14_177C8
+0x17840	0x50	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+DC	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_17840
+0x17890	0xE4	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+54	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_17890
+0x17974	0x6C	CDigitalGuardian	-	func	H	fn_14_17890	same body in 1 other modules (Sporb)	not-port	fn_14_17974
+0x179E0	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+40	marked	marked	fn_14_179E0
+0x17A00	0x44	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+28	marked	marked	fn_14_17A00
+0x17A44	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+24	marked	marked	fn_14_17A44
+0x17A64	0xC4	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+BC	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_17A64
+0x17B28	0x94	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+2C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_17B28
+0x17BBC	0xDC	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+70	marked	marked	fn_14_17BBC
+0x17C98	0xA0	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+14	marked	marked	fn_14_17C98
+0x17D38	0x22C	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+18	marked	marked	fn_14_17D38
+0x17F64	0x300	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_17F64
+0x18264	0xE7C	CDigitalGuardian	-	func	B	fn_14_DF7C	marked	marked	fn_14_18264
+0x190E0	0x4C	CDigitalGuardian	-	func	B	fn_14_18264	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_190E0
+0x1912C	0x5C4	CDigitalGuardian	-	func	B	fn_14_18264 fn_14_1A698	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_1912C
+0x196F0	0x94	CDigitalGuardian	-	func	H	fn_14_1912C	same body as EmperorIngStage1 0xff4 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_196F0
+0x19784	0xB4	CDigitalGuardian	-	virtual	B	lbl_14_data_1034+14	marked	marked	fn_14_19784
+0x19838	0xD0	CDigitalGuardian	-	func	B	fn_14_10CA0	marked	marked	fn_14_19838
+0x19908	0x84	CDigitalGuardian	-	func	H	fn_14_1AAC4	same body in 1 other modules (Sporb)	not-port	fn_14_19908
+0x1998C	0x7C	CDigitalGuardian	-	func	H	fn_14_19908	same body in 1 other modules (Sporb)	not-port	fn_14_1998C
+0x19A08	0x168	CDigitalGuardian	-	func	B	fn_14_1A1F8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_19A08
+0x19B70	0x170	CDigitalGuardian	-	func	B	fn_14_1A1F8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_19B70
+0x19CE0	0x118	CDigitalGuardian	-	func	B	fn_14_1A1F8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_19CE0
+0x19DF8	0x120	CDigitalGuardian	-	func	B	fn_14_14CF4 fn_14_14DA0	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_19DF8
+0x19F18	0xB8	CDigitalGuardian	-	func	B	fn_14_1223C	marked	marked	fn_14_19F18
+0x19FD0	0x15C	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+54	marked	marked	fn_14_19FD0
+0x1A12C	0x3C	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+40	marked	marked	fn_14_1A12C
+0x1A168	0x90	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+2C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1A168
+0x1A1F8	0x238	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+14	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1A1F8
+0x1A430	0x1C4	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+18	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1A430
+0x1A5F4	0xA4	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+8	marked	marked	fn_14_1A5F4
+0x1A698	0x3AC	CDigitalGuardian	-	func	B	fn_14_12314	marked	marked	fn_14_1A698
+0x1AA44	0x40	CDigitalGuardian	-	virtual	B	lbl_14_data_1008+C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AA44
+0x1AA84	0x40	CDigitalGuardian	-	virtual	B	lbl_14_data_1024+C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AA84
+0x1AAC4	0x60	CDigitalGuardian	-	virtual	B	lbl_14_data_1034+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AAC4
+0x1AB24	0xC	CDigitalGuardian	-	virtual	B	lbl_14_data_1034+94	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AB24
+0x1AB30	0x20	CDigitalGuardian	-	virtual	B	lbl_14_data_1034+98	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AB30
+0x1AB50	0x48	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+48	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AB50
+0x1AB98	0x40	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+50	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AB98
+0x1ABD8	0x8	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+38	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1ABD8
+0x1ABE0	0x34	CDigitalGuardian	-	func	B	fn_14_18264	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_1ABE0
+0x1AC14	0xA4	CDigitalGuardian	-	func	H	fn_14_139C4	same body in 2 other modules (Blogg,Sporb)	not-port	fn_14_1AC14
+0x1ACB8	0x74	CDigitalGuardian	-	func	H	fn_14_19908	same body as EmperorIngStage1 0xbf14 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_1ACB8
+0x1AD2C	0x9CC	CDigitalGuardian	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_14_1AD2C
+0x1B6F8	0xC4	REL runtime	_unresolved	runtime	T	-	REL runtime (crtexe) unresolved-symbol trap	not-port	_unresolved
+0x1B7BC	0x24	REL runtime	_epilog	runtime	T	-	REL runtime (crtexe) module exit	not-port	_epilog
+0x1B7E0	0x24	REL runtime	_prolog	runtime	T	-	REL runtime (crtexe) module entry	not-port	_prolog
+0x1B804	0x4C	REL runtime	ModuleDestructors	runtime	T	_epilog	REL runtime (crtexe) _dtors walker	not-port	ModuleDestructors
+0x1B850	0x4C	REL runtime	ModuleConstructors	runtime	T	_prolog	REL runtime (crtexe) _ctors walker	not-port	ModuleConstructors
