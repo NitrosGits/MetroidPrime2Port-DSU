@@ -6,16 +6,16 @@ offset	size	class	kind	name	callers	marked	state
 0xA08	0x58	B	method	fn_10_A08	1	no	
 0xA60	0x5C	B	method	fn_10_A60	1	no	
 0xABC	0x48	H	host-copy	fn_10_ABC	0	no	
-0xB04	0x24	B	method	fn_10_B04	1	no	
-0xB28	0x50	B	method	fn_10_B28	1	no	
+0xB04	0x24	H	host-copy	fn_10_B04	1	no	ds41: CRayCastResult::MakeInvalid() header inline (CRayCastResult.hpp:25) over B28
+0xB28	0x50	H	host-copy	fn_10_B28	1	no	ds41: CRayCastResult() header inline ctor
 0xB78	0xE4	B	method	fn_10_B78	1	yes	
 0xC5C	0x3C	T	unreferenced	fn_10_C5C	0	yes	
 0xC98	0x130	B	method	fn_10_C98	2	yes	
-0xDC8	0x48	B	method	fn_10_DC8	1	no	
-0xE10	0x4C	B	method	fn_10_E10	1	no	
+0xDC8	0x48	H	host-copy	fn_10_DC8	1	no	ds41: rstl::reserved_vector<SShot>::push_back (count +0, 0x20 stride)
+0xE10	0x4C	H	host-copy	fn_10_E10	1	no	ds41: rstl placement construct (beqlr null test + 0x1D-byte shot copy)
 0xE5C	0x20	H	host-copy	fn_10_E5C	0	yes	
 0xE7C	0xCA8	T	unreferenced	fn_10_E7C	0	no	
-0x1B24	0x40	B	method	fn_10_1B24	2	no	
+0x1B24	0x40	H	host-copy	fn_10_1B24	2	no	ds41: CVector3f::Cross header inline (CVector3f.hpp:60)
 0x1B64	0xA4	B	method	fn_10_1B64	1	no	
 0x1C08	0x184	B	method	fn_10_1C08	1	yes	
 0x1D8C	0x2B4	B	method	fn_10_1D8C	2	yes	
@@ -29,7 +29,7 @@ offset	size	class	kind	name	callers	marked	state
 0x29DC	0x20	H	host-copy	fn_10_29DC	0	yes	
 0x29FC	0xD4	H	host-copy	fn_10_29FC	0	no	
 0x2AD0	0x374	B	method	fn_10_2AD0	1	yes	
-0x2E44	0x20	B	method	fn_10_2E44	2	no	
+0x2E44	0x20	H	host-copy	fn_10_2E44	2	no	ds41: CModelData::CModelDataNull() header inline (CModelData.hpp:158)
 0x2E64	0x98	H	host-copy	fn_10_2E64	0	yes	
 0x2EFC	0x8	B	method	fn_10_2EFC	1	yes	
 0x2F04	0xC	B	method	fn_10_2F04	1	yes	
@@ -37,12 +37,12 @@ offset	size	class	kind	name	callers	marked	state
 0x3008	0x16C	H	host-copy	fn_10_3008	0	yes	
 0x3174	0x70	H	host-copy	fn_10_3174	0	yes	
 0x31E4	0x304	B	method	fn_10_31E4	1	yes	
-0x34E8	0x38	B	method	fn_10_34E8	1	no	
-0x3520	0x20	B	method	fn_10_3520	2	no	
-0x3540	0x28	B	method	fn_10_3540	1	no	
+0x34E8	0x38	H	host-copy	fn_10_34E8	1	no	ds41: rstl::vector<CJointCollisionDescription>::push_back (reserved, no growth)
+0x3520	0x20	H	host-copy	fn_10_3520	2	no	ds41: rstl::construct wrapper over 3540
+0x3540	0x28	H	host-copy	fn_10_3540	1	no	ds41: rstl placement construct (null test + CJointCollisionDescription copy 3568)
 0x3568	0xC0	B	method	fn_10_3568	2	no	
 0x3628	0x84	B	method	fn_10_3628	1	no	
-0x36AC	0x38	B	method	fn_10_36AC	1	no	
+0x36AC	0x38	H	host-copy	fn_10_36AC	1	no	ds41: rstl::destroy range of CJointCollisionDescription
 0x36E4	0x60	B	method	fn_10_36E4	1	no	
 0x3744	0x5C	B	method	fn_10_3744	5	no	
 0x37A0	0x130	B	method	fn_10_37A0	1	no	
@@ -53,7 +53,7 @@ offset	size	class	kind	name	callers	marked	state
 0x3BC4	0x3AC	B	method	fn_10_3BC4	1	yes	
 0x3F70	0x68	B	method	fn_10_3F70	2	no	
 0x3FD8	0x390	B	method	fn_10_3FD8	1	yes	
-0x4368	0x40	B	method	fn_10_4368	2	no	
+0x4368	0x40	B	method	fn_10_4368	2	yes	
 0x43A8	0xC0	B	method	fn_10_43A8	1	no	
 0x4468	0x68	B	method	fn_10_4468	1	no	
 0x44D0	0x5C	H	host-copy	fn_10_44D0	0	no	
@@ -70,13 +70,13 @@ offset	size	class	kind	name	callers	marked	state
 0x4C40	0x15C	B	method	fn_10_4C40	1	yes	
 0x4D9C	0x54	B	method	fn_10_4D9C	4	no	
 0x4DF0	0x5C	B	method	fn_10_4DF0	2	no	
-0x4E4C	0x20	B	method	fn_10_4E4C	1	no	
-0x4E6C	0x48	B	method	fn_10_4E6C	2	no	
-0x4EB4	0x48	B	method	fn_10_4EB4	4	no	
+0x4E4C	0x20	H	host-copy	fn_10_4E4C	1	no	ds41: rstl::destroy wrapper over 4E6C
+0x4E6C	0x48	H	host-copy	fn_10_4E6C	2	no	ds41: optional<TLockedToken> dtor (null + valid-byte test, ~CToken)
+0x4EB4	0x48	H	host-copy	fn_10_4EB4	4	no	ds41: CImpactVisorEffect::None() header inline (CImpactVisorEffect.hpp:62)
 0x4EFC	0xB4	B	method	fn_10_4EFC	1	no	
-0x4FB0	0x40	B	method	fn_10_4FB0	1	no	
-0x4FF0	0x20	B	method	fn_10_4FF0	1	no	
-0x5010	0x28	B	method	fn_10_5010	2	no	
+0x4FB0	0x40	H	host-copy	fn_10_4FB0	1	no	ds41: rstl::optional_object copy ctor (valid byte 0x14)
+0x4FF0	0x20	H	host-copy	fn_10_4FF0	1	no	ds41: rstl::construct wrapper over 5010
+0x5010	0x28	H	host-copy	fn_10_5010	2	no	ds41: rstl placement construct (null test + copy 5038)
 0x5038	0x80	B	method	fn_10_5038	1	no	
 0x50B8	0x788	B	method	fn_10_50B8	1	yes	
 0x5840	0x80	B	method	fn_10_5840	1	yes	
@@ -133,7 +133,7 @@ offset	size	class	kind	name	callers	marked	state
 0x9644	0xE0	B	method	fn_10_9644	2	yes	
 0x9724	0x1FC	B	fsm-state	fn_10_9724	0	yes	BoostBallFire
 0x9920	0x4C	B	method	fn_10_9920	2	yes	
-0x996C	0x4C	B	method	fn_10_996C	4	no	
+0x996C	0x4C	B	method	fn_10_996C	4	yes	
 0x99B8	0x10C	B	method	fn_10_99B8	3	yes	
 0x9AC4	0x60	B	method	fn_10_9AC4	4	yes	
 0x9B24	0x2DC	B	method	fn_10_9B24	1	yes	
@@ -179,11 +179,11 @@ offset	size	class	kind	name	callers	marked	state
 0xCEB4	0x1C	B	virtual	fn_10_CEB4	0	no	
 0xCED0	0x24	H	rel-entry	RELExit	0	no	
 0xCEF4	0x20	T	rel-entry	RELMain	0	no	
-0xCF14	0x30	B	method	fn_10_CF14	1	no	
+0xCF14	0x30	B	method	fn_10_CF14	1	yes	
 0xCF44	0xE98	T	loader	fn_10_CF44	0	no	
-0xDDDC	0x40	B	method	fn_10_DDDC	1	no	
-0xDE1C	0x20	B	method	fn_10_DE1C	1	no	
-0xDE3C	0x28	B	method	fn_10_DE3C	1	no	
+0xDDDC	0x40	H	host-copy	fn_10_DDDC	1	no	ds41: rstl::optional_object copy ctor (valid byte 0x4C), loader only
+0xDE1C	0x20	H	host-copy	fn_10_DE1C	1	no	ds41: rstl::construct wrapper over DE3C
+0xDE3C	0x28	H	host-copy	fn_10_DE3C	1	no	ds41: rstl placement construct (null test + copy DE64)
 0xDE64	0x13C	B	method	fn_10_DE64	1	no	
 0xDFA0	0x6C	H	host-copy	fn_10_DFA0	0	no	
 0xE00C	0x54	H	host-copy	fn_10_E00C	0	no	
@@ -200,7 +200,7 @@ offset	size	class	kind	name	callers	marked	state
 0xEA08	0x1C	B	method	fn_10_EA08	4	yes	
 0xEA24	0x16C	B	method	fn_10_EA24	1	no	
 0xEB90	0x228	B	method	fn_10_EB90	2	yes	
-0xEDB8	0x14	B	method	fn_10_EDB8	1	no	
+0xEDB8	0x14	T	unreferenced	fn_10_EDB8	1	no	ds41: only caller 153EC SideDash, no node in the shipped FSM2 (fsm u04f7 SideDash enters and leaves at once, 0 calls)
 0xEDCC	0x14	H	host-copy	fn_10_EDCC	0	no	
 0xEDE0	0x14	B	method	fn_10_EDE0	5	yes	
 0xEDF4	0xE4	B	method	fn_10_EDF4	1	no	
@@ -233,7 +233,7 @@ offset	size	class	kind	name	callers	marked	state
 0xFF20	0x94	B	virtual	fn_10_FF20	0	no	
 0xFFB4	0x5C	B	method	fn_10_FFB4	2	no	
 0x10010	0xC0	B	method	fn_10_10010	1	no	
-0x100D0	0xC	B	method	fn_10_100D0	1	no	
+0x100D0	0xC	H	host-copy	fn_10_100D0	1	no	ds41: rstl::vector<12-byte record>::clear (size word +4 = 0), inlined template
 0x100DC	0x134	B	virtual	fn_10_100DC	0	no	
 0x10210	0x148	B	virtual	fn_10_10210	0	yes	
 0x10358	0x12C	B	virtual	fn_10_10358	0	yes	
@@ -246,8 +246,8 @@ offset	size	class	kind	name	callers	marked	state
 0x106F8	0x18	T	fsm-thunk	fn_10_106F8	0	yes	BreakPause
 0x10710	0x154	B	fsm-state	fn_10_10710	0	yes	Pause
 0x10864	0x17C	B	method	fn_10_10864	1	yes	
-0x109E0	0x40	B	method	fn_10_109E0	1	no	
-0x10A20	0x44	B	method	fn_10_10A20	1	no	
+0x109E0	0x40	H	host-copy	fn_10_109E0	1	no	ds41: CHierarchyPoseBuilder::Insert(seg, quat) (host CIkChain.cpp:54)
+0x10A20	0x44	H	host-copy	fn_10_10A20	1	no	ds41: CHierarchyPoseBuilder::GetSegRotation (host CIkChain.cpp:58)
 0x10A64	0x158	B	method	fn_10_10A64	1	yes	
 0x10BBC	0xE0	B	method	fn_10_10BBC	4	yes	
 0x10C9C	0x2FC	B	fsm-state	fn_10_10C9C	0	yes	HeavyHit
@@ -314,7 +314,7 @@ offset	size	class	kind	name	callers	marked	state
 0x13FFC	0x184	B	method	fn_10_13FFC	7	no	
 0x14180	0x3C	H	host-copy	fn_10_14180	0	no	
 0x141BC	0xC8	B	method	fn_10_141BC	2	yes	
-0x14284	0x48	B	fsm-trigger	fn_10_14284	0	no	CanMissileDeflect
+0x14284	0x48	B	fsm-trigger	fn_10_14284	0	yes	CanMissileDeflect
 0x142CC	0x28	B	fsm-trigger	fn_10_142CC	0	yes	FacingPlayer
 0x142F4	0xB4	B	method	fn_10_142F4	3	yes	
 0x143A8	0xA0	B	fsm-state	fn_10_143A8	0	yes	Dead
@@ -363,7 +363,7 @@ offset	size	class	kind	name	callers	marked	state
 0x17D50	0x90	B	method	fn_10_17D50	2	yes	
 0x17DE0	0x34	B	method	fn_10_17DE0	2	yes	
 0x17E14	0x34	B	method	fn_10_17E14	41	yes	
-0x17E48	0x8	B	method	fn_10_17E48	3	no	
+0x17E48	0x8	B	method	fn_10_17E48	3	yes	
 0x17E50	0x40	T	unreferenced	fn_10_17E50	0	no	
 0x17E90	0x74	B	method	fn_10_17E90	1	yes	
 0x17F04	0x2D8	B	virtual	fn_10_17F04	0	yes	
@@ -384,7 +384,7 @@ offset	size	class	kind	name	callers	marked	state
 0x18F34	0x5C	H	host-copy	fn_10_18F34	0	no	
 0x18F90	0x3C	B	method	fn_10_18F90	13	yes	
 0x18FCC	0x48	B	method	fn_10_18FCC	3	yes	
-0x19014	0x48	B	method	fn_10_19014	1	no	
+0x19014	0x48	B	method	fn_10_19014	1	yes	
 0x1905C	0x344	B	method	fn_10_1905C	1	no	
 0x193A0	0x10C	B	method	fn_10_193A0	1	yes	
 0x194AC	0xA0	B	method	fn_10_194AC	1	yes	
@@ -411,7 +411,7 @@ offset	size	class	kind	name	callers	marked	state
 0x1AE08	0xB8	B	method	fn_10_1AE08	1	yes	
 0x1AEC0	0xF4	B	method	fn_10_1AEC0	21	yes	
 0x1AFB4	0x58	B	method	fn_10_1AFB4	1	no	
-0x1B00C	0x50	B	method	fn_10_1B00C	1	no	
+0x1B00C	0x50	H	host-copy	fn_10_1B00C	1	no	ds41: compiler dtor wrapper (1B05C + Free when the short flag > 0)
 0x1B05C	0x84	B	method	fn_10_1B05C	1	no	
 0x1B0E0	0x74	B	method	fn_10_1B0E0	1	yes	
 0x1B154	0xA8	B	method	fn_10_1B154	1	yes	
@@ -470,7 +470,7 @@ offset	size	class	kind	name	callers	marked	state
 0x20600	0xC8	B	method	fn_10_20600	1	no	
 0x206C8	0x54	H	host-copy	fn_10_206C8	0	no	
 0x2071C	0x58	H	host-copy	fn_10_2071C	0	no	
-0x20774	0x48	B	method	fn_10_20774	1	no	
+0x20774	0x48	H	host-copy	fn_10_20774	1	no	ds41: TLockedToken ctor (207BC + obj + Lock), header template
 0x207BC	0x74	B	method	fn_10_207BC	1	no	
 0x20830	0x90	H	host-copy	fn_10_20830	0	no	
 0x208C0	0x78	H	host-copy	fn_10_208C0	0	no	
@@ -481,12 +481,12 @@ offset	size	class	kind	name	callers	marked	state
 0x20AC0	0x58	H	host-copy	fn_10_20AC0	0	no	
 0x20B18	0x58	H	host-copy	fn_10_20B18	0	no	
 0x20B70	0x8C	H	host-copy	fn_10_20B70	0	no	
-0x20BFC	0x30	B	method	fn_10_20BFC	1	no	
+0x20BFC	0x30	H	host-copy	fn_10_20BFC	1	no	ds41: optional/projectile-info record ctor wrapper over 20C2C
 0x20C2C	0x68	B	method	fn_10_20C2C	4	no	
-0x20C94	0x30	B	method	fn_10_20C94	2	no	
+0x20C94	0x30	H	host-copy	fn_10_20C94	2	no	ds41: rstl::optional_object assign wrapper over 20CC4
 0x20CC4	0x94	B	method	fn_10_20CC4	1	no	
-0x20D58	0x20	B	method	fn_10_20D58	1	no	
-0x20D78	0x28	B	method	fn_10_20D78	1	no	
+0x20D58	0x20	H	host-copy	fn_10_20D58	1	no	ds41: rstl::construct wrapper over 20D78
+0x20D78	0x28	H	host-copy	fn_10_20D78	1	no	ds41: rstl placement construct (null test + copy ctor 20DA0)
 0x20DA0	0x8C	B	method	fn_10_20DA0	1	no	
 0x20E2C	0x58	H	host-copy	fn_10_20E2C	0	no	
 0x20E84	0x5C	H	host-copy	fn_10_20E84	0	no	
@@ -509,9 +509,9 @@ offset	size	class	kind	name	callers	marked	state
 0x21790	0x6C	H	host-copy	fn_10_21790	0	no	
 0x217FC	0x138	B	method	fn_10_217FC	1	no	
 0x21934	0x68	H	host-copy	fn_10_21934	0	no	
-0x2199C	0x38	B	method	fn_10_2199C	1	no	
-0x219D4	0x40	B	method	fn_10_219D4	2	no	
-0x21A14	0x50	B	method	fn_10_21A14	1	no	
+0x2199C	0x38	H	host-copy	fn_10_2199C	1	no	ds41: projectile-info record ctor (219D4 + 0x38 = 0)
+0x219D4	0x40	H	host-copy	fn_10_219D4	2	no	ds41: projectile-info record ctor (20C2C + zeroed 0x2C/0x30/0x34)
+0x21A14	0x50	H	host-copy	fn_10_21A14	1	no	ds41: projectile-info record ctor (219D4 + 0x38/0x3C)
 0x21A64	0x94	H	host-copy	fn_10_21A64	0	no	
 0x21AF8	0x8C	H	host-copy	fn_10_21AF8	0	no	
 0x21B84	0x64	H	host-copy	fn_10_21B84	0	no	
@@ -525,7 +525,7 @@ offset	size	class	kind	name	callers	marked	state
 0x21F14	0x10C	B	method	fn_10_21F14	1	yes	
 0x22020	0xCC	B	method	fn_10_22020	1	no	
 0x220EC	0x98	B	method	fn_10_220EC	1	no	
-0x22184	0x3C	B	method	fn_10_22184	1	no	
+0x22184	0x3C	H	host-copy	fn_10_22184	1	no	ds41: rstl::uninitialized_copy of 12-byte records
 0x221C0	0xD20	T	ctor-table	fn_10_221C0	0	no	
 0x22EE0	0x58	H	rel-runtime	__destroy_global_chain	0	no	
 0x22F38	0x1C	H	rel-runtime	__register_global_object	1	no	

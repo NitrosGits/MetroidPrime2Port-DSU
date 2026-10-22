@@ -92,7 +92,10 @@ void CDarkSamus::StopGuestSfx() {
 }
 
 // fn_10_2E44 (0x00002E44, 0x20 bytes): the CModelData default constructor (0x00002E50).
-// fn_10_2E44 (ported, unreferenced in the port: nothing calls it yet)
+// Class H (ds41): the REL's copy of the header inline CModelData::CModelDataNull()
+// (include/MetroidPrime/CModelData.hpp:158), a lone `bl __ct__10CModelDataFv`; its callers
+// (fn_10_2AD0 at 0x00002B24, fn_10_50B8 at 0x00005544) build the host's CModelData directly.
+// This host function stays unreferenced.
 void CDarkSamus::InitGuestModelData(CModelData* model) { new (model) CModelData(); }
 
 // fn_10_8698 (0x00008698, 0xCC bytes): the taunt command over a state's messages. Activate
@@ -1011,8 +1014,9 @@ namespace {
 // a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C)
 // and the z a.x * b.y - b.x * a.y (0x00001B54); the host's CVector3f::Cross is the same
 // formula.
-// Unmarked: the compiler inlines it, so the coverage report has no row for
-// it (the caller fn_10_10A64's row carries the lines) - no ALL-ARMS run to cite.
+// Class H (ds41): the REL's out-of-line copy of the header inline CVector3f::Cross
+// (include/Kyoto/Math/CVector3f.hpp:60), called from two classes' bodies (fn_10_10A64 at
+// 0x00010B34, the scatter shot's fn_10_E7C at 0x00001934); the host's inline is the body.
 void CrossProduct(CVector3f& out, const CVector3f& a, const CVector3f& b) {
   out = CVector3f::Cross(a, b);
 }
@@ -1028,6 +1032,12 @@ namespace {
 // lbl_10_bss_5C: the module's name, built by its static initializer fn_10_44D0 (0x000044EC) from
 // lbl_10_rodata_A4 + 0x2A; the ball's CRELFileToken (0x34C) holds it.
 const rstl::string skRELName = rstl::string_l("DarkSamus.rel");
+
+// fn_10_4368 (0x00004368, 0x40 bytes): default actor parameters (the CActorParameters ctor at
+// 0x00004380) hot in thermal (`li r5, 0x1`, HotInThermal at 0x00004390). Branch-free; the
+// boost ball's two ctors call it (fn_10_3BC4 at 0x00003D5C, fn_10_3FD8 at 0x00004160).
+// @ fn_10_4368
+CActorParameters BoostBallActorParameters() { return CActorParameters().HotInThermal(true); }
 } // namespace
 
 // fn_10_3FD8 (0x00003FD8, 0x390 bytes) and fn_10_3BC4 (0x00003BC4, 0x3AC bytes): the
@@ -1040,8 +1050,8 @@ const rstl::string skRELName = rstl::string_l("DarkSamus.rel");
 // colour Black and the fade 0.0f (lbl_10_rodata_7C) with the bit 0x80 clear (0x000042C4);
 // fn_10_3BC4 takes the fade and the colour and sets the bit 0x80 (the `rlwimi` at 0x00003EC4).
 // The CRELFileToken at 0x34C takes "DarkSamus.rel" (lbl_10_bss_5C) with the mode 0 (0x00003EEC /
-// 0x000042EC). The inlined helpers: fn_10_4368 is CActorParameters().HotInThermal(true),
-// fn_10_3F70 the SMoverData constructor (CAxisAngle::Identity at 0x00003D60 / 0x00004164 is its
+// 0x000042EC). The helpers: fn_10_4368 (BoostBallActorParameters) is
+// CActorParameters().HotInThermal(true), fn_10_3F70 the SMoverData constructor (CAxisAngle::Identity at 0x00003D60 / 0x00004164 is its
 // angular velocity), fn_10_2040 / fn_10_2098 the CEntityInfo temporary's destructor (its
 // connection vector) and internal_dereference the name string's.
 // Both end with the default animation set looping (0x00003F40 / 0x00004340) and EnableLooping.
@@ -1060,7 +1070,7 @@ CDarkSamusBoostBall::CDarkSamusBoostBall(TUniqueId uid, TAreaId area, const CTra
                 model, CMaterialList(kMT_Character, kMT_Target, kMT_Orbit, kMT_RadarObject),
                 CAABox(CVector3f(-0.2f, -0.2f, -0.2f), CVector3f(0.2f, 0.2f, 0.2f)),
                 SMoverData(0.75f),                      // fn_10_3F70
-                CActorParameters().HotInThermal(true),  // fn_10_4368
+                BoostBallActorParameters(),             // fn_10_4368
                 CPhysicsActor::skDefaultStepData)       // fn_10_2040, fn_10_2098
 , mBounds(bounds)
 , mSilhouetteColor(silhouette ? color : CColor::Black())

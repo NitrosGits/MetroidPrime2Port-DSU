@@ -1175,12 +1175,12 @@ bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
 // 0x000142A8) against zero (lbl_10_rodata_3FC): the trigger answers when the float is above
 // zero (the fcmpo at 0x000142B0 and the extrwi at 0x000142B8, which keeps the compare's "greater
 // than" bit).
-// Run (darksamus_uevent.py with darksamus_react.py): no stage (the uid forced invalid), the shipped float 45.0f, and -1.0f
-// (forced).
-// Unmarked: only the shipped data's arm ran (the deflect time 45.0f or 50.0f, the trigger
-// answers true); the other arm (a deflect time below zero) could not be run - gdb cannot call
-// the port's GetBattleStage to write the stage's info.
-
+// NaN: the extrwi keeps GT, so a NaN time answers false, as `> 0.f` does.
+// Run (ds41, coverage build, rooftop, tools/drivers/darksamus_ds40.con with
+// tools/cov/specs/darksamus_ds41_force.py, 5900 fast frames): ALL-ARMS - the shipped 45.0f
+// (true) natural; no stage and -1.0f forced (GetBattleStage answering null / the stage's float
+// written for the call).
+// @ fn_10_14284
 bool CDarkSamus::CanMissileDeflect(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr) {
@@ -1845,6 +1845,24 @@ CActor* CDarkSamus::GetBoostBallActor(CStateManager& mgr) const {
     return nullptr;
   }
   return TCastToPtr< CActor >(mgr.ObjectById(mBoostBallUid));
+}
+
+// fn_10_996C (0x0000996C, 0x4C bytes): fn_10_9920's twin for the const callers (GetAimPosition
+// fn_10_10210 at 0x0001025C/0x00010270, GetOrbitPosition fn_10_10358 at 0x00010398/0x000103AC):
+// null when the ball's uid 0xE38 is kInvalidUniqueId (`cmplw r6, r0` at 0x00009984, `bne` at
+// 0x00009988), else the actor GetObjectById (the const lookup, 0x000099A0) names.
+// The null arm (0x0000998C) is dead: both callers run it only after fn_10_9624 found the same
+// uid 0xE38 valid (`cmplwi r0, 0x1; bne` at 0x0001024C/0x00010250 and 0x00010388/0x0001038C),
+// with nothing between that writes 0xE38.
+// Run (ds41, darksamus_ds41_force.py): the lookup arm, the ball's uid forced to the player's in
+// GetOrbitPosition / GetAimPosition (the fight never asks them while the ball rolls).
+// @ fn_10_996C
+const CActor* CDarkSamus::GetBoostBallActor(const CStateManager& mgr) const {
+  if (mBoostBallUid == kInvalidUniqueId) { // 0x00009984
+    return nullptr;
+  }
+  // TCastToPtr<CActor> at 0x000099A4; the host's const cast stands for it on the const lookup.
+  return TCastToConstPtr< CActor >(mgr.GetObjectById(mBoostBallUid));
 }
 
 // fn_10_A06C (0x0000A06C, 0xE8 bytes): with a ball actor (`mr. r31, r3` at 0x0000A088) its
@@ -3451,14 +3469,22 @@ void CDarkSamus::UpdateShieldFlag(EStateMsg msg) {
 // @ fn_10_18F90
 void CDarkSamus::UpdateGroundCollision(CStateManager& mgr, EStateMsg msg) {
   if (msg == kStateMsg_Activate) {
-    mVerticalMovement = true;
-    mOnGround = false;
-    RemoveMaterial(kMT_GroundCollider, mgr);
+    LeaveGround(mgr); // fn_10_19014 at 0x00018FA4
   } else if (msg == kStateMsg_Deactivate) {
-    mVerticalMovement = false;
-    mOnGround = true;
-    AddMaterial(kMT_GroundCollider, mgr);
+    SetGrounded(mgr, true); // fn_10_18FCC at 0x00018FBC, `li r5, 0x1`
   }
+}
+
+// fn_10_19014 (0x00019014, 0x48 bytes): vertical movement on, off the ground and
+// kMT_GroundCollider removed. Branch-free; its only caller is fn_10_18F90's Activate.
+// 0x0001902C `rlwimi r0, r5, 6, 25, 25` with r5 = 1: PowerPC bit 25 of the byte 0x34C, 0x40.
+// 0x00019040 `rlwimi r0, r6, 3, 28, 28` with r6 = 0: bit 28, 0x8.
+// 0x00019034 `li r4, 0x25` (kMT_GroundCollider), removed at 0x00019048.
+// @ fn_10_19014
+void CDarkSamus::LeaveGround(CStateManager& mgr) {
+  mVerticalMovement = true;                 // 0x0001902C
+  mOnGround = false;                        // 0x00019040
+  RemoveMaterial(kMT_GroundCollider, mgr); // 0x00019048
 }
 
 // fn_10_FD4C (0x0000FD4C, 0xCC bytes): a stage count (fn_10_17E48, 0x978) other than the one last
@@ -3469,7 +3495,7 @@ void CDarkSamus::UpdateGroundCollision(CStateManager& mgr, EStateMsg msg) {
 // count become the seen ones (0x0000FDD4..0x0000FDDC, 0x0000FDF4..0x0000FDFC).
 // @ fn_10_FD4C
 void CDarkSamus::WatchStageChange(CStateManager& mgr) {
-  if (mStageCount == mSeenStageCount) {
+  if (GetStageCount() == mSeenStageCount) { // fn_10_17E48 at 0x0000FD68, the beq at 0x0000FD74
     return;
   }
   mStageChanged = 0;
@@ -3485,7 +3511,7 @@ void CDarkSamus::WatchStageChange(CStateManager& mgr) {
     mStageChanged = 1;
   }
   mSeenStageUid = mBattleStageUid;
-  mSeenStageCount = mStageCount;
+  mSeenStageCount = GetStageCount(); // fn_10_17E48 at 0x0000FDD8 / 0x0000FDF8
 }
 
 // fn_10_175AC (0x000175AC, 0x1B4 bytes): the ScatterShot state. Every message runs the aim
@@ -3533,6 +3559,9 @@ void CDarkSamus::ScatterShot(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_10_EDB8 (0x0000EDB8, 0x14 bytes): the side dash's weight of a slot, lbl_10_rodata_3BC[slot]:
 // 0.6f, 0.7f, 1.0f, 1.0f, 0.8f, 0.8f, 0.9f, 0.9f (slots 2/3 first, the forward slots 0/1 last).
+// Class T (ds41): its only caller is fn_10_153EC (the `bl` at 0x00015480), the SideDash state,
+// which the shipped FSM2 never enters (no SideDash node among its 59 states, DarkSamus.md
+// "SideDash"), so it never runs in retail.
 static float GetSideDashWeight(int slot) {
   static const float kWeights[8] = {0.6f, 0.7f, 1.f, 1.f, 0.8f, 0.8f, 0.9f, 0.9f};
   return kWeights[slot];

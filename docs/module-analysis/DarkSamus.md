@@ -2212,3 +2212,32 @@ platform casts and the dash arms of CollidedWith.
   the asm; it set 0xEA8 = -1000.0f (rodata_260, +0x98) and zeroed 0xE98 (+0x88..0x90), now the
   initializers too. Its copies (damage info +0x00, model words 0xE2C..0xE34, collision sounds
   +0x70) the port reads from mData instead.
+
+## Slice ds41 (2026-10-22): the 40 smallest B rows (6 marked, 32 H, 1 T, 1 left)
+
+- Marked: 17E48 GetStageCount (FD4C now calls it at 0x0000FD68 instead of reading 0x978),
+  14284 CanMissileDeflect, 19014 `LeaveGround` (new; 18F90's Activate at 0x00018FA4, its
+  Deactivate now `SetGrounded(mgr, true)` as at 0x00018FBC), 996C the const
+  `GetBoostBallActor` (new; replaces the four `const_cast` calls in GetOrbitPosition /
+  GetAimPosition), 4368 `BoostBallActorParameters()` (Helpers.cpp, the boost-ball ctor's
+  argument), CF14 `RegisterDarkSamusLoader()` (RELMain at 0x0000CF30; inlined, RELMain 1/1).
+- Run on `build-port-cov`, rooftop, `tools/drivers/darksamus_ds40.con`, 5900 fast frames,
+  forced with `tools/cov/specs/darksamus_ds41_force.py`. 0 caught / reach-stub. 14284 and 18F90
+  ALL-ARMS; 17E48 / 19014 / 4368 / CF14 branch-free, every line hit; 996C 3/3 lines, the null arm
+  (0x0000998C) dead: both callers gate on fn_10_9624 finding the same uid 0xE38 valid
+  (0x0001024C/0x00010250, 0x00010388/0x0001038C).
+
+| fn | forced arms |
+|---|---|
+| 14284 CanMissileDeflect | GetBattleStage null; the stage's missiles unknown_0x7ee77018 = -1 |
+| 996C GetBoostBallActor (const) | 0xE38 = the player's uid in GetOrbitPosition / GetAimPosition (never asked while the ball rolls) |
+
+- H (host copy; the tsv state names each): 100D0 20D58 20D78 20C94 20BFC 219D4 2199C 21A14 2E44
+  3520 3540 34E8 36AC 4E4C 4E6C 4FF0 5010 4FB0 4EB4 DE1C DE3C DDDC B04 B28 22184 109E0 10A20 1B24
+  20774 DC8 E10 1B00C: rstl construct / optional / vector templates and header inlines
+  (CModelDataNull, CImpactVisorEffect::None, CRayCastResult, CVector3f::Cross, CHierarchyPoseBuilder
+  Insert / GetSegRotation in host `CIkChain.cpp`).
+- T: EDB8, whose only caller 153EC SideDash has no node in the shipped FSM2 (`fsm u04f7 SideDash`
+  enters and leaves at once; 0 calls).
+- Left unmarked: CEB4 GetOrigin, 0 calls: only CScriptTeamAiMgr and CMetroid ask it, and the boss
+  is in no team.
