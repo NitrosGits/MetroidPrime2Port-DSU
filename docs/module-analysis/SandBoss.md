@@ -987,10 +987,8 @@ the render / think / message overrides.
 | `fn_55_10C18` | 0x60 | `SandBossChargeBeam::~SandBossChargeBeam` | the deleting destructor only runs when a charge beam is destroyed, i.e. at the end of a volley | checked against the asm and marked; a triple-charge volley destroys the beams |
 | `fn_55_11184` | 0x9AC | the static initialiser of the FSM tables | the port builds the tables as static data, not as a function | the port's 66 table entries were compared with the retail's name tables (same functions, same order, same names) and the tables marked |
 
-The ten T functions that still carry no marker (`fn_55_0`, `64`, `6C`, `74`, `7C`, `8C`, `98`,
-`A4`, `AC`, `BC`) are the vtable thunks of §7.3: no run calls them - the engine dispatches them
-only in situations this fight never reaches - and each body is one line, checked against the asm
-there.
+The T functions other than `fn_55_0` (marked 2026-10-22, §7.7) carry no marker: no run calls
+them (§7.7 measured it), and each body is one line, checked against the asm there.
 
 ### 7.5 The runs (2026-10-21)
 
@@ -1024,8 +1022,8 @@ The port's `CSandBoss::IsOnGround()` returns `CPatterned::IsOnGround()`; the cav
 host's `mOnGround` might not be the flag retail reads. It is the same flag:
 
 - Retail's `fn_55_8C` is the DOL's own `CPatterned::IsOnGround` (0x80073C90) copied verbatim:
-  `lbz r0, 0x34c(r3); extrwi r3, r0, 1, 28` - bit 28 of the word at 0x34C, i.e. **bit 4 of the
-  byte** (the earlier "bit 3 of the byte" reading in the port's comment was off by one).
+  `lbz r0, 0x34c(r3); extrwi r3, r0, 1, 28` - PPC bit 28 of the zero-extended byte at 0x34C, i.e.
+  **mask 0x08** of the byte ((byte >> 3) & 1; PPC bit numbers below are the same register bits).
 - The DOL's `CPatterned::AcceptScriptMsg` (0x80079568) writes that bit in its two ground
   branches, with the message ids as four-character codes:
   - `kSM_Landed` ("XLND", 0x584C4E44): zero the momentum (0x80079720), add the ground-collider
@@ -1050,3 +1048,23 @@ So the port's override returns the same flag as retail, and the port's comment n
 [proven] instead of [inferred]. The function stays unmarked: no run in this fight reaches the
 virtual (the physics never asks a worm whether it is on the ground), and the marker rule wants
 a run.
+
+### 7.7 The T thunks under compiler coverage (2026-10-22)
+
+The ten unmarked T bodies were re-read against the asm (0x0..0xD8: `li r3,1` / `li r3,0` /
+`lhz kInvalidUniqueId` / `lbz 0x34c; extrwi 1,28` / `lfs lbl_8041B758` = 24.525 =
+`kDefaultGravityAccel` / `addi r3,r3,0x754` / `lfs 0x54..0x5c(r4)` = `mPosition`): all match.
+gdb can't count them: the host linker folds identical bodies (`GetSearchPath`,
+`GetPointSearchPath` and `GetRagDoll` share one address), so the run used the gcov build
+(`build-port-cov`, `tools/cov/gcov_report.py --module SandBoss`) with
+`tools/drivers/sandboss_thunks.py` (layer 5, Activate, a full `scan` of each worm, beam and
+charged `shoot` from 4 units, `damage` with knock-back, `kill`), 16000 updates fast, 0 caught.
+
+| fn | ran | why / why not |
+|---|---|---|
+| `fn_55_0` IsScanVisorSelfRender | yes, natural (`scan`) | CScanDisplay asks the scan target's patterned; no arms. Marked |
+| `fn_55_74` GetRagDoll, `fn_55_AC` CanBeShot | no | only `CGameProjectile::CanCollideWithGameObject` asks them, when a shot touches the CSandBoss actor itself; shots hit the collision actors (Head_1/Spine/Root), never the worm |
+| `fn_55_8C` IsOnGround, `fn_55_98` GetGravityConstant | no | asked by `CAiKnockBackMgr::KnockBack` (and CBSJump/CBSHurled, which this boss never enters); `ApplyKnockBack` returns when the weapon doesn't hurt, and the worm actor takes no direct damage (`damage` leaves HP 150) |
+| `fn_55_64`, `fn_55_6C` search paths, `fn_55_7C` GetAttackTarget, `fn_55_BC` GetOrigin | no | the host callers are other classes' own bodies (CFlyingPirate, Ing spot path, Ing snatching swarm, team-AI roles) |
+| `fn_55_A4` GetDeathExplosionParticle | no | no host caller of the virtual at all |
+
