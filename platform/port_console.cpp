@@ -47,6 +47,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/CPhysicsActor.hpp"
 #include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
 #include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
@@ -57,6 +58,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "Collision/CMaterialFilter.hpp"
 #include "Collision/CRayCastResult.hpp"
+#include "Collision/CCollisionInfoList.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -551,6 +553,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
+      "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
+      "                           list, the way the collision code does (no real collision needed)\n"
       "material <id> [+|-]<m> ...  show or add/remove an actor's materials (name w/o kMT_, or bit; -solid)\n"
       "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
@@ -1812,6 +1816,43 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   Fail("unknown state '" + Str(args[2]) + "'; valid names: " + StateNameList(valid));
 }
 
+// touch <mover id> <other id>: call one actor's CollidedWith the way the collision code does,
+// with a collision list that carries the other actor's material list.
+//
+// The collision code (CGameCollision::MakeCollisionCallbacks) hands the mover its own
+// CollidedWith(id, list, mgr) and then the other actor's CollidedWith with the same list; the
+// list is in the mover's frame, so its 0x30 slot holds the *other* side's material list. A
+// module that only does its own work in that callback - the SwampBossStage1 "player touched"
+// flag, which the retail's fn_78_9A44 sets from the list's 0x30 slot - can then be driven
+// without a real collision, which the harness cannot produce (a teleport moves the player
+// without a touch).
+void CmdTouch(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() != 3) {
+    Fail("usage: touch <mover id> <other id>");
+    return;
+  }
+  CEntity* moverEnt = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CEntity* otherEnt = const_cast< CEntity* >(ResolveObject(mgr, args[2]));
+  CPhysicsActor* mover = moverEnt != nullptr ? TCastToPtr< CPhysicsActor >(moverEnt) : nullptr;
+  const CActor* other = otherEnt != nullptr ? TCastToPtr< CActor >(otherEnt) : nullptr;
+  if (mover == nullptr || other == nullptr) {
+    Fail("the mover must be a physics actor and the other an actor");
+    return;
+  }
+  // One collision, at the other actor's position, with the other actor's material list in the
+  // 0x30 slot (the "left" material of the host's CCollisionInfo, which is where the retail
+  // reads the u64 it masks) and the mover's own list in the 0x38 slot.
+  CCollisionInfoList list;
+  list.Add(CCollisionInfo(other->GetTranslation(), mover->GetMaterialList(),
+                          other->GetMaterialList(), CVector3f::Zero(), 0xffff));
+  mover->CollidedWith(other->GetUniqueId(), list, mgr);
+  char line[160];
+  std::snprintf(line, sizeof(line), "touch %s -> %s (0x30 material 0x%llx)\n",
+                Str(args[1]).c_str(), Str(args[2]).c_str(),
+                static_cast< unsigned long long >(other->GetMaterialList().GetValue()));
+  out += line;
+}
+
 // The state/trigger function the actor's own table registered under `name`, from either machine
 // type: the FSM2 (GetType() 1, CGenericFSM2State) or the AFSM (0, TStateMachineState).
 CPatterned::StateMachine::StateFunc PortFindStateFunction(CPatterned& patterned, const char* name) {
@@ -3035,6 +3076,7 @@ constexpr SCommand kCommands[] = {
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
+    {"touch", CmdTouch, true},
     {"bodystate", CmdBodyState, true},
     {"statecall", CmdStateCall, true},
     {"trigcall", CmdTrigCall, true},

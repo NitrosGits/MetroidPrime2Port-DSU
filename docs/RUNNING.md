@@ -81,6 +81,10 @@ reaches only some of the body states, and the coverage runs need the others.
 `statecall <id> <state> <msg> [dt]` runs one FSM2 state body once (msg 0 Activate, 1 Update, 2
 Deactivate) outside the machine, from the actor's whole state table: states the FSM2 has no node for.
 `codecall <id> <code> [dt]` does the same for a code function (codes otherwise run only on transitions).
+`touch <mover id> <other id>` calls the mover's `CollidedWith` the way the collision code does
+(`CGameCollision::MakeCollisionCallbacks`): with a one-entry collision list whose 0x30 slot holds
+the *other* actor's material list. It needs no real collision, so a module whose own work is in
+that callback can be driven (the SwampBossStage1 "player touched" flag, the retail's fn_78_9A44).
 `scaninfo <id>` prints the 'SCAN' asset an actor's GetScannableObjectInfo answers (no scanning needed).
 `a; b; c` on one line runs all of them in the same game tick (a one-frame window); one reply each.
 `grapple <id> [d]` (ids from `objs grapple`) wakes a grapple point, stands the player d (8) units

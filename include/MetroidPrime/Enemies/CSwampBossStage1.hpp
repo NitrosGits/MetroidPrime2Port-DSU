@@ -80,6 +80,7 @@ public:
   void SplashWait(CStateManager& mgr, EStateMsg msg, float dt);
   void StopBeaching(CStateManager& mgr, EStateMsg msg, float dt);
   void Swim(CStateManager& mgr, EStateMsg msg, float dt);
+  void ResetTongueState();
   void TongueLoop(CStateManager& mgr, EStateMsg msg, float dt);
   void TonguePull(CStateManager& mgr, EStateMsg msg, float dt);
   void Vomit(CStateManager& mgr, EStateMsg msg, float dt);
