@@ -1,0 +1,13 @@
+# DigitalGuardian area 53: the body (editor id 00350060) and head (0035000f) are woken and the body is scanned
+# (console `scan`; the first call raises the scan visor): the scan display calls fn_14_9CA4 and
+# fn_14_9ABC.
+@f30 layer 3
+@f60 layer 11
+@f140 send e00350060 Activate; send e0035000f Activate
+@f300 scan e00350060
+@f360 scan e00350060
+@f420 scan
+@f520 scan
+@f620 scan
+@f760 scan
+@f900 scan

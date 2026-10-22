@@ -1,0 +1,44 @@
+# DigitalGuardian area 53: every case of fn_14_A6A8 (AcceptScriptMsg; `send` takes the
+# four-character code as hex) and the scan display's fn_14_9CA4 / fn_14_9ABC (console `scan`),
+# with the head (e0035000f) there and after it is deleted. Before the first Think the collision
+# managers (0xE60, 0xE64) are null: the ACTV/DCTV/XAUD null arms run at f150 (layer 11's guardian
+# is there, inactive, by then). Editor ids (e...): unique ids are reused across the layer load.
+# XDEL with null managers: digitalguardian_msgs_del.con (a second run, it deletes the guardian).
+@f30 layer 3
+@f60 layer 11
+# ACTV (inactive: null managers), ACTV again (active: skipped), DCTV (active: null managers),
+# DCTV again (inactive: skipped), XAUD with null managers.
+@f145 obj e00350060
+@f150 send e00350060 0x41435456; send e00350060 0x41435456; send e00350060 0x44435456; send e00350060 0x44435456; send e00350060 0x58415544
+@f160 send e00350060 0x41435456; send e0035000f Activate
+# the scan with the head there (beacon down)
+@f300 scan e00350060
+@f360 scan e00350060
+@f640 scan
+# OPEN: the beacon rises (x1268 2), reaches 1.0 after 60 updates (fn_14_28D0 starts its sound)
+@f800 send e00350060 0x4F50454E
+@f900 scan e00350060
+@f960 scan e00350060
+@f1240 scan
+# OPEN with x1268 1 (skipped); DCTV/ACTV with the managers built (0x128C bit 0x40 clear)
+@f1400 send e00350060 0x4F50454E; send e00350060 0x44435456; send e00350060 0x41435456
+# the cases with one arm each, and an unknown message (default)
+@f1450 send e00350060 0x58414C44; send e00350060 0x58444D47; send e00350060 0x58524447; send e00350060 0x58484954
+@f1460 send e00350060 0x494D3030; send e00350060 0x494D3031; send e00350060 0x494D3032; send e00350060 0x494D3033; send e00350060 0x494D3034
+@f1470 send e00350060 0x494D3035; send e00350060 0x494D3036; send e00350060 0x494D3037; send e00350060 0x494D3038
+@f1480 send e00350060 0x58435254; send e00350060 0x12345678; send e00350060 0x494D3039; send e00350060 0x47000000
+# CrippledReaction sets 0x128C bit 0x40; then DCTV/ACTV wakes the second manager (0xA91C)
+@f1500 fsm e00350060 CrippledReaction
+@f1560 send e00350060 0x44435456; send e00350060 0x41435456
+# the head is deleted: the scan without it
+@f1600 send e0035000f Delete
+@f1650 scan e00350060
+@f1710 scan e00350060
+@f1990 scan
+# XAUD; then CLOS and OPEN in the same tick (OPEN sees 0x128C bit 0x08 that CLOS set). CLOS's
+# delete request delivers "XDEL" (kSM_Delete, CStateManager::DispatchScriptMessages) with the
+# managers built and the beacon sound playing, then removes the guardian.
+@f2200 send e00350060 0x58415544
+@f2210 send e00350060 0x434C4F53; send e00350060 0x4F50454E
+@f2260 objs Guardian
+@f2280 covdump
