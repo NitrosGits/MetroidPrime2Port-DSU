@@ -2,7 +2,7 @@ offset	size	fn	kind	class	port	note
 0x0	0x8	fn_9_0	vtable-override	T	marked	
 0x8	0x8	fn_9_8	vtable-override	T	marked	
 0x10	0xC	fn_9_10	vtable-override	T	ported	
-0x1C	0x3C	fn_9_1C	behaviour	B	not-port	
+0x1C	0x3C	fn_9_1C	vtable-override	H	not-port	slot 0x48 GetTouchBounds = the host's CPatterned::GetTouchBounds (CPatterned.hpp:443, the same GetBoundingBox); asm: GetBoundingBox 0x34, the optional ctor 0xF9BC at 0x40, no branch
 0x58	0x10	fn_9_58	data-thunk	T	not-port	
 0x68	0x8	fn_9_68	vtable-override	T	marked	
 0x70	0x8	fn_9_70	vtable-override	T	ported	
@@ -21,8 +21,8 @@ offset	size	fn	kind	class	port	note
 0x934	0x58	fn_9_934	host-copy	H	not-port	
 0x98C	0x94	fn_9_98C	behaviour	B	not-port	
 0xA20	0x40	fn_9_A20	behaviour	B	not-port	
-0xA60	0x20	fn_9_A60	behaviour	B	not-port	
-0xA80	0x28	fn_9_A80	behaviour	B	not-port	
+0xA60	0x20	fn_9_A60	host-copy	H	not-port	rstl::construct<CModelData> (construct.hpp:119 via construction_policy, reached from optional_object's copy ctor, optional_object.hpp:17-21) = the forward at 0xA6C to fn_9_A80; the port copies the same optional at PortCCommandoPirate.cpp:4761
+0xA80	0x28	fn_9_A80	host-copy	H	not-port	the same rstl::construct's `if (dest)` (0xA88 cmplwi, 0xA90 beq) then the CModelData copy ctor fn_9_AA8 (already H); placement new's null test
 0xAA8	0x13C	fn_9_AA8	host-copy	H	not-port	
 0xBE4	0x6C	fn_9_BE4	host-copy	H	not-port	
 0xC50	0x54	fn_9_C50	host-copy	H	not-port	
@@ -72,11 +72,11 @@ offset	size	fn	kind	class	port	note
 0x4568	0x3C	fn_9_4568	host-copy	H	not-port	
 0x45A4	0x304	fn_9_45A4	behaviour	B	not-port	
 0x48A8	0x60	fn_9_48A8	behaviour	B	not-port	
-0x4908	0x38	fn_9_4908	behaviour	B	not-port	
+0x4908	0x38	fn_9_4908	host-copy	H	not-port	rstl::destroy(begin,end) for rstl::vector<CJointCollisionDescription> (construct.hpp:151-160): the two pointers 0x4910/0x491C, then the 0x68-stride loop fn_9_4940 (element string at +0x2C); host vector at PortCCommandoPirate.cpp:1255
 0x4940	0x60	fn_9_4940	host-copy	H	not-port	
-0x49A0	0x38	fn_9_49A0	behaviour	B	not-port	
-0x49D8	0x20	fn_9_49D8	behaviour	B	not-port	
-0x49F8	0x28	fn_9_49F8	behaviour	B	not-port	
+0x49A0	0x38	fn_9_49A0	host-copy	H	not-port	rstl::vector<CJointCollisionDescription>::push_back_unsafe (vector.hpp:86): count +0x4, items +0xC, mulli 0x68 (0x49B4), count+1 stored (0x49BC), construct 0x49D8 (0x49C4), no growth test; host push_back at PortCCommandoPirate.cpp:1256
+0x49D8	0x20	fn_9_49D8	host-copy	H	not-port	rstl::construct<CJointCollisionDescription> forward half (vector.hpp:86 -> construct.hpp:119): bare bl fn_9_49F8 at 0x49E4
+0x49F8	0x28	fn_9_49F8	host-copy	H	not-port	the same rstl::construct's `if (dest)` (0x4A00 cmplwi, 0x4A08 beq) then the CJointCollisionDescription copy ctor fn_9_4A20 (already H) at 0x4A0C
 0x4A20	0xC0	fn_9_4A20	host-copy	H	not-port	
 0x4AE0	0x5C	fn_9_4AE0	host-copy	H	not-port	
 0x4B3C	0x84	fn_9_4B3C	behaviour	B	not-port	
@@ -101,8 +101,8 @@ offset	size	fn	kind	class	port	note
 0x6054	0x48	fn_9_6054	behaviour	B	not-port	
 0x609C	0xB4	fn_9_609C	behaviour	B	not-port	
 0x6150	0x40	fn_9_6150	behaviour	B	not-port	
-0x6190	0x20	fn_9_6190	behaviour	B	not-port	
-0x61B0	0x28	fn_9_61B0	behaviour	B	not-port	
+0x6190	0x20	fn_9_6190	host-copy	H	not-port	rstl::construct<CImpactVisorEffect::SParticleEffect> forward half (CImpactVisorEffect.hpp:16-23): bare bl fn_9_61B0 at 0x619C; host builds one at PortCCommandoPirate.cpp:860
+0x61B0	0x28	fn_9_61B0	host-copy	H	not-port	the same rstl::construct's `if (dest)` (0x61B8 cmplwi, 0x61C0 beq) then the SParticleEffect copy ctor fn_9_61D8 (already H) at 0x61C4
 0x61D8	0x80	fn_9_61D8	host-copy	H	not-port	
 0x6258	0x6C	fn_9_6258	host-copy	H	not-port	
 0x62C4	0x54	fn_9_62C4	host-copy	H	not-port	
@@ -242,7 +242,7 @@ offset	size	fn	kind	class	port	note
 0xF69C	0x40	fn_9_F69C	behaviour	B	not-port	
 0xF6DC	0x40	fn_9_F6DC	behaviour	B	not-port	
 0xF71C	0x98	fn_9_F71C	behaviour	B	not-port	
-0xF7B4	0x3C	fn_9_F7B4	behaviour	B	not-port	
+0xF7B4	0x3C	fn_9_F7B4	host-copy	H	not-port	rstl::uninitialized_copy (construct.hpp:157-165) of rstl::vector<CWeaponTypeVulnerability> (CDamageVulnerability.hpp:100): 12-byte element, f32 0x0 / u32 0x4 / u8 0x8 at 0xF7C0..0xF7DC, stride 0xC, no early exit; host copy at PortCCommandoPirate.cpp:354
 0xF7F0	0xC0	fn_9_F7F0	behaviour	B	not-port	
 0xF8B0	0x68	fn_9_F8B0	behaviour	B	not-port	
 0xF918	0xA4	fn_9_F918	host-copy	H	not-port	
