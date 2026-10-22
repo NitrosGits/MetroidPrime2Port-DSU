@@ -107,7 +107,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mSeparationDir(CVector3f(0.f, 0.f, 0.f))
 , mContactTime(0.f)
 , mContactPoint(CVector3f(0.f, 0.f, 0.f))
-, mLastMeleeTime(0.f)
+, mLastMeleeTime(-1000.f) // lbl_10_rodata_410, fn_10_EA24 `stfs f0, 0x1c(r31)` at 0x0000EAAC
 , mAttackMask(0)
 , mWeightedPick(0xFFFF)
 , mPickCount(0)
@@ -129,7 +129,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mScatterUseSecondInfo(0)                      // 0x000216BC
 , mDive(data.mDiveAttackDamage, data.mDiveAttackImpulseHorizontal,
         data.mDiveAttackImpulseVertical)         // fn_10_E784 at 0x0001FE64
-, mGuestE04(0.f) // not written by the constructor; fn_10_18628 is the only writer
+, mGuestE04(-1000.f) // lbl_10_rodata_410, fn_10_EDF4 `stfs f1, 0x14(r31)` at 0x0000EE34
 , mGuestE08(0.f)
 , mGuestE0C(0.f)
 , mBoostBallUid(kInvalidUniqueId)                  // 0x000089FC

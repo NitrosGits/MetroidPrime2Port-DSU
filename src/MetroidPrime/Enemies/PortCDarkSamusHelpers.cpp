@@ -129,6 +129,36 @@ void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
   }
 }
 
+// fn_10_22020 (0x00022020, 0xCC bytes): the getup command over a state's messages, the same
+// shape as fn_10_8698 with pas::kAS_Getup. Activate (`cmpwi r4, 0x0` / `bge` at 0x0002204C)
+// stores 1 (kAS_Ready) to 0x6B4 (0x00022068) and delivers the command (0x00022078); Update
+// (`cmpwi r4, 0x1` / `beq` at 0x00022028/0x00022040) re-delivers it when ShouldRetry
+// (fn_801B73E4 at 0x00022098, the host's CAnimationState::CanIssueCommand) answers true
+// (`clrlwi.` / `beq` at 0x0002209C); Deactivate (2, 0x0002205C) stores 0 (kAS_NotReady,
+// 0x000220D0). Its only caller is the GetUp state fn_10_18EAC (0x00018F00).
+// Arms: statecall u04f7 GetUp 0/1/2, Update with CanIssueCommand true and false (ds43).
+// @ fn_10_22020
+void CDarkSamus::RunGetupCmd(EStateMsg msg, const CBCGetupCmd& cmd) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x00022068
+    BodyController()->CommandMgr().DeliverCmd(cmd);       // 0x00022078
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Getup)) { // 0x00022098
+      BodyController()->CommandMgr().DeliverCmd(cmd);                         // 0x000220B4
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x000220D0
+    break;
+  default:
+    // Dead: EStateMsg has three values and the GetUp state passes its own message; retail's
+    // out-of-range exits are 0x00022050 (`b`, below 0) and 0x00022058 (`bge`, 3 and up).
+    break;
+  }
+}
+
 // fn_10_6F90 (0x00006F90, 0xC4 bytes): the path find to the destination. The path find itself is
 // fn_10_1C778 (the host's SetPathFindDestination, 0x00006FC0); when the path is shagged
 // (0x00006FE0) the navigation goes back to the last good destination (guest 0x1048, 0x00006FF8)

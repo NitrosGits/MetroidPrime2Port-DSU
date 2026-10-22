@@ -435,23 +435,7 @@ void CDarkSamus::MissileDeflect(CStateManager& mgr, EStateMsg msg, float) {
 void CDarkSamus::GetUp(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("GetUp", msg);
   UpdateGroundCollision(mgr, msg);
-  const CBCGetupCmd getup(static_cast< pas::EGetupType >(0));
-  switch (msg) { // fn_10_22020
-  case kStateMsg_Activate:
-    mAnimationState.SetState(CAnimationState::kAS_Ready);
-    BodyController()->CommandMgr().DeliverCmd(getup);
-    break;
-  case kStateMsg_Update:
-    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Getup)) {
-      BodyController()->CommandMgr().DeliverCmd(getup);
-    }
-    break;
-  case kStateMsg_Deactivate:
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
-    break;
-  default:
-    break;
-  }
+  RunGetupCmd(msg, CBCGetupCmd(static_cast< pas::EGetupType >(0))); // fn_10_22020, 0x00018F00
 }
 
 // fn_10_4AC8 (0x00004AC8, 0xD4 bytes): the PhazonSuck state. The attack bookkeeping with

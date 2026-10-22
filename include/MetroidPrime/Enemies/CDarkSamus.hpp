@@ -862,13 +862,9 @@ private:
   CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
                                    // constructor writes the zero vector to it (0x0001FF24..)
   float mLastMeleeTime;            // guest 0x9C0, the elapsed time the MeleeAttack state
-                                   // fn_10_17BC0 stores (0x00017C9C), its only writer in the
-                                   // module; fn_10_1A34C reads it (0x0001A3E0) only
-                                   // when the newest finished attack is the melee, i.e. after
-                                   // MeleeAttack ran. Neither the constructor (its stores run
-                                   // 0x8AC..0xD58 with no 0x9C0) nor the game heap clears it, so
-                                   // retail leaves it unset until the first melee; the host's 0
-                                   // stands in for that never-read value
+                                   // fn_10_17BC0 stores (0x00017C9C); fn_10_1A34C reads it
+                                   // (0x0001A3E0). The 0x9A4 record's constructor fn_10_EA24
+                                   // starts it at lbl_10_rodata_410 = -1000.0f (0x0000EAAC)
   SAttackWeights mAttackWeights;   // guest 0xC54/0xC58, the pickers' last weights; the
                                    // constructor writes the count 0 (0x0001FF4C)
   uint mAttackMask;                // guest 0xCB8, the pickers' last attack mask; 0 (0x0001FF50)
@@ -1082,6 +1078,7 @@ private:
   void EnsureRenderedActor(const CStateManager& mgr) const; // fn_10_E5C: the base's EnsureRendered
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
+  void RunGetupCmd(EStateMsg msg, const CBCGetupCmd& cmd); // fn_10_22020: the getup command
   void StopBoostBallParticles();                  // fn_10_99B8: the boost ball's old effects
   void RollBoostBallToPosition(float dt);         // fn_10_A154: the actor moves to the ball
   void RunLoopAttackCmd(EStateMsg msg, const CBCLoopAttackCmd& attack); // fn_10_8870
@@ -1234,7 +1231,7 @@ private:
   void RenderFlash() const;                          // fn_10_1890C
   // fn_10_EDF4's record at guest 0xDF0: the flash's 'TXTR' token (tXTR; its valid byte 0xDFC is
   // the optional's presence, built only for a valid asset) and the quad's size 0xE00
-  // (unknown_0x2c6a3344). EDF4 also writes 0xE04 = -1000 (mGuestE04 starts at 0 on the host).
+  // (unknown_0x2c6a3344). EDF4 also writes 0xE04 = -1000 (0x0000EE34) and 0xE08/0xE0C = 0.
   rstl::optional_object< TLockedToken< CTexture > > mFlashTexture;
   float mFlashSize = 0.f;
 #endif

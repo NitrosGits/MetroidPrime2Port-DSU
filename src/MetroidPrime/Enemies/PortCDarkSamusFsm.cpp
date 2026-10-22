@@ -2820,8 +2820,8 @@ float CDarkSamus::RollReflectChanceForHit(CStateManager& mgr, TUniqueId uid) con
 // 0x0001EE78) plus lbl_10_rodata_438 = 3.0f must be past the elapsed time 0x8B0
 // (0x0001EE90), the damage's weapon type must be 6 (kWT_Missile, 0x0001EEA8) and the stage
 // must exist (0x0001EEB8). Then fn_10_F100's roll (0x0001EED8) is compared with the stage
-// info's +0x2C (the third missile float) when the damage info's flag bit 0x40 is set
-// (0x0001EEDC) and with its +0x28 (the second missile float, 0x0001EF0C) otherwise.
+// info's +0x2C (the third missile float) when the weapon is comboed (the super missile; the
+// weapon mode's byte 2 bit 0x40, `lbz r0, 0x2(r29)` + `extrwi r3, r0, 1, 25`, 0x0001EEDC) and with its +0x28 (the second missile float, 0x0001EF0C) otherwise.
 bool CDarkSamus::CanReflectHit(CStateManager& mgr, const CDamageInfo& damage, TUniqueId uid) const {
   const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0001EE74, 0x0001EE78
   if (3.f + since > mElapsedTime) { // lbl_10_rodata_438, 0x0001EE8C
@@ -2835,7 +2835,7 @@ bool CDarkSamus::CanReflectHit(CStateManager& mgr, const CDamageInfo& damage, TU
     return false;
   }
   const float roll = RollReflectChanceForHit(mgr, uid); // fn_10_F100, 0x0001EED8
-  if (damage.ShouldApplyRadiusDamage()) { // the damage info's +2 bit 0x40, 0x0001EEDC
+  if (damage.GetWeaponMode().IsComboed()) { // the weapon mode's byte 2 bit 0x40, 0x0001EEDC
     return roll < stage->GetStageInfo().missiles.unknown_0x1e2debc6; // the stage info's +0x2C
   }
   return roll < stage->GetStageInfo().missiles.unknown_0xbfb7ca5c; // the stage info's +0x28
