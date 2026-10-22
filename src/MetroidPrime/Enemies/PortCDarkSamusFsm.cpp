@@ -1825,9 +1825,98 @@ void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
   }
 }
 
-void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_A3B0", "state BoostBallRoll");
+// fn_10_A3B0 (0x0000A3B0, 0x384 bytes): the BoostBallRoll state - the boss rolls the boost ball
+// toward the hint. Every message runs the attack bookkeeping with id 0x20000 (fn_10_1B478, the
+// `lis r4, 0x2` at 0x0000A3EC, the call at 0x0000A3F4), the shield flag (fn_10_105F4 at
+// 0x0000A408) and turns the "BoostThingy" effect on (the string at lbl_10_rodata_2E4 + 7, the
+// SetEffectState at 0x0000A434).
+// Activate (0x0000A464): the script state "SI20" (kSS_InternalState2, 0x0000A48C); the boost
+// ball is spawned (fn_10_9E00 at 0x0000A4AC) when there is none (the uid 0xE38 is
+// kInvalidUniqueId, 0x0000A49C); the actor's position goes to the ball's target 0xE98..0xEA0 and
+// the roll's time 0xEA4 = 0.0f (0x0000A4B0..0x0000A4D0).
+// Update (0x0000A4D8): the boost ball's bit 0x20 of 0xEBC must be clear (the `extrwi` at
+// 0x0000A4DC takes the bit 26 = 1u << (31 - 26) = 0x20), the ball's actor must exist
+// (fn_10_9920 at 0x0000A4EC) and the bit 0x40 of 0x318 must be set (fn_10_2F04 at 0x0000A4FC; the
+// `clrlwi` at 0x0000A500 takes the bool's low byte, so the check is the bit 0x40 itself). Then
+// fn_10_A1C0 (0x0000A514), the shield flag 0xCD0 is cleared (0x0000A520), the ball's actor
+// takes the damage (0x0000A654) and the flags follow: the bit 0x20 of 0xEBC is set (0x0000A660)
+// and the shield flag 0xCD0 becomes 1 (0x0000A668).
+// Deactivate (0x0000A6DC): the script state "SI21" (kSS_InternalState3, 0x0000A704).
+// Every message then rolls the ball to the hint: with a hint (the uid 0xEC0, 0x0000A66C)
+// fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
+// (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
+// Port limits: fn_10_A1C0 (0x1F0 bytes, it picks the roll's hint and the roll's parameters),
+// fn_10_AA04 (0x760 bytes, the roll to the hint) and fn_10_A06C (0xE8 bytes, the ball's
+// transform and the roll emitter) are not ported, so their calls stay stand-ins.
+void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallRoll", msg);
+  UpdateCurrentAttack(0x20000, mgr, msg);                  // 0x0000A3F4
+  UpdateShieldFlag(msg);                                   // 0x0000A408
+  AnimationData()->SetEffectState(rstl::string_l("BoostThingy"), true, mgr); // 0x0000A434
+  switch (msg) {
+  case kStateMsg_Activate:
+    SendScriptMsgs(kSS_InternalState2, mgr, kInvalidUniqueId,
+                   static_cast< EScriptObjectMessage >(-1)); // 0x0000A48C
+    if (mBoostBallUid == kInvalidUniqueId) {               // 0x0000A49C
+      SpawnBoostBall(mgr);                                 // fn_10_9E00, 0x0000A4AC
+    }
+    mBoostBallPos = GetTranslation(); // 0x0000A4B0..0x0000A4CC
+    mGuestEA4 = 0.f;                 // 0x0000A4D0
+    break;
+  case kStateMsg_Update:
+    if (mBoostBallFlag20 == false &&            // 0x0000A4DC (the bit 0x20 of 0xEBC)
+        GetBoostBallActor(mgr) != nullptr &&     // 0x0000A4EC (fn_10_9920)
+        GetGuest318Bit6() == true) {            // 0x0000A4FC (fn_10_2F04: the bit 0x40 of the
+                                              // byte 0x318, the `clrlwi` at 0x0000A500
+                                              // takes the bool's low byte)
+      FsmStandIn("fn_10_A1C0", "BoostBallRoll's roll pick"); // 0x0000A514
+      mGuestCD0 = 0;                                     // 0x0000A520
+      // 0x0000A524..0x0000A538: the health (the vtable's slot 0x3C, the float at its +4) and
+      // 0x0000A544: the health - 1.0f (lbl_10_rodata_264). 0x0000A548: the float at 0x314
+      // (fn_10_2EFC, the call's result in f1). 0x0000A54C..0x0000A558: the `fcmpo` of that
+      // value with the health - 1.0f - `bge` takes the health - 1.0f, the other way the float at
+      // 0x314 (the unordered case too): the damage is min(the float at 0x314, the health - 1.0f).
+      const float health = GetHealthInfo()->GetHP();
+      const float healthMinusOne = health - 1.f;
+      const float rollDamage = mGuest314;
+      const float damage = (rollDamage >= healthMinusOne) ? healthMinusOne : rollDamage;
+      // 0x0000A564..0x0000A5EC: the damage info - the weapon mode word 0x13 in the high half
+      // (the `li r0, 0x13` and the `rlwimi` at 0x0000A560/0x0000A564) with the low half and the
+      // bits 16, 17, 18, 24 and 25 cleared, so the type is 0x13 = 19 = kWT_UnknownSource and the
+      // mode's flags (the charged, the comboed, the instant-kill) are all false; the damage, the
+      // radius damage amount (the same value, 0x0000A568), the damage radius 0.0f, the knockback
+      // 0.0f, the three sound ids 0 and the flags byte with its bit 0x80 cleared. The host's
+      // CDamageInfo defaults the sound ids to 0xffff.
+      const CDamageInfo info(CWeaponMode(kWT_UnknownSource, false, false, false), damage, 0.f, 0.f,
+                             true);
+      // 0x0000A5B4..0x0000A5F0: the filter - the include list is the material bit 1 << 0x3B
+      // (lbl_10_data_1E0 = 0x3B through the `__shl2i` at 0x0000A5F0), which is 59 =
+      // kMT_Solid, the exclude list is empty and the type is 3 = kFT_IncludeExclude
+      // (0x0000A5F8/0x0000A62C).
+      const CMaterialFilter filter(CMaterialList(kMT_Solid), CMaterialList(),
+                                   CMaterialFilter::kFT_IncludeExclude);
+      // 0x0000A630..0x0000A650: all three uids are this actor's own (`lhz 0x8(r30)`), so the
+      // retail damages the Dark Samus herself; the ball's actor is not used.
+      mgr.ApplyDamage(GetUniqueId(), GetUniqueId(), GetUniqueId(), info, filter,
+                      CVector3f::Zero()); // 0x0000A654 (sZeroVector, 0x0000A600)
+      mBoostBallFlag20 = true; // 0x0000A660 (the `rlwimi` at 0x0000A660 sets the bit 0x20 of 0xEBC)
+      mGuestCD0 = 1;            // 0x0000A668
+    }
+    break;
+  case kStateMsg_Deactivate:
+    SendScriptMsgs(kSS_InternalState3, mgr, kInvalidUniqueId,
+                   static_cast< EScriptObjectMessage >(-1)); // 0x0000A704
+    break;
+  default:
+    break;
+  }
+  if (mBoostHintUid != kInvalidUniqueId) { // 0x0000A66C (the uid 0xEC0)
+    FsmStandIn("fn_10_AA04", "BoostBallRoll's roll to the hint"); // 0x0000A68C
+  } else {
+    MoveInOneFrameOR(CVector3f(0.f, 1.25f, 0.f), dt); // 0x0000A6BC
+  }
+  FsmStandIn("fn_10_A06C", "BoostBallRoll's ball update"); // 0x0000A6C8
+  RollBoostBallToPosition(dt); // fn_10_A154, 0x0000A6D4
 }
 
 // fn_10_16CDC (0x00016CDC, 0x1F0 bytes): the FreezeBeam state. Every message runs the attack

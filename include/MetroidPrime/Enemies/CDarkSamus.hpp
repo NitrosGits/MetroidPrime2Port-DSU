@@ -922,6 +922,8 @@ private:
                                    // the data order (the r9 token is the 'SWHC' trail swoosh,
                                    // then the two sounds +0x58 / +0x5A)
   CSfxHandle mBoostBallRollSfx;    // guest 0xE6C (+0x5C), the roll emitter; 0 (0x00008A50)
+  CVector3f mBoostBallPos;          // guest 0xE98/0x9C/0xA0, where the boost ball rolls to
+                                    // (fn_10_A3B0, 0x0000A4B0..0x0000A4CC)
   bool mBoostBallFlag40 : 1;       // 0xebc 0x40 (+0xAC); BoostBallInto clears it
                                    // (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4)
   TUniqueId mBoostHintUid;         // guest 0xEC0, the hint the ball rolls to; kInvalidUniqueId
@@ -1079,6 +1081,7 @@ private:
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
   void StopBoostBallParticles();                  // fn_10_99B8: the boost ball's old effects
+  void RollBoostBallToPosition(float dt);         // fn_10_A154: the actor moves to the ball
   void RunLoopAttackCmd(EStateMsg msg, const CBCLoopAttackCmd& attack); // fn_10_8870
   void UpdateShieldFromHealth(EStateMsg msg);     // fn_10_6DAC: the shield flag and direction
   void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
