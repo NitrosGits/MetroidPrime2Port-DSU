@@ -91,7 +91,7 @@ bool CSplitterCommandModule::PortListen(CStateManager& mgr, const CVector3f& pos
     return false;
   }
   const CVector3f delta = position - GetTranslation();
-  if (delta.MagSquared() >= 400.f) {
+  if (!(delta.MagSquared() < 400.f)) {
     return false;
   }
   mAutoDestructFlags |= 0x40;

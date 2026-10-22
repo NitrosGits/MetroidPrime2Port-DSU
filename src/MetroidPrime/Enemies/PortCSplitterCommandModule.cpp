@@ -1427,7 +1427,7 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
   // 0x120C-0x1224: a missing beam is made only when the base's field at 0x3D0 (its copy of the
   // patterned info's detection range) is above zero (ble skips to 0x13EC, where the emitter is
   // still updated).
-  if (beam == nullptr && !(GetDetectionRange() <= 0.f)) {
+  if (beam == nullptr && GetDetectionRange() > 0.f) {
     // 0x1230-0x1244: a fresh id, kept at 0xF68. 0x1248-0x1380: the beam effect is built with the
     // CEntityInfo the retail makes at 0x12A0 (the area id, NullConnectionList, true and
     // kInvalidEditorId), the name (0x12B8, the rodata string at 0xA0 + 0x230), the module
@@ -1663,9 +1663,9 @@ void CSplitterCommandModule::PortFindChassis(CStateManager& mgr) {
       continue;
     }
     const float distSq = (chassis->GetTranslation() - pos).MagSquared();
-    // 0x2348 fcmpo f31, f27 + 0x234C bge: only distSq >= best skips, so a NaN distance falls
-    // through and becomes the pick (and the NaN best then lets every later chassis through).
-    if (distSq >= best) {
+    // 0x2348 fcmpo f31, f27 + 0x234C bge: distSq >= best or a NaN skips (bge is taken on a
+    // NaN), so only an ordered smaller distance becomes the pick.
+    if (!(distSq < best)) {
       continue;
     }
     if (CSplitterMainChassis* old =
@@ -2120,7 +2120,7 @@ void CSplitterCommandModule::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
     // and 1 otherwise (0x6668 stw).
     BodyController()->Activate(mgr, pas::kAS_Invalid);
     PortCreateCollisionActorManager(mgr);
-    mPreviousCollisionState = mgr.Random()->Range(0.f, 100.f) >= 50.f ? 2 : 1;
+    mPreviousCollisionState = mgr.Random()->Range(0.f, 100.f) < 50.f ? 1 : 2;
     break;
   }
   case kSM_Delete: { // "XDEL" (0x65DC)

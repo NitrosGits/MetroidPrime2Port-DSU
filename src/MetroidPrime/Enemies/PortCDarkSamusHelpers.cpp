@@ -353,7 +353,8 @@ void CDarkSamus::TouchPhazonSphere(CStateManager& mgr) {
   const CVector3f center = bounds.data().GetCenterPoint();
   const float boxRadius = (bounds.data().GetMaxPoint() - center).Magnitude();
   const float sphereRadius = mGuest1028->GetGlobalScale().Magnitude();
-  if ((center - GetPhazonSpherePos()).Magnitude() >= sphereRadius + boxRadius) {
+  // 0x7E84/0x7E88 fcmpo, bge to the return (taken on a NaN too).
+  if (!((center - GetPhazonSpherePos()).Magnitude() < sphereRadius + boxRadius)) {
     return;
   }
   PushPlayer(mgr, 22.f, 0.f);
@@ -1210,7 +1211,7 @@ void CDarkSamusBoostBall::Think(float dt, CStateManager& mgr) {
   mCollisionManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   UpdateAnimation(2.f * dt, mgr, true);
   mHitCooldown -= dt;
-  if (!(mHitCooldown >= 0.f)) { // 0x00003B94 `bge`: NaN clamps too
+  if (mHitCooldown < 0.f) { // 0x00003B94 `bge` to the fmr of the value (a NaN is kept)
     mHitCooldown = 0.f;
   }
 }
@@ -1449,7 +1450,8 @@ void CDarkSamus::UpdateFade(float dt) {
     mGuestDE8 += dt / 3.f;           // 0x0001D730
   }
   const float v = mGuestDE8;
-  mGuestDE8 = 0.f > v ? 0.f : (1.f >= v ? v : 1.f); // 0x0001D744, 0x0001D758
+  // 0x0001D744 ble and 0x0001D758 bge to the fmr of v: a NaN v is kept (CMath::Clamp's shape).
+  mGuestDE8 = 0.f > v ? 0.f : (1.f < v ? 1.f : v);
   SetDrawShadow(mGuestDE8 > 0.f);                    // 0x0001D774, 0x0001D780
 }
 
@@ -1645,10 +1647,10 @@ void CDarkSamus::UpdateStageFlash(CStateManager& mgr) {
 // @ fn_10_1B154
 void CDarkSamus::CheckHealthThreshold(CStateManager& mgr) {
   const float threshold = mData.mUnknown72EDEB7D;
-  if (threshold <= 0.f || mHealthThresholdSent) {
+  if (!(threshold > 0.f) || mHealthThresholdSent) { // 0x1B180 ble to the return (a NaN too)
     return;
   }
-  if (GetHealthInfo()->GetHP() >= threshold) {
+  if (!(GetHealthInfo()->GetHP() < threshold)) { // 0x1B1AC bge to the return (a NaN too)
     return;
   }
   SendScriptMsgs(kSS_AILogicState1, mgr, kInvalidUniqueId, kSM_None);

@@ -550,7 +550,7 @@ void CDarkSamus::UpdateStillTimer(EStateMsg msg, float dt) {
     return;
   }
   const CVector3f delta = GetTranslation() - mStillPosition;
-  if (delta.Magnitude() <= 0.6f) {
+  if (!(delta.Magnitude() > 0.6f)) { // 0x1D80C ble to the += (a NaN too)
     mStillTime += dt;
     return;
   }
@@ -1901,11 +1901,12 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
       // 0x0000A544: the health - 1.0f (lbl_10_rodata_264). 0x0000A548: the ball's float at 0x314
       // (fn_10_2EFC on r29, the call's result in f1). 0x0000A54C..0x0000A558: the `fcmpo` of that
       // value with the health - 1.0f - `bge` takes the health - 1.0f, the other way the float at
-      // 0x314 (the unordered case too): the damage is min(the float at 0x314, the health - 1.0f).
+      // 0x314: the damage is min(the float at 0x314, the health - 1.0f); `bge` is taken on a NaN,
+      // so the unordered case takes the health - 1.0f.
       const float health = GetHealthInfo()->GetHP();
       const float healthMinusOne = health - 1.f;
       const float rollDamage = ball->GetDamageTaken();
-      const float damage = (rollDamage >= healthMinusOne) ? healthMinusOne : rollDamage;
+      const float damage = (rollDamage < healthMinusOne) ? rollDamage : healthMinusOne;
       // 0x0000A564..0x0000A5EC: the damage info - the weapon mode word 0x13 in the high half
       // (the `li r0, 0x13` and the `rlwimi` at 0x0000A560/0x0000A564) with the low half and the
       // bits 16, 17, 18, 24 and 25 cleared, so the type is 0x13 = 19 = kWT_UnknownSource and the
@@ -2107,9 +2108,9 @@ void CDarkSamus::RollToBoostHint(CStateManager& mgr, float dt) {
   }
 
   bool arrived = false;
-  if (!(distSq >= 25.f)) { // lbl_10_rodata_2AC, 0x0000ADE8 `bge`: NaN goes in
+  if (distSq < 25.f) { // lbl_10_rodata_2AC, 0x0000ADE8 `bge` (a NaN skips)
     float back = 0.5f; // lbl_10_rodata_284, 0x0000ADF4
-    if (!(hint->GetValueParm2() >= 0.5f)) { // 0x0000AE04/0x0000AE08 `bge`
+    if (hint->GetValueParm2() < 0.5f) { // 0x0000AE04/0x0000AE08 `bge` (a NaN skips)
       back = 1.f;                       // lbl_10_rodata_264, 0x0000AE10
     }
     const CVector3f plane = hint->GetTranslation() - back * dir; // 0x0000AE14..0x0000AE58
@@ -2118,7 +2119,7 @@ void CDarkSamus::RollToBoostHint(CStateManager& mgr, float dt) {
     }
   }
   if (!arrived && mBoostBallFlag80 == true) { // 0x0000AE88, 0x0000AE90 (the bit 0x80 of 0xEBC)
-    if (!(distSq >= 25.f)) {                  // 0x0000AEA8 `bge`
+    if (distSq < 25.f) {                      // 0x0000AEA8 `bge` (a NaN skips)
       arrived = true;                         // 0x0000AEAC
     } else {
       mBoostBallFlag80 = false; // 0x0000AEB8
@@ -2135,12 +2136,12 @@ void CDarkSamus::RollToBoostHint(CStateManager& mgr, float dt) {
   } else {
     mBoostHintUid = next->GetUniqueId(); // 0x0000AF20
     mGuestECC = hint->GetTranslation();  // 0x0000AF24..0x0000AF38
-    if (!(next->GetValueParm() <= 0.f)) { // 0x0000AF48/0x0000AF4C `ble`
+    if (next->GetValueParm() > 0.f) {    // 0x0000AF48/0x0000AF4C `ble` (a NaN skips)
       const float value = next->GetValueParm();
       float clamped;
-      if (!(0.1f <= value)) { // lbl_10_rodata_2B0, 0x0000AF60/0x0000AF64
+      if (0.1f > value) { // lbl_10_rodata_2B0, 0x0000AF60/0x0000AF64 `ble` (a NaN skips)
         clamped = 0.1f;
-      } else if (2.f >= value) { // lbl_10_rodata_27C, 0x0000AF74/0x0000AF78
+      } else if (!(2.f < value)) { // lbl_10_rodata_27C, 0x0000AF74/0x0000AF78 `bge` (NaN too)
         clamped = value;
       } else {
         clamped = 2.f;
@@ -2149,7 +2150,7 @@ void CDarkSamus::RollToBoostHint(CStateManager& mgr, float dt) {
     } else {
       mBoostHintValue = 1.f; // lbl_10_rodata_264, 0x0000AF94
     }
-    if (!(next->GetValueParm2() <= 0.5f)) { // lbl_10_rodata_284, 0x0000AFA8/0x0000AFAC `ble`
+    if (next->GetValueParm2() > 0.5f) { // lbl_10_rodata_284, 0x0000AFA8/0x0000AFAC `ble`
       PlayBoostBallCollision(mgr);      // fn_10_A814, 0x0000AFB8
       CVector3f toNext = next->GetTranslation() - GetTranslation();
       toNext.SetZ(0.f);                       // 0x0000AFFC
@@ -4457,7 +4458,8 @@ bool CDarkSamus::IsPlayerInAnimReach(CStateManager& mgr, const CPASAnimParmData&
                                      float minScale, float maxScale) const {
   const float dist = GetDistanceToPlayer(mgr);
   const float reach = GetAnimationDistance(parms) * GetModelData()->GetScale().GetY();
-  if (dist > reach * maxScale || !(dist >= reach * minScale)) {
+  // 0x14238 bgt to false (a NaN goes on), 0x14244 bge to true (a NaN too).
+  if (dist > reach * maxScale || dist < reach * minScale) {
     return false;
   }
   return true;

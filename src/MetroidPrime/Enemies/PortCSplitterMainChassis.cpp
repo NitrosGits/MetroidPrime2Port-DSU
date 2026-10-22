@@ -289,7 +289,7 @@ bool CSplitterMainChassis::ShouldSpinAttack(CStateManager& mgr, const CTriggerDa
 // flag words are 0x6E, 0x76, 0x7C and 0x7D), so only the timer half of the first test runs.
 // @ fn_75_E0B0
 bool CSplitterMainChassis::ShouldLaserSweep(CStateManager& mgr, const CTriggerData&) const {
-  if ((mData.mUnknownCEF5C2FE & 0x40) == 0 || mLaserSweepTimer > 0.f) {
+  if ((mData.mUnknownCEF5C2FE & 0x40) == 0 || !(mLaserSweepTimer <= 0.f)) {
     return false;
   }
   if (mTeamId != kInvalidUniqueId &&
@@ -800,7 +800,7 @@ void CSplitterMainChassis::BounceOffGeometry(CStateManager&, float) {
 // NaN (a zero cross product), as in the retail; a forced 180-degree target flip hangs the game.
 // @ fn_75_963C
 void CSplitterMainChassis::PortSpinMove(const CVector3f& velocity, float dt) {
-  if (dt <= 0.f) {
+  if (!(dt > 0.f)) {
     return;
   }
   CVector3f heading = mSpinVector;
@@ -824,7 +824,7 @@ void CSplitterMainChassis::PortSpinMove(const CVector3f& velocity, float dt) {
   if (mData.mSpinAttackLinearVelocity < speed) {
     speed = mData.mSpinAttackLinearVelocity;
   }
-  if (speed <= 0.f) {
+  if (!(0.f < speed)) {
     speed = 0.f;
   }
   mSpinVector = dt * (speed * heading);
@@ -856,7 +856,7 @@ void CSplitterMainChassis::SpinAttack(CStateManager& mgr, EStateMsg msg, float d
       mAnimationState.SetState(CAnimationState::kAS_Over);
       break;
     }
-    if (dt <= 0.f) {
+    if (!(dt > 0.f)) {
       break;
     }
     const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncId));
@@ -1215,7 +1215,7 @@ void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
     const CVector3f headColumn = head->GetTransform().GetColumn(kDY);
     const CVector3f chassisColumn = locator.GetColumn(kDY);
     const float turn = 12.566371f * dt;
-    if (CVector3f::GetAngleDiff(headColumn, chassisColumn) >= turn) {
+    if (!(CVector3f::GetAngleDiff(headColumn, chassisColumn) < turn)) {
       const CVector3f slerped =
           CVector3f::Slerp(headColumn, chassisColumn, CRelAngle::FromRadians(turn));
       head->SetTransform(CTransform4f::LookAt(position, position + slerped, zColumn));
@@ -1834,7 +1834,7 @@ void CSplitterMainChassis::DeploymentLanding(CStateManager& mgr, EStateMsg msg, 
     BodyController()->SetLocomotionType(pas::kLT_Relaxed);
     Stop();
     const CVector3f forward = GetTransform().GetColumn(kDY);
-    if (CMath::AbsF(forward.GetZ() - 0.f) >= 0.00001f) {
+    if (!(CMath::AbsF(forward.GetZ() - 0.f) < 0.00001f)) {
       const CVector3f pos = GetTranslation();
       SetTransform(CTransform4f::LookAt(
           pos, pos + CVector3f(forward.GetX(), forward.GetY(), 0.f), CVector3f::Up()));
@@ -2072,12 +2072,12 @@ void CSplitterMainChassis::PortUpdateFade(float dt) {
   const float step = dt / (mSyncId != kInvalidUniqueId ? 0.25f : 1.f); // 0x00009558-0x0000956C
   if (mScanTimer > 0.f || mSyncId != kInvalidUniqueId) { // 0x0000957C, 0x00009584
     mFadeWeight -= step;                                 // 0xCB8 (0x0000958C)
-    if (mFadeWeight <= 0.f) {                            // 0x0000959C (the <= sense)
+    if (!(0.f < mFadeWeight)) {                          // 0x0000959C bge (NaN clamps)
       mFadeWeight = 0.f;                                 // 0x000095A8
     }
   } else {
     mFadeWeight += step;                                 // 0xCB8 (0x000095B4)
-    if (mFadeWeight >= 1.f) {                            // 0x000095C4 (the >= sense)
+    if (!(mFadeWeight < 1.f)) {                          // 0x000095C4 bge (NaN clamps)
       mFadeWeight = 1.f;                                 // 0x000095D0
     }
   }

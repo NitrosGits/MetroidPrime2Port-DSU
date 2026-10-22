@@ -698,13 +698,14 @@ bool CDigitalGuardian::x34E8_(CStateManager& mgr, float dt, float minDist) {
   if (target == nullptr) {
     return false;
   }
-  x11BC_ = rstl::min_val(mData.mVortexLinearVelocity,
-                         mData.mVortexLinearAcceleration * dt + x11BC_);
+  // 0x3550 fcmpo x8A0, v; bge to the fmr of v: x8A0 >= v and a NaN give v.
+  x11BC_ = rstl::min_val(mData.mVortexLinearAcceleration * dt + x11BC_,
+                         mData.mVortexLinearVelocity);
   const CVector3f delta(target->GetTranslation().GetX() - GetTranslation().GetX(),
                         target->GetTranslation().GetY() - GetTranslation().GetY(), 0.f);
   const float dist = delta.Magnitude();
-  // 0x359C..0x35A0 fcmpo, ble: only dist <= minDist stops, so a NaN distance moves.
-  if (!(dist <= minDist)) {
+  // 0x359C..0x35A0 fcmpo, ble (taken on a NaN): a NaN distance stops.
+  if (dist > minDist) {
     const float step = x11BC_ * dt;
     const float move = step < dist ? step : dist;
     if (delta.IsMagnitudeSafe()) {
@@ -1386,10 +1387,10 @@ void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
     return;
   }
   if (x1268_ != 0) { // 0x2A78
-    // 0x2A90..0x2A9C fcmpo 0, v; bge: 0 >= v gives 0, otherwise (and for a NaN) v.
-    const float fade = x126C_ - dt;
-    x126C_ = 0.f >= fade ? 0.f : fade; // .rodata 0x264
-    const float t = rstl::min_val(1.f, x126C_); // .rodata 0x270
+    // 0x2A90..0x2A9C fcmpo 0, v; bge to the fmr of 0: 0 >= v and a NaN give 0.
+    x126C_ = rstl::max_val(0.f, x126C_ - dt); // .rodata 0x264
+    // 0x2AB0..0x2ABC fcmpo 1, v; bge to the fmr of v: 1 >= v and a NaN give v.
+    const float t = rstl::min_val(x126C_, 1.f); // .rodata 0x270
     x1270_ = CColor::Lerp(CColor::Black(), CPatterned::skDamageColor, t).GetColor_u32();
     float param = 1.f; // .rodata 0x270, 0x2AF4
     if (CDigitalGuardianHead* head =
@@ -1744,9 +1745,9 @@ bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&
     const CVector3f locator = GetLctrTransform(x10C8_[i]).GetTranslation();
     const float dx = player.GetX() - locator.GetX();
     const float dy = player.GetY() - locator.GetY();
-    // 0.0f (.rodata 0x264) + dx * dx + dy * dy (0x98C4/0x98C8); the bge at 0x98D0 skips only an
-    // ordered >=, so a NaN distance answers true.
-    if (!(0.0f + (dx * dx + dy * dy) >= rangeSq)) {
+    // 0.0f (.rodata 0x264) + dx * dx + dy * dy (0x98C4/0x98C8); the bge at 0x98D0 is taken on a
+    // NaN too, so a NaN distance does not answer true.
+    if (0.0f + (dx * dx + dy * dy) < rangeSq) {
       return true;
     }
   }
@@ -2466,7 +2467,7 @@ void CDigitalGuardian::VortexEndAttack(CStateManager& mgr, EStateMsg msg, float 
     break;
   case kStateMsg_Update: {
     const float speed = mSpeed - 0.6666667f * dt;
-    mSpeed = x1288_ >= speed ? x1288_ : speed;
+    mSpeed = x1288_ < speed ? speed : x1288_; // 0x91BC fcmpo/bge to the fmr of x1288 (NaN too)
     SetSoundEventPitchBend(
         static_cast< int >(static_cast< uint >(
             (mSpeed - x1288_) / x1288_ * static_cast< float >(mData.mUnknown6AAF33E3))) +
@@ -3063,7 +3064,7 @@ void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
     const float dx = player.GetX() - foot.GetX();
     const float dy = player.GetY() - foot.GetY();
     const float distSq = 0.f + (dx * dx + dy * dy);
-    if (!(distSq >= best)) {
+    if (distSq < best) { // 0x75A4 fcmpo/bge skips (a NaN too)
       best = distSq;
       x11D8_ = i;
     }
@@ -3090,13 +3091,15 @@ void CDigitalGuardian::SelectMeleeAttackRange(CStateManager& mgr, float dt) {
   const float playerY = player.GetY() - body.GetY();
   const float footX = foot.GetX() - body.GetX();
   const float footY = foot.GetY() - body.GetY();
-  if (!(0.f + (playerX * playerX + playerY * playerY) >= 0.f + (footX * footX + footY * footY))) {
+  // 0x7488 fcmpo/bge to the range test (a NaN goes there too).
+  if (0.f + (playerX * playerX + playerY * playerY) < 0.f + (footX * footX + footY * footY)) {
     x11DC_ = 0;
     return;
   }
   const float dx = player.GetX() - foot.GetX();
   const float dy = player.GetY() - foot.GetY();
-  x11DC_ = 0.f + (dx * dx + dy * dy) >= mData.mNearLegStabRange * mData.mNearLegStabRange ? 1 : 0;
+  // 0x74B8 fcmpo/bge to the li 1 (a NaN gives 1 too).
+  x11DC_ = 0.f + (dx * dx + dy * dy) < mData.mNearLegStabRange * mData.mNearLegStabRange ? 0 : 1;
 }
 
 // @ fn_14_7208
