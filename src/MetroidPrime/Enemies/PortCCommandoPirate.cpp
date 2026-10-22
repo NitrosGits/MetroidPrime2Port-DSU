@@ -3182,15 +3182,15 @@ void CCommandoPirate::x19D8_JoinTeam(CStateManager& mgr) {
   }
 }
 
-// fn_9_9AAC: the state path-finds. On activate (the guest's message 0, 0x00009AEC) the body
-// controller's field at +0x4C is set to 1 (the store at 0x00009BE4) - that field is the command
+// fn_9_9AAC: the state path-finds. On activate (the guest's message 0, 0x00009AEC, 0x00009B00) the body
+// controller's field at +0x4C is set to 1 (the store at 0x00009B10) - that field is the command
 // manager's steering blend mode (the cmd mgr sits at body controller + 4 and its six CVector3f
 // put mSteeringMode at +0x48) - the steering speed range is set to 1.0f twice (the
-// SetSteeringSpeedRange call at 0x00009BF4, lbl_9_rodata_43C is 1.f) and the 0x80 bit of the
-// module's flag byte at guest this+0xC63 is cleared (the rlwimi at 0x00009C00 keeps the bit at
+// SetSteeringSpeedRange call at 0x00009B20, lbl_9_rodata_43C is 1.f) and the 0x80 bit of the
+// module's flag byte at guest this+0xC63 is cleared (the rlwimi at 0x00009B2C keeps the bit at
 // position 24, the mask 1u << (31 - 24) = 0x80). On deactivate (the guest's message 2,
-// 0x00009AF4) that field is set to 0 (0x00009C18) and the 0x80 bit of the byte at +0xC65 is set
-// (the rlwimi at 0x00009C20).
+// 0x00009AF4, 0x00009AF8) that field is set to 0 (0x00009B44) and the 0x80 bit of the byte at +0xC65 is set
+// (the rlwimi at 0x00009B4C).
 // Then, while the block's flag byte at +0x15C does not have its 0x08 bit (extrwi. r0, r0, 1, 28 at
 // 0x00009B58) and the byte at +0xC65 has its 0x80 bit (extrwi. r0, r0, 1, 24 at 0x00009B64), the
 // path find navigation runs (the call at 0x00009B80) and the module's own helper follows.
@@ -3200,18 +3200,18 @@ void CCommandoPirate::x19D8_JoinTeam(CStateManager& mgr) {
 void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
-    // 0x00009BE4: the guest writes 1 into the body controller's field at +0x4C. The host's
+    // 0x00009B10: the guest writes 1 into the body controller's field at +0x4C. The host's
     // enumerator with the value 1 is kSBM_FullSpeed.
-    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);  // 0x00009BE4
-    BodyController()->CommandMgr().SetSteeringSpeedRange(1.f, 1.f);        // 0x00009BF4
-    xc63_ &= ~0x80;                                    // 0x00009C00
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);  // 0x00009B10
+    BodyController()->CommandMgr().SetSteeringSpeedRange(1.f, 1.f);        // 0x00009B20
+    xc63_ &= ~0x80;                                    // 0x00009B2C
     break;
   }
   case kStateMsg_Deactivate: {
-    // 0x00009C18: the same field, cleared - the host's enumerator with the value 0 is
+    // 0x00009B44: the same field, cleared - the host's enumerator with the value 0 is
     // kSBM_Normal.
-    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);  // 0x00009C18
-    xc65_ |= 0x80;                                     // 0x00009C20
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);  // 0x00009B44
+    xc65_ |= 0x80;                                     // 0x00009B4C
     break;
   }
   default:
