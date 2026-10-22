@@ -302,6 +302,19 @@ private:
   CProjectileInfo xE54_; // 0xE54: the lock-on missiles (data +0x200, damage +0x204)
   CProjectileInfo xE7C_; // 0xE7C: the machine gun (data +0x214, damage +0x218)
 
+  // The machine gun (MachineGunAttack, fn_14_16408).
+  // fn_14_10798 (0x354 bytes): the sweep's ends either side of the player's predicted position.
+  void x10798_(CStateManager& mgr, int side);
+  // fn_14_101E0 (0x29C bytes): one bullet from the gun's locator along dir.
+  void x101E0_(CStateManager& mgr, const CVector3f& dir);
+  CSegId x10A4_;    // 0x10A4: the gun's locator ("T_lazor_LCTR", .rodata 0x94C; the ctor's 0x18D9C)
+  CVector3f x10A8_; // 0x10A8: the sweep's start (fn_14_10798)
+  CVector3f x10B4_; // 0x10B4: the sweep's end (fn_14_10798)
+  int x10C0_;       // 0x10C0: the sweep's side (1 when the roll was at most 50)
+  int x10C4_;       // 0x10C4: the gun's phase (0 charge, 1 sweep; -1 in the ctor)
+  float x10C8_;     // 0x10C8: the time in the phase
+  float x10CC_;     // 0x10CC: the time to the next bullet
+
 public:
   // Host: the console's `var <id> dghd.attack|flags|sweeptime [value]` (platform/port_console.cpp).
   static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);

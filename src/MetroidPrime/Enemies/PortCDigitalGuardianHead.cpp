@@ -217,6 +217,15 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xE2C_(data.annihilatorCharge, LdrToDamageInfo(data.annihilatorChargeDamage))
 , xE54_(data.lockOnMissiles, LdrToDamageInfo(data.lockOnMissilesDamage))
 , xE7C_(data.machineGun, LdrToDamageInfo(data.machineGunDamage))
+// 0x18C04..0x18C44: the gun's locator 0xFF until set below, both sweep ends the zero vector,
+// side 0 (r8), phase -1 (r5), both times 0.0f (f1, .rodata 0x960).
+, x10A4_()
+, x10A8_(CVector3f::Zero())
+, x10B4_(CVector3f::Zero())
+, x10C0_(0)
+, x10C4_(-1)
+, x10C8_(0.f)
+, x10CC_(0.f)
 {
   xE04_.Token().Lock(); // 0x18CD8
   xE2C_.Token().Lock(); // 0x18CE0
@@ -245,6 +254,8 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   const CAnimData* anim = GetModelData()->GetAnimationData();
   xDCC_[0] = anim->GetLocatorSegId(rstl::string_l("L_ball_LCTR"));
   xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));
+  // 0x18D70..0x18D9C: the machine gun's locator, the same name (.rodata 0x94C), at 0x10A4.
+  x10A4_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
   // 0x18DA4..0x18DD0: the lasers' locator (.rodata 0x94C, "T_lazor_LCTR") at 0x1088.
   x1088_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
   // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
@@ -1320,13 +1331,207 @@ void CDigitalGuardianHead::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
     StandInFn(#fn " (head state " #name ")");                                                      \
   }
-DGHD_STATE_STANDIN(PulseAttack, fn_14_16D64)
-DGHD_STATE_STANDIN(MissileAttack, fn_14_167EC)
-DGHD_STATE_STANDIN(MachineGunAttack, fn_14_16408)
 DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
 DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 #undef DGHD_STATE_STANDIN
+
+// fn_14_16D64: the annihilator pulse. The cmpwi chain at 0x16D88..0x16DB0 picks the message.
+// Activate (0): Ready (0x6B4 = 1, 0x16DBC), flag 0x20 (rlwimi at 0x16DC8), the turn direction
+// from fn_14_13B38 (0x16DD0, stores 0x16DD8..0x16DE8) and one burst fewer (0x10D8 - 1, 0x16DF4).
+// Update (1): when a projectile attack can be issued (CanIssueCommand with 0x12, 0x16E08) it is
+// sent (DeliverCmd 6 at 0x16E80): severity 0 (li r0 0 at 0x16E18), the target the head's position
+// (0x54..0x5C) plus its Y column (0x28/0x38/0x48), no blend (stb 0 at 0x16E7C); then the head
+// turns either way (fn_14_11D64 at 0x16ED8). Deactivate (2): NotReady (0x16EE4); while the body
+// is in the projectile attack (0x37C == 0x12, 0x16EF0) it is aborted (0xD, DeliverCmd at 0x16F14);
+// flag 0x20 clears (0x16F2C) and the turn direction is sZeroVector (0x16F38..0x16F4C).
+void CDigitalGuardianHead::PulseAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x16DBC
+    x10F4_ |= 0x20;                                        // 0x16DC8
+    x1028_ = x13B38_();                                    // 0x16DD0
+    x10D8_ -= 1;                                           // 0x16DF4
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_Zero, GetTranslation() + GetTransform().GetColumn(kDY), false)); // 0x16E80
+    }
+    x11D64_(mgr, dt); // 0x16ED8
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16EE4
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x16EF0
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x16F14
+    }
+    x10F4_ &= ~0x20;            // 0x16F2C
+    x1028_ = CVector3f::Zero(); // 0x16F38..0x16F4C
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_167EC: the lock-on missiles. PulseAttack's body without the burst count (the cmpwi chain
+// at 0x16810..0x16838): Activate (0) Ready (0x16844), flag 0x20 (0x16850), the turn direction from
+// fn_14_13B38 (0x16858, stores 0x16860..0x16870); Update (1) the projectile attack
+// (CanIssueCommand with 0x12 at 0x16884, DeliverCmd 6 at 0x16900) with severity 1 (li r5 1 at
+// 0x168BC), then the turn (fn_14_11D64 at 0x16958); Deactivate (2) NotReady (0x16964), the abort
+// while the body is in state 0x12 (0x16970, DeliverCmd 0xD at 0x16994), flag 0x20 cleared
+// (0x169AC) and the turn direction zeroed (0x169B8..0x169CC).
+void CDigitalGuardianHead::MissileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x16844
+    x10F4_ |= 0x20;                                        // 0x16850
+    x1028_ = x13B38_();                                    // 0x16858
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_One, GetTranslation() + GetTransform().GetColumn(kDY), false)); // 0x16900
+    }
+    x11D64_(mgr, dt); // 0x16958
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16964
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x16970
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x16994
+    }
+    x10F4_ &= ~0x20;            // 0x169AC
+    x1028_ = CVector3f::Zero(); // 0x169B8..0x169CC
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_16408: the machine gun (the cmpwi chain at 0x1642C..0x16454). Activate (0): Ready
+// (0x16468); the side is 1 when CRandom16::Range(0.0f, 100.0f) (.rodata 0x960/0x978, 0x16478)
+// is at most 50.0f (.rodata 0x9C4; fcmpo/cror at 0x16484..0x1648C), else 0 (0x1649C); the sweep's
+// ends for it (fn_14_10798 at 0x164AC); phase 0 (0x164C0), its time 0.0f (0x164CC), the next
+// bullet in machineGunFireTime (data +0x24C, 0x164D4); the turn direction toward the sweep's start
+// from the head's position (fn_14_11C08 at 0x16520); flag 0x20 (rlwimi at 0x16544).
+// Update (1): the phase time grows by dt (0x16554), then by phase (the cmpwi chain at 0x16560):
+// 0 (charge): from machineGunChargeDuration (data +0x248; fcmpo/bge at 0x16580) phase 1 starts at
+// 0.0f (0x16628/0x16630); before it the sweep's ends follow the player (fn_14_10798 at 0x1658C) and
+// the head aims at the start from the locator (0x10A4, GetLctrTransform at 0x1659C; fn_14_11C08
+// at 0x16600). 1 (sweep): from machineGunSweepDuration (data +0x244; fcmpo/bge at 0x16640) the
+// state is Over (0x16754); before it the aim moves from start to end by t = time / duration
+// (fdivs at 0x1667C, a (1 - t) + b t) seen from the locator (0x16654; fn_14_11C08 at 0x166F4), and
+// the bullet timer counts down (0x1671C); at most 0.0f (fcmpo/cror at 0x16728) it is reset to the
+// fire time (0x16744) and a bullet goes along the aim (fn_14_101E0 at 0x16748). Any other phase
+// does nothing. Deactivate (2): NotReady (0x16760), the abort while the body is in state 0x12
+// (0x1676C, DeliverCmd 0xD at 0x16790), flag 0x20 cleared (0x167A8), the turn direction zeroed
+// (0x167B4..0x167C8).
+void CDigitalGuardianHead::MachineGunAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);           // 0x16468
+    x10C0_ = mgr.Random()->Range(0.f, 100.f) <= 50.f ? 1 : 0;       // 0x16478..0x1649C
+    x10798_(mgr, x10C0_);                                           // 0x164AC
+    x10C4_ = 0;                                                     // 0x164C0
+    x10C8_ = 0.f;                                                   // 0x164CC
+    x10CC_ = mData.machineGunFireTime;                              // 0x164D4
+    x1028_ = x11C08_(x10A8_ - GetTranslation());                    // 0x16520
+    x10F4_ |= 0x20;                                                 // 0x16544
+    break;
+  case kStateMsg_Update:
+    x10C8_ += dt; // 0x16554
+    switch (x10C4_) {
+    case 0:
+      if (x10C8_ >= mData.machineGunChargeDuration) { // 0x16580
+        x10C4_ = 1;                                   // 0x16628
+        x10C8_ = 0.f;                                 // 0x16630
+      } else {
+        x10798_(mgr, x10C0_); // 0x1658C
+        x1028_ = x11C08_(x10A8_ - GetLctrTransform(x10A4_).GetTranslation()); // 0x16600
+      }
+      break;
+    case 1:
+      if (x10C8_ >= mData.machineGunSweepDuration) {           // 0x16640
+        mAnimationState.SetState(CAnimationState::kAS_Over); // 0x16754
+      } else {
+        const CVector3f from = GetLctrTransform(x10A4_).GetTranslation(); // 0x16654
+        const float t = x10C8_ / mData.machineGunSweepDuration;          // 0x1667C
+        x1028_ = x11C08_(x10A8_ * (1.f - t) + x10B4_ * t - from);        // 0x166F4
+        x10CC_ -= dt;                                                    // 0x1671C
+        if (x10CC_ <= 0.f) {                                             // 0x16728
+          x10CC_ = mData.machineGunFireTime;                             // 0x16744
+          x101E0_(mgr, x1028_);                                          // 0x16748
+        }
+      }
+      break;
+    default:
+      break;
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16760
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x1676C
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x16790
+    }
+    x10F4_ &= ~0x20;            // 0x167A8
+    x1028_ = CVector3f::Zero(); // 0x167B4..0x167C8
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_10798: the machine gun's sweep. From the player's aim position now (vtable 0x54 with
+// 0.0f, 0x1084C) and in half the sweep's duration (0.5f, .rodata 0x9A0, times data +0x244; 0x10890)
+// the centre is 0.5f * (((later + the player's position) - now) + later) (0x108A4..0x108E8). The
+// side axis is (c.y - o.y, -(c.x - o.x), 0.0f) from the gun's locator o (0x10A4, GetLctrTransform
+// at 0x10810; stores 0x108D0..0x108FC) normalised when safe (IsMagnitudeSafe at 0x10900,
+// AsNormalized at 0x10914), else the head's X column (0x24/0x34/0x44, 0x10920); times
+// machineGunHalfSweepDist (data +0x240, 0x1093C) and negated for side 1 (cmpwi/bne at 0x10940).
+// The start is the centre minus it, the end the centre plus it (0x109A8..0x109C8).
+void CDigitalGuardianHead::x10798_(CStateManager& mgr, int side) {
+  const CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f o = GetLctrTransform(x10A4_).GetTranslation();             // 0x10810
+  const CVector3f now = player.GetAimPosition(mgr, 0.f);                       // 0x1084C
+  const CVector3f later = player.GetAimPosition(mgr, 0.5f * mData.machineGunSweepDuration); // 0x10890
+  const CVector3f centre = 0.5f * (((later + player.GetTranslation()) - now) + later); // 0x108A4
+  const CVector3f axis(centre.GetY() - o.GetY(), -(centre.GetX() - o.GetX()), 0.f); // 0x108D0
+  const CVector3f dir = axis.IsMagnitudeSafe() ? axis.AsNormalized()                 // 0x10900
+                                               : GetTransform().GetColumn(kDX);       // 0x10920
+  CVector3f offset = mData.machineGunHalfSweepDist * dir; // 0x1093C
+  if (side == 1) {                                        // 0x10940
+    offset = -offset;
+  }
+  x10A8_ = centre - offset; // 0x109A8..0x109B0
+  x10B4_ = centre + offset; // 0x109B4..0x109C8
+}
+
+// fn_14_101E0: one machine-gun bullet. Only with the gun's weapon cached (0xE7C; 0x1020C..0x10258)
+// and room for one more kWT_AI projectile (CanCreateProjectile with 0xB and 0x40, 0x1027C). LookAt
+// from the gun's locator (0x10A4, GetLctrTransform at 0x10294) along dir (0x102E8). The 0x568-byte
+// CEnergyProjectile (operator new at 0x10310, ctor at 0x103E0) is fn_14_10A2C's with the gun's
+// weapon (0xE7C) and damage (0xE88): kWT_AI (li r6 0xB), material 0x21 (li r8), homing on the
+// player, no visor effect (fn_14_1047C), false, true, false, 1.0f, 4.0f, 4.0f (.rodata
+// 0x96C/0x998). When built it is added (AddObject at 0x1040C) and sound_MachineGun (data +0x228)
+// plays at the shot's position along its Y column, not looped (PlayCustomSound at 0x10458).
+void CDigitalGuardianHead::x101E0_(CStateManager& mgr, const CVector3f& dir) {
+  if (!xE7C_.Token().TryCache()) {
+    return;
+  }
+  if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 64)) { // 0x1027C
+    return;
+  }
+  const CVector3f pos = GetLctrTransform(x10A4_).GetTranslation();
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, xE7C_.Token(), kWT_AI, xf, kMT_Character, xE7C_.GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), 0, false,
+      CVector3f::One(), CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (projectile != nullptr) {
+    mgr.AddObject(projectile);                                                       // 0x1040C
+    PlayCustomSound(xf.GetTranslation(), xf.GetColumn(kDY), mData.sound_MachineGun, false); // 0x10458
+  }
+}
 
 // fn_14_16A50: the state message picks the work (the cmpwi chain at 0x16A74..0x16A9C).
 // Activate (0): ready (0x6B4 = 1, 0x16AA8), flag 0x20 (the rlwimi at 0x16AB4) and the turn
