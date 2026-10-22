@@ -1,7 +1,8 @@
-@18 objs spacepirate
-@24 tp 372.4 -284.1 1.8
-@27 face 270
-@31 press a 2
-@36 press a 2
-@41 press a 2
-@48 objs spacepirate
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400, last check f2250.
+@f990 objs spacepirate
+@f1240 tp 372.4 -284.1 1.8
+@f1370 face 270
+@f1540 press a 2
+@f1750 press a 2
+@f1960 press a 2
+@f2250 objs spacepirate

@@ -1,3 +1,4 @@
-@20 objs commando
-@34 objs commando
-@50 objs commando
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2000, last check f1850.
+@f880 objs commando
+@f1330 objs commando
+@f1850 objs commando

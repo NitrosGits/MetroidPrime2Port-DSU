@@ -1,3 +1,4 @@
-@22 status
-@36 objs spacepirate
-@50 status
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400, last check f2250.
+@f1120 status
+@f1690 objs spacepirate
+@f2250 status

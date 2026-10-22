@@ -62,7 +62,8 @@ if [ "$LIST" = 0 ] && [ -z "${SMOKE_DISPLAY_BASE:-}" ] && [ "$DISPBASE" = 760 ];
 fi
 
 # The family table: the world to boot into, the game updates to run, the backstop, the console
-# port, the command file, the input file, the console driver and extra environment.
+# port, the command file, the input file, the console driver and extra environment. A cmd_*.txt
+# script is timed in game updates (`@f<n>`, gameplay from ~f240), never in wall seconds.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [swamp2]="3dfd2249,04_swamp_temple_dark"
                [sandboss]="42b935e4,7575048a"

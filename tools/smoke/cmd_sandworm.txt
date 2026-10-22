@@ -1,7 +1,8 @@
-@16 obj u0488
-@20 tp -364.9 -61.2 -30.0
-@26 objs sandworm
-@32 tp -305.0 -58.0 -28.0
-@38 objs sandworm
-@44 status
-@56 objs sandworm
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2000, last check f1850.
+@f700 obj u0488
+@f820 tp -364.9 -61.2 -30.0
+@f990 objs sandworm
+@f1160 tp -305.0 -58.0 -28.0
+@f1330 objs sandworm
+@f1500 status
+@f1850 objs sandworm
