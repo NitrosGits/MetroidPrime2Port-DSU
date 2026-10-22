@@ -261,9 +261,11 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
 CElitePirate::~CElitePirate() {}
 
 // @ fn_15_9988
-// Is the editor's initial animation (data+4, 0x9A48 `lwz r0, 0x82c(r29)`) the best match for
-// state 5 (0x9A28 `li r4, 0x5`) with parms FromEnum(0) (0x99F4) and FromEnum(idle) (0x99EC)?
-// 0x9A50..0x9A60: subf/cntlzw/srwi 5 = the == test.
+// Is the editor's initial animation (data+4) the best match for state 5 with parms FromEnum(0)
+// and FromEnum(idle)? The == test is subf/cntlzw/srwi 5 (0x9A50..0x9A60).
+// 0x9A48 `lwz r0, 0x82c(r29)`: data+4.
+// 0x9A28 `li r4, 0x5`: the state.
+// 0x99F4 `li r4, 0x0`: the first parm; 0x99EC: FromEnum(idle), r4 = the argument.
 bool CElitePirate::IsInitialIdle(int idle) const {
   const rstl::pair< float, int > best = GetAnimationData()->GetPASDatabase().FindBestAnimation(
       CPASAnimParmData(pas::EAnimationState(5), CPASAnimParm::FromEnum(0),
