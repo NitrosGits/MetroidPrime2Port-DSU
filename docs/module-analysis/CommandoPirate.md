@@ -1974,3 +1974,25 @@ Two bugs fixed against the asm before the runs:
 | x1A9C_AvoidActors | all live | own area id +1 forced; cast null dead (CListeningAiList admits only CPatterned, GameObjectLists.cpp:30) |
 
 asmcheck: CALL ShouldRetry in AE04/8B70 is CanIssueCommand's own call (6.4).
+
+## The cp4 rows (2026-10-22)
+
+Runs (forced, gcov build-port-cov, `tools/cov/force_ret.py` + `tools/cov/specs/commandopirate_cp4.py`
+with `CP4_MODE=msg|col`, driver `tools/drivers/commandopirate_cp4.py`, 1500 frames): m59/c59 (area 59),
+msw (Swamp `05_swamp_timber!`). Exit 0, 0 caught / reach-stub each.
+
+Fixed against the asm: D904 rewritten in retail order (PART tokens, Token Lock, EnableBurn,
+knock-back physics, unguarded locators, `mVisualKnowledge.SetLocator(head)`, bone tracking,
+charge time, path-search size from the bbox); CB40 XDEL has no null tests (0xCCEC/0xCCF8); NaN
+senses (bge/ble taken on NaN): BF44 0xC174 `steep < 0.707f`, B690 0xB748 `xb60 < 1.5f`, ABDC 0xAC94
+`angle > 0.349f` (the cror/bne hunks of bcabd1e66/f9db1dc44 were already right).
+
+| Body | Arms | How |
+|---|---|---|
+| ctor D904 (+ xD904_LockEffect, xD904_SetChargeTime) | all guest arms | invalid PART id and zero back-up speed forced; speed > 0 natural in the Swamp; the 8 untaken arms are host exception landing pads (labelled) |
+| CollidedWith BF44 | all | +0xC65 0x04 outside a charge, the player's id, up axis turned over, no floor bit forced |
+| AcceptScriptMsg CB40 | not marked | left: null shield/blade managers in DCTV/XAUD (XCRT always builds both; nulling them under gdb lost restores), XLAU Hurled (forcing it broke UpdateBody), XRDG WeaponHurts true (only Power beam owned), ACTV/ESCP/XALD combinations missed by the period-4 phases, XOFF frozen |
+
+asmcheck D904: BIT/STORE findings are whole-byte init-list members (xc63..xc66, xbfc single_ptr,
+xc04/xc38 CSfxHandle()); CALL fn_9_5D74 is the inlined CPASAnimParmData ctor; member ctors are named
+by type in the init list. BF44: GetObjectById is the host's ObjectById.
