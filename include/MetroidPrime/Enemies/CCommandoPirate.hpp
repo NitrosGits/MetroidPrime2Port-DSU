@@ -22,14 +22,14 @@
 class CPirateRagDoll;
 
 // The E-grenade half of the REL's parameter block (guest data+0x68, 0x70 bytes). The guest block
-// is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
+// is built by fn_9_98C (the grenade property block, its own damage info included) and fn_9_F50C (the eight
 // floats on top); the guest offsets are the REL's and the host layout is its own. The four
 // constants 0.1f/150.f/0.1f/150.f are the guest's (fn_9_98C stores them from its own arguments at
 // 0x0000098C..0x00000A0C); the flag byte at guest +0x4C gets its 0x80 bit (0x00000A14) from the
 // caller's 1 (fn_9_168 @0x00000610), so CBouncyGrenadeData::x4c_ is true.
 struct CCommandoPirateGrenadeData {
   CCommandoPirateGrenadeData(float grenadeMass, float unknownED086CE0,
-                             const CDamageInfo& bladeDamage, int grenadeNumBounces,
+                             const CDamageInfo& grenadeDamage, int grenadeNumBounces,
                              CAssetId grenadeExplosion, CAssetId grenadeExplosion2,
                              CAssetId grenadeTrail, CAssetId grenadeEffect,
                              ushort soundGrenadeBounce, ushort soundGrenadeExplode,
@@ -40,7 +40,7 @@ struct CCommandoPirateGrenadeData {
                              float grenadeMaxLaunchSpeed)
   : mGrenadeMass(grenadeMass)
   , mUnknownED086CE0(unknownED086CE0)
-  , mBladeDamage(bladeDamage)
+  , mGrenadeDamage(grenadeDamage)
   , mGrenadeNumBounces(grenadeNumBounces)
   , mGrenadeExplosion(grenadeExplosion)
   , mGrenadeExplosion2(grenadeExplosion2)
@@ -64,7 +64,7 @@ struct CCommandoPirateGrenadeData {
 
   float mGrenadeMass;              // guest +0x00, fn_9_98C @0x0000098C
   float mUnknownED086CE0;          // guest +0x04, fn_9_98C @0x00000994
-  CDamageInfo mBladeDamage;        // guest +0x08 (0x1c), fn_9_98C @0x0000099C..0x000009D8
+  CDamageInfo mGrenadeDamage;      // guest +0x08 (0x1c), fn_9_98C @0x0000099C..0x000009D8
   int mGrenadeNumBounces;          // guest +0x24, fn_9_98C @0x000009E4
   CAssetId mGrenadeExplosion;      // guest +0x28, fn_9_98C @0x000009E8
   CAssetId mGrenadeExplosion2;     // guest +0x2c, fn_9_98C @0x000009EC (the same asset again)

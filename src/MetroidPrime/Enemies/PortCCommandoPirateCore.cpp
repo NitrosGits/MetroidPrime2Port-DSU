@@ -689,7 +689,7 @@ public:
                           const CActorParameters& actorParams, TUniqueId owner,
                           const CCommandoPirateGrenadeData& data, float speed)
   : CBouncyGrenade(uid, name, info, xf, modelData, actorParams, owner, speed,
-                   CBouncyGrenadeData(data.mGrenadeMass, data.mUnknownED086CE0, data.mBladeDamage,
+                   CBouncyGrenadeData(data.mGrenadeMass, data.mUnknownED086CE0, data.mGrenadeDamage,
                                       data.mGrenadeNumBounces, data.mGrenadeExplosion,
                                       data.mGrenadeExplosion2, data.mGrenadeTrail,
                                       data.mGrenadeEffect, data.mSoundGrenadeBounce,

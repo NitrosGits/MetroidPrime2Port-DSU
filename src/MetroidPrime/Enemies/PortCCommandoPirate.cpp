@@ -58,6 +58,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "rstl/math.hpp"
 #include "rstl/string.hpp"
 
 namespace {
@@ -257,7 +258,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb94_(CVector3f::Zero())                         // 0xb94, fn_9_D904 @0x0000DB14
 , xbb8_(CVector3f::Zero())                         // 0xbb8, the fourth vector; fn_9_D904 @0x0000DB5C
 , xba0_(CVector3f::Zero())                         // 0xba0, the charge direction
-, xbac_(CVector3f::Zero())                         // 0xbac, the waypoint's forward
+, xbac_(CVector3f::Zero())                         // 0xbac, the waypoint's up column
 , xc4c_(-1)                                       // 0xc4c, the module's own state word; -1 = unset
 , xc44_(0.f)                                      // 0xc44, the module's own scale
 , xc48_(0.f)                                      // 0xc48, the scale's target
@@ -1377,7 +1378,11 @@ void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg)
   if (TCastToPtr< CPlayer >(mgr.ObjectById(touched)) == nullptr) {  // 0x00003AD0..0x00003ADC
     return;
   }
-  if (mCurDamageRemTime > 0.f) {  // guest this+0x440, 0x00003AE0..0x00003AF4
+  // guest this+0x440 vs rodata_494 = 0: fcmpo + `cror eq,lt,eq` + bne 0x00003AEC..0x00003AF4
+  // (0x00003C04..0x00003C0C), so the damage needs the timer <= 0 and a NaN timer skips it.
+  // The filter: data_804/data_808 = 0x3B = kMT_Solid (0x00003B10/0x00003C28 + __shl2i), the
+  // exclude list 0 (0x00003B50/0x00003B5C), the type 3 (0x00003B60/0x00003C78).
+  if (!(mCurDamageRemTime <= 0.f)) {
     return;
   }
   mgr.ApplyDamage(GetUniqueId(), touched, GetUniqueId(), *damage,
@@ -1453,14 +1458,15 @@ void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
 // rlwinm at 0x00002B00). Then the module's own connection search finds the waypoint's "arrived"
 // connection (0x00002B44: the state kSS_Arrived and the message kSM_Next, with the module's own
 // waypoint predicate), the found waypoint becomes the module's waypoint (the store at
-// 0x00002B8C) and its position (the loads at 0x00002B90..0x00002BA8) and its forward column
-// (0x00002BAC..0x00002BC4) become the module's own vectors. Without the third argument the
+// 0x00002B8C) and its position (the loads at 0x00002B90..0x00002BA8) and its up column
+// (0x00002BAC..0x00002BC4: the loads of +0x2C/+0x3C/+0x4C, m02/m12/m22 of the transform at +0x24)
+// become the module's own vectors. Without the third argument the
 // module keeps the waypoint it has (0x00002C0C..0x00002C3C). The module's time to the waypoint
 // (the float at guest this+0xB88) is the distance to it over the charge speed
 // (0x00002BF8..0x00002C04).
 bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
   const float speed = mData.mShield.mChargeSpeed;  // guest this+0x8EC
-  if (speed <= 0.f) {  // 0x00002AD0..0x00002AD4
+  if (!(speed > 0.f)) {  // 0x00002AD0 fcmpo / 0x00002AD4 ble: a NaN speed fails too
     return false;
   }
   const CScriptAIWaypoint* waypoint =
@@ -1473,7 +1479,7 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
     return false;
   }
   CVector3f position;
-  CVector3f forward;
+  CVector3f up;
   if (useNext) {  // 0x00002B08
     // The guest searches the *waypoint's* connections (its r4 is the waypoint the flags were
     // read from, 0x00002AF4..0x00002B44), not the commando's own.
@@ -1485,13 +1491,13 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
     }
     mWaypointNavigation.SetDestination(id);           // 0x00002B8C (guest this+0x6C0)
     position = next->GetTranslation();                // 0x00002B90..0x00002BA8
-    forward = next->GetTransform().GetForward();      // 0x00002BAC..0x00002BC4
+    up = next->GetTransform().GetUp();                // 0x00002BAC..0x00002BB4 (+0x4C/+0x3C/+0x2C)
   } else {
     position = waypoint->GetTranslation();             // 0x00002C0C..0x00002C24
-    forward = waypoint->GetTransform().GetForward();   // 0x00002C28..0x00002C3C
+    up = waypoint->GetTransform().GetUp();             // 0x00002C28..0x00002C30 (+0x4C/+0x3C/+0x2C)
   }
   xb94_ = position;  // guest this+0xB94
-  xbac_ = forward;   // guest this+0xBAC
+  xbac_ = up;        // guest this+0xBAC (0x00002BBC..0x00002BC4 / 0x00002C34..0x00002C3C)
   const CVector3f delta = xb94_ - GetTranslation();  // 0x00002C40..0x00002C6C
   xb88_ = delta.Magnitude() / speed;                // 0x00002BF8..0x00002C04
   return true;
@@ -1509,7 +1515,7 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
 // `addi r3, r1, 0xd4` at 0x0000258C), not the copy of the direction it made at sp+0xC8.
 //
 // The new rotation: the actor's position and the direction give a look-at transform (with the
-// waypoint's forward column as the up vector, 0x000025EC), the target's quaternion comes from it
+// waypoint's up column, guest this+0xBAC, as the up vector, 0x000025EC), the target's quaternion comes from it
 // (0x00002604) and the actor's own quaternion (0x000024DC) is slerped towards it with the factor
 // clamp(1 - the time / the module's own time to the waypoint (the float at guest this+0xB88), 0, 1)
 // (0x00002634..0x00002678). The result is normalized (0x000026A4), turned into a transform
@@ -1530,10 +1536,13 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
 // push vector is cleared (0x000029A8..0x000029C0).
 void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
   const float speed = mData.mShield.mChargeSpeed;  // guest this+0x8EC
-  if (speed <= 0.f) {  // 0x000024B4..0x000024B8
+  if (!(speed > 0.f)) {  // 0x000024B4 fcmpo / 0x000024B8 ble: a NaN speed returns too
     return;
   }
   const CVector3f pos = GetTranslation();  // guest this+0x54
+  // The forward column before the turn (0x00002510..0x00002524, sp+0xE0): the angle test below
+  // compares the direction with it, not with the turned transform's.
+  const CVector3f oldForward = GetTransform().GetForward();
   const CVector3f delta = xb94_ - pos;    // guest this+0xB94
   CVector3f dir;
   if (delta.IsMagnitudeSafe()) {  // 0x0000254C
@@ -1548,11 +1557,13 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
   const CTransform4f lookAt = CTransform4f::LookAt(pos, pos + dir, xbac_);  // 0x000025EC
   const CQuaternion current = CQuaternion::FromMatrix(GetTransform());  // 0x000024DC
   const CQuaternion target = CQuaternion::FromMatrix(lookAt);  // 0x00002604
-  // the factor: clamp(1 - the time / the module's time to the waypoint, 0, 1) (0x00002634..0x00002678)
-  const float factor = CMath::Clamp(0.f, 1.f - time / xb88_, 1.f);
+  // the factor: 1 - the time / the module's time to the waypoint (0x00002634..0x0000263C),
+  // limited to 1 (rodata_43C, fcmpo 0x00002640 / bge 0x00002644: min_val, a NaN stays) and then
+  // to 0 (rodata_494, fcmpo 0x00002668 / bge 0x0000266C: max_val, a NaN gives 0)
+  const float factor = rstl::max_val(0.f, rstl::min_val(1.f - time / xb88_, 1.f));
   const CQuaternion turn = CQuaternion::SlerpLocal(current, target, factor);
   SetTransform(turn.BuildNormalized().BuildTransform4f(pos));  // 0x000026A4..0x000026C0
-  const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), dir);  // 0x000026CC
+  const float angle = CVector3f::GetAngleDiff(dir, oldForward);  // 0x000026C4..0x000026CC
   pas::ELoopAttackType type = pas::kLAT_Four;  // 0x00002840
   if (angle > 0.17453292f) {  // rodata_498 = 10 degrees, 0x000026D8
     const float dot = CVector3f::Dot(dir, GetTransform().GetRight());  // 0x000026E0..0x00002718
@@ -1564,12 +1575,12 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
   // The movement: the direction in the actor's own frame (0x000028CC) times the charge speed and
   // the frame time (0x00002918).
   const CVector3f local = GetTransform().TransposeRotate(dir);
-  MoveInOneFrameOR(local * (speed * dt), dt);
+  MoveInOneFrameOR((local * speed) * dt, dt);  // fmuls speed 0x000028F0..0x000028F8, dt 0x00002900..0x00002908
   if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {  // 0x0000291C..0x00002948
     const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00002964
     // 0x000029A4: the push is scaled by the charge speed and the frame time, like the movement
     // above (the two fmuls chains at 0x0000297C..0x00002994).
-    MoveInOneFrameOR(push * (speed * dt), dt);  // 0x000029A4
+    MoveInOneFrameOR((push * speed) * dt, dt);  // 0x000029A4
     xbb8_ = CVector3f::Zero();  // 0x000029A8..0x000029C0
   }
 }
@@ -1604,12 +1615,14 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
   const TUniqueId senderId = msg.GetSenderId();
   const CWeapon* weapon = nullptr;
   if (senderId == xbc6_) {
+    // A missing collision actor skips the shield effect too: `beq .L_00002DB0` at 0x00002D50
+    // jumps past the 0xC66 test.
     if (const CCollisionActor* actor =
-            TCastToPtr< CCollisionActor >(mgr.ObjectById(xbc6_))) {  // 0x00002D3C..0x00002D4C
+            TCastToPtr< CCollisionActor >(mgr.ObjectById(xbc6_))) {  // 0x00002D3C..0x00002D50
       weapon = TCastToPtr< CWeapon >(mgr.ObjectById(actor->GetLastTouchedObject()));
-    }
-    if ((xc66_ & 0x20) != 0) {  // 0x00002D78..0x00002D84
-      x2048_ShieldEffect(mgr);  // 0x00002D90
+      if ((xc66_ & 0x20) != 0) {  // 0x00002D78..0x00002D84 (extrwi 1,26 = 0x20)
+        x2048_ShieldEffect(mgr);  // 0x00002D90
+      }
     }
   } else {
     weapon = TCastToPtr< CWeapon >(mgr.ObjectById(senderId));  // 0x00002D9C..0x00002DA8
@@ -4803,15 +4816,19 @@ static CEntity* PortLoadCommandoPirate(CStateManager& mgr, CInputStream& input,
     return nullptr;
   }
 
-  // The two damage infos the loader converts (fn_9_168 @0x000005E0 and @0x00000738): the blade's
-  // and the projectile's.
+  // The blade's and the projectile's damage infos (fn_9_168 @0x00000744 and @0x00000738).
   const CDamageInfo bladeDamage = LdrToDamageInfo(sldrThis.bladeDamage);
   const CDamageInfo projectileDamage = LdrToDamageInfo(sldrThis.projectileDamage);
 
-  // The E-grenade half (fn_9_98C then fn_9_F50C, out of the 0xfb435257 property block).
+  // The E-grenade half (fn_9_98C then fn_9_F50C, out of the 0xfb435257 property block). Its
+  // damage info is the block's own grenadeDamage (+0x14 = sp+0xC48 of the sldr at sp+0x76C:
+  // `addi r4,r1,0xc48` 0x000005E4 + LdrToDamageInfo 0x000005E8, the copy at sp+0x98 handed to
+  // fn_9_98C as r4 at 0x00000620), not the blade's (sp+0xC08, converted at 0x00000744 for
+  // fn_9_EDC0 only).
   const SLdrUnknownStruct10& grenade = sldrThis.unknown_0xfb435257;
   const CCommandoPirateGrenadeData grenadeData(
-      grenade.grenadeMass, grenade.unknown_0xed086ce0, bladeDamage, grenade.grenadeNumBounces,
+      grenade.grenadeMass, grenade.unknown_0xed086ce0, LdrToDamageInfo(grenade.grenadeDamage),
+      grenade.grenadeNumBounces,
       grenade.grenadeExplosion, grenade.grenadeExplosion, grenade.grenadeTrail,
       grenade.grenadeEffect, static_cast< ushort >(grenade.sound_GrenadeBounce),
       static_cast< ushort >(grenade.sound_GrenadeExplode),
