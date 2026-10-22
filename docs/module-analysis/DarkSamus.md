@@ -1995,3 +1995,36 @@ written once at a body's entry and put back afterwards):
 
 Natural (r1): XDMG from the console (no projectile), shot hits, XLAU, ALRT, DCTV/XDEL, the
 platform casts and the dash arms of CollidedWith.
+
+## Slice ds2opus (2026-10-22): BoostBallRoll's callees (A1C0, A814, AA04), A06C and 9424 marked
+
+- Asm read: fn_10_A06C 0xA06C..0xA150, fn_10_A1C0 0xA1C0..0xA3AC, fn_10_A3B0 0xA3B0..0xA730,
+  fn_10_A814 0xA814..0xAA00, fn_10_AA04 0xAA04..0xB160, fn_10_9424 0x9424..0x95A4; CGenericFSM2
+  EvaluateTransitions 0x801FC4C0..0x801FC5B0 and CPhysicsActor::GetMoveToORImpulseWR 0x800EA76C.
+- Bug fixed: BoostBallRoll ran its movement tail (0xA66C..0xA6D4: AA04 or MoveInOneFrameOR, A06C,
+  A154) on every message. Retail runs it on Update only: Activate leaves through `b .L_0000A708`
+  at 0xA4D4 and Deactivate falls into the epilogue after 0xA704. CGenericFSM2 passes dt = 0.0f
+  (lbl_8041D6B0) to Activate, so the port's Activate built a 1/dt impulse: NaN position, then
+  CMetroidAreaCollider::BuildOctreeLeafCache spun forever once the roll ended.
+- Runs (tools/cov/specs/darksamus_boostroll.py, tools/drivers/darksamus_boostroll.con, rooftop
+  10_cliff_rooftop, build-port-cov): f1 = DSR_MODE=1, f2 = DSR_MODE=2; both rc 0, 0 caught,
+  0 reach-stub. Breakpoints are `loc:*<mangled>+<off>` after a call; offsets in the spec header.
+- Branch table (natural unless marked forced):
+  - A06C: ball null (natural, 774); roll emitter null (natural after DiveFromBoost, 208).
+  - A3B0: Activate/Update/Deactivate natural; `default` dead (three EStateMsg values); Activate
+    with a ball (driver: two `fsm BoostBallRoll`); flag 0x20 set (after A1C0); ball null forced
+    (DSR_MODE=1, A3B0+628); bit 0x40 of 0x318 forced (DSR_MODE=2, A3B0+654); no hint natural.
+  - A1C0: Normalize false forced (DSR_MODE=2, A1C0+150), true natural.
+  - A814: token absent forced (DSR_MODE=1, `m_valid` = 0 at entry, restored at AA04+1832);
+    the two null-after-`rs_new` arms are class (a), compiler-generated.
+  - AA04: hint null forced (DSR_MODE=1, AA04+92); toHint Normalize forced (DSR_MODE=2,
+    AA04+153); next null forced (DSR_MODE=2, AA04+580, also the arrival without a next hint);
+    toNext/fromLast/dir/face Normalize forced (DSR_MODE=1, AA04+641/+832/+908/+1878); last hint
+    zero and the zero direction natural (before the first arrival); bit 0x80 forced (DSR_MODE=1,
+    entry write); the hint values forced (DSR_MODE=1, AA04+1602/+1761 -1.0/0.05/5.0 for the
+    1.0f/0.1f/2.0f clamps, AA04+1645 value2 1.0); the 25.0f arrival and the plane test natural.
+  - 9424: Activate and Deactivate both natural (driver `fsm DiveFromBoost`).
+- Marks: A06C, A1C0, A814, AA04, 9424. A3B0 stays unmarked: every arm ran, but fn_10_9E00
+  spawns CDarkSamusBoostBallPortStub, not the retail ball. fn_10_2EFC is not called (the port
+  reads mGuest314 directly).
+- Spec gotcha: gdb counters must not be named after registers (`$pc` advanced the PC).

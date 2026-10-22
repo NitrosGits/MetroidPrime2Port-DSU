@@ -1166,6 +1166,17 @@ private:
   rstl::optional_object< TLockedToken< CSwooshDescription > > mBoostBallSwooshTokenE50 =
       BoostBallSwooshToken(mData.mSWHC); // r10
   CAssetId mBoostBallGlowPart = mData.mBoostBallGlow; // guest 0xE5C (+0x4C), r8 (0x00008A10)
+  // guest 0xE70 (+0x60, valid byte 0xE7C = +0x6C), the boost ball's collision 'PART'
+  // (boostBallCollision, fn_10_895C's r30 stack argument): an invalid id leaves it empty (`addis
+  // r0, r30, 0x1; cmplwi r0, 0xffff` at 0x00008C10/0x00008C14), a valid one is the pool's 'PART'
+  // (`lis r4, 0x5041` at 0x00008C1C) copied and locked by fn_10_8D30 (0x00008C78) - the same as
+  // PhazonBeamHitToken. The collision sound at guest 0xE80 (+0x70, 0x00008A6C..) is
+  // mData.mBoostBallCollisionSoundOneShot.
+  rstl::optional_object< TLockedToken< CGenDescription > > mBoostBallCollisionToken =
+      PhazonBeamHitToken(mData.mBoostBallCollision);
+  void StartBoostBallRoll(CStateManager& mgr);            // fn_10_A1C0
+  void PlayBoostBallCollision(CStateManager& mgr);        // fn_10_A814
+  void RollToBoostHint(CStateManager& mgr, float dt);     // fn_10_AA04
   void CreateBoostBallEffects(); // fn_10_9B24: the swooshes 0xE3C/0xE4C and the generator 0xE64
 #endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
