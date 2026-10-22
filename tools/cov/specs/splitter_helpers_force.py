@@ -257,21 +257,6 @@ elif WHICH == 'E87CN':
 elif WHICH == 'E87C2':
     FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'],
               ['$esi = 1', CH + '->mCommandModuleId.value = 0x520'], 0, _what)]
-elif WHICH == 'PATHZ':
-    # the chassis's own position: the separation from the other actors has a z component, so the
-    # "the separation is not all zeros" arm's z side runs (the port's fn_75_986C).
-    FORCE = [(_label, _where, [],
-              [CH + '->mPosition.mZ = 2.0'], 0, _what)]
-elif WHICH == 'DESPAWN':
-    # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
-    # update (asm 0x1820).
-    FORCE = [(_label, _where, [], ['$this->mAlive = 0'], 0, _what)]
-elif WHICH == 'LOOKAT':
-    # the target id at 0xF02 is the chassis u0532: the cast to a CBeamProjectile fails.
-    FORCE = [(_label, _where, [], ['$this->mLookAtTargetId.value = 0x532'], 0, _what)]
-elif WHICH == 'LOOKATN':
-    # the target id at 0xF02 is invalid: the body ends at once.
-    FORCE = [(_label, _where, [], ['$this->mLookAtTargetId.value = 0xffff'], 0, _what)]
 elif WHICH == 'E87CN':
     FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'], ['$esi = 1'], 0, _what)]
 elif WHICH == '32F4F':
