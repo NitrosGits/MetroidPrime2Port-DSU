@@ -1240,6 +1240,11 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the touched object's player test (0x00003AD0..0x00003ADC) and the damage timer (0x00003AE0..0x00003AF4) | d | they need the shield's or the blade's collision actor to have touched the player |
 | `fn_9_3E1C` (the rag-doll driver) | the rag-doll path (0x00003E50..0x00003FF0) | c | the guest's own GetRagDoll (fn_9_78) answers null and the constructor stores 0 at guest this+0xBFC (0x0000DC18), so the guest never takes it |
 | | the drowning timer (0x00003FF8..0x0000401C) and the rag doll's creation (0x00004020..0x00004118) | b | the module's float at guest this+0xC00 runs down in the run; the creation is the port's stand-in (the host has no CPirateRagDoll) |
+| `fn_9_19D8` (the team helper) | the team id (0x00001A04), the block's two flag bits (0x00001A10 and 0x00001A1C), the invalid team id (0x00001A48) and the team lookup (0x00001A60..0x00001A6C) | d | the coverage run in area 59 with the c300 driver gives the body 6/8 lines and 4/10 branches: the commando has no team id and the block's flags allow it, so only the "join" path runs |
+| `fn_9_1A9C` (the avoid-actors helper) | the list walk (0x00001AD0..0x00001AE8), the area test (0x00001AF0..0x00001AFC) and the magnitude-safe test (0x00001B5C) | d | the same run gives it 14/16 lines and 8/12 branches: the other actors are none, this one or of another area, so the separation is never taken |
+| `fn_9_1EF8` (the shield's turn-off helper) | the flag byte (0x00001F0C..0x00001F14), the emitter handle (0x00001F18..0x00001F20) and the two floats (0x00001F64..0x00001F70) | d | the same run gives it 0/9 lines: the shield's turn-off event never runs in area 59 |
+| `fn_9_1F88` (the shield's turn-on helper) | the flag byte (0x00001F9C..0x00001FA4), the 0x20 bit (0x00001FA8..0x00001FB4), the emitter handle (0x00001FB8..0x00001FC0) and the state word (0x00001FF4..0x00002018) | d | the same run gives it 0/9 lines: the shield's turn-on event never runs in area 59 |
+| `fn_9_2A98` (the waypoint picker) | the speed (0x00002AD0..0x00002AD4), the waypoint (0x00002AD8..0x00002AF8), the 0x20 flag (0x00002B00..0x00002B04) and the connection search (0x00002B08..0x00002B84) | d | the same run gives it 0/25 lines: the module's waypoint picker only runs in the scripted charge, which area 59 does not reach |
 | `fn_9_45A4` (the collision actors) | the two spheres (0x00004604..0x00004620 and 0x00004728..0x00004744), the ids (0x000046CC and 0x000047F8) and the filter (0x00004830..0x0000487C) | b | the module's kSM_Create case builds them: the run's commando has both collision actors, and the material filter's exclude list gets the bit 0x8000 (the material 15, kMT_Glass) |
 | | the collision actor's null tests (0x000046E4 and 0x00004810) | d | the coverage run's commando has both collision actors, so the null arms did not run - the body gets no marker |
 | `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) | d | the branch wants the block's flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest this+0xBFC to be there; the rag doll is always null (the constructor stores 0 there, 0x0000DC18, and the module's GetRagDoll returns null, fn_9_78), so the guest never takes it |
@@ -1260,6 +1265,8 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the retreat point found (0x0000A9C4..0x0000A9CC) | d | the module's retreat point id (guest this+0xBCE) is kInvalidUniqueId in this area |
 | `fn_9_69C8` (the Dead state) | the base's dead handler (0x000069EC), the activate (0x000069F0) and the other messages (0x000069F8) | b | forced (fsm) |
 | | the byte at guest this+0xC66 with its 0x20 bit (0x00006A0C..0x00006A14) | d | that bit is set by the knock-back helper when the shield is up; the commando is not hit with the shield up in this run |
+| `fn_9_6A40` (the GetUp state) | the activate (0x00006A78), the update's "the commando lies on the ground" arm (0x00006AA0..0x00006AC4) and the getup command (0x00006ACC..0x00006B18) | b | the coverage run in area 59 with the core driver (tools/cov/run.sh with tools/cov/specs/commandopirate.py and tools/drivers/commandopirate_core.py, 8000 frames, game exit code 0, no caught/reach-stub): 16/17 lines and 8/10 branches - the arm that sets the pending death (the commando on the ground and the path find with no source point) did not run, so the body gets no marker |
+| `fn_9_6DBC` (the Cover state) | the activate (0x00006E08..0x00006E2C), the cover point (0x00006E34..0x00006E48) and the cover command (0x00006E5C..0x00006EE8) | b | the same run: 14/23 lines and 5/14 branches - the cover arms need a cover point and the commando holds none in area 59, so the body gets no marker |
 | `fn_9_B168` (ShouldCrouch) and `fn_9_B114` (ShouldWallHang) | the cover point missing (0x0000B184..0x0000B194 and 0x0000B134..0x0000B138) | b | the Cover state's triggers run when the console forces that state (forced (fsm)) |
 | | the cover point's own answer (0x0000B18C and 0x0000B140) | d | the commando holds no cover point in this area |
 | `fn_9_B1E0` (ShouldBoost) | the byte at guest this+0xC66 (0x0000B1F0), the byte at guest this+0xC64 (0x0000B1FC) and the AI waypoint (0x0000B218) | b | 162 calls per run: the state sets the 0x80 bit of guest this+0xC66 and the trigger is evaluated every tick of the state |
@@ -1719,3 +1726,101 @@ The helper's formula is the guest's: `f31` is the gravity the vtable call at 0x0
 `rodata_44C` = 2.0), the time is `zVelocity / g + sqrt(2 * (apex - target.z) / g)`
 (0x000039C8..0x000039EC) and the velocity is `(dx / time, dy / time, zVelocity)`
 (0x00003A00..0x00003A14).
+
+### 6.3 `fn_9_2D0C` - the knock-back helper (2026-10-22)
+
+The helper's body, with the guest's addresses:
+
+- the weapon (the shield's own collision actor at guest this+0xBC6 -> the weapon that touched
+  it, 0x00002D38..0x00002D74; the module's effect fn_9_2048 when the byte at guest this+0xC66 has
+  its 0x20 bit, 0x00002D78..0x00002D90; otherwise the sender itself, 0x00002D98..0x00002DA8);
+- the knock-back info (the weapon's forward column, its id, its owner id, its damage info and the
+  direct flag, 0x00002DB8..0x00002E00);
+- the knock-back manager's anim reaction range when the byte at guest this+0xC64 has its 0x01 bit
+  (0x00002E04..0x00002E1C: `SetAnimReactionRange(kAR_Hurled, kAR_Fall)`), the knock-back itself
+  (the vtable slot 0x9C, 0x00002E38) and the range the guest restores right after it
+  (0x00002E3C..0x00002E48: `SetAnimReactionRange(kAR_None, kAR_Fall)`);
+- the flag byte at guest this+0xC64: the manager's **active reaction** (the word at guest
+  this+0x630, the manager's own +0x10 - the CRuleSetEvaluator base is 0x10 bytes and the reaction
+  flags are the +0x20) is compared with 5 and 2 (0x00002E50 and 0x00002E58): 2 to 4 sets the
+  byte's 0x04 bit (0x00002E64..0x00002E70), anything else ors the byte's 0x01 bit into its 0x04
+  bit (the `extrwi` 1,29 = 0x04 and the `clrlwi` 31 = 0x01 or-ed and put back by the `rlwimi`
+  2,29,29, 0x00002E78..0x00002E8C);
+- the ground ray (the filter's include list kMT_Solid, `lbl_9_data_814`, and its exclude list
+  kMT_Player, kMT_Character, kMT_CollisionActor and kMT_Platform, `lbl_9_data_81C`,
+  `lbl_9_data_818`, `lbl_9_data_820` and `lbl_9_data_824`, the type 3 = kFT_IncludeExclude,
+  0x00002F20..0x00002FC4) and, when the ray is clear, the death (0x00003018), the zeroed health
+  (0x0000302C), the recorded damage source (0x00003044..0x00003068) and the byte's 0x04 bit
+  (0x0000306C..0x00003078).
+
+### 6.4 The six FSM states checked against the asm (2026-10-22)
+
+`tools/asmcheck.py check CommandoPirate` (with `--all`, since the bodies are unmarked) finds no
+difference in the six states: `fn_9_69C8` (the Dead state) and `fn_9_786C` (the
+RestoreOrientation state) are clean, and the other four only raise the host-API findings:
+
+- `fn_9_6A40` (the GetUp state) and `fn_9_7A98` (the ScriptedShieldCharge state) raise
+  NOPOS: the base's bitfields `mPendingDeath` and `mVerticalMovement` have no stated bit
+  position for the module, so the tool leaves their masks unchecked.  The guest's
+  `mPendingDeath` is the byte at guest this+0x421's bit 3 (`lbz r0, 0x421` and
+  `rlwimi r0, r3, 4, 27, 27` at 0x00006AB8..0x00006AC4) - the members live in the shared
+  base class (include/MetroidPrime/Enemies/CPatterned.hpp), which this lane does not edit.
+- the CALL findings name `CTryCommand::ShouldRetry` where the asm calls
+  `CAnimationState::CanIssueCommand` (0x00006AD8, 0x00006E6C, 0x00007540, 0x00007C4C - the
+  animation state ids 1 = kAS_Getup, 0x13 = kAS_Cover, 0x14 = kAS_WallHang and 9 =
+  kAS_LoopAttack, which are the host's values too) and `CEntity::CheckConnectedObject_if`
+  where the port calls `CEntity::FindConnectedObject_if` (0x00007414) - the host's two
+  functions have the same body (src/MetroidPrime/CEntity.cpp:124 and 198).
+
+### 6.5 The six states' untaken arms (2026-10-22, slice 30)
+
+The tooling: `tools/drivers/commandopirate_states2.py` (the console's `fsm` forces the WallHang,
+the RestoreOrientation, the ScriptedShieldCharge, the Cover and the GetUp; an unknown fourcc
+reaches a message switch's default arm) and `tools/cov/specs/commandopirate_states2.py` (the
+forcing spec: the WallHang's and the Cover's cover point - the Swamp's u05c8 - and the byte at
+guest this+0xC66's 0x20 bit for the Dead state, which the knock-back helper sets when the shield
+is up).  The run: the coverage build with
+`COV_GDB_SCRIPT=tools/cov/cov_force.py tools/cov/force.sh tools/cov/specs/commandopirate_states2.py
+<out> swamp,05_swamp_timber! --driver 'python3 tools/drivers/commandopirate_states2.py {port}'`
+(8000 frames, game exit code 0, no caught/reach-stub).
+
+| body | lines | branches | the arms that still did not run |
+|---|---|---|---|
+| `fn_9_7358` (the WallHang) | 30/39 | 10/22 | the message switch's default (0x000073A0..0x000073A4), the "no cover point" exit (0x000073D4..0x000073D8), the cover point's forward (0x00007478..0x0000748C), the update's angle test (0x000074BC..0x00007528), the wall-hang command's `CanIssueCommand` (0x00007534..0x00007548) and the body's own state (0x000075B8..0x00007628) - the last three need the body in the wall-hang state, which only the wall-hang command gives |
+| `fn_9_786C` (the RestoreOrientation) | 17/29 | 9/14 | the message switch's default (0x000078B0..0x000078B4) and the update's angle arms (0x00007918..0x000079E0) - they need a commando that is tipped over, and nothing in the shipped flow tips it |
+| `fn_9_7A98` (the ScriptedShieldCharge) | 55/60 | 23/30 | the message switch's default (0x00007B24..0x00007B28), the activate's arm (0x00007B38..0x00007B3C) and the update's arms (0x00007C64..0x00007CFC) - the charge's own abort and its waypoint arms need the module's shield-charge states |
+| `fn_9_6DBC` (the Cover) | 19/23 | 8/14 | the message switch's default (0x00006E08..0x00006E0C), the "the body is already in the cover state" arm (0x00006E10..0x00006E14), the cover's attack direction (0x00006E50..0x00006E68), the cover command's `CanIssueCommand` (0x00006E5C..0x00006E74) and the "the body cannot shoot" arm (0x00006F48..0x00006F9C) |
+| `fn_9_6A40` (the GetUp) | 15/17 | 5/10 | the message switch's default (0x00006A78..0x00006A7C) and the update's "the commando lies on the ground" arm (0x00006A90..0x00006AC4) - it needs the body in the lie-on-ground state and the path find with no source point |
+| `fn_9_69C8` (the Dead) | 0/6 | 0/4 | the state did not run: the console's `kill` deletes the actor, so the `fsm Dead` after it finds nothing |
+
+### 6.6 The message switch's default arm is dead (2026-10-22, slice 31)
+
+`EStateMsg` has three values (include/MetroidPrime/StateMachineCommon.hpp:4-8:
+`kStateMsg_Activate`, `kStateMsg_Update`, `kStateMsg_Deactivate`), and the state machine never
+sends anything else: the only senders are the FSM2's own `ExecuteState` and `ExecuteSubflow`
+calls, and they pass exactly those three -
+include/MetroidPrime/CGenericFSM2StateImpl.hpp:21 (`kStateMsg_Deactivate`), :85 and :337
+(`kStateMsg_Activate`), :96 and :101 (`kStateMsg_Update`) and :370 and :374
+(`kStateMsg_Deactivate`).  The module runs on the FSM2 (its machine's type is 1), so the default
+arm of a state's message switch is **dead** (class **c**), not untaken: the six bodies' untaken
+"3/4" switch arms are that arm.
+
+### 6.7 What the six states still need (2026-10-22, slice 31)
+
+The forcing run of slice 31 (`tools/cov/force.sh` with
+`tools/cov/specs/commandopirate_states2.py` and `tools/drivers/commandopirate_states2.py`, the
+Swamp's 05_swamp_timber!, 8000 frames, game exit code 0, no caught/reach-stub) gives:
+
+| body | lines | branches | the live arms that did not run |
+|---|---|---|---|
+| `fn_9_7358` (the WallHang) | 30/39 | 10/22 | the cover point's forward, the update's angle test, the wall-hang command's `CanIssueCommand` and the body's own state - the last two need the body controller in the wall-hang state |
+| `fn_9_786C` (the RestoreOrientation) | 17/29 | 9/14 | the update's angle arms - they need a commando that is tipped over |
+| `fn_9_7A98` (the ScriptedShieldCharge) | 55/60 | 23/30 | the activate's arm and the update's arms - the charge's abort and waypoint arms need the module's shield-charge states |
+| `fn_9_6DBC` (the Cover) | 19/23 | 8/14 | the "the body is already in the cover state" arm, the cover's attack direction, the cover command's `CanIssueCommand` and the "the body cannot shoot" arm |
+| `fn_9_6A40` (the GetUp) | 15/17 | 5/10 | the update's "the commando lies on the ground" arm - it needs the body in the lie-on-ground state and the path find with no source point |
+| `fn_9_69C8` (the Dead) | 0/6 | 0/4 | the state did not run in that run |
+
+So none of the six can be marked yet.  The blocker for the body-state arms is the forcing
+itself: the spec writes `$this->mBodyController->mBodyStateInfo.mState`, but the body controller
+is an `rstl::single_ptr` (include/MetroidPrime/Enemies/CPatterned.hpp:409) and gdb reports "Could
+not find operator->" for it - the write needs the pointer's target reached another way.

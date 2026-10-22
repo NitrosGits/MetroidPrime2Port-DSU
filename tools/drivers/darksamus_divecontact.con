@@ -1,0 +1,19 @@
+# fn_10_1ACA0 UpdateDiveContact's arms with the boxes overlapping: the hit made and no bounce
+# (tools/cov/specs/darksamus_uevent.py keys 86, 96), then a bounce (40) and no touch bounds (87),
+# alone: Sanctuary 10_cliff_rooftop layer 2, boss u04f7. BUILD=build-port-cov tools/cov/force.sh tools/cov/specs/darksamus_uevent.py <out>
+# "1baa96c2,10_cliff_rooftop" --con tools/drivers/darksamus_divecontact.con --fast --frames 720
+@f600 send u04f7 Activate; god 1
+@f620 uevent u04f7 9 130; uevent u04f7 9 186; uevent u04f7 9 196; place u04f7 player 60
+@f623 place u04f7 player 1
+@f624 place u04f7 player 1
+@f625 place u04f7 player 1
+@f626 place u04f7 player 1
+@f627 place u04f7 player 1
+@f630 uevent u04f7 9 199
+@f650 uevent u04f7 9 130; uevent u04f7 9 186; uevent u04f7 9 140; place u04f7 player 1
+@f651 uevent u04f7 9 140; place u04f7 player 1
+@f652 uevent u04f7 9 140; place u04f7 player 1
+@f653 uevent u04f7 9 140; place u04f7 player 1
+@f654 uevent u04f7 9 187; place u04f7 player 1
+@f656 uevent u04f7 9 199
+@f660 status

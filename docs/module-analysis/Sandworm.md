@@ -1127,13 +1127,13 @@ Three independent scans over the module (the REL's own asm in the archive tree,
 |---|---|---|---|---|---|
 | `fn_56_95E0` DeleteHeldBomb | B | four call sites: the anim event `fn_56_646C` (case 26), the fountain state's exit `fn_56_B8B8` (0xB9A8), the toss state's exit `fn_56_BC8C` (0xBD3C) and the worm's XDMG handler `fn_56_11374` (0x11B64) | the bomb id test: delete a live bomb / early-out | run 2026-10-21: the breakpoint printed the held id - 1523 and 1547 (a live bomb, the delete arm) and -1 (no bomb, the early-out, from the XDMG path once the worm's HP dropped below a bomb-phase threshold) | **marked** |
 | `fn_56_10A20` GetLctrTransformWrapper | B | `fn_56_108BC` (0x1094C) and `fn_56_1096C` (0x10A00) | none (a straight copy of the translation, 0x10A48..0x10A50) | run 2026-10-21: 68174 calls, one per spine update; the port's two spine helpers call the wrapper now, as retail does | **marked** |
-| `fn_56_10110` the joint-list search | B | **none**: no `bl`, no table entry | the distance test; the not-found path | ported 2026-10-21 from the asm (0x10164..0x10230), `asmcheck.py` clean; nothing calls it, so it is never marked | cited |
+| `fn_56_10110` the joint-list search | B | **none**: no `bl`, no table entry | the distance test; the not-found path | ported 2026-10-21 from the asm (0x10164..0x10230), `asmcheck.py` clean; nothing calls it, so it is never marked - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
 | `fn_56_10268` the segment sweep | B | **none**: no `bl`, no table entry | the magnitude test; the lerp loop | ported 2026-10-21 from the asm (0x10310..0x10478), `asmcheck.py` clean; nothing calls it, so it is never marked | cited |
-| `fn_56_C350` InAttackRange | B (vtable entry) | the CSandworm vtable (`data_884`): the FSM asks for the trigger by name | two compares (0xC3AC, 0xC3B8) | **never asked** - of the 146 FSM2 assets only the Metroid's (`1870596557`) names "InAttackRange"; the worm's own two assets do not (l.2) | cited |
-| `fn_56_C3D0` Activated | B (vtable entry) | the CSandworm vtable (`data_884`) | one test (the actor's active flag, 0xC3D0) | **never asked** - no FSM2 asset in the game names "Activated" (0 of 146) | cited |
-| `fn_56_2210` CSandwormEye::GetX2E8 | B | **none**: no `bl`, and not in any table (not in the eye's vtable `data_6F8` either) | none (a straight copy) | dead code in the retail module | cited |
-| `fn_56_534C` CountScriptActors | B | **none** (no `bl`, not in any table) | the GRNT/NEXT test, the CActor cast test | dead code in the retail module | cited |
-| `fn_56_6324` Unreferenced6324 | B | **none** (no `bl`, not in any table) | the CONN/FOLW test | dead code in the retail module | cited |
+| `fn_56_C350` InAttackRange | B (vtable entry) | the CSandworm vtable (`data_884`): the FSM asks for the trigger by name | two compares (0xC3AC, 0xC3B8) | **never asked** - of the 146 FSM2 assets only the Metroid's (`1870596557`) names "InAttackRange"; the worm's own two assets do not (l.2) - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
+| `fn_56_C3D0` Activated | B (vtable entry) | the CSandworm vtable (`data_884`) | one test (the actor's active flag, 0xC3D0) | **never asked** - no FSM2 asset in the game names "Activated" (0 of 146) - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
+| `fn_56_2210` CSandwormEye::GetX2E8 | B | **none**: no `bl`, and not in any table (not in the eye's vtable `data_6F8` either) | none (a straight copy) | dead code in the retail module - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
+| `fn_56_534C` CountScriptActors | B | **none** (no `bl`, not in any table) | the GRNT/NEXT test, the CActor cast test | dead code in the retail module - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
+| `fn_56_6324` Unreferenced6324 | B | **none** (no `bl`, not in any table) | the CONN/FOLW test | dead code in the retail module - the 2026-10-22 coverage run enters it 0 times (l.7) | cited |
 | `fn_56_10A68` SetSteeringSpeedRange | B | **none** (no `bl`, not in any table) | the 1.2 s test (rodata_1C8) | dead code in the retail module | cited |
 | `fn_56_14A6C` the retail-only slot 0x23C | T | **none**: the slot exists only in the REL's own vtable, the DOL has no such virtual | none | dead slot | cited |
 | `fn_56_14AE4` GetPointSearchPath | T | `CIngSpotPathFindNavigation` (the DOL) reads it on a possessed actor | none (returns null) | the worm is never Ing-possessed in a build that runs the Bomb Guardian (the possession did not reproduce in any boot) | cited |
@@ -1244,3 +1244,35 @@ carry one.**
 A new marker would need a caller the retail code does not have, so the next slice for this module
 is not more markers but the *quality* of what is already marked: `tools/asmcheck.py` with the
 completeness tags (BIT, CMP, STORE, CALL, XCALL, BRANCH) over the seven `PortCSandworm*.cpp` files.
+
+### l.7 The six unmarked bodies (2026-10-22)
+
+The classification's order (section g.3) leaves eight B bodies without a marker; the first six in
+that order were diffed against the asm and run under the coverage tool.
+
+| id | the port's body | the asm | the diff | the coverage run |
+|---|---|---|---|---|
+| `fn_56_2210` `CSandwormEye::GetX2E8` | `PortCSandwormEye.cpp:51` | 0x2210-0x2228: the three floats at 0x2e8/0x2ec/0x2f0 copied out | **matches** (a straight copy) | 0 hits |
+| `fn_56_534C` `CSandworm::CountScriptActors` | `PortCSandwormStates.cpp:69` | 0x534C-0x53E0: the GRNT/NEXT test (0x5380-0x5398) and the `GetIdForScript` call (0x53B0) | **matches** (`asmcheck.py` clean) | 0 hits |
+| `fn_56_6324` `CSandworm::Unreferenced6324` | `PortCSandwormAttacks.cpp:88` | 0x6324: the CONN/FOLW test | **matches** (`asmcheck.py` clean) | 0 hits |
+| `fn_56_C350` `CSandworm::InAttackRange` | `PortCSandwormAttacks.cpp:553` | 0xC350-0xC3C4: the squared distance (0xC380-0xC3A8) and the two compares (0xC3AC, 0xC3B8) | **matches** (`distSq > 0.f` is the `fcmpo`/`ble` pair ✓) | 0 hits |
+| `fn_56_C3D0` `CSandworm::Activated` | `PortCSandwormStates.cpp:712` | 0xC3D0-0xC3E4: the byte at 0x20, `extrwi` mask 0x80 | **matches** (`GetActive()` is the same flag ✓) | 0 hits |
+| `fn_56_10110` `CSandworm::UnreferencedMath10110` | `PortCSandwormSpine.cpp:290` | 0x10164-0x10230, cited line by line in the port | **matches** (`asmcheck.py` clean) | 0 hits |
+
+The coverage run is the gdb spec `tools/cov/specs/sandworm_helpers.py` (new) in the Agon Wastes
+`03_sand_temple` layer 2 with `tools/cov/specs/sandworm_temple.con`:
+
+    tools/cov/run.sh tools/cov/specs/sandworm_helpers.py /tmp/opencode/sw_cov \
+      "Agon Wastes,03_sand_temple" --con tools/cov/specs/sandworm_temple.con --fast --frames 6000
+    game: game exit code 0;  caught/reach-stub: 0
+    2210 GetX2E8 0 hits      534C CountScriptActors 0 hits   6324 Unreferenced6324 0 hits
+    C350 InAttackRange 0 hits  C3D0 Activated 0 hits         10110 UnreferencedMath10110 0 hits
+
+**None of the six is marked**: the arms of a body that is never entered cannot all run, so none of
+them is ALL-ARMS ✓. The run turns the static "no `bl`, no table entry" scan of l.1 into a runtime
+fact ✓ (0 entries in a full fight ✓).
+
+One finding for the shared code: `asmcheck.py` cannot place the bit of `mActive`
+(`include/MetroidPrime/CActor.hpp:422` and `:438` ✓) - the REL's copy reads the flag as the bit
+0x80 of the byte at 0x20 (asm 0xC3D4 ✓) while the host's header states no bit position for it, so
+`fn_56_C3D0` gets a NOPOS ✓. The member is in the DOL's header ✓, so this lane did not touch it ✓.

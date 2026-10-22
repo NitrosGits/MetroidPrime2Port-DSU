@@ -23,6 +23,7 @@ class CBCProjectileAttackCmd;
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
 class CParticleSwoosh;
+class CSwooshDescription;
 class CEnergyProjectile;
 class CScriptAIHint;
 struct SLdrDSStageInfo;
@@ -1134,9 +1135,24 @@ private:
   bool HasPhazonBeam() const;   // fn_10_4AA8: the beam 0xEF8 is not null
   float GetFadeFactor() const;  // fn_10_185CC: 1, then down to 0 over fn_10_18628's window
   // guest 0xE3C / 0xE4C, the boost ball's two swooshes (fn_10_9B24 builds them, fn_10_99B8
-  // deletes them). The host builds neither yet, so both stay null; they are not owned.
+  // deletes them). Owned: the 0xE10 sub-object's destructor fn_10_1F72C deletes both (the
+  // vtable's word 2 with 1, 0x0001F7F4 and 0x0001F840), as ~CDarkSamus does.
   CParticleSwoosh* mBoostBallSwooshE3C = nullptr;
   CParticleSwoosh* mBoostBallSwooshE4C = nullptr;
+  // The 0xE10 sub-object's effect tokens (fn_10_895C; its arguments follow the data order:
+  // boostBallModel r4..r6, boostBallDamage *r7, boostBallGlow r8, boostBallTrailSwoosh r9, sWHC
+  // r10, the two sounds, boostBallCollision, the collision sound). A valid swoosh id (`addis r0,
+  // rX, 0x1; cmplwi r0, 0xffff` at 0x00008A48/0x00008A58 and 0x00008B70/0x00008B74) is fetched as
+  // an 'SWHC' (`lis r4, 0x5357; addi r0, r4, 0x4843`) into the optional at 0xE40 (valid byte
+  // 0xE48, 0x00008B3C) or 0xE50 (0xE58, 0x00008BDC) and locked (0x00008B6C, 0x00008C0C).
+  static rstl::optional_object< TLockedToken< CSwooshDescription > >
+  BoostBallSwooshToken(CAssetId id);
+  rstl::optional_object< TLockedToken< CSwooshDescription > > mBoostBallSwooshTokenE40 =
+      BoostBallSwooshToken(mData.mBoostBallTrailSwoosh); // r9
+  rstl::optional_object< TLockedToken< CSwooshDescription > > mBoostBallSwooshTokenE50 =
+      BoostBallSwooshToken(mData.mSWHC); // r10
+  CAssetId mBoostBallGlowPart = mData.mBoostBallGlow; // guest 0xE5C (+0x4C), r8 (0x00008A10)
+  void CreateBoostBallEffects(); // fn_10_9B24: the swooshes 0xE3C/0xE4C and the generator 0xE64
 #endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
@@ -1226,7 +1242,7 @@ private:
   // 0x00020038) the constructor fills with the CSkinnedModel of mInvulnerableModel /
   // mInvulnerableSkinRules (the new at 0x000202D8, fn_10_20600 at 0x00020408); 183E8 renders it.
   rstl::optional_object< TLockedToken< CSkinnedModel > > mInvulnerableSkinnedModel;
-  // guest 0xE60/0xE64: the boost ball's element generator (fn_10_9B24, unported: always null).
+  // guest 0xE60/0xE64: the boost ball's element generator (fn_10_9B24 builds it from 0xE5C).
   rstl::auto_ptr< CElementGen > mBoostBallElementGen;
 #endif
 #ifdef TARGET_PC

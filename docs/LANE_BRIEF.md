@@ -62,6 +62,9 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   (`timeout`, or `wait <pids>` in one foreground command); background-shell notifications do not
   reliably wake a lane whose turn has ended. Your last message is always the report. Run independent runs
   concurrently (each cov/smoke run takes its own slot) instead of one after another.
+- Game slots: before each run do `tools/games_running.sh --wait` in the foreground; it returns
+  once fewer than 3 MP2/MP3 games run. Don't count with `pgrep -fc`: it also counts the
+  timeout/gdb wrappers, about 4 per game. Never skip a run because slots are busy; wait for one.
 
 ## Coverage without probes
 

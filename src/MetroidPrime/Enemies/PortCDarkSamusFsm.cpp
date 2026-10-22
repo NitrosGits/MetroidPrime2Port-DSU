@@ -1612,12 +1612,12 @@ bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
 // at 0x00009788), takes 0xD24 = lbl_10_rodata_284 = 0.5f (0x000097AC) and sets the boost ball's
 // bit 0x40 of 0xEBC (`rlwimi r3, r4, 6, 25, 25` at 0x000097B4, the PowerPC bit 25 being
 // 1u << (31 - 25) = 0x40). Update (0x0000983C) deletes the boost ball (fn_10_9AC4 at
-// 0x0000984C) and Deactivate (0x00009854) stops the boost ball's particle effects (fn_10_99B8
-// at 0x00009864) - the port has none, so nothing runs. Then the turn toward the player
+// 0x0000984C) and Deactivate (0x00009854) deletes the boost ball's particle effects (fn_10_99B8
+// at 0x00009864). Then the turn toward the player
 // (fn_10_16B64 at 0x00009880, the rate lbl_10_rodata_28C = 5.2359877f) and the melee attack
 // command (fn_10_8764 at 0x000098E0, the severity lbl_10 = 8 = pas::kS_Eight).
-// The guest's boost ball record at 0xE60/0xE64 (the element generator) is cleared on Activate
-// (0x000097FC/0x00009804); the port has no counterpart for it.
+// Activate also empties the element generator's auto_ptr at 0xE60/0xE64 (the old one deleted at
+// 0x000097F0, the stores at 0x000097FC/0x00009804).
 void CDarkSamus::BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallFire", msg);
   UpdateCurrentAttack(0x20000, mgr, msg); // `lis r4, 0x2` at 0x00009758, the call at 0x00009760
@@ -1627,6 +1627,7 @@ void CDarkSamus::BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt) {
     TurnAround();                                  // fn_10_9644, 0x00009788
     mGuestD24 = 0.5f;                              // lbl_10_rodata_284, 0x000097AC
     mBoostBallFlag40 = true;                       // 0x000097B4
+    mBoostBallElementGen = nullptr;                // 0x000097F0..0x00009804
   } else if (msg == kStateMsg_Update) {
     DeleteBoostBall(mgr); // fn_10_9AC4, 0x0000984C
   } else if (msg == kStateMsg_Deactivate) {
@@ -2716,17 +2717,12 @@ void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
 // (`bl RemoveEmitter__11CSfxManagerF10CSfxHandle` at 0x00009474) and its handle cleared
 // (`stw r0, 0xe6c(r29)` at 0x00009480), fn_10_9644 (the turn around, 0x00009484), 0xD24 =
 // lbl_10_rodata_284 = 0.5f (`stfs f0, 0xd24(r29)` at 0x000094A8), 0xEBC bit 0x40
-// (`rlwimi r3, r4, 6, 25, 25` at 0x000094B0), fn_10_9AC4 (the boost ball's deletion,
+// (`rlwimi r3, r4, 6, 25, 25` at 0x000094B0), the element generator's auto_ptr 0xE60/0xE64
+// emptied (the old one deleted at 0x000094EC, the stores at 0x000094F8/0x00009500), fn_10_9AC4 (the boost ball's deletion,
 // 0x0000953C) and fn_10_99B8 (0x00009548). Then the base state handler - the vtable's word
 // 136 (`lwz r12, 0x220(r12)` at 0x00009560), the DiveAttack state fn_10_11FA4 - runs on
 // every message. Deactivate (`cmpwi r31, 0x2` at 0x0000956C) clears the boost bit again
 // (`rlwimi r0, r3, 0, 31, 31` at 0x0000957C).
-// Outside the port: the boost ball's particle effects - the two swooshes (guest 0xE3C /
-// 0xE4C) and the element generator (guest 0xE60 / 0xE64). fn_10_9B24, which builds them,
-// has no host counterpart and the loader's swoosh tokens are not in the host, so the
-// pointers are always null and fn_10_99B8's "stop the old effect" calls (0x000099F4,
-// 0x00009A20 and 0x00009A68) and fn_10_9424's (0x000094EC) have nothing to stop. That is
-// why this body has no `// @` marker: one of its calls is outside the port.
 void CDarkSamus::DiveFromBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveFromBoost", msg);
   if (msg == kStateMsg_Activate) {                 // 0x00009454 `bne .L_0000954C`
@@ -2736,8 +2732,9 @@ void CDarkSamus::DiveFromBoost(CStateManager& mgr, EStateMsg msg, float dt) {
     TurnAround();                                  // fn_10_9644, 0x00009484
     mGuestD24 = 0.5f;                              // lbl_10_rodata_284, 0x000094A8
     mBoostBallFlag40 = true;                       // 0x000094B0 `rlwimi r3, r4, 6, 25, 25`
+    mBoostBallElementGen = nullptr;                // 0x000094EC..0x00009500
     DeleteBoostBall(mgr);                          // fn_10_9AC4, 0x0000953C
-    // fn_10_99B8 (0x00009548) stops the boost ball's particle effects; the port has none.
+    StopBoostBallParticles();                      // fn_10_99B8, 0x00009548
   }
   DiveAttack(mgr, msg, dt); // 0x00009560, the vtable's word 136
   if (msg == kStateMsg_Deactivate) { // 0x0000956C `cmpwi r31, 0x2`

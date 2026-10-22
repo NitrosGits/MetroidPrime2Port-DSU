@@ -1,6 +1,17 @@
-@20 objs emperoring
-@26 send u04e3 Activate
-@28 send u04e8 Activate
-@34 obj u04e3
-@44 objs emperoring
-@56 objs emperoring
+# Emperor Ing stage 1 (area 11). Game-update times follow tools/drivers/emperoring1_heartstage.py
+# (`cycles`): the boss (u04e3) and its 'PLAY' actor (u04e8) are activated, the eight health-bearing
+# tentacle boxes are killed until the FSM walks AllTentaclesRetracted -> BeginHeartStage ->
+# HeartStage on its own (~f890), and the heart stage ends (~f1910, ChooseRandomTentacleCount runs)
+# before the family's 2000 updates. The uids are the smoke save's (/tmp/opencode/mi_u).
+@f120 objs emperoring
+@f130 send u04e3 Activate
+@f137 send u04e8 Activate
+@f300 obj u04e3
+@f480 damage u056e 9999; damage u0569 9999; damage u0564 9999; damage u055f 9999; damage u055a 9999; damage u0555 9999; damage u0550 9999; damage u054b 9999
+@f560 damage u056e 9999; damage u0569 9999; damage u0564 9999; damage u055f 9999; damage u055a 9999; damage u0555 9999; damage u0550 9999; damage u054b 9999
+@f640 damage u056e 9999; damage u0569 9999; damage u0564 9999; damage u055f 9999; damage u055a 9999; damage u0555 9999; damage u0550 9999; damage u054b 9999
+@f720 damage u056e 9999; damage u0569 9999; damage u0564 9999; damage u055f 9999; damage u055a 9999; damage u0555 9999; damage u0550 9999; damage u054b 9999
+@f800 damage u056e 9999; damage u0569 9999; damage u0564 9999; damage u055f 9999; damage u055a 9999; damage u0555 9999; damage u0550 9999; damage u054b 9999
+@f1000 obj u04e3
+@f1400 objs emperoring
+@f1960 obj u04e3

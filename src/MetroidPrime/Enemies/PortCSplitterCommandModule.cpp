@@ -17,6 +17,7 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CParticleGenInfo.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
+#include "Collision/CCollisionInfoList.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
@@ -496,6 +497,8 @@ bool CSplitterCommandModule::IsDocked(CStateManager&, const CTriggerData&) const
 
 // fn_75_3B20 (the head's RaiseShields code, 0x3B20-0x3B34): the flag byte at 0xF6A gets its
 // 0x08 bit set (0x3B28 rlwimi with the word's bit 28 - the byte's 0x08) and the body ends.
+// Arms: all ran; the coverage build's merged profile says 3/3 lines and no branches.
+// @ fn_75_3B20
 void CSplitterCommandModule::RaiseShields(CStateManager&, float) {
   mAutoDestructFlags |= 0x8;
 }
@@ -598,6 +601,10 @@ void CSplitterCommandModule::PortMoveTo(const CVector3f& dest, float dt) {
 // floats at 0x28, 0x38 and 0x48 - 0x5548-0x5550) into the vector at 0xF24-0xF2C
 // (0x5554-0x555C), which is the vector the retail's constructor fills from the editor
 // properties (fn_75_6B08) and the head's other states overwrite.
+// Arms: all ran - the update and the activate message take the body, the deactivate and the
+// messages above it return; the coverage build's merged profile says 3/3 lines and 2/2 branches,
+// ALL-ARMS.
+// @ fn_75_5538
 void CSplitterCommandModule::Idle(CStateManager&, EStateMsg msg, float) {
   if (msg != kStateMsg_Update && msg != kStateMsg_Activate) {
     return;
@@ -885,6 +892,10 @@ bool CSplitterCommandModule::ShouldLaserSweep(CStateManager&, const CTriggerData
 // for the two constants: kSS_Attack (0x4154544B) and kSM_None (0xFFFFFFFF). The message
 // argument is the one a connection's own message must differ from, so "none" reaches every
 // connection but the ones that ask for no message.
+// Arms: all ran - the synced id is taken or the player's, the effect states are updated and the
+// state 'ATTK' goes out; the coverage build's merged profile says 6/6 lines and 2/2 branches,
+// ALL-ARMS.
+// @ fn_75_3E60
 void CSplitterCommandModule::SelectTarget(CStateManager& mgr, float) {
   if (mSyncedId == kInvalidUniqueId) {
     mSyncedId = mgr.GetPlayer(0)->GetUniqueId();
@@ -1451,6 +1462,10 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
 // either the IsScanning trigger (fn_75_58E8, 0x16A8) turns "AlertEye" on or both stay off
 // (0x1718-0x1774). The two names are the rodata strings at 0x18 ("LaserMuzzle") and 0x1C (the
 // "AlertEye" blob at 0x2C0).
+// Arms: all ran - the shield state 1 and 2 turn both effects off, the laser-pulse projectile
+// turns LaserMuzzle on, the synced id turns AlertEye on and the IsScanning trigger is the last
+// way to it; the coverage build's merged profile says 9/9 lines and 10/10 branches, ALL-ARMS.
+// @ fn_75_1578
 void CSplitterCommandModule::PortUpdateEffectStates(CStateManager& mgr) {
   bool alertEye = false;
   bool laserMuzzle = false;
@@ -2174,18 +2189,77 @@ rstl::optional_object< CAABox > CSplitterCommandModule::GetTouchBounds() const {
   return rstl::optional_object< CAABox >(GetBoundingBox());
 }
 
-// vtable slot 0x54 = fn_75_5F8C (0x1E0): the aim position the head scans from.
+// vtable slot 0x54 = fn_75_5F8C (0x5F8C-0x616C): the aim position the head scans from.  The
+// base's own aim (asm 0x5FD8) is the start.  With the shield state at 0xEDC equal to 2 (asm
+// 0x5FDC, 0x5FE4) the chassis at 0xEFA is asked for its aim (the chassis's vtable slot 0x54,
+// asm 0x6028) and the two aims are mixed with the module's timer at 0xF18 as the weight (asm
+// 0x6038, 0x6044; the weight is the timer capped at 1.0f, asm 0x6058, 0x6070): the base's aim
+// weighs (1 - w) and the chassis's w (asm 0x6074-0x607C).  Otherwise, with the timer at 0xF1C
+// below 1.0f (asm 0x6088, 0x6090), the chassis's aim (asm 0x60CC) is mixed the other way round
+// (asm 0x6118-0x6120).  The result is the mixed aim (asm 0x6124).
+// @ fn_75_5F8C
 CVector3f CSplitterCommandModule::GetAimPosition(const CStateManager& mgr, float dt) const {
-  StandIn("CSplitterCommandModule::GetAimPosition (vtable slot 0x54, fn_75_5F8C)");
-  return CPatterned::GetAimPosition(mgr, dt);
+  CVector3f aim = CPatterned::GetAimPosition(mgr, dt);
+  if (mShieldState == 2) {
+    // The retail looks the id up with the manager's ObjectById (asm 0x6004); the port's method is
+    // const, so the manager's const GetObjectById is used.
+    if (const CSplitterMainChassis* chassis =
+            TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mChassisId))) {
+      const CVector3f other = chassis->GetAimPosition(mgr, dt);
+      const float weight = mCountupTimerA < 1.f ? mCountupTimerA : 1.f;
+      aim = aim * (1.f - weight) + other * weight;
+    }
+  } else if (mCountupTimerB < 1.f) {
+    if (const CSplitterMainChassis* chassis =
+            TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mChassisId))) {
+      const CVector3f other = chassis->GetAimPosition(mgr, dt);
+      const float weight = mCountupTimerB < 1.f ? mCountupTimerB : 1.f;
+      aim = other * (1.f - weight) + aim * weight;
+    }
+  }
+  return aim;
 }
 
 
-// vtable slot 0x84 = fn_75_6178.
+// The REL's data words at 0x434, 0x438 and 0x43C: the materials the head collides with (the
+// wall, the floor and the ceiling).  The port's SLdrSplitterCommandModuleData does not carry
+// them, so the REL's initialized values are used.
+static const EMaterialTypes kSplitterCollisionMaterials[] = {kMT_Wall, kMT_Floor, kMT_Ceiling};
+// The REL's two globals: the flag that says the material list is built (lbl_75_bss_0) and the
+// list itself (lbl_75_bss_8).
+static bool sSplitterCollisionMaterialsBuilt = false;
+static CMaterialList sSplitterCollisionMaterialList;
+
+// vtable slot 0x84 = fn_75_6178 (0x6178-0x6310): the head's collision.  The base's own
+// collision runs first (asm 0x619C); then the flag byte at 0xF6A's 0x01 bit must be clear (asm
+// 0x61A0-0x61A8) and the collided id must be invalid (asm 0x61B0-0x61BC).  The material list
+// is built once (asm 0x61C0-0x6290: the three data words, the flag set at 0x6284) and every
+// collision info's material (asm 0x62B8, 0x62C0) is matched against it (asm 0x62D4): a match
+// sets the flag byte's 0x01 bit (asm 0x62E0-0x62E4) and ends the walk (asm 0x62E8).
 void CSplitterCommandModule::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                            CStateManager& mgr) {
-  StandIn("CSplitterCommandModule::CollidedWith (vtable slot 0x84, fn_75_6178)");
   CPatterned::CollidedWith(id, list, mgr);
+  if ((mAutoDestructFlags & 0x1) != 0) {  // 0x61A0-0x61A8
+    return;
+  }
+  if (id != kInvalidUniqueId) {  // 0x61B0-0x61BC
+    return;
+  }
+  if (!sSplitterCollisionMaterialsBuilt) {  // 0x61C0-0x61CC
+    CMaterialList materials;
+    for (EMaterialTypes material : kSplitterCollisionMaterials) {
+      materials.Add(material);
+    }
+    sSplitterCollisionMaterialList = materials;
+    sSplitterCollisionMaterialsBuilt = true;  // 0x6284
+  }
+  for (uint i = 0; i < list.GetCount(); ++i) {  // 0x629C-0x62F0
+    if ((sSplitterCollisionMaterialList.GetValue() &
+         list[i].GetMaterialLeft().GetValue()) != 0) {  // 0x62C0-0x62D4
+      mAutoDestructFlags |= 0x1;  // 0x62E0-0x62E4
+      break;  // 0x62E8
+    }
+  }
 }
 
 // vtable slot 0x9C = fn_75_6174: the REL's whole body is a single `blr`, so the head ignores a

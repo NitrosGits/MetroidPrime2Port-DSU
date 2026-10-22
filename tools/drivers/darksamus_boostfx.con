@@ -1,0 +1,10 @@
+# Dark Samus boost ball effects (fn_10_9B24 / 99B8 / 8F50) on Sanctuary 10_cliff_rooftop layer 2
+# (MP2_WORLD="1baa96c2,10_cliff_rooftop" MP2_INPUT="LAYER2@400"), boss u04f7; the forced token
+# arms are in tools/cov/specs/darksamus_boostfx.py. Spawns at f700 and f1100; BoostBallFire
+# (0xEBC bit 0x40 with the swooshes alive) at f900; the kill with the swoosh 0xE3C alive at f1450.
+@f600 send u04f7 Activate
+@f700 fsm u04f7 BoostBallInto
+@f900 fsm u04f7 BoostBallFire
+@f1100 fsm u04f7 BoostBallInto
+@f1450 kill u04f7
+@f1600 obj u04f7
