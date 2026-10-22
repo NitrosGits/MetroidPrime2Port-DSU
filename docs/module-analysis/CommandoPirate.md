@@ -2051,3 +2051,25 @@ senses, ble/bge taken on NaN): 786C 0x7924 `!(a > b)`, 9064 0x94E8 `!(0.f < f)`,
 (no AiJumpPoint in any commando area, `tools/scan_area_actors.py CMDO`), ShouldShieldCharge B250
 (gates past c64 0x40 not driven yet). asmcheck: ShouldRetry = CanIssueCommand (6.4); 9064
 fn_9_F918/95C8 H-class vector ctor/dtor, GetObjectById = ObjectById; 6A40 NOPOS mPendingDeath.
+
+## The tail9 rows (2026-10-23)
+
+The ten smallest unmarked class-B rows are all **H**: the REL's own copies of template/rstl helpers
+and one of the base class's inline overrides. Each row is identified from its only caller and its
+destination, and the host emits the same code from the same header; none of them is a body the port
+has to write. No source change, so no `// @` marker (nothing of the module's own behaviour is in
+them).
+
+| fn | what it is | caller / evidence | host equivalent |
+|---|---|---|---|
+| `1C` (0x3C) | the vtable's slot 0x48 `GetTouchBounds` (`lbl_9_data_828` + 0x48, word 20) | `bl GetBoundingBox__13CPhysicsActorCFv` 0x34, then the out-of-line `rstl::optional_object<CAABox>` ctor `fn_9_F9BC` 0x40 (`li r0,1` / `stb r0,0x18(r3)`, the six words 0xF9C0..0xF9F0); no branch | `CPatterned::GetTouchBounds` (CPatterned.hpp:443) is literally `return GetBoundingBox();`, and the class does not override it, so host dispatch lands there |
+| `A60` (0x20), `A80` (0x28) | `rstl::construct<CModelData>(dest,src)` — the forward half and the placement-new `if (dest)` | `A20` is the copy ctor of `rstl::optional_object<CModelData>` (`lbz r0,0x4C(r4)` 0xA2C, `stb` 0xA3C, `beq` 0xA40, `bl fn_9_A60` 0xA44); `A60` 0xA6C → `A80`; `A80` 0xA88 `cmplwi r3,0` / 0xA90 `beq` / 0xA94 `bl fn_9_AA8` (= `CModelData`'s copy ctor, an H row) | rstl/construct.hpp:119 + optional_object.hpp:17; the port's loader copies exactly this optional (PortCCommandoPirate.cpp:4761, `LdrToModelData` returns `optional_object<CModelData>`, ScriptLoader.hpp:58) |
+| `4908` (0x38) | `rstl::destroy(begin,end)` of `rstl::vector<CJointCollisionDescription>` | the two pointers 0x4910/0x491C, then `bl fn_9_4940` 0x492C, the 0x68-stride loop that calls the string's `internal_dereference` on each element's +0x2C (0x4974); caller `48A8` (`clear`, count = 0 at 0x48EC) | construct.hpp:151-160; host vector + `push_back` at PortCCommandoPirate.cpp:1255-1260 and 1268 |
+| `49A0` (0x38) | `rstl::vector<CJointCollisionDescription>::push_back_unsafe` (count + construct, **no** growth test) | count +0x4 (0x49AC), items +0xC (0x49B0), `mulli r0,r5,0x68` 0x49B4, count+1 stored 0x49BC, `bl fn_9_49D8` 0x49C4; no `cmpw` against capacity +0x8 | vector.hpp:86; the host's `push_back` (vector.hpp:78) is the growing variant: same increment + construct after its `reserve` |
+| `49D8` (0x20), `49F8` (0x28) | the same `rstl::construct<CJointCollisionDescription>`: forward, then `if (dest)` | `49D8` is a bare `bl fn_9_49F8` 0x49E4; `49F8` 0x4A00 `cmplwi` / 0x4A08 `beq` / 0x4A0C `bl fn_9_4A20` (the copy ctor, H) | construct.hpp:119 |
+| `6190` (0x20), `61B0` (0x28) | `rstl::construct<CImpactVisorEffect::SParticleEffect>`: forward, then `if (dest)` | `6190` bare `bl fn_9_61B0` 0x619C; `61B0` 0x61B8 `cmplwi` / 0x61C0 `beq` / 0x61C4 `bl fn_9_61D8` (the SParticleEffect copy ctor, H); caller `6150` is the copy ctor of `optional_object<SParticleEffect>` (flag at 0x14), reached from `609C` (the CImpactVisorEffect ctor `57A0` builds for `LaunchProjectile`) | CImpactVisorEffect.hpp:16-23; host `CImpactVisorEffect::None()` at PortCCommandoPirate.cpp:860 builds the same optional |
+| `F7B4` (0x3C) | `rstl::uninitialized_copy` of `rstl::vector<CWeaponTypeVulnerability>` (12-byte element: f32 0x0, u32 0x4, u8 0x8, 0xF7C0..0xF7DC, stride 0xC, one `bne` 0xF7E4 back to the copy) | called from `F71C` (the vector's `reserve`: capacity +0x8 compared at 0xF73C, `mulli r3,r30,0xc` 0xF748, the copy call 0xF784, `Free` 0xF78C) which `E72C` (`vector::operator=`) calls; `E6D0` copies the 0xA44 vulnerability, i.e. the ctor's `mShieldVulnerability = …MakeIgnoreRadius()` | construct.hpp:157-165 + CDamageVulnerability.hpp:100 (`CHECK_SIZEOF(CWeaponTypeVulnerability, 0xc)`); host copy at PortCCommandoPirate.cpp:354 |
+
+Verdicts: all ten are `host-copy`/`H` in the table. B progress of the module: the rows leave the B
+denominator, so `tools/port_progress.py` reads CommandoPirate at 75/126 = 59.5% (was 75/136 = 55.1%)
+with the same number of marked bodies.
