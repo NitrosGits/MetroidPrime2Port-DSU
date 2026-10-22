@@ -232,6 +232,7 @@ void StandInBeamEffect(const char* what) {
 }
 } // namespace
 
+// Arms: all ran; the coverage build's merged profile says 20/20 lines and 6/6 branches, ALL-ARMS.
 // @ fn_75_11884
 // The ctor (0x11884-0x11A8C): a CActor (0x1197C) with an empty model (fn_75_11A8C, the
 // CModelData default ctor), the material list holding the material lbl_75_data_E30 names (0,
@@ -266,6 +267,9 @@ CSplitterBeamEffect::CSplitterBeamEffect(TUniqueId uid, const CEntityInfo& info,
 , mUnknown194(0.f)
 , mOpening(true) {}
 
+// Arms: all ran but the deleting flag's arm (the only caller is the operator delete, so the
+// direct-destructor path is dead); the coverage build's merged profile says 4/4 lines and 1/2
+// branches.
 // @ fn_75_11804
 // The dtor (0x11804-0x11884): the texture is scheduled for deletion (0x11834) and freed
 // (0x11848), then the CActor dtor runs (0x11854).
@@ -822,6 +826,8 @@ void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float
 // vector as direction, the area at 0x4, acoustics on and looped (0x1BD8 AddEmitter); its handle
 // goes to 0xF5C and the beam's id to 0xF02 (0x1BDC-0x1BE8). Last the effect states update
 // (0x1BF4 fn_75_1578), with or without the beam.
+// Arms: all ran - the beam info, the new beam, its fire, the sound and the two ids.  The coverage
+// build's merged profile says 19/19 lines and 4/4 branches, ALL-ARMS.
 // @ fn_75_1974
 void CSplitterCommandModule::PortFireLaserSweep(CStateManager& mgr, const CVector3f& end) {
   const CBeamInfo beamInfo = TLdrToBeamInfo(mData.mLaserSweepBeamInfo, 0x91);
@@ -891,6 +897,8 @@ void CSplitterCommandModule::SelectTarget(CStateManager& mgr, float) {
 // fn_75_6B08. The base call is the retail one: EPatternedAI 0x39 (li r4, 0x39 at 0x00006B68),
 // flavor 0 (li r7, 0x0 at 0x00006B30), movement 1 / collider 1 / body 7 (the stack words at
 // 0x00006B60..0x00006B6C - the head flies), all passed to CPatterned at 0x00006B78.
+// Arms: all ran; the coverage build's merged profile says 22/23 lines and 27/27 branches,
+// ALL-ARMS.
 // @ fn_75_6B08
 CSplitterCommandModule::CSplitterCommandModule(TUniqueId uid, const rstl::string& name,
                                                  const CEntityInfo& info, const CTransform4f& xf,
@@ -1088,6 +1096,7 @@ CParticleGenInfo* CSplitterCommandModule::PortGetShieldEffect() {
   return AnimationData()->GetFirstParticleEffect(rstl::string_l(name));
 }
 
+// Arms: all ran; the coverage build's merged profile says 6/6 lines and 2/2 branches, ALL-ARMS.
 // @ fn_75_10D0
 // The module's own transform (0x10D0-0x1188): the actor's own transform (the guest's at 0x24) is
 // copied (0x10F0-0x10F4), the "Beam_LCTR" locator's transform (rodata 0x293, 0x1118
@@ -1354,7 +1363,7 @@ bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
 // zero (asm 0x1214) and above it.  The fight never has the detection range at or below zero, so
 // the range (the base's field at 0x3D0) is written through $this at the body's entry
 // (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=1188).  The coverage build's merged
-// profile says 36/36 lines and 19/21 branches: the two branches still untaken are the
+// profile says 35/35 lines and 21/23 branches: the two branches still untaken are the
 // allocation-failure path of the new and an internal path of the inlined AddObject, neither of
 // which is a live arm.
 // @ fn_75_1188
@@ -1992,7 +2001,8 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
 }
 
 // Arms: all ran; a joint that is not a collision actor and the Beam_LCTR arm are dead (the head's
-// only joint is "Skeleton_Root"); the delete's null test is the compiler's, not a retail arm.
+// only joint is "Skeleton_Root"); the delete's null test is the compiler's, not a retail arm.  The
+// coverage build's merged profile says 18/20 lines and 21/24 branches.
 // @ fn_75_3460
 // The head's collision actor manager (0x3460-0x3674): the head's one joint sphere - the
 // "Skeleton_Root" locator (rodata 0x0) with the radius 3.0f (rodata 0x4) and the mass 1000.0f
