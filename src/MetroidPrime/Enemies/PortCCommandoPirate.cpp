@@ -4047,21 +4047,22 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
           // The movement only runs while the byte at guest this+0xC64 has its 0x08 bit - the
           // charge animation has taken off (the kUE_TakeOff event sets it).
           const CVector3f local = GetTransform().TransposeRotate(xba0_);  // 0x000084A8
-          MoveInOneFrameOR(local * (speed * dt), dt);                     // 0x000084E8
+          MoveInOneFrameOR(local * speed * dt, dt);  // 0x000084C0..0x000084E8: (speed * v) * dt
           if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {
             const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00008538
-            MoveInOneFrameOR(push * (speed * dt), dt);                     // 0x00008578
+            MoveInOneFrameOR(push * speed * dt, dt);  // 0x00008550..0x00008578: (speed * v) * dt
             xbb8_ = CVector3f::Zero();                                    // 0x0000857C..0x00008594
           }
         }
       }
     } else if (x924_ == 0) {
       // 0x0000825C: turn towards the charge direction.
-      if (CVector3f::GetAngleDiff(GetTransform().GetForward(), xba0_) <= 0.17453292f) {
-        x924_ = 1;  // rodata_498, 0x000082E8
-      } else {
+      // 0x00008288 fcmpo + ble .L_000082E8: a plain `>` (a NaN angle takes the ble, x924 = 1).
+      if (CVector3f::GetAngleDiff(GetTransform().GetForward(), xba0_) > 0.17453292f) {
         const CBCLocomotionCmd cmd(CVector3f::Zero(), xba0_, 1.f);  // 0x00008290..0x000082E4
         BodyController()->CommandMgr().DeliverCmd(cmd);
+      } else {
+        x924_ = 1;  // rodata_498, 0x000082E8
       }
     }
     break;
@@ -4152,11 +4153,10 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
       // 0x00007C58: the vertical movement flag (the byte at guest this+0x34C's 0x40 bit).
       mVerticalMovement = true;
       RemoveMaterial(kMT_GroundCollider, mgr);  // 0x00007C74
-      // 0x00007CC4: the loop-attack command; the guest's payload is the loop attack type 4, no
-      // wait for the animation and the flag byte's 0x80 bit (0x00007C90) - the retail's skip-into.
-      CBCLoopAttackCmd loopCmd(pas::kLAT_Four, false);
-      loopCmd.SetSkipInto(true);
-      BodyController()->CommandMgr().DeliverCmd(loopCmd);
+      // 0x00007CC4: the loop-attack command; the guest's payload is the loop attack type 4
+      // (0x00007C98 li r6,0x4), no wait for the animation (0x00007C88 li r5,0x0 -> +0x4C) and the
+      // flag byte's 0x80 bit cleared (0x00007C90 rlwimi r0,r5,7,24,24 with r5 = 0): no skip-into.
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Four, false));
       // The guest calls the manager without a test; the host's test covers the window before
       // the kSM_Create case has built it (the host limit named here).
       if (mCollisionShield.get() != nullptr) {
@@ -4171,7 +4171,9 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
         // inside the actor's own bounding box.
         const CVector3f delta = xb94_ - GetTranslation();
         const CAABox box = GetBoundingBox();
-        const float height = box.GetMaxPoint().GetZ() - box.GetMinPoint().GetZ();
+        // 0x00007DBC lfs f3,0x38(r1) / 0x00007DC0 lfs f2,0x2c(r1) with the box at sp+0x28: the
+        // max's y minus the min's y (the box's depth, not its height).
+        const float height = box.GetMaxPoint().GetY() - box.GetMinPoint().GetY();
         const float along = CVector3f::Dot(GetTransform().GetForward(), delta);
         if (along <= 0.f || delta.MagSquared() <= height * height) {  // 0x00007DDC..0x00007DF0
           if (!x2A98_PickWaypoint(mgr, true)) {  // 0x00007E00
@@ -4354,11 +4356,12 @@ void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
         // the cover point's forward; the guest's three-argument GetAngleDiff has no host
         // counterpart, the host's takes the facing and the direction.
         const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), xba0_);
-        if (angle <= 0.17453292f) {                                  // rodata_498, 0x000074C8
-          x924_ = 1;                                                 // 0x00007528
-        } else {
+        // 0x000074C8 fcmpo + 0x000074CC ble .L_00007528: a plain `>` (a NaN angle takes the ble).
+        if (angle > 0.17453292f) {                                   // rodata_498
           BodyController()->CommandMgr().DeliverCmd(                 // 0x00007520
               CBCLocomotionCmd(CVector3f::Zero(), xba0_, 1.0f));     // rodata_43C, 0x000074D0
+        } else {
+          x924_ = 1;                                                 // 0x00007528
         }
       } else if (x924_ == 1) {                                       // 0x00007488..0x00007534
         if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_WallHang)) {  // 0x0000753C
