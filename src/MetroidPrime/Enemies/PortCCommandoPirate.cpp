@@ -2200,6 +2200,9 @@ bool CCommandoPirate::StateOver(CStateManager& mgr, const CTriggerData& data) co
 // has its 0x20 bit set (extrwi. r0, r0, 1, 26 at 0x0000BDB8).
 // The block's +0x15D is the loader's mFlags1 - the "sound" property's bits 6, 3, 0 and 29 (the
 // data ctor fn_9_EDC0 packs them at 0x0000EF34..0x0000EF60) - so the flag is script-supplied.
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; owner word and +0xC63 0x20 forced.
+// @ fn_9_BD98
 bool CCommandoPirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
   return x920_ == -1 && (mData.mFlags1 & 0x80) != 0 && (xc63_ & 0x20) != 0;
 }
@@ -2217,6 +2220,10 @@ bool CCommandoPirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data)
 //
 // The guest reads the target's position at the actor's +0x54 without a cast; the host's CEntity
 // has no position, so the port casts to CActor and keeps a null test of its own.
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// guest arm (block flag 0x02 forced); the host null cast is dead (the target id is only ever the
+// player's, SelectTarget).
+// @ fn_9_BCB8
 bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
   if ((mData.mFlags0 & 0x02) != 0) {
     return false;                                   // 0x0000BCCC
@@ -2251,6 +2258,9 @@ bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& 
 // dt 0.f, the call at 0x0000BC30) must be inside the grenade's band: the squared distance must
 // not be below the grenade's minimum attack distance (the block's +0x60, the compare at
 // 0x0000BC80) nor above its maximum (the block's +0x64, the compare at 0x0000BC8C).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; E-grenade count, block flag 0x10, target gone forced.
+// @ fn_9_BBC8
 bool CCommandoPirate::ShouldFireEGrenade(CStateManager& mgr, const CTriggerData& data) const {
   if ((xc63_ & 0x02) == 0) {
     return false;                                   // 0x0000BBDC
@@ -2281,6 +2291,9 @@ bool CCommandoPirate::ShouldFireEGrenade(CStateManager& mgr, const CTriggerData&
 // bit (extrwi. r0, r0, 1, 24 at 0x0000BB8C), the block's flag byte at +0x15C does not have its
 // 0x08 bit (extrwi. r0, r0, 1, 28 at 0x0000BB98) and the id at guest this+0xBCE is not
 // kInvalidUniqueId (the compare at 0x0000BBA0..0x0000BBB8).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; the flag bits and the +0xBCE id forced.
+// @ fn_9_BB7C
 bool CCommandoPirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) const {
   return (xc63_ & 0x40) != 0 && (mData.mFlags1 & 0x80) == 0 &&
          (mData.mFlags0 & 0x08) == 0 && xbce_ != kInvalidUniqueId;
@@ -2291,6 +2304,9 @@ bool CCommandoPirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data
 // over the 0x80 limit) decides - the guest calls it with the actor's forward column negated (the
 // three loads at 0x0000BB28..0x0000BB54) and the module's float at guest this+0xBE0 (the load at
 // 0x0000BB58).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; block flag 0x08 forced.
+// @ fn_9_BB10
 bool CCommandoPirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
   if ((mData.mFlags0 & 0x08) != 0) {
     return false;                                   // 0x0000BB20
@@ -2404,6 +2420,9 @@ bool CCommandoPirate::HasTarget(CStateManager& mgr, const CTriggerData& data) co
 // fn_9_BA20: there is a target and it is a new one. The guest asks its own HasTarget trigger
 // first (the call at 0x0000BA3C, fn_9_BA78) and then compares the id at guest this+0xBCC with
 // the target id at +0xBCA (0x0000BA48..0x0000BA54).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; target gone and +0xBCC == target forced.
+// @ fn_9_BA20
 bool CCommandoPirate::HasNewTarget(CStateManager& mgr, const CTriggerData& data) const {
   return HasTarget(mgr, data) && xbcc_ != xbca_;
 }
@@ -2411,6 +2430,9 @@ bool CCommandoPirate::HasNewTarget(CStateManager& mgr, const CTriggerData& data)
 // fn_9_B9D8: the commando's own flag byte at guest this+0xC63 has its 0x80 bit set (extrwi.
 // r0, r0, 1, 24 at 0x0000B9F0), or the base's own answer says the path is shagged (the call at
 // 0x0000B9F8).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; +0xC63 0x80 forced.
+// @ fn_9_B9D8
 bool CCommandoPirate::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
   return (xc63_ & 0x80) != 0 || CPatterned::PathShagged(mgr, data);
 }
@@ -2418,6 +2440,9 @@ bool CCommandoPirate::PathShagged(CStateManager& mgr, const CTriggerData& data) 
 // fn_9_B990: the commando's own flag byte at guest this+0xC65 does not have its 0x80 bit set
 // (extrwi. r0, r0, 1, 24 at 0x0000B9A8 - the beq at 0x0000B9AC takes the "true" branch), or the
 // base's own answer says the path is over (the call at 0x0000B9B0).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; +0xC65 0x80 forced.
+// @ fn_9_B990
 bool CCommandoPirate::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return (xc65_ & 0x80) == 0 || CPatterned::PathOver(mgr, data);
 }
@@ -2435,6 +2460,9 @@ bool CCommandoPirate::IsOffPath(CStateManager& mgr, const CTriggerData& data) co
 // GetConnectedObject(mgr, kSS_Attack, kSM_Follow) (the call at 0x0000B928, with the two FourCCs
 // built at 0x0000B908..0x0000B924) - and the actor's compare against kInvalidUniqueId
 // (0x0000B930..0x0000B944) is the != test.
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py):
+// branch-free; true (swamp, natural) and false answers recorded.
+// @ fn_9_B900
 bool CCommandoPirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
   return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
@@ -2479,6 +2507,9 @@ bool CCommandoPirate::AttackPatternOver(CStateManager& mgr, const CTriggerData& 
 // 0x0000B7A4). That radius is the base's minimum attack range - the host's own
 // CPatterned::TooClose compares against mMinAttackRange (src/MetroidPrime/Enemies/
 // CPatternedAiFunctions.cpp:107).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// guest arm (target gone forced); the host null cast is dead (player id).
+// @ fn_9_B76C
 bool CCommandoPirate::TooClose(CStateManager& mgr, const CTriggerData& data) const {
   const CEntity* target = mgr.GetObjectById(xbca_);
   if (target == nullptr) {
@@ -2501,6 +2532,9 @@ bool CCommandoPirate::TooClose(CStateManager& mgr, const CTriggerData& data) con
 // 0x0000B71C). Then either the under-fire distance at guest this+0xB64 is under 0.75f
 // (rodata_4E0, the compare at 0x0000B730) or the heard-shot distance at guest this+0xB60 is
 // under 1.5f (rodata_47C, the compare at 0x0000B744).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// guest arm (+0xB64 under 0.75 and target gone forced); the host null cast is dead (player id).
+// @ fn_9_B690
 bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
   if ((mData.mFlags0 & 0x20) != 0) {
     return false;                                   // 0x0000B6A4
@@ -2527,6 +2561,9 @@ bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) 
 // bit set (extrwi. r0, r4, 1, 24 at 0x0000B668), the block's flag byte at +0x15D does not have
 // its 0x20 bit (extrwi. r0, r0, 1, 26 at 0x0000B674) and that same byte's 0x01 bit is clear
 // (clrlwi. r0, r4, 31 at 0x0000B67C).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; the flag bits forced.
+// @ fn_9_B660
 bool CCommandoPirate::ShouldArmShield(CStateManager& mgr, const CTriggerData& data) const {
   return (xc64_ & 0x80) != 0 && (mData.mFlags1 & 0x20) == 0 && (xc64_ & 0x01) == 0;
 }
@@ -2721,6 +2758,9 @@ bool CCommandoPirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& dat
 // (extrwi. r0, r0, 1, 28 at 0x0000B0F8, and the beq at 0x0000B0FC takes the "clear" branch) and
 // the module's flag byte at this+0xC63 must have its 0x01 bit set (clrlwi r3, r0, 31 at
 // 0x0000B10C keeps only that bit).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; block flag 0x08 and +0xC63 0x01 forced.
+// @ fn_9_B0F4
 bool CCommandoPirate::ShouldCover(CStateManager& mgr, const CTriggerData& data) const {
   return (mData.mFlags0 & 0x08) == 0 && (xc63_ & 0x01) != 0;
 }
@@ -2728,6 +2768,9 @@ bool CCommandoPirate::ShouldCover(CStateManager& mgr, const CTriggerData& data) 
 // fn_9_B0D4: the module's cover point id at guest this+0xBD2 (the u16 loaded at 0x0000B0DC)
 // is not kInvalidUniqueId - the same "the two differ" idiom as FoundJumpPoint (0x0000B0E0..).
 // The constructor leaves the id kInvalidUniqueId (0x0000DBC8).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py):
+// branch-free; true (swamp cover point u05c8) and false answers recorded.
+// @ fn_9_B0D4
 bool CCommandoPirate::FoundCover(CStateManager& mgr, const CTriggerData& data) const {
   return xbd2_ != kInvalidUniqueId;
 }
@@ -2822,6 +2865,9 @@ void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
 // at 0x00003D1C, CActor's slot 0x54, GetAimPosition - with the state manager and the dt, and
 // copies the answer into the out vector (0x00003D28..0x00003D38). It returns false when the
 // target is gone (0x00003D40).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// guest arm (target gone forced); the host null cast is dead (player id).
+// @ fn_9_3CBC
 bool CCommandoPirate::x3CBC_(CStateManager& mgr, CVector3f& out, float dt) const {
   const CEntity* target = mgr.GetObjectById(xbca_);
   if (target == nullptr) {
@@ -2847,6 +2893,10 @@ bool CCommandoPirate::x3CBC_(CStateManager& mgr, CVector3f& out, float dt) const
 // 0x0000AD08) and delivers the locomotion command that walks there (the CBCLocomotionCmd at
 // 0x0000AD70).
 // On deactivate (the guest's message 2, 0x0000AD84) the animation state goes back to "not ready".
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm (aim = own position forced on activate); the message switch's default is dead (note 6.6).
+// asmcheck CALL ShouldRetry/CanIssueCommand is the known false positive (6.4).
+// @ fn_9_ABDC
 void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -2934,12 +2984,17 @@ void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) 
 // 0x0000AAA0..0x0000AAB8) and the 0x80 bit of +0xC65 is set (the rlwimi at 0x0000AAC0).
 // Then the path find navigation's destination is set (the SetDestination call at 0x0000AAD0) and
 // its face target id (guest this+0x718 - the navigation's own member at +0x24) is cleared (the
-// store at 0x0000AAE8). The module's own helper fn_9_19D8 (0xc4 bytes, over the 0x80 limit) is
-// called last (0x0000AAEC) and stands in for now.
+// store at 0x0000AAE8). The module's team helper fn_9_19D8 (x19D8_JoinTeam) is called last
+// (0x0000AAEC). The +0xAE8 bit is CVisualKnowledge's visible flag, read through IsTargetVisible
+// (asmcheck's "xae8_80 never read" is that named accessor).
 //
 // The guest reads the target's position at the actor's +0x54 without a cast; the host's CEntity
 // has no position, so the port casts to CActor and keeps a null test of its own (the guest's
 // only null test is the lookup's, at 0x0000AA80).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// guest arm; the target id invalid and +0xC64 0x40 forced, visible both ways natural. The host null
+// cast is dead (player id).
+// @ fn_9_AA20
 void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;
@@ -2965,6 +3020,9 @@ void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt)
 // (0x0000A9B0..0x0000A9BC) and gets it back when there is a point (0x0000A9D0..0x0000A9DC). The
 // navigation's face target id (guest this+0x718) goes to kInvalidUniqueId
 // (0x0000A9F0..0x0000A9FC) and the byte at guest this+0xC63 gets its 0x01 bit (0x0000AA00..0x0000AA08).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm.
+// @ fn_9_A97C
 void CCommandoPirate::SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {  // 0x0000A984..0x0000A994
     return;
@@ -3136,6 +3194,9 @@ void CCommandoPirate::x19D8_JoinTeam(CStateManager& mgr) {
 // Then, while the block's flag byte at +0x15C does not have its 0x08 bit (extrwi. r0, r0, 1, 28 at
 // 0x00009B58) and the byte at +0xC65 has its 0x80 bit (extrwi. r0, r0, 1, 24 at 0x00009B64), the
 // path find navigation runs (the call at 0x00009B80) and the module's own helper follows.
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm.
+// @ fn_9_9AAC
 void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -3200,6 +3261,9 @@ void CCommandoPirate::x1A9C_AvoidActors(CStateManager& mgr) {
 // patrols (the call at 0x00009A78). The guest's own enum has more messages than the host's, so
 // the two the body tests are the host's kStateMsg_Activate (0) and kStateMsg_Deactivate (2);
 // every other message skips the setup (0x00009A9C0..0x00009A9C8 and 0x00009A9BC).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm.
+// @ fn_9_996C
 void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -3616,6 +3680,10 @@ int CCommandoPirate::x3678_PickDodgeDirection(CStateManager& mgr) const {
 // (the store at 0x00008ADC), the dodge id at guest this+0xBDC goes back to -1 (0x00008AE8), the
 // module's flag byte at +0xC63 loses its 0x04 bit (the rlwimi at 0x00008AF0, the mask
 // 1u << (31 - 29) = 0x04) and the timer at guest this+0xB68 is cleared (0x00008AF8).
+// Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
+// arm; the message switch's default is dead (note 6.6). asmcheck CALL ShouldRetry/CanIssueCommand
+// is the known false positive (6.4).
+// @ fn_9_8934
 void CCommandoPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
