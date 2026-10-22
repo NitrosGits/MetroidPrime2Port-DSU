@@ -1691,3 +1691,32 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 | 101E0 | built, CanCreate false (70 pulses out); TryCache false | gun2; forced (force.sh, weapon uncached) | 9/9, marked |
 
 - Marked: 16D64, 167EC, 16408, 10798, 101E0.
+
+## 2026-10-22: the head's AttachedToBody, BombedReaction and SeekMotionPath (dg23); gcov run dg23_r3
+
+The DGHD_STATE_STANDIN block is gone (asmcheck now finds ChargeAttack 16A50 again). Asm (section
+offsets): 1633C 0x1633C..0x16408, 15CE8 0x15CE8..0x15E18, 158F8 0x158F8..0x15B94; the ctor's 0xFE4
+store 0x18A8C..0x18A9C (`lfs f0,0x8(r29)`, r29 = the CPatternedInfo: mTurnSpeed; the host takes
+CPatterned::mTurnSpeed, copied from it). 0x7DC = data +0x1C maxStunnedLinearVelocity.
+
+- Driver `tools/cov/specs/digitalguardian_dg23.con` (`--fast --frames 900`). New console var
+  `dghd.stunspeed` (data +0x1C; retail 10).
+- AttachedToBody has no FSM2 node in area 53's machine (`fsm` refuses it): every arm by `statecall`.
+
+| fn | arm | how |
+|---|---|---|
+| 1633C | Activate / Update / msg 2 / msg 3 | statecall 0/1/2/3 |
+| 1633C | flat direction unsafe (0x163D8 taken) | `statecall FaceTarget 2` (0x1028 zero) + `statecall AttachedToBody 1 0` in one tick |
+| 1633C | flat direction safe | statecall 1 0.016 after Activate |
+| 15CE8 | Activate, Update issue / no issue, Deactivate | `fsm BombedReaction` (the body then in the knock-back), `fsm FaceTarget` |
+| 15CE8 | msg 3 | statecall 3 |
+| 158F8 | no platform (Activate and Update) | `fsm SeekMotionPath` before SelectRetreatPlatform |
+| 158F8 | speed <= epsilon | `var dghd.stunspeed 0` after `codecall SelectRetreatPlatform` |
+| 158F8 | turn speed set, step short (move) | stunspeed 20 |
+| 158F8 | step reaches (Over, SetTranslation) | stunspeed 100000 |
+| 158F8 | Deactivate, msg 3 | `fsm FaceTarget`, statecall 3 |
+
+All three ALL-ARMS in one run (dg23_r3, caught/reach-stub 0) and marked. Open: at stunspeed 20 the
+head hardly moved toward the platform in 450 frames (MoveInOneFrameOR on the flyer; SeekAttackPosition
+uses the same call) - unexplained, not chased. `damage <head> 50 bomb` does not hurt the head (hp
+150 -> 150); BombedReaction comes from the bomb pit's path, not reached naturally here.

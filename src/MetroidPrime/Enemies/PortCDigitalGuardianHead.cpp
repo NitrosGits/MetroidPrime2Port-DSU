@@ -1969,6 +1969,14 @@ bool CDigitalGuardianHead::PortConsoleVar(CEntity& ent, const char* name, const 
     current = static_cast< int >(head->x1090_);
     return true;
   }
+  // data +0x1C (0x7DC): SeekMotionPath's flight speed, StunnedReaction's drift speed.
+  if (strcmp(name, "dghd.stunspeed") == 0) {
+    if (value != nullptr) {
+      head->mData.maxStunnedLinearVelocity = static_cast< float >(*value);
+    }
+    current = static_cast< int >(head->mData.maxStunnedLinearVelocity);
+    return true;
+  }
   return false;
 }
 

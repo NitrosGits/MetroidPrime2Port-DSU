@@ -319,7 +319,7 @@ private:
   float xFE4_; // 0xFE4: the turn speed (the CPatternedInfo's, the ctor's 0x18A9C)
 
 public:
-  // Host: the console's `var <id> dghd.attack|flags|sweeptime [value]` (platform/port_console.cpp).
+  // Host: the console's `var <id> dghd.attack|flags|sweeptime|stunspeed [value]` (platform/port_console.cpp).
   static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
 
 private:
