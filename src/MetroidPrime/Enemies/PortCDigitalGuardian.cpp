@@ -2434,6 +2434,7 @@ void CDigitalGuardian::ExitVortexAttack(CStateManager& mgr, EStateMsg msg, float
   }
 }
 
+// @ fn_14_8CCC
 // fn_14_8CCC: the state message picks the work (the cmpwi chain at 0x8CD4..0x8CFC).
 // Activate (0): with a melee leg (0x11D8 != -1, 0x8D08) ready (0x8D18) and the leg's toe target
 // to state 0 (fn_14_1A68 with r6 = 0, 0x8D20), else over (3, 0x8D2C); then 0x11E8 = 1 (0x8D34).
@@ -2471,6 +2472,7 @@ void CDigitalGuardian::MeleeAttackTelegraph(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
+// @ fn_14_89D4
 // fn_14_89D4: the animation the state started on is a function static (lbl_14_bss_4, -1 on the
 // first call: the guard byte lbl_14_bss_8 at 0x89F0..0x8A0C). The state message picks the work
 // (the cmpwi chain at 0x8A10..0x8A2C).
@@ -2524,6 +2526,7 @@ void CDigitalGuardian::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float
   StandInFn("fn_14_8794");
 }
 
+// @ fn_14_8580
 // fn_14_8580: the state message picks the work (the cmpwi chain at 0x8588..0x85BC).
 // Activate (0): ready (0x85CC), 0x11E8 = 0 (0x85D4), every toe target to state 0 (fn_14_1A68
 // with r6 = 0, the loop to 4 at 0x85D8..0x85F4) and the speed back to the base speed (0x1288 ->
@@ -2799,6 +2802,7 @@ void CDigitalGuardian::SelectExitVortexTarget(CStateManager& mgr, float dt) {
   x1168_ = x308C_(mgr, player);
 }
 
+// @ fn_14_7504
 // fn_14_7504: 0x11D8 starts at -1 (0x7544); the leg whose locator (0x10C8[i], GetLctrTransform at
 // 0x7578) is nearest the player (0x14FC, its x and y at 0x7564/0x7568) on the xy plane (the
 // square sum plus 0.0f, .rodata 0x264, 0x75A0) wins: a leg replaces the best only when strictly
@@ -2846,6 +2850,7 @@ void CDigitalGuardian::SelectMeleeAttackRange(CStateManager& mgr, float dt) {
   x11DC_ = 0.f + (dx * dx + dy * dy) >= mData.mNearLegStabRange * mData.mNearLegStabRange ? 1 : 0;
 }
 
+// @ fn_14_7208
 // fn_14_7208: the face target 0x1278 is zeroed (0x724C..0x7260). The waypoint nearest the player
 // (fn_14_308C with the player's translation, 0x7280) is looked up (GetObjectById at 0x7298; none:
 // done, 0x72A0). The angle between the body's offset to it (0x72D0..0x72F0) and the body's
