@@ -3260,7 +3260,7 @@ void CCommandoPirate::x1A9C_AvoidActors(CStateManager& mgr) {
 // fn_9_996C: the message picks the locomotion the patrol uses and the waypoint navigation then
 // patrols (the call at 0x00009A78). The guest's own enum has more messages than the host's, so
 // the two the body tests are the host's kStateMsg_Activate (0) and kStateMsg_Deactivate (2);
-// every other message skips the setup (0x00009A9C0..0x00009A9C8 and 0x00009A9BC).
+// every other message skips the setup (0x000099AC, 0x000099C4).
 // Run: cp2 2026-10-22 (n1-n3 natural 59/swamp; f1-f4 tools/cov/specs/commandopirate_cp2.py): every
 // arm.
 // @ fn_9_996C
@@ -3275,7 +3275,7 @@ void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
     const float ratio = BodyController()->BodyStateInfo().GetLocomotionSpeed(pas::kLA_Walk) /
                          BodyController()->BodyStateInfo().GetLocomotionSpeed(pas::kLA_Run);
     // 0x00009A1C: the guest's body controller takes a flag at +0x4C, one here and zero in the
-    // other branch (0x00009B60). That field is the command manager's steering blend mode (the
+    // other branch (0x00009A60). That field is the command manager's steering blend mode (the
     // cmd mgr sits at body controller + 4 and its six CVector3f put mSteeringMode at +0x48), so
     // the host's enumerator with the value 1 is kSBM_FullSpeed.
     BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);  // 0x00009A1C
@@ -3284,10 +3284,10 @@ void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
   case kStateMsg_Deactivate: {
     // 0x00009A3C: the combat locomotion; 0x00009A50: twice the turn speed (lbl_9_rodata_44C is
-    // 2.f); 0x00009B60: the same flag at +0x4C, cleared - the host's value 0 is kSBM_Normal.
+    // 2.f); 0x00009A60: the same flag at +0x4C, cleared - the host's value 0 is kSBM_Normal.
     BodyController()->SetLocomotionType(pas::kLT_Combat);
     BodyController()->SetTurnSpeed(2.f * BodyController()->GetTurnSpeed());
-    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);  // 0x00009B60
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);  // 0x00009A60
     break;
   }
   default:
