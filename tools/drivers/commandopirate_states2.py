@@ -126,6 +126,10 @@ def main():
         # The Dead state first: the kill at the end deletes the actor, so the state has to run
         # while the commando is still there.
         step(cid, "fsm %s Dead", 60)
+        # and once more (with another state in between, so the state is entered again): the first
+        # entry runs the Dead state's arms with the byte's 0x20 bit clear, the second with it set.
+        step(cid, "fsm %s Lurk", 10)
+        step(cid, "fsm %s Dead", 60)
         # The body states the state machine does not reach: the body's own state is written with
         # the console's `bodystate` (the pas::EAnimationState index).
         step(cid, "bodystate %s 20", 5)   # kAS_WallHang

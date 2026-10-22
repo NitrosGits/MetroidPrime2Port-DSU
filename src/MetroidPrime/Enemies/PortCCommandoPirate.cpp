@@ -4265,6 +4265,14 @@ void CCommandoPirate::BreakCover(CStateManager& mgr, EStateMsg msg, float dt) {
 // 0x000069EC); the activate message (the guest's test of 0 at 0x000069F0) then takes the byte at
 // guest this+0xC66's 0x40 bit away (0x000069FC..0x00006A08) and, when that byte still has its
 // 0x20 bit (the test at 0x00006A10), the module's shield effect runs (0x00006A18..0x00006A20).
+//
+// Run: cov 2026-10-22 (area 59's Swamp run, the coverage build, tools/cov/run.sh with
+// tools/cov/specs/commandopirate_states2.py and tools/drivers/commandopirate_states2.py): 6/6
+// lines, 4/4 branches. The state's activate is forced with the console's `fsm Dead` (forced
+// (fsm)); the byte's 0x20 bit is written by the forcing spec (forced (the spec writes the bit)) -
+// the knock-back helper (fn_9_2D0C) is its only writer, so the two runs (the force from the
+// first entry on and the force from the second entry on) give both arms of the test.
+// @ fn_9_69C8
 void CCommandoPirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Dead(mgr, msg, dt);  // 0x000069EC
   if (msg != kStateMsg_Activate) {  // 0x000069F0..0x000069F8
