@@ -1893,6 +1893,7 @@ static const float skCommandoRagDollRadii[14] = {
     0.15f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f,
 };  // lbl_9_rodata_3C8 (0x38 bytes)
 
+// @ fn_9_3E1C
 void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noRagDoll) {
   if (!noRagDoll) {                                                // 0x00003E3C, 0x00003E4C
     CPirateRagDoll* ragDoll = xbfc_ragDoll.get();                  // 0x00003E50
