@@ -2026,3 +2026,28 @@ reads on) and D904 (the token conditions live in xD904_LockEffect).
 
 asmcheck: 8028 0x8300, 7A98 0x7C4C, 7358 0x7540 ShouldRetry is CanIssueCommand (cp2 6.4); 7358
 0x7414/0x7428/0x742C are the host's FindConnectedObject_if + ObjectById + TCastToConstPtr.
+
+## The cp6 rows (2026-10-22)
+
+Runs (gcov build-port-cov, Swamp `05_swamp_timber!`, driver `tools/drivers/commandopirate_cp6.py`,
+spec `tools/cov/specs/commandopirate_cp6.py`): natural `tools/cov/run.sh` with the sections
+getup,restore,coverblown,egrenade,postegrenade,warpin (9000 frames, exit at the driver's end ~3050);
+the Cover side under gdb (`COV_GDB_SCRIPT=tools/cov/force_ret.py tools/cov/force.sh`, section cover,
+2500 frames). Exit 0, 0 caught / reach-stub each.
+
+| Body | Arms | How |
+|---|---|---|
+| CoverBlown AFD4 | 6/6, 8/8 | forced: no target, target inside the minimum range, no cover point, Blown both ways (xbca/xbd2 set to other cover points/waypoints, the actor placed beside them) |
+| EGrenadeAttack A2EC | 17/17, 7/8 | untaken: default; forced: no aim position, command refused |
+| PostEGrenadeAttack A110 | 22/22, 13/14 | untaken: default; forced: pause over (fsmtime), no target / aim, yaw sweep, target on the actor (unsafe delta) |
+| WarpIn 9064 | 48/56, 29/46 | untaken: default and the GRNT/FOLW waypoint pick (data-dead: no shipped commando has a GRNT connection, `tools/scan_commando_pattern.py --all`); forced: collision (on the player), x920, xc58, bodystate 12 |
+| Cover 6DBC | 23/23, 13/14 | untaken: default; forced: bodystate 19/0, no cover point; the side: every other `GetAttackDirection` from Cover answers with 0x4 flipped (gdb, return value only; every Swamp cover point has the same bit) |
+| GetUp 6A40 | 16/17, 8/10 | untaken: default and the death (dead: Search(pos, pos) answers Success on close_enough first, DOL 0x8013DD44) |
+| RestoreOrientation 786C | 29/29, 13/14 | untaken: default; forced: place pitch 90/1, dt 1.0/0.0001 |
+
+Console: `var <id> cp.` gains xbd0, x920, pendingdeath, xb78, xc58 (ms). Fixed against the asm (NaN
+senses, ble/bge taken on NaN): 786C 0x7924 `!(a > b)`, 9064 0x94E8 `!(0.f < f)`, B250
+0xB33C..0xB348 and 0xB370..0xB384 (cror + bne). Left unmarked: JetBoost 9BB4 / JumpPointFind 9F24
+(no AiJumpPoint in any commando area, `tools/scan_area_actors.py CMDO`), ShouldShieldCharge B250
+(gates past c64 0x40 not driven yet). asmcheck: ShouldRetry = CanIssueCommand (6.4); 9064
+fn_9_F918/95C8 H-class vector ctor/dtor, GetObjectById = ObjectById; 6A40 NOPOS mPendingDeath.

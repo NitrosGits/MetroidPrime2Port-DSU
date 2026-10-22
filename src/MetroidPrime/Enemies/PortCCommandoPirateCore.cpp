@@ -167,6 +167,10 @@ bool CCommandoPirate::Listen(CStateManager& mgr, const CVector3f& position, ELis
 // than the minimum attack range (this+0x3DC, both squared, 0x0000B064..0x0000B068); then the
 // cover point the actor holds (this+0xBD2, 0x0000B080) decides with CScriptCoverPoint::Blown
 // (0x0000B090). Every other arm answers true (0x0000B098).
+// Run: cov 2026-10-22 (cp6: tools/drivers/commandopirate_cp6.py, 05_swamp_timber!): every arm; no target,
+// the target inside the minimum range, no cover point, and Blown both ways forced (xbca/xbd2 set
+// to other cover points and waypoints, the actor placed beside them).
+// @ fn_9_AFD4
 bool CCommandoPirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
   CVector3f aim = CVector3f::Zero();                                   // 0x0000AFDC..0x0000B01C
   if (x3CBC_(mgr, aim, 1.f) &&                                         // rodata_43C, 0x0000B020..0x0000B028
@@ -250,6 +254,10 @@ void CCommandoPirate::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
 // (0x0000A3A4, 0x0000A3D4).
 // Deactivate: not ready (0x0000A430), the timer this+0xB74 is 0.f (0x0000A438) and this+0xC65
 // loses 0x01 (0x0000A440).
+// Run: cov 2026-10-22 (cp6: tools/drivers/commandopirate_cp6.py, 05_swamp_timber!): every arm but the
+// dead default; the aim position forced missing (xbca invalid) and the command refused (state
+// not ready).
+// @ fn_9_A2EC
 void CCommandoPirate::EGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:                                             // 0x0000A32C
@@ -283,6 +291,10 @@ void CCommandoPirate::EGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt
 // 1.f lbl_9_rodata_43C, 0x0000A2B0) when the direction is safe (0x0000A214) and more than 20
 // degrees off (lbl_9_rodata_4B4, 0x0000A24C..0x0000A250).
 // Deactivate: not ready (0x0000A2C8).
+// Run: cov 2026-10-22 (cp6: tools/drivers/commandopirate_cp6.py, 05_swamp_timber!): every arm but the
+// dead default; the pause forced over (fsmtime), no target / no aim position (xbca invalid),
+// the yaw swept for the turn / no turn, and the target on the actor for the unsafe delta.
+// @ fn_9_A110
 void CCommandoPirate::PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:                                             // 0x0000A158
@@ -398,6 +410,13 @@ void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
 // Deactivate: not ready (0x00009510), the four materials back (0x00009524), alpha (u8)255.f
 // (lbl_9_rodata_4DC, 0x0000952C..0x0000954C), the alpha delta 0.f (0x00009550), the word -1
 // (0x00009554) and this+0xC63 loses 0x20 (0x0000955C).
+// Run: cov 2026-10-22 (cp6: tools/drivers/commandopirate_cp6.py, 05_swamp_timber!): every arm but the
+// dead default and the waypoint pick: the collision forced (placed on the player), x920 and the
+// kept time (xc58) forced, the body state forced generating (bodystate 12). The GRNT/FOLW
+// waypoint arm (0x00009144..0x00009234) is data-dead: no commando in the shipped data has a
+// GRNT connection (tools/scan_commando_pattern.py --all: 9 CMDO, only ACTV/PLAY, ATTK/FOLW,
+// MDFY/FOLW, RATL/ZERO and RATL/INCR).
+// @ fn_9_9064
 void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:                                             // 0x000090B4
@@ -449,7 +468,8 @@ void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
           xc58_ = BodyController()->GetAnimTimeRemaining();            // 0x00009498..0x0000949C
         } else if (xc58_ > 1.1920929e-07f) {                           // rodata_4C4, 0x000094A4..0x000094B4
           float f = 1.f - BodyController()->GetAnimTimeRemaining() / xc58_;  // rodata_43C, 0x000094B8..0x000094DC
-          if (0.f >= f) {                                              // rodata_494, 0x000094E4..0x000094F0
+          // bge (branch when lt is clear): taken on NaN too, so the clamp is !(0.f < f).
+          if (!(0.f < f)) {                                            // rodata_494, 0x000094E4..0x000094F0
             f = 0.f;
           }
           mColor.SetAlpha(static_cast< uchar >(255.f * f));            // rodata_4DC, 0x000094F4..0x00009500
@@ -518,6 +538,12 @@ void CCommandoPirate::Crouch(CStateManager& mgr, EStateMsg msg, float dt) {
 // actor slides 5% of the way to the cover's position (lbl_9_rodata_470 = 0.05f, the local offset
 // from TransposeRotate, 0x00006FA0..0x0000700C).
 // Deactivate: not ready (0x00007018).
+// Run: cov 2026-10-22 (cp6: tools/drivers/commandopirate_cp6.py, 05_swamp_timber!; side forced under
+// gdb, tools/cov/specs/commandopirate_cp6.py): every arm but the dead default; already in the
+// cover state (bodystate 19), no cover point, the command refused can / cannot shoot (bodystate
+// 19 / 0). Every Swamp cover point has the same 0x4 bit, so the other side is forced: every
+// other GetAttackDirection call from Cover answers with the bit flipped (return value only).
+// @ fn_9_6DBC
 void CCommandoPirate::Cover(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:                                             // 0x00006E08
@@ -591,6 +617,14 @@ void CCommandoPirate::CoverAttack(CStateManager& mgr, EStateMsg msg, float dt) {
 // (this+0x421's 0x10, the pending death, 0x00006AC0); otherwise once the getup command may be
 // issued (kAS_Getup = 1, 0x00006AD4..0x00006AE0) it goes out (id 0, type 0, 0x00006AE4..0x00006B18).
 // Deactivate: not ready (0x00006B4C) and this+0xC65 loses 0x10 (0x00006B54).
+// Run: cov 2026-10-22 (cp6: tools/drivers/commandopirate_cp6.py, 05_swamp_timber!): every arm but the
+// dead default and the death: standing / lying (bodystate 5 / 2), the command refused (not
+// ready), lying off the mesh. The death arm is dead: GetUp searches from its own position to the
+// same vector (r4 = r5 = this+0x54, 0x00006AA0..0x00006AA8), and the DOL's
+// CPathFindSearch::Search(const CVector3f&, const CVector3f&) answers kR_Success first when
+// close_enough(source, dest) (bl close_enough at 0x8013DD44, beq at 0x8013DD4C; the port's
+// CPathFindSearch.cpp:57 the same), before any source-point lookup. Only a NaN position fails it.
+// @ fn_9_6A40
 void CCommandoPirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:                                             // 0x00006A78
