@@ -484,6 +484,8 @@ void CSplitterCommandModule::Start(CStateManager&, EStateMsg, float) {}
 // fn_75_58DC (the head's IsInitiallyDocked trigger, 0x58DC-0x58E8): the SPLU parameter block's
 // first word (0x7C0, the loader's unknown_0xbd80fd94) is read (0x58DC lwz) and its low bit is
 // kept (0x58E0 clrlwi with the word's bit 31 - the byte's 0x01); that bit is the answer.
+// Arms: no branches; the coverage build's merged profile hits every line.
+// @ fn_75_58DC
 bool CSplitterCommandModule::IsInitiallyDocked(CStateManager&, const CTriggerData&) const {
   return (mData.mUnknownBD80FD94 & 0x1) != 0;
 }
@@ -491,6 +493,8 @@ bool CSplitterCommandModule::IsInitiallyDocked(CStateManager&, const CTriggerDat
 // fn_75_58BC (the head's IsDocked trigger, 0x58BC-0x58DC): the id at 0xEFA (the chassis the
 // head is docked to) is compared with kInvalidUniqueId (0x58C0 lhz, 0x58C4 lhz, 0x58C8 subf,
 // 0x58CC subf, 0x58D0 or, 0x58D4 srwi by 31): the trigger is true when the id is valid.
+// Arms: no branches; the coverage build's merged profile hits every line.
+// @ fn_75_58BC
 bool CSplitterCommandModule::IsDocked(CStateManager&, const CTriggerData&) const {
   return mChassisId != kInvalidUniqueId;
 }
@@ -506,6 +510,8 @@ void CSplitterCommandModule::RaiseShields(CStateManager&, float) {
 // fn_75_57B4 (the head's HasTarget trigger, 0x57B4-0x57D4): the id at 0xEFE (the copy of the
 // chassis's 0xCC0) is compared with kInvalidUniqueId (0x57B8 lhz, 0x57BC lhz, 0x57C0 subf,
 // 0x57C4 subf, 0x57C8 or, 0x57CC srwi): the trigger is true when the id is valid.
+// Arms: no branches; the coverage build's merged profile hits every line.
+// @ fn_75_57B4
 bool CSplitterCommandModule::HasTarget(CStateManager&, const CTriggerData&) const {
   return mSyncedId != kInvalidUniqueId;
 }
@@ -711,7 +717,8 @@ void CSplitterCommandModule::FaceTarget(CStateManager& mgr, EStateMsg msg, float
     mEditorProperties = GetTransform().GetColumn(kDY);
     return;
   }
-  if (msg != kStateMsg_Update || dt <= 0.f) {
+  // 0x510C fcmpo dt, 0.0f (lbl_75_rodata_40); 0x5110 ble: a NaN frame time skips the update.
+  if (msg != kStateMsg_Update || !(dt > 0.f)) {
     return;
   }
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mSyncedId));
@@ -1949,6 +1956,9 @@ bool CSplitterCommandModule::PortDodgeClear(CStateManager& mgr, const CVector3f&
 // fn_75_565C (the head's InLaserPulseRange trigger, 0x565C-0x570C): with the target at 0xEFE
 // (0x5680) its squared distance (0x568C-0x56CC) lies between the data's minimum (0x7D4) and
 // maximum (0x7D8) laser pulse ranges squared (0x56D0-0x56E4).
+// Arms: ALL-ARMS; the in-range, below-min, above-max and no-target arms forced (SPLITTER22 force_ret, splitter_split22.py), with
+// the natural 914f1381 and a92f00b3 head runs; gdb saw both results.
+// @ fn_75_565C
 bool CSplitterCommandModule::InLaserPulseRange(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId));
   if (target == nullptr) {  // 0x5684-0x5688
@@ -1962,6 +1972,9 @@ bool CSplitterCommandModule::InLaserPulseRange(CStateManager& mgr, const CTrigge
 // fn_75_570C (the head's InHoverRange trigger, 0x570C-0x57B4): with the target at 0xEFE (0x5730)
 // its squared distance is within half (lbl_75_rodata_44) the sum of the two laser pulse ranges,
 // squared (0x573C-0x5794).
+// Arms: ALL-ARMS; the no-target, in-range and out-of-range arms forced (SPLITTER22 force_ret, splitter_split22.py), with the natural
+// head runs; gdb saw both results.
+// @ fn_75_570C
 bool CSplitterCommandModule::InHoverRange(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mSyncedId));
   if (target == nullptr) {  // 0x5734

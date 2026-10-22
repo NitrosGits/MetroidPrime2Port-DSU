@@ -217,8 +217,11 @@ bool CSplitterMainChassis::HasLineOfSight(CStateManager&, const CTriggerData&) c
 // (0xE310-0xE324, lbl_75_rodata_390) and the target at 0xCC0 is there (0xE328-0xE340); then the
 // answer is the squared distance below the square of the data's leg stab min range (0x830,
 // 0xE344-0xE384: fcmpo, the cr0 lt bit).
+// Arms: ALL-ARMS; the bit, timer, no-target and range arms forced (SPLITTER22 force_ret, splitter_split22.py); gdb saw both results.
+// @ fn_75_E2F0
 bool CSplitterMainChassis::ShouldMorphballStab(CStateManager& mgr, const CTriggerData&) const {
-  if ((mData.mUnknownCEF5C2FE & 0x4) == 0 || mLegStabTimer > 0.f) {
+  // 0xE308 rlwinm. 29,29 (0x4); 0xE31C fcmpo, 0xE320 cror eq,lt,eq, 0xE324 bne: a NaN timer gives false.
+  if ((mData.mUnknownCEF5C2FE & 0x4) == 0 || !(mLegStabTimer <= 0.f)) {
     return false;
   }
   const float distSq = PortTargetDistanceSq(*this, mgr);
@@ -232,8 +235,12 @@ bool CSplitterMainChassis::ShouldMorphballStab(CStateManager& mgr, const CTrigge
 // ShouldMorphballStab (0xE3B8-0xE3F4); then the squared distance must be at least the square of
 // the leg stab min range (0x830, 0xE43C-0xE444: cror eq, gt, eq) and at most the square of the
 // max range (0x834, 0xE448-0xE450: cror eq, lt, eq).
+// Arms: ALL-ARMS; the bit, timer, no-target and both range arms forced (SPLITTER22 force_ret, splitter_split22.py); gdb saw both
+// results.
+// @ fn_75_E3A4
 bool CSplitterMainChassis::ShouldLegStab(CStateManager& mgr, const CTriggerData&) const {
-  if ((mData.mUnknownCEF5C2FE & 0x4) == 0 || mLegStabTimer > 0.f) {
+  // 0xE3BC rlwinm. 29,29 (0x4); 0xE3D0 fcmpo, 0xE3D4 cror eq,lt,eq, 0xE3D8 bne: a NaN timer gives false.
+  if ((mData.mUnknownCEF5C2FE & 0x4) == 0 || !(mLegStabTimer <= 0.f)) {
     return false;
   }
   const float distSq = PortTargetDistanceSq(*this, mgr);
@@ -265,7 +272,9 @@ bool CSplitterMainChassis::BreakOutOfSpin(CStateManager&, const CTriggerData&) c
 // (0xE250-0xE268) at a squared distance from the square of the data's spin attack min range
 // (0x880) to the square of its max range (0x884), both ends included (0xE2B0-0xE2C4).
 bool CSplitterMainChassis::ShouldSpinAttack(CStateManager& mgr, const CTriggerData&) const {
-  if ((mFlagsD40 & 0x80) == 0 || mSpinPenaltyTimer > 0.f) {
+  // 0xE1F0 extrwi. bit 24 (0x80); 0xE204 fcmpo, 0xE208 cror eq,lt,eq, 0xE20C bne: a NaN timer
+  // gives false.
+  if ((mFlagsD40 & 0x80) == 0 || !(mSpinPenaltyTimer <= 0.f)) {
     return false;
   }
   if (mTeamId != kInvalidUniqueId &&
@@ -1324,6 +1333,8 @@ void CSplitterMainChassis::PortCopyHealthToCollisionActors(CStateManager& mgr) {
 
 // fn_75_E620 (the chassis's IsDisabled trigger, 0xE620-0xE62C): the flag byte at 0xD40 gets its
 // 0x40 bit tested (0xE624 extrwi with the word's bit 25 - the byte's 0x40).
+// Arms: no branches; the coverage build's merged profile hits every line.
+// @ fn_75_E620
 bool CSplitterMainChassis::IsDisabled(CStateManager&, const CTriggerData&) const {
   return (mFlagsD40 & 0x40) != 0;
 }
@@ -1331,6 +1342,8 @@ bool CSplitterMainChassis::IsDisabled(CStateManager&, const CTriggerData&) const
 // fn_75_E034 (the chassis's DeployFromHoldingTube trigger, 0xE034-0xE040): the data's flag word
 // at 0x828 (the loader's unknown_0xcef5c2fe) is read (0xE034 lwz) and its second bit is kept
 // (0xE038 extrwi with the word's bit 30 - the byte's 0x02); that bit is the answer.
+// Arms: no branches; the coverage build's merged profile hits every line.
+// @ fn_75_E034
 bool CSplitterMainChassis::DeployFromHoldingTube(CStateManager&, const CTriggerData&) const {
   return (mData.mUnknownCEF5C2FE & 0x2) != 0;
 }
@@ -1339,6 +1352,8 @@ bool CSplitterMainChassis::DeployFromHoldingTube(CStateManager&, const CTriggerD
 // its 0x80 bit tested (0xE5BC extrwi with the word's bit 24 - the byte's 0x80, the host's
 // GetHitByPlayerProjectile) and the result is made a 0/1 value (0xE5C0 neg, 0xE5C4 or, 0xE5C8
 // srwi).
+// Arms: no branches; the coverage build's merged profile hits every line.
+// @ fn_75_E5B8
 bool CSplitterMainChassis::ShotAt(CStateManager&, const CTriggerData&) const {
   return GetHitByPlayerProjectile();
 }
@@ -1379,6 +1394,8 @@ bool CSplitterMainChassis::PatrolPathOver(CStateManager&, const CTriggerData&) c
 
 // fn_75_E5AC (the chassis's LostHead trigger, 0xE5AC-0xE5B8): the flag byte at 0xD41 gets its
 // second bit tested (0xE5B0 extrwi with the word's bit 30 - the byte's 0x02).
+// Arms: no branches; the coverage build's merged profile hits every line.
+// @ fn_75_E5AC
 bool CSplitterMainChassis::LostHead(CStateManager&, const CTriggerData&) const {
   return (mFlagsD41 & 0x2) != 0;
 }
@@ -1398,6 +1415,8 @@ bool CSplitterMainChassis::ShouldWaitForSnatch(CStateManager&, const CTriggerDat
 // fn_75_DFEC (the chassis's PrepareForDocking trigger, 0xDFEC-0xE00C): the id at 0xC6E (the
 // second link) is compared with kInvalidUniqueId (0xDFF0 lhz, 0xDFF4 lhz, 0xDFF8 subf, 0xDFFC
 // subf, 0xE000 or, 0xE004 srwi): the trigger is true when the id is valid.
+// Arms: no branches; the coverage build's merged profile hits every line.
+// @ fn_75_DFEC
 bool CSplitterMainChassis::PrepareForDocking(CStateManager&, const CTriggerData&) const {
   return mSecondLinkId != kInvalidUniqueId;
 }
@@ -1945,6 +1964,9 @@ void CSplitterMainChassis::EnsureBodyActive(CStateManager& mgr) {
 }
 
 // vtable slot 0x10 = fn_75_F1A0: the REL's whole body is the base class's call.
+// Arms: no branches of its own (EnsureBodyActive is the port's Activate-before-Think guard,
+// GOTCHAS); every line ran.
+// @ fn_75_F1A0
 void CSplitterMainChassis::PreThink(float dt, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   CPatterned::PreThink(dt, mgr);
@@ -2652,6 +2674,9 @@ void CSplitterMainChassis::KnockBack(CStateManager& mgr, const CKnockBackInfo& i
 // (0xEAD8-0xEAE4) and is heard; the player's fire (type 0, 0xEA8C-0xEA90) clears the timer at
 // 0xD34 (0xEAEC-0xEAF8, the time since the last shot that FindBestDodgeDirection tests) and is
 // heard. The base's Listen is not called.
+// Arms: ALL-ARMS; types 0, 3 and 4 ran in the 914f1381 runs (console noise), the not-alive arm
+// forced (SPLITTER22 force_ret, splitter_split22.py); gdb saw both results.
+// @ fn_75_EA70
 bool CSplitterMainChassis::Listen(CStateManager&, const CVector3f& position,
                                    EListenNoiseType type) {
   if (!mAlive) {  // 0xEA78-0xEA7C

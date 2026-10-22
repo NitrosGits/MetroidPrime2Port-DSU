@@ -648,6 +648,26 @@ names no object).
   its alive bit).  The run's AddEmitter returns null handles, so 0xF60 is forced (0xffffffff: index
   0xfff, past the 72-entry sound table, so StopSound ignores it).
 
+### 3.23 The triggers, Listen and PreThink (split22, 2026-10-22)
+
+**Marked** (14): the head's `fn_75_565C` InLaserPulseRange, `fn_75_570C` InHoverRange,
+`fn_75_57B4` HasTarget, `fn_75_58BC` IsDocked, `fn_75_58DC` IsInitiallyDocked; the chassis's
+`fn_75_E2F0` ShouldMorphballStab, `fn_75_E3A4` ShouldLegStab, `fn_75_EA70` Listen, `fn_75_DFEC`,
+`fn_75_E034`, `fn_75_E5AC`, `fn_75_E5B8`, `fn_75_E620` and `fn_75_F1A0` PreThink.  The branched
+five are ALL-ARMS in the merged profile (forced f1 + natural K3 + t9d); the rest have no branches
+and every line ran.  Forces: `tools/cov/specs/splitter_split22.py` (FORCE_RET, period 40) with
+`tools/cov/specs/splitter_split22.con` on 914f1381 layer 2.
+
+- **NaN fixes** (`cror eq,lt,eq` + `bne`: a NaN timer fails the "at most 0" test): E2F0
+  0xE31C-0xE324 and E3A4 0xE3D0-0xE3D8 (`mLegStabTimer`), E1D0 0xE204-0xE20C (`mSpinPenaltyTimer`);
+  `fn_75_50B0` FaceTarget 0x510C fcmpo + 0x5110 `ble` (a NaN dt skips the update).
+- **Not marked**: `fn_75_E1D0` (13/14: the team arm where CanStartAttack says yes never ran; the
+  force with the chassis's own id as team fails HasTeamAiRole, and the real team u0530 needs the
+  chassis as a member); `fn_75_EBF4` KnockBack (the Splitter is immune, no damage reaches it);
+  `fn_75_50B0` (the null-target and unsafe-magnitude arms); `fn_75_57F0` (needs a sequenced
+  docking setup).
+- **Smoke**: `tools/smoke/run.sh splitter` (0q_cliff_hall layer 0, `objs splitter`).
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
