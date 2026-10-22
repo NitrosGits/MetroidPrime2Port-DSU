@@ -442,4 +442,29 @@ def hover2():
 
 
 saved(HV, hover2)
+
+# fn_75_3EEC PortDockToChassis: no chassis at 0xEFC (0x3F24); a chassis that already has a head
+# (fn_75_E6E4 false, 0x3F40); accepted with 0xF6A's 0x02 bit set and the data's 0x1 bit set (no
+# sound), set and clear (sound), and the 0x02 bit clear (sound).
+DK = [H + '->mChassisId.value', H + '->mCheckedChassisId.value', H + '->mClearedId.value',
+      H + '->mAutoDestructFlags', H + '->mData.mUnknownBD80FD94', BC + '->mLocomotionType',
+      C + '->mCommandModuleId.value', C + '->mSecondLinkId.value', C + '->mFlagsD40']
+
+
+def dock():
+    run('set var %s->mCheckedChassisId.value = 0xffff' % H)
+    run('call %s->PortDockToChassis(%s)' % (H, M))
+    run('set var %s->mCheckedChassisId.value = %s->mUniqueId.value' % (H, C))
+    run('set var %s->mCommandModuleId.value = %s->mUniqueId.value' % (C, H))
+    run('call %s->PortDockToChassis(%s)' % (H, M))
+    for flag, data in ((1, 1), (1, 0), (0, 1)):
+        run('set var %s->mCheckedChassisId.value = %s->mUniqueId.value' % (H, C))
+        run('set var %s->mCommandModuleId.value = 0xffff' % C)
+        run('set var %s->mAutoDestructFlags = (%s->mAutoDestructFlags & 0xfd) | %d' % (H, H, flag * 2))
+        run('set var %s->mData.mUnknownBD80FD94 = %d' % (H, data))
+        run('call %s->PortDockToChassis(%s)' % (H, M))
+        log('docked: chassis %s flags %s' % (ev(H + '->mChassisId.value'), ev(H + '->mAutoDestructFlags')))
+
+
+saved(DK, dock)
 log('split24: done')

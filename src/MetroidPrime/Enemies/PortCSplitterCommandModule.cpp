@@ -284,6 +284,10 @@ CSplitterBeamEffect::~CSplitterBeamEffect() {
 // (lbl_75_rodata_848, 0x10E00-0x10E24) or toward 0.0f otherwise (lbl_75_rodata_85C,
 // 0x10E2C-0x10E50), and its angle becomes the closed angle lerped to the full one by that
 // fraction, wrapped to one turn (0x10E54-0x10ED0).
+// Arms: 6/6, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): the
+// active ones in play; the inactive arm and the wrap's below-zero arm (the full angle -3) forced
+// by gdb calls (splitter_split24_beam.py).
+// @ fn_75_10DC4
 void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
   if (!GetActive()) {
@@ -309,6 +313,9 @@ void CSplitterBeamEffect::PreRender(CStateManager&) { StandInBeamEffect("fn_75_1
 
 // fn_75_10EF0 (AddToRenderer, 0x10EF0-0x10F1C): unless the actor is out of the frustum (0x150's
 // low bit, 0x10EFC-0x10F04) it is rendered (0x10F08 EnsureRendered).
+// Arms: 2/2, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): the
+// clipped arm forced (0x150's low bit set for one call).
+// @ fn_75_10EF0
 void CSplitterBeamEffect::AddToRenderer(const CStateManager& mgr) const {
   if (!GetPreRenderClipped()) {
     EnsureRendered(mgr);
@@ -324,6 +331,9 @@ void CSplitterBeamEffect::Render(const CStateManager&) const { StandInBeamEffect
 // (lbl_75_rodata_840 0.5f, 0x116D0-0x11754) through the transform; they are both the render
 // bounds (0xCC) and the other bounds (0xE4) (0x11758-0x117B4). With render bounds dirty
 // (0x117B8-0x117C0) the portal state is updated and the flag cleared (0x117CC-0x117DC).
+// Arms: 6/6, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// render bounds dirty and clean, both forced.
+// @ fn_75_1167C
 void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
   CAABox bounds(GetTranslation(), GetTranslation());
   const float half = mLength * static_cast< float >(tan(0.5f * mAngle));
@@ -344,7 +354,10 @@ void CSplitterBeamEffect::PreRenderAllViewports(CStateManager& mgr) {
 // fn_75_5864 (the head's HasDockingPath trigger, 0x5864-0x58BC): the "CONN"/"FOLW" connected
 // object (0x588C GetConnectedObject) is valid.
 // The true arm is dead in shipped data: no Splitter head has a CONN/FOLW link in any SCLY or SCGN
-// layer (disc scan); the false arm was not evaluated in any run. No marker.
+// layer (disc scan).
+// Arms: both, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// false by a gdb call, true with GetConnectedObject answering the head's own id.
+// @ fn_75_5864
 bool CSplitterCommandModule::HasDockingPath(CStateManager& mgr, const CTriggerData&) const {
   return GetConnectedObject(mgr, kSS_Connect, kSM_Follow) != kInvalidUniqueId;
 }
@@ -441,7 +454,11 @@ void CSplitterCommandModule::SeekMainChassis(CStateManager& mgr, EStateMsg msg, 
 // with a safe body command move vector the head moves by it times dt * the data's max linear
 // velocity (0x7C4, 0x40F8 fn_75_2154) and faces it (0x4108 FaceDirection).
 // Not reachable in shipped data: entered only through HasDockingPath (fn_75_5864); no Splitter head
-// has a CONN/FOLW link. No marker.
+// has a CONN/FOLW link.
+// Arms: 6/6, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// every message by gdb calls; IsMagnitudeSafe answering false and true (Patrol rewrites the move
+// vector).
+// @ fn_75_3FE0
 void CSplitterCommandModule::FollowDockingPath(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   if (msg == kStateMsg_Activate) {
@@ -557,6 +574,10 @@ bool CSplitterCommandModule::HasDockingTarget(CStateManager& mgr, const CTrigger
 // bigger than the frame time times the data's max linear velocity at 0x7C4 (0x4DFC-0x4E0C) the
 // head moves up or down by that step (0x4E10-0x4E54) and the module's own move runs
 // (0x4E64 fn_75_2154).
+// Arms: 14/14, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// the update in play; a zero frame time, no target and the head 200 above and below its target
+// forced.
+// @ fn_75_4D04
 void CSplitterCommandModule::Hover(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     BodyController()->SetLocomotionType(pas::kLT_Combat);
@@ -673,14 +694,13 @@ bool CSplitterCommandModule::InDetectionRange(CStateManager& mgr, const CTrigger
 // 0.0f (0x28/0x38 and 0x24/0x34 - 0x5324-0x53A4) must both be IsMagnitudeSafe (0x53A8-0x53C0);
 // the vector at 0xF24 becomes Slerp(Y normalized, X normalized, turn * 0.017453292f)
 // (0x53C4-0x5418, the degrees to radians constant lbl_75_rodata_74).
-// Not marked (2026-10-21), three arms never ran:
-// - The own-0x80 shortcut. Only the head's ALRT case (0x6710) sets the bit, plus the base's
-//   Damage/Touch with a player projectile. Shots reach the head through its collision actors,
-//   so the sender is never a projectile. Area 5 has no Alert link to the head, but a DOL sender
-//   isn't ruled out.
-// - The null chassis. Reachable: the parent's IsDocked check runs after this update, and the
-//   chassis can die while the head is docked.
-// - The unsafe-axis guard. Not proven unreachable.
+// The own-0x80 shortcut is set only by the head's ALRT case (0x6710) or the base's Damage/Touch
+// with a player projectile; the null chassis is reachable (the chassis can die while the head is
+// docked).
+// Arms: 19/19, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): no
+// chassis, the own hit bit, InDetectionRange false and true (forced), both columns flattened to
+// zero, an out-of-range message.
+// @ fn_75_523C
 void CSplitterCommandModule::Scanning(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1011,6 +1031,9 @@ void CSplitterCommandModule::EnsureBodyActive(CStateManager& mgr) {
 // byte at 0x420, the word's bit 25 - the byte's 0x40, 0x5A58 extrwi.) whose 0xF6A 0x04 bit is still
 // clear (0x5A64 extrwi.) the bit is set (0x5A70 rlwimi) and the death timer at 0xEF0 is the time
 // (0x5A78 stfs); fn_75_32F4 counts it down and kills the module at zero.
+// Arms: 4/4, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// alive with the 0x04 bit clear (set, the timer taken), alive with it set, dead - gdb calls.
+// @ fn_75_5A54
 void CSplitterCommandModule::PortAutoDestruct(float time) {
   if (!GetAlive()) {
     return;
@@ -1213,7 +1236,6 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
   }
 }
 
-// fn_75_3EEC (not marked: the run only reached the null chassis lookup)
 // The head's "dock to the chassis" (0x3EEC-0x3FE0): the id at 0xEFC (the connected object the
 // XAND message found) is looked up (0x3F18 ObjectById) and cast to a main chassis (0x3F1C); with
 // no chassis the body ends (0x3F24). The chassis is asked to accept this head (0x3F3C
@@ -1225,6 +1247,10 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
 // (0x3F78 clrlwi, the word's bit 31); the flag byte's 0x02 bit is cleared either way (0x3FB4
 // rlwimi, the word's bit 30). The locomotion type becomes 1 (kLT_Relaxed, 0x3FC4
 // SetLocomotionType).
+// Arms: 8/8, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov
+// merged): the docking in play; no chassis, a chassis that already has a head, and the 0x02 bit
+// and the data's 0x1 bit in every combination by gdb calls.
+// @ fn_75_3EEC
 void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
   CSplitterMainChassis* chassis =
       TCastToPtr< CSplitterMainChassis >(mgr.ObjectById(mCheckedChassisId));
@@ -1641,8 +1667,11 @@ void CSplitterCommandModule::PortTurnUpright(float dt) {
 // (0x2480-0x249C) gives the steering separation (0x24DC) from its position with 5.0f
 // (lbl_75_rodata_58) times the model data's scale x; safe ones (0x24FC) are normalized and summed
 // and counted; a count above 0.0f (0x2564) divides the sum (0x2574).
-// fn_75_23F0 (not marked, the 19-run gcov of 2026-10-21: a null cast and an AI in another area
-// never came up in the listening-AI walk; not proven dead)
+// Arms: 21/22, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged)
+// (other area, a docked and an undocked second head forced). The null cast is dead:
+// CListeningAiList::IsQualified (DOL 0x8013C05C, src/MetroidPrime/GameObjectLists.cpp:28-34)
+// admits only a CPatterned.
+// @ fn_75_23F0
 CVector3f CSplitterCommandModule::PortSeparationVector(CStateManager& mgr) const {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
@@ -1744,6 +1773,9 @@ void CSplitterCommandModule::SetTargetDest(CStateManager& mgr, float) {
 // (0x4FE4 fn_75_2154). The facing is that step, or with the path finder's face target (0x718,
 // 0x5008 GetObjectById) the flat offset to it (z 0.0f; 0x5014-0x504C); the body faces it
 // (0x505C FaceDirection). Deactivate (0x5064): the 0x80 bit is set.
+// Arms: 12/12, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// both 0xF6A 0x80 senses, a zero move vector and every message forced.
+// @ fn_75_4E90
 void CSplitterCommandModule::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if ((mAutoDestructFlags & 0x80) != 0) {  // 0x4EC8-0x4ED8
     mPathFindNavigation.PathFind(mgr, msg, dt, *this);
@@ -2016,6 +2048,10 @@ bool CSplitterCommandModule::InHoverRange(CStateManager& mgr, const CTriggerData
 // and fn_75_21FC (0x652C, 0x84): PortUpdateChassis, PortUpdateFlashAndDeath, PortUpdateCollision,
 // PortLookAtTarget, PortSpawnBeamEffect and PortAutoDestructTimer, every one ported and marked.
 // EnsureBodyActive is the port's Activate-before-Think guard (GOTCHAS), not retail code.
+// Arms: 3/4, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): the
+// inactive arm by a gdb call; the untaken one is the host-safety null test on the collision
+// actor manager, which the retail lacks.
+// @ fn_75_6490
 void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -2294,6 +2330,11 @@ static CMaterialList sSplitterCollisionMaterialList;
 // is built once (asm 0x61C0-0x6290: the three data words, the flag set at 0x6284) and every
 // collision info's material (asm 0x62B8, 0x62C0) is matched against it (asm 0x62D4): a match
 // sets the flag byte's 0x01 bit (asm 0x62E0-0x62E4) and ends the walk (asm 0x62E8).
+// Arms: 14/14, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// gdb calls with a calloc'd list - the 0x01 bit set, a valid id, no infos (the material list
+// built, then reused), a non-matching info, a non-matching then a matching one (the bit set, the
+// walk ends).
+// @ fn_75_6178
 void CSplitterCommandModule::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                            CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr);
