@@ -299,39 +299,60 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 
 CDarkSamus::~CDarkSamus() {}
 
-// vtable slot 5 = fn_10_1B1FC (0x27C). Retail runs the state machine's own tick first (it asks
-// the machine for a state through the vtable slot 0x28), then aims at the player (the vector at
-// 0x6E0), then runs CPatterned::Think and afterwards the module's own AI.
+// vtable slot 5 = fn_10_1B1FC (0x27C): Think. Until the state machine has a state (the machine at
+// 0x350, its vtable 0x28 at 0x0001B234) the first Think only sets the machine up (fn_10_18D78 at
+// 0x0001B248, the host's InitializeStateMachine) and returns. Then the waypoint navigation faces the
+// player: the flat direction (z = lbl_10_rodata_3FC = 0.0f at 0x0001B294), normalized when it can
+// be (0x0001B2A4), goes to the base's 0x6E0 (0x0001B2B4..0x0001B2C4). CPatterned::Think runs
+// (0x0001B2D4; it returns at once for an inactive actor, and retail has no active test of its own),
+// and the elapsed time 0x8B0 grows by dt after it (0x0001B2DC).
+// @ fn_10_1B1FC
 void CDarkSamus::Think(float dt, CStateManager& mgr) {
-  StandIn("fn_10_1B1FC", "vtable slot 5, Think");
-  // 0x0001B2DC: retail grows the elapsed time at 0x8B0 by dt in every Think, also while the
-  // actor is inactive, so the port grows it before the active check.
-  mElapsedTime += dt;
-  if (!GetActive()) {
+  if (!StateMachineState().HasState()) {
+    InitializeStateMachine(mgr);
     return;
   }
+  CVector3f toPlayer = (mgr.GetPlayer(0)->GetTranslation() - GetTranslation()).DropZ();
+  if (toPlayer.CanBeNormalized()) {
+    toPlayer.Normalize();
+    mWaypointNavigation.SetFaceVector(toPlayer);
+  }
   CPatterned::Think(dt, mgr);
+  mElapsedTime += dt;
   // 0x0001B2E4: the module's own AI runs only while the actor is alive (the guest's 0x420 bit 6,
-  // the extrwi at 0x0001B2E8 - the host's GetAlive()). Of its calls the port has the stage
-  // advance (fn_10_193A0, 0x0001B308), the attack pick (fn_10_1954C, 0x0001B314), the head aim
-  // (fn_10_10A64, 0x0001B330) and the stage watch (fn_10_FD4C, 0x0001B33C); the ten others
-  // (fn_10_1ACA0 .. fn_10_1B154) are not ported, so the body stays a stand-in rather than a
-  // retail-order Think.
+  // the extrwi at 0x0001B2E8 - the host's GetAlive()).
   if (GetAlive()) {
-    AdvanceBattleStage(mgr);
-    UpdateAttackPick(mgr);
-    UpdateHeadAim(mgr);    // fn_10_10A64 at 0x0001B330 (fn_10_1ACA0 before it is not ported)
-    WatchStageChange(mgr); // 0x0001B33C
+    AdvanceBattleStage(mgr);           // fn_10_193A0 at 0x0001B308
+    UpdateAttackPick(mgr);             // fn_10_1954C at 0x0001B314
+    UpdateDiveContact(mgr);            // fn_10_1ACA0 at 0x0001B320
+    UpdateHeadAim(mgr);                // fn_10_10A64 at 0x0001B330
+    WatchStageChange(mgr);             // fn_10_FD4C at 0x0001B33C
+    UpdateSilhouetteFade(mgr, dt);     // fn_10_F710 at 0x0001B34C
+    UpdateInvulnerableFade(dt);        // fn_10_F654 at 0x0001B358
+    UpdateMeleeHit(mgr);               // fn_10_1AE08 at 0x0001B364
+    if (mGuestC00 > 0.f) {             // 0x0001B378
+      ReflectProjectiles(mgr);         // fn_10_1B658 at 0x0001B384
+    }
+    UpdateStageFlash(mgr);             // fn_10_1B0E0 at 0x0001B390
+    // 0x0001B3A8: in an unsafe spot (fn_10_EFC8) with a safe position kept (0x928 == 1,
+    // 0x0001B3B4) the actor goes back there (SetTranslation at 0x0001B3C0), the collision
+    // failsafe runs (fn_10_1AEC0 at 0x0001B3CC) and the model is hidden (0xDE8 = 0.0f, 0x0001B3D8).
+    if (IsInUnsafeSpot(mgr) && mHasSafePos == 1) {
+      SetTranslation(mSafePos);
+      RunCollisionFailsafe(mgr);
+      mGuestDE8 = 0.f;
+    }
   }
   // 0x0001B3DC: alive or not, the visibility fade, the env fx faded out while not fading
-  // (0xDEC == 0, 0x0001B3F0) and alive (0x0001B40C), the targetability, and the melee pulse and
-  // the boost ball's effects with dt.
+  // (0xDEC == 0, 0x0001B3F0) and alive (0x0001B40C), the targetability, the melee pulse and the
+  // boost ball's effects with dt, and the health threshold's message.
   UpdateFade(dt);                                  // fn_10_1D6CC at 0x0001B3E4
   if (mFadeOut == 0 && GetAlive()) {
     mgr.EnvFxManager()->FadeDensity(0.f, 4000);    // lbl_10_rodata_3FC, lbl_10_rodata_254 (0x0001B42C)
   }
   UpdateTargetable(mgr);                           // fn_10_1D5C4 at 0x0001B438
   UpdateMeleePulseAndEffects(mgr, dt);             // fn_10_12DD0 at 0x0001B448
+  CheckHealthThreshold(mgr);                       // fn_10_1B154 at 0x0001B454
 }
 
 // vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch. The four-character codes it
@@ -746,10 +767,14 @@ const CDamageVulnerability* CDarkSamus::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability(); // 0x000101F0
 }
 
-// vtable slot 18 = fn_10_F5C0 (0x2C): it builds the box from CPhysicsActor::GetBoundingBox.
+// vtable slot 18 = fn_10_F5C0 (0x2C) only calls fn_10_F5EC (0x0000F5D4), which fills the
+// optional with CPhysicsActor::GetBoundingBox (0x0000F604) and sets its valid byte
+// (`li r0, 0x1` at 0x0000F608, `stb r0, 0x18(r31)` at 0x0000F60C): the touch bounds are always
+// the bounding box.
+// @ fn_10_F5C0
+// @ fn_10_F5EC
 rstl::optional_object< CAABox > CDarkSamus::GetTouchBounds() const {
-  StandIn("fn_10_F5C0", "vtable slot 18, GetTouchBounds");
-  return CPatterned::GetTouchBounds();
+  return GetBoundingBox();
 }
 
 // vtable slot 20 = fn_10_10358 (0x12C).

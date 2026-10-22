@@ -64,11 +64,25 @@ FORCE = [
       '((CPlayer*)((CStateManager*)$rsi)->mPlayers[0])->mActive = ($ct_a && $ct == 1) ? 0 : 1',
       '$ct = $ct_a ? $ct + 1 : $ct'],
      0, 'the attack target is not a player, and the player is not active'),
+    ('2EA8 UpdateSfxEmitter', 'CSpacePirate::UpdateSfxEmitter(',
+     ['$this->xc00_.mID != 0'],
+     ['$es = $_isvoid($es) ? 0 : $es',
+      '$es_a = ($es < 2) ? 1 : 0',
+      # a live emitter handle (the pirate's own hurled sound) and then a bogus one: the playing /
+      # queued arm and the dead one
+      '$this->xc00_ = ($es_a && $es == 0) ? CSfxManager::AddEmitter(((CSpacePirate*)$rdi)->mData.mHurledSfx, ((CSpacePirate*)$rdi)->mPosition, 127, -1, 0, 0, 0) : $this->xc00_',
+      '$this->xc00_.mID = ($es_a && $es == 1) ? 12345 : $this->xc00_.mID',
+      '$es = $es_a ? ($es + 1) % 2 : $es'],
+     0, 'a live emitter handle and then a bogus one: the playing / queued arm and the dead one'),
     ('8670 Shuffle', 'CSpacePirate::Shuffle(',
-     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck'],
-     ['$this->x8f4_28_noShuffleCloseCheck = 0'],
-     0, 'the close check (the 0x8f4 bit 28) clear, so the shuffle picks a close spot and'
-        ' fn_72_D608 runs'),
+     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck', '$this->mMinAttackRange'],
+     ['$this->x8f4_28_noShuffleCloseCheck = 0',
+      '$this->mMinAttackRange = 1000.0',
+      # the random's seed, so the x draw (the second one) is 32768 -> 0.5 - the clamp arm
+      # (|x| < 0.001, asm 0xD694-0xD69C) of fn_72_D608
+      '((CStateManager*)$rsi)->mRandom.mSeed = 204577074'],
+     0, 'the close check (the 0x8f4 bit 28) clear and a big min attack range, so the player counts'
+        ' as too close and the shuffle picks a close spot: fn_72_D608 runs'),
 ]
 
 # The arms are counted too (tools/cov/cov_force.py runs this list's breakpoints after force.py's
@@ -77,6 +91,8 @@ SPEC = [
     ('51C8 TrooperWarpOut: arms', 'CSpacePirate::TrooperWarpOut(',
      ['$this->mAlive', '$this->x8fa_25_', '$this->xc04_warpPoint', '$this->x8f6_24_trooper'],
      'max=100000'),
+    ('2EA8 UpdateSfxEmitter: arms', 'CSpacePirate::UpdateSfxEmitter(',
+     ['$this->xc00_.mID != 0'], 'max=1000000'),
     ('EFD4 ChooseTeamTarget: arms', 'CSpacePirate::ChooseTeamTarget(',
      ['$this->xba0_teamAiMgrId.value'], 'calls max=100000'),
     ('DFD4 SquadJoin: arms', 'CSpacePirate::SquadJoin(',
@@ -84,5 +100,5 @@ SPEC = [
     ('EDEC ChooseTarget: arms', 'CSpacePirate::ChooseTarget(',
      ['$this->mAttackTarget.value'], 'calls max=100000'),
     ('8670 Shuffle: arms', 'CSpacePirate::Shuffle(',
-     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck'], 'max=100000'),
+     ['$rdx', '$this->x8f4_28_noShuffleCloseCheck', '$this->mMinAttackRange'], 'max=100000'),
 ]

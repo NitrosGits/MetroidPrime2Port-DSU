@@ -1835,10 +1835,11 @@ void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
 // the roll's time 0xEA4 = 0.0f (0x0000A4B0..0x0000A4D0).
 // Update (0x0000A4D8): the boost ball's bit 0x20 of 0xEBC must be clear (the `extrwi` at
 // 0x0000A4DC takes the bit 26 = 1u << (31 - 26) = 0x20), the ball's actor must exist
-// (fn_10_9920 at 0x0000A4EC) and the bit 0x40 of 0x318 must be set (fn_10_2F04 at 0x0000A4FC, the
-// `clrlwi` at 0x0000A500 takes the bit 24 = 1u << (31 - 24) = 0x80 of it). Then fn_10_A1C0
-// (0x0000A514), the shield flag 0xCD0 is cleared (0x0000A520) and the ball's actor takes the
-// damage (0x0000A654).
+// (fn_10_9920 at 0x0000A4EC) and the bit 0x40 of 0x318 must be set (fn_10_2F04 at 0x0000A4FC; the
+// `clrlwi` at 0x0000A500 takes the bool's low byte, so the check is the bit 0x40 itself). Then
+// fn_10_A1C0 (0x0000A514), the shield flag 0xCD0 is cleared (0x0000A520), the ball's actor
+// takes the damage (0x0000A654) and the flags follow: the bit 0x20 of 0xEBC is set (0x0000A660)
+// and the shield flag 0xCD0 becomes 1 (0x0000A668).
 // Deactivate (0x0000A6DC): the script state "SI21" (kSS_InternalState3, 0x0000A704).
 // Every message then rolls the ball to the hint: with a hint (the uid 0xEC0, 0x0000A66C)
 // fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
@@ -1864,13 +1865,34 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
   case kStateMsg_Update:
     if (mBoostBallFlag20 == false &&            // 0x0000A4DC (the bit 0x20 of 0xEBC)
         GetBoostBallActor(mgr) != nullptr &&     // 0x0000A4EC (fn_10_9920)
-        GetGuest318Bit6() == true) {            // 0x0000A4FC (fn_10_2F04, the bit 0x40 of 0x318)
+        GetGuest318Bit6() == true) {            // 0x0000A4FC (fn_10_2F04: the bit 0x40 of the
+                                              // byte 0x318, the `clrlwi` at 0x0000A500
+                                              // takes the bool's low byte)
       FsmStandIn("fn_10_A1C0", "BoostBallRoll's roll pick"); // 0x0000A514
       mGuestCD0 = 0;                                     // 0x0000A520
-      // 0x0000A654: the ball's actor takes the damage the retail builds on the stack (the
-      // damage min(the health - 1.0f, the float at 0x314), the radius 0.0f, the knockback
-      // 0.0f and the weapon mode 0x13 with the bits 16, 17, 18, 24 and 25 cleared) - the
-      // port's damage info is the boost ball's own, so the hit is not reproduced.
+      // 0x0000A524..0x0000A538: the health (the vtable's slot 0x3C, the float at its +4) and
+      // 0x0000A544: the health - 1.0f (lbl_10_rodata_264); 0x0000A548: the float at 0x314
+      // (fn_10_2EFC). 0x0000A54C..0x0000A558: the damage is the health - 1.0f unless the
+      // compare is unordered, when it is the float at 0x314.
+      const float health = GetHealthInfo()->GetHP();
+      const float healthMinusOne = health - 1.f;
+      const float damage = (health >= healthMinusOne) ? healthMinusOne : mGuest314;
+      // 0x0000A564..0x0000A5EC: the damage info - the weapon mode word 0x13 with the bits 16,
+      // 17, 18, 24 and 25 cleared (the `rlwimi` chain), the damage, the radius damage amount
+      // (the same value), the damage radius 0.0f, the knockback 0.0f, the three sound ids 0 and
+      // the flags byte with its bit 0x80 cleared. The host's CWeaponMode carries only the type
+      // (0 = kWT_Power) and CDamageInfo's sound ids default to 0xffff.
+      const CDamageInfo info(CWeaponMode(kWT_Power), damage, 0.f, 0.f, true);
+      // 0x0000A630..0x0000A650: the filter - the actor's own uid in the include and the exclude
+      // lists; the host's filter carries the material types, so the port uses the same filter as
+      // its other damage calls.
+      const CMaterialFilter filter(CMaterialList(kMT_Solid), CMaterialList(),
+                                   CMaterialFilter::kFT_IncludeExclude); // 0x0000A5B4
+      CActor* ball = GetBoostBallActor(mgr);
+      mgr.ApplyDamage(GetUniqueId(), ball->GetUniqueId(), GetUniqueId(), info, filter,
+                      CVector3f::Zero()); // 0x0000A654
+      mBoostBallFlag20 = true; // 0x0000A660 (the `rlwimi` at 0x0000A660 sets the bit 0x20 of 0xEBC)
+      mGuestCD0 = 1;            // 0x0000A668
     }
     break;
   case kStateMsg_Deactivate:

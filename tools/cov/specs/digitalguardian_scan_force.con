@@ -1,0 +1,14 @@
+# DigitalGuardian area 53, the forcing run (digitalguardian_scan_force.py): "OPEN" twice 100 updates
+# apart (the second finds the beacon up, 0x1268 == 1, and is skipped: fn_14_A6A8's cmpwi at
+# 0xAA4C), then the scan display, whose fn_14_9ABC calls get 0x11EC (the beacon model) emptied
+# and then 0x128C bit 0x08 set by gdb.
+@f30 layer 3
+@f60 layer 11
+@f140 send e00350060 Activate; send e0035000f Activate
+@f160 send e00350060 0x4F50454E
+@f260 send e00350060 0x4F50454E
+@f300 scan e00350060
+@f360 scan e00350060
+@f420 scan
+@f620 scan
+@f700 covdump

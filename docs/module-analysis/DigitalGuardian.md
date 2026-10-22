@@ -1472,3 +1472,34 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 | 775C, 3DA8 off, CE1C off | - | - | not run: no natural vortex entry in these runs |
 
 - Marked: 9260, 9E88.
+
+## 2026-10-22: scan display and AcceptScriptMsg, gcov runs msgs3/del2/force1/open1
+
+- Drivers (`tools/cov/specs/`): `digitalguardian_msgs.con` (every A6A8 case plus three scans),
+  `digitalguardian_msgs_del.con` (a delete before the first Think), `digitalguardian_open.con` (OPEN
+  with the beacon up), `digitalguardian_scan_force.con` with `digitalguardian_scan_force.py`. Coverage build;
+  the counts come from `tools/cov/gcov_report.py build-port-cov <the four gcov dirs> --module DigitalGuardian`.
+- Console: `scan <id>` (the scan display draws 9CA4/9ABC), `e<editor id>` object ids (the body's
+  unique id is reused across the layer load: it is e00350060, the head e0035000f), and `covdump`
+  (most coverage runs here hang in shutdown and are killed at SECS, which loses the exit dump).
+- A delete request delivers "XDEL" (kSM_Delete) before it removes the object
+  (`CStateManager::DispatchScriptMessages`), so `send <id> Delete` reaches the XDEL case.
+- The beacon rises only in the Crippled state (fn_14_7CB4's Update runs fn_14_2CC4).
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| A6A8 | ACTV inactive + null managers, ACTV active (skip), DCTV active + null managers, DCTV inactive (skip), XAUD null | msgs3 | ran |
+| A6A8 | ACTV/DCTV with managers, 0x128C 0x40 clear and set (`fsm <body> CrippledReaction`) | msgs3 | ran |
+| A6A8 | XALD, XDMG, XRDG, XHIT, IM00-IM08, XCRT, default; XAUD with managers | msgs3 | ran |
+| A6A8 | OPEN normal; OPEN after CLOS in one tick (0x128C 0x08); CLOS; XDEL with managers and the beacon sound (CLOS's delete) | msgs3 | ran |
+| A6A8 | XDEL with null managers, no sound | del2 | ran |
+| A6A8 | OPEN with 0x1268 == 1 | open1 | ran: every arm has run (gcov 49/49), marked |
+| 9CA4 | head there, head gone (`send <head> Delete`) | msgs3 | ran: 2/2, marked |
+| 9ABC | head there / gone, beacon drawn (0x1264 > 0) | msgs3 | ran |
+| 9ABC | 0x128C bit 0x08 set | force1, forced (`$this->x128C_ \|= 8` at entry) | unreachable: only CLOS sets it, and CLOS deletes the body |
+| 9ABC | no beacon model (0x11EC empty) | force1, forced (`$this->x11EC_.m_valid = 0` at entry) | unreachable: fn_14_6864 fills it whenever mTransmissionBeacon is valid, and the one guardian's data names one; every arm has run (8/8), marked |
+
+- asmcheck: 3 findings, all naming: A6A8 `BIT x20_80` (the C++ reads it through `GetActive()`),
+  9CA4/9ABC `CALL TCastToPtr<CDigitalGuardianHead>` (the C++ spells it `TCastToConstPtr`, the const
+  overload of the same cast).
+- Marked: A6A8, 9CA4, 9ABC.

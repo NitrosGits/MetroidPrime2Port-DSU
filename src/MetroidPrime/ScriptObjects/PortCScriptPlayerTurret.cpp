@@ -874,12 +874,7 @@ void CScriptPlayerTurret::RemoveSolidFromTopActor(CStateManager& mgr) {
 }
 
 // fn_63_1134 (0x32C): the player's aim while in the turret.
-//
-// Unmarked: the body is retail's (the fire test is the guest's `mUnknown1B8 <= 0.f`, 0x12B4-0x12BC,
-// port's a19f25ae8) and it ran, but one live arm is not covered - the shot skipped while the reload
-// timer is still positive (0x12BC `bne`).  A run cannot reach it yet: the second console press
-// does not produce a second press edge, so the press branch is taken only once (section 21.1 of
-// docs/module-analysis/ScriptPlayerTurret.md).
+// @ fn_63_1134
 void CScriptPlayerTurret::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
   // 0x1154: the player in the turret (0x188) and the base actor (0x198).
   CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mPlayerId));

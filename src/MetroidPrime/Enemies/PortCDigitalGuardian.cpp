@@ -473,6 +473,7 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 // at 0xA9A8), "XALD" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
 // 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
 // 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C).
+// @ fn_14_A6A8
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   // The retail reads the actor's active bit before it calls the base (the byte at guest 0x20,
   // bit 7, read at 0xA6C4) and the "ACTV" and "DCTV" cases test that value.
@@ -2732,6 +2733,7 @@ CAABox CDigitalGuardian::x1570_() const {
 
 // vtable slot 71 = fn_14_9CA4: fn_14_1570's box, with the head (0x1082, TCastToPtr at 0x9CE0) the
 // head's own scan bounds (vtable 0x11C at 0x9D40) taken in (AccumulateBounds at 0x9D4C, 0x9D58).
+// @ fn_14_9CA4
 CAABox CDigitalGuardian::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   if (const CDigitalGuardianHead* head =
           TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_))) {
@@ -2748,6 +2750,7 @@ CAABox CDigitalGuardian::GetScanVisorRenderBounds(const CStateManager& mgr) cons
 // locator's scaled transform (0x10B8, 0x9B08..0x9B18; vtable 0x120 at 0x9B44). The body then
 // draws as AddToRenderer does, but at xf with the given flags: the transform (0x24) and draw
 // flags (0xFC) are swapped for them (0x9B48..0x9BB8) and put back at the end (0x9C5C..0x9C8C).
+// @ fn_14_9ABC
 void CDigitalGuardian::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                        const CModelFlags& flags) const {
   if (const CDigitalGuardianHead* head =

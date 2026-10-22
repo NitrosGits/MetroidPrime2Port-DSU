@@ -981,25 +981,25 @@ void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator)
 
 // fn_79_5030: put every chain node on its recorded position. The retail walks the *nodes* vector
 // and reads the position at the same index (0x505C-0x5080, the loop's bound at 0x5090/0x5094);
-// the `if (node)` is the retail's own cast test (0x5074). The extra `i < positions.size()` is a
-// host guard: the retail trusts the two vectors to be the same length.
+// the `if (node)` is the retail's own cast test (0x5074). The bound is the nodes count alone
+// (0x5054 lwz r31,0x4(r5); 0x5090 cmpw r27,r31): the only writer, fn_79_50AC, pushes a position
+// and a uid together, so the two vectors are always the same length.
 // @ fn_79_5030
 void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const rstl::vector< CVector3f >& positions) const {
-  const int count = static_cast< int >(nodes.size());
-  for (int i = 0; i < count && i < static_cast< int >(positions.size()); ++i) {
+  const int count = static_cast< int >(nodes.size()); // 0x5054
+  for (int i = 0; i < count; ++i) {                   // 0x5090 cmpw, 0x5094 blt
     CActor* node = TCastToPtr< CActor >(mgr.ObjectById(nodes[i]));
-    if (node) {
+    if (node) {                                       // 0x5074 cmplwi, 0x5078 beq
       node->SetTranslation(positions[i]);
     }
   }
 }
 
 // @ fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
-// The arm that pulls a node back inside the edge radius (0x53B0) ran: the chain launch in the
-// light phase's Lurk leaves a node 83 units from the centre, past the 54.9 unit edge radius
-// (a `place`d node ends up 495 units out).
+// The arm that pulls a node back inside the edge radius (0x53B0) ran on its own in the chain
+// launch (anim event 0x1b, carried by the DropFlyer / Become*Flyer animations; note 7.24).
 void CSwampBossStage2::SwingChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const CVector3f& origin,

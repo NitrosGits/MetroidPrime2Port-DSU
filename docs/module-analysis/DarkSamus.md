@@ -1830,3 +1830,38 @@ trigger's entry, one per hit, from gdb convenience variables).
   the stack (the damage min(the health - 1.0f, the float at 0x314), the radius 0.0f, the
   knockback 0.0f and the weapon mode 0x13 with the bits 16, 17, 18, 24 and 25 cleared); the port
   does not reproduce that hit.
+
+## Slice 12 (dsfsm2, 2026-10-22)
+
+- Merged `port` (e30f30958); its 14284 `> 0` and F100 first-roll lines are kept unchanged.
+- Ported: Think 1B1FC in retail order, without the stand-in. It sets up the machine until it has a
+  state, then faces the player through the waypoint navigation's 0x6E0, runs CPatterned::Think and
+  grows 0x8B0. Retail has no active test of its own; the alive block runs the 14 calls, and the
+  tail is slice 11's. Also ported: 1ACA0 UpdateDiveContact, 13868 PushPlayerAfterBounce, F710
+  UpdateSilhouetteFade (0xD14), F654 UpdateInvulnerableFade (0xD24), 1AE08 UpdateMeleeHit, 1B0E0
+  UpdateStageFlash, 1B154 CheckHealthThreshold, and F5C0/F5EC GetTouchBounds (always the bounding
+  box, valid).
+- 0x10A0 is the constructor's **first** float (`fmr f23, f1` at 0x0001FA94), not its eighth (the
+  table above): the loader's property 0x72EDEB7D (ReadFloat, `stfs f1, 0x91c(r1)` at 0x0000D4FC),
+  the host's `mData.mUnknown72EDEB7D`. New member 0x10A4 is `mHealthThresholdSent`, in an appended
+  TARGET_PC block.
+- Forcing keys 80..96 (tools/cov/specs/darksamus_uevent.{py,con}; meanings in the spec's comment).
+  -O2 places a line breakpoint before that line's code, so the post-call forces (85, 87, 95) break
+  on the instruction after the call, written as a mangled symbol plus an offset (`after_call`)
+  because the binary is PIE. The spec now starts every `$dsk_*` at its "nothing forced" value:
+  gdb's `&&` evaluates both sides, so before key 30 every set had failed and been logged, which
+  made run t1 time out.
+- 8F50 (item 3): this is a **port gap**, not the shipped data. Retail's fn_10_9B24 (0x00009B24,
+  called by SpawnBoostBall at 0x0000A03C) builds 0xE3C (a CParticleSwoosh, `new 0x218`, from the
+  optional swoosh token at 0xE40 whose valid byte is 0xE48, 0x00009B44), 0xE4C (the same from
+  0xE50/0xE58, 0x00009BE4) and 0xE64 (a CElementGen, `new 0x338`, from the 'PART' id at 0xE5C
+  through gpSimplePool, 0x00009C84). The host has none of the three: 9B24 is a logged stand-in in
+  SpawnBoostBall, and the 0xE10 sub-object (fn_10_895C) holds no swoosh or PART tokens. Fixing it
+  takes 895C's tokens (from the loader's properties) and a 9B24 port; that is left for its own
+  slice.
+- Marks (run `dsfsm2-runs/s12/t3`, every arm): 1B1FC Think, 13868, F710, F654, 1AE08, 1B0E0, 1B154;
+  F5C0/F5EC have no branches. 1ACA0 is unmarked: its `else if (mBounced)` false arm (the hit
+  made, no bounce, the boxes overlapping, 1148:1/2) did not run. Key 96 (that state at each call
+  until 99, with the player placed on the actor at f1534..f1537) is written but not yet run:
+  runs t4, t5, t7, t9 and t10 all died with VK_ERROR_DEVICE_LOST ("this context is innocent",
+  so another process on the GPU caused the reset), and Aurora skips llvmpipe.

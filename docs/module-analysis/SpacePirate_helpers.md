@@ -69,7 +69,7 @@ in one of the module session's files; `header` = the body is an inline in `CSpac
 | 0xCE30 | 0x470 | GetStrafeDir | method | module | - (28 branches, not all traced) |
 | 0xD2A0 | 0x16C | CantJumpBack | method | module | marked (module) |
 | 0xD40C | 0x1FC | AvoidActors | method | module | marked (module) |
-| 0xD608 | 0x118 | ShuffleRandomVector | method | module | - (0 calls in the runs) |
+| 0xD608 | 0x118 | ShuffleRandomVector | method | module | this lane (section 3) |
 | 0xD720 | 0xE0 | UpdateHeldPosition | method | module | marked (module) |
 | 0xD800 | 0x348 | UpdateGuardPosition | method | module | marked (module) |
 | 0xDB48 | 0x8C | LineOfSightRay | method | module | marked (module) |
@@ -114,8 +114,20 @@ The header gets an append-only `#ifdef TARGET_PC // helpers` block with the two 
 `xc00_` becomes a `CSfxHandle` (four bytes, the layout is unchanged) because the emitter's handle
 is a handle, not an int.
 
-Nothing was moved: the module session's files are byte for byte the branch's own text apart from
-the markers below, the two call sites of the new bodies and the ctor's handle init.
+This round (after the module session's audit fixes, decomp/spacepirate ac42f32b9 and
+review12/spacepirate dcf664036, both merged) the lane *fixed* three bodies of the module's files
+instead of moving them:
+
+- `E3D8` Touch: the force field's push onto the ragdoll (asm 0xE3F8-0xE47C) was a comment; the
+  conditions are now code (section 3), the accumulation stays a comment: 0xb8..0xc0 belong to the
+  module's pirate ragdoll, not the DOL CRagDoll (0xa0), and the port has none (review15).
+- `17A0` GetRagDoll: the flag test (asm 0x17A4, 0x17B0, 0x17B8) was missing, now the body in
+  PortCSpacePirateHelpers.cpp.
+- `D608` ShuffleRandomVector: the clamp now tests the absolute value like the asm (asm 0xD688-
+  0xD69C) and the body carries a marker.
+
+The waypoint predicate (fn_72_10CE4) moved to the module session's own file with its WallHang
+change (review12/spacepirate dcf664036), so this lane's copy is gone.
 
 ## 3. The arm tables
 
@@ -137,9 +149,13 @@ and one call each, the command in brackets.
 | `2EA8` UpdateSfxEmitter | the handle at 0xc00 is 0 (asm 0x2EC0) 11468 entries; the handle plays (asm 0x2ED4) 45; the handle is queued but silent (asm 0x2EEC) 3; the handle is neither (asm 0x2EF4 -> 0x2F30) 1 - the handle is cleared | the handle is the retail's own: the KnockBack stores the hurled / death sound's handle at 0xc00 (asm 0xC944 / 0xC9B8) - the port drops it (section 5), so the playing / queued entries are forced (gdb: `CSfxManager::AddEmitter` of the pirate's hurled sound into 0xc00) and the dead handle is forced (gdb: a bogus handle 0x3039 into 0xc00) |
 | `51C8` TrooperWarpOut | the actor is alive (asm 0x51F4), the 0x8fa bit 25 clear (asm 0x5200), the warp point -1 (asm 0x520C) and the 0x8f6 bit 24 set (asm 0x5218) -> the "WarpOut" state (asm 0x521C); each of the four tests false ends the body | forced (tools/cov/force.sh, the spec's 51C8 entry): one call per arm, the keys `1, 0, -1, 1` (the true arm), `1, 0, -1, 0` (not a trooper), `0, 0, -1, 0` (not alive), `1, 1, -1, 0` (the 0x8fa bit 25), `1, 0, 5, 0` (a warp point) - the kSM_SetToZero message reaches the body (the port's AcceptScriptMsg, asm 0x5200) |
 | `EFD4` ChooseTeamTarget | no squad (0xba0 == 0xffff, asm 0xF010); a squad id that resolves to nothing (asm 0xF02C); a squad that is out of range (asm 0xF04C); a squad in range (asm 0xF060) | forced (the same spec's EFD4 entry, 07_sand_alamoportalobservation L3): the keys 0xffff (1 call), 0x7ffe (1 call) and the layer's team id 1427 (3 calls); the call counts: `ChoosePlayer` 4, `IsTeamMemberInRange` 3, `FindBestIndividualAttackTarget` 1 - the driver puts the layer's other pirates next to the actor and then far from it, so the range test takes both ways |
+| `E3D8` Touch | the ragdoll (0xb30) with its flag byte 0x70's 0x40 (mPrimed) set (asm 0xE404-0xE40C), the other actor a CScriptTrigger (asm 0xE410) whose entity flag byte 0x20 carries 0x80 (CEntity::mActive, asm 0xE420-0xE428) and whose word 0x1a0 carries 0x8000 (kTFL_DetectAI, asm 0xE42C-0xE434), and the trigger's float 0x19c above zero (asm 0xE438-0xE448); then the pirate ragdoll's torso impulse (0xb8..0xc0, past the DOL CRagDoll's 0xa0) takes the trigger's 0x190..0x198 (asm 0xE44C-0xE47C; not ported, no pirate ragdoll) | the tests are the retail's, but the arms do not run: the port never sets 0xb30 (there is no ragdoll), so the profile shows 5/12 lines and 1/12 branches - the body stays unmarked |
+| `17A0` GetRagDoll | the ragdoll (0xb30) is returned only while its flag byte 0x70 carries 0x40 (mPrimed, asm 0x17B0-0x17B4) and 0x80 (mRenderBoundsValid, asm 0x17B8-0x17BC) | the body is now the retail's, but the body is never called (the port has no ragdoll): the profile shows 0/6 lines - the body stays unmarked |
+| `D608` ShuffleRandomVector | the x term is forced to 0.001 when its absolute value is under 0.001 (asm 0xD688-0xD69C), the vector is normalized (asm 0xD6A0) and the length is lerped (asm 0xD6C0) | the gcov profile of the three coverage runs of 2026-10-21 (the natural draws and the forced seed merged) has the body at 8/8 lines and 2/2 branches: **ALL-ARMS** |
 | `DFD4` SquadJoin | the squad id is invalid -> the team is looked up (asm 0xE000); it is still invalid -> the body ends (asm 0xE02C); the id resolves to no team -> the body ends (asm 0xE04C); the 0x8f4 bit 27 (the melee role) -> kTAR_Melee (asm 0xE060) or kTAR_Projectile (asm 0xE05C) | forced (the same spec's DFD4 entry): the keys 0xffff,0 (3 calls), 0xffff,1 (1 call, the melee role) and 0x7ffe,0 (1 call); the call counts: `GetAssociatedTeamId` 4, `ObjectById` 3, `TCastToPtr<CScriptTeamAiMgr>` 3, `JoinTeam` 2 (the melee and the projectile role) |
 
-Marked by this lane: 9 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, `2EA8`, `51C8`).
+Marked by this lane: 10 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, `2EA8`, `51C8`,
+`D608`).
 `EFD4` and `DFD4` carry the module session's own markers (their arm tables agree with this
 lane's forcing run), so this lane does not add a second marker there.
 The gcov profile (the coverage build, the natural run and the forced run merged) confirms
@@ -150,12 +166,12 @@ Not marked, and why:
 
 | body | what is missing |
 |---|---|
-| `17A0` GetRagDoll | the ragdoll (0xb30) is never set in the port, so the "primed and not over" arm (asm 0x17AC-0x17BC) cannot run |
+| `17A0` GetRagDoll | the ragdoll (0xb30) is never set in the port, so the "primed with valid render bounds" arm (asm 0x17AC-0x17BC) cannot run |
 | `3220` ShouldFrenzy | the run armed the frenzy (the true result) and left it unarmed (the false one), but the four inner arms (the pending-chance bit, the charge-player list, the morphed target, the low-health path) are not all traced |
 | `51C8` TrooperWarpOut | 0 calls: the "WarpOut" script message never reached a trooper in the runs |
 | `3D7C` / `4030` / `4174` the grenade bodies | a forced call runs them (the no-target arm and the whole spawn), but the solve's arms (the candidate loop's accept / closest-miss paths) are not all traced |
 | `CE30` GetStrafeDir | 28 branches in the asm; the run's calls do not cover them all |
-| `D608` ShuffleRandomVector | 0 calls: the Shuffle state's "too close" branch (which is the only caller) never ran |
+| `D608` ShuffleRandomVector | marked (section 3) |
 | `EDEC` ChooseTarget | the port's body is not retail's yet (section 5): the retail's "a team target was chosen" flag (asm 0xEF48) and its squad branch (asm 0xEF50-0xEFA4) are missing, so the body cannot be marked |
 | `E3D8` Touch | the ragdoll's push (asm 0xE3F8-0xE47C) needs a ragdoll, which the port never creates |
 | `E314` the empty function | a `blr` only; the port does not need the symbol |
@@ -169,7 +185,7 @@ edges first.
 
 | body | lines | branches | untaken edges | what it needs |
 |---|---|---|---|---|
-| `D608` ShuffleRandomVector | 0/8 | 0/2 | 2 | the Shuffle state's close branch (the 0x8f4 bit 28 clear - written at the Shuffle entry by the forcing spec - and the player inside the min attack range): the branch is still not taken, so the body never runs |
+| `D608` ShuffleRandomVector | 8/8 | 2/2 | 0 | **ALL-ARMS** (the natural draws and the forced seed merged) - marked |
 | `EDEC` ChooseTarget | 13/20 | 9/16 | 7 | the port's body is not retail's (section 5) - reported, not marked |
 | `4030` GetGrenadeAimPoint | 0/8 | 0/8 | 8 | the grenade spawn: the body's entry is never reached |
 | `3220` ShouldFrenzy | 9/13 | 5/16 | 11 | the charge-player list arm (the body is not retail's, section 5) - reported, not marked |
@@ -177,8 +193,8 @@ edges first.
 | `3D7C` SolveGrenadeLaunch | 0/35 | 0/14 | 14 | the grenade spawn (the body's entry is never reached) |
 | `CE30` GetStrafeDir | 39/45 | 24/50 | 26 | other pirates in range, the path find mesh and the dynamic rays - the body needs a scene, not a member |
 | `10CE4` the waypoint predicate (this lane's) | no row (a class) | - | - | the host's `CheckConnectedObject` takes no predicate, so nothing calls it |
-| `17A0` GetRagDoll | no row (the header's inline) | - | - | the body is not retail's (section 5) - reported, not marked |
-| `E3D8` Touch | 4/4 | 0/0 | 0 | the body is not retail's (section 5) - reported, not marked |
+| `17A0` GetRagDoll | 0/6 | 0/6 | 6 | the body is the retail's now, but it is never called: the port has no ragdoll (0xb30 is never set) |
+| `E3D8` Touch | 5/12 | 1/12 | 11 | the body is the retail's now, but the ragdoll is never set (0xb30), so the push's arms do not run |
 | `E314` the empty function | - | - | - | not ported (a `blr` only) |
 
 ## 4. The coverage runs
@@ -227,10 +243,4 @@ so this lane only reports them:
   port lets the nearest-player swap at the end overwrite the team target) and the squad branch
   (asm 0xEF50-0xEFA4: a valid squad whose member is within 20 units returns the attack target).
   The port's body is therefore not retail's, which is why it carries no marker.
-- The retail's Touch (0xE3D8) adds a force-field trigger's push to the ragdoll's torso impulse
-  (asm 0xE3F8-0xE47C: the ragdoll's flag byte 0x70 bit 0x40, the other actor a CScriptTrigger with
-  the flag byte 0x20 bit 0x80 and the word 0x1a0 bit 0x10000, and its float 0x19c above zero). The
-  port's body is the base class's call only, so it carries no marker.
-- The retail's GetRagDoll (0x17A0) returns the ragdoll (0xb30) only while it is primed and not
-  over (the ragdoll's flag byte 0x70: asm 0x17A4 the null test, 0x17B4 bit 0x40 and 0x17BC bit
-  0x80). The port's inline returns null without the test, so it carries no marker.
+(The Touch push and the GetRagDoll flag test were fixed in this round - section 3.)
