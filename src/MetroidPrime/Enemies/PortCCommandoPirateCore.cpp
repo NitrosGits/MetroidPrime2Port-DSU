@@ -144,12 +144,12 @@ bool CCommandoPirate::Listen(CStateManager& mgr, const CVector3f& position, ELis
   case kLNT_PlayerFire: {                                              // 0, 0x0000BE68..0x0000BE6C
     const CVector3f delta = position - GetTranslation();               // 0x0000BEC8..0x0000BEF0
     const float dzSq = delta.GetZ() * delta.GetZ();                    // 0x0000BEF8
-    if (delta.GetX() * delta.GetX() + delta.GetY() * delta.GetY() + dzSq >=
-        mData.mHearingRadius * mData.mHearingRadius) {                 // this+0x81C, 0x0000BF04..0x0000BF08
+    if (!(delta.GetX() * delta.GetX() + delta.GetY() * delta.GetY() + dzSq <
+          mData.mHearingRadius * mData.mHearingRadius)) {              // this+0x81C, 0x0000BF04..0x0000BF08 bge
       break;
     }
     if (mDetectionHeightRange != 0.f &&                                // this+0x3D4, rodata_494, 0x0000BF1C..0x0000BF20
-        dzSq >= mDetectionHeightRange * mDetectionHeightRange) {       // 0x0000BF24..0x0000BF28
+        !(dzSq < mDetectionHeightRange * mDetectionHeightRange)) {     // 0x0000BF24..0x0000BF28 bge
       break;
     }
     heard = true;                                                      // 0x0000BF30
@@ -766,7 +766,7 @@ void CCommandoPirate::x5008_SolveGrenadeLaunch(const CVector3f& target, const CV
     const float cosine = CMath::FastCosR(candidate);
     const float sine = CMath::FastSinR(candidate);
     const float denominator = distance * (cosine * sine) - heightDelta * (cosine * cosine);  // 0x000051A4..0x000051B0
-    if (denominator <= 1.1920929e-7f) {                             // rodata_4C4, 0x000051B4..0x000051B8
+    if (!(denominator > 1.1920929e-7f)) {                           // rodata_4C4, 0x000051B4..0x000051B8 ble
       continue;
     }
     const float speedSq = halfGravityDistSq / denominator;          // 0x000051BC

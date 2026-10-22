@@ -11,6 +11,7 @@
 // four-to-twelve-instruction bodies, so they are real rather than stand-ins; fn_9_C2CC (the
 // damage vulnerability) and fn_9_D474 (the projectile info) are real too.
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
+#include "port_console.h"
 
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Animation/CPASAnimParm.hpp"
@@ -705,7 +706,7 @@ bool CCommandoPirate::x4CA4_CanAim() {
   if (xc4c_ != -1) {                               // 0x00004D18..0x00004D20
     return false;
   }
-  if (xb7c_ <= 1.f) {                              // 0x00004D24..0x00004D34 (rodata_43c)
+  if (!(xb7c_ > 1.f)) {                            // 0x00004D24..0x00004D34 (rodata_43c) ble: NaN false
     return false;
   }
   if (BodyController()->IsFrozen()) {               // 0x00004D38..0x00004D44 (guest +0x594 bit 0x20)
@@ -1059,6 +1060,12 @@ void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
 // The module helpers this case calls are ported: fn_9_2D0C (the knock-back) as x2D0C_KnockBack,
 // fn_9_3900 (the jump-back velocity) as x3900_JumpBackVelocity and fn_9_3A5C (the hit-object
 // damage) as x3A5C_HitObject.
+// Run: cp5 2026-10-22 (f59c/f59d/f59x + nat1, tools/cov/specs/commandopirate_cp5.py): every arm
+// but the null-manager tests (DCTV, XAUD: kSM_Create always builds both) and XLAU in kAS_Hurled;
+// forced: the block's +0x91C 0x01/+0x91D 0x80 bits and +0x920, +0xC63 0x20, +0xC64 0x10, +0xC65
+// 0x04, +0xC66 0x40, the XRDG sender, the body frozen, and WeaponHurts true (a console XRDG with
+// a live shot as the shield actor's last toucher: the actor only sends XRDG when the shot misses).
+// @ fn_9_CB40
 void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   // r31: the entity's active bit as it was before the base's handler (0x0000CB60..0x0000CB80) -
@@ -1667,7 +1674,8 @@ void CCommandoPirate::x3900_JumpBackVelocity(CStateManager& mgr) {
   const float dx = target.GetX() - pos.GetX();
   const float dy = target.GetY() - pos.GetY();
   // The apex: the float at guest this+0xBEC over the higher of the two heights.
-  const float apex = xbec_ + (pos.GetZ() >= target.GetZ() ? pos.GetZ() : target.GetZ());
+  // 0x00003994 bge: a NaN takes the actor's own height.
+  const float apex = xbec_ + (pos.GetZ() < target.GetZ() ? target.GetZ() : pos.GetZ());
   const float zVelocity = CMath::SqrtF(2.f * gravity * (apex - pos.GetZ()));  // 0x000039A8..0x000039BC
   const float timeUp = zVelocity / gravity;                                 // 0x000039D8
   const float timeDown = CMath::SqrtF(2.f * (apex - target.GetZ()) / gravity);  // 0x000039DC
@@ -1988,7 +1996,7 @@ void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noR
       Stop();                                                      // 0x00003FF0
     }
   }
-  if (xc00_ <= 0.f) {                                              // 0x00003FF8..0x00004004
+  if (!(xc00_ > 0.f)) {                                            // 0x00003FF8..0x00004004 ble: NaN returns
     return;
   }
   xc00_ -= dt;                                                     // 0x00004008..0x0000400C
@@ -2289,8 +2297,8 @@ bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& 
   if ((mData.mFlags0 & 0x02) != 0) {
     return false;                                   // 0x0000BCCC
   }
-  if (xb7c_ <= 1.f) {
-    return false;                                   // 0x0000BCE4
+  if (!(xb7c_ > 1.f)) {
+    return false;                                   // 0x0000BCE4 ble: NaN false
   }
   const CEntity* target = mgr.GetObjectById(xbca_);  // 0x0000BCFC
   if (target == nullptr) {
@@ -2618,8 +2626,8 @@ bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) 
     return false;
   }
   const CVector3f delta = actor->GetTranslation() - GetTranslation();
-  if (CVector3f::Dot(delta, GetTransform().GetForward()) <= 0.f) {
-    return false;                                   // 0x0000B71C
+  if (!(CVector3f::Dot(delta, GetTransform().GetForward()) > 0.f)) {
+    return false;                                   // 0x0000B71C ble: NaN false
   }
   // 0x0000B734 blt / 0x0000B748 bge to "false": a NaN takes neither blt nor falls past bge, so
   // a NaN +0xB64 tests +0xB60 and a NaN +0xB60 returns false.
@@ -3742,14 +3750,14 @@ int CCommandoPirate::x3678_PickDodgeDirection(CStateManager& mgr) const {
       continue;
     }
     const CVector3f delta = other->GetTranslation() - position;   // 0x00003720..0x00003734
-    if (delta.MagSquared() >= distanceSq) {                       // 0x00003738..0x0000375C
+    if (!(delta.MagSquared() < distanceSq)) {                     // 0x00003738..0x0000375C bge: NaN skips
       continue;
     }
     if (CVector3f::Dot(delta, right) >= 0.f) {                    // 0x0000376C..0x00003788
       if (!rightFree) {                                           // 0x0000378C
         continue;
       }
-      if (CVector3f::GetAngleDiff(right, delta) >= 1.0471976f) {  // 0x0000379C..0x000037AC
+      if (!(CVector3f::GetAngleDiff(right, delta) < 1.0471976f)) {  // 0x0000379C..0x000037AC bge
         continue;
       }
       rightFree = false;                                         // 0x000037B0
@@ -3757,7 +3765,7 @@ int CCommandoPirate::x3678_PickDodgeDirection(CStateManager& mgr) const {
       if (!leftFree) {                                            // 0x000037B8
         continue;
       }
-      if (CVector3f::GetAngleDiff(-right, delta) >= 1.0471976f) {  // 0x000037E0..0x000037F0
+      if (!(CVector3f::GetAngleDiff(-right, delta) < 1.0471976f)) {  // 0x000037E0..0x000037F0 bge
         continue;
       }
       leftFree = false;                                          // 0x000037F4
@@ -3910,7 +3918,7 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
     }
     // 0x00008820..0x00008848: the angle between the actor's facing (the transform's forward
     // column) and the direction to the target, against 20 degrees (rodata_4B4).
-    if (CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= 0.34906584f) {
+    if (!(CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) > 0.34906584f)) {  // ble: NaN breaks
       break;
     }
     const CBCLocomotionCmd cmd(CVector3f::Zero(), delta.AsNormalized(), 1.f);  // 0x00008850
@@ -3939,6 +3947,12 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
 // run: the Swamp (05_swamp_timber!), the attack pattern with the area's own waypoints, 2026-10-21:
 // the state runs in the normal flow (the ShouldBoost trigger answers true on the waypoint's 0x20
 // flag) and all its arms are taken.
+// Run: cp5 2026-10-22 (s2: tools/drivers/commandopirate_cp5.py states2 in the Swamp, every message
+// through `statecall`, tools/cov/specs/commandopirate_cp5.py CP5_MODE=states): every arm but
+// the switch's default (no state message beyond 2) and the shield manager's null test (kSM_Create
+// always builds it); forced, each put back in the same tick: no team / no target, the target
+// on the actor, the facing (a yaw sweep), the body state LoopAttack, +0xC64 0x04/0x08, the charge
+// target behind, the state time, no charge speed, the push on each axis.
 // @ fn_9_8028
 // fn_9_8028 (0x68c bytes): the shield-charge state - the commando charges at its target with
 // the shield up.
@@ -4047,21 +4061,22 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
           // The movement only runs while the byte at guest this+0xC64 has its 0x08 bit - the
           // charge animation has taken off (the kUE_TakeOff event sets it).
           const CVector3f local = GetTransform().TransposeRotate(xba0_);  // 0x000084A8
-          MoveInOneFrameOR(local * (speed * dt), dt);                     // 0x000084E8
+          MoveInOneFrameOR(local * speed * dt, dt);  // 0x000084C0..0x000084E8: (speed * v) * dt
           if (xbb8_.GetX() != 0.f || xbb8_.GetY() != 0.f || xbb8_.GetZ() != 0.f) {
             const CVector3f push = GetTransform().TransposeRotate(xbb8_);  // 0x00008538
-            MoveInOneFrameOR(push * (speed * dt), dt);                     // 0x00008578
+            MoveInOneFrameOR(push * speed * dt, dt);  // 0x00008550..0x00008578: (speed * v) * dt
             xbb8_ = CVector3f::Zero();                                    // 0x0000857C..0x00008594
           }
         }
       }
     } else if (x924_ == 0) {
       // 0x0000825C: turn towards the charge direction.
-      if (CVector3f::GetAngleDiff(GetTransform().GetForward(), xba0_) <= 0.17453292f) {
-        x924_ = 1;  // rodata_498, 0x000082E8
-      } else {
+      // 0x00008288 fcmpo + ble .L_000082E8: a plain `>` (a NaN angle takes the ble, x924 = 1).
+      if (CVector3f::GetAngleDiff(GetTransform().GetForward(), xba0_) > 0.17453292f) {
         const CBCLocomotionCmd cmd(CVector3f::Zero(), xba0_, 1.f);  // 0x00008290..0x000082E4
         BodyController()->CommandMgr().DeliverCmd(cmd);
+      } else {
+        x924_ = 1;  // rodata_498, 0x000082E8
       }
     }
     break;
@@ -4126,6 +4141,12 @@ void CCommandoPirate::ShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) 
 // collision actor manager goes inactive (0x00007FA0), the module's own activate helper (fn_9_1EF8)
 // runs (0x00007FA8) and the bytes at guest this+0xC64 and this+0xC65 lose their 0x08 and their
 // 0x04 bit (0x00007FB4 and 0x00007FC0).
+// Run: cp5 2026-10-22 (s2: tools/drivers/commandopirate_cp5.py states2 in the Swamp, every message
+// through `statecall`, tools/cov/specs/commandopirate_cp5.py CP5_MODE=states): every arm but
+// the switch's default (no state message beyond 2) and the shield manager's null test (kSM_Create
+// always builds it); forced, each put back in the same tick: the body state
+// LoopAttack, +0xC64 0x04/0x08, the waypoint behind or inside the box.
+// @ fn_9_7A98
 void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -4152,11 +4173,10 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
       // 0x00007C58: the vertical movement flag (the byte at guest this+0x34C's 0x40 bit).
       mVerticalMovement = true;
       RemoveMaterial(kMT_GroundCollider, mgr);  // 0x00007C74
-      // 0x00007CC4: the loop-attack command; the guest's payload is the loop attack type 4, no
-      // wait for the animation and the flag byte's 0x80 bit (0x00007C90) - the retail's skip-into.
-      CBCLoopAttackCmd loopCmd(pas::kLAT_Four, false);
-      loopCmd.SetSkipInto(true);
-      BodyController()->CommandMgr().DeliverCmd(loopCmd);
+      // 0x00007CC4: the loop-attack command; the guest's payload is the loop attack type 4
+      // (0x00007C98 li r6,0x4), no wait for the animation (0x00007C88 li r5,0x0 -> +0x4C) and the
+      // flag byte's 0x80 bit cleared (0x00007C90 rlwimi r0,r5,7,24,24 with r5 = 0): no skip-into.
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(pas::kLAT_Four, false));
       // The guest calls the manager without a test; the host's test covers the window before
       // the kSM_Create case has built it (the host limit named here).
       if (mCollisionShield.get() != nullptr) {
@@ -4171,7 +4191,9 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
         // inside the actor's own bounding box.
         const CVector3f delta = xb94_ - GetTranslation();
         const CAABox box = GetBoundingBox();
-        const float height = box.GetMaxPoint().GetZ() - box.GetMinPoint().GetZ();
+        // 0x00007DBC lfs f3,0x38(r1) / 0x00007DC0 lfs f2,0x2c(r1) with the box at sp+0x28: the
+        // max's y minus the min's y (the box's depth, not its height).
+        const float height = box.GetMaxPoint().GetY() - box.GetMinPoint().GetY();
         const float along = CVector3f::Dot(GetTransform().GetForward(), delta);
         if (along <= 0.f || delta.MagSquared() <= height * height) {  // 0x00007DDC..0x00007DF0
           if (!x2A98_PickWaypoint(mgr, true)) {  // 0x00007E00
@@ -4325,6 +4347,13 @@ void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, floa
 // Deactivate (0x00007630): the animation state goes back to "not ready" (0x00007638), the 0x02
 // bit of the flag byte at guest this+0xC65 is cleared (0x00007640) and the module's word at
 // guest this+0x924 goes back to -1 (0x00007648).
+// Run: cp5 2026-10-22 (s2: tools/drivers/commandopirate_cp5.py states2 in the Swamp, every message
+// through `statecall`, tools/cov/specs/commandopirate_cp5.py CP5_MODE=states): every arm but
+// the switch's default (no state message beyond 2) and the shield manager's null test (kSM_Create
+// always builds it); forced, each put back in the same tick: no cover point (+0xBD2), the
+// ARRV/NEXT search's answer (a Swamp waypoint: no commando has the link), the facing (a yaw sweep),
+// the body state WallHang, no aim target (+0xBCA), the aim position ahead/behind.
+// @ fn_9_7358
 void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
     case kStateMsg_Activate: {                                       // 0x0000739C
@@ -4354,11 +4383,12 @@ void CCommandoPirate::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
         // the cover point's forward; the guest's three-argument GetAngleDiff has no host
         // counterpart, the host's takes the facing and the direction.
         const float angle = CVector3f::GetAngleDiff(GetTransform().GetForward(), xba0_);
-        if (angle <= 0.17453292f) {                                  // rodata_498, 0x000074C8
-          x924_ = 1;                                                 // 0x00007528
-        } else {
+        // 0x000074C8 fcmpo + 0x000074CC ble .L_00007528: a plain `>` (a NaN angle takes the ble).
+        if (angle > 0.17453292f) {                                   // rodata_498
           BodyController()->CommandMgr().DeliverCmd(                 // 0x00007520
               CBCLocomotionCmd(CVector3f::Zero(), xba0_, 1.0f));     // rodata_43C, 0x000074D0
+        } else {
+          x924_ = 1;                                                 // 0x00007528
         }
       } else if (x924_ == 1) {                                       // 0x00007488..0x00007534
         if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_WallHang)) {  // 0x0000753C
@@ -4470,7 +4500,7 @@ void CCommandoPirate::CoverFind(CStateManager& mgr, EStateMsg msg, float dt) {
       continue;
     }
     const float distSq = (cover->GetTranslation() - GetTranslation()).MagSquared();  // 0x000071A4..0x000071D0
-    if (distSq >= bestDistSq) {                // 0x000071D4..0x000071D8
+    if (!(distSq < bestDistSq)) {              // 0x000071D4..0x000071D8 bge: NaN skips
       continue;
     }
     if (cover->Blown(xb94_)) {                 // 0x000071DC..0x000071EC
@@ -4588,6 +4618,101 @@ TUniqueId CCommandoPirate::GetAttackTarget() const { return kInvalidUniqueId; }
 
 // vtable slot 0x114 = fn_9_10 (0xc): the module's own rodata_400, the float 50.
 float CCommandoPirate::GetGravityConstant() const { return 50.f; }
+
+// Port console vars (`var <id> cp.<name> [value]`; no guest code): the flag bytes (cp.c63..c66),
+// x924 (cp.x924), the ids (cp.xbca the target, cp.xbd2 the cover point, cp.xbd6 the wall-hang
+// waypoint, cp.team), the charge speed (cp.chargespeed, 1/1000), the state machine's time in its
+// state (cp.fsmtime, ms), the push vector (cp.bb8x/bb8y/bb8z, 1/1000) and the charge target set d/1000
+// units along the facing (cp.b94ahead; reads the target's distance along it).
+bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* value,
+                                     int& current) {
+  // No TCastToPtr for the module's class: a patterned actor whose machine's "ShieldCharge" is
+  // this class's own state function is a commando.
+  CPatterned* patterned = TCastToPtr< CPatterned >(&ent);
+  if (patterned == nullptr || strncmp(name, "cp.", 3) != 0 ||
+      patterned->StateMachineState().PortFindStateFunction("ShieldCharge") !=
+          static_cast< CPatterned::StateMachine::StateFunc >(&CCommandoPirate::ShieldCharge)) {
+    return false;
+  }
+  CCommandoPirate* cp = static_cast< CCommandoPirate* >(patterned);
+  name += 3;
+  struct SByteVar {
+    const char* name;
+    uchar* field;
+  };
+  const SByteVar bytes[] = {
+      {"c63", &cp->xc63_}, {"c64", &cp->xc64_}, {"c65", &cp->xc65_}, {"c66", &cp->xc66_}};
+  for (const SByteVar& var : bytes) {
+    if (strcmp(name, var.name) == 0) {
+      if (value != nullptr) {
+        *var.field = static_cast< uchar >(*value);
+      }
+      current = *var.field;
+      return true;
+    }
+  }
+  struct SIdVar {
+    const char* name;
+    TUniqueId* field;
+  };
+  const SIdVar ids[] = {
+      {"xbca", &cp->xbca_}, {"xbd2", &cp->xbd2_}, {"xbd6", &cp->xbd6_}, {"team", &cp->xbc4_teamId}};
+  for (const SIdVar& var : ids) {
+    if (strcmp(name, var.name) == 0) {
+      if (value != nullptr) {
+        *var.field = TUniqueId(static_cast< u16 >(*value));
+      }
+      current = var.field->value;
+      return true;
+    }
+  }
+  if (strcmp(name, "x924") == 0) {
+    if (value != nullptr) {
+      cp->x924_ = *value;
+    }
+    current = cp->x924_;
+    return true;
+  }
+  if (strcmp(name, "chargespeed") == 0) {
+    if (value != nullptr) {
+      cp->mData.mShield.mChargeSpeed = static_cast< float >(*value) / 1000.f;
+    }
+    current = static_cast< int >(cp->mData.mShield.mChargeSpeed * 1000.f);
+    return true;
+  }
+  if (strcmp(name, "fsmtime") == 0) {
+    if (value != nullptr) {
+      cp->StateMachineState().PortSetTime(static_cast< float >(*value) / 1000.f);
+    }
+    current = static_cast< int >(cp->StateMachineState().GetTime() * 1000.f);
+    return true;
+  }
+  for (int i = 0; i < 3; ++i) {
+    static const char* const kPush[3] = {"bb8x", "bb8y", "bb8z"};
+    if (strcmp(name, kPush[i]) == 0) {
+      float xyz[3] = {cp->xbb8_.GetX(), cp->xbb8_.GetY(), cp->xbb8_.GetZ()};
+      if (value != nullptr) {
+        xyz[i] = static_cast< float >(*value) / 1000.f;
+        cp->xbb8_ = CVector3f(xyz[0], xyz[1], xyz[2]);
+      }
+      current = static_cast< int >(xyz[i] * 1000.f);
+      return true;
+    }
+  }
+  if (strcmp(name, "b94ahead") == 0) {
+    const CVector3f forward = cp->GetTransform().GetForward();
+    if (value != nullptr) {
+      cp->xb94_ = cp->GetTranslation() + forward * (static_cast< float >(*value) / 1000.f);
+    }
+    current = static_cast< int >(CVector3f::Dot(forward, cp->xb94_ - cp->GetTranslation()) * 1000.f);
+    return true;
+  }
+  return false;
+}
+
+namespace {
+const bool sCpConsoleVars = PortConsole::RegisterVar(&CCommandoPirate::PortConsoleVar);
+} // namespace
 
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_9_168) and entry points.

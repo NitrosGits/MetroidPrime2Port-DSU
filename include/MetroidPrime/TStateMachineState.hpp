@@ -138,6 +138,8 @@ public:
     }
     return TriggerFunc();
   }
+  // Port console (`var`): the time in the current state, so a state's timeout arm runs on demand.
+  void PortSetTime(float time) { mTime = time; }
 #endif
 
 private:
