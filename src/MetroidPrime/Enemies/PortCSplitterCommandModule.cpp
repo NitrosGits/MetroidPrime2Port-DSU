@@ -1052,17 +1052,17 @@ void CSplitterCommandModule::PortUpdateShield(CStateManager& mgr, bool shieldUp)
   actor->HealthInfo()->SetHP(mData.mShieldHP);
   switch (mCollisionState) {
   case 1: {
-    // 0x2DC4-0x2EA4: the character material (0x21) goes to the collision actor and the material
+    // 0x2DC4-0x2DE0: the character material (0x21) goes to the collision actor and the material
     // 0x36 to the head.
     actor->AddMaterial(kMT_Character, mgr);
     AddMaterial(kMT_Unknown54, mgr);
-    // 0x2EA8-0x2EB0: the light shield's vulnerability (0xD0C) goes to the collision actor.
+    // 0x2DE4-0x2DEC: the light shield's vulnerability (0xD0C) goes to the collision actor.
     actor->SetDamageVulnerability(mData.mLightShieldVulnerability);
-    // 0x2EB4-0x2F0C: the "LightShield" effect (rodata 0x10) is on and the "DarkShield" effect
+    // 0x2DF0-0x2E4C: the "LightShield" effect (rodata 0x10) is on and the "DarkShield" effect
     // (rodata 0x14) is off.
     AnimationData()->SetEffectState(rstl::string_l("LightShield"), true, mgr);
     AnimationData()->SetEffectState(rstl::string_l("DarkShield"), false, mgr);
-    // 0x2F14-0x2F80: the light shield's sound (the sound id at 0x894) is added as a looping
+    // 0x2E50-0x2E80: the light shield's sound (the sound id at 0x894) is added as a looping
     // emitter and its handle goes to 0xF60.
     mSoundHandle = CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundLightShield & 0xFFFF),
                                            GetTranslation(), 0x7F, GetCurrentAreaId().Value(), true,
@@ -1079,7 +1079,7 @@ void CSplitterCommandModule::PortUpdateShield(CStateManager& mgr, bool shieldUp)
     // 0x2EB4-0x2F0C: the effects are swapped.
     AnimationData()->SetEffectState(rstl::string_l("LightShield"), false, mgr);
     AnimationData()->SetEffectState(rstl::string_l("DarkShield"), true, mgr);
-    // 0x2F14-0x2F80: the dark shield's sound (the sound id at 0x898) is added as a looping
+    // 0x2F14-0x2F44: the dark shield's sound (the sound id at 0x898) is added as a looping
     // emitter and its handle goes to 0xF60.
     mSoundHandle = CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundDarkShield & 0xFFFF),
                                            GetTranslation(), 0x7F, GetCurrentAreaId().Value(), true,
@@ -1663,8 +1663,9 @@ void CSplitterCommandModule::PortFindChassis(CStateManager& mgr) {
       continue;
     }
     const float distSq = (chassis->GetTranslation() - pos).MagSquared();
-    // 0x2348 fcmpo f31, f27 + 0x234C bge: the walk skips unless distSq < best (a NaN skips).
-    if (!(distSq < best)) {
+    // 0x2348 fcmpo f31, f27 + 0x234C bge: only distSq >= best skips, so a NaN distance falls
+    // through and becomes the pick (and the NaN best then lets every later chassis through).
+    if (distSq >= best) {
       continue;
     }
     if (CSplitterMainChassis* old =
