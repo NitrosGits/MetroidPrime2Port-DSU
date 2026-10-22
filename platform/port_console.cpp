@@ -23,6 +23,9 @@
 #include "port_overlay_internal.h"
 #include "port_ui_common.h"
 #include "port_warp.h"
+#ifdef MP_PORT_COVERAGE
+#include "port_coverage.h"
+#endif
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
@@ -531,8 +534,9 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "settings [<key> <value>|self-test]  settings.cfg's entries; set one (and save), or check every key round-trips\n"
       "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
-      "obj <id>                    one object (an id as `objs` prints it: u046e): health, fsm, messages\n"
+      "obj <id>                    one object (an id as `objs` prints it: u046e, or e<editor id>): health, fsm, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
+      "covdump                     coverage build: write the gcov counters now (and zero them)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
@@ -556,6 +560,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
       "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"
+      "scan <id> [d] [updates]     scan an actor: d (40) units away, orbit locked, L held (alone: progress)\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
@@ -1392,6 +1397,27 @@ void DescribeObject(const CEntity& ent, bool withPosition, std::string& out) {
 // TUniqueId::Value(), which drops the version bits ("[door] 006e got kSM_Open") - the one object
 // whose Value() matches, when exactly one does. `obj` and `send` both take their target from here.
 const CEntity* ResolveObject(CStateManager& mgr, std::string_view text) {
+  // e<hex>: the object with that editor id (as `objs` prints it: e00350060). Unique ids are
+  // reused as objects come and go, so a console script that runs across a layer load names the
+  // script object instead.
+  if (text.size() > 1 && (text[0] == 'e' || text[0] == 'E')) {
+    const std::string hex(text.substr(1));
+    char* end = nullptr;
+    const unsigned long editorId = std::strtoul(hex.c_str(), &end, 16);
+    if (end != nullptr && *end == '\0') {
+      const CObjectList& list = mgr.GetObjectListById(kOL_All);
+      for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+        const CEntity* ent = list[i];
+        if (ent != nullptr && ent->GetEditorId().Value() == editorId) {
+          return ent;
+        }
+      }
+      char why[48];
+      std::snprintf(why, sizeof(why), "no object with editor id %08lx", editorId);
+      Fail(why);
+      return nullptr;
+    }
+  }
   TUniqueId uid = kInvalidUniqueId;
   if (!ParseUid(text, uid)) {
     Fail("not an object id '" + Str(text) + "'");
@@ -2354,7 +2380,94 @@ void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// scan <id> [d] [updates]: a scan of an actor without aiming. The orbit candidate lists rarely
+// offer a big actor whose orbit point is far above the player, so this puts the player d (40)
+// units from the actor on its level, facing it, locks the orbit on it (CPlayer::PortForceOrbit:
+// what a lock-on press does) and holds L (lock-on and Scan Item) for `updates` (the scan's
+// download time plus 2 s). It takes two calls ~30 updates apart: the first raises the scan visor
+// and starts holding L, because the update that sees L go down runs UpdateOrbitSelection, which
+// would move a fresh lock to the player's next orbit candidate. A completed scan soft-pauses the game and the scan display renders the
+// actor (CScanDisplay::PrepareScanDisplay and Draw: GetScanVisorRenderBounds / ScanVisorRender
+// for a self-rendering CPatterned). `scan` alone prints the orbit target, scanning time and the
+// game state (1 = soft-paused: the scan display is up).
+void CmdScan(CStateManager& mgr, const Args& args, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  CPlayerState* state = mgr.PlayerState(0);
+  if (player == nullptr || state == nullptr) {
+    Fail("no player");
+    return;
+  }
+  char line[256];
+  if (args.size() < 2) {
+    std::snprintf(line, sizeof(line),
+                  "scan: visor %s, orbit state %d target u%04x, scanning time %.2f, game state %d\n",
+                  VisorName(state->GetCurrentVisor()), static_cast< int >(player->GetOrbitState()),
+                  player->GetOrbitTargetId().value, player->GetScanningTime(),
+                  static_cast< int >(mgr.GetGameState()));
+    out += line;
+    return;
+  }
+  const CEntity* ent = ResolveObject(mgr, args[1]);
+  const CActor* actor = ent != nullptr ? TCastToConstPtr< CActor >(ent) : nullptr;
+  float dist = 40.f;
+  if (actor == nullptr || (args.size() > 2 && (!ParseFloat(args[2], dist) || !(dist > 1.f)))) {
+    Fail("usage: scan <actor id> [dist > 1] [updates]   (`scan` alone: progress)");
+    return;
+  }
+  if (!state->HasVisor(CPlayerState::kPV_Scan)) {
+    Fail("scan visor not owned (`give scanVisor 1`)");
+    return;
+  }
+  static TUniqueId sArmed = kInvalidUniqueId;
+  if (state->GetCurrentVisor() != CPlayerState::kPV_Scan || sArmed != actor->GetUniqueId()) {
+    if (state->GetCurrentVisor() != CPlayerState::kPV_Scan) {
+      state->StartTransitionToVisor(CPlayerState::kPV_Scan);
+      if (CPlayerGun* gun = player->GetPlayerGun()) {
+        gun->HolsterGun(mgr);
+      }
+    }
+    sArmed = actor->GetUniqueId();
+    PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, 0);
+    out += "scan visor up, L held: repeat the command in ~30 updates\n";
+    return;
+  }
+  sArmed = kInvalidUniqueId;
+  const CScannableObjectInfo* info = actor->GetScannableObjectInfo();
+  const float download = info != nullptr ? info->GetTotalDownloadTime() : 0.f;
+  const unsigned updates = args.size() > 3 ? static_cast< unsigned >(ArgToInt(args[3], 0))
+                                           : static_cast< unsigned >(download * 60.f) + 120u;
+  const CVector3f target = actor->GetOrbitPosition(mgr);
+  CVector3f dir = player->GetTranslation() - actor->GetTranslation();
+  dir.SetZ(0.f);
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, -1.f, 0.f);
+  CVector3f pos = actor->GetTranslation() + dir * dist;
+  pos.SetZ(actor->GetTranslation().GetZ());
+  player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
+  player->PortForceOrbit(actor->GetUniqueId(), mgr);
+  PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, updates);
+  std::snprintf(line, sizeof(line),
+                "scan u%04x (orbit point %.1f, %.1f, %.1f, visor flags %x, download %.1f s)%s%s: "
+                "player at (%.1f, %.1f, %.1f), orbit locked, L held for %u updates\n",
+                actor->GetUniqueId().value, target.GetX(), target.GetY(), target.GetZ(),
+                actor->GetTargetableVisorFlags(), download, info != nullptr ? "" : "; no scan info",
+                actor->GetMaterialList().HasMaterial(kMT_Scannable) ? "" : "; not kMT_Scannable",
+                pos.GetX(), pos.GetY(), pos.GetZ(), updates);
+  out += line;
+}
+
 // stick <x> <y> [updates]: hold the main stick, -127..127 (0 holds until the next press/stick).
+// covdump: a coverage build (MP_PORT_COVERAGE) writes its gcov counters now and zeroes them; the
+// next dump (another covdump, or the exit) adds to the .gcda files. A run that hangs in shutdown
+// and is killed keeps what was dumped. Other builds answer that there is nothing to write.
+void CmdCovdump(CStateManager&, const Args&, std::string& out) {
+#ifdef MP_PORT_COVERAGE
+  PortCoverageFlush();
+  out += "gcov counters written\n";
+#else
+  out += "not a coverage build\n";
+#endif
+}
+
 void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
   (void)mgr;
   if (args.size() < 3) {
@@ -2641,6 +2754,8 @@ constexpr SCommand kCommands[] = {
     {"take", CmdGiveTake, true},
     {"press", CmdPress, true},
     {"grapple", CmdGrapple, true},
+    {"scan", CmdScan, true},
+    {"covdump", CmdCovdump, true},
     {"stick", CmdStick, true},
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},

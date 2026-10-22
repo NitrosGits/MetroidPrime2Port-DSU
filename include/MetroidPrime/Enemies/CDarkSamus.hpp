@@ -1245,6 +1245,20 @@ private:
   void UpdateFade(float dt);                // fn_10_1D6CC
   void UpdateTargetable(CStateManager& mgr); // fn_10_1D5C4
 #endif
+#ifdef TARGET_PC
+  // dsfsm2 slice 12: the rest of Think's calls (fn_10_1B1FC).
+  void UpdateDiveContact(CStateManager& mgr);              // fn_10_1ACA0
+  void PushPlayerAfterBounce(CStateManager& mgr);          // fn_10_13868
+  void UpdateSilhouetteFade(CStateManager& mgr, float dt); // fn_10_F710
+  void UpdateInvulnerableFade(float dt);                   // fn_10_F654
+  void UpdateMeleeHit(CStateManager& mgr);                 // fn_10_1AE08
+  void UpdateStageFlash(CStateManager& mgr);               // fn_10_1B0E0
+  void CheckHealthThreshold(CStateManager& mgr);           // fn_10_1B154
+  // guest 0x10A4: fn_10_1B154 sent kSS_AILogicState1 (0x0001B1E0); the constructor clears it
+  // (0x0002026C). Its threshold 0x10A0 is mData.mUnknown72EDEB7D (the constructor's f1,
+  // `stfs f23, 0x10a0` at 0x00020268; the loader's property 0x72EDEB7D at 0x0000D4FC).
+  bool mHealthThresholdSent = false;
+#endif
 #else
   uchar x7c0_[0x1128 - 0x7c0];
 #endif

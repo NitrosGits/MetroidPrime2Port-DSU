@@ -1481,6 +1481,8 @@ are unreachable in the shipped data (the class-**c** rows above). `fn_9_3338` (t
 helper) is marked too: the coverage run in area 59 gives it 7/7 lines and 2/2 branches - the ray
 and the path finder answered both ways. `fn_9_C300` (the KnockBack override) is marked: 15/15
 lines and 11/11 branches with tools/drivers/commandopirate_c300.py (forced (damage), forced (kill +
+`fn_9_3900` (the jump-back velocity) is marked as well:
+the console's `send <id> 0x584c4155` delivers the module's own launching message, so the helper
 damage); the rag-doll branch is dead). The four functions of the first
 slice (`fn_9_7A98`, `fn_9_2474`, `fn_9_2A98` and `fn_9_B1E0`) and the FollowAttackPattern state
 (`fn_9_961C`) are not marked: each of them still has a class-**d** arm (the charge's abort and

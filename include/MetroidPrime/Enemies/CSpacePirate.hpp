@@ -139,7 +139,10 @@ public:
   // @ fn_72_8 (0x8): `addi r3, r3, 0x920` (0x8), this + 0x920. Branchless; 400+ calls in the gdb run.
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // fn_72_40
-  CRagDoll* GetRagDoll() const override { return nullptr; } // fn_72_17A0; xb30_ is never set yet
+  // fn_72_17A0 (0x28): the ragdoll (0xb30) is returned only while it is live: the ragdoll's flag
+  // byte 0x70 has to carry 0x40 (asm 0x17B0-0x17B4) and 0x80 (asm 0x17B8-0x17BC), else null
+  // (asm 0x17C0).  The body is in PortCSpacePirateHelpers.cpp.
+  CRagDoll* GetRagDoll() const override;
   // @ fn_72_24
   // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
   float GetGravityConstant() const override { return 50.f; } // fn_72_24

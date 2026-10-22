@@ -17,3 +17,8 @@ extern "C" void PortCoverageInstall();
 // Writes the counters to the .gcda files. Safe to call more than once: the second call does
 // nothing, so a dump from a signal and the one from the exit path cannot double-count.
 extern "C" void PortCoverageDump();
+
+// Writes the counters now and zeroes them, so the next dump adds only what ran since (libgcov
+// merges into the existing .gcda files). The console's `covdump`: a run that hangs in shutdown
+// and is killed still leaves a profile behind.
+extern "C" void PortCoverageFlush();

@@ -447,6 +447,22 @@ The five functions the audit could not diff in depth were read against the asm:
   0x38 and 0x48) with the volume 0x7F - the host's CSfxManager::UpdateEmitter has the same
   signature.  Both stand-ins are gone.
 
+### 3.11 The five functions the sweep did not diff
+
+Each of them was read against the REL's asm (the decode rules in `docs/LANE_BRIEF.md`), and each
+one turned out to be **right as it was** - the two "fixes" of the earlier slice were wrong and are
+reverted (section 3.10).  The profile is the coverage build's merged counters over the natural run
+and the forced runs (28 runs, `tools/cov/specs/splitter_helpers_force.py`):
+
+| function | the diff | the profile |
+|---|---|---|
+| `fn_75_1974` (the laser shot) | right: the attributes word is 0x21000 (`lis r4, 0x2` loads 0x2 << 16, asm 0x1A68; `addi r0, r4, 0x1000`, asm 0x1A70; stored at 0x1A9C), the material 0x14 (asm 0x1A98), the damage at 0xCF0 (asm 0x1A88), the weapon type 2 (asm 0x1A94), the new beam (asm 0x19D8), the sound's parameters 150.0f/0.1f/1/0x7F/0x23 and its position the beam's collision point (+0x444, asm 0x1BC8) | 19/19 lines, 4/4 branches, **ALL-ARMS** |
+| `fn_75_10D0` (the module's transform) | right: the copy (asm 0x10E0), the "Beam_LCTR" locator (rodata 0x293), the operator* (asm 0x1140) and the result's translation (asm 0x1154) | 6/6 lines, 2/2 branches, **ALL-ARMS** |
+| `fn_75_11884` (the beam effect's ctor) | right: the CActor's arguments, the kMT_NoStepLogic material list (asm 0x11910-0x11954), the texture (kTF_IA8, 4 wide, one mip, asm 0x119A8-0x119FC), the closed angle (lbl_75_bss_38), the seed 99 (asm 0x11A34) and the opening flag (asm 0x11A54) | 20/20 lines, 6/6 branches, **ALL-ARMS** |
+| `fn_75_11804` (the beam effect's dtor) | right: the texture's scheduled deletion (asm 0x11834) and its deletion (asm 0x11848) before the base's dtor (asm 0x11854) | 4/4 lines, 1/2 branches - the untaken one is the deleting flag's arm (dead: the only caller is the operator delete) |
+| `fn_75_3460` (the collision actor manager) | right: the "Skeleton_Root" joint (the radius 3.0f, rodata 0x4, asm 0x3510; the mass 1000.0f, rodata 0x94, asm 0x34FC), the new manager (asm 0x356C) and its ctor (asm 0x35A4), the walk (asm 0x35CC) with the id at the description's 0x3C (asm 0x35D8), the "Beam_LCTR" compare (asm 0x3614) and the final call with the flag clear (asm 0x3654) | 18/20 lines, 21/24 branches - the untaken ones are the joint that is not a collision actor and the "Beam_LCTR" name (dead: the head's only joint is "Skeleton_Root") and the delete's null test (the compiler's) |
+| `fn_75_6B08` (the head's constructor) | right: the EPatternedAI 0x39 (asm 0x6B68), the CPathFindSearch (the null area, the flags 3, the patterned info's pathfinding index, the two radii 1.0f from lbl_75_rodata_34, asm 0x6BA0-0x6BB0), the two CProjectileInfos (asm 0x6BC4 and 0x6BD8), the flag byte 0x92 (asm 0x6D44-0x6DA0), the locator "Beam_LCTR" (asm 0x6DB0), the material filter (1 << 59 and 1 << 47 | 1 << 33, asm 0x6DEC-0x6E40) and the dodge distance (asm 0x6E60-0x6EF8) | 22/23 lines, 27/27 branches, **ALL-ARMS** |
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the

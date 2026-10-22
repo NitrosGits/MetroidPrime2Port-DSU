@@ -219,7 +219,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
   // at 0x18E60).
   x137A8_();
-  mDamageColor = CPatterned::skHitsWithoutDamageColor; // 0x450, stored at 0x18F28..0x18F30
+  mDamageColor = CPatterned::skHitsWithoutDamageColor; // 0x450, stored at 0x18E64..0x18E6C
 
   // The three 'SCAN' tokens (0x18E70..0x190B4): each id tested against -1 (addis/cmplwi 0xffff),
   // a 0xC-byte TCachedToken (operator new at 0x18E98) cached at once (GetObj at 0x18EF0).

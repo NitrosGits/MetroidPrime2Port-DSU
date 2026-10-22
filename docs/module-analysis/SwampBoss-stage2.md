@@ -747,7 +747,7 @@ approximate.
 |---|---|---|
 | 0x5078 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors, so the shipped area never takes it |
 | 0x5094 | the walk's condition | (a) a loop condition |
-| - | the body itself | (d) it never ran: the chain walk is launched by the anim event 0x1b (`kUE_EventStart`), and that event did not fire in any driver run, so `fn_79_5030` and `fn_79_527C` are unreachable in the port as it stands |
+| - | the body itself | (b) it runs whenever the anim event 0x1b fires (7.24: the flyer-drop animations) |
 
 **fn_79_527C** (the port's `SwingChainNodes`)
 
@@ -810,12 +810,8 @@ The driver is committed: `tools/drivers/swampboss2_chain.py` (the console part) 
 `MP2_TICKS_PER_FRAME=8` and runs the driver). It waits for the boss in the `objs` list, sends it
 the `kSM_AreaLoaded` message and forces the boss's AI states with `fsm <id> <state>`.
 
-**The anim event 0x1b** (the chain launch) is carried by the **light phase's `Lurk` state's
-animation**: a probe on the port's `DoUserAnimEvent` case 0x1b printed the state at the moment
-the event fired - `[probe] the chain launch in the state Lurk` - and the chain launch then ran
-(`fn_79_55B0` -> `fn_79_5030` -> `fn_79_527C`). It is not forced: `Lurk` is a sub-machine state,
-so `fsm <id> Lurk` cannot enter it by name (the console says "state 'Lurk' not entered"), and the
-launch happened in the state the boss reaches on its own.
+**The anim event 0x1b** (the chain launch) is carried by the flyer-drop animations, not by
+`Lurk` (7.24 has the shipped event sets and the probe-free runs).
 
 **fn_79_5030** (the port's `PlaceChainNodes`) - **marked**
 
@@ -823,7 +819,7 @@ launch happened in the state the boss reaches on its own.
 |---|---|---|
 | 0x5078 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
 | 0x5094 | the walk's condition | (a) a loop condition |
-| - | the body | (b) `[arm] 60 5030 a chain node is put on its recorded position` (the light phase's `Lurk`, no forcing) |
+| - | the body | (b) see 7.24 (gcov) |
 
 **fn_79_527C** (the port's `SwingChainNodes`) - **not marked** (the edge-radius arm 0x53B0 was not
 reached: the swung node stayed inside the edge radius, so the driver would have to `place` a chain
@@ -859,24 +855,8 @@ to every object it loads) and the console's `send <boss uid> AreaLoaded` (the dr
 the boss is in the `objs` list) delivers a second one - so the chain walk is reached without any
 forcing (7.18 repeats this with a run that forces nothing).
 
-**The grapple (fn_79_7E24's 0x804C) is blocked by shared host code, not by the module**
-
-- `src/MetroidPrime/ScriptObjects/CScriptGrapplePoint.cpp:68` - the grapple point only gets
-  `kMT_Orbit` when it is activated; it never gets `kMT_Target`.
-- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1004` - the lock-on's near list is built with
-  `CMaterialFilter::MakeInclude(CMaterialList(kMT_Target))`, so a grapple point is not in it.
-- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1070` - `ValidateAimTargetId` rejects a target without
-  `kMT_Target`.
-- `src/MetroidPrime/Player/CPlayerOrbit.cpp:1478,1492,1506` - `BeginGrapple` is reached from the
-  *orbit* target, which is the same aim target, so the grapple needs the same material.
-- Retail: the grapple points are `CScriptGrapplePoint`s that the arm's beam connects to
-  (`fn_79_7E24`'s window test is on `mGrappleTime`, +0xd8c); the port's `CPlayer::BeginGrapple`
-  (CPlayerOrbit.cpp:1361) is the same path.
-
-With the grapple beam owned (`give grappleBeam 1` - `CPlayerState::kIT_GrappleBeam` = 0x17, and
-`CPlayerState::ShouldDrawGrapple` needs it) and the point woken (`send u066b Activate`), the point
-still never becomes the player's orbit target, so `mGrappleTime` stayed at 0.00 in every run.
-The fix belongs in the shared `CScriptGrapplePoint`/`CPlayerOrbit` code, not here.
+**The grapple:** the lock-on works; the earlier runs used a uid that is not a grapple point
+and left the points inactive. 7.24 has the area's wiring and the run.
 
 ### 7.18 The chain walk's arms (2026-10-21, twelfth lane pass)
 
@@ -933,7 +913,7 @@ layer 6, `MP2_GODMODE=1`, `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`:
    `kSM_AreaLoaded` at the area load drives `fn_79_5830` -> `fn_79_50AC`
    (`[arm] 72`, `[arm] 73`).  The light chain has 6 nodes, the dark chain 82.
 2. **The swing** (the driver forces the boss's AI states, `fsm <boss> <state>`): the light
-   phase's Lurk animation carries the anim event 0x1b, the chain launch
+   flyer-drop animations (DropFlyer, Become*Flyer; 7.24) carry the anim event 0x1b, the chain launch
    (`fn_79_55B0` -> `fn_79_5030` -> `fn_79_527C`) runs, and **the edge arm runs on its own**:
    the swung node ends up 83.3 units from the centre while the edge radius is 54.9
    (`[probe] 527C pull back: d 83.31 edge 54.89`).  `fn_79_527C`'s edge arm therefore needs no
@@ -1163,3 +1143,53 @@ additive flinch: the module's only copy of that code and nothing calls it - the 
 `AddAdditiveFlinch` is the retail's inline code in fn_79_61C4), `fn_79_4F88` (`SendDecrement`,
 no caller), `fn_79_5D40` (`GetIngSnatchingPoint`: the ing snatch never runs) and `fn_79_72FC`
 (the code node: it is in the asset's code list but no state transitions into it).
+
+### 7.24 The anim event 0x1b and the grapple lock-on, probe-free (2026-10-22, sb2grapple lane)
+
+**Neither gap is a port bug.** The engine path (CAnimPOIData -> CAnimData::mInt32POINodes ->
+CActor::UpdateAnimation `kPT_UserEvent` -> `DoUserAnimEvent`) delivers 0x1b. The earlier runs just
+never reached the animations that carry it, and they never woke the grapple points.
+
+**Where 0x1b is in the shipped data.** A temporary dump of every `CAnimPOIData` user event as it
+loaded (removed again) shows the boss's ANCS event sets (04_swamp_temple_dark, layer 6). 0x1b is
+in two of them, each followed by the EggLay (0x01) flyer releases:
+
+| set | user events (value@time, locator) | state |
+|---|---|---|
+| 579 | 27@0.750 tail_LCTR, then 1@0.817..1.283 (10 x) | DropFlyer's loop attack |
+| 600 | 15@0.500, 27@2.117 L_backWing_1, then 1@2.250..2.900 (6 x) | Become*Flyer (FadeOut, then the drop) |
+
+Lurk's sets carry no 0x1b. In a natural 6000-update light-phase run (tools/cov gdb tally on
+`DoUserAnimEvent`'s `$rcx`), Lurk is entered 8 times and the boss gets only the events
+0/8/9/22/33/34/37/38/39. DropFlyer and Become*Flyer are never entered there, so 55B0/5030/527C get
+0 hits.
+
+**Runs** (all `3dfd2249,04_swamp_temple_dark`, `--fast`, caught/reach-stub 0):
+
+- *forced (fsm)*, `fsm u06d9 DropFlyer` @f1000, `BecomeDarkFlyer` @f1800, `DropFlyer` @f2600,
+  `BecomeLightFlyer` @f3200, 4000 updates. Event 27 arrives 3 x and event 1 22 x, and
+  `LaunchPlatformChain`/`PlaceChainNodes`/`SwingChainNodes` get 3 hits each. In real play these
+  states follow `AllGrowthsDead` and the dark-phase attack slots (7.19).
+- coverage build (`build-port-cov`) of the same run, plus a `tools/cov/force.sh` run with the same
+  driver whose FORCE writes `mChainANodes/mChainBNodes.mItems[0] = 0xffff` at `PlaceChainNodes`
+  entry, so the CActor cast fails, **forced (gdb)**. gcov over both:
+  - `fn_79_527C`: 15/15 lines, 6/6 branches, **ALL-ARMS**. The edge pull-back (0x53B0) ran both
+    ways without forcing; the cast failure 0x52D0 is the forced one.
+  - `fn_79_5030`: **ALL-ARMS** (after this lane removed the port's `i < positions.size()` host
+    guard, which retail lacks: retail's bound is the nodes count alone, 0x5054 `lwz r31,0x4(r5)` /
+    0x5090 `cmpw r27,r31`, and the only writer fn_79_50AC pushes the position and the uid
+    together). The loop 0x5090/0x5094 ran; the cast 0x5074/0x5078 ran both ways (failure side
+    forced).
+
+**The grapple.** The area's three points (GRAP 1820006a/6d/6f, layer 6) start inactive. The fight's
+start switch SWTC 00200232 (OPEN) fires relay SRLY 00200235 (layer 0). Its ZERO goes to relay
+18200260, which sends ACTV to the three GRAPs and three PLATs, and to relay 18200265, which sends
+ACTV to the boss. Relay 1820025e (from 00200237) deactivates the points again. The earlier lanes
+sent `u066b Activate`, but `u066b` is not a grapple point in this boot (the points are
+u06e9/u06e4/u06d1), so nothing woke them. Driver `tools/drivers/swampboss2_grapple.py` sends the
+start relay (`u04cc`) SetToZero, and the console lists the points active. It then gives the
+grapple beam and runs `grapple u06e9`. Result: `CPlayer::BeginGrapple` 1 hit, orbit state 5 (grapple)
+from f513 on while the player swings, and `PlayerOnGrapplePoint` (fn_79_3354) returns true 1544
+times out of 1584 (gdb tally, 2000 updates). The orbit candidates are kMT_Orbit
+(CPlayerOrbit.cpp:826), and an active point has it, so the old kMT_Target theory does not apply.
+
