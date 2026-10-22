@@ -24,6 +24,8 @@ public:
   bool IsTargetVisible() const { return x38_visible; }
   float GetVisibleTime() const { return x30_visibleTime; }
   float GetHiddenTime() const { return x34_hiddenTime; }
+  // Owners write the flag directly (the CommandoPirate REL clears bit 0x80 of +0x38).
+  void SetTargetVisible(bool visible) { x38_visible = visible; }
 
 private:
   TUniqueId x0_owner;
