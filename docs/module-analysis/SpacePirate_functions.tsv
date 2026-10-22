@@ -51,7 +51,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x2EA0	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_2EA0
 0x2EA8	0xA4	CSpacePirate	sfx emitter update (Think helper)	method	B	1980	the sfx emitter, ported 2026-10-21 (asm 0x2EA8)	marked	fn_72_2EA8
 0x2F4C	0x2D4	CSpacePirate	UpdateCloak (Think helper)	method	B	1980	-	marked	fn_72_2F4C
-0x3220	0x17C	CSpacePirate	ShouldFrenzy (squad random, from 28F0)	method	B	28F0	-	ported	fn_72_3220
+0x3220	0x17C	CSpacePirate	ShouldFrenzy (squad random, from 28F0)	method	B	28F0	the charge-player list arm (asm 0x3290-0x32A4), fixed by the module lane	ported	fn_72_3220
 0x339C	0xA0	CSpacePirate	ScanVisorRender	virtual	B	data_8D8	-	marked	fn_72_339C
 0x343C	0x190	CSpacePirate	GetScanVisorRenderBounds	virtual	B	data_8D8	-	marked	fn_72_343C
 0x35CC	0x100	CSpacePirate	GetSortingBounds	virtual	B	data_8D8	-	marked	fn_72_35CC
@@ -193,7 +193,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xC488	0xB0	CSpacePirate	Stuck (trigger)	fsm-trigger	B	data_4	-	marked	fn_72_C488
 0xC538	0xF0	CSpacePirate	Death	virtual	B	data_8D8	-	marked	fn_72_C538
 0xC628	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_A8C	CBodyStateCmd subclass dtor	not-port	fn_72_C628
-0xC684	0x358	CSpacePirate	KnockBack	virtual	B	data_8D8	-	marked	fn_72_C684
+0xC684	0x358	CSpacePirate	KnockBack	virtual	B	data_8D8	the sfx emitter's handle at 0xc00 (asm 0xC944/0xC9B8), fixed by the module lane	marked	fn_72_C684
 0xC9DC	0xB8	CSpacePirate	SetNonCinematicCollision	method	B	1980	-	marked	fn_72_C9DC
 0xCA94	0x9C	CSpacePirate	SetCinematicCollision	method	B	1980	-	marked	fn_72_CA94
 0xCB30	0x150	CSpacePirate	GetTargetPos	method	B	253C 63C8 82D0 8464 8670 960C 99F0 9F1C A71C AA64 ABC0 AF70 BCB0 C1A4	-	marked	fn_72_CB30
@@ -222,7 +222,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xE498	0x944	CSpacePirate	AcceptScriptMsg	virtual	B	data_8D8	-	marked	fn_72_E498
 0xEDDC	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_EDDC
 0xEDE4	0x8	(module)	returns 1, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_EDE4
-0xEDEC	0x1E8	CSpacePirate	ChooseTarget	method	B	1980	-	marked	fn_72_EDEC
+0xEDEC	0x1E8	CSpacePirate	ChooseTarget	method	B	1980	the team-target flag (asm 0xEE74/0xEF48) and the squad branch (asm 0xEF50-0xEFA4), fixed by the module lane	marked	fn_72_EDEC
 0xEFD4	0xCC	CSpacePirate	ChooseTeamTarget	method	B	7970 AF70 B59C CB30 E498 EDEC	ChooseTeamTarget, marked by the module lane (the arms agree with the forcing run)	marked	fn_72_EFD4
 0xF0A0	0x6C	CSpacePirate	SetupStateMachine	virtual	B	data_8D8	-	marked	fn_72_F0A0
 0xF10C	0xC0	CSpacePirate	~CSpacePirate (deleting, slot 2)	dtor	H	data_8D8	compiler-generated member dtors	not-port	fn_72_F10C

@@ -244,7 +244,25 @@ class, callers, counterpart_or_proof, port, symbol) and the `port` column reconc
 The `owner` column keeps the retail's owner (the class the function belongs to); what this lane
 did with the rows it touched is in the `counterpart_or_proof` column and in this note's arm tables.
 
-## 5. Three gaps in the module's own files (reported, not changed)
+## 5. The three gaps in the module's own files - fixed by the module lane
+
+This lane reported three bodies that were not the retail's; the module lane fixed all three in
+`decomp/spacepirate` (ac42f32b9 / dcf664036, both merged here) and this lane re-read them against
+the asm:
+
+- `EDEC` ChooseTarget: the retail keeps a "a team target was chosen" flag (r30, set at asm 0xEE74,
+  tested at asm 0xEF48) and, without it, a squad (0xba0) that resolves and has a member within
+  50 units (rodata 0xB70 = 50.0, asm 0xEF50-0xEFA4) keeps the current attack target.  The port has
+  the flag (`teamChosen`), the squad branch and the 50.0 ✔; the swap's thresholds are rodata 0xC2C =
+  30.0 and rodata 0xB58 = 10.0 ✔.  The module lane marked the body.
+- `3220` ShouldFrenzy: the module's charge-player list (bss_40, asm 0x3290-0x32A4) not being empty
+  also rolls a burst.  The port has `!mChargePlayerList.empty()` ✔.
+- `KnockBack` (asm 0xC944 / 0xC9B8): the retail keeps the sfx emitter's handle at 0xc00 - the
+  hurled sound (the data's sound at 0x878, the volume 0x7f, the area at 0x4) and the death sound
+  (0x87a).  The port stores both handles in `xc00_` ✔.
+
+So nothing of this lane's remains open in the module's files; the note's earlier "reported, not
+changed" list is empty.
 
 All three are in `PortCSpacePirate.cpp` / `PortCSpacePirateStates.cpp`, the module session's files,
 so this lane only reports them:
