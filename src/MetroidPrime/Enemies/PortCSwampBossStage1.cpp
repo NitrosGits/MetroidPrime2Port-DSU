@@ -2185,6 +2185,11 @@ CScannableObjectInfo* CSwampBossStage1::GetScannableObjectInfo() const {
   return CPatterned::GetScannableObjectInfo();
 }
 
+// @ fn_78_9A44 (CollidedWith): the retail's own work runs only while the state is 5
+// (TonguePull): it walks the collision list and sets the "player touched" flag when the list's
+// 0x30 slot has u64 bit 32 = kMT_Player (the u64 is big-word-first, so bit 0 of that word is
+// bit 32). The state id is 5 only while the boss pulls its tongue, and the list is in the
+// mover's frame, so the flag means "the boss's body hit the player while it pulled".
 void CSwampBossStage1::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                     CStateManager& mgr) {
   if (xb14_state == 5) {

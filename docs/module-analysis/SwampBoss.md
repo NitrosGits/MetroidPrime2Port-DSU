@@ -624,7 +624,7 @@ stayed at 0.0 and state 3 was never reached.
 | `fn_78_3320` | 0 (an FSM state) | `LightHitReact` | compared, **not marked** (state 3 unreachable) |
 | `fn_78_348C` | 0 (an FSM state) | `HeavyHitReact` | compared, **not marked** (state 3 unreachable) |
 | `fn_78_5784` | 0 (an FSM state) | `SlideIntoWater` | compared, **not marked** (the state is never reached) |
-| `fn_78_9A44` | 0 (a vtable slot) | `CollidedWith` | compared, **not marked** (its own work needs a collision list while the state is 5; the boss's `CollidedWith` was never entered) |
+| `fn_78_9A44` | 0 (a vtable slot) | `CollidedWith` | **marked** (2026-10-22, ALL-ARMS: the state-5 branch with the mask set and unset, and the base call) |
 
 - **`fn_78_348C` (`HeavyHitReact`)** - the retail sets the joints to `kAllJoints` with
   `RemoveTarget|Reflect` on Activate, sends `CBodyStateCmd(kBSC_NextState)`, calls the shared
@@ -692,7 +692,7 @@ in 330 charged shots, and the belly accumulator reached **21.58** - short of the
 | `fn_78_3320` | `LightHitReact` | the shared body plus, on Activate, `DeliverCmd(CBCAdditiveReactionCmd)` | matches; **not marked** - never entered |
 | `fn_78_348C` | `HeavyHitReact` | on Activate `SetJointsActive(kAllJoints, RemoveTarget|Reflect)` and `DeliverCmd(CBodyStateCmd(kBSC_NextState))`, then the shared body, then the taunt (type 4) | matches; **not marked** - state 3 was never reached |
 | `fn_78_5784` | `SlideIntoWater` | records state 6 and, on Activate, `SetJointsActive(kAllJoints, 0xa)`, rumbles and stops the tongue | matches; **not marked** - the state is never reached |
-| `fn_78_9A44` | `CollidedWith` | its own work only while the state is 5 (TonguePull): it walks the collision list, tests bit 0 of the word at collision-info+0x30 (u64 bit 32 = `kMT_Player`) and sets the "player touched" flag, then calls the base | matches, after the mask fix (the port tested `kMT_SeekerTarget`, the wrong bit of the wrong word); **not marked** - the boss's `CollidedWith` was never entered (0 entries) |
+| `fn_78_9A44` | `CollidedWith` | its own work only while the state is 5 (TonguePull): it walks the collision list, tests bit 0 of the word at collision-info+0x30 (u64 bit 32 = `kMT_Player`) and sets the "player touched" flag, then calls the base | matches, after the mask fix (the port tested `kMT_SeekerTarget`, the wrong bit of the wrong word); **marked** - ALL-ARMS (2026-10-22) |
 
 The blocker for all five is the same: state 3 needs the belly accumulator over 50 and the
 harness's hit rate (37 hits in 330 charged shots, the accumulator reset by `BeachWait` between
@@ -731,18 +731,18 @@ message falls through to the body part. The port does the same, and a run exerci
 | the tongue stop (Activate only) | `cmpwi r31, 0x0` at 0x57D8 -> 0x57E0 (`bl fn_78_6BEC` at 0x57E4) | 9 x Activate |
 | the body part (every message) | the fall-through at 0x57E8 | 909 x Update, 9 x Deactivate |
 
-**The other four stay unmarked**, each with the arm that did not run:
+**The other three stay unmarked**, each with the arm that did not run:
 
 | fn | arm that did not run |
 |---|---|
 | `fn_78_35DC` | the `msg == 1` branch (`cmpwi r31, 0x1` at 0x3620 -> the four calls); the function was never entered (state 3 needs the accumulator over 50) |
 | `fn_78_3320` | the `DeliverCmd(CBCAdditiveReactionCmd)` on Activate (`cmpwi r31, 0x0` at 0x3340); the function was never entered |
 | `fn_78_348C` | the Activate branch (`cmpwi r31, 0x0` at 0x34B8 -> `bl fn_78_9744` at 0x34C4 and `bl DeliverCmd` at 0x34E8); the function was never entered |
-| `fn_78_9A44` | the state-5 branch (`cmpwi r0, 0x5` at 0x9A54 -> the `kMT_Player` walk); the boss's `CollidedWith` was never entered (0 entries) |
 
 A run that reaches state 3 (the belly accumulator over 50, or over 5 at min health) would open
-all of them: `fn_78_35DC` and `fn_78_3320` from the `LightHit`/`HeavyHit` triggers, and
-`fn_78_9A44` from a collision list reaching the boss's own `CollidedWith` while the tongue pulls.
+all of them: `fn_78_35DC` and `fn_78_3320` from the `LightHit`/`HeavyHit` triggers.
+(`fn_78_9A44` no longer needs it: the console's `touch` opened that one, see the 2026-10-22
+section below.)
 
 ### Stage1: forcing state 3, the branch tables and the next three (2026-10-21)
 
@@ -776,8 +776,6 @@ of the forced-state runs):
 | `fn_78_3320` | the shared body | `bl fn_78_35DC` at 0x333C | 0 | not marked |
 | `fn_78_348C` | the Activate branch (SetJointsActive(kAllJoints, 0xa) and `DeliverCmd(CBodyStateCmd)`) | `cmpwi r31, 0x0` at 0x34B8 | 0 | **not marked** - never entered |
 | `fn_78_348C` | the shared body and the taunt | `bl fn_78_35DC` at 0x3508, `bl fn_78_B9D0` | 0 | not marked |
-| `fn_78_9A44` | the state-5 branch (the `kMT_Player` walk) | `cmpwi r0, 0x5` at 0x9A54 | 0 | **not marked** - the boss's `CollidedWith` was never entered |
-| `fn_78_9A44` | the base call | the tail of the function | 0 | not marked |
 
 **The next three unmarked functions by static call count** (the ones after the five above; all
 three are the REL's copies of base behaviour, so they are cited, not ported):
@@ -810,8 +808,8 @@ launched (`xc00_tongues < 1`); `BeachWait` and `Dive` reset it to 0. A charged h
 therefore leaves `xd10 = 25` for a few frames and the next `BeachWait` wipes it before
 `fn_78_6458` is evaluated - the trace's heartbeat never sees a value above 0.0.
 
-**So state 3 is still not reached** and the branch tables for `fn_78_35DC`, `fn_78_3320`,
-`fn_78_348C` and `fn_78_9A44` are unchanged (0 entries each, the arms as listed above). What
+**So state 3 is still not reached** and the branch tables for `fn_78_35DC`, `fn_78_3320` and
+`fn_78_348C` are unchanged (0 entries each, the arms as listed above). What
 would be needed: a hit that lands on the **weak** joint while the boss is in a tongue state
 (4, 5, 9 or 10) - the tongue has to have run once, so `xc00_tongues` lifts the cap - and the
 shots have to arrive before the next `BeachWait`/`Dive` reset.
@@ -863,35 +861,62 @@ from the run that hit the weak joint in it):
 | `fn_78_348C` | Activate (the joints and the next state command) | `bne .L_000034F8` at 0x34B8, `bl fn_78_9744` at 0x34C4, `bl DeliverCmd` at 0x34E8 | 1 | **marked** |
 | `fn_78_348C` | Update (the shared body) | `bl fn_78_35DC` at 0x3508 | 104 | **marked** |
 | `fn_78_348C` | Deactivate | 0x34B8 | 1 | **marked** |
-| `fn_78_9A44` | the state-5 branch (the `kMT_Player` walk) | `cmpwi r0, 0x5` at 0x9A54 | 0 | **not marked** - the boss's `CollidedWith` was never entered (the `place` at a joint's position registers no touch) |
 
-`fn_78_9A44` stays unmarked: its own branch needs a collision list while the state is 5, and
-the harness could not produce one. Two runs on 2026-10-22 (the probe was a temporary trace in the
-port body, never committed) pinned down why:
+### fn_78_9A44 marked: the state-5 arm with the console's `touch` (2026-10-22)
+
+`fn_78_9A44` was the last of this module's five unmarked bodies. Its own branch needs a
+collision list **while the boss is in state 5** (TonguePull), and the harness could not produce
+one:
 
 - the branch is **not** about the joint spheres. Those are separate `CCollisionActor` entities and
   their hits go to `CCollisionActor::Touch` -> `kSM_HitObject`, never to the boss's own
   `CPhysicsActor::CollidedWith` (vtable slot 0x84). The boss's `CollidedWith` is reached only
   through `CGameCollision::MakeCollisionCallbacks` (`CGameCollision.cpp:717-729`): the mover's
-  own `CollidedWith` and then the other actor's, both with the mover-frame list. The boss is
-  the "other" either in a near-list dynamic collision (the boss's collision primitive is a
-  `CCollidableAABox` over the pinfo body box, `CPatterned.cpp:60-67`) or through the octree,
-  where the boss's body box is cached dynamic geometry owned by the boss's uid
-  (`CGameCollisionPackedCache.cpp:141-152`) and the hit carries the owner's id.
+  own `CollidedWith` and then the other actor's, both with the mover-frame list.
 - a temporary trace on `CSwampBossStage1::CollidedWith` (printing the state, the list count and
   both material u64s) logged **0 entries** in a 300-frame run in `04_swamp_temple_dark` (layer 3
   forced, the boss woken with `send <boss> Activate` and dropped to 600 HP, the player morphed and
   parked inside the boss's body box at the AI hint) and in a second, longer run that cycled the
   boss through `SplashRise`, `SplashWait`, `PlatformReady`, `Swim`, `Beach` and `SplashJump`
-  while the player was repeatedly teleported onto the boss's position. The boss's `CollidedWith`
-  is not reached at all in the port, so the state-5 arm cannot run yet.
+  while the player was repeatedly teleported onto the boss's position. A **positive control**
+  (the same env-gated trace printing from `Think`, which certainly runs) printed 5 lines in that
+  run, so the trace path worked and the boss's `CollidedWith` really is never entered: a
+  teleport moves the player without a collision response.
 
-The port's body is nevertheless the faithful translation of the retail's (see the material-bit
-calibration above): the retail masks u64 bit 32 of the *other* side's list, so the flag means
-"the boss's body hit the player", and the port now does the same. What is still missing is a
-runtime that delivers a collision list to the boss's `CollidedWith` while the boss is in
-`TonguePull`; the console's `place` moves the player but does not generate a touch for a
-teleport, so a walk-in (or a `shoot` that knocks the player into the boss) is needed.
+**The way in.** The port branch's console grew a `touch <mover id> <other id>` command
+(`platform/port_console.cpp`, `CmdTouch`), which calls the mover's `CollidedWith` exactly the way
+`CGameCollision::MakeCollisionCallbacks` does: with a one-entry `CCollisionInfoList` whose 0x30
+slot carries the **other** actor's material list (the mover-frame list the collision code builds;
+see the material-bit calibration above). It needs no real collision, so the state-5 arm can be
+driven. `git merge port` also brought `CGenericFSM2State::PortSetStateDeep`, so the console's
+`fsm <id> TonguePull` now reaches the state inside the module's `BeachAttack` sub-machine (before
+the merge it answered "state 'TonguePull' not entered": the state body is the port's own
+`TonguePull`, and the old console only looked at the machine's own top-level states).
+
+**The run** (`04_swamp_temple_dark`, layer 3 forced, the boss woken and dropped to 600 HP, the
+player morphed, coverage build `-DMP_PORT_COVERAGE=ON`, `GCOV_PREFIX` per run):
+
+| phase | commands | what it covers |
+|---|---|---|
+| 1 | `touch <boss> <player>` (the boss in its own state) | the state test's false edge (the list walk is skipped) |
+| 2 | `fsm <boss> TonguePull; touch <boss> <player>` | state 5, the list walk, and the mask **set** (the player's list has `kMT_Player`) |
+| 3 | `fsm <boss> TonguePull; touch <boss> <boss>` | state 5, the list walk, and the mask **unset** (the boss's own flyer list has `kMT_SeekerTarget`, not `kMT_Player`) |
+
+Both commands of a phase go on one console line, so the forced entry and the callback call
+happen in the same tick (`a; b; c` runs in one tick) before the FSM's next update resets the
+state id. `tools/cov/gcov_report.py` on the run's counters:
+
+    SwampBossStage1 fn_78_9A44  CSwampBossStage1::CollidedWith(...)  7/7  6/6  ALL-ARMS
+
+so every branch of the body ran: the state test both ways, the list walk, the `kMT_Player` test
+both ways and the base call. The body is therefore **marked**.
+
+**What the marking does not claim.** The flag's *meaning* changed with the mask fix (see the
+material-bit calibration): the retail masks u64 bit 32 of the other side's list, so the flag
+means "the boss's body hit the player", and the port now does the same. A run that produces a
+real collision (a walk-in, or a `shoot` that knocks the player into the boss) would still be
+worth doing: it is the only way to see the flag through the game's own collision path rather
+than through the console's `touch`.
 
 ## Stage2 (module 79) — verified
 
