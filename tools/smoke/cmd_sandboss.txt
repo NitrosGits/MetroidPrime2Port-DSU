@@ -1,4 +1,10 @@
-@20 objs sandboss
-@30 objs sandboss
-@45 objs sandboss
-@60 objs sandboss
+# The Amorbis (CSandBoss, REL module 55) is a layer 5 'Amorbis Boss' object
+# (docs/modules.tsv: Agon Wastes/03_sand_temple_dark[L5]); area 36 boots with layers
+# 0 4 6 7 13 15 16 active, so `objs sandboss` matched nothing and the family could not tell a
+# missing boss from a missing layer. Gameplay is reached at frame 240; the checks are in frames
+# (not seconds) so a fast run with MP2_TICKS_PER_FRAME lands on the same updates.
+@f400 layer 5
+@f700 objs sandboss
+@f1000 objs sandboss
+@f1400 objs sandboss
+@f1800 objs sandboss
