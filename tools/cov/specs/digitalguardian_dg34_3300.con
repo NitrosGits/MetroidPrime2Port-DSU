@@ -1,0 +1,16 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark), dg34: fn_14_3300's console-reachable arms.
+# The vortex's TakeOff comes from the A_into_vortex_fast transition (meta 30) while the body controller's
+# current anim is 12 (A_vortex_fast, no events): no take-off time. B_jump (char 38, the Step state
+# JumpAttack issues) has a TakeOff and no Landing: with the vortex mode forced to 1 its TakeOff reaches
+# 3300 with take-off found and landing not. Last, the IS05 object gone (dg.follow invalid) and a TakeOff.
+# Run: BUILD=<cov build> tools/cov/run.sh tools/cov/specs/digitalguardian_dg34_lookup.py <out>
+#        1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_dg34_3300.con --fast --frames 1400
+@f30 layer 3
+@f60 layer 11
+@f150 send e00350060 Activate; send e0035000f Activate
+@f200 fsm e00350060 VortexAttack
+@f700 fsm e00350060 JumpAttack; var e00350060 dg.vortex 1
+@f720 var e00350060 dg.vortex 1
+@f760 var e00350060 dg.vortex 1
+@f1000 var e00350060 dg.vortex 1; var e00350060 dg.follow 65535; uevent e00350060 13
+@f1100 covdump

@@ -1,0 +1,8 @@
+# dg34: TakeOff events in the vortex for tools/cov/specs/digitalguardian_dg34_3300.py (the natural one, then uevent).
+@f30 layer 3
+@f60 layer 11
+@f150 send e00350060 Activate; send e0035000f Activate
+@f200 fsm e00350060 VortexAttack
+@f600 var e00350060 dg.vortex 1; uevent e00350060 13
+@f650 var e00350060 dg.vortex 1; uevent e00350060 13
+@f800 covdump

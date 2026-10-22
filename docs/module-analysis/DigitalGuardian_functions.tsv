@@ -58,7 +58,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x308C	0x120	CDigitalGuardian	-	func	B	fn_14_7208 fn_14_7600 fn_14_9678	marked	marked	fn_14_308C
 0x31AC	0x100	CDigitalGuardian	-	func	H	fn_14_119E4 fn_14_308C	same body as IngBoostBallGuardian 0x160d0 (the template inline the compiler emitted out of line)	not-port	fn_14_31AC
 0x32AC	0x54	CDigitalGuardian	-	func	H	fn_14_119E4 fn_14_13830 fn_14_17F64 fn_14_308C	same body as EmperorIngStage1 0x6844 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_32AC
-0x3300	0x1E8	CDigitalGuardian	-	func	B	fn_14_A468	port body (dg33: max_val(0, span) NaN sense at 0x3430); unmarked: never called in runs (DoUserAnimEvent TakeOff in the vortex; GetTimeOfUserEventForAnimation never finds TakeOff on the host)	not-port	fn_14_3300
+0x3300	0x1E8	CDigitalGuardian	-	func	B	fn_14_A468	marked	marked	fn_14_3300
 0x34E8	0x18C	CDigitalGuardian	-	func	B	fn_14_9070	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_34E8
 0x3674	0x188	CDigitalGuardian	-	func	B	fn_14_9260	marked	marked	fn_14_3674
 0x37FC	0xC0	CDigitalGuardian	-	func	B	fn_14_7208 fn_14_77EC	marked	marked	fn_14_37FC

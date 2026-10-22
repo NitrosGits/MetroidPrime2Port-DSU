@@ -828,6 +828,13 @@ void CDigitalGuardian::x4838_(CStateManager& mgr) {
 // (0x3470) 0x11CC is the object's offset from the body times 1.0f (.rodata 0x270) / time
 // (0x3454, 0x3484..0x349C); otherwise zero (0x34A4). The stores are 0x34B0..0x34C0.
 // Retail reads the object's translation (0x54) without a type check; the host casts to CActor.
+// The vortex's TakeOff comes from A_into_vortex_fast (meta 30), which the transition database plays
+// into the locomotion anim A_vortex_fast (char 12, no events): the lookups ask about anim 12 and
+// find no take-off. Only char 29 (meta 30) has both events, and no PAS state lists it, so the span
+// arm is data-dead; B_jump (char 38) has a TakeOff and no Landing.
+// gcov (dg34: tools/cov/specs/digitalguardian_dg34_3300.con natural, digitalguardian_dg34_3300.py
+// forced anim 29 / landing 0): 8/8 branches, ALL-ARMS.
+// @ fn_14_3300
 void CDigitalGuardian::x3300_(CStateManager& mgr) {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(x116A_));
   if (target == nullptr) {
