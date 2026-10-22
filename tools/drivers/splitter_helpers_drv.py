@@ -213,6 +213,11 @@ PLANS = {
           (6, "statecall u0532 Dodge 1"), (8, "statecall u0532 Dodge 2"),
           (10, "fsm u0531 PathFind"), (12, "statecall u0532 Dodge 1"),
           (14, "statecall u0532 Dodge 2")],
+    # K2 (the helpers lane): the chassis takes a cannonball hit (its knock-back, fn_75_EBF4) and
+    # the head is put into the floor (its collision, fn_75_6178).
+    "K2": [(1, "pick:0532"), (2, "damage u0532 25 0 cannonball"), (4, "pick:0531"),
+           (6, "lift:0531:-127.0"), (8, "damage u0531 25 0 power"),
+           (12, "damage u0532 25 0 missile"), (16, "damage u0531 25 0 missile")],
     "D": [(2, "dump:objs collision"), (3, "dump:objs splitter"), (4, "dump:obj u%s" % "0532")],
     "T": ring(10, 0, 10) + ring(30, 0, 36) + ring(25, 12, 62) + missiles(88, 6) + [(101, "tp:0:20:0")]
          + missiles(102, 6) + [(115, "tp:20:0:0")] + missiles(116, 6) + [(129, "tp:-20:0:0")]

@@ -161,3 +161,4 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   (`recording.cpp`, from upstream aurora 9c0bf66f1e), the dstAlpha alpha-only pass
   (`command_processor.cpp` `push_gx_draw`, `67f337a57`) and `AURORA_PRESENT_EVERY` (`aurora.cpp`
   end_frame).
+- **Full list of vendored-Aurora additions** (keep all on re-vendor): 32 MiB uniform buffer, efb_copy shutdown outside the lock, `PADSetPortOverride`, partial `GXCopyTex` clear, dstAlpha alpha-only pass (now dual-source when supported, `AURORA_DUAL_SOURCE=0` = old), `GXSnapshotDepth`/`GXPeekZRegion` (flare occlusion), `aurora/perf.h` counters (`MP2_PERF_COUNTERS=1`), `AURORA_PRESENT_EVERY`, `AURORA_RENDER_EVERY` (fifo copy-destination table), Dawn `ImplicitDeviceSynchronization` (`AURORA_IMPLICIT_SYNC=0` = off; without it GPU ring resets).

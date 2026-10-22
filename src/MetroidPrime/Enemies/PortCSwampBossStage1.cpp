@@ -1806,8 +1806,9 @@ void CSwampBossStage1::Think(float dt, CStateManager& mgr) {
   xb58_radarPresent = AnyJointOnRadar(mgr);
 }
 
-// @ fn_78_9B74 (kSM_Damage branch): route a collision joint's hit to the boss body. Returns false
-// when retail returns before CPatterned::AcceptScriptMsg (the same projectile hit again).
+// fn_78_9B74's kSM_Damage branch ('XDMG', 0x9E10; the function's marker is on AcceptScriptMsg):
+// route a collision joint's hit to the boss body. Returns false when retail returns before
+// CPatterned::AcceptScriptMsg (the same projectile hit again).
 bool CSwampBossStage1::ApplyDamageMsg(CStateManager& mgr, const CScriptMsg& msg) {
   if (!GetAlive()) {
     return true;
@@ -2188,9 +2189,14 @@ void CSwampBossStage1::CollidedWith(const TUniqueId& id, const CCollisionInfoLis
                                     CStateManager& mgr) {
   if (xb14_state == 5) {
     for (int i = 0; i < list.GetCount(); ++i) {
-      // The material u64 starts at info+0x30; big-endian, bit 0 of that word is bit 63 =
-      // kMT_SeekerTarget.
-      if (list[i].GetMaterialLeft().HasMaterial(kMT_SeekerTarget)) {
+      // The retail keeps the material u64 big-word-first: the word at the list's base+0 holds
+      // the u64's bits 63..32 and the word at base+4 holds bits 31..0 (DOL
+      // `CActor::AddMaterial` 0x8004C340 shifts 1<<material and ORs the shift's high half
+      // into the word at the list base+0, the low half into base+4). So bit 0 of the word at
+      // collision-info+0x30 is u64 bit 32 = kMT_Player, not bit 63 = kMT_SeekerTarget.
+      // The retail masks it with `li r8, 0x1` (0x9A70), `lwz r0, 0x30(r10)` (0x9A78) and
+      // `and r0, r0, r8` (0x9A80).
+      if (list[i].GetMaterialLeft().HasMaterial(kMT_Player)) {
         xce4_playerTouched = true;
       }
     }

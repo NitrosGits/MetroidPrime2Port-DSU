@@ -1760,6 +1760,78 @@ trigger's entry, one per hit, from gdb convenience variables).
 - The DigitalGuardianHead's damage colour is stored at 0x18E64..0x18E6C (the store follows the
   armour model's constructor call at 0x18E60), not at 0x18F28.
 
+## Slice 35 (2026-10-22): the next unmarked functions - four bodies, no markers yet
+
+- The merge of `port` (e85ad6ac1) was a fast-forward; no conflict.
+- **fn_10_2EFC** (0x00002EFC, 8 bytes): the float at guest 0x314 (`lfs f1, 0x314(r3)`) - the
+  port's GetGuest314.
+- **fn_10_2F04** (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 (`lbz` at
+  0x00002F04, the `extrwi` at 0x00002F08 takes the bit 25 = 1u << (31 - 25) = 0x40) - the port's
+  GetGuest318Bit6.
+- **fn_10_1B24** (0x00001B24, 0xDC bytes): the cross product of two vectors - the x
+  a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C) and
+  the z a.x * b.y - b.x * a.y (0x00001B54). The host's CVector3f::Cross is the same formula; the
+  port's new CrossProduct helper is used by UpdateHeadAim (fn_10_10A64, the cross at 0x00010B34).
+- **fn_10_E5C** (0x0000E5C, 0xDC bytes): the base's EnsureRendered (the host's
+  CActor::EnsureRendered(const CStateManager&)); the port's new EnsureRenderedActor calls it from
+  AddToRenderer.
+- **No markers**: the coverage run (the rooftop, the coverage build) shows 0 hits for
+  fn_10_2EFC, fn_10_2F04 and fn_10_E5C - their only callers are the BoostBallRoll state
+  (fn_10_A3B0, still a stand-in) and the fade/visor path in AddToRenderer - and the compiler
+  inlines fn_10_1B24, so the report has no row for it. Without an ALL-ARMS run there is no
+  marker, so the four bodies are unmarked.
+- The remaining candidates in the tsv's order (fn_10_2C, fn_10_324, fn_10_A08, fn_10_A60,
+  fn_10_B04, fn_10_B28, fn_10_B78, fn_10_C98, fn_10_DC8, fn_10_E10, fn_10_1B64, fn_10_1C08,
+  fn_10_1D8C, fn_10_2040, fn_10_2098, fn_10_213C, fn_10_2254, fn_10_2798) are the module's own
+  sub-object constructors and destructors: they need port-only classes for the guest's own
+  records (the boost ball, the enrage sphere, the scatter shot's projectile), which is a bigger
+  job than this slice.
+
+## Slice 36 (2026-10-22): the BoostBallRoll state (fn_10_A3B0)
+
+- The merge of `port` was a fast-forward (the base stays d4d094ded).
+- **fn_10_A3B0 (0x0000A3B0, 0x384 bytes) - the BoostBallRoll state.** Every message runs the
+  attack bookkeeping with id 0x20000 (fn_10_1B478, the `lis r4, 0x2` at 0x0000A3EC, the call at
+  0x0000A3F4), the shield flag (fn_10_105F4 at 0x0000A408) and turns the "BoostThingy" effect on
+  (the string at lbl_10_rodata_2E4 + 7, the SetEffectState at 0x0000A434).
+  - Activate (0x0000A464): the script state "SI20" (kSS_InternalState2, 0x0000A48C); the boost ball
+    is spawned (fn_10_9E00 at 0x0000A4AC) when there is none (the uid 0xE38 is kInvalidUniqueId,
+    0x0000A49C); the actor's position goes to the ball's target 0xE98..0xEA0 and the roll's time
+    0xEA4 = 0.0f (0x0000A4B0..0x0000A4D0).
+  - Update (0x0000A4D8): the boost ball's bit 0x20 of 0xEBC must be clear (the `extrwi` at
+    0x0000A4DC takes the bit 26 = 1u << (31 - 26) = 0x20), the ball's actor must exist
+    (fn_10_9920 at 0x0000A4EC) and the bit 0x40 of 0x318 must be set (fn_10_2F04 at 0x0000A4FC, the
+    `clrlwi` at 0x0000A500 takes the bit 24 = 1u << (31 - 24) = 0x80 of it). Then fn_10_A1C0
+    (0x0000A514), the shield flag 0xCD0 is cleared (0x0000A520) and the ball's actor takes the
+    damage (0x0000A654).
+  - Deactivate (0x0000A6DC): the script state "SI21" (kSS_InternalState3, 0x0000A704).
+  - Every message then rolls the ball to the hint: with a hint (the uid 0xEC0, 0x0000A66C)
+    fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
+    (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
+- **fn_10_A154 (0x0000A154, 0x6C bytes) - `RollBoostBallToPosition`** (the small leaf, ported):
+  the actor's position (0x54/0x58) against the ball's target (0xE98/0xE9C) in the XY plane (the
+  squares at 0x0000A180 and 0x0000A184, the sum at 0x0000A188) against lbl_10_rodata_278 = 4.0f
+  (0x0000A18C); when the actor is close enough (0x0000A1B0) the roll's time 0xEA4 grows by dt
+  (0x0000A1B4), else the ball's target becomes the actor's position (0x0000A194..0x0000A1A4) and
+  the time is reset to 0.0f (0x0000A1A8).
+- **The coverage run** (the rooftop, the coverage build, the BoostBallRoll state in it):
+  fn_10_A154 (RollBoostBallToPosition) is 10/10 lines, 6/6 branches, **ALL-ARMS** - it is
+  marked. fn_10_2F04 (GetGuest318Bit6) is 1/1 line and no branches - the state calls it
+  (0x0000A4FC), so it is marked too. fn_10_2EFC (GetGuest314) and fn_10_E5C
+  (EnsureRenderedActor) still have 0 lines: the bit 0x40 of 0x318 is clear in the run, so the
+  Update arm's body (the getter's only caller) never runs, and the EnsureRendered call is behind
+  the fade factor and the dark visor. fn_10_A3B0 itself has no row in the report (its body is in
+  PortCDarkSamusFsm.cpp, which the coverage build does not instrument) and it keeps no marker
+  anyway: fn_10_A1C0, fn_10_AA04 and fn_10_A06C are stand-ins.
+- **The callees that are not ported** (their calls stay stand-ins, so the state keeps no marker):
+  fn_10_A1C0 (0x1F0 bytes - it picks the roll's hint and the roll's parameters), fn_10_AA04
+  (0x760 bytes - the roll to the hint) and fn_10_A06C (0xE8 bytes - the ball's transform and the
+  roll emitter). The damage the Update arm applies to the ball's actor is built by the retail on
+  the stack (the damage min(the health - 1.0f, the float at 0x314), the radius 0.0f, the
+  knockback 0.0f and the weapon mode 0x13 with the bits 16, 17, 18, 24 and 25 cleared); the port
+  does not reproduce that hit.
+
+
 ## Slice 12 (dsfsm2, 2026-10-22)
 
 - Merged `port` (e30f30958); its 14284 `> 0` and F100 first-roll lines are kept unchanged.
@@ -1794,3 +1866,165 @@ trigger's entry, one per hit, from gdb convenience variables).
   until 99, with the player placed on the actor at f1534..f1537) is written but not yet run:
   runs t4, t5, t7, t9 and t10 all died with VK_ERROR_DEVICE_LOST ("this context is innocent",
   so another process on the GPU caused the reset), and Aurora skips llvmpipe.
+
+## Slice 37 (2026-10-22): the rework of the BoostBallRoll's Update arm
+
+- **The merges**: `port` (2e5ff4f85, with the GPU-hang fix) and then `3272cab53` (the
+  darksamus-895c lane). The conflicts were in this note and in PortCDarkSamusHelpers.cpp: both
+  sides' functions are kept, and fn_10_99B8 (StopBoostBallParticles) is the 895c lane's body -
+  the two swooshes at 0xE3C/0xE4C are deleted (0x000099F4, 0x00009A20) and the element
+  generator's auto_ptr at 0xE60/0xE64 takes an empty one (0x00009A68..0x00009A7C).
+- **The BoostBallRoll's Update arm** (fn_10_A3B0, 0x0000A524..0x0000A668) is now whole:
+  - the damage value (0x0000A54C..0x0000A558): the `fcmpo` of the float at 0x314 (fn_10_2EFC,
+    the call's result in f1) with the health - 1.0f - `bge` takes the health - 1.0f, the other
+    way the float at 0x314 (the unordered case too): the damage is min(the float at 0x314, the
+    health - 1.0f);
+  - the damage info (0x0000A564..0x0000A5EC): the weapon mode word 0x13 in the high half (the
+    `li r0, 0x13` and the `rlwimi` at 0x0000A560/0x0000A564) with the low half and the bits 16,
+    17, 18, 24 and 25 cleared - the type is 0x13 = 19 = kWT_UnknownSource and the mode's flags
+    (the charged, the comboed, the instant-kill) are all false; the damage, the radius damage
+    amount (the same value, 0x0000A568), the damage radius 0.0f, the knockback 0.0f, the three
+    sound ids 0 and the flags byte with its bit 0x80 cleared. The host's CDamageInfo defaults the
+    sound ids to 0xffff.
+  - the filter (0x0000A5B4..0x0000A5F0, 0x0000A5F8/0x0000A62C): the include list is the material
+    bit 1 << 0x3B (lbl_10_data_1E0 = 0x3B through the `__shl2i` at 0x0000A5F0), which is 59 =
+    kMT_Solid, the exclude list is empty and the type is 3 = kFT_IncludeExclude.
+  - the damage (0x0000A654): all three uids are this actor's own (`lhz 0x8(r30)` at
+    0x0000A630..0x0000A650) - the retail damages the Dark Samus herself; the ball's actor is not
+    used. The position is sZeroVector (0x0000A600).
+  - **What the port missed**: the bit 0x20 of 0xEBC is set (`rlwimi` at 0x0000A660) and the
+    shield flag 0xCD0 becomes 1 (0x0000A668). Without them the arm re-ran every frame.
+- **The corrected bit comments**: the `clrlwi` at 0x0000A500 takes the bool's low byte, so the
+  check in fn_10_A3B0 is the bit 0x40 of 0x318 itself - not "the bit 0x80".
+
+## Slice 35 (2026-10-22): the next unmarked functions - four bodies, no markers yet
+
+- The merge of `port` (e85ad6ac1) was a fast-forward; no conflict.
+- **fn_10_2EFC** (0x00002EFC, 8 bytes): the float at guest 0x314 (`lfs f1, 0x314(r3)`) - the
+  port's GetGuest314.
+- **fn_10_2F04** (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 (`lbz` at
+  0x00002F04, the `extrwi` at 0x00002F08 takes the bit 25 = 1u << (31 - 25) = 0x40) - the port's
+  GetGuest318Bit6.
+- **fn_10_1B24** (0x00001B24, 0xDC bytes): the cross product of two vectors - the x
+  a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C) and
+  the z a.x * b.y - b.x * a.y (0x00001B54). The host's CVector3f::Cross is the same formula; the
+  port's new CrossProduct helper is used by UpdateHeadAim (fn_10_10A64, the cross at 0x00010B34).
+- **fn_10_E5C** (0x0000E5C, 0xDC bytes): the base's EnsureRendered (the host's
+  CActor::EnsureRendered(const CStateManager&)); the port's new EnsureRenderedActor calls it from
+  AddToRenderer.
+- **No markers**: the coverage run (the rooftop, the coverage build) shows 0 hits for
+  fn_10_2EFC, fn_10_2F04 and fn_10_E5C - their only callers are the BoostBallRoll state
+  (fn_10_A3B0, still a stand-in) and the fade/visor path in AddToRenderer - and the compiler
+  inlines fn_10_1B24, so the report has no row for it. Without an ALL-ARMS run there is no
+  marker, so the four bodies are unmarked.
+- The remaining candidates in the tsv's order (fn_10_2C, fn_10_324, fn_10_A08, fn_10_A60,
+  fn_10_B04, fn_10_B28, fn_10_B78, fn_10_C98, fn_10_DC8, fn_10_E10, fn_10_1B64, fn_10_1C08,
+  fn_10_1D8C, fn_10_2040, fn_10_2098, fn_10_213C, fn_10_2254, fn_10_2798) are the module's own
+  sub-object constructors and destructors: they need port-only classes for the guest's own
+  records (the boost ball, the enrage sphere, the scatter shot's projectile), which is a bigger
+  job than this slice.
+
+## Slice ds895c (2026-10-22): the boost ball's effects (895C tokens, 9B24, 99B8, 8F50) and 1ACA0
+
+- fn_10_895C (the 0xE10 sub-object) loads its tokens in data order: r8 = boostBallGlow → 0xE5C
+  (the 'PART' id), r9 = boostBallTrailSwoosh → 0xE40 (optional, valid byte 0xE48), r10 = the
+  sWHC → 0xE50 (valid byte 0xE58). The host's members are `mBoostBallSwooshTokenE40/E50` and
+  `mBoostBallGlowPart`. 0xE70, the collision PART that fn_10_8D30 loads, is not ported because
+  nothing reads it.
+- fn_10_9B24 replaces SpawnBoostBall's logged stand-in. Its "delete the old non-null" path is
+  dead: its only caller is SpawnBoostBall at 0xA03C, and that runs fn_10_99B8 first (0x9E30).
+  fn_10_99B8 now deletes both swooshes and the generator. BoostBallFire (fn_10_9724) and
+  DiveFromBoost (fn_10_9424, which calls 99B8 at 0x9548) clear the 0xE60 generator.
+  ~CDarkSamus deletes the swooshes, matching the sub-object dtor fn_10_1F72C. fn_10_9424 has
+  all of its effect work ported and could now be checked for a mark.
+- 8F50 matches the asm (vtable 0x14 SetOrientation, 0x18 SetTranslation, 0xC Update,
+  0x24 SetGlobalScale, 0x2C SetParticleEmission, 0x30 SetModulationColor).
+- Marks 9B24, 99B8 and 8F50 come from these runs (tools/cov/specs/darksamus_boostfx.py,
+  tools/drivers/darksamus_boostfx.con): b1 (the natural rooftop run), f1 (forced DSB_MODE=1:
+  no 0xE40 token) and f2 (forced DSB_MODE=2: no 0xE50 token, then the kill). Every arm ran, with
+  no caught errors and no reach stubs.
+- 1ACA0 is marked. tools/drivers/darksamus_divecontact.con runs keys 86/96 on their own (the
+  boss u04f7 placed on the player at f623..f627), then keys 40 (bounced) and 87 (no touch
+  bounds) at f650..f656. Key 96 has to be armed with 86, before the first overlap: run u4
+  armed it later, so every contact took the first-hit arm. Runs u4 + u6 give 10/10 branches.
+
+## Slice dsvt1 (2026-10-22): the vtable stand-ins
+
+The five `StandIn` calls in `PortCDarkSamus.cpp` are now the retail bodies: AcceptScriptMsg
+(fn_10_1E89C), GetOrbitPosition (fn_10_10358), GetAimPosition (fn_10_10210),
+GetCollisionPrimitive (fn_10_1AAC4) and CollidedWith (fn_10_1C7FC). CollidedWith's unported
+callees are ported with it, as new `CDarkSamus` methods declared in `CDarkSamus.hpp` and
+defined in `PortCDarkSamus.cpp`: RecordPlatformContact (fn_10_1D0A0), RecordWallHit
+(fn_10_1CF84), CheckBoostBallWallHit (fn_10_A734), CrushPlatform (fn_10_1D194) and AddPhazonBob
+(fn_10_10484, const). `CDarkSamusDive` gains `mCollidable` (+0x68, guest 0xB28), the dive's
+CCollidableAABox that GetCollisionPrimitive returns. Each body's comment cites its asm.
+
+Fixes against the stand-ins: XDMG skips while `1.0 + 0xC20 >= now` (the stand-in used
+`3.0 + max(0xC0C, 0xC20)`), and the hit direction 0x8C0 is stored before that test; ACTV's
+boss bar HP is 0x908 when above 0, else the health; XALD's filter includes kMT_Solid and
+excludes kMT_CollisionActor | kMT_AIPassthrough; XLSG shares XLND's arm.
+
+Coverage (build-port-cov, rooftop `1baa96c2,10_cliff_rooftop`, `LAYER2@400`, boss u04f7):
+
+    BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/darksamus_vt.py <out> \
+      1baa96c2,10_cliff_rooftop --con tools/cov/specs/darksamus_vt.con --fast --frames 2000 \
+      --env MP2_INPUT=LAYER2@400
+    tools/cov/gcov_report.py build-port-cov <out1>/gcov ... --module DarkSamus
+
+All ten bodies are ALL-ARMS over the union of five runs (r1: the natural run, with no writes;
+r2..r5: `darksamus_vt.py` as it grew; r5 is the committed spec). No single run is ALL-ARMS,
+because the fight is not deterministic: the shots that land and the hits that come in each
+attack change from run to run. The forced arms (the gdb writes in `darksamus_vt.py`, each
+written once at a body's entry and put back afterwards):
+- ACTV with 0x908 at 700 and at -1. The dive's XLND/XLSG with the bounce bit set and clear.
+  XDMG inside 0xC20's 1.0 s. XDMG with the attack 0x800000, where nothing but phazon hurts
+  (the WeaponHurts false arm). CanReflectHit true: a missile, past 3 s, with a cached roll of
+  -1. A vertical hit direction (CanBeNormalized false).
+- XALD's FindConnectedObject with a state that has no connection (invalid uid), and with an
+  IS06 connection, which is an AI hint and not a battle stage (the cast is null).
+- Orbit/aim: a boost ball uid with no actor, and an attack position of (0,5,0) and of (0,0,5).
+- AddPhazonBob inside the 5.3 s window and past it.
+- GetCollisionPrimitive in the dive at the target (dist 0) and bounced.
+- CollidedWith: the dash start/target positions for the `<` test, more than two stuck dashes,
+  and a dive (0x20) that has not launched and has no boost ball (attack 0x80, rewritten for one
+  hit).
+- First contact's left material: Platform and Platform|Floor (RecordPlatformContact), Wall and
+  Ceiling with no object in the attacks 0xFFFF/0x2000 (RecordWallHit; the invalid id is forced
+  in another attack), Wall and Floor with a boost ball uid (CheckBoostBallWallHit).
+- CrushPlatform from platform u0423 with Floor, Platform and neither.
+
+Natural (r1): XDMG from the console (no projectile), shot hits, XLAU, ALRT, DCTV/XDEL, the
+platform casts and the dash arms of CollidedWith.
+
+## Slice ds2opus (2026-10-22): BoostBallRoll's callees (A1C0, A814, AA04), A06C and 9424 marked
+
+- Asm read: fn_10_A06C 0xA06C..0xA150, fn_10_A1C0 0xA1C0..0xA3AC, fn_10_A3B0 0xA3B0..0xA730,
+  fn_10_A814 0xA814..0xAA00, fn_10_AA04 0xAA04..0xB160, fn_10_9424 0x9424..0x95A4; CGenericFSM2
+  EvaluateTransitions 0x801FC4C0..0x801FC5B0 and CPhysicsActor::GetMoveToORImpulseWR 0x800EA76C.
+- Bug fixed: BoostBallRoll ran its movement tail (0xA66C..0xA6D4: AA04 or MoveInOneFrameOR, A06C,
+  A154) on every message. Retail runs it on Update only: Activate leaves through `b .L_0000A708`
+  at 0xA4D4 and Deactivate falls into the epilogue after 0xA704. CGenericFSM2 passes dt = 0.0f
+  (lbl_8041D6B0) to Activate, so the port's Activate built a 1/dt impulse: NaN position, then
+  CMetroidAreaCollider::BuildOctreeLeafCache spun forever once the roll ended.
+- Runs (tools/cov/specs/darksamus_boostroll.py, tools/drivers/darksamus_boostroll.con, rooftop
+  10_cliff_rooftop, build-port-cov): f1 = DSR_MODE=1, f2 = DSR_MODE=2; both rc 0, 0 caught,
+  0 reach-stub. Breakpoints are `loc:*<mangled>+<off>` after a call; offsets in the spec header.
+- Branch table (natural unless marked forced):
+  - A06C: ball null (natural, 774); roll emitter null (natural after DiveFromBoost, 208).
+  - A3B0: Activate/Update/Deactivate natural; `default` dead (three EStateMsg values); Activate
+    with a ball (driver: two `fsm BoostBallRoll`); flag 0x20 set (after A1C0); ball null forced
+    (DSR_MODE=1, A3B0+628); bit 0x40 of 0x318 forced (DSR_MODE=2, A3B0+654); no hint natural.
+  - A1C0: Normalize false forced (DSR_MODE=2, A1C0+150), true natural.
+  - A814: token absent forced (DSR_MODE=1, `m_valid` = 0 at entry, restored at AA04+1832);
+    the two null-after-`rs_new` arms are class (a), compiler-generated.
+  - AA04: hint null forced (DSR_MODE=1, AA04+92); toHint Normalize forced (DSR_MODE=2,
+    AA04+153); next null forced (DSR_MODE=2, AA04+580, also the arrival without a next hint);
+    toNext/fromLast/dir/face Normalize forced (DSR_MODE=1, AA04+641/+832/+908/+1878); last hint
+    zero and the zero direction natural (before the first arrival); bit 0x80 forced (DSR_MODE=1,
+    entry write); the hint values forced (DSR_MODE=1, AA04+1602/+1761 -1.0/0.05/5.0 for the
+    1.0f/0.1f/2.0f clamps, AA04+1645 value2 1.0); the 25.0f arrival and the plane test natural.
+  - 9424: Activate and Deactivate both natural (driver `fsm DiveFromBoost`).
+- Marks: A06C, A1C0, A814, AA04, 9424. A3B0 stays unmarked: every arm ran, but fn_10_9E00
+  spawns CDarkSamusBoostBallPortStub, not the retail ball. fn_10_2EFC is not called (the port
+  reads mGuest314 directly).
+- Spec gotcha: gdb counters must not be named after registers (`$pc` advanced the PC).

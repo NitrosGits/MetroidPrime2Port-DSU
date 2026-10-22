@@ -1,0 +1,35 @@
+# Dark Samus messages and attacks for the vtable overrides (darksamus_vt.py). Sanctuary
+# 10_cliff_rooftop (MP2_WORLD="1baa96c2,10_cliff_rooftop" MP2_INPUT="LAYER2@400"), boss u04f7.
+# Hex messages: 0x58444d47 'XDMG' (from the console: no projectile), 0x584c4e44 'XLND',
+# 0x584c5347 'XLSG', 0x58414c44 'XALD'.
+@f300 send u04f7 0x58444d47
+@f310 send u04f7 0x584c4e44
+@f320 send u04f7 0x584c5347
+@f330 send u04f7 0x58414c44
+@f340 send u04f7 Alert
+@f360 send u04f7 Activate
+@f380 send u04f7 0x58414c44
+@f390 send u04f7 0x58414c44
+@f395 send u04f7 0x58414c44
+@f400 shoot u04f7
+@f402 shoot u04f7
+@f430 shoot u04f7 dir 0 0 1
+@f460 shoot u04f7 charged
+@f520 shoot u04f7 dir 0 0 1
+@f580 shoot u04f7
+@f600 send u04f7 Activate
+@f620 fsm u04f7 DiveAttack
+@f630 send u04f7 0x584c4e44
+@f640 send u04f7 0x584c5347
+@f650 send u04f7 0x584c4e44
+@f800 fsm u04f7 BoostBallInto
+@f1000 fsm u04f7 Dash
+@f1150 fsm u04f7 MeleeDash
+@f1300 fsm u04f7 MissileJump
+@f1550 fsm u04f7 TravelToPissedOff
+@f1650 fsm u04f7 PhazonRise
+@f1670 shoot u04f7
+@f1700 fsm u04f7 DiveAttack
+@f1850 send u04f7 Deactivate
+@f1870 send u04f7 Activate
+@f1900 send u04f7 Delete

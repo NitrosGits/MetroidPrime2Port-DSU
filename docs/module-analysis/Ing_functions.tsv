@@ -256,15 +256,15 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00011438	0x58	fn_29_11438	B	behaviour	fn_29_1105C			no
 0x00011490	0x20	fn_29_11490	B	behaviour	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo,fn_29_1105C			no
 0x000114B0	0xC0	fn_29_114B0	H	host-copy		lbl_29_data_CE4	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
-0x00011570	0x2D0	fn_29_11570	B	behaviour	fn_29_11840,fn_29_11CA4	lbl_29_rodata_7E0,lbl_29_rodata_7E4,lbl_29_rodata_7E8,lbl_29_rodata_7EC,lbl_29_rodata_7F0		no
-0x00011840	0x1A8	fn_29_11840	B	behaviour	fn_29_11A7C	lbl_29_rodata_7F4		no
+0x00011570	0x2D0	fn_29_11570	B	behaviour	fn_29_11840,fn_29_11CA4	lbl_29_rodata_7E0,lbl_29_rodata_7E4,lbl_29_rodata_7E8,lbl_29_rodata_7EC,lbl_29_rodata_7F0		yes
+0x00011840	0x1A8	fn_29_11840	B	behaviour	fn_29_11A7C	lbl_29_rodata_7F4		yes
 0x000119E8	0x94	fn_29_119E8	B	behaviour	fn_29_11840			no
-0x00011A7C	0x198	fn_29_11A7C	B	behaviour	fn_29_11C14	lbl_29_rodata_7F4		no
-0x00011C14	0x90	fn_29_11C14	B	behaviour				no
-0x00011CA4	0x1E8	fn_29_11CA4	B	behaviour				no
-0x00011E8C	0xF4	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo	B	behaviour		lbl_29_bss_7C,lbl_29_data_CE0,lbl_29_data_CE4,lbl_29_rodata_7E0		no
-0x0001201C	0xE4	fn_29_1201C	B	behaviour	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo			no
-0x00012100	0xF4	__ct__18CIngMiniPortalInfoF9TUniqueIdffRC31TLockedToken<15CGenDescription>UsffRC11CDamageInfoRC18SLdrPlasmaBeamInfo	B	behaviour				no
+0x00011A7C	0x198	fn_29_11A7C	B	behaviour	fn_29_11C14	lbl_29_rodata_7F4		yes
+0x00011C14	0x90	fn_29_11C14	B	behaviour				yes
+0x00011CA4	0x1E8	fn_29_11CA4	B	behaviour				yes
+0x00011E8C	0xF4	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo	B	behaviour		lbl_29_bss_7C,lbl_29_data_CE0,lbl_29_data_CE4,lbl_29_rodata_7E0		yes
+0x0001201C	0xE4	fn_29_1201C	B	behaviour	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo			yes
+0x00012100	0xF4	__ct__18CIngMiniPortalInfoF9TUniqueIdffRC31TLockedToken<15CGenDescription>UsffRC11CDamageInfoRC18SLdrPlasmaBeamInfo	B	behaviour				yes
 0x000121F4	0x5C	fn_29_121F4	H	host-copy		lbl_29_bss_70,lbl_29_bss_7C,lbl_29_rodata_7F4	the REL runtime - the host's own code does the same	no
 0x00012250	0x58	__destroy_global_chain	H	host-copy			the REL runtime - the host's own module runtime does the same	no
 0x000122A8	0x1C	__register_global_object	H	host-copy			the REL runtime - the host's own module runtime does the same	no

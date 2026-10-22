@@ -234,39 +234,39 @@ bytes and the REL setup 0x1A4; the symbols' sizes sum to 0x28A0).
 
 ### g.1 H - host copy (31)
 
-| id | size | what it is | the host's counterpart |
-|---|---|---|---|
-| `fn_83_0` | 0x10 | the vtable slot 0xA4: the host's `skDamageHitTime` into 0x448 | `CPatterned`'s inline virtual |
-| `fn_83_10` | 0x8 | the vtable slot 0xC8: the byte at 0x44F | `CPatterned`'s inline virtual |
-| `fn_83_18` | 0x8 | the vtable slot 0xDC: false | `CPatterned`'s inline virtual |
-| `fn_83_20` | 0x8 | the vtable slot 0xE0: false | `CPatterned`'s inline virtual |
-| `fn_83_28` | 0x8 | the vtable slot 0xE4: false | `CPatterned`'s inline virtual |
-| `fn_83_30` | 0x8 | the vtable slot 0xF4: false | `CPatterned`'s inline virtual |
-| `fn_83_38` | 0x10 | the vtable slot 0x10C: `GetAttackTarget` -> `kInvalidUniqueId` | `CPatterned`'s inline virtual |
-| `fn_83_48` | 0xC | the vtable slot 0x110: `IsOnGround` (the bit 1 of the byte at 0x34C) | `CPatterned`'s inline virtual |
-| `fn_83_54` | 0xC | the vtable slot 0x114: `GetGravityConstant` -> `kDefaultGravityAccel` | `CPatterned`'s inline virtual |
-| `fn_83_60` | 0x8 | the vtable slot 0x124: -> `this+0x754` | `CPatterned`'s inline virtual |
-| `fn_83_68` | 0x8 | the vtable slot 0xA8: true | `CPatterned`'s inline virtual |
-| `fn_83_70` | 0x8 | the vtable slot 0xAC: false | `CPatterned`'s inline virtual |
-| `fn_83_78` | 0x8 | the vtable slot 0xB0: false | `CPatterned`'s inline virtual |
-| `fn_83_80` | 0x1C | the vtable slot 0xB4: copies three floats from the argument's 0x54..0x5C | `CPatterned`'s inline virtual |
-| `fn_83_9C` | 0x2C | the vtable slot 0x3C: forwards to the vtable slot 0x38 | `CPatterned`'s inline virtual |
-| `fn_83_48C` | 0x3C | the compiler's destructor: `CMemory::Free` of an rstl string | rstl |
-| `fn_83_DA8` | 0x3C | the same destructor for the other optional member | rstl |
-| `fn_83_DE4` | 0x5C | the destructor of the class whose vtable is `data_188` | the host class |
-| `fn_83_E40` | 0x5C | the destructor of the class whose vtable is `data_194` | the host class |
-| `fn_83_E9C` | 0x48 | the destructor of the class whose vtable is `data_1A0` | the host class |
-| `fn_83_1A24` | 0x58 | `~CAreaCollisionCache` (called at asm 0x1944, the local of `AlignToFloor`) | the host class |
-| `fn_83_1A7C` | 0x50 | the destructor of the cache's member at +0x18 | the host class |
-| `fn_83_1ACC` | 0x84 | the destructor of the cache's leaf array (the 0x910 stride) | the host class |
-| `fn_83_20FC` | 0x1E4 | `~CPatterned` (`__vt__10CPatterned`, `__dt__6CTokenFv`, `__dt__3CAiFv`, ...) | `CPatterned` |
-| `fn_83_22E0` | 0x94 | `~CAiKnockBackMgr` (`__vt__15CAiKnockBackMgr`) | `CAiKnockBackMgr` |
-| `fn_83_2684` | 0x48 | the destructor of the class whose vtable is `data_158` | the host class |
-| `_unresolved` | 0xC4 | the REL runtime's unresolved-symbol trap | crtexe |
-| `_epilog` | 0x24 | the REL runtime's module exit | crtexe |
-| `_prolog` | 0x24 | the REL runtime's module entry | crtexe |
-| `ModuleDestructors` | 0x4C | the REL runtime's static destructor table | crtexe |
-| `ModuleConstructors` | 0x4C | the REL runtime's static constructor table | crtexe |
+| id | size | what it is | the host's counterpart | the port's counterpart (diffed against the asm) |
+|---|---|---|---|---|
+| `fn_83_0` | 0x10 | the vtable slot 0xA4: the host's `skDamageHitTime` into 0x448 | `CPatterned`'s inline virtual | `CPatterned::TakeDamage` (`include/MetroidPrime/Enemies/CPatterned.hpp:151`): `mDamageCooldownTimer = skDamageHitTime;` - the same store the REL does (asm 0x0-0x8: `lis r4, lbl_8041AAB8@ha` / `lfs f0, lbl_8041AAB8@l(r4)` / `stfs f0, 0x448(r3)`) ✓ **matches** |
+| `fn_83_10` | 0x8 | the vtable slot 0xC8: the byte at 0x44F | `CPatterned`'s inline virtual | `CPatterned::GetModelAlphau8` (`CPatterned.hpp:159`): `mColor.GetAlphau8()` - the alpha byte of `mColor`, the byte the REL reads (asm 0x10-0x14: `lbz r3, 0x44f(r3)` / `blr`) ✓ **matches** |
+| `fn_83_18` | 0x8 | the vtable slot 0xDC: false | `CPatterned`'s inline virtual | `CPatterned::ProjectileInfo` (`CPatterned.hpp:164`): `return nullptr;` (asm 0x18-0x1C: `li r3, 0x0` / `blr`) ✓ **matches** |
+| `fn_83_20` | 0x8 | the vtable slot 0xE0: false | `CPatterned`'s inline virtual | `CPatterned::GetSearchPath` (`CPatterned.hpp:165`): `return nullptr;` (asm 0x20-0x24: `li r3, 0x0` / `blr`) ✓ **matches** |
+| `fn_83_28` | 0x8 | the vtable slot 0xE4: false | `CPatterned`'s inline virtual | `CPatterned::GetPointSearchPath` (`CPatterned.hpp:170`): `return nullptr;` (asm 0x28-0x2C: `li r3, 0x0` / `blr`) ✓ **matches** |
+| `fn_83_30` | 0x8 | the vtable slot 0xF4: false | `CPatterned`'s inline virtual | `CPatterned::GetRagDoll` (`CPatterned.hpp:177`): `return nullptr;` (asm 0x30-0x34: `li r3, 0x0` / `blr`) ✓ **matches** |
+| `fn_83_38` | 0x10 | the vtable slot 0x10C: `GetAttackTarget` -> `kInvalidUniqueId` | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_48` | 0xC | the vtable slot 0x110: `IsOnGround` (the bit 1 of the byte at 0x34C) | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_54` | 0xC | the vtable slot 0x114: `GetGravityConstant` -> `kDefaultGravityAccel` | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_60` | 0x8 | the vtable slot 0x124: -> `this+0x754` | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_68` | 0x8 | the vtable slot 0xA8: true | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_70` | 0x8 | the vtable slot 0xAC: false | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_78` | 0x8 | the vtable slot 0xB0: false | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_80` | 0x1C | the vtable slot 0xB4: copies three floats from the argument's 0x54..0x5C | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_9C` | 0x2C | the vtable slot 0x3C: forwards to the vtable slot 0x38 | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_48C` | 0x3C | the compiler's destructor: `CMemory::Free` of an rstl string | rstl | not diffed yet |
+| `fn_83_DA8` | 0x3C | the same destructor for the other optional member | rstl | not diffed yet |
+| `fn_83_DE4` | 0x5C | the destructor of the class whose vtable is `data_188` | the host class | not diffed yet |
+| `fn_83_E40` | 0x5C | the destructor of the class whose vtable is `data_194` | the host class | not diffed yet |
+| `fn_83_E9C` | 0x48 | the destructor of the class whose vtable is `data_1A0` | the host class | not diffed yet |
+| `fn_83_1A24` | 0x58 | `~CAreaCollisionCache` (called at asm 0x1944, the local of `AlignToFloor`) | the host class | not diffed yet |
+| `fn_83_1A7C` | 0x50 | the destructor of the cache's member at +0x18 | the host class | not diffed yet |
+| `fn_83_1ACC` | 0x84 | the destructor of the cache's leaf array (the 0x910 stride) | the host class | not diffed yet |
+| `fn_83_20FC` | 0x1E4 | `~CPatterned` (`__vt__10CPatterned`, `__dt__6CTokenFv`, `__dt__3CAiFv`, ...) | `CPatterned` | not diffed yet |
+| `fn_83_22E0` | 0x94 | `~CAiKnockBackMgr` (`__vt__15CAiKnockBackMgr`) | `CAiKnockBackMgr` | not diffed yet |
+| `fn_83_2684` | 0x48 | the destructor of the class whose vtable is `data_158` | the host class | not diffed yet |
+| `_unresolved` | 0xC4 | the REL runtime's unresolved-symbol trap | crtexe | not diffed yet |
+| `_epilog` | 0x24 | the REL runtime's module exit | crtexe | not diffed yet |
+| `_prolog` | 0x24 | the REL runtime's module entry | crtexe | not diffed yet |
+| `ModuleDestructors` | 0x4C | the REL runtime's static destructor table | crtexe | not diffed yet |
+| `ModuleConstructors` | 0x4C | the REL runtime's static constructor table | crtexe | not diffed yet |
 
 ### g.2 T - dead leaf (2)
 
@@ -418,9 +418,9 @@ B functions is empty** - the slice had no new body to write. What the slice did 
 |---|---|---|---|
 | `fn_83_580` (Think) | the material follows the actor's movable flag | ran (both ways) | marked |
 | | the bend, the kART_Six side (the reaction type 6, asm 0x868) | ran (37k deliveries) | marked |
-| | the bend, the kART_Five side (the reaction type 5, asm 0x9C4) | **did not run**: no crawler was re-orienting (0x04) without the Six bend playing | marked |
+| | the bend, the kART_Five side (the reaction type 5, asm 0x9C4) | **ran** (15,628 deliveries) - the crawler has to be *on a wall* (the re-orient flag 0x04); the console's `place` puts one there (section 8.3) | marked |
 | | the contact damage (the timer at 0x440) | ran (311 times, the crawler next to the player) | marked |
-| | the boost-ball damage | **did not run**: the player falls through the floor when it morphs at the area's spawn point, so it never touches a crawler while boosting | marked |
+| | the boost-ball damage | **still did not run**: the morphed player falls through the floor in that area (the morph-floor lane's bug, `docs/STATUS.md`'s morph-floor report), so it never touches a crawler while boosting | marked |
 | `fn_83_1310` (AlignToFloor) | the unconstrained search | ran | marked |
 | | the constrained search, `x834_` = 1 | ran (the PillBugs of `0b_sand_hall`) | marked |
 | | the constrained search, `x834_` = 2 | ran in the earlier slice (`0d_sand_hall`), not re-run here | marked |
@@ -438,3 +438,47 @@ module's slice; the contact damage ran in the same area with the player on its f
 **The gates:** `$T/ninja -C build-port-link metroid_prime2_port` 0 FAILED;
 `python3 tools/gen_files_cmake.py --check` rc 0; `tools/review_decomp_diff.sh <base>` clean; the run
 as above.
+
+### 8.3 The next six unmarked bodies and the kART_Five bend (2026-10-22, branch `decomp/wallcrawler`)
+
+Slice base `e85ad6ac1` (the merge of `port`); the commit is on top of it.
+
+**The six**: the classification's order starts with the H class, so the next six unmarked rows are
+`fn_83_0`, `fn_83_10`, `fn_83_18`, `fn_83_20`, `fn_83_28` and `fn_83_30` - the REL's own copies of
+the host's `CPatterned` inline virtuals. Each was diffed against the asm
+(`tools/asmcheck.py annotate WallCrawler <fn> --all-ins` ✓) and against the port's counterpart, and
+the results are in section g.1's new column ✓:
+
+| fn | the REL's copy (asm) | the port's counterpart | result |
+|---|---|---|---|
+| `fn_83_0` | `lis r4, lbl_8041AAB8@ha` / `lfs f0, lbl_8041AAB8@l(r4)` / `stfs f0, 0x448(r3)` (asm 0x0-0x8) | `CPatterned::TakeDamage` (`CPatterned.hpp:151`): `mDamageCooldownTimer = skDamageHitTime;` | **matches** ✓ |
+| `fn_83_10` | `lbz r3, 0x44f(r3)` (asm 0x10) | `CPatterned::GetModelAlphau8` (`CPatterned.hpp:159`): `mColor.GetAlphau8()` | **matches** ✓ |
+| `fn_83_18` | `li r3, 0x0` (asm 0x18) | `CPatterned::ProjectileInfo` (`CPatterned.hpp:164`): `return nullptr;` | **matches** ✓ |
+| `fn_83_20` | `li r3, 0x0` (asm 0x20) | `CPatterned::GetSearchPath` (`CPatterned.hpp:165`): `return nullptr;` | **matches** ✓ |
+| `fn_83_28` | `li r3, 0x0` (asm 0x28) | `CPatterned::GetPointSearchPath` (`CPatterned.hpp:170`): `return nullptr;` | **matches** ✓ |
+| `fn_83_30` | `li r3, 0x0` (asm 0x30) | `CPatterned::GetRagDoll` (`CPatterned.hpp:177`): `return nullptr;` | **matches** ✓ |
+
+The slot-to-name mapping comes from the module's own vtable (`data_C` ✓): 0xA4 `TakeDamage`, 0xC8
+`GetModelAlphau8`, 0xDC `ProjectileInfo`, 0xE0 `GetSearchPath`, 0xE4 `GetPointSearchPath`, 0xF4
+`GetRagDoll` ✓ - the four slots the port's `CPatterned` does not have (0xA8, 0xAC, 0xB0, 0xB4 ✓)
+sit between `TakeDamage` and `RenderSystemsToBeDrawnFirst` in the REL's vtable ✓, so the alignment is
+from both ends ✓ (`RenderIngSnatchingTransition` is the last entry in both ✓).
+
+**No port code changed**: the six are the host's code ✓ (the port's `CPatterned` is the upstream
+file ✓), the bodies agree with the REL's copies ✓, and nothing in the port's own body is wrong ✓.
+
+**The kART_Five bend now runs** ✓ - it needs a crawler *on a wall* (the re-orient flag 0x04 ✓, set
+when the up vector is more than ~30 degrees off the surface normal ✓), and the crawlers only climb
+when they are put there. The new driver `tools/drivers/wallcrawler_five.py` does it with the
+console's `place`: it lists the crawlers (`objs pillbug` ✓, the console prints their positions ✓),
+takes the highest one (on a wall ✓) and puts another crawler on that spot ✓.
+
+    Agon Wastes 0b_sand_hall (the world 42b935e4, the area slot 40), 30000 updates:
+      bend type=5 (kART_Five) 15628 deliveries, bend type=6 (kART_Six) 17970 deliveries
+      0 [port] caught, 0 reach-stub
+
+(The proof used a temporary probe in `PortCWallCrawler.cpp` ✓, reverted before the commit ✓; the
+probes are the only thing the coverage build would replace ✓.)
+
+**The boost-ball arm is still open** ✓: the morphed player falls through the floor in that area (the
+morph-floor lane's bug ✓), so it never reaches a crawler while boosting ✓.

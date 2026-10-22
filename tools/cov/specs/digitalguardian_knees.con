@@ -1,0 +1,22 @@
+# DigitalGuardian area 53 with digitalguardian_knees.py: at each knee count (4, then 3, 2, 1, 0 as
+# the spec clears the ids at fn_14_6E04 hits 500/900/1300/1700) the head picks a projectile attack
+# (SelectProjectileAttack, fn_14_10120) and telegraphs it (bit 0x20 of head+0x10F4 while the body
+# runs fn_14_6E04). At the end the body is deleted: fn_14_10120 with no body.
+@f30 layer 3
+@f60 layer 11
+@f140 send e00350060 Activate; send e0035000f Activate
+@f300 codecall e0035000f SelectProjectileAttack
+@f310 fsm e0035000f ProjectileTelegraph
+@f700 codecall e0035000f SelectProjectileAttack
+@f710 fsm e0035000f ProjectileTelegraph
+@f1100 codecall e0035000f SelectProjectileAttack
+@f1110 fsm e0035000f ProjectileTelegraph
+@f1500 codecall e0035000f SelectProjectileAttack
+@f1510 fsm e0035000f ProjectileTelegraph
+@f1900 codecall e0035000f SelectProjectileAttack
+@f1910 fsm e0035000f ProjectileTelegraph
+@f2000 codecall e0035000f ResetProjectileAttackTimes
+@f2200 send e00350060 Delete
+@f2260 codecall e0035000f SelectProjectileAttack
+@f2300 objs Guardian
+@f2320 covdump

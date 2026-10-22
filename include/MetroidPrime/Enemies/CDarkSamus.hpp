@@ -16,6 +16,7 @@
 #include "Kyoto/TToken.hpp"
 #include "Weapons/CCollisionResponseData.hpp"
 #include "rstl/auto_ptr.hpp"
+#include "Collision/CCollidableAABox.hpp"
 
 class CBCProjectileAttackCmd;
 
@@ -23,6 +24,7 @@ class CBCProjectileAttackCmd;
 // ShouldFadeOut and CanMissileDeflect triggers read.
 class CDarkSamusBattleStage;
 class CParticleSwoosh;
+class CSwooshDescription;
 class CEnergyProjectile;
 class CScriptAIHint;
 struct SLdrDSStageInfo;
@@ -193,9 +195,8 @@ struct CDarkSamusDash {
 };
 
 // The dive record at the guest's 0xAC0..0xB28 (fn_10_E784 builds it from the data's
-// diveAttackDamage and its two impulses, the constructor's call at 0x0001FE64). Not on the host:
-// the +0x4C float (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f) and the CCollidableAABox at +0x68
-// (fn_10_E784 at 0x0000E8A8) - no ported reader uses them.
+// diveAttackDamage and its two impulses, the constructor's call at 0x0001FE64). The +0x4C float
+// (fn_10_E910 writes lbl_10_rodata_3EC = -1.0f) has no reader.
 struct CDarkSamusDive {
   CDarkSamusDive(const CDamageInfo& damage, float impulseHorizontal,
                  float impulseVertical); // fn_10_E784
@@ -224,6 +225,12 @@ struct CDarkSamusDive {
   bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4)
   bool mLaunched : 1;    // 0x40, 'XLAU' came: the actor is in the air
   bool mDone : 1;        // 0x80, the dive is over
+  // +0x68 (0xB28), the CCollidableAABox fn_10_E784 builds (0x0000E8A8, the null box). Both
+  // writers replace its material list and box whole before it is handed out: 'XALD'
+  // (fn_10_1E89C, 0x0001EC38..0x0001EC68, the animation's bounds) and GetCollisionPrimitive
+  // (fn_10_1AAC4, 0x0001AC3C..0x0001AC68, the bounds grown for the dive). Mutable because
+  // GetCollisionPrimitive is const on the host.
+  mutable CCollidableAABox mCollidable{CAABox::MakeNullBox(), CMaterialList()};
 };
 
 // The melee contact record at the guest's 0x9A4..0x9E0 (fn_10_EA24 builds it, the constructor's
@@ -593,6 +600,15 @@ private:
   void StartDiveBubble(CStateManager& mgr);
   // fn_10_1C99C: CollidedWith's dive arm (a wall bounces, the floor or the player lands).
   void CheckDiveCollision(CStateManager& mgr, CActor* collider, const CCollisionInfoList& list);
+  // CollidedWith's other helpers (PortCDarkSamus.cpp): fn_10_1D0A0 the platform contact,
+  // fn_10_1CF84 the wall / ceiling hit time, fn_10_A734 the boost ball's wall flag, fn_10_1D194
+  // the platform crush.
+  void RecordPlatformContact(const CCollisionInfoList& list);
+  void RecordWallHit(const TUniqueId& id, const CCollisionInfoList& list);
+  void CheckBoostBallWallHit(CStateManager& mgr, const CCollisionInfoList& list);
+  void CrushPlatform(CStateManager& mgr, const TUniqueId& id, const CCollisionInfoList& list);
+  // fn_10_10484: the phazon volley's bob added to an orbit / aim position's z.
+  void AddPhazonBob(CVector3f& pos) const;
   // fn_10_9644: the actor turned around (its facing negated).
   void TurnAround();
   // fn_10_9AC4: the boost ball actor deleted.
@@ -806,9 +822,8 @@ private:
                                    // when the actor walks away; the constructor writes the zero
                                    // vector to it (0x0001FC64..0x0001FC74)
   float mLastWallHitTime;          // guest 0xC44 (inside the 0xB50 sub-object), the time of the
-                                   // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it
-                                   // (fn_10_1CF84 is not in the port yet); the constructor
-                                   // writes 0.0f to it (0x0001FF38)
+                                   // last wall collision: fn_10_1CF84 and fn_10_1DF74 write it;
+                                   // the constructor writes 0.0f to it (0x0001FF38)
   float mElapsedTime;              // guest 0x8B0, the time since the actor was created: the Think
                                    // (fn_10_1B1FC) adds dt to it (0x0001B2DC); the constructor
                                    // writes 0.0f to it (0x0001FB88)
@@ -840,8 +855,8 @@ private:
                                    // does not); the constructor writes the zero vector to it
                                    // (0x0001FC20..)
   float mContactTime;              // guest 0xC34, the elapsed time (mElapsedTime) of the last
-                                   // contact fn_10_1D0A0 records (0x0001D154; not in the port
-                                   // yet, so it stays at the constructor's 0.0f, 0x0001FF1C)
+                                   // platform contact fn_10_1D0A0 records (0x0001D154); the
+                                   // constructor writes 0.0f (0x0001FF1C)
   CVector3f mContactPoint;         // guest 0xC38/0xC3C/0xC40, the point of that contact; the
                                    // constructor writes the zero vector to it (0x0001FF24..)
   float mLastMeleeTime;            // guest 0x9C0, the elapsed time the MeleeAttack state
@@ -907,6 +922,8 @@ private:
                                    // the data order (the r9 token is the 'SWHC' trail swoosh,
                                    // then the two sounds +0x58 / +0x5A)
   CSfxHandle mBoostBallRollSfx;    // guest 0xE6C (+0x5C), the roll emitter; 0 (0x00008A50)
+  CVector3f mBoostBallPos;          // guest 0xE98/0x9C/0xA0, where the boost ball rolls to
+                                    // (fn_10_A3B0, 0x0000A4B0..0x0000A4CC)
   bool mBoostBallFlag40 : 1;       // 0xebc 0x40 (+0xAC); BoostBallInto clears it
                                    // (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4)
   TUniqueId mBoostHintUid;         // guest 0xEC0, the hint the ball rolls to; kInvalidUniqueId
@@ -1060,9 +1077,11 @@ private:
   void DeleteGuestActor(CStateManager& mgr);        // fn_10_4868: the actor at guest 0xF78
   void DeleteGuestActorIfExpired(CStateManager& mgr); // fn_10_48C8: ... when 0xF7C has expired
   void StopGuestSfx();           // fn_10_812C: the sfx handle at guest 0xF60
+  void EnsureRenderedActor(const CStateManager& mgr) const; // fn_10_E5C: the base's EnsureRendered
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
   void StopBoostBallParticles();                  // fn_10_99B8: the boost ball's old effects
+  void RollBoostBallToPosition(float dt);         // fn_10_A154: the actor moves to the ball
   void RunLoopAttackCmd(EStateMsg msg, const CBCLoopAttackCmd& attack); // fn_10_8870
   void UpdateShieldFromHealth(EStateMsg msg);     // fn_10_6DAC: the shield flag and direction
   void FindPathToDestination(CStateManager& mgr, const CVector3f& destination,
@@ -1130,9 +1149,35 @@ private:
   bool HasPhazonBeam() const;   // fn_10_4AA8: the beam 0xEF8 is not null
   float GetFadeFactor() const;  // fn_10_185CC: 1, then down to 0 over fn_10_18628's window
   // guest 0xE3C / 0xE4C, the boost ball's two swooshes (fn_10_9B24 builds them, fn_10_99B8
-  // deletes them). The host builds neither yet, so both stay null; they are not owned.
+  // deletes them). Owned: the 0xE10 sub-object's destructor fn_10_1F72C deletes both (the
+  // vtable's word 2 with 1, 0x0001F7F4 and 0x0001F840), as ~CDarkSamus does.
   CParticleSwoosh* mBoostBallSwooshE3C = nullptr;
   CParticleSwoosh* mBoostBallSwooshE4C = nullptr;
+  // The 0xE10 sub-object's effect tokens (fn_10_895C; its arguments follow the data order:
+  // boostBallModel r4..r6, boostBallDamage *r7, boostBallGlow r8, boostBallTrailSwoosh r9, sWHC
+  // r10, the two sounds, boostBallCollision, the collision sound). A valid swoosh id (`addis r0,
+  // rX, 0x1; cmplwi r0, 0xffff` at 0x00008A48/0x00008A58 and 0x00008B70/0x00008B74) is fetched as
+  // an 'SWHC' (`lis r4, 0x5357; addi r0, r4, 0x4843`) into the optional at 0xE40 (valid byte
+  // 0xE48, 0x00008B3C) or 0xE50 (0xE58, 0x00008BDC) and locked (0x00008B6C, 0x00008C0C).
+  static rstl::optional_object< TLockedToken< CSwooshDescription > >
+  BoostBallSwooshToken(CAssetId id);
+  rstl::optional_object< TLockedToken< CSwooshDescription > > mBoostBallSwooshTokenE40 =
+      BoostBallSwooshToken(mData.mBoostBallTrailSwoosh); // r9
+  rstl::optional_object< TLockedToken< CSwooshDescription > > mBoostBallSwooshTokenE50 =
+      BoostBallSwooshToken(mData.mSWHC); // r10
+  CAssetId mBoostBallGlowPart = mData.mBoostBallGlow; // guest 0xE5C (+0x4C), r8 (0x00008A10)
+  // guest 0xE70 (+0x60, valid byte 0xE7C = +0x6C), the boost ball's collision 'PART'
+  // (boostBallCollision, fn_10_895C's r30 stack argument): an invalid id leaves it empty (`addis
+  // r0, r30, 0x1; cmplwi r0, 0xffff` at 0x00008C10/0x00008C14), a valid one is the pool's 'PART'
+  // (`lis r4, 0x5041` at 0x00008C1C) copied and locked by fn_10_8D30 (0x00008C78) - the same as
+  // PhazonBeamHitToken. The collision sound at guest 0xE80 (+0x70, 0x00008A6C..) is
+  // mData.mBoostBallCollisionSoundOneShot.
+  rstl::optional_object< TLockedToken< CGenDescription > > mBoostBallCollisionToken =
+      PhazonBeamHitToken(mData.mBoostBallCollision);
+  void StartBoostBallRoll(CStateManager& mgr);            // fn_10_A1C0
+  void PlayBoostBallCollision(CStateManager& mgr);        // fn_10_A814
+  void RollToBoostHint(CStateManager& mgr, float dt);     // fn_10_AA04
+  void CreateBoostBallEffects(); // fn_10_9B24: the swooshes 0xE3C/0xE4C and the generator 0xE64
 #endif
   // guest 0x6B4 is the base's animation state (the byte fn_10_8698 stores 1 to on Activate and 0
   // to on Deactivate, and the DOL's ShouldRetry advances): it is the base's own member, the
@@ -1222,7 +1267,7 @@ private:
   // 0x00020038) the constructor fills with the CSkinnedModel of mInvulnerableModel /
   // mInvulnerableSkinRules (the new at 0x000202D8, fn_10_20600 at 0x00020408); 183E8 renders it.
   rstl::optional_object< TLockedToken< CSkinnedModel > > mInvulnerableSkinnedModel;
-  // guest 0xE60/0xE64: the boost ball's element generator (fn_10_9B24, unported: always null).
+  // guest 0xE60/0xE64: the boost ball's element generator (fn_10_9B24 builds it from 0xE5C).
   rstl::auto_ptr< CElementGen > mBoostBallElementGen;
 #endif
 #ifdef TARGET_PC

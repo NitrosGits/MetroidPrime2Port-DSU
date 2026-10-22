@@ -1,0 +1,202 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark): the arms of fn_14_94BC FaceTarget,
+# fn_14_8794 ProjectileAttack, fn_14_77EC SetProtectKneesFaceTarget, fn_14_7BD4 SetupBossEnergyBar,
+# fn_14_7504/73D4 (melee leg and range), fn_14_A468/458C/20E4 (anim events) that the fight does not
+# take: statecall/codecall/uevent with the body (e00350060), the head (e0035000f), the IS04 counter
+# actor (e0035005f) and the knee armours (u0578..u057b, created by fn_14_4080 on load).
+# Run: tools/cov/run.sh tools/cov/specs/digitalguardian_states.py <out> 1baa96c2,09_cliff_temple_dark
+#   --con tools/cov/specs/digitalguardian_arms.con --fast --frames 5000
+@f30 layer 3
+@f60 layer 11
+@f150 send e00350060 Activate; send e0035000f Activate
+# 73D4 before any 7504 (no melee leg, 0x11D8 -1); msg 3 (no arm); 0x1278 still zero (ctor), so an update that can be issued is over
+@f160 codecall e00350060 SelectMeleeAttackRange; statecall e00350060 FaceTarget 3; statecall e00350060 ProjectileAttack 3; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1; statecall e00350060 FaceTarget 1
+@f300 face 0; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f310 face 45; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f320 face 90; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f330 face 135; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f340 face 180; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f350 face 225; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f360 face 270; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f370 face 315; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f380 face 0; place e00350060 player 1; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f386 face 90; place e00350060 player 1; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f392 face 180; place e00350060 player 1; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f398 face 270; place e00350060 player 1; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f404 face 0; place e00350060 player 10; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f410 face 90; place e00350060 player 10; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f416 face 180; place e00350060 player 10; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f422 face 270; place e00350060 player 10; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f428 face 0; place e00350060 player 20; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f434 face 90; place e00350060 player 20; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f440 face 180; place e00350060 player 20; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f446 face 270; place e00350060 player 20; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f452 face 0; place e00350060 player 30; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f458 face 90; place e00350060 player 30; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f464 face 180; place e00350060 player 30; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f470 face 270; place e00350060 player 30; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f476 face 0; place e00350060 player 45; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f482 face 90; place e00350060 player 45; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f488 face 180; place e00350060 player 45; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f494 face 270; place e00350060 player 45; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f500 face 0; place e00350060 player 60; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f506 face 90; place e00350060 player 60; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f512 face 180; place e00350060 player 60; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f518 face 270; place e00350060 player 60; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f524 face 0; place e00350060 player 90; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f530 face 90; place e00350060 player 90; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f536 face 180; place e00350060 player 90; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f542 face 270; place e00350060 player 90; codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f548 codecall e00350060 SelectMeleeAttackRange
+@f554 uevent e00350060 3
+@f558 uevent e00350060 5
+@f562 uevent e00350060 12
+@f566 uevent e00350060 13
+@f570 uevent e00350060 16
+@f574 uevent e00350060 17
+@f578 uevent e00350060 27
+@f582 uevent e00350060 1
+@f586 uevent e00350060 27 0 L_front_ankle; uevent e00350060 16 0 L_front_ankle
+@f596 uevent e00350060 27 0 R_back_ankle; uevent e00350060 16 0 R_back_ankle
+@f606 uevent e00350060 27 0 L_back_col_LCTR; uevent e00350060 16 0 L_back_col_LCTR
+@f616 uevent e00350060 27 0 R_front_col_LCTR; uevent e00350060 16 0 R_front_col_LCTR
+@f626 uevent e00350060 27 0 nothing; uevent e00350060 16 0 nothing
+@f636 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f648 statecall e00350060 ProjectileAttack 1
+@f660 statecall e00350060 ProjectileAttack 2
+@f666 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f678 statecall e00350060 ProjectileAttack 1
+@f690 statecall e00350060 ProjectileAttack 2
+@f696 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f708 statecall e00350060 ProjectileAttack 1
+@f720 statecall e00350060 ProjectileAttack 2
+@f726 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f738 statecall e00350060 ProjectileAttack 1
+@f750 statecall e00350060 ProjectileAttack 2
+@f756 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f768 statecall e00350060 ProjectileAttack 1
+@f780 statecall e00350060 ProjectileAttack 2
+@f786 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f798 statecall e00350060 ProjectileAttack 1
+@f810 statecall e00350060 ProjectileAttack 2
+@f816 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f828 statecall e00350060 ProjectileAttack 1
+@f840 statecall e00350060 ProjectileAttack 2
+@f846 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f858 statecall e00350060 ProjectileAttack 1
+@f870 statecall e00350060 ProjectileAttack 2
+@f876 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f888 statecall e00350060 ProjectileAttack 1
+@f900 statecall e00350060 ProjectileAttack 2
+@f906 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f918 statecall e00350060 ProjectileAttack 1
+@f930 statecall e00350060 ProjectileAttack 2
+@f936 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f948 statecall e00350060 ProjectileAttack 1
+@f960 statecall e00350060 ProjectileAttack 2
+@f966 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f978 statecall e00350060 ProjectileAttack 1
+@f990 statecall e00350060 ProjectileAttack 2
+@f996 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1008 statecall e00350060 ProjectileAttack 1
+@f1020 statecall e00350060 ProjectileAttack 2
+@f1026 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1038 statecall e00350060 ProjectileAttack 1
+@f1050 statecall e00350060 ProjectileAttack 2
+@f1056 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1068 statecall e00350060 ProjectileAttack 1
+@f1080 statecall e00350060 ProjectileAttack 2
+@f1086 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1098 statecall e00350060 ProjectileAttack 1
+@f1110 statecall e00350060 ProjectileAttack 2
+@f1116 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1128 statecall e00350060 ProjectileAttack 1
+@f1140 statecall e00350060 ProjectileAttack 2
+@f1146 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1158 statecall e00350060 ProjectileAttack 1
+@f1170 statecall e00350060 ProjectileAttack 2
+@f1176 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1188 statecall e00350060 ProjectileAttack 1
+@f1200 statecall e00350060 ProjectileAttack 2
+@f1206 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1218 statecall e00350060 ProjectileAttack 1
+@f1230 statecall e00350060 ProjectileAttack 2
+@f1236 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1248 statecall e00350060 ProjectileAttack 1
+@f1260 statecall e00350060 ProjectileAttack 2
+@f1266 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1278 statecall e00350060 ProjectileAttack 1
+@f1290 statecall e00350060 ProjectileAttack 2
+@f1296 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1308 statecall e00350060 ProjectileAttack 1
+@f1320 statecall e00350060 ProjectileAttack 2
+@f1326 codecall e0035000f SelectProjectileAttack; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1338 statecall e00350060 ProjectileAttack 1
+@f1350 statecall e00350060 ProjectileAttack 2
+@f1356 send u0578 Delete
+@f1366 face 0; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1374 face 22.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1382 face 45; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1390 face 67.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1398 face 90; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1406 face 112.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1414 face 135; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1422 face 157.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1430 face 180; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1438 face 202.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1446 face 225; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1454 face 247.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1462 face 270; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1470 face 292.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1478 face 315; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1486 face 337.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1494 send u057a Delete
+@f1504 face 0; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1512 face 22.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1520 face 45; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1528 face 67.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1536 face 90; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1544 face 112.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1552 face 135; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1560 face 157.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1568 face 180; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1576 face 202.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1584 face 225; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1592 face 247.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1600 face 270; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1608 face 292.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1616 face 315; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1624 face 337.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+# 77EC with the body inactive (Think, so fn_14_3F90, does not clear the id of a deleted
+# armour): u0579 is gone but its id is still there. The body is in its loop attack first, so a
+# FaceTarget update can be issued and, when 77EC leaves 0x1278 zero, is over (94BC).
+@f1632 fsm e00350060 ProjectileAttack
+@f1672 send e00350060 Deactivate; send u0579 Delete
+@f1682 face 0; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1690 face 22.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1698 face 45; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1706 face 67.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1714 face 90; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1722 face 112.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1730 face 135; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1738 face 157.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1746 face 180; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1754 face 202.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1762 face 225; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1770 face 247.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1778 face 270; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1786 face 292.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1794 face 315; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1802 face 337.5; place e00350060 player 30; codecall e00350060 SetProtectKneesFaceTarget; statecall e00350060 FaceTarget 0; statecall e00350060 FaceTarget 1
+@f1810 send e00350060 Activate
+# A468: TakeOff in the vortex (VortexAttack Activate sets 0x11B8 to 1)
+@f1820 statecall e00350060 VortexAttack 0; uevent e00350060 13; statecall e00350060 VortexAttack 2
+@f1830 send e0035000f Delete
+# the machine in ProjectileAttack with no head: the loop attack is issued, then exited
+@f1840 fsm e00350060 ProjectileAttack
+@f1880 statecall e00350060 ProjectileAttack 2; statecall e00350060 ProjectileAttack 0; statecall e00350060 ProjectileAttack 1
+@f1885 statecall e00350060 ProjectileAttack 1
+@f1890 send e0035005f Delete
+@f1900 codecall e00350060 SetupBossEnergyBar
+@f1910 statecall e00350060 CrippledReaction 0; uevent e00350060 27 0 L_front_ankle; uevent e00350060 27 0 R_back_col_LCTR
+@f1920 uevent e00350060 27 0 L_front_ankle; uevent e00350060 27 0 R_back_col_LCTR
+@f1930 covdump

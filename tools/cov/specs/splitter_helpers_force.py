@@ -113,6 +113,36 @@ BODIES = {
                 'there is no target at 0xF02: the body ends at once'),
     'DESPAWN': ('1790 DespawnProjectile', 'CSplitterCommandModule::PortDespawnProjectile(',
                 'the base is dead: the effect states do not update'),
+    'PATHZ': ('986C UpdatePath', 'CSplitterMainChassis::PortUpdatePath(',
+              'the chassis is above the other actors: the separation\'s z is not zero'),
+    'AIMNC': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+              'the shield state is 2 and the head is not docked: there is no chassis'),
+    'AIMC': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+             'the shield state is not 2 and the timer at 0xF1C is below one: the chassis\'s aim'
+             ' is mixed in'),
+    'AIMNC2': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+               'the shield state is not 2 and the head is not docked: there is no chassis'),
+    'COLLIDNM': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
+                 'the material list is empty: no collision matches'),
+    'COLID': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
+              'the collided id is not invalid: the body ends'),
+    'COLFLAG': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
+                'the flag byte at 0xF6A already has its 0x01 bit: the body ends'),
+    'DAMAGE7': ('EBF4 KnockBack', 'CStateManager::ApplyDamage(',
+                'the damage is 25 with the boost ball (the weapon type 7): the chassis is'
+                ' knocked back'),
+    'DAMAGE0': ('EBF4 KnockBack', 'CStateManager::ApplyDamage(',
+                'the damage is 25 with the power beam (the weapon type 0): the chassis is'
+                ' knocked back'),
+    'KNOCKFLAG': ('EBF4 KnockBack', 'CSplitterMainChassis::KnockBack(',
+                  'the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off'),
+    # The combined runs: each body's arms in one run, since the bodies are different.
+    'RUN1': ('run 1', 'CSplitterCommandModule::CollidedWith(', [], [], 0,
+             'the damage with the boost ball, the collided id and the empty material list'),
+    'RUN2': ('run 2', 'CSplitterCommandModule::CollidedWith(', [], [], 0,
+             'the damage with the power beam and the flag byte already set'),
+    'RUN3': ('run 3', 'CSplitterMainChassis::KnockBack(', [], [], 0,
+             'the damage with the boost ball and the flag byte at 0xD41'),
 }
 # the head's own members, written through $this (the spec's CLASS is the head's class).
 HEAD = '((CSplitterCommandModule*)$rdi)'
@@ -235,6 +265,84 @@ elif WHICH == 'E87C':
     # the possession flag (the second argument, in esi) is set and the command module's id at
     # 0xC6C is the head u0531's: the head is looked up and told it is possessed.
     FORCE = [(_label, _where, [], ['$esi = 1', CH + '->mCommandModuleId.value = 0x531'], 1, _what)]
+elif WHICH == 'PATHZ':
+    # The chassis's own position, so the separation from the other actors has a z component: the
+    # port's fn_75_986C tests the separation's z only when its x and y are zero, so this force
+    # alone does not reach that arm (the only actor above the chassis, the docked head, is
+    # skipped by the walk) - it is kept as the attempt the note records.
+    FORCE = [(_label, _where, [],
+              [CH + '->mPosition.mZ = 2.0'], 0, _what)]
+elif WHICH == 'AIMNC':
+    # the shield state at 0xEDC is 2 and the head is not docked: the chassis lookup fails.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 2', '$this->mChassisId.value = 0xffff'], 0, _what)]
+elif WHICH == 'AIMC':
+    # the shield state at 0xEDC is not 2 and the timer at 0xF1C is below one: the second branch
+    # runs and finds the chassis.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 1', '$this->mCountupTimerB = 0.5f'], 0, _what)]
+elif WHICH == 'AIMNC2':
+    # the shield state at 0xEDC is not 2, the timer at 0xF1C is below one and the head is not
+    # docked: the second branch runs and finds no chassis.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 1', '$this->mCountupTimerB = 0.5f',
+               '$this->mChassisId.value = 0xffff'], 0, _what)]
+elif WHICH == 'COLLIDNM':
+    # the material list (the REL's lbl_75_bss_8) is empty: no collision matches.
+    FORCE = [(_label, _where, [],
+              ['sSplitterCollisionMaterialList = CMaterialList()'], 0, _what)]
+elif WHICH == 'COLID':
+    # the collided id (the second argument) is not the invalid one: the body ends.
+    FORCE = [(_label, _where, [], ['((TUniqueId*)$rsi)->value = 0x1234'], 0, _what)]
+elif WHICH == 'COLFLAG':
+    # the flag byte at 0xF6A already has its 0x01 bit: the body ends.
+    FORCE = [(_label, _where, [], ['$this->mAutoDestructFlags |= 0x1'], 0, _what)]
+elif WHICH == 'DAMAGE7':
+    # the damage info (the second argument): the amount 25 and the boost ball (the weapon type 7).
+    FORCE = [(_label, _where, [],
+              ['((CDamageInfo*)$r8)->mDamage = 25.0',
+               '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0, _what)]
+elif WHICH == 'DAMAGE0':
+    # the damage info: the amount 25 and the power beam (the weapon type 0).
+    FORCE = [(_label, _where, [],
+              ['((CDamageInfo*)$r8)->mDamage = 25.0',
+               '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0, _what)]
+elif WHICH == 'KNOCKFLAG':
+    # the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off.
+    FORCE = [(_label, _where, [], [CH + '->mFlagsD41 |= 0x80'], 0, _what)]
+elif WHICH == 'RUN1':
+    FORCE = [
+        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
+         ['((CDamageInfo*)$r8)->mDamage = 25.0',
+          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0,
+         'the damage is 25 with the boost ball (the weapon type 7)'),
+        ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(', [],
+         ['((TUniqueId*)$rsi)->value = 0x1234'], 0,
+         'the collided id is not invalid: the body ends'),
+        ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(', [],
+         ['sSplitterCollisionMaterialList = CMaterialList()'], 0,
+         'the material list is empty: no collision matches'),
+    ]
+elif WHICH == 'RUN2':
+    FORCE = [
+        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
+         ['((CDamageInfo*)$r8)->mDamage = 25.0',
+          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0,
+         'the damage is 25 with the power beam (the weapon type 0)'),
+        ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(', [],
+         ['$this->mAutoDestructFlags |= 0x1'], 0,
+         'the flag byte at 0xF6A already has its 0x01 bit: the body ends'),
+    ]
+elif WHICH == 'RUN3':
+    FORCE = [
+        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
+         ['((CDamageInfo*)$r8)->mDamage = 25.0',
+          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0,
+         'the damage is 25 with the boost ball (the weapon type 7)'),
+        ('EBF4 KnockBack', 'CSplitterMainChassis::KnockBack(', [],
+         [CH + '->mFlagsD41 |= 0x80'], 0,
+         'the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off'),
+    ]
 elif WHICH == 'DESPAWN':
     # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
     # update (asm 0x1820).
@@ -250,16 +358,6 @@ elif WHICH == 'E87CN':
 elif WHICH == 'E87C2':
     FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'],
               ['$esi = 1', CH + '->mCommandModuleId.value = 0x520'], 0, _what)]
-elif WHICH == 'DESPAWN':
-    # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
-    # update (asm 0x1820).
-    FORCE = [(_label, _where, [], ['$this->mAlive = 0'], 0, _what)]
-elif WHICH == 'LOOKAT':
-    # the target id at 0xF02 is the chassis u0532: the cast to a CBeamProjectile fails.
-    FORCE = [(_label, _where, [], ['$this->mLookAtTargetId.value = 0x532'], 0, _what)]
-elif WHICH == 'LOOKATN':
-    # the target id at 0xF02 is invalid: the body ends at once.
-    FORCE = [(_label, _where, [], ['$this->mLookAtTargetId.value = 0xffff'], 0, _what)]
 elif WHICH == 'E87CN':
     FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'], ['$esi = 1'], 0, _what)]
 elif WHICH == '32F4F':

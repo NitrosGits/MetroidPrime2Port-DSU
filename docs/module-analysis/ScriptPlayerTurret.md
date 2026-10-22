@@ -1032,3 +1032,36 @@ So the marker is back: `fn_63_1134` is marked again.
   host's `CScriptActor::AddToRenderer` reads it, so the difference was visible.  The port writes it
   now (`CScriptActor::SetRenderImmediately`, in the header's `TARGET_PC` block, and the module's
   PreRender at 0x2FB8-0x30014).
+
+## 22. The next six unmarked functions (2026-10-22)
+
+The 20 B functions carry their markers (sections 17 and 21); the other 39 are the H and T rows of
+section 16.2 - the REL's own glue, the generated property class, the CToken/CMemory chain and the
+host copies.  This slice took the next six of them - the branch-table one first - and checked each
+against the asm.  None of them can carry a marker: the port writes no body for them (the code is the
+host's or the upstream's generated code, which is the same code), so the marker rule (a port body
+that is retail's and ran) does not apply.  What the slice produces is the verification and the asm
+citations for them.
+
+| fn | size | class | the asm | the port's counterpart | verdict |
+|---|---|---|---|---|---|
+| `fn_63_72C` | 0x114 | T | the module's own copy of the **SLdrTDamageInfo's property reader** - the generated dispatch on the property id: 0x4D577910 (0x740/0x748), 0x0F598739 (0x790/0x794), 0xF3EC8748 (0x7A4/0x7A8), 0x56F98C49 (0x7B8/0x7BC) | the upstream's generated `SLdrTDamageInfo` (`include/MetroidPrime/ScriptLoader/Structs/SLdrTDamageInfo.hpp`) carries **the same four ids** in its member comments (weaponType 0x4d577910, damageRadius 0x0f598739, damageAmount 0xf3ec8748, knockBackPower 0x56f98c49) and the upstream's `LoadTypedefTDamageInfo` is the reader; the loader (marked) uses it | the same generated code; the note's old name ("a second property reader") is now exact |
+| `RELExit` | 0x24 | H | the linker's exit: the DOL's `SetLoader_PlayerTurret` with 0 (0x34/0x3C) | the port's `RELExit` calls the DOL's proxy `SetSPlayerTurret_FuncPtrs(nullptr)`, which drops the table | equivalent |
+| `RELMain` | 0x20 | H | the linker's entry: it calls `fn_63_70` (0x5C) and returns | the port's `RELMain` **is** `fn_63_70`'s body (the linker calls the port's `RELMain`), and it carries the `fn_63_70` marker | equivalent (the guest's RELMain is the linker's own glue, which the port's REL runtime supplies) |
+| `fn_63_610` | 0x64 | T | the module's own copy of the **SLdrEditorProperties' destructor**: the SLdrDamageInfo member's destructor (0x638), the base's (0x644) and the block's free when the delete flag is positive (`extsh. r0, r31` + `ble`, 0x648/0x64C) | the upstream's generated `SLdrEditorProperties` (`include/MetroidPrime/ScriptLoader/Structs/SLdrEditorProperties.hpp`) - the same generated code | the same generated code |
+| `fn_63_674` | 0xB8 | H | the module's own copy of the **SLdrEditorProperties' constructor**: the base's constructor (0x688), the SLdrDamageInfo member's constructor at +0x60 (0x690), then the defaults (-1 at 0x694/0x69C/0x6AC/0x6BC/0x6CC/0x6D8/0x6E8) and the rodata floats (0x6D4/0x6DC/0x6E4) | the upstream's generated class, the same code | the same generated code |
+| `fn_63_B18` | 0x48 | H | **CImpactVisorEffect's constructor**: it zeroes the three flag bytes (0x38/0x20/0x10) and copies the empty effect (`fn_63_B60`, 0xB40) | the port's `CImpactVisorEffect::None()` - the same empty effect | equivalent |
+
+So: no behaviour difference in these six, and no marker (the port has no body for them).  The
+classification of section 16.2 stands, with `fn_63_72C`'s row made exact (it is the
+SLdrTDamageInfo's property reader, not a second property reader).
+
+**The run** (one game run, the Agon Wastes, `sand_world,06_sand_alamofront` layer 3, the
+compiler coverage build): `tools/cov/gcov_report.py <build> <gcov dir> --module ScriptPlayerTurret`
+gives the module's state - `fn_63_84C` 22/25 lines and 22/32 branches, `fn_63_1134` 28/34 and
+19/33 (the press test at 924 and the reload test at 926 have **no untaken arc**: the reload arm of
+section 21.1 ran again), `fn_63_1BE8` 55/90 and 28/48, `fn_63_23C0` 83/108 and 63/103 - the
+remaining untaken arcs are the unreachable ones and the arms the forcing runs cover (the
+multi-player arms, the dead player and the actor without a health info; the port's console has an
+`mpforce` command now, which is the simpler way to force the multi-player arms).  0 `[port]`
+caught / reach-stub.

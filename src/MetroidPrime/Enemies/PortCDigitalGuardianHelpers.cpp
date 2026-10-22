@@ -25,16 +25,20 @@
 
 // fn_14_37FC (0xC0 bytes): the entry of the five-value table (.rodata 0x24C: 0, 0.7853982,
 // 1.5707964, 2.3561945, 3.1415927) that is nearest to v. The five compares are
-// |v - table[i]| < best (0x381C, 0x383C, 0x385C, 0x387C, 0x389C) and the best starts at the
+// |v - table[i]| against the best (0x381C, 0x383C, 0x385C, 0x387C, 0x389C), which starts at the
 // table's largest float (.rodata 0x2AC, FLT_MAX), so the first compare always wins once and a
 // tie keeps the earlier entry. The return value is the table entry itself (the lfsx at 0x38B4).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_37FC
 float CDigitalGuardian::x37FC_(float v) const {
   static const float kAngles[5] = {0.f, 0.7853982f, 1.5707964f, 2.3561945f, 3.1415927f};
   float best = 3.4028235e38f; // .rodata 0x2AC
   int index = 0;
   for (int i = 0; i < 5; ++i) {
     const float d = std::fabs(v - kAngles[i]);
-    if (d < best) { // the fcmpo at 0x381C and the three after it
+    // the fcmpo/bge at 0x381C and the four after it skip only an ordered >=: a NaN v takes every
+    // entry (pi, table[4]), as a zero-length GetAngleDiff would give.
+    if (!(d >= best)) {
       best = d;
       index = i;
     }
@@ -256,7 +260,6 @@ void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf
   }
 }
 //
-// Unmarked: the port has no caller for it yet (fn_14_6E04 calls it).
 
 
 // fn_14_6E04 (0x258 bytes): the guardian's body turns to the head module. With no head (the
@@ -270,8 +273,13 @@ void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf
 // 0x6F5C), else the head's forward is slerped towards the guardian's forward (the Slerp call at
 // 0x6F90) and the LookAt uses that. At the end, with at most two knees left (the x705C call at
 // 0x6FF4), the head's flag byte's bit 5 (head+0x10F4, the extrwi at 0x7004) and the head's
-// projectile attack (head+0x10D0 == 1, the cmpwi at 0x7010), the guardian's flag byte's bit 1
-// (guest this+0x128C, the rlwimi at 0x7020) is set.
+// projectile attack (head+0x10D0 == 1, the cmpwi at 0x7010), the guardian's flag byte's bit 0
+// (0x01, guest this+0x128C, the rlwimi at 0x7020) is set.
+// Every arm ran (gcov 12/12, runs dg16_knees + dg16_headgone, area 53): no head uid and the head
+// gone (`send <head> Delete`), both sides of the angle compare, four/three knees, two/one/none with
+// the head's bit 0x20 clear, set (`fsm <head> ProjectileTelegraph`) with 0x10D0 0 and 1; the knee
+// ids and 0x10D0 forced (tools/cov/specs/digitalguardian_knees.py).
+// @ fn_14_6E04
 void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
   if (x1082_ == kInvalidUniqueId) { // the cmplw at 0x6E40
     return;
@@ -315,10 +323,14 @@ void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
 // 0xA64, 0xA80, 0xA9C - the data block's +0x250, +0x26C, +0x288, +0x2A4, +0x2C0 and +0x2DC).
 // With no knee left the first block is used, unless the head's flag byte's bit 4 (head+0x10F4,
 // the extrwi at 0x10198) is set: then the last block is used (the default at 0x10168).
+// Every live arm ran (gcov 9/10, runs dg16_knees + dg16_headgone): no body (after `send <body>
+// Delete`), knee counts 4..0 (ids forced), 0 with bit 0x10 clear and set (forced). The default is
+// dead: the count is li 0 (0x10130) or fn_14_705C's result, 0..4 (li 0 and at most four addi 1).
+// @ fn_14_10120
 SLdrDigitalGuardianHeadStruct* CDigitalGuardianHead::x10120_(CStateManager& mgr) {
   int knees = 0;
-  CDigitalGuardian* body =
-      TCastToPtr< CDigitalGuardian >(mgr.ObjectById(x1034_)); // the call at 0x1014C
+  const CDigitalGuardian* body =
+      TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_)); // the call at 0x1014C
   if (body != nullptr) { // the retail's test at 0x10158 (cmplwi r3, 0x0 / beq)
     knees = body->x705C_();                                  // the call at 0x1015C
   }
@@ -342,7 +354,6 @@ SLdrDigitalGuardianHeadStruct* CDigitalGuardianHead::x10120_(CStateManager& mgr)
   }
 }
 //
-// Unmarked: the port has no caller for it yet (the head's codes call it).
 
 
 // fn_14_F374 (0x1C bytes): the retreat ride's time limit (FollowRetreatPath, fn_14_1569C). With

@@ -824,12 +824,7 @@ area is an ing spot by the time it can be killed. The same is true of `BecomeWal
 
 **Next slices** (the biggest unported pieces left in the module, by size):
 
-1. `CIngMiniPortalAttack` - the mini-portal attack actor. Its ctor (`fn_29_11E8C`), dtor
-   (`fn_29_114B0`) and the info class (`fn_29_12100`/`121F4`) are ported; the actor's own methods
-   are not: `fn_29_11570` (the aim helper, 0x2D0), `fn_29_11840` (fire, 0x1A8), `fn_29_11CA4`
-   (Think, 0x1E8) and `fn_29_11A7C` (the effect, 0x198). The state is reachable: the Ing opens a
-   mini portal when `ShouldOpenMiniPortal` fires (aggressive and the target in a safe zone), and
-   `MiniPortalAttack` then asks the body for a projectile attack.
+1. ~~`CIngMiniPortalAttack`~~ - ported and marked (A.29).
 2. The eight triggers no run has fired (A.15) - those need a scenario (a lure safe zone, an attack
    pattern, a host), not an audit.
 
@@ -1442,6 +1437,33 @@ probe in every body and the states that the boot does not reach on its own force
 | `fn_29_4C88` the create handler | the data flag byte 0x9d0's bit 7 (0x4CAC and 0x4CC0): the flag set gives the ing spot (the form 3), the flag clear the corporeal Ing (the form 2) | **both arms**: the coverage run of 2026-10-21 (tools/cov, the key is the flag word) shows the flag set (the top bit, 180 hits) and the flag clear (0, 2820 hits) - the Ing 0x101c01c3 of the Great Temple's `06_swamp_boostballguardian_dark` is the one placement the disc scan found without the flag (the scan reads the raw flag word, the port's IngFlagsWord reverses the bits) | **marked** |
 | `fn_29_5190` StartRangedAttack | no branch (one call) | never ran - the Ing never starts a team projectile attack | not marked |
 | `fn_29_3684` the team leave | - | never ran - the Ing is not in a team | not marked |
+
+### A.29 The mini portal, read against the asm and marked (2026-10-22)
+
+The eight `CIngMiniPortalAttack`/`CIngMiniPortalInfo` bodies in `PortCIngMiniPortalAttack.cpp`
+(`fn_29_11570` aim 0x2D0, `11840` fire 0x1A8, `11A7C` open 0x198, `11C14` AcceptScriptMsg 0x90,
+`11CA4` Think 0x1E8, `11E8C` ctor 0xF4, `12100`/`1201C` the info ctor/copy) were read against the
+asm: no behaviour change was needed. Facts checked: the aim blend constants (`rodata_7E4` 0.5,
+`7E8` 0.25, `7EC` 0.75, `7F0` 70 degrees), the translation at 0x54/0x58/0x5c and the forward at
+0x28/0x38/0x48, `CPlasmaProjectile` slots 0x90 ResetBeam / 0x94 Fire / 0x8c UpdateFx, and bit 7 of
+0x230 set from a constant 1 (`0x11DD8 li r3, 1` before the `rlwimi`), not from Fire's result.
+
+Runs (coverage build, Agon `01_sand_entrance_dark`, `tools/drivers/ing_miniportal.py`: wake the
+Ing, `place` it 10 units from the player, `fsm FindMiniPortals` then `fsm MiniPortalAttack`, with a
+`fsm FaceTarget` first on odd rounds): the portals open, fire their beam at the aim time, delete
+the beam at the lifetime and delete themselves, which delivers XDEL. The forced arms
+(`tools/cov/specs/ing_miniportal_force.py`, `tools/cov/force.sh`):
+
+| arm | how |
+|---|---|
+| `11840` @0x11874 no target | forced: `mInfo.mTarget` = invalid on every 3rd Fire; the next Think then finds no beam (@0x11CF4) and the portal deletes itself (@0x11E3C) |
+| `11CA4` @0x11D80 target gone at the aim time | forced: `mInfo.mTarget` = invalid at the aim time, portals whose beam id is 2 mod 4 |
+| `11570` @0x1168C travel speed not above 0 | forced: `travelSpeed` = 0 on every 4th aim made by Think |
+| `11570` @0x11734 delta too short to normalise | forced: the delta handed to `IsMagnitudeSafe` from AimAtTarget zeroed on every 2nd call (aiming the portal at itself, so the blend is its own translation, did not take the arm in a forced run: the blend presumably misses the translation by a rounding step, above the 1e-28 floor) |
+| `11A7C` @0x11B84 no explosion | dead on the host: `rs_new` does not return null |
+
+Every other arm is natural, including both sides of the 70 degree test (@0x11750). Merged gcov:
+all eight bodies ALL-ARMS, 0 `caught`/reach-stub.
 
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into

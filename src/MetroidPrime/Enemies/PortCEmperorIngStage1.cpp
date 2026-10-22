@@ -1384,7 +1384,7 @@ CActor* CEmperorIngStage1::GetActivateActor(CStateManager& mgr) const {
 
 // fn_16_920 (0x920..0x9C0): the tracked actor's (fn_16_302C) "brainSpine_scale" locator
 // (lbl_16_rodata_378) in world space (0x968, 0x978); the result is its translation (0x99C).
-// Area 11 cannot reach fn_16_920's body: only the beam paths read the brain-spine position. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_920
 CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
   CActor* target = GetTargetActor(mgr);
@@ -1405,7 +1405,7 @@ CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
 // C3DEmitterParmData(1000.0f, 0.1f, 1, 0x7F, 0x14) and the up direction (0xF84) into guest 0xA9C;
 // the "Telegraph" timer (0xA5C) takes 0.9833334f (lbl_16_rodata_3A0) and the refire timer (0xA60)
 // 1.5f (0xFB0).
-// Area 11 cannot reach fn_16_CD0's body: the beam fires in the heart stage, which the FSM does not reach there. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_CD0
 bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
   if (xa98_ != kInvalidUniqueId) {
@@ -1448,7 +1448,7 @@ bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
 // player at 10.0f (lbl_16_rodata_390) units a second on the horizontal (0xBE4..0xC44), the beam's
 // effect follows it (slot 33 UpdateFx at 0xC88) and its emitter (guest 0xA9C) sits on the beam's
 // collision point (the beam's +0x444, mCollisionPoint, 0xCA8; volume 0x7F).
-// Area 11 cannot reach fn_16_A64's body: the beam is only out in the heart stage. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_A64
 void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(xa98_);
@@ -1477,7 +1477,7 @@ void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
 // fn_16_9C0 (0x9C0..0xA64): when the beam (guest 0xA98) exists it is reset (vtable slot 34
 // ResetBeam with false, 0xA0C), its emitter removed (0xA1C), the object deleted (0xA30), and the
 // id and the emitter cleared (0xA44, 0xA48).
-// Area 11 cannot reach fn_16_9C0's body: the beam is only out in the heart stage. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_9C0
 void CEmperorIngStage1::StopBeam(CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(xa98_);
@@ -1896,7 +1896,7 @@ StartTentaclePortal(i, pos, up, mgr);
 //     0x68F), the entity info (the area, no connections, active and no editor id), the identity
 //     transform, the one vector as the scale, the effect asset, the timers and the rates, the
 //     three visor flags, the light parameters and the spline.
-// Area 11 cannot reach fn_16_9BE8's body: the portal's effect is only created for the warp portal actor and the tentacle's portal, and neither exists there. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_9BE8
 TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId,
                                                      TAreaId area) {
@@ -1930,7 +1930,7 @@ TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId
 // created when the joint has none (fn_16_9BE8, 0x1AD0). The effect looks along the up vector
 // from the joint's position (the fadds at 0x1B34..0x1B4C and the LookAt at 0x1B60) and it hears
 // "ACTV" (kSM_Activate, 0x41435456, 0x1B84).
-// Area 11 cannot reach fn_16_1A50's body: the tentacle's portal starts on the animation's portal event, which the boss's tentacles do not send there.
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_1A50
 void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up,
                                             CStateManager& mgr) {
@@ -2011,61 +2011,77 @@ CEmperorIngStage1WarpPortal::CEmperorIngStage1WarpPortal(
 CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;  // fn_16_0: the destructor - the vtable back and the base's own
 
 // fn_16_1150 (0x1150..0x1574, 0x424): the portal's think.
-//   0x1194: the model's animation data gets its flag byte's bit 24 (the byte's 0x80) set; the
-//     host's CAnimData has no member for that byte, so the port leaves it out.
+//   0x1194: the model's animation data (the guest 0x60 -> 0x10, no null test) is set animating:
+//     `lbz r0,0x2ac(r5); rlwimi r0,r6,7,24,24` (r6 = 1) at 0x11A4..0x11AC sets the byte's 0x80,
+//     CAnimData::mAnimating - the DOL's CModelData::EnableLooping sets the same bit with the same
+//     rlwimi (0x800E53E8) and CModelData::IsAnimating reads it (0x800E5C3C). Without it the
+//     "Whole Body" animation never advances (its time remaining stays 1.2 s).
 //   0x11B0: the base's own think.
-//   0x11B4: the portal's timer (the guest 0x2D0) counts up and past 0.75f (lbl_16_rodata_3A4,
-//     0x11CC) the portal goes inactive (0x11E0).
+//   0x11B4: the portal's timer (the guest 0x2D0) counts up; until it is past 0.75f
+//     (lbl_16_rodata_3A4, the `ble` at 0x11D0 to the epilogue 0x1534) nothing else runs. Past it
+//     the portal is made active (SetActive, vtable 0x1C, with `li r4,0x1` at 0x11D8) - the
+//     portal is created inactive (0x65DC), so this is what lets it render (fn_16_1088).
 //   0x1214: while the "Whole Body" animation is still running (IsAnimTimeRemaining with the
-//     tolerance dt - 0.00000011920929f, lbl_16_rodata_3A8) the portal does nothing more; when
-//     it is over the portal goes inactive (0x1258) and its effect (the guest 0x2D4) gets the
-//     emitter for the second warp sound (the guest 0x2FA, 0x135C) and the "ACTV" message
-//     (0x12C0) - but only while the effect is active (the byte at the effect's +0x20, 0x1290).
+//     tolerance dt - 0.00000011920929f, lbl_16_rodata_3A8) the portal goes on to 0x131C; when
+//     it is over the portal goes inactive (0x1258, `li r4,0x0`) and its effect (the guest 0x2D4)
+//     gets the emitter for the second warp sound (the guest 0x2FA, 0x12BC) and "DCTV"
+//     (kSM_Deactivate: `lis r3,0x4443; addi r6,r3,0x5456` at 0x12D4 = 0x44435456, 0x1318) -
+//     but only while the effect is active (the byte at the effect's +0x20, 0x1294).
 //   0x131C: past 5.0f (lbl_16_rodata_3AC) the portal asks to be deleted.
 //   0x1348: the animation is updated.
 //   0x1360: the portal hits the player once: the player's touch bounds against the boxes around
 //     the seven "eight_Spine_*" locators (0x13E4), each 2.0f around the locator's world position
 //     (0x1408), and the stab damage (the guest 0x2DC, 0x151C).
-// Area 11 cannot reach fn_16_1150's body: the warp portal actor is never created there (the warp attack's portal needs the player's aim position).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
+// The effect-is-gone (0x128C) and effect-inactive (0x1298) arms are forced by gdb
+// (tools/cov/specs/emperoring1_portal_force.py); the null model / animation data (0x11F8, 0x1204)
+// and no-touch-bounds (0x13CC) arms are dead (module note §12a).
 // @ fn_16_1150
 void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
+  AnimationData()->SetIsAnimating(true);  // 0x1194..0x11AC
   CActor::Think(dt, mgr);  // 0x11B0
   mTimer += dt;             // 0x11B4
-  if (mTimer > 0.75f) {     // 0x11CC, lbl_16_rodata_3A4
-    SetActive(false);        // 0x11E0
+  if (mTimer <= 0.75f) {    // 0x11CC, lbl_16_rodata_3A4: `ble` to the epilogue (0x1534)
+    return;
   }
-  // 0x11EC: the model data and its animation data have to be there.
+  SetActive(true);  // 0x11E0 (li r4,0x1 at 0x11D8)
+  // 0x11EC: the model data and its animation data have to be there; without them the retail
+  // goes straight to the stab (0x1210 beq 0x1360).
   // The retail's arm at 0x11F8 (the animation data is null) cannot be taken in the port: the
   // portal is always built with the attack tip's model and its animation data.
   if (ModelData() != nullptr && ModelData()->AnimationData() != nullptr) {  // 0x11F4, 0x1200
     // 0x1214: the "Whole Body" animation is over?
     if (!AnimationData()->IsAnimTimeRemaining(dt - 0.00000011920929f,
                                               rstl::string_l("Whole Body"))) {
-      SetActive(false);  // 0x1258
+      SetActive(false);  // 0x1258 (li r4,0x0 at 0x125C)
       // 0x1270: the portal's effect (the guest 0x2D4).
       CScriptEffect* effect = TCastToPtr< CScriptEffect >(mgr.ObjectById(mEffectId));
       if (effect != nullptr && effect->GetActive()) {  // 0x128C, 0x1290: the retail's own tests
-        // 0x135C: the emitter for the second warp sound at the effect's own place.
+        // 0x12BC: the emitter for the second warp sound at the effect's own place.
         CSfxManager::AddEmitter(mWarpSound2, effect->GetTranslation(),
                                 effect->GetCurrentAreaId().Value(), true, false,
                                 CSfxManager::kMedPriority);
-        // 0x12C0: the effect gets the "ACTV" message.
-        effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), mEffectId, kSM_Activate));
+        // 0x1318: the effect gets "DCTV" (0x44435456, 0x12D4..0x12D8).
+        effect->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), mEffectId, kSM_Deactivate));
       }
     }
+    if (mTimer > 5.f) {  // 0x131C, lbl_16_rodata_3AC
+      mgr.DeleteObjectRequest(GetUniqueId());  // 0x1344
+    }
+    UpdateAnimation(dt, mgr, true);  // 0x135C
   }
-  if (mTimer > 5.f) {  // 0x131C, lbl_16_rodata_3AC
-    mgr.DeleteObjectRequest(GetUniqueId());  // 0x1344
-  }
-  UpdateAnimation(dt, mgr, true);  // 0x1348
   // 0x1360: the portal hits the player only once.
-  if (mHit == 0) {
+  if (mHit == 0) {  // 0x1368
     const rstl::optional_object< CAABox > bounds = mgr.GetPlayer(0)->GetTouchBounds();  // 0x136C
+    // 0x13CC: dead against the player - CPlayer::GetTouchBounds returns a box in both its arms.
     if (bounds) {
-      for (int i = 0; i < 7; ++i) {  // 0x13E4
-        const CVector3f pos = GetTransform() * GetLocatorTransform(
-                                                    rstl::string_l(skWarpPortalStabLocators[i]))
-                                                  .GetTranslation();  // 0x1408
+      for (int i = 0; i < 7; ++i) {  // 0x13E4, 0x152C: cmpwi r28,0x7; blt
+        // 0x13F0..0x1404: the animation data's own locator (the guest 0x60 -> 0x10, no null test,
+        // the CCharAnimTime pointer null: `li r6,0x0` at 0x13FC).
+        const CVector3f pos = GetTransform() * AnimationData()
+                                                   ->GetLocatorTransform(rstl::string_l(
+                                                       skWarpPortalStabLocators[i]), nullptr)
+                                                   .GetTranslation();  // 0x1408
         const CAABox box(pos - CVector3f(2.f, 2.f, 2.f), pos + CVector3f(2.f, 2.f, 2.f));
         if (box.DoBoundsOverlap(*bounds)) {  // 0x148C
           mHit = 1;                           // 0x14A0
@@ -2130,7 +2146,8 @@ void CEmperorIngStage1WarpPortal::AcceptScriptMsg(CStateManager& mgr, const CScr
 // constant (0x10C4..0x111C); the model data's world space portal plane takes it (0x1128) and
 // the base's own render follows (0x1134). The retail's first call (the renderer's vtable slot
 // 16 with the transform, 0x10A8) is the base's own work.
-// Area 11 cannot reach fn_16_1088's body: the warp portal actor is never created there. A temporary hook drove it (see the module note).
+// It runs in area 11's natural heart-stage cycles (gcov 6/6, module note §12a): the portal is
+// created inactive (0x65DC) and renders once its think activates it past 0.75f (0x11E0).
 // @ fn_16_1088
 void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
   const CVector3f normal = GetTransform().GetColumn(kDY);  // 0x10C4
@@ -2144,7 +2161,7 @@ void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
 // vector the up vector (0x1990..0x19C0), and the portal's effect (the joint's id, 0x19C4) hears
 // "DCTV" (kSM_Deactivate, 0x44435456, 0x19F8) - the message's sender is this actor (0x19EC) and
 // its id the joint's (0x19F4).
-// Area 11 cannot reach fn_16_1950's body: the tentacle's portal stops on the same event.
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_1950
 void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
   CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
@@ -2234,7 +2251,7 @@ bool CEmperorIngStage1::AllTentaclesRetracted(CStateManager& mgr, const CTrigger
 // (guest 0xA3C, 0.0f in the constructor) has run out. The asm compares it with 0.0f
 // (lbl_16_rodata_380) and folds "less than" and "equal" into one bit (cror eq,lt,eq at 0x4BC4),
 // so the test is "<= 0.0f".
-// Area 11 cannot reach fn_16_4BB4's true branch: the FSM only evaluates the trigger in the heart-stage state. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_4BB4
 bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& data) const {
   return xa3c_ <= 0.f;
@@ -2244,7 +2261,7 @@ bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& d
 // The asm calls the vtable slot at +0x3C (slot 13, GetHealthInfo) and reads the health info's
 // second float (CHealthInfo::mHealth at +0x04), then compares it with 0.0f the same way as
 // fn_16_4BB4 (cror eq,lt,eq at 0x4B98).
-// Area 11 cannot reach fn_16_4B6C's true branch: the FSM only evaluates the trigger in the heart-stage state. A temporary hook drove it (see the module note).
+// Area 11 evaluates it on the natural path (the heart-stage cycles of tools/drivers/emperoring1_heartstage.py, module note §12); its true branch needs the boss dead. A temporary hook drove that (see the module note).
 // @ fn_16_4B6C
 bool CEmperorIngStage1::IsDead(CStateManager& mgr, const CTriggerData& data) const {
   return GetHealthInfo()->GetHP() <= 0.f;
@@ -2359,7 +2376,7 @@ void CEmperorIngStage1::BeginHeartStage(CStateManager& mgr, EStateMsg msg, float
 //     heart-stage timer runs down last (0x7858).
 //   Deactivate: the locomotion type 1 (0x7868), the heart's collision actor inactive (fn_16_3D64
 //     with 8, 0x787C) and the beam stopped (fn_16_9C0, 0x7888).
-// Area 11 cannot reach fn_16_774C's body: the FSM does not reach the heart stage there. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_774C
 void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
@@ -2410,7 +2427,7 @@ void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) 
 //     animation state is not ready (0x76A8), the tentacles' 0x80 flags are set (fn_16_2EE0 with
 //     1, 0x76B4), the attack timer re-rolls (fn_16_8E4, 0x76C0) and the tentacles take the normal
 //     vulnerability (fn_16_353C with 1, 0x76D0).
-// Area 11 cannot reach fn_16_71BC's body: the FSM does not reach the heart stage there. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_71BC
 void CEmperorIngStage1::EndHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
   CActor* body = GetPlayActor(mgr);
@@ -3037,16 +3054,13 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
 // mode 0 the roll picks 0 or 1, in mode 1 it picks 1 or 2, and every other mode takes 2.
 // The FSM2 machine's code node "ChooseRandomTentacleCount" hangs off the "HeartStageOver"
 // trigger of the "HeartStage" state (the machine has 10 states, 4 codes and 12 triggers), so
-// the body only runs once the fight reaches the heart stage.  The area-11 scenario cannot play
-// there (the tentacles never leave the state 1 - their out animation never ends - so
-// AllTentaclesRetracted stays false), so the state is forced with the console's
-// `fsm <uid> HeartStage` (tools/drivers/emperoring1_heartstage.py): the heart-stage timer
-// (16 s) then runs out and the code node fires.  The mode (guest 0x7C0) is stepped by the
-// heart's health (fn_16_51D4), so the heart's collision actor is damaged between the runs to
-// get the mode 1 and mode 2 arms.  Every arm ran: the mode 0 rolls 38.68/42.64/42.90/51.87/
-// 78.90/98.61 and the mode 1 rolls 0.36/16.96/91.60/96.93 (both sides of 50), the mode 2
-// rolls 75.89/85.46/91.38 (the mode's own arm).  The mode is never below 0, so the arm at
-// 0x4998 is unreachable.
+// the body runs once per heart stage.  The natural fight reaches it: with the tentacles' own
+// boxes hit and the 'PLAY' actor active, the FSM walks BeginHeartStage -> HeartStage ->
+// EndHeartStage on its own (tools/drivers/emperoring1_heartstage.py `cycles`, no `fsm`), and the
+// heart's health steps the mode (fn_16_51D4).  Every live arm ran there (gcov, module note §12):
+// both sides of 50 in mode 0 and mode 1, and mode 2.  The mode is never below 0 (the only
+// stores to guest 0x7C0 are 0x909C li 0, 0x5284 li 1 and 0x529C li 2), so the arm at 0x4998
+// is dead.
 // @ fn_16_4954
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
   const float roll = mgr.Random()->Range(0.f, 100.f);

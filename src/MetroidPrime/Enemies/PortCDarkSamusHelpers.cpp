@@ -32,6 +32,7 @@
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
 #include "Kyoto/Particles/CElementGen.hpp"
 #include "Kyoto/Particles/CParticleSwoosh.hpp"
+#include "Kyoto/Particles/CSwooshDescription.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CDarkSamusBattleStage.hpp"
@@ -43,11 +44,20 @@ bool CDarkSamus::HasBoostBall() const {
   return mBoostBallUid != kInvalidUniqueId;
 }
 
-// fn_10_2EFC (0x00002EFC, 8 bytes): the float at guest 0x314 (0x00002EFC).
+// fn_10_2EFC (0x00002EFC, 8 bytes): the float at guest 0x314 (the `lfs f1, 0x314(r3)` at
+// 0x00002EFC).
+// Unmarked: the fight does not reach it (the coverage run: 0 hits - its
+// only caller is the BoostBallRoll state, fn_10_A3B0, which is still a
+// stand-in), so there is no ALL-ARMS run to cite.
 float CDarkSamus::GetGuest314() const { return mGuest314; }
 
-// fn_10_2F04 (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 - the extrwi at
-// 0x00002F08 takes the bit 25, which is 1u << (31 - 25) = 0x40.
+// fn_10_2F04 (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 - the `lbz` at
+// 0x00002F04 and the `extrwi` at 0x00002F08 take the bit 25, which is 1u << (31 - 25) = 0x40.
+// (The `clrlwi` at 0x0000A500 in fn_10_A3B0 takes the bool's low byte, so the check there is
+// the bit 0x40 itself.)
+// The coverage run (the rooftop, the BoostBallRoll state in it): 3 hits, the body has no
+// branches, so every arm ran.
+// @ fn_10_2F04
 bool CDarkSamus::GetGuest318Bit6() const { return (mGuest318 & 0x40) != 0; }
 
 // fn_10_4868 (0x00004868, 0x60 bytes): the actor whose uid is at guest 0xF78 is deleted
@@ -567,40 +577,75 @@ void CDarkSamus::UpdatePhazonBeam(CStateManager& mgr, float dt) {
   }
 }
 
-// fn_10_99B8 (0x000099B8, 0xDC bytes): the boost ball's old particle effects are stopped and
-// forgotten: the two swoosh handles at 0xE3C and 0xE4C are cleared and their objects told to
-// stop (the vtable's word 2 with the argument 1, 0x000099F4 and 0x00009A20) and the element
-// generator's record at 0xE60/0xE64 is cleared (0x00009A68..0x00009A80). The port has no
-// counterpart for any of them - the module's own swooshes (fn_10_9B24) and the generator are
-// not in the port - so the pointers are always null and the body does nothing.
-// Unmarked: the virtual calls on those objects (the vtable's word 2) have no host counterpart,
-// so the body is not the whole function.
-void CDarkSamus::StopBoostBallParticles() {}
-
-// fn_10_6DAC (0x00006DAC, 0xDC bytes): the shield flag 0xCD0 and the direction it points.
-// Deactivate (0x00006DB4) clears the flag (0x00006DCC). The other messages read the health
-// (the vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is
-// not above lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 -
-// the `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 =
-// 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 (
-// 0x00006E10..0x00006E20). lbl_10_bss_128 is the module's static vector: the module's data
-// initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the
-// actor's 0xD18 (0x0000E5C8), = (0.3, 0.6, 1.0): rodata 46C/424/3E8 at 0x0002224C..0x000222A8.
-// Unmarked: the coverage run never reaches the Deactivate arm (the EnragedTravel state's
-// Deactivate did not run in it), so the body is not proved arm by arm.
-void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
-  if (msg == kStateMsg_Deactivate) {
-    mGuestCD0 = 0; // 0x00006DCC
-    return;
+// fn_10_99B8 (0x000099B8, 0xDC bytes): the boost ball's old particle effects are deleted and
+// forgotten: each swoosh handle at 0xE3C and 0xE4C that is set (0x000099D0, 0x000099FC) is
+// cleared (0x000099DC, 0x00009A08) and its object deleted (the vtable's word 2 with the argument
+// 1, 0x000099F4 and 0x00009A20), and the element generator's auto_ptr at 0xE60/0xE64 takes an
+// empty one (0x00009A74/0x00009A7C), deleting the old generator (0x00009A68).
+// The asm's four calls are the deleting destructors (`delete` here, the auto_ptr's two
+// included) and its other conditions the auto_ptr assignment's (self, valid byte, null).
+// Runs (darksamus_boostfx.py, ds895c b1/f1/f2): no effects (the first spawn) and both swooshes.
+// @ fn_10_99B8
+void CDarkSamus::StopBoostBallParticles() {
+  if (mBoostBallSwooshE3C != nullptr) { // 0x000099D0
+    CParticleSwoosh* swoosh = mBoostBallSwooshE3C;
+    mBoostBallSwooshE3C = nullptr; // 0x000099DC
+    delete swoosh;                 // 0x000099F4
   }
-  const float health = GetHealthInfo()->GetHP(); // 0x00006DE0
-  if (health > 1.f) {                             // 0x00006DF0
-    return;                                       // 0x00006DF8
+  if (mBoostBallSwooshE4C != nullptr) { // 0x000099FC
+    CParticleSwoosh* swoosh = mBoostBallSwooshE4C;
+    mBoostBallSwooshE4C = nullptr; // 0x00009A08
+    delete swoosh;                 // 0x00009A20
   }
-  mGuestD24 = 1.f;               // 0x00006DFC
-  mGuestCD0 = 1;                 // 0x00006E08
-  mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128, 0x00006E0C..0x00006E20
+  mBoostBallElementGen = nullptr; // 0x00009A68..0x00009A7C
 }
+
+// fn_10_895C's swoosh tokens (the header's mBoostBallSwooshTokenE40/E50): an invalid id leaves
+// the optional empty (`cmplwi r0, 0xffff` at 0x00008A58 / 0x00008B74), a valid one is the pool's
+// 'SWHC' (0x00008AE4 / 0x00008B84), locked (0x00008B6C / 0x00008C0C).
+rstl::optional_object< TLockedToken< CSwooshDescription > >
+CDarkSamus::BoostBallSwooshToken(CAssetId id) {
+  if (id == kInvalidAssetId) {
+    return rstl::optional_object< TLockedToken< CSwooshDescription > >();
+  }
+  return rstl::optional_object< TLockedToken< CSwooshDescription > >(
+      TLockedToken< CSwooshDescription >(gpSimplePool->GetObj(SObjectTag('SWHC', id))));
+}
+
+// fn_10_9B24 (0x00009B24, 0x2DC bytes), SpawnBoostBall's last call (0x0000A03C): the boost ball's
+// effects. With the trail swoosh token (0xE48 == 1, 0x00009B48) a CParticleSwoosh (`new 0x218`,
+// length 0, 0x00009B8C) replaces 0xE3C (the old one deleted, the vtable's word 2 at 0x00009BB0;
+// the store at 0x00009BB8) and emits (the vtable's word 0x2C = SetParticleEmission(true),
+// 0x00009BE0); the same for the second token (0xE58 == 1, 0x00009BEC) into 0xE4C (0x00009C2C,
+// 0x00009C50, 0x00009C58, 0x00009C80). Then, untested, a CElementGen (`new 0x338`) of the
+// glow 'PART' 0xE5C (`lis r5, 0x5041` at 0x00009CAC, `addi r0, r5, 0x5254` at 0x00009CB8)
+// with kMOT_Normal (`li r5, 0x0` at 0x00009CFC)
+// and kOSF_One (`li r6, 0x1` at 0x00009D00) goes into the auto_ptr at 0xE60/0xE64 (the old
+// deleted at 0x00009D58, the stores at 0x00009D64 / 0x00009D6C) and emits (0x00009DDC).
+// The asm's other conditions are the two `new` null tests, the token temporaries' flags and
+// the auto_ptr's self-assignment test; an old 0xE3C/0xE4C is never there (the only caller,
+// SpawnBoostBall, runs fn_10_99B8 first at 0x00009E30).
+// Runs (darksamus_boostfx.py, ds895c b1/f1/f2): both tokens (natural), the trail token absent
+// (forced, DSB_MODE=1) and the second token absent (forced, DSB_MODE=2).
+// @ fn_10_9B24
+void CDarkSamus::CreateBoostBallEffects() {
+  if (mBoostBallSwooshTokenE40.valid() == true) { // 0x00009B48
+    CParticleSwoosh* swoosh = rs_new CParticleSwoosh(*mBoostBallSwooshTokenE40, 0); // 0x00009B8C
+    delete mBoostBallSwooshE3C;                    // 0x00009BB0
+    mBoostBallSwooshE3C = swoosh;                  // 0x00009BB8
+    mBoostBallSwooshE3C->SetParticleEmission(true); // 0x00009BE0
+  }
+  if (mBoostBallSwooshTokenE50.valid() == true) { // 0x00009BEC
+    CParticleSwoosh* swoosh = rs_new CParticleSwoosh(*mBoostBallSwooshTokenE50, 0); // 0x00009C2C
+    delete mBoostBallSwooshE4C;                    // 0x00009C50
+    mBoostBallSwooshE4C = swoosh;                  // 0x00009C58
+    mBoostBallSwooshE4C->SetParticleEmission(true); // 0x00009C80
+  }
+  mBoostBallElementGen = rs_new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', mBoostBallGlowPart)),
+                                            CElementGen::kMOT_Normal, CElementGen::kOSF_One); // 0x00009D04
+  mBoostBallElementGen->SetParticleEmission(true); // 0x00009DDC
+}
+
 
 // fn_10_8870 (0x00008870, 0xE0 bytes): the loop attack command over a state's messages. The
 // function is generic: the message is in r4, the animation state for the DOL's ShouldRetry in r5
@@ -951,6 +996,18 @@ void CDarkSamus::FirePhazonSuperMissile(CStateManager& mgr) {
 
 namespace {
 
+// fn_10_1B24 (0x00001B24, 0x40 bytes): the cross product of two vectors - the x is
+// a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C)
+// and the z a.x * b.y - b.x * a.y (0x00001B54); the host's CVector3f::Cross is the same
+// formula.
+// Unmarked: the compiler inlines it, so the coverage report has no row for
+// it (the caller fn_10_10A64's row carries the lines) - no ALL-ARMS run to cite.
+void CrossProduct(CVector3f& out, const CVector3f& a, const CVector3f& b) {
+  out = CVector3f::Cross(a, b);
+}
+
+
+
 // Port stand-in for the module's boost ball actor (vtable lbl_10_data_104, 0x358 bytes; ctors
 // fn_10_3FD8 and fn_10_3BC4, which adds a fade 0.5 and the tint fn_10_181E0). Only the
 // construction is ported: the CPhysicsActor "Dark Samus BoostBall" (lbl_10_rodata_A4 + 0x15) with
@@ -979,16 +1036,6 @@ public:
   }
 };
 
-// The two callees of fn_10_9E00 the port lacks, reported once each as PortCDarkSamus.cpp's StandIn.
-void SpawnStandIn(bool& seen, const char* fn, const char* what) {
-  if (!seen) {
-    seen = true;
-    fprintf(stderr, "[darksamus] stand-in %s (%s)\n", fn, what);
-  }
-}
-
-bool sStandIn9B24 = false;
-
 } // namespace
 
 // fn_10_9E00 (0x00009E00, 0x26C bytes): the old ball deleted (fn_10_9AC4, 0x00009E24) and its
@@ -998,7 +1045,6 @@ bool sStandIn9B24 = false;
 // data's mBoostBallModel), the actor's model scale and looping (0x00009EB8). 0xD14 == 0.0f picks
 // the ctor fn_10_3FD8 (0x00009ED0), else fn_10_3BC4; both are the stub above. Then lighting on
 // (0x0000A024), AddObject (0x0000A030) and the swooshes fn_10_9B24 (0x0000A03C).
-// Port limits: fn_10_9B24 (the swooshes) is not in the port, so it stays a stand-in.
 void CDarkSamus::SpawnBoostBall(CStateManager& mgr) {
   DeleteBoostBall(mgr); // fn_10_9AC4, 0x00009E24
   StopBoostBallParticles(); // fn_10_99B8, 0x00009E30
@@ -1018,7 +1064,7 @@ void CDarkSamus::SpawnBoostBall(CStateManager& mgr) {
   }
   ball->SetCalculateLighting(true);
   mgr.AddObject(ball);
-  SpawnStandIn(sStandIn9B24, "fn_10_9B24", "SpawnBoostBall (0x0000A03C)");
+  CreateBoostBallEffects(); // fn_10_9B24
 }
 
 // fn_10_10A64 (0x00010A64, 0x158 bytes), Think's (0x0001B330): the head's yaw toward the player.
@@ -1045,7 +1091,9 @@ void CDarkSamus::UpdateHeadAim(CStateManager& mgr) {
     toPlayer.Normalize();
   }
   float angle = CVector3f::GetAngleDiff(forward, toPlayer);   // 0x00010B20
-  if (CVector3f::Cross(forward, toPlayer).GetZ() < 0.f) {      // 0x00010B48
+  CVector3f cross;
+  CrossProduct(cross, forward, toPlayer);                      // fn_10_1B24, 0x00010B34
+  if (cross.GetZ() < 0.f) {                                    // 0x00010B48
     angle *= -1.f;                                             // 0x00010B54
   }
   mHeadYaw = 57.295776f * angle; // 0x00010B6C
@@ -1110,7 +1158,10 @@ void CDarkSamus::UpdateMeleePulseAndEffects(CStateManager& mgr, float dt) {
 // lbl_10_rodata_26C = 1.25f (vtable 0x24, 0x000090B4) and updated (0x000090CC); 0xE4C, when set
 // (0x000090D8), is scaled by (lbl_10_rodata_270 = 0.2f, 0.2f, 1.25f) (0x00009108), tinted white
 // (vtable 0x30, 0x00009128) and updated (0x00009140).
-// Unmarked: the host builds none of the three (fn_10_9B24 is a stand-in), so only the null arms run.
+// Runs (darksamus_boostfx.py, ds895c b1/f1/f2): no effects; generator and both swooshes; the
+// swooshes with 0xEBC bit 0x40 (BoostBallFire); 0xE3C without 0xE4C alive and dead (forced,
+// DSB_MODE=2, then `kill`).
+// @ fn_10_8F50
 void CDarkSamus::UpdateBoostBallEffects(CStateManager& mgr, float dt) {
   const CVector3f pos = GetTranslation() + CVector3f(0.f, 0.f, 0.625f);
   if (CElementGen* gen = mBoostBallElementGen.get()) { // 0x00008FB0
@@ -1180,6 +1231,52 @@ void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
   }
 }
 
+// fn_10_A154 (0x0000A154, 0x6C bytes): the boost ball's roll: the actor's position (0x54/0x58) is
+// measured against the ball's target (0xE98/0xE9C) in the XY plane (the squares at 0x0000A180
+// and 0x0000A184, the sum at 0x0000A188) and compared with lbl_10_rodata_278 = 4 (0x0000A18C);
+// when the actor is close enough (0x0000A1B0) the roll's time 0xEA4 grows by dt (0x0000A1B4),
+// else the ball's target becomes the actor's position (0x0000A194..0x0000A1A4) and the time is
+// reset to 0.0f (0x0000A1A8).
+// @ fn_10_A154
+// fn_10_6DAC (0x00006DAC, 0xDC bytes): the shield flag 0xCD0 and the direction it points.
+// Deactivate (0x00006DB4) clears the flag (0x00006DCC). The other messages read the health
+// (the vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is
+// not above lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 -
+// the `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 =
+// 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 (
+// 0x00006E10..0x00006E20). lbl_10_bss_128 is the module's static vector: the module's data
+// initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the
+// actor's 0xD18 (0x0000E5C8), = (0.3, 0.6, 1.0): rodata 46C/424/3E8 at 0x0002224C..0x000222A8.
+// Unmarked: the coverage run never reaches the Deactivate arm (the EnragedTravel state's
+// Deactivate did not run in it), so the body is not proved arm by arm.
+void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
+  if (msg == kStateMsg_Deactivate) {
+    mGuestCD0 = 0; // 0x00006DCC
+    return;
+  }
+  const float health = GetHealthInfo()->GetHP(); // 0x00006DE0
+  if (health > 1.f) {                             // 0x00006DF0
+    return;                                       // 0x00006DF8
+  }
+  mGuestD24 = 1.f;               // 0x00006DFC
+  mGuestCD0 = 1;                 // 0x00006E08
+  mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128, 0x00006E0C..0x00006E20
+}
+
+void CDarkSamus::RollBoostBallToPosition(float dt) {
+  const CVector3f pos = GetTranslation();
+  const float dx = pos.GetX() - mBoostBallPos.GetX();
+  const float dy = pos.GetY() - mBoostBallPos.GetY();
+  const float distSq = dx * dx + dy * dy; // 0x0000A180..0x0000A188
+  if (distSq <= 4) {                    // 0x0000A18C
+    mGuestEA4 += dt;                    // 0x0000A1B4
+  } else {
+    mBoostBallPos = pos;                // 0x0000A194..0x0000A1A4
+    mGuestEA4 = 0.f;                    // 0x0000A1A8
+  }
+}
+
+
 // fn_10_1ACA0 (0x0001ACA0, 0x168 bytes): the dive's contact with the player. Only while the dive
 // is launched (0xB20 bit 0x40, `extrwi. r0, r0, 1, 25` at 0x0001ACC0) and the actor has touch
 // bounds (vtable 0x48 at 0x0001ACDC, its valid byte at 0x0001AD28): the player's touch bounds
@@ -1188,7 +1285,9 @@ void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
 // (DoBoundsOverlap at 0x0001ADAC). Then the first contact hits the player (the dive's hit bit
 // 0x20 clear, `extrwi. r0, r3, 1, 26` at 0x0001ADC0: fn_10_138A4), and a later one after a
 // bounce (bit 0x02, `extrwi r0, r3, 1, 30` at 0x0001ADD8) pushes it (fn_10_13868).
-// Unmarked: the arm with the hit already made, no bounce and an overlap has not run yet.
+// Every arm: runs ds895c u4 (the first hit) and u6 (tools/drivers/darksamus_divecontact.con,
+// keys 86/96, 40 and 87: the hit made without and with a bounce, no touch bounds).
+// @ fn_10_1ACA0
 void CDarkSamus::UpdateDiveContact(CStateManager& mgr) {
   if (!mDive.mLaunched) {
     return;

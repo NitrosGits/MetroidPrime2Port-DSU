@@ -64,6 +64,14 @@ SPEC = [
     # turn and the dodge) are written at the Update's entry, one per Update (the Activate clears
     # both, 0x00016D5C and 0x00016D6C).
     ('16CDC FreezeBeam', 'CDarkSamus::FreezeBeam(', [FB_K, FB_SET, '$rdx'], 'calls'),
+    # the DiveFromBoost state (fn_10_9424) and the BoostBallRoll (fn_10_A3B0)
+    ('9424 DiveFromBoost', 'CDarkSamus::DiveFromBoost(', ['$rdx'], 'calls'),
+    # slice 36: the BoostBallRoll state and the two getters it calls (fn_10_2F04 at 0x0000A4FC
+    # and fn_10_2EFC at 0x0000A548) - the state must run for them to.
+    ('A3B0 BoostBallRoll', 'CDarkSamus::BoostBallRoll(', ['$rdx'], 'calls'),
+    ('2F04 GetGuest318Bit6', 'CDarkSamus::GetGuest318Bit6(', [], 'ret max=3000'),
+    ('2EFC GetGuest314', 'CDarkSamus::GetGuest314(', [], 'ret max=3000'),
+    ('A154 RollBoostBallToPosition', 'CDarkSamus::RollBoostBallToPosition(', [], 'calls'),
     # the helpers of slice 27
     ('99B8 StopBoostBallParticles', 'CDarkSamus::StopBoostBallParticles(', [], 'calls'),
     ('6DAC UpdateShieldFromHealth', 'CDarkSamus::UpdateShieldFromHealth(', ['$rdx'], 'calls'),

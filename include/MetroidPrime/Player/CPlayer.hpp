@@ -505,6 +505,14 @@ public:
   void SetHoldScreenFilterAlpha(bool hold) { mHoldScreenFilterAlpha = hold; }    // Guessed name.
   TUniqueId GetEnemyLockOnActorId() const { return mEnemyLockOnActorId; }        // Guessed name.
   char GetEnemyLockOnCount() const { return mEnemyLockOnCount; }                 // Guessed name.
+#ifdef TARGET_PC
+  // Host: the DigitalGuardian REL's ChargeAttack (fn_14_16A50) stores the two by offset (the count
+  // byte at +0x14C6, then the id at +0x14C4); the port goes through this setter.
+  void SetEnemyLockOn(TUniqueId id, char count) {
+    mEnemyLockOnCount = count;
+    mEnemyLockOnActorId = id;
+  }
+#endif
   void TakeDamage(bool significant, const CVector3f& location, float damage, TUniqueId source,
                   TUniqueId owner, const CDamageInfo& damageInfo, CStateManager& mgr);
   bool GetExplorationMode() const;

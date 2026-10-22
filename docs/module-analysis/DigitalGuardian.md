@@ -493,7 +493,7 @@ the rest are the same base-class symbols as the body's inherited list.
 | 0x17A64-0x18264 | head overrides: `fn_14_17A00` AddToRenderer, `fn_14_17A44` PreRender, `fn_14_17A64` RenderSystemsToBeDrawnLast, `fn_14_17B28` Render, `fn_14_17BBC` DoUserAnimEvent, `fn_14_17C98` Think, `fn_14_17D38` AcceptScriptMsg, `fn_14_17F64` head dtor |
 | 0x18264-0x190E0 | **`fn_14_18264` head ctor** (0xE7C) |
 | 0x1912C-0x196F0 | **`fn_14_1912C`** — the 0x5B0-byte head-data copy (0x5C4) |
-| 0x196F0-0x1A698 | projectile class: `fn_14_19784` PreThink, `fn_14_19838` ctor, `fn_14_19908`/`1998C`/`19A08`/`19B70`/`19CE0`/`19DF8`/`19F18`/`19FD0`/`1A12C`/`1A168`/`1A1F8`/`1A430` — the `CEnergyProjectile` overrides |
+| 0x196F0-0x1A698 | charge-shot projectile `CGuardianProjectile` (dg21): `fn_14_19784` Think, `fn_14_19838` ctor, `fn_14_19908`/`fn_14_1998C` the module's copies of ~CEnergyProjectile/~CGameProjectile (called from its dtor `fn_14_1AAC4`); `fn_14_19A08`…`fn_14_1A430` are not in its vtable (`fn_14_1A430` is in `lbl_14_data_10D0`) |
 | 0x1A5F4-0x1AA44 | `fn_14_1A5F4` echo-target dtor, **`fn_14_1A698` echo-target ctor** (0x3AC) |
 | 0x1AAC4-0x1AD2C | `fn_14_1AAC4` projectile dtor, `fn_14_1AC14`, `fn_14_1ACB8` |
 | 0x1AD2C-0x1B6F8 | **`fn_14_1AD2C` — the head's static table initialiser** (`.ctors`) |
@@ -1503,3 +1503,220 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   9CA4/9ABC `CALL TCastToPtr<CDigitalGuardianHead>` (the C++ spells it `TCastToConstPtr`, the const
   overload of the same cast).
 - Marked: A6A8, 9CA4, 9ABC.
+
+## 2026-10-22: fn_14_6E04 and fn_14_10120 (dg16), gcov runs dg16_knees/dg16_headgone
+
+- The head's codes and states that call them are ported (ProjectileTelegraph 16F74,
+  SelectProjectileAttack 15448, ResetProjectileAttackTimes 15598); 9930/9994/173CC were already marked.
+- Drivers: `tools/cov/specs/digitalguardian_knees.{py,con}` (force.sh on `build-port-cov`; clears the
+  knee ids at 6E04 hits 500/900/1300/1700, sets head 0x10D0 from 0x10DC at ProjectileTelegraph and
+  head 0x10F4 bit 0x10 once 0x10DC is 0) and `digitalguardian_headgone.con` (run.sh, head deleted at f600).
+- Coverage: `gcov_report.py build-port-cov <both gcov dirs> --module DigitalGuardian`: 6E04 12/12, 10120 9/10.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| 6E04 | no head uid (0x1082 invalid after 70E4), head gone -> 70E4 | headgone | ran |
+| 6E04 | angle < turn (LookAt), >= turn (Slerp) | knees | ran |
+| 6E04 | knees > 2; knees <= 2 with head bit 0x20 clear | knees, forced (knee ids cleared) | ran |
+| 6E04 | knees <= 2, bit 0x20 set (`fsm <head> ProjectileTelegraph`), 0x10D0 0 / 1 | knees, forced (0x10D0) | ran: 12/12, marked |
+| 10120 | no body (`send <body> Delete`, then `codecall <head> SelectProjectileAttack`) | knees | ran |
+| 10120 | knees 4, 3, 2, 1, 0 | knees, forced (knee ids) | ran |
+| 10120 | knees 0 with head bit 0x10 set | knees, forced (0x10F4 \|= 0x10) | ran |
+| 10120 | default (knees < 0 or > 4) | - | dead: the count is li 0 (0x10130) or fn_14_705C's 0..4; marked |
+
+- fn_14_4080's XSTORE xFB2/xFB4/xFB6 (review_decomp_diff) is a tool false positive: retail stores
+  every id with `sth r0,0x0(r28)` (0x42C8), r28 = this+0xFB0 (0x40AC) stepped by 2 (0x42D0).
+
+## 2026-10-22: the melee/jump states (dg17), gcov runs dg17_melee1/dg17_melee2
+
+- Ported: MeleeAttackTelegraph 8CCC, MeleeAttack 89D4, JumpAttack 8580, SelectBestMeleeAttackLeg
+  7504, SetJumpFaceTarget 7208. Still stand-ins: FaceTarget 94BC, ProjectileAttack 8794,
+  SetProtectKneesFaceTarget 77EC, SetupBossEnergyBar 7BD4. fn_14_4F2C (XHIT) was already marked.
+- Drivers: `tools/cov/specs/digitalguardian_melee.con` (1600 frames) and `digitalguardian_melee2.con`
+  (3600 frames; console lag meant the steps after f2820 did not run), both with run.sh on
+  `build-port-cov`, area `1baa96c2,09_cliff_temple_dark`, `--fast`.
+- Coverage (`gcov_report.py build-port-cov <both gcov dirs> --module DigitalGuardian`): 7504 8/8,
+  7208 8/8, 8CCC 7/8, 89D4 15/16, 8580 9/10; 73D4 9/10, A468 9/10, 458C 10/14, 20E4 8/12, 4E00 4/5.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| 8CCC, 89D4, 8580 | Activate, Update, Deactivate | melee1/melee2 (`fsm`, natural Idle/MeleeAttack cycles) | ran |
+| 8CCC, 89D4, 8580 | switch default (msg outside 0..2) | - | dead: EStateMsg is 0..2 (same as marked 9260/8E44); marked |
+| 7504 | every leg nearer/farther, none | melee2 (`place` + `codecall`) | ran: 8/8, marked |
+| 7208 | target, no target, angle > 0 both sides, angle 0 | melee2 (`tp`/`place` + `codecall`) | ran: 8/8, marked |
+| 73D4 | one side of the 0x11DC ternary (line ~2846) | - | not run; unmarked |
+| A468 | one of cases 7/8 (line ~1479) | - | not run; unmarked |
+| 458C | leg -1 / 0x10DC == 3 (CrippledReaction then melee) | - | not run; unmarked |
+| 20E4 | -1 return | - | not run; unmarked |
+
+- asmcheck: 2 findings, both naming: 8CCC/8580 `CALL CTryCommand::ShouldRetry` (the host spells it
+  `mAnimationState.CanIssueCommand`, as in marked 8EC4's state).
+- Marked: 8CCC, 89D4, 8580, 7504, 7208.
+
+## 2026-10-22: FaceTarget, ProjectileAttack, the protect-knees and boss-bar codes, the melee leg; gcov run arms5
+
+- Ported: fn_14_94BC FaceTarget, fn_14_8794 ProjectileAttack, fn_14_77EC SetProtectKneesFaceTarget,
+  fn_14_7BD4 SetupBossEnergyBar ("BossCliffsideBoss", .rodata 0x2F4 + 0x614), fn_14_7504
+  SelectBestMeleeAttackLeg (the one 73D4 needs: it sets 0x11D8). The knee directions 77EC sums
+  are the ctor's table at 0xFC8 ((-1,1), (-1,-1), (1,1), (1,-1); 0xBD7C..0xBE3C), a constant in
+  the port. 20E4 is two ifs and 458C's new-expression temporaries are locals (retail order), so
+  gcov sees no conditional-destruction flags.
+- Driver: `tools/cov/specs/digitalguardian_arms.con` with `digitalguardian_states.py` (one run, no
+  forcing). The natural fight (`digitalguardian_fight.con`) goes Idle -> FaceTarget ->
+  ProjectileAttack -> JumpAttack (a stand-in, stuck there).
+- Console: `uevent <id> <type> [dt] [locator]` (the POI node's locator, default "root").
+- The FSM is built on Activate: `statecall`/`codecall` before it answer "no state function".
+  fn_14_3F90 (in Think) clears the id of a deleted armour, so the ObjectById-null arm of 77EC
+  needs the body inactive (`send <body> Deactivate`) across the delete.
+
+| Function | Arm | How (arms5) | Result |
+|---|---|---|---|
+| 94BC | act, turn, repeat, deact, msg 3 | natural + `statecall` | ran |
+| 94BC | 0x1278 not magnitude-safe (over) | `fsm <body> ProjectileAttack`, body inactive, 77EC early return then FaceTarget 0/1 | ran: 8/8, marked |
+| 8794 | head missiles (0x10D0 2) / other, flag 0x20, exit, deact, msg 3 | `codecall <head> SelectProjectileAttack` x24 + statecalls | ran |
+| 8794 | no head (both casts) | `send <head> Delete`, `fsm <body> ProjectileAttack` | ran: 16/16, marked |
+| 7BD4 | counter actor there / gone | Start; `send e0035005f Delete` + codecall | ran: 2/2, marked |
+| 77EC | zero sum (random, both sides), non-zero sum (snap 0 / > 0, both sides) | face sweep (45 / 22.5 deg) + `place <body> player 30` | ran |
+| 77EC | id invalid; id valid, object gone | armours u0578/u057a deleted (ids cleared), u0579 deleted with the body inactive | ran: 14/14, marked |
+| 7504 | best / not best | `place` at 1..90 units, four yaws | ran: 8/8, marked |
+| 73D4 | no leg (before any 7504), player nearer, within / beyond nearLegStabRange | as 7504 | ran: 10/10, marked |
+| A468 | 3, 5, 12, 13 in / out of the vortex, 16, 17, 27, default (1) | `uevent`; vortex via `statecall <body> VortexAttack 0` | ran: 10/10, marked |
+| 458C, 20E4 | no leg, ankle, toe, toe target destroyed (CrippledReaction Activate) | `uevent <body> 27 0 <locator>` | ran: 12/12 and 6/6, marked |
+
+- asmcheck: naming only (ShouldRetry = CanIssueCommand, TCastToPtr spelled TCastToConstPtr,
+  GetStringIndexByName = the host's GetStringIndex, the 77EC knee compare goes through a local copy).
+- Marked: 94BC, 8794, 77EC, 7BD4, 7504, 73D4, A468, 458C, 20E4.
+
+## 2026-10-22: the head's ChargeAttack and lasers, 17BBC, body helpers (dg19); gcov runs dg19_charge1..8, dg19_arms2
+
+- Ported (head): fn_14_16A50 ChargeAttack, the laser chain fn_14_FB70 (sweep start, three lasers),
+  fn_14_FE14 (one CPlasmaProjectile "RezBitCuttingLaser", weapon = lock-on beams' data +0x1BC,
+  beam info data +0x1B8 with attributes 0x291, material 0x14, attributes 0x20000), fn_14_F6A4
+  (the lasers close in), fn_14_FAEC (delete; also the XDEL's call, stand-in gone), fn_14_FA50
+  (reset), and fn_14_17BBC DoUserAnimEvent. The new host members are 0x1054 (CProjectileInfo),
+  0x107C (reserved_vector<TUniqueId, 3>), 0x1088 (the "T_lazor_LCTR" CSegId), 0x108C..0x1098.
+- 17BBC is required as soon as ChargeAttack really plays its animation: without it the head's
+  projectile event reached CPatterned::DoUserAnimEvent and crashed on the head's empty
+  projectile (LaunchProjectile). Retail handles every projectile event itself (li 1 at 0x17C50);
+  the spawners 111E0 (pulse), 10CA0 (charge shot) and 10A2C (missiles) are stand-ins.
+- Not ported: the player's lock-on ring writes in 16A50 (CPlayer +0x14C4 id, +0x14C6 count;
+  0x16BF0..0x16C8C, 0x16D30..0x16D3C). CPlayer has getters only; needs DOL setters.
+- Body: NaN-exact compares in 97F0 (0x986C cror/bne, 0x98D0 bge) and 37FC (bge at 0x381C..0x389C:
+  a NaN takes every entry, pi).
+- Driver: `tools/cov/specs/digitalguardian_charge.con` (morph, a laser deleted by its run id,
+  dt 30 sweep end with and without the boost shield, back-to-back statecalls, six 400-frame
+  sweeps; the projectile event comes ~300 updates in). The morph press is timing-sensitive.
+
+| Function | Arm | How | Result |
+|---|---|---|---|
+| 16A50 | act, issue / sweep / lasers, deact in / out of the projectile attack, msg 3 | charge5+6+7+8 | ran 12/12; unmarked (lock-on ring) |
+| FB70 | event time / time left (old animation) | charge8; charge1 (same FB70 source, e9b868ad1) | ran 4/4, marked |
+| FE14 | fire; count >= 3 dead (only caller empties, calls 3x); null = alloc failure | charge* | marked |
+| FAEC | ids / none | XDEL, deact, sweep start | ran 2/2, marked |
+| F6A4 | pop (found / gone), boost shield on / off, one laser, centre kept | charge5..8 | 24/28; unmarked: 0x390 spawn-morph arm, time <= 0 |
+| FA50 | - | needs 0x10D0 == 1 at the event; this stage's odds drew 0/2 only | no run, unmarked |
+| 17BBC | 0, 2, other, non-projectile | charge8 | unmarked (stand-ins) |
+| 3E88 97F0 705C 37FC A3A4 7B90 775C 7648 | all | arms2 (arms spec) | ALL-ARMS, marked |
+
+- Marked: FAEC, FB70, FE14, 3E88, 97F0, 705C, 37FC, A3A4, 7B90, 775C, 7648 (port_progress 155/420).
+
+## 2026-10-22: the projectile spawners and ChargeAttack's lock-on ring (dg20); gcov runs dg20_shots1/2, dg20_force1
+
+- Ported (head): fn_14_111E0 (pulse), fn_14_10CA0 (charge shot), fn_14_10A2C (missiles), with
+  four new host CProjectileInfos built and locked in the ctor (0x183A4..0x18408, 0x18CD8..0x18CF0):
+  0xE04 pulse (data +0x184/+0x188), 0xE2C charge (+0x198/+0x19C), 0xE54 missiles (+0x200/+0x204),
+  0xE7C machine gun (+0x214/+0x218). 17BBC calls them with the node's locator name.
+- 16A50's lock-on ring (0x16BF0..0x16C8C, 0x16D30..0x16D3C) through a TARGET_PC
+  `CPlayer::SetEnemyLockOn(TUniqueId, char)`. A count over 3 is dead (v <= 1 at 0x16C24).
+- 10CA0 builds a plain CEnergyProjectile; retail builds the module's subclass (ctor fn_14_19838,
+  vtable lbl_14_data_1034, overrides 0x19784..0x1A430). Follow-up: port that subclass, then mark.
+- Console: `var <id> <name> [n]` (PortConsole::RegisterVar): `dghd.attack` (0x10D0),
+  `dghd.flags` (0x10F4), `dghd.sweeptime` (0x1090); `var player spawnmorph [n]`.
+- Drivers: `tools/cov/specs/digitalguardian_shots.con` (natural run) and
+  `digitalguardian_shots_force.py` (forced, same .con, `--frames 420`); gcov of the runs merged.
+
+| Function | Arm | How | Result |
+|---|---|---|---|
+| 16A50 | every arm incl. msg 3, ring flag 0x01 / count clamps | shots2 | 16/16, marked |
+| 17BBC | attacks 0..3, other attack, non-projectile event | shots1 | 6/6, marked |
+| FA50 | lasers found / one deleted / none | shots1 | 4/4, marked |
+| 111E0 | flat unsafe + slerp (head placed on the player) | shots2 | 10/10, marked |
+| 10CA0 | all; CanCreate false (20 missiles out); TryCache false forced | shots2 + force1 | 23/23, unmarked (subclass) |
+| 10A2C | all; TryCache false forced | shots1 + force1 | 9/9, marked |
+| F6A4 | all but the no-laser return: dead (only call 0x16BDC behind bne 0x16BBC) | shots1/2 | 27/28, marked |
+
+- Marked: 16A50, 17BBC, FA50, 111E0, 10A2C, F6A4.
+
+## 2026-10-22: the charge shot's projectile class (dg21); gcov runs dg21_cs1 + shots1 + force1
+
+- `CGuardianProjectile` (guessed name; file-local in PortCDigitalGuardianHead.cpp), 0x568 bytes,
+  no own members. `lbl_14_data_1034` slots (after the RTTI pair): 2 dtor `fn_14_1AAC4` (base dtors
+  only), 5 Think `fn_14_19784`, 15 GetHealthInfo `fn_14_10C` (CActor inline), 38 GetImpactParticle
+  `fn_14_1AB24` (empty optional), 39 GetExplosionNormal `fn_14_1AB30` (sUpVector); every other slot
+  a base symbol. Only Think differs from CEnergyProjectile.
+- Ctor `fn_14_19838`: CEnergyProjectile with false, true, false, 1.0f (0x96C), 4.0f, 4.0f (0x998).
+- Think: a homing target (+0x3F0) that is the morphed player (spawned state 0 then transition
+  state 1) with the boost shield up is dropped; then CEnergyProjectile::Think.
+- 10CA0 now builds it (marked: every arm ran with the real class).
+
+| fn | arms | run | result |
+|---|---|---|---|
+| 19784 | no target (flag 0x01), unmorphed, spawned morph (`var player spawnmorph 1`, forced), morphed no boost, boost shield | cs1 (`tools/cov/specs/digitalguardian_chargeshot.con`) | 10/10, marked |
+| 19838 | no branches | cs1 | ran, marked |
+| 10CA0 | all; TryCache false forced | cs1 + shots1 + force1 | 23/23, marked |
+
+## 2026-10-22: the head's pulse, missiles and machine gun states (dg22); gcov runs dg22_gun2 + dg22_force2
+
+- Ported (head): PulseAttack fn_14_16D64 (severity 0, burst count 0x10D8 - 1 on Activate),
+  MissileAttack fn_14_167EC (severity 1), MachineGunAttack fn_14_16408 (side from Range(0,100) <= 50,
+  phase 0 charge / 1 sweep), the sweep's ends fn_14_10798 and one bullet fn_14_101E0.
+- New head members (TARGET_PC block after xE7C_): 0x10A4 the gun's locator (a second
+  "T_lazor_LCTR", .rodata 0x94C; ctor 0x18D70..0x18D9C), 0x10A8/0x10B4 sweep start/end, 0x10C0 side,
+  0x10C4 phase (ctor -1), 0x10C8 phase time, 0x10CC bullet timer. Data: +0x228 sound_MachineGun,
+  +0x240..+0x24C machineGun HalfSweepDist / SweepDuration / ChargeDuration / FireTime.
+- 101E0 builds a plain CEnergyProjectile (not CGuardianProjectile), limit CanCreateProjectile(uid,
+  kWT_AI, 64); the sound plays only when the projectile is built.
+- Drivers: `tools/cov/specs/digitalguardian_gun.con` (natural, `--frames 1150`; 70 pulse uevents in
+  one line fill the 64-projectile limit), `digitalguardian_gun_force.py` + `digitalguardian_gun_force.con`
+  (`--frames 300`, head placed on the player).
+- asmcheck reports 16A50 MISSING: its parser swallows the definition after the DGHD_STATE_STANDIN
+  calls (predates dg22; the new bodies sit above the macro block for that reason).
+
+| Function | Arm | How | Result |
+|---|---|---|---|
+| 16D64 | act / update issue or not / deact in or out of 0x12 / msg 3 | gun2 | 10/10, marked |
+| 167EC | same arms | gun2 | 10/10, marked |
+| 16408 | sides 0/1, phase 0 charge / start sweep, phase 1 sweep / over, timer fire / wait, other phase, deact | gun2 | 19/19, marked |
+| 10798 | side 0/1, axis safe; X-column fallback | gun2; forced (force.sh, locator 0x10A4 invalid) | 6/6, marked |
+| 101E0 | built, CanCreate false (70 pulses out); TryCache false | gun2; forced (force.sh, weapon uncached) | 9/9, marked |
+
+- Marked: 16D64, 167EC, 16408, 10798, 101E0.
+
+## 2026-10-22: the head's AttachedToBody, BombedReaction and SeekMotionPath (dg23); gcov run dg23_r3
+
+The DGHD_STATE_STANDIN block is gone (asmcheck now finds ChargeAttack 16A50 again). Asm (section
+offsets): 1633C 0x1633C..0x16408, 15CE8 0x15CE8..0x15E18, 158F8 0x158F8..0x15B94; the ctor's 0xFE4
+store 0x18A8C..0x18A9C (`lfs f0,0x8(r29)`, r29 = the CPatternedInfo: mTurnSpeed; the host takes
+CPatterned::mTurnSpeed, copied from it). 0x7DC = data +0x1C maxStunnedLinearVelocity.
+
+- Driver `tools/cov/specs/digitalguardian_dg23.con` (`--fast --frames 900`). New console var
+  `dghd.stunspeed` (data +0x1C; retail 10).
+- AttachedToBody has no FSM2 node in area 53's machine (`fsm` refuses it): every arm by `statecall`.
+
+| fn | arm | how |
+|---|---|---|
+| 1633C | Activate / Update / msg 2 / msg 3 | statecall 0/1/2/3 |
+| 1633C | flat direction unsafe (0x163D8 taken) | `statecall FaceTarget 2` (0x1028 zero) + `statecall AttachedToBody 1 0` in one tick |
+| 1633C | flat direction safe | statecall 1 0.016 after Activate |
+| 15CE8 | Activate, Update issue / no issue, Deactivate | `fsm BombedReaction` (the body then in the knock-back), `fsm FaceTarget` |
+| 15CE8 | msg 3 | statecall 3 |
+| 158F8 | no platform (Activate and Update) | `fsm SeekMotionPath` before SelectRetreatPlatform |
+| 158F8 | speed <= epsilon | `var dghd.stunspeed 0` after `codecall SelectRetreatPlatform` |
+| 158F8 | turn speed set, step short (move) | stunspeed 20 |
+| 158F8 | step reaches (Over, SetTranslation) | stunspeed 100000 |
+| 158F8 | Deactivate, msg 3 | `fsm FaceTarget`, statecall 3 |
+
+All three ALL-ARMS in one run (dg23_r3, caught/reach-stub 0) and marked. Open: at stunspeed 20 the
+head hardly moved toward the platform in 450 frames (MoveInOneFrameOR on the flyer; SeekAttackPosition
+uses the same call) - unexplained, not chased. `damage <head> 50 bomb` does not hurt the head (hp
+150 -> 150); BombedReaction comes from the bomb pit's path, not reached naturally here.
