@@ -292,6 +292,9 @@ public:
   // `src/MetroidPrime/CActorSetDirtyFlags.cpp` still has a declaration to define. It is a plain
   // non-virtual member, so it adds no vtable entry and moves no member.
   void SetDirtyFlags();
+  // Port: the transform itself, for a retail body that swaps it round a draw with a plain copy
+  // (no dirty flags, unlike SetTransform).
+  CTransform4f& PortRawTransform() const { return const_cast< CTransform4f& >(mTransform); }
 
   // Port: actor transform smoothing (MP1's docs/FRAME_INTERPOLATION.md, "1. Actor transforms").
   // CStateManager::Update records every actor's transform before the tick; frames drawn between

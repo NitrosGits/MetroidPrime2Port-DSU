@@ -145,7 +145,8 @@ public:
 
 #ifdef TARGET_PC
   // The reaction flags of the active parameters (the retail's SReactionParameters::mFlags, the
-  // word at the knock-back manager's +0x10). Added for the CommandoPirate's fn_9_2D0C.
+  // word at the knock-back manager's +0x20; +0x10 is mReaction - the DOL's ExecuteAction ORs the
+  // flags into +0x20 at 0x801BD9B8..C0). Guest reads of +0x10 want GetActiveReaction.
   uint GetActiveReactionFlags() const { return mActiveParameters.mFlags; }
 #endif
 

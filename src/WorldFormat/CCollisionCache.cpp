@@ -395,7 +395,13 @@ void CCollisionCacheIterator::Reset() {
   mLeafStatus = 0;
 }
 
+#ifdef TARGET_PC
+// Out of line on the port: CMapWorld and CGroundMovement inline the same body in retail
+// (fn_8009646C), and they call this definition.
+void rstl::locked_cache_allocator::Allocate(void*& out, int size) {
+#else
 inline void rstl::locked_cache_allocator::Allocate(void*& out, int size) {
+#endif
   if (size == 0) {
     out = 0;
     return;

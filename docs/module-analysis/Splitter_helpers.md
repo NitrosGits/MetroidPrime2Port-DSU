@@ -247,7 +247,7 @@ The bodies that ran but whose arms did not all run are the queue's next work: th
 names the exact lines and branches each one still misses, so the lane can take them one at a
 time (`gdb` forces what no run reaches).
 
-### 3.4 The two DoUserAnimEvent bodies (fn_75_6394, fn_75_EFA4) and fn_75_1CA0 - ported, the marks wait for the arms
+### 3.4 The two DoUserAnimEvent bodies (fn_75_6394, fn_75_EFA4) and fn_75_1CA0 - all three marked
 
 **How the bodies are reached.** The override is a member of the class, so the REL's vtable slot
 0x70 runs it: `CSplitterCommandModule::DoUserAnimEvent` (declared in the helpers block of
@@ -262,18 +262,28 @@ own aim position (its vtable slot 0x54) and the look-at, then the launch (the tr
 manager, 6 max projectiles, 0 attributes, no homing, the impact visor effect and the scale
 1.0, 1.0, 1.0 - the rodata constant lbl_75_rodata_34). Every offset is cited in the body.
 
-**But none of the three is marked yet**, because the coverage profile of the run still misses
-arms (the forces fire - the runs' `forced.log` names the forced hit - but the profile does not
-show the forced arms, so they do not count yet):
-- `fn_75_6394`'s body: 5/13 lines, 2/10 branches - the kUE_BreakLockOn case ran, the
-  kUE_Projectile case did not (the fight does not play it; the force that takes it - the event
-  type in r6 set to 0 - is in the spec, `SPLITTER_FORCE=6394`).
-- `fn_75_1CA0`: 0/15 lines in the natural run; the forced run takes the kUE_Projectile case
-  (the run's `forced.log` names the forced hit) but its "the head is dead" and the "there is no
-  player" arms are still untaken.
-- `fn_75_EFA4` (the chassis's DoUserAnimEvent): 0/3 lines - the chassis's animation plays no
-  user event in this fight, so the body is not reached at all (and a force cannot reach a body
-  that is never entered).
+**All three are marked.** The forces were wrong before: the host is x86-64, so the event's type
+is the fourth integer argument and lives in **ecx** (not in r6), and the members the arms read
+are written through `$this` at the body's entry (a member is read after the entry, unlike an
+argument the caller copies). The force spec is `tools/cov/specs/splitter_helpers_force.py`; one
+run per arm, the counters add up (tools/cov/gcov_report.py takes several prefix dirs):
+
+| body | arms | the force |
+|---|---|---|
+| `fn_75_6394` | the break-lock event with the head's flag byte's 0x10 bit **set** and the data's flag word's 0x4 bit **set** (asm 0x63E4, 0x63F0: the branch skips when the bit is clear), the player at 0xEFE present or missing, the projectile event, another event type (the base class's call) | `6394LOCK`, `6394FLAG`, `6394DATA`, `6394NOPLAYER`, `6394P0`, `6394P0NP`, `6394DEAD`, `6394OTHER` |
+| `fn_75_1CA0` | the head dead, no player at 0xEFE, the launch | `6394P0NP`, `6394DEAD` (with the event's type in ecx, so the aim is reached) |
+| `fn_75_EFA4` | the break-lock event with the chassis's flag byte's 0x10 bit **set** (asm 0xEFE8: the branch skips when the bit is clear) and the player at 0xCC0 present or missing, the material event with the flag byte's 0x80 bit set (asm 0xF054) or clear and the head at 0xC6C present (asm 0xF084) or missing, another event type (the base class's call) | `EFA4LOCK`, `EFA4FLAG`, `EFA4NOPLAYER`, `EFA4MAT`, `EFA4MATCLEAR`, `EFA4MATN`, `EFA4OTHER` |
+
+The coverage build's merged profile of those runs says:
+
+| body | lines | branches |
+|---|---|---|
+| `fn_75_6394` | 13/13 | 10/10, ALL-ARMS |
+| `fn_75_1CA0` | 15/15 | 5/5, ALL-ARMS |
+| `fn_75_EFA4` | 19/19 | 12/12, ALL-ARMS |
+
+The chassis's animation does play a user event in the fight (its break-lock event), so its body
+runs on its own; the material event (the type 0x5) is the one the fight never plays.
 
 ### 3.5 The head's DoUserAnimEvent (fn_75_6394) - the slot, the mapping and the port
 
@@ -329,9 +339,113 @@ The body switches on the type (asm 0x63B4 `cmpwi r31, 0x16`): the type 0x16 asks
 base class's own `DoUserAnimEvent` runs (asm 0x6468).
 
 The next one is the chassis's own `fn_75_EFA4` (the chassis's DoUserAnimEvent, the same
-slot): its body switches on the type 0x16 and the type 0x5 (asm 0xEFC0, 0xEFDC). It is a
-stand-in in the port today (the chassis's `GetSortingBounds`), and the port's chassis has no
-DoUserAnimEvent override at all, so the DOL's runs there too.
+slot): its body switches on the type 0x16 and the type 0x5 (asm 0xEFC0, 0xEFDC). It is ported
+and marked now (section 3.4): the port's chassis has a DoUserAnimEvent override that calls
+`CSplitterMainChassis::PortDoUserAnimEvent`.
+
+### 3.7 The parked lane's eight open bodies: what each untaken arm reads
+
+The eight bodies the parked Splitter lane left open (32F4, 1188, 23F0, 270C, 909C, 8EC8, D61C,
+E87C) were checked one by one. For each, the value the untaken arm reads decides how it can be
+forced: a member is written through `$this` at the body's entry, an argument is written in its
+register (only where the disassembly shows it is not copied before the use), and a callee's
+result can only be taken by breaking on the callee.
+
+| body | the caller in the asm | what the untaken arm reads | the profile | the state |
+|---|---|---|---|---|
+| `fn_75_32F4` (the head's UpdateFlashAndDeath) | the module's own per-frame call (asm 0x64F0) | the flash weight at 0xF08, the flag byte's 0x04 bit at 0xF6A and the death timer at 0xEF0 (members, written through `$this`), the alive bit at 0x420 (the base's flag) | 17/17 lines, 10/10 branches | **marked** |
+| `fn_75_1188` (the head's SpawnBeamEffect) | the module's own per-frame call (asm 0x651C) | the base's detection range at 0x3D0 (a member) | 36/36 lines, 19/21 branches | **marked** - the two untaken branches are the `new`'s allocation-failure path and an internal path of the inlined AddObject, neither a live arm |
+| `fn_75_23F0` (the head's PortSeparationVector) | `fn_75_4E90` (the head's PathFind state) at **0x4F50**, the Update branch (asm 0x4EF0) | the listening-AI list's objects: a null cast and an AI in another area (the world state, not a member) | 19/19 lines, 19/22 branches | unmarked: the two arms need the world state (the area-id force breaks the game's shutdown, so the run writes no gcda) |
+| `fn_75_270C` (the head's PortDodgeDirection) | `fn_75_3B34` (the head's FindBestDodgeDirection code) at **0x3BB4**, the guard at 0x3B5C (the data word 0x7C0's 0x2 bit) | the same list arms: a null cast and an AI in another area | 27/27 lines, 32/34 branches | unmarked: the same two world-state arms.  The note's "unreachable with the shipped data" (all 13 SPLU placements have the flags 11, so the 0x2 bit is clear) does not hold for the port's data: the body runs |
+| `fn_75_909C` (the chassis's PortDodgeIsClear) | `fn_75_91E4` (the chassis's FindBestDodgeDirection) at **0x9454** and **0x9498**, itself called at 0xB4D8 | the ray's result and the path search's (callee results) | 0/7 lines | unmarked: the chassis's dodge direction pick needs a missile threat, so the body is never called |
+| `fn_75_8EC8` (the chassis's PortSeparationVector) | `fn_75_986C` (the chassis's path update) at **0x9890** and `fn_75_D7D4` (the chassis's SpinAttack state) at **0xD928** | the listening-AI list's objects: a null cast (the list holds CPatterneds, so it never comes up) and an AI in another area | 20/20 lines, 21/23 branches | unmarked: the same two world-state arms |
+| `fn_75_D61C` (the chassis's Dodge state) | the FSM table's entry (the state body) | the dodge direction at 0xD04 and the head's id at 0xC6C (members), the message (an argument) | 21/21 lines, 14/14 branches | **marked** - the state is entered with the console (the driver's plan S: `statecall u0532 Dodge 0/1/2`) and the members are written through `$this` (`D61C`, `D61CN`, `D61CX`) |
+| `fn_75_E87C` (the chassis's SetIngPossessed with the duration) | the possession call | the possession flag (an argument) and the command module's id at 0xC6C (a member) | 7/7 lines, 4/4 branches | **marked** - the flag in esi and the id through `$this` (`E87C`, `E87CN`) |
+
+The two GetSortingBounds overrides the port had are gone as well: the retail inherits the DOL's
+GetSortingBounds (vtable slot 0x6C) and the module's slot 0x70 is DoUserAnimEvent, so the
+overrides - which only forwarded to `CPatterned::GetSortingBounds` behind a stand-in log - were
+spurious.
+
+### 3.8 The marked bodies re-read against the asm
+
+Every marked body was read again against the REL's asm, with the bit tests decoded in the PPC's
+own numbering (the mask's bit N is the register's bit 31-N, so `extrwi. r0, r0, 1, 27` tests the
+byte's 0x10 bit and `rlwinm. r0, r0, 0, 29, 29` tests the word's 0x4 bit), and the direction of
+each test read from the branch after it (`beq` to the skip means the action needs the bit **set**):
+
+- `fn_75_6394` (0x63B0-0x6468): the break-lock action needs the head's flag byte at 0xF6A's 0x10
+  bit (asm 0x63E4, 0x63E8) and the data's flag word at 0x7C0's 0x4 bit (asm 0x63F0, 0x63F4) both
+  set; the base class's own DoUserAnimEvent runs when no case was taken (asm 0x644C `clrlwi`,
+  0x6450 `bne`).  The port's body (after the review lane's fix 0f82f6ce2) says exactly that.
+- `fn_75_EFA4` (0xEFBC-0xF0CC): the break-lock action needs the flag byte at 0xD41's 0x10 bit set
+  (asm 0xEFE8, 0xEFEC); the no-player path (asm 0xF010) and the material event's flag byte at
+  0xD41's 0x80 bit (asm 0xF054, 0xF058) fall through to the base class's call (asm 0xF0B0
+  `clrlwi`, 0xF0B4 `bne`); the material action also has the head at 0xC6C reset its shield
+  (asm 0xF084-0xF0A8).  The port's body says exactly that.
+- `fn_75_32F4` (0x32F4-0x3460): the flash block runs when the weight at 0xF08 is above zero
+  (asm 0x336C, 0x3370 `ble`), the countdown is clamped at zero (asm 0x337C, 0x3380 `bge`) and
+  the weight is capped at 1.0f (asm 0x339C, 0x33A0 `bge`); the death timer at 0xEF0 is counted
+  down when the flag byte at 0xF6A's 0x04 bit (asm 0x33CC, 0x33D0) and the alive bit at 0x420's
+  0x40 bit (asm 0x33D8, 0x33DC) are set, and the death happens at or below zero (asm 0x33FC,
+  0x3400 `cror`, 0x3404 `bne`).  The port's body says exactly that.
+- `fn_75_1188` (0x1188-0x14CC): the beam effect is only made when the detection range at 0x3D0 is
+  above zero (asm 0x1214-0x1224 `fcmpo`, `ble` to the skip).  The port's body says exactly that.
+- `fn_75_E87C` (0xE87C-0xE90C): the possession flag (the second argument) is tested with
+  `clrlwi` (asm 0xE8A4, 0xE8A8 `beq`), so the action needs it set; the head at 0xC6C is looked up
+  and cast (asm 0xE8AC, 0xE8C0) and told it is possessed through the vtable slot 0x104 with true
+  and 0.0f (asm 0xE8CC-0xE8EC).  The port's body says exactly that.
+- `fn_75_1CA0` (0x1CA0-0x1E37): the alive gate, the entity at 0xEFE, the look-at and the launch
+  (the three 1.0f are the scale, the impact visor effect is the empty one).  Unchanged.
+
+### 3.9 The audit's findings: the look-at and two constants
+
+The sweep audit (`/tmp/opencode/reports/sweep-audit-Splitter.md`) found that fn_75_184C (the
+head's look-at) was a stand-in behind its marker: the look-at transform was computed and
+dropped, and the DOL's CEntity virtual at the vtable slot 0x8C and the CSfxManager::UpdateEmitter
+were once-logging shells.  The body is now ported for real:
+
+- The vtable slot 0x8C (asm 0x1924) is **CBeamProjectile::UpdateFx**: the next slot, 0x90, is
+  CBeamProjectile::ResetBeam (asm 0x17D4, fn_75_1790) and the header's order is UpdateFx,
+  ResetBeam, Fire (include/MetroidPrime/Weapons/CBeamProjectile.hpp:24-26).  The port's own
+  chain (CEntity's 7 slots, CActor's 22, CGameProjectile's 4) puts UpdateFx at 0x84, two slots
+  low because the port's CEntity is a stub; the port calls it by name.
+- The call (asm 0x1910-0x192C) gets the transform (r4), the manager (r5) and the dt (f1), and
+  the sound (asm 0x1930-0x194C) is the host's CSfxManager::UpdateEmitter (the handle at 0xF5C,
+  the target's position at 0x444, the up vector and the volume 0x7F).
+- The look-at's construction was already right: the locator transform's translation (asm 0x18B0-
+  0x18D8, the copy's m03/m13/m23) plus the offset at 0xF50/0xF54/0xF58 (asm 0x18DC-0x18FC) is
+  the point it looks at (asm 0x1900, the up vector sUpVector).
+- The marker is kept: the coverage build's merged profile of the two forced runs and the
+  natural run says 13/13 lines and 4/4 branches, ALL-ARMS.
+
+The five functions the audit could not diff in depth were read against the asm:
+
+| function | the result |
+|---|---|
+| `fn_75_1974` (the laser shot) | right: the attributes are 0x21000 - `lis r4, 0x2` loads 0x2 << 16 (asm 0x1A68) and `addi r0, r4, 0x1000` (asm 0x1A70) makes 0x21000, stored at 0x1A9C |
+| `fn_75_10D0` (the module's transform) | right: the copy (asm 0x10E0), the "Beam_LCTR" locator (rodata 0x293), the operator* (asm 0x1140) and the result's translation (asm 0x1154) |
+| `fn_75_11884` / `fn_75_11804` (the beam effect's ctor and dtor) | right: the CActor's arguments, the kMT_NoStepLogic material list, the texture (kTF_IA8, 4 wide, one mip), the closed angle, the random seed 99 and the texture's scheduled deletion |
+| `fn_75_3460` (the collision actor manager) | right: the "Skeleton_Root" joint (the radius 3.0f and the mass 1000.0f), the manager's replacement, the walk and the "Beam_LCTR" compare |
+| `fn_75_6B08` (the head's constructor) | right: the include list is 1 << 59 (kMT_Solid, lbl_75_data_428) and the exclude list 1 << 47 | 1 << 33 (kMT_CollisionActor and kMT_Character, lbl_75_data_42C and lbl_75_data_430) - the `li r3, 0; li r4, 1` before each `__shl2i` is the input (the value 1) and r5 the shift count from the data table |
+
+### 3.10 The two reverts and the audit's last stand-ins
+
+- **fn_75_1974 and fn_75_6B08 were right as they were.**  The decode rule that settles both:
+  `lis rN, X` loads X << 16, so `lis r4, 0x2` (asm 0x1A68) is 0x20000 and the attributes word is
+  0x21000 (the port's value); and before each `__shl2i` the `li r3, 0; li r4, 1` is the input
+  (the 64-bit value 1) with r5 the shift count from the data table, so the material lists are
+  1 << 59 and 1 << 47 | 1 << 33, exactly the port's line.  Both "fixes" were reverted
+  (e344342ca, dfb73355a) and this section says so.
+- **fn_75_1790 (the projectile's despawn) fixed** (7952bcfdc): the retail tests the base's flag
+  byte at 0x420 with `extrwi. r0, r0, 1, 25` (asm 0x1820), which is the word's bit 25 - the
+  byte's 0x40 bit, the host's alive flag; the port asked GetFlag26 (the word's bit 26).
+- **fn_75_3004 (the collision update) ported** (2098bbec8): the shield effect's virtual at the
+  vtable word 0x4C (asm 0x3034-0x3044) is CParticleGenInfo::SetModulationColor with the
+  module's flash colour at 0xF04, and the DOL's CSfxManager::UpdateEmitter (asm 0x3048-0x3078)
+  gets the handle at 0xF60, the module's position at 0x54 and its transform's Y column (0x28,
+  0x38 and 0x48) with the volume 0x7F - the host's CSfxManager::UpdateEmitter has the same
+  signature.  Both stand-ins are gone.
 
 ## 4. What is left, and why
 

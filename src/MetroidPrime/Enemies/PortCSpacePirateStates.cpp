@@ -516,8 +516,8 @@ void CSpacePirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // @ fn_72_BCB0 (0x31C). Every message forwards to CPatterned::Patrol first (asm 0xBCE4). Activate
 // takes the kSS_Attack/kSM_Follow connected waypoint as the nav destination and, when the dot of the
-// forward axis with (waypoint - translation) is exactly zero (asm 0xBD90: fcmpo/cror/bne), marks the
-// nav in-position; Update
+// forward axis with (waypoint - translation) is <= 0, i.e. the waypoint is not ahead (asm 0xBDB8:
+// fcmpo, cror eq,lt,eq, bne), marks the nav in-position; Update
 // marks it in-position and sets the jump height when the AI waypoint's flags bit1/bit2 ask for a
 // jump/drop and the pirate is within a body-length, aims the cmd-manager target at the player while
 // the body state is kAS_Jump and the waypoint has no kSS_Arrived/kSM_Next connection, then caches
@@ -533,7 +533,7 @@ void CSpacePirate::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
     if (CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(id))) {
       mWaypointNavigation.SetDestination(id);
       if (CVector3f::Dot(GetTransform().GetForward(),
-                         waypoint->GetTranslation() - GetTranslation()) == 0.f) {
+                         waypoint->GetTranslation() - GetTranslation()) <= 0.f) {
         mWaypointNavigation.SetInPosition(true);
       }
     }

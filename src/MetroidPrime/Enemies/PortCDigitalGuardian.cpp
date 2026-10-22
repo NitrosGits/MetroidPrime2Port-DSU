@@ -273,6 +273,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1013_(0)
 , x1168_(kInvalidUniqueId) // the store at 0xB5B8
 , x116A_(kInvalidUniqueId) // the store at 0xB5C0
+, x116C_(LdrToDamageInfo(data.mVortexDamage)) // the stores at 0xB5D4..0xB614
 , x11B8_(0)
 , x11BC_(0.f) // the store at 0xB65C
 , x11C0_(kInvalidUniqueId) // the store at 0xB668
@@ -392,6 +393,8 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   // asset (guest 0x950, the data block's mTransmissionBeaconFx).
   x123C_ = xD664_(mData.mTransmissionBeaconFx);
 
+  mDamageColor = skHitsWithoutDamageColor; // 0x450 at 0xC010..0xC018
+
   // The beacon's echo emitter (0xC01C..0xC074): with the beacon's model (0x1238, 0x11EC's valid
   // flag), enabled, over the model's bounds at fn_14_2578's transform of the actor's (0x24), with
   // the beacon's echo parameters (0x954, the data block's +0x194).
@@ -433,7 +436,6 @@ void CDigitalGuardian::PreThink(float dt, CStateManager& mgr) {
 // 3000 frames, the coverage build (tools/cov/gcov_report.py: 4/4 branches, ALL-ARMS).
 // @ fn_14_A5BC
 void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
-  StandIn("CDigitalGuardian::Think (vtable slot 5, fn_14_A5BC)");
   if (!GetActive()) {
     return;
   }
@@ -468,50 +470,48 @@ void CDigitalGuardian::Think(float dt, CStateManager& mgr) {
 // (0x494D3030..0x494D3038, the cases at 0xAAB8, 0xAAC8, 0xAAE0, 0xAAF8, 0xAB10, 0xAB28,
 // 0xAB40, 0xAB58 and 0xAB70), "OPEN" (0x4F50454E, the case at 0xAA3C), "CLOS" (0x434C4F53,
 // the case at 0xAA80), "XDEL" (0x5844454C, the case at 0xA880), "XAUD" (0x58415544, the case
-// at 0xA9A8), "XALC" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
+// at 0xA9A8), "XALD" (0x58414C44, the case at 0xA998), "XDMG" (0x58444D47, the case at
 // 0xA9DC), "XRDG" (0x58524447, the case at 0xA9FC) and "XHIT" (0x58484954, the case at
-// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C). The helpers fn_14_5644 and
-// fn_14_4F2C the cases call are not ported yet.
+// 0xAA1C) and "XCRT" (0x58435254, the case at 0xA81C).
 void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("CDigitalGuardian::AcceptScriptMsg (vtable slot 6, fn_14_A6A8)");
   // The retail reads the actor's active bit before it calls the base (the byte at guest 0x20,
   // bit 7, read at 0xA6C4) and the "ACTV" and "DCTV" cases test that value.
   const bool active = GetActive();
-  CPatterned::AcceptScriptMsg(mgr, msg);
-  switch (static_cast< uint >(msg.GetMessage())) {
+  CPatterned::AcceptScriptMsg(mgr, msg); // 0xA6DC
+  switch (static_cast< uint >(msg.GetMessage())) { // the message (+8) at 0xA6BC
   case 0x41435456: // "ACTV"
-    if (!active) {
+    if (!active) { // 0xA8DC
       if (xE60_ != nullptr) { // the retail's test at 0xA8E8
-        xE60_->SetActive(mgr, true);
+        xE60_->SetActive(mgr, true); // 0xA8F8
       }
       // The second manager is only woken when the flag byte's bit 6 is set (the extrwi at
       // 0xA90C, the byte's bit 6 = 0x40).
       if (xE64_ != nullptr && (x128C_ & 0x40) != 0) { // the tests at 0xA900 and 0xA910
-        xE64_->SetActive(mgr, true);
+        xE64_->SetActive(mgr, true); // 0xA91C
       }
-      x3E88_(mgr, true);
+      x3E88_(mgr, true); // 0xA92C
       // The retail's call at 0xA944 passes the float at .rodata 0x264 (0.0f) as its last
       // argument and a pointer to that word as its state message; the code function ignores
       // both.
-      ResetAttackTimes(mgr, 0.f);
+      ResetAttackTimes(mgr, 0.f); // fn_14_7B24
     }
     break;
   case 0x44435456: // "DCTV"
-    if (active) {
+    if (active) {             // 0xA94C
       if (xE60_ != nullptr) { // the retail's test at 0xA958
-        xE60_->SetActive(mgr, false);
+        xE60_->SetActive(mgr, false); // 0xA968
       }
       if (xE64_ != nullptr) { // the retail's test at 0xA970
-        xE64_->SetActive(mgr, false);
+        xE64_->SetActive(mgr, false); // 0xA980
       }
-      x3E88_(mgr, false);
+      x3E88_(mgr, false); // 0xA990
     }
     break;
   case 0x4F50454E: // "OPEN"
     // The flag byte's bit 3 must be clear (the extrwi at 0xAA40, the byte's bit 3 = 0x08) and
     // the beacon's state word must not be 1 (the cmpwi at 0xAA4C).
     if ((x128C_ & 0x08) == 0 && x1268_ != 1) {
-      x1268_ = 2;
+      x1268_ = 2; // 0xAA5C
       // The sound (the call at 0xAA78): the position is the actor's translation (guest 0x54),
       // the direction is the up vector and the parms are the data block's +0x1C0
       // (sound_BeaconExtract).
@@ -527,80 +527,80 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     break;
   case 0x5844454C: // "XDEL"
     if (xE60_ != nullptr) { // the retail's test at 0xA884
-      xE60_->Destroy(mgr);
+      xE60_->Destroy(mgr);  // 0xA890
     }
     if (xE64_ != nullptr) { // the retail's test at 0xA898
-      xE64_->Destroy(mgr);
+      xE64_->Destroy(mgr);  // 0xA8A4
     }
-    if (x1240_ != CSfxHandle()) {
-      CSfxManager::RemoveEmitter(x1240_);
-      x1240_ = CSfxHandle();
+    if (x1240_ != CSfxHandle()) {        // cmplwi 0 at 0xA8AC
+      CSfxManager::RemoveEmitter(x1240_); // 0xA8C0
+      x1240_ = CSfxHandle();             // 0 at 0xA8C8
     }
-    x3F14_(mgr); // fn_14_3F14
+    x3F14_(mgr); // fn_14_3F14 at 0xA8D4
     break;
   case 0x58415544: // "XAUD"
     if (xE60_ != nullptr) { // the retail's test at 0xA9AC
-      xE60_->SetPhysicsActive(mgr, false);
+      xE60_->SetPhysicsActive(mgr, false); // 0xA9BC
     }
     if (xE64_ != nullptr) { // the retail's test at 0xA9C4
-      xE64_->SetPhysicsActive(mgr, false);
+      xE64_->SetPhysicsActive(mgr, false); // 0xA9D4
     }
     break;
-  case 0x58414C44: // "XALC"
-    x5910_(mgr); // fn_14_5910
+  case 0x58414C44: // "XALD"
+    x5910_(mgr); // fn_14_5910 at 0xA9A0
     break;
-  case 0x58444D47: // "XDMG": the sender (the message's +0)
-    x5838_(mgr, msg.GetSenderId()); // fn_14_5838
+  case 0x58444D47: // "XDMG": the sender (the message's +0, 0xA9DC)
+    x5838_(mgr, msg.GetSenderId()); // fn_14_5838 at 0xA9F4
     break;
   case 0x58524447: // "XRDG"
-    x5644_(mgr, msg.GetSenderId()); // fn_14_5644
+    x5644_(mgr, msg.GetSenderId()); // fn_14_5644 at 0xAA14
     break;
   case 0x58484954: // "XHIT"
-    StandInFn("fn_14_4F2C (the XHIT case's helper)");
+    x4F2C_(mgr, msg.GetSenderId()); // fn_14_4F2C at 0xAA34
     break;
-  case 0x494D3030: // "IM00"
-    x3F14_(mgr); // fn_14_3F14
+  case 0x494D3030: // "IM00", 0xAAB8 (the bge at 0xA74C)
+    x3F14_(mgr); // fn_14_3F14 at 0xAAC0
     break;
-  case 0x494D3031: // "IM01"
-    x1010_ = 1;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3031: // "IM01", 0xAAC8
+    x1010_ = 1;  // stb at 0xAAD0
+    x3A44_(mgr); // fn_14_3A44 at 0xAAD8
     break;
-  case 0x494D3032: // "IM02"
-    x1010_ = 0;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3032: // "IM02", 0xAAE0
+    x1010_ = 0;  // stb at 0xAAE8
+    x3A44_(mgr); // fn_14_3A44 at 0xAAF0
     break;
-  case 0x494D3033: // "IM03"
-    x1012_ = 1;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3033: // "IM03", 0xAAF8
+    x1012_ = 1;  // stb at 0xAB00
+    x3A44_(mgr); // fn_14_3A44 at 0xAB08
     break;
-  case 0x494D3034: // "IM04"
-    x1012_ = 0;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3034: // "IM04", 0xAB10
+    x1012_ = 0;  // stb at 0xAB18
+    x3A44_(mgr); // fn_14_3A44 at 0xAB20
     break;
-  case 0x494D3035: // "IM05"
-    x1013_ = 1;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3035: // "IM05", 0xAB28
+    x1013_ = 1;  // stb at 0xAB30
+    x3A44_(mgr); // fn_14_3A44 at 0xAB38
     break;
-  case 0x494D3036: // "IM06"
-    x1013_ = 0;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3036: // "IM06", 0xAB40
+    x1013_ = 0;  // stb at 0xAB48
+    x3A44_(mgr); // fn_14_3A44 at 0xAB50
     break;
-  case 0x494D3037: // "IM07"
-    x1011_ = 1;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3037: // "IM07", 0xAB58
+    x1011_ = 1;  // stb at 0xAB60
+    x3A44_(mgr); // fn_14_3A44 at 0xAB68
     break;
-  case 0x494D3038: // "IM08"
-    x1011_ = 0;
-    x3A44_(mgr); // fn_14_3A44
+  case 0x494D3038: // "IM08", 0xAB70
+    x1011_ = 0;  // stb at 0xAB78
+    x3A44_(mgr); // fn_14_3A44 at 0xAB80
     break;
   case 0x58435254: // "XCRT", the case at 0xA81C
-    BodyController()->Activate(mgr, pas::kAS_Invalid);
-    x4080_(mgr); // fn_14_4080
-    x24E4_(mgr); // fn_14_24E4
-    SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
-    SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);
-    RemoveMaterial(kMT_SeekerTarget, mgr);
-    x14F8_(); // fn_14_14F8
+    BodyController()->Activate(mgr, pas::kAS_Invalid);          // -1 at 0xA828
+    x4080_(mgr);                                                 // fn_14_4080 at 0xA834
+    x24E4_(mgr);                                                 // fn_14_24E4 at 0xA840
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);  // 0xF, 0 at 0xA850
+    SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true);  // 2, 1 at 0xA860
+    RemoveMaterial(kMT_SeekerTarget, mgr);                       // 0x3F at 0xA870
+    x14F8_();                                                    // fn_14_14F8 at 0xA878
     break;
   default:
     break;
@@ -712,8 +712,10 @@ bool CDigitalGuardian::x34E8_(CStateManager& mgr, float dt, float minDist) {
 // mass (0x158) and dt (0x3734..0x3770), applied with no angular part (0x3790); then the player's
 // collision impulses (0x3798), its minimal acceleration timer at 2 * dt (.rodata 0x26C, 0x37AC)
 // and a static interference source from the body at 0.1 for 0.1 s (.rodata 0x2B4, 0x37D4).
-// Unmarked: the 0x04 arm needs fn_14_4F2C (the XHIT helper, a stand-in; it sets the bit), and the
-// out-of-range arm (the player beyond maxVortexAttractionDistance) has not run.
+// The arms: the pull and the 0x04 arm ran (fn_14_4F2C sets the bit on a vortex hit; the body
+// placed on the player during VortexAttack); the player beyond maxVortexAttractionDistance was
+// forced (tools/cov/force.sh, the distance set to 0.001 at the entry, 530 frames).
+// @ fn_14_3674
 void CDigitalGuardian::x3674_(CStateManager& mgr, float dt) {
   // 0x40: extrwi. at 0x36A4; 0x04: extrwi. at 0x36B0; the duration: fcmpo at 0x36C4.
   if ((x128D_ & 0x40) == 0 || (x128C_ & 0x04) != 0 || !(mData.mVortexAttackDuration > 0.f)) {
@@ -1609,6 +1611,9 @@ bool CDigitalGuardian::AllKneesDestroyed(CStateManager& mgr, const CTriggerData&
 // cr0 at 0x99E0, the "cror eq, lt, eq" at 0x99E4 and the mfcr/extrwi pair at 0x99E8..0x99EC:
 // the mfcr puts CR0 in the top four bits of r0, so the extracted bit 29 is CR0's eq, which the
 // cror has just made "f1 <= f0").
+// The arms: gcov had the body's answer; the head's bit 0x20 (set by its ProjectileTelegraph)
+// answered false in the area-53 head-stun runs (local probe).
+// @ fn_14_9994
 bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData& data) const {
   if (HeadFlag20_(mgr)) {
     return false;
@@ -1621,6 +1626,9 @@ bool CDigitalGuardian::ShouldProtectKnees(CStateManager& mgr, const CTriggerData
 // byte's bit 5, the mask 1u << (31 - 26) = 0x20), the answer is false (the bne at 0x996C and
 // the li at 0x997C). Otherwise the answer is bit 0 (the mask 1u << (31 - 30) = 0x1) of the flag
 // byte at guest this+0x128C (the clrlwi at 0x9974).
+// The arms: gcov had the body's answer; the head's bit 0x20 (set by its ProjectileTelegraph)
+// answered false in the area-53 head-stun runs (local probe).
+// @ fn_14_9930
 bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (HeadFlag20_(mgr)) {
     return false;
@@ -1810,6 +1818,44 @@ void CDigitalGuardian::x5838_(CStateManager& mgr, TUniqueId sender) {
     x5470_(mgr, sender, knee); // fn_14_5470
   } else if (x43AC_(sender) || sender.value == x1080_) {
     x5384_(mgr, sender); // fn_14_5384
+  }
+}
+
+// @ fn_14_4F2C
+// "XHIT": a collider (the sender, TCastToPtr at 0x4F6C) whose last touched object is the player
+// (0x4F80..0x4F94) damages the player, unless bit 6 of 0x128C is set (0x4F50). In the vortex
+// (0x11B8 == 1) with bit 2 of 0x128C clear (0x4FA8) it is a big strike (0x421, 0x4FC0) for 1 s
+// (0x73C, .rodata 0x270) with the vortex damage (0x116C), and bit 2 is set (0x5058); otherwise,
+// once the damage wait (0x440 <= 0.0f, 0x507C) is over and the player is not morphed (0x38C,
+// 0x5068), with the contact damage (vtable 0xE8, 0x50F4). Both apply the damage from the body to
+// the player with an include filter of material 0x3B (.data 0x8, __shl2i) and no knockback
+// (sZeroVector), then restart the damage wait (0x444 -> 0x440).
+void CDigitalGuardian::x4F2C_(CStateManager& mgr, TUniqueId sender) {
+  if ((x128C_ & 0x40) != 0) {
+    return;
+  }
+  CCollisionActor* collider = TCastToPtr< CCollisionActor >(mgr.ObjectById(sender));
+  if (collider == nullptr) {
+    return;
+  }
+  const CPlayer* player = mgr.GetPlayer(0);
+  if (collider->GetLastTouchedObject() != player->GetUniqueId()) {
+    return;
+  }
+  const CMaterialFilter filter =
+      CMaterialFilter::MakeIncludeExclude(CMaterialList(1ULL << 0x3B), CMaterialList());
+  if (x11B8_ == 1 && (x128C_ & 0x04) == 0) {
+    mIsMakingBigStrike = true;
+    mDamageDuration = 1.f;
+    mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), x116C_, filter,
+                    CVector3f::Zero());
+    mCurDamageRemTime = mDamageWaitTime;
+    x128C_ |= 0x04;
+  } else if (player->GetMorphballTransitionState() != CPlayer::kMS_Morphed &&
+             mCurDamageRemTime <= 0.f) {
+    mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), GetContactDamage(),
+                    filter, CVector3f::Zero());
+    mCurDamageRemTime = mDamageWaitTime;
   }
 }
 
@@ -2198,7 +2244,8 @@ void CDigitalGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 // (0) the body controller's locomotion type becomes 1 (pas::kLT_Relaxed, the call at 0x95F8)
 // and bit 7 (the mask 0x80) of the flag byte at guest this+0x128C is set (the rlwimi at 0x9604);
 // on Deactivate (2) that bit is cleared (the rlwimi at 0x9618); Update (1) and every other
-// message do nothing.
+// message do nothing. gcov (the helpers lane, area 53): 3/3 branches, ALL-ARMS.
+// @ fn_14_95B8
 void CDigitalGuardian::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -2424,9 +2471,12 @@ void CDigitalGuardian::KneeDestroyedReaction(CStateManager& mgr, EStateMsg msg, 
               CPASAnimParmData(pas::kAS_KnockBack, CPASAnimParm::FromReal32(kKneeAngles[x1284_]),
                                CPASAnimParm::FromEnum(2)),
               -1);
-      if (best.first > 0.f) { // .rodata 0x264
+      if (best.first > 0.f) { // .rodata 0x264, fcmpo/ble at 0x81FC
+        // The direction is the transform's forward column (0x28/0x38/0x48 at 0x8208..0x8214),
+        // severity 2 (0x8224), the best animation (0x8258), no force restart (0x825C);
+        // DeliverCmd at 0x8260.
         BodyController()->CommandMgr().DeliverCmd(
-            CBCKnockBackCmd(GetTranslation(), pas::kS_Two, best.second, false));
+            CBCKnockBackCmd(GetTransform().GetForward(), pas::kS_Two, best.second, false));
       }
     }
     break;
@@ -2670,17 +2720,58 @@ void CDigitalGuardian::SetJumpFaceTarget(CStateManager& mgr, float dt) {
   StandInFn("fn_14_7208");
 }
 
-// vtable slot 71 = fn_14_9CA4.
-CAABox CDigitalGuardian::GetScanVisorRenderBounds(const CStateManager& mgr) const {
-  StandIn("CDigitalGuardian::GetScanVisorRenderBounds (vtable slot 71, fn_14_9CA4)");
-  return CPatterned::GetScanVisorRenderBounds(mgr);
+// fn_14_1570: the anim data's vertex bounds (0x15CC) through Translate(-translation) (the fnegs
+// at 0x1630..0x1638, 0x1654) * the transform (0x24, 0x1664) * Scale(the model's scale, 0x1648;
+// 0x1674), GetTransformedAABox at 0x1684. The translation cancels: the box is about the origin.
+CAABox CDigitalGuardian::x1570_() const {
+  const CAABox verts = GetModelData()->GetAnimationData()->CalcBoundingBoxFromModelVerts();
+  const CTransform4f xf = CTransform4f::Translate(-GetTranslation()) * GetTransform() *
+                          CTransform4f::Scale(GetModelData()->GetScale());
+  return verts.GetTransformedAABox(xf);
 }
 
-// vtable slot 72 = fn_14_9ABC.
+// vtable slot 71 = fn_14_9CA4: fn_14_1570's box, with the head (0x1082, TCastToPtr at 0x9CE0) the
+// head's own scan bounds (vtable 0x11C at 0x9D40) taken in (AccumulateBounds at 0x9D4C, 0x9D58).
+CAABox CDigitalGuardian::GetScanVisorRenderBounds(const CStateManager& mgr) const {
+  if (const CDigitalGuardianHead* head =
+          TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_))) {
+    CAABox bounds = x1570_();                                   // 0x9CF4
+    const CAABox headBounds = head->GetScanVisorRenderBounds(mgr); // 0x9D40
+    bounds.AccumulateBounds(headBounds.GetMinPoint());          // 0x9D4C
+    bounds.AccumulateBounds(headBounds.GetMaxPoint());          // 0x9D58
+    return bounds;
+  }
+  return x1570_(); // 0x9D98
+}
+
+// vtable slot 72 = fn_14_9ABC: the head (0x1082, 0x9AF0) draws itself at xf * the "Head_1"
+// locator's scaled transform (0x10B8, 0x9B08..0x9B18; vtable 0x120 at 0x9B44). The body then
+// draws as AddToRenderer does, but at xf with the given flags: the transform (0x24) and draw
+// flags (0xFC) are swapped for them (0x9B48..0x9BB8) and put back at the end (0x9C5C..0x9C8C).
 void CDigitalGuardian::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                        const CModelFlags& flags) const {
-  StandIn("CDigitalGuardian::ScanVisorRender (vtable slot 72, fn_14_9ABC)");
-  CPatterned::ScanVisorRender(mgr, xf, flags);
+  if (const CDigitalGuardianHead* head =
+          TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_))) {
+    head->ScanVisorRender(mgr, xf * GetScaledLocatorTransform(CSegId(x10B8_)), flags);
+  }
+  const CTransform4f savedXf = GetTransform();   // 0x9B50
+  const CModelFlags savedFlags = GetModelFlags(); // 0x9B54..0x9B84
+  PortRawTransform() = xf;                        // 0x9B88
+  const_cast< CDigitalGuardian* >(this)->SetModelFlags(flags); // 0x9B8C..0x9BB8
+  CPatterned::Render(mgr);  // 0x9BBC
+  x1994_(mgr, xf, flags);   // 0x9BD0
+  x18B4_(mgr, xf, flags);   // 0x9BE4
+  // The beacon: 0x128C bit 0x08 clear (0x9BEC), the model there (0x1238, 0x9BF8) and its height
+  // above 0 (.rodata 0x264, fcmpo/ble at 0x9C0C); at fn_14_2578's transform of xf (0x9C20),
+  // with the actor's lights (0xBC) and the given flags (Render at 0x9C44).
+  if ((x128C_ & 0x08) == 0 && x11EC_.valid() && x1264_ > 0.f) {
+    CTransform4f modelXf = CTransform4f::Identity();
+    x2578_(modelXf, xf);
+    x11EC_.data().Render(mgr, modelXf, GetActorLights(), flags);
+  }
+  x1700_(mgr, xf, flags);                     // 0x9C58
+  PortRawTransform() = savedXf;               // 0x9C64
+  const_cast< CDigitalGuardian* >(this)->SetModelFlags(savedFlags); // 0x9C68..0x9C8C
 }
 
 // vtable slot 73 = fn_14_D8 (0x8): it returns the base member at 0x754, which is what the base

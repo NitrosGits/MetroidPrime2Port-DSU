@@ -3,6 +3,7 @@
 #ifdef TARGET_PC
 #include <stdio.h>
 
+#include "port_console.h"
 #include "port_freecam.h"
 #include "port_harness.h"
 #include "port_overlay.h"
@@ -155,6 +156,11 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
     const bool wasInitialized = mInitialized;
     mInitialized = true;
     const float dt = MakeMsg::GetParmTimerTick(message).GetReal();
+#ifdef TARGET_PC
+    // The console normally runs inside the state manager's update; this serves it on frames
+    // where the flow state skipped that update (portal transition, cinematic skip, pause).
+    PortConsole::IdleTick(*mStateManager);
+#endif
     if (!mStateManager->mSaveGameScreen.null() &&
         mStateManager->mSaveGameScreen->Update(dt) != kMR_Normal && mFlowState == kFS_Paused) {
       mStateManager->DeleteSaveGameScreen();

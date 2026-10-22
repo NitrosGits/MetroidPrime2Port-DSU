@@ -153,7 +153,6 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // CSplitterCommandModule::PortMoveTo.
 
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
-void StandInSfxUpdateEmitter() { StandIn("the DOL's CSfxManager::UpdateEmitter"); }
 
 
 } // namespace
@@ -983,7 +982,6 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 // virtual yet, so it stays a shell. The CCollisionActor's virtual at the vtable word 0x38 (the
 // float at its +0x4) is CCollisionActor::HealthInfo() (found while porting fn_75_2CE0, which
 // calls it), so the body asks the host for it now.
-void StandInVTable0x4C() { StandIn("the vtable word 0x4C of fn_75_2BE0's result"); }
 
 // fn_75_2CE0 (not marked: the run only reached the null collision-actor lookup)
 // The head's shield (0x2CE0-0x3004). The flag (the third argument, r5) is the "a shield goes up"
@@ -1118,9 +1116,13 @@ void CSplitterCommandModule::PortModuleTransform(CTransform4f& out) const {
 void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
   CParticleGenInfo* effect = PortGetShieldEffect();
   if (effect != nullptr) {
-    StandInVTable0x4C();
+    // asm 0x3034-0x3044: the effect's virtual at the vtable word 0x4C is called with the
+    // module's flash colour at 0xF04 - CParticleGenInfo::SetModulationColor.
+    effect->SetModulationColor(mFlashColor);
   }
-  StandInSfxUpdateEmitter();
+  // asm 0x3048-0x3078: the sound handle at 0xF60 is updated with the module's position (0x54)
+  // and its transform's Y column (0x28, 0x38 and 0x48), the volume 0x7F.
+  CSfxManager::UpdateEmitter(mSoundHandle, GetTranslation(), GetTransform().GetColumn(kDY), 0x7F);
   CEntity* entity = mgr.ObjectById(mSoundTargetId);
   if (entity == nullptr) {
     return;
@@ -1186,9 +1188,14 @@ void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
   BodyController()->SetLocomotionType(pas::kLT_Relaxed);
 }
 
-// fn_75_32F4 (not marked, the 19-run gcov of 2026-10-21: the dead-module arm with the 0x04 bit set
-// and the death timer still above 0 never ran - the only call of PortAutoDestruct in the runs is
-// fn_75_21FC's with 0.0f)
+// Arms: the flash weight above zero (asm 0x336C) and the countdown below zero (asm 0x3374), the
+// flag byte's 0x04 bit set (asm 0x33CC) with the head alive (asm 0x33D8) and dead, and the death
+// timer at or below zero (asm 0x33FC) and above it.  The fight never flashes the head and never
+// sets the flag byte's 0x04 bit, so the members the arms read are written through $this at the
+// body's entry (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=32F4, 32F4D, 32F4DEAD,
+// 32F4F).  The coverage build's merged profile of those runs and the natural run says 17/17 lines
+// and 10/10 branches, ALL-ARMS.
+// @ fn_75_32F4
 // The command module's flash and death (0x32F4-0x3460): three timers are counted down (0xF10 at
 // 0x332C, 0xF0C at 0x333C and 0xF14 at 0x3344) and two counted up (0xF18 at 0x3354 and 0xF1C at
 // 0x3360). While the flash weight 0xF08 is above zero (0x336C-0x3370) it is counted down and
@@ -1284,13 +1291,12 @@ void CSplitterCommandModule::PortAutoDestructTimer(float dt) {
   }
 }
 
-// The DOL's CEntity virtual the look-at calls (the vtable slot 0x8C, 0x1924-0x192C): the DOL's
-// slot 35 is not named in the port, so the call stays a once-logging shell.
-void StandInCEntityVirtual0x8C() { StandIn("the DOL's CEntity virtual at the vtable slot 0x8C"); }
-
-// The DOL's CEntity virtual the projectile's despawn calls (the vtable word 0x24, 0x17C8-0x17DC
-// of fn_75_1790): the port has no name for it, so the call stays a once-logging shell.
-
+// Arms: there is no target at 0xF02 (the body ends at once), the target is there but it is not a
+// CBeamProjectile (the cast fails) and the target is the laser sweep beam (the virtual is
+// called and the sound is moved).  The fight only ever puts the laser sweep beam at 0xF02, so
+// the first two arms are forced (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=
+// LOOKATN writes the id invalid, LOOKAT writes the chassis's id).  The coverage build's merged
+// profile of those runs and the natural run says 13/13 lines and 4/4 branches, ALL-ARMS.
 // @ fn_75_184C
 // The command module's look-at (0x184C-0x1974): the target id (the u16 at 0xF02, 0x1874 lhz) is
 // looked up (0x1888 ObjectById) and, when it is there, the module's locator transform (the
@@ -1299,7 +1305,13 @@ void StandInCEntityVirtual0x8C() { StandIn("the DOL's CEntity virtual at the vta
 // (0x1900 LookAt with the up vector) and the result goes to the target's virtual at the vtable
 // slot 0x8C (0x1924-0x192C). The sound (the handle at 0xF5C read at 0x1930, the target's position
 // at 0x444 and the byte 0x7f, 0x194C UpdateEmitter) is the DOL's CSfxManager call, which the host
-// spells differently, so it stays a shell too.
+// has as CSfxManager::UpdateEmitter (the handle, the position, the direction and the volume).
+// The vtable slot 0x8C: the DOL's CEntity virtual the look-at calls is the CBeamProjectile's
+// first own virtual, UpdateFx - the next slot, 0x90, is CBeamProjectile::ResetBeam (asm 0x17D4,
+// fn_75_1790) and the header's order is UpdateFx, ResetBeam, Fire
+// (include/MetroidPrime/Weapons/CBeamProjectile.hpp:24-26).  The port's own chain (CEntity's 7
+// slots, CActor's 22, CGameProjectile's 4) puts UpdateFx at 0x84, two slots low because the
+// port's CEntity has two virtuals fewer than the DOL's; the port calls it by name.
 void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
   CEntity* target = mgr.ObjectById(mLookAtTargetId);
   if (target == nullptr) {
@@ -1311,8 +1323,16 @@ void CSplitterCommandModule::PortLookAtTarget(CStateManager& mgr, float dt) {
                             locator.GetTranslation().GetZ() + mLookAtOffset.GetZ());
   const CTransform4f lookAt =
       CTransform4f::LookAt(locator.GetTranslation(), position, CVector3f::Up());
-  StandInCEntityVirtual0x8C();
-  StandInSfxUpdateEmitter();
+  // asm 0x1910-0x192C: the target's virtual at the vtable slot 0x8C gets the transform (r4), the
+  // manager (r5) and the dt (f1).
+  if (CBeamProjectile* beam = TCastToPtr< CBeamProjectile >(target)) {
+    beam->UpdateFx(lookAt, dt, mgr);
+    // asm 0x1930-0x194C: the sound handle at 0xF5C is updated with the beam's +0x444 (asm 0x193C
+    // `addi r4, r31, 0x444`) - CBeamProjectile::mCollisionPoint (0x418 + 0x2C), not the actor's
+    // translation (0x54) - the up vector and the volume 0x7F.  The id at 0xF02 only ever holds the
+    // laser sweep beam (fn_75_1974).
+    CSfxManager::UpdateEmitter(mLookAtSfxHandle, beam->GetCurrentPos(), CVector3f::Up(), 0x7F);
+  }
 }
 
 // @ fn_75_58E8
@@ -1330,8 +1350,14 @@ bool CSplitterCommandModule::PortChassisTimerRunning(CStateManager& mgr) const {
   return chassis->GetScanTimer() > 0.f;
 }
 
-// fn_75_1188 (not marked, the 19-run gcov of 2026-10-21: the detection range <= 0 arm and its cone
-// edges never ran; not proven dead)
+// Arms: the beam effect already there (the id at 0xF68) and not, the detection range at or below
+// zero (asm 0x1214) and above it.  The fight never has the detection range at or below zero, so
+// the range (the base's field at 0x3D0) is written through $this at the body's entry
+// (tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=1188).  The coverage build's merged
+// profile says 36/36 lines and 19/21 branches: the two branches still untaken are the
+// allocation-failure path of the new and an internal path of the inlined AddObject, neither of
+// which is a live arm.
+// @ fn_75_1188
 // The head's beam-effect spawner (0x1188-0x14CC). The beam effect's id (0xF68) is looked up
 // (0x11B0 ObjectById), the module's own transform (fn_75_10D0, 0x11C0) is built and copied
 // (0x11CC) and set on the beam effect (0x11E0 SetTransform), and the gate (fn_75_58E8, 0x1200)
@@ -1369,12 +1395,10 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
     }
     return;
   }
-  if (beam == nullptr) {  // 0x120C-0x1210
-    // 0x1214-0x1224: the base's field at 0x3D0 (its copy of the patterned info's detection
-    // range) must be above zero.
-    if (GetDetectionRange() <= 0.f) {
-      return;
-    }
+  // 0x120C-0x1224: a missing beam is made only when the base's field at 0x3D0 (its copy of the
+  // patterned info's detection range) is above zero (ble skips to 0x13EC, where the emitter is
+  // still updated).
+  if (beam == nullptr && !(GetDetectionRange() <= 0.f)) {
     // 0x1230-0x1244: a fresh id, kept at 0xF68. 0x1248-0x1380: the beam effect is built with the
     // CEntityInfo the retail makes at 0x12A0 (the area id, NullConnectionList, true and
     // kInvalidEditorId), the name (0x12B8, the rodata string at 0xA0 + 0x230), the module
@@ -1401,7 +1425,9 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
   }
   // 0x13EC-0x142C: the beam opens (0x198 set, 0x13F8) and the sound follows the head, facing
   // along its Y column (0x13FC-0x142C UpdateEmitter, volume 0x7F).
-  beam->SetOpening(true);
+  if (beam != nullptr) {  // 0x13EC-0x13F0
+    beam->SetOpening(true);
+  }
   CSfxManager::UpdateEmitter(mBeamSfxHandle, GetTranslation(), GetTransform().GetColumn(kDY),
                              0x7F);
 }
@@ -1934,16 +1960,17 @@ void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   PortAutoDestructTimer(dt);
 }
 
-// Arms: all ran but a projectile that is not a CBeamProjectile, dead: the head only fires its
-// laser sweep beam through this path.
+// Arms: all ran - the base's alive flag's two sides are forced (the base is dead,
+// tools/cov/specs/splitter_helpers_force.py: SPLITTER_FORCE=DESPAWN); a projectile that is not
+// a CBeamProjectile is dead: the head only fires its laser sweep beam through this path.
 // @ fn_75_1790
 // The head's laser-pulse projectile despawn (0x1790-0x184C): the projectile's id at 0xF02 is
-// looked up (0x17BC ObjectById) and, when it is there, its virtual at the vtable word 0x24 is
-// called with the manager and false (0x17C8-0x17DC), the sound handle at 0xF5C is removed
+// looked up (0x17BC ObjectById) and, when it is there, its virtual at the vtable word 0x90 is
+// called with the manager and false (0x17D4, 0x17C8-0x17DC), the sound handle at 0xF5C is removed
 // (0x17EC RemoveEmitter) and the object is deleted (0x1800 DeleteObjectRequest). Then the id
 // at 0xF02 is cleared (0x1814), the handle at 0xF5C is zeroed (0x1818) and, when the base's
-// flag byte at 0x420 has its 0x20 bit (the word's bit 25, 0x1820 extrwi) set, the module's own
-// call runs (0x1830 fn_75_1578).
+// flag byte at 0x420 has its 0x40 bit (the word's bit 25, asm 0x1820 `extrwi. r0, r0, 1, 25`)
+// set, the module's own call runs (0x1830 fn_75_1578).
 void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   CEntity* projectile = mgr.ObjectById(mLookAtTargetId);
   if (projectile != nullptr) {
@@ -1957,7 +1984,9 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   }
   mLookAtTargetId = kInvalidUniqueId;
   mLookAtSfxHandle.Clear();
-  if (GetFlag26()) {
+  // asm 0x1820 `extrwi. r0, r0, 1, 25`: the base's flag byte at 0x420 has its 0x40 bit set -
+  // the host's alive flag.
+  if (GetAlive()) {
     PortUpdateEffectStates(mgr);
   }
 }

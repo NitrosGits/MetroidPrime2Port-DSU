@@ -99,9 +99,16 @@ def main():
         log("send Activate: %s" % cmd("send %s Activate" % target))
         time.sleep(1.0)
         # the commando is frozen with the dark beam (the frozen knock-back reaction's flags are
-        # 1|2 = 3), then it dies (the console's `kill`), then the damage lands on the dead actor:
-        # the KnockBack override's dead arm.
+        # 1|2 = 3) and then hit while it is still alive: the KnockBack override's alive branch
+        # reads the flags right after the base's call.
         log("darkburst: %s" % cmd("damage %s 5 darkburst" % target))
+        wait_frame(frame() + 10)
+        log("damage alive: %s" % cmd("damage %s 1" % target))
+        wait_frame(frame() + 10)
+        log("state: %s" % state_of(target))
+        # and the dead arm: the commando dies (the console's `kill`) and the damage lands on the
+        # dead actor.
+        log("kill: %s" % cmd("kill %s" % target))
         wait_frame(frame() + 10)
         log("kill: %s" % cmd("kill %s" % target))
         wait_frame(frame() + 10)
