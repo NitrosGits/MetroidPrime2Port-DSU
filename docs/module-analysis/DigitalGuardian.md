@@ -1745,3 +1745,30 @@ uses the same call) - unexplained, not chased. `damage <head> 50 bomb` does not 
 | 14828 | ball HP <= 0 | forced (loc 2385: ball mHealth 0 from the 5th visit) | ran |
 | 14828/14664 | no root / no balls | `send u0574/u0573/u0572 Delete` + codecalls | ran |
 | 14828/14664 | 0xD70 null | forced (nulled at entry, restored at the filter line) | ran |
+
+## 2026-10-22: DestroyActiveSplitters and the last head code stand-ins (dg25); gcov runs dg25_r2 + dg25_f1
+
+- Ported and marked: DestroyActiveSplitters 14C24, EnableValidTarget 14604, DisableValidTarget
+  145A4, ResetGravityRepulsorHP 14248, EjectPlayerFromBombPit 14058, StartVocalRecoverReaction
+  13C1C; no DGHD_CODE_STANDIN rows are left. All runs: `build-port-cov`, area
+  `1baa96c2,09_cliff_temple_dark`, `--fast --frames 450`, driver
+  `tools/cov/specs/digitalguardian_dg25.con`, gdb spec `digitalguardian_dg25.py`, forcing spec
+  `digitalguardian_dg25_force.py`. 0 caught/reach-stub.
+- Splitter side (minimal): fn_75_E660 is `CSplitterMainChassis::PortStartDeathTimer` (marked,
+  ALL-ARMS); `CSplitterCommandModule` befriends the head so 14C24 calls its fn_75_5A54
+  (`PortAutoDestruct`, another lane's body, not re-marked here).
+- Splitters in area 53: layer 10 ('Boss Stage 2 Splitters') holds the generators 00350042/45 (one
+  chassis + one command module each); the head's IS01 reaches them through the relays
+  00350006/11/28. `layer` must run after the warp (frame ~121), else it lands on the boot world's
+  area 0. `fsm DeploySplitters` alone ejected none in 300 frames (not chased).
+- 14828/14664: the ball loops run to the host array's size (the count at 0xDC0 is the ctor's 2,
+  0x18340; nothing else writes it). The dg24 natural run still takes every unforced arm.
+- 145A4 sets the echo-visor orbit flag again (li 2 / li 1, as 14604): retail's, kept.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 14C24 | no splitters / module / chassis | codecall before and after `send e00350042/45 SetToZero` | ran |
+| 75_E660 | alive, bit clear / bit set / dead | 14C24 twice, then `kill e00350046` + 14C24 in one tick | ran |
+| 14058 | player either side; platform / none | codecalls with `place e0035000f player 20` / `-20`, before/after SelectRetreatPlatform | ran |
+| 14058 | direction unsafe | forced (loc 2543: dir zeroed) | ran |
+| 14604, 145A4, 14248, 13C1C | no branches | codecall | ran |

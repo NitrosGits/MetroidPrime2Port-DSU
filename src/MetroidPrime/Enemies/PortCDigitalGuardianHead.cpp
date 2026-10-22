@@ -2330,7 +2330,9 @@ void CDigitalGuardianHead::SeekLineOfSight(CStateManager& mgr, float dt) {
 // command module (TCastToPtr at 0x14C60, null test 0x14C64) fn_75_5A54 (0x14C70) and else each
 // main chassis (0x14C90, null test 0x14C94) fn_75_E660 (0x14CA0), with a delay that starts at 0.0
 // (.rodata 0x960, 0x14C48) and grows by 0.7 per command module (.rodata 0x9A4, fadds at 0x14C7C)
-// and by 0.15 per chassis (.rodata 0x9A8, fadds at 0x14CAC).
+// and by 0.15 per chassis (.rodata 0x9A8, fadds at 0x14CAC). Every arm ran: no splitters, then
+// two (their layer-10 generators) given the delays.
+// @ fn_14_14C24
 void CDigitalGuardianHead::DestroyActiveSplitters(CStateManager& mgr, float dt) {
   CObjectList& list = mgr.ObjectListById(kOL_All);
   float delay = 0.f;
@@ -2527,7 +2529,8 @@ void CDigitalGuardianHead::ResetGravityRepulsorHP(CStateManager& mgr, float dt) 
 // player gets the impulse 30 (.rodata 0x98C) * mass (player +0x158) * its direction
 // (ApplyImpulseWR with no angular part, 0x141A8) and the ApplyJump move state (li 2 at 0x141B4).
 // Either way the retreat platform (0x1038), when it is one (mr./beq at 0x141D4), stops excluding
-// the player (exclude word 0x8 &= ~1, bit 32, li -2/and at 0x141EC/0x14204).
+// the player (exclude word 0x8 &= ~1, bit 32, li -2/and at 0x141EC/0x14204). Both sides and both
+// platform arms ran; the unsafe direction is forced (the head's columns are orthonormal).
 // @ fn_14_14058
 void CDigitalGuardianHead::EjectPlayerFromBombPit(CStateManager& mgr, float dt) {
   CPlayer* player = mgr.GetPlayer(0);
