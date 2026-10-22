@@ -2606,10 +2606,22 @@ void CSplitterMainChassis::Death(CStateManager& mgr, const CVector3f& direction,
   mCommandModuleId = kInvalidUniqueId;
 }
 
-// vtable slot 0x9C = fn_75_EBF4.
+// vtable slot 0x9C = fn_75_EBF4 (0xEBF4-0xECA4): the chassis's knock-back.  With the flag byte
+// at 0xD41's 0x80 bit set (asm 0xEC18, 0xEC1C) the knock back manager gets the flinch (1) and
+// the knock back (2) reactions turned off (asm 0xEC64, 0xEC74).  Otherwise the damage's weapon
+// type (the info's 0x10) decides: 7 (asm 0xEC24, 0xEC28) turns the knock back reaction on (asm
+// 0xEC3C) and any other type turns it off (asm 0xEC50).  Then the base's knock back runs (asm
+// 0xEC84).
 void CSplitterMainChassis::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  StandIn("CSplitterMainChassis::KnockBack (vtable slot 0x9C, fn_75_EBF4)");
-  CPatterned::KnockBack(mgr, info);
+  if ((mFlagsD41 & 0x80) != 0) {  // 0xEC18-0xEC1C
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, false);  // 0xEC64
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, false);  // 0xEC74
+  } else if (info.GetDamageInfo().GetWeaponMode().GetType() == kWT_BoostBall) {  // 0xEC24-0xEC28
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, true);  // 0xEC3C
+  } else {
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_KnockBack, false);  // 0xEC50
+  }
+  CPatterned::KnockBack(mgr, info);  // 0xEC84
 }
 
 // vtable slot 0xB0 = fn_75_EA70 (0xEA70-0xEB04): only a live chassis (0x420's 0x40 bit,
