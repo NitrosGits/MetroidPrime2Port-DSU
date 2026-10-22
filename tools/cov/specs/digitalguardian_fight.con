@@ -1,0 +1,16 @@
+# DigitalGuardian area 53: the body (e00350060) and the head (e0035000f) woken, then the fight
+# runs on its own; `obj` polls show the body's root state.
+@f30 layer 3
+@f60 layer 11
+@f140 send e00350060 Activate; send e0035000f Activate
+@f400 obj e00350060
+@f1000 obj e00350060
+@f1600 obj e00350060
+@f2200 obj e00350060
+@f2800 obj e00350060
+@f3400 obj e00350060
+@f4000 obj e00350060
+@f5000 obj e00350060
+@f6000 obj e00350060
+@f7000 obj e00350060
+@f7900 covdump

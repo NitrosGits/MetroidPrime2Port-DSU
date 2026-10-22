@@ -16,6 +16,7 @@
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/TToken.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardianHead.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 
 #include "rstl/optional_object.hpp"
 #include "rstl/reserved_vector.hpp"
@@ -42,6 +43,8 @@ public:
   // CEntity
   void Think(float dt, CStateManager& mgr) override;                        // fn_14_17C98
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override; // fn_14_17D38
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override; // fn_14_17BBC
 
   // CActor
   void PreRender(CStateManager& mgr) override;                 // fn_14_17A44
@@ -272,6 +275,21 @@ private:
   void x11F7C_(CStateManager& mgr); // fn_14_11F7C: the echo targets are deleted
   void x137A8_();                    // fn_14_137A8: the head's armour model
   rstl::optional_object< CModelData > xEA4_; // 0xEA4: the armour model (fn_14_137A8)
+
+  // The charge attack's three cutting lasers (ChargeAttack, fn_14_16A50).
+  void xFAEC_(CStateManager& mgr);           // fn_14_FAEC: the lasers are deleted
+  void xFA50_(CStateManager& mgr);           // fn_14_FA50: the lasers reset
+  void xFB70_(CStateManager& mgr);           // fn_14_FB70: the sweep starts, three lasers fire
+  void xF6A4_(CStateManager& mgr, float dt); // fn_14_F6A4: the lasers close in on the player
+  // fn_14_FE14: one more laser (at most three) fired from from toward to.
+  void xFE14_(CStateManager& mgr, const CVector3f& from, const CVector3f& to);
+  CProjectileInfo x1054_; // 0x1054: the lock-on beams' weapon (data +0x1BC), a default damage
+  rstl::reserved_vector< TUniqueId, 3 > x107C_; // 0x107C: the lasers' ids (count, then 0x1080)
+  CSegId x1088_;          // 0x1088: "T_lazor_LCTR" (the ctor's 0x18DD0)
+  float x108C_;           // 0x108C: the lasers' phase
+  float x1090_;           // 0x1090: the sweep time
+  float x1094_;           // 0x1094: the sweep time left
+  CVector3f x1098_;       // 0x1098: the point the lasers circle
 #else
   uchar x7c0_[0x10F8 - 0x7c0]; // the parameter block and everything above it in retail
 #endif

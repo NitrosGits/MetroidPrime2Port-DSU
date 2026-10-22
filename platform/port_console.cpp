@@ -1877,9 +1877,10 @@ void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
          "\n";
 }
 
-// uevent <id> <type> [dt]: deliver a user anim event (EUserEventType, e.g. 27 EventStart, 28
-// EventStop, 18 EndAction, 12 Landing) to an actor's DoUserAnimEvent with an empty POI node, for
-// the event arms an animation never fires on the host.
+// uevent <id> <type> [dt] [locator]: deliver a user anim event (EUserEventType, e.g. 27 EventStart,
+// 28 EventStop, 18 EndAction, 12 Landing) to an actor's DoUserAnimEvent with an empty POI node
+// whose locator is `locator` (default "root"), for the event arms an animation never fires on the
+// host.
 void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
   float type = 0.f;
   float dt = 0.f;
@@ -1887,10 +1888,12 @@ void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
   CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
   if (actor == nullptr || !ParseFloat(args[2], type) ||
       (args.size() >= 4 && !ParseFloat(args[3], dt))) {
-    Fail("usage: uevent <id> <type> [dt]   (id must be an actor)");
+    Fail("usage: uevent <id> <type> [dt] [locator]   (id must be an actor)");
     return;
   }
-  actor->DoUserAnimEvent(mgr, CInt32POINode(),
+  const rstl::string locator = rstl::string_l(args.size() >= 5 ? Str(args[4]).c_str() : "root");
+  actor->DoUserAnimEvent(mgr, CInt32POINode(-1, kPT_EmptyInt32, CCharAnimTime(), -1, false, 1.f,
+                                            -1, 0, 0, locator),
                          static_cast< EUserEventType >(static_cast< int >(type)), dt);
   out += "uevent " + std::string(args[1]) + " " + std::to_string(static_cast< int >(type)) + "\n";
 }

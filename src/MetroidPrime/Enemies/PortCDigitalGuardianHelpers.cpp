@@ -25,16 +25,20 @@
 
 // fn_14_37FC (0xC0 bytes): the entry of the five-value table (.rodata 0x24C: 0, 0.7853982,
 // 1.5707964, 2.3561945, 3.1415927) that is nearest to v. The five compares are
-// |v - table[i]| < best (0x381C, 0x383C, 0x385C, 0x387C, 0x389C) and the best starts at the
+// |v - table[i]| against the best (0x381C, 0x383C, 0x385C, 0x387C, 0x389C), which starts at the
 // table's largest float (.rodata 0x2AC, FLT_MAX), so the first compare always wins once and a
 // tie keeps the earlier entry. The return value is the table entry itself (the lfsx at 0x38B4).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_37FC
 float CDigitalGuardian::x37FC_(float v) const {
   static const float kAngles[5] = {0.f, 0.7853982f, 1.5707964f, 2.3561945f, 3.1415927f};
   float best = 3.4028235e38f; // .rodata 0x2AC
   int index = 0;
   for (int i = 0; i < 5; ++i) {
     const float d = std::fabs(v - kAngles[i]);
-    if (d < best) { // the fcmpo at 0x381C and the three after it
+    // the fcmpo/bge at 0x381C and the four after it skip only an ordered >=: a NaN v takes every
+    // entry (pi, table[4]), as a zero-length GetAngleDiff would give.
+    if (!(d >= best)) {
       best = d;
       index = i;
     }
