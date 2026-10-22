@@ -2032,7 +2032,7 @@ void CDigitalGuardian::x4080_(CStateManager& mgr) {
         mData.mSoundKneeVulnerable);
     if (knee != nullptr) { // the retail's test at 0x42B0
       mgr.AddObject(*knee);
-      // The store at 0x42C8 (xFB0_ + 2i).
+      // The sth at 0x42C8 goes through r28 = this+0xFB0 (0x40AC), +2 per knee (0x42D0): xFB0_ + 2i.
       switch (i) {
       case 0: xFB0_ = uid.value; break;
       case 1: xFB2_ = uid.value; break;
