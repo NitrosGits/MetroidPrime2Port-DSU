@@ -1240,7 +1240,9 @@ void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
 // (DoBoundsOverlap at 0x0001ADAC). Then the first contact hits the player (the dive's hit bit
 // 0x20 clear, `extrwi. r0, r3, 1, 26` at 0x0001ADC0: fn_10_138A4), and a later one after a
 // bounce (bit 0x02, `extrwi r0, r3, 1, 30` at 0x0001ADD8) pushes it (fn_10_13868).
-// Unmarked: the arm with the hit already made, no bounce and an overlap has not run yet.
+// Every arm: runs ds895c u4 (the first hit) and u6 (tools/drivers/darksamus_divecontact.con,
+// keys 86/96, 40 and 87: the hit made without and with a bounce, no touch bounds).
+// @ fn_10_1ACA0
 void CDarkSamus::UpdateDiveContact(CStateManager& mgr) {
   if (!mDive.mLaunched) {
     return;

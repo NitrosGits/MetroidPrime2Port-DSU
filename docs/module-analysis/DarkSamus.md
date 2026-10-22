@@ -1800,5 +1800,7 @@ trigger's entry, one per hit, from gdb convenience variables).
   tools/drivers/darksamus_boostfx.con): b1 (the natural rooftop run), f1 (forced DSB_MODE=1:
   no 0xE40 token) and f2 (forced DSB_MODE=2: no 0xE50 token, then the kill). Every arm ran, with
   no caught errors and no reach stubs.
-- 1ACA0: tools/drivers/darksamus_divecontact.con runs key 96 on its own, with the boss u04f7
-  placed on the player from f623 to f627.
+- 1ACA0 is marked. tools/drivers/darksamus_divecontact.con runs keys 86/96 on their own (the
+  boss u04f7 placed on the player at f623..f627), then keys 40 (bounced) and 87 (no touch
+  bounds) at f650..f656. Key 96 has to be armed with 86, before the first overlap: run u4
+  armed it later, so every contact took the first-hit arm. Runs u4 + u6 give 10/10 branches.
