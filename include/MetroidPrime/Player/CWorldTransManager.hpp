@@ -53,6 +53,11 @@ public:
   void CheckIntroTextSeen();
   bool IsTransitionFinished() const { return mTransitionFinished; }
   bool IsIntroText() const { return mIntroText; } // Guessed name
+#ifdef TARGET_PC
+  // Port: types the world-name card out at once, so it fades as soon as the load is done
+  // (CMFGameLoader, PortOverlay::WorldNameCard). Not for the intro text.
+  void PortSkipText();
+#endif
   ETransType GetTransType() const { return mTransType; }
 
 private:

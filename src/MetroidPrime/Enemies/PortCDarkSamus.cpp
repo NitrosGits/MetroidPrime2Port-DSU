@@ -272,6 +272,12 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   // collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed time at 0x8B0 is 0.0f
   // (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
+  // Bits 25, 27..30 of 0x681: freeze, burn, burn death, explode death, lagged burn death.
+  KnockBackController().EnableFreeze(false);
+  KnockBackController().EnableBurn(false);
+  KnockBackController().EnableBurnDeath(false);
+  KnockBackController().EnableExplodeDeath(false);
+  KnockBackController().EnableLaggedBurnDeath(false);
   ConstructPhazonBeam(); // fn_10_45F8 at 0x000201B4
   mHeadSegId = GetModelData()->GetAnimationData()->GetCharLayoutInfo()->GetSegIdFromString(
       rstl::string_l("Head_1")); // lbl_10_rodata_572, 0x0001FFB4..0x0001FFF0

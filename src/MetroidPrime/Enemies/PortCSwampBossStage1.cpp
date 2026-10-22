@@ -241,9 +241,15 @@ CSwampBossStage1::CSwampBossStage1(TUniqueId uid, const rstl::string& name,
 , xd78_waitStart(-1000.f)
 , xd7c_projectileInfo(data.spitProjectile, LdrToDamageInfo(data.spitDamage))
 , xda4_spitVisor(MakeGenToken(data.spitVisorEffect)) {
-  // TODO(uncertain): retail also clears the freeze/burn/burn-death/explode-death/lagged-burn
-  // and slow knockback enables (+0x681 bits); the host CAiKnockBackMgr has no setters for them.
-  KnockBackController().EnableKnockBackPhysics(false);
+  // Retail clears these +0x681 bits (0x40/0x10/0x08/0x04/0x02, then 0x80); shock stays enabled.
+  CAiKnockBackMgr& kb = KnockBackController();
+  kb.EnableFreeze(false);
+  kb.EnableBurn(false);
+  kb.EnableBurnDeath(false);
+  kb.EnableExplodeDeath(false);
+  kb.EnableLaggedBurnDeath(false);
+  kb.EnableKnockBackPhysics(false);
+  kb.EnableSlow(false);
 }
 
 CSwampBossStage1::~CSwampBossStage1() {

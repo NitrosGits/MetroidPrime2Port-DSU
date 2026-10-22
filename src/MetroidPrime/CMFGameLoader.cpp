@@ -21,6 +21,7 @@
 
 #ifdef TARGET_PC
 #include "port_harness.h"
+#include "port_overlay.h"
 #endif
 
 extern int gResFactoryUnknown;
@@ -51,6 +52,8 @@ CMFGameLoader::CMFGameLoader()
   // The transition itself still runs; with nothing enabled UpdateDisabled finishes it in two
   // seconds, which is what lets the game start.
   if (PortHarness::IntroSkipLevelText()) {
+  } else if (!introText && PortOverlay::WorldNameCard() == PortOverlay::kScreen_Off) {
+    // World name card Off: the plain transition, as MP2_SKIP_INTRO plays it.
   } else
 #endif
   if (introText) {
@@ -95,6 +98,13 @@ CIOWin::EMessageReturn CMFGameLoader::OnMessage(const CArchitectureMessage& mess
         mStateManager->IsFullyInitialized()) {
       transition->CheckIntroTextSeen();
     }
+#ifdef TARGET_PC
+    // Port: A or Start ends the world-name card's typing (F1 > Game > Cutscenes).
+    if (input.ControllerNumber() == 0 && (input.PA() || input.PStart()) && !transition.IsNull() &&
+        PortOverlay::WorldNameCard() == PortOverlay::kScreen_Skippable) {
+      transition->PortSkipText();
+    }
+#endif
   } else if (type == kAM_TimerTick) {
     const float dt = MakeMsg::GetParmTimerTick(message).GetReal();
     if (!gpResourceFactory->GetResLoader().AreAllPaksLoaded()) {

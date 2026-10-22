@@ -154,6 +154,10 @@ bool sGameOptionsRestored = false;
 
 const SettingKey kSettingKeys[] = {
     BoolKey< &sSkipCinematics >("skip_cinematics"),
+    IntKey< &sBootLogos, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
+        "boot_logos", "0", "2"),
+    IntKey< &sWorldNameCard, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off >(
+        "world_name_card", "0", "2"),
     BoolKey< &sFastMorph >("fast_morph"),
     BoolKey< &sSpringBall >("spring_ball"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
