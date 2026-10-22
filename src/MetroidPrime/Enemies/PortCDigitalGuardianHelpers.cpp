@@ -317,8 +317,8 @@ void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
 // the extrwi at 0x10198) is set: then the last block is used (the default at 0x10168).
 SLdrDigitalGuardianHeadStruct* CDigitalGuardianHead::x10120_(CStateManager& mgr) {
   int knees = 0;
-  CDigitalGuardian* body =
-      TCastToPtr< CDigitalGuardian >(mgr.ObjectById(x1034_)); // the call at 0x1014C
+  const CDigitalGuardian* body =
+      TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_)); // the call at 0x1014C
   if (body != nullptr) { // the retail's test at 0x10158 (cmplwi r3, 0x0 / beq)
     knees = body->x705C_();                                  // the call at 0x1015C
   }
