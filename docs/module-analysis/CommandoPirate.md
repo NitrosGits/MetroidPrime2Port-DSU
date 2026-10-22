@@ -2093,3 +2093,28 @@ The destructors' member **order** differs from retail's (host layout is the host
 "host objects outgrow retail"), but every destroyed member is an independent resource owner, so the
 order has no observable effect; that is what keeps `D47C`/`D634` H rather than a body to write.
 B progress: the rows leave the B denominator (126 -> 122), the marked count is unchanged (75).
+
+## The cp7 rows (2026-10-23)
+
+Run (build-port-link under gdb, `COV_GDB_SCRIPT=tools/cov/force_ret.py tools/cov/force.sh`, spec
+`tools/cov/specs/commandopirate_cp7.py`, driver `tools/drivers/commandopirate_cp7.py` sections
+ssc,egrenade, Swamp `05_swamp_timber!`, --fast 4000 frames, MP2_GODMODE=1): exit 0 at frame 3920,
+0 caught / reach-stub.
+
+| Body | Arms | How |
+|---|---|---|
+| Waypoint IsValid F6DC/F69C | 7 hits: true 4, false 3 | natural true; forced (force_ret cp7: id 0xffff) |
+| ShieldData ctor EF80 | loader lines 2/2 | natural |
+| GetGrenadeTarget 52BC | 12 calls: unmorphed 4, morphed 4, not a player 4, far 4, near 8 | natural unmorphed/far/near; forced (force_ret cp7: morph / self) |
+
+F6DC and F69C are one 0x40-byte body under two vtables (lbl_9_data_A84, lbl_9_data_A50); the host
+has one predicate. 52BC: `ble` at 0x539C is `distance > 6`, rodata 0x440=0.5, 0x448=3, 0x494=0,
+0x49C=6; `lwz 0x38c; cmpwi 0; bne` is kMS_Unmorphed. Its "not a player" arm is data-dead (xbca is
+written only by SelectTarget, with the player's id). asmcheck: F6DC/F69C TCastToPtr<CScriptWaypoint>
+= host TCastToConstPtr; EF80 0xF060 fn_9_D294 is the implicit CDamageVulnerability copy.
+
+Ruled H (compiler/rstl bodies the host gets from its own headers): D294 E6D0 (CDamageVulnerability
+copy / assign), 2378 (~CEntityInfo; the cp6 note's "temporary string dtor" was wrong), D8AC 4140
+(single_ptr<CPirateRagDoll> dtor / assign), 5F90 6150 A20 F9BC (optional_object dtor / copies),
+5F3C 5FEC 6054 (CImpactVisorEffect dtor, SParticleEffect dtor, None()), EA24 EB84 (Data /
+ShieldData copies), 5D74 (inline CPASAnimParmData ctor). Likely H too, not in the slice: 609C, 4188, E72C.

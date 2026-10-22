@@ -100,24 +100,7 @@ struct CCommandoPirateShieldData {
                              float unknown6CB0DA5A, float unknownC3938663, float armChance,
                              float armTime, float armTimeVariation, CAssetId armExplodeEffect,
                              CAssetId chargeEffect, CAssetId armEffect, ushort soundTurnOn,
-                             ushort soundTurnOff)
-  : mChargeDamage(chargeDamage)
-  , mChargeVulnerability(chargeVulnerability)
-  , mChargeMinAttackDist(chargeMinAttackDist)
-  , mChargeMaxAttackDist(chargeMaxAttackDist)
-  , mChargeSpeed(chargeSpeed)
-  , mExplodeEffect(explodeEffect)
-  , mSoundExplode(soundExplode)
-  , mUnknown6CB0DA5A(unknown6CB0DA5A)
-  , mUnknownC3938663(unknownC3938663)
-  , mArmChance(armChance)
-  , mArmTime(armTime)
-  , mArmTimeVariation(armTimeVariation)
-  , mArmExplodeEffect(armExplodeEffect)
-  , mChargeEffect(chargeEffect)
-  , mArmEffect(armEffect)
-  , mSoundTurnOn(soundTurnOn)
-  , mSoundTurnOff(soundTurnOff) {}
+                             ushort soundTurnOff);
 
   CDamageInfo mChargeDamage;            // guest +0x00 (0x1c), fn_9_EF80 @0x0000EF80
   CDamageVulnerability mChargeVulnerability; // guest +0x1c (0x30), fn_9_EF80 @0x0000EFA4
@@ -137,6 +120,35 @@ struct CCommandoPirateShieldData {
   ushort mSoundTurnOn;                  // guest +0x80, fn_9_EF80 @0x0000EFE8
   ushort mSoundTurnOff;                 // guest +0x82, fn_9_EF80 @0x0000EFEC
 };
+
+// fn_9_EF80: the members in the argument order of the loader's call (0x00000728): r4 the
+// damage (inlined CDamageInfo copy, 0x0000EFD0..0x0000F054), r5 the vulnerability (fn_9_D294,
+// 0x0000F060), f1..f3 +0x4c..+0x54, r6/r7 +0x58/+0x5c, f4..f8 +0x60..+0x70, r8..r10
+// +0x74..+0x7c, the stack's two halves +0x80/+0x82 (0x0000F064..0x0000F0A0).
+// @ fn_9_EF80
+inline CCommandoPirateShieldData::CCommandoPirateShieldData(
+    const CDamageInfo& chargeDamage, const CDamageVulnerability& chargeVulnerability,
+    float chargeMinAttackDist, float chargeMaxAttackDist, float chargeSpeed,
+    CAssetId explodeEffect, ushort soundExplode, float unknown6CB0DA5A, float unknownC3938663,
+    float armChance, float armTime, float armTimeVariation, CAssetId armExplodeEffect,
+    CAssetId chargeEffect, CAssetId armEffect, ushort soundTurnOn, ushort soundTurnOff)
+  : mChargeDamage(chargeDamage)
+  , mChargeVulnerability(chargeVulnerability)
+  , mChargeMinAttackDist(chargeMinAttackDist)
+  , mChargeMaxAttackDist(chargeMaxAttackDist)
+  , mChargeSpeed(chargeSpeed)
+  , mExplodeEffect(explodeEffect)
+  , mSoundExplode(soundExplode)
+  , mUnknown6CB0DA5A(unknown6CB0DA5A)
+  , mUnknownC3938663(unknownC3938663)
+  , mArmChance(armChance)
+  , mArmTime(armTime)
+  , mArmTimeVariation(armTimeVariation)
+  , mArmExplodeEffect(armExplodeEffect)
+  , mChargeEffect(chargeEffect)
+  , mArmEffect(armEffect)
+  , mSoundTurnOn(soundTurnOn)
+  , mSoundTurnOff(soundTurnOff) {}
 
 // The REL's parameter block (guest 0x15e bytes at guest 0x7C0), built by fn_9_EDC0 and copied into
 // the object by fn_9_EA24. The guest offsets are the REL's; the host layout is its own.
