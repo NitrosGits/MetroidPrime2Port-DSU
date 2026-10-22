@@ -136,6 +136,9 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mBoostBallRollSfxId(data.mBoostBallRollSound == -1 // 0x00008978
                           ? CSfxManager::kInternalInvalidSfxId
                           : static_cast< ushort >(data.mBoostBallRollSound))
+, mBoostBallHitPlayerSfxId(data.mBoostBallHitPlayerSound == -1 // 0x00008A28
+                               ? CSfxManager::kInternalInvalidSfxId
+                               : static_cast< ushort >(data.mBoostBallHitPlayerSound))
 , mBoostBallRollSfx()                                // 0x00008A50
 , mBoostBallFlag40(false)
 , mBoostHintUid(kInvalidUniqueId)                    // 0x0002011C
