@@ -1059,6 +1059,12 @@ void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
 // The module helpers this case calls are ported: fn_9_2D0C (the knock-back) as x2D0C_KnockBack,
 // fn_9_3900 (the jump-back velocity) as x3900_JumpBackVelocity and fn_9_3A5C (the hit-object
 // damage) as x3A5C_HitObject.
+// Run: cp5 2026-10-22 (f59c/f59d/f59x + nat1, tools/cov/specs/commandopirate_cp5.py): every arm
+// but the null-manager tests (DCTV, XAUD: kSM_Create always builds both) and XLAU in kAS_Hurled;
+// forced: the block's +0x91C 0x01/+0x91D 0x80 bits and +0x920, +0xC63 0x20, +0xC64 0x10, +0xC65
+// 0x04, +0xC66 0x40, the XRDG sender, the body frozen, and WeaponHurts true (a console XRDG with
+// a live shot as the shield actor's last toucher: the actor only sends XRDG when the shot misses).
+// @ fn_9_CB40
 void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   // r31: the entity's active bit as it was before the base's handler (0x0000CB60..0x0000CB80) -

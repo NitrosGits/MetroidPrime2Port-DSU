@@ -540,7 +540,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
       "obj <id>                    one object (an id as `objs` prints it: u046e, or e<editor id>): health, fsm, messages\n"
-      "send <id> <msg>             deliver a script message to an object (name or number)\n"
+      "send <id> <msg> [from <id>] deliver a script message to an object (name or number), from a sender\n"
       "covdump                     coverage build: write the gcov counters now (and zero them)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
@@ -2315,13 +2315,23 @@ void CmdBodyState(CStateManager& mgr, const Args& args, std::string& out) {
 }
 
 void CmdSend(CStateManager& mgr, const Args& args, std::string& out) {
-  if (args.size() < 3) {
-    Fail("usage: send <id> <msg>");
+  if (args.size() != 3 && !(args.size() == 5 && args[3] == "from")) {
+    Fail("usage: send <id> <msg> [from <id>]");
     return;
   }
   const CEntity* target = ResolveObject(mgr, args[1]);
   if (target == nullptr) {
     return;
+  }
+  // `from <id>`: the message's sender (default none), e.g. a live shot as a collision actor's
+  // last toucher.
+  TUniqueId sender = kInvalidUniqueId;
+  if (args.size() == 5) {
+    const CEntity* from = ResolveObject(mgr, args[4]);
+    if (from == nullptr) {
+      return;
+    }
+    sender = from->GetUniqueId();
   }
   const int msg = EnumValue(kMessageNames, kMessageCount, args[2]);
   if (msg < 0) {
@@ -2338,7 +2348,7 @@ void CmdSend(CStateManager& mgr, const Args& args, std::string& out) {
     return;
   }
   mgr.DeliverScriptMsg(
-      CScriptMsg(kInvalidUniqueId, uid, static_cast< EScriptObjectMessage >(msg)));
+      CScriptMsg(sender, uid, static_cast< EScriptObjectMessage >(msg)));
   char line[160];
   std::snprintf(line, sizeof(line), "sent %s to u%04x %08x\n",
                 NameOrHex(kMessageNames, kMessageCount, static_cast< uint >(msg)).c_str(),
