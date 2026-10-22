@@ -779,7 +779,7 @@ Its overrides:
 | fn | what |
 |---|---|
 | fn_16_0 | the destructor (the vtable back and the base's own) |
-| fn_16_1150 (0x424) | the think: the timer counts up, past 0.75f the portal goes inactive, when the "Whole Body" animation is over the portal goes inactive and its effect gets the emitter for the second warp sound and the "ACTV" message, past 5.0f the portal asks to be deleted, the animation is updated, and once the player's touch bounds overlap one of the seven "eight_Spine_*" locator boxes (2.0f around the locator) the stab damage is applied |
+| fn_16_1150 (0x424) | the think (corrected by emp1r, §12a): the animation data is set animating, the timer counts up and nothing more runs until it is past 0.75f; then the portal goes active, when the "Whole Body" animation is over the portal goes inactive and its effect gets the emitter for the second warp sound and the "DCTV" message, past 5.0f the portal asks to be deleted, the animation is updated, and once the player's touch bounds overlap one of the seven "eight_Spine_*" locator boxes (2.0f around the locator) the stab damage is applied |
 | fn_16_1574 (0x1AC) | the script messages: kSM_Create creates the portal's effect (fn_16_9BE8) and gives it the portal's transform and the "ACTV" message, kSM_Delete deletes the effect |
 | fn_16_1088 (0xC8) | the render: the transform's Y column is the plane's normal and the position's dot with it the constant |
 
@@ -1393,8 +1393,40 @@ The same run covers the rest of the heart stage on the natural path: fn_16_920, 
 fn_16_9BE8 ALL-ARMS; fn_16_CD0, fn_16_9C0, fn_16_774C, fn_16_71BC, fn_16_78AC, fn_16_4BB4,
 fn_16_4B6C, fn_16_1A50, fn_16_1950, fn_16_1150 and the portal's constructor fn_16_1720 ran (the
 untaken branches are the states' default message arms and the arms the hooks of section 8
-forced).  fn_16_1088 (the warp portal's Render) still did not run (0/6 lines) although the
-portal is created.
+forced).  fn_16_1088 (the warp portal's Render) did not run (0/6 lines) until the think's fix of §12a.
+
+## 12a. The warp portal's Render (fn_16_1088) runs: its think was mis-decoded
+
+The portal actor is created inactive (`li r6,0x0` at 0x65DC is CEntityInfo's active flag, 0x65F4),
+and the host's CStateManager::PreRender only lists active, drawn actors, so nothing rendered it.
+The retail's think activates it: `fcmpo; ble .L_00001534` at 0x11CC..0x11D0 skips the whole body
+(to the epilogue) until the timer is past 0.75f, then vtable 0x1C (SetActive) with `li r4,0x1`
+(0x11D8..0x11E8). The port had `if (timer > 0.75f) SetActive(false)` and ran the rest from the
+first frame. Two more decode fixes in the same body: the effect's message after the animation is
+"DCTV" (`lis r3,0x4443; addi r6,r3,0x5456` at 0x12D4..0x12D8 = 0x44435456 = kSM_Deactivate, not
+ACTV), and 0x1194..0x11AC (`lbz r0,0x2ac(r5); rlwimi r0,r6,7,24,24`, r6 = 1) sets CAnimData's
+mAnimating (the DOL's CModelData::EnableLooping sets the same bit at 0x800E53E8,
+CModelData::IsAnimating reads it at 0x800E5C3C). Without the last one the "Whole Body" animation
+never advanced (a temporary probe saw its time remaining stay 1.200 s at rate 1.0), so the stab
+locators never moved and the animation-over arm never ran.
+
+The run (2026-10-22, coverage build of the fix, same scenario as §12: `cycles 0 0 0 0 250 0 0 250
+0`, 30000 updates, fast mode, `MP2_GODMODE=1`, 9 heart stages, 0 `[port] caught`/`reach-stub`):
+fn_16_1088 6/6 lines (no branches); fn_16_1150 34/34 lines, 20/25 branches.
+
+| retail offset | the retail's test | ran |
+|---|---|---|
+| 0x11D0 | timer > 0.75f | both |
+| 0x11F8 / 0x1204 | the model data / the animation data is null | no - dead: the only constructor call (0x6660) passes the "Attack Tip" CAnimRes model (0x62B0..) |
+| 0x1254 | the animation is over | both |
+| 0x128C | the effect is gone | **no** |
+| 0x1298 | the effect is inactive (CEntity +0x20 bit 0x80) | **no** - DCTV only stops emission (MP2's CScriptEffect handles it), so the effect stays active and the arm repeats each frame until 5.0f, as in retail |
+| 0x132C | timer > 5.0f | both |
+| 0x1368 | already hit | both |
+| 0x13CC | the player has no touch bounds | **no** |
+| 0x1494 / 0x1530 | the box overlaps / the loop | both |
+
+fn_16_1150 is therefore unmarked (its old marker certified the mis-decoded body); 1088 keeps its marker.
 
 ## 13. Why a hit on the collision actors does not destroy the tentacles
 
