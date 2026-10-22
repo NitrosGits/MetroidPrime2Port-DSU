@@ -2271,3 +2271,42 @@ platform casts and the dash arms of CollidedWith.
   0x94C, which host CAi (CAi.cpp:24-29) loads.
 - Follow-up: the tsv calls E7C "unreferenced", but it is the scattershot Render vtable entry (1B64's
   caller).
+
+## Slice ds43 (2026-10-22): the next B rows (16 marked, 17 H, 1 T)
+
+- Marked: 100DC F488 F100 1EE4C 11DDC 11EB8 1CDD0 12960 1E3C0 1D860 B6C4 150DC C2B0 C104 14A00
+  22020. Every body was read against the asm, including the NaN senses.
+- Fixes: 0xE04 and 0x9C0 now start at -1000.0f (`stfs f1, 0x14(r31)` at 0x0000EE34 in EDF4,
+  `stfs f0, 0x1c(r31)` at 0x0000EAAC in EA24). 1EE4C tests the weapon mode's comboed bit (`lbz r0,
+  0x2(r29)` + `extrwi r3, r0, 1, 25` at 0x0001EEDC). 22020 is now `RunGetupCmd`, moved out of GetUp.
+  B6C4's best-distance test stays `!(distSq < best)`: the `bge` at 0x0000B7EC branches when cr0.lt
+  is clear, unordered included, so a NaN distance is skipped.
+- Dead arms: 22020's default arm (0x00022050 `b`, 0x00022058 `bge`); 14A00's null object
+  (`mr. r6, r3` at 0x00014BE4): the uids come from BuildNearList in the same frame.
+- C104: retail interpolates the rays with `fmadds`; the host multiplies, then adds. This is a known
+  fma knife-edge, as in the mathdiff ruling; no change.
+- H (tsv state "ds43: ..."): 3568 43A8 20600 B570 37A0 DE64 E124 1F238 1F72C 217FC 215FC 20F50 8DB4
+  EDF4 EA24 E560 13FFC. E560: the PhazonIndirectTexture token 0xD04 is never read; only the
+  0x1FED8 ctor and the 0x1F0D0 dtor touch 0xCD0. 153EC SideDash is T: it has no FSM2 node (as
+  EDB8).
+- Left: B86C (one forced call; five arms still short: the start tests, the arrived-link loop and
+  its null test). E23C is the loader data-block ctor (0x490 bytes, from 0x0000CF64) and has not
+  been checked field by field. CEB4 needs team AI.
+- Runs: `build-port-cov`, rooftop, `tools/drivers/darksamus_ds43.con` (GetUp statecalls at f5650).
+  gdb stops at the 4600th Think and runs `tools/cov/specs/darksamus_ds43_calls.gdb`; the .py
+  forces return values through gated breakpoints. Every member it writes is restored. 0
+  caught/reach-stub.
+
+      COV_GDB_SCRIPT=$PWD/tools/cov/specs/darksamus_ds43_calls.py BUILD=$PWD/build-port-cov \
+        MP2_INPUT=LAYER2@400 tools/cov/force.sh tools/cov/specs/darksamus_ds43_calls.py <out> \
+        "1baa96c2,10_cliff_rooftop" --con tools/drivers/darksamus_ds43.con --fast --frames 5900
+
+| fn | forced (gdb call / forced return) |
+|---|---|
+| F488 / 100DC / F100 / 1EE4C | as in the .gdb comments (inactive, die/hold, phazon mark; CD0/enrage; 11 uids + hit; reflect gates) |
+| 11EB8 / 1CDD0 / 11DDC / 12960 | stuck timer; flat normal; sent/bounced/no stage/+0x59; on-actor target, ring paths false |
+| 1D860 | FindBestAnimation score 0; Deactivate with -1 |
+| 1E3C0 | scored cover point inactive, then in another area |
+| 150DC | no stage, double dash, stuck counts, FindBestCoverPoint -> 0xFFFF, PickDash -> 0 |
+| B6C4 | hint inactive / type 0 / chain true (radius 1e6); GetObjectById -> null |
+| C2B0 / C104 | gun forward (0,0,1); a stale end sfx handle; mSweepBeamPart 0 |
