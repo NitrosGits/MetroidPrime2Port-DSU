@@ -2189,9 +2189,9 @@ void CSwampBossStage1::CollidedWith(const TUniqueId& id, const CCollisionInfoLis
   if (xb14_state == 5) {
     for (int i = 0; i < list.GetCount(); ++i) {
       // The retail keeps the material u64 big-word-first: the word at the list's base+0 holds
-      // the u64's bits 63..32 and the word at base+4 holds bits 31..0 (DOL
-      // `CActor::AddMaterial` 0x8004C340 shifts 1<<material and ORs the shift's high half
-      // into the word at the list base+0, the low half into base+4). So bit 0 of the word at
+      // the u64's bits 63..32 and the word at base+4 holds bits 31..0 (the retail's
+      // `CActor::AddMaterial` shifts 1<<material and ORs the shift's high half into the word at
+      // the list base+0, the low half into base+4). So bit 0 of the word at
       // collision-info+0x30 is u64 bit 32 = kMT_Player, not bit 63 = kMT_SeekerTarget.
       // The retail masks it with `li r8, 0x1` (0x9A70), `lwz r0, 0x30(r10)` (0x9A78) and
       // `and r0, r0, r8` (0x9A80).
