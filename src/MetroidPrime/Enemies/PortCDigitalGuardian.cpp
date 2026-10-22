@@ -669,6 +669,7 @@ void CDigitalGuardian::x39CC_(CStateManager& mgr, const CDamageVulnerability& vu
 // fn_14_3DA8: the four knee armour ids from 0xFB0 (the loop's cmpwi 4 at 0x3E10); each id that is
 // not kInvalidUniqueId (0x3DD8) and whose object exists (0x3DF4) is made orbitable or not
 // (fn_14_CE1C, 0x3E04).
+// @ fn_14_3DA8
 void CDigitalGuardian::x3DA8_(CStateManager& mgr, bool orbitable) {
   const u16* const armor[4] = {&xFB0_, &xFB2_, &xFB4_, &xFB6_};
   for (int i = 0; i < 4; ++i) {
@@ -1168,8 +1169,9 @@ void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
 // fn_14_18B4 (0xE0 bytes): the shin model. The same walk as fn_14_1994 (the ids at this+0x10C0,
 // the locator transform at 0x1928, the two __ml__ calls at 0x1938 and 0x1948), but the model at
 // this+0xEBC is drawn (the Render call at 0x196C) and only when bit 4 of the flag byte at
-// this+0x128C is clear (the extrwi at 0x19D8 - the byte's bit 4, the mask 1u << (31 - 27) =
-// 0x10) and the byte at this+0xF08 is set (the test at 0x19E4).
+// this+0x128C is clear (the extrwi at 0x18D8 - the byte's bit 4, the mask 1u << (31 - 27) =
+// 0x10) and the byte at this+0xF08 is set (the test at 0x18E4).
+// @ fn_14_18B4
 void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
                               const CModelFlags& flags) const {
   if ((x128C_ & 0x10) != 0 || !xEBC_.valid()) {

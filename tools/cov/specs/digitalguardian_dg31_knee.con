@@ -1,0 +1,4 @@
+@f130 layer 10; god 1
+@f150 send e00350060 Activate; send e0035000f Activate
+@f160 var e00350060 dg.armor3 65535; var e00350060 dg.armor2 378; codecall e00350060 SetVortexAttackMode; var e00350060 dg.armor2 1402; var e00350060 dg.armor3 1403
+@f200 status

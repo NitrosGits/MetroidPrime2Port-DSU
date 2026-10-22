@@ -157,6 +157,8 @@ void CDigitalGuardianKneeArmor::AcceptScriptMsg(CStateManager& mgr, const CScrip
   }
 }
 
+// fn_14_D7BC: always pass-through (0xD7BC..0xD7D8).
+// @ fn_14_D7BC
 const CDamageVulnerability* CDigitalGuardianKneeArmor::GetDamageVulnerability() const {
   return &PassThruVulnerability(); // the call at 0xD7C8
 }
