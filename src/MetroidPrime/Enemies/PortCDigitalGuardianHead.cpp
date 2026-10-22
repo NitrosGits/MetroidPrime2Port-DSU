@@ -584,7 +584,6 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
 // collider, downward.
 // Area-53 runs ran every arm but zero damage, which is data-dead (every entry WeaponHurts accepts
 // here has multiplier 0.5..2.0, effect 3) and was forced in dg33 (ble at 0x12E90).
-// @ fn_14_12D98
 void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   if ((x10F4_ & 0x10) == 0 || sender != xE00_) {
     return;
@@ -605,13 +604,14 @@ void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   }
   const float damage =
       weapon->GetCurrentDamageInfo().GetVulnerableDamage(*col->GetDamageVulnerability());
-  // 0x12E8C / 0x12F04 fcmpo damage, 0 (25); ble skips: a NaN damage is taken (and flinches).
-  if (!(damage <= 0.f)) {
+  // 0x12E8C / 0x12F04 fcmpo damage, 0 (25); ble skips (taken when GT is clear, so a NaN damage
+  // skips the hit and the flinch too).
+  if (damage > 0.f) {
     TakeDamage(GetTransform().GetColumn(kDY), damage);
     if (EchoEmitter() != nullptr) {
       EchoEmitter()->SetAutoReducingYellowDamage(CPatterned::skDamageHitTime);
     }
-    if (TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched)) && !(damage <= 25.f)) {
+    if (TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched)) && damage > 25.f) {
       BodyController()->CommandMgr().DeliverCmd(CBCAdditiveFlinchCmd(1.f));
     }
   }

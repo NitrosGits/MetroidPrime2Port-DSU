@@ -1997,9 +1997,10 @@ Left unmarked:
   1baa96c2,09_cliff_temple_dark --fast --frames 600` (beacon: `--con tools/cov/specs/digitalguardian_dg33_beacon.con`;
   head: `--driver 'python3 tools/drivers/dg33_head.py {port}'`; ctor: `--con tools/smoke/cmd_digig.txt`).
 - Marked: 1B8 D904 1AD2C 28D0 2CC4 308C B100; head 12818 12D98. 3300 fixed but left unmarked.
-- Fixes: 2CC4 clamps with `min_val(x1264_ + dt, 1)` (fcmpo/bge at 0x2D28: NaN takes the clamp);
-  3300 with `max_val(0, span)` (0x3430); 12D98 takes a NaN damage (`!(d <= 0)`, `!(d <= 25)`: ble at
-  0x12E90/0x12F08 falls through on NaN); B100 stores `CColor::Black()` at 0x1270 (0xB9C8/0xB9DC,
+- Fixes: 2CC4 clamps with `min_val(x1264_ + dt, 1)` (fcmpo/bge at 0x2D28: a NaN sum is stored, not clamped);
+  3300 with `max_val(0, span)` (0x3430: a NaN span gives 0); 12D98 keeps `d > 0` / `d > 25` (ble at
+  0x12E90/0x12F08 is taken on NaN, so a NaN damage skips; review26 reverted dg33's `!(d <= 0)` and
+  unmarked 12D98); B100 stores `CColor::Black()` at 0x1270 (0xB9C8/0xB9DC,
   was 0) and starts a built beacon generator with emission off and the model's scale as its
   global scale (0xBEF8..0xBF48, vtable 0x2C/0x24).
 - B100's 0xFC4 knee directions are the host's kKneeDirections (fn_14_77EC); the 0xFF8 angles
