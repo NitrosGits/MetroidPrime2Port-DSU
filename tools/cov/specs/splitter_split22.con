@@ -1,0 +1,22 @@
+# 04_cliff_contraption (914f1381) layer 2: the two chassis (u0532, u0521) and their heads (u0531,
+# u0520) are activated, brought to the player, hear noises, take boost ball and cannonball hits
+# and spin; at the end the 0532 chassis dies so the 0531 head loses it (plan K3).
+@f60 layer 2
+@f200 objs splitter
+@f210 send u0532 Activate; send u0531 Activate; send u0521 Activate; send u0520 Activate
+@f700 place u0532 player 8
+@f760 noise 4
+@f780 noise 0
+@f800 noise 3
+@f900 damage u0532 5 boostball
+@f1200 fsm u0532 SpinAttack
+@f1300 damage u0532 5 boostball
+@f1600 damage u0532 25 0 cannonball
+@f2000 place u0521 player 10
+@f2100 noise 4
+@f2150 shoot
+@f2600 place u0532 player 25
+@f3200 place u0532 player 6
+@f4200 objs splitter
+@f6000 kill u0532
+@f8800 objs splitter
