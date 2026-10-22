@@ -28,3 +28,12 @@ SPEC = [
     ('4BC0 0x4C48 clear c04', L + '616', [], 'max=100000'),
     ('4BC0 0x4C8C update c38', L + '620', [], 'max=100000'),
 ]
+# The loader's sound defaults (fn_9_E30's -1 ids, xE30_SoundDefaults): what each commando's block
+# holds once loaded (0xffff = the default or the data's -1). Plain run, no driver needed:
+#   tools/cov/run.sh tools/cov/specs/commandopirate_cp8.py <out> 'swamp,05_swamp_timber!' --fast --frames 1500
+SPEC.append(('E30 sounds: impact hurled death projectile bounce explode shieldexplode on off',
+             'CCommandoPirate::x4BC0_UpdateEmitters(',
+             ['$this->mData.mSoundImpact', '$this->mData.mSoundHurled', '$this->mData.mSoundDeath',
+              '$this->mData.mSoundProjectile', '$this->mData.mGrenade.mSoundGrenadeBounce',
+              '$this->mData.mGrenade.mSoundGrenadeExplode', '$this->mData.mShield.mSoundExplode',
+              '$this->mData.mShield.mSoundTurnOn', '$this->mData.mShield.mSoundTurnOff'], 'max=20'))

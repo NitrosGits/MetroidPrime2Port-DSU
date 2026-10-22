@@ -4762,11 +4762,36 @@ const bool sCpConsoleVars = PortConsole::RegisterVar(&CCommandoPirate::PortConso
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_9_168) and entry points.
 
+// @ fn_9_E30
+// fn_9_E30 (0x224 bytes): SLdrCommandoPirate's constructor, the loader's defaults (the call at
+// 0x00000188). The header's inline constructor (SLdrCommandoPirate.hpp:302) stores the same
+// floats, weapon types, asset ids and base-struct defaults (0x38 = 3, the lighting colour, the
+// visor flags 0xf), except the sound ids: the guest's default for every sound id is -1, the
+// generated header's 0. So the guest's -1 stores are written over the header's here: the five
+// words 0x488..0x498 (`li r0,-0x1` 0x00000E60, `stw` 0x00000E68..0x00000E78; the last two are
+// already -1 in the header), sound_Projectile 0x4c0 (`li r0,-0x1` 0x00000E90, `stw` 0x00000E98),
+// and in the two sub-struct constructors it calls: the grenade block's (fn_9_120C, 0x00000E9C)
+// two sounds +0x48/+0x4c (`li r0,-0x1` 0x00001228, `stw` 0x00001260/0x00001270) and the shield
+// block's (fn_9_10B8, 0x00000EA4) three sounds +0x17c/+0x1a0/+0x1a4 (`li r30,-0x1` 0x000010DC,
+// `stw` 0x000010F4/0x00001134/0x00001144). A property in the instance's data overwrites them.
+static void xE30_SoundDefaults(SLdrCommandoPirate& sldr) {
+  sldr.sound_Impact = -1;                              // 0x00000E68 (0x488)
+  sldr.sound_Hurled = -1;                              // 0x00000E6C (0x48c)
+  sldr.sound_Death = -1;                               // 0x00000E70 (0x490)
+  sldr.sound_Projectile = -1;                          // 0x00000E98 (0x4c0)
+  sldr.unknown_0xfb435257.sound_GrenadeBounce = -1;    // fn_9_120C 0x00001260 (+0x48)
+  sldr.unknown_0xfb435257.sound_GrenadeExplode = -1;   // fn_9_120C 0x00001270 (+0x4c)
+  sldr.shieldInfo.sound_ShieldExplode = -1;            // fn_9_10B8 0x000010F4 (+0x17c)
+  sldr.shieldInfo.sound_ShieldTurnOn = -1;             // fn_9_10B8 0x00001134 (+0x1a0)
+  sldr.shieldInfo.sound_ShieldTurnOff = -1;            // fn_9_10B8 0x00001144 (+0x1a4)
+}
+
 // fn_9_168. The property ids and their order are the generated SLdrCommandoPirate reader's, which
 // the REL's own switch matches id by id (fn_9_168 @0x000001C8..0x00000568).
 static CEntity* PortLoadCommandoPirate(CStateManager& mgr, CInputStream& input,
                                         CEntityInfo& info) {
   SLdrCommandoPirate sldrThis;
+  xE30_SoundDefaults(sldrThis);  // fn_9_E30's -1 sound ids (0x00000188)
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.inc"
 
   rstl::optional_object< CModelData > modelData(LdrToModelData(

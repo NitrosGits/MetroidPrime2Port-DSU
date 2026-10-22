@@ -29,7 +29,7 @@ offset	size	fn	kind	class	port	note
 0xCA4	0x64	fn_9_CA4	host-copy	H	not-port	
 0xD08	0x60	fn_9_D08	host-copy	H	not-port	
 0xD68	0xC8	fn_9_D68	host-copy	H	not-port	
-0xE30	0x224	fn_9_E30	behaviour	B	not-port	
+0xE30	0x224	fn_9_E30	behaviour	B	marked	
 0x1054	0x64	fn_9_1054	host-copy	H	not-port	
 0x10B8	0xFC	fn_9_10B8	host-copy	H	not-port	
 0x11B4	0x58	fn_9_11B4	host-copy	H	not-port	

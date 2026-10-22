@@ -2146,3 +2146,22 @@ Ruled H (compiler/rstl/DOL-class bodies the host gets from its own headers):
 | `4240` (0x94) | `CRagDoll::~CRagDoll` (deleting form) | `__vt__8CRagDoll` stored 0x4270, the five vectors' dtors 0x90/0x34/0x24/0x14/0x4 (`bl` 0x4274..0x42A4, each `li r4,-1`), delete flag 0x42A8 | `~CRagDoll() {}` CRagDoll.hpp:30 with the five vectors (CRagDoll.hpp:182-205) |
 | `4188` (0xB8) | `CPirateRagDoll::~CPirateRagDoll` (deleting form) | `__vt__14CPirateRagDoll` 0x41B4; the reserved_vector at +0xD4: count 0x41BC, an empty `bdnz` loop (trivial element dtor) 0x41EC/0x4204; `bl fn_9_4240` 0x4210 (base, r4=0); delete flag 0x4214; callers `bl` 0x4164 (`4140`, single_ptr reset) and 0xD8D4 (`D8AC`) | the host's implicit `CPirateRagDoll` dtor (CPirateRagDoll.hpp:38-40 reserved_vectors) |
 | `609C` (0xB4) | `CImpactVisorEffect`'s constructor | `bl fn_9_6150` 0x60C0 (particle optional copy, H); blur optional flag 0xC -> 0x24, payload 0x18 (0x60C4..0x60F0); low-pass optional flag 0x8 -> 0x30, payload 0x28 (0x60F4..0x6118); `li r0,-1` / `stw 0x34` 0x6120/0x612C (kPV_Invalid); rodata_494 = 0.0 -> 0x38 0x6130; caller `bl` 0x607C in `6054` (None(), H) | CImpactVisorEffect.hpp:37-44, the same five members in the same order |
+
+**`E30` (0x224), SLdrCommandoPirate's constructor: marked, one fix.** Straight-line (no conditional
+branch), called once per load (`bl` 0x188 in `168`). Store by store against the header's inline
+ctor (SLdrCommandoPirate.hpp:302) and the base structs' ctors (ScriptLoaderDefinitions.inc): the
+floats (rodata 0x42C..0x470: 360 90 1 0.5 10 10 3 150 2 0.8 3 0.3 0.2 / 10 50 30 80 / 10 5 / 5 /
+20 / 0.1 0.05), the weapon types (11 at 0x70/0x49C/0x4B0), creatureSize 1 (0x268), the asset ids
+(-1) and the base defaults it re-stores (0x38 = 3 = editorProperties.unknown_0x5d298a43, 0x294 =
+CColor(1,1,1,1) lighting, 0x2E4 = 0xf visor flags, 0x26C = 1 isEchoEmitter) agree. The sound ids
+do not: the guest's default is -1 for all of them (E30 0x488/0x48C/0x490 `stw` 0xE68..0xE70 and
+0x4C0 `stw` 0xE98; the grenade block fn_9_120C +0x48/+0x4C `stw` 0x1260/0x1270; the shield block
+fn_9_10B8 +0x17C/+0x1A0/+0x1A4 `stw` 0x10F4/0x1134/0x1144), the generated header's 0.
+`xE30_SoundDefaults` (PortCCommandoPirate.cpp, the loader's first statement) writes the guest's
+-1s over the header's. Run (`tools/cov/run.sh` cp8 spec, Temple `05_temple_federationsite_dark`,
+1500 frames, 0 caught): the loaded block reads 551 1357 7809 7780 **65535** 7778 7893 7859 7858
+(impact hurled death projectile bounce explode shield-explode on off), so that commando's
+grenade-bounce sound is 0xFFFF (the guest's default or the data's -1; with the header's default
+it would have been sound 0 if the property is absent). The same generator default (0 for sound
+ids) is in every generated SLdr header (shared; not changed here). fn_9_120C/fn_9_10B8 stay H rows
+(their other stores agree; their sounds are written by the same helper).
