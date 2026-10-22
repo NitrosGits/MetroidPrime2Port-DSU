@@ -1345,12 +1345,12 @@ the bodies are the states' own work but not the whole function.
   (0x00009A68..0x00009A80). The port has no counterpart for any of them - the module's own
   swooshes (fn_10_9B24) and the generator are not in the port - so the pointers are always null
   and the body does nothing.
-- **fn_10_6DAC (0x00006DAC, 0xDC bytes) - `UpdateShieldFromHealth`.** Deactivate (0x00006DB4)
+- **fn_10_6DAC (0x00006DAC, 0x8C bytes) - `UpdateShieldFromHealth`.** Deactivate (0x00006DB4)
   clears the shield flag byte 0xCD0 (0x00006DCC). The other messages read the health (the
   vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is not above
-  lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 - the
-  `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 = 1.0f
-  (0x00006DFC) and the direction 0xD18..0xD20 to the zero vector (lbl_10_bss_128,
+  lbl_10_rodata_14C = 1.0f (`fcmpo` at 0x00006DF0, `cror eq, lt, eq`, `bne` skip at 0x00006DF8 -
+  a NaN health skips, so the test is `health <= 1.0f`), set the flag (0x00006E08), 0xD24 = 1.0f
+  (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 = (0.3, 0.6, 1.0) (
   0x00006E10..0x00006E20).
 - **fn_10_8870 (0x00008870, 0xE0 bytes) - `RunFreezeBeamCmd`.** Activate (0x000088B0) stores 1
   (kAS_Ready) to the animation state 0x6B4, delivers the command (0x000088C8) and copies it into
@@ -1667,8 +1667,8 @@ trigger's entry, one per hit, from gdb convenience variables).
   rounding to zero.
 - **The module's globals**: lbl_10_bss_128 is the module's static vector - the module's data
   initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the actor's
-  0xD18 (0x0000E5C8), so the port's mGuestD18 (CVector3f::Zero) is the same value and fn_10_6DAC's
-  direction write (0x00006E10..0x00006E20) matches it. lbl_10_bss_11C = 22.0f and lbl_10_bss_120 =
+  0xD18 (0x0000E5C8); it is (0.3, 0.6, 1.0) (rodata 46C/424/3E8 at 0x0002224C..0x000222A8), not
+  zero, and fn_10_6DAC's direction write (0x00006E10..0x00006E20) stores the same value. lbl_10_bss_11C = 22.0f and lbl_10_bss_120 =
   0.5f are written by the module's init fn_10_CDB8 at 0x0000CE38 and 0x0000CE3C (the freeze beam's
   dodge step takes them as its impulse and its time).
 - **The audit's two findings**:
@@ -2150,3 +2150,29 @@ platform casts and the dash arms of CollidedWith.
 |---|---|
 | 48C8 DeleteGuestActorIfExpired | 0xF7C = elapsed - 1, the delete (0x000048F4 not taken; bge is taken on NaN, as `!(f7c < t)`) |
 | 69C0 DeleteGuestUids | the count 0x930 is 0 in every run (nothing ported fills it); forced 2 with slot 0 invalid (0x000069F8) and slot 1 a stale uid (0x00006A0C) |
+
+## Slice ds39 (2026-10-22): bodied B rows marked (6DAC 6F90 6374 9624 8698 6E38 7A14 1E2E8 8764 21F14 11C60)
+
+- Fix: 6DAC UpdateShieldFromHealth is `health <= 1.0f` (`fcmpo` 0x00006DF0, `cror eq, lt, eq`
+  0x00006DF4, `bne` skip 0x00006DF8: NaN skips); the port had `if (health > 1.f) return;`, which
+  sets the shield on NaN. Sizes corrected: 6DAC 0x8C, 6E38 0x158, 7A14 0x154, 1E2E8 0x78.
+- Runs on `build-port-cov`, rooftop, `tools/drivers/darksamus_ds39.con`, 5700 fast frames: natural
+  `tools/cov/specs/darksamus_ds39.py`; forced `tools/cov/specs/darksamus_ds39_force.py` (force.sh +
+  `COV_GDB_SCRIPT=tools/cov/force_ret.py`). 0 caught / reach-stub. Merged report: 6374 6DAC 6E38
+  6F90 7A14 11C60 ALL-ARMS; 8764 8698 21F14 every arm but the dead `default:`; 1E2E8 9624 no branch.
+
+| fn | forced arms (everything else natural) |
+|---|---|
+| 6DAC UpdateShieldFromHealth | health 0.5 (the set arm) |
+| 6374 FindPathToWaypoint | path not shagged, on the last waypoint and before it (the search's result, waypoint, count) |
+| 11C60 UpdateDiveFlight | the dive target = its start (CanBeNormalized false) |
+| 21F14 DoProjectileAttackCmd | Update with the animation state Ready (CanIssueCommand true) |
+
+- Dead arms with proof comments: the `default:` of 8764 / 8698 / 21F14 (EStateMsg has three
+  values; retail's out-of-range exits are cited per function); 1E2E8's range checks and loop count
+  (the only caller, 1E26C, passes begin with the count at 2).
+- Still unmarked, checked partially: 1E740 ShouldForgetLastAttacker (7/8, the null cover point
+  untaken - needs a forced uid whose cover lookup fails), 175AC ScatterShot (3/4, dead switch path),
+  9724 BoostBallFire (5/6, dead final else-if), 1DF74 TravelToCoverPoints (15/16, the null cover
+  return at 0x0001E0A8), 16B8C TurnTowardPoint (4/6, zero flat forward / zero target), 16048
+  GetDashPathClearance (14/16); not yet looked at: 812C 895C 1444C B458 BA38 1E4C4 1DD14 EFC8.

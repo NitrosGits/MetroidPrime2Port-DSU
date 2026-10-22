@@ -1,0 +1,35 @@
+# ds39: the bodied, unmarked DarkSamus rows. Rooftop boss u04f7 (Sanctuary 10_cliff_rooftop,
+# MP2_INPUT=LAYER2@400). Every state forced in turn; EnragedTravel with the player moved mid-state
+# (the "aim is far" arm 0x00006EF8), the phazon path states run long (fn_10_6374's last-waypoint
+# arm), each followed by another state (the Deactivate arms).
+@f600 send u04f7 Activate; god 1; status
+@f650 fsm u04f7 EnragedTravel
+@f700 tp 0 0 0
+@f760 status; obj u04f7
+@f800 fsm u04f7 EnragedTravel
+@f900 fsm u04f7 Patrol
+@f950 fsm u04f7 GoToPhazonAttack
+@f1350 fsm u04f7 GoToPhazonEnrage
+@f1750 fsm u04f7 EnrageHitReact
+@f1900 fsm u04f7 Dash
+@f2050 fsm u04f7 SideDash
+@f2200 fsm u04f7 SweepBeam
+@f2450 fsm u04f7 ScatterShot
+@f2650 fsm u04f7 MovingScatterShot
+@f2850 fsm u04f7 BoostBallInto
+@f3000 fsm u04f7 BoostBallFire
+@f3150 fsm u04f7 BoostBallRoll
+@f3350 fsm u04f7 DiveAttack
+@f3550 fsm u04f7 TravelToCoverPoints
+@f3750 fsm u04f7 MeleeDash
+@f3900 fsm u04f7 MissileJump
+@f4050 fsm u04f7 TravelToPissedOff
+@f4250 fsm u04f7 PissedOff
+@f4400 fsm u04f7 TurnToFacePlayer
+@f4500 fsm u04f7 FreezeBeam
+@f4700 fsm u04f7 PhazonSuck
+@f4850 fsm u04f7 PhazonAttack
+@f5050 fsm u04f7 PhazonEnraged
+@f5200 fsm u04f7 PhazonMissiles
+@f5400 fsm u04f7 Patrol
+@f5600 objs darksamus
