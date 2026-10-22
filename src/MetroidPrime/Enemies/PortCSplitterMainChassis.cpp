@@ -1156,7 +1156,7 @@ CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
   return sum;
 }
 
-// fn_75_ACEC (the chassis's head placement, 0xACEC-0xAFE8): the head's id at 0xC6C (0x0000AD18
+// fn_75_ACEC. The chassis's head placement (0xACEC-0xAFE8): the head's id at 0xC6C (0x0000AD18
 // lhz) decides. With no head id the body looks at the second link at 0xC6E (0x0000AF8C): an
 // object that is not a command module clears it (0x0000AFC0). With a head id the head is looked
 // up (0x0000AD40 ObjectById) and cast (0x0000AD44); with no head object the id at 0xC6C is
@@ -1171,6 +1171,10 @@ CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
 // otherwise the head's Y column is slerped toward the chassis's (0x0000AE30 GetAngleDiff,
 // 0x0000AE60 Slerp with the turn rate 12.566371 rad/s) and the head gets the chassis's
 // transform (0x0000AE44 SetTransform).
+// Arms: the placement ran in the fight; the arms with no head id, with a second link, with the
+// 0xD41 flag bits set, with a counter at 0xD00 that is not 5, with an editor offset that has no
+// y or no z, and with a head id that names no object were forced under gdb.
+// @ fn_75_ACEC
 void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
   if (mCommandModuleId == kInvalidUniqueId) {
     if (mSecondLinkId == kInvalidUniqueId) {

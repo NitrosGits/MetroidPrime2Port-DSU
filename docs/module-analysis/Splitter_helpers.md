@@ -656,14 +656,41 @@ already there was forced under gdb (`SPLITTER_FORCE=ACCEPT` writes the head's id
 body's entry).  The coverage build's merged profile says **8/8 lines, 2/2 branches, ALL-ARMS** -
 **marked**.
 
+### 3.21 The chassis's head placement
+
+`fn_75_ACEC` (the chassis's head placement) is marked now: 34/34 lines, 32/32 branches,
+ALL-ARMS.  The port's body matches the REL's asm:
+
+- 0xAD28 `cmplw r0, r3` (the id at 0xC6C against the invalid one) and 0xAD2C `beq .L_0000AF8C` -
+  with no head id the body looks at the second link at 0xC6E (0xAF90-0xAFB4) and clears it when
+  the object is not a command module (0xAFC0);
+- 0xAD40 ObjectById and 0xAD44 `TCastToPtr<CSplitterCommandModule>` with 0xAD4C `beq .L_0000AF54`
+  - with no head object the id at 0xC6C is cleared (0xAF74), the flag byte 0xD41's 0x02 bit is set
+  (0xAF7C `rlwimi r0, r7, 1, 30, 30` - the mask 0x2) and the materials kMT_Target and kMT_Orbit
+  are added (0xAF84);
+- 0xAD88/0xAD8C the flag byte 0xD41's 0x80 bit, 0xAD90/0xAD94 its 0x08 bit and 0xAD9C/0xADA0 the
+  counter at 0xD00 against 5 pick the path;
+- 0xADAC-0xADD0 the head's editor offset at 0xF24-0xF2C: the three comparisons against 0.0f
+  (0xADB4, 0xADC0, 0xADCC) - the port's `offsetIsZero` is the same test in the other direction;
+- 0xADFC the turn rate 12.566371f (lbl_75_rodata_3B0), 0xAE20/0xAE24 the counter at 0xD00, 0xAE30
+  GetAngleDiff and 0xAE34/0xAE38 the angle against the turn: the head is slerped toward the
+  chassis's column (0xAE60) or takes the chassis's transform (0xAE44).
+
+The arms that the fight cannot reach were forced under gdb: `PLACENOH` (no head id at 0xC6C),
+`PLACELINK` and `PLACELINKH` (the second link at 0xC6E is or is not a command module), `PLACEF80`
+and `PLACEF08` (the flag byte 0xD41's 0x80 and 0x08 bits), `PLACELC` (the counter at 0xD00 is not
+5), `PLACEZERO` and `PLACEYNZ` (the head's editor offset has no y or no z - the force writes the
+head's transform's Y column in the head's Idle state, which copies it into 0xF24-0xF2C, and the
+driver's new plan E6 puts the 0531 head into that state) and `PLACENULL` (the head's id at 0xC6C
+names no object).
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
   shipped spawns reach: section 3.3 lists them with the lines and the branches each one still
   misses. The next ones are `fn_75_2994` (the head's turn upright: 18/18 lines, 9/12 branches),
-  `fn_75_2280` (the head's chassis search: 18/19 lines, 11/14 branches), `fn_75_2CE0` (the head's
-  shield: 5/34 lines) and `fn_75_ACEC` (the chassis's head placement: 30/34 lines, 29/32
-  branches) - the smallest gaps.  `fn_75_A0A0` (the chassis's collision actor's damage) has a body
+  `fn_75_2280` (the head's chassis search: 18/19 lines, 11/14 branches) and `fn_75_2CE0` (the
+  head's shield: 5/34 lines) - the smallest gaps.  `fn_75_A0A0` (the chassis's collision actor's damage) has a body
   but never runs: only the chassis's own "target_LCTR" collision actor sends the message, and the
   laser sweep's beam does not reach it in the shipped spawns.
 - **The queue's rows with no body at all** are the module's own helpers that the FSM lane's
