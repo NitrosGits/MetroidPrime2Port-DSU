@@ -951,6 +951,14 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
     // AURORA_DUAL_SOURCE=0 keeps the two-draw fallback (A/B checks of ShaderConfig::dualSrcAlpha).
     const char* dualSourceEnv = std::getenv("AURORA_DUAL_SOURCE");
     const bool dualSourceDisabled = dualSourceEnv != nullptr && std::string_view(dualSourceEnv) == "0";
+    // Port: the FIFO processor, the render worker and the game thread all call into the device
+    // (CreateBindGroup/CreateTexture/releases vs Submit/ProcessEvents/WriteBuffer). Dawn is only
+    // thread-safe with ImplicitDeviceSynchronization; without it the races freed descriptor and
+    // upload memory the GPU still read (SQC page faults, gfx ring timeouts, mode1 resets).
+    // AURORA_IMPLICIT_SYNC=0 turns it off for A/B checks.
+    const char* implicitSyncEnv = std::getenv("AURORA_IMPLICIT_SYNC");
+    const bool implicitSyncDisabled = implicitSyncEnv != nullptr && std::string_view(implicitSyncEnv) == "0";
+    bool implicitSyncEnabled = false;
     wgpu::SupportedFeatures supportedFeatures;
     g_adapter.GetFeatures(&supportedFeatures);
     for (size_t i = 0; i < supportedFeatures.featureCount; ++i) {
@@ -974,6 +982,12 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
         }
         requiredFeatures.push_back(feature);
       }
+#ifdef WEBGPU_DAWN
+      if (feature == wgpu::FeatureName::ImplicitDeviceSynchronization && !implicitSyncDisabled) {
+        requiredFeatures.push_back(feature);
+        implicitSyncEnabled = true;
+      }
+#endif
 #ifdef TRACY_ENABLE
       if (feature == wgpu::FeatureName::TimestampQuery) {
         requiredFeatures.push_back(feature);
@@ -983,9 +997,15 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
     std::string featureList;
     for (auto featureName : requiredFeatures) {
       featureList += "\n  ";
-      featureList += magic_enum::enum_name(featureName);
+      const auto name = magic_enum::enum_name(featureName);
+      // Dawn-only features (0x5xxxx) are outside magic_enum's range.
+      featureList += name.empty() ? fmt::format("0x{:x}", underlying(featureName)) : std::string(name);
     }
     Log.info("Enabling features: {}", featureList);
+    if (!implicitSyncEnabled) {
+      Log.warn("ImplicitDeviceSynchronization {}: multi-threaded device use is unsynchronized",
+               implicitSyncDisabled ? "disabled by AURORA_IMPLICIT_SYNC=0" : "not supported");
+    }
 #ifdef WEBGPU_DAWN
     wgpu::DawnCacheDeviceDescriptor cacheDescriptor({.nextInChain = nullptr});
     cacheDescriptor.SetDawnLoadCacheDataCallback(
