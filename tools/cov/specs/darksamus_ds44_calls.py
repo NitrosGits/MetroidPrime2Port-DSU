@@ -441,9 +441,11 @@ class Scratch(gdb.Command):
 
 Scratch()
 
+# DS44_GDB names another script of this directory to run instead (ds46: darksamus_ds46_pickdash.gdb).
+GDB_SCRIPT = os.environ.get('DS44_GDB', 'darksamus_ds44_calls.gdb')
 think = gdb.Breakpoint(addr('CDarkSamus::Think('))
 think.ignore_count = int(os.environ.get('DS44_AT', '4600'))
 think.commands = ('set logging file %s/ds44_calls.log\nset logging overwrite on\n'
                   'set logging redirect off\nset logging enabled on\n'
-                  'source %s/darksamus_ds44_calls.gdb\nset logging enabled off\n'
-                  'delete %d\ncontinue' % (OUT, HERE, think.number))
+                  'source %s/%s\nset logging enabled off\n'
+                  'delete %d\ncontinue' % (OUT, HERE, GDB_SCRIPT, think.number))

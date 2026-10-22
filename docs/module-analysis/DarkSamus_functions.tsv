@@ -332,7 +332,7 @@ offset	size	class	kind	name	callers	marked	state
 0x150DC	0x26C	B	fsm-state	fn_10_150DC	0	yes	Dash
 0x15348	0xA4	B	method	fn_10_15348	2	yes	
 0x153EC	0x110	T	unreferenced	fn_10_153EC	0	no	SideDash; ds43: SideDash state, no node in the shipped FSM2 (as EDB8: fsm u04f7 SideDash enters and leaves at once)
-0x154FC	0xB4C	B	method	fn_10_154FC	3	no	
+0x154FC	0xB4C	B	method	fn_10_154FC	3	yes	ds46: marked
 0x16048	0x3D0	B	method	fn_10_16048	1	yes	
 0x16418	0xA8	B	method	fn_10_16418	1	yes	
 0x164C0	0x140	B	method	fn_10_164C0	5	yes	
