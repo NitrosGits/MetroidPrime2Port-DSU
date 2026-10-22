@@ -2115,3 +2115,28 @@ platform casts and the dash arms of CollidedWith.
   flags; the flagged calls are inlined helpers (2C8, B04, A08, A60, 2040, 1B64, 2E44 = the
   CModelData ctor) and token/string helpers; E7C's call/branch counts sit in StreamBillboard /
   BillboardAxes; the dtor's 9 conditions are the vector teardown, 1D8C's 18 the optional/token ones.
+
+## Slice ds38 (2026-10-22): the CScattershotProjectile rows marked (C98 2C 324 B78 1D8C 213C 2254 2798)
+
+- Fix: 2254 UpdateShots' pass test compares the move's own magnitude (`bl Magnitude` at
+  0x000023E8 on the move at sp+0xAC, `fcmpo cr0, f1, f31` at 0x000023F0, f31 = the distance left), not
+  the step; the distance flown adds that magnitude too (0x000023F8).
+- Runs on `build-port-cov`, rooftop, `tools/drivers/darksamus_scat.con`, 2000 fast frames: natural
+  `tools/cov/specs/darksamus_scat.py`; forced `tools/cov/specs/darksamus_scat_arms.py` (force.sh +
+  `COV_GDB_SCRIPT=tools/cov/force_ret.py`, custom breakpoints in the spec). 0 caught / reach-stub.
+  Merged report (forced + natural): all eight ALL-ARMS.
+
+| fn | forced arms (everything else natural) |
+|---|---|
+| C98 AddShot | 300 shots, the cap at 0x00000CA8 (mCount = 300 every 7th call) |
+| 2C CheckPlayerHit | the last shot's target = its position, no direction (0x000000A0) |
+| 324 Sweep | to = from (0x000003EC); a stale uid in the near list, ObjectById null (0x0000057C); the own uid appended with CanHit true and its touch box moved: around `from` (PointInside, 0x00000888), 1% along (nearer hit, 0x00000824), 99.5% along, 50 off the ray, none (0x0000074C) |
+| B78 CanHit | GetVulnerability effect 2 = pass-through (0x00000BC4) |
+| 1D8C SpawnHitExplosion | COLR absent (0x00001DC4); shot flown 1.0 (0x00001DB8); empty particle optional (0x00001E58) |
+| 213C PlayHitSfx | COLR absent (0x00002170); sound id -1 (0x00002198) |
+| 2254 UpdateShots | target = pos (0x00002334); a shot 0.001 short of a target still to sweep (0x00002404); toEye zeroed (the eye at the box centre) |
+| 2798 InitRenderParams | sub-elements null; textures null; B1PO/B2PO/TLPO set to the description's IVEC (null in the shipped data) |
+
+- retail_diff leads: 324's fn_10_B04 (CRayCastResult() via B28), fn_10_A60 (the CCollidableAABox
+  copy) and fn_10_A08 (the valid CRayCastResult ctor) are the header's inline ctors; 1D8C/213C's
+  GetObj is TToken's operator*.

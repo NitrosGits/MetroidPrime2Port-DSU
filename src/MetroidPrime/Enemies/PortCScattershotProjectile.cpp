@@ -157,6 +157,7 @@ rstl::optional_object< CAABox > CScattershotProjectile::GetTouchBounds() const {
 // sweep (flags 4). Every 17th (count % 17 == 0 at 0x00000D38) plays the hit sound, every 13th
 // (0x00000D68) spawns the hit explosion and every 5th (0x00000D9C) flies slow; the record goes in
 // through fn_10_DC8/fn_10_E10.
+// @ fn_10_C98
 void CScattershotProjectile::AddShot(const CVector3f& pos, const CVector3f& dir) {
   const int count = mShots.size();
   if (count >= kMaxShots) { // 0x00000CA8
@@ -185,6 +186,7 @@ void CScattershotProjectile::AddShot(const CVector3f& pos, const CVector3f& dir)
 // shot is hit and dead, its sound (flag 8, 0x00000204) and explosion (flag 0x10, 0x0000021C) play,
 // and the player takes the current damage 0x19C from the weapon (owner 0x15C, filter 0x168) along
 // the shot's direction (0x0000029C).
+// @ fn_10_2C
 void CScattershotProjectile::CheckPlayerHit(CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0);
   for (int i = 0; i < mShots.size(); ++i) {
@@ -224,6 +226,7 @@ void CScattershotProjectile::CheckPlayerHit(CStateManager& mgr) {
 // everything) replace the hit when nearer (`bge` at 0x00000698 / 0x00000824). A box that does not
 // stop the ray but holds `from` (0x00000888) ends the search with a hit there, facing back along
 // the ray (0x0000096C).
+// @ fn_10_324
 CRayCastResult CScattershotProjectile::Sweep(
     const CVector3f& from, const CVector3f& to,
     const rstl::reserved_vector< TUniqueId, 1024 >& nearList, CStateManager& mgr) const {
@@ -292,6 +295,7 @@ CRayCastResult CScattershotProjectile::Sweep(
 // fn_10_B78 (0x00000B78, 0xE4 bytes): an actor the current weapon mode passes through
 // (vulnerability effect 2 = kE_PassThrough, `cmpwi r0, 0x2` at 0x00000BC4) is never hit; otherwise
 // only players and platforms (lbl_10_data_28/_2C) are (0x00000C2C).
+// @ fn_10_B78
 bool CScattershotProjectile::CanHit(const CActor& actor) const {
   if (actor.GetDamageVulnerability()->GetVulnerability(mCurDamageInfo.GetWeaponMode()).mEffect ==
       CWeaponTypeVulnerability::kE_PassThrough) { // 0x00000BC4
@@ -332,6 +336,7 @@ void CScattershotProjectile::CheckNewShots(CStateManager& mgr) {
 // faces the shot's reversed direction (LookAt from zero at +0xC, up) at its position; the explosion
 // "Projectile collision response" (lbl_10_rodata_3C + 7) is 1.75f (lbl_10_rodata_28) big, white,
 // flags 2, in this actor's area.
+// @ fn_10_1D8C
 void CScattershotProjectile::SpawnHitExplosion(CStateManager& mgr, const SShot& shot) const {
   if (shot.mDistance < 2.f) { // 0x00001DB8
     return;
@@ -358,6 +363,7 @@ void CScattershotProjectile::SpawnHitExplosion(CStateManager& mgr, const SShot& 
 
 // fn_10_213C (0x0000213C, 0x118 bytes): with a collision response (description +0xD8) its type 1
 // sound (when not negative, 0x00002198) plays once at pos, with the response's range and falloff.
+// @ fn_10_213C
 void CScattershotProjectile::PlayHitSfx(const CVector3f& pos) const {
   if (!mDesc->mCOLR.valid()) { // 0x00002170
     return;
@@ -383,6 +389,7 @@ void CScattershotProjectile::PlayHitSfx(const CVector3f& pos) const {
 // live shots the actor deletes itself and drops the alive byte (0x00002518). Otherwise it sits at
 // the old box's centre, 5.0f (lbl_10_rodata_34) along the shots' mean direction, or toward the
 // player's eye by the new box's half size; the box is the new one grown by 5.0f.
+// @ fn_10_2254
 void CScattershotProjectile::UpdateShots(CStateManager& mgr, float dt) {
   CAABox box = CAABox::MakeNullBox();
   CVector3f meanDir = CVector3f::Zero();
@@ -404,8 +411,11 @@ void CScattershotProjectile::UpdateShots(CStateManager& mgr, float dt) {
       }
       const CVector3f move = step * dir;
       shot.mPos += move;
-      shot.mDistance += move.Magnitude();
-      if (step > left && (shot.mFlags & SShot::kF_NeedsSweep) == 0) { // 0x000023FC, 0x00002404
+      // The pass test compares the move's own magnitude (Magnitude at 0x000023E8, r3 = the move at
+      // sp+0xAC; `fcmpo cr0, f1, f31` at 0x000023F0 with f31 = the distance left), not the step.
+      const float moved = move.Magnitude();
+      shot.mDistance += moved;                                          // 0x000023F8
+      if (moved > left && (shot.mFlags & SShot::kF_NeedsSweep) == 0) { // 0x000023FC, 0x00002404
         shot.mPos = shot.mTarget;
         shot.mTarget = -1.f * dir;
         shot.mFlags |= SShot::kF_Hit;
@@ -448,6 +458,7 @@ void CScattershotProjectile::UpdateShots(CStateManager& mgr, float dt) {
 // fn_10_2798 (0x00002798, 0x180 bytes): the description's sizes, offsets and trail length at frame
 // 0, under the global random CRandom16(0x63): B1SE/B1PO with B1TX, B2SE/B2PO with B2TX,
 // TSZE/TLEN/TLPO with TTEX; each element is read only when present.
+// @ fn_10_2798
 void CScattershotProjectile::InitRenderParams() {
   CRandom16 random(0x63);
   CGlobalRandom globalRandom(random);
