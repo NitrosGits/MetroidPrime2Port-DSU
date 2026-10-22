@@ -122,6 +122,11 @@ patch, run `tools/review_decomp_diff.sh <lane-base>` and answer every hit:
 - **MARK** - a marker means the body is retail's and ran. A function that mostly calls unported
   functions is not ported: unmark it or port the callees. A body another lane already ported is
   called, not copied (`grep -rn 'fn_<id>_<off>' src/`).
+- **retail_diff** - `tools/retail_diff.py --diff <lane-base>` (or `--module M`, `--fn fn_X`; no
+  selector = whole port, ~5 s, no build) lists per marked body: retail `bl` targets the port never
+  names, rodata floats missing from the file, branch-count/size shape, and `nan` (fcmpo + plain
+  `blt/ble/bge/bgt` needs a C `<`/`>`; `cror` needs `<=`/`>=`; negation flips the NaN arm with the
+  sense, so `!(a <= b)` is wrong for a plain `ble`). Leads only: answer each like the hits above.
 - Lanes never run `git reset --hard`, `git clean`, `git stash`, `git checkout -- <path>` or `rm -rf`
   on a path held in a variable; reject a patch made that way and re-brief.
 

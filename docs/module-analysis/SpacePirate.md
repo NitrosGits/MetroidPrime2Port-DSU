@@ -618,8 +618,42 @@ Unmarked B (41) and what each still lacks:
   `C0C`, the ctor `F49C`, `10A10`, `10C64`, `10CE4`, `1854`, `2EA8`, the grenade bodies `3D7C`/`4030`/`4174`,
   and `E314` (an empty function the port does not need as a symbol).
 
+## 9. sp20 slice (2026-10-22)
+
+New marks, each ALL-ARMS in `tools/cov/gcov_report.py` over the natural run (08_sand_casualpirates L3), two
+staged alamo runs (07_sand_alamoportalobservation L3: troopers 002a00f3/002a00f4 - the L3 ids print without the
+layer byte) and the one-call forced runs of `tools/cov/specs/spacepirate_force7.py` (`force_ret.py`, every write
+restored when the call returns). Forced arms are *labelled*.
+
+| fn | body | how its arms ran |
+|---|---|---|
+| `90`/`B4`/`D4` | RELExit / RELMain / `PortRegisterSpacePirateFuncPtrs` | no branches; every boot |
+| `140` | loader | all but `!modelData` (retail 0x7A4; data-dead: every placement has a valid ANCS). Retail's `new`-null arm (0xAE0) has no host arm |
+| `10A10`/`10C64` | `PortInitSpacePirateData` / `PortInitLauncherBlock` | no branches; data+0xbc is never read (not stored), data+0xc4 is always 0.5 (0xDB14 uses the literal) |
+| `E314` | `EmptyE314` (bare `blr`), called from Dead Activate (0x5C6C) and AcceptScriptMsg 0xE91C | no branches |
+| `A71C` | ShouldAttack | `trigcall` with five pirates placed 4 units off the player in Attack: closer>3 and the non-player target; *forced*: the own list entry (target = the player), another area (this pirate's area 77), a dead attacker (the last attacking pirate's mAlive 0) |
+| `3220` | ShouldFrenzy | natural low-HP roll; *forced*: no target + empty charge list, morphed player target, low HP with timer 1.0 / 0.0, the frenzy-chance bit. That bit (0x8f8 0x80) is written only by the ctor, as false (F6E8), so its two rolls are dead in retail |
+| `3D7C` | SolveGrenadeLaunch (inlined into SpawnGrenade in the cov build) | `uevent <trooper> 0` (kUE_Projectile) with the troopers placed above / below the player; *forced*: launch speed range 0.1-0.2 and 200-201 |
+| `4030` | GetGrenadeAimPoint | unmorphed player (`press x` first: the harness spawn in this area is morphed), *forced*: morphed player with 0 bounces, the pirate targeting itself (no player) |
+
+sp20 also fixed: ctor xa18 = starting HP (it was 0, so Dodge 7DFC's low-HP test now sees a real value), the grenade
+SFX falloff 0.1 / max distance 150, and 3D7C's NaN senses (0x3EC4/0x3F2C/0x3F60 `ble`, 0x3F74 `bge`).
+Reclassified: `99F0` DoubleSnap B -> T (no such state in the shipped AFSM), `C0C` B -> H (inline
+`CBouncyGrenadeData` ctor, CBouncyGrenade.hpp:43).
+
+Still unmarked from the slice:
+- `4174` SpawnGrenade: 11/12; the arm where the flat aim direction cannot be normalised (aim straight over the gun
+  locator) needs an invalid gun segment or an exact player position; not forced.
+- `58D8` LaunchGrenade: the team arms (1681/1684) need a trooper that is a member of a CScriptTeamAiMgr; the alamo
+  troopers' team never takes them in the runs.
+- `CE30` GetStrafeDir, `10CE4` (the WallHang waypoint search; 02_sand_sandfalls L3 staging not run): not reached.
+- `F49C` ctor: needs shared/DOL header accessors: CBodyStateInfo `mChangeLocoAtEndOfAnimOnly` setter (body+0x56c
+  0x80, 0xFF44), CPatterned x682 0x80 (0xFFA0), CPatternedInfo echo parameters (pInfo+0x2a4 0x80, 0xFFCC-0x101B0),
+  CActor x154 0x40 clear for a floating corpse (0x10230).
+- `17A0` GetRagDoll, `E3D8` Touch: the ragdoll (xb30) is not ported, so their arms cannot run.
+
 ## Open questions (verify first)
 
 1. `x8f4_24` mask is `flags & 3` (MP1 `& 1`): a 2-bit field or a different flag.
-2. Identity of 0xa18 (pInfo+0x58) and 0xb30 (null pointer; ragdoll slot?).
+2. 0xa18 (pInfo+0x58) is the starting HP (`pInfo.GetHealthInfo().GetHP()`, ctor 0xF89C/0xF8B8; sp20). Identity of 0xb30 (null pointer; ragdoll slot?).
 3. The [?] rows of section 1 (`253C`, `28F0`, `3220`, `3D7C`, `CB30`, `EDEC`).

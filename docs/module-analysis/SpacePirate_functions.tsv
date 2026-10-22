@@ -14,7 +14,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xB4	0x20	(module)	RELMain	rel-entry	B	-	-	not-port	RELMain
 0xD4	0x6C	(module)	RegisterFuncPtrs (SSpacePirate_FuncPtrs)	rel-entry	B	RELMain	-	not-port	fn_72_D4
 0x140	0xACC	(module)	LoadSpacePirate	loader	B	D4(addr)	the loader: the host's SLdr reader, equal to the retail's property switch (asm 0x1BC-0x268); the profile: 65/65 lines, 13/16 branches (the three untaken edges are data-dead)	ported	fn_72_140
-0xC0C	0x94	CSpacePirateData	BuildGrenadeData: CBouncyGrenadeData ctor from SLdr weapon data	method	B	140	BuildGrenadeData: equal to the retail's copy of the weapon data (asm 0xC0C-0xC98); it runs only with a grenade spawn	ported	fn_72_C0C
+0xC0C	0x94	CSpacePirateData	BuildGrenadeData: CBouncyGrenadeData ctor from SLdr weapon data	method	H	140	the host's CBouncyGrenadeData constructor (CBouncyGrenade.hpp:43): the REL's copy of that inline, argument for argument (mass f1 +0x0, speed f2 +0x4, damage r4 +0x8, bounces r5 +0x24, ids r6-r9 +0x28-0x34, sfx r10/sp+0xa +0x38/+0x3a, f3-f6 +0x3c-+0x48, the bool's 0x80 bit +0x4c, asm 0xC0C-0xC98); the loader's arguments are in PortInitLauncherBlock (fn_72_10C64)	ported	fn_72_C0C
 0xCA0	0x40	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	140	rstl/TToken copy (header inline)	not-port	fn_72_CA0
 0xCE0	0x20	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	4FF4 CA0	rstl/TToken copy (header inline)	not-port	fn_72_CE0
 0xD00	0x28	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	CE0	rstl/TToken copy (header inline)	not-port	fn_72_D00
@@ -155,7 +155,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x960C	0x2CC	CSpacePirate	ShouldStrafe (trigger)	fsm-trigger	B	data_124	-	marked	fn_72_960C
 0x98D8	0xCC	CSpacePirate	Crouch (state)	fsm-state	B	data_484	-	marked	fn_72_98D8
 0x99A4	0x4C	CSpacePirate	ShouldCrouch (trigger)	fsm-trigger	B	data_D0	-	marked	fn_72_99A4
-0x99F0	0x418	CSpacePirate	DoubleSnap (state)	fsm-state	B	data_58C	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	ported	fn_72_99F0
+0x99F0	0x418	CSpacePirate	DoubleSnap (state)	fsm-state	T	data_58C	dead in shipped data, the same case as the T states 5D0C/5EA4/6334: no state named DoubleSnap in AFSM 0x5652a12f/0x7b49526b, the only FSMs of the 65 PIRT placements (disc scan 2026-10-21); `fsm` refuses it. The body stays ported (asm 0x99F0)	ported	fn_72_99F0
 0x9E08	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_ABC	CBodyStateCmd subclass dtor	not-port	fn_72_9E08
 0x9E64	0x4C	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	99F0 E498	rstl::list::remove	not-port	fn_72_9E64
 0x9EB0	0x6C	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9E64	rstl::list::remove	not-port	fn_72_9EB0

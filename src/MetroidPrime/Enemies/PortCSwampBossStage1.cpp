@@ -1127,19 +1127,30 @@ void CSwampBossStage1::ShreddersOn(CStateManager& mgr, float) {
 // --------------------------------------------------------------------------------------------
 // States
 
+// @ fn_78_19A4: the tongue-state reset the retail's TongueLoop (fn_78_31E8) calls on Activate
+// (0x3254: `addi r3, r29, 0xc0c`, the tongue block) and the CModelData member's constructor
+// (fn_78_19FC) calls as well: the tip and the target go to the zero vector, the extend, the pull
+// time and the pull speed to 0, the tongue state to kTS_Idle and the vomit timer to 0 (the retail
+// zeroes the tip from sZeroVector and copies it into the target, 0x19C8-0x19F4).
+// From the block base: 0x24/0x28/0x2c/0x30 are the extend, the tongue state, the pull time and
+// the pull speed (0x19B8-0x19C4); 0xdc is the vomit timer (0x19B4).
+void CSwampBossStage1::ResetTongueState() {
+  xc18_tongueTarget = CVector3f::Zero();
+  xc24_tongueTip = CVector3f::Zero();
+  xc30_extend = 0.f;
+  xc34_tongueState = kTS_Idle;
+  xc38_pullTime = 0.f;
+  xc3c_pullSpeed = 0.f;
+  xce8_vomitTimer = 0.f;
+}
+
 // @ fn_78_31E8
 void CSwampBossStage1::TongueLoop(CStateManager& mgr, EStateMsg msg, float dt) {
   RecordState(9, msg);
   SetLocomotion(3);
   if (msg == kStateMsg_Activate) {
     BodyController()->CommandMgr().ClearLocomotionCmds();
-    xc18_tongueTarget = CVector3f::Zero();
-    xc24_tongueTip = CVector3f::Zero();
-    xc30_extend = 0.f;
-    xc34_tongueState = kTS_Idle;
-    xc38_pullTime = 0.f;
-    xc3c_pullSpeed = 0.f;
-    xce8_vomitTimer = 0.f;
+    ResetTongueState();
     ++xc00_tongues;
     SetJointsActive(mgr, 1, kJF_RemoveTarget | kJF_Reflect);
     SetJointsActive(mgr, 0, kJF_RemoveTarget | kJF_Vulnerable);
@@ -2103,10 +2114,17 @@ rstl::optional_object< CAABox > CSwampBossStage1::GetTouchBounds() const {
   return GetBoundingBox();
 }
 
+// @ fn_78_2100: the module's own orbit position - the head's locator, not the base class's
+// (CPatterned::GetOrbitPosition returns the aim position, CPatterned.cpp:1183). The retail builds
+// the "head" string from its rodata (0x4953's "head" at +0x24, 0x211C) and calls GetLctrTransform
+// with it (0x213C).
 CVector3f CSwampBossStage1::GetOrbitPosition(const CStateManager& mgr) const {
   return GetLctrTransform(rstl::string_l("head")).GetTranslation();
 }
 
+// @ fn_78_21C8: the scan change - when the scan finishes (kSS_Done, 2) the scanned flag goes up,
+// and the base class still runs. The retail: `cmpwi r4, 0x2` (0x21D0), `rlwimi r0, r6, 7, 24, 24`
+// (0x21E8, the flag's bit 7 of the byte at 0xb58) and the base call at 0x21F0.
 void CSwampBossStage1::OnScanStateChange(EScanState state, CStateManager& mgr) {
   if (state == kSS_Done) {
     xb58_scanned = true;
@@ -2185,6 +2203,11 @@ CScannableObjectInfo* CSwampBossStage1::GetScannableObjectInfo() const {
   return CPatterned::GetScannableObjectInfo();
 }
 
+// @ fn_78_9A44 (CollidedWith): the retail's own work runs only while the state is 5
+// (TonguePull): it walks the collision list and sets the "player touched" flag when the list's
+// 0x30 slot has u64 bit 32 = kMT_Player (the u64 is big-word-first, so bit 0 of that word is
+// bit 32). The state id is 5 only while the boss pulls its tongue, and the list is in the
+// mover's frame, so the flag means "the boss's body hit the player while it pulled".
 void CSwampBossStage1::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                     CStateManager& mgr) {
   if (xb14_state == 5) {

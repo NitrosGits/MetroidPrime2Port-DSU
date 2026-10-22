@@ -75,6 +75,8 @@ void StandInFn(const char* fn) {
 class CWaypointPredicate : public CValidEntityPredicate {
 public:
   ~CWaypointPredicate() override {}
+  // The neg/or/srwi 31 at 0x1AAA8..0x1AAB0: the cast's result != null.
+  // @ fn_14_1AA84
   bool IsValid(const CStateManager& mgr, TUniqueId id) const override {
     return TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id)) != nullptr;
   }
@@ -84,6 +86,8 @@ public:
 class CPlatformPredicate : public CValidEntityPredicate {
 public:
   ~CPlatformPredicate() override {}
+  // The neg/or/srwi 31 at 0x1AA68..0x1AA70: the cast's result != null.
+  // @ fn_14_1AA44
   bool IsValid(const CStateManager& mgr, TUniqueId id) const override {
     return TCastToConstPtr< CScriptPlatform >(mgr.GetObjectById(id)) != nullptr;
   }
@@ -1848,7 +1852,19 @@ public:
                       const CDamageInfo& damage, TUniqueId uid, TAreaId areaId, TUniqueId owner,
                       TUniqueId homingTarget, uint attribs, bool underwater,
                       const CVector3f& scale, const CImpactVisorEffect& visorEffect);
+  // fn_14_1AAC4: the vtable lbl_14_data_1034 (0x1AAF0), then fn_14_19908 (~CEnergyProjectile).
+  // @ fn_14_1AAC4
+  ~CGuardianProjectile() override {}
   void Think(float dt, CStateManager& mgr) override;
+  // fn_14_1AB24: an empty optional (li r0 0; stb r0 0xC(r3) at 0x1AB24).
+  // @ fn_14_1AB24
+  rstl::optional_object< TLockedToken< CGenDescription > >
+  GetImpactParticle(CStateManager& mgr) override {
+    return rstl::optional_object_null();
+  }
+  // fn_14_1AB30: CVector3f::sUpVector (0x1AB30..0x1AB48).
+  // @ fn_14_1AB30
+  CVector3f GetExplosionNormal() const override { return CVector3f::Up(); }
 };
 
 // fn_14_19838: the CEnergyProjectile ctor (0x198E0) with the caller's arguments and then false

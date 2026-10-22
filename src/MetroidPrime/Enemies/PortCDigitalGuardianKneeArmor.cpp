@@ -55,8 +55,20 @@ CDigitalGuardianKneeArmor::CDigitalGuardianKneeArmor(
 
 // The retail destructor destroys the sound parameters (0x180) and the CActor base; its deleting
 // form's Free__7CMemoryFPCv (0xD4B0) is the compiler's.
+// @ fn_14_D460
 CDigitalGuardianKneeArmor::~CDigitalGuardianKneeArmor() {}
 
+// Arms (dg30): the hit flash with and without time left (the Damage message), armoured and
+// vulnerable (InternalMessage1..4 through fn_14_3A44), the sound handle set and not, the echo
+// emitter null and not (tools/cov/specs/digitalguardian_dg30_knees.py, forced). Two arms are dead:
+// - the touch box's engaged test (0xD204, the optional's flag 0x17C): the ctor engages it (the
+//   stb of 1 at 0xD5AC) and nothing disengages it, so the assignment always takes 0xD24C;
+// - HasModelData's false arms (no model data 0xD294, no animation and no model 0xD2AC):
+//   fn_14_4080 builds a knee only with the static model loaded (the xF58 test at 0x4098) and
+//   passes it (0xF0C, the addi at 0x4250); the ctor reads its bounds unconditionally (0xD634),
+//   and nothing clears a knee's model.
+// The bit test at 0xCFC0 is GetActive (CEntity 0x20); 0xD19C's x18F bits are the maxVolume byte.
+// @ fn_14_CF94
 void CDigitalGuardianKneeArmor::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -145,10 +157,16 @@ void CDigitalGuardianKneeArmor::AcceptScriptMsg(CStateManager& mgr, const CScrip
   }
 }
 
+// fn_14_D7BC: always pass-through (0xD7BC..0xD7D8).
+// @ fn_14_D7BC
 const CDamageVulnerability* CDigitalGuardianKneeArmor::GetDamageVulnerability() const {
   return &PassThruVulnerability(); // the call at 0xD7C8
 }
 
+// fn_14_D774: the copy of the optional touch box (its flag 0x17C, the beqlr at 0xD784 skips the
+// box when clear). The empty arm is dead: the ctor engages x164_ (the stb of 1 at 0xD5AC) and
+// Think only assigns it (0xD204..0xD278).
+// @ fn_14_D774
 rstl::optional_object< CAABox > CDigitalGuardianKneeArmor::GetTouchBounds() const {
   return x164_;
 }
@@ -156,6 +174,7 @@ rstl::optional_object< CAABox > CDigitalGuardianKneeArmor::GetTouchBounds() cons
 // fn_14_CE1C: with the flag (the clrlwi. at 0xCE28) the orbit material (0x29 = kMT_Orbit) is
 // added (0xCE48); without it, it is removed (0xCE58) and the player is asked to break any orbit
 // on this armour (request 8, kOR_ActivateOrbitSource, the li at 0xCE68 and the call at 0xCE78).
+// @ fn_14_CE1C
 void CDigitalGuardianKneeArmor::SetOrbitable(CStateManager& mgr, bool orbitable) {
   if (orbitable) {
     AddMaterial(kMT_Orbit, mgr);
@@ -166,6 +185,12 @@ void CDigitalGuardianKneeArmor::SetOrbitable(CStateManager& mgr, bool orbitable)
   }
 }
 
+// fn_14_CE94: no change -> nothing (the cmplw/beq at 0xCEBC). Otherwise the flag bit (the rlwimi
+// at 0xCEC8) and the pulse phase 0x15C = 0.0f (0xCED4); vulnerable: the looped sound when none
+// plays (0xCEEC, PlayCustomSound at 0xCF20) and the target materials 0x28/0x3F (0xCF3C);
+// armoured: the sound removed when set (0xCF4C, 0xCF5C) and the materials removed. Arms (dg30):
+// knee 0 with no handle, knee 2 with one (the spec digitalguardian_dg30_knees.py, forced).
+// @ fn_14_CE94
 void CDigitalGuardianKneeArmor::SetArmored(CStateManager& mgr, bool armored) {
   if (x19C_24_armored_ == armored) {
     return;

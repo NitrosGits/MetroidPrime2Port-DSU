@@ -268,9 +268,10 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   xa0c_unkTimer = 0.f;
   xa10_steeringDelayTimer = 0.f;
   xa14_ = 0;
-  // TODO(fn_72_F49C): 0xa18 = pInfo+0x58 (MP1's x750_initialHP is the patterned health); not
-  // resolved against CPatternedInfo's layout.
-  xa18_ = 0.f;
+  // 0xF89C lfs 0x58(r29) (r29 = pInfo), 0xF8B8 stfs 0xa18: CPatternedInfo +0x54 is the
+  // CHealthInfo, whose +0x4 is the HP - the pirate's starting HP (ShouldFrenzy 3220 and the
+  // Hurled chance read it).
+  xa18_ = pInfo.GetHealthInfo().GetHP();
   xa1c_coverRange = 0.f;
   xa24_ = 0;
   xa28_taunt = -1;
@@ -379,6 +380,11 @@ void CSpacePirate::EnsureBodyActive(CStateManager& mgr) {
     BodyController()->Activate(mgr, pas::kAS_Invalid);
   }
 }
+
+// @ fn_72_E314
+// A bare blr (0xE314): Dead's Activate (0x5C6C, flag 0) and AcceptScriptMsg's kSM_Activate when the
+// corpse does not float (0xE91C, flag 1) call it; neither argument is read.
+void CSpacePirate::EmptyE314(CStateManager&, bool) {}
 
 // @ fn_72_E0D8 (AttachActorToPirate): the pirate takes hold of one actor at a time and
 // refuses a second one. The ragdoll's flag byte at 0x118 is the "an actor is held" bit.
@@ -705,6 +711,10 @@ TUniqueId CSpacePirate::ChooseTarget(CStateManager& mgr) {
 }
 
 // Whether the next shot is a frenzy burst; a roll of 2..4 shots is queued and counted down.
+// Retail fn_72_3220. Arms FORCED by spacepirate_force7.py (sp20): the frenzy-chance bit (0x8f8 0x80;
+// only the ctor writes it, as false, F6E8, so both rolls are dead in retail), an empty charge list, a
+// morphed target, the low-HP arms (xa18_ raised) and no target; the natural runs give the rest.
+// @ fn_72_3220
 bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
   bool reset = false;
   if (x8f8_24_pendingFrenzyChance) {
@@ -807,6 +817,7 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
 // Retail fn_72_3D7C: the launcher's ballistic solve. Ten candidate angles are tried from 0 (or from
 // pi/4 downwards when the target is above the gun); the first one whose required speed lands inside
 // [minLaunchSpeed, maxLaunchSpeed] wins, otherwise the closest miss is kept.
+// @ fn_72_3D7C
 static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin, float minLaunchSpeed,
                                float maxLaunchSpeed, float& angle, float& speed) {
   const float heightDelta = target.GetZ() - origin.GetZ();
@@ -817,7 +828,8 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
 
   float startAngle = 0.f;
   float angleStep = 0.07853982f; // pi/40
-  if (target.GetZ() > origin.GetZ()) {
+  // The negated compares keep retail's NaN arms (0x3EC4 ble, 0x3F2C ble, 0x3F60 ble, 0x3F74 bge).
+  if (!(target.GetZ() <= origin.GetZ())) {
     startAngle = 0.7853982f; // pi/4
     angleStep = -angleStep;
   }
@@ -833,15 +845,15 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
     const float sine = CMath::FastSinR(candidate);
     // Retail's fmsubs leaves the terms in this order: distance*(cos*sin) - height*cos^2.
     const float denominator = distance * (cosine * sine) - heightDelta * (cosine * cosine);
-    if (denominator > 1.1920929e-7f) {
+    if (!(denominator <= 1.1920929e-7f)) {
       const float speedSq = lhs / denominator;
       if (speedSq >= minSpeedSq && speedSq <= maxSpeedSq) {
         bestAngle = candidate;
         bestSpeed = CMath::SqrtF(speedSq);
         break; // retail branches straight past the loop counter here
       }
-      const float error = speedSq > maxSpeedSq ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
-      if (error < bestError) {
+      const float error = !(speedSq <= maxSpeedSq) ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
+      if (!(error >= bestError)) {
         bestAngle = candidate;
         bestSpeed = CMath::SqrtF(speedSq);
         bestError = error;
@@ -855,6 +867,7 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
 // Retail fn_72_4030: the point the grenade is thrown at - the target's aim position, lowered to half
 // the player's eye height, then (for a bouncing launcher) pulled 70% of the way back towards the gun
 // when the aim is at most 2 m above the pirate (asm: cror lt/eq -> <=, not an equality test).
+// @ fn_72_4030
 static CVector3f GetGrenadeAimPoint(const CActor& target, const CStateManager& mgr,
                                     const CVector3f& piratePos, uint numBounces) {
   CVector3f aim = target.GetAimPosition(mgr, 0.5f);
@@ -1149,6 +1162,8 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       RemoveMaterial(kMT_Character, kMT_Solid, kMT_Target, kMT_Orbit, mgr);
       mAlive = false;
       HealthInfo()->SetHP(-1.f);
+    } else {
+      EmptyE314(mgr, true); // 0xE910-0xE91C: fn_72_E314(this, mgr, 1) when the bit is clear
     }
     break;
   }
@@ -1776,8 +1791,87 @@ bool CSpacePirate::TryToBeCaptured(CStateManager& mgr) {
   return true; // 0x1918 li r3, 1
 }
 
+// @ fn_72_10A10
+// CSpacePirateData's constructor: the loader's arguments stored in order (0x10AB0-0x10C04), then
+// the launcher block copied in (0x10C08 fn_72_108D8, a copy constructor; see PortInitLauncherBlock).
+// The host struct keeps only the fields the module reads: retail's +0xbc (unknown_0x8708b7d3, loader
+// stack 0xC24 -> 0x10BFC stfs 0xbc) is never read, and +0xc4 is the loader's constant 0.5 (0xA7C, rodata B44), which
+// UpdateGuardPosition (0xDB14) reads as its literal.
+static void PortInitSpacePirateData(CSpacePirateData& data, const SLdrSpacePirate& sldrThis) {
+  data.mAggressiveness = sldrThis.aggressiveness;       // 0x10AB0 stfs f1, 0x0
+  data.mCoverCheck = sldrThis.coverCheck;               // 0x10ABC stfs f2, 0x4
+  data.mSearchRadius = sldrThis.searchRadius;           // 0x10AC4 stfs f3, 0x8
+  data.mFallBackCheck = sldrThis.fallBackCheck;         // 0x10ACC stfs f4, 0xc
+  data.mFallBackRadius = sldrThis.fallBackRadius;       // 0x10AD4 stfs f5, 0x10
+  data.mHearingRadius = sldrThis.hearingRadius;         // 0x10ADC stfs f6, 0x14
+  data.mFlags = sldrThis.flags;                         // 0x10AE4 stw r4, 0x18
+  data.mUnknownCe670970 = sldrThis.unknown_0xce670970;  // 0x10AF0 stb r5, 0x1c
+  data.mProjectile = sldrThis.projectile;               // 0x10AF8 stw r6, 0x20
+  data.mProjectileDamage = LdrToDamageInfo(sldrThis.projectileDamage); // 0x10B00-0x10B40 0x24..0x3e
+  data.mProjectileSfx = static_cast< ushort >(sldrThis.sound_Projectile); // 0x10B48 sth r8, 0x40
+  data.mBladeDamage = LdrToDamageInfo(sldrThis.bladeDamage); // 0x10B4C-0x10B6C 0x44..0x5e
+  data.mKneelAttackChance = sldrThis.kneelAttackChance; // 0x10B70 stfs f7, 0x60
+  data.mKneelAttackShot = sldrThis.kneelAttackShot;     // 0x10B74 stw r10, 0x64
+  data.mKneelAttackDamage = LdrToDamageInfo(sldrThis.kneelAttackDamage); // 0x10B7C-0x10BBC 0x68..0x82
+  data.mDodgeCheck = sldrThis.dodgeCheck;               // 0x10BC0 stfs f8, 0x84
+  data.mImpactSfx = static_cast< ushort >(sldrThis.sound_Impact); // 0x10BC4 sth 0x88
+  data.mIntraBurstTime = sldrThis.intraBurstShotTime;   // 0x10BC8 stfs 0x8c
+  data.mIntraBurstVariation = sldrThis.intraBurstShotVariation; // 0x10BCC stfs 0x90
+  data.mIngIntraBurstTime = sldrThis.unknown_0x5080162a;       // 0x10BD0 stfs 0x94
+  data.mIngIntraBurstVariation = sldrThis.unknown_0xc78b40e0;  // 0x10BD4 stfs 0x98
+  data.mAlertSfx = static_cast< ushort >(sldrThis.sound_Alert); // 0x10BD8 sth 0x9c
+  data.mGunTrackDelay = sldrThis.gunTrackDelay;         // 0x10BDC stfs 0xa0
+  data.mFirstBurstCount = static_cast< uint >(sldrThis.unknown_0x1b454a27); // 0x10BE0 stw 0xa4
+  data.mCloakOpacity = sldrThis.cloakOpacity;           // 0x10BE4 stfs 0xa8
+  data.mMaxCloakOpacity = sldrThis.maxCloakOpacity;     // 0x10BE8 stfs 0xac
+  data.mBreakDodgeMinTime = sldrThis.breakDodgeMinTime; // 0x10BEC stfs 0xb0
+  data.mBreakDodgeMaxTime = sldrThis.breakDodgeMaxTime; // 0x10BF0 stfs 0xb4
+  data.mHurledSfx = static_cast< ushort >(sldrThis.sound_Hurled); // 0x10BF4 sth 0xb8
+  data.mDeathSfx = static_cast< ushort >(sldrThis.sound_Death);   // 0x10BF8 sth 0xba
+  data.mAvoidDistance = sldrThis.avoidDistance;         // 0x10C00 stfs 0xc0 (loader stack 0xC28)
+}
+
+// @ fn_72_10C64
+// The launcher block (data +0xc8): the equipped weapon (0x10C80 stw r4, 0x0), the launcher model
+// (0x10C90 stw r5, 0x4), the bouncy-grenade data copied in (0x10CA8 fn_72_10954, a copy
+// constructor), the grenade count (0x10CAC stw r7, 0x58) and four floats (0x10CB4-0x10CC0).
+// The loader's arguments (fn_72_140 0x8D4-0x8F4) come from the weapon data in property order:
+// 0xC2C equipped weapon, 0xC30 launcher, 0xC34 count, f1/f2 = 0xC64/0xC68 the launch speeds,
+// f3/f4 = 0xC38/0xC3C the attack distances. The grenade data itself is fn_72_C0C (the host's
+// CBouncyGrenadeData constructor, CBouncyGrenade.hpp), built from the loader's 0x828-0x8D0: mass
+// 0xC5C, speed 0xC60, the damage 0xC40, bounces 0xC6C, the explosion 0xC50 twice, trail 0xC58,
+// effect 0xC54, the sfx 0xC70/0xC74, and the constants 0.1 (rodata B3C, 0x84C `addi r9`) and
+// 150 (rodata B40, 0x844 `addi r8`) loaded as f3/f5 and f4/f6 (0x874-0x890) for +0x3c..+0x48.
+static void PortInitLauncherBlock(CSpacePirateData& data, const SLdrSpacePirateWeaponData& weapon) {
+  data.mEquippedWeapon = static_cast< uint >(weapon.equippedWeapon); // block +0x00
+  data.mGrenadeLauncher = weapon.grenadeLauncher;                    // block +0x04
+  data.mGrenadeMass = weapon.grenadeMass;                            // grenade +0x00 (0xC0C f1)
+  data.mGrenadeSpeed = weapon.unknown_0xed086ce0;                    // grenade +0x04 (0xC14 f2)
+  data.mGrenadeDamage = LdrToDamageInfo(weapon.grenadeDamage);       // grenade +0x08..0x22
+  data.mGrenadeNumBounces = static_cast< uint >(weapon.grenadeNumBounces); // grenade +0x24 (r5)
+  data.mGrenadeExplosion = weapon.grenadeExplosion;                  // grenade +0x28/+0x2c (r6/r7)
+  data.mGrenadeTrail = weapon.grenadeTrail;                          // grenade +0x30 (r8 = 0xC58)
+  data.mGrenadeEffect = weapon.grenadeEffect;                        // grenade +0x34 (r9 = 0xC54)
+  data.mGrenadeBounceSfx = static_cast< ushort >(weapon.sound_GrenadeBounce);   // grenade +0x38
+  data.mGrenadeExplodeSfx = static_cast< ushort >(weapon.sound_GrenadeExplode); // grenade +0x3a
+  data.mGrenadeSfxFalloff = 0.1f;  // grenade +0x3c = f3 = rodata B3C (0x880 lfs f3, 0x0(r9))
+  data.mGrenadeSfxMaxDist = 150.f; // grenade +0x40 = f4 = rodata B40 (0x874 lfs f4, 0x0(r8))
+  data.mGrenadeX44 = 0.1f;         // grenade +0x44 = f5 (0x890 fmr f5, f3)
+  data.mGrenadeX48 = 150.f;        // grenade +0x48 = f6 (0x884 fmr f6, f4)
+  data.mGrenadeX4c = true;         // grenade +0x4c bit 0x80 (0x85C li r10, 1; 0x8B0 stw r10, 0xc)
+  data.mGrenadeCount = weapon.unknown_0xa95a025b;              // 0x10CAC stw r7, 0x58
+  data.mGrenadeMinLaunchSpeed = weapon.grenadeMinLaunchSpeed;  // 0x10CB4 stfs f28 (f1), 0x5c
+  data.mGrenadeMaxLaunchSpeed = weapon.grenadeMaxLaunchSpeed;  // 0x10CB8 stfs f29 (f2), 0x60
+  data.mGrenadeMinAttackDist = weapon.grenadeMinAttackDist;    // 0x10CBC stfs f30 (f3), 0x64
+  data.mGrenadeMaxAttackDist = weapon.grenadeMaxAttackDist;    // 0x10CC0 stfs f31 (f4), 0x68
+}
+
 // Retail fn_72_140. Property ids and order are the generated SLdrSpacePirate reader's, which the
 // analysis checked against the REL id by id.
+// Coverage (sp20, 2026-10-22): every arm but `!modelData` (retail 0x7A4, an empty optional when the
+// ANCS is invalid) ran; no shipped placement has one, so that arm is data-dead. Retail's null check
+// after `new` (0xAE0) has no host arm (the host's allocator does not return null).
+// @ fn_72_140
 static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSpacePirate sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSpacePirate.inc"
@@ -1789,62 +1883,11 @@ static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEn
     return nullptr;
   }
 
+  // 0x828-0x8F8: the bouncy-grenade data (the weapon data's damage at 0xC40, then fn_72_C0C) and
+  // the launcher block (fn_72_10C64); 0xABC: fn_72_10A10 takes the rest of the properties.
   CSpacePirateData data;
-  data.mAggressiveness = sldrThis.aggressiveness;
-  data.mCoverCheck = sldrThis.coverCheck;
-  data.mSearchRadius = sldrThis.searchRadius;
-  data.mFallBackCheck = sldrThis.fallBackCheck;
-  data.mFallBackRadius = sldrThis.fallBackRadius;
-  data.mHearingRadius = sldrThis.hearingRadius;
-  data.mFlags = sldrThis.flags;
-  data.mUnknownCe670970 = sldrThis.unknown_0xce670970;
-  data.mProjectile = sldrThis.projectile;
-  data.mProjectileDamage = LdrToDamageInfo(sldrThis.projectileDamage);
-  data.mProjectileSfx = static_cast< ushort >(sldrThis.sound_Projectile);
-  data.mBladeDamage = LdrToDamageInfo(sldrThis.bladeDamage);
-  data.mKneelAttackChance = sldrThis.kneelAttackChance;
-  data.mKneelAttackShot = sldrThis.kneelAttackShot;
-  data.mKneelAttackDamage = LdrToDamageInfo(sldrThis.kneelAttackDamage);
-  data.mDodgeCheck = sldrThis.dodgeCheck;
-  data.mImpactSfx = static_cast< ushort >(sldrThis.sound_Impact);
-  data.mIntraBurstTime = sldrThis.intraBurstShotTime;
-  data.mIntraBurstVariation = sldrThis.intraBurstShotVariation;
-  data.mIngIntraBurstTime = sldrThis.unknown_0x5080162a;
-  data.mIngIntraBurstVariation = sldrThis.unknown_0xc78b40e0;
-  data.mAlertSfx = static_cast< ushort >(sldrThis.sound_Alert);
-  data.mGunTrackDelay = sldrThis.gunTrackDelay;
-  data.mFirstBurstCount = static_cast< uint >(sldrThis.unknown_0x1b454a27);
-  data.mCloakOpacity = sldrThis.cloakOpacity;
-  data.mMaxCloakOpacity = sldrThis.maxCloakOpacity;
-  data.mBreakDodgeMinTime = sldrThis.breakDodgeMinTime;
-  data.mBreakDodgeMaxTime = sldrThis.breakDodgeMaxTime;
-  data.mHurledSfx = static_cast< ushort >(sldrThis.sound_Hurled);
-  data.mDeathSfx = static_cast< ushort >(sldrThis.sound_Death);
-  data.mAvoidDistance = sldrThis.avoidDistance;
-  data.mEquippedWeapon = static_cast< uint >(sldrThis.weaponData.equippedWeapon);
-  data.mGrenadeLauncher = sldrThis.weaponData.grenadeLauncher;
-  data.mGrenadeMinAttackDist = sldrThis.weaponData.grenadeMinAttackDist;
-  data.mGrenadeMaxAttackDist = sldrThis.weaponData.grenadeMaxAttackDist;
-  // fn_72_140 builds the bouncy-grenade data (fn_72_C0C) from the same weapon data, then the launcher
-  // block (fn_72_10C64). Retail passes the explosion gen id in both of the first two slots (the asm
-  // reloads the same property) and reuses the attack distances as the explode-sfx falloff/max-dist.
-  data.mGrenadeMass = sldrThis.weaponData.grenadeMass;
-  data.mGrenadeSpeed = sldrThis.weaponData.unknown_0xed086ce0;
-  data.mGrenadeDamage = LdrToDamageInfo(sldrThis.weaponData.grenadeDamage);
-  data.mGrenadeNumBounces = static_cast< uint >(sldrThis.weaponData.grenadeNumBounces);
-  data.mGrenadeExplosion = sldrThis.weaponData.grenadeExplosion;
-  data.mGrenadeTrail = sldrThis.weaponData.grenadeTrail;
-  data.mGrenadeEffect = sldrThis.weaponData.grenadeEffect;
-  data.mGrenadeBounceSfx = static_cast< ushort >(sldrThis.weaponData.sound_GrenadeBounce);
-  data.mGrenadeExplodeSfx = static_cast< ushort >(sldrThis.weaponData.sound_GrenadeExplode);
-  data.mGrenadeSfxFalloff = sldrThis.weaponData.grenadeMinAttackDist;
-  data.mGrenadeSfxMaxDist = sldrThis.weaponData.grenadeMaxAttackDist;
-  data.mGrenadeX44 = 0.1f;
-  data.mGrenadeX48 = 150.f;
-  data.mGrenadeX4c = true;
-  data.mGrenadeCount = sldrThis.weaponData.unknown_0xa95a025b;
-  data.mGrenadeMinLaunchSpeed = sldrThis.weaponData.grenadeMinLaunchSpeed;
-  data.mGrenadeMaxLaunchSpeed = sldrThis.weaponData.grenadeMaxLaunchSpeed;
+  PortInitSpacePirateData(data, sldrThis);
+  PortInitLauncherBlock(data, sldrThis.weaponData);
 
   return rs_new CSpacePirate(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                              LdrToEntityInfo(info, sldrThis.editorProperties),
@@ -1856,14 +1899,22 @@ static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEn
 
 static SSpacePirate_FuncPtrs REL_loader_SpacePirate;
 
-// Retail's RELMain calls fn_72_D4, which fills the table the same way and registers it with the
-// DOL's SetSSpacePirate_FuncPtrs. The PMFs point at the Port* bodies: AttachActorToPirate and
-// DetachActorFromPirate are the proxies that call through this very table.
-void RELMain() {
+// @ fn_72_D4
+// Fills the module's table (bss_24): the loader (0xFC stwu fn_72_140), the attach PMF (data_8C0,
+// 0x114-0x11C) and the detach PMF (data_8CC, 0x120-0x128), then registers it with the DOL's
+// SetSSpacePirate_FuncPtrs (0x12C fn_80200E3C). The PMFs point at the Port* bodies:
+// AttachActorToPirate and DetachActorFromPirate are the proxies that call through this table.
+static void PortRegisterSpacePirateFuncPtrs() {
   REL_loader_SpacePirate.mLoadSpacePirate = PortLoadSpacePirate;
   REL_loader_SpacePirate.mAttachActor = &CSpacePirate::PortAttachActor;
   REL_loader_SpacePirate.mDetachActor = &CSpacePirate::PortDetachActor;
   SetSSpacePirate_FuncPtrs(&REL_loader_SpacePirate);
 }
 
+// @ fn_72_B4
+// The module's entry: fn_72_D4 (0xC0) and nothing else.
+void RELMain() { PortRegisterSpacePirateFuncPtrs(); }
+
+// @ fn_72_90
+// The module's exit: SetSSpacePirate_FuncPtrs(nullptr) (0x98 li r3, 0; 0xA0 fn_80200E3C).
 void RELExit() { SetSSpacePirate_FuncPtrs(nullptr); }

@@ -1144,8 +1144,7 @@ void CSpacePirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
     mBoneTracking.SetActive(false);
-    // Retail calls fn_72_E314(this, mgr, 0) here, which is an empty function (0xe314..0xe318 is a
-    // bare blr), so there is nothing to port.
+    EmptyE314(mgr, false); // 0x5C6C fn_72_E314(this, mgr, 0), a bare blr
     SquadReset(mgr); // fn_72_DEDC
     break;
   case kStateMsg_Update:

@@ -276,6 +276,7 @@ private:
   void SetNonCinematicCollision(CStateManager& mgr);     // C9DC
   bool FireProjectile(float dt, CStateManager& mgr);     // 45F8
   void SquadReset(CStateManager& mgr);                   // DEDC
+  void EmptyE314(CStateManager& mgr, bool flag);         // E314 (empty)
   TUniqueId ChooseTarget(CStateManager& mgr);            // EDEC
   TUniqueId ChooseTeamTarget(CStateManager& mgr);        // EFD4
   void UpdateTeamTarget(CStateManager& mgr);             // DE5C

@@ -35,6 +35,11 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   numbering (bit N = value bit 31-N): `extrwi r0,r0,1,27` is 0x10.
 - `fcmpo` + `cror eq,lt,eq` is `<=`; `cror eq,gt,eq` is `>=`. `mfcr; extrwi r3,r0,1,1` is GT,
   `1,0` LT, `1,2` EQ.
+- NaN: `fcmpo` on a NaN sets only the unordered bit, so `ble`/`bge`/`bne` (branch if GT/LT/EQ
+  clear) are **taken** and `blt`/`bgt`/`beq` are not. Plain C already matches: `if (a > b)` is
+  `fcmpo; ble skip`, `if (a <= b)` is `cror eq,lt,eq; bne skip`. So `!(a <= b)` is NOT `a > b`:
+  rewrite a compare only when the asm shape differs (a plain `ble` needs `<`/`>`, a `cror` needs
+  `<=`/`>=`). `tools/retail_diff.py --kinds nan` lists suspects.
 - `cntlzw; li 1; rlwnm` (or `srwi 5`) tests == 0, but `rlwnm` rotates by the count's low 5
   bits only, so check what a negative value gives.
 - `mulhw` divides signed; `mulhwu` unsigned. `subfc/adde` and `slwi` pairs are MWCC compare
