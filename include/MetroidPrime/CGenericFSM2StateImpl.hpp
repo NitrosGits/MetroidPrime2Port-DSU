@@ -378,6 +378,30 @@ void CGenericFSM2State< T >::ExitActive(CStateManager& mgr, T& owner) {
 
 #ifdef TARGET_PC
 template < class T >
+void CGenericFSM2State< T >::PortCollectStateNames(rstl::vector< rstl::string >& out,
+                                                   int maxDepth) const {
+  if (mMachine == nullptr) {  // the asset is missing until the machine is set up
+    return;
+  }
+  for (const CState2State& state : mMachine->GetStates()) {
+    out.push_back(state.GetName());
+  }
+  // The owner's own table (the port registers the module's states under the retail's names).
+  for (int i = 0; i < mPortStateFunctionCount; ++i) {
+    out.push_back(rstl::string(mPortStateFunctions[i].mName));
+  }
+  if (maxDepth <= 0) {
+    return;
+  }
+  for (int i = 0; i < mSubMachines.size(); ++i) {
+    CGenericFSM2State< T >* sub = mSubMachines[i].mMachine.GetPtr();
+    if (sub != nullptr) {  // a sub-machine without a machine has no states
+      sub->PortCollectStateNames(out, maxDepth - 1);
+    }
+  }
+}
+
+template < class T >
 int CGenericFSM2State< T >::PortFindStateDepth(const rstl::string& name, int maxDepth) const {
   if (mMachine == nullptr) {
     return -1;

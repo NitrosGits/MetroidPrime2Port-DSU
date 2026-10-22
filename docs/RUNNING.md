@@ -58,7 +58,12 @@ took 7.4 s at 8 vs 26 s capped (2026-10-21). `MP2_FRAMES` still counts ticks. Co
 `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines `@f<n> <cmd>` (after game
 update n, polled with `frame`; a few updates late at high tick counts) or `@<secs> <cmd>`.
 Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`; a state in
-an FSM2 sub-machine is entered through it, and the reply names the machine), `place`,
+an FSM2 sub-machine is entered through it, and the reply names the machine; a name the machine does
+not have is reported as `unknown state 'X'; valid names: ...` with the names it has - the actor's
+own states and, for an FSM2, the states of its sub-machines - a state that was entered and left
+at once (the machine is back where it was) says `entered and left at once; now X`, and an actor
+whose machine was never set up (it was not created yet) says `the actor has no state machine state
+(is it active?)`), `place`,
 `send`, `damage` (direct, no projectile; also the combos `darkburst`/`sunburst`/`sonicboom` and
 `powerbomb`, which knockback rule sets tell apart) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
 from d units, travelling along dir, for modules that only count projectile hits on a joint).
