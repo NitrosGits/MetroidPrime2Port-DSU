@@ -1,7 +1,5 @@
 // Host body for the SandBoss REL (module 55, Amorbis): the attack helpers and the charge-beam
-// projectile. The stampede helpers and the charge-beam list (fn_55_26C0..fn_55_311C) follow retail
-// (`// fn_55_X (ported, not exercised yet)`); every other function here is still a log-once stand-in
-// (bool helpers return false, the rest do nothing).
+// projectile. Every body follows retail and carries its `// @ fn_55_X` marker.
 // docs/module-analysis/SandBoss.md section 4 is the function map.
 #include "MetroidPrime/Enemies/CSandBoss.hpp"
 

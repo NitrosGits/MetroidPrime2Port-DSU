@@ -1,8 +1,6 @@
 // Host body for the SandBoss REL (module 55, Amorbis): the FSM triggers, states and code functions
 // (lbl_55_data_100 / lbl_55_data_340 / lbl_55_data_5AC, registered by fn_55_CAA4 in
-// PortCSandBoss.cpp). Functions marked `// @ fn_55_X` were checked against retail's behaviour;
-// `// fn_55_X (ported, not exercised yet)` follows the retail pseudocode but has not run in game;
-// the rest are log-once stand-ins (triggers return false, states and codes do nothing).
+// PortCSandBoss.cpp). Every function here follows retail and carries its `// @ fn_55_X` marker.
 // docs/module-analysis/SandBoss.md section 4 is the function map.
 #include "MetroidPrime/Enemies/CSandBoss.hpp"
 

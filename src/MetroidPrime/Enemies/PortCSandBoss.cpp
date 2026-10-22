@@ -207,7 +207,8 @@ CEntity* CSandBoss::TypesMatch(int typeId) const {
 // ---------------------------------------------------------------------------------------------
 // One-line accessors at the head of .text.
 
-// fn_55_0 (ported, not exercised yet)
+// @ fn_55_0
+// 0x0 li r3, 0x1: true (CScanDisplay asks it while the scan visor targets the worm).
 bool CSandBoss::IsScanVisorSelfRender() const { return true; }
 
 // @ fn_55_8
@@ -237,8 +238,8 @@ TUniqueId CSandBoss::GetAttackTarget() const { return kInvalidUniqueId; }
 // fn_55_8C (ported, not exercised yet)
 // IsOnGround: the REL's body is the DOL's own CPatterned::IsOnGround
 // (IsOnGround__10CPatternedCFv, the three instructions at the head of CPatterned.s) copied
-// verbatim - `lbz r0, 0x34c(r3); extrwi r3, r0, 1, 28` - so it reads bit 28 of the word at
-// 0x34C (bit 4 of the byte; the earlier "bit 3 of the byte" reading was off by one). The DOL's
+// verbatim - `lbz r0, 0x34c(r3); extrwi r3, r0, 1, 28` (0x8C, 0x90) - so it reads mask 0x08 of
+// the byte at 0x34C (PPC bit 28 of the zero-extended register: (byte >> 3) & 1). The DOL's
 // CPatterned::AcceptScriptMsg sets that bit in its kSM_Landed branch (the one next to the
 // zeroed momentum and the added ground-collider material) and clears it in its kSM_OffGround
 // branch, and the DOL's Landed trigger reads the same bit. The host's CPatterned::mOnGround is
