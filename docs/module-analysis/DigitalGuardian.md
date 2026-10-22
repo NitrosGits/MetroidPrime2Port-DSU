@@ -1903,3 +1903,31 @@ Left unmarked:
 | 9A60 9638 9A0C 768C | all | natural + forced (var dg.knee, dg.face*, send head Delete) | ALL-ARMS |
 | 9A9C 966C 7600 | no branches | codecall / trigcall | ran |
 | A004 | DisableDestinationAlpha tail | natural (msgs.con) | ALL-ARMS (confirms dg28) |
+
+## 2026-10-22: render/beacon and knee armour marks (dg30); gcov runs dg30 fa/fb/fc + r1..r3
+
+- Specs/drivers: `tools/cov/specs/digitalguardian_dg30_{models,beacon,knees}.py`,
+  `tools/drivers/dg30_beacon.py <port> a|b`, `tools/drivers/dg30_knees.py <port>` (run lines
+  in the spec headers). The beacon (2CC4) only updates in Crippled: the driver uses
+  `fsm CrippledReaction` then `fsm Crippled`. Knee flags: `send <body> InternalMessage1..8`
+  (IM01..IM08; the console names them InternalMessageN); a knee hit is `send <knee> Damage`
+  (`hurt` does nothing: knees have no health info).
+- Marked: 1994 17DC 1700 2578 2A28 6864 A3D4 9DFC (0a680b443); knee CF94 (Think), CE94
+  (SetArmored), CE1C, D774, D460.
+- Dead arms (proofs in the comments): 2578's callers all test 0x1238 first; knee Think's touch box
+  engaged test and HasModelData false arms; D774's empty arm.
+- Not marked: D7BC GetDamageVulnerability (no run calls it: knees have no health, so
+  `ApplyDamage` never asks; a projectile hit would); 3DA8 and 3A44's knee-null arm (an id set to
+  an empty slot still resolved non-null in the run; not understood, left); 18B4 (1171 untaken);
+  D320's unarmoured Create arm (dead: fn_14_4080 passes vulnerable = 0, the li at 0x4220 stored
+  at 0x4234, but D320 was already marked); the echo-target rows (19A08..1ABD8) not attempted.
+- Gotcha: knee 2 never opens after the vortex calls (0x128C's 0x20 is set), so the driver does
+  the knee-2 cycle first. Rebuilding build-port-cov makes older runs' gcda stamp-mismatch.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 6864 | five model ids unset | forced (dg30_models) | ALL-ARMS |
+| 17DC 2A28 28D0-emitter | 0x123C null | forced (dg30_beacon: D664 id unset) | ran |
+| A3D4 | mDrawParticles clear | forced (dg30_beacon, skip 40) | ALL-ARMS |
+| CF94 CE94 | handle set / none, knee unarmoured, hit flash, emitter null | forced (dg30_knees) + natural | ALL-ARMS bar the dead ones |
+| CE1C | orbitable both ways | codecall SetVortexAttackMode, ExitVortexAttack→Idle | ALL-ARMS |
