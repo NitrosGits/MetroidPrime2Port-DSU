@@ -70,6 +70,12 @@ public:
   virtual float GetTime() const = 0;
   virtual float GetDelay() const = 0;
   virtual void SetDelay(float delay) = 0;
+#ifdef TARGET_PC
+  // Port console (`fsm`): the names of the states this machine can enter - its own and, for an
+  // FSM2, the states of its sub-machines.  Virtual, so the console never has to read a derived
+  // member through a cast (the machine behind the base is either class).
+  virtual void PortCollectStateNames(rstl::vector< rstl::string >& out, int maxDepth) const {}
+#endif
 };
 
 // Guessed name. The target shares dispatch code across owners; template ownership is unverified.
@@ -111,6 +117,9 @@ public:
   void SetCodeTrigger() { mCodeTrigger = true; }
   const CState* GetState() const { return mState; }
 #ifdef TARGET_PC
+  // Port console (`fsm`): the names of the states this machine holds, so an unknown name can be
+  // reported with the list of the valid ones.
+  void PortCollectStateNames(rstl::vector< rstl::string >& out, int maxDepth) const override;
   // Port console (`statecall`/`trigcall`): the function the owner's table gave under `name`,
   // whether or not the machine has a state or trigger of that name. Same as CGenericFSM2State's.
   StateFunc PortFindStateFunction(const char* name) const {
@@ -163,6 +172,22 @@ template < class T >
 int TStateMachineState< T >::GetType() const {
   return 0;
 }
+
+#ifdef TARGET_PC
+template < class T >
+void TStateMachineState< T >::PortCollectStateNames(rstl::vector< rstl::string >& out,
+                                                   int maxDepth) const {
+  if (mMachine != nullptr) {  // the asset is missing until the machine is set up
+    for (const CState& state : mMachine->GetStateVector()) {
+      out.push_back(rstl::string(state.GetName()));
+    }
+  }
+  // The owner's own table (the port registers the module's states under the retail's names).
+  for (int i = 0; i < mPortStateFunctionCount; ++i) {
+    out.push_back(rstl::string(mPortStateFunctions[i].mName));
+  }
+}
+#endif
 
 template < class T >
 void TStateMachineState< T >::Setup(const CStateMachine* machine) {

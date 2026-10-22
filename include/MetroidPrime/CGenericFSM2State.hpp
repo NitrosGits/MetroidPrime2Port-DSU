@@ -43,6 +43,9 @@ public:
   void SetTriggerFunction(const rstl::string& name, TriggerFunc function);
   void SetCodeFunction(const rstl::string& name, CodeFunc function);
 #ifdef TARGET_PC
+  // Port console (`fsm`): the names of the states this machine can enter - its own and, depth
+  // first, the states of its sub-machines (the ones PortSetStateDeep reaches).
+  void PortCollectStateNames(rstl::vector< rstl::string >& out, int maxDepth) const override;
   // Port console (`fsm`): the depth of the first machine (this one 0, its sub-machines 1, ...)
   // whose own states hold `name`, or -1. PortSetStateDeep enters it the way a transition into a
   // sub-machine does, filling path[0..depth) with the sub-machine names it went through.
