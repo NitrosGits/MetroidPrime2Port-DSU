@@ -261,7 +261,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xE5B8	0x18	CSplitter	-	virtual	B	lbl_75_data_600+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E5B8
 0xE5D0	0x50	CSplitter	-	virtual	B	lbl_75_data_5F4+8	marked	marked	fn_75_E5D0
 0xE620	0xC	CSplitter	-	virtual	B	lbl_75_data_5E8+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E620
-0xE62C	0x20	CSplitter	-	virtual	B	lbl_75_data_5DC+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E62C
+0xE62C	0x20	CSplitter	-	virtual	T	lbl_75_data_5DC+8	IsIntact trigger (FSM2 table lbl_75_data_5DC+8) [T: no shipped FSM2 asks this trigger (disc scan of every FSM2); the body is HasHead fn_75_E58C's, ported as IsIntact]	not-port	fn_75_E62C
 0xE64C	0x14	CSplitter	-	virtual	H	lbl_75_data_5D0+8	same body in 6 other modules (CommandoPirate,Ing,IngBoostBallGuardian)	not-port	fn_75_E64C
 0xE660	0x2C	CSplitter	-	func	B	-	marked	marked	fn_75_E660
 0xE68C	0x58	CSplitter	-	func	B	fn_75_3BEC fn_75_4138	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_E68C

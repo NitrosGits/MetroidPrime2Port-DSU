@@ -2008,33 +2008,25 @@ bool CSplitterCommandModule::InHoverRange(CStateManager& mgr, const CTriggerData
   return distSq <= range * range;
 }
 
-// fn_75_6490 (0xBC) - the command module's Think. The body follows the retail's: the
-// active gate, the base's Think, the collision actor manager's update and the module's
-// own six calls in order (their sizes are in the table in
-// docs/module-analysis/Splitter.md). Five of the six are over 0x80 and each is a once-logging
-// shell here; fn_75_1188 (the beam-effect spawner) is ported, so this function carries no port
-// marker yet.
-// vtable slot 0x14 (0xBC). The active gate (the byte at 0x20, 0x64B4 lbz and 0x64B8 extrwi bit 24 -
-// the byte's 0x80), CPatterned::Think (0x64C0), the collision actor manager's update (the manager at
+// vtable slot 0x14 = fn_75_6490 (0xBC), the command module's Think. The active gate (the byte at
+// 0x20, 0x64B4 lbz and 0x64B8 extrwi bit 24 - the byte's 0x80), CPatterned::Think (0x64C0), the collision actor manager's update (the manager at
 // 0xE58, 0x64C8 lwz; the update options 0 at 0x64D0, which is kUO_ObjectSpace; 0x64D4 the update)
 // and then the module's own six per-frame calls in order: fn_75_31A8 (0x64E0, 0x14C), fn_75_32F4
 // (0x64F0, 0x16C), fn_75_3004 (0x64FC, 0x1A4), fn_75_184C (0x650C, 0x128), fn_75_1188 (0x651C, 0x344)
-// and fn_75_21FC (0x652C, 0x84). Five of them are over 0x80 and belong to the line-of-sight
-// tracker and the derived state, so they stay named once-logging shells that return neutral
-// values; fn_75_1188 is ported (PortSpawnBeamEffect).
+// and fn_75_21FC (0x652C, 0x84): PortUpdateChassis, PortUpdateFlashAndDeath, PortUpdateCollision,
+// PortLookAtTarget, PortSpawnBeamEffect and PortAutoDestructTimer, every one ported and marked.
+// EnsureBodyActive is the port's Activate-before-Think guard (GOTCHAS), not retail code.
 void CSplitterCommandModule::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
-  // port limit: the retail builds the collision actor manager in its constructor, where it has
-  // no CStateManager to hand it, so the port creates it on the first Think instead.
-  if (mCollisionActorManager == nullptr) {
-    mCollisionActorManager = rs_new CCollisionActorManager(
-        mgr, GetUniqueId(), GetCurrentAreaId(), rstl::vector< CJointCollisionDescription >(), true);
+  // The retail has no null test (0x64C8 lwz → 0x64D4 bl): the manager is built at the XCRT
+  // message (fn_75_3460, 0x662C) before the first Think. The guard is host safety only.
+  if (mCollisionActorManager != nullptr) {
+    mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
-  mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   // The retail's state machine calls fn_75_3EEC (the docking) as its NotifyDocking code, so
   // the port runs it from there and not from the Think.
   PortUpdateChassis(mgr);
@@ -2243,7 +2235,8 @@ const CHealthInfo* CSplitterCommandModule::GetHealthInfo() const {
 }
 
 // vtable slot 0x40 = fn_75_616C: it returns the object's own copy of the base class's damage
-// vulnerability (the ctor copies it into 0xeac with fn_75_70A0).
+// vulnerability (the ctor copies it into 0xeac with fn_75_70A0): `addi r3, r3, 0xeac` (0x616C).
+// @ fn_75_616C
 const CDamageVulnerability* CSplitterCommandModule::GetDamageVulnerability() const {
   return &mOwnVulnerability;
 }

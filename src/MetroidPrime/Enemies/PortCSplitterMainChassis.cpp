@@ -329,6 +329,8 @@ bool CSplitterMainChassis::ShouldLaserSweep(CStateManager& mgr, const CTriggerDa
 // 0xBD44-0xBD98, lbl_75_rodata_3A8 0.5f, fcmpo with cror eq, gt, eq). Then the base's path
 // navigation (0x6F4) gets the destination (0xBDEC SetDestination) and its face target (0x718)
 // kInvalidUniqueId (0xBDF0-0xBE04), and the team join runs (0xBE08 fn_75_8DF8).
+// The retail reads the object's position without a cast (0xBCCC mr.); the port's CActor cast is
+// the same answer: 0xCC0's only writer is SelectTarget (fn_75_BE28, the player's id).
 void CSplitterMainChassis::SetTargetDest(CStateManager& mgr, float) {
   CVector3f dest = GetTranslation();
   mFlagsD40 &= ~0x20;
@@ -2030,9 +2032,11 @@ bool CSplitterMainChassis::PortAcceptHead(CStateManager& mgr, TUniqueId headId) 
 // (0xF118), the docking link (the partner id at 0xC68, 0xF11C lwz and 0xF120 cmplwi 0: with no
 // partner the retail looks for one, 0xF130 fn_75_A4E4, otherwise it updates the dock, 0xF144
 // fn_80135D84), the line-of-sight tracker (the tracker at 0xC70, 0xF154 fn_801F55F0) and the
-// module's own three calls (0xF164 fn_75_AFE8, 0xF174 fn_75_ACEC, 0xF180 fn_75_9520). The first
-// and the last are ported (PortUpdateTimers, PortUpdateFade); the middle one is over 0x80 and
-// stays a once-logging shell, so the function carries no port marker yet.
+// module's own three calls (0xF164 fn_75_AFE8, 0xF174 fn_75_ACEC, 0xF180 fn_75_9520): the
+// timers (PortUpdateTimers), the head placement (PortPlaceHead) and the fade (PortUpdateFade).
+// With no collision actor manager at 0xC68 the Think builds it (0xF130 fn_75_A4E4,
+// PortCreateCollisionActorManager) instead of updating it. Every callee is ported and marked.
+// EnsureBodyActive is the port's Activate-before-Think guard (GOTCHAS), not retail code.
 // vtable slot 0x14.
 void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
@@ -2040,10 +2044,7 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
-  if (mCollisionActorManager == nullptr) {
-    // port limit: the retail builds the collision actor manager in fn_75_A4E4 (0x418), which
-    // is one of the module's own functions; the port makes an empty one instead,
-    // as the command module does.
+  if (mCollisionActorManager == nullptr) {  // 0xF11C lwz 0xC68, 0xF120 cmplwi 0, 0xF124 bne
     PortCreateCollisionActorManager(mgr);
   } else {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
@@ -2475,7 +2476,9 @@ void CSplitterMainChassis::Render(const CStateManager& mgr) const { CPatterned::
 const CHealthInfo* CSplitterMainChassis::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
 // vtable slot 0x40 = fn_75_EF24: it returns the static pass-through vulnerability, so the body
-// cannot be damaged at all.
+// cannot be damaged at all: `bl fn_800DBB50` (0xEF30, CDamageVulnerability::PassThroughVulnerabilty)
+// in a stack frame, its r3 returned.
+// @ fn_75_EF24
 const CDamageVulnerability* CSplitterMainChassis::GetDamageVulnerability() const {
   return &CDamageVulnerability::PassThroughVulnerabilty();
 }
