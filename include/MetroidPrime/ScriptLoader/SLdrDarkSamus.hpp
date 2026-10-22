@@ -80,6 +80,7 @@ struct SLdrDarkSamus {
   CAssetId alternateScannableInfo;                        // 0xf60ac5cc
 };
 
+// @ fn_10_E23C
 inline SLdrDarkSamus::SLdrDarkSamus()
 : editorProperties()
 , patterned()
@@ -130,8 +131,14 @@ inline SLdrDarkSamus::SLdrDarkSamus()
   patterned.creatureSize = 1;
   unknown_0x72edeb7d = -1.0f;
   unknown_0x74fa22f0 = -1.0f;
+#ifdef TARGET_PC
+  // fn_10_E23C: the REL's sound defaults are -1 (0xE264: 0x300/0x304 at 0xE26C/0xE270).
+  glideSound = -1;
+  missileRicochetSound = -1;
+#else
   glideSound = 0;
   missileRicochetSound = 0;
+#endif
   startsInTheAir = false;
   unknown_0x2c6a3344 = 100.0f;
   diveAttackImpulseVertical = 40.0f;
@@ -142,12 +149,24 @@ inline SLdrDarkSamus::SLdrDarkSamus()
   unknown_0xc4a1a44e = 3;
   damageInterruptThreshold = 10.0f;
   unknown_0xf317f4d5 = 4.0f;
+#ifdef TARGET_PC
+  sweepBeamSound = -1; // fn_10_E23C (0xE2F8)
+#else
   sweepBeamSound = 0;
+#endif
   unknown_0x0ef8dc15 = -1;
+#ifdef TARGET_PC
+  // fn_10_E23C: -1 at 0xE328/0xE32C (0x408/0x40C), 0xE344 (0x430), 0xE350 (0x43C).
+  boostBallRollSound = -1;
+  boostBallHitPlayerSound = -1;
+  iceSpreadSound = -1;
+  sound = -1;
+#else
   boostBallRollSound = 0;
   boostBallHitPlayerSound = 0;
   iceSpreadSound = 0;
   sound = 0;
+#endif
   phazonProjectileDamage.dI_WeaponType = 11;
   phazonProjectileDamage.dI_Damage = 10.0f;
   phazonProjectileDamage.dI_Radius = 5.0f;

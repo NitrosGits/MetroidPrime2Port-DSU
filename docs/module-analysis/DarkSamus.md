@@ -2310,3 +2310,22 @@ platform casts and the dash arms of CollidedWith.
 | 150DC | no stage, double dash, stuck counts, FindBestCoverPoint -> 0xFFFF, PickDash -> 0 |
 | B6C4 | hint inactive / type 0 / chain true (radius 1e6); GetObjectById -> null |
 | C2B0 / C104 | gun forward (0,0,1); a stale end sfx handle; mSweepBeamPart 0 |
+
+## Slice ds44 (2026-10-22)
+
+- E23C = inline `SLdrDarkSamus()` (SLdrDarkSamus.hpp). Field map vs retail: all match except seven sound
+  defaults the REL sets to -1 (`li r0,-0x1` at 0xE264/0xE2EC/0xE314/0xE338; stores 0x300/0x304 at
+  0xE26C/0xE270, 0x3D0 at 0xE2F8, 0x408/0x40C at 0xE328/0xE32C, 0x430 at 0xE344, 0x43C at 0xE350).
+  Fixed in a TARGET_PC block, marked. Editor 0x38=3, patterned +0x4C=2.0, +0x230=1 already match the sub-ctors.
+- 1EF38 = CDarkSamus deleting dtor -> H (RAII owners; swooshes deleted in ~CDarkSamus).
+- Read against the asm, no differences: B86C, 12F60, B164, C470, 1905C, 1D9A4. Not marked: live arms
+  still untaken (forced ds43 run gcov). B164 `0.f > value` (Fsm.cpp ~1723) is dead: gated by `value > 0`
+  at 0xB2C8 (retail arm 0xB2E8). Arms left to force:
+  - B86C: non-hint start; type != 0x11; exit via null next (hint with no hint arrivals); inactive arrived hint.
+  - 12F60: scatter uid not a CScattershotProjectile; chance > 1.
+  - B164: FindBoostBallHint null; FindArrivedHint null; valueParm <= 0; mBoostHintUid invalid / stale.
+  - C470: hit while mSweepBeamOn; decal token valid/invalid (CCollisionResponseData::mDecalTokens.at(1)).
+  - 1905C: DS xy == player xy; valid ray hits (ForceRet RayWorldIntersection sret; dist > 9 for the 2 result).
+  - 1D9A4: invalid uid; repulsor inactive/other area/repel-player/cylinder; strength null; path area null; obstruction > 0.
+  - CA0C: Update with mSweepBeamOn, sfx valid; Deactivate with emitters set. Asm not yet compared.
+- Not started: 1707C, 1C99C, 19B64, 154FC, 1FA14, CEB4.

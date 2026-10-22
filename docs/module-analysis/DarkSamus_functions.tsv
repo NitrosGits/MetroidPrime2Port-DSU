@@ -190,7 +190,7 @@ offset	size	class	kind	name	callers	marked	state
 0xE060	0x64	H	host-copy	fn_10_E060	0	no	
 0xE0C4	0x60	H	host-copy	fn_10_E0C4	0	no	
 0xE124	0x118	H	host-copy	fn_10_E124	2	no	ds43: CDarkSamusData dtor = its SLdr* member dtors; host members
-0xE23C	0x2A0	B	method	fn_10_E23C	1	no	
+0xE23C	0x2A0	B	method	fn_10_E23C	1	yes	ds44: inline SLdrDarkSamus ctor (SLdrDarkSamus.hpp); 7 sound defaults fixed to -1
 0xE4DC	0x84	H	host-copy	fn_10_E4DC	1	no	ds42: CDarkSamus dtor member 0xCD0: CDamageVulnerability +4, optional token +0x34 (valid 0x40)
 0xE560	0x178	H	host-copy	fn_10_E560	1	no	ds43: record 0xCD0 ctor; fields match except the PhazonIndirectTexture token 0xD04 (valid 0xD10), never read: only 0x1FED8 ctor / 0x1F0D0 dtor take 0xCD0
 0xE6D8	0x58	H	host-copy	fn_10_E6D8	0	no	
@@ -452,7 +452,7 @@ offset	size	class	kind	name	callers	marked	state
 0x1E864	0x38	B	method	fn_10_1E864	1	yes	
 0x1E89C	0x5B0	B	virtual	fn_10_1E89C	0	yes	
 0x1EE4C	0xEC	B	method	fn_10_1EE4C	1	yes	
-0x1EF38	0x300	B	dtor	fn_10_1EF38	0	no	
+0x1EF38	0x300	H	dtor	fn_10_1EF38	0	no	ds44: CDarkSamus deleting dtor; every freed resource has an RAII host owner, swooshes deleted in ~CDarkSamus (PortCDarkSamus.cpp:293)
 0x1F238	0x1E4	H	host-copy	fn_10_1F238	1	no	ds43: inlined ~CPatterned/~CAi member dtors
 0x1F41C	0x94	H	host-copy	fn_10_1F41C	1	no	ds42: CPatterned 0x620 knockback-manager member dtor from 1F238 (vtables 0x803B6A40/0x803B6A80, ~CToken +4)
 0x1F4B0	0x84	H	host-copy	fn_10_1F4B0	1	no	ds42: CDarkSamus dtor member 0x9A4: the melee tokens +0x20/+0x2C (mMeleeAttackFXToken/mMeleePartToken)
