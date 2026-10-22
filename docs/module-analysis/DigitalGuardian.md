@@ -2024,3 +2024,31 @@ Left unmarked:
 | 12D98 | zero damage | forced (dg33_head: damage = 0, skip 2); col-null dead (the sender is the live root collider) | every real arm |
 | B100 | five asset ids -1, null generator, no beacon model | forced (dg33_ctor: data ids -1 at entry, x6864_ models -1) | 115/118 lines, 84/100 br; untaken = EH edges only |
 | 3300 | - | never called (TakeOff lookup) | not run |
+
+## 2026-10-23: fn_14_3300 and the TakeOff lookup (dg34); gcov runs c1 (natural) + c2 (forced)
+
+- Runs (build-port-cov at 47a9282ee, 0 caught/reach-stub): `tools/cov/run.sh
+  tools/cov/specs/digitalguardian_dg34_lookup.py <out> 1baa96c2,09_cliff_temple_dark --con
+  tools/cov/specs/digitalguardian_dg34_3300.con --fast --frames 1400` and `tools/cov/force.sh
+  tools/cov/specs/digitalguardian_dg34_3300.py <out> ... --con tools/cov/specs/digitalguardian_dg34_force.con --fast --frames 900`.
+- Marked: 3300 (DG 281/281). No code change: the lookup is not broken on the host.
+- Why `GetTimeOfUserEventForAnimation` never found TakeOff (gdb trace, run r1): the vortex is
+  locomotion (kLT_Combat, 0x9304), so the body controller's current anim (0x58C) is char 12
+  `A_vortex_fast` (PAS state 5: 12/13/18). The TakeOff that wakes 3300 comes from `A_into_vortex_fast`
+  (meta 30), which the transition database plays as a `CMetaTransMetaAnim` LoopIn into anim 12 (the
+  live tree: CAnimTreeLoopIn -> reader db 30). Anim 12's event set (CAnimSysContext set 12) is empty,
+  so the lookup returns infinite. Retail indexes the same way: `CMetaAnimPlay::VGetAnimationTree`
+  takes `eventSets + prim.mAnimIdx * 0x44` (0x802950D8 lwz r28,8(r31); 0x802950E8 mulli r0,r28,0x44);
+  `GetTimeOfUserEventForAnimation` (0x8002815C) and `_getPOIList<CInt32POINode>` match the source.
+- Event data (44 sets): TakeOff in set 30 (0.767, with Landing 1.233) and set 40 `B_jump` (0.567, no
+  Landing). Char index list skips 21 and 32, so meta 30 = char 29, meta 40 = char 38. PAS: char 38 in
+  state 3 (Step, JumpAttack's CBCStepCmd); char 29 in no state. So the both-events arm (0x3430 span,
+  then 0x3470) is data-dead; forced.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 3300 | object, no take-off (anim 12) | natural (VortexAttack) | ran |
+| 3300 | take-off, no landing (anim 38) | forced (`var dg.vortex 1` + `fsm JumpAttack`) | ran |
+| 3300 | no IS05 object | forced (`var dg.follow 65535; uevent 13`) | ran |
+| 3300 | both events, span 0.466 > 0, drift | forced (dg34_3300: mCurAnim = 29) | ran |
+| 3300 | span < 0 -> 0, zero drift (0x34A4) | forced (dg34_3300: landing.mTime = 0 from hit 2) | ran; c1+c2 8/8 ALL-ARMS |
