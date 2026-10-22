@@ -1772,3 +1772,43 @@ uses the same call) - unexplained, not chased. `damage <head> 50 bomb` does not 
 | 14058 | player either side; platform / none | codecalls with `place e0035000f player 20` / `-20`, before/after SelectRetreatPlatform | ran |
 | 14058 | direction unsafe | forced (loc 2543: dir zeroed) | ran |
 | 14604, 145A4, 14248, 13C1C | no branches | codecall | ran |
+
+## 2026-10-22: marking the ported head bodies (dg26); gcov runs dg26 r2 + r4a/b/c + r5c + f1
+
+- Marked (ALL-ARMS or no branches, asmcheck reviewed): AcceptScriptMsg 17D38, GetDamageVulnerability
+  179E0, IsBurstOver 173B8, UseMachineGun 17370, UseLockOnMissiles 1735C, UseAnnihilatorCharge
+  17338, AllSplittersDead 17298, IsAntennaTransmitting 17244, AllEchoTargetsDestroyed 171D8,
+  BombPitDestroyed 17198, xF2B8_ F2B8, x11FEC_ 11FEC. All runs: `build-port-cov`, area
+  `1baa96c2,09_cliff_temple_dark`, `--fast --frames 2400`, driver `tools/drivers/dg26_slots.py
+  {port} a|b|c`, gdb spec `digitalguardian_dg26.py` (both return values seen for every trigger),
+  forcing spec `digitalguardian_dg26_force.py`. 0 caught/reach-stub.
+- asmcheck findings, all explained: XCMP 173B8/171D8 are the `cntlzw; li 1; rlwnm 31,31` idiom (1
+  when the count is 0 or 32, i.e. x <= 0); 17D38 x20_80 is GetActive's mActive; 179E0
+  PassThruVulnerability is the host's PassThroughVulnerabilty; 17244 TCastToPtr is the const cast;
+  11FEC fn_14_1FE8 / internal_dereference are the CEntityInfo and string destructors.
+- Driver notes: an echo kill needs a RetractEchoTargets -> ExtractEchoTargets cycle before the next
+  (11FEC sets the survivors' damage-ignored flag); a ball dies only with the morph ball held in its
+  slot (fastmorph, `press x`, `tp` to the ball with z-0.7 for a few frames, `damage <ball> 1000
+  bomb`); the root resists every weapon (hp 1 -> 1).
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 17D38 | XCRT/XDEL/ACTV/DCTV/XAUD/XALD/XDMG/XRDG, active either way | driver a/b/c | ran |
+| 17D38 | 0xD70 null on XDEL/ACTV/DCTV/XAUD | forced (AcceptScriptMsg entry: xD70_ nulled, back at Think) | ran |
+| 11FEC | token set; targets left / none | driver a (three echo kills) | ran |
+| 11FEC | no effect token (data-dead: the one placement sets the asset) | forced (entry: xFD0_.m_valid 0, set back at 2820) | ran |
+| 17298 | splitters / module / chassis / none | driver b/c (`send` generators SetToZero) | ran |
+| 17244 | body / no body | driver c (body Delete) | ran |
+| F2B8 | waypoint / none | driver a (IS04 actor and waypoint deleted before the last kill) | ran |
+| 173B8 17370 1735C 17338 171D8 17198 | true / false | `var e0035000f dghd.attack N` + `trigcall` | ran |
+
+Left unmarked:
+- 14470 SelectDeathHeadAttack: firstShotType 4 arm (2615:3/4) is data-dead (shipped 0); not forced yet.
+- DF7C loader: the empty-model arm is data-dead (one DGHD, 0x0035000F, has a model); not forced yet.
+- 14DA0 RetractEchoTargets: the `kS_Extending` arm (923:3/4) never ran: no retract came while a
+  target was still extending.
+- 13248 (not-found, -1) and 12B04 (idx -1, no effect token): the forced run's bomb hit on u0572 did
+  nothing under gdb (the slowdown drops the ball out of the slot), so the forces never fired.
+  13248 loops to a fixed 2 (retail reads 0xDC0, only written by the ctor's 2 at 0x18340).
+- 18264 ctor (76 asmcheck completeness findings), 12818/12D98 (documented unreachable arms).
+- 19908: no C++ body; it is the module's copy of ~CEnergyProjectile, which the host takes from the DOL class.

@@ -7,6 +7,6 @@
 CLASS = 'CDigitalGuardianHead'
 SPEC = []
 FORCE = [
-    ('14058 the push direction is unsafe', 'loc:PortCDigitalGuardianHead.cpp:2543', [],
+    ('14058 the push direction is unsafe', 'loc:PortCDigitalGuardianHead.cpp:2558', [],
      ['dir.mX = 0', 'dir.mY = 0', 'dir.mZ = 0'], 0, 'zeroes the push direction (dir)'),
 ]

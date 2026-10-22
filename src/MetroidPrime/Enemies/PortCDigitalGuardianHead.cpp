@@ -485,6 +485,8 @@ void CDigitalGuardianHead::x126C8_(CStateManager& mgr, const CVector3f& pos, flo
 }
 
 // fn_14_17D38: the active flag is read before the base's call (0x17D64..0x17D78).
+// The 0xD70-null arms of ACTV/DCTV/XAUD/XDEL are forced (dg26): XCRT builds it first.
+// @ fn_14_17D38
 void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool active = GetActive();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -946,6 +948,7 @@ void CDigitalGuardianHead::AddToRenderer(const CStateManager& mgr) const {
 }
 
 // fn_14_179E0: the pass-through vulnerability.
+// @ fn_14_179E0
 const CDamageVulnerability* CDigitalGuardianHead::GetDamageVulnerability() const {
   return &CDamageVulnerability::PassThroughVulnerabilty();
 }
@@ -1020,6 +1023,9 @@ bool CDigitalGuardianHead::ShouldProjectileAttack(CStateManager& mgr,
 }
 
 // fn_14_173B8: the burst count (0x10D8, a word: cntlzw/rlwnm) at most 0.
+// cntlzw; li 1; rlwnm 31,31 is 1 when the count is 0 or 32 (x < 0 or x == 0), i.e. x <= 0;
+// asmcheck's XCMP there is a false positive.
+// @ fn_14_173B8
 bool CDigitalGuardianHead::IsBurstOver(CStateManager& mgr, const CTriggerData& data) const {
   return x10D8_ <= 0;
 }
@@ -1045,11 +1051,13 @@ bool CDigitalGuardianHead::IsGuarding(CStateManager& mgr, const CTriggerData& da
 }
 
 // fn_14_17370: the projectile attack (0x10D0) is 3.
+// @ fn_14_17370
 bool CDigitalGuardianHead::UseMachineGun(CStateManager& mgr, const CTriggerData& data) const {
   return x10D0_ == 3;
 }
 
 // fn_14_1735C: the projectile attack (0x10D0) is 2.
+// @ fn_14_1735C
 bool CDigitalGuardianHead::UseLockOnMissiles(CStateManager& mgr, const CTriggerData& data) const {
   return x10D0_ == 2;
 }
@@ -1062,6 +1070,7 @@ bool CDigitalGuardianHead::UseAnnihilatorPulse(CStateManager& mgr,
 }
 
 // fn_14_17338: the projectile attack (0x10D0) is 1.
+// @ fn_14_17338
 bool CDigitalGuardianHead::UseAnnihilatorCharge(CStateManager& mgr,
                                                 const CTriggerData& data) const {
   return x10D0_ == 1;
@@ -1069,6 +1078,7 @@ bool CDigitalGuardianHead::UseAnnihilatorCharge(CStateManager& mgr,
 
 // fn_14_17298: no splitter command module or main chassis in the object list (retail walks the
 // list at state manager +0x830, its first dynamic list, which holds every object).
+// @ fn_14_17298
 bool CDigitalGuardianHead::AllSplittersDead(CStateManager& mgr, const CTriggerData& data) const {
   CObjectList& list = mgr.ObjectListById(kOL_All);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -1089,6 +1099,7 @@ bool CDigitalGuardianHead::HeadArmorDestroyed(CStateManager& mgr, const CTrigger
 }
 
 // fn_14_17244: the body's fn_14_70B4; with no body the answer is false (li r3, 0 at 0x17278).
+// @ fn_14_17244
 bool CDigitalGuardianHead::IsAntennaTransmitting(CStateManager& mgr,
                                                  const CTriggerData& data) const {
   if (const CDigitalGuardian* body = TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_))) {
@@ -1115,6 +1126,8 @@ bool CDigitalGuardianHead::EchoTargetDestroyed(CStateManager& mgr,
 }
 
 // fn_14_171D8: the echo targets left (0xFE0, a word) at most 0.
+// The cntlzw/rlwnm idiom (see 173B8) gives 1 for x <= 0; asmcheck's XCMP is a false positive.
+// @ fn_14_171D8
 bool CDigitalGuardianHead::AllEchoTargetsDestroyed(CStateManager& mgr,
                                                    const CTriggerData& data) const {
   return xFE0_ <= 0;
@@ -1127,6 +1140,8 @@ bool CDigitalGuardianHead::ShouldRetreat(CStateManager& mgr, const CTriggerData&
 }
 
 // fn_14_17198: the id at 0x103A is set.
+// subf/subf/or/srwi 31: a sign test of (id - 0xFFFF) | (0xFFFF - id), i.e. id != 0xFFFF.
+// @ fn_14_17198
 bool CDigitalGuardianHead::BombPitDestroyed(CStateManager& mgr, const CTriggerData& data) const {
   return x103A_ != kInvalidUniqueId;
 }
@@ -2747,6 +2762,8 @@ void CDigitalGuardianHead::x1303C_(CStateManager& mgr, TUniqueId sender) {
 
 // fn_14_F2B8: the IS07/FOLW object (0xF2C0..0xF2D8), if a waypoint, goes to pos; then state is
 // sent with no message (-1).
+// 'IS07' 0x49533037 (0xF2C4/0xF2D8), 'FOLW' 0x464F4C57 (0xF2C0/0xF2CC), msg -1 at 0xF348.
+// @ fn_14_F2B8
 void CDigitalGuardianHead::xF2B8_(CStateManager& mgr, const CVector3f& pos,
                                   EScriptObjectState state) {
   const TUniqueId wpId = CheckConnectedObject(mgr, kSS_InternalState7, kSM_Follow);
@@ -2783,6 +2800,9 @@ bool CDigitalGuardianHead::x11F30_(TUniqueId id) const {
 // this head's scale, the IS04/ACTV object (0x103E) loses one health (.rodata 0x96C), one echo
 // target fewer (0xFE0); at none the armour is gone (bit 0x10) and IS00 is sent. The survivors
 // then ignore damage (0x78C bit 0x80).
+// The unset-token arm is data-dead (the ctor locks xFD0_ only with the asset set, and the one
+// placement sets it); forced (dg26 force spec).
+// @ fn_14_11FEC
 void CDigitalGuardianHead::x11FEC_(CStateManager& mgr, const CTransform4f& xf) {
   if (xFD0_.valid()) {
     const CVector3f scale = GetModelData()->GetScale();
