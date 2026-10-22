@@ -36,9 +36,9 @@ float CDigitalGuardian::x37FC_(float v) const {
   int index = 0;
   for (int i = 0; i < 5; ++i) {
     const float d = std::fabs(v - kAngles[i]);
-    // the fcmpo/bge at 0x381C and the four after it skip only an ordered >=: a NaN v takes every
-    // entry (pi, table[4]), as a zero-length GetAngleDiff would give.
-    if (!(d >= best)) {
+    // the fcmpo/bge at 0x381C and the four after it skip on >= and on a NaN: a NaN v keeps
+    // entry 0.
+    if (d < best) {
       best = d;
       index = i;
     }
@@ -183,7 +183,7 @@ void CDigitalGuardian::x5644_(CStateManager& mgr, TUniqueId sender) {
   if (x10DC_[toe] == 3) { // the cmpwi at 0x56CC
     return;
   }
-  if (x1158_[toe] > 0.f) { // the fcmpo at 0x56E0
+  if (!(x1158_[toe] <= 0.f)) { // the fcmpo/cror eq,lt,eq/bne at 0x56E0: a NaN returns too
     return;
   }
   const CPlayer* player = mgr.GetPlayer(0);

@@ -80,7 +80,7 @@ void CDigitalGuardianKneeArmor::Think(float dt, CStateManager& mgr) {
   float t = 0.f;
   if (x158_ > 0.f) {
     float left = x158_ - dt;
-    if (0.f >= left) {
+    if (!(0.f < left)) { // fcmpo 0, left / bge at 0xCFE8 to the fmr of 0: a NaN becomes 0
       left = 0.f;
     }
     x158_ = left;

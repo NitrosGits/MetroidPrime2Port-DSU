@@ -671,7 +671,7 @@ CVector3f CDigitalGuardianHead::x11C08_(const CVector3f& dir) const {
   if (dir.IsMagnitudeSafe() && flat.IsMagnitudeSafe()) {
     const CVector3f dirN = dir.AsNormalized();
     const CVector3f flatN = flat.AsNormalized();
-    if (!(CVector3f::GetAngleDiff(flatN, dirN) <= 0.9599311f)) { // fcmpo/ble 0x11CE8: NaN slerps
+    if (CVector3f::GetAngleDiff(flatN, dirN) > 0.9599311f) { // fcmpo/ble 0x11CE8: a NaN keeps it
       return CVector3f::Slerp(flatN, dirN, CRelAngle::FromRadians(0.9599311f));
     }
     return dirN;
@@ -684,7 +684,7 @@ CVector3f CDigitalGuardianHead::x11C08_(const CVector3f& dir) const {
 // bit 0x08 of 0x10F4 is set (extrwi. 1, 28 at 0x11E54), the body controller faces it.
 // @ fn_14_11D64
 void CDigitalGuardianHead::x11D64_(CStateManager& mgr, float dt) {
-  if (dt <= 0.f) {
+  if (!(dt > 0.f)) { // 0x11D90 fcmpo/ble to the return (a NaN returns too)
     return;
   }
   if (const CEntity* ent = mgr.GetObjectById(x1036_)) {
@@ -817,7 +817,7 @@ void CDigitalGuardianHead::xF424_(CStateManager& mgr) {
     x10E8_ = 0;
     return;
   }
-  if (x10EC_ < 4.f) {
+  if (!(x10EC_ >= 4.f)) { // 0xF468 fcmpo/cror eq,gt,eq/bne to the return (a NaN returns too)
     return;
   }
   --x10E8_;
@@ -1471,7 +1471,7 @@ void CDigitalGuardianHead::MachineGunAttack(CStateManager& mgr, EStateMsg msg, f
     x10C8_ += dt; // 0x16554
     switch (x10C4_) {
     case 0:
-      if (x10C8_ >= mData.machineGunChargeDuration) { // 0x16580
+      if (!(x10C8_ < mData.machineGunChargeDuration)) { // 0x16580 bge (a NaN too)
         x10C4_ = 1;                                   // 0x16628
         x10C8_ = 0.f;                                 // 0x16630
       } else {
@@ -1480,7 +1480,7 @@ void CDigitalGuardianHead::MachineGunAttack(CStateManager& mgr, EStateMsg msg, f
       }
       break;
     case 1:
-      if (x10C8_ >= mData.machineGunSweepDuration) {           // 0x16640
+      if (!(x10C8_ < mData.machineGunSweepDuration)) {        // 0x16640 bge (a NaN too)
         mAnimationState.SetState(CAnimationState::kAS_Over); // 0x16754
       } else {
         const CVector3f from = GetLctrTransform(x10A4_).GetTranslation(); // 0x16654
@@ -1642,7 +1642,7 @@ void CDigitalGuardianHead::SeekMotionPath(CStateManager& mgr, EStateMsg msg, flo
       break;
     }
     const float speed = mData.maxStunnedLinearVelocity; // 0x7DC
-    if (!(speed <= 1.1920929e-07f)) {                   // 0x159D0..0x159D4
+    if (speed > 1.1920929e-07f) {                       // 0x159D0..0x159D4 (ble: a NaN skips)
       const CVector3f delta = plat->GetTranslation() - GetTranslation(); // 0x159D8..0x159F4
       const float angle = CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY),
                                                   plat->GetTransform().GetColumn(kDY)); // 0x159F8
@@ -1659,7 +1659,7 @@ void CDigitalGuardianHead::SeekMotionPath(CStateManager& mgr, EStateMsg msg, flo
     const CTransform4f xf = plat->GetTransform(); // 0x15A6C
     const CVector3f delta = xf.GetTranslation() - GetTranslation();
     const float step = mData.maxStunnedLinearVelocity * dt; // 0x15AA8
-    if (step >= delta.Magnitude()) {                        // 0x15AB0..0x15AB4
+    if (!(step < delta.Magnitude())) {                      // 0x15AB0..0x15AB4 bge (a NaN too)
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15B14
       SetTranslation(xf.GetTranslation());                 // 0x15B1C
     } else {
@@ -1717,8 +1717,8 @@ void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float
     x11D64_(mgr, dt); // 0x16BEC
     if ((x10F4_ & 0x01) == 0) { // 0x16BF8
       float v = 1.f - (x1094_ - 1.f) / (x1090_ - 1.f); // 0x16C08..0x16C20
-      v = 1.f >= v ? v : 1.f;                          // 0x16C24
-      v = 0.f >= v ? 0.f : v;                          // 0x16C44
+      v = 1.f < v ? 1.f : v;                           // 0x16C24 bge to the fmr of v (NaN too)
+      v = 0.f < v ? v : 0.f;                           // 0x16C44 bge to the fmr of 0 (NaN too)
       int count = static_cast< int >(3.f * v);         // .rodata 0x9F0, 0x16C5C
       if (count > 3) {                                 // 0x16C68
         count = 3;
@@ -1807,7 +1807,7 @@ void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
 // 0x1120C) at the player's aim position (vtable 0x54 with 0.0f, .rodata 0x960; 0x1124C). The
 // direction's horizontal part (z 0.0f, 0x11298) normalised, or the head's facing (fn_14_13B38,
 // 0x112C4) when it is not safe (0x112A4), is the reference; a direction more than 0.9599311f
-// (.rodata 0x9B8) from it (fcmpo/ble at 0x112FC, so a NaN angle is slerped too) is the reference slerped
+// (.rodata 0x9B8) from it (fcmpo/ble at 0x112FC, taken on a NaN: a NaN angle keeps it) is the reference slerped
 // toward the normalised direction by that angle (0x11320). LookAt from the locator along it
 // (0x11380). No cache or projectile-count test. The 0x568-byte CEnergyProjectile (ctor at 0x11478):
 // active (li r4 1), the pulse's weapon (0xE04), kWT_AI (li r6 0xB), material 0x21 (kMT_Character,
@@ -1824,7 +1824,7 @@ void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locat
   CVector3f dir = player.GetAimPosition(mgr, 0.f) - pos;
   const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
   const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
-  if (!(CVector3f::GetAngleDiff(dir, ref) <= 0.9599311f)) {
+  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) {
     dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
   }
   const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
@@ -1933,7 +1933,7 @@ void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locat
   CVector3f dir = x1098_ - pos;
   const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
   const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
-  if (!(CVector3f::GetAngleDiff(dir, ref) <= 0.9599311f)) { // 0x10E10, fcmpo/ble: NaN slerps
+  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) { // 0x10E10, fcmpo/ble: a NaN keeps it
     dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
   }
   const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
@@ -2183,7 +2183,7 @@ void CDigitalGuardianHead::ProjectileTelegraph(CStateManager& mgr, EStateMsg msg
     break;
   case kStateMsg_Update: {
     const SLdrDigitalGuardianHeadStruct* attack = x10120_(mgr); // 0x17000
-    if (mStateMachine->GetTime() >= attack->projectileTelegraphTime) { // vtable 0x30 of 0x350 at
+    if (!(mStateMachine->GetTime() < attack->projectileTelegraphTime)) { // vtable 0x30 of 0x350 at
                                                                        // 0x17014, +4, fcmpo/bge 0x17020
       mAnimationState.SetState(CAnimationState::kAS_Over); // 0x1703C
     } else {

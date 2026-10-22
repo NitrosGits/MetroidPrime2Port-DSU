@@ -89,9 +89,9 @@ void CDigitalGuardianEchoTarget::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
 
   // The hit flash (0x1A230..0x1A2A0): the timer counts down and lerps the colour.
-  if (!(x70C_ <= 0.f)) { // the fcmpo/ble at 0x1A23C: a NaN timer goes in
+  if (x70C_ > 0.f) { // the fcmpo/ble at 0x1A23C (ble is taken on a NaN: a NaN timer skips)
     float left = x70C_ - dt;
-    if (0.f >= left) { // fcmpo 0, left / bge at 0x1A24C: a NaN stays
+    if (!(0.f < left)) { // fcmpo 0, left / bge at 0x1A24C to the fmr of 0: a NaN becomes 0
       left = 0.f;
     }
     x70C_ = left;
