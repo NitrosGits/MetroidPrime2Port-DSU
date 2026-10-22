@@ -601,9 +601,14 @@ void CDarkSamus::PushAttacker(TUniqueId uid) {
   mAttackerCount++;
 }
 
-// fn_10_1E2E8 (0x0001E2E8, 0xDC bytes): the oldest uid is dropped and the rest move one down -
+// fn_10_1E2E8 (0x0001E2E8, 0x78 bytes): the oldest uid is dropped and the rest move one down -
 // the guest's loop copies every uid one slot down (the lhz/sth at 0x0001E318/0x0001E31C) and the
-// count grows one less (0x0001E33C/0x0001E344).
+// count grows one less (0x0001E33C/0x0001E344). The retail body is the generic erase(pos) of a
+// reserved_vector<TUniqueId, 2>; its range checks (0x0001E2F4, 0x0001E30C) and the loop
+// (0x0001E338) are fixed by the only caller, fn_10_1E26C at 0x0001E2B0 in its own body, which
+// passes begin (`addi r4, r31, 0xc2c`) with the count at 2 (`cmpwi r0, 0x2; blt` before it): the
+// position is in range and the loop copies one uid.
+// @ fn_10_1E2E8
 void CDarkSamus::EraseFirstAttacker() {
   mAttackerUids[0] = mAttackerUids[1];
   mAttackerCount--;
@@ -2501,7 +2506,9 @@ void CDarkSamus::DoDiveJumpCmd() {
 // (normalized when it can be, 0x00011CD8); below lbl_10_rodata_418 = 50.0f * scale of speed
 // (`fcmpo; bge` at 0x00011CF8) the velocity becomes 50 * scale along it, else below
 // lbl_10_rodata_480 = 80.0f * scale (0x00011D60) an impulse of lbl_10_rodata_484 = 800.0f * scale.
-// Unmarked: the arm whose line cannot be normalized has not run yet.
+// Arms: the zero direction (CanBeNormalized false) forced (the target = the start,
+// tools/cov/specs/darksamus_ds39_force.py); the rest natural (DiveAttack).
+// @ fn_10_11C60
 void CDarkSamus::UpdateDiveFlight(float scale) {
   CVector3f dir = mDive.mTarget - mDive.mStart;
   if (dir.CanBeNormalized() == true) {
@@ -3039,7 +3046,7 @@ void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
   }
 }
 
-// fn_10_7A14 (0x00007A14, 0xDC bytes): the EnrageHitReact state. Every message sets the body's
+// fn_10_7A14 (0x00007A14, 0x154 bytes): the EnrageHitReact state. Every message sets the body's
 // locomotion type 10 (pas::kLT_Internal10, the call at 0x00007A4C). Deactivate (0x00007A50)
 // draws the time 0xFB0 from lbl_10_rodata_1CC = 0.2f and lbl_10_rodata_1D0 = 4.5f
 // (0x00007A70), steps the guest's own random (the `mulhw` with 0x55555556 at 0x00007A8C: 0x105C
@@ -3047,6 +3054,8 @@ void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
 // moment (0xFC4, the vtable's slot 0x3C at 0x00007AA0 and the store at 0x00007AB4). Then
 // fn_10_7F98 (0x00007AC8) - the phazon enrage frame, UpdatePhazonEnrage - and the
 // melee attack command (fn_10_8764 at 0x00007B28, the severity 8 = pas::kS_Eight).
+// Arms: both natural (tools/drivers/darksamus_ds39.con).
+// @ fn_10_7A14
 void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("EnrageHitReact", msg);
   BodyController()->SetLocomotionType(pas::kLT_Internal10); // 0x00007A4C
@@ -3064,7 +3073,7 @@ void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
   RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Eight)); // 0x00007B28
 }
 
-// fn_10_6E38 (0x00006E38, 0xDC bytes): the EnragedTravel state. Every message reads the player's
+// fn_10_6E38 (0x00006E38, 0x158 bytes): the EnragedTravel state. Every message reads the player's
 // aim position (the state manager's player at 0x14FC, the vtable's slot 0x54 at 0x00006E78; the
 // guest's extra argument &lbl_10_rodata_1AC = 0.5f has no host counterpart, the dt is 0.5f).
 // Activate (0x00006E90) runs fn_10_6F90 - the travel, the helpers branch's
@@ -3077,6 +3086,8 @@ void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
 // message then runs fn_10_6DAC (0x00006F4C - a stateless one the helper lanes port),
 // fn_10_1D860 (the additive animation, 0x00006F5C) and fn_10_11334 (the glide emitter,
 // 0x00006F68).
+// Arms: all natural (tools/drivers/darksamus_ds39.con: the player moved mid-state for 0x00006EF8).
+// @ fn_10_6E38
 void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("EnragedTravel", msg);
   const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.5f); // 0x00006E88
@@ -3202,9 +3213,9 @@ void CDarkSamus::MissileJump(CStateManager& mgr, EStateMsg msg, float dt) {
 // 0x180..0x194); Update (0x000087F4) re-delivers it when the DOL's ShouldRetry with `state`
 // answers true (0x00008800) - the host's CAnimationState::CanIssueCommand, as in
 // TurnToFacePlayer; Deactivate (0x00008850) stores 0 (kAS_NotReady).
-// Unmarked: the Update re-delivery (ShouldRetry true, 0x00008808) never ran - Activate's command
-// moves the body into kAS_MeleeAttack before the first Update in every MeleeAttack, MeleeDash and
-// MissileJump seen, so the check only answered false.
+// Arms: Activate, Update with ShouldRetry false and true, Deactivate, natural
+// (tools/drivers/darksamus_ds39.con).
+// @ fn_10_8764
 void CDarkSamus::RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state,
                                    const CBCMeleeAttackCmd& cmd) {
   switch (msg) {
@@ -3221,6 +3232,9 @@ void CDarkSamus::RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state,
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
     break;
   default:
+    // Dead: EStateMsg has three values (StateMachineCommon.hpp) and every caller passes its
+    // state's message; retail's out-of-range exits are the 0x00008794 (`b`, below 0) and
+    // 0x0000879C (`bge`, 3 and up).
     break;
   }
 }
@@ -5423,6 +5437,9 @@ void CDarkSamus::DoStepCmd(EStateMsg msg, pas::EAnimationState state, const CBCS
 // 0x00021F6C, the projectile-attack slot copy at 0x00021F78..0x00021F9C); Update (0x00021FA4)
 // delivers it again while CanIssueCommand(state) answers true (0x00021FAC); Deactivate
 // (0x00022000) sets the animation state to 0 (kAS_NotReady).
+// Arms: Activate, Update with CanIssueCommand false, Deactivate natural; CanIssueCommand true
+// forced (the animation state Ready, tools/cov/specs/darksamus_ds39_force.py).
+// @ fn_10_21F14
 void CDarkSamus::DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state,
                                        const CBCProjectileAttackCmd& cmd) {
   switch (msg) {
@@ -5439,6 +5456,9 @@ void CDarkSamus::DoProjectileAttackCmd(EStateMsg msg, pas::EAnimationState state
     mAnimationState.SetState(CAnimationState::kAS_NotReady);
     break;
   default:
+    // Dead: EStateMsg has three values (StateMachineCommon.hpp) and every caller passes its
+    // state's message; retail's out-of-range exits are the 0x00021F44 (`b`, below 0) and
+    // 0x00021F4C (`bge`, 3 and up).
     break;
   }
 }

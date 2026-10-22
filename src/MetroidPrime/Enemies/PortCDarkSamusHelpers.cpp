@@ -47,7 +47,8 @@
 
 // fn_10_9624 (0x00009624, 0x20 bytes): is the boost ball's uid (guest 0xE38) a real one? The
 // compare is the "subf/or/srwi" idiom for `uid != kInvalidUniqueId` (0x00009630..0x00009640).
-// fn_10_9624 (ported, unreferenced in the port: nothing calls it yet)
+// No branch in retail or port; runs in every rooftop fight (PreRender, 0x00018B38).
+// @ fn_10_9624
 bool CDarkSamus::HasBoostBall() const {
   return mBoostBallUid != kInvalidUniqueId;
 }
@@ -97,6 +98,9 @@ void CDarkSamus::InitGuestModelData(CModelData* model) { new (model) CModelData(
 // host's CAnimationState::CanIssueCommand) answers true; Deactivate (0x00008744) stores 0
 // (kAS_NotReady). The guest's 0x6B4 is the base's animation state, which the host keeps in
 // CPatterned::mAnimationState.
+// Arms: Activate, Update with ShouldRetry false and true, Deactivate, natural
+// (tools/drivers/darksamus_ds39.con).
+// @ fn_10_8698
 void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -112,6 +116,9 @@ void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x00008750
     break;
   default:
+    // Dead: EStateMsg has three values (StateMachineCommon.hpp) and every caller passes its
+    // state's message; retail's out-of-range exits are the 0x000086C8 (`b`, below 0) and
+    // 0x000086D0 (`bge`, 3 and up).
     break;
   }
 }
@@ -121,7 +128,9 @@ void CDarkSamus::RunTauntCmd(EStateMsg msg, pas::ETauntType type) {
 // (0x00006FE0) the navigation goes back to the last good destination (guest 0x1048, 0x00006FF8)
 // and the path find runs again (0x00007010); otherwise the destination is kept in 0x1048
 // (0x00007018..0x0000702C).
-// fn_10_6F90 (ported, unreferenced in the port: the states call the path find inline)
+// Called from the EnragedTravel state (fn_10_6E38 at 0x00006EBC and 0x00006F10). Arms: both natural
+// (tools/drivers/darksamus_ds39.con).
+// @ fn_10_6F90
 void CDarkSamus::FindPathToDestination(CStateManager& mgr, const CVector3f& destination, float dt) {
   SetPathFindDestination(mgr, destination, dt); // fn_10_1C778 at 0x00006FC0
   if (PathShagged(mgr, CTriggerData(0.f))) {    // 0x00006FE0
@@ -157,6 +166,9 @@ void CDarkSamus::DeleteGuestUids(CStateManager& mgr) {
 // is on the last waypoint (the waypoint count 0x7C4 and the current one 0x888, 0x000063F8..
 // 0x00006408), the destination is set again (0x0000641C). Every message ends with the additive
 // animation (fn_10_1D860, 0x0000642C) and the glide emitter (fn_10_11334, 0x00006438).
+// Arms: Activate and the shagged path natural; a path not shagged on its last waypoint and before
+// it forced (the search's result, waypoint and count, tools/cov/specs/darksamus_ds39_force.py).
+// @ fn_10_6374
 void CDarkSamus::FindPathToWaypoint(CStateManager& mgr, float dt, EStateMsg msg) {
   if (msg == kStateMsg_Activate) {
     SetPathFindDestination(mgr, mGuestEE4, dt); // fn_10_1C778 at 0x000063AC
@@ -1484,6 +1496,31 @@ void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
   }
 }
 
+// fn_10_6DAC (0x00006DAC, 0x8C bytes): the shield flag 0xCD0 and the direction it points.
+// Deactivate (0x00006DB4) clears the flag (0x00006DCC). The other messages read the health
+// (the vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is
+// at most lbl_10_rodata_14C = 1.0f (`fcmpo` at 0x00006DF0, `cror eq, lt, eq` at 0x00006DF4,
+// `bne` skip at 0x00006DF8: a NaN health skips too, so the test is `<=`), set the flag
+// (0x00006E08), 0xD24 = 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 (
+// 0x00006E10..0x00006E20). lbl_10_bss_128 is the module's static vector: the module's data
+// initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the
+// actor's 0xD18 (0x0000E5C8), = (0.3, 0.6, 1.0): rodata 46C/424/3E8 at 0x0002224C..0x000222A8.
+// Arms: Deactivate and the health above 1.0f natural; the health at most 1.0f forced (0.5,
+// tools/cov/specs/darksamus_ds39_force.py).
+// @ fn_10_6DAC
+void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
+  if (msg == kStateMsg_Deactivate) {
+    mGuestCD0 = 0; // 0x00006DCC
+    return;
+  }
+  const float health = GetHealthInfo()->GetHP(); // 0x00006DE0
+  if (health <= 1.f) {                            // 0x00006DF0..0x00006DF8
+    mGuestD24 = 1.f;                              // 0x00006DFC
+    mGuestCD0 = 1;                                // 0x00006E08
+    mGuestD18 = CVector3f(0.3f, 0.6f, 1.f);       // lbl_10_bss_128, 0x00006E0C..0x00006E20
+  }
+}
+
 // fn_10_A154 (0x0000A154, 0x6C bytes): the boost ball's roll: the actor's position (0x54/0x58) is
 // measured against the ball's target (0xE98/0xE9C) in the XY plane (the squares at 0x0000A180
 // and 0x0000A184, the sum at 0x0000A188) and compared with lbl_10_rodata_278 = 4 (0x0000A18C);
@@ -1491,31 +1528,6 @@ void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
 // else the ball's target becomes the actor's position (0x0000A194..0x0000A1A4) and the time is
 // reset to 0.0f (0x0000A1A8).
 // @ fn_10_A154
-// fn_10_6DAC (0x00006DAC, 0xDC bytes): the shield flag 0xCD0 and the direction it points.
-// Deactivate (0x00006DB4) clears the flag (0x00006DCC). The other messages read the health
-// (the vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is
-// not above lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 -
-// the `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 =
-// 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 (
-// 0x00006E10..0x00006E20). lbl_10_bss_128 is the module's static vector: the module's data
-// initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the
-// actor's 0xD18 (0x0000E5C8), = (0.3, 0.6, 1.0): rodata 46C/424/3E8 at 0x0002224C..0x000222A8.
-// Unmarked: the coverage run never reaches the Deactivate arm (the EnragedTravel state's
-// Deactivate did not run in it), so the body is not proved arm by arm.
-void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
-  if (msg == kStateMsg_Deactivate) {
-    mGuestCD0 = 0; // 0x00006DCC
-    return;
-  }
-  const float health = GetHealthInfo()->GetHP(); // 0x00006DE0
-  if (health > 1.f) {                             // 0x00006DF0
-    return;                                       // 0x00006DF8
-  }
-  mGuestD24 = 1.f;               // 0x00006DFC
-  mGuestCD0 = 1;                 // 0x00006E08
-  mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128, 0x00006E0C..0x00006E20
-}
-
 void CDarkSamus::RollBoostBallToPosition(float dt) {
   const CVector3f pos = GetTranslation();
   const float dx = pos.GetX() - mBoostBallPos.GetX();

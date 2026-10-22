@@ -84,7 +84,7 @@ offset	size	class	kind	name	callers	marked	state
 0x5974	0x7A4	B	method	fn_10_5974	1	yes	
 0x6118	0x19C	B	method	fn_10_6118	1	yes	
 0x62B4	0xC0	B	fsm-trigger	fn_10_62B4	0	yes	Arrived
-0x6374	0xEC	B	method	fn_10_6374	2	no	
+0x6374	0xEC	B	method	fn_10_6374	2	yes	
 0x6460	0xCC	B	fsm-state	fn_10_6460	0	yes	GoToPhazonEnrage
 0x652C	0xA0	B	fsm-state	fn_10_652C	0	yes	GoToPhazonAttack
 0x65CC	0x1EC	B	method	fn_10_65CC	4	yes	
@@ -96,9 +96,9 @@ offset	size	class	kind	name	callers	marked	state
 0x6AE8	0x90	B	fsm-trigger	fn_10_6AE8	0	yes	ShouldRiseAgain
 0x6B78	0x28	B	fsm-trigger	fn_10_6B78	0	yes	ShouldEnragedMelee
 0x6BA0	0x20C	B	fsm-state	fn_10_6BA0	0	yes	PhazonFall
-0x6DAC	0x8C	B	method	fn_10_6DAC	1	no	
-0x6E38	0x158	B	fsm-state	fn_10_6E38	0	no	EnragedTravel
-0x6F90	0xC4	B	method	fn_10_6F90	2	no	
+0x6DAC	0x8C	B	method	fn_10_6DAC	1	yes	
+0x6E38	0x158	B	fsm-state	fn_10_6E38	0	yes	EnragedTravel
+0x6F90	0xC4	B	method	fn_10_6F90	2	yes	
 0x7054	0x2B0	B	fsm-state	fn_10_7054	0	yes	PhazonRise
 0x7304	0x168	B	method	fn_10_7304	2	yes	
 0x746C	0xCC	B	method	fn_10_746C	1	yes	
@@ -107,7 +107,7 @@ offset	size	class	kind	name	callers	marked	state
 0x7780	0x38	B	method	fn_10_7780	2	yes	
 0x77B8	0xB4	B	method	fn_10_77B8	1	yes	
 0x786C	0x1A8	B	method	fn_10_786C	1	yes	
-0x7A14	0x154	B	fsm-state	fn_10_7A14	0	no	EnrageHitReact
+0x7A14	0x154	B	fsm-state	fn_10_7A14	0	yes	EnrageHitReact
 0x7B68	0x58	B	fsm-trigger	fn_10_7B68	0	yes	HitDuringEnrage
 0x7BC0	0x140	B	fsm-state	fn_10_7BC0	0	yes	PhazonEnraged
 0x7D00	0x298	B	method	fn_10_7D00	1	yes	
@@ -118,8 +118,8 @@ offset	size	class	kind	name	callers	marked	state
 0x81D4	0x450	B	fsm-state	fn_10_81D4	0	yes	PhazonAttack
 0x8624	0x5C	H	host-copy	fn_10_8624	0	no	
 0x8680	0x18	T	fsm-thunk	fn_10_8680	0	yes	PickedPhazonAttack
-0x8698	0xCC	B	method	fn_10_8698	7	no	
-0x8764	0x10C	B	method	fn_10_8764	11	no	
+0x8698	0xCC	B	method	fn_10_8698	7	yes	
+0x8764	0x10C	B	method	fn_10_8764	11	yes	
 0x8870	0xEC	B	method	fn_10_8870	4	yes	
 0x895C	0x3D4	B	method	fn_10_895C	1	no	
 0x8D30	0x84	B	method	fn_10_8D30	1	no	
@@ -129,7 +129,7 @@ offset	size	class	kind	name	callers	marked	state
 0x9314	0x110	B	fsm-trigger	fn_10_9314	0	yes	DoneRolling
 0x9424	0x184	B	fsm-state	fn_10_9424	0	yes	DiveFromBoost
 0x95A8	0x7C	B	fsm-trigger	fn_10_95A8	0	yes	DiveAfterBoost
-0x9624	0x20	B	method	fn_10_9624	6	no	
+0x9624	0x20	B	method	fn_10_9624	6	yes	
 0x9644	0xE0	B	method	fn_10_9644	2	yes	
 0x9724	0x1FC	B	fsm-state	fn_10_9724	0	no	BoostBallFire
 0x9920	0x4C	B	method	fn_10_9920	2	yes	
@@ -278,7 +278,7 @@ offset	size	class	kind	name	callers	marked	state
 0x11974	0x164	B	method	fn_10_11974	2	yes	
 0x11AD8	0x17C	B	fsm-state	fn_10_11AD8	0	yes	MovingScatterShot
 0x11C54	0xC	T	fsm-thunk	fn_10_11C54	0	yes	BreakDiveAttack
-0x11C60	0x17C	B	method	fn_10_11C60	1	no	
+0x11C60	0x17C	B	method	fn_10_11C60	1	yes	
 0x11DDC	0xDC	B	method	fn_10_11DDC	1	no	
 0x11EB8	0xEC	B	method	fn_10_11EB8	1	no	
 0x11FA4	0x764	B	fsm-state	fn_10_11FA4	0	yes	DiveAttack
@@ -444,7 +444,7 @@ offset	size	class	kind	name	callers	marked	state
 0x1DF74	0x204	B	fsm-state	fn_10_1DF74	0	no	TravelToCoverPoints
 0x1E178	0xF4	B	method	fn_10_1E178	3	yes	
 0x1E26C	0x7C	B	method	fn_10_1E26C	3	yes	
-0x1E2E8	0x78	B	method	fn_10_1E2E8	1	no	
+0x1E2E8	0x78	B	method	fn_10_1E2E8	1	yes	
 0x1E360	0x60	B	method	fn_10_1E360	1	yes	
 0x1E3C0	0x104	B	method	fn_10_1E3C0	3	no	
 0x1E4C4	0x27C	B	method	fn_10_1E4C4	1	no	
@@ -522,7 +522,7 @@ offset	size	class	kind	name	callers	marked	state
 0x21D14	0x84	B	method	fn_10_21D14	1	no	
 0x21D98	0x60	H	host-copy	fn_10_21D98	0	no	
 0x21DF8	0x11C	B	method	fn_10_21DF8	4	yes	
-0x21F14	0x10C	B	method	fn_10_21F14	1	no	
+0x21F14	0x10C	B	method	fn_10_21F14	1	yes	
 0x22020	0xCC	B	method	fn_10_22020	1	no	
 0x220EC	0x98	B	method	fn_10_220EC	1	no	
 0x22184	0x3C	B	method	fn_10_22184	1	no	
