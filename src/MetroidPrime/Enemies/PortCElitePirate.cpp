@@ -1544,7 +1544,8 @@ bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
 // to it, and (retail's RayCollideWorld result) a clear shot from the launcher's lock-on locator.
 // fn_15_6820 is the thunk that passes &x9fa (mLauncherId) as `id`'s source (0x6830 lhz 0x9fa).
 bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) const {
-  if (mTimer > 0.f || mLauncherId == kInvalidUniqueId) { // 0x6644..0x6650 xa34 <= 0, 0x6660 cmplw
+  // 0x6644..0x6650 `cror eq, lt, eq; bne`: anything but xa34 <= 0 (NaN too) returns false
+  if (!(mTimer <= 0.f) || mLauncherId == kInvalidUniqueId) { // 0x6660 cmplw
     return false;
   }
   const CElitePirateGrenadeLauncher* launcher =
@@ -1560,8 +1561,9 @@ bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) cons
   }
   const CVector3f aim = target->GetAimPosition(mgr, 0.f); // 0x66C0 bctrl +0x54, f1 = 0.0f
   const float distSq = DistSq(aim, GetTranslation());    // 0x66DC..0x6704 vs 0x54/0x58/0x5c
-  if (!(mData.mMinRocketRange * mData.mMinRocketRange < distSq &&  // 0x6708 ble, 0x988
-        distSq < mData.mMaxRocketRange * mData.mMaxRocketRange)) { // 0x6718 bge, 0x98c
+  // 0x6708 `ble` (0x988) and 0x6718 `bge` (0x98c) to the false return: a NaN distance goes on
+  if (distSq <= mData.mMinRocketRange * mData.mMinRocketRange ||
+      distSq >= mData.mMaxRocketRange * mData.mMaxRocketRange) {
     return false;
   }
   // 0x6740 vtable +0x1a4 = ShouldTurn (with a zeroed CTriggerData at 0x10; ShouldTurn ignores it)
