@@ -212,6 +212,22 @@ CEntity* LoadFlyerSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& in
   const CAnimRes animRes(sldrThis.animationInformation.ancs,
                          sldrThis.animationInformation.character_index, CVector3f::One(),
                          sldrThis.animationInformation.initial_anim, true);
+#ifdef TARGET_PC
+  // Retail (fn_21_0D8 after the property loop) copies property 0xc6bb2f45 into the editor
+  // properties' active flag and its ctor (fn_21_198C) passes a constant true to CSwarmBasics's
+  // "animated" argument. Passing the property there instead left an initially inactive swarm
+  // (the Chykka's minions) without models and spawning all its boids at once.
+  sldrThis.editorProperties.active = sldrThis.active;
+  return rs_new CFlyerSwarm(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
+                            LdrToEntityInfo(info, sldrThis.editorProperties),
+                            sldrThis.editorProperties.transform.scale,
+                            LdrToTransform4f(sldrThis.editorProperties), animRes,
+                            LdrToActorParameters(sldrThis.actorInformation),
+                            LdrToBasicSwarmData(sldrThis.basicSwarmProperties), true,
+                            sldrThis.unknown_0x4a85a2da, sldrThis.initialMoveSpeedModifier,
+                            sldrThis.initialMoveSpeedModifierTime, sldrThis.unknown_0x262e586d,
+                            sldrThis.rollUprightSpeed, sldrThis.rollUprightMinAngle);
+#else
   return rs_new CFlyerSwarm(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                             LdrToEntityInfo(info, sldrThis.editorProperties),
                             sldrThis.editorProperties.transform.scale,
@@ -221,6 +237,7 @@ CEntity* LoadFlyerSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& in
                             sldrThis.unknown_0x4a85a2da, sldrThis.initialMoveSpeedModifier,
                             sldrThis.initialMoveSpeedModifierTime, sldrThis.unknown_0x262e586d,
                             sldrThis.rollUprightSpeed, sldrThis.rollUprightMinAngle);
+#endif
 }
 
 #ifndef MONOLITHIC

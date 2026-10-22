@@ -1050,6 +1050,35 @@ void CSwarmBasics::PreRenderBoid(CBoid* boid, uint* drawMask) {
   }
 }
 
+#ifdef TARGET_PC
+void CSwarmBasics::PortDescribe(char* buf, int size) const {
+  int active = 0;
+  for (int i = 0; i < mBoids.size(); ++i) {
+    active += mBoids[i].mActive ? 1 : 0;
+  }
+  int n = std::snprintf(buf, size,
+                        "  swarm active=%d gen=%d pending=%d boids=%d/%d created=%d/%d rate=%.2f "
+                        "models=%d dl=%d animated=%d\n",
+                        GetActive() ? 1 : 0, x4f0_30_ ? 1 : 0, x52c_, active, mBoids.size(),
+                        mCreatedBoids, mMaxCreatedBoids, mBoidGenRate, mModelDatas.size(),
+                        mDisplayList.null() ? 0 : 1, mAnimated ? 1 : 0);
+  for (int i = 0, shown = 0; i < mBoids.size() && shown < 4 && n > 0 && n < size; ++i) {
+    const CBoid& b = mBoids[i];
+    if (!b.mActive) {
+      continue;
+    }
+    const CVector3f p = b.GetTranslation();
+    const CVector3f v = b.mVelocity;
+    n += std::snprintf(buf + n, size - n,
+                       "  boid %d (%.1f, %.1f, %.1f) vel (%.2f, %.2f, %.2f) frz %.2f launched %d "
+                       "frustum %d\n",
+                       i, p.GetX(), p.GetY(), p.GetZ(), v.GetX(), v.GetY(), v.GetZ(),
+                       b.mFreezeTimer, b.mLaunched ? 1 : 0, b.mInFrustum ? 1 : 0);
+    ++shown;
+  }
+}
+#endif
+
 void CSwarmBasics::RenderBoid(CBoid* boid) const {
 #ifdef TARGET_PC
   // No display list means the skinned model has not arrived: drawing anyway put an unresolved

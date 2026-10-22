@@ -169,6 +169,12 @@ CPatterned::CPatterned(EPatternedAI character, TUniqueId uid, const rstl::string
 , mMoveScale(1.f, 1.f, 1.f)
 , mIngSnatchingPlane(CVector3f::Zero(), CVector3f::Forward())
 , mDisintegrationOrigin(CVector3f::Zero()) {
+#ifdef TARGET_PC
+  // Retail sets the dark-visor highlight for every patterned actor here, whatever the actor
+  // parameters said (0x8007A2F8..0x8007A35C, just before BuildIngModel): without it the dark visor
+  // drew enemies grey instead of red. Death clears it again.
+  SetHighlightedInDarkVisor(true);
+#endif
   BuildIngModel(mIngPossessionData.ingPossessedModel, mIngPossessionData.ingPossessedSkinRules);
   if (pinfo.mDeathExplosionParticle != kInvalidAssetId) {
     mDeathExplosionParticle =

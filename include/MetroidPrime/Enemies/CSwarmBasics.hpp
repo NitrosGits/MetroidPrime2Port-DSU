@@ -138,6 +138,10 @@ public:
   virtual CVector3f GetLockOnLocation(int index) const { return mBoids[index].GetTranslation(); }
   virtual void FreezeBoids(const CVector3f& position, float radius);
   virtual TUniqueId GetSeekerTargetLockedOn() const;
+#ifdef TARGET_PC
+  // Port console (`obj`): spawn and render state, a few active boids.
+  void PortDescribe(char* buf, int size) const;
+#endif
   virtual void RenderBoid(CBoid* boid) const;
   virtual void AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhichModel which);
   virtual void UpdateSwarmAnimations(CStateManager& mgr, float dt);
