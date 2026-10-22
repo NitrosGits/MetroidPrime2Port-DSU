@@ -113,6 +113,17 @@ BODIES = {
                 'there is no target at 0xF02: the body ends at once'),
     'DESPAWN': ('1790 DespawnProjectile', 'CSplitterCommandModule::PortDespawnProjectile(',
                 'the base is dead: the effect states do not update'),
+    'PATHZ': ('986C UpdatePath', 'CSplitterMainChassis::PortUpdatePath(',
+              'the chassis is above the other actors: the separation\'s z is not zero'),
+    'AIMNC': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+              'the shield state is 2 and the head is not docked: there is no chassis'),
+    'AIMC': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+             'the shield state is not 2 and the timer at 0xF1C is below one: the chassis\'s aim'
+             ' is mixed in'),
+    'AIMNC2': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+               'the shield state is not 2 and the head is not docked: there is no chassis'),
+    'COLLIDNM': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
+                 'the material list is empty: no collision matches'),
 }
 # the head's own members, written through $this (the spec's CLASS is the head's class).
 HEAD = '((CSplitterCommandModule*)$rdi)'
@@ -235,6 +246,32 @@ elif WHICH == 'E87C':
     # the possession flag (the second argument, in esi) is set and the command module's id at
     # 0xC6C is the head u0531's: the head is looked up and told it is possessed.
     FORCE = [(_label, _where, [], ['$esi = 1', CH + '->mCommandModuleId.value = 0x531'], 1, _what)]
+elif WHICH == 'PATHZ':
+    # The chassis's own position, so the separation from the other actors has a z component: the
+    # port's fn_75_986C tests the separation's z only when its x and y are zero, so this force
+    # alone does not reach that arm (the only actor above the chassis, the docked head, is
+    # skipped by the walk) - it is kept as the attempt the note records.
+    FORCE = [(_label, _where, [],
+              [CH + '->mPosition.mZ = 2.0'], 0, _what)]
+elif WHICH == 'AIMNC':
+    # the shield state at 0xEDC is 2 and the head is not docked: the chassis lookup fails.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 2', '$this->mChassisId.value = 0xffff'], 0, _what)]
+elif WHICH == 'AIMC':
+    # the shield state at 0xEDC is not 2 and the timer at 0xF1C is below one: the second branch
+    # runs and finds the chassis.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 1', '$this->mCountupTimerB = 0.5f'], 0, _what)]
+elif WHICH == 'AIMNC2':
+    # the shield state at 0xEDC is not 2, the timer at 0xF1C is below one and the head is not
+    # docked: the second branch runs and finds no chassis.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 1', '$this->mCountupTimerB = 0.5f',
+               '$this->mChassisId.value = 0xffff'], 0, _what)]
+elif WHICH == 'COLLIDNM':
+    # the material list (the REL's lbl_75_bss_8) is empty: no collision matches.
+    FORCE = [(_label, _where, [],
+              ['sSplitterCollisionMaterialList = CMaterialList()'], 0, _what)]
 elif WHICH == 'DESPAWN':
     # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
     # update (asm 0x1820).
@@ -250,16 +287,6 @@ elif WHICH == 'E87CN':
 elif WHICH == 'E87C2':
     FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'],
               ['$esi = 1', CH + '->mCommandModuleId.value = 0x520'], 0, _what)]
-elif WHICH == 'DESPAWN':
-    # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
-    # update (asm 0x1820).
-    FORCE = [(_label, _where, [], ['$this->mAlive = 0'], 0, _what)]
-elif WHICH == 'LOOKAT':
-    # the target id at 0xF02 is the chassis u0532: the cast to a CBeamProjectile fails.
-    FORCE = [(_label, _where, [], ['$this->mLookAtTargetId.value = 0x532'], 0, _what)]
-elif WHICH == 'LOOKATN':
-    # the target id at 0xF02 is invalid: the body ends at once.
-    FORCE = [(_label, _where, [], ['$this->mLookAtTargetId.value = 0xffff'], 0, _what)]
 elif WHICH == 'E87CN':
     FORCE = [(_label, _where, [CH + '->mCommandModuleId.value'], ['$esi = 1'], 0, _what)]
 elif WHICH == '32F4F':
