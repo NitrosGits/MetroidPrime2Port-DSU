@@ -1961,3 +1961,31 @@ Left unmarked:
 | 19A08 | echo visor / combat | natural (`visor echo` 260..420) | visor arms both ran |
 | D7BC | knee vulnerability | natural (`shoot <knee>`) | ran |
 | 1AA84 1AA44 1AAC4 1AB24 1ABD8 | (no branches) | natural | ran |
+
+## 2026-10-22: head render/scan/aim overrides, dtors, xE68 scan token (dg32); gcov runs dg32 run1 (render) + run2 (noarmour)
+
+- Runs: `tools/cov/force.sh tools/cov/specs/digitalguardian_dg32_{render,noarmour}.py <out>
+  1baa96c2,09_cliff_temple_dark --driver 'python3 tools/drivers/dg32_head.py {port}' --fast --frames 900`
+  (build-port-cov at 07b08e00f). Both runs 0 caught/reach-stub. The driver relinks the head
+  (`send <head> 0x58414C44`) and scans both parts; the driver's `covdump` is needed (shutdown hangs).
+- Marked (07b08e00f): head 17B28 17A64 17840 17890 17638 174F4 17F64 13B08 13B30, helper 137A8;
+  body AB98 9DBC 97A4.
+- Fixes: 137A8 tests the armour id against -1 (kInvalidAssetId), not 0xFFFE; the head dtor
+  deletes xD70_ and the body dtor x123C_/xE64_/xE60_ (leaked); the body ctor builds the xE68_
+  single_ptr SCAN token (0xBF4C..0xC00C; `scaninfo` shows CEEF8207); 9DBC got its real body.
+- Reclassified (fe1ed1b33): H C68C CAFC 1912C CDB8 (SLdr copy ctors) and 11044 11068 139C4 190E0
+  1ABE0 (compiler/rstl copies); T 11BA8 13A80 (vtable word only, no bl/b reaches them).
+- Not taken: the dtors' remaining arms (17F64 8/12, AB98 14/22) are the members' implicit dtor
+  arms (empty optionals/vectors), not the functions' own logic.
+- Left unmarked: 28D0 308C 2CC4 3300 12D98 12818 D904 1AD2C 1B8 B100 (next slice).
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 17B28 | particles off (sHeadRendering path) | forced (dg32_render: mDrawParticles = 0, skip 20) | ALL-ARMS |
+| 17890 | dt > 0 | forced (dg32_render: dt = 0.5, skip 30; no natural caller seen) | ALL-ARMS |
+| 174F4 | head flag 0x10 | forced (dg32_render: x10F4_ \|= 0x10, skip 4; the scan display draws the head only a few frames) | ALL-ARMS |
+| 137A8 | armour id -1 | forced (dg32_noarmour: headArmor = -1) | ALL-ARMS |
+| 9DBC | no scan token | forced (dg32_noarmour: xE68_.mPtr = 0, skip 1) | ALL-ARMS |
+| 17F64 AB98 | null members | forced (dg32_noarmour: ptrs = 0 before the dtor) | own arms ran |
+| 17A64 17840 | (all arms) | natural (driver scans + `dghd.projinfo`) | ALL-ARMS |
+| 17638 97A4 13B08 13B30 | (no branches) | natural | ran |
