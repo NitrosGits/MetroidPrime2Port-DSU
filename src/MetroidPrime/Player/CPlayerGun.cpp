@@ -2069,12 +2069,24 @@ void CPlayerGun::UpdateSeeker(float dt, CStateManager& mgr) {
             case CPlayerState::kPV_Echo:
               visible = (visorFlags & 8) != 0;
               break;
+#ifdef TARGET_PC
+            // Port: the retail tests scan with 2 and dark with 4 (0x801C7A50, 0x801C7A5C), as
+            // CPlayer::ValidateOrbitTargetId does; the dark-visor-only seeker targets (Reactor
+            // Access) never locked on with the bits swapped.
+            case CPlayerState::kPV_Dark:
+              visible = (visorFlags & 4) != 0;
+              break;
+            case CPlayerState::kPV_Scan:
+              visible = (visorFlags & 2) != 0;
+              break;
+#else
             case CPlayerState::kPV_Dark:
               visible = (visorFlags & 2) != 0;
               break;
             case CPlayerState::kPV_Scan:
               visible = (visorFlags & 4) != 0;
               break;
+#endif
             }
             if (!visible) {
               continue;
