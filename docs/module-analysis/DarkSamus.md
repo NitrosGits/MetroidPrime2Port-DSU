@@ -1845,3 +1845,51 @@ trigger's entry, one per hit, from gdb convenience variables).
   boss u04f7 placed on the player at f623..f627), then keys 40 (bounced) and 87 (no touch
   bounds) at f650..f656. Key 96 has to be armed with 86, before the first overlap: run u4
   armed it later, so every contact took the first-hit arm. Runs u4 + u6 give 10/10 branches.
+
+## Slice dsvt1 (2026-10-22): the vtable stand-ins
+
+The five `StandIn` calls in `PortCDarkSamus.cpp` are now the retail bodies: AcceptScriptMsg
+(fn_10_1E89C), GetOrbitPosition (fn_10_10358), GetAimPosition (fn_10_10210),
+GetCollisionPrimitive (fn_10_1AAC4) and CollidedWith (fn_10_1C7FC). CollidedWith's unported
+callees are ported with it, as new `CDarkSamus` methods declared in `CDarkSamus.hpp` and
+defined in `PortCDarkSamus.cpp`: RecordPlatformContact (fn_10_1D0A0), RecordWallHit
+(fn_10_1CF84), CheckBoostBallWallHit (fn_10_A734), CrushPlatform (fn_10_1D194) and AddPhazonBob
+(fn_10_10484, const). `CDarkSamusDive` gains `mCollidable` (+0x68, guest 0xB28), the dive's
+CCollidableAABox that GetCollisionPrimitive returns. Each body's comment cites its asm.
+
+Fixes against the stand-ins: XDMG skips while `1.0 + 0xC20 >= now` (the stand-in used
+`3.0 + max(0xC0C, 0xC20)`), and the hit direction 0x8C0 is stored before that test; ACTV's
+boss bar HP is 0x908 when above 0, else the health; XALD's filter includes kMT_Solid and
+excludes kMT_CollisionActor | kMT_AIPassthrough; XLSG shares XLND's arm.
+
+Coverage (build-port-cov, rooftop `1baa96c2,10_cliff_rooftop`, `LAYER2@400`, boss u04f7):
+
+    BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/darksamus_vt.py <out> \
+      1baa96c2,10_cliff_rooftop --con tools/cov/specs/darksamus_vt.con --fast --frames 2000 \
+      --env MP2_INPUT=LAYER2@400
+    tools/cov/gcov_report.py build-port-cov <out1>/gcov ... --module DarkSamus
+
+All ten bodies are ALL-ARMS over the union of five runs (r1: the natural run, with no writes;
+r2..r5: `darksamus_vt.py` as it grew; r5 is the committed spec). No single run is ALL-ARMS,
+because the fight is not deterministic: the shots that land and the hits that come in each
+attack change from run to run. The forced arms (the gdb writes in `darksamus_vt.py`, each
+written once at a body's entry and put back afterwards):
+- ACTV with 0x908 at 700 and at -1. The dive's XLND/XLSG with the bounce bit set and clear.
+  XDMG inside 0xC20's 1.0 s. XDMG with the attack 0x800000, where nothing but phazon hurts
+  (the WeaponHurts false arm). CanReflectHit true: a missile, past 3 s, with a cached roll of
+  -1. A vertical hit direction (CanBeNormalized false).
+- XALD's FindConnectedObject with a state that has no connection (invalid uid), and with an
+  IS06 connection, which is an AI hint and not a battle stage (the cast is null).
+- Orbit/aim: a boost ball uid with no actor, and an attack position of (0,5,0) and of (0,0,5).
+- AddPhazonBob inside the 5.3 s window and past it.
+- GetCollisionPrimitive in the dive at the target (dist 0) and bounced.
+- CollidedWith: the dash start/target positions for the `<` test, more than two stuck dashes,
+  and a dive (0x20) that has not launched and has no boost ball (attack 0x80, rewritten for one
+  hit).
+- First contact's left material: Platform and Platform|Floor (RecordPlatformContact), Wall and
+  Ceiling with no object in the attacks 0xFFFF/0x2000 (RecordWallHit; the invalid id is forced
+  in another attack), Wall and Floor with a boost ball uid (CheckBoostBallWallHit).
+- CrushPlatform from platform u0423 with Floor, Platform and neither.
+
+Natural (r1): XDMG from the console (no projectile), shot hits, XLAU, ALRT, DCTV/XDEL, the
+platform casts and the dash arms of CollidedWith.
