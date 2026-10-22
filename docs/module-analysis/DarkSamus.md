@@ -546,9 +546,8 @@ jumptable_10_data_FB4, 0x0001C1F0; never reaches the base) starts it with fn_10_
 attack 8 at 0x0001C25C, the byte 0xBAC for 0x10 at 0x0001C268); 0xBA4 is the start time (0x8B0),
 not a delay. fn_10_13230 is the jittered aim point (0.47 s sweep for 8, 0.67 s otherwise).
 fn_10_12F60 spawns the shot: the module's own CScattershotProjectile (CWeapon subclass, 0x27B0,
-ctor fn_10_2AD0, vtable lbl_10_data_40, code 0x0..0x44D0) is not ported, so a CEnergyProjectile
-(kWT_AI, the info's token/damage) stands in; fn_10_C98 (add a shot to the live swarm) is a
-stand-in. 0xB50/0xBB0 are the two optional CProjectileInfos (scatterShotProjectile/2, one damage;
+ctor fn_10_2AD0, vtable lbl_10_data_40, code 0x0..0x44D0; ported in Slice dsscat, which replaced
+the CEnergyProjectile stand-in), fed by fn_10_C98 (add a shot to the live swarm). 0xB50/0xBB0 are the two optional CProjectileInfos (scatterShotProjectile/2, one damage;
 valid bytes 0xB78/0xBD8), ProjectileInfo (fn_10_1C6C8) picks 0xBB0 when 0xBAE = (rand < 0xBDC,
 /100 when > 1). 0x8CC = GetLctrTransform("GUN_Particle_LCTR") in PreRender (0x00018C18). Forced
 walk: ScatterShot -> 5 shots from the gun locator, each gone after 0.15..0.45 s -> Dash.
@@ -2081,4 +2080,38 @@ platform casts and the dash arms of CollidedWith.
 - fn_10_C98 (CScattershotProjectile add shot) stays a stand-in: it appends a 0x20-byte shot record
   to the projectile's own list at +0x22C (cap 0x12C = 300, `cmpwi r9, 0x12c`; flag byte 4, | 8 every
   17th, | 0x10 every 13th, | 0x20 every 5th shot; fn_10_DC8 / fn_10_E10), so it needs the
-  CScattershotProjectile class (vtable lbl_10_data_40, 0x0..0x44D0) ported first.
+  CScattershotProjectile class (vtable lbl_10_data_40, 0x0..0x44D0) ported first (done: Slice dsscat).
+
+## Slice dsscat (2026-10-22): CScattershotProjectile (vtable lbl_10_data_40) and fn_10_C98
+
+- Port class `include/MetroidPrime/Enemies/CScattershotProjectile.hpp` +
+  `src/MetroidPrime/Enemies/PortCScattershotProjectile.cpp` (TypesMatch id 21 and the TCastToPtr
+  specializations live there). Names from MP3 symbols; shot record SShot {pos, target, distance,
+  flags: 1 dead, 2 hit, 4 needs sweep, 8 hit sfx, 0x10 hit explosion, 0x20 slow}.
+- FireScatterShotProjectile (fn_10_12F60) now adds to the live projectile through
+  TCastToPtr (AddShot at 0x0001308C), else spawns `CScattershotProjectile(..., 45.0f)`.
+- Bodies: 2AD0 ctor, 29FC dtor, 2918 Think, 29DC AcceptScriptMsg, E5C AddToRenderer, E7C Render,
+  C5C GetTouchBounds, C98 AddShot, 2C CheckPlayerHit, 324 Sweep, B78 CanHit, 1C08 CheckNewShots,
+  1D8C SpawnHitExplosion, 213C PlayHitSfx, 2254 UpdateShots, 2798 InitRenderParams. The TEV setup
+  (lbl_10_bss_0/4, fn_10_1B64) is a function-static CTevPass in Render.
+- Runs: gcov build `build-port-cov`, rooftop, driver `tools/drivers/darksamus_scat.con`, spec
+  `tools/cov/specs/darksamus_scat.py` (natural, 2000 fast frames) and
+  `tools/cov/specs/darksamus_scat_force.py` (force.sh); 0 caught / reach-stub in both.
+
+| fn | arms | run |
+|---|---|---|
+| 2AD0 ctor | all 15 | natural |
+| 1C08 CheckNewShots | all 10 (alive / not, needs sweep / not, hit / none) | natural |
+| 2918 Think | dt <= 0 (0x00002950) | forced (`$th % 97`, dt = 0) |
+| | lifetime > 10 (0x000029A0) | forced (`$th % 211`, mLifetime = 11) |
+| | the rest | natural |
+| 29DC / E5C / C5C | no branch in retail or port | natural |
+
+- Unmarked (arms missing in the natural run): C98 cap 300 (0x00000CA8); 2C dir not normalizable
+  (0x000000A0); 324 Sweep point-inside / box arms; B78 pass-through (0x00000BC4); 1D8C dist < 2,
+  no COLR, no particle (0x00001DB8/0x00001DC4/0x00001E58); 213C no COLR / sfx < 0; 2254 4 arms;
+  2798 the missing-texture / missing-colour arms; E7C Render 24 arms; 29FC dtor (empty-vector arm).
+- asmcheck false positives (commented in the cpp): x22C is mShots.size(); x24C_* bits are the shot
+  flags; the flagged calls are inlined helpers (2C8, B04, A08, A60, 2040, 1B64, 2E44 = the
+  CModelData ctor) and token/string helpers; E7C's call/branch counts sit in StreamBillboard /
+  BillboardAxes; the dtor's 9 conditions are the vector teardown, 1D8C's 18 the optional/token ones.

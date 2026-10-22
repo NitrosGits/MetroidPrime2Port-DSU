@@ -81,6 +81,7 @@ CScattershotProjectile* TCastToPtr< CScattershotProjectile >(CEntity& entity) {
 // leaves from the transform's translation along its second column (fn_10_C98 at 0x00002DE8), the
 // actor goes there (0x00002E0C), the box takes the position (0x00002E18) and the render parameters
 // are read (fn_10_2798 at 0x00002E20).
+// @ fn_10_2AD0
 CScattershotProjectile::CScattershotProjectile(const TToken< CWeaponDescription >& desc,
                                                EWeaponType type, const CTransform4f& xf,
                                                const CDamageInfo& damage, TUniqueId uid,
@@ -118,6 +119,7 @@ CScattershotProjectile::~CScattershotProjectile() {}
 // (`cror eq, lt, eq` at 0x00002950). The lifetime 0x1F0 counts dt; the shots move (fn_10_2254), new
 // ones are swept (fn_10_1C08) and checked against the player (fn_10_2C); past 10.0f
 // (lbl_10_rodata_38, `ble` at 0x000029A0) the actor deletes itself.
+// @ fn_10_2918
 void CScattershotProjectile::Think(float dt, CStateManager& mgr) {
   CWeapon::Think(dt, mgr);
   if (dt <= 0.f) { // 0x00002950
@@ -133,16 +135,19 @@ void CScattershotProjectile::Think(float dt, CStateManager& mgr) {
 }
 
 // fn_10_29DC (0x000029DC, 0x20 bytes): CActor's.
+// @ fn_10_29DC
 void CScattershotProjectile::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CActor::AcceptScriptMsg(mgr, msg);
 }
 
 // fn_10_E5C (0x00000E5C, 0x20 bytes): EnsureRendered only.
+// @ fn_10_E5C
 void CScattershotProjectile::AddToRenderer(const CStateManager& mgr) const {
   EnsureRendered(mgr);
 }
 
 // fn_10_C5C (0x00000C5C, 0x3C bytes): the box 0x1D8, always.
+// @ fn_10_C5C
 rstl::optional_object< CAABox > CScattershotProjectile::GetTouchBounds() const {
   return mBounds;
 }
@@ -299,6 +304,7 @@ bool CScattershotProjectile::CanHit(const CActor& actor) const {
 // fn_10_1C08 (0x00001C08, 0x184 bytes): with the alive byte 0x1F4 set (0x00001C2C), every shot
 // that still needs its sweep (flag 4) gathers what is near its path (solid in, projectile
 // passthrough out, not itself), stops at the first hit (fn_10_324) and is swept (flag 4 off).
+// @ fn_10_1C08
 void CScattershotProjectile::CheckNewShots(CStateManager& mgr) {
   if (!mAlive) { // 0x00001C2C
     return;
