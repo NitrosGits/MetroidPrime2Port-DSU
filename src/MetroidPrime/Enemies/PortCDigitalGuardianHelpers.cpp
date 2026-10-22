@@ -256,7 +256,6 @@ void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf
   }
 }
 //
-// Unmarked: the port has no caller for it yet (fn_14_6E04 calls it).
 
 
 // fn_14_6E04 (0x258 bytes): the guardian's body turns to the head module. With no head (the
@@ -270,8 +269,13 @@ void CDigitalGuardian::x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf
 // 0x6F5C), else the head's forward is slerped towards the guardian's forward (the Slerp call at
 // 0x6F90) and the LookAt uses that. At the end, with at most two knees left (the x705C call at
 // 0x6FF4), the head's flag byte's bit 5 (head+0x10F4, the extrwi at 0x7004) and the head's
-// projectile attack (head+0x10D0 == 1, the cmpwi at 0x7010), the guardian's flag byte's bit 1
-// (guest this+0x128C, the rlwimi at 0x7020) is set.
+// projectile attack (head+0x10D0 == 1, the cmpwi at 0x7010), the guardian's flag byte's bit 0
+// (0x01, guest this+0x128C, the rlwimi at 0x7020) is set.
+// Every arm ran (gcov 12/12, runs dg16_knees + dg16_headgone, area 53): no head uid and the head
+// gone (`send <head> Delete`), both sides of the angle compare, four/three knees, two/one/none with
+// the head's bit 0x20 clear, set (`fsm <head> ProjectileTelegraph`) with 0x10D0 0 and 1; the knee
+// ids and 0x10D0 forced (tools/cov/specs/digitalguardian_knees.py).
+// @ fn_14_6E04
 void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
   if (x1082_ == kInvalidUniqueId) { // the cmplw at 0x6E40
     return;
@@ -315,6 +319,10 @@ void CDigitalGuardian::x6E04_(CStateManager& mgr, float dt) {
 // 0xA64, 0xA80, 0xA9C - the data block's +0x250, +0x26C, +0x288, +0x2A4, +0x2C0 and +0x2DC).
 // With no knee left the first block is used, unless the head's flag byte's bit 4 (head+0x10F4,
 // the extrwi at 0x10198) is set: then the last block is used (the default at 0x10168).
+// Every live arm ran (gcov 9/10, runs dg16_knees + dg16_headgone): no body (after `send <body>
+// Delete`), knee counts 4..0 (ids forced), 0 with bit 0x10 clear and set (forced). The default is
+// dead: the count is li 0 (0x10130) or fn_14_705C's result, 0..4 (li 0 and at most four addi 1).
+// @ fn_14_10120
 SLdrDigitalGuardianHeadStruct* CDigitalGuardianHead::x10120_(CStateManager& mgr) {
   int knees = 0;
   const CDigitalGuardian* body =
@@ -342,7 +350,6 @@ SLdrDigitalGuardianHeadStruct* CDigitalGuardianHead::x10120_(CStateManager& mgr)
   }
 }
 //
-// Unmarked: the port has no caller for it yet (the head's codes call it).
 
 
 // fn_14_F374 (0x1C bytes): the retreat ride's time limit (FollowRetreatPath, fn_14_1569C). With
