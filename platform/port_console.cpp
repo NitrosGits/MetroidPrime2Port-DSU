@@ -28,6 +28,7 @@
 #endif
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
 
 extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
@@ -540,11 +541,13 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
+      "bodystate <id> <n>          set a patterned actor's body state (the pas::EAnimationState index)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
+      "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
@@ -1962,11 +1965,54 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
     pos = CVector3f(x, y, z);
   }
   actor->SetTranslation(pos);
+  // The optional rotation: place <id> <x> <y> <z> [yaw [pitch [roll]]] in degrees - the yaw
+  // about the world's up (z), the pitch about the right one (x) and the roll about the forward
+  // one (y), applied in that order.  Without it the actor keeps its rotation.
+  if (args.size() >= 6) {
+    const float yaw = std::atof(Str(args[5]).c_str());
+    const float pitch = args.size() >= 7 ? std::atof(Str(args[6]).c_str()) : 0.f;
+    const float roll = args.size() >= 8 ? std::atof(Str(args[7]).c_str()) : 0.f;
+    const CQuaternion rot = CQuaternion::YRotation(CRelAngle::FromDegrees(roll)) *
+                             CQuaternion::XRotation(CRelAngle::FromDegrees(pitch)) *
+                             CQuaternion::ZRotation(CRelAngle::FromDegrees(yaw));
+    actor->SetRotation(rot);
+  }
   if (CPhysicsActor* physics = TCastToPtr< CPhysicsActor >(ent)) {
     physics->Stop();
   }
   char line[64];
   std::snprintf(line, sizeof(line), "placed at %.2f %.2f %.2f\n", pos.GetX(), pos.GetY(), pos.GetZ());
+  out += line;
+}
+
+// bodystate <id> <animation state index>: set a patterned actor's body controller state
+// directly (the body's own state, e.g. 2 = kAS_LieOnGround, 19 = kAS_Cover, 20 =
+// kAS_WallHang).  The state machine reaches only some of the body states, and the coverage
+// runs need the others; the index is the pas::EAnimationState value.
+void CmdBodyState(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() < 3) {
+    Fail("usage: bodystate <id> <animation state index>");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  CBodyController* body = patterned->BodyController();
+  if (body == nullptr) {
+    Fail("the actor has no body controller");
+    return;
+  }
+  const int value = std::atoi(Str(args[2]).c_str());
+  if (value < 0 || value > 28) { // 28 = kAS_AdditiveLoopReaction, the last one
+    Fail("the animation state index must be 0..28");
+    return;
+  }
+  body->BodyStateInfo().SetState(static_cast< pas::EAnimationState >(value));
+  char line[64];
+  std::snprintf(line, sizeof(line), "body state %d\n", value);
   out += line;
 }
 
@@ -2732,6 +2778,7 @@ constexpr SCommand kCommands[] = {
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
+    {"bodystate", CmdBodyState, true},
     {"statecall", CmdStateCall, true},
     {"trigcall", CmdTrigCall, true},
     {"codecall", CmdCodeCall, true},
