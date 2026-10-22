@@ -2132,7 +2132,7 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
     pos = player->GetTranslation() + dir * dist;
   } else {
     float x = 0.f, y = 0.f, z = 0.f;
-    if (args.size() != 5 || !ParseFloat(args[2], x) || !ParseFloat(args[3], y) ||
+    if (args.size() < 5 || !ParseFloat(args[2], x) || !ParseFloat(args[3], y) ||
         !ParseFloat(args[4], z)) {
       Fail("usage: place <id> <x> <y> <z> | place <id> player [dist]");
       return;
