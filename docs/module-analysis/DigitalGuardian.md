@@ -1503,3 +1503,37 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   9CA4/9ABC `CALL TCastToPtr<CDigitalGuardianHead>` (the C++ spells it `TCastToConstPtr`, the const
   overload of the same cast).
 - Marked: A6A8, 9CA4, 9ABC.
+
+## 2026-10-22: FaceTarget, ProjectileAttack, the protect-knees and boss-bar codes, the melee leg; gcov run arms5
+
+- Ported: fn_14_94BC FaceTarget, fn_14_8794 ProjectileAttack, fn_14_77EC SetProtectKneesFaceTarget,
+  fn_14_7BD4 SetupBossEnergyBar ("BossCliffsideBoss", .rodata 0x2F4 + 0x614), fn_14_7504
+  SelectBestMeleeAttackLeg (the one 73D4 needs: it sets 0x11D8). The knee directions 77EC sums
+  are the ctor's table at 0xFC8 ((-1,1), (-1,-1), (1,1), (1,-1); 0xBD7C..0xBE3C), a constant in
+  the port. 20E4 is two ifs and 458C's new-expression temporaries are locals (retail order), so
+  gcov sees no conditional-destruction flags.
+- Driver: `tools/cov/specs/digitalguardian_arms.con` with `digitalguardian_states.py` (one run, no
+  forcing). The natural fight (`digitalguardian_fight.con`) goes Idle -> FaceTarget ->
+  ProjectileAttack -> JumpAttack (a stand-in, stuck there).
+- Console: `uevent <id> <type> [dt] [locator]` (the POI node's locator, default "root").
+- The FSM is built on Activate: `statecall`/`codecall` before it answer "no state function".
+  fn_14_3F90 (in Think) clears the id of a deleted armour, so the ObjectById-null arm of 77EC
+  needs the body inactive (`send <body> Deactivate`) across the delete.
+
+| Function | Arm | How (arms5) | Result |
+|---|---|---|---|
+| 94BC | act, turn, repeat, deact, msg 3 | natural + `statecall` | ran |
+| 94BC | 0x1278 not magnitude-safe (over) | `fsm <body> ProjectileAttack`, body inactive, 77EC early return then FaceTarget 0/1 | ran: 8/8, marked |
+| 8794 | head missiles (0x10D0 2) / other, flag 0x20, exit, deact, msg 3 | `codecall <head> SelectProjectileAttack` x24 + statecalls | ran |
+| 8794 | no head (both casts) | `send <head> Delete`, `fsm <body> ProjectileAttack` | ran: 16/16, marked |
+| 7BD4 | counter actor there / gone | Start; `send e0035005f Delete` + codecall | ran: 2/2, marked |
+| 77EC | zero sum (random, both sides), non-zero sum (snap 0 / > 0, both sides) | face sweep (45 / 22.5 deg) + `place <body> player 30` | ran |
+| 77EC | id invalid; id valid, object gone | armours u0578/u057a deleted (ids cleared), u0579 deleted with the body inactive | ran: 14/14, marked |
+| 7504 | best / not best | `place` at 1..90 units, four yaws | ran: 8/8, marked |
+| 73D4 | no leg (before any 7504), player nearer, within / beyond nearLegStabRange | as 7504 | ran: 10/10, marked |
+| A468 | 3, 5, 12, 13 in / out of the vortex, 16, 17, 27, default (1) | `uevent`; vortex via `statecall <body> VortexAttack 0` | ran: 10/10, marked |
+| 458C, 20E4 | no leg, ankle, toe, toe target destroyed (CrippledReaction Activate) | `uevent <body> 27 0 <locator>` | ran: 12/12 and 6/6, marked |
+
+- asmcheck: naming only (ShouldRetry = CanIssueCommand, TCastToPtr spelled TCastToConstPtr,
+  GetStringIndexByName = the host's GetStringIndex, the 77EC knee compare goes through a local copy).
+- Marked: 94BC, 8794, 77EC, 7BD4, 7504, 73D4, A468, 458C, 20E4.
