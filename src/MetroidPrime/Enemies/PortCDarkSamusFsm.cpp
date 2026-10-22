@@ -5293,6 +5293,11 @@ float CDarkSamus::GetDashPathClearance(
 // largest weight (from 0.0f) is looked for from a random slot on (Next, the signed modulo 8 at
 // 0x00015EB0..); the slot (1 when none matches), its end point, the actor's position and its weight
 // go into the dash record (0x00015F94..0x00015FD4), and the weight is the answer.
+// Arms: the fight (blocked slots dropped or scaled, steps left, a target), plus forced calls
+// (tools/cov/specs/darksamus_ds46_pickdash.{py,gdb}): the facing flat, the last slot with and
+// without steps, the actor next to the player, a far target, the clearance forced under 1 with the
+// height query failed / the actor still / moving, weights all negative (no slot matches: 1) (ds46).
+// @ fn_10_154FC
 float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* target) {
   static const int skOpposite[8] = {1, 0, 3, 2, 7, 6, 5, 4};
   const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
@@ -5375,9 +5380,12 @@ float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* 
       weight = weight * (endDistSq - playerDistSq);
     } else {
       float closest = 8.01f;
+      // z is the player's z minus itself (`fsubs f21, f25, f25` at 0x00015C90), not 0.0f: NaN
+      // for a non-finite player z.
+      const float alongZ = playerPos.GetZ() - playerPos.GetZ();
       for (float t = 0.05f; t <= 1.f; t += 0.05f) {
         const CVector3f along((1.f - t) * pos.GetX() + t * end.GetX() - playerPos.GetX(),
-                              (1.f - t) * pos.GetY() + t * end.GetY() - playerPos.GetY(), 0.f);
+                              (1.f - t) * pos.GetY() + t * end.GetY() - playerPos.GetY(), alongZ);
         const float dist = along.Magnitude();
         if (dist < closest) {
           closest = dist;

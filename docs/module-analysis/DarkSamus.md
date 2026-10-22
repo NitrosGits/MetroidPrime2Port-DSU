@@ -2351,3 +2351,34 @@ platform casts and the dash arms of CollidedWith.
 - Harness gotchas: `$cl` (and every x86 register name) is a gdb register, not a variable; gdb-called
   allocators handed back 32-bit-cut pointers here, so scratch memory comes from `ds45-scratch`.
 - Left: 154FC PickDash (3 callers: 0x1505C, 0x15298 and SideDash 0x154A8, so not T) and 1FA14 (ctor).
+
+## Slice ds46 (2026-10-23): fn_10_154FC PickDash marked
+
+- Read against the asm block by block: no difference except the closest-pass vector's z, which is
+  the player's z minus itself (`fsubs f21, f25, f25` at 0x15C90), not 0.0f (NaN for a non-finite
+  player z); fixed. Senses: clearance `bge` 0x15B98 (`<`), still `bge` 0x15BD0, steps `ble`
+  0x15C54, end-vs-player `bge` 0x15C58/0x15D54, closest `bge` 0x15D04/0x15D28, t `cror` 0x15D14
+  (`<=`), target range `bge` 0x15DC0, best `ble` 0x15E1C.. (`>`), pick `fcmpu; bne` 0x15ED0 (`==`).
+  The slot index passed in r7 to fn_10_16048 (`mr r7, r26` at 0x15B58) is unused there (r7 is
+  overwritten at 0x160AC before any read).
+- Harness: `tools/cov/specs/darksamus_ds46_pickdash.{py,gdb}` (on the ds44 harness via
+  `DS44_GDB`; forced GetHeightOfPointAboveMesh / GetDashPathClearance answers; every member restored).
+
+      COV_GDB_SCRIPT=$PWD/tools/cov/specs/darksamus_ds46_pickdash.py BUILD=$PWD/build-port-cov \
+        MP2_INPUT=LAYER2@400 tools/cov/force.sh tools/cov/specs/darksamus_ds46_pickdash.py <out> \
+        "1baa96c2,10_cliff_rooftop" --con tools/drivers/darksamus_ds43.con --fast --frames 5900
+
+| arm (gcov line count, 16 calls: 6 fight, 10 forced) | how |
+|---|---|
+| facing not normalizable -> (1,0,0) (1) | forced (forward column m01 = m11 = 0) |
+| steps left: last slot / its opposite -> 0 (4) | forced (mStepsLeft 1/2, mLastSlot 2) |
+| no steps: last slot * 0.01 (3) | forced (mStepsLeft 0, mLastSlot 2) |
+| clearance < 1, height failed * 0.1c (33) / still dropped (35) | fight + forced (GetHeightOfPointAboveMesh -> 1; clearance 0.5) |
+| clearance < 1, moving * 0.02c (8) | forced (clearance 0.5, height ok, mStillTime 2.0) |
+| steps: end nearer dropped (10) / * gain (18) | fight + forced |
+| no steps: closest pass < 8 (16); end nearer * 0.5 (19) | forced (actor 4 units from the player) |
+| target < range: 1 - d/range (7) | fight |
+| target >= range: 0.01 (26) | fight + forced (target 100000 off) |
+| no slot matches the best -> slot 1 | forced (all weights -1.0, clearance 1.0) |
+
+gcov: PickDash 91/91 lines, 46/46 branches, ALL-ARMS.
