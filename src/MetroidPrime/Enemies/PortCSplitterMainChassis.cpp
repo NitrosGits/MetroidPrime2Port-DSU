@@ -516,18 +516,19 @@ int CSplitterMainChassis::PortFindDodgeDirection(CStateManager& mgr, const CVect
       continue;
     }
     const CVector3f offset = other->GetTranslation() - GetTranslation();
-    // 0x9378 fcmpo, 0x937C bge: an actor at or beyond the step distance is skipped (a NaN
-    // distance falls through and is tested).
-    if (offset.MagSquared() >= rangeSq) {
+    // 0x9378 fcmpo, 0x937C bge (taken when !(dist < range)): only an actor nearer than the step
+    // distance is tested (a NaN distance is skipped).
+    if (!(offset.MagSquared() < rangeSq)) {
       continue;
     }
     // 0x93A0 fcmpo, 0x93A4 cror eq, gt, eq, 0x93A8 bne: a NaN dot takes the opposite side.
     if (CVector3f::Dot(offset, axis) >= 0.f) {
-      // 0x93C8 fcmpo, 0x93CC bge: the side stays open only at 60 degrees or more (NaN closes it).
-      if (axisOpen && !(CVector3f::GetAngleDiff(axis, offset) >= 1.0471976f)) {
+      // 0x93C8 fcmpo, 0x93CC bge (taken when !(diff < 60 degrees)): the side closes only under
+      // 60 degrees (a NaN angle leaves it open).
+      if (axisOpen && CVector3f::GetAngleDiff(axis, offset) < 1.0471976f) {
         axisOpen = false;
       }
-    } else if (oppositeOpen && !(CVector3f::GetAngleDiff(-axis, offset) >= 1.0471976f)) {  // 0x940C-0x9410
+    } else if (oppositeOpen && CVector3f::GetAngleDiff(-axis, offset) < 1.0471976f) {  // 0x940C-0x9410
       oppositeOpen = false;
     }
   }

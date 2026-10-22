@@ -294,13 +294,15 @@ void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
     return;
   }
   if (mOpening) {
-    // 0x10E14 fcmpo 1.0f, open; bge: the sum is kept when 1.0f >= it (a NaN sum gives 1.0f).
+    // 0x10E14 fcmpo 1.0f, open; 0x10E18 bge (taken when !(1.0f < open)) keeps the sum, so 1.0f
+    // only when the sum exceeds it (a NaN sum is kept).
     const float open = dt * mOpenSpeed + mOpenFraction;
-    mOpenFraction = 1.f >= open ? open : 1.f;
+    mOpenFraction = 1.f < open ? 1.f : open;
   } else {
-    // 0x10E40 fcmpo 0.0f, open; bge: 0.0f when 0.0f >= the difference (a NaN one is kept).
+    // 0x10E40 fcmpo 0.0f, open; 0x10E44 bge (taken when !(0.0f < open)) stores 0.0f, so the
+    // difference only when above 0.0f (a NaN one gives 0.0f).
     const float open = mOpenFraction - dt * mOpenSpeed;
-    mOpenFraction = 0.f >= open ? 0.f : open;
+    mOpenFraction = 0.f < open ? open : 0.f;
   }
   mAngle = PortWrapTurn((mMaxAngle - kBeamEffectClosedAngle) * mOpenFraction +
                         kBeamEffectClosedAngle);
