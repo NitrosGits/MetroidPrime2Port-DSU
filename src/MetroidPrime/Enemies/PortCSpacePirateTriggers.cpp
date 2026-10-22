@@ -545,7 +545,8 @@ int CSpacePirate::GetStrafeDir(CStateManager& mgr, float dist) {
     }
     const CVector3f delta = other->GetTranslation() - GetTranslation();
     const float magSquared = delta.MagSquared();
-    if (magSquared >= distSquared) {
+    // 0xCED8 fcmpo + 0xCEDC bge skips this pirate: a NaN distance is skipped too.
+    if (!(magSquared < distSquared)) {
       continue;
     }
     const float rightDot = CVector3f::Dot(delta, GetTransform().GetRight());
