@@ -1318,8 +1318,9 @@ void CDigitalGuardian::x2CC4_(CStateManager& mgr, float dt) {
 // fn_14_28D0 (0x158 bytes): the beacon's arrival. The guard's collision actor (the uid at
 // 0x10CC - the lhz at 0x28F0 and the ObjectById call at 0x28FC) is woken: when its flag
 // word's bit 24 is clear (the extrwi at 0x2910 - the byte's bit 7, the mask 0x80 - the CEntity's
-// first bitfield, mActive) the CEntity::SetActive(true) runs (the vtable slot 0x1C). Then the particle generator starts (the CParticleGen's vtable slot 0x2C with the
-// argument 1), the arrival sound plays (the PlayCustomSound call at 0x29E8: the position is
+// first bitfield, mActive) the CEntity::SetActive(true) runs (the vtable slot 0x1C). Then the
+// particle generator starts emitting (the CParticleGen's vtable 0x2C, SetParticleEmission, with
+// r4 = 1 at 0x293C; SetGeneratorRate would take f1), the arrival sound plays (the PlayCustomSound call at 0x29E8: the position is
 // the neck locator's translation, the direction the up vector and the parms are the
 // transmission beacon's sound parms - the guest's 0x968..0x97F - with the maxVolume at 0x7F
 // while the echo visor is active) and its handle goes to 0x1240, and the dark visor may orbit
@@ -1330,7 +1331,7 @@ void CDigitalGuardian::x28D0_(CStateManager& mgr) {
     actor->SetActive(true);
   }
   if (x123C_ != nullptr) {
-    x123C_->SetGeneratorRate(1.f);
+    x123C_->SetParticleEmission(true); // vtable 0x2C
   }
   if (!x1240_) {
     const CVector3f position = GetLctrTransform(CSegId(x10B9_)).GetTranslation();
@@ -1345,19 +1346,36 @@ void CDigitalGuardian::x28D0_(CStateManager& mgr) {
 
 // fn_14_2A28 (0x29C bytes): the beacon's effect update. While the beacon is up the echo flash
 // (0x126C) fades and tints the beacon model (0x1270), and the effect's external parameter 0 is
-// set; the effect always updates. The head part (the TCastToPtr<CDigitalGuardianHead> of 0x1084
-// at 0x2B04: the effect is aimed from the neck locator at the head, 0x2B10..0x2C6C, and the
-// parameter is dt times that distance) cannot run: the head class is not ported, so the
-// parameter is the 1.0 the retail loads at 0x2AF4 for a missing head.
+// set; the effect always updates. With the linked head (the TCastToPtr<CDigitalGuardianHead> of
+// 0x1084 at 0x2B04) the effect is aimed at it: the start is the neck locator's (0x10B9,
+// 0x2B1C) translation plus 1.5f (.rodata 0x2A4, 0x2B4C) times the beacon model's bounds height
+// (x11EC's GetBounds at 0x2B34, max.z - min.z at 0x2B50) along the locator's z column (0xC0/0xD0/
+// 0xE0, 0x2B68..0x2B98); the end is the head's GetAimPosition(mgr, 0.0f) (vtable 0x54 at 0x2BB4,
+// .rodata 0x264). The effect's global orientation (CParticleGen vtable 0x1C, 0x2C54) is the
+// LookAt from start to end with the up vector (0x2C3C), its global translation (0x20, 0x2C6C) the
+// start, and the parameter is dt times the distance (Magnitude at 0x2BEC, the fmuls at 0x2BF4);
+// without a head the parameter is the 1.0f loaded at 0x2AF4 (.rodata 0x270).
 void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
   if (x123C_ == nullptr || !x11EC_.valid()) { // the tests at 0x2A60 and 0x2A6C
     return;
   }
-  if (x1268_ != 0) {
+  if (x1268_ != 0) { // 0x2A78
     x126C_ = rstl::max_val(0.f, x126C_ - dt); // .rodata 0x264
     const float t = rstl::min_val(1.f, x126C_); // .rodata 0x270
     x1270_ = CColor::Lerp(CColor::Black(), CPatterned::skDamageColor, t).GetColor_u32();
-    static_cast< CElementGen* >(x123C_)->SetExternalParam(0, 1.f); // 0x2C7C
+    float param = 1.f; // .rodata 0x270, 0x2AF4
+    if (CDigitalGuardianHead* head =
+            TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1084_))) { // 0x2B0C
+      const CTransform4f neck = GetLctrTransform(CSegId(x10B9_));
+      const CAABox bounds = x11EC_->GetBounds();
+      const float height = 1.5f * (bounds.GetMaxPoint().GetZ() - bounds.GetMinPoint().GetZ());
+      const CVector3f start = neck.GetTranslation() + neck.GetColumn(kDZ) * height;
+      const CVector3f dir = head->GetAimPosition(mgr, 0.f) - start;
+      param = dt * dir.Magnitude();
+      x123C_->SetGlobalOrientation(CTransform4f::LookAt(start, start + dir, CVector3f::Up()));
+      x123C_->SetGlobalTranslation(start);
+    }
+    static_cast< CElementGen* >(x123C_)->SetExternalParam(0, param); // 0x2C7C
   }
   x123C_->Update(dt); // vtable 0xC
 }
@@ -2712,10 +2730,11 @@ void CDigitalGuardian::KneeDestroyedReaction(CStateManager& mgr, EStateMsg msg, 
   }
 }
 
-// fn_14_7D8C (0x260 bytes): the guardian falls. The head part of the activate path (the
-// TCastToPtr<CDigitalGuardianHead> of 0x1082 at 0x7EC0: the head is put at the locator 0x10B8,
-// then bit 1 of 0x128C is cleared) cannot run: the head class is WP3 and its loader is a
-// stand-in, so no head exists in the port.
+// fn_14_7D8C (0x260 bytes): the guardian falls. On Activate, after the move to the
+// DeathRattle/Follow waypoint (0x7E6C..0x7EA8), the head (the TCastToPtr<CDigitalGuardianHead>
+// of 0x1082 at 0x7EC0; none: done, 0x7EC8) is put at the "Head_1" locator (0x10B8,
+// GetLctrTransform at 0x7ED8, SetTransform at 0x7EF0) and bit 1 of 0x128C (the mask 0x02, the
+// rlwimi r0, r3(0), 1, 30, 30 at 0x7EFC) is cleared.
 void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -2735,6 +2754,12 @@ void CDigitalGuardian::CrippledReaction(CStateManager& mgr, EStateMsg msg, float
       break;
     }
     SetTransform(waypoint->GetTransform());
+    CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_));
+    if (head == nullptr) { // 0x7EC8
+      break;
+    }
+    head->SetTransform(GetLctrTransform(CSegId(x10B8_)));
+    x128C_ &= ~0x02; // 0x7EFC
     break;
   }
   case kStateMsg_Update:
