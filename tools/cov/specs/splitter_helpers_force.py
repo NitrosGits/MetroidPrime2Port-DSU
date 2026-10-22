@@ -140,10 +140,85 @@ BODIES = {
                 'the head\'s state at 0xEE0 is 1: the LightShield effect'),
     'SHIELD2': ('2BE0 GetShieldEffect', 'CSplitterCommandModule::PortGetShieldEffect(',
                 'the head\'s state at 0xEE0 is 2: the DarkShield effect'),
-    'LANDED0': ('F5F8 ctor', 'loc:PortCSplitterMainChassis.cpp:1887',
+    'LANDED0': ('F5F8 ctor', 'loc:PortCSplitterMainChassis.cpp:1905',
                 'the data\'s flag word at 0x68 has its 0x1 bit: the landed count at 0xD00 is 0'),
-    'NULLCAST': ('9AF8 SetCollisionVulnerability', 'loc:PortCSplitterMainChassis.cpp:682',
+    'NULLCAST': ('9AF8 SetCollisionVulnerability', 'loc:PortCSplitterMainChassis.cpp:683',
                  'the collision actor\'s id is invalid: the cast to a CCollisionActor fails'),
+    'MOVE': ('2154 MoveTo', 'CSplitterCommandModule::PortMoveTo(',
+             'the timer at 0xEF4 is above zero: the head is teleported to the destination'),
+    'RELO': ('E768 ReleaseDock', 'CSplitterCommandModule::PortFindChassis(',
+             'the head has an old pick: the chassis is asked to release the reservation'),
+    'RELO2': ('E768 ReleaseDock', 'CSplitterCommandModule::PortFindChassis(',
+              'the old pick is the chassis the head reserved: the reservation is cleared'),
+    'RELO3': ('E768 ReleaseDock', 'CSplitterCommandModule::PortFindChassis(',
+              'the old pick\'s reservation is another head\'s: nothing is cleared'),
+    'RESA': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the chassis is dead: the head is not reserved'),
+    'RESB': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the chassis is not active: the head is not reserved'),
+    'RESC': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the chassis has no head: the head is reserved'),
+    'RESD': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the chassis has a reservation: the head is not reserved'),
+    'RESE1': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+              'the chassis has landed 5 times: the head is reserved'),
+    'RESE2': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+              'the chassis has landed 0 times: the head is reserved'),
+    'RESE3': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+              'the chassis has landed another number of times: the head is not reserved'),
+    'RESF': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the flag byte at 0xD41 has its 0x80 bit: the head is not reserved'),
+    'RESG': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the flag byte at 0xD40 has its 0x01 bit: the head is not reserved'),
+    'DEATHT': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
+               'the flag byte at 0xD41 has its 0x01 bit and the timer at 0xD20 is zero: the'
+               ' chassis dies'),
+    'DEATHALIVE': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
+                   'the chassis is dead: the timer at 0xD20 is not counted down'),
+    'TIMERHI': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
+                'the timer at 0xD20 is above zero: the chassis does not die yet'),
+    'TURNX': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+              'the head\'s Y column has an x: the head looks along its flat Y column'),
+    'TURNY': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+              'the head\'s Y column has a y: the head looks along its flat Y column'),
+    'FINDAREA': ('2280 FindChassis', 'CSplitterCommandModule::PortFindChassis(',
+                 'the head\'s area id is not the chassis\'s: the other-area arm'),
+    'FINDNORES': ('2280 FindChassis', 'CSplitterMainChassis::PortReserveDock(',
+                  'the chassis is dead: the reserve fails'),
+    'FINDDIST': ('2280 FindChassis', 'CSplitterCommandModule::PortFindChassis(',
+                 'the head is far away: the chassis is not nearer than the best'),
+    'TURNZERO2': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+                  'the head\'s Y column has no x and no y and its Z column is the up vector:'
+                  ' the head only turns'),
+    'ACCEPT': ('E6E4 AcceptHead', 'CSplitterMainChassis::PortAcceptHead(',
+               'the chassis already has a command module at 0xC6C: the head is not accepted'),
+    'PLACEZERO': ('ACEC PlaceHead', 'CSplitterCommandModule::Idle(',
+                  'the head\'s editor offset has no y: the head only turns'),
+    'PLACEYNZ': ('ACEC PlaceHead', 'CSplitterCommandModule::Idle(',
+                 'the head\'s editor offset has no z: the head only turns'),
+    'PLACENULL': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                  'the head\'s id at 0xC6C names no object: the chassis clears the id'),
+    'PLACENOH': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                 'the chassis has no head id at 0xC6C: the body looks at the second link'),
+    'PLACELINK': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                  'the second link at 0xC6E is not a command module: the link is cleared'),
+    'PLACELINKH': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                   'the second link at 0xC6E is a command module: the body returns'),
+    'PLACEF80': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                 'the flag byte at 0xD41 has its 0x80 bit: the head only turns'),
+    'PLACEF08': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                 'the flag byte at 0xD41 has its 0x08 bit: the head only turns'),
+    'PLACELC': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                'the counter at 0xD00 is not 5: the head takes the chassis\'s transform'),
+    'D3C': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
+            'the id at 0xCC0 is valid and the counter at 0xC48 is not zero: the timer at 0xD3C'
+            ' is counted up'),
+    'TURNCLEAR': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+                  'the flag byte at 0xF6A has no 0x20 bit: the head does not turn upright'),
+    'TURNSLERP': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+                  'the head\'s Z column points away from the up vector: the head is slerped'),
+    'TURNZERO': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+                 'the head\'s Y column has no x and no y: the head only turns'),
     'VULN7': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
               'the boost ball (the weapon type 7) knocks the chassis back'),
     'VULN6': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
@@ -167,6 +242,9 @@ HEAD = '((CSplitterCommandModule*)$rdi)'
 LOCK = ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10', '$this->mData.mUnknownBD80FD94 = 0x4']
 if WHICH in ('6394DEAD', '6394NOPLAYER'):
     _label, _where, _what = BODIES['6394']
+elif WHICH.startswith('R_'):
+    # a FORCE_RET case (tools/cov/force_ret.py, at the end of this file): no force.py write.
+    _label, _where, _what = ('-', 'no body(', '-')
 else:
     _label, _where, _what = BODIES[WHICH]
 FORCE = [
@@ -385,6 +463,149 @@ elif WHICH == 'NULLCAST':
     # the walk skips the actor (asm 0x9B44-0x9B4C).  The id is in r15 when the line is reached
     # (the build keeps it there: movzwl 0x48(%rax),%r15d; mov %r15d,%esi).
     FORCE = [(_label, _where, [], ['$r15 = 0xffff'], 0, _what)]
+elif WHICH == 'FINDAREA':
+    # The head's area id is a value the chassis does not have: the other-area arm of the walk
+    # (asm 0x22F8-0x2304).
+    FORCE = [(_label, _where, [], ['$this->mAreaId.value = 12'], 0, _what)]
+elif WHICH == 'FINDNORES':
+    # The chassis is dead: the reserve fails and the walk skips it (asm 0x2318-0x2320).
+    FORCE = [(_label, _where, [], [CH + '->mAlive = 0'], 0, _what)]
+elif WHICH == 'FINDDIST':
+    # The head is far away: the chassis is not nearer than the best (asm 0x2324-0x234C).
+    FORCE = [(_label, _where, [], ['$this->mTransform.m03 = 5000.f'], 0, _what)]
+elif WHICH == 'TURNZERO2':
+    # The head's Y column has no x and no y and its Z column is the up vector, so the angle is
+    # below the turn and the head only turns (asm 0x2A38-0x2A7C).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m10 = 0.f', '$this->mTransform.m11 = 0.f',
+               '$this->mTransform.m12 = 1.f', '$this->mTransform.m20 = 0.f',
+               '$this->mTransform.m21 = 0.f', '$this->mTransform.m22 = 1.f'], 0, _what)]
+elif WHICH in ('PLACENOH', 'PLACELINK', 'PLACELINKH', 'PLACEF80', 'PLACEF08', 'PLACELC'):
+    sets = []
+    if WHICH in ('PLACENOH', 'PLACELINK', 'PLACELINKH'):
+        sets.append(CH + '->mCommandModuleId.value = 0xffff')
+    if WHICH == 'PLACELINK':
+        sets.append(CH + '->mSecondLinkId.value = 0x1234')
+    elif WHICH == 'PLACELINKH':
+        sets.append(CH + '->mSecondLinkId.value = 0x531')
+    elif WHICH == 'PLACEF80':
+        sets.append(CH + '->mFlagsD41 |= 0x80')
+    elif WHICH == 'PLACEF08':
+        sets.append(CH + '->mFlagsD41 |= 0x8')
+    elif WHICH == 'PLACELC':
+        sets.append(CH + '->mLandedCount = 3')
+    FORCE = [(_label, _where, [], sets, 0, _what)]
+elif WHICH == 'PLACEZERO':
+    # The head's editor offset (the transform's Y column, the head's Idle state copies it into
+    # 0xF24-0xF2C) is zero: the chassis's placement takes the "all three are zero" arms
+    # (asm 0xADAC-0xADD0).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m01 = 0.f', '$this->mTransform.m11 = 0.f',
+               '$this->mTransform.m21 = 1.f'], 0, _what)]
+elif WHICH == 'PLACEYNZ':
+    # The head's editor offset has no z (and a y, so the z is compared).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m01 = 0.f', '$this->mTransform.m11 = 1.f',
+               '$this->mTransform.m21 = 0.f'], 0, _what)]
+elif WHICH == 'PLACENULL':
+    # The head's id at 0xC6C names no object: the cast fails and the chassis clears the id
+    # (asm 0xAD40-0xAD4C, 0xAF74-0xAF84).
+    FORCE = [(_label, _where, [], [CH + '->mCommandModuleId.value = 0x1234'], 0, _what)]
+elif WHICH == 'ACCEPT':
+    # The chassis already has a command module at 0xC6C: the accept answers false (asm 0xE708,
+    # 0xE70C).
+    FORCE = [(_label, _where, [], [CH + '->mCommandModuleId.value = 0x531'], 0, _what)]
+elif WHICH == 'TIMERHI':
+    # The flag byte at 0xD41 has its 0x01 bit and the timer at 0xD20 is above zero: the chassis
+    # does not die yet (asm 0xB0B8, 0xB0C0, 0xB0C8).
+    FORCE = [(_label, _where, [],
+              [CH + '->mFlagsD41 |= 0x1', CH + '->mTimerD20 = 10.f'], 0, _what)]
+elif WHICH == 'TURNX':
+    # The head's Y column has an x (asm 0x2A48-0x2A7C): the head looks along it.
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m10 = 1.f', '$this->mTransform.m11 = 0.f',
+               '$this->mTransform.m12 = 0.f'], 0, _what)]
+elif WHICH == 'TURNY':
+    # The head's Y column has a y (asm 0x2A48-0x2A7C): the head looks along it.
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m10 = 0.f', '$this->mTransform.m11 = 1.f',
+               '$this->mTransform.m12 = 0.f'], 0, _what)]
+elif WHICH == 'DEATHT':
+    # The flag byte at 0xD41 has its 0x01 bit and the timer at 0xD20 is zero (the Digital
+    # Guardian's DestroyActiveSplitters gives the first chassis the delay 0.0): the chassis dies
+    # at the next timer update (asm 0xB094, 0xB0A0, 0xB0B8, 0xB0C0, 0xB0F0).
+    FORCE = [(_label, _where, [],
+              [CH + '->mFlagsD41 |= 0x1', CH + '->mTimerD20 = 0.f'], 0, _what)]
+elif WHICH == 'DEATHALIVE':
+    # The same, but the chassis is dead: the timer at 0xD20 is not counted down (asm 0xB0A0).
+    FORCE = [(_label, _where, [],
+              [CH + '->mFlagsD41 |= 0x1', CH + '->mTimerD20 = 0.f', CH + '->mAlive = 0'],
+              0, _what)]
+elif WHICH == 'D3C':
+    # The id at 0xCC0 is valid and the counter at 0xC48 is not zero: the timer at 0xD3C is
+    # counted up (asm 0xB060, 0xB064, 0xB06C, 0xB070, 0xB07C).
+    FORCE = [(_label, _where, [],
+              [CH + '->mSyncId.value = 0x521', CH + '->mIntC48 = 1'], 0, _what)]
+elif WHICH == 'TURNCLEAR':
+    # The flag byte at 0xF6A has no 0x20 bit: the body returns at once (asm 0x29BC-0x29C8).
+    FORCE = [(_label, _where, [], ['$this->mAutoDestructFlags &= ~0x20'], 0, _what)]
+elif WHICH == 'TURNSLERP':
+    # The head's Z column points away from the up vector: the angle is above the turn and the
+    # head is slerped (asm 0x2A38-0x2A44, 0x2B10, 0x2B38, 0x2B64, 0x2B74, 0x2BA4, 0x2BB0).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m20 = 0.f', '$this->mTransform.m21 = 0.f',
+               '$this->mTransform.m22 = -1.f'], 0, _what)]
+elif WHICH == 'TURNZERO':
+    # The head's Y column has no x and no y: the head only turns (asm 0x2A48-0x2A7C).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m10 = 0.f', '$this->mTransform.m11 = 0.f',
+               '$this->mTransform.m12 = 1.f'], 0, _what)]
+elif WHICH == 'MOVE':
+    # The timer at 0xEF4 is above zero: the head is teleported to the destination (asm 0x2180).
+    FORCE = [(_label, _where, [], ['$this->mAutoDestructTimer = 10.0f'], 0, _what)]
+elif WHICH == 'RELO':
+    # The head's checked chassis id at 0xEFC is a live chassis (u0521): the search asks it to
+    # release the reservation (the old pick's release, fn_75_E768).
+    FORCE = [(_label, _where, [], ['$this->mCheckedChassisId.value = 0x521'], 0, _what)]
+elif WHICH == 'RELO2':
+    # The same, and the chassis the head just reserved is the old pick: the reservation is the
+    # head's, so the release clears it (fn_75_E768's other arm).
+    FORCE = [('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(', [],
+              [CH + '->mCommandModuleId.value = 0xffff'], 0,
+              'the chassis has no head: the head is reserved'),
+             (_label, _where, [], ['$this->mCheckedChassisId.value = 0x521'], 0, _what)]
+elif WHICH == 'RELO3':
+    FORCE = [('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(', [],
+              [CH + '->mCommandModuleId.value = 0xffff'], 0,
+              'the chassis has no head: the head is reserved'),
+             ('E768 ReleaseDock', 'CSplitterMainChassis::PortReleaseDock(', [],
+              [CH + '->mSecondLinkId.value = 0x520'], 0,
+              'the reservation is another head\'s: nothing is cleared'),
+             (_label, _where, [], ['$this->mCheckedChassisId.value = 0x521'], 0, _what)]
+elif WHICH in ('RESA', 'RESB', 'RESC', 'RESD', 'RESE1', 'RESE2', 'RESE3', 'RESF', 'RESG'):
+    # The chassis's dock reserve (fn_75_E788): the conditions are a chain, so every run keeps the
+    # earlier ones true (the head id at 0xC6C invalid, the reservation at 0xC6E invalid, the
+    # landed count at 0xD00 5) and breaks the one the arm reads.
+    sets = []
+    if WHICH not in ('RESA', 'RESB'):
+        sets.append(CH + '->mCommandModuleId.value = 0xffff')
+    if WHICH == 'RESD':
+        sets.append(CH + '->mSecondLinkId.value = 0x1234')
+    if WHICH in ('RESE1', 'RESF', 'RESG'):
+        sets.append(CH + '->mLandedCount = 5')
+    elif WHICH == 'RESE2':
+        sets.append(CH + '->mLandedCount = 0')
+    elif WHICH == 'RESE3':
+        sets.append(CH + '->mLandedCount = 3')
+    if WHICH == 'RESA':
+        sets.append(CH + '->mAlive = 0')
+    elif WHICH == 'RESB':
+        sets.append(CH + '->mActive = 0')
+    elif WHICH == 'RESF':
+        sets.append(CH + '->mFlagsD41 |= 0x80')
+    elif WHICH == 'RESG':
+        sets.append(CH + '->mFlagsD40 |= 0x1')
+    FORCE = [(_label, _where, [], sets, 0, _what)]
 elif WHICH == 'DESPAWN':
     # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
     # update (asm 0x1820).
@@ -448,3 +669,89 @@ SPEC = [
     # distance to the noise (the squared distance under 400).
     ('5F18 Listen', 'CSplitterCommandModule::PortListen(', ['$this->GetAlive() != 0', '$rcx'], 'ret'),
 ]
+
+# FORCE_RET cases (COV_GDB_SCRIPT=tools/cov/force_ret.py, SPLITTER_FORCE=R_<name>): each write
+# lasts one call and is written back when the call returns, so the fight goes on unchanged.  The
+# period 100000 with the phases 1, 2, 3 forces only the body's first three calls.  The chassis's
+# members are written through a cast of the bound head pointer (force_ret binds $this to the
+# call's rdi, so the restore writes the same object).
+#
+# The host's CTransform4f is row-major: m<row><col>, so the Y column (the guest's 0x28, 0x38,
+# 0x48) is m01, m11, m21 and the Z column (0x2C, 0x3C, 0x4C) is m02, m12, m22.  (The old TURNX,
+# TURNY, TURNZERO and TURNZERO2 cases above write the rows m1x/m2x, not the columns: that is why
+# they never moved fn_75_2994's arms.)
+CHR = '((CSplitterMainChassis*)$this)'
+_FLAG20 = [('$this->mAutoDestructFlags', '$this->mAutoDestructFlags | 0x20')]
+
+
+def _rot(x, y, z):
+    """The head's rotation as three columns; all nine elements are written back on return."""
+    out = []
+    for col, v in enumerate((x, y, z)):
+        for row in range(3):
+            out.append(('$this->mTransform.m%d%d' % (row, col), repr(float(v[row]))))
+    return out + _FLAG20
+
+
+_TURN = [
+    # fn_75_2994 (the flag 0x20 is kept set by the write-back, so the calls go on):
+    # call 1: the Z column (1, 0, 0) is 90 degrees from up, above the turn (0x2A3C-0x2A44): slerp;
+    # call 2: Z up, Y (0, 1, 0): x is 0 (0x2A58-0x2A5C), y is not (0x2A60-0x2A64): LookAt;
+    # call 3: Z up, Y (0, 0, 1): x and y are 0 (0x2A7C to 0x2AE4): slerp;
+    # call 4: Z up, Y (1, 0, 0): x is not 0 (0x2A5C): LookAt.
+    ('fn_75_2994 turn', 'CSplitterCommandModule::PortTurnUpright(', 100000,
+     [(1, _rot((0, 1, 0), (0, 0, 1), (1, 0, 0))),
+      (2, _rot((1, 0, 0), (0, 1, 0), (0, 0, 1))),
+      (3, _rot((1, 0, 0), (0, 0, 1), (0, 0, 1))),
+      (4, _rot((0, -1, 0), (1, 0, 0), (0, 0, 1)))],
+     'the head\'s Z column (1,0,0); or Z up and Y (0,1,0), (0,0,1), (1,0,0)'),
+]
+_FIND = [
+    # fn_75_2280 (one search every 3 s while 0xEFC is invalid, fn_75_31A8):
+    # search 1: every chassis is in another area (0x22F8-0x2304);
+    # search 2: the head is at x = 1e30, so the squared distance is inf, not below FLT_MAX
+    #   (0x2348-0x234C: the not-nearer arm).  The host's GetTranslation() is mPosition, not the
+    #   transform's m03, so mPosition is written; 0xEFC is written back too, so the searches go on;
+    # search 3: the pick with no old pick (0x2368-0x236C null); 0xEFC is written back to invalid
+    #   on return so the searches go on;
+    # search 4: the old pick at 0xEFC is the 0521 chassis: its reservation is released
+    #   (0x2370-0x2380 fn_75_E768).
+    ('fn_75_2280 search', 'CSplitterCommandModule::PortFindChassis(', 100000,
+     [(1, [('$this->mAreaId.value', '12')]),
+      (2, [('$this->mPosition.mX', '1e30'),
+           ('$this->mCheckedChassisId.value', '$this->mCheckedChassisId.value')]),
+      (3, [('$this->mCheckedChassisId.value', '$this->mCheckedChassisId.value')]),
+      (4, [('$this->mCheckedChassisId.value', '0x521')])],
+     'the head in area 12; at x = 1e30; 0xEFC written back; 0xEFC = 0521'),
+    # the 0521 chassis's own head 0520 holds 0xC6C, so the natural reserve fails (0x2318-0x2320);
+    # on the reserves of searches 2-4 the head id 0xC6C and the reservation 0xC6E are invalid
+    # (both written back on return), so fn_75_E788 reserves the chassis.  Each search asks both
+    # chassis (the dead 0532 is still listed; its reserve fails on 0x420's alive bit), so the
+    # three searches are the first six reserves.
+    ('fn_75_2280 reserve', 'CSplitterMainChassis::PortReserveDock(', 100000,
+     [(n, [(CHR + '->mCommandModuleId.value', '0xffff'), (CHR + '->mSecondLinkId.value', '0xffff')])
+      for n in range(1, 7)],
+     'the chassis has no head and no reservation: the reserve succeeds'),
+]
+_SHIELD = [
+    # fn_75_2CE0: call 1 (the XCRT of the first head) has the state 2 (0x2DA8-0x2DC0, 0x2E88) and
+    # the flag set (edx, the third argument; 0x2D0C-0x2D18); call 3 has no collision actor at
+    # 0xF00 (0x2D88); call 2 finds a handle at 0xF60 (0x2D48-0x2D6C: the remove).  The headless
+    # run's AddEmitter hands back null handles, so 0xF60 is never set naturally; the forced handle
+    # 0xffffffff has the index 0xfff, past the channel's sound table, so StopSound ignores it
+    # (CSfxManager.cpp, StopSound's index check) and the body clears it itself (no write-back).
+    ('fn_75_2CE0 shield', 'CSplitterCommandModule::PortUpdateShield(', 100000,
+     [(1, [('$this->mCollisionState', '2'), ('!$edx', '1')]),
+      (2, [('!$this->mSoundHandle.mID', '0xffffffff')]),
+      (3, [('$this->mSoundTargetId.value', '0xffff')])],
+     'the state 2 and the flag; no collision actor'),
+    # fn_75_3004: every 600th call raises a shield (the flag byte 0xF6A's 0x08 and the timer 0xF10
+    # at zero, the state at 0xEE0 out of range: 0x3138-0x3188), so fn_75_2CE0 runs again on a head
+    # that already holds a looping emitter at 0xF60 (0x2D48-0x2D6C: it is removed).
+    ('fn_75_3004 raise', 'CSplitterCommandModule::PortUpdateCollision(', 600,
+     [(300, [('$this->mAutoDestructFlags', '$this->mAutoDestructFlags | 0x8'),
+             ('$this->mCountdownTimerA', '0.f'), ('!$this->mCollisionState', '0')])],
+     'a shield is raised'),
+]
+FORCE_RET = {'R_TURN': _TURN, 'R_FIND': _FIND, 'R_SHIELD': _SHIELD,
+             'R_K3': _TURN + _FIND + _SHIELD}.get(WHICH, [])

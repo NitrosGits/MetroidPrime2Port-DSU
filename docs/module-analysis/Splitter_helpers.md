@@ -569,13 +569,141 @@ the head is docked in the shipped spawns), the manager's descriptions only hold 
 actors the manager made - so the cast to a CCollisionActor never fails - and the shipped flag
 word has no 0x1 bit, so the counter at 0xD00 is always 5.
 
+### 3.18 The head's move to and the chassis's dock reserve and release
+
+The next three rows of section 2, the ones the head's docking chain touches.  The chain is
+reached by killing the 0532 chassis: the 0531 head loses it (its LostChassisReaction state,
+fn_75_42F8), looks for another chassis (fn_75_31A8 gates fn_75_2280, the head's chassis search)
+and reserves it (fn_75_E788) - the driver's plan K3 does that with the console's `kill u0532`.
+Each body was read against the REL's asm (`tools/asmcheck.py annotate Splitter fn_75_<off>`) and
+the coverage build's merged profile (the natural run of the plan K3 and the forced runs of the
+force spec) says:
+
+| body | the diff | the profile |
+|---|---|---|
+| `fn_75_2154` (the head's move to) | right: the timer at 0xEF4 is compared with 0.0f (asm 0x2180 `fcmpo cr0, f2, f0`, 0x2184 `ble` - the move is skipped when the timer is at or below zero) and the teleport is SetTranslation (asm 0x2188); otherwise the difference is moved through the transform (asm 0x21CC TransposeRotate) into MoveInOneFrameOR (asm 0x21DC) | 6/6 lines, 2/2 branches, **ALL-ARMS** - **marked**; the teleport was forced (`SPLITTER_FORCE=MOVE` writes the head's mAutoDestructTimer) |
+| `fn_75_E788` (the chassis's dock reserve) | right: the alive bit (asm 0xE78C, 0xE790), the active bit (asm 0xE798, 0xE79C), the head id at 0xC6C (asm 0xE7B0, 0xE7B4), the reservation at 0xC6E (asm 0xE7BC, 0xE7C0), the landed count at 0xD00 (asm 0xE7C8, 0xE7CC, 0xE7D0, 0xE7D4), the flag byte at 0xD41's 0x80 bit (asm 0xE7DC, 0xE7E0) and the flag byte at 0xD40's 0x01 bit (asm 0xE7E8, 0xE7EC) all gate the reservation (asm 0xE7F4), and the result is whether the reservation is that head's (asm 0xE808) | 6/6 lines, 16/16 branches, **ALL-ARMS** - **marked**; every condition's other arm was forced (`SPLITTER_FORCE=RESA`, `RESB`, `RESC`, `RESD`, `RESE1`, `RESE2`, `RESE3`, `RESF`, `RESG` write the alive bit, the active bit, the head id, the reservation, the landed count and the two flag bits) |
+| `fn_75_E768` (the chassis's dock release) | right: the reservation at 0xC6E is compared with the head's id (asm 0xE770 `cmplw r5, r0`, 0xE774 `bnelr`) and the invalid id is stored when they are equal (asm 0xE780) | 4/4 lines, 2/2 branches, **ALL-ARMS** - **marked**; both arms were forced (`SPLITTER_FORCE=RELO`, `RELO2`, `RELO3` write the head's checked chassis id at 0xEFC and the chassis's reservation) |
+
+The armed arm of `fn_75_E768` is not reachable in the fight: the head's search (fn_75_2280) only
+runs when the id at 0xEFC is invalid (fn_75_31A8, 0x327C-0x3280), so the old pick it releases
+(0x2350-0x2380) is never a live chassis - the force gives the head an old pick to release.
+
+### 3.19 The chassis's timers: the Digital Guardian's death timer
+
+The Digital Guardian's head (fn_14_14C24) gives every Splitter chassis a death timer: the flag
+byte at 0xD41 gets its 0x01 bit and the timer at 0xD20 is set (fn_75_E660, dg25's lane).  The
+chassis's own timer update (fn_75_AFE8) counts that timer down and kills the chassis when it
+reaches zero.  The port's body matches the REL's asm exactly:
+
+- 0xB094 `clrlwi. r0, r0, 31` (the flag byte at 0xD41's 0x01 bit) and 0xB098 `beq` - the death
+  block is skipped when the bit is **clear**, so the bit must be set;
+- 0xB0A0 `extrwi. r0, r0, 1, 25` (the alive bit of the byte at 0x420) and 0xB0A4 `beq` - skipped
+  when the chassis is not alive;
+- 0xB0B8 the timer at 0xD20 is counted down (0xD20 = 0.0f - dt), 0xB0C0 `fcmpo` with 0xB0C4
+  `cror eq, lt, eq` (the <= sense) and 0xB0C8 `bne` - the death is at zero or below;
+- 0xB0F0 `bl Death__10CPatternedFR13CStateManagerRC9CVector3f18EScriptObjectState` - the **base**
+  class's Death, not the module's override (fn_75_EB04), with the transform's Y column and the
+  state kSS_DeathRattle.
+
+The port's `PortUpdateTimers` says exactly that, and the run with the Digital Guardian's own
+delay (0.0f for the first chassis, the force spec's `DEATHT` case) shows the chassis dying at
+the next timer update and **leaving the world** (the console's `objs splitter` lists only the two
+heads afterwards).  So the port is not divergent: a chassis that does not die is one whose Think
+does not run - the port's Think returns early when the entity is not active (the retail's gate
+at 0xF10C-0xF110), which is the same gate the retail has - or one whose timer has not run out
+yet (the delay is 0.7s per command module and 0.15s per chassis, so the first chassis waits
+1.4s and the second 1.55s - 84 and 93 frames at 60Hz).
+
+`fn_75_AFE8` (the chassis's timers) is now **marked**: 17/17 lines, 10/10 branches, ALL-ARMS.  The
+death branch, the alive gate, the timer above zero and the D3C-up branch (the id at 0xCC0 valid
+and the counter at 0xC48 not zero) were forced under gdb (`DEATHT`, `DEATHALIVE`, `TIMERHI`,
+`D3C`).
+
+The two rows that stayed unmarked in this slice (`fn_75_2994`, `fn_75_2280`) are marked now:
+section 3.22 says why the forces here did not move them.
+
+**A note on the merge order** (this is the tool's behaviour, not the port's): `gcov-tool merge`
+keeps the first profile's counter where it is already non-zero and only adds the later
+profiles' counters where the first has none.  A profile that puts the **natural run first** loses
+the forced arms - the merged row then shows only the natural run's arcs.  The profiles above put
+the forced runs first; the merged rows are then the union of every run.
+
+### 3.20 The chassis's accept head
+
+`fn_75_E6E4` (the chassis's accept head) is the next row of section 2 that the note had not
+tried: its port body was already there (the chassis's own command module id at 0xC6C still the
+invalid one - the compare at 0xE708 and the branch at 0xE70C - then the head's id goes to 0xC6C
+(0xE720), the id at 0xC6E is cleared (0xE72C), the flag byte 0xD40's 0x40 bit is cleared
+(0xE734-0xE738), the materials kMT_Target and kMT_Orbit are removed (0xE73C) and the four
+timers are copied (0xE744 fn_75_8EA4); the answer is true (0xE748) or, with a command module
+already there, false (0xE750)).
+
+The accept runs in the fight when the head docks to the chassis (the driver's plan K3 kills the
+0532 chassis, so the 0531 head re-docks to the 0521 one).  The arm with a command module
+already there was forced under gdb (`SPLITTER_FORCE=ACCEPT` writes the head's id at 0xC6C at the
+body's entry).  The coverage build's merged profile says **8/8 lines, 2/2 branches, ALL-ARMS** -
+**marked**.
+
+### 3.21 The chassis's head placement
+
+`fn_75_ACEC` (the chassis's head placement) is marked now: 34/34 lines, 32/32 branches,
+ALL-ARMS.  The port's body matches the REL's asm:
+
+- 0xAD28 `cmplw r0, r3` (the id at 0xC6C against the invalid one) and 0xAD2C `beq .L_0000AF8C` -
+  with no head id the body looks at the second link at 0xC6E (0xAF90-0xAFB4) and clears it when
+  the object is not a command module (0xAFC0);
+- 0xAD40 ObjectById and 0xAD44 `TCastToPtr<CSplitterCommandModule>` with 0xAD4C `beq .L_0000AF54`
+  - with no head object the id at 0xC6C is cleared (0xAF74), the flag byte 0xD41's 0x02 bit is set
+  (0xAF7C `rlwimi r0, r7, 1, 30, 30` - the mask 0x2) and the materials kMT_Target and kMT_Orbit
+  are added (0xAF84);
+- 0xAD88/0xAD8C the flag byte 0xD41's 0x80 bit, 0xAD90/0xAD94 its 0x08 bit and 0xAD9C/0xADA0 the
+  counter at 0xD00 against 5 pick the path;
+- 0xADAC-0xADD0 the head's editor offset at 0xF24-0xF2C: the three comparisons against 0.0f
+  (0xADB4, 0xADC0, 0xADCC) - the port's `offsetIsZero` is the same test in the other direction;
+- 0xADFC the turn rate 12.566371f (lbl_75_rodata_3B0), 0xAE20/0xAE24 the counter at 0xD00, 0xAE30
+  GetAngleDiff and 0xAE34/0xAE38 the angle against the turn: the head is slerped toward the
+  chassis's column (0xAE60) or takes the chassis's transform (0xAE44).
+
+The arms that the fight cannot reach were forced under gdb: `PLACENOH` (no head id at 0xC6C),
+`PLACELINK` and `PLACELINKH` (the second link at 0xC6E is or is not a command module), `PLACEF80`
+and `PLACEF08` (the flag byte 0xD41's 0x80 and 0x08 bits), `PLACELC` (the counter at 0xD00 is not
+5), `PLACEZERO` and `PLACEYNZ` (the head's editor offset has no y or no z - the force writes the
+head's transform's Y column in the head's Idle state, which copies it into 0xF24-0xF2C, and the
+driver's new plan E6 puts the 0531 head into that state) and `PLACENULL` (the head's id at 0xC6C
+names no object).
+
+### 3.22 The head's shield, turn upright and chassis search (split21, 2026-10-22)
+
+`fn_75_2CE0`, `fn_75_2994` and `fn_75_2280` are **marked**, each ALL-ARMS in the coverage build
+(K3 fight, natural + forced): 34/34 lines 18/18 branches, 18/18 12/12, 19/19 14/14.
+
+- **A bug in fn_75_3460 (the head's collision actor manager)**: the name the walk compares
+  (0x35F8-0x3604) is lbl_75_rodata_8, a pointer to lbl_75_rodata_285 "Skeleton_Root", not
+  "Beam_LCTR".  The port compared "Beam_LCTR", so 0xF00 was never set and fn_75_2CE0 only ever
+  took its no-actor path.  With the fix the head's shield goes up in the fight (the collision
+  actor gets its HP, materials, vulnerability; the effects and the looping sounds run).
+- **fn_75_2280**: 0x2348 `fcmpo cr0, f31, f27` + 0x234C `bge` - the walk skips unless
+  `distSq < best`, so a NaN distance skips; the port had `distSq >= best` (a NaN took the pick).
+- **fn_75_2994**: the LookAt target's z is `pos.z + 0.0f` (0x2A94-0x2AA8, lbl_75_rodata_40).
+- **Why the old forces did nothing**: the host's `CTransform4f` is row-major (`m<row><col>`), so
+  the Y column is m01/m11/m21 and the Z column m02/m12/m22; the old TURN* cases wrote rows.  The
+  host's `GetTranslation()` is `CActor::mPosition`, not the transform's m03, so a position force
+  writes `mPosition`.  `best` starts at FLT_MAX, so the first chassis is always nearer.
+- **The new forces** are `FORCE_RET` cases (`tools/cov/force_ret.py`, every write restored when
+  the call returns): `SPLITTER_FORCE=R_TURN|R_FIND|R_SHIELD|R_K3`.  The search's reserve force
+  covers six reserves: each search asks both chassis (the dead 0532 is still listed and fails on
+  its alive bit).  The run's AddEmitter returns null handles, so 0xF60 is forced (0xffffffff: index
+  0xfff, past the 72-entry sound table, so StopSound ignores it).
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
   shipped spawns reach: section 3.3 lists them with the lines and the branches each one still
-  misses. The next ones are `fn_75_2CE0` (the head's shield: 5/34 lines), `fn_75_E768` (the
-  head's dock release: 0/4 lines), `fn_75_E788` (the dock reserve: 0/6) and `fn_75_2154` (the
-  head's move to: 0/6) - the smallest gaps.
+  misses. (`fn_75_2994`, `fn_75_2280` and
+  `fn_75_2CE0` are marked: section 3.22.)  `fn_75_A0A0` (the chassis's collision actor's damage) has a body
+  but never runs: only the chassis's own "target_LCTR" collision actor sends the message, and the
+  laser sweep's beam does not reach it in the shipped spawns.
 - **The queue's rows with no body at all** are the module's own helpers that the FSM lane's
   states and codes call (the beam effect's actor, the laser-pulse shot, the collision actor
   managers' joint helpers) and the ones the two classes' constructors build. They are listed in

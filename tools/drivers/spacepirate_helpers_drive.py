@@ -137,6 +137,20 @@ def main():
     if not os.environ.get('SP_NO_ACTIVATE'):
         for p in ps:
             c.cmd('send u%04x Activate' % p[0])
+    # SP_FSM_TEST: the console's `fsm` on a pirate - a state it has and one it does not.
+    if os.environ.get('SP_OBJ_TEST') and ps:
+        uid = ps[0][0]
+        for cmd in ('obj', 'statecall'):
+            if cmd == 'obj':
+                print('driver: obj -> %s' % c.cmd('obj u%04x' % uid).splitlines()[-8:], flush=True)
+            else:
+                print('driver: statecall -> %s' % c.cmd('statecall u%04x Attack 0' % uid).splitlines()[-2:],
+                      flush=True)
+    if os.environ.get('SP_FSM_TEST') and ps:
+        uid = ps[0][0]
+        for st in os.environ.get('SP_FSM_TEST').split():
+            print('driver: fsm u%04x %s -> %s' % (uid, st, c.cmd('fsm u%04x %s' % (uid, st)).splitlines()[-1:]),
+                  flush=True)
     # SP_FORCE_EARLY: the forced states before the fight rounds (the console's replies get slow
     # when the game stalls, so the states that matter go first).
     if os.environ.get('SP_FORCE_EARLY') and ps:

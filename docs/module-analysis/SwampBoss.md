@@ -124,13 +124,93 @@ in GetScannableObjectInfo.
 **Resolved from the pseudocode while reviewing** (kept here so they are not re-opened): the joint
 filter excludes `kMT_Character`, not material 1 (8954 ORs 2 into the word at filter+8, the high half
 of the big-endian exclude u64 — same bit order as the radar test in 993C); `CollidedWith` tests
-`kMT_SeekerTarget` (bit 0 of the word at collision-info+0x30, the high half of mMaterialLeft); the
+`kMT_Player` (bit 0 of the word at collision-info+0x30 is u64 bit 32 — see the material-bit
+calibration below); the
 tongue-out one-shot takes an XY-only direction (6C2C zeroes z before normalising); VomitHit zeroes
 the radius-damage amount and the knockback of the Ldr damage info (+8 and +0x10 of CDamageInfo);
 EaseInOut's mangled signature fixes the argument order the host already used (2E38); the Beach
 descriptor's taunt type is 6 (4AA8 → B9D0); projectile+0x19c is `CWeapon::mCurDamageInfo`; the ctor
 stores `mskNullBox` and −1000 in 0xb40/0xd0c (AA50/AE04); `SetBossParams` gets the initial HP
 (*GetHealthInfo() = +0).
+
+### The material bits: the retail keeps the u64 big-word-first (2026-10-22)
+
+The retail's `CMaterialList` is two 32-bit words, and **the word at the list's base+0 holds the
+u64's bits 63..32**; the word at base+4 holds bits 31..0. The host's `CMaterialList` is one u64
+with `HasMaterial(t)` = `mValue & (1ull << t)`, so the host's bit *t* is the retail's u64 bit *t*.
+Three independent anchors fix the word order, all of them host-paired:
+
+- **DOL `CActor::AddMaterial` (0x8004C340)** builds the mask `1 << material` with `li r3, 0` /
+  `li r4, 1` / `bl __shl2i` (the 64-bit shift of the pair `r3:r4`), then ORs the shift's **high**
+  half into the word at the list base+0 (`or r0, r5, r3` at 0x8004C394, `stw r0, 0x68(r28)` at
+  0x8004C39C) and the **low** half into base+4 (`or r0, r0, r4` at 0x8004C388, `stw r0, 0x6c(r28)`
+  at 0x8004C390). So `material = 32` sets bit 0 of the word at base+0.
+- **DOL `CGameCollisionPackedCache`'s is-player test (0x80218EA4)** masks the word at
+  `actor+0x68` with 1 (`and r0, r8, r0` at 0x80218EC0) and the word at `actor+0x6c` with 0
+  (`and r4, r4, r7` at 0x80218EB8) - the host's paired line is
+  `actor.GetMaterialList().HasMaterial(kMT_Player)` (`CGameCollisionPackedCache.cpp:596`), and
+  `kMT_Player = 32` (`include/Collision/CMaterialList.hpp:42`). So bit 0 of the word at base+0 is
+  u64 bit 32.
+- **The REL's own `fn_78_993C` (radar) and `fn_78_8954` (joint filter)** use the same order:
+  `fn_78_993C` masks the word at `+0x68` with `lis r0, 0x8` = 0x00080000 (bit 19 of the high word =
+  u64 bit 51 = `kMT_RadarObject`, `include/Collision/CMaterialList.hpp:61`) and `fn_78_8954` ORs 2
+  into the word at the filter's exclude list base+0 (`ori r0, r5, 0x2` at 0x8008B60) = u64 bit 33 =
+  `kMT_Character` (`include/Collision/CMaterialList.hpp:43`).
+
+**Consequence for `fn_78_9A44`:** the retail masks **bit 0 of the word at collision-info+0x30**
+(`li r8, 0x1` at 0x9A70, `lwz r0, 0x30(r10)` at 0x9A78, `and r0, r0, r8` at 0x9A80), i.e.
+**u64 bit 32 = `kMT_Player`**, not `kMT_SeekerTarget` (u64 bit 63, which lives in the *other*
+word). The port's `CollidedWith` was testing `kMT_SeekerTarget` - the wrong bit of the wrong word -
+and now tests `kMT_Player`.
+
+**Which list is at slot 0x30.** The retail's `CCollisionInfo` five-argument constructor
+(0x80282228) stores the *last* `CMaterialList` argument's two words at 0x30/0x34 and the
+middle one's at 0x38/0x3c (`lwz r10, 0x4(r6)` / `lwz r7, 0x0(r6)` -> `stw r10, 0x34(r3)` /
+`stw r7, 0x30(r3)` at 0x802822C0-0x802822C4; the other argument's words -> 0x38/0x3c). The
+word at 0x30 is therefore the list's **high** word (bits 63..32) and 0x34 its low word, exactly
+as for every other `CMaterialList` in the retail. The host's layout matches: `mMaterialLeft` at
+0x30, `mMaterialRight` at 0x38 (`include/Collision/CCollisionInfo.hpp:42-43`; the host's 0x60
+stride matches the retail's `addi r10, r10, 0x60` at 0x9ABC). In the sphere-sphere collider the
+*first* of the two material arguments is the left desc's list and the *second* the right desc's
+(`CCollidableSphere.cpp:101`: `CCollisionInfo(point, p0.GetMaterial(), p1.GetMaterial(), normal,
+0xffff)`, `p0` = left), and the retail's collider passes them the same way round (the left
+desc's list in `r5`, the right desc's in `r6` at 0x80288464/0x8028846C). So slot 0x30 holds
+the **right** desc's material list.
+
+In `CGameCollision::DetectDynamicCollision` (`CGameCollision.cpp:411-424`) the **left** desc is
+the mover's own primitive and the **right** desc the other actor's, so slot 0x30 carries the
+**other** actor's material list. `MakeCollisionCallbacks` then hands the *unswapped* mover-frame
+list to `other->CollidedWith` (`CGameCollision.cpp:717-729`; the retail does the same -
+`CGameCollision.s` 0x801259B4-0x801259D8 passes the original list at `r26`, not the swapped copy
+it built at `r1+0x14`). So when the **boss** is the one being called back, the list is in the
+*player's* frame and slot 0x30 holds the **boss's own** material list - which does not contain
+`kMT_Player`.
+
+**Which actor's list that is, per path.** `MakeCollisionCallbacks` (`CGameCollision.cpp:717-729`)
+calls the mover's own `CollidedWith` with the mover-frame list and then the other actor's
+`CollidedWith` with the *same* list (the host builds a swapped copy but hands over the original -
+the retail does the same, `CGameCollision.s` 0x801259BC passes `r26`, the original list). So the
+boss's own callback always sees the mover's frame:
+
+- the **boss** is the mover (its body sweeps the player): slot 0x30 holds the **player's** list,
+  which has `kMT_Player` -> the flag is set, and that is the retail's "the player touched me";
+- the **player** is the mover (the player walks into the boss): slot 0x30 holds the **boss's own**
+  flyer list (`kMT_Character`, `kMT_Solid`, `kMT_Orbit`, `kMT_Target`, `kMT_SeekerTarget`), which
+  has `kMT_SeekerTarget` but not `kMT_Player` -> the flag is *not* set.
+
+The old port code (`kMT_SeekerTarget` at slot 0x30) fired in exactly the second case, i.e. it
+read the boss's own list and tested the bit that list happens to carry; the retail's mask reads the
+*other* side's list and tests `kMT_Player`. The corrected constant therefore moves the flag from
+"the player touched the boss" to "the boss's body hit the player" - the retail's meaning.
+
+**A consequence in the port.** The boss's body box is octree-cached dynamic geometry owned by the
+boss's uid (`CGameCollisionPackedCache.cpp:222-232`, the owner's material list is cached with the
+geometry), and the octree's collision info puts the *tree's* material in the second
+`CMaterialList` argument (`CMetroidAreaCollider.cpp:499-502`), i.e. in slot 0x30. So a player
+walking into the boss's cached body also sees the **boss's own** flyer list at 0x30 and does not
+set the flag with the corrected mask - the flag can only be set from the boss-as-mover near-list
+path, where slot 0x30 holds the player's list. The retail's mask behaves the same way; the port
+now matches it.
 
 ### Stage1 runtime status (2026-10-20, second pass)
 
@@ -316,7 +396,7 @@ marked - the host already has the class, so a port body would be a second copy):
 | `fn_78_1104` | 2 | 838 | the `SLdrAudioPlaybackParms` reader (a DOL reader) |
 | `fn_78_130` | 1 | RELMain | the REL entry that installs the loader |
 | `fn_78_21C8` | 0 | - | `OnScanStateChange`, forwards to `CActor` |
-| `fn_78_25F4` | 0 | - | `IncrementMisses` (a code function, the FSM calls it) |
+| `fn_78_25F4` | 0 | - | `IncrementMisses` (a code function, the FSM calls it) - **marked** |
 | `fn_78_2840` | 2 | 260C | a code function of the FSM |
 | `fn_78_28A4` | 2 | 2728 | the `EScriptObjectState` 4CC helper ('I30'..'I33') - a DOL copy |
 | `fn_78_2C78` | 4 | 2B20, 4D3C | the `CPASAnimParmData` constructor - a DOL copy |
@@ -544,7 +624,7 @@ stayed at 0.0 and state 3 was never reached.
 | `fn_78_3320` | 0 (an FSM state) | `LightHitReact` | compared, **not marked** (state 3 unreachable) |
 | `fn_78_348C` | 0 (an FSM state) | `HeavyHitReact` | compared, **not marked** (state 3 unreachable) |
 | `fn_78_5784` | 0 (an FSM state) | `SlideIntoWater` | compared, **not marked** (the state is never reached) |
-| `fn_78_9A44` | 0 (a vtable slot) | `CollidedWith` | compared, **not marked** (its own work needs a joint touch during a tongue pull) |
+| `fn_78_9A44` | 0 (a vtable slot) | `CollidedWith` | compared, **not marked** (its own work needs a collision list while the state is 5; the boss's `CollidedWith` was never entered) |
 
 - **`fn_78_348C` (`HeavyHitReact`)** - the retail sets the joints to `kAllJoints` with
   `RemoveTarget|Reflect` on Activate, sends `CBodyStateCmd(kBSC_NextState)`, calls the shared
@@ -553,9 +633,9 @@ stayed at 0.0 and state 3 was never reached.
   joints to `kAllJoints` with `RemoveTarget|Reflect` (0xa), rumbles and stops the tongue; the
   port does the same.
 - **`fn_78_9A44` (`CollidedWith`)** - the retail only does its own work while the state is 5
-  (TonguePull): it walks the collision list for `kMT_SeekerTarget` (bit 0 of the word at
-  collision-info+0x30) and sets the "player touched" flag, and then calls the base. The port
-  does the same.
+  (TonguePull): it walks the collision list and tests bit 0 of the word at collision-info+0x30,
+  i.e. u64 bit 32 = `kMT_Player` (see the material-bit calibration below), and sets the "player
+  touched" flag, and then calls the base. The port does the same.
 
 ### Stage1: the arena entry, the charged shots, the hit-react functions (2026-10-21)
 
@@ -612,7 +692,7 @@ in 330 charged shots, and the belly accumulator reached **21.58** - short of the
 | `fn_78_3320` | `LightHitReact` | the shared body plus, on Activate, `DeliverCmd(CBCAdditiveReactionCmd)` | matches; **not marked** - never entered |
 | `fn_78_348C` | `HeavyHitReact` | on Activate `SetJointsActive(kAllJoints, RemoveTarget|Reflect)` and `DeliverCmd(CBodyStateCmd(kBSC_NextState))`, then the shared body, then the taunt (type 4) | matches; **not marked** - state 3 was never reached |
 | `fn_78_5784` | `SlideIntoWater` | records state 6 and, on Activate, `SetJointsActive(kAllJoints, 0xa)`, rumbles and stops the tongue | matches; **not marked** - the state is never reached |
-| `fn_78_9A44` | `CollidedWith` | its own work only while the state is 5 (TonguePull): it walks the collision list for `kMT_SeekerTarget` and sets the "player touched" flag, then calls the base | matches; **not marked** - no run had a joint touch during a tongue pull (0 entries) |
+| `fn_78_9A44` | `CollidedWith` | its own work only while the state is 5 (TonguePull): it walks the collision list, tests bit 0 of the word at collision-info+0x30 (u64 bit 32 = `kMT_Player`) and sets the "player touched" flag, then calls the base | matches, after the mask fix (the port tested `kMT_SeekerTarget`, the wrong bit of the wrong word); **not marked** - the boss's `CollidedWith` was never entered (0 entries) |
 
 The blocker for all five is the same: state 3 needs the belly accumulator over 50 and the
 harness's hit rate (37 hits in 330 charged shots, the accumulator reset by `BeachWait` between
@@ -658,11 +738,11 @@ message falls through to the body part. The port does the same, and a run exerci
 | `fn_78_35DC` | the `msg == 1` branch (`cmpwi r31, 0x1` at 0x3620 -> the four calls); the function was never entered (state 3 needs the accumulator over 50) |
 | `fn_78_3320` | the `DeliverCmd(CBCAdditiveReactionCmd)` on Activate (`cmpwi r31, 0x0` at 0x3340); the function was never entered |
 | `fn_78_348C` | the Activate branch (`cmpwi r31, 0x0` at 0x34B8 -> `bl fn_78_9744` at 0x34C4 and `bl DeliverCmd` at 0x34E8); the function was never entered |
-| `fn_78_9A44` | the state-5 branch (`cmpwi r0, 0x5` at 0x9A54 -> the `kMT_SeekerTarget` walk); no run had a joint touch during a tongue pull |
+| `fn_78_9A44` | the state-5 branch (`cmpwi r0, 0x5` at 0x9A54 -> the `kMT_Player` walk); the boss's `CollidedWith` was never entered (0 entries) |
 
 A run that reaches state 3 (the belly accumulator over 50, or over 5 at min health) would open
 all of them: `fn_78_35DC` and `fn_78_3320` from the `LightHit`/`HeavyHit` triggers, and
-`fn_78_9A44` from the player touching a joint while the tongue pulls.
+`fn_78_9A44` from a collision list reaching the boss's own `CollidedWith` while the tongue pulls.
 
 ### Stage1: forcing state 3, the branch tables and the next three (2026-10-21)
 
@@ -696,7 +776,7 @@ of the forced-state runs):
 | `fn_78_3320` | the shared body | `bl fn_78_35DC` at 0x333C | 0 | not marked |
 | `fn_78_348C` | the Activate branch (SetJointsActive(kAllJoints, 0xa) and `DeliverCmd(CBodyStateCmd)`) | `cmpwi r31, 0x0` at 0x34B8 | 0 | **not marked** - never entered |
 | `fn_78_348C` | the shared body and the taunt | `bl fn_78_35DC` at 0x3508, `bl fn_78_B9D0` | 0 | not marked |
-| `fn_78_9A44` | the state-5 branch (the `kMT_SeekerTarget` walk) | `cmpwi r0, 0x5` at 0x9A54 | 0 | **not marked** - no joint touch during a tongue pull |
+| `fn_78_9A44` | the state-5 branch (the `kMT_Player` walk) | `cmpwi r0, 0x5` at 0x9A54 | 0 | **not marked** - the boss's `CollidedWith` was never entered |
 | `fn_78_9A44` | the base call | the tail of the function | 0 | not marked |
 
 **The next three unmarked functions by static call count** (the ones after the five above; all
@@ -783,11 +863,35 @@ from the run that hit the weak joint in it):
 | `fn_78_348C` | Activate (the joints and the next state command) | `bne .L_000034F8` at 0x34B8, `bl fn_78_9744` at 0x34C4, `bl DeliverCmd` at 0x34E8 | 1 | **marked** |
 | `fn_78_348C` | Update (the shared body) | `bl fn_78_35DC` at 0x3508 | 104 | **marked** |
 | `fn_78_348C` | Deactivate | 0x34B8 | 1 | **marked** |
-| `fn_78_9A44` | the state-5 branch (the `kMT_SeekerTarget` walk) | `cmpwi r0, 0x5` at 0x9A54 | 0 | **not marked** - no run had the player touch a joint while the tongue pulled (the `place player` at a joint's position registers no touch) |
+| `fn_78_9A44` | the state-5 branch (the `kMT_Player` walk) | `cmpwi r0, 0x5` at 0x9A54 | 0 | **not marked** - the boss's `CollidedWith` was never entered (the `place` at a joint's position registers no touch) |
 
-`fn_78_9A44` stays unmarked: its own branch needs a collision between the player and a joint
-while the state is 5, and the harness could not produce one (the `place` command moves the player
-but the collision system's touch is not generated for a teleport).
+`fn_78_9A44` stays unmarked: its own branch needs a collision list while the state is 5, and
+the harness could not produce one. Two runs on 2026-10-22 (the probe was a temporary trace in the
+port body, never committed) pinned down why:
+
+- the branch is **not** about the joint spheres. Those are separate `CCollisionActor` entities and
+  their hits go to `CCollisionActor::Touch` -> `kSM_HitObject`, never to the boss's own
+  `CPhysicsActor::CollidedWith` (vtable slot 0x84). The boss's `CollidedWith` is reached only
+  through `CGameCollision::MakeCollisionCallbacks` (`CGameCollision.cpp:717-729`): the mover's
+  own `CollidedWith` and then the other actor's, both with the mover-frame list. The boss is
+  the "other" either in a near-list dynamic collision (the boss's collision primitive is a
+  `CCollidableAABox` over the pinfo body box, `CPatterned.cpp:60-67`) or through the octree,
+  where the boss's body box is cached dynamic geometry owned by the boss's uid
+  (`CGameCollisionPackedCache.cpp:141-152`) and the hit carries the owner's id.
+- a temporary trace on `CSwampBossStage1::CollidedWith` (printing the state, the list count and
+  both material u64s) logged **0 entries** in a 300-frame run in `04_swamp_temple_dark` (layer 3
+  forced, the boss woken with `send <boss> Activate` and dropped to 600 HP, the player morphed and
+  parked inside the boss's body box at the AI hint) and in a second, longer run that cycled the
+  boss through `SplashRise`, `SplashWait`, `PlatformReady`, `Swim`, `Beach` and `SplashJump`
+  while the player was repeatedly teleported onto the boss's position. The boss's `CollidedWith`
+  is not reached at all in the port, so the state-5 arm cannot run yet.
+
+The port's body is nevertheless the faithful translation of the retail's (see the material-bit
+calibration above): the retail masks u64 bit 32 of the *other* side's list, so the flag means
+"the boss's body hit the player", and the port now does the same. What is still missing is a
+runtime that delivers a collision list to the boss's `CollidedWith` while the boss is in
+`TonguePull`; the console's `place` moves the player but does not generate a touch for a
+teleport, so a walk-in (or a `shoot` that knocks the player into the boss) is needed.
 
 ## Stage2 (module 79) — verified
 

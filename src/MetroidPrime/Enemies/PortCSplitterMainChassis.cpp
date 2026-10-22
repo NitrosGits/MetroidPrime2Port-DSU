@@ -1156,7 +1156,7 @@ CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
   return sum;
 }
 
-// fn_75_ACEC (the chassis's head placement, 0xACEC-0xAFE8): the head's id at 0xC6C (0x0000AD18
+// fn_75_ACEC. The chassis's head placement (0xACEC-0xAFE8): the head's id at 0xC6C (0x0000AD18
 // lhz) decides. With no head id the body looks at the second link at 0xC6E (0x0000AF8C): an
 // object that is not a command module clears it (0x0000AFC0). With a head id the head is looked
 // up (0x0000AD40 ObjectById) and cast (0x0000AD44); with no head object the id at 0xC6C is
@@ -1171,6 +1171,10 @@ CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
 // otherwise the head's Y column is slerped toward the chassis's (0x0000AE30 GetAngleDiff,
 // 0x0000AE60 Slerp with the turn rate 12.566371 rad/s) and the head gets the chassis's
 // transform (0x0000AE44 SetTransform).
+// Arms: the placement ran in the fight; the arms with no head id, with a second link, with the
+// 0xD41 flag bits set, with a counter at 0xD00 that is not 5, with an editor offset that has no
+// y or no z, and with a head id that names no object were forced under gdb.
+// @ fn_75_ACEC
 void CSplitterMainChassis::PortPlaceHead(CStateManager& mgr, float dt) {
   if (mCommandModuleId == kInvalidUniqueId) {
     if (mSecondLinkId == kInvalidUniqueId) {
@@ -1959,13 +1963,16 @@ void CSplitterMainChassis::PortCopyTimers() {
   mDodgeTimer = mData.mMinDodgeInterval;
 }
 
-// fn_75_E6E4 (not marked: the run never reached the accept)
-// The chassis accepts a head (0xE6E4-0xE768): with the chassis's own command module id (0xC6C)
-// still the invalid one (0xE700-0xE70C) the head's id goes there (0xE720), the id at 0xC6E is
-// cleared (0xE72C), the flag byte 0xD40's 0x40 bit is cleared (0xE730-0xE738, the word's bit 25),
-// the materials 0x28 and 0x29 (kMT_Target and kMT_Orbit) are removed (0xE73C) and the four
-// timers are copied (0xE744 fn_75_8EA4); the answer is true (0xE748). With a command module
-// already there the answer is false (0xE750).
+// fn_75_E6E4. The chassis accepts a head (0xE6E4-0xE768): with the chassis's own command module
+// id (0xC6C) still the invalid one (0xE700-0xE70C, the compare at 0xE708 and the branch at
+// 0xE70C) the head's id goes there (0xE720), the id at 0xC6E is cleared (0xE72C), the flag byte
+// 0xD40's 0x40 bit is cleared (0xE734-0xE738, the word's bit 25), the materials 0x28 and 0x29
+// (kMT_Target and kMT_Orbit) are removed (0xE73C) and the four timers are copied (0xE744
+// fn_75_8EA4); the answer is true (0xE748). With a command module already there the answer is
+// false (0xE750).
+// Arms: the accept ran when the head docked to the chassis; the arm with a command module
+// already there was forced under gdb.
+// @ fn_75_E6E4
 bool CSplitterMainChassis::PortAcceptHead(CStateManager& mgr, TUniqueId headId) {
   if (mCommandModuleId != kInvalidUniqueId) {
     return false;
@@ -2007,9 +2014,7 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   PortUpdateFade(dt);
 }
 
-// fn_75_AFE8 (not marked: the area-4 run never reached the death branch, and the D3C-up
-// branch needs the sync id at 0xCC0 and the counter at 0xC48 - see the module note)
-// The chassis's timers (0xAFE8-0xB104), the Think's call at 0x0000F164 (the manager, the frame
+// fn_75_AFE8. The chassis's timers (0xAFE8-0xB104), the Think's call at 0x0000F164 (the manager, the frame
 // time in f1 and the state manager in r4). The four timers the chassis copies from its data
 // (fn_75_8EA4) are counted down (0x0000AFF8 0xD10, 0x0000B004 0xD14, 0x0000B010 0xD18,
 // 0x0000B01C 0xD1C), the scan timer at 0xD28 too (0x0000B028), and three timers are counted up
@@ -2022,6 +2027,11 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
 // (0x0000B0B0) and, at zero or below (0x0000B0C0 fcmpo with the cror eq, lt, eq - the <= sense),
 // the chassis dies with the transform's Y column (the vector at 0x28, 0x38 and 0x48) and the
 // state 'RATL' (0x0000B0E0).
+// Arms: the timers ran in the 914f1381 runs; the death branch (the flag byte at 0xD41's 0x01 bit
+// set and the timer at 0xD20 at or below zero), the alive gate, the timer above zero and the
+// D3C-up branch (the id at 0xCC0 valid and the counter at 0xC48 not zero) were forced under
+// gdb.  The death calls the base class's Death (asm 0x0000B0F0), not the module's override.
+// @ fn_75_AFE8
 void CSplitterMainChassis::PortUpdateTimers(CStateManager& mgr, float dt) {
   mLegStabTimer -= dt;     // 0xD10 (0x0000AFF8)
   mSpinPenaltyTimer -= dt; // 0xD14 (0x0000B004)
@@ -2554,11 +2564,15 @@ void CSplitterMainChassis::HeadExplosion(CStateManager& mgr, EStateMsg msg, floa
   }
 }
 
-// fn_75_E788 (0xE788-0xE810): a living (the base's 0x420 0x40 bit, 0xE788-0xE790), active (the
-// entity's 0x20 0x80 bit, 0xE794-0xE79C) chassis with no head (0xC6C, 0xE7A4-0xE7B4) and no
-// reservation (0xC6E, 0xE7B8-0xE7C0), landed (0xD00 at 5 or 0, 0xE7C4-0xE7D4), with 0xD41's 0x80
-// and 0xD40's 0x01 bits clear (0xE7D8-0xE7EC) takes the head's reservation (0xE7F4); the result
-// is whether the reservation is that head's (0xE7F8-0xE808).
+// fn_75_E788 (0xE788-0xE810): a living (the base's 0x420 0x40 bit, 0xE78C, 0xE790), active (the
+// entity's 0x20 0x80 bit, 0xE798, 0xE79C) chassis with no head (0xC6C, 0xE7B0, 0xE7B4) and no
+// reservation (0xC6E, 0xE7BC, 0xE7C0), landed (0xD00 at 5 or 0, 0xE7C8, 0xE7CC, 0xE7D0, 0xE7D4),
+// with 0xD41's 0x80 and 0xD40's 0x01 bits clear (0xE7DC, 0xE7E0, 0xE7E8, 0xE7EC) takes the head's
+// reservation (0xE7F4); the result is whether the reservation is that head's (0xE7F8-0xE808).
+// Arms: the reserve ran when the head searched for a chassis (after the chassis died); every
+// condition's other arm was forced under gdb (the alive bit, the active bit, the head id, the
+// reservation, the landed count and the two flag bits).
+// @ fn_75_E788
 bool CSplitterMainChassis::PortReserveDock(TUniqueId head) {
   if (mAlive && GetActive() && mCommandModuleId == kInvalidUniqueId &&
       mSecondLinkId == kInvalidUniqueId && (mLandedCount == 5 || mLandedCount == 0) &&
@@ -2568,7 +2582,12 @@ bool CSplitterMainChassis::PortReserveDock(TUniqueId head) {
   return mSecondLinkId == head;
 }
 
-// fn_75_E768 (0xE768-0xE788): the reservation at 0xC6E is cleared when it is that head's.
+// fn_75_E768 (0xE768-0xE788): the reservation at 0xC6E is cleared when it is that head's
+// (0xE770 cmplw r5, r0; 0xE774 bnelr; 0xE780 sth r0, 0xc6e(r3)).
+// Arms: the release only ran in the forced runs - the head's search (fn_75_2280) is gated on the
+// id at 0xEFC being invalid (fn_75_31A8, 0x327C-0x3280), so the old pick it releases
+// (0x2350-0x2380) is never a live chassis; the force gives the head one.
+// @ fn_75_E768
 void CSplitterMainChassis::PortReleaseDock(TUniqueId head) {
   if (mSecondLinkId == head) {
     mSecondLinkId = kInvalidUniqueId;

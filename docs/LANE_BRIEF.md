@@ -102,7 +102,9 @@ taken, and `ALL-ARMS` when every branch was taken. The run scripts set `GCOV_PRE
 `GCOV_PREFIX_STRIP` when the binary is a coverage build, so concurrent runs write into their own
 directory, and the game's flush hook (`platform/port_coverage.cpp`) writes the counters on a clean
 quit, on SIGTERM and on SIGINT. Several prefix dirs may be given: their counters add up, so the
-arms of a natural run and of a forced one merge into one profile. gdb stays the tool for the arms
+arms of a natural run and of a forced one merge into one profile (pass the dirs to `gcov_report.py`;
+if you merge with `gcov-tool merge` instead, put the forced profiles first: it keeps the first
+profile's non-zero counters, so a natural run merged first hides the forced arms). gdb stays the tool for the arms
 no run reaches (`tools/cov/force.sh`): coverage says which arm is missing, not how to reach it.
 
 ## Gates (one line each in the report)

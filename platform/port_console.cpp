@@ -542,7 +542,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "covdump                     coverage build: write the gcov counters now (and zero them)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
-      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
+      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2\n"
+      "                              sub-machines too; an unknown name lists the valid ones)\n"
       "bodystate <id> <n>          set a patterned actor's body state (the pas::EAnimationState index)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
@@ -1700,9 +1701,47 @@ void CmdAt(CStateManager&, const Args& args, std::string& out) {
          "): " + line + '\n';
 }
 
+// The state names a `fsm` command can use, for the "unknown state" message: the machine's own
+// states and, for an FSM2, the states of its sub-machines.  A long list is cut.
+std::string StateNameList(const rstl::vector< rstl::string >& names) {
+  const size_t kMaxNames = 24;
+  std::string out;
+  size_t shown = 0;
+  size_t total = 0;
+  for (size_t i = 0; i < names.size(); ++i) {
+    // The asset's states and the owner's table hold the same names: list each one once.
+    bool seen = false;
+    for (size_t j = 0; j < i; ++j) {
+      if (names[j] == names[i]) {
+        seen = true;
+        break;
+      }
+    }
+    if (seen) {
+      continue;
+    }
+    ++total;
+    if (shown < kMaxNames) {
+      if (shown != 0) {
+        out += ", ";
+      }
+      out += names[i].data();
+      ++shown;
+    }
+  }
+  if (total > kMaxNames) {
+    out += ", ... (+" + std::to_string(total - kMaxNames) + " more)";
+  }
+  return out;
+}
+
 // fsm <id> <state>: put a patterned actor's state machine in a named state, through the machine's
 // own SetState (the AFSM and FSM2 dispatchers both take a name), so a run can enter a state whose
 // trigger it cannot reach. The leave/enter callbacks run as they would in game.
+//
+// The name is looked up first, so an unknown one is reported as such - with the list of the valid
+// names - and a state that was entered and left at once (the machine is back where it was) says
+// so instead of reading as an unknown name.
 void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() != 3) {
     Fail("usage: fsm <id> <state name>");
@@ -1719,16 +1758,20 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   // string_l borrows the characters: keep the std::string alive for every use of `name`.
   const std::string wanted(args[2]);
   const rstl::string name = rstl::string_l(wanted.c_str());
+  // The names this machine can enter: its own states and, for an FSM2, the states of its
+  // sub-machines (the ones PortSetStateDeep reaches).
+  rstl::vector< rstl::string > valid;
+  std::string where = "top machine";
+  machine->PortCollectStateNames(valid, 8);
   // An FSM2's SetState looks only at its own top-level states; a state inside one of its
   // sub-machines is entered the way a transition into that sub-machine would enter it.
-  std::string where = "top machine";
   if (machine->GetType() == 1) {
     const char* path[8] = {};
-    const int depth = static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortSetStateDeep(
+    const int entered = static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortSetStateDeep(
         mgr, *patterned, name, path, 8);
-    if (depth > 0) {
+    if (entered > 0) {
       where = "sub-machine ";
-      for (int i = 0; i < depth; ++i) {
+      for (int i = 0; i < entered; ++i) {
         where += (i != 0 ? "/" : "");
         where += path[i] != nullptr ? path[i] : "?";
       }
@@ -1737,20 +1780,36 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
     machine->SetState(mgr, *patterned, name);
   }
   const char* after = machine->HasState() ? machine->GetName() : nullptr;
-  // An unknown name leaves the machine where it was; say so rather than report a no-op. An FSM2
-  // evaluates the new state's transitions inside SetState, so a state that was entered and left
-  // at once reads as another, new name: report that as entered.
-  if (after != nullptr && std::string_view(after) != args[2] && before != after) {
+  if (after == nullptr) {
+    // No state at all: the machine was never set up (an actor that was not created yet has none).
+    Fail("the actor has no state machine state (is it active?)");
+    return;
+  }
+  if (std::string_view(after) == args[2]) {
+    out += "fsm " + before + " -> " + after + " [" + where + "]\n";
+    return;
+  }
+  if (before != after) {
+    // Another state now: the machine moved on (its own transitions) while the state was entered.
     out += "fsm " + before + " -> " + Str(args[2]) + " [" + where + "] (entered; now " + after +
            ")\n";
     return;
   }
-  if (after == nullptr || std::string_view(after) != args[2]) {
-    Fail("state '" + Str(args[2]) + "' not entered (unknown name?); now " +
-         (after != nullptr ? after : "?"));
+  // The machine is back where it was: the state was entered and left at once, unless the name is
+  // not one of the machine's at all.
+  bool known = false;
+  for (const rstl::string& candidate : valid) {
+    if (candidate == name) {
+      known = true;
+      break;
+    }
+  }
+  if (known) {
+    out += "fsm " + before + " -> " + Str(args[2]) + " [" + where +
+           "] (entered and left at once; now " + after + ")\n";
     return;
   }
-  out += "fsm " + before + " -> " + after + " [" + where + "]\n";
+  Fail("unknown state '" + Str(args[2]) + "'; valid names: " + StateNameList(valid));
 }
 
 // The state/trigger function the actor's own table registered under `name`, from either machine

@@ -1465,6 +1465,70 @@ the beam at the lifetime and delete themselves, which delivers XDEL. The forced 
 Every other arm is natural, including both sides of the 70 degree test (@0x11750). Merged gcov:
 all eight bodies ALL-ARMS, 0 `caught`/reach-stub.
 
+### A.30 The unmarked behaviour rows, reclassified and marked (2026-10-22)
+
+Of the 45 unmarked `B` rows, 15 are host copies the asm shows have no behaviour of their own;
+`Ing_functions.tsv` now has them as `H host-copy`: `3424` (rstl placement construct: null check +
+copy ctor), `4AA8` (a plain 0x4D-byte field copy), `BEB4` (a float copy of the PredictMotion
+result), `BFF0` (only `CPatterned::PreRenderAllViewports`), `E68C` (deleting dtor, A.20), `E7C8`
+(CIngData copy ctor), `E8D8`/`E944`/`E9E8`/`EA7C`/`EB38`/`EBEC` (sub-struct copy ctors), `EC88`/`ED38`
+(vulnerability/vector copy, `__copy` + `allocate`), `F260` (rstl construct loop over `3404`).
+
+Marked against the asm (13): the branch-free data ctors `EE68` CIngData (the flag byte's bit
+reversal is IngFlagsWord), `EFC0` swarm, `F000` mini portal, `F090` grapple (retail passes the
+vulnerability last, r7; each value lands in retail's field), `F12C` body projectile, `100` the
+RELMain helper; and, with every arm run in the Agon coverage run (`tools/drivers/ing_triggers.py`,
+gcov ALL-ARMS or branch-free; console `var <ing> ing.form|ing.desired|ing.found|ing.safezones`):
+
+| fn | forced with |
+|---|---|
+| `AA94` ShouldFleeSafeZone | `send XENZ`/`XEXZ` + `trigcall` (false, true, false) |
+| `A4E0` FoundMovementPos | `var ing.found 0/1` + `trigcall` |
+| `AA04`/`AA4C` ShouldBecomeIngSpot/Corporeal | `var ing.desired -1/2/3` x `var ing.form 2/3` + `trigcall` (4/4 branches each) |
+| `5190` StartRangedAttack | `codecall` |
+| `B890` TakeDamage | `var ing.form 0/1/5/2/3`, then `hurt <joint> 1` (the joint relays kSM_Damage -> CollisionActorDamage) |
+| `5C28` Evaporate | `fsm Evaporate`; the Ing deleted itself after two seconds |
+
+Evaporate was also fixed: the two-second test reads the state machine's time (asm 0x5C68-0x5C78,
+`lwz r3, 0x350` + vtable 0x30 GetTime), not the host's `mStateTime`, which LogState clears.
+
+### A.31 The last behaviour rows: fixes, marks and blockers (2026-10-22, lane ing4)
+
+Driver `tools/drivers/ing_rows.py` (Agon `01_sand_entrance_dark`, one Ing). Forced values go
+through `var <ing> ing.hurtful|ing.evap|ing.takeoff|ing.form|ing.coverhint|ing.lurezone|ing.team`
+chained with the call (`a; b` runs in one tick, so Think's ValidateLureZone and the cover-hint
+release cannot undo the forced id in between). Every arm below is forced unless noted.
+
+Fixed against the asm (unmarked rows too): `3190` no anim null test (0x31C4-0x3208); `8FE8`
+Deactivate no anim null test (0x93F4-0x9410); `8CF4` the one-second test reads the state
+machine's GetTime (0x8E48-0x8E68, `lwz r3,0x350(r31)` + vtable 0x30), not mStateTime; `75C0` length
+test before `!IsMagnitudeSafe` (0x7640, 0x7650); `1DF4` hearing test `distSq > r^2` exits
+(0x1E58-0x1E60 `cror eq,lt,eq; bne`); `3684` is now `LeaveTeam`: invalid id, TCast,
+`IsPartOfTeam` (0x36EC), QuitTeam (0x3704), id reset (0x3710), from Delete (0xCC28) and
+Deactivate (0xCCB8).
+
+| fn | result | forced with / why not |
+|---|---|---|
+| `3190` CreateCollisionActorManager | marked, 14/14 | natural (kSM_Create) |
+| `F2C8` FSM table init | marked, branch-free | its copy loop simulated: 49 triggers -> data_250, 29 states -> data_6BC, 12 code fns -> data_91C; names and order match `skTriggers`/`skStates`/`skCodeFuncs` |
+| `1C98` lure mesh point | marked (on `PortIngLuredMeshPoint`), all arms | `ing.lurezone` invalid / hint / each zone + `codecall SetLuredDest|SetLuredPointDest` |
+| `75C0` SeekWallPoint | marked, 9/10 | `ing.coverhint` + `statecall`, Ing placed on / far from the hint; the missing arm (`!IsMagnitudeSafe` after the length test) needs 0 < |delta|^2 < 1e-28 above dt*speed: dead |
+| `53E0` SetLuredDest | open | `PathExists` to the lure point never succeeded (7 tries) |
+| `51D0` SetLuredPointDest | open | Ing's own closest point never -1; the final point search's failure arm not run |
+| `5714` SetWallPointCoverDest | open | the `to` closest point / the point search arms (3177, 3183, 3191) not run |
+| `8CF4` SafeZoneReaction | open, 12/14 | the knock-back command never issued (CanIssueCommand false) and an unknown message not sent |
+| `8FE8` BecomeWallProjectile | open, 20/25 | needs a floor surface (cross not safe), no aim target, an in-cone aim, and an unknown message |
+| `3684` LeaveTeam | open, 3/6 | no `CScriptTeamAiMgr` in the area; needs an Ing area with a team or a gdb force |
+| `1DF4` (in Listen `B294`) | open | the kept-nearer-zone arms did not run even with the zone set in the same tick; Agon's zones are likely not type 2 (Echo), which ValidateLureZone requires |
+| `B534` CollidedWith | open, 1/10 | `fsm BecomeBodyProjectile` never produced a contact at >= 0.5 s |
+| `10D50` ConstructEffect | open, 1/2 | the token-not-loaded arm not run |
+| `10E64` CIngExitHostEffect::Render | skipped | the effect has no model, so it is never queued for rendering on the host |
+| `130` loader / `D540` ctor | skipped | the generated reader's property switch (14 arms) and the DebugIng / no-model arms need other layers' data |
+
+Reclassified `H host-copy`: `11490` (a plain `CModelData()` wrapper), `11438` (the trail
+container copy-assign), `119E8` (CBeamInfo copy ctor, 0x48 bytes, after TLdrToBeamInfo at
+0x1189C in `11840`).
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).

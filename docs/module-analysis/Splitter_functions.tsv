@@ -1,0 +1,308 @@
+offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
+0x0	0x8	CSplitter	-	virtual	B	lbl_75_data_448+E0	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_0
+0x8	0x8	CSplitter	-	virtual	B	lbl_75_data_448+DC	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_8
+0x10	0x8	CSplitter	-	virtual	H	lbl_75_data_448+AC	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_75_10
+0x18	0x3C	CSplitter	-	virtual	H	lbl_75_data_448+48 lbl_75_data_CB8+48	same body as SwampBossStage2 0x8 (see SwampBossStage2_functions.tsv)	not-port	fn_75_18
+0x54	0x10	CSplitter	-	virtual	H	lbl_75_data_448+A4 lbl_75_data_CB8+A4	same body as SpacePirate 0x30 (CPatterned::TakeDamage (CPatterned.hpp:151))	not-port	fn_75_54
+0x64	0x8	CSplitter	-	virtual	H	lbl_75_data_448+C8 lbl_75_data_CB8+C8	same body as SwampBossStage2 0x54 (see SwampBossStage2_functions.tsv)	not-port	fn_75_64
+0x6C	0x8	CSplitter	-	virtual	H	lbl_75_data_448+E4 lbl_75_data_CB8+E4	same body as SpacePirate 0x40 (CPatterned::GetPointSearchPath (CPatterned.hpp:170))	not-port	fn_75_6C
+0x74	0x8	CSplitter	-	virtual	H	lbl_75_data_448+F4 lbl_75_data_CB8+F4	same body as SpacePirate 0x40 (CPatterned::GetPointSearchPath (CPatterned.hpp:170))	not-port	fn_75_74
+0x7C	0x10	CSplitter	-	virtual	H	lbl_75_data_448+10C lbl_75_data_CB8+10C	same body as SwampBossStage2 0x74 (see SwampBossStage2_functions.tsv)	not-port	fn_75_7C
+0x8C	0xC	CSplitter	-	virtual	H	lbl_75_data_448+110 lbl_75_data_CB8+110	same body as SpacePirate 0x48 (CPatterned::IsOnGround (CPatterned.hpp:184))	not-port	fn_75_8C
+0x98	0xC	CSplitter	-	virtual	H	lbl_75_data_448+114 lbl_75_data_CB8+114	same body as SwampBossStage2 0x90 (see SwampBossStage2_functions.tsv)	not-port	fn_75_98
+0xA4	0x8	CSplitter	-	virtual	H	lbl_75_data_448+124 lbl_75_data_CB8+124	same body as SpacePirate 0x54 (CPatterned::GetDeathExplosionParticle (CPatterned.hpp:190))	not-port	fn_75_A4
+0xAC	0x8	CSplitter	-	virtual	H	lbl_75_data_448+A8 lbl_75_data_CB8+A8	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_75_AC
+0xB4	0x1C	CSplitter	-	virtual	H	lbl_75_data_448+B4 lbl_75_data_CB8+B4	same body as SwampBossStage2 0xb4 (see SwampBossStage2_functions.tsv)	not-port	fn_75_B4
+0xD0	0x2C	CSplitter	-	virtual	H	lbl_75_data_448+3C lbl_75_data_CB8+3C lbl_75_data_E34+3C	same body as SandBoss 0xd8 (CActor::GetHealthInfo (header inline))	not-port	fn_75_D0
+0xFC	0x370	CSplitter	-	func	B	fn_75_8254	module loader (SpacePirate LoadSpacePirate precedent)	not-port	fn_75_FC
+0x46C	0x40	CSplitter	-	func	H	fn_75_82B0 fn_75_FC	same body as ElitePirate 0xca8 (fn_15_CA8)	not-port	fn_75_46C
+0x4AC	0x20	CSplitter	-	func	H	fn_75_46C	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_75_4AC
+0x4CC	0x28	CSplitter	-	func	H	fn_75_4AC fn_75_8678	same body as ElitePirate 0xd08 (fn_15_D08)	not-port	fn_75_4CC
+0x4F4	0x13C	CSplitter	-	func	H	fn_75_4CC	same body as CommandoPirate 0xaa8 (see CommandoPirate_functions.tsv)	not-port	fn_75_4F4
+0x630	0x1BC	CSplitter	-	func	H	fn_75_970	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrSplitter{MainChassis,CommandModule}.hpp): the port reads properties through the upstream SLdr class	not-port	fn_75_630
+0x7EC	0x3C	CSplitter	-	func	H	fn_75_E60	same body as CommandoPirate 0x4568 (see CommandoPirate_functions.tsv)	not-port	fn_75_7EC
+0x828	0x148	CSplitter	-	func	H	fn_75_F00	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrSplitter{MainChassis,CommandModule}.hpp): the port reads properties through the upstream SLdr class	not-port	fn_75_828
+0x970	0x4F0	CSplitter	-	func	H	fn_75_FC	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrSplitter{MainChassis,CommandModule}.hpp): the port reads properties through the upstream SLdr class	not-port	fn_75_970
+0xE60	0xA0	CSplitter	-	func	H	fn_75_6798 fn_75_FC	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrSplitter{MainChassis,CommandModule}.hpp): the port reads properties through the upstream SLdr class	not-port	fn_75_E60
+0xF00	0x1D0	CSplitter	-	func	H	fn_75_FC	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrSplitter{MainChassis,CommandModule}.hpp): the port reads properties through the upstream SLdr class	not-port	fn_75_F00
+0x10D0	0xB8	CSplitter	-	func	B	fn_75_1188	marked	marked	fn_75_10D0
+0x1188	0x344	CSplitter	-	func	B	fn_75_6490	marked	marked	fn_75_1188
+0x14CC	0x58	CSplitter	-	func	H	fn_75_1188	same body as ElitePirate 0x2730 (fn_15_2730)	not-port	fn_75_14CC
+0x1524	0x54	CSplitter	-	func	H	fn_75_14CC	same body as CommandoPirate 0x23d0 (see CommandoPirate_functions.tsv)	not-port	fn_75_1524
+0x1578	0x218	CSplitter	-	func	B	fn_75_1790 fn_75_1974 fn_75_31A8 fn_75_3E60 fn_75_523C fn_75_5B28 fn_75_5CC4 fn_75_5D50 fn_75_5DDC	marked	marked	fn_75_1578
+0x1790	0xBC	CSplitter	-	func	B	fn_75_44DC fn_75_5448 fn_75_654C	marked	marked	fn_75_1790
+0x184C	0x128	CSplitter	-	func	B	fn_75_6490	marked	marked	fn_75_184C
+0x1974	0x298	CSplitter	-	func	B	fn_75_44DC	marked	marked	fn_75_1974
+0x1C0C	0x94	CSplitter	-	func	H	fn_75_1974	same body as EmperorIngStage3 0xa794 (SLdrDamageInfo (header inline))	not-port	fn_75_1C0C
+0x1CA0	0x198	CSplitter	-	func	B	fn_75_6394	marked	marked	fn_75_1CA0
+0x1E38	0x54	CSplitter	-	func	H	fn_75_1CA0	same body as ElitePirate 0x7aac (fn_15_7AAC)	not-port	fn_75_1E38
+0x1E8C	0x5C	CSplitter	-	func	H	fn_75_1E38 fn_75_1F50	same body as ElitePirate 0x79e8 (fn_15_79E8)	not-port	fn_75_1E8C
+0x1EE8	0x20	CSplitter	-	func	H	fn_75_1E8C	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_75_1EE8
+0x1F08	0x48	CSplitter	-	func	H	fn_75_1EE8	same body as CommandoPirate 0x600c (see CommandoPirate_functions.tsv)	not-port	fn_75_1F08
+0x1F50	0x48	CSplitter	-	func	H	fn_75_1CA0	same body as ElitePirate 0x776c (fn_15_776C)	not-port	fn_75_1F50
+0x1F98	0xB4	CSplitter	-	func	H	fn_75_1F50	same body as ElitePirate 0x77b4 (fn_15_77B4)	not-port	fn_75_1F98
+0x204C	0x40	CSplitter	-	func	H	fn_75_1F98	same body as ElitePirate 0x7868 (fn_15_7868)	not-port	fn_75_204C
+0x208C	0x20	CSplitter	-	func	H	fn_75_204C	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_75_208C
+0x20AC	0x28	CSplitter	-	func	H	fn_75_208C	same body as ElitePirate 0xd08 (fn_15_D08)	not-port	fn_75_20AC
+0x20D4	0x80	CSplitter	-	func	H	fn_75_20AC	same body as CommandoPirate 0x61d8 (see CommandoPirate_functions.tsv)	not-port	fn_75_20D4
+0x2154	0xA8	CSplitter	-	func	B	fn_75_3FE0 fn_75_4138 fn_75_4D04 fn_75_4E90	marked	marked	fn_75_2154
+0x21FC	0x84	CSplitter	-	func	B	fn_75_6490	marked	marked	fn_75_21FC
+0x2280	0x170	CSplitter	-	func	B	fn_75_31A8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_2280
+0x23F0	0x1D4	CSplitter	-	func	B	fn_75_4E90	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_23F0
+0x25C4	0x148	CSplitter	-	func	B	fn_75_270C	marked	marked	fn_75_25C4
+0x270C	0x288	CSplitter	-	func	B	fn_75_3B34	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_270C
+0x2994	0x24C	CSplitter	-	func	B	fn_75_42F8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_2994
+0x2BE0	0xE0	CSplitter	-	func	B	fn_75_3004	marked	marked	fn_75_2BE0
+0x2CC0	0x20	CSplitter	-	func	B	fn_75_654C	marked	marked	fn_75_2CC0
+0x2CE0	0x324	CSplitter	-	func	B	fn_75_3004 fn_75_3460	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_2CE0
+0x3004	0x1A4	CSplitter	-	func	B	fn_75_6490	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_3004
+0x31A8	0x14C	CSplitter	-	func	B	fn_75_6490	marked	marked	fn_75_31A8
+0x32F4	0x16C	CSplitter	-	func	B	fn_75_6490	marked	marked	fn_75_32F4
+0x3460	0x218	CSplitter	-	func	B	fn_75_654C	marked	marked	fn_75_3460
+0x3678	0x28	CSplitter	-	func	H	fn_75_3460 fn_75_A4E4	same body as ElitePirate 0x2fc8 (fn_15_2FC8)	not-port	fn_75_3678
+0x36A0	0x7C	CSplitter	-	func	H	fn_75_3678	same body as ElitePirate 0x2ff0 (fn_15_2FF0)	not-port	fn_75_36A0
+0x371C	0x114	CSplitter	-	func	H	fn_75_36A0	same body as ElitePirate 0x306c (fn_15_306C)	not-port	fn_75_371C
+0x3830	0x38	CSplitter	-	func	H	fn_75_3460 fn_75_A4E4	same body as ElitePirate 0x3288 (fn_15_3288)	not-port	fn_75_3830
+0x3868	0x20	CSplitter	-	func	H	fn_75_3830 fn_75_7BDC	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_75_3868
+0x3888	0x28	CSplitter	-	func	H	fn_75_3868 fn_75_AA10	only called from H rows fn_75_3868 fn_75_AA10	not-port	fn_75_3888
+0x38B0	0xC0	CSplitter	-	func	H	fn_75_3460 fn_75_3888 fn_75_A4E4	same body as ElitePirate 0x3308 (fn_15_3308)	not-port	fn_75_38B0
+0x3970	0x84	CSplitter	-	func	H	fn_75_3460 fn_75_A4E4	same body as ElitePirate 0x3bd8 (fn_15_3BD8)	not-port	fn_75_3970
+0x39F4	0x38	CSplitter	-	func	H	fn_75_3970	same body as ElitePirate 0x3b40 (fn_15_3B40)	not-port	fn_75_39F4
+0x3A2C	0x60	CSplitter	-	func	H	fn_75_39F4 fn_75_AA30	same body as CommandoPirate 0x4940 (see CommandoPirate_functions.tsv)	not-port	fn_75_3A2C
+0x3A8C	0x50	CSplitter	-	func	B	fn_75_654C	marked	marked	fn_75_3A8C
+0x3ADC	0x44	CSplitter	-	virtual	B	lbl_75_data_3AC+8	marked	marked	fn_75_3ADC
+0x3B20	0x14	CSplitter	-	virtual	B	lbl_75_data_3A0+8	marked	marked	fn_75_3B20
+0x3B34	0xB8	CSplitter	-	virtual	B	lbl_75_data_394+8	marked	marked	fn_75_3B34
+0x3BEC	0x134	CSplitter	-	virtual	B	lbl_75_data_388+8	marked	marked	fn_75_3BEC
+0x3D20	0x140	CSplitter	-	virtual	B	lbl_75_data_37C+8	marked	marked	fn_75_3D20
+0x3E60	0x8C	CSplitter	-	virtual	B	lbl_75_data_370+8	marked	marked	fn_75_3E60
+0x3EEC	0xF4	CSplitter	-	virtual	B	lbl_75_data_364+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_3EEC
+0x3FE0	0x158	CSplitter	-	virtual	B	lbl_75_data_278+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_3FE0
+0x4138	0x1C0	CSplitter	-	virtual	B	lbl_75_data_26C+8	marked	marked	fn_75_4138
+0x42F8	0x140	CSplitter	-	virtual	B	lbl_75_data_260+8	marked	marked	fn_75_42F8
+0x4438	0x5C	CSplitter	-	virtual	H	lbl_75_data_5B8+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_4438
+0x4494	0x48	CSplitter	-	virtual	H	lbl_75_data_5C4+8	same body as CommandoPirate 0x2a50 (see CommandoPirate_functions.tsv)	not-port	fn_75_4494
+0x44DC	0x388	CSplitter	-	virtual	B	lbl_75_data_254+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_44DC
+0x4864	0x200	CSplitter	-	virtual	B	lbl_75_data_248+8	marked	marked	fn_75_4864
+0x4A64	0x5C	CSplitter	-	virtual	H	lbl_75_data_5AC+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_4A64
+0x4AC0	0x1E8	CSplitter	-	virtual	B	lbl_75_data_23C+8	marked	marked	fn_75_4AC0
+0x4CA8	0x5C	CSplitter	-	virtual	H	lbl_75_data_5A0+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_4CA8
+0x4D04	0x18C	CSplitter	-	virtual	B	lbl_75_data_230+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_4D04
+0x4E90	0x220	CSplitter	-	virtual	B	lbl_75_data_224+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_4E90
+0x50B0	0x18C	CSplitter	-	virtual	B	lbl_75_data_218+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_50B0
+0x523C	0x20C	CSplitter	-	virtual	B	lbl_75_data_20C+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_523C
+0x5448	0x50	CSplitter	-	virtual	B	lbl_75_data_200+8	marked	marked	fn_75_5448
+0x5498	0xA0	CSplitter	-	virtual	B	lbl_75_data_1F4+8	marked	marked	fn_75_5498
+0x5538	0x2C	CSplitter	-	virtual	B	lbl_75_data_1E8+8	marked	marked	fn_75_5538
+0x5564	0x4	CSplitter	-	virtual	H	lbl_75_data_1DC+8	same body as DarkSamus 0x181dc (fn_10_181DC)	not-port	fn_75_5564
+0x5568	0x48	CSplitter	-	virtual	B	lbl_75_data_C0+8	marked	marked	fn_75_5568
+0x55B0	0x48	CSplitter	-	virtual	B	lbl_75_data_B4+8	marked	marked	fn_75_55B0
+0x55F8	0x18	CSplitter	-	virtual	B	lbl_75_data_A8+8	marked	marked	fn_75_55F8
+0x5610	0x14	CSplitter	-	virtual	B	lbl_75_data_9C+8	marked	marked	fn_75_5610
+0x5624	0x20	CSplitter	-	virtual	B	lbl_75_data_90+8	marked	marked	fn_75_5624
+0x5644	0x18	CSplitter	-	virtual	B	lbl_75_data_84+8	marked	marked	fn_75_5644
+0x565C	0xB0	CSplitter	-	virtual	B	lbl_75_data_78+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_565C
+0x570C	0xA8	CSplitter	-	virtual	B	lbl_75_data_6C+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_570C
+0x57B4	0x20	CSplitter	-	virtual	B	lbl_75_data_60+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_57B4
+0x57D4	0x1C	CSplitter	-	virtual	H	lbl_75_data_54+8	same body in 3 other modules (CommandoPirate,ElitePirate,SpacePirate)	not-port	fn_75_57D4
+0x57F0	0x74	CSplitter	-	virtual	B	lbl_75_data_48+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_57F0
+0x5864	0x58	CSplitter	-	virtual	B	lbl_75_data_3C+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_5864
+0x58BC	0x20	CSplitter	-	virtual	B	lbl_75_data_30+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_58BC
+0x58DC	0xC	CSplitter	-	virtual	B	lbl_75_data_24+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_58DC
+0x58E8	0x5C	CSplitter	-	virtual	B	fn_75_1188 fn_75_1578 fn_75_5944 lbl_75_data_18+8	marked	marked	fn_75_58E8
+0x5944	0xFC	CSplitter	-	virtual	B	fn_75_523C lbl_75_data_C+8	marked	marked	fn_75_5944
+0x5A40	0x14	CSplitter	-	virtual	H	lbl_75_data_0+8	same body in 6 other modules (CommandoPirate,Ing,IngBoostBallGuardian)	not-port	fn_75_5A40
+0x5A54	0x2C	CSplitter	-	virtual	B	fn_75_21FC lbl_75_data_CAC+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_5A54
+0x5A80	0x58	CSplitter	-	func	B	fn_75_B678	marked	marked	fn_75_5A80
+0x5AD8	0x50	CSplitter	-	func	B	fn_75_B678	marked	marked	fn_75_5AD8
+0x5B28	0x74	CSplitter	-	func	B	fn_75_C8F4	marked	marked	fn_75_5B28
+0x5B9C	0x5C	CSplitter	-	func	H	fn_75_5B28 fn_75_5CC4 fn_75_5D50 fn_75_5DDC	same body as ElitePirate 0x2b08 (fn_15_2B08)	not-port	fn_75_5B9C
+0x5BF8	0xC0	CSplitter	-	func	H	fn_75_5B9C	same body as EmperorIngStage3 0x1d28 (rstl::vector (header inline))	not-port	fn_75_5BF8
+0x5CB8	0xC	CSplitter	-	func	H	fn_75_5BF8	same body as EmperorIngStage3 0x1de8 (rstl::vector (header inline))	not-port	fn_75_5CB8
+0x5CC4	0x8C	CSplitter	-	func	B	fn_75_D61C	marked	marked	fn_75_5CC4
+0x5D50	0x8C	CSplitter	-	func	B	fn_75_B9B0 fn_75_C8F4 fn_75_D61C fn_75_EB04 fn_75_EFA4	marked	marked	fn_75_5D50
+0x5DDC	0x74	CSplitter	-	func	B	fn_75_BAA8	marked	marked	fn_75_5DDC
+0x5E50	0x3C	CSplitter	-	virtual	B	lbl_75_data_448+F8	marked	marked	fn_75_5E50
+0x5E8C	0x8C	CSplitter	-	virtual	B	lbl_75_data_448+F0	marked	marked	fn_75_5E8C
+0x5F18	0x74	CSplitter	-	virtual	B	lbl_75_data_448+B0	marked	marked	fn_75_5F18
+0x5F8C	0x1E0	CSplitter	-	virtual	B	lbl_75_data_448+54	marked	marked	fn_75_5F8C
+0x616C	0x8	CSplitter	-	virtual	B	lbl_75_data_448+40	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_616C
+0x6174	0x4	CSplitter	-	virtual	H	lbl_75_data_448+9C	same body as DarkSamus 0x181dc (fn_10_181DC)	not-port	fn_75_6174
+0x6178	0x198	CSplitter	-	virtual	B	lbl_75_data_448+84	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_6178
+0x6310	0x2C	CSplitter	-	virtual	B	lbl_75_data_448+28	marked	marked	fn_75_6310
+0x633C	0x2C	CSplitter	-	virtual	B	lbl_75_data_448+24	marked	marked	fn_75_633C
+0x6368	0x2C	CSplitter	-	virtual	B	lbl_75_data_448+2C	marked	marked	fn_75_6368
+0x6394	0xFC	CSplitter	-	virtual	B	lbl_75_data_448+70	marked	marked	fn_75_6394
+0x6490	0xBC	CSplitter	-	virtual	B	lbl_75_data_448+14	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_6490
+0x654C	0x24C	CSplitter	-	virtual	B	lbl_75_data_448+18	marked	marked	fn_75_654C
+0x6798	0xF8	CSplitter	-	virtual	B	lbl_75_data_448+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_6798
+0x6890	0x1E4	CSplitter	-	func	H	fn_75_6798 fn_75_F560	same body as ElitePirate 0x9e14 (fn_15_9E14)	not-port	fn_75_6890
+0x6A74	0x94	CSplitter	-	func	H	fn_75_6890	same body as CommandoPirate 0xd818 (see CommandoPirate_functions.tsv)	not-port	fn_75_6A74
+0x6B08	0x414	CSplitter	-	func	B	fn_75_FC	marked	marked	fn_75_6B08
+0x6F1C	0x184	CSplitter	-	func	H	fn_75_6B08 fn_75_F5F8	same body as ElitePirate 0x9ab0 (fn_15_9AB0)	not-port	fn_75_6F1C
+0x70A0	0x5C	CSplitter	-	func	H	fn_75_6B08 fn_75_72BC fn_75_791C fn_75_FB30 fn_75_FD58	same body as ElitePirate 0x2b08 (fn_15_2B08)	not-port	fn_75_70A0
+0x70FC	0x130	CSplitter	-	func	H	fn_75_70A0	same body as CommandoPirate 0xd344 (see CommandoPirate_functions.tsv)	not-port	fn_75_70FC
+0x722C	0x90	CSplitter	-	func	H	fn_75_6B08	same body as SandBoss 0xf9fc (CDamageVulnerability helper)	not-port	fn_75_722C
+0x72BC	0xE4	CSplitter	-	func	H	fn_75_6B08	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_72BC
+0x73A0	0x164	CSplitter	-	func	H	fn_75_72BC fn_75_791C	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_73A0
+0x7504	0x2BC	CSplitter	-	func	H	fn_75_73A0 fn_75_77C0 fn_75_FC10	same body as IngBoostBallGuardian 0x108d4 (the module's own memberwise copy of a parameter block)	not-port	fn_75_7504
+0x77C0	0x84	CSplitter	-	func	H	fn_75_73A0 fn_75_FC10	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_77C0
+0x7844	0x44	CSplitter	-	func	H	fn_75_73A0	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_7844
+0x7888	0x94	CSplitter	-	func	H	fn_75_73A0	same body as EmperorIngStage3 0xa794 (SLdrDamageInfo (header inline))	not-port	fn_75_7888
+0x791C	0x12C	CSplitter	-	func	H	fn_75_FC	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_791C
+0x7A48	0x98	CSplitter	-	func	H	fn_75_5BF8	same body as EmperorIngStage3 0xdb5c (rstl::vector (header inline))	not-port	fn_75_7A48
+0x7AE0	0x3C	CSplitter	-	func	H	fn_75_7A48	same body as EmperorIngStage3 0xdcc8 (rstl::vector (header inline))	not-port	fn_75_7AE0
+0x7B1C	0xC0	CSplitter	-	func	H	fn_75_3460 fn_75_A4E4	same body as ElitePirate 0xbf6c (fn_15_BF6C)	not-port	fn_75_7B1C
+0x7BDC	0x68	CSplitter	-	func	H	fn_75_7B1C	same body as ElitePirate 0xc02c (fn_15_C02C)	not-port	fn_75_7BDC
+0x7C44	0x3C	CSplitter	-	func	H	fn_75_18	same body as ElitePirate 0xc094 (fn_15_C094)	not-port	fn_75_7C44
+0x7C80	0x578	CSplitter	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_75_7C80
+0x81F8	0x8	CSplitter	-	virtual	B	lbl_75_data_CB8+E0	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_81F8
+0x8200	0x8	CSplitter	-	virtual	H	lbl_75_data_CB8+AC	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_75_8200
+0x8208	0x8	CSplitter	-	virtual	H	lbl_75_data_CB8+DC	same body as SpacePirate 0x40 (CPatterned::GetPointSearchPath (CPatterned.hpp:170))	not-port	fn_75_8208
+0x8210	0x24	REL runtime	RELExit	runtime	T	_epilog	REL exit (called by _epilog)	not-port	RELExit
+0x8234	0x20	REL runtime	RELMain	runtime	T	_prolog	REL entry (called by _prolog)	not-port	RELMain
+0x8254	0x5C	CSplitter	-	func	T	RELMain	RegisterFuncPtrs-style REL setup (only caller RELMain)	not-port	fn_75_8254
+0x82B0	0x364	CSplitter	-	func	B	fn_75_8254	module loader for the command module (SpacePirate LoadSpacePirate precedent)	not-port	fn_75_82B0
+0x8614	0x64	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_8614
+0x8678	0x20	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_8678
+0x8698	0x7C	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_8698
+0x8714	0x460	CSplitter	-	func	H	fn_75_82B0	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrSplitter{MainChassis,CommandModule}.hpp): the port reads properties through the upstream SLdr class	not-port	fn_75_8714
+0x8B74	0x7C	CSplitter	-	func	H	fn_75_82B0 fn_75_8614 fn_75_8698 fn_75_F560	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrSplitter{MainChassis,CommandModule}.hpp): the port reads properties through the upstream SLdr class	not-port	fn_75_8B74
+0x8BF0	0x160	CSplitter	-	func	H	fn_75_82B0	SLdr loader copy (include/MetroidPrime/ScriptLoader/SLdrSplitter{MainChassis,CommandModule}.hpp): the port reads properties through the upstream SLdr class	not-port	fn_75_8BF0
+0x8D50	0xA8	CSplitter	-	func	B	fn_75_F1C0	marked	marked	fn_75_8D50
+0x8DF8	0xAC	CSplitter	-	func	B	fn_75_BC70	marked	marked	fn_75_8DF8
+0x8EA4	0x24	CSplitter	-	func	B	fn_75_BE28 fn_75_E6E4	marked	marked	fn_75_8EA4
+0x8EC8	0x1D4	CSplitter	-	func	B	fn_75_986C fn_75_D7D4	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_8EC8
+0x909C	0x148	CSplitter	-	func	B	fn_75_91E4	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_909C
+0x91E4	0x33C	CSplitter	-	func	B	fn_75_B2A0	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_91E4
+0x9520	0x11C	CSplitter	-	func	B	fn_75_F0E8	marked	marked	fn_75_9520
+0x963C	0x230	CSplitter	-	func	B	fn_75_D7D4	marked	marked	fn_75_963C
+0x986C	0x28C	CSplitter	-	func	B	fn_75_DC08 fn_75_DCFC	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_986C
+0x9AF8	0xA4	CSplitter	-	func	B	fn_75_B9B0 fn_75_BAA8 fn_75_C9E4 fn_75_D3E0 fn_75_EFA4	marked	marked	fn_75_9AF8
+0x9B9C	0x40C	CSplitter	-	func	B	fn_75_F1C0	marked	marked	fn_75_9B9C
+0x9FA8	0xF8	CSplitter	-	func	B	fn_75_F1C0	marked	marked	fn_75_9FA8
+0xA0A0	0x2DC	CSplitter	-	func	B	fn_75_F1C0	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_A0A0
+0xA37C	0x114	CSplitter	-	func	B	fn_75_A4E4	marked	marked	fn_75_A37C
+0xA490	0x54	CSplitter	-	func	H	fn_75_A37C	same body as EmperorIngStage3 0xa884 (SLdrHealthInfo (header inline))	not-port	fn_75_A490
+0xA4E4	0x418	CSplitter	-	func	B	fn_75_F0E8	marked	marked	fn_75_A4E4
+0xA8FC	0x114	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_A8FC
+0xAA10	0x20	CSplitter	-	func	H	fn_75_FE68	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_75_AA10
+0xAA30	0x38	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_AA30
+0xAA68	0x5C	CSplitter	-	func	B	fn_75_F1C0	marked	marked	fn_75_AA68
+0xAAC4	0xC8	CSplitter	-	func	B	fn_75_F1C0	marked	marked	fn_75_AAC4
+0xAB8C	0xDC	CSplitter	-	func	B	fn_75_9B9C fn_75_9FA8 fn_75_A0A0	marked	marked	fn_75_AB8C
+0xAC68	0x84	CSplitter	-	func	B	fn_75_F1C0	marked	marked	fn_75_AC68
+0xACEC	0x2FC	CSplitter	-	func	B	fn_75_F0E8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_ACEC
+0xAFE8	0x11C	CSplitter	-	func	B	fn_75_F0E8	marked	marked	fn_75_AFE8
+0xB104	0xD4	CSplitter	-	virtual	B	lbl_75_data_BC0+8	marked	marked	fn_75_B104
+0xB1D8	0xC8	CSplitter	-	virtual	B	lbl_75_data_BB4+8	marked	marked	fn_75_B1D8
+0xB2A0	0x2A0	CSplitter	-	virtual	B	lbl_75_data_BA8+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_B2A0
+0xB540	0x3C	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_B540
+0xB57C	0xF0	CSplitter	-	virtual	B	lbl_75_data_B9C+8	marked	marked	fn_75_B57C
+0xB66C	0xC	CSplitter	-	virtual	B	lbl_75_data_B90+8	marked	marked	fn_75_B66C
+0xB678	0x338	CSplitter	-	virtual	B	lbl_75_data_B84+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_B678
+0xB9B0	0xF8	CSplitter	-	virtual	B	lbl_75_data_B78+8	marked	marked	fn_75_B9B0
+0xBAA8	0x118	CSplitter	-	virtual	B	lbl_75_data_B6C+8	marked	marked	fn_75_BAA8
+0xBBC0	0xB0	CSplitter	-	virtual	B	lbl_75_data_B60+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_BBC0
+0xBC70	0x1B8	CSplitter	-	virtual	B	lbl_75_data_B54+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_BC70
+0xBE28	0xC4	CSplitter	-	virtual	B	lbl_75_data_B48+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_BE28
+0xBEEC	0x148	CSplitter	-	virtual	B	lbl_75_data_9DC+8	marked	marked	fn_75_BEEC
+0xC034	0x374	CSplitter	-	virtual	B	lbl_75_data_9D0+8	marked	marked	fn_75_C034
+0xC3A8	0x9C	CSplitter	-	func	H	fn_75_C034	same body as SpacePirate 0x5418 (CBodyStateCmdMgr::DeliverCmd (header inline))	not-port	fn_75_C3A8
+0xC444	0x5C	CSplitter	-	virtual	H	lbl_75_data_E24+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_C444
+0xC4A0	0x7C	CSplitter	-	func	H	fn_75_C034	same body as SpacePirate 0x5510 (CBCJumpCmd ctor (header inline))	not-port	fn_75_C4A0
+0xC51C	0x37C	CSplitter	-	virtual	B	lbl_75_data_9C4+8	marked	marked	fn_75_C51C
+0xC898	0x5C	CSplitter	-	virtual	H	lbl_75_data_E18+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_C898
+0xC8F4	0xF0	CSplitter	-	virtual	B	lbl_75_data_9B8+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_C8F4
+0xC9E4	0x258	CSplitter	-	virtual	B	lbl_75_data_9AC+8	marked	marked	fn_75_C9E4
+0xCC3C	0x5C	CSplitter	-	virtual	H	lbl_75_data_E0C+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_CC3C
+0xCC98	0x58	CSplitter	-	virtual	B	lbl_75_data_9A0+8	marked	marked	fn_75_CC98
+0xCCF0	0x1F8	CSplitter	-	virtual	B	lbl_75_data_994+8	marked	marked	fn_75_CCF0
+0xCEE8	0x5C	CSplitter	-	func	H	fn_75_CCF0	same body as EmperorIngStage3 0x3ac (CRayCastResult (header inline))	not-port	fn_75_CEE8
+0xCF44	0x160	CSplitter	-	virtual	B	lbl_75_data_988+8	marked	marked	fn_75_CF44
+0xD0A4	0x98	CSplitter	-	virtual	B	lbl_75_data_97C+8	marked	marked	fn_75_D0A4
+0xD13C	0x164	CSplitter	-	virtual	B	lbl_75_data_970+8	marked	marked	fn_75_D13C
+0xD2A0	0x140	CSplitter	-	virtual	B	lbl_75_data_964+8	marked	marked	fn_75_D2A0
+0xD3E0	0x23C	CSplitter	-	virtual	B	lbl_75_data_958+8	marked	marked	fn_75_D3E0
+0xD61C	0x1B8	CSplitter	-	virtual	B	lbl_75_data_94C+8	marked	marked	fn_75_D61C
+0xD7D4	0x264	CSplitter	-	virtual	B	lbl_75_data_940+8	marked	marked	fn_75_D7D4
+0xDA38	0x174	CSplitter	-	virtual	B	lbl_75_data_934+8	marked	marked	fn_75_DA38
+0xDBAC	0x5C	CSplitter	-	virtual	H	lbl_75_data_E00+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_DBAC
+0xDC08	0xF0	CSplitter	-	virtual	B	lbl_75_data_928+8	marked	marked	fn_75_DC08
+0xDCF8	0x4	CSplitter	-	virtual	H	lbl_75_data_91C+8	same body as DarkSamus 0x181dc (fn_10_181DC)	not-port	fn_75_DCF8
+0xDCFC	0xFC	CSplitter	-	virtual	B	lbl_75_data_910+8	marked	marked	fn_75_DCFC
+0xDDF8	0x190	CSplitter	-	virtual	B	lbl_75_data_904+8	marked	marked	fn_75_DDF8
+0xDF88	0x5C	CSplitter	-	virtual	B	lbl_75_data_8F8+8	marked	marked	fn_75_DF88
+0xDFE4	0x4	CSplitter	-	virtual	B	lbl_75_data_8EC+8	marked	marked	fn_75_DFE4
+0xDFE8	0x4	CSplitter	-	virtual	H	lbl_75_data_8E0+8	same body as DarkSamus 0x181dc (fn_10_181DC)	not-port	fn_75_DFE8
+0xDFEC	0x20	CSplitter	-	virtual	B	lbl_75_data_714+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_DFEC
+0xE00C	0x1C	CSplitter	-	virtual	B	lbl_75_data_708+8	marked	marked	fn_75_E00C
+0xE028	0xC	CSplitter	-	virtual	B	lbl_75_data_6FC+8	marked	marked	fn_75_E028
+0xE034	0xC	CSplitter	-	virtual	B	lbl_75_data_6F0+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E034
+0xE040	0x20	CSplitter	-	virtual	B	lbl_75_data_6E4+8	marked	marked	fn_75_E040
+0xE060	0xC	CSplitter	-	virtual	B	lbl_75_data_6D8+8	marked	marked	fn_75_E060
+0xE06C	0xC	CSplitter	-	virtual	B	lbl_75_data_6CC+8	marked	marked	fn_75_E06C
+0xE078	0xC	CSplitter	-	virtual	B	lbl_75_data_6C0+8	marked	marked	fn_75_E078
+0xE084	0x14	CSplitter	-	virtual	B	lbl_75_data_6B4+8	marked	marked	fn_75_E084
+0xE098	0x18	CSplitter	-	virtual	B	lbl_75_data_6A8+8	marked	marked	fn_75_E098
+0xE0B0	0x120	CSplitter	-	virtual	B	lbl_75_data_69C+8	marked	marked	fn_75_E0B0
+0xE1D0	0x120	CSplitter	-	virtual	B	lbl_75_data_690+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E1D0
+0xE2F0	0xB4	CSplitter	-	virtual	B	lbl_75_data_684+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E2F0
+0xE3A4	0xD4	CSplitter	-	virtual	B	lbl_75_data_678+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E3A4
+0xE478	0x1C	CSplitter	-	virtual	H	lbl_75_data_66C+8	same body in 3 other modules (CommandoPirate,ElitePirate,SpacePirate)	not-port	fn_75_E478
+0xE494	0x48	CSplitter	-	virtual	B	lbl_75_data_660+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E494
+0xE4DC	0x48	CSplitter	-	virtual	B	lbl_75_data_654+8	marked	marked	fn_75_E4DC
+0xE524	0xC	CSplitter	-	virtual	B	lbl_75_data_648+8	marked	marked	fn_75_E524
+0xE530	0x1C	CSplitter	-	virtual	B	lbl_75_data_63C+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E530
+0xE54C	0x20	CSplitter	-	virtual	B	lbl_75_data_630+8	marked	marked	fn_75_E54C
+0xE56C	0x20	CSplitter	-	virtual	B	lbl_75_data_624+8	marked	marked	fn_75_E56C
+0xE58C	0x20	CSplitter	-	virtual	B	lbl_75_data_618+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E58C
+0xE5AC	0xC	CSplitter	-	virtual	B	lbl_75_data_60C+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E5AC
+0xE5B8	0x18	CSplitter	-	virtual	B	lbl_75_data_600+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E5B8
+0xE5D0	0x50	CSplitter	-	virtual	B	lbl_75_data_5F4+8	marked	marked	fn_75_E5D0
+0xE620	0xC	CSplitter	-	virtual	B	lbl_75_data_5E8+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E620
+0xE62C	0x20	CSplitter	-	virtual	B	lbl_75_data_5DC+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_E62C
+0xE64C	0x14	CSplitter	-	virtual	H	lbl_75_data_5D0+8	same body in 6 other modules (CommandoPirate,Ing,IngBoostBallGuardian)	not-port	fn_75_E64C
+0xE660	0x2C	CSplitter	-	func	B	-	marked	marked	fn_75_E660
+0xE68C	0x58	CSplitter	-	func	B	fn_75_3BEC fn_75_4138	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_E68C
+0xE6E4	0x84	CSplitter	-	func	B	fn_75_3EEC	marked	marked	fn_75_E6E4
+0xE768	0x20	CSplitter	-	func	B	fn_75_2280	marked	marked	fn_75_E768
+0xE788	0x88	CSplitter	-	func	B	fn_75_2280	marked	marked	fn_75_E788
+0xE810	0x6C	CSplitter	-	virtual	B	lbl_75_data_CB8+108	marked	marked	fn_75_E810
+0xE87C	0x90	CSplitter	-	virtual	B	lbl_75_data_CB8+104	marked	marked	fn_75_E87C
+0xE90C	0x90	CSplitter	-	virtual	B	lbl_75_data_CB8+100	marked	marked	fn_75_E90C
+0xE99C	0x48	CSplitter	-	virtual	B	lbl_75_data_CB8+F8	marked	marked	fn_75_E99C
+0xE9E4	0x8C	CSplitter	-	virtual	B	lbl_75_data_CB8+F0	marked	marked	fn_75_E9E4
+0xEA70	0x94	CSplitter	-	virtual	B	lbl_75_data_CB8+B0	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_EA70
+0xEB04	0xF0	CSplitter	-	virtual	B	lbl_75_data_CB8+98	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_EB04
+0xEBF4	0xB0	CSplitter	-	virtual	B	lbl_75_data_CB8+9C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_EBF4
+0xECA4	0x280	CSplitter	-	virtual	B	lbl_75_data_CB8+84	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_ECA4
+0xEF24	0x20	CSplitter	-	virtual	B	lbl_75_data_CB8+40	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_EF24
+0xEF44	0x20	CSplitter	-	virtual	H	lbl_75_data_CB8+28	same body in 3 other modules (CommandoPirate,ElitePirate,MinorIng)	not-port	fn_75_EF44
+0xEF64	0x20	CSplitter	-	virtual	H	lbl_75_data_CB8+24	same body in 3 other modules (MinorIng,Sandworm,SwampBossStage2)	not-port	fn_75_EF64
+0xEF84	0x20	CSplitter	-	virtual	H	lbl_75_data_CB8+2C	same body as EmperorIngStage3 0x47b4 (CPatterned::Render (module override))	not-port	fn_75_EF84
+0xEFA4	0x144	CSplitter	-	virtual	B	lbl_75_data_CB8+70	marked	marked	fn_75_EFA4
+0xF0E8	0xB8	CSplitter	-	virtual	B	lbl_75_data_CB8+14	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_F0E8
+0xF1A0	0x20	CSplitter	-	virtual	B	lbl_75_data_CB8+10	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_F1A0
+0xF1C0	0x3A0	CSplitter	-	virtual	B	lbl_75_data_CB8+18	marked	marked	fn_75_F1C0
+0xF560	0x98	CSplitter	-	virtual	B	lbl_75_data_CB8+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_F560
+0xF5F8	0x538	CSplitter	-	func	B	fn_75_82B0	marked	marked	fn_75_F5F8
+0xFB30	0xE0	CSplitter	-	func	H	fn_75_F5F8	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_FB30
+0xFC10	0x148	CSplitter	-	func	H	fn_75_FB30 fn_75_FD58	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_FC10
+0xFD58	0x110	CSplitter	-	func	H	fn_75_82B0	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_FD58
+0xFE68	0x68	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_FE68
+0xFED0	0x8A8	CSplitter	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_75_FED0
+0x10778	0x64C	CSplitter	-	virtual	B	lbl_75_data_E34+2C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10778
+0x10DC4	0x12C	CSplitter	-	virtual	B	lbl_75_data_E34+14	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10DC4
+0x10EF0	0x2C	CSplitter	-	virtual	B	lbl_75_data_E34+28	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10EF0
+0x10F1C	0x760	CSplitter	-	virtual	B	lbl_75_data_E34+24	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10F1C
+0x1167C	0x188	CSplitter	-	virtual	B	lbl_75_data_E34+34	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_1167C
+0x11804	0x80	CSplitter	-	virtual	B	lbl_75_data_E34+8	marked	marked	fn_75_11804
+0x11884	0x208	CSplitter	-	func	B	fn_75_1188	marked	marked	fn_75_11884
+0x11A8C	0x20	CSplitter	-	func	H	fn_75_11884	same body in 4 other modules (Ing,ScriptCannonBall,ScriptPlayerTurret)	not-port	fn_75_11A8C
+0x11AAC	0x14	CSplitter	-	static-init	H	-	static initialiser (.ctors entry): registers the global string dtor; host copy (PLRT fn_63_376C precedent)	not-port	fn_75_11AAC
+0x11AC0	0xC4	REL runtime	_unresolved	runtime	T	-	REL runtime (crtexe) unresolved-symbol trap	not-port	_unresolved
+0x11B84	0x24	REL runtime	_epilog	runtime	T	-	REL runtime (crtexe) module exit	not-port	_epilog
+0x11BA8	0x24	REL runtime	_prolog	runtime	T	-	REL runtime (crtexe) module entry	not-port	_prolog
+0x11BCC	0x4C	REL runtime	ModuleDestructors	runtime	T	_epilog	REL runtime (crtexe) _dtors walker	not-port	ModuleDestructors
+0x11C18	0x4C	REL runtime	ModuleConstructors	runtime	T	_prolog	REL runtime (crtexe) _ctors walker	not-port	ModuleConstructors

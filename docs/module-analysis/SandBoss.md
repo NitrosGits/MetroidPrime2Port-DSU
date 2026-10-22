@@ -1068,3 +1068,22 @@ charged `shoot` from 4 units, `damage` with knock-back, `kill`), 16000 updates f
 | `fn_55_64`, `fn_55_6C` search paths, `fn_55_7C` GetAttackTarget, `fn_55_BC` GetOrigin | no | the host callers are other classes' own bodies (CFlyingPirate, Ing spot path, Ing snatching swarm, team-AI roles) |
 | `fn_55_A4` GetDeathExplosionParticle | no | no host caller of the virtual at all |
 
+
+### 7.8 Marker audit (2026-10-22, lane sandboss3, base e937e01b4)
+
+The TSV's `class` column against the source markers (`grep -rhoE '// @ fn_55_[0-9A-F]+' src`):
+163 markers, all on TSV rows.
+
+| class | rows | marked | unmarked |
+|---|---|---|---|
+| B | 155 | 155 | 0 |
+| H | 152 | 2 (`fn_55_D8` GetHealthInfo, `fn_55_CF6C` GetDamageVulnerability) | 150 |
+| T | 15 | 6 (`fn_55_0`, `8`, `5C`, `B4`, `CDF0`, `D304`) | 9 |
+
+So no B row is left to port; the unmarked rows are the 150 H and nine T rows (§7.3, §7.7). The
+eight marked H/T rows are module vtable overrides with a port body each, marked by earlier slices;
+this audit left them as they were. Spot-checks of the H `inline-dol` rows against the asm
+confirm they are inline copies of host types, not module behaviour: `CC54` (quaternion conjugate:
+`x`, `-y`, `-z`, `-w`), `CF00` (0x34-byte struct copy), `10688`/`106E0`/`10760`/`1073C` (a
+0x29-byte struct's ctor, copy and default ctor: float, vector, vector4, two words, a bool),
+`10C78` (`rstl::optional_object<CAABox>` ctor).

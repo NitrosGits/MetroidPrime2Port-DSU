@@ -153,6 +153,9 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 // projectile infos at 0xE04..0xE7C, the 'PART' and 'SCAN' tokens, the head armour model and the
 // locator ids) belong to the states this slice does not port, so the host keeps only what the
 // ported functions read, with the values the retail stores.
+// Coverage: every arm natural or forced (tools/cov/specs/digitalguardian_dg28_ctor.py forces the
+// PART/SCAN ids to -1); the only unrun arms are the compiler's EH-unwind edges on the closing brace.
+// @ fn_14_18264
 CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& name,
                                            const CEntityInfo& info, const CTransform4f& xf,
                                            const CModelData& modelData,
@@ -166,7 +169,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDC4_{kInvalidUniqueId, kInvalidUniqueId} // 0x18358
 , xDD0_(LdrToDamageVulnerability(data.bombPitVulnerability)) // 0x18370
 , xE00_(kInvalidUniqueId)
-, xD80_(uid, CSegId(), 0.1f, 0.05f) // 0x183F8: no locator (0xFF), .rodata 0x9F4 / 0x9F8
+, xD80_(uid, CSegId(), 0.1f, 0.05f) // 0x18334: no locator (0xFF), .rodata 0x9F4 / 0x9F8
 , xEF4_()
 , xF04_()
 , xF14_()
@@ -232,6 +235,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   xE2C_.Token().Lock(); // 0x18CE0
   xE54_.Token().Lock(); // 0x18CE8
   xE7C_.Token().Lock(); // 0x18CF0
+  KnockBackController().EnableAllAnimReactions(false); // 0x18CF4..0x18CFC: this +0x620, li r4,0
   // The drop-shields effect (data +0x48, 0x184D8): locked when set.
   if (mData.dropShieldsFx != kInvalidAssetId) {
     xEF4_ = TLockedToken< CGenDescription >(
@@ -259,6 +263,13 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   x10A4_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
   // 0x18DA4..0x18DD0: the lasers' locator (.rodata 0x94C, "T_lazor_LCTR") at 0x1088.
   x1088_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
+  // 0x18DD8..0x18DE8: the visual knowledge's locator (0xD82, lbz 0x1088 / stb 0xd82) becomes 0x1088.
+  xD80_.SetLocator(x1088_);
+  // 0x18DEC..0x18E5C: its filter (0xD88..0xD98) is rebuilt inline: include 1 << .data 0xE58
+  // (0x3B, kMT_Solid; stfd 0xd88), exclude 1 << 0xE5C | 1 << 0xE60 (0x21 kMT_Character, 0x20
+  // kMT_Player; stfd 0xd90), type 3 (li r0,0x3; stw 0xd98: kFT_IncludeExclude).
+  xD80_.SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_Character, kMT_Player)));
   // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
   // at 0x18E60).
   x137A8_();
@@ -485,6 +496,8 @@ void CDigitalGuardianHead::x126C8_(CStateManager& mgr, const CVector3f& pos, flo
 }
 
 // fn_14_17D38: the active flag is read before the base's call (0x17D64..0x17D78).
+// The 0xD70-null arms of ACTV/DCTV/XAUD/XDEL are forced (dg26): XCRT builds it first.
+// @ fn_14_17D38
 void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool active = GetActive();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -654,7 +667,7 @@ CVector3f CDigitalGuardianHead::x11C08_(const CVector3f& dir) const {
   if (dir.IsMagnitudeSafe() && flat.IsMagnitudeSafe()) {
     const CVector3f dirN = dir.AsNormalized();
     const CVector3f flatN = flat.AsNormalized();
-    if (CVector3f::GetAngleDiff(flatN, dirN) > 0.9599311f) {
+    if (!(CVector3f::GetAngleDiff(flatN, dirN) <= 0.9599311f)) { // fcmpo/ble 0x11CE8: NaN slerps
       return CVector3f::Slerp(flatN, dirN, CRelAngle::FromRadians(0.9599311f));
     }
     return dirN;
@@ -915,7 +928,9 @@ void CDigitalGuardianHead::ExtractAntenna(CStateManager& mgr, float) {
 
 // fn_14_14DA0: every extended or extending echo target starts retracting (fn_14_19DF8 with 2) and
 // ignores damage (+0x78C bit 0x80); bits 0x40 and 0x02 are cleared, the deployment time (0x10F0)
-// becomes data +0x20 and bit 0x04 is set.
+// grows by data +0x20 (lfs 0x10F0 / lfs 0x7E0 / fadds / stfs at 0x14E48..0x14E54) and bit 0x04
+// is set.
+// @ fn_14_14DA0
 void CDigitalGuardianHead::RetractEchoTargets(CStateManager& mgr, float) {
   for (int i = 0; i < xF34_.size(); ++i) {
     CDigitalGuardianEchoTarget* target =
@@ -928,7 +943,7 @@ void CDigitalGuardianHead::RetractEchoTargets(CStateManager& mgr, float) {
   }
   x10F4_ &= ~0x40;
   x10F4_ &= ~0x02;
-  x10F0_ = mData.maxStage2StunnedTime;
+  x10F0_ += mData.maxStage2StunnedTime;
   x10F4_ |= 0x04;
 }
 
@@ -946,6 +961,7 @@ void CDigitalGuardianHead::AddToRenderer(const CStateManager& mgr) const {
 }
 
 // fn_14_179E0: the pass-through vulnerability.
+// @ fn_14_179E0
 const CDamageVulnerability* CDigitalGuardianHead::GetDamageVulnerability() const {
   return &CDamageVulnerability::PassThroughVulnerabilty();
 }
@@ -1020,6 +1036,9 @@ bool CDigitalGuardianHead::ShouldProjectileAttack(CStateManager& mgr,
 }
 
 // fn_14_173B8: the burst count (0x10D8, a word: cntlzw/rlwnm) at most 0.
+// cntlzw; li 1; rlwnm 31,31 is 1 when the count is 0 or 32 (x < 0 or x == 0), i.e. x <= 0;
+// asmcheck's XCMP there is a false positive.
+// @ fn_14_173B8
 bool CDigitalGuardianHead::IsBurstOver(CStateManager& mgr, const CTriggerData& data) const {
   return x10D8_ <= 0;
 }
@@ -1045,11 +1064,13 @@ bool CDigitalGuardianHead::IsGuarding(CStateManager& mgr, const CTriggerData& da
 }
 
 // fn_14_17370: the projectile attack (0x10D0) is 3.
+// @ fn_14_17370
 bool CDigitalGuardianHead::UseMachineGun(CStateManager& mgr, const CTriggerData& data) const {
   return x10D0_ == 3;
 }
 
 // fn_14_1735C: the projectile attack (0x10D0) is 2.
+// @ fn_14_1735C
 bool CDigitalGuardianHead::UseLockOnMissiles(CStateManager& mgr, const CTriggerData& data) const {
   return x10D0_ == 2;
 }
@@ -1062,6 +1083,7 @@ bool CDigitalGuardianHead::UseAnnihilatorPulse(CStateManager& mgr,
 }
 
 // fn_14_17338: the projectile attack (0x10D0) is 1.
+// @ fn_14_17338
 bool CDigitalGuardianHead::UseAnnihilatorCharge(CStateManager& mgr,
                                                 const CTriggerData& data) const {
   return x10D0_ == 1;
@@ -1069,6 +1091,7 @@ bool CDigitalGuardianHead::UseAnnihilatorCharge(CStateManager& mgr,
 
 // fn_14_17298: no splitter command module or main chassis in the object list (retail walks the
 // list at state manager +0x830, its first dynamic list, which holds every object).
+// @ fn_14_17298
 bool CDigitalGuardianHead::AllSplittersDead(CStateManager& mgr, const CTriggerData& data) const {
   CObjectList& list = mgr.ObjectListById(kOL_All);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -1089,6 +1112,7 @@ bool CDigitalGuardianHead::HeadArmorDestroyed(CStateManager& mgr, const CTrigger
 }
 
 // fn_14_17244: the body's fn_14_70B4; with no body the answer is false (li r3, 0 at 0x17278).
+// @ fn_14_17244
 bool CDigitalGuardianHead::IsAntennaTransmitting(CStateManager& mgr,
                                                  const CTriggerData& data) const {
   if (const CDigitalGuardian* body = TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_))) {
@@ -1115,6 +1139,8 @@ bool CDigitalGuardianHead::EchoTargetDestroyed(CStateManager& mgr,
 }
 
 // fn_14_171D8: the echo targets left (0xFE0, a word) at most 0.
+// The cntlzw/rlwnm idiom (see 173B8) gives 1 for x <= 0; asmcheck's XCMP is a false positive.
+// @ fn_14_171D8
 bool CDigitalGuardianHead::AllEchoTargetsDestroyed(CStateManager& mgr,
                                                    const CTriggerData& data) const {
   return xFE0_ <= 0;
@@ -1127,6 +1153,8 @@ bool CDigitalGuardianHead::ShouldRetreat(CStateManager& mgr, const CTriggerData&
 }
 
 // fn_14_17198: the id at 0x103A is set.
+// subf/subf/or/srwi 31: a sign test of (id - 0xFFFF) | (0xFFFF - id), i.e. id != 0xFFFF.
+// @ fn_14_17198
 bool CDigitalGuardianHead::BombPitDestroyed(CStateManager& mgr, const CTriggerData& data) const {
   return x103A_ != kInvalidUniqueId;
 }
@@ -1775,7 +1803,7 @@ void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
 // 0x1120C) at the player's aim position (vtable 0x54 with 0.0f, .rodata 0x960; 0x1124C). The
 // direction's horizontal part (z 0.0f, 0x11298) normalised, or the head's facing (fn_14_13B38,
 // 0x112C4) when it is not safe (0x112A4), is the reference; a direction more than 0.9599311f
-// (.rodata 0x9B8) from it (fcmpo/ble at 0x112FC, so a NaN angle keeps it) is the reference slerped
+// (.rodata 0x9B8) from it (fcmpo/ble at 0x112FC, so a NaN angle is slerped too) is the reference slerped
 // toward the normalised direction by that angle (0x11320). LookAt from the locator along it
 // (0x11380). No cache or projectile-count test. The 0x568-byte CEnergyProjectile (ctor at 0x11478):
 // active (li r4 1), the pulse's weapon (0xE04), kWT_AI (li r6 0xB), material 0x21 (kMT_Character,
@@ -1792,7 +1820,7 @@ void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locat
   CVector3f dir = player.GetAimPosition(mgr, 0.f) - pos;
   const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
   const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
-  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) {
+  if (!(CVector3f::GetAngleDiff(dir, ref) <= 0.9599311f)) {
     dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
   }
   const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
@@ -1889,7 +1917,7 @@ void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locat
   CVector3f dir = x1098_ - pos;
   const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
   const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
-  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) { // 0x10E10
+  if (!(CVector3f::GetAngleDiff(dir, ref) <= 0.9599311f)) { // 0x10E10, fcmpo/ble: NaN slerps
     dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
   }
   const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
@@ -2604,10 +2632,9 @@ void CDigitalGuardianHead::EndSplitterDeployment(CStateManager& mgr, float dt) {
 // data +0x2DC) once while 0x10DC is set and the type is not 4; else a weighted pick over block
 // 6's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the gun 3.
 // A pulse fires a burst of 3 (0x10D8), the rest none.
-// Unmarked: area-53 runs ran the splitter, first-shot and random 0 and 2 arms. Random 1 and 3 need
-// more fights: the first random pick comes after the first shot and the splitters. Runs 37-39 made
-// none (seven fights to the head's death among them); only run 36's fight made one. Runs 402/403
-// (11 picks) never had the splitters dead: the main chassis stand-in passes every shot through.
+// Every arm ran (dg26 driver a); the first-shot test failing on a firstShotType of 4 (shipped 0)
+// forced (dg27 force spec: x10DC_ 1, firstShotType 4 at entry).
+// @ fn_14_14470
 void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
   const SLdrDigitalGuardianHeadStruct& odds = mData.digitalGuardianHeadStruct_0x48b46e55;
   if (!AllSplittersDead(mgr, CTriggerData(0.f))) {
@@ -2630,7 +2657,7 @@ void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
       x10D0_ = 3;
     }
   }
-  x10D8_ = x10D0_ == 0 ? 3 : 0;
+  x10D8_ = x10D0_ == 0 ? 3 : 0; // 0x14570..0x14588: cntlzw/extrwi 1,26, neg, and with 3
 }
 
 // fn_14_13F70: the IS02/ATCH player hint, unless already this head's, takes this head as its
@@ -2696,9 +2723,13 @@ void CDigitalGuardianHead::SelectRetreatPlatform(CStateManager& mgr, float dt) {
 
 // ---------------------------------------------------------------------------------------------
 // fn_14_DF7C: the DGHD loader. The generated reader fills the four property blocks; an empty model
-// is skipped (null), as the body's loader does.
+// is skipped (null), as the body's loader does. The empty arm is data-dead (the one DGHD, 0x0035000F,
+// has a model); forced (dg27 noload spec: the ANCS id invalid before LdrToModelData).
+// @ fn_14_DF7C
 CEntity* PortLoadDigitalGuardianHead(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDigitalGuardianHead sldrThis;
+  // Retail's loader default the generated SLdr ctor lacks: stb 1 to patterned +0x230 (0xE01C).
+  sldrThis.patterned.echoParameters.isEchoEmitter = true;
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardianHead.inc"
 
   rstl::optional_object< CModelData > modelData(
@@ -2747,6 +2778,8 @@ void CDigitalGuardianHead::x1303C_(CStateManager& mgr, TUniqueId sender) {
 
 // fn_14_F2B8: the IS07/FOLW object (0xF2C0..0xF2D8), if a waypoint, goes to pos; then state is
 // sent with no message (-1).
+// 'IS07' 0x49533037 (0xF2C4/0xF2D8), 'FOLW' 0x464F4C57 (0xF2C0/0xF2CC), msg -1 at 0xF348.
+// @ fn_14_F2B8
 void CDigitalGuardianHead::xF2B8_(CStateManager& mgr, const CVector3f& pos,
                                   EScriptObjectState state) {
   const TUniqueId wpId = CheckConnectedObject(mgr, kSS_InternalState7, kSM_Follow);
@@ -2756,7 +2789,9 @@ void CDigitalGuardianHead::xF2B8_(CStateManager& mgr, const CVector3f& pos,
   }
 }
 
-// fn_14_13248: the index of id among the ball colliders (count 0xDC0, 2), or -1.
+// fn_14_13248: the index of id among the ball colliders (count 0xDC0, 2), or -1. The -1 arm
+// forced (dg27 force spec: the second bomb hit's id 0xffff).
+// @ fn_14_13248
 int CDigitalGuardianHead::x13248_(TUniqueId id) const {
   for (int i = 0; i < 2; ++i) {
     if (xDC4_[i] == id) {
@@ -2783,6 +2818,9 @@ bool CDigitalGuardianHead::x11F30_(TUniqueId id) const {
 // this head's scale, the IS04/ACTV object (0x103E) loses one health (.rodata 0x96C), one echo
 // target fewer (0xFE0); at none the armour is gone (bit 0x10) and IS00 is sent. The survivors
 // then ignore damage (0x78C bit 0x80).
+// The unset-token arm is data-dead (the ctor locks xFD0_ only with the asset set, and the one
+// placement sets it); forced (dg26 force spec).
+// @ fn_14_11FEC
 void CDigitalGuardianHead::x11FEC_(CStateManager& mgr, const CTransform4f& xf) {
   if (xFD0_.valid()) {
     const CVector3f scale = GetModelData()->GetScale();
@@ -2816,7 +2854,8 @@ void CDigitalGuardianHead::x11FEC_(CStateManager& mgr, const CTransform4f& xf) {
 // fn_14_12B04: at ball idx's locator (0xDCC) the bomb-pit effect ("BombPitExplosionFx", .rodata
 // 0xF39) when set, the explosion sound (data +0x13C), the slot's destroyed effect state (.data
 // 0xE50) and, once, its looping sound (data +0x154) at 0xF28; the IS04/ACTV object loses one
-// health.
+// health. idx -1 and the unset token forced (dg27 force spec); the rest ran (dg26 drivers a, b, c).
+// @ fn_14_12B04
 void CDigitalGuardianHead::x12B04_(CStateManager& mgr, int idx) {
   if (idx == -1) {
     return;

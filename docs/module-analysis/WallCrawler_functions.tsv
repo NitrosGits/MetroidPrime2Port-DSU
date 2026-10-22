@@ -1,0 +1,58 @@
+offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
+0x0	0x10	CWallCrawler	-	virtual	H	lbl_83_data_C+A4	the vtable slot 0xA4: the host's `skDamageHitTime` into 0x448	not-port	fn_83_0
+0x10	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+C8	the vtable slot 0xC8: the byte at 0x44F	not-port	fn_83_10
+0x18	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+DC	the vtable slot 0xDC: false	not-port	fn_83_18
+0x20	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+E0	the vtable slot 0xE0: false	not-port	fn_83_20
+0x28	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+E4	the vtable slot 0xE4: false	not-port	fn_83_28
+0x30	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+F4	the vtable slot 0xF4: false	not-port	fn_83_30
+0x38	0x10	CWallCrawler	-	virtual	H	lbl_83_data_C+10C	the vtable slot 0x10C: `GetAttackTarget` -> `kInvalidUniqueId`	not-port	fn_83_38
+0x48	0xC	CWallCrawler	-	virtual	H	lbl_83_data_C+110	the vtable slot 0x110: `IsOnGround` (the bit 1 of the byte at 0x34C)	not-port	fn_83_48
+0x54	0xC	CWallCrawler	-	virtual	H	lbl_83_data_C+114	the vtable slot 0x114: `GetGravityConstant` -> `kDefaultGravityAccel`	not-port	fn_83_54
+0x60	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+124	the vtable slot 0x124: -> `this+0x754`	not-port	fn_83_60
+0x68	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+A8	the vtable slot 0xA8: true	not-port	fn_83_68
+0x70	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+AC	the vtable slot 0xAC: false	not-port	fn_83_70
+0x78	0x8	CWallCrawler	-	virtual	H	lbl_83_data_C+B0	the vtable slot 0xB0: false	not-port	fn_83_78
+0x80	0x1C	CWallCrawler	-	virtual	H	lbl_83_data_C+B4	the vtable slot 0xB4: copies three floats from the argument's 0x54..0x5C	not-port	fn_83_80
+0x9C	0x2C	CWallCrawler	-	virtual	H	lbl_83_data_C+3C	the vtable slot 0x3C: forwards to the vtable slot 0x38	not-port	fn_83_9C
+0xC8	0x4	REL runtime	RELMain	runtime	B	_prolog	the module's entry point	marked	RELMain
+0xCC	0x4	REL runtime	RELExit	runtime	B	_epilog	the module's exit point	marked	RELExit
+0xD0	0x8	CWallCrawler	GetConstraintPlane__12CWallCrawlerCFv	func	B	-	the constraint plane at 0x838	marked	GetConstraintPlane__12CWallCrawlerCFv
+0xD8	0x3C	CWallCrawler	GetNextWaypoint__12CWallCrawlerFR13CStateManagerPC15CScriptWaypointb	func	B	-	the slot 0x148: the waypoint's `NextWaypoint`	marked	GetNextWaypoint__12CWallCrawlerFR13CStateManagerPC15CScriptWaypointb
+0x114	0x2C	CWallCrawler	SetConstraint__12CWallCrawlerFR13CStateManageri	func	B	-	the store at 0x834 and the plane rebuild	marked	SetConstraint__12CWallCrawlerFR13CStateManageri
+0x140	0x8	CWallCrawler	-	func	T	-	`GetConstraint`: returns the word at 0x834	not-port	fn_83_140
+0x148	0x344	CWallCrawler	UpdateConstraintPlane__12CWallCrawlerFR13CStateManager	func	B	-	the constraint plane from three waypoints	marked	UpdateConstraintPlane__12CWallCrawlerFR13CStateManager
+0x48C	0x3C	CWallCrawler	-	func	H	-	the compiler's destructor: `CMemory::Free` of an rstl string	not-port	fn_83_48C
+0x4C8	0xB8	CWallCrawler	GetTouchBounds__12CWallCrawlerCFv	func	B	-	the base box transformed by the primitive transform	marked	GetTouchBounds__12CWallCrawlerCFv
+0x580	0x828	CWallCrawler	Think__12CWallCrawlerFfR13CStateManager	func	B	-	the material, the bend and the contact damage	marked	Think__12CWallCrawlerFfR13CStateManager
+0xDA8	0x3C	CWallCrawler	-	func	H	-	the same destructor for the other optional member	not-port	fn_83_DA8
+0xDE4	0x5C	CWallCrawler	-	virtual	H	lbl_83_data_188+8	the destructor of the class whose vtable is `data_188`	not-port	fn_83_DE4
+0xE40	0x5C	CWallCrawler	-	virtual	H	lbl_83_data_194+8	the destructor of the class whose vtable is `data_194`	not-port	fn_83_E40
+0xE9C	0x48	CWallCrawler	-	virtual	H	lbl_83_data_1A0+8	the destructor of the class whose vtable is `data_1A0`	not-port	fn_83_E9C
+0xEE4	0x20	CWallCrawler	Render__12CWallCrawlerCFRC13CStateManager	func	B	-	`CPatterned::Render`	marked	Render__12CWallCrawlerCFRC13CStateManager
+0xF04	0x194	CWallCrawler	UpdateWPDestination__12CWallCrawlerFR13CStateManager	func	B	-	the waypoint advance, the pause and the arrival	marked	UpdateWPDestination__12CWallCrawlerFR13CStateManager
+0x1098	0x204	CWallCrawler	PreThink__12CWallCrawlerFfR13CStateManager	func	B	-	the guard, the motion state and the floor snap	marked	PreThink__12CWallCrawlerFfR13CStateManager
+0x129C	0x6C	CWallCrawler	-	func	B	fn_83_1098	the `CMotionState` copy before `AddMotionState`	marked	fn_83_129C
+0x1308	0x8	CWallCrawler	GetCollisionPrimitive__12CWallCrawlerCFv	func	B	-	-> `&mColSphere` (0x7F0)	marked	GetCollisionPrimitive__12CWallCrawlerCFv
+0x1310	0x6B8	CWallCrawler	AlignToFloor__12CWallCrawlerFR13CStateManagerfRC9CVector3ff	func	B	-	the floor search, the tumble and the re-orient	marked	AlignToFloor__12CWallCrawlerFR13CStateManagerfRC9CVector3ff
+0x19C8	0x5C	CWallCrawler	-	func	B	fn_83_1310	the `CCollisionSurface` copy	marked	fn_83_19C8
+0x1A24	0x58	CWallCrawler	-	func	H	fn_83_1310	`~CAreaCollisionCache` (called at asm 0x1944, the local of `AlignToFloor`)	not-port	fn_83_1A24
+0x1A7C	0x50	CWallCrawler	-	func	H	fn_83_1A24	the destructor of the cache's member at +0x18	not-port	fn_83_1A7C
+0x1ACC	0x84	CWallCrawler	-	func	H	fn_83_1A7C	the destructor of the cache's leaf array (the 0x910 stride)	not-port	fn_83_1ACC
+0x1B50	0x164	CWallCrawler	AlignToPlane__12CWallCrawlerFRC13CUnitVector3ff	func	B	-	the clamped arc onto the normal	marked	AlignToPlane__12CWallCrawlerFRC13CUnitVector3ff
+0x1CB4	0x1C4	CWallCrawler	-	func	B	fn_83_1310	`PointOnSurface`	marked	fn_83_1CB4
+0x1E78	0x40	CWallCrawler	-	func	B	fn_83_1CB4	the cross product	marked	fn_83_1E78
+0x1EB8	0x4C	CWallCrawler	ProjectVectorToPlane__12CWallCrawlerFRC9CVector3fRC9CVector3f	func	B	-	the projection onto a plane	marked	ProjectVectorToPlane__12CWallCrawlerFRC9CVector3fRC9CVector3f
+0x1F04	0x78	CWallCrawler	-	func	B	fn_83_1CB4	the closest point on a plane	marked	fn_83_1F04
+0x1F7C	0x54	CWallCrawler	GetClosestPointOnPlane__12CWallCrawlerFRC9CVector3fRC6CPlane	func	B	-	`GetClosestPointOnPlane`: the host's `CPlane::GetClosestPoint` inlined (WallCrawler.md g had T; marked, so B)	marked	GetClosestPointOnPlane__12CWallCrawlerFRC9CVector3fRC6CPlane
+0x1FD0	0xBC	CWallCrawler	AcceptScriptMsg__12CWallCrawlerFR13CStateManagerRC10CScriptMsg	func	B	-	the materials on `kSM_Create`	marked	AcceptScriptMsg__12CWallCrawlerFR13CStateManagerRC10CScriptMsg
+0x208C	0x70	CWallCrawler	__dt__12CWallCrawlerFv	func	B	-	the destructor	marked	__dt__12CWallCrawlerFv
+0x20FC	0x1E4	CWallCrawler	-	func	H	fn_83_208C	`~CPatterned` (`__vt__10CPatterned`, `__dt__6CTokenFv`, `__dt__3CAiFv`, ...)	not-port	fn_83_20FC
+0x22E0	0x94	CWallCrawler	-	func	H	fn_83_20FC	`~CAiKnockBackMgr` (`__vt__15CAiKnockBackMgr`)	not-port	fn_83_22E0
+0x2374	0x310	CWallCrawler	__ct__12CWallCrawlerF12EPatternedAI9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Q210CPatterned11EFlavorTypeR11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfoQ210CPatterned13EMovementTypeQ210CPatterned13EColliderType9EBodyTypeRC16CActorParametersfffffQ212CWallCrawler5ETypebffffff	func	B	-	the constructor	marked	__ct__12CWallCrawlerF12EPatternedAI9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Q210CPatterned11EFlavorTypeR11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfoQ210CPatterned13EMovementTypeQ210CPatterned13EColliderType9EBodyTypeRC16CActorParametersfffffQ212CWallCrawler5ETypebffffff
+0x2684	0x48	CWallCrawler	-	virtual	H	lbl_83_data_158+18	the destructor of the class whose vtable is `data_158`	not-port	fn_83_2684
+0x26CC	0x54	CWallCrawler	-	func	B	fn_83_2374	the `CCollisionSurface` constructor	marked	fn_83_26CC
+0x2720	0xC4	REL runtime	_unresolved	runtime	T	-	REL runtime (crtexe) unresolved-symbol trap (WallCrawler.md g had H)	not-port	_unresolved
+0x27E4	0x24	REL runtime	_epilog	runtime	T	-	REL runtime (crtexe) module exit (WallCrawler.md g had H)	not-port	_epilog
+0x2808	0x24	REL runtime	_prolog	runtime	T	-	REL runtime (crtexe) module entry (WallCrawler.md g had H)	not-port	_prolog
+0x282C	0x4C	REL runtime	ModuleDestructors	runtime	T	_epilog	REL runtime (crtexe) _dtors walker (WallCrawler.md g had H)	not-port	ModuleDestructors
+0x2878	0x4C	REL runtime	ModuleConstructors	runtime	T	_prolog	REL runtime (crtexe) _ctors walker (WallCrawler.md g had H)	not-port	ModuleConstructors

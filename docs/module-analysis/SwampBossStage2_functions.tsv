@@ -100,7 +100,7 @@ offset	fn	size	class	marked	what	callers
 0x04C1C	fn_79_4C1C	0x8C	B	yes		fn_79_4324
 0x04CA8	fn_79_4CA8	0x78	B	yes		fn_79_4324
 0x04D20	fn_79_4D20	0x268	B	yes		fn_79_A838
-0x04F88	fn_79_4F88	0xA8	B	no	`SendDecrement`	-
+0x04F88	fn_79_4F88	0xA8	B	yes	`SendDecrement`	-
 0x05030	fn_79_5030	0x7C	B	yes		fn_79_55B0
 0x050AC	fn_79_50AC	0x1D0	B	yes		fn_79_50AC fn_79_5830
 0x0527C	fn_79_527C	0x1C0	B	yes		fn_79_55B0
@@ -112,7 +112,7 @@ offset	fn	size	class	marked	what	callers
 0x05BC8	fn_79_5BC8	0xAC	B	yes	`SetGrowthTargetEffects`	fn_79_7870
 0x05C74	fn_79_5C74	0x8C	B	yes		fn_79_24E0 fn_79_25C0 fn_79_7870 fn_79_AFB4
 0x05D00	fn_79_5D00	0x40	B	yes		fn_79_5C74 fn_79_61C4
-0x05D40	fn_79_5D40	0xFC	B	no	`GetIngSnatchingPoint`	-
+0x05D40	fn_79_5D40	0xFC	B	yes	`GetIngSnatchingPoint`	-
 0x05E3C	fn_79_5E3C	0x88	B	yes		-
 0x05EC4	fn_79_5EC4	0x190	B	yes		fn_79_7870
 0x06054	fn_79_6054	0x4C	B	yes		fn_79_238C fn_79_2A84 fn_79_2E84 fn_79_527C fn_79_5EC4 fn_79_7308 fn_79_7870 fn_79_9754 fn_79_A838
