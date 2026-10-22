@@ -13,7 +13,7 @@ offset	size	class	kind	callers	tables	what	marker
 0x00000CD0	0x324	B	behaviour	fn_16_774C	-		yes
 0x00000FF4	0x94	H	host-copy	fn_16_CD0	-	the rstl / compiler-generated helper - the host's rstl provides it	no
 0x00001088	0xC8	B	behaviour	-	auto_04_00000000_data.s		yes
-0x00001150	0x424	B	behaviour	-	auto_04_00000000_data.s		no
+0x00001150	0x424	B	behaviour	-	auto_04_00000000_data.s		yes
 0x00001574	0x1AC	B	behaviour	-	auto_04_00000000_data.s		yes
 0x00001720	0x1C8	B	behaviour	fn_16_601C	-		yes
 0x000018E8	0x68	H	host-copy	fn_16_1720	-	the base class's own body - the host's CActor / CPhysicsActor / CModelData provide it	no
