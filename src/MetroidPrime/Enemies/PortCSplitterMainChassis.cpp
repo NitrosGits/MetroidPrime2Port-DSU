@@ -2554,11 +2554,15 @@ void CSplitterMainChassis::HeadExplosion(CStateManager& mgr, EStateMsg msg, floa
   }
 }
 
-// fn_75_E788 (0xE788-0xE810): a living (the base's 0x420 0x40 bit, 0xE788-0xE790), active (the
-// entity's 0x20 0x80 bit, 0xE794-0xE79C) chassis with no head (0xC6C, 0xE7A4-0xE7B4) and no
-// reservation (0xC6E, 0xE7B8-0xE7C0), landed (0xD00 at 5 or 0, 0xE7C4-0xE7D4), with 0xD41's 0x80
-// and 0xD40's 0x01 bits clear (0xE7D8-0xE7EC) takes the head's reservation (0xE7F4); the result
-// is whether the reservation is that head's (0xE7F8-0xE808).
+// fn_75_E788 (0xE788-0xE810): a living (the base's 0x420 0x40 bit, 0xE78C, 0xE790), active (the
+// entity's 0x20 0x80 bit, 0xE798, 0xE79C) chassis with no head (0xC6C, 0xE7B0, 0xE7B4) and no
+// reservation (0xC6E, 0xE7BC, 0xE7C0), landed (0xD00 at 5 or 0, 0xE7C8, 0xE7CC, 0xE7D0, 0xE7D4),
+// with 0xD41's 0x80 and 0xD40's 0x01 bits clear (0xE7DC, 0xE7E0, 0xE7E8, 0xE7EC) takes the head's
+// reservation (0xE7F4); the result is whether the reservation is that head's (0xE7F8-0xE808).
+// Arms: the reserve ran when the head searched for a chassis (after the chassis died); every
+// condition's other arm was forced under gdb (the alive bit, the active bit, the head id, the
+// reservation, the landed count and the two flag bits).
+// @ fn_75_E788
 bool CSplitterMainChassis::PortReserveDock(TUniqueId head) {
   if (mAlive && GetActive() && mCommandModuleId == kInvalidUniqueId &&
       mSecondLinkId == kInvalidUniqueId && (mLandedCount == 5 || mLandedCount == 0) &&
@@ -2568,7 +2572,12 @@ bool CSplitterMainChassis::PortReserveDock(TUniqueId head) {
   return mSecondLinkId == head;
 }
 
-// fn_75_E768 (0xE768-0xE788): the reservation at 0xC6E is cleared when it is that head's.
+// fn_75_E768 (0xE768-0xE788): the reservation at 0xC6E is cleared when it is that head's
+// (0xE770 cmplw r5, r0; 0xE774 bnelr; 0xE780 sth r0, 0xc6e(r3)).
+// Arms: the release only ran in the forced runs - the head's search (fn_75_2280) is gated on the
+// id at 0xEFC being invalid (fn_75_31A8, 0x327C-0x3280), so the old pick it releases
+// (0x2350-0x2380) is never a live chassis; the force gives the head one.
+// @ fn_75_E768
 void CSplitterMainChassis::PortReleaseDock(TUniqueId head) {
   if (mSecondLinkId == head) {
     mSecondLinkId = kInvalidUniqueId;

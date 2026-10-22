@@ -144,6 +144,32 @@ BODIES = {
                 'the data\'s flag word at 0x68 has its 0x1 bit: the landed count at 0xD00 is 0'),
     'NULLCAST': ('9AF8 SetCollisionVulnerability', 'loc:PortCSplitterMainChassis.cpp:682',
                  'the collision actor\'s id is invalid: the cast to a CCollisionActor fails'),
+    'MOVE': ('2154 MoveTo', 'CSplitterCommandModule::PortMoveTo(',
+             'the timer at 0xEF4 is above zero: the head is teleported to the destination'),
+    'RELO': ('E768 ReleaseDock', 'CSplitterCommandModule::PortFindChassis(',
+             'the head has an old pick: the chassis is asked to release the reservation'),
+    'RELO2': ('E768 ReleaseDock', 'CSplitterCommandModule::PortFindChassis(',
+              'the old pick is the chassis the head reserved: the reservation is cleared'),
+    'RELO3': ('E768 ReleaseDock', 'CSplitterCommandModule::PortFindChassis(',
+              'the old pick\'s reservation is another head\'s: nothing is cleared'),
+    'RESA': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the chassis is dead: the head is not reserved'),
+    'RESB': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the chassis is not active: the head is not reserved'),
+    'RESC': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the chassis has no head: the head is reserved'),
+    'RESD': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the chassis has a reservation: the head is not reserved'),
+    'RESE1': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+              'the chassis has landed 5 times: the head is reserved'),
+    'RESE2': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+              'the chassis has landed 0 times: the head is reserved'),
+    'RESE3': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+              'the chassis has landed another number of times: the head is not reserved'),
+    'RESF': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the flag byte at 0xD41 has its 0x80 bit: the head is not reserved'),
+    'RESG': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
+             'the flag byte at 0xD40 has its 0x01 bit: the head is not reserved'),
     'VULN7': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
               'the boost ball (the weapon type 7) knocks the chassis back'),
     'VULN6': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
@@ -385,6 +411,52 @@ elif WHICH == 'NULLCAST':
     # the walk skips the actor (asm 0x9B44-0x9B4C).  The id is in r15 when the line is reached
     # (the build keeps it there: movzwl 0x48(%rax),%r15d; mov %r15d,%esi).
     FORCE = [(_label, _where, [], ['$r15 = 0xffff'], 0, _what)]
+elif WHICH == 'MOVE':
+    # The timer at 0xEF4 is above zero: the head is teleported to the destination (asm 0x2180).
+    FORCE = [(_label, _where, [], ['$this->mAutoDestructTimer = 10.0f'], 0, _what)]
+elif WHICH == 'RELO':
+    # The head's checked chassis id at 0xEFC is a live chassis (u0521): the search asks it to
+    # release the reservation (the old pick's release, fn_75_E768).
+    FORCE = [(_label, _where, [], ['$this->mCheckedChassisId.value = 0x521'], 0, _what)]
+elif WHICH == 'RELO2':
+    # The same, and the chassis the head just reserved is the old pick: the reservation is the
+    # head's, so the release clears it (fn_75_E768's other arm).
+    FORCE = [('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(', [],
+              [CH + '->mCommandModuleId.value = 0xffff'], 0,
+              'the chassis has no head: the head is reserved'),
+             (_label, _where, [], ['$this->mCheckedChassisId.value = 0x521'], 0, _what)]
+elif WHICH == 'RELO3':
+    FORCE = [('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(', [],
+              [CH + '->mCommandModuleId.value = 0xffff'], 0,
+              'the chassis has no head: the head is reserved'),
+             ('E768 ReleaseDock', 'CSplitterMainChassis::PortReleaseDock(', [],
+              [CH + '->mSecondLinkId.value = 0x520'], 0,
+              'the reservation is another head\'s: nothing is cleared'),
+             (_label, _where, [], ['$this->mCheckedChassisId.value = 0x521'], 0, _what)]
+elif WHICH in ('RESA', 'RESB', 'RESC', 'RESD', 'RESE1', 'RESE2', 'RESE3', 'RESF', 'RESG'):
+    # The chassis's dock reserve (fn_75_E788): the conditions are a chain, so every run keeps the
+    # earlier ones true (the head id at 0xC6C invalid, the reservation at 0xC6E invalid, the
+    # landed count at 0xD00 5) and breaks the one the arm reads.
+    sets = []
+    if WHICH not in ('RESA', 'RESB'):
+        sets.append(CH + '->mCommandModuleId.value = 0xffff')
+    if WHICH == 'RESD':
+        sets.append(CH + '->mSecondLinkId.value = 0x1234')
+    if WHICH in ('RESE1', 'RESF', 'RESG'):
+        sets.append(CH + '->mLandedCount = 5')
+    elif WHICH == 'RESE2':
+        sets.append(CH + '->mLandedCount = 0')
+    elif WHICH == 'RESE3':
+        sets.append(CH + '->mLandedCount = 3')
+    if WHICH == 'RESA':
+        sets.append(CH + '->mAlive = 0')
+    elif WHICH == 'RESB':
+        sets.append(CH + '->mActive = 0')
+    elif WHICH == 'RESF':
+        sets.append(CH + '->mFlagsD41 |= 0x80')
+    elif WHICH == 'RESG':
+        sets.append(CH + '->mFlagsD40 |= 0x1')
+    FORCE = [(_label, _where, [], sets, 0, _what)]
 elif WHICH == 'DESPAWN':
     # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
     # update (asm 0x1820).
