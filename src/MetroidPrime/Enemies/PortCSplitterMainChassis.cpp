@@ -271,6 +271,9 @@ bool CSplitterMainChassis::BreakOutOfSpin(CStateManager&, const CTriggerData&) c
 // let a melee attack start (0xE244 CanStartAttack with 0). Then the target at 0xCC0 must be there
 // (0xE250-0xE268) at a squared distance from the square of the data's spin attack min range
 // (0x880) to the square of its max range (0x884), both ends included (0xE2B0-0xE2C4).
+// Arms: ALL-ARMS; the bit, timer and range arms ran, the no-team arm (0xCBE invalid) and the team's yes
+// (CanStartAttack overridden) forced (split23 force_ret, splitter_split23.py).
+// @ fn_75_E1D0
 bool CSplitterMainChassis::ShouldSpinAttack(CStateManager& mgr, const CTriggerData&) const {
   // 0xE1F0 extrwi. bit 24 (0x80); 0xE204 fcmpo, 0xE208 cror eq,lt,eq, 0xE20C bne: a NaN timer
   // gives false.
@@ -500,7 +503,9 @@ int CSplitterMainChassis::PortFindDodgeDirection(CStateManager& mgr, const CVect
       continue;
     }
     const CVector3f offset = other->GetTranslation() - GetTranslation();
-    if (offset.MagSquared() >= rangeSq) {
+    // 0x9378 fcmpo, 0x937C bge: only an actor nearer than the step distance blocks (a NaN
+    // distance skips).
+    if (!(offset.MagSquared() < rangeSq)) {
       continue;
     }
     if (CVector3f::Dot(offset, axis) >= 0.f) {
@@ -1087,13 +1092,16 @@ void CSplitterMainChassis::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 // (0x00009918-0x00009930), the locomotion commands are cleared (0x00009934) and the best step
 // direction for that vector is asked for (0x00009940 FindBestStepDirection). With a safe
 // magnitude (0x0000994C IsMagnitudeSafe) and a step direction other than 0 (0x00009958) the
-// vector becomes the face vector - the step direction 1 negates it (0x000099A0), 2 negates its x
-// (0x000099E8) and 3 negates its y (0x000099C8) - the steering speed range becomes 1.0f and
+// vector becomes the face vector - the step direction 1 negates it (0x000099A0), 2 turns it to
+// (y, -x, z) (0x000099E8-0x00009A00) and 3 to (-y, x, z) (0x000099C8-0x000099E0) - the steering speed range becomes 1.0f and
 // 1.0f (0x00009A04) and the command manager gets the locomotion command with the move vector,
 // the normalized face vector and the weight 1.0f (0x00009A1C-0x00009A70). Otherwise the
 // steering speed range becomes the chassis's 0xD0C (0x00009A78) and the command manager gets
 // the locomotion command with the move vector, a zero face vector and the weight 1.0f
 // (0x00009A8C-0x00009ADC).
+// Arms: ALL-ARMS; the shipped fight's separation and forward/side steps ran; each step answer (0-4, -1),
+// a separation with only y or only z and an unsafe move vector forced (split23 force_ret, splitter_split23.py).
+// @ fn_75_986C
 void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
   CBodyStateCmdMgr& cmdMgr = BodyController()->CommandMgr();
   const CVector3f separation = PortSeparationVector(mgr);
@@ -1103,6 +1111,7 @@ void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
   const CVector3f move = cmdMgr.GetMoveVector();
   cmdMgr.ClearLocomotionCmds();
   const pas::EStepDirection step = FindBestStepDirection(move);
+  // 0x994C IsMagnitudeSafe + 0x9954 beq; 0x9958 cmpwi 0 + 0x995C beq.
   if (!move.IsMagnitudeSafe() || step == pas::kSD_Forward) {
     cmdMgr.SetSteeringSpeedRange(mSteeringSpeed, mSteeringSpeed);
     cmdMgr.DeliverCmd(CBCLocomotionCmd(move, CVector3f::Zero(), 1.f));
@@ -1110,14 +1119,14 @@ void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
   }
   CVector3f face = CVector3f::Zero();
   switch (step) {
-  case pas::kSD_Backward:
+  case pas::kSD_Backward:  // 0x998C bge 1: 0x99A0-0x99C0 every component negated
     face = -move;
     break;
-  case pas::kSD_Left:
-    face = CVector3f(-move.GetX(), move.GetY(), move.GetZ());
+  case pas::kSD_Left:  // 0x9980 beq 2: 0x99E8-0x9A00 stores y at 0x20, -x at 0x24, z at 0x28
+    face = CVector3f(move.GetY(), -move.GetX(), move.GetZ());
     break;
-  case pas::kSD_Right:
-    face = CVector3f(move.GetX(), -move.GetY(), move.GetZ());
+  case pas::kSD_Right:  // 0x9994 cmpwi 4 + bge: 0x99C8-0x99E0 stores -y at 0x20, x at 0x24, z at 0x28
+    face = CVector3f(-move.GetY(), move.GetX(), move.GetZ());
     break;
   default:
     break;
@@ -2524,13 +2533,18 @@ void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInf
 // base's 0x420 0x40 bit, 0xA0C8-0xA0D8). The sender cast to a CCollisionActor (0xA0F0-0xA0F8)
 // carries a copy of the chassis's health (fn_75_A37C), so the hit is the chassis's initial health
 // less the actor's (0xA180): the chassis loses it (0xA28C). The hit's direction is the chassis's
-// own translation and its damage a boost ball hit of that much (CWeaponMode 7, 0xA140-0xA1FC),
-// unless the object the actor last touched (0xA104 GetLastTouchedObject) is a CWeapon (0xA208):
-// then its translation, owner (0x15C) and current damage info (0x19C-0x1B6). The chassis takes the
+// transform's Y column (0x28, 0x38, 0x48 at 0xA1A8-0xA1D0) and its damage a boost ball hit of
+// that much (CWeaponMode 7, 0xA140-0xA1FC), unless the object the actor last touched (0xA104
+// GetLastTouchedObject) is a CWeapon (0xA208): then the weapon's Y column (its 0x28, 0x38, 0x48 at
+// 0xA214-0xA228), owner (0x15C) and current damage info (0x19C-0x1B6). The chassis takes the
 // hit (0xA29C, vtable 0xA4 TakeDamage) and with its health at or below the hit (0xA2A0-0xA2A8)
 // dies (0xA2CC, vtable 0x98 Death with kSS_DeathRattle) and records the actor as the cause
 // (0xA2F4 UpdateHealthCause); it is knocked back (0xA320-0xA33C) and the actor's health is
 // re-armed (0xA340). With or without the actor the hint grant follows (0xA34C fn_75_AB8C).
+// Arms: ALL-ARMS; the con's `send u0521 Damage [from <collision actor>]` ran the null-actor and plain
+// hits; a dead chassis, a live weapon as the last touched object (CCollisionActor::GetLastTouchedObject
+// overridden) and a lethal hit (health 0.0f) forced (split23 force_ret, splitter_split23.py).
+// @ fn_75_A0A0
 void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
   if (!mAlive) {  // 0xA0D4-0xA0D8
     return;
@@ -2543,11 +2557,11 @@ void CSplitterMainChassis::PortCollisionActorDamage(CStateManager& mgr, TUniqueI
     const float initial = health->GetInitialHP();
     const float hp = health->GetHP();
     const float amount = initial - actorHealth->GetHP();
-    CVector3f direction = GetTranslation();
+    CVector3f direction = GetTransform().GetColumn(kDY);  // 0xA1A8-0xA1D0
     TUniqueId attacker = kInvalidUniqueId;
     CDamageInfo damage(CWeaponMode(kWT_BoostBall), amount, 0.f, 0.f, false, false);
     if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
-      direction = weapon->GetTranslation();
+      direction = weapon->GetTransform().GetColumn(kDY);  // 0xA214-0xA228
       attacker = weapon->GetOwnerId();
       damage = weapon->GetCurrentDamageInfo();
     }

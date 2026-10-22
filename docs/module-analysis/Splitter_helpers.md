@@ -60,13 +60,9 @@ keeps the head's five.
 
 | id | size | the retail's callers | a table names it |
 |---|---|---|---|
-| `fn_75_3004` | 0x1A4 | fn_75_6490 |  |
 | `fn_75_91E4` | 0x33C | fn_75_B2A0 |  |
-| `fn_75_986C` | 0x28C | fn_75_DC08 fn_75_DCFC |  |
-| `fn_75_A0A0` | 0x2DC | fn_75_F1C0 |  |
-| `fn_75_E68C` | 0x58 | fn_75_3BEC fn_75_4138 |  |
 
-Marked since (B, `// @` in the port): `fn_75_1578`, `fn_75_1CA0`, `fn_75_2154`, `fn_75_2280`, `fn_75_2994`, `fn_75_2BE0`, `fn_75_2CE0`, `fn_75_8EA4`, `fn_75_9520`, `fn_75_9AF8`, `fn_75_ACEC`, `fn_75_AFE8`, `fn_75_E6E4`, `fn_75_E768`, `fn_75_E788`, `fn_75_F5F8`.
+Marked since (B, `// @` in the port): `fn_75_3004`, `fn_75_986C`, `fn_75_A0A0`, `fn_75_E68C`, `fn_75_E1D0`, `fn_75_50B0`, `fn_75_57F0` (split23), `fn_75_1578`, `fn_75_1CA0`, `fn_75_2154`, `fn_75_2280`, `fn_75_2994`, `fn_75_2BE0`, `fn_75_2CE0`, `fn_75_8EA4`, `fn_75_9520`, `fn_75_9AF8`, `fn_75_ACEC`, `fn_75_AFE8`, `fn_75_E6E4`, `fn_75_E768`, `fn_75_E788`, `fn_75_F5F8`.
 
 Reclassified H (see `Splitter_functions.tsv`: host copies of shared bodies, not queue work): `fn_75_7EC`, `fn_75_828`, `fn_75_E60`, `fn_75_F00`, `fn_75_14CC`, `fn_75_1524`, `fn_75_1C0C`, `fn_75_1E38`, `fn_75_1E8C`, `fn_75_1EE8`, `fn_75_1F08`, `fn_75_1F50`, `fn_75_1F98`, `fn_75_204C`, `fn_75_208C`, `fn_75_20AC`, `fn_75_20D4`, `fn_75_3678`, `fn_75_36A0`, `fn_75_371C`, `fn_75_3830`, `fn_75_3868`, `fn_75_3888`, `fn_75_38B0`, `fn_75_3970`, `fn_75_39F4`, `fn_75_3A2C`, `fn_75_5B9C`, `fn_75_6890`, `fn_75_6A74`, `fn_75_A490`, `fn_75_AA10`, `fn_75_C3A8`, `fn_75_C4A0`, `fn_75_CEE8`, `fn_75_11A8C`.
 
@@ -668,14 +664,34 @@ and every line ran.  Forces: `tools/cov/specs/splitter_split22.py` (FORCE_RET, p
   docking setup).
 - **Smoke**: `tools/smoke/run.sh splitter` (0q_cliff_hall layer 0, `objs splitter`).
 
+### 3.24 The queue's last rows and split22's leftovers (split23, 2026-10-22)
+
+**Marked** (7): `fn_75_E1D0` ShouldSpinAttack, `fn_75_50B0` FaceTarget, `fn_75_57F0`
+HasDockingTarget, `fn_75_3004` the head's collision update, `fn_75_986C` the chassis's path
+update, `fn_75_A0A0` the collision actor's damage, `fn_75_E68C` the head attach point (no
+branches; 2463 calls from the head's seek/dock).  All six branched bodies are ALL-ARMS in one
+forced run (f9) of `tools/cov/specs/splitter_split23.py` + `.con` on 914f1381 layer 2.  The spec
+adds RET_OVERRIDE (a callee's return value, only on a direct call from the named caller; values
+may be `cmd:` gdb commands, e.g. the xmm0/xmm1 of a returned CVector3f) and a live-projectile
+id (`$split23_wid`) for GetLastTouchedObject.
+
+- **Fixes**: 3004 0x30E0: a clear 0xF6A 0x08 bit branches straight to the shield-down block
+  (0x3114); 91E4 0x937C `bge`: a NaN distance skips; 986C: the left/right face vectors; A0A0:
+  the hit direction is the Y column (0xA1A8-0xA1D0, the weapon's 0xA214-0xA228), not the
+  translation.
+- **Not marked**: `fn_75_91E4` (the dodge search): FindBestDodgeDirection (fn_75_B2A0) needs the
+  player orbiting the chassis or its head and a missile (`kWT_Missile`) within 50 units; the
+  console's `shoot` fires the beam in hand, so the next lane must force the orbit id and the
+  missile (or give the player missiles and fire one by input).
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
   shipped spawns reach: section 3.3 lists them with the lines and the branches each one still
   misses. (`fn_75_2994`, `fn_75_2280` and
-  `fn_75_2CE0` are marked: section 3.22.)  `fn_75_A0A0` (the chassis's collision actor's damage) has a body
-  but never runs: only the chassis's own "target_LCTR" collision actor sends the message, and the
-  laser sweep's beam does not reach it in the shipped spawns.
+  `fn_75_2CE0` are marked: section 3.22.)  `fn_75_A0A0` (the chassis's collision actor's damage)
+  is marked from console sends (section 3.24); in the shipped spawns only the chassis's own
+  "target_LCTR" collision actor sends the message.
 - **The queue's rows with no body at all** are the module's own helpers that the FSM lane's
   states and codes call (the beam effect's actor, the laser-pulse shot, the collision actor
   managers' joint helpers) and the ones the two classes' constructors build. They are listed in
