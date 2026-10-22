@@ -1,0 +1,24 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark): the head's ChargeAttack
+# (fn_14_16A50) and its three cutting lasers (fn_14_FB70 / FE14 / F6A4 / FAEC), driven with the head
+# (e0035000f) in the state from the start, then forced through the sweep's end (a large dt) and
+# the boosting player with one laser left; XDEL deletes the head (FAEC via AcceptScriptMsg).
+# Run: tools/cov/run.sh tools/cov/specs/digitalguardian_states.py <out> 1baa96c2,09_cliff_temple_dark
+#   --con tools/cov/specs/digitalguardian_charge.con --fast --frames 3000
+@f30 layer 3
+@f60 layer 11; god 1
+@f150 send e00350060 Activate; send e0035000f Activate
+@f200 place e0035000f player 20; fsm e0035000f ChargeAttack
+@f260 objs Plasma; obj e0035000f
+@f320 objs Plasma; obj e0035000f
+# a fresh sweep, then the time left run out (dt 30): the lasers but the first go
+@f400 statecall e0035000f ChargeAttack 2; statecall e0035000f ChargeAttack 0; statecall e0035000f ChargeAttack 1; statecall e0035000f ChargeAttack 1 0.016
+@f402 statecall e0035000f ChargeAttack 1 30; objs Plasma
+# the boosting player with one laser left
+@f410 fastmorph 1; press x 1
+@f440 boost
+@f444 statecall e0035000f ChargeAttack 1 0.016; statecall e0035000f ChargeAttack 1 0.016; objs Plasma
+@f470 press x 1
+@f520 statecall e0035000f ChargeAttack 2; objs Plasma
+@f530 fsm e0035000f ChargeAttack
+@f600 send e0035000f Delete
+@f640 objs Plasma

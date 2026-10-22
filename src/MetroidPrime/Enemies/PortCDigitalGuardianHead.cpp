@@ -25,7 +25,10 @@
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Weapons/CBeamInfo.hpp"
 #include "MetroidPrime/Weapons/CBomb.hpp"
+#include "MetroidPrime/Weapons/CPlasmaProjectile.hpp"
+#include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
@@ -193,6 +196,16 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , x10F0_(0.f)
 , x10F4_(0x08) // only bit 0x08 is set (the rlwimi stores at the ctor's tail)
 , x10F5_(0)    // bit 0x80 cleared
+// 0x18B98..0x18BA8: the lock-on beams' weapon (data +0x1BC) with a default damage (fn_14_FFFC:
+// weapon -1, every amount 0.0f, the sounds 0xFFFF); 0x18BB4..0x18C00: no lasers, no locator
+// yet (0xFF) and the sweep's floats 0.0f (.rodata 0x960) and its point the zero vector.
+, x1054_(data.lockOnBeams.weaponSystem, CDamageInfo())
+, x107C_()
+, x1088_()
+, x108C_(0.f)
+, x1090_(0.f)
+, x1094_(0.f)
+, x1098_(CVector3f::Zero())
 {
   // The drop-shields effect (data +0x48, 0x184D8): locked when set.
   if (mData.dropShieldsFx != kInvalidAssetId) {
@@ -216,7 +229,10 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   // 0x18D28 / 0x18D5C: the balls' locators (.rodata 0x954's names) at 0xDCC / 0xDCD.
   const CAnimData* anim = GetModelData()->GetAnimationData();
   xDCC_[0] = anim->GetLocatorSegId(rstl::string_l("L_ball_LCTR"));
-  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
+  xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));
+  // 0x18DA4..0x18DD0: the lasers' locator (.rodata 0x94C, "T_lazor_LCTR") at 0x1088.
+  x1088_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
+  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
   // at 0x18E60).
   x137A8_();
   mDamageColor = CPatterned::skHitsWithoutDamageColor; // 0x450, stored at 0x18E64..0x18E6C
@@ -458,7 +474,7 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
       xD70_->Destroy(mgr);
     }
     x11EA8_(); // fn_14_11EA8
-    StandInFn("fn_14_FAEC (head XDEL)");
+    xFAEC_(mgr); // fn_14_FAEC
     x11F7C_(mgr); // fn_14_11F7C
     break;
   case kSM_Activate: // "ACTV", 0x17E9C
@@ -1290,13 +1306,200 @@ void CDigitalGuardianHead::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
     StandInFn(#fn " (head state " #name ")");                                                      \
   }
 DGHD_STATE_STANDIN(PulseAttack, fn_14_16D64)
-DGHD_STATE_STANDIN(ChargeAttack, fn_14_16A50)
 DGHD_STATE_STANDIN(MissileAttack, fn_14_167EC)
 DGHD_STATE_STANDIN(MachineGunAttack, fn_14_16408)
 DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
 DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
 DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 #undef DGHD_STATE_STANDIN
+
+// fn_14_16A50: the state message picks the work (the cmpwi chain at 0x16A74..0x16A9C).
+// Activate (0): ready (0x6B4 = 1, 0x16AA8), flag 0x20 (the rlwimi at 0x16AB4) and the turn
+// direction from fn_14_13B38 (0x16ABC, stores 0x16AC4..0x16AD4). Update (1): when a projectile
+// attack can be issued (ShouldRetry with 0x12 = kAS_ProjectileAttack, 0x16AE8) it is sent
+// (DeliverCmd 6 at 0x16B64): severity 2 (0x16B20), the target the head's position (0x54..0x5C)
+// plus its transform's Y column (0x28, 0x38, 0x48), no blend (0x16B60). Otherwise with no lasers
+// (0x107C == 0, 0x16BBC) the sweep starts (fn_14_FB70, 0x16BC8), else the lasers move
+// (fn_14_F6A4, 0x16BDC). Then the head turns (fn_14_11D64, 0x16BEC).
+// Deactivate (2): not ready (0x6B4 = 0, 0x16CB0); while the body is in the projectile attack
+// (0x37C == 0x12, 0x16CBC) it is aborted (command 0xD = kBSC_AbortScripted, 0x16CC8, 0x16CE0);
+// the lasers go (fn_14_FAEC, 0x16CF8), flag 0x20 clears (0x16D04) and the turn direction is the
+// zero vector (0x16D18..0x16D2C).
+// Not ported: the player's lock-on ring (CPlayer +0x14C4 id, +0x14C6 count). After the turn
+// (0x16BF0..0x16C8C), unless flag 0x01 (0x16BF8), the count is 3.0f (.rodata 0x9F0) times
+// 1.0f - (0x1094 - 1.0f) / (0x1090 - 1.0f) clamped to [0.0f, 1.0f] (0x16C24 / 0x16C44),
+// truncated, at most 3 and at least 1 (0x16C68 / 0x16C74), with the head's id; with flag 0x01
+// (0x16C94) and on Deactivate (0x16D30..0x16D3C) the count is 0 and the id invalid. CPlayer has
+// no setter for the two (only GetEnemyLockOnActorId/GetEnemyLockOnCount), so the HUD shows no
+// lock-on ring during the charge.
+void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x16AA8
+    x10F4_ |= 0x20;                                        // 0x16AB4
+    x1028_ = x13B38_();                                    // 0x16ABC
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_Two, GetTranslation() + GetTransform().GetColumn(kDY), false)); // 0x16B64
+    } else if (x107C_.empty()) { // 0x16BB8
+      xFB70_(mgr);               // 0x16BC8
+    } else {
+      xF6A4_(mgr, dt); // 0x16BDC
+    }
+    x11D64_(mgr, dt); // 0x16BEC
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16CB0
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x16CBC
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x16CE0
+    }
+    xFAEC_(mgr);                    // 0x16CF8
+    x10F4_ &= ~0x20;                // 0x16D04
+    x1028_ = CVector3f::Zero();     // 0x16D18..0x16D2C
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_FAEC: every laser id (0x1080, count 0x107C; the loop at 0xFB1C..0xFB44) is deleted
+// (DeleteObjectRequest at 0xFB2C) and the count is 0 (0xFB4C).
+void CDigitalGuardianHead::xFAEC_(CStateManager& mgr) {
+  for (int i = 0; i < x107C_.size(); ++i) {
+    mgr.DeleteObjectRequest(x107C_[i]);
+  }
+  x107C_.clear();
+}
+
+// fn_14_FB70: the lasers go (fn_14_FAEC, 0xFBB8) and the phase is 0.0f (.rodata 0x960, 0xFBCC).
+// The sweep time is the current animation's (the body controller's 0x58C) projectile event
+// (type 0, 0xFBC8; GetTimeOfUserEventForAnimation at 0xFBE0) when it differs from the infinite
+// time {4, 1.0f} (.data 0x710/0x714, the __ne__ at 0xFC1C), else the animation's time left
+// (0xFC34); it is stored at 0x1090 and 0x1094 (0xFC38, 0xFC54). The centre is half the player's
+// aim position (vtable 0x54 with 0.0f, 0xFC6C) plus its position (0x54..0x5C; .rodata 0x9A0,
+// 0.5f, 0xFCA4..0xFCB4). From the laser locator (0x1088, GetLctrTransform at 0xFCC0) a LookAt to
+// the centre (up vector, 0xFCF0) turns the offsets (10.0f * cos, 0.0f, 10.0f * sin) of the phase
+// (.rodata 0x980; FastSinR/FastCosR at 0xFD24/0xFD30, Rotate at 0xFD50), and three lasers fire
+// from the locator at centre + offset (fn_14_FE14 at 0xFD94; the cmpwi 3 at 0xFDA0), the phase
+// growing by 2.0943952f (.rodata 0x9B4) each. Flag 0x01 clears (0xFDB0) and the centre is kept at
+// 0x1098 (0xFDBC..0xFDCC).
+void CDigitalGuardianHead::xFB70_(CStateManager& mgr) {
+  xFAEC_(mgr);
+  x108C_ = 0.f;
+  const CAnimData& animData = *GetModelData()->GetAnimationData();
+  const CCharAnimTime event =
+      animData.GetTimeOfUserEventForAnimation(GetBodyController()->GetCurrentAnimId(), kUE_Projectile);
+  const CCharAnimTime infinite(CCharAnimTime::kT_Infinity, 1.f);
+  x1090_ = event != infinite ? event.GetSeconds() : GetBodyController()->GetAnimTimeRemaining();
+  x1094_ = x1090_;
+  const CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f centre = (player.GetAimPosition(mgr, 0.f) + player.GetTranslation()) * 0.5f;
+  const CVector3f from = GetLctrTransform(x1088_).GetTranslation();
+  const CTransform4f look = CTransform4f::LookAt(from, centre, CVector3f::Up());
+  float phase = x108C_;
+  for (int i = 0; i < 3; ++i) {
+    const float s = 10.f * CMath::FastSinR(phase);
+    const float c = 10.f * CMath::FastCosR(phase);
+    xFE14_(mgr, from, centre + look.Rotate(CVector3f(c, 0.f, s)));
+    phase += 2.0943952f;
+  }
+  x10F4_ &= ~0x01;
+  x1098_ = centre;
+}
+
+// fn_14_FE14: at most three lasers (the cmpwi 3 at 0xFE38). The lock-on beams' info (data
+// +0x1B8) becomes a CBeamInfo with the attributes 0x291 (fn_80239B64, the DOL's TLdrToBeamInfo,
+// 0xFE4C; fn_14_1008C copies it). A new id (AllocateUniqueId at 0xFE64) gets the 0x6A8-byte
+// CPlasmaProjectile "RezBitCuttingLaser" (.rodata 0xA00 + 0x507; new at 0xFE88, ctor at 0xFF54):
+// the weapon at 0x1054, weapon type 2 (0xFF4C), the identity transform, material 0x14
+// (kMT_ProjectilePassthrough, 0xFF44), a default damage (fn_14_FFFC), the area (0x4) and this
+// actor as owner (0x8), a default CWeaponAssetInfo (8 entries of -1, 0xFE94..0xFED0), drawn owner
+// first (1, 0xFF48) and the attributes 0x20000 (0xFF2C). When it exists (0xFF74) it fires (vtable
+// 0x94, Fire with false; 0xFFB8) along LookAt(from, to, up) (0xFF8C), is added (AddObject at
+// 0xFFC4) and its id appended (0xFFD8..0xFFE4).
+void CDigitalGuardianHead::xFE14_(CStateManager& mgr, const CVector3f& from,
+                                  const CVector3f& to) {
+  if (x107C_.size() >= 3) {
+    return;
+  }
+  const CBeamInfo beamInfo = TLdrToBeamInfo(mData.lockOnBeams, 0x291);
+  const TUniqueId id = mgr.AllocateUniqueId();
+  CPlasmaProjectile* laser = rs_new CPlasmaProjectile(
+      x1054_.Token(), rstl::string_l("RezBitCuttingLaser"), EWeaponType(2), beamInfo,
+      CTransform4f::Identity(), kMT_ProjectilePassthrough, CDamageInfo(), id, GetCurrentAreaId(),
+      GetUniqueId(), CWeaponAssetInfo(), true, 0x20000);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (laser != nullptr) {
+    laser->Fire(CTransform4f::LookAt(from, to, CVector3f::Up()), mgr, false);
+    mgr.AddObject(laser);
+    x107C_.push_back(id);
+  }
+}
+
+// fn_14_F6A4: nothing without lasers (0xF6E8) or with the sweep time at most 0.0f (.rodata 0x960,
+// the fcmpo/ble at 0xF6FC, so a NaN time goes on). The phase grows by 2.0943952f * dt (.rodata
+// 0x9B4, the fmadds at 0xF71C) and the time left shrinks by dt (0xF728). The centre and the
+// locator's LookAt are fn_14_FB70's (0xF744..0xF7D4). The radius is 10.0f (.rodata 0x980) *
+// (left - 1.0f) / time (.rodata 0x96C; 0xF7F4..0xF804), raised to 0.0f (the fcmpo/bge at 0xF808,
+// a NaN radius stays). At a radius of at most 0.0f (the cror at 0xF828) the lasers but the first
+// go, last first (0xF838..0xF8A0): each found one resets (vtable 0x90, ResetBeam with false;
+// 0xF870) and is deleted (0xF888); the count drops either way (0xF894). Then, without flag 0x01,
+// one laser left and a boosting player (0x390 zero, 0x38C == 1 and the morph ball's boost shield,
+// 0xF8BC..0xF8E8) set flag 0x01 (0xF8F4); without flag 0x01 the circled point follows the centre
+// (0xF908..0xF91C). Each laser found (0xF92C..0xFA18) is moved (vtable 0x8C, UpdateFx with dt;
+// 0xF9F4) along a LookAt from the locator to the point plus the turned offset (radius * cos,
+// 0.0f, radius * sin) of the phase (0xF948..0xF9C8), the phase growing by 2.0943952f (0xF9FC)
+// only for a laser found.
+// Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
+void CDigitalGuardianHead::xF6A4_(CStateManager& mgr, float dt) {
+  if (x107C_.empty() || x1090_ <= 0.f) {
+    return;
+  }
+  x108C_ = 2.0943952f * dt + x108C_;
+  x1094_ = x1094_ - dt;
+  const CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f centre = (player.GetAimPosition(mgr, 0.f) + player.GetTranslation()) * 0.5f;
+  const CVector3f from = GetLctrTransform(x1088_).GetTranslation();
+  const CTransform4f look = CTransform4f::LookAt(from, centre, CVector3f::Up());
+  float radius = 10.f * (x1094_ - 1.f) / x1090_;
+  if (0.f >= radius) {
+    radius = 0.f;
+  }
+  float phase = x108C_;
+  if (radius <= 0.f) {
+    while (x107C_.size() > 1) {
+      if (CPlasmaProjectile* laser =
+              TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(x107C_[x107C_.size() - 1]))) {
+        laser->ResetBeam(mgr, false);
+        mgr.DeleteObjectRequest(laser->GetUniqueId());
+      }
+      x107C_.pop_back();
+    }
+  }
+  if ((x10F4_ & 0x01) == 0 && x107C_.size() == 1) {
+    const CPlayer::EPlayerMorphBallState morph =
+        player.GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+            ? player.GetMorphballTransitionState()
+            : CPlayer::kMS_Unmorphed;
+    if (morph == CPlayer::kMS_Morphed && player.GetMorphBall()->IsBoostShieldActive()) {
+      x10F4_ |= 0x01;
+    }
+  }
+  if ((x10F4_ & 0x01) == 0) {
+    x1098_ = centre;
+  }
+  for (int i = 0; i < x107C_.size(); ++i) {
+    if (CPlasmaProjectile* laser = TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(x107C_[i]))) {
+      const float s = radius * CMath::FastSinR(phase);
+      const float c = radius * CMath::FastCosR(phase);
+      const CVector3f to = x1098_ + look.Rotate(CVector3f(c, 0.f, s));
+      laser->UpdateFx(CTransform4f::LookAt(from, to, CVector3f::Up()), dt, mgr);
+      phase += 2.0943952f;
+    }
+  }
+}
 
 // fn_14_16F74: the projectile telegraph. Activate (0): the animation state Ready (the store at
 // 0x16FCC), bit 0x20 of 0x10F4 set (0x16FD8) and the turn direction 0x1028 the fallback one
