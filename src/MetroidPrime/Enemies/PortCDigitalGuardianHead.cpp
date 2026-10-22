@@ -153,6 +153,9 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 // projectile infos at 0xE04..0xE7C, the 'PART' and 'SCAN' tokens, the head armour model and the
 // locator ids) belong to the states this slice does not port, so the host keeps only what the
 // ported functions read, with the values the retail stores.
+// Coverage: every arm natural or forced (tools/cov/specs/digitalguardian_dg28_ctor.py forces the
+// PART/SCAN ids to -1); the only unrun arms are the compiler's EH-unwind edges on the closing brace.
+// @ fn_14_18264
 CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& name,
                                            const CEntityInfo& info, const CTransform4f& xf,
                                            const CModelData& modelData,
