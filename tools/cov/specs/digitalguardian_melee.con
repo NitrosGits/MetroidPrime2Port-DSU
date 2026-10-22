@@ -1,0 +1,44 @@
+# DigitalGuardian area 53: the melee and jump states (MeleeAttackTelegraph fn_14_8CCC, MeleeAttack
+# fn_14_89D4, JumpAttack fn_14_8580) and their codes (SelectBestMeleeAttackLeg fn_14_7504,
+# SelectMeleeAttackRange fn_14_73D4, SetJumpFaceTarget fn_14_7208). 0x11D8/0x11DC start at -1 (the
+# ctor), so the no-leg arms run first, then the leg without a range, then both.
+@f30 layer 3
+@f60 layer 11
+@f140 send e00350060 Activate; send e0035000f Activate
+@f160 objs Waypoint
+@f170 obj e00350060
+# no leg (0x11D8 -1): the telegraph and the attack are over at once
+@f200 fsm e00350060 MeleeAttackTelegraph
+@f260 fsm e00350060 MeleeAttack
+@f320 obj e00350060
+# a leg, no range (0x11DC -1): the attack is over at once
+@f340 codecall e00350060 SelectBestMeleeAttackLeg
+@f345 fsm e00350060 MeleeAttack
+@f400 obj e00350060
+# the body next to the player: leg and range, the telegraph, then the FSM's own way on
+@f420 place e00350060 player 8
+@f430 codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f435 fsm e00350060 MeleeAttackTelegraph
+@f520 obj e00350060
+@f600 obj e00350060
+# the attack with the range both ways (near: 0, far: 1)
+@f700 place e00350060 player 4
+@f710 codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f715 fsm e00350060 MeleeAttack
+@f800 obj e00350060
+@f900 place e00350060 player 40
+@f910 codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f915 fsm e00350060 MeleeAttack
+@f1000 obj e00350060
+# the jump: face target from several body positions, then the state
+@f1100 codecall e00350060 SetJumpFaceTarget
+@f1110 place e00350060 player 20; codecall e00350060 SetJumpFaceTarget
+@f1120 place e00350060 player -20; codecall e00350060 SetJumpFaceTarget
+@f1130 place e00350060 player 60; codecall e00350060 SetJumpFaceTarget
+@f1140 place e00350060 player -60; codecall e00350060 SetJumpFaceTarget
+@f1150 tp 0 0 0; codecall e00350060 SetJumpFaceTarget
+@f1200 fsm e00350060 JumpAttack
+@f1300 obj e00350060
+@f1400 obj e00350060
+@f1500 objs Guardian
+@f1520 covdump

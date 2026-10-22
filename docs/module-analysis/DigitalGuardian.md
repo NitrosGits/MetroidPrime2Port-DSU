@@ -1526,3 +1526,29 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 
 - fn_14_4080's XSTORE xFB2/xFB4/xFB6 (review_decomp_diff) is a tool false positive: retail stores
   every id with `sth r0,0x0(r28)` (0x42C8), r28 = this+0xFB0 (0x40AC) stepped by 2 (0x42D0).
+
+## 2026-10-22: the melee/jump states (dg17), gcov runs dg17_melee1/dg17_melee2
+
+- Ported: MeleeAttackTelegraph 8CCC, MeleeAttack 89D4, JumpAttack 8580, SelectBestMeleeAttackLeg
+  7504, SetJumpFaceTarget 7208. Still stand-ins: FaceTarget 94BC, ProjectileAttack 8794,
+  SetProtectKneesFaceTarget 77EC, SetupBossEnergyBar 7BD4. fn_14_4F2C (XHIT) was already marked.
+- Drivers: `tools/cov/specs/digitalguardian_melee.con` (1600 frames) and `digitalguardian_melee2.con`
+  (3600 frames; console lag meant the steps after f2820 did not run), both with run.sh on
+  `build-port-cov`, area `1baa96c2,09_cliff_temple_dark`, `--fast`.
+- Coverage (`gcov_report.py build-port-cov <both gcov dirs> --module DigitalGuardian`): 7504 8/8,
+  7208 8/8, 8CCC 7/8, 89D4 15/16, 8580 9/10; 73D4 9/10, A468 9/10, 458C 10/14, 20E4 8/12, 4E00 4/5.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| 8CCC, 89D4, 8580 | Activate, Update, Deactivate | melee1/melee2 (`fsm`, natural Idle/MeleeAttack cycles) | ran |
+| 8CCC, 89D4, 8580 | switch default (msg outside 0..2) | - | dead: EStateMsg is 0..2 (same as marked 9260/8E44); marked |
+| 7504 | every leg nearer/farther, none | melee2 (`place` + `codecall`) | ran: 8/8, marked |
+| 7208 | target, no target, angle > 0 both sides, angle 0 | melee2 (`tp`/`place` + `codecall`) | ran: 8/8, marked |
+| 73D4 | one side of the 0x11DC ternary (line ~2846) | - | not run; unmarked |
+| A468 | one of cases 7/8 (line ~1479) | - | not run; unmarked |
+| 458C | leg -1 / 0x10DC == 3 (CrippledReaction then melee) | - | not run; unmarked |
+| 20E4 | -1 return | - | not run; unmarked |
+
+- asmcheck: 2 findings, both naming: 8CCC/8580 `CALL CTryCommand::ShouldRetry` (the host spells it
+  `mAnimationState.CanIssueCommand`, as in marked 8EC4's state).
+- Marked: 8CCC, 89D4, 8580, 7504, 7208.
