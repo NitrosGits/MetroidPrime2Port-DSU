@@ -226,6 +226,8 @@ public:
 private:
   // The chassis's AutoDestruct table entry is this class's fn_75_5A54 (PortAutoDestruct).
   friend class CSplitterMainChassis;
+  // The Digital Guardian head's DestroyActiveSplitters (fn_14_14C24) calls fn_75_5A54 too.
+  friend class CDigitalGuardianHead;
   void EnsureBodyActive(CStateManager& mgr);
 
   // Host layout (retail's object is 0xF70, CPatterned is 0x7C0; the guest offsets are the REL's

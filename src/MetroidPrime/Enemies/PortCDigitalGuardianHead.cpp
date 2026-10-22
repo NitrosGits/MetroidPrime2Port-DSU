@@ -2326,15 +2326,24 @@ void CDigitalGuardianHead::SeekLineOfSight(CStateManager& mgr, float dt) {
   xD80_.SetVisualTarget(mgr.GetPlayer(0)->GetUniqueId());
 }
 
-#define DGHD_CODE_STANDIN(name, fn)                                                                \
-  void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
-    StandInFn(#fn " (head code " #name ")");                                                       \
+// fn_14_14C24: the object list (state manager +0x830, the walk at 0x14C4C..0x14CD0) gives each
+// command module (TCastToPtr at 0x14C60, null test 0x14C64) fn_75_5A54 (0x14C70) and else each
+// main chassis (0x14C90, null test 0x14C94) fn_75_E660 (0x14CA0), with a delay that starts at 0.0
+// (.rodata 0x960, 0x14C48) and grows by 0.7 per command module (.rodata 0x9A4, fadds at 0x14C7C)
+// and by 0.15 per chassis (.rodata 0x9A8, fadds at 0x14CAC).
+void CDigitalGuardianHead::DestroyActiveSplitters(CStateManager& mgr, float dt) {
+  CObjectList& list = mgr.ObjectListById(kOL_All);
+  float delay = 0.f;
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    if (CSplitterCommandModule* module = TCastToPtr< CSplitterCommandModule >(list[i])) {
+      module->PortAutoDestruct(delay);
+      delay += 0.7f;
+    } else if (CSplitterMainChassis* chassis = TCastToPtr< CSplitterMainChassis >(list[i])) {
+      chassis->PortStartDeathTimer(delay);
+      delay += 0.15f;
+    }
   }
-// fn_14_14C24 walks the object list (state manager +0x830) giving each command module
-// fn_75_5A54 and each main chassis fn_75_E660 a growing delay (from 0, +0.7 and +0.15 per
-// object, .rodata 0x960/0x9A4/0x9A8). Neither entry point is reachable from here: the command
-// module's port of fn_75_5A54 is private and fn_75_E660 is not ported in the Splitter module.
-DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
+}
 
 // fn_14_153D0: the attack position (0xFEC) is the head's translation, or the retreat platform's
 // (0x1038; ObjectById at 0x1540C, TCastToPtr<CScriptPlatform> at 0x15410, null test 0x15418).
@@ -2387,7 +2396,8 @@ void CDigitalGuardianHead::EnableDynamicCollision(CStateManager& mgr, float dt) 
     if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
       root->SetActive(false);
     }
-    for (int i = 0; i < 2; ++i) { // the count at 0xDC0 is 2
+    // the count at 0xDC0 (the ctor's 2 at 0x18340; nothing else writes it)
+    for (int i = 0; i < ARRAY_SIZE(xDC4_); ++i) {
       if (CCollisionActor* ball = TCastToPtr< CCollisionActor >(mgr.ObjectById(xDC4_[i]))) {
         if (ball->GetHealthInfo()->GetHP() > 0.f) {
           ball->SetActive(true); // li 1 at 0x14940
@@ -2419,7 +2429,8 @@ void CDigitalGuardianHead::DisableDynamicCollision(CStateManager& mgr, float dt)
     if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
       root->SetActive(true);
     }
-    for (int i = 0; i < 2; ++i) { // the count at 0xDC0 is 2
+    // the count at 0xDC0 (the ctor's 2 at 0x18340; nothing else writes it)
+    for (int i = 0; i < ARRAY_SIZE(xDC4_); ++i) {
       if (CCollisionActor* ball = TCastToPtr< CCollisionActor >(mgr.ObjectById(xDC4_[i]))) {
         ball->SetActive(false);
       }
@@ -2482,12 +2493,69 @@ void CDigitalGuardianHead::SelectProjectileAttack(CStateManager& mgr, float dt) 
   x10DC_ = knees;               // 0x15558
   x10D8_ = x10D0_ == 0 ? 3 : 0; // cntlzw/extrwi 1, 26/neg/and at 0x15564..0x15574
 }
-DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
-DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
-DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
-DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_14058)
-DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13C1C)
-#undef DGHD_CODE_STANDIN
+
+// fn_14_14604: orbitable in every visor (li 0xF / li 1 at 0x1461C/0x1460C) and in the echo visor
+// (li 2 / li 1 at 0x14630/0x14634), and a seeker target (li 0x3F at 0x14644, AddMaterial).
+// @ fn_14_14604
+void CDigitalGuardianHead::EnableValidTarget(CStateManager& mgr, float dt) {
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);  // 0x14628
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true); // 0x14638
+  AddMaterial(kMT_SeekerTarget, mgr);                        // 0x14648
+}
+
+// fn_14_145A4: not orbitable in any visor (li 0xF / li 0 at 0x145BC/0x145AC), but the echo visor
+// flag is set again (li 2 / li 1 at 0x145D0/0x145D4, as in fn_14_14604), and no seeker target
+// (li 0x3F at 0x145E4, RemoveMaterial).
+// @ fn_14_145A4
+void CDigitalGuardianHead::DisableValidTarget(CStateManager& mgr, float dt) {
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false); // 0x145C8
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true); // 0x145D8
+  RemoveMaterial(kMT_SeekerTarget, mgr);                     // 0x145E8
+}
+
+// fn_14_14248: the gravity repulsor's health (0x10E0) is the data's gravityRepulsorHP again
+// (0x7D8 = data +0x18; lfs/stfs at 0x14248/0x1424C).
+// @ fn_14_14248
+void CDigitalGuardianHead::ResetGravityRepulsorHP(CStateManager& mgr, float dt) {
+  x10E0_ = mData.gravityRepulsorHP;
+}
+
+// fn_14_14058: the player (mgr +0x14FC) stops (0x14080). The push goes along the head's X column
+// (0x24/0x34/0x44), negated when the player is behind it (the dot of the player minus the head
+// with the column >= 0.0, .rodata 0x960, fcmpo/cror/bne at 0x140D4..0x140DC), plus the Z column
+// (0x2C/0x3C/0x4C, 0x14104..0x14134). When that is magnitude-safe (clrlwi./beq at 0x1413C) the
+// player gets the impulse 30 (.rodata 0x98C) * mass (player +0x158) * its direction
+// (ApplyImpulseWR with no angular part, 0x141A8) and the ApplyJump move state (li 2 at 0x141B4).
+// Either way the retreat platform (0x1038), when it is one (mr./beq at 0x141D4), stops excluding
+// the player (exclude word 0x8 &= ~1, bit 32, li -2/and at 0x141EC/0x14204).
+// @ fn_14_14058
+void CDigitalGuardianHead::EjectPlayerFromBombPit(CStateManager& mgr, float dt) {
+  CPlayer* player = mgr.GetPlayer(0);
+  player->Stop();
+  CVector3f side = GetTransform().GetColumn(kDX);
+  if (!(CVector3f::Dot(player->GetTranslation() - GetTranslation(), side) >= 0.f)) {
+    side = -side; // 0x140E8..0x14100
+  }
+  const CVector3f dir = side + GetTransform().GetColumn(kDZ);
+  if (dir.IsMagnitudeSafe()) {
+    const CVector3f impulse = 30.f * (player->GetMass() * dir.AsNormalized()); // 0x14150..0x14194
+    player->ApplyImpulseWR(impulse, CAxisAngle::Identity());                    // 0x141A8
+    player->SetMoveState(NPlayer::kMS_ApplyJump, mgr); // 0x141B8
+  }
+  if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+    CMaterialFilter filter = plat->GetMaterialFilter();
+    filter.ExcludeList().Remove(kMT_Player);
+    plat->SetMaterialFilter(filter); // 0x14228
+  }
+}
+
+// fn_14_13C1C: sound_Stage3Recover (this +0x92C = data +0x16C) at the translation (0x54) along the
+// Y column (0x28/0x38/0x48), not looped (li 0 at 0x13C28); the handle is dropped.
+// @ fn_14_13C1C
+void CDigitalGuardianHead::StartVocalRecoverReaction(CStateManager& mgr, float dt) {
+  PlayCustomSound(GetTranslation(), GetTransform().GetColumn(kDY), mData.sound_Stage3Recover,
+                  false); // 0x13C58
+}
 
 // fn_14_15054: the "RaisedShields" effect state (.rodata 0x950) off; at locator 1 the drop-shields
 // effect (0xEF4, "Drop Shields Fx", .rodata 0xA00) at this head's scale, then the drop-shields
