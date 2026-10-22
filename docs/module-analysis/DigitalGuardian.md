@@ -1843,3 +1843,23 @@ Left unmarked:
 | 14DA0 | null, extended, extending, other | r1 (dg26 a) + r2 (dg27_retract) | ran |
 | 13248 | ball 0 / ball 1 / -1 | r1, r4 (dg26 c) / forced (dg27_force: second hit id 0xffff) | ran |
 | 12B04 | idx -1; token unset; IS04 there / gone; loop sound set / not | forced (dg27_force) / r4 (c) / r1, r3 (b) | ran |
+
+## 2026-10-22: the head ctor's filter and body marks (dg28); gcov runs dg28 arms/melee/msgs + ctor/fight/slotsc
+
+- Ctor 18264 finished: `CVisualKnowledge::SetLocator`/`SetMaterialFilter` (inline, no DOL fn) set
+  locator 0x1088 (0x18DE8) and the filter (0x18DEC..0x18E5C: include kMT_Solid, exclude
+  Character|Player, type 3). The 0xEA4..0xEF0 optional (flag 0xEF0 = 0) is not modelled; its
+  readers 174F4/17A64/17F64 are unported.
+- 676C's filter was wrong: include kMT_Solid, exclude CollisionActor|AIPassthrough|Player. A004's
+  tail is `DisableDestinationAlpha` (IRenderer vtable 0x12C at 0xA118), not a second SetDestinationAlpha.
+- Marked: 18264, 9634, 7B84, 9A48, 9AA8, A688 (port-only EnsureBodyActive, as 17C98), A384, 9FE4,
+  10, 676C, A004, 1570. Not marked: 9DBC (retail returns token 0xE68 when 0x128C&0x40; the host
+  has no xE68), and the bodies below whose arms no run reached yet.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 18264 | PART x4 / SCAN x3 ids unset | forced (dg28_ctor: ids 0xffffffff at :237) | ran |
+| 18264 | the rest | natural (ctor/fight) | ran; closing-brace EH edges only unrun |
+| 9634 7B84 9A48 9AA8 A688 A384 9FE4 10 676C A004 1570 | all | natural (arms/melee/msgs/fight) | ALL-ARMS |
+| 9A9C 966C 9638 7600 F0 9A0C 7D8C 3300 34E8 39CC 4878 4D54 5140 3DA8 2CC4 28D0 2A28 | — | no run reaches | unhit |
+| 9A60 9678 308C 768C 70B4 A3D4 6864 1700 1994 18B4 17DC 2578 4E00 | some | natural | partial |
