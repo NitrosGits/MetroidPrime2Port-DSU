@@ -788,7 +788,8 @@ void CMinorIng::UpdateSafeZone(CStateManager& mgr) {
 // @ fn_44_3780
 void CMinorIng::PickSafeZone(CStateManager& mgr, const CVector3f& pos) {
   const float distSq = (pos - GetTranslation()).MagSquared();
-  if (distSq > mData.mHearingRadius * mData.mHearingRadius) {
+  // 0x37E4..0x37EC fcmpo, cror eq,lt,eq, bne to the return: a NaN distance returns too.
+  if (!(distSq <= mData.mHearingRadius * mData.mHearingRadius)) {
     return;
   }
   const TUniqueId zoneId = mgr.GetSafeZoneManager()->PointIsInWhichSafeZone(mgr, pos);
@@ -947,7 +948,8 @@ bool CMinorIng::InMaxRange(CStateManager& mgr, const CTriggerData&) const {
 // @ fn_44_5F60
 bool CMinorIng::ShouldFire(CStateManager& mgr, const CTriggerData&) const {
   const CTriggerData zero(0.f);
-  if (mTouched || mAttackTimer > 0.f || !IsTargetInAttackAngle(mgr) || !InMaxRange(mgr, zero) ||
+  // 0x5F9C..0x5FA4 fcmpo, cror eq,lt,eq, bne to false: a NaN timer answers false too.
+  if (mTouched || !(mAttackTimer <= 0.f) || !IsTargetInAttackAngle(mgr) || !InMaxRange(mgr, zero) ||
       !LineOfSight(mgr, zero) || !IsMoveClear(mgr, CVector3f::Zero(), true)) {
     return false;
   }
@@ -1807,15 +1809,17 @@ rstl::optional_object< CAABox > CMinorIng::GetTouchBounds() const {
 
 // @ fn_44_25E4
 void CMinorIng::PuddleDamage(CStateManager& mgr, TUniqueId sender) {
-  if (mDamageFxTimer > 0.f) {
+  // 0x2608..0x2610 fcmpo, cror eq,lt,eq, bne to the return: a NaN timer returns too.
+  if (!(mDamageFxTimer <= 0.f)) {
     return;
   }
   const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(sender));
   if (weapon == nullptr) {
     return;
   }
+  // 0x264C..0x2654 fcmpo, cror eq,gt,eq, bne to the normal arm: a NaN damage is normal.
   const bool heavy =
-      !(weapon->GetCurrentDamageInfo().GetDamage(mData.mIngSpotVulnerability) < 10.f);
+      weapon->GetCurrentDamageInfo().GetDamage(mData.mIngSpotVulnerability) >= 10.f;
   const rstl::optional_object< TLockedToken< CGenDescription > >& hitEffect =
       heavy ? mHeavyHitEffect : mNormalHitEffect;
   CEntity* fx = nullptr;
@@ -2133,7 +2137,8 @@ void CMinorIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObj
 
 // @ fn_44_8D2C
 void CMinorIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  if ((mForm == kF_Puddle || mForm == kF_IntoPuddle) && GetHealthInfo()->GetHP() > 0.f) {
+  // 0x8D84..0x8D8C fcmpo, cror eq,lt,eq, bne to the return: a NaN HP returns too.
+  if ((mForm == kF_Puddle || mForm == kF_IntoPuddle) && !(GetHealthInfo()->GetHP() <= 0.f)) {
     return;
   }
   EnsureBodyActive(mgr);
