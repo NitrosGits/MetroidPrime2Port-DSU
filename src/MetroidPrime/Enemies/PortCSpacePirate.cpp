@@ -1373,21 +1373,21 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
   RenderLauncherModel(mgr, GetTransform(), GetModelFlags());
 }
 
-// Retail fn_72_E3D8 adds a force-field trigger's push to the ragdoll's torso impulse once the
-// ragdoll is primed; with no ragdoll (xb30_ is never set) it is CPatterned::Touch.
 // Retail fn_72_E3D8 (0xC0): the base class's touch first, then a force-field trigger's push
 // onto the ragdoll's torso impulse (asm 0xE3F8-0xE47C).  The conditions, each one a branch that
 // skips the push:
 //   0xE3FC-0xE400: the ragdoll (0xb30) is there,
-//   0xE404-0xE40C: the ragdoll's flag byte 0x70 carries 0x40 (the ragdoll has stopped - the
-//     host's CRagDoll keeps that as IsOver()),
+//   0xE404-0xE40C: the ragdoll's flag byte 0x70 carries 0x40 (CRagDoll::mPrimed: the DOL's
+//     CRagDoll::Prime sets it, rlwimi r0,r3,6,25,25 at 0x80160610),
 //   0xE410-0xE41C: the other actor is a CScriptTrigger,
-//   0xE420-0xE428: the trigger's flag byte 0x20 carries 0x80 (the CEntity's flag byte's bit 7 -
-//     the host's CEntity keeps that as GetUpdateDuringCinematicSkip()),
-//   0xE42C-0xE434: the trigger's word 0x1a0 carries 0x10000 (the host's GetTriggerFlags()),
-//   0xE438-0xE448: the trigger's float 0x19c is above zero (the host's GetForceMagnitude()),
+//   0xE420-0xE428: the trigger's flag byte 0x20 carries 0x80 (CEntity::mActive),
+//   0xE42C-0xE434: the trigger's word 0x1a0 carries 0x8000 (rlwinm. r0,r0,0,16,16 =
+//     kTFL_DetectAI),
+//   0xE438-0xE448: the trigger's float 0x19c is above zero (GetForceMagnitude()),
 // and then the ragdoll's 0xb8, 0xbc and 0xc0 take the trigger's 0x190, 0x194 and 0x198 (the
-// host's force field, added to the ragdoll's impulse).
+// force field, asm 0xE44C-0xE47C).  0xb8..0xc0 lie past the DOL CRagDoll (0xa0): they belong to
+// the module's own pirate ragdoll (MP1's CPirateRagDoll::x84_torsoImpulse), which the port does
+// not have - xb30_ is never set, so the push is left out.
 void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   TraceCall(*this, "Touch", 0);
   CPatterned::Touch(actor, mgr);
@@ -1395,23 +1395,24 @@ void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   if (ragdoll == nullptr) {
     return; // 0xE3FC-0xE400
   }
-  if (!ragdoll->IsOver()) {
+  if (!ragdoll->IsPrimed()) {
     return; // 0xE404-0xE40C
   }
   CScriptTrigger* trigger = TCastToPtr< CScriptTrigger >(&actor);
   if (trigger == nullptr) {
     return; // 0xE410-0xE41C
   }
-  if (!trigger->GetUpdateDuringCinematicSkip()) {
+  if (!trigger->GetActive()) {
     return; // 0xE420-0xE428
   }
-  if ((trigger->GetTriggerFlags() & 0x10000) == 0) {
+  if ((trigger->GetTriggerFlags() & kTFL_DetectAI) == 0) {
     return; // 0xE42C-0xE434
   }
   if (trigger->GetForceMagnitude() <= 0.f) {
     return; // 0xE438-0xE448
   }
-  ragdoll->AddImpulse(trigger->GetForceField()); // 0xE44C-0xE47C
+  // 0xE44C-0xE47C: the pirate ragdoll's torso impulse += trigger->GetForceField() (not ported,
+  // see above).
 }
 
 // Retail fn_72_C538.
