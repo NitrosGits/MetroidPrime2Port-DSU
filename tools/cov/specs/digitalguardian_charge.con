@@ -1,24 +1,53 @@
 # DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark): the head's ChargeAttack
-# (fn_14_16A50) and its three cutting lasers (fn_14_FB70 / FE14 / F6A4 / FAEC), driven with the head
-# (e0035000f) in the state from the start, then forced through the sweep's end (a large dt) and
-# the boosting player with one laser left; XDEL deletes the head (FAEC via AcceptScriptMsg).
+# (fn_14_16A50), its three cutting lasers (fn_14_FB70 / FE14 / F6A4 / FAEC) and the head's
+# projectile event (fn_14_17BBC). The player morphs; the head (e0035000f) is put in the state.
+# One laser is deleted by id (the run's own ids, u063f..u0641, printed at f225), so F6A4 meets a
+# missing laser; a large dt ends the sweep (the lasers but the first go), first without and then
+# with the boost shield (flag 0x01); msg 3 (no arm); back-to-back statecalls start a sweep on the
+# old animation; six fresh sweeps (400 frames: the projectile event comes late), the first left
+# mid-animation (the abort); XDEL deletes the head (FAEC via AcceptScriptMsg).
+# The morph press is timing-sensitive: check `status` at f190 says morph 1.
 # Run: tools/cov/run.sh tools/cov/specs/digitalguardian_states.py <out> 1baa96c2,09_cliff_temple_dark
-#   --con tools/cov/specs/digitalguardian_charge.con --fast --frames 3000
+#   --con tools/cov/specs/digitalguardian_charge.con --fast --frames 2900
 @f30 layer 3
-@f60 layer 11; god 1
+@f60 layer 11; god 1; give morphBall; give boostBall
 @f150 send e00350060 Activate; send e0035000f Activate
+@f160 fastmorph 1; press x 30
+@f190 status
 @f200 place e0035000f player 20; fsm e0035000f ChargeAttack
-@f260 objs Plasma; obj e0035000f
+@f225 objs Plasma; status
+@f230 send u0641 Delete
+@f234 statecall e0035000f ChargeAttack 1 0.016; objs Plasma
+# the sweep's end (dt 30): the lasers but the first go; morphed, no boost shield yet
+@f237 statecall e0035000f ChargeAttack 1 30; objs Plasma
+@f250 boost
+@f260 statecall e0035000f ChargeAttack 1 0.016; statecall e0035000f ChargeAttack 3; objs Plasma
 @f320 objs Plasma; obj e0035000f
-# a fresh sweep, then the time left run out (dt 30): the lasers but the first go
-@f400 statecall e0035000f ChargeAttack 2; statecall e0035000f ChargeAttack 0; statecall e0035000f ChargeAttack 1; statecall e0035000f ChargeAttack 1 0.016
-@f402 statecall e0035000f ChargeAttack 1 30; objs Plasma
-# the boosting player with one laser left
-@f410 fastmorph 1; press x 1
-@f440 boost
-@f444 statecall e0035000f ChargeAttack 1 0.016; statecall e0035000f ChargeAttack 1 0.016; objs Plasma
-@f470 press x 1
-@f520 statecall e0035000f ChargeAttack 2; objs Plasma
-@f530 fsm e0035000f ChargeAttack
-@f600 send e0035000f Delete
-@f640 objs Plasma
+# a sweep started on the old animation (no projectile event: its time left, fn_14_FB70 0xFC34)
+@f340 statecall e0035000f ChargeAttack 2; statecall e0035000f ChargeAttack 0; statecall e0035000f ChargeAttack 1; statecall e0035000f ChargeAttack 1 0.016
+# unmorph; fresh sweeps after fresh picks (the projectile event's arms by 0x10D0); the first is
+# left mid-animation (the abort at 0x16CE0)
+@f335 press x 30
+@f360 fsm e0035000f FaceTarget
+@f362 codecall e0035000f SelectProjectileAttack; fsm e0035000f ChargeAttack
+@f380 fsm e0035000f FaceTarget; obj e0035000f
+@f400 fsm e0035000f FaceTarget
+@f430 codecall e0035000f SelectProjectileAttack; fsm e0035000f ChargeAttack
+@f790 obj e0035000f; objs Plasma
+@f800 fsm e0035000f FaceTarget
+@f830 codecall e0035000f SelectProjectileAttack; codecall e0035000f SelectProjectileAttack; fsm e0035000f ChargeAttack
+@f1190 obj e0035000f; objs Plasma
+@f1200 fsm e0035000f FaceTarget
+@f1230 codecall e0035000f SelectProjectileAttack; codecall e0035000f SelectProjectileAttack; codecall e0035000f SelectProjectileAttack; fsm e0035000f ChargeAttack
+@f1590 obj e0035000f; objs Plasma
+@f1600 fsm e0035000f FaceTarget
+@f1630 codecall e0035000f SelectProjectileAttack; fsm e0035000f ChargeAttack
+@f1990 obj e0035000f; objs Plasma
+@f2000 fsm e0035000f FaceTarget
+@f2030 codecall e0035000f SelectProjectileAttack; codecall e0035000f SelectProjectileAttack; fsm e0035000f ChargeAttack
+@f2390 obj e0035000f; objs Plasma
+@f2400 fsm e0035000f FaceTarget
+@f2430 codecall e0035000f SelectProjectileAttack; codecall e0035000f SelectProjectileAttack; codecall e0035000f SelectProjectileAttack; fsm e0035000f ChargeAttack
+@f2790 obj e0035000f; objs Plasma
+@f2800 send e0035000f Delete
+@f2840 objs Plasma

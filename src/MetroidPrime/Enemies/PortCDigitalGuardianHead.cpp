@@ -1331,7 +1331,8 @@ DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 // truncated, at most 3 and at least 1 (0x16C68 / 0x16C74), with the head's id; with flag 0x01
 // (0x16C94) and on Deactivate (0x16D30..0x16D3C) the count is 0 and the id invalid. CPlayer has
 // no setter for the two (only GetEnemyLockOnActorId/GetEnemyLockOnCount), so the HUD shows no
-// lock-on ring during the charge.
+// lock-on ring during the charge. Every other arm ran (digitalguardian_charge.con), but the
+// state stays unmarked until the ring is ported.
 void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1366,11 +1367,56 @@ void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float
 
 // fn_14_FAEC: every laser id (0x1080, count 0x107C; the loop at 0xFB1C..0xFB44) is deleted
 // (DeleteObjectRequest at 0xFB2C) and the count is 0 (0xFB4C).
+// Every arm ran (the XDEL, a sweep's start and Deactivate; tools/cov/specs/digitalguardian_charge.con).
+// @ fn_14_FAEC
 void CDigitalGuardianHead::xFAEC_(CStateManager& mgr) {
   for (int i = 0; i < x107C_.size(); ++i) {
     mgr.DeleteObjectRequest(x107C_[i]);
   }
   x107C_.clear();
+}
+
+// fn_14_17BBC: a projectile event (type 0, the beq at 0x17BF4) never reaches the base: by the
+// projectile attack at 0x10D0 (the cmpwi chain at 0x17C00..0x17C1C) the pulse fires (0,
+// fn_14_111E0 at 0x17C28), the charge's shot fires and its lasers reset (1, fn_14_10CA0 at
+// 0x17C34 and fn_14_FA50 at 0x17C40) or the missiles fire (2, fn_14_10A2C at 0x17C4C); any other
+// attack does nothing, and the event is handled either way (li 1 at 0x17C50). Every other event
+// goes to CPatterned::DoUserAnimEvent (0x17C70).
+// Not marked: the three spawners are stand-ins (not ported).
+void CDigitalGuardianHead::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
+                                           EUserEventType type, float dt) {
+  if (type != kUE_Projectile) {
+    CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+    return;
+  }
+  switch (x10D0_) {
+  case 0:
+    StandInFn("fn_14_111E0 (head pulse shot)");
+    break;
+  case 1:
+    StandInFn("fn_14_10CA0 (head charge shot)");
+    xFA50_(mgr);
+    break;
+  case 2:
+    StandInFn("fn_14_10A2C (head missiles)");
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_FA50: each laser found (the ids at 0x1080, count 0x107C; the loop at 0xFA80..0xFAC8;
+// ObjectById at 0xFA90, the null test at 0xFA94) resets (vtable 0x90, ResetBeam with false;
+// 0xFAB0). The ids stay.
+// Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
+// Not marked: no run. It needs the charge (0x10D0 == 1) at the projectile event, and this stage's
+// odds never picked it (codecall SelectProjectileAttack drew 0 and 2 only).
+void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
+  for (int i = 0; i < x107C_.size(); ++i) {
+    if (CPlasmaProjectile* laser = TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(x107C_[i]))) {
+      laser->ResetBeam(mgr, false);
+    }
+  }
 }
 
 // fn_14_FB70: the lasers go (fn_14_FAEC, 0xFBB8) and the phase is 0.0f (.rodata 0x960, 0xFBCC).
@@ -1385,6 +1431,9 @@ void CDigitalGuardianHead::xFAEC_(CStateManager& mgr) {
 // from the locator at centre + offset (fn_14_FE14 at 0xFD94; the cmpwi 3 at 0xFDA0), the phase
 // growing by 2.0943952f (.rodata 0x9B4) each. Flag 0x01 clears (0xFDB0) and the centre is kept at
 // 0x1098 (0xFDBC..0xFDCC).
+// Every arm ran (digitalguardian_charge.con): the projectile event's time on the attack's
+// animation, the time left on an older one (the back-to-back statecalls).
+// @ fn_14_FB70
 void CDigitalGuardianHead::xFB70_(CStateManager& mgr) {
   xFAEC_(mgr);
   x108C_ = 0.f;
@@ -1419,6 +1468,9 @@ void CDigitalGuardianHead::xFB70_(CStateManager& mgr) {
 // first (1, 0xFF48) and the attributes 0x20000 (0xFF2C). When it exists (0xFF74) it fires (vtable
 // 0x94, Fire with false; 0xFFB8) along LookAt(from, to, up) (0xFF8C), is added (AddObject at
 // 0xFFC4) and its id appended (0xFFD8..0xFFE4).
+// Every live arm ran (digitalguardian_charge.con). The count >= 3 return is dead: the only caller
+// (fn_14_FB70) empties the list (fn_14_FAEC at 0xFBB8) and calls three times.
+// @ fn_14_FE14
 void CDigitalGuardianHead::xFE14_(CStateManager& mgr, const CVector3f& from,
                                   const CVector3f& to) {
   if (x107C_.size() >= 3) {
@@ -1453,6 +1505,8 @@ void CDigitalGuardianHead::xFE14_(CStateManager& mgr, const CVector3f& from,
 // 0.0f, radius * sin) of the phase (0xF948..0xF9C8), the phase growing by 2.0943952f (0xF9FC)
 // only for a laser found.
 // Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
+// Not marked: the spawn-morph arm (CPlayer 0x390 non-zero, 0xF8BC) needs a spawn point that starts
+// the player morphed, and the time at most 0.0f (0xF700) did not run; every other arm ran.
 void CDigitalGuardianHead::xF6A4_(CStateManager& mgr, float dt) {
   if (x107C_.empty() || x1090_ <= 0.f) {
     return;

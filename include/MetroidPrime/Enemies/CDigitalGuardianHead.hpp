@@ -43,6 +43,8 @@ public:
   // CEntity
   void Think(float dt, CStateManager& mgr) override;                        // fn_14_17C98
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override; // fn_14_17D38
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override; // fn_14_17BBC
 
   // CActor
   void PreRender(CStateManager& mgr) override;                 // fn_14_17A44
@@ -276,6 +278,7 @@ private:
 
   // The charge attack's three cutting lasers (ChargeAttack, fn_14_16A50).
   void xFAEC_(CStateManager& mgr);           // fn_14_FAEC: the lasers are deleted
+  void xFA50_(CStateManager& mgr);           // fn_14_FA50: the lasers reset
   void xFB70_(CStateManager& mgr);           // fn_14_FB70: the sweep starts, three lasers fire
   void xF6A4_(CStateManager& mgr, float dt); // fn_14_F6A4: the lasers close in on the player
   // fn_14_FE14: one more laser (at most three) fired from from toward to.
