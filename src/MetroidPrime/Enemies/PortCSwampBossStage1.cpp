@@ -1806,8 +1806,9 @@ void CSwampBossStage1::Think(float dt, CStateManager& mgr) {
   xb58_radarPresent = AnyJointOnRadar(mgr);
 }
 
-// @ fn_78_9B74 (kSM_Damage branch): route a collision joint's hit to the boss body. Returns false
-// when retail returns before CPatterned::AcceptScriptMsg (the same projectile hit again).
+// fn_78_9B74's kSM_Damage branch ('XDMG', 0x9E10; the function's marker is on AcceptScriptMsg):
+// route a collision joint's hit to the boss body. Returns false when retail returns before
+// CPatterned::AcceptScriptMsg (the same projectile hit again).
 bool CSwampBossStage1::ApplyDamageMsg(CStateManager& mgr, const CScriptMsg& msg) {
   if (!GetAlive()) {
     return true;
