@@ -1786,3 +1786,38 @@ trigger's entry, one per hit, from gdb convenience variables).
   sub-object constructors and destructors: they need port-only classes for the guest's own
   records (the boost ball, the enrage sphere, the scatter shot's projectile), which is a bigger
   job than this slice.
+
+## Slice 36 (2026-10-22): the BoostBallRoll state (fn_10_A3B0)
+
+- The merge of `port` was a fast-forward (the base stays d4d094ded).
+- **fn_10_A3B0 (0x0000A3B0, 0x384 bytes) - the BoostBallRoll state.** Every message runs the
+  attack bookkeeping with id 0x20000 (fn_10_1B478, the `lis r4, 0x2` at 0x0000A3EC, the call at
+  0x0000A3F4), the shield flag (fn_10_105F4 at 0x0000A408) and turns the "BoostThingy" effect on
+  (the string at lbl_10_rodata_2E4 + 7, the SetEffectState at 0x0000A434).
+  - Activate (0x0000A464): the script state "SI20" (kSS_InternalState2, 0x0000A48C); the boost ball
+    is spawned (fn_10_9E00 at 0x0000A4AC) when there is none (the uid 0xE38 is kInvalidUniqueId,
+    0x0000A49C); the actor's position goes to the ball's target 0xE98..0xEA0 and the roll's time
+    0xEA4 = 0.0f (0x0000A4B0..0x0000A4D0).
+  - Update (0x0000A4D8): the boost ball's bit 0x20 of 0xEBC must be clear (the `extrwi` at
+    0x0000A4DC takes the bit 26 = 1u << (31 - 26) = 0x20), the ball's actor must exist
+    (fn_10_9920 at 0x0000A4EC) and the bit 0x40 of 0x318 must be set (fn_10_2F04 at 0x0000A4FC, the
+    `clrlwi` at 0x0000A500 takes the bit 24 = 1u << (31 - 24) = 0x80 of it). Then fn_10_A1C0
+    (0x0000A514), the shield flag 0xCD0 is cleared (0x0000A520) and the ball's actor takes the
+    damage (0x0000A654).
+  - Deactivate (0x0000A6DC): the script state "SI21" (kSS_InternalState3, 0x0000A704).
+  - Every message then rolls the ball to the hint: with a hint (the uid 0xEC0, 0x0000A66C)
+    fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
+    (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
+- **fn_10_A154 (0x0000A154, 0x6C bytes) - `RollBoostBallToPosition`** (the small leaf, ported):
+  the actor's position (0x54/0x58) against the ball's target (0xE98/0xE9C) in the XY plane (the
+  squares at 0x0000A180 and 0x0000A184, the sum at 0x0000A188) against lbl_10_rodata_278 = 4.0f
+  (0x0000A18C); when the actor is close enough (0x0000A1B0) the roll's time 0xEA4 grows by dt
+  (0x0000A1B4), else the ball's target becomes the actor's position (0x0000A194..0x0000A1A4) and
+  the time is reset to 0.0f (0x0000A1A8).
+- **The callees that are not ported** (their calls stay stand-ins, so the state keeps no marker):
+  fn_10_A1C0 (0x1F0 bytes - it picks the roll's hint and the roll's parameters), fn_10_AA04
+  (0x760 bytes - the roll to the hint) and fn_10_A06C (0xE8 bytes - the ball's transform and the
+  roll emitter). The damage the Update arm applies to the ball's actor is built by the retail on
+  the stack (the damage min(the health - 1.0f, the float at 0x314), the radius 0.0f, the
+  knockback 0.0f and the weapon mode 0x13 with the bits 16, 17, 18, 24 and 25 cleared); the port
+  does not reproduce that hit.
