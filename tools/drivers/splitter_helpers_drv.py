@@ -232,6 +232,11 @@ PLANS = {
     # fn_75_E788).
     "K3": [(1, "pick:0532"), (2, "dump:objs splitter"), (3, "kill u0532"), (6, "dump:objs splitter"),
            (12, "dump:objs splitter"), (20, "dump:objs splitter")],
+    # K5 (the helpers lane): the chassis alive, with dumps so the death timer's effect on the
+    # listing can be seen (the Digital Guardian's DestroyActiveSplitters gives the first
+    # chassis the delay 0.0, so its timer at 0xD20 is zero and it dies at the next update).
+    "K5": [(1, "pick:0532"), (4, "dump:objs splitter"), (8, "dump:objs splitter"),
+           (12, "dump:objs splitter"), (16, "dump:objs splitter")],
     "D": [(2, "dump:objs collision"), (3, "dump:objs splitter"), (4, "dump:obj u%s" % "0532")],
     "T": ring(10, 0, 10) + ring(30, 0, 36) + ring(25, 12, 62) + missiles(88, 6) + [(101, "tp:0:20:0")]
          + missiles(102, 6) + [(115, "tp:20:0:0")] + missiles(116, 6) + [(129, "tp:-20:0:0")]

@@ -140,9 +140,9 @@ BODIES = {
                 'the head\'s state at 0xEE0 is 1: the LightShield effect'),
     'SHIELD2': ('2BE0 GetShieldEffect', 'CSplitterCommandModule::PortGetShieldEffect(',
                 'the head\'s state at 0xEE0 is 2: the DarkShield effect'),
-    'LANDED0': ('F5F8 ctor', 'loc:PortCSplitterMainChassis.cpp:1887',
+    'LANDED0': ('F5F8 ctor', 'loc:PortCSplitterMainChassis.cpp:1901',
                 'the data\'s flag word at 0x68 has its 0x1 bit: the landed count at 0xD00 is 0'),
-    'NULLCAST': ('9AF8 SetCollisionVulnerability', 'loc:PortCSplitterMainChassis.cpp:682',
+    'NULLCAST': ('9AF8 SetCollisionVulnerability', 'loc:PortCSplitterMainChassis.cpp:683',
                  'the collision actor\'s id is invalid: the cast to a CCollisionActor fails'),
     'MOVE': ('2154 MoveTo', 'CSplitterCommandModule::PortMoveTo(',
              'the timer at 0xEF4 is above zero: the head is teleported to the destination'),
@@ -170,6 +170,37 @@ BODIES = {
              'the flag byte at 0xD41 has its 0x80 bit: the head is not reserved'),
     'RESG': ('E788 ReserveDock', 'CSplitterMainChassis::PortReserveDock(',
              'the flag byte at 0xD40 has its 0x01 bit: the head is not reserved'),
+    'DEATHT': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
+               'the flag byte at 0xD41 has its 0x01 bit and the timer at 0xD20 is zero: the'
+               ' chassis dies'),
+    'DEATHALIVE': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
+                   'the chassis is dead: the timer at 0xD20 is not counted down'),
+    'TIMERHI': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
+                'the timer at 0xD20 is above zero: the chassis does not die yet'),
+    'TURNX': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+              'the head\'s Y column has an x: the head looks along its flat Y column'),
+    'TURNY': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+              'the head\'s Y column has a y: the head looks along its flat Y column'),
+    'FINDAREA': ('2280 FindChassis', 'CSplitterCommandModule::PortFindChassis(',
+                 'the head\'s area id is not the chassis\'s: the other-area arm'),
+    'FINDNORES': ('2280 FindChassis', 'CSplitterMainChassis::PortReserveDock(',
+                  'the chassis is dead: the reserve fails'),
+    'FINDDIST': ('2280 FindChassis', 'CSplitterCommandModule::PortFindChassis(',
+                 'the head is far away: the chassis is not nearer than the best'),
+    'TURNZERO2': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+                  'the head\'s Y column has no x and no y and its Z column is the up vector:'
+                  ' the head only turns'),
+    'ACCEPT': ('E6E4 AcceptHead', 'CSplitterMainChassis::PortAcceptHead(',
+               'the chassis already has a command module at 0xC6C: the head is not accepted'),
+    'D3C': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
+            'the id at 0xCC0 is valid and the counter at 0xC48 is not zero: the timer at 0xD3C'
+            ' is counted up'),
+    'TURNCLEAR': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+                  'the flag byte at 0xF6A has no 0x20 bit: the head does not turn upright'),
+    'TURNSLERP': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+                  'the head\'s Z column points away from the up vector: the head is slerped'),
+    'TURNZERO': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
+                 'the head\'s Y column has no x and no y: the head only turns'),
     'VULN7': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
               'the boost ball (the weapon type 7) knocks the chassis back'),
     'VULN6': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
@@ -411,6 +442,72 @@ elif WHICH == 'NULLCAST':
     # the walk skips the actor (asm 0x9B44-0x9B4C).  The id is in r15 when the line is reached
     # (the build keeps it there: movzwl 0x48(%rax),%r15d; mov %r15d,%esi).
     FORCE = [(_label, _where, [], ['$r15 = 0xffff'], 0, _what)]
+elif WHICH == 'FINDAREA':
+    # The head's area id is a value the chassis does not have: the other-area arm of the walk
+    # (asm 0x22F8-0x2304).
+    FORCE = [(_label, _where, [], ['$this->mAreaId.value = 12'], 0, _what)]
+elif WHICH == 'FINDNORES':
+    # The chassis is dead: the reserve fails and the walk skips it (asm 0x2318-0x2320).
+    FORCE = [(_label, _where, [], [CH + '->mAlive = 0'], 0, _what)]
+elif WHICH == 'FINDDIST':
+    # The head is far away: the chassis is not nearer than the best (asm 0x2324-0x234C).
+    FORCE = [(_label, _where, [], ['$this->mTransform.m03 = 5000.f'], 0, _what)]
+elif WHICH == 'TURNZERO2':
+    # The head's Y column has no x and no y and its Z column is the up vector, so the angle is
+    # below the turn and the head only turns (asm 0x2A38-0x2A7C).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m10 = 0.f', '$this->mTransform.m11 = 0.f',
+               '$this->mTransform.m12 = 1.f', '$this->mTransform.m20 = 0.f',
+               '$this->mTransform.m21 = 0.f', '$this->mTransform.m22 = 1.f'], 0, _what)]
+elif WHICH == 'ACCEPT':
+    # The chassis already has a command module at 0xC6C: the accept answers false (asm 0xE708,
+    # 0xE70C).
+    FORCE = [(_label, _where, [], [CH + '->mCommandModuleId.value = 0x531'], 0, _what)]
+elif WHICH == 'TIMERHI':
+    # The flag byte at 0xD41 has its 0x01 bit and the timer at 0xD20 is above zero: the chassis
+    # does not die yet (asm 0xB0B8, 0xB0C0, 0xB0C8).
+    FORCE = [(_label, _where, [],
+              [CH + '->mFlagsD41 |= 0x1', CH + '->mTimerD20 = 10.f'], 0, _what)]
+elif WHICH == 'TURNX':
+    # The head's Y column has an x (asm 0x2A48-0x2A7C): the head looks along it.
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m10 = 1.f', '$this->mTransform.m11 = 0.f',
+               '$this->mTransform.m12 = 0.f'], 0, _what)]
+elif WHICH == 'TURNY':
+    # The head's Y column has a y (asm 0x2A48-0x2A7C): the head looks along it.
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m10 = 0.f', '$this->mTransform.m11 = 1.f',
+               '$this->mTransform.m12 = 0.f'], 0, _what)]
+elif WHICH == 'DEATHT':
+    # The flag byte at 0xD41 has its 0x01 bit and the timer at 0xD20 is zero (the Digital
+    # Guardian's DestroyActiveSplitters gives the first chassis the delay 0.0): the chassis dies
+    # at the next timer update (asm 0xB094, 0xB0A0, 0xB0B8, 0xB0C0, 0xB0F0).
+    FORCE = [(_label, _where, [],
+              [CH + '->mFlagsD41 |= 0x1', CH + '->mTimerD20 = 0.f'], 0, _what)]
+elif WHICH == 'DEATHALIVE':
+    # The same, but the chassis is dead: the timer at 0xD20 is not counted down (asm 0xB0A0).
+    FORCE = [(_label, _where, [],
+              [CH + '->mFlagsD41 |= 0x1', CH + '->mTimerD20 = 0.f', CH + '->mAlive = 0'],
+              0, _what)]
+elif WHICH == 'D3C':
+    # The id at 0xCC0 is valid and the counter at 0xC48 is not zero: the timer at 0xD3C is
+    # counted up (asm 0xB060, 0xB064, 0xB06C, 0xB070, 0xB07C).
+    FORCE = [(_label, _where, [],
+              [CH + '->mSyncId.value = 0x521', CH + '->mIntC48 = 1'], 0, _what)]
+elif WHICH == 'TURNCLEAR':
+    # The flag byte at 0xF6A has no 0x20 bit: the body returns at once (asm 0x29BC-0x29C8).
+    FORCE = [(_label, _where, [], ['$this->mAutoDestructFlags &= ~0x20'], 0, _what)]
+elif WHICH == 'TURNSLERP':
+    # The head's Z column points away from the up vector: the angle is above the turn and the
+    # head is slerped (asm 0x2A38-0x2A44, 0x2B10, 0x2B38, 0x2B64, 0x2B74, 0x2BA4, 0x2BB0).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m20 = 0.f', '$this->mTransform.m21 = 0.f',
+               '$this->mTransform.m22 = -1.f'], 0, _what)]
+elif WHICH == 'TURNZERO':
+    # The head's Y column has no x and no y: the head only turns (asm 0x2A48-0x2A7C).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m10 = 0.f', '$this->mTransform.m11 = 0.f',
+               '$this->mTransform.m12 = 1.f'], 0, _what)]
 elif WHICH == 'MOVE':
     # The timer at 0xEF4 is above zero: the head is teleported to the destination (asm 0x2180).
     FORCE = [(_label, _where, [], ['$this->mAutoDestructTimer = 10.0f'], 0, _what)]
