@@ -1878,16 +1878,23 @@ trigger's entry, one per hit, from gdb convenience variables).
     health - 1.0f (lbl_10_rodata_264, 0x0000A544); the float at 0x314 (fn_10_2EFC, 0x0000A548);
     the damage is the health - 1.0f unless the compare is unordered, when it is the float at
     0x314 (0x0000A54C..0x0000A558);
-  - the damage info (0x0000A564..0x0000A5EC): the weapon mode word 0x13 with the bits 16, 17, 18,
-    24 and 25 cleared (the `rlwimi` chain), the damage, the radius damage amount (the same value),
-    the damage radius 0.0f, the knockback 0.0f, the three sound ids 0 and the flags byte with its
-    bit 0x80 cleared. The host's CWeaponMode carries only the type (0 = kWT_Power) and the host's
-    CDamageInfo defaults the sound ids to 0xffff.
-  - the filter (0x0000A630..0x0000A650): the actor's own uid in the include and the exclude
-    lists; the host's filter carries the material types, so the port uses the same filter as its
-    other damage calls.
-  - the damage (0x0000A654): CStateManager::ApplyDamage to the ball's actor (fn_10_9920) with the
-    actor as the damager and the owner.
+  - the damage value (0x0000A54C..0x0000A558): the `fcmpo` of the float at 0x314 (fn_10_2EFC,
+    the call's result in f1) with the health - 1.0f - `bge` takes the health - 1.0f, the other
+    way the float at 0x314 (the unordered case too): the damage is min(the float at 0x314, the
+    health - 1.0f);
+  - the damage info (0x0000A564..0x0000A5EC): the weapon mode word 0x13 in the high half (the
+    `li r0, 0x13` and the `rlwimi` at 0x0000A560/0x0000A564) with the low half and the bits 16,
+    17, 18, 24 and 25 cleared - the type is 0x13 = 19 = kWT_UnknownSource and the mode's flags
+    (the charged, the comboed, the instant-kill) are all false; the damage, the radius damage
+    amount (the same value, 0x0000A568), the damage radius 0.0f, the knockback 0.0f, the three
+    sound ids 0 and the flags byte with its bit 0x80 cleared. The host's CDamageInfo defaults the
+    sound ids to 0xffff.
+  - the filter (0x0000A5B4..0x0000A5F0, 0x0000A5F8/0x0000A62C): the include list is the material
+    bit 1 << 0x3B (lbl_10_data_1E0 = 0x3B through the `__shl2i` at 0x0000A5F0), which is 59 =
+    kMT_Solid, the exclude list is empty and the type is 3 = kFT_IncludeExclude.
+  - the damage (0x0000A654): all three uids are this actor's own (`lhz 0x8(r30)` at
+    0x0000A630..0x0000A650) - the retail damages the Dark Samus herself; the ball's actor is not
+    used. The position is sZeroVector (0x0000A600).
   - **What the port missed**: the bit 0x20 of 0xEBC is set (`rlwimi` at 0x0000A660) and the
     shield flag 0xCD0 becomes 1 (0x0000A668). Without them the arm re-ran every frame.
 - **The corrected bit comments**: the `clrlwi` at 0x0000A500 takes the bool's low byte, so the
