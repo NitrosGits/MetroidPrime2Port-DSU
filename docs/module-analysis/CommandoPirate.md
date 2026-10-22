@@ -2093,3 +2093,44 @@ The destructors' member **order** differs from retail's (host layout is the host
 "host objects outgrow retail"), but every destroyed member is an independent resource owner, so the
 order has no observable effect; that is what keeps `D47C`/`D634` H rather than a body to write.
 B progress: the rows leave the B denominator (126 -> 122), the marked count is unchanged (75).
+
+## The tail11 rows (2026-10-23)
+
+Ten class-B rows: eight are **H** (the parameter block's two embedded types and the rstl
+vector/construct helpers the block and the collision-actor list use), and the two team helpers
+(`1930`, `19D8`) were already ported by cp3 and keep their markers - re-verified here against the
+asm and re-run. No source change, so no new `// @` marker.
+
+| fn | what it is | evidence | host equivalent |
+|---|---|---|---|
+| `98C` (0x94) | `CBouncyGrenadeData`'s ctor - the first 0x50 bytes of the module's E-grenade block | one caller: `bl fn_9_98C` **0x684** in `fn_9_168`, on the loader's temp at sp+0x234, then handed to `F50C` (r4 at 0x694). Leaf, no branch. Its stores are the block's fields in declaration order: floats 0x0/0x4 (f1 = `lfs 0xc64`, f2 = `0xc68`), the blade `CDamageInfo` copied as raw words 0x8..0x22 (r4 = the `LdrToDamageInfo` result at sp+0x98, 0x99C..0x9D8), `stw` 0x24 (r5 = 0xc74, the bounces), 0x28 and 0x2c (r6 = r7 = 0xc58, the same explosion), 0x30 (r8 = 0xc60, the trail), 0x34 (r9 = 0xc5c, the effect), `sth` 0x38 (r10 = `clrlwi 0xc7c`, 16) and 0x3a (the low half of the caller's sp+0x8, 0x0x9D8/0x9FC, = `clrlwi 0xc80`), the four floats 0x3c/0x40/0x44/0x48 = `lbl_9_rodata_42C` (0.1f) and `lbl_9_rodata_430` (150.f), each twice, and the flag byte 0x4c's 0x80 bit from the caller's stack word at +0xC = 1 (0xA10..0xA18, `rlwimi r0,r4,7,24,24`) | `include/MetroidPrime/Enemies/CCommandoPirate.hpp:44-55` (the header's ctor stores the same fields in the same order, including `mRadiusMin(0.1f)`, `mDamageMax(150.f)`, `mRadiusMax(0.1f)`, `mDamageMin(150.f)`, `mFlags(0x80)`); the loader's call PortCCommandoPirate.cpp:4777-4784. Loader field map re-derived: 0x00 mass 0xc64, 0x04 unknown 0xc68, 0x24 bounces 0xc74, 0x28/0x2c explosion 0xc58, 0x30 trail 0xc60, 0x34 effect 0xc5c, 0x38 0xc7c, 0x3a 0xc80 - the same values the port passes by name |
+| `F50C` (0x80) | `CCommandoPirateGrenadeData`'s ctor: the embedded `CBouncyGrenadeData` copy plus the eight floats | one caller: `bl fn_9_F50C` **0x6B0**, this = sp+0x1c4, src = sp+0x234 (the `98C` temp), f1..f8 = 0xc78/0xc34/0xc38/0xc3c/0xc40/0xc44/0xc6c/0xc70. Body: `bl fn_9_ED04` 0xF548 (the base copy, **no** self test) then `stfs` 0x50 = f1, 0x54 = **f4**, 0x58 = f2, 0x5C = f3, 0x60 = f5, 0x64 = f6, 0x68 = f7, 0x6C = f8 (0xF54C..0xF56C) | the same header ctor, `CCommandoPirate.hpp:56-63`: its member order is 0x50 emp, 0x54 chance, 0x58 interval, 0x5C pause, 0x60 min dist, 0x64 max dist, 0x68 min launch, 0x6C max launch, and the port's loader passes loader 0xc78 as `eMPDuration`, 0xc3c as `grenadeAttackChance`, 0xc34 as `grenadeMinAttackInterval`, 0xc38 as `grenadePostAttackPause`, 0xc40/0xc44/0xc6c/0xc70 for the rest - i.e. the fields come out with the guest's values even though retail's *parameter* order is (p1, p4, p2, p3) |
+| `EC88` (0x7C) | `CCommandoPirateGrenadeData`'s copy ctor | `bl fn_9_ED04` 0xECA4 then the eight floats copied in order 0x50..0x6C (0xECA8..0xECE8); callers `fn_9_EA24` **0xEB48** (the block copy into the object), `fn_9_EDC0` **0xEEC0** (`mGrenade`), `fn_9_F418` **0xF4B0** (the E-grenade's `this+0x390`) | the host's implicit copy: `CCommandoPirate.hpp:167` `mGrenade(grenade)` and PortCCommandoPirateCore.cpp:700 `mData(data)` with the member at :744 (`guest +0x390 (0x70)`) |
+| `ED04` (0xBC) | `CBouncyGrenadeData`'s copy ctor - the 0x50-byte base part of the block | callers `EC88` **0xECA4** and `F50C` **0xF548**; straight-line: 0x0/0x4 floats, 0x8 word, 0xC..0x18 floats, 0x1C/0x1E/0x20 `lhz`/`sth`, 0x22 byte, 0x24..0x34 words, 0x38/0x3A, 0x3C..0x48 floats, 0x4C byte (0xED04..0xEDB8), padding 0x4D..0x4F untouched | the first 0x50 bytes of the header struct are a `CBouncyGrenadeData` in the guest (that is what `F418` passes at 0xF480); the host builds one from those fields, PortCCommandoPirateCore.cpp:693-697 |
+| `E72C` (0xC0) | `rstl::vector<CWeaponTypeVulnerability>::operator=` | caller `fn_9_E6D0` **0xE70C**; `cmplw this,other` 0xE748/`beq` end 0xE74C, `bl fn_9_E7EC` 0xE754 (clear), `cmpwi other.count,0` 0xE75C: `Free(mItems)` + count/cap/items = 0 (0xE764..0xE778), else `bl fn_9_F71C` 0xE784 (reserve) and the 0xC-stride copy of other.mItems..+count (0xE7A0..0xE7C4) then `mCount = other.count` 0xE7CC | `include/rstl/vector.hpp:228-243` is literally that: self test, `clear()`, `deallocate` + the three zeros, else `reserve` + `uninitialized_copy` + `mCount = other.mCount` |
+| `F71C` (0x98) | `rstl::vector<CWeaponTypeVulnerability>::reserve` | caller `E72C` **0xE784**; `cmpw newSize,capacity(+0x8)` 0xF73C/`ble` end, `allocate(newSize*0xc)` 0xF748, `uninitialized_copy` (**`F7B4`**, tail9's H row) 0xF784, `Free(mItems)` 0xF78C, `mItems`/`mCapacity` stores 0xF790/0xF794 | vector.hpp:158-170 (the same five steps) |
+| `F7F0` (0xC0) | `rstl::vector<CJointCollisionDescription>::reserve` (0x68-byte element with a string at +0x2C) | caller `fn_9_45A4` **0x45DC**; capacity test 0xF80C, `allocate(count*0x68)` 0xF814, `uninitialized_copy` (**`F8B0`**) 0xF850, then the old elements' `+0x2C` string `internal_dereference` in a 0x68 loop (0xF868..0xF884), `Free` 0xF890, the two stores 0xF894/0xF898 | vector.hpp:158-170, and its `destroy(mItems, mItems + mCount)` at :166 is that loop (the element's destructor is the string member only) |
+| `F8B0` (0x68) | `rstl::uninitialized_copy<CJointCollisionDescription>` | caller `F7F0` **0xF850**; args (`&begin` sp+0x14, `&end` sp+0xc, dest) -> `lwz r31,0x0(r3)` (begin), loop while `!= *(r4)` calling `rstl::construct` (**`49D8`**, tail9's H row) and stepping both by 0x68 (0xF8D8..0xF8F4), returns the new end | construct.hpp:157-165, exercised by the host vector's own `reserve`/`push_back` (PortCCommandoPirate.cpp:1255-1268) |
+
+The two team helpers, checked again line by line (no difference, `tools/asmcheck.py check` reports
+0 findings for both):
+
+| body | identity + asm | verdict |
+|---|---|---|
+| `1930` (0xA8) | the leave-team helper: `cmplw xbc4,kInvalidUniqueId` 0x1958/`beq` 0x195C; `ObjectById(xbc4)` 0x1970 + `TCastToPtr<CScriptTeamAiMgr>` 0x1974 + `mr. r31,r3`/`beq` 0x1978/0x197C; `IsPartOfTeam(GetUniqueId())` 0x1990 + `clrlwi.`/`beq` 0x1994/0x1998; `QuitTeam` 0x19B0 and `xbc4 = kInvalidUniqueId` 0x19BC | `x1930_LeaveTeam` (PortCCommandoPirate.cpp:1291-1304) already `// @ fn_9_1930`; every live arm re-run (below) |
+| `19D8` (0xC4) | the join-team helper: `bne` 0x1A08 when an id is held; `extrwi. 1,30` (0x02) 0x1A10/`beq` 0x1A14 and `extrwi. 1,25` (0x40) 0x1A1C/`bne` 0x1A20 - both bits together only; `GetAssociatedTeamId(*this,mgr)` 0x1A30, the id stored 0x1A3C, `cmplw`+`beq` 0x1A48 when it is still invalid; `ObjectById` 0x1A60 + cast 0x1A64 + `cmplwi`/`beq` 0x1A6C; `JoinTeam(*this, 1, -1, -1)` 0x1A80 | `x19D8_JoinTeam` (PortCCommandoPirate.cpp:3286-3303) already `// @ fn_9_19D8`; every live arm re-run |
+
+Runs (`build-port-link`, 0 `[port] caught`/`reach-stub`, game exit code 0; the spec is
+`tools/cov/specs/commandopirate_tail11.py` under `COV_GDB_SCRIPT=tools/cov/force_ret.py`):
+
+| run | driver | `1930` | `19D8` |
+|---|---|---|---|
+| area 59 `3bfa3eff,05_temple_federationsite_dark`, 3000 frames, `--fast` | `tools/drivers/commandopirate_cp3.py` | 4 entries: 3 invalid-id exits, 1 null cast (forced) | 33 entries, 27 `GetAssociatedTeamId` and **no** lookup: the invalid-team exit (0x1A48) |
+| Swamp `05_swamp_timber!`, 3000 frames, `--fast` | `commandopirate_cp3.py` | 5 entries: 4 part -> `QuitTeam`, 1 null cast (forced) | 68 entries: `JoinTeam` 14 |
+| Swamp `05_swamp_timber!`, 2500 frames, `--fast` | `tools/drivers/commandopirate_tail11.py` (joined, then two Deactivates in a row) | 11 entries: 3 invalid, 3 null cast (forced, the own id as the team), **2 "not part of the team"** (forced: the first Deactivate's id written back at its return, the second Deactivate finds it), 3 `QuitTeam` | 9 entries: the "already in a team" exit natural, both flags forced (0x1A20), 0x02 alone forced (0x1A14), `JoinTeam` 4 (the Swamp's team manager u0516 in a24) |
+
+The `JoinTeam`-refused cast (`TCastToPtr<CScriptTeamAiMgr>` null after `GetAssociatedTeamId`) stays
+dead: the predicate keeps only ids that cast to the manager (CScriptTeamAiMgr.cpp:33).
+
+B progress: the eight H rows leave the B denominator (122 -> 114), the marked count is unchanged
+(75), so `tools/port_progress.py` reads CommandoPirate at 75/114 = 65.8%.

@@ -1287,6 +1287,10 @@ void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
 // Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
 // area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every arm; the "not part of the team" call
 // forced (the id written back over the quit) and the own id as the team (not a team manager).
+// tail11 2026-10-23 (tools/cov/specs/commandopirate_tail11.py + tools/drivers/commandopirate_tail11.py,
+// Swamp, gdb SPEC calls): 11 entries - 3 invalid-id exits, 3 null casts (forced, the own id as the
+// team), 2 "not part of the team" (forced: two Deactivates in a row, the first one's id written back
+// at its return at 0x00001998) and 3 quits.
 // @ fn_9_1930
 void CCommandoPirate::x1930_LeaveTeam(CStateManager& mgr) {
   if (xbc4_teamId == kInvalidUniqueId) {  // 0x00001950..0x0000195C
@@ -3282,6 +3286,10 @@ void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt)
 // area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every live arm; the block flags 0x02 with and
 // without 0x40 forced. The failed team cast after GetAssociatedTeamId is dead: its predicate keeps
 // only ids that cast to CScriptTeamAiMgr (CScriptTeamAiMgr.cpp:33).
+// tail11 2026-10-23 (tools/cov/specs/commandopirate_tail11.py, gdb SPEC calls): area 59 gives the
+// "the team id came back invalid" exit 27 times (0x00001A48); the Swamp gives the JoinTeam call 4
+// times, the "already in a team" exit naturally, the both-flags exit (0x00001A20) and the 0x02-alone
+// arm (0x00001A14) forced.
 // @ fn_9_19D8
 void CCommandoPirate::x19D8_JoinTeam(CStateManager& mgr) {
   if (xbc4_teamId != kInvalidUniqueId) {
