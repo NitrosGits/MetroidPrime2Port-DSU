@@ -2647,11 +2647,6 @@ bool CCommandoPirate::ShouldArmShield(CStateManager& mgr, const CTriggerData& da
 }
 
 // fn_9_B250 (0x410 bytes): the commando charges with its shield when it is aggressive, the
-// The run in area 59 (2026-10-21) reaches only the first gate: the 0x40 bit of the byte at guest
-// this+0xC64 is set by the module's own timer helper (fn_9_662C) when the aggressiveness roll
-// wins, and the counter at guest this+0xB54 that the gate also asks about is raised only by the
-// module's shield-charge states (fn_9_7A98 and fn_9_8028) - until those are ported, this body
-// is not marked.
 // script does not forbid the charge, the target is inside the charge band and the way to it is
 // clear.
 //
@@ -2709,7 +2704,8 @@ bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData&
     return false;
   }
   const CVector3f delta = actor->GetTranslation() - GetTranslation();
-  if (CMath::AbsF(delta.GetZ()) > 5.f) {                           // 0x0000B324..0x0000B348
+  // cror eq,lt,eq + bne: the gate passes only on `<=` (a NaN height fails it).
+  if (!(CMath::AbsF(delta.GetZ()) <= 5.f)) {                       // 0x0000B324..0x0000B348
     return false;
   }
   const float distSq = delta.MagSquared();                         // 0x0000B34C..0x0000B36C
@@ -2717,7 +2713,8 @@ bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData&
       mData.mShield.mChargeMinAttackDist * mData.mShield.mChargeMinAttackDist;  // guest +0x8e4
   const float maxSq =
       mData.mShield.mChargeMaxAttackDist * mData.mShield.mChargeMaxAttackDist;  // guest +0x8e8
-  if (distSq < minSq || distSq > maxSq) {                          // 0x0000B370..0x0000B384
+  // cror eq,gt,eq / cror eq,lt,eq + bne: the band passes only on `>=` and `<=` (NaN fails).
+  if (!(distSq >= minSq) || !(distSq <= maxSq)) {                  // 0x0000B370..0x0000B384
     return false;
   }
   if (!delta.IsMagnitudeSafe()) {                                  // 0x0000B38C..0x0000B394
@@ -4264,6 +4261,10 @@ void CCommandoPirate::ScriptedShieldCharge(CStateManager& mgr, EStateMsg msg, fl
 // actor is laid down: the look-at from its position towards the position plus the transform's
 // second column's x and y (the loads at 0x00007A20..0x00007A4C) with the world up
 // (0x00007A60..0x00007A78).
+// Run: cov 2026-10-22 (cp6: tools/drivers/commandopirate_cp6.py, 05_swamp_timber!): every arm but the
+// dead default; upright, tipped 90 degrees (the turn), within one frame's turn (place pitch 1,
+// dt 1.0) and outside it (dt 0.0001).
+// @ fn_9_786C
 void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {  // the guest's message 0
@@ -4278,7 +4279,8 @@ void CCommandoPirate::RestoreOrientation(CStateManager& mgr, EStateMsg msg, floa
     }
     const float turnSpeed = BodyController()->GetTurnSpeed();  // the body controller's +0x590
     const float angle = CVector3f::GetAngleDiff(up, CVector3f::Up());  // 0x00007904
-    if (angle * 57.295776f <= dt * turnSpeed) {  // rodata_4D4, 0x00007918..0x00007924
+    // ble (branch when gt is clear): taken on NaN too, so the test is !(a > b), not a <= b.
+    if (!(angle * 57.295776f > dt * turnSpeed)) {  // rodata_4D4, 0x00007918..0x00007924
       mAnimationState.SetState(CAnimationState::kAS_Over);  // 0x000079E8
       break;
     }
@@ -4622,9 +4624,11 @@ float CCommandoPirate::GetGravityConstant() const { return 50.f; }
 
 // Port console vars (`var <id> cp.<name> [value]`; no guest code): the flag bytes (cp.c63..c66),
 // x924 (cp.x924), the ids (cp.xbca the target, cp.xbd2 the cover point, cp.xbd6 the wall-hang
-// waypoint, cp.team), the charge speed (cp.chargespeed, 1/1000), the state machine's time in its
-// state (cp.fsmtime, ms), the push vector (cp.bb8x/bb8y/bb8z, 1/1000) and the charge target set d/1000
-// units along the facing (cp.b94ahead; reads the target's distance along it).
+// waypoint, cp.team, cp.xbd0 the jump point), the charge speed (cp.chargespeed, 1/1000), the state
+// machine's time in its state (cp.fsmtime, ms), the push vector (cp.bb8x/bb8y/bb8z, 1/1000), the
+// charge target set d/1000 units along the facing (cp.b94ahead; reads the target's distance along
+// it), the words x920 (cp.x920), the timers xb78 and xc58 (cp.xb78, cp.xc58, ms) and the base's
+// pending death (cp.pendingdeath).
 bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* value,
                                      int& current) {
   // No TCastToPtr for the module's class: a patterned actor whose machine's "ShieldCharge" is
@@ -4657,7 +4661,8 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
     TUniqueId* field;
   };
   const SIdVar ids[] = {
-      {"xbca", &cp->xbca_}, {"xbd2", &cp->xbd2_}, {"xbd6", &cp->xbd6_}, {"team", &cp->xbc4_teamId}};
+      {"xbca", &cp->xbca_}, {"xbd2", &cp->xbd2_}, {"xbd6", &cp->xbd6_}, {"team", &cp->xbc4_teamId},
+      {"xbd0", &cp->xbd0_}};
   for (const SIdVar& var : ids) {
     if (strcmp(name, var.name) == 0) {
       if (value != nullptr) {
@@ -4673,6 +4678,34 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
     }
     current = cp->x924_;
     return true;
+  }
+  if (strcmp(name, "x920") == 0) {
+    if (value != nullptr) {
+      cp->x920_ = *value;
+    }
+    current = cp->x920_;
+    return true;
+  }
+  if (strcmp(name, "pendingdeath") == 0) {
+    if (value != nullptr) {
+      cp->mPendingDeath = *value != 0;
+    }
+    current = cp->mPendingDeath;
+    return true;
+  }
+  struct STimerVar {
+    const char* name;
+    float* field;
+  };
+  const STimerVar timers[] = {{"xb78", &cp->xb78_}, {"xc58", &cp->xc58_}};
+  for (const STimerVar& var : timers) {
+    if (strcmp(name, var.name) == 0) {
+      if (value != nullptr) {
+        *var.field = static_cast< float >(*value) / 1000.f;
+      }
+      current = static_cast< int >(*var.field * 1000.f);
+      return true;
+    }
   }
   if (strcmp(name, "chargespeed") == 0) {
     if (value != nullptr) {
