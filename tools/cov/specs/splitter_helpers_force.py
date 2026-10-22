@@ -238,8 +238,10 @@ elif WHICH == 'E87C':
     # 0xC6C is the head u0531's: the head is looked up and told it is possessed.
     FORCE = [(_label, _where, [], ['$esi = 1', CH + '->mCommandModuleId.value = 0x531'], 1, _what)]
 elif WHICH == 'PATHZ':
-    # the chassis's own position: the separation from the other actors has a z component, so the
-    # "the separation is not all zeros" arm's z side runs (the port's fn_75_986C).
+    # The chassis's own position, so the separation from the other actors has a z component: the
+    # port's fn_75_986C tests the separation's z only when its x and y are zero, so this force
+    # alone does not reach that arm (the only actor above the chassis, the docked head, is
+    # skipped by the walk) - it is kept as the attempt the note records.
     FORCE = [(_label, _where, [],
               [CH + '->mPosition.mZ = 2.0'], 0, _what)]
 elif WHICH == 'DESPAWN':

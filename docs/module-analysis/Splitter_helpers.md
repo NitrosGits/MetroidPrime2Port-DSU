@@ -496,6 +496,13 @@ asm (`tools/asmcheck.py annotate Splitter` for the same decoding):
 | `fn_75_2280` (the head's chassis search) | right: the areas must be equal (asm 0x22F8-0x2304), the reservation (asm 0x2318) must succeed (asm 0x2320) and the squared distance must be below the best (asm 0x234C, `bge` skips) before the old pick is released (asm 0x2350-0x2380) and the new one is kept (asm 0x238C) | 17/19 lines, 10/14 branches - not marked: the null cast (the listening-AI list holds no other kind of actor) and the failed reservation cannot be forced |
 | `fn_75_2994` (the head's turn upright) | right: the flag byte's 0x20 bit (asm 0x29BC, the word's bit 26) must be set, the angle test is the `<=` of the turn (asm 0x2A38-0x2A44, `cror eq,lt,eq`) and the Y column's x or y must not be zero (asm 0x2A48-0x2A7C) | 18/18 lines, 9/12 branches - not marked: the three untaken branches are inside the inlined GetAngleDiff |
 
+`fn_75_986C` (the chassis's path update) was looked at as well, for its two untaken arms: the
+separation's z (the port tests the z only when the x and y are zero, so the arm needs the chassis
+exactly above another actor - and the only actor above it, the docked head, is skipped by the
+walk) and the switch's default (the compiler's: the forward step returns earlier, like
+`fn_75_11804`'s deleting flag).  The force spec's `PATHZ` (the chassis's own position) is the
+attempt for the first arm; it does not reach it, and the body stays unmarked.
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
