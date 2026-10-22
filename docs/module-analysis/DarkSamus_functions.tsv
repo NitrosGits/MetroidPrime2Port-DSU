@@ -59,8 +59,8 @@ offset	size	class	kind	name	callers	marked	state
 0x44D0	0x5C	H	host-copy	fn_10_44D0	0	no	
 0x452C	0xCC	B	method	fn_10_452C	2	yes	
 0x45F8	0x270	B	method	fn_10_45F8	1	yes	
-0x4868	0x60	B	method	fn_10_4868	4	no	
-0x48C8	0x44	B	method	fn_10_48C8	2	no	
+0x4868	0x60	B	method	fn_10_4868	4	yes	
+0x48C8	0x44	B	method	fn_10_48C8	2	yes	
 0x490C	0x19C	B	method	fn_10_490C	2	yes	
 0x4AA8	0x14	B	method	fn_10_4AA8	1	yes	
 0x4ABC	0xC	T	fsm-thunk	fn_10_4ABC	0	yes	BreakPhazonAttack
@@ -90,7 +90,7 @@ offset	size	class	kind	name	callers	marked	state
 0x65CC	0x1EC	B	method	fn_10_65CC	4	yes	
 0x67B8	0x1AC	B	fsm-state	fn_10_67B8	0	yes	PhazonMissiles
 0x6964	0x5C	H	host-copy	fn_10_6964	0	no	
-0x69C0	0x80	B	method	fn_10_69C0	2	no	
+0x69C0	0x80	B	method	fn_10_69C0	2	yes	
 0x6A40	0x20	B	fsm-trigger	fn_10_6A40	0	yes	ReadyForMissiles
 0x6A60	0x88	B	fsm-trigger	fn_10_6A60	0	yes	ShouldLeaveSphere
 0x6AE8	0x90	B	fsm-trigger	fn_10_6AE8	0	yes	ShouldRiseAgain
@@ -195,7 +195,7 @@ offset	size	class	kind	name	callers	marked	state
 0xE560	0x178	B	method	fn_10_E560	1	no	
 0xE6D8	0x58	H	host-copy	fn_10_E6D8	0	no	
 0xE730	0x54	H	host-copy	fn_10_E730	0	no	
-0xE784	0x18C	B	method	fn_10_E784	1	no	
+0xE784	0x18C	B	method	fn_10_E784	1	yes	
 0xE910	0xF8	B	method	fn_10_E910	4	yes	
 0xEA08	0x1C	B	method	fn_10_EA08	4	yes	
 0xEA24	0x16C	B	method	fn_10_EA24	1	no	
@@ -428,7 +428,7 @@ offset	size	class	kind	name	callers	marked	state
 0x1BE80	0x7C	B	method	fn_10_1BE80	1	yes	
 0x1BEFC	0x7CC	B	virtual	fn_10_1BEFC	0	yes	
 0x1C6C8	0xB0	B	virtual	fn_10_1C6C8	0	no	
-0x1C778	0x84	B	method	fn_10_1C778	5	no	
+0x1C778	0x84	B	method	fn_10_1C778	5	yes	
 0x1C7FC	0x1A0	B	virtual	fn_10_1C7FC	0	yes	
 0x1C99C	0x434	B	method	fn_10_1C99C	1	no	
 0x1CDD0	0x1B4	B	method	fn_10_1CDD0	3	no	

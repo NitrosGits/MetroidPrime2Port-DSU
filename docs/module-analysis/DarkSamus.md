@@ -2140,3 +2140,13 @@ platform casts and the dash arms of CollidedWith.
 - retail_diff leads: 324's fn_10_B04 (CRayCastResult() via B28), fn_10_A60 (the CCollidableAABox
   copy) and fn_10_A08 (the valid CRayCastResult ctor) are the header's inline ctors; 1D8C/213C's
   GetObj is TToken's operator*.
+- Also marked: E784 CDarkSamusDive ctor (fix: the collidable box gets the retail material list
+  1 << lbl_10_data_CB8 = 0x3B, kMT_Solid, `__shl2i` at 0x0000E880, not an empty one; no branch in
+  retail) and 1C778 SetPathFindDestination (no branch); plain fsm2 run
+  (`darksamus_fsm2.py` + `darksamus_fsm2.con`, 4000 frames). 4868 DeleteGuestActor all arms
+  natural. 48C8 / 69C0 with `tools/cov/specs/darksamus_guest_force.py` (force.sh, same driver):
+
+| fn | forced arms (everything else natural) |
+|---|---|
+| 48C8 DeleteGuestActorIfExpired | 0xF7C = elapsed - 1, the delete (0x000048F4 not taken; bge is taken on NaN, as `!(f7c < t)`) |
+| 69C0 DeleteGuestUids | the count 0x930 is 0 in every run (nothing ported fills it); forced 2 with slot 0 invalid (0x000069F8) and slot 1 a stale uid (0x00006A0C) |

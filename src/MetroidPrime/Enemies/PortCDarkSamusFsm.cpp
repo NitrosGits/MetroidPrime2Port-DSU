@@ -558,7 +558,7 @@ void CDarkSamus::UpdateStillTimer(EStateMsg msg, float dt) {
   mStillPosition = GetTranslation();
 }
 
-// fn_10_1C778 (0x0001C778, 0xDC bytes): the destination of the path find (the guest's
+// fn_10_1C778 (0x0001C778, 0x84 bytes): the destination of the path find (the guest's
 // 0x8B4/0x8B8/0x8BC) and the path find itself.
 //
 // The vector is written into the three floats (the three stfs at 0x0001C7A4..0x0001C7BC), then
@@ -566,6 +566,7 @@ void CDarkSamus::UpdateStillTimer(EStateMsg msg, float dt) {
 // SetDestination call at 0x0001C7C0) and is told to find a path (the PathFind call at
 // 0x0001C7D8) with the message kStateMsg_Activate (the `li r5, 0x0` at 0x0001C7D4) and the
 // float argument.
+// @ fn_10_1C778
 void CDarkSamus::SetPathFindDestination(CStateManager& mgr, const CVector3f& destination,
                                         float dt) {
   mPathFindDestination = destination;
@@ -2414,7 +2415,10 @@ void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_10_E784 (0x0000E784, 0x18C bytes): the vectors to zero, the damage copied to +0x30
 // (0x0000E83C..0x0000E85C), the two impulses to +0x50/+0x54 (0x0000E860/0x0000E864), the
-// boost-ball bit cleared (0x0000E86C) and fn_10_E910 (0x0000E8F0).
+// boost-ball bit cleared (0x0000E86C), the collidable box null with the material list
+// 1 << lbl_10_data_CB8 = 0x3B, kMT_Solid (__shl2i at 0x0000E880, the ctor at 0x0000E8A8), and
+// fn_10_E910 (0x0000E8F0).
+// @ fn_10_E784
 CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage, float impulseHorizontal,
                                float impulseVertical)
 : mTarget(CVector3f::Zero())
@@ -2426,7 +2430,8 @@ CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage, float impulseHorizonta
 , mImpulseVertical(impulseVertical)
 , mBounceTime(0.f)
 , mStuckTime(0.f)
-, mFromBoost(false) {
+, mFromBoost(false)
+, mCollidable(CAABox::MakeNullBox(), CMaterialList(kMT_Solid)) {
   Reset();
 }
 
