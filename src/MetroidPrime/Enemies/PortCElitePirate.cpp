@@ -46,8 +46,10 @@
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Weapons/WeaponTypes.hpp"
+#include "port_console.h"
 
 #include <float.h>
+#include <string.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -1569,6 +1571,40 @@ bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) cons
       CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Character));
   return mgr.RayCollideWorld(lockon, aim, filter, this); // 0x67E8, 0x67F0 beq
 }
+
+// Host: the console's `var <id> <name> [value]` for the Ingsmasher, so ShouldFire's early-out
+// arms run without gdb: ep.timer is the attack cooldown 0xa34 (whole seconds), ep.launcher the
+// launcher uid 0x9fa, ep.target the target uid 0xa26 (65535 = kInvalidUniqueId).
+bool CElitePirate::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
+  CElitePirate* ep = TCastToPtr< CElitePirate >(&ent);
+  if (ep == nullptr) {
+    return false;
+  }
+  if (strcmp(name, "ep.timer") == 0) {
+    if (value != nullptr) {
+      ep->mTimer = static_cast< float >(*value);
+    }
+    current = static_cast< int >(ep->mTimer);
+    return true;
+  }
+  TUniqueId* uid = nullptr;
+  if (strcmp(name, "ep.launcher") == 0) {
+    uid = &ep->mLauncherId;
+  } else if (strcmp(name, "ep.target") == 0) {
+    uid = &ep->xa26_;
+  } else {
+    return false;
+  }
+  if (value != nullptr) {
+    *uid = TUniqueId(static_cast< ushort >(*value));
+  }
+  current = uid->value;
+  return true;
+}
+
+namespace {
+const bool sEliteConsoleVars = PortConsole::RegisterVar(&CElitePirate::PortConsoleVar);
+} // namespace
 
 // @ fn_15_6500
 bool CElitePirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
