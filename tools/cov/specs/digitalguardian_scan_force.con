@@ -1,4 +1,4 @@
-# DigitalGuardian area 53, the forcing run (digitalguardian_force.py): "OPEN" twice 100 updates
+# DigitalGuardian area 53, the forcing run (digitalguardian_scan_force.py): "OPEN" twice 100 updates
 # apart (the second finds the beacon up, 0x1268 == 1, and is skipped: fn_14_A6A8's cmpwi at
 # 0xAA4C), then the scan display, whose fn_14_9ABC calls get 0x11EC (the beacon model) emptied
 # and then 0x128C bit 0x08 set by gdb.

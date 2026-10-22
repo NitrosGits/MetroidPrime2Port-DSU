@@ -1477,7 +1477,7 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
 
 - Drivers (`tools/cov/specs/`): `digitalguardian_msgs.con` (every A6A8 case plus three scans),
   `digitalguardian_msgs_del.con` (a delete before the first Think), `digitalguardian_open.con` (OPEN
-  with the beacon up), `digitalguardian_force.con` with `digitalguardian_force.py`. Coverage build;
+  with the beacon up), `digitalguardian_scan_force.con` with `digitalguardian_scan_force.py`. Coverage build;
   the counts come from `tools/cov/gcov_report.py build-port-cov <the four gcov dirs> --module DigitalGuardian`.
 - Console: `scan <id>` (the scan display draws 9CA4/9ABC), `e<editor id>` object ids (the body's
   unique id is reused across the layer load: it is e00350060, the head e0035000f), and `covdump`
