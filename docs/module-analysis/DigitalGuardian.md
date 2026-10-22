@@ -1903,3 +1903,61 @@ Left unmarked:
 | 9A60 9638 9A0C 768C | all | natural + forced (var dg.knee, dg.face*, send head Delete) | ALL-ARMS |
 | 9A9C 966C 7600 | no branches | codecall / trigcall | ran |
 | A004 | DisableDestinationAlpha tail | natural (msgs.con) | ALL-ARMS (confirms dg28) |
+
+## 2026-10-22: render/beacon and knee armour marks (dg30); gcov runs dg30 fa/fb/fc + r1..r3
+
+- Specs/drivers: `tools/cov/specs/digitalguardian_dg30_{models,beacon,knees}.py`,
+  `tools/drivers/dg30_beacon.py <port> a|b`, `tools/drivers/dg30_knees.py <port>` (run lines
+  in the spec headers). The beacon (2CC4) only updates in Crippled: the driver uses
+  `fsm CrippledReaction` then `fsm Crippled`. Knee flags: `send <body> InternalMessage1..8`
+  (IM01..IM08; the console names them InternalMessageN); a knee hit is `send <knee> Damage`
+  (`hurt` does nothing: knees have no health info).
+- Marked: 1994 17DC 1700 2578 2A28 6864 A3D4 9DFC (0a680b443); knee CF94 (Think), CE94
+  (SetArmored), CE1C, D774, D460.
+- Dead arms (proofs in the comments): 2578's callers all test 0x1238 first; knee Think's touch box
+  engaged test and HasModelData false arms; D774's empty arm.
+- Not marked: D7BC GetDamageVulnerability (no run calls it: knees have no health, so
+  `ApplyDamage` never asks; a projectile hit would); 3DA8 and 3A44's knee-null arm (an id set to
+  an empty slot still resolved non-null in the run; not understood, left); 18B4 (1171 untaken);
+  D320's unarmoured Create arm (dead: fn_14_4080 passes vulnerable = 0, the li at 0x4220 stored
+  at 0x4234, but D320 was already marked); the echo-target rows (19A08..1ABD8) not attempted.
+- Gotcha: knee 2 never opens after the vortex calls (0x128C's 0x20 is set), so the driver does
+  the knee-2 cycle first. Rebuilding build-port-cov makes older runs' gcda stamp-mismatch.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 6864 | five model ids unset | forced (dg30_models) | ALL-ARMS |
+| 17DC 2A28 28D0-emitter | 0x123C null | forced (dg30_beacon: D664 id unset) | ran |
+| A3D4 | mDrawParticles clear | forced (dg30_beacon, skip 40) | ALL-ARMS |
+| CF94 CE94 | handle set / none, knee unarmoured, hit flash, emitter null | forced (dg30_knees) + natural | ALL-ARMS bar the dead ones |
+| CE1C | orbitable both ways | codecall SetVortexAttackMode, ExitVortexAttack→Idle | ALL-ARMS |
+
+## 2026-10-22: echo target, projectile and predicate marks, D7BC 3DA8 18B4 (dg31); gcov runs r1..r6 f1..f5
+
+- Specs/drivers: `tools/drivers/dg31_echo.py <port>` (echo cycle, knee shots, 3DA8 ids, flag
+  0x10), `tools/cov/specs/digitalguardian_dg31_{explode,nulls}.py`, `digitalguardian_dg31_knee.con`
+  (run lines in the headers). Fast runs, 800 frames, area 53; every run 0 caught/reach-stub.
+- Marked (7150c37f0): echo target 1A1F8 1A430 1A168 1AB50 1AB98 19DF8 19A08 19B70 19CE0 1ABD8;
+  head file 1AA84 1AA44 1AAC4 1AB24 1AB30; knee D7BC; body 3DA8 18B4.
+- Fixes: 19A08 keeps the transmit sound while extended (states 1 and 3 go to 0x19A50; the port
+  removed it in state 1); 1A1F8's flash clamp keeps a NaN (`fcmpo 0,left / bge` at 0x1A24C).
+  CGuardianProjectile gets its retail dtor, GetImpactParticle (empty) and GetExplosionNormal (Up).
+- Dead arms (proofs in the comments): 1A1F8/1AB50's not-engaged touch box (0x730 only ever
+  stored with 1, 0x1A7C4 and 0x1A39C); 19DF8's early return and default (the callers 14CF4/14DA0
+  filter by state and pass 2 or 3); 19CE0's out-of-range arm (x708 only written with 0..4).
+  19A08's second visor-line branch is the TARGET_PC GetPlayerState fallback (host-only).
+- Not marked: 11BA8 / 13A80 (the predicate dtors: empty, inlined at each use, the out-of-line
+  copy never runs, 0/1 lines in every run); 190E0 / 1ABE0 (struct copies inlined into the head
+  ctor). 3DA8's knee-null arm only shows when the id writes and the call share one console line
+  (with frames between the writes and the call it is not taken; cause not traced).
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 1AB30 | explosion normal | forced (dg31_explode: mExplodePending = 1 in every CGuardianProjectile Think) | ran |
+| 1A1F8 1A430 1A168 19B70 | x784_ / echo emitter null | forced (dg31_nulls: both nulled after 300 Thinks, CActor's echo bit cleared) | ALL-ARMS |
+| 1A430 | kill with no transmit sound (0x1A504) | forced (dg31_nulls: x788_ cleared at each message) | ALL-ARMS |
+| 3DA8 | invalid id, stale id | forced (console `var dg.armor3 65535`, `dg.armor2` xor 0x400, same line as `codecall SetVortexAttackMode`) | ALL-ARMS |
+| 18B4 | flag 0x10 / no model | forced (console `var dg.flags` 0x10 to the end) / forced (dg30_models, f1) | ALL-ARMS |
+| 19A08 | echo visor / combat | natural (`visor echo` 260..420) | visor arms both ran |
+| D7BC | knee vulnerability | natural (`shoot <knee>`) | ran |
+| 1AA84 1AA44 1AAC4 1AB24 1ABD8 | (no branches) | natural | ran |

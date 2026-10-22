@@ -80,17 +80,18 @@ CDigitalGuardianEchoTarget::CDigitalGuardianEchoTarget(
 // block and the CActor base are the compiler's.
 CDigitalGuardianEchoTarget::~CDigitalGuardianEchoTarget() { delete x784_; }
 
-// fn_14_1A1F8: only while active (the extrwi at 0x1A21C).
+// fn_14_1A1F8: only while active (the extrwi at 0x1A224, mActive).
+// @ fn_14_1A1F8
 void CDigitalGuardianEchoTarget::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
   }
   CActor::Think(dt, mgr);
 
-  // The hit flash (0x1A230..0x1A2B8): the timer counts down and lerps the colour.
-  if (x70C_ > 0.f) {
+  // The hit flash (0x1A230..0x1A2A0): the timer counts down and lerps the colour.
+  if (!(x70C_ <= 0.f)) { // the fcmpo/ble at 0x1A23C: a NaN timer goes in
     float left = x70C_ - dt;
-    if (!(left > 0.f)) {
+    if (0.f >= left) { // fcmpo 0, left / bge at 0x1A24C: a NaN stays
       left = 0.f;
     }
     x70C_ = left;
@@ -101,11 +102,13 @@ void CDigitalGuardianEchoTarget::Think(float dt, CStateManager& mgr) {
   x19B70_(mgr, dt);
   x19A08_(mgr);
 
-  // The touch bounds: the box 5 units up the up column (0x1A2C8..0x1A3C4).
+  // The touch bounds: the box 5 units up the up column (0x1A2C8..0x1A3D0). The optional's
+  // not-engaged arm (0x1A36C..0x1A3A0) is dead: the ctor engages it (the stb of 1 at 0x1A7C4) and
+  // the only other store to its flag, 0x1A39C in that arm, writes 1 too.
   const CVector3f centre = GetTranslation() + GetTransform().GetColumn(kDZ) * 5.f;
   x718_ = EchoTargetBox(centre);
 
-  // The echo emitter's bounds follow the box (0x1A3C8..0x1A41C).
+  // The echo emitter's bounds follow the box (the test at 0x1A3D8, 0x1A3D4..0x1A41C).
   if (EchoEmitter() != nullptr) {
     EchoEmitter()->SetBounds(x718_.data());
   }
@@ -113,24 +116,25 @@ void CDigitalGuardianEchoTarget::Think(float dt, CStateManager& mgr) {
 
 // fn_14_1A430: only "XDMG" (0x1A458), and not while ignored (0x78C bit 7, the extrwi at
 // 0x1A470). The flash restarts (.rodata 0x96C, 1); at no HP (the HealthInfo's HP at 0x768,
-// fcmpo/cror le at 0x1A48C) the target is destroyed: sound_EchoTargetExplosion (data +0x108) and
+// fcmpo/cror le at 0x1A494) the target is destroyed: sound_EchoTargetExplosion (data +0x108) and
 // the transmit sound stops; otherwise sound_EchoTargetHit (data +0xF0). The owner gets the XDMG
 // with this target as the sender, and the echo emitter the flash time.
+// @ fn_14_1A430
 void CDigitalGuardianEchoTarget::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CActor::AcceptScriptMsg(mgr, msg);
-  if (message != kSM_Damage) {
+  if (message != kSM_Damage) { // 'XDMG' at 0x1A460
     return;
   }
   if (x78C_24_) {
     return;
   }
   x70C_ = 1.f;
-  if (x764_.GetHP() <= 0.f) {
+  if (x764_.GetHP() <= 0.f) { // fcmpo/cror eq,lt,eq at 0x1A494: a NaN HP is a hit
     x708_ = kS_Destroyed;
     PlayCustomSound(GetAimPosition(mgr, 0.f), GetTransform().GetColumn(kDZ),
                     x158_.sound_EchoTargetExplosion, false);
-    if (x788_ != CSfxHandle()) {
+    if (x788_ != CSfxHandle()) { // cmplwi/beq at 0x1A500/0x1A504
       CSfxManager::RemoveEmitter(x788_);
       x788_ = CSfxHandle();
     }
@@ -145,7 +149,8 @@ void CDigitalGuardianEchoTarget::AcceptScriptMsg(CStateManager& mgr, const CScri
 }
 
 // Extending or extended: the emitter effect, then the model; retracting: the model only;
-// retracted or destroyed: nothing.
+// retracted or destroyed: nothing (the switch at 0x1A188..0x1A1AC).
+// @ fn_14_1A168
 void CDigitalGuardianEchoTarget::Render(const CStateManager& mgr) const {
   switch (x708_) {
   case kS_Extended:
@@ -172,10 +177,13 @@ const CDamageVulnerability* CDigitalGuardianEchoTarget::GetDamageVulnerability()
   return &PassThruVulnerability();
 }
 
+// The empty arm (the beqlr at 0x1AB60) is dead: x718_ is always engaged (see Think).
+// @ fn_14_1AB50
 rstl::optional_object< CAABox > CDigitalGuardianEchoTarget::GetTouchBounds() const {
   return x718_;
 }
 
+// @ fn_14_1AB98
 CVector3f CDigitalGuardianEchoTarget::GetOrbitPosition(const CStateManager& mgr) const {
   return GetAimPosition(mgr, 0.f); // .rodata 0x960
 }
@@ -195,9 +203,14 @@ CVector3f CDigitalGuardianEchoTarget::GetAimPosition(const CStateManager& mgr, f
 }
 
 // fn_14_19DF8: never out of the destroyed state; retracting plays sound_EchoTargetRetract (data
-// +0xC0), extending sound_EchoTargetExtract (data +0xA8), both one-shot.
+// +0xC0, 0x218), extending sound_EchoTargetExtract (data +0xA8, 0x200), both one-shot (li r8 0).
+// The early return and the default arm are dead in this module: the only callers, fn_14_14CF4
+// (3 for a retracted or retracting target) and fn_14_14DA0 (2 for an extended or extending one),
+// filter by state, so the target is never destroyed or already in the new state, and the new
+// state is always 2 or 3.
+// @ fn_14_19DF8
 void CDigitalGuardianEchoTarget::SetState(CStateManager& mgr, int state) {
-  if (x708_ == kS_Destroyed || x708_ == state) {
+  if (x708_ == kS_Destroyed || x708_ == state) { // cmpwi 4 at 0x19E14, cmpw at 0x19E1C
     return;
   }
   x708_ = state;
@@ -224,14 +237,19 @@ void CDigitalGuardianEchoTarget::SetExtendedTransform(const CTransform4f& xf) {
   SetTransform(moved);
 }
 
-// fn_14_19A08: extending, the looped transmit sound (data +0xD8) at the aim position along the up
-// column, full volume (0x7F) in the echo visor and the sound's max volume (the low byte at data
-// +0xE4) otherwise; any other state stops it.
+// fn_14_19A08: extended or extending (the switch at 0x19A28..0x19A4C sends 1 and 3 to 0x19A50),
+// the looped transmit sound (data +0xD8, li r8 1 at 0x19AC0) at the aim position along the up
+// column, full volume (0x7F) in the echo visor (GetActiveVisor == 1 at 0x19AE8) and the sound's
+// max volume (the low byte at data +0xE4, clrlwi at 0x19AFC) otherwise; any other state stops it.
+// (The visor line's second host branch is the TARGET_PC CStateManager::GetPlayerState fallback,
+// not a retail arm.)
+// @ fn_14_19A08
 void CDigitalGuardianEchoTarget::x19A08_(CStateManager& mgr) {
   switch (x708_) {
+  case kS_Extended:
   case kS_Extending: {
     const CVector3f pos = GetAimPosition(mgr, 0.f);
-    if (x788_ == CSfxHandle()) {
+    if (x788_ == CSfxHandle()) { // cmplwi at 0x19A94
       x788_ = PlayCustomSound(pos, GetTransform().GetColumn(kDZ),
                               x158_.sound_EchoTargetTransmit, true);
       return;
@@ -252,9 +270,10 @@ void CDigitalGuardianEchoTarget::x19A08_(CStateManager& mgr) {
 }
 
 // fn_14_19B70: extending or extended, the effect emits, faces up the up column from the aim
-// position and steps; otherwise it stops emitting.
+// position and steps; otherwise it stops emitting. The states: cmpwi 3 / 1 at 0x19BA8 / 0x19BB0.
+// @ fn_14_19B70
 void CDigitalGuardianEchoTarget::x19B70_(CStateManager& mgr, float dt) {
-  if (x784_ == nullptr) {
+  if (x784_ == nullptr) { // cmplwi at 0x19B9C
     return;
   }
   if (x708_ == kS_Extending || x708_ == kS_Extended) {
@@ -272,12 +291,15 @@ void CDigitalGuardianEchoTarget::x19B70_(CStateManager& mgr, float dt) {
 
 // fn_14_19CE0: retracting, the extension falls 0.75/s (.rodata 0x9FC) to 0 and the target is
 // retracted; extending, it rises 0.25/s (.rodata 0x99C) to 1 and the target is extended. Extended
-// and extending targets carry the orbit, target and seeker-target materials (41, 40, 63).
+// and extending targets carry the orbit, target and seeker-target materials (41, 40, 63: li r4
+// 0x29, r5 0x28, r6 0x3F). The switch: 0x19CF0..0x19D18. Its out-of-range arm (0x19D08, 0x19D18)
+// is dead: x708_ is only written with 0..4 (0x1A748, 0x19D50, 0x19DA0, 0x19E24 and 0x1A4A8).
+// @ fn_14_19CE0
 void CDigitalGuardianEchoTarget::x19CE0_(CStateManager& mgr, float dt) {
   switch (x708_) {
   case kS_Retracting:
     x710_ = x710_ - 0.75f * dt;
-    if (x710_ <= 0.f) {
+    if (x710_ <= 0.f) { // fcmpo/cror eq,lt,eq at 0x19D3C
       x710_ = 0.f;
       x708_ = kS_Retracted;
     }
@@ -285,7 +307,7 @@ void CDigitalGuardianEchoTarget::x19CE0_(CStateManager& mgr, float dt) {
     break;
   case kS_Extending:
     x710_ += 0.25f * dt;
-    if (x710_ >= 1.f) {
+    if (x710_ >= 1.f) { // fcmpo/cror eq,gt,eq at 0x19D8C (.rodata 0x96C)
       x710_ = 1.f;
       x708_ = kS_Extended;
     }

@@ -669,6 +669,7 @@ void CDigitalGuardian::x39CC_(CStateManager& mgr, const CDamageVulnerability& vu
 // fn_14_3DA8: the four knee armour ids from 0xFB0 (the loop's cmpwi 4 at 0x3E10); each id that is
 // not kInvalidUniqueId (0x3DD8) and whose object exists (0x3DF4) is made orbitable or not
 // (fn_14_CE1C, 0x3E04).
+// @ fn_14_3DA8
 void CDigitalGuardian::x3DA8_(CStateManager& mgr, bool orbitable) {
   const u16* const armor[4] = {&xFB0_, &xFB2_, &xFB4_, &xFB6_};
   for (int i = 0; i < 4; ++i) {
@@ -1147,6 +1148,10 @@ CTransform4f CDigitalGuardian::SegmentRotation_(const CSegId& seg) const {
 // scaled transform (the GetScaledLocatorTransform call at 0x19FC), the actor's transform times
 // the locator's (the __ml__ at 0x1A0C), times the segment's rotation (the __ml__ at 0x1A1C), and
 // the model at this+0xE6C is drawn there (the Render call at 0x1A40).
+// Arms (dg30): model there (natural) / absent (forced: dg30_models, the five ids unset at
+// fn_14_6864's entry). Retail indexes the rotations with the raw byte; SegmentRotation_'s
+// invalid-id and no-animation arms are port limits, not retail arms.
+// @ fn_14_1994
 void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
                               const CModelFlags& flags) const {
   if (!xE6C_.valid()) {
@@ -1165,8 +1170,9 @@ void CDigitalGuardian::x1994_(const CStateManager& mgr, const CTransform4f& xf,
 // fn_14_18B4 (0xE0 bytes): the shin model. The same walk as fn_14_1994 (the ids at this+0x10C0,
 // the locator transform at 0x1928, the two __ml__ calls at 0x1938 and 0x1948), but the model at
 // this+0xEBC is drawn (the Render call at 0x196C) and only when bit 4 of the flag byte at
-// this+0x128C is clear (the extrwi at 0x19D8 - the byte's bit 4, the mask 1u << (31 - 27) =
-// 0x10) and the byte at this+0xF08 is set (the test at 0x19E4).
+// this+0x128C is clear (the extrwi at 0x18D8 - the byte's bit 4, the mask 1u << (31 - 27) =
+// 0x10) and the byte at this+0xF08 is set (the test at 0x18E4).
+// @ fn_14_18B4
 void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
                               const CModelFlags& flags) const {
   if ((x128C_ & 0x10) != 0 || !xEBC_.valid()) {
@@ -1192,7 +1198,11 @@ void CDigitalGuardian::x18B4_(const CStateManager& mgr, const CTransform4f& xf,
 //
 // Then the echo emitter at this+0x123C, when it is there (the test at 0x1878), is drawn through
 // the renderer: the retail calls the renderer's vtable slot at 0x44 (the lwz at 0x1954 and the
-// bctrl at 0x1958). The slot is not identified, so the call is a stand-in.
+// bctrl at 0x1958).
+// The ble at 0x1820 also skips on a NaN height, as the port's `> 0.f` does.
+// Arms (dg30): flag 0x08 (dg29 msgs), no beacon model (forced: dg30_models), height 0 / up
+// (natural), no emitter (forced: dg30_beacon, fn_14_D664's id unset).
+// @ fn_14_17DC
 void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) const {
   if ((x128C_ & 0x08) == 0 && x11EC_.valid() && x1264_ > 0.f) {
     CTransform4f modelXf = CTransform4f::Identity();
@@ -1219,6 +1229,8 @@ void CDigitalGuardian::x17DC_(const CStateManager& mgr, const CTransform4f& xf) 
 // the word at this+0x10DC is 3 (the cmpwi at 0x173C). The transform is the actor's, times the
 // locator's scaled transform (the GetScaledLocatorTransform call at 0x176C), times the segment's
 // rotation (the two __ml__ calls at 0x177C and 0x178C).
+// Arms (dg30): toe state 3 / other (natural); the port-only no-model guard forced (dg30_models).
+// @ fn_14_1700
 void CDigitalGuardian::x1700_(const CStateManager& mgr, const CTransform4f& xf,
                               const CModelFlags& flags) const {
   // The ids are the bytes the retail loads (the lbz at 0x1744): the first one is the byte the
@@ -1245,8 +1257,12 @@ void CDigitalGuardian::x1700_(const CStateManager& mgr, const CTransform4f& xf,
 // with it (the __ml__ at 0x26B4) and, when the beacon's model is there (the byte at this+0x1238,
 // the model's valid flag - the test at 0x26C4), moves the result along its own z axis by
 // (this+0x1264 - 0.5f) * (0.8f * the model's height) - the constants are .rodata 0x29C (0.5f)
-// and 0x2A0 (0.8f) and the height comes from the model's bounds (the GetBounds call at 0x269C:
-// the box's min z at 0x10(sp) and its max z at 0x1c(sp), the fsubs at 0x25F0).
+// and 0x2A0 (0.8f) and the height comes from the model's bounds (the GetBounds call at 0x25D8:
+// the fsubs at 0x25F0 and 0x25FC).
+// The no-model arm (0x25CC) is dead: all four callers test 0x1238 before the call - fn_14_17DC
+// (0x1804, call 0x182C), fn_14_9ABC (0x9BF4, call 0x9C20), fn_14_A138 (0xA2B0,
+// call 0xA2DC) and the constructor fn_14_B100 (0xC01C, call 0xC034). The model arm ran (natural).
+// @ fn_14_2578
 void CDigitalGuardian::x2578_(CTransform4f& out, const CTransform4f& xf) const {
   CTransform4f result = xf * GetScaledLocatorTransform(CSegId(x10B9_));
   if (x11EC_.valid()) {
@@ -1362,6 +1378,9 @@ void CDigitalGuardian::x28D0_(CStateManager& mgr) {
 // LookAt from start to end with the up vector (0x2C3C), its global translation (0x20, 0x2C6C) the
 // start, and the parameter is dt times the distance (Magnitude at 0x2BEC, the fmuls at 0x2BF4);
 // without a head the parameter is the 1.0f loaded at 0x2AF4 (.rodata 0x270).
+// asmcheck's CMP x126C (0x2AB0) is rstl::max_val's compare. Arms (dg30): no emitter / no model
+// (forced: dg30_beacon / dg30_models), beacon down / up, head there / gone (dg29 r1).
+// @ fn_14_2A28
 void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
   if (x123C_ == nullptr || !x11EC_.valid()) { // the tests at 0x2A60 and 0x2A6C
     return;
@@ -1400,6 +1419,9 @@ void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
 // was empty (fn_14_528) and copies it otherwise (fn_14_6A98); the host's optional_object does
 // the same). The temporary is destroyed right after (the __dt__ at 0x68E0). An invalid asset id
 // (the cmplwi at 0x689C) leaves the optional empty.
+// Arms (dg30): every id set (natural: the one DGRD placement sets all five) / unset (forced:
+// dg30_models). The compares are 0x689C, 0x68EC, 0x6930, 0x6974, 0x69B8.
+// @ fn_14_6864
 void CDigitalGuardian::x6864_() {
   const CVector3f scale = GetModelData()->GetScale();
   if (mData.mLegModel != kInvalidAssetId) {
@@ -1429,6 +1451,8 @@ void CDigitalGuardian::x6864_() {
 // CStateManager::GetCharacterRenderMaskAndTarget. The base's Render is never called: the
 // retail's guardian draws its model through the render list (fn_14_A004), not through the
 // render path.
+// Arms (dg30): mDrawParticles set (natural) / clear (forced: dg30_beacon after 40 renders).
+// @ fn_14_A3D4
 void CDigitalGuardian::Render(const CStateManager& mgr) const {
   sRendering = 1;
   uint mask = 0;
@@ -1594,11 +1618,12 @@ void CDigitalGuardian::RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint
   }
 }
 
-// vtable slot 60 = fn_14_9DFC (0x9DFC..0x9FE4): the base's setup first (the call at 0x9ED0), then
+// vtable slot 60 = fn_14_9DFC (0x9DFC..0x9E88): the base's setup first (the call at 0x9E10), then
 // the module's three tables on the state manager at this+0x350 - the triggers (lbl_14_data_9C,
-// 12 = 0xC) through the vtable slot at +0x18 (the call at 0x9EE8), the states (lbl_14_data_204,
-// 14 = 0xE) through +0x14 (0x9F10) and the codes (lbl_14_data_380, 13 = 0xD) through +0x1C
-// (0x9F30).
+// 12 = 0xC, li r5 at 0x9E20) through the vtable slot at +0x18 (the bctrl at 0x9E30), the states
+// (lbl_14_data_204, 14 = 0xE at 0x9E40) through +0x14 (0x9E50) and the codes (lbl_14_data_380,
+// 13 = 0xD at 0x9E60) through +0x1C (0x9E70). No branches; ran in every run.
+// @ fn_14_9DFC
 void CDigitalGuardian::SetupStateMachine(CStateManager& mgr) {
   CPatterned::SetupStateMachine(mgr);
   StateMachine* stateMachine = mStateMachine.get();

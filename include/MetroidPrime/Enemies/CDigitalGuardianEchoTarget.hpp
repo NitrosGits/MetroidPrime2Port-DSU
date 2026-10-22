@@ -45,7 +45,8 @@ public:
 
   // CActor
   void Render(const CStateManager& mgr) const override;                 // fn_14_1A168
-  CHealthInfo* HealthInfo() override { return &x764_; }                  // fn_14_1ABD8
+  // @ fn_14_1ABD8
+  CHealthInfo* HealthInfo() override { return &x764_; } // addi r3, r3, 0x764
   const CDamageVulnerability* GetDamageVulnerability() const override;  // fn_14_1A12C
   rstl::optional_object< CAABox > GetTouchBounds() const override;      // fn_14_1AB50
   CVector3f GetOrbitPosition(const CStateManager& mgr) const override;  // fn_14_1AB98
