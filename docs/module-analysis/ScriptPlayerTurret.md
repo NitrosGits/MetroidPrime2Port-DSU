@@ -1055,3 +1055,13 @@ citations for them.
 So: no behaviour difference in these six, and no marker (the port has no body for them).  The
 classification of section 16.2 stands, with `fn_63_72C`'s row made exact (it is the
 SLdrTDamageInfo's property reader, not a second property reader).
+
+**The run** (one game run, the Agon Wastes, `sand_world,06_sand_alamofront` layer 3, the
+compiler coverage build): `tools/cov/gcov_report.py <build> <gcov dir> --module ScriptPlayerTurret`
+gives the module's state - `fn_63_84C` 22/25 lines and 22/32 branches, `fn_63_1134` 28/34 and
+19/33 (the press test at 924 and the reload test at 926 have **no untaken arc**: the reload arm of
+section 21.1 ran again), `fn_63_1BE8` 55/90 and 28/48, `fn_63_23C0` 83/108 and 63/103 - the
+remaining untaken arcs are the unreachable ones and the arms the forcing runs cover (the
+multi-player arms, the dead player and the actor without a health info; the port's console has an
+`mpforce` command now, which is the simpler way to force the multi-player arms).  0 `[port]`
+caught / reach-stub.
