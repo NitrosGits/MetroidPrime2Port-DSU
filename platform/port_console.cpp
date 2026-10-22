@@ -543,7 +543,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
-      "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags); var player spawnmorph [n]\n"
+      "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
@@ -1849,8 +1849,9 @@ std::vector< VarHandler >& VarHandlers() {
 }
 
 // var <id> <name> [value]: read or set a module field a REL's port registered (dghd.attack,
-// dghd.flags), so an arm a fight rarely draws runs without gdb. `var player spawnmorph [n]` reads
-// or sets the player's spawned morph-ball state (0x390), keeping its morph state.
+// dghd.flags, dghd.sweeptime), so an arm a fight rarely draws runs without gdb. `var player
+// spawnmorph [n]` reads or sets the player's spawned morph-ball state (0x390), keeping its morph
+// state.
 void CmdVar(CStateManager& mgr, const Args& args, std::string& out) {
   float number = 0.f;
   if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], number))) {

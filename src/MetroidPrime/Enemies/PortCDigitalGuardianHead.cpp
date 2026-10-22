@@ -1557,7 +1557,8 @@ void CDigitalGuardianHead::x10A2C_(CStateManager& mgr, const rstl::string& locat
 }
 
 // Host: the console's `var <id> <name> [value]` for the head: dghd.attack is the projectile
-// attack at 0x10D0 (0 pulse, 1 charge, 2 missiles, 3 gun), dghd.flags the flag byte 0x10F4.
+// attack at 0x10D0 (0 pulse, 1 charge, 2 missiles, 3 gun), dghd.flags the flag byte 0x10F4,
+// dghd.sweeptime the lasers' sweep time 0x1090 (whole seconds).
 bool CDigitalGuardianHead::PortConsoleVar(CEntity& ent, const char* name, const int* value,
                                           int& current) {
   CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(&ent);
@@ -1576,6 +1577,13 @@ bool CDigitalGuardianHead::PortConsoleVar(CEntity& ent, const char* name, const 
       head->x10F4_ = static_cast< uchar >(*value);
     }
     current = head->x10F4_;
+    return true;
+  }
+  if (strcmp(name, "dghd.sweeptime") == 0) {
+    if (value != nullptr) {
+      head->x1090_ = static_cast< float >(*value);
+    }
+    current = static_cast< int >(head->x1090_);
     return true;
   }
   return false;

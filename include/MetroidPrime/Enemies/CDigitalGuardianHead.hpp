@@ -303,7 +303,7 @@ private:
   CProjectileInfo xE7C_; // 0xE7C: the machine gun (data +0x214, damage +0x218)
 
 public:
-  // Host: the console's `var <id> dghd.attack|dghd.flags [value]` (platform/port_console.cpp).
+  // Host: the console's `var <id> dghd.attack|flags|sweeptime [value]` (platform/port_console.cpp).
   static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
 
 private:
