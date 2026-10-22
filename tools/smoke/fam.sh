@@ -51,14 +51,16 @@ if [ ! -d "$SAVE" ]; then
 fi
 cp -r "$SAVE" "$USER" || exit 2
 
-# A game left behind by a killed script would keep a run slot and an Xvfb: find it by the user
-# dir it runs with (no other run uses it) and end it.
+# A game left behind by a killed script would keep a run slot and an Xvfb: find it by a token only
+# this invocation exports and end it. Not by the user dir: a suite rerun into the same --out dir
+# shares it, and a leftover family of the first run would end the rerun's game on its way out.
+export SMOKE_FAM_TOKEN="$TAG.$$.$(date +%s%N)"
 kill_game() {
   local p pid
   for p in /proc/[0-9]*; do
     pid=${p#/proc/}
     [ "$pid" = "$$" ] && continue
-    tr '\0' '\n' 2>/dev/null < "$p/environ" | grep -qx "MP2_USER_PATH=$USER" && kill -TERM "$pid" 2>/dev/null
+    tr '\0' '\n' 2>/dev/null < "$p/environ" | grep -qx "SMOKE_FAM_TOKEN=$SMOKE_FAM_TOKEN" && kill -TERM "$pid" 2>/dev/null
   done
   return 0
 }
