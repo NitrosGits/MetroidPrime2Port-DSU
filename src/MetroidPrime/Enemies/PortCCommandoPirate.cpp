@@ -1543,13 +1543,13 @@ void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg)
   }
   // The module's flag byte: the 0x04 bit is set when the knock-back manager's reaction is between
   // 2 and 4 (the guest's word at guest this+0x630, the manager's own mReaction at its +0x10, the
-  // compares at 0x00002E50 and 0x00002E58); otherwise the byte keeps the bit
-  // (0x00002E78..0x00002E8C).
+  // compares at 0x00002E50 and 0x00002E58); otherwise the 0x04 bit becomes 0x04 | 0x01 (the extrwi
+  // 1,29 = 0x04 and clrlwi 31 = 0x01 or-ed and put back by rlwimi 2,29,29, 0x00002E78..0x00002E8C).
   const uint reaction = KnockBackController().GetActiveReaction();
   if (reaction >= 2 && reaction < 5) {
     xc64_ |= 0x04;                                         // 0x00002E64..0x00002E70
   } else {
-    xc64_ = (xc64_ & ~0x04) | (xc64_ & 0x04);               // 0x00002E78..0x00002E8C
+    xc64_ |= (xc64_ & 0x01) << 2;                          // 0x00002E78..0x00002E8C
   }
   // The ray under the commando: from its own position plus the up vector six units down.
   const CVector3f start = GetTranslation() + CVector3f::Up();
