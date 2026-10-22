@@ -63,9 +63,9 @@ void CSandworm::StopMoveSfx() {
   handle = CSfxHandle();
 }
 
-// Unreferenced in retail: the number of 'GRNT'/'NEXT' connections that resolve to an actor.
-// fn_56_534C (ported, not exercised yet)
-// Unreferenced in retail and in the tree: nothing calls it.
+// class T (fn_56_534C): the number of 'GRNT'/'NEXT' connections that resolve to an actor.
+// Unreferenced in retail - no 'bl fn_56_534C' in the module's asm and no table entry or
+// relocation for it, so nothing calls it. No marker (Sandworm_functions.tsv, class T).
 int CSandworm::CountScriptActors(CStateManager& mgr) const {
   int count = 0;
   const rstl::vector< SConnection >& conns = GetConnectionList();
@@ -174,9 +174,9 @@ CTransform4f CSandworm::MoveToScriptActor(CStateManager& mgr, int& index) const 
   return xf;
 }
 
-// Unreferenced in retail: ramps the steering speed over 1.2 s after x134C.
-// fn_56_10A68 (ported, not exercised yet)
-// Unreferenced in retail and in the tree: nothing calls it.
+// class T (fn_56_10A68): ramps the steering speed over 1.2 s after x134C.
+// Unreferenced in retail - no 'bl fn_56_10A68' in the module's asm and no table entry or
+// relocation for it, so nothing calls it. No marker (Sandworm_functions.tsv, class T).
 void CSandworm::SetSteeringSpeedRange() {
   const float t = x8B0_activeTime - x134C_;
   BodyController()->CommandMgr().SetSteeringSpeedRange(0.f, t > 1.2f ? 1.f : t / 1.2f);
@@ -708,7 +708,9 @@ void CSandworm::Rise(CStateManager& mgr, EStateMsg msg, float dt) {
   IssueGenerateCmd(msg, pas::kAS_Generate, CBCGenerateCmd(pas::EGenerateType(0), -1));
 }
 
-// fn_56_C3D0 (ported, not exercised yet)
+// `lbz r0, 0x20(r3)`; `extrwi r3, r0, 1, 24` = CEntity::mActive (0x20, byte bit 0x80), the
+// neg/or/srwi pair being the `!= 0` bool normalize. No marker: no FSM2 asset asks for this
+// trigger (Sandworm.md l.7) and the coverage run entered it 0 times.
 bool CSandworm::Activated(CStateManager& mgr, const CTriggerData& data) const {
   return GetActive();
 }

@@ -82,9 +82,9 @@ CVector3f CSandworm::PlayerDirection(float scale) const {
   return GetTransform().GetColumn(kDY).AsNormalized() * scale + x15AC_toss.x0_xf.GetTranslation();
 }
 
-// Unreferenced in retail: the id of the first CONN/FOLW connection's target.
-// fn_56_6324 (ported, not exercised yet)
-// Unreferenced in retail and in the tree: nothing calls it.
+// class T (fn_56_6324): the id of the first CONN/FOLW connection's target.
+// Unreferenced in retail - no 'bl fn_56_6324' in the module's asm and no table entry or
+// relocation for it, so nothing calls it. No marker (Sandworm_functions.tsv, class T).
 TUniqueId CSandworm::Unreferenced6324(CStateManager& mgr) const {
   const rstl::vector< SConnection >& conns = GetConnectionList();
   for (rstl::vector< SConnection >::const_iterator it = conns.begin(); it != conns.end(); ++it) {
@@ -549,7 +549,11 @@ bool CSandworm::HitDuringWindUp(CStateManager& mgr, const CTriggerData& data) co
   return (x19A8_bombPhase.xc_flags & 0x80) != 0;
 }
 
-// fn_56_C350 (ported, not exercised yet)
+// 0x58(r3)/0x14FC(r4): the player's translation (mgr.Player(0)); fsubs per axis, fmuls/fadds =
+// MagSquared; `fcmpo vs rodata_150` + `ble` = `distSq > 0.f` (NaN takes the ble, as C's `>`),
+// `lfs f6, 0x3e0(r3)` = mMaxAttackRange, `fcmpo` + `bge` = `distSq < max*max`.
+// No marker: no FSM2 asset asks for this trigger (Sandworm.md l.7: only the Metroid's machine
+// names InAttackRange) and the 2026-10-22 coverage run entered it 0 times.
 bool CSandworm::InAttackRange(CStateManager& mgr, const CTriggerData& data) const {
   const float distSq = (PlayerPos(mgr) - GetTranslation()).MagSquared();
   return distSq > 0.f && distSq < mMaxAttackRange * mMaxAttackRange;

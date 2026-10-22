@@ -28,7 +28,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x2198	0x58	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	H	-	[?] compiler-emitted dtor	-
 0x21F0	0x14	CSandwormEye	[?] SetDead (x2F4 bit6)	method	B	11374 5D80	-	WP2
 0x2204	0xC	CSandwormEye	[?] IsDead (x2F4 bit6)	method	B	321C 35F8 36A0 441C E204 E2C0	-	WP2
-0x2210	0x1C	CSandwormEye	[?] GetX2E8 (CVector3f)	method	B	-	-	WP2
+0x2210	0x1C	CSandwormEye	[?] GetX2E8 (CVector3f) [T: no bl, table entry or relocation for it in the REL asm]	unreferenced	T	-	-	WP2
 0x222C	0x1C	CSandwormEye	[?] SetX2E8 (CVector3f)	method	B	441C	-	WP2
 0x2248	0x14	CSandwormEye	[?] SetX2F4bit7	method	B	441C	-	WP2
 0x225C	0xC	CSandwormEye	[?] GetX2F4bit7	method	B	441C	-	WP2
@@ -101,7 +101,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x5250	0x50	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	H	-	[?] compiler-emitted dtor	-
 0x52A0	0x58	CEntityInfo	~CEntityInfo (inline)	inline-dol	H	5060	CEntityInfo::~CEntityInfo	-
 0x52F8	0x54	rstl::vector<SConnection>	~vector<SConnection> (inline)	inline-dol	H	52A0	rstl::vector dtor	-
-0x534C	0xD0	CSandworm	[?] unreferenced script-actor lookup	unreferenced	B	-	-	WP3
+0x534C	0xD0	CSandworm	[?] unreferenced script-actor lookup [T: no bl, table entry or relocation for it in the REL asm]	unreferenced	T	-	-	WP3
 0x541C	0x54	CSandworm	DoneSulking [trigger slot 0x174]	fsm-trigger	B	data_9F8	-	WP3
 0x5470	0xC0	CSandworm	Sulk [state slot 0x234]	fsm-state	B	data_AB8	-	WP3
 0x5530	0x4C	CSandworm	SequenceAttack [trigger slot 0x1c8]	fsm-trigger	B	data_A4C	-	WP4
@@ -126,7 +126,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x5F5C	0x1E8	CSandworm	[?] ApplyMeleeDamage	method	B	646C	-	WP4
 0x6144	0xA8	CSandworm	[?] ReleaseGrabbedPlayer (DetachActorFromPlayer)	method	B	646C 74B8 BF44	-	WP4
 0x61EC	0x138	CSandworm	[?] GrabPlayer (AttachActorToPlayer)	method	B	646C	-	WP4
-0x6324	0x94	CSandworm	[?] unreferenced (GetIdForScript)	unreferenced	B	-	-	WP4
+0x6324	0x94	CSandworm	[?] unreferenced (GetIdForScript) [T: no bl, table entry or relocation for it in the REL asm]	unreferenced	T	-	-	WP4
 0x63B8	0x58	CSandworm	[?] SendGrabMsgs	method	B	646C BF44	-	WP4
 0x6410	0x5C	CSandworm	[?] SendAttackMsgs	method	B	646C	-	WP4
 0x646C	0x324	CSandworm	DoUserAnimEvent [slot 0x70] (jumptable data_790)	virtual	B	data_8F4	-	WP4
@@ -225,8 +225,8 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0xC0A4	0xC4	CSandworm	[?] grab helper	method	B	C168	-	WP4
 0xC168	0x114	CSandworm	CanGrabMorphball [trigger slot 0x15c]	fsm-trigger	B	data_9E0	-	WP4
 0xC27C	0xD4	CSandworm	InSpitRange [trigger slot 0x194]	fsm-trigger	B	data_A18	-	WP4
-0xC350	0x80	CSandworm	InAttackRange [trigger slot 0x18c]	fsm-trigger	B	data_A10	-	WP4
-0xC3D0	0x18	CSandworm	Activated [trigger slot 0x148]	fsm-trigger	B	data_9CC	-	WP3
+0xC350	0x80	CSandworm	InAttackRange [trigger slot 0x18c] [T: no FSM2 asset asks this trigger - only the Metroid machine names InAttackRange; 0 entries in the 2026-10-22 coverage run]	fsm-trigger	T	data_A10	-	WP4
+0xC3D0	0x18	CSandworm	Activated [trigger slot 0x148] [T: no FSM2 asset asks this trigger - only the Metroid machine names InAttackRange; 0 entries in the 2026-10-22 coverage run]	fsm-trigger	T	data_9CC	-	WP3
 0xC3E8	0xC	CSandworm	BeginUnderground [trigger slot 0x14c]	fsm-trigger	B	data_9D0	-	WP3
 0xC3F4	0x74	CSandworm	LurkUnderground [state slot 0x204]	fsm-state	B	data_A88	-	WP3
 0xC468	0x198	CSandworm	[?] MoveToScriptActor (GetIdForScript)	method	B	5470 C3F4	-	WP3
@@ -288,8 +288,8 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0xFFBC	0x7C	CSandworm	[?] spine/segment chain helper	method	B	E764	-	WP5
 0x10038	0x58	CSandworm	[?] spine/segment chain helper	method	B	10090 4200 B138 F384 F5B0 F77C	-	WP5
 0x10090	0x80	CSandworm	[?] GetSegmentPosition(i)	method	B	11CF8 5938 A708 D350 FB24 FFBC	-	WP5
-0x10110	0x158	CSandworm	[?] unreferenced math helper	unreferenced	B	-	-	WP5
-0x10268	0x2A8	CSandworm	[?] unreferenced math helper	unreferenced	B	-	-	WP5
+0x10110	0x158	CSandworm	[?] unreferenced math helper [T: no bl, table entry or relocation for it in the REL asm]	unreferenced	T	-	-	WP5
+0x10268	0x2A8	CSandworm	[?] unreferenced math helper [T: no bl, table entry or relocation for it in the REL asm]	unreferenced	T	-	-	WP5
 0x10510	0x1C4	CSandworm	[?] spine/segment chain helper	method	B	FA30	-	WP5
 0x106D4	0x114	CSandworm	[?] spine/segment chain helper	method	B	AD14 FC94	-	WP5
 0x107E8	0x24	CSandworm	[?] spine/segment chain helper	method	B	AD14 C600 F5B0 F77C FC94	-	WP5
@@ -297,7 +297,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x108BC	0xB0	CSandworm	[?] spine/segment chain helper	method	B	D350	-	WP5
 0x1096C	0xB4	CSandworm	[?] GetLocatorPosition(i)	method	B	5938 A04C A348 B138 D350 F384 F5B0	-	WP5
 0x10A20	0x48	CSandworm	[?] GetLctrTransform wrapper	method	B	108BC 1096C	-	WP5
-0x10A68	0x70	CSandworm	[?] unreferenced (SetSteeringSpeedRange)	unreferenced	B	-	-	WP3
+0x10A68	0x70	CSandworm	[?] unreferenced (SetSteeringSpeedRange) [T: no bl, table entry or relocation for it in the REL asm]	unreferenced	T	-	-	WP3
 0x10AD8	0x110	CSandworm	[?] UpdateTimers (Think)	method	B	110C0	-	WP1
 0x10BE8	0xBC	CSandworm	[?] UpdateFade (Think)	method	B	110C0	-	WP1
 0x10CA4	0x30	CSandworm	[?] fade helper	method	B	10BE8	-	WP1

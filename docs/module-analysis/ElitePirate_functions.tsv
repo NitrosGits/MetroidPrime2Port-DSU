@@ -4,15 +4,15 @@ offset	size	name	kind	class	callers	marker	reason
 0x10	0x3C	fn_15_10	virtual	T	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual, but the copy only calls the base (the same body the host has), so the port leaves it inherited: DOL `GetTouchBounds__10CPatternedCFv` @ 0x80073bf0 (vtable slot 18)
 0x4C	0x10	fn_15_4C TakeDamage	virtual	B	data:lbl_15_data_634	fn_15_4C	the module's own body; the port's marker is over it (DOL `TakeDamage__10CPatternedFRC9CVector3ff` @ 0x80073c58 (vtable slot 41))
 0x5C	0x8	fn_15_5C	virtual	T	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual, but the copy only calls the base (the same body the host has), so the port leaves it inherited: DOL `GetModelAlphau8__10CPatternedCFRC13CStateManager` @ 0x80073c64 (vtable slot 50)
-0x64	0x8	fn_15_64	virtual	B	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `(CPatterned::GetPointSearchPath)` @ 0x80073c7c (vtable slot 57)
-0x6C	0x8	fn_15_6C	virtual	B	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `GetRagDoll__10CPatternedCFv` @ 0x800358e0 (vtable slot 61)
-0x74	0x10	fn_15_74	virtual	B	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `GetAttackTarget__10CPatternedCFv` @ 0x80073c84 (vtable slot 67)
+0x64	0x8	fn_15_64	virtual	B	data:lbl_15_data_634	fn_15_64	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `(CPatterned::GetPointSearchPath)` @ 0x80073c7c (vtable slot 57)
+0x6C	0x8	fn_15_6C	virtual	B	data:lbl_15_data_634	fn_15_6C	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `GetRagDoll__10CPatternedCFv` @ 0x800358e0 (vtable slot 61)
+0x74	0x10	fn_15_74	virtual	B	data:lbl_15_data_634	fn_15_74	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `GetAttackTarget__10CPatternedCFv` @ 0x80073c84 (vtable slot 67)
 0x84	0xC	fn_15_84	virtual	T	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual, but the copy only calls the base (the same body the host has), so the port leaves it inherited: DOL `IsOnGround__10CPatternedFv` @ 0x80073c90 (vtable slot 68)
-0x90	0xC	fn_15_90	virtual	B	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `GetGravityConstant__10CPatternedCFv` @ 0x80073c9c (vtable slot 69)
+0x90	0xC	fn_15_90	virtual	B	data:lbl_15_data_634	fn_15_90	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `GetGravityConstant__10CPatternedCFv` @ 0x80073c9c (vtable slot 69)
 0x9C	0x8	fn_15_9C	virtual	T	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual, but the copy only calls the base (the same body the host has), so the port leaves it inherited: DOL `GetDeathExplosionParticle__10CPatternedCFv` @ 0x80073ca4 (vtable slot 73)
-0xA4	0x8	fn_15_A4	virtual	B	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `CanBeShot__3CAiFRC13CStateManageri` @ 0x800358d8 (vtable slot 42)
+0xA4	0x8	fn_15_A4	virtual	B	data:lbl_15_data_634	fn_15_A4	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `CanBeShot__3CAiFRC13CStateManageri` @ 0x800358d8 (vtable slot 42)
 0xAC	0x8	fn_15_AC IsListening	virtual	B	data:lbl_15_data_634	fn_15_AC	the module's own body; the port's marker is over it (DOL `IsListening__3CAiCFv` @ 0x80073cac (vtable slot 43))
-0xB4	0x8	fn_15_B4	virtual	B	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `Listen__3CAiFRC9CVector3f16EListenNoiseType` @ 0x8003c59c (vtable slot 44)
+0xB4	0x8	fn_15_B4	virtual	B	data:lbl_15_data_634	fn_15_B4	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `Listen__3CAiFRC9CVector3f16EListenNoiseType` @ 0x8003c59c (vtable slot 44)
 0xBC	0x1C	fn_15_BC	virtual	T	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual, but the copy only calls the base (the same body the host has), so the port leaves it inherited: DOL `GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f` @ 0x80073cb4 (vtable slot 45)
 0xD8	0x2C	fn_15_D8	virtual	T	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual, but the copy only calls the base (the same body the host has), so the port leaves it inherited: DOL `GetHealthInfo__6CActorCFRC13CStateManager` @ 0x8000b900 (vtable slot 15)
 0x104	0x24	RELExit RELExit	rel-entry	H	-	-	the REL's own boilerplate (entry/exit/prolog); the host's runtime does it
@@ -29,7 +29,7 @@ offset	size	name	kind	class	callers	marker	reason
 0xF2C	0x64	fn_15_F2C	compiler-dtor	H	-	-	body identical to DOL `"__dt__Q24rstl27auto_ptr<15CCharLayoutInfo>Fv"` @ 0x802ac5ec
 0xF90	0x60	fn_15_F90	compiler-dtor	H	-	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
 0xFF0	0xD0	fn_15_FF0	compiler-dtor	H	-	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
-0x10C0	0x268	fn_15_10C0 SLdrElitePirate ctor (the loader's stack object)	loader	B	bl:fn_15_178	-	checked against the generated SLdrElitePirate ctor: same defaults except darkShieldSound/lightShieldSound/sound_VisorElectric = -1, which PortLoadElitePirate applies (no separate body to mark)
+0x10C0	0x268	fn_15_10C0 SLdrElitePirate ctor (the loader's stack object)	loader	H	bl:fn_15_178	-	H: the generated SLdrElitePirate ctor (SLdrElitePirate.hpp:64, inline) is the same struct ctor; the only difference is darkShieldSound/lightShieldSound/sound_VisorElectric, which retail sets to -1 (0x10F0 `li r0,-0x1` + stw 0x330/0x33c/0x484) and PortLoadElitePirate applies (PortCElitePirate.cpp:1251); no separate body to mark
 0x1328	0x90	fn_15_1328 ReleaseClaimedRegion	method	B	bl:fn_15_1FC0 fn_15_7B00 fn_15_8580	fn_15_1328	the module's own body; the port's marker is over it
 0x13B8	0x1E0	fn_15_13B8 ClaimPathRegion	method	B	bl:fn_15_1FC0	fn_15_13B8	the module's own body; the port's marker is over it
 0x1598	0x34	fn_15_1598 GetPathArea	method	B	bl:fn_15_1328 fn_15_13B8	fn_15_1598	the module's own body; the port's marker is over it
@@ -110,7 +110,7 @@ offset	size	name	kind	class	callers	marker	reason
 0x50B4	0x8	fn_15_50B4 BreakProjectileAttack	fsm-trigger	B	data:lbl_15_data_634	fn_15_50B4	the module's own body; the port's marker is over it
 0x50BC	0x1B0	fn_15_50BC ProjectileAttack	fsm-state	B	data:lbl_15_data_634	fn_15_50BC	the module's own body; the port's marker is over it
 0x526C	0x5C	fn_15_526C	method	H	data:lbl_15_data_930	-	host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile)
-0x52C8	0x8	fn_15_52C8	virtual	B	data:lbl_15_data_634	-	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `ProjectileInfo__10CPatternedFv` @ 0x80073c6c (vtable slot 55)
+0x52C8	0x8	fn_15_52C8	virtual	B	data:lbl_15_data_634	fn_15_52C8	the REL's own copy of a base-class virtual (vtable slot), the port implements it; DOL `ProjectileInfo__10CPatternedFv` @ 0x80073c6c (vtable slot 55)
 0x52D0	0x70	fn_15_52D0 InvulnAlert	fsm-state	B	data:lbl_15_data_634	fn_15_52D0	the module's own body; the port's marker is over it
 0x5340	0x110	fn_15_5340 Alert	fsm-state	B	data:lbl_15_data_634	fn_15_5340	the module's own body; the port's marker is over it
 0x5450	0x5C	fn_15_5450	method	H	data:lbl_15_data_924	-	host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile)
@@ -218,7 +218,7 @@ offset	size	name	kind	class	callers	marker	reason
 0xB2A0	0x3C	fn_15_B2A0	compiler-dtor	H	-	-	body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0
 0xB2DC	0x3C	fn_15_B2DC	compiler-dtor	H	-	-	body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0
 0xB318	0x48	fn_15_B318	compiler-dtor	H	data:lbl_15_data_8D0	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
-0xB360	0x21C	fn_15_B360 CElitePirateData copy into the object	loader	B	bl:fn_15_A190	-	compiler copy constructor of CElitePirateData; the host's implicit copy is the same (no marker)
+0xB360	0x21C	fn_15_B360 CElitePirateData copy into the object	loader	H	bl:fn_15_A190	-	H: compiler copy constructor - member-wise word/lfs+stfs copies, the member copy ctors (0x0000B40C `bl fn_15_B5E0` = CActorParameters) and no branch; the host implicit CElitePirateData copy does the same, nothing to mark
 0xB57C	0x64	fn_15_B57C	compiler-dtor	H	bl:fn_15_B360 fn_15_B82C	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
 0xB5E0	0x94	fn_15_B5E0	compiler-dtor	H	bl:fn_15_B360 fn_15_B82C	-	body identical to DOL `__ct__16CActorParametersFRC16CActorParameters` @ 0x800dfe98
 0xB674	0x7C	fn_15_B674	compiler-dtor	H	bl:fn_15_B5E0	-	body identical to DOL `__ct__16CLightParametersFRC16CLightParameters` @ 0x800dff2c

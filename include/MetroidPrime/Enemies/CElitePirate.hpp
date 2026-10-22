@@ -133,26 +133,41 @@ public:
   // (asm 0x004C: `lfs f0, skDamageHitTime` + `stfs f0, 0x448(r3)`).
   // @ fn_15_4C
   void TakeDamage(const CVector3f&, float) override { mDamageCooldownTimer = skDamageHitTime; }
-  // The three one-line accessors below are the REL's own bodies (vtable slot -> function).
-  bool CanBeShot(const CStateManager&, int) override { return true; } // slot 42, fn_15_A4
+  // The one-line accessors below are the REL's own bodies (vtable slot -> function), the
+  // instruction each body is, and the retail offset it sits at.
+  // @ fn_15_A4
+  bool CanBeShot(const CStateManager&, int) override { return true; } // slot 42; `li r3, 1` (0xA4)
   // The REL's own copy: `li r3, 0` (asm 0x00AC). It keeps the Ingsmasher out of the state
   // manager's listening list, so the REL's Listen (fn_15_B4) is never called for it.
   // @ fn_15_AC
   bool IsListening() const override { return false; }                 // slot 43, fn_15_AC
-  bool Listen(CStateManager&, const CVector3f&, EListenNoiseType) override { // slot 44, fn_15_B4
+  // `li r3, 0` (0xB4): the Ingsmasher never hears noises.
+  // @ fn_15_B4
+  bool Listen(CStateManager&, const CVector3f&, EListenNoiseType) override { // slot 44
     return false;
   }
 
   // CPatterned
-  CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; } // slot 55, fn_15_52C8
+  // `addi r3, r3, 0xcd0` (0x52C8): mProjectileInfo.
+  // @ fn_15_52C8
+  CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; } // slot 55
   using CPatterned::GetSearchPath;
   // The REL's own copy: `addi r3, r3, 0xa50` (asm 0x0000) - its own path search, not the base's.
   // @ fn_15_0
   CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; } // slot 56, fn_15_0
-  CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // slot 57, fn_15_64
-  CRagDoll* GetRagDoll() const override { return nullptr; }              // slot 61, fn_15_6C
-  TUniqueId GetAttackTarget() const override { return kInvalidUniqueId; } // slot 67, fn_15_74
-  float GetGravityConstant() const override { return 24.525f; }          // fn_15_90
+  // `li r3, 0` (0x64).
+  // @ fn_15_64
+  CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // slot 57
+  // `li r3, 0` (0x6C).
+  // @ fn_15_6C
+  CRagDoll* GetRagDoll() const override { return nullptr; }              // slot 61
+  // `lhz r0, kInvalidUniqueId` then `sth r0, 0x0(r3)` (0x74): the return value is sret.
+  // @ fn_15_74
+  TUniqueId GetAttackTarget() const override { return kInvalidUniqueId; } // slot 67
+  // `lfs f1, kDefaultGravityAccel@l` (0x90): the DOL's constant (9.81f * 2.5f = 24.525001f),
+  // not the 24.525f literal the port had.
+  // @ fn_15_90
+  float GetGravityConstant() const override { return kDefaultGravityAccel; } // slot 69
   // The REL's own copy: `li r3, 0` (asm 0x1A0C) - the Ing cannot be pushed out of it.
   // @ fn_15_1A0C
   bool CanBeUnPossessed(CStateManager&) const override { return false; } // fn_15_1A0C
