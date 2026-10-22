@@ -661,6 +661,7 @@ TUniqueId CDarkSamus::FindBestCoverPoint(CStateManager& mgr) const {
 // apart (the fcmpo at 0x0001E63C) lose lbl_10_rodata_4C8 = 15.0f, and the flat forward axis (the
 // guest's 0x28/0x38/0x48) and the flat direction from the actor to the cover point more than
 // pi / 2 apart (0x0001E704) lose 10.
+// @ fn_10_1E4C4
 float CDarkSamus::ScoreCoverPoint(const CScriptCoverPoint& cover, const CVector3f& target) const {
   float score = 10.f;
   for (uint i = 0; i < mAttackerCount; ++i) {
@@ -701,7 +702,7 @@ float CDarkSamus::ScoreCoverPoint(const CScriptCoverPoint& cover, const CVector3
   return score;
 }
 
-// fn_10_1E740 (0x0001E740, 0x120 bytes): should the actor forget the uid of the attacker that hit
+// fn_10_1E740 (0x0001E740, 0x124 bytes): should the actor forget the uid of the attacker that hit
 // it last (the guest's 0xC24)?
 //
 // Without an attacker there is nothing to forget (the lhz against kInvalidUniqueId at
@@ -714,6 +715,7 @@ float CDarkSamus::ScoreCoverPoint(const CScriptCoverPoint& cover, const CVector3
 // at 0x0001E810..0x0001E828) and compared with lbl_10_rodata_408 = 4.0f (the fcmpo at
 // 0x0001E840); the mfcr/srwi at 0x0001E844..0x0001E848 keeps the compare's "less than" bit, so
 // the attacker is forgotten once it is within 2 units.
+// @ fn_10_1E740
 bool CDarkSamus::ShouldForgetLastAttacker(CStateManager& mgr) const {
   if (mLastAttackerUid == kInvalidUniqueId) {
     return false;
@@ -808,8 +810,9 @@ CVector3f CDarkSamus::GetRepulsionPoint(CStateManager& mgr, float* strength) con
 // fn_10_1DD14 (0x0001DD14, 0x260 bytes): the separation.
 //
 // The steering direction (the guest's 0x910) is cleared (0x0001DD50..0x0001DD68) and the
-// repulsion point is asked for with the strength 0 (lbl_10_rodata_3FC, 0x0001DD6C); the zero
-// vector ends the function (the three fcmpu at 0x0001DD8C..0x0001DDB0). The point is taken at
+// repulsion point is asked for (fn_10_1D9A4 at 0x0001DD70) with the strength 0 (lbl_10_rodata_3FC,
+// 0x0001DD6C); the zero vector ends the function (the three fcmpu at 0x0001DD8C..0x0001DDB0).
+// The point is taken at
 // the actor's height (0x0001DDD4). Retail then builds the flat direction from the actor to its
 // path find navigation's target (the guest's 0x700, the navigation's mPathTarget) or, when that
 // cannot be normalized, the actor's forward axis (0x0001DDC4..0x0001DE3C), but no later
@@ -820,6 +823,7 @@ CVector3f CDarkSamus::GetRepulsionPoint(CStateManager& mgr, float* strength) con
 // is flattened (0x0001DEC4) and, when it can be normalized (0x0001DED8), becomes a locomotion
 // command (its direction normalized, the zero face vector and the speed, 0x0001DF38) and the
 // steering direction (0x0001DF40..0x0001DF50).
+// @ fn_10_1DD14
 void CDarkSamus::Separate(CStateManager& mgr) {
   mSeparationDir = CVector3f::Zero();
   float strength = 0.f;
@@ -883,6 +887,7 @@ void CDarkSamus::UpdateAdditiveAnimation(CStateManager& mgr, EStateMsg msg) {
 // (the TCastToPtr at 0x0000F034, the byte at 0x20's bit 7) in the actor's area (0x0000F054) of
 // type 0x1C (the word at 0x158, 0x0000F060) whose radius (0x15C) holds the actor (the 3D
 // distance, Magnitude at 0x0000F0A0, strictly less) says it is.
+// @ fn_10_EFC8
 bool CDarkSamus::IsInUnsafeSpot(CStateManager& mgr) const {
   if (mHasSafePos == 1 && GetTranslation().GetZ() < mSafePos.GetZ() - 10.f) { // 0x0000F00C
     return true;
@@ -1631,7 +1636,7 @@ bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
 
 // ---- the state bodies (stand-ins) --------------------------------------------------------------
 
-// fn_10_9724 (0x00009724, 0xDC bytes): the BoostBallFire state. Every message runs the attack
+// fn_10_9724 (0x00009724, 0x1FC bytes): the BoostBallFire state. Every message runs the attack
 // bookkeeping with id 0x20000 (`lis r4, 0x2` at 0x00009758, the call at 0x00009760). Activate
 // (0x00009764) removes the roll
 // emitter (0x00009778) and clears its handle (0x00009784), turns the actor around (fn_10_9644
@@ -1644,6 +1649,9 @@ bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
 // command (fn_10_8764 at 0x000098E0, the severity lbl_10 = 8 = pas::kS_Eight).
 // Activate also empties the element generator's auto_ptr at 0xE60/0xE64 (the old one deleted at
 // 0x000097F0, the stores at 0x000097FC/0x00009804).
+// Arms: all natural but one, dead: the last test's false arm (`bne` at 0x00009858 to 0x00009868,
+// a message that is neither 0, 1 nor 2) - EStateMsg has only Activate/Update/Deactivate (0..2).
+// @ fn_10_9724
 void CDarkSamus::BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallFire", msg);
   UpdateCurrentAttack(0x20000, mgr, msg); // `lis r4, 0x2` at 0x00009758, the call at 0x00009760
@@ -1769,6 +1777,10 @@ const CScriptAIHint* CDarkSamus::FindBoostBallHint(CStateManager& mgr) const {
 // fn_10_B458 (0x0000B458, 0x118 bytes): null when uid is no hint (0x0000B48C);
 // else the first active hint (`cmplwi r0, 0x1` at 0x0000B50C) among its kSS_Arrived
 // links (`lis r6, 0x4152` at 0x0000B49C, any message), null when there is none (0x0000B550).
+// Retail copies the returned links vector (fn_10_B570, the module's rstl::vector<TUniqueId> copy
+// constructor, 0x0000B4C0) and frees the temporary (fn_10_B670, its destructor, 0x0000B4CC); the
+// port's copy elision does both.
+// @ fn_10_B458
 CScriptAIHint* CDarkSamus::FindArrivedHint(CStateManager& mgr, TUniqueId uid) {
   const CScriptAIHint* from = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(uid));
   if (from == nullptr) { // 0x0000B48C
@@ -1793,6 +1805,9 @@ CScriptAIHint* CDarkSamus::FindArrivedHint(CStateManager& mgr, TUniqueId uid) {
 // hint of type 0x11 (`cmpwi r0, 0x11` at 0x0000BAEC) answers true when it is inactive (the 0x20
 // bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BAF8) and is the next step's uid when active. A
 // step with no such link repeats the same uid; after 15 steps the answer is false (0x0000BB54).
+// The links vector is copied and its temporary freed as in fn_10_B458 (fn_10_B570 at 0x0000BAB0,
+// fn_10_B670 at 0x0000BABC).
+// @ fn_10_BA38
 bool CDarkSamus::BoostChainHasInactiveHint(CStateManager& mgr, TUniqueId uid) const {
   for (int step = 0; step < 15; ++step) { // 0x0000BB4C
     const CScriptAIHint* from = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(uid));
@@ -3080,9 +3095,9 @@ void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
 // FindPathToDestination - and forgets the target (0x9FC = -1, 0x00006EC4). The other messages measure the aim position
 // against the point 0x1048/0x104C/0x1050 (the squared distance at 0x00006EEC..0x00006EF4
 // against lbl_10_rodata_1B0 = 16.0f at 0x00006EF8) and run fn_10_6F90 when it is bigger
-// (0x00006F10); then the player's halfword at its +8 goes to 0x718 (0x00006F30 - the host's
-// player has no counterpart for it), the path find runs (the guest's CPathFindNavigation at
-// 0x6F4, 0x00006F34 - not in the port) and fn_10_1DD14 (the separation, 0x00006F40). Every
+// (0x00006F10); then the player's uid (its halfword at +8) becomes the navigation's face target
+// (0x718, 0x00006F30), the navigation's path find runs (CPathFindNavigation::PathFind on 0x6F4,
+// 0x00006F34) and fn_10_1DD14 (the separation, 0x00006F40). Every
 // message then runs fn_10_6DAC (0x00006F4C - a stateless one the helper lanes port),
 // fn_10_1D860 (the additive animation, 0x00006F5C) and fn_10_11334 (the glide emitter,
 // 0x00006F68).
@@ -3485,6 +3500,10 @@ void CDarkSamus::WatchStageChange(CStateManager& mgr) {
 // (`li r7, 0x1`), the target lbl_10_rodata_3E4 = 0.5f times the sum of the line's ends (0xB7C +
 // 0xB94, 0x000176B8..0x000176E8) and no blend (`li r0, 0x0`). The state ends on the FSM's
 // AnimOver, which the command's animation state drives.
+// Arms: all natural but the switch's out-of-range one, dead (a message below 0, the fall-through
+// at 0x00017608, or of 3 and up, the `bge` at 0x00017610, both to 0x0001769C) - EStateMsg has only
+// 0..2.
+// @ fn_10_175AC
 void CDarkSamus::ScatterShot(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("ScatterShot", msg);
   UpdateAttackAimPoints(mgr, msg);
@@ -3828,6 +3847,7 @@ void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float le
 // the navigation's face target, 0x0001E110) and runs (0x0001E114), and the actor separates
 // (fn_10_1DD14 at 0x0001E120). Then the damage (fn_10_1E178), the glide emitter (fn_10_11334) and
 // the still timer (fn_10_1D794) are updated with the message.
+// @ fn_10_1DF74
 void CDarkSamus::TravelToCoverPoints(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("TravelToCoverPoints", msg);
   UpdateAdditiveAnimation(mgr, msg);
@@ -4517,6 +4537,7 @@ bool CDarkSamus::IsOnPath(const CVector3f& point) const {
 // 0.1f steps (t from lbl_10_rodata_3E8 = 1.0f while above 0.0f), every point on the line must be
 // on the mesh (GetHeightOfPointAboveMesh at 0x00014544, padding 0.0f; a failure answers false)
 // within lbl_10_rodata_40C = 5.0f of height (0x0001455C/0x00014564).
+// @ fn_10_1444C
 bool CDarkSamus::IsLineOnMesh(const CVector3f& point, float height) const {
   const float top = 5.f + height;
   const float bottom = height - 5.f;
@@ -4794,6 +4815,7 @@ void CDarkSamus::RunCollisionFailsafe(CStateManager& mgr) {
 // 0x00016BD4..0x00016BF0) and the flattened line to the point (0x00016C0C..0x00016C4C), each
 // normalized when it can be (0x00016BF4/0x00016C50), give a rotation arc clamped to dt * rate
 // (0x00016C68, 0x00016C80) that the actor turns by in one frame (0x00016CB0).
+// @ fn_10_16B8C
 void CDarkSamus::TurnTowardPoint(float dt, const CVector3f& point, float rate) {
   if (dt <= 0.f) {
     return;
@@ -5097,6 +5119,7 @@ void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
 // and excludes C7C / C80 (0x20 kMT_Player, kMT_AIPassthrough). A blocked centre ray answers 0.0f
 // (0x000162B0/0x0001638C); a blocked side ray takes lbl_10_rodata_4F4 = 0.49f off the answer,
 // which starts at lbl_10_rodata_3E8 = 1.0f.
+// @ fn_10_16048
 float CDarkSamus::GetDashPathClearance(
     CStateManager& mgr, const CVector3f& dest,
     const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const {

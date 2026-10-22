@@ -2176,3 +2176,35 @@ platform casts and the dash arms of CollidedWith.
   9724 BoostBallFire (5/6, dead final else-if), 1DF74 TravelToCoverPoints (15/16, the null cover
   return at 0x0001E0A8), 16B8C TurnTowardPoint (4/6, zero flat forward / zero target), 16048
   GetDashPathClearance (14/16); not yet looked at: 812C 895C 1444C B458 BA38 1E4C4 1DD14 EFC8.
+
+## Slice ds40 (2026-10-22): 13 B rows marked (175AC 9724 1E740 1DF74 16B8C 16048 812C 1444C B458 BA38 1E4C4 1DD14 EFC8)
+
+- No behaviour change: every body read against its asm (NaN senses included) matched. Sizes
+  corrected: 9724 0x1FC, 1E740 0x124. The 6E38 comment now says what the body does at 0x00006F30 /
+  0x00006F34 (the navigation's face target and PathFind).
+- Run on `build-port-cov`, rooftop, `tools/drivers/darksamus_ds40.con` (ds39's drive + eight
+  BoostBallInto Activates, two EventStarts in PhazonAttack, AI-hint edits for EFC8 via the console's
+  `hint <id> [type] [area n] [radius r]`), 5900 fast frames, forced with
+  `tools/cov/specs/darksamus_ds40_force.py` (force.sh + `COV_GDB_SCRIPT=tools/cov/force_ret.py`;
+  the spec adds per-caller callee forcing). 0 caught / reach-stub. Every function below ALL-ARMS
+  except 175AC / 9724, whose one untaken arm is dead (proof comments: EStateMsg has only 0..2).
+
+| fn | forced arms (everything else natural or driven) |
+|---|---|
+| 1E740 ShouldForgetLastAttacker | search not shagged on 1 / 3 waypoints; GetCoverPoint null (0x0001E7CC) |
+| 1DF74 TravelToCoverPoints | GetCoverPoint null (the return at 0x0001E0A8) |
+| 16B8C TurnTowardPoint | forward straight up (flat zero, 0x00016C00); point on the actor's x/y (0x00016C5C) |
+| 16048 GetDashPathClearance | dest on the actor's x/y (0x00016124); right static / left dynamic side ray blocked; every dynamic ray blocked (0x0001638C) |
+| 1444C IsLineOnMesh | height query fails (0x0001454C); height 1e6 / -1e6 (0x00014560 / 0x00014568) |
+| 1E4C4 ScoreCoverPoint | min range 1e9; min -1 max 0; cover on target, target on actor, cover on actor x/y; forward up |
+| 1DD14 Separate | repulsion point 100 units off (0x0001DEDC); contact time = now (0x0001DE60) |
+| B458 FindArrivedHint | start uid no object (0x0000B48C); links no object (0x0000B4F4); links inactive (0x0000B50C) |
+| BA38 BoostChainHasInactiveHint | uid no object (0x0000BA80); links no object / type 0 / inactive or active type 0x11 |
+| 812C StopGuestSfx | the beam sound 1 instead of the rooftop's -1, so a live emitter is stopped (0x00008158) |
+| EFC8 IsInUnsafeSpot | driven, not forced: u066a deactivated, u066b/u066d moved to area 7, u066c type 0x1C radius 20 with the boss placed on it |
+
+- 1E4C4's attacker loop is `uint i < mAttackerCount`; retail tests the count signed (`cmpwi` /
+  `ble`). The count is at most 2, so it is the same.
+- 895C left unmarked: it is not a body but the CDarkSamus.hpp member initializers
+  (mBoostBallSwooshTokenE40/E50, mBoostBallGlowPart, mBoostBallCollisionToken, ...); marking it
+  needs a body or a tsv class change (orchestrator).
