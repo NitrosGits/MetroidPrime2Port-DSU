@@ -43,6 +43,11 @@ public:
   void SetMaximumPitch(float pitch) { mMaxPitch = pitch; } // Guessed name
 
   bool GetLocoAnimChangeAtEndOfAnimOnly() const { return mChangeLocoAtEndOfAnimOnly; }
+#ifdef TARGET_PC
+  // Port: the SpacePirate REL's constructor (fn_72_F49C, 0xFF44-0xFF54) sets this bit (body
+  // controller +0x56c bit 0x80 = this +0x200, the bit the ctor clears at 0x800F0890).
+  void SetLocoAnimChangeAtEndOfAnimOnly(bool v) { mChangeLocoAtEndOfAnimOnly = v; }
+#endif
 
   pas::EAnimationState GetCurrentStateId() const { return mState; }
 

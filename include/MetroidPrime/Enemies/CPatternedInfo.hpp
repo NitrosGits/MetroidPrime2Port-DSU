@@ -35,6 +35,11 @@ public:
   float GetSpeed() const { return mSpeed; }
   float GetMinAttackRange() const { return mMinAttackRange; }
   float GetMaxAttackRange() const { return mMaxAttackRange; }
+#ifdef TARGET_PC
+  // Port: the SpacePirate REL's constructor (fn_72_F49C, 0xFFCC) tests the echo parameters
+  // (+0x2a4, bit 0x80 = mIsEchoEmitter) and passes them to its CPirateEchoEmitter (0x10180).
+  const SEchoParameters& GetEchoParameters() const { return mEchoParameters; }
+#endif
 
 private:
   float mMass;
