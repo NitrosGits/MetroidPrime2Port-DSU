@@ -655,23 +655,22 @@ single-player mode itself.  The arm is therefore an unported path, not an unreac
 
 Three classes, applied by rule so the table can be audited.
 
-- **H - host copy** (27 functions, 0x948 bytes): the body is a copy of something the host
+- **H - host copy** (17 functions, 0x618 bytes): the body is a copy of something the host
   already has - a shared class body, a compiler-emitted destructor, the generated property
-  class, inlined DOL code or the REL runtime - so the port writes no body for it.  These are the
-  40 rows of section 13.1 minus the 14 rows of section 16.1 (the dead ones and the two table
-  entries), which are T.
-- **T - dead or table-only** (14 functions, 0x554 bytes): no retail caller.  Twelve are dead in
-  retail (nothing calls them and no table names them), and two are table entries the port writes
-  as a line in the table (`fn_63_0`, the vtable's `GetHealthInfo` thunk, and `fn_63_3510`, the
-  generated owner's destructor).
-- **B - module behaviour** (18 functions, 0x2B78 bytes): the port writes a body for it - the
+  class or inlined DOL code - so the port writes no body for it.
+- **T - dead, table-only or REL runtime** (22 functions, 0x784 bytes): twelve are dead in retail
+  (nothing calls them and no table names them), one is a table entry with no retail caller
+  (`fn_63_3510`, the generated owner's destructor), and nine are the REL linker's runtime
+  (`RELMain`/`RELExit`, the global-object registry, `_unresolved`, `_prolog`/`_epilog` and the
+  ctor/dtor walkers), which the port's REL loader replaces.
+- **B - module behaviour** (20 functions, 0x2C78 bytes): the port writes a body for it - the
   loader, the constructor and the destructor, the three vtable overrides, the five functions the
   module hands the DOL through `SPlayerTurret_FuncPtrs`, and the module's own helpers.
 
 | class | functions | .text bytes | marked |
 |---|---|---|---|
-| H host copy | 26 | 0x874 (2,164) | 0 |
-| T dead or table-only | 13 | 0x528 (1,320) | 0 |
+| H host copy | 17 | 0x618 (1,560) | 0 |
+| T dead, table-only or REL runtime | 22 | 0x784 (1,924) | 0 |
 | B module behaviour | 20 | 0x2C78 (11,384) | 20 |
 | **total** | **59** | **0x3A14 (14,868)** | **20** |
 
@@ -707,8 +706,8 @@ function's name appears either in a `bl`, in a table, in the linker's own tables
 | fn | size | class | the scan | marked |
 |---|---|---|---|---|
 | `fn_63_0` | 0x2C | B | the vtable's slot 15 (`GetHealthInfo`): the module's own thunk, now a body of its own (section 20) | yes |
-| `RELExit` | 0x24 | H | the REL linker's exit (the `_epilog` calls it) | - |
-| `RELMain` | 0x20 | H | the REL's entry (the `_prolog` calls it) | - |
+| `RELExit` | 0x24 | T | the REL linker's exit (the `_epilog` calls it) (the port's REL loader replaces it) | no |
+| `RELMain` | 0x20 | T | the REL's entry (the `_prolog` calls it) (the port's REL loader replaces it) | no |
 | `fn_63_70` | 0xD4 | B | the REL's setup (called by `RELMain`): it stores the loader and the five pointers-to-member - the port's `RELMain` is that body (section 20) | yes |
 | `fn_63_144` | 0x4CC | B | the loader: `fn_63_70` stores it at `lbl_63_bss_20`+0 (0x98) | yes |
 | `fn_63_610` | 0x64 | T | dead: no `bl` and no table names it | no |
@@ -758,13 +757,13 @@ function's name appears either in a `bl`, in a table, in the linker's own tables
 | `fn_63_3704` | 0x48 | T | dead: no `bl` and no table names it (the owner's destructor) | no |
 | `fn_63_374C` | 0x20 | H | `CModelData`'s default constructor (a host copy; `fn_63_30E8` calls it at 0x3268) | - |
 | `fn_63_376C` | 0x90 | H | the module's static initializer (the `.ctors` entry): compiler-generated | - |
-| `__destroy_global_chain` | 0x58 | H | the REL linker's global-object registry | - |
-| `__register_global_object` | 0x1C | H | the REL linker's global-object registry | - |
-| `_unresolved` | 0xC4 | H | the REL linker's "unlinked function called" report | - |
-| `_epilog` | 0x24 | H | the REL linker's exit | - |
-| `_prolog` | 0x24 | H | the REL linker's entry | - |
-| `ModuleDestructors` | 0x4C | H | the REL linker's `_dtors` walker | - |
-| `ModuleConstructors` | 0x4C | H | the REL linker's `_ctors` walker | - |
+| `__destroy_global_chain` | 0x58 | T | the REL linker's global-object registry (the port's REL loader replaces it) | no |
+| `__register_global_object` | 0x1C | T | the REL linker's global-object registry (the port's REL loader replaces it) | no |
+| `_unresolved` | 0xC4 | T | the REL linker's "unlinked function called" report (the port's REL loader replaces it) | no |
+| `_epilog` | 0x24 | T | the REL linker's exit (the port's REL loader replaces it) | no |
+| `_prolog` | 0x24 | T | the REL linker's entry (the port's REL loader replaces it) | no |
+| `ModuleDestructors` | 0x4C | T | the REL linker's `_dtors` walker (the port's REL loader replaces it) | no |
+| `ModuleConstructors` | 0x4C | T | the REL linker's `_ctors` walker (the port's REL loader replaces it) | no |
 
 **The unmarked B list** (the B functions the port does not mark): none.  All 20 B functions carry
 a `// @ fn_63_<hexoff>` marker in `src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp`.
@@ -783,7 +782,7 @@ PY
 symbols: 59
 ```
 
-and the class column of the table above counts 26 H + 13 T + 20 B = 59, one row per symbol; the
+and the class column of the table above counts 17 H + 22 T + 20 B = 59 (as `ScriptPlayerTurret_functions.tsv`), one row per symbol; the
 sizes add up to the module's 14868 text bytes.
 
 ## 17. The two unmarked B functions: every branch (2026-10-21)

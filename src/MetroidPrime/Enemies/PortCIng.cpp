@@ -164,7 +164,8 @@ void PortIngStandIn(const char* what) {
 // `var <id> ing.form|ing.desired|ing.found|ing.safezones [value]`: the form (0x9d4), the desired
 // form (0x9d8), the found-movement-pos flag (0xe5c bit 3) and the safe zone count (0xe2c), so
 // `trigcall` can take the trigger arms a fight rarely draws. Also `ing.hurtful|ing.evap|
-// ing.takeoff|ing.coverhint|ing.lurezone|ing.team` (below).
+// ing.takeoff|ing.coverhint|ing.lurezone|ing.team|ing.target` (below), and `ing.targetpos 1`
+// (lane leads1: mTargetPos, 0xdc8, onto the Ing's own position, FaceTarget's unsafe-delta arms).
 bool CIng::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
   CIng* ing = dynamic_cast< CIng* >(&ent); // a host-only helper: the console names the class
   if (ing == nullptr) {
@@ -194,8 +195,17 @@ bool CIng::PortConsoleVar(CEntity& ent, const char* name, const int* value, int&
     current = c == 'h' ? ing->mHurtfulZone : c == 'e' ? ing->mEvaporate : ing->mTakeOff;
     return true;
   }
+  if (strcmp(name, "ing.targetpos") == 0) {
+    if (value != nullptr && *value != 0) {
+      ing->mTargetPos = ing->GetTranslation();
+    }
+    current = 0;
+    return true;
+  }
   TUniqueId* id = nullptr;
-  if (strcmp(name, "ing.coverhint") == 0) {
+  if (strcmp(name, "ing.target") == 0) {
+    id = &ing->mTargetId;
+  } else if (strcmp(name, "ing.coverhint") == 0) {
     id = &ing->mCoverHintId;
   } else if (strcmp(name, "ing.lurezone") == 0) {
     id = &ing->mLureSafeZoneId;
@@ -2487,41 +2497,52 @@ void CIng::SelectTarget(CStateManager& mgr, EStateMsg msg, float) {
 }
 
 // @ fn_29_7244
+// Retail reads the target once, on Activate (fn_29_4468 into mTargetPos with its z set to the
+// Ing's own, asm 0x000072AC); the Update arms turn towards that stored point, not the live target.
+// Both angle tests are `fcmpo; ble Over` (asm 0x00007304/0x00007308 and 0x000074A4/0x000074A8),
+// so a NaN angle gives Over, as an angle within 20 degrees does.
 void CIng::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (msg == kStateMsg_Activate) {
+  if (msg == kStateMsg_Activate) { // 0x00007268..0x00007274: msg 0
     LogState("FaceTarget");
-    mAnimationState.SetState(target == nullptr || IsFacingTarget(mgr, CTriggerData(0.f))
-                                 ? CAnimationState::kAS_Over
-                                 : CAnimationState::kAS_Ready);
-    mMoving = false;
-  } else if (msg == kStateMsg_Update) {
-    if (target == nullptr) {
-      mAnimationState.SetState(CAnimationState::kAS_Over);
-      return;
+    if (TargetAimPosition(mgr, mTargetPos)) { // fn_29_4468, 0xdc8; f1 = rodata_6C (0.0)
+      mTargetPos.SetZ(GetTranslation().GetZ()); // 0x000072AC: xdd0 = x5c
+      const CVector3f delta = mTargetPos - GetTranslation();
+      // 0x00007304: fcmpo; ble -> Over (a NaN takes the ble)
+      mAnimationState.SetState(CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) >
+                                       kFacingAngle
+                                   ? CAnimationState::kAS_Ready  // 0x00007310: x6b4 = 1
+                                   : CAnimationState::kAS_Over); // 0x0000731C: x6b4 = 3
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x00007328: x6b4 = 3
     }
-    CVector3f delta = target->GetTranslation() - GetTranslation();
-    delta = CVector3f(delta.GetX(), delta.GetY(), 0.f);
-    if (mForm == kForm_IngSpot || (mForm >= 6 && mForm <= 9)) {
-      if (IsFacingTarget(mgr, CTriggerData(0.f)) || !delta.IsMagnitudeSafe()) {
-        mAnimationState.SetState(CAnimationState::kAS_Over);
-      } else {
-        BodyController()->FaceDirection(delta.AsNormalized(), dt);
+    mMoving = false; // 0x00007334: xe5d bit 1 clear
+  } else if (msg == kStateMsg_Update) { // 0x00007268: msg 1
+    const CVector3f delta = mTargetPos - GetTranslation(); // 0xdc8 - 0x54..0x5c
+    if (mForm == kForm_Corporeal) { // 0x00007350..0x00007354: form 2
+      // 0x0000737C: fn_801B73E4 (CanIssueCommand, state 8)
+      if (!mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
+        return;
       }
-    } else if (mForm == kForm_Corporeal) {
-      if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)) {
-        if (delta.IsMagnitudeSafe()) {
-          BodyController()->CommandMgr().DeliverCmd(
-              CBCLocomotionCmd(CVector3f::Zero(), delta.AsNormalized(), 1.f));
-        } else {
-          mAnimationState.SetState(CAnimationState::kAS_Over);
-        }
+      if (delta.IsMagnitudeSafe()) { // 0x000073BC
+        BodyController()->CommandMgr().DeliverCmd(
+            CBCLocomotionCmd(CVector3f::Zero(), delta.AsNormalized(), 1.f)); // rodata_64 = 1.0
+      } else {
+        mAnimationState.SetState(CAnimationState::kAS_Over); // 0x00007430
+      }
+    } else if (mForm == kForm_IngSpot || (mForm >= 6 && mForm < 10)) { // 0x00007344, 0x00007360/68
+      if (!delta.IsMagnitudeSafe()) { // 0x0000746C
+        mAnimationState.SetState(CAnimationState::kAS_Over); // 0x000074E0
+      } else if (CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) > kFacingAngle) {
+        // 0x000074A4: fcmpo; ble -> Over (a NaN takes the ble)
+        BodyController()->FaceDirection(delta.AsNormalized(), dt); // 0x000074C8
+      } else {
+        mAnimationState.SetState(CAnimationState::kAS_Over); // 0x000074D4
       }
     } else {
-      mAnimationState.SetState(CAnimationState::kAS_Over);
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x000074EC: forms 0, 1, 4, 5, 10+
     }
-  } else if (msg == kStateMsg_Deactivate) {
-    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+  } else if (msg == kStateMsg_Deactivate) { // 0x0000727C..0x00007284: msg 2
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x000074F8: x6b4 = 0
   }
 }
 

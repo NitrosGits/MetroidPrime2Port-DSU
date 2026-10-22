@@ -1529,6 +1529,23 @@ Reclassified `H host-copy`: `11490` (a plain `CModelData()` wrapper), `11438` (t
 container copy-assign), `119E8` (CBeamInfo copy ctor, 0x48 bytes, after TLdrToBeamInfo at
 0x1189C in `11840`).
 
+### A.32 FaceTarget fn_29_7244 rewritten from the asm (2026-10-22, lane leads1)
+
+The port's body called IsFacingTarget (`<=`, NaN-true) and steered at the live target. Retail
+(asm 0x7244-0x7518) reads the aim point once, on Activate (fn_29_4468 into 0xdc8, its z set to the
+Ing's own at 0x72AC), and both angle tests are `fcmpo; ble Over` (0x7304/0x7308, 0x74A4/0x74A8):
+a NaN angle gives Over. Update steers at the stored point; forms 2 / 3 and 6..9 / the rest; msg 2
+is NotReady. Driver `tools/drivers/ing_facetarget.py` (Agon `01_sand_entrance_dark`, `tp` round
+the Ing, `var ing.target|ing.targetpos|ing.form` + `statecall FaceTarget`, all forced); gcov 23/24.
+
+| arm | result |
+|---|---|
+| Activate: no target / angle > 20 deg (Ready) / within (Over) | forced (`var ing.target 65535`; `tp` bearings) |
+| Update form 2: CanIssueCommand false / command / unsafe delta | forced (`statecall 2` first; `ing.form 2`; `ing.targetpos 1`) |
+| Update forms 3, 7: unsafe / FaceDirection / Over | forced (`ing.targetpos 1`; `tp` bearings) |
+| Update forms 0, 4, 10: Over; Deactivate: NotReady | forced (`ing.form`) |
+| msg >= 3 (the last `else if` edge) | no FSM sends it; not a retail arm (retail's `bge 0x74FC` does nothing) |
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).

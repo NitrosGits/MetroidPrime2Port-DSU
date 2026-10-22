@@ -211,28 +211,28 @@ function is left unmarked**: every one of the 24 B functions carries its marker.
 
 Three classes, applied by rule so the table can be audited:
 
-- **H - host copy** (31 functions): the body is a copy of code the host already has, so the port
-  writes no body for it. Three sources: the REL's weak copies of the host's `CPatterned`/`CAi`
-  inline virtuals (15, all in the module's vtable), the compiler-emitted destructors (11) and the
-  crtexe REL runtime (5).
-- **T - dead leaf** (2 functions): the body has no retail caller. The scan is the module's own
+- **H - host copy** (26 functions): the body is a copy of code the host already has, so the port
+  writes no body for it. Two sources: the REL's weak copies of the host's `CPatterned`/`CAi`
+  inline virtuals (15, all in the module's vtable) and the compiler-emitted destructors (11).
+- **T - dead or table-only** (6 functions): the crtexe REL runtime (5; the port's REL loader
+  replaces it) and one dead leaf whose body has no retail caller. The scan is the module's own
   `.text`: no `bl` reaches the function, it is in no vtable and in no data table, and its symbol is
   local (`scope` is not `global` in `config/G2ME01/rels/WallCrawler/symbols.txt`), so no other
   module can reach it either.
-- **B - module behaviour** (24 functions): real behaviour - these are the port's bodies. The last
+- **B - module behaviour** (25 functions): real behaviour - these are the port's bodies. The last
   column says whether the body carries a `// @ fn_83_` marker.
 
 | class | functions | bytes |
 |---|---|---|
-| H host copy | 31 | 0x7D0 (2,000) |
-| T dead leaf | 2 | 0x5C (92) |
-| B module behaviour | 24 | 0x2098 (8,344) |
+| H host copy | 26 | 0x62C (1,580) |
+| T dead or table-only | 6 | 0x1AC (428) |
+| B module behaviour | 25 | 0x20EC (8,428) |
 | **total** | **57** | **0x28C4 (10,436)** |
 
 The 57 bodies cover 0x28C4 bytes with the padding between them (the module's text section is 0x2720
 bytes and the REL setup 0x1A4; the symbols' sizes sum to 0x28A0).
 
-### g.1 H - host copy (31)
+### g.1 H - host copy (26)
 
 | id | size | what it is | the host's counterpart | the port's counterpart (diffed against the asm) |
 |---|---|---|---|---|
@@ -262,26 +262,25 @@ bytes and the REL setup 0x1A4; the symbols' sizes sum to 0x28A0).
 | `fn_83_20FC` | 0x1E4 | `~CPatterned` (`__vt__10CPatterned`, `__dt__6CTokenFv`, `__dt__3CAiFv`, ...) | `CPatterned` | not diffed yet |
 | `fn_83_22E0` | 0x94 | `~CAiKnockBackMgr` (`__vt__15CAiKnockBackMgr`) | `CAiKnockBackMgr` | not diffed yet |
 | `fn_83_2684` | 0x48 | the destructor of the class whose vtable is `data_158` | the host class | not diffed yet |
-| `_unresolved` | 0xC4 | the REL runtime's unresolved-symbol trap | crtexe | not diffed yet |
-| `_epilog` | 0x24 | the REL runtime's module exit | crtexe | not diffed yet |
-| `_prolog` | 0x24 | the REL runtime's module entry | crtexe | not diffed yet |
-| `ModuleDestructors` | 0x4C | the REL runtime's static destructor table | crtexe | not diffed yet |
-| `ModuleConstructors` | 0x4C | the REL runtime's static constructor table | crtexe | not diffed yet |
 
-### g.2 T - dead leaf (2)
+### g.2 T - dead or table-only (6)
 
 | id | size | what it is | the scan | port |
 |---|---|---|---|---|
 | `fn_83_140` | 0x8 | `GetConstraint`: returns the word at 0x834 | no `bl` to 0x140 in the module's `.text`, not in `data_C` or any other table, and the symbol is local | the port has the accessor; nothing calls it |
-| `fn_83_1F7C` | 0x54 | `GetClosestPointOnPlane`: the host's `CPlane::GetClosestPoint` inlined | the same scan: no `bl` to 0x1F7C, and the symbol is local | the port has it and it carries a marker (it is a host method, so the port keeps it for its callers) |
+| `_unresolved` | 0xC4 | the REL runtime's unresolved-symbol trap | crtexe | the port's REL loader |
+| `_epilog` | 0x24 | the REL runtime's module exit | crtexe | the port's REL loader |
+| `_prolog` | 0x24 | the REL runtime's module entry | crtexe | the port's REL loader |
+| `ModuleDestructors` | 0x4C | the REL runtime's static destructor table | crtexe | the port's REL loader |
+| `ModuleConstructors` | 0x4C | the REL runtime's static constructor table | crtexe | the port's REL loader |
 
 The scan is the module's own `.text`: every `bl` target was collected per function, and the data
 section (`auto_04_00000000_data.s`) was read for the vtable and the other tables. The REL exports
 nothing (no `SetFuncPtrs`), so a local symbol has no caller outside the module.
 
-### g.3 B - module behaviour (24)
+### g.3 B - module behaviour (25)
 
-`port` column: **marked** = the body carries a `// @ fn_83_` marker. All 24 do, so the list of the
+`port` column: **marked** = the body carries a `// @ fn_83_` marker. All 25 do, so the list of the
 unmarked B functions is **empty**.
 
 | id | size | what it is | port |
@@ -306,6 +305,7 @@ unmarked B functions is **empty**.
 | `fn_83_1E78` | 0x40 | the cross product | marked |
 | `ProjectVectorToPlane__12CWallCrawlerF...` | 0x4C | the projection onto a plane | marked |
 | `fn_83_1F04` | 0x78 | the closest point on a plane | marked |
+| `fn_83_1F7C` (`GetClosestPointOnPlane`) | 0x54 | the host's `CPlane::GetClosestPoint` inlined; no `bl` reaches it and the symbol is local, but the port keeps the body for its callers and marks it, so the tsv has it as B | marked |
 | `AcceptScriptMsg__12CWallCrawlerF...` | 0xBC | the materials on `kSM_Create` | marked |
 | `__dt__12CWallCrawlerFv` | 0x70 | the destructor | marked |
 | `__ct__12CWallCrawlerF...` | 0x310 | the constructor | marked |
