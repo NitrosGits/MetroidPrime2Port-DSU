@@ -17,6 +17,7 @@
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CParticleGenInfo.hpp"
 #include "MetroidPrime/Collision/CJointCollisionDescription.hpp"
+#include "Collision/CCollisionInfoList.hpp"
 
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
@@ -2188,10 +2189,34 @@ rstl::optional_object< CAABox > CSplitterCommandModule::GetTouchBounds() const {
   return rstl::optional_object< CAABox >(GetBoundingBox());
 }
 
-// vtable slot 0x54 = fn_75_5F8C (0x1E0): the aim position the head scans from.
+// vtable slot 0x54 = fn_75_5F8C (0x5F8C-0x616C): the aim position the head scans from.  The
+// base's own aim (asm 0x5FD8) is the start.  With the shield state at 0xEDC equal to 2 (asm
+// 0x5FDC, 0x5FE4) the chassis at 0xEFA is asked for its aim (the chassis's vtable slot 0x54,
+// asm 0x6028) and the two aims are mixed with the module's timer at 0xF18 as the weight (asm
+// 0x6038, 0x6044; the weight is the timer capped at 1.0f, asm 0x6058, 0x6070): the base's aim
+// weighs (1 - w) and the chassis's w (asm 0x6074-0x607C).  Otherwise, with the timer at 0xF1C
+// below 1.0f (asm 0x6088, 0x6090), the chassis's aim (asm 0x60CC) is mixed the other way round
+// (asm 0x6118-0x6120).  The result is the mixed aim (asm 0x6124).
 CVector3f CSplitterCommandModule::GetAimPosition(const CStateManager& mgr, float dt) const {
-  StandIn("CSplitterCommandModule::GetAimPosition (vtable slot 0x54, fn_75_5F8C)");
-  return CPatterned::GetAimPosition(mgr, dt);
+  CVector3f aim = CPatterned::GetAimPosition(mgr, dt);
+  if (mShieldState == 2) {
+    // The retail looks the id up with the manager's ObjectById (asm 0x6004); the port's method is
+    // const, so the manager's const GetObjectById is used.
+    if (const CSplitterMainChassis* chassis =
+            TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mChassisId))) {
+      const CVector3f other = chassis->GetAimPosition(mgr, dt);
+      const float weight = mCountupTimerA < 1.f ? mCountupTimerA : 1.f;
+      aim = aim * (1.f - weight) + other * weight;
+    }
+  } else if (mCountupTimerB < 1.f) {
+    if (const CSplitterMainChassis* chassis =
+            TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mChassisId))) {
+      const CVector3f other = chassis->GetAimPosition(mgr, dt);
+      const float weight = mCountupTimerB < 1.f ? mCountupTimerB : 1.f;
+      aim = other * (1.f - weight) + aim * weight;
+    }
+  }
+  return aim;
 }
 
 
