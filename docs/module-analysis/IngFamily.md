@@ -1465,6 +1465,33 @@ the beam at the lifetime and delete themselves, which delivers XDEL. The forced 
 Every other arm is natural, including both sides of the 70 degree test (@0x11750). Merged gcov:
 all eight bodies ALL-ARMS, 0 `caught`/reach-stub.
 
+### A.30 The unmarked behaviour rows, reclassified and marked (2026-10-22)
+
+Of the 45 unmarked `B` rows, 15 are host copies the asm shows have no behaviour of their own;
+`Ing_functions.tsv` now has them as `H host-copy`: `3424` (rstl placement construct: null check +
+copy ctor), `4AA8` (a plain 0x4D-byte field copy), `BEB4` (a float copy of the PredictMotion
+result), `BFF0` (only `CPatterned::PreRenderAllViewports`), `E68C` (deleting dtor, A.20), `E7C8`
+(CIngData copy ctor), `E8D8`/`E944`/`E9E8`/`EA7C`/`EB38`/`EBEC` (sub-struct copy ctors), `EC88`/`ED38`
+(vulnerability/vector copy, `__copy` + `allocate`), `F260` (rstl construct loop over `3404`).
+
+Marked against the asm (13): the branch-free data ctors `EE68` CIngData (the flag byte's bit
+reversal is IngFlagsWord), `EFC0` swarm, `F000` mini portal, `F090` grapple (retail passes the
+vulnerability last, r7; each value lands in retail's field), `F12C` body projectile, `100` the
+RELMain helper; and, with every arm run in the Agon coverage run (`tools/drivers/ing_triggers.py`,
+gcov ALL-ARMS or branch-free; console `var <ing> ing.form|ing.desired|ing.found|ing.safezones`):
+
+| fn | forced with |
+|---|---|
+| `AA94` ShouldFleeSafeZone | `send XENZ`/`XEXZ` + `trigcall` (false, true, false) |
+| `A4E0` FoundMovementPos | `var ing.found 0/1` + `trigcall` |
+| `AA04`/`AA4C` ShouldBecomeIngSpot/Corporeal | `var ing.desired -1/2/3` x `var ing.form 2/3` + `trigcall` (4/4 branches each) |
+| `5190` StartRangedAttack | `codecall` |
+| `B890` TakeDamage | `var ing.form 0/1/5/2/3`, then `hurt <joint> 1` (the joint relays kSM_Damage -> CollisionActorDamage) |
+| `5C28` Evaporate | `fsm Evaporate`; the Ing deleted itself after two seconds |
+
+Evaporate was also fixed: the two-second test reads the state machine's time (asm 0x5C68-0x5C78,
+`lwz r3, 0x350` + vtable 0x30 GetTime), not the host's `mStateTime`, which LogState clears.
+
 ## B. MinorIng.rel (module 44)
 - **Module head [proven]**: `RELMain` (0xC0) -> `fn_44_E0` stores loader `fn_44_110` into
   `lbl_44_bss_84` and calls `SetSMinorIng_FuncPtrs` (DOL 0x80218AA0).

@@ -33,6 +33,10 @@ class CPFArea;
 // analysis's, i.e. guessed from the properties the loader reads; the state machine in PortCIng.cpp
 // reads the attack ranges, odds and sounds.
 struct CIngBodyProjectileData {
+  // fn_29_F12C (0x74, branch-free): the CDamageInfo copy at +0..+0x1a (0xF12C-0xF170), f1 -> +0x1c
+  // (0xF174), r5/r6/r7 -> +0x20/+0x24/+0x26 (0xF178-0xF180), f3..f6 -> +0x28..+0x34, f2 -> +0x38,
+  // f7 -> +0x3c (0xF184-0xF198).
+  // @ fn_29_F12C
   CIngBodyProjectileData(const CDamageInfo& contactDamage, float unknownA0D6, float suckTime,
                          float speed, float dropTime, float minAttackDist, float maxAttackDist,
                          float odds, CAssetId splatEffect, ushort soundProjectile,
@@ -68,6 +72,11 @@ struct CIngBodyProjectileData {
 // Retail shape from fn_29_F090: +0 f, +4 CDamageInfo (0x1c), +0x20 f, +0x24/+0x26 sounds,
 // +0x28..0x30 floats, +0x34 CDamageVulnerability (0x30) = 0x64.
 struct CIngGrappleData {
+  // fn_29_F090 (0x9C, branch-free): f1 -> +0 (0xF0B0), the CDamageInfo r4 -> +4..+0x1e, f2 -> +0x20
+  // (0xF0F8), the two sounds -> +0x24/+0x26 (0xF0FC/0xF100), f3..f5 -> +0x28..+0x30 (0xF104-0xF10C)
+  // and the vulnerability r7 -> +0x34 (fn_29_EC88, 0xF110). The retail passes the vulnerability
+  // last (r7); the host's argument order is its own, the field each value lands in is retail's.
+  // @ fn_29_F090
   CIngGrappleData(float unknown67F6, const CDamageInfo& exitDamage, float spitForce,
                   float maxHoldTime, float postWaitTime, float pursuitRange,
                   const CDamageVulnerability& vulnerability, ushort soundExitGrapple,
@@ -96,6 +105,10 @@ struct CIngGrappleData {
 // Retail shape from fn_29_F000: +0 min, +4 max, +8 effect, +0xc sound, +0x10 CDamageInfo (0x1c),
 // +0x2c SLdrPlasmaBeamInfo (0x48) = 0x74.
 struct CIngMiniPortalData {
+  // fn_29_F000 (0x90, branch-free): f1/f2 -> +0/+4 (0xF020/0xF028), r4 -> +8 (0xF034), the sound
+  // r5 -> +0xc (sth, 0xF040), the CDamageInfo r6 -> +0x10..+0x2a and the beam info r7 -> +0x2c
+  // (fn_29_E9E8, 0xF074).
+  // @ fn_29_F000
   CIngMiniPortalData(float minAttackDist, float maxAttackDist, CAssetId effect, ushort sound,
                      const CDamageInfo& damage, const SLdrPlasmaBeamInfo& beamInfo)
   : mMinAttackDist(minAttackDist)
@@ -117,6 +130,9 @@ struct CIngMiniPortalData {
 // +0x20..0x28 five u16 sounds = 0x2a (padded to 0x2c). This is the swarm/exit-host block; the
 // ctor's two optional GEN tokens at 0xce0/0xcf0 come from +0x00 and +0x10.
 struct CIngSwarmData {
+  // fn_29_EFC0 (0x40, branch-free): r4/r5/r6 -> +0/+4/+8, f1 -> +0xc, r7 -> +0x10, f2..f4 ->
+  // +0x14..+0x1c, r8/r9/r10 and the two stack halfwords (sp+0xa, sp+0xe) -> +0x20..+0x28 (0xEFC0-0xEFF8).
+  // @ fn_29_EFC0
   CIngSwarmData(CAssetId pART, CAssetId sRSC, CAssetId pART_3DA2, float unknown2327,
                 CAssetId pART_081E, float unknownCB39, float unknown587C, float unknown0BD7,
                 ushort soundSwarmMove, ushort soundExitHost, ushort soundExitHostSafeZone,
@@ -159,6 +175,11 @@ struct CIngSwarmData {
 // tests give the bits their meaning (the table is in IngFamily.md section A.5).
 class CIngData {
 public:
+  // fn_29_EE68 (0x158, branch-free): f1..f6 -> +0..+0x14 (0xEEB0-0xEED0), the colour r7 -> +0x18
+  // (0xEED4), f7 -> +0x1c (0xEEDC), the CDamageInfo r5 -> +0x20..+0x3a, the vulnerability r6 -> +0x3c
+  // (fn_29_EC88, 0xEF08), the five sub-structs r8/r9/r10/sp+0x38/sp+0x3c -> +0x6c/+0xac/+0x10c/
+  // +0x170/+0x1e4 (0xEF14-0xEF44), then the flag byte +0x210 (IngFlagsWord, 0xEF4C-0xEFA8).
+  // @ fn_29_EE68
   CIngData(uint ingFlags, float hearingRadius, const CDamageInfo& armSwipeDamage,
            const CDamageVulnerability& triggerVulnerability, const CColor& lightColor,
            const CIngBodyProjectileData& bodyProjectile, const CIngSpotData& ingSpot,
@@ -231,6 +252,10 @@ public:
        const CModelData& modelData, const CActorParameters& actParms, const CPatternedInfo& pInfo,
        const CIngData& data);
   ~CIng() override;
+
+  // The console's `var <id> ing.<field> [value]` (PortCIng.cpp), for the trigger arms a run
+  // rarely draws.
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
 
   // CPatterned
   // The seven accessors below are the REL's own one-line bodies (vtable slot -> function), so they
