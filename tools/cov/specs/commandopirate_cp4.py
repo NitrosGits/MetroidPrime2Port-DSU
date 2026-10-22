@@ -5,9 +5,9 @@
 # dead after the entry).
 #
 # Run (the coverage build; put the forced profiles first in a gcov-tool merge):
-#   BUILD=build-port-cov COV_GDB_SCRIPT=tools/cov/force_ret.py tools/cov/force.sh
+#   CP4_MODE=msg|col BUILD=build-port-cov COV_GDB_SCRIPT=tools/cov/force_ret.py tools/cov/force.sh
 #     tools/cov/specs/commandopirate_cp4.py <out> 3bfa3eff,05_temple_federationsite_dark --fast
-#     --frames 9000 --driver 'python3 tools/drivers/commandopirate_cp4.py {port} <out>/drv.txt'
+#     --frames 1500 --driver 'python3 tools/drivers/commandopirate_cp4.py {port} <out>/drv.txt'
 #   (and the same in 'swamp,05_swamp_timber!')
 import os
 
@@ -21,12 +21,6 @@ F0, F1 = '$this->mData.mFlags0', '$this->mData.mFlags1'
 # message may pick it; an lvalue through $rdx/$rsi would be re-read at the return, so those writes
 # are '!' (the console's message and the collision's id/list are the caller's temporaries).
 MSG = '((CScriptMsg*)$rdx)->m_msg'
-
-
-SHIELD, BLADE = '$this->mCollisionShield.mPtr', '$this->mCollisionBlade.mPtr'
-NULLED = ['kSM_Deactivate', 'kSM_AIUpdateDisabled']
-REPAIR = ('(!(%s == kSM_Deactivate || %s == kSM_AIUpdateDisabled) && !$_isvoid($cp4o) && '
-          '$cp4o == (long)$this && %%s == 0) ? (CCollisionActorManager*)%%s : %%s' % (MSG, MSG))
 
 
 def on(msgs, lv, val):
@@ -65,23 +59,21 @@ FORCE_RET = [
                ' & ~0xE0000000ULL')])],
         'the +0xC65 0x04 bit outside a shield charge; the player id / the up axis turned over / '
         'no floor bit'),
-    # AcceptScriptMsg, period 4. Phase 1: the two managers null for DCTV/XAUD (the null tests at
-    # 0x0000CD90/0x0000CDA8 and 0x0000CDD0/0x0000CDE8); the block's +0x91D 0x80 bit for ACTV
+    # AcceptScriptMsg, period 4. Not forced: the null managers of DCTV/XAUD (0x0000CD90/0x0000CDA8,
+    # 0x0000CDD0/0x0000CDE8; XCRT always builds both, and nulling them under gdb lost restores)
+    # and XLAU's Hurled body state (0x0000CFAC; a lost restore broke UpdateBody).
+    # Phase 1: the block's +0x91D 0x80 bit for ACTV
     # (0x0000CD3C); +0xC65 0x04 for XDMG/XRDG (0x0000D0A0, 0x0000D168), +0xC66 0x40 for XDMG
-    # (0x0000D0D0), +0xC64 0x10 for XDMG/XRDG (0x0000D150, 0x0000D248); the body state Hurled for
-    # XLAU (0x0000CFAC); the XRDG sender the shield actor (0x0000D184). Phase 3: +0xC65 0x04 and
+    # (0x0000D0D0), +0xC64 0x10 for XDMG/XRDG (0x0000D150, 0x0000D248); the XRDG sender the
+    # shield actor (0x0000D184). Phase 3: +0xC65 0x04 and
     # the shield actor's id kInvalidUniqueId for XRDG (the cast at 0x0000D1A4 fails); +0xC63 0x20
     # for ESCP/ZERO (0x0000CF3C, 0x0000CF08). Phases 1 and 3: the block's +0x91C 0x01 bit for an
     # XALD after the first (the waypoint +0xBCE is set: the driver's own late XALD; 0x0000CE04).
     ent('CB40 AcceptScriptMsg', 'AcceptScriptMsg', 4,
-        [(1, [on(NULLED, SHIELD, '($cp4o = (long)$this, $cp4s = (long)%s, 0)' % SHIELD),
-              on(NULLED, BLADE, '($cp4b = (long)%s, 0)' % BLADE),
-              on(['kSM_Activate'], F1, F1 + ' | 0x80'),
+        [(1, [              on(['kSM_Activate'], F1, F1 + ' | 0x80'),
               on(['kSM_Damage', 'kSM_ResistedDamage'], C65, C65 + ' | 0x04'),
               on(['kSM_Damage'], C66, C66 + ' | 0x40'),
               on(['kSM_Damage', 'kSM_ResistedDamage'], C64, C64 + ' | 0x10'),
-              on(['kSM_Launching'], '$this->mBodyController.mPtr->mBodyStateInfo.mState',
-                 '(pas::EAnimationState)14'),
               on(['kSM_ResistedDamage'], '!((CScriptMsg*)$rdx)->mSenderId.value',
                  '$this->xbc6_.value'),
               on(['kSM_AreaLoaded'], F0, '$this->xbce_.value != 0xffff ? %s | 0x01 : %s' % (F0, F0))]),
@@ -90,11 +82,6 @@ FORCE_RET = [
               on(['kSM_Escape', 'kSM_SetToZero'], C63, C63 + ' | 0x20'),
               on(['kSM_AreaLoaded'], F0, '$this->xbce_.value != 0xffff ? %s | 0x01 : %s' % (F0, F0))])],
         'the message arms (see the comment)'),
-    # A null manager whose restore was lost (gdb's "left without a return") is put back at the
-    # commando's next message, before an XDEL's Destroy can see it.
-    ent('CB40 repair', 'AcceptScriptMsg', 1, [(0, [('!' + SHIELD, REPAIR % (SHIELD, '$cp4s', SHIELD)),
-                                                  ('!' + BLADE, REPAIR % (BLADE, '$cp4b', BLADE))])],
-        'a lost restore of a forced null manager'),
 ]
 FORCE_RET = [e for e in FORCE_RET
              if e[0].startswith('D904') or (MODE == 'col') == e[0].startswith('BF44')]

@@ -313,10 +313,8 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
   mLocatorRElbow = animData->GetLocatorSegId(rstl::string_l("R_elbow"));
   mLocatorLWrist = animData->GetLocatorSegId(rstl::string_l("L_wrist"));
 
-  // The visual knowledge's locator becomes the head's (xab2 = xc5c, 0x0000E3EC). The host's
-  // CVisualKnowledge keeps x2_locator private with no setter, so the port rebuilds it with the
-  // same (deterministic) constructor arguments as the init list.
-  mVisualKnowledge = CVisualKnowledge(GetUniqueId(), mLocatorHead, 0.1f, 0.05f);
+  // The visual knowledge's locator becomes the head's (xab2 = xc5c, 0x0000E3EC).
+  mVisualKnowledge.SetLocator(mLocatorHead);
 
   // The bone tracking stops at 25.0f (lbl_9_rodata_488) times the model scale's Z (0x0000E3F0..
   // 0x0000E414).

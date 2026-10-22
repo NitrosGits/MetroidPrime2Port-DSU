@@ -100,11 +100,16 @@ def objs_of(kind, cls):
     return out
 
 
-def shield_actor():
-    for line in cmd("objs Shield_CollisionActor").split(" | "):
-        if "CCollisionActor" in line:
-            return line.split()[0]
-    return None
+def near_actors(cid, radius=4.0):
+    """The collision actors within radius of the commando: its shield and blade spheres."""
+    me = objs_of("commando", "CCommandoPirate").get(cid)
+    if me is None:
+        return []
+    out = []
+    for aid, p in objs_of("Collision", "CCollisionActor").items():
+        if sum((a - b) ** 2 for a, b in zip(p, me)) <= radius * radius:
+            out.append(aid)
+    return out
 
 
 def messages(cid):
@@ -114,50 +119,43 @@ def messages(cid):
     for m in ("Start", "Stop", "Start", "Alert", "Landed", "HitObject") + \
             ("OffGround", "Launching", "AIUpdateDisabled") * 4:
         run("send %s %s" % (cid, m))
-        wait(2)
-    for _ in range(2):
-        run("shoot %s" % cid)
-        wait(20)
+        wait(1)
+    run("shoot %s" % cid)
+    wait(15)
     run("damage %s 1" % cid)
-    wait(4)
-    # the armed shield: the Damage/ResistedDamage cases test +0xC65 & 0x0C.
+    # the armed shield: the Damage/ResistedDamage cases test +0xC65 & 0x0C; the shots on its
+    # collision actors make the actor's last toucher a live weapon (XRDG, 0x0000D1B0..0x0000D204),
+    # with two beams for both answers of WeaponHits.
     run("fsm %s ArmShield" % cid)
-    wait(60)
-    run("objs Collision")
-    sid = shield_actor()
-    log("shield actor %s" % sid)
-    for _ in range(3):
-        if sid is not None:
-            run("shoot %s" % sid)
-            wait(20)
-        run("shoot %s" % cid)
-        wait(20)
-        run("send %s Damage" % cid)
+    wait(40)
+    near = near_actors(cid)
+    log("near collision actors %s" % near)
+    for beam in ("power", "dark", "light", "power"):
+        run("beam %s" % beam)
+        for aid in near:
+            run("shoot %s" % aid)
+            run("damage %s 1" % aid)
+        wait(8)
         run("send %s ResistedDamage" % cid)
-    # the shield charge: CollidedWith with the +0xC65 0x04 bit, near the player.
-    run("place %s player 12" % cid)
-    run("fsm %s ShieldCharge" % cid)
-    wait(150)
-    run("place %s player 6" % cid)
-    run("fsm %s ShieldCharge" % cid)
-    wait(150)
+        run("send %s Damage" % cid)
+        wait(4)
     # the active bit from before the base's handler, both ways.
-    for _ in range(3):
+    for _ in range(2):
         for m in ("Deactivate", "Deactivate", "Escape", "SetToZero", "Activate", "Activate",
                   "Escape", "SetToZero"):
             run("send %s %s" % (cid, m))
-            wait(4)
+            wait(2)
     # the messages that may end in the module's knock-back (a death): last.
     for _ in range(6):
         run("send %s Damage" % cid)
-        wait(2)
+        wait(1)
         run("send %s ResistedDamage" % cid)
-        wait(2)
+        wait(1)
     run("obj %s" % cid)
 
 
 def main():
-    wait(200)
+    wait(120)
     if LAYER is not None:
         run("layer %s" % LAYER)
         wait(20)
@@ -172,11 +170,11 @@ def main():
             for cid in ids:
                 run("place %s player 6" % cid)
                 run("fsm %s ShieldCharge" % cid)
-            wait(150)
+            wait(120)
             for cid in ids:
                 run("place %s player 2" % cid)
                 run("fsm %s PathFind" % cid)
-            wait(100)
+            wait(80)
         log("done (frame %d)" % frame())
         return
     for cid in ids:
@@ -188,9 +186,9 @@ def main():
         wait(4)
     for cid, m in zip(ids, ("Escape", "SetToZero", "Delete")):
         run("send %s %s" % (cid, m))
-        wait(60)
+        wait(30)
     run("objs commando")
-    wait(200)
+    wait(30)
     log("done (frame %d)" % frame())
 
 
