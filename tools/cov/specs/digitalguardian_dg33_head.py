@@ -12,3 +12,9 @@ FORCE = [
     ('12D98 zero damage', 'loc:PortCDigitalGuardianHead.cpp:607', [], ['damage = 0'], 2,
      'the damage computed as 0'),
 ]
+# fn_14_12818's null ball (ObjectById of 0xDC4 empty, the beq at 0x12950): the ids are the
+# XCRT-built colliders, never deleted in a fight; null from the 2900th test on.
+FORCE += [
+    ('12818 null ball', 'loc:PortCDigitalGuardianHead.cpp:480', [], ['ball = 0'], 2900,
+     'the ball collider gone'),
+]

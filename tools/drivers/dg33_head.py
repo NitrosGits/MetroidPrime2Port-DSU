@@ -75,6 +75,8 @@ def pos(uid):
 at(130, 'layer 10; god 1; fastmorph 1')
 at(150, f'send e00350060 Activate; send {HEAD} Activate')
 at(152, f'place {HEAD} player 20; fsm {HEAD} FaceTarget')
+# XRDG with the armour still on (0x10F4 bit 0x10 clear, beq at 0x12DCC)
+at(200, 'damage u0574 1 cannonball; damage u0574 1')
 # the armour: the three echo targets killed (HeadArmorDestroyed sets 0x10F4 bit 0x10)
 n = 400
 for t in ('u0575', 'u0576', 'u0577'):
@@ -84,8 +86,11 @@ for t in ('u0575', 'u0576', 'u0577'):
     C(f'codecall {HEAD} RetractEchoTargets')
     n += 150
 # fn_14_12818: the morph ball held in slot 0, then the slot's ball collider deactivated (the
-# inactive-ball arm, 0x12930) and activated again
+# inactive-ball arm, beq at 0x1295C) and activated again
 at(n, f'codecall {HEAD} EnableDynamicCollision; fsm {HEAD} Idle; var {HEAD} dghd.flags')
+# a ball's XRDG (the sender is not the root, bne at 0x12DDC); the retreat platform (0x1038) set, so the
+# hold excludes the player from it
+C(f'damage u0573 1; codecall {HEAD} SelectRetreatPlatform; var {HEAD} dghd.flags')
 C('press x 10')
 for _ in range(6):
     p = pos('u0572')
@@ -95,10 +100,13 @@ for _ in range(6):
     at(frame() + 4)
 at(frame() + 30, 'send u0572 Deactivate; objs CCollisionActor')
 at(frame() + 60, 'send u0572 Activate')
+# a bomb destroys slot 0's ball while it is held (fn_14_12B04 sets its 0xF28 sound: the
+# destroyed-slot arm, 0x128A4)
+at(frame() + 30, 'damage u0572 1000 bomb; objs CCollisionActor')
 at(frame() + 30, 'press x 10')
 # XRDG fn_14_12D98: beam shots at the root (u0574) once it is vulnerable: charged (> 25, the
 # flinch), normal, then the spec's zero damage
-at(frame() + 30, f'codecall {HEAD} SetVulnerableToDamage; obj {HEAD}')
+at(frame() + 30, f'codecall {HEAD} SetVulnerableToDamage; send u0574 Activate; objs CCollisionActor')
 for opt in ('charged', '', '', '', ''):
     C(f'shoot u0574 {opt}'.strip())
     at(frame() + 40, f'var {HEAD} dghd.flags')
