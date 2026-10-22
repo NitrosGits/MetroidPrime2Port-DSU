@@ -702,7 +702,8 @@ bool CDigitalGuardian::x34E8_(CStateManager& mgr, float dt, float minDist) {
   const CVector3f delta(target->GetTranslation().GetX() - GetTranslation().GetX(),
                         target->GetTranslation().GetY() - GetTranslation().GetY(), 0.f);
   const float dist = delta.Magnitude();
-  if (dist > minDist) {
+  // 0x359C..0x35A0 fcmpo, ble: only dist <= minDist stops, so a NaN distance moves.
+  if (!(dist <= minDist)) {
     const float step = x11BC_ * dt;
     const float move = step < dist ? step : dist;
     if (delta.IsMagnitudeSafe()) {
@@ -1366,7 +1367,9 @@ void CDigitalGuardian::x2A28_(CStateManager& mgr, float dt) {
     return;
   }
   if (x1268_ != 0) { // 0x2A78
-    x126C_ = rstl::max_val(0.f, x126C_ - dt); // .rodata 0x264
+    // 0x2A90..0x2A9C fcmpo 0, v; bge: 0 >= v gives 0, otherwise (and for a NaN) v.
+    const float fade = x126C_ - dt;
+    x126C_ = 0.f >= fade ? 0.f : fade; // .rodata 0x264
     const float t = rstl::min_val(1.f, x126C_); // .rodata 0x270
     x1270_ = CColor::Lerp(CColor::Black(), CPatterned::skDamageColor, t).GetColor_u32();
     float param = 1.f; // .rodata 0x270, 0x2AF4
@@ -1775,7 +1778,8 @@ TUniqueId CDigitalGuardian::x308C_(CStateManager& mgr, const CVector3f& position
 // the guardian (the two distance sums at 0x973C..0x9774, compared at 0x9778).
 // @ fn_14_9678
 bool CDigitalGuardian::ShouldJumpAttack(CStateManager& mgr, const CTriggerData& data) const {
-  if (x11E4_ > 0.0f) {
+  // 0x96A0..0x96A8 fcmpo, cror eq, lt, eq; bne: only x11E4 <= 0 goes on, so a NaN returns false.
+  if (!(x11E4_ <= 0.0f)) {
     return false;
   }
   const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
