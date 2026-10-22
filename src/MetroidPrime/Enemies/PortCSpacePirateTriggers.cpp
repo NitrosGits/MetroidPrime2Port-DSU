@@ -81,7 +81,8 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   }
   self->xbc0_playerIndex = (self->xbc0_playerIndex + 1) % count;
   const CPlayer* player = mgr.GetPlayer(self->xbc0_playerIndex);
-  if (player == nullptr || player->GetVelocityWR().MagSquared() <= 0.1f) {
+  // 0xBC24 fcmpo + 0xBC28 ble (rodata 0.1f): a NaN speed is not heard.
+  if (player == nullptr || !(player->GetVelocityWR().MagSquared() > 0.1f)) {
     TraceCall(*this, "HearPlayer trigger", 0);
     return false;
   }
@@ -153,7 +154,8 @@ bool CSpacePirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const
       continue;
     }
     const float distSq = (GetTranslation() - point->GetTranslation()).MagSquared();
-    if (distSq >= minDistSq) {
+    // 0xACB8 fcmpo + 0xACBC bge: a NaN distance skips the point.
+    if (!(distSq < minDistSq)) {
       continue;
     }
     if (point->Blown(self->GetTargetPos(mgr))) {

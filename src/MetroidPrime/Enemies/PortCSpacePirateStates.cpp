@@ -347,8 +347,9 @@ void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
         }
         const CVector3f toJump = jumpPoint->GetTranslation() - GetTranslation();
         const float distSq = toJump.MagSquared();
-        if (distSq <= 25.f ||
-            CVector3f::Dot(jumpPoint->GetTransform().GetForward(), toJump) <= 0.f) {
+        // 0x8D3C fcmpo + 0x8D40 ble, 0x8D70 fcmpo + 0x8D74 ble: a NaN skips the point.
+        if (!(distSq > 25.f) ||
+            !(CVector3f::Dot(jumpPoint->GetTransform().GetForward(), toJump) > 0.f)) {
           continue;
         }
         CScriptWaypoint* waypoint =
@@ -357,14 +358,17 @@ void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
           continue;
         }
         // Only take a jump that leads towards the destination (the two height deltas agree).
-        if ((mDestPos.GetZ() - GetTranslation().GetZ()) *
-                (waypoint->GetTranslation().GetZ() - jumpPoint->GetTranslation().GetZ()) <= 0.f) {
+        // 0x8DC0 fcmpo + 0x8DC4 ble: a NaN skips the point.
+        if (!((mDestPos.GetZ() - GetTranslation().GetZ()) *
+                  (waypoint->GetTranslation().GetZ() - jumpPoint->GetTranslation().GetZ()) >
+              0.f)) {
           continue;
         }
         const CVector3f toDest = mDestPos - waypoint->GetTranslation();
         float score = distSq + 4.f * toJump.GetZ() * toJump.GetZ() + toDest.MagSquared() +
                       9.f * toDest.GetZ() * toDest.GetZ();
-        if (score >= minDistSq ||
+        // 0x8E18 fcmpo + 0x8E1C bge: a NaN score skips the point.
+        if (!(score < minDistSq) ||
             GetSearchPath()->PathExists(GetTranslation(), jumpPoint->GetTranslation()) !=
                 CPathFindSearch::kR_Success) {
           continue;
