@@ -620,19 +620,8 @@ death branch, the alive gate, the timer above zero and the D3C-up branch (the id
 and the counter at 0xC48 not zero) were forced under gdb (`DEATHT`, `DEATHALIVE`, `TIMERHI`,
 `D3C`).
 
-The two rows that stay unmarked in this slice:
-
-- `fn_75_2994` (the head's turn upright) is 18/18 lines and 9/12 branches: the three untaken
-  arms are the two comparisons of the head's flat Y column (asm 0x2A48-0x2A7C) and the arc that
-  leads into them.  The forces that write the head's transform (`TURNCLEAR`, `TURNSLERP`,
-  `TURNZERO`, `TURNZERO2`, `TURNX`, `TURNY`) fire; `TURNSLERP` takes the slerp path (the angle's
-  other arm) but the three arms of the Y column's two comparisons are not moved by the writes
-  of the Y column at the body's entry - the row stays unmarked.
-- `fn_75_2280` (the head's chassis search) is 18/19 lines and 11/14 branches: the untaken arms
-  are the other-area arm of the walk (asm 0x22F8-0x2304), the failed reserve (0x2318-0x2320) and
-  the not-nearer arm (0x2324-0x234C).  The forces (`FINDAREA`, `FINDNORES`, `FINDDIST`) fire but
-  do not move them: the head's area id and the head's position are not what the walk compares
-  (the walk reads the actors' own area ids and positions) - the row stays unmarked.
+The two rows that stayed unmarked in this slice (`fn_75_2994`, `fn_75_2280`) are marked now:
+section 3.22 says why the forces here did not move them.
 
 **A note on the merge order** (this is the tool's behaviour, not the port's): `gcov-tool merge`
 keeps the first profile's counter where it is already non-zero and only adds the later
@@ -684,13 +673,35 @@ head's transform's Y column in the head's Idle state, which copies it into 0xF24
 driver's new plan E6 puts the 0531 head into that state) and `PLACENULL` (the head's id at 0xC6C
 names no object).
 
+### 3.22 The head's shield, turn upright and chassis search (split21, 2026-10-22)
+
+`fn_75_2CE0`, `fn_75_2994` and `fn_75_2280` are **marked**, each ALL-ARMS in the coverage build
+(K3 fight, natural + forced): 34/34 lines 18/18 branches, 18/18 12/12, 19/19 14/14.
+
+- **A bug in fn_75_3460 (the head's collision actor manager)**: the name the walk compares
+  (0x35F8-0x3604) is lbl_75_rodata_8, a pointer to lbl_75_rodata_285 "Skeleton_Root", not
+  "Beam_LCTR".  The port compared "Beam_LCTR", so 0xF00 was never set and fn_75_2CE0 only ever
+  took its no-actor path.  With the fix the head's shield goes up in the fight (the collision
+  actor gets its HP, materials, vulnerability; the effects and the looping sounds run).
+- **fn_75_2280**: 0x2348 `fcmpo cr0, f31, f27` + 0x234C `bge` - the walk skips unless
+  `distSq < best`, so a NaN distance skips; the port had `distSq >= best` (a NaN took the pick).
+- **fn_75_2994**: the LookAt target's z is `pos.z + 0.0f` (0x2A94-0x2AA8, lbl_75_rodata_40).
+- **Why the old forces did nothing**: the host's `CTransform4f` is row-major (`m<row><col>`), so
+  the Y column is m01/m11/m21 and the Z column m02/m12/m22; the old TURN* cases wrote rows.  The
+  host's `GetTranslation()` is `CActor::mPosition`, not the transform's m03, so a position force
+  writes `mPosition`.  `best` starts at FLT_MAX, so the first chassis is always nearer.
+- **The new forces** are `FORCE_RET` cases (`tools/cov/force_ret.py`, every write restored when
+  the call returns): `SPLITTER_FORCE=R_TURN|R_FIND|R_SHIELD|R_K3`.  The search's reserve force
+  covers six reserves: each search asks both chassis (the dead 0532 is still listed and fails on
+  its alive bit).  The run's AddEmitter returns null handles, so 0xF60 is forced (0xffffffff: index
+  0xfff, past the 72-entry sound table, so StopSound ignores it).
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
   shipped spawns reach: section 3.3 lists them with the lines and the branches each one still
-  misses. The next ones are `fn_75_2994` (the head's turn upright: 18/18 lines, 9/12 branches),
-  `fn_75_2280` (the head's chassis search: 18/19 lines, 11/14 branches) and `fn_75_2CE0` (the
-  head's shield: 5/34 lines) - the smallest gaps.  `fn_75_A0A0` (the chassis's collision actor's damage) has a body
+  misses. (`fn_75_2994`, `fn_75_2280` and
+  `fn_75_2CE0` are marked: section 3.22.)  `fn_75_A0A0` (the chassis's collision actor's damage) has a body
   but never runs: only the chassis's own "target_LCTR" collision actor sends the message, and the
   laser sweep's beam does not reach it in the shipped spawns.
 - **The queue's rows with no body at all** are the module's own helpers that the FSM lane's

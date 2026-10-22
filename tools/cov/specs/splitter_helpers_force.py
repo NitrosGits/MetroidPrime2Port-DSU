@@ -242,6 +242,9 @@ HEAD = '((CSplitterCommandModule*)$rdi)'
 LOCK = ['$ecx = 0x16', '$this->mAutoDestructFlags = 0x10', '$this->mData.mUnknownBD80FD94 = 0x4']
 if WHICH in ('6394DEAD', '6394NOPLAYER'):
     _label, _where, _what = BODIES['6394']
+elif WHICH.startswith('R_'):
+    # a FORCE_RET case (tools/cov/force_ret.py, at the end of this file): no force.py write.
+    _label, _where, _what = ('-', 'no body(', '-')
 else:
     _label, _where, _what = BODIES[WHICH]
 FORCE = [
@@ -666,3 +669,89 @@ SPEC = [
     # distance to the noise (the squared distance under 400).
     ('5F18 Listen', 'CSplitterCommandModule::PortListen(', ['$this->GetAlive() != 0', '$rcx'], 'ret'),
 ]
+
+# FORCE_RET cases (COV_GDB_SCRIPT=tools/cov/force_ret.py, SPLITTER_FORCE=R_<name>): each write
+# lasts one call and is written back when the call returns, so the fight goes on unchanged.  The
+# period 100000 with the phases 1, 2, 3 forces only the body's first three calls.  The chassis's
+# members are written through a cast of the bound head pointer (force_ret binds $this to the
+# call's rdi, so the restore writes the same object).
+#
+# The host's CTransform4f is row-major: m<row><col>, so the Y column (the guest's 0x28, 0x38,
+# 0x48) is m01, m11, m21 and the Z column (0x2C, 0x3C, 0x4C) is m02, m12, m22.  (The old TURNX,
+# TURNY, TURNZERO and TURNZERO2 cases above write the rows m1x/m2x, not the columns: that is why
+# they never moved fn_75_2994's arms.)
+CHR = '((CSplitterMainChassis*)$this)'
+_FLAG20 = [('$this->mAutoDestructFlags', '$this->mAutoDestructFlags | 0x20')]
+
+
+def _rot(x, y, z):
+    """The head's rotation as three columns; all nine elements are written back on return."""
+    out = []
+    for col, v in enumerate((x, y, z)):
+        for row in range(3):
+            out.append(('$this->mTransform.m%d%d' % (row, col), repr(float(v[row]))))
+    return out + _FLAG20
+
+
+_TURN = [
+    # fn_75_2994 (the flag 0x20 is kept set by the write-back, so the calls go on):
+    # call 1: the Z column (1, 0, 0) is 90 degrees from up, above the turn (0x2A3C-0x2A44): slerp;
+    # call 2: Z up, Y (0, 1, 0): x is 0 (0x2A58-0x2A5C), y is not (0x2A60-0x2A64): LookAt;
+    # call 3: Z up, Y (0, 0, 1): x and y are 0 (0x2A7C to 0x2AE4): slerp;
+    # call 4: Z up, Y (1, 0, 0): x is not 0 (0x2A5C): LookAt.
+    ('fn_75_2994 turn', 'CSplitterCommandModule::PortTurnUpright(', 100000,
+     [(1, _rot((0, 1, 0), (0, 0, 1), (1, 0, 0))),
+      (2, _rot((1, 0, 0), (0, 1, 0), (0, 0, 1))),
+      (3, _rot((1, 0, 0), (0, 0, 1), (0, 0, 1))),
+      (4, _rot((0, -1, 0), (1, 0, 0), (0, 0, 1)))],
+     'the head\'s Z column (1,0,0); or Z up and Y (0,1,0), (0,0,1), (1,0,0)'),
+]
+_FIND = [
+    # fn_75_2280 (one search every 3 s while 0xEFC is invalid, fn_75_31A8):
+    # search 1: every chassis is in another area (0x22F8-0x2304);
+    # search 2: the head is at x = 1e30, so the squared distance is inf, not below FLT_MAX
+    #   (0x2348-0x234C: the not-nearer arm).  The host's GetTranslation() is mPosition, not the
+    #   transform's m03, so mPosition is written; 0xEFC is written back too, so the searches go on;
+    # search 3: the pick with no old pick (0x2368-0x236C null); 0xEFC is written back to invalid
+    #   on return so the searches go on;
+    # search 4: the old pick at 0xEFC is the 0521 chassis: its reservation is released
+    #   (0x2370-0x2380 fn_75_E768).
+    ('fn_75_2280 search', 'CSplitterCommandModule::PortFindChassis(', 100000,
+     [(1, [('$this->mAreaId.value', '12')]),
+      (2, [('$this->mPosition.mX', '1e30'),
+           ('$this->mCheckedChassisId.value', '$this->mCheckedChassisId.value')]),
+      (3, [('$this->mCheckedChassisId.value', '$this->mCheckedChassisId.value')]),
+      (4, [('$this->mCheckedChassisId.value', '0x521')])],
+     'the head in area 12; at x = 1e30; 0xEFC written back; 0xEFC = 0521'),
+    # the 0521 chassis's own head 0520 holds 0xC6C, so the natural reserve fails (0x2318-0x2320);
+    # on the reserves of searches 2-4 the head id 0xC6C and the reservation 0xC6E are invalid
+    # (both written back on return), so fn_75_E788 reserves the chassis.  Each search asks both
+    # chassis (the dead 0532 is still listed; its reserve fails on 0x420's alive bit), so the
+    # three searches are the first six reserves.
+    ('fn_75_2280 reserve', 'CSplitterMainChassis::PortReserveDock(', 100000,
+     [(n, [(CHR + '->mCommandModuleId.value', '0xffff'), (CHR + '->mSecondLinkId.value', '0xffff')])
+      for n in range(1, 7)],
+     'the chassis has no head and no reservation: the reserve succeeds'),
+]
+_SHIELD = [
+    # fn_75_2CE0: call 1 (the XCRT of the first head) has the state 2 (0x2DA8-0x2DC0, 0x2E88) and
+    # the flag set (edx, the third argument; 0x2D0C-0x2D18); call 3 has no collision actor at
+    # 0xF00 (0x2D88); call 2 finds a handle at 0xF60 (0x2D48-0x2D6C: the remove).  The headless
+    # run's AddEmitter hands back null handles, so 0xF60 is never set naturally; the forced handle
+    # 0xffffffff has the index 0xfff, past the channel's sound table, so StopSound ignores it
+    # (CSfxManager.cpp, StopSound's index check) and the body clears it itself (no write-back).
+    ('fn_75_2CE0 shield', 'CSplitterCommandModule::PortUpdateShield(', 100000,
+     [(1, [('$this->mCollisionState', '2'), ('!$edx', '1')]),
+      (2, [('!$this->mSoundHandle.mID', '0xffffffff')]),
+      (3, [('$this->mSoundTargetId.value', '0xffff')])],
+     'the state 2 and the flag; no collision actor'),
+    # fn_75_3004: every 600th call raises a shield (the flag byte 0xF6A's 0x08 and the timer 0xF10
+    # at zero, the state at 0xEE0 out of range: 0x3138-0x3188), so fn_75_2CE0 runs again on a head
+    # that already holds a looping emitter at 0xF60 (0x2D48-0x2D6C: it is removed).
+    ('fn_75_3004 raise', 'CSplitterCommandModule::PortUpdateCollision(', 600,
+     [(300, [('$this->mAutoDestructFlags', '$this->mAutoDestructFlags | 0x8'),
+             ('$this->mCountdownTimerA', '0.f'), ('!$this->mCollisionState', '0')])],
+     'a shield is raised'),
+]
+FORCE_RET = {'R_TURN': _TURN, 'R_FIND': _FIND, 'R_SHIELD': _SHIELD,
+             'R_K3': _TURN + _FIND + _SHIELD}.get(WHICH, [])
