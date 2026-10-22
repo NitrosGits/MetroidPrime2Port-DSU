@@ -205,8 +205,8 @@ lane's states are what will call them.
 
 | id | the body |
 |---|---|
-| `fn_10_2EFC` | the float at guest 0x314 (0x00002EFC) |
-| `fn_10_2F04` | bit 0x80 of the byte at guest 0x318 (the extrwi at 0x00002F08 takes the bit 25) |
+| `fn_10_2EFC` | the float at ball 0x314 (0x00002EFC); now `CDarkSamusBoostBall::GetDamageTaken`, marked (slice dsball) |
+| `fn_10_2F04` | bit 0x40 of the byte at ball 0x318 (the extrwi at 0x00002F08 takes the bit 25 = 1u << 6); now `CDarkSamusBoostBall::HasBeenDamaged`, marked (slice dsball) |
 | `fn_10_2E44` | the `CModelData` default constructor (0x00002E50) |
 | `fn_10_4868` | the actor whose uid is at guest 0xF78 is deleted and the uid cleared (0x000048A4, 0x000048B0); a kInvalidUniqueId uid is left alone (0x00004890) |
 | `fn_10_48C8` | the same, but only when the timestamp at guest 0xF7C is older than the elapsed time (0x000048F0) |

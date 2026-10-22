@@ -25,7 +25,7 @@ import time
 
 port = int(sys.argv[1]) if len(sys.argv) > 1 else 50360
 layer = sys.argv[2] if len(sys.argv) > 2 else "3"
-rounds = int(sys.argv[3]) if len(sys.argv) > 3 else 4
+rounds = int(os.environ.get('SP_ROUNDS', sys.argv[3] if len(sys.argv) > 3 else 4))
 
 
 class Console:
@@ -34,7 +34,7 @@ class Console:
         self.sock = None
         self.file = None
 
-    def connect(self, timeout=150):
+    def connect(self, timeout=int(os.environ.get('SP_CONNECT_TIMEOUT', '1200'))):
         t0 = time.time()
         while time.time() - t0 < timeout:
             try:
@@ -45,7 +45,7 @@ class Console:
                 time.sleep(0.5)
         return False
 
-    def cmd(self, line, timeout=60):
+    def cmd(self, line, timeout=int(os.environ.get('SP_CMD_TIMEOUT', '300'))):
         for _ in range(2):
             if self.sock is None and not self.connect():
                 return ''
@@ -117,6 +117,7 @@ FORCED = os.environ.get('SP_FORCE', 'JumpBack Halt Approach TurnAround Shuffle D
 
 
 def main():
+    print('driver: starting, console port %d' % port, flush=True)
     c = Console(port)
     if not c.connect(timeout=600):
         print('driver: no console')
@@ -124,15 +125,26 @@ def main():
     if layer != '-':
         c.cmd('layer %s' % layer)
     ps = []
-    for _ in range(300):  # the console is up before the world has loaded
+    for _i in range(int(os.environ.get('SP_WAIT_PIRATES', '900'))):  # the console is up before the world has loaded
         ps = pirates(c.cmd('objs spacepirate'))
         if ps:
             break
+        if _i % 20 == 0:
+            print('driver: waiting for the pirates (%d)' % _i, flush=True)
         time.sleep(1)
     time.sleep(3)
     print('driver: %d pirates: %s' % (len(ps), [(hex(p[0]), hex(p[4])) for p in ps]), flush=True)
-    for p in ps:
-        c.cmd('send u%04x Activate' % p[0])
+    if not os.environ.get('SP_NO_ACTIVATE'):
+        for p in ps:
+            c.cmd('send u%04x Activate' % p[0])
+    # SP_FORCE_EARLY: the forced states before the fight rounds (the console's replies get slow
+    # when the game stalls, so the states that matter go first).
+    if os.environ.get('SP_FORCE_EARLY') and ps:
+        uid = ps[0][0]
+        for st in os.environ.get('SP_FORCE_EARLY').split():
+            print('driver: early forced %s -> %s' % (st, c.cmd('fsm u%04x %s' % (uid, st)).splitlines()[-1:]),
+                  flush=True)
+            time.sleep(float(os.environ.get('SP_FORCE_SLEEP', '4')))
     def team_phase(c, far):
         """Put the layer's other pirates near (or far from) the first one, so the squad's
         range test takes both ways."""
@@ -183,7 +195,7 @@ def main():
         yaw, pitch = aim_at(ps[0][1], ps[0][2] - 1.0, ps[0][3], ps[0][1], ps[0][2], ps[0][3] + 1.5)
         c.cmd('aim %.1f %.1f' % (yaw, pitch))
         print('driver: forcing u%04x %08x' % (uid, ps[0][4]), flush=True)
-        for st in FORCED:
+        for st in os.environ.get('SP_FORCE_STATES', ' '.join(FORCED)).split():
             print('driver: forced %s -> %s' % (st, c.cmd('fsm u%04x %s' % (uid, st)).splitlines()[-1:]),
                   flush=True)
             time.sleep(float(os.environ.get('SP_FORCE_SLEEP', '4')))

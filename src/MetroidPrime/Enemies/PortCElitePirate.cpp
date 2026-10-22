@@ -1534,9 +1534,12 @@ bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
   return true;
 }
 
-// fn_15_6820 / fn_15_6618 (not marked: the `true` return at 0x67F4 never runs in the port - the ray
-// ends at the target's aim point, inside the player's kMT_Solid primitive, so the dynamic half of
-// RayCollideWorld always hits the player; docs/module-analysis/ElitePirate.md section 11).
+// @ fn_15_6820
+// @ fn_15_6618
+// Every arm ran (ElitePirate.md section 11): the early-outs forced with `var ep.*`, the `true`
+// return 0x67F4 forced with `material -solid` (the ray ends at the player's aim point, inside its
+// own kMT_Solid primitive, and here also crosses two closed doors and the pirate's own collision
+// actors), as entering a turret does to the player (CPlayer.cpp:4337); retail's ray is the same (ray1).
 // The launcher can fire: no cooldown, a target in the rocket range band, the body already turned
 // to it, and (retail's RayCollideWorld result) a clear shot from the launcher's lock-on locator.
 // fn_15_6820 is the thunk that passes &x9fa (mLauncherId) as `id`'s source (0x6830 lhz 0x9fa).
@@ -1570,7 +1573,7 @@ bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) cons
   // 0x67DC/0x67E0 exclude 0, 0x67E4 type 1 = kFT_Include.
   const CMaterialFilter filter =
       CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Character));
-  return mgr.RayCollideWorld(lockon, aim, filter, this); // 0x67E8, 0x67F0 beq
+  return mgr.RayCollideWorld(lockon, aim, filter, this); // 0x67E8, 0x67F0 beq, 0x67F4 true
 }
 
 // Host: the console's `var <id> <name> [value]` for the Ingsmasher, so ShouldFire's early-out

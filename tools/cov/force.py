@@ -7,7 +7,9 @@
 #   CLASS = 'CDarkSamus'                 # what `$this` is: ((CLASS*)$rdi)
 #   FORCE = [(label, 'CDarkSamus::Body(', [exprs], [sets], skip, 'what it forces'), ...]
 # `exprs` are the arm conditions (as in tools/cov/gdb_cov.py), `sets` the members to write, and
-# `skip` the number of hits to let pass before the write.  A label that ends in '|ret' records
+# `skip` the number of hits to let pass before the write.  `exprs` are only recorded, never
+# tested: every set runs on every hit after `skip`, so a conditional force must put its
+# condition inside the set (e.g. `$this->x10 = $this->x14 > 0 ? 0 : $this->x10`).  A label that ends in '|ret' records
 # the function's return value as an extra key part (the low byte).
 import os
 import gdb

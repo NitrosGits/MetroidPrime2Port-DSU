@@ -1,0 +1,29 @@
+# Dark Samus boost ball (tools/cov/specs/darksamus_ball.py), from darksamus_boostroll.con: the rooftop sequence of
+# darksamus_boost_rooftop.con (Sanctuary 10_cliff_rooftop layer 2, boss u04f7) plus BoostBallRoll
+# entered twice in a row (the Activate with a ball) and after DiveFromBoost (no roll emitter).
+@f600 send u04f7 Activate
+@f700 fsm u04f7 BoostBallInto
+@f900 damage u04f7 130
+@f1000 damage u04f7 130
+@f1100 damage u04f7 130
+@f1200 damage u04f7 100
+@f1300 obj u04f7
+@f1350 fsm u04f7 BoostBallInto
+@f1450 fsm u04f7 BoostBallRoll
+@f1460 objs boost
+@f1462 objs collision
+@f1463 send u0702 HitObject
+@f1464 damage u0703 3000 darkburst
+@f1468 obj u04f7
+@f1470 fsm u04f7 BoostBallRoll
+@f1480 send u0702 Damage
+@f1482 obj u04f7
+@f1700 visor scan
+@f1600 fsm u04f7 BoostBallInto
+@f1850 place u04f7 player 6
+@f1860 fsm u04f7 BoostBallInto
+@f2050 fsm u04f7 DiveFromBoost
+@f2150 fsm u04f7 BoostBallRoll
+@f2250 fsm u04f7 BoostBallInto
+@f2400 fsm u04f7 BoostBallInto
+@f2550 obj u04f7

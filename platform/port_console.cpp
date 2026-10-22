@@ -66,6 +66,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
@@ -549,6 +550,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
+      "material <id> [+|-]<m> ...  show or add/remove an actor's materials (name w/o kMT_, or bit; -solid)\n"
       "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
@@ -1550,6 +1552,16 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   if (const CScriptDoor* door = TCastToConstPtr< CScriptDoor >(ent)) {
     ::PortConsoleDoor::Describe(*door, mgr, out);
   }
+  // A water's volume (DescribeObject prints no position for it: the cast to CActor fails on the
+  // trigger types), so a driver can put an actor in it: bounds <min x y z> <max x y z>.
+  if (const CScriptWater* water = TCastToConstPtr< CScriptWater >(ent)) {
+    const CAABox box = water->GetTriggerBoundsWR();
+    char line[160];
+    std::snprintf(line, sizeof(line), "  bounds %.2f %.2f %.2f %.2f %.2f %.2f\n",
+                  box.GetMinPoint().GetX(), box.GetMinPoint().GetY(), box.GetMinPoint().GetZ(),
+                  box.GetMaxPoint().GetX(), box.GetMaxPoint().GetY(), box.GetMaxPoint().GetZ());
+    out += line;
+  }
   const CPatterned* patterned = TCastToConstPtr< CPatterned >(ent);
   if (patterned != nullptr) {
     TStateMachineStateBase< CPatterned >* machine =
@@ -2046,6 +2058,129 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
   char line[64];
   std::snprintf(line, sizeof(line), "placed at %.2f %.2f %.2f\n", pos.GetX(), pos.GetY(), pos.GetZ());
   out += line;
+}
+
+// material <id> [+|-]<name|bit> ...: show an actor's material list, or add (+, the default) or
+// remove (-) materials on it (CActor::AddMaterial/RemoveMaterial, which also re-sort the actor in
+// the near list).  Names are the EMaterialTypes ones without kMT_, any case, or the bit number.
+// Removing kMT_Solid from the player is what entering a turret does (CPlayer.cpp:4337), so a
+// line-of-sight ray that ends at the player's aim point can come back clear.
+const char* const kMaterialNames[] = {
+    "nosteplogic",
+    "stone",
+    "metal",
+    "grass",
+    "ice",
+    "pillar",
+    "metalgrating",
+    "phazon",
+    "dirt",
+    "lava",
+    "lavastone",
+    "snow",
+    "mudslow",
+    "halfpipe",
+    "mud",
+    "glass",
+    "shield",
+    "sand",
+    "unknown18",
+    "unknown19",
+    "projectilepassthrough",
+    "camerapassthrough",
+    "wood",
+    "organic",
+    "noedgecollision",
+    "unknown25",
+    "seethrough",
+    "scanpassthrough",
+    "aipassthrough",
+    "ceiling",
+    "wall",
+    "floor",
+    "player",
+    "character",
+    "trigger",
+    "projectile",
+    "bomb",
+    "groundcollider",
+    "nostaticcollision",
+    "scannable",
+    "target",
+    "orbit",
+    "occluder",
+    "immovable",
+    "debris",
+    "powerbomb",
+    "unknown46",
+    "collisionactor",
+    "aiblock",
+    "platform",
+    "nonsoliddamageable",
+    "radarobject",
+    "platformslave",
+    "aijoint",
+    "unknown54",
+    "solidcharacter",
+    "excludefromlineofsighttest",
+    "excludefromradar",
+    "noplayercollision",
+    "solid",
+    "noplatformcollision",
+    "unknown61",
+    "screwattackwall",
+    "seekertarget",
+};
+
+bool ParseMaterial(std::string_view text, EMaterialTypes& mat) {
+  const std::string name = Lower(text);
+  for (int i = 0; i < static_cast< int >(sizeof(kMaterialNames) / sizeof(kMaterialNames[0])); ++i) {
+    if (name == kMaterialNames[i]) {
+      mat = static_cast< EMaterialTypes >(i);
+      return true;
+    }
+  }
+  char* end = nullptr;
+  const long bit = std::strtol(name.c_str(), &end, 0);
+  if (name.empty() || end == nullptr || *end != '\0' || bit < 0 || bit > 63) {
+    return false;
+  }
+  mat = static_cast< EMaterialTypes >(bit);
+  return true;
+}
+
+void CmdMaterial(CStateManager& mgr, const Args& args, std::string& out) {
+  CEntity* ent = args.size() >= 2 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr) {
+    Fail("usage: material <id> [+|-]<name|bit> ...   (id must be an actor)");
+    return;
+  }
+  for (size_t i = 2; i < args.size(); ++i) {
+    std::string_view arg = args[i];
+    const bool remove = !arg.empty() && arg[0] == '-';
+    if (!arg.empty() && (arg[0] == '-' || arg[0] == '+')) {
+      arg.remove_prefix(1);
+    }
+    EMaterialTypes mat;
+    if (!ParseMaterial(arg, mat)) {
+      Fail("unknown material '" + Str(arg) + "'");
+      return;
+    }
+    if (remove) {
+      actor->RemoveMaterial(mat, mgr);
+    } else {
+      actor->AddMaterial(mat, mgr);
+    }
+  }
+  out += "materials";
+  for (int i = 0; i < 64; ++i) {
+    if (actor->GetMaterialList().HasMaterial(static_cast< EMaterialTypes >(i))) {
+      out += ' ';
+      out += kMaterialNames[i];
+    }
+  }
+  out += '\n';
 }
 
 // bodystate <id> <animation state index>: set a patterned actor's body controller state
@@ -2850,6 +2985,7 @@ constexpr SCommand kCommands[] = {
     {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
+    {"material", CmdMaterial, true},
     {"shoot", CmdShoot, true},
     {"visor", CmdVisor, true},
     {"beam", CmdBeam, true},

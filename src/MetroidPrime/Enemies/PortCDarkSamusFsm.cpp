@@ -19,6 +19,7 @@
 // The bodies below are stand-ins: each logs the first time it runs and does nothing else. The
 // tables, the names and the name-to-function mapping are retail's; the behaviour is not yet.
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
+#include "MetroidPrime/Enemies/CDarkSamusBoostBall.hpp"
 
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
@@ -1851,8 +1852,10 @@ void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
 // fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
 // (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
 // Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm but the dead `default` (EStateMsg has three
-// values). Unmarked: fn_10_9E00 (0x0000A4AC) spawns CDarkSamusBoostBallPortStub, not the retail
-// boost ball.
+// values). dsball (tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con) with the real
+// ball: fn_10_2F04 ret 0 and 1 (`damage u0703 <n> darkburst` on the ball's collision actor), the
+// damage min both ways (50 below the health - 1: 1500 -> 1450; 3000 above it: 1500 -> 1).
+// @ fn_10_A3B0
 void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallRoll", msg);
   UpdateCurrentAttack(0x20000, mgr, msg);                  // 0x0000A3F4
@@ -1868,22 +1871,23 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
     mBoostBallPos = GetTranslation(); // 0x0000A4B0..0x0000A4CC
     mGuestEA4 = 0.f;                 // 0x0000A4D0
     break;
-  case kStateMsg_Update:
-    if (mBoostBallFlag20 == false &&            // 0x0000A4DC (the bit 0x20 of 0xEBC)
-        GetBoostBallActor(mgr) != nullptr &&     // 0x0000A4EC (fn_10_9920)
-        GetGuest318Bit6() == true) {            // 0x0000A4FC (fn_10_2F04: the bit 0x40 of the
-                                              // byte 0x318, the `clrlwi` at 0x0000A500
-                                              // takes the bool's low byte)
+  case kStateMsg_Update: {
+    CDarkSamusBoostBall* ball = static_cast< CDarkSamusBoostBall* >(GetBoostBallActor(mgr));
+    if (mBoostBallFlag20 == false &&      // 0x0000A4DC (the bit 0x20 of 0xEBC)
+        ball != nullptr &&                // 0x0000A4EC (fn_10_9920, kept in r29)
+        ball->HasBeenDamaged() == true) { // 0x0000A4FC (fn_10_2F04 on the ball: the bit 0x40 of
+                                          // its byte 0x318, the `clrlwi` at 0x0000A500 takes
+                                          // the bool's low byte)
       StartBoostBallRoll(mgr); // fn_10_A1C0, 0x0000A514
       mGuestCD0 = 0;                                     // 0x0000A520
       // 0x0000A524..0x0000A538: the health (the vtable's slot 0x3C, the float at its +4) and
-      // 0x0000A544: the health - 1.0f (lbl_10_rodata_264). 0x0000A548: the float at 0x314
-      // (fn_10_2EFC, the call's result in f1). 0x0000A54C..0x0000A558: the `fcmpo` of that
+      // 0x0000A544: the health - 1.0f (lbl_10_rodata_264). 0x0000A548: the ball's float at 0x314
+      // (fn_10_2EFC on r29, the call's result in f1). 0x0000A54C..0x0000A558: the `fcmpo` of that
       // value with the health - 1.0f - `bge` takes the health - 1.0f, the other way the float at
       // 0x314 (the unordered case too): the damage is min(the float at 0x314, the health - 1.0f).
       const float health = GetHealthInfo()->GetHP();
       const float healthMinusOne = health - 1.f;
-      const float rollDamage = mGuest314;
+      const float rollDamage = ball->GetDamageTaken();
       const float damage = (rollDamage >= healthMinusOne) ? healthMinusOne : rollDamage;
       // 0x0000A564..0x0000A5EC: the damage info - the weapon mode word 0x13 in the high half
       // (the `li r0, 0x13` and the `rlwimi` at 0x0000A560/0x0000A564) with the low half and the
@@ -1918,6 +1922,7 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
     UpdateBoostBallAtActor(mgr); // fn_10_A06C, 0x0000A6C8
     RollBoostBallToPosition(dt); // fn_10_A154, 0x0000A6D4
     break;                       // 0x0000A6D8 `b .L_0000A708`
+  }
   case kStateMsg_Deactivate:
     SendScriptMsgs(kSS_InternalState3, mgr, kInvalidUniqueId,
                    static_cast< EScriptObjectMessage >(-1)); // 0x0000A704
