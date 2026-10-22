@@ -1794,3 +1794,30 @@ trigger's entry, one per hit, from gdb convenience variables).
   until 99, with the player placed on the actor at f1534..f1537) is written but not yet run:
   runs t4, t5, t7, t9 and t10 all died with VK_ERROR_DEVICE_LOST ("this context is innocent",
   so another process on the GPU caused the reset), and Aurora skips llvmpipe.
+
+## Slice 35 (2026-10-22): the next unmarked functions - four bodies, no markers yet
+
+- The merge of `port` (e85ad6ac1) was a fast-forward; no conflict.
+- **fn_10_2EFC** (0x00002EFC, 8 bytes): the float at guest 0x314 (`lfs f1, 0x314(r3)`) - the
+  port's GetGuest314.
+- **fn_10_2F04** (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 (`lbz` at
+  0x00002F04, the `extrwi` at 0x00002F08 takes the bit 25 = 1u << (31 - 25) = 0x40) - the port's
+  GetGuest318Bit6.
+- **fn_10_1B24** (0x00001B24, 0xDC bytes): the cross product of two vectors - the x
+  a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C) and
+  the z a.x * b.y - b.x * a.y (0x00001B54). The host's CVector3f::Cross is the same formula; the
+  port's new CrossProduct helper is used by UpdateHeadAim (fn_10_10A64, the cross at 0x00010B34).
+- **fn_10_E5C** (0x0000E5C, 0xDC bytes): the base's EnsureRendered (the host's
+  CActor::EnsureRendered(const CStateManager&)); the port's new EnsureRenderedActor calls it from
+  AddToRenderer.
+- **No markers**: the coverage run (the rooftop, the coverage build) shows 0 hits for
+  fn_10_2EFC, fn_10_2F04 and fn_10_E5C - their only callers are the BoostBallRoll state
+  (fn_10_A3B0, still a stand-in) and the fade/visor path in AddToRenderer - and the compiler
+  inlines fn_10_1B24, so the report has no row for it. Without an ALL-ARMS run there is no
+  marker, so the four bodies are unmarked.
+- The remaining candidates in the tsv's order (fn_10_2C, fn_10_324, fn_10_A08, fn_10_A60,
+  fn_10_B04, fn_10_B28, fn_10_B78, fn_10_C98, fn_10_DC8, fn_10_E10, fn_10_1B64, fn_10_1C08,
+  fn_10_1D8C, fn_10_2040, fn_10_2098, fn_10_213C, fn_10_2254, fn_10_2798) are the module's own
+  sub-object constructors and destructors: they need port-only classes for the guest's own
+  records (the boost ball, the enrage sphere, the scatter shot's projectile), which is a bigger
+  job than this slice.

@@ -1060,6 +1060,7 @@ private:
   void DeleteGuestActor(CStateManager& mgr);        // fn_10_4868: the actor at guest 0xF78
   void DeleteGuestActorIfExpired(CStateManager& mgr); // fn_10_48C8: ... when 0xF7C has expired
   void StopGuestSfx();           // fn_10_812C: the sfx handle at guest 0xF60
+  void EnsureRenderedActor(const CStateManager& mgr) const; // fn_10_E5C: the base's EnsureRendered
   void InitGuestModelData(CModelData* model); // fn_10_2E44: the CModelData ctor
   void RunTauntCmd(EStateMsg msg, pas::ETauntType type); // fn_10_8698: the taunt command
   void StopBoostBallParticles();                  // fn_10_99B8: the boost ball's old effects
