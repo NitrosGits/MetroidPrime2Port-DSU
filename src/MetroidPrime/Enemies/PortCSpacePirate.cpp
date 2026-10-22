@@ -711,6 +711,10 @@ TUniqueId CSpacePirate::ChooseTarget(CStateManager& mgr) {
 }
 
 // Whether the next shot is a frenzy burst; a roll of 2..4 shots is queued and counted down.
+// Retail fn_72_3220. Arms FORCED by spacepirate_force7.py (sp20): the frenzy-chance bit (0x8f8 0x80;
+// only the ctor writes it, as false, F6E8, so both rolls are dead in retail), an empty charge list, a
+// morphed target, the low-HP arms (xa18_ raised) and no target; the natural runs give the rest.
+// @ fn_72_3220
 bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
   bool reset = false;
   if (x8f8_24_pendingFrenzyChance) {
@@ -813,6 +817,7 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
 // Retail fn_72_3D7C: the launcher's ballistic solve. Ten candidate angles are tried from 0 (or from
 // pi/4 downwards when the target is above the gun); the first one whose required speed lands inside
 // [minLaunchSpeed, maxLaunchSpeed] wins, otherwise the closest miss is kept.
+// @ fn_72_3D7C
 static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin, float minLaunchSpeed,
                                float maxLaunchSpeed, float& angle, float& speed) {
   const float heightDelta = target.GetZ() - origin.GetZ();
@@ -823,7 +828,8 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
 
   float startAngle = 0.f;
   float angleStep = 0.07853982f; // pi/40
-  if (target.GetZ() > origin.GetZ()) {
+  // The negated compares keep retail's NaN arms (0x3EC4 ble, 0x3F2C ble, 0x3F60 ble, 0x3F74 bge).
+  if (!(target.GetZ() <= origin.GetZ())) {
     startAngle = 0.7853982f; // pi/4
     angleStep = -angleStep;
   }
@@ -839,15 +845,15 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
     const float sine = CMath::FastSinR(candidate);
     // Retail's fmsubs leaves the terms in this order: distance*(cos*sin) - height*cos^2.
     const float denominator = distance * (cosine * sine) - heightDelta * (cosine * cosine);
-    if (denominator > 1.1920929e-7f) {
+    if (!(denominator <= 1.1920929e-7f)) {
       const float speedSq = lhs / denominator;
       if (speedSq >= minSpeedSq && speedSq <= maxSpeedSq) {
         bestAngle = candidate;
         bestSpeed = CMath::SqrtF(speedSq);
         break; // retail branches straight past the loop counter here
       }
-      const float error = speedSq > maxSpeedSq ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
-      if (error < bestError) {
+      const float error = !(speedSq <= maxSpeedSq) ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
+      if (!(error >= bestError)) {
         bestAngle = candidate;
         bestSpeed = CMath::SqrtF(speedSq);
         bestError = error;
@@ -861,6 +867,7 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
 // Retail fn_72_4030: the point the grenade is thrown at - the target's aim position, lowered to half
 // the player's eye height, then (for a bouncing launcher) pulled 70% of the way back towards the gun
 // when the aim is at most 2 m above the pirate (asm: cror lt/eq -> <=, not an equality test).
+// @ fn_72_4030
 static CVector3f GetGrenadeAimPoint(const CActor& target, const CStateManager& mgr,
                                     const CVector3f& piratePos, uint numBounces) {
   CVector3f aim = target.GetAimPosition(mgr, 0.5f);
@@ -1861,6 +1868,10 @@ static void PortInitLauncherBlock(CSpacePirateData& data, const SLdrSpacePirateW
 
 // Retail fn_72_140. Property ids and order are the generated SLdrSpacePirate reader's, which the
 // analysis checked against the REL id by id.
+// Coverage (sp20, 2026-10-22): every arm but `!modelData` (retail 0x7A4, an empty optional when the
+// ANCS is invalid) ran; no shipped placement has one, so that arm is data-dead. Retail's null check
+// after `new` (0xAE0) has no host arm (the host's allocator does not return null).
+// @ fn_72_140
 static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSpacePirate sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSpacePirate.inc"

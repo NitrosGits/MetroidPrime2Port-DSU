@@ -254,17 +254,15 @@ bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) co
   return result;
 }
 
-// fn_72_A71C. Unmarked: Cover's LineOfSight->TargetPlayer chain reaches it only after RandomDelay 5
-// and Delay 0.5, and the fights leave Cover sooner; spacepirate_force6.py (Cover state time 5.1)
-// gives one call, 8 of 20 edges untaken. The rest needs, at one ShouldAttack call: an attack target
-// that is not a CPlayer (one-call force of 0xa94), and four other live pirates in this area with
-// 0x8f6 bit 31 set (Attack, CoverAttack, WallHang, Skid) closer to the player than this one, while
-// this one stays in Cover with a held, unblown cover point. Console staging (four pirates placed in
-// front of the player and sent to Attack, #173 put on cover 001d01e9 and sent to Cover, the player
-// 10 or 30 units off on either side) fails: CoverBlown fires on Cover's first Update (2026-10-21).
+// Coverage (2026-10-22, sp20): `trigcall <pirate> ShouldAttack` in 07_sand_alamoportalobservation with
+// five pirates placed 4 units off the player and sent to Attack gives the closer>3 (false) arm and the
+// non-player target; the own-list entry, another area and a dead attacker are FORCED arms
+// (tools/cov/specs/spacepirate_force7.py: target = the player, this pirate's area 77, the last
+// attacking pirate's mAlive 0, each for one call).
 // The asm casts the attack target to CPlayer (it does not compare ids as MP1 does) and then refuses
 // the attack while more than three other pirates, alive and in the attack state in this area, are
 // closer to that player than this one.
+// @ fn_72_A71C
 bool CSpacePirate::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   bool result = true;
   if (TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget)) != nullptr) {
