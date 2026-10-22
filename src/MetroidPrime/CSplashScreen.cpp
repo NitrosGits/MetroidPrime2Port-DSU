@@ -13,6 +13,13 @@
 
 #include "math.h"
 
+#ifdef TARGET_PC
+#include "port_harness.h"
+#include "port_overlay.h"
+
+#include <cstdio>
+#endif
+
 static const char* const skSplashScreenTextureNames[CSplashScreen::kSplashScreen_MAX] = {
     nullptr, "TXTR_HealthWarning", "TXTR_NintendoLogoNCL", "TXTR_RetroLogo", "TXTR_DolbyLogoNCL",
 };
@@ -129,6 +136,14 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
     }
 
     if (mSplashTimeout <= 0.f) {
+#ifdef TARGET_PC
+      std::fprintf(stderr, "[splash] %d ended at %.1f s\n", static_cast< int >(mSplash),
+                   PortHarness::Seconds());
+      // Port: boot logos Off ends the chain after the progressive check.
+      if (PortOverlay::BootLogos() == PortOverlay::kBootLogos_Off) {
+        return kMR_RemoveIOWinAndExit;
+      }
+#endif
       if (mSplash < kSplashScreen_Dolby) {
         int next = mSplash + 1;
         if (gpGameState->PreviousGameResults().mGameMode != 0 &&
@@ -169,6 +184,15 @@ CIOWin::EMessageReturn CSplashScreen::OnMessage(const CArchitectureMessage& mess
          input.PL() || input.PR())) {
       mSplashTimeout = 0.5f;
     }
+#ifdef TARGET_PC
+    // Port: A or Start ends any logo (the health warning too, without its 2 s wait) with the
+    // usual fade out.
+    if (mSplash != kSplashScreen_ProgressiveCheck && mProgressivePhase == kPP_Complete &&
+        (input.PA() || input.PStart()) && mSplashTimeout > 0.5f &&
+        PortOverlay::BootLogos() == PortOverlay::kBootLogos_Skippable) {
+      mSplashTimeout = 0.5f;
+    }
+#endif
     break;
   }
   default:

@@ -62,6 +62,7 @@
 namespace PortOverlayState {
 
 bool sSkipCinematics = false;
+int sBootLogos = PortOverlay::kBootLogos_Skippable;
 // `MP2_LOG_FILE`: whether stdout and stderr also go to a file (F1 > Testing, console `logfile`).
 // PortLogFile::Start reads it before Aurora comes up, so the row only reports the state the next
 // launch will take.
@@ -613,6 +614,14 @@ void DrawGameSection() {
   // The game reads this every frame in its cinematic flow state.
   Changed(PortUi::Toggle("Skip cinematics", &sSkipCinematics, "MP2_SKIP_CINEMATICS=1",
                "START or A skips any cinematic, seen or not; off, START skips only seen ones"));
+  // Read by CSplashScreen, so a change applies from the next launch.
+  int bootLogos = sBootLogos;
+  if (PortUi::Combo("Boot logos", &bootLogos, "Show\0" "Skip with A or Start\0" "Off\0",
+                    "MP2_BOOT_LOGOS=show|skip|off",
+                    "the health warning and the Nintendo, Retro and Dolby logos at launch")) {
+    sBootLogos = std::clamp(bootLogos, PortOverlay::kBootLogos_Show, PortOverlay::kBootLogos_Off);
+    Changed(true);
+  }
 }
 
 // The Prime 1 port's Video page (debug_ui/tabs.cpp's DrawVideoTab) with its four sub-tabs. Display
@@ -1897,6 +1906,27 @@ bool SkipCinematics() {
 void SetSkipCinematics(bool skip) {
   ReadEnv();
   sSkipCinematics = skip;
+  Persist();
+}
+
+int BootLogos() {
+  ReadEnv();
+  const char* env = port::EnvString("MP2_BOOT_LOGOS");
+  if (env != nullptr && std::strcmp(env, "show") == 0) {
+    return kBootLogos_Show;
+  }
+  if (env != nullptr && std::strcmp(env, "skip") == 0) {
+    return kBootLogos_Skippable;
+  }
+  if (env != nullptr && std::strcmp(env, "off") == 0) {
+    return kBootLogos_Off;
+  }
+  return EnvIntIn("MP2_BOOT_LOGOS", sBootLogos, kBootLogos_Show, kBootLogos_Off);
+}
+
+void SetBootLogos(int mode) {
+  ReadEnv();
+  sBootLogos = std::clamp(mode, kBootLogos_Show, kBootLogos_Off);
   Persist();
 }
 

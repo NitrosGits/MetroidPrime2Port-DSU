@@ -32,6 +32,7 @@
 {"Video", "Display", "HUD and view", "Crosshair opacity", "reticle cursor alpha transparency"},
 {"Video", "Display", "HUD and view", "HUD scale", "interface size shrink"},
 {"Game", "", "Cutscenes", "Skip cinematics", "cutscenes movies"},
+{"Game", "", "Cutscenes", "Boot logos", "splash screens intro nintendo retro dolby health warning startup launch"},
 {"System", "", "Log", "Log file", "logging output stdout stderr debug"},
 {"System", "", "Settings", "Save settings now", "settings file unsaved write persist"},
 {"System", "", "MemoryCard", "Back up the card", "save memory card backup"},

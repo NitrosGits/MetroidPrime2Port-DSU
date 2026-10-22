@@ -46,6 +46,14 @@ void Wheel(float steps);
 // story beats along with the intro.
 bool SkipCinematics();
 void SetSkipCinematics(bool skip);
+// The health warning and the Nintendo, Retro and Dolby logos at launch (CSplashScreen,
+// `MP2_BOOT_LOGOS=show|skip|off`, F1 > Game > Cutscenes): Skippable ends the current one with its
+// 0.5 s fade on A or Start; Off goes straight from the progressive check to the front end.
+const int kBootLogos_Show = 0;
+const int kBootLogos_Skippable = 1;
+const int kBootLogos_Off = 2;
+int BootLogos();
+void SetBootLogos(int mode);
 // Cheat (`MP2_GODMODE=1`, F1 > Cheats): the player takes no damage, so a hazard cannot end a
 // test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
 bool GodMode();
