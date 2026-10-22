@@ -1436,7 +1436,7 @@ probe in every body and the states that the boot does not reach on its own force
 | `fn_29_5714` SetWallPointCoverDest | the hint (0x5748), the closest point (0x5784), the connected point (0x57C4) and the point path (0x57F0) | the probe has one label per arm (no hint or no area, no closest point, and the found/not found pair); the Agon run of 2026-10-21 did not reach the code function | not marked |
 | `fn_29_4C88` the create handler | the data flag byte 0x9d0's bit 7 (0x4CAC and 0x4CC0): the flag set gives the ing spot (the form 3), the flag clear the corporeal Ing (the form 2) | **both arms**: the coverage run of 2026-10-21 (tools/cov, the key is the flag word) shows the flag set (the top bit, 180 hits) and the flag clear (0, 2820 hits) - the Ing 0x101c01c3 of the Great Temple's `06_swamp_boostballguardian_dark` is the one placement the disc scan found without the flag (the scan reads the raw flag word, the port's IngFlagsWord reverses the bits) | **marked** |
 | `fn_29_5190` StartRangedAttack | no branch (one call) | never ran - the Ing never starts a team projectile attack | not marked |
-| `fn_29_3684` the team leave | - | never ran - the Ing is not in a team | not marked |
+| `fn_29_3684` the team leave | the id at 0xd6a (0x36AC), the TCastToPtr (0x36D0), the IsPartOfTeam (0x36EC) and the QuitTeam + id reset (0x3704/0x3710) | all three tests both ways in one run (A.33): Sand World `02_sand_sandfalls_dark` layer 5 | **marked** |
 
 ### A.29 The mini portal, read against the asm and marked (2026-10-22)
 
@@ -1518,7 +1518,7 @@ Deactivate (0xCCB8).
 | `5714` SetWallPointCoverDest | open | the `to` closest point / the point search arms (3177, 3183, 3191) not run |
 | `8CF4` SafeZoneReaction | open, 12/14 | the knock-back command never issued (CanIssueCommand false) and an unknown message not sent |
 | `8FE8` BecomeWallProjectile | open, 20/25 | needs a floor surface (cross not safe), no aim target, an in-cone aim, and an unknown message |
-| `3684` LeaveTeam | open, 3/6 | no `CScriptTeamAiMgr` in the area; needs an Ing area with a team or a gdb force |
+| `3684` LeaveTeam | marked | the area does load a team: A.33, Sand World `02_sand_sandfalls_dark` layer 5 (no gdb force needed) |
 | `1DF4` (in Listen `B294`) | open | the kept-nearer-zone arms did not run even with the zone set in the same tick; Agon's zones are likely not type 2 (Echo), which ValidateLureZone requires |
 | `B534` CollidedWith | open, 1/10 | `fsm BecomeBodyProjectile` never produced a contact at >= 0.5 s |
 | `10D50` ConstructEffect | open, 1/2 | the token-not-loaded arm not run |
@@ -1664,6 +1664,46 @@ the Ing, `var ing.target|ing.targetpos|ing.form` + `statecall FaceTarget`, all f
 - No `include/MetroidPrime/Enemies/CIng.hpp` / `CMinorIng.hpp`; no CIngData / CMinorIngData.
 
 ---
+
+### A.33 LeaveTeam fn_29_3684 covered on an area that has a team (2026-10-22, lane tail7)
+
+The row was open for "no `CScriptTeamAiMgr` in the area". A disc scan says otherwise: 80
+area-layers place a TMAI and five of them also place an ing spot, so a team is reachable without
+gdb forcing. Sand World `02_sand_sandfalls_dark` (area 25), layer 5 `AFTER`, is the one used:
+`INGS` editor ids `0x14190138`/`0x14190139` each carry an `ACTV`/`PLAY` connection to the
+`CScriptTeamAiMgr` `0x14190161`, so `JoinTeam` (fn_29_372C, through `GetAssociatedTeamId` ->
+`CheckConnectedObject_if`) resolves a real team and the Ing joins it by itself at spawn.
+
+The body is the asm 0x3684-0x372C: 0x36AC `cmplw` the id at 0xd6a against `kInvalidUniqueId`
+(0x36B0 `beq` end), 0x36C4 `ObjectById`, 0x36C8 `TCastToPtr<16CScriptTeamAiMgr>`, 0x36D0 `beq`
+end, 0x36E4 `IsPartOfTeam(0x8)`, 0x36EC `beq` end, 0x3704 `QuitTeam(id)`, 0x3710 `sth` the id
+back to invalid. There is no message or remove call in it - the brief's "remove call" is the
+QuitTeam. The port had the 0x36D0 and 0x36EC tests merged into one `||`; they are now two
+returns (`src/MetroidPrime/Enemies/PortCIng.cpp:3516,3519`), as retail's two `beq`s are.
+
+| arm | forced with | evidence (the spec's counts) |
+|---|---|---|
+| 0x36B0 the id is `kInvalidUniqueId` | `var <ing> ing.team 65535; send <ing> Deactivate` | `je` taken 1, the arm's own `ret` 1 |
+| 0x36D0 `ObjectById` gives null | `var ing.team 1` (an id the area does not load) + Deactivate | `je` taken 1 |
+| 0x36D0 the object is no team | `var ing.team` = the other Ing (u061b) + Deactivate | `je` taken 1 |
+| 0x36EC a real team without the Ing | after the member leave, `var ing.team 1590` + Deactivate in the same tick | `je` taken 1, and the id stays 1590 (0x3710 does not run) |
+| 0x3704/0x3710 the body | `var ing.team 65535; codecall <ing> SetTargetDest; send <ing> Deactivate` | QuitTeam arm 4, `ing.team = 65535` after the leave, and the arm ran once more on the Ing's own leave (`team at start 1590` -> 65535) |
+| the `kSM_Delete` call site (0xCC28) | the second Ing, joined, `send <ing> Delete` | the same body ran, then "no object" |
+
+8 entries: the invalid `je` 1 taken / 7 not, the no-team `je` 2 / 5, the not-member `je` 1 / 4,
+so each test's both directions ran.
+
+Forcing notes: the Ing re-joins the team in its own Think (its state runs SetTargetDest), so the
+member leave and the not-a-member leave must be one console line - `a; b; c` runs in one tick -
+with an `Activate` between them (the Deactivate handler needs `wasActive`, asm 0xCC9C). A leave
+step across ticks finds the role restored and takes the member arm again (the first three runs of
+this lane did exactly that).
+
+Run: `tools/cov/run.sh tools/cov/specs/ing_team.py <out> "42b935e4,02_sand_sandfalls_dark"
+--driver "python3 tools/drivers/ing_team.py {port} <out>/game.log" --fast --frames 12000 --env
+MP2_DEBUG_ING=1`; the spec counts the arms at the emitted `je`s and the QuitTeam block
+(symbol-relative offsets, `$eflags & 0x40` is ZF), because an optimised `return;` has no line of
+its own. game exit 0, 0 `[port] caught`/reach-stub.
 
 ## D. Implementation order
 
