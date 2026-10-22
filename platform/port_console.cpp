@@ -63,6 +63,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/Enemies/CSwarmBasics.hpp"
 #include "MetroidPrime/CGenericFSM2State.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
@@ -1565,6 +1566,11 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
     std::snprintf(line, sizeof(line), "  bounds %.2f %.2f %.2f %.2f %.2f %.2f\n",
                   box.GetMinPoint().GetX(), box.GetMinPoint().GetY(), box.GetMinPoint().GetZ(),
                   box.GetMaxPoint().GetX(), box.GetMaxPoint().GetY(), box.GetMaxPoint().GetZ());
+    out += line;
+  }
+  if (const CSwarmBasics* swarm = TCastToConstPtr< CSwarmBasics >(ent)) {
+    char line[768];
+    swarm->PortDescribe(line, sizeof(line));
     out += line;
   }
   const CPatterned* patterned = TCastToConstPtr< CPatterned >(ent);
