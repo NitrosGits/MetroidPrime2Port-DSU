@@ -1844,7 +1844,8 @@ void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
 // takes the damage (0x0000A654) and the flags follow: the bit 0x20 of 0xEBC is set (0x0000A660)
 // and the shield flag 0xCD0 becomes 1 (0x0000A668).
 // Deactivate (0x0000A6DC): the script state "SI21" (kSS_InternalState3, 0x0000A704).
-// Every message then rolls the ball to the hint: with a hint (the uid 0xEC0, 0x0000A66C)
+// Update then rolls the ball to the hint (0x0000A66C..0x0000A6D8; Activate and Deactivate skip it):
+// with a hint (the uid 0xEC0, 0x0000A66C)
 // fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
 // (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
 void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1901,21 +1902,24 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
       mBoostBallFlag20 = true; // 0x0000A660 (the `rlwimi` at 0x0000A660 sets the bit 0x20 of 0xEBC)
       mGuestCD0 = 1;            // 0x0000A668
     }
-    break;
+    // The movement (0x0000A66C..0x0000A6D4) is Update's only: Activate leaves through
+    // `b .L_0000A708` at 0x0000A4D4 and Deactivate's SendScriptMsgs (0x0000A704) falls into the
+    // epilogue, so neither moves the actor with the transition's dt of 0.0f (a 1/dt impulse).
+    if (mBoostHintUid != kInvalidUniqueId) { // 0x0000A66C (the uid 0xEC0)
+      RollToBoostHint(mgr, dt); // fn_10_AA04, 0x0000A68C
+    } else {
+      MoveInOneFrameOR(CVector3f(0.f, 1.25f, 0.f), dt); // 0x0000A6BC
+    }
+    UpdateBoostBallAtActor(mgr); // fn_10_A06C, 0x0000A6C8
+    RollBoostBallToPosition(dt); // fn_10_A154, 0x0000A6D4
+    break;                       // 0x0000A6D8 `b .L_0000A708`
   case kStateMsg_Deactivate:
     SendScriptMsgs(kSS_InternalState3, mgr, kInvalidUniqueId,
                    static_cast< EScriptObjectMessage >(-1)); // 0x0000A704
     break;
   default:
-    break;
+    break; // `cmpwi r29, 0x3` / `bge .L_0000A708` at 0x0000A458
   }
-  if (mBoostHintUid != kInvalidUniqueId) { // 0x0000A66C (the uid 0xEC0)
-    RollToBoostHint(mgr, dt); // fn_10_AA04, 0x0000A68C
-  } else {
-    MoveInOneFrameOR(CVector3f(0.f, 1.25f, 0.f), dt); // 0x0000A6BC
-  }
-  UpdateBoostBallAtActor(mgr); // fn_10_A06C, 0x0000A6C8
-  RollBoostBallToPosition(dt); // fn_10_A154, 0x0000A6D4
 }
 
 // fn_10_A1C0 (0x0000A1C0, 0x1F0 bytes): the roll's start. The hint 0xEC0 is cleared
@@ -1923,7 +1927,7 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
 // (0xEA8, 0x0000A1FC), the actor's position (0xEAC/0xEB0/0xEB4, 0x0000A204..0x0000A214) and the
 // radius lbl_10_rodata_294 = 1000.0f (0xEB8, 0x0000A218). The direction from the actor to the
 // player (mgr+0x14FC, 0x0000A21C) with z = lbl_10_rodata_25C = 0.0f (0x0000A238), normalized
-// when it can be (`clrlwi r0, r3, 24; cmplwi r0, 0x1` at 0x0000A258/0x0000A25C), is reversed
+// when it can be (`clrlwi r0, r3, 24` at 0x0000A258, `cmplwi r0, 0x1` at 0x0000A25C), is reversed
 // (lbl_10_rodata_288 = -1.0f, 0x0000A274..0x0000A28C): the actor turns away from the player.
 // The turn: LookAt from the facing (the transform's Y column 0x28/0x38/0x48) to it with the
 // limit lbl_10_rodata_298 = 6.2831855f (0x0000A2E8), its vector part taken into the actor's frame
@@ -2001,9 +2005,10 @@ void CDarkSamus::PlayBoostBallCollision(CStateManager& mgr) {
 // 0x0000ADE4/0x0000ADE8), past the plane through the hint minus k times the direction - k is
 // lbl_10_rodata_284 = 0.5f, or lbl_10_rodata_264 = 1.0f when the hint's second value is below
 // 0.5f (0x0000AE04/0x0000AE08) - (dot(dir, pos) >= dot(dir, hint - k dir): `cror eq, gt, eq` at
-// 0x0000AE6C, EQ at 0x0000AE74). Not arrived but the bit 0x80 of 0xEBC set (`extrwi r0, r4, 1, 24`
-// at 0x0000AE90, the PowerPC bit 24 = 1u << (31 - 24) = 0x80): arrived when within the 25.0f
-// squared (0x0000AEA8), else the bit is cleared (`rlwimi r4, r0, 7, 24, 24` at 0x0000AEB8).
+// 0x0000AE6C, `extrwi r0, r0, 1, 2` at 0x0000AE74). Not arrived but the bit 0x80 of 0xEBC set
+// (`extrwi r0, r4, 1, 24` at 0x0000AE90, the PowerPC bit 24 = 1u << (31 - 24) = 0x80): arrived
+// when within the 25.0f squared (0x0000AEA8), else the bit is cleared (`rlwimi r4, r0, 7, 24, 24`
+// at 0x0000AEB8).
 // On arrival (0x0000AEC8): the hint is deactivated (the vtable's slot 0x1C = SetActive(false),
 // 0x0000AEE0) and sends kSS_Arrived (`lis r4, 0x4152; addi r4, r4, 0x5256` = 0x41525256 at
 // 0x0000AEE8/0x0000AEF8) with the player's uid (0x0000AEF4) and the message -1 (0x0000AF0C).
