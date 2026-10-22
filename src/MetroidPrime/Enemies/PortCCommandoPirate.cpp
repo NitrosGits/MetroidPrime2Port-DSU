@@ -599,6 +599,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   x3E1C_UpdateRagDoll(mgr, dt, noRagDoll);    // 0x0000CAA0..0x0000CAA4
 }
 
+// @ fn_9_4BC0
 // fn_9_4BC0 (0xe4 bytes): the module's two sound emitters. The handle at guest this+0xC04 is
 // updated while it is playing or queued (the IsPlaying and IsQueued calls at 0x00004BEC and
 // 0x00004C04); when it is neither, the handle is cleared (the store at 0x00004C4C). The
@@ -2023,6 +2024,7 @@ void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noR
   xc00_ = 0.f;                                                     // 0x00004110..0x00004118
 }
 
+// @ fn_9_1F88
 // fn_9_1F88 (0xd4 bytes): the kUE_Activate event's helper (jump-table entry 29; the name predates
 // that) - the shield's sound and scale.
 // While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at
@@ -2049,6 +2051,7 @@ void CCommandoPirate::x1F88_EventStart() {
   xc48_ = GetModelData()->GetScale().GetX();                           // 0x00002028..0x00002030
 }
 
+// @ fn_9_1EF8
 // fn_9_1EF8 (0xd4 bytes): the kUE_Deactivate event's helper (entry 30) - the counterpart of
 // fn_9_1F88. While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at 0x00001F10
 // clears the byte's low bit); otherwise it removes the sound emitter whose handle is at guest this+0xC38, clears that handle

@@ -2118,3 +2118,31 @@ copy / assign), 2378 (~CEntityInfo; the cp6 note's "temporary string dtor" was w
 (single_ptr<CPirateRagDoll> dtor / assign), 5F90 6150 A20 F9BC (optional_object dtor / copies),
 5F3C 5FEC 6054 (CImpactVisorEffect dtor, SParticleEffect dtor, None()), EA24 EB84 (Data /
 ShieldData copies), 5D74 (inline CPASAnimParmData ctor). Likely H too, not in the slice: 609C, 4188, E72C.
+
+## The cp8 rows (2026-10-23)
+
+Run (build-port-link under gdb, `COV_GDB_SCRIPT=tools/cov/force_ret.py tools/cov/force.sh`, spec
+`tools/cov/specs/commandopirate_cp8.py`, driver `tools/drivers/commandopirate_cp8.py` sections
+shield,hits,dead, Swamp `05_swamp_timber!`, --fast 12000 frames, MP2_GODMODE=1): exit 0 at the
+driver's end (frame 7960), 0 caught / reach-stub. Commandos u0508, u0500.
+
+| Body | Arms | How |
+|---|---|---|
+| EventStart 1F88 (kUE_Activate) | 9 calls: 0xC64&1 set 3 (return), clear 6: 0xC38 null 5 (AddEmitter 0x918) / set 1; 0xC65 0x04 2 (state 1), 0x08 4 (state 0) | natural (fsm ArmShield); forced (force_ret cp8: 0xC64 0x01 on calls 1 mod 3) |
+| Activate 1EF8 (kUE_Deactivate, charge/ArmShield exits) | 15 calls: 0xC64&1 set 5, clear 10: 0xC38 set 4 (Remove + AddEmitter 0x91A) / null 6 | natural; forced (same) |
+| UpdateEmitters 4BC0 | 7438 calls: 0xC04 null 6376 / set 1062 (IsPlaying 1062, IsQueued 34, UpdateEmitter 3984 = 2924 for 0xC38 + 1060 for 0xC04, so 1028 playing, 32 queued, 2 cleared); 0xC38 null 4514 / set 2924 | natural (hurled and death sounds from the hits, turn-on sound from ArmShield) |
+
+1F88's third value (-1, neither 0x04 nor 0x08 in 0xC65) is dead: its only caller is the
+DoUserAnimEvent arm at 0xC8B8 (`bl` 0xC8BC), entered only when `extrwi. r0,r3,1,29` 0xC8A8 (0x04)
+or `extrwi. r0,r3,1,28` 0xC8B0 (0x08) is set, and nothing writes 0xC65 in between.
+The spec's three `loc:` entries did not bind (0 hits while the call counts show the arms ran); the
+call counts above are the evidence.
+
+Ruled H (compiler/rstl/DOL-class bodies the host gets from its own headers):
+
+| fn | what it is | evidence | host equivalent |
+|---|---|---|---|
+| `4B3C` (0x84) | `rstl::vector<CJointCollisionDescription>::~vector` (deleting form) | one caller `bl` 0x4888 in `45A4` (its local vector); begin = +0xC, end = +0xC + count*0x68 (`mulli r0,r0,0x68` 0x4B6C), `bl fn_9_4908` 0x4B88 (destroy, H), `Free` of the items 0x4B90, delete flag `extsh.`/`ble` 0x4B94/0x4B98 | rstl/vector.hpp dtor |
+| `4240` (0x94) | `CRagDoll::~CRagDoll` (deleting form) | `__vt__8CRagDoll` stored 0x4270, the five vectors' dtors 0x90/0x34/0x24/0x14/0x4 (`bl` 0x4274..0x42A4, each `li r4,-1`), delete flag 0x42A8 | `~CRagDoll() {}` CRagDoll.hpp:30 with the five vectors (CRagDoll.hpp:182-205) |
+| `4188` (0xB8) | `CPirateRagDoll::~CPirateRagDoll` (deleting form) | `__vt__14CPirateRagDoll` 0x41B4; the reserved_vector at +0xD4: count 0x41BC, an empty `bdnz` loop (trivial element dtor) 0x41EC/0x4204; `bl fn_9_4240` 0x4210 (base, r4=0); delete flag 0x4214; callers `bl` 0x4164 (`4140`, single_ptr reset) and 0xD8D4 (`D8AC`) | the host's implicit `CPirateRagDoll` dtor (CPirateRagDoll.hpp:38-40 reserved_vectors) |
+| `609C` (0xB4) | `CImpactVisorEffect`'s constructor | `bl fn_9_6150` 0x60C0 (particle optional copy, H); blur optional flag 0xC -> 0x24, payload 0x18 (0x60C4..0x60F0); low-pass optional flag 0x8 -> 0x30, payload 0x28 (0x60F4..0x6118); `li r0,-1` / `stw 0x34` 0x6120/0x612C (kPV_Invalid); rodata_494 = 0.0 -> 0x38 0x6130; caller `bl` 0x607C in `6054` (None(), H) | CImpactVisorEffect.hpp:37-44, the same five members in the same order |
