@@ -829,7 +829,15 @@ void CmdKill(CStateManager& mgr, const Args& args, std::string& out) {
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
   if (args.size() < 2) {
-    Fail("usage: layer <n>");
+    Fail("usage: layer <n> | layer off <n>");
+    return;
+  }
+  if (Str(args[1]) == "off") {
+    if (args.size() < 3) {
+      Fail("usage: layer off <n>");
+      return;
+    }
+    PortWarp::LayerOff(ArgToInt(args[2], 0));
     return;
   }
   PortWarp::Layer(ArgToInt(args[1], 0));

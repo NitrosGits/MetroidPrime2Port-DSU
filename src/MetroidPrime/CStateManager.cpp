@@ -4052,6 +4052,7 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
       std::fprintf(stderr, "[area] %d\n", areaNow);
     }
     PortOverlay::SetGameState(gpGameState->CurrentWorldAssetId(), areaNow, w);
+    PortOverlay::SetAreaLayers(mCurrentWorldLayerState.GetPtr(), areaNow);
   } else {
     // A world that is gone (a world teleport's restart) must not leave the overlay drawing the
     // room list of a freed world: the publish clears its snapshot.
@@ -4510,6 +4511,17 @@ void CStateManager::PortWarpTick() {
   }
   case PortWarp::EKind::kLayer: {
     PortWarpToLayer(world->GetCurrentAreaId(), request.delta);
+    break;
+  }
+  case PortWarp::EKind::kLayerOff: {
+    const TAreaId aid = world->GetCurrentAreaId();
+    if (!mCurrentWorldLayerState.IsNull() && aid.Value() >= 0 &&
+        aid.Value() < static_cast< int >(mCurrentWorldLayerState->GetAreaLayers().size()) &&
+        request.delta >= 0 && request.delta < mCurrentWorldLayerState->GetLayerCount(aid)) {
+      mCurrentWorldLayerState->SetLayerActive(aid, TLayerId(request.delta), false);
+      std::fprintf(stderr, "[layer] area %d layer %d marked inactive for the next load\n",
+                   aid.Value(), request.delta);
+    }
     break;
   }
   case PortWarp::EKind::kWorld: {

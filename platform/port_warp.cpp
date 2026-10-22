@@ -143,6 +143,12 @@ void Layer(int layer) {
   request.delta = layer;
   Queue(request);
 }
+void LayerOff(int layer) {
+  SRequest request;
+  request.kind = EKind::kLayerOff;
+  request.delta = layer;
+  Queue(request);
+}
 
 void ApplyEnvOnce() {
   if (sReadEnv) {

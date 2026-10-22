@@ -34,6 +34,7 @@
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/IGameArea.hpp"
 #include "MetroidPrime/Player/CGameOptions.hpp"
+#include "MetroidPrime/CWorldLayerState.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
@@ -183,6 +184,14 @@ struct SRoomEntry {
 };
 std::vector< SRoomEntry > sRooms;
 uint32_t sRoomsWorld = 0; // the asset id the entries were taken from, 0 before any world
+
+// The current area's layers, copied by SetAreaLayers on the game thread like the room list.
+struct SLayerEntry {
+  std::string name;
+  bool active;
+};
+std::vector< SLayerEntry > sLayers;
+int sLayersArea = -1;
 
 void ClearRooms() {
   for (SRoomEntry& room : sRooms) {
@@ -1153,6 +1162,29 @@ void DrawCheatsSection() {
     }
   }
 
+  ImGui::SeparatorText("Room layers");
+  PortUi::Help("The room's script layers, as the world's layer state has them. The game switches "
+               "them for good as the story moves on (a boss fight turns its first-pass layer off "
+               "when it starts), and the next save keeps them, so leaving a fight by a warp can "
+               "leave its room without the enemy. Turning a layer on loads it now; turning one "
+               "off takes effect when the room loads again (Reload).");
+  if (sLayers.empty() || sLayersArea != sAreaId) {
+    ImGui::TextDisabled("(no layer state for this room)");
+  } else {
+    for (int i = 0; i < static_cast< int >(sLayers.size()); ++i) {
+      bool active = sLayers[i].active;
+      char label[96];
+      std::snprintf(label, sizeof(label), "%d: %s##layer%d", i, sLayers[i].name.c_str(), i);
+      if (ImGui::Checkbox(label, &active)) {
+        if (active) {
+          PortWarp::Layer(i);
+        } else {
+          PortWarp::LayerOff(i);
+        }
+      }
+    }
+  }
+
 }
 
 void DrawControlsMouse() {
@@ -1775,6 +1807,27 @@ const int kPageCount = static_cast< int >(std::size(kPages));
 } // namespace PortOverlaySearch
 
 namespace PortOverlay {
+
+void SetAreaLayers(const CWorldLayerState* layers, int areaId) {
+  if (layers == nullptr || areaId < 0 ||
+      areaId >= static_cast< int >(layers->GetAreaLayers().size())) {
+    sLayers.clear();
+    sLayersArea = -1;
+    return;
+  }
+  const TAreaId aid(areaId);
+  const int count = layers->GetLayerCount(aid);
+  if (sLayersArea != areaId || static_cast< int >(sLayers.size()) != count) {
+    sLayers.clear();
+    for (int i = 0; i < count; ++i) {
+      sLayers.push_back(SLayerEntry{layers->GetLayerName(aid, TLayerId(i)).c_str(), false});
+    }
+    sLayersArea = areaId;
+  }
+  for (int i = 0; i < count; ++i) {
+    sLayers[i].active = layers->IsLayerActive(aid, TLayerId(i));
+  }
+}
 
 void SetGameState(uint32_t worldId, int areaId, CWorld* world) {
   sWorldId = worldId;

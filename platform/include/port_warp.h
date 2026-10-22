@@ -23,7 +23,8 @@ enum class EKind {
   kWorldPortal, // activate the nearest elevator (world teleporter), to test a world change
   kKill,       // kill the player, to test dying and respawning
   kHeal,       // refill the player's energy, so a sweep survives a damaging environment
-  kLayer       // activate a layer of the current area (its `delta` is the layer number)
+  kLayer,      // activate a layer of the current area (its `delta` is the layer number)
+  kLayerOff    // mark a layer of the current area inactive (takes effect on the area's next load)
 };
 
 struct SRequest {
@@ -47,6 +48,9 @@ void Heal();
 // one of ElitePirate's five areas, for instance - only appears once that layer runs, so this is what
 // makes such a module verifiable from the `MP2_INPUT` token `LAYER<layer>`.
 void Layer(int layer);
+// Mark a layer of the current area inactive in the world's layer state, as a script's layer
+// controller does: the live objects stay until the area loads again (the overlay's Reload).
+void LayerOff(int layer);
 // Reads MP2_WORLD / MP2_TELEPORT once; called from the platform event loop.
 void ApplyEnvOnce();
 // Whether a request is waiting. The game checks this before it is ready to act (no world yet, or

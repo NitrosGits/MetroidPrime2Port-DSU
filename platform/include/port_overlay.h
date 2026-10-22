@@ -10,6 +10,7 @@
 
 class CGameOptions;
 class CWorld;
+class CWorldLayerState;
 
 namespace PortOverlay {
 
@@ -30,6 +31,9 @@ void SyncGameOptions();
 // before the restart replaces it. `world` is null when there is none; the pages then say so
 // instead of drawing an empty list.
 void SetGameState(uint32_t worldId, int areaId, CWorld* world);
+// The current area's script layers (name, active in the world's layer state), copied every update
+// for the Cheats page's layer toggles; `layers` null or an area it lacks clears the list.
+void SetAreaLayers(const CWorldLayerState* layers, int areaId);
 // "Temple Grounds - Landing Site": the English world and room names, as far as they are known
 // (rooms only for the current world, once their name tables have loaded); empty when the room's is not.
 std::string RoomName(uint32_t worldId, int areaIndex);
