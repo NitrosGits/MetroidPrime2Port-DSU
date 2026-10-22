@@ -921,6 +921,10 @@ private:
                                    // boostBallRollSound: fn_10_895C's stack arguments follow
                                    // the data order (the r9 token is the 'SWHC' trail swoosh,
                                    // then the two sounds +0x58 / +0x5A)
+  ushort mBoostBallHitPlayerSfxId; // guest 0xE6A (+0x5A), the ball's hit-player sound
+                                   // (0x00008A28..0x00008A40; -1 is kInternalInvalidSfxId).
+                                   // [probable] the loader's boostBallHitPlayerSound (the data
+                                   // order, as above); fn_10_9E00 passes it to the ball (`lhz`)
   CSfxHandle mBoostBallRollSfx;    // guest 0xE6C (+0x5C), the roll emitter; 0 (0x00008A50)
   CVector3f mBoostBallPos;          // guest 0xE98/0x9C/0xA0, where the boost ball rolls to
                                     // (fn_10_A3B0, 0x0000A4B0..0x0000A4CC)
@@ -1072,8 +1076,6 @@ private:
   // The helpers below 0xA000 that the FSM states call (the module's own members, which the host
   // class did not have). The bodies are in src/MetroidPrime/Enemies/PortCDarkSamusHelpers.cpp;
   // docs/module-analysis/DarkSamus_helpers.md has the caller map.
-  float GetGuest314() const;   // fn_10_2EFC: the float at guest 0x314
-  bool GetGuest318Bit6() const; // fn_10_2F04: bit 0x40 of the byte at guest 0x318
   void DeleteGuestActor(CStateManager& mgr);        // fn_10_4868: the actor at guest 0xF78
   void DeleteGuestActorIfExpired(CStateManager& mgr); // fn_10_48C8: ... when 0xF7C has expired
   void StopGuestSfx();           // fn_10_812C: the sfx handle at guest 0xF60
@@ -1124,10 +1126,7 @@ private:
   float mGuestE30 = 0.f;             // guest 0xE30 (fn_10_9E00)
   float mGuestE34 = 0.f;             // guest 0xE34 (fn_10_9E00)
   float mGuestE38 = 0.f;             // guest 0xE38 (fn_10_9E00)
-  uchar mGuestE6A = 0;               // guest 0xE6A, a flag byte (fn_10_9E00)
   CVector3f mGuestEE4 = CVector3f::Zero(); // guest 0xEE4, the path find's fallback destination
-  float mGuest314;               // guest 0x314 (fn_10_2EFC)
-  uchar mGuest318;               // guest 0x318 (fn_10_2F04)
   TUniqueId mGuestF78 = kInvalidUniqueId; // guest 0xF78 (fn_10_4868, fn_10_48C8)
   float mGuestF7C;               // guest 0xF7C (fn_10_48C8)
   CSfxHandle mGuestF60;          // guest 0xF60 (fn_10_812C)
@@ -1195,7 +1194,8 @@ private:
                                           // the FreezeBeam state (fn_10_16CDC) uses it as its
                                           // counter: at least 1 makes it deliver the exit state
                                           // command (0x00016DA8)
-  bool mBoostBallFlag20 = false;          // guest 0xEBC bit 0x20 (fn_10_1BEFC clears it)
+  bool mBoostBallFlag20 : 1;              // 0xebc 0x20; the ctor and fn_10_1BEFC clear it,
+                                          // fn_10_A3B0 tests it at 0x0000A4DC, sets it at 0x0000A660
   bool mBoostBallFlag80 = false;          // guest 0xEBC bit 0x80 (fn_10_1BEFC clears it); the
                                           // DoneRolling trigger reads it (`extrwi r0, r0, 1, 24` at
                                           // 0x00009378, the PowerPC bit 24 being
