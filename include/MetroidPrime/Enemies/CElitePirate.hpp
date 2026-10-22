@@ -27,74 +27,74 @@ class CSkinnedModel;
 
 // Host copy of the properties the ElitePirate loader reads and hands to the class (retail:
 // CElitePirateData, 0x190 bytes at 0x828, built on the loader's stack by fn_15_B82C and copied in
-// by its copy constructor fn_15_B360). The retail offsets are the ones the class's own code reads
-// (data+N below = this+0x828+N); the host layout is its own and the loader assigns by name.
+// by its copy constructor fn_15_B360). Members are in retail offset order (data+N = this+0x828+N);
+// every one of the 0x190 bytes is accounted for below, so the loader's energyAbsorbDuration and
+// energyAbsorbVariance (SLdr 0xa70/0xa74) have no slot: fn_15_178 never passes them.
 class CElitePirateData {
 public:
-  CElitePirateData()
-  : mStateMachine(kInvalidAssetId)
-  , mInitialAnim(-1)
-  , mMeleeDamage()
-  , mShieldedModel(kInvalidAssetId)
-  , mShieldedSkinRules(kInvalidAssetId)
-  , mDarkShield(kInvalidAssetId)
-  , mDarkShieldSound(0)
-  , mDarkShieldPop(kInvalidAssetId)
-  , mLightShield(kInvalidAssetId)
-  , mLightShieldSound(0)
-  , mLightShieldPop(kInvalidAssetId)
-  , mSingleShockWaveInfo(SLdrShockWaveInfo())
-  , mDoubleShockWaveInfo(SLdrShockWaveInfo())
-  , mRocket(kInvalidAssetId)
-  , mRocketDamage()
-  , mRocketLauncherActorInfo()
-  , mRocketLauncherAnimInfo(CAssetId(0), 0, 0)
-  , mUnknown7E6E0D38(CAssetId(0), 0, 0)
-  , mVisorElectricEffect(kInvalidAssetId)
-  , mSoundVisorElectric(0)
-  , mPartAsset(kInvalidAssetId) {}
+  // fn_15_B82C's parameter list, in its register/stack order (r4..r10, f1..f8, then the stack
+  // words caller sp+0x8..0x64). Each line names the slot and where B82C stores it.
+  CElitePirateData(CAssetId stateMachine, int initialAnim, const CDamageInfo& meleeDamage,
+                   float maxMeleeRange, float minShockwaveRange, float maxShockwaveRange,
+                   float minRocketRange, float maxRocketRange, float unknown5236C2B6,
+                   float unknown01EAAB17, CAssetId darkShield, ushort darkShieldSound,
+                   CAssetId darkShieldPop, CAssetId lightShield, float tauntInterval,
+                   ushort lightShieldSound, CAssetId lightShieldPop, float tauntVariance,
+                   float shockWaveWeight0, float shockWaveWeight1, float shockWaveWeight2,
+                   float shockWaveWeight5, float repeatedAttackChance, float energyAttractionForce,
+                   CAssetId partAsset, ushort alwaysFF23F5E1EE,
+                   const CActorParameters& rocketLauncherActorInfo,
+                   const CAnimationParameters& rocketLauncherAnimInfo,
+                   const CAnimationParameters& unknown7E6E0D38, CAssetId rocket,
+                   const CDamageInfo& rocketDamage, int unknown624222F8, int unknown31E43A1C,
+                   CAssetId visorElectricEffect, ushort soundVisorElectric,
+                   const SLdrShockWaveInfo& singleShockWaveInfo,
+                   const SLdrShockWaveInfo& doubleShockWaveInfo, CAssetId shieldedModel,
+                   CAssetId shieldedSkinRules);
 
   CAssetId mStateMachine;       // +0x00 patterned.stateMachine2; the ctor's 'FSM2' token (0xc30)
-  int mInitialAnim;             // +0x04 patterned.animationInformation.initial_anim (ctor, 0xc40)
+  int mInitialAnim;             // +0x04 patterned.animationInformation.initial_anim (fn_15_9988)
   CDamageInfo mMeleeDamage;     // +0x08 the melee hit (fn_15_7004)
-  float mMaxMeleeRange;         // +0x154
-  float mMinShockwaveRange;     // +0x158
-  float mMaxShockwaveRange;     // +0x15c
-  float mMinRocketRange;        // +0x160
-  float mMaxRocketRange;        // +0x164
+  float mTauntInterval;         // +0x24
+  float mTauntVariance;         // +0x28
+  float mRepeatedAttackChance;  // +0x2c
+  float mEnergyAttractionForce; // +0x30
+  CAssetId mPartAsset;          // +0x34 alwaysFF: the ctor's optional 'PART' token (0x9e8)
+  ushort mAlwaysFF23F5E1EE;     // +0x38
+  CActorParameters mRocketLauncherActorInfo;  // +0x3c the launcher's actor parameters
+  CAnimationParameters mRocketLauncherAnimInfo; // +0x9c the launcher's model (fn_15_2564)
+  CAnimationParameters mUnknown7E6E0D38;      // +0xa8 the launcher's model when Ing-possessed
+  int mUnknown624222F8;         // +0xb4
+  int mUnknown31E43A1C;         // +0xb8
+  CAssetId mVisorElectricEffect; // +0xbc
+  ushort mSoundVisorElectric;    // +0xc0
   float mUnknown5236C2B6;       // +0xc4
   float mUnknown01EAAB17;       // +0xc8
-  CAssetId mShieldedModel;      // +0x188 the shield CSkinnedModel's CMDL
-  CAssetId mShieldedSkinRules;  // +0x18c and its CSKR
   CAssetId mDarkShield;         // +0xcc
   ushort mDarkShieldSound;      // +0xd0
   CAssetId mDarkShieldPop;      // +0xd4 'PART' for the shield pop, polarity != 1 (fn_15_3C5C)
   CAssetId mLightShield;        // +0xd8
   ushort mLightShieldSound;     // +0xdc
   CAssetId mLightShieldPop;     // +0xe0 'PART' for the shield pop, polarity 1
-  float mTauntInterval;         // +0x24
-  float mTauntVariance;         // +0x28
-  CShockWaveInfo mSingleShockWaveInfo; // +0xe4 (fn_15_1A48)
+  // +0xe4 / +0x114: retail keeps the SLdrShockWaveInfo (fn_15_B57C copies it) and fn_15_1A48 builds
+  // the CShockWaveInfo from it on each call (fn_15_1A84); the host builds it once here.
+  CShockWaveInfo mSingleShockWaveInfo; // +0xe4
   CShockWaveInfo mDoubleShockWaveInfo; // +0x114 (fn_15_1A48, when 0xcb0 == 5)
-  float mUnknown28B39197;       // +0x144..+0x150, in some order [?]
-  float mUnknownE27DE71B;
-  float mUnknown665E7ACE;
-  float mUnknownACD4D06D;
+  // +0x144..+0x150: the Shockwave state's weights for severities 0/1/2/5 (fn_15_4AE0), the SLdr's
+  // 0x28b39197/0xe27de71b/0x665e7ace/0xacd4d06d in that order (fn_15_178 0x9EC..0xA08).
+  float mUnknown28B39197;       // +0x144
+  float mUnknownE27DE71B;       // +0x148
+  float mUnknown665E7ACE;       // +0x14c
+  float mUnknownACD4D06D;       // +0x150
+  float mMaxMeleeRange;         // +0x154
+  float mMinShockwaveRange;     // +0x158
+  float mMaxShockwaveRange;     // +0x15c
+  float mMinRocketRange;        // +0x160
+  float mMaxRocketRange;        // +0x164
   CAssetId mRocket;             // +0x168 the ctor's CProjectileInfo (0xcd0) asset
   CDamageInfo mRocketDamage;    // +0x16c that CProjectileInfo's damage
-  int mUnknown624222F8;         // +0xb4
-  int mUnknown31E43A1C;         // +0xb8
-  float mRepeatedAttackChance;  // +0x2c
-  float mEnergyAbsorbDuration;  // [?] offset not read by this slice
-  float mEnergyAbsorbVariance;  // [?]
-  float mEnergyAttractionForce; // +0x30
-  int mAlwaysFF23F5E1EE;        // +0x38 (u16 in retail)
-  CActorParameters mRocketLauncherActorInfo;  // +0x3c the launcher's actor parameters
-  CAnimationParameters mRocketLauncherAnimInfo; // +0x9c the launcher's model (fn_15_2564)
-  CAnimationParameters mUnknown7E6E0D38;      // +0xa8 the launcher's model when Ing-possessed
-  CAssetId mVisorElectricEffect; // +0xbc
-  ushort mSoundVisorElectric;    // +0xc0
-  CAssetId mPartAsset;          // +0x34 alwaysFF: the ctor's optional 'PART' token (0x9e8)
+  CAssetId mShieldedModel;      // +0x188 the shield CSkinnedModel's CMDL
+  CAssetId mShieldedSkinRules;  // +0x18c and its CSKR
 };
 #endif
 
@@ -236,6 +236,8 @@ private:
 #ifdef TARGET_PC
   // Helpers (retail function on each; shared by Think, AcceptScriptMsg and the FSM states).
   bool IsShieldUp() const;                                         // fn_15_2CE8
+  bool IsInitialIdle(int idle) const;                              // fn_15_9988
+  CVector3f GetLockOnPosition(const CActor& launcher) const;       // fn_15_2284
   // 0x1B54 rlwimi r0, r4, 6, 25, 25: mask 0x40 (xc10 = (xc10 & ~0x40) | (a1 -> 0x40)), stored to
   // xc10 at 0x1B58 - the XDamaged bit of the flags byte, set or cleared from the bool.
   // @ fn_15_1B50
