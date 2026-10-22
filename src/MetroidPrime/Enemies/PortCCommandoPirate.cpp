@@ -599,6 +599,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   x3E1C_UpdateRagDoll(mgr, dt, noRagDoll);    // 0x0000CAA0..0x0000CAA4
 }
 
+// @ fn_9_4BC0
 // fn_9_4BC0 (0xe4 bytes): the module's two sound emitters. The handle at guest this+0xC04 is
 // updated while it is playing or queued (the IsPlaying and IsQueued calls at 0x00004BEC and
 // 0x00004C04); when it is neither, the handle is cleared (the store at 0x00004C4C). The
@@ -1385,71 +1386,56 @@ void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg)
   mCurDamageRemTime = mDamageWaitTime;              // guest this+0x444, 0x00003C9C
 }
 
+// @ fn_9_2048
 // fn_9_2048 (0x330 bytes): the module's shield effect - the explosion and the sound that play
-// when the shield takes a hit.
+// when the shield takes a hit (the callers: the knock-back helper fn_9_2D0C at 0x00002D90 and
+// the shield's damage counter at 0x00006A20).
 //
 // The byte at guest this+0xC64's 0x01 bit stops it (the clrlwi at 0x00002064); otherwise the bit
 // is set (0x00002074) and the effect is built at the module's left-wrist locator (the
 // GetLctrTransform call at 0x00002088, the locator id at guest this+0xC62).
 //
-// Which effect it is depends on the module's state word at guest this+0xC4C: 1 is the charge (the
-// compare at 0x0000209C), which needs the effect the guest's token at guest this+0xC08 holds to
-// be loaded (the test at 0x000020A8) and builds an explosion it clears again (the call at
-// 0x000021A4), so the charge's effect never reaches the world; 0 is the armed shield (the compare
-// at 0x000021BC), which needs the effect the guest's token at guest this+0xC0C holds to be loaded
-// (the test at 0x000021C8) and puts its explosion into the world (the AddObject call at
-// 0x000022E8), starts the block's explode sound (the SfxStart call at 0x00002324, the sound id at
-// guest this+0x8F4 = the block's +0x134) and removes the module's own second sound emitter (the
-// RemoveEmitter call at 0x00002340, the handle at guest this+0xC38) before it resets the module's
-// state word and its two scale floats (0x0000234C..0x00002360).
-//
-// The guest's two tokens are the block's two effect asset ids: the port reads the charge effect
-// (the block's +0x78) for the charge and the explode effect (the block's +0x58, the one the
-// explode sound at the block's +0x5C belongs to) for the armed shield.
+// Which effect it is depends on the module's state word at guest this+0xC4C: 1 (`cmpwi r3,0x1`
+// 0x0000209C) takes the locked token at guest this+0xC08 (`addi r4,r30,0xc08` 0x0000216C; the
+// ctor fills it from the shield's explode effect, guest +0x8F0, 0x0000DC24) when its optional is
+// present (`lbz r0,0xc14(r30)` 0x000020A4); 0 (`cmpwi r3,0x0` 0x000021BC) takes the token at guest
+// this+0xC18 (`addi r4,r30,0xc18` 0x0000228C; the arm-explode effect, guest +0x90C, 0x0000DD8C)
+// when its optional is present (`lbz r0,0xc24(r30)` 0x000021C4). Either explosion (0x180 bytes,
+// "Commando Explosion Fx" = "StateOver" + 0x364, the model's scale from guest this+0x60, white,
+// flags 0, -1) is put into the world (the AddObject at 0x000022E8), the block's explode sound
+// starts (SfxStart 0x00002324: the id at guest this+0x8F4, volume kMaxVolume 0x00002308, pan
+// 0x40 0x00002318, kAllAreas, false, false, kMedPriority) and the module's second sound emitter
+// goes (0x00002328..0x00002348). The state word and the two scale floats are reset on every
+// path past the 0x01 test (0x0000234C..0x00002360). fn_9_2378 (0x000021A4/0x000022C4) is the
+// temporary CEntityInfo's destructor.
 void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
   if ((xc64_ & 0x01) != 0) {  // 0x00002064
     return;
   }
   xc64_ |= 0x01;              // 0x00002074
   const CTransform4f xf = GetLctrTransform(mLocatorLWrist);  // 0x00002088
-  // 0x00002098..0x000020AC: the state word at guest this+0x0C4C picks the effect - 1 is the
-  // charge (the guest's own token at guest this+0x0C08, used when the byte at guest this+0x0C14
-  // says it is loaded) and 0 is the armed shield (the token at guest this+0x18, used when the
-  // byte at guest this+0x0C24 says it is loaded); every other value does nothing (0x000021BC).
-  // Both effects reach the world (the AddObject at 0x000022E8) and the sound plays
-  // (0x00002324); the guest destroys its temporary copy of the token on the way (0x000021A4).
-  const CAssetId effectId = xc4c_ == 1 ? mData.mShield.mChargeEffect    // 0x0000216C (this+0x0C08)
-                          : xc4c_ == 0 ? mData.mShield.mExplodeEffect   // 0x0000228C (this+0x18)
-                                       : kInvalidAssetId;
-  // 0x000021BC..0x000021C0: a state word that is neither 0 nor 1 reaches 0x000022D8 with no
-  // explosion at all - the port takes the invalid id, so no token is loaded and the three fields
-  // at the end are reset like the guest's.
-  // 0x000020A8 (the charge) and 0x000021C8 (the armed shield): the guest's own test of the
-  // token's "loaded" flag (the bytes at guest this+0xC14 and this+0xC24); the port's token's
-  // validity stands in for it.  When the token is not there the guest reaches 0x000022D8 with no
-  // explosion, so nothing is added and no sound plays - but the three fields at the end are
-  // reset either way (0x0000234C..0x00002360).
-  CExplosion* explosion = nullptr;
-  rstl::optional_object< TCachedToken< CGenDescription > > effect;
-  if (effectId != kInvalidAssetId) {
-    effect = gpSimplePool->GetObj(SObjectTag('PART', effectId));
+  const rstl::optional_object< TLockedToken< CGenDescription > >* effect = nullptr;
+  if (xc4c_ == 1 && xc08_explodeEffect) {             // 0x0000209C, 0x000020A4..0x000020AC
+    effect = &xc08_explodeEffect;                     // 0x0000216C
+  } else if (xc4c_ == 0 && xc18_armExplodeEffect) {   // 0x000021BC, 0x000021C4..0x000021CC
+    effect = &xc18_armExplodeEffect;                  // 0x0000228C
   }
-  if (effect.valid()) {  // 0x000021C8 (the guest's test of the flag at guest this+0xC24)
+  CExplosion* explosion = nullptr;
+  if (effect != nullptr) {
     explosion = rs_new CExplosion(
-        TLockedToken< CGenDescription >(*effect), mgr.AllocateUniqueId(),
+        **effect, mgr.AllocateUniqueId(),
         CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
-        rstl::string_l("CommandExplosion F"), xf, 0, GetModelData()->GetScale(), CColor::White(),
-        -1);
-    // 0x000021A4: the guest destroys its temporary copy of the token here - nothing is cleared
-    // from the explosion itself.
+        rstl::string_l("Commando Explosion Fx"), xf, 0, GetModelData()->GetScale(),
+        CColor::White(), -1);  // 0x0000218C / 0x000022AC
   }
   if (explosion != nullptr) {  // 0x000022D8..0x000022DC
     mgr.AddObject(explosion);  // 0x000022E8
-    CSfxManager::SfxStart(mData.mShield.mSoundExplode, 0x40, 0, CSfxManager::kAllAreas, false, false,
+    CSfxManager::SfxStart(mData.mShield.mSoundExplode, CAudioSys::kMaxVolume, 0x40,
+                          CSfxManager::kAllAreas, false, false,
                           CSfxManager::kMedPriority);  // 0x00002324
-    if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002344
-      CSfxManager::RemoveEmitter(xc38_);
-      xc38_ = CSfxHandle::NullHandle();
+    if (xc38_ != CSfxHandle::NullHandle()) {  // 0x00002328..0x00002330
+      CSfxManager::RemoveEmitter(xc38_);      // 0x00002340
+      xc38_ = CSfxHandle::NullHandle();       // 0x00002348
     }
   }
   xc4c_ = -1;   // 0x00002354
@@ -2027,6 +2013,7 @@ void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noR
   xc00_ = 0.f;                                                     // 0x00004110..0x00004118
 }
 
+// @ fn_9_1F88
 // fn_9_1F88 (0xd4 bytes): the kUE_Activate event's helper (jump-table entry 29; the name predates
 // that) - the shield's sound and scale.
 // While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at
@@ -2053,6 +2040,7 @@ void CCommandoPirate::x1F88_EventStart() {
   xc48_ = GetModelData()->GetScale().GetX();                           // 0x00002028..0x00002030
 }
 
+// @ fn_9_1EF8
 // fn_9_1EF8 (0xd4 bytes): the kUE_Deactivate event's helper (entry 30) - the counterpart of
 // fn_9_1F88. While the flag byte at guest this+0xC64 has its 0x01 bit it does nothing (the clrlwi at 0x00001F10
 // clears the byte's low bit); otherwise it removes the sound emitter whose handle is at guest this+0xC38, clears that handle
@@ -4643,7 +4631,7 @@ float CCommandoPirate::GetGravityConstant() const { return 50.f; }
 // waypoint, cp.team, cp.xbd0 the jump point), the charge speed (cp.chargespeed, 1/1000), the state
 // machine's time in its state (cp.fsmtime, ms), the push vector (cp.bb8x/bb8y/bb8z, 1/1000), the
 // charge target set d/1000 units along the facing (cp.b94ahead; reads the target's distance along
-// it), the words x920 (cp.x920), the timers xb78 and xc58 (cp.xb78, cp.xc58, ms) and the base's
+// it), the words x920 (cp.x920) and xc4c (cp.c4c, the module's state word), the timers xb78 and xc58 (cp.xb78, cp.xc58, ms) and the base's
 // pending death (cp.pendingdeath).
 bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* value,
                                      int& current) {
@@ -4700,6 +4688,13 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
       cp->x920_ = *value;
     }
     current = cp->x920_;
+    return true;
+  }
+  if (strcmp(name, "c4c") == 0) {
+    if (value != nullptr) {
+      cp->xc4c_ = *value;
+    }
+    current = cp->xc4c_;
     return true;
   }
   if (strcmp(name, "pendingdeath") == 0) {
@@ -4767,11 +4762,36 @@ const bool sCpConsoleVars = PortConsole::RegisterVar(&CCommandoPirate::PortConso
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_9_168) and entry points.
 
+// @ fn_9_E30
+// fn_9_E30 (0x224 bytes): SLdrCommandoPirate's constructor, the loader's defaults (the call at
+// 0x00000188). The header's inline constructor (SLdrCommandoPirate.hpp:302) stores the same
+// floats, weapon types, asset ids and base-struct defaults (0x38 = 3, the lighting colour, the
+// visor flags 0xf), except the sound ids: the guest's default for every sound id is -1, the
+// generated header's 0. So the guest's -1 stores are written over the header's here: the five
+// words 0x488..0x498 (`li r0,-0x1` 0x00000E60, `stw` 0x00000E68..0x00000E78; the last two are
+// already -1 in the header), sound_Projectile 0x4c0 (`li r0,-0x1` 0x00000E90, `stw` 0x00000E98),
+// and in the two sub-struct constructors it calls: the grenade block's (fn_9_120C, 0x00000E9C)
+// two sounds +0x48/+0x4c (`li r0,-0x1` 0x00001228, `stw` 0x00001260/0x00001270) and the shield
+// block's (fn_9_10B8, 0x00000EA4) three sounds +0x17c/+0x1a0/+0x1a4 (`li r30,-0x1` 0x000010DC,
+// `stw` 0x000010F4/0x00001134/0x00001144). A property in the instance's data overwrites them.
+static void xE30_SoundDefaults(SLdrCommandoPirate& sldr) {
+  sldr.sound_Impact = -1;                              // 0x00000E68 (0x488)
+  sldr.sound_Hurled = -1;                              // 0x00000E6C (0x48c)
+  sldr.sound_Death = -1;                               // 0x00000E70 (0x490)
+  sldr.sound_Projectile = -1;                          // 0x00000E98 (0x4c0)
+  sldr.unknown_0xfb435257.sound_GrenadeBounce = -1;    // fn_9_120C 0x00001260 (+0x48)
+  sldr.unknown_0xfb435257.sound_GrenadeExplode = -1;   // fn_9_120C 0x00001270 (+0x4c)
+  sldr.shieldInfo.sound_ShieldExplode = -1;            // fn_9_10B8 0x000010F4 (+0x17c)
+  sldr.shieldInfo.sound_ShieldTurnOn = -1;             // fn_9_10B8 0x00001134 (+0x1a0)
+  sldr.shieldInfo.sound_ShieldTurnOff = -1;            // fn_9_10B8 0x00001144 (+0x1a4)
+}
+
 // fn_9_168. The property ids and their order are the generated SLdrCommandoPirate reader's, which
 // the REL's own switch matches id by id (fn_9_168 @0x000001C8..0x00000568).
 static CEntity* PortLoadCommandoPirate(CStateManager& mgr, CInputStream& input,
                                         CEntityInfo& info) {
   SLdrCommandoPirate sldrThis;
+  xE30_SoundDefaults(sldrThis);  // fn_9_E30's -1 sound ids (0x00000188)
 #include "MetroidPrime/ScriptLoader/SLdrCommandoPirate.inc"
 
   rstl::optional_object< CModelData > modelData(LdrToModelData(

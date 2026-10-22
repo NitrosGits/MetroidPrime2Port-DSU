@@ -2161,3 +2161,67 @@ dead: the predicate keeps only ids that cast to the manager (CScriptTeamAiMgr.cp
 
 B progress: the eight H rows leave the B denominator (122 -> 114), the marked count is unchanged
 (75), so `tools/port_progress.py` reads CommandoPirate at 75/114 = 65.8%.
+
+## The cp8 rows (2026-10-23)
+
+Run (build-port-link under gdb, `COV_GDB_SCRIPT=tools/cov/force_ret.py tools/cov/force.sh`, spec
+`tools/cov/specs/commandopirate_cp8.py`, driver `tools/drivers/commandopirate_cp8.py` sections
+shield,hits,dead, Swamp `05_swamp_timber!`, --fast 12000 frames, MP2_GODMODE=1): exit 0 at the
+driver's end (frame 7960), 0 caught / reach-stub. Commandos u0508, u0500.
+
+| Body | Arms | How |
+|---|---|---|
+| EventStart 1F88 (kUE_Activate) | 9 calls: 0xC64&1 set 3 (return), clear 6: 0xC38 null 5 (AddEmitter 0x918) / set 1; 0xC65 0x04 2 (state 1), 0x08 4 (state 0) | natural (fsm ArmShield); forced (force_ret cp8: 0xC64 0x01 on calls 1 mod 3) |
+| Activate 1EF8 (kUE_Deactivate, charge/ArmShield exits) | 15 calls: 0xC64&1 set 5, clear 10: 0xC38 set 4 (Remove + AddEmitter 0x91A) / null 6 | natural; forced (same) |
+| UpdateEmitters 4BC0 | 7438 calls: 0xC04 null 6376 / set 1062 (IsPlaying 1062, IsQueued 34, UpdateEmitter 3984 = 2924 for 0xC38 + 1060 for 0xC04, so 1028 playing, 32 queued, 2 cleared); 0xC38 null 4514 / set 2924 | natural (hurled and death sounds from the hits, turn-on sound from ArmShield) |
+
+1F88's third value (-1, neither 0x04 nor 0x08 in 0xC65) is dead: its only caller is the
+DoUserAnimEvent arm at 0xC8B8 (`bl` 0xC8BC), entered only when `extrwi. r0,r3,1,29` 0xC8A8 (0x04)
+or `extrwi. r0,r3,1,28` 0xC8B0 (0x08) is set, and nothing writes 0xC65 in between.
+The spec's three `loc:` entries did not bind (0 hits while the call counts show the arms ran); the
+call counts above are the evidence.
+
+Ruled H (compiler/rstl/DOL-class bodies the host gets from its own headers):
+
+| fn | what it is | evidence | host equivalent |
+|---|---|---|---|
+| `4B3C` (0x84) | `rstl::vector<CJointCollisionDescription>::~vector` (deleting form) | one caller `bl` 0x4888 in `45A4` (its local vector); begin = +0xC, end = +0xC + count*0x68 (`mulli r0,r0,0x68` 0x4B6C), `bl fn_9_4908` 0x4B88 (destroy, H), `Free` of the items 0x4B90, delete flag `extsh.`/`ble` 0x4B94/0x4B98 | rstl/vector.hpp dtor |
+| `4240` (0x94) | `CRagDoll::~CRagDoll` (deleting form) | `__vt__8CRagDoll` stored 0x4270, the five vectors' dtors 0x90/0x34/0x24/0x14/0x4 (`bl` 0x4274..0x42A4, each `li r4,-1`), delete flag 0x42A8 | `~CRagDoll() {}` CRagDoll.hpp:30 with the five vectors (CRagDoll.hpp:182-205) |
+| `4188` (0xB8) | `CPirateRagDoll::~CPirateRagDoll` (deleting form) | `__vt__14CPirateRagDoll` 0x41B4; the reserved_vector at +0xD4: count 0x41BC, an empty `bdnz` loop (trivial element dtor) 0x41EC/0x4204; `bl fn_9_4240` 0x4210 (base, r4=0); delete flag 0x4214; callers `bl` 0x4164 (`4140`, single_ptr reset) and 0xD8D4 (`D8AC`) | the host's implicit `CPirateRagDoll` dtor (CPirateRagDoll.hpp:38-40 reserved_vectors) |
+| `609C` (0xB4) | `CImpactVisorEffect`'s constructor | `bl fn_9_6150` 0x60C0 (particle optional copy, H); blur optional flag 0xC -> 0x24, payload 0x18 (0x60C4..0x60F0); low-pass optional flag 0x8 -> 0x30, payload 0x28 (0x60F4..0x6118); `li r0,-1` / `stw 0x34` 0x6120/0x612C (kPV_Invalid); rodata_494 = 0.0 -> 0x38 0x6130; caller `bl` 0x607C in `6054` (None(), H) | CImpactVisorEffect.hpp:37-44, the same five members in the same order |
+
+**`E30` (0x224), SLdrCommandoPirate's constructor: marked, one fix.** Straight-line (no conditional
+branch), called once per load (`bl` 0x188 in `168`). Store by store against the header's inline
+ctor (SLdrCommandoPirate.hpp:302) and the base structs' ctors (ScriptLoaderDefinitions.inc): the
+floats (rodata 0x42C..0x470: 360 90 1 0.5 10 10 3 150 2 0.8 3 0.3 0.2 / 10 50 30 80 / 10 5 / 5 /
+20 / 0.1 0.05), the weapon types (11 at 0x70/0x49C/0x4B0), creatureSize 1 (0x268), the asset ids
+(-1) and the base defaults it re-stores (0x38 = 3 = editorProperties.unknown_0x5d298a43, 0x294 =
+CColor(1,1,1,1) lighting, 0x2E4 = 0xf visor flags, 0x26C = 1 isEchoEmitter) agree. The sound ids
+do not: the guest's default is -1 for all of them (E30 0x488/0x48C/0x490 `stw` 0xE68..0xE70 and
+0x4C0 `stw` 0xE98; the grenade block fn_9_120C +0x48/+0x4C `stw` 0x1260/0x1270; the shield block
+fn_9_10B8 +0x17C/+0x1A0/+0x1A4 `stw` 0x10F4/0x1134/0x1144), the generated header's 0.
+`xE30_SoundDefaults` (PortCCommandoPirate.cpp, the loader's first statement) writes the guest's
+-1s over the header's. Run (`tools/cov/run.sh` cp8 spec, Temple `05_temple_federationsite_dark`,
+1500 frames, 0 caught): the loaded block reads 551 1357 7809 7780 **65535** 7778 7893 7859 7858
+(impact hurled death projectile bounce explode shield-explode on off), so that commando's
+grenade-bounce sound is 0xFFFF (the guest's default or the data's -1; with the header's default
+it would have been sound 0 if the property is absent). The same generator default (0 for sound
+ids) is in every generated SLdr header (shared; not changed here). fn_9_120C/fn_9_10B8 stay H rows
+(their other stores agree; their sounds are written by the same helper).
+
+**`2048` (0x330), the shield effect: marked, three fixes.** (1) The effect: state word 1
+(`cmpwi r3,0x1` 0x209C) takes the token at guest this+0xC08 (`addi r4,r30,0xc08` 0x216C; ctor fills
+it from the shield block's +0x8F0, 0xDC24) when its optional is set (`lbz r0,0xc14` 0x20A4), 0
+(0x21BC) the one at 0xC18 (0x228C; +0x90C, 0xDD8C; flag `lbz r0,0xc24` 0x21C4); the old body used
+the charge/explode effects. (2) SfxStart (0x2324) gets volume kMaxVolume (0x2308) and pan 0x40
+(0x2318); the old call passed 0x40, 0. (3) The explosion's name is "Commando Explosion Fx"
+("StateOver" + 0x364 = rodata 0x868). fn_9_2378 (0x21A4/0x22C4) is the temporary CEntityInfo's
+dtor, not an explosion reset (old comment wrong). Run (force.sh cp8 spec, Swamp
+`05_swamp_timber!`, driver section `effect`, 0 caught): 12 calls - c64&1 set (return) 2; state
+word 1 with 0xC08 present 4 / absent 2; 0 with 0xC18 present 3 / absent 1; 2 once, -1 once (no
+effect); 7 explosions (CExplosion, AddObject, SfxStart 7), RemoveEmitter 1 (c38 set: the Dead
+entry the frame after fn_9_1F88 started the turn-on sound; the other 6 with c38 null). Forced: the
+Dead state with `fsm`, cp.c64/c66/c4c (new console var) written in the Dead entry's tick (the state
+word is reset between ticks, 0x1D0C), the two optionals cleared on calls 0/2 mod 4. The spec's c38
+key read 0 on every entry, but `CSfxManager::RemoveEmitter` is only called from 2048 in this
+extent (its other Kyoto callers go to `S3dRemoveEmitter`), so the call count is the evidence.
