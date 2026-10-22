@@ -706,7 +706,7 @@ bool CCommandoPirate::x4CA4_CanAim() {
   if (xc4c_ != -1) {                               // 0x00004D18..0x00004D20
     return false;
   }
-  if (xb7c_ <= 1.f) {                              // 0x00004D24..0x00004D34 (rodata_43c)
+  if (!(xb7c_ > 1.f)) {                            // 0x00004D24..0x00004D34 (rodata_43c) ble: NaN false
     return false;
   }
   if (BodyController()->IsFrozen()) {               // 0x00004D38..0x00004D44 (guest +0x594 bit 0x20)
@@ -1674,7 +1674,8 @@ void CCommandoPirate::x3900_JumpBackVelocity(CStateManager& mgr) {
   const float dx = target.GetX() - pos.GetX();
   const float dy = target.GetY() - pos.GetY();
   // The apex: the float at guest this+0xBEC over the higher of the two heights.
-  const float apex = xbec_ + (pos.GetZ() >= target.GetZ() ? pos.GetZ() : target.GetZ());
+  // 0x00003994 bge: a NaN takes the actor's own height.
+  const float apex = xbec_ + (pos.GetZ() < target.GetZ() ? target.GetZ() : pos.GetZ());
   const float zVelocity = CMath::SqrtF(2.f * gravity * (apex - pos.GetZ()));  // 0x000039A8..0x000039BC
   const float timeUp = zVelocity / gravity;                                 // 0x000039D8
   const float timeDown = CMath::SqrtF(2.f * (apex - target.GetZ()) / gravity);  // 0x000039DC
@@ -1995,7 +1996,7 @@ void CCommandoPirate::x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noR
       Stop();                                                      // 0x00003FF0
     }
   }
-  if (xc00_ <= 0.f) {                                              // 0x00003FF8..0x00004004
+  if (!(xc00_ > 0.f)) {                                            // 0x00003FF8..0x00004004 ble: NaN returns
     return;
   }
   xc00_ -= dt;                                                     // 0x00004008..0x0000400C
@@ -2296,8 +2297,8 @@ bool CCommandoPirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& 
   if ((mData.mFlags0 & 0x02) != 0) {
     return false;                                   // 0x0000BCCC
   }
-  if (xb7c_ <= 1.f) {
-    return false;                                   // 0x0000BCE4
+  if (!(xb7c_ > 1.f)) {
+    return false;                                   // 0x0000BCE4 ble: NaN false
   }
   const CEntity* target = mgr.GetObjectById(xbca_);  // 0x0000BCFC
   if (target == nullptr) {
@@ -2625,8 +2626,8 @@ bool CCommandoPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) 
     return false;
   }
   const CVector3f delta = actor->GetTranslation() - GetTranslation();
-  if (CVector3f::Dot(delta, GetTransform().GetForward()) <= 0.f) {
-    return false;                                   // 0x0000B71C
+  if (!(CVector3f::Dot(delta, GetTransform().GetForward()) > 0.f)) {
+    return false;                                   // 0x0000B71C ble: NaN false
   }
   // 0x0000B734 blt / 0x0000B748 bge to "false": a NaN takes neither blt nor falls past bge, so
   // a NaN +0xB64 tests +0xB60 and a NaN +0xB60 returns false.
@@ -3749,14 +3750,14 @@ int CCommandoPirate::x3678_PickDodgeDirection(CStateManager& mgr) const {
       continue;
     }
     const CVector3f delta = other->GetTranslation() - position;   // 0x00003720..0x00003734
-    if (delta.MagSquared() >= distanceSq) {                       // 0x00003738..0x0000375C
+    if (!(delta.MagSquared() < distanceSq)) {                     // 0x00003738..0x0000375C bge: NaN skips
       continue;
     }
     if (CVector3f::Dot(delta, right) >= 0.f) {                    // 0x0000376C..0x00003788
       if (!rightFree) {                                           // 0x0000378C
         continue;
       }
-      if (CVector3f::GetAngleDiff(right, delta) >= 1.0471976f) {  // 0x0000379C..0x000037AC
+      if (!(CVector3f::GetAngleDiff(right, delta) < 1.0471976f)) {  // 0x0000379C..0x000037AC bge
         continue;
       }
       rightFree = false;                                         // 0x000037B0
@@ -3764,7 +3765,7 @@ int CCommandoPirate::x3678_PickDodgeDirection(CStateManager& mgr) const {
       if (!leftFree) {                                            // 0x000037B8
         continue;
       }
-      if (CVector3f::GetAngleDiff(-right, delta) >= 1.0471976f) {  // 0x000037E0..0x000037F0
+      if (!(CVector3f::GetAngleDiff(-right, delta) < 1.0471976f)) {  // 0x000037E0..0x000037F0 bge
         continue;
       }
       leftFree = false;                                          // 0x000037F4
@@ -3917,7 +3918,7 @@ void CCommandoPirate::ArmShield(CStateManager& mgr, EStateMsg msg, float dt) {
     }
     // 0x00008820..0x00008848: the angle between the actor's facing (the transform's forward
     // column) and the direction to the target, against 20 degrees (rodata_4B4).
-    if (CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= 0.34906584f) {
+    if (!(CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) > 0.34906584f)) {  // ble: NaN breaks
       break;
     }
     const CBCLocomotionCmd cmd(CVector3f::Zero(), delta.AsNormalized(), 1.f);  // 0x00008850
@@ -4499,7 +4500,7 @@ void CCommandoPirate::CoverFind(CStateManager& mgr, EStateMsg msg, float dt) {
       continue;
     }
     const float distSq = (cover->GetTranslation() - GetTranslation()).MagSquared();  // 0x000071A4..0x000071D0
-    if (distSq >= bestDistSq) {                // 0x000071D4..0x000071D8
+    if (!(distSq < bestDistSq)) {              // 0x000071D4..0x000071D8 bge: NaN skips
       continue;
     }
     if (cover->Blown(xb94_)) {                 // 0x000071DC..0x000071EC

@@ -1384,8 +1384,8 @@ tens of thousands of units away). With the guest's polarity the commando stays w
 condition says it should: in the Swamp run (2026-10-21) it ends 2 units from where it started
 instead of 600 units away.
 
-The charge's loop-attack command also carries the guest's flag byte's 0x80 bit (the skip-into,
-0x00007C90), which the port did not set.
+The charge's loop-attack command *clears* the guest's flag byte's 0x80 bit (the skip-into,
+0x00007C90; cp5 corrected an earlier reading that it set it).
 
 **The JumpBack state is a *step*, not a jump.** The command the guest delivers (0x00008C70) has the
 id 1 - `kBSC_Step` - with the direction 1 (`kSD_Backward`, 0x00008C2C) and the type 0
@@ -1996,3 +1996,33 @@ senses (bge/ble taken on NaN): BF44 0xC174 `steep < 0.707f`, B690 0xB748 `xb60 <
 asmcheck D904: BIT/STORE findings are whole-byte init-list members (xc63..xc66, xbfc single_ptr,
 xc04/xc38 CSfxHandle()); CALL fn_9_5D74 is the inlined CPASAnimParmData ctor; member ctors are named
 by type in the init list. BF44: GetObjectById is the host's ObjectById.
+
+## The cp5 rows (2026-10-22)
+
+Runs (forced, gcov build-port-cov, `tools/cov/force_ret.py` + `tools/cov/specs/commandopirate_cp5.py`,
+driver `tools/drivers/commandopirate_cp5.py`): CB40 with `CP5_MODE=msg` (driver `msg`/`xald`, area 59,
+1800 frames); the states with `CP5_MODE=states` (driver `states2`, Swamp `05_swamp_timber!`, 5500
+frames). Exit 0, 0 caught / reach-stub each.
+
+| Body | Arms | How |
+|---|---|---|
+| AcceptScriptMsg CB40 | 103/103 lines, 67/73 branches | untaken: null shield/blade managers (host-only tests), XLAU Hurled; forced: messages via console `send <id> <msg> [from <id>]`, WeaponHurts true on the XRDG from a live shot |
+| ShieldCharge 8028 | 71/71, 47/50 | untaken: switch default, null shield manager; forced (put back the same tick): no team/target, yaw sweep, body state LoopAttack, +0xC64 0x04/0x08, charge target behind, state time, no charge speed, push per axis |
+| ScriptedShieldCharge 7A98 | 58/58, 27/30 | untaken: default, null shield; forced: LoopAttack, +0xC64 bits, waypoint behind/inside the box |
+| WallHang 7358 | 39/39, 21/22 | untaken: default; forced: no cover point (+0xBD2), the ARRV/NEXT search (gdb returns a Swamp waypoint: no commando has the link), yaw sweep, body state WallHang, no aim target, aim ahead/behind |
+
+Console: `var <id> cp.<name> [value]` (`CCommandoPirate::PortConsoleVar`: c63..c66, x924, xbca, xbd2,
+xbd6, team, chargespeed, fsmtime, bb8x/y/z, b94ahead), `statecall`, `bodystate`;
+`TStateMachineState::PortSetTime` (TARGET_PC) sets the state time.
+
+Fixed against the asm: 8028 0x8288 / 7358 0x74C8 NaN senses; 7A98 clears skip-into (0x7C90); arrival
+depth is the box's Y (0x7DBC); charge move `(speed*v)*dt`. NaN senses from `retail_diff` (ble/bge
+taken on NaN): 3678 0x3758/0x37A8/0x37EC, 3900 0x3994, 3E1C 0x4000, 4CA4 0x4D30, 5008 0x51B4, 709C
+0x71D4, 86B4 0x8848, B690 0xB71C, BCB8 0xBCE4, BE4C 0xBF04/0xBF24. False positives left: 3480 (the
+retail loops are unrolled; each cror/bne is a `>=`), 4CA4 0x4D54 (`IsElectrocuting` is `> 0.f`);
+calls fn_50_1938 (CPirateRagDoll ctor), fn_9_4140 (auto_ptr reset), fn_9_5780 (CModelData()),
+fn_9_2378 (temporary string dtor), GetObjectById (ObjectById); shape D474 (one-liner body, the parser
+reads on) and D904 (the token conditions live in xD904_LockEffect).
+
+asmcheck: 8028 0x8300, 7A98 0x7C4C, 7358 0x7540 ShouldRetry is CanIssueCommand (cp2 6.4); 7358
+0x7414/0x7428/0x742C are the host's FindConnectedObject_if + ObjectById + TCastToConstPtr.
