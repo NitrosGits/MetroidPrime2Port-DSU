@@ -182,7 +182,6 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mGuestAB8(0)
 , mGuestC30(0.f)
 , mGuestEA4(0.f)
-, mGuest9FC(0)
 , mGuest1048(0.f)
 , mGuest104C(0.f)
 , mGuest1050(0.f)

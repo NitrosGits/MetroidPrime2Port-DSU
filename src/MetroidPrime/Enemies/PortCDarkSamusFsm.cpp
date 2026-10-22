@@ -3108,7 +3108,7 @@ void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
   const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.5f); // 0x00006E88
   if (msg == kStateMsg_Activate) {
     FindPathToDestination(mgr, aim, dt); // fn_10_6F90, 0x00006EBC
-    mGuest9FC = -1;                     // 0x00006EC4
+    mDash.mLastSlot = -1;               // 0x00006EC4 (`stw r0, 0x9fc(r29)`)
   } else {
     const CVector3f d(aim.GetX() - mGuest1048, aim.GetY() - mGuest104C, aim.GetZ() - mGuest1050);
     if (CVector3f::Dot(d, d) > 16.f) { // 0x00006EF8 (the squared distance)
