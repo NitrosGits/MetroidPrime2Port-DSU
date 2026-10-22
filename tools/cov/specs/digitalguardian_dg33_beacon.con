@@ -1,0 +1,18 @@
+# DigitalGuardian area 53, dg33 (spec digitalguardian_dg33_beacon.py): the beacon raised with the
+# echo visor on (fn_14_28D0's 0x7F volume, emitter and collider natural), raised again with the
+# sound handle and the collider already set, fn_14_2CC4's echo volume with the handle set, then
+# its flag 0x08 early-out; fn_14_308C (ShouldJumpAttack) with waypoint 00350017 inactive.
+@f130 layer 10; god 1; give EchoVisor
+@f150 send e00350060 Activate; send e0035000f Activate
+@f160 send e00350017 Deactivate
+@f200 fsm e00350060 CrippledReaction
+@f250 fsm e00350060 Crippled
+@f255 visor echo
+@f300 var e00350060 dg.beacon 2
+@f380 var e00350060 dg.beacon; var e00350060 dg.beaconh; var e00350060 dg.jumptime 0; trigcall e00350060 ShouldJumpAttack
+@f400 var e00350060 dg.beacon 2
+@f440 var e00350060 dg.beacon; var e00350060 dg.jumptime 0; trigcall e00350060 ShouldJumpAttack
+@f450 visor combat
+@f470 var e00350060 dg.flags 8
+@f500 var e00350060 dg.jumptime 0; trigcall e00350060 ShouldJumpAttack; var e00350060 dg.flags
+@f520 covdump

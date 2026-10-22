@@ -453,10 +453,11 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
 // it, the 0x1038 platform excludes the player (material 32, the ori at 0x12A38), the ball gets
 // 0xDD0, bit 0x80 is set and the bombs there are pulled in (fn_14_126C8 with r^2); out of range
 // the ball is pass-through again. .rodata 0x960 is 0.
-// Unmarked: area-53 runs ran every arm but the inactive ball, which ran only with a console DCTV
-// (run 37 ran in-range with no platform: morphed in a slot before the retreat). A slot's ball goes
-// inactive in fn_14_1303C only after fn_14_12B04 set its 0xF28 sound, so the arm needs that
-// sound's PlayCustomSound to return no handle.
+// Area-53 runs ran every arm (run 37: in range with no platform); dg33 ran the inactive ball (beq
+// at 0x1295C, a console DCTV of the held slot's ball: in a fight a slot's ball goes inactive in
+// fn_14_1303C only after fn_14_12B04 set its 0xF28 sound) and forced the null ball (beq at
+// 0x12950; the XCRT colliders are never deleted in a fight).
+// @ fn_14_12818
 void CDigitalGuardianHead::x12818_(CStateManager& mgr, float dt) {
   x10F5_ &= ~0x80;
   if ((x10F4_ & 0x10) == 0) {
@@ -581,8 +582,9 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
 // (state cmd 0x1C, weight .rodata 0x96C = 1). Then the gravity repulsor's health (0x10E0) drops
 // by it (even at 0), the weapon is remembered and "HeadModuleHit" (data +0x2C) plays at the
 // collider, downward.
-// Unmarked: area-53 runs ran every arm but zero damage. That needs a CWeapon with 0 damage: every
-// entry WeaponHurts accepts here has multiplier 0.5..2.0 (effect 3).
+// Area-53 runs ran every arm but zero damage, which is data-dead (every entry WeaponHurts accepts
+// here has multiplier 0.5..2.0, effect 3) and was forced in dg33 (ble at 0x12E90).
+// @ fn_14_12D98
 void CDigitalGuardianHead::x12D98_(CStateManager& mgr, TUniqueId sender) {
   if ((x10F4_ & 0x10) == 0 || sender != xE00_) {
     return;

@@ -1336,6 +1336,8 @@ CElementGen* CDigitalGuardian::xD664_(CAssetId id) {
 // GetActiveVisor call at 0x2DF8 - the retail's visor 1) and the low byte of 0x974 otherwise
 // (the clrlwi at 0x2E10; the guest's 0x974 is the data block's +0x1B4, the transmission
 // beacon's sound parms' maxVolume).
+// Every arm ran (dg33): flag 0x08, states 2/3/other with both ends, the handle with both visors.
+// @ fn_14_2CC4
 void CDigitalGuardian::x2CC4_(CStateManager& mgr, float dt) {
   if ((x128C_ & 0x08) != 0) {
     return;
@@ -1376,6 +1378,9 @@ void CDigitalGuardian::x2CC4_(CStateManager& mgr, float dt) {
 // transmission beacon's sound parms - the guest's 0x968..0x97F - with the maxVolume at 0x7F
 // while the echo visor is active) and its handle goes to 0x1240, and the dark visor may orbit
 // the beacon (the SetVisorOrbitableFlags call at 0x2A0C - the flag 8 is the dark visor).
+// Every arm ran (dg33): the collider inactive/active and (forced) unset, the emitter set and
+// (forced, D664) null, the handle set/clear, both visors.
+// @ fn_14_28D0
 void CDigitalGuardian::x28D0_(CStateManager& mgr) {
   CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(x10CC_));
   if (actor != nullptr && !actor->GetActive()) {
@@ -1808,6 +1813,9 @@ bool CDigitalGuardian::HeadFlag20_(CStateManager& mgr) const {
 // 0x3118) is skipped, and its squared distance to the position (the fsubs at 0x3130..0x3150)
 // has to be below the best so far (3.4028235e+38f, lbl_14_rodata_2AC, loaded at 0x30F0). The
 // winner's id (the u16 at +0x8, 0x3160) is the answer (the sth at 0x3180).
+// Every arm ran (dg33): an inactive waypoint (console DCTV of 00350017); the non-waypoint arm
+// (beq at 0x3114) is data-dead (all four IS02/FOLW links are waypoints) and was forced.
+// @ fn_14_308C
 TUniqueId CDigitalGuardian::x308C_(CStateManager& mgr, const CVector3f& position) const {
   const rstl::vector< TUniqueId > objects =
       FindConnectedObjects(mgr, kSS_InternalState2, kSM_Follow);
