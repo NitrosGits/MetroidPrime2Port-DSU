@@ -1910,3 +1910,46 @@ tools/cov/cov_force.py tools/cov/force.sh` with the core driver (`msgs`); the sa
 
 Marked: `fn_9_C944`, `fn_9_AB08` (`fn_9_BAEC` keeps its marker with the new evidence).
 
+
+## The cheap triggers and states (cp2, 2026-10-22)
+
+Coverage: gcov build (`build-port-cov`), natural runs n1 (core msgs, 59), n2 (states driver, 59,
+`--fast`), n3 (swamp, `05_swamp_timber!`, cover msgs), and forced runs f1-f4 with
+`tools/cov/force_ret.py` + `tools/cov/specs/commandopirate_cp2.py` (each write lasts one call and
+is restored at the return; force.py's persistent writes left shared members stuck, so its runs
+were discarded). Host null casts (`TCastToConstPtr<CActor>` on the `xbca_` target) are dead: the
+only writer of `xbca_` is SelectTarget, which stores the player's id. Message-switch defaults are
+dead (6.6).
+
+| Body | Arms | How |
+|---|---|---|
+| ShouldWarpIn BD98 | all | owner word, F1 0x80, C63 0x20: forced (force_ret BD98) |
+| ShouldMeleeAttack BCB8 | all guest | F0 0x02, cooldown + target gone: forced; host cast dead |
+| ShouldFireEGrenade BBC8 | all | grenade count, F1 0x10, target gone: forced |
+| ShouldRetreat BB7C | all | flag bits, `xbce_`: forced |
+| ShouldJumpBack BB10 | all | F0 0x08: forced |
+| HasNewTarget BA20 | all | target gone, xbcc==xbca: forced |
+| PathShagged B9D8 / PathOver B990 | all | C63 0x80 / C65 0x80: forced |
+| HasAttackPattern B900 | branch-free | true natural (swamp), false natural (59); SPEC ret |
+| TooClose B76C | all guest | target gone: forced; host cast dead |
+| ShouldDodge B690 | all guest | xb64 < 0.75, target gone: forced; host cast dead |
+| ShouldArmShield B660 | all | flag bits: forced |
+| ShouldCover B0F4 | all | F0 0x08, C63 0x01: forced |
+| FoundCover B0D4 | branch-free | true natural (swamp u05c8, 1 hit), false natural; SPEC ret |
+| x3CBC_ 3CBC | all guest | target gone: forced; host cast dead |
+| FaceTarget ABDC | all live | aim = own position on activate: forced; default dead |
+| SetTargetDest AA20 | all guest | target invalid, C64 0x40: forced; visible both ways natural; host cast dead |
+| SetRetreatDest A97C, PathFind 9AAC, Patrol 996C | all | natural |
+| Dodge 8934 | all live | natural; default dead |
+
+Not marked yet (arm still untaken; the force each needs):
+- Lurk ADD4: the invalid-target return (2761) - force `xbca_` INVALID (the spec forces SELF, wrong).
+- Alert AE04: mState Ready with loco relaxed / Ready alone (`!` keep on update).
+- AbortShieldCharge B1D4 true (C64|0x04), IsAggressive B1C8 true (C64|0x40), AbortSeekCover AFB8
+  false (`xb8c_` < `xb90_`): answers not recorded.
+- HeardShot BAB4, ShouldCoverAttack B0B4, ShouldCrouch B168, ShouldWallHang B114: 0 calls in every
+  run; the FSM2 states that evaluate them are not reached by the drivers.
+- SetJumpDest A8E8 (point found: `xbd0_` valid), SetCoverDest A7A8 (C66 0x40 set), JumpBack 8B70
+  (x3CBC fails on activate), x19D8_JoinTeam, x1930_LeaveTeam, x1A9C_AvoidActors: partial arms.
+- The heavy bodies (ctor D904, AcceptScriptMsg CB40, CollidedWith BF44, ShieldCharge family,
+  WallHang, JumpPointFind, x3D64, x4BC0, x1F88, ...) untouched.
