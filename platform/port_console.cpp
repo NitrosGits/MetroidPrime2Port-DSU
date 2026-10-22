@@ -543,6 +543,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
+      "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags); var player spawnmorph [n]\n"
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
@@ -1840,6 +1841,56 @@ void CmdCodeCall(CStateManager& mgr, const Args& args, std::string& out) {
   out += "codecall " + wanted + "\n";
 }
 
+// The module handlers `var` asks (PortConsole::RegisterVar); a function-local list, so a module's
+// static-init registration never runs before it exists.
+std::vector< VarHandler >& VarHandlers() {
+  static std::vector< VarHandler > sHandlers;
+  return sHandlers;
+}
+
+// var <id> <name> [value]: read or set a module field a REL's port registered (dghd.attack,
+// dghd.flags), so an arm a fight rarely draws runs without gdb. `var player spawnmorph [n]` reads
+// or sets the player's spawned morph-ball state (0x390), keeping its morph state.
+void CmdVar(CStateManager& mgr, const Args& args, std::string& out) {
+  float number = 0.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], number))) {
+    Fail("usage: var <id>|player <name> [value]");
+    return;
+  }
+  const int value = static_cast< int >(number);
+  const std::string name(args[2]);
+  int current = 0;
+  char line[160];
+  if (args[1] == "player") {
+    CPlayer* player = mgr.GetPlayer(0);
+    if (player == nullptr || name != "spawnmorph") {
+      Fail(player == nullptr ? "no player" : "player vars: spawnmorph");
+      return;
+    }
+    if (args.size() == 4) {
+      player->SetMorphBallState(player->GetMorphballTransitionState(),
+                                static_cast< CPlayer::EPlayerMorphBallState >(value));
+    }
+    std::snprintf(line, sizeof(line), "player spawnmorph = %d\n",
+                  static_cast< int >(player->GetSpawnedMorphballState()));
+    out += line;
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  if (ent == nullptr) {
+    Fail("no object '" + std::string(args[1]) + "'");
+    return;
+  }
+  for (VarHandler handler : VarHandlers()) {
+    if (handler(*ent, name.c_str(), args.size() == 4 ? &value : nullptr, current)) {
+      std::snprintf(line, sizeof(line), "%s = %d (0x%x)\n", name.c_str(), current, current);
+      out += line;
+      return;
+    }
+  }
+  Fail("no var '" + name + "' on that object");
+}
+
 // hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
 // setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
 // phazon waypoints) finds one the area lacks, or skips one of another area.
@@ -2746,6 +2797,7 @@ constexpr SCommand kCommands[] = {
     {"statecall", CmdStateCall, true},
     {"trigcall", CmdTrigCall, true},
     {"codecall", CmdCodeCall, true},
+    {"var", CmdVar, true},
     {"hint", CmdHint, true},
     {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},
@@ -2921,6 +2973,11 @@ void IdleTick(CStateManager& mgr) {
     return;
   }
   RunCommands(mgr);
+}
+
+bool RegisterVar(VarHandler handler) {
+  VarHandlers().push_back(handler);
+  return true;
 }
 
 } // namespace PortConsole

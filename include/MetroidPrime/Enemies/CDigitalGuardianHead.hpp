@@ -290,6 +290,23 @@ private:
   float x1090_;           // 0x1090: the sweep time
   float x1094_;           // 0x1094: the sweep time left
   CVector3f x1098_;       // 0x1098: the point the lasers circle
+
+  // The projectile event's spawners (DoUserAnimEvent, fn_14_17BBC) and their weapons; the ctor
+  // builds the four infos at 0x183A4..0x18408 (data +0x184/+0x198/+0x200/+0x214 with their damage)
+  // and locks their tokens (0x18CD8..0x18CF0).
+  void x111E0_(CStateManager& mgr, const rstl::string& locator); // fn_14_111E0: the pulse
+  void x10CA0_(CStateManager& mgr, const rstl::string& locator); // fn_14_10CA0: the charge shot
+  void x10A2C_(CStateManager& mgr, const rstl::string& locator); // fn_14_10A2C: the missiles
+  CProjectileInfo xE04_; // 0xE04: the annihilator pulse (data +0x184, damage +0x188)
+  CProjectileInfo xE2C_; // 0xE2C: the annihilator charge (data +0x198, damage +0x19C)
+  CProjectileInfo xE54_; // 0xE54: the lock-on missiles (data +0x200, damage +0x204)
+  CProjectileInfo xE7C_; // 0xE7C: the machine gun (data +0x214, damage +0x218)
+
+public:
+  // Host: the console's `var <id> dghd.attack|dghd.flags [value]` (platform/port_console.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+
+private:
 #else
   uchar x7c0_[0x10F8 - 0x7c0]; // the parameter block and everything above it in retail
 #endif
