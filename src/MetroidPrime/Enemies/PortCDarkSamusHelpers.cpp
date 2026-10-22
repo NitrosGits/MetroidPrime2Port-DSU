@@ -987,7 +987,6 @@ void SpawnStandIn(bool& seen, const char* fn, const char* what) {
   }
 }
 
-bool sStandIn99B8 = false;
 bool sStandIn9B24 = false;
 
 } // namespace
@@ -999,11 +998,10 @@ bool sStandIn9B24 = false;
 // data's mBoostBallModel), the actor's model scale and looping (0x00009EB8). 0xD14 == 0.0f picks
 // the ctor fn_10_3FD8 (0x00009ED0), else fn_10_3BC4; both are the stub above. Then lighting on
 // (0x0000A024), AddObject (0x0000A030) and the swooshes fn_10_9B24 (0x0000A03C).
-// Port limits: fn_10_99B8 is the darksamus2 lane's StopBoostBallParticles (613d2cbfb, not merged
-// here; the merge swaps the call in) and fn_10_9B24 is not in the port, so both stay stand-ins.
+// Port limits: fn_10_9B24 (the swooshes) is not in the port, so it stays a stand-in.
 void CDarkSamus::SpawnBoostBall(CStateManager& mgr) {
-  DeleteBoostBall(mgr); // fn_10_9AC4
-  SpawnStandIn(sStandIn99B8, "fn_10_99B8", "SpawnBoostBall (0x00009E30)");
+  DeleteBoostBall(mgr); // fn_10_9AC4, 0x00009E24
+  StopBoostBallParticles(); // fn_10_99B8, 0x00009E30
   mBoostBallUid = mgr.AllocateUniqueId();
   CTransform4f xf = GetTransform();
   xf.SetColumn(kDZ, CVector3f(0.f, 0.f, 1.f));
