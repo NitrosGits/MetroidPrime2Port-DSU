@@ -3017,7 +3017,8 @@ void CIng::Evaporate(CStateManager& mgr, EStateMsg msg, float) {
     mForm = kForm_Evaporate; // 0x00005C5C: 0x9d4 = 5
   } else if (msg == kStateMsg_Update) {
     // 0x00005C80: rodata_74 = 2.0f.
-    if (mStateMachine->GetTime() > 2.f) {
+    // 0x00005C88 ble skips the delete: a NaN time falls through to it.
+    if (!(mStateMachine->GetTime() <= 2.f)) {
       DeathDelete(mgr); // 0x00005C94
     }
   }
