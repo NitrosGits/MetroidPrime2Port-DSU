@@ -1780,3 +1780,25 @@ trigger's entry, one per hit, from gdb convenience variables).
   until 99, with the player placed on the actor at f1534..f1537) is written but not yet run:
   runs t4, t5, t7, t9 and t10 all died with VK_ERROR_DEVICE_LOST ("this context is innocent",
   so another process on the GPU caused the reset), and Aurora skips llvmpipe.
+
+## Slice ds895c (2026-10-22): the boost ball's effects (895C tokens, 9B24, 99B8, 8F50) and 1ACA0
+
+- fn_10_895C (the 0xE10 sub-object) loads its tokens in data order: r8 = boostBallGlow → 0xE5C
+  (the 'PART' id), r9 = boostBallTrailSwoosh → 0xE40 (optional, valid byte 0xE48), r10 = the
+  sWHC → 0xE50 (valid byte 0xE58). The host's members are `mBoostBallSwooshTokenE40/E50` and
+  `mBoostBallGlowPart`. 0xE70, the collision PART that fn_10_8D30 loads, is not ported because
+  nothing reads it.
+- fn_10_9B24 replaces SpawnBoostBall's logged stand-in. Its "delete the old non-null" path is
+  dead: its only caller is SpawnBoostBall at 0xA03C, and that runs fn_10_99B8 first (0x9E30).
+  fn_10_99B8 now deletes both swooshes and the generator. BoostBallFire (fn_10_9724) and
+  DiveFromBoost (fn_10_9424, which calls 99B8 at 0x9548) clear the 0xE60 generator.
+  ~CDarkSamus deletes the swooshes, matching the sub-object dtor fn_10_1F72C. fn_10_9424 has
+  all of its effect work ported and could now be checked for a mark.
+- 8F50 matches the asm (vtable 0x14 SetOrientation, 0x18 SetTranslation, 0xC Update,
+  0x24 SetGlobalScale, 0x2C SetParticleEmission, 0x30 SetModulationColor).
+- Marks 9B24, 99B8 and 8F50 come from these runs (tools/cov/specs/darksamus_boostfx.py,
+  tools/drivers/darksamus_boostfx.con): b1 (the natural rooftop run), f1 (forced DSB_MODE=1:
+  no 0xE40 token) and f2 (forced DSB_MODE=2: no 0xE50 token, then the kill). Every arm ran, with
+  no caught errors and no reach stubs.
+- 1ACA0: tools/drivers/darksamus_divecontact.con runs key 96 on its own, with the boss u04f7
+  placed on the player from f623 to f627.
