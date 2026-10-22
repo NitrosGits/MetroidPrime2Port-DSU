@@ -220,7 +220,9 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , mShieldVulnerability(data.mShield.mChargeVulnerability) // 0xa44, fn_9_D904 @0x0000D9D4
 , mBoneTracking(*AnimationData(), rstl::string_l("Head_1"), 1.2217305f, 3.1415927f,
                 kBTF_None)                        // 0xa74, fn_9_D904 @0x0000DA08
-, xae8_(0)                                        // 0xae8, the module's byte
+// 0xab0: the owner's id (this+0x8, 0x0000DA40), no locator (0xFF, 0x0000DA28), the intervals
+// 0.1f (lbl_9_rodata_42C, 0x0000DA50) and 0.05f (lbl_9_rodata_470, 0x0000DA5C); 0x0000DA64.
+, mVisualKnowledge(uid, CSegId(), 0.1f, 0.05f)
 , mBurstFire(sBurstTable, 0)                      // 0xaf0, fn_9_D904 @0x0000DA78
 , xb7c_(0.f)                                      // 0xb7c, the melee cooldown; fn_9_662C advances it
 , xb5c_(0.f)                                      // 0xb5c, fn_9_D904 @0x0000DABC
@@ -280,7 +282,7 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 {
   // The retail constructor sets knock-back physics on CPatterned's own manager (@0x0000E264) to
   // !((byte at +0x91c >> 2) & 1) - that is, to the manager's own default while the flag bit is
-  // clear - and sets the base's flag byte at +0x681. The rest - the CVisualKnowledge, the six
+  // clear - and sets the base's flag byte at +0x681. The rest - the six
   // locked tokens, the burst fire and the three animation distances
   // - belongs to the state machine and the render paths this milestone does not enter; the
   // analysis note lists them.
@@ -488,6 +490,11 @@ void CCommandoPirate::x662C_UpdateTimers(CStateManager& mgr, float dt) {
 // advances the module's timers, including the melee cooldown at guest this+0xB7C) and fn_9_3090
 // (0x0000CA34), then the tail: fn_9_1C0C (0x0000CA88), fn_9_4BC0 (0x0000CA8C) and fn_9_3E1C
 // (0x0000CAA0).
+// run (area 59, tools/cov/specs/commandopirate_vis*.py, 2026-10-22): every guest arm ran - the
+// inactive return (the console's Deactivate), no rag doll, a primed and an unprimed rag doll, the
+// frozen body (forced, both paths). The host's two collision-manager null tests are dead: the only
+// writer is the kSM_Create case, which CStateManager::AddObject delivers before the first Think.
+// @ fn_9_C944
 void CCommandoPirate::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;                                    // 0x0000C96C
@@ -507,8 +514,8 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
     CPatterned::Think(dt, mgr);                  // 0x0000C9A4
     // The module's two collision actor managers are updated with the object-space option (the
     // guest's r5 = 0 at 0x0000C9B4 and 0x0000C9C8). The guest loads the pointers and calls without
-    // a test; the host's test covers the window before the kSM_Create case has built them (the
-    // host limit named here).
+    // a test; the host keeps a null test whose null arm is dead (kSM_Create builds both before the
+    // first Think).
     if (mCollisionShield.get() != nullptr) {
       mCollisionShield->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);  // 0x0000C9B8
     }
@@ -518,7 +525,7 @@ void CCommandoPirate::Think(float dt, CStateManager& mgr) {
     if (!BodyController()->IsFrozen()) {
       mBoneTracking.Think(dt);                   // 0x0000C9E8
     }
-    StandIn("CVisualKnowledge::Update (guest this+0xab0)");  // 0x0000C9F8
+    mVisualKnowledge.Update(mgr, dt);              // 0x0000C9F8
     x6390_UpdateBurstFire(mgr, dt);                     // 0x0000CA08
     x4D84_UpdateAim(mgr);                     // 0x0000CA18
     x662C_UpdateTimers(mgr, dt);                 // 0x0000CA28
@@ -847,7 +854,7 @@ bool CCommandoPirate::x57A0_FireShot(CStateManager& mgr, float dt) {
       const CMaterialFilter losFilter = CMaterialFilter::MakeIncludeExclude(
           CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_ProjectilePassthrough));
       if (!mgr.RayCollideWorld(gunXf.GetTranslation(), pos, losFilter, this)) {  // 0x00005A4C
-        xae8_ &= ~0x80;                                            // 0x00005B70..0x00005B7C
+        mVisualKnowledge.SetTargetVisible(false);                  // 0x00005B70..0x00005B7C
         return false;                                               // 0x00005BD4
       }
     }
@@ -2352,17 +2359,13 @@ bool CCommandoPirate::BreakAmbush(CStateManager& mgr, const CTriggerData& data) 
   return (mData.mFlags0 & 0x40) != 0;
 }
 
-// fn_9_BAEC: the module's byte at guest this+0xAE8 has its 0x80 bit set (extrwi r3, r0, 1, 24
-// at 0x0000BAF0).  The byte has three accesses in the REL and only one of them is a store: the
-// read-modify-write at 0x00005B70..0x00005B7C (the module clears the 0x80 bit there) - the other
-// two are reads (0x0000AA94 and the trigger's own load at 0x0000BAEC).  Nothing sets the bit, and
-// the constructor leaves the byte at 0 (the port's xae8_(0)), so the true arm is dead.
-// run: area 59 (05_temple_federationsite_dark), the coverage build (build-port-cov) with
-// tools/cov/run.sh, 2026-10-21: the trigger answers false in the run, and its true arm is dead -
-// nothing in the module writes the byte at guest this+0xAE8, so its 0x80 bit is clear.
+// fn_9_BAEC: the byte at guest this+0xAE8 has its 0x80 bit set (extrwi r3, r0, 1, 24 at
+// 0x0000BAF0). The byte is the visible flag of the CVisualKnowledge at guest this+0xAB0 (its +0x38):
+// the DOL's CVisualKnowledge::Update (Think, 0x0000C9F8) sets and clears it, the shot clears it
+// (0x00005B70..0x00005B7C) and SetTargetDest reads it (0x0000AA94).
 // @ fn_9_BAEC
 bool CCommandoPirate::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
-  return (xae8_ & 0x80) != 0;
+  return mVisualKnowledge.IsTargetVisible();  // +0xAE8 0x80, 0x0000BAEC..0x0000BAF0
 }
 
 // fn_9_BAD0: the actor is under fire while the float at guest +0xB64 is below 0.75f
@@ -2900,6 +2903,7 @@ void CCommandoPirate::FaceTarget(CStateManager& mgr, EStateMsg msg, float dt) {
 // 0x0000AB40..0x0000AB48). It then points the bone tracking at that target (0x0000AB74 and
 // 0x0000AB88), tells the script that the attack connection changed (0x0000ABB4, the message is
 // the host's kSM_None, the guest's -1) and switches to the combat locomotion (0x0000ABC0).
+// @ fn_9_AB08
 void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;
@@ -2912,9 +2916,7 @@ void CCommandoPirate::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) 
   // player actor's id, which is what the bone tracking and the script message want.
   const TUniqueId target = mgr.GetPlayer(0)->GetUniqueId(); // mgr+0x14FC, +0x8 at 0x0000AB50
   xbca_ = target;                                    // 0x0000AB5C
-  // 0x0000AB68: the guest tells its visual knowledge the new target (guest this+0xAB0). The host
-  // has no CVisualKnowledge class yet, so the call is a stand-in.
-  StandInFn("CVisualKnowledge::SetVisualTarget (guest this+0xab0)");
+  mVisualKnowledge.SetVisualTarget(target);          // guest this+0xAB0, 0x0000AB68
   mBoneTracking.SetActive(true);                     // 0x0000AB74
   mBoneTracking.SetTarget(target);                   // 0x0000AB88
   SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None); // 0x0000ABB4
@@ -2946,7 +2948,7 @@ void CCommandoPirate::SetTargetDest(CStateManager& mgr, EStateMsg msg, float dt)
   xc65_ &= ~0x80;                            // 0x0000AA6C
   const CEntity* target = mgr.GetObjectById(xbca_);  // 0x0000AA7C
   const CActor* actor = target != nullptr ? TCastToConstPtr< CActor >(target) : nullptr;
-  if (actor != nullptr && ((xc64_ & 0x40) != 0 || (xae8_ & 0x80) == 0)) {  // 0x0000AA88..0x0000AA9C
+  if (actor != nullptr && ((xc64_ & 0x40) != 0 || !mVisualKnowledge.IsTargetVisible())) {  // 0x0000AA88..0x0000AA9C
     destination = actor->GetTranslation();  // 0x0000AAA0..0x0000AAB8
     xc65_ |= 0x80;                          // 0x0000AAC0
   }

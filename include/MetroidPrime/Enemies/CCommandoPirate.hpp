@@ -13,6 +13,7 @@
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/CVisualKnowledge.hpp"
 #include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
@@ -452,7 +453,9 @@ private:
   rstl::single_ptr< CCollisionActorManager > mCollisionBlade;  // 0xa40, "Blade_CollisionActor"
   CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
   CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
-  uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
+  // 0xab0 (fn_9_D904 @0x0000DA64): the line of sight to the target. Its flag byte at guest 0xAE8
+  // (the class's +0x38, bit 0x80) is the visibility HasLineOfSight and SetTargetDest read.
+  CVisualKnowledge mVisualKnowledge;
   CBurstFire mBurstFire;                  // 0xaf0, the module's burst fire (fn_9_D904 @0x0000DA78)
   float xb7c_;                            // 0xb7c, the cooldown since the last melee attack
   float xb80_;                            // 0xb80, the shield's arm timer; fn_9_86B4 advances it

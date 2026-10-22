@@ -211,7 +211,7 @@ read off the asm with `tools/asmcheck.py annotate` and carries the guest offset 
 | ShouldWarpIn | `fn_9_BD98` | 0x50E | `x920_ == -1 && (mData.mFlags1 & 0x80) != 0 && (xc63_ & 0x20) != 0` | the block's +0x15D, `x920_`, `xc63_` |
 | ShouldAmbush | `fn_9_BB04` | 0x55D | `(mData.mFlags0 & 0x80) != 0` | the block's +0x15C |
 | BreakAmbush | `fn_9_BAF8` | 0x56A | `(mData.mFlags0 & 0x40) != 0` | the block's +0x15C |
-| HasLineOfSight | `fn_9_BAEC` | 0x576 | `(xae8_ & 0x80) != 0` | `xae8_` (new, 0) |
+| HasLineOfSight | `fn_9_BAEC` | 0x576 | `mVisualKnowledge.IsTargetVisible()` (guest +0xAE8 0x80 = the CVisualKnowledge's +0x38) | - |
 | HeardShot | `fn_9_BAB4` | 0x58F | `xb60_ < 1.5f` | `xb60_` (new, 1.5f, `lbl_9_rodata_47C`) |
 | HasAttackPattern | `fn_9_B900` | 0x5CF | `GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId` | the base's |
 | AttackPatternOver | `fn_9_B7FC` | 0x5EF | `mWaypointNavigation.GetDestination() == kInvalidUniqueId` | the base's waypoint navigation (guest +0x6C0) |
@@ -302,7 +302,7 @@ The eleven triggers of the cover, shield, grenade, melee and jump states do not 
 | Lurk | `fn_9_ADD4` | 0x6D2 | on activate, and only when the commando has a target, the 0x10 bit of the flag byte at guest this+0xC64 is set | `xc64_` (0) |
 | Alert | `fn_9_AE04` | 0x6DE | activate: the target id goes into the field at guest this+0xBCC and the animation state becomes "ready"; update: the animation state is asked whether the alert command may be issued (the guest's command id 0x10) and the commando taunts - the relaxed taunt (`pas::kTT_Two`) while the body controller's locomotion type is relaxed, `pas::kTT_Four` otherwise; deactivate: the animation state back to "not ready" | the guest's command id 0x15 is the body state command `kBSC_Taunt`; the host's `CBCTauntCmd` |
 | Patrol | `fn_9_996C` | 0x783 | the message picks the locomotion (activate: relaxed, half the turn speed, the steering ratio of the walk and run speeds; deactivate: combat, twice the turn speed) and then `mWaypointNavigation.Patrol(mgr, msg, dt, *this)` | the guest's body-controller flag at +0x4C (0x00009A1C, 0x00009B60) is the command manager's steering blend mode: full speed on activate, normal on deactivate |
-| SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the guest's visual knowledge (this+0xAB0) has no host class: `SetVisualTarget` is a named stand-in |
+| SelectTarget | `fn_9_AB08` | 0x6EF | on activate, when the old target is gone: take the player as the target, point the bone tracking at it, send `kSS_Attack` with `kSM_None`, and switch to the combat locomotion | the visual knowledge (this+0xAB0) is the port's CVisualKnowledge (2026-10-22) |
 | FaceTarget | `fn_9_ABDC` | 0x6E4 | activate: the module's own helper `fn_9_3CBC` asks the target for its aim position (guest this+0xB94) and the state measures the angle between the actor's facing and the direction to it (0.34906584 rad = 20 degrees) - the animation is "over" when the target is in front and "ready" when it is not; update: the animation state's own command test, the direction to the target, its magnitude test and the locomotion command that walks there; deactivate: the animation state back to "not ready" | the guest's `CTryCommand::ShouldRetry` is the base's animation state, so the port calls `mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Turn)` (the guest's command id 8) |
 | SetTargetDest | `fn_9_AA20` | 0x6FC | on activate only: the destination starts as the actor's own position (guest this+0x54) and the 0x80 bit of the flag byte at guest this+0xC65 is cleared; the target (the id at guest this+0xBCA) is looked up and, when it is there and either the flag byte at +0xC64 has its 0x40 bit or the byte at +0xAE8 does not have its 0x80 bit, the destination becomes the target's position and the 0x80 bit of +0xC65 is set; then the path find navigation's destination is set, its face target id (guest this+0x718, the navigation's own member at +0x24) is cleared and the module's helper `fn_9_19D8` is called | `fn_9_19D8` is 0xc4 bytes, over the 0x80 limit, so it is a named stand-in; the guest reads the target's position without a cast, so the port casts to CActor (the host's CEntity has no position) |
 | SetPathMeshDest | `fn_9_A838` | 0x725 | on activate: the 0x80 bit of the flag byte at guest this+0xC65 is cleared, the path find search (guest this+0x928) looks for the closest reachable point to the actor's own position (the out point starts as the zero vector) and the path find navigation (guest this+0x6F4) takes that point as its destination; when the search finds no point the navigation takes the actor's own position and the flag byte's 0x80 bit stays clear; the navigation's face target id (guest this+0x718) is cleared either way | the host's `CPathFindSearch::FindClosestReachablePoint` takes the same two arguments as the guest's (the source and the out point) |
@@ -1596,8 +1596,7 @@ not run.
   `fn_9_8DF0` (WarpOut, 0x218), `fn_9_9064` (WarpIn, 0x528), `fn_9_9BB4` (JetBoost, 0x1fc),
   `fn_9_A110` (PostEGrenadeAttack, 0x1dc), `fn_9_A2EC` (EGrenadeAttack, 0x174) and
   `fn_9_A4BC` (MeleeAttack, 0x290), plus the trigger `fn_9_AFD4` (CoverBlown, 0xe0).
-- The guest's `CVisualKnowledge` (this+0xAB0): the host has no class for it, so the call that
-  uses it is a stand-in.
+- The guest's `CVisualKnowledge` (this+0xAB0): ported 2026-10-22 (see "The visual knowledge").
 - The `CTryCommand` the base keeps at +0x6B4 is the base's animation state, so the host's
   animation state answers it (`mAnimationState.CanIssueCommand`).
 - The FollowAttackPattern state (fn_9_961C, 0x350) is host code since 2026-10-21: it sets the
@@ -1613,7 +1612,7 @@ not run.
   distances, the scale's Y times the parms (1, 2) and the scale's X times the parms (3, 2), and
   the jump distance, the scale's Y times the kAS_Jump parms (0, 0, 0)); the locomotion-speed term
   at +0xB90 is not.
-- The CVisualKnowledge at +0xAB0 (the host has no such class yet).
+- The CVisualKnowledge at +0xAB0: ported 2026-10-22 (see "The visual knowledge").
 
 `fn_9_C598` (0x13c, the actor's render - the vtable slot 0x2c) is ported (2026-10-21, the port's
 `Render`): the guest fades the actor with its colour's alpha (the psq_l at 0x0000C5C4 reads the
@@ -1870,11 +1869,44 @@ their own conditions.
 | | `fn_9_3CBC` finds no target (0x00004E04) | not run (unchanged by this slice) |
 | | alive with a rag doll (0x00004DAC) | dead: every writer of the rag doll is on a death path |
 
-Think (fn_9_C944) keeps no marker: it still calls the CVisualKnowledge stand-in and its two
-collision-manager null arms (0x0000C9xx) did not run. `fn_9_3090` stays unmarked (12/29 lines).
+Think (fn_9_C944) was unmarked here (the CVisualKnowledge stand-in); marked since, see "The visual
+knowledge". `fn_9_3090` stays unmarked (12/29 lines).
 
 The flags 3 forcing gives the corpse a big launch when it is shot after drowning (u0500 ended
 ~9e6 units away in x in three forced runs; never in the natural runs, where the drowned corpse
 faded in place). The forcing sets the block flag 0x01 on every call, a state the shipped
 commandos may never reach; whether retail launches the same way is not checked.
+
+## The visual knowledge (cpvis, 2026-10-22)
+
+The guest's CVisualKnowledge at this+0xAB0 (0x3C bytes, up to the burst fire at 0xAF0) is the
+DOL class the port already has (`include/MetroidPrime/CVisualKnowledge.hpp`, the DG head uses it).
+The ctor builds it with the owner's id (this+0x8, 0x0000DA40), no locator (0xFF, 0x0000DA28) and
+the intervals 0.1f / 0.05f (rodata_42C / rodata_470, 0x0000DA50 / 0x0000DA5C; 0x0000DA64).
+Think updates it (0x0000C9F8), SelectTarget sets the player as its target (0x0000AB68). The
+"module's byte at +0xAE8" is its flag byte (+0x38): the visible bit 0x80, set and cleared by the
+DOL's Update, cleared by the shot (fn_9_57A0, 0x00005B70..0x00005B7C, now
+`SetTargetVisible(false)`, an inline setter added to the header) and read by HasLineOfSight
+(0x0000BAEC) and SetTargetDest (0x0000AA94). The old note that "nothing sets the bit" (HasLineOfSight's
+true arm dead) was wrong: Update sets it.
+
+Runs (build-port-link, gdb specs, area 59 `3bfa3eff,05_temple_federationsite_dark`, 0
+`[port] caught`/`reach-stub` each): `tools/cov/specs/commandopirate_vis.py` with the core and the
+states drivers (9000 frames each); `commandopirate_vis_force.py` under `COV_GDB_SCRIPT=
+tools/cov/cov_force.py tools/cov/force.sh` with the core driver (`msgs`); the same spec under
+`tools/cov/run.sh --con tools/cov/specs/commandopirate_vis_inactive.con` (1000 frames).
+
+| Body | Arm | How |
+|---|---|---|
+| `fn_9_C944` Think | inactive return (0x0000C974) | natural (the .con's Deactivate: 220 of 880 calls) |
+| | no rag doll / primed rag doll / unprimed rag doll | natural (core: 1519 / 608 / 1) |
+| | frozen body without a rag doll (0x0000C9DC) | forced (vis_force: every 40th call; 15 skips of the bone tracking) |
+| | primed rag doll frozen (0x0000CA74) | forced (the cpragdoll slice's CA74) |
+| | host-only collision-manager null tests | dead: the only writer is kSM_Create (fn_9_45A4), which `CStateManager::AddObject` delivers (CStateManager.cpp:2789) before any Think; never null in ~11k calls |
+| `fn_9_AB08` SelectTarget | not activate / target still there / new target | natural (core: 6 / 2 / 1) |
+| `fn_9_BAEC` HasLineOfSight | true / false | natural (core 7 / 6, states 18 / 1986) |
+| `fn_9_AA20` SetTargetDest | visible 0 / 1 with +0xC64 0x40 clear | natural (states 767 / 18); stays unmarked (not this slice) |
+| `fn_9_57A0` the shot's clear (0x00005B70) | ran | natural (states: 335) |
+
+Marked: `fn_9_C944`, `fn_9_AB08` (`fn_9_BAEC` keeps its marker with the new evidence).
 
