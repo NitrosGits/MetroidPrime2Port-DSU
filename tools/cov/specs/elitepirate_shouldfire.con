@@ -1,0 +1,44 @@
+# Sanctuary 0c_cliff_hall (1baa96c2,b666b655), layer 3: the Ingsmasher u04ff, the player u0400
+# at (67.55, -3.81, -152.01). The pirate is still powering up and has not run SelectTarget, so
+# each ask first sets the target uid (0xa26) to the player and the cooldown (0xa34) to 0 (the FSM
+# re-arms it). A placement is asked 20 updates later, once Think has moved the launcher
+# (UpdateLauncherTransform) with it; `var ep.yaw` turns the pirate (the `face` convention).
+@f300 layer 3
+@f600 objs elitepirate
+@f640 send u04ff Activate; send u04ff Alert
+@f700 status
+@f710 obj u04ff
+@f720 var u04ff ep.launcher
+
+@f800 var u04ff ep.target 1024; place u04ff player 3
+@f820 var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f840 var u04ff ep.target 1024; place u04ff player 120
+@f860 var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f880 var u04ff ep.target 1024; place u04ff player 20; var u04ff ep.yaw 180
+@f900 var u04ff ep.yaw 180; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f920 var u04ff ep.target 1024; place u04ff player 15; var u04ff ep.yaw 180
+@f940 var u04ff ep.yaw 180; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f960 var u04ff ep.target 1024; place u04ff player 30; var u04ff ep.yaw 180
+@f980 var u04ff ep.yaw 180; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f1000 var u04ff ep.target 1024; place u04ff player 20; var u04ff ep.yaw 0
+@f1020 var u04ff ep.yaw 0; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f1040 var u04ff ep.target 1024; face 90; place u04ff player 20; var u04ff ep.yaw 270
+@f1060 var u04ff ep.yaw 270; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f1080 var u04ff ep.target 1024; face 180; place u04ff player 20; var u04ff ep.yaw 0
+@f1100 var u04ff ep.yaw 0; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f1120 var u04ff ep.target 1024; face 270; place u04ff player 20; var u04ff ep.yaw 90
+@f1140 var u04ff ep.yaw 90; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f1160 var u04ff ep.target 1024; face 0; place u04ff player 25; var u04ff ep.yaw 180
+@f1180 var u04ff ep.yaw 180; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f1200 var u04ff ep.target 1024; place u04ff 69 12 -170; var u04ff ep.yaw 185
+@f1220 var u04ff ep.yaw 185; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f1240 var u04ff ep.target 1024; place u04ff 69 12 -125; var u04ff ep.yaw 185
+@f1260 var u04ff ep.yaw 185; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+@f1280 var u04ff ep.target 1024; place u04ff player 20; var u04ff ep.yaw 180
+@f1300 var u04ff ep.yaw 180; var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn
+# early-outs: cooldown, no target, launcher gone, no launcher (each set and asked in one tick)
+@f1320 var u04ff ep.target 1024; var u04ff ep.timer 5; trigcall u04ff ShouldFire
+@f1360 var u04ff ep.timer 0; var u04ff ep.target 65535; trigcall u04ff ShouldFire
+@f1400 var u04ff ep.timer 0; var u04ff ep.target 1024; var u04ff ep.launcher 2046; trigcall u04ff ShouldFire
+@f1440 var u04ff ep.timer 0; var u04ff ep.launcher 65535; trigcall u04ff ShouldFire
+@f1480 status

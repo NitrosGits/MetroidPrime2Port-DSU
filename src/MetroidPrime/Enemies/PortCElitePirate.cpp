@@ -1534,8 +1534,9 @@ bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
   return true;
 }
 
-// @ fn_15_6820
-// @ fn_15_6618
+// fn_15_6820 / fn_15_6618 (not marked: the `true` return at 0x67F4 never runs in the port - the ray
+// ends at the target's aim point, inside the player's kMT_Solid primitive, so the dynamic half of
+// RayCollideWorld always hits the player; docs/module-analysis/ElitePirate.md section 11).
 // The launcher can fire: no cooldown, a target in the rocket range band, the body already turned
 // to it, and (retail's RayCollideWorld result) a clear shot from the launcher's lock-on locator.
 // fn_15_6820 is the thunk that passes &x9fa (mLauncherId) as `id`'s source (0x6830 lhz 0x9fa).
@@ -1574,7 +1575,8 @@ bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) cons
 
 // Host: the console's `var <id> <name> [value]` for the Ingsmasher, so ShouldFire's early-out
 // arms run without gdb: ep.timer is the attack cooldown 0xa34 (whole seconds), ep.launcher the
-// launcher uid 0x9fa, ep.target the target uid 0xa26 (65535 = kInvalidUniqueId).
+// launcher uid 0x9fa, ep.target the target uid 0xa26 (65535 = kInvalidUniqueId), ep.yaw the facing (degrees,
+// the console `face` convention) so a placed pirate can be turned to the player.
 bool CElitePirate::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
   CElitePirate* ep = TCastToPtr< CElitePirate >(&ent);
   if (ep == nullptr) {
@@ -1585,6 +1587,18 @@ bool CElitePirate::PortConsoleVar(CEntity& ent, const char* name, const int* val
       ep->mTimer = static_cast< float >(*value);
     }
     current = static_cast< int >(ep->mTimer);
+    return true;
+  }
+  if (strcmp(name, "ep.yaw") == 0) {
+    // the console `face` convention: 0 faces +y, 90 faces +x; the position is kept
+    const CVector3f pos = ep->GetTranslation();
+    if (value != nullptr) {
+      const float radians = static_cast< float >(*value) * 3.14159265358979f / 180.f;
+      const CVector3f dir(sinf(radians), cosf(radians), 0.f);
+      ep->SetTransform(CTransform4f::LookAt(pos, pos + dir, CVector3f::Up()));
+    }
+    const CVector3f fwd = ep->GetTransform().GetForward();
+    current = static_cast< int >(atan2f(fwd.GetX(), fwd.GetY()) * 180.f / 3.14159265358979f);
     return true;
   }
   TUniqueId* uid = nullptr;

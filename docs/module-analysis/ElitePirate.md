@@ -982,6 +982,46 @@ Fixed on the way: `fn_15_10C0` sets darkShieldSound/lightShieldSound/sound_Visor
 generated ctor has 0, which a placement without the property would have played as sfx 0); the data
 lost the two fields retail has no slot for. Not marked: `fn_15_10C0` (no separate host body: the
 generated ctor plus the three stores), `fn_15_B360` (compiler copy ctor = the host's implicit copy).
-Open: `fn_15_6820`/`6618` (`ShouldFire`, marked earlier) still has three untaken arms after the
-forced run (gcov `1538:2/4`, `1543:0/2`, `1553:0/2`: one of the cooldown/no-launcher exits, the
-launcher-gone exit and the beyond-max-range exit); the shipped FSM never asks ShouldFire in the smoke fight, so its marker rests on trigcall alone.
+`fn_15_6820`/`6618` (`ShouldFire`): unmarked by ep2, see section 11.
+
+## 11. ShouldFire (fn_15_6820 / fn_15_6618): every early-out ran, the `true` return cannot (ep2, 2026-10-22)
+
+Re-read against the asm: one fix. 0x6680..0x66C0 null-checks the xa26 entity (0x6694 `cmplwi r3,0`)
+and calls its vtable +0x54 (GetAimPosition) with no actor cast, so the port's `TCastToConstPtr`
+(an arm retail lacks) became a `static_cast`. The rest matches: 0x6644..0x6650 `xa34 <= 0`,
+0x6660 launcher uid != kInvalidUniqueId, 0x6678 launcher entity non-null, 0x6708 `ble` /
+0x6718 `bge` (distSq strictly between 0x988^2 and 0x98c^2), vtable 0x1a4 = ShouldTurn (passed a
+zeroed CTriggerData at 0x10; ShouldTurn ignores it), 0x6760 fn_15_2284, and the filter
+include (1<<0x3B kMT_Solid)|(1<<0x21 kMT_Character) (data 0x604/0x608), exclude 0, type 1.
+fn_15_6820 only loads 0x9fa (0x6830) and calls 6618.
+
+Run: `tools/cov/specs/elitepirate_shouldfire.{py,con}` (coverage build, Sanctuary 0c_cliff_hall
+1baa96c2,b666b655 layer 3, u04ff, 1600 updates at 8 ticks/frame, 0 caught/reach-stub). The pirate
+is still in PowerUp and never picks a target, so each ask sets the uid with the console `var`
+(new: `ep.timer` 0xa34, `ep.launcher` 0x9fa, `ep.target` 0xa26, `ep.yaw` the facing), places it, and
+asks `trigcall ShouldFire` 20 updates later (Think moves the launcher then).
+
+| arm (asm) | ran | how |
+|---|---|---|
+| 0x6650 cooldown > 0 | yes | forced (`var ep.timer 5`) |
+| 0x6664 launcher uid invalid | yes | forced (`var ep.launcher 65535`) |
+| 0x667C launcher entity gone | yes | forced (`var ep.launcher 2046`) |
+| 0x6698 target entity gone | yes | forced (`var ep.target 65535`) |
+| 0x670C distSq <= min^2 | yes | `place u04ff player 3` |
+| 0x671C distSq >= max^2 | yes | `place u04ff player 120` |
+| 0x6750 ShouldTurn true | yes | default facing |
+| 0x67F0 ray blocked (false) | yes | 10 asks |
+| 0x67F4 ray clear (true) | **no** | see below |
+
+gcov (`gcov_report.py ... --fn fn_15_6820`) reports 16/16 branches ALL-ARMS, but the final
+`return mgr.RayCollideWorld(...)` has no branch of its own, so gcov cannot see 0x67F4; the gdb
+spec's `ret` on ShouldFire shows only `ret=0`. Of the 10 rays that reached RayCollideWorld, 7
+failed RayStaticLineOfSightTest. The other 3 passed it and then failed RayDynamicLineOfSightTest
+on the player itself: the spec's `DynHit` entry at the `return false` (CGameCollision.cpp:192)
+reports id 0x400 = the player all 3 times. The ray ends at the target's aim position, which is
+inside the player's primitive, and the player carries kMT_Solid (CPlayer.cpp:805), which the
+include filter passes. xa26's only writer is SelectTarget (fn_15_555C, `ChoosePlayer`), so in the
+port every ShouldFire target is a player and the `true` return never runs. Whether retail's near
+list or dynamic test leaves out the ray's own target is shared-code territory (CStateManager /
+CGameCollision), not checked here. The shipped FSM never asks ShouldFire in the smoke fight either.
+
