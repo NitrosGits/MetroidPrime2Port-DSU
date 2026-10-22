@@ -136,6 +136,14 @@ BODIES = {
                 ' knocked back'),
     'KNOCKFLAG': ('EBF4 KnockBack', 'CSplitterMainChassis::KnockBack(',
                   'the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off'),
+    'SHIELD1': ('2BE0 GetShieldEffect', 'CSplitterCommandModule::PortGetShieldEffect(',
+                'the head\'s state at 0xEE0 is 1: the LightShield effect'),
+    'SHIELD2': ('2BE0 GetShieldEffect', 'CSplitterCommandModule::PortGetShieldEffect(',
+                'the head\'s state at 0xEE0 is 2: the DarkShield effect'),
+    'LANDED0': ('F5F8 ctor', 'loc:PortCSplitterMainChassis.cpp:1887',
+                'the data\'s flag word at 0x68 has its 0x1 bit: the landed count at 0xD00 is 0'),
+    'NULLCAST': ('9AF8 SetCollisionVulnerability', 'loc:PortCSplitterMainChassis.cpp:682',
+                 'the collision actor\'s id is invalid: the cast to a CCollisionActor fails'),
     'VULN7': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
               'the boost ball (the weapon type 7) knocks the chassis back'),
     'VULN6': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
@@ -359,6 +367,24 @@ elif WHICH == 'VULNA':
     # The flag byte at 0xD41 has its 0x80 bit: both reactions are turned off.
     FORCE = [(_label, _where, [],
               [CH + '->mFlagsD41 |= 0x80'], 0, _what)]
+elif WHICH == 'SHIELD1':
+    # The head's state at 0xEE0 is 1: the LightShield particle effect (asm 0x2C08-0x2C34).
+    FORCE = [(_label, _where, [], ['$this->mCollisionState = 1'], 0, _what)]
+elif WHICH == 'SHIELD2':
+    # The head's state at 0xEE0 is 2: any state but 1 gives the DarkShield effect
+    # (asm 0x2C08-0x2C50).
+    FORCE = [(_label, _where, [], ['$this->mCollisionState = 2'], 0, _what)]
+elif WHICH == 'LANDED0':
+    # The data's flag word at 0x68 has its 0x1 bit, so the counter at 0xD00 is 0 and not 5
+    # (asm 0xF7EC-0xF7FC: lwz 0x68(r31); clrlwi. r0, r0, 31; beq; mr r3, r4).  The write is at the
+    # line before the assignment (the initialiser list has already copied the data into mData).
+    FORCE = [(_label, _where, [],
+              ['this->mData.mUnknownCEF5C2FE |= 1'], 0, _what)]
+elif WHICH == 'NULLCAST':
+    # The collision actor's id is the invalid one, so the cast to a CCollisionActor fails and
+    # the walk skips the actor (asm 0x9B44-0x9B4C).  The id is in r15 when the line is reached
+    # (the build keeps it there: movzwl 0x48(%rax),%r15d; mov %r15d,%esi).
+    FORCE = [(_label, _where, [], ['$r15 = 0xffff'], 0, _what)]
 elif WHICH == 'DESPAWN':
     # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
     # update (asm 0x1820).

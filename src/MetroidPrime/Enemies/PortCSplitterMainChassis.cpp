@@ -671,6 +671,9 @@ void CSplitterMainChassis::EndSpinAttack(CStateManager& mgr, float) {
 // GetCollisionDescFromIndex, to GetNumCollisionActors at 0x9B7C) that casts to a CCollisionActor
 // (0x9B44-0x9B4C) gets the first vulnerability when it is the "target_LCTR" actor at 0xCC2
 // (0x9B50-0x9B64), else the second (0x9B6C-0x9B70).
+// Arms: the failed cast (0x9B44-0x9B4C) was forced under gdb (the manager's descriptions only
+// hold the collision actors it made, so the cast never fails in the fight).
+// @ fn_75_9AF8
 void CSplitterMainChassis::PortSetCollisionVulnerability(CStateManager& mgr,
                                                          const CDamageVulnerability& target,
                                                          const CDamageVulnerability& other) {

@@ -1093,12 +1093,14 @@ void CSplitterCommandModule::PortUpdateShield(CStateManager& mgr, bool shieldUp)
   }
 }
 
-// fn_75_2BE0 (not marked: the run only reached the state-0 return)
-// The head's shield particle effect (0x2BE0-0x2BC4): the state at 0xEE0 picks the name - 1 gives
-// "LightShield" (rodata 0x10, 0x2C18-0x2C34), any other state gives "DarkShield" (rodata 0x14,
-// 0x2C38-0x2C50) and the state 0 gives nothing (0x2C00-0x2C04, the return at 0x2CA0). The name is
-// the animation data's first particle effect (0x2C88 GetFirstParticleEffect), which is what the
-// body returns.
+// fn_75_2BE0. The head's shield particle effect (0x2BE0-0x2BC4): the state at 0xEE0 picks the
+// name - 1 gives "LightShield" (rodata 0x10, 0x2C18-0x2C34), any other state gives "DarkShield"
+// (rodata 0x14, 0x2C38-0x2C50) and the state 0 gives nothing (0x2C00-0x2C04, the return at
+// 0x2CA0). The name is the animation data's first particle effect (0x2C88
+// GetFirstParticleEffect), which is what the body returns.
+// Arms: the state 0 ran in the fight; the states 1 and 2 were forced under gdb (the head's
+// shield never comes up in the shipped spawns).
+// @ fn_75_2BE0
 CParticleGenInfo* CSplitterCommandModule::PortGetShieldEffect() {
   if (mCollisionState == 0) {
     return nullptr;
