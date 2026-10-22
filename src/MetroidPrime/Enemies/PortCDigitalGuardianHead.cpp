@@ -153,6 +153,9 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 // projectile infos at 0xE04..0xE7C, the 'PART' and 'SCAN' tokens, the head armour model and the
 // locator ids) belong to the states this slice does not port, so the host keeps only what the
 // ported functions read, with the values the retail stores.
+// Coverage: every arm natural or forced (tools/cov/specs/digitalguardian_dg28_ctor.py forces the
+// PART/SCAN ids to -1); the only unrun arms are the compiler's EH-unwind edges on the closing brace.
+// @ fn_14_18264
 CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& name,
                                            const CEntityInfo& info, const CTransform4f& xf,
                                            const CModelData& modelData,
@@ -166,7 +169,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDC4_{kInvalidUniqueId, kInvalidUniqueId} // 0x18358
 , xDD0_(LdrToDamageVulnerability(data.bombPitVulnerability)) // 0x18370
 , xE00_(kInvalidUniqueId)
-, xD80_(uid, CSegId(), 0.1f, 0.05f) // 0x183F8: no locator (0xFF), .rodata 0x9F4 / 0x9F8
+, xD80_(uid, CSegId(), 0.1f, 0.05f) // 0x18334: no locator (0xFF), .rodata 0x9F4 / 0x9F8
 , xEF4_()
 , xF04_()
 , xF14_()
@@ -260,12 +263,13 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   x10A4_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
   // 0x18DA4..0x18DD0: the lasers' locator (.rodata 0x94C, "T_lazor_LCTR") at 0x1088.
   x1088_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
-  // 0x18DD8..0x18DE8: the visual knowledge's locator (0xD82) becomes 0x1088. CVisualKnowledge has
-  // no locator setter, so it is rebuilt with the ctor's arguments (0x183F8); nothing ran it yet.
-  // Its filter (0x18DEC..0x18E5C: include 1 << .data 0xE58 (0x3B, kMT_Solid), exclude
-  // 1 << 0xE5C | 1 << 0xE60 (0x21, 0x20: kMT_Character, kMT_Player), type 3 at 0xD98) stays the
-  // DOL ctor's default (which also excludes 47, 20 and 56): the class has no filter setter.
-  xD80_ = CVisualKnowledge(uid, x1088_, 0.1f, 0.05f);
+  // 0x18DD8..0x18DE8: the visual knowledge's locator (0xD82, lbz 0x1088 / stb 0xd82) becomes 0x1088.
+  xD80_.SetLocator(x1088_);
+  // 0x18DEC..0x18E5C: its filter (0xD88..0xD98) is rebuilt inline: include 1 << .data 0xE58
+  // (0x3B, kMT_Solid; stfd 0xd88), exclude 1 << 0xE5C | 1 << 0xE60 (0x21 kMT_Character, 0x20
+  // kMT_Player; stfd 0xd90), type 3 (li r0,0x3; stw 0xd98: kFT_IncludeExclude).
+  xD80_.SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_Character, kMT_Player)));
   // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
   // at 0x18E60).
   x137A8_();
