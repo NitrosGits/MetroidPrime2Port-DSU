@@ -397,6 +397,14 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   // asset (guest 0x950, the data block's mTransmissionBeaconFx).
   x123C_ = xD664_(mData.mTransmissionBeaconFx);
 
+  // The crippled 'SCAN' token (0xBF4C..0xC00C): the id (data +0) tested against -1 (addis r0,
+  // r23, 0x1 / cmplwi r0, 0xffff / beq at 0xBF50..0xBF58), a 0xC-byte TCachedToken (operator new
+  // at 0xBF74) cached at once (GetObj at 0xBFC8), stored at 0xE68 (0xBFFC).
+  if (mData.mScannableInfoCrippled != kInvalidAssetId) {
+    xE68_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', mData.mScannableInfoCrippled)), true);
+  }
+
   mDamageColor = skHitsWithoutDamageColor; // 0x450 at 0xC010..0xC018
 
   // The beacon's echo emitter (0xC01C..0xC074): with the beacon's model (0x1238, 0x11EC's valid
@@ -410,7 +418,16 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   }
 }
 
-CDigitalGuardian::~CDigitalGuardian() {}
+// fn_14_AB98: besides the members' own dtors, the beacon's particle generator (0x123C) is deleted
+// through its vtable (+0x8 with r4 = 1, 0xAC34..0xAC44) and both collision actor managers (0xE64
+// at 0xAE28, 0xE60 at 0xAE3C, the dtor with r4 = 1); the 0xE68 token (0xADF4..0xAE14) is
+// xE68_'s own dtor.
+// @ fn_14_AB98
+CDigitalGuardian::~CDigitalGuardian() {
+  delete x123C_;
+  delete xE64_;
+  delete xE60_;
+}
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say
@@ -1588,9 +1605,12 @@ void CDigitalGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& 
 // fn_14_9DBC (vtable slot 29): when bit 6 (the mask 0x40, the extrwi at 0x9DCC) of the flag byte
 // at guest this+0x128C is set and the scannable token (guest this+0xE68, the lwz at 0x9DD4) is
 // there, that token's object is the answer (the lwz at 0x9DE0); otherwise the base's scannable
-// info (the call at 0x9DE8). The token is locked in the constructor, which the port does not do
-// yet, so only the base's answer is reachable.
+// info (the call at 0x9DE8). The ctor builds the token (0xBF4C..0xC00C).
+// @ fn_14_9DBC
 CScannableObjectInfo* CDigitalGuardian::GetScannableObjectInfo() const {
+  if ((x128C_ & 0x40) != 0 && xE68_.get() != nullptr) {
+    return xE68_->GetObject();
+  }
   return CPatterned::GetScannableObjectInfo();
 }
 
@@ -1757,6 +1777,7 @@ bool CDigitalGuardian::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&
 // fn_14_97A4: the head's flag byte (head+0x10F4, bit 5) is the whole answer (the extrwi at
 // 0x97D4 keeps the byte's bit 5, the mask 1u << (31 - 26) = 0x20), but only when the head
 // exists (the cmplwi at 0x97C8 and the beq at 0x97CC answer false without it).
+// @ fn_14_97A4
 bool CDigitalGuardian::ShouldProjectileAttack(CStateManager& mgr, const CTriggerData& data) const {
   return HeadFlag20_(mgr);
 }

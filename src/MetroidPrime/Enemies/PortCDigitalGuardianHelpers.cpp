@@ -464,19 +464,18 @@ void CDigitalGuardianHead::x11F7C_(CStateManager& mgr) {
 
 // fn_14_137A8 (0x88 bytes): the head's armour model. The armour's asset id (the parameter
 // block's +0x0C, guest this+0x7CC) is put into the head's model (guest this+0xEA4), unless the
-// id is 0xFFFE (the addis at 0x137C0 and the cmplwi at 0x137C4). The model is built from the
-// asset id and the actor's model scale (the three lfs at 0x137D8..0x137E0) and assigned into the
+// id is -1 (addis r0, r6, 0x1 gives 0xFFFF only for 0xFFFFFFFF; cmplwi r0, 0xffff at
+// 0x137C4). The model is built from the asset id and the actor's model scale (the three lfs at 0x137D8..0x137E0) and assigned into the
 // optional (fn_14_6A20 at 0x1380C).
+// @ fn_14_137A8
 void CDigitalGuardianHead::x137A8_() {
   const uint armour = mData.headArmor; // guest 0x7CC (the data block's +0x0C)
-  if (armour + 1 == 0xFFFFu) {       // the addis at 0x137C0 and the cmplwi at 0x137C4
+  if (armour == kInvalidAssetId) { // addis r0, r6, 0x1 / cmplwi r0, 0xffff at 0x137C0/0x137C4
     return;
   }
   const CVector3f scale = GetModelData()->GetScale();
   xEA4_ = CModelData(CStaticRes(armour, scale));
 }
-//
-// Unmarked: the port has no caller for it yet (the head's constructor calls it).
 
 // fn_14_83C0 (0x184 bytes): the knee's knock-back animation parm data. The struct the retail
 // fills is {u32 stateId; u32 parmCount; CPASAnimParm parms[8]} - the host's CPASAnimParmData

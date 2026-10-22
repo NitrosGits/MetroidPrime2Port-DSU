@@ -15,6 +15,7 @@ class CGenDescription;
 
 #ifdef TARGET_PC
 #include "Kyoto/TToken.hpp"
+#include "rstl/single_ptr.hpp"
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
@@ -338,6 +339,8 @@ private:
   // bytes and the byte after it is the optional's valid flag, which the draws test.
   CCollisionActorManager* xE60_; // 0xE60: the first collision actor manager (fn_14_61DC builds it)
   CCollisionActorManager* xE64_; // 0xE64: the second collision actor manager (fn_14_5C30 builds it)
+  // 0xE68: the crippled 'SCAN' token (data +0, the ctor at 0xBF4C..0xC00C); fn_14_9DBC reads it.
+  rstl::single_ptr< TCachedToken< CScannableObjectInfo > > xE68_;
   // 0xE6C (0x4c, valid flag 0xEB8): the leg model, built by fn_14_6864 and drawn by
   // fn_14_1994 at the four knee locators.
   rstl::optional_object< CModelData > xE6C_;

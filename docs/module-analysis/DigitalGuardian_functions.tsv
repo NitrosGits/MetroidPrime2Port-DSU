@@ -212,9 +212,9 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xC524	0x58	CDigitalGuardian	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_14_C524
 0xC57C	0x94	CDigitalGuardian	-	func	H	fn_14_B100	same body in 1 other modules (MediumIng)	not-port	fn_14_C57C
 0xC610	0x7C	CDigitalGuardian	-	func	H	fn_14_C57C	same body in 2 other modules (MediumIng,ScriptCannonBall)	not-port	fn_14_C610
-0xC68C	0x470	CDigitalGuardian	-	func	B	fn_14_B100	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_C68C
-0xCAFC	0x2BC	CDigitalGuardian	-	func	B	fn_14_1912C fn_14_C68C	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_CAFC
-0xCDB8	0x64	CDigitalGuardian	-	func	B	fn_14_C68C	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_CDB8
+0xC68C	0x470	CDigitalGuardian	-	func	H	fn_14_B100	SLdr copy ctor (dg32): copies the body's data block into this+0x7C0 (B100 `addi r3, r30, 0x7c0; bl fn_14_C68C` at 0xB174/0xB17C); the port's mData(data) is the implicit copy	not-port	fn_14_C68C
+0xCAFC	0x2BC	CDigitalGuardian	-	func	H	fn_14_1912C fn_14_C68C	SLdr copy ctor (dg32): field-by-field copy of a sub-struct (lfs/lwz/lbz pairs, no calls), called for three members by fn_14_C68C (0xCAC4..0xCADC) and two by fn_14_1912C; part of the implicit mData(data) copies	not-port	fn_14_CAFC
+0xCDB8	0x64	CDigitalGuardian	-	func	H	fn_14_C68C	SLdr copy ctor (dg32): 0x30-byte sub-struct copy called from fn_14_C68C (0xC7F8); part of the implicit mData(data) copy	not-port	fn_14_CDB8
 0xCE1C	0x78	CDigitalGuardian	-	func	B	fn_14_3DA8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_CE1C
 0xCE94	0x100	CDigitalGuardian	-	func	B	fn_14_3A44	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_CE94
 0xCF94	0x38C	CDigitalGuardian	-	virtual	B	lbl_14_data_694+14	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_CF94
@@ -262,8 +262,8 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x10798	0x294	CDigitalGuardian	-	func	B	fn_14_16408	marked	marked	fn_14_10798
 0x10A2C	0x274	CDigitalGuardian	-	func	B	fn_14_17BBC	marked	marked	fn_14_10A2C
 0x10CA0	0x3A4	CDigitalGuardian	-	func	B	fn_14_17BBC	marked	marked	fn_14_10CA0
-0x11044	0x24	CDigitalGuardian	-	func	B	fn_14_10CA0	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_11044
-0x11068	0x64	CDigitalGuardian	-	func	B	fn_14_11044	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_11068
+0x11044	0x24	CDigitalGuardian	-	func	H	fn_14_10CA0	compiler copy (dg32): CImpactVisorEffect's assignment to its optional at +0x28 (forwards to fn_14_11068), called from fn_14_10CA0; the host class's implicit operator=	not-port	fn_14_11044
+0x11068	0x64	CDigitalGuardian	-	func	H	fn_14_11044	rstl (dg32): rstl::optional_object<rstl::pair<int,float>>::operator=, only from fn_14_11044; the host's rstl provides it	not-port	fn_14_11068
 0x110CC	0xA4	CDigitalGuardian	-	func	H	fn_14_10CA0	same body in 1 other modules (Blogg)	not-port	fn_14_110CC
 0x11170	0x70	CDigitalGuardian	-	func	H	fn_14_10CA0	same body in 1 other modules (Blogg)	not-port	fn_14_11170
 0x111E0	0x2E8	CDigitalGuardian	-	func	B	fn_14_17BBC	marked	marked	fn_14_111E0
@@ -272,7 +272,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x11788	0x128	CDigitalGuardian	-	func	B	fn_14_118B0 fn_14_143D8 fn_14_15284	marked	marked	fn_14_11788
 0x118B0	0x134	CDigitalGuardian	-	func	B	fn_14_14254	marked	marked	fn_14_118B0
 0x119E4	0x1C4	CDigitalGuardian	-	func	B	fn_14_13830	marked	marked	fn_14_119E4
-0x11BA8	0x60	CDigitalGuardian	-	virtual	B	lbl_14_data_1024+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_11BA8
+0x11BA8	0x60	CDigitalGuardian	-	virtual	T	lbl_14_data_1024+8	never executed (dg32): deleting dtor (vtable slot +8) of the stack-only waypoint predicate (vtable lbl_14_data_1024); the only reference is that .data vtable word, no bl/b: the temporaries' dtors are inlined at their callers	not-port	fn_14_11BA8
 0x11C08	0x15C	CDigitalGuardian	-	func	B	fn_14_11D64 fn_14_16408	marked	marked	fn_14_11C08
 0x11D64	0x144	CDigitalGuardian	-	func	B	fn_14_15B94 fn_14_1633C fn_14_167EC fn_14_16A50 fn_14_16D64 fn_14_16F74 fn_14_1709C	marked	marked	fn_14_11D64
 0x11EA8	0x88	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_11EA8
@@ -292,9 +292,9 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x13318	0x490	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_13318
 0x137A8	0x88	CDigitalGuardian	-	func	B	fn_14_18264	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_137A8
 0x13830	0x194	CDigitalGuardian	-	func	B	fn_14_17D38	marked	marked	fn_14_13830
-0x139C4	0xB0	CDigitalGuardian	-	func	B	fn_14_13830	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_139C4
+0x139C4	0xB0	CDigitalGuardian	-	func	H	fn_14_13830	rstl (dg32): rstl::vector<TUniqueId>::operator=, called from fn_14_13830 (x1044_ = FindConnectedObjects_if); the host's rstl provides it	not-port	fn_14_139C4
 0x13A74	0xC	CDigitalGuardian	-	func	H	fn_14_139C4	same body in 1 other modules (Sporb)	not-port	fn_14_13A74
-0x13A80	0x60	CDigitalGuardian	-	virtual	B	lbl_14_data_1008+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_13A80
+0x13A80	0x60	CDigitalGuardian	-	virtual	T	lbl_14_data_1008+8	never executed (dg32): deleting dtor (vtable slot +8) of the stack-only platform predicate (vtable lbl_14_data_1008); the only reference is that .data vtable word, no bl/b: the temporaries' dtors are inlined at their callers	not-port	fn_14_13A80
 0x13AE0	0x28	CDigitalGuardian	-	func	B	fn_14_17C98	marked	marked	fn_14_13AE0
 0x13B08	0x28	CDigitalGuardian	-	func	B	fn_14_7B24	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_13B08
 0x13B30	0x8	CDigitalGuardian	-	func	B	fn_14_70E4 fn_14_7168 fn_14_7648 fn_14_768C fn_14_76D0 fn_14_775C	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_13B30
@@ -383,8 +383,8 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x17D38	0x22C	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+18	marked	marked	fn_14_17D38
 0x17F64	0x300	CDigitalGuardian	-	virtual	B	lbl_14_data_EB4+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_17F64
 0x18264	0xE7C	CDigitalGuardian	-	func	B	fn_14_DF7C	marked	marked	fn_14_18264
-0x190E0	0x4C	CDigitalGuardian	-	func	B	fn_14_18264	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_190E0
-0x1912C	0x5C4	CDigitalGuardian	-	func	B	fn_14_18264 fn_14_1A698	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_1912C
+0x190E0	0x4C	CDigitalGuardian	-	func	H	fn_14_18264	compiler ctor (dg32): aggregate ctor of the three CVector3f members 0x1004/0x1010/0x101C, inlined by the host in the head ctor's initializers (PortCDigitalGuardianHead.cpp x1004_..x101C_)	not-port	fn_14_190E0
+0x1912C	0x5C4	CDigitalGuardian	-	func	H	fn_14_18264 fn_14_1A698	SLdr copy ctor (dg32): copies the head's data block into head+0x7C0 (18264 `addi r3, r31, 0x7c0; bl fn_14_1912C` at 0x182D8/0x182E0); the port's CDigitalGuardianHead mData(data) is the implicit copy	not-port	fn_14_1912C
 0x196F0	0x94	CDigitalGuardian	-	func	H	fn_14_1912C	same body as EmperorIngStage1 0xff4 (the rstl / compiler-generated helper - the host's rstl provides it)	not-port	fn_14_196F0
 0x19784	0xB4	CDigitalGuardian	-	virtual	B	lbl_14_data_1034+14	marked	marked	fn_14_19784
 0x19838	0xD0	CDigitalGuardian	-	func	B	fn_14_10CA0	marked	marked	fn_14_19838
@@ -410,7 +410,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x1AB50	0x48	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+48	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AB50
 0x1AB98	0x40	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+50	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1AB98
 0x1ABD8	0x8	CDigitalGuardian	-	virtual	B	lbl_14_data_10D0+38	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_14_1ABD8
-0x1ABE0	0x34	CDigitalGuardian	-	func	B	fn_14_18264	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_14_1ABE0
+0x1ABE0	0x34	CDigitalGuardian	-	func	H	fn_14_18264	compiler copy (dg32): CTransform4f copy (six lfd/stfd), called by the head ctor's 3-iteration loop at 0x188EC for xF40_; the host's CTransform4f copy	not-port	fn_14_1ABE0
 0x1AC14	0xA4	CDigitalGuardian	-	func	H	fn_14_139C4	same body in 2 other modules (Blogg,Sporb)	not-port	fn_14_1AC14
 0x1ACB8	0x74	CDigitalGuardian	-	func	H	fn_14_19908	same body as EmperorIngStage1 0xbf14 (the module's own deleting destructor / free-only thunk - the host's own classes )	not-port	fn_14_1ACB8
 0x1AD2C	0x9CC	CDigitalGuardian	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_14_1AD2C

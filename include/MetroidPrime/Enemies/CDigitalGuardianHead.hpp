@@ -51,17 +51,27 @@ public:
   void AddToRenderer(const CStateManager& mgr) const override; // fn_14_17A00
   const CDamageVulnerability* GetDamageVulnerability() const override; // fn_14_179E0
   CScannableObjectInfo* GetScannableObjectInfo() const override;      // fn_14_177C8
+  void Render(const CStateManager& mgr) const override;               // fn_14_17B28
+  CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override; // fn_14_17890
 
   // CAi / CPatterned
+  void RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint mask,
+                                  uint target) const override; // fn_14_17A64
+  CProjectileInfo* ProjectileInfo() override;                  // fn_14_17840
+  CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override; // fn_14_17638
+  void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
+                       const CModelFlags& flags) const override; // fn_14_174F4
   bool IsListening() const override { return true; }          // fn_14_DF6C
   bool IsScanVisorSelfRender() const override { return true; } // fn_14_DF74
   void SetupStateMachine(CStateManager& mgr) override;        // fn_14_17468
 
   // fn_14_13B30: the attack mode word at guest 0xFE8 (the body's fn_14_7168 sets 0, its detach
   // fn_14_70E4 sets 1).
+  // @ fn_14_13B30
   void SetAttackMode(int mode) { xFE8_ = mode; }
   // fn_14_13B08 (0x28 bytes): ResetProjectileAttackTimes with 0 (.rodata 0x960); the body's
   // fn_14_7B24 calls it.
+  // @ fn_14_13B08
   void x13B08_(CStateManager& mgr) { ResetProjectileAttackTimes(mgr, 0.f); }
 
   // Triggers (lbl_14_data_808, 20 entries).
