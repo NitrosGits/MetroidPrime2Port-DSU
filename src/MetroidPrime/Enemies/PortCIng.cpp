@@ -3506,16 +3506,21 @@ void CIng::Think(float dt, CStateManager& mgr) {
 // valid (asm 0x36AC), names a CScriptTeamAiMgr (asm 0x36D0) and the team still counts the Ing
 // (IsPartOfTeam, asm 0x36EC); then QuitTeam (asm 0x3704) and the id goes back to invalid (asm 0x3710).
 // The kSM_Delete (asm 0xCC28) and the Deactivate (asm 0xCCB8) handlers call it.
+// @ fn_29_3684
 static void LeaveTeam(CStateManager& mgr, TUniqueId& teamId, TUniqueId self) {
-  if (teamId == kInvalidUniqueId) {
+  if (teamId == kInvalidUniqueId) { // 0x36A4 lhz 0xd6a, 0x36AC cmplw, 0x36B0 beq end
     return;
   }
+  // 0x36B4-0x36C8: ObjectById with the id at 0xd6a, then TCastToPtr<CScriptTeamAiMgr>.
   CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(teamId));
-  if (team == nullptr || !team->IsPartOfTeam(self)) {
+  if (team == nullptr) { // 0x36CC mr., 0x36D0 beq end (an id that is no team)
     return;
   }
-  team->QuitTeam(self);
-  teamId = kInvalidUniqueId;
+  if (!team->IsPartOfTeam(self)) { // 0x36E4 IsPartOfTeam(0x8), 0x36E8 clrlwi., 0x36EC beq end
+    return;
+  }
+  team->QuitTeam(self);       // 0x3704 QuitTeam(id at 0x8)
+  teamId = kInvalidUniqueId;  // 0x3710 sth kInvalidUniqueId at 0xd6a
 }
 
 // @ fn_29_C9A4
