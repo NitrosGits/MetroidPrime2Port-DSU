@@ -2329,3 +2329,25 @@ platform casts and the dash arms of CollidedWith.
   - 1D9A4: invalid uid; repulsor inactive/other area/repel-player/cylinder; strength null; path area null; obstruction > 0.
   - CA0C: Update with mSweepBeamOn, sfx valid; Deactivate with emitters set. Asm not yet compared.
 - Not started: 1707C, 1C99C, 19B64, 154FC, 1FA14, CEB4.
+
+## Slice ds45 (2026-10-23): 11 B rows marked (B86C 1D9A4 B164 12F60 C470 1905C CA0C 1707C 1C99C 19B64 CEB4)
+
+- Harness: `tools/cov/specs/darksamus_ds44_calls.{py,gdb}` (gdb boots the game; at the 4600th
+  CDarkSamus::Think the .gdb forces each arm with member writes and forced callee answers, then
+  writes every member back). Run: see the .py header; one run gives all arms below.
+- Read against the asm (no differences): CA0C, 1707C, 1C99C (.data C30=0x31 platform, C34=0x1D
+  ceiling, C38=0x1E wall, C3C/C40=0x1F floor, C44/C48=0x20 player), 19B64, CEB4 (0x54..0x5C = mPosition).
+- gcov (forced run): B86C, 1D9A4, 12F60, 1905C, 1707C, 1C99C, CA0C, 19B64 all arms; CEB4 no branches.
+  B164 15/16: the `0.f > value` arm (0xB2E8) is dead under `value > 0` (0xB2C8); the retail_diff
+  nan finding there is a false positive (NaN takes `ble` 0xB2CC to 1.0f, as the port's `>`).
+  C470 14/17: left are the static filter's guard abort and the decal path's exception pads; the
+  decal arm ran with the player power beam's CRSC type-1 entry swapped into the sweep CRSC (the
+  sweep CRSC, mScatterShotInfo and mScatterShotInfo2 have no valid decals: data-dead in retail on
+  the rooftop, live code).
+- CA0C: the rooftop's sweep sounds give null handles; the remove arms ran with stand-in handles
+  that StopSound ignores.
+- asmcheck: only host copies (fn_10_2C8 CRayCastResult, fn_10_13FFC CPASAnimParmData, B570/B670
+  vector, Lock = TLockedToken) and the 0xB20 dive bits (mDive bitfield names).
+- Harness gotchas: `$cl` (and every x86 register name) is a gdb register, not a variable; gdb-called
+  allocators handed back 32-bit-cut pointers here, so scratch memory comes from `ds45-scratch`.
+- Left: 154FC PickDash (3 callers: 0x1505C, 0x15298 and SideDash 0x154A8, so not T) and 1FA14 (ctor).

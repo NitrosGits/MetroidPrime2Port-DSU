@@ -1343,9 +1343,9 @@ void CDarkSamus::TakeDamage(const CVector3f& direction, float magnitude) {
 
 // vtable slot 45 = fn_10_CEB4 (0x1C): it copies the three floats out of this+0x54/0x58/0x5C, the
 // actor's translation.
-// Unmarked (ds41): no run calls it - the only callers are CScriptTeamAiMgr (its roles,
-// CScriptTeamAiMgr.cpp:390) and CMetroid, and the rooftop boss is in no team (0 calls in the
-// ds41 coverage run).
+// The only callers are CScriptTeamAiMgr (its roles, CScriptTeamAiMgr.cpp:390) and CMetroid; the
+// rooftop boss is in no team. Arms: one forced call (ds45), no branches.
+// @ fn_10_CEB4
 CVector3f CDarkSamus::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                 const CVector3f& point) const {
   return GetTranslation();

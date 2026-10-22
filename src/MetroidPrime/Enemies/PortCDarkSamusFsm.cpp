@@ -467,10 +467,12 @@ TUniqueId CDarkSamus::GetNextBattleStage(CStateManager& mgr) const {
 // slot 0x1C, SetActive(true), at 0x0000B908) before the next is looked for among its kSS_Arrived
 // links (0x0000B928): the first that is a hint. An active next hint whose 0x15C (the radius) is
 // lbl_10_rodata_25C = 0.0f counts up (0x0000B99C), an inactive one resets the count (0x0000B9A4);
-// four (`cmpwi r29, 0x4` at 0x0000B9CC) or no next hint ends the chain.
-// Unmarked (ds43): one forced call (the rooftop never advances to a stage whose info +0x35 is 1)
-// ran the chain walk, but five arms are still short (gcov 2026-10-22: the start tests, the
-// arrived-link loop and its null test).
+// four (`cmpwi r29, 0x4` at 0x0000B9CC) or no next hint ends the chain. The links vector copy
+// (fn_10_B570 at 0x0000B8A8) and its destructor (fn_10_B670 at 0x0000B8B4) are the host vector's.
+// Arms: the chain walk, plus forced calls: the first start lookup null, a start of another type,
+// the first arrived lookup null, the first arrived hint inactive, one with a radius (ds45 gdb
+// calls, tools/cov/specs/darksamus_ds44_calls.gdb).
+// @ fn_10_B86C
 void CDarkSamus::ActivateHintChains(CStateManager& mgr) {
   const rstl::vector< TUniqueId > starts =
       FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
@@ -762,6 +764,11 @@ bool CDarkSamus::ShouldForgetLastAttacker(CStateManager& mgr) const {
 // 0x0001DC60) answers its centroid (the region's 0x28, 0x0001DC6C). Otherwise the last contact
 // point answers for lbl_10_rodata_46C = 0.3 seconds after the contact (0x0001DCAC..0x0001DCB4)
 // and the zero vector after that (0x0001DCD4).
+// Arms: the fight (11 repulsor connections), plus forced calls: every connection invalid; a
+// repulsor holding the actor with and without a strength, a cylinder, repel-player, in another
+// area, inactive, outside; no path area; a region with an obstruction; a contact under and over
+// 0.3 s ago (ds45).
+// @ fn_10_1D9A4
 CVector3f CDarkSamus::GetRepulsionPoint(CStateManager& mgr, float* strength) const {
   const rstl::vector< SConnection >& connections = GetConnectionList();
   for (rstl::vector< SConnection >::const_iterator it = connections.begin();
@@ -1698,6 +1705,12 @@ void CDarkSamus::BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt) {
 // bit 0x40 (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4) and runs the melee attack command with
 // severity 7 (0x0000B3E0; pas::kAS_MeleeAttack = 7 at 0x0000B3F8; fn_10_8764 at
 // 0x0000B414).
+// Arms: the fight, plus forced calls: no boost hint, no arrived hint, a hint value of 0, 3 and
+// 1.5, a hint uid that is not an actor (ds45). Dead: the clamp's `0.f > value` arm (0x0000B2E8) sits under the value > 0.0f
+// test of the same getter (0x0000B2C8), so it cannot run; a NaN value takes the `ble` at
+// 0x0000B2CC to the 1.0f arm, as the port's plain `>` does, so the two inner compares
+// (0x0000B2E4 `ble`, 0x0000B2F8 `bge`) never see one.
+// @ fn_10_B164
 void CDarkSamus::BoostBallInto(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallInto", msg);
   UpdateShieldFlag(msg);
@@ -2945,7 +2958,10 @@ void CDarkSamus::SetGrounded(CStateManager& mgr, bool onGround) {
 // (Range at 0x000172E4), right first (0x00017344) then left (0x0001736C), whose gun line to the
 // aim is clear becomes the direction, and the timer starts at time (0x000173A8). While it runs
 // (`ble` at 0x000173BC) the impulse mass * impulse along it (0x00017410).
-// Unmarked: no dodge has started yet (only the idle, clear-line arm ran).
+// Arms: the fight (idle, clear line), plus forced calls (IsGunLineClear answers forced): a dodge
+// running, one running out, the right side clear, only the left, neither, the player too close,
+// an inf position (ds45).
+// @ fn_10_1707C
 void CDarkSamus::UpdateDodge(CStateManager& mgr, float dt, float impulse, float time) {
   if (mDodgeTime > 0.f) {
     mDodgeTime -= dt;
@@ -2995,7 +3011,11 @@ void CDarkSamus::UpdateDodge(CStateManager& mgr, float dt, float impulse, float 
 // 0x0001CBF8). Second pass (0x0001CCE8): a contact with no platform (C30) and floor or player
 // (C40/C44) lands the dive (0x08, 0x0001CDA8), hitting the player first when it is the player
 // (C48) and the dive has not hit yet (0x20, 0x0001CD8C).
-// Unmarked: the arm where the collider's vulnerability lets the dive's weapon hit it has not run yet.
+// Arms: forced calls on a built list: the five guards; a wall with no collider; a ceiling whose
+// collider the dive's weapon hits (WeaponHits answered 1) and a wall it does not (0); wall and
+// floor; platform, nothing, then the player, before and after the player was hit; no listed
+// material; an empty list (ds45).
+// @ fn_10_1C99C
 void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
                                     const CCollisionInfoList& list) {
   if (mCurrentAttack != 0x20 || mDive.mLaunched != true || mDive.mBounced || mDive.mLanding ||
@@ -3651,6 +3671,10 @@ void CDarkSamus::Start(CStateManager& mgr, EStateMsg msg, float dt) {
 // the effect (fn_10_C798 at 0x0000CD18), removes each emitter that is set
 // (`cmplwi r0, 0x0` at 0x0000CD20, 0x0000CD3C), zeroes both handles (0x0000CD5C, 0x0000CD68),
 // restores the speed (0x0000CD70) and runs the failsafe (0x0000CD74).
+// Arms: forced calls: Activate; Update with the beam on and a sound, then off with none;
+// Deactivate with both handles set (stand-ins: the rooftop's sweep sounds give null handles),
+// then zero; message 3 (ds45).
+// @ fn_10_CA0C
 void CDarkSamus::SweepBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("SweepBeam", msg);
   UpdateCurrentAttack(0x10000, mgr, msg);
@@ -3778,6 +3802,11 @@ void CDarkSamus::UpdateSweepBeamAim(CStateManager& mgr, float dt) {
 // 0x0000C684; AddDecal at 0x0000C6D4, the ray's direction unnormalized). The end point is the hit
 // point on any hit (0x0000C6FC..0x0000C710), else the gun plus 100.0f times the direction
 // (0x0000C718..0x0000C758); its z is then the gun's (0x0000C774).
+// Arms: the fight (no hit, beam off), plus forced calls: a hit with the beam on and off, the
+// sweep CRSC's type-1 decal missing and (the player's power beam CRSC entry swapped in) present
+// (ds45). Not run: the static filter's guard-abort arm and the decal path's exception pads (host
+// compiler arms).
+// @ fn_10_C470
 void CDarkSamus::UpdateSweepBeamEnd(CStateManager& mgr) {
   CVector3f dir(mGunLctrXf.GetForward().GetX(), mGunLctrXf.GetForward().GetY(), 0.f);
   if (dir.CanBeNormalized() == true) { // 0x0000C4C8
@@ -4305,6 +4334,9 @@ int CDarkSamus::PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, 
 // 0x000191C8). The nearest hit (from the unshifted start) that is not 8 short of the player
 // (the blt at 0x000192F0) is kept (lbl_10_rodata_3EC = -1.0f = none, 0x00019300); none is 0
 // (0x0001932C), short of the player 1 (0x0001933C), else 2.
+// Arms: the fight, plus forced calls: the actor on the player's xy, the ray hits forced near and
+// far, an inf x (ds45).
+// @ fn_10_1905C
 int CDarkSamus::ClassifyLineToPlayer(CStateManager& mgr) const {
   CVector3f dir = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
   dir.SetZ(0.f);
@@ -4634,6 +4666,12 @@ bool CDarkSamus::CanWalkToPoint(const CVector3f& point) const {
 // 0x0001A020, 0 for slot 3 at 0x0001A0D0); 0x10 goes unless that end point and the point
 // lbl_10_rodata_53C = 1.3f times the offset out are on the path (fn_10_16B1C) and walkable
 // (fn_10_145E4).
+// The CPASAnimParmData builds go through fn_10_13FFC (0x00019DB4, 0x00019E9C), the module's copy of the host
+// header's ctor.
+// Arms: forced calls (the callees' answers forced): every check failing, every check passing,
+// walkable but out of anim reach, no bits, and for each dodge side nearer the player the four
+// path/walk outcomes (ds45).
+// @ fn_10_19B64
 void CDarkSamus::CollectReachAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) {
   const float dist = GetDistanceToPlayer(mgr);
   if ((*mask & 0x1) != 0 && dist > mMinAttackRange) { // `clrlwi.` at 0x00019BD4
@@ -4971,6 +5009,9 @@ CVector3f CDarkSamus::GetScatterShotAimPoint(CStateManager& mgr) const {
 // the uid, the area 0x4, the owner 0x8 and lbl_10_rodata_488 = 45.0f) is added (0x000131F4), or
 // 0xBE4 is cleared when the allocation fails (0x00013204).
 // CScattershotProjectile is src/MetroidPrime/Enemies/PortCScattershotProjectile.cpp.
+// Arms: the fight, plus forced calls (attack 8): a uid that is not a scatter projectile, a
+// chance above 1, the description not cached (ds45).
+// @ fn_10_12F60
 void CDarkSamus::FireScatterShotProjectile(CStateManager& mgr) {
   const CVector3f aim = GetScatterShotAimPoint(mgr);
   const CTransform4f xf = CTransform4f::LookAt(mGunLctrXf.GetTranslation(), aim, mGunLctrXf.GetUp());
