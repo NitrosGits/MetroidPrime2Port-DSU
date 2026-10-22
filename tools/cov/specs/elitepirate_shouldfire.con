@@ -9,6 +9,11 @@
 @f700 status
 @f710 obj u04ff
 @f720 var u04ff ep.launcher
+# Forced clear line of sight for the `true` return 0x67F4: kMT_Solid off the player (what a turret
+# does, CPlayer.cpp:4337; the ray ends at its aim point, inside its own primitive), off the two
+# closed doors on the line (u043c area 4, u049a area 3) and off the pirate's own collision actors
+# u0500..u0514 (each blocked a ray in turn; DynHit names the blocker's uid)
+@f760 material u0400 -solid; material u043c -solid; material u049a -solid; material u0500 -solid; material u0501 -solid; material u0502 -solid; material u0503 -solid; material u0504 -solid; material u0505 -solid; material u0506 -solid; material u0507 -solid; material u0508 -solid; material u0509 -solid; material u050a -solid; material u050b -solid; material u050c -solid; material u050d -solid; material u050e -solid; material u050f -solid; material u0510 -solid; material u0511 -solid; material u0512 -solid; material u0513 -solid; material u0514 -solid
 
 @f800 var u04ff ep.target 1024; place u04ff player 3
 @f820 var u04ff ep.timer 0; var u04ff ep.target 1024; trigcall u04ff ShouldFire; trigcall u04ff ShouldTurn

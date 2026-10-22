@@ -984,7 +984,7 @@ lost the two fields retail has no slot for. Not marked: `fn_15_10C0` (no separat
 generated ctor plus the three stores), `fn_15_B360` (compiler copy ctor = the host's implicit copy).
 `fn_15_6820`/`6618` (`ShouldFire`): unmarked by ep2, see section 11.
 
-## 11. ShouldFire (fn_15_6820 / fn_15_6618): every early-out ran, the `true` return cannot (ep2, 2026-10-22)
+## 11. ShouldFire (fn_15_6820 / fn_15_6618): marked, the `true` return forced (ep2, ep3, 2026-10-22)
 
 Re-read against the asm: one fix. 0x6680..0x66C0 null-checks the xa26 entity (0x6694 `cmplwi r3,0`)
 and calls its vtable +0x54 (GetAimPosition) with no actor cast, so the port's `TCastToConstPtr`
@@ -1011,7 +1011,7 @@ asks `trigcall ShouldFire` 20 updates later (Think moves the launcher then).
 | 0x671C distSq >= max^2 | yes | `place u04ff player 120` |
 | 0x6750 ShouldTurn true | yes | default facing |
 | 0x67F0 ray blocked (false) | yes | 10 asks |
-| 0x67F4 ray clear (true) | **no** | see below |
+| 0x67F4 ray clear (true) | yes, 5 asks | forced (`material <id> -solid` on the player, doors u043c/u049a, collision actors u0500..u0514; ep3) |
 
 gcov (`gcov_report.py ... --fn fn_15_6820`) reports 16/16 branches ALL-ARMS, but the final
 `return mgr.RayCollideWorld(...)` has no branch of its own, so gcov cannot see 0x67F4; the gdb
@@ -1024,4 +1024,15 @@ include filter passes. xa26's only writer is SelectTarget (fn_15_555C, `ChoosePl
 port every ShouldFire target is a player and the `true` return never runs. Whether retail's near
 list or dynamic test leaves out the ray's own target is shared-code territory (CStateManager /
 CGameCollision), not checked here. The shipped FSM never asks ShouldFire in the smoke fight either.
+
+ep3 (2026-10-22): ray1 (/tmp/opencode/reports/ray1.md) re-read retail's RayCollideWorld /
+RayDynamicLineOfSightTest / BuildNearList against the port: the same, the target is not excluded
+in retail either, so 0x67F4 runs only when the target's actor list lacks kMT_Solid (a player in a
+turret, CPlayer.cpp:4337). The new console `material <id> [+|-]<m>` forces that: with Solid off
+the player alone the dynamic half then hit u0510 (one of the pirate's own collision actors,
+u0500..u0514 Solid|CollisionActor) and the closed door u043c; with those off, the area 3 door
+u049a. With all of them off (the con's f760) ShouldFire returned true 5 times (gdb `ret=1`, at
+the yaw-180 asks f909/f941/f980/f1180/f1300) and false 12, 0 caught/reach-stub, build-port-link,
+1600 updates. With the early-outs above every arm ran: both ids marked. gcov's 16/16 is ep2's
+(the body's C++ is unchanged since); gcov cannot see 0x67F4 (no branch of its own), gdb's `ret` does.
 
