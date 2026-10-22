@@ -526,6 +526,31 @@ that says the list is built, and lbl_75_bss_8, the list) are the port's two file
 | `fn_75_E788` (the chassis's dock reserve) | right: the alive bit (asm 0xE78C), the active bit (asm 0xE798), the command module id at 0xC6C (asm 0xE7A4-0xE7B4), the reservation at 0xC6E (asm 0xE7B8-0xE7C0), the landed count 5 or 0 (asm 0xE7C4-0xE7D4), the flag byte 0xD41's 0x80 bit (asm 0xE7DC) and the flag byte 0xD40's 0x01 bit (asm 0xE7E8) | 6/6 lines, 9/16 branches - the seven untaken arms need the chassis dead, inactive, with a head, with a reservation, landed somewhere else or with the two flag bits set |
 | `fn_75_A490` (the health info's copy) | right: the 0x1C-byte copy (asm 0xA490-0xA4E0) | inlined into the marked `fn_75_A37C` (the port's `*actor->HealthInfo() = *GetHealthInfo()`) - no body of its own to mark |
 
+### 3.16 The knock-back's arms: the Splitter is immune to every weapon
+
+The console's `damage` now takes `boostball` (the weapon type 7 fn_75_EBF4 tests) and the force
+spec's cases write the damage's weapon type and the flag byte 0xD41's 0x80 bit, but **the arms are
+not reachable in the port's fight**:
+
+- The Splitter's collision actors get the ricochet vulnerability (fn_75_A4E4, 0x0000A814) and the
+  chassis's own vulnerability is the data's, so `CStateManager::ApplyKnockBack` returns at its
+  `!weaponVulnerability.WeaponHurts()` guard (src/MetroidPrime/CStateManager.cpp) before it calls
+  the actor's virtual.  The chassis's KnockBack (fn_75_EBF4) therefore never runs: **0/9 lines** in
+  every run - the natural one, the boost ball hit (the console's new weapon type), the chassis's
+  laser sweep (`fsm u0532 LaserSweepAttack`, the beam's impact does not reach the chassis's
+  target_LCTR actor) and the spin attack (`fsm u0532 SpinAttack`, which does set the flag byte
+  0xD41's 0x80 bit).
+- gdb cannot write the vulnerability's per-weapon entry from the force (the vector's `operator[]`
+  is not in the debug information: "Could not find operator[]"), so the damage cannot be made to
+  get past the guard.
+
+`fn_75_6178` (the head's collision) stays unmarked for the same kind of reason: the head flies
+(kMT_Flyer) and only touches the world, so the two arms that need a collision whose material is
+not the wall, the floor or the ceiling are not reached.  The head's collision itself is a one-off
+(the head spawns into the ceiling), so the coverage runs catch it in some runs only (4/14 lines
+there, 0/14 in the rest); the force spec's COLID, COLLIDNM and COLFLAG cases write the collided
+id, empty the material list and set the flag byte 0xF6A's 0x01 bit.
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
