@@ -1002,8 +1002,7 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 // float at its +0x4) is CCollisionActor::HealthInfo() (found while porting fn_75_2CE0, which
 // calls it), so the body asks the host for it now.
 
-// fn_75_2CE0 (not marked: the run only reached the null collision-actor lookup)
-// The head's shield (0x2CE0-0x3004). The flag (the third argument, r5) is the "a shield goes up"
+// fn_75_2CE0. The head's shield (0x2CE0-0x3004). The flag (the third argument, r5) is the "a shield goes up"
 // one: the asm tests its low byte (0x2D0C clrlwi with the word's bit 24 - the byte's 0xFF). With
 // it set the shield-on sound (the sound id at 0x89C) is added (0x2D1C-0x2E44: the volume 0x7F,
 // the area at 0x4, useAcoustics true, looped false) and its handle is dropped - the retail writes
@@ -1022,6 +1021,14 @@ void CSplitterCommandModule::PortAutoDestruct(float time) {
 //     0x898).
 //   otherwise (0x2F4C): both materials are removed, the collision actor's vulnerability becomes the
 //     pass-through one (fn_800DBB50) and both effects are off.
+// Arms (the coverage build, 2026-10-22, K3 fight natural + forced: 34/34 lines, 18/18 branches):
+// the flag clear and set, the actor and no actor, the state 1 and the default ran (the actor at
+// 0xF00 exists since fn_75_3460's name fix); forced (SPLITTER_FORCE=R_SHIELD, force_ret.py): the
+// state 2 with the flag set, no actor (0xF00 invalid), and the handle at 0xF60 (the run's
+// AddEmitter hands back null handles, so 0xF60 is never set naturally).
+// asmcheck: the rstl string's internal_dereference (0x2E1C) is the effect names' string_l
+// temporaries' destructor.
+// @ fn_75_2CE0
 void CSplitterCommandModule::PortUpdateShield(CStateManager& mgr, bool shieldUp) {
   if (shieldUp) {
     // 0x2D1C-0x2E44: the shield-on sound. The retail's emitter position is the vector at 0x54
@@ -1568,6 +1575,13 @@ void CSplitterCommandModule::LostChassisReaction(CStateManager& mgr, EStateMsg m
 // slerped toward the up vector by the turn (0x2B10) and the rotation arc from the Z column to it
 // (0x2B38) is applied after the head's rotation (0x2B64 FromMatrix, 0x2B74 operator*,
 // 0x2BA4 BuildTransform4f at the translation, 0x2BB0 SetTransform).
+// Arms (the coverage build, 2026-10-22: 18/18 lines, 12/12 branches): the flag clear and the
+// LookAt with x non-zero ran; forced (SPLITTER_FORCE=R_TURN, force_ret.py, the head's columns):
+// the Z column (1,0,0) (the slerp), Z up with Y (0,1,0) (x zero, y not), (0,0,1) (both zero:
+// the slerp) and (1,0,0).
+// asmcheck: the 0xF6A 0x20 bit (0x29C4 test, 0x2AD8 clear) is mAutoDestructFlags & 0x20, the
+// host's name for the flag byte at 0xF6A; FromMatrix (0x2B64) is GetRotation()'s body.
+// @ fn_75_2994
 void CSplitterCommandModule::PortTurnUpright(float dt) {
   if ((mAutoDestructFlags & 0x20) == 0) {  // 0x29BC-0x29C8
     return;
@@ -1580,7 +1594,8 @@ void CSplitterCommandModule::PortTurnUpright(float dt) {
   if (CVector3f::GetAngleDiff(up, zColumn) <= turn &&
       (yColumn.GetX() != 0.f || yColumn.GetY() != 0.f)) {
     SetTransform(CTransform4f::LookAt(
-        pos, CVector3f(pos.GetX() + yColumn.GetX(), pos.GetY() + yColumn.GetY(), pos.GetZ()), up));
+        pos, CVector3f(pos.GetX() + yColumn.GetX(), pos.GetY() + yColumn.GetY(), pos.GetZ() + 0.f),
+        up));  // 0x2A94-0x2AA8: the z is pos.z + 0.0f (lbl_75_rodata_40)
     mAutoDestructFlags &= ~0x20;
     return;
   }
@@ -1629,6 +1644,12 @@ CVector3f CSplitterCommandModule::PortSeparationVector(CStateManager& mgr) const
 // takes the head's reservation (0x2318 fn_75_E788) and is nearer than the best so far (squared,
 // from FLT_MAX lbl_75_rodata_88; 0x2324-0x234C) releases the old pick's reservation (0x2350-0x2380
 // ObjectById, cast, fn_75_E768) and becomes the pick at 0xEFC (0x238C).
+// Arms (the coverage build, 2026-10-22: 19/19 lines, 14/14 branches): the walk, the cast's null,
+// the failed reserve (the 0521 chassis's head 0520 holds 0xC6C) ran; forced
+// (SPLITTER_FORCE=R_FIND, force_ret.py): every chassis in another area (the head's area 12), the
+// successful reserve (the chassis's 0xC6C and 0xC6E invalid), the not-nearer skip (the head's x
+// at 1e30), the pick with no old pick, and the old pick 0521 released (0xEFC = 0x521).
+// @ fn_75_2280
 void CSplitterCommandModule::PortFindChassis(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   const CVector3f pos = GetTranslation();
@@ -1642,7 +1663,8 @@ void CSplitterCommandModule::PortFindChassis(CStateManager& mgr) {
       continue;
     }
     const float distSq = (chassis->GetTranslation() - pos).MagSquared();
-    if (distSq >= best) {
+    // 0x2348 fcmpo f31, f27 + 0x234C bge: the walk skips unless distSq < best (a NaN skips).
+    if (!(distSq < best)) {
       continue;
     }
     if (CSplitterMainChassis* old =
@@ -2017,9 +2039,11 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
   }
 }
 
-// Arms: all ran; a joint that is not a collision actor and the Beam_LCTR arm are dead (the head's
-// only joint is "Skeleton_Root"); the delete's null test is the compiler's, not a retail arm.  The
-// coverage build's merged profile says 18/20 lines and 21/24 branches.
+// Arms: all ran; a joint that is not a collision actor is dead (the manager makes a collision
+// actor for its one joint), and so is a name that is not "Skeleton_Root" (that one joint is the
+// "Skeleton_Root" sphere built above); the delete's null test is the compiler's, not a retail arm.
+// The coverage build's merged profile (2026-10-22, after the name fix) says 19/20 lines and 21/24
+// branches: the three untaken are those (the cast's null, the name's mismatch, the delete's test).
 // @ fn_75_3460
 // The head's collision actor manager (0x3460-0x3674): the head's one joint sphere - the
 // "Skeleton_Root" locator (rodata 0x0) with the radius 3.0f (rodata 0x4) and the mass 1000.0f
@@ -2027,7 +2051,9 @@ void CSplitterCommandModule::PortDespawnProjectile(CStateManager& mgr) {
 // (0x35A4), the old one deleted (0x35B4) and the new one kept at 0xE58 (0x35B8). Then every
 // collision actor of the manager is walked (0x35C4-0x3644): the description's id (its 0x3C) is
 // looked up (0x35E8 ObjectById) and cast to a CCollisionActor (0x35EC); when the description's
-// name is "Beam_LCTR" (0x3614, the retail's string compare) the id goes to 0xF00 (0x3630).
+// name is "Skeleton_Root" (0x35F8-0x3604 lbl_75_rodata_8, a pointer to lbl_75_rodata_285
+// "Skeleton_Root" - the same string as the joint's name at lbl_75_rodata_0; 0x3614 fn_75_3678,
+// the string ==) the id goes to 0xF00 (0x3630). So 0xF00 holds the head's one collision actor.
 // Finally the module's own call runs (0x3654 fn_75_2CE0, the shield, ported).
 void CSplitterCommandModule::PortCreateCollisionActorManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
@@ -2046,7 +2072,7 @@ void CSplitterCommandModule::PortCreateCollisionActorManager(CStateManager& mgr)
     if (TCastToPtr< CCollisionActor >(mgr.ObjectById(id)) == nullptr) {
       continue;
     }
-    if (strcmp(desc.GetName().c_str(), "Beam_LCTR") == 0) {
+    if (strcmp(desc.GetName().c_str(), "Skeleton_Root") == 0) {  // 0x35F8-0x3628, lbl_75_rodata_8
       mSoundTargetId = id;
     }
   }
