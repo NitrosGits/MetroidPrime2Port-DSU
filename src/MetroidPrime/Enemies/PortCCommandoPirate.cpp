@@ -1222,6 +1222,10 @@ void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
 
 // fn_9_1930 (0xa8 bytes): the module's team helper - it leaves the team the commando joined
 // (fn_9_19D8). The team id is the module's own member at guest this+0xBC4.
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every arm; the "not part of the team" call
+// forced (the id written back over the quit) and the own id as the team (not a team manager).
+// @ fn_9_1930
 void CCommandoPirate::x1930_LeaveTeam(CStateManager& mgr) {
   if (xbc4_teamId == kInvalidUniqueId) {  // 0x00001950..0x0000195C
     return;
@@ -2401,6 +2405,10 @@ bool CCommandoPirate::UnderFire(CStateManager& mgr, const CTriggerData& data) co
 // 0x0000BAB8). The compare is fcmpo cr0, f1, f0 (0x0000BAC0) and the return takes cr0.LT
 // (mfcr r0 at 0x0000BAC4, srwi r3, r0, 31 at 0x0000BAC8). The constructor sets that float to
 // 1.5f (0x0000DACC), the same constant, so the test is false until something lowers it.
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): branch-free; true (+0xB60 forced 0) and false
+// answers recorded; reached only by trigcall (no shipped FSM2 state evaluates it).
+// @ fn_9_BAB4
 bool CCommandoPirate::HeardShot(CStateManager& mgr, const CTriggerData& data) const {
   return xb60_ < 1.5f;
 }
@@ -2706,12 +2714,20 @@ bool CCommandoPirate::ShouldBoost(CStateManager& mgr, const CTriggerData& data) 
 // fn_9_B1D4: the module's flag byte at guest this+0xC64 has its 0x04 bit set (extrwi r3, r0,
 // 1, 29 at 0x0000B1D8). The constructor clears that byte (0x0000E150); the module's states set
 // its bits.
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): branch-free; true and false recorded (+0xC64
+// 0x04 forced set / clear, trigcall).
+// @ fn_9_B1D4
 bool CCommandoPirate::AbortShieldCharge(CStateManager& mgr, const CTriggerData& data) const {
   return (xc64_ & 0x04) != 0;
 }
 
 // fn_9_B1C8: the module's flag byte at guest this+0xC64 has its 0x40 bit set (extrwi r3, r0,
 // 1, 25 at 0x0000B1CC).
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): branch-free; true and false recorded (+0xC64
+// 0x40 forced set / clear, trigcall).
+// @ fn_9_B1C8
 bool CCommandoPirate::IsAggressive(CStateManager& mgr, const CTriggerData& data) const {
   return (xc64_ & 0x40) != 0;
 }
@@ -2733,6 +2749,10 @@ bool CCommandoPirate::FoundJumpPoint(CStateManager& mgr, const CTriggerData& dat
 // guest this+0xBD2, 0x0000B178) is looked up (the GetCoverPoint call at 0x0000B180); when there
 // is none the trigger answers false (0x0000B184..0x0000B194), otherwise the cover point's own
 // answer (the ShouldCrouch call at 0x0000B18C).
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every arm; the cover point forced (u05c8, the
+// Swamp's first, written into +0xBD2) and none (trigcall).
+// @ fn_9_B168
 bool CCommandoPirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data) const {
   const CScriptCoverPoint* cover = GetCoverPoint(mgr, xbd2_);  // 0x0000B178..0x0000B180
   if (cover == nullptr) {                                     // 0x0000B184
@@ -2746,6 +2766,10 @@ bool CCommandoPirate::ShouldCrouch(CStateManager& mgr, const CTriggerData& data)
 // none the trigger answers false (0x0000B134..0x0000B138), otherwise the cover point's own answer
 // (the ShouldWallHang call at 0x0000B140) - the guest keeps only the non-zero case
 // (0x0000B144..0x0000B14C).
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every arm; the cover point forced (u05c8, the
+// Swamp's first, written into +0xBD2) and none (trigcall).
+// @ fn_9_B114
 bool CCommandoPirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) const {
   const CScriptCoverPoint* cover = GetCoverPoint(mgr, xbd2_);  // 0x0000B124..0x0000B130
   if (cover == nullptr) {                                     // 0x0000B134
@@ -2778,6 +2802,10 @@ bool CCommandoPirate::FoundCover(CStateManager& mgr, const CTriggerData& data) c
 // fn_9_B0B4: the float at guest this+0xB5C is at most 0.f (lbl_9_rodata_494, loaded at
 // 0x0000B0BC). The compare is fcmpo cr0, f1, f0 (0x0000B0C0) and the cror at 0x0000B0C4 makes
 // cr0's eq bit "lt or eq", so the answer is "the first is at most the second".
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): branch-free; true and false recorded (+0xB5C
+// forced -1 / 1, trigcall).
+// @ fn_9_B0B4
 bool CCommandoPirate::ShouldCoverAttack(CStateManager& mgr, const CTriggerData& data) const {
   return xb5c_ <= 0.f;
 }
@@ -2787,6 +2815,10 @@ bool CCommandoPirate::ShouldCoverAttack(CStateManager& mgr, const CTriggerData& 
 // fn_9_AFB8: the float at guest this+0xB8C against the float at this+0xB90 (both loaded at
 // 0x0000AFB8 and 0x0000AFBC). The compare is fcmpo cr0, f1, f0 (0x0000AFC0) and the cror at
 // 0x0000AFC4 makes cr0's eq bit "gt or eq", so the answer is "the first is at least the second".
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): branch-free; true and false recorded (+0xB8C /
+// +0xB90 forced both ways, trigcall).
+// @ fn_9_AFB8
 bool CCommandoPirate::AbortSeekCover(CStateManager& mgr, const CTriggerData& data) const {
   return xb8c_ >= xb90_;
 }
@@ -2797,6 +2829,10 @@ bool CCommandoPirate::AbortSeekCover(CStateManager& mgr, const CTriggerData& dat
 // against 0 at 0x0000ADD4): when the commando has a target (the id at guest this+0xBCA is not
 // kInvalidUniqueId, 0x0000ADE0..0x0000ADEC) it sets the 0x10 bit of the flag byte at +0xC64
 // (the rlwimi at 0x0000ADF8 keeps the bit at position 27, the mask 1u << (31 - 27) = 0x10).
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every arm; the invalid target on activate forced
+// (statecall Lurk 0).
+// @ fn_9_ADD4
 void CCommandoPirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;
@@ -2827,6 +2863,11 @@ void CCommandoPirate::Ambush(CStateManager& mgr, EStateMsg msg, float dt) {
 // command id 0x10 (0x0000AE58), which is the host's pas::kAS_Taunt - and, when it may, makes the
 // commando taunt (the DeliverCmd calls at 0x0000AEAC and 0x0000AF10). On deactivate (the guest's
 // message 2, 0x0000AF40) the animation state goes back to "not ready".
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every live arm (statecall Alert 0/1/2): the
+// taunt with the relaxed locomotion forced and without; the switch default is dead (6.6).
+// asmcheck's CALL ShouldRetry (0x0000AE5C) is CanIssueCommand's own call (note 6.4).
+// @ fn_9_AE04
 void CCommandoPirate::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -3046,6 +3087,10 @@ void CCommandoPirate::SetRetreatDest(CStateManager& mgr, EStateMsg msg, float dt
 // is no such point (0x0000A950..0x0000A958); the flag byte at guest this+0xC65 loses its 0x80 bit
 // (0x0000A91C..0x0000A928) and gets it back when there is a point (0x0000A93C..0x0000A948). The
 // navigation's face target id (guest this+0x718) goes to kInvalidUniqueId (0x0000A95C..0x0000A964).
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every arm; the jump point forced (the own id at
+// +0xBD0), the other messages by statecall.
+// @ fn_9_A8E8
 void CCommandoPirate::SetJumpDest(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {  // 0x0000A8F0..0x0000A900
     return;
@@ -3156,21 +3201,25 @@ void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt)
 
 // fn_9_19D8: the module's team helper, called by the destination states. The commando takes the
 // team of its area when it has none yet: the id at guest this+0xBC4 must be kInvalidUniqueId
-// (the compare at 0x00001A04), the block's flag byte at +0x15C (guest this+0x91C) must not have
-// its 0x02 bit (extrwi at 0x00001A10) and the one at +0x15D (guest this+0x91D) must not have its
-// 0x40 bit (extrwi at 0x00001A1C). The team id comes from the team AI manager (the call at
+// (the compare at 0x00001A04), and the block's flag byte at +0x15C (guest this+0x91C) with its
+// 0x02 bit (extrwi at 0x00001A10) and the one at +0x15D (guest this+0x91D) with its 0x40 bit
+// (extrwi at 0x00001A1C) must not both be set. The team id comes from the team AI manager (the call at
 // 0x00001A30) and is stored (0x00001A3C); then that manager is looked up (the ObjectById call at
 // 0x00001A60) and the commando joins it with the melee role (the JoinTeam call at 0x00001A80,
 // the roles 1, -1 and -1 - the host's kTAR_Melee, kTAR_Invalid and kTAR_Invalid).
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every live arm; the block flags 0x02 with and
+// without 0x40 forced. The failed team cast after GetAssociatedTeamId is dead: its predicate keeps
+// only ids that cast to CScriptTeamAiMgr (CScriptTeamAiMgr.cpp:33).
+// @ fn_9_19D8
 void CCommandoPirate::x19D8_JoinTeam(CStateManager& mgr) {
   if (xbc4_teamId != kInvalidUniqueId) {
     return;                                   // 0x00001A04
   }
-  if ((mData.mFlags0 & 0x02) != 0) {
-    return;                                   // 0x00001A10
-  }
-  if ((mData.mFlags1 & 0x40) != 0) {
-    return;                                   // 0x00001A1C
+  // 0x00001A10..0x00001A20: only both bits together keep the commando out of the team - the
+  // 0x02 bit clear jumps straight to the lookup (beq .L_00001A24 at 0x00001A14).
+  if ((mData.mFlags0 & 0x02) != 0 && (mData.mFlags1 & 0x40) != 0) {
+    return;
   }
   xbc4_teamId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);  // 0x00001A30, 0x00001A3C
   if (xbc4_teamId == kInvalidUniqueId) {
@@ -3237,6 +3286,11 @@ void CCommandoPirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
 // normalized separation as the move vector, a zero look direction and the weight 0.5f
 // (lbl_9_rodata_440) - the command's fields are laid out at 0x00001BA0..0x00001BB8 and delivered
 // at 0x00001BC4.
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every live arm; the other-area arm forced (the
+// own area id moved by one). The failed CPatterned cast is dead: the listening-AI list admits only
+// CPatterned (CListeningAiList::IsQualified, GameObjectLists.cpp:30).
+// @ fn_9_1A9C
 void CCommandoPirate::x1A9C_AvoidActors(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);  // 0x00001ABC
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -3520,10 +3574,11 @@ void CCommandoPirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
 // fn_9_8B70 (0x1b8 bytes): the JumpBack state - the commando steps back away from its target.
 //
 // On activate (the guest's message 0, 0x00008BA8) the animation state goes "ready" (guest
-// this+0x6B4 = 1, 0x00008BB0) and the module's helper fn_9_3CBC (the call at 0x00008BBC) has to
-// find the target: when it does not, the state ends right there (0x00008BC0..0x00008BC4). The
-// step's own target is then the actor's position plus the transform's second column (guest
-// this+0x28, 0x38 and 0x48 - the loads at 0x00008BC8..0x00008BF4), stored at guest this+0xB94.
+// this+0x6B4 = 1, 0x00008BB8) and the module's helper fn_9_3CBC (the call at 0x00008BBC) writes
+// the target's aim position into guest this+0xB94; when it finds the target that is the step's
+// target and the activate ends (0x00008BC0..0x00008BC4). Without a target the step's target is
+// the actor's position plus the transform's second column (guest this+0x28, 0x38 and 0x48 - the
+// loads at 0x00008BC8..0x00008BF4), stored at guest this+0xB94.
 //
 // On update (the guest's message 1, 0x00008BFC) the step command is issued when the animation
 // state may issue it (the CanIssueCommand call at 0x00008C08 asks for the animation state 3 =
@@ -3536,15 +3591,22 @@ void CCommandoPirate::PostWarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
 // (0x00008CD8..0x00008D04) - the host's step state faces that vector (CBSStep.cpp:36).
 //
 // On deactivate (the guest's message 2, 0x00008D0C) the animation state goes "not ready".
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every live arm; the target gone on activate
+// forced; the switch default is dead (6.6). asmcheck's CALL ShouldRetry (0x00008C08) is
+// CanIssueCommand's own call (note 6.4).
+// @ fn_9_8B70
 void CCommandoPirate::JumpBack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {  // the guest's message 0
-    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x00008BB0
-    if (!x3CBC_(mgr, xb94_, 0.f)) {  // 0x00008BBC (the target has to exist)
+    mAnimationState.SetState(CAnimationState::kAS_Ready);  // 0x00008BB8
+    // 0x00008BBC..0x00008BC4: the helper writes the target's aim position into +0xB94; when it
+    // finds the target the state is done (bne .L_00008D14 at 0x00008BC4).
+    if (x3CBC_(mgr, xb94_, 0.f)) {
       break;
     }
-    // 0x00008BC8..0x00008BF4: the jump target is the position plus the transform's second column
-    // (guest this+0x28, 0x38 and 0x48).
+    // 0x00008BC8..0x00008BF4: no target - the step target is the position plus the transform's
+    // second column (guest this+0x28, 0x38 and 0x48).
     xb94_ = GetTranslation() + GetTransform().GetForward();
     break;
   }
@@ -4371,6 +4433,10 @@ void CCommandoPirate::CoverFind(CStateManager& mgr, EStateMsg msg, float dt) {
 // byte at guest this+0xC66 has no 0x40 bit (the test at 0x0000A804), that bit is set
 // (0x0000A80C..0x0000A81C) and the module's float at guest this+0xB8C goes to zero
 // (0x0000A820).
+// Run: cp3 2026-10-22 (tools/cov/specs/commandopirate_cp3.py + tools/drivers/commandopirate_cp3.py,
+// area 59 and the Swamp's 05_swamp_timber!, gcov build-port-cov): every arm; the cover point natural (the Swamp,
+// CoverFind), the +0xC66 0x40 bit forced set, the other messages by statecall.
+// @ fn_9_A7A8
 void CCommandoPirate::SetCoverDest(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {  // 0x0000A7B0..0x0000A7C0
     return;

@@ -1942,14 +1942,35 @@ dead (6.6).
 | SetRetreatDest A97C, PathFind 9AAC, Patrol 996C | all | natural |
 | Dodge 8934 | all live | natural; default dead |
 
-Not marked yet (arm still untaken; the force each needs):
-- Lurk ADD4: the invalid-target return (2761) - force `xbca_` INVALID (the spec forces SELF, wrong).
-- Alert AE04: mState Ready with loco relaxed / Ready alone (`!` keep on update).
-- AbortShieldCharge B1D4 true (C64|0x04), IsAggressive B1C8 true (C64|0x40), AbortSeekCover AFB8
-  false (`xb8c_` < `xb90_`): answers not recorded.
-- HeardShot BAB4, ShouldCoverAttack B0B4, ShouldCrouch B168, ShouldWallHang B114: 0 calls in every
-  run; the FSM2 states that evaluate them are not reached by the drivers.
-- SetJumpDest A8E8 (point found: `xbd0_` valid), SetCoverDest A7A8 (C66 0x40 set), JumpBack 8B70
-  (x3CBC fails on activate), x19D8_JoinTeam, x1930_LeaveTeam, x1A9C_AvoidActors: partial arms.
-- The heavy bodies (ctor D904, AcceptScriptMsg CB40, CollidedWith BF44, ShieldCharge family,
-  WallHang, JumpPointFind, x3D64, x4BC0, x1F88, ...) untouched.
+Not marked yet after cp3: the heavy bodies (ctor D904, AcceptScriptMsg CB40, CollidedWith BF44,
+ShieldCharge family, WallHang, JumpPointFind, x3D64, x4BC0, x1F88, ...).
+
+## The cp3 rows (2026-10-22)
+
+Runs (all forced, gcov build-port-cov, `tools/cov/force_ret.py` + `tools/cov/specs/commandopirate_cp3.py`,
+driver `tools/drivers/commandopirate_cp3.py`): a59 (area 59, 9000 frames), sw (Swamp
+`05_swamp_timber!`, 9000), sw2/sw3 (Swamp, the driver's `cover` mode, 9000/6000). Exit 0, 0 caught /
+reach-stub each. No shipped FSM2 state evaluates HeardShot, ShouldCoverAttack, ShouldCrouch or
+ShouldWallHang in these areas, so the driver calls them with `trigcall` (forced (trigcall)).
+
+Two bugs fixed against the asm before the runs:
+- JumpBack 8B70: `bne .L_00008D14` at 0x8BC4 skips the step target when fn_9_3CBC *finds* the
+  target (its aim is already in +0xB94); the port had the test inverted.
+- x19D8_JoinTeam: `extrwi. r0,r0,1,30; beq .L_00001A24` (0x1A10/0x1A14) then
+  `extrwi. r0,r0,1,25; bne .L_00001A84` (0x1A1C/0x1A20): only the block flags 0x02 *and* 0x40
+  together keep the commando out; the port returned on either.
+
+| Body | Arms | How |
+|---|---|---|
+| HeardShot BAB4, ShouldCoverAttack B0B4, AbortSeekCover AFB8, AbortShieldCharge B1D4, IsAggressive B1C8 | branch-free, true and false | forced (trigcall + the member written both ways); SPEC ret |
+| ShouldCrouch B168, ShouldWallHang B114 | all | forced (trigcall; +0xBD2 = u05c8, the Swamp's first cover point, every other call) |
+| Lurk ADD4 | all | forced (statecall Lurk 0, target INVALID every other call) |
+| Alert AE04 | all live | statecall 0/1/2; relaxed locomotion forced every third call; default dead (6.6) |
+| SetJumpDest A8E8 | all | forced (+0xBD0 = own id); msgs 1/2 by statecall |
+| SetCoverDest A7A8 | all | cover natural (Swamp CoverFind); +0xC66 0x40 forced; msgs 1/2 by statecall |
+| JumpBack 8B70 | all live | target gone on activate forced; default dead (6.6) |
+| x19D8_JoinTeam | all live | flags 0x02 with/without 0x40 forced; cast null dead (CTeamAiPredicate, CScriptTeamAiMgr.cpp:33) |
+| x1930_LeaveTeam | all | send Deactivate; "not part" forced (id written back over QuitTeam), own id as team forced |
+| x1A9C_AvoidActors | all live | own area id +1 forced; cast null dead (CListeningAiList admits only CPatterned, GameObjectLists.cpp:30) |
+
+asmcheck: CALL ShouldRetry in AE04/8B70 is CanIssueCommand's own call (6.4).
