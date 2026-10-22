@@ -811,8 +811,9 @@ CVector3f CDarkSamus::GetOrbitPosition(const CStateManager& mgr) const {
 }
 
 // vtable slot 21 = fn_10_10210 (0x148): GetOrbitPosition's shape with the ball's aim position
-// (vtable 0x54, 0x0001036C), CPatterned::GetAimPosition (0x00010384) and the attack's aim position
-// 0xD34 (the `fcmpu` at 0x000103BC..0x000103DC; its z 0xD3C at 0x000103F0).
+// (vtable 0x54, 0x00010290), CPatterned::GetAimPosition (0x000102A8), the phazon bob (fn_10_10484
+// at 0x000102CC) and the attack's aim position 0xD34 (the `fcmpu` at 0x000102E0..0x00010300; its
+// z 0xD3C at 0x00010314).
 // @ fn_10_10210
 CVector3f CDarkSamus::GetAimPosition(const CStateManager& mgr, float dt) const {
   if (HasBoostBall() == true) {
