@@ -1143,15 +1143,17 @@ void CSplitterCommandModule::PortModuleTransform(CTransform4f& out) const {
 // position at 0x54 and the byte 0x7f (0x3044-0x3074); the id at 0xF00 is looked up (0x3088) and
 // cast to a CCollisionActor (0x308C); the manager at 0xE58, when there is one, is deactivated
 // when this actor has no chassis (0x3098-0x30C0 - the DOL's
-// CCollisionActorManager::SetActive, with the flag built by the cntlzw idiom at 0x30B4-0x30BC);
-// the state in 0xEE0 (0..2) with the flag byte 0xF6A's 0x08 set asks the collision actor for the
-// field at its 0x4 (0x30DC-0x3100) and, at zero or below, clears the state, sets the timer 0xF10
-// to the data's 0x40 and runs fn_75_2CE0 (0x3114-0x3130); a state out of range with the flag set
-// and the timer at zero or below advances the state to 1 or 2 (0x3138-0x3170) and runs
-// fn_75_2CE0 with it (0x3174-0x3188).
+// CCollisionActorManager::SetActive, with the flag built by the cntlzw idiom at 0x30B4-0x30BC).
+// With the state in 0xEE0 at 1 or 2 (0x30C8-0x30D8) the shield goes down (0x3114-0x3130: the
+// state cleared, the timer 0xF10 set to the data's 0x800 and fn_75_2CE0 with 0) unless the flag
+// byte 0xF6A's 0x08 is set (0x30E0, a clear bit branches straight to 0x3114) and the collision
+// actor's health (0x30E8-0x3100) is above zero. With any other state, the flag set and the timer
+// at zero or below the state goes to 1, or 2 after a 1 (0x3138-0x3170), and fn_75_2CE0 runs
+// with 1 (0x3174-0x3188).
+// @ fn_75_3004
 void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
   CParticleGenInfo* effect = PortGetShieldEffect();
-  if (effect != nullptr) {
+  if (effect != nullptr) {  // 0x3028 cmplwi
     // asm 0x3034-0x3044: the effect's virtual at the vtable word 0x4C is called with the
     // module's flash colour at 0xF04 - CParticleGenInfo::SetModulationColor.
     effect->SetModulationColor(mFlashColor);
@@ -1159,32 +1161,30 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
   // asm 0x3048-0x3078: the sound handle at 0xF60 is updated with the module's position (0x54)
   // and its transform's Y column (0x28, 0x38 and 0x48), the volume 0x7F.
   CSfxManager::UpdateEmitter(mSoundHandle, GetTranslation(), GetTransform().GetColumn(kDY), 0x7F);
-  CEntity* entity = mgr.ObjectById(mSoundTargetId);
-  if (entity == nullptr) {
-    return;
-  }
-  CCollisionActor* actor = TCastToPtr< CCollisionActor >(entity);
+  // 0x3088 ObjectById, 0x308C TCastToPtr (a missing object casts to null), 0x3090 mr. + beq.
+  CCollisionActor* actor = TCastToPtr< CCollisionActor >(mgr.ObjectById(mSoundTargetId));
   if (actor == nullptr) {
     return;
   }
-  if (mCollisionActorManager != nullptr) {
-    mCollisionActorManager->SetActive(mgr, mChassisId == kInvalidUniqueId);
+  if (mCollisionActorManager != nullptr) {  // 0x309C cmplwi
+    mCollisionActorManager->SetActive(mgr, mChassisId == kInvalidUniqueId);  // 0x30A4-0x30C0
   }
-  if (mCollisionState > 0 && mCollisionState < 3) {
-    if ((mAutoDestructFlags & 0x8) != 0) {
-      // 0x30E8-0x3110: the collision actor's virtual at the vtable word 0x38 is
-      // CCollisionActor::HealthInfo() and the float at its +0x4 is the health; the shield goes
-      // down when that health is zero or below.
-      if (actor->HealthInfo()->GetHP() <= 0.f) {
-        mCollisionState = 0;
-        mCountdownTimerA = mData.mResetShieldTime;
-        // 0x3124-0x3130: the retail calls fn_75_2CE0 with the flag clear (the shield goes down).
-        PortUpdateShield(mgr, false);
-      }
+  if (mCollisionState > 0 && mCollisionState < 3) {  // 0x30C8-0x30D8
+    // 0x30E0 extrwi. bit 28 (0x8) + 0x30E4 beq 0x3114: a clear bit takes the shield down at once.
+    // 0x30E8-0x3110: the collision actor's virtual at the vtable word 0x38 is
+    // CCollisionActor::HealthInfo() and the float at its +0x4 is the health; 0x3108 fcmpo,
+    // 0x310C cror eq,lt,eq, 0x3110 bne: the shield stays while the health is above zero (a NaN
+    // health keeps it).
+    if ((mAutoDestructFlags & 0x8) != 0 && !(actor->HealthInfo()->GetHP() <= 0.f)) {
+      return;
     }
-  } else if ((mAutoDestructFlags & 0x8) != 0 && mCountdownTimerA <= 0.f) {
-    mCollisionState = mPreviousCollisionState == 1 ? 2 : 1;
-    mPreviousCollisionState = mCollisionState;
+    mCollisionState = 0;                         // 0x311C
+    mCountdownTimerA = mData.mResetShieldTime;   // 0x3128-0x312C
+    // 0x3124-0x3130: the retail calls fn_75_2CE0 with the flag clear (the shield goes down).
+    PortUpdateShield(mgr, false);
+  } else if ((mAutoDestructFlags & 0x8) != 0 && mCountdownTimerA <= 0.f) {  // 0x313C, 0x3150-0x3158
+    mCollisionState = mPreviousCollisionState == 1 ? 2 : 1;  // 0x315C-0x3170
+    mPreviousCollisionState = mCollisionState;               // 0x3180-0x3184
     // 0x317C-0x3188: the retail calls fn_75_2CE0 with the flag set (a shield goes up).
     PortUpdateShield(mgr, true);
   }

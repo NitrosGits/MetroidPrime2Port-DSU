@@ -109,7 +109,9 @@ public:
   void PortReleaseDock(TUniqueId head);
   TUniqueId GetSyncId() const { return mSyncId; }
   // The retail's fn_75_E68C: the translation of the "attach_LCTR" locator (0xCC8) - where a
-  // docking head goes (the head's SeekMainChassis and SetDockingDest ask).
+  // docking head goes (the head's SeekMainChassis and SetDockingDest ask): 0xE6A8
+  // GetLctrTransform with the segment at 0xCC8, the copy's 0x44/0x54/0x64 stored (0xE6C4-0xE6CC).
+  // @ fn_75_E68C
   CVector3f PortHeadAttachPoint() const { return GetLctrTransform(mLocatorSegment).GetTranslation(); }
 
 #ifdef TARGET_PC
