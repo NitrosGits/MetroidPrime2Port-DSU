@@ -536,6 +536,16 @@ private:
   CVector3f x52BC_GetGrenadeTarget(const CStateManager& mgr, const CActor& target) const;
   void x5008_SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin, float& angle,
                                 float& speed) const;
+  // cp4: the ctor's three locked 'PART' tokens (fn_9_D904 @0x0000DC24..0x0000E080), each an
+  // optional TLockedToken<CGenDescription> (0x10 bytes, the "present" byte at +0xC) that is only
+  // filled for a valid asset id: 0xc08 the block's mShield.mExplodeEffect (guest +0x8F0),
+  // 0xc18 its mShield.mArmExplodeEffect (guest +0x90C), 0xc28 mAlwaysFF2 (guest +0x7C8).
+  rstl::optional_object< TLockedToken< CGenDescription > > xc08_explodeEffect;
+  rstl::optional_object< TLockedToken< CGenDescription > > xc18_armExplodeEffect;
+  rstl::optional_object< TLockedToken< CGenDescription > > xc28_drownEffect;
+  // The ctor's inlined pieces, split out so a forcing run can reach both arms (fn_9_D904).
+  static rstl::optional_object< TLockedToken< CGenDescription > > xD904_LockEffect(CAssetId id);
+  void xD904_SetChargeTime(float backUpSpeed);
 
 public:
   // vtable slot 0xc8 = fn_9_68, slot 0xb4 = fn_9_AC (PortCCommandoPirateCore.cpp)

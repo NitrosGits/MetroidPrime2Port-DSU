@@ -224,7 +224,8 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 // 0.1f (lbl_9_rodata_42C, 0x0000DA50) and 0.05f (lbl_9_rodata_470, 0x0000DA5C); 0x0000DA64.
 , mVisualKnowledge(uid, CSegId(), 0.1f, 0.05f)
 , mBurstFire(sBurstTable, 0)                      // 0xaf0, fn_9_D904 @0x0000DA78
-, xb7c_(0.f)                                      // 0xb7c, the melee cooldown; fn_9_662C advances it
+, xb7c_(1.f)                                      // 0xb7c, lbl_9_rodata_43C, fn_9_D904 @0x0000DAF8
+, xb80_(0.f)                                      // 0xb80, fn_9_D904 @0x0000DAFC
 , xb5c_(0.f)                                      // 0xb5c, fn_9_D904 @0x0000DABC
 , xb50_(0)                                        // 0xb50, fn_9_D904 @0x0000DA84
 , xb54_(0)                                        // 0xb54, fn_9_D904 @0x0000DA94
@@ -234,8 +235,8 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xb68_(0.f)                                      // 0xb68, a timer; fn_9_662C advances it
 , xb6c_(0.f)                                      // 0xb6c, a timer; fn_9_662C advances it
 , xb70_(0.f)                                      // 0xb70, a timer; fn_9_662C advances it
-, xb74_(0.f)                                      // 0xb74, a timer; fn_9_662C advances it
-, xb78_(0.f)                                      // 0xb78, a timer; fn_9_662C advances it
+, xb74_(data.mGrenade.mGrenadeMinAttackInterval) // 0xb74, block +0xC0, fn_9_D904 @0x0000DAEC
+, xb78_(2.f)                                      // 0xb78, lbl_9_rodata_44C, fn_9_D904 @0x0000DAF4
 , xb84_(0.f)                                      // 0xb84, a timer; fn_9_662C advances it
 , xb88_(0.f)                                      // 0xb88, the time to the waypoint
 , xb8c_(0.f)                                      // 0xb8c, fn_9_D904 @0x0000DB08
@@ -256,9 +257,14 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xbcc_(kInvalidUniqueId)                          // 0xbcc, fn_9_D904 @0x0000DBB0
 , xbce_(kInvalidUniqueId)                          // 0xbce, fn_9_D904 @0x0000DBB8
 , xbdc_(-1)                                    // 0xbdc, the dodge id; fn_9_8934 sets it
-, xbe0_(0.f)                                    // 0xbe0, the jump-back distance
-, xbe4_(0.f)                                    // 0xbe4, a distance
-, xbe8_(0.f)                                    // 0xbe8, the jump distance
+// 0xbe0/0xbe4 = 5.0f (lbl_9_rodata_468) and 0xbe8 = 1.0f (fn_9_D904 @0x0000DBF0..0x0000DBF8);
+// the animation distances at the end of the body overwrite all three.
+, xbe0_(5.f)                                    // 0xbe0, the jump-back distance
+, xbe4_(5.f)                                    // 0xbe4, a distance
+, xbe8_(1.f)                                    // 0xbe8, the jump distance
+, xbec_(0.f)                                    // 0xbec, fn_9_D904 @0x0000DBFC
+, xbf0_(CVector3f::Zero())                      // 0xbf0, fn_9_D904 @0x0000DC00..0x0000DC14
+, xc58_(0.f)                                    // 0xc58, fn_9_D904 @0x0000E0D0
 , xbd0_(kInvalidUniqueId)                          // 0xbd0, fn_9_D904 @0x0000DBC0
 , xbd2_(kInvalidUniqueId)                          // 0xbd2, fn_9_D904 @0x0000DBC8
 , xbd4_(kInvalidUniqueId)                          // 0xbd4, the cover point the actor holds
@@ -279,18 +285,63 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
 , xc54_(-1)                                       // 0xc54, fn_9_D904 @0x0000E0CC
 , xc3c_armEffect(xF58C_CreateEffect(data.mShield.mArmEffect))        // 0xc3c, fn_9_D904 @0x0000E094
 , xc40_chargeEffect(xF58C_CreateEffect(data.mShield.mChargeEffect))  // 0xc40, fn_9_D904 @0x0000E0A4
+// The three locked 'PART' tokens (fn_9_D904 @0x0000DC24..0x0000E080), each filled only for a
+// valid id: the shield's explode effect (guest +0x8F0), its arm-explode effect (+0x90C) and the
+// block's mAlwaysFF2 (+0x7C8).
+, xc08_explodeEffect(xD904_LockEffect(data.mShield.mExplodeEffect))
+, xc18_armExplodeEffect(xD904_LockEffect(data.mShield.mArmExplodeEffect))
+, xc28_drownEffect(xD904_LockEffect(data.mAlwaysFF2))
 {
-  // The retail constructor sets knock-back physics on CPatterned's own manager (@0x0000E264) to
-  // !((byte at +0x91c >> 2) & 1) - that is, to the manager's own default while the flag bit is
-  // clear - and sets the base's flag byte at +0x681. The rest - the six
-  // locked tokens, the burst fire and the three animation distances
-  // - belongs to the state machine and the render paths this milestone does not enter; the
-  // analysis note lists them.
-  KnockBackController().EnableKnockBackPhysics(true);
+  // The projectile's token is locked (0x0000E23C), the knock-back manager's burn is enabled
+  // (0x681 |= 0x10 at 0x0000E248, CKnockBackMgr +0x61 bit 0x10 = mEnableBurn), and knock-back
+  // physics is set to !(mFlags0 & 4) (extrwi/cntlzw/srwi at 0x0000E258..0x0000E260, the call at
+  // 0x0000E264).
+  mProjectileInfo.Token().Lock();
+  KnockBackController().EnableBurn(true);
+  KnockBackController().EnableKnockBackPhysics((mData.mFlags0 & 0x04) == 0);
+
+  // The seven locator segment ids (fn_9_D904 @0x0000E26C..0x0000E3D4) are read from the model's
+  // animation data, unguarded in retail. The names are the module's own rodata strings, at
+  // "StateOver" + 0x3cd and friends: "Head_1", "Mid_Launch_LCTRL", "gun_LCTR" (twice), "R_wrist",
+  // "R_elbow", "L_wrist".
+  const CAnimData* animData = GetAnimationData();
+  mLocatorHead = animData->GetLocatorSegId(rstl::string_l("Head_1"));
+  mLocatorMidLaunch = animData->GetLocatorSegId(rstl::string_l("Mid_Launch_LCTRL"));
+  mLocatorGun = animData->GetLocatorSegId(rstl::string_l("gun_LCTR"));
+  mLocatorGun2 = animData->GetLocatorSegId(rstl::string_l("gun_LCTR"));
+  mLocatorRWrist = animData->GetLocatorSegId(rstl::string_l("R_wrist"));
+  mLocatorRElbow = animData->GetLocatorSegId(rstl::string_l("R_elbow"));
+  mLocatorLWrist = animData->GetLocatorSegId(rstl::string_l("L_wrist"));
+
+  // The visual knowledge's locator becomes the head's (xab2 = xc5c, 0x0000E3EC). The host's
+  // CVisualKnowledge keeps x2_locator private with no setter, so the port rebuilds it with the
+  // same (deterministic) constructor arguments as the init list.
+  mVisualKnowledge = CVisualKnowledge(GetUniqueId(), mLocatorHead, 0.1f, 0.05f);
+
+  // The bone tracking stops at 25.0f (lbl_9_rodata_488) times the model scale's Z (0x0000E3F0..
+  // 0x0000E414).
+  const CVector3f scale = GetModelData()->GetScale();
+  mBoneTracking.SetDisableTrackingDistance(25.f * scale.GetZ());
 
   // The burst fire's own type starts at 0 (fn_9_D904 @0x0000E420), not at the -1 its constructor
   // leaves: the module's burst-fire helper fn_9_6390 gives up when the type is -1 (0x00006468).
   mBurstFire.SetBurstType(0);
+
+  // The jump distance (0x0000E4D4): the jump animation's travel distance (the state id 13 =
+  // kAS_Jump with the parms (0, 0, 0), the parm data fn_9_5D74 builds at 0x0000E49C) times the
+  // model's scale Y (the load at 0x0000E4B0). Then two step distances (fn_9_5D74 is the module's
+  // inlined CPASAnimParmData ctor): the step with parms (3, 2) times the scale's X
+  // (0x0000E4DC..0x0000E56C) and the step with parms (1, 2) times the scale's Y
+  // (0x0000E570..0x0000E61C).
+  const CPASAnimParmData jumpParm(pas::kAS_Jump, CPASAnimParm::FromEnum(0),
+                                  CPASAnimParm::FromEnum(0), CPASAnimParm::FromEnum(0));
+  xbe8_ = scale.GetY() * GetAnimationDistance(jumpParm);
+  const CPASAnimParmData sideStep(pas::kAS_Step, CPASAnimParm::FromEnum(3),
+                                  CPASAnimParm::FromEnum(2));
+  xbe4_ = scale.GetX() * GetAnimationDistance(sideStep);
+  const CPASAnimParmData backStep(pas::kAS_Step, CPASAnimParm::FromEnum(1),
+                                  CPASAnimParm::FromEnum(2));
+  xbe0_ = scale.GetY() * GetAnimationDistance(backStep);
 
   // The vulnerability at guest +0xA44 starts as the shield's charge vulnerability (fn_9_D904
   // @0x0000D9D4 copies the block's +0xF4) and ends as the actor's own vulnerability with the
@@ -298,34 +349,34 @@ CCommandoPirate::CCommandoPirate(TUniqueId uid, const rstl::string& name, const 
   // over it. That is the copy GetDamageVulnerability returns while the shield is up.
   mShieldVulnerability = CPatterned::GetDamageVulnerability()->MakeIgnoreRadius();
 
-  // The seven locator segment ids (fn_9_D904 @0x0000E26C..0x0000E3F0) are read from the model's
-  // animation data. The names are the module's own rodata strings, at "StateOver" + 0x3cd and
-  // friends: "Head_1", "Mid_Launch_LCTRL", "gun_LCTR" (twice), "R_wrist", "R_elbow", "L_wrist".
-  if (const CAnimData* animData = GetAnimationData()) {
-    mLocatorHead = animData->GetLocatorSegId(rstl::string_l("Head_1"));
-    mLocatorMidLaunch = animData->GetLocatorSegId(rstl::string_l("Mid_Launch_LCTRL"));
-    mLocatorGun = animData->GetLocatorSegId(rstl::string_l("gun_LCTR"));
-    mLocatorGun2 = animData->GetLocatorSegId(rstl::string_l("gun_LCTR"));
-    mLocatorRWrist = animData->GetLocatorSegId(rstl::string_l("R_wrist"));
-    mLocatorRElbow = animData->GetLocatorSegId(rstl::string_l("R_elbow"));
-    mLocatorLWrist = animData->GetLocatorSegId(rstl::string_l("L_wrist"));
+  // The charge time from the back-up locomotion speed (kLA_BackUp = 3, 0x0000E654).
+  xD904_SetChargeTime(BodyController()->GetBodyStateInfo().GetLocomotionSpeed(pas::kLA_BackUp));
 
-    // Two step distances (fn_9_5D74 is the module's inlined CPASAnimParmData ctor): the step
-    // with parms (3, 2) times the scale's X (0x0000E4DC..0x0000E56C) and the step with parms
-    // (1, 2) times the scale's Y (0x0000E570..0x0000E61C).
-    const CVector3f scale = GetModelData()->GetScale();
-    const CPASAnimParmData sideStep(pas::kAS_Step, CPASAnimParm::FromEnum(3),
-                                    CPASAnimParm::FromEnum(2));
-    xbe4_ = scale.GetX() * GetAnimationDistance(sideStep);
-    const CPASAnimParmData backStep(pas::kAS_Step, CPASAnimParm::FromEnum(1),
-                                    CPASAnimParm::FromEnum(2));
-    xbe0_ = scale.GetY() * GetAnimationDistance(backStep);
-    // The jump distance (0x0000E4D4): the jump animation's travel distance (the state id 13 =
-    // kAS_Jump with the parms (0, 0, 0), the parm data fn_9_5D74 builds at 0x0000E49C) times the
-    // model's scale Y (the model's scale's second float, the load at 0x0000E4B0).
-    const CPASAnimParmData jumpParm(pas::kAS_Jump, CPASAnimParm::FromEnum(0),
-                                    CPASAnimParm::FromEnum(0), CPASAnimParm::FromEnum(0));
-    xbe8_ = scale.GetY() * GetAnimationDistance(jumpParm);
+  // The path search's character size from the bounding box: radius = max.x - min.x (0x9fc,
+  // 0x0000E6A0), height = max.z - min.z (0x9f8, 0x0000E6B8).
+  const CAABox bb = GetBoundingBox();
+  mPathFindSearch.SetCharacterRadius(bb.GetMaxPoint().GetX() - bb.GetMinPoint().GetX());
+  mPathFindSearch.SetCharacterHeight(bb.GetMaxPoint().GetZ() - bb.GetMinPoint().GetZ());
+}
+
+// fn_9_D904's three token blocks (0x0000DC24..0x0000E080): each tests the id against -1 and only
+// then builds a TLockedToken from gpSimplePool->GetObj('PART', id). Run: every actor's ctor; the
+// invalid-id arm forced (commandopirate_cp4.py).
+rstl::optional_object< TLockedToken< CGenDescription > >
+CCommandoPirate::xD904_LockEffect(CAssetId id) {
+  if (id == kInvalidAssetId) {
+    return rstl::optional_object< TLockedToken< CGenDescription > >();
+  }
+  return rstl::optional_object< TLockedToken< CGenDescription > >(
+      TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
+}
+
+// fn_9_D904 0x0000E658..0x0000E67C: xb90 = 4.0f (lbl_9_rodata_480) * (mSearchRadius (guest
+// +0x814) / speed) only when speed > 0.0f (lbl_9_rodata_494; fcmpo/ble, so NaN skips). Run: every
+// actor's ctor; the skip arm forced (speed 0, commandopirate_cp4.py).
+void CCommandoPirate::xD904_SetChargeTime(float backUpSpeed) {
+  if (backUpSpeed > 0.f) {
+    xb90_ = 4.f * (mData.mSearchRadius / backUpSpeed);
   }
 }
 
@@ -1002,9 +1053,9 @@ void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
 // | ALRT | kSM_Alert | the base's flag byte (0x0000D088) |
 // | ZERO | kSM_SetToZero | the module's warp-out helper (0x0000CEF8) |
 //
-// Two of the module helpers this case calls are not ported yet (fn_9_2D0C, the knock-back, and
-// fn_9_3900, the jump-back velocity); they are named stand-ins. The third (fn_9_3A5C, the
-// hit-object damage) is ported as x3A5C_HitObject.
+// The module helpers this case calls are ported: fn_9_2D0C (the knock-back) as x2D0C_KnockBack,
+// fn_9_3900 (the jump-back velocity) as x3900_JumpBackVelocity and fn_9_3A5C (the hit-object
+// damage) as x3A5C_HitObject.
 void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   // r31: the entity's active bit as it was before the base's handler (0x0000CB60..0x0000CB80) -
@@ -1040,12 +1091,10 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
     break;
   }
   case kSM_Delete: {                                       // "XDEL", 0x0000CCEC
-    if (mCollisionShield.get() != nullptr) {               // 0x0000CCEC..0x0000CCF4
-      mCollisionShield->Destroy(mgr);
-    }
-    if (mCollisionBlade.get() != nullptr) {                // 0x0000CCF8..0x0000CD00
-      mCollisionBlade->Destroy(mgr);
-    }
+    // No null tests in retail: the two managers are destroyed directly (0x0000CCEC..0x0000CCF4,
+    // 0x0000CCF8..0x0000CD00); kSM_Create always builds both first.
+    mCollisionShield->Destroy(mgr);
+    mCollisionBlade->Destroy(mgr);
     ReleaseCoverPoint(mgr, xbd2_, true);                   // guest this+0xbd2, 0x0000CD14
     mgr.DeleteObjectRequest(xbd8_);                        // guest this+0xbd8, 0x0000CD28
     x1930_LeaveTeam(mgr);                                  // 0x0000CD34
@@ -1139,6 +1188,8 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
         const CDamageVulnerability vulnerability = *actor->GetDamageVulnerability();
         if (const CWeapon* weapon = TCastToPtr< CWeapon >(
                 mgr.ObjectById(actor->GetLastTouchedObject()))) {  // 0x0000D1B0..0x0000D1EC
+          // The DOL's one-argument WeaponHits__20CDamageVulnerabilityCFRC11CWeaponMode
+          // (0x0000D204) is the host's WeaponHurts(mode).
           if (vulnerability.WeaponHurts(
                   weapon->GetCurrentDamageInfo().GetWeaponMode())) {  // 0x0000D204
             x2D0C_KnockBack(mgr, msg);                       // 0x0000D224
@@ -2060,7 +2111,9 @@ void CCommandoPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList
     }
     const float steep =
         CVector3f::Dot(GetTransform().GetColumn(kDZ), info.GetNormalLeft());  // 0x0000C158..0x0000C16C
-    if (steep < 0.707f) {                                         // rodata_4E8, 0x0000C170..0x0000C174
+    // fcmpo/bge at 0x0000C170..0x0000C174: only steep >= 0.707f falls through, so NaN takes
+    // this arm.
+    if (!(steep >= 0.707f)) {                                     // rodata_4E8, 0x0000C170..0x0000C174
       xc64_ |= 0x02;                                              // 0x0000C178..0x0000C184
       xbb8_ = info.GetNormalLeft();                               // 0x0000C184..0x0000C19C
       return;
