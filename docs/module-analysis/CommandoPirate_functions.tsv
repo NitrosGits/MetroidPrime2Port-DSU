@@ -36,9 +36,9 @@ offset	size	fn	kind	class	port	note
 0x120C	0xFC	fn_9_120C	host-copy	H	not-port	
 0x1308	0x318	fn_9_1308	host-copy	H	not-port	
 0x1620	0x310	fn_9_1620	host-copy	H	not-port	
-0x1930	0xA8	fn_9_1930	behaviour	B	ported	
-0x19D8	0xC4	fn_9_19D8	behaviour	B	not-port	
-0x1A9C	0x170	fn_9_1A9C	behaviour	B	not-port	
+0x1930	0xA8	fn_9_1930	behaviour	B	marked	
+0x19D8	0xC4	fn_9_19D8	behaviour	B	marked	
+0x1A9C	0x170	fn_9_1A9C	behaviour	B	marked	
 0x1C0C	0x2EC	fn_9_1C0C	behaviour	B	marked	shield effects driver; cov: every guest arm
 0x1EF8	0x90	fn_9_1EF8	behaviour	B	not-port	
 0x1F88	0xC0	fn_9_1F88	behaviour	B	not-port	
@@ -58,9 +58,9 @@ offset	size	fn	kind	class	port	note
 0x3678	0x288	fn_9_3678	behaviour	B	marked	
 0x3900	0x15C	fn_9_3900	behaviour	B	marked	
 0x3A5C	0x260	fn_9_3A5C	behaviour	B	not-port	
-0x3CBC	0xA8	fn_9_3CBC	host-copy	H	not-port	
+0x3CBC	0xA8	fn_9_3CBC	host-copy	H	marked	
 0x3D64	0xB8	fn_9_3D64	host-copy	H	not-port	
-0x3E1C	0x324	fn_9_3E1C	behaviour	B	not-port	
+0x3E1C	0x324	fn_9_3E1C	behaviour	B	marked	
 0x4140	0x48	fn_9_4140	behaviour	B	not-port	
 0x4188	0xB8	fn_9_4188	behaviour	B	not-port	
 0x4240	0x94	fn_9_4240	behaviour	B	not-port	
@@ -119,17 +119,17 @@ offset	size	fn	kind	class	port	note
 0x7040	0x5C	fn_9_7040	host-copy	H	not-port	
 0x709C	0x1F0	fn_9_709C	fsm-trigger	B	marked	CoverFind
 0x728C	0xCC	fn_9_728C	fsm-trigger	B	marked	WallDetach
-0x7358	0x310	fn_9_7358	fsm-trigger	B	ported	WallHang
+0x7358	0x310	fn_9_7358	fsm-trigger	B	marked	WallHang
 0x7668	0x5C	fn_9_7668	host-copy	H	not-port	
 0x76C4	0x60	fn_9_76C4	host-copy	H	not-port	
 0x7724	0x148	fn_9_7724	fsm-trigger	B	marked	Crouch
 0x786C	0x22C	fn_9_786C	fsm-trigger	B	marked	RestoreOrientation
-0x7A98	0x590	fn_9_7A98	fsm-trigger	B	ported	ScriptedShieldCharge
+0x7A98	0x590	fn_9_7A98	fsm-trigger	B	marked	ScriptedShieldCharge
 0x8028	0x68C	fn_9_8028	fsm-trigger	B	marked	ShieldCharge
 0x86B4	0x280	fn_9_86B4	fsm-trigger	B	marked	ArmShield
-0x8934	0x1E0	fn_9_8934	fsm-trigger	B	ported	Dodge
+0x8934	0x1E0	fn_9_8934	fsm-trigger	B	marked	Dodge
 0x8B14	0x5C	fn_9_8B14	host-copy	H	not-port	
-0x8B70	0x1B8	fn_9_8B70	fsm-trigger	B	ported	JumpBack
+0x8B70	0x1B8	fn_9_8B70	fsm-trigger	B	marked	JumpBack
 0x8D28	0xC8	fn_9_8D28	fsm-trigger	B	marked	PostWarpOut
 0x8DF0	0x218	fn_9_8DF0	fsm-trigger	B	marked	WarpOut
 0x9008	0x5C	fn_9_9008	host-copy	H	not-port	
@@ -137,8 +137,8 @@ offset	size	fn	kind	class	port	note
 0x958C	0x3C	fn_9_958C	host-copy	H	not-port	
 0x95C8	0x54	fn_9_95C8	host-copy	H	not-port	
 0x961C	0x350	fn_9_961C	fsm-trigger	B	ported	FollowAttackPattern
-0x996C	0x140	fn_9_996C	behaviour	B	not-port	
-0x9AAC	0x108	fn_9_9AAC	fsm-trigger	B	ported	PathFind
+0x996C	0x140	fn_9_996C	behaviour	B	marked	
+0x9AAC	0x108	fn_9_9AAC	fsm-trigger	B	marked	PathFind
 0x9BB4	0x1FC	fn_9_9BB4	fsm-trigger	B	ported	JetBoost
 0x9DB0	0x9C	fn_9_9DB0	data-thunk	T	not-port	
 0x9E4C	0x5C	fn_9_9E4C	host-copy	H	not-port	
@@ -149,54 +149,54 @@ offset	size	fn	kind	class	port	note
 0xA460	0x5C	fn_9_A460	host-copy	H	not-port	
 0xA4BC	0x290	fn_9_A4BC	fsm-trigger	B	marked	MeleeAttack; cov: every guest arm
 0xA74C	0x5C	fn_9_A74C	host-copy	H	not-port	
-0xA7A8	0x90	fn_9_A7A8	fsm-trigger	B	ported	SetCoverDest
+0xA7A8	0x90	fn_9_A7A8	fsm-trigger	B	marked	SetCoverDest
 0xA838	0xB0	fn_9_A838	fsm-trigger	B	marked	SetPathMeshDest
-0xA8E8	0x94	fn_9_A8E8	fsm-trigger	B	ported	SetJumpDest
-0xA97C	0xA4	fn_9_A97C	fsm-trigger	B	ported	SetRetreatDest
-0xAA20	0xE8	fn_9_AA20	fsm-state	B	ported	SetTargetDest
-0xAB08	0xD4	fn_9_AB08	fsm-trigger	B	ported	SelectTarget
-0xABDC	0x1C4	fn_9_ABDC	fsm-trigger	B	ported	FaceTarget
+0xA8E8	0x94	fn_9_A8E8	fsm-trigger	B	marked	SetJumpDest
+0xA97C	0xA4	fn_9_A97C	fsm-trigger	B	marked	SetRetreatDest
+0xAA20	0xE8	fn_9_AA20	fsm-state	B	marked	SetTargetDest
+0xAB08	0xD4	fn_9_AB08	fsm-trigger	B	marked	SelectTarget
+0xABDC	0x1C4	fn_9_ABDC	fsm-trigger	B	marked	FaceTarget
 0xADA0	0x34	fn_9_ADA0	fsm-trigger	B	marked	Ambush
-0xADD4	0x30	fn_9_ADD4	data-thunk	T	not-port	
-0xAE04	0x158	fn_9_AE04	fsm-trigger	B	ported	Alert
+0xADD4	0x30	fn_9_ADD4	data-thunk	T	marked	
+0xAE04	0x158	fn_9_AE04	fsm-trigger	B	marked	Alert
 0xAF5C	0x5C	fn_9_AF5C	host-copy	H	not-port	
-0xAFB8	0x1C	fn_9_AFB8	fsm-trigger	T	ported	AbortSeekCover
+0xAFB8	0x1C	fn_9_AFB8	fsm-trigger	T	marked	AbortSeekCover
 0xAFD4	0xE0	fn_9_AFD4	fsm-trigger	B	marked	CoverBlown
-0xB0B4	0x20	fn_9_B0B4	fsm-trigger	T	ported	ShouldCoverAttack
-0xB0D4	0x20	fn_9_B0D4	fsm-trigger	T	ported	FoundCover
-0xB0F4	0x20	fn_9_B0F4	fsm-trigger	T	ported	ShouldCover
-0xB114	0x54	fn_9_B114	fsm-trigger	B	ported	ShouldWallHang
-0xB168	0x40	fn_9_B168	fsm-trigger	B	ported	ShouldCrouch
+0xB0B4	0x20	fn_9_B0B4	fsm-trigger	T	marked	ShouldCoverAttack
+0xB0D4	0x20	fn_9_B0D4	fsm-trigger	T	marked	FoundCover
+0xB0F4	0x20	fn_9_B0F4	fsm-trigger	T	marked	ShouldCover
+0xB114	0x54	fn_9_B114	fsm-trigger	B	marked	ShouldWallHang
+0xB168	0x40	fn_9_B168	fsm-trigger	B	marked	ShouldCrouch
 0xB1A8	0x20	fn_9_B1A8	fsm-trigger	T	marked	FoundJumpPoint
-0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	ported	IsAggressive
-0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	ported	AbortShieldCharge
+0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	marked	IsAggressive
+0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	marked	AbortShieldCharge
 0xB1E0	0x70	fn_9_B1E0	fsm-trigger	B	marked	ShouldBoost
 0xB250	0x410	fn_9_B250	fsm-trigger	B	ported	ShouldShieldCharge
-0xB660	0x30	fn_9_B660	fsm-trigger	T	ported	ShouldArmShield
-0xB690	0xDC	fn_9_B690	fsm-trigger	H	ported	ShouldDodge
-0xB76C	0x90	fn_9_B76C	fsm-trigger	H	ported	TooClose
+0xB660	0x30	fn_9_B660	fsm-trigger	T	marked	ShouldArmShield
+0xB690	0xDC	fn_9_B690	fsm-trigger	H	marked	ShouldDodge
+0xB76C	0x90	fn_9_B76C	fsm-trigger	H	marked	TooClose
 0xB7FC	0x1C	fn_9_B7FC	fsm-trigger	B	marked	AttackPatternOver
 0xB818	0xE8	fn_9_B818	fsm-trigger	B	marked	IsFacingTarget
-0xB900	0x58	fn_9_B900	fsm-trigger	B	ported	HasAttackPattern
+0xB900	0x58	fn_9_B900	fsm-trigger	B	marked	HasAttackPattern
 0xB958	0x38	fn_9_B958	fsm-trigger	B	marked	IsOffPath
-0xB990	0x48	fn_9_B990	fsm-trigger	T	ported	PathOver
-0xB9D8	0x48	fn_9_B9D8	fsm-trigger	T	ported	PathShagged
-0xBA20	0x58	fn_9_BA20	fsm-trigger	B	ported	HasNewTarget
+0xB990	0x48	fn_9_B990	fsm-trigger	T	marked	PathOver
+0xB9D8	0x48	fn_9_B9D8	fsm-trigger	T	marked	PathShagged
+0xBA20	0x58	fn_9_BA20	fsm-trigger	B	marked	HasNewTarget
 0xBA78	0x3C	fn_9_BA78	fsm-trigger	H	marked	HasTarget
-0xBAB4	0x1C	fn_9_BAB4	fsm-trigger	T	ported	HeardShot
+0xBAB4	0x1C	fn_9_BAB4	fsm-trigger	T	marked	HeardShot
 0xBAD0	0x1C	fn_9_BAD0	fsm-trigger	T	marked	UnderFire
 0xBAEC	0xC	fn_9_BAEC	fsm-trigger	T	marked	HasLineOfSight
 0xBAF8	0xC	fn_9_BAF8	fsm-trigger	T	marked	BreakAmbush
 0xBB04	0xC	fn_9_BB04	fsm-trigger	T	marked	ShouldAmbush
-0xBB10	0x6C	fn_9_BB10	fsm-trigger	B	ported	ShouldJumpBack
-0xBB7C	0x4C	fn_9_BB7C	fsm-trigger	T	ported	ShouldRetreat
-0xBBC8	0xF0	fn_9_BBC8	fsm-trigger	B	ported	ShouldFireEGrenade
-0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	H	ported	ShouldMeleeAttack
-0xBD98	0x34	fn_9_BD98	fsm-trigger	T	ported	ShouldWarpIn
+0xBB10	0x6C	fn_9_BB10	fsm-trigger	B	marked	ShouldJumpBack
+0xBB7C	0x4C	fn_9_BB7C	fsm-trigger	T	marked	ShouldRetreat
+0xBBC8	0xF0	fn_9_BBC8	fsm-trigger	B	marked	ShouldFireEGrenade
+0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	H	marked	ShouldMeleeAttack
+0xBD98	0x34	fn_9_BD98	fsm-trigger	T	marked	ShouldWarpIn
 0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	marked	StateOver
 0xBDE0	0x6C	fn_9_BDE0	vtable-override	B	marked	
-0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	ported	
-0xBF44	0x2B0	fn_9_BF44	vtable-override	B	ported	shield collision
+0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	marked	
+0xBF44	0x2B0	fn_9_BF44	vtable-override	B	marked	shield collision
 0xC1F4	0xD8	fn_9_C1F4	vtable-override	B	marked	
 0xC2CC	0x34	fn_9_C2CC	vtable-override	T	marked	
 0xC300	0x1FC	fn_9_C300	vtable-override	B	marked	
@@ -205,9 +205,9 @@ offset	size	fn	kind	class	port	note
 0xC598	0x13C	fn_9_C598	vtable-override	B	marked	Render; cov: every arm
 0xC6D4	0xC4	fn_9_C6D4	vtable-override	B	marked	
 0xC798	0x1AC	fn_9_C798	vtable-override	B	marked	anim events; cov: every arm (types forced)
-0xC944	0x184	fn_9_C944	vtable-override	B	ported	Think; CVisualKnowledge::Update stand-in
+0xC944	0x184	fn_9_C944	vtable-override	B	marked	Think; CVisualKnowledge::Update stand-in
 0xCAC8	0x78	fn_9_CAC8	vtable-override	B	marked	
-0xCB40	0x754	fn_9_CB40	vtable-override	B	ported	AcceptScriptMsg; not every case run
+0xCB40	0x754	fn_9_CB40	vtable-override	B	marked	AcceptScriptMsg; not every case run
 0xD294	0x5C	fn_9_D294	behaviour	B	not-port	
 0xD2F0	0x54	fn_9_D2F0	host-copy	H	not-port	
 0xD344	0x130	fn_9_D344	host-copy	H	not-port	
@@ -216,7 +216,7 @@ offset	size	fn	kind	class	port	note
 0xD634	0x1E4	fn_9_D634	behaviour	B	not-port	
 0xD818	0x94	fn_9_D818	host-copy	H	not-port	
 0xD8AC	0x58	fn_9_D8AC	behaviour	B	not-port	
-0xD904	0xDCC	fn_9_D904	behaviour	B	not-port	
+0xD904	0xDCC	fn_9_D904	behaviour	B	marked	
 0xE6D0	0x5C	fn_9_E6D0	behaviour	B	not-port	
 0xE72C	0xC0	fn_9_E72C	behaviour	B	not-port	
 0xE7EC	0xC	fn_9_E7EC	data-thunk	T	not-port	
