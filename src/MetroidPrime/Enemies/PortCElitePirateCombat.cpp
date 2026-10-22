@@ -154,7 +154,7 @@ void CElitePirate::ShieldUp(CStateManager& mgr, EStateMsg msg, float dt) {
       mShieldPolarity = 0;
       break;
     case 2:
-      mShieldPolarity = mgr.Random()->Range(0.f, 1.f) >= 0.5f ? 0 : 1;
+      mShieldPolarity = mgr.Random()->Range(0.f, 1.f) < 0.5f ? 1 : 0;
       break;
     }
     const CAssetId effect = mShieldPolarity == 1 ? mData.mLightShield : mData.mDarkShield;

@@ -951,7 +951,7 @@ void CElitePirate::AddToRenderer(const CStateManager& mgr) const {
 // @ fn_15_8294
 // Register 1 flashes white when the shield is hit and fades to black over a second.
 void CElitePirate::Render(const CStateManager& mgr) const {
-  if (mShieldHitTime + 1.f <= mTime) {
+  if (!(mShieldHitTime + 1.f > mTime)) {
     gpRender->SetGXRegister1Color(CColor::Black());
   } else {
     gpRender->SetGXRegister1Color(
@@ -1407,9 +1407,9 @@ bool CElitePirate::DonePursuing(CStateManager& mgr, const CTriggerData& data) co
     }
   }
   const CPlayer* player = mgr.GetPlayer(0);
-  if (mLastPushTime <= mPursueStartTime) {
+  if (!(mLastPushTime > mPursueStartTime)) {
     const CVector3f d = player->GetAimPosition(mgr, 0.f) - GetTranslation();
-    if (mData.mMaxMeleeRange * mData.mMaxMeleeRange * 4.f <= DistSq(d, CVector3f::Zero())) {
+    if (!(DistSq(d, CVector3f::Zero()) < mData.mMaxMeleeRange * mData.mMaxMeleeRange * 4.f)) {
       if (mTime < mPursueStartTime + 2.5f) {
         if (ClearLineOfSight(mgr, data) || IsOnJumpHint(mgr)) {
           return true;
@@ -1528,7 +1528,7 @@ bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
   if (xc10_01_) {
     return false;
   }
-  if (x81c_ != CVector3f::Zero() && DistSq(x81c_, GetTranslation()) <= 25.f) {
+  if (x81c_ != CVector3f::Zero() && !(DistSq(x81c_, GetTranslation()) > 25.f)) {
     return false;
   }
   return true;
@@ -1561,9 +1561,10 @@ bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) cons
   }
   const CVector3f aim = target->GetAimPosition(mgr, 0.f); // 0x66C0 bctrl +0x54, f1 = 0.0f
   const float distSq = DistSq(aim, GetTranslation());    // 0x66DC..0x6704 vs 0x54/0x58/0x5c
-  // 0x6708 `ble` (0x988) and 0x6718 `bge` (0x98c) to the false return: a NaN distance goes on
-  if (distSq <= mData.mMinRocketRange * mData.mMinRocketRange ||
-      distSq >= mData.mMaxRocketRange * mData.mMaxRocketRange) {
+  // 0x6708 `ble` (0x988) and 0x6718 `bge` (0x98c) to the false return: both are taken on a
+  // NaN, so a NaN distance returns false
+  if (!(mData.mMinRocketRange * mData.mMinRocketRange < distSq &&
+        distSq < mData.mMaxRocketRange * mData.mMaxRocketRange)) {
     return false;
   }
   // 0x6740 vtable +0x1a4 = ShouldTurn (with a zeroed CTriggerData at 0x10; ShouldTurn ignores it)
@@ -1632,8 +1633,8 @@ bool CElitePirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&) co
   }
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(xa26_));
   if (target == nullptr ||
-      DistSq(target->GetTranslation(), GetTranslation()) >
-          mData.mMaxMeleeRange * mData.mMaxMeleeRange) {
+      !(DistSq(target->GetTranslation(), GetTranslation()) <=
+        mData.mMaxMeleeRange * mData.mMaxMeleeRange)) {
     return false;
   }
   return AngleToTarget(*this, *target) < kTurnAngle;
@@ -1641,7 +1642,7 @@ bool CElitePirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&) co
 
 // @ fn_15_63BC
 bool CElitePirate::ShouldShockwave(CStateManager& mgr, const CTriggerData&) const {
-  if (mTimer > 0.f) {
+  if (!(mTimer <= 0.f)) {
     return false;
   }
   for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
@@ -1651,7 +1652,7 @@ bool CElitePirate::ShouldShockwave(CStateManager& mgr, const CTriggerData&) cons
     }
     const CVector3f aim = player->GetAimPosition(mgr, 0.f);
     const float distSq = DistSq(aim, GetTranslation());
-    if (distSq > mData.mMaxShockwaveRange * mData.mMaxShockwaveRange) {
+    if (!(distSq <= mData.mMaxShockwaveRange * mData.mMaxShockwaveRange)) {
       continue;
     }
     const bool morphed =
@@ -1729,7 +1730,7 @@ void CElitePirate::PickAttackType(CStateManager& mgr, float) {
   }
   if (GetPlayerHintType(mgr) == kHintJumpDown) {
     mRocketPattern = 1;
-  } else if (mgr.Random()->Range(0.f, 1.f) >= 0.8f) {
+  } else if (!(mgr.Random()->Range(0.f, 1.f) < 0.8f)) {
     mRocketPattern = mDefaultRocketPattern;
   } else {
     mRocketPattern = mDefaultRocketPattern == 0 ? 1 : 0;
