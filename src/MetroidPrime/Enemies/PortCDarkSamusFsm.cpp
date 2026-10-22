@@ -3672,8 +3672,8 @@ void CDarkSamus::Start(CStateManager& mgr, EStateMsg msg, float dt) {
 // (`cmplwi r0, 0x0` at 0x0000CD20, 0x0000CD3C), zeroes both handles (0x0000CD5C, 0x0000CD68),
 // restores the speed (0x0000CD70) and runs the failsafe (0x0000CD74).
 // Arms: forced calls: Activate; Update with the beam on and a sound, then off with none;
-// Deactivate with both handles set (stand-ins: the rooftop's sweep sounds give null handles),
-// then zero; message 3 (ds45).
+// Deactivate with both handles set (to ids StopSound ignores: the rooftop's sweep sounds give
+// null handles), then zero; message 3 (ds45).
 // @ fn_10_CA0C
 void CDarkSamus::SweepBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("SweepBeam", msg);
