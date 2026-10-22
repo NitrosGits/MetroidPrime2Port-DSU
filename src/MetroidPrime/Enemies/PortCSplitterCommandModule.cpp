@@ -496,6 +496,8 @@ bool CSplitterCommandModule::IsDocked(CStateManager&, const CTriggerData&) const
 
 // fn_75_3B20 (the head's RaiseShields code, 0x3B20-0x3B34): the flag byte at 0xF6A gets its
 // 0x08 bit set (0x3B28 rlwimi with the word's bit 28 - the byte's 0x08) and the body ends.
+// Arms: all ran; the coverage build's merged profile says 3/3 lines and no branches.
+// @ fn_75_3B20
 void CSplitterCommandModule::RaiseShields(CStateManager&, float) {
   mAutoDestructFlags |= 0x8;
 }
@@ -598,6 +600,10 @@ void CSplitterCommandModule::PortMoveTo(const CVector3f& dest, float dt) {
 // floats at 0x28, 0x38 and 0x48 - 0x5548-0x5550) into the vector at 0xF24-0xF2C
 // (0x5554-0x555C), which is the vector the retail's constructor fills from the editor
 // properties (fn_75_6B08) and the head's other states overwrite.
+// Arms: all ran - the update and the activate message take the body, the deactivate and the
+// messages above it return; the coverage build's merged profile says 3/3 lines and 2/2 branches,
+// ALL-ARMS.
+// @ fn_75_5538
 void CSplitterCommandModule::Idle(CStateManager&, EStateMsg msg, float) {
   if (msg != kStateMsg_Update && msg != kStateMsg_Activate) {
     return;
@@ -885,6 +891,10 @@ bool CSplitterCommandModule::ShouldLaserSweep(CStateManager&, const CTriggerData
 // for the two constants: kSS_Attack (0x4154544B) and kSM_None (0xFFFFFFFF). The message
 // argument is the one a connection's own message must differ from, so "none" reaches every
 // connection but the ones that ask for no message.
+// Arms: all ran - the synced id is taken or the player's, the effect states are updated and the
+// state 'ATTK' goes out; the coverage build's merged profile says 6/6 lines and 2/2 branches,
+// ALL-ARMS.
+// @ fn_75_3E60
 void CSplitterCommandModule::SelectTarget(CStateManager& mgr, float) {
   if (mSyncedId == kInvalidUniqueId) {
     mSyncedId = mgr.GetPlayer(0)->GetUniqueId();
@@ -1451,6 +1461,10 @@ void CSplitterCommandModule::PortSpawnBeamEffect(CStateManager& mgr) {
 // either the IsScanning trigger (fn_75_58E8, 0x16A8) turns "AlertEye" on or both stay off
 // (0x1718-0x1774). The two names are the rodata strings at 0x18 ("LaserMuzzle") and 0x1C (the
 // "AlertEye" blob at 0x2C0).
+// Arms: all ran - the shield state 1 and 2 turn both effects off, the laser-pulse projectile
+// turns LaserMuzzle on, the synced id turns AlertEye on and the IsScanning trigger is the last
+// way to it; the coverage build's merged profile says 9/9 lines and 10/10 branches, ALL-ARMS.
+// @ fn_75_1578
 void CSplitterCommandModule::PortUpdateEffectStates(CStateManager& mgr) {
   bool alertEye = false;
   bool laserMuzzle = false;

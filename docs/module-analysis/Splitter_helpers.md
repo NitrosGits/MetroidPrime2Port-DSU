@@ -463,6 +463,28 @@ and the forced runs (28 runs, `tools/cov/specs/splitter_helpers_force.py`):
 | `fn_75_3460` (the collision actor manager) | right: the "Skeleton_Root" joint (the radius 3.0f, rodata 0x4, asm 0x3510; the mass 1000.0f, rodata 0x94, asm 0x34FC), the new manager (asm 0x356C) and its ctor (asm 0x35A4), the walk (asm 0x35CC) with the id at the description's 0x3C (asm 0x35D8), the "Beam_LCTR" compare (asm 0x3614) and the final call with the flag clear (asm 0x3654) | 18/20 lines, 21/24 branches - the untaken ones are the joint that is not a collision actor and the "Beam_LCTR" name (dead: the head's only joint is "Skeleton_Root") and the delete's null test (the compiler's) |
 | `fn_75_6B08` (the head's constructor) | right: the EPatternedAI 0x39 (asm 0x6B68), the CPathFindSearch (the null area, the flags 3, the patterned info's pathfinding index, the two radii 1.0f from lbl_75_rodata_34, asm 0x6BA0-0x6BB0), the two CProjectileInfos (asm 0x6BC4 and 0x6BD8), the flag byte 0x92 (asm 0x6D44-0x6DA0), the locator "Beam_LCTR" (asm 0x6DB0), the material filter (1 << 59 and 1 << 47 | 1 << 33, asm 0x6DEC-0x6E40) and the dodge distance (asm 0x6E60-0x6EF8) | 22/23 lines, 27/27 branches, **ALL-ARMS** |
 
+### 3.12 Six more bodies: the diff and the marks
+
+The next six unmarked bodies (the FSM table's states and codes first), each read against the REL's
+asm.  All six match the port's bodies, so no code changed; each is now marked with the coverage
+build's merged profile (the natural run and the forced runs of the earlier slices):
+
+| body | the diff | the profile |
+|---|---|---|
+| `fn_75_5538` (the head's Idle state) | the message is compared with 2 (asm 0x5538) and with 0 (asm 0x5540), so the body runs for the update and the activate message; the transform's Y column (0x28, 0x38, 0x48 - asm 0x5548-0x5550) goes to 0xF24-0xF2C (asm 0x5554-0x555C) | 3/3 lines, 2/2 branches, **ALL-ARMS** |
+| `fn_75_3E60` (the head's SelectTarget code) | the id at 0xEFE against kInvalidUniqueId (asm 0x3E84-0x3E90) takes the state manager's player at 0x14FC (asm 0x3E94) and its id (asm 0x3E9C); then the effect states (asm 0x3EA8) and the state 'ATTK' (0x4154544B, asm 0x3EB0-0x3EC0) with the head's own id (asm 0x3EAC) and the message -1 (asm 0x3EC8) | 6/6 lines, 2/2 branches, **ALL-ARMS** |
+| `fn_75_1578` (the head's effect-state update) | the shield state at 0xEDC (asm 0x1590) 1 or 2 turns both effects off (asm 0x15AC-0x160C); the laser-pulse projectile's id at 0xF02 (asm 0x1614) turns LaserMuzzle on (asm 0x1628-0x1688); the synced id at 0xEFE (asm 0x168C) turns AlertEye on (asm 0x16B4-0x1714) and the IsScanning trigger (asm 0x16A8) is the last way to it | 9/9 lines, 10/10 branches, **ALL-ARMS** |
+| `fn_75_DC08` (the chassis's PathFind state) | the blend mode 1 (asm 0xDC50-0xDC58) and the steering speed range (asm 0xDC5C-0xDC6C); the 0xD40 0x20 bit (asm 0xDC70-0xDC78) runs the path find (asm 0xDC90) and the 0x10 bit is cleared (asm 0xDC94-0xDCA0); the update runs it again (asm 0xDCBC) and every message but the deactivate (asm 0xDCC0) runs the path update | 13/13 lines, 10/10 branches, **ALL-ARMS** |
+| `fn_75_DCFC` (the chassis's Patrol state) | the waypoint navigation's own patrol (asm 0xDD20-0xDD28); the activate message (asm 0xDD2C) gets the blend mode (asm 0xDD4C) and the speed range (asm 0xDD50-0xDD60); the update message (asm 0xDD30) looks the two waypoint ids up (0x6C2 and 0x6C0 - asm 0xDD68 and 0xDD84), and with both there the path update (asm 0xDDB8) and the face vector copy (asm 0xDDC0-0xDDC8) run | 14/14 lines, 6/6 branches, **ALL-ARMS** |
+| `fn_75_3B20` (the head's RaiseShields code) | the flag byte at 0xF6A gets its 0x08 bit set (asm 0x3B28 `rlwimi`) and the body ends | 3/3 lines, no branches |
+
+The bodies left unmarked in this batch and why: `fn_75_3EEC` (the head's dock to the chassis -
+the run only reaches the null chassis lookup, so the sound's and the accept's arms are untaken),
+`fn_75_2CE0` (the head's shield - 5/34 lines, the state machine's own arms), `fn_75_2BE0` (the
+shield effect - 2/4 lines), `fn_75_9AF8` (the collision vulnerability - 7/8 lines) and
+`fn_75_986C` (the chassis's path update - 25/25 lines, 12/14 branches: the separation's z is
+never above zero and the switch's default is the forward step, which returns earlier).
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
