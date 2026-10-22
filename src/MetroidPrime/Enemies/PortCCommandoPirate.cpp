@@ -3240,7 +3240,7 @@ void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt)
     return;                                     // 0x00009F44..0x00009F50
   }
   xbd0_ = kInvalidUniqueId;                     // 0x00009F64
-  if (xb78_ < 2.f) {                            // 0x00009F6C..0x00009F74
+  if (!(xb78_ >= 2.f)) {                        // cror ge, 0x00009F6C..0x00009F74 (NaN returns)
     return;
   }
   if (!x3CBC_(mgr, xb94_, 0.f)) {                // 0x00009F84..0x00009F8C
@@ -3264,7 +3264,7 @@ void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt)
       continue;
     }
     const float distSq = (waypoint->GetTranslation() - xb94_).MagSquared();  // 0x0000A05C..0x0000A088
-    if (distSq >= best) {                       // 0x0000A08C..0x0000A090
+    if (!(distSq < best)) {                     // bge, 0x0000A08C..0x0000A090 (NaN skips)
       continue;
     }
     if (mPathFindSearch.PathExists(GetTranslation(), jumpPoint->GetTranslation()) !=
