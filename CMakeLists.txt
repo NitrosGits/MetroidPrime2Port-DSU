@@ -467,6 +467,10 @@ if(AURORA_SDL3_TARGET)
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
     target_compile_definitions(mp_port_audio PRIVATE TARGET_PC AURORA
         MUSY_TARGET=MUSY_TARGET_PC)
+    if(MP_PORT_COVERAGE)
+        # port_console.cpp's `covdump` (platform/port_coverage.cpp).
+        target_compile_definitions(mp_port_audio PRIVATE MP_PORT_COVERAGE=1)
+    endif()
     mp_signed_char(mp_port_audio)
     # aurora::core carries ImGui's include directory, which the F1 overlay builds against.
     target_link_libraries(mp_port_audio PRIVATE ${AURORA_SDL3_TARGET} aurora::core)

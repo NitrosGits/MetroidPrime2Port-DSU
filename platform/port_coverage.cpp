@@ -32,6 +32,7 @@
 // where the gcc headers are not on the include path (the header is a C header of the compiler's
 // own include directory, which is not a default include directory of a C++ compile).
 extern "C" void __gcov_dump(void);
+extern "C" void __gcov_reset(void);
 
 namespace {
 
@@ -58,6 +59,14 @@ void PortCoverageSignalHandler(int sig) {
 } // namespace
 
 extern "C" void PortCoverageDump() { PortCoverageDumpOnce(); }
+
+extern "C" void PortCoverageFlush() {
+  if (gPortCoverageDumped != 0) {
+    return;
+  }
+  __gcov_dump();
+  __gcov_reset();
+}
 
 extern "C" void PortCoverageInstall() {
   std::signal(SIGTERM, PortCoverageSignalHandler);

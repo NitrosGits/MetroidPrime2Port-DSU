@@ -70,6 +70,8 @@ Deactivate) outside the machine, from the actor's whole state table: states the 
 `grapple <id> [d]` (ids from `objs grapple`) wakes a grapple point, stands the player d (8) units
 from it and holds L: with `give grappleBeam 1` the player locks on and grapples (`status`: orbit 5).
 A bare `tp` + `press l` misses: the lock-on press needs the orbit candidate lists, rebuilt every 20 updates.
+`scan <id> [d] [updates]` twice ~30 updates apart (scan visor + L, then tp d (40) units, forced orbit lock) scans an actor; `scan` alone prints progress (game state 1 = scan display up).
+Ids may be `e<editor id>` (unique ids are reused across layer loads); `covdump` writes a coverage build's gcov counters mid-run (runs that hang in shutdown keep them).
 
 ## Area regression sweep (63 Temple Grounds areas, 4 shards, START-free)
 

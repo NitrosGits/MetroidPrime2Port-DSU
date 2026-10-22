@@ -392,7 +392,7 @@ behind (`fn_63_84C` 1, `fn_63_1BE8` 6), so the six below are the ones a run can 
 | `fn_63_F6C` | **marked** | the base actor is found (4849 calls); the other arm (no base actor) is a guard the game's flow cannot reach: the hull's connections are set at the area load, before the camera ever asks for the turret's transform |
 | `fn_63_1070` | **marked** | branch-free: the guest's `LookAt(position, position + (forward.x, forward.y, forward.z + 0.0), Up)` - the z term is `lbl_63_rodata_8` = 0.0, so the port's `position.GetZ() + 0.f` is retail's; 2425 calls |
 | `fn_63_840` | **marked** | branch-free (`lhz 0x19A`): 2304 calls |
-| `fn_63_1134` | **unmarked** (section 21.1) | every arm the game's flow can produce ran: the reload timer (61), the "Whole Body" animation block (3), the shot (3), the pitch below zero (60) and above (2420), and the inverted-Y arm (2303, the game's invert-stick option on). The arms left are the two null guards, the "not active" arm (the DOL only calls `ProcessInput` while the turret state is 3) and the `|difference| > 1` clamp (the turn axes are mutually exclusive, so the difference cannot exceed 1) - retail cannot reach them either.  The slice of section 21.1 found one more: the fire test's *false* arm (the shot skipped while the reload timer is positive) is live in retail and no run reaches it yet |
+| `fn_63_1134` | **marked** (the reload arm came back in section 21.1) | every arm the game's flow can produce ran: the reload timer (61), the "Whole Body" animation block (3), the shot (3), the pitch below zero (60) and above (2420), and the inverted-Y arm (2303, the game's invert-stick option on). The arms left are the two null guards, the "not active" arm (the DOL only calls `ProcessInput` while the turret state is 3) and the `|difference| > 1` clamp (the turn axes are mutually exclusive, so the difference cannot exceed 1) - retail cannot reach them either.  The slice of section 21.1 found one more: the fire test's *false* arm (the shot skipped while the reload timer is positive) is live in retail and no run reaches it yet |
 | `fn_63_2D68` | **fixed, not marked** | three behaviour differences fixed (below); the damage-flash arm (0x2E9C) needs a `kSM_Damage` message, and the port's damage path only sends that message to the object that was damaged (`CStateManager::ApplyDamage`), never to the turret script object - the arm is unreachable in the port, and covering it would need a forced `send` |
 
 ### 13.4 The three differences fn_63_2D68 had
@@ -672,8 +672,8 @@ Three classes, applied by rule so the table can be audited.
 |---|---|---|---|
 | H host copy | 26 | 0x874 (2,164) | 0 |
 | T dead or table-only | 13 | 0x528 (1,320) | 0 |
-| B module behaviour | 20 | 0x2C78 (11,384) | 19 |
-| **total** | **59** | **0x3A14 (14,868)** | **19** |
+| B module behaviour | 20 | 0x2C78 (11,384) | 20 |
+| **total** | **59** | **0x3A14 (14,868)** | **20** |
 
 (Two functions changed class in the slice of section 20: `fn_63_0` was a table entry (T) and
 `fn_63_70` a host copy (H); both are the module's own behaviour (B) now, because the port writes
@@ -733,7 +733,7 @@ function's name appears either in a `bl`, in a table, in the linker's own tables
 | `fn_63_F6C` | 0xB4 | B | the PMF table `lbl_63_data_10`: the DOL calls it | yes |
 | `fn_63_1020` | 0x50 | H | the global string's destructor (registered by `fn_63_376C` at 0x379C) | - |
 | `fn_63_1070` | 0xC4 | B | the PMF table `lbl_63_data_04`: the DOL calls it | yes |
-| `fn_63_1134` | 0x32C | B | the PMF table `lbl_63_data_28`: the DOL calls it | no (section 21.1) |
+| `fn_63_1134` | 0x32C | B | the PMF table `lbl_63_data_28`: the DOL calls it | yes |
 | `fn_63_1460` | 0x54 | B | `fn_63_1B70` calls it (0x1BC8) | yes |
 | `fn_63_14B4` | 0x54 | B | `fn_63_1BE8` calls it (0x1FF0) | yes |
 | `fn_63_1508` | 0xA8 | B | `fn_63_84C` calls it (0x870) | yes |
@@ -766,10 +766,10 @@ function's name appears either in a `bl`, in a table, in the linker's own tables
 | `ModuleDestructors` | 0x4C | H | the REL linker's `_dtors` walker | - |
 | `ModuleConstructors` | 0x4C | H | the REL linker's `_ctors` walker | - |
 
-**The unmarked B list** (the B functions the port does not mark): `fn_63_1134` (the input path) -
-its body is retail's and it ran, but the arm "the shot is skipped while the reload timer is still
-positive" is not covered yet (section 21.1).  The other 19 B functions carry a
-`// @ fn_63_<hexoff>` marker in `src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp`.
+**The unmarked B list** (the B functions the port does not mark): none.  All 20 B functions carry
+a `// @ fn_63_<hexoff>` marker in `src/MetroidPrime/ScriptObjects/PortCScriptPlayerTurret.cpp`.
+(`fn_63_1134` lost its marker in the slice of section 21 and got it back in the same slice, once
+the compiler coverage showed the reload arm's two sides.)
 
 ### 16.3 The count check
 
@@ -991,7 +991,7 @@ Both bodies are branch-free, so both are ALL-ARMS.
 
 ## 21. The slice of 2026-10-21 (night): the audit's findings
 
-### 21.1 The fire test (fn_63_1134) - the marker is gone
+### 21.1 The fire test (fn_63_1134) - the marker is back
 
 The guest's fire test is the reload timer against zero: `lfs f1, 0x1b8` (0x12AC), `fcmpo cr0, f1,
 f0` (0x12B4) and `cror eq, lt, eq` (0x12B8) - *less than or equal*, not *equal*.  The port's `== 0.f`
@@ -999,19 +999,23 @@ never fired a second time, because the timer is decremented by the frame time (0
 input + 0) and therefore counts past zero.  Port's a19f25ae8 has the fix (`mUnknown1B8 <= 0.f`,
 the port line carries the address) and this branch took it.
 
-**The marker is removed.**  The rule (section 15) is that every live arm has to have run, and the
-arm *the reload timer is still positive* - the shot is skipped - is live in retail (a tap during the
-reload).  The re-run could not reach it: the driver presses A twice (3000 updates = 50 s of game
-time apart, far more than the fire rate) and the gdb coverage shows
+**The arm** - *the reload timer is still positive, the shot is skipped* - is live in retail (a tap
+during the reload), and the rule (section 15) is that every live arm has to have run.  It needs a
+**second press edge** while the timer runs, and the console's `press` *holds* the button, so a held
+button has no second press event: the driver releases it between the two presses
+(`stick 0 0 1` holds no button, which releases the A) and presses again straight away (`press A 1`,
+one update each, so the gap is a few updates - short enough to be inside the fire rate).
 
-    1134_fire_pressed   400 hits   (the press test's line, evaluated every update)
-    1134_reload_test      1 hits   (the reload test's line: the press branch was taken ONCE)
-    84C_sp_sound          1 hits   (the shot ran once)
+**The compiler coverage** (`-DMP_PORT_COVERAGE=ON`, `tools/cov/gcov_report.py <build> <gcov dir>
+--module ScriptPlayerTurret`) of that run shows the arm's two sides taken: in
+`CScriptPlayerTurret::ProcessInput` the press test (line 914) and the reload test (line 916) have
+**no untaken arc** - the condition was true once (the first press, the timer was 0, the shot ran:
+`FireTurretShot` 22/25 lines) and false once (the second press, the timer was still positive, the
+shot was skipped).  The function's other untaken arcs are the unreachable ones (the two null
+guards at 887, the "not in control" arm at 892, the animation block at 899-903 and the turn-axis
+clamps at 929-953), which retail cannot reach either.
 
-so the *second* console press did not produce a second press edge - the port's virtual pad (the
-console's `press` holds the button) and the player's control mapper, not the module's code, decide
-that.  The body is retail's and it ran; the arm is not covered, so the marker goes until a run can
-produce the second edge.
+So the marker is back: `fn_63_1134` is marked again.
 
 ### 21.2 The audit's two unchecked LOWs
 

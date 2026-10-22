@@ -1,0 +1,11 @@
+# DigitalGuardian area 53: fn_14_A6A8's "OPEN" (0x4F50454E) when the beacon is already up
+# (0x1268 == 1: the cmpwi at 0xAA4C skips the case). The beacon rises only in the Crippled state
+# (fn_14_7CB4's Update runs fn_14_2CC4), reaching 1.0 after 60 updates; the second OPEN comes later.
+@f30 layer 3
+@f60 layer 11
+@f160 send e00350060 Activate; send e0035000f Activate
+@f200 send e00350060 0x4F50454E
+@f220 fsm e00350060 CrippledReaction
+@f400 obj e00350060
+@f420 send e00350060 0x4F50454E
+@f440 covdump
