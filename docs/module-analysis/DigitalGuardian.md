@@ -1720,3 +1720,28 @@ All three ALL-ARMS in one run (dg23_r3, caught/reach-stub 0) and marked. Open: a
 head hardly moved toward the platform in 450 frames (MoveInOneFrameOR on the flyer; SeekAttackPosition
 uses the same call) - unexplained, not chased. `damage <head> 50 bomb` does not hurt the head (hp
 150 -> 150); BombedReaction comes from the bomb pit's path, not reached naturally here.
+
+## 2026-10-22: the head's platform, stage-3 and dynamic-collision codes (dg24); gcov runs dg24_r3 + dg24_f2 + dg24_f3
+
+- SetPlatformPosition 153D0, Stage3Start 149F8, EnableDynamicCollision 14828 and
+  DisableDynamicCollision 14664 are ported and marked. All runs: `build-port-cov`, area
+  `1baa96c2,09_cliff_temple_dark`, `--fast --frames 400`, driver `tools/cov/specs/digitalguardian_dg24.con`
+  (codecalls); forcing spec `tools/cov/specs/digitalguardian_dg24_force.py`. 0 caught/reach-stub.
+- fn_14_13318 fix: the colliders' HealthInfo +4 (0x136A8) is mHealth, not the knockback resistance.
+  Before it the balls started at HP 0 and 14828 never re-activated them; with it r3 shows u0572/u0573
+  active after Enable.
+- Stage3Start: retail's safe arm reads the direction from sp+0x30, which the body never writes (the
+  column is at sp+0x3C); the port uses the waypoint's Y column.
+- DestroyActiveSplitters 14C24 stays a stand-in: it needs the command module's fn_75_5A54 (port
+  `CSplitterCommandModule::PortAutoDestruct`, private) and the chassis's fn_75_E660 (if alive and
+  0xD41 bit 0x01 clear: set it, 0xD20 = time), which the Splitter module does not have.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 153D0 | platform / none | codecall before/after `codecall SelectRetreatPlatform` | ran |
+| 149F8 | waypoint / none | codecall; `send e00350272 Delete` + codecall | ran |
+| 149F8 | column unsafe | forced (loc 2359: dir zeroed) | ran |
+| 14828 | platform / none; root; balls HP > 0 | codecalls | ran |
+| 14828 | ball HP <= 0 | forced (loc 2385: ball mHealth 0 from the 5th visit) | ran |
+| 14828/14664 | no root / no balls | `send u0574/u0573/u0572 Delete` + codecalls | ran |
+| 14828/14664 | 0xD70 null | forced (nulled at entry, restored at the filter line) | ran |

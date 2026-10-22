@@ -2338,6 +2338,7 @@ DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
 
 // fn_14_153D0: the attack position (0xFEC) is the head's translation, or the retreat platform's
 // (0x1038; ObjectById at 0x1540C, TCastToPtr<CScriptPlatform> at 0x15410, null test 0x15418).
+// @ fn_14_153D0
 void CDigitalGuardianHead::SetPlatformPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation(); // 0x153E4..0x15400
   if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
@@ -2351,6 +2352,9 @@ void CDigitalGuardianHead::SetPlatformPosition(CStateManager& mgr, float dt) {
 // LookAt with the up vector (0x14B2C), SetTransform (0x14B38). Combat locomotion either way (li 3,
 // 0x14B40). Retail's safe arm reads the direction from sp+0x30, which nothing in the body writes
 // (the column was stored at sp+0x3C): the port uses the waypoint's column, the evident intent.
+// The unsafe arm is forced (the area-53 waypoint 0x00350272 is orthonormal); the no-waypoint arm
+// ran with that waypoint deleted.
+// @ fn_14_149F8
 void CDigitalGuardianHead::Stage3Start(CStateManager& mgr, float dt) {
   const TUniqueId id =
       FindConnectedObject_if(mgr, kSS_InternalState6, kSM_Follow, CWaypointPredicate());
@@ -2371,7 +2375,10 @@ void CDigitalGuardianHead::Stage3Start(CStateManager& mgr, float dt) {
 // cmpw/blt at 0x14960) with health (GetHealthInfo, vtable 0x3C; HP at +4 > 0.0, fcmpo/ble at
 // 0x14934) is activated; the manager is updated (dt 0.0, li 1 = kUO_WorldSpace, 0x14980). The
 // head's filter excludes the player (exclude word 0x8 |= 1, bit 32, ori at 0x149A8), its shadow
-// is off (0x149D4) and the damage colour is skDamageColor (0x149E0).
+// is off (0x149D4) and the damage colour is skDamageColor (0x149E0). Forced: the dead ball (HP 0)
+// and no manager (0xD70 null; only fn_14_13318 on XCRT writes it, before any Think, and Think
+// updates it unchecked). No root/balls ran with the colliders deleted.
+// @ fn_14_14828
 void CDigitalGuardianHead::EnableDynamicCollision(CStateManager& mgr, float dt) {
   if (TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_)) != nullptr) {
     mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), x1038_, kSM_Activate)); // 0x148A8
@@ -2403,7 +2410,8 @@ void CDigitalGuardianHead::EnableDynamicCollision(CStateManager& mgr, float dt) 
 // deactivated (li 0 at 0x1475C); the manager is updated (dt 0.0, li 1 = kUO_WorldSpace, 0x14798).
 // The head's filter stops excluding the player (exclude word 0x8 &= ~1, bit 32, li -2/and at
 // 0x147B0/0x147C8), its shadow is on (0x147F8) and the damage colour is
-// skHitsWithoutDamageColor (0x80418FEC, 0x14804).
+// skHitsWithoutDamageColor (0x80418FEC, 0x14804). Forced: no manager (as fn_14_14828).
+// @ fn_14_14664
 void CDigitalGuardianHead::DisableDynamicCollision(CStateManager& mgr, float dt) {
   mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), x1038_, kSM_Deactivate));
   mgr.GetPlayer(0)->GetMorphBall()->SetDamageTimer(2.f);
