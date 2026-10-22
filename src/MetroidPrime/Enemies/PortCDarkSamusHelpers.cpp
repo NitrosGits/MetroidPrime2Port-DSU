@@ -1015,6 +1015,10 @@ void CrossProduct(CVector3f& out, const CVector3f& a, const CVector3f& b) {
 // colour Black and the fade 0.0f (lbl_10_rodata_7C) with the bit 0x80 clear (0x000042C4);
 // fn_10_3BC4 takes the fade and the colour and sets the bit 0x80 (the `rlwimi` at 0x00003EC4).
 // Both end with the default animation set looping (0x00003F40 / 0x00004340) and EnableLooping.
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): both ctors (the
+// fn_10_9E00 0xD14 key 1 and 0, the 0.5 forced on the first spawn in run 3).
+// @ fn_10_3FD8
+// @ fn_10_3BC4
 CDarkSamusBoostBall::CDarkSamusBoostBall(TUniqueId uid, TAreaId area, const CTransform4f& xf,
                                          const CModelData& model, int defaultAnim,
                                          const CAABox& bounds, ushort hitSfx,
@@ -1046,14 +1050,23 @@ CDarkSamusBoostBall::CDarkSamusBoostBall(TUniqueId uid, TAreaId area, const CTra
 
 // fn_10_2E64 (0x00002E64, 0x98 bytes): the collision manager is deleted (0x00002E9C), then the
 // members and the base.
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): 18 hits, no
+// branch.
+// @ fn_10_2E64
 CDarkSamusBoostBall::~CDarkSamusBoostBall() { delete mCollisionManager; }
 
 // fn_10_2EFC (0x00002EFC, 8 bytes): the float at 0x314 (`lfs f1, 0x314(r3)`), the damage the
 // ball's collision actor took (fn_10_3998's kSM_Damage arm).
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): read once per
+// damaged roll (50 in run 3, 3000 in run 4).
+// @ fn_10_2EFC
 float CDarkSamusBoostBall::GetDamageTaken() const { return mDamageTaken; }
 
-// fn_10_2F04 (0x00002F04, 0xC bytes): the bit 0x40 of the byte 0x318 (`extrwi r3, r0, 1, 25` at
-// 0x00002F08: bit 25 = 1u << 6), set by fn_10_3998's kSM_Damage arm.
+// fn_10_2F04 (0x00002F04, 0xC bytes): the bit 0x40 of the byte 0x318 (the `lbz r0, 0x318(r3)`
+// at 0x00002F04, then `extrwi r3, r0, 1, 25` at 0x00002F08: bit 25 = 1u << 6), set by
+// fn_10_3998's kSM_Damage arm.
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): ret 0 and ret 1.
+// @ fn_10_2F04
 bool CDarkSamusBoostBall::HasBeenDamaged() const { return mDamaged; }
 
 // fn_10_2F10 (0x00002F10, 0xF8 bytes): the touch damage. Nothing while the cooldown 0x310 is above
@@ -1061,6 +1074,9 @@ bool CDarkSamusBoostBall::HasBeenDamaged() const { return mDamaged; }
 // +0x4, AddEmitter at 0x00002F60), the damage info 0x2F4 from the ball to the player (mgr+0x14FC)
 // with the include list kMT_Solid (lbl_10_data_E0 = 0x3B) and type 3 (kFT_IncludeExclude), and
 // the cooldown becomes 1.0f (lbl_10_rodata_80, 0x00002FF0).
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): the cooldown key 1
+// and 0 (the ball rolled into the player).
+// @ fn_10_2F10
 void CDarkSamusBoostBall::ApplyTouchDamage(CStateManager& mgr) {
   if (mHitCooldown > 0.f) { // 0x00002F3C
     return;
@@ -1074,13 +1090,15 @@ void CDarkSamusBoostBall::ApplyTouchDamage(CStateManager& mgr) {
   mHitCooldown = 1.f;                 // 0x00002FF0
 }
 
-// fn_10_3008 (0x00003008, 0x16C bytes): with the bit 0x80 of 0x318 (`extrwi r0, r0, 1, 24`,
-// `beq` at 0x00003034) the silhouette pass: the screen to the spare buffer (CopyScreenTex(3, true,
-// mpSpareBuffer, 4 = GX_TF_RGB565, false)), the destination alpha on at 0xFF, the model matrix the
-// transform times the model's scale (+0x60), the base's Render, then the renderer's silhouette at
-// the fade 0x2EC with the colour 0x2E8, no texture and (0.0f, 0.0f, 0.0f, White)
-// (lbl_10_rodata_7C). The base's Render runs again after it, with or without the pass
-// (0x0000314C).
+// fn_10_3008 (0x00003008, 0x16C bytes): the silhouette pass runs with the bit 0x80 of 0x318
+// (`extrwi r0, r0, 1, 24` at 0x0000302C, `bne` at 0x00003034); the pass: the screen to the spare
+// buffer (CopyScreenTex(3, true, mpSpareBuffer, 4 = GX_TF_RGB565, false)), the destination alpha on
+// at 0xFF, the model matrix the transform times the model's scale (+0x60), the base's Render, then
+// the renderer's silhouette at the fade 0x2EC with the colour 0x2E8, no texture and (0.0f, 0.0f,
+// 0.0f, White) (lbl_10_rodata_7C). The base's Render runs again after it, with or without the pass
+// (0x0000314C). Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): the
+// silhouette key 0 and 1.
+// @ fn_10_3008
 void CDarkSamusBoostBall::Render(const CStateManager& mgr) const {
   if (mSilhouette) { // 0x00003034
     CCubeRenderer* render = gpRender;
@@ -1101,6 +1119,9 @@ void CDarkSamusBoostBall::Render(const CStateManager& mgr) const {
 // fn_10_3174 (0x00003174, 0x70 bytes): with the bit 0x80 of 0x318 and the combat visor
 // (GetActiveVisor == 0) the renderer's phazon suit mask texture is allocated; then the base's
 // PreRender.
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): no silhouette, the
+// silhouette with the combat visor and with the scan one (run 5: 167 hits, 79 allocations).
+// @ fn_10_3174
 void CDarkSamusBoostBall::PreRender(CStateManager& mgr) {
   if (mSilhouette && mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Combat) {
     gpRender->AllocatePhazonSuitMaskTexture();
@@ -1110,7 +1131,7 @@ void CDarkSamusBoostBall::PreRender(CStateManager& mgr) {
 
 // fn_10_31E4 (0x000031E4, 0x304 bytes): the ball's collision actor. Its vulnerability is the
 // reflect one (ImmuneRicochetVulnerability) with the charged and the combo vulnerability of the
-// four beams set to (1.0f, kE_Normal, false) (`cmpwi r29, 0x4` at 0x00003270). One sphere
+// four beams set to (1.0f, kE_Normal, false) (`cmpwi r28, 0x4` at 0x00003270). One sphere
 // (reserve 1) at the locator "Skeleton_Root" with the radius 2.3f (lbl_10_rodata_84) and the mass
 // 100000.0f (lbl_10_rodata_88); the manager is owned by the ball (0x0000333C) and replaces 0x354.
 // The actor's knockback resistance and health are 100000.0f (+0x8 / +0x4, 0x000033E0), it takes
@@ -1118,13 +1139,15 @@ void CDarkSamusBoostBall::PreRender(CStateManager& mgr) {
 // transform's second column (0x28/0x38/0x48); the manager is set active (0x00003434) and the
 // actor's filter excludes kMT_Platform as well (`lis r0, 0x2` OR'd into the exclude list's high
 // word at 0x00003464, 1 << 49).
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): one per ball, no
+// branch but the loop.
+// @ fn_10_31E4
 void CDarkSamusBoostBall::CreateCollisionActors(CStateManager& mgr) {
   CDamageVulnerability vuln(CDamageVulnerability::ReflectVulnerabilty());
+  const CWeaponTypeVulnerability normal(1.f, CWeaponTypeVulnerability::kE_Normal, false);
   for (int i = 0; i < 4; ++i) { // 0x00003270
-    vuln.SetChargedVulnerability(i, CWeaponTypeVulnerability(1.f, CWeaponTypeVulnerability::kE_Normal,
-                                                             false));
-    vuln.SetComboVulnerability(i, CWeaponTypeVulnerability(1.f, CWeaponTypeVulnerability::kE_Normal,
-                                                           false));
+    vuln.SetChargedVulnerability(i, normal);
+    vuln.SetComboVulnerability(i, normal);
   }
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(1);
@@ -1156,6 +1179,9 @@ void CDarkSamusBoostBall::CreateCollisionActors(CStateManager& mgr) {
 // one (0x354 null, 0x00003B3C); the manager updates in object space (0), the animation advances at
 // twice the rate (lbl_10_rodata_94 = 2.0f) and the hit cooldown 0x310 counts down to 0.0f (`bge`
 // at 0x00003B94).
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): the manager null
+// and set, the cooldown above 0 and clamped.
+// @ fn_10_3B08
 void CDarkSamusBoostBall::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
   if (mCollisionManager == nullptr) { // 0x00003B3C
@@ -1175,6 +1201,12 @@ void CDarkSamusBoostBall::Think(float dt, CStateManager& mgr) {
 // kSM_Damage (0x000039D0) sets the bit 0x40 of 0x318 (0x00003A80) and, for a collision actor
 // sender, adds 100000.0f (lbl_10_rodata_88) minus its health (vtable 0x3C, +0x4) to 0x314
 // (0x00003AD4). The base's AcceptScriptMsg follows every message (0x00003AE4).
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): kSM_Delete with
+// the manager and without (forced once: FORCE "3998 delete null"), kSM_HitObject from the player's
+// touch, from another toucher and from no sender (`send u0702 HitObject`), kSM_Damage from the
+// collision actor (`damage u0703 <n> darkburst`) and from no sender (`send u0702 Damage`), other
+// messages.
+// @ fn_10_3998
 void CDarkSamusBoostBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Delete: // 0x000039E0
@@ -1185,7 +1217,8 @@ void CDarkSamusBoostBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
     }
     break;
   case kSM_HitObject: // 0x000039F4
-    if (CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(msg.GetSenderId()))) {
+    if (CCollisionActor* colAct =
+            TCastToPtr< CCollisionActor >(mgr.ObjectById(msg.GetSenderId()))) {
       if (colAct->GetLastTouchedObject() == mgr.GetPlayer(0)->GetUniqueId()) { // 0x00003A60
         ApplyTouchDamage(mgr); // fn_10_2F10, 0x00003A70
       }
@@ -1193,7 +1226,8 @@ void CDarkSamusBoostBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
     break;
   case kSM_Damage: // 0x000039D0
     mDamaged = true; // 0x00003A80
-    if (CCollisionActor* colAct = TCastToPtr< CCollisionActor >(mgr.ObjectById(msg.GetSenderId()))) {
+    if (CCollisionActor* colAct =
+            TCastToPtr< CCollisionActor >(mgr.ObjectById(msg.GetSenderId()))) {
       mDamageTaken += 100000.f - colAct->GetHealthInfo()->GetHP(); // 0x00003AD4 (vtable 0x3C)
     }
     break;
@@ -1205,10 +1239,14 @@ void CDarkSamusBoostBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& 
 
 // fn_10_3934 (0x00003934, 0x64 bytes) / fn_10_38D0 (0x000038D0, 0x64 bytes): the base's orbit /
 // aim position raised by 0.8f (lbl_10_rodata_90) in z.
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): no branch.
+// @ fn_10_3934
 CVector3f CDarkSamusBoostBall::GetOrbitPosition(const CStateManager& mgr) const {
   return CPhysicsActor::GetOrbitPosition(mgr) + CVector3f(0.f, 0.f, 0.8f);
 }
 
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): no branch.
+// @ fn_10_38D0
 CVector3f CDarkSamusBoostBall::GetAimPosition(const CStateManager& mgr, float dt) const {
   return CPhysicsActor::GetAimPosition(mgr, dt) + CVector3f(0.f, 0.f, 0.8f);
 }
@@ -1223,6 +1261,9 @@ CVector3f CDarkSamusBoostBall::GetAimPosition(const CStateManager& mgr, float dt
 // the ctor fn_10_3FD8 (`bne` at 0x00009ED0), else fn_10_3BC4 with the fade 0.5f
 // (lbl_10_rodata_330) and fn_10_181E0's colour. Then lighting on (0x0000A024), AddObject
 // (0x0000A030) and the swooshes fn_10_9B24 (0x0000A03C).
+// Run (dsball, tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con): the 0xD14 key 1
+// and 0.
+// @ fn_10_9E00
 void CDarkSamus::SpawnBoostBall(CStateManager& mgr) {
   DeleteBoostBall(mgr); // fn_10_9AC4, 0x00009E24
   StopBoostBallParticles(); // fn_10_99B8, 0x00009E30

@@ -1852,7 +1852,10 @@ void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
 // fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
 // (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
 // Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm but the dead `default` (EStateMsg has three
-// values).
+// values). dsball (tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con) with the real
+// ball: fn_10_2F04 ret 0 and 1 (`damage u0703 <n> darkburst` on the ball's collision actor), the
+// damage min both ways (50 below the health - 1: 1500 -> 1450; 3000 above it: 1500 -> 1).
+// @ fn_10_A3B0
 void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallRoll", msg);
   UpdateCurrentAttack(0x20000, mgr, msg);                  // 0x0000A3F4

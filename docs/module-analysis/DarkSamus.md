@@ -2028,3 +2028,29 @@ platform casts and the dash arms of CollidedWith.
   spawns CDarkSamusBoostBallPortStub, not the retail ball. fn_10_2EFC is not called (the port
   reads mGuest314 directly).
 - Spec gotcha: gdb counters must not be named after registers (`$pc` advanced the PC).
+
+## Slice dsball (2026-10-22): the retail boost ball
+
+- `CDarkSamusBoostBall` (`include/MetroidPrime/Enemies/CDarkSamusBoostBall.hpp`, bodies in
+  `PortCDarkSamusHelpers.cpp`; vtable lbl_10_data_104) replaces CDarkSamusBoostBallPortStub. 0x318
+  bits: 0x80 = `mSilhouette`, 0x40 = `mDamaged`; 0x314 = damage taken; the CRELFileToken at 0x34c is
+  omitted (the port has no REL token to hold). New DS member 0xE6A `mBoostBallHitPlayerSfxId`; the
+  `mGuest314/318/E6A` stand-ins are gone. A3B0 now reads the ball through 2F04/2EFC.
+- Spec `tools/cov/specs/darksamus_ball.py` + driver `tools/drivers/darksamus_ball.con` (gdb force.sh,
+  command in the spec header), 0 caught / reach-stub:
+
+| fn | arms | run |
+|---|---|---|
+| 9E00 SpawnBoostBall | 0xD14 == 0 / != 0 | natural 0, 0.5 forced on the 1st spawn (natural at hp 1) |
+| 3FD8 / 3BC4 ctors | plain / silhouette | both |
+| 2F04 / 2EFC | ret 0 / 1 | both (A3B0 reads) |
+| 2F10 touch damage | cooldown > 0 / hit | both |
+| 3008 Render / 3174 PreRender | silhouette 0 / 1; pre-render combat / other visor | all (`visor scan`) |
+| 31E4 / 3B08 Think | manager null (create) / set; cooldown | all |
+| 3998 AcceptScriptMsg | XDEL with / without manager (forced), XHIT player / other / null, XDMG colAct / null, others | all |
+| 3934 / 38D0 | straight-line | run |
+| A3B0 BoostBallRoll | ball damaged; damage < hp-1 / >= hp-1 | all (`damage u0703 50` / `3000 darkburst`) |
+
+- Marks: 3FD8 3BC4 2E64 2EFC 2F04 2F10 3008 3174 31E4 3B08 3998 3934 38D0 9E00 A3B0.
+- Driver uids u0702 (ball) / u0703 (its collision actor) are the first ball's in every run so far.
+  XDMG adds `100000 - HP` per message, as retail does.
