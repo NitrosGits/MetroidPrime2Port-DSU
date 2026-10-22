@@ -502,7 +502,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
       "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
-      "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
+      "                            cannonball, dark, light, annihilator, powerbomb, bomb,\n"
+      "                            boostball, screwattack, darkburst,\n"
       "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
@@ -1585,7 +1586,8 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
     Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
-         "annihilator|powerbomb|darkburst|sunburst|sonicboom|supermissile]");
+         "annihilator|powerbomb|bomb|boostball|screwattack|darkburst|sunburst|sonicboom|"
+         "supermissile]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
@@ -1614,6 +1616,12 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
       weapon = kWT_Annihilator;
     } else if (args[i] == "powerbomb") {
       weapon = kWT_PowerBomb;
+    } else if (args[i] == "bomb") {
+      weapon = kWT_Bomb;
+    } else if (args[i] == "boostball") {
+      weapon = kWT_BoostBall;
+    } else if (args[i] == "screwattack") {
+      weapon = kWT_ScrewAttack;
     } else if (args[i] == "darkburst") {
       weapon = kWT_Dark;
       comboed = true;
@@ -1628,7 +1636,7 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
       comboed = true;
     } else {
       Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
-           "darkburst, sunburst, sonicboom or supermissile");
+           "bomb, boostball, screwattack, darkburst, sunburst, sonicboom or supermissile");
       return;
     }
   }
