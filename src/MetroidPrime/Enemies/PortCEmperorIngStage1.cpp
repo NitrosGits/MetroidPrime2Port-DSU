@@ -1384,7 +1384,7 @@ CActor* CEmperorIngStage1::GetActivateActor(CStateManager& mgr) const {
 
 // fn_16_920 (0x920..0x9C0): the tracked actor's (fn_16_302C) "brainSpine_scale" locator
 // (lbl_16_rodata_378) in world space (0x968, 0x978); the result is its translation (0x99C).
-// Area 11 cannot reach fn_16_920's body: only the beam paths read the brain-spine position. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_920
 CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
   CActor* target = GetTargetActor(mgr);
@@ -1405,7 +1405,7 @@ CVector3f CEmperorIngStage1::GetBrainSpinePosition(CStateManager& mgr) const {
 // C3DEmitterParmData(1000.0f, 0.1f, 1, 0x7F, 0x14) and the up direction (0xF84) into guest 0xA9C;
 // the "Telegraph" timer (0xA5C) takes 0.9833334f (lbl_16_rodata_3A0) and the refire timer (0xA60)
 // 1.5f (0xFB0).
-// Area 11 cannot reach fn_16_CD0's body: the beam fires in the heart stage, which the FSM does not reach there. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_CD0
 bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
   if (xa98_ != kInvalidUniqueId) {
@@ -1448,7 +1448,7 @@ bool CEmperorIngStage1::FireBeam(CStateManager& mgr, float dt) {
 // player at 10.0f (lbl_16_rodata_390) units a second on the horizontal (0xBE4..0xC44), the beam's
 // effect follows it (slot 33 UpdateFx at 0xC88) and its emitter (guest 0xA9C) sits on the beam's
 // collision point (the beam's +0x444, mCollisionPoint, 0xCA8; volume 0x7F).
-// Area 11 cannot reach fn_16_A64's body: the beam is only out in the heart stage. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_A64
 void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(xa98_);
@@ -1477,7 +1477,7 @@ void CEmperorIngStage1::UpdateBeam(float dt, CStateManager& mgr) {
 // fn_16_9C0 (0x9C0..0xA64): when the beam (guest 0xA98) exists it is reset (vtable slot 34
 // ResetBeam with false, 0xA0C), its emitter removed (0xA1C), the object deleted (0xA30), and the
 // id and the emitter cleared (0xA44, 0xA48).
-// Area 11 cannot reach fn_16_9C0's body: the beam is only out in the heart stage. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_9C0
 void CEmperorIngStage1::StopBeam(CStateManager& mgr) {
   CEntity* entity = mgr.ObjectById(xa98_);
@@ -1896,7 +1896,7 @@ StartTentaclePortal(i, pos, up, mgr);
 //     0x68F), the entity info (the area, no connections, active and no editor id), the identity
 //     transform, the one vector as the scale, the effect asset, the timers and the rates, the
 //     three visor flags, the light parameters and the spline.
-// Area 11 cannot reach fn_16_9BE8's body: the portal's effect is only created for the warp portal actor and the tentacle's portal, and neither exists there. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_9BE8
 TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId effectId,
                                                      TAreaId area) {
@@ -1930,7 +1930,7 @@ TUniqueId CEmperorIngStage1::CreateWarpPortalEffect(CStateManager& mgr, CAssetId
 // created when the joint has none (fn_16_9BE8, 0x1AD0). The effect looks along the up vector
 // from the joint's position (the fadds at 0x1B34..0x1B4C and the LookAt at 0x1B60) and it hears
 // "ACTV" (kSM_Activate, 0x41435456, 0x1B84).
-// Area 11 cannot reach fn_16_1A50's body: the tentacle's portal starts on the animation's portal event, which the boss's tentacles do not send there.
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_1A50
 void CEmperorIngStage1::StartTentaclePortal(int index, const CVector3f& pos, const CVector3f& up,
                                             CStateManager& mgr) {
@@ -2026,7 +2026,7 @@ CEmperorIngStage1WarpPortal::~CEmperorIngStage1WarpPortal() = default;  // fn_16
 //   0x1360: the portal hits the player once: the player's touch bounds against the boxes around
 //     the seven "eight_Spine_*" locators (0x13E4), each 2.0f around the locator's world position
 //     (0x1408), and the stab damage (the guest 0x2DC, 0x151C).
-// Area 11 cannot reach fn_16_1150's body: the warp portal actor is never created there (the warp attack's portal needs the player's aim position).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_1150
 void CEmperorIngStage1WarpPortal::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);  // 0x11B0
@@ -2130,7 +2130,7 @@ void CEmperorIngStage1WarpPortal::AcceptScriptMsg(CStateManager& mgr, const CScr
 // constant (0x10C4..0x111C); the model data's world space portal plane takes it (0x1128) and
 // the base's own render follows (0x1134). The retail's first call (the renderer's vtable slot
 // 16 with the transform, 0x10A8) is the base's own work.
-// Area 11 cannot reach fn_16_1088's body: the warp portal actor is never created there. A temporary hook drove it (see the module note).
+// The warp portal actor is created in area 11 (fn_16_1720 runs in the natural heart-stage cycles), but its Render never ran there (gcov 0 of 6 lines). A temporary hook drove it (see the module note).
 // @ fn_16_1088
 void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
   const CVector3f normal = GetTransform().GetColumn(kDY);  // 0x10C4
@@ -2144,7 +2144,7 @@ void CEmperorIngStage1WarpPortal::Render(const CStateManager& mgr) const {
 // vector the up vector (0x1990..0x19C0), and the portal's effect (the joint's id, 0x19C4) hears
 // "DCTV" (kSM_Deactivate, 0x44435456, 0x19F8) - the message's sender is this actor (0x19EC) and
 // its id the joint's (0x19F4).
-// Area 11 cannot reach fn_16_1950's body: the tentacle's portal stops on the same event.
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_1950
 void CEmperorIngStage1::StopTentaclePortal(int index, CStateManager& mgr) {
   CEmperorIngStage1Joint& joint = mJoints.mJoints[index];
@@ -2234,7 +2234,7 @@ bool CEmperorIngStage1::AllTentaclesRetracted(CStateManager& mgr, const CTrigger
 // (guest 0xA3C, 0.0f in the constructor) has run out. The asm compares it with 0.0f
 // (lbl_16_rodata_380) and folds "less than" and "equal" into one bit (cror eq,lt,eq at 0x4BC4),
 // so the test is "<= 0.0f".
-// Area 11 cannot reach fn_16_4BB4's true branch: the FSM only evaluates the trigger in the heart-stage state. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_4BB4
 bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& data) const {
   return xa3c_ <= 0.f;
@@ -2244,7 +2244,7 @@ bool CEmperorIngStage1::HeartStageOver(CStateManager& mgr, const CTriggerData& d
 // The asm calls the vtable slot at +0x3C (slot 13, GetHealthInfo) and reads the health info's
 // second float (CHealthInfo::mHealth at +0x04), then compares it with 0.0f the same way as
 // fn_16_4BB4 (cror eq,lt,eq at 0x4B98).
-// Area 11 cannot reach fn_16_4B6C's true branch: the FSM only evaluates the trigger in the heart-stage state. A temporary hook drove it (see the module note).
+// Area 11 evaluates it on the natural path (the heart-stage cycles of tools/drivers/emperoring1_heartstage.py, module note §12); its true branch needs the boss dead. A temporary hook drove that (see the module note).
 // @ fn_16_4B6C
 bool CEmperorIngStage1::IsDead(CStateManager& mgr, const CTriggerData& data) const {
   return GetHealthInfo()->GetHP() <= 0.f;
@@ -2359,7 +2359,7 @@ void CEmperorIngStage1::BeginHeartStage(CStateManager& mgr, EStateMsg msg, float
 //     heart-stage timer runs down last (0x7858).
 //   Deactivate: the locomotion type 1 (0x7868), the heart's collision actor inactive (fn_16_3D64
 //     with 8, 0x787C) and the beam stopped (fn_16_9C0, 0x7888).
-// Area 11 cannot reach fn_16_774C's body: the FSM does not reach the heart stage there. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_774C
 void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
@@ -2410,7 +2410,7 @@ void CEmperorIngStage1::HeartStage(CStateManager& mgr, EStateMsg msg, float dt) 
 //     animation state is not ready (0x76A8), the tentacles' 0x80 flags are set (fn_16_2EE0 with
 //     1, 0x76B4), the attack timer re-rolls (fn_16_8E4, 0x76C0) and the tentacles take the normal
 //     vulnerability (fn_16_353C with 1, 0x76D0).
-// Area 11 cannot reach fn_16_71BC's body: the FSM does not reach the heart stage there. A temporary hook drove it (see the module note).
+// Area 11 runs it on the natural path: the heart-stage cycles of tools/drivers/emperoring1_heartstage.py (no `fsm`, module note §12).
 // @ fn_16_71BC
 void CEmperorIngStage1::EndHeartStage(CStateManager& mgr, EStateMsg msg, float dt) {
   CActor* body = GetPlayActor(mgr);
@@ -3037,16 +3037,13 @@ void CEmperorIngStage1::ResetTentacles(CStateManager& mgr, float dt) {
 // mode 0 the roll picks 0 or 1, in mode 1 it picks 1 or 2, and every other mode takes 2.
 // The FSM2 machine's code node "ChooseRandomTentacleCount" hangs off the "HeartStageOver"
 // trigger of the "HeartStage" state (the machine has 10 states, 4 codes and 12 triggers), so
-// the body only runs once the fight reaches the heart stage.  The area-11 scenario cannot play
-// there (the tentacles never leave the state 1 - their out animation never ends - so
-// AllTentaclesRetracted stays false), so the state is forced with the console's
-// `fsm <uid> HeartStage` (tools/drivers/emperoring1_heartstage.py): the heart-stage timer
-// (16 s) then runs out and the code node fires.  The mode (guest 0x7C0) is stepped by the
-// heart's health (fn_16_51D4), so the heart's collision actor is damaged between the runs to
-// get the mode 1 and mode 2 arms.  Every arm ran: the mode 0 rolls 38.68/42.64/42.90/51.87/
-// 78.90/98.61 and the mode 1 rolls 0.36/16.96/91.60/96.93 (both sides of 50), the mode 2
-// rolls 75.89/85.46/91.38 (the mode's own arm).  The mode is never below 0, so the arm at
-// 0x4998 is unreachable.
+// the body runs once per heart stage.  The natural fight reaches it: with the tentacles' own
+// boxes hit and the 'PLAY' actor active, the FSM walks BeginHeartStage -> HeartStage ->
+// EndHeartStage on its own (tools/drivers/emperoring1_heartstage.py `cycles`, no `fsm`), and the
+// heart's health steps the mode (fn_16_51D4).  Every live arm ran there (gcov, module note §12):
+// both sides of 50 in mode 0 and mode 1, and mode 2.  The mode is never below 0 (the only
+// stores to guest 0x7C0 are 0x909C li 0, 0x5284 li 1 and 0x529C li 2), so the arm at 0x4998
+// is dead.
 // @ fn_16_4954
 void CEmperorIngStage1::ChooseRandomTentacleCount(CStateManager& mgr, float dt) {
   const float roll = mgr.Random()->Range(0.f, 100.f);

@@ -840,8 +840,8 @@ triggers. HeartStageOver and IsDead belong to the heart-stage states the FSM doe
 (their state body fn_16_76F0 is not ported), the Dead state is entered only on a normal death
 (the console's `damage` is an X-damage, which takes the massive-death path instead of
 CPatterned::Death's `SetState("Dead")`). ChooseRandomTentacleCount is a code node of the
-heart stage (section 10), which the scenario does not reach - so the four bodies ported in this
-slice did not run in that scenario.
+heart stage (section 10), which that early scenario did not reach - so the four bodies ported
+in this slice did not run then (they all run on the natural path now, section 12).
 
 With the joint work ported (fn_16_2B68, fn_16_1E6C, fn_16_3984) the area load fills the joint
 descriptions and the joint vector: the run reaches the element's copy (fn_16_39CC) and the tentacle actor lookup
@@ -1013,9 +1013,9 @@ flags, modes, timers and ids forced, the hooks and their once-logs reverted afte
   portal started and stopped (fn_16_1A50, fn_16_1950); the FSM was forced into the heart stage
   (fn_16_774C) and the end of it (fn_16_71BC), which fired the beam (fn_16_CD0), updated it
   (fn_16_A64) and stopped it (fn_16_9C0) and evaluated the two triggers (fn_16_4BB4,
-  fn_16_4B6C); and CanBeShot (fn_16_B9FC) was called. Only fn_16_4954 stays unreachable: the
-  actor runs an FSM2 (section 10) and its code node hangs off the heart stage, which the
-  scenario does not reach. fn_16_7EA8 (ProcessSoundEvent) was **not** unreachable: a run on
+  fn_16_4B6C); and CanBeShot (fn_16_B9FC) was called. fn_16_4954 is not driven by a hook:
+  the actor runs an FSM2 (section 10) and its code node hangs off the heart stage, which the
+  natural fight reaches (section 12). fn_16_7EA8 (ProcessSoundEvent) was **not** unreachable: a run on
   2026-10-21 took its early return 5627 times and ran the base's own handling 11838 times, so
   it is marked now (section 11.3).
 
@@ -1262,13 +1262,12 @@ is the machine the actor runs, printed from the host's `CGenericFSM2`):
 
 **fn_16_4954 (ChooseRandomTentacleCount)** therefore hangs off the "HeartStageOver" trigger of
 the "HeartStage" state: it runs only when the fight reaches the heart stage (the FSM2's
-"AllTentaclesRetracted" -> "BeginHeartStage" -> "AnimOver" -> "HeartStage"). The area-11
-scenario never gets there - the tentacles are not destroyed, so the FSM stays in
-TrackPlayer/Attack - and the trigger's body (fn_16_4BB4, the heart-stage timer) is the retail's
-own. The other two code functions do run: "ResetTentacles" and "BeginSubStage" once each, at
+"AllTentaclesRetracted" -> "BeginHeartStage" -> "AnimOver" -> "HeartStage"), and the natural
+fight does get there once the tentacles' own boxes are hit and the 'PLAY' actor is active
+(sections 15-20; the gcov run in section 12). The other two code functions do run: "ResetTentacles" and "BeginSubStage" once each, at
 the "Start" state. Nothing in the module's own code blocks fn_16_4954: the module's table
 (lbl_16_data_220) and the machine's code node have the same name, and the host's FSM2 binds
-them. The gap is the scenario, not the code.
+them. There is no dispatch gap: the host's FSM2 calls the code node (section 12's gcov run).
 
 ## 11. The classification of the unmarked functions
 
@@ -1294,8 +1293,8 @@ module - marked once a run exercises it.
 
 | class | the functions |
 |---|---|
-| (a) the module's own deleting destructors and the free-only thunks | `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BB3C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BE98` `fn_16_BE9C` `fn_16_BEA4` `fn_16_BEB0` `fn_16_BEB8` `fn_16_BF14` |
-| (a) the rstl and compiler-generated helpers | `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C` `fn_16_FF4` |
+| (a) the module's own deleting destructors and the free-only thunks | `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BE98` `fn_16_BE9C` `fn_16_BEA4` `fn_16_BEB0` `fn_16_BEB8` `fn_16_BF14` |
+| (a) the rstl and compiler-generated helpers | `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C` `fn_16_BB3C` `fn_16_FF4` |
 | (a) the loader's readers and the model's copies | `fn_16_A2A0` `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A980` `fn_16_ABD0` `fn_16_AEDC` `fn_16_AF7C` `fn_16_B014` `fn_16_B1D8` `fn_16_B434` `fn_16_B5C8` `fn_16_B6EC` `fn_16_9700` |
 | (a) the base classes' own bodies | `fn_16_60` (`CActor::GetHealthInfo` - a thunk to the base's slot 12), `fn_16_B958` (`CActor::GetTouchBounds` - the base's `GetBoundingBox` in an `optional`), `fn_16_BA30` (that `optional`'s builder), `fn_16_18E8` (the `SMoverData` copy constructor), `fn_16_6898` (the `CRayCastResult` copy) |
 | (a) the REL runtime | `fn_16_A270`, `fn_16_BF88` (the static initialiser of the three FSM tables), `fn_16_C3B0` (`ModuleDestructors`), `fn_16_C3FC` (`ModuleConstructors`), `fn_16_469C` (`push_back_unsafe`), `RELMain`, `RELExit` |
@@ -1358,34 +1357,44 @@ probe stood on.
 | 0x49D0 | `bge .L_000049DC` (the roll is 50 or more) | (b) ran (forced) |
 | 0x49D8 | `b .L_000049E0` (the roll is below 50) | (b) ran (forced) |
 
-## 12. fn_16_4954 (ChooseRandomTentacleCount) is marked
+## 12. fn_16_4954 (ChooseRandomTentacleCount) is marked - on the natural path
 
 The code node is the FSM2 machine's, hanging off the "HeartStageOver" trigger of the
-"HeartStage" state (section 10), so it runs when the heart-stage timer (guest 0xA3C, 16 s -
-`heartExposedTime`, the value the probe read at the state's activate) runs out.  The area-11
-play cannot get there: the tentacles never leave the state 1 (their out animation never ends, so
-fn_16_26B8's 0x2884 test never fires), so "AllTentaclesRetracted" stays false and the FSM never
-enters "BeginHeartStage".  The state is therefore **forced** with the console's
-`fsm <uid> HeartStage` (`tools/drivers/emperoring1_heartstage.py`, which also damages the
-heart's collision actor between the runs so the mode steps).  The mode (guest 0x7C0) is stepped
-by the heart's health in fn_16_51D4 (0x527C: 0 -> 1 below 466 hp, 0x5294: 1 -> 2 below 233 hp),
-so the heart's collision actor is hit 100 hp at a time between the cycles.
+"HeartStage" state (section 10), so it runs when the heart-stage timer (guest 0xA3C) runs out.
+**The host dispatches it and the natural fight reaches it**: there is no FSM1/FSM2 code-node
+gap (this actor runs the FSM2, section 10, and `CGenericFSM2State::CallCode` calls the node).
+The earlier "unreachable" claims came from runs that never killed the tentacles (the smoke
+family's `cmd_emp1.txt` only activates the boss, so its coverage never shows the heart stage).
 
-Every arm ran (2026-10-21, `WORLD=863fcd72,07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`,
-`send u<uid> Activate`, `fsm u<uid> HeartStage`): the mode 0 rolls 38.68, 42.64, 42.90, 51.87,
-78.90 and 98.61, the mode 1 rolls 0.36, 16.96, 91.60 and 96.93, the mode 2 rolls 75.89, 85.46
-and 91.38.
+The run (2026-10-22, coverage build `build-port-cov` of 275125673, `WORLD=863fcd72,
+07_temple_mothlordsanctuary_dark`, `MP2_GODMODE=1`, `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
+30000 updates, `tools/drivers/emperoring1_heartstage.py <port> <out> cycles 0 0 0 0 250 0 0 250 0`,
+no `fsm`, 0 `[port] caught`/`reach-stub`): the driver activates the boss and the 'PLAY' actor,
+hits the eight health-bearing tentacle boxes on every poll until the FSM walks
+"AllTentaclesRetracted" -> "BeginHeartStage" -> "HeartStage", hits the heart's collision actor
+with that cycle's damage there, and waits for "EndHeartStage".  Nine heart stages ran (f910,
+f2327, f3887, f5326, f6831, f8310, f9809, f11299, f12753), four at 699 hp (mode 0), three at
+449 hp (mode 1, below the 466 of 0x527C), two at 199 hp (mode 2, below the 233 of 0x5294).
+
+`tools/cov/gcov_report.py build-port-cov <run>/gcov --module EmperorIngStage1 --fn fn_16_4954`:
+`9/10 lines, 9/10 branches, untaken @ 3058:1/2` - the one untaken branch is the false side of
+`x7c0_ >= 0`, the mode < 0 arm.
 
 | retail offset | the retail's test | class |
 |---|---|---|
-| 0x4988 | `beq .L_000049C4` (the mode is 1) | (b) ran (forced) - the mode 1 rolls |
-| 0x498C | `bge .L_000049E8` (the mode is 2 or more) | (b) ran (forced) - the mode 2 rolls |
-| 0x4994 | `bge .L_000049A0` (the mode is 0) | (b) ran (forced) - the mode 0 rolls |
-| 0x4998 | `b .L_000049E8` (the mode is below 0) | (c) unreachable in shipped data: the mode is 0, 1 or 2 (fn_16_51D4 only steps it up, the constructor clears it) |
-| 0x49AC | `bge .L_000049B8` (the roll is 50 or more, the mode 0) | (b) ran (forced) - the rolls 51.87, 78.90, 98.61 |
-| 0x49B4 | `b .L_000049BC` (the roll is below 50, the mode 0) | (b) ran (forced) - the rolls 38.68, 42.64, 42.90 |
-| 0x49D0 | `bge .L_000049DC` (the roll is 50 or more, the mode 1) | (b) ran (forced) - the rolls 91.60, 96.93 |
-| 0x49D8 | `b .L_000049E0` (the roll is below 50, the mode 1) | (b) ran (forced) - the rolls 0.36, 16.96 |
+| 0x4988 | `beq .L_000049C4` (the mode is 1) | (b) ran - the mode 1 cycles |
+| 0x498C | `bge .L_000049E8` (the mode is 2 or more) | (b) ran - the mode 2 cycles |
+| 0x4994 | `bge .L_000049A0` (the mode is 0) | (b) ran - the mode 0 cycles |
+| 0x4998 | `b .L_000049E8` (the mode is below 0) | (c) dead: the only stores to guest 0x7C0 are 0x909C (`li r6,0` at 0x9088, the constructor), 0x5284 (`li r0,1`) and 0x529C (`li r0,2`) |
+| 0x49AC | `bge .L_000049B8` (the roll is 50 or more, the mode 0) | (b) ran - both sides (gcov: no untaken branch on the mode 0 line) |
+| 0x49D0 | `bge .L_000049DC` (the roll is 50 or more, the mode 1) | (b) ran - both sides (gcov: no untaken branch on the mode 1 line) |
+
+The same run covers the rest of the heart stage on the natural path: fn_16_920, fn_16_A64 and
+fn_16_9BE8 ALL-ARMS; fn_16_CD0, fn_16_9C0, fn_16_774C, fn_16_71BC, fn_16_78AC, fn_16_4BB4,
+fn_16_4B6C, fn_16_1A50, fn_16_1950, fn_16_1150 and the portal's constructor fn_16_1720 ran (the
+untaken branches are the states' default message arms and the arms the hooks of section 8
+forced).  fn_16_1088 (the warp portal's Render) still did not run (0/6 lines) although the
+portal is created.
 
 ## 13. Why a hit on the collision actors does not destroy the tentacles
 
@@ -1660,9 +1669,9 @@ callers and the tables that reference it):
 | B module behaviour | 98 | 0x8708 (34,568) | 98 |
 | **total** | **241** | **0xE448 (58,248)** | **98** |
 
-- **69** - the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6): `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_89B8` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BB3C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BF14`
+- **68** - the module's own deleting destructor / free-only thunk - the host's own classes destroy their members (note section 6): `fn_16_43C` `fn_16_48C` `fn_16_2A68` `fn_16_2AB8` `fn_16_3340` `fn_16_3500` `fn_16_47DC` `fn_16_4838` `fn_16_48BC` `fn_16_48F4` `fn_16_4DF0` `fn_16_4E68` `fn_16_55D4` `fn_16_5610` `fn_16_564C` `fn_16_5BA8` `fn_16_5C04` `fn_16_5D60` `fn_16_67EC` `fn_16_6844` `fn_16_76F0` `fn_16_8784` `fn_16_87F0` `fn_16_8844` `fn_16_8880` `fn_16_88BC` `fn_16_8918` `fn_16_8938` `fn_16_89B8` `fn_16_8A28` `fn_16_8AA0` `fn_16_8D40` `fn_16_8F24` `fn_16_8FB8` `fn_16_96A4` `fn_16_97CC` `fn_16_9824` `fn_16_987C` `fn_16_992C` `fn_16_9B04` `fn_16_9B90` `fn_16_9E48` `fn_16_9FB0` `fn_16_A1D4` `fn_16_A780` `fn_16_A7EC` `fn_16_A840` `fn_16_A8A4` `fn_16_A904` `fn_16_AA70` `fn_16_AAD4` `fn_16_B130` `fn_16_B188` `fn_16_B378` `fn_16_B3DC` `fn_16_B52C` `fn_16_B584` `fn_16_B668` `fn_16_B6BC` `fn_16_B86C` `fn_16_B8F4` `fn_16_BB1C` `fn_16_BC44` `fn_16_BD04` `fn_16_BD6C` `fn_16_BDD0` `fn_16_BE34` `fn_16_BF14`
 
-- **24** - the rstl / compiler-generated helper - the host's rstl provides it: `fn_16_FF4` `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `push_back_unsafe__28CEmperorIngStage1JointVectorFRC26CJointCollisionDescription` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C`
+- **25** - the rstl / compiler-generated helper - the host's rstl provides it: `fn_16_BB3C` (a byte vector's reserve: allocate, the byte copy loop at 0xBBAC, Free of the old buffer at 0xBC1C) `fn_16_FF4` `fn_16_219C` `fn_16_2204` `fn_16_22B0` `fn_16_22D0` `fn_16_22F8` `fn_16_231C` `fn_16_2398` `fn_16_337C` `fn_16_39CC` `fn_16_39EC` `fn_16_3A14` `fn_16_4640` `push_back_unsafe__28CEmperorIngStage1JointVectorFRC26CJointCollisionDescription` `fn_16_46D4` `fn_16_46F4` `fn_16_471C` `fn_16_9980` `fn_16_9AB0` `fn_16_9E9C` `fn_16_9F04` `fn_16_A004` `fn_16_A644` `fn_16_BA6C`
 
 - **13** - the loader's reader / the model's copy - the host's ScriptLoaderRel and the generated SLdr do it: `fn_16_9700` `fn_16_A5BC` `fn_16_A5FC` `fn_16_A61C` `fn_16_A980` `fn_16_ABD0` `fn_16_AEDC` `fn_16_AF7C` `fn_16_B014` `fn_16_B1D8` `fn_16_B434` `fn_16_B5C8` `fn_16_B6EC`
 
@@ -1695,6 +1704,22 @@ and the entry points run at the module's load, and the tables are static data.  
 `asmcheck` findings are the ones the note's section 11.2 lists as (a): the REL's own reader
 chain (fn_16_ABD0, fn_16_AEDC, ...) is the host's generated `SLdrEmperorIngStage1.inc` in the
 port, so the C++ never names it.
+
+### 21.1a The T rows are the DOL's own bodies (2026-10-22)
+
+Each T entry was compared instruction by instruction with the DOL body at the same vtable
+entry (`EmperorIngStage1_functions.tsv` column "what" has the name and address): the twelve in
+the boss's vtable (lbl_16_data_3C8) are the entries where the DOL's CPatterned vtable
+(lbl_803B2458) has an inline body - `CPatterned::TakeDamage` 0x80073C58, `GetModelAlphau8`
+0x80073C64, `ProjectileInfo` 0x80073C6C, `GetSearchPath` 0x80073C74, `fn_80073c7c` 0x80073C7C,
+`GetRagDoll` 0x800358E0, `GetAttackTarget` 0x80073C84, `IsOnGround` 0x80073C90,
+`GetGravityConstant` 0x80073C9C, `GetDeathExplosionParticle` 0x80073CA4, `CAi::Listen`
+0x8003C59C, `CAi::GetOrigin` 0x80073CB4 - and every one is byte-identical (the REL loads the
+globals through `@ha/@l` where the DOL uses `@sda21`).  lbl_16_data_510 is a copy of
+`__vt__12CParticleGen` (its entries 11/12/20/22/23 against the DOL's `SetGeneratorRate`
+0x800534B0, `SetDrawFlags` 0x800534B4, `GetGeneratorRate` 0x800534BC, `GetDrawFlags`
+0x800534C4, `ShouldDraw` 0x800534CC; the other entries are DOL relocations).  None of them is a
+module override, so none is marked; the host's CPatterned / CParticleGen bodies are the code.
 
 ### 21.2 Count check
 
