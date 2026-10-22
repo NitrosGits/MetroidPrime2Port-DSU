@@ -28,6 +28,8 @@
 @f262 statecall e0035000f ChargeAttack 1 0.016; uevent e0035000f 0 0 T_lazor_LCTR
 # a sweep time of 0: F6A4 returns at 0xF700
 @f266 var e0035000f dghd.sweeptime 0; statecall e0035000f ChargeAttack 1 0.016
+# a message the state does not handle (ChargeAttack's default arm)
+@f268 statecall e0035000f ChargeAttack 3 0.016
 @f280 press x 30
 @f320 fsm e0035000f FaceTarget; status
 # no lasers: FA50's empty loop; then every attack choice and a non-projectile event
@@ -43,8 +45,18 @@
 @f350 place e0035000f player 20
 # more than 16 shots of this head at once: CanCreateProjectile fails (10CA0, 10A2C)
 @f360 var e0035000f dghd.attack 2; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR
-@f361 uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR
+@f361 uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR
 @f362 var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; objs Energy
+# the head on the player (place ... player 0): a near-vertical aim, so the horizontal part is
+# unsafe (the fn_14_13B38 reference) and the angle is past 55 degrees (the slerp). The charge
+# shot aims at the circled point (0x1098): flag 0x01 cleared (0x28) and two sweep updates with
+# the player still make it the player's centre first.
+@f370 var e0035000f dghd.flags 40; fsm e0035000f ChargeAttack
+@f372 statecall e0035000f ChargeAttack 1 0.016
+@f374 statecall e0035000f ChargeAttack 1 0.016; var e0035000f dghd.flags
+@f376 place e0035000f player 0; var e0035000f dghd.attack 0; uevent e0035000f 0 0 root; uevent e0035000f 0 0 T_lazor_LCTR; var e0035000f dghd.attack 1; uevent e0035000f 0 0 root; uevent e0035000f 0 0 T_lazor_LCTR
+@f378 place e0035000f player 0.5; var e0035000f dghd.attack 0; uevent e0035000f 0 0 root; var e0035000f dghd.attack 1; uevent e0035000f 0 0 root
+@f380 place e0035000f player 20
 # fresh sweeps with the charge chosen: the natural event runs 10CA0 and FA50; the ring's counts
 @f400 fsm e0035000f ChargeAttack; var e0035000f dghd.attack 1
 @f790 obj e0035000f; objs Plasma; var e0035000f dghd.flags

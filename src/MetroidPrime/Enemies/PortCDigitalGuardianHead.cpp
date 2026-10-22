@@ -1347,6 +1347,8 @@ DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 // raised to 0.0f when 0.0f >= v (0x16C44), truncated (fctiwz at 0x16C5C), at most 3 (cmpwi/bgt at
 // 0x16C68) and at least 1 (cmpwi/ble at 0x16C74), with the head's id (0x16C84/0x16C8C). With flag
 // 0x01 (0x16C94..0x16CA4) and on Deactivate (0x16D30..0x16D3C) the count is 0 and the id invalid.
+// Every arm ran, msg 3 being the unhandled one (tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_16A50
 void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1413,6 +1415,9 @@ void CDigitalGuardianHead::xFAEC_(CStateManager& mgr) {
 // attack does nothing, and the event is handled either way (li 1 at 0x17C50). Every other event
 // goes to CPatterned::DoUserAnimEvent (0x17C70). Each spawner gets the node's locator name (node
 // +0x30, the addi r5 at 0x17C24/0x17C30/0x17C48).
+// Every arm ran (each attack, an unknown one and another event;
+// tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_17BBC
 void CDigitalGuardianHead::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                            EUserEventType type, float dt) {
   if (type != kUE_Projectile) {
@@ -1439,8 +1444,8 @@ void CDigitalGuardianHead::DoUserAnimEvent(CStateManager& mgr, const CInt32POINo
 // ObjectById at 0xFA90, the null test at 0xFA94) resets (vtable 0x90, ResetBeam with false;
 // 0xFAB0). The ids stay.
 // Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
-// Not marked: no run. It needs the charge (0x10D0 == 1) at the projectile event, and this stage's
-// odds never picked it (codecall SelectProjectileAttack drew 0 and 2 only).
+// Every arm ran (lasers found, one deleted, none; tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_FA50
 void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
   for (int i = 0; i < x107C_.size(); ++i) {
     if (CPlasmaProjectile* laser = TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(x107C_[i]))) {
@@ -1461,6 +1466,9 @@ void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
 // player as homing target (0x113CC), attributes 0, not underwater, scale one (sOneVector), no
 // visor effect (fn_14_1047C), then false, true, false and 1.0f, 4.0f, 4.0f (.rodata 0x96C/0x998);
 // added when built (0x11494, AddObject at 0x114A4).
+// Every arm ran: the head on the player (place ... player 0) takes the unsafe horizontal part and
+// the slerp (tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_111E0
 void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locator) {
   const CVector3f pos = GetLctrTransform(locator).GetTranslation();
   const CPlayer& player = *mgr.GetPlayer(0);
@@ -1496,6 +1504,8 @@ void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locat
 // 0x11018. The pair {0, data +0x1AC} at 0x10F20/0x10F2C is stored and never read.
 // Retail's object is the module's CEnergyProjectile subclass (vtable lbl_14_data_1034, its
 // overrides at 0x19784..0x1A430); the host builds the base class, so those overrides are missing.
+// Not marked for that reason, though every arm ran (tools/cov/specs/digitalguardian_shots.con;
+// the TryCache-false arm forced, tools/cov/specs/digitalguardian_shots_force.py).
 void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locator) {
   if (!xE2C_.Token().TryCache()) {
     return;
@@ -1537,6 +1547,9 @@ void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locat
 // CEnergyProjectile (ctor at 0x10C50) is fn_14_111E0's with the missiles' weapon (0xE54) and
 // damage (0xE60): homing on the player (0x10BA4), no visor effect (fn_14_1047C at 0x10B90);
 // added when built (0x10C6C, AddObject at 0x10C7C).
+// Every arm ran (tools/cov/specs/digitalguardian_shots.con; the TryCache-false arm forced,
+// tools/cov/specs/digitalguardian_shots_force.py, CanCreateProjectile false with 20 shots out).
+// @ fn_14_10A2C
 void CDigitalGuardianHead::x10A2C_(CStateManager& mgr, const rstl::string& locator) {
   if (!xE54_.Token().TryCache()) {
     return;
@@ -1679,8 +1692,9 @@ void CDigitalGuardianHead::xFE14_(CStateManager& mgr, const CVector3f& from,
 // 0.0f, radius * sin) of the phase (0xF948..0xF9C8), the phase growing by 2.0943952f (0xF9FC)
 // only for a laser found.
 // Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
-// Not marked: the spawn-morph arm (CPlayer 0x390 non-zero, 0xF8BC) needs a spawn point that starts
-// the player morphed, and the time at most 0.0f (0xF700) did not run; every other arm ran.
+// Every arm ran (tools/cov/specs/digitalguardian_shots.con) but the no-laser return: dead, as the
+// only call (fn_14_16A50 at 0x16BDC) is taken only with lasers (0x107C != 0, the bne at 0x16BBC).
+// @ fn_14_F6A4
 void CDigitalGuardianHead::xF6A4_(CStateManager& mgr, float dt) {
   if (x107C_.empty() || x1090_ <= 0.f) {
     return;
