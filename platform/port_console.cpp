@@ -61,6 +61,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "Collision/CRayCastResult.hpp"
 #include "Collision/CCollisionInfoList.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
+#include "MetroidPrime/RenderGeometryRayCast.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
@@ -565,7 +566,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
-      "ray <x> <y> <z> [len]       static surfaces and the world hit straight below the point\n"
+      "ray <x> <y> <z> [len] [dx dy dz]  static and render surfaces (beam stops/passes) and the world hit along the ray (default: down)\n"
       "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"
       "aim <yaw> <pitch>          point the view outright, in degrees; negative pitch looks down\n"
       "items                       power-up amounts and capacities\n"
@@ -2511,26 +2512,40 @@ void CmdBeam(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
-// ray <x> <y> <z> [len]: cast straight down from the point and list every static surface the ray
-// crosses (point, normal, material bits, hex), then the first hit of the world ray (static plus
-// actors) and the actor it belongs to. For collision bugs: what holds the player up, and where.
+// ray <x> <y> <z> [len] [dx dy dz]: cast from the point (straight down, or along the direction)
+// and list every static collision surface the ray crosses (point, normal, material bits, hex),
+// every area render surface it crosses (the geometry beam projectiles hit, with the surface's
+// material mask and whether a beam's filter lets it through), then the first hit of the world
+// ray (static plus actors) and the actor it belongs to. For collision bugs: what holds the
+// player up, what stops a shot, and where.
 void CmdRay(CStateManager& mgr, const Args& args, std::string& out) {
   float x = 0.f;
   float y = 0.f;
   float z = 0.f;
   float len = 100.f;
+  float dx = 0.f;
+  float dy = 0.f;
+  float dz = -1.f;
   if (args.size() < 4 || !ParseFloat(args[1], x) || !ParseFloat(args[2], y) ||
-      !ParseFloat(args[3], z) || (args.size() > 4 && !ParseFloat(args[4], len))) {
-    Fail("usage: ray <x> <y> <z> [len]");
+      !ParseFloat(args[3], z) || (args.size() > 4 && !ParseFloat(args[4], len)) ||
+      (args.size() > 5 && (args.size() < 8 || !ParseFloat(args[5], dx) ||
+                           !ParseFloat(args[6], dy) || !ParseFloat(args[7], dz)))) {
+    Fail("usage: ray <x> <y> <z> [len] [dx dy dz]");
     return;
   }
-  const CVector3f down(0.f, 0.f, -1.f);
+  const CVector3f origin(x, y, z);
+  CVector3f dir(dx, dy, dz);
+  if (!dir.CanBeNormalized()) {
+    Fail("ray: zero direction");
+    return;
+  }
+  dir = dir.AsNormalized();
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
   char line[192];
-  CVector3f start(x, y, z);
+  CVector3f start = origin;
   float left = len;
   for (int i = 0; i < 16 && left > 0.f; ++i) {
-    const CRayCastResult hit = CGameCollision::RayStaticIntersection(mgr, start, down, left, filter);
+    const CRayCastResult hit = CGameCollision::RayStaticIntersection(mgr, start, dir, left, filter);
     if (!hit.IsValid()) {
       break;
     }
@@ -2540,14 +2555,34 @@ void CmdRay(CStateManager& mgr, const Args& args, std::string& out) {
                   pt.GetX(), pt.GetY(), pt.GetZ(), n.GetX(), n.GetY(), n.GetZ(),
                   static_cast< unsigned long long >(hit.GetMaterial().GetValue()));
     out += line;
-    start = CVector3f(x, y, pt.GetZ() - 0.01f);
-    left = len - (z - start.GetZ());
+    start = pt + dir * 0.01f;
+    left = len - CVector3f::Dot(start - origin, dir);
+  }
+  // The beam projectiles' filter (CGameProjectile's constructor, no extra exclude).
+  const CMaterialFilter beamFilter = CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid, kMT_NonSolidDamageable),
+      CMaterialList(kMT_Projectile, kMT_ProjectilePassthrough));
+  start = origin;
+  left = len;
+  for (int i = 0; i < 16 && left > 0.f; ++i) {
+    const CRayCastResult hit =
+        RenderGeometryRayCast::RayWorldIntersection(mgr, start, dir, left, filter, nullptr);
+    if (!hit.IsValid()) {
+      break;
+    }
+    const CVector3f& pt = hit.GetPoint();
+    std::snprintf(line, sizeof(line), "render %.3f %.3f %.3f  mat %016llx  beam %s\n", pt.GetX(),
+                  pt.GetY(), pt.GetZ(),
+                  static_cast< unsigned long long >(hit.GetMaterial().GetValue()),
+                  beamFilter.Passes(hit.GetMaterial()) ? "stops" : "passes");
+    out += line;
+    start = pt + dir * 0.01f;
+    left = len - CVector3f::Dot(start - origin, dir);
   }
   rstl::reserved_vector< TUniqueId, 1024 > nearList;
-  mgr.BuildNearList(nearList, CVector3f(x, y, z), down, len, filter, nullptr);
+  mgr.BuildNearList(nearList, origin, dir, len, filter, nullptr);
   TUniqueId id = kInvalidUniqueId;
-  const CRayCastResult hit =
-      mgr.RayWorldIntersection(id, CVector3f(x, y, z), down, len, filter, nearList);
+  const CRayCastResult hit = mgr.RayWorldIntersection(id, origin, dir, len, filter, nearList);
   if (hit.IsValid()) {
     const CEntity* ent = id == kInvalidUniqueId ? nullptr : mgr.GetObjectById(id);
     std::snprintf(line, sizeof(line), "world %.3f %.3f %.3f  id %04x %s (near %d)\n",

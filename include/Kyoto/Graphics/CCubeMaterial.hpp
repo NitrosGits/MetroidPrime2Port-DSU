@@ -56,7 +56,13 @@ public:
 
   // Guessed name. Echoes material masks follow the compressed vertex descriptor.
   u64 GetMaterialMask() const {
+#ifdef TARGET_PC
+    // Port: the mask is a big-endian u64 like the rest of the material data.
+    return __builtin_bswap64(
+        *reinterpret_cast< const u64* >(static_cast< const uint* >(mData) + GetTextureCount() + 3));
+#else
     return *reinterpret_cast< const u64* >(static_cast< const uint* >(mData) + GetTextureCount() + 3);
+#endif
   }
 
   void SetCurrent(const CModelFlags& flags, const CCubeSurface& surface,

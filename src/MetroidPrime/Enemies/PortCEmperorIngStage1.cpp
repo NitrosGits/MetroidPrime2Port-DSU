@@ -1669,21 +1669,12 @@ CPlane CEmperorIngStage1::GetJointPlane(const CEmperorIngStage1Joint& joint) con
 // whose high half is zero and whose low half holds the mask (the register pair holds the high
 // half in r3 and the low half in r4, 0x1D24, 0x1D28), and the index 0 also gets the bit
 // 0x02000000 (the lis 0x200 at 0x1D00, which lands in the low half, 0x1D30).
-// The host reads a material's mask as a native u64 - the material data stays big-endian in
-// memory (include/Kyoto/Graphics/CCubeMaterial.hpp's GetMaterialMask) - so the masks here are
-// the retail's byte-swapped: the retail's 0x200, 0x400, 0x100, 0x1000, 0x8, 0x4, 0x10 and 0x40
-// become 0x0002000000000000, 0x0004000000000000, 0x0001000000000000, 0x0010000000000000,
-// 0x0800000000000000, 0x0400000000000000, 0x1000000000000000 and 0x4000000000000000, and each
-// of the model's eight surfaces then matches exactly one of them.
 // @ fn_16_1CF4
 u64 CEmperorIngStage1::GetJointDrawMask(const CEmperorIngStage1Joint& joint) const {
-  static const u64 skMasks[8] = {
-      0x0002000000000000ull, 0x0004000000000000ull, 0x0001000000000000ull,
-      0x0010000000000000ull, 0x0800000000000000ull, 0x0400000000000000ull,
-      0x1000000000000000ull, 0x4000000000000000ull};
+  static const u64 skMasks[8] = {0x200, 0x400, 0x100, 0x1000, 0x8, 0x4, 0x10, 0x40};
   u64 mask = skMasks[joint.mIndex]; // 0x1D14, 0x1D20
   if (joint.mIndex == 0) {
-    mask |= 0x0000000200000000ull; // 0x1D00, 0x1D30
+    mask |= 0x02000000; // 0x1D00, 0x1D30
   }
   return mask;
 }
