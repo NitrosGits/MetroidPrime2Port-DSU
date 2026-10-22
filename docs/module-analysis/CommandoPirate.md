@@ -1722,3 +1722,29 @@ The helper's formula is the guest's: `f31` is the gravity the vtable call at 0x0
 `rodata_44C` = 2.0), the time is `zVelocity / g + sqrt(2 * (apex - target.z) / g)`
 (0x000039C8..0x000039EC) and the velocity is `(dx / time, dy / time, zVelocity)`
 (0x00003A00..0x00003A14).
+
+### 6.3 `fn_9_2D0C` - the knock-back helper (2026-10-22)
+
+The helper's body, with the guest's addresses:
+
+- the weapon (the shield's own collision actor at guest this+0xBC6 -> the weapon that touched
+  it, 0x00002D38..0x00002D74; the module's effect fn_9_2048 when the byte at guest this+0xC66 has
+  its 0x20 bit, 0x00002D78..0x00002D90; otherwise the sender itself, 0x00002D98..0x00002DA8);
+- the knock-back info (the weapon's forward column, its id, its owner id, its damage info and the
+  direct flag, 0x00002DB8..0x00002E00);
+- the knock-back manager's anim reaction range when the byte at guest this+0xC64 has its 0x01 bit
+  (0x00002E04..0x00002E1C: `SetAnimReactionRange(kAR_Hurled, kAR_Fall)`), the knock-back itself
+  (the vtable slot 0x9C, 0x00002E38) and the range the guest restores right after it
+  (0x00002E3C..0x00002E48: `SetAnimReactionRange(kAR_None, kAR_Fall)`);
+- the flag byte at guest this+0xC64: the manager's **active reaction** (the word at guest
+  this+0x630, the manager's own +0x10 - the CRuleSetEvaluator base is 0x10 bytes and the reaction
+  flags are the +0x20) is compared with 5 and 2 (0x00002E50 and 0x00002E58): 2 to 4 sets the
+  byte's 0x04 bit (0x00002E64..0x00002E70), anything else ors the byte's 0x01 bit into its 0x04
+  bit (the `extrwi` 1,29 = 0x04 and the `clrlwi` 31 = 0x01 or-ed and put back by the `rlwimi`
+  2,29,29, 0x00002E78..0x00002E8C);
+- the ground ray (the filter's include list kMT_Solid, `lbl_9_data_814`, and its exclude list
+  kMT_Player, kMT_Character, kMT_CollisionActor and kMT_Platform, `lbl_9_data_81C`,
+  `lbl_9_data_818`, `lbl_9_data_820` and `lbl_9_data_824`, the type 3 = kFT_IncludeExclude,
+  0x00002F20..0x00002FC4) and, when the ray is clear, the death (0x00003018), the zeroed health
+  (0x0000302C), the recorded damage source (0x00003044..0x00003068) and the byte's 0x04 bit
+  (0x0000306C..0x00003078).
