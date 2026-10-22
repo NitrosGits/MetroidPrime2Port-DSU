@@ -4633,11 +4633,15 @@ float CCommandoPirate::GetGravityConstant() const { return 50.f; }
 
 // Port console vars (`var <id> cp.<name> [value]`; no guest code): the flag bytes (cp.c63..c66),
 // x924 (cp.x924), the ids (cp.xbca the target, cp.xbd2 the cover point, cp.xbd6 the wall-hang
-// waypoint, cp.team, cp.xbd0 the jump point), the charge speed (cp.chargespeed, 1/1000), the state
+// waypoint, cp.team, cp.xbd0 the jump point, cp.xbc6/xbc8 the shield's/blade's collision actor, cp.xbda the
+// attack pattern's waypoint), the charge speed (cp.chargespeed, 1/1000), the state
 // machine's time in its state (cp.fsmtime, ms), the push vector (cp.bb8x/bb8y/bb8z, 1/1000), the
 // charge target set d/1000 units along the facing (cp.b94ahead; reads the target's distance along
 // it), the words x920 (cp.x920) and xc4c (cp.c4c, the module's state word), the timers xb78 and xc58 (cp.xb78, cp.xc58, ms) and the base's
-// pending death (cp.pendingdeath).
+// pending death (cp.pendingdeath); cp9: the time to the waypoint (cp.xb88, ms), the jump direction
+// (cp.ba0x/ba0y/ba0z, 1/1000), the waypoint navigation's destination (cp.wpdest), the animation
+// state (cp.anim), the counters xb50/xb54 (cp.xb50, cp.xb54), the block's flag byte (cp.flags1),
+// the fluid list (cp.fluid) and a fake jump point (cp.mkjump).
 bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* value,
                                      int& current) {
   // No TCastToPtr for the module's class: a patterned actor whose machine's "ShieldCharge" is
@@ -4671,7 +4675,7 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
   };
   const SIdVar ids[] = {
       {"xbca", &cp->xbca_}, {"xbd2", &cp->xbd2_}, {"xbd6", &cp->xbd6_}, {"team", &cp->xbc4_teamId},
-      {"xbd0", &cp->xbd0_}};
+      {"xbd0", &cp->xbd0_}, {"xbc6", &cp->xbc6_}, {"xbc8", &cp->xbc8_}, {"xbda", &cp->xbda_}};
   for (const SIdVar& var : ids) {
     if (strcmp(name, var.name) == 0) {
       if (value != nullptr) {
@@ -4713,7 +4717,7 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
     const char* name;
     float* field;
   };
-  const STimerVar timers[] = {{"xb78", &cp->xb78_}, {"xc58", &cp->xc58_}};
+  const STimerVar timers[] = {{"xb78", &cp->xb78_}, {"xc58", &cp->xc58_}, {"xb88", &cp->xb88_}};
   for (const STimerVar& var : timers) {
     if (strcmp(name, var.name) == 0) {
       if (value != nullptr) {
@@ -4748,6 +4752,95 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
       current = static_cast< int >(xyz[i] * 1000.f);
       return true;
     }
+  }
+  for (int i = 0; i < 3; ++i) {
+    static const char* const kDir[3] = {"ba0x", "ba0y", "ba0z"};
+    if (strcmp(name, kDir[i]) == 0) {
+      float xyz[3] = {cp->xba0_.GetX(), cp->xba0_.GetY(), cp->xba0_.GetZ()};
+      if (value != nullptr) {
+        xyz[i] = static_cast< float >(*value) / 1000.f;
+        cp->xba0_ = CVector3f(xyz[0], xyz[1], xyz[2]);
+      }
+      current = static_cast< int >(xyz[i] * 1000.f);
+      return true;
+    }
+  }
+  if (strcmp(name, "xb50") == 0 || strcmp(name, "xb54") == 0) {
+    uint& field = name[3] == '0' ? cp->xb50_ : cp->xb54_;
+    if (value != nullptr) {
+      field = static_cast< uint >(*value);
+    }
+    current = static_cast< int >(field);
+    return true;
+  }
+  if (strcmp(name, "flags1") == 0) {
+    if (value != nullptr) {
+      cp->mData.mFlags1 = static_cast< uchar >(*value);
+    }
+    current = cp->mData.mFlags1;
+    return true;
+  }
+  if (strcmp(name, "wpdest") == 0) {
+    if (value != nullptr) {
+      cp->mWaypointNavigation.SetDestination(TUniqueId(static_cast< u16 >(*value)));
+    }
+    current = cp->mWaypointNavigation.GetDestination().value;
+    return true;
+  }
+  if (strcmp(name, "anim") == 0) {
+    if (value != nullptr) {
+      cp->mAnimationState.SetState(static_cast< CAnimationState::EState >(*value));
+    }
+    current = cp->mAnimationState.GetState();
+    return true;
+  }
+  if (strcmp(name, "fluid") == 0) {
+    // The fluid list taken as it is (SetFluidList, no water filter): 0xffff empties it.
+    if (value != nullptr) {
+      rstl::reserved_vector< TUniqueId, 4 > fluids;
+      if ((*value & 0xffff) != 0xffff) {
+        fluids.push_back(TUniqueId(static_cast< u16 >(*value)));
+      }
+      cp->SetFluidList(fluids);
+    }
+    current = cp->InFluidId().value;
+    return true;
+  }
+  if (strcmp(name, "mkjump") == 0) {
+    // A fake AiJumpPoint 3 units in front of the commando (no commando area ships one): the
+    // value's bits 0..3 its type, 4..7 the index of the area's CScriptWaypoint its ARRV/NEXT
+    // connection names (15: none), bit 8 another area, bit 9 inactive. Reads -1; set answers
+    // the new id.
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    if (value == nullptr || mgr == nullptr) {
+      return true;
+    }
+    const int wpIndex = (*value >> 4) & 0xf;
+    rstl::vector< SConnection > conns;
+    CObjectList& list = mgr->ObjectListById(kOL_All);
+    int n = 0;
+    for (int i = list.GetFirstObjectIndex(); wpIndex != 0xf && i != -1;
+         i = list.GetNextObjectIndex(i)) {
+      const CScriptWaypoint* wp = TCastToConstPtr< CScriptWaypoint >(list[i]);
+      if (wp != nullptr && wp->GetCurrentAreaId() == cp->GetCurrentAreaId() && n++ == wpIndex) {
+        conns.push_back(SConnection(kSS_Arrived, kSM_Next, wp->GetEditorId()));
+        break;
+      }
+    }
+    TAreaId area = cp->GetCurrentAreaId();
+    if ((*value & 0x100) != 0) {
+      area = TAreaId(area.Value() + 1);
+    }
+    CTransform4f xf = cp->GetTransform();
+    xf.SetTranslation(cp->GetTranslation() + cp->GetTransform().GetForward() * 3.f);
+    CScriptAiJumpPoint* jp = rs_new CScriptAiJumpPoint(
+        mgr->AllocateUniqueId(), rstl::string_l("cp9 fake jump point"),
+        CEntityInfo(area, conns, (*value & 0x200) == 0, kInvalidEditorId), xf, 2.f, *value & 0xf);
+    mgr->AddObject(jp);
+    jp->AcceptScriptMsg(*mgr, CScriptMsg(kInvalidUniqueId, jp->GetUniqueId(), kSM_AreaLoaded));
+    current = jp->GetUniqueId().value;
+    return true;
   }
   if (strcmp(name, "b94ahead") == 0) {
     const CVector3f forward = cp->GetTransform().GetForward();

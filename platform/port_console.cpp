@@ -2012,6 +2012,8 @@ void CmdCodeCall(CStateManager& mgr, const Args& args, std::string& out) {
 
 // The module handlers `var` asks (PortConsole::RegisterVar); a function-local list, so a module's
 // static-init registration never runs before it exists.
+CStateManager* sVarManager = nullptr;  // the running `var` command's manager (VarManager)
+
 std::vector< VarHandler >& VarHandlers() {
   static std::vector< VarHandler > sHandlers;
   return sHandlers;
@@ -2051,13 +2053,16 @@ void CmdVar(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("no object '" + std::string(args[1]) + "'");
     return;
   }
+  sVarManager = &mgr;
   for (VarHandler handler : VarHandlers()) {
     if (handler(*ent, name.c_str(), args.size() == 4 ? &value : nullptr, current)) {
+      sVarManager = nullptr;
       std::snprintf(line, sizeof(line), "%s = %d (0x%x)\n", name.c_str(), current, current);
       out += line;
       return;
     }
   }
+  sVarManager = nullptr;
   Fail("no var '" + name + "' on that object");
 }
 
@@ -3369,5 +3374,7 @@ bool RegisterVar(VarHandler handler) {
   VarHandlers().push_back(handler);
   return true;
 }
+
+CStateManager* VarManager() { return sVarManager; }
 
 } // namespace PortConsole

@@ -34,5 +34,8 @@ void IdleTick(CStateManager& mgr);
 // current. Modules register one at static init (PortCDigitalGuardianHead.cpp); returns true.
 typedef bool (*VarHandler)(CEntity& ent, const char* name, const int* value, int& current);
 bool RegisterVar(VarHandler handler);
+// The state manager of the `var` command a handler is answering (null outside one), for handlers
+// that build or look up objects.
+CStateManager* VarManager();
 
 } // namespace PortConsole
