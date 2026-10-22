@@ -225,7 +225,7 @@ struct CDarkSamusDive {
   bool mHitPlayer : 1;   // 0x20, the dive hit the player (fn_10_138A4)
   bool mLaunched : 1;    // 0x40, 'XLAU' came: the actor is in the air
   bool mDone : 1;        // 0x80, the dive is over
-  // +0x68 (0xB28), the CCollidableAABox fn_10_E784 builds (0x0000E8A8, the null box). Both
+  // +0x68 (0xB28), the CCollidableAABox fn_10_E784 builds (0x0000E8A8, the null box, kMT_Solid). Both
   // writers replace its material list and box whole before it is handed out: 'XALD'
   // (fn_10_1E89C, 0x0001EC38..0x0001EC68, the animation's bounds) and GetCollisionPrimitive
   // (fn_10_1AAC4, 0x0001AC3C..0x0001AC68, the bounds grown for the dive). Mutable because

@@ -55,6 +55,7 @@ bool CDarkSamus::HasBoostBall() const {
 // fn_10_4868 (0x00004868, 0x60 bytes): the actor whose uid is at guest 0xF78 is deleted
 // (0x000048A4) and the uid cleared (0x000048B0); a kInvalidUniqueId uid is left alone
 // (0x00004890).
+// @ fn_10_4868
 void CDarkSamus::DeleteGuestActor(CStateManager& mgr) {
   if (mGuestF78 == kInvalidUniqueId) { // 0x00004890
     return;
@@ -65,6 +66,7 @@ void CDarkSamus::DeleteGuestActor(CStateManager& mgr) {
 
 // fn_10_48C8 (0x000048C8, 0x44 bytes): the actor at guest 0xF78 is deleted when the timestamp at
 // 0xF7C is older than the elapsed time (0x000048F0 compares it with guest 0x8B0).
+// @ fn_10_48C8
 void CDarkSamus::DeleteGuestActorIfExpired(CStateManager& mgr) {
   if (mGuestF78 == kInvalidUniqueId) { // 0x000048E4
     return;
@@ -137,6 +139,7 @@ void CDarkSamus::FindPathToDestination(CStateManager& mgr, const CVector3f& dest
 // fn_10_69C0 (0x000069C0, 0x80 bytes): the uids at guest 0x934 are deleted from the state manager
 // (0x000069FC..0x00006A0C) and the slot cleared (0x00006A14); a kInvalidUniqueId slot is left
 // alone (0x000069F4). The loop runs over the count at guest 0x930 (0x00006A20).
+// @ fn_10_69C0
 void CDarkSamus::DeleteGuestUids(CStateManager& mgr) {
   for (int i = 0; i < mGuest930; ++i) { // 0x00006A20
     if (mGuest934[i] == kInvalidUniqueId.value) { // 0x000069F4
