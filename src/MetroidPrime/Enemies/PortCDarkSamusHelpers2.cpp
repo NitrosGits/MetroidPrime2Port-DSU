@@ -15,8 +15,9 @@
 // the lwz at 0x00017E48 reads the word at 0x978 and the blr at 0x00017E4C returns it. Its only
 // caller is fn_10_FD4C (WatchStageChange), which compares the count with the one it saw last
 // (the guest's 0xD54) to notice a stage change.
-// The port's fn_10_FD4C (WatchStageChange) reads the member directly, so this body does not
-// run yet: it is ported and unmarked until the caller uses it.
+// The port's fn_10_FD4C (WatchStageChange) calls it as retail does (0x0000FD68, 0x0000FDD8,
+// 0x0000FDF8). Branch-free. Run (ds41, coverage build): every WatchStageChange runs it.
+// @ fn_10_17E48
 uint CDarkSamus::GetStageCount() const {
   return mStageCount;
 }

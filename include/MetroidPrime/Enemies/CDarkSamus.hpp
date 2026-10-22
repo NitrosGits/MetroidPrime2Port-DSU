@@ -561,6 +561,7 @@ private:
   // fn_10_9920 / A06C: the boost ball actor (the 0xE10 sub-object's uid, 0xE38); the ball's
   // transform under the actor and the roll emitter's position (BoostBallInto's Update).
   CActor* GetBoostBallActor(CStateManager& mgr) const;
+  const CActor* GetBoostBallActor(const CStateManager& mgr) const; // fn_10_996C
   void UpdateBoostBallAtActor(CStateManager& mgr);
   // fn_10_C85C / C798: the sweep beam's effect (0xD78) made at the kUE_BeginAction event with
   // emission on and 0xDC8 bit 0x40 set; released with the bit cleared. fn_10_C2B0 / C470: the
@@ -635,6 +636,7 @@ private:
   void SetGuestE04(float a, float b);
   // fn_10_18FCC: vertical movement off, on the ground as given, kMT_GroundCollider back.
   void SetGrounded(CStateManager& mgr, bool onGround);
+  void LeaveGround(CStateManager& mgr); // fn_10_19014
   // fn_10_1707C: the side dodge away from the player's line of fire.
   void UpdateDodge(CStateManager& mgr, float dt, float impulse, float time);
 

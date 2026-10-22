@@ -820,8 +820,8 @@ rstl::optional_object< CAABox > CDarkSamus::GetTouchBounds() const {
 // @ fn_10_10358
 CVector3f CDarkSamus::GetOrbitPosition(const CStateManager& mgr) const {
   if (HasBoostBall() == true) {
-    if (GetBoostBallActor(const_cast< CStateManager& >(mgr)) != nullptr) {
-      return GetBoostBallActor(const_cast< CStateManager& >(mgr))->GetOrbitPosition(mgr);
+    if (GetBoostBallActor(mgr) != nullptr) {
+      return GetBoostBallActor(mgr)->GetOrbitPosition(mgr);
     }
   }
   CVector3f pos = CPatterned::GetOrbitPosition(mgr);
@@ -841,8 +841,8 @@ CVector3f CDarkSamus::GetOrbitPosition(const CStateManager& mgr) const {
 // @ fn_10_10210
 CVector3f CDarkSamus::GetAimPosition(const CStateManager& mgr, float dt) const {
   if (HasBoostBall() == true) {
-    if (GetBoostBallActor(const_cast< CStateManager& >(mgr)) != nullptr) {
-      return GetBoostBallActor(const_cast< CStateManager& >(mgr))->GetAimPosition(mgr, dt);
+    if (GetBoostBallActor(mgr) != nullptr) {
+      return GetBoostBallActor(mgr)->GetAimPosition(mgr, dt);
     }
   }
   CVector3f pos = CPatterned::GetAimPosition(mgr, dt);
@@ -1336,6 +1336,9 @@ void CDarkSamus::TakeDamage(const CVector3f& direction, float magnitude) {
 
 // vtable slot 45 = fn_10_CEB4 (0x1C): it copies the three floats out of this+0x54/0x58/0x5C, the
 // actor's translation.
+// Unmarked (ds41): no run calls it - the only callers are CScriptTeamAiMgr (its roles,
+// CScriptTeamAiMgr.cpp:390) and CMetroid, and the rooftop boss is in no team (0 calls in the
+// ds41 coverage run).
 CVector3f CDarkSamus::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                 const CVector3f& point) const {
   return GetTranslation();
@@ -1474,12 +1477,16 @@ static CEntity* PortLoadDarkSamus(CStateManager& mgr, CInputStream& input, CEnti
 
 static SDarkSamus_FuncPtrs REL_loader_DarkSamus;
 
-// Retail's RELMain calls fn_10_CF14, which stores the loader fn_10_CF44 into lbl_10_bss_110 (the
-// module's SDarkSamus_FuncPtrs) and calls the DOL's SetSDarkSamus_FuncPtrs (fn_802188E4). The
-// proxy in SDarkSamus_FuncPtrs.cpp calls through it.
-void RELMain() {
+// fn_10_CF14 (0x0000CF14, 0x30 bytes), RELMain's only call (0x0000CF00): it stores the loader
+// fn_10_CF44 into lbl_10_bss_110 (the module's SDarkSamus_FuncPtrs) and hands that to the DOL's
+// SetSDarkSamus_FuncPtrs (fn_802188E4 at 0x0000CF30). The proxy in SDarkSamus_FuncPtrs.cpp calls
+// through it. Branch-free; runs once per module load.
+// @ fn_10_CF14
+static void RegisterDarkSamusLoader() {
   REL_loader_DarkSamus.mLoader = PortLoadDarkSamus;
   SetSDarkSamus_FuncPtrs(&REL_loader_DarkSamus);
 }
+
+void RELMain() { RegisterDarkSamusLoader(); }
 
 void RELExit() { SetSDarkSamus_FuncPtrs(nullptr); }
