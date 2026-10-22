@@ -827,7 +827,8 @@ void CDigitalGuardian::x3300_(CStateManager& mgr) {
     const CCharAnimTime landing = animData.GetTimeOfUserEventForAnimation(anim, kUE_Landing);
     if (landing != infinite) {
       const float span = landing.GetSeconds() - takeOff.GetSeconds();
-      time = 0.f >= span ? 0.f : span;
+      // 0x3430 fcmpo 0, span; bge to the 0: 0 >= span and a NaN give 0 (max_val(0, span)).
+      time = rstl::max_val(0.f, span);
     }
   }
   if (time > 0.f) {
@@ -1339,16 +1340,18 @@ void CDigitalGuardian::x2CC4_(CStateManager& mgr, float dt) {
   if ((x128C_ & 0x08) != 0) {
     return;
   }
-  if (x1268_ == 2) {
-    x1264_ = rstl::min_val(1.f, x1264_ + dt);
-    if (x1264_ >= 1.f) {
+  if (x1268_ == 2) { // 0x2CFC; 3 is 0x2D0C..0x2D14, anything else skips (0x2D08, 0x2D10)
+    // 0x2D28 fcmpo 1, v; bge to the fmr of v: 1 >= v and a NaN give v (min_val(v, 1)).
+    x1264_ = rstl::min_val(x1264_ + dt, 1.f); // .rodata 0x270
+    if (x1264_ >= 1.f) {                      // 0x2D48 cror eq, gt, eq
       x28D0_(mgr);
-      x1268_ = 1;
+      x1268_ = 1; // 0x2D64
     }
   } else if (x1268_ == 3) {
-    x1264_ = rstl::max_val(0.f, x1264_ - 2.f * dt);
-    if (x1264_ <= 0.f) {
-      x1268_ = 0;
+    // 0x2D88 fcmpo 0, v; bge to the fmr of 0: 0 >= v and a NaN give 0 (max_val(0, v)).
+    x1264_ = rstl::max_val(0.f, x1264_ - 2.f * dt); // .rodata 0x264, 0x26C
+    if (x1264_ <= 0.f) {                            // 0x2DA8 cror eq, lt, eq
+      x1268_ = 0;                                   // 0x2DB8
     }
   }
   if (x1240_) {
