@@ -652,6 +652,30 @@ Still unmarked from the slice:
   CActor x154 0x40 clear for a floating corpse (0x10230).
 - `17A0` GetRagDoll, `E3D8` Touch: the ragdoll (xb30) is not ported, so their arms cannot run.
 
+## 10. sp21 slice (2026-10-22)
+
+New marks (gcov over `tools/cov/specs/spacepirate_force8.py`, `force_ret.py`, 07_sand_alamoportalobservation L3,
+grenades by `uevent <trooper> 0`; forced arms *labelled*):
+
+| fn | body | how its arms ran |
+|---|---|---|
+| `F49C` | ctor | natural: echo emitter (every placement: the PatternedAI loader default is `isEchoEmitter = true`), lights, projectile, AdditiveAim present; *forced* (ctor args at entry, not restored: per-load temporaries): data flags onlyAttackInRange 0x20 + floatingCorpse 0x10000 and no projectile, pInfo echo bit 0, actParms `mMakeLights` 0, `HasBodyState(0x16)` asked as 99 (melee arm). Left: 6 arms at 351/393 that are exception landing pads (host-only, no retail arm) |
+| `4174` | SpawnGrenade | ALL-ARMS; *forced*: no target (65535), player `mPosition` x/y NaN for one call (flat aim not normalisable, gun forward used) |
+
+sp21 also: header accessors (TARGET_PC) `CBodyStateInfo::SetLocoAnimChangeAtEndOfAnimOnly` (body+0x56c 0x80) and
+`CPatternedInfo::GetEchoParameters` (+0x2a4); the ctor builds `CPirateEchoEmitter` and locks the projectile token.
+NaN senses undone to plain compares (LANE_BRIEF rule: plain `ble`/`bge` are taken on NaN): 3D7C 0x3EC4/0x3F2C/0x3F60/0x3F74,
+4174 0x42F4; CE30 0xCEDC `bge` now `!(magSq < distSq)`. `tools/retail_diff.py --kinds nan` is clean for 3220, A71C, 3D7C,
+4174, F49C; it still lists leads in 1980, 253C, 28F0, 38E4, 5280, 8A90, ABC0, BBC0, C684, E498 (not audited).
+
+Still unmarked:
+- `58D8` LaunchGrenade: body matches the asm (enum values, cmd fields, 0x5A80 multiplayer bit). Team arms need a trooper that
+  ran SquadJoin (Taunt) and is in an active FSM state; `fsm <trooper> LaunchGrenade` failed ("no state machine state") right
+  after the uevent steps. Not run.
+- `CE30` GetStrafeDir: body matches the asm (list = mgr+0x830 = kOL_ListeningAi: rstl::auto_ptr is 8 bytes; kMT_Solid 59;
+  kSD_Left 2 / Right 3). ShouldStrafe is not a `trigcall` name, and a gdb breakpoint on it (~5000 hits) overran the 1100 s run.
+- `10CE4`: not started (02_sand_sandfalls L3 WallHang staging).
+
 ## Open questions (verify first)
 
 1. `x8f4_24` mask is `flags & 3` (MP1 `& 1`): a 2-bit field or a different flag.

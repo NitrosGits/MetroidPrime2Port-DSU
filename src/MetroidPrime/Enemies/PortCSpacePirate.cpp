@@ -14,6 +14,7 @@
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "MetroidPrime/CActorLights.hpp"
+#include "MetroidPrime/CPirateEchoEmitter.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
 #include "MetroidPrime/CKnockBackInfo.hpp"
@@ -177,6 +178,7 @@ void StandIn(const char* what) { PortSpacePirateStandIn(what); }
 // DoubleSnap's Activate drops the pirate from it.
 rstl::list< TUniqueId > CSpacePirate::mChargePlayerList;
 
+// @ fn_72_F49C
 CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CTransform4f& xf, const CModelData& modelData,
                            const CActorParameters& actParms, const CPatternedInfo& pInfo,
@@ -201,8 +203,10 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
 , xb30_(nullptr)
 , xba0_teamAiMgrId(kInvalidUniqueId)
 , mPortalPlane(0.f, CUnitVector3f(CVector3f::Forward())) {
-  // Flag bits 0x8f4_24..0x8f6_24, unpacked from the data's flags word (fn_72_F49C); every other
-  // bit of 0x8f6..0x8fa starts cleared. 0x8f9_29 is the one bit the retail ctor skips.
+  // Flag bits 0x8f4_24..0x8f6_24, unpacked from the data's flags word (0xF51C-0xF638); every other
+  // bit of 0x8f6..0x8fa starts cleared (0xF63C-0xF838). The retail ctor skips two bits:
+  // x8f6_31 (0xF680 clears 0x8f6 0x2, then 0xF684 starts on 0x8f7) and x8f9_29 (0xF7C8 clears
+  // 0x8f9 0x2 after 0xF7BC's 0x8); the host heap isn't zeroed, so the port clears them too.
   const uint flags = data.mFlags;
   x8f4_24_pendingAmbush = (flags & 3) != 0;
   x8f4_25_ceilingAmbush = (flags & 0x2) != 0;
@@ -227,7 +231,7 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   x8f6_28_ = false;
   x8f6_29_enableRetreat = false;
   x8f6_30_shuffleClose = false;
-  x8f6_31_inAttackState = false;
+  x8f6_31_inAttackState = false; // port: retail leaves this bit untouched (see above)
   x8f7_24_enablePatrol = false;
   mEnableAim = false;
   x8f7_26_hearPlayerFire = false;
@@ -249,7 +253,7 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   x8f9_26_started = false;
   x8f9_27_inRange = false;
   x8f9_28_satUp = false;
-  x8f9_29_enableBreakDodge = false; // TODO(fn_72_F49C): retail leaves this bit untouched
+  x8f9_29_enableBreakDodge = false; // port: retail leaves this bit untouched (see above)
   x8f9_30_closeMelee = false;
   x8f9_31_sentAttackMsg = false;
   x8fa_24_normalDodge = false;
@@ -265,7 +269,7 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   x904_steeringSpeed = 1.f;
   x908_targetDelta = CVector3f::Forward();
   x914_coverPointRearDir = CVector3f::Zero();
-  xa0c_unkTimer = 0.f;
+  xa0c_unkTimer = 0.f; // port: the retail ctor never stores 0xa0c (Think counts it down)
   xa10_steeringDelayTimer = 0.f;
   xa14_ = 0;
   // 0xF89C lfs 0x58(r29) (r29 = pInfo), 0xF8B8 stfs 0xa18: CPatternedInfo +0x54 is the
@@ -281,7 +285,6 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   xa78_ = 0.f;
   xa7c_timeNoPlayerLos = 0.f;
   xa80_cantSeePlayerCycleCounter = 0;
-  mBurstFire.SetBurstType(1);
   xaf8_jumpHeight = 3.f;
   xafc_patrolDestPos = CVector3f::Zero();
   xb08_skidDir = -1;
@@ -319,9 +322,11 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   InitLauncherModel(data);
   // 0xFB34-0xFB40: the data's projectile (+0x20) is not -1 (`addis 1` + `cmplwi 0xffff`).
   if (data.mProjectile != kInvalidAssetId) {
+    // 0xFB4C CProjectileInfo(data+0x20, data+0x24), 0xFB58 assigned to 0xbd4, 0xFB6C Lock.
     mProjectileInfo = CProjectileInfo(data.mProjectile, data.mProjectileDamage);
+    mProjectileInfo.data().Token().Lock();
   }
-  mBurstFire.SetBurstType(1);
+  mBurstFire.SetBurstType(1); // 0xFB78 stw 1, 0xa98
 
   const CVector3f scale = GetModelData()->GetScale();
   mBoneTracking.SetDisableTrackingDistance(25.f * scale.GetZ());
@@ -346,8 +351,9 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
                                       CPASAnimParm::FromEnum(2));
     xb20_breakDodgeDist = scale.GetX() * GetAnimationDistance(breakDodge);
   } else {
-    // TODO(fn_72_F49C): retail sets bit 0x80 of the body controller's byte at +0x56c here
-    // (MP1: BodyStateInfo().SetLocoAnimChangeAtEndOfAnimOnly(true)); no such setter in this tree.
+    // 0xFF44-0xFF54: body controller +0x56c bit 0x80 set (its CBodyStateInfo's
+    // mChangeLocoAtEndOfAnimOnly).
+    BodyController()->BodyStateInfo().SetLocoAnimChangeAtEndOfAnimOnly(true);
   }
 
   const CAABox& baseBox = GetBaseBoundingBox();
@@ -356,16 +362,34 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   if (HasActorLights()) {
     ActorLights()->SetAmbienceGenerated(false);
   }
-  // TODO(fn_72_F49C): `this->x682 |= 0x80` (a CPatterned bit, likely the knock-back controller's
-  // locomotion-during-electrocution flag); not mapped to a member.
-  if (!BodyController()->HasBodyState(static_cast< pas::EAnimationState >(0x16))) {
+  // 0xFF98-0xFFA8: x682 |= 0x80. The knock-back controller is at 0x620 (DOL CPatterned ctor
+  // 0x8007A214), so this is its +0x62 bit 0x80: CKnockBackMgr::mLocomotionDuringElectrocution.
+  KnockBackController().SetLocomotionDuringElectrocution(true);
+  // 0xFFA4 li r4,0x16; 0xFFB8 bne: only a body without state 0x16 forces melee (0xFFC4 0x8f4 0x10).
+  if (!BodyController()->HasBodyState(pas::kAS_AdditiveAim)) {
     x8f4_27_melee = true;
   }
-  // TODO(fn_72_F49C): if pInfo+0x2a4 bit 0x80, retail builds a CEchoEmitter (0x70, DOL
-  // fn_802455CC) from segs Head_1/L_ankle/R_ankle/Swoosh_LCTR/... and calls SetEchoEmitter; the
-  // CPatternedInfo flag is unnamed here, so no emitter is made.
-  // TODO(fn_72_F49C): if x8f5_30_floatingCorpse, retail clears bit 0x40 of the CActor flag byte at
-  // +0x154; unmapped.
+  // 0xFFCC-0xFFD4: pInfo+0x2a4 bit 0x80 (mIsEchoEmitter) set builds a CPirateEchoEmitter (new
+  // 0x70 at 0x10008, ctor fn_802455CC at 0x1019C) at the actor's position (this+0x54) from the
+  // rodata C38 segs below, then 0x101B0 SetEchoEmitter(true, emitter).
+  const SEchoParameters& echo = pInfo.GetEchoParameters();
+  if (echo.mIsEchoEmitter) {
+    CPirateEchoEmitter* emitter = rs_new CPirateEchoEmitter(
+        this, GetTranslation(), echo,
+        animData->GetLocatorSegId(rstl::string_l("Head_1")),      // r7: C38+0x342
+        animData->GetLocatorSegId(rstl::string_l("R_wing_LCTR")), // r8: C38+0x3a6
+        animData->GetLocatorSegId(rstl::string_l("L_wing_LCTR")), // r9: C38+0x39a
+        animData->GetLocatorSegId(rstl::string_l("gun_lctr")),    // r10: C38+0x391
+        animData->GetLocatorSegId(rstl::string_l("Swoosh_LCTR")), // sp+8: C38+0x359
+        animData->GetLocatorSegId(rstl::string_l("R_ankle")),     // sp+0xc: C38+0x389
+        animData->GetLocatorSegId(rstl::string_l("L_ankle")));    // sp+0x10: C38+0x381
+    SetEchoEmitter(true, emitter);
+  }
+  // 0x10224-0x1023C: a floating corpse (0x8f5 0x2) clears CActor 0x154 bit 0x40, the actor's
+  // mHighlightedInDarkVisor (0x154: echo-emitter-enabled 0x80, highlighted 0x40, ...).
+  if (x8f5_30_floatingCorpse) {
+    SetHighlightedInDarkVisor(false);
+  }
 }
 
 CSpacePirate::~CSpacePirate() {}
@@ -828,8 +852,8 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
 
   float startAngle = 0.f;
   float angleStep = 0.07853982f; // pi/40
-  // The negated compares keep retail's NaN arms (0x3EC4 ble, 0x3F2C ble, 0x3F60 ble, 0x3F74 bge).
-  if (!(target.GetZ() <= origin.GetZ())) {
+  // Plain compares: 0x3EC4/0x3F2C/0x3F60 ble and 0x3F74 bge are taken on NaN, as C's > / < are.
+  if (target.GetZ() > origin.GetZ()) {
     startAngle = 0.7853982f; // pi/4
     angleStep = -angleStep;
   }
@@ -845,15 +869,15 @@ static void SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
     const float sine = CMath::FastSinR(candidate);
     // Retail's fmsubs leaves the terms in this order: distance*(cos*sin) - height*cos^2.
     const float denominator = distance * (cosine * sine) - heightDelta * (cosine * cosine);
-    if (!(denominator <= 1.1920929e-7f)) {
+    if (denominator > 1.1920929e-7f) {
       const float speedSq = lhs / denominator;
       if (speedSq >= minSpeedSq && speedSq <= maxSpeedSq) {
         bestAngle = candidate;
         bestSpeed = CMath::SqrtF(speedSq);
         break; // retail branches straight past the loop counter here
       }
-      const float error = !(speedSq <= maxSpeedSq) ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
-      if (!(error >= bestError)) {
+      const float error = speedSq > maxSpeedSq ? speedSq - maxSpeedSq : minSpeedSq - speedSq;
+      if (error < bestError) {
         bestAngle = candidate;
         bestSpeed = CMath::SqrtF(speedSq);
         bestError = error;
@@ -883,6 +907,7 @@ static CVector3f GetGrenadeAimPoint(const CActor& target, const CStateManager& m
 
 // Retail fn_72_4174: launches one bouncy grenade from the gun locator, aimed by fn_72_4030 and
 // fn_72_3D7C, with retail's default model / actor parameters and 5 m player-explode distance.
+// @ fn_72_4174
 void CSpacePirate::SpawnGrenade(CStateManager& mgr) {
   --xc58_;
   const CTransform4f gunXf = GetLctrTransform(xa86_gunSeg);
