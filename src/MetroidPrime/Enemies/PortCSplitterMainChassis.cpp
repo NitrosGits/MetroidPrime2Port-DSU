@@ -2007,9 +2007,7 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   PortUpdateFade(dt);
 }
 
-// fn_75_AFE8 (not marked: the area-4 run never reached the death branch, and the D3C-up
-// branch needs the sync id at 0xCC0 and the counter at 0xC48 - see the module note)
-// The chassis's timers (0xAFE8-0xB104), the Think's call at 0x0000F164 (the manager, the frame
+// fn_75_AFE8. The chassis's timers (0xAFE8-0xB104), the Think's call at 0x0000F164 (the manager, the frame
 // time in f1 and the state manager in r4). The four timers the chassis copies from its data
 // (fn_75_8EA4) are counted down (0x0000AFF8 0xD10, 0x0000B004 0xD14, 0x0000B010 0xD18,
 // 0x0000B01C 0xD1C), the scan timer at 0xD28 too (0x0000B028), and three timers are counted up
@@ -2022,6 +2020,11 @@ void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
 // (0x0000B0B0) and, at zero or below (0x0000B0C0 fcmpo with the cror eq, lt, eq - the <= sense),
 // the chassis dies with the transform's Y column (the vector at 0x28, 0x38 and 0x48) and the
 // state 'RATL' (0x0000B0E0).
+// Arms: the timers ran in the 914f1381 runs; the death branch (the flag byte at 0xD41's 0x01 bit
+// set and the timer at 0xD20 at or below zero), the alive gate, the timer above zero and the
+// D3C-up branch (the id at 0xCC0 valid and the counter at 0xC48 not zero) were forced under
+// gdb.  The death calls the base class's Death (asm 0x0000B0F0), not the module's override.
+// @ fn_75_AFE8
 void CSplitterMainChassis::PortUpdateTimers(CStateManager& mgr, float dt) {
   mLegStabTimer -= dt;     // 0xD10 (0x0000AFF8)
   mSpinPenaltyTimer -= dt; // 0xD14 (0x0000B004)

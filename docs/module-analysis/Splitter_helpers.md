@@ -589,13 +589,65 @@ The armed arm of `fn_75_E768` is not reachable in the fight: the head's search (
 runs when the id at 0xEFC is invalid (fn_75_31A8, 0x327C-0x3280), so the old pick it releases
 (0x2350-0x2380) is never a live chassis - the force gives the head an old pick to release.
 
+### 3.19 The chassis's timers: the Digital Guardian's death timer
+
+The Digital Guardian's head (fn_14_14C24) gives every Splitter chassis a death timer: the flag
+byte at 0xD41 gets its 0x01 bit and the timer at 0xD20 is set (fn_75_E660, dg25's lane).  The
+chassis's own timer update (fn_75_AFE8) counts that timer down and kills the chassis when it
+reaches zero.  The port's body matches the REL's asm exactly:
+
+- 0xB094 `clrlwi. r0, r0, 31` (the flag byte at 0xD41's 0x01 bit) and 0xB098 `beq` - the death
+  block is skipped when the bit is **clear**, so the bit must be set;
+- 0xB0A0 `extrwi. r0, r0, 1, 25` (the alive bit of the byte at 0x420) and 0xB0A4 `beq` - skipped
+  when the chassis is not alive;
+- 0xB0B8 the timer at 0xD20 is counted down (0xD20 = 0.0f - dt), 0xB0C0 `fcmpo` with 0xB0C4
+  `cror eq, lt, eq` (the <= sense) and 0xB0C8 `bne` - the death is at zero or below;
+- 0xB0F0 `bl Death__10CPatternedFR13CStateManagerRC9CVector3f18EScriptObjectState` - the **base**
+  class's Death, not the module's override (fn_75_EB04), with the transform's Y column and the
+  state kSS_DeathRattle.
+
+The port's `PortUpdateTimers` says exactly that, and the run with the Digital Guardian's own
+delay (0.0f for the first chassis, the force spec's `DEATHT` case) shows the chassis dying at
+the next timer update and **leaving the world** (the console's `objs splitter` lists only the two
+heads afterwards).  So the port is not divergent: a chassis that does not die is one whose Think
+does not run - the port's Think returns early when the entity is not active (the retail's gate
+at 0xF10C-0xF110), which is the same gate the retail has - or one whose timer has not run out
+yet (the delay is 0.7s per command module and 0.15s per chassis, so the first chassis waits
+1.4s and the second 1.55s - 84 and 93 frames at 60Hz).
+
+`fn_75_AFE8` (the chassis's timers) is now **marked**: 17/17 lines, 10/10 branches, ALL-ARMS.  The
+death branch, the alive gate, the timer above zero and the D3C-up branch (the id at 0xCC0 valid
+and the counter at 0xC48 not zero) were forced under gdb (`DEATHT`, `DEATHALIVE`, `TIMERHI`,
+`D3C`).
+
+The two rows that stay unmarked in this slice:
+
+- `fn_75_2994` (the head's turn upright) is 18/18 lines and 9/12 branches: the three untaken
+  arms are the two comparisons of the head's flat Y column (asm 0x2A48-0x2A7C) and the arc that
+  leads into them.  The forces that write the head's transform (`TURNCLEAR`, `TURNSLERP`,
+  `TURNZERO`, `TURNZERO2`, `TURNX`, `TURNY`) fire; `TURNSLERP` takes the slerp path (the angle's
+  other arm) but the three arms of the Y column's two comparisons are not moved by the writes
+  of the Y column at the body's entry - the row stays unmarked.
+- `fn_75_2280` (the head's chassis search) is 18/19 lines and 11/14 branches: the untaken arms
+  are the other-area arm of the walk (asm 0x22F8-0x2304), the failed reserve (0x2318-0x2320) and
+  the not-nearer arm (0x2324-0x234C).  The forces (`FINDAREA`, `FINDNORES`, `FINDDIST`) fire but
+  do not move them: the head's area id and the head's position are not what the walk compares
+  (the walk reads the actors' own area ids and positions) - the row stays unmarked.
+
+**A note on the merge order** (this is the tool's behaviour, not the port's): `gcov-tool merge`
+keeps the first profile's counter where it is already non-zero and only adds the later
+profiles' counters where the first has none.  A profile that puts the **natural run first** loses
+the forced arms - the merged row then shows only the natural run's arcs.  The profiles above put
+the forced runs first; the merged rows are then the union of every run.
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
   shipped spawns reach: section 3.3 lists them with the lines and the branches each one still
-  misses. The next ones are `fn_75_2994` (the head's turn upright: 14/18 lines, 4/12 branches),
-  `fn_75_2CE0` (the head's shield: 5/34 lines) and `fn_75_ACEC` (the chassis's head placement:
-  26/34 lines, 24/32 branches) - the smallest gaps.
+  misses. The next ones are `fn_75_2994` (the head's turn upright: 18/18 lines, 9/12 branches),
+  `fn_75_2280` (the head's chassis search: 18/19 lines, 11/14 branches), `fn_75_2CE0` (the head's
+  shield: 5/34 lines) and `fn_75_ACEC` (the chassis's head placement: 30/34 lines, 29/32
+  branches) - the smallest gaps.
 - **The queue's rows with no body at all** are the module's own helpers that the FSM lane's
   states and codes call (the beam effect's actor, the laser-pulse shot, the collision actor
   managers' joint helpers) and the ones the two classes' constructors build. They are listed in
