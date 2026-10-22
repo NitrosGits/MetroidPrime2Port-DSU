@@ -18,7 +18,7 @@ offset	size	name	kind	class	callers	marker	reason
 0x104	0x24	RELExit RELExit	rel-entry	H	-	-	the REL's own boilerplate (entry/exit/prolog); the host's runtime does it
 0x128	0x20	RELMain RELMain	rel-entry	H	-	-	the REL's own boilerplate (entry/exit/prolog); the host's runtime does it
 0x148	0x30	fn_15_148 the module's register function (RELMain calls it)	rel-entry	H	bl:RELMain	-	the REL's own boilerplate (entry/exit/prolog); the host's runtime does it
-0x178	0xACC	fn_15_178 LoadElitePirate (the module's loader)	loader	B	data:lbl_15_data_88	-	the module's own loader body; the port replaces it wholesale (no marker)
+0x178	0xACC	fn_15_178 LoadElitePirate (the module's loader)	loader	B	data:lbl_15_data_88	fn_15_178	ported (PortLoadElitePirate): fn_15_10C0 defaults, the 43-id reader, the Ldr conversions in retail order and the B82C argument list; ALL-ARMS but the null-model arm, dead in shipped data (all 10 EPRT placements carry ANCS 0x6b45f06d) (ep1 2026-10-22)
 0xC44	0x64	fn_15_C44	compiler-dtor	H	-	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
 0xCA8	0x40	fn_15_CA8	compiler-dtor	H	bl:fn_15_178	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
 0xCE8	0x20	fn_15_CE8	compiler-dtor	H	bl:fn_15_CA8	-	body identical to DOL `AddChildWidget__10CGuiWidgetFP10CGuiWidgetbb` @ 0x8027d930
@@ -29,7 +29,7 @@ offset	size	name	kind	class	callers	marker	reason
 0xF2C	0x64	fn_15_F2C	compiler-dtor	H	-	-	body identical to DOL `"__dt__Q24rstl27auto_ptr<15CCharLayoutInfo>Fv"` @ 0x802ac5ec
 0xF90	0x60	fn_15_F90	compiler-dtor	H	-	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
 0xFF0	0xD0	fn_15_FF0	compiler-dtor	H	-	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
-0x10C0	0x268	fn_15_10C0 SLdrElitePirate ctor (the loader's stack object)	loader	B	bl:fn_15_178	-	the module's own loader body; the port replaces it wholesale (no marker)
+0x10C0	0x268	fn_15_10C0 SLdrElitePirate ctor (the loader's stack object)	loader	B	bl:fn_15_178	-	checked against the generated SLdrElitePirate ctor: same defaults except darkShieldSound/lightShieldSound/sound_VisorElectric = -1, which PortLoadElitePirate applies (no separate body to mark)
 0x1328	0x90	fn_15_1328 ReleaseClaimedRegion	method	B	bl:fn_15_1FC0 fn_15_7B00 fn_15_8580	fn_15_1328	the module's own body; the port's marker is over it
 0x13B8	0x1E0	fn_15_13B8 ClaimPathRegion	method	B	bl:fn_15_1FC0	fn_15_13B8	the module's own body; the port's marker is over it
 0x1598	0x34	fn_15_1598 GetPathArea	method	B	bl:fn_15_1328 fn_15_13B8	fn_15_1598	the module's own body; the port's marker is over it
@@ -51,7 +51,7 @@ offset	size	name	kind	class	callers	marker	reason
 0x1F2C	0x94	fn_15_1F2C ResetAttackTimer	method	B	bl:fn_15_4AE0 fn_15_4D18 fn_15_50BC	fn_15_1F2C	the module's own body; the port's marker is over it
 0x1FC0	0x244	fn_15_1FC0 PlanPath	method	B	bl:fn_15_5CBC	fn_15_1FC0	the module's own body; the port's marker is over it
 0x2204	0x80	fn_15_2204 UpdatePositionHistory	method	B	bl:fn_15_9598	fn_15_2204	the module's own body; the port's marker is over it
-0x2284	0xC0	fn_15_2284	method	H	bl:fn_15_6618	-	host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile)
+0x2284	0xC0	fn_15_2284	method	H	bl:fn_15_6618	fn_15_2284	ported as CElitePirate::GetLockOnPosition; ALL-ARMS forced (trigcall ShouldFire) (ep1 2026-10-22)
 0x2344	0x50	fn_15_2344	method	H	-	-	body identical to DOL `__dt__10CMemorySysFv` @ 0x802ce648
 0x2394	0xB4	fn_15_2394 UpdateLauncherTransform	method	B	bl:fn_15_9598	fn_15_2394	the module's own body; the port's marker is over it
 0x2448	0xA8	fn_15_2448 SendLauncherMsg	method	B	bl:fn_15_24F0	fn_15_2448	the module's own body; the port's marker is over it
@@ -185,7 +185,7 @@ offset	size	name	kind	class	callers	marker	reason
 0x9840	0x8C	fn_15_9840 InstallStateMachine	virtual	B	data:lbl_15_data_634	fn_15_9840	the module's own body; the port's marker is over it
 0x98CC	0x68	fn_15_98CC	method	H	-	-	host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile)
 0x9934	0x54	fn_15_9934	method	H	-	-	host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile)
-0x9988	0xEC	fn_15_9988	method	H	bl:fn_15_A190	-	the animation setup the ctor calls: it uses the DOL's `FindBestAnimation__12CPASDatabaseCFRC16CPASAnimParmDatai` @ 0x80298d04, `NoParameter__12CPASAnimParmFv` @ 0x80297248 and `FromEnum__12CPASAnimParmFi` @ 0x80297150
+0x9988	0xEC	fn_15_9988	method	H	bl:fn_15_A190	fn_15_9988	ported as CElitePirate::IsInitialIdle (ep1 2026-10-22)
 0x9A74	0x3C	fn_15_9A74	method	H	-	-	body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0
 0x9AB0	0x184	fn_15_9AB0	compiler-dtor	H	bl:fn_15_9988	-	body identical to DOL `__ct__16CPASAnimParmDataFQ23pas15EAnimationStateRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParm` @ 0x80079a60
 0x9C34	0x3C	fn_15_9C34	method	H	-	-	body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0
@@ -218,14 +218,14 @@ offset	size	name	kind	class	callers	marker	reason
 0xB2A0	0x3C	fn_15_B2A0	compiler-dtor	H	-	-	body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0
 0xB2DC	0x3C	fn_15_B2DC	compiler-dtor	H	-	-	body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0
 0xB318	0x48	fn_15_B318	compiler-dtor	H	data:lbl_15_data_8D0	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
-0xB360	0x21C	fn_15_B360 CElitePirateData copy into the object	loader	B	bl:fn_15_A190	-	the module's own loader body; the port replaces it wholesale (no marker)
+0xB360	0x21C	fn_15_B360 CElitePirateData copy into the object	loader	B	bl:fn_15_A190	-	compiler copy constructor of CElitePirateData; the host's implicit copy is the same (no marker)
 0xB57C	0x64	fn_15_B57C	compiler-dtor	H	bl:fn_15_B360 fn_15_B82C	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
 0xB5E0	0x94	fn_15_B5E0	compiler-dtor	H	bl:fn_15_B360 fn_15_B82C	-	body identical to DOL `__ct__16CActorParametersFRC16CActorParameters` @ 0x800dfe98
 0xB674	0x7C	fn_15_B674	compiler-dtor	H	bl:fn_15_B5E0	-	body identical to DOL `__ct__16CLightParametersFRC16CLightParameters` @ 0x800dff2c
 0xB6F0	0x58	fn_15_B6F0	compiler-dtor	H	-	-	body identical to DOL `"__dt__Q24rstl84single_ptr<Q24rstl63vector<Q219CCollisionPrimitive4Type,Q24rstl17rmemory_allocator>>Fv"` @ 0x802836f8
 0xB748	0x84	fn_15_B748	compiler-dtor	H	bl:fn_15_A190	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
 0xB7CC	0x60	fn_15_B7CC	compiler-dtor	H	-	-	ctor/dtor of a module struct (rstl/CMemory), no game logic
-0xB82C	0x2CC	fn_15_B82C CElitePirateData builder (the loader's stack object)	loader	B	bl:fn_15_178	-	the module's own loader body; the port replaces it wholesale (no marker)
+0xB82C	0x2CC	fn_15_B82C CElitePirateData builder (the loader's stack object)	loader	B	bl:fn_15_178	fn_15_B82C	ported as the CElitePirateData constructor, retail argument order, every store cited (ep1 2026-10-22)
 0xBAF8	0x10C	fn_15_BAF8	method	B	bl:fn_15_48BC	fn_15_BAF8	the module's own body; the port's marker is over it (the TryCommand copy for the melee command (section 8.2))
 0xBC04	0x10C	fn_15_BC04	method	B	bl:fn_15_4AE0 fn_15_4D18	fn_15_BC04	the module's own body; the port's marker is over it (the TryCommand copy for the projectile command (section 8.2))
 0xBD10	0xEC	fn_15_BD10	method	B	bl:fn_15_50BC	fn_15_BD10	the module's own body; the port's marker is over it (the TryCommand copy for the loop-attack command (section 8.2))
@@ -234,7 +234,7 @@ offset	size	name	kind	class	callers	marker	reason
 0xBF6C	0xC0	fn_15_BF6C	method	H	bl:fn_15_36CC	-	body identical to DOL `"reserve__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fi"` @ 0x801374c4
 0xC02C	0x68	fn_15_C02C	method	H	bl:fn_15_BF6C	-	body identical to DOL `"uninitialized_copy<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P26CJointCollisionDescription>__4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P26CJointCollisionDescription"` @ 0x80137584
 0xC094	0x3C	fn_15_C094	method	H	bl:fn_15_10	-	host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile)
-0xC0D0	0x808	fn_15_C0D0 the static initialiser of the FSM name/PTMF tables	loader	B	-	-	the module's own loader body; the port replaces it wholesale (no marker)
+0xC0D0	0x808	fn_15_C0D0 the static initialiser of the FSM name/PTMF tables	loader	B	-	fn_15_C0D0	ported as the static skTriggers/skStates/skCodes tables; all 54 name->function bindings decoded from the PTMF copies and checked (ep1 2026-10-22)
 0xC8D8	0xC4	_unresolved the REL's unresolved-symbol report	runtime	H	-	-	the REL's own boilerplate (entry/exit/prolog); the host's runtime does it
 0xC99C	0x24	_epilog the REL's epilog	runtime	H	-	-	the REL's own boilerplate (entry/exit/prolog); the host's runtime does it
 0xC9C0	0x24	_prolog the REL's prolog	runtime	H	-	-	the REL's own boilerplate (entry/exit/prolog); the host's runtime does it
