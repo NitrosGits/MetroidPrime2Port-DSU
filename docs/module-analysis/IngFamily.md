@@ -1529,6 +1529,11 @@ Reclassified `H host-copy`: `11490` (a plain `CModelData()` wrapper), `11438` (t
 container copy-assign), `119E8` (CBeamInfo copy ctor, 0x48 bytes, after TLdrToBeamInfo at
 0x1189C in `11840`).
 
+The rows of this table that are still open were taken up by lane tail8 (A.34): `1DF4`, `53E0`,
+`8CF4` and `10D50` are marked, `10E64` is proved dead on the host, and `5714` keeps four arms
+(`from == -1`, `to == -1`, the search's failure, the host's `mPathArea` guard) that this area's
+point graph cannot produce.
+
 ### A.32 FaceTarget fn_29_7244 rewritten from the asm (2026-10-22, lane leads1)
 
 The port's body called IsFacingTarget (`<=`, NaN-true) and steered at the live target. Retail
@@ -1704,6 +1709,56 @@ Run: `tools/cov/run.sh tools/cov/specs/ing_team.py <out> "42b935e4,02_sand_sandf
 MP2_DEBUG_ING=1`; the spec counts the arms at the emitted `je`s and the QuitTeam block
 (symbol-relative offsets, `$eflags & 0x40` is ZF), because an optimised `return;` has no line of
 its own. game exit 0, 0 `[port] caught`/reach-stub.
+
+### A.34 The small unmarked class-B rows, arm by arm (2026-10-22/23, lane tail8)
+
+Six rows of `Ing_functions.tsv`: `1DF4` (0x128), `53E0` (0x108), `5714` (0x10C), `8CF4` (0x1A0),
+`10D50` (0x9C) and `10E64` (0x50). Driver `tools/drivers/ing_tail8.py`, spec
+`tools/cov/specs/ing_tail8.py`, the Agon Wastes `01_sand_entrance_dark` (the world 42b935e4).
+Three coverage runs (`/tmp/opencode/tail8_run1..3`, each ~35 s, `--fast`, frames 9000-14000); the
+last is the one quoted.
+
+Read against the asm, the four behaviour bodies needed **no change**: `53E0`'s flag-1 mesh query,
+its kR_Success test (`cmpwi r3,0` / `bne`, 0x5470) and the 0x301 restore, `5714`'s two filters
+(rodata_94 = 20 for both, the second's connected point = the first's index) and its point search,
+`8CF4`'s message switch, forward knock-back and 0x350/GetTime second, and `10D50`'s single
+ConstructChildParticleSystem call all agree with the port. What changed:
+
+| where | what |
+|---|---|
+| `include/MetroidPrime/Enemies/PortIngShared.hpp:55-89` | `fn_29_1DF4` lifted out of `CIng::Listen` into `PortIngSafeZoneNoise` (behaviour identical; the asm turned into one call at 0xB3A8) so the body has a name to mark and to break on |
+| `src/MetroidPrime/Enemies/PortCIng.cpp:3273-3290` (`53E0`), `:3217-3236` (`5714`), `:2005-2050` (`8CF4`) | arm addresses, the polarity of every test and the two notes that make the arms reachable (the knock-back needs an Activate first; the point search reads the area from the point search itself) |
+| `src/MetroidPrime/Enemies/PortCIngExitHostEffect.cpp:42-56`, `:376-390` | `10D50`'s host `HasReference` guard called out as the host's (retail 0x10D50-0x10DC8 has no branch at all), and `10E64`'s dead-arm proof |
+
+| fn | arms (asm) | the run | marker |
+|---|---|---|---|
+| `1DF4` | hearing exit 0x1E58-0x1E60 (cror eq,lt,eq; bne, a NaN exits too); unset 0xd78 takes the zone 0x1E84; held id no zone 0x1EAC-0x1EF4; held zone kept when not farther 0x1EE4/0x1EE8 (bge skips) | all: 38 out of radius / 57 in; 5 unset takes / 52 held; 23 not-a-zone replaces / 29 zone compares; 13 keeps / 16 nearer replaces | **marked** |
+| `53E0` | no CScriptSafeZone at 0xd78 (0x1CD4); mesh point not found (1C98's height query); PathExists 0x5470 (5 success / 9 failure) | all: 46 no-zone / 28 zone, 14 mesh point found / 14 not, 5 found path / 9 not; the found arm needs the Ing *placed on* the lure zone (the same tick, `place` + `var ing.lurezone` + `codecall SetLuredDest`) | **marked** |
+| `5714` | no hint 0x5748 (1); no closest point 0x5788; point for the hint 0x57C8; point search 0x57F4 | the no-hint arm ran (1 of 90); `from == -1`, `to == -1` and the search's failure arm did **not** (89/89 succeeded); the host's `mPathArea` guard arm did not either | not marked |
+| `8CF4` | messages 0/1/2 and the unknown one (0x8CFC-0x8D24); hurtful 0x8D64; evaporating 0x8D70; CanIssueCommand 0x8D84 (both answers); the state time 0x8E48-0x8E70 | all: msg keys 4/202/4 and 3 unknown; hurtful 4, evaporating 136; CanIssueCommand 6 yes / 134 no; time over a second 1, under 61 | **marked** |
+| `10D50` | branch-free (0x10D50-0x10DC8) | the ctor built both effects in the ExitHost run (2 entries) and one ConstructChildParticleSystem call each; the host guard's true side never ran (it is the host's, not retail's) | **marked** |
+| `10E64` | no branch either; two CParticleGen slot 0x10 calls (0x10E80, 0x10E94) | dead on the host: 0 Render entries while the effect existed and ran its AddToRenderer 22 times. Nothing queues an actor's Render but `mgr.RenderLast*`, and this class's AddToRenderer (0x10DEC, no CActor call) submits only the two particle gens; CActor::AddToRenderer reaches Render only when the actor has a model, and the ctor's model is `CModelData()` (0x11200) | not marked (dead) |
+
+Why `5714` stays open: `FindClosestPhysicalPoint` (upstream `CPathFindPointSearch.cpp`, the DOL's
+own body) stores the index of the nearest candidate **whatever the distance**, so `from == -1` needs
+an area with no points and `to == -1` needs one where even the Ing's own point is not connected to
+itself; and the second query's filter tests `point -> from` while the search tests `from -> point`,
+so its failure arm needs a one-way point link, which the 82 hints (each pair, cross-hint too) never
+produced. Both remaining arms want a point graph this area does not have; the guard arm wants a
+forced null `mPathArea` (`tools/cov/force.sh`).
+
+Forcing notes: `var <ing> ing.lurezone` + `noise 6 x y z` in one line covers the four `1DF4` holds;
+the "kept" arm needs the Ing standing *on* the held zone and the noise 8 units off it (equal
+distances go the other way and store). `statecall <ing> SafeZoneReaction 0` immediately before the
+Update is what makes the knock-back possible (0x6b4 must be kAS_Ready), and a second Update in the
+same line takes CanIssueCommand's false answer. The evaporating arm deletes the Ing, so it runs
+last, after `fsm ExitHost` has built the effect.
+
+Run: `tools/cov/run.sh tools/cov/specs/ing_tail8.py <out> "42b935e4,01_sand_entrance_dark"
+--driver "python3 tools/drivers/ing_tail8.py {port} <out>/game.log" --fast --frames 14000`; the
+spec counts the arms at the emitted branch (symbol-relative offsets; `$eflags & 0x40` is ZF at a
+`je`, `& 0x1` CF at the hearing test's `jb`, `& 0x41` at the `jbe`). game exit 0, 0
+`[port] caught`/reach-stub.
 
 ## D. Implementation order
 

@@ -52,8 +52,45 @@ inline bool PortIngLuredMeshPoint(CStateManager& mgr, CPathFindSearch& search, T
   return found;
 }
 
-// fn_44_21A8 = fn_29_53E0 (code function SetLuredDest): `dest` becomes the lure point when a mesh
-// path to it exists (flags 1 for that query), else stays `pos`. Returns whether it was found.
+// fn_29_1DF4 (0x128, asm 0x00001DF4-0x00001EF4), CIng::Listen's kLNT_SafeZone arm: the safe zone the
+// noise is in becomes the Ing's lure zone (0xd78), unless the Ing already holds one that is nearer.
+// Extracted from CIng::Listen (asm 0xB3A8 is the one call) so the body has a name to mark and to
+// break on; the argument order follows the asm's registers (r3 this, r4 mgr, r5 the noise).
+//   * 0x1E1C-0x1E60: the hearing test, distSq of noise - the Ing's translation (0x54) against
+//     0x7c0's (the hearing radius) squared; `fcmpo; cror eq,lt,eq; bne` exits, so the noise is
+//     heard while distSq <= r^2 and a NaN exits;
+//   * 0x1E64-0x1E90: PointIsInWhichSafeZone(mgr (0x1638), noise); an unset 0xd78 takes the zone;
+//   * 0x1E94-0x1EF4: otherwise the held zone: TCastToPtr<CScriptSafeZone>(ObjectById(0xd78)) -
+//     no object (or not a zone) takes the new zone, else the new zone is taken only when
+//     distSq < the held zone's distSq (`fcmpo; bge` skips the store, so a NaN keeps the held one).
+// The body returns false on every path (Listen's kLNT_SafeZone arm answers false).
+// @ fn_29_1DF4
+inline bool PortIngSafeZoneNoise(CStateManager& mgr, const CVector3f& noise, float hearingRadius,
+                                 const CVector3f& pos, TUniqueId& lureZone) {
+  const CVector3f delta = noise - pos;
+  const float distSq = delta.MagSquared();
+  if (!(distSq <= hearingRadius * hearingRadius)) { // 0x1E58, NaN exits too
+    return false;
+  }
+  const TUniqueId zoneId = mgr.GetSafeZoneManager()->PointIsInWhichSafeZone(mgr, noise);
+  if (lureZone == kInvalidUniqueId) { // 0x1E84-0x1E90
+    lureZone = zoneId;
+    return false;
+  }
+  const CScriptSafeZone* zone = TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(lureZone));
+  if (zone == nullptr) { // 0x1EAC-0x1EF4
+    lureZone = zoneId;
+    return false;
+  }
+  if (distSq < (zone->GetTranslation() - pos).MagSquared()) { // 0x1EE4/0x1EE8 bge skips
+    lureZone = zoneId;
+  }
+  return false;
+}
+
+// fn_29_53E0 = fn_44_21A8 (code function SetLuredDest): `dest` becomes the lure point when a mesh
+// path to it exists (flags 1 for that query, asm 0x5458-0x5468, and back to 0x301 at 0x54B4), else
+// stays `pos`. It calls CPathFindSearch::PathExists (0x546C) and returns whether it was found.
 inline bool PortIngLuredDest(CStateManager& mgr, CPathFindSearch& search, TUniqueId safeZone,
                              const CVector3f& pos, CVector3f& dest) {
   dest = pos;
