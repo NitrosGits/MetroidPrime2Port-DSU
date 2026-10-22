@@ -1552,7 +1552,9 @@ CVector3f CDigitalGuardian::GetOrigin(const CStateManager& mgr, const CTeamAiRol
 
 // fn_14_A3A4 (vtable slot 47): the base's call, but only while the module's render flag is set
 // (the byte at lbl_14_bss_0, the lbz at 0xA3B4). The flag is set by the module's render
-// (fn_14_A3D4, the stores at 0xA3FC and 0xA44C), which is not ported yet, so it stays clear.
+// around its own body (fn_14_A3D4, the stores at 0xA3FC and 0xA44C).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_A3A4
 void CDigitalGuardian::RenderSystemsToBeDrawnLast(const CStateManager& mgr, uint mask,
                                                   uint target) const {
   if (sRendering) {
@@ -2788,6 +2790,8 @@ void CDigitalGuardian::SetupBossEnergyBar(CStateManager& mgr, float dt) {
 // float that is copied into the member at guest this+0x1274 (the store at 0x7BBC): the data
 // block's +0x174 (mUnknown6A754EBD) when all four knees are set (the cmpwi with 4 at 0x7BA8),
 // otherwise the block's +0x170 (mUnknownA324E26C) (the two loads at 0x7BB0/0x7BB8).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_7B90
 void CDigitalGuardian::ResetProtectKneesTime(CStateManager& mgr, float dt) {
   x1274_ = x705C_() >= 4 ? mData.mUnknown6A754EBD : mData.mUnknownA324E26C;
 }
@@ -2907,6 +2911,8 @@ void CDigitalGuardian::SetProtectKneesFaceTarget(CStateManager& mgr, float dt) {
 // (fn_14_3A44, 0x7788), the knee armours not orbitable (fn_14_3DA8 with 0, 0x7798), bit 2 of
 // 0x128C cleared (the rlwimi at 0x77A4) and the head (uid 0x1082, 0x77B4), when there is one
 // (0x77C4), set to attack mode 2 (the li at 0x77CC, fn_14_13B30).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_775C
 void CDigitalGuardian::SetVortexAttackMode(CStateManager& mgr, float dt) {
   x3D2C_(mgr, true);   // fn_14_3D2C
   x3A44_(mgr);         // fn_14_3A44
@@ -2944,6 +2950,8 @@ void CDigitalGuardian::DisableHeadAttacks(CStateManager& mgr, float dt) {
 // fn_14_7648: the head module is looked up by the uid at guest this+0x1082 (the lhz at 0x7654)
 // and, if it exists, asked to reset its attacks with the argument 4 (the li r4, 4 at 0x7674 and
 // the call at 0x7678, fn_14_13B30).
+// Every arm ran (tools/cov/specs/digitalguardian_arms.con).
+// @ fn_14_7648
 void CDigitalGuardian::ResetHeadAttacks(CStateManager& mgr, float dt) {
   if (CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(mgr.ObjectById(x1082_))) {
     head->SetAttackMode(4);
