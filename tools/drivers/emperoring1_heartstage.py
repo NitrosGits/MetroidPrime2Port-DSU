@@ -13,12 +13,20 @@ the code only runs when the fight reaches the heart stage.  This driver
   * optionally damages the heart between the cycles, so the code node runs with
     the other modes.
 
-usage: emperoring1_heartstage.py <port> [outfile] [damage ...]
+usage: emperoring1_heartstage.py <port> [outfile] [natural|cycles] [damage ...]
 
   <damage ...>  the amounts to damage the heart with, one per cycle (the heart
                 starts at the boss's 700 health; the mode steps down at the
                 heart-stage thresholds, so a small amount gives mode 1 and a
                 large one mode 2).
+  natural       no `fsm`: after the tentacles are killed the FSM walks to the
+                heart stage on its own (one cycle, then 40 state polls).
+  cycles        no `fsm`, one natural heart stage per damage value: the
+                tentacle boxes are hit on every poll until the FSM reaches
+                "HeartStage", the heart takes that cycle's damage there (0 =
+                none) and the cycle ends when the FSM leaves the heart stage,
+                so the code node "ChooseRandomTentacleCount" runs once per
+                cycle with the mode the heart's health gives.
 """
 import re
 import socket
@@ -27,8 +35,9 @@ import time
 
 port = int(sys.argv[1])
 outfile = sys.argv[2] if len(sys.argv) > 2 else None
-damages = [float(a) for a in sys.argv[3:] if a != 'natural']
+damages = [float(a) for a in sys.argv[3:] if a not in ('natural', 'cycles')]
 natural = 'natural' in sys.argv[3:]
+cycles = 'cycles' in sys.argv[3:]
 
 WAIT_FRAMES = 1200  # the heart-stage timer is 16 s of game time (960 updates)
 out_lines = []
@@ -192,8 +201,44 @@ if boxes:
     for cu in boxes:
         run(f'obj {cu}')
 
+
+
+def state_and_hp():
+    lines, _ = request(f'obj {uid}')
+    st, hp = None, None
+    for l in lines:
+        l = l.strip()
+        if l.startswith('fsm '):
+            st = l.split()[1]
+        elif l.startswith('hp '):
+            hp = l.split()[1]
+    return st, hp
+
+
+# the natural cycles: kill the tentacles, let the heart stage play, hit the heart in it
+for i, amount in enumerate(damages if cycles else []):
+    seen_heart = False
+    st, hp = None, None
+    for _ in range(200):
+        wait_frames(frame() + 60)
+        st, hp = state_and_hp()
+        if st == 'HeartStage':
+            if not seen_heart:
+                seen_heart = True
+                emit(f'[con f{frame()}] cycle {i}: HeartStage, hp {hp}')
+                if amount:
+                    run(f'damage {heart} {amount}')
+        elif seen_heart and st != 'BeginHeartStage':
+            break
+        elif not seen_heart and st != 'BeginHeartStage':
+            for cu in boxes:
+                request(f'damage {cu} 9999')
+    emit(f'[con f{frame()}] cycle {i}: ends in {st}, hp {hp}, heart stage seen {seen_heart}')
+if cycles:
+    damages = []
+
 # the cycles: force the heart stage, wait for the timer, damage the heart, repeat
-for i, amount in enumerate([0.0] + damages):
+for i, amount in enumerate([] if cycles else [0.0] + damages):
     if i:
         run(f'damage {heart} {amount}')
         wait_frames(frame() + 60)

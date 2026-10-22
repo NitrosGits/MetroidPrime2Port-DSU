@@ -35,6 +35,7 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "Kyoto/Particles/CParticleSwoosh.hpp"
+#include "Kyoto/Particles/CSwooshDescription.hpp"
 #include "Kyoto/Animation/CCharLayoutInfo.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.hpp"
@@ -297,7 +298,12 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   }
 }
 
-CDarkSamus::~CDarkSamus() {}
+// The 0xE10 sub-object's destructor (fn_10_1F72C, from the actor's at 0x0001F014) deletes the two
+// boost ball swooshes (0x0001F840 0xE3C, 0x0001F7F4 0xE4C); the host's members are raw pointers.
+CDarkSamus::~CDarkSamus() {
+  delete mBoostBallSwooshE4C;
+  delete mBoostBallSwooshE3C;
+}
 
 // vtable slot 5 = fn_10_1B1FC (0x27C): Think. Until the state machine has a state (the machine at
 // 0x350, its vtable 0x28 at 0x0001B234) the first Think only sets the machine up (fn_10_18D78 at
@@ -574,8 +580,17 @@ void CDarkSamus::AddToRenderer(const CStateManager& mgr) const {
   }
   if (GetFadeFactor() > 0.f &&
       mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Dark) {
-    EnsureRendered(mgr);
+    EnsureRenderedActor(mgr);
   }
+}
+
+// fn_10_E5C (0x00000E5C, 0x20 bytes): the base's EnsureRendered - the host's
+// CActor::EnsureRendered(const CStateManager&), which the module's own copy calls.
+// Unmarked: the fight does not reach it (the coverage run: 0 hits - the
+// call is behind the fade factor and the dark visor), so there is no
+// ALL-ARMS run to cite.
+void CDarkSamus::EnsureRenderedActor(const CStateManager& mgr) const {
+  EnsureRendered(mgr);
 }
 
 // fn_10_4AA8 (0x00004AA8, 0x14 bytes): the beam 0xEF8 is not null (`neg; or; srwi 31`).

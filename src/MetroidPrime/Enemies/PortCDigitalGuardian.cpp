@@ -2048,7 +2048,7 @@ void CDigitalGuardian::x4080_(CStateManager& mgr) {
         mData.mSoundKneeVulnerable);
     if (knee != nullptr) { // the retail's test at 0x42B0
       mgr.AddObject(*knee);
-      // The store at 0x42C8 (xFB0_ + 2i).
+      // The sth at 0x42C8 goes through r28 = this+0xFB0 (0x40AC), +2 per knee (0x42D0): xFB0_ + 2i.
       switch (i) {
       case 0: xFB0_ = uid.value; break;
       case 1: xFB2_ = uid.value; break;
@@ -2479,12 +2479,92 @@ void CDigitalGuardian::ExitVortexAttack(CStateManager& mgr, EStateMsg msg, float
   }
 }
 
+// @ fn_14_8CCC
+// fn_14_8CCC: the state message picks the work (the cmpwi chain at 0x8CD4..0x8CFC).
+// Activate (0): with a melee leg (0x11D8 != -1, 0x8D08) ready (0x8D18) and the leg's toe target
+// to state 0 (fn_14_1A68 with r6 = 0, 0x8D20), else over (3, 0x8D2C); then 0x11E8 = 1 (0x8D34).
+// Update (1): when CTryCommand allows kAS_MeleeAttack (li r5, 7 and the call at 0x8D48) a
+// CBCMeleeAttackCmd (kBSC_MeleeAttack, li r4, 5 at 0x8D98) with the leg's severity (.rodata
+// 0x21C = {0, 1, 2, 3}, the lwzx at 0x8D74) goes out (DeliverCmd at 0x8DC0); otherwise over
+// (3, 0x8E14), whatever CanIssueCommand left. Deactivate (2): not ready (0x8E24) and the toe
+// target to state 1 (r6 = 1, fn_14_1A68 at 0x8E2C).
 void CDigitalGuardian::MeleeAttackTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_8CCC");
+  static const pas::ESeverity kTelegraphSeverity[4] = {pas::kS_Zero, pas::kS_One, pas::kS_Two,
+                                                       pas::kS_Three}; // .rodata 0x21C
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (x11D8_ != -1) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      x1A68_(mgr, x11D8_, 0); // fn_14_1A68
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    x11E8_ = 1;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCMeleeAttackCmd(kTelegraphSeverity[x11D8_]));
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x1A68_(mgr, x11D8_, 1); // fn_14_1A68
+    break;
+  default:
+    break;
+  }
 }
 
+// @ fn_14_89D4
+// fn_14_89D4: the animation the state started on is a function static (lbl_14_bss_4, -1 on the
+// first call: the guard byte lbl_14_bss_8 at 0x89F0..0x8A0C). The state message picks the work
+// (the cmpwi chain at 0x8A10..0x8A2C).
+// Activate (0): with a melee leg (0x11D8 != -1, 0x8A38) and a range (0x11DC != -1, 0x8A44) ready
+// (0x8A54), the body controller's current animation (0x58C) kept (0x8A6C) and the toe target to
+// state 0 (fn_14_1A68 with r6 = 0, 0x8A74); else over (3, 0x8A80). Then 0x11E8 = 0 (0x8A88).
+// Update (1): while the animation is still the kept one (the cmpw at 0x8AA4) a CBCMeleeAttackCmd
+// (li r4, 5 at 0x8B00 / 0x8BB8) goes out every update with the severity of .rodata 0x22C
+// ({4, 5}, {6, 7}, {8, 9}, {10, 11}; 8 bytes a leg, slwi 3 at 0x8AD4 / 0x8B90): the far one
+// (+4, the lwz 0x4(r5) at 0x8AE0) when the range is 1 (0x8AB0), else the near one (the lwzx at
+// 0x8B9C). Once the animation changed, over (3, 0x8C3C) unless the body state is still
+// kAS_MeleeAttack (0x37C == 7, 0x8C30). Deactivate (2): not ready (0x8C4C) and the toe target to
+// state 1 (r6 = 1, fn_14_1A68 at 0x8C58).
 void CDigitalGuardian::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_89D4");
+  static const pas::ESeverity kAttackSeverity[4][2] = {
+      {pas::kS_Four, pas::kS_Five},
+      {pas::kS_Six, pas::kS_Seven},
+      {pas::kS_Eight, pas::kS_Nine},
+      {pas::kS_Ten, pas::kS_Eleven},
+  }; // .rodata 0x22C
+  static int sAttackAnim = -1; // lbl_14_bss_4
+  switch (msg) {
+  case kStateMsg_Activate:
+    if (x11D8_ != -1 && x11DC_ != -1) {
+      mAnimationState.SetState(CAnimationState::kAS_Ready);
+      sAttackAnim = GetBodyController()->GetCurrentAnimId();
+      x1A68_(mgr, x11D8_, 0); // fn_14_1A68
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    x11E8_ = 0;
+    break;
+  case kStateMsg_Update:
+    if (sAttackAnim == GetBodyController()->GetCurrentAnimId()) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCMeleeAttackCmd(kAttackSeverity[x11D8_][x11DC_ == 1 ? 1 : 0]));
+    } else if (GetBodyController()->GetCurrentStateId() != pas::kAS_MeleeAttack) {
+      mAnimationState.SetState(CAnimationState::kAS_Over);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x1A68_(mgr, x11D8_, 1); // fn_14_1A68
+    break;
+  default:
+    break;
+  }
 }
 
 // fn_14_8794: the state message picks the work (the cmpwi chain at 0x879C..0x87CC).
@@ -2530,8 +2610,44 @@ void CDigitalGuardian::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float
   }
 }
 
+// @ fn_14_8580
+// fn_14_8580: the state message picks the work (the cmpwi chain at 0x8588..0x85BC).
+// Activate (0): ready (0x85CC), 0x11E8 = 0 (0x85D4), every toe target to state 0 (fn_14_1A68
+// with r6 = 0, the loop to 4 at 0x85D8..0x85F4) and the speed back to the base speed (0x1288 ->
+// 0x3C8, 0x85FC). Update (1): when CTryCommand allows kAS_Step (li r5, 3 and the call at
+// 0x8610) a CBCStepCmd (kBSC_Step, li r4, 1 at 0x8658) forward (0, 0x8664) as a break dodge
+// (2, 0x8668) goes out (DeliverCmd at 0x867C); nothing otherwise. Deactivate (2): not ready
+// (0x86DC), bit 5 of 0x128C off (fn_14_3D2C with 0, 0x86E0), the knees' vulnerabilities
+// (fn_14_3A44, 0x86EC), every toe target to state 1 (0x86F4..0x8710) and the speed for the
+// knee armours left (fn_14_14F8, 0x8718).
 void CDigitalGuardian::JumpAttack(CStateManager& mgr, EStateMsg msg, float dt) {
-  StandInFn("fn_14_8580");
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    x11E8_ = 0;
+    for (int i = 0; i < 4; ++i) {
+      x1A68_(mgr, i, 0); // fn_14_1A68
+    }
+    mSpeed = x1288_;
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_Step)) {
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCStepCmd(pas::kSD_Forward, pas::kStep_BreakDodge));
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    x3D2C_(mgr, false); // fn_14_3D2C
+    x3A44_(mgr);        // fn_14_3A44
+    for (int i = 0; i < 4; ++i) {
+      x1A68_(mgr, i, 1); // fn_14_1A68
+    }
+    x14F8_(); // fn_14_14F8
+    break;
+  default:
+    break;
+  }
 }
 
 // @ fn_14_8090
@@ -2835,12 +2951,12 @@ void CDigitalGuardian::SelectExitVortexTarget(CStateManager& mgr, float dt) {
   x1168_ = x308C_(mgr, player);
 }
 
-// fn_14_7504: 0x11D8 is -1 (0x7544); then the leg whose locator (0x10C8 + i, GetLctrTransform at
-// 0x7578) is nearest the player (0x14FC, its x and y at +0x54/+0x58) on the xy plane (the square
-// sum plus 0.0f, .rodata 0x264): a sum below the best so far (FLT_MAX, .rodata 0x2AC; the fcmpo
-// and bge at 0x75A4) takes it (0x75B0). Four legs (the cmpwi 4 at 0x75BC).
-// gcov (tools/cov/specs/digitalguardian_arms.con, one run): 8/8 branches, ALL-ARMS.
 // @ fn_14_7504
+// fn_14_7504: 0x11D8 starts at -1 (0x7544); the leg whose locator (0x10C8[i], GetLctrTransform at
+// 0x7578) is nearest the player (0x14FC, its x and y at 0x7564/0x7568) on the xy plane (the
+// square sum plus 0.0f, .rodata 0x264, 0x75A0) wins: a leg replaces the best only when strictly
+// nearer (the fcmpo/bge at 0x75A4, so a NaN sum never wins), the best starting at FLT_MAX
+// (.rodata 0x2AC). Four legs (the cmpwi 4 at 0x75BC). dt is unused.
 void CDigitalGuardian::SelectBestMeleeAttackLeg(CStateManager& mgr, float dt) {
   x11D8_ = -1;
   float best = FLT_MAX;
@@ -2886,8 +3002,35 @@ void CDigitalGuardian::SelectMeleeAttackRange(CStateManager& mgr, float dt) {
   x11DC_ = 0.f + (dx * dx + dy * dy) >= mData.mNearLegStabRange * mData.mNearLegStabRange ? 1 : 0;
 }
 
+// @ fn_14_7208
+// fn_14_7208: the face target 0x1278 is zeroed (0x724C..0x7260). The waypoint nearest the player
+// (fn_14_308C with the player's translation, 0x7280) is looked up (GetObjectById at 0x7298; none:
+// done, 0x72A0). The angle between the body's offset to it (0x72D0..0x72F0) and the body's
+// forward column (0x28/0x38/0x48, 0x72A4..0x72BC; GetAngleDiff at 0x72F4) is snapped to the
+// nearest 45 degrees (fn_14_37FC, 0x72FC); with a snapped angle above 0.0f (.rodata 0x264, the
+// fcmpo/ble at 0x7308) the turn is pi/2 (.rodata 0x2D0) minus it when the offset is on the
+// right (its dot with the right column 0x24/0x34/0x44 above 0.0f, 0x7334), else pi/2 plus it
+// (0x7354), and 0x1278 is the transform's rotation of (cos, sin, 0) of that turn (0x735C..0x7390,
+// stores 0x7398..0x73A8). Retail reads the object's translation (0x54) without a type check;
+// the host casts to CActor (fn_14_308C only returns waypoints).
 void CDigitalGuardian::SetJumpFaceTarget(CStateManager& mgr, float dt) {
-  StandInFn("fn_14_7208");
+  x1278_ = CVector3f::Zero();
+  const CVector3f player = mgr.GetPlayer(0)->GetTranslation();
+  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(x308C_(mgr, player)));
+  if (target == nullptr) {
+    return;
+  }
+  const CVector3f forward = GetTransform().GetForward();
+  const CVector3f offset = target->GetTranslation() - GetTranslation();
+  const float angle = x37FC_(CVector3f::GetAngleDiff(offset, forward)); // fn_14_37FC
+  if (angle > 0.f) {
+    const float turn = CVector3f::Dot(offset, GetTransform().GetRight()) > 0.f
+                           ? 1.5707964f - angle
+                           : 1.5707964f + angle; // .rodata 0x2D0
+    const float sinTurn = CMath::FastSinR(turn);
+    const float cosTurn = CMath::FastCosR(turn);
+    x1278_ = GetTransform().Rotate(CVector3f(cosTurn, sinTurn, 0.f));
+  }
 }
 
 // fn_14_1570: the anim data's vertex bounds (0x15CC) through Translate(-translation) (the fnegs

@@ -1794,3 +1794,54 @@ trigger's entry, one per hit, from gdb convenience variables).
   until 99, with the player placed on the actor at f1534..f1537) is written but not yet run:
   runs t4, t5, t7, t9 and t10 all died with VK_ERROR_DEVICE_LOST ("this context is innocent",
   so another process on the GPU caused the reset), and Aurora skips llvmpipe.
+
+## Slice 35 (2026-10-22): the next unmarked functions - four bodies, no markers yet
+
+- The merge of `port` (e85ad6ac1) was a fast-forward; no conflict.
+- **fn_10_2EFC** (0x00002EFC, 8 bytes): the float at guest 0x314 (`lfs f1, 0x314(r3)`) - the
+  port's GetGuest314.
+- **fn_10_2F04** (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 (`lbz` at
+  0x00002F04, the `extrwi` at 0x00002F08 takes the bit 25 = 1u << (31 - 25) = 0x40) - the port's
+  GetGuest318Bit6.
+- **fn_10_1B24** (0x00001B24, 0xDC bytes): the cross product of two vectors - the x
+  a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C) and
+  the z a.x * b.y - b.x * a.y (0x00001B54). The host's CVector3f::Cross is the same formula; the
+  port's new CrossProduct helper is used by UpdateHeadAim (fn_10_10A64, the cross at 0x00010B34).
+- **fn_10_E5C** (0x0000E5C, 0xDC bytes): the base's EnsureRendered (the host's
+  CActor::EnsureRendered(const CStateManager&)); the port's new EnsureRenderedActor calls it from
+  AddToRenderer.
+- **No markers**: the coverage run (the rooftop, the coverage build) shows 0 hits for
+  fn_10_2EFC, fn_10_2F04 and fn_10_E5C - their only callers are the BoostBallRoll state
+  (fn_10_A3B0, still a stand-in) and the fade/visor path in AddToRenderer - and the compiler
+  inlines fn_10_1B24, so the report has no row for it. Without an ALL-ARMS run there is no
+  marker, so the four bodies are unmarked.
+- The remaining candidates in the tsv's order (fn_10_2C, fn_10_324, fn_10_A08, fn_10_A60,
+  fn_10_B04, fn_10_B28, fn_10_B78, fn_10_C98, fn_10_DC8, fn_10_E10, fn_10_1B64, fn_10_1C08,
+  fn_10_1D8C, fn_10_2040, fn_10_2098, fn_10_213C, fn_10_2254, fn_10_2798) are the module's own
+  sub-object constructors and destructors: they need port-only classes for the guest's own
+  records (the boost ball, the enrage sphere, the scatter shot's projectile), which is a bigger
+  job than this slice.
+
+## Slice ds895c (2026-10-22): the boost ball's effects (895C tokens, 9B24, 99B8, 8F50) and 1ACA0
+
+- fn_10_895C (the 0xE10 sub-object) loads its tokens in data order: r8 = boostBallGlow → 0xE5C
+  (the 'PART' id), r9 = boostBallTrailSwoosh → 0xE40 (optional, valid byte 0xE48), r10 = the
+  sWHC → 0xE50 (valid byte 0xE58). The host's members are `mBoostBallSwooshTokenE40/E50` and
+  `mBoostBallGlowPart`. 0xE70, the collision PART that fn_10_8D30 loads, is not ported because
+  nothing reads it.
+- fn_10_9B24 replaces SpawnBoostBall's logged stand-in. Its "delete the old non-null" path is
+  dead: its only caller is SpawnBoostBall at 0xA03C, and that runs fn_10_99B8 first (0x9E30).
+  fn_10_99B8 now deletes both swooshes and the generator. BoostBallFire (fn_10_9724) and
+  DiveFromBoost (fn_10_9424, which calls 99B8 at 0x9548) clear the 0xE60 generator.
+  ~CDarkSamus deletes the swooshes, matching the sub-object dtor fn_10_1F72C. fn_10_9424 has
+  all of its effect work ported and could now be checked for a mark.
+- 8F50 matches the asm (vtable 0x14 SetOrientation, 0x18 SetTranslation, 0xC Update,
+  0x24 SetGlobalScale, 0x2C SetParticleEmission, 0x30 SetModulationColor).
+- Marks 9B24, 99B8 and 8F50 come from these runs (tools/cov/specs/darksamus_boostfx.py,
+  tools/drivers/darksamus_boostfx.con): b1 (the natural rooftop run), f1 (forced DSB_MODE=1:
+  no 0xE40 token) and f2 (forced DSB_MODE=2: no 0xE50 token, then the kill). Every arm ran, with
+  no caught errors and no reach stubs.
+- 1ACA0 is marked. tools/drivers/darksamus_divecontact.con runs keys 86/96 on their own (the
+  boss u04f7 placed on the player at f623..f627), then keys 40 (bounced) and 87 (no touch
+  bounds) at f650..f656. Key 96 has to be armed with 86, before the first overlap: run u4
+  armed it later, so every contact took the first-hit arm. Runs u4 + u6 give 10/10 branches.

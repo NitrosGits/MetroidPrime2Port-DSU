@@ -463,6 +463,59 @@ and the forced runs (28 runs, `tools/cov/specs/splitter_helpers_force.py`):
 | `fn_75_3460` (the collision actor manager) | right: the "Skeleton_Root" joint (the radius 3.0f, rodata 0x4, asm 0x3510; the mass 1000.0f, rodata 0x94, asm 0x34FC), the new manager (asm 0x356C) and its ctor (asm 0x35A4), the walk (asm 0x35CC) with the id at the description's 0x3C (asm 0x35D8), the "Beam_LCTR" compare (asm 0x3614) and the final call with the flag clear (asm 0x3654) | 18/20 lines, 21/24 branches - the untaken ones are the joint that is not a collision actor and the "Beam_LCTR" name (dead: the head's only joint is "Skeleton_Root") and the delete's null test (the compiler's) |
 | `fn_75_6B08` (the head's constructor) | right: the EPatternedAI 0x39 (asm 0x6B68), the CPathFindSearch (the null area, the flags 3, the patterned info's pathfinding index, the two radii 1.0f from lbl_75_rodata_34, asm 0x6BA0-0x6BB0), the two CProjectileInfos (asm 0x6BC4 and 0x6BD8), the flag byte 0x92 (asm 0x6D44-0x6DA0), the locator "Beam_LCTR" (asm 0x6DB0), the material filter (1 << 59 and 1 << 47 | 1 << 33, asm 0x6DEC-0x6E40) and the dodge distance (asm 0x6E60-0x6EF8) | 22/23 lines, 27/27 branches, **ALL-ARMS** |
 
+### 3.12 Six more bodies: the diff and the marks
+
+The next six unmarked bodies (the FSM table's states and codes first), each read against the REL's
+asm.  All six match the port's bodies, so no code changed; each is now marked with the coverage
+build's merged profile (the natural run and the forced runs of the earlier slices):
+
+| body | the diff | the profile |
+|---|---|---|
+| `fn_75_5538` (the head's Idle state) | the message is compared with 2 (asm 0x5538) and with 0 (asm 0x5540), so the body runs for the update and the activate message; the transform's Y column (0x28, 0x38, 0x48 - asm 0x5548-0x5550) goes to 0xF24-0xF2C (asm 0x5554-0x555C) | 3/3 lines, 2/2 branches, **ALL-ARMS** |
+| `fn_75_3E60` (the head's SelectTarget code) | the id at 0xEFE against kInvalidUniqueId (asm 0x3E84-0x3E90) takes the state manager's player at 0x14FC (asm 0x3E94) and its id (asm 0x3E9C); then the effect states (asm 0x3EA8) and the state 'ATTK' (0x4154544B, asm 0x3EB0-0x3EC0) with the head's own id (asm 0x3EAC) and the message -1 (asm 0x3EC8) | 6/6 lines, 2/2 branches, **ALL-ARMS** |
+| `fn_75_1578` (the head's effect-state update) | the shield state at 0xEDC (asm 0x1590) 1 or 2 turns both effects off (asm 0x15AC-0x160C); the laser-pulse projectile's id at 0xF02 (asm 0x1614) turns LaserMuzzle on (asm 0x1628-0x1688); the synced id at 0xEFE (asm 0x168C) turns AlertEye on (asm 0x16B4-0x1714) and the IsScanning trigger (asm 0x16A8) is the last way to it | 9/9 lines, 10/10 branches, **ALL-ARMS** |
+| `fn_75_DC08` (the chassis's PathFind state) | the blend mode 1 (asm 0xDC50-0xDC58) and the steering speed range (asm 0xDC5C-0xDC6C); the 0xD40 0x20 bit (asm 0xDC70-0xDC78) runs the path find (asm 0xDC90) and the 0x10 bit is cleared (asm 0xDC94-0xDCA0); the update runs it again (asm 0xDCBC) and every message but the deactivate (asm 0xDCC0) runs the path update | 13/13 lines, 10/10 branches, **ALL-ARMS** |
+| `fn_75_DCFC` (the chassis's Patrol state) | the waypoint navigation's own patrol (asm 0xDD20-0xDD28); the activate message (asm 0xDD2C) gets the blend mode (asm 0xDD4C) and the speed range (asm 0xDD50-0xDD60); the update message (asm 0xDD30) looks the two waypoint ids up (0x6C2 and 0x6C0 - asm 0xDD68 and 0xDD84), and with both there the path update (asm 0xDDB8) and the face vector copy (asm 0xDDC0-0xDDC8) run | 14/14 lines, 6/6 branches, **ALL-ARMS** |
+| `fn_75_3B20` (the head's RaiseShields code) | the flag byte at 0xF6A gets its 0x08 bit set (asm 0x3B28 `rlwimi`) and the body ends | 3/3 lines, no branches |
+
+The bodies left unmarked in this batch and why: `fn_75_3EEC` (the head's dock to the chassis -
+the run only reaches the null chassis lookup, so the sound's and the accept's arms are untaken),
+`fn_75_2CE0` (the head's shield - 5/34 lines, the state machine's own arms), `fn_75_2BE0` (the
+shield effect - 2/4 lines), `fn_75_9AF8` (the collision vulnerability - 7/8 lines) and
+`fn_75_986C` (the chassis's path update - 25/25 lines, 12/14 branches: the separation's z is
+never above zero and the switch's default is the forward step, which returns earlier).
+
+### 3.13 The next six unmarked bodies
+
+The next six unmarked rows of section 2 that the port has a body for, each read against the REL's
+asm (`tools/asmcheck.py annotate Splitter` for the same decoding):
+
+| body | the diff | the profile / why |
+|---|---|---|
+| `fn_75_1C0C`, `fn_75_1E38`, `fn_75_1F50`, `fn_75_1F98` | no separate body: the port inlines them into the marked `fn_75_1CA0` (the beam info's copy, the impact visor effect's construction and its destruction), so their code was checked there - the beam info's copy (the six words and the two floats, asm 0x1C0C-0x1C2C), the effect's three optionals cleared (asm 0x1F68) and the calls (asm 0x1DD0 to `fn_75_1F50`, asm 0x1E14 to `fn_75_1E38`) | covered by `fn_75_1CA0`: 15/15 lines, 5/5 branches, ALL-ARMS |
+| `fn_75_2280` (the head's chassis search) | right: the areas must be equal (asm 0x22F8-0x2304), the reservation (asm 0x2318) must succeed (asm 0x2320) and the squared distance must be below the best (asm 0x234C, `bge` skips) before the old pick is released (asm 0x2350-0x2380) and the new one is kept (asm 0x238C) | 17/19 lines, 10/14 branches - not marked: the null cast (the listening-AI list holds no other kind of actor) and the failed reservation cannot be forced |
+| `fn_75_2994` (the head's turn upright) | right: the flag byte's 0x20 bit (asm 0x29BC, the word's bit 26) must be set, the angle test is the `<=` of the turn (asm 0x2A38-0x2A44, `cror eq,lt,eq`) and the Y column's x or y must not be zero (asm 0x2A48-0x2A7C) | 18/18 lines, 9/12 branches - not marked: the three untaken branches are inside the inlined GetAngleDiff |
+
+`fn_75_986C` (the chassis's path update) was looked at as well, for its two untaken arms: the
+separation's z (the port tests the z only when the x and y are zero, so the arm needs the chassis
+exactly above another actor - and the only actor above it, the docked head, is skipped by the
+walk) and the switch's default (the compiler's: the forward step returns earlier, like
+`fn_75_11804`'s deleting flag).  The force spec's `PATHZ` (the chassis's own position) is the
+attempt for the first arm; it does not reach it, and the body stays unmarked.
+
+### 3.14 The three stand-ins: the aim position, the collision and the knock-back
+
+| body | the diff | the profile / why |
+|---|---|---|
+| `fn_75_5F8C` (the head's aim position, the vtable slot 0x54) | ported: the base's aim (asm 0x5FD8), the shield state at 0xEDC equal to 2 (asm 0x5FDC, 0x5FE4), the chassis's aim (the chassis's vtable slot 0x54, asm 0x6028) and the two mixes (asm 0x6038-0x607C and 0x6088-0x6120) | 15/15 lines, 8/8 branches, **ALL-ARMS** - **marked** |
+| `fn_75_6178` (the head's collision, the vtable slot 0x84) | ported: the base's collision (asm 0x619C), the flag byte at 0xF6A's 0x01 bit clear (asm 0x61A0-0x61A8), the collided id invalid (asm 0x61B0-0x61BC), the material list built once (asm 0x61C0-0x6290) and the match against the collision info's material (asm 0x62C0-0x62D4) that sets the flag byte's 0x01 bit (asm 0x62E0-0x62E4) | 14/14 lines, 12/14 branches - not marked: the two untaken arms are the "a collision with a material outside the wall, floor and ceiling list" case, which needs a collision the head does not make in the fight |
+| `fn_75_EBF4` (the chassis's knock-back, the vtable slot 0x9C) | ported: the flag byte at 0xD41's 0x80 bit (asm 0xEC18-0xEC1C) turns the flinch and the knock back reactions off (asm 0xEC64, 0xEC74), the damage's weapon type 7 (asm 0xEC24-0xEC28) turns the knock back reaction on (asm 0xEC3C) and any other type off (asm 0xEC50), then the base's knock back (asm 0xEC84) | 0/9 lines - not marked: the chassis takes no damage in the fight (its hp only drops through the laser sweep's target_LCTR, fn_75_A0A0), so the knock-back never runs |
+
+The port's `SLdrSplitterCommandModuleData` does not carry the REL's data words at 0x434, 0x438 and
+0x43C (the materials the head collides with), so fn_75_6178 uses the REL's initialized values
+(0x1E the wall, 0x1F the floor, 0x1D the ceiling).  The two REL globals (lbl_75_bss_0, the flag
+that says the list is built, and lbl_75_bss_8, the list) are the port's two file-scope statics.
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the

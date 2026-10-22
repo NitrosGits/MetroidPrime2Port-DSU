@@ -1,0 +1,55 @@
+# DigitalGuardian area 53, the second melee run (adds to digitalguardian_melee.con's counters): the
+# vortex (DoUserAnimEvent's vortex arms, `shoot` for the aim query), the attack range far
+# (0x11DC 1), SetJumpFaceTarget (fn_14_7208) with the body beside the IS02 waypoints (00350017,
+# 0035006a, 0035001e, 00350063; the turn both sides) and with all four inactive (no target), and
+# a melee after CrippledReaction (every toe target destroyed: fn_14_458C's 0x10DC == 3 arm).
+@f30 layer 3
+@f60 layer 11
+@f140 send e00350060 Activate; send e0035000f Activate
+@f200 fsm e00350060 VortexAttack
+@f300 obj e00350060; shoot e00350060
+@f450 obj e00350060; shoot e00350060
+@f600 obj e00350060; shoot e00350060
+@f750 obj e00350060; shoot e00350060
+@f900 obj e00350060; shoot e00350060
+@f1050 obj e00350060; shoot e00350060
+@f1200 obj e00350060; shoot e00350060
+@f1350 obj e00350060; shoot e00350060
+@f1500 obj e00350060; shoot e00350060
+@f1650 obj e00350060; shoot e00350060
+@f1800 obj e00350060; shoot e00350060
+@f1950 obj e00350060; shoot e00350060
+@f2100 obj e00350060; shoot e00350060
+@f2250 obj e00350060; shoot e00350060
+@f2400 obj e00350060; shoot e00350060
+@f2500 fsm e00350060 Idle
+@f2520 place e00350060 player 80
+@f2530 codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f2535 fsm e00350060 MeleeAttack
+@f2620 place e00350060 player 150
+@f2630 codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f2635 fsm e00350060 MeleeAttack
+@f2720 obj e00350060
+# the face target: the player by a waypoint, the body beside it
+@f2800 tp 91.8 30.4 -31; place e00350060 74.5 30.4 -31.7; codecall e00350060 SetJumpFaceTarget
+@f2805 tp 57.2 30.4 -31; place e00350060 74.5 30.4 -31.7; codecall e00350060 SetJumpFaceTarget
+@f2810 tp 74.5 40.4 -31; place e00350060 74.5 20.4 -31.7; codecall e00350060 SetJumpFaceTarget
+@f2815 tp 74.5 20.4 -31; place e00350060 74.5 40.4 -31.7; codecall e00350060 SetJumpFaceTarget
+@f2820 tp 91.8 30.4 -31; place e00350060 60 10 -31.7; codecall e00350060 SetJumpFaceTarget
+@f2825 tp 57.2 30.4 -31; place e00350060 90 50 -31.7; codecall e00350060 SetJumpFaceTarget
+@f2830 obj e00350060
+# no active IS02 waypoint: no target
+@f2840 send e00350017 Deactivate; send e0035006a Deactivate; send e0035001e Deactivate; send e00350063 Deactivate
+@f2845 codecall e00350060 SetJumpFaceTarget
+@f2850 send e00350017 Activate; send e0035006a Activate; send e0035001e Activate; send e00350063 Activate
+@f2860 place e00350060 74.5 30.4 -31.7; tp 74.5 45 -31
+# every toe target destroyed, then a melee: the stomp's shock wave finds its toe at 3
+@f2900 fsm e00350060 CrippledReaction
+@f3100 obj e00350060
+@f3110 codecall e00350060 SelectBestMeleeAttackLeg; codecall e00350060 SelectMeleeAttackRange
+@f3115 fsm e00350060 MeleeAttack
+@f3250 obj e00350060
+@f3260 fsm e00350060 JumpAttack
+@f3400 obj e00350060
+@f3500 objs Guardian
+@f3520 covdump

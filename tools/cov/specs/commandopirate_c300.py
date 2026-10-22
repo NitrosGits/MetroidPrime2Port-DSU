@@ -11,9 +11,9 @@ CLASS = 'CCommandoPirate'
 L = 'loc:PortCCommandoPirate.cpp:'
 SPEC = [
     ('0xC300 KnockBack', 'CCommandoPirate::KnockBack(', [], 'calls max=3000'),
-    ('0xC3F0 after base: alive, reaction, follow-up', L + '2016',
+    ('0xC3F0 after base: alive, reaction, follow-up', L + '2029',
      ['$this->mAlive', '(int)$this->mKnockBackController.mActiveParameters.mReaction',
       '(int)$this->mKnockBackController.mActiveParameters.mFollowUp'], 'max=3000'),
-    ('0xC40C GetUp + hurled sound', L + '2018', [], 'max=3000'),
-    ('0xC4B0 death sound', L + '2028', ['(int)$this->mKnockBackController.mActiveParameters.mFollowUp'], 'max=3000'),
+    ('0xC40C GetUp + hurled sound', L + '2030', [], 'max=3000'),
+    ('0xC4B0 death sound', L + '2041', ['(int)$this->mKnockBackController.mActiveParameters.mFollowUp'], 'max=3000'),
 ]

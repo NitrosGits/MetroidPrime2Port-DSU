@@ -1,57 +1,57 @@
 offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
-0x0	0x8	CSpacePirate	IsScanVisorSelfRender [slot] -> true	virtual	B	data_8D8	-	unmarked	fn_72_0
+0x0	0x8	CSpacePirate	IsScanVisorSelfRender [slot] -> true	virtual	B	data_8D8	the vtable helper, marked 2026-10-21 (forced gdb call)	marked	fn_72_0
 0x8	0x8	CSpacePirate	GetSearchPath -> &x920	virtual	B	data_8D8	-	marked	fn_72_8
 0x10	0x8	CSpacePirate	IsListening -> true	virtual	B	data_8D8	-	marked	fn_72_10
-0x18	0xC	CSpacePirate	GetAttackTarget (xa94)	virtual	B	data_8D8	-	unmarked	fn_72_18
-0x24	0xC	CSpacePirate	GetGravityConstant -> 50.0 (rodata B00)	virtual	B	data_8D8	-	unmarked	fn_72_24
-0x30	0x10	CPatterned (weak)	TakeDamage: x448 = skDamageHitTime	inline-dol	H	data_8D8	CPatterned::TakeDamage (CPatterned.hpp:151)	unmarked	fn_72_30
-0x40	0x8	CPatterned (weak)	GetPointSearchPath -> null	inline-dol	H	data_8D8	CPatterned::GetPointSearchPath (CPatterned.hpp:170)	unmarked	fn_72_40
-0x48	0xC	CPatterned (weak)	IsOnGround (x34c bit)	inline-dol	H	data_8D8	CPatterned::IsOnGround (CPatterned.hpp:184)	unmarked	fn_72_48
-0x54	0x8	CPatterned (weak)	GetDeathExplosionParticle (+0x754)	inline-dol	H	data_8D8	CPatterned::GetDeathExplosionParticle (CPatterned.hpp:190)	unmarked	fn_72_54
-0x5C	0x8	CAi (weak)	CanBeShot -> true	inline-dol	H	data_8D8	CAi::CanBeShot (CAi.hpp:44)	unmarked	fn_72_5C
+0x18	0xC	CSpacePirate	GetAttackTarget (xa94)	virtual	B	data_8D8	the vtable helper, marked 2026-10-21 (forced gdb call)	marked	fn_72_18
+0x24	0xC	CSpacePirate	GetGravityConstant -> 50.0 (rodata B00)	virtual	B	data_8D8	the vtable helper, marked 2026-10-21 (forced gdb call)	marked	fn_72_24
+0x30	0x10	CPatterned (weak)	TakeDamage: x448 = skDamageHitTime	inline-dol	H	data_8D8	CPatterned::TakeDamage (CPatterned.hpp:151)	not-port	fn_72_30
+0x40	0x8	CPatterned (weak)	GetPointSearchPath -> null	inline-dol	H	data_8D8	CPatterned::GetPointSearchPath (CPatterned.hpp:170)	not-port	fn_72_40
+0x48	0xC	CPatterned (weak)	IsOnGround (x34c bit)	inline-dol	H	data_8D8	CPatterned::IsOnGround (CPatterned.hpp:184)	not-port	fn_72_48
+0x54	0x8	CPatterned (weak)	GetDeathExplosionParticle (+0x754)	inline-dol	H	data_8D8	CPatterned::GetDeathExplosionParticle (CPatterned.hpp:190)	not-port	fn_72_54
+0x5C	0x8	CAi (weak)	CanBeShot -> true	inline-dol	H	data_8D8	CAi::CanBeShot (CAi.hpp:44)	not-port	fn_72_5C
 0x64	0x2C	CActor (weak)	GetHealthInfo -> HealthInfo() [slot 0x38]	inline-dol	H	data_8D8	CActor::GetHealthInfo (header inline)	marked	fn_72_64
-0x90	0x24	(module)	RELExit	rel-entry	B	-	-	unmarked	RELExit
-0xB4	0x20	(module)	RELMain	rel-entry	B	-	-	unmarked	RELMain
-0xD4	0x6C	(module)	RegisterFuncPtrs (SSpacePirate_FuncPtrs)	rel-entry	B	RELMain	-	unmarked	fn_72_D4
-0x140	0xACC	(module)	LoadSpacePirate	loader	B	D4(addr)	-	unmarked	fn_72_140
-0xC0C	0x94	CSpacePirateData	BuildGrenadeData: CBouncyGrenadeData ctor from SLdr weapon data	method	B	140	-	unmarked	fn_72_C0C
-0xCA0	0x40	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	140	rstl/TToken copy (header inline)	unmarked	fn_72_CA0
-0xCE0	0x20	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	4FF4 CA0	rstl/TToken copy (header inline)	unmarked	fn_72_CE0
-0xD00	0x28	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	CE0	rstl/TToken copy (header inline)	unmarked	fn_72_D00
-0xD28	0x13C	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	D00	rstl/TToken copy (header inline)	unmarked	fn_72_D28
-0xE64	0x6C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_E64
-0xED0	0x54	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_ED0
-0xF24	0x64	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_F24
-0xF88	0x60	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_F88
-0xFE8	0xB4	SLdrSpacePirate	~SLdrSpacePirate	inline-hdr	H	-	SLdrSpacePirate.hpp	unmarked	fn_72_FE8
-0x109C	0x2B0	SLdrSpacePirate	SLdrSpacePirate::SLdrSpacePirate	inline-hdr	H	140	SLdrSpacePirate.hpp	unmarked	fn_72_109C
-0x134C	0x58	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_134C
-0x13A4	0xF8	SLdrSpacePirateWeaponData	SLdrSpacePirateWeaponData ctor	inline-hdr	H	109C	SLdrSpacePirate.hpp:35	unmarked	fn_72_13A4
-0x149C	0x304	SLdrSpacePirateWeaponData	LoadTypedefSpacePirateWeaponData (prop 0xdc89cc3c)	inline-hdr	H	140	SLdrSpacePirate.hpp:60	unmarked	fn_72_149C
-0x17A0	0x28	CSpacePirate	GetRagDoll -> xb30	virtual	B	data_8D8	-	unmarked	fn_72_17A0
+0x90	0x24	(module)	RELExit	rel-entry	B	-	-	not-port	RELExit
+0xB4	0x20	(module)	RELMain	rel-entry	B	-	-	not-port	RELMain
+0xD4	0x6C	(module)	RegisterFuncPtrs (SSpacePirate_FuncPtrs)	rel-entry	B	RELMain	-	not-port	fn_72_D4
+0x140	0xACC	(module)	LoadSpacePirate	loader	B	D4(addr)	-	ported	fn_72_140
+0xC0C	0x94	CSpacePirateData	BuildGrenadeData: CBouncyGrenadeData ctor from SLdr weapon data	method	B	140	-	ported	fn_72_C0C
+0xCA0	0x40	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	140	rstl/TToken copy (header inline)	not-port	fn_72_CA0
+0xCE0	0x20	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	4FF4 CA0	rstl/TToken copy (header inline)	not-port	fn_72_CE0
+0xD00	0x28	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	CE0	rstl/TToken copy (header inline)	not-port	fn_72_D00
+0xD28	0x13C	TToken/CModelData	CModelData/TToken copy chain (loader temp)	template	H	D00	rstl/TToken copy (header inline)	not-port	fn_72_D28
+0xE64	0x6C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_E64
+0xED0	0x54	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_ED0
+0xF24	0x64	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_F24
+0xF88	0x60	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_F88
+0xFE8	0xB4	SLdrSpacePirate	~SLdrSpacePirate	inline-hdr	H	-	SLdrSpacePirate.hpp	not-port	fn_72_FE8
+0x109C	0x2B0	SLdrSpacePirate	SLdrSpacePirate::SLdrSpacePirate	inline-hdr	H	140	SLdrSpacePirate.hpp	not-port	fn_72_109C
+0x134C	0x58	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_134C
+0x13A4	0xF8	SLdrSpacePirateWeaponData	SLdrSpacePirateWeaponData ctor	inline-hdr	H	109C	SLdrSpacePirate.hpp:35	not-port	fn_72_13A4
+0x149C	0x304	SLdrSpacePirateWeaponData	LoadTypedefSpacePirateWeaponData (prop 0xdc89cc3c)	inline-hdr	H	140	SLdrSpacePirate.hpp:60	not-port	fn_72_149C
+0x17A0	0x28	CSpacePirate	GetRagDoll -> xb30	virtual	B	data_8D8	the ragdoll pointer, ported 2026-10-22 (asm 0x17A4/0x17B0/0x17B8)	ported	fn_72_17A0
 0x17C8	0x8C	CSpacePirate	GetTouchBounds	virtual	B	data_8D8	-	marked	fn_72_17C8
-0x1854	0x68	CSpacePirate	GetTouchBounds helper: actor bounding box	method	B	17C8	-	unmarked	fn_72_1854
-0x18BC	0x74	CSpacePirate	TryToBeCaptured	virtual	B	data_8D8	-	unmarked	fn_72_18BC
-0x1930	0x50	rstl::string	static string dtor (registered by 10E50)	template	H	10E50(addr)	rstl::basic_string dtor	unmarked	fn_72_1930
+0x1854	0x68	CSpacePirate	GetTouchBounds helper: actor bounding box	method	B	17C8	the touch-bounds helper, ported 2026-10-21 (asm 0x1854)	marked	fn_72_1854
+0x18BC	0x74	CSpacePirate	TryToBeCaptured	virtual	B	data_8D8	-	marked	fn_72_18BC
+0x1930	0x50	rstl::string	static string dtor (registered by 10E50)	template	H	10E50(addr)	rstl::basic_string dtor	not-port	fn_72_1930
 0x1980	0x6E0	CSpacePirate	Think	virtual	B	data_8D8	-	marked	fn_72_1980
-0x2060	0x48	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	1980	rstl::vector dtor	unmarked	fn_72_2060
-0x20A8	0xB8	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2060 F444	rstl::vector dtor	unmarked	fn_72_20A8
-0x2160	0x94	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	20A8	rstl::vector dtor	unmarked	fn_72_2160
-0x21F4	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	unmarked	fn_72_21F4
-0x2278	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	unmarked	fn_72_2278
-0x22FC	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	unmarked	fn_72_22FC
-0x2380	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	unmarked	fn_72_2380
-0x2404	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	unmarked	fn_72_2404
-0x2488	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_2488
+0x2060	0x48	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	1980	rstl::vector dtor	not-port	fn_72_2060
+0x20A8	0xB8	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2060 F444	rstl::vector dtor	not-port	fn_72_20A8
+0x2160	0x94	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	20A8	rstl::vector dtor	not-port	fn_72_2160
+0x21F4	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_21F4
+0x2278	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_2278
+0x22FC	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_22FC
+0x2380	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_2380
+0x2404	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_2404
+0x2488	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_2488
 0x24C4	0x78	CSpacePirate	PreThink	virtual	B	data_8D8	-	marked	fn_72_24C4
 0x253C	0x310	CSpacePirate	UpdateAttacks (Think helper)	method	B	1980	-	marked	fn_72_253C
-0x284C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_B14	CBodyStateCmd subclass dtor	unmarked	fn_72_284C
-0x28A8	0x48	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_B20	CBodyStateCmd subclass dtor	unmarked	fn_72_28A8
+0x284C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_B14	CBodyStateCmd subclass dtor	not-port	fn_72_284C
+0x28A8	0x48	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_B20	CBodyStateCmd subclass dtor	not-port	fn_72_28A8
 0x28F0	0x5B0	CSpacePirate	UpdateAimBodyState (Think helper)	method	B	1980	-	marked	fn_72_28F0
-0x2EA0	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	unmarked	fn_72_2EA0
-0x2EA8	0xA4	CSpacePirate	sfx emitter update (Think helper)	method	B	1980	-	unmarked	fn_72_2EA8
+0x2EA0	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_2EA0
+0x2EA8	0xA4	CSpacePirate	sfx emitter update (Think helper)	method	B	1980	the sfx emitter, ported 2026-10-21 (asm 0x2EA8)	marked	fn_72_2EA8
 0x2F4C	0x2D4	CSpacePirate	UpdateCloak (Think helper)	method	B	1980	-	marked	fn_72_2F4C
-0x3220	0x17C	CSpacePirate	ShouldFrenzy (squad random, from 28F0)	method	B	28F0	-	unmarked	fn_72_3220
+0x3220	0x17C	CSpacePirate	ShouldFrenzy (squad random, from 28F0)	method	B	28F0	the charge-player list arm (asm 0x3290-0x32A4), fixed by the module lane	ported	fn_72_3220
 0x339C	0xA0	CSpacePirate	ScanVisorRender	virtual	B	data_8D8	-	marked	fn_72_339C
 0x343C	0x190	CSpacePirate	GetScanVisorRenderBounds	virtual	B	data_8D8	-	marked	fn_72_343C
 0x35CC	0x100	CSpacePirate	GetSortingBounds	virtual	B	data_8D8	-	marked	fn_72_35CC
@@ -63,70 +63,70 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x3AB4	0x34	CSpacePirate	GetDamageVulnerability()	virtual	B	data_8D8	-	marked	fn_72_3AB4
 0x3AE8	0x40	CSpacePirate	GetModelAlphau8	virtual	B	data_8D8	-	marked	fn_72_3AE8
 0x3B28	0x254	CSpacePirate	DoUserAnimEvent	virtual	B	data_8D8 jumptable_72_data_A20	-	marked	fn_72_3B28
-0x3D7C	0x2B4	CSpacePirate	SolveGrenadeLaunch	method	B	4174	-	unmarked	fn_72_3D7C
-0x4030	0x144	CSpacePirate	GetGrenadeAimPoint	method	B	4174	-	unmarked	fn_72_4030
-0x4174	0x3B8	CSpacePirate	SpawnGrenade	method	B	3B28	-	unmarked	fn_72_4174
-0x452C	0x20	CModelData	CModelData() default ctor	inline-dol	H	4174	CModelData::CModelData()	unmarked	fn_72_452C
-0x454C	0x58	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	4174	compiler-emitted dtor	unmarked	fn_72_454C
-0x45A4	0x54	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	454C	compiler-emitted dtor	unmarked	fn_72_45A4
+0x3D7C	0x2B4	CSpacePirate	SolveGrenadeLaunch	method	B	4174	-	ported	fn_72_3D7C
+0x4030	0x144	CSpacePirate	GetGrenadeAimPoint	method	B	4174	-	ported	fn_72_4030
+0x4174	0x3B8	CSpacePirate	SpawnGrenade	method	B	3B28	-	ported	fn_72_4174
+0x452C	0x20	CModelData	CModelData() default ctor	inline-dol	H	4174	CModelData::CModelData()	not-port	fn_72_452C
+0x454C	0x58	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	4174	compiler-emitted dtor	not-port	fn_72_454C
+0x45A4	0x54	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	454C	compiler-emitted dtor	not-port	fn_72_45A4
 0x45F8	0x4C0	CSpacePirate	FireProjectile	method	B	28F0	-	marked	fn_72_45F8
-0x4AB8	0x54	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	45F8	TToken copy (header inline)	unmarked	fn_72_4AB8
-0x4B0C	0x5C	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4AB8 4BD0	TToken copy (header inline)	unmarked	fn_72_4B0C
-0x4B68	0x20	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4B0C	TToken copy (header inline)	unmarked	fn_72_4B68
-0x4B88	0x48	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4B68	TToken copy (header inline)	unmarked	fn_72_4B88
-0x4BD0	0x48	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	45F8	TToken copy (header inline)	unmarked	fn_72_4BD0
-0x4C18	0xB4	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4BD0	TToken copy (header inline)	unmarked	fn_72_4C18
-0x4CCC	0x40	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4C18	TToken copy (header inline)	unmarked	fn_72_4CCC
-0x4D0C	0x20	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4CCC	TToken copy (header inline)	unmarked	fn_72_4D0C
-0x4D2C	0x28	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4D0C	TToken copy (header inline)	unmarked	fn_72_4D2C
-0x4D54	0x80	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4D2C	TToken copy (header inline)	unmarked	fn_72_4D54
-0x4DD4	0x6C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4DD4
-0x4E40	0x54	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4E40
-0x4E94	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4E94
-0x4ED0	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_4ED0
+0x4AB8	0x54	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	45F8	TToken copy (header inline)	not-port	fn_72_4AB8
+0x4B0C	0x5C	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4AB8 4BD0	TToken copy (header inline)	not-port	fn_72_4B0C
+0x4B68	0x20	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4B0C	TToken copy (header inline)	not-port	fn_72_4B68
+0x4B88	0x48	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4B68	TToken copy (header inline)	not-port	fn_72_4B88
+0x4BD0	0x48	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	45F8	TToken copy (header inline)	not-port	fn_72_4BD0
+0x4C18	0xB4	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4BD0	TToken copy (header inline)	not-port	fn_72_4C18
+0x4CCC	0x40	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4C18	TToken copy (header inline)	not-port	fn_72_4CCC
+0x4D0C	0x20	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4CCC	TToken copy (header inline)	not-port	fn_72_4D0C
+0x4D2C	0x28	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4D0C	TToken copy (header inline)	not-port	fn_72_4D2C
+0x4D54	0x80	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4D2C	TToken copy (header inline)	not-port	fn_72_4D54
+0x4DD4	0x6C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_4DD4
+0x4E40	0x54	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_4E40
+0x4E94	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_4E94
+0x4ED0	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_4ED0
 0x4F0C	0x1C	CSpacePirate	ProjectileInfo -> &xbd4	virtual	B	data_8D8	-	marked	fn_72_4F0C
 0x4F28	0x9C	CSpacePirate	InitLauncherModel	method	B	F49C	-	marked	fn_72_4F28
-0x4FC4	0x30	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4F28	rstl::optional_object assign	unmarked	fn_72_4FC4
-0x4FF4	0x48	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4FC4	rstl::optional_object assign	unmarked	fn_72_4FF4
-0x503C	0xC4	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4FF4	rstl::optional_object assign	unmarked	fn_72_503C
-0x5100	0xC8	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	503C	rstl::optional_object assign	unmarked	fn_72_5100
-0x51C8	0xB8	CSpacePirate	TrooperWarpOut	method	B	E498	-	unmarked	fn_72_51C8
+0x4FC4	0x30	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4F28	rstl::optional_object assign	not-port	fn_72_4FC4
+0x4FF4	0x48	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4FC4	rstl::optional_object assign	not-port	fn_72_4FF4
+0x503C	0xC4	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	4FF4	rstl::optional_object assign	not-port	fn_72_503C
+0x5100	0xC8	rstl::optional<CModelData>	optional<CModelData> assign chain (from 4F28)	template	H	503C	rstl::optional_object assign	not-port	fn_72_5100
+0x51C8	0xB8	CSpacePirate	TrooperWarpOut	method	B	E498	TrooperWarpOut, marked 2026-10-22 (forced: one call per arm)	marked	fn_72_51C8
 0x5280	0x78	CSpacePirate	leash/frozen check (Jump, GetUp)	method	B	5310 B3D4	-	marked	fn_72_5280
 0x52F8	0x18	CSpacePirate	Leash (trigger)	fsm-trigger	B	data_190	-	marked	fn_72_52F8
 0x5310	0x108	CSpacePirate	Jump (state)	fsm-state	B	data_5C8	-	marked	fn_72_5310
-0x5418	0x9C	CBodyStateCmdMgr	DeliverCmd(const CBCJumpCmd&) inline copy	inline-dol	H	5310 5D0C 63C8 8A90 C1A4	CBodyStateCmdMgr::DeliverCmd (header inline)	unmarked	fn_72_5418
-0x54B4	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_B08	CBodyStateCmd subclass dtor	unmarked	fn_72_54B4
-0x5510	0x7C	CBCJumpCmd	CBCJumpCmd ctor (type 0x11, vtable data_B08)	inline-dol	H	5310 63C8 8A90 C1A4	CBCJumpCmd ctor (header inline)	unmarked	fn_72_5510
+0x5418	0x9C	CBodyStateCmdMgr	DeliverCmd(const CBCJumpCmd&) inline copy	inline-dol	H	5310 5D0C 63C8 8A90 C1A4	CBodyStateCmdMgr::DeliverCmd (header inline)	not-port	fn_72_5418
+0x54B4	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_B08	CBodyStateCmd subclass dtor	not-port	fn_72_54B4
+0x5510	0x7C	CBCJumpCmd	CBCJumpCmd ctor (type 0x11, vtable data_B08)	inline-dol	H	5310 63C8 8A90 C1A4	CBCJumpCmd ctor (header inline)	not-port	fn_72_5510
 0x558C	0x2C	CSpacePirate	Landed (trigger)	fsm-trigger	B	data_178	-	marked	fn_72_558C
 0x55B8	0x58	CSpacePirate	OffLine (trigger)	fsm-trigger	B	data_16C	-	marked	fn_72_55B8
 0x5610	0x26C	CSpacePirate	Captured (state)	fsm-state	B	data_5EC	-	marked	fn_72_5610
-0x587C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AFC	CBodyStateCmd subclass dtor	unmarked	fn_72_587C
-0x58D8	0x254	CSpacePirate	LaunchGrenade (state)	fsm-state	B	data_5E0	-	unmarked	fn_72_58D8
-0x5B2C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AF0	CBodyStateCmd subclass dtor	unmarked	fn_72_5B2C
+0x587C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AFC	CBodyStateCmd subclass dtor	not-port	fn_72_587C
+0x58D8	0x254	CSpacePirate	LaunchGrenade (state)	fsm-state	B	data_5E0	-	ported	fn_72_58D8
+0x5B2C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AF0	CBodyStateCmd subclass dtor	not-port	fn_72_5B2C
 0x5B88	0x6C	CSpacePirate	RemoveFromWorld (state)	fsm-state	B	data_5F8	-	marked	fn_72_5B88
 0x5BF4	0x1C	CSpacePirate	Deactivate (state)	fsm-state	B	data_5D4	-	marked	fn_72_5BF4
 0x5C10	0xFC	CSpacePirate	Dead (state)	fsm-state	B	data_520	-	marked	fn_72_5C10
-0x5D0C	0x11C	CSpacePirate	Bounce (state)	fsm-state	T	data_5A4	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	unmarked	fn_72_5D0C
-0x5E28	0x7C	CSpacePirate	Bounce helper (only caller 5D0C)	method	T	5D0C	only caller is the T state 5D0C	unmarked	fn_72_5E28
-0x5EA4	0x188	CSpacePirate	PathFindEx (state)	fsm-state	T	data_5B0	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	unmarked	fn_72_5EA4
-0x602C	0x2FC	CSpacePirate	BounceFind (trigger)	fsm-trigger	T	data_160	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	unmarked	fn_72_602C
+0x5D0C	0x11C	CSpacePirate	Bounce (state)	fsm-state	T	data_5A4	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	ported	fn_72_5D0C
+0x5E28	0x7C	CSpacePirate	Bounce helper (only caller 5D0C)	method	T	5D0C	only caller is the T state 5D0C	ported	fn_72_5E28
+0x5EA4	0x188	CSpacePirate	PathFindEx (state)	fsm-state	T	data_5B0	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	ported	fn_72_5EA4
+0x602C	0x2FC	CSpacePirate	BounceFind (trigger)	fsm-trigger	T	data_160	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	ported	fn_72_602C
 0x6328	0xC	CSpacePirate	BreakAttack (trigger)	fsm-trigger	B	data_148	-	marked	fn_72_6328
-0x6334	0x28	CSpacePirate	StartAttack (trigger)	fsm-trigger	T	data_13C	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	unmarked	fn_72_6334
-0x635C	0x30	CSpacePirate	LostInterest (trigger)	fsm-trigger	T	data_154	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	unmarked	fn_72_635C
-0x638C	0x3C	CSpacePirate	ShouldSpecialAttack (trigger)	fsm-trigger	T	data_130	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	unmarked	fn_72_638C
+0x6334	0x28	CSpacePirate	StartAttack (trigger)	fsm-trigger	T	data_13C	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	ported	fn_72_6334
+0x635C	0x30	CSpacePirate	LostInterest (trigger)	fsm-trigger	T	data_154	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	ported	fn_72_635C
+0x638C	0x3C	CSpacePirate	ShouldSpecialAttack (trigger)	fsm-trigger	T	data_130	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	ported	fn_72_638C
 0x63C8	0x448	CSpacePirate	JumpBack (state)	fsm-state	B	data_598	-	marked	fn_72_63C8
-0x6810	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AE4	CBodyStateCmd subclass dtor	unmarked	fn_72_6810
+0x6810	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AE4	CBodyStateCmd subclass dtor	not-port	fn_72_6810
 0x686C	0x30	CSpacePirate	ShouldJumpBack (trigger)	fsm-trigger	B	63C8 data_184	-	marked	fn_72_686C
 0x689C	0x48	CSpacePirate	AnimOver (trigger)	fsm-trigger	B	data_118	-	marked	fn_72_689C
 0x68E4	0xC8	CSpacePirate	WallDetach (state)	fsm-state	B	data_55C	-	marked	fn_72_68E4
 0x69AC	0x33C	CSpacePirate	WallHang (state)	fsm-state	B	data_550	-	marked	fn_72_69AC
-0x6CE8	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AC8	CBodyStateCmd subclass dtor	unmarked	fn_72_6CE8
-0x6D44	0x60	CValidEntityPredicate (weak)	deleting dtor (vtable data_AD4)	weak-dtor	H	data_AD4	compiler-emitted dtor	unmarked	fn_72_6D44
+0x6CE8	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AC8	CBodyStateCmd subclass dtor	not-port	fn_72_6CE8
+0x6D44	0x60	CValidEntityPredicate (weak)	deleting dtor (vtable data_AD4)	weak-dtor	H	data_AD4	compiler-emitted dtor	not-port	fn_72_6D44
 0x6DA4	0xC8	CSpacePirate	PostWarpOut (state)	fsm-state	B	data_46C	-	marked	fn_72_6DA4
 0x6E6C	0x20C	CSpacePirate	WarpOut (state)	fsm-state	B	data_460	-	marked	fn_72_6E6C
 0x7078	0x528	CSpacePirate	WarpIn (state)	fsm-state	B	data_454	-	marked	fn_72_7078
-0x75A0	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_75A0
-0x75DC	0x54	(weak)	local dtor (from 7078)	weak-dtor	H	7078	compiler-emitted dtor	unmarked	fn_72_75DC
+0x75A0	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_75A0
+0x75DC	0x54	(weak)	local dtor (from 7078)	weak-dtor	H	7078	compiler-emitted dtor	not-port	fn_72_75DC
 0x7630	0x4C	CSpacePirate	Ambushing (state)	fsm-state	B	data_448	-	marked	fn_72_7630
 0x767C	0x54	CSpacePirate	ShouldWallHang (trigger)	fsm-trigger	B	data_10C	-	marked	fn_72_767C
 0x76D0	0xCC	CSpacePirate	InProjectileRange (trigger)	fsm-trigger	B	data_1CC	-	marked	fn_72_76D0
@@ -145,7 +145,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x82D0	0x194	CSpacePirate	ShouldDodge (trigger)	fsm-trigger	B	data_AC	-	marked	fn_72_82D0
 0x8464	0x20C	CSpacePirate	TurnAround (state)	fsm-state	B	data_4E4	-	marked	fn_72_8464
 0x8670	0x3D4	CSpacePirate	Shuffle (state)	fsm-state	B	data_4D8	-	marked	fn_72_8670
-0x8A44	0x40	CVector3f	CVector3f::Cross inline	inline-dol	H	8670 D800	CVector3f::Cross	unmarked	fn_72_8A44
+0x8A44	0x40	CVector3f	CVector3f::Cross inline	inline-dol	H	8670 D800	CVector3f::Cross	not-port	fn_72_8A44
 0x8A84	0xC	CSpacePirate	InRange (trigger)	fsm-trigger	B	data_C4	-	marked	fn_72_8A84
 0x8A90	0x8E8	CSpacePirate	PathFind (state)	fsm-state	B	data_4B4	-	marked	fn_72_8A90
 0x9378	0x14	CSpacePirate	LineOfSight (trigger)	fsm-trigger	B	data_88	-	marked	fn_72_9378
@@ -155,32 +155,32 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x960C	0x2CC	CSpacePirate	ShouldStrafe (trigger)	fsm-trigger	B	data_124	-	marked	fn_72_960C
 0x98D8	0xCC	CSpacePirate	Crouch (state)	fsm-state	B	data_484	-	marked	fn_72_98D8
 0x99A4	0x4C	CSpacePirate	ShouldCrouch (trigger)	fsm-trigger	B	data_D0	-	marked	fn_72_99A4
-0x99F0	0x418	CSpacePirate	DoubleSnap (state)	fsm-state	B	data_58C	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	unmarked	fn_72_99F0
-0x9E08	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_ABC	CBodyStateCmd subclass dtor	unmarked	fn_72_9E08
-0x9E64	0x4C	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	99F0 E498	rstl::list::remove	unmarked	fn_72_9E64
-0x9EB0	0x6C	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9E64	rstl::list::remove	unmarked	fn_72_9EB0
+0x99F0	0x418	CSpacePirate	DoubleSnap (state)	fsm-state	B	data_58C	dead in shipped data: not in AFSM 0x5652a12f/0x7b49526b (the only PIRT FSMs, disc scan 2026-10-21)	ported	fn_72_99F0
+0x9E08	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_ABC	CBodyStateCmd subclass dtor	not-port	fn_72_9E08
+0x9E64	0x4C	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	99F0 E498	rstl::list::remove	not-port	fn_72_9E64
+0x9EB0	0x6C	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9E64	rstl::list::remove	not-port	fn_72_9EB0
 0x9F1C	0x39C	CSpacePirate	Attack (state)	fsm-state	B	data_478	-	marked	fn_72_9F1C
 0xA2B8	0x58	CSpacePirate	Enraged (state)	fsm-state	B	data_5BC	-	marked	fn_72_A2B8
 0xA310	0xB0	CSpacePirate	CoverAttack (state)	fsm-state	B	data_490	-	marked	fn_72_A310
 0xA3C0	0x300	CSpacePirate	Cover (state)	fsm-state	B	data_514	-	marked	fn_72_A3C0
-0xA6C0	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AB0	CBodyStateCmd subclass dtor	unmarked	fn_72_A6C0
-0xA71C	0x1B4	CSpacePirate	ShouldAttack (trigger)	fsm-trigger	B	data_7C	Cover chain RandomDelay 5/Delay 0.5 first; force6 one call, 8/20 untaken; the crowd arms need 4 attacking pirates nearer the player while this one holds unblown cover (console staging fails)	unmarked	fn_72_A71C
+0xA6C0	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AB0	CBodyStateCmd subclass dtor	not-port	fn_72_A6C0
+0xA71C	0x1B4	CSpacePirate	ShouldAttack (trigger)	fsm-trigger	B	data_7C	Cover chain RandomDelay 5/Delay 0.5 first; force6 one call, 8/20 untaken; the crowd arms need 4 attacking pirates nearer the player while this one holds unblown cover (console staging fails)	ported	fn_72_A71C
 0xA8D0	0xB8	CSpacePirate	CoveringFire (trigger)	fsm-trigger	B	data_70	-	marked	fn_72_A8D0
 0xA988	0xDC	CSpacePirate	CoverNearlyBlown (trigger)	fsm-trigger	B	data_64	-	marked	fn_72_A988
 0xAA64	0x15C	CSpacePirate	CoverBlown (trigger)	fsm-trigger	B	data_58	-	marked	fn_72_AA64
 0xABC0	0x1F4	CSpacePirate	CoverFind (trigger)	fsm-trigger	B	data_4C	-	marked	fn_72_ABC0
 0xADB4	0xC	CSpacePirate	CoverCheck (trigger)	fsm-trigger	B	data_40	-	marked	fn_72_ADB4
 0xADC0	0xF8	CSpacePirate	AggressionCheck (trigger)	fsm-trigger	B	data_34	-	marked	fn_72_ADC0
-0xAEB8	0x28	rstl::list<TUniqueId>	list push_back (from ADC0)	template	H	ADC0	rstl::list::push_back	unmarked	fn_72_AEB8
-0xAEE0	0x90	rstl::list<TUniqueId>	list push_back (from ADC0)	template	H	AEB8	rstl::list::push_back	unmarked	fn_72_AEE0
+0xAEB8	0x28	rstl::list<TUniqueId>	list push_back (from ADC0)	template	H	ADC0	rstl::list::push_back	not-port	fn_72_AEB8
+0xAEE0	0x90	rstl::list<TUniqueId>	list push_back (from ADC0)	template	H	AEB8	rstl::list::push_back	not-port	fn_72_AEE0
 0xAF70	0x464	CSpacePirate	Lurk (state)	fsm-state	B	data_4FC	-	marked	fn_72_AF70
 0xB3D4	0x16C	CSpacePirate	GetUp (state)	fsm-state	B	data_568	-	marked	fn_72_B3D4
-0xB540	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AA4	CBodyStateCmd subclass dtor	unmarked	fn_72_B540
+0xB540	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AA4	CBodyStateCmd subclass dtor	not-port	fn_72_B540
 0xB59C	0x3AC	CSpacePirate	Taunt (state)	fsm-state	B	data_508	-	marked	fn_72_B59C
-0xB948	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_A98	CBodyStateCmd subclass dtor	unmarked	fn_72_B948
-0xB9A4	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_B9A4
-0xB9E0	0x184	CPASAnimParmData	CPASAnimParmData(8 parms) ctor	inline-dol	H	B59C F49C	CPASAnimParmData ctor (header inline)	unmarked	fn_72_B9E0
-0xBB64	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_BB64
+0xB948	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_A98	CBodyStateCmd subclass dtor	not-port	fn_72_B948
+0xB9A4	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_B9A4
+0xB9E0	0x184	CPASAnimParmData	CPASAnimParmData(8 parms) ctor	inline-dol	H	B59C F49C	CPASAnimParmData ctor (header inline)	not-port	fn_72_B9E0
+0xBB64	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_BB64
 0xBBA0	0x10	CSpacePirate	Run (state)	fsm-state	B	data_4A8	-	marked	fn_72_BBA0
 0xBBB0	0x10	CSpacePirate	Halt (state)	fsm-state	B	data_49C	-	marked	fn_72_BBB0
 0xBBC0	0xB8	CSpacePirate	HearPlayer (trigger)	fsm-trigger	B	data_28	-	marked	fn_72_BBC0
@@ -192,16 +192,16 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xC468	0x20	CSpacePirate	PatternShagged (trigger)	fsm-trigger	B	data_10	-	marked	fn_72_C468
 0xC488	0xB0	CSpacePirate	Stuck (trigger)	fsm-trigger	B	data_4	-	marked	fn_72_C488
 0xC538	0xF0	CSpacePirate	Death	virtual	B	data_8D8	-	marked	fn_72_C538
-0xC628	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_A8C	CBodyStateCmd subclass dtor	unmarked	fn_72_C628
-0xC684	0x358	CSpacePirate	KnockBack	virtual	B	data_8D8	-	marked	fn_72_C684
-0xC9DC	0xB8	CSpacePirate	SetNonCinematicCollision	method	B	1980	-	unmarked	fn_72_C9DC
-0xCA94	0x9C	CSpacePirate	SetCinematicCollision	method	B	1980	-	unmarked	fn_72_CA94
+0xC628	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_A8C	CBodyStateCmd subclass dtor	not-port	fn_72_C628
+0xC684	0x358	CSpacePirate	KnockBack	virtual	B	data_8D8	the sfx emitter's handle at 0xc00 (asm 0xC944/0xC9B8), fixed by the module lane	marked	fn_72_C684
+0xC9DC	0xB8	CSpacePirate	SetNonCinematicCollision	method	B	1980	-	marked	fn_72_C9DC
+0xCA94	0x9C	CSpacePirate	SetCinematicCollision	method	B	1980	-	marked	fn_72_CA94
 0xCB30	0x150	CSpacePirate	GetTargetPos	method	B	253C 63C8 82D0 8464 8670 960C 99F0 9F1C A71C AA64 ABC0 AF70 BCB0 C1A4	-	marked	fn_72_CB30
 0xCC80	0x1B0	CSpacePirate	CheckBlade	method	B	99F0 9F1C	-	marked	fn_72_CC80
-0xCE30	0x470	CSpacePirate	GetStrafeDir	method	B	7DFC 960C	-	unmarked	fn_72_CE30
+0xCE30	0x470	CSpacePirate	GetStrafeDir	method	B	7DFC 960C	-	ported	fn_72_CE30
 0xD2A0	0x16C	CSpacePirate	CantJumpBack	method	B	63C8	-	marked	fn_72_D2A0
 0xD40C	0x1FC	CSpacePirate	AvoidActors	method	B	5EA4 8670 8A90 9478 BFCC	-	marked	fn_72_D40C
-0xD608	0x118	CSpacePirate	ShuffleRandomVector	method	B	8670	-	unmarked	fn_72_D608
+0xD608	0x118	CSpacePirate	ShuffleRandomVector	method	B	8670	the shuffle's random vector, ported 2026-10-22 (asm 0xD688-0xD69C)	marked	fn_72_D608
 0xD720	0xE0	CSpacePirate	UpdateHeldPosition	method	B	8A90 99F0 9F1C AF70	-	marked	fn_72_D720
 0xD800	0x348	CSpacePirate	UpdateGuardPosition	method	B	8464 8A90 98D8 99F0 9F1C A310 A3C0 AF70 BFCC	-	marked	fn_72_D800
 0xDB48	0x8C	CSpacePirate	LineOfSightRay	method	B	45F8 D800	-	marked	fn_72_DB48
@@ -209,55 +209,55 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xDE5C	0x80	CSpacePirate	UpdateTeamTarget	method	B	1980 7970 AF70 B59C CB30 E120 E498	-	marked	fn_72_DE5C
 0xDEDC	0x50	CSpacePirate	SquadReset	method	B	28F0 5C10 B3D4	-	marked	fn_72_DEDC
 0xDF2C	0xA8	CSpacePirate	SquadAdd (team membership)	method	B	E498	-	marked	fn_72_DF2C
-0xDFD4	0xBC	CSpacePirate	SquadJoin	method	B	B59C C1A4	-	marked	fn_72_DFD4
+0xDFD4	0xBC	CSpacePirate	SquadJoin	method	B	B59C C1A4	SquadJoin, marked by the module lane (the arms agree with the forcing run)	marked	fn_72_DFD4
 0xE090	0x1C	CSpacePirate	GetOrigin	virtual	B	data_8D8	-	marked	fn_72_E090
 0xE0AC	0x2C	CSpacePirate	DetachActorFromPirate (PMF)	method	B	data_8CC	-	marked	fn_72_E0AC
 0xE0D8	0x48	CSpacePirate	AttachActorToPirate (PMF)	method	B	data_8C0	-	marked	fn_72_E0D8
 0xE120	0x48	CSpacePirate	SetAttackTarget	virtual	B	data_8D8	-	marked	fn_72_E120
 0xE168	0x174	CSpacePirate	SetVelocityForJump	method	B	E498	-	marked	fn_72_E168
 0xE2DC	0x38	CSpacePirate	CheckTargetable	method	B	28F0	-	marked	fn_72_E2DC
-0xE314	0x4	CSpacePirate	empty function (called from Dead, AcceptScriptMsg)	method	B	5C10 E498	-	unmarked	fn_72_E314
+0xE314	0x4	CSpacePirate	empty function (called from Dead, AcceptScriptMsg)	method	B	5C10 E498	-	not-port	fn_72_E314
 0xE318	0xC0	CSpacePirate	Listen	virtual	B	data_8D8	-	marked	fn_72_E318
-0xE3D8	0xC0	CSpacePirate	Touch	virtual	B	data_8D8	-	unmarked	fn_72_E3D8
+0xE3D8	0xC0	CSpacePirate	Touch	virtual	B	data_8D8	Touch: the ragdoll push, ported 2026-10-22 (asm 0xE3F8-0xE47C)	ported	fn_72_E3D8
 0xE498	0x944	CSpacePirate	AcceptScriptMsg	virtual	B	data_8D8	-	marked	fn_72_E498
-0xEDDC	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	unmarked	fn_72_EDDC
-0xEDE4	0x8	(module)	returns 1, no reference anywhere	unreferenced	T	-	-	unmarked	fn_72_EDE4
-0xEDEC	0x1E8	CSpacePirate	ChooseTarget	method	B	1980	-	marked	fn_72_EDEC
-0xEFD4	0xCC	CSpacePirate	ChooseTeamTarget	method	B	7970 AF70 B59C CB30 E498 EDEC	-	marked	fn_72_EFD4
+0xEDDC	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_EDDC
+0xEDE4	0x8	(module)	returns 1, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_EDE4
+0xEDEC	0x1E8	CSpacePirate	ChooseTarget	method	B	1980	the team-target flag (asm 0xEE74/0xEF48) and the squad branch (asm 0xEF50-0xEFA4), fixed by the module lane	marked	fn_72_EDEC
+0xEFD4	0xCC	CSpacePirate	ChooseTeamTarget	method	B	7970 AF70 B59C CB30 E498 EDEC	ChooseTeamTarget, marked by the module lane (the arms agree with the forcing run)	marked	fn_72_EFD4
 0xF0A0	0x6C	CSpacePirate	SetupStateMachine	virtual	B	data_8D8	-	marked	fn_72_F0A0
-0xF10C	0xC0	CSpacePirate	~CSpacePirate (deleting, slot 2)	dtor	H	data_8D8	compiler-generated member dtors	unmarked	fn_72_F10C
-0xF1CC	0x1E4	CSpacePirate	~CSpacePirate body / member dtors	member-dtor	H	F10C	compiler-generated member dtors	unmarked	fn_72_F1CC
-0xF3B0	0x94	CSpacePirate	~CSpacePirate body / member dtors	member-dtor	H	F1CC	compiler-generated member dtors	unmarked	fn_72_F3B0
-0xF444	0x58	CSpacePirate	~CSpacePirate body / member dtors	member-dtor	H	F10C	compiler-generated member dtors	unmarked	fn_72_F444
-0xF49C	0xDBC	CSpacePirate	CSpacePirate ctor	method	B	140	-	unmarked	fn_72_F49C
-0x10258	0x30	TToken	TToken copy/assign chain (from ctor)	template	H	F49C	TToken copy (header inline)	unmarked	fn_72_10258
-0x10288	0x94	TToken	TToken copy/assign chain (from ctor)	template	H	10258	TToken copy (header inline)	unmarked	fn_72_10288
-0x1031C	0x20	TToken	TToken copy/assign chain (from ctor)	template	H	10288	TToken copy (header inline)	unmarked	fn_72_1031C
-0x1033C	0x28	TToken	TToken copy/assign chain (from ctor)	template	H	1031C	TToken copy (header inline)	unmarked	fn_72_1033C
-0x10364	0x8C	TToken	TToken copy/assign chain (from ctor)	template	H	1033C	TToken copy (header inline)	unmarked	fn_72_10364
-0x103F0	0x58	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_103F0
-0x10448	0x54	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_10448
-0x1049C	0x5C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_1049C
-0x104F8	0x70	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_104F8
-0x10568	0xB8	CIkChain	CIkChain() default ctor	inline-dol	H	F49C	CIkChain ctor	unmarked	fn_72_10568
-0x10620	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_10620
-0x1065C	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_1065C
-0x10698	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	unmarked	fn_72_10698
-0x106D4	0x204	CSpacePirateData	compiler copy ctors (CSpacePirateData, launcher block, grenade data)	member-ctor	H	F49C	implicit copy ctor	unmarked	fn_72_106D4
-0x108D8	0x7C	CSpacePirateData	compiler copy ctors (CSpacePirateData, launcher block, grenade data)	member-ctor	H	106D4 10A10	implicit copy ctor	unmarked	fn_72_108D8
-0x10954	0xBC	CSpacePirateData	compiler copy ctors (CSpacePirateData, launcher block, grenade data)	member-ctor	H	108D8 10C64	implicit copy ctor	unmarked	fn_72_10954
-0x10A10	0x254	CSpacePirateData	CSpacePirateData(SLdr) ctor	ctor	B	140	-	unmarked	fn_72_10A10
-0x10C64	0x80	CSpacePirateData	launcher block ctor	ctor	B	140	-	unmarked	fn_72_10C64
-0x10CE4	0x40	(module predicate)	CValidEntityPredicate-like operator(): id is a CScriptWaypoint (WallHang)	virtual	B	data_AD4	-	unmarked	fn_72_10CE4
-0x10D24	0x14	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9E64	rstl::list::remove	unmarked	fn_72_10D24
-0x10D38	0xA4	rstl::vector	vector reserve (from 7078)	template	H	7078	rstl::vector::reserve	unmarked	fn_72_10D38
-0x10DDC	0x74	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9EB0	rstl::list::remove	unmarked	fn_72_10DDC
-0x10E50	0xB6C	(module)	static init: trigger/state name tables	static-init	H	-	port static tables skTriggers/skStates	unmarked	fn_72_10E50
-0x119BC	0x74	(weak)	dtor registered by static init (list free)	weak-dtor	H	10E50(addr)	compiler-emitted dtor	unmarked	fn_72_119BC
-0x11A30	0x58	REL runtime	__destroy_global_chain	runtime	H	-	REL runtime	unmarked	__destroy_global_chain
-0x11A88	0x1C	REL runtime	__register_global_object	runtime	H	10E50	REL runtime	unmarked	__register_global_object
-0x11AA4	0xC4	REL runtime	_unresolved	runtime	H	-	REL runtime	unmarked	_unresolved
-0x11B68	0x24	REL runtime	_epilog	runtime	H	-	REL runtime	unmarked	_epilog
-0x11B8C	0x24	REL runtime	_prolog	runtime	H	-	REL runtime	unmarked	_prolog
-0x11BB0	0x4C	REL runtime	ModuleDestructors	runtime	H	-	REL runtime	unmarked	ModuleDestructors
-0x11BFC	0x4C	REL runtime	ModuleConstructors	runtime	H	-	REL runtime	unmarked	ModuleConstructors
+0xF10C	0xC0	CSpacePirate	~CSpacePirate (deleting, slot 2)	dtor	H	data_8D8	compiler-generated member dtors	not-port	fn_72_F10C
+0xF1CC	0x1E4	CSpacePirate	~CSpacePirate body / member dtors	member-dtor	H	F10C	compiler-generated member dtors	not-port	fn_72_F1CC
+0xF3B0	0x94	CSpacePirate	~CSpacePirate body / member dtors	member-dtor	H	F1CC	compiler-generated member dtors	not-port	fn_72_F3B0
+0xF444	0x58	CSpacePirate	~CSpacePirate body / member dtors	member-dtor	H	F10C	compiler-generated member dtors	not-port	fn_72_F444
+0xF49C	0xDBC	CSpacePirate	CSpacePirate ctor	method	B	140	-	ported	fn_72_F49C
+0x10258	0x30	TToken	TToken copy/assign chain (from ctor)	template	H	F49C	TToken copy (header inline)	not-port	fn_72_10258
+0x10288	0x94	TToken	TToken copy/assign chain (from ctor)	template	H	10258	TToken copy (header inline)	not-port	fn_72_10288
+0x1031C	0x20	TToken	TToken copy/assign chain (from ctor)	template	H	10288	TToken copy (header inline)	not-port	fn_72_1031C
+0x1033C	0x28	TToken	TToken copy/assign chain (from ctor)	template	H	1031C	TToken copy (header inline)	not-port	fn_72_1033C
+0x10364	0x8C	TToken	TToken copy/assign chain (from ctor)	template	H	1033C	TToken copy (header inline)	not-port	fn_72_10364
+0x103F0	0x58	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_103F0
+0x10448	0x54	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_10448
+0x1049C	0x5C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_1049C
+0x104F8	0x70	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_104F8
+0x10568	0xB8	CIkChain	CIkChain() default ctor	inline-dol	H	F49C	CIkChain ctor	not-port	fn_72_10568
+0x10620	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_10620
+0x1065C	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_1065C
+0x10698	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_10698
+0x106D4	0x204	CSpacePirateData	compiler copy ctors (CSpacePirateData, launcher block, grenade data)	member-ctor	H	F49C	implicit copy ctor	not-port	fn_72_106D4
+0x108D8	0x7C	CSpacePirateData	compiler copy ctors (CSpacePirateData, launcher block, grenade data)	member-ctor	H	106D4 10A10	implicit copy ctor	not-port	fn_72_108D8
+0x10954	0xBC	CSpacePirateData	compiler copy ctors (CSpacePirateData, launcher block, grenade data)	member-ctor	H	108D8 10C64	implicit copy ctor	not-port	fn_72_10954
+0x10A10	0x254	CSpacePirateData	CSpacePirateData(SLdr) ctor	ctor	B	140	-	not-port	fn_72_10A10
+0x10C64	0x80	CSpacePirateData	launcher block ctor	ctor	B	140	-	not-port	fn_72_10C64
+0x10CE4	0x40	(module predicate)	CValidEntityPredicate-like operator(): id is a CScriptWaypoint (WallHang)	virtual	B	data_AD4	the module's waypoint predicate, ported 2026-10-21 (asm 0x10CE4)	ported	fn_72_10CE4
+0x10D24	0x14	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9E64	rstl::list::remove	not-port	fn_72_10D24
+0x10D38	0xA4	rstl::vector	vector reserve (from 7078)	template	H	7078	rstl::vector::reserve	not-port	fn_72_10D38
+0x10DDC	0x74	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9EB0	rstl::list::remove	not-port	fn_72_10DDC
+0x10E50	0xB6C	(module)	static init: trigger/state name tables	static-init	H	-	port static tables skTriggers/skStates	ported	fn_72_10E50
+0x119BC	0x74	(weak)	dtor registered by static init (list free)	weak-dtor	H	10E50(addr)	compiler-emitted dtor	not-port	fn_72_119BC
+0x11A30	0x58	REL runtime	__destroy_global_chain	runtime	H	-	REL runtime	not-port	__destroy_global_chain
+0x11A88	0x1C	REL runtime	__register_global_object	runtime	H	10E50	REL runtime	not-port	__register_global_object
+0x11AA4	0xC4	REL runtime	_unresolved	runtime	H	-	REL runtime	not-port	_unresolved
+0x11B68	0x24	REL runtime	_epilog	runtime	H	-	REL runtime	not-port	_epilog
+0x11B8C	0x24	REL runtime	_prolog	runtime	H	-	REL runtime	not-port	_prolog
+0x11BB0	0x4C	REL runtime	ModuleDestructors	runtime	H	-	REL runtime	not-port	ModuleDestructors
+0x11BFC	0x4C	REL runtime	ModuleConstructors	runtime	H	-	REL runtime	not-port	ModuleConstructors
