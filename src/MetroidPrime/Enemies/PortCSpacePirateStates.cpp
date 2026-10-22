@@ -347,8 +347,9 @@ void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
         }
         const CVector3f toJump = jumpPoint->GetTranslation() - GetTranslation();
         const float distSq = toJump.MagSquared();
-        if (distSq <= 25.f ||
-            CVector3f::Dot(jumpPoint->GetTransform().GetForward(), toJump) <= 0.f) {
+        // 0x8D3C fcmpo + 0x8D40 ble, 0x8D70 fcmpo + 0x8D74 ble: a NaN skips the point.
+        if (!(distSq > 25.f) ||
+            !(CVector3f::Dot(jumpPoint->GetTransform().GetForward(), toJump) > 0.f)) {
           continue;
         }
         CScriptWaypoint* waypoint =
@@ -357,14 +358,17 @@ void CSpacePirate::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
           continue;
         }
         // Only take a jump that leads towards the destination (the two height deltas agree).
-        if ((mDestPos.GetZ() - GetTranslation().GetZ()) *
-                (waypoint->GetTranslation().GetZ() - jumpPoint->GetTranslation().GetZ()) <= 0.f) {
+        // 0x8DC0 fcmpo + 0x8DC4 ble: a NaN skips the point.
+        if (!((mDestPos.GetZ() - GetTranslation().GetZ()) *
+                  (waypoint->GetTranslation().GetZ() - jumpPoint->GetTranslation().GetZ()) >
+              0.f)) {
           continue;
         }
         const CVector3f toDest = mDestPos - waypoint->GetTranslation();
         float score = distSq + 4.f * toJump.GetZ() * toJump.GetZ() + toDest.MagSquared() +
                       9.f * toDest.GetZ() * toDest.GetZ();
-        if (score >= minDistSq ||
+        // 0x8E18 fcmpo + 0x8E1C bge: a NaN score skips the point.
+        if (!(score < minDistSq) ||
             GetSearchPath()->PathExists(GetTranslation(), jumpPoint->GetTranslation()) !=
                 CPathFindSearch::kR_Success) {
           continue;
@@ -1223,13 +1227,18 @@ void CSpacePirate::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
 // (asm 0x10D04) with the null test (asm 0x10D08-0x10D10). The WallHang state walks its cover
 // point's kSS_Arrived/kSM_Next connection with this predicate through CheckConnectedObject_if
 // (asm 0x6A54): a non-waypoint first connection is skipped, not returned.
+// Run 2026-10-22 (sp22, spacepirate_force10.py, 02_sand_sandfalls L3 wall hang): true for the cover
+// point's waypoint (natural); false forced (the invalid id asked: the shipped connections are waypoints).
 class CSpacePirateWaypointPredicate : public CValidEntityPredicate {
 public:
   ~CSpacePirateWaypointPredicate() override {}
-  bool IsValid(const CStateManager& mgr, TUniqueId id) const override {
-    return TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id)) != nullptr;
-  }
+  bool IsValid(const CStateManager& mgr, TUniqueId id) const override;
 };
+
+// @ fn_72_10CE4
+bool CSpacePirateWaypointPredicate::IsValid(const CStateManager& mgr, TUniqueId id) const {
+  return TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id)) != nullptr;
+}
 
 // Retail fn_72_69AC (0x33C): Activate stores kAS_Ready, sets 0x8f7 bit 0x04 and, when the pirate has
 // a cover point, walks that point's kSS_Arrived/kSM_Next connection with an explicit
@@ -1677,6 +1686,11 @@ void CSpacePirate::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
 // kAS_Over. Update (msg 1, asm 0x598C) delivers CBCLoopAttackCmd(kLAT_Zero, waitForAnimOver) while
 // kAS_LoopAttack can be issued, and exits the state once xc58_ is spent; Deactivate (0x5A70) re-arms
 // the attack timer (with retail's multiplayer variation), exits the state and releases the team slot.
+// gcov 2026-10-22 (sp22, every arm): `statecall` steps of tools/drivers/spacepirate_strafe.py
+// (07_sand_alamoportalobservation L3): the troopers after Taunt (squad joined) granted and denied,
+// the layer-0 pirates with no squad; forced: the multiplayer variation (`mpforce 1`) and the
+// switch default (`statecall ... LaunchGrenade 3`).
+// @ fn_72_58D8
 void CSpacePirate::LaunchGrenade(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:

@@ -81,7 +81,8 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   }
   self->xbc0_playerIndex = (self->xbc0_playerIndex + 1) % count;
   const CPlayer* player = mgr.GetPlayer(self->xbc0_playerIndex);
-  if (player == nullptr || player->GetVelocityWR().MagSquared() <= 0.1f) {
+  // 0xBC24 fcmpo + 0xBC28 ble (rodata 0.1f): a NaN speed is not heard.
+  if (player == nullptr || !(player->GetVelocityWR().MagSquared() > 0.1f)) {
     TraceCall(*this, "HearPlayer trigger", 0);
     return false;
   }
@@ -153,7 +154,8 @@ bool CSpacePirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const
       continue;
     }
     const float distSq = (GetTranslation() - point->GetTranslation()).MagSquared();
-    if (distSq >= minDistSq) {
+    // 0xACB8 fcmpo + 0xACBC bge: a NaN distance skips the point.
+    if (!(distSq < minDistSq)) {
       continue;
     }
     if (point->Blown(self->GetTargetPos(mgr))) {
@@ -527,12 +529,14 @@ bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const 
   return CPatterned::AnimOver(mgr, data);
 }
 
-// fn_72_CE30. Unmarked: ShouldStrafe never enters the branch that calls it in the 208 cycle
-// (the 0.66 s shot windows and the lost-LOS branch never open there).
+// gcov 2026-10-22 (sp22, ALL-ARMS): `trigcall <trooper> ShouldStrafe` with the other trooper put
+// around it (tools/drivers/spacepirate_strafe.py, 07_sand_alamoportalobservation L3); forced: the
+// other-area skip (spacepirate_force9.py, this pirate read as area 77 for one call in ten).
 // Retail's step-direction picker for the strafe trigger: a side is dropped when another pirate of
 // the same area is that way (dot against the transform's right axis, in the squared-distance frame
 // MP1 uses), then the survivors must be on the path find mesh and have a clear dynamic ray. Both
 // sides clear is a coin flip on CRandom16 bit 0x4000. Returns pas::EStepDirection.
+// @ fn_72_CE30
 int CSpacePirate::GetStrafeDir(CStateManager& mgr, float dist) {
   const float distSquared = dist * dist;
   bool canStrafeLeft = true;

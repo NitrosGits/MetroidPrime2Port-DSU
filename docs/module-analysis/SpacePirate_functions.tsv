@@ -101,7 +101,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x55B8	0x58	CSpacePirate	OffLine (trigger)	fsm-trigger	B	data_16C	-	marked	fn_72_55B8
 0x5610	0x26C	CSpacePirate	Captured (state)	fsm-state	B	data_5EC	-	marked	fn_72_5610
 0x587C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AFC	CBodyStateCmd subclass dtor	not-port	fn_72_587C
-0x58D8	0x254	CSpacePirate	LaunchGrenade (state)	fsm-state	B	data_5E0	-	ported	fn_72_58D8
+0x58D8	0x254	CSpacePirate	LaunchGrenade (state)	fsm-state	B	data_5E0	-	marked	fn_72_58D8
 0x5B2C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_AF0	CBodyStateCmd subclass dtor	not-port	fn_72_5B2C
 0x5B88	0x6C	CSpacePirate	RemoveFromWorld (state)	fsm-state	B	data_5F8	-	marked	fn_72_5B88
 0x5BF4	0x1C	CSpacePirate	Deactivate (state)	fsm-state	B	data_5D4	-	marked	fn_72_5BF4
@@ -198,7 +198,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xCA94	0x9C	CSpacePirate	SetCinematicCollision	method	B	1980	-	marked	fn_72_CA94
 0xCB30	0x150	CSpacePirate	GetTargetPos	method	B	253C 63C8 82D0 8464 8670 960C 99F0 9F1C A71C AA64 ABC0 AF70 BCB0 C1A4	-	marked	fn_72_CB30
 0xCC80	0x1B0	CSpacePirate	CheckBlade	method	B	99F0 9F1C	-	marked	fn_72_CC80
-0xCE30	0x470	CSpacePirate	GetStrafeDir	method	B	7DFC 960C	-	ported	fn_72_CE30
+0xCE30	0x470	CSpacePirate	GetStrafeDir	method	B	7DFC 960C	-	marked	fn_72_CE30
 0xD2A0	0x16C	CSpacePirate	CantJumpBack	method	B	63C8	-	marked	fn_72_D2A0
 0xD40C	0x1FC	CSpacePirate	AvoidActors	method	B	5EA4 8670 8A90 9478 BFCC	-	marked	fn_72_D40C
 0xD608	0x118	CSpacePirate	ShuffleRandomVector	method	B	8670	the shuffle's random vector, ported 2026-10-22 (asm 0xD688-0xD69C)	marked	fn_72_D608
@@ -248,7 +248,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x10954	0xBC	CSpacePirateData	compiler copy ctors (CSpacePirateData, launcher block, grenade data)	member-ctor	H	108D8 10C64	implicit copy ctor	not-port	fn_72_10954
 0x10A10	0x254	CSpacePirateData	CSpacePirateData(SLdr) ctor	ctor	B	140	-	not-port	fn_72_10A10
 0x10C64	0x80	CSpacePirateData	launcher block ctor	ctor	B	140	-	not-port	fn_72_10C64
-0x10CE4	0x40	(module predicate)	CValidEntityPredicate-like operator(): id is a CScriptWaypoint (WallHang)	virtual	B	data_AD4	the module's waypoint predicate, ported 2026-10-21 (asm 0x10CE4)	ported	fn_72_10CE4
+0x10CE4	0x40	(module predicate)	CValidEntityPredicate-like operator(): id is a CScriptWaypoint (WallHang)	virtual	B	data_AD4	the module's waypoint predicate, ported 2026-10-21 (asm 0x10CE4)	marked	fn_72_10CE4
 0x10D24	0x14	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9E64	rstl::list::remove	not-port	fn_72_10D24
 0x10D38	0xA4	rstl::vector	vector reserve (from 7078)	template	H	7078	rstl::vector::reserve	not-port	fn_72_10D38
 0x10DDC	0x74	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9EB0	rstl::list::remove	not-port	fn_72_10DDC

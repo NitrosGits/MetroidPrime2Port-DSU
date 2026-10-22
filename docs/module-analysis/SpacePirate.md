@@ -676,6 +676,33 @@ Still unmarked:
   kSD_Left 2 / Right 3). ShouldStrafe is not a `trigcall` name, and a gdb breakpoint on it (~5000 hits) overran the 1100 s run.
 - `10CE4`: not started (02_sand_sandfalls L3 WallHang staging).
 
+## 11. sp22 slice (2026-10-22)
+
+NaN audit of the `tools/retail_diff.py --kinds nan` leads (rule: `ble`/`bge`/`bne` after `fcmpo` are taken on NaN):
+
+| fn | verdict |
+|---|---|
+| `8A90` PathFind | **fixed** 0x8D40, 0x8D74, 0x8DC4, 0x8E1C (cf18e35f4); 0x8E94, 0x917C, 0x92E8 match |
+| `ABC0` CoverFind | **fixed** 0xACBC |
+| `BBC0` HearPlayer | **fixed** 0xBC28 |
+| `1980` Think | false positive: CMath::Max matches the `bge`, 0x1B90 `<` matches; 0x1F14/0x1F28 are in the unported ragdoll tail (below) |
+| `253C`, `28F0`, `5280` | false positives: IsElectrocuting (`body+0x5b8 > 0`), Max, `>`/`<`, SetTimeToNextShot's inline `> 0` |
+| `38E4` | lead is in the portal-plane code (xc68), not ported |
+| `C684`, `E498` | false positives: `>=` matches the cror, `< -1.f` matches, CMath::Clamp |
+
+New marks (gcov over build-port-cov, 0 caught/reach-stub; forced arms *labelled*):
+
+| fn | body | how its arms ran |
+|---|---|---|
+| `CE30` | GetStrafeDir | ALL-ARMS 50/50: `trigcall <trooper> ShouldStrafe` (it is in skTriggers) with the other trooper ringed at 0.9/1.4/2.0/5.0 and put right/left (`tools/drivers/spacepirate_strafe.py`, alamoportalobservation L3); *forced*: the other-area skip (`spacepirate_force9.py`, area 77 for one call in ten) |
+| `58D8` | LaunchGrenade | ALL-ARMS 14/14: `statecall` steps (Taunt joins the squad, then Activate/Update/Deactivate), claims granted and denied, layer-0 pirates with no squad (team 65535); *forced*: `mpforce 1` (multiplayer variation), msg 3 (switch default) |
+| `10CE4` | waypoint predicate IsValid | no branches (2/2 lines); true natural (id 1429, sandfalls L3 wall hang, `spacepirate_force10.py`); false *forced* (id asked as 65535). Body moved out of the class so asmcheck/retail_diff parse it |
+
+asmcheck CALL notes: CE30 0xCE84 and 10CE4 0x10D04 call `TCastToPtr` where the port uses `TCastToConstPtr` (same cast).
+
+Gap found: Think `1980` (marked) lacks retail's xb2c ragdoll tail (0x1F08-0x2030: decrement xb2c, create the ragdoll
+via fn_50_1938). Not fixed in sp22; the mark needs revisiting with the ragdoll work.
+
 ## Open questions (verify first)
 
 1. `x8f4_24` mask is `flags & 3` (MP1 `& 1`): a 2-bit field or a different flag.
