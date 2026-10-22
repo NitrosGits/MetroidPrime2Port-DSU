@@ -3574,6 +3574,8 @@ static float GetSideDashWeight(int slot) {
 // at 0x000154A8, `li r6, 0x0`) over fn_10_EDB8's weights (the loop at 0x0001547C); a pick of weight
 // 0.0f (`fcmpu` at 0x000154B4) blocks the dash (0x80 at 0x000154C4). Every message, unless blocked
 // (`extrwi.` at 0x000154D0), runs the dash step (fn_10_12CE0 at 0x000154E4).
+// Class T (ds43): the shipped FSM2 has no SideDash node (as fn_10_EDB8 above), so retail never
+// enters it; `fsm u04f7 SideDash` enters and leaves at once.
 void CDarkSamus::SideDash(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("SideDash", msg);
   if (msg == kStateMsg_Activate) {
