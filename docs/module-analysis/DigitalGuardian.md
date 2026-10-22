@@ -1863,3 +1863,43 @@ Left unmarked:
 | 9634 7B84 9A48 9AA8 A688 A384 9FE4 10 676C A004 1570 | all | natural (arms/melee/msgs/fight) | ALL-ARMS |
 | 9A9C 966C 9638 7600 F0 9A0C 7D8C 3300 34E8 39CC 4878 4D54 5140 3DA8 2CC4 28D0 2A28 | — | no run reaches | unhit |
 | 9A60 9678 308C 768C 70B4 A3D4 6864 1700 1994 18B4 17DC 2578 4E00 | some | natural | partial |
+
+## 2026-10-22: body marks (dg29); gcov runs dg29 r1 + msgs (build b9150154d) and r2 (+ PortConsoleVar)
+
+- `var <id> dg.*` (`CDigitalGuardian::PortConsoleVar`, end of `PortCDigitalGuardian.cpp`) replaces
+  a gdb force spec: vortex 0x11B8/hp 0x11C8, knee 0x1284, flags/flags2 0x128C, beacon 0x1268
+  (+beaconh 0x1264), jumptime 0x11E4, toe0..3 0x1078, toestate0..3 0x10DC, shaker 0x11C0,
+  armor0..3 0xFB0, exit 0x1168, follow 0x116A, root. Driver `tools/drivers/dg29_body.py`, spec
+  `tools/cov/specs/digitalguardian_dg29.py` (run command in its header).
+- Ported: 28D0 starts the beacon with SetParticleEmission(true) (vtable 0x2C, `li r4,1` at 0x293C),
+  not SetGeneratorRate; 2A28's head arm (1.5f .rodata 0x2A4, GetAimPosition vtable 0x54,
+  SetGlobalOrientation 0x1C / SetGlobalTranslation 0x20); 7D8C's head arm (0x7EC0..0x7EFC).
+- asmcheck notes: fn_14_4A2C/4910 are the module's weak CCameraShakeData copy/dtor (4D54, 4878,
+  4E00); fn_14_13B30 is the head's DisableAttacks (768C); 7D8C's ShouldRetry is inlined in
+  `CAnimationState::CanIssueCommand`; 34E8's CMP x11BC is `rstl::min_val`; 3DA8's CMP is the
+  pointer array over 0xFB0..0xFB6; 2CC4's "BIT x977" is the `clrlwi 24` of maxVolume (0x974).
+- Marked: 39CC 4D54 4878 34E8 4E00 9A0C 9A60 9A9C 966C 9638 9678 5140 7D8C 70B4 768C 7600.
+- Dead arms: 7D8C's switch default (EStateMsg has three values); 5140's collider-null (its only
+  caller 5384 already cast the same sender); 34E8's `IsMagnitudeSafe` false (a nonzero flat delta
+  near |x| ~ 100 has MagSquared >= ~5.8e-11, far above the ~1e-28 threshold).
+- Not marked: F0 GetOrigin (only CScriptTeamAiMgr calls it; no team AI here); 3300 (the
+  takeOff != infinite arm never ran: `CAnimData::GetTimeOfUserEventForAnimation`
+  (src/MetroidPrime/CAnimData.cpp:935) never finds TakeOff - possible shared bug); 3DA8 (r2's
+  second vortex never called it; r1 lacks the invalid-id and missing-knee arms); 2CC4 (1303
+  fade-out end, 1311/1313 echo-visor volume), 28D0 (1331/1340, 1334 null generator), 308C (1750
+  null waypoint); the render data-dead arms (null 0x123C in 1146/1166/1191/1201/1224/1246/1334/1360,
+  6864 assets, Render's mDrawParticles false) need gdb forcing.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 4D54 4878 | no camera shaker | forced (var dg.shaker 65535) | ran (r2) |
+| 39CC | toe collider missing | forced (var dg.toe0 65535) | ran (r2) |
+| 4E00 | IS03 shaker missing / Attach vs Action | forced (send e0035000e/e0035005b Delete); natural | ran (r1+r2) |
+| 34E8 | no exit waypoint | forced (var dg.exit 65535) | ran (r2); 706 false dead |
+| 5140 | toe hits outside the vortex | forced (var dg.vortex 0, var dg.toestate1, hurt) | ran (r2); collider-null dead |
+| 7D8C | waypoint null / head null | forced (send e00350062 Delete, send head Delete) | ran (r1+r2); default dead |
+| 9678 | timer, no waypoint, near/far | forced (var dg.jumptime, send waypoint Deactivate/Delete) | ALL-ARMS (r2) |
+| 70B4 | beacon 0..3, flag 0x08 | forced (var dg.beacon, var dg.flags) | ALL-ARMS |
+| 9A60 9638 9A0C 768C | all | natural + forced (var dg.knee, dg.face*, send head Delete) | ALL-ARMS |
+| 9A9C 966C 7600 | no branches | codecall / trigcall | ran |
+| A004 | DisableDestinationAlpha tail | natural (msgs.con) | ALL-ARMS (confirms dg28) |

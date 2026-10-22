@@ -164,6 +164,12 @@ public:
                    const CActorParameters& actParms, const CPatternedInfo& pInfo,
                    const CDigitalGuardianData& data);
   ~CDigitalGuardian() override;
+  // Host: the console's `var <id> dg.<name> [value]` for the body (platform/port_console.cpp):
+  // dg.flags 0x128C, dg.flags2 0x128D, dg.vortex 0x11B8, dg.vortexhp 0x11C8, dg.knee 0x1284,
+  // dg.facex/facey/facez 0x1278/0x127C/0x1280, dg.beacon 0x1268, dg.jumptime 0x11E4.
+  // dg.toe0..3 0x1078, dg.toestate0..3 0x10DC, dg.shaker 0x11C0, dg.armor0..3 0xFB0, dg.exit
+  // 0x1168, dg.follow 0x116A, dg.root 0x1080, dg.beaconh 0x1264 (thousandths).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
 
   // CEntity / CActor
   void PreThink(float dt, CStateManager& mgr) override;
