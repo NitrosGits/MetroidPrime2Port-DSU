@@ -136,7 +136,7 @@ All offsets [proven] by a store in `fn_72_F49C` unless tagged.
 | 0xb1c/0xb20 | anim distances | |
 | 0xb24/0xb28 | FLT_MAX ×2 | |
 | 0xb2c | 0 | |
-| 0xb30 | pointer = null (ragdoll?) | [?]; GetRagDoll `17A0` should confirm |
+| 0xb30 | pointer = null (the ragdoll) | confirmed by run 2026-10-22 (tail3): `17A0` entered 3 times after console `shoot` on a live trooper, `xb30_` = 0 every time and its return null; it stays 0 after `damage` kills the pirate (the creation is the unported `1980` tail) |
 | 0xb34 | object via `fn_72_10568` (CIkChain?) | [?] |
 | 0xb7c..0xbd0 | floats/vectors from data+0xa8..0xb0, +0xa0 (cloak, dodge-break, gun track delay) | |
 | 0xbd4 | CProjectileInfo, built only if projectile asset valid | |
@@ -331,7 +331,7 @@ properties, per-actor flags 0x10000/0x829c/0x40000) line up.
 ## Family summary (2026-10-21)
 
 The SpacePirate module is at **105 marked bodies of 262** (the module's own count, `tools/port_progress.py`; section 8 has the H/T/B split); every state and every trigger of the FSM is ported. Most of the fight cycle is marked (Patrol, Taunt, Lurk, TargetPlayer, Run, PathFind, TargetPatrol, Attack, Dodge, Jump, JumpBack, Skid, PostWarpOut, Dead, Enraged, TargetCover, Halt, Approach, CoverAttack, Deactivate), as are the triggers of that cycle and the data-driven ones (LineOfSight, SpotPlayer, HearShot, HearPlayer, Attacked, OffLine, AggressionCheck, HasTargetingPoint, ShouldRetreat, ShouldDodge, ShouldStrafe, CoverFind, IsAmbushing, Stuck, PatternShagged, CoverCheck, InRange). **TurnAround 8464, WarpIn 7078, CoverBlown AA64, and ShouldWarpIn 77D0 are not marked** (an earlier version of this summary listed some of them as marked); the unmarked list with reasons is in section 8. What is left is gated on the shipped data rather than on the module's code: the **cover states** (Cover, Crouch, CoverAttack, TargetCover's arrival) need a cover point at the trooper's own level, and the survey of all 65 placements finds none (the nearest is 12.8 units above the trooper, on a ledge); the **jump-point group** (Bounce, PathFindEx, BounceFind) has no state at all in the FSM asset; the **ambush group** (Ambushing, Generate) needs a placement with the ambush flag, which none has; the **grenade group** (LaunchGrenade, SpawnGrenade) now runs but its bodies have arms that a short run does not reach; the **team-AI group** (ChooseTeamTarget, UpdateTeamTarget) needs the pirates to be in a team, which the layer's TMAI alone does not give; `7078` WarpIn runs for ~63 frames and only its two remaining arms (a GRNT/FOLW waypoint, a blocked box) are missing, `A3C0` Cover waits on the missing cover point, and the ragdoll-only branches (E3D8 Touch and the ragdoll part of E0D8/E3D8/3A0C/38E4/17C8) need a ragdoll, which the port never creates.
-| `E3D8` `Touch` | verified, **unmarked** (the ragdoll branch needs 0xb30, which the port never sets): retail calls `CPatterned::Touch` first, then adds a force-field trigger's push (the trigger's 0x190/0x194/0x198) to the ragdoll's torso impulse (0xb8/0xbc/0xc0) when the ragdoll (0xb30) is live with its flag byte 0x70 bit 0x40, the other actor casts to `CScriptTrigger` with its flag byte 0x20 bit 0x80 and its word 0x1a0 bit 0x10000, and its float 0x19c is above zero (asm 0xE3F8-0xE47C). The run's 9332 calls only prove the base-class call |
+| `E3D8` `Touch` | verified, **unmarked** (the ragdoll branch needs 0xb30, which the port never sets): retail calls `CPatterned::Touch` first, then adds a force-field trigger's push (the trigger's 0x190/0x194/0x198) to the ragdoll's torso impulse (0xb8/0xbc/0xc0) when the ragdoll (0xb30) is live with its flag byte 0x70 bit 0x40 (asm 0xE404-0xE40C `extrwi. r0,r0,1,25`), the other actor casts to `CScriptTrigger` (0xE410-0xE41C) with its flag byte 0x20 bit 0x80 (0xE420-0xE428 `extrwi. r0,r0,1,24`, `CEntity::mActive`), its word 0x1a0 bit 15 (0xE42C-0xE434 `rlwinm. r0,r0,0,16,16` = 0x8000 = `kTFL_DetectAI`), and its float 0x19c above zero (0xE438-0xE448, `rodata_B9C` = 0.0, so `ble` = `<=`). The 2026-10-21 run's 9332 calls and the 2026-10-22 tail3 run's 400 prove only `CPatterned::Touch` plus the 0xb30 = 0 early-out: every call had `xb30_` = 0 |
 | `E2DC` `CheckTargetable` | verified, **marked**: the body is the vtable slot 0xC8 (`GetModelAlphau8`, `fn_72_3AE8`, which returns the alpha byte in the top byte) and the `> 127` test (the `clrlwi`/`subfic`/`srwi` triple at asm 0xE2F8). No branch, so the run's 9120 calls prove all of it. The slot identity is confirmed twice over: the same slot 0xC8 in `fn_72_36CC` is the `GetModelAlphau8 != 0` of `RenderLauncherModel`, and the slot 0x110 in `fn_72_558C`/`55B8`/`C684` is `IsOnGround` (the vtable word 69 of `lbl_72_data_8D8`) |
 | `DEDC` `SquadReset` | **fixed and marked**: the attack type comes from the melee bit (the 0x8f4 byte's bit 27 = the flags' 0x8): the bit clear is 1 = `kAT_Projectile` and the bit set is 0 = `kAT_Melee`, the enum's own order (asm 0xDF14 `srwi` inverts the bit). The team is the id at 0xba0, the member is the pirate's own id (asm 0xDEF4/0xDEFC) and the last argument is a plain 1 (asm 0xDEE4 `li r7, 0x1`) - the port passed `!melee`, so a melee pirate did not give up its team role; that is fixed. The run proves both arms (4560 calls each: pirates 208/193 are melee, 190/70 are not) |
 | `BC78` `HearShot` | verified, **marked**: the 0x8f6 mask 0x40 bit is read (asm 0xBC80 `extrwi. 1,25`), cleared (asm 0xBC84 `rlwimi`) and returned (asm 0xBC8C) - no branch, so the run's 9116 calls prove all of it. The bit is never set in this area (the trace's value is 0 throughout) |
@@ -650,7 +650,7 @@ Still unmarked from the slice:
 - `F49C` ctor: needs shared/DOL header accessors: CBodyStateInfo `mChangeLocoAtEndOfAnimOnly` setter (body+0x56c
   0x80, 0xFF44), CPatterned x682 0x80 (0xFFA0), CPatternedInfo echo parameters (pInfo+0x2a4 0x80, 0xFFCC-0x101B0),
   CActor x154 0x40 clear for a floating corpse (0x10230).
-- `17A0` GetRagDoll, `E3D8` Touch: the ragdoll (xb30) is not ported, so their arms cannot run.
+- `17A0` GetRagDoll, `E3D8` Touch: the ragdoll (xb30) is not ported, so their arms cannot run (tail3, 2026-10-22: 17A0 entered 3 times and E3D8 400+, `xb30_` = 0 on every one - see section 12).
 
 ## 10. sp21 slice (2026-10-22)
 
@@ -703,7 +703,24 @@ asmcheck CALL notes: CE30 0xCE84 and 10CE4 0x10D04 call `TCastToPtr` where the p
 Gap found: Think `1980` (marked) lacks retail's xb2c ragdoll tail (0x1F08-0x2030: decrement xb2c, create the ragdoll
 via fn_50_1938). Not fixed in sp22; the mark needs revisiting with the ragdoll work.
 
-## Open questions (verify first)
+## 12. tail3 slice (2026-10-22): the two ragdoll rows, 17A0 and E3D8
+
+Both bodies checked line by line against `build/G2ME01/SpacePirate/asm/auto_00_00000000_text.s`
+(the port tree's dump). They match; what keeps them unmarked is the ragdoll, which the port never
+creates.
+
+| fn | body vs asm | what ran (run 2026-10-22, `42b935e4,02_sand_sandfalls` L3, 12000 frames, fast) |
+|---|---|---|
+| `17A0` GetRagDoll | 0x17A0 `lwz r3,0xb30`; 0x17A4/0x17A8 null -> 0; 0x17AC/0x17B0 the 0x70 byte's 0x40 (`extrwi. r0,r4,1,25`) -> 0; 0x17B8/0x17BC its 0x80 (`1,24`) -> `bnelr` with r3 = the ragdoll. The port's three `return nullptr`s and the final return are exactly that; `CRagDoll::mPrimed`/`mRenderBoundsValid` sit in the byte at 0x70 (port layout: mRenderBounds 0x58..0x70, bitfields 0x70) | **3 hits, all `xb30_` = 0, return null** (`retp=0`). Its only caller is `CGameProjectile::CanCollideWithGameObject` (`src/MetroidPrime/Weapons/CGameProjectile.cpp:146`); console `shoot u<id>` on each live trooper produced 400 `CanCollideWithGameObject` hits and those 3 `GetRagDoll` calls. The other two arms need a live ragdoll: dead in the port |
+| `E3D8` Touch | 0xE3F4 `bl Touch__10CPatterned...`; 0xE3F8..0xE434 the six skips (0xb30, its 0x40 bit, `TCastToPtr<CScriptTrigger>`, the 0x20 byte's 0x80 = `GetActive`, 0x1a0's 0x8000 = `kTFL_DetectAI`, `rodata_B9C` = 0.0 with `ble` = `<=`); 0xE44C..0xE47C the three `fadds`/`stfs` push. The port has all six tests in asm order; the push is a comment (0xb8/0xbc/0xc0 are the module's pirate ragdoll, past the DOL CRagDoll's 0xa0) | **400 hits (the spec's cap), every one `xb30_` = 0**: the base call and the first early-out only. The trigger's own arms need a force-field `CScriptTrigger` as the touching actor, and the set below it needs the push |
+
+Why the remaining arms cannot be forced the way ds42's were: a non-null `xb30_` at `17A0` makes
+`CGameProjectile` dereference it (`GetRagDoll()->ProjectileCollision(...)`), so a fabricated pointer
+crashes instead of covering an arm; only a real ragdoll object works, and the port's creation path
+is retail's `1980` tail (0x1F08-0x2030, `fn_50_1938`) which is unported. `E3D8` additionally needs
+a `CScriptTrigger` with `kTFL_DetectAI` and a force field as the touching actor.
+
+
 
 1. `x8f4_24` mask is `flags & 3` (MP1 `& 1`): a 2-bit field or a different flag.
 2. 0xa18 (pInfo+0x58) is the starting HP (`pInfo.GetHealthInfo().GetHP()`, ctor 0xF89C/0xF8B8; sp20). Identity of 0xb30 (null pointer; ragdoll slot?).
