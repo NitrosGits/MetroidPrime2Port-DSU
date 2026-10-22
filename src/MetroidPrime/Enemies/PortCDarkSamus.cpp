@@ -534,7 +534,7 @@ void CDarkSamus::PreRender(CStateManager& mgr) {
   mColor.SetAlpha(static_cast< uchar >(255.f * visible));       // lbl_10_rodata_52C, 0x00018B58
   if (mEchoVisorDED40 == true && mDamageCooldownTimer > 0.f) {  // 0x00018B70, 0x00018B88
     float t = mDamageCooldownTimer / skDamageHitTime;           // 0x00018B9C
-    if (t >= 1.f) {                                             // 0x00018BA4
+    if (!(t < 1.f)) {                                           // 0x00018BA4 bge (a NaN too)
       t = 1.f;
     }
     SetModelFlags(CModelFlags(CModelFlags::kT_Two, 0, CModelFlags::EFlags(3),
@@ -685,7 +685,7 @@ void CDarkSamus::Render(const CStateManager& mgr) const {
 // @ fn_10_181E0
 CColor CDarkSamus::GetSilhouetteColor() const {
   float scale = mGuestDE8;
-  if (scale >= mGuestD14) { // 0x000181F8
+  if (!(scale < mGuestD14)) { // 0x000181F8 bge to the fmr of 0xD14 (a NaN too)
     scale = mGuestD14;
   }
   return CColor(scale * mGuestD18.GetX(), scale * mGuestD18.GetY(), scale * mGuestD18.GetZ(),
