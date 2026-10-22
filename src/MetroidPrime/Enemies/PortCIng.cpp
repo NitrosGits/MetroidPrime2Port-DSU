@@ -2007,7 +2007,7 @@ void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
       // 0x8E48-0x8E68: `lwz r3, 0x350(r31)` (0x8E48) + vtable 0x30 (GetTime), the state
       // machine's time against rodata_64 = 1.0 (ble skips) - not the host's mStateTime, which
       // LogState clears.
-      if (mStateMachine->GetTime() > 1.f) {
+      if (!(mStateMachine->GetTime() <= 1.f)) { // 0x8E64-0x8E68 `ble`: NaN goes in
         mAnimationState.SetState(CAnimationState::kAS_Over);
       }
     } else if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
@@ -4025,7 +4025,7 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
     // asm 0xB32C-0xB3A4: inside the hearing radius (CIngData+0x0, the actor's 0x7c0) and not too
     // far above the Ing, the shot is heard.
     // asm 0xB368-0xB370: heard while distSq <= the radius squared (cror eq,lt,eq; bne).
-    if (distSq > mData.mHearingRadius * mData.mHearingRadius) {
+    if (!(distSq <= mData.mHearingRadius * mData.mHearingRadius)) { // NaN exits too
       return false;
     }
     // The retail also rejects the noise when dz squared (0xB35C) reaches 0x3d4 squared (asm
@@ -4042,7 +4042,7 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
     // (0xd78), unless the Ing already has one that is nearer. The retail returns false here.
     // asm 0x1E58-0x1E60: fcmpo distSq, 0x7c0 squared; cror eq,lt,eq; bne - a noise exactly on the
     // hearing radius is still heard (the exit is distSq > radius squared).
-    if (distSq > mData.mHearingRadius * mData.mHearingRadius) {
+    if (!(distSq <= mData.mHearingRadius * mData.mHearingRadius)) { // NaN exits too
       return false;
     }
     const TUniqueId zoneId =
