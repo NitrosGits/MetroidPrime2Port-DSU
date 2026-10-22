@@ -1489,6 +1489,60 @@ void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locat
   }
 }
 
+// The charge shot's projectile (guessed name; vtable lbl_14_data_1034, 0x568 bytes like its base,
+// no members of its own). Slots after the RTTI pair: 2 dtor fn_14_1AAC4 (the base dtors only:
+// fn_14_19908/1998C are the module's copies of ~CEnergyProjectile/~CGameProjectile), 5 Think
+// fn_14_19784, 15 GetHealthInfo fn_14_10C (the CActor inline, HealthInfo through slot 14), 38
+// GetImpactParticle fn_14_1AB24 (an empty optional), 39 GetExplosionNormal fn_14_1AB30
+// (sUpVector). Every other slot is a base symbol. Only Think differs from CEnergyProjectile.
+namespace {
+class CGuardianProjectile : public CEnergyProjectile {
+public:
+  CGuardianProjectile(bool active, const TToken< CWeaponDescription >& description,
+                      EWeaponType type, const CTransform4f& xf, EMaterialTypes excludeMaterial,
+                      const CDamageInfo& damage, TUniqueId uid, TAreaId areaId, TUniqueId owner,
+                      TUniqueId homingTarget, uint attribs, bool underwater,
+                      const CVector3f& scale, const CImpactVisorEffect& visorEffect);
+  void Think(float dt, CStateManager& mgr) override;
+};
+
+// fn_14_19838: the CEnergyProjectile ctor (0x198E0) with the caller's arguments and then false
+// (li r12 0, stw 0x24 at 0x198D4), true (li r0 1, stw 0x28 at 0x198D8), false (stw 0x2C at
+// 0x198DC), 1.0f (.rodata 0x96C) and 4.0f, 4.0f (.rodata 0x998, f2/f3); then the vtable
+// lbl_14_data_1034 (0x198F0).
+// @ fn_14_19838
+CGuardianProjectile::CGuardianProjectile(bool active,
+                                         const TToken< CWeaponDescription >& description,
+                                         EWeaponType type, const CTransform4f& xf,
+                                         EMaterialTypes excludeMaterial, const CDamageInfo& damage,
+                                         TUniqueId uid, TAreaId areaId, TUniqueId owner,
+                                         TUniqueId homingTarget, uint attribs, bool underwater,
+                                         const CVector3f& scale,
+                                         const CImpactVisorEffect& visorEffect)
+: CEnergyProjectile(active, description, type, xf, excludeMaterial, damage, uid, areaId, owner,
+                    homingTarget, attribs, underwater, scale, visorEffect, false, true, false,
+                    1.f, 4.f, 4.f) {}
+
+// fn_14_19784 (slot 5, Think): a homing target (+0x3F0, read at 0x197AC) that is the player
+// (TCastToPtr at 0x197C0, null test 0x197C8) in the morph ball (spawned state +0x390 == 0 at
+// 0x197D4, then the transition state +0x38C; == 1 at 0x197E4) with the boost shield up
+// (+0x1174, IsBoostShieldActive at 0x197F0, beq at 0x197F8) is dropped: kInvalidUniqueId stored
+// at 0x19808. Then CEnergyProjectile::Think (0x19818).
+// @ fn_14_19784
+void CGuardianProjectile::Think(float dt, CStateManager& mgr) {
+  if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mHomingTargetId))) {
+    const CPlayer::EPlayerMorphBallState morph =
+        player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+            ? player->GetMorphballTransitionState()
+            : CPlayer::kMS_Unmorphed;
+    if (morph == CPlayer::kMS_Morphed && player->GetMorphBall()->IsBoostShieldActive()) {
+      mHomingTargetId = kInvalidUniqueId;
+    }
+  }
+  CEnergyProjectile::Think(dt, mgr);
+}
+} // namespace
+
 // fn_14_10CA0: the annihilator charge's shot. Only with its weapon cached (the TCachedToken test
 // at 0x10CC8..0x10D18) and room for one more kWT_AI projectile of this head (CanCreateProjectile
 // with 0xB and 16 = li r6 0x10, 0x10D38). From the event's locator (0x10D54) toward the point the
@@ -1496,16 +1550,16 @@ void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locat
 // The visor effect is a blur {1, 4.0f (.rodata 0x998), data +0x1AC (0x96C)} (fn_14_11170 at
 // 0x10ECC) with the low-pass filter {data +0x1B0 (0x970), data +0x1AC} (fn_14_11044 at 0x10F08).
 // The homing target is none with flag 0x01 (clrlwi. 31 / beq at 0x10F40) and the player
-// otherwise (0x10F54). The projectile is fn_14_19838's (0x10FEC): the CEnergyProjectile ctor with
-// the charge's weapon (0xE2C), kWT_AI, material 0x21, the charge's damage (0xE38), attributes 0,
-// not underwater, scale one, false, true, false and 1.0f, 4.0f, 4.0f (inside 0x19838..0x198E0).
+// otherwise (0x10F54). The projectile is fn_14_19838's (0x10FEC): CGuardianProjectile with the
+// charge's weapon (0xE2C), kWT_AI, material 0x21, the charge's damage (0xE38), attributes 0,
+// not underwater, scale one.
 // When built it gets attribute 0x1000 (kPA_BigStrike; lwz/ori/stw 0x158 at 0x10FFC..0x11010)
 // with data +0x1AC as its damage duration (stfs 0x1C0 at 0x11014): SetDamageDuration; added at
 // 0x11018. The pair {0, data +0x1AC} at 0x10F20/0x10F2C is stored and never read.
-// Retail's object is the module's CEnergyProjectile subclass (vtable lbl_14_data_1034, its
-// overrides at 0x19784..0x1A430); the host builds the base class, so those overrides are missing.
-// Not marked for that reason, though every arm ran (tools/cov/specs/digitalguardian_shots.con;
-// the TryCache-false arm forced, tools/cov/specs/digitalguardian_shots_force.py).
+// The object is the module's CGuardianProjectile (fn_14_19838 above, vtable lbl_14_data_1034).
+// Every arm ran (tools/cov/specs/digitalguardian_shots.con; the TryCache-false arm forced,
+// tools/cov/specs/digitalguardian_shots_force.py).
+// @ fn_14_10CA0
 void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locator) {
   if (!xE2C_.Token().TryCache()) {
     return;
@@ -1530,10 +1584,9 @@ void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locat
       rstl::optional_object< rstl::pair< int, float > >(
           rstl::pair< int, float >(mData.unknown_0x12ebb390, amount)));
   const TUniqueId homing = (x10F4_ & 0x01) != 0 ? kInvalidUniqueId : player.GetUniqueId();
-  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+  CGuardianProjectile* projectile = rs_new CGuardianProjectile(
       true, xE2C_.Token(), kWT_AI, xf, kMT_Character, xE2C_.GetDamage(), mgr.AllocateUniqueId(),
-      GetCurrentAreaId(), GetUniqueId(), homing, 0, false, CVector3f::One(), visor, false, true,
-      false, 1.f, 4.f, 4.f);
+      GetCurrentAreaId(), GetUniqueId(), homing, 0, false, CVector3f::One(), visor);
   // The null arm is an allocation failure only (rs_new); it never happens in a run.
   if (projectile != nullptr) {
     projectile->SetDamageDuration(mData.unknown_0xff7688bf);
