@@ -419,8 +419,8 @@ void CSandworm::FinishConstruction() {
   ResetFade();
   KnockBackController().EnableAllAnimReactions(false);
   KnockBackController().EnableKnockBackPhysics(false);
-  // Retail also clears bit 0x10 of the knock-back manager byte at this+0x681, a field the host
-  // CKnockBackMgr does not declare; left out.
+  // Retail also clears bit 0x10 of the knock-back manager byte at this+0x681 (burn).
+  KnockBackController().EnableBurn(false);
 
   for (int i = 0; i < 13; ++i) {
     x970_segIds.push_back(GetSegLocatorId(i));
