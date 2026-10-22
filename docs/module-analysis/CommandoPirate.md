@@ -1769,3 +1769,28 @@ RestoreOrientation state) are clean, and the other four only raise the host-API 
   kAS_LoopAttack, which are the host's values too) and `CEntity::CheckConnectedObject_if`
   where the port calls `CEntity::FindConnectedObject_if` (0x00007414) - the host's two
   functions have the same body (src/MetroidPrime/CEntity.cpp:124 and 198).
+
+### 6.5 The six states' untaken arms (2026-10-22, slice 30)
+
+The tooling: `tools/drivers/commandopirate_states2.py` (the console's `fsm` forces the WallHang,
+the RestoreOrientation, the ScriptedShieldCharge, the Cover and the GetUp; an unknown fourcc
+reaches a message switch's default arm) and `tools/cov/specs/commandopirate_states2.py` (the
+forcing spec: the WallHang's and the Cover's cover point - the Swamp's u05c8 - and the byte at
+guest this+0xC66's 0x20 bit for the Dead state, which the knock-back helper sets when the shield
+is up).  The run: the coverage build with
+`COV_GDB_SCRIPT=tools/cov/cov_force.py tools/cov/force.sh tools/cov/specs/commandopirate_states2.py
+<out> swamp,05_swamp_timber! --driver 'python3 tools/drivers/commandopirate_states2.py {port}'`
+(8000 frames, game exit code 0, no caught/reach-stub).
+
+| body | lines | branches | the arms that still did not run |
+|---|---|---|---|
+| `fn_9_7358` (the WallHang) | 30/39 | 10/22 | the message switch's default (0x000073A0..0x000073A4), the "no cover point" exit (0x000073D4..0x000073D8), the cover point's forward (0x00007478..0x0000748C), the update's angle test (0x000074BC..0x00007528), the wall-hang command's `CanIssueCommand` (0x00007534..0x00007548) and the body's own state (0x000075B8..0x00007628) - the last three need the body in the wall-hang state, which only the wall-hang command gives |
+| `fn_9_786C` (the RestoreOrientation) | 17/29 | 9/14 | the message switch's default (0x000078B0..0x000078B4) and the update's angle arms (0x00007918..0x000079E0) - they need a commando that is tipped over, and nothing in the shipped flow tips it |
+| `fn_9_7A98` (the ScriptedShieldCharge) | 55/60 | 23/30 | the message switch's default (0x00007B24..0x00007B28), the activate's arm (0x00007B38..0x00007B3C) and the update's arms (0x00007C64..0x00007CFC) - the charge's own abort and its waypoint arms need the module's shield-charge states |
+| `fn_9_6DBC` (the Cover) | 19/23 | 8/14 | the message switch's default (0x00006E08..0x00006E0C), the "the body is already in the cover state" arm (0x00006E10..0x00006E14), the cover's attack direction (0x00006E50..0x00006E68), the cover command's `CanIssueCommand` (0x00006E5C..0x00006E74) and the "the body cannot shoot" arm (0x00006F48..0x00006F9C) |
+| `fn_9_6A40` (the GetUp) | 15/17 | 5/10 | the message switch's default (0x00006A78..0x00006A7C) and the update's "the commando lies on the ground" arm (0x00006A90..0x00006AC4) - it needs the body in the lie-on-ground state and the path find with no source point |
+| `fn_9_69C8` (the Dead) | 0/6 | 0/4 | the state did not run: the console's `kill` deletes the actor, so the `fsm Dead` after it finds nothing |
+
+So none of the six can be marked yet - each still has a live arm that no run reaches.  The arms
+that need the body's own animation state (the wall-hang, the lie-on-ground and the cover state)
+need a forcing of the body controller, which the cov tooling does not write.
