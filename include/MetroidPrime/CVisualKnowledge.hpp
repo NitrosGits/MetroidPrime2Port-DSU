@@ -19,6 +19,9 @@ public:
   void Update(CStateManager& mgr, float dt);
   // 0x801F585C.
   void SetVisualTarget(TUniqueId target);
+  // No DOL function: owners store the locator (+0x2) and the filter (+0x8) inline.
+  void SetLocator(CSegId locator) { x2_locator = locator; }
+  void SetMaterialFilter(const CMaterialFilter& filter) { x8_filter = filter; }
 
   TUniqueId GetVisualTarget() const { return x20_target; }
   bool IsTargetVisible() const { return x38_visible; }
