@@ -273,15 +273,15 @@ Ing	fn_29_1105C	0x3dc	MARKED	CIngExitHostEffect ctor
 Ing	fn_29_11438	0x58	INLINED	is the copy-assignment of retail's inline [size][60 x CVector3f] trail
 Ing	fn_29_11490	0x20	INLINED	is a plain CModelData() , inlined below as the base class's model argu
 Ing	fn_29_114B0	0xc0	BODY	CIngMiniPortalAttack dtor
-Ing	fn_29_11570	0x2d0	BODY	CIngMiniPortalAttack aim helper: steers the aim point (0x214) at the t
-Ing	fn_29_11840	0x1a8	BODY	CIngMiniPortalAttack fire: aims ( ), TLdrToBeamInfo (DOL 0x80239B64, a
+Ing	fn_29_11570	0x2d0	MARKED	CIngMiniPortalAttack aim helper: steers the aim point (0x214) at the t
+Ing	fn_29_11840	0x1a8	MARKED	CIngMiniPortalAttack fire: aims ( ), TLdrToBeamInfo (DOL 0x80239B64, a
 Ing	fn_29_119E8	0x94	NONE	struct copy (10 words)
-Ing	fn_29_11A7C	0x198	BODY	is the normal path one frame after the spawn.
-Ing	fn_29_11C14	0x90	BODY	CIngMiniPortalAttack AcceptScriptMsg (vtable 0x18): XDEL deletes the p
-Ing	fn_29_11CA4	0x1e8	BODY	CIngMiniPortalAttack Think (vtable 0x14): ages 0x220, deletes the fire
-Ing	fn_29_11E8C	0x190	BODY	CIngMiniPortalAttack ctor
-Ing	fn_29_1201C	0xe4	BODY	portal's data (CIngMiniPortalInfo, and its copy ) and the actor a port
-Ing	fn_29_12100	0xf4	BODY	CIngMiniPortalInfo ctor
+Ing	fn_29_11A7C	0x198	MARKED	is the normal path one frame after the spawn.
+Ing	fn_29_11C14	0x90	MARKED	CIngMiniPortalAttack AcceptScriptMsg (vtable 0x18): XDEL deletes the p
+Ing	fn_29_11CA4	0x1e8	MARKED	CIngMiniPortalAttack Think (vtable 0x14): ages 0x220, deletes the fire
+Ing	fn_29_11E8C	0x190	MARKED	CIngMiniPortalAttack ctor
+Ing	fn_29_1201C	0xe4	MARKED	portal's data (CIngMiniPortalInfo, and its copy ) and the actor a port
+Ing	fn_29_12100	0xf4	MARKED	CIngMiniPortalInfo ctor
 Ing	fn_29_121F4	0x5c	BODY	module static init: lbl_29_bss_7C = string_l("Grenchler.rel"), registe
 MinorIng	fn_44_0	0x8	NONE	offset getter (+0x960)
 MinorIng	fn_44_8	0x8	NONE	offset getter (+0xa4c)
