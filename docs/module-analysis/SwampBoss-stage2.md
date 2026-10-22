@@ -336,7 +336,7 @@ manager's copies).
 | 7E24 | the `Blow` state | **marked** (7.12, 7.19): the port's body is retail's and every arm of it ran |
 | 1B38 | an additive flinch with no caller | documented no-op, like 4F88 |
 | 4F88 | `SendDecrement` | no caller anywhere in the module |
-| 5D40 | `GetIngSnatchingPoint` | the port has the body but the ing-snatch transition never runs in the port |
+| 5D40 | `GetIngSnatchingPoint` | **marked** (7.25): the ing-snatch transition does run - the head-mode anim event (0x0e) makes the boss ing-possessed |
 | 3774 | the wing-damage burst | the port has the body; it needs a growth to die, which needs a real beam hit |
 | 6B78 | the second half of `SetupCollisionManager` (the per-joint vulnerability, health and materials) | the port merges it into `SetupCollisionManager` (marked `fn_79_6E68`); it deserves its own body |
 | A0C8, B8B4 | a scan helper and `OnScanStateChange` | not ported (the scan-by-form work is still open) |
@@ -1096,7 +1096,7 @@ applied by rule, so the table can be audited:
   `fn_79_A4AC` (the address of `mLightChain`, 0xca8), `fn_79_6E5C` and `fn_79_B8A8` (a flag
   cleared).
 - **B - module behaviour** (100 functions, 0x8BD0 bytes): real behaviour - these are the
-  port's bodies. 96 of them carry a `// @ fn_79_` marker.  Six more are host copies after
+  port's bodies. 97 of them carry a `// @ fn_79_` marker.  Six more are host copies after
   all (the port calls the host's equivalent): `fn_79_2704` (the scan setup, the host's
   `CPatterned` scan info), `fn_79_2C20` (`LdrToDamageInfo`, the host's), `fn_79_3314` (the
   cross product, the host's `CVector3f::Cross`), `fn_79_3E50` (the collidable copy, the host's),
@@ -1110,14 +1110,13 @@ applied by rule, so the table can be audited:
 | B module behaviour | 100 | 0x8BD0 (35,792) |
 | **total** | **243** | **0xDD00 (56,576)** |
 
-**The unmarked B list (4)** - the module's behaviour that the port has but has not proved
+**The unmarked B list (3)** - the module's behaviour that the port has but has not proved
 (the rest of the list was closed by 7.21 and 7.23):
 
 | fn | what | why it is not marked |
 |---|---|---|
 | `fn_79_1B38` | an additive flinch with no caller | the note's 7.2: no state, trigger, code function or vtable slot references it |
 | `fn_79_4F88` | `SendDecrement` | no caller in the module (7.2) |
-| `fn_79_5D40` | `GetIngSnatchingPoint` | the ing-snatch transition never runs |
 | `fn_79_72FC` | `ResetAttackPhase` (the code node) | the code node never runs (no state references it) |
 
 ### 7.23 The three triggers' true arms (2026-10-21, fifteenth lane pass)
@@ -1138,11 +1137,11 @@ So all three are **marked** now. The other arms of A064 and A3D8 ran without for
 attack not ready with the type 3, 5, 6 and 7: `[probe] trigger 3 a 0 b 3 -> 0` and so on; the
 field 2 with the phase 2: `[probe] trigger 2 a 2 b 2 -> 0`).
 
-**The four that stay unmarked** (the whole unmarked B list now): `fn_79_1B38` (the retail's
+**The three that stay unmarked** (the whole unmarked B list now): `fn_79_1B38` (the retail's
 additive flinch: the module's only copy of that code and nothing calls it - the port's
 `AddAdditiveFlinch` is the retail's inline code in fn_79_61C4), `fn_79_4F88` (`SendDecrement`,
-no caller), `fn_79_5D40` (`GetIngSnatchingPoint`: the ing snatch never runs) and `fn_79_72FC`
-(the code node: it is in the asset's code list but no state transitions into it).
+no caller) and `fn_79_72FC` (the code node: it is in the asset's code list but no state
+transitions into it).  `fn_79_5D40` left the list with 7.25.
 
 ### 7.24 The anim event 0x1b and the grapple lock-on, probe-free (2026-10-22, sb2grapple lane)
 
@@ -1193,3 +1192,56 @@ from f513 on while the player swings, and `PlayerOnGrapplePoint` (fn_79_3354) re
 times out of 1584 (gdb tally, 2000 updates). The orbit candidates are kMT_Orbit
 (CPlayerOrbit.cpp:826), and an active point has it, so the old kMT_Target theory does not apply.
 
+
+### 7.25 fn_79_5D40 (`GetIngSnatchingPoint`): the ing snatch does run (2026-10-22, swamp2h lane)
+
+**The anim-event handler calls `SetIngPossessed`, and the test is the event type alone.**
+`fn_79_A838` (`DoUserAnimEvent`) dispatches on the event type through the jump table
+`jumptable_79_data_56C` (46 entries, the types 0..0x2d).  The type **0x0e** (`kUE_FadeIn`) block at
+0xA8A0 sets the head-mode bit (0xc74 bit 0x80), calls the vtable slot **+0x104** with `r4 = 1` and
+`f1 = 15.0f` (0xA8C4) and stores 0.2f to 0xc80 (0xA8D8); the type **0x0f** (`kUE_FadeOut`) block at
+0xA8E0 clears the bit, calls the same slot with `r4 = 0` and `f1 = 20.0f` (0xA904) and stores -0.5f
+to 0xc80 (0xA918).  The slot +0x104 is `SetIngPossessed(bool, float, CStateManager&)`
+(`lbl_79_data_424` entry 65; the vtable's entries are the slots divided by four), so the retail
+calls `SetIngPossessed(true, 15.f, mgr)` and `SetIngPossessed(false, 20.f, mgr)`.  The port's
+`DoUserAnimEvent` (`PortCSwampBossStage2.cpp:2208-2217`) does exactly that: **the C++ needed no
+fix**.
+
+**The transition is reached from the module's own `AddToRenderer`, not from the host's
+`CPatterned::Render`** (the module overrides `Render`, `fn_79_A78C`, and the retail's body does not
+call the base's, so the host's `IsBeingSnatched` branch there never runs for this class).
+`fn_79_A59C` (`AddToRenderer`) calls the host's `IsBeingSnatched` (0xA5D8) and, when it is true,
+the virtual `RenderIngSnatchingTransition` (the vcall at 0xA5FC, the vtable slot **+0x144**); the
+host's method then asks the virtual `GetIngSnatchingNormal` (**+0x138**, the module's own
+`fn_79_5E3C`) and the virtual `GetIngSnatchingPoint` (**+0x13C**, `fn_79_5D40`).  The port's
+`AddToRenderer` (`PortCSwampBossStage2.cpp:2354`) has the same shape.
+
+**The run** (`tools/cov/run.sh tools/cov/specs/swampboss2_ingsnatch.py`, the coverage build
+`build-port-cov`, `3dfd2249,04_swamp_temple_dark`, layer 6, 6000 updates, the driver
+`tools/drivers/swampboss2_ing.py`): the driver finds the boss on layer 6 and sends it the
+head-mode anim event (`uevent u06d9 14`, the type 0x0e), which makes the boss ing-possessed.  The
+possession blend then ramps from 0 to 1 over the 15 s the retail asked for, and while it is
+between 0 and 1 (and the ing model is valid) the boss "is being snatched".  **Nothing is
+forced.**
+
+| body | lines | branches | arms |
+|---|---|---|---|
+| `fn_79_5D40` (`GetIngSnatchingPoint`) | 6/6 | none (the body is straight-line code, 0x5D40..0x5E38) | **every line hit, 100% of the blocks, 113 calls - marked** |
+| `fn_79_5E3C` (`GetIngSnatchingNormal`) | 4/4 | none | 226 calls (113 from `GetIngSnatchingPoint`, 113 from `RenderIngSnatchingTransition`) |
+| `fn_79_A59C` (`AddToRenderer`) | 14/19 | 10/16 | the `IsBeingSnatched` arm: 113 ing-snatch / 484 normal |
+
+So `fn_79_5D40` is **marked**.  It was the note's 7.2/7.23 "the ing-snatch transition never runs":
+it runs as soon as the boss is ing-possessed, and the head-mode anim event (0x0e) does that.
+
+**The checker's XCALL on `fn_79_5D40` is a false positive.**  The retail's body asks for the normal
+through the vtable (the vcall at 0x5D94, the slot +0x138), which for this class is the module's
+own `fn_79_5E3C`; the port's `GetIngSnatchingNormal(t)` is the same call, resolved to the same body
+at compile time, so the two are the same function.  `tools/asmcheck.py check SwampBossStage2
+src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp fn_79_5D40 --all` reports that one finding and
+nothing else.
+
+**Two dead ends worth writing down.**  A gdb `call` of the two helpers on the live boss (the
+coverage spec's `Force` breakpoint) enters the body but hangs the game: gdb's call allocates in
+the inferior and the port's allocator does not survive it.  The natural path above needs no such
+help.  And the layer request must not be sent while the area is still loading: the boss then never
+appears (`tools/drivers/swampboss2_ing.py` waits for 1200 updates first).

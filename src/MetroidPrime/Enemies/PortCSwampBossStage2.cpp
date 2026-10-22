@@ -2398,8 +2398,12 @@ CVector3f CSwampBossStage2::GetIngSnatchingNormal(float t) const {
   return (CVector3f::Down() + tilt * CVector3f(xf.Get00(), xf.Get10(), xf.Get20())).AsNormalized();
 }
 
-// fn_79_5D40: the snatch plane starts (0xc88 + 2) scaled heights from the splash position and
-// moves back by the model's bounds height as the blend rises.
+// @ fn_79_5D40: the snatch plane starts (0xc88 + 2) scaled heights from the splash position and
+// moves back by the model's bounds height as the blend rises. The retail's body (0x5D40..0x5E38)
+// takes the model's bounds (the GetBounds call at 0x5D78), asks for the normal with the virtual
+// GetIngSnatchingNormal (the vcall at 0x5D94, the vtable slot +0x138, the module's own
+// fn_79_5E3C - the port's call reaches that same body), and adds the splash position (0xab4)
+// plus the distance along that normal.
 CVector3f CSwampBossStage2::GetIngSnatchingPoint(float t) const {
   const CAABox bounds = GetModelData()->GetBounds();
   const CVector3f normal = GetIngSnatchingNormal(t);
