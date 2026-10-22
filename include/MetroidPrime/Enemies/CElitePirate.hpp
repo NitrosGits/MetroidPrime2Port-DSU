@@ -113,6 +113,8 @@ public:
                const CTransform4f& xf, const CModelData& modelData, const CPatternedInfo& pInfo,
                const CActorParameters& actParms, const CElitePirateData& data);
   ~CElitePirate() override;
+  // Host: console `var` handler (ep.timer, ep.launcher, ep.target); see PortCElitePirate.cpp.
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
 
   // CEntity / CActor
   // PreThink, Touch, Death, KnockBack and SetupStateMachine are not overridden: the REL's vtable

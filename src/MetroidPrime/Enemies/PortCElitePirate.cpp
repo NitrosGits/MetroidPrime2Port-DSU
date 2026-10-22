@@ -46,8 +46,10 @@
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Weapons/WeaponTypes.hpp"
+#include "port_console.h"
 
 #include <float.h>
+#include <string.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -1532,37 +1534,91 @@ bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
   return true;
 }
 
-// @ fn_15_6820
-// @ fn_15_6618
+// fn_15_6820 / fn_15_6618 (not marked: the `true` return at 0x67F4 never runs in the port - the ray
+// ends at the target's aim point, inside the player's kMT_Solid primitive, so the dynamic half of
+// RayCollideWorld always hits the player; docs/module-analysis/ElitePirate.md section 11).
 // The launcher can fire: no cooldown, a target in the rocket range band, the body already turned
 // to it, and (retail's RayCollideWorld result) a clear shot from the launcher's lock-on locator.
+// fn_15_6820 is the thunk that passes &x9fa (mLauncherId) as `id`'s source (0x6830 lhz 0x9fa).
 bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) const {
-  if (mTimer > 0.f || mLauncherId == kInvalidUniqueId) {
+  if (mTimer > 0.f || mLauncherId == kInvalidUniqueId) { // 0x6644..0x6650 xa34 <= 0, 0x6660 cmplw
     return false;
   }
   const CElitePirateGrenadeLauncher* launcher =
       static_cast< const CElitePirateGrenadeLauncher* >(mgr.GetObjectById(mLauncherId));
-  if (launcher == nullptr) {
+  if (launcher == nullptr) { // 0x6678 mr. r28
     return false;
   }
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(xa26_));
-  if (target == nullptr) {
+  // 0x6680..0x6698: retail only null-checks the xa26 entity and calls its vtable +0x54
+  // (GetAimPosition) directly; there is no actor cast.
+  const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(xa26_));
+  if (target == nullptr) { // 0x6694 cmplwi r3,0
     return false;
   }
-  const CVector3f aim = target->GetAimPosition(mgr, 0.f);
-  const float distSq = DistSq(aim, GetTranslation());
-  if (!(mData.mMinRocketRange * mData.mMinRocketRange < distSq &&
-        distSq < mData.mMaxRocketRange * mData.mMaxRocketRange)) {
+  const CVector3f aim = target->GetAimPosition(mgr, 0.f); // 0x66C0 bctrl +0x54, f1 = 0.0f
+  const float distSq = DistSq(aim, GetTranslation());    // 0x66DC..0x6704 vs 0x54/0x58/0x5c
+  if (!(mData.mMinRocketRange * mData.mMinRocketRange < distSq &&  // 0x6708 ble, 0x988
+        distSq < mData.mMaxRocketRange * mData.mMaxRocketRange)) { // 0x6718 bge, 0x98c
     return false;
   }
-  if (ShouldTurn(mgr, data)) {
+  // 0x6740 vtable +0x1a4 = ShouldTurn (with a zeroed CTriggerData at 0x10; ShouldTurn ignores it)
+  if (ShouldTurn(mgr, data)) { // 0x674C clrlwi. / bne
     return false;
   }
   const CVector3f lockon = GetLockOnPosition(*launcher); // 0x6760 bl fn_15_2284
+  // 0x6778..0x67B4: (1 << data_604 = 0x3B kMT_Solid) | (1 << data_608 = 0x21 kMT_Character);
+  // 0x67DC/0x67E0 exclude 0, 0x67E4 type 1 = kFT_Include.
   const CMaterialFilter filter =
       CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Character));
-  return mgr.RayCollideWorld(lockon, aim, filter, this);
+  return mgr.RayCollideWorld(lockon, aim, filter, this); // 0x67E8, 0x67F0 beq
 }
+
+// Host: the console's `var <id> <name> [value]` for the Ingsmasher, so ShouldFire's early-out
+// arms run without gdb: ep.timer is the attack cooldown 0xa34 (whole seconds), ep.launcher the
+// launcher uid 0x9fa, ep.target the target uid 0xa26 (65535 = kInvalidUniqueId), ep.yaw the facing (degrees,
+// the console `face` convention) so a placed pirate can be turned to the player.
+bool CElitePirate::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
+  CElitePirate* ep = TCastToPtr< CElitePirate >(&ent);
+  if (ep == nullptr) {
+    return false;
+  }
+  if (strcmp(name, "ep.timer") == 0) {
+    if (value != nullptr) {
+      ep->mTimer = static_cast< float >(*value);
+    }
+    current = static_cast< int >(ep->mTimer);
+    return true;
+  }
+  if (strcmp(name, "ep.yaw") == 0) {
+    // the console `face` convention: 0 faces +y, 90 faces +x; the position is kept
+    const CVector3f pos = ep->GetTranslation();
+    if (value != nullptr) {
+      const float radians = static_cast< float >(*value) * 3.14159265358979f / 180.f;
+      const CVector3f dir(sinf(radians), cosf(radians), 0.f);
+      ep->SetTransform(CTransform4f::LookAt(pos, pos + dir, CVector3f::Up()));
+    }
+    const CVector3f fwd = ep->GetTransform().GetForward();
+    current = static_cast< int >(atan2f(fwd.GetX(), fwd.GetY()) * 180.f / 3.14159265358979f);
+    return true;
+  }
+  TUniqueId* uid = nullptr;
+  if (strcmp(name, "ep.launcher") == 0) {
+    uid = &ep->mLauncherId;
+  } else if (strcmp(name, "ep.target") == 0) {
+    uid = &ep->xa26_;
+  } else {
+    return false;
+  }
+  if (value != nullptr) {
+    *uid = TUniqueId(static_cast< ushort >(*value));
+  }
+  current = uid->value;
+  return true;
+}
+
+namespace {
+const bool sEliteConsoleVars = PortConsole::RegisterVar(&CElitePirate::PortConsoleVar);
+} // namespace
 
 // @ fn_15_6500
 bool CElitePirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&) const {

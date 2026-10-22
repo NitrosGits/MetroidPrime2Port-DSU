@@ -138,8 +138,8 @@ offset	size	name	kind	class	callers	marker	reason
 0x63B0	0xC	fn_15_63B0 ShotAt	fsm-trigger	B	data:lbl_15_data_634	fn_15_63B0	the module's own body; the port's marker is over it
 0x63BC	0x144	fn_15_63BC ShouldShockwave	fsm-trigger	B	data:lbl_15_data_634	fn_15_63BC	the module's own body; the port's marker is over it
 0x6500	0x118	fn_15_6500 ShouldMeleeAttack	fsm-trigger	B	data:lbl_15_data_634	fn_15_6500	the module's own body; the port's marker is over it
-0x6618	0x208	fn_15_6618 ShouldFire	fsm-trigger	B	bl:fn_15_6820	fn_15_6618	the module's own body; the port's marker is over it
-0x6820	0x2C	fn_15_6820 ShouldFire	fsm-trigger	B	data:lbl_15_data_634	fn_15_6820	the module's own body; the port's marker is over it
+0x6618	0x208	fn_15_6618 ShouldFire	fsm-trigger	B	bl:fn_15_6820	-	ported as CElitePirate::ShouldFire; unmarked (ep2 2026-10-22): every arm but the true return 0x67F4 ran (forced, trigcall + var ep.*); the ray always hits the target player (kMT_Solid) in RayDynamicLineOfSightTest (section 11)
+0x6820	0x2C	fn_15_6820 ShouldFire	fsm-trigger	B	data:lbl_15_data_634	-	thunk passing &x9fa to 6618 (no branches); unmarked with 6618 (ep2 2026-10-22, section 11)
 0x684C	0xD0	fn_15_684C ShouldAlert	fsm-trigger	B	data:lbl_15_data_634	fn_15_684C	the module's own body; the port's marker is over it
 0x691C	0x348	fn_15_691C DonePursuing	fsm-trigger	B	data:lbl_15_data_634	fn_15_691C	the module's own body; the port's marker is over it
 0x6C64	0x20	fn_15_6C64 DoneTurning	fsm-trigger	B	data:lbl_15_data_634	fn_15_6C64	the module's own body; the port's marker is over it
