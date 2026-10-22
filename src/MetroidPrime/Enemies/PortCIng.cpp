@@ -55,6 +55,8 @@
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#include "port_console.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -154,6 +156,42 @@ void PortIngStandIn(const char* what) {
   }
   fprintf(stderr, "[ing] stand-in %s (see PortCIng.cpp)\n", what);
 }
+
+// `var <id> ing.form|ing.desired|ing.found|ing.safezones [value]`: the form (0x9d4), the desired
+// form (0x9d8), the found-movement-pos flag (0xe5c bit 3) and the safe zone count (0xe2c), so
+// `trigcall` can take the trigger arms a fight rarely draws.
+bool CIng::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
+  CIng* ing = dynamic_cast< CIng* >(&ent); // a host-only helper: the console names the class
+  if (ing == nullptr) {
+    return false;
+  }
+  if (strcmp(name, "ing.found") == 0) {
+    if (value != nullptr) {
+      ing->mFoundMovementPos = *value != 0;
+    }
+    current = ing->mFoundMovementPos ? 1 : 0;
+    return true;
+  }
+  int* field = nullptr;
+  if (strcmp(name, "ing.form") == 0) {
+    field = &ing->mForm;
+  } else if (strcmp(name, "ing.desired") == 0) {
+    field = &ing->mDesiredForm;
+  } else if (strcmp(name, "ing.safezones") == 0) {
+    field = &ing->mSafeZoneCount;
+  } else {
+    return false;
+  }
+  if (value != nullptr) {
+    *field = *value;
+  }
+  current = *field;
+  return true;
+}
+
+namespace {
+const bool sIngConsoleVars = PortConsole::RegisterVar(&CIng::PortConsoleVar);
+} // namespace
 
 namespace {
 
@@ -1170,40 +1208,39 @@ bool CIng::ShouldEvaporate(CStateManager&, const CTriggerData&) const {
          (mForm == kForm_Corporeal || mForm == kForm_IngSpot || mForm == kForm_Evaporate);
 }
 
-// fn_29_AA94 (0x18, asm 0x0000AA94-0x0000AAAC): the word at 0xe2c (the safe zone count) is not
-// zero - the neg/andc/srwi idiom, so the arm is "the count is not zero", not "the count is
-// above zero". One comparison, two arms:
-//   - the count is zero: false;
-//   - the count is not zero: true.
-// The trigger never ran in the runs of 2026-10-21 (area 57 and the Agon Wastes, which has 23
-// safe zones): the count only changes with the XENZ message (the player entering a safe zone),
-// and the console's `noise 6` informs the listeners without changing the count. Not marked.
+// fn_29_AA94 (0x14, asm 0x0000AA94-0x0000AAA8): the word at 0xe2c (the safe zone count) is above
+// zero: `neg r0, r3` (0x0000AA98), `andc r0, r0, r3` (0x0000AA9C) and `srwi r3, r0, 31` (0x0000AAA0) give the sign bit of
+// (-n & ~n), set only for n > 0 (n = 0 gives 0, a negative n has ~n's sign bit clear, INT_MIN
+// gives -n = INT_MIN & ~n = 0). The arms (the count is set by XENZ/XEXZ in AcceptScriptMsg):
+//   - the count is not above zero: false;
+//   - the count is above zero: true.
+// Both ran in the Agon Wastes coverage run of 2026-10-22 (the body compiles branch-free; `trigcall`
+// answered false, true, false), forced (`send <ing> XENZ`/`XEXZ` + `trigcall`).
+// @ fn_29_AA94
 bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
   return mSafeZoneCount > 0;
 }
 
-// fn_29_AA4C (0x54, asm 0x0000AA4C-0x0000AAA0): the desired form (0x9d8) is 2 and the Ing is
+// fn_29_AA4C (0x48, asm 0x0000AA4C-0x0000AA90): the desired form (0x9d8) is 2 and the Ing is
 // not corporeal yet (fn_29_AD54, asm 0x0000AA6C). The arms:
 //   - the desired form is not 2 (asm 0x0000AA68): false;
 //   - it is 2 and the Ing is already corporeal (fn_29_AD54): false;
 //   - it is 2 and the Ing is not: true.
-// The Agon Wastes run of 2026-10-21 (area 01_sand_entrance_dark, the area whose Ings have the
-// "ATTK"/"FOLW" attack pattern, so the FollowAttackPattern state runs) ran the "the desired
-// form is not 2" arm and the "the desired form is 2 and the Ing is not corporeal" arm; the
-// "the Ing is already corporeal" arm did not run, so the body is not marked.
+// Every arm ran in the Agon Wastes coverage run of 2026-10-22 (tools/drivers/ing_triggers.py,
+// gcov 4/4 branches), forced (`var ing.desired -1/2/3` + `var ing.form 2/3` + `trigcall`).
+// @ fn_29_AA4C
 bool CIng::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_Corporeal && !IsCorporeal(mgr, data);
 }
 
-// fn_29_AA04 (0x4C, asm 0x0000AA04-0x0000AA50): the desired form (0x9d8) is 3 and the Ing is
+// fn_29_AA04 (0x48, asm 0x0000AA04-0x0000AA48): the desired form (0x9d8) is 3 and the Ing is
 // not an ing spot yet (fn_29_AD40, asm 0x0000AA24). The arms:
 //   - the desired form is not 3 (asm 0x0000AA20): false;
 //   - it is 3 and the Ing is already an ing spot (fn_29_AD40): false;
 //   - it is 3 and the Ing is not: true.
-// The Agon Wastes run of 2026-10-21 (area 01_sand_entrance_dark, the area whose Ings have the
-// "ATTK"/"FOLW" attack pattern) ran the "the desired form is not 3" arm; the arms with the
-// desired form 3 did not run (the Ing never wanted to be an ing spot there), so the body is not
-// marked.
+// Every arm ran in the Agon Wastes coverage run of 2026-10-22 (tools/drivers/ing_triggers.py,
+// gcov 4/4 branches), forced (`var ing.desired -1/2/3` + `var ing.form 2/3` + `trigcall`).
+// @ fn_29_AA04
 bool CIng::ShouldBecomeIngSpot(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_IngSpot && !IsIngSpot(mgr, data);
 }
@@ -1310,10 +1347,9 @@ bool CIng::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
 //   - the flag is set: true;
 //   - the flag is clear: false.
 // The FSM2 graph puts this trigger in the SetLuredDest code function's trigger list only (the
-// Ing's lure), so it needs an Ing that is lured by a safe zone. The Agon Wastes run of
-// 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing) lured one - the lure
-// code functions ran 64 and 44 times - and the trigger was evaluated with the flag clear; the
-// "the flag is set" arm did not run, so the body is not marked.
+// Ing's lure). Both arms ran in the Agon Wastes coverage run of 2026-10-22 (the body compiles
+// branch-free; `trigcall` answered false, then true), forced (`var ing.found 0/1` + `trigcall`).
+// @ fn_29_A4E0
 bool CIng::FoundMovementPos(CStateManager&, const CTriggerData&) const {
   return mFoundMovementPos;
 }
@@ -2966,21 +3002,23 @@ void CIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_29_5C28 (0x88, asm 0x00005C28-0x00005CB0): the Evaporate state. The arms: the message
-// (the Activate at asm 0x00005C48, the Update at asm 0x00005C54, the Deactivate at
-// asm 0x00005C4C) and the state time against two seconds (asm 0x00005C84). The run of
-// 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing> Evaporate`) ran the three
-// messages (the probe's keys 0, 4 and 8, four calls each); the "the state time is over two
-// seconds" arm (the death delete) and the "the message is below zero" arm did not run - the
-// state machine never sends a message below zero, so that one is dead, but the two-second arm
-// needs the state to live for two seconds. Not marked.
+// (`cmpwi r5, 1` at 0x00005C30: the Update branches at 0x00005C48, the Deactivate (2) leaves at
+// 0x00005C4C, the Activate (0) stores at 0x00005C54, and a message below zero leaves at
+// 0x00005C58 - dead, CGenericFSM2 only sends 0, 1 and 2) and the state time against two
+// seconds (0x00005C84, `fcmpo` + `ble` skip: the delete needs time > 2.0). The time is the
+// state machine's (0x00005C68-0x00005C78: `lwz r3, 0x350(r30)`, vtable 0x30 = GetTime, the
+// CGenericFSM2State slot after GetName), not the host's mStateTime, which the code functions'
+// LogState also clears. Every arm but the dead one ran in the Agon Wastes coverage run of
+// 2026-10-22 (gcov 6/6 branches; the Ing deleted itself after two seconds), forced (`fsm <ing> Evaporate`).
+// @ fn_29_5C28
 void CIng::Evaporate(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Evaporate");
     mForm = kForm_Evaporate; // 0x00005C5C: 0x9d4 = 5
   } else if (msg == kStateMsg_Update) {
-    // 0x00005C68: the state time (the state machine at 0x350) past two seconds (rodata_74).
-    if (mStateTime > 2.f) {
-      DeathDelete(mgr);
+    // 0x00005C80: rodata_74 = 2.0f.
+    if (mStateMachine->GetTime() > 2.f) {
+      DeathDelete(mgr); // 0x00005C94
     }
   }
 }
@@ -3183,8 +3221,10 @@ void CIng::SetLuredPointDest(CStateManager& mgr, float) {
                                             mLureSafeZoneId, GetTranslation());
 }
 
-// fn_29_5190 (not yet exercised in a run): the Ing starts a projectile attack on its own team: the
+// fn_29_5190 (0x40, branch-free): the Ing starts a projectile attack on its own team: the
 // attack type 1 (kAT_Projectile), the team id at 0xd6a and the Ing's own id (asm 0x000051A4-0x000051B8).
+// Ran in the Agon Wastes coverage run of 2026-10-22, forced (`codecall <ing> StartRangedAttack`).
+// @ fn_29_5190
 void CIng::StartRangedAttack(CStateManager& mgr, float) {
 
   CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
@@ -3889,18 +3929,18 @@ void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 // (0x448 = lbl_8041AAB8, CPatterned::skDamageHitTime = 0.33). The base class does exactly that
 // store, so the port's early return plus the base call is retail's body.
 // The arms:
-//   - the forms 0, 1 and 5 (asm 0x0000B894-0x0000B8AC): the early return - **still open**. The
-//     Agon Wastes run of 2026-10-21 put the Ing in the host (`fsm <ing> SuckEnergy`, the form 0)
-//     and in the evaporating form (the form 5) and hit it: the damage reached the vulnerability
-//     lookup (the probe's keys 0 and 10) but not TakeDamage, because the trigger table takes
-//     nothing from the light beam. The arm needs a hit the Ing's own table accepts, or a joint
-//     shot that lands (the joints carry the base table, the one the light beam does hurt);
-//   - every other form (asm 0x0000B8B0): the base class's store - the forms 3 and 4 in the Agon
-//     Wastes run of 2026-10-21 (the probe's keys 3 and 4).
+//   - the forms 0, 1 and 5 (asm 0x0000B894-0x0000B8AC): the early return;
+//   - every other form (asm 0x0000B8B0): the base class's store.
+// Both ran in the Agon Wastes coverage run of 2026-10-22 (gcov 2/2 branches), forced: `var <ing>
+// ing.form 0/1/5/2/3`, then `hurt <joint> 1` on one of the Ing's joint collision actors (the
+// joint relays kSM_Damage -> CollisionActorDamage -> TakeDamage), the form put back after each.
+// @ fn_29_B890
 void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
     return;
   }
+  // Retail inlines the base's body here (asm 0x0000B8B0-0x0000B8B8: 0x448 = skDamageHitTime), so
+  // asmcheck's XCALL on this call is that inline.
   CPatterned::TakeDamage(direction, magnitude);
 }
 
@@ -4117,6 +4157,8 @@ static SIng_FuncPtrs REL_loader_Ing;
 // Retail's RELMain calls fn_29_100, which stores the loader fn_29_130 into lbl_29_bss_6C (the
 // module's SIng_FuncPtrs) and calls the DOL's SetSIng_FuncPtrs. The proxy in SIng_FuncPtrs.cpp
 // calls through it.
+// @ fn_29_100 (0x30, branch-free): the loader's store and the SetSIng_FuncPtrs call (bl fn_80218918
+// at 0x11C); the RELMain around it is the REL runtime's (host-copy).
 void RELMain() {
   REL_loader_Ing.mLoader = PortLoadIng;
   SetSIng_FuncPtrs(&REL_loader_Ing);
