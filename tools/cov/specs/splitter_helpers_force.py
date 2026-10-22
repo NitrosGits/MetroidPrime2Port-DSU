@@ -190,6 +190,8 @@ BODIES = {
     'TURNZERO2': ('2994 TurnUpright', 'CSplitterCommandModule::PortTurnUpright(',
                   'the head\'s Y column has no x and no y and its Z column is the up vector:'
                   ' the head only turns'),
+    'ACCEPT': ('E6E4 AcceptHead', 'CSplitterMainChassis::PortAcceptHead(',
+               'the chassis already has a command module at 0xC6C: the head is not accepted'),
     'D3C': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
             'the id at 0xCC0 is valid and the counter at 0xC48 is not zero: the timer at 0xD3C'
             ' is counted up'),
@@ -457,6 +459,10 @@ elif WHICH == 'TURNZERO2':
               ['$this->mTransform.m10 = 0.f', '$this->mTransform.m11 = 0.f',
                '$this->mTransform.m12 = 1.f', '$this->mTransform.m20 = 0.f',
                '$this->mTransform.m21 = 0.f', '$this->mTransform.m22 = 1.f'], 0, _what)]
+elif WHICH == 'ACCEPT':
+    # The chassis already has a command module at 0xC6C: the accept answers false (asm 0xE708,
+    # 0xE70C).
+    FORCE = [(_label, _where, [], [CH + '->mCommandModuleId.value = 0x531'], 0, _what)]
 elif WHICH == 'TIMERHI':
     # The flag byte at 0xD41 has its 0x01 bit and the timer at 0xD20 is above zero: the chassis
     # does not die yet (asm 0xB0B8, 0xB0C0, 0xB0C8).

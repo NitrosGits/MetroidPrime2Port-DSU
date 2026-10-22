@@ -640,6 +640,22 @@ profiles' counters where the first has none.  A profile that puts the **natural 
 the forced arms - the merged row then shows only the natural run's arcs.  The profiles above put
 the forced runs first; the merged rows are then the union of every run.
 
+### 3.20 The chassis's accept head
+
+`fn_75_E6E4` (the chassis's accept head) is the next row of section 2 that the note had not
+tried: its port body was already there (the chassis's own command module id at 0xC6C still the
+invalid one - the compare at 0xE708 and the branch at 0xE70C - then the head's id goes to 0xC6C
+(0xE720), the id at 0xC6E is cleared (0xE72C), the flag byte 0xD40's 0x40 bit is cleared
+(0xE734-0xE738), the materials kMT_Target and kMT_Orbit are removed (0xE73C) and the four
+timers are copied (0xE744 fn_75_8EA4); the answer is true (0xE748) or, with a command module
+already there, false (0xE750)).
+
+The accept runs in the fight when the head docks to the chassis (the driver's plan K3 kills the
+0532 chassis, so the 0531 head re-docks to the 0521 one).  The arm with a command module
+already there was forced under gdb (`SPLITTER_FORCE=ACCEPT` writes the head's id at 0xC6C at the
+body's entry).  The coverage build's merged profile says **8/8 lines, 2/2 branches, ALL-ARMS** -
+**marked**.
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
@@ -647,7 +663,9 @@ the forced runs first; the merged rows are then the union of every run.
   misses. The next ones are `fn_75_2994` (the head's turn upright: 18/18 lines, 9/12 branches),
   `fn_75_2280` (the head's chassis search: 18/19 lines, 11/14 branches), `fn_75_2CE0` (the head's
   shield: 5/34 lines) and `fn_75_ACEC` (the chassis's head placement: 30/34 lines, 29/32
-  branches) - the smallest gaps.
+  branches) - the smallest gaps.  `fn_75_A0A0` (the chassis's collision actor's damage) has a body
+  but never runs: only the chassis's own "target_LCTR" collision actor sends the message, and the
+  laser sweep's beam does not reach it in the shipped spawns.
 - **The queue's rows with no body at all** are the module's own helpers that the FSM lane's
   states and codes call (the beam effect's actor, the laser-pulse shot, the collision actor
   managers' joint helpers) and the ones the two classes' constructors build. They are listed in

@@ -1959,13 +1959,16 @@ void CSplitterMainChassis::PortCopyTimers() {
   mDodgeTimer = mData.mMinDodgeInterval;
 }
 
-// fn_75_E6E4 (not marked: the run never reached the accept)
-// The chassis accepts a head (0xE6E4-0xE768): with the chassis's own command module id (0xC6C)
-// still the invalid one (0xE700-0xE70C) the head's id goes there (0xE720), the id at 0xC6E is
-// cleared (0xE72C), the flag byte 0xD40's 0x40 bit is cleared (0xE730-0xE738, the word's bit 25),
-// the materials 0x28 and 0x29 (kMT_Target and kMT_Orbit) are removed (0xE73C) and the four
-// timers are copied (0xE744 fn_75_8EA4); the answer is true (0xE748). With a command module
-// already there the answer is false (0xE750).
+// fn_75_E6E4. The chassis accepts a head (0xE6E4-0xE768): with the chassis's own command module
+// id (0xC6C) still the invalid one (0xE700-0xE70C, the compare at 0xE708 and the branch at
+// 0xE70C) the head's id goes there (0xE720), the id at 0xC6E is cleared (0xE72C), the flag byte
+// 0xD40's 0x40 bit is cleared (0xE734-0xE738, the word's bit 25), the materials 0x28 and 0x29
+// (kMT_Target and kMT_Orbit) are removed (0xE73C) and the four timers are copied (0xE744
+// fn_75_8EA4); the answer is true (0xE748). With a command module already there the answer is
+// false (0xE750).
+// Arms: the accept ran when the head docked to the chassis; the arm with a command module
+// already there was forced under gdb.
+// @ fn_75_E6E4
 bool CSplitterMainChassis::PortAcceptHead(CStateManager& mgr, TUniqueId headId) {
   if (mCommandModuleId != kInvalidUniqueId) {
     return false;
