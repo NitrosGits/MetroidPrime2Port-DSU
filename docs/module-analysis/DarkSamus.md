@@ -1865,3 +1865,30 @@ trigger's entry, one per hit, from gdb convenience variables).
   until 99, with the player placed on the actor at f1534..f1537) is written but not yet run:
   runs t4, t5, t7, t9 and t10 all died with VK_ERROR_DEVICE_LOST ("this context is innocent",
   so another process on the GPU caused the reset), and Aurora skips llvmpipe.
+
+## Slice 37 (2026-10-22): the rework of the BoostBallRoll's Update arm
+
+- **The merges**: `port` (2e5ff4f85, with the GPU-hang fix) and then `3272cab53` (the
+  darksamus-895c lane). The conflicts were in this note and in PortCDarkSamusHelpers.cpp: both
+  sides' functions are kept, and fn_10_99B8 (StopBoostBallParticles) is the 895c lane's body -
+  the two swooshes at 0xE3C/0xE4C are deleted (0x000099F4, 0x00009A20) and the element
+  generator's auto_ptr at 0xE60/0xE64 takes an empty one (0x00009A68..0x00009A7C).
+- **The BoostBallRoll's Update arm** (fn_10_A3B0, 0x0000A524..0x0000A668) is now whole:
+  - the health (the vtable's slot 0x3C, the float at its +4, 0x0000A524..0x0000A538) and the
+    health - 1.0f (lbl_10_rodata_264, 0x0000A544); the float at 0x314 (fn_10_2EFC, 0x0000A548);
+    the damage is the health - 1.0f unless the compare is unordered, when it is the float at
+    0x314 (0x0000A54C..0x0000A558);
+  - the damage info (0x0000A564..0x0000A5EC): the weapon mode word 0x13 with the bits 16, 17, 18,
+    24 and 25 cleared (the `rlwimi` chain), the damage, the radius damage amount (the same value),
+    the damage radius 0.0f, the knockback 0.0f, the three sound ids 0 and the flags byte with its
+    bit 0x80 cleared. The host's CWeaponMode carries only the type (0 = kWT_Power) and the host's
+    CDamageInfo defaults the sound ids to 0xffff.
+  - the filter (0x0000A630..0x0000A650): the actor's own uid in the include and the exclude
+    lists; the host's filter carries the material types, so the port uses the same filter as its
+    other damage calls.
+  - the damage (0x0000A654): CStateManager::ApplyDamage to the ball's actor (fn_10_9920) with the
+    actor as the damager and the owner.
+  - **What the port missed**: the bit 0x20 of 0xEBC is set (`rlwimi` at 0x0000A660) and the
+    shield flag 0xCD0 becomes 1 (0x0000A668). Without them the arm re-ran every frame.
+- **The corrected bit comments**: the `clrlwi` at 0x0000A500 takes the bool's low byte, so the
+  check in fn_10_A3B0 is the bit 0x40 of 0x318 itself - not "the bit 0x80".
