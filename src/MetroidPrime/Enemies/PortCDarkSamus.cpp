@@ -1,9 +1,6 @@
-// Host body for the DarkSamus REL (module 10), milestone 1: the actor loads, registers and
-// thinks. Every vtable override that belongs to retail's AI forwards to CPatterned behind a
-// once-only stand-in log, and the REL function it stands in for is named on each. The state
-// machine, the melee / dive / scatter-shot / missile attacks, the boost ball, the freeze beam,
-// the sweep beam and the phazon enrage are later milestones - docs/module-analysis/DarkSamus.md
-// section i has the plan.
+// Host body for the DarkSamus REL (module 10): the constructor and the vtable overrides; the
+// state machine and the attacks are in PortCDarkSamusFsm*.cpp / PortCDarkSamusHelpers*.cpp
+// (docs/module-analysis/DarkSamus.md).
 //
 // Which methods the REL overrides is not guessed: its vtable lbl_10_data_CBC lists them by address
 // and the slots line up with the CEntity -> CActor -> CPhysicsActor -> CAi -> CPatterned chain
@@ -41,29 +38,13 @@
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.hpp"
 #include "MetroidPrime/ScriptLoaderRel.hpp"
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
+#include "Kyoto/Text/CStringTable.hpp"
+#include "Collision/CCollisionInfoList.hpp"
+#include "Collision/CMaterialFilter.hpp"
 
 #include <math.h>
 #include <stdio.h>
-
-namespace {
-
-// Reports a stand-in the first time it runs, so a log lists what is still a shell. The retail
-// function is the key, so the same function is reported once even if several call sites reach it.
-void StandIn(const char* fn, const char* what) {
-  static const char* sSeen[48] = {};
-  static int sCount = 0;
-  for (int i = 0; i < sCount; ++i) {
-    if (sSeen[i] == fn) {
-      return;
-    }
-  }
-  if (sCount < 48) {
-    sSeen[sCount++] = fn;
-  }
-  fprintf(stderr, "[darksamus] stand-in %s (%s)\n", fn, what);
-}
-
-} // namespace
 
 // fn_10_1FA14. The base call is the retail one: EPatternedAI 7 (`li r4, 0x7` at 0x0001FB00),
 // flavor 0 (`li r7, 0x0` at 0x0001FB08), movement 0 / collider 1 / body 8 (the constants stored to
@@ -361,11 +342,6 @@ void CDarkSamus::Think(float dt, CStateManager& mgr) {
   CheckHealthThreshold(mgr);                       // fn_10_1B154 at 0x0001B454
 }
 
-// vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch. The four-character codes it
-// compares are 'XCRT' (0x0001E91C, the arm that also activates the body controller, 0x0001E9A4),
-// 'ACTV' (0x0001E908), 'ALRT' (0x0001E8F4), 'DCTV' (0x0001E8E0), 'XALD' (0x0001E930), 'XDEL'
-// (0x0001E8B8), 'XDMG' (0x0001E968), 'XLAU' (0x0001E958), 'XLND' (0x0001E944), 'XLSG'
-// (0x0001E98C) and 'XOFF' (0x0001E978).
 // fn_10_1E864 (0x0001E864, 0x38 bytes): the path search's area - the actor's area (the guest's
 // this+4) in the world's area list (the state manager's 0x1604, the list at 0x24 and the entry's
 // +4 at 0x0001E884), its post-constructed data (+0x104) and that data's path area (+0xEC), stored
@@ -376,60 +352,78 @@ void CDarkSamus::SetPathSearchArea(CStateManager& mgr) {
       mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
 }
 
+// vtable slot 6 = fn_10_1E89C (0x5B0): the script-message switch (the compare tree at
+// 0x0001E8B8..0x0001E998). The arms that do something: 'XCRT' (0x0001E99C), 'ACTV' (0x0001E9AC),
+// 'ALRT' (0x0001EA1C), 'XDMG' (0x0001EA30), 'XDEL' and 'DCTV' (both 0x0001EB38), 'XALD'
+// (0x0001EB60), 'XLAU' (0x0001ED58), 'XLND' and 'XLSG' (both 0x0001EDDC); 'XOFF' and every other
+// message only reach the common tail, CPatterned::AcceptScriptMsg (0x0001EE2C), which the
+// landing arms skip while a dive is not done (0x0001EE1C).
+// @ fn_10_1E89C
 void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
-  StandIn("fn_10_1E89C", "vtable slot 6, AcceptScriptMsg");
-  // The 'XDMG' arm (0x58444D47, the host's kSM_Damage; the compare at 0x0001E96C) is the
-  // projectile that hit the actor: the sender must be a CGameProjectile (the cast at
-  // 0x0001EA40), the vulnerability (the vtable's slot 16, fn_10_100DC, at 0x0001EA5C) must be
-  // hurt by the projectile's damage info (fn_800DB834, the host's WeaponHurts, at 0x0001EA64),
-  // and the last hit must be lbl_10_rodata_438 = 3.0f old (0x0001EAB4). The hit direction (the
-  // projectile's position minus the actor's, 0x0001EA70..0x0001EAA4) goes to 0x8C0/0x8C4/0x8C8.
-  // Then fn_10_1EE4C (0x0001EED8) decides whether the missile can be sent back: then 0xC0C
-  // takes the elapsed time (0x0001EAF8) and 0xC10/0xC14/0xC18 the flattened direction
-  // (0x0001EB04..0x0001EB18), normalized (0x0001EB30).
-  if (msg.GetMessage() == kSM_Damage) {
+  switch (msg.GetMessage()) {
+  case kSM_Create: // 'XCRT', 0x0001E928
+    BodyController()->Activate(mgr, pas::kAS_Invalid); // 0x0001E9A0 (li r5, -0x1), 0x0001E9A4
+    break;
+  case kSM_Activate: { // 'ACTV', 0x0001E914
+    // The boss bar's health: the constructor's float 0x908 (the loader's unknown_0x74fa22f0, its
+    // only writer `stfs f24, 0x908` at 0x0001FBF0) when it is above lbl_10_rodata_3FC = 0.0f
+    // (0x0001E9B8, `ble`), the health info's (vtable 0x3C, 0x0001E9D4) otherwise. The name is
+    // "BossDarkSamus" (lbl_10_rodata_560 + 0x55F = .rodata 0xABF, 0x0001E9F8).
+    const float hp = mData.mUnknown74FA22F0 > 0.f ? mData.mUnknown74FA22F0 // 0x0001E9B8
+                                                   : GetHealthInfo()->GetHP(); // 0x0001E9D8
+    mgr.SetBossParams(GetUniqueId(), hp,
+                      gpStringTable->GetStringIndex("BossDarkSamus")); // 0x0001EA00, 0x0001EA14
+    break;
+  }
+  case kSM_Alert: // 'ALRT', 0x0001E900
+    // The alerted flag: the byte 0x90C's bit 0x80 (`rlwimi r0, r3, 7, 24, 24` at 0x0001EA24).
+    mFlags90C |= 0x80;
+    break;
+  case kSM_Damage: { // 'XDMG', 0x0001E970
+    // The sender must be a CGameProjectile (0x0001EA40, the null test 0x0001EA48) whose damage
+    // (its 0x19C) hurts the vulnerability (vtable 0x40 at 0x0001EA5C, WeaponHurts at 0x0001EA64,
+    // `beq` on false at 0x0001EA6C).
     const CGameProjectile* proj =
         TCastToConstPtr< CGameProjectile >(mgr.GetObjectById(msg.GetSenderId()));
-    if (proj != nullptr &&  // the retail's own null test, 0x0001EA48
-        GetDamageVulnerability()->WeaponHurts(                // 0x0001EA5C, 0x0001EA64
-            proj->GetCurrentDamageInfo().GetWeaponMode()) &&
-        3.f + (mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20) <= mElapsedTime) { // 0x0001EAB4
-      mHitDirection = proj->GetTranslation() - GetTranslation(); // 0x0001EA70..0x0001EAA4
-      if (CanReflectHit(mgr, proj->GetCurrentDamageInfo(), proj->GetUniqueId())) { // 0x0001EED8
-        mGuestC0C = mElapsedTime; // 0x0001EAF8
-        mHitDirectionFlat = mHitDirection;
-        mHitDirectionFlat.SetZ(0.f); // 0x0001EB18
-        if (mHitDirectionFlat.CanBeNormalized() == true) {  // 0x0001EB1C
-          mHitDirectionFlat.Normalize(); // 0x0001EB30
-        }
+    if (proj == nullptr) { // 0x0001EA48
+      break;
+    }
+    if (!GetDamageVulnerability()->WeaponHurts(proj->GetCurrentDamageInfo().GetWeaponMode())) {
+      break; // 0x0001EA6C
+    }
+    // The hit direction goes to 0x8C0/0x8C4/0x8C8 before the time test (0x0001EA98..0x0001EAA4).
+    mHitDirection = proj->GetTranslation() - GetTranslation();
+    // Only while lbl_10_rodata_3E8 = 1.0f has passed since 0xC20 (`fadds` 0x0001EAB0, `fcmpo` +
+    // `bge` skip at 0x0001EAB4/0x0001EAB8).
+    if (1.f + mGuestC20 >= mElapsedTime) {
+      break;
+    }
+    // fn_10_1EE4C (0x0001EAD8) with the projectile's damage (0x19C) and uid; on true (`cmplwi
+    // r0, 0x1` at 0x0001EAE0) 0xC0C takes the elapsed time (0x0001EAF8) and 0xC10..0xC18 the hit
+    // direction with z = lbl_10_rodata_3FC = 0.0f (0x0001EB04..0x0001EB18), normalized when it
+    // can be (0x0001EB24, 0x0001EB30).
+    if (CanReflectHit(mgr, proj->GetCurrentDamageInfo(), proj->GetUniqueId()) == true) {
+      mGuestC0C = mElapsedTime;
+      mHitDirectionFlat = mHitDirection;
+      mHitDirectionFlat.SetZ(0.f);
+      if (mHitDirectionFlat.CanBeNormalized() == true) {
+        mHitDirectionFlat.Normalize();
       }
     }
+    break;
   }
-  // The 'ALRT' arm (0x414C5254, the host's kSM_Alert; the compare at 0x0001E8FC) sets the
-  // alerted flag: the byte 0x90C's bit 7 (the rlwimi at 0x0001EA24 keeps the mask 0x80, the
-  // PowerPC bit 24 being 1u << (31 - 24)).
-  if (msg.GetMessage() == kSM_Alert) {
-    mFlags90C |= 0x80;
-  }
-  // The 'XCRT' arm (0x58435254, the host's kSM_Create; the compare at 0x0001E91C) loads the body
-  // controller (this+0x48C at 0x0001E99C), passes -1 for the animation state (0x0001E9A0) and
-  // calls CBodyController::Activate (0x0001E9A4). Every arm then falls into the common tail,
-  // which forwards the message to CPatterned (the call at 0x0001EE2C), so the message is
-  // forwarded here too - after the activation, in retail's order.
-  if (msg.GetMessage() == kSM_Create) {
-    BodyController()->Activate(mgr, pas::kAS_Invalid);
-  }
-  // The 'XALD' arm (0x58414C44, kSM_AreaLoaded; the compare at 0x0001E938) links the fight
-  // script's object: the object connected with the state 'IS05' (kSS_InternalState5, the lis/addi
-  // at 0x0001EB60/0x0001EB70) and any message (-1, 0x0001EB74). When the uid is valid (the cmplw
-  // at 0x0001EB8C) and the object is a CScriptDarkSamusBattleStage (the cast at 0x0001EBA4, the
-  // null test at 0x0001EBA8), its uid goes to 0x974 and to 0xD50 and the stage count becomes 1
-  // (0x0001EBB8..0x0001EBC4). Then the path search's area (fn_10_1E864 at 0x0001EBD0); the
-  // collision primitive (0x0001EBE0..), the boss parameters (0x0001ECDC) and the material filter
-  // (0x0001ED50) after it are not in the port yet.
-  if (msg.GetMessage() == kSM_AreaLoaded) {
-    const TUniqueId stageUid =
-        FindConnectedObject(mgr, kSS_InternalState5, kSM_None);
+  case kSM_Delete:     // 'XDEL', 0x0001E8D8
+  case kSM_Deactivate: // 'DCTV', 0x0001E8EC
+    DeleteBoostBall(mgr);  // fn_10_9AC4 at 0x0001EB40
+    DeleteGuestActor(mgr); // fn_10_4868 at 0x0001EB4C
+    DeleteGuestUids(mgr);  // fn_10_69C0 at 0x0001EB58
+    break;
+  case kSM_AreaLoaded: { // 'XALD', 0x0001E93C
+    // The object connected with 'IS05' (kSS_InternalState5, 0x0001EB60/0x0001EB70) for any
+    // message (-1, 0x0001EB74): a valid uid (0x0001EB8C) that is a CScriptDarkSamusBattleStage
+    // (0x0001EBA4, the null test 0x0001EBA8) goes to 0x974 and 0xD50 and the stage count 0x978
+    // becomes 1 (0x0001EBB8..0x0001EBC4).
+    const TUniqueId stageUid = FindConnectedObject(mgr, kSS_InternalState5, kSM_None);
     if (stageUid != kInvalidUniqueId) {
       if (const CDarkSamusBattleStage* stage =
               TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(stageUid))) {
@@ -438,33 +432,59 @@ void CDarkSamus::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         mStageCount = 1;
       }
     }
-    SetPathSearchArea(mgr);
+    SetPathSearchArea(mgr); // fn_10_1E864 at 0x0001EBD0
+    // The dive record's collidable 0xB28 takes the animation's bounds (0x0001EBE0) and the
+    // actor's material list (this+0x68, 0x0001EBEC) (the stores at 0x0001EC38..0x0001EC68).
+    mDive.mCollidable = CCollidableAABox(GetAnimationData()->GetBoundingBox(), GetMaterialList());
+    // Active (the byte 0x20's bit 0x80, `extrwi r3, r0, 1, 24` at 0x0001EC74, `cmplwi 0x1` at
+    // 0x0001EC84): the boss bar with the health info's health (vtable 0x3C, 0x0001EC9C) and
+    // "BossDarkSamus" (0x0001ECC4).
+    if (GetActive() == true) {
+      mgr.SetBossParams(GetUniqueId(), GetHealthInfo()->GetHP(),
+                        gpStringTable->GetStringIndex("BossDarkSamus")); // 0x0001ECDC
+    }
+    // The material filter (0x0001ED50): include 1 << lbl_10_data_C14 = 0x3B (kMT_Solid,
+    // 0x0001ED2C), exclude 1 << lbl_10_data_C18 = 0x2F (kMT_CollisionActor, 0x0001ECF4) |
+    // 1 << lbl_10_data_C1C = 0x1C (kMT_AIPassthrough, 0x0001ED10), type 3 (`li r0, 0x3` at
+    // 0x0001ED30, kFT_IncludeExclude).
+    SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+        CMaterialList(kMT_Solid), CMaterialList(kMT_CollisionActor, kMT_AIPassthrough)));
+    break;
   }
-  // The 'XLAU' arm (kSM_Launching, 0x0001ED58): the base first takes a kSM_OffGround from the
-  // same sender (0x0001EDA0), then the dive is in flight (0x40, 0x0001EDAC) from the actor's
-  // position and the bubble comes on (fn_10_12EF8 at 0x0001EDD4); the original message goes to
-  // the base in the common tail.
-  if (msg.GetMessage() == kSM_Launching) {
+  case kSM_Launching: // 'XLAU', 0x0001E960
+    // The base first takes a 'XOFF' (kSM_OffGround, 0x0001ED6C/0x0001ED70) from the message's
+    // sender to this actor, originator kInvalidUniqueId, state -1 (built at 0x0001ED74..
+    // 0x0001ED9C, the call at 0x0001EDA0). Then the dive is in flight (0xB20 bit 0x40,
+    // `rlwimi r0, r3, 6, 25, 25` at 0x0001EDAC) from the actor's position (0xACC..0xAD4,
+    // 0x0001EDC0..0x0001EDD0) and the bubble comes on (fn_10_12EF8 at 0x0001EDD4).
     CPatterned::AcceptScriptMsg(mgr, CScriptMsg(msg.GetSenderId(), GetUniqueId(), kSM_OffGround,
                                                 kInvalidUniqueId,
                                                 static_cast< EScriptObjectState >(-1)));
     mDive.mLaunched = true;
     mDive.mStart = GetTranslation();
     StartDiveBubble(mgr);
-  }
-  // The 'XLND' arm (kSM_Landed, 0x0001EDDC): in the dive (0x20, 0x0001EDE4), after a bounce
-  // (0x0001EDF4) the dive is done and vertical movement off (0x0001EE00/0x0001EE0C); the message
-  // reaches the base only when the dive is done (`extrwi. 1,24` at 0x0001EE18).
-  if (msg.GetMessage() == kSM_Landed && mCurrentAttack == 0x20) {
-    if (mDive.mBounced == true) {
-      mDive.mDone = true;
-      mVerticalMovement = false;
+    break;
+  case kSM_Landed:               // 'XLND', 0x0001E950
+  case kSM_LandedOnStaticGround: // 'XLSG', 0x0001E994
+    // Only in the dive (0x980 == 0x20, 0x0001EDE0/0x0001EDE4): after a bounce (0xB20 bit 0x02,
+    // `extrwi r0, r4, 1, 30` at 0x0001EDEC, `cmplwi r0, 0x1` at 0x0001EDF0) the dive is done
+    // (bit 0x80, `rlwimi r4, r0, 7, 24, 24` at 0x0001EE00) and the vertical movement off (0x34C
+    // bit 0x40 cleared, `rlwimi r0, r3, 6, 25, 25` at 0x0001EE0C); the base is skipped while the
+    // dive is not done (`extrwi. r0, r0, 1, 24` + `beq` at 0x0001EE18/0x0001EE1C).
+    if (mCurrentAttack == 0x20) {
+      if (mDive.mBounced == true) {
+        mDive.mDone = true;
+        mVerticalMovement = false;
+      }
+      if (!mDive.mDone) {
+        return;
+      }
     }
-    if (!mDive.mDone) {
-      return;
-    }
+    break;
+  default:
+    break;
   }
-  CPatterned::AcceptScriptMsg(mgr, msg);
+  CPatterned::AcceptScriptMsg(mgr, msg); // 0x0001EE2C
 }
 
 // The state machine's setup (vtable slot 60 stays CPatterned::SetupStateMachine, so this is the
@@ -783,16 +803,60 @@ rstl::optional_object< CAABox > CDarkSamus::GetTouchBounds() const {
   return GetBoundingBox();
 }
 
-// vtable slot 20 = fn_10_10358 (0x12C).
+// vtable slot 20 = fn_10_10358 (0x12C). With a boost ball (fn_10_9624, `cmplwi r0, 0x1` at
+// 0x00010388) whose actor exists (fn_10_996C, the null test 0x000103A0) the ball's own orbit
+// position (vtable 0x50, 0x000103C8). Otherwise CPatterned's (0x000103DC) with the phazon bob
+// (fn_10_10484 at 0x00010400); when the attack's orbit position 0xD28 is not the zero vector (the
+// three `fcmpu` at 0x00010414..0x00010438) its z (0xD30) replaces the result's (0x00010454..).
+// @ fn_10_10358
 CVector3f CDarkSamus::GetOrbitPosition(const CStateManager& mgr) const {
-  StandIn("fn_10_10358", "vtable slot 20, GetOrbitPosition");
-  return CPatterned::GetOrbitPosition(mgr);
+  if (HasBoostBall() == true) {
+    if (GetBoostBallActor(const_cast< CStateManager& >(mgr)) != nullptr) {
+      return GetBoostBallActor(const_cast< CStateManager& >(mgr))->GetOrbitPosition(mgr);
+    }
+  }
+  CVector3f pos = CPatterned::GetOrbitPosition(mgr);
+  AddPhazonBob(pos);
+  if (!(mAttackOrbitPos.GetX() == CVector3f::Zero().GetX() &&
+        mAttackOrbitPos.GetY() == CVector3f::Zero().GetY() &&
+        mAttackOrbitPos.GetZ() == CVector3f::Zero().GetZ())) {
+    pos.SetZ(mAttackOrbitPos.GetZ());
+  }
+  return pos;
 }
 
-// vtable slot 21 = fn_10_10210 (0x148).
+// vtable slot 21 = fn_10_10210 (0x148): GetOrbitPosition's shape with the ball's aim position
+// (vtable 0x54, 0x00010290), CPatterned::GetAimPosition (0x000102A8), the phazon bob (fn_10_10484
+// at 0x000102CC) and the attack's aim position 0xD34 (the `fcmpu` at 0x000102E0..0x00010300; its
+// z 0xD3C at 0x00010314).
+// @ fn_10_10210
 CVector3f CDarkSamus::GetAimPosition(const CStateManager& mgr, float dt) const {
-  StandIn("fn_10_10210", "vtable slot 21, GetAimPosition");
-  return CPatterned::GetAimPosition(mgr, dt);
+  if (HasBoostBall() == true) {
+    if (GetBoostBallActor(const_cast< CStateManager& >(mgr)) != nullptr) {
+      return GetBoostBallActor(const_cast< CStateManager& >(mgr))->GetAimPosition(mgr, dt);
+    }
+  }
+  CVector3f pos = CPatterned::GetAimPosition(mgr, dt);
+  AddPhazonBob(pos);
+  if (!(mAttackAimPos.GetX() == CVector3f::Zero().GetX() &&
+        mAttackAimPos.GetY() == CVector3f::Zero().GetY() &&
+        mAttackAimPos.GetZ() == CVector3f::Zero().GetZ())) {
+    pos.SetZ(mAttackAimPos.GetZ());
+  }
+  return pos;
+}
+
+// fn_10_10484 (0x00010484, 0x9C bytes): while the phazon volley's time 0xFCC is above
+// lbl_10_rodata_3FC = 0.0f (0x000104A4) and lbl_10_rodata_440 = 5.3f has not passed since it
+// (0x000104BC), z grows by lbl_10_rodata_448 = 12.0f * sin(lbl_10_rodata_444 = pi * (1 - (1 - t)^2))
+// with t = (elapsed - 0xFCC) / 5.3 (0x000104C4..0x00010508; 1.0f is lbl_10_rodata_3E8).
+// @ fn_10_10484
+void CDarkSamus::AddPhazonBob(CVector3f& pos) const {
+  if (mGuestFCC > 0.f && 5.3f + mGuestFCC > mElapsedTime) { // 0x000104A8, 0x000104C0
+    const float u = 1.f - (mElapsedTime - mGuestFCC) / 5.3f;   // 0x000104C4..0x000104E0
+    const float s = static_cast< float >(sin(3.1415927f * (1.f - u * u))); // 0x000104E4..0x000104F4
+    pos.SetZ(pos.GetZ() + 12.f * s);                           // 0x00010500..0x00010508
+  }
 }
 
 // vtable slot 24 = fn_10_F84C (0x18): the byte at guest this+0xCD0 picks the response - 0x6A when
@@ -1047,21 +1111,174 @@ CScannableObjectInfo* CDarkSamus::GetScannableObjectInfo() const {
   return CPatterned::GetScannableObjectInfo();
 }
 
-// vtable slot 31 = fn_10_1AAC4 (0x1DC): the collision primitive the attacks use.
+// vtable slot 31 = fn_10_1AAC4 (0x1DC). In the dive (0x980 == 0x20, `cmpwi r0, 0x20` at
+// 0x0001AAE4) before any bounce (0xB20 bit 0x02, `extrwi. r0, r0, 1, 30` at 0x0001AAF0) and
+// within lbl_10_rodata_518 = 16.0f of the dive's target (0xAC0 minus the position, 0x0001AB2C;
+// `bge` out at 0x0001AB3C), the dive record's collidable 0xB28 takes the animation's bounds
+// (0x0001AB84) grown in x and y by lbl_10_rodata_548 = 1.8f - shrunk by
+// (distance - lbl_10_rodata_408 = 4.0f) / lbl_10_rodata_448 = 12.0f beyond 4.0f (0x0001AB50..
+// 0x0001AB74) - and in z by lbl_10_rodata_3FC = 0.0f (0x0001ABC0/0x0001ABC8), with the actor's
+// material list (this+0x68, 0x0001ABEC); the stores at 0x0001AC3C..0x0001AC68, and that
+// collidable is the answer (0x0001AC74). Otherwise CPhysicsActor's (0x0001AC80).
+// @ fn_10_1AAC4
 const CCollisionPrimitive* CDarkSamus::GetCollisionPrimitive() const {
-  StandIn("fn_10_1AAC4", "vtable slot 31, GetCollisionPrimitive");
-  return CPhysicsActor::GetCollisionPrimitive();
+  if (mCurrentAttack == 0x20 && !mDive.mBounced) { // 0x0001AAE8, 0x0001AAF4
+    const float dist = (mDive.mTarget - GetTranslation()).Magnitude(); // 0x0001AB2C
+    if (dist < 16.f) {                                                // 0x0001AB3C
+      float grow = 1.8f;                                               // 0x0001AB4C
+      if (dist > 4.f) {                                                // 0x0001AB54
+        grow *= 1.f - (dist - 4.f) / 12.f;                             // 0x0001AB5C..0x0001AB74
+      }
+      const CAABox bounds = GetAnimationData()->GetBoundingBox();     // 0x0001AB84
+      const CAABox box(CVector3f(bounds.GetMinPoint().GetX() - grow,
+                                 bounds.GetMinPoint().GetY() - grow,
+                                 bounds.GetMinPoint().GetZ() - 0.f),
+                       CVector3f(bounds.GetMaxPoint().GetX() + grow,
+                                 bounds.GetMaxPoint().GetY() + grow,
+                                 bounds.GetMaxPoint().GetZ() + 0.f)); // 0x0001ABE4
+      mDive.mCollidable = CCollidableAABox(box, GetMaterialList());
+      return &mDive.mCollidable; // 0x0001AC74
+    }
+  }
+  return CPhysicsActor::GetCollisionPrimitive(); // 0x0001AC80
 }
 
-// vtable slot 33 = fn_10_1C7FC (0x1A0): what the actor collides with.
+// vtable slot 33 = fn_10_1C7FC (0x1A0). The collider cast to an actor (0x0001C838), then
+// fn_10_1D0A0 (0x0001C848), the dive's arm fn_10_1C99C (0x0001C85C), fn_10_1CF84 (0x0001C86C) and
+// fn_10_A734 (0x0001C87C). In the attacks 0x80 or 0x4 (0x0001C884/0x0001C890), with a boost ball
+// (fn_10_9624, 0x0001C8A4) or in the dive (0x20, 0x0001C8AC) in flight (0xB20 bit 0x40,
+// `extrwi r0, r0, 1, 25` at 0x0001C8B8, `cmplwi r0, 0x1` at 0x0001C8BC) the platform crush runs
+// (fn_10_1D194 at 0x0001C8D4), and the base is skipped while the actor is nearer the dive's start
+// (0xACC) than its target (0xAC0) is (the two Magnitudes at 0x0001C930/0x0001C93C, `blt` out at
+// 0x0001C944). Then more than two stuck dashes (0x968 > 2, `cmplwi r0, 0x2` + `ble` at
+// 0x0001C94C/0x0001C950) crush (0x0001C964) instead of the base (CPatterned at 0x0001C97C).
+// @ fn_10_1C7FC
 void CDarkSamus::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                               CStateManager& mgr) {
-  StandIn("fn_10_1C7FC", "vtable slot 33, CollidedWith");
-  // The dive's arm (fn_10_1C99C at 0x0001C85C) with the collider cast to an actor
-  // (0x0001C838); fn_10_1D0A0 before it and fn_10_1CF84, fn_10_A734 and fn_10_1D194 after it are
-  // not in the port yet, so the base takes the rest.
-  CheckDiveCollision(mgr, TCastToPtr< CActor >(mgr.ObjectById(id)), list);
-  CPatterned::CollidedWith(id, list, mgr);
+  CActor* collider = TCastToPtr< CActor >(mgr.ObjectById(id));
+  RecordPlatformContact(list);                 // fn_10_1D0A0
+  CheckDiveCollision(mgr, collider, list);     // fn_10_1C99C
+  RecordWallHit(id, list);                     // fn_10_1CF84
+  CheckBoostBallWallHit(mgr, list);            // fn_10_A734
+  if (mCurrentAttack == 0x80 || mCurrentAttack == 0x4 || HasBoostBall() == true ||
+      (mCurrentAttack == 0x20 && mDive.mLaunched == true)) {
+    CrushPlatform(mgr, id, list); // 0x0001C8D4
+    const float targetDist = (mDive.mTarget - mDive.mStart).Magnitude(); // 0x0001C930
+    if ((GetTranslation() - mDive.mStart).Magnitude() < targetDist) {     // 0x0001C93C/0x0001C944
+      return;
+    }
+  }
+  if (mDashStuckCount > 2) { // 0x0001C950
+    CrushPlatform(mgr, id, list);
+  } else {
+    CPatterned::CollidedWith(id, list, mgr);
+  }
+}
+
+// fn_10_1D0A0 (0x0001D0A0, 0xF4 bytes): the first contact whose left material has
+// 1 << lbl_10_data_C20 = 0x31 (kMT_Platform, 0x0001D0DC..0x0001D114) ends the scan; unless it is
+// also 1 << lbl_10_data_C24 = 0x1F (kMT_Floor, 0x0001D12C, `bne` out at 0x0001D148) the contact
+// time 0xC34 takes the elapsed time and 0xC38..0xC40 the contact's point (0x0001D14C..0x0001D168).
+// @ fn_10_1D0A0
+void CDarkSamus::RecordPlatformContact(const CCollisionInfoList& list) {
+  for (int i = 0; i < list.GetCount(); ++i) { // 0x0001D17C
+    const CCollisionInfo& info = list[i];
+    if (info.GetMaterialLeft().HasMaterial(kMT_Platform)) {
+      if (!info.GetMaterialLeft().HasMaterial(kMT_Floor)) {
+        mContactTime = mElapsedTime;
+        mContactPoint = info.GetPoint();
+      }
+      return;
+    }
+  }
+}
+
+// fn_10_1CF84 (0x0001CF84, 0x11C bytes): for a collision with no object (the id is
+// kInvalidUniqueId, 0x0001CFA4/0x0001CFA8) with no attack (0x980 == 0xFFFF, `addis r0, r3, 0x0;
+// cmplwi r0, 0xffff` at 0x0001CFB0/0x0001CFB4) or in 0x2000 (`cmpwi r3, 0x2000` at 0x0001CFBC),
+// the first contact whose left material has 1 << lbl_10_data_C28 = 0x1E (kMT_Wall, 0x0001CFF0) or
+// else 1 << lbl_10_data_C2C = 0x1D (kMT_Ceiling, 0x0001D040) sets the wall hit time 0xC44 to the
+// elapsed time (0x0001D02C / 0x0001D074) and ends the scan.
+// @ fn_10_1CF84
+void CDarkSamus::RecordWallHit(const TUniqueId& id, const CCollisionInfoList& list) {
+  if (id != kInvalidUniqueId) { // 0x0001CFA8
+    return;
+  }
+  if (mCurrentAttack != 0xFFFF && mCurrentAttack != 0x2000) { // 0x0001CFB8, 0x0001CFC0
+    return;
+  }
+  for (int i = 0; i < list.GetCount(); ++i) { // 0x0001D088
+    const CMaterialList& mat = list[i].GetMaterialLeft();
+    if (mat.HasMaterial(kMT_Wall)) { // 0x0001D024
+      mLastWallHitTime = mElapsedTime;
+      return;
+    }
+    if (mat.HasMaterial(kMT_Ceiling)) { // 0x0001D06C
+      mLastWallHitTime = mElapsedTime;
+      return;
+    }
+  }
+}
+
+// fn_10_A734 (0x0000A734, 0xE0 bytes): with a boost ball (fn_10_9624, `clrlwi.` + `beq` at
+// 0x0000A750/0x0000A754) the first contact whose left material has 1 << lbl_10_data_1F8 = 0x1E
+// (kMT_Wall) or 1 << lbl_10_data_1FC = 0x1D (kMT_Ceiling) (the `or` mask at 0x0000A7A0..
+// 0x0000A7C4) sets 0xEBC's bit 0x80 (`rlwimi r0, r3, 7, 24, 24` at 0x0000A7E4) and ends the scan.
+// @ fn_10_A734
+void CDarkSamus::CheckBoostBallWallHit(CStateManager& mgr, const CCollisionInfoList& list) {
+  if (!HasBoostBall()) { // 0x0000A754
+    return;
+  }
+  const CMaterialList wallOrCeiling(kMT_Wall, kMT_Ceiling);
+  for (int i = 0; i < list.GetCount(); ++i) { // 0x0000A7FC
+    if ((list[i].GetMaterialLeft().GetValue() & wallOrCeiling.GetValue()) != 0) { // 0x0000A7D8
+      mBoostBallFlag80 = true;
+      return;
+    }
+  }
+}
+
+// fn_10_1D194 (0x0001D194, 0x430 bytes): the collider must be a CScriptPlatform (0x0001D1D4, the
+// null test 0x0001D1DC). No contact may have kMT_Floor on its left (the low word's 0x80000000,
+// `lis r5, 0x8000` at 0x0001D1EC, `beq` out at 0x0001D234); the first contact with kMT_Platform
+// (the high word's 0x20000 = bit 49, `lis r4, 0x2` at 0x0001D244) crushes the platform with three
+// ApplyDamage calls (0x0001D380, 0x0001D498, 0x0001D594) from this actor to the platform, each
+// of lbl_10_rodata_558 = 1000.0f damage and radius damage, 0.0f radius and knockback
+// (lbl_10_rodata_3FC), the sound ids 0xFFFF (`lis 1; subi 1`), no-immunity set (the byte's 0x80,
+// `rlwimi 7, 24, 24`) and radius damage off (0x40 cleared, `rlwimi 6, 25, 25`), the filter
+// include 1 << lbl_10_data_200 = 0x3B (kMT_Solid) / exclude nothing / type 3 (`li r10, 0x3`) and
+// the zero vector: kWT_Power (type 0, 0x0001D294..0x0001D2E4), kWT_Power comboed (the 0x4000 bit,
+// `rlwimi r7, r0, 14, 17, 17` at 0x0001D3F4) and kWT_UnknownSource (0x13, `li r0, 0x13` at
+// 0x0001D4A0) instant-kill (the 0x2000 bit, `rlwimi r7, r0, 13, 18, 18` at 0x0001D4EC).
+// @ fn_10_1D194
+void CDarkSamus::CrushPlatform(CStateManager& mgr, const TUniqueId& id,
+                               const CCollisionInfoList& list) {
+  if (TCastToPtr< CScriptPlatform >(mgr.ObjectById(id)) == nullptr) { // 0x0001D1DC
+    return;
+  }
+  for (int i = 0; i < list.GetCount(); ++i) { // 0x0001D23C
+    if (list[i].GetMaterialLeft().HasMaterial(kMT_Floor)) { // 0x0001D234
+      return;
+    }
+  }
+  for (int i = 0; i < list.GetCount(); ++i) { // 0x0001D5A0
+    if (list[i].GetMaterialLeft().HasMaterial(kMT_Platform)) { // 0x0001D288
+      const CMaterialFilter filter =
+          CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Solid), CMaterialList());
+      mgr.ApplyDamage(GetUniqueId(), id, GetUniqueId(),
+                      CDamageInfo(CWeaponMode(kWT_Power), 1000.f, 0.f, 0.f, true, false), filter,
+                      CVector3f::Zero()); // 0x0001D380
+      mgr.ApplyDamage(GetUniqueId(), id, GetUniqueId(),
+                      CDamageInfo(CWeaponMode(kWT_Power, false, true, false), 1000.f, 0.f, 0.f,
+                                  true, false),
+                      filter, CVector3f::Zero()); // 0x0001D498
+      mgr.ApplyDamage(GetUniqueId(), id, GetUniqueId(),
+                      CDamageInfo(CWeaponMode(kWT_UnknownSource, false, false, true), 1000.f, 0.f,
+                                  0.f, true, false),
+                      filter, CVector3f::Zero()); // 0x0001D594
+      return;
+    }
+  }
 }
 
 // vtable slot 40 = fn_10_FF20 (0x94): the damage vulnerability the actor is hit with - the phazon

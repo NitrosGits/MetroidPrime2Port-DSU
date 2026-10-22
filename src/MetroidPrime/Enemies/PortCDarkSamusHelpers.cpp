@@ -53,9 +53,11 @@ float CDarkSamus::GetGuest314() const { return mGuest314; }
 
 // fn_10_2F04 (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 - the `lbz` at
 // 0x00002F04 and the `extrwi` at 0x00002F08 take the bit 25, which is 1u << (31 - 25) = 0x40.
-// Unmarked: the fight does not reach it (the coverage run: 0 hits - its
-// only caller is the BoostBallRoll state, fn_10_A3B0, which is still a
-// stand-in), so there is no ALL-ARMS run to cite.
+// (The `clrlwi` at 0x0000A500 in fn_10_A3B0 takes the bool's low byte, so the check there is
+// the bit 0x40 itself.)
+// The coverage run (the rooftop, the BoostBallRoll state in it): 3 hits, the body has no
+// branches, so every arm ran.
+// @ fn_10_2F04
 bool CDarkSamus::GetGuest318Bit6() const { return (mGuest318 & 0x40) != 0; }
 
 // fn_10_4868 (0x00004868, 0x60 bytes): the actor whose uid is at guest 0xF78 is deleted
@@ -644,30 +646,6 @@ void CDarkSamus::CreateBoostBallEffects() {
   mBoostBallElementGen->SetParticleEmission(true); // 0x00009DDC
 }
 
-// fn_10_6DAC (0x00006DAC, 0xDC bytes): the shield flag 0xCD0 and the direction it points.
-// Deactivate (0x00006DB4) clears the flag (0x00006DCC). The other messages read the health
-// (the vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is
-// not above lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 -
-// the `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 =
-// 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 (
-// 0x00006E10..0x00006E20). lbl_10_bss_128 is the module's static vector: the module's data
-// initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the
-// actor's 0xD18 (0x0000E5C8), = (0.3, 0.6, 1.0): rodata 46C/424/3E8 at 0x0002224C..0x000222A8.
-// Unmarked: the coverage run never reaches the Deactivate arm (the EnragedTravel state's
-// Deactivate did not run in it), so the body is not proved arm by arm.
-void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
-  if (msg == kStateMsg_Deactivate) {
-    mGuestCD0 = 0; // 0x00006DCC
-    return;
-  }
-  const float health = GetHealthInfo()->GetHP(); // 0x00006DE0
-  if (health > 1.f) {                             // 0x00006DF0
-    return;                                       // 0x00006DF8
-  }
-  mGuestD24 = 1.f;               // 0x00006DFC
-  mGuestCD0 = 1;                 // 0x00006E08
-  mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128, 0x00006E0C..0x00006E20
-}
 
 // fn_10_8870 (0x00008870, 0xE0 bytes): the loop attack command over a state's messages. The
 // function is generic: the message is in r4, the animation state for the DOL's ShouldRetry in r5
@@ -1252,6 +1230,52 @@ void CDarkSamus::UpdateTargetable(CStateManager& mgr) {
     RemoveMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
   }
 }
+
+// fn_10_A154 (0x0000A154, 0x6C bytes): the boost ball's roll: the actor's position (0x54/0x58) is
+// measured against the ball's target (0xE98/0xE9C) in the XY plane (the squares at 0x0000A180
+// and 0x0000A184, the sum at 0x0000A188) and compared with lbl_10_rodata_278 = 4 (0x0000A18C);
+// when the actor is close enough (0x0000A1B0) the roll's time 0xEA4 grows by dt (0x0000A1B4),
+// else the ball's target becomes the actor's position (0x0000A194..0x0000A1A4) and the time is
+// reset to 0.0f (0x0000A1A8).
+// @ fn_10_A154
+// fn_10_6DAC (0x00006DAC, 0xDC bytes): the shield flag 0xCD0 and the direction it points.
+// Deactivate (0x00006DB4) clears the flag (0x00006DCC). The other messages read the health
+// (the vtable's slot 0x3C at 0x00006DD4, the float at its +4 at 0x00006DE8) and, when it is
+// not above lbl_10_rodata_14C = 1.0f (the compare at 0x00006DF0, the branch at 0x00006DF8 -
+// the `cror eq, lt, eq` also takes the unordered case), set the flag (0x00006E08), 0xD24 =
+// 1.0f (0x00006DFC) and the direction 0xD18..0xD20 to lbl_10_bss_128 (
+// 0x00006E10..0x00006E20). lbl_10_bss_128 is the module's static vector: the module's data
+// initialiser fn_10_221C0 writes it at 0x0002224C and the constructor copies it into the
+// actor's 0xD18 (0x0000E5C8), = (0.3, 0.6, 1.0): rodata 46C/424/3E8 at 0x0002224C..0x000222A8.
+// Unmarked: the coverage run never reaches the Deactivate arm (the EnragedTravel state's
+// Deactivate did not run in it), so the body is not proved arm by arm.
+void CDarkSamus::UpdateShieldFromHealth(EStateMsg msg) {
+  if (msg == kStateMsg_Deactivate) {
+    mGuestCD0 = 0; // 0x00006DCC
+    return;
+  }
+  const float health = GetHealthInfo()->GetHP(); // 0x00006DE0
+  if (health > 1.f) {                             // 0x00006DF0
+    return;                                       // 0x00006DF8
+  }
+  mGuestD24 = 1.f;               // 0x00006DFC
+  mGuestCD0 = 1;                 // 0x00006E08
+  mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128, 0x00006E0C..0x00006E20
+}
+
+void CDarkSamus::RollBoostBallToPosition(float dt) {
+  const CVector3f pos = GetTranslation();
+  const float dx = pos.GetX() - mBoostBallPos.GetX();
+  const float dy = pos.GetY() - mBoostBallPos.GetY();
+  const float distSq = dx * dx + dy * dy; // 0x0000A180..0x0000A188
+  if (distSq <= 4) {                    // 0x0000A18C
+    mGuestEA4 += dt;                    // 0x0000A1B4
+  } else {
+    mBoostBallPos = pos;                // 0x0000A194..0x0000A1A4
+    mGuestEA4 = 0.f;                    // 0x0000A1A8
+  }
+}
+
 
 // fn_10_1ACA0 (0x0001ACA0, 0x168 bytes): the dive's contact with the player. Only while the dive
 // is launched (0xB20 bit 0x40, `extrwi. r0, r0, 1, 25` at 0x0001ACC0) and the actor has touch

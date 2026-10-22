@@ -46,8 +46,10 @@
 #include "MetroidPrime/Weapons/CGameProjectile.hpp"
 #include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Weapons/WeaponTypes.hpp"
+#include "port_console.h"
 
 #include <float.h>
+#include <string.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -232,13 +234,11 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
   mPathFindSearch.SetCharacterRadius(radius);
   mPathFindSearch.SetCharacterHeight(height);
 
-  // The idle variant whose animation is the editor's initial one (state 5, parm 10/11/12).
+  // The idle variant whose animation is the editor's initial one: retail asks fn_15_9988 for 10,
+  // 11 and 12 in turn (0xA780/0xA7A4/0xA7C8, `li r4, 0xa/0xb/0xc`) and stores the first match to
+  // 0xc40; none leaves the ctor's 1.
   for (int n = 10; n <= 12; ++n) {
-    const rstl::pair< float, int > best = GetAnimationData()->GetPASDatabase().FindBestAnimation(
-        CPASAnimParmData(pas::EAnimationState(5), CPASAnimParm::FromEnum(0),
-                         CPASAnimParm::FromEnum(n)),
-        -1);
-    if (best.second == mData.mInitialAnim) {
+    if (IsInitialIdle(n)) {
       mInitialAnimState = n;
       break;
     }
@@ -261,6 +261,31 @@ CElitePirate::CElitePirate(TUniqueId uid, const rstl::string& name, const CEntit
 // the deleting-dtor free (0x9DF0). The port's members are those objects, so their destructors
 // are that body.
 CElitePirate::~CElitePirate() {}
+
+// @ fn_15_9988
+// Is the editor's initial animation (data+4) the best match for state 5 with parms FromEnum(0)
+// and FromEnum(idle)? The == test is subf/cntlzw/srwi 5 (0x9A50..0x9A60).
+// 0x9A48 `lwz r0, 0x82c(r29)`: data+4.
+// 0x9A28 `li r4, 0x5`: the state.
+// 0x99F4 `li r4, 0x0`: the first parm; 0x99EC: FromEnum(idle), r4 = the argument.
+bool CElitePirate::IsInitialIdle(int idle) const {
+  const rstl::pair< float, int > best = GetAnimationData()->GetPASDatabase().FindBestAnimation(
+      CPASAnimParmData(pas::EAnimationState(5), CPASAnimParm::FromEnum(0),
+                       CPASAnimParm::FromEnum(idle)),
+      -1); // 0x9A3C li r6, -0x1
+  return mData.mInitialAnim == best.second;
+}
+
+// @ fn_15_2284
+// The launcher's lock-on locator in world space: the launcher's transform (+0x24, 0x22E0) rotates
+// the "lockon_target_LCTR" locator's translation (lbl_15_rodata_4FA, 0x2294; the column-3 words
+// 0x6c/0x7c/0x8c of the copy, 0x22D4..0x22E4) and its position (0x54/0x58/0x5c, 0x22FC..0x2310)
+// is added. Retail passes this (r4) and never reads it.
+CVector3f CElitePirate::GetLockOnPosition(const CActor& launcher) const {
+  return launcher.GetTransform().Rotate(
+             launcher.GetLocatorTransform("lockon_target_LCTR").GetTranslation()) +
+         launcher.GetTranslation();
+}
 
 // @ fn_15_1A48
 const CShockWaveInfo& CElitePirate::GetShockWaveInfo() const {
@@ -1096,6 +1121,16 @@ namespace {
 #define EP_CODE(name)                                                                              \
   { #name, reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CElitePirate::name) }
 
+// @ fn_15_C0D0
+// The tables fn_15_C0D0 (the module's static initialiser) fills: it copies the 12-byte PTMFs
+// {0, vtbl_off, 0} of lbl_15_data_4.. into lbl_15_data_178 (31 triggers, +0x8 per 0x10 entry,
+// 0xC18C..0xC3F0), lbl_15_data_464 (21 states, 0xC438..0xC844) and lbl_15_data_5CC (2 codes,
+// 0xC85C..0xC8C8); the vtable words lbl_15_data_634+vtbl_off name every entry's function, which
+// match the names below one for one (Alerted = vt+0x14c = fn_15_60C8 .. PickAttackType =
+// fn_15_54AC). Its trailing float stores (0xC89C..0xC8C8) build two file-static CVector3f:
+// lbl_15_bss_10 = (4, 4, 2) (rodata_140, rodata_D8), the shield OBB extent fn_15_36CC passes
+// (0x3834; the CVector3f(4.f, 4.f, 2.f) in SetupCollisionManagers), and lbl_15_bss_4, a splat
+// read at 0x7CAC/0x7CCC, inlined at its use.
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     EP_TRIGGER(Alerted), EP_TRIGGER(AngryAttackOver), EP_TRIGGER(AttackPatternOver),
     EP_TRIGGER(BreakProjectileAttack), EP_TRIGGER(CanShockwave), EP_TRIGGER(ClearLineOfSight),
@@ -1140,69 +1175,131 @@ void CElitePirate::InstallStateMachine(CStateManager& mgr) {
   mStateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
-// Retail fn_15_178. Property ids and order are the generated SLdrElitePirate reader's, which the
-// analysis checked against the REL's switch id by id: the loader's dispatch tree reads all 43.
+// @ fn_15_B82C
+// The data builder: every argument goes to its slot, nothing is computed. The register arguments:
+// r4 -> +0x0 (0xB894), r5 -> +0x4 (0xB8A4), r6 = the melee CDamageInfo -> +0x8..+0x22
+// (0xB8A0..0xB914), f1..f5 -> +0x154..+0x164 (0xBA24..0xBA34), f6/f7 -> +0xc4/+0xc8 (0xB9E0/0xB9E4),
+// r7 -> +0xcc (0xB9E8), r8 -> +0xd0 (sth, 0xB9EC), r9 -> +0xd4 (0xB9F0), r10 -> +0xd8 (0xB9F4),
+// f8 -> +0x24 (0xB91C). The stack words (callee sp+0x118 = caller sp+0x8): 0x11a -> +0xdc (lhz,
+// 0xB9F8), 0x11c -> +0xe0 (0xB9FC), 0x120 -> +0x28 (0xB924), 0x124..0x130 -> +0x144..+0x150
+// (0xBA10..0xBA20), 0x134 -> +0x2c (0xB92C), 0x138 -> +0x30 (0xB934), 0x13c -> +0x34 (0xB93C),
+// 0x142 -> +0x38 (lhz/sth, 0xB94C), 0x144 -> +0x3c (fn_15_B5E0 = CActorParameters copy, 0xB990),
+// 0x148 -> +0x9c (0xB9A0..0xB9B0), 0x14c -> +0xa8 (0xB9B8..0xB9C8), 0x150 -> +0x168 (0xBA38),
+// 0x154 -> +0x16c..+0x186 (0xBA40..0xBA80), 0x158/0x15c/0x160 -> +0xb4/+0xb8/+0xbc
+// (0xB9D0..0xB9D8), 0x166 -> +0xc0 (lhz/sth, 0xB9DC), 0x168/0x16c -> +0xe4/+0x114 (fn_15_B57C,
+// 0xBA00/0xBA0C), 0x170/0x174 -> +0x188/+0x18c (0xBA84/0xBA88).
+CElitePirateData::CElitePirateData(
+    CAssetId stateMachine, int initialAnim, const CDamageInfo& meleeDamage, float maxMeleeRange,
+    float minShockwaveRange, float maxShockwaveRange, float minRocketRange, float maxRocketRange,
+    float unknown5236C2B6, float unknown01EAAB17, CAssetId darkShield, ushort darkShieldSound,
+    CAssetId darkShieldPop, CAssetId lightShield, float tauntInterval, ushort lightShieldSound,
+    CAssetId lightShieldPop, float tauntVariance, float shockWaveWeight0, float shockWaveWeight1,
+    float shockWaveWeight2, float shockWaveWeight5, float repeatedAttackChance,
+    float energyAttractionForce, CAssetId partAsset, ushort alwaysFF23F5E1EE,
+    const CActorParameters& rocketLauncherActorInfo,
+    const CAnimationParameters& rocketLauncherAnimInfo,
+    const CAnimationParameters& unknown7E6E0D38, CAssetId rocket, const CDamageInfo& rocketDamage,
+    int unknown624222F8, int unknown31E43A1C, CAssetId visorElectricEffect,
+    ushort soundVisorElectric, const SLdrShockWaveInfo& singleShockWaveInfo,
+    const SLdrShockWaveInfo& doubleShockWaveInfo, CAssetId shieldedModel,
+    CAssetId shieldedSkinRules)
+: mStateMachine(stateMachine)
+, mInitialAnim(initialAnim)
+, mMeleeDamage(meleeDamage)
+, mTauntInterval(tauntInterval)
+, mTauntVariance(tauntVariance)
+, mRepeatedAttackChance(repeatedAttackChance)
+, mEnergyAttractionForce(energyAttractionForce)
+, mPartAsset(partAsset)
+, mAlwaysFF23F5E1EE(alwaysFF23F5E1EE)
+, mRocketLauncherActorInfo(rocketLauncherActorInfo)
+, mRocketLauncherAnimInfo(rocketLauncherAnimInfo)
+, mUnknown7E6E0D38(unknown7E6E0D38)
+, mUnknown624222F8(unknown624222F8)
+, mUnknown31E43A1C(unknown31E43A1C)
+, mVisorElectricEffect(visorElectricEffect)
+, mSoundVisorElectric(soundVisorElectric)
+, mUnknown5236C2B6(unknown5236C2B6)
+, mUnknown01EAAB17(unknown01EAAB17)
+, mDarkShield(darkShield)
+, mDarkShieldSound(darkShieldSound)
+, mDarkShieldPop(darkShieldPop)
+, mLightShield(lightShield)
+, mLightShieldSound(lightShieldSound)
+, mLightShieldPop(lightShieldPop)
+, mSingleShockWaveInfo(singleShockWaveInfo)
+, mDoubleShockWaveInfo(doubleShockWaveInfo)
+, mUnknown28B39197(shockWaveWeight0)
+, mUnknownE27DE71B(shockWaveWeight1)
+, mUnknown665E7ACE(shockWaveWeight2)
+, mUnknownACD4D06D(shockWaveWeight5)
+, mMaxMeleeRange(maxMeleeRange)
+, mMinShockwaveRange(minShockwaveRange)
+, mMaxShockwaveRange(maxShockwaveRange)
+, mMinRocketRange(minRocketRange)
+, mMaxRocketRange(maxRocketRange)
+, mRocket(rocket)
+, mRocketDamage(rocketDamage)
+, mShieldedModel(shieldedModel)
+, mShieldedSkinRules(shieldedSkinRules) {}
+
+// @ fn_15_178
+// The loader. The SLdrElitePirate members sit at r1+0x694 (the property dispatch 0x1E4..0x88C reads
+// all 43 ids into the generated struct's fields in its order); fn_15_10C0 is its constructor.
 static CEntity* PortLoadElitePirate(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrElitePirate sldrThis;
+  // fn_15_10C0's defaults that the generated constructor does not apply: the three sound ids are
+  // -1 (0x10F0 li r0, -0x1; 0x1104 stw 0x330 and 0x1110 stw 0x33c = darkShieldSound and
+  // lightShieldSound; 0x1158 li r0, -0x1; 0x1164 stw 0x484 = sound_VisorElectric), which the
+  // u16 masks below make 0xffff (no sound). Its other stores are the generated defaults.
+  sldrThis.darkShieldSound = -1;
+  sldrThis.lightShieldSound = -1;
+  sldrThis.sound_VisorElectric = -1;
 #include "MetroidPrime/ScriptLoader/SLdrElitePirate.inc"
 
+  // 0x8AC fn_8023A0B8 = LdrToModelData(scale, kInvalidAssetId (li r5, -0x1), animation set, true).
   rstl::optional_object< CModelData > modelData(
       LdrToModelData(sldrThis.editorProperties.transform.scale, kInvalidAssetId,
                      sldrThis.patterned.animationInformation, true));
   if (!modelData) {
-    // The REL checks the optional's valid byte (r1+0x1fc) and returns null when it is empty.
+    // 0x8BC lbz 0x1fc / 0x8C0 cmplwi 0: the optional's valid byte; clear returns null (0x974).
     return nullptr;
   }
 
-  CElitePirateData data;
-  // data+0x00 is the loader's first integer argument (r4 = patterned+0x1e4), which the class's
-  // constructor loads as the 'FSM2' token at 0xc30 - i.e. the patterned info's second state
-  // machine asset. data+0x08 is a CDamageInfo copied out of the builder's damage argument, i.e.
-  // the melee damage. The rest of the REL builder's parameter list could not be mapped back to
-  // properties (see docs/module-analysis/ElitePirate.md), so the remaining fields are assigned by
-  // name and nothing in this milestone reads them.
-  data.mStateMachine = sldrThis.patterned.stateMachine2;
-  data.mInitialAnim = sldrThis.patterned.animationInformation.initial_anim;
-  data.mMeleeDamage = LdrToDamageInfo(sldrThis.meleeDamage);
-  data.mMaxMeleeRange = sldrThis.maxMeleeRange;
-  data.mMinShockwaveRange = sldrThis.minShockwaveRange;
-  data.mMaxShockwaveRange = sldrThis.maxShockwaveRange;
-  data.mMinRocketRange = sldrThis.minRocketRange;
-  data.mMaxRocketRange = sldrThis.maxRocketRange;
-  data.mUnknown5236C2B6 = sldrThis.unknown_0x5236c2b6;
-  data.mUnknown01EAAB17 = sldrThis.unknown_0x01eaab17;
-  data.mShieldedModel = sldrThis.shieldedModel;
-  data.mShieldedSkinRules = sldrThis.shieldedSkinRules;
-  data.mDarkShield = sldrThis.darkShield;
-  data.mDarkShieldSound = static_cast< ushort >(sldrThis.darkShieldSound);
-  data.mDarkShieldPop = sldrThis.darkShieldPop;
-  data.mLightShield = sldrThis.lightShield;
-  data.mLightShieldSound = static_cast< ushort >(sldrThis.lightShieldSound);
-  data.mLightShieldPop = sldrThis.lightShieldPop;
-  data.mTauntInterval = sldrThis.tauntInterval;
-  data.mTauntVariance = sldrThis.tauntVariance;
-  data.mSingleShockWaveInfo = CShockWaveInfo(sldrThis.singleShockWaveInfo);
-  data.mDoubleShockWaveInfo = CShockWaveInfo(sldrThis.doubleShockWaveInfo);
-  data.mUnknown28B39197 = sldrThis.unknown_0x28b39197;
-  data.mUnknownE27DE71B = sldrThis.unknown_0xe27de71b;
-  data.mUnknown665E7ACE = sldrThis.unknown_0x665e7ace;
-  data.mUnknownACD4D06D = sldrThis.unknown_0xacd4d06d;
-  data.mRocket = sldrThis.rocket;
-  data.mRocketDamage = LdrToDamageInfo(sldrThis.rocketDamage);
-  data.mUnknown624222F8 = sldrThis.unknown_0x624222f8;
-  data.mUnknown31E43A1C = sldrThis.unknown_0x31e43a1c;
-  data.mRepeatedAttackChance = sldrThis.repeatedAttackChance;
-  data.mEnergyAbsorbDuration = sldrThis.energyAbsorbDuration;
-  data.mEnergyAbsorbVariance = sldrThis.energyAbsorbVariance;
-  data.mEnergyAttractionForce = sldrThis.energyAttractionForce;
-  data.mPartAsset = sldrThis.alwaysFF;
-  data.mAlwaysFF23F5E1EE = sldrThis.alwaysFF_0x23f5e1ee;
-  data.mRocketLauncherActorInfo = LdrToActorParameters(sldrThis.rocketLauncherActorInfo);
-  data.mRocketLauncherAnimInfo = LdrToAnimationParameters(sldrThis.rocketLauncherAnimInfo);
-  data.mUnknown7E6E0D38 = LdrToAnimationParameters(sldrThis.unknown_0x7e6e0d38);
-  data.mVisorElectricEffect = sldrThis.visorElectricEffect;
-  data.mSoundVisorElectric = static_cast< ushort >(sldrThis.sound_VisorElectric);
+  // 0x97C..0x9B4, in retail's order: the rocket damage, the two animation sets (0x7e6e0d38 at
+  // r1+0x70, the launcher's at r1+0x7c), the launcher's actor parameters, the melee damage.
+  const CDamageInfo rocketDamage = LdrToDamageInfo(sldrThis.rocketDamage);
+  const CAnimationParameters unknown7E6E0D38 =
+      LdrToAnimationParameters(sldrThis.unknown_0x7e6e0d38);
+  const CAnimationParameters rocketLauncherAnimInfo =
+      LdrToAnimationParameters(sldrThis.rocketLauncherAnimInfo);
+  const CActorParameters rocketLauncherActorInfo =
+      LdrToActorParameters(sldrThis.rocketLauncherActorInfo);
+  const CDamageInfo meleeDamage = LdrToDamageInfo(sldrThis.meleeDamage);
+  // 0x9B8..0xAC0: r4 = patterned+0x1e4 (lwz 0x8b4), r5 = patterned+0x1dc (lwz 0x8ac, the
+  // animation set's initial_anim), f1..f7 = SLdr 0x99c..0x9b4, f8 = 0x9d8; the sound ids go in
+  // clrlwi 16 (0x9C8, 0xA28, 0xA64, 0xA90). energyAbsorbDuration/Variance (0xa70/0xa74) are not
+  // passed.
+  const CElitePirateData data(
+      sldrThis.patterned.stateMachine2, sldrThis.patterned.animationInformation.initial_anim,
+      meleeDamage, sldrThis.maxMeleeRange, sldrThis.minShockwaveRange,
+      sldrThis.maxShockwaveRange, sldrThis.minRocketRange, sldrThis.maxRocketRange,
+      sldrThis.unknown_0x5236c2b6, sldrThis.unknown_0x01eaab17, sldrThis.darkShield,
+      static_cast< ushort >(sldrThis.darkShieldSound), sldrThis.darkShieldPop,
+      sldrThis.lightShield, sldrThis.tauntInterval,
+      static_cast< ushort >(sldrThis.lightShieldSound), sldrThis.lightShieldPop,
+      sldrThis.tauntVariance, sldrThis.unknown_0x28b39197, sldrThis.unknown_0xe27de71b,
+      sldrThis.unknown_0x665e7ace, sldrThis.unknown_0xacd4d06d, sldrThis.repeatedAttackChance,
+      sldrThis.energyAttractionForce, sldrThis.alwaysFF,
+      static_cast< ushort >(sldrThis.alwaysFF_0x23f5e1ee), rocketLauncherActorInfo,
+      rocketLauncherAnimInfo, unknown7E6E0D38, sldrThis.rocket, rocketDamage,
+      sldrThis.unknown_0x624222f8, sldrThis.unknown_0x31e43a1c, sldrThis.visorElectricEffect,
+      static_cast< ushort >(sldrThis.sound_VisorElectric), sldrThis.singleShockWaveInfo,
+      sldrThis.doubleShockWaveInfo, sldrThis.shieldedModel, sldrThis.shieldedSkinRules);
 
+  // 0xAD0 li r3, 0xd30: rs_new; then (0xAF4..0xB5C) LdrToPatternedInfo(patterned, &ing
+  // possession data), AllocateUniqueId, LoadActorParameters, LoadEditorTransform, LdrToEntityInfo,
+  // and fn_15_A190 with patternedInfo (r9) before actorParameters (r10).
   return rs_new CElitePirate(mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
                              LdrToEntityInfo(info, sldrThis.editorProperties),
                              LdrToTransform4f(sldrThis.editorProperties), *modelData,
@@ -1437,40 +1534,91 @@ bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
   return true;
 }
 
-// @ fn_15_6820
-// @ fn_15_6618
+// fn_15_6820 / fn_15_6618 (not marked: the `true` return at 0x67F4 never runs in the port - the ray
+// ends at the target's aim point, inside the player's kMT_Solid primitive, so the dynamic half of
+// RayCollideWorld always hits the player; docs/module-analysis/ElitePirate.md section 11).
 // The launcher can fire: no cooldown, a target in the rocket range band, the body already turned
 // to it, and (retail's RayCollideWorld result) a clear shot from the launcher's lock-on locator.
+// fn_15_6820 is the thunk that passes &x9fa (mLauncherId) as `id`'s source (0x6830 lhz 0x9fa).
 bool CElitePirate::ShouldFire(CStateManager& mgr, const CTriggerData& data) const {
-  if (mTimer > 0.f || mLauncherId == kInvalidUniqueId) {
+  if (mTimer > 0.f || mLauncherId == kInvalidUniqueId) { // 0x6644..0x6650 xa34 <= 0, 0x6660 cmplw
     return false;
   }
   const CElitePirateGrenadeLauncher* launcher =
       static_cast< const CElitePirateGrenadeLauncher* >(mgr.GetObjectById(mLauncherId));
-  if (launcher == nullptr) {
+  if (launcher == nullptr) { // 0x6678 mr. r28
     return false;
   }
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(xa26_));
-  if (target == nullptr) {
+  // 0x6680..0x6698: retail only null-checks the xa26 entity and calls its vtable +0x54
+  // (GetAimPosition) directly; there is no actor cast.
+  const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(xa26_));
+  if (target == nullptr) { // 0x6694 cmplwi r3,0
     return false;
   }
-  const CVector3f aim = target->GetAimPosition(mgr, 0.f);
-  const float distSq = DistSq(aim, GetTranslation());
-  if (!(mData.mMinRocketRange * mData.mMinRocketRange < distSq &&
-        distSq < mData.mMaxRocketRange * mData.mMaxRocketRange)) {
+  const CVector3f aim = target->GetAimPosition(mgr, 0.f); // 0x66C0 bctrl +0x54, f1 = 0.0f
+  const float distSq = DistSq(aim, GetTranslation());    // 0x66DC..0x6704 vs 0x54/0x58/0x5c
+  if (!(mData.mMinRocketRange * mData.mMinRocketRange < distSq &&  // 0x6708 ble, 0x988
+        distSq < mData.mMaxRocketRange * mData.mMaxRocketRange)) { // 0x6718 bge, 0x98c
     return false;
   }
-  if (ShouldTurn(mgr, data)) {
+  // 0x6740 vtable +0x1a4 = ShouldTurn (with a zeroed CTriggerData at 0x10; ShouldTurn ignores it)
+  if (ShouldTurn(mgr, data)) { // 0x674C clrlwi. / bne
     return false;
   }
-  // fn_15_2284: the launcher's "lockon_target_LCTR" locator in world space.
-  const CVector3f lockon = launcher->GetTransform().Rotate(
-                               launcher->GetLocatorTransform("lockon_target_LCTR").GetTranslation()) +
-                           launcher->GetTranslation();
+  const CVector3f lockon = GetLockOnPosition(*launcher); // 0x6760 bl fn_15_2284
+  // 0x6778..0x67B4: (1 << data_604 = 0x3B kMT_Solid) | (1 << data_608 = 0x21 kMT_Character);
+  // 0x67DC/0x67E0 exclude 0, 0x67E4 type 1 = kFT_Include.
   const CMaterialFilter filter =
       CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Character));
-  return mgr.RayCollideWorld(lockon, aim, filter, this);
+  return mgr.RayCollideWorld(lockon, aim, filter, this); // 0x67E8, 0x67F0 beq
 }
+
+// Host: the console's `var <id> <name> [value]` for the Ingsmasher, so ShouldFire's early-out
+// arms run without gdb: ep.timer is the attack cooldown 0xa34 (whole seconds), ep.launcher the
+// launcher uid 0x9fa, ep.target the target uid 0xa26 (65535 = kInvalidUniqueId), ep.yaw the facing (degrees,
+// the console `face` convention) so a placed pirate can be turned to the player.
+bool CElitePirate::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
+  CElitePirate* ep = TCastToPtr< CElitePirate >(&ent);
+  if (ep == nullptr) {
+    return false;
+  }
+  if (strcmp(name, "ep.timer") == 0) {
+    if (value != nullptr) {
+      ep->mTimer = static_cast< float >(*value);
+    }
+    current = static_cast< int >(ep->mTimer);
+    return true;
+  }
+  if (strcmp(name, "ep.yaw") == 0) {
+    // the console `face` convention: 0 faces +y, 90 faces +x; the position is kept
+    const CVector3f pos = ep->GetTranslation();
+    if (value != nullptr) {
+      const float radians = static_cast< float >(*value) * 3.14159265358979f / 180.f;
+      const CVector3f dir(sinf(radians), cosf(radians), 0.f);
+      ep->SetTransform(CTransform4f::LookAt(pos, pos + dir, CVector3f::Up()));
+    }
+    const CVector3f fwd = ep->GetTransform().GetForward();
+    current = static_cast< int >(atan2f(fwd.GetX(), fwd.GetY()) * 180.f / 3.14159265358979f);
+    return true;
+  }
+  TUniqueId* uid = nullptr;
+  if (strcmp(name, "ep.launcher") == 0) {
+    uid = &ep->mLauncherId;
+  } else if (strcmp(name, "ep.target") == 0) {
+    uid = &ep->xa26_;
+  } else {
+    return false;
+  }
+  if (value != nullptr) {
+    *uid = TUniqueId(static_cast< ushort >(*value));
+  }
+  current = uid->value;
+  return true;
+}
+
+namespace {
+const bool sEliteConsoleVars = PortConsole::RegisterVar(&CElitePirate::PortConsoleVar);
+} // namespace
 
 // @ fn_15_6500
 bool CElitePirate::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&) const {

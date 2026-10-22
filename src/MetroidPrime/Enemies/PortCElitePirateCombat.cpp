@@ -178,8 +178,9 @@ void CElitePirate::ShieldUp(CStateManager& mgr, EStateMsg msg, float dt) {
 void CElitePirate::Shockwave(CStateManager& mgr, EStateMsg msg, float) {
   SetAttackKind(7, msg);
   if (msg == kStateMsg_Activate) {
-    // [probable] the four weights are the loader's 0x28b39197/0xe27de71b/0x665e7ace/0xacd4d06d in
-    // data order (+0x144..+0x150).
+    // The four weights are the loader's 0x28b39197/0xe27de71b/0x665e7ace/0xacd4d06d in data order
+    // (+0x144..+0x150): fn_15_178 0x9EC..0xA08 passes SLdr 0xa40..0xa4c to the stack words fn_15_B82C
+    // stores there (0xBA10..0xBA20).
     const float w0 = mData.mUnknown28B39197;
     const float w1 = mData.mUnknownE27DE71B;
     const float w2 = mData.mUnknown665E7ACE;

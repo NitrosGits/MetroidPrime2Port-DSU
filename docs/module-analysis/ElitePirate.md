@@ -194,25 +194,29 @@ unless tagged.
 
 ### CElitePirateData (0x190 at 0x828)
 
-Built on the loader's stack by `fn_15_B82C` and copied in by `fn_15_B360`. Its parameter list is
-long and mixed (8 float registers, then 7 integer/pointer registers, then 24 stack slots), so only
-the fields its *reader* (`fn_15_A190`) touches are proven:
+Built on the loader's stack (r1+0x250) by `fn_15_B82C` and copied in by `fn_15_B360` (the
+compiler copy constructor). **Every byte is mapped [proven, ep1 2026-10-22]**: the builder stores
+each argument straight to its slot, and the loader's argument setup (0x9B8..0xAC0) names each
+argument's SLdr source. The host class (`CElitePirate.hpp`) declares the members in this offset
+order and its constructor takes the builder's ABI order (r4..r10, f1..f8, then caller sp+0x8..0x64);
+every store is cited in `PortCElitePirate.cpp` above the builder.
 
-- **+0x00** = the builder's first integer argument, which the loader computes as
-  `patterned+0x1e4` = `SLdrPatternedAITypedef.stateMachine2`; the ctor loads it as the **'FSM2'**
-  token [proven].
-- **+0x08** = a `CDamageInfo` copied field-by-field out of the builder's damage argument
-  (`mWeaponMode`, four floats, two u16 sfx ids) = `SLdrElitePirate.meleeDamage` [proven].
-- **+0x34** = an integer the ctor tests against −1 and, when set, loads as a **'PART'** asset
-  [proven offset and use]; the loader now feeds it `alwaysFF` (0x06cf4324) [probable].
-- **+0x04** = the editor's initial animation, which the ctor matches against idle 10/11/12 (0xc40).
-- **+0x168 / +0x16c** = the **rocket** projectile asset and its `CDamageInfo` (the
-  `CProjectileInfo` at 0xcd0) [proven].
-- 0x144..0x164 = nine floats (shock-wave/taunt range block), 0x188/0x18c = two ints
-  (`unknown_0x624222f8` / `unknown_0x31e43a1c`-ish) [proven offsets, [?] identities].
+| data+ | field (SLdr) | data+ | field (SLdr) |
+|---|---|---|---|
+| 0x00 | patterned.stateMachine2 ('FSM2') | 0xc4/0xc8 | unknown_0x5236c2b6 / unknown_0x01eaab17 |
+| 0x04 | patterned.animationInformation.initial_anim | 0xcc/0xd0/0xd4 | darkShield / darkShieldSound (u16) / darkShieldPop |
+| 0x08 | meleeDamage (CDamageInfo) | 0xd8/0xdc/0xe0 | lightShield / lightShieldSound (u16) / lightShieldPop |
+| 0x24/0x28 | tauntInterval / tauntVariance | 0xe4/0x114 | single / double SLdrShockWaveInfo |
+| 0x2c/0x30 | repeatedAttackChance / energyAttractionForce | 0x144..0x150 | the four shock-wave weights 0x28b39197/0xe27de71b/0x665e7ace/0xacd4d06d |
+| 0x34 | alwaysFF (0x06cf4324, the ctor's optional 'PART') | 0x154..0x164 | maxMelee, min/maxShockwave, min/maxRocket ranges |
+| 0x38 | alwaysFF_0x23f5e1ee (u16) | 0x168/0x16c | rocket / rocketDamage |
+| 0x3c | rocketLauncherActorInfo (CActorParameters) | 0x188/0x18c | shieldedModel / shieldedSkinRules |
+| 0x9c/0xa8 | rocketLauncherAnimInfo / unknown_0x7e6e0d38 | 0xb4/0xb8 | unknown_0x624222f8 / unknown_0x31e43a1c |
+| 0xbc/0xc0 | visorElectricEffect / sound_VisorElectric (u16) | | |
 
-The host `CElitePirateData` in `CElitePirate.hpp` therefore names its fields after the SLdr
-properties (assigned by the loader, host layout) rather than claiming retail offsets.
+`energyAbsorbDuration`/`energyAbsorbVariance` (SLdr 0xa70/0xa74) are read but never passed: they
+have no slot. `fn_15_10C0` (the SLdr ctor) matches the generated defaults except the three sound
+ids, which it sets to -1 (0x1104/0x1110/0x1164); the port loader applies those before the reader.
 
 ## 3. Loader `fn_15_178`
 
@@ -268,7 +272,7 @@ are ported (`// @ fn_15_XXXX`). Retail's virtual self-calls map through the vtab
 (`lbl_15_data_634 + off`, slot = off/4): 0x160 = `ClearLineOfSight`, 0x194 = `ShieldKilled`, 0x1a4 =
 `ShouldTurn`. Retail CPatterned offsets: 0x6c0 = the waypoint navigation's destination uid (the
 navigation sits at 0x6b8), 0x728 = `mPredictedLeashTime`. `0xd20` is an int (`mAngryCount`, was a
-float in the header). `fn_15_6618` is `ShouldFire`'s only caller and is inlined, as is `fn_15_2284`
+float in the header). `fn_15_6618` is `ShouldFire`'s only caller and is inlined; `fn_15_2284` is `GetLockOnPosition`
 (launcher "lockon_target_LCTR" world position). Filters: ClearLineOfSight include Solid / exclude
 Floor; ShouldFire include Solid|Character (bits 0x3b/0x1f/0x21). Resolved 2026-10-19 (section 5
 "Resolved `[?]` members"): 0x194 *is* `ShieldKilled` (word 101 of the table), `x81c_` is where the
@@ -963,3 +967,61 @@ The run: Sanctuary Fortress area 4 (world 1baa96c2, area b666b655, layer 3), the
 `u04ff`, with `tools/drivers/ep_slots.py` (the fight, then `shoot` and `noise` at the pirate). The
 probe counted the calls of the twelve one-liners; the seven that never ran are listed above with
 the caller that would ask them.
+
+## 10. The loader group and two ctor/trigger helpers: marked (ep1, 2026-10-22)
+
+| fn | port body | arms | how |
+|---|---|---|---|
+| `fn_15_178` | `PortLoadElitePirate` | 15/16; the `!modelData` arm is dead: all 10 shipped EPRT placements (5 areas) carry ANCS 0x6b45f06d, an ANCS in the paks (disc scan of patterned 0xe25fb08c) | smoke `ep` (coverage build) |
+| `fn_15_B82C` | `CElitePirateData::CElitePirateData` | no branches | smoke `ep` |
+| `fn_15_C0D0` | the `skTriggers`/`skStates`/`skCodes` tables | data; all 54 bindings decoded (PTMF {0, vtbl_off, 0} copies, vtable word = function) and equal to the table in section 0 | static |
+| `fn_15_9988` | `CElitePirate::IsInitialIdle` | no branches | smoke `ep` (ctor) |
+| `fn_15_2284` | `CElitePirate::GetLockOnPosition` | 2/2, forced (`trigcall u<id> ShouldFire` each poll of the smoke driver) | smoke `ep` + trigcall |
+
+Fixed on the way: `fn_15_10C0` sets darkShieldSound/lightShieldSound/sound_VisorElectric to -1 (the
+generated ctor has 0, which a placement without the property would have played as sfx 0); the data
+lost the two fields retail has no slot for. Not marked: `fn_15_10C0` (no separate host body: the
+generated ctor plus the three stores), `fn_15_B360` (compiler copy ctor = the host's implicit copy).
+`fn_15_6820`/`6618` (`ShouldFire`): unmarked by ep2, see section 11.
+
+## 11. ShouldFire (fn_15_6820 / fn_15_6618): every early-out ran, the `true` return cannot (ep2, 2026-10-22)
+
+Re-read against the asm: one fix. 0x6680..0x66C0 null-checks the xa26 entity (0x6694 `cmplwi r3,0`)
+and calls its vtable +0x54 (GetAimPosition) with no actor cast, so the port's `TCastToConstPtr`
+(an arm retail lacks) became a `static_cast`. The rest matches: 0x6644..0x6650 `xa34 <= 0`,
+0x6660 launcher uid != kInvalidUniqueId, 0x6678 launcher entity non-null, 0x6708 `ble` /
+0x6718 `bge` (distSq strictly between 0x988^2 and 0x98c^2), vtable 0x1a4 = ShouldTurn (passed a
+zeroed CTriggerData at 0x10; ShouldTurn ignores it), 0x6760 fn_15_2284, and the filter
+include (1<<0x3B kMT_Solid)|(1<<0x21 kMT_Character) (data 0x604/0x608), exclude 0, type 1.
+fn_15_6820 only loads 0x9fa (0x6830) and calls 6618.
+
+Run: `tools/cov/specs/elitepirate_shouldfire.{py,con}` (coverage build, Sanctuary 0c_cliff_hall
+1baa96c2,b666b655 layer 3, u04ff, 1600 updates at 8 ticks/frame, 0 caught/reach-stub). The pirate
+is still in PowerUp and never picks a target, so each ask sets the uid with the console `var`
+(new: `ep.timer` 0xa34, `ep.launcher` 0x9fa, `ep.target` 0xa26, `ep.yaw` the facing), places it, and
+asks `trigcall ShouldFire` 20 updates later (Think moves the launcher then).
+
+| arm (asm) | ran | how |
+|---|---|---|
+| 0x6650 cooldown > 0 | yes | forced (`var ep.timer 5`) |
+| 0x6664 launcher uid invalid | yes | forced (`var ep.launcher 65535`) |
+| 0x667C launcher entity gone | yes | forced (`var ep.launcher 2046`) |
+| 0x6698 target entity gone | yes | forced (`var ep.target 65535`) |
+| 0x670C distSq <= min^2 | yes | `place u04ff player 3` |
+| 0x671C distSq >= max^2 | yes | `place u04ff player 120` |
+| 0x6750 ShouldTurn true | yes | default facing |
+| 0x67F0 ray blocked (false) | yes | 10 asks |
+| 0x67F4 ray clear (true) | **no** | see below |
+
+gcov (`gcov_report.py ... --fn fn_15_6820`) reports 16/16 branches ALL-ARMS, but the final
+`return mgr.RayCollideWorld(...)` has no branch of its own, so gcov cannot see 0x67F4; the gdb
+spec's `ret` on ShouldFire shows only `ret=0`. Of the 10 rays that reached RayCollideWorld, 7
+failed RayStaticLineOfSightTest. The other 3 passed it and then failed RayDynamicLineOfSightTest
+on the player itself: the spec's `DynHit` entry at the `return false` (CGameCollision.cpp:192)
+reports id 0x400 = the player all 3 times. The ray ends at the target's aim position, which is
+inside the player's primitive, and the player carries kMT_Solid (CPlayer.cpp:805), which the
+include filter passes. xa26's only writer is SelectTarget (fn_15_555C, `ChoosePlayer`), so in the
+port every ShouldFire target is a player and the `true` return never runs. Whether retail's near
+list or dynamic test leaves out the ray's own target is shared-code territory (CStateManager /
+CGameCollision), not checked here. The shipped FSM never asks ShouldFire in the smoke fight either.
+

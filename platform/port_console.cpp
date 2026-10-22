@@ -28,6 +28,7 @@
 #endif
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
 
 extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
@@ -541,11 +542,14 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
       "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
+      "bodystate <id> <n>          set a patterned actor's body state (the pas::EAnimationState index)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
+      "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
+      "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
@@ -1840,6 +1844,57 @@ void CmdCodeCall(CStateManager& mgr, const Args& args, std::string& out) {
   out += "codecall " + wanted + "\n";
 }
 
+// The module handlers `var` asks (PortConsole::RegisterVar); a function-local list, so a module's
+// static-init registration never runs before it exists.
+std::vector< VarHandler >& VarHandlers() {
+  static std::vector< VarHandler > sHandlers;
+  return sHandlers;
+}
+
+// var <id> <name> [value]: read or set a module field a REL's port registered (dghd.attack,
+// dghd.flags, dghd.sweeptime), so an arm a fight rarely draws runs without gdb. `var player
+// spawnmorph [n]` reads or sets the player's spawned morph-ball state (0x390), keeping its morph
+// state.
+void CmdVar(CStateManager& mgr, const Args& args, std::string& out) {
+  float number = 0.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], number))) {
+    Fail("usage: var <id>|player <name> [value]");
+    return;
+  }
+  const int value = static_cast< int >(number);
+  const std::string name(args[2]);
+  int current = 0;
+  char line[160];
+  if (args[1] == "player") {
+    CPlayer* player = mgr.GetPlayer(0);
+    if (player == nullptr || name != "spawnmorph") {
+      Fail(player == nullptr ? "no player" : "player vars: spawnmorph");
+      return;
+    }
+    if (args.size() == 4) {
+      player->SetMorphBallState(player->GetMorphballTransitionState(),
+                                static_cast< CPlayer::EPlayerMorphBallState >(value));
+    }
+    std::snprintf(line, sizeof(line), "player spawnmorph = %d\n",
+                  static_cast< int >(player->GetSpawnedMorphballState()));
+    out += line;
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  if (ent == nullptr) {
+    Fail("no object '" + std::string(args[1]) + "'");
+    return;
+  }
+  for (VarHandler handler : VarHandlers()) {
+    if (handler(*ent, name.c_str(), args.size() == 4 ? &value : nullptr, current)) {
+      std::snprintf(line, sizeof(line), "%s = %d (0x%x)\n", name.c_str(), current, current);
+      out += line;
+      return;
+    }
+  }
+  Fail("no var '" + name + "' on that object");
+}
+
 // hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
 // setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
 // phazon waypoints) finds one the area lacks, or skips one of another area.
@@ -1877,9 +1932,10 @@ void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
          "\n";
 }
 
-// uevent <id> <type> [dt]: deliver a user anim event (EUserEventType, e.g. 27 EventStart, 28
-// EventStop, 18 EndAction, 12 Landing) to an actor's DoUserAnimEvent with an empty POI node, for
-// the event arms an animation never fires on the host.
+// uevent <id> <type> [dt] [locator]: deliver a user anim event (EUserEventType, e.g. 27 EventStart,
+// 28 EventStop, 18 EndAction, 12 Landing) to an actor's DoUserAnimEvent with an empty POI node
+// whose locator is `locator` (default "root"), for the event arms an animation never fires on the
+// host.
 void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
   float type = 0.f;
   float dt = 0.f;
@@ -1887,10 +1943,12 @@ void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
   CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
   if (actor == nullptr || !ParseFloat(args[2], type) ||
       (args.size() >= 4 && !ParseFloat(args[3], dt))) {
-    Fail("usage: uevent <id> <type> [dt]   (id must be an actor)");
+    Fail("usage: uevent <id> <type> [dt] [locator]   (id must be an actor)");
     return;
   }
-  actor->DoUserAnimEvent(mgr, CInt32POINode(),
+  const rstl::string locator = rstl::string_l(args.size() >= 5 ? Str(args[4]).c_str() : "root");
+  actor->DoUserAnimEvent(mgr, CInt32POINode(-1, kPT_EmptyInt32, CCharAnimTime(), -1, false, 1.f,
+                                            -1, 0, 0, locator),
                          static_cast< EUserEventType >(static_cast< int >(type)), dt);
   out += "uevent " + std::string(args[1]) + " " + std::to_string(static_cast< int >(type)) + "\n";
 }
@@ -1970,11 +2028,54 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
     pos = CVector3f(x, y, z);
   }
   actor->SetTranslation(pos);
+  // The optional rotation: place <id> <x> <y> <z> [yaw [pitch [roll]]] in degrees - the yaw
+  // about the world's up (z), the pitch about the right one (x) and the roll about the forward
+  // one (y), applied in that order.  Without it the actor keeps its rotation.
+  if (args.size() >= 6) {
+    const float yaw = std::atof(Str(args[5]).c_str());
+    const float pitch = args.size() >= 7 ? std::atof(Str(args[6]).c_str()) : 0.f;
+    const float roll = args.size() >= 8 ? std::atof(Str(args[7]).c_str()) : 0.f;
+    const CQuaternion rot = CQuaternion::YRotation(CRelAngle::FromDegrees(roll)) *
+                             CQuaternion::XRotation(CRelAngle::FromDegrees(pitch)) *
+                             CQuaternion::ZRotation(CRelAngle::FromDegrees(yaw));
+    actor->SetRotation(rot);
+  }
   if (CPhysicsActor* physics = TCastToPtr< CPhysicsActor >(ent)) {
     physics->Stop();
   }
   char line[64];
   std::snprintf(line, sizeof(line), "placed at %.2f %.2f %.2f\n", pos.GetX(), pos.GetY(), pos.GetZ());
+  out += line;
+}
+
+// bodystate <id> <animation state index>: set a patterned actor's body controller state
+// directly (the body's own state, e.g. 2 = kAS_LieOnGround, 19 = kAS_Cover, 20 =
+// kAS_WallHang).  The state machine reaches only some of the body states, and the coverage
+// runs need the others; the index is the pas::EAnimationState value.
+void CmdBodyState(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() < 3) {
+    Fail("usage: bodystate <id> <animation state index>");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  CBodyController* body = patterned->BodyController();
+  if (body == nullptr) {
+    Fail("the actor has no body controller");
+    return;
+  }
+  const int value = std::atoi(Str(args[2]).c_str());
+  if (value < 0 || value > 28) { // 28 = kAS_AdditiveLoopReaction, the last one
+    Fail("the animation state index must be 0..28");
+    return;
+  }
+  body->BodyStateInfo().SetState(static_cast< pas::EAnimationState >(value));
+  char line[64];
+  std::snprintf(line, sizeof(line), "body state %d\n", value);
   out += line;
 }
 
@@ -2740,9 +2841,11 @@ constexpr SCommand kCommands[] = {
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
+    {"bodystate", CmdBodyState, true},
     {"statecall", CmdStateCall, true},
     {"trigcall", CmdTrigCall, true},
     {"codecall", CmdCodeCall, true},
+    {"var", CmdVar, true},
     {"hint", CmdHint, true},
     {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},
@@ -2918,6 +3021,11 @@ void IdleTick(CStateManager& mgr) {
     return;
   }
   RunCommands(mgr);
+}
+
+bool RegisterVar(VarHandler handler) {
+  VarHandlers().push_back(handler);
+  return true;
 }
 
 } // namespace PortConsole

@@ -1263,8 +1263,8 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | | the jump point found (0x0000A930..0x0000A938) | d | the module's jump point id (guest this+0xBD0) is kInvalidUniqueId in this area |
 | `fn_9_A97C` (the SetRetreatDest state) | the activate (0x0000A984) and the other messages (0x0000A994) | b | forced (fsm) |
 | | the retreat point found (0x0000A9C4..0x0000A9CC) | d | the module's retreat point id (guest this+0xBCE) is kInvalidUniqueId in this area |
-| `fn_9_69C8` (the Dead state) | the base's dead handler (0x000069EC), the activate (0x000069F0) and the other messages (0x000069F8) | b | forced (fsm) |
-| | the byte at guest this+0xC66 with its 0x20 bit (0x00006A0C..0x00006A14) | d | that bit is set by the knock-back helper when the shield is up; the commando is not hit with the shield up in this run |
+| `fn_9_69C8` (the Dead state) | the base's dead handler (0x000069EC), the activate (0x000069F0) and the other messages (0x000069F8) | b | forced (fsm): the driver's `fsm Dead` enters the state |
+| | the byte at guest this+0xC66 with its 0x20 bit (0x00006A0C..0x00006A14) | b | **forced (the spec writes the bit)**: the bit is set by the knock-back helper (fn_9_2D0C) when the shield is up.  The forcing spec (tools/cov/specs/commandopirate_states2.py) writes it from the state's second entry on, so the first activate runs the arm with the bit clear and the second one with it set - the merged coverage of the two runs gives the body 6/6 lines and 4/4 branches (ALL-ARMS), so it is marked |
 | `fn_9_6A40` (the GetUp state) | the activate (0x00006A78), the update's "the commando lies on the ground" arm (0x00006AA0..0x00006AC4) and the getup command (0x00006ACC..0x00006B18) | b | the coverage run in area 59 with the core driver (tools/cov/run.sh with tools/cov/specs/commandopirate.py and tools/drivers/commandopirate_core.py, 8000 frames, game exit code 0, no caught/reach-stub): 16/17 lines and 8/10 branches - the arm that sets the pending death (the commando on the ground and the path find with no source point) did not run, so the body gets no marker |
 | `fn_9_6DBC` (the Cover state) | the activate (0x00006E08..0x00006E2C), the cover point (0x00006E34..0x00006E48) and the cover command (0x00006E5C..0x00006EE8) | b | the same run: 14/23 lines and 5/14 branches - the cover arms need a cover point and the commando holds none in area 59, so the body gets no marker |
 | `fn_9_B168` (ShouldCrouch) and `fn_9_B114` (ShouldWallHang) | the cover point missing (0x0000B184..0x0000B194 and 0x0000B134..0x0000B138) | b | the Cover state's triggers run when the console forces that state (forced (fsm)) |
@@ -1460,7 +1460,7 @@ Three classes, applied by rule so the table can be audited:
 Count check: 256 rows = the 256 `.text` function symbols of `symbols.txt` (the REL's 246 module
 functions with a body in the asm, the 8 REL runtime symbols and the 2 entry points).
 
-The port's state per function (the `port` column): 53 marked, 62 ported but not marked, 141
+The port's state per function (the `port` column): 54 marked, 61 ported but not marked, 141
 not ported at all (the H and T ones, and the module's own loader/ctor/dtor helpers, which the
 host's classes already have).
 
@@ -1786,12 +1786,12 @@ is up).  The run: the coverage build with
 
 | body | lines | branches | the arms that still did not run |
 |---|---|---|---|
-| `fn_9_7358` (the WallHang) | 30/39 | 10/22 | the message switch's default (0x000073A0..0x000073A4), the "no cover point" exit (0x000073D4..0x000073D8), the cover point's forward (0x00007478..0x0000748C), the update's angle test (0x000074BC..0x00007528), the wall-hang command's `CanIssueCommand` (0x00007534..0x00007548) and the body's own state (0x000075B8..0x00007628) - the last three need the body in the wall-hang state, which only the wall-hang command gives |
+| `fn_9_7358` (the WallHang) | 21/39 | 7/22 | the message switch's default (0x000073A0..0x000073A4), the "no cover point" exit (0x000073D4..0x000073D8), the cover point's forward (0x00007478..0x0000748C), the update's angle test (0x000074BC..0x00007528), the wall-hang command's `CanIssueCommand` (0x00007534..0x00007548) and the body's own state (0x000075B8..0x00007628) - the last three need the body in the wall-hang state, which only the wall-hang command gives |
 | `fn_9_786C` (the RestoreOrientation) | 17/29 | 9/14 | the message switch's default (0x000078B0..0x000078B4) and the update's angle arms (0x00007918..0x000079E0) - they need a commando that is tipped over, and nothing in the shipped flow tips it |
 | `fn_9_7A98` (the ScriptedShieldCharge) | 55/60 | 23/30 | the message switch's default (0x00007B24..0x00007B28), the activate's arm (0x00007B38..0x00007B3C) and the update's arms (0x00007C64..0x00007CFC) - the charge's own abort and its waypoint arms need the module's shield-charge states |
-| `fn_9_6DBC` (the Cover) | 19/23 | 8/14 | the message switch's default (0x00006E08..0x00006E0C), the "the body is already in the cover state" arm (0x00006E10..0x00006E14), the cover's attack direction (0x00006E50..0x00006E68), the cover command's `CanIssueCommand` (0x00006E5C..0x00006E74) and the "the body cannot shoot" arm (0x00006F48..0x00006F9C) |
+| `fn_9_6DBC` (the Cover) | 19/23 | 9/14 | the message switch's default (0x00006E08..0x00006E0C), the "the body is already in the cover state" arm (0x00006E10..0x00006E14), the cover's attack direction (0x00006E50..0x00006E68), the cover command's `CanIssueCommand` (0x00006E5C..0x00006E74) and the "the body cannot shoot" arm (0x00006F48..0x00006F9C) |
 | `fn_9_6A40` (the GetUp) | 15/17 | 5/10 | the message switch's default (0x00006A78..0x00006A7C) and the update's "the commando lies on the ground" arm (0x00006A90..0x00006AC4) - it needs the body in the lie-on-ground state and the path find with no source point |
-| `fn_9_69C8` (the Dead) | 0/6 | 0/4 | the state did not run: the console's `kill` deletes the actor, so the `fsm Dead` after it finds nothing |
+| `fn_9_69C8` (the Dead) | 6/6 | 4/4 | **marked**: the two runs (the force from the first entry on and the force from the second entry on) give both arms of the byte's 0x20-bit test |
 
 ### 6.6 The message switch's default arm is dead (2026-10-22, slice 31)
 
@@ -1817,7 +1817,7 @@ Swamp's 05_swamp_timber!, 8000 frames, game exit code 0, no caught/reach-stub) g
 | `fn_9_786C` (the RestoreOrientation) | 17/29 | 9/14 | the update's angle arms - they need a commando that is tipped over |
 | `fn_9_7A98` (the ScriptedShieldCharge) | 55/60 | 23/30 | the activate's arm and the update's arms - the charge's abort and waypoint arms need the module's shield-charge states |
 | `fn_9_6DBC` (the Cover) | 19/23 | 8/14 | the "the body is already in the cover state" arm, the cover's attack direction, the cover command's `CanIssueCommand` and the "the body cannot shoot" arm |
-| `fn_9_6A40` (the GetUp) | 15/17 | 5/10 | the update's "the commando lies on the ground" arm - it needs the body in the lie-on-ground state and the path find with no source point |
+| `fn_9_6A40` (the GetUp) | 16/17 | 8/10 | the update's "the commando lies on the ground" arm (0x00006A90..0x00006AC4) - it needs the body in the lie-on-ground state (the console's `bodystate` gives it that) and the path find with no source point |
 | `fn_9_69C8` (the Dead) | 0/6 | 0/4 | the state did not run in that run |
 
 So none of the six can be marked yet.  The blocker for the body-state arms is the forcing

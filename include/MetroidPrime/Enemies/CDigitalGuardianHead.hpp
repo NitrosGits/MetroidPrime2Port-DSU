@@ -16,6 +16,7 @@
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/TToken.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardianHead.hpp"
+#include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 
 #include "rstl/optional_object.hpp"
 #include "rstl/reserved_vector.hpp"
@@ -42,6 +43,8 @@ public:
   // CEntity
   void Think(float dt, CStateManager& mgr) override;                        // fn_14_17C98
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) override; // fn_14_17D38
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override; // fn_14_17BBC
 
   // CActor
   void PreRender(CStateManager& mgr) override;                 // fn_14_17A44
@@ -272,6 +275,54 @@ private:
   void x11F7C_(CStateManager& mgr); // fn_14_11F7C: the echo targets are deleted
   void x137A8_();                    // fn_14_137A8: the head's armour model
   rstl::optional_object< CModelData > xEA4_; // 0xEA4: the armour model (fn_14_137A8)
+
+  // The charge attack's three cutting lasers (ChargeAttack, fn_14_16A50).
+  void xFAEC_(CStateManager& mgr);           // fn_14_FAEC: the lasers are deleted
+  void xFA50_(CStateManager& mgr);           // fn_14_FA50: the lasers reset
+  void xFB70_(CStateManager& mgr);           // fn_14_FB70: the sweep starts, three lasers fire
+  void xF6A4_(CStateManager& mgr, float dt); // fn_14_F6A4: the lasers close in on the player
+  // fn_14_FE14: one more laser (at most three) fired from from toward to.
+  void xFE14_(CStateManager& mgr, const CVector3f& from, const CVector3f& to);
+  CProjectileInfo x1054_; // 0x1054: the lock-on beams' weapon (data +0x1BC), a default damage
+  rstl::reserved_vector< TUniqueId, 3 > x107C_; // 0x107C: the lasers' ids (count, then 0x1080)
+  CSegId x1088_;          // 0x1088: "T_lazor_LCTR" (the ctor's 0x18DD0)
+  float x108C_;           // 0x108C: the lasers' phase
+  float x1090_;           // 0x1090: the sweep time
+  float x1094_;           // 0x1094: the sweep time left
+  CVector3f x1098_;       // 0x1098: the point the lasers circle
+
+  // The projectile event's spawners (DoUserAnimEvent, fn_14_17BBC) and their weapons; the ctor
+  // builds the four infos at 0x183A4..0x18408 (data +0x184/+0x198/+0x200/+0x214 with their damage)
+  // and locks their tokens (0x18CD8..0x18CF0).
+  void x111E0_(CStateManager& mgr, const rstl::string& locator); // fn_14_111E0: the pulse
+  void x10CA0_(CStateManager& mgr, const rstl::string& locator); // fn_14_10CA0: the charge shot
+  void x10A2C_(CStateManager& mgr, const rstl::string& locator); // fn_14_10A2C: the missiles
+  CProjectileInfo xE04_; // 0xE04: the annihilator pulse (data +0x184, damage +0x188)
+  CProjectileInfo xE2C_; // 0xE2C: the annihilator charge (data +0x198, damage +0x19C)
+  CProjectileInfo xE54_; // 0xE54: the lock-on missiles (data +0x200, damage +0x204)
+  CProjectileInfo xE7C_; // 0xE7C: the machine gun (data +0x214, damage +0x218)
+
+  // The machine gun (MachineGunAttack, fn_14_16408).
+  // fn_14_10798 (0x354 bytes): the sweep's ends either side of the player's predicted position.
+  void x10798_(CStateManager& mgr, int side);
+  // fn_14_101E0 (0x29C bytes): one bullet from the gun's locator along dir.
+  void x101E0_(CStateManager& mgr, const CVector3f& dir);
+  CSegId x10A4_;    // 0x10A4: the gun's locator ("T_lazor_LCTR", .rodata 0x94C; the ctor's 0x18D9C)
+  CVector3f x10A8_; // 0x10A8: the sweep's start (fn_14_10798)
+  CVector3f x10B4_; // 0x10B4: the sweep's end (fn_14_10798)
+  int x10C0_;       // 0x10C0: the sweep's side (1 when the roll was at most 50)
+  int x10C4_;       // 0x10C4: the gun's phase (0 charge, 1 sweep; -1 in the ctor)
+  float x10C8_;     // 0x10C8: the time in the phase
+  float x10CC_;     // 0x10CC: the time to the next bullet
+
+  // SeekMotionPath (fn_14_158F8) restores the turn speed on Deactivate.
+  float xFE4_; // 0xFE4: the turn speed (the CPatternedInfo's, the ctor's 0x18A9C)
+
+public:
+  // Host: the console's `var <id> dghd.attack|flags|sweeptime|stunspeed [value]` (platform/port_console.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+
+private:
 #else
   uchar x7c0_[0x10F8 - 0x7c0]; // the parameter block and everything above it in retail
 #endif
