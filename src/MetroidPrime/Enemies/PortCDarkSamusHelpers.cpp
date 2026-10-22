@@ -45,12 +45,16 @@ bool CDarkSamus::HasBoostBall() const {
 
 // fn_10_2EFC (0x00002EFC, 8 bytes): the float at guest 0x314 (the `lfs f1, 0x314(r3)` at
 // 0x00002EFC).
-// @ fn_10_2EFC
+// Unmarked: the fight does not reach it (the coverage run: 0 hits - its
+// only caller is the BoostBallRoll state, fn_10_A3B0, which is still a
+// stand-in), so there is no ALL-ARMS run to cite.
 float CDarkSamus::GetGuest314() const { return mGuest314; }
 
 // fn_10_2F04 (0x00002F04, 0xC bytes): bit 0x40 of the byte at guest 0x318 - the `lbz` at
 // 0x00002F04 and the `extrwi` at 0x00002F08 take the bit 25, which is 1u << (31 - 25) = 0x40.
-// @ fn_10_2F04
+// Unmarked: the fight does not reach it (the coverage run: 0 hits - its
+// only caller is the BoostBallRoll state, fn_10_A3B0, which is still a
+// stand-in), so there is no ALL-ARMS run to cite.
 bool CDarkSamus::GetGuest318Bit6() const { return (mGuest318 & 0x40) != 0; }
 
 // fn_10_4868 (0x00004868, 0x60 bytes): the actor whose uid is at guest 0xF78 is deleted
@@ -958,7 +962,8 @@ namespace {
 // a.y * b.z - b.y * a.z (the `fmsubs` at 0x00001B44), the y a.z * b.x - b.z * a.x (0x00001B4C)
 // and the z a.x * b.y - b.x * a.y (0x00001B54); the host's CVector3f::Cross is the same
 // formula.
-// @ fn_10_1B24
+// Unmarked: the compiler inlines it, so the coverage report has no row for
+// it (the caller fn_10_10A64's row carries the lines) - no ALL-ARMS run to cite.
 void CrossProduct(CVector3f& out, const CVector3f& a, const CVector3f& b) {
   out = CVector3f::Cross(a, b);
 }

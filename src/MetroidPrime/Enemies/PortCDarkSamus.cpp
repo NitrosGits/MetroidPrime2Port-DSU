@@ -559,7 +559,9 @@ void CDarkSamus::AddToRenderer(const CStateManager& mgr) const {
 
 // fn_10_E5C (0x0000E5C, 0xDC bytes): the base's EnsureRendered - the host's
 // CActor::EnsureRendered(const CStateManager&), which the module's own copy calls.
-// @ fn_10_E5C
+// Unmarked: the fight does not reach it (the coverage run: 0 hits - the
+// call is behind the fade factor and the dark visor), so there is no
+// ALL-ARMS run to cite.
 void CDarkSamus::EnsureRenderedActor(const CStateManager& mgr) const {
   EnsureRendered(mgr);
 }
