@@ -1,0 +1,72 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark): the head's projectile event
+# (fn_14_17BBC) and its spawners fn_14_111E0 (pulse), fn_14_10CA0 (charge shot) and fn_14_10A2C
+# (missiles), FA50, ChargeAttack's lock-on ring (fn_14_16A50) and F6A4's last arms (dg20). The
+# console's `var` picks the projectile attack (dghd.attack = 0x10D0), the flag byte
+# (dghd.flags = 0x10F4), the sweep time (dghd.sweeptime = 0x1090) and the player's spawned
+# morph state (`var player spawnmorph`). Laser ids are the run's own (u063f..u0641 at f225),
+# as in digitalguardian_charge.con; the morph press is timing-sensitive (status at f190).
+# Run: tools/cov/run.sh tools/cov/specs/digitalguardian_states.py <out> 1baa96c2,09_cliff_temple_dark
+#   --con tools/cov/specs/digitalguardian_shots.con --fast --frames 2000   (BUILD=build-port-cov)
+@f30 layer 3
+@f60 layer 11; god 1; give morphBall; give boostBall
+@f150 send e00350060 Activate; send e0035000f Activate
+@f160 fastmorph 1; press x 30
+@f190 status
+@f200 place e0035000f player 20; fsm e0035000f ChargeAttack
+@f225 objs Plasma; status; var e0035000f dghd.flags
+# the charge's event with every laser found (FA50), then with one deleted
+@f228 var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR
+@f230 send u0641 Delete
+@f232 uevent e0035000f 0 0 T_lazor_LCTR
+@f234 statecall e0035000f ChargeAttack 1 0.016; objs Plasma
+# the sweep's end (dt 30): one laser left; then a spawned morph state (F6A4 0xF8BC)
+@f237 statecall e0035000f ChargeAttack 1 30; objs Plasma
+@f238 var player spawnmorph 1; statecall e0035000f ChargeAttack 1 0.016; var player spawnmorph 0
+@f250 boost
+@f260 statecall e0035000f ChargeAttack 1 0.016; var e0035000f dghd.flags
+# flag 0x01 set: the ring clears and the charge shot has no homing target
+@f262 statecall e0035000f ChargeAttack 1 0.016; uevent e0035000f 0 0 T_lazor_LCTR
+# a sweep time of 0: F6A4 returns at 0xF700
+@f266 var e0035000f dghd.sweeptime 0; statecall e0035000f ChargeAttack 1 0.016
+# a message the state does not handle (ChargeAttack's default arm)
+@f268 statecall e0035000f ChargeAttack 3 0.016
+@f280 press x 30
+@f320 fsm e0035000f FaceTarget; status
+# no lasers: FA50's empty loop; then every attack choice and a non-projectile event
+@f330 var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR
+@f332 var e0035000f dghd.attack 0; uevent e0035000f 0 0 T_lazor_LCTR
+@f334 var e0035000f dghd.attack 2; uevent e0035000f 0 0 T_lazor_LCTR
+@f336 var e0035000f dghd.attack 3; uevent e0035000f 0 0 T_lazor_LCTR
+@f338 var e0035000f dghd.attack -1; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 27 0 T_lazor_LCTR
+# the head close by: a steep aim (the 55-degree slerp) for the pulse and the charge shot
+@f340 place e0035000f player 2
+@f342 var e0035000f dghd.attack 0; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 root
+@f344 var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 root
+@f350 place e0035000f player 20
+# more than 16 shots of this head at once: CanCreateProjectile fails (10CA0, 10A2C)
+@f360 var e0035000f dghd.attack 2; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR
+@f361 uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR
+@f362 var e0035000f dghd.attack 1; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; objs Energy
+# the head on the player (place ... player 0): a near-vertical aim, so the horizontal part is
+# unsafe (the fn_14_13B38 reference) and the angle is past 55 degrees (the slerp). The charge
+# shot aims at the circled point (0x1098): flag 0x01 cleared (0x28) and two sweep updates with
+# the player still make it the player's centre first.
+@f370 var e0035000f dghd.flags 40; fsm e0035000f ChargeAttack
+@f372 statecall e0035000f ChargeAttack 1 0.016
+@f374 statecall e0035000f ChargeAttack 1 0.016; var e0035000f dghd.flags
+@f376 place e0035000f player 0; var e0035000f dghd.attack 0; uevent e0035000f 0 0 root; uevent e0035000f 0 0 T_lazor_LCTR; var e0035000f dghd.attack 1; uevent e0035000f 0 0 root; uevent e0035000f 0 0 T_lazor_LCTR
+@f378 place e0035000f player 0.5; var e0035000f dghd.attack 0; uevent e0035000f 0 0 root; var e0035000f dghd.attack 1; uevent e0035000f 0 0 root
+@f380 place e0035000f player 20
+# fresh sweeps with the charge chosen: the natural event runs 10CA0 and FA50; the ring's counts
+@f400 fsm e0035000f ChargeAttack; var e0035000f dghd.attack 1
+@f790 obj e0035000f; objs Plasma; var e0035000f dghd.flags
+@f800 fsm e0035000f FaceTarget
+@f830 fsm e0035000f ChargeAttack; var e0035000f dghd.attack 1
+@f1190 obj e0035000f; objs Plasma
+@f1200 fsm e0035000f FaceTarget
+@f1230 codecall e0035000f SelectProjectileAttack; fsm e0035000f ChargeAttack; var e0035000f dghd.attack 0
+@f1590 obj e0035000f
+@f1600 fsm e0035000f FaceTarget
+@f1630 fsm e0035000f ChargeAttack; var e0035000f dghd.attack 2
+@f1990 obj e0035000f
+@f2000 send e0035000f Delete

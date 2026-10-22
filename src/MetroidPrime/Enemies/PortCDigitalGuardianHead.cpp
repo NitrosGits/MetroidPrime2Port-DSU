@@ -27,6 +27,8 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Weapons/CBeamInfo.hpp"
 #include "MetroidPrime/Weapons/CBomb.hpp"
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
 #include "MetroidPrime/Weapons/CPlasmaProjectile.hpp"
 #include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
@@ -44,8 +46,11 @@
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#include "port_console.h"
+
 #include <float.h>
 #include <stdio.h>
+#include <string.h>
 
 namespace {
 
@@ -206,7 +211,17 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , x1090_(0.f)
 , x1094_(0.f)
 , x1098_(CVector3f::Zero())
+// 0x183A4..0x18408: the four projectile infos, each the data's weapon with its damage
+// (LdrToDamageInfo); their tokens are locked below (0x18CD8..0x18CF0).
+, xE04_(data.annihilatorPulse, LdrToDamageInfo(data.annihilatorPulseDamage))
+, xE2C_(data.annihilatorCharge, LdrToDamageInfo(data.annihilatorChargeDamage))
+, xE54_(data.lockOnMissiles, LdrToDamageInfo(data.lockOnMissilesDamage))
+, xE7C_(data.machineGun, LdrToDamageInfo(data.machineGunDamage))
 {
+  xE04_.Token().Lock(); // 0x18CD8
+  xE2C_.Token().Lock(); // 0x18CE0
+  xE54_.Token().Lock(); // 0x18CE8
+  xE7C_.Token().Lock(); // 0x18CF0
   // The drop-shields effect (data +0x48, 0x184D8): locked when set.
   if (mData.dropShieldsFx != kInvalidAssetId) {
     xEF4_ = TLockedToken< CGenDescription >(
@@ -1325,14 +1340,15 @@ DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
 // (0x37C == 0x12, 0x16CBC) it is aborted (command 0xD = kBSC_AbortScripted, 0x16CC8, 0x16CE0);
 // the lasers go (fn_14_FAEC, 0x16CF8), flag 0x20 clears (0x16D04) and the turn direction is the
 // zero vector (0x16D18..0x16D2C).
-// Not ported: the player's lock-on ring (CPlayer +0x14C4 id, +0x14C6 count). After the turn
-// (0x16BF0..0x16C8C), unless flag 0x01 (0x16BF8), the count is 3.0f (.rodata 0x9F0) times
-// 1.0f - (0x1094 - 1.0f) / (0x1090 - 1.0f) clamped to [0.0f, 1.0f] (0x16C24 / 0x16C44),
-// truncated, at most 3 and at least 1 (0x16C68 / 0x16C74), with the head's id; with flag 0x01
-// (0x16C94) and on Deactivate (0x16D30..0x16D3C) the count is 0 and the id invalid. CPlayer has
-// no setter for the two (only GetEnemyLockOnActorId/GetEnemyLockOnCount), so the HUD shows no
-// lock-on ring during the charge. Every other arm ran (digitalguardian_charge.con), but the
-// state stays unmarked until the ring is ported.
+// The player's lock-on ring (CPlayer +0x14C4 id, +0x14C6 count): after the turn on Update
+// (0x16BF0..0x16C8C), unless flag 0x01 (clrlwi. 31 / bne at 0x16BF8..0x16BFC), the count is
+// 3.0f (.rodata 0x9F0) times v = 1.0f - (0x1094 - 1.0f) / (0x1090 - 1.0f) (.rodata 0x96C,
+// 0x16C08..0x16C20), v kept only when 1.0f >= v (fcmpo/bge at 0x16C24, so a NaN v is 1.0f) and
+// raised to 0.0f when 0.0f >= v (0x16C44), truncated (fctiwz at 0x16C5C), at most 3 (cmpwi/bgt at
+// 0x16C68) and at least 1 (cmpwi/ble at 0x16C74), with the head's id (0x16C84/0x16C8C). With flag
+// 0x01 (0x16C94..0x16CA4) and on Deactivate (0x16D30..0x16D3C) the count is 0 and the id invalid.
+// Every arm ran, msg 3 being the unhandled one (tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_16A50
 void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1350,6 +1366,21 @@ void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float
       xF6A4_(mgr, dt); // 0x16BDC
     }
     x11D64_(mgr, dt); // 0x16BEC
+    if ((x10F4_ & 0x01) == 0) { // 0x16BF8
+      float v = 1.f - (x1094_ - 1.f) / (x1090_ - 1.f); // 0x16C08..0x16C20
+      v = 1.f >= v ? v : 1.f;                          // 0x16C24
+      v = 0.f >= v ? 0.f : v;                          // 0x16C44
+      int count = static_cast< int >(3.f * v);         // .rodata 0x9F0, 0x16C5C
+      if (count > 3) {                                 // 0x16C68
+        count = 3;
+      }
+      if (count <= 1) { // 0x16C74
+        count = 1;
+      }
+      mgr.GetPlayer(0)->SetEnemyLockOn(GetUniqueId(), static_cast< char >(count)); // 0x16C84
+    } else {
+      mgr.GetPlayer(0)->SetEnemyLockOn(kInvalidUniqueId, 0); // 0x16C9C..0x16CA4
+    }
     break;
   case kStateMsg_Deactivate:
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16CB0
@@ -1359,6 +1390,7 @@ void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float
     xFAEC_(mgr);                    // 0x16CF8
     x10F4_ &= ~0x20;                // 0x16D04
     x1028_ = CVector3f::Zero();     // 0x16D18..0x16D2C
+    mgr.GetPlayer(0)->SetEnemyLockOn(kInvalidUniqueId, 0); // 0x16D30..0x16D3C
     break;
   default:
     break;
@@ -1381,8 +1413,11 @@ void CDigitalGuardianHead::xFAEC_(CStateManager& mgr) {
 // fn_14_111E0 at 0x17C28), the charge's shot fires and its lasers reset (1, fn_14_10CA0 at
 // 0x17C34 and fn_14_FA50 at 0x17C40) or the missiles fire (2, fn_14_10A2C at 0x17C4C); any other
 // attack does nothing, and the event is handled either way (li 1 at 0x17C50). Every other event
-// goes to CPatterned::DoUserAnimEvent (0x17C70).
-// Not marked: the three spawners are stand-ins (not ported).
+// goes to CPatterned::DoUserAnimEvent (0x17C70). Each spawner gets the node's locator name (node
+// +0x30, the addi r5 at 0x17C24/0x17C30/0x17C48).
+// Every arm ran (each attack, an unknown one and another event;
+// tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_17BBC
 void CDigitalGuardianHead::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                            EUserEventType type, float dt) {
   if (type != kUE_Projectile) {
@@ -1391,14 +1426,14 @@ void CDigitalGuardianHead::DoUserAnimEvent(CStateManager& mgr, const CInt32POINo
   }
   switch (x10D0_) {
   case 0:
-    StandInFn("fn_14_111E0 (head pulse shot)");
+    x111E0_(mgr, node.GetLocatorName()); // 0x17C28
     break;
   case 1:
-    StandInFn("fn_14_10CA0 (head charge shot)");
-    xFA50_(mgr);
+    x10CA0_(mgr, node.GetLocatorName()); // 0x17C34
+    xFA50_(mgr);                         // 0x17C40
     break;
   case 2:
-    StandInFn("fn_14_10A2C (head missiles)");
+    x10A2C_(mgr, node.GetLocatorName()); // 0x17C4C
     break;
   default:
     break;
@@ -1409,8 +1444,8 @@ void CDigitalGuardianHead::DoUserAnimEvent(CStateManager& mgr, const CInt32POINo
 // ObjectById at 0xFA90, the null test at 0xFA94) resets (vtable 0x90, ResetBeam with false;
 // 0xFAB0). The ids stay.
 // Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
-// Not marked: no run. It needs the charge (0x10D0 == 1) at the projectile event, and this stage's
-// odds never picked it (codecall SelectProjectileAttack drew 0 and 2 only).
+// Every arm ran (lasers found, one deleted, none; tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_FA50
 void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
   for (int i = 0; i < x107C_.size(); ++i) {
     if (CPlasmaProjectile* laser = TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(x107C_[i]))) {
@@ -1418,6 +1453,158 @@ void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
     }
   }
 }
+
+// fn_14_111E0: the annihilator pulse, fired from the event's locator (GetLctrTransform at
+// 0x1120C) at the player's aim position (vtable 0x54 with 0.0f, .rodata 0x960; 0x1124C). The
+// direction's horizontal part (z 0.0f, 0x11298) normalised, or the head's facing (fn_14_13B38,
+// 0x112C4) when it is not safe (0x112A4), is the reference; a direction more than 0.9599311f
+// (.rodata 0x9B8) from it (fcmpo/ble at 0x112FC, so a NaN angle keeps it) is the reference slerped
+// toward the normalised direction by that angle (0x11320). LookAt from the locator along it
+// (0x11380). No cache or projectile-count test. The 0x568-byte CEnergyProjectile (ctor at 0x11478):
+// active (li r4 1), the pulse's weapon (0xE04), kWT_AI (li r6 0xB), material 0x21 (kMT_Character,
+// li r8), the pulse's damage (0xE10), a new id (0x113F0), the head's area (0x4) and id (0x8), the
+// player as homing target (0x113CC), attributes 0, not underwater, scale one (sOneVector), no
+// visor effect (fn_14_1047C), then false, true, false and 1.0f, 4.0f, 4.0f (.rodata 0x96C/0x998);
+// added when built (0x11494, AddObject at 0x114A4).
+// Every arm ran: the head on the player (place ... player 0) takes the unsafe horizontal part and
+// the slerp (tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_111E0
+void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locator) {
+  const CVector3f pos = GetLctrTransform(locator).GetTranslation();
+  const CPlayer& player = *mgr.GetPlayer(0);
+  CVector3f dir = player.GetAimPosition(mgr, 0.f) - pos;
+  const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
+  const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
+  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) {
+    dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
+  }
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, xE04_.Token(), kWT_AI, xf, kMT_Character, xE04_.GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), player.GetUniqueId(), 0, false, CVector3f::One(),
+      CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (projectile != nullptr) {
+    mgr.AddObject(projectile);
+  }
+}
+
+// fn_14_10CA0: the annihilator charge's shot. Only with its weapon cached (the TCachedToken test
+// at 0x10CC8..0x10D18) and room for one more kWT_AI projectile of this head (CanCreateProjectile
+// with 0xB and 16 = li r6 0x10, 0x10D38). From the event's locator (0x10D54) toward the point the
+// lasers circle (0x1098..0x10A0, 0x10D80..0x10D94), aimed like fn_14_111E0 (0x10DB0..0x10E94).
+// The visor effect is a blur {1, 4.0f (.rodata 0x998), data +0x1AC (0x96C)} (fn_14_11170 at
+// 0x10ECC) with the low-pass filter {data +0x1B0 (0x970), data +0x1AC} (fn_14_11044 at 0x10F08).
+// The homing target is none with flag 0x01 (clrlwi. 31 / beq at 0x10F40) and the player
+// otherwise (0x10F54). The projectile is fn_14_19838's (0x10FEC): the CEnergyProjectile ctor with
+// the charge's weapon (0xE2C), kWT_AI, material 0x21, the charge's damage (0xE38), attributes 0,
+// not underwater, scale one, false, true, false and 1.0f, 4.0f, 4.0f (inside 0x19838..0x198E0).
+// When built it gets attribute 0x1000 (kPA_BigStrike; lwz/ori/stw 0x158 at 0x10FFC..0x11010)
+// with data +0x1AC as its damage duration (stfs 0x1C0 at 0x11014): SetDamageDuration; added at
+// 0x11018. The pair {0, data +0x1AC} at 0x10F20/0x10F2C is stored and never read.
+// Retail's object is the module's CEnergyProjectile subclass (vtable lbl_14_data_1034, its
+// overrides at 0x19784..0x1A430); the host builds the base class, so those overrides are missing.
+// Not marked for that reason, though every arm ran (tools/cov/specs/digitalguardian_shots.con;
+// the TryCache-false arm forced, tools/cov/specs/digitalguardian_shots_force.py).
+void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locator) {
+  if (!xE2C_.Token().TryCache()) {
+    return;
+  }
+  if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 16)) {
+    return;
+  }
+  const CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f pos = GetLctrTransform(locator).GetTranslation();
+  CVector3f dir = x1098_ - pos;
+  const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
+  const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
+  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) { // 0x10E10
+    dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
+  }
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
+  const float amount = mData.unknown_0xff7688bf; // 0x96C
+  const CImpactVisorEffect visor(
+      rstl::optional_object< CImpactVisorEffect::SParticleEffect >(),
+      rstl::optional_object< CImpactVisorEffect::SBlurEffect >(
+          CImpactVisorEffect::SBlurEffect(1, 4.f, amount)),
+      rstl::optional_object< rstl::pair< int, float > >(
+          rstl::pair< int, float >(mData.unknown_0x12ebb390, amount)));
+  const TUniqueId homing = (x10F4_ & 0x01) != 0 ? kInvalidUniqueId : player.GetUniqueId();
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, xE2C_.Token(), kWT_AI, xf, kMT_Character, xE2C_.GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), homing, 0, false, CVector3f::One(), visor, false, true,
+      false, 1.f, 4.f, 4.f);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (projectile != nullptr) {
+    projectile->SetDamageDuration(mData.unknown_0xff7688bf);
+    mgr.AddObject(projectile);
+  }
+}
+
+// fn_14_10A2C: the lock-on missiles. Only with their weapon cached (0x10A58..0x10AA8) and room for
+// one more kWT_AI projectile (CanCreateProjectile with 0xB and 16, 0x10AC8). From the event's
+// locator (0x10AE0) along the head's facing (fn_14_13B38 at 0x10B10; LookAt at 0x10B58). The
+// CEnergyProjectile (ctor at 0x10C50) is fn_14_111E0's with the missiles' weapon (0xE54) and
+// damage (0xE60): homing on the player (0x10BA4), no visor effect (fn_14_1047C at 0x10B90);
+// added when built (0x10C6C, AddObject at 0x10C7C).
+// Every arm ran (tools/cov/specs/digitalguardian_shots.con; the TryCache-false arm forced,
+// tools/cov/specs/digitalguardian_shots_force.py, CanCreateProjectile false with 20 shots out).
+// @ fn_14_10A2C
+void CDigitalGuardianHead::x10A2C_(CStateManager& mgr, const rstl::string& locator) {
+  if (!xE54_.Token().TryCache()) {
+    return;
+  }
+  if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 16)) {
+    return;
+  }
+  const CVector3f pos = GetLctrTransform(locator).GetTranslation();
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + x13B38_(), CVector3f::Up());
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, xE54_.Token(), kWT_AI, xf, kMT_Character, xE54_.GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), 0, false,
+      CVector3f::One(), CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (projectile != nullptr) {
+    mgr.AddObject(projectile);
+  }
+}
+
+// Host: the console's `var <id> <name> [value]` for the head: dghd.attack is the projectile
+// attack at 0x10D0 (0 pulse, 1 charge, 2 missiles, 3 gun), dghd.flags the flag byte 0x10F4,
+// dghd.sweeptime the lasers' sweep time 0x1090 (whole seconds).
+bool CDigitalGuardianHead::PortConsoleVar(CEntity& ent, const char* name, const int* value,
+                                          int& current) {
+  CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(&ent);
+  if (head == nullptr) {
+    return false;
+  }
+  if (strcmp(name, "dghd.attack") == 0) {
+    if (value != nullptr) {
+      head->x10D0_ = *value;
+    }
+    current = head->x10D0_;
+    return true;
+  }
+  if (strcmp(name, "dghd.flags") == 0) {
+    if (value != nullptr) {
+      head->x10F4_ = static_cast< uchar >(*value);
+    }
+    current = head->x10F4_;
+    return true;
+  }
+  if (strcmp(name, "dghd.sweeptime") == 0) {
+    if (value != nullptr) {
+      head->x1090_ = static_cast< float >(*value);
+    }
+    current = static_cast< int >(head->x1090_);
+    return true;
+  }
+  return false;
+}
+
+namespace {
+const bool sDghdConsoleVars = PortConsole::RegisterVar(&CDigitalGuardianHead::PortConsoleVar);
+} // namespace
 
 // fn_14_FB70: the lasers go (fn_14_FAEC, 0xFBB8) and the phase is 0.0f (.rodata 0x960, 0xFBCC).
 // The sweep time is the current animation's (the body controller's 0x58C) projectile event
@@ -1505,8 +1692,9 @@ void CDigitalGuardianHead::xFE14_(CStateManager& mgr, const CVector3f& from,
 // 0.0f, radius * sin) of the phase (0xF948..0xF9C8), the phase growing by 2.0943952f (0xF9FC)
 // only for a laser found.
 // Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
-// Not marked: the spawn-morph arm (CPlayer 0x390 non-zero, 0xF8BC) needs a spawn point that starts
-// the player morphed, and the time at most 0.0f (0xF700) did not run; every other arm ran.
+// Every arm ran (tools/cov/specs/digitalguardian_shots.con) but the no-laser return: dead, as the
+// only call (fn_14_16A50 at 0x16BDC) is taken only with lasers (0x107C != 0, the bne at 0x16BBC).
+// @ fn_14_F6A4
 void CDigitalGuardianHead::xF6A4_(CStateManager& mgr, float dt) {
   if (x107C_.empty() || x1090_ <= 0.f) {
     return;
