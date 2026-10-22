@@ -2197,6 +2197,7 @@ rstl::optional_object< CAABox > CSplitterCommandModule::GetTouchBounds() const {
 // weighs (1 - w) and the chassis's w (asm 0x6074-0x607C).  Otherwise, with the timer at 0xF1C
 // below 1.0f (asm 0x6088, 0x6090), the chassis's aim (asm 0x60CC) is mixed the other way round
 // (asm 0x6118-0x6120).  The result is the mixed aim (asm 0x6124).
+// @ fn_75_5F8C
 CVector3f CSplitterCommandModule::GetAimPosition(const CStateManager& mgr, float dt) const {
   CVector3f aim = CPatterned::GetAimPosition(mgr, dt);
   if (mShieldState == 2) {

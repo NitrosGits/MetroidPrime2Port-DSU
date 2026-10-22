@@ -503,6 +503,19 @@ walk) and the switch's default (the compiler's: the forward step returns earlier
 `fn_75_11804`'s deleting flag).  The force spec's `PATHZ` (the chassis's own position) is the
 attempt for the first arm; it does not reach it, and the body stays unmarked.
 
+### 3.14 The three stand-ins: the aim position, the collision and the knock-back
+
+| body | the diff | the profile / why |
+|---|---|---|
+| `fn_75_5F8C` (the head's aim position, the vtable slot 0x54) | ported: the base's aim (asm 0x5FD8), the shield state at 0xEDC equal to 2 (asm 0x5FDC, 0x5FE4), the chassis's aim (the chassis's vtable slot 0x54, asm 0x6028) and the two mixes (asm 0x6038-0x607C and 0x6088-0x6120) | 15/15 lines, 8/8 branches, **ALL-ARMS** - **marked** |
+| `fn_75_6178` (the head's collision, the vtable slot 0x84) | ported: the base's collision (asm 0x619C), the flag byte at 0xF6A's 0x01 bit clear (asm 0x61A0-0x61A8), the collided id invalid (asm 0x61B0-0x61BC), the material list built once (asm 0x61C0-0x6290) and the match against the collision info's material (asm 0x62C0-0x62D4) that sets the flag byte's 0x01 bit (asm 0x62E0-0x62E4) | 14/14 lines, 12/14 branches - not marked: the two untaken arms are the "a collision with a material outside the wall, floor and ceiling list" case, which needs a collision the head does not make in the fight |
+| `fn_75_EBF4` (the chassis's knock-back, the vtable slot 0x9C) | ported: the flag byte at 0xD41's 0x80 bit (asm 0xEC18-0xEC1C) turns the flinch and the knock back reactions off (asm 0xEC64, 0xEC74), the damage's weapon type 7 (asm 0xEC24-0xEC28) turns the knock back reaction on (asm 0xEC3C) and any other type off (asm 0xEC50), then the base's knock back (asm 0xEC84) | 0/9 lines - not marked: the chassis takes no damage in the fight (its hp only drops through the laser sweep's target_LCTR, fn_75_A0A0), so the knock-back never runs |
+
+The port's `SLdrSplitterCommandModuleData` does not carry the REL's data words at 0x434, 0x438 and
+0x43C (the materials the head collides with), so fn_75_6178 uses the REL's initialized values
+(0x1E the wall, 0x1F the floor, 0x1D the ceiling).  The two REL globals (lbl_75_bss_0, the flag
+that says the list is built, and lbl_75_bss_8, the list) are the port's two file-scope statics.
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the

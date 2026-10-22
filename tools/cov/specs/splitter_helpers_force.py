@@ -115,6 +115,15 @@ BODIES = {
                 'the base is dead: the effect states do not update'),
     'PATHZ': ('986C UpdatePath', 'CSplitterMainChassis::PortUpdatePath(',
               'the chassis is above the other actors: the separation\'s z is not zero'),
+    'AIMNC': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+              'the shield state is 2 and the head is not docked: there is no chassis'),
+    'AIMC': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+             'the shield state is not 2 and the timer at 0xF1C is below one: the chassis\'s aim'
+             ' is mixed in'),
+    'AIMNC2': ('5F8C GetAimPosition', 'CSplitterCommandModule::GetAimPosition(',
+               'the shield state is not 2 and the head is not docked: there is no chassis'),
+    'COLLIDNM': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
+                 'the material list is empty: no collision matches'),
 }
 # the head's own members, written through $this (the spec's CLASS is the head's class).
 HEAD = '((CSplitterCommandModule*)$rdi)'
@@ -244,6 +253,25 @@ elif WHICH == 'PATHZ':
     # skipped by the walk) - it is kept as the attempt the note records.
     FORCE = [(_label, _where, [],
               [CH + '->mPosition.mZ = 2.0'], 0, _what)]
+elif WHICH == 'AIMNC':
+    # the shield state at 0xEDC is 2 and the head is not docked: the chassis lookup fails.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 2', '$this->mChassisId.value = 0xffff'], 0, _what)]
+elif WHICH == 'AIMC':
+    # the shield state at 0xEDC is not 2 and the timer at 0xF1C is below one: the second branch
+    # runs and finds the chassis.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 1', '$this->mCountupTimerB = 0.5f'], 0, _what)]
+elif WHICH == 'AIMNC2':
+    # the shield state at 0xEDC is not 2, the timer at 0xF1C is below one and the head is not
+    # docked: the second branch runs and finds no chassis.
+    FORCE = [(_label, _where, [],
+              ['$this->mShieldState = 1', '$this->mCountupTimerB = 0.5f',
+               '$this->mChassisId.value = 0xffff'], 0, _what)]
+elif WHICH == 'COLLIDNM':
+    # the material list (the REL's lbl_75_bss_8) is empty: no collision matches.
+    FORCE = [(_label, _where, [],
+              ['sSplitterCollisionMaterialList = CMaterialList()'], 0, _what)]
 elif WHICH == 'DESPAWN':
     # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
     # update (asm 0x1820).
