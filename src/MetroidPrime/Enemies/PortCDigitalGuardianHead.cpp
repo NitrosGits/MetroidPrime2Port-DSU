@@ -2330,11 +2330,100 @@ void CDigitalGuardianHead::SeekLineOfSight(CStateManager& mgr, float dt) {
   void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
     StandInFn(#fn " (head code " #name ")");                                                       \
   }
-DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
+// fn_14_14C24 walks the object list (state manager +0x830) giving each command module
+// fn_75_5A54 and each main chassis fn_75_E660 a growing delay (from 0, +0.7 and +0.15 per
+// object, .rodata 0x960/0x9A4/0x9A8). Neither entry point is reachable from here: the command
+// module's port of fn_75_5A54 is private and fn_75_E660 is not ported in the Splitter module.
 DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
-DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
-DGHD_CODE_STANDIN(EnableDynamicCollision, fn_14_14828)
-DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
+
+// fn_14_153D0: the attack position (0xFEC) is the head's translation, or the retreat platform's
+// (0x1038; ObjectById at 0x1540C, TCastToPtr<CScriptPlatform> at 0x15410, null test 0x15418).
+void CDigitalGuardianHead::SetPlatformPosition(CStateManager& mgr, float dt) {
+  xFEC_ = GetTranslation(); // 0x153E4..0x15400
+  if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+    xFEC_ = plat->GetTransform().GetTranslation(); // 0x1541C..0x15430
+  }
+}
+
+// fn_14_149F8: the IS06/FOLW waypoint (FindConnectedObject_if with the waypoint predicate,
+// lbl_14_data_1024, 0x14A4C) places the head at its translation, looking along its Y column, or
+// the head's own Y column when that is not magnitude-safe (0x14AAC, clrlwi./beq at 0x14AB0);
+// LookAt with the up vector (0x14B2C), SetTransform (0x14B38). Combat locomotion either way (li 3,
+// 0x14B40). Retail's safe arm reads the direction from sp+0x30, which nothing in the body writes
+// (the column was stored at sp+0x3C): the port uses the waypoint's column, the evident intent.
+void CDigitalGuardianHead::Stage3Start(CStateManager& mgr, float dt) {
+  const TUniqueId id =
+      FindConnectedObject_if(mgr, kSS_InternalState6, kSM_Follow, CWaypointPredicate());
+  if (const CScriptWaypoint* wp = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id))) {
+    CVector3f dir = wp->GetTransform().GetColumn(kDY); // 0x14A90..0x14AA8
+    if (!dir.IsMagnitudeSafe()) {
+      dir = GetTransform().GetColumn(kDY); // 0x14AC0..0x14AD8
+    }
+    const CVector3f& pos = wp->GetTranslation(); // wp+0x54 at 0x14AE8
+    SetTransform(CTransform4f::LookAt(pos, pos + dir, CVector3f::Up())); // 0x14B08..0x14B38
+  }
+  BodyController()->SetLocomotionType(pas::kLT_Combat); // li 3 at 0x14B40, 0x14B44
+}
+
+// fn_14_14828: the retreat platform (0x1038), when it is one (null test 0x1485C), gets ACTV
+// (lis 0x4143 / addi 0x5456 at 0x14874). With colliders built (0xD70, 0x148B4) the root (0xE00)
+// is deactivated (SetActive, vtable 0x1C, li 0 at 0x148DC) and each ball (0xDC4, count 0xDC0,
+// cmpw/blt at 0x14960) with health (GetHealthInfo, vtable 0x3C; HP at +4 > 0.0, fcmpo/ble at
+// 0x14934) is activated; the manager is updated (dt 0.0, li 1 = kUO_WorldSpace, 0x14980). The
+// head's filter excludes the player (exclude word 0x8 |= 1, bit 32, ori at 0x149A8), its shadow
+// is off (0x149D4) and the damage colour is skDamageColor (0x149E0).
+void CDigitalGuardianHead::EnableDynamicCollision(CStateManager& mgr, float dt) {
+  if (TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_)) != nullptr) {
+    mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), x1038_, kSM_Activate)); // 0x148A8
+  }
+  if (xD70_ != nullptr) {
+    if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
+      root->SetActive(false);
+    }
+    for (int i = 0; i < 2; ++i) { // the count at 0xDC0 is 2
+      if (CCollisionActor* ball = TCastToPtr< CCollisionActor >(mgr.ObjectById(xDC4_[i]))) {
+        if (ball->GetHealthInfo()->GetHP() > 0.f) {
+          ball->SetActive(true); // li 1 at 0x14940
+        }
+      }
+    }
+    xD70_->Update(0.f, mgr, CCollisionActorManager::kUO_WorldSpace);
+  }
+  CMaterialFilter filter = GetMaterialFilter();
+  filter.ExcludeList().Add(kMT_Player);
+  SetMaterialFilter(filter);
+  SetDrawShadow(false); // li 0 at 0x149D0
+  mDamageColor = CPatterned::skDamageColor;
+}
+
+// fn_14_14664: the retreat platform (0x1038) gets DCTV (lis 0x4443 / addi 0x5456 at 0x1469C,
+// sent with no type check, 0x146D0) and the player's morph ball a 2 s damage timer (player
+// +0x1174, .rodata 0x968, 0x146E8). With colliders built (0xD70, 0x146F4) the root (0xE00) is
+// activated (li 1 at 0x1471C) and both balls (0xDC4, count 0xDC0, cmpw/blt at 0x14778)
+// deactivated (li 0 at 0x1475C); the manager is updated (dt 0.0, li 1 = kUO_WorldSpace, 0x14798).
+// The head's filter stops excluding the player (exclude word 0x8 &= ~1, bit 32, li -2/and at
+// 0x147B0/0x147C8), its shadow is on (0x147F8) and the damage colour is
+// skHitsWithoutDamageColor (0x80418FEC, 0x14804).
+void CDigitalGuardianHead::DisableDynamicCollision(CStateManager& mgr, float dt) {
+  mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), x1038_, kSM_Deactivate));
+  mgr.GetPlayer(0)->GetMorphBall()->SetDamageTimer(2.f);
+  if (xD70_ != nullptr) {
+    if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
+      root->SetActive(true);
+    }
+    for (int i = 0; i < 2; ++i) { // the count at 0xDC0 is 2
+      if (CCollisionActor* ball = TCastToPtr< CCollisionActor >(mgr.ObjectById(xDC4_[i]))) {
+        ball->SetActive(false);
+      }
+    }
+    xD70_->Update(0.f, mgr, CCollisionActorManager::kUO_WorldSpace);
+  }
+  CMaterialFilter filter = GetMaterialFilter();
+  filter.ExcludeList().Remove(kMT_Player);
+  SetMaterialFilter(filter);
+  SetDrawShadow(true); // li 1 at 0x147F4
+  mDamageColor = CPatterned::skHitsWithoutDamageColor;
+}
 
 // fn_14_15598: the projectile timer 0x10D4 is block 6's projectileAttackTime (fn_14_10120's +8,
 // 0x155EC) once every splitter is dead (fn_14_17298, the test at 0x155C8), else 6 (.rodata 0x990).
