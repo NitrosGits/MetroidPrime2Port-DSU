@@ -140,7 +140,7 @@ BODIES = {
                 'the head\'s state at 0xEE0 is 1: the LightShield effect'),
     'SHIELD2': ('2BE0 GetShieldEffect', 'CSplitterCommandModule::PortGetShieldEffect(',
                 'the head\'s state at 0xEE0 is 2: the DarkShield effect'),
-    'LANDED0': ('F5F8 ctor', 'loc:PortCSplitterMainChassis.cpp:1901',
+    'LANDED0': ('F5F8 ctor', 'loc:PortCSplitterMainChassis.cpp:1905',
                 'the data\'s flag word at 0x68 has its 0x1 bit: the landed count at 0xD00 is 0'),
     'NULLCAST': ('9AF8 SetCollisionVulnerability', 'loc:PortCSplitterMainChassis.cpp:683',
                  'the collision actor\'s id is invalid: the cast to a CCollisionActor fails'),
@@ -192,6 +192,24 @@ BODIES = {
                   ' the head only turns'),
     'ACCEPT': ('E6E4 AcceptHead', 'CSplitterMainChassis::PortAcceptHead(',
                'the chassis already has a command module at 0xC6C: the head is not accepted'),
+    'PLACEZERO': ('ACEC PlaceHead', 'CSplitterCommandModule::Idle(',
+                  'the head\'s editor offset has no y: the head only turns'),
+    'PLACEYNZ': ('ACEC PlaceHead', 'CSplitterCommandModule::Idle(',
+                 'the head\'s editor offset has no z: the head only turns'),
+    'PLACENULL': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                  'the head\'s id at 0xC6C names no object: the chassis clears the id'),
+    'PLACENOH': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                 'the chassis has no head id at 0xC6C: the body looks at the second link'),
+    'PLACELINK': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                  'the second link at 0xC6E is not a command module: the link is cleared'),
+    'PLACELINKH': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                   'the second link at 0xC6E is a command module: the body returns'),
+    'PLACEF80': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                 'the flag byte at 0xD41 has its 0x80 bit: the head only turns'),
+    'PLACEF08': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                 'the flag byte at 0xD41 has its 0x08 bit: the head only turns'),
+    'PLACELC': ('ACEC PlaceHead', 'CSplitterMainChassis::PortPlaceHead(',
+                'the counter at 0xD00 is not 5: the head takes the chassis\'s transform'),
     'D3C': ('AFE8 UpdateTimers', 'CSplitterMainChassis::PortUpdateTimers(',
             'the id at 0xCC0 is valid and the counter at 0xC48 is not zero: the timer at 0xD3C'
             ' is counted up'),
@@ -459,6 +477,37 @@ elif WHICH == 'TURNZERO2':
               ['$this->mTransform.m10 = 0.f', '$this->mTransform.m11 = 0.f',
                '$this->mTransform.m12 = 1.f', '$this->mTransform.m20 = 0.f',
                '$this->mTransform.m21 = 0.f', '$this->mTransform.m22 = 1.f'], 0, _what)]
+elif WHICH in ('PLACENOH', 'PLACELINK', 'PLACELINKH', 'PLACEF80', 'PLACEF08', 'PLACELC'):
+    sets = []
+    if WHICH in ('PLACENOH', 'PLACELINK', 'PLACELINKH'):
+        sets.append(CH + '->mCommandModuleId.value = 0xffff')
+    if WHICH == 'PLACELINK':
+        sets.append(CH + '->mSecondLinkId.value = 0x1234')
+    elif WHICH == 'PLACELINKH':
+        sets.append(CH + '->mSecondLinkId.value = 0x531')
+    elif WHICH == 'PLACEF80':
+        sets.append(CH + '->mFlagsD41 |= 0x80')
+    elif WHICH == 'PLACEF08':
+        sets.append(CH + '->mFlagsD41 |= 0x8')
+    elif WHICH == 'PLACELC':
+        sets.append(CH + '->mLandedCount = 3')
+    FORCE = [(_label, _where, [], sets, 0, _what)]
+elif WHICH == 'PLACEZERO':
+    # The head's editor offset (the transform's Y column, the head's Idle state copies it into
+    # 0xF24-0xF2C) is zero: the chassis's placement takes the "all three are zero" arms
+    # (asm 0xADAC-0xADD0).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m01 = 0.f', '$this->mTransform.m11 = 0.f',
+               '$this->mTransform.m21 = 1.f'], 0, _what)]
+elif WHICH == 'PLACEYNZ':
+    # The head's editor offset has no z (and a y, so the z is compared).
+    FORCE = [(_label, _where, [],
+              ['$this->mTransform.m01 = 0.f', '$this->mTransform.m11 = 1.f',
+               '$this->mTransform.m21 = 0.f'], 0, _what)]
+elif WHICH == 'PLACENULL':
+    # The head's id at 0xC6C names no object: the cast fails and the chassis clears the id
+    # (asm 0xAD40-0xAD4C, 0xAF74-0xAF84).
+    FORCE = [(_label, _where, [], [CH + '->mCommandModuleId.value = 0x1234'], 0, _what)]
 elif WHICH == 'ACCEPT':
     # The chassis already has a command module at 0xC6C: the accept answers false (asm 0xE708,
     # 0xE70C).
