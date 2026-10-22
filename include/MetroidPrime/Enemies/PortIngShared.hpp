@@ -28,7 +28,12 @@ inline bool PortIngPointSearch(CPathFindPointSearch& search, CPFArea& area, int 
 // The MinorIng's copy of the lure point query (the Ing module's is fn_29_1C98): the retail's
 // fn_44_204C (asm 0x204C) reads the safe zone id at 0xcda, gets the zone, asks the search for the
 // height of the point five units above it with the flags at 3, and writes the point below it; the
-// host's body is the same query.
+// host's body is the same query. The Ing module's fn_29_1C98 (0x15C) is the same body with the
+// zone id at 0xd78: the Agon Wastes coverage run of 2026-10-22 (lane ing4, `var <ing>
+// ing.lurezone <id>; codecall <ing> SetLuredDest|SetLuredPointDest` in one tick, forced, over
+// an invalid id, a non-zone object and every safe zone) ran every arm (no zone, height found,
+// height not found). TCastToConstPtr is TCastToPtr (asm 0x1CD0) on a const pointer.
+// @ fn_29_1C98
 inline bool PortIngLuredMeshPoint(CStateManager& mgr, CPathFindSearch& search, TUniqueId safeZone,
                                   CVector3f& out) {
   const CScriptSafeZone* zone = TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(safeZone));

@@ -33,7 +33,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x000016AC	0x3D4	fn_29_16AC	B	behaviour	fn_29_130	lbl_29_rodata_64,lbl_29_rodata_68,lbl_29_rodata_6C,lbl_29_rodata_70,lbl_29_rodata_74,lbl_29_rodata_78,lbl_29_rodata_7C,lbl_29_rodata_80,lbl_29_rodata_84,lbl_29_rodata_88,lbl_29_rodata_8C,lbl_29_rodata_90,lbl_29_rodata_94,lbl_29_rodata_98,lbl_29_rodata_9C,lbl_29_rodata_A0,lbl_29_rodata_A4,lbl_29_rodata_A8,lbl_29_rodata_AC,lbl_29_rodata_B0,lbl_29_rodata_B4,lbl_29_rodata_B8,lbl_29_rodata_BC	0x3D4) is the retail's default constructor for the loader's data block: it fills	yes
 0x00001A80	0x1AC	fn_29_1A80	B	behaviour	fn_29_9A74	lbl_29_rodata_6C		yes
 0x00001C2C	0x6C	fn_29_1C2C	B	behaviour	fn_29_C654		, asm 0x0000C7CC	yes
-0x00001C98	0x15C	fn_29_1C98	B	behaviour	fn_29_51D0,fn_29_53E0	lbl_29_rodata_6C,lbl_29_rodata_98		no
+0x00001C98	0x15C	fn_29_1C98	B	behaviour	fn_29_51D0,fn_29_53E0	lbl_29_rodata_6C,lbl_29_rodata_98		yes
 0x00001DF4	0x128	fn_29_1DF4	B	behaviour	fn_29_B294		asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone	no
 0x00001F1C	0x17C	fn_29_1F1C	B	behaviour	fn_29_9D68	lbl_29_rodata_120		yes
 0x00002098	0x58	fn_29_2098	H	host-copy	fn_29_11A7C,fn_29_1F1C,fn_29_2414,fn_29_2B70,fn_29_4F14,fn_29_5CB0,fn_29_9D68,fn_29_C228		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
@@ -49,7 +49,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00002ED8	0x13C	fn_29_2ED8	B	behaviour	fn_29_C9A4	lbl_29_data_0,lbl_29_rodata_6C		yes
 0x00003014	0x128	fn_29_3014	B	behaviour	fn_29_3190			yes
 0x0000313C	0x54	fn_29_313C	B	behaviour	fn_29_3014			yes
-0x00003190	0x23C	fn_29_3190	B	behaviour	fn_29_C9A4	lbl_29_data_A14,lbl_29_data_A18,lbl_29_data_A1C,lbl_29_data_A20,lbl_29_rodata_0,lbl_29_rodata_120,lbl_29_rodata_C4	's seven joint spheres: Ing.rel's own rodata_0 table, seven (locator, radius) pairs.	no
+0x00003190	0x23C	fn_29_3190	B	behaviour	fn_29_C9A4	lbl_29_data_A14,lbl_29_data_A18,lbl_29_data_A1C,lbl_29_data_A20,lbl_29_rodata_0,lbl_29_rodata_120,lbl_29_rodata_C4	's seven joint spheres: Ing.rel's own rodata_0 table, seven (locator, radius) pairs.	yes
 0x000033CC	0x38	fn_29_33CC	B	behaviour	fn_29_3190			yes
 0x00003404	0x20	fn_29_3404	B	behaviour	fn_29_33CC,fn_29_F260			yes
 0x00003424	0x28	fn_29_3424	H	host-copy	fn_29_3404		rstl placement construct: null check + copy ctor (fn_29_3404)	no
@@ -105,7 +105,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x000071B8	0x8C	fn_29_71B8	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x00007244	0x2D4	fn_29_7244	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_E8		yes
 0x00007518	0xA8	fn_29_7518	B	behaviour				yes
-0x000075C0	0xF8	fn_29_75C0	B	behaviour			not yet exercised in a run	no
+0x000075C0	0xF8	fn_29_75C0	B	behaviour			not yet exercised in a run	yes
 0x000076B8	0x658	fn_29_76B8	B	behaviour		lbl_29_data_0,lbl_29_data_C50,lbl_29_rodata_120,lbl_29_rodata_6C,lbl_29_rodata_98		yes
 0x00007D10	0x50	fn_29_7D10	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x00007D60	0x68	fn_29_7D60	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
@@ -238,7 +238,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x0000F12C	0x74	fn_29_F12C	B	behaviour	fn_29_130		CIngBodyProjectileData ctor	yes
 0x0000F1A0	0xC0	fn_29_F1A0	B	behaviour	fn_29_3190			yes
 0x0000F260	0x68	fn_29_F260	H	host-copy	fn_29_F1A0		rstl construct loop over fn_29_3404	no
-0x0000F2C8	0xCC0	fn_29_F2C8	B	behaviour		lbl_29_data_10,lbl_29_data_100,lbl_29_data_10C,lbl_29_data_118,lbl_29_data_124,lbl_29_data_130,lbl_29_data_13C,lbl_29_data_148,lbl_29_data_154,lbl_29_data_160,lbl_29_data_16C,lbl_29_data_178,lbl_29_data_184,lbl_29_data_190,lbl_29_data_19C,lbl_29_data_1A8,lbl_29_data_1B4,lbl_29_data_1C,lbl_29_data_1C0,lbl_29_data_1CC,lbl_29_data_1D8,lbl_29_data_1E4,lbl_29_data_1F0,lbl_29_data_1FC,lbl_29_data_208,lbl_29_data_214,lbl_29_data_220,lbl_29_data_22C,lbl_29_data_238,lbl_29_data_244,lbl_29_data_250,lbl_29_data_28,lbl_29_data_34,lbl_29_data_4,lbl_29_data_40,lbl_29_data_4C,lbl_29_data_560,lbl_29_data_56C,lbl_29_data_578,lbl_29_data_58,lbl_29_data_584,lbl_29_data_590,lbl_29_data_59C,lbl_29_data_5A8,lbl_29_data_5B4,lbl_29_data_5C0,lbl_29_data_5CC,lbl_29_data_5D8,lbl_29_data_5E4,lbl_29_data_5F0,lbl_29_data_5FC,lbl_29_data_608,lbl_29_data_614,lbl_29_data_620,lbl_29_data_62C,lbl_29_data_638,lbl_29_data_64,lbl_29_data_644,lbl_29_data_650,lbl_29_data_65C,lbl_29_data_668,lbl_29_data_674,lbl_29_data_680,lbl_29_data_68C,lbl_29_data_698,lbl_29_data_6A4,lbl_29_data_6B0,lbl_29_data_6BC,lbl_29_data_70,lbl_29_data_7C,lbl_29_data_88,lbl_29_data_88C,lbl_29_data_898,lbl_29_data_8A4,lbl_29_data_8B0,lbl_29_data_8BC,lbl_29_data_8C8,lbl_29_data_8D4,lbl_29_data_8E0,lbl_29_data_8EC,lbl_29_data_8F8,lbl_29_data_904,lbl_29_data_910,lbl_29_data_91C,lbl_29_data_94,lbl_29_data_A0,lbl_29_data_AC,lbl_29_data_B8,lbl_29_data_C4,lbl_29_data_D0,lbl_29_data_DC,lbl_29_data_E8,lbl_29_data_F4		no
+0x0000F2C8	0xCC0	fn_29_F2C8	B	behaviour		lbl_29_data_10,lbl_29_data_100,lbl_29_data_10C,lbl_29_data_118,lbl_29_data_124,lbl_29_data_130,lbl_29_data_13C,lbl_29_data_148,lbl_29_data_154,lbl_29_data_160,lbl_29_data_16C,lbl_29_data_178,lbl_29_data_184,lbl_29_data_190,lbl_29_data_19C,lbl_29_data_1A8,lbl_29_data_1B4,lbl_29_data_1C,lbl_29_data_1C0,lbl_29_data_1CC,lbl_29_data_1D8,lbl_29_data_1E4,lbl_29_data_1F0,lbl_29_data_1FC,lbl_29_data_208,lbl_29_data_214,lbl_29_data_220,lbl_29_data_22C,lbl_29_data_238,lbl_29_data_244,lbl_29_data_250,lbl_29_data_28,lbl_29_data_34,lbl_29_data_4,lbl_29_data_40,lbl_29_data_4C,lbl_29_data_560,lbl_29_data_56C,lbl_29_data_578,lbl_29_data_58,lbl_29_data_584,lbl_29_data_590,lbl_29_data_59C,lbl_29_data_5A8,lbl_29_data_5B4,lbl_29_data_5C0,lbl_29_data_5CC,lbl_29_data_5D8,lbl_29_data_5E4,lbl_29_data_5F0,lbl_29_data_5FC,lbl_29_data_608,lbl_29_data_614,lbl_29_data_620,lbl_29_data_62C,lbl_29_data_638,lbl_29_data_64,lbl_29_data_644,lbl_29_data_650,lbl_29_data_65C,lbl_29_data_668,lbl_29_data_674,lbl_29_data_680,lbl_29_data_68C,lbl_29_data_698,lbl_29_data_6A4,lbl_29_data_6B0,lbl_29_data_6BC,lbl_29_data_70,lbl_29_data_7C,lbl_29_data_88,lbl_29_data_88C,lbl_29_data_898,lbl_29_data_8A4,lbl_29_data_8B0,lbl_29_data_8BC,lbl_29_data_8C8,lbl_29_data_8D4,lbl_29_data_8E0,lbl_29_data_8EC,lbl_29_data_8F8,lbl_29_data_904,lbl_29_data_910,lbl_29_data_91C,lbl_29_data_94,lbl_29_data_A0,lbl_29_data_AC,lbl_29_data_B8,lbl_29_data_C4,lbl_29_data_D0,lbl_29_data_DC,lbl_29_data_E8,lbl_29_data_F4		yes
 0x0000FF88	0xE4	fn_29_FF88	B	behaviour		lbl_29_data_C60		yes
 0x0001006C	0x4C	fn_29_1006C	B	behaviour	fn_29_10EB4			yes
 0x000100B8	0x9C	fn_29_100B8	B	behaviour	fn_29_10F58			yes
@@ -253,12 +253,12 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00010EB4	0xA4	fn_29_10EB4	B	behaviour				yes
 0x00010F58	0x104	fn_29_10F58	B	behaviour		lbl_29_rodata_798		yes
 0x0001105C	0x3DC	fn_29_1105C	B	behaviour	fn_29_9D68	lbl_29_data_C60,lbl_29_rodata_798,lbl_29_rodata_7A8,lbl_29_rodata_7C8		yes
-0x00011438	0x58	fn_29_11438	B	behaviour	fn_29_1105C			no
-0x00011490	0x20	fn_29_11490	B	behaviour	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo,fn_29_1105C			no
+0x00011438	0x58	fn_29_11438	H	host-copy	fn_29_1105C		the exit host effect's trail container copy-assign	no
+0x00011490	0x20	fn_29_11490	H	host-copy	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo,fn_29_1105C		plain CModelData() default ctor wrapper (no behaviour of its own)	no
 0x000114B0	0xC0	fn_29_114B0	H	host-copy		lbl_29_data_CE4	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x00011570	0x2D0	fn_29_11570	B	behaviour	fn_29_11840,fn_29_11CA4	lbl_29_rodata_7E0,lbl_29_rodata_7E4,lbl_29_rodata_7E8,lbl_29_rodata_7EC,lbl_29_rodata_7F0		yes
 0x00011840	0x1A8	fn_29_11840	B	behaviour	fn_29_11A7C	lbl_29_rodata_7F4		yes
-0x000119E8	0x94	fn_29_119E8	B	behaviour	fn_29_11840			no
+0x000119E8	0x94	fn_29_119E8	H	host-copy	fn_29_11840		CBeamInfo copy ctor (0x48 bytes), after TLdrToBeamInfo in fn_29_11840	no
 0x00011A7C	0x198	fn_29_11A7C	B	behaviour	fn_29_11C14	lbl_29_rodata_7F4		yes
 0x00011C14	0x90	fn_29_11C14	B	behaviour				yes
 0x00011CA4	0x1E8	fn_29_11CA4	B	behaviour				yes

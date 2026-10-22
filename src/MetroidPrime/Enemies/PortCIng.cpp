@@ -69,7 +69,11 @@ typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 #define ING_STATE(name) {#name, static_cast< StateFunc >(&CIng::name)}
 #define ING_CODE(name) {#name, static_cast< CodeFunc >(&CIng::name)}
 
-// fn_29_B208's three tables, in the REL's order; the names are its own strings.
+// fn_29_B208's three tables, in the REL's order; the names are its own strings. fn_29_F2C8
+// (0xCC0, branch-free) is their static init: it copies 49 trigger pairs into lbl_29_data_250, 29
+// state pairs into lbl_29_data_6BC and 12 code function pairs into lbl_29_data_91C, each a name
+// and a member pointer; every name and its order matches the three tables below.
+// @ fn_29_F2C8
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     ING_TRIGGER(StateOver),          ING_TRIGGER(IsAlert),
     ING_TRIGGER(IsControllingHost),  ING_TRIGGER(IsFacingTarget),
@@ -159,7 +163,8 @@ void PortIngStandIn(const char* what) {
 
 // `var <id> ing.form|ing.desired|ing.found|ing.safezones [value]`: the form (0x9d4), the desired
 // form (0x9d8), the found-movement-pos flag (0xe5c bit 3) and the safe zone count (0xe2c), so
-// `trigcall` can take the trigger arms a fight rarely draws.
+// `trigcall` can take the trigger arms a fight rarely draws. Also `ing.hurtful|ing.evap|
+// ing.takeoff|ing.coverhint|ing.lurezone|ing.team` (below).
 bool CIng::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
   CIng* ing = dynamic_cast< CIng* >(&ent); // a host-only helper: the console names the class
   if (ing == nullptr) {
@@ -170,6 +175,38 @@ bool CIng::PortConsoleVar(CEntity& ent, const char* name, const int* value, int&
       ing->mFoundMovementPos = *value != 0;
     }
     current = ing->mFoundMovementPos ? 1 : 0;
+    return true;
+  }
+  // Lane ing4: the flag bits (0xe5e bit 4, 0xe5c bit 7, 0xe5c bit 0) and the three ids (0xd72,
+  // 0xd78, 0xd6a; the packed value `objs` prints) the state and team bodies branch on.
+  if (strcmp(name, "ing.hurtful") == 0 || strcmp(name, "ing.evap") == 0 ||
+      strcmp(name, "ing.takeoff") == 0) {
+    const char c = name[4];
+    if (value != nullptr) {
+      if (c == 'h') {
+        ing->mHurtfulZone = *value != 0;
+      } else if (c == 'e') {
+        ing->mEvaporate = *value != 0;
+      } else {
+        ing->mTakeOff = *value != 0;
+      }
+    }
+    current = c == 'h' ? ing->mHurtfulZone : c == 'e' ? ing->mEvaporate : ing->mTakeOff;
+    return true;
+  }
+  TUniqueId* id = nullptr;
+  if (strcmp(name, "ing.coverhint") == 0) {
+    id = &ing->mCoverHintId;
+  } else if (strcmp(name, "ing.lurezone") == 0) {
+    id = &ing->mLureSafeZoneId;
+  } else if (strcmp(name, "ing.team") == 0) {
+    id = &ing->mTeamId;
+  }
+  if (id != nullptr) {
+    if (value != nullptr) {
+      *id = TUniqueId(static_cast< ushort >(*value));
+    }
+    current = id->value;
     return true;
   }
   int* field = nullptr;
@@ -498,6 +535,11 @@ CIng::~CIng() {}
 // changes and the script messages set it active. The joint vector is the retail's fn_29_33CC
 // (0x38, asm 0x33CC: the count at +4 goes up before the element at data + count * 0x68 is built
 // by fn_29_3404 (0x20) and fn_29_3424 (0x28)); the host's vector push is the same step.
+// The Agon Wastes coverage run of 2026-10-22 (lane ing4) ran every arm (gcov 14/14 branches).
+// asmcheck's CALLS/BRANCH/STORE/CALL lines for this id are its reading of the `// @ fn_29_33CC`..
+// `fn_29_3568` lines in the body, which give the lines after them to those ids; the body itself
+// makes each call (string_l, SphereCollision, the manager ctor, AddMaterial, SetMaterialFilter).
+// @ fn_29_3190
 void CIng::CreateCollisionActorManager(CStateManager& mgr) {
   // The joint vector is the retail's own: fn_29_33CC (0x38) pushes an element, fn_29_344C (0xC0)
   // is the element's copy constructor (the two words, the two bytes, the eight floats, the locator
@@ -511,11 +553,12 @@ void CIng::CreateCollisionActorManager(CStateManager& mgr) {
   // @ fn_29_3568 (0x84, asm 0x3568): the array's destruction.
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(7);
+  // asm 0x31C4-0x31D8: the model data's anim data (0x60, +0x10), read once with no null test.
   const CAnimData* anim = GetAnimationData();
-  for (uint i = 0; i < 7; ++i) {
+  for (uint i = 0; i < 7; ++i) { // asm 0x3294: cmplwi r23, 7; blt
     const SIngJointSphere& sphere = skIngJointSpheres[i];
     const rstl::string name = rstl::string_l(sphere.mLocator);
-    const CSegId seg = anim != nullptr ? anim->GetLocatorSegId(name) : CSegId();
+    const CSegId seg = anim->GetLocatorSegId(name); // asm 0x3208: fn_8002BE04
     joints.push_back_unsafe(CJointCollisionDescription::SphereCollision(
         seg, CVector3f::Zero(), sphere.mRadius, name, kIngJointMass));
   }
@@ -1918,9 +1961,8 @@ void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
     mStartAsIngSpot = false; // 0xe5d bit 5
     BodyController()->SetLocomotionType(pas::kLT_Crouch); // 0x000093DC: li r4, 0 (li at 0x000093C4)
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6b4 = 0
-    if (AnimationData() != nullptr) {
-      AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
-    }
+    // asm 0x93F4-0x9410: the model data's anim data (0x60, +0x10) with no null test.
+    AnimationData()->SetEffectState(rstl::string_l("eyes"), false, mgr); // rodata_68E
     break;
   default:
     break;
@@ -1961,8 +2003,11 @@ void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
   } else if (msg == kStateMsg_Update) {
     // 0x00008D60: a harmful zone or the evaporating form knocks the Ing back; otherwise the state
     // ends after a second (the state time comes from the state machine at 0x350).
-    if (!mHurtfulZone && !mEvaporate) {
-      if (mStateTime > 1.f) { // rodata_64 = 1.0
+    if (!mHurtfulZone && !mEvaporate) { // 0x8D64: 0xe5e & 0x10; 0x8D70: 0xe5c & 0x80
+      // 0x8E48-0x8E68: `lwz r3, 0x350(r31)` (0x8E48) + vtable 0x30 (GetTime), the state
+      // machine's time against rodata_64 = 1.0 (ble skips) - not the host's mStateTime, which
+      // LogState clears.
+      if (mStateMachine->GetTime() > 1.f) {
         mAnimationState.SetState(CAnimationState::kAS_Over);
       }
     } else if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) {
@@ -2393,9 +2438,12 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
 // fn_29_75C0 (0xF8, asm 0x000075C0-0x000076B8): the SeekWallPoint state. The arms: the
 // message (asm 0x000075DC and 0x000075E8), the cover hint (asm 0x000075F8), the delta's
 // magnitude (asm 0x00007650) and its length against the wall speed (asm 0x00007640). The run
-// of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing> SeekWallPoint`) ran
-// the three messages (the probe's keys 0, 16 and 32, four calls each); the hint, the magnitude
-// and the length arms did not run (the forced state leaves before the Ing moves). Not marked.
+// of 2026-10-22 (lane ing4, the Agon Wastes area; `var <ing> ing.coverhint <hint>; statecall
+// <ing> SeekWallPoint <msg> <dt>` in one tick, forced) ran every arm (gcov 9/10) but one: the
+// `!IsMagnitudeSafe()` exit after the length test failed. That needs |delta| > dt * the wall
+// speed and |delta|^2 < 1e-28 (or an infinite position), so it is dead for any frame time and
+// wall speed; retail tests in the same order, so the state behaves the same.
+// @ fn_29_75C0
 void CIng::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("SeekWallPoint");
@@ -2408,7 +2456,8 @@ void CIng::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   }
   const CVector3f delta = hint->GetTranslation() - GetTranslation();
   const float maxWall = mData.mIngSpot.GetMaxWallSpeed(); // 0x880
-  if (!delta.IsMagnitudeSafe() || delta.Magnitude() <= dt * maxWall) {
+  // 0x7640: Magnitude() <= dt * 0x880 (ble), then 0x7650: !IsMagnitudeSafe() - retail's order.
+  if (delta.Magnitude() <= dt * maxWall || !delta.IsMagnitudeSafe()) {
     mMoving = false; // 0x0000768C: 0xe5d bit 1
   } else {
     MoveOnSurface(delta.AsNormalized(), maxWall, dt); // 0x00007674: the direction is normalised
@@ -3424,6 +3473,22 @@ void CIng::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// fn_29_3684 (0xA8, asm 0x3684-0x372C): the Ing leaves its team - only when the id at 0xd6a is
+// valid (asm 0x36AC), names a CScriptTeamAiMgr (asm 0x36D0) and the team still counts the Ing
+// (IsPartOfTeam, asm 0x36EC); then QuitTeam (asm 0x3704) and the id goes back to invalid (asm 0x3710).
+// The kSM_Delete (asm 0xCC28) and the Deactivate (asm 0xCCB8) handlers call it.
+static void LeaveTeam(CStateManager& mgr, TUniqueId& teamId, TUniqueId self) {
+  if (teamId == kInvalidUniqueId) {
+    return;
+  }
+  CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(teamId));
+  if (team == nullptr || !team->IsPartOfTeam(self)) {
+    return;
+  }
+  team->QuitTeam(self);
+  teamId = kInvalidUniqueId;
+}
+
 // @ fn_29_C9A4
 void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool wasActive = GetActive(); // asm 0x0000C9C8: CEntity 0x20 bit 7 before the base class
@@ -3483,9 +3548,7 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       mgr.DeleteObjectRequest(mD76Id);
     }
     ReleaseCoverHint(mgr, mCoverHintId); // fn_29_4560
-    if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
-      team->QuitTeam(GetUniqueId()); // fn_29_3684
-    }
+    LeaveTeam(mgr, mTeamId, GetUniqueId()); // fn_29_3684, asm 0x0000CC28
     break;
   case kSM_AreaLoaded:
     mPathArea =
@@ -3512,9 +3575,7 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     if (!mCollisionActorManager.null()) {
       mCollisionActorManager->SetActive(mgr, false); // asm 0x0000CCAC
     }
-    if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamId))) {
-      team->QuitTeam(GetUniqueId()); // fn_29_3684, asm 0x0000CCB8
-    }
+    LeaveTeam(mgr, mTeamId, GetUniqueId()); // fn_29_3684, asm 0x0000CCB8
     StopSfx(); // fn_29_2194, asm 0x0000CD18
     break;
   case kSM_AIUpdateDisabled:
@@ -3977,11 +4038,11 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
     return true;
   }
   if (type == kLNT_SafeZone) {
-    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone.
-    // The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the
-    // Ing) reached it: the lure zone was set and the lure code functions ran 64 and 44 times.
+    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone
     // (0xd78), unless the Ing already has one that is nearer. The retail returns false here.
-    if (distSq >= mData.mHearingRadius * mData.mHearingRadius) {
+    // asm 0x1E58-0x1E60: fcmpo distSq, 0x7c0 squared; cror eq,lt,eq; bne - a noise exactly on the
+    // hearing radius is still heard (the exit is distSq > radius squared).
+    if (distSq > mData.mHearingRadius * mData.mHearingRadius) {
       return false;
     }
     const TUniqueId zoneId =
