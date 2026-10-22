@@ -247,6 +247,11 @@ public:
                        float dt) override;
   void CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                     CStateManager& mgr) override;
+#ifdef TARGET_PC
+  // Port console (`var <id> cp.<name> [value]`): the module's flag bytes and ids, set by a driver
+  // and put back in the same tick, so a state body's arms run on demand.
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+#endif
 
 #ifdef TARGET_PC
   // The body's state machine. Retail fn_9_BDE0 (vtable slot 60) calls the base's setup and

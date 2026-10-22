@@ -11,6 +11,7 @@
 // four-to-twelve-instruction bodies, so they are real rather than stand-ins; fn_9_C2CC (the
 // damage vulnerability) and fn_9_D474 (the projectile info) are real too.
 #include "MetroidPrime/Enemies/CCommandoPirate.hpp"
+#include "port_console.h"
 
 #include "Kyoto/CSimplePool.hpp"
 #include "Kyoto/Animation/CPASAnimParm.hpp"
@@ -4597,6 +4598,97 @@ TUniqueId CCommandoPirate::GetAttackTarget() const { return kInvalidUniqueId; }
 
 // vtable slot 0x114 = fn_9_10 (0xc): the module's own rodata_400, the float 50.
 float CCommandoPirate::GetGravityConstant() const { return 50.f; }
+
+// Port console vars (`var <id> cp.<name> [value]`; no guest code): the flag bytes (cp.c63..c66),
+// x924 (cp.x924), the ids (cp.xbca the target, cp.xbd2 the cover point, cp.xbd6 the wall-hang
+// waypoint, cp.team), the charge speed (cp.chargespeed, 1/1000), the state machine's time in its
+// state (cp.fsmtime, ms), the push vector's x (cp.bb8x, 1/1000) and the charge target set d/1000
+// units along the facing (cp.b94ahead; reads the target's distance along it).
+bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* value,
+                                     int& current) {
+  // No TCastToPtr for the module's class: a patterned actor whose machine's "ShieldCharge" is
+  // this class's own state function is a commando.
+  CPatterned* patterned = TCastToPtr< CPatterned >(&ent);
+  if (patterned == nullptr || strncmp(name, "cp.", 3) != 0 ||
+      patterned->StateMachineState().PortFindStateFunction("ShieldCharge") !=
+          static_cast< CPatterned::StateMachine::StateFunc >(&CCommandoPirate::ShieldCharge)) {
+    return false;
+  }
+  CCommandoPirate* cp = static_cast< CCommandoPirate* >(patterned);
+  name += 3;
+  struct SByteVar {
+    const char* name;
+    uchar* field;
+  };
+  const SByteVar bytes[] = {
+      {"c63", &cp->xc63_}, {"c64", &cp->xc64_}, {"c65", &cp->xc65_}, {"c66", &cp->xc66_}};
+  for (const SByteVar& var : bytes) {
+    if (strcmp(name, var.name) == 0) {
+      if (value != nullptr) {
+        *var.field = static_cast< uchar >(*value);
+      }
+      current = *var.field;
+      return true;
+    }
+  }
+  struct SIdVar {
+    const char* name;
+    TUniqueId* field;
+  };
+  const SIdVar ids[] = {
+      {"xbca", &cp->xbca_}, {"xbd2", &cp->xbd2_}, {"xbd6", &cp->xbd6_}, {"team", &cp->xbc4_teamId}};
+  for (const SIdVar& var : ids) {
+    if (strcmp(name, var.name) == 0) {
+      if (value != nullptr) {
+        *var.field = TUniqueId(static_cast< u16 >(*value));
+      }
+      current = var.field->value;
+      return true;
+    }
+  }
+  if (strcmp(name, "x924") == 0) {
+    if (value != nullptr) {
+      cp->x924_ = *value;
+    }
+    current = cp->x924_;
+    return true;
+  }
+  if (strcmp(name, "chargespeed") == 0) {
+    if (value != nullptr) {
+      cp->mData.mShield.mChargeSpeed = static_cast< float >(*value) / 1000.f;
+    }
+    current = static_cast< int >(cp->mData.mShield.mChargeSpeed * 1000.f);
+    return true;
+  }
+  if (strcmp(name, "fsmtime") == 0) {
+    if (value != nullptr) {
+      cp->StateMachineState().PortSetTime(static_cast< float >(*value) / 1000.f);
+    }
+    current = static_cast< int >(cp->StateMachineState().GetTime() * 1000.f);
+    return true;
+  }
+  if (strcmp(name, "bb8x") == 0) {
+    if (value != nullptr) {
+      cp->xbb8_ = CVector3f(static_cast< float >(*value) / 1000.f, cp->xbb8_.GetY(),
+                            cp->xbb8_.GetZ());
+    }
+    current = static_cast< int >(cp->xbb8_.GetX() * 1000.f);
+    return true;
+  }
+  if (strcmp(name, "b94ahead") == 0) {
+    const CVector3f forward = cp->GetTransform().GetForward();
+    if (value != nullptr) {
+      cp->xb94_ = cp->GetTranslation() + forward * (static_cast< float >(*value) / 1000.f);
+    }
+    current = static_cast< int >(CVector3f::Dot(forward, cp->xb94_ - cp->GetTranslation()) * 1000.f);
+    return true;
+  }
+  return false;
+}
+
+namespace {
+const bool sCpConsoleVars = PortConsole::RegisterVar(&CCommandoPirate::PortConsoleVar);
+} // namespace
 
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_9_168) and entry points.

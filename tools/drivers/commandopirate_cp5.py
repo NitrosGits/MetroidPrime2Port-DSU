@@ -7,12 +7,14 @@ msg: the script messages of AcceptScriptMsg (fn_9_CB40), paired with the forcing
   own resisted shots (ArmShield, then the dark, light and power beams at its collision actor: the
   actor's XRDG with a live weapon).
 xald: two AreaLoaded messages only (the spec's kill arm, from the message's 2nd call on).
+states2: the three state bodies through `statecall`, each arm on demand: the module's fields
+  (`var <id> cp.*`) and the body state forced around the call and put back in the same tick.
 states: the WallHang (fn_9_7358), ShieldCharge (fn_9_8028) and ScriptedShieldCharge (fn_9_7A98)
   states in the Swamp's 05_swamp_timber! (cover points, the attack pattern's waypoints): WallHang
   without a cover point, then after CoverFind; ShieldCharge from 6 and from 2 units; the
   FollowAttackPattern state (its ShouldBoost trigger enters the scripted charge).
 
-usage: commandopirate_cp5.py <port> [outfile|-] [layer|-] [msg|xald|states]
+usage: commandopirate_cp5.py <port> [outfile|-] [layer|-] [msg|xald|states|states2]
 """
 import re
 import socket
@@ -189,6 +191,132 @@ def states(cid):
             run("fsm %s FollowAttackPattern" % cid)
 
 
+def var(cid, name, value=None):
+    out = cmd("var %s cp.%s%s" % (cid, name, "" if value is None else " %d" % value))
+    m = re.search(r"= (-?\d+)", out)
+    return int(m.group(1)) if m else None
+
+
+def tick(*cmds):
+    """several commands in one game tick (the console's `a; b; c`)."""
+    log("%s: %s" % ("; ".join(cmds), cmd("; ".join(cmds))))
+
+
+def pos_of(uid, kind):
+    return objs_of(kind, "").get(uid)
+
+
+def face_sweep(cid, state, kind):
+    """x924 = 0 Update at every 10th yaw: the turn command until the facing is within 10 degrees
+    of xba0 (0x8288 / 0x74C8), then x924 = 1."""
+    p = pos_of(cid, kind)
+    if p is None:
+        return
+    for yaw in range(0, 360, 10):
+        tick("place %s %.3f %.3f %.3f %d" % (cid, p[0], p[1], p[2], yaw),
+             "var %s cp.x924 0" % cid, "statecall %s %s 1" % (cid, state))
+        if var(cid, "x924") == 1:
+            log("%s: x924 = 1 at yaw %d" % (state, yaw))
+            return
+
+
+def forced(cid, name, value, *body):
+    """a forced field around state calls, put back in the same tick."""
+    old = var(cid, name)
+    tick("var %s cp.%s %d" % (cid, name, value), *body, "var %s cp.%s %d" % (cid, name, old))
+
+
+def bits(cid, name, mask, on, *body):
+    old = var(cid, name)
+    forced(cid, name, (old | mask) if on else (old & ~mask & 0xff), *body)
+
+
+def states2(cid, kind, player):
+    """the state bodies through statecall, every arm on demand (cp5): each forced field is set
+    and put back in the same tick as the call."""
+    log("=== commando %s (statecall) ===" % cid)
+    run("send %s Activate" % cid)
+    run("place %s player 6" % cid)
+    wait(20)
+    others = [u for u in objs_of(kind, "CCommandoPirate") if u != cid]
+    sc, ssc, wh = ("statecall %s %s" % (cid, n) for n in
+                   ("ShieldCharge", "ScriptedShieldCharge", "WallHang"))
+    # -- ShieldCharge (fn_9_8028)
+    log("team %s xbca %s" % (var(cid, "team"), var(cid, "xbca")))
+    tick(sc + " 0", sc + " 1")
+    forced(cid, "xbca", 0xffff, sc + " 0")                 # no target (0x8228)
+    forced(cid, "xbca", int(player[1:], 16), sc + " 0")    # the player
+    for o in others:
+        forced(cid, "xbca", int(o[1:], 16), sc + " 0")     # another commando's direction
+    pp = pos_of(player, "player")
+    if pp is not None:                                      # the target straight above/below
+        me = pos_of(cid, kind)
+        tick("place %s %.3f %.3f %.3f" % (cid, pp[0], pp[1], pp[2] + 3.0),
+             "var %s cp.xbca %d" % (cid, int(player[1:], 16)), sc + " 0")
+        if me is not None:
+            run("place %s %.3f %.3f %.3f" % (cid, me[0], me[1], me[2]))
+    forced(cid, "xbca", int(player[1:], 16), sc + " 0")
+    face_sweep(cid, "ShieldCharge", kind)
+    tick("var %s cp.x924 1" % cid, sc + " 1")              # the loop command (mState ready)
+    wait(4)
+    for body in ([sc + " 1"],
+                 ["bodystate %s 9" % cid, sc + " 1"]):
+        tick(*body)
+    loop = "bodystate %s 9" % cid
+    tick(loop, "var %s cp.x924 1" % cid, sc + " 1")
+    bits(cid, "c64", 0x04, True, loop, sc + " 1")           # c64 0x04: the exit
+    bits(cid, "c64", 0x08, False, loop, "var %s cp.b94ahead -2000" % cid, sc + " 1")  # behind
+    forced(cid, "fsmtime", 100000, loop, "var %s cp.b94ahead 20000" % cid, sc + " 1")
+    forced(cid, "chargespeed", 0, loop, "var %s cp.b94ahead 20000" % cid, sc + " 1")
+    bits(cid, "c64", 0x08, True, loop, "var %s cp.b94ahead 20000" % cid,
+         "var %s cp.fsmtime 0" % cid, sc + " 1")
+    bits(cid, "c64", 0x08, True, loop, "var %s cp.b94ahead 20000" % cid,
+         "var %s cp.fsmtime 0" % cid, "var %s cp.bb8x 500" % cid, sc + " 1")
+    bits(cid, "c64", 0x08, False, loop, "var %s cp.b94ahead 20000" % cid,
+         "var %s cp.fsmtime 0" % cid, sc + " 1")
+    tick("var %s cp.x924 7" % cid, sc + " 1")              # neither 0 nor 1
+    bits(cid, "c64", 0x04, True, sc + " 2")
+    tick(sc + " 2")
+    run("bodystate %s 5" % cid)
+    wait(10)
+    # -- ScriptedShieldCharge (fn_9_7A98)
+    tick(ssc + " 0")
+    tick(ssc + " 1")                                        # the loop command (mState ready)
+    wait(4)
+    tick(ssc + " 1")
+    loop9 = [loop]
+    bits(cid, "c64", 0x04, True, *(loop9 + [ssc + " 1"]))
+    for ahead in (-2000, 100, -2000, 100):                  # arrived: behind / inside the box
+        bits(cid, "c64", 0x04, False, *(loop9 + ["var %s cp.b94ahead %d" % (cid, ahead), ssc + " 1"]))
+    bits(cid, "c64", 0x08, True, *(loop9 + ["var %s cp.b94ahead 30000" % cid, ssc + " 1"]))
+    bits(cid, "c64", 0x08, False, *(loop9 + ["var %s cp.b94ahead 30000" % cid, ssc + " 1"]))
+    run("bodystate %s 5" % cid)
+    tick(ssc + " 1")                                        # not ready, not looping
+    bits(cid, "c64", 0x04, True, ssc + " 2")
+    tick(ssc + " 2")
+    wait(10)
+    # -- WallHang (fn_9_7358)
+    forced(cid, "xbd2", 0xffff, wh + " 0", wh + " 2")      # no cover point (0x73D4)
+    covers = list(objs_of("Cover", "Cover"))
+    log("cover points %s" % covers)
+    for c in covers[:3]:
+        forced(cid, "xbd2", int(c[1:], 16), wh + " 0")
+        log("xbd6 %s" % var(cid, "xbd6"))
+    if covers:
+        face_sweep(cid, "WallHang", kind)
+    tick("var %s cp.x924 1" % cid, wh + " 1")              # the wall-hang command
+    wait(4)
+    for _ in range(3):
+        tick("bodystate %s 20" % cid, "var %s cp.x924 1" % cid, wh + " 1")
+        run("place %s player 8" % cid)
+        tick("bodystate %s 20" % cid, "var %s cp.x924 1" % cid, wh + " 1")
+        wait(5)
+    run("bodystate %s 5" % cid)
+    tick("var %s cp.x924 1" % cid, wh + " 1")              # not ready, not hanging
+    tick("var %s cp.x924 7" % cid, wh + " 1", wh + " 2")
+    wait(10)
+
+
 def main():
     wait(100)
     if LAYER is not None:
@@ -208,6 +336,13 @@ def main():
                 run("send %s AreaLoaded" % cid)
                 wait(2)
             log(state_of(cid))
+        log("done (frame %d)" % frame())
+        return
+    if MODE == "states2":
+        players = [u for u in objs_of("player", "CPlayer")]
+        log("players %s" % players)
+        for cid in ids:
+            states2(cid, "commando", players[0] if players else "u0000")
         log("done (frame %d)" % frame())
         return
     if MODE == "states":
