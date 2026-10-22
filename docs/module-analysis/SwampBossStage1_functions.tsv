@@ -1,0 +1,252 @@
+offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
+0x0	0x8	CSwampBossStage1	-	virtual	H	lbl_78_data_510+AC	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_78_0
+0x8	0x3C	CSwampBossStage1	-	virtual	B	lbl_78_data_510+48	marked	marked	fn_78_8
+0x44	0x8	CSwampBossStage1	-	virtual	H	lbl_78_data_510+C8	same body as SwampBossStage2 0x54 (see SwampBossStage2_functions.tsv)	not-port	fn_78_44
+0x4C	0x8	CSwampBossStage1	-	virtual	H	lbl_78_data_510+E0	same body as SpacePirate 0x40 (CPatterned::GetPointSearchPath (CPatterned.hpp:170))	not-port	fn_78_4C
+0x54	0x8	CSwampBossStage1	-	virtual	H	lbl_78_data_510+E4	same body as SpacePirate 0x40 (CPatterned::GetPointSearchPath (CPatterned.hpp:170))	not-port	fn_78_54
+0x5C	0x8	CSwampBossStage1	-	virtual	H	lbl_78_data_510+F4	same body as SpacePirate 0x40 (CPatterned::GetPointSearchPath (CPatterned.hpp:170))	not-port	fn_78_5C
+0x64	0x10	CSwampBossStage1	-	virtual	H	lbl_78_data_510+10C	same body as SwampBossStage2 0x74 (see SwampBossStage2_functions.tsv)	not-port	fn_78_64
+0x74	0xC	CSwampBossStage1	-	virtual	H	lbl_78_data_510+110	same body as SpacePirate 0x48 (CPatterned::IsOnGround (CPatterned.hpp:184))	not-port	fn_78_74
+0x80	0xC	CSwampBossStage1	-	virtual	H	lbl_78_data_510+114	same body as SwampBossStage2 0x90 (see SwampBossStage2_functions.tsv)	not-port	fn_78_80
+0x8C	0x8	CSwampBossStage1	-	virtual	H	lbl_78_data_510+124	same body as SpacePirate 0x54 (CPatterned::GetDeathExplosionParticle (CPatterned.hpp:190))	not-port	fn_78_8C
+0x94	0x8	CSwampBossStage1	-	virtual	H	lbl_78_data_510+A8	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_78_94
+0x9C	0x8	CSwampBossStage1	-	virtual	H	lbl_78_data_510+B0	same body as SpacePirate 0x40 (CPatterned::GetPointSearchPath (CPatterned.hpp:170))	not-port	fn_78_9C
+0xA4	0x1C	CSwampBossStage1	-	virtual	H	lbl_78_data_510+B4	same body as SwampBossStage2 0xb4 (see SwampBossStage2_functions.tsv)	not-port	fn_78_A4
+0xC0	0x2C	CSwampBossStage1	-	virtual	H	lbl_78_data_510+3C	same body as SandBoss 0xd8 (CActor::GetHealthInfo (header inline))	not-port	fn_78_C0
+0xEC	0x24	REL runtime	RELExit	runtime	T	_epilog	REL exit (called by _epilog)	not-port	RELExit
+0x110	0x20	REL runtime	RELMain	runtime	T	_prolog	REL entry (called by _prolog)	not-port	RELMain
+0x130	0x30	CSwampBossStage1	-	func	T	RELMain	RegisterFuncPtrs-style REL setup (only caller RELMain)	not-port	fn_78_130
+0x160	0x314	CSwampBossStage1	-	func	B	fn_78_130	marked	marked	fn_78_160
+0x474	0x40	CSwampBossStage1	-	func	H	fn_78_160	same body as ElitePirate 0xca8 (fn_15_CA8)	not-port	fn_78_474
+0x4B4	0x20	CSwampBossStage1	-	func	H	fn_78_1B54 fn_78_474	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_78_4B4
+0x4D4	0x28	CSwampBossStage1	-	func	H	fn_78_4B4	same body as ElitePirate 0xd08 (fn_15_D08)	not-port	fn_78_4D4
+0x4FC	0x13C	CSwampBossStage1	-	func	H	fn_78_4D4	same body as CommandoPirate 0xaa8 (see CommandoPirate_functions.tsv)	not-port	fn_78_4FC
+0x638	0x6C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_638
+0x6A4	0x54	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_6A4
+0x6F8	0x64	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_6F8
+0x75C	0x60	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_75C
+0x7BC	0x7C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_7BC
+0x838	0x46C	CSwampBossStage1	-	func	H	fn_78_160	SLdr loader copy (SwampBoss.md: DOL copies of the generated SLdr property readers): the port uses the upstream SLdr class	not-port	fn_78_838
+0xCA4	0xAC	CSwampBossStage1	-	func	H	fn_78_160 fn_78_7BC fn_78_A5E4	SLdr loader copy (SwampBoss.md: DOL copies of the generated SLdr property readers): the port uses the upstream SLdr class	not-port	fn_78_CA4
+0xD50	0x134	CSwampBossStage1	-	func	H	fn_78_160	SLdr loader copy (SwampBoss.md: DOL copies of the generated SLdr property readers): the port uses the upstream SLdr class	not-port	fn_78_D50
+0xE84	0x1F0	CSwampBossStage1	-	func	H	fn_78_838	SLdr loader copy (SwampBoss.md: DOL copies of the generated SLdr property readers): the port uses the upstream SLdr class	not-port	fn_78_E84
+0x1074	0x3C	CSwampBossStage1	-	func	H	fn_78_CA4	same body as CommandoPirate 0x4568 (see CommandoPirate_functions.tsv)	not-port	fn_78_1074
+0x10B0	0x54	CSwampBossStage1	-	func	H	fn_78_D50	SLdr loader copy (SwampBoss.md: DOL copies of the generated SLdr property readers): the port uses the upstream SLdr class	not-port	fn_78_10B0
+0x1104	0x1E4	CSwampBossStage1	-	func	H	fn_78_838	SLdr loader copy (SwampBoss.md: DOL copies of the generated SLdr property readers): the port uses the upstream SLdr class	not-port	fn_78_1104
+0x12E8	0xB8	CSwampBossStage1	-	func	H	fn_78_CA4	SLdr loader copy (SwampBoss.md: DOL copies of the generated SLdr property readers): the port uses the upstream SLdr class	not-port	fn_78_12E8
+0x13A0	0x7C	CSwampBossStage1	-	func	H	fn_78_D50	SLdr loader copy (SwampBoss.md: DOL copies of the generated SLdr property readers): the port uses the upstream SLdr class	not-port	fn_78_13A0
+0x141C	0xD0	CSwampBossStage1	-	func	H	fn_78_AA50	the REL's own copy of the DOL's CProjectileInfo constructor (it calls the DOL's __ct__15CProjectileInfoFUiRC11CDamageInfo at 0x1448): the host's ctor (include/MetroidPrime/Weapons/CProjectileInfo.hpp:13) does the same, so the port's member needs no body of its own	not-port	fn_78_141C
+0x14EC	0x84	CSwampBossStage1	-	func	H	fn_78_141C	same body as SwampBossStage2 0xc68c (see SwampBossStage2_functions.tsv)	not-port	fn_78_14EC
+0x1570	0x58	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_1570
+0x15C8	0x54	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_15C8
+0x161C	0x6C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_161C
+0x1688	0x5C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_1688
+0x16E4	0x6C	CSwampBossStage1	-	func	H	fn_78_A5E4	same body as DarkSamus 0x21790 (fn_10_21790)	not-port	fn_78_16E4
+0x1750	0x160	CSwampBossStage1	-	func	H	fn_78_AA50	the REL's own copy of the DOL's CToken copy constructor (the DOL's __ct__6CTokenFRC6CToken and __dt__6CTokenFv): the host's CToken copy ctor (include/Kyoto/CToken.hpp:16) does the same	not-port	fn_78_1750
+0x18B0	0x68	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_18B0
+0x1918	0x8C	CSwampBossStage1	-	func	H	fn_78_A5E4	the REL's own copy of the DOL's CModelData destructor (it calls the DOL's __dt__10CModelDataFv): the host's ~CModelData (include/MetroidPrime/CModelData.hpp:64) does the same	not-port	fn_78_1918
+0x19A4	0x58	CSwampBossStage1	-	func	B	fn_78_19FC fn_78_31E8	the module's own tongue-state reset: the port's body is CSwampBossStage1::ResetTongueState (src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp:1140), called from TongueLoop; the retail calls it with the tongue block (0x3254: `addi r3, r29, 0xc0c`)	marked	fn_78_19A4
+0x19FC	0x158	CSwampBossStage1	-	func	H	fn_78_AA50	the REL's own copy of the DOL's CModelData constructor (it calls the DOL's __ct__10CModelDataFRC10CStaticRes): the host's CModelData (include/MetroidPrime/CModelData.hpp:63) does the same	not-port	fn_78_19FC
+0x1B54	0x38	CSwampBossStage1	-	func	H	fn_78_19FC	the REL's own copy of a DOL member constructor: it sets the member's flag and calls the module's own copy of the DOL's struct ctor (fn_78_4B4, class H, 'same body as ElitePirate 0xd08'), so the host's own member ctor does the same	not-port	fn_78_1B54
+0x1B8C	0x8C	CSwampBossStage1	-	func	H	fn_78_A5E4	the REL's own copy of a DOL destructor (it calls the DOL's fn_8023FD54 and frees the member): the host's own destructor of that member does the same	not-port	fn_78_1B8C
+0x1C18	0x9C	CSwampBossStage1	-	func	H	fn_78_AA50	the REL's own copy of a DOL member constructor: it calls the module's own copy of the DOL's struct copy ctor (fn_78_1D2C, class H, 'same body as ElitePirate 0xb57c'), so the host's own member ctor does the same	not-port	fn_78_1C18
+0x1CB4	0x78	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_1CB4
+0x1D2C	0x64	CSwampBossStage1	-	func	H	fn_78_1C18 fn_78_B270	same body as ElitePirate 0xb57c (fn_15_B57C)	not-port	fn_78_1D2C
+0x1D90	0x7C	CSwampBossStage1	-	func	H	fn_78_A5E4	the REL's own copy of a DOL destructor (it frees the member): the host's own destructor of that member does the same	not-port	fn_78_1D90
+0x1E0C	0x154	CSwampBossStage1	-	func	H	fn_78_AA50	the REL's own copy of the DOL's CElementGen constructor (it news the element gen and copies the CToken): the host's CElementGen (include/Kyoto/Particles/CElementGen.hpp) does the same	not-port	fn_78_1E0C
+0x1F60	0x118	CSwampBossStage1	-	func	B	fn_78_6638 fn_78_67C8	marked	marked	fn_78_1F60
+0x2078	0x88	CSwampBossStage1	-	virtual	B	lbl_78_data_510+A4	marked	marked	fn_78_2078
+0x2100	0x78	CSwampBossStage1	-	virtual	B	lbl_78_data_510+50	the module's own orbit position (the head's locator): the port's body is CSwampBossStage1::GetOrbitPosition (src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp:2121)	marked	fn_78_2100
+0x2178	0x50	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_2178
+0x21C8	0x3C	CSwampBossStage1	-	virtual	B	lbl_78_data_510+68	the module's own scan change (the scanned flag on kSS_Done): the port's body is CSwampBossStage1::OnScanStateChange (src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp:2129)	marked	fn_78_21C8
+0x2204	0xC4	CSwampBossStage1	-	virtual	B	lbl_78_data_510+28	marked	marked	fn_78_2204
+0x22C8	0x264	CSwampBossStage1	-	virtual	B	lbl_78_data_21C+8	marked	marked	fn_78_22C8
+0x252C	0x64	CSwampBossStage1	-	virtual	B	lbl_78_data_4C0+8	marked	marked	fn_78_252C
+0x2590	0x64	CSwampBossStage1	-	virtual	B	lbl_78_data_4B4+8	marked	marked	fn_78_2590
+0x25F4	0x18	CSwampBossStage1	-	virtual	B	lbl_78_data_49C+8	marked	marked	fn_78_25F4
+0x260C	0x11C	CSwampBossStage1	-	func	B	fn_78_38A4 fn_78_86E8	marked	marked	fn_78_260C
+0x2728	0x118	CSwampBossStage1	-	func	B	fn_78_86E8	marked	marked	fn_78_2728
+0x2840	0x64	CSwampBossStage1	-	func	H	fn_78_260C	the DOL's EScriptObjectState 4CC helper (it returns 'IS04'..'IS08' from the index: 0x4953's 0x3034-0x3036): the host's kSS_InternalState values (include/MetroidPrime/CEntityInfo.hpp:247-253) are the same 4CCs	not-port	fn_78_2840
+0x28A4	0x64	CSwampBossStage1	-	func	H	fn_78_2728	the DOL's EScriptObjectState 4CC helper (it returns 'I30'..'I33' from the index: 0x4953's 0x3031-0x3032): the host's kSS_InternalState values (include/MetroidPrime/CEntityInfo.hpp:247-250) are the same 4CCs	not-port	fn_78_28A4
+0x2908	0xBC	CSwampBossStage1	-	func	B	fn_78_5268	marked	marked	fn_78_2908
+0x29C4	0x88	CSwampBossStage1	-	func	B	fn_78_5268	marked	marked	fn_78_29C4
+0x2A4C	0xD4	CSwampBossStage1	-	func	B	fn_78_260C fn_78_2728 fn_78_3EB8	marked	marked	fn_78_2A4C
+0x2B20	0x11C	CSwampBossStage1	-	func	B	fn_78_2E38	marked	marked	fn_78_2B20
+0x2C3C	0x3C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_2C3C
+0x2C78	0x184	CSwampBossStage1	-	func	H	fn_78_2B20 fn_78_4D3C	same body as ElitePirate 0x9ab0 (fn_15_9AB0)	not-port	fn_78_2C78
+0x2DFC	0x3C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_2DFC
+0x2E38	0x250	CSwampBossStage1	-	func	B	fn_78_31E8 fn_78_35DC fn_78_3694 fn_78_4280 fn_78_44CC fn_78_4984 fn_78_4AA8	marked	marked	fn_78_2E38
+0x3088	0x40	CSwampBossStage1	-	func	H	fn_78_2E38	same body as EmperorIngStage3 0x39a0 (CVector3f (header inline))	not-port	fn_78_3088
+0x30C8	0x120	CSwampBossStage1	-	func	B	fn_78_2E38	marked	marked	fn_78_30C8
+0x31E8	0x138	CSwampBossStage1	-	virtual	B	lbl_78_data_2E8+8	marked	marked	fn_78_31E8
+0x3320	0xC8	CSwampBossStage1	-	virtual	B	lbl_78_data_24C+8	marked	marked	fn_78_3320
+0x33E8	0x5C	CSwampBossStage1	-	virtual	H	lbl_78_data_70C+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_78_33E8
+0x3444	0x48	CSwampBossStage1	-	virtual	H	lbl_78_data_718+8	same body as CommandoPirate 0x2a50 (see CommandoPirate_functions.tsv)	not-port	fn_78_3444
+0x348C	0xF4	CSwampBossStage1	-	virtual	B	lbl_78_data_240+8	marked	marked	fn_78_348C
+0x3580	0x5C	CSwampBossStage1	-	virtual	H	lbl_78_data_700+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_78_3580
+0x35DC	0xB8	CSwampBossStage1	-	func	B	fn_78_3320 fn_78_348C	marked	marked	fn_78_35DC
+0x3694	0x1B4	CSwampBossStage1	-	virtual	B	lbl_78_data_234+8	marked	marked	fn_78_3694
+0x3848	0x5C	CSwampBossStage1	-	virtual	H	lbl_78_data_6F4+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_78_3848
+0x38A4	0x68	CSwampBossStage1	-	virtual	B	lbl_78_data_270+8	marked	marked	fn_78_38A4
+0x390C	0x58	CSwampBossStage1	-	func	B	fn_78_44CC	marked	marked	fn_78_390C
+0x3964	0x5C	CSwampBossStage1	-	func	B	fn_78_44CC	marked	marked	fn_78_3964
+0x39C0	0x110	CSwampBossStage1	-	func	B	fn_78_44CC	marked	marked	fn_78_39C0
+0x3AD0	0x264	CSwampBossStage1	-	func	B	fn_78_44CC	marked	marked	fn_78_3AD0
+0x3D34	0x118	CSwampBossStage1	-	func	B	fn_78_3E4C fn_78_3E90	marked	marked	fn_78_3D34
+0x3E4C	0x44	CSwampBossStage1	-	func	B	fn_78_44CC	marked	marked	fn_78_3E4C
+0x3E90	0x28	CSwampBossStage1	-	func	B	fn_78_22C8 fn_78_3694 fn_78_4280	marked	marked	fn_78_3E90
+0x3EB8	0x360	CSwampBossStage1	-	func	B	fn_78_86E8	marked	marked	fn_78_3EB8
+0x4218	0x68	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_4218
+0x4280	0x230	CSwampBossStage1	-	virtual	B	lbl_78_data_300+8	marked	marked	fn_78_4280
+0x44B0	0x1C	CSwampBossStage1	-	virtual	B	lbl_78_data_B8+8	marked	marked	fn_78_44B0
+0x44CC	0x3A4	CSwampBossStage1	-	virtual	B	lbl_78_data_2F4+8	marked	marked	fn_78_44CC
+0x4870	0x38	CSwampBossStage1	-	func	B	fn_78_44CC	marked	marked	fn_78_4870
+0x48A8	0xDC	CSwampBossStage1	-	func	B	fn_78_44CC	marked	marked	fn_78_48A8
+0x4984	0x124	CSwampBossStage1	-	virtual	B	lbl_78_data_264+8	marked	marked	fn_78_4984
+0x4AA8	0x1E8	CSwampBossStage1	-	virtual	B	lbl_78_data_1E0+8	marked	marked	fn_78_4AA8
+0x4C90	0x8C	CSwampBossStage1	-	virtual	B	lbl_78_data_2D0+8	marked	marked	fn_78_4C90
+0x4D1C	0x20	CSwampBossStage1	-	virtual	B	lbl_78_data_C4+8	marked	marked	fn_78_4D1C
+0x4D3C	0x11C	CSwampBossStage1	-	virtual	B	fn_78_5D6C lbl_78_data_2C4+8	marked	marked	fn_78_4D3C
+0x4E58	0x230	CSwampBossStage1	-	func	B	fn_78_5088 fn_78_5188	marked	marked	fn_78_4E58
+0x5088	0x94	CSwampBossStage1	-	virtual	B	lbl_78_data_2B8+8	marked	marked	fn_78_5088
+0x511C	0x6C	CSwampBossStage1	-	func	B	fn_78_4280 fn_78_4AA8 fn_78_5088 fn_78_5188 fn_78_5784	marked	marked	fn_78_511C
+0x5188	0xE0	CSwampBossStage1	-	virtual	B	lbl_78_data_1EC+8	marked	marked	fn_78_5188
+0x5268	0x9C	CSwampBossStage1	-	virtual	B	lbl_78_data_204+8	marked	marked	fn_78_5268
+0x5304	0x70	CSwampBossStage1	-	virtual	B	lbl_78_data_258+8	marked	marked	fn_78_5304
+0x5374	0x128	CSwampBossStage1	-	virtual	B	lbl_78_data_228+8	marked	marked	fn_78_5374
+0x549C	0x7C	CSwampBossStage1	-	func	B	fn_78_568C fn_78_6358 fn_78_63D8	marked	marked	fn_78_549C
+0x5518	0x48	CSwampBossStage1	-	func	B	fn_78_549C fn_78_568C fn_78_5E84 fn_78_95D8 fn_78_9B74	marked	marked	fn_78_5518
+0x5560	0x4C	CSwampBossStage1	-	func	B	fn_78_31E8 fn_78_35DC fn_78_3694 fn_78_4280 fn_78_44CC fn_78_4984 fn_78_4AA8 fn_78_4D3C fn_78_5088 fn_78_5374 fn_78_5784 fn_78_587C fn_78_5984 fn_78_5A88 fn_...	marked	marked	fn_78_5560
+0x55AC	0x6C	CSwampBossStage1	-	func	H	fn_78_5560	same body in 2 other modules (DarkTrooper,ElitePirate)	not-port	fn_78_55AC
+0x5618	0x74	CSwampBossStage1	-	func	H	fn_78_55AC	same body in 5 other modules (DarkSamus,DarkTrooper,ElitePirate)	not-port	fn_78_5618
+0x568C	0xF8	CSwampBossStage1	-	func	B	fn_78_4AA8 fn_78_4C90 fn_78_587C fn_78_5984 fn_78_5D6C fn_78_95D8	marked	marked	fn_78_568C
+0x5784	0xF8	CSwampBossStage1	-	virtual	B	lbl_78_data_288+8	marked	marked	fn_78_5784
+0x587C	0x108	CSwampBossStage1	-	virtual	B	lbl_78_data_1F8+8	marked	marked	fn_78_587C
+0x5984	0x104	CSwampBossStage1	-	virtual	B	lbl_78_data_2AC+8	marked	marked	fn_78_5984
+0x5A88	0x1A8	CSwampBossStage1	-	virtual	B	lbl_78_data_2A0+8	marked	marked	fn_78_5A88
+0x5C30	0xA4	CSwampBossStage1	-	virtual	B	lbl_78_data_4A8+8	marked	marked	fn_78_5C30
+0x5CD4	0x8	CSwampBossStage1	-	virtual	B	lbl_78_data_94+8	marked	marked	fn_78_5CD4
+0x5CDC	0x90	CSwampBossStage1	-	func	B	fn_78_5C30	marked	marked	fn_78_5CDC
+0x5D6C	0x94	CSwampBossStage1	-	virtual	B	lbl_78_data_27C+8	marked	marked	fn_78_5D6C
+0x5E00	0x84	CSwampBossStage1	-	virtual	B	lbl_78_data_10+8	marked	marked	fn_78_5E00
+0x5E84	0x1B0	CSwampBossStage1	-	virtual	B	lbl_78_data_294+8	marked	marked	fn_78_5E84
+0x6034	0x164	CSwampBossStage1	-	virtual	B	lbl_78_data_210+8	marked	marked	fn_78_6034
+0x6198	0xB4	CSwampBossStage1	-	virtual	B	lbl_78_data_2DC+8	marked	marked	fn_78_6198
+0x624C	0x10C	CSwampBossStage1	-	virtual	B	lbl_78_data_34+8	marked	marked	fn_78_624C
+0x6358	0x80	CSwampBossStage1	-	virtual	B	lbl_78_data_64+8	marked	marked	fn_78_6358
+0x63D8	0x80	CSwampBossStage1	-	virtual	B	lbl_78_data_88+8	marked	marked	fn_78_63D8
+0x6458	0x78	CSwampBossStage1	-	virtual	B	lbl_78_data_7C+8	marked	marked	fn_78_6458
+0x64D0	0x6C	CSwampBossStage1	-	virtual	B	lbl_78_data_70+8	marked	marked	fn_78_64D0
+0x653C	0xC	CSwampBossStage1	-	virtual	B	lbl_78_data_4+8	marked	marked	fn_78_653C
+0x6548	0x48	CSwampBossStage1	-	virtual	B	fn_78_5E00 fn_78_6358 fn_78_6458 lbl_78_data_4C+8	marked	marked	fn_78_6548
+0x6590	0x58	CSwampBossStage1	-	virtual	B	lbl_78_data_40+8	marked	marked	fn_78_6590
+0x65E8	0x8	CSwampBossStage1	-	virtual	B	lbl_78_data_28+8	marked	marked	fn_78_65E8
+0x65F0	0x48	CSwampBossStage1	-	virtual	B	lbl_78_data_1C+8	marked	marked	fn_78_65F0
+0x6638	0x9C	CSwampBossStage1	-	virtual	B	lbl_78_data_AC+8	marked	marked	fn_78_6638
+0x66D4	0x14	CSwampBossStage1	-	virtual	B	lbl_78_data_A0+8	marked	marked	fn_78_66D4
+0x66E8	0xE0	CSwampBossStage1	-	func	B	fn_78_3EB8 fn_78_6638 fn_78_67C8	marked	marked	fn_78_66E8
+0x67C8	0x9C	CSwampBossStage1	-	virtual	B	lbl_78_data_58+8	marked	marked	fn_78_67C8
+0x6864	0x8C	CSwampBossStage1	-	func	B	fn_78_95D8	marked	marked	fn_78_6864
+0x68F0	0x68	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_68F0
+0x6958	0x54	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_6958
+0x69AC	0x2C	CSwampBossStage1	-	virtual	H	lbl_78_data_510+54	same body in 1 other modules (MinorIng)	not-port	fn_78_69AC
+0x69D8	0x20	CSwampBossStage1	-	virtual	H	lbl_78_data_510+40	a pure forward: it calls the base class's GetDamageVulnerability (0x69E4) and the port gets that from CPatterned (include/MetroidPrime/Enemies/CPatterned.hpp:127)	not-port	fn_78_69D8
+0x69F8	0x184	CSwampBossStage1	-	virtual	B	lbl_78_data_510+24	marked	marked	fn_78_69F8
+0x6B7C	0x70	CSwampBossStage1	-	func	B	fn_78_22C8 fn_78_3694 fn_78_4280 fn_78_6BEC fn_78_6C2C	marked	marked	fn_78_6B7C
+0x6BEC	0x40	CSwampBossStage1	-	func	B	fn_78_3694 fn_78_4280 fn_78_5784 fn_78_729C fn_78_86E8	marked	marked	fn_78_6BEC
+0x6C2C	0xDC	CSwampBossStage1	-	func	B	fn_78_86E8	marked	marked	fn_78_6C2C
+0x6D08	0x464	CSwampBossStage1	-	func	B	fn_78_7AE4	marked	marked	fn_78_6D08
+0x716C	0xB8	CSwampBossStage1	-	func	B	fn_78_31E8 fn_78_35DC fn_78_3694 fn_78_4280 fn_78_44CC fn_78_4984	marked	marked	fn_78_716C
+0x7224	0x3C	CSwampBossStage1	-	func	B	fn_78_35DC fn_78_3694 fn_78_4280	marked	marked	fn_78_7224
+0x7260	0x3C	CSwampBossStage1	-	func	B	fn_78_31E8 fn_78_4984	marked	marked	fn_78_7260
+0x729C	0x108	CSwampBossStage1	-	func	B	fn_78_35DC fn_78_3694 fn_78_4280 fn_78_4984	marked	marked	fn_78_729C
+0x73A4	0x9C	CSwampBossStage1	-	func	B	fn_78_31E8	marked	marked	fn_78_73A4
+0x7440	0x2EC	CSwampBossStage1	-	func	B	fn_78_716C	marked	marked	fn_78_7440
+0x772C	0x5C	CSwampBossStage1	-	func	H	fn_78_7440	same body as EmperorIngStage3 0x3ac (CRayCastResult (header inline))	not-port	fn_78_772C
+0x7788	0x3C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_7788
+0x77C4	0x98	CSwampBossStage1	-	func	B	fn_78_30C8 fn_78_3EB8 fn_78_44CC fn_78_624C fn_78_6C2C fn_78_73A4	marked	marked	fn_78_77C4
+0x785C	0x34	CSwampBossStage1	-	virtual	B	lbl_78_data_510+6C	marked	marked	fn_78_785C
+0x7890	0x218	CSwampBossStage1	-	virtual	B	lbl_78_data_510+34	marked	marked	fn_78_7890
+0x7AA8	0x3C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_7AA8
+0x7AE4	0x148	CSwampBossStage1	-	virtual	B	lbl_78_data_510+2C	marked	marked	fn_78_7AE4
+0x7C2C	0x23C	CSwampBossStage1	-	func	B	fn_78_86E8	marked	marked	fn_78_7C2C
+0x7E68	0x58	CSwampBossStage1	-	func	H	fn_78_7C2C	same body as ElitePirate 0x2730 (fn_15_2730)	not-port	fn_78_7E68
+0x7EC0	0x54	CSwampBossStage1	-	func	H	fn_78_7E68	same body as CommandoPirate 0x23d0 (see CommandoPirate_functions.tsv)	not-port	fn_78_7EC0
+0x7F14	0x24	CSwampBossStage1	-	func	H	fn_78_7C2C	the module's reader of the SLdr damage info (it calls the DOL's LdrToDamageInfo, fn_78_7F38, class H, 'same body as EmperorIngStage3 0xa2ec (SLdrDamageInfo (header inline))'): the port reads the properties through the upstream SLdrDamageInfo (include/MetroidPrime/ScriptLoader/Structs/SLdrDamageInfo.hpp:7)	not-port	fn_78_7F14
+0x7F38	0xCC	CSwampBossStage1	-	func	H	fn_78_7F14	same body as EmperorIngStage3 0xa2ec (SLdrDamageInfo (header inline))	not-port	fn_78_7F38
+0x8004	0x8	CSwampBossStage1	-	virtual	B	lbl_78_data_510+DC	marked	marked	fn_78_8004
+0x800C	0x19C	CSwampBossStage1	-	func	B	fn_78_86E8	marked	marked	fn_78_800C
+0x81A8	0x48	CSwampBossStage1	-	func	H	fn_78_800C	same body as ElitePirate 0x776c (fn_15_776C)	not-port	fn_78_81A8
+0x81F0	0xB4	CSwampBossStage1	-	func	H	fn_78_81A8 fn_78_84E8	same body as ElitePirate 0x77b4 (fn_15_77B4)	not-port	fn_78_81F0
+0x82A4	0x40	CSwampBossStage1	-	func	H	fn_78_81F0	same body as ElitePirate 0x7868 (fn_15_7868)	not-port	fn_78_82A4
+0x82E4	0x20	CSwampBossStage1	-	func	H	fn_78_82A4 fn_78_8574	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_78_82E4
+0x8304	0x28	CSwampBossStage1	-	func	H	fn_78_82E4	same body as ElitePirate 0xd08 (fn_15_D08)	not-port	fn_78_8304
+0x832C	0x80	CSwampBossStage1	-	func	H	fn_78_8304	same body as CommandoPirate 0x61d8 (see CommandoPirate_functions.tsv)	not-port	fn_78_832C
+0x83AC	0x3C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_83AC
+0x83E8	0x3C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_83E8
+0x8424	0x5C	CSwampBossStage1	-	func	H	fn_78_81A8 fn_78_84E8 fn_78_8694	same body as ElitePirate 0x79e8 (fn_15_79E8)	not-port	fn_78_8424
+0x8480	0x20	CSwampBossStage1	-	func	H	fn_78_8424	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_78_8480
+0x84A0	0x48	CSwampBossStage1	-	func	H	fn_78_8480	same body as CommandoPirate 0x600c (see CommandoPirate_functions.tsv)	not-port	fn_78_84A0
+0x84E8	0x8C	CSwampBossStage1	-	func	H	fn_78_800C	same body as Sandworm 0x86cc (see Sandworm_functions.tsv)	not-port	fn_78_84E8
+0x8574	0x38	CSwampBossStage1	-	func	H	fn_78_84E8	same body as Sandworm 0x898c (see Sandworm_functions.tsv)	not-port	fn_78_8574
+0x85AC	0x70	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_85AC
+0x861C	0x78	CSwampBossStage1	-	func	H	fn_78_84E8	same body as Sandworm 0x8a34 (see Sandworm_functions.tsv)	not-port	fn_78_861C
+0x8694	0x54	CSwampBossStage1	-	func	H	fn_78_800C	same body as ElitePirate 0x7aac (fn_15_7AAC)	not-port	fn_78_8694
+0x86E8	0x180	CSwampBossStage1	-	virtual	B	lbl_78_data_510+70	marked	marked	fn_78_86E8
+0x8868	0xEC	CSwampBossStage1	-	func	B	fn_78_4AA8 fn_78_6198	marked	marked	fn_78_8868
+0x8954	0x268	CSwampBossStage1	-	func	B	fn_78_95D8	marked	marked	fn_78_8954
+0x8BBC	0x84	CSwampBossStage1	-	func	H	fn_78_8954	same body as ElitePirate 0x3bd8 (fn_15_3BD8)	not-port	fn_78_8BBC
+0x8C40	0x38	CSwampBossStage1	-	func	H	fn_78_8BBC	same body as ElitePirate 0x3b40 (fn_15_3B40)	not-port	fn_78_8C40
+0x8C78	0x60	CSwampBossStage1	-	func	H	fn_78_8C40	same body as CommandoPirate 0x4940 (see CommandoPirate_functions.tsv)	not-port	fn_78_8C78
+0x8CD8	0x108	CSwampBossStage1	-	func	B	fn_78_8954	marked	marked	fn_78_8CD8
+0x8DE0	0x38	CSwampBossStage1	-	func	H	fn_78_8CD8	same body as ElitePirate 0x3288 (fn_15_3288)	not-port	fn_78_8DE0
+0x8E18	0x20	CSwampBossStage1	-	func	H	fn_78_8DE0 fn_78_BC68	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_78_8E18
+0x8E38	0x28	CSwampBossStage1	-	func	H	fn_78_8E18	same body as ElitePirate 0x32e0 (fn_15_32E0)	not-port	fn_78_8E38
+0x8E60	0xC0	CSwampBossStage1	-	func	H	fn_78_8CD8 fn_78_8E38	same body as ElitePirate 0x3308 (fn_15_3308)	not-port	fn_78_8E60
+0x8F20	0x5C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_8F20
+0x8F7C	0x74	CSwampBossStage1	-	func	B	fn_78_4E58 fn_78_7C2C fn_78_8FF0	marked	marked	fn_78_8F7C
+0x8FF0	0x1B8	CSwampBossStage1	-	func	B	fn_78_95D8	marked	marked	fn_78_8FF0
+0x91A8	0x22C	CSwampBossStage1	-	func	B	fn_78_95D8	marked	marked	fn_78_91A8
+0x93D4	0x204	CSwampBossStage1	-	func	B	fn_78_6034 fn_78_6198	marked	marked	fn_78_93D4
+0x95D8	0x16C	CSwampBossStage1	-	virtual	B	lbl_78_data_510+14	marked	marked	fn_78_95D8
+0x9744	0x1F8	CSwampBossStage1	-	func	B	fn_78_31E8 fn_78_348C fn_78_3694 fn_78_38A4 fn_78_4280 fn_78_44CC fn_78_4984 fn_78_4AA8 fn_78_4D3C fn_78_5088 fn_78_5188 fn_78_5268 fn_78_5304 fn_78_5374 fn_...	marked	marked	fn_78_9744
+0x993C	0xE0	CSwampBossStage1	-	func	B	fn_78_95D8	marked	marked	fn_78_993C
+0x9A1C	0x28	CSwampBossStage1	-	func	B	fn_78_48A8 fn_78_9744 fn_78_9AD8	marked	marked	fn_78_9A1C
+0x9A44	0x94	CSwampBossStage1	-	virtual	B	lbl_78_data_510+84	the module's own CollidedWith: the port's body is CSwampBossStage1::CollidedWith (src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp:2196); ALL-ARMS (7/7 lines, 6/6 branches) in the coverage run of 2026-10-22	marked	fn_78_9A44
+0x9AD8	0x9C	CSwampBossStage1	-	func	B	fn_78_9B74	marked	marked	fn_78_9AD8
+0x9B74	0x9B4	CSwampBossStage1	-	virtual	B	lbl_78_data_510+18	marked	marked	fn_78_9B74
+0xA528	0x48	CSwampBossStage1	-	func	B	fn_78_2078 fn_78_9B74	marked	marked	fn_78_A528
+0xA570	0x44	CSwampBossStage1	-	virtual	B	lbl_78_data_510+74	marked	marked	fn_78_A570
+0xA5B4	0x18	CSwampBossStage1	-	func	B	fn_78_4D3C fn_78_5CDC fn_78_5D6C fn_78_5E84	marked	marked	fn_78_A5B4
+0xA5CC	0x18	CSwampBossStage1	-	func	B	fn_78_587C fn_78_5984 fn_78_6198	marked	marked	fn_78_A5CC
+0xA5E4	0x160	CSwampBossStage1	-	virtual	H	lbl_78_data_510+8	the module's destructor: the port's ~CSwampBossStage1 runs the host's ~CPatterned (include/MetroidPrime/Enemies/CPatterned.hpp:115), so the base's destructor does this work	not-port	fn_78_A5E4
+0xA744	0x1E4	CSwampBossStage1	-	func	H	fn_78_A5E4	same body as EmperorIngStage3 0x96e8 (CPatterned::~CPatterned (the host))	not-port	fn_78_A744
+0xA928	0x94	CSwampBossStage1	-	func	H	fn_78_A744	same body as EmperorIngStage3 0x98cc (CPatterned::~CPatterned (the host))	not-port	fn_78_A928
+0xA9BC	0x94	CSwampBossStage1	-	func	H	fn_78_A5E4	the REL's own copy of a DOL destructor (it destroys the CToken member and frees the member): the host's own destructor of that member does the same	not-port	fn_78_A9BC
+0xAA50	0x35C	CSwampBossStage1	-	func	B	fn_78_160	marked	marked	fn_78_AA50
+0xADAC	0x58	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_ADAC
+0xAE04	0x58	CSwampBossStage1	-	func	H	fn_78_AA50	the REL's own copy of a DOL member constructor: it sets the member's -1000.0f (0xAE14) and calls the module's own copy of the DOL's struct ctor (fn_78_AE5C, class H, 'same body as ElitePirate 0x2b08'), so the host's own member ctor does the same	not-port	fn_78_AE04
+0xAE5C	0x5C	CSwampBossStage1	-	func	H	fn_78_AE04	same body as ElitePirate 0x2b08 (fn_15_2B08)	not-port	fn_78_AE5C
+0xAEB8	0x54	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_AEB8
+0xAF0C	0x130	CSwampBossStage1	-	func	H	fn_78_AE5C	same body as CommandoPirate 0xd344 (see CommandoPirate_functions.tsv)	not-port	fn_78_AF0C
+0xB03C	0x5C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_B03C
+0xB098	0x58	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_B098
+0xB0F0	0x64	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_B0F0
+0xB154	0x90	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_B154
+0xB1E4	0x8C	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_B1E4
+0xB270	0x204	CSwampBossStage1	-	func	H	fn_78_AA50	the REL's own copy of the SLdr struct's copy constructor (it calls the DOL's copy ctors fn_78_1D2C and fn_78_B630): the port reads the properties through the upstream SLdr class (include/MetroidPrime/ScriptLoader/SLdrSwampBossStage1.inc)	not-port	fn_78_B270
+0xB474	0x1BC	CSwampBossStage1	-	func	H	fn_78_B270	the REL's own copy of the SLdr struct's copy constructor: the port reads the properties through the upstream SLdr class (include/MetroidPrime/ScriptLoader/SLdrSwampBossStage1.inc)	not-port	fn_78_B474
+0xB630	0x2BC	CSwampBossStage1	-	func	H	fn_78_B270	same body as IngBoostBallGuardian 0x108d4 (the module's own memberwise copy of a parameter block)	not-port	fn_78_B630
+0xB8EC	0x84	CSwampBossStage1	-	func	H	fn_78_AA50	same body as ElitePirate 0xb748 (fn_15_B748)	not-port	fn_78_B8EC
+0xB970	0x60	CSwampBossStage1	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_78_B970
+0xB9D0	0xCC	CSwampBossStage1	-	func	B	fn_78_348C fn_78_4AA8	marked	marked	fn_78_B9D0
+0xBA9C	0x10C	CSwampBossStage1	-	func	B	fn_78_3694 fn_78_4280 fn_78_5374 fn_78_5784 fn_78_587C fn_78_5984 fn_78_5A88 fn_78_5E84 fn_78_6034	marked	marked	fn_78_BA9C
+0xBBA8	0xC0	CSwampBossStage1	-	func	H	fn_78_8954	same body as ElitePirate 0xbf6c (fn_15_BF6C)	not-port	fn_78_BBA8
+0xBC68	0x68	CSwampBossStage1	-	func	H	fn_78_BBA8	same body as ElitePirate 0xc02c (fn_15_C02C)	not-port	fn_78_BC68
+0xBCD0	0x3C	CSwampBossStage1	-	func	H	fn_78_8	same body as ElitePirate 0xc094 (fn_15_C094)	not-port	fn_78_BCD0
+0xBD0C	0x6A0	CSwampBossStage1	-	static-init	H	-	the module's static initialiser (.ctors entry) that builds the FSM state/trigger/code table: the port builds the same table as its static skTriggers/skStates/skCodeFunctions (src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp:2234-2260) and registers it in CSwampBossStage1::SetupStateMachine (MinorIng fn_44_ABCC precedent)	not-port	fn_78_BD0C
+0xC3AC	0xC4	REL runtime	_unresolved	runtime	T	-	REL runtime (crtexe) unresolved-symbol trap	not-port	_unresolved
+0xC470	0x24	REL runtime	_epilog	runtime	T	-	REL runtime (crtexe) module exit	not-port	_epilog
+0xC494	0x24	REL runtime	_prolog	runtime	T	-	REL runtime (crtexe) module entry	not-port	_prolog
+0xC4B8	0x4C	REL runtime	ModuleDestructors	runtime	T	_epilog	REL runtime (crtexe) _dtors walker	not-port	ModuleDestructors
+0xC504	0x4C	REL runtime	ModuleConstructors	runtime	T	_prolog	REL runtime (crtexe) _ctors walker	not-port	ModuleConstructors
