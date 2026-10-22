@@ -1,0 +1,10 @@
+# dsfsm (tools/cov/specs/darksamus_dsfsm.py): rooftop boss u04f7 (Sanctuary 10_cliff_rooftop layer 2).
+# DiveAfterBoost keys, EnrageHitReact, Null, then Dead during the boost ball (the roll emitter set).
+@f600 send u04f7 Activate; god 1
+@f625 trigcall u04f7 DiveAfterBoost 111; trigcall u04f7 DiveAfterBoost 110; trigcall u04f7 DiveAfterBoost 119; trigcall u04f7 DiveAfterBoost 112; trigcall u04f7 DiveAfterBoost 119
+@f650 trigcall u04f7 DiveAfterBoost 113; trigcall u04f7 DiveAfterBoost 114; trigcall u04f7 DiveAfterBoost 119; trigcall u04f7 DiveAfterBoost 111
+@f675 fsm u04f7 EnrageHitReact
+@f750 fsm u04f7 Null
+@f800 fsm u04f7 BoostBallInto
+@f830 fsm u04f7 Dead
+@f950 status

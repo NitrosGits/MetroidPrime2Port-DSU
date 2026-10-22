@@ -22,6 +22,7 @@
 #include "MetroidPrime/Enemies/CDarkSamusBoostBall.hpp"
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CEnvFxManager.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
 #include "WorldFormat/CMetroidAreaCollider.hpp"
 #include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
@@ -1176,9 +1177,24 @@ bool CDarkSamus::CanMissileDeflect(CStateManager& mgr, const CTriggerData&) cons
   return stage->GetMissileDeflectTime() > 0.f; // 0x000142B0 fcmpo, extrwi r3,r0,1,1 (GT)
 }
 
-bool CDarkSamus::DiveAfterBoost(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_95A8", "trigger DiveAfterBoost");
-  return false;
+// fn_10_95A8 (0x000095A8, 0x7C bytes): the DiveAfterBoost trigger. With the boost ball's bit 0x20
+// of 0xEBC (`extrwi r0, r0, 1, 26` at 0x000095C8, the PowerPC bit 26 being 1u << (31 - 26) =
+// 0x20; `cmplwi r0, 0x1` at 0x000095CC) the trigger answers false (0x000095D4). Otherwise the
+// stage info (fn_10_17E14, 0x000095DC; null answers false at 0x000095E4) answers with its byte
+// +0x78 (`lbz r0, 0x78(r3)` at 0x000095F4, `cmplwi r0, 0x1` at 0x000095F8): the bool
+// unknown_0x2d7551e6, the one after the boostBall float (+0x74) in SLdrDSStageInfo.
+// Run (darksamus_dsfsm.py, `trigcall`): the bit set and no stage forced; the byte 0 natural (the
+// shipped value), 1 forced (true).
+// @ fn_10_95A8
+bool CDarkSamus::DiveAfterBoost(CStateManager& mgr, const CTriggerData&) const {
+  if (mBoostBallFlag20) { // 0x000095C8
+    return false;         // 0x000095D4
+  }
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (stage == nullptr) { // 0x000095E0
+    return false;
+  }
+  return stage->GetDiveAfterBoost(); // 0x000095F4 lbz 0x78, cmplwi 1
 }
 
 // fn_10_9314 (0x00009314, 0xDC bytes): the DoneRolling trigger. Without the boost ball actor
@@ -3021,9 +3037,9 @@ void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
 // (0x00007A70), steps the guest's own random (the `mulhw` with 0x55555556 at 0x00007A8C: 0x105C
 // grows by the high word of 0x55555556 * 0x1058 and its carry bit) and stores the health at that
 // moment (0xFC4, the vtable's slot 0x3C at 0x00007AA0 and the store at 0x00007AB4). Then
-// fn_10_7F98 (0x00007AC8) - the enrage helper, a stateless one the helper lanes port - and the
+// fn_10_7F98 (0x00007AC8) - the phazon enrage frame, UpdatePhazonEnrage - and the
 // melee attack command (fn_10_8764 at 0x00007B28, the severity 8 = pas::kS_Eight).
-void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float) {
+void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("EnrageHitReact", msg);
   BodyController()->SetLocomotionType(pas::kLT_Internal10); // 0x00007A4C
   if (msg == kStateMsg_Deactivate) {
@@ -3036,7 +3052,7 @@ void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float) {
                                     static_cast< uint >(static_cast< int >(mGuest1058) / 3)); // 0x00007A8C
     mGuestFC4 = GetHealthInfo()->GetHP(); // 0x00007AB0
   }
-  FsmStandIn("fn_10_7F98", "state EnrageHitReact's enrage helper"); // 0x00007AC8
+  UpdatePhazonEnrage(mgr, msg, dt); // fn_10_7F98 at 0x00007AC8
   RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Eight)); // 0x00007B28
 }
 
@@ -3242,17 +3258,38 @@ void CDarkSamus::MovingScatterShot(CStateManager& mgr, EStateMsg msg, float dt) 
             CBCStepCmd(mScatterSide != 0 ? pas::kSD_Left : pas::kSD_Right, pas::kStep_BreakDodge));
 }
 
+// fn_10_14448 (0x00014448, 4 bytes): the Null state, a bare `blr`. DsStateEntered is the port's
+// state log. No arm to run: the rooftop FSM2 has no node named Null (`fsm u04f7 Null` finds
+// none), so the handler is never entered there.
+// @ fn_10_14448
 void CDarkSamus::Null(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_14448", "state Null");
   DsStateEntered("Null", msg);
 }
 
-// The base's Dead body is the host's death path (the die command, the fade and the material
-// change); it stands in for the module's until that one is ported, so the actor can still die.
+// fn_10_143A8 (0x000143A8, 0xA0 bytes): the Dead state. Every message runs the base's Dead
+// (Dead__10CPatterned = fn_80152820, 0x000143CC). Activate only (`cmpwi r31, 0x0` at 0x000143D0):
+// the boost ball roll emitter 0xE6C, when there is one (`cmplwi r0, 0x0` at 0x000143DC), is
+// removed (RemoveEmitter at 0x000143F0) and cleared (0x000143F8); the environment effects' density
+// fades to lbl_10_rodata_3FC = 0.0f over lbl_10_rodata_254 = 0xFA0 = 4000 (the manager at 0x1630,
+// SetDensity__13CEnvFxManagerFfi = the host's FadeDensity, 0x00014418) and bit 0x20 of 0x90C is
+// cleared (`rlwimi r0, r3, 5, 26, 26` with r3 = 0 at 0x00014424, the store at 0x00014428).
+// asmcheck's three findings are names: x90c_20 is mFlags90C's 0x20, SetDensity the host's
+// FadeDensity and fn_80152820 CPatterned::Dead (symbols.txt).
+// Run (darksamus_dsfsm.py, darksamus_dsfsm.con / _dead.con): Activate with the roll emitter
+// (after BoostBallInto) and without it, Update and Deactivate - every arm natural.
+// @ fn_10_143A8
 void CDarkSamus::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
-  FsmStandIn("fn_10_143A8", "state Dead");
   DsStateEntered("Dead", msg);
-  CPatterned::Dead(mgr, msg, dt);
+  CPatterned::Dead(mgr, msg, dt); // 0x000143CC
+  if (msg != kStateMsg_Activate) { // 0x000143D0
+    return;
+  }
+  if (mBoostBallRollSfx) { // 0x000143DC
+    CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x000143F0
+    mBoostBallRollSfx = CSfxHandle();              // 0x000143F8
+  }
+  mgr.EnvFxManager()->FadeDensity(0.f, 4000); // 0x00014418
+  mFlags90C &= ~0x20;                         // 0x00014424
 }
 
 // fn_10_10710 (0x00010710, 0x154 bytes): the Pause state. The rest of its body is still a
