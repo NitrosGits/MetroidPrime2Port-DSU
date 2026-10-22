@@ -128,20 +128,34 @@ BODIES = {
               'the collided id is not invalid: the body ends'),
     'COLFLAG': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
                 'the flag byte at 0xF6A already has its 0x01 bit: the body ends'),
-    'DAMAGE7': ('EBF4 KnockBack', 'CStateManager::ApplyDamage(',
+    'DAMAGE7': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
                 'the damage is 25 with the boost ball (the weapon type 7): the chassis is'
                 ' knocked back'),
-    'DAMAGE0': ('EBF4 KnockBack', 'CStateManager::ApplyDamage(',
+    'DAMAGE0': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
                 'the damage is 25 with the power beam (the weapon type 0): the chassis is'
                 ' knocked back'),
     'KNOCKFLAG': ('EBF4 KnockBack', 'CSplitterMainChassis::KnockBack(',
                   'the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off'),
+    'SHIELD1': ('2BE0 GetShieldEffect', 'CSplitterCommandModule::PortGetShieldEffect(',
+                'the head\'s state at 0xEE0 is 1: the LightShield effect'),
+    'SHIELD2': ('2BE0 GetShieldEffect', 'CSplitterCommandModule::PortGetShieldEffect(',
+                'the head\'s state at 0xEE0 is 2: the DarkShield effect'),
+    'LANDED0': ('F5F8 ctor', 'loc:PortCSplitterMainChassis.cpp:1887',
+                'the data\'s flag word at 0x68 has its 0x1 bit: the landed count at 0xD00 is 0'),
+    'NULLCAST': ('9AF8 SetCollisionVulnerability', 'loc:PortCSplitterMainChassis.cpp:682',
+                 'the collision actor\'s id is invalid: the cast to a CCollisionActor fails'),
+    'VULN7': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
+              'the boost ball (the weapon type 7) knocks the chassis back'),
+    'VULN6': ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(',
+              'another weapon type knocks the chassis back: the knock back reaction is off'),
+    'VULNA': ('EBF4 KnockBack', 'CSplitterMainChassis::KnockBack(',
+              'the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off'),
     # The combined runs: each body's arms in one run, since the bodies are different.
-    'RUN1': ('run 1', 'CSplitterCommandModule::CollidedWith(', [], [], 0,
+    'RUN1': ('run 1', 'CSplitterCommandModule::CollidedWith(',
              'the damage with the boost ball, the collided id and the empty material list'),
-    'RUN2': ('run 2', 'CSplitterCommandModule::CollidedWith(', [], [], 0,
-             'the damage with the power beam and the flag byte already set'),
-    'RUN3': ('run 3', 'CSplitterMainChassis::KnockBack(', [], [], 0,
+    'RUN2': ('run 2', 'CSplitterCommandModule::CollidedWith(',
+             'the damage with the boost ball and the flag byte already set'),
+    'RUN3': ('run 3', 'CSplitterMainChassis::KnockBack(',
              'the damage with the boost ball and the flag byte at 0xD41'),
 }
 # the head's own members, written through $this (the spec's CLASS is the head's class).
@@ -298,24 +312,18 @@ elif WHICH == 'COLFLAG':
     # the flag byte at 0xF6A already has its 0x01 bit: the body ends.
     FORCE = [(_label, _where, [], ['$this->mAutoDestructFlags |= 0x1'], 0, _what)]
 elif WHICH == 'DAMAGE7':
-    # the damage info (the second argument): the amount 25 and the boost ball (the weapon type 7).
+    # the damage info (the fourth argument of CStateManager::ApplyKnockBack): the boost ball.
     FORCE = [(_label, _where, [],
-              ['((CDamageInfo*)$r8)->mDamage = 25.0',
-               '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0, _what)]
+              ['((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0, _what)]
 elif WHICH == 'DAMAGE0':
-    # the damage info: the amount 25 and the power beam (the weapon type 0).
+    # the damage info: the missile (the weapon type 6), so the knock back reaction is off.
     FORCE = [(_label, _where, [],
-              ['((CDamageInfo*)$r8)->mDamage = 25.0',
-               '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0, _what)]
+              ['((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0, _what)]
 elif WHICH == 'KNOCKFLAG':
     # the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off.
     FORCE = [(_label, _where, [], [CH + '->mFlagsD41 |= 0x80'], 0, _what)]
 elif WHICH == 'RUN1':
     FORCE = [
-        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
-         ['((CDamageInfo*)$r8)->mDamage = 25.0',
-          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0,
-         'the damage is 25 with the boost ball (the weapon type 7)'),
         ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(', [],
          ['((TUniqueId*)$rsi)->value = 0x1234'], 0,
          'the collided id is not invalid: the body ends'),
@@ -325,24 +333,58 @@ elif WHICH == 'RUN1':
     ]
 elif WHICH == 'RUN2':
     FORCE = [
-        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
-         ['((CDamageInfo*)$r8)->mDamage = 25.0',
-          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0,
-         'the damage is 25 with the power beam (the weapon type 0)'),
+        ('EBF4 KnockBack', 'CStateManager::ApplyKnockBack(', [],
+         ['((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0,
+         'the damage hurts but its weapon type is not 7: the knock back reaction is off'),
         ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(', [],
          ['$this->mAutoDestructFlags |= 0x1'], 0,
          'the flag byte at 0xF6A already has its 0x01 bit: the body ends'),
     ]
 elif WHICH == 'RUN3':
     FORCE = [
-        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
-         ['((CDamageInfo*)$r8)->mDamage = 25.0',
-          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0,
-         'the damage is 25 with the boost ball (the weapon type 7)'),
         ('EBF4 KnockBack', 'CSplitterMainChassis::KnockBack(', [],
          [CH + '->mFlagsD41 |= 0x80'], 0,
          'the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off'),
     ]
+elif WHICH == 'VULN7':
+    # The damage info's weapon type is the boost ball (7) and the vulnerability (the fifth
+    # argument) is the default one, so the damage reaches the chassis.
+    FORCE = [(_label, _where, [],
+              ['((CDamageVulnerability*)$r9)->mVulnerabilities['
+               '((CDamageVulnerability*)$r9)->mWeaponIndices[7]].mDamageMultiplier = 1.0f',
+               '((CDamageVulnerability*)$r9)->mVulnerabilities['
+               '((CDamageVulnerability*)$r9)->mWeaponIndices[7]].mEffect = 0',
+               '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0, _what)]
+elif WHICH == 'VULN6':
+    # The same, but the weapon type is the missile (6): the knock back reaction is turned off.
+    FORCE = [(_label, _where, [],
+              ['((CDamageVulnerability*)$r9)->mVulnerabilities['
+               '((CDamageVulnerability*)$r9)->mWeaponIndices[6]].mDamageMultiplier = 1.0f',
+               '((CDamageVulnerability*)$r9)->mVulnerabilities['
+               '((CDamageVulnerability*)$r9)->mWeaponIndices[6]].mEffect = 0',
+               '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0, _what)]
+elif WHICH == 'VULNA':
+    # The flag byte at 0xD41 has its 0x80 bit: both reactions are turned off.
+    FORCE = [(_label, _where, [],
+              [CH + '->mFlagsD41 |= 0x80'], 0, _what)]
+elif WHICH == 'SHIELD1':
+    # The head's state at 0xEE0 is 1: the LightShield particle effect (asm 0x2C08-0x2C34).
+    FORCE = [(_label, _where, [], ['$this->mCollisionState = 1'], 0, _what)]
+elif WHICH == 'SHIELD2':
+    # The head's state at 0xEE0 is 2: any state but 1 gives the DarkShield effect
+    # (asm 0x2C08-0x2C50).
+    FORCE = [(_label, _where, [], ['$this->mCollisionState = 2'], 0, _what)]
+elif WHICH == 'LANDED0':
+    # The data's flag word at 0x68 has its 0x1 bit, so the counter at 0xD00 is 0 and not 5
+    # (asm 0xF7EC-0xF7FC: lwz 0x68(r31); clrlwi. r0, r0, 31; beq; mr r3, r4).  The write is at the
+    # line before the assignment (the initialiser list has already copied the data into mData).
+    FORCE = [(_label, _where, [],
+              ['this->mData.mUnknownCEF5C2FE |= 1'], 0, _what)]
+elif WHICH == 'NULLCAST':
+    # The collision actor's id is the invalid one, so the cast to a CCollisionActor fails and
+    # the walk skips the actor (asm 0x9B44-0x9B4C).  The id is in r15 when the line is reached
+    # (the build keeps it there: movzwl 0x48(%rax),%r15d; mov %r15d,%esi).
+    FORCE = [(_label, _where, [], ['$r15 = 0xffff'], 0, _what)]
 elif WHICH == 'DESPAWN':
     # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
     # update (asm 0x1820).
