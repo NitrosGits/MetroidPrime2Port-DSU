@@ -1503,3 +1503,26 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   9CA4/9ABC `CALL TCastToPtr<CDigitalGuardianHead>` (the C++ spells it `TCastToConstPtr`, the const
   overload of the same cast).
 - Marked: A6A8, 9CA4, 9ABC.
+
+## 2026-10-22: fn_14_6E04 and fn_14_10120 (dg16), gcov runs dg16_knees/dg16_headgone
+
+- The head's codes and states that call them are ported (ProjectileTelegraph 16F74,
+  SelectProjectileAttack 15448, ResetProjectileAttackTimes 15598); 9930/9994/173CC were already marked.
+- Drivers: `tools/cov/specs/digitalguardian_knees.{py,con}` (force.sh on `build-port-cov`; clears the
+  knee ids at 6E04 hits 500/900/1300/1700, sets head 0x10D0 from 0x10DC at ProjectileTelegraph and
+  head 0x10F4 bit 0x10 once 0x10DC is 0) and `digitalguardian_headgone.con` (run.sh, head deleted at f600).
+- Coverage: `gcov_report.py build-port-cov <both gcov dirs> --module DigitalGuardian`: 6E04 12/12, 10120 9/10.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| 6E04 | no head uid (0x1082 invalid after 70E4), head gone -> 70E4 | headgone | ran |
+| 6E04 | angle < turn (LookAt), >= turn (Slerp) | knees | ran |
+| 6E04 | knees > 2; knees <= 2 with head bit 0x20 clear | knees, forced (knee ids cleared) | ran |
+| 6E04 | knees <= 2, bit 0x20 set (`fsm <head> ProjectileTelegraph`), 0x10D0 0 / 1 | knees, forced (0x10D0) | ran: 12/12, marked |
+| 10120 | no body (`send <body> Delete`, then `codecall <head> SelectProjectileAttack`) | knees | ran |
+| 10120 | knees 4, 3, 2, 1, 0 | knees, forced (knee ids) | ran |
+| 10120 | knees 0 with head bit 0x10 set | knees, forced (0x10F4 \|= 0x10) | ran |
+| 10120 | default (knees < 0 or > 4) | - | dead: the count is li 0 (0x10130) or fn_14_705C's 0..4; marked |
+
+- fn_14_4080's XSTORE xFB2/xFB4/xFB6 (review_decomp_diff) is a tool false positive: retail stores
+  every id with `sth r0,0x0(r28)` (0x42C8), r28 = this+0xFB0 (0x40AC) stepped by 2 (0x42D0).
