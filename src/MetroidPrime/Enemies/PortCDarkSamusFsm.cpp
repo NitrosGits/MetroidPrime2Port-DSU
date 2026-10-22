@@ -1813,6 +1813,8 @@ CActor* CDarkSamus::GetBoostBallActor(CStateManager& mgr) const {
 // lbl_10_rodata_290 = -0.45f) with the actor's rotation (0x0000A0E0..0x0000A0F8); with a roll
 // emitter (`cmplwi r0, 0x0` at 0x0000A100) the emitter moves to the actor along its forward
 // vector (0x28/0x38/0x48) at volume 0x7F (`li r6, 0x7f` at 0x0000A120).
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm; the emitter-less arm after DiveFromBoost.
+// @ fn_10_A06C
 void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
   if (CActor* ball = GetBoostBallActor(mgr)) { // 0x0000A088
     CTransform4f xf(ball->GetTransform());
@@ -1848,6 +1850,9 @@ void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
 // with a hint (the uid 0xEC0, 0x0000A66C)
 // fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
 // (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm but the dead `default` (EStateMsg has three
+// values). Unmarked: fn_10_9E00 (0x0000A4AC) spawns CDarkSamusBoostBallPortStub, not the retail
+// boost ball.
 void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallRoll", msg);
   UpdateCurrentAttack(0x20000, mgr, msg);                  // 0x0000A3F4
@@ -1895,7 +1900,7 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
       // (0x0000A5F8/0x0000A62C).
       const CMaterialFilter filter(CMaterialList(kMT_Solid), CMaterialList(),
                                    CMaterialFilter::kFT_IncludeExclude);
-      // 0x0000A630..0x0000A650: all three uids are this actor's own (`lhz 0x8(r30)`), so the
+      // 0x0000A630..0x0000A650: all three uids are this actor's own (`lhz r0, 0x8(r30)`), so the
       // retail damages the Dark Samus herself; the ball's actor is not used.
       mgr.ApplyDamage(GetUniqueId(), GetUniqueId(), GetUniqueId(), info, filter,
                       CVector3f::Zero()); // 0x0000A654 (sZeroVector, 0x0000A600)
@@ -1934,6 +1939,8 @@ void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
 // (TransposeRotate at 0x0000A318), the matrix's quaternion times it (0x0000A344, 0x0000A354), the
 // forces cleared (0x0000A37C) and the transform rebuilt at the position 0x54 (0x0000A38C,
 // SetTransform at 0x0000A398). No arm but the Normalize test.
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm, the Normalize-false arm forced (mode 2).
+// @ fn_10_A1C0
 void CDarkSamus::StartBoostBallRoll(CStateManager& mgr) {
   mBoostHintUid = kInvalidUniqueId; // 0x0000A1EC
   mGuestEA8 = mElapsedTime;         // 0x0000A1FC
@@ -1969,6 +1976,9 @@ void CDarkSamus::StartBoostBallRoll(CStateManager& mgr) {
 // r6, 0x1`) and kInvalidEditorId (0x0000A96C), a new uid (0x0000A97C), the flags 0 (`li r9,
 // 0x0`), the model's scale (0x60, 0x0000A904..0x0000A92C), white (0x0000A988) and the player
 // index -1 (`li r0, -0x1` at 0x0000A990), and added to the state manager (0x0000A9EC).
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm, the token-absent arm forced (mode 1); the
+// null `rs_new` arms are the compiler's.
+// @ fn_10_A814
 void CDarkSamus::PlayBoostBallCollision(CStateManager& mgr) {
   PlayCustomSound(GetTranslation(), -1.f * CVector3f::Forward(),
                   mData.mBoostBallCollisionSoundOneShot, false); // 0x0000A874
@@ -2007,8 +2017,8 @@ void CDarkSamus::PlayBoostBallCollision(CStateManager& mgr) {
 // 0.5f (0x0000AE04/0x0000AE08) - (dot(dir, pos) >= dot(dir, hint - k dir): `cror eq, gt, eq` at
 // 0x0000AE6C, `extrwi r0, r0, 1, 2` at 0x0000AE74). Not arrived but the bit 0x80 of 0xEBC set
 // (`extrwi r0, r4, 1, 24` at 0x0000AE90, the PowerPC bit 24 = 1u << (31 - 24) = 0x80): arrived
-// when within the 25.0f squared (0x0000AEA8), else the bit is cleared (`rlwimi r4, r0, 7, 24, 24`
-// at 0x0000AEB8).
+// when within the 25.0f squared (0x0000AEA8), else the bit is cleared (0x0000AEB8: `rlwimi r4,
+// r0, 7, 24, 24`).
 // On arrival (0x0000AEC8): the hint is deactivated (the vtable's slot 0x1C = SetActive(false),
 // 0x0000AEE0) and sends kSS_Arrived (`lis r4, 0x4152; addi r4, r4, 0x5256` = 0x41525256 at
 // 0x0000AEE8/0x0000AEF8) with the player's uid (0x0000AEF4) and the message -1 (0x0000AF0C).
@@ -2022,6 +2032,9 @@ void CDarkSamus::PlayBoostBallCollision(CStateManager& mgr) {
 // 0x0000B0A0, FromMatrix * it at 0x0000B0CC/0x0000B0DC, ClearForcesAndTorques at 0x0000B104,
 // SetTransform at 0x0000B120). Every arrival ends with the bit 0x80 of 0xEBC cleared
 // (`rlwimi r0, r3, 7, 24, 24` at 0x0000B138).
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm, the lookups, Normalize tests, bit 0x80 and
+// the hint values forced (the branch table in docs/module-analysis/DarkSamus.md, slice ds2opus).
+// @ fn_10_AA04
 void CDarkSamus::RollToBoostHint(CStateManager& mgr, float dt) {
   CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(mBoostHintUid));
   if (hint == nullptr) { // 0x0000AA48
@@ -2939,6 +2952,8 @@ void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
 // 136 (`lwz r12, 0x220(r12)` at 0x00009560), the DiveAttack state fn_10_11FA4 - runs on
 // every message. Deactivate (`cmpwi r31, 0x2` at 0x0000956C) clears the boost bit again
 // (`rlwimi r0, r3, 0, 31, 31` at 0x0000957C).
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm (the Activate and the Deactivate).
+// @ fn_10_9424
 void CDarkSamus::DiveFromBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveFromBoost", msg);
   if (msg == kStateMsg_Activate) {                 // 0x00009454 `bne .L_0000954C`
