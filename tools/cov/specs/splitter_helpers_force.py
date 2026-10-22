@@ -124,6 +124,25 @@ BODIES = {
                'the shield state is not 2 and the head is not docked: there is no chassis'),
     'COLLIDNM': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
                  'the material list is empty: no collision matches'),
+    'COLID': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
+              'the collided id is not invalid: the body ends'),
+    'COLFLAG': ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(',
+                'the flag byte at 0xF6A already has its 0x01 bit: the body ends'),
+    'DAMAGE7': ('EBF4 KnockBack', 'CStateManager::ApplyDamage(',
+                'the damage is 25 with the boost ball (the weapon type 7): the chassis is'
+                ' knocked back'),
+    'DAMAGE0': ('EBF4 KnockBack', 'CStateManager::ApplyDamage(',
+                'the damage is 25 with the power beam (the weapon type 0): the chassis is'
+                ' knocked back'),
+    'KNOCKFLAG': ('EBF4 KnockBack', 'CSplitterMainChassis::KnockBack(',
+                  'the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off'),
+    # The combined runs: each body's arms in one run, since the bodies are different.
+    'RUN1': ('run 1', 'CSplitterCommandModule::CollidedWith(', [], [], 0,
+             'the damage with the boost ball, the collided id and the empty material list'),
+    'RUN2': ('run 2', 'CSplitterCommandModule::CollidedWith(', [], [], 0,
+             'the damage with the power beam and the flag byte already set'),
+    'RUN3': ('run 3', 'CSplitterMainChassis::KnockBack(', [], [], 0,
+             'the damage with the boost ball and the flag byte at 0xD41'),
 }
 # the head's own members, written through $this (the spec's CLASS is the head's class).
 HEAD = '((CSplitterCommandModule*)$rdi)'
@@ -272,6 +291,58 @@ elif WHICH == 'COLLIDNM':
     # the material list (the REL's lbl_75_bss_8) is empty: no collision matches.
     FORCE = [(_label, _where, [],
               ['sSplitterCollisionMaterialList = CMaterialList()'], 0, _what)]
+elif WHICH == 'COLID':
+    # the collided id (the second argument) is not the invalid one: the body ends.
+    FORCE = [(_label, _where, [], ['((TUniqueId*)$rsi)->value = 0x1234'], 0, _what)]
+elif WHICH == 'COLFLAG':
+    # the flag byte at 0xF6A already has its 0x01 bit: the body ends.
+    FORCE = [(_label, _where, [], ['$this->mAutoDestructFlags |= 0x1'], 0, _what)]
+elif WHICH == 'DAMAGE7':
+    # the damage info (the second argument): the amount 25 and the boost ball (the weapon type 7).
+    FORCE = [(_label, _where, [],
+              ['((CDamageInfo*)$r8)->mDamage = 25.0',
+               '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0, _what)]
+elif WHICH == 'DAMAGE0':
+    # the damage info: the amount 25 and the power beam (the weapon type 0).
+    FORCE = [(_label, _where, [],
+              ['((CDamageInfo*)$r8)->mDamage = 25.0',
+               '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0, _what)]
+elif WHICH == 'KNOCKFLAG':
+    # the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off.
+    FORCE = [(_label, _where, [], [CH + '->mFlagsD41 |= 0x80'], 0, _what)]
+elif WHICH == 'RUN1':
+    FORCE = [
+        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
+         ['((CDamageInfo*)$r8)->mDamage = 25.0',
+          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0,
+         'the damage is 25 with the boost ball (the weapon type 7)'),
+        ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(', [],
+         ['((TUniqueId*)$rsi)->value = 0x1234'], 0,
+         'the collided id is not invalid: the body ends'),
+        ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(', [],
+         ['sSplitterCollisionMaterialList = CMaterialList()'], 0,
+         'the material list is empty: no collision matches'),
+    ]
+elif WHICH == 'RUN2':
+    FORCE = [
+        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
+         ['((CDamageInfo*)$r8)->mDamage = 25.0',
+          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 6'], 0,
+         'the damage is 25 with the power beam (the weapon type 0)'),
+        ('6178 CollidedWith', 'CSplitterCommandModule::CollidedWith(', [],
+         ['$this->mAutoDestructFlags |= 0x1'], 0,
+         'the flag byte at 0xF6A already has its 0x01 bit: the body ends'),
+    ]
+elif WHICH == 'RUN3':
+    FORCE = [
+        ('EBF4 KnockBack', 'CStateManager::ApplyDamage(', [],
+         ['((CDamageInfo*)$r8)->mDamage = 25.0',
+          '((CDamageInfo*)$r8)->mWeaponMode.mWeaponType = 7'], 0,
+         'the damage is 25 with the boost ball (the weapon type 7)'),
+        ('EBF4 KnockBack', 'CSplitterMainChassis::KnockBack(', [],
+         [CH + '->mFlagsD41 |= 0x80'], 0,
+         'the flag byte at 0xD41 has its 0x80 bit: both reactions are turned off'),
+    ]
 elif WHICH == 'DESPAWN':
     # the base's alive flag (the byte at 0x420's 0x40 bit) is clear: the effect states do not
     # update (asm 0x1820).

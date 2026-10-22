@@ -516,6 +516,16 @@ The port's `SLdrSplitterCommandModuleData` does not carry the REL's data words a
 (0x1E the wall, 0x1F the floor, 0x1D the ceiling).  The two REL globals (lbl_75_bss_0, the flag
 that says the list is built, and lbl_75_bss_8, the list) are the port's two file-scope statics.
 
+### 3.15 The knock-back's arms, the collision's arms and the next bodies
+
+| body | the diff | the profile / why |
+|---|---|---|
+| `fn_75_EBF4` (the chassis's knock-back) | ported (section 3.14) | 0/9 lines - the arms do not run: the console's `damage` cannot make the Splitter take damage (its hp stays 10.0, the ricochet vulnerability) and the boost ball - the weapon type 7 the retail tests - is not one of the console's weapons, so the knock-back is unreachable from the console.  The force spec's RUN1/RUN2/RUN3 (the damage info's amount and weapon type written at `CStateManager::ApplyDamage`) never fire: the console's damage does not reach that call |
+| `fn_75_6178` (the head's collision) | ported (section 3.14) | 12/14 branches - the two untaken arms are a collision whose material is not the wall, the floor or the ceiling; the head flies (kMT_Flyer) and only touches the world, so the fight makes no such collision |
+| `fn_75_E768` (the chassis's dock release) | right: the reservation at 0xC6E is cleared when it is that head's (asm 0xE768, 0xE770, 0xE780) | 0/4 lines - the head's chassis search (fn_75_2280) releases the old pick only, and the head is docked, so the call never comes |
+| `fn_75_E788` (the chassis's dock reserve) | right: the alive bit (asm 0xE78C), the active bit (asm 0xE798), the command module id at 0xC6C (asm 0xE7A4-0xE7B4), the reservation at 0xC6E (asm 0xE7B8-0xE7C0), the landed count 5 or 0 (asm 0xE7C4-0xE7D4), the flag byte 0xD41's 0x80 bit (asm 0xE7DC) and the flag byte 0xD40's 0x01 bit (asm 0xE7E8) | 6/6 lines, 9/16 branches - the seven untaken arms need the chassis dead, inactive, with a head, with a reservation, landed somewhere else or with the two flag bits set |
+| `fn_75_A490` (the health info's copy) | right: the 0x1C-byte copy (asm 0xA490-0xA4E0) | inlined into the marked `fn_75_A37C` (the port's `*actor->HealthInfo() = *GetHealthInfo()`) - no body of its own to mark |
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
