@@ -1,0 +1,25 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark), dg25: the head codes
+# DestroyActiveSplitters (fn_14_14C24, with the chassis's fn_75_E660), EnableValidTarget (14604),
+# DisableValidTarget (145A4), ResetGravityRepulsorHP (14248), EjectPlayerFromBombPit (14058) and
+# StartVocalRecoverReaction (13C1C), by codecall. Layer 10 ('Boss Stage 2 Splitters') holds the
+# splitter generators; the head's IS01 relays (00350006/11/28) SetToZero them, here sent directly.
+# Layers go after the warp (frame ~121), or they land on the boot world's area 0.
+# Run: BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/digitalguardian_dg25.py <out>
+#   1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_dg25.con --fast --frames 450
+@f130 layer 10; god 1
+@f150 send e00350060 Activate; send e0035000f Activate
+@f152 place e0035000f player 20; fsm e0035000f FaceTarget
+# no splitters yet; no retreat platform yet (0x1038 invalid)
+@f160 codecall e0035000f DestroyActiveSplitters; codecall e0035000f EjectPlayerFromBombPit
+@f162 codecall e0035000f EnableValidTarget; codecall e0035000f DisableValidTarget; codecall e0035000f ResetGravityRepulsorHP; codecall e0035000f StartVocalRecoverReaction
+@f170 codecall e0035000f SelectRetreatPlatform; codecall e0035000f EjectPlayerFromBombPit
+# the player on the head's other side
+@f180 place e0035000f player -20
+@f182 codecall e0035000f EjectPlayerFromBombPit
+# two splitters (chassis 00350041/46, command modules 00350040/47)
+@f190 send e00350042 SetToZero; send e00350045 SetToZero
+@f300 objs CSplitter
+# one tick: the delays start; the second call finds 0xD41's 0x01 set; a dead chassis
+@f302 codecall e0035000f DestroyActiveSplitters; codecall e0035000f DestroyActiveSplitters; kill e00350046; codecall e0035000f DestroyActiveSplitters
+@f400 objs CSplitter
+@f420 status

@@ -239,6 +239,9 @@ public:
   // understood yet (docs/module-analysis/Splitter.md section j), so the table's slot is filled
   // with a documented stand-in (PortCSplitterMainChassis.cpp).
   void PortAutoDestruct(float time);
+  // The retail's fn_75_E660: the delayed death the Digital Guardian head's DestroyActiveSplitters
+  // (fn_14_14C24) gives each chassis (0xD41's 0x01 bit and the 0xD20 timer).
+  void PortStartDeathTimer(float time);
 
   // CEntity
   CEntity* TypesMatch(int typeId) const override;

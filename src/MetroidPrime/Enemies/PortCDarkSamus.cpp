@@ -136,6 +136,9 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mBoostBallRollSfxId(data.mBoostBallRollSound == -1 // 0x00008978
                           ? CSfxManager::kInternalInvalidSfxId
                           : static_cast< ushort >(data.mBoostBallRollSound))
+, mBoostBallHitPlayerSfxId(data.mBoostBallHitPlayerSound == -1 // 0x00008A28
+                               ? CSfxManager::kInternalInvalidSfxId
+                               : static_cast< ushort >(data.mBoostBallHitPlayerSound))
 , mBoostBallRollSfx()                                // 0x00008A50
 , mBoostBallFlag40(false)
 , mBoostHintUid(kInvalidUniqueId)                    // 0x0002011C
@@ -186,6 +189,7 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mBss118(160.f)
 , mReflectChanceCount(0)                         // 0x00020270
 , mReflectChances() {
+  mBoostBallFlag20 = false; // 0xEBC bit 0x20: the retail heap is zeroed, the host's is not
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
   // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
   // (0x000216E4), both with scatterShotDamage, each only for a valid asset and locked after.

@@ -1,0 +1,23 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark), dg24: the head codes
+# SetPlatformPosition (fn_14_153D0), Stage3Start (fn_14_149F8), EnableDynamicCollision
+# (fn_14_14828) and DisableDynamicCollision (fn_14_14664), all by codecall.
+# Run: BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/digitalguardian_states.py <out>
+#   1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_dg24.con --fast --frames 400
+# The null-collider arms: the head's three colliders (u0572..u0574 in these runs, listed by objs)
+# are deleted at the end; the no-waypoint arm deletes the IS06/FOLW waypoint 0x00350272.
+@f30 layer 3
+@f60 layer 11; god 1
+@f150 send e00350060 Activate; send e0035000f Activate
+@f152 place e0035000f player 20; fsm e0035000f FaceTarget
+# no retreat platform yet (0x1038 invalid)
+@f160 codecall e0035000f SetPlatformPosition; codecall e0035000f EnableDynamicCollision; codecall e0035000f DisableDynamicCollision; codecall e0035000f Stage3Start
+@f170 codecall e0035000f SelectRetreatPlatform; codecall e0035000f SetPlatformPosition; codecall e0035000f DisableDynamicCollision; codecall e0035000f EnableDynamicCollision
+@f180 objs CCollisionActor; obj e0035000f
+# the balls at HP 1 (fn_14_13318): Enable re-activates them
+@f200 codecall e0035000f DisableDynamicCollision; codecall e0035000f EnableDynamicCollision; codecall e0035000f Stage3Start
+@f220 send e00350272 Delete
+@f222 codecall e0035000f Stage3Start
+@f240 objs CCollisionActor
+@f250 send u0574 Delete; send u0573 Delete; send u0572 Delete
+@f252 codecall e0035000f EnableDynamicCollision; codecall e0035000f DisableDynamicCollision
+@f260 status

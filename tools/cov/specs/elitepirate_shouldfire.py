@@ -2,7 +2,7 @@
 # `trigcall` and `var ep.*` (the timer 0xa34, the launcher uid 0x9fa, the target uid 0xa26, ep.yaw).
 # Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/elitepirate_shouldfire.py <out>
 #        1baa96c2,b666b655 --con tools/cov/specs/elitepirate_shouldfire.con --fast --frames 1600
-# (ElitePirate.md section 11). DynHit names a source line of CGameCollision.cpp: re-check it after edits there.
+# (ElitePirate.md section 11). 0x67F4 needs the con's f760 `material -solid` force (ret=1 on ShouldFire). DynHit names a source line of CGameCollision.cpp: re-check it after edits there.
 CLASS = 'CElitePirate'
 SPEC = [
     ('0x6618 ShouldFire', 'CElitePirate::ShouldFire(', [], 'ret max=3000'),

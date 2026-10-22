@@ -369,12 +369,14 @@ member at that offset in the host's state manager, so the port uses the player a
   It is ported as the private member `x19D8_JoinTeam` (the same shape as the Dark Commando's own
   `JoinTeam`, src/MetroidPrime/Enemies/CDarkCommando.cpp:1497); the team id is the new member
   `xbc4_teamId` (guest +0xBC4).
-- The guest's rag doll (guest this+0xBFC) is always null - the constructor stores 0 there
-  (0x0000DC18) and the module's `GetRagDoll` returns null (fn_9_78) - so the rag-doll branches of
-  `fn_9_CAC8` (PreThink), `fn_9_C6D4` (PreRender) and `fn_9_C51C` (PreRenderAllViewports) are dead
-  here. What is left is the bone tracking's own PreThink and PreRender (the calls at
-  0x0000CB10 and 0x0000C77C, with the model's scale, the actor's transform and the body
-  controller) and the base's own calls - the same three bodies the Dark Commando has.
+- The guest's rag doll (guest this+0xBFC) is the port's member `xbfc_ragDoll` (a
+  `rstl::single_ptr<CPirateRagDoll>`, upstream's module 50 class): the constructor stores 0 there
+  (0x0000DC18) and only `fn_9_3E1C` creates it, after the death (see "The rag doll" below). The
+  module's `GetRagDoll` (fn_9_78) stays `li r3, 0x0` - the guest never exposes it - so the port's
+  `GetRagDoll()` stays null too and the module's own bodies read the member. The rag-doll
+  branches of `fn_9_CAC8` (PreThink), `fn_9_C6D4` (PreRender) and `fn_9_C51C`
+  (PreRenderAllViewports) are ported with it; the rest is the bone tracking's own PreThink and
+  PreRender (the calls at 0x0000CB10 and 0x0000C77C) and the base's own calls.
 - The path find search needs its area: the guest's `kSM_AreaLoaded` case (fn_9_CB40) sets the
   search's area pointer (guest this+0x928) to the area's path area - the world's area at the
   actor's area id (this+0x04), its post-constructed data (+0x104) and that data's path area
@@ -942,18 +944,8 @@ the visual knowledge, which the port has no classes for. `fn_9_662C` (0x39c) is 
 since 2026-10-20.
 
 `fn_9_3E1C` (0x324, the module's rag-doll driver) is host code since 2026-10-21 (the port's
-member `x3E1C_UpdateRagDoll`): its third argument says whether the rag doll is gone - the
-guest's Think computes it from the rag doll pointer at guest this+0xBFC (the cntlzw/srwi pair at
-0x0000C97C..0x0000C984) and passes it at 0x0000CAA0, which is the guest's null test for the rag
-doll here (0x00003E3C..0x00003E4C; the same pointer is tested for null in the guest's PreThink
-at 0x0000CAEC..0x0000CAF4). The port uses the host's `GetRagDoll()` for it: the retail's own
-GetRagDoll (fn_9_78) answers null, so both are null in the host and the rag-doll part (the
-water check at 0x00003EC0..0x00003F30 and the rigid path at 0x00003E60..0x00003FF0) stays a
-named stand-in. Without a rag doll the guest runs the drowning timer: the module's float at
-guest this+0xC00 falls by the frame time while it is above zero (0x00003FF8..0x0000401C) and
-when it reaches zero the guest creates the rag doll (0x00004020..0x0000410C) and clears the
-timer (0x00004110..0x00004118); the host cannot create the retail's rag doll, so that creation
-is a named stand-in too.
+member `x3E1C_UpdateRagDoll`); its rag-doll path and the rag doll's creation, the stand-ins
+until 2026-10-22, are ported - see "The rag doll" below.
 
 `fn_9_B250` (0x410, the ShouldShieldCharge trigger) is host code since 2026-10-21 (the port's
 `ShouldShieldCharge`): the flag byte at guest this+0xC64 must have its 0x40 bit, the block's
@@ -1238,8 +1230,7 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_3900` (the jump-back velocity) | the flag byte at guest this+0xC63 (0x0000393C) and the ballistic velocity (0x000039A8..0x00003A18) | b | the console's `send <id> 0x584c4155` (the module's own launching message, the kSM_Launching case of fn_9_CB40, the call at 0x0000D040) reaches the helper: the coverage build in area 59 with the driver's four sends in a row gives the helper 14/15 lines and both the early out and the ballistic velocity |
 | `fn_9_3A5C` (the hit-object helper) | the shield's path (0x00003A78..0x00003A90) and the blade's path (0x00003B90..0x00003BA8) | d | the module's shield has to be up (the 0x04 bit of the byte at guest this+0xC65) or its blade out (the 0x20 bit) and the sender has to be the module's own collision actor (guest this+0xBC6 or this+0xBC8); the area 59 run's commando never has the shield up, and the blade's own damage needs the melee state's blade |
 | | the touched object's player test (0x00003AD0..0x00003ADC) and the damage timer (0x00003AE0..0x00003AF4) | d | they need the shield's or the blade's collision actor to have touched the player |
-| `fn_9_3E1C` (the rag-doll driver) | the rag-doll path (0x00003E50..0x00003FF0) | c | the guest's own GetRagDoll (fn_9_78) answers null and the constructor stores 0 at guest this+0xBFC (0x0000DC18), so the guest never takes it |
-| | the drowning timer (0x00003FF8..0x0000401C) and the rag doll's creation (0x00004020..0x00004118) | b | the module's float at guest this+0xC00 runs down in the run; the creation is the port's stand-in (the host has no CPirateRagDoll) |
+| `fn_9_3E1C` (the rag-doll driver) | every arm | b | see "The rag doll": ALL-ARMS over the natural and forced runs (35/35 lines, 30/30 branches) |
 | `fn_9_19D8` (the team helper) | the team id (0x00001A04), the block's two flag bits (0x00001A10 and 0x00001A1C), the invalid team id (0x00001A48) and the team lookup (0x00001A60..0x00001A6C) | d | the coverage run in area 59 with the c300 driver gives the body 6/8 lines and 4/10 branches: the commando has no team id and the block's flags allow it, so only the "join" path runs |
 | `fn_9_1A9C` (the avoid-actors helper) | the list walk (0x00001AD0..0x00001AE8), the area test (0x00001AF0..0x00001AFC) and the magnitude-safe test (0x00001B5C) | d | the same run gives it 14/16 lines and 8/12 branches: the other actors are none, this one or of another area, so the separation is never taken |
 | `fn_9_1EF8` (the shield's turn-off helper) | the flag byte (0x00001F0C..0x00001F14), the emitter handle (0x00001F18..0x00001F20) and the two floats (0x00001F64..0x00001F70) | d | the same run gives it 0/9 lines: the shield's turn-off event never runs in area 59 |
@@ -1247,7 +1238,7 @@ runs its activate, its updates and its deactivate, and the trigger answers true.
 | `fn_9_2A98` (the waypoint picker) | the speed (0x00002AD0..0x00002AD4), the waypoint (0x00002AD8..0x00002AF8), the 0x20 flag (0x00002B00..0x00002B04) and the connection search (0x00002B08..0x00002B84) | d | the same run gives it 0/25 lines: the module's waypoint picker only runs in the scripted charge, which area 59 does not reach |
 | `fn_9_45A4` (the collision actors) | the two spheres (0x00004604..0x00004620 and 0x00004728..0x00004744), the ids (0x000046CC and 0x000047F8) and the filter (0x00004830..0x0000487C) | b | the module's kSM_Create case builds them: the run's commando has both collision actors, and the material filter's exclude list gets the bit 0x8000 (the material 15, kMT_Glass) |
 | | the collision actor's null tests (0x000046E4 and 0x00004810) | d | the coverage run's commando has both collision actors, so the null arms did not run - the body gets no marker |
-| `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) | d | the branch wants the block's flag byte at guest this+0x91C to have its 0x01 bit and the module's own rag doll at guest this+0xBFC to be there; the rag doll is always null (the constructor stores 0 there, 0x0000DC18, and the module's GetRagDoll returns null, fn_9_78), so the guest never takes it |
+| `fn_9_C300` (the KnockBack override) | the rag-doll branch (0x0000C324..0x0000C3AC) and the rag doll's early out (0x0000C3B0..0x0000C3B8) | b | see "The rag doll": the torso push forced (the flags 3 forcing), the early out natural (a corpse shot) |
 | | the knock-back itself (0x0000C3C0..0x0000C3EC) | b | the area 59 boot: the console's `damage` reaches the module's override through the module's own helper fn_9_2D0C (the call at 0x00002EF0) |
 | | the alive branch (0x0000C3F0..0x0000C404) | b | the coverage run (build-port-cov, tools/cov/run.sh with tools/cov/specs/commandopirate_c300.py and tools/drivers/commandopirate_c300.py, area 59): 190 of the 200 calls land on the live commando |
 | | the alive branch's "the reaction is kAR_Hurled" arm (0x0000C3FC, `lwz r0,0x630` + `cmpwi r0,3`) | b | the guest's +0x630 is the knock-back manager (+0x620) +0x10, `SReactionParameters::mReaction` (the CRuleSetEvaluator base is 0x10 bytes; the reaction flags are +0x20, the DOL's ExecuteAction `ori`s them at 0x801BD9BC) - the port read the flags before 2026-10-21. The rule set gives kAR_Hurled to the console's `damage <id> 1 60 supermissile` (forced (damage)): once in the run, the state machine goes to "GetUp" and the hurled sound plays |
@@ -1824,3 +1815,66 @@ So none of the six can be marked yet.  The blocker for the body-state arms is th
 itself: the spec writes `$this->mBodyController->mBodyStateInfo.mState`, but the body controller
 is an `rstl::single_ptr` (include/MetroidPrime/Enemies/CPatterned.hpp:409) and gdb reports "Could
 not find operator->" for it - the write needs the pointer's target reached another way.
+
+## The rag doll (cpragdoll, 2026-10-22)
+
+The rag doll is upstream's `CPirateRagDoll` (module 50, include/MetroidPrime/Enemies/CPirateRagDoll.hpp),
+created with `rs_new` the way CDarkTrooper/CDarkCommando create theirs, and kept in the new member
+`xbfc_ragDoll` (guest this+0xBFC). Retail facts: the rag doll's vtable +0x8 Prime, +0xc Update,
++0x10 PreRender; its flag byte +0x70: 0x40 primed, 0x20 keeps making small movements, 0x01 over;
+the module's vtable (lbl_9_data_828) +0x114 = fn_9_10 (the gravity constant, 50.f), +0x128
+GetDeathTimeScale; the rag doll's thud is the block's `mSoundImpact` (guest this+0x7C0); the
+sphere radii are rodata_3C8 (`skCommandoRagDollRadii`, 14 floats). It is created only after a
+death: the BecomeRagDoll event, the drowning (`fn_9_3090`), the death with the block's flag 0x01,
+and the timer path (0x00004020..0x0000410C, the flags 3 when the block's flag byte at guest
+this+0x91C has its 0x01 bit, 0x000040A0..0x000040C0).
+
+`fn_9_3E1C` (`x3E1C_UpdateRagDoll(mgr, dt, noRagDoll)`): with a rag doll it primes it once
+(0x00003E54..0x00003EB8: the transform goes to identity at the same translation and the body's
+playback rate to 0) and then updates it with the death time scale and the top of the active water
+the actor is in (-2^127, rodata_4A8, without one; the water's `GetActive()` is the entity flag
+byte's 0x80 bit, 0x00003F10..0x00003F20). Once it is over and no longer moving it starts the fade
+(`mFadeToDeath`, `mAlphaDelta` -1/3 rodata_4AC, the projectile-passthrough material, zero momentum
+and `Stop`, 0x00003F80..0x00003FF0). The update path then falls through into the drowning timer
+(retail has no early return there).
+
+Ported alongside, because the bodies had assumed the rag doll null: Think's primed-rag-doll arm
+(fn_9_C944, the frozen body is unfrozen, 0x0000CA74..0x0000CA78), PreThink (CAC8), PreRender
+(C6D4: the rag doll's PreRender, vtable +0x10), PreRenderAllViewports (C51C) and the KnockBack
+override (C300: the torso impulse, the knock-back direction times 200000.f (rodata_4EC) times the
+damage's knock-back power, 0x0000C324..0x0000C3AC). Two fixes outside the slice: `fn_9_4D84`'s
+false gate takes the idle branch at 0x00004F4C (it returned) and its gate includes the rag-doll
+test (0x00004DAC..0x00004DB4); `fn_9_3090`'s water test is `GetActive()` (lbz +0x20, extrwi 0x80),
+not the trigger flags.
+
+Runs (the coverage build, merged with tools/cov/gcov_report.py; 0 `[port] caught`/`reach-stub` in
+each): area 59 natural (the c300 and core drivers), Torvus 05_swamp_timber! natural and forced
+(tools/cov/force.sh with tools/cov/specs/commandopirate_ragdoll.py and
+tools/drivers/commandopirate_ragdoll.py; the driver waits for a30, the area that holds the waters,
+before it kills anything). force.py does not gate on a spec's exprs (it logs them); the sets carry
+their own conditions.
+
+| Body | Arm | How |
+|---|---|---|
+| `fn_9_3E1C` | the null rag doll / the timer / the creation (0x00003E3C, 0x00003FF8..0x00004118) | natural (the kills and the corpse shots) |
+| | prime (0x00003E54..0x00003EB8), the update, the fade (0x00003F80..0x00003FF0) | natural |
+| | the flags 3 creation (0x000040A0..0x000040C0) and the small movements (0x00003F90) | forced (the spec's 4090: the block flag 0x01 on every call) |
+| | the timer running out with a rag doll (0x00004028) | forced (4020: the timer at 0xC00 at 0.001) |
+| | an active water (0x00003F2C), an inactive one (0x00003F1C) | forced (3ED4: the primed rag doll's fluid id u058b for u0508, u05bd for u0500) |
+| | a fluid that is not a water (0x00003F10) | forced (an earlier run of the spec, the fluid id the commando's own u0500 on every call) |
+| `fn_9_C300` | the torso push (0x0000C324..0x0000C3AC) | forced (4090) |
+| | the early out with a rag doll (0x0000C3B0..0x0000C3B8) | natural |
+| `fn_9_C944` | the primed rag doll with a frozen body (0x0000CA74..0x0000CA78) | forced (CA74: the body frozen) |
+| `fn_9_CAC8`, `fn_9_C6D4`, `fn_9_C51C` | every arm | natural |
+| `fn_9_4D84` | the aim path, the 0xC65 0x02 flip, both target-vector arms, the idle branch and its two early outs | forced (a one-off spec: the melee cooldown 0xB7C above 1, the 0x02 bit and the block flag 0x10 in turn) |
+| | `fn_9_3CBC` finds no target (0x00004E04) | not run (unchanged by this slice) |
+| | alive with a rag doll (0x00004DAC) | dead: every writer of the rag doll is on a death path |
+
+Think (fn_9_C944) keeps no marker: it still calls the CVisualKnowledge stand-in and its two
+collision-manager null arms (0x0000C9xx) did not run. `fn_9_3090` stays unmarked (12/29 lines).
+
+The flags 3 forcing gives the corpse a big launch when it is shot after drowning (u0500 ended
+~9e6 units away in x in three forced runs; never in the natural runs, where the drowned corpse
+faded in place). The forcing sets the block flag 0x01 on every call, a state the shipped
+commandos may never reach; whether retail launches the same way is not checked.
+

@@ -671,6 +671,9 @@ void CSplitterMainChassis::EndSpinAttack(CStateManager& mgr, float) {
 // GetCollisionDescFromIndex, to GetNumCollisionActors at 0x9B7C) that casts to a CCollisionActor
 // (0x9B44-0x9B4C) gets the first vulnerability when it is the "target_LCTR" actor at 0xCC2
 // (0x9B50-0x9B64), else the second (0x9B6C-0x9B70).
+// Arms: the failed cast (0x9B44-0x9B4C) was forced under gdb (the manager's descriptions only
+// hold the collision actors it made, so the cast never fails in the fight).
+// @ fn_75_9AF8
 void CSplitterMainChassis::PortSetCollisionVulnerability(CStateManager& mgr,
                                                          const CDamageVulnerability& target,
                                                          const CDamageVulnerability& other) {
@@ -2739,6 +2742,23 @@ void CSplitterMainChassis::PortAutoDestruct(float time) {
   if (mCharacterType == static_cast< EPatternedAI >(0x39)) {
     static_cast< CSplitterCommandModule* >(self)->PortAutoDestruct(time);
   }
+}
+
+// fn_75_E660 (0xE660-0xE68C; its caller is the Digital Guardian head's fn_14_14C24): when the
+// chassis is alive (0x420's 0x40 bit, extrwi. 1,25 / beqlr at 0xE664) and 0xD41's 0x01 bit is
+// clear (clrlwi. 31 / bnelr at 0xE670), the bit is set (rlwimi 0,31,31 at 0xE67C) and the death
+// timer 0xD20 is the given time (stfs f1 at 0xE684). PortUpdateTimers counts it down. Every arm
+// ran from the head's 14C24 (the bit clear, already set, and a chassis just killed).
+// @ fn_75_E660
+void CSplitterMainChassis::PortStartDeathTimer(float time) {
+  if (!GetAlive()) { // 0xE664
+    return;
+  }
+  if ((mFlagsD41 & 0x1) != 0) { // 0xE670
+    return;
+  }
+  mFlagsD41 |= 0x1; // 0xE67C
+  mTimerD20 = time; // 0xE684
 }
 
 // ---------------------------------------------------------------------------------------------

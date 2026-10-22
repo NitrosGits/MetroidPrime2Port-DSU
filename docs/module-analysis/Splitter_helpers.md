@@ -526,12 +526,56 @@ that says the list is built, and lbl_75_bss_8, the list) are the port's two file
 | `fn_75_E788` (the chassis's dock reserve) | right: the alive bit (asm 0xE78C), the active bit (asm 0xE798), the command module id at 0xC6C (asm 0xE7A4-0xE7B4), the reservation at 0xC6E (asm 0xE7B8-0xE7C0), the landed count 5 or 0 (asm 0xE7C4-0xE7D4), the flag byte 0xD41's 0x80 bit (asm 0xE7DC) and the flag byte 0xD40's 0x01 bit (asm 0xE7E8) | 6/6 lines, 9/16 branches - the seven untaken arms need the chassis dead, inactive, with a head, with a reservation, landed somewhere else or with the two flag bits set |
 | `fn_75_A490` (the health info's copy) | right: the 0x1C-byte copy (asm 0xA490-0xA4E0) | inlined into the marked `fn_75_A37C` (the port's `*actor->HealthInfo() = *GetHealthInfo()`) - no body of its own to mark |
 
+### 3.16 The knock-back's arms: the Splitter is immune to every weapon
+
+The console's `damage` now takes `boostball` (the weapon type 7 fn_75_EBF4 tests) and the force
+spec's cases write the damage's weapon type and the flag byte 0xD41's 0x80 bit, but **the arms are
+not reachable in the port's fight**:
+
+- The Splitter's collision actors get the ricochet vulnerability (fn_75_A4E4, 0x0000A814) and the
+  chassis's own vulnerability is the data's, so `CStateManager::ApplyKnockBack` returns at its
+  `!weaponVulnerability.WeaponHurts()` guard (src/MetroidPrime/CStateManager.cpp) before it calls
+  the actor's virtual.  The chassis's KnockBack (fn_75_EBF4) therefore never runs: **0/9 lines** in
+  every run - the natural one, the boost ball hit (the console's new weapon type), the chassis's
+  laser sweep (`fsm u0532 LaserSweepAttack`, the beam's impact does not reach the chassis's
+  target_LCTR actor) and the spin attack (`fsm u0532 SpinAttack`, which does set the flag byte
+  0xD41's 0x80 bit).
+- gdb cannot write the vulnerability's per-weapon entry from the force (the vector's `operator[]`
+  is not in the debug information: "Could not find operator[]"), so the damage cannot be made to
+  get past the guard.
+
+`fn_75_6178` (the head's collision) stays unmarked for the same kind of reason: the head flies
+(kMT_Flyer) and only touches the world, so the two arms that need a collision whose material is
+not the wall, the floor or the ceiling are not reached.  The head's collision itself is a one-off
+(the head spawns into the ceiling), so the coverage runs catch it in some runs only (4/14 lines
+there, 0/14 in the rest); the force spec's COLID, COLLIDNM and COLFLAG cases write the collided
+id, empty the material list and set the flag byte 0xF6A's 0x01 bit.
+
+### 3.17 The next three rows: the shield effect, the collision vulnerability and the constructor
+
+The three rows of section 2 whose port bodies were one branch away from complete, each read
+against the REL's asm (`tools/asmcheck.py annotate Splitter fn_75_<off>`) and each driven with
+the coverage build's merged profile (the natural run and the forced runs of this slice):
+
+| body | the diff | the profile |
+|---|---|---|
+| `fn_75_2BE0` (the head's shield effect) | right: the state at 0xEE0 is compared with 0 (asm 0x2C00, 0x2C04 - the state 0 returns nothing) and with 1 (asm 0x2C08, 0x2C14 - the state 1 gives "LightShield", any other state "DarkShield"), and the name is looked up in the animation data's first particle effect (asm 0x2C88) | 4/4 lines, 5/5 branches, **ALL-ARMS** - **marked**; the state 0 ran in the fight, the states 1 and 2 were forced (`SPLITTER_FORCE=SHIELD1` and `SHIELD2` write the head's mCollisionState at the body's entry) |
+| `fn_75_9AF8` (the chassis's collision vulnerability) | right: the walk over the manager's collision actors (asm 0x9B28, 0x9B7C), the lookup (0x9B40), the cast to a CCollisionActor (0x9B44) whose failure skips the actor (0x9B48, 0x9B4C), and the comparison of the id with the one at 0xCC2 (0x9B58, 0x9B5C) that picks the first or the second vulnerability (0x9B64, 0x9B70) | 8/8 lines, 6/6 branches, **ALL-ARMS** - **marked**; the failed cast was forced (`SPLITTER_FORCE=NULLCAST` writes the id in r15 at the cast's line: the build keeps the id there, `movzwl 0x48(%rax),%r15d; mov %r15d,%esi`) |
+| `fn_75_F5F8` (the chassis's constructor) | right: the counter at 0xD00 is 5 unless the data's flag word (the runtime struct's 0x68) has its 0x1 bit (asm 0xF7EC `lwz 0x68(r31)`, 0xF7F0 `clrlwi. r0, r0, 31`, 0xF7F4 `beq`, 0xF7F8 `mr r3, r4`, 0xF7FC `stw r3, 0xd00(r29)`) | 30/30 lines, 33/33 branches, **ALL-ARMS** - the 0x1 bit was forced (`SPLITTER_FORCE=LANDED0` writes the data's flag word at the constructor's line 1887, before the build's load of it, `mov 0x8b0(%rbx),%eax`) |
+
+The three forced arms are the arms the shipped spawns cannot reach: the head's shield state at
+0xEE0 is 0 in the shipped fight (the shield only comes up in the laser sweep and the dodge, and
+the head is docked in the shipped spawns), the manager's descriptions only hold the collision
+actors the manager made - so the cast to a CCollisionActor never fails - and the shipped flag
+word has no 0x1 bit, so the counter at 0xD00 is always 5.
+
 ## 4. What is left, and why
 
 - **The queue's rows with a body but no marker** are the ones the coverage build shows the
   shipped spawns reach: section 3.3 lists them with the lines and the branches each one still
-  misses. The next ones are `fn_75_2CE0` (the head's shield: 5/34 lines), `fn_75_8D50` (the
-  team exit: 2/7) and `fn_75_AAC4` (the player hint: 3/8) - the smallest gaps.
+  misses. The next ones are `fn_75_2CE0` (the head's shield: 5/34 lines), `fn_75_E768` (the
+  head's dock release: 0/4 lines), `fn_75_E788` (the dock reserve: 0/6) and `fn_75_2154` (the
+  head's move to: 0/6) - the smallest gaps.
 - **The queue's rows with no body at all** are the module's own helpers that the FSM lane's
   states and codes call (the beam effect's actor, the laser-pulse shot, the collision actor
   managers' joint helpers) and the ones the two classes' constructors build. They are listed in

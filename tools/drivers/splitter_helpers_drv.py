@@ -218,6 +218,14 @@ PLANS = {
     "K2": [(1, "pick:0532"), (2, "damage u0532 25 0 cannonball"), (4, "pick:0531"),
            (6, "lift:0531:-127.0"), (8, "damage u0531 25 0 power"),
            (12, "damage u0532 25 0 missile"), (16, "damage u0531 25 0 missile")],
+    # E2/E3 (the helpers lane): the chassis takes a boost ball hit, so fn_75_EBF4's knock-back
+    # runs; E3 puts the chassis into its spin attack first, so fn_75_BAA8 has set the flag byte
+    # 0xD41's 0x80 bit (the arm that turns both reactions off).
+    "E2": [(1, "pick:0532"), (3, "damage u0532 5 boostball")],
+    "E3": [(1, "pick:0532"), (3, "fsm u0532 SpinAttack"), (6, "damage u0532 5 boostball")],
+    # E4: the chassis's laser sweep; its beam's collision actor is the chassis itself, so the
+    # chassis takes the damage and fn_75_EBF4's knock-back runs.
+    "E4": [(1, "pick:0532"), (2, "tp:0:9:0"), (4, "fsm u0532 LaserSweepAttack")],
     "D": [(2, "dump:objs collision"), (3, "dump:objs splitter"), (4, "dump:obj u%s" % "0532")],
     "T": ring(10, 0, 10) + ring(30, 0, 36) + ring(25, 12, 62) + missiles(88, 6) + [(101, "tp:0:20:0")]
          + missiles(102, 6) + [(115, "tp:20:0:0")] + missiles(116, 6) + [(129, "tp:-20:0:0")]

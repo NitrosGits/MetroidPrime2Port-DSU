@@ -69,8 +69,8 @@ SPEC = [
     # slice 36: the BoostBallRoll state and the two getters it calls (fn_10_2F04 at 0x0000A4FC
     # and fn_10_2EFC at 0x0000A548) - the state must run for them to.
     ('A3B0 BoostBallRoll', 'CDarkSamus::BoostBallRoll(', ['$rdx'], 'calls'),
-    ('2F04 GetGuest318Bit6', 'CDarkSamus::GetGuest318Bit6(', [], 'ret max=3000'),
-    ('2EFC GetGuest314', 'CDarkSamus::GetGuest314(', [], 'ret max=3000'),
+    ('2F04 HasBeenDamaged', 'CDarkSamusBoostBall::HasBeenDamaged(', [], 'ret max=3000'),
+    ('2EFC GetDamageTaken', 'CDarkSamusBoostBall::GetDamageTaken(', [], 'ret max=3000'),
     ('A154 RollBoostBallToPosition', 'CDarkSamus::RollBoostBallToPosition(', [], 'calls'),
     # the helpers of slice 27
     ('99B8 StopBoostBallParticles', 'CDarkSamus::StopBoostBallParticles(', [], 'calls'),
