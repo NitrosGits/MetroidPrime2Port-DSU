@@ -120,6 +120,12 @@ void StandInFn(const char* fn) {
 // On the host the table addresses are irrelevant: the state machine matches a node by its name,
 // so the name strings are retail's and the entry's function is the module's member function.
 // The members are cast the way CAIMannedTurret and the SpacePirate port do it.
+// fn_14_D904 (0x668, no branch) also stores the knee colours bss_1C (0.75, 0, 0, 1; 0xD938/0xD964)
+// and bss_20 (0, 0, 0.75, 1; 0xD974), the toe bounds bss_24 (0, 0, 2; 0xDEEC..0xDF50) and the GX
+// colour bss_30 (0.25, 0.25, 0.25, 1; 0xDF54): sHitColor/sVulnerableColor (knee armour file),
+// skToeTouchBounds and sGXRegister1Color. tools/drivers/dg_tables.py runs the initialiser over the
+// .data dump and compares every entry (name, order, retail function by the member's marker) with
+// the arrays below: 12 + 14 + 13 entries, no mismatch.
 #define DG_TRIGGER(name)                                                                           \
   { #name, reinterpret_cast< CPatterned::StateMachine::TriggerFunc >(&CDigitalGuardian::name) }
 #define DG_STATE(name)                                                                             \
@@ -127,6 +133,7 @@ void StandInFn(const char* fn) {
 #define DG_CODE(name)                                                                              \
   { #name, reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CDigitalGuardian::name) }
 
+// @ fn_14_D904
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     DG_TRIGGER(StateOver),           DG_TRIGGER(IsIdle),
     DG_TRIGGER(HasFaceTarget),       DG_TRIGGER(KneeDestroyed),
@@ -3224,7 +3231,18 @@ CDigitalGuardian::GetDeathExplosionParticle() const {
 // Retail fn_14_1B8. The property ids and their order are the generated SLdrDigitalGuardian
 // reader's, which the analysis checked against the REL's switch id by id: the loader's dispatch
 // tree reads all four blocks (0x255A4580 editor properties, 0xB3774750 patterned AI, 0x7E397FED
-// actor parameters, 0xC55918CC guardian data).
+// actor parameters, 0xC55918CC guardian data; any other id is skipped, ReadBytes at 0x338).
+// The defaults stored before the read (0x1F8..0x264) are the generated SLdrDigitalGuardian ctor's:
+// patterned +0x8 turnSpeed 360 (.rodata 0x260), +0x18 minAttackRange 0 (0x264), +0x48 health 150
+// (0x268), +0x4C knock-back resistance 2 (0x26C), +0x22C creatureSize 2 (li 0x214); the actor
+// parameters' ambient colour (1, 1, 1, 1; CColor 0x248 -> +0x14) and visor flags 0xF (0x250 ->
+// +0x64) are already the SLdrLightParameters / SLdrVisorParameters ctor defaults.
+// The guardian data goes to the ctor as the SLdr struct (stw r29 0x448, copied by fn_14_C68C);
+// the host copies its 51 properties into CDigitalGuardianData, every field.
+// The empty-model arm (0x38C) is data-dead (the shipped DGRD, 0x00350060, has a model); forced
+// (tools/cov/specs/digitalguardian_dg33_noload.py). Retail's null test after __nw__ (0x3F4) has no
+// host arm (the host's allocator does not return null).
+// @ fn_14_1B8
 static CEntity* PortLoadDigitalGuardian(CStateManager& mgr, CInputStream& input,
                                          CEntityInfo& info) {
   SLdrDigitalGuardian sldrThis;

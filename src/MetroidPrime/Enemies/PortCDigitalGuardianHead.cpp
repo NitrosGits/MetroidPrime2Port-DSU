@@ -113,6 +113,15 @@ public:
 
 // The head's three FSM tables, in retail order: lbl_14_data_808 (20 triggers), lbl_14_data_A14
 // (17 states) and lbl_14_data_C80 (29 codes). The host state machine matches a node by its name.
+// fn_14_1AD2C (0x9CC, the .ctors entry, no branch) builds them: it copies each three-word record
+// {0, -1, fn} (.data 0x718..0x7F0 and on) into the entries' last three words (0x1AE3C..0x1B6DC),
+// and also stores the echo colour bss_34 (0.5, 0, 0, 1; CColor at 0x1AD60, stw 0x1AE2C), bss_38
+// (2, 2, 2; .rodata 0x968, stfs 0x1AE30..0x1AE38) and data_E50 = {"LeftBombSlotDestroyed",
+// "RightBombSlotDestroyed"} (.rodata 0x944/0x948, 0x1B6CC/0x1B6E0); the port's are
+// sEchoTargetHitColor, sEchoTargetHalfExtent and skSlotDestroyed. tools/drivers/dg_tables.py runs
+// the initialiser over the .data dump and compares every entry's name, order and retail function
+// (by the member's marker) with these arrays: 20 + 17 + 29 entries, no mismatch.
+// @ fn_14_1AD2C
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     DGHD_TRIGGER(StateOver),           DGHD_TRIGGER(MainBodyDestroyed),
     DGHD_TRIGGER(ShouldProjectileAttack), DGHD_TRIGGER(IsBurstOver),
