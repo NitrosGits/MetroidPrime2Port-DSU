@@ -299,7 +299,22 @@ void Clear() {
 namespace {
 // The 60 FPS cap's next frame deadline; 0 while the cap is off, so turning it on starts afresh.
 uint64_t sNextFrameDeadline = 0;
+// Pad 0 as PortPumpEvents last read it. Aurora's override is one-shot (consumed by the next
+// PADRead), but a loop iteration can run several game ticks, each with its own PADRead.
+PADStatus sPad0{};
+bool sPad0Valid = false;
 } // namespace
+
+// Called before every game tick's PADRead: re-arms pad 0 with this iteration's state. Without it
+// the second tick of an iteration read pad 0 as PAD_ERR_NO_CONTROLLER (no physical pad), so
+// CDolphinController cleared every button for that tick: a held fire button read as a release
+// (the charge fired early) and a new press the next iteration (a stream of shots), and a held
+// lock-on dropped and re-locked. Only frames below 60 fps run more than one tick.
+void PortRearmPad0() {
+  if (sPad0Valid) {
+    PADSetPortOverride(0, &sPad0);
+  }
+}
 
 // MP1's frame pacing (src/MetroidPrime/main.cpp there), called once per main-loop iteration: under
 // the 60 FPS cap, sleeps to the next 60 Hz deadline. A frame that overran by more than a period
@@ -401,8 +416,9 @@ bool PortPumpEvents() {
   // MP2_INPUT's virtual pad on top of it.
   PortInputDevices::PollPortActions();
   PortInputDevices::PollGyro();
-  PADStatus pad0 = PortInputDevices::Poll();
-  PADSetPortOverride(0, &pad0);
+  sPad0 = PortInputDevices::Poll();
+  sPad0Valid = true;
+  PADSetPortOverride(0, &sPad0);
   // A device or pack change requested since the last iteration swaps the replacement set here,
   // and the binding icons follow the input used last (both throttle themselves).
   PortTextures::Poll();

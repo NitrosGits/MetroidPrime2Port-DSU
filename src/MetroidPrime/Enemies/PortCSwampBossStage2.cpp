@@ -113,7 +113,7 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mClampHealth(true)
 , mPlayerInWater(false)
 , mAttackReady(false)
-, mLightFlyer(true)
+, mLightFlyer(false) // the retail's ctor clears the flag (0xC0E8, mask 0x1 of the byte at 0xc76)
 , mMoveRequested(false)
 , mSwoopSide(false)
 , mCircleDone(false)
@@ -307,7 +307,7 @@ CVector3f CSwampBossStage2::CenterPosition(const CStateManager& mgr) const {
 
 // @ fn_79_60A0: the point the states steer at. fn_79_2E7C is its mSwoopTarget branch.
 CVector3f CSwampBossStage2::TargetPoint(const CStateManager& mgr) const {
-  if (mDashing) {
+  if (mHeadMode) { // 0x60B4: xc74 & 0x80
     return mSwoopTarget;
   }
   const CActor* node = TCastToConstPtr< CActor >(mgr.GetObjectById(mSwoopNode));
@@ -448,16 +448,6 @@ void CSwampBossStage2::Activate(CStateManager& mgr) {
   SetGrowthsActive(mgr, false);
   mgr.SetBossParams(GetUniqueId(), HealthInfo()->GetHP(),
                     gpStringTable->GetStringIndex("BossSwampBossStage2"));
-}
-
-void CSwampBossStage2::SetHeadVulnerable(CStateManager& mgr, bool vulnerable) {
-  // TODO(uncertain): retail swaps the head collision actor's vulnerability between the light and
-  // dark tables; reconstructed from the material/vulnerability writes only.
-  CCollisionActor* head = CollisionActor(mgr, kHeadActor);
-  if (head) {
-    head->SetDamageVulnerability(vulnerable ? mLightVulnerability
-                                            : CDamageVulnerability::ImmuneVulnerabilty());
-  }
 }
 
 // @ fn_79_5BC8
@@ -989,20 +979,27 @@ void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator)
   (void)projectile;
 }
 
-// fn_79_5030: put every chain node on its recorded position.
+// fn_79_5030: put every chain node on its recorded position. The retail walks the *nodes* vector
+// and reads the position at the same index (0x505C-0x5080, the loop's bound at 0x5090/0x5094);
+// the `if (node)` is the retail's own cast test (0x5074). The bound is the nodes count alone
+// (0x5054 lwz r31,0x4(r5); 0x5090 cmpw r27,r31): the only writer, fn_79_50AC, pushes a position
+// and a uid together, so the two vectors are always the same length.
+// @ fn_79_5030
 void CSwampBossStage2::PlaceChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const rstl::vector< CVector3f >& positions) const {
-  const int count = static_cast< int >(nodes.size());
-  for (int i = 0; i < count && i < static_cast< int >(positions.size()); ++i) {
+  const int count = static_cast< int >(nodes.size()); // 0x5054
+  for (int i = 0; i < count; ++i) {                   // 0x5090 cmpw, 0x5094 blt
     CActor* node = TCastToPtr< CActor >(mgr.ObjectById(nodes[i]));
-    if (node) {
+    if (node) {                                       // 0x5074 cmplwi, 0x5078 beq
       node->SetTranslation(positions[i]);
     }
   }
 }
 
-// fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
+// @ fn_79_527C: swing each node about the chain origin, then pull it back inside the edge radius.
+// The arm that pulls a node back inside the edge radius (0x53B0) ran on its own in the chain
+// launch (anim event 0x1b, carried by the DropFlyer / Become*Flyer animations; note 7.24).
 void CSwampBossStage2::SwingChainNodes(CStateManager& mgr,
                                        const rstl::vector< TUniqueId >& nodes,
                                        const CVector3f& origin,
@@ -1040,6 +1037,47 @@ void CSwampBossStage2::PlaceChainSegment(CStateManager& mgr, CActor& chain,
     if (child) {
       PlaceChainSegment(mgr, *child, origin, rotation);
     }
+  }
+  --mChainDepth;
+}
+
+// @ fn_79_5830: the chain's nodes: the chain actor's "PTRL/FOLW" node, then the walk. The engine
+// delivers the boss's kSM_AreaLoaded at the area load, so the walk runs without any forcing
+// (the console's `send <boss> AreaLoaded` only adds a second one).
+void CSwampBossStage2::CollectChainNodes(CStateManager& mgr, TUniqueId chain,
+                                         rstl::vector< TUniqueId >& nodes,
+                                         rstl::vector< CVector3f >& positions) {
+  CActor* chainActor = TCastToPtr< CActor >(mgr.ObjectById(chain));
+  if (!chainActor) {
+    return;
+  }
+  const TUniqueId nodeId = chainActor->FindConnectedObject(mgr, kSS_Patrol, kSM_Follow);
+  CActor* node = TCastToPtr< CActor >(mgr.ObjectById(nodeId));
+  if (!node) {
+    return;
+  }
+  WalkChainNodes(mgr, node, nodes, positions);
+}
+
+// @ fn_79_50AC: the chain walk's recursion: the node's position and uid go on the lists and the
+// walk follows the node's "ARRV/NEXT" connections. It runs with fn_79_5830 above.
+void CSwampBossStage2::WalkChainNodes(CStateManager& mgr, CActor* node,
+                                      rstl::vector< TUniqueId >& nodes,
+                                      rstl::vector< CVector3f >& positions) {
+  ++mChainDepth;
+  positions.push_back(node->GetTranslation());
+  nodes.push_back(node->GetUniqueId());
+  const rstl::vector< TUniqueId > connected =
+      node->FindConnectedObjects(mgr, kSS_Arrived, kSM_Next);
+  for (const TUniqueId& uid : connected) {
+    if (uid == node->GetUniqueId()) {
+      continue;
+    }
+    CActor* next = TCastToPtr< CActor >(mgr.ObjectById(uid));
+    if (!next) {
+      continue;
+    }
+    WalkChainNodes(mgr, next, nodes, positions);
   }
   --mChainDepth;
 }
@@ -1103,7 +1141,10 @@ void CSwampBossStage2::AimSpitPlatforms(CStateManager& mgr,
   pivot->SetTranslation(target);
 }
 
-// fn_79_55B0: wake the platform chain, drop its nodes on their recorded positions, swing them by the
+// @ fn_79_55B0: wake the platform chain (the retail's two virtual calls on the chain actor, the
+// vtable slot +0x18 = CEntity::AcceptScriptMsg, at 0x5654 and 0x56B0; the second one's message
+// id is the "DECR" fourcc at 0x5668-0x5670, the first is the activation),
+// drop its nodes on their recorded positions, swing them by the
 // heading difference to the chain's follow node and park that node at the event's locator.
 void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
                                            rstl::vector< TUniqueId >& nodes,
@@ -1141,11 +1182,20 @@ void CSwampBossStage2::LaunchPlatformChain(CStateManager& mgr, TUniqueId chain,
   patrol->SetTranslation(from);
 }
 
-// fn_79_4F88 SendDecrement (sends kSM_Decrement to mLightChain) is left out: nothing in the module
-// calls it (no state, trigger, code function or vtable slot references it), so it cannot be
-// exercised, and the port does not invent a caller.
+// @ fn_79_4F88: send the "DECR" message to the light chain actor. The retail looks the actor up
+// by mLightChain (0xca4) with ObjectById (0x4FB4), leaves when it is not there (0x4FBC) and
+// otherwise sends the message (the vcall at 0x5014, the vtable slot +0x18 =
+// CEntity::AcceptScriptMsg): the sender is the boss itself (its uid at 0x8), the message id is
+// mLightChain, the message is the fourcc 0x44454352 (0x4FD4-0x4FD8, kSM_Decrement) and the
+// state is -1 (0x4FCC, kSS_InvalidState).
+// Nothing in the module calls it - the only reference to 0x4F88 in the retail's .text is its own
+// definition - so the body was exercised from a temporary caller (the note's 7.26).
 void CSwampBossStage2::SendDecrement(CStateManager& mgr) {
-  (void)mgr;
+  CEntity* chain = mgr.ObjectById(mLightChain);
+  if (chain == nullptr) {
+    return;
+  }
+  chain->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), mLightChain, kSM_Decrement));
 }
 
 // @ fn_79_3390: total damage still inside the memory window.
@@ -1294,6 +1344,8 @@ void CSwampBossStage2::ProcessDamage(CStateManager& mgr, TUniqueId colActorId) {
 // --------------------------------------------------------------------------------------------
 // Triggers
 
+// @ fn_79_A498: the animation is over (retail: the animation state id at 0x6b4 == 3, which is
+// the host's kAS_Over).
 bool CSwampBossStage2::StateOver(CStateManager& mgr, const CTriggerData&) const {
   return mAnimationState.IsOver();
 }
@@ -1308,13 +1360,21 @@ bool CSwampBossStage2::AllGrowthsDead(CStateManager& mgr, const CTriggerData&) c
   return true;
 }
 
+// @ fn_79_A418: the ovipositor's health (0xc50) is zero or less (retail: the compare with
+// rodata_9C, the zero float, at 0xA424).
 bool CSwampBossStage2::OvipositorDead(CStateManager& mgr, const CTriggerData&) const {
   return mOvipositorHealth <= 0.f;
 }
 
+// @ fn_79_A3D8: retail compares the phase (0xc94) with the field at 0x8cc - the loader's
+// unknown_0x96ce7897 (the loader struct sits at 0x7c0, so 0x8cc is its 0x10c) - as
+// "2 * field <= phase": `slwi r0, r4, 1` doubles the field, then subfc/adde with the sign bits
+// (`extrwi` takes the doubled value's sign, `srawi` the phase's) is MWCC's signed `<=`
+// (0xA3E0-0xA3F0). The arm that fires was reached with the loader's field forced to 0 (gdb:
+// `set var this->mData.unknown_0x96ce7897 = 0` at the trigger's entry), so the compare takes
+// its true side.
 bool CSwampBossStage2::ZeroHealth(CStateManager& mgr, const CTriggerData&) const {
-  // TODO(uncertain): retail compares the phase index against unknown_0x96ce7897.
-  return mPhase >= mData.unknown_0x96ce7897;
+  return mData.unknown_0x96ce7897 * 2 <= mPhase;
 }
 
 // @ fn_79_A3F8
@@ -1358,6 +1418,10 @@ bool CSwampBossStage2::CircleOver(CStateManager& mgr, const CTriggerData&) const
   return GetBodyController()->GetCurrentStateId() == pas::kAS_Locomotion || mCircleDone;
 }
 
+// @ fn_79_A064: the attack is ready and it is the blow (the attack type 6) - retail: xc75_80
+// (the attack ready) at 0xA06C and the type at 0xA078.  The arm that fires was reached with
+// the attack ready and the type 6 forced (gdb: `set var this->mAttackReady = 1`,
+// `set var this->mAttackType = 6` at the trigger's entry).
 bool CSwampBossStage2::ShouldBlow(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 6;
 }
@@ -1380,6 +1444,10 @@ bool CSwampBossStage2::IsLevel(CStateManager& mgr, const CTriggerData&) const {
          CMath::FastCosR(0.034906585f);
 }
 
+// @ fn_79_A0C8: the wind node (0xf00) is not the chain node nearest the player - retail: the
+// wind node at 0xA0EC and the compare at 0xA11C.  The trigger is in the module's trigger table
+// but no state's transition list uses it (the note's 6: the asset's edges), so the function is
+// never called: its only arm is dead, and the shipped data scan is the proof.
 bool CSwampBossStage2::SwitchedPlatform(CStateManager& mgr, const CTriggerData&) const {
   return mWindNode != NearestNodeToPlayer(mgr);
 }
@@ -1399,6 +1467,8 @@ bool CSwampBossStage2::OneGrowthDead(CStateManager& mgr, const CTriggerData&) co
   return mGrowthDestroyed && mGrowthDeadTime > 0.3f;
 }
 
+// @ fn_79_9F7C: the attack is ready and it is the flyer drop (the attack type 5) - retail:
+// xc75_80 (the attack ready) at 0x9F84 and the type at 0x9F90.
 bool CSwampBossStage2::ShouldDropFlyer(CStateManager& mgr, const CTriggerData&) const {
   return mAttackReady && mAttackType == 5;
 }
@@ -1534,7 +1604,7 @@ void CSwampBossStage2::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
     mSwoopCount = mAttackType == 4 ? mSwoopCount + 1 : 0;
     mDashing = mgr.Random()->Float() < phase.dashChance;
     mDashTimer = RandomRange(mgr, phase.unknown_0x29e6ead6, phase.unknown_0x1753225e);
-    SetHeadVulnerable(mgr, true);
+    SetBodyVulnerable(mgr, true); // fn_79_20D8 (0x9C70)
     PickSpitNode(mgr);
   } else if (msg == kStateMsg_Update) {
     BodyController()->FaceDirection(DirectionToPlayerAim(mgr), dt);
@@ -1584,7 +1654,7 @@ void CSwampBossStage2::DarkLurk(CStateManager& mgr, EStateMsg msg, float dt) {
         // Close enough while diving: switch the queued attack to the flyer drop.
         if (mAttackType == 3 &&
             (player->GetTranslation() - GetTranslation()).Magnitude() <
-                mData.unknown_0x9e116385) {
+                mData.unknown_0x5a844633) { // 0x99FC: guest 0x91c
           mAttackType = 5;
         }
       }
@@ -1752,7 +1822,10 @@ void CSwampBossStage2::Swoop(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_79_7E24
+// @ fn_79_7E24: the Blow state. Its arms all ran: the window's three tests (in front, the
+// 18 model scales to the side, the player not grappling), the push, the damage, the wind
+// effect and the deactivate that pops the sustained damage while the window is still open
+// (forced (fsm) - the window is open for fewer updates than a console round trip).
 void CSwampBossStage2::Blow(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Update) {
     if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_MeleeAttack)) {
@@ -1929,6 +2002,9 @@ void CSwampBossStage2::DropFlyer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_79_72FC: the code node resets the attack index (retail: `li r0, 0; stw r0, 0xc98`).
+// Not marked: the code node is in the asset's code list but no state transitions into it (the
+// note's 6), so the body never runs.
 void CSwampBossStage2::ResetAttackPhase(CStateManager& mgr, float dt) { mAttackIndex = 0; }
 
 // --------------------------------------------------------------------------------------------
@@ -1998,7 +2074,13 @@ void CSwampBossStage2::Think(float dt, CStateManager& mgr) {
     }
   }
   UpdateWater(mgr, mSplashPos, mLastHeadSplash);
-  // TODO(uncertain): retail also clears the player's riding-platform state while in water.
+  // 0xB100: a player standing on a platform (CPlayer+0x124c) is not in the water.
+  if (mPlayerInWater) {
+    const CPlayer* player = mgr.GetPlayer(0);
+    if (player && player->GetRidingPlatform() != kInvalidUniqueId) {
+      mPlayerInWater = false;
+    }
+  }
   DecayDamageMemory(dt);
   if (mHeadMode) {
     mHeadBlend = rstl::min_val(mHeadBlend + dt, 1.f);
@@ -2058,8 +2140,10 @@ void CSwampBossStage2::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
     mPlatformsB = FindConnectedObjects(mgr, kSS_InternalState4, kSM_None);
     mWater = FindConnectedObject(mgr, kSS_InternalState12, kSM_None);
     mLightChain = FindConnectedObject(mgr, kSS_InternalState2, kSM_None);
-    // TODO(uncertain): fn_79_5830 walks each chain into its node/position lists.
+    // fn_79_5830: each chain walks into its own node and position lists.
+    CollectChainNodes(mgr, mLightChain, mChainANodes, mChainAPositions);
     mDarkChain = FindConnectedObject(mgr, kSS_InternalState7, kSM_None);
+    CollectChainNodes(mgr, mDarkChain, mChainBNodes, mChainBPositions);
     ReadWaterAndNodes(mgr);
     break;
   case kSM_Delete:
@@ -2245,11 +2329,17 @@ CVector3f CSwampBossStage2::GetAimPosition(const CStateManager& mgr, float dt) c
 
 // @ fn_79_2690
 CScannableObjectInfo* CSwampBossStage2::GetScannableObjectInfo() const {
-  // TODO(uncertain): retail picks the light or dark scan by flyer form.
-  const rstl::optional_object< TLockedToken< CScannableObjectInfo > >& scan =
-      mLightFlyer ? mScanLight : mScanDark;
-  if (scan) {
-    return const_cast< CScannableObjectInfo* >(*scan.data());
+  // Retail picks the scan by the phase, not by a flag (0x26A0-0x26F0): the phase 0 and 2 use
+  // the light scan (0xe04), the phase 1 and 3 the dark one (0xe08) and the phase 4 and up the
+  // base's scan.
+  if (mPhase == 2 || mPhase == 0) {
+    if (mScanLight) {
+      return const_cast< CScannableObjectInfo* >(*mScanLight.data());
+    }
+  } else if (mPhase >= 4) {
+    return CPatterned::GetScannableObjectInfo();
+  } else if (mScanDark) {
+    return const_cast< CScannableObjectInfo* >(*mScanDark.data());
   }
   return CPatterned::GetScannableObjectInfo();
 }
@@ -2317,8 +2407,12 @@ CVector3f CSwampBossStage2::GetIngSnatchingNormal(float t) const {
   return (CVector3f::Down() + tilt * CVector3f(xf.Get00(), xf.Get10(), xf.Get20())).AsNormalized();
 }
 
-// fn_79_5D40: the snatch plane starts (0xc88 + 2) scaled heights from the splash position and
-// moves back by the model's bounds height as the blend rises.
+// @ fn_79_5D40: the snatch plane starts (0xc88 + 2) scaled heights from the splash position and
+// moves back by the model's bounds height as the blend rises. The retail's body (0x5D40..0x5E38)
+// takes the model's bounds (the GetBounds call at 0x5D78), asks for the normal with the virtual
+// GetIngSnatchingNormal (the vcall at 0x5D94, the vtable slot +0x138, the module's own
+// fn_79_5E3C - the port's call reaches that same body), and adds the splash position (0xab4)
+// plus the distance along that normal.
 CVector3f CSwampBossStage2::GetIngSnatchingPoint(float t) const {
   const CAABox bounds = GetModelData()->GetBounds();
   const CVector3f normal = GetIngSnatchingNormal(t);

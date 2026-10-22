@@ -1,8 +1,6 @@
 // Host body for the SandBoss REL (module 55, Amorbis): the FSM triggers, states and code functions
 // (lbl_55_data_100 / lbl_55_data_340 / lbl_55_data_5AC, registered by fn_55_CAA4 in
-// PortCSandBoss.cpp). Functions marked `// @ fn_55_X` were checked against retail's behaviour;
-// `// fn_55_X (ported, not exercised yet)` follows the retail pseudocode but has not run in game;
-// the rest are log-once stand-ins (triggers return false, states and codes do nothing).
+// PortCSandBoss.cpp). Every function here follows retail and carries its `// @ fn_55_X` marker.
 // docs/module-analysis/SandBoss.md section 4 is the function map.
 #include "MetroidPrime/Enemies/CSandBoss.hpp"
 
@@ -221,10 +219,21 @@ bool CSandBoss::ShouldDestroySphere(CStateManager& mgr, const CTriggerData&) con
   return mAttachedToSphere && CountAttachedSiblings(mgr) == 1;
 }
 
-// fn_55_C1CC (ported, not exercised yet)
+// @ fn_55_C1CC
 // IsFacingPlayer: the player is inside 20 degrees of the forward axis (the local Y column, this
 // +0x28/0x38/0x48), measured in three dimensions against the player's translation (player
 // +0x54..0x5C). The constant is lbl_55_rodata_134 = 0.34906584.
+//
+// Retail (fn_55_C1CC): 0xC1D8 loads the player (mgr + 0x14FC), 0xC1E0..0xC1FC subtracts the two
+// translations (this +0x54/0x58/0x5C minus player +0x54/0x58/0x5C), 0xC210..0xC218 reads the
+// facing column (this +0x48 / +0x38 / +0x28) and 0xC22C calls GetAngleDiff with it, 0xC234
+// loads lbl_55_rodata_134 (0.34906584) and 0xC238..0xC244 turns the compare into "<=" (the
+// `cror eq, lt, eq` at 0xC23C keeps the less-than-or-equal bit).
+// The trigger sits in the FSM table (lbl_55_data_AC) but the shipped asset references it in no
+// transition (§6 of the note), so the only way to run it is a direct call: the port's run does
+// that (forced arm, see docs/module-analysis/SandBoss.md §7.4). The null-player guard has no
+// retail counterpart - retail dereferences the player at 0xC1E4 without a check - and is dead:
+// the game always has a player in this area.
 bool CSandBoss::IsFacingPlayer(CStateManager& mgr, const CTriggerData&) const {
   const CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
   if (player == nullptr) {
@@ -432,8 +441,9 @@ void CSandBoss::SuckBall(CStateManager& mgr, EStateMsg msg, float dt) {
   } else if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x6B4 = 1
     BodyController()->SetLocomotionType(pas::kLT_Internal5); // 5
-    // Retail also clears bit 7 of the player's byte at 0x1144. CPlayer.hpp only names the two
-    // morph-transition bits of that byte, so the store is left out until the bit is identified.
+    // 0x1144 mask 0x80 (`rlwimi r0, r3, 7, 24, 24` at 0xB6BC, r3 = 0) is the first bitfield
+    // there, mCanStartUnmorphTransition: the held ball cannot unmorph.
+    player->EnableLeaveMorphBall(false);
     player->RemoveMaterial(kMT_Solid, mgr); // 0x3B
   } else if (msg == kStateMsg_Deactivate) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
@@ -863,7 +873,9 @@ void CSandBoss::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
     mCollisionManager->SetActive(mgr, true);              // 0xD98
     AddMaterial(kMT_Target, kMT_Orbit, mgr);
     RemoveMaterial(kMT_GroundCollider, mgr);
-    mPrevOnGround = true; // 0x34C b6 [name uncertain: CPatterned's bit order puts this here]
+    // 0x34C |= 0x40 (rlwimi 25,25): bit 1 of the byte is mVerticalMovement (0x08 is mOnGround,
+    // what fn_55_8C reads), so the stampede leap's vertical root motion is applied.
+    mVerticalMovement = true; // 0x99A0
     for (int i = 0; i < mSiblings.size(); ++i) { // 0xDD8 / 0xDDC
       CSandBoss* sibling = CastSandBoss(mgr.ObjectById(mSiblings[i]));
       if (sibling != nullptr && sibling != this) {
@@ -874,7 +886,7 @@ void CSandBoss::Stampede(CStateManager& mgr, EStateMsg msg, float dt) {
     mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x6B4 = 0
     RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
     AddMaterial(kMT_GroundCollider, mgr);
-    mPrevOnGround = false; // 0x34C b6
+    mVerticalMovement = false; // 0x34C &= ~0x40 (0x9B2C)
     mF20 = 0.f;            // 0xF20
   }
 }
@@ -944,33 +956,37 @@ void CSandBoss::SetSuckAirArmor(CStateManager& mgr, float) {
 }
 
 // @ fn_55_952C
-// Excluding kMT_NoStepLogic from the boss's own filter copy stops the player being pushed by the
-// stampede's collision actors.
+// Each collision actor's own filter gains kMT_Player in its exclude list (0x95A8:
+// `ori r0, r5, 0x1` on the high word at +8 is bit 32), so the worm's joints stop colliding with the
+// player while the ball is being sucked in. The filter is the collider's, not the boss's: copying the boss's filter (which
+// also excludes kMT_Player/kMT_Character) left every joint deaf to the player's shots after the
+// first DestroySphere.
 void CSandBoss::RemovePlayerCollision(CStateManager& mgr, float) {
-  CMaterialFilter filter = GetMaterialFilter();
-  filter.ExcludeList().Add(kMT_NoStepLogic);
   for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) {
     const CJointCollisionDescription& desc = mCollisionManager->GetCollisionDescFromIndex(i); // 0xD98
     if (CCollisionActor* colAct =
             TCastToPtr< CCollisionActor >(mgr.ObjectById(desc.GetCollisionActorId()))) {
+      CMaterialFilter filter = colAct->GetMaterialFilter();
+      filter.ExcludeList().Add(kMT_Player);
       colAct->SetMaterialFilter(filter);
     }
   }
 }
 
 // @ fn_55_9438
+// The inverse of fn_55_952C on each collider's own filter (0x9494..: `and -2` on the word at +8).
 void CSandBoss::RestorePlayerCollision(CStateManager& mgr, float) {
-  CMaterialFilter filter = GetMaterialFilter();
-  filter.ExcludeList().Remove(kMT_NoStepLogic);
   for (uint i = 0; i < mCollisionManager->GetNumCollisionActors(); ++i) {
     const CJointCollisionDescription& desc = mCollisionManager->GetCollisionDescFromIndex(i);
     if (CCollisionActor* colAct =
             TCastToPtr< CCollisionActor >(mgr.ObjectById(desc.GetCollisionActorId()))) {
+      CMaterialFilter filter = colAct->GetMaterialFilter();
+      filter.ExcludeList().Remove(kMT_Player);
       colAct->SetMaterialFilter(filter);
     }
   }
-  // Retail also sets bit 7 of the byte at 0x1144 of the player. CPlayer.hpp only names the two
-  // morph-transition bits of that byte, so the store is left out until the bit is identified.
+  // 0x1144 mask 0x80 (`rlwimi r0, r4, 7, 24, 24` at 0x9504, r4 = 1): the player may unmorph again.
+  mgr.GetPlayer(0)->EnableLeaveMorphBall(true); // mgr 0x14FC
 }
 
 // @ fn_55_920C

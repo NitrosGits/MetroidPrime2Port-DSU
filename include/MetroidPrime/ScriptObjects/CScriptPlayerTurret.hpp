@@ -23,6 +23,13 @@ public:
   // CEntity
   ~CScriptPlayerTurret() override;
   CEntity* TypesMatch(int typeId) const override;
+#ifdef TARGET_PC
+  // The module's vtable slot 15 (fn_63_0): the guest's thunk forwards to the vtable's slot 12
+  // (the base's HealthInfo), so the port forwards to the same virtual call.  The guest has its own
+  // thunk because the module's vtable is the linker's own; the host's CEntity has the entry
+  // already, and the port's copy keeps the same shape.
+  const CHealthInfo* GetHealthInfo() const override;
+#endif
 
   float GetMaxAimAngle() const { return mMaxAimAngle; }
   void SetTargetPosition(const CVector3f& position) { mTargetPosition = position; }

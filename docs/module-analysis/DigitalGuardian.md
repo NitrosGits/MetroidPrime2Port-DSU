@@ -493,7 +493,7 @@ the rest are the same base-class symbols as the body's inherited list.
 | 0x17A64-0x18264 | head overrides: `fn_14_17A00` AddToRenderer, `fn_14_17A44` PreRender, `fn_14_17A64` RenderSystemsToBeDrawnLast, `fn_14_17B28` Render, `fn_14_17BBC` DoUserAnimEvent, `fn_14_17C98` Think, `fn_14_17D38` AcceptScriptMsg, `fn_14_17F64` head dtor |
 | 0x18264-0x190E0 | **`fn_14_18264` head ctor** (0xE7C) |
 | 0x1912C-0x196F0 | **`fn_14_1912C`** — the 0x5B0-byte head-data copy (0x5C4) |
-| 0x196F0-0x1A698 | projectile class: `fn_14_19784` PreThink, `fn_14_19838` ctor, `fn_14_19908`/`1998C`/`19A08`/`19B70`/`19CE0`/`19DF8`/`19F18`/`19FD0`/`1A12C`/`1A168`/`1A1F8`/`1A430` — the `CEnergyProjectile` overrides |
+| 0x196F0-0x1A698 | charge-shot projectile `CGuardianProjectile` (dg21): `fn_14_19784` Think, `fn_14_19838` ctor, `fn_14_19908`/`fn_14_1998C` the module's copies of ~CEnergyProjectile/~CGameProjectile (called from its dtor `fn_14_1AAC4`); `fn_14_19A08`…`fn_14_1A430` are not in its vtable (`fn_14_1A430` is in `lbl_14_data_10D0`) |
 | 0x1A5F4-0x1AA44 | `fn_14_1A5F4` echo-target dtor, **`fn_14_1A698` echo-target ctor** (0x3AC) |
 | 0x1AAC4-0x1AD2C | `fn_14_1AAC4` projectile dtor, `fn_14_1AC14`, `fn_14_1ACB8` |
 | 0x1AD2C-0x1B6F8 | **`fn_14_1AD2C` — the head's static table initialiser** (`.ctors`) |
@@ -1366,3 +1366,500 @@ The entity-type tags for these are **not** in the reserved 112/113 pair (those a
   - The full fight crashed at the morph-out (`press x` after the bombs). The crash was in
     `CPlayer::Render` → `CModelData::Render` → `CTexture::Load`, which is player model texture
     code, not DG code.
+
+## 2026-10-21: unmorph crash fixed, runs 38/39
+
+- The run-37 crash (`CPlayer::Render` → `CTexture::Load`, at the morph-out in the fight) was a null
+  CTexture in the player's ball-transition beam model (CPlayer.cpp ~3303). It came from
+  `CModel::UnlockTextures` (DolphinCModel.cpp): when `CModelData::LockTextures` releases a model's
+  initial texture locks after the model has been drawn, the current material set's tokens are
+  released through the shader. That nulls the cached textures but leaves the instance's
+  `mLoadTextures` set, so `TryLockTextures` skips relocking. The host fix, under TARGET_PC,
+  releases the current set through `CCubeModel::UnlockTextures`, as `FrameDone` does.
+  - Before the fix, runs 380/381 (morph and bomb in slot 0 before the retreat, then unmorph)
+    logged a null texture (tag b6b1c040, index 3/5, unlocked) and then the SIGSEGV.
+  - After the fix, runs 390-392 hit the stale case once each, with no null texture and no crash.
+  - This is not the stale copy-texture mapping that `GXDestroyCopyTex` in DolphinCTexture.cpp
+    addresses: there the object is valid but the wrong image is drawn.
+- `/tmp/opencode/dghd2/run38.sh <tag> <port> <display> hold|holdtp|safe` is run37 with modes:
+  - `hold` and `holdtp` morph, bomb slot 0 before the retreat until a slot dies, then unmorph in
+    place (`holdtp` teleports away first). `safe` skips that step.
+  - Every mode then runs the FIRE and DRV loops to the head's death.
+- Results from seven fights to the head's death:
+  - IsDead returned true (head deleted), so 17184 is marked.
+  - IsIdle was never read with bit 0x80 set.
+  - 14470 made no random pick in any of them, only first-shot (1) and splitters (3); only run
+    36's fight made one.
+  - 15284 ran only its armour-on and platform arms. The hold runs destroyed slot 0 before the
+    retreat, but no SetStunnedPosition followed with the armour off.
+  - 9E88 ran the active collision-actor arm and the locator arm (actor inactive, 0x11B8 clear),
+    but not the 0x11B8 arm.
+  - A138 ran the no-emitter arm only.
+
+## 2026-10-21: forced arms, runs 400-404
+
+- Drivers: `tools/drivers/dg_area53.sh <tag> <port> <display> <steps>` with the step files
+  `dg_steps_beacon_rounds.sh`, `dg_steps_armour_off_stun.sh` and `dg_steps_close.sh`. The `fsm`
+  step needs port's console. Pick counts come from a local probe that was not committed.
+- The body constructor now allocates the beacon's echo emitter (fn_14_B100 at 0xC01C..0xC074), so
+  pre-render's emitter arms can run.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| A138 | no emitter | 37-39 | ran |
+| A138 | beacon model with height | 402 | ran |
+| A138 | emitter, no beacon height | 402, 404 | ran |
+| A138 | bit 0x08 (inactive) | 404, forced (`send <body> CLOS`) | unreachable: CLOS deletes the body before its next pre-render |
+| 14470 | random 1 and 3 | 402/403 (11 picks) | not run: the splitter main chassis is a pass-through stand-in, so the splitters never all die |
+| 15284 | armour off, no platform | 403, forced (`fsm <head> StunnedReaction`) | not run: StunnedReaction is a sub-machine state, which `fsm` cannot enter |
+| 173AC (IsIdle) | bit 0x80 set | FSM2 dump | not run: its triggers sit in sub-machines (`fsm <head> Idle` fails the same way) |
+| 9E88 | 0x11B8 set | - | unreachable until the vortex states (fn_14_9260/9070/8E44/76D0) are ported |
+
+- Marked: fn_14_A138. Still unmarked: 14470, 15284, 173AC, 9E88.
+- Console asks:
+  - `fsm <id> <Machine>/<State>`, to enter FSM2 sub-machine states. This would unblock IsIdle
+    and the 15284 armour-off arm.
+  - `delete <id>` (`CStateManager::FreeScriptObject`), to remove the undamageable splitter
+    chassis. This would unblock 14470's random arms.
+
+## 2026-10-21: vortex states, runs 410-413
+
+- Ported: fn_14_9260 VortexAttack, fn_14_9164 VortexEndAttack, fn_14_9070 VortexRetreat,
+  fn_14_8E44 ExitVortexAttack, fn_14_76D0 SetNormalAttackMode, fn_14_775C SetVortexAttackMode and
+  the helpers 34E8, 3674, 39CC, 3DA8, 4838, 4878, 4D54, plus the knee's fn_14_CE1C SetOrbitable.
+- Constructor fix: 0x128C starts at 0x80 (the rlwimi at 0xBA30 with r6 = 1); the port had 0.
+- Step files: `dg_steps_vortex.sh` (`fsm <body> VortexAttack`, then the sub-machine runs on its
+  own) and `dg_steps_head_stun.sh`. `dg_steps_beacon_rounds.sh` still needs the uncommitted
+  14470 probe for its counts (see its header).
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| 9260 | act, no drift, over, deact | 410, 412, forced (`fsm <body> VortexAttack`) | ran |
+| 9260 | drift (0x128D bit 0x40) | - | not run: only fn_14_A468 (DoUserAnimEvent, stand-in) sets it |
+| 3674 | no 0x40 | 410, 412 | ran; the pull arm needs 0x128D 0x40 (A468) |
+| 9164, 9070, 8E44 | every arm | 412, forced as above | ran |
+| 34E8 | no target / target: dist, near, step, accel, clamp | 410, 412 | ran; `unsafe` (dist > 0, direction not magnitude-safe) not run |
+| 76D0 | head, no head | 410-413 | ran |
+| 775C, 3DA8 off, CE1C off, 39CC null | - | - | not run: 775C runs on the root transition into the vortex, which `fsm` skips |
+| 4D54, 4878 | shaker | 410, 412 | ran; the no-shaker arm not run |
+| 173AC | bit 0x80 set | 410-413 | ran (no branch) |
+| 9E88 | 0x11B8 set | 410-412 | not run: no aim-position query during the vortex |
+
+- Marked: 9070, 9164, 8E44, 76D0, 4838, 173AC. Unmarked: 9260, 3674 (need A468 + 3300, 4E00,
+  458C, 73D4: a follow-up slice), 34E8, 39CC, 3DA8, 4D54, 4878, 775C, CE1C, 9E88, 15284.
+
+## 2026-10-21: DoUserAnimEvent, runs 420-423
+
+- Ported: fn_14_A468 DoUserAnimEvent and its handlers fn_14_3300 (vortex drift), fn_14_4E00
+  (locator camera shake), fn_14_458C (toe shock wave) with fn_14_20E4 (leg from locator), and
+  fn_14_73D4 SelectMeleeAttackRange (the A468 type-3 handler). New members 0x11D8/0x11DC (-1).
+- `dg_steps_vortex.sh` with `SHOOT=1` runs `shoot <body>` on each poll (`obj` shows only the root
+  state, so the polls cannot tell the vortex sub-state).
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| A468 | 5, 12, 13 (vortex), 16, 17 | 420, 423, forced (`fsm <body> VortexAttack`) | ran |
+| A468 | 3, 27, 13 outside the vortex, other types (CPatterned) | - | not run: no such event in the vortex animations; 3/27 come from the melee/jump states (stand-ins) |
+| 9260 | drift (0x128D 0x80) | 420, 423 | ran: every arm has run, marked |
+| 3674 | no 0x40, pull | 420, 423 | ran |
+| 3674 | 0x128C 0x04 | - | not run: only fn_14_4F2C (XHIT helper, stand-in) and the ctor set it |
+| 3674 | player beyond max distance | - | not run |
+| 3300 | object, time > 0 | 420, 423 | ran; no-object and take-off/landing-span arms not run |
+| 4E00 | Attach, Action, shaker | 423 | ran; no-shaker arm not run |
+| 9E88 | 0x11B8 set | 423, forced (`shoot <body>`) | ran: every arm has run, marked |
+| 458C, 20E4, 73D4 | - | - | not run (melee/jump states are stand-ins; 0x11D8 stays -1) |
+| 15284 | no platform | 421 | not run: aborted at the 32 MiB staging window too (33555040 bytes, frame 35700) |
+| 775C, 3DA8 off, CE1C off | - | - | not run: no natural vortex entry in these runs |
+
+- Marked: 9260, 9E88.
+
+## 2026-10-22: scan display and AcceptScriptMsg, gcov runs msgs3/del2/force1/open1
+
+- Drivers (`tools/cov/specs/`): `digitalguardian_msgs.con` (every A6A8 case plus three scans),
+  `digitalguardian_msgs_del.con` (a delete before the first Think), `digitalguardian_open.con` (OPEN
+  with the beacon up), `digitalguardian_scan_force.con` with `digitalguardian_scan_force.py`. Coverage build;
+  the counts come from `tools/cov/gcov_report.py build-port-cov <the four gcov dirs> --module DigitalGuardian`.
+- Console: `scan <id>` (the scan display draws 9CA4/9ABC), `e<editor id>` object ids (the body's
+  unique id is reused across the layer load: it is e00350060, the head e0035000f), and `covdump`
+  (most coverage runs here hang in shutdown and are killed at SECS, which loses the exit dump).
+- A delete request delivers "XDEL" (kSM_Delete) before it removes the object
+  (`CStateManager::DispatchScriptMessages`), so `send <id> Delete` reaches the XDEL case.
+- The beacon rises only in the Crippled state (fn_14_7CB4's Update runs fn_14_2CC4).
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| A6A8 | ACTV inactive + null managers, ACTV active (skip), DCTV active + null managers, DCTV inactive (skip), XAUD null | msgs3 | ran |
+| A6A8 | ACTV/DCTV with managers, 0x128C 0x40 clear and set (`fsm <body> CrippledReaction`) | msgs3 | ran |
+| A6A8 | XALD, XDMG, XRDG, XHIT, IM00-IM08, XCRT, default; XAUD with managers | msgs3 | ran |
+| A6A8 | OPEN normal; OPEN after CLOS in one tick (0x128C 0x08); CLOS; XDEL with managers and the beacon sound (CLOS's delete) | msgs3 | ran |
+| A6A8 | XDEL with null managers, no sound | del2 | ran |
+| A6A8 | OPEN with 0x1268 == 1 | open1 | ran: every arm has run (gcov 49/49), marked |
+| 9CA4 | head there, head gone (`send <head> Delete`) | msgs3 | ran: 2/2, marked |
+| 9ABC | head there / gone, beacon drawn (0x1264 > 0) | msgs3 | ran |
+| 9ABC | 0x128C bit 0x08 set | force1, forced (`$this->x128C_ \|= 8` at entry) | unreachable: only CLOS sets it, and CLOS deletes the body |
+| 9ABC | no beacon model (0x11EC empty) | force1, forced (`$this->x11EC_.m_valid = 0` at entry) | unreachable: fn_14_6864 fills it whenever mTransmissionBeacon is valid, and the one guardian's data names one; every arm has run (8/8), marked |
+
+- asmcheck: 3 findings, all naming: A6A8 `BIT x20_80` (the C++ reads it through `GetActive()`),
+  9CA4/9ABC `CALL TCastToPtr<CDigitalGuardianHead>` (the C++ spells it `TCastToConstPtr`, the const
+  overload of the same cast).
+- Marked: A6A8, 9CA4, 9ABC.
+
+## 2026-10-22: fn_14_6E04 and fn_14_10120 (dg16), gcov runs dg16_knees/dg16_headgone
+
+- The head's codes and states that call them are ported (ProjectileTelegraph 16F74,
+  SelectProjectileAttack 15448, ResetProjectileAttackTimes 15598); 9930/9994/173CC were already marked.
+- Drivers: `tools/cov/specs/digitalguardian_knees.{py,con}` (force.sh on `build-port-cov`; clears the
+  knee ids at 6E04 hits 500/900/1300/1700, sets head 0x10D0 from 0x10DC at ProjectileTelegraph and
+  head 0x10F4 bit 0x10 once 0x10DC is 0) and `digitalguardian_headgone.con` (run.sh, head deleted at f600).
+- Coverage: `gcov_report.py build-port-cov <both gcov dirs> --module DigitalGuardian`: 6E04 12/12, 10120 9/10.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| 6E04 | no head uid (0x1082 invalid after 70E4), head gone -> 70E4 | headgone | ran |
+| 6E04 | angle < turn (LookAt), >= turn (Slerp) | knees | ran |
+| 6E04 | knees > 2; knees <= 2 with head bit 0x20 clear | knees, forced (knee ids cleared) | ran |
+| 6E04 | knees <= 2, bit 0x20 set (`fsm <head> ProjectileTelegraph`), 0x10D0 0 / 1 | knees, forced (0x10D0) | ran: 12/12, marked |
+| 10120 | no body (`send <body> Delete`, then `codecall <head> SelectProjectileAttack`) | knees | ran |
+| 10120 | knees 4, 3, 2, 1, 0 | knees, forced (knee ids) | ran |
+| 10120 | knees 0 with head bit 0x10 set | knees, forced (0x10F4 \|= 0x10) | ran |
+| 10120 | default (knees < 0 or > 4) | - | dead: the count is li 0 (0x10130) or fn_14_705C's 0..4; marked |
+
+- fn_14_4080's XSTORE xFB2/xFB4/xFB6 (review_decomp_diff) is a tool false positive: retail stores
+  every id with `sth r0,0x0(r28)` (0x42C8), r28 = this+0xFB0 (0x40AC) stepped by 2 (0x42D0).
+
+## 2026-10-22: the melee/jump states (dg17), gcov runs dg17_melee1/dg17_melee2
+
+- Ported: MeleeAttackTelegraph 8CCC, MeleeAttack 89D4, JumpAttack 8580, SelectBestMeleeAttackLeg
+  7504, SetJumpFaceTarget 7208. Still stand-ins: FaceTarget 94BC, ProjectileAttack 8794,
+  SetProtectKneesFaceTarget 77EC, SetupBossEnergyBar 7BD4. fn_14_4F2C (XHIT) was already marked.
+- Drivers: `tools/cov/specs/digitalguardian_melee.con` (1600 frames) and `digitalguardian_melee2.con`
+  (3600 frames; console lag meant the steps after f2820 did not run), both with run.sh on
+  `build-port-cov`, area `1baa96c2,09_cliff_temple_dark`, `--fast`.
+- Coverage (`gcov_report.py build-port-cov <both gcov dirs> --module DigitalGuardian`): 7504 8/8,
+  7208 8/8, 8CCC 7/8, 89D4 15/16, 8580 9/10; 73D4 9/10, A468 9/10, 458C 10/14, 20E4 8/12, 4E00 4/5.
+
+| Function | Arm | Run | Result |
+|---|---|---|---|
+| 8CCC, 89D4, 8580 | Activate, Update, Deactivate | melee1/melee2 (`fsm`, natural Idle/MeleeAttack cycles) | ran |
+| 8CCC, 89D4, 8580 | switch default (msg outside 0..2) | - | dead: EStateMsg is 0..2 (same as marked 9260/8E44); marked |
+| 7504 | every leg nearer/farther, none | melee2 (`place` + `codecall`) | ran: 8/8, marked |
+| 7208 | target, no target, angle > 0 both sides, angle 0 | melee2 (`tp`/`place` + `codecall`) | ran: 8/8, marked |
+| 73D4 | one side of the 0x11DC ternary (line ~2846) | - | not run; unmarked |
+| A468 | one of cases 7/8 (line ~1479) | - | not run; unmarked |
+| 458C | leg -1 / 0x10DC == 3 (CrippledReaction then melee) | - | not run; unmarked |
+| 20E4 | -1 return | - | not run; unmarked |
+
+- asmcheck: 2 findings, both naming: 8CCC/8580 `CALL CTryCommand::ShouldRetry` (the host spells it
+  `mAnimationState.CanIssueCommand`, as in marked 8EC4's state).
+- Marked: 8CCC, 89D4, 8580, 7504, 7208.
+
+## 2026-10-22: FaceTarget, ProjectileAttack, the protect-knees and boss-bar codes, the melee leg; gcov run arms5
+
+- Ported: fn_14_94BC FaceTarget, fn_14_8794 ProjectileAttack, fn_14_77EC SetProtectKneesFaceTarget,
+  fn_14_7BD4 SetupBossEnergyBar ("BossCliffsideBoss", .rodata 0x2F4 + 0x614), fn_14_7504
+  SelectBestMeleeAttackLeg (the one 73D4 needs: it sets 0x11D8). The knee directions 77EC sums
+  are the ctor's table at 0xFC8 ((-1,1), (-1,-1), (1,1), (1,-1); 0xBD7C..0xBE3C), a constant in
+  the port. 20E4 is two ifs and 458C's new-expression temporaries are locals (retail order), so
+  gcov sees no conditional-destruction flags.
+- Driver: `tools/cov/specs/digitalguardian_arms.con` with `digitalguardian_states.py` (one run, no
+  forcing). The natural fight (`digitalguardian_fight.con`) goes Idle -> FaceTarget ->
+  ProjectileAttack -> JumpAttack (a stand-in, stuck there).
+- Console: `uevent <id> <type> [dt] [locator]` (the POI node's locator, default "root").
+- The FSM is built on Activate: `statecall`/`codecall` before it answer "no state function".
+  fn_14_3F90 (in Think) clears the id of a deleted armour, so the ObjectById-null arm of 77EC
+  needs the body inactive (`send <body> Deactivate`) across the delete.
+
+| Function | Arm | How (arms5) | Result |
+|---|---|---|---|
+| 94BC | act, turn, repeat, deact, msg 3 | natural + `statecall` | ran |
+| 94BC | 0x1278 not magnitude-safe (over) | `fsm <body> ProjectileAttack`, body inactive, 77EC early return then FaceTarget 0/1 | ran: 8/8, marked |
+| 8794 | head missiles (0x10D0 2) / other, flag 0x20, exit, deact, msg 3 | `codecall <head> SelectProjectileAttack` x24 + statecalls | ran |
+| 8794 | no head (both casts) | `send <head> Delete`, `fsm <body> ProjectileAttack` | ran: 16/16, marked |
+| 7BD4 | counter actor there / gone | Start; `send e0035005f Delete` + codecall | ran: 2/2, marked |
+| 77EC | zero sum (random, both sides), non-zero sum (snap 0 / > 0, both sides) | face sweep (45 / 22.5 deg) + `place <body> player 30` | ran |
+| 77EC | id invalid; id valid, object gone | armours u0578/u057a deleted (ids cleared), u0579 deleted with the body inactive | ran: 14/14, marked |
+| 7504 | best / not best | `place` at 1..90 units, four yaws | ran: 8/8, marked |
+| 73D4 | no leg (before any 7504), player nearer, within / beyond nearLegStabRange | as 7504 | ran: 10/10, marked |
+| A468 | 3, 5, 12, 13 in / out of the vortex, 16, 17, 27, default (1) | `uevent`; vortex via `statecall <body> VortexAttack 0` | ran: 10/10, marked |
+| 458C, 20E4 | no leg, ankle, toe, toe target destroyed (CrippledReaction Activate) | `uevent <body> 27 0 <locator>` | ran: 12/12 and 6/6, marked |
+
+- asmcheck: naming only (ShouldRetry = CanIssueCommand, TCastToPtr spelled TCastToConstPtr,
+  GetStringIndexByName = the host's GetStringIndex, the 77EC knee compare goes through a local copy).
+- Marked: 94BC, 8794, 77EC, 7BD4, 7504, 73D4, A468, 458C, 20E4.
+
+## 2026-10-22: the head's ChargeAttack and lasers, 17BBC, body helpers (dg19); gcov runs dg19_charge1..8, dg19_arms2
+
+- Ported (head): fn_14_16A50 ChargeAttack, the laser chain fn_14_FB70 (sweep start, three lasers),
+  fn_14_FE14 (one CPlasmaProjectile "RezBitCuttingLaser", weapon = lock-on beams' data +0x1BC,
+  beam info data +0x1B8 with attributes 0x291, material 0x14, attributes 0x20000), fn_14_F6A4
+  (the lasers close in), fn_14_FAEC (delete; also the XDEL's call, stand-in gone), fn_14_FA50
+  (reset), and fn_14_17BBC DoUserAnimEvent. The new host members are 0x1054 (CProjectileInfo),
+  0x107C (reserved_vector<TUniqueId, 3>), 0x1088 (the "T_lazor_LCTR" CSegId), 0x108C..0x1098.
+- 17BBC is required as soon as ChargeAttack really plays its animation: without it the head's
+  projectile event reached CPatterned::DoUserAnimEvent and crashed on the head's empty
+  projectile (LaunchProjectile). Retail handles every projectile event itself (li 1 at 0x17C50);
+  the spawners 111E0 (pulse), 10CA0 (charge shot) and 10A2C (missiles) are stand-ins.
+- Not ported: the player's lock-on ring writes in 16A50 (CPlayer +0x14C4 id, +0x14C6 count;
+  0x16BF0..0x16C8C, 0x16D30..0x16D3C). CPlayer has getters only; needs DOL setters.
+- Body: NaN-exact compares in 97F0 (0x986C cror/bne, 0x98D0 bge) and 37FC (bge at 0x381C..0x389C:
+  a NaN takes every entry, pi).
+- Driver: `tools/cov/specs/digitalguardian_charge.con` (morph, a laser deleted by its run id,
+  dt 30 sweep end with and without the boost shield, back-to-back statecalls, six 400-frame
+  sweeps; the projectile event comes ~300 updates in). The morph press is timing-sensitive.
+
+| Function | Arm | How | Result |
+|---|---|---|---|
+| 16A50 | act, issue / sweep / lasers, deact in / out of the projectile attack, msg 3 | charge5+6+7+8 | ran 12/12; unmarked (lock-on ring) |
+| FB70 | event time / time left (old animation) | charge8; charge1 (same FB70 source, e9b868ad1) | ran 4/4, marked |
+| FE14 | fire; count >= 3 dead (only caller empties, calls 3x); null = alloc failure | charge* | marked |
+| FAEC | ids / none | XDEL, deact, sweep start | ran 2/2, marked |
+| F6A4 | pop (found / gone), boost shield on / off, one laser, centre kept | charge5..8 | 24/28; unmarked: 0x390 spawn-morph arm, time <= 0 |
+| FA50 | - | needs 0x10D0 == 1 at the event; this stage's odds drew 0/2 only | no run, unmarked |
+| 17BBC | 0, 2, other, non-projectile | charge8 | unmarked (stand-ins) |
+| 3E88 97F0 705C 37FC A3A4 7B90 775C 7648 | all | arms2 (arms spec) | ALL-ARMS, marked |
+
+- Marked: FAEC, FB70, FE14, 3E88, 97F0, 705C, 37FC, A3A4, 7B90, 775C, 7648 (port_progress 155/420).
+
+## 2026-10-22: the projectile spawners and ChargeAttack's lock-on ring (dg20); gcov runs dg20_shots1/2, dg20_force1
+
+- Ported (head): fn_14_111E0 (pulse), fn_14_10CA0 (charge shot), fn_14_10A2C (missiles), with
+  four new host CProjectileInfos built and locked in the ctor (0x183A4..0x18408, 0x18CD8..0x18CF0):
+  0xE04 pulse (data +0x184/+0x188), 0xE2C charge (+0x198/+0x19C), 0xE54 missiles (+0x200/+0x204),
+  0xE7C machine gun (+0x214/+0x218). 17BBC calls them with the node's locator name.
+- 16A50's lock-on ring (0x16BF0..0x16C8C, 0x16D30..0x16D3C) through a TARGET_PC
+  `CPlayer::SetEnemyLockOn(TUniqueId, char)`. A count over 3 is dead (v <= 1 at 0x16C24).
+- 10CA0 builds a plain CEnergyProjectile; retail builds the module's subclass (ctor fn_14_19838,
+  vtable lbl_14_data_1034, overrides 0x19784..0x1A430). Follow-up: port that subclass, then mark.
+- Console: `var <id> <name> [n]` (PortConsole::RegisterVar): `dghd.attack` (0x10D0),
+  `dghd.flags` (0x10F4), `dghd.sweeptime` (0x1090); `var player spawnmorph [n]`.
+- Drivers: `tools/cov/specs/digitalguardian_shots.con` (natural run) and
+  `digitalguardian_shots_force.py` (forced, same .con, `--frames 420`); gcov of the runs merged.
+
+| Function | Arm | How | Result |
+|---|---|---|---|
+| 16A50 | every arm incl. msg 3, ring flag 0x01 / count clamps | shots2 | 16/16, marked |
+| 17BBC | attacks 0..3, other attack, non-projectile event | shots1 | 6/6, marked |
+| FA50 | lasers found / one deleted / none | shots1 | 4/4, marked |
+| 111E0 | flat unsafe + slerp (head placed on the player) | shots2 | 10/10, marked |
+| 10CA0 | all; CanCreate false (20 missiles out); TryCache false forced | shots2 + force1 | 23/23, unmarked (subclass) |
+| 10A2C | all; TryCache false forced | shots1 + force1 | 9/9, marked |
+| F6A4 | all but the no-laser return: dead (only call 0x16BDC behind bne 0x16BBC) | shots1/2 | 27/28, marked |
+
+- Marked: 16A50, 17BBC, FA50, 111E0, 10A2C, F6A4.
+
+## 2026-10-22: the charge shot's projectile class (dg21); gcov runs dg21_cs1 + shots1 + force1
+
+- `CGuardianProjectile` (guessed name; file-local in PortCDigitalGuardianHead.cpp), 0x568 bytes,
+  no own members. `lbl_14_data_1034` slots (after the RTTI pair): 2 dtor `fn_14_1AAC4` (base dtors
+  only), 5 Think `fn_14_19784`, 15 GetHealthInfo `fn_14_10C` (CActor inline), 38 GetImpactParticle
+  `fn_14_1AB24` (empty optional), 39 GetExplosionNormal `fn_14_1AB30` (sUpVector); every other slot
+  a base symbol. Only Think differs from CEnergyProjectile.
+- Ctor `fn_14_19838`: CEnergyProjectile with false, true, false, 1.0f (0x96C), 4.0f, 4.0f (0x998).
+- Think: a homing target (+0x3F0) that is the morphed player (spawned state 0 then transition
+  state 1) with the boost shield up is dropped; then CEnergyProjectile::Think.
+- 10CA0 now builds it (marked: every arm ran with the real class).
+
+| fn | arms | run | result |
+|---|---|---|---|
+| 19784 | no target (flag 0x01), unmorphed, spawned morph (`var player spawnmorph 1`, forced), morphed no boost, boost shield | cs1 (`tools/cov/specs/digitalguardian_chargeshot.con`) | 10/10, marked |
+| 19838 | no branches | cs1 | ran, marked |
+| 10CA0 | all; TryCache false forced | cs1 + shots1 + force1 | 23/23, marked |
+
+## 2026-10-22: the head's pulse, missiles and machine gun states (dg22); gcov runs dg22_gun2 + dg22_force2
+
+- Ported (head): PulseAttack fn_14_16D64 (severity 0, burst count 0x10D8 - 1 on Activate),
+  MissileAttack fn_14_167EC (severity 1), MachineGunAttack fn_14_16408 (side from Range(0,100) <= 50,
+  phase 0 charge / 1 sweep), the sweep's ends fn_14_10798 and one bullet fn_14_101E0.
+- New head members (TARGET_PC block after xE7C_): 0x10A4 the gun's locator (a second
+  "T_lazor_LCTR", .rodata 0x94C; ctor 0x18D70..0x18D9C), 0x10A8/0x10B4 sweep start/end, 0x10C0 side,
+  0x10C4 phase (ctor -1), 0x10C8 phase time, 0x10CC bullet timer. Data: +0x228 sound_MachineGun,
+  +0x240..+0x24C machineGun HalfSweepDist / SweepDuration / ChargeDuration / FireTime.
+- 101E0 builds a plain CEnergyProjectile (not CGuardianProjectile), limit CanCreateProjectile(uid,
+  kWT_AI, 64); the sound plays only when the projectile is built.
+- Drivers: `tools/cov/specs/digitalguardian_gun.con` (natural, `--frames 1150`; 70 pulse uevents in
+  one line fill the 64-projectile limit), `digitalguardian_gun_force.py` + `digitalguardian_gun_force.con`
+  (`--frames 300`, head placed on the player).
+- asmcheck reports 16A50 MISSING: its parser swallows the definition after the DGHD_STATE_STANDIN
+  calls (predates dg22; the new bodies sit above the macro block for that reason).
+
+| Function | Arm | How | Result |
+|---|---|---|---|
+| 16D64 | act / update issue or not / deact in or out of 0x12 / msg 3 | gun2 | 10/10, marked |
+| 167EC | same arms | gun2 | 10/10, marked |
+| 16408 | sides 0/1, phase 0 charge / start sweep, phase 1 sweep / over, timer fire / wait, other phase, deact | gun2 | 19/19, marked |
+| 10798 | side 0/1, axis safe; X-column fallback | gun2; forced (force.sh, locator 0x10A4 invalid) | 6/6, marked |
+| 101E0 | built, CanCreate false (70 pulses out); TryCache false | gun2; forced (force.sh, weapon uncached) | 9/9, marked |
+
+- Marked: 16D64, 167EC, 16408, 10798, 101E0.
+
+## 2026-10-22: the head's AttachedToBody, BombedReaction and SeekMotionPath (dg23); gcov run dg23_r3
+
+The DGHD_STATE_STANDIN block is gone (asmcheck now finds ChargeAttack 16A50 again). Asm (section
+offsets): 1633C 0x1633C..0x16408, 15CE8 0x15CE8..0x15E18, 158F8 0x158F8..0x15B94; the ctor's 0xFE4
+store 0x18A8C..0x18A9C (`lfs f0,0x8(r29)`, r29 = the CPatternedInfo: mTurnSpeed; the host takes
+CPatterned::mTurnSpeed, copied from it). 0x7DC = data +0x1C maxStunnedLinearVelocity.
+
+- Driver `tools/cov/specs/digitalguardian_dg23.con` (`--fast --frames 900`). New console var
+  `dghd.stunspeed` (data +0x1C; retail 10).
+- AttachedToBody has no FSM2 node in area 53's machine (`fsm` refuses it): every arm by `statecall`.
+
+| fn | arm | how |
+|---|---|---|
+| 1633C | Activate / Update / msg 2 / msg 3 | statecall 0/1/2/3 |
+| 1633C | flat direction unsafe (0x163D8 taken) | `statecall FaceTarget 2` (0x1028 zero) + `statecall AttachedToBody 1 0` in one tick |
+| 1633C | flat direction safe | statecall 1 0.016 after Activate |
+| 15CE8 | Activate, Update issue / no issue, Deactivate | `fsm BombedReaction` (the body then in the knock-back), `fsm FaceTarget` |
+| 15CE8 | msg 3 | statecall 3 |
+| 158F8 | no platform (Activate and Update) | `fsm SeekMotionPath` before SelectRetreatPlatform |
+| 158F8 | speed <= epsilon | `var dghd.stunspeed 0` after `codecall SelectRetreatPlatform` |
+| 158F8 | turn speed set, step short (move) | stunspeed 20 |
+| 158F8 | step reaches (Over, SetTranslation) | stunspeed 100000 |
+| 158F8 | Deactivate, msg 3 | `fsm FaceTarget`, statecall 3 |
+
+All three ALL-ARMS in one run (dg23_r3, caught/reach-stub 0) and marked. Open: at stunspeed 20 the
+head hardly moved toward the platform in 450 frames (MoveInOneFrameOR on the flyer; SeekAttackPosition
+uses the same call) - unexplained, not chased. `damage <head> 50 bomb` does not hurt the head (hp
+150 -> 150); BombedReaction comes from the bomb pit's path, not reached naturally here.
+
+## 2026-10-22: the head's platform, stage-3 and dynamic-collision codes (dg24); gcov runs dg24_r3 + dg24_f2 + dg24_f3
+
+- SetPlatformPosition 153D0, Stage3Start 149F8, EnableDynamicCollision 14828 and
+  DisableDynamicCollision 14664 are ported and marked. All runs: `build-port-cov`, area
+  `1baa96c2,09_cliff_temple_dark`, `--fast --frames 400`, driver `tools/cov/specs/digitalguardian_dg24.con`
+  (codecalls); forcing spec `tools/cov/specs/digitalguardian_dg24_force.py`. 0 caught/reach-stub.
+- fn_14_13318 fix: the colliders' HealthInfo +4 (0x136A8) is mHealth, not the knockback resistance.
+  Before it the balls started at HP 0 and 14828 never re-activated them; with it r3 shows u0572/u0573
+  active after Enable.
+- Stage3Start: retail's safe arm reads the direction from sp+0x30, which the body never writes (the
+  column is at sp+0x3C); the port uses the waypoint's Y column.
+- DestroyActiveSplitters 14C24 stays a stand-in: it needs the command module's fn_75_5A54 (port
+  `CSplitterCommandModule::PortAutoDestruct`, private) and the chassis's fn_75_E660 (if alive and
+  0xD41 bit 0x01 clear: set it, 0xD20 = time), which the Splitter module does not have.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 153D0 | platform / none | codecall before/after `codecall SelectRetreatPlatform` | ran |
+| 149F8 | waypoint / none | codecall; `send e00350272 Delete` + codecall | ran |
+| 149F8 | column unsafe | forced (loc 2359: dir zeroed) | ran |
+| 14828 | platform / none; root; balls HP > 0 | codecalls | ran |
+| 14828 | ball HP <= 0 | forced (loc 2385: ball mHealth 0 from the 5th visit) | ran |
+| 14828/14664 | no root / no balls | `send u0574/u0573/u0572 Delete` + codecalls | ran |
+| 14828/14664 | 0xD70 null | forced (nulled at entry, restored at the filter line) | ran |
+
+## 2026-10-22: DestroyActiveSplitters and the last head code stand-ins (dg25); gcov runs dg25_r2 + dg25_f1
+
+- Ported and marked: DestroyActiveSplitters 14C24, EnableValidTarget 14604, DisableValidTarget
+  145A4, ResetGravityRepulsorHP 14248, EjectPlayerFromBombPit 14058, StartVocalRecoverReaction
+  13C1C; no DGHD_CODE_STANDIN rows are left. All runs: `build-port-cov`, area
+  `1baa96c2,09_cliff_temple_dark`, `--fast --frames 450`, driver
+  `tools/cov/specs/digitalguardian_dg25.con`, gdb spec `digitalguardian_dg25.py`, forcing spec
+  `digitalguardian_dg25_force.py`. 0 caught/reach-stub.
+- Splitter side (minimal): fn_75_E660 is `CSplitterMainChassis::PortStartDeathTimer` (marked,
+  ALL-ARMS); `CSplitterCommandModule` befriends the head so 14C24 calls its fn_75_5A54
+  (`PortAutoDestruct`, another lane's body, not re-marked here).
+- Splitters in area 53: layer 10 ('Boss Stage 2 Splitters') holds the generators 00350042/45 (one
+  chassis + one command module each); the head's IS01 reaches them through the relays
+  00350006/11/28. `layer` must run after the warp (frame ~121), else it lands on the boot world's
+  area 0. `fsm DeploySplitters` alone ejected none in 300 frames (not chased).
+- 14828/14664: the ball loops run to the host array's size (the count at 0xDC0 is the ctor's 2,
+  0x18340; nothing else writes it). The dg24 natural run still takes every unforced arm.
+- 145A4 sets the echo-visor orbit flag again (li 2 / li 1, as 14604): retail's, kept.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 14C24 | no splitters / module / chassis | codecall before and after `send e00350042/45 SetToZero` | ran |
+| 75_E660 | alive, bit clear / bit set / dead | 14C24 twice, then `kill e00350046` + 14C24 in one tick | ran |
+| 14058 | player either side; platform / none | codecalls with `place e0035000f player 20` / `-20`, before/after SelectRetreatPlatform | ran |
+| 14058 | direction unsafe | forced (loc 2543: dir zeroed) | ran |
+| 14604, 145A4, 14248, 13C1C | no branches | codecall | ran |
+
+## 2026-10-22: marking the ported head bodies (dg26); gcov runs dg26 r2 + r4a/b/c + r5c + f1
+
+- Marked (ALL-ARMS or no branches, asmcheck reviewed): AcceptScriptMsg 17D38, GetDamageVulnerability
+  179E0, IsBurstOver 173B8, UseMachineGun 17370, UseLockOnMissiles 1735C, UseAnnihilatorCharge
+  17338, AllSplittersDead 17298, IsAntennaTransmitting 17244, AllEchoTargetsDestroyed 171D8,
+  BombPitDestroyed 17198, xF2B8_ F2B8, x11FEC_ 11FEC. All runs: `build-port-cov`, area
+  `1baa96c2,09_cliff_temple_dark`, `--fast --frames 2400`, driver `tools/drivers/dg26_slots.py
+  {port} a|b|c`, gdb spec `digitalguardian_dg26.py` (both return values seen for every trigger),
+  forcing spec `digitalguardian_dg26_force.py`. 0 caught/reach-stub.
+- asmcheck findings, all explained: XCMP 173B8/171D8 are the `cntlzw; li 1; rlwnm 31,31` idiom (1
+  when the count is 0 or 32, i.e. x <= 0); 17D38 x20_80 is GetActive's mActive; 179E0
+  PassThruVulnerability is the host's PassThroughVulnerabilty; 17244 TCastToPtr is the const cast;
+  11FEC fn_14_1FE8 / internal_dereference are the CEntityInfo and string destructors.
+- Driver notes: an echo kill needs a RetractEchoTargets -> ExtractEchoTargets cycle before the next
+  (11FEC sets the survivors' damage-ignored flag); a ball dies only with the morph ball held in its
+  slot (fastmorph, `press x`, `tp` to the ball with z-0.7 for a few frames, `damage <ball> 1000
+  bomb`); the root resists every weapon (hp 1 -> 1).
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 17D38 | XCRT/XDEL/ACTV/DCTV/XAUD/XALD/XDMG/XRDG, active either way | driver a/b/c | ran |
+| 17D38 | 0xD70 null on XDEL/ACTV/DCTV/XAUD | forced (AcceptScriptMsg entry: xD70_ nulled, back at Think) | ran |
+| 11FEC | token set; targets left / none | driver a (three echo kills) | ran |
+| 11FEC | no effect token (data-dead: the one placement sets the asset) | forced (entry: xFD0_.m_valid 0, set back at 2820) | ran |
+| 17298 | splitters / module / chassis / none | driver b/c (`send` generators SetToZero) | ran |
+| 17244 | body / no body | driver c (body Delete) | ran |
+| F2B8 | waypoint / none | driver a (IS04 actor and waypoint deleted before the last kill) | ran |
+| 173B8 17370 1735C 17338 171D8 17198 | true / false | `var e0035000f dghd.attack N` + `trigcall` | ran |
+
+Left unmarked:
+- 14470 SelectDeathHeadAttack: firstShotType 4 arm (2615:3/4) is data-dead (shipped 0); not forced yet.
+- DF7C loader: the empty-model arm is data-dead (one DGHD, 0x0035000F, has a model); not forced yet.
+- 14DA0 RetractEchoTargets: the `kS_Extending` arm (923:3/4) never ran: no retract came while a
+  target was still extending.
+- 13248 (not-found, -1) and 12B04 (idx -1, no effect token): the forced run's bomb hit on u0572 did
+  nothing under gdb (the slowdown drops the ball out of the slot), so the forces never fired.
+  13248 loops to a fixed 2 (retail reads 0xDC0, only written by the ctor's 2 at 0x18340).
+- 18264 ctor (76 asmcheck completeness findings), 12818/12D98 (documented unreachable arms).
+- 19908: no C++ body; it is the module's copy of ~CEnergyProjectile, which the host takes from the DOL class.
+
+## 2026-10-22: dg26's leftover head bodies (dg27); gcov runs dg27 r1-r4 + f1 + f2
+
+- Marked (ALL-ARMS over the merged profile, asmcheck reviewed): SelectDeathHeadAttack 14470, the
+  DGHD loader DF7C, RetractEchoTargets 14DA0, x13248_ 13248, x12B04_ 12B04. All runs:
+  `build-port-cov`, area `1baa96c2,09_cliff_temple_dark`, `--fast`, 0 caught/reach-stub.
+- 14DA0: the arm dg26 missed is `state == kS_Extended` (gcov 932 branch 3), not Extending: dg26
+  retracted at most 80 frames after an extract, inside the 4 s extension. `tools/drivers/dg27_retract.py`
+  retracts 600 frames after.
+- 13248/12B04: the dg26 forces never fired because that spec's per-frame breakpoints (Think,
+  AcceptScriptMsg) slowed the run until the ball left its slot. `digitalguardian_dg27_force.py` has
+  no per-frame breakpoint; the bomb kill then works under gdb.
+- asmcheck findings, all explained: 14470 XCMP 0x14570 is the `cntlzw; extrwi 1,26; neg; and 3`
+  idiom (x10D0_ == 0 ? 3 : 0); DF7C CALL/BRANCH are the generated reader in the `.inc` (the tool
+  does not read includes); 12B04 fn_14_1FE8 / internal_dereference are the CEntityInfo and string dtors.
+- 18264 ctor (left unmarked): asmcheck parses no body for it (CALLS "C++ body 0"), so its 76
+  findings are the init list, unread; checked by hand against the asm. Ported in dg27:
+  EnableAllAnimReactions(false) at 0x18CFC and the visual knowledge's locator = 0x1088 (0x18DE8;
+  rebuilt with the ctor's arguments, no setter). Missing: the visual knowledge's filter
+  (0x18DEC..0x18E5C: include 1<<0x3B kMT_Solid, exclude 1<<0x21|1<<0x20 kMT_Character/kMT_Player,
+  type 3), which needs a `CVisualKnowledge` filter setter (shared header). Its gcov-untaken arms
+  are the token/SCAN asset-unset arms (data-dead) and the closing-brace unwind edges.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 14470 | splitters / first shot / pick 0-3 | dg26 driver a (r1) | ran |
+| 14470 | first shot skipped for type 4 | forced (dg27_force: x10DC_ 1, firstShotType 4 at entry) | ran |
+| DF7C | model / no model | r1 / forced (dg27_noload: ANCS 0xffffffff at 2728) | ran |
+| 14DA0 | null, extended, extending, other | r1 (dg26 a) + r2 (dg27_retract) | ran |
+| 13248 | ball 0 / ball 1 / -1 | r1, r4 (dg26 c) / forced (dg27_force: second hit id 0xffff) | ran |
+| 12B04 | idx -1; token unset; IS04 there / gone; loop sound set / not | forced (dg27_force) / r4 (c) / r1, r3 (b) | ran |
+
+## 2026-10-22: the head ctor's filter and body marks (dg28); gcov runs dg28 arms/melee/msgs + ctor/fight/slotsc
+
+- Ctor 18264 finished: `CVisualKnowledge::SetLocator`/`SetMaterialFilter` (inline, no DOL fn) set
+  locator 0x1088 (0x18DE8) and the filter (0x18DEC..0x18E5C: include kMT_Solid, exclude
+  Character|Player, type 3). The 0xEA4..0xEF0 optional (flag 0xEF0 = 0) is not modelled; its
+  readers 174F4/17A64/17F64 are unported.
+- 676C's filter was wrong: include kMT_Solid, exclude CollisionActor|AIPassthrough|Player. A004's
+  tail is `DisableDestinationAlpha` (IRenderer vtable 0x12C at 0xA118), not a second SetDestinationAlpha.
+- Marked: 18264, 9634, 7B84, 9A48, 9AA8, A688 (port-only EnsureBodyActive, as 17C98), A384, 9FE4,
+  10, 676C, A004, 1570. Not marked: 9DBC (retail returns token 0xE68 when 0x128C&0x40; the host
+  has no xE68), and the bodies below whose arms no run reached yet.
+
+| fn | arm | how | result |
+|---|---|---|---|
+| 18264 | PART x4 / SCAN x3 ids unset | forced (dg28_ctor: ids 0xffffffff at :237) | ran |
+| 18264 | the rest | natural (ctor/fight) | ran; closing-brace EH edges only unrun |
+| 9634 7B84 9A48 9AA8 A688 A384 9FE4 10 676C A004 1570 | all | natural (arms/melee/msgs/fight) | ALL-ARMS |
+| 9A9C 966C 9638 7600 F0 9A0C 7D8C 3300 34E8 39CC 4878 4D54 5140 3DA8 2CC4 28D0 2A28 | — | no run reaches | unhit |
+| 9A60 9678 308C 768C 70B4 A3D4 6864 1700 1994 18B4 17DC 2578 4E00 | some | natural | partial |

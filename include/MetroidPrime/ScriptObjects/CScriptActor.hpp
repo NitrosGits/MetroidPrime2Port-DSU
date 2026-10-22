@@ -57,6 +57,12 @@ public:
   void SetPlayerActor(const bool playerActor) { mIsPlayerActor = playerActor; }
   bool IsSkipRendering() const { return mSkipRendering; }
   void SetSkipRendering(const bool skipRendering) { mSkipRendering = skipRendering; }
+#ifdef TARGET_PC
+  // The guest's CScriptActor packs its bit fields from the top (PowerPC is big-endian), so the
+  // byte at +0x396's bit 1 (0x02) is the last one - mRenderImmediately.  The ScriptPlayerTurret's
+  // PreRender (fn_63_2D68 at 0x300C-0x30014) sets that bit on the base actor.
+  void SetRenderImmediately(const bool renderImmediately) { mRenderImmediately = renderImmediately; }
+#endif
 
 private:
   void FireProjectile(CStateManager& mgr, const rstl::string& locator); // Guessed name

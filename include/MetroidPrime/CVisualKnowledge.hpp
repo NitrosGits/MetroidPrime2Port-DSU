@@ -19,11 +19,16 @@ public:
   void Update(CStateManager& mgr, float dt);
   // 0x801F585C.
   void SetVisualTarget(TUniqueId target);
+  // No DOL function: owners store the locator (+0x2) and the filter (+0x8) inline.
+  void SetLocator(CSegId locator) { x2_locator = locator; }
+  void SetMaterialFilter(const CMaterialFilter& filter) { x8_filter = filter; }
 
   TUniqueId GetVisualTarget() const { return x20_target; }
   bool IsTargetVisible() const { return x38_visible; }
   float GetVisibleTime() const { return x30_visibleTime; }
   float GetHiddenTime() const { return x34_hiddenTime; }
+  // Owners write the flag directly (the CommandoPirate REL clears bit 0x80 of +0x38).
+  void SetTargetVisible(bool visible) { x38_visible = visible; }
 
 private:
   TUniqueId x0_owner;

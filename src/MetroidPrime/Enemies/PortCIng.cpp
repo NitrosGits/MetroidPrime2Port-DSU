@@ -55,6 +55,8 @@
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#include "port_console.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -154,6 +156,42 @@ void PortIngStandIn(const char* what) {
   }
   fprintf(stderr, "[ing] stand-in %s (see PortCIng.cpp)\n", what);
 }
+
+// `var <id> ing.form|ing.desired|ing.found|ing.safezones [value]`: the form (0x9d4), the desired
+// form (0x9d8), the found-movement-pos flag (0xe5c bit 3) and the safe zone count (0xe2c), so
+// `trigcall` can take the trigger arms a fight rarely draws.
+bool CIng::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
+  CIng* ing = dynamic_cast< CIng* >(&ent); // a host-only helper: the console names the class
+  if (ing == nullptr) {
+    return false;
+  }
+  if (strcmp(name, "ing.found") == 0) {
+    if (value != nullptr) {
+      ing->mFoundMovementPos = *value != 0;
+    }
+    current = ing->mFoundMovementPos ? 1 : 0;
+    return true;
+  }
+  int* field = nullptr;
+  if (strcmp(name, "ing.form") == 0) {
+    field = &ing->mForm;
+  } else if (strcmp(name, "ing.desired") == 0) {
+    field = &ing->mDesiredForm;
+  } else if (strcmp(name, "ing.safezones") == 0) {
+    field = &ing->mSafeZoneCount;
+  } else {
+    return false;
+  }
+  if (value != nullptr) {
+    *field = *value;
+  }
+  current = *field;
+  return true;
+}
+
+namespace {
+const bool sIngConsoleVars = PortConsole::RegisterVar(&CIng::PortConsoleVar);
+} // namespace
 
 namespace {
 
@@ -379,7 +417,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 // fn_29_D540 @0x0000E110: the tracker gets the "head" locator (0xd7b) and rodata 0x118/0x11c,
 // 0.1f and 0.05f.
 , mEyeSegId(PortHeadSegId(modelData))
-, mCollarSegId(CSegId::Invalid()) // 0xd7a: the ctor writes 0xff and nothing else does
+, mCollarSegId(PortArmSegId(modelData, "Collar_SDK")) // 0xd7a, asm 0x0000E41C-0x0000E448
 // The ctor's arm locators: R_shoulder/R_elbow/R_forearm/R_wrist_end, then the L_ set. The pseudo-C
 // puts the shoulders at CPatterned's 0x35f/0x360; the asm stores them here (0x0000E47C/0x0000E54C).
 , mRightShoulderSegId(PortArmSegId(modelData, "R_shoulder")) // 0xd7c
@@ -622,7 +660,7 @@ void CIng::CollisionActorDamage(CStateManager& mgr, TUniqueId sender) {
   health->SetHP(hp - amount);
 
   // The hit comes from the weapon the actor last touched, or from the player (morph ball).
-  CVector3f direction = CVector3f::Zero();
+  CVector3f direction = GetTransform().GetForward(); // 0x27A0: the Ing's own forward
   TUniqueId attacker = kInvalidUniqueId;
   CDamageInfo damage = IngDefaultDamageInfo(); // fn_29_2AE0 (asm 0x2744)
   if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
@@ -681,8 +719,11 @@ void CIng::JoinTeam(CStateManager& mgr) {
   }
 }
 
-// The DOL's surface move shared with MinorIng (fn_44_5384): drop the part of the move along the
-// surface normal, step, and keep the step on the path mesh unless following a point path.
+// @ fn_29_3948: the DOL's surface move shared with MinorIng (fn_44_5384): drop the part of the
+// move along the surface normal, step, and keep the step on the path mesh unless following a point
+// path. The arms of the retail's body (asm 0x00003948-0x00003B50) all ran in the area 57 run of
+// 2026-10-21: the parallel part under 0.6 of the move's length is cut (3369 calls), the move is
+// kept as it is (311), and a move that is not magnitude safe stores the zero vector (37).
 void CIng::MoveOnSurface(const CVector3f& moveIn, float speed, float dt) {
   const CVector3f pos = GetTranslation();
   const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();
@@ -732,6 +773,11 @@ float CIng::DistSqToTarget(const CStateManager& mgr) const {
   return (target->GetTranslation() - GetTranslation()).MagSquared();
 }
 
+// @ fn_29_45BC: the cover hint lookup. The retail reads the Ing's own hint id (0xd72) and looks
+// it up; the port's helper takes the id, and every call site passes 0xd72 (the one exception is
+// FindCoverPoint, which looks up the picked hint - the retail does that in its own helper,
+// fn_29_4510, so the object is the same either way). Both arms ran in the area 57 run of
+// 2026-10-21: the invalid id (2 calls, before a hint is picked) and the lookup (4145).
 CScriptAIHint* CIng::GetCoverHint(CStateManager& mgr, TUniqueId id) const {
   if (id == kInvalidUniqueId) {
     return nullptr;
@@ -782,9 +828,12 @@ void CIng::UpdateTimers(float dt, CStateManager& mgr) {
   }
 }
 
-// fn_29_426C (CIng::Think's call at asm 0x0000C7A0). The forms: the two host forms (0, 1) are
+// @ fn_29_426C: CIng::Think's call at asm 0x0000C7A0. The forms: the two host forms (0, 1) are
 // never valid targets, the ing-spot and evaporating forms (3, 5) follow the Dark visor and the
-// actor's own byte 0x9d0 bit 0, every other form is always a valid target.
+// actor's own byte 0x9d0 bit 0, every other form is always a valid target. All four arms ran in
+// the area 57 run of 2026-10-21: "always a target" (7166 calls), "another visor, the flag 0"
+// (21), "never a target" (2277, the host form) and "the Dark visor, the flag 0" (9292, with the
+// console's `give darkVisor` and `visor dark`).
 void CIng::UpdateValidTarget(CStateManager& mgr) {
   switch (mForm) {
   case kForm_Host:            // 0
@@ -811,20 +860,36 @@ void CIng::UpdateValidTarget(CStateManager& mgr) {
   }
 }
 
-// fn_29_BCB4: CIng's GetAimPosition - CPhysicsActor's vtable slot 0x54. Retail works out the
+// @ fn_29_BCB4: CIng's GetAimPosition - CPhysicsActor's vtable slot 0x54. Retail works out the
 // aim position from the form: the corporeal form (2) and the three form-change forms (6..8)
 // predict their motion first, and the collar locator (0xd7a) then decides between the locator's
-// aim and the base class's. The ctor writes 0xff (invalid) to 0xd7a and nothing else in the
-// module ever writes it (asm 0x0000E170/0x0000E448), so retail's locator path is dead and the
-// aim is always the base class's - the port keeps the structure anyway. (Grepped over the whole
-// module: only the ctor's two stores at asm 0x0000E170/0x0000E448 write 0xd7a, and it is outside
-// the loader's data block - CIngData covers 0x7c0..0x9d3.)
+// aim and the base class's. The ctor looks 0xd7a up by name: "Collar_SDK" (rodata 0x747, asm
+// 0x0000E41C-0x0000E448; the 0xff at asm 0x0000E170 is only the default it overwrites), so the
+// corporeal Ing aims (and is locked on, CPatterned::GetOrbitPosition) at its collar. The base
+// class is no substitute: the Ing's model has no "lockon_target_LCTR", so its aim is the centre
+// of the 2-unit bounding box, one unit above the feet (the run of 2026-10-21 below).
+//
+// The arms (the area 57 run of 2026-10-21, a probe in the body):
+//   - the base class (the forms 0, 1, 3, 4, 5 and 9 - asm 0x0000BE4C): the form 3 with dt 0.00
+//     (the aim the Ing asks for itself);
+//   - the prediction (the forms 2, 6, 7, 8 - asm 0x0000BD34) with dt above zero: the form 6
+//     with dt 0.22 and 0.23 and the form 2 with dt 0.07 and 0.22 (the lock-on asks the target
+//     with a prediction time);
+//   - the same forms with dt of zero or less (asm 0x0000BD3C-0x0000BD40: the aim stays the zero
+//     vector): the form 6 with dt 0.00;
+//   - the collar locator (asm 0x0000BD90): the form 2 in Agon Wastes 1baa96c2,2735236b
+//     (2026-10-21, a probe): Ing u0022 at z 4.60, its collar at z 8.69..8.79 (seg 2), the base
+//     class's aim at z 5.60 (bounding box z 4.60..6.60, no lockon_target_LCTR);
+//   - the forms 6/7's fall back to the base class when the aim is below the actor's own height
+//     (0x5c, asm 0x0000BDF8): not seen (the collar is above the feet).
 CVector3f CIng::GetAimPosition(const CStateManager& mgr, float dt) const {
   CVector3f aim = CVector3f::Zero(); // asm 0x0000BCFC: sZeroVector
   // asm 0x0000BD04-0x0000BD40: the corporeal form and the forms 6..8 predict; the prediction
-  // only runs when the argument is above zero (rodata_6C).
+  // only runs when the argument is above zero (rodata_6C). The form 9 (the wall projectile's
+  // form change) does not predict: asm 0x0000BD28-0x0000BD30 sends the forms 9 and above to the
+  // base class.
   const bool predict = mForm == kForm_Corporeal ||
-                       (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingWallProjectile);
+                       (mForm >= kForm_BecomingCorporeal && mForm <= kForm_BecomingBodyProjectile);
   if (!predict) {
     return CPatterned::GetAimPosition(mgr, dt); // asm 0x0000BE4C
   }
@@ -887,10 +952,14 @@ void CIng::UpdateLoopSfx() {
 
 // @ fn_29_2194 (asm 0x2194): the sounds stop.
 void CIng::StopSfx() {
-  for (int i = 0; i < 2; ++i) {
-    if (mLoopSfx[i]) {
-      CSfxManager::SfxStop(mLoopSfx[i]);
-      mLoopSfx[i] = CSfxHandle();
+  // 0x21A8-0x2250: every looping emitter is removed and cleared, in this order: 0xd58, 0xd60,
+  // 0xd64, 0xd00, 0xd04.
+  CSfxHandle* handles[] = {&mBodyProjectileSfx, &mLoopSfx[0], &mLoopSfx[1], &mSuckSfx,
+                           &mGrappleSfx};
+  for (int i = 0; i < 5; ++i) {
+    if (*handles[i]) {
+      CSfxManager::RemoveEmitter(*handles[i]);
+      *handles[i] = CSfxHandle();
     }
   }
 }
@@ -901,10 +970,12 @@ void CIng::StopSfx() {
 // blob's model scale and colour (0xfc/0x100..0x104), calls GeomBlobV2's fn_25_256C and sets the
 // blob's byte 0x154 bit 5.
 //
-// The Ing never spawns the blob (mBlobId stays invalid - the member map in IngFamily.md A.3), so
-// retail's whole body is unreachable in every run so far and the port stops where retail does:
-// at the lookup. The blob's class has no host counterpart either (the model's stores, GeomBlobV2's
-// fn_25_256C and the byte 0x154), so those three steps have no host equivalent.
+// @ fn_29_4604: the blob's align. The arms of the retail's body (asm 0x00004604-0x00004810) all
+// ran in the area 57 run of 2026-10-21: the align flag 0 (2604 calls) and 1 (4789), and with the
+// flag set the up vector (the normal's z under 0.95) and the right vector (z 0.95 and over). The
+// one arm that cannot run is "the blob is gone": the blob is made in the create branch
+// (fn_29_4830) and deleted in the delete branch, and the align runs from the Think, so the two
+// never overlap.
 void CIng::AlignBlobToSurface(CStateManager& mgr) {
   CEntity* blobEntity = mgr.ObjectById(mBlobId); // asm 0x00004634: the blob id (0xd5c)
   if (blobEntity == nullptr) {
@@ -936,10 +1007,22 @@ void CIng::AlignBlobToSurface(CStateManager& mgr) {
     const CVector3f pos = GetTranslation(); // asm 0x000046D8/0x000046EC/0x00004700: 0x54/0x58/0x5c
     const CVector3f look = pos + normal;    // asm 0x00004770-0x00004788
     blob->SetTransform(CTransform4f::LookAt(pos, look, up)); // asm 0x0000478C/0x00004798
+    // asm 0x0000479C-0x000047E0: the blob's draw flags (0xfc..0x104): blend mode 2, material set 0,
+    // depth compare|update, and the Ing's hit-flash colour at full alpha. 0x44c..0x44e is
+    // CPatterned's mColor (the word after mDamageCooldownTimer at 0x448, read at 0x47F4), black
+    // until a hit lerps it toward the red mDamageColor (0x450) - not mDamageColor itself, which
+    // tinted the blob solid red.
+    blob->SetModelFlags(CModelFlags(CModelFlags::kT_Two, 0,
+                                    static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
+                                                                       CModelFlags::kF_DepthUpdate),
+                                    CColor(mColor.GetRedu8(), mColor.GetGreenu8(),
+                                           mColor.GetBlueu8(), 0xff)));
   }
-  // asm 0x000047EC: GeomBlobV2's fn_25_256C(blob, align) - no host counterpart.
-  // asm 0x000047FC-0x0000480C: mDamageCooldownTimer (0x448) > 0 sets the blob's byte 0x154 bit 5
-  // (0x20) - no host counterpart.
+  CCollisionTracker* tracker = static_cast< CCollisionTracker* >(blob);
+  tracker->SetParticleEmissionRateScalar(align); // asm 0x000047EC: GeomBlobV2's fn_25_256C
+  // asm 0x000047F4-0x0000480C: the CR0 GT bit of mDamageCooldownTimer (0x448) > 0 goes to the
+  // blob's byte 0x154 bit 5 (0x20).
+  tracker->SetOwnerDamaged(mDamageCooldownTimer > 0.f);
 }
 
 // ---- triggers -------------------------------------------------------------------------------
@@ -966,11 +1049,12 @@ bool CIng::IsControllingHost(CStateManager&, const CTriggerData&) const {
 
 // @ fn_29_B0E0
 bool CIng::IsFacingTarget(CStateManager& mgr, const CTriggerData&) const {
-  const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId));
-  if (target == nullptr) {
+  // 0xB124: the target's aim position (fn_29_4468, prediction 0); no target counts as facing.
+  CVector3f aim = CVector3f::Zero();
+  if (!const_cast< CIng* >(this)->TargetAimPosition(mgr, aim, 0.f)) {
     return true;
   }
-  CVector3f delta = target->GetTranslation() - GetTranslation();
+  CVector3f delta = aim - GetTranslation();
   delta = CVector3f(delta.GetX(), delta.GetY(), 0.f);
   return CVector3f::GetAngleDiff(GetTransform().GetForward(), delta) <= kFacingAngle;
 }
@@ -1062,7 +1146,12 @@ bool CIng::IsLuredBySafeZone(CStateManager&, const CTriggerData&) const {
          (mForm == kForm_Corporeal || mForm == kForm_IngSpot);
 }
 
-// fn_29_AC78 (not yet exercised in a run)
+// @ fn_29_AC78 (0x20, asm 0x0000AC78-0x0000AD54): the lure zone id (0xd78) against
+// kInvalidUniqueId. One comparison, two arms: the id is invalid (false) and it is set (true).
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark, with the console's
+// `noise 6` repeated at the safe zone nearest the Ing and a probe in the body): the id invalid
+// (404 calls) and the id set (404 calls) - the lure zone is set and cleared again as the noise
+// repeats. Both arms ran, so the body is marked.
 bool CIng::StillLuredBySafeZone(CStateManager&, const CTriggerData&) const {
   return mLureSafeZoneId != kInvalidUniqueId;
 }
@@ -1119,17 +1208,39 @@ bool CIng::ShouldEvaporate(CStateManager&, const CTriggerData&) const {
          (mForm == kForm_Corporeal || mForm == kForm_IngSpot || mForm == kForm_Evaporate);
 }
 
-// fn_29_AA94 (not yet exercised in a run)
+// fn_29_AA94 (0x14, asm 0x0000AA94-0x0000AAA8): the word at 0xe2c (the safe zone count) is above
+// zero: `neg r0, r3` (0x0000AA98), `andc r0, r0, r3` (0x0000AA9C) and `srwi r3, r0, 31` (0x0000AAA0) give the sign bit of
+// (-n & ~n), set only for n > 0 (n = 0 gives 0, a negative n has ~n's sign bit clear, INT_MIN
+// gives -n = INT_MIN & ~n = 0). The arms (the count is set by XENZ/XEXZ in AcceptScriptMsg):
+//   - the count is not above zero: false;
+//   - the count is above zero: true.
+// Both ran in the Agon Wastes coverage run of 2026-10-22 (the body compiles branch-free; `trigcall`
+// answered false, true, false), forced (`send <ing> XENZ`/`XEXZ` + `trigcall`).
+// @ fn_29_AA94
 bool CIng::ShouldFleeSafeZone(CStateManager&, const CTriggerData&) const {
   return mSafeZoneCount > 0;
 }
 
-// fn_29_AA4C (not yet exercised in a run): 0x9d8 == 2 and not fn_29_AD54 (asm 0x0000AA6C).
+// fn_29_AA4C (0x48, asm 0x0000AA4C-0x0000AA90): the desired form (0x9d8) is 2 and the Ing is
+// not corporeal yet (fn_29_AD54, asm 0x0000AA6C). The arms:
+//   - the desired form is not 2 (asm 0x0000AA68): false;
+//   - it is 2 and the Ing is already corporeal (fn_29_AD54): false;
+//   - it is 2 and the Ing is not: true.
+// Every arm ran in the Agon Wastes coverage run of 2026-10-22 (tools/drivers/ing_triggers.py,
+// gcov 4/4 branches), forced (`var ing.desired -1/2/3` + `var ing.form 2/3` + `trigcall`).
+// @ fn_29_AA4C
 bool CIng::ShouldBecomeCorporeal(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_Corporeal && !IsCorporeal(mgr, data);
 }
 
-// fn_29_AA04 (not yet exercised in a run): 0x9d8 == 3 and not fn_29_AD40 (asm 0x0000AA24).
+// fn_29_AA04 (0x48, asm 0x0000AA04-0x0000AA48): the desired form (0x9d8) is 3 and the Ing is
+// not an ing spot yet (fn_29_AD40, asm 0x0000AA24). The arms:
+//   - the desired form is not 3 (asm 0x0000AA20): false;
+//   - it is 3 and the Ing is already an ing spot (fn_29_AD40): false;
+//   - it is 3 and the Ing is not: true.
+// Every arm ran in the Agon Wastes coverage run of 2026-10-22 (tools/drivers/ing_triggers.py,
+// gcov 4/4 branches), forced (`var ing.desired -1/2/3` + `var ing.form 2/3` + `trigcall`).
+// @ fn_29_AA04
 bool CIng::ShouldBecomeIngSpot(CStateManager& mgr, const CTriggerData& data) const {
   return mDesiredForm == kForm_IngSpot && !IsIngSpot(mgr, data);
 }
@@ -1231,7 +1342,14 @@ bool CIng::ProjectileHitTarget(CStateManager& mgr, const CTriggerData&) const {
   return CAABox(pos - half, pos + half).DoBoundsOverlap(target->GetBoundingBox());
 }
 
-// fn_29_A4E0 (not yet exercised in a run)
+// fn_29_A4E0 (0xC, asm 0x0000A4E0-0x0000A4EC): the byte at 0xe5c's bit 3 (the asm's extrwi index
+// 28) - the port's mFoundMovementPos. One bit, one arm:
+//   - the flag is set: true;
+//   - the flag is clear: false.
+// The FSM2 graph puts this trigger in the SetLuredDest code function's trigger list only (the
+// Ing's lure). Both arms ran in the Agon Wastes coverage run of 2026-10-22 (the body compiles
+// branch-free; `trigcall` answered false, then true), forced (`var ing.found 0/1` + `trigcall`).
+// @ fn_29_A4E0
 bool CIng::FoundMovementPos(CStateManager&, const CTriggerData&) const {
   return mFoundMovementPos;
 }
@@ -1268,9 +1386,16 @@ bool CIng::HasAttackPattern(CStateManager& mgr, const CTriggerData&) const {
          kInvalidUniqueId;
 }
 
-// fn_29_A340 (not yet exercised in a run): over once the attack path is being followed
+// @ fn_29_A340 (0xE4, asm 0x0000A340-0x0000A424): over once the attack path is being followed
 // (0x0000A348: 0xE5D 0x08) and the waypoint navigation has no destination left (0x0000A35C:
 // this+0x6c0 against kInvalidUniqueId). It stores nothing.
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark - the area whose Ings
+// have the "ATTK"/"FOLW" attack pattern - with a probe in the body):
+//   - the attack path is not followed (asm 0x0000A34C): false - the destination is invalid and
+//     it is not;
+//   - it is followed and the destination is still there (asm 0x0000A35C): false;
+//   - it is followed and the destination is gone: true.
+// All three ran, so the body is marked.
 bool CIng::AttackPatternOver(CStateManager&, const CTriggerData&) const {
   return mFollowingAttackPath && mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
@@ -1732,7 +1857,12 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8FE8 (not yet exercised in a run)
+// fn_29_8FE8 (0x464, asm 0x00008FE8-0x0000944C): the BecomeWallProjectile state. The arms: the
+// message (asm 0x00009014, 0x00009024, 0x00009028, 0x00009034 and 0x00009038), the cross
+// product's magnitude (asm 0x000090CC) and the body command (asm 0x000091BC and 0x000091E4).
+// The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing>
+// BecomeWallProjectile`) ran the three messages (the probe's keys 0, 5 and 9, four calls
+// each); the cross product and the body command arms did not run. Not marked.
 void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1814,7 +1944,12 @@ void CIng::Alert(CStateManager&, EStateMsg msg, float) {
   }
 }
 
-// fn_29_8CF4 (not yet exercised in a run)
+// fn_29_8CF4 (0x1A0, asm 0x00008CF4-0x00008E94): the SafeZoneReaction state. The arms: the
+// message (asm 0x00008CFC, 0x00008D10, 0x00008D14 and 0x00008D20), the harmful zone and the
+// evaporating flag (asm 0x00008D64 and 0x00008D70) and the state time against a second
+// (asm 0x00008D88). The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm
+// <ing> SafeZoneReaction`) ran the three messages (the probe's keys 0, 8 and 16, four calls
+// each); the zone and the time arms did not run. Not marked.
 void CIng::SafeZoneReaction(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("SafeZoneReaction");
@@ -1973,7 +2108,12 @@ void CIng::IngSpotPointPathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   MoveOnSurface(move, speed, dt);
 }
 
-// fn_29_84A4 (not yet exercised in a run)
+// @ fn_29_84A4 (0xDC, asm 0x000084A4-0x00008580): the Ing walks its patrol path. The message
+// arms are the state's own: the Activate (asm 0x000084E0) sets the steering blend mode and the
+// speed range, and the other messages only run the waypoint navigation's patrol.
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark, with a probe in the
+// body and the state forced with `fsm <ing> Patrol`): the Activate (the probe's key 0) and the
+// other two messages (the keys 1 and 2) - four calls each. Both arms ran, so the body is marked.
 void CIng::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("Patrol");
@@ -1989,7 +2129,23 @@ void CIng::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
 }
 
-// fn_29_82D4 (not yet exercised in a run)
+// @ fn_29_82D4 (0x1D0, asm 0x000082D4-0x000084A4): the Ing walks its attack pattern. The message
+// arms are the state's own (the Activate, the Update and the Deactivate), the ing-spot form walks
+// the waypoint's own speed (0x158) over the ing spot's maximum speed (0x87c) and the waypoint's
+// flags (0x164) pick the form the Ing changes to (0x40 or 0x80 the ing spot, 0x100 the
+// corporeal one).
+// The arms (the Agon Wastes run of 2026-10-21, area 01_sand_entrance_dark - the area whose Ings
+// have the "ATTK"/"FOLW" attack pattern - with a probe in the body):
+//   - the message: the Activate (asm 0x000083AC), the Update (asm 0x00008410) and the Deactivate
+//     (asm 0x00008468): all three ran;
+//   - the ing-spot form (asm 0x00008310) and the other forms: both ran;
+//   - the waypoint (the navigation's destination at 0x6c0) is cast to CScriptAIWaypoint
+//     (asm 0x00008428) before its flags are read: the cast never succeeds in the shipped data -
+//     every attack pattern's target is a WAYP, never an AIWP (tools/scan_ing_pattern.py) - so
+//     the flag arms are dead and the "the waypoint is not an AI waypoint" arm is the only live one.
+//   - the resume id (0xd70, asm 0x000083B0) and the "ATTK"/"FOLW" connection: both ran, the
+//     Deactivate stores the destination into the resume id (asm 0x00008478) and the next Activate
+//     takes it.
 void CIng::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   // 0x00008310: in the ing-spot form the Ing walks the waypoint's own speed (0x158) over the ing
@@ -2207,7 +2363,7 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
                              true, false);
     // The asm builds one included material, 1 << 0x3b (kMT_Solid), type 3 = kFT_IncludeExclude.
     mgr.ApplyDamage(GetUniqueId(), mHostId, GetUniqueId(), damage, SolidFilter(),
-                    GetTransform().GetForward());
+                    CVector3f::Zero()); // 0x7C14: r9 = sZeroVector, no knock-back
     break;
   }
   case kStateMsg_Deactivate: {
@@ -2234,7 +2390,12 @@ void CIng::SuckEnergy(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_75C0 (not yet exercised in a run)
+// fn_29_75C0 (0xF8, asm 0x000075C0-0x000076B8): the SeekWallPoint state. The arms: the
+// message (asm 0x000075DC and 0x000075E8), the cover hint (asm 0x000075F8), the delta's
+// magnitude (asm 0x00007650) and its length against the wall speed (asm 0x00007640). The run
+// of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing> SeekWallPoint`) ran
+// the three messages (the probe's keys 0, 16 and 32, four calls each); the hint, the magnitude
+// and the length arms did not run (the forced state leaves before the Ing moves). Not marked.
 void CIng::SeekWallPoint(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("SeekWallPoint");
@@ -2840,15 +3001,24 @@ void CIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
-// fn_29_5C28 (not yet exercised in a run)
+// fn_29_5C28 (0x88, asm 0x00005C28-0x00005CB0): the Evaporate state. The arms: the message
+// (`cmpwi r5, 1` at 0x00005C30: the Update branches at 0x00005C48, the Deactivate (2) leaves at
+// 0x00005C4C, the Activate (0) stores at 0x00005C54, and a message below zero leaves at
+// 0x00005C58 - dead, CGenericFSM2 only sends 0, 1 and 2) and the state time against two
+// seconds (0x00005C84, `fcmpo` + `ble` skip: the delete needs time > 2.0). The time is the
+// state machine's (0x00005C68-0x00005C78: `lwz r3, 0x350(r30)`, vtable 0x30 = GetTime, the
+// CGenericFSM2State slot after GetName), not the host's mStateTime, which the code functions'
+// LogState also clears. Every arm but the dead one ran in the Agon Wastes coverage run of
+// 2026-10-22 (gcov 6/6 branches; the Ing deleted itself after two seconds), forced (`fsm <ing> Evaporate`).
+// @ fn_29_5C28
 void CIng::Evaporate(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     LogState("Evaporate");
     mForm = kForm_Evaporate; // 0x00005C5C: 0x9d4 = 5
   } else if (msg == kStateMsg_Update) {
-    // 0x00005C68: the state time (the state machine at 0x350) past two seconds (rodata_74).
-    if (mStateTime > 2.f) {
-      DeathDelete(mgr);
+    // 0x00005C80: rodata_74 = 2.0f.
+    if (mStateMachine->GetTime() > 2.f) {
+      DeathDelete(mgr); // 0x00005C94
     }
   }
 }
@@ -2956,7 +3126,7 @@ void CIng::SetPointCoverDest(CStateManager& mgr, float) {
   }
 }
 
-// fn_29_5714 (not yet exercised in a run): the point-graph route to the cover hint. Two closest-point
+// fn_29_5714 (0x10C, asm 0x00005714-0x00005820): the point-graph route to the cover hint. Two closest-point
 // queries - the Ing's own position with filter (20, 0, -1) (asm 0x00005758-0x00005768), then the
 // hint's position with filter (20, 0, from) (asm 0x00005778-0x000057A0) - and a point-graph search
 // between the two results (asm 0x000057CC-0x000057EC). It sets no destination: mFoundMovementPos is
@@ -3022,7 +3192,7 @@ void CIng::SetExitHostDest(CStateManager& mgr, float) {
   mTargetPos = bestPos; // 0xdc8
 }
 
-// fn_29_53E0 (not yet exercised in a run): the lure point is the nav-mesh point below the lure safe
+// fn_29_53E0 (the lure point is the nav-mesh point below the lure safe
 // zone (fn_29_1C98, the shared PortIngLuredDest does it); the path search's flags go to 1 for the
 // mesh-path query and back to 0x301 after it (asm 0x00005458-0x000054B8). Only when that path
 // exists does the lure point become the destination and mFoundMovementPos get set (0xe5c bit 3);
@@ -3036,26 +3206,38 @@ void CIng::SetLuredDest(CStateManager& mgr, float) {
   mPathFindNavigation.SetFaceTarget(kInvalidUniqueId); // 0x718, asm 0x000054C8
 }
 
-// fn_29_51D0 (not yet exercised in a run): the point-graph route to the lure point - the flag-1
+// fn_29_51D0 (the point-graph route to the lure point - the flag-1
 // point nearest the Ing that the graph connects to the Ing's own point and that has a mesh path to
 // the lure point (asm 0x000052BC-0x0000531C), then the point search between the two (asm
 // 0x00005350-0x0000536C). The shared PortIngLuredPointDest is the same routine as the MinorIng's
 // copy (fn_44_22B0), whose asm matches this one field for field.
+// The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the Ing)
+// reached this code function 44 times with the lure zone set; the arms of the retail's body (the
+// flag-1 point, the graph link and the mesh path) are inside the shared helper, so the body is
+// not marked yet.
 void CIng::SetLuredPointDest(CStateManager& mgr, float) {
   LogState("SetLuredPointDest");
   mFoundMovementPos = PortIngLuredPointDest(mgr, mPathFindSearch, mPointPathFindSearch, mPathArea,
                                             mLureSafeZoneId, GetTranslation());
 }
 
-// fn_29_5190 (not yet exercised in a run): the Ing starts a projectile attack on its own team: the
+// fn_29_5190 (0x40, branch-free): the Ing starts a projectile attack on its own team: the
 // attack type 1 (kAT_Projectile), the team id at 0xd6a and the Ing's own id (asm 0x000051A4-0x000051B8).
+// Ran in the Agon Wastes coverage run of 2026-10-22, forced (`codecall <ing> StartRangedAttack`).
+// @ fn_29_5190
 void CIng::StartRangedAttack(CStateManager& mgr, float) {
+
   CScriptTeamAiMgr::StartAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId());
 }
 
-// fn_29_514C (not yet exercised in a run): the team attack ends, but the Ing keeps its team role:
-// retail's last argument to EndAttack is 0 (asm 0x00005154), not a role clear.
+// @ fn_29_514C (0x44, asm 0x0000514C-0x00005190): the team attack ends, but the Ing keeps its
+// team role: retail's last argument to EndAttack is 0 (asm 0x00005154), not a role clear. The
+// attack type is 1 (kAT_Projectile, asm 0x00005170), the team id is the halfword at 0xd6a and
+// the second id is the Ing's own (asm 0x00005164).
+// The arms: the body has no branch (one call) - the run of 2026-10-21 (the Agon Wastes area
+// 01_sand_entrance_dark) evaluated it once, so the body is marked.
 void CIng::EndRangedAttack(CStateManager& mgr, float) {
+
   CScriptTeamAiMgr::EndAttack(CScriptTeamAiMgr::kAT_Projectile, mgr, mTeamId, GetUniqueId(),
                               false);
 }
@@ -3145,7 +3327,21 @@ void CIng::ValidateLureZone(CStateManager& mgr) {
 
 // @ fn_29_C814
 void CIng::PreThink(float dt, CStateManager& mgr) {
-  EnsureBodyActive(mgr);
+  EnsureBodyActive(mgr); // host guard, not in retail
+  // 0xC840-0xC970: an active ing spot (form 3) off a ground collider eases toward 0.1 above its
+  // surface plane while it isn't moving along the normal, then forgets the move direction.
+  if (GetActive() && mForm == 3 && !GetMaterialList().HasMaterial(kMT_GroundCollider)) {
+    const CPlane plane = mSurfaceAlignment.GetSurface().GetPlane(); // 0xC884 (0xc58)
+    const CVector3f normal = plane.GetNormal();
+    if (CVector3f::Dot(mSurfaceMoveDir, normal) < 0.95f) { // 0xC8C0
+      const float t = 0.59999996f * dt;                     // rodata_114
+      const CVector3f pos = GetTranslation();
+      const float dist = CVector3f::Dot(normal, pos) - plane.GetConstant() - 0.1f;
+      const CVector3f onPlane = pos - normal * dist;
+      SetTranslation(pos * (1.f - t) + onPlane * t); // 0xC954
+    }
+    mSurfaceMoveDir = CVector3f::Zero(); // 0xC958
+  }
   CPatterned::PreThink(dt, mgr);
 }
 
@@ -3155,22 +3351,48 @@ void CIng::Think(float dt, CStateManager& mgr) {
     return;
   }
   EnsureBodyActive(mgr);
-  // @ fn_29_3B50 (asm 0x3B7C-0x3BA8): 0xe40 is the time the body has spent in the locomotion state
-  // (the body controller's state id 5, read at 0x37c); it is cleared whenever the body is in any
-  // other state. The retail then only updates the body controller and the animation while the
-  // timer is below rodata_C8 (2.5f) - the host's CPatterned::Think does both unconditionally, so
-  // only the timer is ported here; the draw gate in PreRender and AddToRenderer reads it.
-  if (BodyController()->GetCurrentStateId() == pas::kAS_Locomotion) {
-    mBodyState5Time += dt;
-  } else {
-    mBodyState5Time = 0.f;
+  // 0xC684: the form picks the think. Forms 0/1 only run the actor and the state machine and
+  // stop there (0xC6B4-0xC6E4); the ing spot and the evaporating form (3/5) skip CPatterned::Think
+  // for the module's own fn_29_3B50 and the hit-damage timer (vtable 0xec = fn_29_B784,
+  // 0xC6E8-0xC72C); every other form is a full CPatterned::Think (0xC73C).
+  switch (mForm) {
+  case 0:
+  case 1:
+    CActor::Think(dt, mgr);
+    mStateMachine->Update(mgr, *this, dt); // vcall(0x350)+0x24
+    SetDrawShadow(false);
+    return;
+  case 3:
+  case 5:
+    CActor::Think(dt, mgr);
+    // @ fn_29_3B50: 0xe40 is the time the body has spent in the locomotion state (the body
+    // controller's state id 5, read at 0x37c); it is cleared in any other state. The body and
+    // the animation only update while it is below rodata_C8 (2.5f, 0x3BB4); the draw gate in
+    // PreRender and AddToRenderer reads it too.
+    if (BodyController()->GetCurrentStateId() == pas::kAS_Locomotion) {
+      mBodyState5Time += dt;
+    } else {
+      mBodyState5Time = 0.f;
+    }
+    if (mBodyState5Time < 2.5f) {
+      BodyController()->Update(dt, mgr); // 0x3BC4
+      UpdateAnimation(dt, mgr, true);    // 0x3BDC
+    }
+    if (!mStateMachine->HasState()) { // vcall(0x350)+0x28
+      InitializeStateMachine(mgr);
+    } else {
+      mStateMachine->Update(mgr, *this, dt);
+    }
+    mWaypointNavigation.Update(dt); // 0x3C34 (0x6b8)
+    SetDrawShadow(false);
+    UpdateHitDamageTime(dt); // vtable 0xec
+    break;
+  default:
+    CPatterned::Think(dt, mgr);
+    break;
   }
-  CPatterned::Think(dt, mgr);
-  // The retail's Think (fn_29_C654) calls three more module functions the host has no body for:
-  // fn_29_3B50 (0x108) before the state machine thinks (asm 0xC704), fn_29_2270 (0x1A4) before
-  // the touch box (asm 0xC7A8) and fn_29_4960 (0x148) after it (asm 0xC7C0). The first two are
-  // ported (the body-state-5 timer above, the looped sounds in UpdateLoopSfx); the third is the
-  // actor's light, which the host does not have.
+  // The rest of the retail's Think (0xC740 on): the touch box (fn_29_3C58), the looped sounds
+  // (fn_29_2270, UpdateLoopSfx) and the actor's light (fn_29_4960), which the host does not have.
   if (!mCollisionActorManager.null()) {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
   }
@@ -3223,7 +3445,16 @@ void CIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
   switch (msg.GetMessage()) {
   case kSM_Create:
-    // fn_29_4C88
+    // @ fn_29_4C88 (0x90, asm 0x00004C88-0x00004D18): the create handler. The data flag byte
+    // 0x9d0's bit 7 (asm 0x00004CAC, the guest copy at 0xe5d's bit 5 is seeded from the same flag
+    // in the ctor) picks the form: the flag set gives the ing spot (the form 3) and the flag clear
+    // the corporeal Ing (the form 2); the flag set also sets the locomotion type 0 and aligns the
+    // Ing near its position (asm 0x00004CBC-0x00004CFC).
+    // The arms (the coverage run of 2026-10-21 with tools/cov, the key is the flag word
+    // $this->mData.mFlags210): the flag set (the top bit, 180 hits) and the flag clear (0, 2820
+    // hits - the Ing 0x101c01c3 of the Great Temple's 06_swamp_boostballguardian_dark, the one
+    // placement the disc scan found without the flag). The create branch's own calls ran too (the
+    // collision actor manager, the blob and the light). Both arms ran, so the body is marked.
     EnsureBodyActive(mgr);
     // 0x00004CA4: the data flag byte 0x9d0 bit 0x80, not the guest copy at 0xe5d bit 5 (the ctor
     // seeds that from the same flag, 0x0000E368, but the states rewrite it).
@@ -3427,19 +3658,41 @@ void CIng::Render(const CStateManager& mgr) const {
     // The forms 3 and 5 (asm 0xC1A4-0xC210): the ing spot draws only while the body-state-5 timer
     // (0xe40) is below rodata_C8 (2.5f) and the actor draws particles (the bit 0 of the byte at
     // 0x421).
-    if (mBodyState5Time < 2.5f && mDrawParticles) {
-      // The retail draws no model in this form: the ing spot's visible body is the separate blob
-      // object (0xd5c) that module 25's class spawns (fn_29_4830), and the host has no blob, so
-      // the model's draw is kept here (with its own particles) to keep the ing spot visible.
-      CPatterned::Render(mgr);
+    // The retail draws no model in this form: the ing spot's visible body is the separate blob
+    // object (0xd5c, fn_29_4830's CCollisionTracker), and the Ing itself only draws its animation's
+    // particle systems straight from the particle database (the model data 0x60, its animation
+    // data 0x10, the database 0x178), with the POI check.
+    if (mBodyState5Time < 2.5f && mDrawParticles) { // asm 0xC1A4-0xC1C0
+      uint mask = 0;
+      uint target = 0;
+      mgr.GetCharacterRenderMaskAndTarget(mask, target); // asm 0xC1DC
+      const CParticleDatabase& db = GetModelData()->GetAnimationData()->GetParticleDB();
+      db.RenderSystemsToBeDrawnFirstPOICheck(mask, target); // asm 0xC1F4
+      db.RenderSystemsToBeDrawnLastPOICheck(mask, target);  // asm 0xC20C
     }
   }
 }
 
-// fn_29_BF20 (0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile
+// @ fn_29_BF20 (0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile
 // (4) takes the base class's own table, the ing spot (3) takes the grapple's table while the ball
 // is held (the byte at 0xe5d, bit 0) and the ing spot's own table otherwise, and every other form
 // takes the trigger table at CIngData+0x3c (0x7fc).
+// The arms:
+//   - the form 4 (asm 0x0000BF34): the base class's table - the Agon Wastes run of 2026-10-21
+//     (`fsm <ing> BecomeBodyProjectile` and a hit on the Ing) - the probe's key 8;
+//   - the form 3 and the ball is held (asm 0x0000BF50): the grapple's table - the Agon Wastes
+//     morph-ball run of 2026-10-21 (2 calls, the Ing with the ball in it);
+//   - the form 3 (asm 0x0000BF64): the ing spot's table - that run (the key 6);
+//   - every other form (asm 0x0000BF6C): the trigger's table - that run (the keys 0, 2, 4, 12
+//     and 14: the forms 0, 1, 2, 6 and 7).
+// All four arms ran, so the body is marked.
+// The arms:
+//   - the form 4 (asm 0x0000BF34): the base class's table - **open**, only the body projectile
+//     asks for it and the area 57 run of 2026-10-21 never reached that form;
+//   - the form 3 and the ball is held (asm 0x0000BF50): the grapple's table - the Agon Wastes
+//     run of 2026-10-21, 2 calls;
+//   - the form 3 (asm 0x0000BF64): the ing spot's table - 37 calls in the area 57 run;
+//   - every other form (asm 0x0000BF6C): the trigger's table - the forms 2 and 6, 71 calls.
 const CDamageVulnerability* CIng::GetDamageVulnerability() const {
   if (mForm == kForm_BodyProjectile) {
     return CPatterned::GetDamageVulnerability();
@@ -3461,10 +3714,13 @@ rstl::optional_object< CAABox > CIng::GetTouchBounds() const {
   return CPatterned::GetTouchBounds();
 }
 
-// fn_29_BB8C (0x128, asm 0x0000BB8C-0x0000BCB0): the ing spot (3) damages the target it touches
-// when the ball is not held (the byte at 0xe5d, bit 0), the toucher is the target (0xd6c) and the
-// damage cooldown (0x440) has run out; the contact damage is the actor's own (GetContactDamage)
-// and the filter is Solid alone. The cooldown is then reloaded from 0x444.
+// @ fn_29_BB8C: 0x128, asm 0x0000BB8C-0x0000BCB0. The ing spot (3) damages the target it
+// touches when the ball is not held (the byte at 0xe5d, bit 0), the toucher is the target (0xd6c)
+// and the damage cooldown (0x440) has run out; the contact damage is the actor's own
+// (GetContactDamage) and the filter is Solid alone. The cooldown is then reloaded from 0x444.
+// All five arms ran: the Agon Wastes run of 2026-10-21 (the morph-ball recipe) and the area 57
+// run between them - the hit (44 calls), the form (the other way), the id, the cooldown and "the
+// ball is held" (4484 calls, the Ing with the morph ball in it).
 void CIng::Touch(CActor& actor, CStateManager& mgr) {
   EnsureBodyActive(mgr);
   if (mForm == kForm_IngSpot && !mGrappled && actor.GetUniqueId() == mTargetId &&
@@ -3477,10 +3733,20 @@ void CIng::Touch(CActor& actor, CStateManager& mgr) {
   CPatterned::Touch(actor, mgr);
 }
 
-// fn_29_B534: CIng's CollidedWith - CPhysicsActor's vtable slot 0x80 (the REL's own override).
+// fn_29_B534 (0x250, asm 0x0000B534-0x0000B610): CIng's CollidedWith - CPhysicsActor's vtable
+// slot 0x80 (the REL's own override).
 // The flying body projectile (form 4) remembers the surface it hit: the first collision whose
 // material list holds one of the six splat surfaces gives the normal (0xdd4/0xdd8/0xddc) and
 // sets the splat flag (0xe5e bit 6).
+// The arms:
+//   - the form is not 4 (asm 0x0000B558): the body does nothing - every call;
+//   - the flight time is under 0.5 (asm 0x0000B56C): the body does nothing - 203 calls in the
+//     area 57 run of 2026-10-21;
+//   - the contact list is empty (asm 0x0000B710): the body does nothing - 6 calls in that run;
+//   - a contact whose material is not one of the six splat surfaces (asm 0x0000B720): the next
+//     contact is tried - **open**, that run had no such contact;
+//   - a contact whose material meets the mask (asm 0x0000B738): the normal is stored, the splat
+//     flag is set and the first hit wins (asm 0x0000B760) - 1 call in that run.
 void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr); // asm 0x0000B550
   if (mForm != kForm_BodyProjectile) {
@@ -3584,13 +3850,27 @@ void CIng::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserE
   }
 }
 
-// fn_29_B3C4 (0x170, asm 0x0000B3C4-0x0000B530): the Ing's own death body. It *replaces*
+// @ fn_29_B3C4 (0x170, asm 0x0000B3C4-0x0000B530): the Ing's own death body. It *replaces*
 // CPatterned::Death - the retail never calls the base class here - so the base's massive-death
 // logic, the dark-visor highlight and the unpossess step are not part of the Ing's death. The
 // body: the body controller's time scale, the FSM's "Dead" state (only when the state machine
 // has one), the ground collider's material, the vertical movement flag (unless the Ing burns),
 // the alive bit, the death body command in the forms 2 and 6..9 - and the script messages, which
 // the retail sends whether the Ing was alive or not.
+//
+// The arms (the area 57 runs of 2026-10-21, a probe in the body):
+//   - the Ing is alive (asm 0x0000B3F0: the byte at 0x420's bit 1) and it is not (the same body
+//     after the alive bit is cleared): both ran;
+//   - the machine has a state (asm 0x0000B420): yes - the "no state" arm cannot run, the machine
+//     is set up in the constructor;
+//   - the Ing does not burn (asm 0x0000B474: the byte at 0x421's bits 1 and 2) and it does: the
+//     power bomb's follow-up (kFU_LaggedBurnDeath) burns the Ing, so the death runs with the
+//     lagged bit set - `send <ing> Activate; place <ing> player 8; damage <ing> 100 powerbomb`;
+//   - the death body command in the form 2 and the form changes 6..9 (asm 0x0000B4A8) and no
+//     command in the form 3 (asm 0x0000B4C4): all three ran;
+//   - the script messages (asm 0x0000B4E4: the state argument is not -1) and no message (the
+//     state is -1): the messages ran; the "no message" arm cannot run, the Ing's death always
+//     carries a real state (the damage path's kSS_DeathRattle).
 void CIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   EnsureBodyActive(mgr);
   if (GetAlive()) {
@@ -3619,13 +3899,21 @@ void CIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectSt
   }
 }
 
-// fn_29_B8C0 (0xB0, asm 0x0000B8C0-0x0000B96C): only the corporeal form (2) outside the
+// @ fn_29_B8C0 (0xB0, asm 0x0000B8C0-0x0000B96C): only the corporeal form (2) outside the
 // knock-back body state (6) takes the knock-back animation reaction; the hit's weapon type picks
 // the flinch type the knock-back manager keeps at 0x688 (2 for the light beam, 1 for everything
 // else), and the base class runs last. The Boost Guardian REL carries the same body
 // (fn_30_CB84) and the port's copy of it is the reference for the two calls.
+//
+// The arms (the area 57 run of 2026-10-21, a probe in the body):
+//   - the form is not 2 (asm 0x0000B8E8): the reaction off - the form 3, 26 calls;
+//   - the form 2 and the body state 6 (asm 0x0000B8F8): the reaction off - 1 call;
+//   - the form 2 and any other body state (asm 0x0000B900): the reaction on - 12 calls;
+//   - the weapon type 2 (asm 0x0000B928): the flinch type 2;
+//   - every other weapon (asm 0x0000B93C): the flinch type 1 - the power beam, 6 calls.
 void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  EnsureBodyActive(mgr);
+  EnsureBodyActive(mgr); // host guard, not in retail: the body controller is only activated by
+                          // the kSM_Create message (fn_29_4C88) and the body state is read below
   // asm 0x0000B8E4-0x0000B8F8: form 2 and the body state (0x48c -> 0x37c) 6.
   const bool react =
       mForm == kForm_Corporeal && BodyController()->GetCurrentStateId() != pas::kAS_KnockBack;
@@ -3640,10 +3928,19 @@ void CIng::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
 // form (5) take no damage; every other form only gets the base class's damage-cooldown store
 // (0x448 = lbl_8041AAB8, CPatterned::skDamageHitTime = 0.33). The base class does exactly that
 // store, so the port's early return plus the base call is retail's body.
+// The arms:
+//   - the forms 0, 1 and 5 (asm 0x0000B894-0x0000B8AC): the early return;
+//   - every other form (asm 0x0000B8B0): the base class's store.
+// Both ran in the Agon Wastes coverage run of 2026-10-22 (gcov 2/2 branches), forced: `var <ing>
+// ing.form 0/1/5/2/3`, then `hurt <joint> 1` on one of the Ing's joint collision actors (the
+// joint relays kSM_Damage -> CollisionActorDamage -> TakeDamage), the form put back after each.
+// @ fn_29_B890
 void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
   if (mForm == 0 || mForm == 1 || mForm == kForm_Evaporate) {
     return;
   }
+  // Retail inlines the base's body here (asm 0x0000B8B0-0x0000B8B8: 0x448 = skDamageHitTime), so
+  // asmcheck's XCALL on this call is that inline.
   CPatterned::TakeDamage(direction, magnitude);
 }
 
@@ -3680,7 +3977,9 @@ bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseTyp
     return true;
   }
   if (type == kLNT_SafeZone) {
-    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone
+    // fn_29_1DF4 (asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone.
+    // The Agon Wastes run of 2026-10-21 (the console's `noise 6` at the safe zone nearest the
+    // Ing) reached it: the lure zone was set and the lure code functions ran 64 and 44 times.
     // (0xd78), unless the Ing already has one that is nearer. The retail returns false here.
     if (distSq >= mData.mHearingRadius * mData.mHearingRadius) {
       return false;
@@ -3858,6 +4157,8 @@ static SIng_FuncPtrs REL_loader_Ing;
 // Retail's RELMain calls fn_29_100, which stores the loader fn_29_130 into lbl_29_bss_6C (the
 // module's SIng_FuncPtrs) and calls the DOL's SetSIng_FuncPtrs. The proxy in SIng_FuncPtrs.cpp
 // calls through it.
+// @ fn_29_100 (0x30, branch-free): the loader's store and the SetSIng_FuncPtrs call (bl fn_80218918
+// at 0x11C); the RELMain around it is the REL runtime's (host-copy).
 void RELMain() {
   REL_loader_Ing.mLoader = PortLoadIng;
   SetSIng_FuncPtrs(&REL_loader_Ing);

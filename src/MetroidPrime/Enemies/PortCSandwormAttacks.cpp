@@ -30,8 +30,12 @@ const CVector3f& PlayerPos(const CStateManager& mgr) { return mgr.Player(0)->Get
 
 CVector3f FlatXY(const CVector3f& v) { return CVector3f(v.GetX(), v.GetY(), 0.f); }
 
+// fn_56_C0A4 0xC0BC, fn_56_646C 0x65DC: the transition state only counts while the spawned
+// morph ball state (player+0x390) is 0, as in PlayerIsMorphball (fn_56_7390).
 bool PlayerMorphed(const CStateManager& mgr) {
-  return mgr.Player(0)->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
+  const CPlayer* player = mgr.Player(0);
+  return player->GetSpawnedMorphballState() == 0 &&
+         player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
 }
 
 } // namespace
@@ -246,12 +250,20 @@ void CSandworm::ResetAttackTimer(CStateManager& mgr) {
 // @ fn_56_5F5C
 void CSandworm::ApplyMeleeDamage(CStateManager& mgr) {
   CVector3f dir = FlatXY(GetTransform().GetColumn(kDY));
-  dir = dir.AsNormalized();
+  if (dir.CanBeNormalized()) { // 0x5FAC
+    dir.Normalize();
+  }
   if (mgr.IsRandomAvailable()) {
     // Retail draws two values and discards them.
     mgr.Random()->Float();
     mgr.Random()->Float();
   }
+  // 0x6008: a worm facing straight up or down has no flat direction; retail then skips both
+  // the knock and the damage.
+  if (!dir.CanBeNormalized()) {
+    return;
+  }
+  dir.Normalize(); // 0x6010
   const CVector3f impulse =
       (dir * x15AC_toss.x4c_impulseH + CVector3f::Up() * x15AC_toss.x50_impulseV) * 0.5f;
   KnockPlayer(mgr, impulse);
@@ -296,7 +308,7 @@ void CSandworm::GrabPlayer(CStateManager& mgr) {
 void CSandworm::SendGrabMsgs(CStateManager& mgr) {
   if (x15AC_toss.x58_flags & 0x20) {
     x15AC_toss.x58_flags &= ~0x20;
-    SendScriptMsgs(kSS_InternalState1, mgr, kInvalidUniqueId, EScriptObjectMessage(-1));
+    SendScriptMsgs(kSS_InternalState1, mgr, GetUniqueId(), EScriptObjectMessage(-1));
   }
 }
 
@@ -304,7 +316,7 @@ void CSandworm::SendGrabMsgs(CStateManager& mgr) {
 void CSandworm::SendAttackMsgs(CStateManager& mgr) {
   if (!(x15AC_toss.x58_flags & 0x20)) {
     x15AC_toss.x58_flags |= 0x20;
-    SendScriptMsgs(kSS_InternalState0, mgr, kInvalidUniqueId, EScriptObjectMessage(-1));
+    SendScriptMsgs(kSS_InternalState0, mgr, GetUniqueId(), EScriptObjectMessage(-1));
   }
 }
 
@@ -349,11 +361,14 @@ void CSandworm::ApplyChargeDamage(CStateManager& mgr) {
   float rx = 0.f;
   float ry = 0.f;
   if (mgr.IsRandomAvailable()) {
-    rx = mgr.Random()->Float() - 0.5f;
+    // 0x8054/0x807C: the first draw goes to Y, the second (0x806C/0x8074) to X.
     ry = mgr.Random()->Float() - 0.5f;
+    rx = mgr.Random()->Float() - 0.5f;
   }
   CVector3f dir(fwd.GetX() + rx, fwd.GetY() + ry, 0.f);
-  dir = dir.AsNormalized();
+  if (dir.CanBeNormalized()) { // 0x8094
+    dir.Normalize();
+  }
   CVector3f impulse = dir * x14D8_charge.x14_impulseH + CVector3f::Up() * x14D8_charge.x18_impulseV;
   if (PlayerMorphed(mgr)) {
     impulse = impulse * 0.4f;
@@ -512,7 +527,8 @@ bool CSandworm::FacingPlayerForCharge(CStateManager& mgr, const CTriggerData& da
   if (x1210_.size() < 12) {
     return false;
   }
-  const CVector3f dir = FlatXY(x1210_[0] - x1210_[x1210_.size() - 1]);
+  // 0x694C: the radar point 6 (0x125C) minus the newest.
+  const CVector3f dir = FlatXY(x1210_[6] - x1210_[x1210_.size() - 1]);
   if (!dir.CanBeNormalized()) {
     return false;
   }
@@ -524,8 +540,11 @@ bool CSandworm::GrabAttackFinished(CStateManager& mgr, const CTriggerData& data)
   return (x15AC_toss.x58_flags & 0x40) != 0;
 }
 
-// fn_56_35EC (ported, not exercised yet)
-// Data-gated: the BG prefab never selects kind 4 (picked 7), so this cannot run; see Sandworm.md Port status.
+// @ fn_56_35EC
+// Run 2026-10-21 (03_sand_temple L2, u048f forced into BombFountainAttack): the trigger was asked
+// 478 times, so both outcomes of the test ran - the phase flag is set by the eye's health path and
+// cleared on every state exit. The old "data-gated" note was wrong: the BG prefab's AFSM has the
+// BombFountainAttack state, and forcing it (console `fsm`) runs the picked-7 chain.
 bool CSandworm::HitDuringWindUp(CStateManager& mgr, const CTriggerData& data) const {
   return (x19A8_bombPhase.xc_flags & 0x80) != 0;
 }
@@ -602,7 +621,8 @@ void CSandworm::ChargePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     x1524_fadeTarget = 1.f;
     BodyController()->SetLocomotionType(pas::ELocomotionType(8));
-    // Retail also writes 1 to CBodyController+0x4C here; the field is not identified.
+    // 0x81F4: CBodyController+0x4C = 1, the steering blend mode (Patrol writes 2 there, 0x7584).
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed);
     x14D8_charge.x0_ = GetTranslation();
     x14D8_charge.x1c_ = PlayerPos(mgr);
     x14D8_charge.x30_flags &= ~0x40;

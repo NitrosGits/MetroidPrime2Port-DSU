@@ -34,6 +34,11 @@ void TraceCall(const CSpacePirate& self, const char* what, int arg) {
 }
 } // namespace
 
+// @ fn_72_C488 (0xB0): the state machine's time (0x350, vtable slot 0x30, 0xC4B0-0xC4C0) must beat
+// rodata B44 = 0.5 (0xC4CC `fcmpo`, 0xC4D0 `ble` -> false); then CPatterned::Stuck (0xC4E4, true ->
+// 0xC4EC `bne`) or CPatterned::PathShagged (0xC4FC, 0xC504 `beq`). The gdb run (2026-10-21,
+// casualpirates) ran every arm: 400 entries but 181 CPatterned::Stuck calls (the <= 0.5 arm), one
+// Stuck true, and 7 results true against that one (PathShagged true) as well as false ones.
 bool CSpacePirate::Stuck(CStateManager& mgr, const CTriggerData& data) const {
   if (mStateMachine->GetTime() > 0.5f) {
     return CPatterned::Stuck(mgr, data) || CPatterned::PathShagged(mgr, data);
@@ -41,6 +46,7 @@ bool CSpacePirate::Stuck(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
+// @ fn_72_C468 (0x20): a tail of CPatterned::Stuck (0xC474), no branch; the gdb run saw both results.
 bool CSpacePirate::PatternShagged(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Stuck(mgr, data);
 }
@@ -87,7 +93,6 @@ bool CSpacePirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) cons
   return heard;
 }
 
-// @ fn_72_ADC0
 // The 208 cycle does evaluate this trigger (2851 calls in the 2026-10-20 run), but it is always
 // false there, so only the first branch is proven by the run.
 // Retail: a pirate with the non-aggressive bit (0x8f4 mask 0x20) never charges. Otherwise it
@@ -116,6 +121,8 @@ bool CSpacePirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data)
   return result;
 }
 
+// @ fn_72_ADB4 (0xC): the 0x8f8 byte (0xADB4) bit 27, mask 0x10 (0xADB8 `extrwi 1,27`). Branchless;
+// 400+ calls in the gdb run (all false: no cover check is set in the shipped data).
 bool CSpacePirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) const {
   return x8f8_27_coverCheck;
 }
@@ -169,13 +176,17 @@ bool CSpacePirate::CoverFind(CStateManager& mgr, const CTriggerData& data) const
   return result;
 }
 
-// fn_72_AA64. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// fn_72_AA64.
 // Retail: the point that is tested is the pirate's own target position (fn_72_CB30), not the
 // player. Inside the minimum attack range (0x3dc) the cover is not blown yet, so the trigger is
 // true. Outside it the cover point reports whether that target is inside its safe angle
 // (fn_800EC5A0). A cover that is not blown but more than 3 * scaleY away from the pirate (the
 // model's Y scale, 0x60) also counts as blown - the asm compares the squared distance with
 // 3.0 * scaleY, it does not square the radius.
+// gcov 2026-10-21: ALL-ARMS. Sandfalls L3 pirates in PathFind/TargetCover give the cover-point arms;
+// spacepirate_force5.py forces the rest one call each: the minimum attack range, a stopped pirate far
+// from its cover, the same pirate near it (scale Y), and the same pirate stepping (kAS_Step).
+// @ fn_72_AA64
 bool CSpacePirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   bool result = true;
@@ -198,11 +209,13 @@ bool CSpacePirate::CoverBlown(CStateManager& mgr, const CTriggerData& data) cons
   return result;
 }
 
-// fn_72_A988. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// gcov 2026-10-21: ALL-ARMS. The no-player-target arm is forced once (spacepirate_force4.py: the
+// attack target set to the invalid id on one call, restored at the next CoverBlown).
 // Retail: with no cover point the trigger is true. With one it asks whether the cover is blown
 // by the attack target's position plus its velocity (1.0 * velocity, so the raw velocity is
 // added). The target is the pirate's attack target cast to CPlayer - not mgr.GetPlayer() - so a
 // missing or non-player target leaves the trigger false.
+// @ fn_72_A988
 bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data) const {
   bool result = true;
   const CScriptCoverPoint* point = GetCoverPoint(mgr, x900_coverPoint);
@@ -218,10 +231,12 @@ bool CSpacePirate::CoverNearlyBlown(CStateManager& mgr, const CTriggerData& data
   return result;
 }
 
-// fn_72_A8D0. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// gcov 2026-10-21: ALL-ARMS. The other-area arm is forced once (spacepirate_force4.py: this
+// pirate's area id = 99 on one call, restored at the next CoverBlown).
 // Retail: the listening-AI object list (mgr+0x830) is scanned for other pirates; one of them
 // that has its in-attack-state bit (0x8f6 mask 0x01) set and is in this area means this pirate
 // is covering that one's fire. The scan does not stop at the first hit.
+// @ fn_72_A8D0
 bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
@@ -239,7 +254,14 @@ bool CSpacePirate::CoveringFire(CStateManager& mgr, const CTriggerData& data) co
   return result;
 }
 
-// fn_72_A71C. Unmarked: no state the 208 cycle reaches lists this trigger (2026-10-20 run).
+// fn_72_A71C. Unmarked: Cover's LineOfSight->TargetPlayer chain reaches it only after RandomDelay 5
+// and Delay 0.5, and the fights leave Cover sooner; spacepirate_force6.py (Cover state time 5.1)
+// gives one call, 8 of 20 edges untaken. The rest needs, at one ShouldAttack call: an attack target
+// that is not a CPlayer (one-call force of 0xa94), and four other live pirates in this area with
+// 0x8f6 bit 31 set (Attack, CoverAttack, WallHang, Skid) closer to the player than this one, while
+// this one stays in Cover with a held, unblown cover point. Console staging (four pirates placed in
+// front of the player and sent to Attack, #173 put on cover 001d01e9 and sent to Cover, the player
+// 10 or 30 units off on either side) fails: CoverBlown fires on Cover's first Update (2026-10-21).
 // The asm casts the attack target to CPlayer (it does not compare ids as MP1 does) and then refuses
 // the attack while more than three other pirates, alive and in the attack state in this area, are
 // closer to that player than this one.
@@ -381,6 +403,8 @@ bool CSpacePirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) c
   return true;
 }
 
+// @ fn_72_8A84 (0xC): the 0x8f9 byte (0x8A84) bit 27, mask 0x10 (0x8A88 `extrwi 1,27`). Branchless; the
+// gdb run evaluated it 59 times (07_sand_alamoportalobservation L3, the PathFind state).
 bool CSpacePirate::InRange(CStateManager& mgr, const CTriggerData& data) const {
   return x8f9_27_inRange;
 }
@@ -426,7 +450,6 @@ bool CSpacePirate::Attacked(CStateManager& mgr, const CTriggerData& data) const 
   return xb24_timeSinceHitByPlayer < window;
 }
 
-// @ fn_72_7970
 // The 208 cycle does evaluate this trigger (about 2850 calls in the 2026-10-20 run), but it is
 // always false there and the attack target is the player every time, so only the box/near-list
 // branch is proven by the run: the team-target branch and the active-non-player early return are
@@ -494,6 +517,11 @@ bool CSpacePirate::ShouldWallHang(CStateManager& mgr, const CTriggerData& data) 
   return result;
 }
 
+// fn_72_689C (0x48): in a wall hang (the 0x8f7 byte's bit 29, asm 0x68AC) the animation is over
+// once the body has left kAS_WallHang (20; the body controller 0x48c, its state 0x37c, asm 0x68B4-0x68C8 is the branchless `state != 20`);
+// otherwise CPatterned::AnimOver (asm 0x68D0). Both arms ran (tools/cov, 08_sand_casualpirates L3 and
+// 07_sand_alamoportalobservation L3, 2026-10-21); the wall-hang arm only from a forced WallHang.
+// @ fn_72_689C
 bool CSpacePirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   if (x8f7_29_inWallHang) {
     return GetBodyController()->GetCurrentStateId() != pas::kAS_WallHang;
@@ -621,10 +649,14 @@ bool CSpacePirate::ShouldStrafe(CStateManager& mgr, const CTriggerData& data) co
   return result;
 }
 
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// trigger (disc scan of every PIRT placement, 2026-10-21).
 bool CSpacePirate::ShouldSpecialAttack(CStateManager& mgr, const CTriggerData& data) const {
   return x8f4_29_onlyAttackInRange && !mBurstFire.IsBurstSet() && mAttackRemTime > 2.f;
 }
 
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// trigger (disc scan of every PIRT placement, 2026-10-21).
 bool CSpacePirate::StartAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (x8f8_31_mayStartAttack) {
     const_cast< CSpacePirate* >(this)->x8f8_31_mayStartAttack = false;
@@ -633,10 +665,15 @@ bool CSpacePirate::StartAttack(CStateManager& mgr, const CTriggerData& data) con
   return false;
 }
 
+// @ fn_72_6328
+// Retail is `lbz 0x8f5; extrwi 1, 25` (x8f5_25_breakAttack, data flag 0x400). Ambushing's trigger list
+// evaluates it every frame (gcov 2026-10-21, a forced `fsm Ambushing`).
 bool CSpacePirate::BreakAttack(CStateManager& mgr, const CTriggerData& data) const {
   return x8f5_25_breakAttack;
 }
 
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// trigger (disc scan of every PIRT placement, 2026-10-21).
 bool CSpacePirate::LostInterest(CStateManager& mgr, const CTriggerData& data) const {
   return x8f4_29_onlyAttackInRange && mAttackRemTime < 1.5f;
 }
@@ -658,6 +695,8 @@ bool CSpacePirate::LostInterest(CStateManager& mgr, const CTriggerData& data) co
 // The winner's current waypoint (0x180) decides: only if it still resolves does the pirate get
 // the jump point's translation as its destination, its id (0xb14), its jump apex (0x158 ->
 // 0xaf8) and the current waypoint's translation (0xafc).
+// Dead in shipped data: neither SpacePirate FSM on the disc (AFSM 0x5652a12f, 0x7b49526b) lists this
+// trigger (disc scan of every PIRT placement, 2026-10-21).
 bool CSpacePirate::BounceFind(CStateManager& mgr, const CTriggerData& data) const {
   CSpacePirate* self = const_cast< CSpacePirate* >(this);
   bool result = false;
@@ -751,6 +790,13 @@ bool CSpacePirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
   return result;
 }
 
+// fn_72_686C (0x30): true unless the 0x8f4 byte's bit 28 (mask 0x08, the data flag 0x10; asm
+// 0x6874 `extrwi.`) is set; with it set, true once the hold-position time (0xbac) is above 6
+// (rodata BE8 = 6.0, asm 0x6880-0x688C `fcmpo` + `ble`).
+// All three arms ran (tools/cov, 2026-10-21): bit clear (06_sand_alamofront L2, 400 hits), bit set
+// with the hold time <= 6 and > 6 (08_sand_casualpirates L3 0036013d/003600fa, console `fsm Attack`/
+// `fsm Lurk` and 12 s held, then `fsm JumpBack`: 246 hits with the time > 6).
+// @ fn_72_686C
 bool CSpacePirate::ShouldJumpBack(CStateManager& mgr, const CTriggerData& data) const {
   return !x8f4_28_noShuffleCloseCheck || xbac_holdPositionTime > 6.f;
 }
@@ -773,12 +819,14 @@ bool CSpacePirate::IsAmbushing(CStateManager& mgr, const CTriggerData& data) con
 }
 
 // Retail fn_72_77D0 (0x34): the warp point (0xc04) has to be -1 and the 0x8f6 byte's bit 24 (mask
-// 0x80, the data flag 0x10000) and the 0x8fa byte's bit 26 (mask 0x20, the data flag 0x04000000)
-// have to be set (asm 0x77D8-0x77F8). The trace's argument is the arm: 1 = the warp point is not
-// -1, 2 = not a trooper, 3 = the data flag 0x04000000 is missing, 4 = all three hold. The last
-// arm needs a placement with the data flag 0x04000000, which no shipped SpacePirate placement
-// carries (the scan of all 65 placements, tools/scan_pirt_props.py), so the other three arms are
-// all the run can reach.
+// 0x80, the data flag 0x40000 - the trooper) and the 0x8fa byte's bit 26 (mask 0x20) have to be set
+// (asm 0x77D8-0x77F8). Bit 26 is not a data flag: the kSM_Activate handler sets it at run time for a
+// trooper (fn_72_E498, asm 0xE38C). The trace's argument is the arm: 1 = the warp point is not -1,
+// 2 = not a trooper, 3 = the trooper has not been activated, 4 = all three hold.
+// All four arms ran (tools/cov, 2026-10-21): 1 in 07_sand_alamoportalobservation L3 (a trooper that
+// warped out, 0xc04 = 1), 2 for the non-troopers, 3 and 4 for the troopers before and after their
+// activation message.
+// @ fn_72_77D0
 bool CSpacePirate::ShouldWarpIn(CStateManager& mgr, const CTriggerData& data) const {
   const int arm = xc04_warpPoint != -1 ? 1 : (!x8f6_24_trooper ? 2 : (!x8fa_26_ ? 3 : 4));
   TraceCall(*this, "ShouldWarpIn trigger", arm);

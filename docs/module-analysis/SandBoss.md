@@ -823,6 +823,21 @@ warp's gameplay frame 240.) Layer 5 is `Amorbis Boss`; `[layer] area 36 layer 5 
   reached are `HandleScreenShake` (4C60) and 528C; the FSM never evaluates an attack trigger, so the
   volleys (3ACC 3F44) and the beam itself stay unexercised. At `SECS=460` a loaded host only reached
   3000 of 6000 frames (exit 124).
+- Phase-1 bug fixes (2026-10-21, `tools/drivers/sandboss_fight.py`, no probes, real charged shots):
+  (a) `Stampede` (98FC) sets/clears bit 0x40 of the byte at 0x34C (`rlwimi 25,25` at 0x99A0 / 0x9B2C).
+  CW allocates the `CPhysicsActor` flags MSB-first (0x80 mInPosition, 0x40 mVerticalMovement, 0x20
+  Solid, 0x10 Blocking, 0x08 mOnGround — what `fn_55_8C` reads, 0x04 OnStatic, 0x02 PrevOnGround), so
+  the bit is `mVerticalMovement`; the port set `mPrevOnGround`, which dropped the leap's vertical root
+  motion (z stayed at -5.3; now -5.1 -> 12.1 -> -5.1 per leap). (b) `RemovePlayerCollision` /
+  `RestorePlayerCollision` (952C / 9438) edit each collision actor's own filter (`GetMaterialFilter` on
+  the cast collider; `ori 1` / `and -2` on the exclude high word = bit 32, `kMT_Player`). The port copied
+  the boss's filter (which excludes Player/Character) into every joint with `kMT_NoStepLogic`, so after
+  the first SuckBall no joint took a player shot: phase 2 stampedes never ended ("invincible"). Run r9:
+  phase 1 -> DestroySphere -> two worms stampede, break and attach -> DestroySphere -> all three
+  stampede. Only one worm in phase 1 is retail: `CanStartNewRound` (CA1C) needs `commandIndex <= mRound`.
+  (c) kSM_Create (D8BC) starts the body in `kLT_Crouch` (`li r4, 0` at 0xD9AC), not Relaxed. (d) The
+  player's 0x1144 mask 0x80 (`rlwimi 7,24,24`) is `mCanStartUnmorphTransition`: SuckBall (B658) clears it
+  (`EnableLeaveMorphBall(false)`), HandleObjectDrop (5FEC) and RestorePlayerCollision (9438) set it.
 - Not tested: ASAN, the intro cinema path, `IsFacingPlayer` (C1CC — the FSM asset never references it,
   so only a direct call could run it), and the getter/render slots no probe calls
   (64 6C 74 7C 8C 98 A4 AC BC). The scan-visor pair `CB30`/`CC84` with `8740`/`88D0`/`89E8` behind
@@ -883,3 +898,192 @@ DestroySphere#4 -> StateOver#16 -> RestorePlayerCollision#22 -> Recover#8} and S
 else StateOver#13 -> SpitOutBall#3 -> StateOver#14 -> SetCinematicStateStunned#29 -> RestorePlayerCollision
 -> SuckAir#0 again). ShouldDestroySphere's other branch leaves the fight: IsLastStage#20 / RestorePlayerCollision
 #22, and IsLastStage#10 -> Deactivate#10.
+
+## 7. Function classification (all 322 symbols)
+
+The full table is `docs/module-analysis/SandBoss_functions.tsv` (one row per function: offset,
+size, owner, name, kind, class, the scan result, the DOL/upstream counterpart, the work
+package). The rules below are the ones `Sandworm.md` §g and `Sandworm_functions.tsv` use, so the
+two modules can be read side by side.
+
+### 7.1 The scan
+
+The REL `.text` is 0x11CD4 bytes (73,940) and holds **322** functions: the 317 that the objdump
+carries a `.fn` label for, plus 5 that the crtexe runtime reaches without a label (0x104, 0x128,
+0x11B30, 0x11BF4, 0x11C18 - split by their prologues; the last two are the module's `_ctors` /
+`_dtors` wrappers). The scan reads the disassembly in
+`../MetroidPrime2Port/build/G2ME01/SandBoss/asm/` (`auto_00_*_text.s`, `auto_03_*_rodata.s`,
+`auto_04_*_data.s`, `auto_05_*_bss.s`):
+
+- every `bl fn_55_X` in `.text` gives X's direct callers;
+- every `.4byte fn_55_X` in `.data` gives X's table entries - the class vtable
+  `lbl_55_data_760` (82 words), the 21 trigger / 20 state / 25 code name tables and the REL's own
+  weak command-class vtables (`lbl_55_data_958..9A0`);
+- every `lis`/`addi fn_55_X` in `.text` gives an address taken in code (the loader pointer in
+  `lbl_55_bss_4`);
+- §6's FSM graph gives which of the 66 FSM entries the shipped asset actually dispatches.
+
+### 7.2 The rules
+
+- **H - host copy** (152 functions, 0x4CE4 bytes): the body duplicates code the host already
+  ships, so the port writes no body for it. Six sources: the crtexe REL runtime (8
+  `rel-entry`), compiler-emitted / EH-only destructors and `Free` wrappers (42 `weak-dtor`),
+  rstl / token / vector template code and inlined math (67 `template`), the loader struct's
+  copy and destroy helpers (15 `inline-hdr`), inline DOL members (14 `inline-dol`) and the
+  host's own AI-typedef / FSM2 asset readers (5 `asset-reader`).
+- **T - table-only, no retail caller** (15 functions, 0x98 bytes): the function is reached only
+  through a data table and its whole body is a constant, a member address or a flag, so there
+  is no module behaviour to port beyond one line in the vtable. Every T row cites the scan
+  (the vtable word and the absence of a direct `bl` caller).
+- **B - module behaviour** (155 functions, 0xCF70 bytes): everything else - the loader, the
+  constructor and destructor, the FSM entries, the vtable overrides that do something and the
+  helpers they call. These are the port bodies.
+
+| class | functions | .text bytes |
+|---|---|---|
+| H host copy | 152 | 0x4CE4 (19,668) |
+| T table-only | 15 | 0x98 (152) |
+| B module behaviour | 155 | 0xCF70 (53,096) |
+| **total** | **322** | **0x11CD4 (73,940)** |
+
+By kind: 68 `template`, 67 `method`, 42 `weak-dtor`, 32 `virtual`, 25 `fsm-code`, 21
+`fsm-trigger`, 20 `fsm-state`, 15 `inline-hdr`, 14 `inline-dol`, 8 `rel-entry`, 5
+`asset-reader`, 1 `static-init`, 1 `member-ctor`, 1 `loader`, 1 `ctor`, 1 `dtor` (= 322).
+
+### 7.3 T - the table-only functions (15)
+
+All fifteen are `lbl_55_data_760` slots with no direct `bl` caller in the module's `.text`; the
+engine dispatches them virtually. Each is one line in the port's vtable.
+
+| fn | size | what it returns | the scan |
+|---|---|---|---|
+| `fn_55_0` | 0x8 | `IsScanVisorSelfRender` -> true | vtable word 70, no direct `bl` |
+| `fn_55_8` | 0x8 | `IsListening` -> true | vtable word 43, no direct `bl` |
+| `fn_55_5C` | 0x8 | `GetModelAlphau8` -> the byte at +0x44F | vtable word 50, no direct `bl` |
+| `fn_55_64` | 0x8 | `GetSearchPath` -> null | vtable word 56, no direct `bl` |
+| `fn_55_6C` | 0x8 | `GetPointSearchPath` -> null | vtable word 57, no direct `bl` |
+| `fn_55_74` | 0x8 | `GetRagDoll` -> null | vtable word 61, no direct `bl` |
+| `fn_55_7C` | 0x10 | `GetAttackTarget` -> `kInvalidUniqueId` | vtable word 67, no direct `bl` |
+| `fn_55_8C` | 0xC | `IsOnGround` -> bit 28 of the word at +0x34C | vtable word 68, no direct `bl` |
+| `fn_55_98` | 0xC | `GetGravityConstant` -> `kDefaultGravityAccel` | vtable word 69, no direct `bl` |
+| `fn_55_A4` | 0x8 | `GetDeathExplosionParticle` -> &+0x754 | vtable word 73, no direct `bl` |
+| `fn_55_AC` | 0x8 | `CanBeShot` -> true | vtable word 42, no direct `bl` |
+| `fn_55_B4` | 0x8 | `Listen` -> false | vtable word 44, no direct `bl` |
+| `fn_55_BC` | 0x1C | `GetOrigin` -> the transform origin | vtable word 45, no direct `bl` |
+| `fn_55_CDF0` | 0x8 | `ProjectileInfo` -> &+0xE00 | vtable word 55, no direct `bl` |
+| `fn_55_D304` | 0x4 | `RenderSystemsToBeDrawnLast` -> (empty) | vtable word 47, no direct `bl` |
+
+The other vtable slots are B: `fn_55_4C` (`TakeDamage`, which writes the hit-flash timer),
+`fn_55_10` (`GetTouchBounds`), `fn_55_CF6C` and `fn_55_D8` (inline DOL members, class H), and
+the render / think / message overrides.
+
+### 7.4 The unmarked B list (before this lane's slice)
+
+152 of the 155 B functions carried a `// @ fn_55_X` marker; these three did not:
+
+| fn | size | what | why no run reached it | what this lane did |
+|---|---|---|---|---|
+| `fn_55_C1CC` | 0x8C | `IsFacingPlayer` (trigger) | the shipped FSM asset registers the trigger (lbl_55_data_AC) but references it in no transition (§6), so only a direct call can run it | checked against the asm and marked, with the direct call labelled a forced arm |
+| `fn_55_10C18` | 0x60 | `SandBossChargeBeam::~SandBossChargeBeam` | the deleting destructor only runs when a charge beam is destroyed, i.e. at the end of a volley | checked against the asm and marked; a triple-charge volley destroys the beams |
+| `fn_55_11184` | 0x9AC | the static initialiser of the FSM tables | the port builds the tables as static data, not as a function | the port's 66 table entries were compared with the retail's name tables (same functions, same order, same names) and the tables marked |
+
+The T functions other than `fn_55_0` (marked 2026-10-22, §7.7) carry no marker: no run calls
+them (§7.7 measured it), and each body is one line, checked against the asm there.
+
+### 7.5 The runs (2026-10-21)
+
+Two runs in Agon Wastes `03_sand_temple_dark` (world `42b935e4,7575048a`, area 36), layer 5,
+with the lane's temporary probe knobs (not committed; the committed diff has none):
+
+| run | knobs | what it showed |
+|---|---|---|
+| sb1 | `MP2_SB_PROBE=1 MP2_SB_FACE=1 MP2_SB_ROUND=2 MP2_SB_HP=1` | the three worms activate, `IsFacingPlayer` answers false 136 times (the player is not in front of the worm), and the triple-charge volley ends with the charge beams destroyed: three calls of `SandBossChargeBeam::~SandBossChargeBeam` (`fn_55_10C18`) |
+| sb2 | the same plus `MP2_SB_FRONT=1` (the player parked in front of the worm) | `IsFacingPlayer` answers true 139 times |
+
+Both runs: exit 0, 0 `[port] caught`, 0 reach-stub, no stand-in line. The knobs are the ones the
+earlier slices used (`MP2_SB_ROUND` re-seeds `mRound` while the worm is not attached,
+`MP2_SB_HP` empties the stampede HP, `MP2_SB_PROBE` activates the worm the way the intro cinema
+does); `MP2_SB_FACE` calls `IsFacingPlayer` directly and `MP2_SB_FRONT` parks the player in front
+of the worm - both are the forced arms of `fn_55_C1CC`.
+
+**Branch table for the three marked functions**
+
+| fn | arm | how it ran |
+|---|---|---|
+| `fn_55_C1CC` | the player is in front (angle <= 0.34906584) -> true | forced (`MP2_SB_FACE` calls the trigger directly; the player parked in front with `MP2_SB_FRONT`, sb2) |
+| `fn_55_C1CC` | the player is not in front -> false | forced (`MP2_SB_FACE` calls the trigger directly, sb1) |
+| `fn_55_C1CC` | the null-player guard | dead: retail dereferences the player at 0xC1E4 without a check, and the game always has a player in this area |
+| `fn_55_10C18` | the deleting destructor (vtable reset, base destructor, free) | natural: the end of the triple-charge volley (fn_55_31E8) deletes the beams, sb1 |
+| `fn_55_11184` | the three table fills | natural: the module's static tables are built when the module loads, in every run |
+
+### 7.6 `fn_55_8C` (IsOnGround) - the caveat resolved [proven]
+
+The port's `CSandBoss::IsOnGround()` returns `CPatterned::IsOnGround()`; the caveat was that the
+host's `mOnGround` might not be the flag retail reads. It is the same flag:
+
+- Retail's `fn_55_8C` is the DOL's own `CPatterned::IsOnGround` (0x80073C90) copied verbatim:
+  `lbz r0, 0x34c(r3); extrwi r3, r0, 1, 28` - PPC bit 28 of the zero-extended byte at 0x34C, i.e.
+  **mask 0x08** of the byte ((byte >> 3) & 1; PPC bit numbers below are the same register bits).
+- The DOL's `CPatterned::AcceptScriptMsg` (0x80079568) writes that bit in its two ground
+  branches, with the message ids as four-character codes:
+  - `kSM_Landed` ("XLND", 0x584C4E44): zero the momentum (0x80079720), add the ground-collider
+    material (0x80079734) and **set** bit 28 (0x80079740);
+  - `kSM_OffGround` ("XOFF", 0x584F4646): the gravity momentum and the removal of the material
+    (0x80079780..0x8007979C) and **clear** bit 28 (0x800797AC).
+  The DOL's `Landed` trigger reads the same bit (0x80151D68) and clears bit 30 next to it.
+- The host's `CPatterned::mOnGround` is written in exactly those two branches
+  (`src/MetroidPrime/Enemies/CPatterned.cpp:284` and `:291`, with the same momentum and material
+  side effects) and read by `CPatterned::IsOnGround()`
+  (`include/MetroidPrime/Enemies/CPatterned.hpp:184`).
+
+The rest of retail's byte at 0x34C matches the host's neighbouring flags the same way, which
+confirms the pairing rather than leaving it a coincidence: retail bit 25 gates the
+momentum/material work (`mVerticalMovement`), bit 29 is set by the `kSM_LandedOnStaticGround`
+branch ("LSG", 0x800796F0) and read by `fn_80073F58` (0x80073F58) - the host's
+`mOnStaticGround` - and bit 30 is the "was on ground" flag the DOL's `Landed` trigger stores
+before clearing it (0x80151D80) - the host's `mPrevOnGround`
+(`src/MetroidPrime/Enemies/CPatternedAiFunctions.cpp:185`).
+
+So the port's override returns the same flag as retail, and the port's comment now says
+[proven] instead of [inferred]. The function stays unmarked: no run in this fight reaches the
+virtual (the physics never asks a worm whether it is on the ground), and the marker rule wants
+a run.
+
+### 7.7 The T thunks under compiler coverage (2026-10-22)
+
+The ten unmarked T bodies were re-read against the asm (0x0..0xD8: `li r3,1` / `li r3,0` /
+`lhz kInvalidUniqueId` / `lbz 0x34c; extrwi 1,28` / `lfs lbl_8041B758` = 24.525 =
+`kDefaultGravityAccel` / `addi r3,r3,0x754` / `lfs 0x54..0x5c(r4)` = `mPosition`): all match.
+gdb can't count them: the host linker folds identical bodies (`GetSearchPath`,
+`GetPointSearchPath` and `GetRagDoll` share one address), so the run used the gcov build
+(`build-port-cov`, `tools/cov/gcov_report.py --module SandBoss`) with
+`tools/drivers/sandboss_thunks.py` (layer 5, Activate, a full `scan` of each worm, beam and
+charged `shoot` from 4 units, `damage` with knock-back, `kill`), 16000 updates fast, 0 caught.
+
+| fn | ran | why / why not |
+|---|---|---|
+| `fn_55_0` IsScanVisorSelfRender | yes, natural (`scan`) | CScanDisplay asks the scan target's patterned; no arms. Marked |
+| `fn_55_74` GetRagDoll, `fn_55_AC` CanBeShot | no | only `CGameProjectile::CanCollideWithGameObject` asks them, when a shot touches the CSandBoss actor itself; shots hit the collision actors (Head_1/Spine/Root), never the worm |
+| `fn_55_8C` IsOnGround, `fn_55_98` GetGravityConstant | no | asked by `CAiKnockBackMgr::KnockBack` (and CBSJump/CBSHurled, which this boss never enters); `ApplyKnockBack` returns when the weapon doesn't hurt, and the worm actor takes no direct damage (`damage` leaves HP 150) |
+| `fn_55_64`, `fn_55_6C` search paths, `fn_55_7C` GetAttackTarget, `fn_55_BC` GetOrigin | no | the host callers are other classes' own bodies (CFlyingPirate, Ing spot path, Ing snatching swarm, team-AI roles) |
+| `fn_55_A4` GetDeathExplosionParticle | no | no host caller of the virtual at all |
+
+
+### 7.8 Marker audit (2026-10-22, lane sandboss3, base e937e01b4)
+
+The TSV's `class` column against the source markers (`grep -rhoE '// @ fn_55_[0-9A-F]+' src`):
+163 markers, all on TSV rows.
+
+| class | rows | marked | unmarked |
+|---|---|---|---|
+| B | 155 | 155 | 0 |
+| H | 152 | 2 (`fn_55_D8` GetHealthInfo, `fn_55_CF6C` GetDamageVulnerability) | 150 |
+| T | 15 | 6 (`fn_55_0`, `8`, `5C`, `B4`, `CDF0`, `D304`) | 9 |
+
+So no B row is left to port; the unmarked rows are the 150 H and nine T rows (§7.3, §7.7). The
+eight marked H/T rows are module vtable overrides with a port body each, marked by earlier slices;
+this audit left them as they were. Spot-checks of the H `inline-dol` rows against the asm
+confirm they are inline copies of host types, not module behaviour: `CC54` (quaternion conjugate:
+`x`, `-y`, `-z`, `-w`), `CF00` (0x34-byte struct copy), `10688`/`106E0`/`10760`/`1073C` (a
+0x29-byte struct's ctor, copy and default ctor: float, vector, vector4, two words, a bool),
+`10C78` (`rstl::optional_object<CAABox>` ctor).

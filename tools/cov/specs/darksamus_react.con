@@ -1,0 +1,9 @@
+# darksamus_react.py's driver (25 frames apart). Each line ends with the key 99 call, which puts
+# every forced member and the stage's float back. `shoot u04f7 <d> [dir x y z]` fires the player's beam
+# at the boss from d units in the same tick, so the near list holds it.
+@f600 send u04f7 Activate; god 1
+@f625 place u04f7 player 20; trigcall u04f7 ShouldReact 130; trigcall u04f7 ShouldReact 101; trigcall u04f7 ShouldReact 102; trigcall u04f7 ShouldReact 103; trigcall u04f7 ShouldReact 104; trigcall u04f7 ShouldReact 199
+@f650 trigcall u04f7 ShouldReact 130; place u04f7 player 20; shoot u04f7 10; trigcall u04f7 ShouldReact 110; trigcall u04f7 ShouldReact 111; trigcall u04f7 ShouldReact 112; trigcall u04f7 ShouldReact 113; trigcall u04f7 ShouldReact 114; trigcall u04f7 ShouldReact 115; trigcall u04f7 ShouldReact 116; trigcall u04f7 ShouldReact 117; trigcall u04f7 ShouldReact 118; trigcall u04f7 ShouldReact 199
+@f675 trigcall u04f7 ShouldReact 130; shoot u04f7 60 dir 0 0 -1; trigcall u04f7 ShouldReact 110; trigcall u04f7 ShouldReact 199
+@f700 trigcall u04f7 ShouldReact 130; place u04f7 player -20; trigcall u04f7 ShouldReact 103; trigcall u04f7 ShouldReact 199
+@f725 status

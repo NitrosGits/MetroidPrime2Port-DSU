@@ -65,7 +65,8 @@ CVector3f CSandworm::SpineHelper108BC(int idx) const {
   } else {
     segId = GetAnimationData()->GetLocatorSegId(rstl::string_l(skSpineJoints[idx].name));
   }
-  return GetLctrTransform(segId).GetTranslation();
+  // Retail calls the wrapper (0x1094C), which returns the locator transform's translation.
+  return GetLctrTransformWrapper(segId);
 }
 
 // @ fn_56_F710
@@ -118,15 +119,19 @@ CVector3f CSandworm::GetLocatorPosition(int idx) const {
   } else {
     segId = GetAnimationData()->GetLocatorSegId(rstl::string_l(skSpineJoints[idx + 1].name));
   }
-  return GetLctrTransform(segId).GetTranslation();
+  // Retail calls the wrapper (0x10A00), which returns the locator transform's translation.
+  return GetLctrTransformWrapper(segId);
 }
 
-// Retail returns only the translation (a CVector3f); the header's CTransform4f is kept and callers
-// take GetTranslation().
-// fn_56_10A20 (ported, not exercised yet)
-// Dead slot: no caller in the tree (the spine helpers call GetLctrTransform directly).
-CTransform4f CSandworm::GetLctrTransformWrapper(const CSegId& id) const {
-  return GetLctrTransform(id);
+// Retail returns the translation only: it calls GetLctrTransform (0x10A38) and copies the three
+// translation floats of the returned transform (0x10A48..0x10A50) into the return slot, so the
+// return type is a CVector3f, not a CTransform4f.
+// @ fn_56_10A20
+// Run 2026-10-21 (03_sand_temple L2): the wrapper runs on every spine update (68174 calls). Its two
+// retail callers - fn_56_108BC (0x1094C) and fn_56_1096C (0x10A00) - call it, and the port now
+// calls it too instead of inlining GetLctrTransform(segId).GetTranslation().
+CVector3f CSandworm::GetLctrTransformWrapper(const CSegId& id) const {
+  return GetLctrTransform(id).GetTranslation();
 }
 
 // @ fn_56_10090
@@ -259,8 +264,12 @@ CVector3f CSandworm::SpineHelperC994(CStateManager& mgr, const CVector3f& pt) co
 // fn_56_C828 (ported, not exercised yet)
 // Blocked by the only prefab that could reach it: this runs only from SetUnderground, which only
 // Patrol/Null activate call, and u048f (03_sand_temple L2, the one worm whose x8C0 bit 7 is clear)
-// never leaves Start/Prime/Snatch in seven boots — the AC24 hits of earlier runs are the adjacent
+// never leaves Start/Prime/Snatch in seven boots - the AC24 hits of earlier runs are the adjacent
 // u04e9, whose prefab sets the bit. See Sandworm.md Port status.
+// @ fn_56_C828
+// Run 2026-10-21 (03_sand_temple L2, u048f forced into Null with console `fsm`): the state calls
+// SetUnderground, whose underground bit (x8C0 b7) is clear on this prefab, so the spine rebuild ran
+// (forced (fsm u048f Null)); both of its loops ran in that one call.
 void CSandworm::SpineHelperC828(CStateManager& mgr) {
   while (x99C_joints.size() < 180) { // 0xB4 capacity
     x99C_joints.push_back(CVector3f::Zero());
@@ -271,6 +280,65 @@ void CSandworm::SpineHelperC828(CStateManager& mgr) {
     pt.SetY(pt.GetY() - 0.5f);
     x99C_joints[i] = SpineHelperC994(mgr, pt);
   }
+}
+
+// The joint-list search: walk the spine path back from the last joint and take the first point
+// that is farther from the reference than the radius, pushed out to exactly the radius.
+// fn_56_10110 (ported, unreferenced in retail)
+// Unreferenced in retail: no 'bl fn_56_10110' in the module and no table entry, so nothing calls
+// it - the body is here for completeness and is never marked.
+void CSandworm::UnreferencedMath10110(CVector3f* out, int* outIndex, int count, float radius) {
+  const CVector3f* joints = x99C_joints.data();
+  const CVector3f ref = joints[count]; // 0x10164..0x1016C
+  for (int i = count - 1; i >= 0; --i) {
+    const CVector3f d = joints[i] - ref;
+    if (d.MagSquared() <= radius * radius) { // 0x101B4..0x101B8
+      continue;
+    }
+    *outIndex = i; // 0x101BC
+    CVector3f dir = d;
+    dir.Normalize(); // 0x101C4
+    *out = ref + dir * radius; // 0x101F8..0x10200
+    return;
+  }
+  *outIndex = 0; // 0x10214..0x10218
+  *out = joints[0]; // 0x1021C..0x10230
+}
+
+// The segment sweep: for the last spine segment that starts farther from the point than the
+// radius, walk the segment from its start to its end and return where it leaves the sphere.
+// fn_56_10268 (ported, unreferenced in retail)
+// Unreferenced in retail: no 'bl fn_56_10268' in the module and no table entry, so nothing calls
+// it - the body is here for completeness and is never marked.
+void CSandworm::UnreferencedMath10268(SSandwormSweepOut* out, const SSandwormSweepIn& in,
+                                     float radius) {
+  const CVector3f* joints = x99C_joints.data();
+  const CVector3f ref = in.vec;
+  for (int i = in.count - 1; i >= 0; --i) {
+    if ((joints[i] - ref).Magnitude() <= radius) { // 0x10350..0x10358
+      continue;
+    }
+    float t = 0.f; // rodata_150
+    CVector3f p;
+    for (;;) {
+      const float w = 1.f - t; // rodata_128, 0x103C4
+      p = joints[i] * t + joints[i + 1] * w; // 0x103D0..0x103F0
+      if ((p - ref).Magnitude() > radius) { // 0x10414..0x1041C
+        break;
+      }
+      t += 0.02f; // rodata_244, 0x10420
+      if (t >= 1.f) { // 0x10424..0x1042C
+        break;
+      }
+    }
+    out->index = i; // 0x10430
+    out->next = i + 1; // 0x10434
+    out->point = p; // 0x10438..0x10440
+    return;
+  }
+  out->index = 0; // 0x10468
+  out->next = 0; // 0x1046C
+  out->point = joints[0]; // 0x10470..0x10478
 }
 
 // Index of the joint reached by walking `t` units from the front of the spine path.

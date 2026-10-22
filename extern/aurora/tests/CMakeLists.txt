@@ -78,6 +78,7 @@ if (AURORA_ENABLE_GX)
     # FIFO/command processor (encoder + decoder)
     ../lib/gx/fifo.cpp
     ../lib/gx/command_processor.cpp
+    ../lib/gfx/perf.cpp
     ../lib/gx/regs.cpp
     ../lib/thread.cpp
     # Display list reader/optimizer
@@ -113,6 +114,7 @@ if (AURORA_ENABLE_GX)
     gx_texture_cache_test.cpp
     gx_texture_cache_test_stubs.cpp
     ../lib/gx/texture.cpp
+    ../lib/gfx/perf.cpp
   )
   target_include_directories(gx_texture_cache_tests PRIVATE
     ../include

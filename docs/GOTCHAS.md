@@ -137,6 +137,9 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   (`platform/input/port_input_devices.cpp`, polled in `PortPumpEvents`), and Aurora then skips its
   own controller/keyboard read for the port but still merges the virtual pad (console, `MP2_INPUT`,
   touch) on top. A re-vendor of Aurora must keep the hook, or pad 0 silently loses the keyboard.
+  The override is one-shot (the next `PADRead` consumes it), so every game tick re-arms it
+  (`PortRearmPad0`, called in both `UpdateTicks` loops); a new loop that reads the pad needs the
+  same call, or its reads see `PAD_ERR_NO_CONTROLLER` and `CDolphinController` clears every button.
   Keyboard bindings live in `<user>/controls.toml`; `keybinds.cfg` is no longer read.
 - **The game's EFB copies all land in one spare buffer, and Aurora resolves each copy into a texture
   keyed by the destination pointer** - so two consumers copying into that buffer in the same frame end
@@ -158,3 +161,4 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   (`recording.cpp`, from upstream aurora 9c0bf66f1e), the dstAlpha alpha-only pass
   (`command_processor.cpp` `push_gx_draw`, `67f337a57`) and `AURORA_PRESENT_EVERY` (`aurora.cpp`
   end_frame).
+- **Full list of vendored-Aurora additions** (keep all on re-vendor): 32 MiB uniform buffer, efb_copy shutdown outside the lock, `PADSetPortOverride`, partial `GXCopyTex` clear, dstAlpha alpha-only pass (now dual-source when supported, `AURORA_DUAL_SOURCE=0` = old), `GXSnapshotDepth`/`GXPeekZRegion` (flare occlusion), `aurora/perf.h` counters (`MP2_PERF_COUNTERS=1`), `AURORA_PRESENT_EVERY`, `AURORA_RENDER_EVERY` (fifo copy-destination table), Dawn `ImplicitDeviceSynchronization` (`AURORA_IMPLICIT_SYNC=0` = off; without it GPU ring resets).

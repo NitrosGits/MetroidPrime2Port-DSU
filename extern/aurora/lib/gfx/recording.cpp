@@ -2,6 +2,7 @@
 
 #include "encoding.hpp"
 #include "frame.hpp"
+#include "perf.hpp"
 #include "resource_cache.hpp"
 
 #include "clear.hpp"
@@ -31,6 +32,7 @@
 #include <vector>
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
 #include <magic_enum.hpp>
 #include <tracy/Tracy.hpp>
 
@@ -517,6 +519,13 @@ void enqueue_op(FramePacket& frame, uint32_t opIndex) {
   if (opIndex >= frame.ops.size() || g_recorder.suppressRenderWorker) {
     return;
   }
+  // Port: AURORA_RENDER_EVERY: a frame that is not rendered records no GPU work, so the render
+  // worker does not encode it and the frame is never submitted. The EFB and the depth buffer keep
+  // the last rendered frame's contents, which is what the read-backs (GXPeekZ, the EFB copy)
+  // return for a frame that was not drawn.
+  if (!gx::fifo::frame_rendered()) {
+    return;
+  }
   auto op = frame.ops[opIndex];
   render_worker::enqueue_encode_pass(frame.frameId, opIndex, [packet = &frame, op = std::move(op)] {
     if (op.renderPass == nullptr && op.textureCopy == nullptr && op.encoderTask == nullptr) {
@@ -530,11 +539,31 @@ void enqueue_pass(FramePacket& frame, uint32_t passIndex) {
   seal_pass(frame, passIndex);
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::RenderPass, passIndex));
-  enqueue_op(frame, opIndex);
 }
 } // namespace
 
 namespace detail {
+
+// Port: a frame's uniform blocks are deduplicated by content. Every GX draw pushes its whole block
+// (~3.3 KB: all position/normal/texture matrices, lights, colours), mostly unchanged since the last
+// draw, so the area-53 cinematic (a skinned CScriptPlayerActor drawn twice, plus projected shadows;
+// ~19.5k draws) asked for 33 MB of the 32 MiB uniform window from ~240 distinct blocks (0.6 MB).
+// A repeat returns the earlier range: the uniform buffer is append-only within a frame, so the range
+// still holds those bytes. The table is cleared at each frame's begin_recording.
+static absl::flat_hash_map<uint64_t, Range> g_uniformDedup;
+
+// Port: AURORA_RENDER_EVERY: the frame's work is enqueued as a whole, at the end of the frame:
+// the frame's decision is final then (a frame that holds an EFB copy was raised to "rendered"
+// while it was recorded), so a frame that is rendered is encoded in full and a frame that is not
+// rendered is not encoded at all.
+void enqueue_frame_ops(FramePacket& frame) {
+  if (g_recorder.suppressRenderWorker) {
+    return;
+  }
+  for (size_t i = 0; i < frame.ops.size(); ++i) {
+    enqueue_op(frame, static_cast<uint32_t>(i));
+  }
+}
 
 void begin_recording(FramePacket& packet, size_t frameSlot) {
   CHECK(!g_recorder.active(), "A recording session is already active");
@@ -544,6 +573,7 @@ void begin_recording(FramePacket& packet, size_t frameSlot) {
   g_recorder.drawCallCount = 0;
   g_recorder.mergedDrawCallCount = 0;
   g_recorder.suspendedEfbPass.reset();
+  g_uniformDedup.clear(); // Port: see push_uniform
 
   current_render_passes().emplace_back();
   auto& pass = current_render_passes()[0];
@@ -571,6 +601,8 @@ RecordedFrame end_recording() {
   frame.stats.lastIndexSize = frame.indices.size();
   frame.stats.lastStorageSize = frame.storage.size();
   frame.stats.lastTextureUploadSize = frame.textureUpload.size();
+  perf::count(AURORA_PERF_DRAWS, g_recorder.drawCallCount);
+  perf::end_frame();
 
   for (auto& array : gx::g_gxState.arrays) {
     array.cachedRange = {};
@@ -691,7 +723,6 @@ void queue_texture_copy(wgpu::TexelCopyTextureInfo src, wgpu::TexelCopyTextureIn
   });
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::TextureCopy, copyIndex));
-  enqueue_op(frame, opIndex);
 }
 
 void begin_color_pass(const ColorPassDescriptor& desc) {
@@ -800,6 +831,7 @@ PipelineRef pipeline_ref(const clear::PipelineConfig& config) {
 
 void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
                        Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat) {
+  perf::pass_break(AURORA_PERF_BREAK_COPY);
   // Resolve current render pass
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
   prevPass.resolveTarget = std::move(texture);
@@ -903,6 +935,9 @@ void queue_scan_peek(scan_peek::Request req) {
     Log.warn("Scan peek request dropped: pass {} already has one", g_recorder.currentRenderPass);
     return;
   }
+  // Port: AURORA_RENDER_EVERY: the peek reads the EFB, so the frame that carries it is rendered in
+  // full (see resolve_pass_into).
+  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Readback);
   renderPass.scanPeek = std::move(req);
 }
 
@@ -916,6 +951,9 @@ void queue_efb_cpu_copy(efb_copy::Request req) {
     Log.warn("EFB copy read-back dropped: pass {} already has one", g_recorder.currentRenderPass);
     return;
   }
+  // Port: AURORA_RENDER_EVERY: the copy reads the EFB, so the frame that carries it is rendered in
+  // full (see resolve_pass_into).
+  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Readback);
   renderPass.efbCpuCopy = std::move(req);
 }
 
@@ -980,6 +1018,7 @@ void begin_offscreen(uint32_t width, uint32_t height) {
   AURORA_ASSERT(g_recorder.active() && g_recorder.currentRenderPass != UINT32_MAX,
                 "begin_offscreen called outside of an active recording frame");
 
+  perf::pass_break(AURORA_PERF_BREAK_OFFSCREEN);
   if (g_recorder.inOffscreen) {
     finish_current_offscreen();
   } else {
@@ -990,6 +1029,7 @@ void begin_offscreen(uint32_t width, uint32_t height) {
 
 void end_offscreen() {
   ZoneScoped;
+  perf::pass_break(AURORA_PERF_BREAK_OFFSCREEN);
   finish_current_offscreen();
   restore_efb();
 }
@@ -1058,10 +1098,27 @@ bool resolve_pass(const ResolveDesc& desc, ResolvedTargets& out) {
   // Seal the current EFB pass and continue on a new one that loads the existing contents.
   // EFB writes persist into the loading continuation, so content keeps the pass alive even
   // without a consumer.
+  perf::pass_break(AURORA_PERF_BREAK_RESOLVE);
   prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
   enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
   resume_efb_pass_loading(prevPass);
   return true;
+}
+
+void split_pass_for_depth_snapshot() {
+  ZoneScoped;
+  if (!g_recorder.active() || g_recorder.currentRenderPass == UINT32_MAX || g_recorder.inOffscreen) {
+    return;
+  }
+  auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
+  if (prevPass.msaaSamples > 1) {
+    return; // depth_peek reads single-sampled depth only
+  }
+  perf::pass_break(AURORA_PERF_BREAK_DEPTH_SNAPSHOT);
+  prevPass.forceDepthSnapshot = true;
+  prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
+  enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
+  resume_efb_pass_loading(prevPass);
 }
 
 bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSize) {
@@ -1096,6 +1153,7 @@ bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSi
   // Seal the current EFB pass, record the task between it and a continuation
   // pass that loads the existing contents. EFB writes persist into the continuation, so
   // content keeps the sealed pass alive even without a consumer.
+  perf::pass_break(AURORA_PERF_BREAK_ENCODER_TASK);
   auto& frame = current_frame_packet();
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
   prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
@@ -1109,7 +1167,6 @@ bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSi
   }
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::EncoderTask, taskIndex));
-  enqueue_op(frame, opIndex);
 
   resume_efb_pass_loading(prevPass);
   return true;
@@ -1175,6 +1232,17 @@ Range push_uniform(const uint8_t* data, size_t length) {
   ZoneScoped;
   if (!check_recording("push_uniform")) {
     return {};
+  }
+  if (length != 0) {
+    auto& uniforms = current_frame_packet().uniforms;
+    const uint64_t key = absl::HashOf(std::string_view(reinterpret_cast<const char*>(data), length));
+    if (const auto it = g_uniformDedup.find(key); it != g_uniformDedup.end() && it->second.size == length &&
+                                                  std::memcmp(uniforms.data() + it->second.offset, data, length) == 0) {
+      return it->second;
+    }
+    const Range range = push(uniforms, data, length, resources().limits.minUniformBufferOffsetAlignment);
+    g_uniformDedup[key] = range;
+    return range;
   }
   return push(current_frame_packet().uniforms, data, length, resources().limits.minUniformBufferOffsetAlignment);
 }

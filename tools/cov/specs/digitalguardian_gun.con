@@ -1,0 +1,49 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark), dg22: the head's PulseAttack
+# (fn_14_16D64), MissileAttack (fn_14_167EC) and MachineGunAttack (fn_14_16408) with the gun's
+# sweep (fn_14_10798) and bullet (fn_14_101E0). statecall drives each message and gun phase;
+# fsm runs the states naturally (the body's projectile attack, the abort while it is in state
+# 0x12); 70 pulses in flight make the gun's CanCreateProjectile (64) fail.
+# Run: BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/digitalguardian_states.py <out>
+#   1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_gun.con --fast --frames 1150
+@f30 layer 3
+@f60 layer 11; god 1
+@f150 send e00350060 Activate; send e0035000f Activate
+@f152 place e0035000f player 20; fsm e0035000f FaceTarget
+# the gun's phase is -1 until an Activate (the ctor): the default arm; msg 3 for each state
+@f154 statecall e0035000f MachineGunAttack 1 0.016; statecall e0035000f MachineGunAttack 3 0.016; statecall e0035000f PulseAttack 3 0.016; statecall e0035000f MissileAttack 3 0.016
+# Activate draws the side (Range(0, 100) <= 50): several draws
+@f156 statecall e0035000f MachineGunAttack 0 0.016; statecall e0035000f MachineGunAttack 0 0.016; statecall e0035000f MachineGunAttack 0 0.016
+@f157 statecall e0035000f MachineGunAttack 0 0.016; statecall e0035000f MachineGunAttack 0 0.016; statecall e0035000f MachineGunAttack 0 0.016
+# charging, charge over, a sweep step that fires, one that does not, the sweep's end
+@f160 statecall e0035000f MachineGunAttack 1 0.016
+@f162 statecall e0035000f MachineGunAttack 1 1.0
+@f164 statecall e0035000f MachineGunAttack 1 0.2
+@f166 statecall e0035000f MachineGunAttack 1 0.016
+@f168 statecall e0035000f MachineGunAttack 1 5; statecall e0035000f MachineGunAttack 2 0.016
+# the natural states: the body's projectile attack, aborted from each state's Deactivate
+@f180 var e0035000f dghd.attack 0; fsm e0035000f PulseAttack
+@f200 status; statecall e0035000f MachineGunAttack 2 0.016
+@f220 fsm e0035000f FaceTarget
+@f240 var e0035000f dghd.attack 2; fsm e0035000f MissileAttack
+@f262 statecall e0035000f PulseAttack 2 0.016
+@f290 fsm e0035000f FaceTarget
+@f310 var e0035000f dghd.attack 0; fsm e0035000f PulseAttack
+@f334 statecall e0035000f MissileAttack 2 0.016
+@f360 var e0035000f dghd.attack 2; fsm e0035000f MissileAttack
+@f385 fsm e0035000f FaceTarget
+@f420 var e0035000f dghd.attack 0; fsm e0035000f PulseAttack
+@f444 fsm e0035000f FaceTarget
+@f470 var e0035000f dghd.attack 3; fsm e0035000f MachineGunAttack
+@f700 obj e0035000f; objs Energy
+@f720 fsm e0035000f FaceTarget
+# the head on the player (the side axis stays safe: the gun locator is off the head's origin;
+# the X-column fallback is forced in digitalguardian_gun_force.con)
+@f740 place e0035000f player 0; statecall e0035000f MachineGunAttack 0 0.016; statecall e0035000f MachineGunAttack 0 0.016
+@f742 place e0035000f player 0.5; statecall e0035000f MachineGunAttack 0 0.016; statecall e0035000f MachineGunAttack 0 0.016
+@f744 place e0035000f player 20
+# more than 64 kWT_AI shots of this head in one tick (the driver runs a line every ~24 updates,
+# so pulses from earlier lines have expired): the bullet's CanCreateProjectile fails
+@f760 fsm e0035000f FaceTarget; var e0035000f dghd.attack 0; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; uevent e0035000f 0 0 T_lazor_LCTR; objs Energy; statecall e0035000f MachineGunAttack 0 0.016; statecall e0035000f MachineGunAttack 1 1.0; statecall e0035000f MachineGunAttack 1 0.2; objs Energy
+@f800 var e0035000f dghd.attack 3; fsm e0035000f MachineGunAttack
+@f1100 obj e0035000f; objs Energy
+@f1140 send e0035000f Delete

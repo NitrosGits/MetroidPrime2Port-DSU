@@ -201,23 +201,159 @@ For CWallWalker (f1..f6 = 1, 0.167, 0.6, 1.5, 0.6, 1.5) the roles are:
   guard never blocks. The port's extra "obstruction scan" block (added in 036ca13db) was removed in
   this slice; it could set `mPlayerObstructed` and freeze a crawler that the retail keeps moving.
 
-## 6. The functions that carry no marker (2026-10-21)
+## 6. The functions that carry no marker
 
 57 functions live in the REL's `.text`; 25 carry a `// @ fn_83_<off>` marker. The other 32 are
-the REL's copies of host/DOL code, so they are cited here and neither reimplemented nor marked:
+**31 host copies and 2 dead leaves** - the classification is section 7, and **no module-behaviour
+function is left unmarked**: every one of the 24 B functions carries its marker.
 
-| fn | what it is |
-|---|---|
-| `0`, `10`, `18`, `20`, `28`, `30`, `38`, `48`, `54`, `60`, `68`, `70`, `78`, `80`, `9C` | the REL's weak copies of `CPatterned`/`CAi` inline virtuals (they sit in the module's vtable at 0xa4-0x124; the host's `CPatterned` provides the behaviour) |
-| `140` | `GetConstraint` - an 8-byte accessor for the constraint word (0x834) that nothing in the module calls |
-| `48C`, `DA8`, `DE4`, `E40`, `E9C`, `1A24`, `1A7C`, `1ACC`, `22E0`, `2684` | the optional members' destructors (rstl) |
-| `20FC` | the `~CPatterned` chain (0x1E4) |
-| `2720`, `27E4`, `2808`, `282C`, `2878` | the REL runtime (`_unresolved`, `_epilog`, `_prolog`, the module's constructors/destructors) |
+## g. Function classification (all 57 symbols)
 
-`fn_83_9C` is the one of the weak copies that is not a plain accessor: it is the vtable slot at
-0x3c and it forwards to the slot at 0x38 (a DOL function). The host's `CPatterned` covers it.
+Three classes, applied by rule so the table can be audited:
 
-## 7. This slice (2026-10-21, branch `decomp/wallcrawler`)
+- **H - host copy** (31 functions): the body is a copy of code the host already has, so the port
+  writes no body for it. Three sources: the REL's weak copies of the host's `CPatterned`/`CAi`
+  inline virtuals (15, all in the module's vtable), the compiler-emitted destructors (11) and the
+  crtexe REL runtime (5).
+- **T - dead leaf** (2 functions): the body has no retail caller. The scan is the module's own
+  `.text`: no `bl` reaches the function, it is in no vtable and in no data table, and its symbol is
+  local (`scope` is not `global` in `config/G2ME01/rels/WallCrawler/symbols.txt`), so no other
+  module can reach it either.
+- **B - module behaviour** (24 functions): real behaviour - these are the port's bodies. The last
+  column says whether the body carries a `// @ fn_83_` marker.
+
+| class | functions | bytes |
+|---|---|---|
+| H host copy | 31 | 0x7D0 (2,000) |
+| T dead leaf | 2 | 0x5C (92) |
+| B module behaviour | 24 | 0x2098 (8,344) |
+| **total** | **57** | **0x28C4 (10,436)** |
+
+The 57 bodies cover 0x28C4 bytes with the padding between them (the module's text section is 0x2720
+bytes and the REL setup 0x1A4; the symbols' sizes sum to 0x28A0).
+
+### g.1 H - host copy (31)
+
+| id | size | what it is | the host's counterpart | the port's counterpart (diffed against the asm) |
+|---|---|---|---|---|
+| `fn_83_0` | 0x10 | the vtable slot 0xA4: the host's `skDamageHitTime` into 0x448 | `CPatterned`'s inline virtual | `CPatterned::TakeDamage` (`include/MetroidPrime/Enemies/CPatterned.hpp:151`): `mDamageCooldownTimer = skDamageHitTime;` - the same store the REL does (asm 0x0-0x8: `lis r4, lbl_8041AAB8@ha` / `lfs f0, lbl_8041AAB8@l(r4)` / `stfs f0, 0x448(r3)`) ✓ **matches** |
+| `fn_83_10` | 0x8 | the vtable slot 0xC8: the byte at 0x44F | `CPatterned`'s inline virtual | `CPatterned::GetModelAlphau8` (`CPatterned.hpp:159`): `mColor.GetAlphau8()` - the alpha byte of `mColor`, the byte the REL reads (asm 0x10-0x14: `lbz r3, 0x44f(r3)` / `blr`) ✓ **matches** |
+| `fn_83_18` | 0x8 | the vtable slot 0xDC: false | `CPatterned`'s inline virtual | `CPatterned::ProjectileInfo` (`CPatterned.hpp:164`): `return nullptr;` (asm 0x18-0x1C: `li r3, 0x0` / `blr`) ✓ **matches** |
+| `fn_83_20` | 0x8 | the vtable slot 0xE0: false | `CPatterned`'s inline virtual | `CPatterned::GetSearchPath` (`CPatterned.hpp:165`): `return nullptr;` (asm 0x20-0x24: `li r3, 0x0` / `blr`) ✓ **matches** |
+| `fn_83_28` | 0x8 | the vtable slot 0xE4: false | `CPatterned`'s inline virtual | `CPatterned::GetPointSearchPath` (`CPatterned.hpp:170`): `return nullptr;` (asm 0x28-0x2C: `li r3, 0x0` / `blr`) ✓ **matches** |
+| `fn_83_30` | 0x8 | the vtable slot 0xF4: false | `CPatterned`'s inline virtual | `CPatterned::GetRagDoll` (`CPatterned.hpp:177`): `return nullptr;` (asm 0x30-0x34: `li r3, 0x0` / `blr`) ✓ **matches** |
+| `fn_83_38` | 0x10 | the vtable slot 0x10C: `GetAttackTarget` -> `kInvalidUniqueId` | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_48` | 0xC | the vtable slot 0x110: `IsOnGround` (the bit 1 of the byte at 0x34C) | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_54` | 0xC | the vtable slot 0x114: `GetGravityConstant` -> `kDefaultGravityAccel` | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_60` | 0x8 | the vtable slot 0x124: -> `this+0x754` | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_68` | 0x8 | the vtable slot 0xA8: true | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_70` | 0x8 | the vtable slot 0xAC: false | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_78` | 0x8 | the vtable slot 0xB0: false | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_80` | 0x1C | the vtable slot 0xB4: copies three floats from the argument's 0x54..0x5C | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_9C` | 0x2C | the vtable slot 0x3C: forwards to the vtable slot 0x38 | `CPatterned`'s inline virtual | not diffed yet |
+| `fn_83_48C` | 0x3C | the compiler's destructor: `CMemory::Free` of an rstl string | rstl | not diffed yet |
+| `fn_83_DA8` | 0x3C | the same destructor for the other optional member | rstl | not diffed yet |
+| `fn_83_DE4` | 0x5C | the destructor of the class whose vtable is `data_188` | the host class | not diffed yet |
+| `fn_83_E40` | 0x5C | the destructor of the class whose vtable is `data_194` | the host class | not diffed yet |
+| `fn_83_E9C` | 0x48 | the destructor of the class whose vtable is `data_1A0` | the host class | not diffed yet |
+| `fn_83_1A24` | 0x58 | `~CAreaCollisionCache` (called at asm 0x1944, the local of `AlignToFloor`) | the host class | not diffed yet |
+| `fn_83_1A7C` | 0x50 | the destructor of the cache's member at +0x18 | the host class | not diffed yet |
+| `fn_83_1ACC` | 0x84 | the destructor of the cache's leaf array (the 0x910 stride) | the host class | not diffed yet |
+| `fn_83_20FC` | 0x1E4 | `~CPatterned` (`__vt__10CPatterned`, `__dt__6CTokenFv`, `__dt__3CAiFv`, ...) | `CPatterned` | not diffed yet |
+| `fn_83_22E0` | 0x94 | `~CAiKnockBackMgr` (`__vt__15CAiKnockBackMgr`) | `CAiKnockBackMgr` | not diffed yet |
+| `fn_83_2684` | 0x48 | the destructor of the class whose vtable is `data_158` | the host class | not diffed yet |
+| `_unresolved` | 0xC4 | the REL runtime's unresolved-symbol trap | crtexe | not diffed yet |
+| `_epilog` | 0x24 | the REL runtime's module exit | crtexe | not diffed yet |
+| `_prolog` | 0x24 | the REL runtime's module entry | crtexe | not diffed yet |
+| `ModuleDestructors` | 0x4C | the REL runtime's static destructor table | crtexe | not diffed yet |
+| `ModuleConstructors` | 0x4C | the REL runtime's static constructor table | crtexe | not diffed yet |
+
+### g.2 T - dead leaf (2)
+
+| id | size | what it is | the scan | port |
+|---|---|---|---|---|
+| `fn_83_140` | 0x8 | `GetConstraint`: returns the word at 0x834 | no `bl` to 0x140 in the module's `.text`, not in `data_C` or any other table, and the symbol is local | the port has the accessor; nothing calls it |
+| `fn_83_1F7C` | 0x54 | `GetClosestPointOnPlane`: the host's `CPlane::GetClosestPoint` inlined | the same scan: no `bl` to 0x1F7C, and the symbol is local | the port has it and it carries a marker (it is a host method, so the port keeps it for its callers) |
+
+The scan is the module's own `.text`: every `bl` target was collected per function, and the data
+section (`auto_04_00000000_data.s`) was read for the vtable and the other tables. The REL exports
+nothing (no `SetFuncPtrs`), so a local symbol has no caller outside the module.
+
+### g.3 B - module behaviour (24)
+
+`port` column: **marked** = the body carries a `// @ fn_83_` marker. All 24 do, so the list of the
+unmarked B functions is **empty**.
+
+| id | size | what it is | port |
+|---|---|---|---|
+| `fn_83_C8` (`RELMain`) | 0x4 | the module's entry point | marked |
+| `fn_83_CC` (`RELExit`) | 0x4 | the module's exit point | marked |
+| `GetConstraintPlane__12CWallCrawlerCFv` | 0x8 | the constraint plane at 0x838 | marked |
+| `GetNextWaypoint__12CWallCrawlerF...` | 0x3C | the slot 0x148: the waypoint's `NextWaypoint` | marked |
+| `SetConstraint__12CWallCrawlerF...` | 0x2C | the store at 0x834 and the plane rebuild | marked |
+| `UpdateConstraintPlane__12CWallCrawlerF...` | 0x344 | the constraint plane from three waypoints | marked |
+| `GetTouchBounds__12CWallCrawlerCFv` | 0xB8 | the base box transformed by the primitive transform | marked |
+| `Think__12CWallCrawlerFfR13CStateManager` | 0x828 | the material, the bend and the contact damage | marked |
+| `Render__12CWallCrawlerCFRC13CStateManager` | 0x20 | `CPatterned::Render` | marked |
+| `UpdateWPDestination__12CWallCrawlerF...` | 0x194 | the waypoint advance, the pause and the arrival | marked |
+| `PreThink__12CWallCrawlerFfR13CStateManager` | 0x204 | the guard, the motion state and the floor snap | marked |
+| `fn_83_129C` | 0x6C | the `CMotionState` copy before `AddMotionState` | marked |
+| `GetCollisionPrimitive__12CWallCrawlerCFv` | 0x8 | -> `&mColSphere` (0x7F0) | marked |
+| `AlignToFloor__12CWallCrawlerF...` | 0x6B8 | the floor search, the tumble and the re-orient | marked |
+| `fn_83_19C8` | 0x5C | the `CCollisionSurface` copy | marked |
+| `AlignToPlane__12CWallCrawlerF...` | 0x164 | the clamped arc onto the normal | marked |
+| `fn_83_1CB4` | 0x1C4 | `PointOnSurface` | marked |
+| `fn_83_1E78` | 0x40 | the cross product | marked |
+| `ProjectVectorToPlane__12CWallCrawlerF...` | 0x4C | the projection onto a plane | marked |
+| `fn_83_1F04` | 0x78 | the closest point on a plane | marked |
+| `AcceptScriptMsg__12CWallCrawlerF...` | 0xBC | the materials on `kSM_Create` | marked |
+| `__dt__12CWallCrawlerFv` | 0x70 | the destructor | marked |
+| `__ct__12CWallCrawlerF...` | 0x310 | the constructor | marked |
+| `fn_83_26CC` | 0x54 | the `CCollisionSurface` constructor | marked |
+
+### g.4 Count check
+
+Every function id of the module's symbol list must appear exactly once in the tables above. The
+check reads the symbol list of record and the table rows of this section (the table shortens the
+REL's mangled names, so the rows are mapped back to the ids first):
+
+```
+$ python3 - <<'PYCHK'
+import re, pathlib, collections
+sym = pathlib.Path('config/G2ME01/rels/WallCrawler/symbols.txt').read_text()
+ids = re.findall(r'^(\S+) = \.text:0x[0-9A-Fa-f]+; // type:function', sym, re.M)
+doc = pathlib.Path('docs/module-analysis/WallCrawler.md').read_text()
+sec = doc.split('## g. Function classification')[1].split('\n## 8.')[0]
+rows = re.findall(r'^\| `([^`]+)`', sec, re.M)
+alias = {'fn_83_C8': 'RELMain', 'fn_83_CC': 'RELExit',
+         'fn_83_1F7C': 'GetClosestPointOnPlane__12CWallCrawlerFRC9CVector3fRC6CPlane'}
+mapped = []
+for r in rows:
+    if r in alias:
+        mapped.append(alias[r])
+    elif r.endswith('...'):
+        head = r[:-3]
+        hit = [i for i in ids if i.startswith(head)]
+        mapped.append(hit[0] if len(hit) == 1 else r)
+    else:
+        mapped.append(r)
+c = collections.Counter(mapped)
+print('symbols:', len(ids))
+print('classified rows:', len(rows))
+print('missing:', [i for i in ids if i not in c])
+print('duplicated:', [i for i, n in c.items() if n > 1])
+print('extra:', [r for r in c if r not in ids])
+PYCHK
+symbols: 57
+classified rows: 57
+missing: []
+duplicated: []
+extra: []
+```
+
+## 8. The slices on this branch
+
+### 8.1 The behaviour fixes (2026-10-21, branch `decomp/wallcrawler`)
 
 - **The flag layout is now the retail's.** The header's bitfields carried the wrong masks (they
   were one bit off): the retail's byte 0x860 is `mAlignToFloor` 0x80, `mHasAlignSurface` 0x40,
@@ -227,8 +363,10 @@ the REL's copies of host/DOL code, so they are cited here and neither reimplemen
   and every bitfield now carries its retail mask as a comment, so `tools/asmcheck.py check`
   reports no MASK hit for the module any more.
 - **AlignToFloor had two behaviour differences**, both fixed:
-  1. the best distance started at `radius + margin`; the retail starts it at the **radius**
-     (f24 = the radius argument, asm 0x1390) and only the search box is radius+margin wide.
+  1. the best distance started at `radius`; the retail's threshold is **radius + margin** (f24 is
+     the radius argument at asm 0x1390 and the margin at 0x810 is added to it at asm 0x141C,
+     before the first comparison at asm 0x159C). The earlier reading stopped at asm 0x1390 and
+     missed the addition; section 8.2 has the correction and the fix.
   2. the port ran an extra "player-obstruction scan" that the retail does not have (see the
      bullet above); it could set `mPlayerObstructed` and stop the crawler.
 - **Where the constraint (0x834) comes from.** The WallCrawler REL has no loader, so no shipped
@@ -255,3 +393,92 @@ the REL's copies of host/DOL code, so they are cited here and neither reimplemen
   constrained) ran in the Agon Wastes areas above; only the constraint-3 sub-arm has no shipped
   instance.
 
+### 8.2 The classification and the corrections (2026-10-21, branch `decomp/wallcrawler`)
+
+**The 57 functions are classified in section g: 31 H (host copies), 2 T (dead leaves) and 24 B
+(module behaviour).** Every B function carries a `// @ fn_83_` marker, so **the list of the unmarked
+B functions is empty** - the slice had no new body to write. What the slice did instead:
+
+- **Every constant, mask, compare and store of the port's bodies now carries its asm offset** (140
+  of them in `PortCWallCrawler.cpp`), as the lane rules ask.
+- **Two behaviour differences were found by re-reading the asm and fixed:**
+  1. **The best distance of the floor search is `radius + margin`, not `radius`.** The earlier
+     reading stopped at asm 0x1390, where f24 (the threshold) is set to the radius argument, and
+     missed asm 0x141C, where the margin at 0x810 is added to f24 before the first comparison
+     (asm 0x159C and 0x16E8). The search box is the same `radius + margin` (asm 0x13A4-0x13F4).
+  2. **The agreement of the constrained search is a two-dimensional dot.** The constraint normal's
+     z is loaded at asm 0x15C0 and immediately clobbered by the surface-flag mask (asm 0x15C4), so
+     the z term of the dot is scaled by `(float)0x10000000` instead of by the constraint's own z
+     (asm 0x1680). The port used the full 3D dot.
+- **The run** (the Agon Wastes `0b_sand_hall`, the world 42b935e4, the area slot 40, the MREA
+  84303dd5), 40000 game updates, `tools/drivers/wallcrawler_crawlers.py` as the driver:
+  **0 `[port] caught`, 0 reach-stub**.
+
+| fn | the arms | the run | marker |
+|---|---|---|---|
+| `fn_83_580` (Think) | the material follows the actor's movable flag | ran (both ways) | marked |
+| | the bend, the kART_Six side (the reaction type 6, asm 0x868) | ran (37k deliveries) | marked |
+| | the bend, the kART_Five side (the reaction type 5, asm 0x9C4) | **ran** (15,628 deliveries) - the crawler has to be *on a wall* (the re-orient flag 0x04); the console's `place` puts one there (section 8.3) | marked |
+| | the contact damage (the timer at 0x440) | ran (311 times, the crawler next to the player) | marked |
+| | the boost-ball damage | **still did not run**: the morphed player falls through the floor in that area (the morph-floor lane's bug, `docs/STATUS.md`'s morph-floor report), so it never touches a crawler while boosting | marked |
+| `fn_83_1310` (AlignToFloor) | the unconstrained search | ran | marked |
+| | the constrained search, `x834_` = 1 | ran (the PillBugs of `0b_sand_hall`) | marked |
+| | the constrained search, `x834_` = 2 | ran in the earlier slice (`0d_sand_hall`), not re-run here | marked |
+| | the constrained search, `x834_` = 3 | no shipped instance (the property scan of the note's section 8.1) | marked |
+| | the surface / the tumble / the re-orient | ran (the flags 0x08 and 0x04 were both seen) | marked |
+| `fn_83_1098` (PreThink) | the guard, the motion state, the floor snap | ran (the crawlers think every frame) | marked |
+| `fn_83_148` (UpdateConstraintPlane), `fn_83_F04` (UpdateWPDestination), `fn_83_1B50` (AlignToPlane), `fn_83_1CB4`/`fn_83_1F04`/`fn_83_1E78` (the point on surface), `fn_83_1FD0` (AcceptScriptMsg), `fn_83_4C8` (GetTouchBounds), `fn_83_2374` (the ctor), `fn_83_129C`/`fn_83_19C8`/`fn_83_26CC` (the copies) | their live arms | ran | marked |
+
+The two open arms (the kART_Five bend and the boost-ball damage) are the same two the earlier slice
+listed. They are **not** forced in this run: the Five bend needs a crawler that is on a surface and
+still turned away from its normal, and the boost-ball damage needs the player morphed next to a
+crawler - the morph drops the player through the floor in that area (a port bug outside this
+module's slice; the contact damage ran in the same area with the player on its feet).
+
+**The gates:** `$T/ninja -C build-port-link metroid_prime2_port` 0 FAILED;
+`python3 tools/gen_files_cmake.py --check` rc 0; `tools/review_decomp_diff.sh <base>` clean; the run
+as above.
+
+### 8.3 The next six unmarked bodies and the kART_Five bend (2026-10-22, branch `decomp/wallcrawler`)
+
+Slice base `e85ad6ac1` (the merge of `port`); the commit is on top of it.
+
+**The six**: the classification's order starts with the H class, so the next six unmarked rows are
+`fn_83_0`, `fn_83_10`, `fn_83_18`, `fn_83_20`, `fn_83_28` and `fn_83_30` - the REL's own copies of
+the host's `CPatterned` inline virtuals. Each was diffed against the asm
+(`tools/asmcheck.py annotate WallCrawler <fn> --all-ins` ✓) and against the port's counterpart, and
+the results are in section g.1's new column ✓:
+
+| fn | the REL's copy (asm) | the port's counterpart | result |
+|---|---|---|---|
+| `fn_83_0` | `lis r4, lbl_8041AAB8@ha` / `lfs f0, lbl_8041AAB8@l(r4)` / `stfs f0, 0x448(r3)` (asm 0x0-0x8) | `CPatterned::TakeDamage` (`CPatterned.hpp:151`): `mDamageCooldownTimer = skDamageHitTime;` | **matches** ✓ |
+| `fn_83_10` | `lbz r3, 0x44f(r3)` (asm 0x10) | `CPatterned::GetModelAlphau8` (`CPatterned.hpp:159`): `mColor.GetAlphau8()` | **matches** ✓ |
+| `fn_83_18` | `li r3, 0x0` (asm 0x18) | `CPatterned::ProjectileInfo` (`CPatterned.hpp:164`): `return nullptr;` | **matches** ✓ |
+| `fn_83_20` | `li r3, 0x0` (asm 0x20) | `CPatterned::GetSearchPath` (`CPatterned.hpp:165`): `return nullptr;` | **matches** ✓ |
+| `fn_83_28` | `li r3, 0x0` (asm 0x28) | `CPatterned::GetPointSearchPath` (`CPatterned.hpp:170`): `return nullptr;` | **matches** ✓ |
+| `fn_83_30` | `li r3, 0x0` (asm 0x30) | `CPatterned::GetRagDoll` (`CPatterned.hpp:177`): `return nullptr;` | **matches** ✓ |
+
+The slot-to-name mapping comes from the module's own vtable (`data_C` ✓): 0xA4 `TakeDamage`, 0xC8
+`GetModelAlphau8`, 0xDC `ProjectileInfo`, 0xE0 `GetSearchPath`, 0xE4 `GetPointSearchPath`, 0xF4
+`GetRagDoll` ✓ - the four slots the port's `CPatterned` does not have (0xA8, 0xAC, 0xB0, 0xB4 ✓)
+sit between `TakeDamage` and `RenderSystemsToBeDrawnFirst` in the REL's vtable ✓, so the alignment is
+from both ends ✓ (`RenderIngSnatchingTransition` is the last entry in both ✓).
+
+**No port code changed**: the six are the host's code ✓ (the port's `CPatterned` is the upstream
+file ✓), the bodies agree with the REL's copies ✓, and nothing in the port's own body is wrong ✓.
+
+**The kART_Five bend now runs** ✓ - it needs a crawler *on a wall* (the re-orient flag 0x04 ✓, set
+when the up vector is more than ~30 degrees off the surface normal ✓), and the crawlers only climb
+when they are put there. The new driver `tools/drivers/wallcrawler_five.py` does it with the
+console's `place`: it lists the crawlers (`objs pillbug` ✓, the console prints their positions ✓),
+takes the highest one (on a wall ✓) and puts another crawler on that spot ✓.
+
+    Agon Wastes 0b_sand_hall (the world 42b935e4, the area slot 40), 30000 updates:
+      bend type=5 (kART_Five) 15628 deliveries, bend type=6 (kART_Six) 17970 deliveries
+      0 [port] caught, 0 reach-stub
+
+(The proof used a temporary probe in `PortCWallCrawler.cpp` ✓, reverted before the commit ✓; the
+probes are the only thing the coverage build would replace ✓.)
+
+**The boost-ball arm is still open** ✓: the morphed player falls through the floor in that area (the
+morph-floor lane's bug ✓), so it never reaches a crawler while boosting ✓.

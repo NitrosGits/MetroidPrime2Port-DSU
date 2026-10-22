@@ -20,6 +20,10 @@ void begin_recording(FramePacket& packet, size_t frameSlot);
 RecordedFrame end_recording();
 void shutdown_recording();
 void increment_merged_draw_count() noexcept;
+// Port: AURORA_RENDER_EVERY: enqueue the frame's recorded work for the render worker. It is
+// enqueued at the end of the frame, so the frame's "rendered" decision is final: a frame that
+// holds an EFB copy is rendered in full, a frame that is not rendered is not encoded at all.
+void enqueue_frame_ops(FramePacket& packet);
 
 namespace testing {
 void suppress_render_worker(bool suppress) noexcept;
@@ -111,6 +115,9 @@ PipelineRef pipeline_ref(const PipelineConfig& config);
 
 void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
                        Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat = GX_TF_RGBA8);
+// Seal the current EFB pass, snapshot its depth (depth_peek, unthrottled) and continue on a pass that
+// loads the existing contents. One pass break and no copies; skipped offscreen and with MSAA.
+void split_pass_for_depth_snapshot();
 uint32_t align_uniform(uint32_t value);
 Vec2<uint32_t> get_render_target_size() noexcept;
 void set_viewport(const Viewport& viewport) noexcept;

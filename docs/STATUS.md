@@ -294,3 +294,11 @@ on scannables"; asked how, "they flash".
 Older sessions: `docs/STATUS-history.md`.
 
 The openchamber tool rejects every non-string argument (2026-10-20), so lanes run as subagents now; old lane sessions can't be resumed from here.
+- 2026-10-21 16:40 batch9 merged (081b71c14): CommandoPirate a957ff47c, EmperorIng1 298b62b1c, Splitter a619f5a69, DarkSamus2 ce575f3c8, Ing blob 9f8fd3003, Ing 646a9fabd, Sandworm cad0531f5, SwampBoss2 4a51bc63c, DigitalGuardian f8ec985d5; smoke9 no regressions.
+- 2026-10-21 17:20 batch10 merged (f09b42959): CommandoPirate df8fbb5b6, DarkSamus2 5fe53f11c, EmperorIng1 af5535c8f (done), Splitter 4a756509f, Ing 1a0ba410f, SwampBoss2 32c062e08, BoostGuardian 75bd1ac4d (done), Sandworm 36fb82f7c, SandBoss 5a5858859 (done), SpacePirate 727d520b8, DigitalGuardian 0d273717a + aurora 32 MiB uniform buffer (82b1c482c); 1890/4730 fns. smoke10 vs smoke9: turret (GPU reset 16:56, innocent context) and ing (X display shared with another run) pass solo (smoke10b); agon54 exit 137 = shutdown hang twice, same as spacepirate (sp-hang lane). New console `noise` (196d15fee).
+
+## 2026-10-21 (port orchestrator, late): batches 12 and 13
+
+- Batch 12 (25b367dda) and batch 13 (0d9af897f) merged after asm review by a dedicated Opus review lane and orchestrator checks; smoke12b/smoke13 no regressions (`--jobs 4` once gave flaky exit-137 shutdown hangs on ing/ep/plain/emp3, clean at `--jobs 2`).
+- Audit-session fixes routed or applied: PlayerTurret refire `<= 0` (a19f25ae8), DarkSamus CanMissileDeflect `> 0` and RollReflectChanceForHit's first roll (f5802a210), CommandoPirate's five 662C/8028/86B4 items, the DigitalGuardian knee knock-back, the 177C8/114C8 stand-ins, the SpacePirate weapon switch, Hurled, Ing timer, trooper alpha and charge list.
+- MiniMax misreads caught in review (`lis` as a small value, `__shl2i` input read as a high word, an early return skipping retail's tail) are now in LANE_BRIEF "Decode traps".

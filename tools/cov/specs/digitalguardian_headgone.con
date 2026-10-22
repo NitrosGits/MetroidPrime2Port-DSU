@@ -1,0 +1,8 @@
+# DigitalGuardian area 53: the head is deleted while the body runs, so fn_14_6E04 finds the head
+# gone (fn_14_70E4 detaches it) and then has no head uid (0x1082 invalid).
+@f30 layer 3
+@f60 layer 11
+@f140 send e00350060 Activate; send e0035000f Activate
+@f600 send e0035000f Delete
+@f800 objs Guardian
+@f820 covdump

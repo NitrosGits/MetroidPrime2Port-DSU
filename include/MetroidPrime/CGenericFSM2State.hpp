@@ -43,12 +43,23 @@ public:
   void SetTriggerFunction(const rstl::string& name, TriggerFunc function);
   void SetCodeFunction(const rstl::string& name, CodeFunc function);
 #ifdef TARGET_PC
+  // Port console (`fsm`): the names of the states this machine can enter - its own and, depth
+  // first, the states of its sub-machines (the ones PortSetStateDeep reaches).
+  void PortCollectStateNames(rstl::vector< rstl::string >& out, int maxDepth) const override;
   // Port console (`fsm`): the depth of the first machine (this one 0, its sub-machines 1, ...)
   // whose own states hold `name`, or -1. PortSetStateDeep enters it the way a transition into a
   // sub-machine does, filling path[0..depth) with the sub-machine names it went through.
   int PortFindStateDepth(const rstl::string& name, int maxDepth) const;
   int PortSetStateDeep(CStateManager& mgr, T& owner, const rstl::string& name, const char** path,
                        int maxDepth);
+  // Port console (`statecall`): the function SetStateFunctions was given under `name`, whether or
+  // not a node of the asset uses it (so a state the shipped FSM never enters can still run), or
+  // null.
+  StateFunc PortFindStateFunction(const char* name) const;
+  // Port console (`trigcall`): the same for the trigger table SetTriggerFunctions was given.
+  TriggerFunc PortFindTriggerFunction(const char* name) const;
+  // Port console (`codecall`): the same for the code table SetCodeFunctions was given.
+  CodeFunc PortFindCodeFunction(const char* name) const;
 #endif
 
 private:
@@ -83,6 +94,14 @@ private:
   const CState2* mState;
   float mTime;
   float mDelay;
+#ifdef TARGET_PC
+  const SStateFunction* mPortStateFunctions = nullptr; // the last table SetStateFunctions got
+  int mPortStateFunctionCount = 0;
+  const STriggerFunction* mPortTriggerFunctions = nullptr; // the last table SetTriggerFunctions got
+  int mPortTriggerFunctionCount = 0;
+  const SCodeFunction* mPortCodeFunctions = nullptr; // the last table SetCodeFunctions got
+  int mPortCodeFunctionCount = 0;
+#endif
 };
 
 #endif // _CGENERICFSM2STATE

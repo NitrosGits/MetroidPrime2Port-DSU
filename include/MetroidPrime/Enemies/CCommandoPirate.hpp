@@ -8,26 +8,32 @@
 #include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Animation/CSegId.hpp"
 #include "Kyoto/SObjectTag.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
 #include "MetroidPrime/CBoneTracking.hpp"
 #include "MetroidPrime/CCollisionActorManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CDamageVulnerability.hpp"
+#include "MetroidPrime/CVisualKnowledge.hpp"
 #include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
 #include "rstl/single_ptr.hpp"
 
+class CPirateRagDoll;
+
 // The E-grenade half of the REL's parameter block (guest data+0x68, 0x70 bytes). The guest block
 // is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
 // floats on top); the guest offsets are the REL's and the host layout is its own. The four
 // constants 0.1f/150.f/0.1f/150.f are the guest's (fn_9_98C stores them from its own arguments at
-// 0x0000098C..0x00000A0C) and the flag byte at guest +0x4C is the guest's zero.
+// 0x0000098C..0x00000A0C); the flag byte at guest +0x4C gets its 0x80 bit (0x00000A14) from the
+// caller's 1 (fn_9_168 @0x00000610), so CBouncyGrenadeData::x4c_ is true.
 struct CCommandoPirateGrenadeData {
   CCommandoPirateGrenadeData(float grenadeMass, float unknownED086CE0,
                              const CDamageInfo& bladeDamage, int grenadeNumBounces,
                              CAssetId grenadeExplosion, CAssetId grenadeExplosion2,
                              CAssetId grenadeTrail, CAssetId grenadeEffect,
-                             ushort soundGrenadeBounce, float empDuration,
+                             ushort soundGrenadeBounce, ushort soundGrenadeExplode,
+                             float empDuration,
                              float grenadeAttackChance, float grenadeMinAttackInterval,
                              float grenadePostAttackPause, float grenadeMinAttackDist,
                              float grenadeMaxAttackDist, float grenadeMinLaunchSpeed,
@@ -41,6 +47,12 @@ struct CCommandoPirateGrenadeData {
   , mGrenadeTrail(grenadeTrail)
   , mGrenadeEffect(grenadeEffect)
   , mSoundGrenadeBounce(soundGrenadeBounce)
+  , mSoundGrenadeExplode(soundGrenadeExplode)
+  , mRadiusMin(0.1f)
+  , mDamageMax(150.f)
+  , mRadiusMax(0.1f)
+  , mDamageMin(150.f)
+  , mFlags(0x80)
   , mEMPDuration(empDuration)
   , mGrenadeAttackChance(grenadeAttackChance)
   , mGrenadeMinAttackInterval(grenadeMinAttackInterval)
@@ -59,13 +71,15 @@ struct CCommandoPirateGrenadeData {
   CAssetId mGrenadeTrail;          // guest +0x30, fn_9_98C @0x000009F0
   CAssetId mGrenadeEffect;         // guest +0x34, fn_9_98C @0x000009F4
   ushort mSoundGrenadeBounce;      // guest +0x38, fn_9_98C @0x000009F8
-  // guest +0x3a: the guest reads the high half of the word it stored at its own stack +0x8
-  // (fn_9_98C @0x000009D8 reads 0xa(r1)), so the guest stores zero here.
+  // guest +0x3a: fn_9_98C is a leaf, so its 0xa(r1) (0x000009D8) is the low half of the
+  // caller's stack word at +0x8 - the loader's sound_GrenadeExplode (the lwz 0xc80 at 0x0000062C,
+  // clrlwi'd at 0x00000640 and stored at 0x00000660).
+  ushort mSoundGrenadeExplode;     // guest +0x3a, fn_9_98C @0x000009FC
   float mRadiusMin;                // guest +0x3c, fn_9_98C @0x00000A00 (the guest's 0.1f)
   float mDamageMax;                // guest +0x40, fn_9_98C @0x00000A04 (the guest's 150.f)
   float mRadiusMax;                // guest +0x44, fn_9_98C @0x00000A08 (the guest's 0.1f)
   float mDamageMin;                // guest +0x48, fn_9_98C @0x00000A0C (the guest's 150.f)
-  uchar mFlags;                    // guest +0x4c, fn_9_98C @0x00000A14 (the guest's zero)
+  uchar mFlags;                    // guest +0x4c, fn_9_98C @0x00000A14 (bit 0x80 from fn_9_168's 1)
   float mEMPDuration;              // guest +0x50, fn_9_F50C @0x00000A28
   float mGrenadeAttackChance;      // guest +0x54, fn_9_F50C @0x00000A2C
   float mGrenadeMinAttackInterval; // guest +0x58, fn_9_F50C @0x00000A30
@@ -324,6 +338,9 @@ private:
   // fn_9_3CBC: the target's aim position - the guest's own helper, called by FaceTarget.
   bool x3CBC_(CStateManager& mgr, CVector3f& out, float dt) const;
 
+  // fn_9_3480: the melee-attack picker - the row of the attack table, or -1.
+  int x3480_PickMeleeAttack(CStateManager& mgr) const;
+
   // fn_9_19D8: the module's team helper - the commando joins the team of its area.
   void x19D8_JoinTeam(CStateManager& mgr);
 
@@ -344,18 +361,20 @@ private:
   // the module's two own renderables.
   void x1C0C_UpdateRenderables(CStateManager& mgr, float dt);
 
-  // fn_9_3E1C: the module's rag-doll driver - with no rag doll it runs the drowning timer.
-  void x3E1C_UpdateRagDoll(CStateManager& mgr, float dt);
+  // fn_9_3E1C: the module's rag-doll driver - with a rag doll it primes and steps it, then it
+  // runs the drowning timer, which creates the rag doll when it runs out. The Think passes
+  // whether the rag doll was null when it started (the guest's third argument).
+  void x3E1C_UpdateRagDoll(CStateManager& mgr, float dt, bool noRagDoll);
 
-  // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper. Not ported (the
-  // port does not create the "Commando E-Grenade" script object), so it stays a stand-in.
-  void x5410_CreateEGrenade();
+  // fn_9_5410: the E-grenade's own creator - the kUE_Projectile event's helper
+  // (PortCCommandoPirateCore.cpp).
+  void x5410_CreateEGrenade(CStateManager& mgr);
 
-  // fn_9_1F88: the kUE_EventStart event's helper - the shield's sound emitter and the module's
-  // state word and scale.
+  // fn_9_1F88: the kUE_Activate event's helper (jump-table entry 29) - the shield's sound emitter
+  // and the module's state word and scale.
   void x1F88_EventStart();
 
-  // fn_9_1EF8: the kUE_Activate event's helper - the counterpart of fn_9_1F88.
+  // fn_9_1EF8: the kUE_Deactivate event's helper (entry 30) - the counterpart of fn_9_1F88.
   void x1EF8_Activate();
 
   // fn_9_57A0: the module's shot - the burst fire's projectile, aimed at the target.
@@ -391,6 +410,18 @@ private:
   // damage and knock-back.
   void x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg);
 
+  // fn_9_2A98: the module's waypoint picker - the AI waypoint it follows and the waypoint it
+  // walks to.
+  bool x2A98_PickWaypoint(CStateManager& mgr, bool useNext);
+
+  // fn_9_2474: the module's turn helper - it turns the commando towards the waypoint it follows
+  // and charges at it.
+  void x2474_TurnToWaypoint(CStateManager& mgr, float dt);
+
+  // fn_9_2048: the module's shield effect - the explosion and the sound the shield makes when
+  // it takes a hit.
+  void x2048_ShieldEffect(CStateManager& mgr);
+
   // fn_9_3A5C: the module's hit-object helper (0x260 bytes) - the shield's damage on the
   // player that touched it, and the blade's damage when the blade is out.
   void x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg);
@@ -422,7 +453,9 @@ private:
   rstl::single_ptr< CCollisionActorManager > mCollisionBlade;  // 0xa40, "Blade_CollisionActor"
   CDamageVulnerability mShieldVulnerability; // 0xa44 (fn_9_D904 @0x0000D9D4)
   CBoneTracking mBoneTracking;            // 0xa74 (fn_9_D904 @0x0000DA08)
-  uchar xae8_;                            // 0xae8, the module's byte; nothing writes it
+  // 0xab0 (fn_9_D904 @0x0000DA64): the line of sight to the target. Its flag byte at guest 0xAE8
+  // (the class's +0x38, bit 0x80) is the visibility HasLineOfSight and SetTargetDest read.
+  CVisualKnowledge mVisualKnowledge;
   CBurstFire mBurstFire;                  // 0xaf0, the module's burst fire (fn_9_D904 @0x0000DA78)
   float xb7c_;                            // 0xb7c, the cooldown since the last melee attack
   float xb80_;                            // 0xb80, the shield's arm timer; fn_9_86B4 advances it
@@ -438,10 +471,12 @@ private:
   float xb74_;                            // 0xb74, a timer; fn_9_662C advances it
   float xb78_;                            // 0xb78, a timer; fn_9_662C advances it
   float xb84_;                            // 0xb84, a timer; fn_9_662C advances it
+  float xb88_;                            // 0xb88, the time to the waypoint; fn_9_2A98 sets it
   float xb8c_;                            // 0xb8c, 0.f from the ctor (fn_9_D904 @0x0000DB08)
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   CVector3f xba0_;                         // 0xba0, the charge direction; fn_9_8028 sets it
+  CVector3f xbac_;                         // 0xbac, the waypoint's forward; fn_9_2A98 sets it
   CVector3f xbb8_;                         // 0xbb8, the fourth vector; fn_9_BF44 stores a normal
   float xbec_;                            // 0xbec, a float of the jump-back helper fn_9_3900
   CVector3f xbf0_;                         // 0xbf0, the jump-back target; fn_9_3900 reads it
@@ -450,6 +485,9 @@ private:
   float xc48_;                            // 0xc48, the scale's target; fn_9_1F88 sets it
   float xc50_;                            // 0xc50, a counter; fn_9_662C lowers it
   float xc00_;                            // 0xc00, a float; fn_9_3090 sets 0.01f
+  // 0xbfc: the module's own rag doll, module 50's CPirateRagDoll (0x11c bytes); fn_9_3E1C
+  // creates it, the constructor leaves it null (0x0000DC18).
+  rstl::single_ptr< CPirateRagDoll > xbfc_ragDoll;
   TUniqueId xbca_;                       // 0xbca, the target id; kInvalidUniqueId from the ctor
   TUniqueId xbc4_teamId;                 // 0xbc4, the team id; fn_9_19D8 sets it
   TUniqueId xbc6_;                       // 0xbc6, the shield collision actor's id; fn_9_45A4 sets it
@@ -459,10 +497,16 @@ private:
   int xbdc_;                             // 0xbdc, the dodge id; fn_9_8934 sets it
   float xbe0_;                           // 0xbe0, the jump-back distance; fn_9_D904 @0x0000E61C
   float xbe4_;                           // 0xbe4, a distance; fn_9_D904 @0x0000E56C
+  float xbe8_;                           // 0xbe8, the jump distance; fn_9_D904 @0x0000E4D4
   TUniqueId xbd0_;                       // 0xbd0, kInvalidUniqueId from the ctor (@0x0000DBC0)
   TUniqueId xbd2_;                       // 0xbd2, kInvalidUniqueId from the ctor (@0x0000DBC8)
   TUniqueId xbd4_;                       // 0xbd4, the cover point the actor holds; fn_9_709C
+  TUniqueId xbd6_;                       // 0xbd6, the waypoint the WallHang state finds
   TUniqueId xbd8_;                       // 0xbd8, the id the delete case asks to delete
+  // Guest this+0x6C0 is the waypoint navigation's own destination field (the navigation sits at
+  // guest this+0x6B8 and its destination is at +0x8), so the port uses the host's
+  // CWaypointNavigation::GetDestination()/SetDestination() for it and has no member of its own.
+  TUniqueId xbda_;                       // 0xbda, the waypoint the commando is at
   CSfxHandle xc04_;                      // 0xc04, the first sound emitter's handle; fn_9_4BC0
   CSfxHandle xc38_;                      // 0xc38, the second sound emitter's handle; fn_9_4BC0
   CSegId mLocatorHead;                    // 0xc5c, "Head_1" (fn_9_D904 @0x0000E29C)
@@ -472,10 +516,32 @@ private:
   CSegId mLocatorRWrist;                  // 0xc60, "R_wrist" (fn_9_D904 @0x0000E36C)
   CSegId mLocatorRElbow;                  // 0xc61, "R_elbow" (fn_9_D904 @0x0000E3A0)
   CSegId mLocatorLWrist;                  // 0xc62, "L_wrist" (fn_9_D904 @0x0000E3D4)
+  float xc58_;                            // 0xc58, the animation time the WarpOut fade divides by
   uchar xc63_;                            // 0xc63, cleared by the ctor; the states set its bits
   uchar xc64_;                            // 0xc64, cleared (fn_9_D904 @0x0000E150)
   uchar xc65_;                            // 0xc65, 0x80 (fn_9_D904 @0x0000E1B0)
   uchar xc66_;                            // 0xc66, cleared (fn_9_D904 @0x0000E1E8)
+  // core (append-only; PortCCommandoPirateCore.cpp)
+  int xc54_;                              // 0xc54, the melee attack index; -1 (fn_9_D904 @0x0000E0CC)
+  // 0xc3c / 0xc40: the shield's two particle systems, the arm effect (the block's mShield
+  // mArmEffect, guest this+0x914) and the charge effect (mChargeEffect, guest this+0x910); the
+  // ctor makes them with fn_9_F58C (@0x0000E090 and @0x0000E09C), fn_9_1C0C drives them and
+  // fn_9_C598 draws the one the state word at 0xc4c picks.
+  rstl::single_ptr< CElementGen > xc3c_armEffect;
+  rstl::single_ptr< CElementGen > xc40_chargeEffect;
+  // fn_9_F58C: a CElementGen for a PART id, or null for kInvalidAssetId (PortCCommandoPirateCore.cpp)
+  static CElementGen* xF58C_CreateEffect(CAssetId id);
+  void x1C0C_DriveEffect(CElementGen& effect, float dt);
+  // fn_9_52BC / fn_9_5008: the E-grenade's aim point and its launch angle and speed.
+  CVector3f x52BC_GetGrenadeTarget(const CStateManager& mgr, const CActor& target) const;
+  void x5008_SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin, float& angle,
+                                float& speed) const;
+
+public:
+  // vtable slot 0xc8 = fn_9_68, slot 0xb4 = fn_9_AC (PortCCommandoPirateCore.cpp)
+  uchar GetModelAlphau8(const CStateManager& mgr) const override;
+  CVector3f GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
+                      const CVector3f& aimPos) const override;
 #else
   uchar x7c0_[0xc68 - 0x7c0];
 #endif

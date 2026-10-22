@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <span>
 #include <string>
 #include <string_view>
@@ -71,6 +72,7 @@ wgpu::AdapterInfo g_adapterInfo;
 static const void* g_surfaceWindow = nullptr;
 static wgpu::SurfaceCapabilities g_surfaceCapabilities;
 bool g_hasCoreFeatures = false;
+bool g_dualSourceBlendingSupported = false;
 bool g_bcTexturesSupported = false;
 bool g_astcTexturesSupported = false;
 bool g_textureComponentSwizzleSupported = false;
@@ -945,13 +947,26 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
     g_bcTexturesSupported = false;
     g_astcTexturesSupported = false;
     g_textureComponentSwizzleSupported = false;
+    g_dualSourceBlendingSupported = false;
+    // AURORA_DUAL_SOURCE=0 keeps the two-draw fallback (A/B checks of ShaderConfig::dualSrcAlpha).
+    const char* dualSourceEnv = std::getenv("AURORA_DUAL_SOURCE");
+    const bool dualSourceDisabled = dualSourceEnv != nullptr && std::string_view(dualSourceEnv) == "0";
+    // Port: the FIFO processor, the render worker and the game thread all call into the device
+    // (CreateBindGroup/CreateTexture/releases vs Submit/ProcessEvents/WriteBuffer). Dawn is only
+    // thread-safe with ImplicitDeviceSynchronization; without it the races freed descriptor and
+    // upload memory the GPU still read (SQC page faults, gfx ring timeouts, mode1 resets).
+    // AURORA_IMPLICIT_SYNC=0 turns it off for A/B checks.
+    const char* implicitSyncEnv = std::getenv("AURORA_IMPLICIT_SYNC");
+    const bool implicitSyncDisabled = implicitSyncEnv != nullptr && std::string_view(implicitSyncEnv) == "0";
+    bool implicitSyncEnabled = false;
     wgpu::SupportedFeatures supportedFeatures;
     g_adapter.GetFeatures(&supportedFeatures);
     for (size_t i = 0; i < supportedFeatures.featureCount; ++i) {
       const auto feature = supportedFeatures.features[i];
       if (feature == wgpu::FeatureName::CoreFeaturesAndLimits || feature == wgpu::FeatureName::TextureCompressionBC ||
           feature == wgpu::FeatureName::TextureCompressionASTC ||
-          feature == wgpu::FeatureName::TextureComponentSwizzle) {
+          feature == wgpu::FeatureName::TextureComponentSwizzle ||
+          (feature == wgpu::FeatureName::DualSourceBlending && !dualSourceDisabled)) {
         if (feature == wgpu::FeatureName::CoreFeaturesAndLimits) {
           g_hasCoreFeatures = true;
         } else if (feature == wgpu::FeatureName::TextureCompressionBC) {
@@ -960,9 +975,19 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
           g_astcTexturesSupported = true;
         } else if (feature == wgpu::FeatureName::TextureComponentSwizzle) {
           g_textureComponentSwizzleSupported = true;
+        } else if (feature == wgpu::FeatureName::DualSourceBlending) {
+          // Port: lets a blended draw under GXSetDstAlpha write the constant alpha in one draw
+          // (gx::populate_pipeline_config, ShaderConfig::dualSrcAlpha).
+          g_dualSourceBlendingSupported = true;
         }
         requiredFeatures.push_back(feature);
       }
+#ifdef WEBGPU_DAWN
+      if (feature == wgpu::FeatureName::ImplicitDeviceSynchronization && !implicitSyncDisabled) {
+        requiredFeatures.push_back(feature);
+        implicitSyncEnabled = true;
+      }
+#endif
 #ifdef TRACY_ENABLE
       if (feature == wgpu::FeatureName::TimestampQuery) {
         requiredFeatures.push_back(feature);
@@ -972,9 +997,15 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
     std::string featureList;
     for (auto featureName : requiredFeatures) {
       featureList += "\n  ";
-      featureList += magic_enum::enum_name(featureName);
+      const auto name = magic_enum::enum_name(featureName);
+      // Dawn-only features (0x5xxxx) are outside magic_enum's range.
+      featureList += name.empty() ? fmt::format("0x{:x}", underlying(featureName)) : std::string(name);
     }
     Log.info("Enabling features: {}", featureList);
+    if (!implicitSyncEnabled) {
+      Log.warn("ImplicitDeviceSynchronization {}: multi-threaded device use is unsynchronized",
+               implicitSyncDisabled ? "disabled by AURORA_IMPLICIT_SYNC=0" : "not supported");
+    }
 #ifdef WEBGPU_DAWN
     wgpu::DawnCacheDeviceDescriptor cacheDescriptor({.nextInChain = nullptr});
     cacheDescriptor.SetDawnLoadCacheDataCallback(

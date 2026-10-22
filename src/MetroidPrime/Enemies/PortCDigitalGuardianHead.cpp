@@ -12,6 +12,7 @@
 #include "Kyoto/Math/CRelAngle.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "Kyoto/CSimplePool.hpp"
+#include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
 #include "MetroidPrime/BodyState/CBodyController.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "MetroidPrime/CCollisionActor.hpp"
@@ -24,7 +25,12 @@
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/Weapons/CBeamInfo.hpp"
 #include "MetroidPrime/Weapons/CBomb.hpp"
+#include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
+#include "MetroidPrime/Weapons/CImpactVisorEffect.hpp"
+#include "MetroidPrime/Weapons/CPlasmaProjectile.hpp"
+#include "MetroidPrime/Weapons/CWeaponAssetInfo.hpp"
 #include "MetroidPrime/Weapons/CWeapon.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
@@ -40,8 +46,11 @@
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#include "port_console.h"
+
 #include <float.h>
 #include <stdio.h>
+#include <string.h>
 
 namespace {
 
@@ -144,6 +153,9 @@ CPatterned::StateMachine::SCodeFunction skCodes[] = {
 // projectile infos at 0xE04..0xE7C, the 'PART' and 'SCAN' tokens, the head armour model and the
 // locator ids) belong to the states this slice does not port, so the host keeps only what the
 // ported functions read, with the values the retail stores.
+// Coverage: every arm natural or forced (tools/cov/specs/digitalguardian_dg28_ctor.py forces the
+// PART/SCAN ids to -1); the only unrun arms are the compiler's EH-unwind edges on the closing brace.
+// @ fn_14_18264
 CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& name,
                                            const CEntityInfo& info, const CTransform4f& xf,
                                            const CModelData& modelData,
@@ -157,7 +169,7 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , xDC4_{kInvalidUniqueId, kInvalidUniqueId} // 0x18358
 , xDD0_(LdrToDamageVulnerability(data.bombPitVulnerability)) // 0x18370
 , xE00_(kInvalidUniqueId)
-, xD80_(uid, CSegId(), 0.1f, 0.05f) // 0x183F8: no locator (0xFF), .rodata 0x9F4 / 0x9F8
+, xD80_(uid, CSegId(), 0.1f, 0.05f) // 0x18334: no locator (0xFF), .rodata 0x9F4 / 0x9F8
 , xEF4_()
 , xF04_()
 , xF14_()
@@ -192,7 +204,38 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
 , x10F0_(0.f)
 , x10F4_(0x08) // only bit 0x08 is set (the rlwimi stores at the ctor's tail)
 , x10F5_(0)    // bit 0x80 cleared
+// 0x18B98..0x18BA8: the lock-on beams' weapon (data +0x1BC) with a default damage (fn_14_FFFC:
+// weapon -1, every amount 0.0f, the sounds 0xFFFF); 0x18BB4..0x18C00: no lasers, no locator
+// yet (0xFF) and the sweep's floats 0.0f (.rodata 0x960) and its point the zero vector.
+, x1054_(data.lockOnBeams.weaponSystem, CDamageInfo())
+, x107C_()
+, x1088_()
+, x108C_(0.f)
+, x1090_(0.f)
+, x1094_(0.f)
+, x1098_(CVector3f::Zero())
+// 0x183A4..0x18408: the four projectile infos, each the data's weapon with its damage
+// (LdrToDamageInfo); their tokens are locked below (0x18CD8..0x18CF0).
+, xE04_(data.annihilatorPulse, LdrToDamageInfo(data.annihilatorPulseDamage))
+, xE2C_(data.annihilatorCharge, LdrToDamageInfo(data.annihilatorChargeDamage))
+, xE54_(data.lockOnMissiles, LdrToDamageInfo(data.lockOnMissilesDamage))
+, xE7C_(data.machineGun, LdrToDamageInfo(data.machineGunDamage))
+// 0x18C04..0x18C44: the gun's locator 0xFF until set below, both sweep ends the zero vector,
+// side 0 (r8), phase -1 (r5), both times 0.0f (f1, .rodata 0x960).
+, x10A4_()
+, x10A8_(CVector3f::Zero())
+, x10B4_(CVector3f::Zero())
+, x10C0_(0)
+, x10C4_(-1)
+, x10C8_(0.f)
+, x10CC_(0.f)
+, xFE4_(mTurnSpeed) // 0x18A8C..0x18A9C: the CPatternedInfo turn speed (pInfo +0x8)
 {
+  xE04_.Token().Lock(); // 0x18CD8
+  xE2C_.Token().Lock(); // 0x18CE0
+  xE54_.Token().Lock(); // 0x18CE8
+  xE7C_.Token().Lock(); // 0x18CF0
+  KnockBackController().EnableAllAnimReactions(false); // 0x18CF4..0x18CFC: this +0x620, li r4,0
   // The drop-shields effect (data +0x48, 0x184D8): locked when set.
   if (mData.dropShieldsFx != kInvalidAssetId) {
     xEF4_ = TLockedToken< CGenDescription >(
@@ -216,6 +259,36 @@ CDigitalGuardianHead::CDigitalGuardianHead(TUniqueId uid, const rstl::string& na
   const CAnimData* anim = GetModelData()->GetAnimationData();
   xDCC_[0] = anim->GetLocatorSegId(rstl::string_l("L_ball_LCTR"));
   xDCC_[1] = anim->GetLocatorSegId(rstl::string_l("R_ball_LCTR"));
+  // 0x18D70..0x18D9C: the machine gun's locator, the same name (.rodata 0x94C), at 0x10A4.
+  x10A4_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
+  // 0x18DA4..0x18DD0: the lasers' locator (.rodata 0x94C, "T_lazor_LCTR") at 0x1088.
+  x1088_ = anim->GetLocatorSegId(rstl::string_l("T_lazor_LCTR"));
+  // 0x18DD8..0x18DE8: the visual knowledge's locator (0xD82, lbz 0x1088 / stb 0xd82) becomes 0x1088.
+  xD80_.SetLocator(x1088_);
+  // 0x18DEC..0x18E5C: its filter (0xD88..0xD98) is rebuilt inline: include 1 << .data 0xE58
+  // (0x3B, kMT_Solid; stfd 0xd88), exclude 1 << 0xE5C | 1 << 0xE60 (0x21 kMT_Character, 0x20
+  // kMT_Player; stfd 0xd90), type 3 (li r0,0x3; stw 0xd98: kFT_IncludeExclude).
+  xD80_.SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_Character, kMT_Player)));
+  // fn_14_137A8 (0x88 bytes): the head's armour model (the retail's constructor calls it
+  // at 0x18E60).
+  x137A8_();
+  mDamageColor = CPatterned::skHitsWithoutDamageColor; // 0x450, stored at 0x18E64..0x18E6C
+
+  // The three 'SCAN' tokens (0x18E70..0x190B4): each id tested against -1 (addis/cmplwi 0xffff),
+  // a 0xC-byte TCachedToken (operator new at 0x18E98) cached at once (GetObj at 0x18EF0).
+  if (data.scannableInfoShieldHead != kInvalidAssetId) { // data +0, 0x18E70
+    xD74_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoShieldHead)), true);
+  }
+  if (data.scannableInfoStunnedHead != kInvalidAssetId) { // data +4, 0x18F38
+    xD78_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoStunnedHead)), true);
+  }
+  if (data.scannableInfoFinalHead != kInvalidAssetId) { // data +8, 0x19000
+    xD7C_ = rs_new TCachedToken< CScannableObjectInfo >(
+        gpSimplePool->GetObj(SObjectTag('SCAN', data.scannableInfoFinalHead)), true);
+  }
 }
 
 CDigitalGuardianHead::~CDigitalGuardianHead() {}
@@ -288,9 +361,9 @@ bool CDigitalGuardianHead::x13284_(const rstl::string& name, const TUniqueId& id
 // at 0x1345C); every collider (the loop at 0x13490) gets the include list's high word | 0x4000000
 // (material 58) first, then a ball the pass-through vulnerability and the exclude bits of .data
 // 0xE64..0xE74 (33, 47, 49, 60, 32), the root the immune-ricochet one and the bits of 0xE78..0xE84
-// (33, 47, 49, 60) and its id at 0xE00; then the knockback resistance .rodata 0x96C (1, the
-// HealthInfo slot at 0x13690). The head's own filter (0x136C0): include .data 0xE88 (59), exclude
-// 0xE8C..0xE9C (33, 32, 47, 49, 60), type 3. __shl2i(0, 1, n) is the 64-bit 1 << n.
+// (33, 47, 49, 60) and its id at 0xE00; then the health (HealthInfo +4, 0x136A8) is .rodata 0x96C
+// (1, the HealthInfo slot at 0x13690). The head's own filter (0x136C0): include .data 0xE88 (59),
+// exclude 0xE8C..0xE9C (33, 32, 47, 49, 60), type 3. __shl2i(0, 1, n) is the 64-bit 1 << n.
 void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(3); // fn_14_D7DC
@@ -333,7 +406,7 @@ void CDigitalGuardianHead::x13318_(CStateManager& mgr) {
       xE00_ = id;
     }
     actor->SetMaterialFilter(filter);
-    actor->HealthInfo()->SetKnockbackResistance(1.f);
+    actor->HealthInfo()->SetHP(1.f); // stfs f0, 0x4(r3) at 0x136A8: +4 is mHealth
   }
   CMaterialList exclude;
   exclude.Add(kMT_Character);
@@ -423,6 +496,8 @@ void CDigitalGuardianHead::x126C8_(CStateManager& mgr, const CVector3f& pos, flo
 }
 
 // fn_14_17D38: the active flag is read before the base's call (0x17D64..0x17D78).
+// The 0xD70-null arms of ACTV/DCTV/XAUD/XDEL are forced (dg26): XCRT builds it first.
+// @ fn_14_17D38
 void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool active = GetActive();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -438,9 +513,9 @@ void CDigitalGuardianHead::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
     if (xD70_ != nullptr) {
       xD70_->Destroy(mgr);
     }
-    StandInFn("fn_14_11EA8 (head XDEL)");
-    StandInFn("fn_14_FAEC (head XDEL)");
-    StandInFn("fn_14_11F7C (head XDEL)");
+    x11EA8_(); // fn_14_11EA8
+    xFAEC_(mgr); // fn_14_FAEC
+    x11F7C_(mgr); // fn_14_11F7C
     break;
   case kSM_Activate: // "ACTV", 0x17E9C
     if (!active && xD70_ != nullptr) {
@@ -661,11 +736,54 @@ int CDigitalGuardianHead::x118B0_(CVector3f* points) const {
   return count;
 }
 
-// fn_14_114C8 needs the visual knowledge's line of sight, which the host never reports yet.
+// fn_14_114C8 (0x1D0 bytes): a point near the 40-unit circle (in x/y) round the player. Each
+// point's score is its squared x/y distance to the player minus 1600 (.rodata 0x9BC), the head's
+// own translation's first (0x114E4..0x11544). `outside` keeps the closest point outside the
+// circle (while its score is still negative: any higher one), `inside` the closest point inside
+// (while its score is still positive: any lower one). Nothing inside: `inside` (the closest
+// outside one); nothing outside: `outside` (the closest inside one); else the two blended where
+// the score crosses 0.
+// Every return ran (area 53, `codecall <head> SetAttackPosition` with the player teleported
+// round the head): the closest outside (far off), the closest inside (on a candidate), the blend
+// (between); the last one forced (the player's x NaN at the entry: every compare false).
+// @ fn_14_114C8
 CVector3f CDigitalGuardianHead::x114C8_(const CVector3f& player, const CVector3f* points,
                                          int count) {
-  StandInFn("fn_14_114C8 (0x1D0, attack point in sight of the player)");
-  return xFEC_;
+  const CVector3f self = GetTranslation(); // 0x54/0x58/0x5C at 0x114E4..0x11510
+  const float selfDx = player.GetX() - self.GetX(); // 0x1150C
+  const float selfDy = player.GetY() - self.GetY(); // 0x114FC
+  // f29, 0x11540/0x11544
+  float outsideScore = 0.f + (selfDx * selfDx + selfDy * selfDy) - 1600.f;
+  float insideScore = outsideScore; // f30
+  CVector3f outside = self;         // f7..f9 (0x11508..0x11528)
+  CVector3f inside = self;          // f4..f6
+  for (int i = 0; i < count; ++i) { // the 0xC stride (0x115E0), the end test at 0x115E4
+    const CVector3f& p = points[i];
+    const float dx = player.GetX() - p.GetX();          // 0x1155C
+    const float dy = player.GetY() - p.GetY();          // 0x11554
+    const float d = 0.f + (dx * dx + dy * dy) - 1600.f; // 0x11564..0x1156C
+    // 0x11570..0x11594
+    if ((d > 0.f && d < outsideScore) || (outsideScore < 0.f && d > outsideScore)) {
+      outsideScore = d; // 0x11598
+      outside = p;      // 0x1159C..0x115A4
+    }
+    // 0x115A8..0x115CC
+    if ((d < 0.f && d > insideScore) || (insideScore > 0.f && d < insideScore)) {
+      insideScore = d; // 0x115D0
+      inside = p;      // 0x115D4..0x115DC
+    }
+  }
+  if (insideScore > 0.f) { // fcmpo/ble at 0x115F4
+    return inside;          // 0x115FC
+  }
+  if (outsideScore < 0.f) { // fcmpo/bge at 0x1160C
+    return outside;         // 0x11614
+  }
+  if (outsideScore > insideScore) { // fcmpo/ble at 0x11624
+    const float t = -insideScore / (outsideScore - insideScore); // 0x1162C..0x1163C
+    return inside * (1.f - t) + outside * t; // .rodata 0x96C, 0x11640..0x11658
+  }
+  return outside; // 0x1166C
 }
 
 // fn_14_F390: the echo targets (0xF30/0xF34) that are gone or inactive (+0x20 bit 0x80), plus
@@ -725,6 +843,11 @@ void CDigitalGuardianHead::xF424_(CStateManager& mgr) {
 // (li r6, 0) at locator 1 times its offset, solid, orbit, target and seeker-target (.data
 // 0xEA4..0xEB0: 59, 41, 40, 63), with the echo-target vulnerability (data +0x454), this head as
 // its owner and the parameter block; its id goes to 0xF34.
+// The arms: the echo target asset id is invalid -> nothing is built, else the three echo targets
+// are built. The run: area 53 (Sanctuary Fortress 09_cliff_temple_dark), 3000 frames; the
+// "invalid" arm was forced (the asset id set to kInvalidAssetId at the entry, tools/cov/force.sh
+// with /tmp/opencode/dgclose_12314.py).
+// @ fn_14_12314
 void CDigitalGuardianHead::x12314_(CStateManager& mgr) {
   xF40_[0] = CTransform4f::RotateX(CRelAngle::FromRadians(1.5707964f));
   xF40_[1] = CTransform4f::RotateX(CRelAngle::FromRadians(-1.5707964f)) *
@@ -806,6 +929,7 @@ void CDigitalGuardianHead::ExtractAntenna(CStateManager& mgr, float) {
 // fn_14_14DA0: every extended or extending echo target starts retracting (fn_14_19DF8 with 2) and
 // ignores damage (+0x78C bit 0x80); bits 0x40 and 0x02 are cleared, the deployment time (0x10F0)
 // becomes data +0x20 and bit 0x04 is set.
+// @ fn_14_14DA0
 void CDigitalGuardianHead::RetractEchoTargets(CStateManager& mgr, float) {
   for (int i = 0; i < xF34_.size(); ++i) {
     CDigitalGuardianEchoTarget* target =
@@ -836,19 +960,35 @@ void CDigitalGuardianHead::AddToRenderer(const CStateManager& mgr) const {
 }
 
 // fn_14_179E0: the pass-through vulnerability.
+// @ fn_14_179E0
 const CDamageVulnerability* CDigitalGuardianHead::GetDamageVulnerability() const {
   return &CDamageVulnerability::PassThroughVulnerabilty();
 }
 
 // fn_14_177C8: while bit 0x08 of 0x10F4 is clear, one of the three 'SCAN' tokens (0x10 set: the
 // final one at 0xD7C, else 0x40 set: the stunned one at 0xD78, else the shield one at 0xD74);
-// otherwise, or with no token, the base's. The tokens are not built yet, so the head's answer is
-// always the base's; the ctor sets 0x08, so that is also retail's answer until the head moves.
+// otherwise, or with no token, the base's. The ctor sets 0x08, so the base's until the head
+// detaches (fn_14_16160 clears it).
+// Every arm ran (area 53, `scaninfo <head>` x180 under gdb attach): bit 0x08 set (the base's,
+// 4BA321EA) naturally; forced: 0x08 clear (the shield's 7D9FAEC7), +0x40 (the stunned
+// AFE327ED), +0x10 (the final A23D895E), and each token nulled in its own arm (the base's
+// again, three times).
+// @ fn_14_177C8
 CScannableObjectInfo* CDigitalGuardianHead::GetScannableObjectInfo() const {
-  if ((x10F4_ & 0x08) == 0) {
-    StandInFn("fn_14_177C8 'SCAN' tokens (0xD74..0xD7C)");
+  if ((x10F4_ & 0x08) == 0) {       // extrwi. 1, 28 / bne at 0x177D8
+    if ((x10F4_ & 0x10) != 0) {     // 0x177E0
+      if (xD7C_.get() != nullptr) { // cmplwi 0 / beq at 0x177EC
+        return xD7C_->GetObject();  // the cached object (+8) at 0x177F4
+      }
+    } else if ((x10F4_ & 0x40) != 0) { // 0x177FC
+      if (xD78_.get() != nullptr) {    // cmplwi 0 / beq at 0x17808
+        return xD78_->GetObject();     // 0x17810
+      }
+    } else if (xD74_.get() != nullptr) { // cmplwi 0 / beq at 0x1781C
+      return xD74_->GetObject();         // 0x17824
+    }
   }
-  return CPatterned::GetScannableObjectInfo();
+  return CPatterned::GetScannableObjectInfo(); // 0x1782C
 }
 
 // fn_14_17468: the base's setup, then the triggers (20 = 0x14), the states (17 = 0x11) and the
@@ -882,6 +1022,10 @@ bool CDigitalGuardianHead::MainBodyDestroyed(CStateManager& mgr, const CTriggerD
 }
 
 // fn_14_173CC: attack mode 0 or 1 and the projectile timer (0x10D4) at most 0 (.rodata 0x960).
+// The arms: modes 0 and 1 run in every area-53 fight; the other modes' false was forced
+// (tools/cov/force.sh, xFE8_ = 2 at the entry from hit 41, 1911 hits), as SetVortexAttackMode
+// sets it while the head's triggers are not asked.
+// @ fn_14_173CC
 bool CDigitalGuardianHead::ShouldProjectileAttack(CStateManager& mgr,
                                                   const CTriggerData& data) const {
   if (xFE8_ == 0 || xFE8_ == 1) {
@@ -891,12 +1035,17 @@ bool CDigitalGuardianHead::ShouldProjectileAttack(CStateManager& mgr,
 }
 
 // fn_14_173B8: the burst count (0x10D8, a word: cntlzw/rlwnm) at most 0.
+// cntlzw; li 1; rlwnm 31,31 is 1 when the count is 0 or 32 (x < 0 or x == 0), i.e. x <= 0;
+// asmcheck's XCMP there is a false positive.
+// @ fn_14_173B8
 bool CDigitalGuardianHead::IsBurstOver(CStateManager& mgr, const CTriggerData& data) const {
   return x10D8_ <= 0;
 }
 
 // fn_14_173AC: bit 0x80 of 0x10F4 (extrwi 1, 24).
-// Unmarked: run 37 entered Idle (0x10F4 0x88) but no trigger read IsIdle there; true never ran.
+// No branch: the extrwi result is returned. Runs 410-413 (forced `fsm <body> VortexAttack`) read
+// it with the bit set; earlier runs read it clear.
+// @ fn_14_173AC
 bool CDigitalGuardianHead::IsIdle(CStateManager& mgr, const CTriggerData& data) const {
   return (x10F4_ & 0x80) != 0;
 }
@@ -914,11 +1063,13 @@ bool CDigitalGuardianHead::IsGuarding(CStateManager& mgr, const CTriggerData& da
 }
 
 // fn_14_17370: the projectile attack (0x10D0) is 3.
+// @ fn_14_17370
 bool CDigitalGuardianHead::UseMachineGun(CStateManager& mgr, const CTriggerData& data) const {
   return x10D0_ == 3;
 }
 
 // fn_14_1735C: the projectile attack (0x10D0) is 2.
+// @ fn_14_1735C
 bool CDigitalGuardianHead::UseLockOnMissiles(CStateManager& mgr, const CTriggerData& data) const {
   return x10D0_ == 2;
 }
@@ -931,6 +1082,7 @@ bool CDigitalGuardianHead::UseAnnihilatorPulse(CStateManager& mgr,
 }
 
 // fn_14_17338: the projectile attack (0x10D0) is 1.
+// @ fn_14_17338
 bool CDigitalGuardianHead::UseAnnihilatorCharge(CStateManager& mgr,
                                                 const CTriggerData& data) const {
   return x10D0_ == 1;
@@ -938,6 +1090,7 @@ bool CDigitalGuardianHead::UseAnnihilatorCharge(CStateManager& mgr,
 
 // fn_14_17298: no splitter command module or main chassis in the object list (retail walks the
 // list at state manager +0x830, its first dynamic list, which holds every object).
+// @ fn_14_17298
 bool CDigitalGuardianHead::AllSplittersDead(CStateManager& mgr, const CTriggerData& data) const {
   CObjectList& list = mgr.ObjectListById(kOL_All);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -958,6 +1111,7 @@ bool CDigitalGuardianHead::HeadArmorDestroyed(CStateManager& mgr, const CTrigger
 }
 
 // fn_14_17244: the body's fn_14_70B4; with no body the answer is false (li r3, 0 at 0x17278).
+// @ fn_14_17244
 bool CDigitalGuardianHead::IsAntennaTransmitting(CStateManager& mgr,
                                                  const CTriggerData& data) const {
   if (const CDigitalGuardian* body = TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_))) {
@@ -984,6 +1138,8 @@ bool CDigitalGuardianHead::EchoTargetDestroyed(CStateManager& mgr,
 }
 
 // fn_14_171D8: the echo targets left (0xFE0, a word) at most 0.
+// The cntlzw/rlwnm idiom (see 173B8) gives 1 for x <= 0; asmcheck's XCMP is a false positive.
+// @ fn_14_171D8
 bool CDigitalGuardianHead::AllEchoTargetsDestroyed(CStateManager& mgr,
                                                    const CTriggerData& data) const {
   return xFE0_ <= 0;
@@ -996,12 +1152,14 @@ bool CDigitalGuardianHead::ShouldRetreat(CStateManager& mgr, const CTriggerData&
 }
 
 // fn_14_17198: the id at 0x103A is set.
+// subf/subf/or/srwi 31: a sign test of (id - 0xFFFF) | (0xFFFF - id), i.e. id != 0xFFFF.
+// @ fn_14_17198
 bool CDigitalGuardianHead::BombPitDestroyed(CStateManager& mgr, const CTriggerData& data) const {
   return x103A_ != kInvalidUniqueId;
 }
 
 // fn_14_17184: the lives left (0x10E4, a word) at most 0.
-// Unmarked: true never ran; no fight with the probes has reached the head's death yet.
+// @ fn_14_17184
 bool CDigitalGuardianHead::IsDead(CStateManager& mgr, const CTriggerData& data) const {
   return x10E4_ <= 0;
 }
@@ -1197,20 +1355,897 @@ void CDigitalGuardianHead::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   MassiveDeath(mgr);
 }
 
-#define DGHD_STATE_STANDIN(name, fn)                                                               \
-  void CDigitalGuardianHead::name(CStateManager& mgr, EStateMsg msg, float dt) {                   \
-    StandInFn(#fn " (head state " #name ")");                                                      \
+// fn_14_16D64: the annihilator pulse. The cmpwi chain at 0x16D88..0x16DB0 picks the message.
+// Activate (0): Ready (0x6B4 = 1, 0x16DBC), flag 0x20 (rlwimi at 0x16DC8), the turn direction
+// from fn_14_13B38 (0x16DD0, stores 0x16DD8..0x16DE8) and one burst fewer (0x10D8 - 1, 0x16DF4).
+// Update (1): when a projectile attack can be issued (CanIssueCommand with 0x12, 0x16E08) it is
+// sent (DeliverCmd 6 at 0x16E80): severity 0 (li r0 0 at 0x16E18), the target the head's position
+// (0x54..0x5C) plus its Y column (0x28/0x38/0x48), no blend (stb 0 at 0x16E7C); then the head
+// turns either way (fn_14_11D64 at 0x16ED8). Deactivate (2): NotReady (0x16EE4); while the body
+// is in the projectile attack (0x37C == 0x12, 0x16EF0) it is aborted (0xD, DeliverCmd at 0x16F14);
+// flag 0x20 clears (0x16F2C) and the turn direction is sZeroVector (0x16F38..0x16F4C).
+// Every arm ran (dg22_gun2: uevents and statecalls 0/1/2, in and out of the projectile attack).
+// @ fn_14_16D64
+void CDigitalGuardianHead::PulseAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x16DBC
+    x10F4_ |= 0x20;                                        // 0x16DC8
+    x1028_ = x13B38_();                                    // 0x16DD0
+    x10D8_ -= 1;                                           // 0x16DF4
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_Zero, GetTranslation() + GetTransform().GetColumn(kDY), false)); // 0x16E80
+    }
+    x11D64_(mgr, dt); // 0x16ED8
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16EE4
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x16EF0
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x16F14
+    }
+    x10F4_ &= ~0x20;            // 0x16F2C
+    x1028_ = CVector3f::Zero(); // 0x16F38..0x16F4C
+    break;
+  default:
+    break;
   }
-DGHD_STATE_STANDIN(ProjectileTelegraph, fn_14_16F74)
-DGHD_STATE_STANDIN(PulseAttack, fn_14_16D64)
-DGHD_STATE_STANDIN(ChargeAttack, fn_14_16A50)
-DGHD_STATE_STANDIN(MissileAttack, fn_14_167EC)
-DGHD_STATE_STANDIN(MachineGunAttack, fn_14_16408)
-DGHD_STATE_STANDIN(AttachedToBody, fn_14_1633C)
-DGHD_STATE_STANDIN(BombedReaction, fn_14_15CE8)
-DGHD_STATE_STANDIN(SeekMotionPath, fn_14_158F8)
-DGHD_STATE_STANDIN(FollowRetreatPath, fn_14_1569C)
-#undef DGHD_STATE_STANDIN
+}
+
+// fn_14_167EC: the lock-on missiles. PulseAttack's body without the burst count (the cmpwi chain
+// at 0x16810..0x16838): Activate (0) Ready (0x16844), flag 0x20 (0x16850), the turn direction from
+// fn_14_13B38 (0x16858, stores 0x16860..0x16870); Update (1) the projectile attack
+// (CanIssueCommand with 0x12 at 0x16884, DeliverCmd 6 at 0x16900) with severity 1 (li r5 1 at
+// 0x168BC), then the turn (fn_14_11D64 at 0x16958); Deactivate (2) NotReady (0x16964), the abort
+// while the body is in state 0x12 (0x16970, DeliverCmd 0xD at 0x16994), flag 0x20 cleared
+// (0x169AC) and the turn direction zeroed (0x169B8..0x169CC).
+// Every arm ran (dg22_gun2: statecalls 0/1/2, in and out of the projectile attack).
+// @ fn_14_167EC
+void CDigitalGuardianHead::MissileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x16844
+    x10F4_ |= 0x20;                                        // 0x16850
+    x1028_ = x13B38_();                                    // 0x16858
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_One, GetTranslation() + GetTransform().GetColumn(kDY), false)); // 0x16900
+    }
+    x11D64_(mgr, dt); // 0x16958
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16964
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x16970
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x16994
+    }
+    x10F4_ &= ~0x20;            // 0x169AC
+    x1028_ = CVector3f::Zero(); // 0x169B8..0x169CC
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_16408: the machine gun (the cmpwi chain at 0x1642C..0x16454). Activate (0): Ready
+// (0x16468); the side is 1 when CRandom16::Range(0.0f, 100.0f) (.rodata 0x960/0x978, 0x16478)
+// is at most 50.0f (.rodata 0x9C4; fcmpo/cror at 0x16484..0x1648C), else 0 (0x1649C); the sweep's
+// ends for it (fn_14_10798 at 0x164AC); phase 0 (0x164C0), its time 0.0f (0x164CC), the next
+// bullet in machineGunFireTime (data +0x24C, 0x164D4); the turn direction toward the sweep's start
+// from the head's position (fn_14_11C08 at 0x16520); flag 0x20 (rlwimi at 0x16544).
+// Update (1): the phase time grows by dt (0x16554), then by phase (the cmpwi chain at 0x16560):
+// 0 (charge): from machineGunChargeDuration (data +0x248; fcmpo/bge at 0x16580) phase 1 starts at
+// 0.0f (0x16628/0x16630); before it the sweep's ends follow the player (fn_14_10798 at 0x1658C) and
+// the head aims at the start from the locator (0x10A4, GetLctrTransform at 0x1659C; fn_14_11C08
+// at 0x16600). 1 (sweep): from machineGunSweepDuration (data +0x244; fcmpo/bge at 0x16640) the
+// state is Over (0x16754); before it the aim moves from start to end by t = time / duration
+// (fdivs at 0x1667C, a (1 - t) + b t) seen from the locator (0x16654; fn_14_11C08 at 0x166F4), and
+// the bullet timer counts down (0x1671C); at most 0.0f (fcmpo/cror at 0x16728) it is reset to the
+// fire time (0x16744) and a bullet goes along the aim (fn_14_101E0 at 0x16748). Any other phase
+// does nothing. Deactivate (2): NotReady (0x16760), the abort while the body is in state 0x12
+// (0x1676C, DeliverCmd 0xD at 0x16790), flag 0x20 cleared (0x167A8), the turn direction zeroed
+// (0x167B4..0x167C8).
+// Every arm ran (dg22_gun2: both sides, phases 0/1/other, sweep end, bullet timer).
+// @ fn_14_16408
+void CDigitalGuardianHead::MachineGunAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);           // 0x16468
+    x10C0_ = mgr.Random()->Range(0.f, 100.f) <= 50.f ? 1 : 0;       // 0x16478..0x1649C
+    x10798_(mgr, x10C0_);                                           // 0x164AC
+    x10C4_ = 0;                                                     // 0x164C0
+    x10C8_ = 0.f;                                                   // 0x164CC
+    x10CC_ = mData.machineGunFireTime;                              // 0x164D4
+    x1028_ = x11C08_(x10A8_ - GetTranslation());                    // 0x16520
+    x10F4_ |= 0x20;                                                 // 0x16544
+    break;
+  case kStateMsg_Update:
+    x10C8_ += dt; // 0x16554
+    switch (x10C4_) {
+    case 0:
+      if (x10C8_ >= mData.machineGunChargeDuration) { // 0x16580
+        x10C4_ = 1;                                   // 0x16628
+        x10C8_ = 0.f;                                 // 0x16630
+      } else {
+        x10798_(mgr, x10C0_); // 0x1658C
+        x1028_ = x11C08_(x10A8_ - GetLctrTransform(x10A4_).GetTranslation()); // 0x16600
+      }
+      break;
+    case 1:
+      if (x10C8_ >= mData.machineGunSweepDuration) {           // 0x16640
+        mAnimationState.SetState(CAnimationState::kAS_Over); // 0x16754
+      } else {
+        const CVector3f from = GetLctrTransform(x10A4_).GetTranslation(); // 0x16654
+        const float t = x10C8_ / mData.machineGunSweepDuration;          // 0x1667C
+        x1028_ = x11C08_(x10A8_ * (1.f - t) + x10B4_ * t - from);        // 0x166F4
+        x10CC_ -= dt;                                                    // 0x1671C
+        if (x10CC_ <= 0.f) {                                             // 0x16728
+          x10CC_ = mData.machineGunFireTime;                             // 0x16744
+          x101E0_(mgr, x1028_);                                          // 0x16748
+        }
+      }
+      break;
+    default:
+      break;
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16760
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x1676C
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x16790
+    }
+    x10F4_ &= ~0x20;            // 0x167A8
+    x1028_ = CVector3f::Zero(); // 0x167B4..0x167C8
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_10798: the machine gun's sweep. From the player's aim position now (vtable 0x54 with
+// 0.0f, 0x1084C) and in half the sweep's duration (0.5f, .rodata 0x9A0, times data +0x244; 0x10890)
+// the centre is 0.5f * (((later + the player's position) - now) + later) (0x108A4..0x108E8). The
+// side axis is (c.y - o.y, -(c.x - o.x), 0.0f) from the gun's locator o (0x10A4, GetLctrTransform
+// at 0x10810; stores 0x108D0..0x108FC) normalised when safe (IsMagnitudeSafe at 0x10900,
+// AsNormalized at 0x10914), else the head's X column (0x24/0x34/0x44, 0x10920); times
+// machineGunHalfSweepDist (data +0x240, 0x1093C) and negated for side 1 (cmpwi/bne at 0x10940).
+// The start is the centre minus it, the end the centre plus it (0x109A8..0x109C8).
+// Every arm ran (dg22_gun2; the X-column fallback forced (force.sh, locator invalid)).
+// @ fn_14_10798
+void CDigitalGuardianHead::x10798_(CStateManager& mgr, int side) {
+  const CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f o = GetLctrTransform(x10A4_).GetTranslation();             // 0x10810
+  const CVector3f now = player.GetAimPosition(mgr, 0.f);                       // 0x1084C
+  const CVector3f later = player.GetAimPosition(mgr, 0.5f * mData.machineGunSweepDuration); // 0x10890
+  const CVector3f centre = 0.5f * (((later + player.GetTranslation()) - now) + later); // 0x108A4
+  const CVector3f axis(centre.GetY() - o.GetY(), -(centre.GetX() - o.GetX()), 0.f); // 0x108D0
+  const CVector3f dir = axis.IsMagnitudeSafe() ? axis.AsNormalized()                 // 0x10900
+                                               : GetTransform().GetColumn(kDX);       // 0x10920
+  CVector3f offset = mData.machineGunHalfSweepDist * dir; // 0x1093C
+  if (side == 1) {                                        // 0x10940
+    offset = -offset;
+  }
+  x10A8_ = centre - offset; // 0x109A8..0x109B0
+  x10B4_ = centre + offset; // 0x109B4..0x109C8
+}
+
+// fn_14_101E0: one machine-gun bullet. Only with the gun's weapon cached (0xE7C; 0x1020C..0x10258)
+// and room for one more kWT_AI projectile (CanCreateProjectile with 0xB and 0x40, 0x1027C). LookAt
+// from the gun's locator (0x10A4, GetLctrTransform at 0x10294) along dir (0x102E8). The 0x568-byte
+// CEnergyProjectile (operator new at 0x10310, ctor at 0x103E0) is fn_14_10A2C's with the gun's
+// weapon (0xE7C) and damage (0xE88): kWT_AI (li r6 0xB), material 0x21 (li r8), homing on the
+// player, no visor effect (fn_14_1047C), false, true, false, 1.0f, 4.0f, 4.0f (.rodata
+// 0x96C/0x998). When built it is added (AddObject at 0x1040C) and sound_MachineGun (data +0x228)
+// plays at the shot's position along its Y column, not looped (PlayCustomSound at 0x10458).
+// Every arm ran (dg22_gun2 incl. CanCreate false; TryCache false forced (force.sh)).
+// @ fn_14_101E0
+void CDigitalGuardianHead::x101E0_(CStateManager& mgr, const CVector3f& dir) {
+  if (!xE7C_.Token().TryCache()) { // 0x1020C..0x10258
+    return;
+  }
+  if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 64)) { // 0x1027C
+    return;
+  }
+  const CVector3f pos = GetLctrTransform(x10A4_).GetTranslation();             // 0x10294
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up()); // 0x102E8
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, xE7C_.Token(), kWT_AI, xf, kMT_Character, xE7C_.GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), 0, false,
+      CVector3f::One(), CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f); // 0x103E0
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (projectile != nullptr) {
+    mgr.AddObject(projectile);                                                       // 0x1040C
+    PlayCustomSound(xf.GetTranslation(), xf.GetColumn(kDY), mData.sound_MachineGun, false); // 0x10458
+  }
+}
+
+// fn_14_1633C: the head rides the body (the cmpwi chain at 0x16344..0x16360). Activate (0):
+// relaxed locomotion (li r4 1, SetLocomotionType at 0x16370), the turn direction from fn_14_13B38
+// (0x1637C, stores 0x16388..0x16398) and flag 0x08 (rlwimi r0,r3,3,28,28 at 0x163A0). Update (1):
+// the head turns (fn_14_11D64 at 0x163AC), then the turn direction is flattened (z 0.0f, .rodata
+// 0x960) when that is safe (IsMagnitudeSafe at 0x163D0, beq at 0x163D8; stores 0x163E0..0x163F0),
+// not normalised. Deactivate (2) and any other message do nothing.
+// @ fn_14_1633C
+void CDigitalGuardianHead::AttachedToBody(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x16370
+    x1028_ = x13B38_();                                     // 0x1637C
+    x10F4_ |= 0x08;                                         // 0x163A0
+    break;
+  case kStateMsg_Update: {
+    x11D64_(mgr, dt); // 0x163AC
+    const CVector3f flat(x1028_.GetX(), x1028_.GetY(), 0.f); // .rodata 0x960, 0x163C4..0x163CC
+    if (flat.IsMagnitudeSafe()) {                            // 0x163D0
+      x1028_ = flat;                                         // 0x163E0..0x163F0
+    }
+    break;
+  }
+  default:
+    break;
+  }
+}
+
+// fn_14_15CE8: the bomb's knock-back (the cmpwi chain at 0x15CF0..0x15D18). Activate (0): Ready
+// (0x6B4 = 1, 0x15D24). Update (1): when a knock-back may be issued (CanIssueCommand with 6 =
+// kAS_KnockBack, 0x15D38) one is sent (DeliverCmd 4 at 0x15DA4) along the Y column
+// (0x28/0x38/0x48) with severity 2 (li r6 2 at 0x15D64), no anim (-1) and no restart (stb 0).
+// Deactivate (2): NotReady (0x6B4 = 0, 0x15E00). Messages 3+ do nothing (bge at 0x15D18).
+// @ fn_14_15CE8
+void CDigitalGuardianHead::BombedReaction(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x15D24
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_KnockBack)) { // 0x15D38
+      BodyController()->CommandMgr().DeliverCmd(
+          CBCKnockBackCmd(GetTransform().GetColumn(kDY), pas::kS_Two)); // 0x15DA4
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x15E00
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_158F8: the head flies to the retreat platform (0x1038) and lines up with it (the cmpwi
+// chain at 0x1592C..0x1594C). Activate (0): Ready (0x6B4 = 1, 0x1595C); with the platform
+// (ObjectById at 0x1596C, TCastToPtr<CScriptPlatform> at 0x15970, null test 0x15978) and a speed
+// above 1.1920929e-07f (.rodata 0x9E4; data +0x1C maxStunnedLinearVelocity at 0x7DC; fcmpo/ble at
+// 0x159D0, so a NaN speed goes on) the turn speed (SetTurnSpeed at 0x15A30) is
+// 1.1f (.rodata 0x9E8) * 57.295776f (.rodata 0x9EC) * the angle between the head's Y column and the
+// platform's (GetAngleDiff at 0x159F8) over the flight time |platform - head| / speed (Magnitude at
+// 0x15A04, fdivs at 0x15A14 / 0x15A2C). Update (1): with the platform (0x15A48..0x15A54) the step
+// is speed * dt; when it reaches the platform (fcmpo/bge at 0x15AB0) the state is Over (0x15B14)
+// and the head is put on it (SetTranslation at 0x15B1C), else it moves one step toward it in its
+// own frame (AsNormalized 0x15AC0, TransposeRotate 0x15AF4, MoveInOneFrameOR 0x15B04); then it
+// faces the platform's Y column (FaceDirection at 0x15B44). Deactivate (2): NotReady (0x15B50)
+// and the turn speed back to the ctor's (0xFE4, SetTurnSpeed at 0x15B5C).
+// @ fn_14_158F8
+void CDigitalGuardianHead::SeekMotionPath(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate: {
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x1595C
+    const CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_)); // 0x15970
+    if (plat == nullptr) {
+      break;
+    }
+    const float speed = mData.maxStunnedLinearVelocity; // 0x7DC
+    if (!(speed <= 1.1920929e-07f)) {                   // 0x159D0..0x159D4
+      const CVector3f delta = plat->GetTranslation() - GetTranslation(); // 0x159D8..0x159F4
+      const float angle = CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY),
+                                                  plat->GetTransform().GetColumn(kDY)); // 0x159F8
+      const float time = delta.Magnitude() / speed;                                   // 0x15A14
+      BodyController()->SetTurnSpeed(1.1f * (57.295776f * angle) / time);             // 0x15A30
+    }
+    break;
+  }
+  case kStateMsg_Update: {
+    const CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_)); // 0x15A4C
+    if (plat == nullptr) {
+      break;
+    }
+    const CTransform4f xf = plat->GetTransform(); // 0x15A6C
+    const CVector3f delta = xf.GetTranslation() - GetTranslation();
+    const float step = mData.maxStunnedLinearVelocity * dt; // 0x15AA8
+    if (step >= delta.Magnitude()) {                        // 0x15AB0..0x15AB4
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15B14
+      SetTranslation(xf.GetTranslation());                 // 0x15B1C
+    } else {
+      MoveInOneFrameOR(GetTransform().TransposeRotate(delta.AsNormalized() * step), dt); // 0x15B04
+    }
+    BodyController()->FaceDirection(xf.GetColumn(kDY), dt); // 0x15B44
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x15B50
+    BodyController()->SetTurnSpeed(xFE4_);                    // 0x15B5C
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_16A50: the state message picks the work (the cmpwi chain at 0x16A74..0x16A9C).
+// Activate (0): ready (0x6B4 = 1, 0x16AA8), flag 0x20 (the rlwimi at 0x16AB4) and the turn
+// direction from fn_14_13B38 (0x16ABC, stores 0x16AC4..0x16AD4). Update (1): when a projectile
+// attack can be issued (ShouldRetry with 0x12 = kAS_ProjectileAttack, 0x16AE8) it is sent
+// (DeliverCmd 6 at 0x16B64): severity 2 (0x16B20), the target the head's position (0x54..0x5C)
+// plus its transform's Y column (0x28, 0x38, 0x48), no blend (0x16B60). Otherwise with no lasers
+// (0x107C == 0, 0x16BBC) the sweep starts (fn_14_FB70, 0x16BC8), else the lasers move
+// (fn_14_F6A4, 0x16BDC). Then the head turns (fn_14_11D64, 0x16BEC).
+// Deactivate (2): not ready (0x6B4 = 0, 0x16CB0); while the body is in the projectile attack
+// (0x37C == 0x12, 0x16CBC) it is aborted (command 0xD = kBSC_AbortScripted, 0x16CC8, 0x16CE0);
+// the lasers go (fn_14_FAEC, 0x16CF8), flag 0x20 clears (0x16D04) and the turn direction is the
+// zero vector (0x16D18..0x16D2C).
+// The player's lock-on ring (CPlayer +0x14C4 id, +0x14C6 count): after the turn on Update
+// (0x16BF0..0x16C8C), unless flag 0x01 (clrlwi. 31 / bne at 0x16BF8..0x16BFC), the count is
+// 3.0f (.rodata 0x9F0) times v = 1.0f - (0x1094 - 1.0f) / (0x1090 - 1.0f) (.rodata 0x96C,
+// 0x16C08..0x16C20), v kept only when 1.0f >= v (fcmpo/bge at 0x16C24, so a NaN v is 1.0f) and
+// raised to 0.0f when 0.0f >= v (0x16C44), truncated (fctiwz at 0x16C5C), at most 3 (cmpwi/bgt at
+// 0x16C68) and at least 1 (cmpwi/ble at 0x16C74), with the head's id (0x16C84/0x16C8C). With flag
+// 0x01 (0x16C94..0x16CA4) and on Deactivate (0x16D30..0x16D3C) the count is 0 and the id invalid.
+// Every arm ran, msg 3 being the unhandled one (tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_16A50
+void CDigitalGuardianHead::ChargeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x16AA8
+    x10F4_ |= 0x20;                                        // 0x16AB4
+    x1028_ = x13B38_();                                    // 0x16ABC
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), pas::kAS_ProjectileAttack)) {
+      BodyController()->CommandMgr().DeliverCmd(CBCProjectileAttackCmd(
+          pas::kS_Two, GetTranslation() + GetTransform().GetColumn(kDY), false)); // 0x16B64
+    } else if (x107C_.empty()) { // 0x16BB8
+      xFB70_(mgr);               // 0x16BC8
+    } else {
+      xF6A4_(mgr, dt); // 0x16BDC
+    }
+    x11D64_(mgr, dt); // 0x16BEC
+    if ((x10F4_ & 0x01) == 0) { // 0x16BF8
+      float v = 1.f - (x1094_ - 1.f) / (x1090_ - 1.f); // 0x16C08..0x16C20
+      v = 1.f >= v ? v : 1.f;                          // 0x16C24
+      v = 0.f >= v ? 0.f : v;                          // 0x16C44
+      int count = static_cast< int >(3.f * v);         // .rodata 0x9F0, 0x16C5C
+      if (count > 3) {                                 // 0x16C68
+        count = 3;
+      }
+      if (count <= 1) { // 0x16C74
+        count = 1;
+      }
+      mgr.GetPlayer(0)->SetEnemyLockOn(GetUniqueId(), static_cast< char >(count)); // 0x16C84
+    } else {
+      mgr.GetPlayer(0)->SetEnemyLockOn(kInvalidUniqueId, 0); // 0x16C9C..0x16CA4
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x16CB0
+    if (BodyController()->GetCurrentStateId() == pas::kAS_ProjectileAttack) { // 0x16CBC
+      BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AbortScripted)); // 0x16CE0
+    }
+    xFAEC_(mgr);                    // 0x16CF8
+    x10F4_ &= ~0x20;                // 0x16D04
+    x1028_ = CVector3f::Zero();     // 0x16D18..0x16D2C
+    mgr.GetPlayer(0)->SetEnemyLockOn(kInvalidUniqueId, 0); // 0x16D30..0x16D3C
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_FAEC: every laser id (0x1080, count 0x107C; the loop at 0xFB1C..0xFB44) is deleted
+// (DeleteObjectRequest at 0xFB2C) and the count is 0 (0xFB4C).
+// Every arm ran (the XDEL, a sweep's start and Deactivate; tools/cov/specs/digitalguardian_charge.con).
+// @ fn_14_FAEC
+void CDigitalGuardianHead::xFAEC_(CStateManager& mgr) {
+  for (int i = 0; i < x107C_.size(); ++i) {
+    mgr.DeleteObjectRequest(x107C_[i]);
+  }
+  x107C_.clear();
+}
+
+// fn_14_17BBC: a projectile event (type 0, the beq at 0x17BF4) never reaches the base: by the
+// projectile attack at 0x10D0 (the cmpwi chain at 0x17C00..0x17C1C) the pulse fires (0,
+// fn_14_111E0 at 0x17C28), the charge's shot fires and its lasers reset (1, fn_14_10CA0 at
+// 0x17C34 and fn_14_FA50 at 0x17C40) or the missiles fire (2, fn_14_10A2C at 0x17C4C); any other
+// attack does nothing, and the event is handled either way (li 1 at 0x17C50). Every other event
+// goes to CPatterned::DoUserAnimEvent (0x17C70). Each spawner gets the node's locator name (node
+// +0x30, the addi r5 at 0x17C24/0x17C30/0x17C48).
+// Every arm ran (each attack, an unknown one and another event;
+// tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_17BBC
+void CDigitalGuardianHead::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
+                                           EUserEventType type, float dt) {
+  if (type != kUE_Projectile) {
+    CPatterned::DoUserAnimEvent(mgr, node, type, dt);
+    return;
+  }
+  switch (x10D0_) {
+  case 0:
+    x111E0_(mgr, node.GetLocatorName()); // 0x17C28
+    break;
+  case 1:
+    x10CA0_(mgr, node.GetLocatorName()); // 0x17C34
+    xFA50_(mgr);                         // 0x17C40
+    break;
+  case 2:
+    x10A2C_(mgr, node.GetLocatorName()); // 0x17C4C
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_FA50: each laser found (the ids at 0x1080, count 0x107C; the loop at 0xFA80..0xFAC8;
+// ObjectById at 0xFA90, the null test at 0xFA94) resets (vtable 0x90, ResetBeam with false;
+// 0xFAB0). The ids stay.
+// Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
+// Every arm ran (lasers found, one deleted, none; tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_FA50
+void CDigitalGuardianHead::xFA50_(CStateManager& mgr) {
+  for (int i = 0; i < x107C_.size(); ++i) {
+    if (CPlasmaProjectile* laser = TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(x107C_[i]))) {
+      laser->ResetBeam(mgr, false);
+    }
+  }
+}
+
+// fn_14_111E0: the annihilator pulse, fired from the event's locator (GetLctrTransform at
+// 0x1120C) at the player's aim position (vtable 0x54 with 0.0f, .rodata 0x960; 0x1124C). The
+// direction's horizontal part (z 0.0f, 0x11298) normalised, or the head's facing (fn_14_13B38,
+// 0x112C4) when it is not safe (0x112A4), is the reference; a direction more than 0.9599311f
+// (.rodata 0x9B8) from it (fcmpo/ble at 0x112FC, so a NaN angle keeps it) is the reference slerped
+// toward the normalised direction by that angle (0x11320). LookAt from the locator along it
+// (0x11380). No cache or projectile-count test. The 0x568-byte CEnergyProjectile (ctor at 0x11478):
+// active (li r4 1), the pulse's weapon (0xE04), kWT_AI (li r6 0xB), material 0x21 (kMT_Character,
+// li r8), the pulse's damage (0xE10), a new id (0x113F0), the head's area (0x4) and id (0x8), the
+// player as homing target (0x113CC), attributes 0, not underwater, scale one (sOneVector), no
+// visor effect (fn_14_1047C), then false, true, false and 1.0f, 4.0f, 4.0f (.rodata 0x96C/0x998);
+// added when built (0x11494, AddObject at 0x114A4).
+// Every arm ran: the head on the player (place ... player 0) takes the unsafe horizontal part and
+// the slerp (tools/cov/specs/digitalguardian_shots.con).
+// @ fn_14_111E0
+void CDigitalGuardianHead::x111E0_(CStateManager& mgr, const rstl::string& locator) {
+  const CVector3f pos = GetLctrTransform(locator).GetTranslation();
+  const CPlayer& player = *mgr.GetPlayer(0);
+  CVector3f dir = player.GetAimPosition(mgr, 0.f) - pos;
+  const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
+  const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
+  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) {
+    dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
+  }
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, xE04_.Token(), kWT_AI, xf, kMT_Character, xE04_.GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), player.GetUniqueId(), 0, false, CVector3f::One(),
+      CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (projectile != nullptr) {
+    mgr.AddObject(projectile);
+  }
+}
+
+// The charge shot's projectile (guessed name; vtable lbl_14_data_1034, 0x568 bytes like its base,
+// no members of its own). Slots after the RTTI pair: 2 dtor fn_14_1AAC4 (the base dtors only:
+// fn_14_19908/1998C are the module's copies of ~CEnergyProjectile/~CGameProjectile), 5 Think
+// fn_14_19784, 15 GetHealthInfo fn_14_10C (the CActor inline, HealthInfo through slot 14), 38
+// GetImpactParticle fn_14_1AB24 (an empty optional), 39 GetExplosionNormal fn_14_1AB30
+// (sUpVector). Every other slot is a base symbol. Only Think differs from CEnergyProjectile.
+namespace {
+class CGuardianProjectile : public CEnergyProjectile {
+public:
+  CGuardianProjectile(bool active, const TToken< CWeaponDescription >& description,
+                      EWeaponType type, const CTransform4f& xf, EMaterialTypes excludeMaterial,
+                      const CDamageInfo& damage, TUniqueId uid, TAreaId areaId, TUniqueId owner,
+                      TUniqueId homingTarget, uint attribs, bool underwater,
+                      const CVector3f& scale, const CImpactVisorEffect& visorEffect);
+  void Think(float dt, CStateManager& mgr) override;
+};
+
+// fn_14_19838: the CEnergyProjectile ctor (0x198E0) with the caller's arguments and then false
+// (li r12 0, stw 0x24 at 0x198D4), true (li r0 1, stw 0x28 at 0x198D8), false (stw 0x2C at
+// 0x198DC), 1.0f (.rodata 0x96C) and 4.0f, 4.0f (.rodata 0x998, f2/f3); then the vtable
+// lbl_14_data_1034 (0x198F0).
+// @ fn_14_19838
+CGuardianProjectile::CGuardianProjectile(bool active,
+                                         const TToken< CWeaponDescription >& description,
+                                         EWeaponType type, const CTransform4f& xf,
+                                         EMaterialTypes excludeMaterial, const CDamageInfo& damage,
+                                         TUniqueId uid, TAreaId areaId, TUniqueId owner,
+                                         TUniqueId homingTarget, uint attribs, bool underwater,
+                                         const CVector3f& scale,
+                                         const CImpactVisorEffect& visorEffect)
+: CEnergyProjectile(active, description, type, xf, excludeMaterial, damage, uid, areaId, owner,
+                    homingTarget, attribs, underwater, scale, visorEffect, false, true, false,
+                    1.f, 4.f, 4.f) {}
+
+// fn_14_19784 (slot 5, Think): a homing target (+0x3F0, read at 0x197AC) that is the player
+// (TCastToPtr at 0x197C0, null test 0x197C8) in the morph ball (spawned state +0x390 == 0 at
+// 0x197D4, then the transition state +0x38C; == 1 at 0x197E4) with the boost shield up
+// (+0x1174, IsBoostShieldActive at 0x197F0, beq at 0x197F8) is dropped: kInvalidUniqueId stored
+// at 0x19808. Then CEnergyProjectile::Think (0x19818).
+// @ fn_14_19784
+void CGuardianProjectile::Think(float dt, CStateManager& mgr) {
+  if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mHomingTargetId))) {
+    const CPlayer::EPlayerMorphBallState morph =
+        player->GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+            ? player->GetMorphballTransitionState()
+            : CPlayer::kMS_Unmorphed;
+    if (morph == CPlayer::kMS_Morphed && player->GetMorphBall()->IsBoostShieldActive()) {
+      mHomingTargetId = kInvalidUniqueId;
+    }
+  }
+  CEnergyProjectile::Think(dt, mgr);
+}
+} // namespace
+
+// fn_14_10CA0: the annihilator charge's shot. Only with its weapon cached (the TCachedToken test
+// at 0x10CC8..0x10D18) and room for one more kWT_AI projectile of this head (CanCreateProjectile
+// with 0xB and 16 = li r6 0x10, 0x10D38). From the event's locator (0x10D54) toward the point the
+// lasers circle (0x1098..0x10A0, 0x10D80..0x10D94), aimed like fn_14_111E0 (0x10DB0..0x10E94).
+// The visor effect is a blur {1, 4.0f (.rodata 0x998), data +0x1AC (0x96C)} (fn_14_11170 at
+// 0x10ECC) with the low-pass filter {data +0x1B0 (0x970), data +0x1AC} (fn_14_11044 at 0x10F08).
+// The homing target is none with flag 0x01 (clrlwi. 31 / beq at 0x10F40) and the player
+// otherwise (0x10F54). The projectile is fn_14_19838's (0x10FEC): CGuardianProjectile with the
+// charge's weapon (0xE2C), kWT_AI, material 0x21, the charge's damage (0xE38), attributes 0,
+// not underwater, scale one.
+// When built it gets attribute 0x1000 (kPA_BigStrike; lwz/ori/stw 0x158 at 0x10FFC..0x11010)
+// with data +0x1AC as its damage duration (stfs 0x1C0 at 0x11014): SetDamageDuration; added at
+// 0x11018. The pair {0, data +0x1AC} at 0x10F20/0x10F2C is stored and never read.
+// The object is the module's CGuardianProjectile (fn_14_19838 above, vtable lbl_14_data_1034).
+// Every arm ran (tools/cov/specs/digitalguardian_shots.con; the TryCache-false arm forced,
+// tools/cov/specs/digitalguardian_shots_force.py).
+// @ fn_14_10CA0
+void CDigitalGuardianHead::x10CA0_(CStateManager& mgr, const rstl::string& locator) {
+  if (!xE2C_.Token().TryCache()) {
+    return;
+  }
+  if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 16)) {
+    return;
+  }
+  const CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f pos = GetLctrTransform(locator).GetTranslation();
+  CVector3f dir = x1098_ - pos;
+  const CVector3f flat(dir.GetX(), dir.GetY(), 0.f);
+  const CVector3f ref = flat.IsMagnitudeSafe() ? flat.AsNormalized() : x13B38_();
+  if (CVector3f::GetAngleDiff(dir, ref) > 0.9599311f) { // 0x10E10
+    dir = CVector3f::Slerp(ref, dir.AsNormalized(), CRelAngle::FromRadians(0.9599311f));
+  }
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + dir, CVector3f::Up());
+  const float amount = mData.unknown_0xff7688bf; // 0x96C
+  const CImpactVisorEffect visor(
+      rstl::optional_object< CImpactVisorEffect::SParticleEffect >(),
+      rstl::optional_object< CImpactVisorEffect::SBlurEffect >(
+          CImpactVisorEffect::SBlurEffect(1, 4.f, amount)),
+      rstl::optional_object< rstl::pair< int, float > >(
+          rstl::pair< int, float >(mData.unknown_0x12ebb390, amount)));
+  const TUniqueId homing = (x10F4_ & 0x01) != 0 ? kInvalidUniqueId : player.GetUniqueId();
+  CGuardianProjectile* projectile = rs_new CGuardianProjectile(
+      true, xE2C_.Token(), kWT_AI, xf, kMT_Character, xE2C_.GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), homing, 0, false, CVector3f::One(), visor);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (projectile != nullptr) {
+    projectile->SetDamageDuration(mData.unknown_0xff7688bf);
+    mgr.AddObject(projectile);
+  }
+}
+
+// fn_14_10A2C: the lock-on missiles. Only with their weapon cached (0x10A58..0x10AA8) and room for
+// one more kWT_AI projectile (CanCreateProjectile with 0xB and 16, 0x10AC8). From the event's
+// locator (0x10AE0) along the head's facing (fn_14_13B38 at 0x10B10; LookAt at 0x10B58). The
+// CEnergyProjectile (ctor at 0x10C50) is fn_14_111E0's with the missiles' weapon (0xE54) and
+// damage (0xE60): homing on the player (0x10BA4), no visor effect (fn_14_1047C at 0x10B90);
+// added when built (0x10C6C, AddObject at 0x10C7C).
+// Every arm ran (tools/cov/specs/digitalguardian_shots.con; the TryCache-false arm forced,
+// tools/cov/specs/digitalguardian_shots_force.py, CanCreateProjectile false with 20 shots out).
+// @ fn_14_10A2C
+void CDigitalGuardianHead::x10A2C_(CStateManager& mgr, const rstl::string& locator) {
+  if (!xE54_.Token().TryCache()) {
+    return;
+  }
+  if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 16)) {
+    return;
+  }
+  const CVector3f pos = GetLctrTransform(locator).GetTranslation();
+  const CTransform4f xf = CTransform4f::LookAt(pos, pos + x13B38_(), CVector3f::Up());
+  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
+      true, xE54_.Token(), kWT_AI, xf, kMT_Character, xE54_.GetDamage(), mgr.AllocateUniqueId(),
+      GetCurrentAreaId(), GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), 0, false,
+      CVector3f::One(), CImpactVisorEffect::None(), false, true, false, 1.f, 4.f, 4.f);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (projectile != nullptr) {
+    mgr.AddObject(projectile);
+  }
+}
+
+// Host: the console's `var <id> <name> [value]` for the head: dghd.attack is the projectile
+// attack at 0x10D0 (0 pulse, 1 charge, 2 missiles, 3 gun), dghd.flags the flag byte 0x10F4,
+// dghd.sweeptime the lasers' sweep time 0x1090 (whole seconds).
+bool CDigitalGuardianHead::PortConsoleVar(CEntity& ent, const char* name, const int* value,
+                                          int& current) {
+  CDigitalGuardianHead* head = TCastToPtr< CDigitalGuardianHead >(&ent);
+  if (head == nullptr) {
+    return false;
+  }
+  if (strcmp(name, "dghd.attack") == 0) {
+    if (value != nullptr) {
+      head->x10D0_ = *value;
+    }
+    current = head->x10D0_;
+    return true;
+  }
+  if (strcmp(name, "dghd.flags") == 0) {
+    if (value != nullptr) {
+      head->x10F4_ = static_cast< uchar >(*value);
+    }
+    current = head->x10F4_;
+    return true;
+  }
+  if (strcmp(name, "dghd.sweeptime") == 0) {
+    if (value != nullptr) {
+      head->x1090_ = static_cast< float >(*value);
+    }
+    current = static_cast< int >(head->x1090_);
+    return true;
+  }
+  // data +0x1C (0x7DC): SeekMotionPath's flight speed, StunnedReaction's drift speed.
+  if (strcmp(name, "dghd.stunspeed") == 0) {
+    if (value != nullptr) {
+      head->mData.maxStunnedLinearVelocity = static_cast< float >(*value);
+    }
+    current = static_cast< int >(head->mData.maxStunnedLinearVelocity);
+    return true;
+  }
+  return false;
+}
+
+namespace {
+const bool sDghdConsoleVars = PortConsole::RegisterVar(&CDigitalGuardianHead::PortConsoleVar);
+} // namespace
+
+// fn_14_FB70: the lasers go (fn_14_FAEC, 0xFBB8) and the phase is 0.0f (.rodata 0x960, 0xFBCC).
+// The sweep time is the current animation's (the body controller's 0x58C) projectile event
+// (type 0, 0xFBC8; GetTimeOfUserEventForAnimation at 0xFBE0) when it differs from the infinite
+// time {4, 1.0f} (.data 0x710/0x714, the __ne__ at 0xFC1C), else the animation's time left
+// (0xFC34); it is stored at 0x1090 and 0x1094 (0xFC38, 0xFC54). The centre is half the player's
+// aim position (vtable 0x54 with 0.0f, 0xFC6C) plus its position (0x54..0x5C; .rodata 0x9A0,
+// 0.5f, 0xFCA4..0xFCB4). From the laser locator (0x1088, GetLctrTransform at 0xFCC0) a LookAt to
+// the centre (up vector, 0xFCF0) turns the offsets (10.0f * cos, 0.0f, 10.0f * sin) of the phase
+// (.rodata 0x980; FastSinR/FastCosR at 0xFD24/0xFD30, Rotate at 0xFD50), and three lasers fire
+// from the locator at centre + offset (fn_14_FE14 at 0xFD94; the cmpwi 3 at 0xFDA0), the phase
+// growing by 2.0943952f (.rodata 0x9B4) each. Flag 0x01 clears (0xFDB0) and the centre is kept at
+// 0x1098 (0xFDBC..0xFDCC).
+// Every arm ran (digitalguardian_charge.con): the projectile event's time on the attack's
+// animation, the time left on an older one (the back-to-back statecalls).
+// @ fn_14_FB70
+void CDigitalGuardianHead::xFB70_(CStateManager& mgr) {
+  xFAEC_(mgr);
+  x108C_ = 0.f;
+  const CAnimData& animData = *GetModelData()->GetAnimationData();
+  const CCharAnimTime event =
+      animData.GetTimeOfUserEventForAnimation(GetBodyController()->GetCurrentAnimId(), kUE_Projectile);
+  const CCharAnimTime infinite(CCharAnimTime::kT_Infinity, 1.f);
+  x1090_ = event != infinite ? event.GetSeconds() : GetBodyController()->GetAnimTimeRemaining();
+  x1094_ = x1090_;
+  const CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f centre = (player.GetAimPosition(mgr, 0.f) + player.GetTranslation()) * 0.5f;
+  const CVector3f from = GetLctrTransform(x1088_).GetTranslation();
+  const CTransform4f look = CTransform4f::LookAt(from, centre, CVector3f::Up());
+  float phase = x108C_;
+  for (int i = 0; i < 3; ++i) {
+    const float s = 10.f * CMath::FastSinR(phase);
+    const float c = 10.f * CMath::FastCosR(phase);
+    xFE14_(mgr, from, centre + look.Rotate(CVector3f(c, 0.f, s)));
+    phase += 2.0943952f;
+  }
+  x10F4_ &= ~0x01;
+  x1098_ = centre;
+}
+
+// fn_14_FE14: at most three lasers (the cmpwi 3 at 0xFE38). The lock-on beams' info (data
+// +0x1B8) becomes a CBeamInfo with the attributes 0x291 (fn_80239B64, the DOL's TLdrToBeamInfo,
+// 0xFE4C; fn_14_1008C copies it). A new id (AllocateUniqueId at 0xFE64) gets the 0x6A8-byte
+// CPlasmaProjectile "RezBitCuttingLaser" (.rodata 0xA00 + 0x507; new at 0xFE88, ctor at 0xFF54):
+// the weapon at 0x1054, weapon type 2 (0xFF4C), the identity transform, material 0x14
+// (kMT_ProjectilePassthrough, 0xFF44), a default damage (fn_14_FFFC), the area (0x4) and this
+// actor as owner (0x8), a default CWeaponAssetInfo (8 entries of -1, 0xFE94..0xFED0), drawn owner
+// first (1, 0xFF48) and the attributes 0x20000 (0xFF2C). When it exists (0xFF74) it fires (vtable
+// 0x94, Fire with false; 0xFFB8) along LookAt(from, to, up) (0xFF8C), is added (AddObject at
+// 0xFFC4) and its id appended (0xFFD8..0xFFE4).
+// Every live arm ran (digitalguardian_charge.con). The count >= 3 return is dead: the only caller
+// (fn_14_FB70) empties the list (fn_14_FAEC at 0xFBB8) and calls three times.
+// @ fn_14_FE14
+void CDigitalGuardianHead::xFE14_(CStateManager& mgr, const CVector3f& from,
+                                  const CVector3f& to) {
+  if (x107C_.size() >= 3) {
+    return;
+  }
+  const CBeamInfo beamInfo = TLdrToBeamInfo(mData.lockOnBeams, 0x291);
+  const TUniqueId id = mgr.AllocateUniqueId();
+  CPlasmaProjectile* laser = rs_new CPlasmaProjectile(
+      x1054_.Token(), rstl::string_l("RezBitCuttingLaser"), EWeaponType(2), beamInfo,
+      CTransform4f::Identity(), kMT_ProjectilePassthrough, CDamageInfo(), id, GetCurrentAreaId(),
+      GetUniqueId(), CWeaponAssetInfo(), true, 0x20000);
+  // The null arm is an allocation failure only (rs_new); it never happens in a run.
+  if (laser != nullptr) {
+    laser->Fire(CTransform4f::LookAt(from, to, CVector3f::Up()), mgr, false);
+    mgr.AddObject(laser);
+    x107C_.push_back(id);
+  }
+}
+
+// fn_14_F6A4: nothing without lasers (0xF6E8) or with the sweep time at most 0.0f (.rodata 0x960,
+// the fcmpo/ble at 0xF6FC, so a NaN time goes on). The phase grows by 2.0943952f * dt (.rodata
+// 0x9B4, the fmadds at 0xF71C) and the time left shrinks by dt (0xF728). The centre and the
+// locator's LookAt are fn_14_FB70's (0xF744..0xF7D4). The radius is 10.0f (.rodata 0x980) *
+// (left - 1.0f) / time (.rodata 0x96C; 0xF7F4..0xF804), raised to 0.0f (the fcmpo/bge at 0xF808,
+// a NaN radius stays). At a radius of at most 0.0f (the cror at 0xF828) the lasers but the first
+// go, last first (0xF838..0xF8A0): each found one resets (vtable 0x90, ResetBeam with false;
+// 0xF870) and is deleted (0xF888); the count drops either way (0xF894). Then, without flag 0x01,
+// one laser left and a boosting player (0x390 zero, 0x38C == 1 and the morph ball's boost shield,
+// 0xF8BC..0xF8E8) set flag 0x01 (0xF8F4); without flag 0x01 the circled point follows the centre
+// (0xF908..0xF91C). Each laser found (0xF92C..0xFA18) is moved (vtable 0x8C, UpdateFx with dt;
+// 0xF9F4) along a LookAt from the locator to the point plus the turned offset (radius * cos,
+// 0.0f, radius * sin) of the phase (0xF948..0xF9C8), the phase growing by 2.0943952f (0xF9FC)
+// only for a laser found.
+// Retail calls the vtable on whatever the id names; the host casts to CPlasmaProjectile.
+// Every arm ran (tools/cov/specs/digitalguardian_shots.con) but the no-laser return: dead, as the
+// only call (fn_14_16A50 at 0x16BDC) is taken only with lasers (0x107C != 0, the bne at 0x16BBC).
+// @ fn_14_F6A4
+void CDigitalGuardianHead::xF6A4_(CStateManager& mgr, float dt) {
+  if (x107C_.empty() || x1090_ <= 0.f) {
+    return;
+  }
+  x108C_ = 2.0943952f * dt + x108C_;
+  x1094_ = x1094_ - dt;
+  const CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f centre = (player.GetAimPosition(mgr, 0.f) + player.GetTranslation()) * 0.5f;
+  const CVector3f from = GetLctrTransform(x1088_).GetTranslation();
+  const CTransform4f look = CTransform4f::LookAt(from, centre, CVector3f::Up());
+  float radius = 10.f * (x1094_ - 1.f) / x1090_;
+  if (0.f >= radius) {
+    radius = 0.f;
+  }
+  float phase = x108C_;
+  if (radius <= 0.f) {
+    while (x107C_.size() > 1) {
+      if (CPlasmaProjectile* laser =
+              TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(x107C_[x107C_.size() - 1]))) {
+        laser->ResetBeam(mgr, false);
+        mgr.DeleteObjectRequest(laser->GetUniqueId());
+      }
+      x107C_.pop_back();
+    }
+  }
+  if ((x10F4_ & 0x01) == 0 && x107C_.size() == 1) {
+    const CPlayer::EPlayerMorphBallState morph =
+        player.GetSpawnedMorphballState() == CPlayer::kMS_Unmorphed
+            ? player.GetMorphballTransitionState()
+            : CPlayer::kMS_Unmorphed;
+    if (morph == CPlayer::kMS_Morphed && player.GetMorphBall()->IsBoostShieldActive()) {
+      x10F4_ |= 0x01;
+    }
+  }
+  if ((x10F4_ & 0x01) == 0) {
+    x1098_ = centre;
+  }
+  for (int i = 0; i < x107C_.size(); ++i) {
+    if (CPlasmaProjectile* laser = TCastToPtr< CPlasmaProjectile >(mgr.ObjectById(x107C_[i]))) {
+      const float s = radius * CMath::FastSinR(phase);
+      const float c = radius * CMath::FastCosR(phase);
+      const CVector3f to = x1098_ + look.Rotate(CVector3f(c, 0.f, s));
+      laser->UpdateFx(CTransform4f::LookAt(from, to, CVector3f::Up()), dt, mgr);
+      phase += 2.0943952f;
+    }
+  }
+}
+
+// fn_14_16F74: the projectile telegraph. Activate (0): the animation state Ready (the store at
+// 0x16FCC), bit 0x20 of 0x10F4 set (0x16FD8) and the turn direction 0x1028 the fallback one
+// (fn_14_13B38, 0x16FE0). Update (1): the head turns to its target (fn_14_11D64, 0x17034) until
+// the state's time reaches block 6's projectileTelegraphTime (fn_14_10120's +4, the fcmpo at
+// 0x17020), then the state is Over (0x1703C). Deactivate (2): NotReady, bit 0x20 cleared and the
+// turn direction zeroed (sZeroVector, 0x17060).
+// The arms (local probes, area 53 (09_cliff_temple_dark), dg_steps_head_stun.sh): Activate, Update before the telegraph
+// time (76 frames), Update at it (Over) and Deactivate all ran, five telegraphs in one fight.
+// @ fn_14_16F74
+void CDigitalGuardianHead::ProjectileTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) { // the cmpwi chain at 0x16F98..0x16FBC
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // stw 1 -> 0x6B4 at 0x16FCC
+    x10F4_ |= 0x20;                                        // rlwimi 5, 26, 26 at 0x16FD8
+    x1028_ = x13B38_();                                    // 0x16FE0, stores 0x16FE8..0x16FF8
+    break;
+  case kStateMsg_Update: {
+    const SLdrDigitalGuardianHeadStruct* attack = x10120_(mgr); // 0x17000
+    if (mStateMachine->GetTime() >= attack->projectileTelegraphTime) { // vtable 0x30 of 0x350 at
+                                                                       // 0x17014, +4, fcmpo/bge 0x17020
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x1703C
+    } else {
+      x11D64_(mgr, dt); // 0x17034
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady); // 0x17050
+    x10F4_ &= ~0x20;                                          // 0x17058
+    x1028_ = CVector3f::Zero();                               // sZeroVector, 0x17060..0x17074
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_14_1569C: the ride on the retreat platform (0x1038). Activate (0): the animation state Ready
+// (0x156EC), the platform, if there is one, gets STRT from the head (its AcceptScriptMsg, the
+// vtable call at 0x15760), the bomb pit id 0x103A cleared (0x15770) and locomotion 5 (0x15778).
+// Update (1): with no platform the state is Over (0x15840). Else the locomotion is relaxed (1)
+// while the player rides the platform (CScriptPlatform::IsRider, 0x157B4) or bit 0x80 of 0x10F5
+// is set, else 5; while the state's time is at most fn_14_F374's value (the fcmpo/cror at
+// 0x1580C) the head takes the platform's transform (0x1582C), after it the state is Over.
+// Deactivate (2): NotReady, combat locomotion (3) and the platform, if there is one, gets STOP.
+// Every arm ran: with no platform after the head stun; after `codecall <head> SelectRetreatPlatform`
+// and `fsm <head> FollowRetreatPath`, STRT, the ride (time <= limit), locomotion 5, STOP; forced
+// (gdb attach): bit 0x80 of 0x10F5 (relaxed), the limit 0 (Over by time). IsRider itself stayed
+// false (the player teleported onto the moving platform each 0.3 s was never counted a rider).
+// @ fn_14_1569C
+void CDigitalGuardianHead::FollowRetreatPath(CStateManager& mgr, EStateMsg msg, float dt) {
+  switch (msg) { // the cmpwi chain at 0x156A4..0x156DC
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready); // stw 1 -> 0x6B4 at 0x156EC
+    // ObjectById(0x1038) at 0x156FC, TCastToPtr<CScriptPlatform> at 0x15700, null test 0x15704
+    if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+      // the message at 0x1570C..0x15738: sender and originator the head (0x5C, 0x5E), id the
+      // platform (0x60), STRT (0x64), state -1 (0x68); AcceptScriptMsg (vtable 0x18) at 0x15760
+      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Start,
+                                            GetUniqueId()));
+    }
+    x103A_ = kInvalidUniqueId;                                  // 0x15770
+    BodyController()->SetLocomotionType(pas::kLT_Internal5);    // li 5 at 0x15768, 0x15778
+    break;
+  case kStateMsg_Update: {
+    // GetObjectById(0x1038) at 0x15790, the cast at 0x15794, null test (mr.) at 0x15798
+    const CScriptPlatform* plat = TCastToConstPtr< CScriptPlatform >(mgr.GetObjectById(x1038_));
+    if (plat == nullptr) {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15840
+      break;
+    }
+    // IsRider(the player at mgr+0x14FC) at 0x157B4, bne 0x157BC; bit 0x80 of 0x10F5 at 0x157C4
+    if (plat->IsRider(mgr.GetPlayer(0)->GetUniqueId()) || (x10F5_ & 0x80) != 0) {
+      BodyController()->SetLocomotionType(pas::kLT_Relaxed); // li 1 at 0x157D0
+    } else {
+      BodyController()->SetLocomotionType(pas::kLT_Internal5); // li 5 at 0x157E0
+    }
+    const float limit = xF374_(); // 0x157F0
+    if (mStateMachine->GetTime() <= limit) { // vtable 0x30 of 0x350 at 0x15808, fcmpo/cror 0x1580C
+      SetTransform(plat->GetTransform()); // the platform's +0x24 at 0x1581C, 0x1582C
+    } else {
+      mAnimationState.SetState(CAnimationState::kAS_Over); // 0x15834
+    }
+    break;
+  }
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);   // 0x15854
+    BodyController()->SetLocomotionType(pas::kLT_Combat);      // li 3 at 0x15850, 0x1585C
+    // ObjectById(0x1038) at 0x15870, the cast at 0x15874, null test 0x15878
+    if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+      // as at Activate with STOP (0x5354_4F50, 0x1588C); the call at 0x158D4
+      plat->AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), plat->GetUniqueId(), kSM_Stop,
+                                            GetUniqueId()));
+    }
+    break;
+  default:
+    break;
+  }
+}
 
 // fn_14_13F0C: the root collider (0xE00) takes the head's own vulnerability (CPatterned's,
 // called directly).
@@ -1250,11 +2285,11 @@ void CDigitalGuardianHead::SetInitialAttackPosition(CStateManager& mgr, float dt
 // (extrwi. 1, 27; the head armour is gone) and 0x1038 a platform, it is instead the attack area's
 // point at the angle (fn_14_11698, fn_14_11788) of the centre plus 50 (.rodata 0x9C4) along the
 // direction to the platform.
-// Unmarked: area-53 runs ran the armour-on and platform arms only (run 37's bombs in a slot before
-// the retreat destroyed none, so no armour-off stun came first). With armour off, 0x1038 holds no
-// platform until SelectRetreatPlatform runs, and the platforms' waypoints span z -18.12..-9.21
-// across the centre's -16.74, so neither arm is excluded by the data. A failed fn_14_11698 cannot
-// happen: once d is magnitude-safe, centre + 50 d/|d| is off the centre.
+// The arms: armour on and the platform arm ran in area-53 runs (run 37); armour off with no
+// platform was forced (tools/cov/force.sh with the head-stun steps as its driver: bit 0x10 set and
+// 0x1038 cleared at the entry). A failed fn_14_11698 cannot happen: once d is magnitude-safe,
+// centre + 50 d/|d| is off the centre; a zero d needs the platform at the centre.
+// @ fn_14_15284
 void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
   xFEC_ = GetTranslation();
   if ((x10F4_ & 0x10) == 0) {
@@ -1275,26 +2310,29 @@ void CDigitalGuardianHead::SetStunnedPosition(CStateManager& mgr, float dt) {
 // from fn_14_118B0. When the visual knowledge sees the player (flag 0x80 of 0xDB8) for over 2.25 s
 // (.rodata 0x9DC; 0xDB0) fn_14_114C8 picks one; otherwise the candidate furthest along the
 // previous move (translation minus 0xFF8, dot product >= the best so far, from 0) wins. 0xFF8
-// then keeps the result.
+// then keeps the result. The fn_14_114C8 arm re-run since 114C8 was ported: forced (0xDB8 bit
+// 0x80 set, 0xDB0 = 3 at the entry), its results the candidates or their blend.
 // @ fn_14_14254
 void CDigitalGuardianHead::SetAttackPosition(CStateManager& mgr, float dt) {
-  xFEC_ = GetTranslation();
+  xFEC_ = GetTranslation(); // 0x14278..0x1428C
   CVector3f points[3];
-  const int count = x118B0_(points);
+  const int count = x118B0_(points); // 0x14294, the count at sp+0x20
+  // bit 0x80 of 0xDB8 at 0x1429C; 0xDB0 > 2.25 (.rodata 0x9DC), fcmpo/ble at 0x142B0
   if (xD80_.IsTargetVisible() && xD80_.GetVisibleTime() > 2.25f) {
-    xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count);
+    // the player (mgr+0x14FC)'s translation at 0x142C8..0x142E0, the call at 0x142E4
+    xFEC_ = x114C8_(mgr.GetPlayer(0)->GetTranslation(), points, count); // 0x142EC..0x142FC
   } else {
-    const CVector3f move = GetTranslation() - xFF8_;
-    float best = 0.f;
-    for (int i = 0; i < count; ++i) {
-      const float dot = CVector3f::Dot(move, points[i] - xFF8_);
-      if (dot >= best) {
-        xFEC_ = points[i];
-        best = dot;
+    const CVector3f move = GetTranslation() - xFF8_; // 0x14304..0x14334
+    float best = 0.f;                                 // .rodata 0x960 at 0x14330
+    for (int i = 0; i < count; ++i) {                 // 0x14390..0x143A4
+      const float dot = CVector3f::Dot(move, points[i] - xFF8_); // 0x1433C..0x14368
+      if (dot >= best) {   // fcmpo/cror/bne at 0x1436C..0x14374
+        xFEC_ = points[i]; // 0x14378..0x1438C
+        best = dot;        // 0x1437C
       }
     }
   }
-  xFF8_ = xFEC_;
+  xFF8_ = xFEC_; // 0x143A8..0x143BC
 }
 
 // fn_14_14B98: bit 0x04 of 0x10F4 cleared, bit 0x40 set (rlwimi 6, 25, 25), the deployment
@@ -1315,23 +2353,239 @@ void CDigitalGuardianHead::SeekLineOfSight(CStateManager& mgr, float dt) {
   xD80_.SetVisualTarget(mgr.GetPlayer(0)->GetUniqueId());
 }
 
-#define DGHD_CODE_STANDIN(name, fn)                                                                \
-  void CDigitalGuardianHead::name(CStateManager& mgr, float dt) {                                  \
-    StandInFn(#fn " (head code " #name ")");                                                       \
+// fn_14_14C24: the object list (state manager +0x830, the walk at 0x14C4C..0x14CD0) gives each
+// command module (TCastToPtr at 0x14C60, null test 0x14C64) fn_75_5A54 (0x14C70) and else each
+// main chassis (0x14C90, null test 0x14C94) fn_75_E660 (0x14CA0), with a delay that starts at 0.0
+// (.rodata 0x960, 0x14C48) and grows by 0.7 per command module (.rodata 0x9A4, fadds at 0x14C7C)
+// and by 0.15 per chassis (.rodata 0x9A8, fadds at 0x14CAC). Every arm ran: no splitters, then
+// two (their layer-10 generators) given the delays.
+// @ fn_14_14C24
+void CDigitalGuardianHead::DestroyActiveSplitters(CStateManager& mgr, float dt) {
+  CObjectList& list = mgr.ObjectListById(kOL_All);
+  float delay = 0.f;
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    if (CSplitterCommandModule* module = TCastToPtr< CSplitterCommandModule >(list[i])) {
+      module->PortAutoDestruct(delay);
+      delay += 0.7f;
+    } else if (CSplitterMainChassis* chassis = TCastToPtr< CSplitterMainChassis >(list[i])) {
+      chassis->PortStartDeathTimer(delay);
+      delay += 0.15f;
+    }
   }
-DGHD_CODE_STANDIN(ResetProjectileAttackTimes, fn_14_15598)
-DGHD_CODE_STANDIN(SelectProjectileAttack, fn_14_15448)
-DGHD_CODE_STANDIN(SetPlatformPosition, fn_14_153D0)
-DGHD_CODE_STANDIN(DestroyActiveSplitters, fn_14_14C24)
-DGHD_CODE_STANDIN(Stage3Start, fn_14_149F8)
-DGHD_CODE_STANDIN(EnableDynamicCollision, fn_14_14828)
-DGHD_CODE_STANDIN(DisableDynamicCollision, fn_14_14664)
-DGHD_CODE_STANDIN(EnableValidTarget, fn_14_14604)
-DGHD_CODE_STANDIN(DisableValidTarget, fn_14_145A4)
-DGHD_CODE_STANDIN(ResetGravityRepulsorHP, fn_14_14248)
-DGHD_CODE_STANDIN(EjectPlayerFromBombPit, fn_14_14058)
-DGHD_CODE_STANDIN(StartVocalRecoverReaction, fn_14_13C1C)
-#undef DGHD_CODE_STANDIN
+}
+
+// fn_14_153D0: the attack position (0xFEC) is the head's translation, or the retreat platform's
+// (0x1038; ObjectById at 0x1540C, TCastToPtr<CScriptPlatform> at 0x15410, null test 0x15418).
+// @ fn_14_153D0
+void CDigitalGuardianHead::SetPlatformPosition(CStateManager& mgr, float dt) {
+  xFEC_ = GetTranslation(); // 0x153E4..0x15400
+  if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+    xFEC_ = plat->GetTransform().GetTranslation(); // 0x1541C..0x15430
+  }
+}
+
+// fn_14_149F8: the IS06/FOLW waypoint (FindConnectedObject_if with the waypoint predicate,
+// lbl_14_data_1024, 0x14A4C) places the head at its translation, looking along its Y column, or
+// the head's own Y column when that is not magnitude-safe (0x14AAC, clrlwi./beq at 0x14AB0);
+// LookAt with the up vector (0x14B2C), SetTransform (0x14B38). Combat locomotion either way (li 3,
+// 0x14B40). Retail's safe arm reads the direction from sp+0x30, which nothing in the body writes
+// (the column was stored at sp+0x3C): the port uses the waypoint's column, the evident intent.
+// The unsafe arm is forced (the area-53 waypoint 0x00350272 is orthonormal); the no-waypoint arm
+// ran with that waypoint deleted.
+// @ fn_14_149F8
+void CDigitalGuardianHead::Stage3Start(CStateManager& mgr, float dt) {
+  const TUniqueId id =
+      FindConnectedObject_if(mgr, kSS_InternalState6, kSM_Follow, CWaypointPredicate());
+  if (const CScriptWaypoint* wp = TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(id))) {
+    CVector3f dir = wp->GetTransform().GetColumn(kDY); // 0x14A90..0x14AA8
+    if (!dir.IsMagnitudeSafe()) {
+      dir = GetTransform().GetColumn(kDY); // 0x14AC0..0x14AD8
+    }
+    const CVector3f& pos = wp->GetTranslation(); // wp+0x54 at 0x14AE8
+    SetTransform(CTransform4f::LookAt(pos, pos + dir, CVector3f::Up())); // 0x14B08..0x14B38
+  }
+  BodyController()->SetLocomotionType(pas::kLT_Combat); // li 3 at 0x14B40, 0x14B44
+}
+
+// fn_14_14828: the retreat platform (0x1038), when it is one (null test 0x1485C), gets ACTV
+// (lis 0x4143 / addi 0x5456 at 0x14874). With colliders built (0xD70, 0x148B4) the root (0xE00)
+// is deactivated (SetActive, vtable 0x1C, li 0 at 0x148DC) and each ball (0xDC4, count 0xDC0,
+// cmpw/blt at 0x14960) with health (GetHealthInfo, vtable 0x3C; HP at +4 > 0.0, fcmpo/ble at
+// 0x14934) is activated; the manager is updated (dt 0.0, li 1 = kUO_WorldSpace, 0x14980). The
+// head's filter excludes the player (exclude word 0x8 |= 1, bit 32, ori at 0x149A8), its shadow
+// is off (0x149D4) and the damage colour is skDamageColor (0x149E0). Forced: the dead ball (HP 0)
+// and no manager (0xD70 null; only fn_14_13318 on XCRT writes it, before any Think, and Think
+// updates it unchecked). No root/balls ran with the colliders deleted.
+// @ fn_14_14828
+void CDigitalGuardianHead::EnableDynamicCollision(CStateManager& mgr, float dt) {
+  if (TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_)) != nullptr) {
+    mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), x1038_, kSM_Activate)); // 0x148A8
+  }
+  if (xD70_ != nullptr) {
+    if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
+      root->SetActive(false);
+    }
+    // the count at 0xDC0 (the ctor's 2 at 0x18340; nothing else writes it)
+    for (int i = 0; i < ARRAY_SIZE(xDC4_); ++i) {
+      if (CCollisionActor* ball = TCastToPtr< CCollisionActor >(mgr.ObjectById(xDC4_[i]))) {
+        if (ball->GetHealthInfo()->GetHP() > 0.f) {
+          ball->SetActive(true); // li 1 at 0x14940
+        }
+      }
+    }
+    xD70_->Update(0.f, mgr, CCollisionActorManager::kUO_WorldSpace);
+  }
+  CMaterialFilter filter = GetMaterialFilter();
+  filter.ExcludeList().Add(kMT_Player);
+  SetMaterialFilter(filter);
+  SetDrawShadow(false); // li 0 at 0x149D0
+  mDamageColor = CPatterned::skDamageColor;
+}
+
+// fn_14_14664: the retreat platform (0x1038) gets DCTV (lis 0x4443 / addi 0x5456 at 0x1469C,
+// sent with no type check, 0x146D0) and the player's morph ball a 2 s damage timer (player
+// +0x1174, .rodata 0x968, 0x146E8). With colliders built (0xD70, 0x146F4) the root (0xE00) is
+// activated (li 1 at 0x1471C) and both balls (0xDC4, count 0xDC0, cmpw/blt at 0x14778)
+// deactivated (li 0 at 0x1475C); the manager is updated (dt 0.0, li 1 = kUO_WorldSpace, 0x14798).
+// The head's filter stops excluding the player (exclude word 0x8 &= ~1, bit 32, li -2/and at
+// 0x147B0/0x147C8), its shadow is on (0x147F8) and the damage colour is
+// skHitsWithoutDamageColor (0x80418FEC, 0x14804). Forced: no manager (as fn_14_14828).
+// @ fn_14_14664
+void CDigitalGuardianHead::DisableDynamicCollision(CStateManager& mgr, float dt) {
+  mgr.DeliverScriptMsg(CScriptMsg(GetUniqueId(), x1038_, kSM_Deactivate));
+  mgr.GetPlayer(0)->GetMorphBall()->SetDamageTimer(2.f);
+  if (xD70_ != nullptr) {
+    if (CCollisionActor* root = TCastToPtr< CCollisionActor >(mgr.ObjectById(xE00_))) {
+      root->SetActive(true);
+    }
+    // the count at 0xDC0 (the ctor's 2 at 0x18340; nothing else writes it)
+    for (int i = 0; i < ARRAY_SIZE(xDC4_); ++i) {
+      if (CCollisionActor* ball = TCastToPtr< CCollisionActor >(mgr.ObjectById(xDC4_[i]))) {
+        ball->SetActive(false);
+      }
+    }
+    xD70_->Update(0.f, mgr, CCollisionActorManager::kUO_WorldSpace);
+  }
+  CMaterialFilter filter = GetMaterialFilter();
+  filter.ExcludeList().Remove(kMT_Player);
+  SetMaterialFilter(filter);
+  SetDrawShadow(true); // li 1 at 0x147F4
+  mDamageColor = CPatterned::skHitsWithoutDamageColor;
+}
+
+// fn_14_15598: the projectile timer 0x10D4 is block 6's projectileAttackTime (fn_14_10120's +8,
+// 0x155EC) once every splitter is dead (fn_14_17298, the test at 0x155C8), else 6 (.rodata 0x990).
+// Both arms ran in the area-53 head-stun runs (local probes): splitters alive and all dead.
+// @ fn_14_15598
+void CDigitalGuardianHead::ResetProjectileAttackTimes(CStateManager& mgr, float dt) {
+  if (AllSplittersDead(mgr, CTriggerData(0.f))) { // 0.0 at 0x155C0, 0x155C4, bne at 0x155CC
+    x10D4_ = x10120_(mgr)->projectileAttackTime;  // 0x155E8, +8 at 0x155EC, 0x155F0
+  } else {
+    x10D4_ = 6.f; // .rodata 0x990 at 0x155D4, 0x155D8
+  }
+}
+
+// fn_14_15448: block 6 (fn_14_10120, by the body's knee count) picks the projectile attack. When
+// the body's knee count (fn_14_705C; 0 with no body) differs from the one last seen (0x10DC, the
+// cmpw at 0x154A8) and the block's firstShotType is not 4, that type; else a weighted pick over
+// the block's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the
+// gun 3. The knee count is kept in 0x10DC (0x15558); a pulse fires a burst of 3 (0x10D8), the rest
+// none (the cntlzw at 0x15564).
+// Every arm ran: the first shot (knee count 4 against the ctor's -1, firstShotType 0), then
+// `codecall <head> SelectProjectileAttack` x24 with the count unchanged drew pulse 0, missiles 2
+// and the gun 3; charge 1 (odds 0 in the 4-knee block 0xA64) forced, its odds set to 1000.
+// @ fn_14_15448
+void CDigitalGuardianHead::SelectProjectileAttack(CStateManager& mgr, float dt) {
+  const SLdrDigitalGuardianHeadStruct* odds = x10120_(mgr); // 0x1546C
+  // GetObjectById(0x1034) at 0x15484, the cast at 0x15488, null test 0x1548C, else 0 (0x154A0)
+  const CDigitalGuardian* body = TCastToConstPtr< CDigitalGuardian >(mgr.GetObjectById(x1034_));
+  const int knees = body != nullptr ? body->x705C_() : 0; // 0x15494
+  // cmpw with 0x10DC at 0x154A8 (beq); firstShotType (+0) cmpwi 4 at 0x154B4 (beq)
+  if (knees != x10DC_ && odds->firstShotType != 4) {
+    x10D0_ = odds->firstShotType; // 0x154BC
+  } else {
+    // Range(mgr+0x16E4, 0 (.rodata 0x960), ((+0xC + +0x10) + +0x14) + +0x18) at 0x154F0
+    const float r = mgr.Random()->Range(0.f, odds->annihilatorPulseOdds +
+                                                  odds->annihilatorChargeOdds +
+                                                  odds->machineGunOdds + odds->lockOnMissilesOdds);
+    float bound = odds->annihilatorPulseOdds; // +0xC at 0x154F4
+    if (r <= bound) {                         // fcmpo/cror/bne at 0x154F8..0x15500
+      x10D0_ = 0;                             // 0x15508
+    } else if (r <= (bound += odds->annihilatorChargeOdds)) { // +0x10, 0x15514..0x15520
+      x10D0_ = 1;                                              // 0x15528
+    } else if (r <= bound + odds->lockOnMissilesOdds) {        // +0x18, 0x15534..0x15540
+      x10D0_ = 2;                                              // 0x15548
+    } else {
+      x10D0_ = 3; // 0x15554
+    }
+  }
+  x10DC_ = knees;               // 0x15558
+  x10D8_ = x10D0_ == 0 ? 3 : 0; // cntlzw/extrwi 1, 26/neg/and at 0x15564..0x15574
+}
+
+// fn_14_14604: orbitable in every visor (li 0xF / li 1 at 0x1461C/0x1460C) and in the echo visor
+// (li 2 / li 1 at 0x14630/0x14634), and a seeker target (li 0x3F at 0x14644, AddMaterial).
+// @ fn_14_14604
+void CDigitalGuardianHead::EnableValidTarget(CStateManager& mgr, float dt) {
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, true);  // 0x14628
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true); // 0x14638
+  AddMaterial(kMT_SeekerTarget, mgr);                        // 0x14648
+}
+
+// fn_14_145A4: not orbitable in any visor (li 0xF / li 0 at 0x145BC/0x145AC), but the echo visor
+// flag is set again (li 2 / li 1 at 0x145D0/0x145D4, as in fn_14_14604), and no seeker target
+// (li 0x3F at 0x145E4, RemoveMaterial).
+// @ fn_14_145A4
+void CDigitalGuardianHead::DisableValidTarget(CStateManager& mgr, float dt) {
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false); // 0x145C8
+  SetVisorOrbitableFlags(CVisorParameters::kVOF_Echo, true); // 0x145D8
+  RemoveMaterial(kMT_SeekerTarget, mgr);                     // 0x145E8
+}
+
+// fn_14_14248: the gravity repulsor's health (0x10E0) is the data's gravityRepulsorHP again
+// (0x7D8 = data +0x18; lfs/stfs at 0x14248/0x1424C).
+// @ fn_14_14248
+void CDigitalGuardianHead::ResetGravityRepulsorHP(CStateManager& mgr, float dt) {
+  x10E0_ = mData.gravityRepulsorHP;
+}
+
+// fn_14_14058: the player (mgr +0x14FC) stops (0x14080). The push goes along the head's X column
+// (0x24/0x34/0x44), negated when the player is behind it (the dot of the player minus the head
+// with the column >= 0.0, .rodata 0x960, fcmpo/cror/bne at 0x140D4..0x140DC), plus the Z column
+// (0x2C/0x3C/0x4C, 0x14104..0x14134). When that is magnitude-safe (clrlwi./beq at 0x1413C) the
+// player gets the impulse 30 (.rodata 0x98C) * mass (player +0x158) * its direction
+// (ApplyImpulseWR with no angular part, 0x141A8) and the ApplyJump move state (li 2 at 0x141B4).
+// Either way the retreat platform (0x1038), when it is one (mr./beq at 0x141D4), stops excluding
+// the player (exclude word 0x8 &= ~1, bit 32, li -2/and at 0x141EC/0x14204). Both sides and both
+// platform arms ran; the unsafe direction is forced (the head's columns are orthonormal).
+// @ fn_14_14058
+void CDigitalGuardianHead::EjectPlayerFromBombPit(CStateManager& mgr, float dt) {
+  CPlayer* player = mgr.GetPlayer(0);
+  player->Stop();
+  CVector3f side = GetTransform().GetColumn(kDX);
+  if (!(CVector3f::Dot(player->GetTranslation() - GetTranslation(), side) >= 0.f)) {
+    side = -side; // 0x140E8..0x14100
+  }
+  const CVector3f dir = side + GetTransform().GetColumn(kDZ);
+  if (dir.IsMagnitudeSafe()) {
+    const CVector3f impulse = 30.f * (player->GetMass() * dir.AsNormalized()); // 0x14150..0x14194
+    player->ApplyImpulseWR(impulse, CAxisAngle::Identity());                    // 0x141A8
+    player->SetMoveState(NPlayer::kMS_ApplyJump, mgr); // 0x141B8
+  }
+  if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(mgr.ObjectById(x1038_))) {
+    CMaterialFilter filter = plat->GetMaterialFilter();
+    filter.ExcludeList().Remove(kMT_Player);
+    plat->SetMaterialFilter(filter); // 0x14228
+  }
+}
+
+// fn_14_13C1C: sound_Stage3Recover (this +0x92C = data +0x16C) at the translation (0x54) along the
+// Y column (0x28/0x38/0x48), not looped (li 0 at 0x13C28); the handle is dropped.
+// @ fn_14_13C1C
+void CDigitalGuardianHead::StartVocalRecoverReaction(CStateManager& mgr, float dt) {
+  PlayCustomSound(GetTranslation(), GetTransform().GetColumn(kDY), mData.sound_Stage3Recover,
+                  false); // 0x13C58
+}
 
 // fn_14_15054: the "RaisedShields" effect state (.rodata 0x950) off; at locator 1 the drop-shields
 // effect (0xEF4, "Drop Shields Fx", .rodata 0xA00) at this head's scale, then the drop-shields
@@ -1377,9 +2631,9 @@ void CDigitalGuardianHead::EndSplitterDeployment(CStateManager& mgr, float dt) {
 // data +0x2DC) once while 0x10DC is set and the type is not 4; else a weighted pick over block
 // 6's odds (Range(0, sum), each bound inclusive): pulse 0, charge 1, missiles 2, else the gun 3.
 // A pulse fires a burst of 3 (0x10D8), the rest none.
-// Unmarked: area-53 runs ran the splitter, first-shot and random 0 and 2 arms. Random 1 and 3 need
-// more fights: the first random pick comes after the first shot and the splitters (run 37's five
-// fights, four of them stopped 20 s after VULN, made none).
+// Every arm ran (dg26 driver a); the first-shot test failing on a firstShotType of 4 (shipped 0)
+// forced (dg27 force spec: x10DC_ 1, firstShotType 4 at entry).
+// @ fn_14_14470
 void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
   const SLdrDigitalGuardianHeadStruct& odds = mData.digitalGuardianHeadStruct_0x48b46e55;
   if (!AllSplittersDead(mgr, CTriggerData(0.f))) {
@@ -1402,7 +2656,7 @@ void CDigitalGuardianHead::SelectDeathHeadAttack(CStateManager& mgr, float dt) {
       x10D0_ = 3;
     }
   }
-  x10D8_ = x10D0_ == 0 ? 3 : 0;
+  x10D8_ = x10D0_ == 0 ? 3 : 0; // 0x14570..0x14588: cntlzw/extrwi 1,26, neg, and with 3
 }
 
 // fn_14_13F70: the IS02/ATCH player hint, unless already this head's, takes this head as its
@@ -1468,7 +2722,9 @@ void CDigitalGuardianHead::SelectRetreatPlatform(CStateManager& mgr, float dt) {
 
 // ---------------------------------------------------------------------------------------------
 // fn_14_DF7C: the DGHD loader. The generated reader fills the four property blocks; an empty model
-// is skipped (null), as the body's loader does.
+// is skipped (null), as the body's loader does. The empty arm is data-dead (the one DGHD, 0x0035000F,
+// has a model); forced (dg27 noload spec: the ANCS id invalid before LdrToModelData).
+// @ fn_14_DF7C
 CEntity* PortLoadDigitalGuardianHead(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDigitalGuardianHead sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrDigitalGuardianHead.inc"
@@ -1519,6 +2775,8 @@ void CDigitalGuardianHead::x1303C_(CStateManager& mgr, TUniqueId sender) {
 
 // fn_14_F2B8: the IS07/FOLW object (0xF2C0..0xF2D8), if a waypoint, goes to pos; then state is
 // sent with no message (-1).
+// 'IS07' 0x49533037 (0xF2C4/0xF2D8), 'FOLW' 0x464F4C57 (0xF2C0/0xF2CC), msg -1 at 0xF348.
+// @ fn_14_F2B8
 void CDigitalGuardianHead::xF2B8_(CStateManager& mgr, const CVector3f& pos,
                                   EScriptObjectState state) {
   const TUniqueId wpId = CheckConnectedObject(mgr, kSS_InternalState7, kSM_Follow);
@@ -1528,7 +2786,9 @@ void CDigitalGuardianHead::xF2B8_(CStateManager& mgr, const CVector3f& pos,
   }
 }
 
-// fn_14_13248: the index of id among the ball colliders (count 0xDC0, 2), or -1.
+// fn_14_13248: the index of id among the ball colliders (count 0xDC0, 2), or -1. The -1 arm
+// forced (dg27 force spec: the second bomb hit's id 0xffff).
+// @ fn_14_13248
 int CDigitalGuardianHead::x13248_(TUniqueId id) const {
   for (int i = 0; i < 2; ++i) {
     if (xDC4_[i] == id) {
@@ -1555,6 +2815,9 @@ bool CDigitalGuardianHead::x11F30_(TUniqueId id) const {
 // this head's scale, the IS04/ACTV object (0x103E) loses one health (.rodata 0x96C), one echo
 // target fewer (0xFE0); at none the armour is gone (bit 0x10) and IS00 is sent. The survivors
 // then ignore damage (0x78C bit 0x80).
+// The unset-token arm is data-dead (the ctor locks xFD0_ only with the asset set, and the one
+// placement sets it); forced (dg26 force spec).
+// @ fn_14_11FEC
 void CDigitalGuardianHead::x11FEC_(CStateManager& mgr, const CTransform4f& xf) {
   if (xFD0_.valid()) {
     const CVector3f scale = GetModelData()->GetScale();
@@ -1588,7 +2851,8 @@ void CDigitalGuardianHead::x11FEC_(CStateManager& mgr, const CTransform4f& xf) {
 // fn_14_12B04: at ball idx's locator (0xDCC) the bomb-pit effect ("BombPitExplosionFx", .rodata
 // 0xF39) when set, the explosion sound (data +0x13C), the slot's destroyed effect state (.data
 // 0xE50) and, once, its looping sound (data +0x154) at 0xF28; the IS04/ACTV object loses one
-// health.
+// health. idx -1 and the unset token forced (dg27 force spec); the rest ran (dg26 drivers a, b, c).
+// @ fn_14_12B04
 void CDigitalGuardianHead::x12B04_(CStateManager& mgr, int idx) {
   if (idx == -1) {
     return;

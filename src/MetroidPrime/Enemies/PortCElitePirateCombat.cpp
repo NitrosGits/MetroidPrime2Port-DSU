@@ -52,9 +52,23 @@ const CActor* TargetActor(const CStateManager& mgr, TUniqueId id) {
 
 } // namespace
 
+// @ fn_15_BAF8
+// @ fn_15_BC04
+// @ fn_15_BD10
 // Retail has one copy of this per command type (fn_15_BAF8 melee, fn_15_BC04 projectile,
-// fn_15_BD10 loop attack; the taunt's fn_15_BEA0 is TauntCmd): deliver on Activate, re-deliver on Update while the
-// body is not yet in `state`, and clear the animation state (0x6b4) on Deactivate.
+// fn_15_BD10 loop attack; the taunt's fn_15_BEA0 is TauntCmd): deliver on Activate, re-deliver on
+// Update while the body is not yet in `state`, and clear the animation state (0x6b4) on Deactivate.
+// The three retail copies differ only in the command payload they copy into the body state cmd
+// manager (0x180 for the melee cmd, 0x19c for the projectile cmd, 0x1b8 for the loop cmd); the
+// host's DeliverCmd stores the whole command, so one template carries the three markers.
+// Branch map (fn_15_BAF8; the other two are the same shape at 0xBC04 and 0xBD10):
+//   0xBB00 `cmpwi r4,1` -> 0xBB18 Update arm; 0xBB94 `rlwinm. r0,r3,0,24,31` (r3 & 0xff, the
+//   host's CAnimationState::CanIssueCommand at 0x801B73E4 returns 0 or 1) -> 0xBB98 leaves the
+//   function when it returned 0, otherwise the command is delivered again (0xBBAC);
+//   0xBB20 `cmpwi r4,0` -> 0xBB38 Activate arm (0x6b4 = 1, deliver);
+//   0xBB2C `cmpwi r4,3` -> 0xBB30 leave the function for r4 >= 3 and 0xBB28 for r4 < 0
+//   (EStateMsg has only 0/1/2, so retail never takes them);
+//   0xBB34 -> 0xBBE4 Deactivate arm (0x6b4 = 0).
 template < typename T >
 void CElitePirate::TryCommand(EStateMsg msg, pas::EAnimationState state, const T& cmd) {
   switch (msg) {
@@ -164,8 +178,9 @@ void CElitePirate::ShieldUp(CStateManager& mgr, EStateMsg msg, float dt) {
 void CElitePirate::Shockwave(CStateManager& mgr, EStateMsg msg, float) {
   SetAttackKind(7, msg);
   if (msg == kStateMsg_Activate) {
-    // [probable] the four weights are the loader's 0x28b39197/0xe27de71b/0x665e7ace/0xacd4d06d in
-    // data order (+0x144..+0x150).
+    // The four weights are the loader's 0x28b39197/0xe27de71b/0x665e7ace/0xacd4d06d in data order
+    // (+0x144..+0x150): fn_15_178 0x9EC..0xA08 passes SLdr 0xa40..0xa4c to the stack words fn_15_B82C
+    // stores there (0xBA10..0xBA20).
     const float w0 = mData.mUnknown28B39197;
     const float w1 = mData.mUnknownE27DE71B;
     const float w2 = mData.mUnknown665E7ACE;

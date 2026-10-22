@@ -87,7 +87,9 @@
 #include "MetroidPrime/ScriptObjects/CScriptForgottenObject.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSpawnPoint.hpp"
+#ifdef TARGET_PC
 #include "MetroidPrime/ScriptObjects/CScriptWorldTeleporter.hpp"
+#endif
 #include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -3638,7 +3640,17 @@ void CStateManager::SendScriptMsg(const CScriptMsg& msg) {
   }
 }
 
+#ifdef TARGET_PC
+// Console `mpforce`: makes IsMultiplayer report true so the multiplayer arms run in single player.
+bool gPortForceMultiplayer = false;
+#endif
+
 bool CStateManager::IsMultiplayer() const {
+#ifdef TARGET_PC
+  if (gPortForceMultiplayer) {
+    return true;
+  }
+#endif
   int v = gpGameState->GetGameMode().GetGameModeType();
   return v != 'SNGL' && v != 'FRND';
 }
@@ -3915,6 +3927,7 @@ void CStateManager::ProcessInput(const CFinalInput& input) {
   }
 }
 
+#ifdef TARGET_PC
 namespace {
 // Unload every area except the two a warp has to spare: the one the player is in and the one being
 // streamed. `CWorld::UnloadAllAreasExcept` spares a single area, and using it with the current area
@@ -3944,6 +3957,7 @@ bool PortUnloadAreasExcept(CStateManager& mgr, CWorld& world, TAreaId keepA, TAr
   return !failed;
 }
 } // namespace
+#endif
 
 void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   mArchQueue = &queue;
@@ -5138,6 +5152,13 @@ void CStateManager::PortWarpToLayer(TAreaId aid, int layer) {
     return;
   }
   layers.SetLayerActive(aid, id, true);
+  // An area that is not loaded has no layer phases yet (LoadLayerDynamic indexes them unchecked);
+  // the active flag is enough there, the area's own load streams its active layers in.
+  if (!area->IsLoaded()) {
+    std::fprintf(stderr, "[layer] area %d is not loaded: layer %d marked active for its load\n",
+                 aid.Value(), layer);
+    return;
+  }
   area->LoadLayerDynamic(*this, id);
   mPortLayerArea = aid;
   mPortLayer = id;

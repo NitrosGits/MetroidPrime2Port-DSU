@@ -8,6 +8,7 @@
 #include "rstl/optional_object.hpp"
 
 class CCollisionActorManager;
+class CDigitalGuardianHead;
 class CElementGen;
 class CParticleGen;
 class CGenDescription;
@@ -22,6 +23,7 @@ class CGenDescription;
 #include "MetroidPrime/ScriptLoader/Structs/SLdrDamageVulnerability.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrEchoParameters.hpp"
 #include "MetroidPrime/ScriptLoader/Structs/SLdrShockWaveInfo.hpp"
+#include "Kyoto/Animation/CPASAnimParmData.hpp"
 
 // Host copy of the module's parameter block (SLdrDigitalGuardianData). Retail reads it into a
 // stack struct and copies it into the object verbatim (fn_14_C68C, guest 0x7C0, 0x640 bytes), so
@@ -301,10 +303,17 @@ private:
   uchar x1013_;     // 0x1013: the flag byte the "IM05"/"IM06" messages set (fn_14_A6A8)
   TUniqueId x1168_; // 0x1168: the exit vortex target's waypoint id (fn_14_7600)
   TUniqueId x116A_; // 0x116A: the IS05/Follow object (fn_14_5910)
-  int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1)
-  TUniqueId x11C0_; // 0x11C0: the IS00/Attach object (fn_14_5910)
+  CDamageInfo x116C_; // 0x116C: vortexDamage (data +0xE8, LdrToDamageInfo at 0xB5C4; fn_14_4F2C)
+  int x11B8_;       // 0x11B8: s32, 0 (fn_14_9638 compares it with 1); the vortex mode: 1 in
+                    // VortexAttack, 2 in VortexRetreat, 0 in ExitVortexAttack/SetNormalAttackMode
+  float x11BC_;     // 0x11BC: the exit vortex speed, 0.0f (the store at 0xB65C; fn_14_34E8)
+  TUniqueId x11C0_; // 0x11C0: the IS00/Attach object (fn_14_5910), the vortex's camera shaker
+  int x11C4_;       // 0x11C4: the camera shake id, -1 (the store at 0xB66C; fn_14_4D54)
   float x11C8_;     // 0x11C8: the vortex's health (data +0x100, the store at 0xB674; fn_14_5384
                     // takes damage from it, fn_14_9638 reads it)
+  CVector3f x11CC_; // 0x11CC: the vortex's drift velocity, zero (0xB67C; fn_14_3300 sets it)
+  int x11D8_;       // 0x11D8: the melee leg, -1 (0xB690; fn_14_7504 sets it, fn_14_73D4 reads it)
+  int x11DC_;       // 0x11DC: the melee range, -1 (0xB694; fn_14_73D4, read by fn_14_89D4)
   float x11E0_;     // 0x11E0: f32, 0.0f (fn_14_97F0 compares it with 0.0f)
   float x11E4_;     // 0x11E4: f32, 0.0f (fn_14_9678 compares it with 0.0f)
   int x11E8_;       // 0x11E8: s32, 1 (the store at 0xB6A0; the reaction states clear it,
@@ -312,7 +321,10 @@ private:
   float x1274_;     // 0x1274: f32, 0 (fn_14_9994 compares it with 0.0f)
   CVector3f x1278_; // 0x1278: the face target's position, zero (fn_14_9A60 reads x, y and z)
   int x1284_;       // 0x1284: s32, -1 (fn_14_9A48 and fn_14_9A0C read it)
+  float x1288_;     // 0x1288: the base speed, CPatterned's speed at the ctor's end (0xBA28)
   uchar x128C_;     // 0x128C: the flag byte; bit 7 = "is idle" (fn_14_9A9C reads bit 7)
+  uchar x128D_;     // 0x128D: the vortex flags; 0x80 = drift (fn_14_3300 sets it, user event 12
+                    // clears it), 0x40 = pull the player (user event 17 sets it)
 
   // The five models the module's AddToRenderer (fn_14_A004) draws, and the state they read.
   // The guest offsets are the REL's (docs/module-analysis/DigitalGuardian.md section e); the
@@ -425,6 +437,8 @@ private:
   void x5384_(CStateManager& mgr, TUniqueId sender);
   // fn_14_5274 (0x100 bytes): the head collider (the beacon) hit (from fn_14_5838).
   void x5274_(CStateManager& mgr, TUniqueId sender);
+  // fn_14_4F2C (0x214 bytes): the "XHIT" case - a collider the player touched damages the player.
+  void x4F2C_(CStateManager& mgr, TUniqueId sender);
   // fn_14_266C (0x264 bytes): the beacon is destroyed.
   void x266C_(CStateManager& mgr);
   // fn_14_2E60 (0x234 bytes): the beacon is hit and survives.
@@ -436,6 +450,9 @@ private:
   void x18B4_(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& flags) const;
   void x17DC_(const CStateManager& mgr, const CTransform4f& xf) const;
   void x1700_(const CStateManager& mgr, const CTransform4f& xf, const CModelFlags& flags) const;
+
+  // fn_14_1570 (0x190 bytes): the model's vertex bounds, rotated and scaled about the origin.
+  CAABox x1570_() const;
 
   // fn_14_2578 (0xF4 bytes): the echo emitter's transform.
   void x2578_(CTransform4f& out, const CTransform4f& xf) const;
@@ -451,6 +468,28 @@ private:
 
   // fn_14_3974 (0x58 bytes): the object with the id at guest 0x1080 gets its active flag set.
   void x3974_(CStateManager& mgr, bool active);
+  // fn_14_39CC (0x68 bytes): the toe target colliders (0x1078, count 0x1074) get a vulnerability.
+  void x39CC_(CStateManager& mgr, const CDamageVulnerability& vuln);
+  // fn_14_3DA8 (0x84 bytes): the four knee armours (0xFB0) orbitable or not (fn_14_CE1C).
+  void x3DA8_(CStateManager& mgr, bool orbitable);
+  // fn_14_34E8 (0x18C bytes): a step towards the exit vortex waypoint (0x1168); true while the
+  // step falls short of it.
+  bool x34E8_(CStateManager& mgr, float dt, float minDist);
+  // fn_14_3674 (0x164 bytes): the vortex pulls the player.
+  void x3674_(CStateManager& mgr, float dt);
+  // fn_14_4D54 / fn_14_4878 / fn_14_4838: the vortex camera shake (0x11C0's shaker, id 0x11C4)
+  // is added, moved to the body, removed.
+  void x4D54_(CStateManager& mgr);
+  void x4878_(CStateManager& mgr);
+  void x4838_(CStateManager& mgr);
+  // fn_14_3300 (0x1E8 bytes): the vortex drift towards the IS05/Follow object (0x11CC).
+  void x3300_(CStateManager& mgr);
+  // fn_14_4E00 (0x12C bytes): a camera shake at a locator (the user event ScreenShake).
+  void x4E00_(CStateManager& mgr, const rstl::string& locator);
+  // fn_14_20E4 (0xBC bytes): the leg of an ankle or toe collider locator, or -1.
+  int x20E4_(const rstl::string& name) const;
+  // fn_14_458C (0x1E0 bytes): a toe's shock wave (the user event EventStart).
+  void x458C_(CStateManager& mgr, const rstl::string& locator);
 
   // fn_14_676C (0xF8 bytes): the collision actor managers' builder, and the three builders it
   // calls: fn_14_61DC (0x590 bytes, the manager at 0xE60), fn_14_5C30 (0x2F4 bytes, the manager
@@ -483,6 +522,31 @@ private:
   // REL's and are in docs/module-analysis/DigitalGuardian.md section e; the host class has its
   // own layout and only keeps what this milestone needs.
   CDigitalGuardianData mData; // guest 0x7C0 (0x640), the block fn_14_C68C copies in
+
+  // -------------------------------------------------------------------------------------------
+  // The helpers this lane ports: the module's stateless functions that are not FSM handlers
+  // (the bodies are in src/MetroidPrime/Enemies/PortCDigitalGuardianHelpers.cpp; the function
+  // map, the caller map and the arm tables are in
+  // docs/module-analysis/DigitalGuardian_helpers.md). Append-only, so the FSM lane's edits in
+  // the same header merge cleanly.
+  float x37FC_(float v) const;   // fn_14_37FC: the nearest of the five 45-degree values
+  float x6C74_() const;          // fn_14_6C74: the attack angle (4*pi, pi/3 or 2*pi/3)
+  void x3F90_(CStateManager& mgr);            // fn_14_3F90: the knee armours follow the knees
+  void x38BC_(CStateManager& mgr, float dt);  // fn_14_38BC: the leg-stab, jump and protect timers
+  void x2358_(CStateManager& mgr, float dt);  // fn_14_2358: the toe targets' sound emitters
+  void x5644_(CStateManager& mgr, TUniqueId sender); // fn_14_5644: the "XRDG" case
+  bool x6C24_(CDigitalGuardianHead& head); // fn_14_6C24: the head's turn direction
+  void x6CB0_(CDigitalGuardianHead& head, const CTransform4f& xf, CVector3f& outForward,
+              CVector3f& outUp); // fn_14_6CB0: the aim (the forward and the up vector)
+  void x6E04_(CStateManager& mgr, float dt);   // fn_14_6E04: the body turns to the head
+  // fn_14_83C0 (0x184 bytes): the knock-back animation parm data (the state id and the
+  // eight parameters).
+  CPASAnimParmData x83C0_(pas::EAnimationState state, const CPASAnimParm& p1,
+                          const CPASAnimParm& p2, const CPASAnimParm& p3,
+                          const CPASAnimParm& p4, const CPASAnimParm& p5,
+                          const CPASAnimParm& p6, const CPASAnimParm& p7,
+                          const CPASAnimParm& p8) const;
+  CTransform4f x1088_ = CTransform4f::Identity(); // 0x1088: the aim transform (fn_14_6CB0)
 #else
   uchar x7c0_[0x1290 - 0x7c0]; // CDigitalGuardianData and everything above it in retail
 #endif

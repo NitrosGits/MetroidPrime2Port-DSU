@@ -22,7 +22,9 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
+#include "MetroidPrime/CRagDoll.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptTrigger.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTargetingPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTeamAiMgr.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -308,12 +310,13 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
   xbc4_ = CVector3f::Zero();
   xbd0_ = 0.f;
   xbfc_ = false;
-  xc00_ = 0;
+  xc00_ = CSfxHandle::NullHandle();
   xc04_warpPoint = -1;
   xc58_ = 0;
 
   // 0xFB30: the launcher block (data+0xc8) builds the grenade launcher's model.
   InitLauncherModel(data);
+  // 0xFB34-0xFB40: the data's projectile (+0x20) is not -1 (`addis 1` + `cmplwi 0xffff`).
   if (data.mProjectile != kInvalidAssetId) {
     mProjectileInfo = CProjectileInfo(data.mProjectile, data.mProjectileDamage);
   }
@@ -479,6 +482,8 @@ void CSpacePirate::Think(float dt, CStateManager& mgr) {
     }
   }
   UpdateCloak(dt, mgr);
+  // 0x1B7C: the sfx emitter follows the pirate (fn_72_2EA8).
+  UpdateSfxEmitter();
   if (body->GetPercentageFrozen() < 1.f) {
     if (mAlive) {
       xa10_steeringDelayTimer = CMath::Max(0.f, xa10_steeringDelayTimer - dt);
@@ -506,6 +511,8 @@ void CSpacePirate::Think(float dt, CStateManager& mgr) {
   TraceState(*this, StateMachineState().GetName());
 }
 
+// @ fn_72_CA94
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::SetCinematicCollision(CStateManager& mgr) {
   RemoveMaterial(kMT_AIBlock, mgr);
   CMaterialList include = GetMaterialFilter().GetIncludeList();
@@ -514,6 +521,8 @@ void CSpacePirate::SetCinematicCollision(CStateManager& mgr) {
       CMaterialFilter::MakeIncludeExclude(include, GetMaterialFilter().GetExcludeList()));
 }
 
+// @ fn_72_C9DC
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::SetNonCinematicCollision(CStateManager& mgr) {
   AddMaterial(kMT_AIBlock, mgr);
   SetMaterialFilter(CMaterialFilter::MakeIncludeExclude(
@@ -616,6 +625,12 @@ void CSpacePirate::SquadReset(CStateManager& mgr) {
 }
 
 // Tells the squad manager who this member is shooting at.
+// fn_72_DE5C (0x80): no squad (0xba0 == kInvalidUniqueId, asm 0xDE80-0xDE84) or a squad id that no
+// longer resolves to a CScriptTeamAiMgr (asm 0xDEA0-0xDEA4) does nothing; otherwise the member is
+// the pirate's own id (0x8, asm 0xDEB8) and its target the attack target (0xa94, asm 0xDEA8).
+// All three arms ran (tools/cov, 07_sand_alamoportalobservation L3 with the squads deleted before
+// round 2, 2026-10-21): no squad 10051 entries, the cast 20000 times and SetMemberTargetId 319.
+// @ fn_72_DE5C
 void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
   if (xba0_teamAiMgrId == kInvalidUniqueId) {
     return;
@@ -625,6 +640,13 @@ void CSpacePirate::UpdateTeamTarget(CStateManager& mgr) {
   }
 }
 
+// fn_72_EFD4 (0xCC): a squad (0xba0 != kInvalidUniqueId, asm 0xF00C) that still resolves (asm
+// 0xF028) and has this member within 20 units (rodata B74 = 20.0, asm 0xF040-0xF04C) picks the
+// best individual target (asm 0xF060); every other case falls to ChoosePlayer (asm 0xF068-0xF07C).
+// All four arms ran (tools/cov, 06_sand_alamofront L2, 2026-10-21): no squad, in range (2 hits) and
+// out of range, and a squad id whose manager is gone (150 hits: `send <team> Delete`, then the player
+// deactivated with `send <player> Deactivate` so ChooseTarget falls back to ChooseTeamTarget).
+// @ fn_72_EFD4
 TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
   if (xba0_teamAiMgrId != kInvalidUniqueId) {
     CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
@@ -635,20 +657,30 @@ TUniqueId CSpacePirate::ChooseTeamTarget(CStateManager& mgr) {
   return CScriptTeamAiMgr::ChoosePlayer(mgr, *this);
 }
 
-// Keeps the current target unless it has gone inactive, in which case the squad picks one; a distant target is dropped for a player within 10 units.
+// Retail fn_72_EDEC (0x1E8). The player loop stops at the attack target when that player is
+// inactive: the team picks the target (fn_72_EFD4) and a flag is set (asm 0xEE74). An active target
+// gives its distance; any other player within 10 units (rodata B58) is the nearest. A target more
+// than 30 units away (rodata C2C) is dropped for that nearest player. Without the flag (asm 0xEF48),
+// a squad (0xba0) that resolves and has this member within 50 units (rodata B70, not the 20 of
+// ChooseTeamTarget) keeps the current attack target instead (asm 0xEF50-0xEFA4). Retail has no
+// null check on the player.
+// gcov 2026-10-21: every arm but the swap (it needs a second player: the target and another one),
+// from 06_sand_alamofront with `send <player> Deactivate` and the helpers lane's squad run in
+// 07_sand_alamoportalobservation L3 (spacepirate_helpers_force.py run 2).
+// @ fn_72_EDEC
 TUniqueId CSpacePirate::ChooseTarget(CStateManager& mgr) {
   float nearest = 10.f;
   float currentDist = 0.f;
   TUniqueId nearestId = kInvalidUniqueId;
   TUniqueId result = mAttackTarget;
+  bool teamChosen = false;
   for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
     const CPlayer* player = mgr.GetPlayer(i);
-    if (player == nullptr) {
-      continue;
-    }
     if (player->GetUniqueId() == mAttackTarget) {
       if (!player->GetActive()) {
+        teamChosen = true;
         result = ChooseTeamTarget(mgr);
+        break;
       } else {
         currentDist = (player->GetTranslation() - GetTranslation()).Magnitude();
       }
@@ -663,6 +695,12 @@ TUniqueId CSpacePirate::ChooseTarget(CStateManager& mgr) {
   if (currentDist > 30.f && nearest < 10.f) {
     result = nearestId;
   }
+  if (!teamChosen && xba0_teamAiMgrId != kInvalidUniqueId) {
+    CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(xba0_teamAiMgrId));
+    if (team != nullptr && team->IsTeamMemberInRange(mgr, *this, 50.f)) {
+      return mAttackTarget;
+    }
+  }
   return result;
 }
 
@@ -675,7 +713,10 @@ bool CSpacePirate::ShouldFrenzy(CStateManager& mgr) {
       reset = true;
     }
   }
-  // Retail also resets while the global charge-player list is non-empty (no port equivalent yet).
+  // The module's charge-player list (bss_40, asm 0x3290-0x32A4) not being empty also rolls a burst.
+  if (!mChargePlayerList.empty()) {
+    reset = true;
+  }
   const CPlayer* target = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mAttackTarget));
   if (target != nullptr && target->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
     reset = true;
@@ -910,10 +951,17 @@ bool CSpacePirate::FireProjectile(float dt, CStateManager& mgr) {
   return fired;
 }
 
-// Squad bookkeeping and the burst-fire pattern. Retail's switch has a second case (an inert
-// pirate that only counts its attack timer down) that no state reaches.
+// Squad bookkeeping and the burst-fire pattern. Retail switches on the equipped weapon (0x2920
+// lwz 0x888 = data +0xc8): 0 runs the burst fire below; 1 (the grenade launcher) only counts the
+// attack timer down (0x2E60-0x2E70); any other weapon does nothing (0x2E74).
 // @ fn_72_28F0
 void CSpacePirate::UpdateAttacks(float dt, CStateManager& mgr) {
+  if (mData.mEquippedWeapon != 0) {
+    if (mData.mEquippedWeapon == 1) {
+      mAttackRemTime -= dt;
+    }
+    return;
+  }
   bool reset = true;
   const bool canShoot =
       !mAlive || (BodyController()->GetBodyStateInfo().GetCurrentState()->CanShoot() &&
@@ -975,8 +1023,15 @@ void CSpacePirate::UpdateAttacks(float dt, CStateManager& mgr) {
       }
       FireProjectile(dt, mgr);
       mBurstFire.SetAvoidAccuracy(false);
-      mBurstFire.SetTimeToNextShot(mData.mIntraBurstVariation * (mgr.Random()->Float() - 0.5f) +
-                                   mData.mIntraBurstTime);
+      // 0x2D80: an Ing-possessed pirate uses its own intra-burst time and variation (data +0x94/+0x98).
+      if (IsIngPossessed()) {
+        mBurstFire.SetTimeToNextShot(mData.mIngIntraBurstVariation *
+                                         (mgr.Random()->Float() - 0.5f) +
+                                     mData.mIngIntraBurstTime);
+      } else {
+        mBurstFire.SetTimeToNextShot(mData.mIntraBurstVariation * (mgr.Random()->Float() - 0.5f) +
+                                     mData.mIntraBurstTime);
+      }
     } else if (!mBurstFire.IsBurstSet()) {
       reset = true;
     }
@@ -1063,8 +1118,11 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       mOnGround = false;
     }
     if (message == kSM_Activate && x8f6_24_trooper) {
-      // TODO(fn_72_E498): retail also stores an alpha into the colour byte here when the trooper
-      // is still inactive with no warp point; the value is lost in the pseudocode.
+      // 0xE674-0xE69C: a trooper still inactive with no warp point (xc04 == -1) starts invisible
+      // (colour alpha byte 0x44f = rodata B9C 0.f, quantized).
+      if (!GetActive() && xc04_warpPoint == -1) {
+        mColor.SetAlpha(static_cast< uchar >(0));
+      }
       x8fa_26_ = true;
     }
   }
@@ -1132,7 +1190,8 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     mBurstFire.SetBurstType(3);
     break;
   case kSM_Launching:
-    if (BodyController()->GetCurrentStateId() != pas::kAS_Jump) {
+    // 0xEB10: skipped while the body is hurled (kAS_Hurled, 0xE).
+    if (BodyController()->GetCurrentStateId() != pas::kAS_Hurled) {
       CScriptMsg offGround(msg.GetSenderId(), kInvalidUniqueId, kSM_OffGround);
       CPatterned::AcceptScriptMsg(mgr, offGround);
       SetMomentumWR(CVector3f(0.f, 0.f, -GetGravityConstant() * GetMass()));
@@ -1173,7 +1232,9 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   case kSM_Delete:
   case kSM_Deactivate:
     SquadRemove(mgr);
-    // TODO(fn_72_E498): retail also drops the pirate from the module's charge-player list.
+    // 0xED6C: fn_72_9E64 = remove(uid) on the module's charge-player list (bss_40): fn_72_9EB0
+    // erases every node holding this pirate's id.
+    mChargePlayerList.remove(GetUniqueId());
     break;
   case kSM_Start:
     x8f9_26_started = false;
@@ -1203,6 +1264,8 @@ void CSpacePirate::SquadRemove(CStateManager& mgr) {
 }
 
 // Retail fn_72_51C8: a live trooper with no warp point and no pending warp enters "WarpOut".
+// @ fn_72_51C8
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 void CSpacePirate::TrooperWarpOut(CStateManager& mgr, bool flag) {
   if (mAlive && !x8fa_25_ && xc04_warpPoint == -1 && x8f6_24_trooper) {
     mStateMachine->SetState(mgr, *this, rstl::string_l("WarpOut"));
@@ -1310,18 +1373,46 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
   RenderLauncherModel(mgr, GetTransform(), GetModelFlags());
 }
 
-// Retail fn_72_E3D8 adds a force-field trigger's push to the ragdoll's torso impulse once the
-// ragdoll is primed; with no ragdoll (xb30_ is never set) it is CPatterned::Touch.
 // Retail fn_72_E3D8 (0xC0): the base class's touch first, then a force-field trigger's push
-// onto the ragdoll's torso impulse. The ragdoll pointer at 0xb30 is never set in this port, so
-// that whole branch stays a comment (asm 0xE3F8-0xE47C): the ragdoll's own flag byte 0x70 has
-// to carry bit 0x40 (asm 0xE408), the other actor has to be a CScriptTrigger (asm 0xE414) whose
-// flag byte 0x20 carries bit 0x80 (asm 0xE424) and whose word 0x1a0 carries bit 0x10000 (asm
-// 0xE430), and the trigger's float 0x19c has to be above zero (asm 0xE444); the ragdoll's
-// 0xb8, 0xbc and 0xc0 then take the trigger's 0x190, 0x194 and 0x198.
+// onto the ragdoll's torso impulse (asm 0xE3F8-0xE47C).  The conditions, each one a branch that
+// skips the push:
+//   0xE3FC-0xE400: the ragdoll (0xb30) is there,
+//   0xE404-0xE40C: the ragdoll's flag byte 0x70 carries 0x40 (CRagDoll::mPrimed: the DOL's
+//     CRagDoll::Prime sets it, rlwimi r0,r3,6,25,25 at 0x80160610),
+//   0xE410-0xE41C: the other actor is a CScriptTrigger,
+//   0xE420-0xE428: the trigger's flag byte 0x20 carries 0x80 (CEntity::mActive),
+//   0xE42C-0xE434: the trigger's word 0x1a0 carries 0x8000 (rlwinm. r0,r0,0,16,16 =
+//     kTFL_DetectAI),
+//   0xE438-0xE448: the trigger's float 0x19c is above zero (GetForceMagnitude()),
+// and then the ragdoll's 0xb8, 0xbc and 0xc0 take the trigger's 0x190, 0x194 and 0x198 (the
+// force field, asm 0xE44C-0xE47C).  0xb8..0xc0 lie past the DOL CRagDoll (0xa0): they belong to
+// the module's own pirate ragdoll (MP1's CPirateRagDoll::x84_torsoImpulse), which the port does
+// not have - xb30_ is never set, so the push is left out.
 void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   TraceCall(*this, "Touch", 0);
   CPatterned::Touch(actor, mgr);
+  CRagDoll* ragdoll = static_cast< CRagDoll* >(xb30_);
+  if (ragdoll == nullptr) {
+    return; // 0xE3FC-0xE400
+  }
+  if (!ragdoll->IsPrimed()) {
+    return; // 0xE404-0xE40C
+  }
+  CScriptTrigger* trigger = TCastToPtr< CScriptTrigger >(&actor);
+  if (trigger == nullptr) {
+    return; // 0xE410-0xE41C
+  }
+  if (!trigger->GetActive()) {
+    return; // 0xE420-0xE428
+  }
+  if ((trigger->GetTriggerFlags() & kTFL_DetectAI) == 0) {
+    return; // 0xE42C-0xE434
+  }
+  if (trigger->GetForceMagnitude() <= 0.f) {
+    return; // 0xE438-0xE448
+  }
+  // 0xE44C-0xE47C: the pirate ragdoll's torso impulse += trigger->GetForceField() (not ported,
+  // see above).
 }
 
 // Retail fn_72_C538.
@@ -1379,16 +1470,19 @@ void CSpacePirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (mAlive) {
     if (reaction == CKnockBackMgr::kAR_Hurled) {
       mStateMachine->SetState(mgr, *this, rstl::string_l("GetUpNow"));
-      CSfxManager::AddEmitter(mData.mHurledSfx, GetTranslation(), 127,
-                              GetCurrentAreaId().Value(), false, false, CSfxManager::kMedPriority);
+      // The handle goes to 0xc00 (asm 0xC944), which fn_72_2EA8 reads.
+      xc00_ = CSfxManager::AddEmitter(mData.mHurledSfx, GetTranslation(), 127,
+                                      GetCurrentAreaId().Value(), false, false,
+                                      CSfxManager::kMedPriority);
     }
   } else if (!x8f5_30_floatingCorpse && reaction == CKnockBackMgr::kAR_Hurled) {
     const CKnockBackMgr::EFollowUp followUp = mKnockBackController.GetFollowUp();
     if (followUp != CKnockBackMgr::kFU_ExplodeDeath && followUp != CKnockBackMgr::kFU_IceDeath &&
         followUp != CKnockBackMgr::kFU_BurnDeath &&
         followUp != CKnockBackMgr::kFU_LaggedBurnDeath) {
-      CSfxManager::AddEmitter(mData.mDeathSfx, GetTranslation(), 127, GetCurrentAreaId().Value(),
-                              false, false, CSfxManager::kMedPriority);
+      xc00_ = CSfxManager::AddEmitter(mData.mDeathSfx, GetTranslation(), 127,
+                                      GetCurrentAreaId().Value(), false, false,
+                                      CSfxManager::kMedPriority); // asm 0xC9B8
     }
   }
 }
@@ -1498,7 +1592,7 @@ rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
   // touch bounds are the ragdoll's (ragdoll+0x58..0x70). The ragdoll is outside the port (xb30_
   // is never set), so there is no host member to read: port it with the ragdoll.
   // 0x183C bl fn_72_1854: the actor's own bounding box (GetBoundingBox).
-  return GetBoundingBox();
+  return GetActorTouchBounds();
 }
 
 // @ fn_72_35CC (GetSortingBounds): the model's bounds in the actor's transform, shrunk to a
@@ -1616,7 +1710,8 @@ bool CSpacePirate::Listen(CStateManager& mgr, const CVector3f& position, EListen
   return heard;
 }
 
-// Retail fn_72_E090 (GetOrigin): the pirate's own position.
+// @ fn_72_E090 (GetOrigin, 0x1C): the pirate's own position. Branchless; the team AI of
+// 07_sand_alamoportalobservation L3 called it 400+ times in the gdb run.
 CVector3f CSpacePirate::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                   const CVector3f& aimPos) const {
   // 0xE090-0xE0A4: this+0x54/0x58/0x5c, the actor's translation.
@@ -1631,8 +1726,13 @@ uchar CSpacePirate::GetModelAlphau8(const CStateManager& mgr) const {
   return mColor.GetAlphau8();
 }
 
+// fn_72_4F0C: the null arm is dead in the shipped data. The optional is built only for a valid
+// projectile id (the ctor's 0xFB34-0xFB40) and every one of the 65 PIRT placements carries the
+// projectile property 0xef485db9 = 0x681ed507 (tools/scan_pirt_props.py with that property added,
+// 2026-10-21); the built arm ran in every run.
+// @ fn_72_4F0C
 CProjectileInfo* CSpacePirate::ProjectileInfo() {
-  // Retail returns this+0xbd4 whether or not the ctor built it; the host keeps it optional.
+  // 0x4F0C-0x4F14: the optional's built flag (0xbfc); set -> this+0xbd4 (0x4F18), clear -> null (0x4F20).
   return mProjectileInfo.valid() ? &mProjectileInfo.data() : nullptr;
 }
 
@@ -1667,6 +1767,8 @@ void CSpacePirate::ScanVisorRender(const CStateManager& mgr, const CTransform4f&
 }
 
 // Retail fn_72_18BC (TryToBeCaptured): the pirate switches to the "Captured" state and says so.
+// @ fn_72_18BC
+// arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
 bool CSpacePirate::TryToBeCaptured(CStateManager& mgr) {
   // 0x18D8: the state name "Captured" (rodata 0xF42), set through the state machine's virtual
   // slot 0x20 (SetState).
@@ -1707,6 +1809,8 @@ static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEn
   data.mImpactSfx = static_cast< ushort >(sldrThis.sound_Impact);
   data.mIntraBurstTime = sldrThis.intraBurstShotTime;
   data.mIntraBurstVariation = sldrThis.intraBurstShotVariation;
+  data.mIngIntraBurstTime = sldrThis.unknown_0x5080162a;
+  data.mIngIntraBurstVariation = sldrThis.unknown_0xc78b40e0;
   data.mAlertSfx = static_cast< ushort >(sldrThis.sound_Alert);
   data.mGunTrackDelay = sldrThis.gunTrackDelay;
   data.mFirstBurstCount = static_cast< uint >(sldrThis.unknown_0x1b454a27);

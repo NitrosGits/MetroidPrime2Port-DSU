@@ -1,7 +1,5 @@
 // Host body for the SandBoss REL (module 55, Amorbis): the attack helpers and the charge-beam
-// projectile. The stampede helpers and the charge-beam list (fn_55_26C0..fn_55_311C) follow retail
-// (`// fn_55_X (ported, not exercised yet)`); every other function here is still a log-once stand-in
-// (bool helpers return false, the rest do nothing).
+// projectile. Every body follows retail and carries its `// @ fn_55_X` marker.
 // docs/module-analysis/SandBoss.md section 4 is the function map.
 #include "MetroidPrime/Enemies/CSandBoss.hpp"
 
@@ -48,6 +46,12 @@ SandBossChargeBeam::SandBossChargeBeam(const TToken< CWeaponDescription >& descr
   SetDamageDuration(1.f); // retail stores 1.0 in the weapon's duration field after construction
 }
 
+// @ fn_55_10C18
+// The deleting destructor: 0x10C38 resets the vtable to lbl_55_data_9AC (the SandBossChargeBeam
+// vtable), 0x10C48 runs the base destructor (fn_55_108E4) and 0x10C4C..0x10C58 frees the object
+// when the deleting flag is set. The host's C++ destructor does all three, so the body is empty.
+// A charge-beam volley reaches it: fn_55_31E8 ends the volley with a delete request for every
+// beam, and the game's object list destroys it (see docs/module-analysis/SandBoss.md §7.4).
 SandBossChargeBeam::~SandBossChargeBeam() {} // fn_55_108E4 / fn_55_10C18
 
 // @ fn_55_1027C
@@ -922,8 +926,8 @@ void CSandBoss::Helper5E5C(CStateManager& mgr) {
 // material back either way.
 void CSandBoss::HandleObjectDrop(CStateManager& mgr) {
   CPlayer* player = mgr.GetPlayer(0); // mgr 0x14FC
-  // Retail also sets bit 7 of the player's byte at 0x1144. CPlayer.hpp does not name that byte (the
-  // two morph-transition bits it does name are elsewhere), so the store is left out.
+  // 0x1144 mask 0x80 (`rlwimi r0, r4, 7, 24, 24` at 0x6018, r4 = 1): the player may unmorph again.
+  player->EnableLeaveMorphBall(true);
   if (player->GetAttachedActorId() == GetUniqueId()) { // player 0x2E4
     if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) { // player 0x38C == 1
       player->Stop();

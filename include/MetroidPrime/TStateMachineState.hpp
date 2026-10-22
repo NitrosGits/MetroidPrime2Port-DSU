@@ -70,6 +70,12 @@ public:
   virtual float GetTime() const = 0;
   virtual float GetDelay() const = 0;
   virtual void SetDelay(float delay) = 0;
+#ifdef TARGET_PC
+  // Port console (`fsm`): the names of the states this machine can enter - its own and, for an
+  // FSM2, the states of its sub-machines.  Virtual, so the console never has to read a derived
+  // member through a cast (the machine behind the base is either class).
+  virtual void PortCollectStateNames(rstl::vector< rstl::string >& out, int maxDepth) const {}
+#endif
 };
 
 // Guessed name. The target shares dispatch code across owners; template ownership is unverified.
@@ -110,6 +116,29 @@ public:
   const CState* GetCurrentState() const { return mState; } // Guessed name
   void SetCodeTrigger() { mCodeTrigger = true; }
   const CState* GetState() const { return mState; }
+#ifdef TARGET_PC
+  // Port console (`fsm`): the names of the states this machine holds, so an unknown name can be
+  // reported with the list of the valid ones.
+  void PortCollectStateNames(rstl::vector< rstl::string >& out, int maxDepth) const override;
+  // Port console (`statecall`/`trigcall`): the function the owner's table gave under `name`,
+  // whether or not the machine has a state or trigger of that name. Same as CGenericFSM2State's.
+  StateFunc PortFindStateFunction(const char* name) const {
+    for (int i = 0; i < mPortStateFunctionCount; ++i) {
+      if (strcmp(mPortStateFunctions[i].mName, name) == 0) {
+        return mPortStateFunctions[i].mFunction;
+      }
+    }
+    return StateFunc();
+  }
+  TriggerFunc PortFindTriggerFunction(const char* name) const {
+    for (int i = 0; i < mPortTriggerFunctionCount; ++i) {
+      if (strcmp(mPortTriggerFunctions[i].mName, name) == 0) {
+        return mPortTriggerFunctions[i].mFunction;
+      }
+    }
+    return TriggerFunc();
+  }
+#endif
 
 private:
   void CallState(const CState& state, CStateManager& mgr, T& owner, EStateMsg msg, float arg);
@@ -124,6 +153,12 @@ private:
   float mDelay;
   float mFixedRandom;
   bool mCodeTrigger : 1;
+#ifdef TARGET_PC
+  const SStateFunction* mPortStateFunctions = nullptr; // the last table SetStateFunctions got
+  int mPortStateFunctionCount = 0;
+  const STriggerFunction* mPortTriggerFunctions = nullptr; // the last table SetTriggerFunctions got
+  int mPortTriggerFunctionCount = 0;
+#endif
 };
 
 template < class T >
@@ -137,6 +172,22 @@ template < class T >
 int TStateMachineState< T >::GetType() const {
   return 0;
 }
+
+#ifdef TARGET_PC
+template < class T >
+void TStateMachineState< T >::PortCollectStateNames(rstl::vector< rstl::string >& out,
+                                                   int maxDepth) const {
+  if (mMachine != nullptr) {  // the asset is missing until the machine is set up
+    for (const CState& state : mMachine->GetStateVector()) {
+      out.push_back(rstl::string(state.GetName()));
+    }
+  }
+  // The owner's own table (the port registers the module's states under the retail's names).
+  for (int i = 0; i < mPortStateFunctionCount; ++i) {
+    out.push_back(rstl::string(mPortStateFunctions[i].mName));
+  }
+}
+#endif
 
 template < class T >
 void TStateMachineState< T >::Setup(const CStateMachine* machine) {
@@ -272,6 +323,10 @@ void TStateMachineState< T >::SetStateFunction(const rstl::string& name, StateFu
 
 template < class T >
 void TStateMachineState< T >::SetStateFunctions(const SStateFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortStateFunctions = functions;
+  mPortStateFunctionCount = count;
+#endif
   if (functions != nullptr) {
     for (int i = 0; i < count; ++i) {
       SetStateFunction(functions[i].mName, functions[i].mFunction);
@@ -281,6 +336,10 @@ void TStateMachineState< T >::SetStateFunctions(const SStateFunction* functions,
 
 template < class T >
 void TStateMachineState< T >::SetTriggerFunctions(const STriggerFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortTriggerFunctions = functions;
+  mPortTriggerFunctionCount = count;
+#endif
   if (functions != nullptr) {
     for (int i = 0; i < count; ++i) {
       SetTriggerFunction(functions[i].mName, functions[i].mFunction);

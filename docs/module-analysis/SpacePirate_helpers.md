@@ -1,0 +1,317 @@
+# SpacePirate (module 72) - the stateless helper half
+
+The module's note (docs/module-analysis/SpacePirate.md) and its function table
+(docs/module-analysis/SpacePirate_functions.tsv) are the module session's. This note is the
+helper lane's slice: the **B rows that are neither an FSM state nor an FSM trigger**, the bodies
+this lane added, and the arm tables of the ones a run proved.
+
+The split: the module session (branch `decomp/spacepirate`) owns the FSM states and triggers
+(`PortCSpacePirateStates.cpp`, `PortCSpacePirateTriggers.cpp`) and the module's own file
+(`PortCSpacePirate.cpp`). This lane only **adds** the bodies that are missing; it never moves an
+existing one. The three bodies it added live in `src/MetroidPrime/Enemies/PortCSpacePirateHelpers.cpp`
+(`tools/modules_port.txt` + the generated `files.cmake`). The retail offsets are the REL's `.text`
+offsets (`build/G2ME01/SpacePirate/asm/auto_00_00000000_text.s`); the classification (B/H/T) is the
+module session's, taken from its function table.
+
+## 1. The B rows that are not states or triggers
+
+74 rows. `added` = the body is in `PortCSpacePirateHelpers.cpp` (this lane); `module` = the body is
+in one of the module session's files; `header` = the body is an inline in `CSpacePirate.hpp`.
+
+| offset | size | retail function | kind | body | marker |
+|---|---|---|---|---|---|
+| 0x0 | 0x8 | IsScanVisorSelfRender (`li r3, 1`) | virtual | header | this lane (section 3) |
+| 0x8 | 0x8 | GetSearchPath (`addi r3, r3, 0x920`) | virtual | header | marked (module) |
+| 0x10 | 0x8 | IsListening (`li r3, 1`) | virtual | header | marked (module) |
+| 0x18 | 0xC | GetAttackTarget (`lhz r0, 0xa94(r4)`) | virtual | header | this lane (section 3) |
+| 0x24 | 0xC | GetGravityConstant (`lfs f1, rodata B00`) | virtual | header | this lane (section 3) |
+| 0x90 | 0x24 | RELExit | rel entry | the host's REL runtime | - |
+| 0xB4 | 0x20 | RELMain | rel entry | the host's REL runtime | - |
+| 0xD4 | 0x6C | RegisterFuncPtrs (SSpacePirate_FuncPtrs) | rel entry | the host's module registry (`platform/compiled_modules.cpp`) | - |
+| 0x140 | 0xACC | LoadSpacePirate | loader | module (`PortLoadSpacePirate`) | - (the host's loader, not retail's body) |
+| 0xC0C | 0x94 | CSpacePirateData::BuildGrenadeData | method | header (`BuildGrenadeData()`) | - |
+| 0x17A0 | 0x28 | GetRagDoll (`lwz r3, 0xb30(r3)`) | virtual | header | - (the ragdoll arm is dead) |
+| 0x17C8 | 0x8C | GetTouchBounds | virtual | module | marked (module) |
+| 0x1854 | 0x68 | GetTouchBounds helper (the actor's bounding box) | method | **added** | this lane (section 3) |
+| 0x18BC | 0x74 | TryToBeCaptured | virtual | module | this lane (section 3) |
+| 0x1980 | 0x6E0 | Think | virtual | module | marked (module) |
+| 0x24C4 | 0x78 | PreThink | virtual | module | marked (module) |
+| 0x253C | 0x310 | UpdateAttacks (Think helper) | method | module | marked (module) |
+| 0x28F0 | 0x5B0 | UpdateAimBodyState (Think helper) | method | module | marked (module) |
+| 0x2EA8 | 0xA4 | the sfx emitter update (Think helper) | method | **added** | this lane (section 3) |
+| 0x2F4C | 0x2D4 | UpdateCloak (Think helper) | method | module | marked (module) |
+| 0x3220 | 0x17C | ShouldFrenzy (from UpdateAttacks) | method | module | - (the inner arms are not all traced) |
+| 0x339C | 0xA0 | ScanVisorRender | virtual | module | marked (module) |
+| 0x343C | 0x190 | GetScanVisorRenderBounds | virtual | module | marked (module) |
+| 0x35CC | 0x100 | GetSortingBounds | virtual | module | marked (module) |
+| 0x36CC | 0xF8 | RenderLauncherModel | method | module | marked (module) |
+| 0x37C4 | 0x120 | Render | virtual | module | marked (module) |
+| 0x38E4 | 0x128 | PreRender | virtual | module | marked (module) |
+| 0x3A0C | 0x7C | PreRenderAllViewports | virtual | module | marked (module) |
+| 0x3A88 | 0x2C | GetDamageVulnerability(pos, dir, info) | virtual | module | marked (module) |
+| 0x3AB4 | 0x34 | GetDamageVulnerability() | virtual | module | marked (module) |
+| 0x3AE8 | 0x40 | GetModelAlphau8 | virtual | module | marked (module) |
+| 0x3B28 | 0x254 | DoUserAnimEvent | virtual | module | marked (module) |
+| 0x3D7C | 0x2B4 | SolveGrenadeLaunch | method | module | - (the solve's arms are not all traced) |
+| 0x4030 | 0x144 | GetGrenadeAimPoint | method | module | - (the arms are not all traced) |
+| 0x4174 | 0x3B8 | SpawnGrenade | method | module | - (the arms are not all traced) |
+| 0x45F8 | 0x4C0 | FireProjectile | method | module | marked (module) |
+| 0x4F0C | 0x1C | ProjectileInfo (`&xbd4`) | virtual | module | marked (module) |
+| 0x4F28 | 0x9C | InitLauncherModel | method | module | marked (module) |
+| 0x51C8 | 0xB8 | TrooperWarpOut | method | module | this lane (section 3) |
+| 0x5280 | 0x78 | the leash / frozen check | method | module | marked (module) |
+| 0xC538 | 0xF0 | Death | virtual | module | marked (module) |
+| 0xC684 | 0x358 | KnockBack | virtual | module | marked (module) |
+| 0xC9DC | 0xB8 | SetNonCinematicCollision | method | module | this lane (section 3) |
+| 0xCA94 | 0x9C | SetCinematicCollision | method | module | this lane (section 3) |
+| 0xCB30 | 0x150 | GetTargetPos | method | module | marked (module) |
+| 0xCC80 | 0x1B0 | CheckBlade | method | module | marked (module) |
+| 0xCE30 | 0x470 | GetStrafeDir | method | module | - (28 branches, not all traced) |
+| 0xD2A0 | 0x16C | CantJumpBack | method | module | marked (module) |
+| 0xD40C | 0x1FC | AvoidActors | method | module | marked (module) |
+| 0xD608 | 0x118 | ShuffleRandomVector | method | module | this lane (section 3) |
+| 0xD720 | 0xE0 | UpdateHeldPosition | method | module | marked (module) |
+| 0xD800 | 0x348 | UpdateGuardPosition | method | module | marked (module) |
+| 0xDB48 | 0x8C | LineOfSightRay | method | module | marked (module) |
+| 0xDBD4 | 0x288 | CheckForProjectiles | method | module | marked (module) |
+| 0xDE5C | 0x80 | UpdateTeamTarget | method | module | marked (module) |
+| 0xDEDC | 0x50 | SquadReset | method | module | marked (module) |
+| 0xDF2C | 0xA8 | SquadAdd | method | module | marked (module) |
+| 0xDFD4 | 0xBC | SquadJoin | method | module | this lane (section 3) |
+| 0xE090 | 0x1C | GetOrigin | virtual | module | marked (module) |
+| 0xE0AC | 0x2C | DetachActorFromPirate | method | module | marked (module) |
+| 0xE0D8 | 0x48 | AttachActorToPirate | method | module | marked (module) |
+| 0xE120 | 0x48 | SetAttackTarget | virtual | module | marked (module) |
+| 0xE168 | 0x174 | SetVelocityForJump | method | module | marked (module) |
+| 0xE2DC | 0x38 | CheckTargetable | method | module | marked (module) |
+| 0xE314 | 0x4 | the empty function (Dead, AcceptScriptMsg) | method | - | - (a `blr` only; the port does not need the symbol) |
+| 0xE318 | 0xC0 | Listen | virtual | module | marked (module) |
+| 0xE3D8 | 0xC0 | Touch | virtual | module | - (the ragdoll's push is not ported) |
+| 0xE498 | 0x944 | AcceptScriptMsg | virtual | module | marked (module) |
+| 0xEDEC | 0x1E8 | ChooseTarget | method | module | - (the arms are not all traced) |
+| 0xEFD4 | 0xCC | ChooseTeamTarget | method | module | this lane (section 3) |
+| 0xF0A0 | 0x6C | SetupStateMachine | virtual | module | marked (module) |
+| 0xF49C | 0xDBC | the ctor | method | module | - |
+| 0x10A10 | 0x254 | CSpacePirateData(SLdr) ctor | ctor | module (the loader fills the struct) | - |
+| 0x10C64 | 0x80 | the launcher block ctor | ctor | module (the loader fills the struct) | - |
+| 0x10CE4 | 0x40 | the module's CValidEntityPredicate (a CScriptWaypoint) | virtual | **added** | - (the host has no predicate parameter) |
+
+## 2. What this lane added
+
+`src/MetroidPrime/Enemies/PortCSpacePirateHelpers.cpp` (new; `tools/modules_port.txt` and the
+generated `files.cmake`):
+
+- **fn_72_2EA8** `UpdateSfxEmitter()` - the Think helper that keeps the pirate's sfx emitter
+  (the handle at 0xc00) where the pirate is. The Think calls it (retail asm 0x1B7C).
+- **fn_72_1854** `GetActorTouchBounds()` - the actor's own bounding box in the optional that
+  GetTouchBounds returns (retail asm 0x183C calls it).
+- **fn_72_10CE4** `CSpacePirateWaypointPredicate` - the module's own CValidEntityPredicate: the
+  object with the id has to be a CScriptWaypoint. The host's `CheckConnectedObject` takes no
+  predicate, so the WallHang state (the module's file) casts the object itself; this is the
+  retail's predicate, ready for a host that takes one.
+
+The header gets an append-only `#ifdef TARGET_PC // helpers` block with the two new declarations.
+`xc00_` becomes a `CSfxHandle` (four bytes, the layout is unchanged) because the emitter's handle
+is a handle, not an int.
+
+This round (after the module session's audit fixes, decomp/spacepirate ac42f32b9 and
+review12/spacepirate dcf664036, both merged) the lane *fixed* three bodies of the module's files
+instead of moving them:
+
+- `E3D8` Touch: the force field's push onto the ragdoll (asm 0xE3F8-0xE47C) was a comment; the
+  conditions are now code (section 3), the accumulation stays a comment: 0xb8..0xc0 belong to the
+  module's pirate ragdoll, not the DOL CRagDoll (0xa0), and the port has none (review15).
+- `17A0` GetRagDoll: the flag test (asm 0x17A4, 0x17B0, 0x17B8) was missing, now the body in
+  PortCSpacePirateHelpers.cpp.
+- `D608` ShuffleRandomVector: the clamp now tests the absolute value like the asm (asm 0xD688-
+  0xD69C) and the body carries a marker.
+
+The waypoint predicate (fn_72_10CE4) moved to the module session's own file with its WallHang
+change (review12/spacepirate dcf664036), so this lane's copy is gone.
+
+## 3. The arm tables
+
+The bodies this lane marked, with the arms of the retail asm and the run that proved them. The
+coverage harness is `tools/cov/run.sh` with `tools/cov/specs/spacepirate_helpers.py` (the module's
+own spec plus the helper half) and the driver `tools/drivers/spacepirate_helpers_drive.py` (the
+module's driver under a new name). The rare arms are forced with gdb: a `tbreak` on a live pirate
+and one call each, the command in brackets.
+
+| body | arms (retail asm) | the run |
+|---|---|---|
+| `0` IsScanVisorSelfRender | no branch (`li r3, 1`, asm 0x0-0x4) | forced (gdb `p ((CSpacePirate*)$rdi)->IsScanVisorSelfRender()` -> true) |
+| `18` GetAttackTarget | no branch (`lhz r0, 0xa94(r4)`, asm 0x18-0x20) | forced (gdb `p ...->GetAttackTarget()` -> 0xffff) |
+| `24` GetGravityConstant | no branch (rodata 0xB00 = 50.0, asm 0x24-0x2C) | forced (gdb `p ...->GetGravityConstant()` -> 50) |
+| `1854` GetActorTouchBounds | no branch (the box out of GetBoundingBox, asm 0x1868; the valid flag, asm 0x1870) | natural: 400 hits, 08_sand_casualpirates |
+| `18BC` TryToBeCaptured | no branch (the "Captured" state, asm 0x18D8; `li r3, 1`, asm 0x1918) | forced (gdb `p ...->TryToBeCaptured(mgr)` -> true) |
+| `C9DC` SetNonCinematicCollision | no branch (asm 0xC9DC-0xCA90) | forced (gdb `p ...->SetNonCinematicCollision(mgr)`) |
+| `CA94` SetCinematicCollision | no branch (asm 0xCA94-0xCAF0) | forced (gdb `p ...->SetCinematicCollision(mgr)`) |
+| `2EA8` UpdateSfxEmitter | the handle at 0xc00 is 0 (asm 0x2EC0) 11468 entries; the handle plays (asm 0x2ED4) 45; the handle is queued but silent (asm 0x2EEC) 3; the handle is neither (asm 0x2EF4 -> 0x2F30) 1 - the handle is cleared | the handle is the retail's own: the KnockBack stores the hurled / death sound's handle at 0xc00 (asm 0xC944 / 0xC9B8) - the port drops it (section 5), so the playing / queued entries are forced (gdb: `CSfxManager::AddEmitter` of the pirate's hurled sound into 0xc00) and the dead handle is forced (gdb: a bogus handle 0x3039 into 0xc00) |
+| `51C8` TrooperWarpOut | the actor is alive (asm 0x51F4), the 0x8fa bit 25 clear (asm 0x5200), the warp point -1 (asm 0x520C) and the 0x8f6 bit 24 set (asm 0x5218) -> the "WarpOut" state (asm 0x521C); each of the four tests false ends the body | forced (tools/cov/force.sh, the spec's 51C8 entry): one call per arm, the keys `1, 0, -1, 1` (the true arm), `1, 0, -1, 0` (not a trooper), `0, 0, -1, 0` (not alive), `1, 1, -1, 0` (the 0x8fa bit 25), `1, 0, 5, 0` (a warp point) - the kSM_SetToZero message reaches the body (the port's AcceptScriptMsg, asm 0x5200) |
+| `EFD4` ChooseTeamTarget | no squad (0xba0 == 0xffff, asm 0xF010); a squad id that resolves to nothing (asm 0xF02C); a squad that is out of range (asm 0xF04C); a squad in range (asm 0xF060) | forced (the same spec's EFD4 entry, 07_sand_alamoportalobservation L3): the keys 0xffff (1 call), 0x7ffe (1 call) and the layer's team id 1427 (3 calls); the call counts: `ChoosePlayer` 4, `IsTeamMemberInRange` 3, `FindBestIndividualAttackTarget` 1 - the driver puts the layer's other pirates next to the actor and then far from it, so the range test takes both ways |
+| `E3D8` Touch | the ragdoll (0xb30) with its flag byte 0x70's 0x40 (mPrimed) set (asm 0xE404-0xE40C), the other actor a CScriptTrigger (asm 0xE410) whose entity flag byte 0x20 carries 0x80 (CEntity::mActive, asm 0xE420-0xE428) and whose word 0x1a0 carries 0x8000 (kTFL_DetectAI, asm 0xE42C-0xE434), and the trigger's float 0x19c above zero (asm 0xE438-0xE448); then the pirate ragdoll's torso impulse (0xb8..0xc0, past the DOL CRagDoll's 0xa0) takes the trigger's 0x190..0x198 (asm 0xE44C-0xE47C; not ported, no pirate ragdoll) | the tests are the retail's, but the arms do not run: the port never sets 0xb30 (there is no ragdoll), so the profile shows 5/12 lines and 1/12 branches - the body stays unmarked |
+| `17A0` GetRagDoll | the ragdoll (0xb30) is returned only while its flag byte 0x70 carries 0x40 (mPrimed, asm 0x17B0-0x17B4) and 0x80 (mRenderBoundsValid, asm 0x17B8-0x17BC) | the body is now the retail's, but the body is never called (the port has no ragdoll): the profile shows 0/6 lines - the body stays unmarked |
+| `D608` ShuffleRandomVector | the x term is forced to 0.001 when its absolute value is under 0.001 (asm 0xD688-0xD69C), the vector is normalized (asm 0xD6A0) and the length is lerped (asm 0xD6C0) | the gcov profile of the three coverage runs of 2026-10-21 (the natural draws and the forced seed merged) has the body at 8/8 lines and 2/2 branches: **ALL-ARMS** |
+| `DFD4` SquadJoin | the squad id is invalid -> the team is looked up (asm 0xE000); it is still invalid -> the body ends (asm 0xE02C); the id resolves to no team -> the body ends (asm 0xE04C); the 0x8f4 bit 27 (the melee role) -> kTAR_Melee (asm 0xE060) or kTAR_Projectile (asm 0xE05C) | forced (the same spec's DFD4 entry): the keys 0xffff,0 (3 calls), 0xffff,1 (1 call, the melee role) and 0x7ffe,0 (1 call); the call counts: `GetAssociatedTeamId` 4, `ObjectById` 3, `TCastToPtr<CScriptTeamAiMgr>` 3, `JoinTeam` 2 (the melee and the projectile role) |
+
+Marked by this lane: 10 bodies (`0`, `18`, `24`, `1854`, `18BC`, `C9DC`, `CA94`, `2EA8`, `51C8`,
+`D608`).
+`EFD4` and `DFD4` carry the module session's own markers (their arm tables agree with this
+lane's forcing run), so this lane does not add a second marker there.
+The gcov profile (the coverage build, the natural run and the forced run merged) confirms
+`51C8` as ALL-ARMS.  With the module session's own markers the module is at 122 of 262 marked
+(`tools/port_progress.py`).
+
+Not marked, and why:
+
+| body | what is missing |
+|---|---|
+| `17A0` GetRagDoll | the ragdoll (0xb30) is never set in the port, so the "primed with valid render bounds" arm (asm 0x17AC-0x17BC) cannot run |
+| `3220` ShouldFrenzy | the run armed the frenzy (the true result) and left it unarmed (the false one), but the four inner arms (the pending-chance bit, the charge-player list, the morphed target, the low-health path) are not all traced |
+| `51C8` TrooperWarpOut | 0 calls: the "WarpOut" script message never reached a trooper in the runs |
+| `3D7C` / `4030` / `4174` the grenade bodies | a forced call runs them (the no-target arm and the whole spawn), but the solve's arms (the candidate loop's accept / closest-miss paths) are not all traced |
+| `CE30` GetStrafeDir | 28 branches in the asm; the run's calls do not cover them all |
+| `D608` ShuffleRandomVector | marked (section 3) |
+| `EDEC` ChooseTarget | the port's body is not retail's yet (section 5): the retail's "a team target was chosen" flag (asm 0xEF48) and its squad branch (asm 0xEF50-0xEFA4) are missing, so the body cannot be marked |
+| `E3D8` Touch | the ragdoll's push (asm 0xE3F8-0xE47C) needs a ragdoll, which the port never creates |
+| `E314` the empty function | a `blr` only; the port does not need the symbol |
+
+## 3b. The remaining unmarked stateless helpers (the gcov profile)
+
+The profile: a coverage build (`-B build-port-cov -DMP_PORT_COVERAGE=ON`), a natural run and the
+forced run, merged by `tools/cov/gcov_report.py build-port-cov <gcov dir> ... --module SpacePirate`
+(`lines` = the lines hit, `branches` = the branches taken, and the untaken edges). Fewest untaken
+edges first.
+
+| body | lines | branches | untaken edges | what it needs |
+|---|---|---|---|---|
+| `D608` ShuffleRandomVector | 8/8 | 2/2 | 0 | **ALL-ARMS** (the natural draws and the forced seed merged) - marked |
+| `EDEC` ChooseTarget | 13/20 | 9/16 | 7 | the port's body is not retail's (section 5) - reported, not marked |
+| `4030` GetGrenadeAimPoint | 0/8 | 0/8 | 8 | the grenade spawn: the body's entry is never reached |
+| `3220` ShouldFrenzy | 9/13 | 5/16 | 11 | the charge-player list arm (the body is not retail's, section 5) - reported, not marked |
+| `4174` SpawnGrenade | 0/28 | 0/12 | 12 | the grenade spawn (the body's entry is never reached) |
+| `3D7C` SolveGrenadeLaunch | 0/35 | 0/14 | 14 | the grenade spawn (the body's entry is never reached) |
+| `CE30` GetStrafeDir | 39/45 | 24/50 | 26 | other pirates in range, the path find mesh and the dynamic rays - the body needs a scene, not a member |
+| `10CE4` the waypoint predicate (this lane's) | no row (a class) | - | - | the host's `CheckConnectedObject` takes no predicate, so nothing calls it |
+| `17A0` GetRagDoll | 0/6 | 0/6 | 6 | the body is the retail's now, but it is never called: the port has no ragdoll (0xb30 is never set) |
+| `E3D8` Touch | 5/12 | 1/12 | 11 | the body is the retail's now, but the ragdoll is never set (0xb30), so the push's arms do not run |
+| `E314` the empty function | - | - | - | not ported (a `blr` only) |
+
+## 4. The coverage runs
+
+All runs: `tools/cov/run.sh tools/cov/specs/spacepirate_helpers.py <out> <world,area> --driver
+"python3 tools/drivers/spacepirate_helpers_drive.py {port} <layer> 6" --frames 14000 --fast --env
+MP2_DEBUG_SPACEPIRATE=1`, 0 `[port] caught` and 0 `[reach-stub]` in every one.
+
+| run | area | what it proved |
+|---|---|---|
+| 1 | 08_sand_casualpirates | the helper half's entry counts: `1854` 400 hits, `2EA8` 4557, `3220` 149 (the false result), `CE30` 400, `EDEC` 400, `EFD4` 8 |
+| 2 | 07_sand_alamoportalobservation L3 | `3220` 17 hits, all the true result (the frenzy armed); `EFD4` 14 hits with the squad's cast and the in-range test |
+| 3 | 08_sand_casualpirates, after the 0xc00 handle change | the same, with the emitter's handle: the handle was still 0 in every entry - a pirate is never knocked back while it is alive in these areas, and the death sound's handle is not stored (the death's follow-up is an explode) |
+| 4 | 08_sand_casualpirates | as 3, with the call sites counted |
+| 5 | 07_sand_alamoportalobservation L3 | as 3, with the call sites counted |
+| 6 | 08_sand_casualpirates | the final binary: `3220` both results (16 true, 1 false), the rest as 1 |
+| 7 | 08_sand_casualpirates | the merged branch (port + decomp/spacepirate 0cb54aef2): the game exits with code 0, 0 `[port] caught`, 0 `[reach-stub]`; `1854` 400 hits, `2EA8` 400 entries, `EDEC` 400, `E3D8` 400 |
+| forcing | 08_sand_casualpirates (gdb) | the rare arms: the four vtable helpers, TryToBeCaptured, the two collision helpers, the emitter's handle and the dead handle |
+| forcing 2 | 08_sand_casualpirates (tools/cov/force.sh) | `51C8` TrooperWarpOut: one call per arm, the kSM_SetToZero message (`SP_SETZERO=14`) |
+| forcing 3 | 07_sand_alamoportalobservation L3 (tools/cov/force.sh + cov_force.py) | `EFD4` ChooseTeamTarget and `DFD4` SquadJoin: the squad id and the melee role are written at the entry, the driver's team phase puts the layer's other pirates next to the actor and then far from it (`SP_TEAM_PHASE=1`) |
+| coverage | 08_sand_casualpirates and 07_sand_alamoportalobservation L3 (the coverage build) | the gcov profile of section 3b: the natural run and the forced run merged; `51C8` comes out ALL-ARMS |
+
+Runs 1, 2 and 3 (and the final run) ended with the game exiting normally; runs 4 and 5 were cut off
+by the harness' 900 s limit - the machine was busy and the `calls` entries slow the game down - but
+their counts are complete up to the cut (the table is rewritten every 15 s).
+
+The `calls` counts of the harness are polluted on this build (the call-site breakpoints of one
+label also count the calls of the neighbouring functions), so the arm counts of the emitter were
+read from a run whose spec has that one entry only.
+
+## 4a. The six 'ported' rows: the asm diff and the gcov profile
+
+The 22 rows the table marks "ported" (the body is in the port, no marker) in TSV order; the first
+six are `0x140` (the loader), `0xC0C` (BuildGrenadeData), `0x17A0` (GetRagDoll), `0x3220`
+(ShouldFrenzy), `0x3D7C` (SolveGrenadeLaunch) and `0x4030` (GetGrenadeAimPoint).  Each was read
+against the REL's asm with `tools/asmcheck.py annotate SpacePirate fn_72_XXXX`:
+
+| row | the retail's body | the port's body | verdict |
+|---|---|---|---|
+| `140` the loader | the property switch (the ids 0xf0cf5dd7, 0xda1122eb, ... at asm 0x1BC-0x268) | the host's SLdrSpacePirate reader (the same property ids, read by the generated reader) | equal in behaviour; asmcheck's "asm makes 49 calls, C++ body 12 / asm has 67 conditions, C++ 1" is the known false positive of the host's reader |
+| `C0C` BuildGrenadeData | the SLdr weapon data copied into a CBouncyGrenadeData (asm 0xC0C-0xC98, the flag byte's 0x80 bit at 0xC94) | the header's `BuildGrenadeData()` (the same fields, the flag bit as the constant true) | equal |
+| `17A0` GetRagDoll | the ragdoll (0xb30) with its flag byte 0x70's 0x40 (asm 0x17B0) and 0x80 (asm 0x17B8) set | the reviewer's body (IsPrimed / the render-bounds flag) | equal; the body is never called (the port has no ragdoll) |
+| `3220` ShouldFrenzy | the pending bit (asm 0x3248), the charge-player list (0x329C), the morphed target (0x32CC), the low-health path (0x3304, 0x3334, 0x3348) | the module lane's body (all four) | equal |
+| `3D7C` SolveGrenadeLaunch | the candidate loop (0.07853982 rad per step, pi/4 from above), the accept and closest-miss paths (asm 0x3EB8-0x3F90) | the port's body (the same constants and the same two paths) | equal |
+| `4030` GetGrenadeAimPoint | the eye height (0.5) for an unmorphed player (asm 0x40A4-0x40C4) and the pull-back (70 %, the aim at most 2 m above the pirate, asm 0x40DC-0x4110) | the port's body (the same) | equal |
+
+So none of the six needed a fix - the differences the earlier rounds found (the E3D8 push, the
+17A0 flags, the EDEC team flag, the 3220 charge list, the KnockBack handle) are the module lane's
+and the reviewer's, and they are in this branch.
+
+The gcov profile of the coverage build (the natural run and the forced runs of 2026-10-22 merged)
+says how far each of the six got:
+
+| row | profile | why it is not ALL-ARMS |
+|---|---|---|
+| `140` the loader | 65/65 lines, 13/16 branches | the three untaken edges are data-dead: the model's null (asm 0x1788's `if (!modelData)`) and the grenade damage's type (the two `LdrToDamageInfo` edges at 0x1833) - the shipped placements carry one type |
+| `C0C` BuildGrenadeData | no row of its own (it is an inline in the header) | it only runs with a grenade spawn |
+| `17A0` GetRagDoll | 0/6 lines | the body is never called: the port has no ragdoll, so 0xb30 is never set |
+| `3220` ShouldFrenzy | 0/15 lines | the body is called from UpdateAttacks, and the coverage runs' pirates never attacked (the GPU stalls of the machine make the console-driven fight unreliable) |
+| `3D7C` / `4030` | 0/35, 0/8 lines | the grenade never spawned in the coverage runs (the state that owns the spawn is not entered in a normal fight) |
+
+No new marker: the rule is to mark only the bodies the profile shows ALL-ARMS.
+
+## 4b. The reconciled `SpacePirate_functions.tsv`
+
+One row per REL function (262), the module session's columns kept (offset, size, owner, name, kind,
+class, callers, counterpart_or_proof, port, symbol) and the `port` column reconciled with the
+`// @` markers that are actually in the sources:
+
+- **marked** (126): the sources carry the marker `// @ fn_72_<off>` - the same set
+  `tools/port_progress.py` counts (SpacePirate 126/262).
+- **ported** (22): the port has the body, without a marker - the helpers this lane ported and the
+  few the module lane left unmarked (the grenade group, `CE30`, `3220`, `EDEC`, `E3D8` and the ones
+  the shipped data leaves dead).
+- **not-port** (114): the port has nothing of its own for the row - the host's copies of the
+  retail's weak/inline/template code (the `weak-dtor`, `template`, `inline-dol`, `inline-hdr`,
+  `member-ctor`, `member-dtor`, `ctor` and `dtor` kinds), the REL runtime and the rel-entry glue,
+  the three unreferenced stubs and `fn_72_E314` (the empty function the port does not need as a
+  symbol).
+
+The `owner` column keeps the retail's owner (the class the function belongs to); what this lane
+did with the rows it touched is in the `counterpart_or_proof` column and in this note's arm tables.
+
+## 5. The three gaps in the module's own files - fixed by the module lane
+
+This lane reported three bodies that were not the retail's; the module lane fixed all three in
+`decomp/spacepirate` (ac42f32b9 / dcf664036, both merged here) and this lane re-read them against
+the asm:
+
+- `EDEC` ChooseTarget: the retail keeps a "a team target was chosen" flag (r30, set at asm 0xEE74,
+  tested at asm 0xEF48) and, without it, a squad (0xba0) that resolves and has a member within
+  50 units (rodata 0xB70 = 50.0, asm 0xEF50-0xEFA4) keeps the current attack target.  The port has
+  the flag (`teamChosen`), the squad branch and the 50.0 ✔; the swap's thresholds are rodata 0xC2C =
+  30.0 and rodata 0xB58 = 10.0 ✔.  The module lane marked the body.
+- `3220` ShouldFrenzy: the module's charge-player list (bss_40, asm 0x3290-0x32A4) not being empty
+  also rolls a burst.  The port has `!mChargePlayerList.empty()` ✔.
+- `KnockBack` (asm 0xC944 / 0xC9B8): the retail keeps the sfx emitter's handle at 0xc00 - the
+  hurled sound (the data's sound at 0x878, the volume 0x7f, the area at 0x4) and the death sound
+  (0x87a).  The port stores both handles in `xc00_` ✔.
+
+So nothing of this lane's remains open in the module's files; the note's earlier "reported, not
+changed" list is empty.
+
+All three are in `PortCSpacePirate.cpp` / `PortCSpacePirateStates.cpp`, the module session's files,
+so this lane only reports them:
+
+- The retail's KnockBack stores the sfx emitter's handle at 0xc00 - the hurled sound (asm 0xC93C's
+  `AddEmitter` of the data's sound at 0x878, the handle stored at 0xC944) and the death sound
+  (asm 0xC9B0, the handle at 0xC9B8). The port calls `CSfxManager::AddEmitter` and drops the
+  handle, so fn_72_2EA8 can never see one; the handle is a `CSfxHandle` now, so storing it is a
+  one-line change in each of the two branches.
+- The retail's ShouldFrenzy (0x3220) also arms the frenzy while the module's charge-player list
+  (bss_40, asm 0x3298-0x32A4) is not empty. The port has that as a comment; the list is the
+  module's `mChargePlayerList`, so the test is `!mChargePlayerList.empty()`.
+- The retail's ChooseTarget (0xEDEC) has two pieces the port's body misses: the "a team target was
+  chosen" flag (the retail sets r30 at asm 0xEE74 and keeps the team target at asm 0xEF48 - the
+  port lets the nearest-player swap at the end overwrite the team target) and the squad branch
+  (asm 0xEF50-0xEFA4: a valid squad whose member is within 20 units returns the attack target).
+  The port's body is therefore not retail's, which is why it carries no marker.
+(The Touch push and the GetRagDoll flag test were fixed in this round - section 3.)

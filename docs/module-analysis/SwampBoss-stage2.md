@@ -294,8 +294,6 @@ B4 GetOrigin, D0 GetHealthInfo.
   - 4324 spit radius.
   - ZeroHealth index field.
   - Riding-platform clear in water.
-  - 5830 chain walk.
-  - Scan by form.
   - Actor +0x150 draw gate.
   - AddParticleGen slot.
   - mDrawParticles mask.
@@ -333,12 +331,12 @@ manager's copies).
 
 | fn | what | why it is not marked |
 |---|---|---|
-| 55B0, 50AC, 5830 | the platform-chain walk: 55B0 wakes the chain, 5830 finds the "PLTR/FOLL" node and 50AC recurses over the "ARRV/NEXT" connections | not ported: the port's `LaunchPlatformChain` is an approximation and `AcceptScriptMsg`'s chain walk is still a `TODO(uncertain)` (the `5830 chain walk` in §6) |
-| 5030, 527C | put the chain nodes on their recorded positions / swing them about the chain origin | the port has the two bodies (`PlaceChainNodes`, `SwingChainNodes`) but they are reached only through 55B0, which is not ported, so a run cannot exercise them |
-| 7E24 | the `Blow` state | the port's `Blow` is partial (it keeps the blow damage and the wind flag, the rest is still open) |
+| 55B0, 50AC, 5830 | the platform-chain walk: 55B0 wakes the chain, 5830 finds the "PLTR/FOLL" node and 50AC recurses over the "ARRV/NEXT" connections | **marked** (7.15, 7.17, 7.18): the port has all four bodies (`LaunchPlatformChain`, `CollectChainNodes`, `WalkChainNodes`, `PlaceChainNodes`, `SwingChainNodes`) and every arm of them ran |
+| 5030, 527C | put the chain nodes on their recorded positions / swing them about the chain origin | **marked** (7.17, 7.18): the port has the two bodies (`PlaceChainNodes`, `SwingChainNodes`); the chain launch reaches them |
+| 7E24 | the `Blow` state | **marked** (7.12, 7.19): the port's body is retail's and every arm of it ran |
 | 1B38 | an additive flinch with no caller | documented no-op, like 4F88 |
-| 4F88 | `SendDecrement` | no caller anywhere in the module |
-| 5D40 | `GetIngSnatchingPoint` | the port has the body but the ing-snatch transition never runs in the port |
+| 4F88 | `SendDecrement` | **marked** (7.26): the body is the retail's and both of its arms ran - the retail has no caller, so it was forced |
+| 5D40 | `GetIngSnatchingPoint` | **marked** (7.25): the ing-snatch transition does run - the head-mode anim event (0x0e) makes the boss ing-possessed |
 | 3774 | the wing-damage burst | the port has the body; it needs a growth to die, which needs a real beam hit |
 | 6B78 | the second half of `SetupCollisionManager` (the per-joint vulnerability, health and materials) | the port merges it into `SetupCollisionManager` (marked `fn_79_6E68`); it deserves its own body |
 | A0C8, B8B4 | a scan helper and `OnScanStateChange` | not ported (the scan-by-form work is still open) |
@@ -691,7 +689,7 @@ again before the commit):
 | 0x8110 | the player is not being blown -> no blow damage | (b) both sides: `[arm] 38 7E24 the blow damage`, `[arm] 39 7E24 no blow damage` |
 | 0x81B8, 0x81C0 | the sustained damage is popped when the blow ends | (b) the pop side: `[arm] 41 7E24 the sustained damage is popped` |
 | 0x81E4 | the wind effect is waiting (the flag bit 30) -> fn_79_3578 | (b) both sides: `[arm] 42 7E24 the wind effect`, `[arm] 43 7E24 no wind effect` |
-| 0x8214 | the deactivate pops the sustained damage | (d) not reached: the FSM2 evaluates a state's transitions **after** that state's update (the port's `CGenericFSM2State::Update`: `ExecuteState(update)` then `EvaluateTransitions`), so the update's cleanup (0x81B8) has already popped the sustained damage and cleared `mBlowing` whenever the blow window (the anim event 0x2b) closed first - and it did in every run (`[arm] 41`). The arm is only reachable if the state is left while the window is still open; the driver now sends the stun (a console `damage <body joint uid> 25`, 5% of the joint's 500 HP, which takes the head health to zero) the moment the probe shows the window open, but the run that did it never reached the `Blow` with the window open, so the arm is still unproven |
+| 0x8214 | the deactivate pops the sustained damage | (b) the pop side: `[arm] 80 7E24 the deactivate pops the sustained damage` - **forced (fsm)**: the blow window is open for fewer updates than a console round trip, so the state is left on the frame the player starts being blown (7.19) |
 
 **`fn_79_7E24` is therefore not marked**: its body is retail's (every branch above is matched to
 the port's code), but two real arms - "the player is grappling" (0x804C) and "the deactivate pops
@@ -710,7 +708,7 @@ Counted from the retail asm (the `bl` call sites inside the module):
 | `fn_79_1228`, `fn_79_178C`, `fn_79_1A64`, `fn_79_1AA0`, `fn_79_2D3C`, `fn_79_6974`, `fn_79_B7F8`, `fn_79_D0F8` | 8 each | the loader's own constructors/copies and the loader's string helper (7.1) |
 | `fn_79_31C0` | 6 | the loader's `rstl::vector` copy (7.1) |
 | `fn_79_460`, `fn_79_4958`, `fn_79_6AB0` | 6 each | loader/host copies (7.1) |
-| `fn_79_50AC`, `fn_79_55B0` | 4 each | the platform-chain walk - **not ported** (the port's `LaunchPlatformChain` is an approximation) |
+| `fn_79_50AC`, `fn_79_55B0` | 4 each | the platform-chain walk - **marked** (7.15, 7.17, 7.18) |
 | `fn_79_7E24` | 3 | the `Blow` state - verified against the asm in 7.12, **not marked** because two of its arms did not run |
 
 The next three behaviour functions to take are `fn_79_55B0` and `fn_79_50AC` (the chain walk, which
@@ -749,16 +747,16 @@ approximate.
 |---|---|---|
 | 0x5078 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors, so the shipped area never takes it |
 | 0x5094 | the walk's condition | (a) a loop condition |
-| - | the body itself | (d) it never ran: the chain walk is launched by the anim event 0x1b (`kUE_EventStart`), and that event did not fire in any driver run, so `fn_79_5030` and `fn_79_527C` are unreachable in the port as it stands |
+| - | the body itself | (b) it runs whenever the anim event 0x1b fires (7.24: the flyer-drop animations) |
 
 **fn_79_527C** (the port's `SwingChainNodes`)
 
 | branch | what | class |
 |---|---|---|
 | 0x52D0 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
-| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (d) not reached: the body never runs (see 5030) |
+| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (b) it ran: the chain launch leaves a node 83.3 units from the centre, past the 54.9 unit edge radius (7.18) |
 | 0x541C | the walk's condition | (a) a loop condition |
-| - | the body itself | (d) it never ran (see 5030) |
+| - | the body itself | (b) it ran (7.18) |
 
 **fn_79_55B0** (the port's `LaunchPlatformChain`): the retail's body is the same three steps (the
 chain actor, the patrol node on the "FOLL" connection, the next node on the "ARRV/NEXT"
@@ -768,3 +766,521 @@ branches (0x55FC, 0x56F0, 0x5740: the chain actor, the patrol node and the next 
 gone) are the port's own null guards, all (c) - the chain's nodes are actors.
 
 **fn_79_50AC**: not ported (the recursion over the chain's connections), not marked.
+
+### 7.16 The chain walk ported: fn_79_5830 and fn_79_50AC (2026-10-21, tenth lane pass)
+
+The retail's chain walk is two bodies the port did not have: `fn_79_5830` (the chain actor's
+"PTRL/FOLW" node, then the walk) and `fn_79_50AC` (the recursion over the "ARRV/NEXT"
+connections). Both are ported now (`CollectChainNodes`, `WalkChainNodes`) and the retail's
+`fn_79_B3CC` call site is wired: the `kSM_AreaLoaded` case collects the light chain
+(`mChainANodes`/`mChainAPositions`) and the dark chain (`mChainBNodes`/`mChainBPositions`),
+which is what the retail's `fn_79_B3CC` does (0xB6F8 and 0xB73C, the "IS02" and "IS07"
+connections).
+
+Both are **not marked**: the bodies have not run (see the classes below).
+
+**fn_79_5830** (`CollectChainNodes`)
+
+| branch | what | class |
+|---|---|---|
+| 0x5878 | the chain actor does not cast to `CActor` -> the walk ends | (c) the chain is an actor |
+| 0x58B8 | the "PTRL/FOLW" node does not cast to `CActor` -> the walk ends | (c) the chain's node is an actor |
+| - | the body | (b) it ran: the engine's own `kSM_AreaLoaded` at the area load drives it (7.18) |
+
+**fn_79_50AC** (`WalkChainNodes`)
+
+| branch | what | class |
+|---|---|---|
+| 0x5224 | the "ARRV/NEXT" node does not cast to `CActor` -> it is skipped | (c) the chain's nodes are actors |
+| 0x51F0 | the connection is the node's own -> it is skipped | (c) the chain's nodes do not link to themselves |
+| 0x524C | the walk's condition | (a) a loop condition |
+| - | the body | (b) it ran with fn_79_5830 (7.18) |
+
+The retail's `fn_79_55B0` (the anim event's chain launch: the chain actor, the "PTRL/FOLW" node,
+`fn_79_5030` for the recorded positions, the "ARRV/NEXT" node, the heading difference, the
+rotation and `fn_79_527C` for the swing) is what the port's `LaunchPlatformChain` does, so that
+body is the port's `LaunchPlatformChain` - it is not marked, because the anim event 0x1b that
+calls it never fires in a driver run (the chain walk is the anim event's job, not the script
+message's) and the retail's 55B0 also does not run the recursion.
+
+### 7.17 The chain walk, the anim event 0x1b and the grapple (2026-10-21, eleventh lane pass)
+
+The driver is committed: `tools/drivers/swampboss2_chain.py` (the console part) and
+`tools/drivers/swampboss2_run.sh` (it starts the port with `MP2_CONSOLE` and
+`MP2_TICKS_PER_FRAME=8` and runs the driver). It waits for the boss in the `objs` list, sends it
+the `kSM_AreaLoaded` message and forces the boss's AI states with `fsm <id> <state>`.
+
+**The anim event 0x1b** (the chain launch) is carried by the flyer-drop animations, not by
+`Lurk` (7.24 has the shipped event sets and the probe-free runs).
+
+**fn_79_5030** (the port's `PlaceChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x5078 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x5094 | the walk's condition | (a) a loop condition |
+| - | the body | (b) see 7.24 (gcov) |
+
+**fn_79_527C** (the port's `SwingChainNodes`) - **not marked** (the edge-radius arm 0x53B0 was not
+reached: the swung node stayed inside the edge radius, so the driver would have to `place` a chain
+node outside it - forced (place))
+
+| branch | what | class |
+|---|---|---|
+| 0x52D0 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (d) it did not run: the swung nodes stayed inside the edge radius |
+| 0x541C | the walk's condition | (a) a loop condition |
+| - | the body | (b) `[arm] 63 527C a chain node is swung` |
+
+**fn_79_55B0** (the port's `LaunchPlatformChain`) - **marked**: the retail's body makes two
+virtual calls on the chain actor (the vtable slot +0x18 = `CEntity::AcceptScriptMsg`, at 0x5654
+and 0x56B0, each with a message id in a `CScriptMsg`; the second one's id is the "DECR" fourcc
+built at 0x5668-0x5670, the first is the activation) - so the port's two script messages are the
+retail's, not extra ones. The rest of the body matches step for step (the chain actor, the
+"PTRL/FOLW" node, `fn_79_5030`, the "ARRV/NEXT" node, the two `atan2`s, the rotation,
+`fn_79_527C`, the patrol's position), and it ran (it is what calls `fn_79_5030` and
+`fn_79_527C`: `[arm] 60`, `[arm] 63`). Its three null guards are (c): the chain actor, the patrol
+node and the next node are all actors in the shipped area.
+
+**fn_79_5830 / fn_79_50AC** (the chain's node list and the ARRV/NEXT recursion) - **marked**
+(7.18): the message *does* arrive on its own, and the per-arm probe ran. A temporary probe as
+the first line of `CSwampBossStage2::AcceptScriptMsg` printed the message and the uid it went
+to, and a second probe inside the case printed that the case ran:
+
+    [probe] msg 58414c44 to u0673              (0x58414c44 = kSM_AreaLoaded)
+    [probe] the kSM_AreaLoaded case ran on u0673
+
+The engine delivers it itself at the area load (CScriptObjectLoaderHelper sends `kSM_AreaLoaded`
+to every object it loads) and the console's `send <boss uid> AreaLoaded` (the driver does it once
+the boss is in the `objs` list) delivers a second one - so the chain walk is reached without any
+forcing (7.18 repeats this with a run that forces nothing).
+
+**The grapple:** the lock-on works; the earlier runs used a uid that is not a grapple point
+and left the points inactive. 7.24 has the area's wiring and the run.
+
+### 7.18 The chain walk's arms (2026-10-21, twelfth lane pass)
+
+**The "stale module object" was the probe's own dead code.** The module object in
+`build-port-link/modules/SwampBossStage2.o` was never stale: `$T/ninja -C build-port-link
+metroid_prime2_port` rebuilds `CMakeFiles/mp_mod_SwampBossStage2.dir/src/MetroidPrime/Enemies/
+PortCSwampBossStage2.cpp.o`, re-scopes it into `modules/SwampBossStage2.o` and relinks the
+binary, and a probe string in the module source is in all three. What the earlier lane saw was
+its own probe: the once-per-arm helper was
+
+    static bool sArmSeen[64];
+    static void PortArm(int id, const char* name) {
+      if (id >= 0 && id < 64 && !sArmSeen[id]) { ... std::fprintf(stderr, "[arm] %d %s\n", ...); }
+    }
+
+and the arm ids it used (70..77) were **outside the array**, so the guard was always false, the
+compiler dropped every call *and its strings*, and `strings` on the object found no probe at
+all. The build was fine; the probe was dead. With the bound raised to 128 the same source
+produces the strings in the object, in `modules/SwampBossStage2.o` and in the binary (the module
+the game loads: the run log prints `metroid_prime2_port: init compiled module SwampBossStage2`).
+
+**fn_79_5830** (the port's `CollectChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x5878 | the chain actor does not cast to `CActor` -> the walk ends | (c) the chain is an actor |
+| 0x58B8 | the "PTRL/FOLW" node does not cast to `CActor` -> the walk ends | (c) the chain's node is an actor |
+| - | the body | (b) `[arm] 72 5830 the chain walk starts` |
+
+**fn_79_50AC** (the port's `WalkChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x5224 | the "ARRV/NEXT" node does not cast to `CActor` -> it is skipped | (c) the chain's nodes are actors |
+| 0x51F0 | the connection is the node's own -> it is skipped | (c) the chain's nodes do not link to themselves |
+| 0x524C | the walk's condition | (a) a loop condition |
+| 0x50E4, 0x5130 | the two `rstl::vector` growth checks (the REL's own `fn_79_D2EC` / `fn_79_D174`) | (a) the host's `rstl::vector` does the same (7.1) |
+| 0x5188, 0x5194 | the REL's own vector copy and free (`fn_79_31C0` / `fn_79_32C0`) | (a) the host's `rstl::vector` does the same (7.1) |
+| - | the body | (b) `[arm] 73 50AC the walk visits a node` |
+
+**fn_79_527C** (the port's `SwingChainNodes`) - **marked**
+
+| branch | what | class |
+|---|---|---|
+| 0x52D0 | the chain node does not cast to `CActor` -> it is left alone | (c) the chain's nodes are actors |
+| 0x53B0 | the node is further from the centre than the edge radius -> it is pulled back | (b) `[arm] 77 527C the node is pulled back inside the edge radius` |
+| 0x541C | the walk's condition | (a) a loop condition |
+| - | the body | (b) `[arm] 76 527C a chain node is swung` |
+
+**How the arms were reached.** Three runs, all in `04_swamp_temple_dark` (world 3dfd2249) with
+layer 6, `MP2_GODMODE=1`, `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`:
+
+1. **The chain walk, with nothing forced** (`--no-send --no-states`): the engine's own
+   `kSM_AreaLoaded` at the area load drives `fn_79_5830` -> `fn_79_50AC`
+   (`[arm] 72`, `[arm] 73`).  The light chain has 6 nodes, the dark chain 82.
+2. **The swing** (the driver forces the boss's AI states, `fsm <boss> <state>`): the light
+   flyer-drop animations (DropFlyer, Become*Flyer; 7.24) carry the anim event 0x1b, the chain launch
+   (`fn_79_55B0` -> `fn_79_5030` -> `fn_79_527C`) runs, and **the edge arm runs on its own**:
+   the swung node ends up 83.3 units from the centre while the edge radius is 54.9
+   (`[probe] 527C pull back: d 83.31 edge 54.89`).  `fn_79_527C`'s edge arm therefore needs no
+   forcing at all.
+3. **The edge arm with a `place`d node** (forced (place)): the driver puts the last node of
+   each chain far outside the edge radius (`place u0638 333.78 -123.72 139.60`) and sends
+   `kSM_AreaLoaded` again, so the far position becomes the node's recorded position
+   (`fn_79_5030` puts every node back on its recorded position before the swing, so without the
+   re-record the placement would be undone).  The pulled-back node then ends up 495.7 units from
+   the centre (`[probe] 527C pull back: d 495.69 edge 54.89`).
+
+The driver is `tools/drivers/swampboss2_chain2.py` (the console part) with
+`tools/drivers/swampboss2_run.sh` (it starts the port with `MP2_CONSOLE` and the console
+driver).  It waits for the area to be loaded before it asks for layer 6 (a layer request that
+arrives during the boot never finishes), then waits for the boss, and it can force the chain
+walk (`send <boss> AreaLoaded`), the states (`fsm`) and the placement (`place`).
+
+**The chain's own numbers** (measured, for the note): the centre actor is at
+(-166.22, -123.72, 65.98), the edge radius 50.0 (54.9 after the second area load), the light
+chain 6 nodes and the dark chain 82.  The chain's node list grows with every `kSM_AreaLoaded`
+message - the retail appends to the two vectors as well (its `fn_79_5830` has no clear), so the
+light chain had 12 entries after the second message and the dark chain 164.
+
+### 7.19 The Blow's arms and the dark phase (2026-10-21, twelfth lane pass)
+
+**The dark phase is reachable.** It needs all four growths dead, and only a real beam hit
+damages a growth: the retail's ProcessDamage casts the joint's last toucher to a CWeapon
+(fn_79_61C4) and only the projectile is one, so the console's `damage` cannot do it. The
+recipe the driver uses (`tools/drivers/swampboss2_dark.py`):
+
+1. the boss starts stunned (its head health is 0, so the `Stunned` trigger puts it in the
+   `Reel`), which is where the growths are vulnerable (`mGrowthsVulnerable`);
+2. the growths are only *active* while the player is behind the boss (fn_79_24E0), so the
+   driver puts the player 30 units behind it (`tp`);
+3. `shoot u<growth joint> 30` fires the player's beam at each growth: a real
+   `CEnergyProjectile`, so the weapon cast succeeds and the growth loses 2 HP of its 60;
+4. the boss ignores a second hit from the same toucher, so the console's `damage` (which
+   counts as the player) has to alternate with a beam hit.
+
+After about 120 beam hits the four growths are dead, `AllGrowthsDead` fires and the boss
+becomes a dark flyer (phase 1).  In the dark phase the anim event 0x1b fires in the
+`DropFlyer` state's animation and the **dark chain** (`mChainBNodes`, 82 nodes) is the one
+that swings: `[probe] 55B0 the chain u06c8 with 82 nodes`, 19 to 35 times in a run.
+
+**fn_79_7E24** (the `Blow` state) - **marked**: every arm ran.  The two the earlier pass could
+not reach now do:
+
+| branch | what | class |
+|---|---|---|
+| 0x804C | the player is grappling -> the window's block is skipped | (b) the skip side: `[arm] 84 7E24 the player is grappling` (the console's `grapple u<point>` holds the lock-on while the window is open) |
+| 0x8214 | the deactivate pops the sustained damage | (b) the pop side: `[arm] 80 7E24 the deactivate pops the sustained damage` - **forced (fsm)**: the blow window is open for a handful of updates, less than a console round trip, so the state is left on the frame the player starts being blown (the probe's `StateMachineState().SetState(..., "Start")`, i.e. the console's `fsm <boss> Start` at the only moment it can reach) |
+
+The state's other arms (the message dispatch, the melee command, the window closed, the push
+setup, the blow damage, the pop at the blow's end, the wind effect) are the earlier pass's
+(7.12); this pass added the two above plus the two window tests the probe shows as well
+(0x801C the aim is not in front of the head, 0x8040 the aim is too far to the side).
+
+**A port divergence found here and fixed in 7.20: the chain flag's initial value.** The
+retail's constructor clears the flag that the chain selection reads (`rlwimi r4, r0, 0, 31, 31`
+at 0xC0E8, mask 0x1 of the byte at 0xc76 - `tools/asmcheck.py annotate` on fn_79_BE3C), while the
+port's constructor set it (`mLightFlyer(true)`). The flag is the one the anim event 0x1b
+reads (0xA9D8, mask 0x1) and the one `BecomeLightFlyer` sets and clears (0x95CC / 0x9734), so
+with the port's value the **dark** chain (82 nodes) was the one that swung in the light and
+the dark phase, where the retail swings the light chain (6 nodes); the dark chain is the
+retail's while the boss is in the `BecomeLightFlyer` state (the phase 2/4 transition). 7.20
+fixes it and reaches the phase 2.
+
+**The driver**: `tools/drivers/swampboss2_dark.py` (the console part) with
+`tools/drivers/swampboss2_run.sh` (`DRIVER=swampboss2_dark.py`, `--grapple` for the grapple
+arm). It waits for the area before it asks for layer 6 (a layer request that arrives during
+the boot never finishes), kills the growths, and then drives the Blow.
+
+### 7.20 The chain flag, the phase's chain and the scan (2026-10-21, thirteenth lane pass)
+
+**The chain flag is the byte at 0xc76's bit 0** (the word at +0xc74 holds its bits 16..23).
+Every reader and writer of it, against the asm (`tools/asmcheck.py annotate`):
+
+| where | what | the port |
+|---|---|---|
+| 0xC0E8 (fn_79_BE3C, the ctor) | the ctor **clears** it (`xc76 &= ~0x1`) | the ctor now clears it too: it used to set it (`mLightFlyer(true)`), which made the port swing the dark chain everywhere |
+| 0x95CC / 0x9734 (fn_79_9534, BecomeLightFlyer) | the activate sets it, the deactivate clears it | the same |
+| fn_79_91A4 (BecomeDarkFlyer) | never touches it | the same |
+| 0xA9D8 (fn_79_A838, the anim event 0x1b) | reads it: the chain pick - set means the chain at 0xdd0 (the dark chain, 82 nodes), clear the one at 0xca4 (the light chain, 6 nodes) | the same |
+| 0xAA5C (the anim event 0x01, the egg lay) | reads it the same way | the same |
+| fn_79_2690 (the scan) | **never reads it**: the scan is picked by the phase (0x26A0-0x26F0) - the phase 0 and 2 use the light scan (0xe04), the phase 1 and 3 the dark one (0xe08), the phase 4 and up the base's | the port used the flag (`TODO(uncertain)`, the "Scan by form" item); it now uses the phase |
+
+**Which chain swings where, after the fix** (the probe's lines, one run):
+
+    [probe] 1b the chain launch, lightflyer 0 phase 1 st DropFlyer
+    [probe] 55B0 the chain u0700 with 6 nodes
+    [probe] 1b the chain launch, lightflyer 1 phase 2 st BecomeLightFlyer
+    [probe] 55B0 the chain u06c8 with 82 nodes
+
+So the phase 1 (the dark flyer) swings the **light** chain (6 nodes) and the phase 2's
+`BecomeLightFlyer` swings the **dark** chain (82 nodes) - the retail's rule, because the flag
+is set exactly while the boss is in the `BecomeLightFlyer` state.
+
+**The phase 2 (the ovipositor's death)** is reached by damaging the tail joint (the collision
+actor 4, `spine_5_scale2`) while the boss is in the head mode: the retail's ProcessDamage
+takes the ovipositor's health off that joint's damage (fn_79_61C4), and the top machine's
+`OvipositorDead` edge then goes to `BecomeLightFlyer` (the phase 2). The driver's recipe is
+the same as for the growths: `damage u<tail> 25` alternating with a beam hit (the boss ignores
+a second hit from the same toucher). After the ovipositor dies the fight cycles on: the phase
+0 (the light flyer) -> 1 (the dark flyer) -> 2 (the light flyer again) -> 3 (the dark flyer
+again), and the chain follows the flag.
+
+**Two more bit positions fixed in the same byte**: the port's `mSwoopSelected` (the `Lurk`'s
+"swoop picked" flag) sat at 0xc76's bit 6, but the retail's flag is the byte's bit 7 (the
+`Lurk` sets it at 0x9B14, clears it at 0x9BCC and reads it at 0x9ADC); the byte's bit 6 is
+only ever cleared by the ctor (0xC0AC), so it is now `mUnusedC76Bit6`. The header's flag
+comments carry the byte's bit positions for 0xc74, 0xc75, 0xc76 and 0xc77, which is what
+`tools/asmcheck.py` reads: the module's check went from 212 findings to 107 (the rest are the
+loader-data findings, unchanged).
+
+**The scan fix** (`fn_79_2690`) also removes the "Scan by form" TODO: the retail picks the
+scan by the phase, and the port now does the same.
+
+### 7.21 The six trigger functions (2026-10-21, fourteenth lane pass)
+
+The trigger functions the port has but never marked, against the asm. A trigger function is
+only *called* when the FSM2 evaluates a transition that uses it, so a run's evidence for one
+of them is the transition it drives.
+
+| fn | the retail | the port | the branches |
+|---|---|---|---|
+| 9F7C | `ShouldDropFlyer`: the attack is ready (xc75_80) and the attack type is 5 | the same | 0x9F84 (the attack ready), 0x9F90 (the type) |
+| A064 | `ShouldBlow`: the attack is ready and the attack type is 6 | the same | 0xA06C, 0xA078 |
+| A0C8 | `SwitchedPlatform`: the wind node (0xf00) is not the chain node nearest the player | the same | 0xA0EC (the wind node), 0xA11C (the compare) |
+| A3D8 | `ZeroHealth`: the phase (0xc94) against the field at 0x8cc | the same, **the TODO is resolved** (below) | 0xA3D8 (the field), 0xA3E0-0xA3F0 (the compare) |
+| A418 | `OvipositorDead`: the ovipositor's health (0xc50) is zero or less | the same | 0xA41C (the health), 0xA424 (the compare) |
+| A498 | `StateOver`: the animation state id (0x6b4) is 3, the host's `kAS_Over` | the same | 0xA498 (the id), 0xA49C (the compare) |
+
+**ZeroHealth's `TODO(uncertain)` is resolved**: the retail compares the phase (0xc94) with the
+field at 0x8cc - the loader's `unknown_0x96ce7897` (the loader struct sits at 0x7c0, so 0x8cc
+is its 0x10c, and `unknown_0x96ce7897` is the field at 0x10c) - as **"field < phase"**
+(0xA3E0-0xA3F0: the doubling of the field keeps the signed compare from overflowing). The
+port's old body was `mPhase >= mData.unknown_0x96ce7897`, which fires one phase too early
+(the phase 2 instead of the phase 3).
+
+**The arms** (a probe on the six trigger functions, one line per change of the inputs; the
+run reached the phase 0 -> 1 -> 2 -> 3 cycle):
+
+| fn | branch | what | class |
+|---|---|---|---|
+| 9F7C | 0x9F84 | the attack is not ready | (b) `[probe] trigger 5 a 0 b 3 -> 0` and `a 0 b 5 -> 0` |
+| 9F7C | 0x9F90 | the attack type is not 5 | (b) the same lines (the type 3) |
+| 9F7C | - | the body: ready and the type 5 | (b) `[probe] trigger 5 a 1 b 5 -> 1` |
+| A064 | 0xA06C | the attack is not ready | (b) `[probe] trigger 3 a 0 b 3 -> 0` / `a 0 b 5 -> 0` |
+| A064 | 0xA078 | the attack type is not 6 | (b) the same lines |
+| A064 | - | the body | (d) the dark phase's attack type 6 never came up with the trigger evaluated |
+| A0C8 | 0xA0EC, 0xA11C | the compare | (d) the trigger was never called (no transition that uses it fired) |
+| A3D8 | 0xA3E0 | the phase is not past the field | (b) `[probe] trigger 2 a 2 b 2 -> 0` |
+| A3D8 | - | the body | (d) the phase 3 was reached, but the ovipositor's death takes the machine to the phase 2 and the transition after it does not evaluate this trigger again |
+| A418 | 0xA424 | the health is above zero | (b) `[probe] trigger 1 a 111 b 0 -> 0` and the rest |
+| A418 | - | the body: the health is zero or less | (b) `[probe] trigger 1 a -16 b 0 -> 1` |
+| A498 | 0xA49C | the animation state is not `kAS_Over` | (b) `[probe] trigger 0 a 1 b 0 -> 0` and `a 2 b 0 -> 0` |
+| A498 | - | the body: the animation is over | (b) `[probe] trigger 0 a 3 b 0 -> 1` |
+
+**Marked**: `fn_79_9F7C` (ShouldDropFlyer), `fn_79_A418` (OvipositorDead), `fn_79_A498`
+(StateOver) - every arm of each of them ran. `fn_79_A064` (ShouldBlow), `fn_79_A0C8`
+(SwitchedPlatform) and `fn_79_A3D8` (ZeroHealth) stay **unmarked**: their true arms did not
+run (the dark phase's attack type 6, the transition that uses SwitchedPlatform, and the
+phase 3 with the trigger evaluated).
+
+### 7.22 The function classification (all 243 symbols)
+
+`docs/module-analysis/SwampBossStage2_functions.tsv` has one row per function symbol of the
+module (243: the 236 `fn_79_*` plus RELMain/RELExit and the crtexe runtime bits) with the
+class, the port's marker, the note's name and the module's own call sites. The classes are
+applied by rule, so the table can be audited:
+
+- **H - host copy** (139 functions, 0x5108 bytes): the body copies something the host
+  already has, so the port writes no body for it: the loader's own constructors, copy
+  constructors, assignment operators and destructors, its `rstl::vector`/list growth and free
+  helpers, its `CToken` copies, the loader's read/convert helpers and the vtable entries the
+  host already has (the note's 1: the module does not override them), plus the crtexe runtime
+  bits (RELMain/RELExit, `_prolog`/`_epilog`, `ModuleConstructors`/`ModuleDestructors`).
+- **T - data / vtable thunk** (4 functions, 0x28 bytes): the body only returns a member
+  address or clears a flag: `fn_79_2E7C` (the address of `mSwoopTarget`, 0xdf4),
+  `fn_79_A4AC` (the address of `mLightChain`, 0xca8), `fn_79_6E5C` and `fn_79_B8A8` (a flag
+  cleared).
+- **B - module behaviour** (100 functions, 0x8BD0 bytes): real behaviour - these are the
+  port's bodies. 98 of them carry a `// @ fn_79_` marker.  Six more are host copies after
+  all (the port calls the host's equivalent): `fn_79_2704` (the scan setup, the host's
+  `CPatterned` scan info), `fn_79_2C20` (`LdrToDamageInfo`, the host's), `fn_79_3314` (the
+  cross product, the host's `CVector3f::Cross`), `fn_79_3E50` (the collidable copy, the host's),
+  `fn_79_6644` (the `rstl::list` append, the host's) and `fn_79_B8B4` (the base's
+  `CActor::OnScanStateChange`).
+
+| class | functions | .text bytes |
+|---|---|---|
+| H host copy | 139 | 0x5108 (20,744) |
+| T data / vtable thunk | 4 | 0x28 (40) |
+| B module behaviour | 100 | 0x8BD0 (35,792) |
+| **total** | **243** | **0xDD00 (56,576)** |
+
+**The unmarked B list (2)** - the module's behaviour that the port has but has not proved
+(the rest of the list was closed by 7.21 and 7.23):
+
+| fn | what | why it is not marked |
+|---|---|---|
+| `fn_79_1B38` | an additive flinch with no caller | the note's 7.2: no state, trigger, code function or vtable slot references it |
+| `fn_79_72FC` | `ResetAttackPhase` (the code node) | the code node never runs (no state references it) |
+
+### 7.23 The three triggers' true arms (2026-10-21, fifteenth lane pass)
+
+The arms that 7.21 could not reach, forced with gdb: the game is booted under gdb (the port's
+RUNNING.md, "Boot under gdb"), a breakpoint is set on the trigger function and the member that
+decides the arm is set at the trigger's entry, so the function's own body then takes the true
+side. The driver (`tools/drivers/swampboss2_dark.py`) keeps the fight going (the growth kills and
+the phase cycle) while gdb has the game.
+
+| fn | branch | what | class |
+|---|---|---|---|
+| A064 | 0xA06C, 0xA078 | the attack is ready and the type is 6 | (b) the true side, **forced (gdb `set var this->mAttackReady = 1`, `set var this->mAttackType = 6`)**: `[probe] trigger 3 a 1 b 6 -> 1` |
+| A3D8 | 0xA3E0 | the field is below the phase | (b) the true side, **forced (gdb `set var this->mData.unknown_0x96ce7897 = 0`)**: `[probe] trigger 2 a 0 b 2 -> 1` |
+| A0C8 | 0xA0EC, 0xA11C | the wind node is not the node nearest the player | (c) the trigger is in the module's trigger table but **no state's transition list uses it** (the note's 6: the asset's edges), so the function is never called - the shipped data scan is the proof |
+
+So all three are **marked** now. The other arms of A064 and A3D8 ran without forcing (the
+attack not ready with the type 3, 5, 6 and 7: `[probe] trigger 3 a 0 b 3 -> 0` and so on; the
+field 2 with the phase 2: `[probe] trigger 2 a 2 b 2 -> 0`).
+
+**The two that stay unmarked** (the whole unmarked B list now): `fn_79_1B38` (the retail's
+additive flinch: the module's only copy of that code and nothing calls it - the port's
+`AddAdditiveFlinch` is the retail's inline code in fn_79_61C4) and `fn_79_72FC` (the code node:
+it is in the asset's code list but no state transitions into it).  `fn_79_5D40` left the list
+with 7.25 and `fn_79_4F88` with 7.26.
+
+### 7.24 The anim event 0x1b and the grapple lock-on, probe-free (2026-10-22, sb2grapple lane)
+
+**Neither gap is a port bug.** The engine path (CAnimPOIData -> CAnimData::mInt32POINodes ->
+CActor::UpdateAnimation `kPT_UserEvent` -> `DoUserAnimEvent`) delivers 0x1b. The earlier runs just
+never reached the animations that carry it, and they never woke the grapple points.
+
+**Where 0x1b is in the shipped data.** A temporary dump of every `CAnimPOIData` user event as it
+loaded (removed again) shows the boss's ANCS event sets (04_swamp_temple_dark, layer 6). 0x1b is
+in two of them, each followed by the EggLay (0x01) flyer releases:
+
+| set | user events (value@time, locator) | state |
+|---|---|---|
+| 579 | 27@0.750 tail_LCTR, then 1@0.817..1.283 (10 x) | DropFlyer's loop attack |
+| 600 | 15@0.500, 27@2.117 L_backWing_1, then 1@2.250..2.900 (6 x) | Become*Flyer (FadeOut, then the drop) |
+
+Lurk's sets carry no 0x1b. In a natural 6000-update light-phase run (tools/cov gdb tally on
+`DoUserAnimEvent`'s `$rcx`), Lurk is entered 8 times and the boss gets only the events
+0/8/9/22/33/34/37/38/39. DropFlyer and Become*Flyer are never entered there, so 55B0/5030/527C get
+0 hits.
+
+**Runs** (all `3dfd2249,04_swamp_temple_dark`, `--fast`, caught/reach-stub 0):
+
+- *forced (fsm)*, `fsm u06d9 DropFlyer` @f1000, `BecomeDarkFlyer` @f1800, `DropFlyer` @f2600,
+  `BecomeLightFlyer` @f3200, 4000 updates. Event 27 arrives 3 x and event 1 22 x, and
+  `LaunchPlatformChain`/`PlaceChainNodes`/`SwingChainNodes` get 3 hits each. In real play these
+  states follow `AllGrowthsDead` and the dark-phase attack slots (7.19).
+- coverage build (`build-port-cov`) of the same run, plus a `tools/cov/force.sh` run with the same
+  driver whose FORCE writes `mChainANodes/mChainBNodes.mItems[0] = 0xffff` at `PlaceChainNodes`
+  entry, so the CActor cast fails, **forced (gdb)**. gcov over both:
+  - `fn_79_527C`: 15/15 lines, 6/6 branches, **ALL-ARMS**. The edge pull-back (0x53B0) ran both
+    ways without forcing; the cast failure 0x52D0 is the forced one.
+  - `fn_79_5030`: **ALL-ARMS** (after this lane removed the port's `i < positions.size()` host
+    guard, which retail lacks: retail's bound is the nodes count alone, 0x5054 `lwz r31,0x4(r5)` /
+    0x5090 `cmpw r27,r31`, and the only writer fn_79_50AC pushes the position and the uid
+    together). The loop 0x5090/0x5094 ran; the cast 0x5074/0x5078 ran both ways (failure side
+    forced).
+
+**The grapple.** The area's three points (GRAP 1820006a/6d/6f, layer 6) start inactive. The fight's
+start switch SWTC 00200232 (OPEN) fires relay SRLY 00200235 (layer 0). Its ZERO goes to relay
+18200260, which sends ACTV to the three GRAPs and three PLATs, and to relay 18200265, which sends
+ACTV to the boss. Relay 1820025e (from 00200237) deactivates the points again. The earlier lanes
+sent `u066b Activate`, but `u066b` is not a grapple point in this boot (the points are
+u06e9/u06e4/u06d1), so nothing woke them. Driver `tools/drivers/swampboss2_grapple.py` sends the
+start relay (`u04cc`) SetToZero, and the console lists the points active. It then gives the
+grapple beam and runs `grapple u06e9`. Result: `CPlayer::BeginGrapple` 1 hit, orbit state 5 (grapple)
+from f513 on while the player swings, and `PlayerOnGrapplePoint` (fn_79_3354) returns true 1544
+times out of 1584 (gdb tally, 2000 updates). The orbit candidates are kMT_Orbit
+(CPlayerOrbit.cpp:826), and an active point has it, so the old kMT_Target theory does not apply.
+
+
+### 7.25 fn_79_5D40 (`GetIngSnatchingPoint`): the ing snatch does run (2026-10-22, swamp2h lane)
+
+**The anim-event handler calls `SetIngPossessed`, and the test is the event type alone.**
+`fn_79_A838` (`DoUserAnimEvent`) dispatches on the event type through the jump table
+`jumptable_79_data_56C` (46 entries, the types 0..0x2d).  The type **0x0e** (`kUE_FadeIn`) block at
+0xA8A0 sets the head-mode bit (0xc74 bit 0x80), calls the vtable slot **+0x104** with `r4 = 1` and
+`f1 = 15.0f` (0xA8C4) and stores 0.2f to 0xc80 (0xA8D8); the type **0x0f** (`kUE_FadeOut`) block at
+0xA8E0 clears the bit, calls the same slot with `r4 = 0` and `f1 = 20.0f` (0xA904) and stores -0.5f
+to 0xc80 (0xA918).  The slot +0x104 is `SetIngPossessed(bool, float, CStateManager&)`
+(`lbl_79_data_424` entry 65; the vtable's entries are the slots divided by four), so the retail
+calls `SetIngPossessed(true, 15.f, mgr)` and `SetIngPossessed(false, 20.f, mgr)`.  The port's
+`DoUserAnimEvent` (`PortCSwampBossStage2.cpp:2208-2217`) does exactly that: **the C++ needed no
+fix**.
+
+**The transition is reached from the module's own `AddToRenderer`, not from the host's
+`CPatterned::Render`** (the module overrides `Render`, `fn_79_A78C`, and the retail's body does not
+call the base's, so the host's `IsBeingSnatched` branch there never runs for this class).
+`fn_79_A59C` (`AddToRenderer`) calls the host's `IsBeingSnatched` (0xA5D8) and, when it is true,
+the virtual `RenderIngSnatchingTransition` (the vcall at 0xA5FC, the vtable slot **+0x144**); the
+host's method then asks the virtual `GetIngSnatchingNormal` (**+0x138**, the module's own
+`fn_79_5E3C`) and the virtual `GetIngSnatchingPoint` (**+0x13C**, `fn_79_5D40`).  The port's
+`AddToRenderer` (`PortCSwampBossStage2.cpp:2354`) has the same shape.
+
+**The run** (`tools/cov/run.sh tools/cov/specs/swampboss2_ingsnatch.py`, the coverage build
+`build-port-cov`, `3dfd2249,04_swamp_temple_dark`, layer 6, 6000 updates, the driver
+`tools/drivers/swampboss2_ing.py`): the driver finds the boss on layer 6 and sends it the
+head-mode anim event (`uevent u06d9 14`, the type 0x0e), which makes the boss ing-possessed.  The
+possession blend then ramps from 0 to 1 over the 15 s the retail asked for, and while it is
+between 0 and 1 (and the ing model is valid) the boss "is being snatched".  **Nothing is
+forced.**
+
+| body | lines | branches | arms |
+|---|---|---|---|
+| `fn_79_5D40` (`GetIngSnatchingPoint`) | 6/6 | none (the body is straight-line code, 0x5D40..0x5E38) | **every line hit, 100% of the blocks, 113 calls - marked** |
+| `fn_79_5E3C` (`GetIngSnatchingNormal`) | 4/4 | none | 226 calls (113 from `GetIngSnatchingPoint`, 113 from `RenderIngSnatchingTransition`) |
+| `fn_79_A59C` (`AddToRenderer`) | 14/19 | 10/16 | the `IsBeingSnatched` arm: 113 ing-snatch / 484 normal |
+
+So `fn_79_5D40` is **marked**.  It was the note's 7.2/7.23 "the ing-snatch transition never runs":
+it runs as soon as the boss is ing-possessed, and the head-mode anim event (0x0e) does that.
+
+**The checker's XCALL on `fn_79_5D40` is a false positive.**  The retail's body asks for the normal
+through the vtable (the vcall at 0x5D94, the slot +0x138), which for this class is the module's
+own `fn_79_5E3C`; the port's `GetIngSnatchingNormal(t)` is the same call, resolved to the same body
+at compile time, so the two are the same function.  `tools/asmcheck.py check SwampBossStage2
+src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp fn_79_5D40 --all` reports that one finding and
+nothing else.
+
+**Two dead ends worth writing down.**  A gdb `call` of the two helpers on the live boss (the
+coverage spec's `Force` breakpoint) enters the body but hangs the game: gdb's call allocates in
+the inferior and the port's allocator does not survive it.  The natural path above needs no such
+help.  And the layer request must not be sent while the area is still loading: the boss then never
+appears (`tools/drivers/swampboss2_ing.py` waits for 1200 updates first).
+
+### 7.26 fn_79_4F88 (`SendDecrement`): the body is the retail's, and the retail never runs it (2026-10-22, swamp2h lane)
+
+**The body was a stand-in; now it is the retail's.** The port had
+`void CSwampBossStage2::SendDecrement(CStateManager&) { (void)mgr; }`. The retail's body
+(0x4F88..0x5030) looks the light chain actor up with `mgr.ObjectById(mLightChain)` (the uid from
+0xca4, the `ObjectById` call at 0x4FB4), leaves when the lookup fails (the test at 0x4FB8-0x4FBC)
+and otherwise sends the message (the vcall at 0x5014, the vtable slot +0x18 =
+`CEntity::AcceptScriptMsg`): the sender is the boss's own uid (0x8), the message id is
+mLightChain, the message is the fourcc 0x44454352 (`lis r4,0x4445` / `addi r6,r4,0x4352` at
+0x4FD4-0x4FD8, `kSM_Decrement`) and the state is -1 (0x4FCC, `kSS_InvalidState`). The port's body
+is exactly that, and `tools/asmcheck.py check SwampBossStage2
+src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp fn_79_4F88 --all` finds nothing.
+
+**Nothing calls it.** The only reference to 0x4F88 in the retail's .text is its own definition
+(the module's asm has the function header and one unrelated `addi r3,r1,0x4c`), it is not in the
+module's vtable (`lbl_79_data_424`), it is not in the asset's code list (`lbl_79_data_3F4`, which
+holds only `fn_79_72FC`) and no state, trigger or code function names it. So the body is dead
+code in the retail: only a forced call can run it.
+
+**The run** (`tools/cov/run.sh tools/cov/specs/swampboss2_decrement.py`, the coverage build
+`build-port-cov`, `3dfd2249,04_swamp_temple_dark`, layer 6, 6000 updates, the driver
+`tools/drivers/swampboss2_decrement.py`): the driver puts the boss on layer 6 and sends it the
+area-loaded message, which fills `mLightChain` with the light chain actor's uid
+(`FindConnectedObject(mgr, kSS_InternalState2, kSM_None)`).
+
+- **forced (temporary caller)**: the run's binary carried one temporary line in
+  `CSwampBossStage2::Think` (`SendDecrement(mgr);`), removed again before the commit - the retail
+  has no caller, so the body needs one to run. 49 calls with the chain there.
+- **forced (gdb `set var this->mLightChain.value = 0xffff`)**: the other side of the body, the
+  early return at 0x4FBC. 1 call.
+
+| body | lines | branches | arms |
+|---|---|---|---|
+| `fn_79_4F88` (`SendDecrement`) | 4/4 | 2/2 | **ALL-ARMS** (50 calls: 49 with the chain, 1 with the uid forced invalid) |
+
+So `fn_79_4F88` is **marked**: the port's body is the retail's and both of its arms ran, even
+though the retail itself never runs it. A gdb `call` of the body on the live boss enters it (1
+hit) and then hangs the game - gdb's call allocates in the inferior, which the port's allocator
+does not survive - so the coverage used a temporary caller and a memory write instead.

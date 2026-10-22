@@ -19,8 +19,11 @@
 // The bodies below are stand-ins: each logs the first time it runs and does nothing else. The
 // tables, the names and the name-to-function mapping are retail's; the behaviour is not yet.
 #include "MetroidPrime/Enemies/CDarkSamus.hpp"
+#include "MetroidPrime/Enemies/CDarkSamusBoostBall.hpp"
+#include "MetroidPrime/Enemies/CScattershotProjectile.hpp"
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/CEnvFxManager.hpp"
 #include "MetroidPrime/CGameCollision.hpp"
 #include "WorldFormat/CMetroidAreaCollider.hpp"
 #include "MetroidPrime/BodyState/CBodyStateCmdMgr.hpp"
@@ -44,6 +47,8 @@
 #include "Kyoto/Animation/CPASAnimParmData.hpp"
 #include "Kyoto/Animation/CPASDatabase.hpp"
 #include "MetroidPrime/StateMachineCommon.hpp"
+#include "MetroidPrime/CAxisAngle.hpp"
+#include "MetroidPrime/CRumbleManager.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
@@ -53,6 +58,12 @@
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CAnimPlaybackParms.hpp"
 #include "Collision/CRayCastResult.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Particles/CElementGen.hpp"
+#include "MetroidPrime/CDecalManager.hpp"
+#include "Weapons/CCollisionResponseData.hpp"
+#include "MetroidPrime/CExplosion.hpp"
+#include "MetroidPrime/CModelData.hpp"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -403,6 +414,7 @@ void CDarkSamus::InstallStateMachineFunctions() {
 // flattened into the XY plane (the two zero stores at 0x00014364/0x00014368), normalized (the two
 // calls at 0x0001436C/0x00014374) and compared (the fcmpo at 0x00014384; the cr bit 31 at
 // 0x0001438C is the "less than" of the compare, so the limit is strict).
+// @ fn_10_142F4
 bool CDarkSamus::IsPlayerInFront(CStateManager& mgr, float angle) const {
   const CVector3f toPlayer = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
   const CVector3f forward = GetTransform().GetForward();
@@ -418,6 +430,8 @@ bool CDarkSamus::IsPlayerInFront(CStateManager& mgr, float angle) const {
 // the helper with a null (the cmplwi at 0x00017E24). The uid is written by AcceptScriptMsg's
 // 'XALD' arm (0x0001EBB8, the first stage) and by fn_10_193A0 (0x00019410, the next stage);
 // until the area is loaded the lookup finds nothing and the triggers below answer false.
+// @ fn_10_17E14
+// @ fn_10_17DE0
 const CDarkSamusBattleStage* CDarkSamus::GetBattleStage(CStateManager& mgr) const {
   return TCastToConstPtr< CDarkSamusBattleStage >(mgr.GetObjectById(mBattleStageUid));
 }
@@ -528,6 +542,7 @@ void CDarkSamus::AdvanceBattleStage(CStateManager& mgr) {
 // Magnitude at 0x0001D7FC): when it is more than 0.6 (lbl_10_rodata_424, the ble at 0x0001D80C) the
 // actor has walked away, so the timer is cleared and the reference position becomes the actor's
 // position again (0x0001D810); when it is not, the timer grows by dt (0x0001D838).
+// @ fn_10_1D794
 void CDarkSamus::UpdateStillTimer(EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mStillTime = 0.f;
@@ -565,6 +580,14 @@ void CDarkSamus::SetPathFindDestination(CStateManager& mgr, const CVector3f& des
 // kInvalidUniqueId at 0x0001E294). When there are two uids already the oldest is dropped
 // (fn_10_1E2E8 at 0x0001E2B0: it shifts the rest one down and counts one less), and then the uid
 // is appended (0x0001E2C4) and the count grows (0x0001E2D0).
+// fn_10_1E26C (0x0001E26C, 0x7C bytes): the attacker's uid (0xC24), the count (0xC28)
+// and the uid list (0xC2C). Arms: the uid is invalid (nothing is stored, 0x0001E298),
+// the list has two entries (the oldest is dropped first, fn_10_1E2E8 at 0x0001E2B0) and
+// the list has room.
+// // The arms: the coverage run (tools/cov/specs/darksamus_helpers2.py, the rooftop fight: Sanctuary 10_cliff_rooftop, boss u04f7, 6400 updates) showed the "the list has two" and the "the list has room" arms; the
+// "invalid uid" arm was forced (the uid written at the caller's entry,
+// tools/cov/specs/darksamus_helpers2_force.py).
+// @ fn_10_1E26C
 void CDarkSamus::PushAttacker(TUniqueId uid) {
   mLastAttackerUid = uid;
   if (mLastAttackerUid == kInvalidUniqueId) {
@@ -886,6 +909,15 @@ bool CDarkSamus::IsInUnsafeSpot(CStateManager& mgr) const {
 // to the actor (UpdateEmitter with the zero direction and CAudioSys::kMaxVolume, 0x000113EC).
 // kStateMsg_Deactivate (the case 2 at 0x00011368) removes the emitter when there is one
 // (0x0001140C) and clears the handle (0x00011414). Other messages do nothing.
+// fn_10_11334 (0x00011334, 0xF8 bytes): the looping glide emitter (the sound id at 0xC48,
+// the handle at 0xC4C). Arms: the activate with the invalid id (0x00011378) - dead on
+// shipped data (the id comes from the loader's constructor argument and is valid: the four
+// AddEmitter calls), the activate adds the emitter, the update without an emitter
+// (0x000113B0) adds it first, the update with it moves it, the deactivate without an
+// emitter (0x000113F8) does nothing, the deactivate removes it.
+// // The arms: the coverage run (tools/cov/specs/darksamus_helpers2.py, the rooftop fight: Sanctuary 10_cliff_rooftop, boss u04f7, 6400 updates) showed the activate and the update arms; the "no emitter" arms were forced
+// (the handle cleared at the entry, tools/cov/specs/darksamus_helpers2_force.py).
+// @ fn_10_11334
 void CDarkSamus::UpdateGlideEmitter(EStateMsg msg) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -924,6 +956,12 @@ void CDarkSamus::UpdateGlideEmitter(EStateMsg msg) {
 // unsafe (fn_10_EFC8 at 0x000128F8). Otherwise the actor's position is kept (0x91C/0x920/0x924)
 // and the flag is set (0x0001292C); the guest checks the flag again (0x0001290C) and keeps the
 // position without setting it when it is already set, which the first check makes unreachable.
+// fn_10_128D8 (0x000128D8, 0x88 bytes): the safe position (0x91C/0x920/0x924, the flag
+// byte at 0x928) and the unsafe-spot test (fn_10_EFC8). Arms: the flag is set (the
+// position is kept) and the flag is clear (the unsafe-spot test runs; it answered false
+// in the run, so the boss was not in an unsafe spot).
+// // The arms: the coverage run (tools/cov/specs/darksamus_helpers2.py, the rooftop fight: Sanctuary 10_cliff_rooftop, boss u04f7, 6400 updates) showed both.
+// @ fn_10_128D8
 void CDarkSamus::UpdateSafePosition(CStateManager& mgr) {
   if (mHasSafePos != 0) {
     return;
@@ -945,6 +983,15 @@ void CDarkSamus::UpdateSafePosition(CStateManager& mgr) {
 // gone (0xCC4 - the current health) is added to the damage (0x0001E1F4..0x0001E200), and the last
 // health is updated (0x0001E218). Then the damage decays by the rate at 0xCCC (1.0f) times dt
 // (0x0001E22C..0x0001E238) and never goes below zero (0x0001E248).
+// fn_10_1E178 (0x0001E178, 0xF4 bytes): the damage the actor has taken (0xCC0), the
+// health at the last check (0xCC4) and the decay rate (0xCCC). Arms: the health is the
+// same, the health changed and it counts (the last health above zero and the message is
+// not the activate), the health changed and it does not count, and the damage decays
+// below zero (it is clamped at 0x0001E248).
+// // The arms: the coverage run (tools/cov/specs/darksamus_helpers2.py, the rooftop fight: Sanctuary 10_cliff_rooftop, boss u04f7, 6400 updates) showed the "same", the "does not count" and the "decays" arms; the "it
+// counts" arm was forced (the last health written at the entry,
+// tools/cov/specs/darksamus_helpers2_force.py).
+// @ fn_10_1E178
 void CDarkSamus::AccumulateDamage(EStateMsg msg, float dt) {
   const CHealthInfo* health = GetHealthInfo();
   const float current = health->GetHP();
@@ -962,24 +1009,90 @@ void CDarkSamus::AccumulateDamage(EStateMsg msg, float dt) {
 
 // ---- the trigger bodies (stand-ins) ------------------------------------------------------------
 
+// fn_10_F840 (0x0000F840, 0xC bytes): the flag byte 0x90C's bit 7 - the extrwi at 0x0000F844
+// keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24) = 0x80). The
+// flag is set by AcceptScriptMsg's 'ALRT' arm (0x0001EA1C), so both outcomes come: the
+// TravelToCoverPoints node of the FSM2 evaluates this trigger (the MP2_DS_FSM dump) and the
+// 'ALRT' message (the console's `send <id> Alert`) sets the bit.
+// @ fn_10_F840
 bool CDarkSamus::Alerted(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_F840", "trigger Alerted");
-  return false;
+  return (mFlags90C & 0x80) != 0; // 0x0000F844 `extrwi r3, r0, 1, 24` (the bit 24 = 0x80)
 }
 
+// fn_10_62B4 (0x000062B4, 0xDC bytes): the Arrived trigger. The shield flag byte 0xCD0
+// (mGuestCD0, the lbz at 0x000062C0) short-circuits the time test: with it set the trigger is
+// the distance test alone (0x0000630C). Without it the float 0xF64 (mGuestF64) plus
+// lbl_10_rodata_190 = 6.0f against the elapsed time 0x8B0 (0x000062D0..0x000062E4) answers false
+// while the pause is still running (0x000062E8), and lbl_10_rodata_194 = 20.0f plus the same
+// offset (0x000062F0..0x00006300) answers true when it is over (0x00006304). Otherwise the
+// distance to the point 0xEE4/0xEE8 (the helpers branch's mGuestEE4) in the XY plane - the z
+// is lbl_10_rodata_13C = 0.0f, the store at 0x00006348 overwrites the z difference - against
+// lbl_10_rodata_15C = 3.0f decides (the magnitude at 0x0000634C, the compare at 0x00006358).
+// The trigger is evaluated by the module's FSM2 in the GoToPhazonAttack state (the module's FSM2
+// dump: "state 43 GoToPhazonAttack -> trigger Arrived -> state PhazonSuck"), so the fight calls
+// it when the boss is put in that state. The arms that the fight cannot reach are written at the
+// trigger's entry (gdb) in the forcing run; all five ran.
+// @ fn_10_62B4
 bool CDarkSamus::Arrived(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_62B4", "trigger Arrived");
+  if (mGuestCD0 == 0) { // 0x000062C0
+    if (6.f + mGuestF64 > mElapsedTime) { // 0x000062E0
+      return false;                        // 0x000062E8
+    }
+    if (20.f + mGuestF64 < mElapsedTime) { // 0x000062FC
+      return true;                        // 0x00006304
+    }
+  }
+  const CVector3f pos = GetTranslation();
+  // 0xEE4/0xEE8 (the helpers branch's mGuestEE4, the path find's fallback destination) and the
+  // z is lbl_10_rodata_13C = 0.0f (the store at 0x00006348 overwrites the z difference).
+  const CVector3f flat(pos.GetX() - mGuestEE4.GetX(), pos.GetY() - mGuestEE4.GetY(), 0.f);
+  return flat.Magnitude() < 3.f; // 0x00006358
+}
+
+// fn_10_1BB08 (0x0001BB08, 0x100 bytes): the AnyIncomingMissiles trigger. The near list (the
+// box of half-size lbl_10_rodata_3F0 = 100.0f around the actor, 0x0001BB30..0x0001BB7C) with
+// the default filter and the actor itself (BuildNearList at 0x0001BBB8); every entry is cast to
+// a CEnergyProjectile (0x0001BBDC) and fn_10_1B9B0 with the weapon type 6 (kWT_Missile,
+// 0x0001BBF4) must let it through (0x0001BBFC) and fn_10_145E4 must find the line to the
+// projectile's position on the mesh (0x0001BC10) for the trigger to answer true (0x0001BC20).
+// The trigger itself has no transition in the FSM2 (the MP2_DS_FSM dump lists it only in the
+// machine's 92 triggers), but the module's own ShouldReact (fn_10_11158) calls it (0x00011210)
+// and the FSM2 uses ShouldReact, so the body does run in retail.
+// Run (darksamus_react.py, `trigcall ShouldReact`): no projectile, a shot the walk check takes and one from
+// above it refuses (`shoot`), the filter asked with the type -1 (forced) for the shots.
+// @ fn_10_1BB08
+bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) const {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
+  const CVector3f min(pos.GetX() - 100.f, pos.GetY() - 100.f, pos.GetZ() - 100.f);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    // The retail casts the entry and hands it to fn_10_1B9B0, which answers false for a
+    // null projectile (the `mr.` test at 0x0001B9C0), so the cast's result is used as it is.
+    const CEnergyProjectile* proj =
+        TCastToConstPtr< CEnergyProjectile >(mgr.ObjectById(*it));
+    if (!CanReflectProjectile(mgr, proj, 6)) { // kWT_Missile, 0x0001BBF4
+      continue;
+    }
+    if (!CanWalkToPoint(proj->GetTranslation())) { // fn_10_145E4, 0x0001BC10
+      continue;
+    }
+    return true; // 0x0001BC20
+  }
   return false;
 }
 
-bool CDarkSamus::AnyIncomingMissiles(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_1BB08", "trigger AnyIncomingMissiles");
-  return false;
-}
-
+// fn_10_16B48 (0x00016B48, 0xC bytes): the byte at guest 0xAB8's bit 7 - the extrwi at
+// 0x00016B4C keeps the byte's bit 24, the mask 0x80 (the PowerPC bit 24 is 1u << (31 - 24)).
+// The only writer of that bit is the anim-event handler's Landing for the freeze beam
+// (fn_10_1BEFC, 0x0001C350).
+// Run (darksamus_uevent.py, `trigcall`): false, true after `uevent 12` with the freeze beam (the attack forced),
+// false after the key 99 put the byte back.
+// @ fn_10_16B48
 bool CDarkSamus::BreakFreezeBeam(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B48", "trigger BreakFreezeBeam");
-  return false;
+  return (mGuestAB8 & 0x80) != 0;
 }
 
 // fn_10_149B4 (0x000149B4, 0x4C bytes): the dash record's flag 0x80 (0xA08's
@@ -1002,52 +1115,123 @@ bool CDarkSamus::BreakDiveAttack(CStateManager&, const CTriggerData&) const {
   return mDive.mDone;
 }
 
+// fn_10_16B5C (0x00016B5C, 0x8 bytes): the byte at guest 0xA40 (the lbz at 0x00016B5C).
+// NormalMissileAttack (fn_10_17448) clears it on Activate; the only writer of a non-zero value is
+// the anim-event handler's Landing (fn_10_1BEFC, 0x0001C30C).
+// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA40 forced; darksamus_uevent.py: true after the
+// fight's own Landing event with the normal missile (dt 0, attack 0x40) and after `uevent 12`.
+// @ fn_10_16B5C
 bool CDarkSamus::BreakNormalMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B5C", "trigger BreakNormalMissile");
-  return false;
+  return mGuestA40 != 0;
 }
 
+// fn_10_106F8 (0x000106F8, 0x1C bytes): the float at guest 0xC30 against the actor's elapsed
+// time 0x8B0 (the lfs at 0x000106FC, the fcmpo at 0x00010700); the srwi at 0x00010708 takes
+// the compare's "less than" bit.
+// @ fn_10_106F8
 bool CDarkSamus::BreakPause(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_106F8", "trigger BreakPause");
-  return false;
+  return mGuestC30 < mElapsedTime;
 }
 
+// fn_10_4ABC (0x00004ABC, 0xC bytes): the byte at guest 0xF5C's bit 0x80 (`extrwi 1,24`), which
+// the attack animation's Landing event sets (DoUserAnimEvent) and fn_10_452C clears.
+// Run (darksamus_triggers.py, `trigcall`): false, then true after `uevent 12`.
+// @ fn_10_4ABC
 bool CDarkSamus::BreakPhazonAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_4ABC", "trigger BreakPhazonAttack");
-  return false;
+  return mGuestF5C80;
 }
 
+// fn_10_16B54 (0x00016B54, 0x8 bytes): the byte at guest 0xA80 (the lbz at 0x00016B54).
+// SuperMissileAttack (fn_10_16ECC) clears it on Activate; the only writer of a non-zero value is
+// the anim-event handler's Landing (fn_10_1BEFC, 0x0001C31C).
+// Run (darksamus_triggers2.py, `trigcall`): true and false, 0xA80 forced; darksamus_uevent.py: true after
+// `uevent 12` with the super missile (the attack forced).
+// @ fn_10_16B54
 bool CDarkSamus::BreakSuperMissile(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_16B54", "trigger BreakSuperMissile");
-  return false;
+  return mGuestA80 != 0;
 }
 
-bool CDarkSamus::CanMeleeAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_10634", "trigger CanMeleeAttack");
-  return false;
+// fn_10_10634 (0x00010634, 0x24 bytes): fn_10_17D50 with the attack 1 (the melee, `li r5, 0x1`
+// at 0x0001063C), the port's IsAttackEnabled.
+// Run (darksamus_triggers2.py, `trigcall`): ran (true); no branch of its own.
+// @ fn_10_10634
+bool CDarkSamus::CanMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
+  return IsAttackEnabled(mgr, 1);
 }
 
 // fn_10_14284 (0x00014284): the fight script's object (fn_10_17E14) - without one the trigger
 // answers false (the cmplwi at 0x00014294) - and the float at the stage info's +0x24 (the lfs at
-// 0x000142A8) against zero (lbl_10_rodata_3FC): the trigger answers when the float is below
-// zero (the fcmpo at 0x000142B0 and the extrwi at 0x000142B8, which keeps the compare's "less
+// 0x000142A8) against zero (lbl_10_rodata_3FC): the trigger answers when the float is above
+// zero (the fcmpo at 0x000142B0 and the extrwi at 0x000142B8, which keeps the compare's "greater
 // than" bit).
+// Run (darksamus_uevent.py with darksamus_react.py): no stage (the uid forced invalid), the shipped float 45.0f, and -1.0f
+// (forced).
+// Unmarked: only the shipped data's arm ran (the deflect time 45.0f or 50.0f, the trigger
+// answers true); the other arm (a deflect time below zero) could not be run - gdb cannot call
+// the port's GetBattleStage to write the stage's info.
+
 bool CDarkSamus::CanMissileDeflect(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr) {
     return false;
   }
-  return stage->GetMissileDeflectTime() < 0.f;
+  return stage->GetMissileDeflectTime() > 0.f; // 0x000142B0 fcmpo, extrwi r3,r0,1,1 (GT)
 }
 
-bool CDarkSamus::DiveAfterBoost(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_95A8", "trigger DiveAfterBoost");
-  return false;
+// fn_10_95A8 (0x000095A8, 0x7C bytes): the DiveAfterBoost trigger. With the boost ball's bit 0x20
+// of 0xEBC (`extrwi r0, r0, 1, 26` at 0x000095C8, the PowerPC bit 26 being 1u << (31 - 26) =
+// 0x20; `cmplwi r0, 0x1` at 0x000095CC) the trigger answers false (0x000095D4). Otherwise the
+// stage info (fn_10_17E14, 0x000095DC; null answers false at 0x000095E4) answers with its byte
+// +0x78 (`lbz r0, 0x78(r3)` at 0x000095F4, `cmplwi r0, 0x1` at 0x000095F8): the bool
+// unknown_0x2d7551e6, the one after the boostBall float (+0x74) in SLdrDSStageInfo.
+// Run (darksamus_dsfsm.py, `trigcall`): the bit set and no stage forced; the byte 0 natural (the
+// shipped value), 1 forced (true).
+// @ fn_10_95A8
+bool CDarkSamus::DiveAfterBoost(CStateManager& mgr, const CTriggerData&) const {
+  if (mBoostBallFlag20) { // 0x000095C8
+    return false;         // 0x000095D4
+  }
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (stage == nullptr) { // 0x000095E0
+    return false;
+  }
+  return stage->GetDiveAfterBoost(); // 0x000095F4 lbz 0x78, cmplwi 1
 }
 
+// fn_10_9314 (0x00009314, 0xDC bytes): the DoneRolling trigger. Without the boost ball actor
+// (the uid 0xE38, 0x0000932C) the trigger answers false (0x0000933C). With it the roll's time
+// 0xEA4 (mGuestEA4) against lbl_10_rodata_27C = 2.0f (0x00009350) answers true when it is over
+// (0x00009358). With a boost hint (the uid 0xEC0, 0x00009360) the hint's byte 0xEC8
+// (mGuestEC8, 0x0000936C) answers. With the boost ball's bit 0x80 of 0xEBC
+// (`extrwi r0, r0, 1, 24` at 0x00009378, the PowerPC bit 24 being 1u << (31 - 24) = 0x80) the
+// trigger answers true (0x00009384). With the roll's other time 0xEA8 (mGuestEA8) plus
+// lbl_10_rodata_274 = 5.0f against the elapsed time (0x0000939C) it answers true when that is
+// over (0x000093A8). Otherwise the distance to the point 0xEAC/0xEB0/0xEB4 (mGuestEAC,
+// mGuestEB0, mGuestEB4) against lbl_10_rodata_280 = 12.0f plus the radius 0xEB8 (mGuestEB8)
+// decides (the magnitude at 0x000093F0, the compare at 0x00009404: the "greater than" bit,
+// `extrwi r3, r0, 1, 1`).
+// @ fn_10_9314
 bool CDarkSamus::DoneRolling(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_9314", "trigger DoneRolling");
-  return false;
+  if (mBoostBallUid == kInvalidUniqueId) { // 0x0000932C
+    return false;                          // 0x0000933C
+  }
+  if (mGuestEA4 > 2.f) { // 0x00009350
+    return true;               // 0x00009358
+  }
+  if (mBoostHintUid != kInvalidUniqueId) { // 0x00009364
+    return mGuestEC8 != 0;                    // 0x0000936C
+  }
+  if (mBoostBallFlag80) { // 0x00009378
+    return true;               // 0x00009384
+  }
+  if (5.f + mGuestEA8 < mElapsedTime) { // 0x000093A0
+    return true;                            // 0x000093A8
+  }
+  const CVector3f pos = GetTranslation();
+  // 0xEAC/0xEB0/0xEB4 are the point (the fsm2 lane's mGuestEAC) and 0xEB8 the radius.
+  const CVector3f d(pos.GetX() - mGuestEAC.GetX(), pos.GetY() - mGuestEAC.GetY(),
+                    pos.GetZ() - mGuestEAC.GetZ());
+  return d.Magnitude() > 12.f + mGuestEB8; // 0x00009404
 }
 
 // fn_10_F864: the trigger is the byte at 0xD4C (the lbz at 0x0000F864) - the flag the
@@ -1057,19 +1241,29 @@ bool CDarkSamus::DoneTurning(CStateManager&, const CTriggerData&) const {
   return mTurnDone != 0;
 }
 
-bool CDarkSamus::FacingPlayer(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_142CC", "trigger FacingPlayer");
-  return false;
+// fn_10_142CC (0x000142CC, 0x28 bytes): fn_10_142F4 with lbl_10_rodata_4C4 = 0.17453292f
+// (10 degrees, the lfs at 0x000142DC), the port's IsPlayerInFront.
+// Run (darksamus_triggers2.py, `trigcall`): ran (true); no branch of its own.
+// @ fn_10_142CC
+bool CDarkSamus::FacingPlayer(CStateManager& mgr, const CTriggerData&) const {
+  return IsPlayerInFront(mgr, 0.17453292f);
 }
 
+// fn_10_7B68 (0x00007B68, 0x58 bytes): the health (vtable 0x3C, its +4) plus lbl_10_rodata_14C =
+// 1.0f below the health the enrage started at, 0xFC4 (the fcmpo at 0x00007BA0, `srwi 31` its
+// "less than" bit). Run (darksamus_triggers.py, `trigcall`): both answers, 0xFC4 forced.
+// @ fn_10_7B68
 bool CDarkSamus::HitDuringEnrage(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_7B68", "trigger HitDuringEnrage");
-  return false;
+  return 1.f + GetHealthInfo()->GetHP() < mGuestFC4;
 }
 
-bool CDarkSamus::OutOfMeleeRange(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_17CB8", "trigger OutOfMeleeRange");
-  return false;
+// fn_10_17CB8 (0x00017CB8, 0x34 bytes): fn_10_17CEC (the distance to the player) against
+// lbl_10_rodata_460 = 30.0f (the lfs at 0x00017CCC); the extrwi at 0x00017CD8 takes the
+// compare's "greater than" bit.
+// Run (darksamus_triggers2.py, `trigcall`): both answers, the player placed 60 and 1 away.
+// @ fn_10_17CB8
+bool CDarkSamus::OutOfMeleeRange(CStateManager& mgr, const CTriggerData&) const {
+  return GetDistanceToPlayer(mgr) > 30.f;
 }
 
 // fn_10_116F8 (0x000116F8): the word at 0x984 - the fight script's picked attack id - against
@@ -1082,9 +1276,9 @@ bool CDarkSamus::PickedBoostBall(CStateManager&, const CTriggerData&) const {
 }
 
 // fn_10_11760 (0x00011760): the word at 0x984 against 0x100000, the id of the freeze beam. The
-// body is the cntlzw/srwi idiom over `lis r0,0x10` (0x100000) (0x00011764..0x00011774). Not
-// marked: the freeze beam is not one of the TravelToCoverPoints state's transitions, so the body
-// did not run in the walk.
+// body is the cntlzw/srwi idiom over `lis r0,0x10` (0x100000) (0x00011764..0x00011774).
+// Run (darksamus_triggers2.py, `trigcall`): both answers, 0x984 forced.
+// @ fn_10_11760
 bool CDarkSamus::PickedFreezeBeam(CStateManager&, const CTriggerData&) const {
   return mPickedAttack == 0x100000;
 }
@@ -1132,6 +1326,8 @@ bool CDarkSamus::PickedMovingSShot(CStateManager&, const CTriggerData&) const {
 // fn_10_117A0 (0x000117A0): the byte at 0xDEC (the fade flag) first - when it is 1 the
 // trigger answers for the id 0x200000 (the compare at 0x000117B0, `lis r0,0x20`), otherwise
 // for the normal missile's id 0x40 (the compare at 0x000117C4).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xDEC and 0x984 forced.
+// @ fn_10_117A0
 bool CDarkSamus::PickedNormalMissile(CStateManager&, const CTriggerData&) const {
   if (mFadeOut == 1) {
     return mPickedAttack == 0x200000;
@@ -1197,14 +1393,19 @@ bool CDarkSamus::PickedTaunt(CStateManager&, const CTriggerData&) const {
   return mPickedAttack == 0x200;
 }
 
-bool CDarkSamus::PlayerIsMorphball(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_112E8", "trigger PlayerIsMorphball");
-  return false;
+// fn_10_112E8 (0x000112E8, 0x20 bytes): fn_10_11308, the port's IsPlayerMorphed.
+// Run (darksamus_triggers2.py, `trigcall`): ran (false); no branch of its own.
+// @ fn_10_112E8
+bool CDarkSamus::PlayerIsMorphball(CStateManager& mgr, const CTriggerData&) const {
+  return IsPlayerMorphed(mgr);
 }
 
-bool CDarkSamus::PlayerTooClose(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_10658", "trigger PlayerTooClose");
-  return false;
+// fn_10_10658 (0x00010658, 0x40 bytes): fn_10_17CEC (the distance to the player) against the
+// actor's own minimum attack range 0x3DC (the lfs at 0x0001066C); the srwi at 0x0001067C takes
+// the compare's "less than" bit.
+// @ fn_10_10658
+bool CDarkSamus::PlayerTooClose(CStateManager& mgr, const CTriggerData&) const {
+  return GetDistanceToPlayer(mgr) < mMinAttackRange;
 }
 
 // fn_10_FAF4 (0x0000FAF4, 0x98 bytes): no area hint of type 0xE (fn_10_FC64, 0x0000FB14) is
@@ -1220,25 +1421,39 @@ bool CDarkSamus::ReachedPissedOff(CStateManager& mgr, const CTriggerData&) const
   return CVector3f(delta.GetX(), delta.GetY(), 0.f).Magnitude() < 3.f;
 }
 
+// fn_10_6A40 (0x00006A40, 0x20 bytes): the enrage's timer 0xFB0 at or below lbl_10_rodata_13C =
+// 0.0f (the fcmpo at 0x00006A4C, `cror eq, lt, eq`).
+// Run (darksamus_triggers.py, `trigcall`): both answers, 0xFB0 forced.
+// @ fn_10_6A40
 bool CDarkSamus::ReadyForMissiles(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6A40", "trigger ReadyForMissiles");
-  return false;
+  return mGuestFB0 <= 0.f;
 }
 
-bool CDarkSamus::ShouldEnragedMelee(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6B78", "trigger ShouldEnragedMelee");
-  return false;
+// fn_10_6B78 (0x00006B78, 0x28 bytes): fn_10_1AA6C, the port's GetPlayerRangeBand, is 0 (the
+// player closer than the attack range): `cntlzw; srwi 5` at 0x00006B88 is "== 0" (the port had
+// "== 1"). Run (darksamus_triggers.py, `trigcall`): the player placed 1 and 60 away.
+// @ fn_10_6B78
+bool CDarkSamus::ShouldEnragedMelee(CStateManager& mgr, const CTriggerData&) const {
+  return GetPlayerRangeBand(mgr) == 0;
 }
 
-bool CDarkSamus::ShouldFadeIn(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_BB78", "trigger ShouldFadeIn");
-  return false;
+// fn_10_BB78 (0x0000BB78, 0x6C bytes): the fight script's object (fn_10_17E14) - without one
+// the trigger answers true (the beq at 0x0000BBA4) - and its byte at the stage info's +0x31
+// (the lbz at 0x0000BBB4), which must be 0.
+// Run (darksamus_uevent.py, `trigcall`): no stage (the uid forced invalid), the shipped flag 0, the flag 1 (forced).
+// @ fn_10_BB78
+bool CDarkSamus::ShouldFadeIn(CStateManager& mgr, const CTriggerData&) const {
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  return stage == nullptr || !stage->GetFadeOutFlag();
 }
 
 // fn_10_BBE4 (0x0000BBE4): the fight script's object (fn_10_17E14) - without one the trigger
 // answers false (the cmplwi at 0x0000BC04) - its byte at the stage info's +0x31 (the lbz at
 // 0x0000BC18), which must be 1 (the cmplwi at 0x0000BC1C), and then the actor's own fade flag
 // (the guest's 0xDEC, the lbz at 0x0000BC24), which must be 0.
+// Run (darksamus_uevent.py, `trigcall`): no stage, the shipped flag 0, the flag 1 (forced) with 0xDEC 0 and 1 (the
+// FadeIn / FadeOut events).
+// @ fn_10_BBE4
 bool CDarkSamus::ShouldFadeOut(CStateManager& mgr, const CTriggerData&) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr || !stage->GetFadeOutFlag()) {
@@ -1253,6 +1468,8 @@ bool CDarkSamus::ShouldFadeOut(CStateManager& mgr, const CTriggerData&) const {
 // pass) test it together with the frozen and the visible flags, so it is the alive flag
 // the host keeps in GetAlive(). The byte at 0xD58 is the flag the PissedOff state clears
 // (fn_10_F930) and the fight script sets.
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xD58 and the alive flag forced.
+// @ fn_10_FD30
 bool CDarkSamus::ShouldGetPissedOff(CStateManager&, const CTriggerData&) const {
   if (GetAlive()) {
     return mPissedOff != 0;
@@ -1260,9 +1477,20 @@ bool CDarkSamus::ShouldGetPissedOff(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// fn_10_6A60 (0x00006A60, 0x88 bytes): false while the enrage's timer 0xFB0 is above
+// lbl_10_rodata_13C = 0.0f (0x00006A84) or the health (vtable 0x3C, its +4) below
+// lbl_10_rodata_19C = 65.0f (0x00006AB0); else the volleys to fire 0x1058 at most the volleys
+// fired 0x105C (the signed `srawi; srwi; subfc; adde` at 0x00006AC4).
+// Run (darksamus_triggers.py, `trigcall`): every arm, the timer, health and volleys forced.
+// @ fn_10_6A60
 bool CDarkSamus::ShouldLeaveSphere(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6A60", "trigger ShouldLeaveSphere");
-  return false;
+  if (mGuestFB0 > 0.f) {
+    return false;
+  }
+  if (GetHealthInfo()->GetHP() < 65.f) {
+    return false;
+  }
+  return mGuest1058 <= mGuest105C;
 }
 
 // fn_10_11158 (0x00011158, 0x154 bytes): the trigger's switch over the attack the actor is
@@ -1283,6 +1511,9 @@ bool CDarkSamus::ShouldLeaveSphere(CStateManager&, const CTriggerData&) const {
 // 0x400 the pause, 0x10000 the sweep beam and 0x200000 the fade variant of the normal missile
 // answer true (0x0001127C), 0xFFFF (no attack) answers the fade flag at 0xDEC (0x00011284) and
 // everything else answers false.
+// Run (darksamus_react.py, `trigcall`): a heavy hit; no deflect (the shipped float 45.0f); facing away (`place
+// player -20`); every attack arm with the float forced to -1.0f and a shot in the near list.
+// @ fn_10_11158
 bool CDarkSamus::ShouldReact(CStateManager& mgr, const CTriggerData& data) const {
   if (WasHeavyHit(mgr, data)) {
     return true;
@@ -1306,14 +1537,29 @@ bool CDarkSamus::ShouldReact(CStateManager& mgr, const CTriggerData& data) const
   }
 }
 
+// fn_10_6AE8 (0x00006AE8, 0x90 bytes): the health (vtable 0x3C, its +4) at most
+// lbl_10_rodata_1A0 = 61.0f (0x00006B1C), else at most the phazon phase's starting health 0x1054
+// less lbl_10_rodata_1A4 = 58.0f (0x00006B58).
+// Run (darksamus_triggers.py, `trigcall`): every arm, the health and 0x1054 forced.
+// @ fn_10_6AE8
 bool CDarkSamus::ShouldRiseAgain(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_6AE8", "trigger ShouldRiseAgain");
-  return false;
+  if (GetHealthInfo()->GetHP() <= 61.f) {
+    return true;
+  }
+  return GetHealthInfo()->GetHP() <= mPhazonHealthMark - 58.f;
 }
 
-bool CDarkSamus::SkipPhazonAttack(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_110E0", "trigger SkipPhazonAttack");
-  return false;
+// fn_10_110E0 (0x000110E0, 0x3C bytes): fn_10_1A5BC (the stage's weights) into an empty list and
+// mask (the stores at 0x000110F8/0x000110FC), then the mask's phazon attack bit 0x800000
+// (`extrwi 1,8` at 0x00011108).
+// Run (darksamus_triggers.py, `trigcall`): ran (false in the rooftop fight); no branch of its own.
+// @ fn_10_110E0
+bool CDarkSamus::SkipPhazonAttack(CStateManager& mgr, const CTriggerData&) const {
+  SAttackWeights weights;
+  weights.count = 0;
+  uint mask = 0;
+  CollectStageWeights(mgr, weights, &mask);
+  return (mask & 0x800000) != 0;
 }
 
 // fn_10_F924: the trigger is the flag byte's bit 6 - the extrwi at 0x0000F928 keeps the byte's
@@ -1336,6 +1582,8 @@ bool CDarkSamus::StartsInTheAir(CStateManager&, const CTriggerData&) const {
 // the last id of the history (the word at 0x998 + (count - 1) * 4, the slwi/add at
 // 0x000106BC..0x000106C8) must not be 0x8000 either (the copy at 0x000106CC and the cmplwi at
 // 0x000106D0).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0x980, the history and the damage forced.
+// @ fn_10_10698
 bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
   if (mCurrentAttack == 0x8000) {
     return false;
@@ -1353,6 +1601,8 @@ bool CDarkSamus::TooMuchDamage(CStateManager&, const CTriggerData&) const {
 // lbl_10_rodata_428 = 0.2f against the elapsed time at 0x8B0: the fadds at 0x0000F82C, the
 // fcmpo at 0x0000F830 and the extrwi at 0x0000F838, which takes the CR0 bit 1 - the "greater
 // than" of an fcmpo).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0x964 and 0xC44 forced.
+// @ fn_10_F800
 bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
   if (mStillTime > 1.2f) {
     return true;
@@ -1360,31 +1610,618 @@ bool CDarkSamus::WallCollision(CStateManager&, const CTriggerData&) const {
   return (0.2f + mLastWallHitTime) > mElapsedTime;
 }
 
-bool CDarkSamus::WasHeavyHit(CStateManager&, const CTriggerData&) const {
-  FsmStandIn("fn_10_112AC", "trigger WasHeavyHit");
-  return false;
+// fn_10_112AC (0x000112AC, 0x3C bytes): the elapsed time of the last hit (the guest's 0xC0C)
+// must not be 0.0f (the fcmpu at 0x000112B8) and lbl_10_rodata_46C = 0.3f plus it must be
+// past the actor's elapsed time 0x8B0 (the fcmpo at 0x000112D8, whose "greater than" bit the
+// extrwi at 0x000112E0 takes).
+// Run (darksamus_triggers2.py, `trigcall`): every arm, 0xC0C forced (0, now, now - 1).
+// @ fn_10_112AC
+bool CDarkSamus::WasHeavyHit(CStateManager& mgr, const CTriggerData&) const {
+  if (mGuestC0C == 0.f) {
+    return false;
+  }
+  return 0.3f + mGuestC0C > mElapsedTime;
 }
 
 // ---- the state bodies (stand-ins) --------------------------------------------------------------
 
-void CDarkSamus::BoostBallFire(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_9724", "state BoostBallFire");
+// fn_10_9724 (0x00009724, 0xDC bytes): the BoostBallFire state. Every message runs the attack
+// bookkeeping with id 0x20000 (`lis r4, 0x2` at 0x00009758, the call at 0x00009760). Activate
+// (0x00009764) removes the roll
+// emitter (0x00009778) and clears its handle (0x00009784), turns the actor around (fn_10_9644
+// at 0x00009788), takes 0xD24 = lbl_10_rodata_284 = 0.5f (0x000097AC) and sets the boost ball's
+// bit 0x40 of 0xEBC (`rlwimi r3, r4, 6, 25, 25` at 0x000097B4, the PowerPC bit 25 being
+// 1u << (31 - 25) = 0x40). Update (0x0000983C) deletes the boost ball (fn_10_9AC4 at
+// 0x0000984C) and Deactivate (0x00009854) deletes the boost ball's particle effects (fn_10_99B8
+// at 0x00009864). Then the turn toward the player
+// (fn_10_16B64 at 0x00009880, the rate lbl_10_rodata_28C = 5.2359877f) and the melee attack
+// command (fn_10_8764 at 0x000098E0, the severity lbl_10 = 8 = pas::kS_Eight).
+// Activate also empties the element generator's auto_ptr at 0xE60/0xE64 (the old one deleted at
+// 0x000097F0, the stores at 0x000097FC/0x00009804).
+void CDarkSamus::BoostBallFire(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallFire", msg);
+  UpdateCurrentAttack(0x20000, mgr, msg); // `lis r4, 0x2` at 0x00009758, the call at 0x00009760
+  if (msg == kStateMsg_Activate) {
+    CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x00009778
+    mBoostBallRollSfx = CSfxHandle();              // 0x00009784
+    TurnAround();                                  // fn_10_9644, 0x00009788
+    mGuestD24 = 0.5f;                              // lbl_10_rodata_284, 0x000097AC
+    mBoostBallFlag40 = true;                       // 0x000097B4
+    mBoostBallElementGen = nullptr;                // 0x000097F0..0x00009804
+  } else if (msg == kStateMsg_Update) {
+    DeleteBoostBall(mgr); // fn_10_9AC4, 0x0000984C
+  } else if (msg == kStateMsg_Deactivate) {
+    StopBoostBallParticles(); // fn_10_99B8, 0x00009864
+  }
+  TurnTowardPlayer(mgr, dt, 5.2359877f); // 0x00009880 (lbl_10_rodata_28C)
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Eight)); // 0x000098E0
 }
 
-void CDarkSamus::BoostBallInto(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_B164", "state BoostBallInto");
+// fn_10_B164 (0x0000B164, 0x2F4 bytes): the BoostBallInto state, the morph into the boost ball.
+// The shield flag (fn_10_105F4 at 0x0000B1A4) and the collision failsafe (fn_10_1AEC0 at
+// 0x0000B1B0) run first. Activate (`cmpwi r31, 0x0` at 0x0000B1C0) starts the roll emitter at the
+// actor (AddEmitter with mBoostBallRollSfxId 0xE68 in the actor's area, not looped at
+// 0x0000B1E8, with acoustics at 0x0000B1EC, kMedPriority, the handle to 0xE6C at 0x0000B204), clears 0xEC8 and
+// the hint 0xEC0 and looks for the hint to roll to: the nearest boost hint (fn_10_B6C4,
+// `cmplwi r3, 0x0` at 0x0000B220) and the first active hint it arrives at (fn_10_B458,
+// 0x0000B244). With one, 0xECC is the zero vector, 0xEC0 its uid, 0xEC4 the distance to it and
+// 0xED8 its value parameter clamped to lbl_10_rodata_25C = 0.0f .. lbl_10_rodata_27C = 2.0f when
+// above 0.0f (`fcmpo` at 0x0000B2C8, 0x0000B2E0, 0x0000B2F4), else lbl_10_rodata_264 = 1.0f
+// (0x0000B314). Update (`cmpwi r31, 0x1` at 0x0000B1B4) moves the ball and the emitter
+// (fn_10_A06C). Every message then runs the attack bookkeeping with id 0x20000 (`lis r4, 0x2`,
+// fn_10_1B478 at 0x0000B338) and turns: toward the player at lbl_10_rodata_2B4 = 1.7453293f
+// rad/s with no hint (`cmplw r4, r0` at 0x0000B348, fn_10_16B64), else toward the hint actor at
+// lbl_10_rodata_2B8 = 3.4906585f (`mr. r5, r3` at 0x0000B388, fn_10_16B8C). It clears 0xEBC
+// bit 0x40 (`rlwimi r0, r8, 6, 25, 25` at 0x0000B3B4) and runs the melee attack command with
+// severity 7 (0x0000B3E0; pas::kAS_MeleeAttack = 7 at 0x0000B3F8; fn_10_8764 at
+// 0x0000B414).
+void CDarkSamus::BoostBallInto(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallInto", msg);
+  UpdateShieldFlag(msg);
+  RunCollisionFailsafe(mgr);
+  if (msg == kStateMsg_Update) {
+    UpdateBoostBallAtActor(mgr);
+  } else if (msg == kStateMsg_Activate) {
+    mBoostBallRollSfx = CSfxManager::AddEmitter(mBoostBallRollSfxId, GetTranslation(),
+                                                GetCurrentAreaId().Value(), false, true,
+                                                CSfxManager::kMedPriority);
+    mGuestEC8 = 0;
+    mBoostHintUid = kInvalidUniqueId;
+    const CScriptAIHint* start = FindBoostBallHint(mgr);
+    if (start != nullptr) { // 0x0000B220
+      CScriptAIHint* hint = FindArrivedHint(mgr, start->GetUniqueId());
+      if (hint != nullptr) { // 0x0000B244
+        mGuestECC = CVector3f::Zero();
+        mBoostHintUid = hint->GetUniqueId();
+        mBoostHintDist = (hint->GetTranslation() - GetTranslation()).Magnitude();
+        if (hint->GetValueParm() > 0.f) { // 0x0000B2C8
+          const float value = hint->GetValueParm();
+          float clamped;
+          if (0.f > value) { // 0x0000B2E0
+            clamped = 0.f;
+          } else if (2.f >= value) { // 0x0000B2F4
+            clamped = value;
+          } else {
+            clamped = 2.f;
+          }
+          mBoostHintValue = clamped;
+        } else {
+          mBoostHintValue = 1.f; // 0x0000B310
+        }
+      }
+    }
+  }
+  UpdateCurrentAttack(0x20000, mgr, msg);
+  if (mBoostHintUid == kInvalidUniqueId) { // 0x0000B348
+    TurnTowardPlayer(mgr, dt, 1.7453293f);
+  } else if (const CActor* act = TCastToConstPtr< CActor >(mgr.GetObjectById(mBoostHintUid))) {
+    TurnTowardPoint(dt, act->GetTranslation(), 3.4906585f); // 0x0000B388
+  }
+  mBoostBallFlag40 = false; // 0x0000B3B4
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Seven));
 }
 
-void CDarkSamus::BoostBallRoll(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_A3B0", "state BoostBallRoll");
+// fn_10_B6C4 (0x0000B6C4, 0x1A8 bytes): the hints the actor links with kSS_InternalState6 (`lis
+// r6, 0x4953` at 0x0000B6EC, any message) and keeps the nearest by squared distance (from
+// lbl_10_rodata_2BC = FLT_MAX, `fcmpo cr0, f30, f31` at 0x0000B7E8) that is active (the 0x20
+// bit 0x80, `cmplwi r0, 0x1` at 0x0000B768), of type 0x11 (`cmpwi r0, 0x11` at 0x0000B774),
+// whose radius 0x15C holds the actor (`fcmpo cr0, f30, f0` at 0x0000B7E0: not beyond it) and
+// whose chain fn_10_BA38 does not answer true for (`clrlwi. r0, r3, 24` at 0x0000B80C).
+const CScriptAIHint* CDarkSamus::FindBoostBallHint(CStateManager& mgr) const {
+  const rstl::vector< TUniqueId > links = FindConnectedObjects(mgr, kSS_InternalState6, kSM_None);
+  float best = 3.4028235e38f; // lbl_10_rodata_2BC (0x0000B728)
+  const CScriptAIHint* found = nullptr;
+  for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+    const CScriptAIHint* hint = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(*it));
+    if (hint == nullptr) { // 0x0000B750
+      continue;
+    }
+    if (hint->GetActive() != true) { // 0x0000B768
+      continue;
+    }
+    if (static_cast< int >(hint->GetHintType()) != 0x11) { // 0x0000B774
+      continue;
+    }
+    const CVector3f delta = hint->GetTranslation() - GetTranslation();
+    const float distSq = delta.MagSquared();
+    const float radius = hint->GetRadius();
+    if (distSq > radius * radius) { // 0x0000B7E4
+      continue;
+    }
+    if (!(distSq < best)) { // 0x0000B7EC
+      continue;
+    }
+    if (BoostChainHasInactiveHint(mgr, hint->GetUniqueId())) { // 0x0000B80C
+      continue;
+    }
+    best = distSq;
+    found = hint;
+  }
+  return found;
+}
+
+// fn_10_B458 (0x0000B458, 0x118 bytes): null when uid is no hint (0x0000B48C);
+// else the first active hint (`cmplwi r0, 0x1` at 0x0000B50C) among its kSS_Arrived
+// links (`lis r6, 0x4152` at 0x0000B49C, any message), null when there is none (0x0000B550).
+CScriptAIHint* CDarkSamus::FindArrivedHint(CStateManager& mgr, TUniqueId uid) {
+  const CScriptAIHint* from = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(uid));
+  if (from == nullptr) { // 0x0000B48C
+    return nullptr;
+  }
+  const rstl::vector< TUniqueId > links = from->FindConnectedObjects(mgr, kSS_Arrived, kSM_None);
+  for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+    CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
+    if (hint == nullptr) { // 0x0000B4F4
+      continue;
+    }
+    if (hint->GetActive() == true) { // 0x0000B50C
+      return hint;
+    }
+  }
+  return nullptr;
+}
+
+// fn_10_BA38 (0x0000BA38, 0x140 bytes): follows a hint chain for at most 15 steps (`cmpwi r29,
+// 0xf` at 0x0000BB4C). A step that finds no hint at uid answers false (`cmplwi r3, 0x0` at
+// 0x0000BA80); else the first of its kSS_Arrived links (`lis r31, 0x4152` at 0x0000BA4C) that is a
+// hint of type 0x11 (`cmpwi r0, 0x11` at 0x0000BAEC) answers true when it is inactive (the 0x20
+// bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BAF8) and is the next step's uid when active. A
+// step with no such link repeats the same uid; after 15 steps the answer is false (0x0000BB54).
+bool CDarkSamus::BoostChainHasInactiveHint(CStateManager& mgr, TUniqueId uid) const {
+  for (int step = 0; step < 15; ++step) { // 0x0000BB4C
+    const CScriptAIHint* from = TCastToConstPtr< CScriptAIHint >(mgr.GetObjectById(uid));
+    if (from == nullptr) { // 0x0000BA80
+      return false;
+    }
+    const rstl::vector< TUniqueId > links =
+        from->FindConnectedObjects(mgr, kSS_Arrived, kSM_None);
+    for (rstl::vector< TUniqueId >::const_iterator it = links.begin(); it != links.end(); ++it) {
+      const CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(*it));
+      if (hint == nullptr) { // 0x0000BAE0
+        continue;
+      }
+      if (static_cast< int >(hint->GetHintType()) != 0x11) { // 0x0000BAEC
+        continue;
+      }
+      if (!hint->GetActive()) { // 0x0000BAF8
+        return true;
+      }
+      uid = hint->GetUniqueId(); // 0x0000BB18
+      break;
+    }
+  }
+  return false;
+}
+
+// fn_10_9920 (0x00009920, 0x4C bytes): null when the ball's uid 0xE38 is kInvalidUniqueId
+// (`cmplw r6, r0` at 0x00009938), else the actor it names.
+// @ fn_10_9920
+// Run 2026-10-21 (Sanctuary 10_cliff_rooftop, boss u04f7): 644 calls. The null arm ran on its own
+// (the boost ball paths run with no ball); the actor arm was forced (gdb `set var
+// mBoostBallUid.value = 0x4f7` at the second call). See docs/module-analysis/DarkSamus_helpers.md.
+CActor* CDarkSamus::GetBoostBallActor(CStateManager& mgr) const {
+  if (mBoostBallUid == kInvalidUniqueId) { // 0x00009938
+    return nullptr;
+  }
+  return TCastToPtr< CActor >(mgr.ObjectById(mBoostBallUid));
+}
+
+// fn_10_A06C (0x0000A06C, 0xE8 bytes): with a ball actor (`mr. r31, r3` at 0x0000A088) its
+// transform moves to the actor's position offset by (lbl_10_rodata_25C = 0.0f, 0.0f,
+// lbl_10_rodata_290 = -0.45f) with the actor's rotation (0x0000A0E0..0x0000A0F8); with a roll
+// emitter (`cmplwi r0, 0x0` at 0x0000A100) the emitter moves to the actor along its forward
+// vector (0x28/0x38/0x48) at volume 0x7F (`li r6, 0x7f` at 0x0000A120).
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm; the emitter-less arm after DiveFromBoost.
+// @ fn_10_A06C
+void CDarkSamus::UpdateBoostBallAtActor(CStateManager& mgr) {
+  if (CActor* ball = GetBoostBallActor(mgr)) { // 0x0000A088
+    CTransform4f xf(ball->GetTransform());
+    const CVector3f& pos = GetTranslation();
+    xf.SetTranslation(CVector3f(pos.GetX() + 0.f, pos.GetY() + 0.f, pos.GetZ() + -0.45f));
+    xf.SetRotation(GetTransform().GetRotation());
+    ball->SetTransform(xf);
+  }
+  if (mBoostBallRollSfx) { // 0x0000A100
+    CSfxManager::UpdateEmitter(mBoostBallRollSfx, GetTranslation(), GetTransform().GetForward(),
+                               0x7F);
+  }
+}
+
+// fn_10_A3B0 (0x0000A3B0, 0x384 bytes): the BoostBallRoll state - the boss rolls the boost ball
+// toward the hint. Every message runs the attack bookkeeping with id 0x20000 (fn_10_1B478, the
+// `lis r4, 0x2` at 0x0000A3EC, the call at 0x0000A3F4), the shield flag (fn_10_105F4 at
+// 0x0000A408) and turns the "BoostThingy" effect on (the string at lbl_10_rodata_2E4 + 7, the
+// SetEffectState at 0x0000A434).
+// Activate (0x0000A464): the script state "SI20" (kSS_InternalState2, 0x0000A48C); the boost
+// ball is spawned (fn_10_9E00 at 0x0000A4AC) when there is none (the uid 0xE38 is
+// kInvalidUniqueId, 0x0000A49C); the actor's position goes to the ball's target 0xE98..0xEA0 and
+// the roll's time 0xEA4 = 0.0f (0x0000A4B0..0x0000A4D0).
+// Update (0x0000A4D8): the boost ball's bit 0x20 of 0xEBC must be clear (the `extrwi` at
+// 0x0000A4DC takes the bit 26 = 1u << (31 - 26) = 0x20), the ball's actor must exist
+// (fn_10_9920 at 0x0000A4EC) and the bit 0x40 of 0x318 must be set (fn_10_2F04 at 0x0000A4FC; the
+// `clrlwi` at 0x0000A500 takes the bool's low byte, so the check is the bit 0x40 itself). Then
+// fn_10_A1C0 (0x0000A514), the shield flag 0xCD0 is cleared (0x0000A520), the ball's actor
+// takes the damage (0x0000A654) and the flags follow: the bit 0x20 of 0xEBC is set (0x0000A660)
+// and the shield flag 0xCD0 becomes 1 (0x0000A668).
+// Deactivate (0x0000A6DC): the script state "SI21" (kSS_InternalState3, 0x0000A704).
+// Update then rolls the ball to the hint (0x0000A66C..0x0000A6D8; Activate and Deactivate skip it):
+// with a hint (the uid 0xEC0, 0x0000A66C)
+// fn_10_AA04 (0x0000A68C), else the actor moves by (0.0f, lbl_10_rodata_26C = 1.25f, 0.0f)
+// (MoveInOneFrameOR at 0x0000A6BC); fn_10_A06C (0x0000A6C8) and fn_10_A154 (0x0000A6D4) follow.
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm but the dead `default` (EStateMsg has three
+// values). dsball (tools/cov/specs/darksamus_ball.py, drivers/darksamus_ball.con) with the real
+// ball: fn_10_2F04 ret 0 and 1 (`damage u0703 <n> darkburst` on the ball's collision actor), the
+// damage min both ways (50 below the health - 1: 1500 -> 1450; 3000 above it: 1500 -> 1).
+// @ fn_10_A3B0
+void CDarkSamus::BoostBallRoll(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("BoostBallRoll", msg);
+  UpdateCurrentAttack(0x20000, mgr, msg);                  // 0x0000A3F4
+  UpdateShieldFlag(msg);                                   // 0x0000A408
+  AnimationData()->SetEffectState(rstl::string_l("BoostThingy"), true, mgr); // 0x0000A434
+  switch (msg) {
+  case kStateMsg_Activate:
+    SendScriptMsgs(kSS_InternalState2, mgr, kInvalidUniqueId,
+                   static_cast< EScriptObjectMessage >(-1)); // 0x0000A48C
+    if (mBoostBallUid == kInvalidUniqueId) {               // 0x0000A49C
+      SpawnBoostBall(mgr);                                 // fn_10_9E00, 0x0000A4AC
+    }
+    mBoostBallPos = GetTranslation(); // 0x0000A4B0..0x0000A4CC
+    mGuestEA4 = 0.f;                 // 0x0000A4D0
+    break;
+  case kStateMsg_Update: {
+    CDarkSamusBoostBall* ball = static_cast< CDarkSamusBoostBall* >(GetBoostBallActor(mgr));
+    if (mBoostBallFlag20 == false &&      // 0x0000A4DC (the bit 0x20 of 0xEBC)
+        ball != nullptr &&                // 0x0000A4EC (fn_10_9920, kept in r29)
+        ball->HasBeenDamaged() == true) { // 0x0000A4FC (fn_10_2F04 on the ball: the bit 0x40 of
+                                          // its byte 0x318, the `clrlwi` at 0x0000A500 takes
+                                          // the bool's low byte)
+      StartBoostBallRoll(mgr); // fn_10_A1C0, 0x0000A514
+      mGuestCD0 = 0;                                     // 0x0000A520
+      // 0x0000A524..0x0000A538: the health (the vtable's slot 0x3C, the float at its +4) and
+      // 0x0000A544: the health - 1.0f (lbl_10_rodata_264). 0x0000A548: the ball's float at 0x314
+      // (fn_10_2EFC on r29, the call's result in f1). 0x0000A54C..0x0000A558: the `fcmpo` of that
+      // value with the health - 1.0f - `bge` takes the health - 1.0f, the other way the float at
+      // 0x314 (the unordered case too): the damage is min(the float at 0x314, the health - 1.0f).
+      const float health = GetHealthInfo()->GetHP();
+      const float healthMinusOne = health - 1.f;
+      const float rollDamage = ball->GetDamageTaken();
+      const float damage = (rollDamage >= healthMinusOne) ? healthMinusOne : rollDamage;
+      // 0x0000A564..0x0000A5EC: the damage info - the weapon mode word 0x13 in the high half
+      // (the `li r0, 0x13` and the `rlwimi` at 0x0000A560/0x0000A564) with the low half and the
+      // bits 16, 17, 18, 24 and 25 cleared, so the type is 0x13 = 19 = kWT_UnknownSource and the
+      // mode's flags (the charged, the comboed, the instant-kill) are all false; the damage, the
+      // radius damage amount (the same value, 0x0000A568), the damage radius 0.0f, the knockback
+      // 0.0f, the three sound ids 0 and the flags byte with its bit 0x80 cleared. The host's
+      // CDamageInfo defaults the sound ids to 0xffff.
+      const CDamageInfo info(CWeaponMode(kWT_UnknownSource, false, false, false), damage, 0.f, 0.f,
+                             true);
+      // 0x0000A5B4..0x0000A5F0: the filter - the include list is the material bit 1 << 0x3B
+      // (lbl_10_data_1E0 = 0x3B through the `__shl2i` at 0x0000A5F0), which is 59 =
+      // kMT_Solid, the exclude list is empty and the type is 3 = kFT_IncludeExclude
+      // (0x0000A5F8/0x0000A62C).
+      const CMaterialFilter filter(CMaterialList(kMT_Solid), CMaterialList(),
+                                   CMaterialFilter::kFT_IncludeExclude);
+      // 0x0000A630..0x0000A650: all three uids are this actor's own (`lhz r0, 0x8(r30)`), so the
+      // retail damages the Dark Samus herself; the ball's actor is not used.
+      mgr.ApplyDamage(GetUniqueId(), GetUniqueId(), GetUniqueId(), info, filter,
+                      CVector3f::Zero()); // 0x0000A654 (sZeroVector, 0x0000A600)
+      mBoostBallFlag20 = true; // 0x0000A660 (the `rlwimi` at 0x0000A660 sets the bit 0x20 of 0xEBC)
+      mGuestCD0 = 1;            // 0x0000A668
+    }
+    // The movement (0x0000A66C..0x0000A6D4) is Update's only: Activate leaves through
+    // `b .L_0000A708` at 0x0000A4D4 and Deactivate's SendScriptMsgs (0x0000A704) falls into the
+    // epilogue, so neither moves the actor with the transition's dt of 0.0f (a 1/dt impulse).
+    if (mBoostHintUid != kInvalidUniqueId) { // 0x0000A66C (the uid 0xEC0)
+      RollToBoostHint(mgr, dt); // fn_10_AA04, 0x0000A68C
+    } else {
+      MoveInOneFrameOR(CVector3f(0.f, 1.25f, 0.f), dt); // 0x0000A6BC
+    }
+    UpdateBoostBallAtActor(mgr); // fn_10_A06C, 0x0000A6C8
+    RollBoostBallToPosition(dt); // fn_10_A154, 0x0000A6D4
+    break;                       // 0x0000A6D8 `b .L_0000A708`
+  }
+  case kStateMsg_Deactivate:
+    SendScriptMsgs(kSS_InternalState3, mgr, kInvalidUniqueId,
+                   static_cast< EScriptObjectMessage >(-1)); // 0x0000A704
+    break;
+  default:
+    break; // `cmpwi r29, 0x3` / `bge .L_0000A708` at 0x0000A458
+  }
 }
 
-void CDarkSamus::FreezeBeam(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_16CDC", "state FreezeBeam");
+// fn_10_A1C0 (0x0000A1C0, 0x1F0 bytes): the roll's start. The hint 0xEC0 is cleared
+// (kInvalidUniqueId, 0x0000A1EC); the DoneRolling trigger's record takes the elapsed time 0x8B0
+// (0xEA8, 0x0000A1FC), the actor's position (0xEAC/0xEB0/0xEB4, 0x0000A204..0x0000A214) and the
+// radius lbl_10_rodata_294 = 1000.0f (0xEB8, 0x0000A218). The direction from the actor to the
+// player (mgr+0x14FC, 0x0000A21C) with z = lbl_10_rodata_25C = 0.0f (0x0000A238), normalized
+// when it can be (`clrlwi r0, r3, 24` at 0x0000A258, `cmplwi r0, 0x1` at 0x0000A25C), is reversed
+// (lbl_10_rodata_288 = -1.0f, 0x0000A274..0x0000A28C): the actor turns away from the player.
+// The turn: LookAt from the facing (the transform's Y column 0x28/0x38/0x48) to it with the
+// limit lbl_10_rodata_298 = 6.2831855f (0x0000A2E8), its vector part taken into the actor's frame
+// (TransposeRotate at 0x0000A318), the matrix's quaternion times it (0x0000A344, 0x0000A354), the
+// forces cleared (0x0000A37C) and the transform rebuilt at the position 0x54 (0x0000A38C,
+// SetTransform at 0x0000A398). No arm but the Normalize test.
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm, the Normalize-false arm forced (mode 2).
+// @ fn_10_A1C0
+void CDarkSamus::StartBoostBallRoll(CStateManager& mgr) {
+  mBoostHintUid = kInvalidUniqueId; // 0x0000A1EC
+  mGuestEA8 = mElapsedTime;         // 0x0000A1FC
+  mGuestEAC = GetTranslation();     // 0x0000A204..0x0000A214
+  mGuestEB8 = 1000.f;               // lbl_10_rodata_294, 0x0000A218
+  CVector3f away = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
+  away.SetZ(0.f);                      // lbl_10_rodata_25C, 0x0000A238
+  if (away.CanBeNormalized() == true) { // 0x0000A25C
+    away.Normalize();                  // 0x0000A268
+  }
+  away = -1.f * away; // lbl_10_rodata_288, 0x0000A274..0x0000A28C
+  const CVector3f fwd = GetTransform().GetForward(); // guest 0x28/0x38/0x48
+  const CQuaternion look = CQuaternion::LookAt(
+      CUnitVector3f(fwd.GetX(), fwd.GetY(), fwd.GetZ()),
+      CUnitVector3f(away.GetX(), away.GetY(), away.GetZ()),
+      CRelAngle::FromRadians(6.2831855f)); // lbl_10_rodata_298, 0x0000A2E8
+  const CQuaternion local(look.GetScalar(),
+                          GetTransform().TransposeRotate(look.GetVector())); // 0x0000A318
+  const CQuaternion rot = CQuaternion::FromMatrix(GetTransform()) * local; // 0x0000A344/0x0000A354
+  ClearForcesAndTorques();                                  // 0x0000A37C
+  SetTransform(rot.BuildTransform4f(GetTranslation()));     // 0x0000A38C, 0x0000A398
+}
+
+// fn_10_A814 (0x0000A814, 0x1F0 bytes): the boost ball's collision at a hint. The one-shot
+// collision sound (guest 0xE80, `addi r7, r30, 0xe80`) plays at the actor's position 0x54 toward
+// lbl_10_rodata_288 = -1.0f times sForwardVector (0x0000A84C..0x0000A870), not looped (`li r8,
+// 0x0`, PlayCustomSound at 0x0000A874). With the collision 'PART' (the valid byte 0xE7C,
+// `cmplwi r0, 0x0` at 0x0000A87C) a CExplosion (`new 0x180` at 0x0000A8F8) named
+// "Dark Samus Boost Collision" (lbl_10_rodata_2E4 + 0x13, 0x0000A918) is made at the actor's
+// transform whose translation is the position + (lbl_10_rodata_25C = 0.0f, 0.0f,
+// lbl_10_rodata_29C = 1.8f) (0x0000A8A4..0x0000A8D8), scaled by lbl_10_rodata_27C = 2.0f
+// (ScaleBy at 0x0000A8DC), in the actor's area (0x4) with the null connection list, active (`li
+// r6, 0x1`) and kInvalidEditorId (0x0000A96C), a new uid (0x0000A97C), the flags 0 (`li r9,
+// 0x0`), the model's scale (0x60, 0x0000A904..0x0000A92C), white (0x0000A988) and the player
+// index -1 (`li r0, -0x1` at 0x0000A990), and added to the state manager (0x0000A9EC).
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm, the token-absent arm forced (mode 1); the
+// null `rs_new` arms are the compiler's.
+// @ fn_10_A814
+void CDarkSamus::PlayBoostBallCollision(CStateManager& mgr) {
+  PlayCustomSound(GetTranslation(), -1.f * CVector3f::Forward(),
+                  mData.mBoostBallCollisionSoundOneShot, false); // 0x0000A874
+  if (mBoostBallCollisionToken.valid()) { // 0x0000A87C (the byte 0xE7C)
+    CTransform4f xf(GetTransform());      // 0x0000A88C
+    const CVector3f& pos = GetTranslation();
+    xf.SetTranslation(CVector3f(pos.GetX() + 0.f, pos.GetY() + 0.f,
+                                pos.GetZ() + 1.8f)); // 0x0000A8A4..0x0000A8D8
+    xf.ScaleBy(2.f);                                 // lbl_10_rodata_27C, 0x0000A8DC
+    mgr.AddObject(rs_new CExplosion(
+        *mBoostBallCollisionToken, mgr.AllocateUniqueId(),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        rstl::string_l("Dark Samus Boost Collision"), xf, 0, GetModelData()->GetScale(),
+        CColor::White(), -1)); // 0x0000A9B8, 0x0000A9EC
+  }
+}
+
+// fn_10_AA04 (0x0000AA04, 0x760 bytes): the roll along the boost hints. Nothing without a hint
+// at 0xEC0 (`mr. r31, r3` at 0x0000AA48). The hint's direction from the actor in the XY plane
+// (z = lbl_10_rodata_25C = 0.0f, 0x0000AAA4) gives the squared distance (0x0000AA80..0x0000AAA0)
+// and, normalized when it can be (0x0000AAB0), the turn: LookAt from the facing at the rate
+// lbl_10_rodata_2A0 = 0.017453292f times lbl_10_rodata_2A4 = 935.99994f times dt
+// (0x0000AAD8/0x0000AAF0, 0x0000AB28), its vector part in the actor's frame (0x0000AB58), by
+// RotateInOneFrameOR (0x0000AB88). The actor moves forward by lbl_10_rodata_26C = 1.25f times
+// lbl_10_rodata_2A8 = 60.0f times dt times the hint value 0xED8 (0x0000ABA4..0x0000ABCC,
+// MoveInOneFrameOR at 0x0000ABD0).
+// The path direction: the zero vector (0x0000ABD4..0x0000ABFC) plus the XY direction from the
+// hint to the next active Arrived hint (fn_10_B458 at 0x0000AC08, `mr. r30, r3` at 0x0000AC0C;
+// normalized when it can be, 0x0000AC60) plus the XY direction from the last hint 0xECC to the
+// hint unless 0xECC is the zero vector (the `fcmpu` chain at 0x0000ACB0..0x0000ACD0, normalized
+// at 0x0000AD2C), normalized when it can be (0x0000AD7C). A zero sum sets 0xEC8 = 1 and ends
+// (0x0000ADC8..0x0000ADD4).
+// Arrived (r29): within lbl_10_rodata_2AC = 25.0f squared (`fcmpo cr0, f31, f0; bge` at
+// 0x0000ADE4/0x0000ADE8), past the plane through the hint minus k times the direction - k is
+// lbl_10_rodata_284 = 0.5f, or lbl_10_rodata_264 = 1.0f when the hint's second value is below
+// 0.5f (0x0000AE04/0x0000AE08) - (dot(dir, pos) >= dot(dir, hint - k dir): `cror eq, gt, eq` at
+// 0x0000AE6C, `extrwi r0, r0, 1, 2` at 0x0000AE74). Not arrived but the bit 0x80 of 0xEBC set
+// (`extrwi r0, r4, 1, 24` at 0x0000AE90, the PowerPC bit 24 = 1u << (31 - 24) = 0x80): arrived
+// when within the 25.0f squared (0x0000AEA8), else the bit is cleared (0x0000AEB8: `rlwimi r4,
+// r0, 7, 24, 24`).
+// On arrival (0x0000AEC8): the hint is deactivated (the vtable's slot 0x1C = SetActive(false),
+// 0x0000AEE0) and sends kSS_Arrived (`lis r4, 0x4152; addi r4, r4, 0x5256` = 0x41525256 at
+// 0x0000AEE8/0x0000AEF8) with the player's uid (0x0000AEF4) and the message -1 (0x0000AF0C).
+// Without a next hint 0xEC8 = 1 (0x0000B12C); with one (0x0000AF14) it becomes the hint 0xEC0
+// (0x0000AF20), the last hint 0xECC is the old one's position (0x0000AF24..0x0000AF38) and the
+// value 0xED8 is its value parameter clamped to lbl_10_rodata_2B0 = 0.1f .. lbl_10_rodata_27C =
+// 2.0f when above 0.0f (`fcmpo` at 0x0000AF48, 0x0000AF60, 0x0000AF74), else 1.0f (0x0000AF94).
+// When its second value is above 0.5f (0x0000AFA8/0x0000AFAC) the collision plays (fn_10_A814 at
+// 0x0000AFB8) and the actor faces the next hint at once (the XY direction normalized at
+// 0x0000B008, LookAt with lbl_10_rodata_298 = 6.2831855f at 0x0000B070, TransposeRotate at
+// 0x0000B0A0, FromMatrix * it at 0x0000B0CC/0x0000B0DC, ClearForcesAndTorques at 0x0000B104,
+// SetTransform at 0x0000B120). Every arrival ends with the bit 0x80 of 0xEBC cleared
+// (`rlwimi r0, r3, 7, 24, 24` at 0x0000B138).
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm, the lookups, Normalize tests, bit 0x80 and
+// the hint values forced (the branch table in docs/module-analysis/DarkSamus.md, slice ds2opus).
+// @ fn_10_AA04
+void CDarkSamus::RollToBoostHint(CStateManager& mgr, float dt) {
+  CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(mBoostHintUid));
+  if (hint == nullptr) { // 0x0000AA48
+    return;
+  }
+  CVector3f toHint = hint->GetTranslation() - GetTranslation();
+  toHint.SetZ(0.f);                         // lbl_10_rodata_25C, 0x0000AAA4
+  const float distSq = toHint.MagSquared(); // 0x0000AA80..0x0000AAA0 (z = 0.0f squared)
+  if (toHint.CanBeNormalized() == true) {   // 0x0000AAB0
+    toHint.Normalize();                     // 0x0000AABC
+  }
+  const CVector3f fwd = GetTransform().GetForward(); // guest 0x28/0x38/0x48
+  const CQuaternion turn = CQuaternion::LookAt(
+      CUnitVector3f(fwd.GetX(), fwd.GetY(), fwd.GetZ()),
+      CUnitVector3f(toHint.GetX(), toHint.GetY(), toHint.GetZ()),
+      CRelAngle::FromRadians(0.017453292f * (935.99994f * dt))); // lbl_10_rodata_2A0/2A4, 0x0000AB28
+  RotateInOneFrameOR(CQuaternion(turn.GetScalar(),
+                                 GetTransform().TransposeRotate(turn.GetVector())), // 0x0000AB58
+                     dt); // 0x0000AB88
+  MoveInOneFrameOR(CVector3f(0.f, mBoostHintValue * (1.25f * (60.f * dt)), 0.f),
+                   dt); // lbl_10_rodata_26C/2A8, 0x0000ABD0
+
+  CVector3f dir = CVector3f::Zero(); // 0x0000ABD4..0x0000ABFC
+  CScriptAIHint* next = FindArrivedHint(mgr, mBoostHintUid); // fn_10_B458, 0x0000AC08
+  if (next != nullptr) {                                      // 0x0000AC0C
+    CVector3f toNext = next->GetTranslation() - hint->GetTranslation();
+    toNext.SetZ(0.f);                       // 0x0000AC54
+    if (toNext.CanBeNormalized() == true) { // 0x0000AC60
+      toNext.Normalize();
+    }
+    dir += toNext; // 0x0000AC70..0x0000AC9C
+  }
+  if (mGuestECC != CVector3f::Zero()) { // 0x0000ACB0..0x0000ACE0
+    CVector3f fromLast = hint->GetTranslation() - mGuestECC;
+    fromLast.SetZ(0.f);                       // 0x0000AD20
+    if (fromLast.CanBeNormalized() == true) { // 0x0000AD2C
+      fromLast.Normalize();
+    }
+    dir += fromLast; // 0x0000AD3C..0x0000AD68
+  }
+  if (dir.CanBeNormalized() == true) { // 0x0000AD7C
+    dir.Normalize();
+  }
+  if (dir == CVector3f::Zero()) { // 0x0000AD98..0x0000ADC8
+    mGuestEC8 = 1;                // 0x0000ADD0
+    return;
+  }
+
+  bool arrived = false;
+  if (distSq < 25.f) { // lbl_10_rodata_2AC, 0x0000ADE8
+    float back = 0.5f; // lbl_10_rodata_284, 0x0000ADF4
+    if (hint->GetValueParm2() < 0.5f) { // 0x0000AE04/0x0000AE08
+      back = 1.f;                       // lbl_10_rodata_264, 0x0000AE10
+    }
+    const CVector3f plane = hint->GetTranslation() - back * dir; // 0x0000AE14..0x0000AE58
+    if (CVector3f::Dot(dir, GetTranslation()) >= CVector3f::Dot(plane, dir)) { // 0x0000AE6C
+      arrived = true; // 0x0000AE80
+    }
+  }
+  if (!arrived && mBoostBallFlag80 == true) { // 0x0000AE88, 0x0000AE90 (the bit 0x80 of 0xEBC)
+    if (distSq < 25.f) {                      // 0x0000AEA8
+      arrived = true;                         // 0x0000AEAC
+    } else {
+      mBoostBallFlag80 = false; // 0x0000AEB8
+    }
+  }
+  if (arrived != true) { // 0x0000AEC8
+    return;
+  }
+  hint->SetActive(false); // the vtable's slot 0x1C, 0x0000AEE0
+  hint->SendScriptMsgs(kSS_Arrived, mgr, mgr.GetPlayer(0)->GetUniqueId(),
+                       static_cast< EScriptObjectMessage >(-1)); // 0x0000AF0C
+  if (next == nullptr) { // 0x0000AF14
+    mGuestEC8 = 1;       // 0x0000B12C
+  } else {
+    mBoostHintUid = next->GetUniqueId(); // 0x0000AF20
+    mGuestECC = hint->GetTranslation();  // 0x0000AF24..0x0000AF38
+    if (next->GetValueParm() > 0.f) {    // 0x0000AF48/0x0000AF4C
+      const float value = next->GetValueParm();
+      float clamped;
+      if (!(0.1f <= value)) { // lbl_10_rodata_2B0, 0x0000AF60/0x0000AF64
+        clamped = 0.1f;
+      } else if (2.f >= value) { // lbl_10_rodata_27C, 0x0000AF74/0x0000AF78
+        clamped = value;
+      } else {
+        clamped = 2.f;
+      }
+      mBoostHintValue = clamped; // 0x0000AF84
+    } else {
+      mBoostHintValue = 1.f; // lbl_10_rodata_264, 0x0000AF94
+    }
+    if (next->GetValueParm2() > 0.5f) { // lbl_10_rodata_284, 0x0000AFA8/0x0000AFAC
+      PlayBoostBallCollision(mgr);      // fn_10_A814, 0x0000AFB8
+      CVector3f toNext = next->GetTranslation() - GetTranslation();
+      toNext.SetZ(0.f);                       // 0x0000AFFC
+      if (toNext.CanBeNormalized() == true) { // 0x0000B008
+        toNext.Normalize();
+      }
+      const CVector3f face = GetTransform().GetForward(); // guest 0x28/0x38/0x48
+      const CQuaternion look = CQuaternion::LookAt(
+          CUnitVector3f(face.GetX(), face.GetY(), face.GetZ()),
+          CUnitVector3f(toNext.GetX(), toNext.GetY(), toNext.GetZ()),
+          CRelAngle::FromRadians(6.2831855f)); // lbl_10_rodata_298, 0x0000B070
+      const CQuaternion local(look.GetScalar(),
+                              GetTransform().TransposeRotate(look.GetVector())); // 0x0000B0A0
+      const CQuaternion rot = CQuaternion::FromMatrix(GetTransform()) * local; // 0x0000B0DC
+      ClearForcesAndTorques();                              // 0x0000B104
+      SetTransform(rot.BuildTransform4f(GetTranslation())); // 0x0000B114, 0x0000B120
+    }
+  }
+  mBoostBallFlag80 = false; // 0x0000B138
+}
+
+// fn_10_16CDC (0x00016CDC, 0x1F0 bytes): the FreezeBeam state. Every message runs the attack
+// bookkeeping with id 0x100000 (`lis r4, 0x10` at 0x00016D10, the call at 0x00016D18), the
+// collision failsafe (fn_10_1AEC0 at
+// 0x00016D24), the shield flag (fn_10_105F4 at 0x00016D38) and the ground collision
+// (fn_10_18F90 at 0x00016D48). Activate (0x00016D4C) clears the beam's counter 0xAB0
+// (0x00016D5C), clears the bits 0x40 and 0x80 of 0xAB8 (the `rlwimi` at 0x00016D6C clears the
+// bit 0x40 - the PowerPC bit 25 - and the one at 0x00016D7C sets the bit 0x80 - the PowerPC bit
+// 24 - to the bit 0x40's value, which the first one just cleared) and zeroes the dodge record
+// (0x1090 = 0.0f at 0x00016D9C and the direction 0x1094..0x109C at 0x00016D88..0x00016D98). The
+// other messages deliver the exit state command (fn_800EE45C at 0x00016DD0, the command id
+// 0xA = 10 = kBSC_ExitState) when the counter 0xAB0 is at least 1 (0x00016DA8). With the bit
+// 0x40 of 0xAB8 set (0x00016DEC..0x00016DF4) the actor turns toward the player (fn_10_16B64 at
+// 0x00016E1C, the rate lbl_10_rodata_454 = 0.017453292 radians a degree times
+// lbl_10_bss_118 = 160.0f, the module's own turn speed) and dodges (fn_10_1707C at 0x00016E3C,
+// with lbl_10_bss_11C = 22.0f and lbl_10_bss_120 = 0.5f - the module's init fn_10_CDB8 writes
+// them at 0x0000CE38 and 0x0000CE3C - the port's UpdateDodge). Then
+// fn_10_8870 (0x00016E8C) - the state's command, the port's RunLoopAttackCmd.
+// The arms: the Activate (0x00016D4C), the Update, the Deactivate and the exit state command
+// (the counter 0xAB0 at least 1, 0x00016DA8) and the turn and the dodge (the bit 0x40 of 0xAB8,
+// 0x00016DF0) - the last two need the members written at the Update's entry, because the
+// Activate clears both (0x00016D5C and 0x00016D6C).
+// @ fn_10_16CDC
+void CDarkSamus::FreezeBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("FreezeBeam", msg);
+  UpdateCurrentAttack(0x100000, mgr, msg); // `lis r4, 0x10` at 0x00016D10, the call at 0x00016D18
+  RunCollisionFailsafe(mgr);           // 0x00016D24
+  UpdateShieldFlag(msg);              // 0x00016D38
+  UpdateGroundCollision(mgr, msg);    // 0x00016D48
+  if (msg == kStateMsg_Activate) {
+    mGuestAB0 = 0;                    // 0x00016D5C
+    mGuestAB8 &= 0x3F;                // 0x00016D6C, 0x00016D7C (the bits 0x40 and 0x80)
+    mDodgeTime = 0.f;                 // 0x00016D9C
+    mDodgeDir = CVector3f::Zero();    // 0x00016D88
+  } else if (mGuestAB0 >= 1) {        // 0x00016DA8
+    BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState)); // 0x00016DD0
+    return; // the b to the epilogue at 0x00016DE8: no turn, no loop attack command
+  }
+  if ((mGuestAB8 & 0x40) != 0) { // 0x00016DF0 (the bit 0x40 of 0xAB8)
+    TurnTowardPlayer(mgr, dt, 0.017453292f * mBss118); // 0x00016E1C (lbl_10_rodata_454 times
+                                                              // lbl_10_bss_118 = 160.0f)
+    // 0x00016E3C: fn_10_1707C - the dodge step, with lbl_10_bss_11C = 22.0f (the impulse) and
+    // lbl_10_bss_120 = 0.5f (the dodge's time) - the module's init fn_10_CDB8 writes them at
+    // 0x0000CE38 and 0x0000CE3C - the port's UpdateDodge.
+    UpdateDodge(mgr, dt, 22.f, 0.5f); // 0x00016E3C
+  }
+  // 0x00016E40..0x00016E88: the loop attack command - the vtable lbl_10_data_1B0 (the base
+  // lbl_10_data_1D4), the id 7 = kBSC_LoopAttack (0x00016E70), the type 4 = pas::kLAT_Four
+  // (0x00016E80), the wait flag 0 (0x00016E84) and the byte with its bit 0x80 (the skip-into)
+  // cleared (`rlwimi r0, r7, 7, 24, 24` at 0x00016E54). 0x00016E78's `li r5, 0x9` is fn_10_8870's
+  // animation state (pas::kAS_LoopAttack), not a command id.
+  const CBCLoopAttackCmd attack(pas::kLAT_Four, false);
+  RunLoopAttackCmd(msg, attack); // fn_10_8870, 0x00016E8C
 }
 
 // fn_10_150DC (0x000150DC, 0x26C bytes): the Dash state. Activate (`mr. r31, r5` at 0x000150EC)
@@ -1404,7 +2241,7 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mDash.mDoubleDash = false;
     const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
-    if (stage != nullptr && // `mr. r28, r3; beq` at 0x0001511C/0x00015120
+    if (stage != nullptr && // `mr. r28, r3` at 0x0001511C/0x00015120
         mgr.Random()->Range(0.f, 100.f) < stage->GetStageInfo().chanceToDoubleDash) {
       mDash.mDoubleDash = true;
     }
@@ -1456,8 +2293,13 @@ void CDarkSamus::Dash(CStateManager& mgr, EStateMsg msg, float) {
 // the ground; the projectile reflect (0x000125CC..0x000125F0) and, before the launch, the dodge
 // (0x00012608..0x00012644). Deactivate (0x0001266C) stops the actor, clears the animation state
 // and 0xC00, delivers kBSC_NextState and turns the bubble off.
-// Unmarked: the jump re-issue (0x0001239C) and the static wall hit (0x00012534) arms have not
-// run yet.
+// The static wall hit (0x00012534) needs the dive record's boost bit 0x01 (0xB20), which
+// DiveFromBoost fn_10_9424 sets (`rlwimi r0, r3, 0, 31, 31` at 0x00009460, ported): without
+// the bit the collision failsafe (`clrlwi.` at 0x00012018) runs first in the same message and
+// puts an actor placed in a wall back at its safe position. With the bit set - the boost
+// ball's dive, forced with `fsm <id> DiveFromBoost` - an actor placed into the wall while it
+// is in flight reaches the static collision test and the wall bounce runs.
+// @ fn_10_11FA4
 void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveAttack", msg);
   UpdateCurrentAttack(0x20, mgr, msg);
@@ -1474,7 +2316,7 @@ void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     mDive.mTarget = GetDiveTarget(mgr);
     FindDiveLanding(mgr, &mDive.mTarget);
     SetDiveTargetVector();
-    DoDiveJumpCmd();
+    DoDiveJumpCmd(); // fn_10_12764 (0x000120FC)
     break;
   case kStateMsg_Update: {
     const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
@@ -1569,13 +2411,17 @@ void CDarkSamus::DiveAttack(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 // fn_10_E784 (0x0000E784, 0x18C bytes): the vectors to zero, the damage copied to +0x30
-// (0x0000E83C..0x0000E85C), the boost-ball bit cleared (0x0000E86C) and fn_10_E910 (0x0000E8F0).
-CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage)
+// (0x0000E83C..0x0000E85C), the two impulses to +0x50/+0x54 (0x0000E860/0x0000E864), the
+// boost-ball bit cleared (0x0000E86C) and fn_10_E910 (0x0000E8F0).
+CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage, float impulseHorizontal,
+                               float impulseVertical)
 : mTarget(CVector3f::Zero())
 , mStart(CVector3f::Zero())
 , mBounceDir(CVector3f::Zero())
 , mLastPos(CVector3f::Zero())
 , mDamage(damage)
+, mImpulseHorizontal(impulseHorizontal)
+, mImpulseVertical(impulseVertical)
 , mBounceTime(0.f)
 , mStuckTime(0.f)
 , mFromBoost(false) {
@@ -1583,8 +2429,9 @@ CDarkSamusDive::CDarkSamusDive(const CDamageInfo& damage)
 }
 
 // fn_10_E910 (0x0000E910, 0xF8 bytes): every flag but the boost-ball bit cleared (the rlwimi
-// chain 0x0000E918..0x0000E990 copies a cleared 0x02 down to 0x80), the four vectors to zero and
-// both timers to lbl_10_rodata_3FC = 0.0f (0x0000E9E4/0x0000E9E8).
+// chain 0x0000E918..0x0000E990 copies a cleared 0x02 down to 0x80), the four vectors to zero,
+// the record's float +0x4C to lbl_10_rodata_3EC = -1.0f (0x0000E9E0) and both timers to
+// lbl_10_rodata_3FC = 0.0f (0x0000E9E4/0x0000E9E8).
 // @ fn_10_E910
 void CDarkSamusDive::Reset() {
   mBounced = false;
@@ -1600,6 +2447,7 @@ void CDarkSamusDive::Reset() {
   mStuckTime = 0.f;
   mBounceTime = 0.f;
   mLastPos = CVector3f::Zero();
+  mGuest4C = -1.f; // 0x0000E9E0 (lbl_10_rodata_3EC = -1.0f)
 }
 
 // fn_10_12960 (0x00012960, 0x1A0 bytes): the flat line from the target back to the actor
@@ -1634,6 +2482,8 @@ void CDarkSamus::SetDiveTargetVector() {
 // (0 or 3), kJS_IntoJump (`li r6, 0x0`), animation variant 0 (`li r7, 0x0`) and facing flags 2
 // (`li r8, 0x2`) - and fn_10_12764 copies it into the command manager's jump slot after
 // DeliverCmd(kBSC_Jump), which is DeliverCmd(const CBodyStateCmd&) on the host.
+// @ fn_10_1285C
+// @ fn_10_12764
 void CDarkSamus::DoDiveJumpCmd() {
   BodyController()->CommandMgr().DeliverCmd(
       CBCJumpCmd(mDive.mTarget, mDive.mFromBoost == true ? pas::kJT_Three : pas::kJT_Normal,
@@ -1733,16 +2583,273 @@ void CDarkSamus::StartDiveBubble(CStateManager& mgr) {
   AnimationData()->SetEffectState(rstl::string_l("DiveBubble"), true, mgr);
 }
 
-// fn_10_1B658: the projectile reflect around the actor (the near list, the CEnergyProjectile
-// fields, lbl_10_data_F298's 0x10A8 table, the vtable call at 0x8C). Not in the port yet.
-void CDarkSamus::ReflectProjectiles(CStateManager&) {
-  FsmStandIn("fn_10_1B658", "projectile reflect");
+// fn_10_1B658 (0x0001B658, 0x2E0 bytes): the projectile reflect. The near list (0x0001B708) is the
+// box of half-size lbl_10_rodata_3F0 = 100.0f around the actor (lbl_10_rodata_54C = -100.0f for
+// the low corner, 0x0001B680..0x0001B6CC) with the default filter (include 0xFFFFFFFF, type 0,
+// 0x0001B6D4..0x0001B704) and the actor itself; each entry is cast to a CEnergyProjectile
+// (0x0001B730) and skipped unless fn_10_1B9B0 with any weapon type (`li r6, -0x1` at 0x0001B748)
+// lets it through (0x0001B750) and it is within 0xC00 of the root bone 0x8FC (Magnitude at
+// 0x0001B798, `fcmpo; bgt` at 0x0001B7A4). Then the ricochet sound 0xC50 plays at the projectile
+// in the actor's area 0x4 (AddEmitter at 0x0001B7C8: acoustics `li r7, 0x1` at 0x0001B7C0, not looped
+// `li r8, 0x0` at 0x0001B7C4, kMedPriority at 0x0001B7B0). The new direction is the projectile's
+// forward (its transform's column 1, 0x0001B7CC..0x0001B7E4) with x and y each moved by
+// lbl_10_rodata_520 = 0.4f - lbl_10_rodata_550 = 0.8f * random (`fnmsubs` at 0x0001B804 and
+// 0x0001B82C) and z lowered by lbl_10_rodata_3E4 = 0.5f * random + lbl_10_rodata_474 = 0.05f
+// (`fmadds` at 0x0001B854); normalized when it can be (0x0001B868), else the forward again
+// (0x0001B87C). The projectile explodes there with response 0xD (`li r6, 0xd` at 0x0001B8C4), the
+// reflect vulnerability (fn_800DBB40 at 0x0001B8A0) and no hit actor (kInvalidUniqueId at
+// 0x0001B898) through its vtable 0x8C (Explode, 0x0001B8B4). Last 0xC08 takes the elapsed time
+// (0x0001B8D4), the oldest uid goes when five are kept (`cmpwi r0, 0x5` at 0x0001B8DC,
+// fn_10_1B938 at 0x0001B8EC) and the projectile's uid is appended (0x0001B8FC).
+// The not-normalizable arm is dead: the forward is a unit vector and the largest offset is
+// |(0.4, 0.4, 0.55)|, whose square 0.6225 is below 1, so the sum is never zero.
+// @ fn_10_1B658
+void CDarkSamus::ReflectProjectiles(CStateManager& mgr) {
+  const CVector3f& pos = GetTranslation();
+  const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
+  const CVector3f min(pos.GetX() + -100.f, pos.GetY() + -100.f, pos.GetZ() + -100.f);
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    CEnergyProjectile* proj = TCastToPtr< CEnergyProjectile >(mgr.ObjectById(*it));
+    if (!CanReflectProjectile(mgr, proj, -1)) {
+      continue;
+    }
+    if ((mRootPos - proj->GetTranslation()).Magnitude() > mGuestC00) {
+      continue;
+    }
+    CSfxManager::AddEmitter(mRicochetSfxId, proj->GetTranslation(), GetCurrentAreaId().Value(),
+                            true, false, CSfxManager::kMedPriority);
+    CVector3f dir = proj->GetTransform().GetForward();
+    dir.SetX(dir.GetX() + (0.4f - 0.8f * mgr.Random()->Float()));
+    dir.SetY(dir.GetY() + (0.4f - 0.8f * mgr.Random()->Float()));
+    dir.SetZ(dir.GetZ() - (0.5f * mgr.Random()->Float() + 0.05f));
+    if (dir.CanBeNormalized() == true) {
+      dir.Normalize();
+    } else {
+      dir = proj->GetTransform().GetForward();
+    }
+    proj->Explode(proj->GetTranslation(), dir, EWeaponCollisionResponseTypes(0xD), mgr,
+                  CDamageVulnerability::ReflectVulnerabilty(), kInvalidUniqueId);
+    mLastReflectTime = mElapsedTime;
+    if (mReflectedUids.size() >= 5) {
+      mReflectedUids.erase(mReflectedUids.begin());
+    }
+    mReflectedUids.push_back(proj->GetUniqueId());
+  }
 }
 
-// fn_10_138A4: the dive's hit on the player (the damage, fn_10_1382C and fn_10_13750's knock
-// back). Not in the port yet.
-void CDarkSamus::HitPlayerWithDive(CStateManager&) {
-  FsmStandIn("fn_10_138A4", "dive hits the player");
+// fn_10_1B9B0 (0x0001B9B0, 0x158 bytes): a projectile may be sent back unless it is null
+// (`mr.` at 0x0001B9C0), the actor's own (its owner 0x15C against the uid 0x8, 0x0001B9E4), already
+// exploded (0x562 `extrwi r3, r0, 1, 26` at 0x0001B9F0), of another weapon type than a given one
+// (`cmpwi r6, -0x1` at 0x0001BA10, its 0x160 at 0x0001BA1C) or already sent back (the walk over
+// 0xBF0 at 0x0001BA48..0x0001BA58). During attack 0x800000 (`subis r0, r3, 0x80` at 0x0001BA70)
+// phazon and cannon-ball projectiles (the damage's weapon type 0x19C:
+// `cmpwi r0, 0xa` at 0x0001BA80,
+// `cmpwi r0, 0x8` at 0x0001BA88) are not; any other is. Outside it any weapon type
+// (`cmpwi r6, -0x1` at 0x0001BA98) passes; a given type is compared with the stage's chance: the
+// stage (fn_10_17E14 at 0x0001BAA8, null passes at 0x0001BAB0) and fn_10_F298's roll for the uid
+// against the stage info's +0x24 (`fcmpo` at 0x0001BAD4). Callers: fn_10_1B658 with -1 and
+// AnyIncomingMissiles fn_10_1BB08 with a type (0x0001BBF8).
+// Run (darksamus_uevent.py, dsfsm2-runs/s10/u10): every arm (key 42 the missile type, 45..49 the
+// reject arms, 60 no stage, `trigcall AnyIncomingMissiles` for the typed path and its roll).
+// @ fn_10_1B9B0
+bool CDarkSamus::CanReflectProjectile(CStateManager& mgr, const CEnergyProjectile* proj,
+                                      int type) const {
+  if (proj == nullptr || proj->GetOwnerId() == GetUniqueId() || proj->HasExploded()) {
+    return false;
+  }
+  if (type != -1 && type != proj->GetType()) {
+    return false;
+  }
+  const TUniqueId* it = mReflectedUids.begin();
+  while (it != mReflectedUids.end() && *it != proj->GetUniqueId()) {
+    ++it;
+  }
+  if (it != mReflectedUids.end()) {
+    return false;
+  }
+  if (mCurrentAttack == 0x800000) {
+    const EWeaponType weapon = proj->GetCurrentDamageInfo().GetWeaponMode().GetType();
+    return weapon != kWT_Phazon && weapon != kWT_CannonBall;
+  }
+  if (type == -1) { // 0x0001BA9C
+    return true;
+  }
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr); // fn_10_17E14, 0x0001BAA8
+  if (stage == nullptr) {                                   // 0x0001BAB0
+    return true;
+  }
+  // fn_10_F298 (0x0001BACC) rolls the chance for the projectile's uid and the stage info's +0x24
+  // (the missiles' first float, lbl_10_rodata of SLdrDSMissiles) is the chance the roll is
+  // compared with (`fcmpo cr0, f1, f0` at 0x0001BAD4, the less-than bit at 0x0001BADC).
+  const float roll = RollReflectChance(mgr, proj->GetUniqueId());
+  return roll < stage->GetStageInfo().missiles.unknown_0x7ee77018;
+}
+
+// fn_10_F210 (0x0000F210, 0x88 bytes): the reflect chance cache's entry erased - the entries
+// behind it move down (the next entry's uid at +0x0C, its roll at +0x10 and its roll at +0x14
+// go to +0x00, +0x04 and +0x08 of this one, 0x0000F240..0x0000F254) and the count falls by one
+// (0x0000F27C). The guest's range test (0x0000F218 and 0x0000F230) has no host counterpart:
+// the only caller erases the first entry of a full table.
+// @ fn_10_F210
+void CDarkSamus::EraseReflectChance(uint index) const {
+  for (uint i = index + 1; i < mReflectChanceCount; ++i) {
+    mReflectChances[i - 1] = mReflectChances[i];
+  }
+  --mReflectChanceCount;
+}
+
+// fn_10_F298 (0x0000F298, 0x174 bytes): the reflect chance for a projectile's uid. The cache
+// (the count at guest 0x10A8 and the ten entries from 0x10AC) is walked (0x0000F2E4..0x0000F2FC)
+// and the entry's +0x04 answers when the uid is in it (0x0000F2F0). Otherwise, with ten entries
+// (0x0000F300), the first one is erased (fn_10_F210, 0x0000F310) and two rolls are made
+// (Range(0.0f, lbl_10_rodata_3F0 = 100.0f), 0x0000F32C and 0x0000F348). The time since the last
+// hit or heavy hit (the larger of guest 0xC0C and 0xC20, 0x0000F34C and 0x0000F350) shifts the
+// rolls: zero for the first four seconds (lbl_10_rodata_408 = 4.0f, 0x0000F378) and -50.0f
+// (lbl_10_rodata_418 = 50.0f, 0x0000F3B0) for the next four (lbl_10_rodata_414 = 8.0f,
+// 0x0000F39C). The uid and the two rolls go into the next entry (0x0000F3C8..0x0000F3D4) and the
+// count rises (0x0000F3E0). The second roll answers.
+// Run (darksamus_uevent.py, dsfsm2-runs/s11/u8): every arm (key 65 the cache full, 66/67 the
+// two windows, a uid asked twice for the cached answer).
+// @ fn_10_F298
+float CDarkSamus::RollReflectChance(CStateManager& mgr, TUniqueId uid) const {
+  for (uint i = 0; i < mReflectChanceCount; ++i) {
+    if (mReflectChances[i].mUid == uid) {
+      return mReflectChances[i].mChance; // 0x0000F2F0
+    }
+  }
+  if (mReflectChanceCount == 10) { // 0x0000F300
+    EraseReflectChance(0);          // fn_10_F210, 0x0000F310
+  }
+  float roll = mgr.Random()->Range(0.f, 100.f);      // 0x0000F32C, lbl_10_rodata_3F0
+  float chance = mgr.Random()->Range(0.f, 100.f);    // 0x0000F348
+  const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0000F34C, 0x0000F350
+  if (4.f + since > mElapsedTime) { // lbl_10_rodata_408, 0x0000F378
+    roll = 0.f;
+    chance = 0.f;
+  } else if (8.f + since > mElapsedTime) { // lbl_10_rodata_414, 0x0000F39C
+    roll -= 50.f;                             // lbl_10_rodata_418, 0x0000F3B0
+    chance -= 50.f;
+  }
+  mReflectChances[mReflectChanceCount].mUid = uid; // 0x0000F3C8
+  mReflectChances[mReflectChanceCount].mChance = chance; // 0x0000F3D0
+  mReflectChances[mReflectChanceCount].mRoll = roll; // 0x0000F3D4
+  ++mReflectChanceCount; // 0x0000F3E0
+  return chance;
+}
+
+// fn_10_F100 (0x0000F100, 0x110 bytes): the reflect chance for a projectile's uid, the cache's
+// other writer (the hit arm's). The cache is walked (0x0000F14C..0x0000F164) and the entry's
+// +0x08 answers when the uid is in it (0x0000F158). Otherwise, with ten entries (0x0000F168) the
+// first one is erased (fn_10_F210, 0x0000F178) and two rolls are made (Range(0.0f,
+// lbl_10_rodata_3F0 = 100.0f), 0x0000F194 and 0x0000F1B0); the uid and the two rolls go into
+// the next entry (0x0000F1CC..0x0000F1D4) and the count rises (0x0000F1E4). The first roll (f31,
+// 0x0000F1DC) answers, the value a cache hit returns.
+// Unmarked: the fight does not reach the function (the coverage run: 0 hits - the reflect chance
+// is only rolled for a projectile that comes at the boss), so its two arms (the cache miss and
+// the cache hit) were not run.
+float CDarkSamus::RollReflectChanceForHit(CStateManager& mgr, TUniqueId uid) const {
+  for (uint i = 0; i < mReflectChanceCount; ++i) {
+    if (mReflectChances[i].mUid == uid) {
+      return mReflectChances[i].mRoll; // 0x0000F158
+    }
+  }
+  if (mReflectChanceCount == 10) { // 0x0000F168
+    EraseReflectChance(0);          // fn_10_F210, 0x0000F178
+  }
+  const float first = mgr.Random()->Range(0.f, 100.f);  // 0x0000F194
+  const float second = mgr.Random()->Range(0.f, 100.f); // 0x0000F1B0
+  mReflectChances[mReflectChanceCount].mUid = uid;    // 0x0000F1CC
+  mReflectChances[mReflectChanceCount].mChance = second; // 0x0000F1D0
+  mReflectChances[mReflectChanceCount].mRoll = first;    // 0x0000F1D4
+  ++mReflectChanceCount; // 0x0000F1E4
+  return first; // 0x0000F1DC fmr f1,f31: the first roll, as the cache hit returns mRoll
+}
+
+// fn_10_1EE4C (0x0001EE4C, 0xE4 bytes): the damage that hit the actor may be sent back. The
+// time since the last hit or heavy hit (the larger of guest 0xC0C and 0xC20, 0x0001EE74 and
+// 0x0001EE78) plus lbl_10_rodata_438 = 3.0f must be past the elapsed time 0x8B0
+// (0x0001EE90), the damage's weapon type must be 6 (kWT_Missile, 0x0001EEA8) and the stage
+// must exist (0x0001EEB8). Then fn_10_F100's roll (0x0001EED8) is compared with the stage
+// info's +0x2C (the third missile float) when the damage info's flag bit 0x40 is set
+// (0x0001EEDC) and with its +0x28 (the second missile float, 0x0001EF0C) otherwise.
+bool CDarkSamus::CanReflectHit(CStateManager& mgr, const CDamageInfo& damage, TUniqueId uid) const {
+  const float since = mGuestC0C > mGuestC20 ? mGuestC0C : mGuestC20; // 0x0001EE74, 0x0001EE78
+  if (3.f + since > mElapsedTime) { // lbl_10_rodata_438, 0x0001EE8C
+    return false;
+  }
+  if (damage.GetWeaponMode().GetType() != kWT_Missile) { // 0x0001EEA8
+    return false;
+  }
+  const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+  if (stage == nullptr) { // the retail's own null test, 0x0001EEBC
+    return false;
+  }
+  const float roll = RollReflectChanceForHit(mgr, uid); // fn_10_F100, 0x0001EED8
+  if (damage.ShouldApplyRadiusDamage()) { // the damage info's +2 bit 0x40, 0x0001EEDC
+    return roll < stage->GetStageInfo().missiles.unknown_0x1e2debc6; // the stage info's +0x2C
+  }
+  return roll < stage->GetStageInfo().missiles.unknown_0xbfb7ca5c; // the stage info's +0x28
+}
+
+// fn_10_138A4 (0x000138A4, 0xF4 bytes): the dive's hit on the player. The dive record's 0x20 is
+// set (`rlwimi r0, r5, 5, 26, 26` at 0x000138D0), the dive damage 0xAF0 goes to the player
+// (0x14FC's uid at 0x00013934) from the actor (ApplyDamage at 0x0001394C) through the filter
+// including lbl_10_data_200 = 0x3B (kMT_Solid, the __shl2i at 0x000138E4) with type 3
+// (`li r0, 0x3` at 0x000138EC) and no knock back (sZeroVector, 0x000138F8), the player's orbit
+// target is cleared (fn_10_1382C at 0x00013958), and unless the player is morphed (0x38C:
+// `cmpwi r0, 0x1` at 0x00013964) fn_10_13750 pushes it with the dive's impulses 0xB10/0xB14
+// (0x0001396C/0x00013974).
+// @ fn_10_138A4
+void CDarkSamus::HitPlayerWithDive(CStateManager& mgr) {
+  mDive.mHitPlayer = true;
+  CPlayer* player = mgr.GetPlayer(0);
+  mgr.ApplyDamage(GetUniqueId(), player->GetUniqueId(), GetUniqueId(), mDive.mDamage,
+                  CMaterialFilter(CMaterialList(kMT_Solid), CMaterialList(),
+                                  CMaterialFilter::kFT_IncludeExclude),
+                  CVector3f::Zero());
+  ClearPlayerOrbitTarget(mgr);
+  if (mgr.GetPlayer(0)->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    PushPlayer(mgr, mDive.mImpulseHorizontal, mDive.mImpulseVertical);
+  }
+}
+
+// fn_10_1382C (0x0001382C, 0x3C bytes): the player (0x14FC) orbits nothing: SetOrbitTargetId
+// with kInvalidUniqueId (0x00013840, the call at 0x00013854).
+// @ fn_10_1382C
+void CDarkSamus::ClearPlayerOrbitTarget(CStateManager& mgr) {
+  mgr.GetPlayer(0)->SetOrbitTargetId(kInvalidUniqueId, mgr);
+}
+
+// fn_10_13750 (0x00013750, 0xDC bytes): the direction from the actor to the player (0x14FC's
+// position less the actor's, 0x00013784..0x000137B4) with z = lbl_10_rodata_3FC = 0.0f
+// (0x000137C4), normalized (0x000137C8), x and y times `horizontal` (0x000137DC..0x000137EC), z
+// replaced by `vertical` (0x000137FC), then fn_10_1367C (0x00013800).
+// @ fn_10_13750
+void CDarkSamus::PushPlayer(CStateManager& mgr, float horizontal, float vertical) {
+  const CVector3f& playerPos = mgr.GetPlayer(0)->GetTranslation();
+  const CVector3f& pos = GetTranslation();
+  CVector3f dir(playerPos.GetX() - pos.GetX(), playerPos.GetY() - pos.GetY(), 0.f);
+  dir.Normalize();
+  KnockPlayer(mgr, CVector3f(dir.GetX() * horizontal, dir.GetY() * horizontal, vertical));
+}
+
+// fn_10_1367C (0x0001367C, 0xD4 bytes): the player (0x14FC) stops (0x000136A4), takes the impulse
+// times its mass 0x158 (0x000136A8..0x000136C0) with no turn (CAxisAngle::Identity, the call at
+// 0x000136E0), moves to state 2 (kMS_ApplyJump: `li r4, 0x2` at 0x000136EC, SetMoveState at
+// 0x000136F0) and its rumble manager (0x152C by MaskUIdNumPlayers, 0x00013708) plays effect 6
+// (`li r5, 0x6` at 0x00013728) at lbl_10_rodata_3E8 = 1.0f with priority 2
+// (`li r6, 0x2` at 0x0001372C).
+// @ fn_10_1367C
+void CDarkSamus::KnockPlayer(CStateManager& mgr, const CVector3f& impulse) {
+  CPlayer* player = mgr.GetPlayer(0);
+  player->Stop();
+  player->ApplyImpulseWR(impulse * player->GetMass(), CAxisAngle::Identity());
+  player->SetMoveState(NPlayer::kMS_ApplyJump, mgr);
+  mgr.RumbleManager(mgr.MaskUIdNumPlayers(player->GetUniqueId()))
+      ->Rumble(mgr, kRFX_CameraShake, 1.f, kRP_Two);
 }
 
 // fn_10_18628 (0x00018628, 0x10 bytes): 0xE04 = the elapsed time 0x8B0, 0xE08 = a, 0xE0C = b.
@@ -1854,79 +2961,269 @@ void CDarkSamus::CheckDiveCollision(CStateManager& mgr, CActor* collider,
   }
 }
 
-void CDarkSamus::DiveFromBoost(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_9424", "state DiveFromBoost");
+// fn_10_9424 (0x00009424, 0x184 bytes): the DiveFromBoost state, the dive out of the boost
+// ball. Only Activate runs the body (`mr. r31, r5` at 0x00009444 and `bne .L_0000954C` at
+// 0x00009454 skip it for the other messages): the dive record's boost bit 0x01
+// (`rlwimi r0, r3, 0, 31, 31` at 0x00009460, the byte 0xB20), the roll emitter removed
+// (`bl RemoveEmitter__11CSfxManagerF10CSfxHandle` at 0x00009474) and its handle cleared
+// (`stw r0, 0xe6c(r29)` at 0x00009480), fn_10_9644 (the turn around, 0x00009484), 0xD24 =
+// lbl_10_rodata_284 = 0.5f (`stfs f0, 0xd24(r29)` at 0x000094A8), 0xEBC bit 0x40
+// (`rlwimi r3, r4, 6, 25, 25` at 0x000094B0), the element generator's auto_ptr 0xE60/0xE64
+// emptied (the old one deleted at 0x000094EC, the stores at 0x000094F8/0x00009500), fn_10_9AC4 (the boost ball's deletion,
+// 0x0000953C) and fn_10_99B8 (0x00009548). Then the base state handler - the vtable's word
+// 136 (`lwz r12, 0x220(r12)` at 0x00009560), the DiveAttack state fn_10_11FA4 - runs on
+// every message. Deactivate (`cmpwi r31, 0x2` at 0x0000956C) clears the boost bit again
+// (`rlwimi r0, r3, 0, 31, 31` at 0x0000957C).
+// Run (darksamus_boostroll.py, DSR_MODE=1/2): every arm (the Activate and the Deactivate).
+// @ fn_10_9424
+void CDarkSamus::DiveFromBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("DiveFromBoost", msg);
+  if (msg == kStateMsg_Activate) {                 // 0x00009454 `bne .L_0000954C`
+    mDive.mFromBoost = true;                       // 0x00009460 `rlwimi r0, r3, 0, 31, 31`
+    CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x00009474
+    mBoostBallRollSfx = CSfxHandle();              // 0x00009480 `stw r0, 0xe6c(r29)`
+    TurnAround();                                  // fn_10_9644, 0x00009484
+    mGuestD24 = 0.5f;                              // lbl_10_rodata_284, 0x000094A8
+    mBoostBallFlag40 = true;                       // 0x000094B0 `rlwimi r3, r4, 6, 25, 25`
+    mBoostBallElementGen = nullptr;                // 0x000094EC..0x00009500
+    DeleteBoostBall(mgr);                          // fn_10_9AC4, 0x0000953C
+    StopBoostBallParticles();                      // fn_10_99B8, 0x00009548
+  }
+  DiveAttack(mgr, msg, dt); // 0x00009560, the vtable's word 136
+  if (msg == kStateMsg_Deactivate) { // 0x0000956C `cmpwi r31, 0x2`
+    mDive.mFromBoost = false;        // 0x0000957C `rlwimi r0, r3, 0, 31, 31`
+  }
 }
 
-void CDarkSamus::EnrageHitReact(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_7A14", "state EnrageHitReact");
+// fn_10_9644 (0x00009644, 0xDC bytes): the actor turned around. Its facing (the transform's
+// Y column, guest 0x28/0x38/0x48) is a vector that is normalized when it can be
+// (`clrlwi r0, r3, 24` and `cmplwi r0, 0x1` at 0x00009688 and 0x0000968C), scaled by
+// lbl_10_rodata_288 = -1.0f (0x000096C0) and used as the LookAt target (0x000096E4); the
+// matrix's quaternion (0x000096F0) and the actor's position (guest 0x54, 0x000096FC) build
+// the transform (0x00009700) the actor takes (0x0000970C).
+// The arm whose facing cannot be normalized is dead: the transform's Y column is a unit
+// vector, so CanBeNormalized is always true.
+// @ fn_10_9644
+void CDarkSamus::TurnAround() {
+  CVector3f dir = GetTransform().GetColumn(kDY); // guest 0x28/0x38/0x48
+  if (dir.CanBeNormalized() == true) {            // 0x0000968C
+    dir.Normalize();
+    SetTransform(CQuaternion::FromMatrix(CTransform4f::LookAt(CVector3f::Zero(), -1.f * dir,
+                                                               CVector3f::Up()))
+                     .BuildTransform4f(GetTranslation()));
+  }
+}
+
+// fn_10_9AC4 (0x00009AC4, 0x60 bytes): the boost ball actor (guest 0xE38) deleted from the
+// state manager (`bl DeleteObjectRequest__13CStateManagerF9TUniqueId` at 0x00009B00) and the
+// uid set to kInvalidUniqueId (`sth r0, 0xe38(r31)` at 0x00009B0C), unless it already is (the
+// test at 0x00009AE8).
+// Unmarked: the arm that deletes an actor needs a boost ball in the world. The uid 0xE38 is
+// set by the BoostBallRoll (fn_10_A3B0) and BoostBallFire (fn_10_9724) paths, which are
+// outside the port, so only the "no ball" arm ran.
+// @ fn_10_9AC4
+// Run 2026-10-21 (Sanctuary 10_cliff_rooftop, boss u04f7): the null arm ran on its own (the dive's
+// exit calls it with no ball); the delete arm was forced (gdb `set var mBoostBallUid.value = 0x4f7`
+// at the dive's entry). See docs/module-analysis/DarkSamus_helpers.md.
+void CDarkSamus::DeleteBoostBall(CStateManager& mgr) {
+  if (mBoostBallUid != kInvalidUniqueId) { // 0x00009AE8
+    mgr.DeleteObjectRequest(mBoostBallUid); // 0x00009B00
+    mBoostBallUid = kInvalidUniqueId;       // 0x00009B0C
+  }
+}
+
+// fn_10_7A14 (0x00007A14, 0xDC bytes): the EnrageHitReact state. Every message sets the body's
+// locomotion type 10 (pas::kLT_Internal10, the call at 0x00007A4C). Deactivate (0x00007A50)
+// draws the time 0xFB0 from lbl_10_rodata_1CC = 0.2f and lbl_10_rodata_1D0 = 4.5f
+// (0x00007A70), steps the guest's own random (the `mulhw` with 0x55555556 at 0x00007A8C: 0x105C
+// grows by the high word of 0x55555556 * 0x1058 and its carry bit) and stores the health at that
+// moment (0xFC4, the vtable's slot 0x3C at 0x00007AA0 and the store at 0x00007AB4). Then
+// fn_10_7F98 (0x00007AC8) - the phazon enrage frame, UpdatePhazonEnrage - and the
+// melee attack command (fn_10_8764 at 0x00007B28, the severity 8 = pas::kS_Eight).
+void CDarkSamus::EnrageHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("EnrageHitReact", msg);
+  BodyController()->SetLocomotionType(pas::kLT_Internal10); // 0x00007A4C
+  if (msg == kStateMsg_Deactivate) {
+    mGuestFB0 = mgr.Random()->Range(0.2f, 4.5f); // 0x00007A70
+    // 0x00007A8C: the `mulhw` with 0x55555556 - the high word of 0x55555556 * 0x1058 and its
+    // carry bit - is added to 0x105C. The two words are the guest's own (the phazon volleys' in
+    // the fsm2 lane's naming); the retail's are unsigned, so the step is done in unsigned.
+    // mulhw is the signed high word, plus its sign bit: the signed division by 3 (rounding to 0).
+    mGuest105C = static_cast< int >(static_cast< uint >(mGuest105C) +
+                                    static_cast< uint >(static_cast< int >(mGuest1058) / 3)); // 0x00007A8C
+    mGuestFC4 = GetHealthInfo()->GetHP(); // 0x00007AB0
+  }
+  UpdatePhazonEnrage(mgr, msg, dt); // fn_10_7F98 at 0x00007AC8
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Eight)); // 0x00007B28
 }
 
-void CDarkSamus::EnragedTravel(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_6E38", "state EnragedTravel");
+// fn_10_6E38 (0x00006E38, 0xDC bytes): the EnragedTravel state. Every message reads the player's
+// aim position (the state manager's player at 0x14FC, the vtable's slot 0x54 at 0x00006E78; the
+// guest's extra argument &lbl_10_rodata_1AC = 0.5f has no host counterpart, the dt is 0.5f).
+// Activate (0x00006E90) runs fn_10_6F90 - the travel, the helpers branch's
+// FindPathToDestination - and forgets the target (0x9FC = -1, 0x00006EC4). The other messages measure the aim position
+// against the point 0x1048/0x104C/0x1050 (the squared distance at 0x00006EEC..0x00006EF4
+// against lbl_10_rodata_1B0 = 16.0f at 0x00006EF8) and run fn_10_6F90 when it is bigger
+// (0x00006F10); then the player's halfword at its +8 goes to 0x718 (0x00006F30 - the host's
+// player has no counterpart for it), the path find runs (the guest's CPathFindNavigation at
+// 0x6F4, 0x00006F34 - not in the port) and fn_10_1DD14 (the separation, 0x00006F40). Every
+// message then runs fn_10_6DAC (0x00006F4C - a stateless one the helper lanes port),
+// fn_10_1D860 (the additive animation, 0x00006F5C) and fn_10_11334 (the glide emitter,
+// 0x00006F68).
+void CDarkSamus::EnragedTravel(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("EnragedTravel", msg);
+  const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.5f); // 0x00006E88
+  if (msg == kStateMsg_Activate) {
+    FindPathToDestination(mgr, aim, dt); // fn_10_6F90, 0x00006EBC
+    mGuest9FC = -1;                     // 0x00006EC4
+  } else {
+    const CVector3f d(aim.GetX() - mGuest1048, aim.GetY() - mGuest104C, aim.GetZ() - mGuest1050);
+    if (CVector3f::Dot(d, d) > 16.f) { // 0x00006EF8 (the squared distance)
+      FindPathToDestination(mgr, aim, dt); // fn_10_6F90, 0x00006F10
+    }
+    mPathFindNavigation.SetFaceTarget(mgr.GetPlayer(0)->GetUniqueId()); // 0x718, 0x00006F30
+    mPathFindNavigation.PathFind(mgr, msg, dt, *this);                  // 0x6F4, 0x00006F34
+    Separate(mgr); // fn_10_1DD14, 0x00006F40
+  }
+  UpdateShieldFromHealth(msg); // fn_10_6DAC, 0x00006F4C
+  UpdateAdditiveAnimation(mgr, msg);                        // fn_10_1D860, 0x00006F5C
+  UpdateGlideEmitter(msg);                                  // fn_10_11334, 0x00006F68
 }
 
-void CDarkSamus::FadeIn(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_BD40", "state FadeIn");
+// fn_10_BD40 (0x0000BD40, 0xDC bytes): the FadeIn state. Every message runs the attack
+// bookkeeping with id 0x40000 (`lis r4, 0x4` at 0x0000BD60, the call at 0x0000BD70), the ground
+// collision (fn_10_18F90 at
+// 0x0000BD80) and the melee attack command (fn_10_8764 at 0x0000BDE0, the severity 4 =
+// pas::kS_Four, the target position the zero vector and no target).
+// @ fn_10_BD40
+void CDarkSamus::FadeIn(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("FadeIn", msg);
+  UpdateCurrentAttack(0x40000, mgr, msg); // `lis r4, 0x4` at 0x0000BD60, the call at 0x0000BD70
+  UpdateGroundCollision(mgr, msg); // 0x0000BD80
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Four)); // 0x0000BDE0
 }
 
-void CDarkSamus::FadeOut(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_BC54", "state FadeOut");
+// fn_10_BC54 (0x0000BC54, 0xDC bytes): the FadeOut state. Every message runs the attack
+// bookkeeping with id 0x80000 (`lis r4, 0x8` at 0x0000BC74, the call at 0x0000BC84), the ground
+// collision (fn_10_18F90 at
+// 0x0000BC94), the shield flag (fn_10_105F4 at 0x0000BCA8, with the zero vector) and the melee
+// attack command (fn_10_8764 at 0x0000BD08, the severity 3 = pas::kS_Three).
+// @ fn_10_BC54
+void CDarkSamus::FadeOut(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("FadeOut", msg);
+  UpdateCurrentAttack(0x80000, mgr, msg); // `lis r4, 0x8` at 0x0000BC74, the call at 0x0000BC84
+  UpdateGroundCollision(mgr, msg); // 0x0000BC94
+  UpdateShieldFlag(msg);           // 0x0000BCA8
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Three)); // 0x0000BD08
 }
 
-void CDarkSamus::FallFromTheAir(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_F86C", "state FallFromTheAir");
+// fn_10_F86C (0x0000F86C, 0xDC bytes): the FallFromTheAir state. Every message runs the attack
+// bookkeeping with id 0x4000 (fn_10_1B478 at 0x0000F89C), the ground collision (fn_10_18F90 at
+// 0x0000F8AC) and the taunt command (fn_10_8698 at 0x0000F8E8: the command id 0x15 = 21 =
+// kBSC_Taunt, the taunt type 0 = pas::kTT_Zero, the animation state 0x10 = pas::kAS_Taunt).
+// @ fn_10_F86C
+void CDarkSamus::FallFromTheAir(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("FallFromTheAir", msg);
+  UpdateCurrentAttack(0x4000, mgr, msg); // 0x0000F89C
+  UpdateGroundCollision(mgr, msg);       // 0x0000F8AC
+  RunTauntCmd(msg, pas::kTT_Zero);       // 0x0000F8E8
 }
 
-void CDarkSamus::GetUp(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_18EAC", "state GetUp");
-  DsStateEntered("GetUp", msg);
-}
-
-void CDarkSamus::GoToPhazonAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_652C", "state GoToPhazonAttack");
-  DsStateEntered("GoToPhazonAttack", msg);
-}
-
-void CDarkSamus::GoToPhazonEnrage(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_6460", "state GoToPhazonEnrage");
-  DsStateEntered("GoToPhazonEnrage", msg);
-}
-
-void CDarkSamus::HeavyHit(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_10C9C", "state HeavyHit");
-  DsStateEntered("HeavyHit", msg);
-}
-
-void CDarkSamus::Interrupt(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_10FF4", "state Interrupt");
-  DsStateEntered("Interrupt", msg);
-}
-
-void CDarkSamus::MeleeAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17BC0", "state MeleeAttack");
+// fn_10_17BC0 (0x00017BC0, 0xF8 bytes): the MeleeAttack state. The attack bookkeeping with id 1
+// (`li r4, 0x1`, fn_10_1B478 at 0x00017BEC); Activate (0x00017BF0) resets the melee contact
+// (fn_10_EA08 on 0x9A4); the melee attack command with severity 1 (`li r7, 0x1` at 0x00017C28,
+// pas::kAS_MeleeAttack = `li r5, 0x7`, fn_10_8764 at 0x00017C5C); Deactivate (`cmpwi r30, 0x2` at
+// 0x00017C6C) clears 0xC00 (lbl_10_rodata_3FC = 0.0f) and forgets the last attacker (0xC24 =
+// kInvalidUniqueId); every message stores the elapsed time 0x8B0 to 0x9C0 (0x00017C9C).
+// @ fn_10_17BC0
+void CDarkSamus::MeleeAttack(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("MeleeAttack", msg);
+  UpdateCurrentAttack(0x1, mgr, msg);
+  if (msg == kStateMsg_Activate) {
+    mMeleeContact.Reset();
+  }
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_One));
+  if (msg == kStateMsg_Deactivate) {
+    mGuestC00 = 0.f;
+    mLastAttackerUid = kInvalidUniqueId;
+  }
+  mLastMeleeTime = mElapsedTime;
 }
 
-void CDarkSamus::MeleeDash(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17ABC", "state MeleeDash");
+// fn_10_17ABC (0x00017ABC, 0x104 bytes): the MeleeDash state. The attack bookkeeping with id 4
+// (`li r4, 0x4`, fn_10_1B478 at 0x00017AEC) and the collision failsafe (fn_10_1AEC0 at
+// 0x00017AF8); Activate (`cmpwi r30, 0x0` at 0x00017AFC) resets the melee contact (fn_10_EA08 on
+// 0x9A4); the melee attack command with severity 2 (`li r7, 0x2` at 0x00017B34,
+// pas::kAS_MeleeAttack = `li r5, 0x7`, fn_10_8764 at 0x00017B68); Deactivate (`cmpwi r30, 0x2`
+// at 0x00017B78) clears 0xC00 (lbl_10_rodata_3FC = 0.0f) and the contact's uid (0x9DC =
+// kInvalidUniqueId, 0x00017BA0).
+// @ fn_10_17ABC
+void CDarkSamus::MeleeDash(CStateManager& mgr, EStateMsg msg, float) {
   DsStateEntered("MeleeDash", msg);
+  UpdateCurrentAttack(0x4, mgr, msg);
+  RunCollisionFailsafe(mgr);
+  if (msg == kStateMsg_Activate) {
+    mMeleeContact.Reset();
+  }
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Two));
+  if (msg == kStateMsg_Deactivate) {
+    mGuestC00 = 0.f;
+    mMeleeContact.mHitUid = kInvalidUniqueId;
+  }
 }
 
-void CDarkSamus::MissileDeflect(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_178E4", "state MissileDeflect");
-  DsStateEntered("MissileDeflect", msg);
-}
-
-void CDarkSamus::MissileJump(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_177BC", "state MissileJump");
+// fn_10_177BC (0x000177BC, 0x128 bytes): the MissileJump state. The attack bookkeeping with id
+// 0x80 (`li r4, 0x80`, fn_10_1B478 at 0x000177F8), the shield flag (fn_10_105F4 at 0x0001780C),
+// the ground collision (fn_10_18F90 at 0x0001781C), the turn toward the player at
+// lbl_10_rodata_508 = 1.0471976f rad/s (fn_10_16B64 at 0x00017838), the collision failsafe
+// (fn_10_1AEC0 at 0x00017844) and the melee attack command with severity 10 (0x00017870;
+// pas::kAS_MeleeAttack = 7, fn_10_8764 at 0x000178A4).
+// @ fn_10_177BC
+void CDarkSamus::MissileJump(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("MissileJump", msg);
+  UpdateCurrentAttack(0x80, mgr, msg);
+  UpdateShieldFlag(msg);
+  UpdateGroundCollision(mgr, msg);
+  TurnTowardPlayer(mgr, dt, 1.0471976f);
+  RunCollisionFailsafe(mgr);
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Ten));
+}
+
+// fn_10_8764 (0x00008764, 0x10C bytes): the switch over the message (0x0000876C..0x000087A0).
+// Activate (0x000087A4) stores 1 (kAS_Ready) to the animation state 0x6B4 and delivers the
+// command (DeliverCmd of its id, then the copy into the command manager's melee slot
+// 0x180..0x194); Update (0x000087F4) re-delivers it when the DOL's ShouldRetry with `state`
+// answers true (0x00008800) - the host's CAnimationState::CanIssueCommand, as in
+// TurnToFacePlayer; Deactivate (0x00008850) stores 0 (kAS_NotReady).
+// Unmarked: the Update re-delivery (ShouldRetry true, 0x00008808) never ran - Activate's command
+// moves the body into kAS_MeleeAttack before the first Update in every MeleeAttack, MeleeDash and
+// MissileJump seen, so the check only answered false.
+void CDarkSamus::RunMeleeAttackCmd(EStateMsg msg, pas::EAnimationState state,
+                                   const CBCMeleeAttackCmd& cmd) {
+  switch (msg) {
+  case kStateMsg_Activate:
+    mAnimationState.SetState(CAnimationState::kAS_Ready);
+    BodyController()->CommandMgr().DeliverCmd(cmd);
+    break;
+  case kStateMsg_Update:
+    if (mAnimationState.CanIssueCommand(*BodyController(), state)) {
+      BodyController()->CommandMgr().DeliverCmd(cmd);
+    }
+    break;
+  case kStateMsg_Deactivate:
+    mAnimationState.SetState(CAnimationState::kAS_NotReady);
+    break;
+  default:
+    break;
+  }
+}
+
+// fn_10_EA08 (0x0000EA08, 0x1C bytes): the contact's uid to kInvalidUniqueId (0x0000EA18) and its
+// hit byte to 0 (0x0000EA1C).
+// @ fn_10_EA08
+void CDarkSamusMeleeContact::Reset() {
+  mHitUid = kInvalidUniqueId;
+  mHit = 0;
 }
 
 // fn_10_11AD8 (0x00011AD8, 0x17C bytes): the MovingScatterShot state, the scatter shot fired
@@ -1962,65 +3259,72 @@ void CDarkSamus::MovingScatterShot(CStateManager& mgr, EStateMsg msg, float dt) 
             CBCStepCmd(mScatterSide != 0 ? pas::kSD_Left : pas::kSD_Right, pas::kStep_BreakDodge));
 }
 
-void CDarkSamus::NormalMissileAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_17448", "state NormalMissileAttack");
-  DsStateEntered("NormalMissileAttack", msg);
-}
-
+// fn_10_14448 (0x00014448, 4 bytes): the Null state, a bare `blr`. DsStateEntered is the port's
+// state log. No arm to run: the rooftop FSM2 has no node named Null (`fsm u04f7 Null` finds
+// none), so the handler is never entered there.
+// @ fn_10_14448
 void CDarkSamus::Null(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_14448", "state Null");
   DsStateEntered("Null", msg);
 }
 
-// The base's Dead body is the host's death path (the die command, the fade and the material
-// change); it stands in for the module's until that one is ported, so the actor can still die.
+// fn_10_143A8 (0x000143A8, 0xA0 bytes): the Dead state. Every message runs the base's Dead
+// (Dead__10CPatterned = fn_80152820, 0x000143CC). Activate only (`cmpwi r31, 0x0` at 0x000143D0):
+// the boost ball roll emitter 0xE6C, when there is one (`cmplwi r0, 0x0` at 0x000143DC), is
+// removed (RemoveEmitter at 0x000143F0) and cleared (0x000143F8); the environment effects' density
+// fades to lbl_10_rodata_3FC = 0.0f over lbl_10_rodata_254 = 0xFA0 = 4000 (the manager at 0x1630,
+// SetDensity__13CEnvFxManagerFfi = the host's FadeDensity, 0x00014418) and bit 0x20 of 0x90C is
+// cleared (`rlwimi r0, r3, 5, 26, 26` with r3 = 0 at 0x00014424, the store at 0x00014428).
+// asmcheck's three findings are names: x90c_20 is mFlags90C's 0x20, SetDensity the host's
+// FadeDensity and fn_80152820 CPatterned::Dead (symbols.txt).
+// Run (darksamus_dsfsm.py, darksamus_dsfsm.con / _dead.con): Activate with the roll emitter
+// (after BoostBallInto) and without it, Update and Deactivate - every arm natural.
+// @ fn_10_143A8
 void CDarkSamus::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
-  FsmStandIn("fn_10_143A8", "state Dead");
   DsStateEntered("Dead", msg);
-  CPatterned::Dead(mgr, msg, dt);
+  CPatterned::Dead(mgr, msg, dt); // 0x000143CC
+  if (msg != kStateMsg_Activate) { // 0x000143D0
+    return;
+  }
+  if (mBoostBallRollSfx) { // 0x000143DC
+    CSfxManager::RemoveEmitter(mBoostBallRollSfx); // 0x000143F0
+    mBoostBallRollSfx = CSfxHandle();              // 0x000143F8
+  }
+  mgr.EnvFxManager()->FadeDensity(0.f, 4000); // 0x00014418
+  mFlags90C &= ~0x20;                         // 0x00014424
 }
 
-// The base's Patrol body is the host's waypoint patrol; it stands in for the module's until
-// that one is ported.
-void CDarkSamus::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
-  FsmStandIn("fn_10_1142C", "state Patrol");
-  DsStateEntered("Patrol", msg);
-  CPatterned::Patrol(mgr, msg, dt);
-}
-
-void CDarkSamus::Pause(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_10710", "state Pause");
+// fn_10_10710 (0x00010710, 0x154 bytes): the Pause state. The rest of its body is still a
+// stand-in, but its write of the guest's 0xC30 is ported: on Activate (0x00010754) 0xC30 takes
+// the elapsed time 0x8B0 (0x00010768) and then the stage's pause duration (the stage's +0x18
+// and +0x1C, the random range at 0x000107A0) is added (0x000107AC) - 0xC30 is the time the
+// pause ends, which the BreakPause trigger (fn_10_106F8) compares with the elapsed time.
+// fn_10_10710 (0x00010710, 0x154 bytes): the Pause state. Every message runs the attack
+// bookkeeping with id 0x400 (fn_10_1B478 at 0x00010750). Activate (0x00010754) takes the elapsed
+// time 0x8B0 as the pause's end time (0x00010768) and adds the stage's pause duration (the stage
+// info's +0x18 and +0x1C, the random range at 0x000107A0, the sum at 0x000107AC) - the
+// BreakPause trigger (fn_10_106F8) compares it with the elapsed time. Deactivate (0x000107B4)
+// forgets the last attacker (0xC24 = kInvalidUniqueId, 0x000107C4). Then the damage
+// (fn_10_1E178 at 0x000107D4), the turn toward the player (fn_10_16B64 at 0x000107F0, the rate
+// lbl_10_rodata_44C = 1.3962634f) and the locomotion command (fn_800EE3C4 at 0x00010838 - the
+// CBCLocomotionCmd with the zero move and face vectors and the weight 1.0f).
+// @ fn_10_10710
+void CDarkSamus::Pause(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("Pause", msg);
-}
-
-void CDarkSamus::PhazonAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_81D4", "state PhazonAttack");
-  DsStateEntered("PhazonAttack", msg);
-}
-
-void CDarkSamus::PhazonEnraged(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_7BC0", "state PhazonEnraged");
-  DsStateEntered("PhazonEnraged", msg);
-}
-
-void CDarkSamus::PhazonFall(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_6BA0", "state PhazonFall");
-  DsStateEntered("PhazonFall", msg);
-}
-
-void CDarkSamus::PhazonMissiles(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_67B8", "state PhazonMissiles");
-  DsStateEntered("PhazonMissiles", msg);
-}
-
-void CDarkSamus::PhazonRise(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_7054", "state PhazonRise");
-  DsStateEntered("PhazonRise", msg);
-}
-
-void CDarkSamus::PhazonSuck(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_4AC8", "state PhazonSuck");
-  DsStateEntered("PhazonSuck", msg);
+  UpdateCurrentAttack(0x400, mgr, msg); // 0x00010750
+  if (msg == kStateMsg_Activate) {
+    mGuestC30 = mElapsedTime; // 0x00010768
+    const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
+    if (stage != nullptr) { // 0x00010770
+      mGuestC30 += mgr.Random()->Range(stage->GetStageInfo().pauseDurationMin,
+                                       stage->GetStageInfo().pauseDurationMax); // 0x000107A0
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    mLastAttackerUid = kInvalidUniqueId; // 0x000107C4
+  }
+  AccumulateDamage(msg, dt); // 0x000107D4
+  TurnTowardPlayer(mgr, dt, 1.3962634f); // 0x000107F0 (lbl_10_rodata_44C)
+  BodyController()->CommandMgr().DeliverCmd(
+      CBCLocomotionCmd(CVector3f::Zero(), CVector3f::Zero(), 1.f)); // 0x00010838
 }
 
 // fn_10_F930 (0x0000F930, 0x1C4 bytes): the PissedOff state. Activate (`mr. r31, r5` at
@@ -2091,14 +3395,14 @@ const CScriptAIHint* CDarkSamus::FindAreaHint(CStateManager& mgr, int type) cons
 }
 
 // fn_10_105F4 (0x000105F4, 0x40 bytes): Activate sets the 0xCD0 byte (0x00010604) and copies
-// lbl_10_bss_128 (a zero vector) to 0xD18 (0x0001060C..0x00010618); Deactivate (the `cmpwi r4,
+// lbl_10_bss_128 = (0.3, 0.6, 1.0) to 0xD18 (0x0001060C..0x00010618); Deactivate (the `cmpwi r4,
 // 0x2` at 0x00010620) clears the byte (0x0001062C). The byte picks the shielded collision response
 // (fn_10_F84C) and the 0xCD4 vulnerability (fn_10_100DC, still a stand-in).
 // @ fn_10_105F4
 void CDarkSamus::UpdateShieldFlag(EStateMsg msg) {
   if (msg == kStateMsg_Activate) {
     mGuestCD0 = 1;
-    mGuestD18 = CVector3f::Zero();
+    mGuestD18 = CVector3f(0.3f, 0.6f, 1.f); // lbl_10_bss_128 (fn_10_221C0: rodata 46C/424/3E8)
   } else if (msg == kStateMsg_Deactivate) {
     mGuestCD0 = 0;
   }
@@ -2233,19 +3537,256 @@ void CDarkSamus::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Start(mgr, msg, dt);
 }
 
-void CDarkSamus::SuperMissileAttack(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_16ECC", "state SuperMissileAttack");
-  DsStateEntered("SuperMissileAttack", msg);
-}
-
-void CDarkSamus::SweepBeam(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_CA0C", "state SweepBeam");
+// fn_10_CA0C (0x0000CA0C, 0x394 bytes): the SweepBeam state. Every message first runs the attack
+// bookkeeping with id 0x10000 (`lis r4, 0x1` at 0x0000CA44, fn_10_1B478 at 0x0000CA4C) and the
+// melee attack command with severity 5 (`li r8, 0x5` at 0x0000CA5C; pas::kAS_MeleeAttack = 7,
+// `li r5, 0x7` at 0x0000CA90; fn_10_8764 at 0x0000CAAC). Activate (`cmpwi r28, 0x0` at 0x0000CAD4)
+// turns the kAR_Flinch reaction off (`li r4, 0x1` at 0x0000CAF0,
+// `li r5, 0x0` at 0x0000CAF4), clears 0xDC8 bit 0x80 (`rlwimi r0, r7, 7, 24, 24` at 0x0000CB04) and
+// bit 0x40 (`rlwimi r0, r7, 6, 25, 25` at 0x0000CB64), zeroes the last and current directions
+// (0x0000CB2C..0x0000CB5C) and starts two emitters in the actor's area, at volume 0x7F
+// (`li r6, 0x7f` at 0x0000CB28), without acoustics
+// (`li r8, 0x0` at 0x0000CB30), not looped
+// (`li r9, 0x0` at 0x0000CB34), kMedPriority: the beam sound 0xDD8 at the actor (the handle to
+// 0xDDC at 0x0000CB88) and the end sound 0xDE0 lbl_10_rodata_2D8 = 20.0f along the actor's forward
+// vector (0x0000CB94; the handle to 0xDE4 at 0x0000CC1C). It keeps the speed 0x3C8 in 0xDC4
+// (0x0000CC2C) and scales it by Range(lbl_10_rodata_2DC = 0.7f, lbl_10_rodata_264 = 1.0f)
+// (0x0000CC30), then runs the collision failsafe (fn_10_1AEC0 at 0x0000CC48). Update
+// (`cmpwi r28, 0x1` at 0x0000CABC) aims the beam (fn_10_C2B0 at 0x0000CC5C), sweeps the damage rays
+// while 0xDC8 bit 0x40 is set (`extrwi r0, r0, 1, 25` at 0x0000CC64, fn_10_C104 at 0x0000CC78) and,
+// with a beam sound (`cmplwi r0, 0x0` at 0x0000CC80), moves it lbl_10_rodata_2E0 = 7.0f along the
+// gun's forward vector (0x0000CC90) at volume 0x7F (`li r6, 0x7f` at 0x0000CCD4). Deactivate
+// (`cmpwi r28, 0x3` at 0x0000CAE0) turns kAR_Flinch back on (`li r5, 0x1` at 0x0000CD0C), releases
+// the effect (fn_10_C798 at 0x0000CD18), removes each emitter that is set
+// (`cmplwi r0, 0x0` at 0x0000CD20, 0x0000CD3C), zeroes both handles (0x0000CD5C, 0x0000CD68),
+// restores the speed (0x0000CD70) and runs the failsafe (0x0000CD74).
+void CDarkSamus::SweepBeam(CStateManager& mgr, EStateMsg msg, float dt) {
   DsStateEntered("SweepBeam", msg);
+  UpdateCurrentAttack(0x10000, mgr, msg);
+  RunMeleeAttackCmd(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_Five));
+  if (msg == kStateMsg_Activate) {
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, false); // 0x0000CAF4
+    mSweepBeamHitPlayer = false; // 0x0000CB04
+    mSweepBeamPrevDir = CVector3f::Zero();
+    mSweepBeamDir = mSweepBeamPrevDir;
+    mSweepBeamOn = false; // 0x0000CB64
+    mSweepBeamSfx = CSfxManager::AddEmitter(mSweepBeamSfxId, GetTranslation(), 0x7F,
+                                            GetCurrentAreaId().Value(), false, false,
+                                            CSfxManager::kMedPriority); // 0x0000CB28
+    mSweepBeamEndSfx = CSfxManager::AddEmitter(
+        mSweepBeamEndSfxId, GetTranslation() + 20.f * GetTransform().GetForward(), 0x7F,
+        GetCurrentAreaId().Value(), false, false, CSfxManager::kMedPriority); // 0x0000CB94
+    mSweepBeamSpeed = mSpeed;                                             // 0x0000CC2C
+    mSpeed = mSweepBeamSpeed * mgr.Random()->Range(0.7f, 1.f);            // 0x0000CC30
+    RunCollisionFailsafe(mgr);
+  } else if (msg == kStateMsg_Update) {
+    UpdateSweepBeamAim(mgr, dt);
+    if (mSweepBeamOn == true) { // 0x0000CC64
+      SweepBeamDamage(mgr);
+    }
+    if (mSweepBeamSfx) { // 0x0000CC80
+      const CVector3f fwd = mGunLctrXf.GetForward();
+      CSfxManager::UpdateEmitter(mSweepBeamSfx, mGunLctrXf.GetTranslation() + 7.f * fwd, fwd,
+                                 0x7F); // 0x0000CC90
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, true); // 0x0000CD0C
+    StopSweepBeam();
+    if (mSweepBeamSfx) { // 0x0000CD20
+      CSfxManager::RemoveEmitter(mSweepBeamSfx);
+    }
+    if (mSweepBeamEndSfx) { // 0x0000CD3C
+      CSfxManager::RemoveEmitter(mSweepBeamEndSfx);
+    }
+    mSweepBeamSfx = CSfxHandle();
+    mSweepBeamEndSfx = mSweepBeamSfx;
+    mSpeed = mSweepBeamSpeed; // 0x0000CD70
+    RunCollisionFailsafe(mgr);
+  }
 }
 
-void CDarkSamus::Taunt(CStateManager&, EStateMsg msg, float) {
-  FsmStandIn("fn_10_11544", "state Taunt");
-  DsStateEntered("Taunt", msg);
+// fn_10_C85C (0x0000C85C, 0x1B0 bytes): releases any effect (fn_10_C798 at 0x0000C87C), makes a
+// CElementGen (`li r3, 0x338` at 0x0000C890) from the 'PART' 0xD74 (`lis r5, 0x5041` at 0x0000C8A8)
+// with kMOT_Normal (`li r5, 0x0` at 0x0000C8F8) and kOSF_One
+// (`li r6, 0x1` at 0x0000C8FC) into 0xD78, turns its emission on
+// (`li r4, 0x1` at 0x0000C9C8, vtable slot 0x2C) and sets 0xDC8 bit 0x40
+// (`rlwimi r0, r3, 6, 25, 25` at 0x0000C9E4).
+// Host guard: Agon's boss (10_sand_alamostorage) leaves sweepSwoosh unset (kInvalidAssetId), and a
+// forced SweepBeam there built the effect from that id and crashed in CElementGen's constructor.
+// The guard stays around the CElementGen only: the retail builds the effect whatever the id is
+// and sets 0xDC8 bit 0x40 (0x0000C9E4) with no test of it, so the damage rays (fn_10_C104, the
+// part test at 0x0000C130) and the collision response (fn_10_C470, the same bit at 0x0000C5C4)
+// run as in the retail - the ray code tolerates a null generator (0x0000C32C).
+// @ fn_10_C85C
+void CDarkSamus::StartSweepBeam() {
+  StopSweepBeam();
+  if (mSweepBeamPart != kInvalidAssetId) {
+    mSweepBeamGen = new CElementGen(gpSimplePool->GetObj(SObjectTag('PART', mSweepBeamPart)),
+                                    CElementGen::kMOT_Normal, CElementGen::kOSF_One);
+    mSweepBeamGen->SetParticleEmission(true); // 0x0000C9C8
+  }
+  mSweepBeamOn = true; // 0x0000C9E4
+}
+
+// fn_10_C798 (0x0000C798, 0xC4 bytes): the effect 0xD78 reset to null (the auto_ptr's
+// self-assignment test `cmplw r3, r0` at 0x0000C7BC; an owned old effect,
+// `cmplwi r0, 0x0` at 0x0000C7CC and
+// `cmplwi r3, 0x0` at 0x0000C7D8, deleted at 0x0000C7F0) and 0xDC8 bit 0x40 cleared
+// (`rlwimi r0, r3, 6, 25, 25` at 0x0000C840).
+// @ fn_10_C798
+void CDarkSamus::StopSweepBeam() {
+  mSweepBeamGen = nullptr;
+  mSweepBeamOn = false; // 0x0000C840
+}
+
+// fn_10_C2B0 (0x0000C2B0, 0x1C0 bytes): finds the end point (fn_10_C470 at 0x0000C2D0), then the
+// direction 0xD9C = end point 0xDB4 - the gun's position (the 0x8CC transform's origin,
+// 0x0000C2F8..0x0000C31C) and the length 0xDC0 its magnitude (0x0000C324). With an effect
+// (`cmplwi r3, 0x0` at 0x0000C32C) the effect goes to the gun (slot 0x20 at 0x0000C33C), looks at
+// the end point (LookAt with the up vector at 0x0000C35C, slot 0x1C at 0x0000C378), is scaled to
+// (lbl_10_rodata_278 = 4.0f, lbl_10_rodata_2D0 = 0.18f * length, 4.0f) (slot 0x24 at 0x0000C3B4)
+// and updated by dt (slot 0xC at 0x0000C3CC). The direction is normalized when it can be
+// (`cmplwi r0, 0x1` at 0x0000C3E4). With an end sound
+// (`cmplwi r0, 0x0` at 0x0000C3F8) it moves to the end point along lbl_10_rodata_288 = -1.0f times
+// the actor's forward vector (0x0000C410) at volume 0x7F (`li r6, 0x7f` at 0x0000C42C).
+void CDarkSamus::UpdateSweepBeamAim(CStateManager& mgr, float dt) {
+  UpdateSweepBeamEnd(mgr);
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  const CVector3f end = mSweepBeamEnd;
+  mSweepBeamDir = end - gunPos;
+  mSweepBeamLength = mSweepBeamDir.Magnitude();
+  if (CElementGen* gen = mSweepBeamGen.get()) { // 0x0000C32C
+    gen->SetGlobalTranslation(gunPos);
+    gen->SetGlobalOrientation(CTransform4f::LookAt(gunPos, end, CVector3f::Up()));
+    gen->SetGlobalScale(CVector3f(4.f, 0.18f * mSweepBeamLength, 4.f)); // 0x0000C39C
+    gen->Update(dt);
+  }
+  if (mSweepBeamDir.CanBeNormalized() == true) { // 0x0000C3E4
+    mSweepBeamDir.Normalize();
+  }
+  if (mSweepBeamEndSfx) { // 0x0000C3F8
+    const CVector3f fwd = GetTransform().GetForward();
+    CSfxManager::UpdateEmitter(mSweepBeamEndSfx, mSweepBeamEnd, -1.f * fwd, 0x7F); // 0x0000C42C
+  }
+}
+
+// fn_10_C470 (0x0000C470, 0x328 bytes): the beam's end point. The ray runs from the gun along the
+// gun's forward vector with its z set to lbl_10_rodata_25C = 0.0f (0x0000C4BC), normalized when it
+// can be (`cmplwi r0, 0x1` at 0x0000C4C8), for lbl_10_rodata_2D4 = 100.0f (0x0000C580) against a
+// filter built once (the guard `extsb. r0, r0` at 0x0000C4E0): include lbl_10_data_1E4 = 0x3B
+// (kMT_Solid), exclude lbl_10_data_1E8 = 0x20 (kMT_Player) and lbl_10_data_1EC = 0x2F
+// (kMT_CollisionActor), kFT_IncludeExclude (`li r7, 0x3` at 0x0000C53C). On a hit
+// (`cmplwi r0, 0x1` at 0x0000C5B8) while 0xDC8 bit 0x40 is set
+// (`cmplwi r0, 0x1` at 0x0000C5C8) the response 0xDCC runs for the hit with no target, the beam
+// damage and false (`li r8, 0x0` at 0x0000C5EC; DoCollisionResponse at 0x0000C5F4) and its decal
+// for type 1 (`li r5, 0x1` at 0x0000C600), when it has one (`cmplwi r0, 0x0` at 0x0000C664), goes
+// at the hit point facing the hit plane's normal (LookAt from the origin with the up vector at
+// 0x0000C684; AddDecal at 0x0000C6D4, the ray's direction unnormalized). The end point is the hit
+// point on any hit (0x0000C6FC..0x0000C710), else the gun plus 100.0f times the direction
+// (0x0000C718..0x0000C758); its z is then the gun's (0x0000C774).
+void CDarkSamus::UpdateSweepBeamEnd(CStateManager& mgr) {
+  CVector3f dir(mGunLctrXf.GetForward().GetX(), mGunLctrXf.GetForward().GetY(), 0.f);
+  if (dir.CanBeNormalized() == true) { // 0x0000C4C8
+    dir.Normalize();
+  }
+  static const CMaterialFilter skFilter(CMaterialList(kMT_Solid),
+                                        CMaterialList(kMT_Player, kMT_CollisionActor),
+                                        CMaterialFilter::kFT_IncludeExclude); // 0x0000C53C
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  const CRayCastResult result = mgr.RayStaticIntersection(gunPos, dir, 100.f, skFilter);
+  if (result.IsValid() == true) { // 0x0000C5B8
+    if (mSweepBeamOn == true) {   // 0x0000C5C8
+      mgr.DoCollisionResponse(**mSweepBeamResponse, result, kInvalidUniqueId, mSweepBeamDamageInfo,
+                              false);
+      const rstl::optional_object< TLockedToken< CDecalDescription > > decal =
+          mSweepBeamResponse->GetDecalDescription(static_cast< EWeaponCollisionResponseTypes >(1));
+      if (decal.valid()) { // 0x0000C664
+        CTransform4f xf =
+            CTransform4f::LookAt(CVector3f::Zero(), result.GetPlane().GetNormal(), CVector3f::Up());
+        xf.SetTranslation(result.GetPoint());
+        CDecalManager::AddDecal(*decal, xf, CUnitVector3f(dir, CUnitVector3f::kN_No), mgr);
+      }
+    }
+    mSweepBeamEnd = result.GetPoint();
+  } else {
+    mSweepBeamEnd = gunPos + 100.f * dir; // 0x0000C720
+  }
+  mSweepBeamEnd.SetZ(gunPos.GetZ()); // 0x0000C774
+}
+
+// fn_10_C104 (0x0000C104, 0x1AC bytes): with a beam effect asset 0xD74
+// (`cmplwi r0, 0x0` at 0x0000C130) and a last direction 0xDA8 that is not the zero vector
+// (`fcmpu cr0, f1, f0` at 0x0000C148, 0x0000C158, 0x0000C168) the angle between the last and this
+// direction (GetAngleDiff at 0x0000C184) is halved (lbl_10_rodata_284 = 0.5f) and the ray count
+// doubled until it is at most lbl_10_rodata_2C0 = 0.05235988f (3 degrees,
+// `fcmpo cr0, f1, f0` at 0x0000C1A8); with more than one ray (`cmpwi r27, 0x1` at 0x0000C1B0) the
+// rays i = 1..n-1 (`cmpw r26, r27` at 0x0000C258) run along last * (lbl_10_rodata_264 = 1.0f - i/n)
+// + this * i/n for the length 0xDC0 (fn_10_BE18 at 0x0000C250). Then the ray along this direction
+// (0x0000C270), and this direction becomes the last (0x0000C274..0x0000C288).
+void CDarkSamus::SweepBeamDamage(CStateManager& mgr) {
+  if (mSweepBeamPart == 0) { // 0x0000C130
+    return;
+  }
+  if (!(mSweepBeamPrevDir == CVector3f::Zero())) { // 0x0000C148
+    float angle = CVector3f::GetAngleDiff(mSweepBeamDir, mSweepBeamPrevDir);
+    int count = 1;
+    while (angle > 0.05235988f) { // 0x0000C1A8
+      angle *= 0.5f;              // lbl_10_rodata_284 (0x0000C190)
+      count <<= 1;
+    }
+    if (count > 1) { // 0x0000C1B0
+      for (int i = 1; i < count; ++i) { // 0x0000C258
+        const float t = static_cast< float >(i) / static_cast< float >(count);
+        const float u = 1.f - t; // 0x0000C224
+        const CVector3f dir(mSweepBeamPrevDir.GetX() * u + mSweepBeamDir.GetX() * t,
+                            mSweepBeamPrevDir.GetY() * u + mSweepBeamDir.GetY() * t,
+                            mSweepBeamPrevDir.GetZ() * u + mSweepBeamDir.GetZ() * t);
+        SweepBeamRay(mgr, dir, mSweepBeamLength);
+      }
+    }
+  }
+  SweepBeamRay(mgr, mSweepBeamDir, mSweepBeamLength);
+  mSweepBeamPrevDir = mSweepBeamDir;
+}
+
+// fn_10_BE18 (0x0000BE18, 0x2EC bytes): one damage ray from the gun along dir for length. The near
+// list and the dynamic ray share a filter built once (the guard `extsb. r0, r0` at 0x0000BE48):
+// include lbl_10_data_1F0 = 0x20 (kMT_Player) and lbl_10_data_1F4 = 0x31 (kMT_Platform),
+// kFT_Include (`li r7, 0x1` at 0x0000BE88); the near list ignores no actor
+// (`li r8, 0x0` at 0x0000BEEC). A hit on the player (`cmplw r4, r0` at 0x0000BF64) takes the beam
+// damage 0xD80 once per beam (0xDC8 bit 0x80, `extrwi. r0, r0, 1, 24` at 0x0000BF70; set by
+// `rlwimi r0, r3, 7, 24, 24` at 0x0000BFF8). Any other hit (`cmplw r4, r0` at 0x0000C00C, against
+// kInvalidUniqueId) takes lbl_10_rodata_294 = 1000.0f (0x0000C034) with radius and knock-back
+// lbl_10_rodata_25C = 0.0f, no immunity (`rlwimi r4, r0, 7, 24, 24` at 0x0000C03C), no radius
+// damage (`rlwimi r0, r3, 6, 25, 25` at 0x0000C054) and the zeroed weapon mode lbl_10_bss_114
+// (0x0000C024). Both go through ApplyDamage from the actor with a filter including lbl_10_data_1E0
+// = 0x3B (kMT_Solid), kFT_IncludeExclude (`li r10, 0x3` at 0x0000BF94, 0x0000C08C), and the zero
+// vector.
+// @ fn_10_BE18
+void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float length) {
+  static const CMaterialFilter skFilter = CMaterialFilter::MakeInclude(
+      CMaterialList(kMT_Player, kMT_Platform)); // 0x0000BE88
+  const CVector3f gunPos = mGunLctrXf.GetTranslation();
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, gunPos, dir, length, skFilter, nullptr);
+  TUniqueId hit = kInvalidUniqueId;
+  CGameCollision::RayDynamicIntersection(mgr, hit, gunPos, dir, length, skFilter, nearList);
+  const CMaterialFilter damageFilter(CMaterialList(kMT_Solid), CMaterialList(),
+                                     CMaterialFilter::kFT_IncludeExclude); // 0x0000BF94
+  if (hit == mgr.GetPlayer(0)->GetUniqueId()) { // 0x0000BF64
+    if (mSweepBeamHitPlayer) { // 0x0000BF70
+      return;
+    }
+    mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), mSweepBeamDamageInfo, damageFilter,
+                    CVector3f::Zero());
+    mSweepBeamHitPlayer = true; // 0x0000BFF8
+  } else if (hit != kInvalidUniqueId) { // 0x0000C00C
+    // 0x0000C018/0x0000C024: the module's weapon mode (lbl_10_bss_114, the type 10 =
+    // kWT_Phazon - the guest keeps the type in the high half of the word) and the store into
+    // the damage info at 0x0000C05C.
+    const CDamageInfo info(mSweepBeamWeaponMode, 1000.f, 0.f, 0.f, true); // 0x0000C034
+    mgr.ApplyDamage(GetUniqueId(), hit, GetUniqueId(), info, damageFilter, CVector3f::Zero());
+  }
 }
 
 // fn_10_1DF74 (0x0001DF74, 0x204 bytes): the state that glides the actor from cover point to
@@ -2387,6 +3928,7 @@ void CDarkSamus::TurnToFacePlayer(CStateManager& mgr, EStateMsg msg, float dt) {
 
 // fn_10_1AA30 (0x0001AA30, 0x2C bytes): `set` (the `clrlwi 24` at 0x0001AA30) == 1 ors the bit
 // into the mask (0x0001AA40), anything else clears it (the andc at 0x0001AA50).
+// @ fn_10_1AA30
 void CDarkSamus::SetAttackBit(uint* mask, uchar set, uint bit) {
   if (set == 1) {
     *mask |= bit;
@@ -2397,6 +3939,7 @@ void CDarkSamus::SetAttackBit(uint* mask, uchar set, uint bit) {
 
 // fn_10_1A980 (0x0001A980, 0xB0 bytes): the first bit always, the next three up to the first
 // that is 0xFFFF (the whole-word compares at 0x0001A9B0/0x0001A9D8/0x0001AA00).
+// @ fn_10_1A980
 void CDarkSamus::SetAttackBits(uint* mask, uchar set, uint a, uint b, uint c, uint d) {
   SetAttackBit(mask, set, a);
   if (b != 0xFFFF) {
@@ -2412,6 +3955,7 @@ void CDarkSamus::SetAttackBits(uint* mask, uchar set, uint a, uint b, uint c, ui
 
 // fn_10_1A8F8 (0x0001A8F8, 0x88 bytes): every one of the 24 bits (0x0001A964) except the four
 // given (the cmpw chain at 0x0001A930..0x0001A948).
+// @ fn_10_1A8F8
 void CDarkSamus::SetAttackBitsExcept(uint* mask, uchar set, uint a, uint b, uint c, uint d) {
   for (int i = 0; i < 24; ++i) {
     const uint bit = 1u << i;
@@ -2422,10 +3966,12 @@ void CDarkSamus::SetAttackBitsExcept(uint* mask, uchar set, uint a, uint b, uint
 }
 
 // fn_10_1AA5C (0x0001AA5C, 0x10 bytes): the bit is 2 (the subfic/cntlzw at 0x0001AA5C).
+// @ fn_10_1AA5C
 bool CDarkSamus::IsAttackTwo(uint bit) { return bit == 2; }
 
 // fn_10_10BBC (0x00010BBC): the index of the bit (the first i < 24 with 1 << i == bit), else
 // 0xFFFF.
+// @ fn_10_10BBC
 int CDarkSamus::GetAttackBitIndex(uint bit) {
   for (int i = 0; i < 24; ++i) {
     if ((1u << i) == bit) {
@@ -2439,6 +3985,7 @@ int CDarkSamus::GetAttackBitIndex(uint bit) {
 // offsets: 1 0x44, 4 0x48, 8 0x4C, 0x10 0x50, 0x20 0x54, 0x40 0x5C, 0x80 0x60, 0x100 0x64,
 // 0x200 0x3C, 0x400 0x38, 0x10000 0x70, 0x20000 0x74, 0x100000 0x68, 0x200000 0x6C, 0x400000
 // 0x7C, 0x800000 0x80); every other id answers lbl_10_rodata_3FC = 0.0f.
+// @ fn_10_1A6C4
 float CDarkSamus::GetAttackWeight(const SLdrDSStageInfo& stage, int attack) {
   switch (attack) {
   case 0x1: return stage.meleeAttack;                   // 0x0001A86C
@@ -2464,6 +4011,7 @@ float CDarkSamus::GetAttackWeight(const SLdrDSStageInfo& stage, int attack) {
 // fn_10_17D50 (0x00017D50, 0x90 bytes): no stage answers false (0x00017D78); 0x800 is the stage's
 // lookAround byte (the lbz 0x40 at 0x00017DA0), 2 is false (0x00017D98), every other attack is
 // on when its weight is above lbl_10_rodata_3FC = 0.0f (the fcmpo's gt bit, 0x00017DC4).
+// @ fn_10_17D50
 bool CDarkSamus::IsAttackEnabled(CStateManager& mgr, int attack) const {
   const CDarkSamusBattleStage* stage = GetBattleStage(mgr);
   if (stage == nullptr) {
@@ -2481,6 +4029,7 @@ bool CDarkSamus::IsAttackEnabled(CStateManager& mgr, int attack) const {
 
 // fn_10_11308 (0x00011308, 0x2C bytes): the player (the state manager's 0x14FC) is morphed - its
 // 0x390 is 0 and its 0x38C is 1 (the subfic/cntlzw at 0x00011324).
+// @ fn_10_11308
 bool CDarkSamus::IsPlayerMorphed(CStateManager& mgr) {
   const CPlayer* player = mgr.GetPlayer(0);
   const int state = player->GetSpawnedMorphballState() == 0 // 0x00011310
@@ -2490,13 +4039,16 @@ bool CDarkSamus::IsPlayerMorphed(CStateManager& mgr) {
 }
 
 // fn_10_17CEC (0x00017CEC, 0x64 bytes): the distance from the player (0x14FC) to the actor
-// (the fsubs of 0x54/0x58/0x5C and Magnitude at 0x00017D3C).
+// (the fsubs of 0x54/0x58/0x5C and Magnitude at 0x00017D3C). It has no branch, and it runs in
+// every fight (the attack pick and the triggers call it).
+// @ fn_10_17CEC
 float CDarkSamus::GetDistanceToPlayer(CStateManager& mgr) const {
   return (GetTranslation() - mgr.GetPlayer(0)->GetTranslation()).Magnitude();
 }
 
 // fn_10_1AA6C (0x0001AA6C, 0x58 bytes): 0 below the attack range (0x3DC, the bge at 0x0001AA8C),
 // 2 above it (0x3E0, the ble at 0x0001AAA0), 1 inside.
+// @ fn_10_1AA6C
 int CDarkSamus::GetPlayerRangeBand(CStateManager& mgr) const {
   const float dist = GetDistanceToPlayer(mgr);
   if (dist < mMinAttackRange) {
@@ -2512,6 +4064,7 @@ int CDarkSamus::GetPlayerRangeBand(CStateManager& mgr) const {
 // (0x0001A5F8), the attack 2 (fn_10_1AA5C, 0x0001A610) or one the stage turns off (fn_10_17D50,
 // 0x0001A628) gets lbl_10_data_C4C = 0; the others get their stage weight (fn_10_1A6C4, the
 // fctiwz at 0x0001A670) and their bit is added to the mask (the add at 0x0001A69C).
+// @ fn_10_1A5BC
 void CDarkSamus::CollectStageWeights(CStateManager& mgr, SAttackWeights& weights,
                                      uint* mask) const {
   for (int i = 0; i < 24; ++i) {
@@ -2532,6 +4085,11 @@ void CDarkSamus::CollectStageWeights(CStateManager& mgr, SAttackWeights& weights
 // fn_10_1A554 (0x0001A554, 0x68 bytes): faded (0xDEC == 1, 0x0001A564) the mask keeps only the
 // freeze beam, the melee and the phazon attacks (fn_10_1A8F8 with 0x100000, 1, 0x400000,
 // 0x800000); visible it loses the freeze beam and the fade missile (0x100000, 0x200000).
+// fn_10_1A554 (0x0001A554, 0x68 bytes): the fade attacks (the fade flag at 0xDEC).
+// Arms: the actor is fading out (the flag is one) and it is not.
+// // The arms: the coverage run (tools/cov/specs/darksamus_helpers2.py, the rooftop fight: Sanctuary 10_cliff_rooftop, boss u04f7, 6400 updates) showed the "not fading" arm; the fade-out arm was forced (the flag
+// written at the entry, tools/cov/specs/darksamus_helpers2_force.py).
+// @ fn_10_1A554
 void CDarkSamus::CollectFadeAttacks(CStateManager&, SAttackWeights&, uint* mask) const {
   if (mFadeOut == 1) {
     SetAttackBitsExcept(mask, 0, 0x100000, 1, 0x400000, 0x800000);
@@ -2544,6 +4102,7 @@ void CDarkSamus::CollectFadeAttacks(CStateManager&, SAttackWeights&, uint* mask)
 // scatter shots and the dive (8, 0x10, 0x20), the missile jump, the super missile, the taunt and
 // the sweep beam (0x80, 0x100, 0x200, 0x10000) and turns the normal missile on (0x40, set 1 at
 // 0x0001A2FC); otherwise the melee dash (4) goes.
+// @ fn_10_1A278
 void CDarkSamus::CollectMorphballAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) const {
   if (IsPlayerMorphed(mgr) == true) {
     SetAttackBits(mask, 0, 0x8, 0x10, 0x20, 0xFFFF);
@@ -2557,6 +4116,7 @@ void CDarkSamus::CollectMorphballAttacks(CStateManager& mgr, SAttackWeights&, ui
 // fn_10_1A440 (0x0001A440, 0x114 bytes): by the range band (fn_10_1AA6C): close (0) keeps only
 // the melee, the attack 2 and the look-around (1, 2, 0x800); in range (1) loses the melee; far
 // (2) loses 1, 4, 8, 0x10, then 0x20, 0x40, 0x100, then 0x200000, 0x100000.
+// @ fn_10_1A440
 void CDarkSamus::CollectRangeAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) const {
   switch (GetPlayerRangeBand(mgr)) {
   case 0:
@@ -2578,6 +4138,7 @@ void CDarkSamus::CollectRangeAttacks(CStateManager& mgr, SAttackWeights&, uint* 
 // the melee, the melee dash and the missile jump (1, 4, 0x80: 0x0001A398..0x0001A3A8). A melee as
 // the newest one within lbl_10_rodata_544 = 2.5f of 0x9C0 (the fcmpo at 0x0001A3F0) clears the
 // melee bit.
+// @ fn_10_1A34C
 void CDarkSamus::CollectHistoryPenalties(CStateManager&, SAttackWeights& weights,
                                          uint* mask) const {
   const int last = static_cast< int >(mAttackHistoryCount) - 1;
@@ -2596,6 +4157,7 @@ void CDarkSamus::CollectHistoryPenalties(CStateManager&, SAttackWeights& weights
 // fn_10_1A1D4 (0x0001A1D4, 0xA4 bytes): the look-around (0x800) goes; a player outside
 // lbl_10_rodata_4C4 = 0.17453292f (10 degrees) of the facing (fn_10_142F4, 0x0001A234) leaves only
 // the melee (fn_10_1A8F8 with 1).
+// @ fn_10_1A1D4
 void CDarkSamus::CollectFacingAttacks(CStateManager& mgr, SAttackWeights&, uint* mask) const {
   SetAttackBits(mask, 0, 0x800, 0xFFFF, 0xFFFF, 0xFFFF);
   if (!IsPlayerInFront(mgr, 0.17453292f)) {
@@ -2608,6 +4170,7 @@ void CDarkSamus::CollectFacingAttacks(CStateManager& mgr, SAttackWeights&, uint*
 // is 0xFFFF (0x0001999C). A draw of the state manager's random (the CRandom16 at 0x16E4,
 // Next at 0x000199A8) modulo the total (the divw/mullw at 0x000199AC) walks the positive weights
 // until it is used up (the subf. at 0x000199D8) and picks that attack's bit.
+// @ fn_10_19918
 int CDarkSamus::PickWeightedAttack(CStateManager& mgr, SAttackWeights& weights, uint mask) const {
   int total = 0;
   for (int i = 0; i < weights.count; ++i) {
@@ -2690,6 +4253,7 @@ int CDarkSamus::ClassifyLineToPlayer(CStateManager& mgr) const {
 // 0x00019AC0). Otherwise the line to the player (fn_10_1905C, 0x00019AD0): blocked short of it
 // (1) adds 10 to the normal and the super missile's weights (0x40, 0x100: 0x00019AEC..), blocked
 // beyond it (2) adds 10 to the dive attack's (0x20, 0x00019B28).
+// @ fn_10_19A1C
 void CDarkSamus::CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights,
                                     uint* mask) const {
   const CVector3f point = GetRepulsionPoint(mgr, nullptr);
@@ -2717,6 +4281,7 @@ void CDarkSamus::CollectLineAttacks(CStateManager& mgr, SAttackWeights& weights,
 // inside that region (the world-space point against the region, 0x000148A4) must be on the
 // mesh (an off-mesh point answers the "no region" flag, 0x000148D8) within lbl_10_rodata_40C =
 // 5.0f of the actor's own height (0x000148FC/0x00014908).
+// @ fn_10_14648
 bool CDarkSamus::CanWalkToPlayer(CStateManager& mgr) const {
   const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
   CPFRegion* inside = nullptr;
@@ -2771,6 +4336,9 @@ static CVector3f GetDashDirection(uint slot, const CVector3f& f);
 // 0x000165C8) over the whole line, the filter including lbl_10_data_C60 / C64 (0x3B kMT_Solid,
 // 0x30 kMT_AIBlock; type 1 at 0x00016550 = include only); fn_10_2C8 is the module's copy of the
 // CRayCastResult copy constructor, and the answer is the result not valid (0x000165DC).
+// Arms: the ray cast found nothing (the line is clear) and it found something (the
+// line is blocked); the coverage run showed both (the caller fn_10_16418 answered false
+// four times, and it is the same test).
 // @ fn_10_164C0
 bool CDarkSamus::IsGunLineClear(CStateManager& mgr, const CVector3f& offset,
                                 const CVector3f& target) const {
@@ -2786,6 +4354,8 @@ bool CDarkSamus::IsGunLineClear(CStateManager& mgr, const CVector3f& offset,
 // fn_10_16418 (0x00016418, 0xA8 bytes): the gun line (fn_10_164C0 at 0x000164A4) raised by
 // lbl_10_rodata_40C = 5.0f in z to the player's aim position (the vtable call at 0x00016458,
 // slot 0x54 = GetAimPosition, dt lbl_10_rodata_3FC = 0.0f).
+// Arms: the aim line is clear and it is blocked; the coverage run showed both (20 true
+// and 4 false).
 // @ fn_10_16418
 bool CDarkSamus::IsPlayerAimLineClear(CStateManager& mgr) const {
   const CVector3f aim = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
@@ -2829,6 +4399,7 @@ static int GetRingRayCount() { return 8; }
 // is cast (RayStaticIntersection at 0x00016814) over reach times its length, the filter including
 // lbl_10_data_C54 / C58 (0x3B kMT_Solid, 0x30 kMT_AIBlock) and excluding C5C (0x31 kMT_Platform).
 // A valid hit (`cmplwi r0, 0x1` at 0x00016828) answers false, anything else true.
+// @ fn_10_166AC
 bool CDarkSamus::IsRingRayClear(CStateManager& mgr, const CVector3f& dest, int i, float reach,
                                 float radius) const {
   const CVector3f offset = radius * GetRingRayOffset(i);
@@ -2912,6 +4483,9 @@ CVector3f CDarkSamus::GetDodgeStepOffset(int slot) const {
 
 // fn_10_16B1C (0x00016B1C, 0x2C bytes): the point on the path (OnPath of 0x7C0 at 0x00016B2C
 // answers kR_Success).
+// Arms: the point is on the path and it is not. The coverage run (tools/cov/run.sh with
+// tools/cov/specs/darksamus_helpers2_arms.py, the rooftop fight) saw both: 47 on the path
+// and 21 off it.
 // @ fn_10_16B1C
 bool CDarkSamus::IsOnPath(const CVector3f& point) const {
   return mPathFindSearch.OnPath(point) == CPathFindSearch::kR_Success;
@@ -3015,6 +4589,7 @@ void CDarkSamus::CollectReachAttacks(CStateManager& mgr, SAttackWeights&, uint* 
 // 1A1D4, 19B64, 19A1C), the copy of the weights into 0xC54/0xC58 (0x000198C0..0x000198DC), the
 // mask into 0xCB8 (0x000198F0) and the weighted pick (fn_10_19918) into 0xCBC (0x000198FC),
 // which it answers.
+// @ fn_10_197D8
 int CDarkSamus::PickVisibleAttack(CStateManager& mgr) {
   SAttackWeights weights;
   weights.count = 0;
@@ -3037,6 +4612,7 @@ int CDarkSamus::PickVisibleAttack(CStateManager& mgr) {
 // 1A1D4, then a player the actor cannot walk to (fn_10_14648 false) takes away the boost ball
 // and the sweep beam (fn_10_1A980 with 0x20000, 0x10000); the copy and the pick as in
 // fn_10_197D8.
+// @ fn_10_1969C
 int CDarkSamus::PickFadedAttack(CStateManager& mgr) {
   SAttackWeights weights;
   weights.count = 0;
@@ -3063,6 +4639,7 @@ int CDarkSamus::PickFadedAttack(CStateManager& mgr) {
 // faded its +0xC, 0x00019604/0x00019618; no stage lbl_10_rodata_3E8 = 1.0f; the fnmsubs at
 // 0x0001962C). A pick counts (0x988, 0x00019640), runs the faded picker when 0xDEC is set
 // (0x00019648), stores the attack in 0x984 and the time in 0x98C (0x00019678).
+// @ fn_10_1954C
 void CDarkSamus::UpdateAttackPick(CStateManager& mgr) {
   if (mCurrentAttack != 0xFFFF) {
     return;
@@ -3123,6 +4700,8 @@ uint* CDarkSamus::EraseFinishedAttack(uint* pos) {
 // fn_10_1B5E4 at 0x0001B574), pushes the current one (0x0001B590), counts it (0x0001B5A4), clears
 // 0x980 to 0xFFFF (0x0001B5A8) and turns the delay into a time (0x990 += 0x8B0, 0x0001B5B8).
 // Update does nothing.
+// @ fn_10_1B478
+// @ fn_10_1B5E4
 void CDarkSamus::UpdateCurrentAttack(uint attack, CStateManager& mgr, EStateMsg msg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -3290,23 +4869,17 @@ CVector3f CDarkSamus::GetScatterShotAimPoint(CStateManager& mgr) const {
 // 0x000131DC: the info's token, kWT_AI = `li r5, 0xb`, the transform, the info's damage at +0xC,
 // the uid, the area 0x4, the owner 0x8 and lbl_10_rodata_488 = 45.0f) is added (0x000131F4), or
 // 0xBE4 is cleared when the allocation fails (0x00013204).
-//
-// Port limit: CScattershotProjectile is the module's own CWeapon subclass (its vtable is
-// lbl_10_data_40, its ~57 functions fill 0x0..0x44D0) and the port does not have it yet. The
-// host's CEnergyProjectile stands in for it with the same description, weapon type, transform,
-// damage, uid, area and owner (the impact arguments are CPatterned::LaunchProjectile's); it is one
-// shot rather than a swarm, so fn_10_C98's added shots are a stand-in and the next projectile
-// spawns once the current one is gone.
+// CScattershotProjectile is src/MetroidPrime/Enemies/PortCScattershotProjectile.cpp.
 void CDarkSamus::FireScatterShotProjectile(CStateManager& mgr) {
   const CVector3f aim = GetScatterShotAimPoint(mgr);
   const CTransform4f xf = CTransform4f::LookAt(mGunLctrXf.GetTranslation(), aim, mGunLctrXf.GetUp());
   if (mScatterProjectileUid != kInvalidUniqueId) {
-    if (TCastToPtr< CEnergyProjectile >(mgr.ObjectById(mScatterProjectileUid)) == nullptr) {
-      mScatterProjectileUid = kInvalidUniqueId;
-    } else {
-      FsmStandIn("fn_10_C98", "CScattershotProjectile add shot");
+    if (CScattershotProjectile* scatter =
+            TCastToPtr< CScattershotProjectile >(mgr.ObjectById(mScatterProjectileUid))) {
+      scatter->AddShot(mGunLctrXf.GetTranslation(), xf.GetColumn(kDY)); // 0x0001308C
       return;
     }
+    mScatterProjectileUid = kInvalidUniqueId;
   }
   float chance = mScatterChance;
   if (chance > 1.f) {
@@ -3318,11 +4891,9 @@ void CDarkSamus::FireScatterShotProjectile(CStateManager& mgr) {
     return;
   }
   mScatterProjectileUid = mgr.AllocateUniqueId();
-  CEnergyProjectile* projectile = rs_new CEnergyProjectile(
-      true, ProjectileInfo()->Token(), kWT_AI, xf, kMT_Character, ProjectileInfo()->GetDamage(),
-      mScatterProjectileUid, GetCurrentAreaId(), GetUniqueId(), kInvalidUniqueId,
-      CWeapon::kPA_None, false, CVector3f(1.f, 1.f, 1.f), CImpactVisorEffect::None(), false, true,
-      false, 1.f, 4.f, 4.f);
+  CScattershotProjectile* projectile = rs_new CScattershotProjectile(
+      ProjectileInfo()->Token(), kWT_AI, xf, ProjectileInfo()->GetDamage(), mScatterProjectileUid,
+      GetCurrentAreaId(), GetUniqueId(), 45.f); // lbl_10_rodata_488
   if (projectile != nullptr) {
     mgr.AddObject(projectile);
     return;
@@ -3336,6 +4907,12 @@ void CDarkSamus::FireScatterShotProjectile(CStateManager& mgr) {
 // the timer 0xBA8 counts dt (0x00011A78). With a rate 0xBE0 above 0.0f (0x00011A84) one projectile
 // (fn_10_12F60, 0x00011AA8) fires per lbl_10_rodata_3E8 = 1.0f / rate of the timer (0x00011A8C,
 // the loop at 0x00011AB4).
+// fn_10_11974 (0x00011974, 0x164 bytes): the scatter shot's fire timer (the flag at
+// 0xBAD, the rate at 0xBE0). Arms: not firing (0x000119A4) - the shot is off, the rate at
+// zero - dead on shipped data (the rate comes from the loader's constructor argument
+// (mScatterShotProjectilesPerSecond) and is above zero in every hit) - and firing.
+// // The arms: the coverage run (tools/cov/specs/darksamus_helpers2.py, the rooftop fight: Sanctuary 10_cliff_rooftop, boss u04f7, 6400 updates) showed both.
+// @ fn_10_11974
 void CDarkSamus::UpdateScatterShotFire(CStateManager& mgr, float dt) {
   if (mScatterFiring == 0) {
     return;
@@ -3386,7 +4963,7 @@ static pas::EStepDirection GetDashStepDirection(int slot) {
 }
 
 // fn_10_EB90 (0x0000EB90, 0x228 bytes): the dash slot's direction from the flat facing axis f, the
-// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7; bgt` at 0x0000EB98 to the zero vector):
+// jump table jumptable_10_data_F74 (`cmplwi r4, 0x7` at 0x0000EB98 to the zero vector):
 // 0 f, 1 -f (lbl_10_rodata_3EC = -1.0f), 2 (-f.y, f.x, 0), 3 (f.y, -f.x, 0), and the diagonals
 // normalized (AsNormalized at 0x0000EC70/0x0000ECC4/0x0000ED2C/0x0000ED80): 4 the sum of f and
 // slot 2's, 6 slot 2's minus f, 5 the sum of f and slot 3's, 7 slot 3's minus f (the `cmpwi` at
@@ -3479,7 +5056,7 @@ void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
        it != nearList.end(); ++it) {
     // The near list holds actors only; retail passes the entity on as one.
     CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it));
-    if (actor != nullptr) { // `mr. r6, r3; beq` at 0x00014BE4/0x00014BE8
+    if (actor != nullptr) { // `mr. r6, r3` at 0x00014BE4/0x00014BE8
       mgr.ApplyRadiusDamage(*this, GetTranslation(), *actor, GetUniqueId(), info);
     }
   }
@@ -3667,7 +5244,7 @@ float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* 
     if (endDistSq < playerDistSq) {
       weight = weight * 0.5f;
     }
-    if (target != nullptr) { // `cmplwi r25, 0x0; beq` at 0x00015D6C/0x00015D70
+    if (target != nullptr) { // `cmplwi r25, 0x0` at 0x00015D6C/0x00015D70
       const float dist = (*target - end).Magnitude();
       if (dist < mMaxAttackRange) {
         weight = weight * (1.f - dist / mMaxAttackRange);
@@ -3705,6 +5282,13 @@ float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* 
 // set at 0x00015078). Then the stuck count: standing still for more than lbl_10_rodata_42C = 1.2f
 // (0x0001508C) counts 0x968 up and two or more (`cmplwi r0, 0x2` at 0x000150A4) fire the stuck
 // blast (fn_10_14A00); otherwise the count is cleared (0x000150C0).
+// fn_10_14FE0 (0x00014FE0, 0xFC bytes): the next dash. Arms: no dash to take (the pick
+// answered zero), the actor stood still (the still timer above 1.2f, 0x000150A4) and the
+// dash is stuck (the counter at 0x968 is two or more).
+// // The arms: the coverage run (tools/cov/specs/darksamus_helpers2.py, the rooftop fight: Sanctuary 10_cliff_rooftop, boss u04f7, 6400 updates) showed the first two; the "stood still" and "stuck" arms were forced (the
+// still timer and the counter written at the entry,
+// tools/cov/specs/darksamus_helpers2_force.py).
+// @ fn_10_14FE0
 void CDarkSamus::PickNextDash(CStateManager& mgr) {
   PushAttacker(FindBestCoverPoint(mgr));
   float weights[8] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
@@ -3768,6 +5352,15 @@ void CDarkSamus::StartNextDashStep(CStateManager& mgr) {
 // `extrwi.` at 0x00014DD8) the step command (fn_10_12C2C) and, while a step is left and the base's
 // GetAnimOver answers (CTriggerData(0.0f), 0x00014E14), the next step (fn_10_14C50). Deactivate
 // (`cmpwi r31, 0x2` at 0x00014E30) clears the steps left.
+// fn_10_14D14 (0x00014D14, 0x148 bytes): the double dash. Arms: the activate (the dash's
+// state is reset and the next dash is picked, 0x00014D44), the deactivate (the step counter is
+// cleared, 0x00014D8C), the dash is not blocked (the step command) and the dash is blocked,
+// and the dash has a step left and the animation is over (the next dash step,
+// 0x00014DA4).
+// The coverage run (tools/cov/run.sh with tools/cov/specs/darksamus_helpers2_loc.py, the
+// rooftop fight: 109 calls) showed all of them: the activate 3, the deactivate 3, the step
+// command 108 (the dash is blocked once), the next dash step 1.
+// @ fn_10_14D14
 void CDarkSamus::UpdateDoubleDash(CStateManager& mgr, EStateMsg msg) {
   UpdateCurrentAttack(0x8000, mgr, msg);
   if (msg == kStateMsg_Activate) {

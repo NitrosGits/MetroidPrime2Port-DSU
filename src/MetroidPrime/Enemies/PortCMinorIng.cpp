@@ -62,9 +62,17 @@ typedef CPatterned::StateMachine::CodeFunc CodeFunc;
 
 // Retail data_1A8 (34 triggers), data_47C (15 states) and data_5A8 (5 code functions), installed
 // by fn_44_9758; the names are the REL's own strings.
-// The REL's module constructor (fn_44_ABCC, the REL's .ctors entry) announces those names as
-// global objects and builds the tables; fn_44_2984 is the destructor it registers with them. The
-// host's own tables carry the names, so the body is the class's own.
+//
+// fn_44_ABCC (0x8b8) is the REL's .ctors entry, the compiler's static initialiser: it copies the
+// three tables' records into the name tables in .data and registers the two global strings it
+// builds (fn_44_2984 is the destructor it registers with them). The port's three arrays below
+// are that initialiser's result - the same 34 trigger names, the same 15 state names and the
+// same 5 code-function names, in the same order, each pointing at the retail function the
+// record names. `tools/drivers/minoring_tables.py` reads both sides and compares them entry for
+// entry (34 triggers, 15 states, 5 code functions, no mismatch), so the marker sits above the
+// first of them, the way the EmperorIngStage3 port marks fn_18_E180.
+//
+// @ fn_44_ABCC
 static CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     {"PathShagged", static_cast< TriggerFunc >(&CMinorIng::PathShagged)},
     {"ShouldMoveUnderBall", static_cast< TriggerFunc >(&CMinorIng::ShouldMoveUnderBall)},
@@ -351,15 +359,17 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mLastLoggedState(nullptr)
 , mPathArea(nullptr)
 // The retail clears every flag of the byte at 0xd3d and every flag of the byte at 0xd3e in this
-// order (asm 0xA284-0xA2DC and asm 0xA2E4-0xA330), most significant bit first.
-, mAttackPatternProjectile(false) // 0xd3d 0x80 (asm 0xA284)
+// order (asm 0xA284-0xA2DC and asm 0xA2E4-0xA330), most significant bit first. The flags are
+// the retail's own bits: the host's bitfields are declared in the guest's LSB-first order, so
+// the host's two bytes match the retail's byte for byte.
+, mHasPatrolPath(false)           // 0xd3d 0x80 (asm 0xA284)
 , mPathFindActive(false)          // 0xd3d 0x40 (asm 0xA290)
 , mPointPathFinding(false)        // 0xd3d 0x20 (asm 0xA29C)
 , mFoundMovementPos(false)        // 0xd3d 0x10 (asm 0xA2A8)
 , mRecalculatePath(false)         // 0xd3d 0x08 (asm 0xA2B4)
 , mIdle(false)                    // 0xd3d 0x04 (asm 0xA2C0)
 , mFollowingAttackPath(false)     // 0xd3d 0x02 (asm 0xA2CC)
-, mHasPatrolPath(false)           // 0xd3d 0x01 (asm 0xA2D8)
+, mAttackPatternProjectile(false) // 0xd3d 0x01 (asm 0xA2D8)
 , mPuddleHitByWeapon(false)       // 0xd3e 0x80 (asm 0xA2E4)
 , mCancelStun(false)              // 0xd3e 0x40 (asm 0xA2F0)
 , mKnockAnimCancel(false)         // 0xd3e 0x20 (asm 0xA2FC)
@@ -480,8 +490,7 @@ bool CMinorIng::IsTargetInAttackAngle(CStateManager& mgr) const {
 
 // @ fn_44_88DC
 bool CMinorIng::IsMoveClear(CStateManager& mgr, const CVector3f& offset, bool checkStatic) const {
-  // [?] retail first calls fn_44_3670 (snap to the floor) from this const-looking check; the
-  // host keeps that side effect out of it.
+  const_cast< CMinorIng* >(this)->SnapToFloor(mgr); // 0x88FC: retail snaps first, even here
   if ((mData.mFlags156 & 0x20) != 0) {
     return true;
   }
@@ -647,7 +656,7 @@ void CMinorIng::UpdateTimers(float dt) {
 // @ fn_44_3E20
 void CMinorIng::UpdateLocomotionType() {
   const pas::ELocomotionType type =
-      (mForm == kF_Puddle || mForm == kF_IntoCorporeal || mForm == kF_IntoPuddle)
+      (mForm == kF_Puddle || mForm == kF_IntoPuddle) // 0x3E34-0x3E58: forms 1 and 3
           ? pas::kLT_Relaxed
           : pas::kLT_Combat;
   if (type != BodyController()->GetLocomotionType()) {
@@ -1005,8 +1014,9 @@ bool CMinorIng::ShouldPathFind(CStateManager& mgr, const CTriggerData& data) con
   if (!InMaxRange(mgr, data) || !LineOfSight(mgr, data) || ShouldMoveUnderBall(mgr, data)) {
     return true;
   }
+  // 0x3DB0: true when the raised point is *off* the mesh (OnPath != kR_Success).
   return !mPointPathFinding &&
-         mPathFindSearch.OnPath(RaisedPoint(GetTranslation())) == CPathFindSearch::kR_Success;
+         mPathFindSearch.OnPath(RaisedPoint(GetTranslation())) != CPathFindSearch::kR_Success;
 }
 
 // @ fn_44_3DE0

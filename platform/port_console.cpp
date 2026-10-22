@@ -23,9 +23,15 @@
 #include "port_overlay_internal.h"
 #include "port_ui_common.h"
 #include "port_warp.h"
+#ifdef MP_PORT_COVERAGE
+#include "port_coverage.h"
+#endif
 
 #include "MetroidPrime/CStateManager.hpp"
+#include "Kyoto/Math/CRelAngle.hpp"
 #include "MetroidPrime/CMemoryCard.hpp"
+
+extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CWorld.hpp"
 #include "Kyoto/CResFactory.hpp"
 #include "Kyoto/CSimplePool.hpp"
@@ -35,11 +41,14 @@
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
+#include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
+#include "MetroidPrime/Factories/CScannableObjectInfo.hpp"
+#include "Kyoto/Animation/CInt32POINode.hpp"
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "MetroidPrime/CEntity.hpp"
@@ -47,16 +56,21 @@
 #include "MetroidPrime/CHealthInfo.hpp"
 #include "MetroidPrime/CDamageInfo.hpp"
 #include "Collision/CMaterialFilter.hpp"
+#include "Collision/CRayCastResult.hpp"
+#include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/CGenericFSM2State.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
 #include <aurora/gfx.h>
+#include <aurora/perf.h>
 
 #include <atomic>
 #include <cctype>
@@ -116,6 +130,15 @@ struct SQueued {
 
 std::mutex sQueueMutex;
 std::deque< SQueued > sQueue;
+
+// `at <update> <command>`: commands waiting for a game update (game thread only, no lock).
+struct SDeferred {
+  unsigned update;
+  std::string line;
+  unsigned generation;
+};
+std::vector< SDeferred > sDeferred;
+unsigned sExecutingGeneration = 0;
 
 // macOS has no MSG_NOSIGNAL; SO_NOSIGPIPE is set on the client socket instead.
 #ifdef MSG_NOSIGNAL
@@ -479,12 +502,16 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "warp <slot|id|name>         load an area of the current world (what MP2_TELEPORT takes)\n"
       "nextarea | prevarea         the next or previous existing area of this world\n"
       "door | dock | station       stand in front of the nearest door / doorway / save station\n"
-      "heal | kill                 refill energy, or kill the player (a respawn test)\n"
+      "heal | kill [id]            refill energy; kill the player (a respawn test) or an actor\n"
       "damage <id> <n> [kb] [w]    hit an actor for n as a player shot (w = power, missile,\n"
-      "                            cannonball, dark, light, annihilator, powerbomb, darkburst,\n"
-      "                            sunburst, sonicboom; kb = knockback power)\n"
+      "                            cannonball, dark, light, annihilator, powerbomb, bomb,\n"
+      "                            boostball, screwattack, darkburst,\n"
+      "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
+      "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"
+      "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
+      "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
       "msaa <1|4> | aniso <1..16>  anti-aliasing and anisotropic filtering (applied next frame)\n"
@@ -495,6 +522,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "vsync <0|1>                 vertical sync, as the F1 Render row does\n"
       "interp [0|1]                smooth frames: the camera between ticks with the cap off\n"
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
+      "boost                       boost-ball release on the morphed player\n"
+      "noise <type> [x y z]        InformListeners at the player (6 = safe-zone noise)\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
@@ -508,17 +537,28 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "settings [<key> <value>|self-test]  settings.cfg's entries; set one (and save), or check every key round-trips\n"
       "logfile <0|1>               stdout and stderr also go to metroid_prime2_port.log (next launch)\n"
       "objs [filter]               objects of the world: uid, editor id, class, area, position\n"
-      "obj <id>                    one object (an id as `objs` prints it: u046e): health, fsm, messages\n"
+      "obj <id>                    one object (an id as `objs` prints it: u046e, or e<editor id>): health, fsm, messages\n"
       "send <id> <msg>             deliver a script message to an object (name or number)\n"
+      "covdump                     coverage build: write the gcov counters now (and zero them)\n"
       "hurt <id> <amount> [weapon] damage an object as a shot would (weapon 0 = power beam)\n"
       "frame                       the game updates run so far (what MP2_FRAMES counts)\n"
-      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2 sub-machines too)\n"
+      "fsm <id> <state>            force a patterned actor's AI state by name (as `obj` prints it; FSM2\n"
+      "                              sub-machines too; an unknown name lists the valid ones)\n"
+      "bodystate <id> <n>          set a patterned actor's body state (the pas::EAnimationState index)\n"
+      "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
+      "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
+      "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"
+      "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
+      "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
+      "material <id> [+|-]<m> ...  show or add/remove an actor's materials (name w/o kMT_, or bit; -solid)\n"
+      "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
       "                            (travelling along dir; default from the player): a real projectile\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
+      "ray <x> <y> <z> [len]       static surfaces and the world hit straight below the point\n"
       "face <yaw deg>              turn the player where it stands (0 = +y, 90 = +x)\n"
       "aim <yaw> <pitch>          point the view outright, in degrees; negative pitch looks down\n"
       "items                       power-up amounts and capacities\n"
@@ -528,9 +568,12 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "give <item> [n] | take      add an item (capacity and amount), or remove capacity\n"
       "press <a+b+...> [updates]   hold pad buttons (0 updates: until the next press/stick)\n"
       "grapple <id> [d]            wake a grapple point, stand d (8) units from it facing it, hold L\n"
+      "scan <id> [d] [updates]     scan an actor: d (40) units away, orbit locked, L held (alone: progress)\n"
       "stick <x> <y> [updates]     hold the main stick, -127..127\n"
       "cstick <x> <y> [updates]    hold the C-stick (Spring Ball in Morph Ball), -127..127\n"
       "screenshot                  the F12 capture; the log names the file it wrote\n"
+      "at <update> <command>       run one command on that game update (`frame`), not on arrival,\n"
+      "                            so runs at different speeds act on the same tick\n"
       "help                        this list\n"
       "a; b; c                     run several commands in the same game tick (one reply each)\n";
 }
@@ -655,6 +698,33 @@ void CmdStatus(CStateManager& mgr, const Args&, std::string& out) {
                   stats != nullptr ? stats->lastVertSize : 0u,
                   stats != nullptr && stats->drawCallCount < 40 ? "  <- almost nothing drawn" : "");
     out += line;
+    // Per-frame work counters (aurora/perf.h): render pass breaks by reason (each one is a full
+    // colour+depth store and reload on a tiled GPU), GXCopyTex calls by caller (module offsets,
+    // addr2line -f -e metroid_prime2_port <offset>), texture cache traffic, extra draws.
+    if (const AuroraPerfFrame* perf = aurora_perf_last_frame(); perf != nullptr) {
+      const uint32_t* b = perf->passBreaks;
+      const uint32_t* c = perf->counters;
+      std::snprintf(line, sizeof(line),
+                    "perf breaks copy %u depthsnap %u encoder %u offscreen %u resolve %u | copytex %u"
+                    " | tex hit %u miss %u hash %u upload %u init %u initdata %u | dstalphadup %u"
+                    " bindinval %u\n",
+                    b[AURORA_PERF_BREAK_COPY], b[AURORA_PERF_BREAK_DEPTH_SNAPSHOT],
+                    b[AURORA_PERF_BREAK_ENCODER_TASK], b[AURORA_PERF_BREAK_OFFSCREEN],
+                    b[AURORA_PERF_BREAK_RESOLVE], c[AURORA_PERF_COPY_TEX], c[AURORA_PERF_TEX_OBJ_HIT],
+                    c[AURORA_PERF_TEX_OBJ_MISS], c[AURORA_PERF_TEX_HASH], c[AURORA_PERF_TEX_UPLOAD],
+                    c[AURORA_PERF_TEX_INIT], c[AURORA_PERF_TEX_INIT_DATA], c[AURORA_PERF_DST_ALPHA_DUP],
+                    c[AURORA_PERF_BIND_INVALIDATE]);
+      out += line;
+      if (perf->copySiteCount != 0) {
+        out += "copy sites";
+        for (uint32_t i = 0; i < perf->copySiteCount && i < AURORA_PERF_MAX_COPY_SITES; ++i) {
+          std::snprintf(line, sizeof(line), " %#llx:%u",
+                        static_cast< unsigned long long >(perf->copySiteOffset[i]), perf->copySiteHits[i]);
+          out += line;
+        }
+        out += "\n";
+      }
+    }
   }
 }
 
@@ -692,6 +762,13 @@ void CmdAreas(CStateManager& mgr, const Args&, std::string& out) {
         std::snprintf(line, sizeof(line), " %d", area->GetAttachedAreaId(k).Value());
         out += line;
       }
+      // The world-space AABB CGroundMovement::CheckFalling tests the player against: outside every
+      // alive area's box the standing player is held up (retail 0x8012C5C8).
+      const CAABox& b = area->GetAABB();
+      std::snprintf(line, sizeof(line), "  aabb (%.1f %.1f %.1f)-(%.1f %.1f %.1f)",
+                    b.GetMinPoint().GetX(), b.GetMinPoint().GetY(), b.GetMinPoint().GetZ(),
+                    b.GetMaxPoint().GetX(), b.GetMaxPoint().GetY(), b.GetMaxPoint().GetZ());
+      out += line;
     }
     out += '\n';
   }
@@ -713,12 +790,33 @@ void CmdDoor(CStateManager&, const Args&, std::string&) { PortWarp::Door(); }
 void CmdDock(CStateManager&, const Args&, std::string&) { PortWarp::Dock(); }
 void CmdStation(CStateManager&, const Args&, std::string&) { PortWarp::Station(); }
 void CmdHeal(CStateManager&, const Args&, std::string&) { PortWarp::Heal(); }
-void CmdKill(CStateManager&, const Args& args, std::string&) {
-  if (args.size() > 1) {
-    Fail("usage: kill   (kills the player; for an actor use `damage <id> <amount>`)");
+const CEntity* ResolveObject(CStateManager& mgr, std::string_view text);
+
+// kill [id]: no id kills the player; an id zeroes a patterned actor's health and runs its Death the
+// way ApplyDamage does (kSS_DeathRattle), so an actor that reflects every weapon (the Splitter's
+// chassis) can still be killed.
+void CmdKill(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() > 2) {
+    Fail("usage: kill [id]   (no id: the player)");
     return;
   }
-  PortWarp::Kill();
+  if (args.size() == 1) {
+    PortWarp::Kill();
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr || patterned->GetHealthInfo() == nullptr) {
+    Fail("not a patterned actor with health");
+    return;
+  }
+  const_cast< CHealthInfo* >(patterned->GetHealthInfo())->SetHP(0.f);
+  CVector3f direction = CVector3f::Zero();
+  if (const CPlayer* player = mgr.GetPlayer(0)) {
+    direction = patterned->GetTranslation() - player->GetTranslation();
+  }
+  patterned->Death(mgr, direction, kSS_DeathRattle);
+  out += "killed\n";
 }
 
 void CmdLayer(CStateManager&, const Args& args, std::string&) {
@@ -851,6 +949,13 @@ void CmdGod(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "god mode on\n" : "god mode off\n";
 }
 
+// `mpforce <0|1>`: CStateManager::IsMultiplayer reports true, so multiplayer-only arms run in
+// single player. The game mode itself stays single player (no score, no split screen).
+void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
+  gPortForceMultiplayer = args.size() < 2 ? !gPortForceMultiplayer : ArgToInt(args[1], 1) != 0;
+  out += gPortForceMultiplayer ? "forced multiplayer on\n" : "forced multiplayer off\n";
+}
+
 void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortFreeCam::Active() : ArgToInt(args[1], 1) != 0;
   PortFreeCam::SetActive(enabled, &mgr);
@@ -894,6 +999,54 @@ void CmdFastMorph(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::FastMorph() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetFastMorph(enabled);
   out += enabled ? "fast morph on\n" : "fast morph off\n";
+}
+
+// boost: start a boost-ball charge release on the morphed player (what releasing a held A does), so
+// lanes reach boost-hit arms without timing pad input.
+void CmdBoost(CStateManager& mgr, const Args&, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr || player->GetMorphBall() == nullptr ||
+      player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
+    Fail("boost: the player is not morphed (press x, or 'press x 1')");
+    return;
+  }
+  player->GetMorphBall()->EnterBoosting(mgr, false);
+  out += "boosting\n";
+}
+
+// noise: CStateManager::InformListeners at the player (or at x y z) with a listen-noise type, so
+// lanes reach a listener's noise arms without the object that makes it (e.g. type 6, the safe-zone
+// noise only an "echo" safe zone sends, lures an Ing).
+void CmdNoise(CStateManager& mgr, const Args& args, std::string& out) {
+  const int type = args.size() < 2 ? -1 : ArgToInt(args[1], -1);
+  if (type < 0) {
+    Fail("usage: noise <type 0..6> [<x> <y> <z>] (0 fire, 1 bomb, 2 projectile, 3 scream, "
+         "4 path, 6 safe zone)");
+    return;
+  }
+  CVector3f pos;
+  if (args.size() >= 5) {
+    float x = 0.f;
+    float y = 0.f;
+    float z = 0.f;
+    if (!ParseFloat(args[2], x) || !ParseFloat(args[3], y) || !ParseFloat(args[4], z)) {
+      Fail("noise: bad position");
+      return;
+    }
+    pos = CVector3f(x, y, z);
+  } else {
+    const CPlayer* player = mgr.GetPlayer(0);
+    if (player == nullptr) {
+      Fail("no player");
+      return;
+    }
+    pos = player->GetTranslation();
+  }
+  mgr.InformListeners(pos, static_cast< EListenNoiseType >(type));
+  char line[96];
+  std::snprintf(line, sizeof(line), "noise %d at (%.1f, %.1f, %.1f)\n", type, pos.GetX(),
+                pos.GetY(), pos.GetZ());
+  out += line;
 }
 
 void CmdSpringBall(CStateManager&, const Args& args, std::string& out) {
@@ -1252,6 +1405,27 @@ void DescribeObject(const CEntity& ent, bool withPosition, std::string& out) {
 // TUniqueId::Value(), which drops the version bits ("[door] 006e got kSM_Open") - the one object
 // whose Value() matches, when exactly one does. `obj` and `send` both take their target from here.
 const CEntity* ResolveObject(CStateManager& mgr, std::string_view text) {
+  // e<hex>: the object with that editor id (as `objs` prints it: e00350060). Unique ids are
+  // reused as objects come and go, so a console script that runs across a layer load names the
+  // script object instead.
+  if (text.size() > 1 && (text[0] == 'e' || text[0] == 'E')) {
+    const std::string hex(text.substr(1));
+    char* end = nullptr;
+    const unsigned long editorId = std::strtoul(hex.c_str(), &end, 16);
+    if (end != nullptr && *end == '\0') {
+      const CObjectList& list = mgr.GetObjectListById(kOL_All);
+      for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+        const CEntity* ent = list[i];
+        if (ent != nullptr && ent->GetEditorId().Value() == editorId) {
+          return ent;
+        }
+      }
+      char why[48];
+      std::snprintf(why, sizeof(why), "no object with editor id %08lx", editorId);
+      Fail(why);
+      return nullptr;
+    }
+  }
   TUniqueId uid = kInvalidUniqueId;
   if (!ParseUid(text, uid)) {
     Fail("not an object id '" + Str(text) + "'");
@@ -1329,6 +1503,29 @@ struct PortConsoleDoor {
 namespace PortConsole {
 namespace {
 
+// scaninfo <id>: the 'SCAN' asset an actor answers GetScannableObjectInfo with (what the scan
+// visor would show), or none; a module's override runs without scanning it.
+void CmdScanInfo(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() != 2) {
+    Fail("usage: scaninfo <id>");
+    return;
+  }
+  const CEntity* ent = ResolveObject(mgr, args[1]);
+  const CActor* actor = ent != nullptr ? TCastToConstPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr) {
+    Fail("not an actor");
+    return;
+  }
+  const CScannableObjectInfo* info = actor->GetScannableObjectInfo();
+  char buf[64];
+  if (info != nullptr) {
+    snprintf(buf, sizeof(buf), "scaninfo %08X\n", static_cast< unsigned >(info->GetScannableObjectId()));
+  } else {
+    snprintf(buf, sizeof(buf), "scaninfo none\n");
+  }
+  out += buf;
+}
+
 void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() < 2) {
     Fail("usage: obj <id>");
@@ -1355,6 +1552,16 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   // make only virtual calls; the state's own data is touched only on the AFSM type.
   if (const CScriptDoor* door = TCastToConstPtr< CScriptDoor >(ent)) {
     ::PortConsoleDoor::Describe(*door, mgr, out);
+  }
+  // A water's volume (DescribeObject prints no position for it: the cast to CActor fails on the
+  // trigger types), so a driver can put an actor in it: bounds <min x y z> <max x y z>.
+  if (const CScriptWater* water = TCastToConstPtr< CScriptWater >(ent)) {
+    const CAABox box = water->GetTriggerBoundsWR();
+    char line[160];
+    std::snprintf(line, sizeof(line), "  bounds %.2f %.2f %.2f %.2f %.2f %.2f\n",
+                  box.GetMinPoint().GetX(), box.GetMinPoint().GetY(), box.GetMinPoint().GetZ(),
+                  box.GetMaxPoint().GetX(), box.GetMaxPoint().GetY(), box.GetMaxPoint().GetZ());
+    out += line;
   }
   const CPatterned* patterned = TCastToConstPtr< CPatterned >(ent);
   if (patterned != nullptr) {
@@ -1396,7 +1603,8 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float knockback = 0.f;
   if (args.size() < 3 || !ParseFloat(args[2], amount)) {
     Fail("usage: damage <id> <amount> [knockback-power] [power|missile|cannonball|dark|light|"
-         "annihilator|powerbomb|darkburst|sunburst|sonicboom]");
+         "annihilator|powerbomb|bomb|boostball|screwattack|darkburst|sunburst|sonicboom|"
+         "supermissile]");
     return;
   }
   // The weapon mode is what a damageable trigger's vulnerability is looked up by, so a wall that
@@ -1425,6 +1633,12 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
       weapon = kWT_Annihilator;
     } else if (args[i] == "powerbomb") {
       weapon = kWT_PowerBomb;
+    } else if (args[i] == "bomb") {
+      weapon = kWT_Bomb;
+    } else if (args[i] == "boostball") {
+      weapon = kWT_BoostBall;
+    } else if (args[i] == "screwattack") {
+      weapon = kWT_ScrewAttack;
     } else if (args[i] == "darkburst") {
       weapon = kWT_Dark;
       comboed = true;
@@ -1434,9 +1648,12 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     } else if (args[i] == "sonicboom") {
       weapon = kWT_Annihilator;
       comboed = true;
+    } else if (args[i] == "supermissile") {
+      weapon = kWT_Power;
+      comboed = true;
     } else {
       Fail("damage: weapon is power, missile, cannonball, dark, light, annihilator, powerbomb, "
-           "darkburst, sunburst or sonicboom");
+           "bomb, boostball, screwattack, darkburst, sunburst, sonicboom or supermissile");
       return;
     }
   }
@@ -1469,9 +1686,62 @@ void CmdFrame(CStateManager&, const Args&, std::string& out) {
   out += "frame " + std::to_string(PortHarness::GameUpdates()) + '\n';
 }
 
+// at <update> <command>: hold the command until the game update count reaches <update>; its reply
+// arrives then. One command per `at` (a `;` ends it).
+void CmdAt(CStateManager&, const Args& args, std::string& out) {
+  const int update = args.size() < 3 ? -1 : ArgToInt(args[1], -1);
+  if (update < 0) {
+    Fail("usage: at <update> <command>");
+    return;
+  }
+  const char* begin = args[2].data();
+  const std::string line(begin, args.back().data() + args.back().size() - begin);
+  sDeferred.push_back({static_cast< unsigned >(update), line, sExecutingGeneration});
+  out += "queued for update " + std::to_string(update) + " (now " + std::to_string(PortHarness::GameUpdates()) +
+         "): " + line + '\n';
+}
+
+// The state names a `fsm` command can use, for the "unknown state" message: the machine's own
+// states and, for an FSM2, the states of its sub-machines.  A long list is cut.
+std::string StateNameList(const rstl::vector< rstl::string >& names) {
+  const size_t kMaxNames = 24;
+  std::string out;
+  size_t shown = 0;
+  size_t total = 0;
+  for (size_t i = 0; i < names.size(); ++i) {
+    // The asset's states and the owner's table hold the same names: list each one once.
+    bool seen = false;
+    for (size_t j = 0; j < i; ++j) {
+      if (names[j] == names[i]) {
+        seen = true;
+        break;
+      }
+    }
+    if (seen) {
+      continue;
+    }
+    ++total;
+    if (shown < kMaxNames) {
+      if (shown != 0) {
+        out += ", ";
+      }
+      out += names[i].data();
+      ++shown;
+    }
+  }
+  if (total > kMaxNames) {
+    out += ", ... (+" + std::to_string(total - kMaxNames) + " more)";
+  }
+  return out;
+}
+
 // fsm <id> <state>: put a patterned actor's state machine in a named state, through the machine's
 // own SetState (the AFSM and FSM2 dispatchers both take a name), so a run can enter a state whose
 // trigger it cannot reach. The leave/enter callbacks run as they would in game.
+//
+// The name is looked up first, so an unknown one is reported as such - with the list of the valid
+// names - and a state that was entered and left at once (the machine is back where it was) says
+// so instead of reading as an unknown name.
 void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() != 3) {
     Fail("usage: fsm <id> <state name>");
@@ -1488,16 +1758,20 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
   // string_l borrows the characters: keep the std::string alive for every use of `name`.
   const std::string wanted(args[2]);
   const rstl::string name = rstl::string_l(wanted.c_str());
+  // The names this machine can enter: its own states and, for an FSM2, the states of its
+  // sub-machines (the ones PortSetStateDeep reaches).
+  rstl::vector< rstl::string > valid;
+  std::string where = "top machine";
+  machine->PortCollectStateNames(valid, 8);
   // An FSM2's SetState looks only at its own top-level states; a state inside one of its
   // sub-machines is entered the way a transition into that sub-machine would enter it.
-  std::string where = "top machine";
   if (machine->GetType() == 1) {
     const char* path[8] = {};
-    const int depth = static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortSetStateDeep(
+    const int entered = static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortSetStateDeep(
         mgr, *patterned, name, path, 8);
-    if (depth > 0) {
+    if (entered > 0) {
       where = "sub-machine ";
-      for (int i = 0; i < depth; ++i) {
+      for (int i = 0; i < entered; ++i) {
         where += (i != 0 ? "/" : "");
         where += path[i] != nullptr ? path[i] : "?";
       }
@@ -1506,20 +1780,248 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
     machine->SetState(mgr, *patterned, name);
   }
   const char* after = machine->HasState() ? machine->GetName() : nullptr;
-  // An unknown name leaves the machine where it was; say so rather than report a no-op. An FSM2
-  // evaluates the new state's transitions inside SetState, so a state that was entered and left
-  // at once reads as another, new name: report that as entered.
-  if (after != nullptr && std::string_view(after) != args[2] && before != after) {
+  if (after == nullptr) {
+    // No state at all: the machine was never set up (an actor that was not created yet has none).
+    Fail("the actor has no state machine state (is it active?)");
+    return;
+  }
+  if (std::string_view(after) == args[2]) {
+    out += "fsm " + before + " -> " + after + " [" + where + "]\n";
+    return;
+  }
+  if (before != after) {
+    // Another state now: the machine moved on (its own transitions) while the state was entered.
     out += "fsm " + before + " -> " + Str(args[2]) + " [" + where + "] (entered; now " + after +
            ")\n";
     return;
   }
-  if (after == nullptr || std::string_view(after) != args[2]) {
-    Fail("state '" + Str(args[2]) + "' not entered (unknown name?); now " +
-         (after != nullptr ? after : "?"));
+  // The machine is back where it was: the state was entered and left at once, unless the name is
+  // not one of the machine's at all.
+  bool known = false;
+  for (const rstl::string& candidate : valid) {
+    if (candidate == name) {
+      known = true;
+      break;
+    }
+  }
+  if (known) {
+    out += "fsm " + before + " -> " + Str(args[2]) + " [" + where +
+           "] (entered and left at once; now " + after + ")\n";
     return;
   }
-  out += "fsm " + before + " -> " + after + " [" + where + "]\n";
+  Fail("unknown state '" + Str(args[2]) + "'; valid names: " + StateNameList(valid));
+}
+
+// The state/trigger function the actor's own table registered under `name`, from either machine
+// type: the FSM2 (GetType() 1, CGenericFSM2State) or the AFSM (0, TStateMachineState).
+CPatterned::StateMachine::StateFunc PortFindStateFunction(CPatterned& patterned, const char* name) {
+  TStateMachineStateBase< CPatterned >* machine = &patterned.StateMachineState();
+  if (machine->GetType() == 1) {
+    return static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindStateFunction(name);
+  }
+  return static_cast< TStateMachineState< CPatterned >* >(machine)->PortFindStateFunction(name);
+}
+
+CPatterned::StateMachine::TriggerFunc PortFindTriggerFunction(CPatterned& patterned,
+                                                              const char* name) {
+  TStateMachineStateBase< CPatterned >* machine = &patterned.StateMachineState();
+  if (machine->GetType() == 1) {
+    return static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindTriggerFunction(name);
+  }
+  return static_cast< TStateMachineState< CPatterned >* >(machine)->PortFindTriggerFunction(name);
+}
+
+// statecall <id> <state> <msg> [dt]: run one state body of a patterned actor (FSM2 or AFSM) once with a message (0
+// Activate, 1 Update, 2 Deactivate) and dt (default 1/60), outside the machine: the machine's state
+// does not change. The body is looked up in the actor's whole state table, so a state the shipped
+// FSM2 has no node for (unreachable by `fsm`) can still be run for coverage.
+void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float msgArg = 0.f;
+  float dt = 1.f / 60.f;
+  if (args.size() < 4 || args.size() > 5 || !ParseFloat(args[3], msgArg) ||
+      (args.size() == 5 && !ParseFloat(args[4], dt))) {
+    Fail("usage: statecall <id> <state name> <msg 0..2> [dt]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  const int msg = static_cast< int >(msgArg);
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::StateFunc fn = PortFindStateFunction(*patterned, wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no state function '" + wanted + "'");
+    return;
+  }
+  (patterned->*fn)(mgr, static_cast< EStateMsg >(msg), dt);
+  out += "statecall " + wanted + " msg " + std::to_string(msg) + "\n";
+}
+
+// trigcall <id> <trigger> [arg]: evaluate one trigger of an FSM2 actor once with its argument
+// (default 0) and print the answer, outside the machine, like `statecall` for the states.
+void CmdTrigCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float arg = 0.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], arg))) {
+    Fail("usage: trigcall <id> <trigger name> [arg]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::TriggerFunc fn =
+      PortFindTriggerFunction(*patterned, wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no trigger function '" + wanted + "'");
+    return;
+  }
+  const bool answer = (patterned->*fn)(mgr, CTriggerData(arg));
+  out += "trigcall " + wanted + " = " + (answer ? "true" : "false") + "\n";
+}
+
+// codecall <id> <code> [dt]: run one code function of an FSM2 actor once with dt (default 1/60),
+// outside the machine, like `statecall` for the states (a code runs on a transition).
+void CmdCodeCall(CStateManager& mgr, const Args& args, std::string& out) {
+  float dt = 1.f / 60.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], dt))) {
+    Fail("usage: codecall <id> <code name> [dt]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
+  if (machine->GetType() != 1) {
+    Fail("not an FSM2 machine");
+    return;
+  }
+  const std::string wanted(args[2]);
+  const CPatterned::StateMachine::CodeFunc fn =
+      static_cast< CGenericFSM2State< CPatterned >* >(machine)->PortFindCodeFunction(wanted.c_str());
+  if (fn == nullptr) {
+    Fail("no code function '" + wanted + "'");
+    return;
+  }
+  (patterned->*fn)(mgr, dt);
+  out += "codecall " + wanted + "\n";
+}
+
+// The module handlers `var` asks (PortConsole::RegisterVar); a function-local list, so a module's
+// static-init registration never runs before it exists.
+std::vector< VarHandler >& VarHandlers() {
+  static std::vector< VarHandler > sHandlers;
+  return sHandlers;
+}
+
+// var <id> <name> [value]: read or set a module field a REL's port registered (dghd.attack,
+// dghd.flags, dghd.sweeptime), so an arm a fight rarely draws runs without gdb. `var player
+// spawnmorph [n]` reads or sets the player's spawned morph-ball state (0x390), keeping its morph
+// state.
+void CmdVar(CStateManager& mgr, const Args& args, std::string& out) {
+  float number = 0.f;
+  if (args.size() < 3 || args.size() > 4 || (args.size() == 4 && !ParseFloat(args[3], number))) {
+    Fail("usage: var <id>|player <name> [value]");
+    return;
+  }
+  const int value = static_cast< int >(number);
+  const std::string name(args[2]);
+  int current = 0;
+  char line[160];
+  if (args[1] == "player") {
+    CPlayer* player = mgr.GetPlayer(0);
+    if (player == nullptr || name != "spawnmorph") {
+      Fail(player == nullptr ? "no player" : "player vars: spawnmorph");
+      return;
+    }
+    if (args.size() == 4) {
+      player->SetMorphBallState(player->GetMorphballTransitionState(),
+                                static_cast< CPlayer::EPlayerMorphBallState >(value));
+    }
+    std::snprintf(line, sizeof(line), "player spawnmorph = %d\n",
+                  static_cast< int >(player->GetSpawnedMorphballState()));
+    out += line;
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  if (ent == nullptr) {
+    Fail("no object '" + std::string(args[1]) + "'");
+    return;
+  }
+  for (VarHandler handler : VarHandlers()) {
+    if (handler(*ent, name.c_str(), args.size() == 4 ? &value : nullptr, current)) {
+      std::snprintf(line, sizeof(line), "%s = %d (0x%x)\n", name.c_str(), current, current);
+      out += line;
+      return;
+    }
+  }
+  Fail("no var '" + name + "' on that object");
+}
+
+// hint <id> [type] [area <n>]: print an AI hint's type, area, active flag and radius, after
+// setting its type and/or area, so a module that looks hints up by type and area (DarkSamus's
+// phazon waypoints) finds one the area lacks, or skips one of another area.
+void CmdHint(CStateManager& mgr, const Args& args, std::string& out) {
+  float type = -1.f;
+  float area = -1.f;
+  bool ok = args.size() >= 2;
+  for (size_t i = 2; ok && i < args.size(); ++i) {
+    if (args[i] == "area" && i + 1 < args.size()) {
+      ok = ParseFloat(args[++i], area);
+    } else {
+      ok = ParseFloat(args[i], type);
+    }
+  }
+  if (!ok) {
+    Fail("usage: hint <id> [type] [area <n>]");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CScriptAIHint* hint = ent != nullptr ? TCastToPtr< CScriptAIHint >(ent) : nullptr;
+  if (hint == nullptr) {
+    Fail("not an AI hint");
+    return;
+  }
+  if (type >= 0.f) {
+    hint->PortSetHintType(static_cast< CScriptAIHint::EHintType >(static_cast< int >(type)));
+  }
+  if (area >= 0.f) {
+    hint->SetCurrentAreaId(TAreaId(static_cast< int >(area)));
+  }
+  out += "hint " + std::string(args[1]) + " type " +
+         std::to_string(static_cast< int >(hint->GetHintType())) + " area " +
+         std::to_string(hint->GetCurrentAreaId().Value()) + " active " +
+         std::to_string(hint->GetActive() ? 1 : 0) + " radius " + std::to_string(hint->GetRadius()) +
+         "\n";
+}
+
+// uevent <id> <type> [dt] [locator]: deliver a user anim event (EUserEventType, e.g. 27 EventStart,
+// 28 EventStop, 18 EndAction, 12 Landing) to an actor's DoUserAnimEvent with an empty POI node
+// whose locator is `locator` (default "root"), for the event arms an animation never fires on the
+// host.
+void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
+  float type = 0.f;
+  float dt = 0.f;
+  CEntity* ent = args.size() >= 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr || !ParseFloat(args[2], type) ||
+      (args.size() >= 4 && !ParseFloat(args[3], dt))) {
+    Fail("usage: uevent <id> <type> [dt] [locator]   (id must be an actor)");
+    return;
+  }
+  const rstl::string locator = rstl::string_l(args.size() >= 5 ? Str(args[4]).c_str() : "root");
+  actor->DoUserAnimEvent(mgr, CInt32POINode(-1, kPT_EmptyInt32, CCharAnimTime(), -1, false, 1.f,
+                                            -1, 0, 0, locator),
+                         static_cast< EUserEventType >(static_cast< int >(type)), dt);
+  out += "uevent " + std::string(args[1]) + " " + std::to_string(static_cast< int >(type)) + "\n";
 }
 
 // shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
@@ -1597,11 +2099,177 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
     pos = CVector3f(x, y, z);
   }
   actor->SetTranslation(pos);
+  // The optional rotation: place <id> <x> <y> <z> [yaw [pitch [roll]]] in degrees - the yaw
+  // about the world's up (z), the pitch about the right one (x) and the roll about the forward
+  // one (y), applied in that order.  Without it the actor keeps its rotation.
+  if (args.size() >= 6) {
+    const float yaw = std::atof(Str(args[5]).c_str());
+    const float pitch = args.size() >= 7 ? std::atof(Str(args[6]).c_str()) : 0.f;
+    const float roll = args.size() >= 8 ? std::atof(Str(args[7]).c_str()) : 0.f;
+    const CQuaternion rot = CQuaternion::YRotation(CRelAngle::FromDegrees(roll)) *
+                             CQuaternion::XRotation(CRelAngle::FromDegrees(pitch)) *
+                             CQuaternion::ZRotation(CRelAngle::FromDegrees(yaw));
+    actor->SetRotation(rot);
+  }
   if (CPhysicsActor* physics = TCastToPtr< CPhysicsActor >(ent)) {
     physics->Stop();
   }
   char line[64];
   std::snprintf(line, sizeof(line), "placed at %.2f %.2f %.2f\n", pos.GetX(), pos.GetY(), pos.GetZ());
+  out += line;
+}
+
+// material <id> [+|-]<name|bit> ...: show an actor's material list, or add (+, the default) or
+// remove (-) materials on it (CActor::AddMaterial/RemoveMaterial, which also re-sort the actor in
+// the near list).  Names are the EMaterialTypes ones without kMT_, any case, or the bit number.
+// Removing kMT_Solid from the player is what entering a turret does (CPlayer.cpp:4337), so a
+// line-of-sight ray that ends at the player's aim point can come back clear.
+const char* const kMaterialNames[] = {
+    "nosteplogic",
+    "stone",
+    "metal",
+    "grass",
+    "ice",
+    "pillar",
+    "metalgrating",
+    "phazon",
+    "dirt",
+    "lava",
+    "lavastone",
+    "snow",
+    "mudslow",
+    "halfpipe",
+    "mud",
+    "glass",
+    "shield",
+    "sand",
+    "unknown18",
+    "unknown19",
+    "projectilepassthrough",
+    "camerapassthrough",
+    "wood",
+    "organic",
+    "noedgecollision",
+    "unknown25",
+    "seethrough",
+    "scanpassthrough",
+    "aipassthrough",
+    "ceiling",
+    "wall",
+    "floor",
+    "player",
+    "character",
+    "trigger",
+    "projectile",
+    "bomb",
+    "groundcollider",
+    "nostaticcollision",
+    "scannable",
+    "target",
+    "orbit",
+    "occluder",
+    "immovable",
+    "debris",
+    "powerbomb",
+    "unknown46",
+    "collisionactor",
+    "aiblock",
+    "platform",
+    "nonsoliddamageable",
+    "radarobject",
+    "platformslave",
+    "aijoint",
+    "unknown54",
+    "solidcharacter",
+    "excludefromlineofsighttest",
+    "excludefromradar",
+    "noplayercollision",
+    "solid",
+    "noplatformcollision",
+    "unknown61",
+    "screwattackwall",
+    "seekertarget",
+};
+
+bool ParseMaterial(std::string_view text, EMaterialTypes& mat) {
+  const std::string name = Lower(text);
+  for (int i = 0; i < static_cast< int >(sizeof(kMaterialNames) / sizeof(kMaterialNames[0])); ++i) {
+    if (name == kMaterialNames[i]) {
+      mat = static_cast< EMaterialTypes >(i);
+      return true;
+    }
+  }
+  char* end = nullptr;
+  const long bit = std::strtol(name.c_str(), &end, 0);
+  if (name.empty() || end == nullptr || *end != '\0' || bit < 0 || bit > 63) {
+    return false;
+  }
+  mat = static_cast< EMaterialTypes >(bit);
+  return true;
+}
+
+void CmdMaterial(CStateManager& mgr, const Args& args, std::string& out) {
+  CEntity* ent = args.size() >= 2 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
+  if (actor == nullptr) {
+    Fail("usage: material <id> [+|-]<name|bit> ...   (id must be an actor)");
+    return;
+  }
+  for (size_t i = 2; i < args.size(); ++i) {
+    std::string_view arg = args[i];
+    const bool remove = !arg.empty() && arg[0] == '-';
+    if (!arg.empty() && (arg[0] == '-' || arg[0] == '+')) {
+      arg.remove_prefix(1);
+    }
+    EMaterialTypes mat;
+    if (!ParseMaterial(arg, mat)) {
+      Fail("unknown material '" + Str(arg) + "'");
+      return;
+    }
+    if (remove) {
+      actor->RemoveMaterial(mat, mgr);
+    } else {
+      actor->AddMaterial(mat, mgr);
+    }
+  }
+  out += "materials";
+  for (int i = 0; i < 64; ++i) {
+    if (actor->GetMaterialList().HasMaterial(static_cast< EMaterialTypes >(i))) {
+      out += ' ';
+      out += kMaterialNames[i];
+    }
+  }
+  out += '\n';
+}
+
+// bodystate <id> <animation state index>: set a patterned actor's body controller state
+// directly (the body's own state, e.g. 2 = kAS_LieOnGround, 19 = kAS_Cover, 20 =
+// kAS_WallHang).  The state machine reaches only some of the body states, and the coverage
+// runs need the others; the index is the pas::EAnimationState value.
+void CmdBodyState(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() < 3) {
+    Fail("usage: bodystate <id> <animation state index>");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  CBodyController* body = patterned->BodyController();
+  if (body == nullptr) {
+    Fail("the actor has no body controller");
+    return;
+  }
+  const int value = std::atoi(Str(args[2]).c_str());
+  if (value < 0 || value > 28) { // 28 = kAS_AdditiveLoopReaction, the last one
+    Fail("the animation state index must be 0..28");
+    return;
+  }
+  body->BodyStateInfo().SetState(static_cast< pas::EAnimationState >(value));
+  char line[64];
+  std::snprintf(line, sizeof(line), "body state %d\n", value);
   out += line;
 }
 
@@ -1621,6 +2289,13 @@ void CmdSend(CStateManager& mgr, const Args& args, std::string& out) {
   }
   const uint editorId = target->GetEditorId().Value();
   const TUniqueId uid = target->GetUniqueId();
+  if (msg == kSM_Delete) {
+    // A bare Delete message resets the object's FSM but leaves it alive, and its next Think writes
+    // past mSubMachines; script deletes go through the state manager's delete request.
+    mgr.DeleteObjectRequest(uid);
+    out += "delete requested\n";
+    return;
+  }
   mgr.DeliverScriptMsg(
       CScriptMsg(kInvalidUniqueId, uid, static_cast< EScriptObjectMessage >(msg)));
   char line[160];
@@ -1748,6 +2423,54 @@ void CmdBeam(CStateManager& mgr, const Args& args, std::string& out) {
   char line[64];
   std::snprintf(line, sizeof(line), "beam -> %s\n", choice->name);
   out += line;
+}
+
+// ray <x> <y> <z> [len]: cast straight down from the point and list every static surface the ray
+// crosses (point, normal, material bits, hex), then the first hit of the world ray (static plus
+// actors) and the actor it belongs to. For collision bugs: what holds the player up, and where.
+void CmdRay(CStateManager& mgr, const Args& args, std::string& out) {
+  float x = 0.f;
+  float y = 0.f;
+  float z = 0.f;
+  float len = 100.f;
+  if (args.size() < 4 || !ParseFloat(args[1], x) || !ParseFloat(args[2], y) ||
+      !ParseFloat(args[3], z) || (args.size() > 4 && !ParseFloat(args[4], len))) {
+    Fail("usage: ray <x> <y> <z> [len]");
+    return;
+  }
+  const CVector3f down(0.f, 0.f, -1.f);
+  const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
+  char line[192];
+  CVector3f start(x, y, z);
+  float left = len;
+  for (int i = 0; i < 16 && left > 0.f; ++i) {
+    const CRayCastResult hit = CGameCollision::RayStaticIntersection(mgr, start, down, left, filter);
+    if (!hit.IsValid()) {
+      break;
+    }
+    const CVector3f& pt = hit.GetPoint();
+    const CVector3f n = hit.GetPlane().GetNormal();
+    std::snprintf(line, sizeof(line), "static %.3f %.3f %.3f  normal %.2f %.2f %.2f  mat %016llx\n",
+                  pt.GetX(), pt.GetY(), pt.GetZ(), n.GetX(), n.GetY(), n.GetZ(),
+                  static_cast< unsigned long long >(hit.GetMaterial().GetValue()));
+    out += line;
+    start = CVector3f(x, y, pt.GetZ() - 0.01f);
+    left = len - (z - start.GetZ());
+  }
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, CVector3f(x, y, z), down, len, filter, nullptr);
+  TUniqueId id = kInvalidUniqueId;
+  const CRayCastResult hit =
+      mgr.RayWorldIntersection(id, CVector3f(x, y, z), down, len, filter, nearList);
+  if (hit.IsValid()) {
+    const CEntity* ent = id == kInvalidUniqueId ? nullptr : mgr.GetObjectById(id);
+    std::snprintf(line, sizeof(line), "world %.3f %.3f %.3f  id %04x %s (near %d)\n",
+                  hit.GetPoint().GetX(), hit.GetPoint().GetY(), hit.GetPoint().GetZ(), id.Value(),
+                  ent != nullptr ? ClassName(*ent).c_str() : "static", int(nearList.size()));
+    out += line;
+  } else {
+    out += "world: no hit\n";
+  }
 }
 
 void CmdTp(CStateManager& mgr, const Args& args, std::string& out) {
@@ -1960,7 +2683,94 @@ void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// scan <id> [d] [updates]: a scan of an actor without aiming. The orbit candidate lists rarely
+// offer a big actor whose orbit point is far above the player, so this puts the player d (40)
+// units from the actor on its level, facing it, locks the orbit on it (CPlayer::PortForceOrbit:
+// what a lock-on press does) and holds L (lock-on and Scan Item) for `updates` (the scan's
+// download time plus 2 s). It takes two calls ~30 updates apart: the first raises the scan visor
+// and starts holding L, because the update that sees L go down runs UpdateOrbitSelection, which
+// would move a fresh lock to the player's next orbit candidate. A completed scan soft-pauses the game and the scan display renders the
+// actor (CScanDisplay::PrepareScanDisplay and Draw: GetScanVisorRenderBounds / ScanVisorRender
+// for a self-rendering CPatterned). `scan` alone prints the orbit target, scanning time and the
+// game state (1 = soft-paused: the scan display is up).
+void CmdScan(CStateManager& mgr, const Args& args, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  CPlayerState* state = mgr.PlayerState(0);
+  if (player == nullptr || state == nullptr) {
+    Fail("no player");
+    return;
+  }
+  char line[256];
+  if (args.size() < 2) {
+    std::snprintf(line, sizeof(line),
+                  "scan: visor %s, orbit state %d target u%04x, scanning time %.2f, game state %d\n",
+                  VisorName(state->GetCurrentVisor()), static_cast< int >(player->GetOrbitState()),
+                  player->GetOrbitTargetId().value, player->GetScanningTime(),
+                  static_cast< int >(mgr.GetGameState()));
+    out += line;
+    return;
+  }
+  const CEntity* ent = ResolveObject(mgr, args[1]);
+  const CActor* actor = ent != nullptr ? TCastToConstPtr< CActor >(ent) : nullptr;
+  float dist = 40.f;
+  if (actor == nullptr || (args.size() > 2 && (!ParseFloat(args[2], dist) || !(dist > 1.f)))) {
+    Fail("usage: scan <actor id> [dist > 1] [updates]   (`scan` alone: progress)");
+    return;
+  }
+  if (!state->HasVisor(CPlayerState::kPV_Scan)) {
+    Fail("scan visor not owned (`give scanVisor 1`)");
+    return;
+  }
+  static TUniqueId sArmed = kInvalidUniqueId;
+  if (state->GetCurrentVisor() != CPlayerState::kPV_Scan || sArmed != actor->GetUniqueId()) {
+    if (state->GetCurrentVisor() != CPlayerState::kPV_Scan) {
+      state->StartTransitionToVisor(CPlayerState::kPV_Scan);
+      if (CPlayerGun* gun = player->GetPlayerGun()) {
+        gun->HolsterGun(mgr);
+      }
+    }
+    sArmed = actor->GetUniqueId();
+    PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, 0);
+    out += "scan visor up, L held: repeat the command in ~30 updates\n";
+    return;
+  }
+  sArmed = kInvalidUniqueId;
+  const CScannableObjectInfo* info = actor->GetScannableObjectInfo();
+  const float download = info != nullptr ? info->GetTotalDownloadTime() : 0.f;
+  const unsigned updates = args.size() > 3 ? static_cast< unsigned >(ArgToInt(args[3], 0))
+                                           : static_cast< unsigned >(download * 60.f) + 120u;
+  const CVector3f target = actor->GetOrbitPosition(mgr);
+  CVector3f dir = player->GetTranslation() - actor->GetTranslation();
+  dir.SetZ(0.f);
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, -1.f, 0.f);
+  CVector3f pos = actor->GetTranslation() + dir * dist;
+  pos.SetZ(actor->GetTranslation().GetZ());
+  player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
+  player->PortForceOrbit(actor->GetUniqueId(), mgr);
+  PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, updates);
+  std::snprintf(line, sizeof(line),
+                "scan u%04x (orbit point %.1f, %.1f, %.1f, visor flags %x, download %.1f s)%s%s: "
+                "player at (%.1f, %.1f, %.1f), orbit locked, L held for %u updates\n",
+                actor->GetUniqueId().value, target.GetX(), target.GetY(), target.GetZ(),
+                actor->GetTargetableVisorFlags(), download, info != nullptr ? "" : "; no scan info",
+                actor->GetMaterialList().HasMaterial(kMT_Scannable) ? "" : "; not kMT_Scannable",
+                pos.GetX(), pos.GetY(), pos.GetZ(), updates);
+  out += line;
+}
+
 // stick <x> <y> [updates]: hold the main stick, -127..127 (0 holds until the next press/stick).
+// covdump: a coverage build (MP_PORT_COVERAGE) writes its gcov counters now and zeroes them; the
+// next dump (another covdump, or the exit) adds to the .gcda files. A run that hangs in shutdown
+// and is killed keeps what was dumped. Other builds answer that there is nothing to write.
+void CmdCovdump(CStateManager&, const Args&, std::string& out) {
+#ifdef MP_PORT_COVERAGE
+  PortCoverageFlush();
+  out += "gcov counters written\n";
+#else
+  out += "not a coverage build\n";
+#endif
+}
+
 void CmdStick(CStateManager& mgr, const Args& args, std::string& out) {
   (void)mgr;
   if (args.size() < 3) {
@@ -2125,6 +2935,34 @@ void CmdScreenshot(CStateManager&, const Args&, std::string& out) {
       "names the file (relative to the run's working directory)\n";
 }
 
+// overlay <page|off>: open the F1 window on a page (a name prefix: `overlay save`), for screenshots.
+void CmdOverlay(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() < 2 || !PortOverlay::ShowPage(std::string(args[1]))) {
+    Fail("usage: overlay <page name prefix|off>");
+    return;
+  }
+  out += args[1] == "off" ? std::string("overlay closed\n") : "overlay open on " + std::string(args[1]) + "\n";
+}
+
+// state save|load <slot>: the F5/F9 save states (slot 0 is the undo slot, load only).
+void CmdState(CStateManager&, const Args& args, std::string& out) {
+  const int slot = args.size() < 3 ? -1 : ArgToInt(args[2], -1);
+  const bool save = args.size() >= 2 && args[1] == "save";
+  const bool load = args.size() >= 2 && args[1] == "load";
+  if ((!save && !load) || slot < (save ? 1 : PortSaveState::kUndoSlot) ||
+      slot > PortSaveState::kSlotCount) {
+    Fail("usage: state save <1..8> | state load <0..8>");
+    return;
+  }
+  if (save) {
+    PortSaveState::RequestSave(slot);
+  } else {
+    PortSaveState::RequestLoad(slot);
+  }
+  out += std::string(save ? "save" : "load") + " of slot " + std::to_string(slot) +
+         " requested (the log's [savestate] lines say how it went)\n";
+}
+
 void CmdItems(CStateManager& mgr, const Args&, std::string& out) {
   const CPlayerState* state = mgr.GetPlayerState(0);
   if (state == nullptr) {
@@ -2167,10 +3005,13 @@ constexpr SCommand kCommands[] = {
     {"damage", CmdDamage, true},
     {"layer", CmdLayer, true},
     {"god", CmdGod, true},
+    {"mpforce", CmdMpForce, true},
     {"freecam", CmdFreeCam, true},
     {"photo", CmdPhoto, true},
     {"skipcine", CmdSkipCine, true},
     {"fastmorph", CmdFastMorph, true},
+    {"boost", CmdBoost, true},
+    {"noise", CmdNoise, true},
     {"springball", CmdSpringBall, true},
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},
@@ -2189,16 +3030,26 @@ constexpr SCommand kCommands[] = {
     {"interp", CmdInterp, true},
     {"aspect", CmdAspect, true},
     {"objs", CmdObjs, true},
+    {"scaninfo", CmdScanInfo, true},
     {"obj", CmdObj, true},
     {"send", CmdSend, true},
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
+    {"bodystate", CmdBodyState, true},
+    {"statecall", CmdStateCall, true},
+    {"trigcall", CmdTrigCall, true},
+    {"codecall", CmdCodeCall, true},
+    {"var", CmdVar, true},
+    {"hint", CmdHint, true},
+    {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
+    {"material", CmdMaterial, true},
     {"shoot", CmdShoot, true},
     {"visor", CmdVisor, true},
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},
+    {"ray", CmdRay, true},
     {"items", CmdItems, true},
     {"world", CmdWorld, true},
     {"worlds", CmdWorlds, true},
@@ -2209,10 +3060,15 @@ constexpr SCommand kCommands[] = {
     {"take", CmdGiveTake, true},
     {"press", CmdPress, true},
     {"grapple", CmdGrapple, true},
+    {"scan", CmdScan, true},
+    {"covdump", CmdCovdump, true},
     {"stick", CmdStick, true},
     {"cstick", CmdCstick, true},
     {"save", CmdSave, true},
     {"screenshot", CmdScreenshot, true},
+    {"overlay", CmdOverlay, true},
+    {"state", CmdState, true},
+    {"at", CmdAt, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {
@@ -2290,12 +3146,30 @@ void Start() {
 
 bool Enabled() { return sEnabled; }
 
-void Tick(CStateManager& mgr) {
-  // Save states share this game-thread hook (CStateManager::PortWarpTick) and run without the console.
-  PortSaveState::Tick(mgr);
+namespace {
+
+// Set by Tick (the state manager's update ran) and cleared by IdleTick, so IdleTick knows whether
+// this frame's commands have already been served.
+bool sTickedSinceIdle = false;
+
+void RunCommands(CStateManager& mgr) {
 #ifndef _WIN32
   if (!sEnabled) {
     return;
+  }
+  for (size_t i = 0; i < sDeferred.size();) {
+    if (sDeferred[i].update > PortHarness::GameUpdates()) {
+      ++i;
+      continue;
+    }
+    const SDeferred deferred = std::move(sDeferred[i]);
+    sDeferred.erase(sDeferred.begin() + static_cast< std::ptrdiff_t >(i));
+    std::string out = "[at " + std::to_string(deferred.update) + "] > " + deferred.line + '\n';
+    sExecutingGeneration = deferred.generation;
+    Execute(mgr, deferred.line, out);
+    // The client may have moved on or left; the log keeps the reply.
+    std::fputs(out.c_str(), stderr);
+    SendRaw(deferred.generation, out);
   }
   for (;;) {
     SQueued queued;
@@ -2313,6 +3187,7 @@ void Tick(CStateManager& mgr) {
     for (;;) {
       const size_t sep = queued.line.find(';', start);
       std::string out;
+      sExecutingGeneration = queued.generation;
       Execute(mgr, queued.line.substr(start, sep == std::string::npos ? std::string::npos : sep - start), out);
       SendRaw(queued.generation, out);
       if (sep == std::string::npos) {
@@ -2324,6 +3199,28 @@ void Tick(CStateManager& mgr) {
 #else
   (void)mgr;
 #endif
+}
+
+} // namespace
+
+void Tick(CStateManager& mgr) {
+  // Save states share this game-thread hook (CStateManager::PortWarpTick) and run without the console.
+  PortSaveState::Tick(mgr);
+  sTickedSinceIdle = true;
+  RunCommands(mgr);
+}
+
+void IdleTick(CStateManager& mgr) {
+  if (sTickedSinceIdle) {
+    sTickedSinceIdle = false;
+    return;
+  }
+  RunCommands(mgr);
+}
+
+bool RegisterVar(VarHandler handler) {
+  VarHandlers().push_back(handler);
+  return true;
 }
 
 } // namespace PortConsole

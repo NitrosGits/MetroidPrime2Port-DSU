@@ -326,6 +326,13 @@ public:
   // after up to 20 (UpdateOrbitableObjects' refresh count, retail li 0x14 at 0x80120AF4). A lock-on
   // press only takes mOrbitNextTargetId, which is picked from those lists.
   void PortRefreshOrbitCandidates() { mOrbitCandidateRefreshFrames = 0; }
+  // Port (console `scan`): the orbit lock a lock-on press takes in UpdateOrbitInput (kOS_NoOrbit
+  // case), on a given target instead of mOrbitNextTargetId; the next update validates it as usual.
+  void PortForceOrbit(TUniqueId target, const CStateManager& mgr) {
+    SetOrbitTargetId(target, mgr);
+    SetOrbitNextTargetId(target);
+    SetOrbitState(kOS_OrbitObject, mgr);
+  }
 #endif
   void DetachActorFromPlayer();
   void UpdateScanningState(const CFinalInput& input, CStateManager& mgr, float dt);
@@ -498,6 +505,14 @@ public:
   void SetHoldScreenFilterAlpha(bool hold) { mHoldScreenFilterAlpha = hold; }    // Guessed name.
   TUniqueId GetEnemyLockOnActorId() const { return mEnemyLockOnActorId; }        // Guessed name.
   char GetEnemyLockOnCount() const { return mEnemyLockOnCount; }                 // Guessed name.
+#ifdef TARGET_PC
+  // Host: the DigitalGuardian REL's ChargeAttack (fn_14_16A50) stores the two by offset (the count
+  // byte at +0x14C6, then the id at +0x14C4); the port goes through this setter.
+  void SetEnemyLockOn(TUniqueId id, char count) {
+    mEnemyLockOnCount = count;
+    mEnemyLockOnActorId = id;
+  }
+#endif
   void TakeDamage(bool significant, const CVector3f& location, float damage, TUniqueId source,
                   TUniqueId owner, const CDamageInfo& damageInfo, CStateManager& mgr);
   bool GetExplorationMode() const;

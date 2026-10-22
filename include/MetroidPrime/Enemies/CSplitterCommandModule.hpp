@@ -115,7 +115,6 @@ public:
   const CDamageVulnerability* GetDamageVulnerability() const override;
   rstl::optional_object< CAABox > GetTouchBounds() const override;
   CVector3f GetAimPosition(const CStateManager& mgr, float dt) const override;
-  CAABox GetSortingBounds(const CStateManager& mgr) const override;
 
   // CAi
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
@@ -203,12 +202,32 @@ public:
   int GetLaserSweepStage() const { return mLaserSweepStage; }  // guest 0xF34
   // guest 0xEFA: the chassis the head is docked in (the chassis's fn_75_8EC8 reads it, 0x00008F68).
   TUniqueId GetChassisId() const { return mChassisId; }
+  // guest 0xEFC: the chassis the head is checking (the chassis's WaitForDocking reads it).
+  TUniqueId GetCheckedChassisId() const { return mCheckedChassisId; }
 
+  // The retail's fn_75_2994 (the head's turn upright), fn_75_23F0 (its separation from other
+  // undocked AIs) and fn_75_2280 (the search for a free chassis).
+  void PortTurnUpright(float dt);
+  CVector3f PortSeparationVector(CStateManager& mgr) const;
+  void PortFindChassis(CStateManager& mgr);
+  // The retail's fn_75_270C (the dodge direction pick) and fn_75_25C4 (a clear dodge path).
+  int PortDodgeDirection(CStateManager& mgr);
+  bool PortDodgeClear(CStateManager& mgr, const CVector3f& dir, float dist);
   // The retail's fn_75_5D50: the head's shield reset (the chassis's Death and its spin, dodge and
   // docking states call it).
   void PortResetShield(CStateManager& mgr);
+  // The retail's fn_75_5DDC: the head's spin shield (the chassis's SetupSpinAttack calls it).
+  void PortSpinShield(CStateManager& mgr);
+  // The retail's fn_75_5CC4 (the chassis's Dodge state's shield) and fn_75_5B28 (its WaitForSnatch
+  // state's).
+  void PortDodgeShield(CStateManager& mgr);
+  void PortSnatchShield(CStateManager& mgr);
 
 private:
+  // The chassis's AutoDestruct table entry is this class's fn_75_5A54 (PortAutoDestruct).
+  friend class CSplitterMainChassis;
+  // The Digital Guardian head's DestroyActiveSplitters (fn_14_14C24) calls fn_75_5A54 too.
+  friend class CDigitalGuardianHead;
   void EnsureBodyActive(CStateManager& mgr);
 
   // Host layout (retail's object is 0xF70, CPatterned is 0x7C0; the guest offsets are the REL's
@@ -255,6 +274,9 @@ private:
   // effects are off.
   void PortUpdateEffectStates(CStateManager& mgr);
   uint mShieldState = 0;  // guest 0xEDC
+  // guest 0xEAC: the head's own damage vulnerability (the constructor copies the base's, fn_75_70A0);
+  // the vulnerability slot (fn_75_616C) returns it and the shield functions overwrite it.
+  CDamageVulnerability mOwnVulnerability;
 
   // The retail's fn_75_2154: the head's own move. With the auto-destruct timer running the
   // head is teleported to the destination, otherwise it moves towards it in one frame.
@@ -264,6 +286,10 @@ private:
   void PortUpdateChassis(CStateManager& mgr);
   TUniqueId mChassisId = kInvalidUniqueId;       // guest 0xEFA (the chassis it looks up)
   TUniqueId mSyncedId = kInvalidUniqueId;        // guest 0xEFE (the copy of the chassis's 0xCC0)
+  int mLaserPulseShots = 0;  // guest 0xF20 (ResetAttackTimes, fn_75_3ADC)
+  float mDodgeDistance = 0.f;  // guest 0xEE8 (the constructor, 0x6EEC-0x6EF8)
+  int mDodgeCount = -1;        // guest 0xEEC (the constructor's -1, 0x6C18/0x6C30)
+  int mDodgeDirection = -1;    // guest 0xF30 (FindBestDodgeDirection, fn_75_3B34)
   TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
   TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
   // guest 0xF34: the laser sweep stage. The constructor leaves -1 (0x6CA0, 0x6CE4), fn_75_5AD8
@@ -328,6 +354,27 @@ private:
   void PortDespawnProjectile(CStateManager& mgr);
   // The retail's fn_75_3460: the head's collision actor manager.
   void PortCreateCollisionActorManager(CStateManager& mgr);
+
+  // -------------------------------------------------------------------------------------------
+  // helpers (this lane's half): the module's stateless helper bodies, ported from the REL's asm
+  // (src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp). Append-only: the FSM lane's own members
+  // are above. The retail function each one stands for is named on it.
+  void PortAddToRenderer(const CStateManager& mgr) const;  // fn_75_6310
+  void PortPreRender(CStateManager& mgr);                 // fn_75_633C
+  void PortRender(const CStateManager& mgr) const;         // fn_75_6368
+  bool PortCanBeIngPossessed(CStateManager& mgr) const;   // fn_75_5E50
+  bool PortListen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type);  // fn_75_5F18
+  // The retail's fn_75_6394 is the head's DoUserAnimEvent (the REL's vtable slot 0x70 - the DOL's
+  // slot 0x70, not the GetSortingBounds at 0x6C; the note's section f row was off by one slot).
+  // The port had no override, so the DOL's own DoUserAnimEvent ran.  The body is in
+  // src/MetroidPrime/Enemies/PortCSplitterHelpers.cpp.
+  void DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                       float dt) override;
+  void PortDoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EUserEventType type,
+                           float dt);
+  // The retail's fn_75_1CA0 (the head's projectile aim, the callee of fn_75_6394's kUE_Projectile
+  // case) is not ported yet: it is a shell that logs.
+  void PortHeadProjectileAim(CStateManager& mgr, const rstl::string& locatorName);
 };
 
 #endif // _CSPLITTERCOMMANDMODULE

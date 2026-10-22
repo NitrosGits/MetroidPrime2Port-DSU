@@ -207,7 +207,8 @@ CEntity* CSandBoss::TypesMatch(int typeId) const {
 // ---------------------------------------------------------------------------------------------
 // One-line accessors at the head of .text.
 
-// fn_55_0 (ported, not exercised yet)
+// @ fn_55_0
+// 0x0 li r3, 0x1: true (CScanDisplay asks it while the scan visor targets the worm).
 bool CSandBoss::IsScanVisorSelfRender() const { return true; }
 
 // @ fn_55_8
@@ -235,8 +236,17 @@ CRagDoll* CSandBoss::GetRagDoll() const { return nullptr; }
 TUniqueId CSandBoss::GetAttackTarget() const { return kInvalidUniqueId; }
 
 // fn_55_8C (ported, not exercised yet)
-// Retail reads bit 3 of the byte at 0x34c, the on-ground bit CPatterned's own accessor returns
-// [inferred: same bit].
+// IsOnGround: the REL's body is the DOL's own CPatterned::IsOnGround
+// (IsOnGround__10CPatternedCFv, the three instructions at the head of CPatterned.s) copied
+// verbatim - `lbz r0, 0x34c(r3); extrwi r3, r0, 1, 28` (0x8C, 0x90) - so it reads mask 0x08 of
+// the byte at 0x34C (PPC bit 28 of the zero-extended register: (byte >> 3) & 1). The DOL's
+// CPatterned::AcceptScriptMsg sets that bit in its kSM_Landed branch (the one next to the
+// zeroed momentum and the added ground-collider material) and clears it in its kSM_OffGround
+// branch, and the DOL's Landed trigger reads the same bit. The host's CPatterned::mOnGround is
+// written in exactly those two branches (src/MetroidPrime/Enemies/CPatterned.cpp:284 and
+// :291) and read by CPatterned::IsOnGround()
+// (include/MetroidPrime/Enemies/CPatterned.hpp:184), so this override returns the same flag
+// [proven]. The DOL's exact addresses are in docs/module-analysis/SandBoss.md section 7.6.
 bool CSandBoss::IsOnGround() const { return CPatterned::IsOnGround(); }
 
 // fn_55_98 (ported, not exercised yet)
@@ -370,7 +380,7 @@ void CSandBoss::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     break;
   case kSM_Create:
-    BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+    BodyController()->SetLocomotionType(pas::kLT_Crouch); // li r4, 0 at 0xD9AC: buried
     BodyController()->Activate(mgr, static_cast< pas::EAnimationState >(-1));
     SetupCollisionActors(mgr);
     break;
@@ -977,6 +987,12 @@ namespace {
 #define SB_CODE(label, name)                                                                       \
   { label, static_cast< CPatterned::StateMachine::CodeFunc >(&CSandBoss::name) }
 
+// @ fn_55_11184
+// The module's static initialiser: it fills the 21 trigger, 20 state and 25 code name tables
+// (the name strings in lbl_55_rodata_144..554) and the three pointer arrays
+// (lbl_55_data_100 / lbl_55_data_340 / lbl_55_data_5AC) that fn_55_CAA4 hands to the state
+// machine (0xCAB8..0xCB18). The tables below are the same 66 functions in the same order and
+// carry the same names, so the port's static tables are the initialiser's result.
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SB_TRIGGER(StateOver),          SB_TRIGGER(IsUnderGround),
     SB_TRIGGER(IsRecovered),        SB_TRIGGER(CanStartNewRound),

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <dolphin/gx/GXCpu2Efb.h>
+#include <dolphin/gx/GXExtra.h>
 
 namespace PortEfbCopy {
 namespace {
@@ -128,6 +129,11 @@ Slot* AcquireSlot(void* shared, int width, int height, int texelBytes, bool priv
     }
     if (freeSlot != nullptr) {
       ++sRecycled;
+      // Aurora keys its copy texture by the destination address; drop the old private one or it
+      // stays cached for good once the buffer below moves.
+      if (!freeSlot->destination.empty()) {
+        GXDestroyCopyTex(freeSlot->destination.data());
+      }
     }
   }
   if (freeSlot == nullptr) {

@@ -1,10 +1,12 @@
 #include "command_processor.hpp"
 
 #include "../gfx/depth_peek.hpp"
+#include "../gfx/perf.hpp"
 #include "../gfx/recording.hpp"
 #include "../internal.hpp"
 #include "dolphin/gd/GDGeometry.h"
 #include "dolphin/gx/GXAurora.h"
+#include "fifo.hpp"
 #include "gx.hpp"
 #include "pipeline.hpp"
 #include "regs.hpp"
@@ -563,7 +565,9 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
   // reticle locks onto them (CMinorIng surfacing). Redraw the same fragments alpha-only, with the
   // forced alpha and no blend; LESS/GREATER become LEQUAL/GEQUAL so the pass survives the depth
   // the draw above may have written.
-  if (state.dstAlpha != UINT32_MAX && colorReadsSrcAlpha && cache.config.alphaUpdate) {
+  // With dual-source blending the draw above already wrote the constant (ShaderConfig::dualSrcAlpha).
+  if (state.dstAlpha != UINT32_MAX && colorReadsSrcAlpha && cache.config.alphaUpdate &&
+      !cache.config.shaderConfig.dualSrcAlpha) {
     PipelineConfig alphaConfig = cache.config;
     alphaConfig.blendMode = GX_BM_NONE;
     alphaConfig.blendFacSrc = GX_BL_ONE;
@@ -576,6 +580,7 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
     } else if (alphaConfig.depthFunc == GX_GREATER) {
       alphaConfig.depthFunc = GX_GEQUAL;
     }
+    perf::count(AURORA_PERF_DST_ALPHA_DUP);
     DrawImmediateData alphaImmediates = immediates;
     alphaImmediates.forceDstAlpha = 1u;
     gfx::push_draw_command(DrawData{
@@ -627,6 +632,18 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader& 
   u32 totalVtxBytes = vtxCount * vtxSize;
   if (totalVtxBytes > reader.remaining())
     UNLIKELY { handle_draw_overrun(totalVtxBytes, reader); }
+
+  // Port: AURORA_RENDER_EVERY: a frame that is not rendered drops its draws. The vertex data is
+  // consumed (the stream has to stay in step) but not copied into the staging buffer, and no draw
+  // command is built, so the FIFO processor does the register work only. The state itself has to
+  // be kept: the game sets the viewport, the projection and the copy-clear outside its per-frame
+  // setup, so a frame whose commands were dropped entirely would leave the next rendered frame
+  // drawing with a stale state. A frame that holds an EFB copy is raised to "rendered" while it is
+  // recorded (gx::fifo::force_frame_rendered), so its draws are recorded after all.
+  if (!frame_rendered()) {
+    reader.take(totalVtxBytes);
+    return;
+  }
 
   const bool cleanState = g_gxState.dirty == 0 && fmt == sDrawCache.lastDrawFmt && sDrawCache.lineMode == 0 &&
                           prim != GX_LINES && prim != GX_LINESTRIP && prim != GX_POINTS;
@@ -821,6 +838,8 @@ void handle_aurora(ByteReader& reader) noexcept {
     g_gxState.texCopyDest = reinterpret_cast<const void*>(reader.read<u64>());
   } else if (subCmd == GX_AURORA_REQUEST_DEPTH_SNAPSHOT) {
     gfx::depth_peek::request_snapshot();
+  } else if (subCmd == GX_AURORA_SNAPSHOT_DEPTH) {
+    gfx::split_pass_for_depth_snapshot();
   } else if (subCmd == GX_AURORA_REQUEST_SCAN_PEEK) {
     const s32 left = static_cast<s32>(reader.read<u32>());
     const s32 top = static_cast<s32>(reader.read<u32>());
@@ -904,7 +923,6 @@ void handle_aurora(ByteReader& reader) noexcept {
     const size_t idxBytes = static_cast<size_t>(indexCount) * sizeof(u16);
     // Index data is always host-endian; push it to the GPU buffer as-is
     const auto indexData = reader.take(idxBytes);
-    const gfx::Range idxRange = gfx::push_indices(indexData.data(), indexData.size(), 4);
     u32 vtxSize;
     if (g_gxState.lastVtxFmt == fmt) {
       vtxSize = g_gxState.lastVtxSize;
@@ -912,6 +930,12 @@ void handle_aurora(ByteReader& reader) noexcept {
       vtxSize = calc_vtx_size(fmt);
     }
     const u32 totalVtxBytes = vtxCount * vtxSize;
+    // Port: AURORA_RENDER_EVERY: a frame that is not rendered records no draw (see draw_prim).
+    if (!frame_rendered()) {
+      reader.take(totalVtxBytes);
+      return;
+    }
+    const gfx::Range idxRange = gfx::push_indices(indexData.data(), indexData.size(), 4);
     const auto vertexData = reader.take(totalVtxBytes);
     const gfx::Range vertRange = gfx::push_verts(vertexData.data(), vertexData.size(), 4);
     if (indexCount != 0) {

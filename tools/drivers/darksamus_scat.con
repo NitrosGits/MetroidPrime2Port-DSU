@@ -1,0 +1,14 @@
+# dsscat (CScattershotProjectile, PortCScattershotProjectile.cpp): rooftop boss u04f7 (Sanctuary
+# 10_cliff_rooftop layer 2). Scatter shots with the player on the ledge (shots end on the world),
+# next to the boss (shots hit the player) and at a middle distance; MovingScatterShot adds shots
+# to a live projectile from the side step.
+@f600 send u04f7 Activate; god 1
+@f650 fsm u04f7 ScatterShot
+@f850 fsm u04f7 ScatterShot
+@f1050 place u04f7 player 4
+@f1080 fsm u04f7 ScatterShot
+@f1280 fsm u04f7 MovingScatterShot
+@f1480 place u04f7 player 14
+@f1500 fsm u04f7 ScatterShot
+@f1700 fsm u04f7 MovingScatterShot
+@f1900 status

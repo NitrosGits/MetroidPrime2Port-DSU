@@ -12,6 +12,7 @@
 #include "MetroidPrime/Enemies/CBurstFire.hpp"
 #include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/Weapons/CProjectileInfo.hpp"
+#include "Kyoto/Audio/CSfxHandle.hpp"
 #include "Kyoto/Math/CPlane.hpp"
 #include "rstl/list.hpp"
 #include "rstl/optional_object.hpp"
@@ -39,6 +40,8 @@ struct CSpacePirateData {
   ushort mImpactSfx;           // +0x88
   float mIntraBurstTime;       // +0x8c
   float mIntraBurstVariation;  // +0x90
+  float mIngIntraBurstTime;    // +0x94 unknown_0x5080162a (UpdateAttacks 0x2D94, Ing-possessed)
+  float mIngIntraBurstVariation; // +0x98 unknown_0xc78b40e0 (UpdateAttacks 0x2D8C, Ing-possessed)
   ushort mAlertSfx;            // +0x9c
   float mGunTrackDelay;        // +0xa0
   uint mFirstBurstCount;       // +0xa4
@@ -107,6 +110,8 @@ public:
   void Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) override;
   void KnockBack(CStateManager& mgr, const CKnockBackInfo& info) override;
   void SetupStateMachine(CStateManager& mgr) override;
+  // @ fn_72_18
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
   TUniqueId GetAttackTarget() const override { return mAttackTarget; }
   void SetAttackTarget(CStateManager& mgr, TUniqueId target) override;
 
@@ -124,16 +129,25 @@ public:
                        float dt) override;
   void SpawnGrenade(CStateManager& mgr); // fn_72_4174, called from DoUserAnimEvent's kUE_Projectile
   bool CanBeShot(const CStateManager&, int) override { return true; } // fn_72_5C
-  bool IsListening() const override { return true; }                  // fn_72_10
+  // @ fn_72_10 (0x8): `li r3, 1` (0x10). Branchless; the 2026-10-21 gdb run saw 400+ calls.
+  bool IsListening() const override { return true; }
   bool Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) override;
   CVector3f GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                       const CVector3f& aimPos) const override;
   uchar GetModelAlphau8(const CStateManager& mgr) const override;
   CProjectileInfo* ProjectileInfo() override; // fn_72_4F0C
-  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; } // fn_72_8
+  // @ fn_72_8 (0x8): `addi r3, r3, 0x920` (0x8), this + 0x920. Branchless; 400+ calls in the gdb run.
+  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; } // fn_72_40
-  CRagDoll* GetRagDoll() const override { return nullptr; } // fn_72_17A0; xb30_ is never set yet
+  // fn_72_17A0 (0x28): the ragdoll (0xb30) is returned only while it is live: the ragdoll's flag
+  // byte 0x70 has to carry 0x40 (asm 0x17B0-0x17B4) and 0x80 (asm 0x17B8-0x17BC), else null
+  // (asm 0x17C0).  The body is in PortCSpacePirateHelpers.cpp.
+  CRagDoll* GetRagDoll() const override;
+  // @ fn_72_24
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
   float GetGravityConstant() const override { return 50.f; } // fn_72_24
+  // @ fn_72_0
+  // arms and the run: docs/module-analysis/SpacePirate_helpers.md (section 3).
   bool IsScanVisorSelfRender() const override { return true; } // fn_72_0
   CAABox GetScanVisorRenderBounds(const CStateManager& mgr) const override;
   void ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
@@ -396,7 +410,7 @@ private:
   float xbd0_;                            // 0xbd0
   rstl::optional_object< CProjectileInfo > mProjectileInfo; // 0xbd4 (0x28), only if projectile valid
   bool xbfc_;                             // 0xbfc
-  int xc00_;                              // 0xc00
+  CSfxHandle xc00_;                       // 0xc00 (the sfx emitter handle; fn_72_2EA8)
   int xc04_warpPoint;                     // 0xc04 (-1); ShouldWarpIn
   // 0xc08 (0x4c, valid flag 0xc54): the grenade launcher's static model, built by fn_72_4F28 and
   // drawn at the R_wrist locator by fn_72_36CC.
@@ -428,6 +442,13 @@ private:
   uchar xb34_[0x128];
   CPlane mPortalPlane; // Guessed name; written by the WispTentacle while it drags the pirate.
   uchar xc6c_[4];
+#endif
+#ifdef TARGET_PC // helpers
+  // The module's stateless helper half (retail fn_72_*): the bodies that are neither an FSM state
+  // nor an FSM trigger. They live in PortCSpacePirateHelpers.cpp; the note with every offset and
+  // the arm tables is docs/module-analysis/SpacePirate_helpers.md.
+  void UpdateSfxEmitter();                                    // 2EA8
+  rstl::optional_object< CAABox > GetActorTouchBounds() const; // 1854
 #endif
 };
 CHECK_SIZEOF(CSpacePirate, 0xc70)

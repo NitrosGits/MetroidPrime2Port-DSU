@@ -29,6 +29,10 @@ void CGenericFSM2State< T >::Reset(CStateManager& mgr, T& owner) {
 
 template < class T >
 void CGenericFSM2State< T >::SetStateFunctions(const SStateFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortStateFunctions = functions;
+  mPortStateFunctionCount = count;
+#endif
   for (int i = 0; i < mSubMachines.size(); ++i) {
     mSubMachines[i].mMachine->SetStateFunctions(functions, count);
   }
@@ -41,6 +45,10 @@ void CGenericFSM2State< T >::SetStateFunctions(const SStateFunction* functions, 
 
 template < class T >
 void CGenericFSM2State< T >::SetTriggerFunctions(const STriggerFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortTriggerFunctions = functions;
+  mPortTriggerFunctionCount = count;
+#endif
   for (int i = 0; i < mSubMachines.size(); ++i) {
     mSubMachines[i].mMachine->SetTriggerFunctions(functions, count);
   }
@@ -53,6 +61,10 @@ void CGenericFSM2State< T >::SetTriggerFunctions(const STriggerFunction* functio
 
 template < class T >
 void CGenericFSM2State< T >::SetCodeFunctions(const SCodeFunction* functions, int count) {
+#ifdef TARGET_PC
+  mPortCodeFunctions = functions;
+  mPortCodeFunctionCount = count;
+#endif
   for (int i = 0; i < mSubMachines.size(); ++i) {
     mSubMachines[i].mMachine->SetCodeFunctions(functions, count);
   }
@@ -366,6 +378,30 @@ void CGenericFSM2State< T >::ExitActive(CStateManager& mgr, T& owner) {
 
 #ifdef TARGET_PC
 template < class T >
+void CGenericFSM2State< T >::PortCollectStateNames(rstl::vector< rstl::string >& out,
+                                                   int maxDepth) const {
+  if (mMachine == nullptr) {  // the asset is missing until the machine is set up
+    return;
+  }
+  for (const CState2State& state : mMachine->GetStates()) {
+    out.push_back(state.GetName());
+  }
+  // The owner's own table (the port registers the module's states under the retail's names).
+  for (int i = 0; i < mPortStateFunctionCount; ++i) {
+    out.push_back(rstl::string(mPortStateFunctions[i].mName));
+  }
+  if (maxDepth <= 0) {
+    return;
+  }
+  for (int i = 0; i < mSubMachines.size(); ++i) {
+    CGenericFSM2State< T >* sub = mSubMachines[i].mMachine.GetPtr();
+    if (sub != nullptr) {  // a sub-machine without a machine has no states
+      sub->PortCollectStateNames(out, maxDepth - 1);
+    }
+  }
+}
+
+template < class T >
 int CGenericFSM2State< T >::PortFindStateDepth(const rstl::string& name, int maxDepth) const {
   if (mMachine == nullptr) {
     return -1;
@@ -417,6 +453,57 @@ int CGenericFSM2State< T >::PortSetStateDeep(CStateManager& mgr, T& owner,
     return depth >= 0 ? depth + 1 : -1;
   }
   return -1;
+}
+
+template < class T >
+typename CGenericFSM2State< T >::StateFunc
+CGenericFSM2State< T >::PortFindStateFunction(const char* name) const {
+  for (int i = 0; i < mPortStateFunctionCount; ++i) {
+    const char* a = mPortStateFunctions[i].mName;
+    const char* b = name;
+    while (*a != '\0' && *a == *b) {
+      ++a;
+      ++b;
+    }
+    if (*a == *b) {
+      return mPortStateFunctions[i].mFunction;
+    }
+  }
+  return StateFunc();
+}
+
+template < class T >
+typename CGenericFSM2State< T >::TriggerFunc
+CGenericFSM2State< T >::PortFindTriggerFunction(const char* name) const {
+  for (int i = 0; i < mPortTriggerFunctionCount; ++i) {
+    const char* a = mPortTriggerFunctions[i].mName;
+    const char* b = name;
+    while (*a != '\0' && *a == *b) {
+      ++a;
+      ++b;
+    }
+    if (*a == *b) {
+      return mPortTriggerFunctions[i].mFunction;
+    }
+  }
+  return TriggerFunc();
+}
+
+template < class T >
+typename CGenericFSM2State< T >::CodeFunc
+CGenericFSM2State< T >::PortFindCodeFunction(const char* name) const {
+  for (int i = 0; i < mPortCodeFunctionCount; ++i) {
+    const char* a = mPortCodeFunctions[i].mName;
+    const char* b = name;
+    while (*a != '\0' && *a == *b) {
+      ++a;
+      ++b;
+    }
+    if (*a == *b) {
+      return mPortCodeFunctions[i].mFunction;
+    }
+  }
+  return CodeFunc();
 }
 #endif
 

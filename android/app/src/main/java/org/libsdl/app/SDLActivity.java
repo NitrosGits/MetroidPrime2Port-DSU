@@ -28,6 +28,7 @@ import android.os.Message;
 import android.os.ParcelFileDescriptor;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.util.SparseArray;
 import android.view.Display;
 import android.view.Gravity;
@@ -1508,6 +1509,24 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
                 // on some devices key events are sent for mouse BUTTON_BACK/FORWARD presses
                 // they are ignored here because sending them as mouse input to SDL is messy
                 if ((keyCode == KeyEvent.KEYCODE_BACK) || (keyCode == KeyEvent.KEYCODE_FORWARD)) {
+                    // Port: on devices that send the side buttons only as these keys (the user's
+                    // Lenovo tablet), hand them to SDL as the mouse buttons the motion path would
+                    // (SDL_androidmouse.c: forward = X1, back = X2), so a remap can bind them.
+                    // Relative with no motion, so the cursor stays where it is.
+                    final int side = keyCode == KeyEvent.KEYCODE_BACK ? MotionEvent.BUTTON_BACK
+                                                                      : MotionEvent.BUTTON_FORWARD;
+                    switch (event.getAction()) {
+                    case KeyEvent.ACTION_DOWN:
+                        if (event.getRepeatCount() == 0) {
+                            Log.i(TAG, "mouse side button " + (side == MotionEvent.BUTTON_BACK ? "back" : "forward")
+                                    + " (sent as a key) -> SDL mouse button");
+                            onNativeMouse(side, MotionEvent.ACTION_DOWN, 0f, 0f, true);
+                        }
+                        return true;
+                    case KeyEvent.ACTION_UP:
+                        onNativeMouse(0, MotionEvent.ACTION_UP, 0f, 0f, true);
+                        return true;
+                    }
                     switch (event.getAction()) {
                     case KeyEvent.ACTION_DOWN:
                     case KeyEvent.ACTION_UP:

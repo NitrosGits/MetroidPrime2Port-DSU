@@ -8,6 +8,8 @@
 #include "../../gfx/clear.hpp"
 #include "../../webgpu/gpu.hpp"
 #include "../../gx/texture.hpp"
+#include "../../gx/fifo.hpp"
+#include "../../gfx/perf.hpp"
 #include "../vi/vi_internal.hpp"
 
 #include <algorithm>
@@ -106,6 +108,13 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
   const auto clearColor = clear && g_gxState.colorUpdate;
   const auto clearAlpha = clear && g_gxState.alphaUpdate;
   const auto clearDepth = clear && g_gxState.depthUpdate;
+  // Port: AURORA_RENDER_EVERY: the copy's destination decides whether the frame has to be rendered
+  // in full. A new or one-shot destination (a render-to-texture at an area load) has to be
+  // produced, so its frame is rendered; a destination that was copied within the last N frames
+  // (N = the render interval) keeps its texture, and the copy is skipped with the frame.
+  // The decision is made before the pass that carries the copy is sealed below.
+  fifo::note_copy_destination(reinterpret_cast<uint64_t>(dest), dstWidth, dstHeight,
+                               static_cast<uint32_t>(texCopyFmt));
   gfx::resolve_pass_into(handle.handle, rect, clearColor, clearAlpha, clearDepth, g_gxState.clearColor,
                          clear_depth_value(), texCopyFmt);
   ++handle.revision;
@@ -261,6 +270,7 @@ void GXSetDispCopyGamma(GXGamma gamma) {}
 void GXCopyDisp(void* dest, GXBool clear) {}
 
 void GXCopyTex(void* dest, GXBool clear) {
+  aurora::perf::copy_site(__builtin_return_address(0));
   GX_WRITE_AURORA(GX_AURORA_LOAD_COPY_DEST);
   GX_WRITE_U64(reinterpret_cast<u64>(dest));
 

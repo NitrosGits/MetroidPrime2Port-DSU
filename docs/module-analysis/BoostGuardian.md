@@ -430,6 +430,377 @@ Restating them as guest bits clears these and adds 24 XBITs on the Ing-module ch
 The MASK hit (`mBoostPuddleGenerate` placed by the host bitfield layout at 0x11EF 0x04) is fixed
 with a position comment (`guest 0x11EE bit 2`).
 
+## h. The unmarked functions: what each one is
+
+`tools/port_progress.py` counted 204 of the module's 318 functions as marked (206 after this
+slice), so 114 were unmarked. Every one of them is either the REL's own copy of code the host's
+C++ already does or compiler output; this section says which is which, so the number stops
+being a mystery.
+
+A **REL copy of host/DOL code** never gets a marker: the host's own C++ (or the compiler) does
+the work, and a marker would claim a function the port does not implement. Where the same
+function also exists in the GameCube executable, the table gives its DOL address (from
+`config/G2ME01/symbols.txt`), so the copy can be checked against the original.
+
+The classes: 10 the REL runtime and the module's own entry glue, 47 the compiler's weak
+deleting dtors and copies of the module's own types, 31 the template inlines the compiler
+emitted out of line, 15 the REL's own copies of a DOL / host class member, 2 inline accessors
+and thunks, 5 the module's own memberwise copies of its two parameter blocks and 4 with
+retail behaviour (section h.1).
+
+The "called from" column is the REL's own call graph, read from the disassembly; a "-" means
+nothing in the module calls it and no table names it.
+
+##### rel - The REL runtime and the module's own entry glue
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `RELMain` | 0x20 | the REL's entry: it calls fn_30_100 | - | _prolog |
+| `RELExit` | 0x24 | the REL's exit: the DOL's SetSIngBoostBallGuardian_FuncPtrs (0x8022FFC4) with null | - | _epilog |
+| `fn_30_100` | 0x30 | the installer: fn_30_130 into lbl_30_bss_6C, then the DOL's SetSIngBoostBallGuardian_FuncPtrs (0x8022FFC4) | - | RELMain |
+| `_prolog` | 0x24 | the runtime's prolog: ModuleConstructors, then RELMain | - | - |
+| `_epilog` | 0x24 | the runtime's epilog: ModuleDestructors, then RELExit | - | - |
+| `ModuleConstructors` | 0x4C | the module's .ctors list | - | _prolog |
+| `ModuleDestructors` | 0x4C | the module's .dtors list | - | _epilog |
+| `__destroy_global_chain` | 0x58 | the runtime's global destructor chain | - | - |
+| `__register_global_object` | 0x1C | the runtime's global-object registration | - | fn_30_12510, fn_30_8520 |
+| `_unresolved` | 0xC4 | the runtime's unresolved-relocation stub | - | - |
+
+##### gen - The compiler's weak deleting dtors and copies of the module's own types
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_5E4` | 0xB8 | the module's own data block: the vulnerability's dtor, then the block's | - | fn_30_11CD8, fn_30_130, fn_30_E5EC |
+| `fn_30_69C` | 0x58 | the SLdr damage-info block's dtor chain | - | fn_30_14AC, fn_30_1988, fn_30_5E4 |
+| `fn_30_6F4` | 0x54 | the SLdr damage-info block's inner dtor | - | fn_30_69C |
+| `fn_30_B30` | 0x54 | a member's weak deleting dtor | - | - |
+| `fn_30_FEC` | 0x8C | a member's weak deleting dtor | - | - |
+| `fn_30_12A0` | 0x6C | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_130C` | 0x54 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_1360` | 0x64 | the CAnimData member's weak deleting dtor | - | - |
+| `fn_30_13C4` | 0x60 | the CModelData member's weak deleting dtor | - | - |
+| `fn_30_18B4` | 0x3C | a member's weak deleting dtor | - | - |
+| `fn_30_1078` | 0x64 | the vulnerability + SLdr block's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_1424` | 0x88 | the loader's SLdr block's dtor (actor parameters, patterned typedef, editor properties) | - | fn_30_130 |
+| `fn_30_14AC` | 0x94 | the loader's SLdr damage-info block's dtor | - | fn_30_1424 |
+| `fn_30_2C44` | 0x88 | the SLdr damage-vulnerability / plasma-beam block's dtor | - | fn_30_1078, fn_30_130, fn_30_1424, fn_30_E5EC |
+| `fn_30_6B74` | 0x48 | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_7D00` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_84C4` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_A308` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_A8C0` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_AFE0` | 0x5C | a state functor's deleting dtor (an FSM2 node vtable) | - | a .data table |
+| `fn_30_890C` | 0x8C | a member's weak deleting dtor | - | - |
+| `fn_30_941C` | 0x50 | a wide rstl string member's weak deleting dtor | - | - |
+| `fn_30_946C` | 0x68 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_94D4` | 0x68 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_C46C` | 0x3C | a member's weak deleting dtor | - | - |
+| `fn_30_CE14` | 0x3C | a member's weak deleting dtor | - | - |
+| `fn_30_D8D8` | 0x74 | the SLdr plasma-beam block's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_E4EC` | 0x54 | the connected-ids vector member's weak deleting dtor | - | fn_30_11CD8, fn_30_DDA0, fn_30_E5EC |
+| `fn_30_E540` | 0x58 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_E598` | 0x54 | a CToken holder's weak deleting dtor | - | - |
+| `fn_30_EA38` | 0x94 | CPatterned's token member's weak deleting dtor | - | fn_30_E854 |
+| `fn_30_EACC` | 0x58 | the CSurfaceAlignmentHelper chain's weak deleting dtor | - | fn_30_E5EC |
+| `fn_30_EB24` | 0x58 | the CSurfaceAlignmentHelper chain's weak deleting dtor | - | fn_30_EACC |
+| `fn_30_EB7C` | 0x58 | the CSurfaceAlignmentHelper chain's weak deleting dtor | - | fn_30_EB24 |
+| `fn_30_EBD4` | 0x98 | the CSurfaceAlignmentHelper chain's weak deleting dtor | - | fn_30_EB7C |
+| `fn_30_101A8` | 0x3C | a member's weak deleting dtor (the ball's section) | - | - |
+| `fn_30_101E4` | 0x6C | a CToken holder's weak deleting dtor (the ball's section) | - | - |
+| `fn_30_1049C` | 0x58 | the CCollisionActorManager member's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_104F4` | 0x3C | a member's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_10530` | 0x3C | a member's weak deleting dtor (unreferenced) | - | - |
+| `fn_30_11DF0` | 0x54 | a member's weak deleting dtor (the ball's section) | - | fn_30_11CD8 |
+| `fn_30_127C0` | 0x3C | a member's weak deleting dtor (the ball's section) | - | - |
+| `fn_30_3790` | 0x50 | an rstl string member's weak deleting dtor | - | - |
+| `fn_30_37E0` | 0x58 | a member's weak deleting dtor | - | fn_30_3478, fn_30_38E0, fn_30_3CB0, fn_30_6980, fn_30_7390, fn_30_B478, fn_30_D4F8 |
+| `fn_30_3838` | 0x54 | a member's weak deleting dtor | - | fn_30_37E0 |
+| `fn_30_4D18` | 0x5C | an rstl string member's weak deleting dtor | - | - |
+| `fn_30_E854` | 0x1E4 | CPatterned's own teardown (its token member, body state, vulnerability) | - | fn_30_E5EC |
+
+##### rstl - The template inlines the compiler emitted out of line
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_9E0` | 0x44 | the phase vector's copy constructor | - | fn_30_10250, fn_30_748 |
+| `fn_30_A24` | 0x68 | the phase vector's copy assignment (the element loop) | - | fn_30_9E0 |
+| `fn_30_A8C` | 0x20 | the phase struct's copy assignment | - | fn_30_A24, fn_30_F30 |
+| `fn_30_AAC` | 0x28 | the phase struct's self-assignment guard | - | fn_30_A8C |
+| `fn_30_F30` | 0x48 | the phase vector's element destructor | - | fn_30_130 |
+| `fn_30_AD4` | 0x5C | the CDamageVulnerability's copy constructor | - | fn_30_10250, fn_30_1056C, fn_30_10C24, fn_30_15924, fn_30_748 |
+| `fn_30_B84` | 0x130 | rstl's vector allocate (the damage-vulnerability array) | - | fn_30_AD4 |
+| `fn_30_CB4` | 0xAC | the boost block's copy constructor | - | fn_30_10250, fn_30_748 |
+| `fn_30_D60` | 0x1D0 | rstl's vector allocate (the damage-vulnerability array) | - | fn_30_CB4 |
+| `fn_30_4BD8` | 0x38 | the joint-sphere vector's push_back_unsafe | - | fn_30_4A38, fn_30_4E90 |
+| `fn_30_4C10` | 0x20 | the joint-sphere vector's element constructor | - | fn_30_1105C, fn_30_4BD8 |
+| `fn_30_4C30` | 0x28 | the joint-sphere vector's element copy | - | fn_30_4C10 |
+| `fn_30_4D74` | 0x84 | the joint-sphere vector's destructor | - | fn_30_4A38, fn_30_4E90 |
+| `fn_30_4DF8` | 0x38 | the material-filter vector's element constructor | - | fn_30_4D74 |
+| `fn_30_4E30` | 0x60 | the material-filter vector's element copy | - | fn_30_4DF8 |
+| `fn_30_10E04` | 0xA4 | rstl's vector allocate (the connected-ids array) | - | fn_30_E430 |
+| `fn_30_10EA8` | 0x98 | rstl's vector copy (the connected-ids array) | - | fn_30_1FB4 |
+| `fn_30_10F40` | 0x5C | the connected-ids vector's element copy | - | fn_30_10EA8 |
+| `fn_30_10F9C` | 0xC0 | rstl's vector reserve (the joint-sphere array) | - | fn_30_4A38, fn_30_4E90 |
+| `fn_30_1105C` | 0x68 | the joint-sphere vector's element constructor | - | fn_30_10F9C |
+| `fn_30_136B0` | 0x4C | rstl's vector insert (the ball's near list) | - | fn_30_12AB0 |
+| `fn_30_136FC` | 0x64 | rstl's vector insert (the ball's near list) | - | fn_30_136B0 |
+| `fn_30_14C54` | 0x78 | rstl's vector erase (the ball's near list) | - | fn_30_148DC, fn_30_14CCC |
+| `fn_30_1642C` | 0xA4 | rstl's vector reserve (the ball's bounce counts) | - | fn_30_1466C |
+| `fn_30_CD78` | 0x9C | rstl's optional_object<CAABox> assignment | - | fn_30_13ECC, fn_30_CC34 |
+| `fn_30_E430` | 0xB0 | rstl's vector assignment (the connected-ids array) | - | fn_30_DDA0 |
+| `fn_30_E4E0` | 0xC | rstl's vector's element destructor helper | - | fn_30_E430 |
+| `fn_30_10DC` | 0x40 | the CModelData copy's optional-model branch | - | fn_30_130 |
+| `fn_30_111C` | 0x20 | the optional model data's copy | - | fn_30_10DC |
+| `fn_30_113C` | 0x28 | the optional model data's null guard | - | fn_30_111C |
+| `fn_30_160D0` | 0x100 | the connected-ids vector's copy constructor (the ball's) | - | fn_30_15924 |
+
+##### dol - The REL's own copies of a DOL / host class member
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_388C` | 0x54 | the CHealthInfo copy constructor | 0x80070D60 `__ct__11CHealthInfoFRC11CHealthInfo` | fn_30_160A8, fn_30_3478, fn_30_4924 |
+| `fn_30_33B0` | 0x5C | the CRayCastResult copy constructor | 0x80015CAC `__ct__14CRayCastResultFRC14CRayCastResult` | fn_30_324C |
+| `fn_30_A91C` | 0x40 | CVector3f::Cross | 0x8001994C `Cross__9CVector3fFRC9CVector3fRC9CVector3f` | fn_30_11F2C, fn_30_12124, fn_30_123CC, fn_30_12AB0, fn_30_A45C |
+| `fn_30_D1C4` | 0x6C | the CMotionState copy constructor | 0x8000F200 `__ct__12CMotionStateFRC12CMotionState` | fn_30_CFC4 |
+| `fn_30_161D0` | 0x68 | the CMotionState copy constructor (the ball's) | 0x8000F200 `__ct__12CMotionStateFRC12CMotionState` | fn_30_15924 |
+| `fn_30_6710` | 0xA4 | the CLight copy constructor | 0x80038C9C `__ct__6CLightFRC6CLight` | fn_30_65C8 |
+| `fn_30_1164` | 0x13C | the CModelData copy constructor (three optional tokens, each locked) | 0x80018FBC `__ct__10CModelDataFRC10CModelData` | fn_30_113C |
+| `fn_30_4C58` | 0xC0 | the CJointCollisionDescription copy constructor | 0x80137214 `__ct__26CJointCollisionDescription...` | fn_30_4A38, fn_30_4C30, fn_30_4E90 |
+| `fn_30_160A8` | 0x28 | the CHealthInfo copy constructor (the ball's optional) | 0x80070D60 `__ct__11CHealthInfoFRC11CHealthInfo` | fn_30_16088 |
+| `fn_30_16088` | 0x20 | rstl's optional_object<CHealthInfo> assignment (the ball's) | 0x8016FCB8 `assign__optional_object<CHealthInfo>` | fn_30_15FF4 |
+| `fn_30_15FF4` | 0x94 | rstl's optional_object<CHealthInfo> assignment (the ball's) | 0x8016FCB8 `assign__optional_object<CHealthInfo>` | fn_30_15FC4 |
+| `fn_30_15FC4` | 0x30 | the ball's optional health-info assignment | 0x8016FC88 `__as__optional_object<CHealthInfo>` | fn_30_15924 |
+| `fn_30_1F08` | 0xAC | the CMayaSpline copy constructor (the loader's) | 0x80080B3C `__ct__11CMayaSplineFRC11CMayaSpline` | fn_30_1988 |
+| `fn_30_1FB4` | 0xE0 | the CMayaSpline assignment (the loader's) | 0x80080DB8 `__as__11CMayaSplineFRC11CMayaSpline` | fn_30_1F08 |
+| `fn_30_2094` | 0xC | the CMayaSpline's knot-array release | 0x800327FC `__dt__11CMayaSplineFv` | fn_30_1FB4 |
+
+##### acc - Inline accessors and thunks
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_90` | 0x2C | the vtable's HealthInfo() thunk: it calls the base's slot 9 (vslot 0x38) | - | a .data table |
+| `fn_30_4028` | 0x8 | an unreferenced accessor (the word at 0x254) | - | - |
+
+##### host - The module's own memberwise copies of its two parameter blocks
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_10250` | 0x24C | the boost block's memberwise copy into the object (guest 0xDEC) | - | fn_30_15924, fn_30_EC6C |
+| `fn_30_1056C` | 0x128 | the guardian block's memberwise copy into the object (guest 0x7C0) | - | fn_30_EC6C |
+| `fn_30_10694` | 0x240 | the guardian block's memberwise copy, part two | - | fn_30_1056C, fn_30_10C24 |
+| `fn_30_108D4` | 0x2BC | the guardian block's memberwise copy, part three | - | fn_30_10694 |
+| `fn_30_10B90` | 0x94 | the guardian block's memberwise copy, part four | - | fn_30_10694 |
+
+##### beh - Retail behaviour
+
+| retail function | size | what it is | DOL counterpart | called from |
+|---|---|---|---|---|
+| `fn_30_68F0` | 0x90 | the kSM_Create body: the form, the locomotion type and the surface alignment | - | fn_30_DDA0 |
+| `fn_30_6014` | 0x50 | the cover hint claim: SetInUse(true), then the hint's id into 0x108E and 0x1090 | - | fn_30_8520 |
+| `fn_30_5260` | 0x170 | the separation steering (the module never calls it) | - | - |
+| `fn_30_110C4` | 0xC14 | the .ctors initialiser: the 86 FSM name/function records into the three tables | - | - |
+
+### h.1 The behaviour functions, branch by branch
+
+Four functions are behaviour rather than a copy. The two the fight reaches are marked; the
+other two are dead in retail (nothing calls them and no table names them), so they stay
+unmarked. Every branch of each is listed below with what the run proved.
+
+The evidence is one run of the area (world `3dfd2249`, area
+`06_swamp_boostballguardian_dark`, layer 5, `MP2_BG_FSM=1 MP2_DEBUG_BG=1 MP2_GODMODE=1`):
+the player's start point is 122 units from the guardian, so the console's `tp 14.9 290 58`
+puts it inside the guardian's 100-unit detection range. The probe lines below were in the tree
+for that run only (they are not committed).
+
+| function | asm branch | what the branch selects | verdict |
+|---|---|---|---|
+| `fn_30_68F0` | 0x00006918 `beq .L_00006920` | the data byte's 0x80 clear: form 2 (corporeal) | (b) ran: `[ibbg] PROBE create 012b form 2 startAsIngSpot 0` |
+| `fn_30_68F0` | 0x0000691C `li r3, 0x3` | the data byte's 0x80 set: form 3 (ing spot) | (c) unreachable in the shipped data: the loader's `fn_30_10C24` never sets 0x80 (0x00010D9C `rlwimi 7,24,24` from r11 = 0), so the flag byte's 0x80 is always 0 |
+| `fn_30_68F0` | 0x0000692C `beq .L_0000695C` | the same bit, read a second time | (b) ran (the same arm as 0x00006918) |
+| `fn_30_68F0` | 0x00006938 `bl SetLocomotionType` (0x00006934 `li r4, 0`) | crouch, with the surface alignment | (c) unreachable in the shipped data (the same 0x80) |
+| `fn_30_68F0` | 0x00006954 `bl fn_801F7714` | `AlignNearPosition` (rodata_64 = 1.0) | (c) unreachable in the shipped data (the same 0x80) |
+| `fn_30_68F0` | 0x00006958 `b .L_00006968` | the join after the alignment | (b) ran (the crouch arm is the only one that reaches it) |
+| `fn_30_68F0` | 0x00006964 `bl SetLocomotionType` (0x00006960 `li r4, 1`) | relaxed | (b) ran: the probe line above shows form 2, so this is the arm that ran |
+| `fn_30_6014` | none | the body is branch-free: `SetInUse`, then the id into 0x108E and 0x1090 | (b) ran: `[ibbg] PROBE claim 012b cover hint 0158` (six times in the run); a branch-free body needs only an entry line |
+| `fn_30_5260` | 0x000052A8, 0x000052B0, 0x000052C0, 0x00005328, 0x00005390, 0x000053AC | the separation steering's cast, self, team, magnitude, index and loop tests | (c) unreachable: the module's own text never calls `fn_30_5260` and no table names it, so the whole body is dead in retail (the host's `ApplySeparation` is the live one) |
+| `fn_30_4028` | none | `lwz r3, 0x254(r3)`, an unreferenced accessor | (c) unreachable: nothing calls it and no table names it |
+| `fn_30_110C4` | none | the `.ctors` initialiser: 773 straight-line instructions that copy the 86 FSM records (49 triggers, 28 states, 9 codes) into the module's three tables | (b) ran at module load (the machine's states and triggers fire), but no marker: it is the compiler's static initialiser, and the host's tables are static arrays in `PortCIngBoostBallGuardianFsm.cpp` |
+
+So `fn_30_68F0` (the `kSM_Create` body) and `fn_30_6014` (the cover hint claim) carry a marker
+each: every reachable arm of the first ran or is unreachable in the shipped data, and the
+second is branch-free and ran. `fn_30_5260` and `fn_30_4028` stay unmarked - retail never
+calls them, so the port has no behaviour to reproduce and no host counterpart.
+
+`asmcheck.py` reports one `BIT` finding on `fn_30_68F0` (0x6914: "asm tests xae0_80; C++
+never reads it"). It is the same false positive the module already has on the other flag-bit
+bodies (`fn_30_A0D8` 0xA174, `fn_30_9F50` 0x9FFC, `fn_30_9DA0` 0x9DFC, `fn_30_9C7C` 0x9CC8,
+`fn_30_8520` 0x8700): the host reads the packed flag byte through `mData.mFlags210`, and the
+annotator cannot resolve a member of a member, so it does not see the read.
+
+### h.2 The next five bodies, branch by branch
+
+Section h leaves 112 unmarked functions, and every one of them is a copy (the REL runtime, the
+compiler's dtors, the rstl inlines, the DOL's class members, the accessor thunks, the two
+parameter-block copies) or one of the two behaviour bodies that retail never calls
+(`fn_30_5260`, `fn_30_110C4`). **No unmarked behaviour is left to port**, so this slice took the
+next bodies the *module owns* - section b.3's list, "the module's own body is the authority" -
+and checked each of them against **this module's** asm, arm by arm. The port carries the Ing
+REL's bodies for these, so every difference between the two RELs is a candidate for a silent
+mismatch.
+
+| function | what it is | this module | the Ing's copy | the port's body vs this module's asm |
+|---|---|---|---|---|
+| `fn_30_8998` | `FaceTarget` | 0x280 | `fn_29_7244` 0x2D4 | matches |
+| `fn_30_8520` | `FindCoverPoint` | 0x3EC | `fn_29_6DA0` 0x418 | matches |
+| `fn_30_8CC0` | `SeekWallPoint` | 0x114 | `fn_29_75C0` 0xF8 | matches |
+| `fn_30_9C7C` | `IngSpotPointPathFind` | 0x124 | `fn_29_8570` 0x114 | matches |
+| `fn_30_9DA0` | `IngSpotPathFind` | 0x1B0 | `fn_29_8684` 0x184 | matches |
+| `fn_30_CA18` | `UpdateHitDamageTime` | 0x13C | `fn_29_B784` 0x10C | matches |
+
+Six, not five: `fn_30_CA18` came along because it is the base-class override the fight calls
+every frame in the ing-spot form, and it is the one this module changed the most (the safe-zone
+reload). `tools/asmcheck.py check IngBoostBallGuardian <file> fn_30_XXXX --only
+MASK,XBIT,CROP,XCMP,XSTORE,OFFS` reports **0 findings** for all six, and the bodies were read
+against the asm instruction by instruction: the port's `mData.mFlags210` reads are the asm's
+`this+0xAE0` (0x04 = `kFlag_NoPathFind`, 0x20 = `kFlag_NoBodyProjectile`), the port's
+`CurrentPhase().mIngSpotSpeedScale` is `*(0x11D0)+0x34`, the port's `rodata_9C` is 4.0 and
+`rodata_104` is 0.34906584 rad (20 degrees).
+
+**The run.** Area 28 (`3dfd2249`, `06_swamp_boostballguardian_dark`), the guardian `u052b` woken
+by the module's own `MP2_BG_FSM` probe, fast run (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
+320 s, `GODMODE=1`). The driver `tools/drivers/bg_arms.py` reads the guardian's forward axis out
+of the log ((0, -1, 0) at the spawn), teleports the player 30 degrees off it (inside the 80
+degree detection cone, outside the 20 degree facing cone, so the corporeal `FaceTarget` can
+take its turn command), forces the states below over the console and shoots the guardian with a
+real beam (the hit-damage timer). The arm counters come from the port's own probe lines
+(`MP2_BG_ARMS=1`), which were **temporary** and are not in the tree.
+
+#### `fn_30_8998` `FaceTarget` (0x8998)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x000089B0 `beq .L_00008A88` | msg 1 (Update) | ran |
+| 0x000089CC `b .L_00008BFC` | msg 2 (Deactivate): 0x6B4 = 0 (kAS_NotReady) | ran (42) |
+| 0x000089C0 / 0x000089C8 `b .L_00008C04` | msg < 0 and msg >= 3: nothing happens | (c) unreachable: `EStateMsg` has exactly the three values (StateMachineCommon.hpp), so the machine never sends another one |
+| 0x000089E4 `beq .L_00008A6C` | `fn_30_5F6C` (the target's aim position) failed: 0x6B4 = 3 | (c) unreachable: the state is entered with a live target and `fn_30_5F6C` fails only when the id resolves to no actor |
+| 0x00008A50 `ble .L_00008A60` | the angle to the target is under `rodata_104` (20 degrees): 0x6B4 = 3 | ran (6) |
+| 0x00008A54 `li r0, 0x1` | over 20 degrees: 0x6B4 = 1 (kAS_Ready) | ran (36) |
+| 0x00008A7C `rlwimi r0, r3, 2, 29, 29` | 0x11ED 0x04 = 0 (mMoving = false) | ran |
+| 0x00008A90 `beq .L_00008B80` | form 3 (ing spot): the LookAt snap | ran (41) |
+| 0x00008AB0 `bge .L_00008B80` | forms 6-9: the same snap | (c) not selected: the fight's `FaceTarget` ran in the corporeal and ing-spot forms only; the block itself ran through the form 3 selection |
+| 0x00008A9C `bge .L_00008AB8` | form 2 (corporeal): the turn command | ran (1) |
+| 0x00008AC8 `clrlwi. r0, r3, 24` / 0x00008ACC `beq .L_00008C04` | `CanIssueCommand(pas::kAS_Turn)` refused (the animation state is kAS_Over): nothing happens | ran (31) |
+| 0x00008B08 `clrlwi` / 0x00008B0C `beq .L_00008B74` | the delta to the target is not magnitude-safe: 0x6B4 = 3 | (c) unreachable: the delta is the target's aim position minus the actor's translation, and it is zero only if the player stands exactly on the guardian |
+| 0x00008B6C `bl DeliverCmd` | the turn command (`CBCLocomotionCmd`, zero velocity, the normalised delta, `rodata_64` = 1.0) | ran (1) |
+| 0x00008BBC `beq .L_00008C04` | the snap's delta is not magnitude-safe: no state change | (c) unreachable, as above |
+| 0x00008AA8 / 0x00008AB4 / 0x00008AA0 `b .L_00008BF0` | the forms 0, 1, 4, 5 and 10+: 0x6B4 = 3 | (c) not selected: the fight's `FaceTarget` ran in the forms 2 and 3 only (the host forms need a host, and the projectile forms end the state) |
+
+#### `fn_30_8520` `FindCoverPoint` (0x8520)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x0000854C `beq .L_00008554` | msg 0 (Activate) | ran (43) |
+| 0x00008550 `b .L_000088E8` | any other message: nothing happens | ran (86) |
+| 0x00008578 `beq .L_000088E8` | `fn_30_5F6C` (the target's aim position) failed | (c) unreachable, as in `FaceTarget` |
+| 0x00008588 `bne .L_000085B8` | the one-time init of the static candidate array (`__register_global_object`) | ran (the first scan) |
+| 0x0000869C `extrwi` / 0x000086A4 `beq .L_00008878` | the hint is inactive (0x20 bit 7) | (c) not selected: no hint of area 28 is inactive (the scan's `inactive` counter is 0 in every scan) |
+| 0x000086C0 `bne .L_00008878` | the hint is in use by this actor (`GetInUse`, the id at 0x8) | (c) not selected: no hint in area 28 is in use by the guardian (the scan's `inuse` counter is 0 in every scan) |
+| 0x000086D0 `bne .L_00008878` | the hint is in another area (the area word at 0x4) | (c) not selected: all nine hints of the area share the guardian's area (the scan's `area` counter is 0) |
+| 0x000086E0 `beq .L_00008878` | the hint is the last cover hint (0x1090) | ran (the scan's `last` counter, 1 per scan after the first claim) |
+| 0x000086F0 `ble .L_00008878` | the hint type is 14 or 15 (the boost nav points) | ran (the scan's `boostnav` counter, 2 per scan) |
+| 0x000086F8 `bne .L_00008710` | the hint type is not 4: score it | ran |
+| 0x00008704 `bne .L_00008878` | type 4 (a wall point) and the no-body-projectile flag (0xAE0 0x20) | (c) not selected: the area has no wall hint (the scan's `wallspot` counter is 0) |
+| 0x0000870C `bne .L_00008878` | type 4 and the target in a safe zone (`fn_30_C14C`) | (c) not selected, as above |
+| 0x00008760 `bne .L_00008774` | the type is not 4: the vertical penalty (`rodata_9C` = 4.0) | ran |
+| 0x00008770 `ble .L_00008784` | type 4 at or below the target: no vertical penalty | (c) not selected, as above |
+| 0x00008788 `bge .L_00008790` | the score is over the near bound: no far penalty | ran |
+| 0x0000878C `fadds f3, f3, f30` | under the near bound: the far bound is added | ran |
+| 0x000087A0 `bge .L_000087D8` | the four-entry array is full: compare with the worst | ran |
+| 0x000087EC `bge .L_0000880C` | the score is not better than the worst: drop it | ran |
+| 0x00008844 `bge .L_00008878` | the insertion sort's end | ran |
+| 0x000088A8 `beq .L_000088E8` | no candidate: nothing happens | (c) not selected: every scan of area 28 found four candidates |
+| 0x000088DC `beq .L_000088E8` | the picked object is gone | (c) unreachable: the id came off the hint list of this area |
+| 0x000088E4 `bl fn_30_6014` | the claim (`fn_30_6014`: the hint goes in use, its id goes to 0x108E and 0x1090) | ran (every scan) |
+
+#### `fn_30_8CC0` `SeekWallPoint` (0x8CC0)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x00008CEC `bge .L_00008DB0` | msg >= 2: nothing happens | (c) the state was never entered in area 28 |
+| 0x00008CF4 `bge .L_00008CFC` | msg 0 (Activate) or 1 (Update) | (c) the state was never entered in area 28 |
+| 0x00008CF8 `b .L_00008DB0` | msg < 0: nothing happens | (c) as above |
+| 0x00008D04 `beq .L_00008DB0` | no cover hint: nothing happens | (c) as above |
+| 0x00008D58 `ble .L_00008DA0` | the distance is under `dt` * the wall speed: 0x11ED 0x04 = 0 | (c) as above |
+| 0x00008D68 `beq .L_00008DA0` | the delta is not magnitude-safe: 0x11ED 0x04 = 0 | (c) as above |
+| 0x00008D88 `bl fn_30_53D0` | the move along the wall speed (`*(0x11D0)+0x34` times 0x7CC) | (c) as above |
+| 0x00008D94 `rlwimi r0, r3, 2, 29, 29` | 0x11ED 0x04 = 1 (mMoving = true) | (c) as above |
+
+The state needs a **wall** cover point (a hint of type 4), and area 28 has none: the cover scan
+reports `wallspot 0` in every scan, so the machine never picks a wall point and never enters
+`SeekWallPoint`. The body matches this module's asm, but the run cannot exercise it - the
+Ing REL's own copy of it (`fn_29_75C0`) is the one the Ing lane ran in area 57.
+
+#### `fn_30_9C7C` `IngSpotPointPathFind` (0x9C7C)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x00009CA0 `bne .L_00009CC4` | msg 0 (Activate): 0x11EC 0x08 = 0 and 0x11ED 0x04 = 1 | ran (2) |
+| 0x00009CC8 `extrwi` / 0x00009CCC `bne .L_00009D84` | the no-path-find flag (0xAE0 0x04): nothing happens | (c) not selected: the shipped guardian's flag byte has 0x04 clear - the loader packs it from the property byte's 0x04 (`fn_30_10C24` 0x00010DD8, `r5 = r10 & 5`), and area 28's data leaves it clear |
+| 0x00009CD4 `extrwi` / 0x00009CD8 `beq .L_00009D84` | 0x11EC 0x10 (mFoundMovementPos) clear: nothing happens | (c) not selected: every path find of the fight found a point (the path helpers clear the bit only when they find none) |
+| 0x00009D38 `extrwi` / 0x00009D3C `beq .L_00009D48` | 0x11EE 0x80 clear: the speed base is 0x7C8 (the ing spot's maximum speed) | ran |
+| 0x00009D40 `lfs f5, 0x7d4(r31)` | 0x11EE 0x80 set (the boost retreat): the speed base is 0x7D4 (the speed modifier) | (c) not selected: the fight's `BoostModeRetreat` (the only writer of 0x11EE 0x80, `fn_30_7728`) did not run |
+| 0x00009D7C `fmuls f1, f1, f0` | the speed is scaled by the phase's ing-spot speed scale (`*(0x11D0)+0x34`) | ran |
+| 0x00009D80 `bl fn_30_53D0` | the move | ran (42) |
+
+#### `fn_30_9DA0` `IngSpotPathFind` (0x9DA0)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x00009DD4 `bne .L_00009DF8` | msg 0 (Activate): 0x11EC 0x08 = 0 and 0x11ED 0x04 = 1 | ran (499) |
+| 0x00009DFC `extrwi` / 0x00009E00 `bne .L_00009F28` | the no-path-find flag (0xAE0 0x04) | (c) not selected, as in `fn_30_9C7C` |
+| 0x00009E08 `extrwi` / 0x00009E0C `beq .L_00009F28` | 0x11EC 0x10 clear | (c) not selected, as in `fn_30_9C7C` |
+| 0x00009E2C `extrwi` / 0x00009E30 `bne .L_00009E70` | 0x11EE 0x80 (the boost retreat): the fast speed (0x7D4) | (c) not selected: the retreat state did not run in the fight |
+| 0x00009E3C `extrwi` / 0x00009E40 `beq .L_00009E64` | 0x11EF 0x80 (the boost puddle form) clear: the normal speed | ran |
+| 0x00009E44 `extrwi` / 0x00009E48 `beq .L_00009E64` | 0x11EE 0x10 (the boost pending) clear: the normal speed | ran |
+| 0x00009E5C `beq .L_00009E64` | no cover hint (`fn_30_60C0`): the normal speed | ran |
+| 0x00009E98 `clrlwi` / 0x00009E9C `beq .L_00009F28` | the move vector is not magnitude-safe: nothing happens | ran (13737) |
+| 0x00009EAC `ble .L_00009F28` | `dt` is 0 or less: nothing happens | ran (59) |
+| 0x00009EC0 `clrlwi. r0, r28, 24` / 0x00009EE4 `lfs f1, 0x7d4(r30)` | the fast speed 0x7D4 (the speed modifier) | (c) not selected, as above |
+| 0x00009EEC `lfs f1, 0x7c8(r30)` | the normal speed 0x7C8 (the ing spot's maximum speed) | ran (2051) |
+| 0x00009EFC `fmuls f1, f1, f0` | the phase's ing-spot speed scale (`*(0x11D0)+0x34`) | ran |
+| 0x00009F00 `bl fn_30_53D0` | the move (the move vector, not the normalised one) | ran (2051) |
+| 0x00009F14 `bne .L_00009F28` | 0x1098 (the retreat's second point) is held: no `FaceDirection` | (c) not selected: the retreat state did not run |
+| 0x00009F24 `bl FaceDirection` | the actor faces its move while no retreat point is held | ran (2051) |
+
+#### `fn_30_CA18` `UpdateHitDamageTime` (0xCA18)
+
+| asm branch | what the branch selects | verdict |
+|---|---|---|
+| 0x0000CA48 `bge .L_0000CA50` | 0x448 (the damage cooldown) minus `dt` is under 0: clamp it to 0 | ran |
+| 0x0000CA6C `bge .L_0000CA74` | 0x1080 (the boost hit timer) minus `dt` is under 0: clamp it to 0 | ran |
+| 0x0000CA84 `ble .L_0000CA94` | 0x115C (the safe-zone count) is 0 or less: no reload | ran |
+| 0x0000CA90 `stfs f0, 0x1080(r31)` | the safe zone holds it: 0x1080 = `skDamageHitTime` | ran (758) |
+| 0x0000CAA4 `ble .L_0000CAEC` | 0x448 is 0 or less: the boost tint arm | ran |
+| 0x0000CAB4 `bl Lerp` | the damage tint (`CColor::Black` to `skDamageColor`, 0x448 / `skDamageHitTime`) | ran (19) |
+| 0x0000CAF4 `ble .L_0000CB38` | 0x1080 is 0 or less: no tint at all | ran |
+| 0x0000CB04 `bl Lerp` | the boost tint (`CColor::Black` to `skHitsWithoutDamageColor`, 0x1080 / `skDamageHitTime`) | ran (800) |
+
+**What this slice changes.** Nothing in the port: the six bodies match this module's asm, so the
+port keeps the Ing REL's bodies for them and their markers (`// @ fn_30_8998`, `// @ fn_30_8520`,
+`// @ fn_30_8CC0`, `// @ fn_30_9C7C`, `// @ fn_30_9DA0`, `// @ fn_30_CA18`) stand. What is new is
+the evidence: the branch tables above, the arm counters of a boss fight in area 28, and the
+driver (`tools/drivers/bg_arms.py`) that reaches them.
+
+**What is left for the next slice.** The remaining bodies of section b.3 that this slice did not
+read against this module's asm: `fn_30_B478` (`ExitHost`, the Ing's 0x328 vs this module's
+0x2EC), `fn_30_8DD4` (`SuckEnergy`, 0x658 vs 0x648), `fn_30_953C` (`BodyProjectileFlight`, 0x4A4
+vs 0x498), `fn_30_99D4` (`FollowAttackPattern`, 0x1D0 vs 0x1DC), `fn_30_6980`
+(`SplatOntoMesh`, 0x1F0 vs 0x1F4), `fn_30_7390` (`Dead`, 0x358 vs 0x364) and `fn_30_6C40`
+(`SetExitHostDest`, 0x22C vs 0x23C); and the module's own copies of the base-class overrides
+(section j): `fn_30_DDA0` (`AcceptScriptMsg`, the Ing's 0x514 vs this module's 0x690),
+`fn_30_D4F8` (`DoUserAnimEvent`, 0x3B8 vs 0x3E0) and `fn_30_CE50` (`Touch`, 0x128 vs 0x174).
+
+
 ## i. Port plan
 
 - **WP1 (done, `1e753b70e`):** class header and layout, the loader (`PortLoadIngBoostBallGuardian`)
@@ -521,3 +892,81 @@ The port does not reproduce those two conversions: its host structs hold the sam
 own layout (`CIngBoostBallGuardianData`, `CBoostBallGuardianData` in the header) and the loader fills
 them straight from the `SLdr` fields, which is what later slices will read.
 
+
+## l. The function classification (all 318 symbols)
+
+Three classes, applied by rule so the table can be audited.  The machine-readable copy is
+`docs/module-analysis/BoostGuardian_functions.tsv` (one row per function: the offset, the name,
+the size, the class, the callers, the tables that reference it, the reason and the marker).
+
+- **H - host copy** (102 functions, 0x3200 bytes): the body is a copy of something the host
+  already has - a shared class body, a compiler-emitted destructor, rstl / template code, inlined
+  DOL code or the REL runtime - so the port writes no body for it.  Section h lists them one by
+  one with the DOL counterpart.
+- **T - data / vtable thunk or dead** (9 functions, 0x3B8 bytes): no retail caller.  Six are
+  the FSM2 node vtables' deleting destructors and one the vtable's `HealthInfo()` thunk - the
+  port writes them as a line in the table; two are dead in the shipped data (nothing calls them
+  and no table names them, so the port has no behaviour to reproduce).
+- **B - module behaviour** (207 functions, 0x13130 bytes): the port writes a body for it.  **All
+  207 carry a `// @` marker** - there is no unmarked behaviour function left in the module.
+
+| class | functions | .text bytes | marked |
+|---|---|---|---|
+| H host copy | 102 | 0x3200 (12,800) | 0 |
+| T data / vtable thunk or dead | 9 | 0x3B8 (952) | 0 |
+| B module behaviour | 207 | 0x13130 (78,128) | 207 |
+| **total** | **318** | **0x19B68 (105,880)** | **207** |
+
+### l.1 The nine T functions (the caller scan)
+
+| fn | size | why | the caller scan |
+|---|---|---|---|
+| `fn_30_90` | 0x2C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_4028` | 0x8 | dead in retail: nothing calls it and no table names it | no retail caller and no table names it |
+| `fn_30_5260` | 0x170 | dead in retail: nothing calls it and no table names it | no retail caller and no table names it |
+| `fn_30_6B74` | 0x48 | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_7D00` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_84C4` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_A308` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_A8C0` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+| `fn_30_AFE0` | 0x5C | a vtable entry the port writes as a line in the table | a .data table (auto_04_00000000_data.s), no retail caller |
+
+### l.2 The H functions by kind
+
+| how many | what they are |
+|---|---|
+| 41 | the compiler's weak deleting dtor or a copy of the module's own type |
+| 31 | the template inline the compiler emitted out of line |
+| 15 | the REL's own copy of a DOL / host class member |
+| 9 | a copy of host code |
+| 5 | the module's own memberwise copy of a parameter block |
+| 1 | the REL runtime and the module's own entry glue |
+
+The per-function list is in the tsv's `what` column; section h gives the DOL counterpart of each.
+
+### l.3 Count check
+
+Every function id of the module's symbol list appears exactly once in the table:
+
+```
+$ python3 - <<'PY'
+import re, pathlib, collections
+sym = pathlib.Path('config/G2ME01/rels/IngBoostBallGuardian/symbols.txt').read_text()
+ids = re.findall(r'^(\S+) = \.text:0x[0-9A-Fa-f]+; // type:function', sym, re.M)
+rows = [l.split('\t') for l in
+        pathlib.Path('docs/module-analysis/BoostGuardian_functions.tsv').read_text().split('\n')[1:] if l.strip()]
+print('symbols:', len(ids), 'rows:', len(rows))
+print(collections.Counter(r[3] for r in rows))
+print('unmarked B:', [r[1] for r in rows if r[3] == 'B' and r[8] == 'no'])
+PY
+symbols: 318 rows: 318
+Counter({'B': 207, 'H': 102, 'T': 9})
+unmarked B: []
+```
+
+The machine-readable copy has one row per function:
+
+```
+$ awk -F'\t' 'NR>1{print $2}' docs/module-analysis/BoostGuardian_functions.tsv | sort -u | wc -l
+318
+```

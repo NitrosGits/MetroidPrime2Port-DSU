@@ -1,0 +1,7 @@
+@20 objs digital
+@26 layer 3
+@31 layer 11
+@38 send u054d Activate
+@44 objs digital
+@48 obj u054d
+@58 objs digital

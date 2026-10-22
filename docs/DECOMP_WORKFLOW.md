@@ -51,6 +51,17 @@ pointer to this file plus their slice, not a restatement of it.
   re-derive what is there. Wrong entries are deleted, not annotated.
 - Briefs give paths and line ranges, never file contents.
 
+## Progress
+
+`python3 tools/port_progress.py` counts the port's markers per REL module. Its last column, `B`,
+is the behaviour progress: `docs/module-analysis/<Module>_functions.tsv` says per function whether
+it is behaviour the port has to reproduce (`B`), a host copy the host's base class already provides
+(`H`), or dead or table-only code (`T`: a vtable slot, unreferenced code, the REL runtime). Only
+the `B` rows are work, so the column is `B marked / B total`; a module with no table shows `-` and
+the `TOTAL` line sums the tables that exist. A table's `class` column carries `B`/`H`/`T` directly;
+a table with no class column falls back to its `kind` column (`behaviour` -> B, `host-copy` -> H,
+`vtable`/`unreferenced`/`rel-runtime`/`rel-entry` -> T, anything else -> B).
+
 ## Done means verified
 
 A lane reports `STATUS: DONE` only with all of these pasted (one line each):

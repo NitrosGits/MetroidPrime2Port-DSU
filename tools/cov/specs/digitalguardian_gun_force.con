@@ -1,0 +1,14 @@
+# DigitalGuardian area 53 (world 1baa96c2, 09_cliff_temple_dark), dg22, forced run with
+# tools/cov/specs/digitalguardian_gun_force.py: the gun's locator (0x10A4) is forced invalid at
+# fn_14_10798's entry, so GetLctrTransform is the head's own transform; with the head placed on
+# the player (place ... player 0) the sweep's centre and the locator share x/y and the side axis
+# is zero (the X-column fallback at 0x10920). The bullet (fn_14_101E0) runs with its weapon
+# uncached (the TryCache-false arm).
+# Run: BUILD=$PWD/build-port-cov tools/cov/force.sh tools/cov/specs/digitalguardian_gun_force.py <out>
+#   1baa96c2,09_cliff_temple_dark --con tools/cov/specs/digitalguardian_gun_force.con --fast --frames 300
+@f30 layer 3
+@f60 layer 11; god 1
+@f150 send e00350060 Activate; send e0035000f Activate
+@f152 fsm e0035000f FaceTarget; place e0035000f player 0; statecall e0035000f MachineGunAttack 0 0.016; statecall e0035000f MachineGunAttack 1 1.0; statecall e0035000f MachineGunAttack 1 0.2; objs Energy
+@f160 place e0035000f player 20
+@f280 send e0035000f Delete

@@ -53,6 +53,25 @@ constexpr Module Log{"aurora"};
 
 #ifdef AURORA_ENABLE_GX
 std::atomic_bool g_screenshotRequested;
+// Port: AURORA_RENDER_EVERY=<n> renders one frame in n (1, the default, renders every frame).
+// The frames in between are dropped before they are recorded, so the FIFO processor records no
+// draw and the render worker encodes and submits nothing for them: a test run that only shows
+// one frame in n does not pay for the frames it never shows.
+uint32_t render_every() {
+  static const uint32_t n = [] {
+    const char* env = std::getenv("AURORA_RENDER_EVERY");
+    const long v = env != nullptr ? std::strtol(env, nullptr, 10) : 1;
+    return v > 1 ? static_cast<uint32_t>(v) : 1u;
+  }();
+  return n;
+}
+
+// The frame counter that picks the rendered frames. It advances once per frame, so with the same
+// n as AURORA_PRESENT_EVERY the rendered frames are the presented ones.
+uint32_t g_renderFrameCounter = 0;
+// Set while a screenshot is pending: the frame the shot is taken in and the frame after it are
+// both rendered, so the shot is never taken from a frame that was not drawn.
+std::atomic_bool g_renderNextFrame{false};
 // A PNG request names its file and is answered through g_pngState (0 pending, 1 saved, -1 failed).
 std::mutex g_pngMutex;
 std::string g_pngPath;
@@ -356,6 +375,31 @@ const AuroraEvent* update() noexcept {
   return window::poll_events();
 }
 
+#ifdef AURORA_ENABLE_GX
+// Port: AURORA_RENDER_EVERY: pick the frame that is about to be recorded. A frame that is not
+// rendered records no draw: the FIFO processor walks its command stream (the register state has
+// to survive) but builds no draw, and the render worker encodes and submits nothing for it. A
+// frame that holds an EFB copy is raised to "rendered" while it is recorded (see
+// gx::fifo::force_frame_rendered). A screenshot is always taken from a rendered frame, and so is
+// the frame after it.
+bool render_this_frame() {
+  const uint32_t every = render_every();
+  const uint32_t frameIndex = g_renderFrameCounter++;
+  const bool screenshotPending = g_screenshotRequested.load(std::memory_order_acquire);
+  const bool forced = g_renderNextFrame.exchange(false, std::memory_order_acq_rel);
+  if (screenshotPending) {
+    // The shot is taken at the end of this frame, so this frame has to be drawn; the frame after
+    // it too, so the read-back of the EFB lands on a frame the game drew.
+    g_renderNextFrame.store(true, std::memory_order_release);
+    return true;
+  }
+  if (forced) {
+    return true;
+  }
+  return every == 1 || (frameIndex % every) == 0;
+}
+#endif
+
 bool begin_frame() noexcept {
   ZoneScoped;
 #ifdef AURORA_ENABLE_GX
@@ -396,6 +440,12 @@ bool begin_frame() noexcept {
   // A failed staging-buffer acquisition must not leave an ImGui frame open.
   imgui::new_frame(window::get_window_size());
   gx::fifo::begin_frame();
+  // Port: AURORA_RENDER_EVERY: the frame is recorded as usual, but a frame that is not rendered
+  // records no draw (gx::fifo::set_frame_rendered tells the FIFO processor and the recorder).
+  gx::fifo::set_frame_rendered(render_this_frame());
+  // Port: AURORA_RENDERSKIP_COPYDEST: the render interval is the default limit on how stale a
+  // copy's texture may be before its frame is rendered in full.
+  gx::fifo::set_render_interval(render_every());
 #endif
   return true;
 }
@@ -424,12 +474,13 @@ void end_frame() noexcept {
   }
 #endif
 
-  gfx::end_frame([rmlBindGroup = std::move(rmlBindGroup), rmlOverlay, viewport,
+  // Port: AURORA_RENDER_EVERY: a frame that was not rendered has nothing to encode, submit or
+  // present. Its bookkeeping (the frame slot, the staging buffer) is done by gfx::end_frame, so
+  // the game never waits for it.
+  const bool renderFrame = gx::fifo::frame_rendered();
+  gfx::end_frame([rmlBindGroup = std::move(rmlBindGroup), rmlOverlay, viewport, renderFrame,
                   imguiDrawData = std::move(imguiDrawData)](
                      wgpu::CommandEncoder& encoder, std::vector<gfx::AfterSubmitCallback> afterSubmitCallbacks) {
-    if (g_screenshotRequested.exchange(false, std::memory_order_acq_rel)) {
-      record_screenshot(encoder, afterSubmitCallbacks);
-    }
     wgpu::Texture currentTexture;
     wgpu::TextureView currentView;
     auto surfaceStatus = wgpu::SurfaceGetCurrentTextureStatus::Error;
@@ -441,7 +492,21 @@ void end_frame() noexcept {
       return n > 1 ? static_cast<uint32_t>(n) : 1u;
     }();
     static uint32_t presentCounter = 0;
-    const bool skipPresent = presentEvery > 1 && (presentCounter++ % presentEvery) != 0;
+    // The counter advances once per frame, rendered or not, so the presented frames stay the ones
+    // AURORA_RENDER_EVERY renders when both use the same n.
+    const bool presentSlot = (presentCounter++ % presentEvery) == 0;
+    // Port: a frame that was not rendered holds the last rendered frame's EFB, so it is not
+    // presented either.
+    const bool skipPresent = !renderFrame || !presentSlot;
+    if (!renderFrame) {
+      // Nothing was recorded for this frame: no draw, no copy, no submit. The screenshot request
+      // (if any) stays pending, so the next frame is rendered and takes the shot.
+      gfx::after_present();
+      return;
+    }
+    if (g_screenshotRequested.exchange(false, std::memory_order_acq_rel)) {
+      record_screenshot(encoder, afterSubmitCallbacks);
+    }
     if (skipPresent) {
       gfx::after_present();
     }

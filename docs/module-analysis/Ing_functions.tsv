@@ -1,0 +1,275 @@
+offset	size	fn	class	kind	callers	tables	what	marker
+0x00000000	0x8	fn_29_0	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000008	0x8	fn_29_8	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000010	0x8	fn_29_10	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000018	0xC	fn_29_18	T	vtable		lbl_29_rodata_64	the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000024	0x8	fn_29_24	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x0000002C	0x8	fn_29_2C	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000034	0x8	fn_29_34	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x0000003C	0x10	fn_29_3C	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x0000004C	0xC	fn_29_4C	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000058	0xC	fn_29_58	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000064	0x8	fn_29_64	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x0000006C	0x8	fn_29_6C	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000074	0x1C	fn_29_74	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x00000090	0x2C	fn_29_90	T	vtable			the module's own copy of a base class's virtual body - the host's base class provides it	no
+0x000000BC	0x24	RELExit	H	host-copy			the REL runtime - the host's own module runtime does the same	no
+0x000000E0	0x20	RELMain	H	host-copy			the REL runtime - the host's own module runtime does the same	no
+0x00000100	0x30	fn_29_100	B	behaviour	RELMain	lbl_29_bss_6C		yes
+0x00000130	0xFC8	fn_29_130	B	behaviour		lbl_29_rodata_120		no
+0x000010F8	0x94	fn_29_10F8	H	host-copy	fn_29_130,fn_29_CF64		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000118C	0x58	fn_29_118C	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
+0x000011E4	0x58	fn_29_11E4	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
+0x0000123C	0x58	fn_29_123C	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
+0x00001294	0x40	fn_29_1294	H	host-copy	fn_29_130		the loader's DOL-type temporaries - the host's own code does the same	no
+0x000012D4	0x20	fn_29_12D4	H	host-copy	fn_29_1294		the loader's DOL-type temporaries - the host's own code does the same	no
+0x000012F4	0x28	fn_29_12F4	H	host-copy	fn_29_12D4		the loader's DOL-type temporaries - the host's own code does the same	no
+0x0000131C	0x13C	fn_29_131C	H	host-copy	fn_29_12F4		the loader's DOL-type temporaries - the host's own code does the same	no
+0x00001458	0x6C	fn_29_1458	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
+0x000014C4	0x54	fn_29_14C4	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
+0x00001518	0x64	fn_29_1518	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
+0x0000157C	0x60	fn_29_157C	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
+0x000015DC	0xD0	fn_29_15DC	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
+0x000016AC	0x3D4	fn_29_16AC	B	behaviour	fn_29_130	lbl_29_rodata_64,lbl_29_rodata_68,lbl_29_rodata_6C,lbl_29_rodata_70,lbl_29_rodata_74,lbl_29_rodata_78,lbl_29_rodata_7C,lbl_29_rodata_80,lbl_29_rodata_84,lbl_29_rodata_88,lbl_29_rodata_8C,lbl_29_rodata_90,lbl_29_rodata_94,lbl_29_rodata_98,lbl_29_rodata_9C,lbl_29_rodata_A0,lbl_29_rodata_A4,lbl_29_rodata_A8,lbl_29_rodata_AC,lbl_29_rodata_B0,lbl_29_rodata_B4,lbl_29_rodata_B8,lbl_29_rodata_BC	0x3D4) is the retail's default constructor for the loader's data block: it fills	yes
+0x00001A80	0x1AC	fn_29_1A80	B	behaviour	fn_29_9A74	lbl_29_rodata_6C		yes
+0x00001C2C	0x6C	fn_29_1C2C	B	behaviour	fn_29_C654		, asm 0x0000C7CC	yes
+0x00001C98	0x15C	fn_29_1C98	B	behaviour	fn_29_51D0,fn_29_53E0	lbl_29_rodata_6C,lbl_29_rodata_98		no
+0x00001DF4	0x128	fn_29_1DF4	B	behaviour	fn_29_B294		asm 0x1DF4-0x1EF4): the safe zone the noise is in becomes the Ing's lure zone	no
+0x00001F1C	0x17C	fn_29_1F1C	B	behaviour	fn_29_9D68	lbl_29_rodata_120		yes
+0x00002098	0x58	fn_29_2098	H	host-copy	fn_29_11A7C,fn_29_1F1C,fn_29_2414,fn_29_2B70,fn_29_4F14,fn_29_5CB0,fn_29_9D68,fn_29_C228		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x000020F0	0x54	fn_29_20F0	H	host-copy	fn_29_2098		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00002144	0x50	fn_29_2144	H	host-copy			the rstl internals - the host's own code does the same	no
+0x00002194	0xDC	fn_29_2194	B	behaviour	fn_29_C9A4		, asm 0x0000CBC8	yes
+0x00002270	0x1A4	fn_29_2270	B	behaviour	fn_29_C654		asm 0x2294-0x23F8): the ing spot's idle sound (0xd60) and move sound (0xd64). They	yes
+0x00002414	0x270	fn_29_2414	B	behaviour	fn_29_C9A4	lbl_29_rodata_120		yes
+0x00002684	0x45C	fn_29_2684	B	behaviour	fn_29_2E8C	lbl_29_rodata_6C		yes
+0x00002AE0	0x90	fn_29_2AE0	B	behaviour	fn_29_2684	lbl_29_rodata_6C	asm 0x2744	yes
+0x00002B70	0x31C	fn_29_2B70	B	behaviour	fn_29_2E8C	lbl_29_rodata_120,lbl_29_rodata_84,lbl_29_rodata_C0		yes
+0x00002E8C	0x4C	fn_29_2E8C	B	behaviour	fn_29_C9A4			yes
+0x00002ED8	0x13C	fn_29_2ED8	B	behaviour	fn_29_C9A4	lbl_29_data_0,lbl_29_rodata_6C		yes
+0x00003014	0x128	fn_29_3014	B	behaviour	fn_29_3190			yes
+0x0000313C	0x54	fn_29_313C	B	behaviour	fn_29_3014			yes
+0x00003190	0x23C	fn_29_3190	B	behaviour	fn_29_C9A4	lbl_29_data_A14,lbl_29_data_A18,lbl_29_data_A1C,lbl_29_data_A20,lbl_29_rodata_0,lbl_29_rodata_120,lbl_29_rodata_C4	's seven joint spheres: Ing.rel's own rodata_0 table, seven (locator, radius) pairs.	no
+0x000033CC	0x38	fn_29_33CC	B	behaviour	fn_29_3190			yes
+0x00003404	0x20	fn_29_3404	B	behaviour	fn_29_33CC,fn_29_F260			yes
+0x00003424	0x28	fn_29_3424	H	host-copy	fn_29_3404		rstl placement construct: null check + copy ctor (fn_29_3404)	no
+0x0000344C	0xC0	fn_29_344C	B	behaviour	fn_29_3190,fn_29_3424			yes
+0x0000350C	0x5C	fn_29_350C	H	host-copy			the rstl internals - the host's own code does the same	no
+0x00003568	0x84	fn_29_3568	B	behaviour	fn_29_3190		0x84) destroys it. The host's rstl::vector of CJointCollisionDescription is the	yes
+0x000035EC	0x38	fn_29_35EC	H	host-copy	fn_29_3568		the rstl internals - the host's own code does the same	no
+0x00003624	0x60	fn_29_3624	H	host-copy	fn_29_35EC		the rstl internals - the host's own code does the same	no
+0x00003684	0xA8	fn_29_3684	B	behaviour	fn_29_C9A4			no
+0x0000372C	0xAC	fn_29_372C	B	behaviour	fn_29_5B60			yes
+0x000037D8	0x170	fn_29_37D8	B	behaviour	fn_29_8684,fn_29_8808	lbl_29_rodata_7C,lbl_29_rodata_B4		yes
+0x00003948	0x208	fn_29_3948	B	behaviour	fn_29_6578,fn_29_75C0,fn_29_82D4,fn_29_8570,fn_29_8684	lbl_29_rodata_B8	, 0x880	yes
+0x00003B50	0x108	fn_29_3B50	B	behaviour	fn_29_C654	lbl_29_rodata_6C,lbl_29_rodata_C8	0x108) before the state machine thinks (asm 0xC704), fn_29_2270 (0x1A4) before	yes
+0x00003C58	0x11C	fn_29_3C58	B	behaviour	fn_29_C654	lbl_29_rodata_6C,lbl_29_rodata_8C,lbl_29_rodata_C8,lbl_29_rodata_CC	, asm 0x0000C7B0	yes
+0x00003D74	0xA8	fn_29_3D74	B	behaviour	fn_29_3E1C			yes
+0x00003E1C	0x400	fn_29_3E1C	B	behaviour	fn_29_6A88	lbl_29_data_A10,lbl_29_rodata_D0,lbl_29_rodata_D4		yes
+0x0000421C	0x50	fn_29_421C	B	behaviour	fn_29_6A88	lbl_29_rodata_6C,lbl_29_rodata_78,lbl_29_rodata_A4	, 0xdec	yes
+0x0000426C	0xC0	fn_29_426C	B	behaviour	fn_29_C654			yes
+0x0000432C	0x13C	fn_29_432C	B	behaviour	fn_29_C654	lbl_29_rodata_6C		yes
+0x00004468	0xA8	fn_29_4468	B	behaviour	fn_29_61B4,fn_29_6A88,fn_29_6DA0,fn_29_7244,fn_29_7E30,fn_29_8FE8,fn_29_94E8,fn_29_B0E0			yes
+0x00004510	0x50	fn_29_4510	B	behaviour	fn_29_6DA0		, so the object is the same either way). Both arms ran in the area 57 run of	yes
+0x00004560	0x5C	fn_29_4560	B	behaviour	fn_29_6DA0,fn_29_C9A4	lbl_29_rodata_6C		yes
+0x000045BC	0x48	fn_29_45BC	B	behaviour	fn_29_4560,fn_29_5714,fn_29_5820,fn_29_5AC4,fn_29_75C0,fn_29_AB7C,fn_29_AD7C,fn_29_ADBC,fn_29_ADE8		, id at 0xd72	yes
+0x00004604	0x22C	fn_29_4604	B	behaviour	fn_29_C654	lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_D8,lbl_29_rodata_E0	CIng::Think's call at asm 0x0000C794): the blob the Ing owns (mBlobId, 0xd5c	yes
+0x00004830	0x130	fn_29_4830	B	behaviour	fn_29_C9A4	lbl_29_rodata_120,lbl_29_rodata_6C	, asm 0xCB84	yes
+0x00004960	0x148	fn_29_4960	B	behaviour	fn_29_C654	lbl_29_rodata_64,lbl_29_rodata_6C	, asm 0x0000C7C0	yes
+0x00004AA8	0xA4	fn_29_4AA8	H	host-copy	fn_29_4960		plain field copy (0x4D bytes)	no
+0x00004B4C	0x13C	fn_29_4B4C	B	behaviour	fn_29_C9A4	lbl_29_rodata_120,lbl_29_rodata_6C	, asm 0xCBA8	yes
+0x00004C88	0x90	fn_29_4C88	B	behaviour	fn_29_C9A4	lbl_29_rodata_64		yes
+0x00004D18	0x1FC	fn_29_4D18	B	behaviour		lbl_29_data_0,lbl_29_rodata_6C,lbl_29_rodata_E8		yes
+0x00004F14	0x1F0	fn_29_4F14	B	behaviour		lbl_29_data_C50,lbl_29_rodata_120,lbl_29_rodata_64		yes
+0x00005104	0x48	fn_29_5104	H	host-copy		lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000514C	0x44	fn_29_514C	B	behaviour			not yet exercised in a run): the team attack ends, but the Ing keeps its team role	yes
+0x00005190	0x40	fn_29_5190	B	behaviour			StartRangedAttack: CScriptTeamAiMgr::StartAttack(kAT_Projectile)	yes
+0x000051D0	0x210	fn_29_51D0	B	behaviour		lbl_29_rodata_94,lbl_29_rodata_EC	not yet exercised in a run): the point-graph route to the lure point - the flag-1	no
+0x000053E0	0x108	fn_29_53E0	B	behaviour			not yet exercised in a run): the lure point is the nav-mesh point below the lure safe	no
+0x000054E8	0x22C	fn_29_54E8	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_F0		yes
+0x00005714	0x10C	fn_29_5714	B	behaviour		lbl_29_rodata_94	not yet exercised in a run): the point-graph route to the cover hint. Two closest-point	no
+0x00005820	0x1B0	fn_29_5820	B	behaviour		lbl_29_rodata_94,lbl_29_rodata_F0		yes
+0x000059D0	0xF4	fn_29_59D0	B	behaviour		lbl_29_rodata_94		yes
+0x00005AC4	0x9C	fn_29_5AC4	B	behaviour				yes
+0x00005B60	0xC8	fn_29_5B60	B	behaviour				yes
+0x00005C28	0x88	fn_29_5C28	B	behaviour		lbl_29_rodata_74	Evaporate state (FSM time > 2 s -> DeathDelete)	yes
+0x00005CB0	0x358	fn_29_5CB0	B	behaviour		lbl_29_rodata_120,lbl_29_rodata_6C,lbl_29_rodata_74,lbl_29_rodata_F4		yes
+0x00006008	0x150	fn_29_6008	B	behaviour		lbl_29_data_C44,lbl_29_data_C50		yes
+0x00006158	0x5C	fn_29_6158	H	host-copy		lbl_29_data_C44,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x000061B4	0x3C4	fn_29_61B4	B	behaviour		lbl_29_bss_64,lbl_29_bss_68,lbl_29_data_9FC,lbl_29_data_A00,lbl_29_data_A04,lbl_29_data_A08,lbl_29_data_A0C,lbl_29_rodata_44,lbl_29_rodata_6C,lbl_29_rodata_74,lbl_29_rodata_D0,lbl_29_rodata_F8	's search ring (rodata_44): eight angles in degrees, 180 first, taken in order.	yes
+0x00006578	0x428	fn_29_6578	B	behaviour		lbl_29_data_0,lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_FC		yes
+0x000069A0	0xE8	fn_29_69A0	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_C4		yes
+0x00006A88	0x2BC	fn_29_6A88	B	behaviour		lbl_29_data_C38,lbl_29_data_C50,lbl_29_rodata_38,lbl_29_rodata_6C		yes
+0x00006D44	0x5C	fn_29_6D44	H	host-copy		lbl_29_data_C38,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00006DA0	0x418	fn_29_6DA0	B	behaviour		lbl_29_bss_30,lbl_29_bss_3C,lbl_29_bss_40,lbl_29_rodata_6C,lbl_29_rodata_AC		yes
+0x000071B8	0x8C	fn_29_71B8	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00007244	0x2D4	fn_29_7244	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_E8		yes
+0x00007518	0xA8	fn_29_7518	B	behaviour				yes
+0x000075C0	0xF8	fn_29_75C0	B	behaviour			not yet exercised in a run	no
+0x000076B8	0x658	fn_29_76B8	B	behaviour		lbl_29_data_0,lbl_29_data_C50,lbl_29_rodata_120,lbl_29_rodata_6C,lbl_29_rodata_98		yes
+0x00007D10	0x50	fn_29_7D10	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00007D60	0x68	fn_29_7D60	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00007DC8	0x68	fn_29_7DC8	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00007E30	0x4A4	fn_29_7E30	B	behaviour		lbl_29_bss_10,lbl_29_bss_14,lbl_29_bss_20,lbl_29_bss_24,lbl_29_data_C50,lbl_29_rodata_6C,lbl_29_rodata_90,lbl_29_rodata_B4,lbl_29_rodata_C0		yes
+0x000082D4	0x1D0	fn_29_82D4	B	behaviour		lbl_29_rodata_64		yes
+0x000084A4	0xCC	fn_29_84A4	B	behaviour			not yet exercised in a run	yes
+0x00008570	0x114	fn_29_8570	B	behaviour		lbl_29_rodata_100		yes
+0x00008684	0x184	fn_29_8684	B	behaviour		lbl_29_rodata_6C	asm 0x0000858C-0x000086A8); the speed blends from the safe-zone-or-maximum base to	yes
+0x00008808	0x224	fn_29_8808	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_6C		yes
+0x00008A2C	0x180	fn_29_8A2C	B	behaviour		lbl_29_rodata_6C,lbl_29_rodata_A4		yes
+0x00008BAC	0xEC	fn_29_8BAC	B	behaviour		lbl_29_data_C2C,lbl_29_data_C50		yes
+0x00008C98	0x5C	fn_29_8C98	H	host-copy		lbl_29_data_C2C,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00008CF4	0x1A0	fn_29_8CF4	B	behaviour		lbl_29_data_C20,lbl_29_data_C50,lbl_29_rodata_64	not yet exercised in a run	no
+0x00008E94	0x5C	fn_29_8E94	H	host-copy		lbl_29_data_C20,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00008EF0	0xF8	fn_29_8EF0	B	behaviour		lbl_29_data_C2C,lbl_29_data_C50,lbl_29_rodata_6C		yes
+0x00008FE8	0x464	fn_29_8FE8	B	behaviour		lbl_29_data_C14,lbl_29_data_C50,lbl_29_rodata_104,lbl_29_rodata_40,lbl_29_rodata_6C	not yet exercised in a run	no
+0x0000944C	0x5C	fn_29_944C	H	host-copy		lbl_29_data_C14,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x000094A8	0x40	fn_29_94A8	H	host-copy	fn_29_8FE8		the plain struct copies - the host's own code does the same	no
+0x000094E8	0x268	fn_29_94E8	B	behaviour		lbl_29_data_C14,lbl_29_data_C50,lbl_29_rodata_40,lbl_29_rodata_6C		yes
+0x00009750	0x2C8	fn_29_9750	B	behaviour		lbl_29_data_C08,lbl_29_data_C50,lbl_29_rodata_40,lbl_29_rodata_64,lbl_29_rodata_6C		yes
+0x00009A18	0x5C	fn_29_9A18	H	host-copy		lbl_29_data_C08,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00009A74	0x2F4	fn_29_9A74	B	behaviour		lbl_29_data_C08,lbl_29_data_C50,lbl_29_rodata_40,lbl_29_rodata_64,lbl_29_rodata_6C		yes
+0x00009D68	0x328	fn_29_9D68	B	behaviour		lbl_29_rodata_120,lbl_29_rodata_64,lbl_29_rodata_6C		yes
+0x0000A090	0x4	fn_29_A090	B	behaviour				yes
+0x0000A094	0x4	fn_29_A094	B	behaviour				yes
+0x0000A098	0x68	fn_29_A098	B	behaviour				yes
+0x0000A100	0xC0	fn_29_A100	B	behaviour		lbl_29_rodata_108		yes
+0x0000A1C0	0x64	fn_29_A1C0	B	behaviour				yes
+0x0000A224	0xB4	fn_29_A224	B	behaviour		lbl_29_rodata_6C		yes
+0x0000A2D8	0x68	fn_29_A2D8	B	behaviour	fn_29_8684			yes
+0x0000A340	0x30	fn_29_A340	B	behaviour				yes
+0x0000A370	0x58	fn_29_A370	B	behaviour				yes
+0x0000A3C8	0x38	fn_29_A3C8	B	behaviour				yes
+0x0000A400	0x28	fn_29_A400	B	behaviour				yes
+0x0000A428	0x28	fn_29_A428	B	behaviour				yes
+0x0000A450	0x48	fn_29_A450	B	behaviour				yes
+0x0000A498	0x48	fn_29_A498	B	behaviour	fn_29_432C			yes
+0x0000A4E0	0xC	fn_29_A4E0	B	behaviour			0xC, asm 0x0000A4E0-0x0000A4EC): the byte at 0xe5c's bit 3 (the asm's extrwi index	yes
+0x0000A4EC	0x16C	fn_29_A4EC	B	behaviour		lbl_29_rodata_C8		yes
+0x0000A658	0xC	fn_29_A658	B	behaviour				yes
+0x0000A664	0x11C	fn_29_A664	B	behaviour				yes
+0x0000A780	0x140	fn_29_A780	B	behaviour		lbl_29_rodata_10C,lbl_29_rodata_D0		yes
+0x0000A8C0	0xC	fn_29_A8C0	B	behaviour				yes
+0x0000A8CC	0x138	fn_29_A8CC	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_D0	's branch at 0x0000A924 does).	yes
+0x0000AA04	0x48	fn_29_AA04	B	behaviour			0x4C, asm 0x0000AA04-0x0000AA50): the desired form (0x9d8) is 3 and the Ing is	yes
+0x0000AA4C	0x48	fn_29_AA4C	B	behaviour			0x54, asm 0x0000AA4C-0x0000AAA0): the desired form (0x9d8) is 2 and the Ing is	yes
+0x0000AA94	0x14	fn_29_AA94	B	behaviour			ShouldFleeSafeZone: safe zone count (0xe2c) > 0	yes
+0x0000AAA8	0x50	fn_29_AAA8	B	behaviour				yes
+0x0000AAF8	0x84	fn_29_AAF8	B	behaviour				yes
+0x0000AB7C	0x4C	fn_29_AB7C	B	behaviour				yes
+0x0000ABC8	0x58	fn_29_ABC8	B	behaviour	fn_29_6DA0			yes
+0x0000AC20	0x58	fn_29_AC20	B	behaviour	fn_29_9D68			yes
+0x0000AC78	0x20	fn_29_AC78	B	behaviour			not yet exercised in a run	yes
+0x0000AC98	0x48	fn_29_AC98	B	behaviour				yes
+0x0000ACE0	0xC	fn_29_ACE0	B	behaviour				yes
+0x0000ACEC	0x28	fn_29_ACEC	B	behaviour				yes
+0x0000AD14	0x18	fn_29_AD14	B	behaviour				yes
+0x0000AD2C	0x14	fn_29_AD2C	B	behaviour				yes
+0x0000AD40	0x14	fn_29_AD40	B	behaviour	fn_29_AA04			yes
+0x0000AD54	0x14	fn_29_AD54	B	behaviour	fn_29_AA4C			yes
+0x0000AD68	0x14	fn_29_AD68	B	behaviour				yes
+0x0000AD7C	0x40	fn_29_AD7C	B	behaviour				yes
+0x0000ADBC	0x2C	fn_29_ADBC	B	behaviour				yes
+0x0000ADE8	0x80	fn_29_ADE8	B	behaviour				yes
+0x0000AE68	0x140	fn_29_AE68	B	behaviour		lbl_29_data_9F4,lbl_29_data_9F8,lbl_29_rodata_90		yes
+0x0000AFA8	0x3C	fn_29_AFA8	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000AFE4	0x1C	fn_29_AFE4	B	behaviour		lbl_29_rodata_8C		yes
+0x0000B000	0x1C	fn_29_B000	B	behaviour		lbl_29_rodata_F4		yes
+0x0000B01C	0x30	fn_29_B01C	B	behaviour	fn_29_8808	lbl_29_rodata_B4		yes
+0x0000B04C	0x58	fn_29_B04C	B	behaviour				yes
+0x0000B0A4	0x3C	fn_29_B0A4	B	behaviour	fn_29_B04C			yes
+0x0000B0E0	0xE8	fn_29_B0E0	B	behaviour		lbl_29_rodata_6C,lbl_29_rodata_E8		yes
+0x0000B1C8	0x20	fn_29_B1C8	B	behaviour				yes
+0x0000B1E8	0xC	fn_29_B1E8	B	behaviour				yes
+0x0000B1F4	0x14	fn_29_B1F4	B	behaviour				yes
+0x0000B208	0x8C	fn_29_B208	B	behaviour		lbl_29_data_250,lbl_29_data_6BC,lbl_29_data_91C	's: 49 triggers, 29 states and 12 code functions, all registered under the REL's own	yes
+0x0000B294	0x130	fn_29_B294	B	behaviour		lbl_29_rodata_110,lbl_29_rodata_6C		yes
+0x0000B3C4	0x170	fn_29_B3C4	B	behaviour		lbl_29_rodata_120,lbl_29_rodata_64		yes
+0x0000B534	0x250	fn_29_B534	B	behaviour		lbl_29_bss_0,lbl_29_bss_8,lbl_29_data_9DC,lbl_29_data_9E0,lbl_29_data_9E4,lbl_29_data_9E8,lbl_29_data_9EC,lbl_29_data_9F0,lbl_29_rodata_B4	's CollidedWith); it is zero until then. rodata_64 is 1.0f.	no
+0x0000B784	0x10C	fn_29_B784	B	behaviour		lbl_29_rodata_6C		yes
+0x0000B890	0x30	fn_29_B890	B	behaviour			0x30, asm 0x0000B890-0x0000B8BC): the two host forms (0, 1) and the evaporating	yes
+0x0000B8C0	0xB0	fn_29_B8C0	B	behaviour				yes
+0x0000B970	0xDC	fn_29_B970	B	behaviour				yes
+0x0000BA4C	0x68	fn_29_BA4C	H	host-copy	fn_29_B970		the plain struct copies - the host's own code does the same	no
+0x0000BAB4	0x9C	fn_29_BAB4	H	host-copy	fn_29_10944,fn_29_B970		the plain struct copies - the host's own code does the same	no
+0x0000BB50	0x3C	fn_29_BB50	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000BB8C	0x128	fn_29_BB8C	B	behaviour		lbl_29_data_0,lbl_29_rodata_6C		yes
+0x0000BCB4	0x200	fn_29_BCB4	B	behaviour		lbl_29_rodata_6C		yes
+0x0000BEB4	0x6C	fn_29_BEB4	H	host-copy	fn_29_BCB4		float copy of the PredictMotion result	no
+0x0000BF20	0x60	fn_29_BF20	B	behaviour			0x60, asm 0x0000BF20-0x0000BF7C): the form picks the table. The body projectile	yes
+0x0000BF80	0x70	fn_29_BF80	B	behaviour		lbl_29_rodata_C8	asm 0xBF8C-0xBFE0) and fn_29_C010 (asm 0xC024-0xC07C) gate the draw on the form the	yes
+0x0000BFF0	0x20	fn_29_BFF0	H	host-copy			thunk: CPatterned::PreRenderAllViewports only	no
+0x0000C010	0xA4	fn_29_C010	B	behaviour		lbl_29_rodata_C8		yes
+0x0000C0B4	0x174	fn_29_C0B4	B	behaviour		lbl_29_rodata_C8		yes
+0x0000C228	0x3B8	fn_29_C228	B	behaviour		lbl_29_rodata_120,lbl_29_rodata_40,lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_70,lbl_29_rodata_74	@0xC368: one mini portal per event, as long as the effect is loaded (retail	yes
+0x0000C5E0	0x74	fn_29_C5E0	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000C654	0x1C0	fn_29_C654	B	behaviour				yes
+0x0000C814	0x190	fn_29_C814	B	behaviour		lbl_29_rodata_114,lbl_29_rodata_118,lbl_29_rodata_64,lbl_29_rodata_D8		yes
+0x0000C9A4	0x514	fn_29_C9A4	B	behaviour		lbl_29_rodata_6C,lbl_29_rodata_B4,lbl_29_rodata_E0	's XRDG branch: while grappled in the ing-spot form the hit timer ticks down and	yes
+0x0000CEB8	0x58	fn_29_CEB8	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000CF10	0x54	fn_29_CF10	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000CF64	0x1C4	fn_29_CF64	H	host-copy		lbl_29_data_A24	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000D128	0x1E4	fn_29_D128	H	host-copy	fn_29_CF64		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000D30C	0x94	fn_29_D30C	H	host-copy	fn_29_D128	lbl_29_data_BF8	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000D3A0	0x58	fn_29_D3A0	H	host-copy	fn_29_CF64		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000D3F8	0x58	fn_29_D3F8	H	host-copy	fn_29_D3A0		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000D450	0x58	fn_29_D450	H	host-copy	fn_29_D3F8		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000D4A8	0x98	fn_29_D4A8	H	host-copy	fn_29_D450		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000D540	0x1110	fn_29_D540	B	behaviour	fn_29_130	lbl_29_data_A24,lbl_29_rodata_118,lbl_29_rodata_11C,lbl_29_rodata_120,lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_8C,lbl_29_rodata_98,lbl_29_rodata_D0,lbl_29_rodata_F4	@0x0000D5F4: (null area, flags 0x301, the patterned info's pathfinding index at	no
+0x0000E650	0x3C	fn_29_E650	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000E68C	0x6C	fn_29_E68C	H	host-copy			deleting dtor (A.20)	no
+0x0000E6F8	0x58	fn_29_E6F8	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000E750	0x3C	fn_29_E750	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000E78C	0x3C	fn_29_E78C	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000E7C8	0x110	fn_29_E7C8	H	host-copy	fn_29_D540		CIngData copy ctor	no
+0x0000E8D8	0x6C	fn_29_E8D8	H	host-copy	fn_29_E7C8,fn_29_EE68		sub-struct copy ctor	no
+0x0000E944	0xA4	fn_29_E944	H	host-copy	fn_29_E7C8,fn_29_EE68		sub-struct copy ctor	no
+0x0000E9E8	0x94	fn_29_E9E8	H	host-copy	__ct__18CIngMiniPortalInfoF9TUniqueIdffRC31TLockedToken<15CGenDescription>UsffRC11CDamageInfoRC18SLdrPlasmaBeamInfo,fn_29_1201C,fn_29_E944,fn_29_F000		sub-struct copy ctor	no
+0x0000EA7C	0xBC	fn_29_EA7C	H	host-copy	fn_29_E7C8,fn_29_EE68		sub-struct copy ctor	no
+0x0000EB38	0xB4	fn_29_EB38	H	host-copy	fn_29_E7C8,fn_29_EE68		sub-struct copy ctor	no
+0x0000EBEC	0x9C	fn_29_EBEC	H	host-copy	fn_29_E7C8,fn_29_EE68		sub-struct copy ctor	no
+0x0000EC88	0x5C	fn_29_EC88	H	host-copy	fn_29_E7C8,fn_29_EA7C,fn_29_EB38,fn_29_EE68,fn_29_F090		CDamageVulnerability copy (rstl __copy)	no
+0x0000ECE4	0x54	fn_29_ECE4	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x0000ED38	0x130	fn_29_ED38	H	host-copy	fn_29_EC88		vector copy (allocate + __copy)	no
+0x0000EE68	0x158	fn_29_EE68	B	behaviour	fn_29_130		CIngData ctor	yes
+0x0000EFC0	0x40	fn_29_EFC0	B	behaviour	fn_29_130		CIngSwarmData ctor	yes
+0x0000F000	0x90	fn_29_F000	B	behaviour	fn_29_130		CIngMiniPortalData ctor	yes
+0x0000F090	0x9C	fn_29_F090	B	behaviour	fn_29_130		CIngGrappleData ctor	yes
+0x0000F12C	0x74	fn_29_F12C	B	behaviour	fn_29_130		CIngBodyProjectileData ctor	yes
+0x0000F1A0	0xC0	fn_29_F1A0	B	behaviour	fn_29_3190			yes
+0x0000F260	0x68	fn_29_F260	H	host-copy	fn_29_F1A0		rstl construct loop over fn_29_3404	no
+0x0000F2C8	0xCC0	fn_29_F2C8	B	behaviour		lbl_29_data_10,lbl_29_data_100,lbl_29_data_10C,lbl_29_data_118,lbl_29_data_124,lbl_29_data_130,lbl_29_data_13C,lbl_29_data_148,lbl_29_data_154,lbl_29_data_160,lbl_29_data_16C,lbl_29_data_178,lbl_29_data_184,lbl_29_data_190,lbl_29_data_19C,lbl_29_data_1A8,lbl_29_data_1B4,lbl_29_data_1C,lbl_29_data_1C0,lbl_29_data_1CC,lbl_29_data_1D8,lbl_29_data_1E4,lbl_29_data_1F0,lbl_29_data_1FC,lbl_29_data_208,lbl_29_data_214,lbl_29_data_220,lbl_29_data_22C,lbl_29_data_238,lbl_29_data_244,lbl_29_data_250,lbl_29_data_28,lbl_29_data_34,lbl_29_data_4,lbl_29_data_40,lbl_29_data_4C,lbl_29_data_560,lbl_29_data_56C,lbl_29_data_578,lbl_29_data_58,lbl_29_data_584,lbl_29_data_590,lbl_29_data_59C,lbl_29_data_5A8,lbl_29_data_5B4,lbl_29_data_5C0,lbl_29_data_5CC,lbl_29_data_5D8,lbl_29_data_5E4,lbl_29_data_5F0,lbl_29_data_5FC,lbl_29_data_608,lbl_29_data_614,lbl_29_data_620,lbl_29_data_62C,lbl_29_data_638,lbl_29_data_64,lbl_29_data_644,lbl_29_data_650,lbl_29_data_65C,lbl_29_data_668,lbl_29_data_674,lbl_29_data_680,lbl_29_data_68C,lbl_29_data_698,lbl_29_data_6A4,lbl_29_data_6B0,lbl_29_data_6BC,lbl_29_data_70,lbl_29_data_7C,lbl_29_data_88,lbl_29_data_88C,lbl_29_data_898,lbl_29_data_8A4,lbl_29_data_8B0,lbl_29_data_8BC,lbl_29_data_8C8,lbl_29_data_8D4,lbl_29_data_8E0,lbl_29_data_8EC,lbl_29_data_8F8,lbl_29_data_904,lbl_29_data_910,lbl_29_data_91C,lbl_29_data_94,lbl_29_data_A0,lbl_29_data_AC,lbl_29_data_B8,lbl_29_data_C4,lbl_29_data_D0,lbl_29_data_DC,lbl_29_data_E8,lbl_29_data_F4		no
+0x0000FF88	0xE4	fn_29_FF88	B	behaviour		lbl_29_data_C60		yes
+0x0001006C	0x4C	fn_29_1006C	B	behaviour	fn_29_10EB4			yes
+0x000100B8	0x9C	fn_29_100B8	B	behaviour	fn_29_10F58			yes
+0x00010154	0x318	fn_29_10154	B	behaviour	fn_29_1077C	lbl_29_rodata_798,lbl_29_rodata_79C,lbl_29_rodata_7A0,lbl_29_rodata_7A4,lbl_29_rodata_7A8,lbl_29_rodata_7AC		yes
+0x0001046C	0x1F0	fn_29_1046C	B	behaviour	fn_29_10154	lbl_29_rodata_798,lbl_29_rodata_7A4,lbl_29_rodata_7AC,lbl_29_rodata_7B0		yes
+0x0001065C	0x120	fn_29_1065C	B	behaviour	fn_29_10154	lbl_29_rodata_798,lbl_29_rodata_7B4,lbl_29_rodata_7B8,lbl_29_rodata_7BC		yes
+0x0001077C	0x1C8	fn_29_1077C	B	behaviour	fn_29_10F58	lbl_29_rodata_798,lbl_29_rodata_7A8		yes
+0x00010944	0x40C	fn_29_10944	B	behaviour	fn_29_10F58	lbl_29_rodata_798,lbl_29_rodata_7A8,lbl_29_rodata_7C0,lbl_29_rodata_7C4		yes
+0x00010D50	0x9C	fn_29_10D50	B	behaviour	fn_29_1105C			no
+0x00010DEC	0x78	fn_29_10DEC	B	behaviour				yes
+0x00010E64	0x50	fn_29_10E64	B	behaviour				no
+0x00010EB4	0xA4	fn_29_10EB4	B	behaviour				yes
+0x00010F58	0x104	fn_29_10F58	B	behaviour		lbl_29_rodata_798		yes
+0x0001105C	0x3DC	fn_29_1105C	B	behaviour	fn_29_9D68	lbl_29_data_C60,lbl_29_rodata_798,lbl_29_rodata_7A8,lbl_29_rodata_7C8		yes
+0x00011438	0x58	fn_29_11438	B	behaviour	fn_29_1105C			no
+0x00011490	0x20	fn_29_11490	B	behaviour	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo,fn_29_1105C			no
+0x000114B0	0xC0	fn_29_114B0	H	host-copy		lbl_29_data_CE4	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
+0x00011570	0x2D0	fn_29_11570	B	behaviour	fn_29_11840,fn_29_11CA4	lbl_29_rodata_7E0,lbl_29_rodata_7E4,lbl_29_rodata_7E8,lbl_29_rodata_7EC,lbl_29_rodata_7F0		yes
+0x00011840	0x1A8	fn_29_11840	B	behaviour	fn_29_11A7C	lbl_29_rodata_7F4		yes
+0x000119E8	0x94	fn_29_119E8	B	behaviour	fn_29_11840			no
+0x00011A7C	0x198	fn_29_11A7C	B	behaviour	fn_29_11C14	lbl_29_rodata_7F4		yes
+0x00011C14	0x90	fn_29_11C14	B	behaviour				yes
+0x00011CA4	0x1E8	fn_29_11CA4	B	behaviour				yes
+0x00011E8C	0xF4	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo	B	behaviour		lbl_29_bss_7C,lbl_29_data_CE0,lbl_29_data_CE4,lbl_29_rodata_7E0		yes
+0x0001201C	0xE4	fn_29_1201C	B	behaviour	__ct__20CIngMiniPortalAttackF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4f9TUniqueIdRC9CVector3fRC18CIngMiniPortalInfo			yes
+0x00012100	0xF4	__ct__18CIngMiniPortalInfoF9TUniqueIdffRC31TLockedToken<15CGenDescription>UsffRC11CDamageInfoRC18SLdrPlasmaBeamInfo	B	behaviour				yes
+0x000121F4	0x5C	fn_29_121F4	H	host-copy		lbl_29_bss_70,lbl_29_bss_7C,lbl_29_rodata_7F4	the REL runtime - the host's own code does the same	no
+0x00012250	0x58	__destroy_global_chain	H	host-copy			the REL runtime - the host's own module runtime does the same	no
+0x000122A8	0x1C	__register_global_object	H	host-copy			the REL runtime - the host's own module runtime does the same	no
+0x000122C4	0xC4	_unresolved	H	host-copy			the REL runtime - the host's own module runtime does the same	no
+0x00012388	0x24	_epilog	H	host-copy			the REL runtime - the host's own module runtime does the same	no
+0x000123AC	0x24	_prolog	H	host-copy			the REL runtime - the host's own module runtime does the same	no
+0x000123D0	0x4C	ModuleDestructors	H	host-copy			the REL runtime - the host's own module runtime does the same	no
+0x0001241C	0x4C	ModuleConstructors	H	host-copy			the REL runtime - the host's own module runtime does the same	no

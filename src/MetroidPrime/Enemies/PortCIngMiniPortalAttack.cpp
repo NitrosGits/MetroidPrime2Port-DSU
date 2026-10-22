@@ -1,8 +1,8 @@
 // The Ing REL's (module 29) two mini-portal classes, ported for behaviour rather than bytes: the
 // portal's data (CIngMiniPortalInfo, fn_29_12100 and its copy fn_29_1201C) and the actor a portal
-// spawns (CIngMiniPortalAttack, fn_29_11E8C). Its Think, AcceptScriptMsg and the open/fire/aim
-// helpers are ported too, but neither class is exercised by a run yet, so no `// @` markers. The
-// member maps are docs/module-analysis/IngFamily.md, sections A.1 and A.3.
+// spawns (CIngMiniPortalAttack, fn_29_11E8C), with its Think, AcceptScriptMsg and the open/fire/aim
+// helpers. Every arm ran on the Agon Wastes run plus forced runs (IngFamily.md A.29). The member
+// maps are docs/module-analysis/IngFamily.md, sections A.1 and A.3.
 //
 // fn_29_11490 is a plain `CModelData()`, inlined below as the base class's model argument.
 // fn_29_114B0 is member destruction in reverse plus restoring the class vtable, i.e. the implicit
@@ -31,7 +31,7 @@ const float kMaxAimTurn = 1.2217305f;
 
 } // namespace
 
-// fn_29_12100 (not yet exercised in a run)
+// @ fn_29_12100
 CIngMiniPortalInfo::CIngMiniPortalInfo(TUniqueId target, float x4, float x8,
                                       const TLockedToken< CGenDescription >& effect, ushort sound,
                                       float x1c, float x20, const CDamageInfo& damage,
@@ -49,7 +49,7 @@ CIngMiniPortalInfo::CIngMiniPortalInfo(TUniqueId target, float x4, float x8,
   // TLockedToken copy constructor is that (CToken copy, cached pointer, Lock()).
 }
 
-// fn_29_1201C (not yet exercised in a run)
+// @ fn_29_1201C
 // Retail copies the two floats and the id up front, copies and locks the token, then the sound, the
 // two floats and the damage field by field, and finally the beam info as 0x12 words (fn_29_E9E8).
 CIngMiniPortalInfo::CIngMiniPortalInfo(const CIngMiniPortalInfo& other)
@@ -63,7 +63,7 @@ CIngMiniPortalInfo::CIngMiniPortalInfo(const CIngMiniPortalInfo& other)
 , mDamage(other.mDamage)
 , mBeamInfo(other.mBeamInfo) {}
 
-// fn_29_11E8C (not yet exercised in a run)
+// @ fn_29_11E8C
 // Base: CActor(uid, name, info, 0, xf, CModelData(), CMaterialList(kMT_Projectile),
 // CActorParameters(), kInvalidUniqueId); the single material is retail's lbl_29_data_CE0 = 0x23.
 CIngMiniPortalAttack::CIngMiniPortalAttack(TUniqueId uid, const rstl::string& name,
@@ -95,7 +95,7 @@ CIngMiniPortalAttack::CIngMiniPortalAttack(TUniqueId uid, const rstl::string& na
   SetNextDrawNode(owner);
 }
 
-// fn_29_11CA4 (not yet exercised in a run)
+// @ fn_29_11CA4
 // Retail vtable slot 0x14 (Think). The portal ages 0x220; with the fired beam (0x224) still alive,
 // at mInfo's lifetime (info+0x08) it stops the beam (retail slot 0x90 = CPlasmaProjectile::
 // ResetBeam(mgr, false)) and requests it deleted, and between the aim time (info+0x04) and the
@@ -104,43 +104,46 @@ CIngMiniPortalAttack::CIngMiniPortalAttack(TUniqueId uid, const rstl::string& na
 // transform is a LookAt from the actor's translation to mAimPoint. A portal left with no beam
 // deletes itself, and CActor::Think runs last.
 void CIngMiniPortalAttack::Think(float dt, CStateManager& mgr) {
-  mTime += dt;
+  mTime += dt; // 0x11CE0
 
+  // 0x11CF4
   if (CPlasmaProjectile* beam = static_cast< CPlasmaProjectile* >(mgr.ObjectById(mProjectileId))) {
-    if (mTime >= mInfo.GetLifeTime()) {
-      beam->ResetBeam(mgr, false);
+    if (mTime >= mInfo.GetLifeTime()) { // 0x11D00 (0x160)
+      beam->ResetBeam(mgr, false);      // 0x11D18 slot 0x90
       mgr.DeleteObjectRequest(mProjectileId);
-      mProjectileId = kInvalidUniqueId;
-    } else if (mTime >= mInfo.GetAimTime()) {
-      if ((mFlags & 0x80) != 0) {
+      mProjectileId = kInvalidUniqueId; // 0x11D40
+    } else if (mTime >= mInfo.GetAimTime()) { // 0x11D4C (0x15c)
+      if ((mFlags & 0x80) != 0) {             // 0x11D5C
+        // 0x11E20 slot 0x8c
         beam->UpdateFx(CTransform4f::LookAt(GetTranslation(), mAimPoint, CVector3f::Up()), dt,
                        mgr);
-      } else if (const CActor* target =
+      } else if (const CActor* target = // 0x11D80
                      static_cast< const CActor* >(mgr.GetObjectById(mInfo.GetTarget()))) {
         AimAtTarget(mgr, *target);
+        // 0x11DC8 slot 0x94
         beam->Fire(CTransform4f::LookAt(GetTranslation(), mAimPoint, CVector3f::Up()), mgr, false);
-        mFlags |= 0x80;
+        mFlags |= 0x80; // 0x11DDC: rlwimi of a constant 1, not of Fire's result
       }
     }
   }
 
-  if (mProjectileId == kInvalidUniqueId) {
+  if (mProjectileId == kInvalidUniqueId) { // 0x11E38
     mgr.DeleteObjectRequest(GetUniqueId());
   }
   CActor::Think(dt, mgr);
 }
 
-// fn_29_11C14 (not yet exercised in a run)
+// @ fn_29_11C14
 // Retail vtable slot 0x18 (AcceptScriptMsg): XDEL (kSM_Delete) drops the fired beam, XCRT
 // (kSM_Create) opens the portal. CStateManager::AddObject delivers kSM_Create to a new actor, so
 // fn_29_11A7C is the normal path one frame after the spawn.
 void CIngMiniPortalAttack::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CActor::AcceptScriptMsg(mgr, msg);
   switch (msg.GetMessage()) {
-  case kSM_Delete:
+  case kSM_Delete: // 0x11C48
     mgr.DeleteObjectRequest(mProjectileId);
     break;
-  case kSM_Create:
+  case kSM_Create: // 0x11C5C
     Open(mgr);
     break;
   default:
@@ -148,7 +151,7 @@ void CIngMiniPortalAttack::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
   }
 }
 
-// fn_29_11A7C (not yet exercised in a run)
+// @ fn_29_11A7C
 // The portal opening: a 0x180-byte "Ing Mini Portal Fx" CExplosion from mInfo's effect token
 // (info+0x0c) in the actor's own transform and scale, with a CEntityInfo(area, null connections,
 // active, kInvalidEditorId); then a 3D CSfxManager emitter (info+0x1c max distance, info+0x20
@@ -160,7 +163,7 @@ void CIngMiniPortalAttack::Open(CStateManager& mgr) {
       rs_new CExplosion(mInfo.GetEffect(), mgr.AllocateUniqueId(), info,
                         rstl::string_l("Ing Mini Portal Fx"), GetTransform(), 0, mScale,
                         CColor::White(), -1);
-  if (!explosion) {
+  if (!explosion) { // 0x11B84
     return;
   }
   mgr.AddObject(*explosion);
@@ -174,7 +177,7 @@ void CIngMiniPortalAttack::Open(CStateManager& mgr) {
   Fire(mgr);
 }
 
-// fn_29_11840 (not yet exercised in a run)
+// @ fn_29_11840
 // The shot: aim (fn_29_11570), then TLdrToBeamInfo over mInfo's beam info (info+0x40) with
 // attributes 0x291, allocate mProjectileId (retail 0x224) and spawn the 0x6a8-byte "Ing Mini Portal
 // Beam" CPlasmaProjectile at the identity transform with material 0x14 (kMT_ProjectilePassthrough).
@@ -183,7 +186,7 @@ void CIngMiniPortalAttack::Open(CStateManager& mgr) {
 // the beam's next draw node (retail 0x12a).
 void CIngMiniPortalAttack::Fire(CStateManager& mgr) {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mInfo.GetTarget()));
-  if (!target) {
+  if (!target) { // 0x11874
     return;
   }
   AimAtTarget(mgr, *target);
@@ -196,14 +199,14 @@ void CIngMiniPortalAttack::Fire(CStateManager& mgr) {
       EWeaponType(damage.GetWeaponMode().GetRawType()), beamInfo, CTransform4f::Identity(),
       kMT_ProjectilePassthrough, damage, mProjectileId, GetCurrentAreaId(), GetUniqueId(),
       CWeaponAssetInfo(), false, 0x20000);
-  if (!beam) {
+  if (!beam) { // 0x118D0
     return;
   }
   mgr.AddObject(*beam);
   beam->SetNextDrawNode(GetUniqueId());
 }
 
-// fn_29_11570 (not yet exercised in a run)
+// @ fn_29_11570
 // Aims: the target's aim position is sampled at t = 0 and again at the beam's travel time (retail
 // 0x1d0, beam info +0x38), where t = |0.5 * (aim0 + target translation) - translation| / speed.
 // The two samples are blended 0.25 * ((aim1 + target translation) - aim0) + 0.75 * aim1; the
@@ -219,17 +222,17 @@ void CIngMiniPortalAttack::AimAtTarget(CStateManager& mgr, const CActor& target)
   const CVector3f toTarget = 0.5f * (startAim + targetPos) - translation;
 
   const float travelSpeed = mInfo.GetBeamInfo().travelSpeed;
-  const float time = travelSpeed > 0.0f ? toTarget.Magnitude() / travelSpeed : 0.0f;
+  const float time = travelSpeed > 0.0f ? toTarget.Magnitude() / travelSpeed : 0.0f; // 0x1168C
 
   const CVector3f endAim = target.GetAimPosition(mgr, time);
   const CVector3f blended = 0.25f * ((endAim + targetPos) - startAim) + 0.75f * endAim;
   const CVector3f delta = blended - translation;
 
-  if (!delta.IsMagnitudeSafe()) {
+  if (!delta.IsMagnitudeSafe()) { // 0x11734
     mAimPoint = translation + forward;
     return;
   }
-  if (CVector3f::GetAngleDiff(forward, delta) <= kMaxAimTurn) {
+  if (CVector3f::GetAngleDiff(forward, delta) <= kMaxAimTurn) { // 0x11750
     mAimPoint = blended;
     return;
   }
