@@ -8,6 +8,6 @@
 CLASS = 'CDigitalGuardian'
 SPEC = []
 FORCE = [
-    ('308C not a waypoint', 'loc:PortCDigitalGuardian.cpp:1826', [], ['waypoint = 0'], 4,
+    ('308C not a waypoint', 'loc:PortCDigitalGuardian.cpp:1838', [], ['waypoint = 0'], 4,
      'the connected object is no waypoint'),
 ]

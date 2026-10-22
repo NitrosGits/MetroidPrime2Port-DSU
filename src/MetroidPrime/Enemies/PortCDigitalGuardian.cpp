@@ -262,6 +262,10 @@ rstl::string BoxJointName(const SBoxJoint& joint) {
 // fn_14_B100. The base call is the retail one: EPatternedAI 9 (li r4, 0x9 at 0x0000B154),
 // flavor 0 (li r7, 0x0 at 0x0000B13C), movement 0 / collider 1 / body 1 (the stack words at
 // 0x0000B150..0x0000B15C), all passed to CPatterned at 0x0000B164.
+// Every arm ran: the asset-set arms naturally, the five "id != -1" skips, the null generator and
+// the no-beacon-model echo skip forced (tools/cov/specs/digitalguardian_dg33_ctor.py; the one
+// DGRD placement sets every id, so those arms are data-dead in the retail).
+// @ fn_14_B100
 CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                    const CTransform4f& xf, const CModelData& modelData,
                                    const CActorParameters& actParms, const CPatternedInfo& pInfo,
@@ -326,7 +330,7 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
 , x1264_(0.f)
 , x126C_(0.f) // the store at 0xB9C4
 , x1268_(0)
-, x1270_(0)
+, x1270_(CColor::Black().GetColor_u32()) // Black() at 0xB9C8, the word stored at 0xB9DC
 , xFBC_{kInvalidUniqueId.value, kInvalidUniqueId.value, kInvalidUniqueId.value,
         kInvalidUniqueId.value}
 , x1078_{kInvalidUniqueId.value, kInvalidUniqueId.value, kInvalidUniqueId.value,
@@ -403,6 +407,18 @@ CDigitalGuardian::CDigitalGuardian(TUniqueId uid, const rstl::string& name, cons
   // fn_14_D664 (the call at 0xB6AC): the beacon's particle generator, from the beacon's effect
   // asset (guest 0x950, the data block's mTransmissionBeaconFx).
   x123C_ = xD664_(mData.mTransmissionBeaconFx);
+  // 0xBEF8..0xBF48: a built generator starts with its emission off (vtable 0x2C, r4 = 0; fn_14_28D0
+  // turns it on) and the model's scale (the CModelData at 0x60, its first three floats) as its
+  // global scale (vtable 0x24).
+  if (x123C_ != nullptr) {
+    x123C_->SetParticleEmission(false);
+    x123C_->SetGlobalScale(GetModelData()->GetScale());
+  }
+
+  // The retail also fills two reserved vectors here (0xBD7C..0xBEE0): the knee directions at
+  // 0xFC4 ((-1, 1, 0), (-1, -1, 0), (1, 1, 0), (1, -1, 0); only fn_14_77EC reads them, the host
+  // keeps them as its kKneeDirections) and four angles at 0xFF8 (.data 0x45C..0x468: pi/4, 3pi/4,
+  // -pi/4, -3pi/4) that no other code of the REL reads (its only 0xFF8 accesses are this ctor's).
 
   // The crippled 'SCAN' token (0xBF4C..0xC00C): the id (data +0) tested against -1 (addis r0,
   // r23, 0x1 / cmplwi r0, 0xffff / beq at 0xBF50..0xBF58), a 0xC-byte TCachedToken (operator new
