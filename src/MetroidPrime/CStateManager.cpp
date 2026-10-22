@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <chrono>
+#include <thread>
 #include "Kyoto/CPakFile.hpp"
 #include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResLoader.hpp"
@@ -5321,12 +5323,16 @@ bool PortWithMlvl(CAssetId worldId, F fn) {
 
   CDummyWorld world(worldId, false);
   // The read is asynchronous, so wait for it here: the parse is of a few hundred KB and the DVD
-  // thread is doing the work. The cap is a hang guard, not a timeout.
-  for (int spin = 0; !world.ICheckWorldComplete(); ++spin) {
-    if (spin == 2000000) {
+  // thread is doing the work. The cap is a hang guard in wall-clock time, so a busy machine (smoke
+  // runs in parallel) can't run it out the way a spin count did; the yield gives the DVD thread
+  // the core.
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+  while (!world.ICheckWorldComplete()) {
+    if (std::chrono::steady_clock::now() > deadline) {
       std::fprintf(stderr, "[warp] %08x: its MLVL never finished loading\n", worldId);
       return false;
     }
+    std::this_thread::yield();
   }
 
   fn(world, loader);
