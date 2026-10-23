@@ -1302,6 +1302,9 @@ void CMediumIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
 // @ fn_41_30AC
 void CMediumIng::SelectTargetState(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// Every arm before the land lookup ran (mi5, forced: `pathfail`, `spawn AJMP`, `setarea`); from a
+// same-area type-1 jump point on it is dead in shipped data (no area holds both a MING and an AJMP).
+// @ fn_41_698C
 void CMediumIng::SelectTarget(CStateManager& mgr, float dt) {
   JoinTeam(mgr);
   mHitByPlayerProjectile = false; // 0x69C0 0x420 &= ~0x80
@@ -1381,6 +1384,7 @@ void CMediumIng::SetMeshPathDestination(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_41_261C
 void CMediumIng::SetDashDestination(CStateManager& mgr, float dt) {
   mJumpPointId = kInvalidUniqueId; // 0x2694
   const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();

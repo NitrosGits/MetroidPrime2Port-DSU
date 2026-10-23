@@ -1,6 +1,7 @@
 #pragma once
 
 class CEntity;
+class CPathFindSearch;
 class CStateManager;
 
 // The debug command console: with `MP2_CONSOLE=<port>` (1 = 4780) the port listens on
@@ -37,5 +38,10 @@ bool RegisterVar(VarHandler handler);
 // The state manager of the `var` command a handler is answering (null outside one), for handlers
 // that build or look up objects.
 CStateManager* VarManager();
+
+// `pathfail <id> on|off`: true while the console makes this search fail. CPathFindSearch::Search
+// (kR_NoPath) and FindClosestReachablePoint (kR_NoSourcePoint) ask it in their TARGET_PC block,
+// so a path-search miss arm runs for one actor without a broken nav mesh.
+bool PathSearchForcedFail(const CPathFindSearch* search);
 
 } // namespace PortConsole

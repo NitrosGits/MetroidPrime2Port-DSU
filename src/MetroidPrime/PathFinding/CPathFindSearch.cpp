@@ -4,6 +4,9 @@
 
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CloseEnough.hpp"
+#ifdef TARGET_PC
+#include "port_console.h"
+#endif
 
 bool CPFOpenList::Test(CPFRegion* region) { return mBitSet.Test(region->GetIndex()); }
 
@@ -46,6 +49,13 @@ CPathFindSearch::EResult CPathFindSearch::Search(const CVector3f& source,
   bool outsideDest = false;
   mWaypoints.clear();
   mCurWaypoint = 0;
+#ifdef TARGET_PC
+  // Console `pathfail <id> on`: a forced miss, as a search with no route ends.
+  if (PortConsole::PathSearchForcedFail(this)) {
+    mResult = kR_NoPath;
+    return mResult;
+  }
+#endif
   if (!mArea) {
     mResult = kR_InvalidArea;
     return mResult;
@@ -317,6 +327,12 @@ found:
 
 CPathFindSearch::EResult CPathFindSearch::FindClosestReachablePoint(const CVector3f& source,
                                                                     CVector3f& destination) const {
+#ifdef TARGET_PC
+  // Console `pathfail <id> on`: a forced miss, as when no region is near the source.
+  if (PortConsole::PathSearchForcedFail(this)) {
+    return kR_NoSourcePoint;
+  }
+#endif
   if (!mArea) {
     return kR_InvalidArea;
   }

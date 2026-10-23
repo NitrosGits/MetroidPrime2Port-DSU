@@ -63,6 +63,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/RenderGeometryRayCast.hpp"
 #include "MetroidPrime/CObjectList.hpp"
+#include "MetroidPrime/PathFinding/CPathFindSearch.hpp"
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/CAnimData.hpp"
 #include "Kyoto/Graphics/CModel.hpp"
@@ -82,6 +83,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include <aurora/gfx.h>
 #include <aurora/perf.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <chrono>
@@ -557,6 +559,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "bodystate <id> <n>          set a patterned actor's body state (the pas::EAnimationState index)\n"
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
+      "pathfail <id> on|off        the actor's path search fails (Search, FindClosestReachablePoint)\n"
+      "setarea <id> <area>         set an entity's current area id (put it back after; obj shows it)\n"
       "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "orbit [id]                  lock-on state; with id: orbit position, ValidateOrbitTargetId\n"
@@ -2048,6 +2052,51 @@ void CmdCodeCall(CStateManager& mgr, const Args& args, std::string& out) {
   }
   (patterned->*fn)(mgr, dt);
   out += "codecall " + wanted + "\n";
+}
+
+// The searches `pathfail` holds failing (PortConsole::PathSearchForcedFail). Pointers only, never
+// dereferenced: a deleted actor's entry stays until `pathfail <id> off` or a new one reuses it.
+std::vector< const CPathFindSearch* >& FailingSearches() {
+  static std::vector< const CPathFindSearch* > sSearches;
+  return sSearches;
+}
+
+// pathfail <id> on|off: make a patterned actor's path search (its GetSearchPath) report a miss, so
+// the arms behind a failed Search / FindClosestReachablePoint run on an area whose mesh reaches.
+void CmdPathFail(CStateManager& mgr, const Args& args, std::string& out) {
+  CEntity* ent = args.size() == 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr || (args[2] != "on" && args[2] != "off")) {
+    Fail("usage: pathfail <id> on|off   (id must be a patterned actor)");
+    return;
+  }
+  const CPathFindSearch* search = patterned->GetSearchPath();
+  if (search == nullptr) {
+    Fail("the actor has no path search");
+    return;
+  }
+  std::vector< const CPathFindSearch* >& searches = FailingSearches();
+  searches.erase(std::remove(searches.begin(), searches.end(), search), searches.end());
+  if (args[2] == "on") {
+    searches.push_back(search);
+  }
+  out += "pathfail " + Str(args[2]) + "\n";
+}
+
+// setarea <id> <area>: set an entity's current area id (CEntity +0x4), e.g. so a same-area filter
+// sees a neighbour from another area. Nothing else moves; put the old id back afterwards.
+void CmdSetArea(CStateManager& mgr, const Args& args, std::string& out) {
+  CEntity* ent = args.size() == 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
+  float area = 0.f;
+  if (ent == nullptr || !ParseFloat(args[2], area)) {
+    Fail("usage: setarea <id> <area index>");
+    return;
+  }
+  const int old = ent->GetCurrentAreaId().Value();
+  ent->SetCurrentAreaId(TAreaId(static_cast< int >(area)));
+  char line[64];
+  std::snprintf(line, sizeof(line), "area %d -> %d\n", old, ent->GetCurrentAreaId().Value());
+  out += line;
 }
 
 // The module handlers `var` asks (PortConsole::RegisterVar); a function-local list, so a module's
@@ -3605,6 +3654,8 @@ constexpr SCommand kCommands[] = {
     {"statecall", CmdStateCall, true},
     {"trigcall", CmdTrigCall, true},
     {"codecall", CmdCodeCall, true},
+    {"pathfail", CmdPathFail, true},
+    {"setarea", CmdSetArea, true},
     {"var", CmdVar, true},
     {"hint", CmdHint, true},
     {"uevent", CmdUEvent, true},
@@ -3792,5 +3843,10 @@ bool RegisterVar(VarHandler handler) {
 }
 
 CStateManager* VarManager() { return sVarManager; }
+
+bool PathSearchForcedFail(const CPathFindSearch* search) {
+  const std::vector< const CPathFindSearch* >& searches = FailingSearches();
+  return !searches.empty() && std::find(searches.begin(), searches.end(), search) != searches.end();
+}
 
 } // namespace PortConsole
