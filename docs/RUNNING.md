@@ -249,6 +249,7 @@ pssm (Torvus Bog 0g_swamp_hall) and stod (Torvus Bog dark 09_swamp_catacombs_dar
 needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
 and pbug (Agon Wastes 0b_sand_hall)
 and szone (Agon Wastes dark 02_sand_sandfalls_dark)
+splinter (Temple Grounds 02_temple_exploration)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -384,6 +385,10 @@ listener and the three Activate/Deactivate sends, then the zone's Delete, with `
 counting the zones at f340 and after the Delete at f2300, and `obj` reads (hp/fsm/body/message map)
 around them. The shot ids and late `objs SafeZone` listings follow the update rate, so the
 family stays capped (NC).
+to 132; splinter wakes Temple Grounds 02_temple_exploration's three Splinters
+u055b/u055c/u057c (inactive at load), alerts them, takes the 6 -> 4 -> -6 hp steps on u055b/u055c
+and the missile hit on u057c, and `objs Splinter` counts three at f340 and zero at f3100, with `obj`
+reads of u055b/u057c (hp/fsm/body/message map) at f1200.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
