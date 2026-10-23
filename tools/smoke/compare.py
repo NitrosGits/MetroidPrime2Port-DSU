@@ -15,12 +15,12 @@ import re
 import sys
 
 FAMILIES = ["swamp1", "swamp2", "sandboss", "sandworm", "boostg", "boostg_fsm", "digig",
-            "cmdpirate", "emp1", "spacepirate", "ing", "ep", "plain", "emp3", "turret",
-            "agon54", "darksamus", "splitter", "grenchler", "grenguard", "flyingpirate",
-            "mediuming", "metroid", "sporb", "blogg", "swarm", "gunturret", "rezbit", "parasite",
-            "lumite", "shrieker", "ingswarm", "darktrooper", "bacteriaswarm", "tryclops",
-            "wisptentacle", "octapede", "amt", "dbar", "sjguard", "fishcloud", "spa",
-            "wallwalker", "isbg", "spp", "mysf", "spor", "scriptgui"]
+            "cmdpirate", "emp1", "spacepirate", "ing", "ep", "plain", "emp3", "turret", "agon54",
+            "darksamus", "splitter", "grenchler", "grenguard", "flyingpirate", "mediuming",
+            "metroid", "sporb", "blogg", "swarm", "gunturret", "rezbit", "parasite", "lumite",
+            "shrieker", "ingswarm", "darktrooper", "bacteriaswarm", "tryclops", "wisptentacle",
+            "octapede", "amt", "dbar", "sjguard", "fishcloud", "spa", "wallwalker", "isbg", "spp",
+            "mysf", "spor", "scriptgui", "kral", "gbug"]
 # the old suite named some logs after the family alone
 ALIASES = {"ing": "ing.log", "ep": "ep.log", "plain": "plain.log"}
 
