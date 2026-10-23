@@ -885,6 +885,8 @@ void CDarkSamus::AddPhazonBob(CVector3f& pos) const {
 
 // vtable slot 24 = fn_10_F84C (0x18): the byte at guest this+0xCD0 picks the response - 0x6A when
 // it is 1, 0x2E otherwise (`cmplwi r0, 0x1` at 0x0000F854, the two `li` at 0x0000F850/0x0000F85C).
+// Slice ds10: power-beam hits land with 0xCD0 both 0 (Pause) and 1 (SuperMissileAttack/FreezeBeam).
+// @ fn_10_F84C
 EWeaponCollisionResponseTypes CDarkSamus::GetCollisionResponseType(const CVector3f& position,
                                                                    const CVector3f& direction,
                                                                    const CWeaponMode& mode,
@@ -1410,6 +1412,14 @@ CDarkSamus::GetDeathExplosionParticle() const {
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_10_CF44) and entry points.
 
+// fn_10_CF44: the 63-id property switch is SLdrDarkSamus.inc (same ids and stack offsets from
+// sp+0x624); unknown ids are skipped (ReadBytes, 0x0000D9F0), a null model returns null (`lbz 0x36c`,
+// 0x0000DA3C); the -1 sound defaults are the ctor's (fn_10_E23C) in SLdrDarkSamus.hpp.
+// asmcheck: the property reads (ReadFloat/ReadBytes/LoadTypedef*), their 100-odd conditions and
+// the SLdrDarkSamus ctor/dtor (fn_10_E23C, fn_10_E124) are in the .inc/.hpp; fn_10_DDDC is the
+// optional<CModelData> copy; LoadActorParameters / LoadEditorTransform are the host's
+// LdrToActorParameters / LdrToTransform4f.
+// @ fn_10_CF44
 static CEntity* PortLoadDarkSamus(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDarkSamus sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrDarkSamus.inc"
