@@ -91,6 +91,17 @@ inline SLdrShrieker::SLdrShrieker()
   popDetectionRadius = 10.0f;
   morphballDetectionRadius = 5.0f;
   visibilityChangeTime = 0.5f;
+#ifdef TARGET_PC
+  // fn_69_1170: 3 at +0x38 (0x11FC li r9,3 / 0x124C), 2.0 (rodata 0xC) at +0x88 (0x1260), 1 at
+  // +0x26C (0x126C), CColor(1.0 x4, rodata 0x14) at +0x294 (0x1284), 0xF at +0x2E4 (0x1294),
+  // -1 at +0x4C0 (0x11C8 li r11,-1 / 0x123C; retail never stores 0 there).
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+  sound_MissileDeflection = -1;
+#endif
 }
 
 inline SLdrShrieker::~SLdrShrieker() {}

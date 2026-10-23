@@ -333,7 +333,12 @@ void CShrieker::Render(const CStateManager& mgr) const {
       if (projectile) {
         const float ratio =
             (center - projectile->GetTranslation()).Magnitude() / mData.mMissileDeflectionRadius;
+#ifdef TARGET_PC
+        // 0x5164 fcmpo 0,ratio; ble / 0x517C fcmpo 1,ratio; bge: retail clamps to [0, 1].
+        mgr.DrawSpaceWarp(projectile->GetTranslation(), 1.f - CMath::Clamp(0.f, ratio, 1.f));
+#else
         mgr.DrawSpaceWarp(projectile->GetTranslation(), 1.f - rstl::min_val(ratio, 1.f));
+#endif
       }
     }
   }
@@ -542,7 +547,12 @@ void CShrieker::FaceTarget(CStateManager& mgr, float dt) {
     if (direction.CanBeNormalized()) {
       direction.Normalize();
       BodyController()->FaceDirection(direction, dt);
+#ifdef TARGET_PC
+      // 0x1B40 extrwi. r0,r0,1,28 / 0x1B44 bne: retail tests 0x08 (mChasing), not mBuried (0x10).
+      if (!mChasing) {
+#else
       if (!mBuried) {
+#endif
         float height = 0.f;
         if (GetHeightAboveMesh(height) && CMath::AbsF(height) > 0.5f) {
           BodyController()->CommandMgr().ClearLocomotionCmds();
@@ -1194,7 +1204,12 @@ bool CShrieker::ShouldDodge(CStateManager& mgr, const CTriggerData&) const {
 bool CShrieker::InMaxRange(CStateManager& mgr, const CTriggerData&) const {
   if (const CActor* target = TCastToPtr< CActor >(mgr.ObjectById(mTargetId))) {
     const CVector3f delta = target->GetTranslation() - GetTranslation();
+#ifdef TARGET_PC
+    // 0x2AAC extrwi. r0,r0,1,28 / 0x2AD4 beq: retail tests 0x08 (mChasing), not mBuried (0x10).
+    const float range = mMaxAttackRange - (mChasing ? 0.25f * mMaxAttackRange : 0.f);
+#else
     const float range = mMaxAttackRange - (mBuried ? 0.25f * mMaxAttackRange : 0.f);
+#endif
     return delta.MagSquared() < range * range;
   }
   return false;
