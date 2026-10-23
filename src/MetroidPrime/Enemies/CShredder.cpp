@@ -34,6 +34,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"AttackPlayer", static_cast< CPatterned::StateMachine::StateFunc >(&CShredder::AttackPlayer)},
 };
 
+// @ fn_68_23E0
 CShredder::CShredder(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& modelData,
                      const CActorParameters& actorParams, const CPatternedInfo& patternedInfo,
@@ -74,8 +75,10 @@ CShredder::CShredder(TUniqueId uid, const rstl::string& name, const CEntityInfo&
   }
 }
 
+// @ fn_68_2108
 CShredder::~CShredder() {}
 
+// @ fn_68_209C
 void CShredder::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -83,6 +86,7 @@ void CShredder::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_68_1EA0
 void CShredder::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 
@@ -119,6 +123,7 @@ void CShredder::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_68_1DDC
 void CShredder::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Deactivate:
@@ -134,6 +139,7 @@ void CShredder::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_68_1728
 void CShredder::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -189,6 +195,7 @@ void CShredder::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_68_14F0
 void CShredder::AttackPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -224,6 +231,7 @@ void CShredder::AttackPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_68_12E8
 void CShredder::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
 
@@ -255,6 +263,7 @@ void CShredder::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_68_126C
 void CShredder::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                              CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr);
@@ -263,6 +272,7 @@ void CShredder::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list
   }
 }
 
+// @ fn_68_1198
 void CShredder::Explode(CStateManager& mgr) {
   if (!mExploded) {
     mgr.ApplyDamageToWorld(
@@ -274,11 +284,13 @@ void CShredder::Explode(CStateManager& mgr) {
   }
 }
 
+// @ fn_68_1140
 void CShredder::AddReactionAnimation() {
   AnimationData()->AddAdditiveAnimation(mReactionAnim, CMath::Min(mFuseProgress, 1.f), false,
                                         false);
 }
 
+// @ fn_68_10B8
 void CShredder::Touch(CActor& other, CStateManager& mgr) {
   CPatterned::Touch(other, mgr);
   if (!mLurking) {
@@ -300,8 +312,10 @@ void CShredder::Touch(CActor& other, CStateManager& mgr) {
   }
 }
 
+// @ fn_68_10B0
 bool CShredder::IsListening() const { return true; }
 
+// @ fn_68_FD4
 bool CShredder::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
   bool heard = false;
   if (type == 7) {
@@ -318,10 +332,12 @@ bool CShredder::Listen(CStateManager& mgr, const CVector3f& position, EListenNoi
   return heard;
 }
 
+// @ fn_68_F80
 bool CShredder::ShouldWakeUp(CStateManager& mgr, const CTriggerData& data) const {
   return mWokenUp || mHitByPlayerProjectile || InDetectionRange(mgr, data);
 }
 
+// @ fn_68_EAC
 bool CShredder::IsUnderWater(const CStateManager& mgr) const {
   if (const CScriptWater* water = TCastToConstPtr< CScriptWater >(mgr.GetObjectById(InFluidId()))) {
     const float top = GetCollisionPrimitive()->CalculateAABox(GetTransform()).GetMaxPoint().GetZ();
@@ -330,6 +346,7 @@ bool CShredder::IsUnderWater(const CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_68_D34
 void CShredder::ApplySeparation(CStateManager& mgr) {
   const CObjectList& list = mgr.GetObjectListById(kOL_ListeningAi);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
@@ -346,6 +363,7 @@ void CShredder::ApplySeparation(CStateManager& mgr) {
   }
 }
 
+// @ fn_68_BF0
 void CShredder::Render(const CStateManager& mgr) const {
   if (mAttacking) {
     const float progress = CMath::Min(mFuseProgress, 1.f);
@@ -359,6 +377,7 @@ void CShredder::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
 }
 
+// @ fn_68_168
 CEntity* LoadShredder(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrShredder sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrShredder.inc"
@@ -378,6 +397,7 @@ CEntity* LoadShredder(CStateManager& mgr, CInputStream& input, CEntityInfo& info
 }
 
 #ifndef MONOLITHIC
+// @ fn_68_138
 static void SetFuncPtrs() {
   static SShredder_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadShredder;
