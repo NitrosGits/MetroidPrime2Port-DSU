@@ -1,0 +1,165 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_39_0	68	B	GetTouchBounds	lum1	upstream body (CLumite)	yes
+00068	fn_39_68	10	H	TakeDamage__10CPatternedFRC9CVector3ff	lum1	weak copy	no
+00078	fn_39_78	8	H	GetModelAlphau8__10CPatternedCFRC13CStateManager	lum1	weak copy	no
+00080	fn_39_80	8	H	GetSearchPath__10CPatternedFv	lum1	weak copy	no
+00088	fn_39_88	8	H	GetPointSearchPath__10CPatternedFv	lum1	weak copy	no
+00090	fn_39_90	8	H	GetRagDoll__10CPatternedCFv	lum1	weak copy	no
+00098	fn_39_98	10	H	GetAttackTarget__10CPatternedCFv	lum1	weak copy	no
+000A8	fn_39_A8	C	H	IsOnGround__10CPatternedCFv	lum1	weak copy	no
+000B4	fn_39_B4	8	H	GetDeathExplosionParticle__10CPatternedCFv	lum1	weak copy	no
+000BC	fn_39_BC	8	H	CanBeShot__3CAiFRC13CStateManageri	lum1	weak copy	no
+000C4	fn_39_C4	8	H	IsListening__3CAiCFv	lum1	weak copy	no
+000CC	fn_39_CC	8	H	Listen__3CAiFR13CStateManagerRC9CVector3f16EListenNoiseType	lum1	weak copy	no
+000D4	fn_39_D4	1C	H	GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f	lum1	weak copy	no
+000F0	fn_39_F0	2C	H	GetHealthInfo__6CActorCFv	lum1	weak copy	no
+0011C	fn_39_11C	24	T	RELExit	lum1	REL runtime	yes
+00140	fn_39_140	20	T	RELMain	lum1	REL runtime	yes
+00160	fn_39_160	30	T	SetFuncPtrs	lum1	REL runtime	no
+00190	fn_39_190	5A8	B	LoadLumite	lum1	upstream body (CLumite); fix SLdrLumite defaults (inlined ctor)	no
+00738	fn_39_738	40	H	fn_39_738	lum1	unnamed dtor/thunk/static-init	no
+00778	fn_39_778	20	H	fn_39_778	lum1	unnamed dtor/thunk/static-init	no
+00798	fn_39_798	28	H	fn_39_798	lum1	unnamed dtor/thunk/static-init	no
+007C0	fn_39_7C0	13C	H	fn_39_7C0	lum1	unnamed dtor/thunk/static-init	no
+008FC	fn_39_8FC	6C	H	fn_39_8FC	lum1	unnamed dtor/thunk/static-init	no
+00968	fn_39_968	54	H	fn_39_968	lum1	unnamed dtor/thunk/static-init	no
+009BC	fn_39_9BC	64	H	fn_39_9BC	lum1	unnamed dtor/thunk/static-init	no
+00A20	fn_39_A20	60	H	fn_39_A20	lum1	unnamed dtor/thunk/static-init	no
+00A80	fn_39_A80	88	H	fn_39_A80	lum1	unnamed dtor/thunk/static-init	no
+00B08	fn_39_B08	150	H	fn_39_B08	lum1	unnamed dtor/thunk/static-init	no
+00C58	fn_39_C58	90	B	GetAimPosition	lum1	upstream body (CLumite)	yes
+00CE8	fn_39_CE8	3C	H	fn_39_CE8	lum1	unnamed dtor/thunk/static-init	no
+00D24	fn_39_D24	90	B	GetOrbitPosition	lum1	upstream body (CLumite)	yes
+00DB4	fn_39_DB4	16C	B	ClearLineOfFire	lum1	upstream body (CLumite)	no
+00F20	fn_39_F20	5C	H	fn_39_F20	lum1	unnamed dtor/thunk/static-init	no
+00F7C	fn_39_F7C	20	B	AddToRenderer	lum1	upstream body (CLumite)	yes
+00F9C	fn_39_F9C	5C	B	GetTeamRole	lum1	upstream body (CLumite)	no
+00FF8	fn_39_FF8	A0	B	QuitTeam	lum1	upstream body (CLumite)	no
+01098	fn_39_1098	74	B	JoinTeam	lum1	upstream body (CLumite)	no
+0110C	fn_39_110C	34	B	GetTeamAiMgr	lum1	upstream body (CLumite)	yes
+01140	fn_39_1140	34	B	GetTeamAiMgr	lum1	upstream body (CLumite)	yes
+01174	fn_39_1174	88	B	CanTaunt	lum1	upstream body (CLumite)	no
+011FC	fn_39_11FC	2C	B	IsHeckler	lum1	upstream body (CLumite)	yes
+01228	fn_39_1228	80	B	GetHopSpeedScale	lum1	upstream body (CLumite)	yes
+012A8	fn_39_12A8	C	B	GetGravityConstant	lum1	upstream body (CLumite)	no
+012B4	fn_39_12B4	240	B	Dead	lum1	upstream body (CLumite)	no
+014F4	fn_39_14F4	8	H	fn_39_14F4	lum1	unnamed dtor/thunk/static-init	no
+014FC	fn_39_14FC	48	H	fn_39_14FC	lum1	unnamed dtor/thunk/static-init	no
+01544	fn_39_1544	B0	B	StickToNearestSurface	lum1	upstream body (CLumite)	yes
+015F4	fn_39_15F4	418	B	SelectHopTarget	lum1	upstream body (CLumite); fix 0x18D0..0x1924	no
+01A0C	fn_39_1A0C	40	H	Cross__9CVector3fFRC9CVector3fRC9CVector3f	lum1	weak copy	no
+01A4C	fn_39_1A4C	54	H	__ct__17CCollisionSurfaceFRC9CVector3fRC9CVector3fRC9CVector3fUx	lum1	weak copy	no
+01AA0	fn_39_1AA0	254	B	TrySunlightHop	lum1	upstream body (CLumite)	no
+01CF4	fn_39_1CF4	1AC	B	FindSafeZone	lum1	upstream body (CLumite); fix 0x1E3C	no
+01EA0	fn_39_1EA0	3A4	B	ChooseHop	lum1	upstream body (CLumite)	no
+02244	fn_39_2244	288	B	BuildHopCandidates	lum1	upstream body (CLumite); fix 0x22DC/0x2414/0x2420	no
+024CC	fn_39_24CC	4C	H	fn_39_24CC	lum1	unnamed dtor/thunk/static-init	no
+02518	fn_39_2518	114	B	SpawnZoneImpact	lum1	upstream body (CLumite)	no
+0262C	fn_39_262C	654	B	Hop	lum1	upstream body (CLumite); fix 0x26D0	no
+02C80	fn_39_2C80	9C	H	fn_39_2C80	lum1	unnamed dtor/thunk/static-init	no
+02D1C	fn_39_2D1C	5C	H	fn_39_2D1C	lum1	unnamed dtor/thunk/static-init	no
+02D78	fn_39_2D78	7C	H	fn_39_2D78	lum1	unnamed dtor/thunk/static-init	no
+02DF4	fn_39_2DF4	64	B	EndTeamAction	lum1	upstream body (CLumite)	no
+02E58	fn_39_2E58	64	B	StartTeamAction	lum1	upstream body (CLumite)	no
+02EBC	fn_39_2EBC	54	B	FacingHopPoint	lum1	upstream body (CLumite)	yes
+02F10	fn_39_2F10	174	B	TurnToHopPoint	lum1	upstream body (CLumite)	no
+03084	fn_39_3084	17C	B	CLumite::SHopPlan::Reset	lum1	upstream body (CLumite)	yes
+03200	fn_39_3200	28	B	Landed	lum1	upstream body (CLumite)	yes
+03228	fn_39_3228	D0	B	ReadyToMove	lum1	upstream body (CLumite)	no
+032F8	fn_39_32F8	88	B	CanAttack	lum1	upstream body (CLumite)	no
+03380	fn_39_3380	5C	B	Turn	lum1	upstream body (CLumite)	yes
+033DC	fn_39_33DC	348	B	TurnTowards	lum1	upstream body (CLumite); fix 0x3628	yes
+03724	fn_39_3724	5C	H	fn_39_3724	lum1	unnamed dtor/thunk/static-init	no
+03780	fn_39_3780	168	B	CollidedWith	lum1	upstream body (CLumite)	no
+038E8	fn_39_38E8	2B8	B	Taunt	lum1	upstream body (CLumite); fix 0x39E4	no
+03BA0	fn_39_3BA0	5C	H	fn_39_3BA0	lum1	unnamed dtor/thunk/static-init	no
+03BFC	fn_39_3BFC	C	B	InSunlight	lum1	upstream body (CLumite)	no
+03C08	fn_39_3C08	1E0	B	IsTouchingSunTrigger	lum1	upstream body (CLumite)	no
+03DE8	fn_39_3DE8	3C	H	fn_39_3DE8	lum1	unnamed dtor/thunk/static-init	no
+03E24	fn_39_3E24	28	B	FacingPlayer	lum1	upstream body (CLumite)	yes
+03E4C	fn_39_3E4C	BC	B	FacingHint	lum1	upstream body (CLumite); fix 0x3EBC	no
+03F08	fn_39_3F08	20	H	fn_39_3F08	lum1	unnamed dtor/thunk/static-init	no
+03F28	fn_39_3F28	9C	B	FireBigShot	lum1	upstream body (CLumite)	yes
+03FC4	fn_39_3FC4	54	H	fn_39_3FC4	lum1	unnamed dtor/thunk/static-init	no
+04018	fn_39_4018	5C	H	fn_39_4018	lum1	unnamed dtor/thunk/static-init	no
+04074	fn_39_4074	20	H	fn_39_4074	lum1	unnamed dtor/thunk/static-init	no
+04094	fn_39_4094	48	H	fn_39_4094	lum1	unnamed dtor/thunk/static-init	no
+040DC	fn_39_40DC	48	H	fn_39_40DC	lum1	unnamed dtor/thunk/static-init	no
+04124	fn_39_4124	B4	H	fn_39_4124	lum1	unnamed dtor/thunk/static-init	no
+041D8	fn_39_41D8	40	H	fn_39_41D8	lum1	unnamed dtor/thunk/static-init	no
+04218	fn_39_4218	20	H	fn_39_4218	lum1	unnamed dtor/thunk/static-init	no
+04238	fn_39_4238	28	H	fn_39_4238	lum1	unnamed dtor/thunk/static-init	no
+04260	fn_39_4260	80	H	fn_39_4260	lum1	unnamed dtor/thunk/static-init	no
+042E0	fn_39_42E0	6C	H	fn_39_42E0	lum1	unnamed dtor/thunk/static-init	no
+0434C	fn_39_434C	54	H	fn_39_434C	lum1	unnamed dtor/thunk/static-init	no
+043A0	fn_39_43A0	3C	H	fn_39_43A0	lum1	unnamed dtor/thunk/static-init	no
+043DC	fn_39_43DC	3C	H	fn_39_43DC	lum1	unnamed dtor/thunk/static-init	no
+04418	fn_39_4418	9C	B	FireSmallShot	lum1	upstream body (CLumite)	yes
+044B4	fn_39_44B4	124	B	BuildProjectileTransform	lum1	upstream body (CLumite)	yes
+045D8	fn_39_45D8	EC	B	RandomVector	lum1	upstream body (CLumite)	no
+046C4	fn_39_46C4	D4	B	BigShot	lum1	upstream body (CLumite)	yes
+04798	fn_39_4798	5C	H	fn_39_4798	lum1	unnamed dtor/thunk/static-init	no
+047F4	fn_39_47F4	D0	B	SmallShot	lum1	upstream body (CLumite)	yes
+048C4	fn_39_48C4	5C	B	ResetAttackTimer	lum1	upstream body (CLumite)	no
+04920	fn_39_4920	38	B	SetAttackState	lum1	upstream body (CLumite)	yes
+04958	fn_39_4958	4C	B	InBigShotRange	lum1	upstream body (CLumite)	no
+049A4	fn_39_49A4	4C	B	InSmallShotRange	lum1	upstream body (CLumite)	no
+049F0	fn_39_49F0	64	B	DistanceToPlayer	lum1	upstream body (CLumite)	yes
+04A54	fn_39_4A54	4	B	Pause	lum1	upstream body (CLumite)	yes
+04A58	fn_39_4A58	4	B	Null	lum1	upstream body (CLumite)	no
+04A5C	fn_39_4A5C	464	B	UpdateSunlight	lum1	upstream body (CLumite)	no
+04EC0	fn_39_4EC0	58	H	fn_39_4EC0	lum1	unnamed dtor/thunk/static-init	no
+04F18	fn_39_4F18	54	H	fn_39_4F18	lum1	unnamed dtor/thunk/static-init	no
+04F6C	fn_39_4F6C	50	H	fn_39_4F6C	lum1	unnamed dtor/thunk/static-init	no
+04FBC	fn_39_4FBC	B8	B	PlaySound	lum1	upstream body (CLumite)	yes
+05074	fn_39_5074	16C	B	StickToSurface	lum1	upstream body (CLumite)	no
+051E0	fn_39_51E0	E0	B	DamageSafeZoneOccupant	lum1	upstream body (CLumite)	no
+052C0	fn_39_52C0	144	B	Think	lum1	upstream body (CLumite)	no
+05404	fn_39_5404	8C	B	SetupStateMachineHelper	lum1	upstream body (CLumite)	yes
+05490	fn_39_5490	68	H	fn_39_5490	lum1	unnamed dtor/thunk/static-init	no
+054F8	fn_39_54F8	54	H	fn_39_54F8	lum1	unnamed dtor/thunk/static-init	no
+0554C	fn_39_554C	1B8	B	GetKneeIndex	lum1	upstream body (CLumite)	no
+05704	fn_39_5704	28	H	fn_39_5704	lum1	unnamed dtor/thunk/static-init	no
+0572C	fn_39_572C	7C	H	fn_39_572C	lum1	unnamed dtor/thunk/static-init	no
+057A8	fn_39_57A8	114	H	fn_39_57A8	lum1	unnamed dtor/thunk/static-init	no
+058BC	fn_39_58BC	E8	B	GetKneeName	lum1	upstream body (CLumite)	no
+059A4	fn_39_59A4	144	B	DoUserAnimEvent	lum1	upstream body (CLumite)	no
+05AE8	fn_39_5AE8	34	B	ProjectileInfo	lum1	upstream body (CLumite)	no
+05B1C	fn_39_5B1C	20	B	Render	lum1	upstream body (CLumite)	yes
+05B3C	fn_39_5B3C	3C	B	GetScannableObjectInfo	lum1	upstream body (CLumite)	no
+05B78	fn_39_5B78	148	B	PreRender	lum1	upstream body (CLumite)	no
+05CC0	fn_39_5CC0	48	H	fn_39_5CC0	lum1	unnamed dtor/thunk/static-init	no
+05D08	fn_39_5D08	48	B	DisableGroundCollision	lum1	upstream body (CLumite)	yes
+05D50	fn_39_5D50	3C0	B	AcceptScriptMsg	lum1	upstream body (CLumite)	no
+06110	fn_39_6110	10C	H	fn_39_6110	lum1	unnamed dtor/thunk/static-init	no
+0621C	fn_39_621C	1E4	H	fn_39_621C	lum1	unnamed dtor/thunk/static-init	no
+06400	fn_39_6400	94	H	fn_39_6400	lum1	unnamed dtor/thunk/static-init	no
+06494	fn_39_6494	58	H	fn_39_6494	lum1	unnamed dtor/thunk/static-init	no
+064EC	fn_39_64EC	58	H	fn_39_64EC	lum1	unnamed dtor/thunk/static-init	no
+06544	fn_39_6544	58	H	fn_39_6544	lum1	unnamed dtor/thunk/static-init	no
+0659C	fn_39_659C	98	H	fn_39_659C	lum1	unnamed dtor/thunk/static-init	no
+06634	fn_39_6634	2D8	B	CLumite::CLumite	lum1	upstream body (CLumite)	yes
+0690C	fn_39_690C	3C	H	fn_39_690C	lum1	unnamed dtor/thunk/static-init	no
+06948	fn_39_6948	100	B	CLumite::SHopPlan::SHopPlan	lum1	upstream body (CLumite)	yes
+06A48	fn_39_6A48	3C	H	fn_39_6A48	lum1	unnamed dtor/thunk/static-init	no
+06A84	fn_39_6A84	64	B	CLumite::SSurfaceTarget::SSurfaceTarget	lum1	upstream body (CLumite)	yes
+06AE8	fn_39_6AE8	64	H	fn_39_6AE8	lum1	unnamed dtor/thunk/static-init	no
+06B4C	fn_39_6B4C	64	H	fn_39_6B4C	lum1	unnamed dtor/thunk/static-init	no
+06BB0	fn_39_6BB0	60	H	fn_39_6BB0	lum1	unnamed dtor/thunk/static-init	no
+06C10	fn_39_6C10	5C	H	fn_39_6C10	lum1	unnamed dtor/thunk/static-init	no
+06C6C	fn_39_6C6C	64	H	fn_39_6C6C	lum1	unnamed dtor/thunk/static-init	no
+06CD0	fn_39_6CD0	9C	H	fn_39_6CD0	lum1	unnamed dtor/thunk/static-init	no
+06D6C	fn_39_6D6C	B0	B	CLumite::SSunlightEffect::SSunlightEffect	lum1	upstream body (CLumite)	yes
+06E1C	fn_39_6E1C	58	H	fn_39_6E1C	lum1	unnamed dtor/thunk/static-init	no
+06E74	fn_39_6E74	78	H	fn_39_6E74	lum1	unnamed dtor/thunk/static-init	no
+06EEC	fn_39_6EEC	84	H	fn_39_6EEC	lum1	unnamed dtor/thunk/static-init	no
+06F70	fn_39_6F70	60	H	fn_39_6F70	lum1	unnamed dtor/thunk/static-init	no
+06FD0	fn_39_6FD0	11C	B	CLumite::DeliverCommand<CBCStepCmd>	lum1	upstream body (CLumite)	yes
+070EC	fn_39_70EC	CC	B	CLumite::DeliverCommand<CBCTauntCmd>	lum1	upstream body (CLumite)	yes
+071B8	fn_39_71B8	10C	B	CLumite::DeliverCommand<CBCProjectileAttackCmd>	lum1	upstream body (CLumite)	yes
+072C4	fn_39_72C4	31C	H	fn_39_72C4	lum1	unnamed dtor/thunk/static-init	no
+075E0	fn_39_75E0	C4	T	_unresolved	lum1	REL runtime	no
+076A4	fn_39_76A4	24	T	_epilog	lum1	REL runtime	no
+076C8	fn_39_76C8	24	T	_prolog	lum1	REL runtime	no
+076EC	fn_39_76EC	4C	T	ModuleDestructors	lum1	REL runtime	no
+07738	fn_39_7738	4C	T	ModuleConstructors	lum1	REL runtime	no
