@@ -1,0 +1,33 @@
+# GunTurret (module 28): Agon Wastes 0i_sand_hall holds the Luminoth turrets - base u043d with top
+# u043a, and base u0423 with top u0424, at ~(350,-180,20). They load with the area (no layer) and
+# fire at the player start. Steps follow tools/cov/specs/gunturret_0i_sand_hall.con (the gt1
+# coverage driver: the fight, the base's FSM states, the top's PowerDown/PowerUp and Death).
+# This is not the `turret` family: that one runs M06_ShootingGallery, the player's own turret.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+@f300 god 1; give missile 50
+@f400 objs GunTurret; obj u043d; obj u043a
+@f500 tp 350 -180 20
+@f600 obj u043d; obj u043a
+# The fight: the top takes a beam shot and a missile (hp 20), which is its Death and the base's
+# DestroyGun.
+@f800 shoot u043a
+@f900 shoot u043a missile
+@f1000 obj u043a
+# The base's machine, forced the way the coverage driver forces it (the states a fight only reaches
+# when the player waits them out).
+@f1100 fsm u043d IntoPan; fsm u043d PanLeft; fsm u043d PanRight
+@f1200 fsm u043d AttackExit; fsm u043d Flinch
+@f1300 fsm u043d CloseDoor; fsm u043d OpenDoor; fsm u043d Withdraw
+@f1400 fsm u043d Attack
+@f1500 obj u043d
+# The top's own power cycle: PowerDown then PowerUp revives it (hp back to 20).
+@f1600 fsm u0424 PowerDown; fsm u0424 PowerUp
+@f1700 fsm u0423 Patrol
+@f1800 obj u0423; obj u0424
+@f2000 damage u0424 5
+@f2100 damage u0424 5 missile
+@f2200 obj u0424
+# The kill: the top's Death through the console, which is what DestroyGun runs when the top dies.
+@f2250 kill u0424
+@f2300 obj u0424
+@f2350 objs GunTurret; status

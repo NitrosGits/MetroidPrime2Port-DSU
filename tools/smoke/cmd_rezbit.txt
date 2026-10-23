@@ -1,0 +1,30 @@
+# Rezbit (module 53): Sanctuary Fortress 02_cliff_reactorcore, layers 3 and 4. Steps follow
+# tools/drivers/tail21_rezbit.txt and tail24_rezbit_missile.con (the rez1 lane's drivers): wake it,
+# place it in each attack band, damage it, shoot it with the beam and a real missile, then walk its
+# HP down so the shield breaks and it de-rezzes (the state DeflectMissiles is gated on).
+# The family fights e0005016d, one of the Rezbits the area holds from the start (inactive until
+# `send Activate`, as Torvus's Bloggs are); the Rezbits the layer switch adds (e0005011b,
+# e00050047) stream in after it.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+@f300 god 1; give missile 50; layer 3; layer 4
+@f320 send e0005016d Activate
+@f400 objs rezbit; obj e0005016d
+@f600 place e0005016d player 10
+@f700 damage e0005016d 1
+@f800 obj e0005016d
+@f1000 place e0005016d player 20
+@f1100 shoot e0005016d
+@f1200 shoot e0005016d missile
+@f1300 obj e0005016d
+@f1500 place e0005016d player 4
+@f1600 damage e0005016d 2
+@f1700 obj e0005016d
+@f1900 place e0005016d player 35
+@f2000 damage e0005016d 40
+@f2050 damage e0005016d 40
+@f2100 obj e0005016d
+@f2150 damage e0005016d 40
+@f2200 place e0005016d player 8
+@f2250 shoot e0005016d charged
+@f2300 obj e0005016d
+@f2350 objs rezbit; obj e0005016d; status
