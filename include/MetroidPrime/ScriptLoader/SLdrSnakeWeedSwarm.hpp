@@ -57,6 +57,17 @@ inline SLdrSnakeWeedSwarm::SLdrSnakeWeedSwarm()
   sound_Looped = 0;
   sound_IntoGround = 0;
   sound_OutofGround = 0;
+#ifdef TARGET_PC
+  // fn_71_69C stores -1 (no sound) in sound_Looped/sound_IntoGround/sound_OutofGround:
+  // li r0, -0x1 (0x6cc); stw r0, 0x10c(r31) (0x6d4), 0x110 (0x6e4), 0x114 (0x6f0). The rest
+  // of that ctor matches: the floats +0xc0..+0xf4, contactDamage dI_WeaponType 9 at +0xf8
+  // (0x7d4) and damageWaitTime 0 at +0x108 (0x7d8); CColor(1,1,1,1) at +0x5c (0x71c) and 0xF
+  // at +0xac (0x72c) come from the actor sub-ctors, editor scale (1,1,1) at +0x28..+0x30 from
+  // SLdrTransform.
+  sound_Looped = -1;
+  sound_IntoGround = -1;
+  sound_OutofGround = -1;
+#endif
 }
 
 inline SLdrSnakeWeedSwarm::~SLdrSnakeWeedSwarm() {}

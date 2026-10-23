@@ -83,6 +83,17 @@ inline SLdrBacteriaSwarm::SLdrBacteriaSwarm()
   minVolume = 20;
   maxVolume = 127;
   spawnInstantly = false;
+#ifdef TARGET_PC
+  // fn_6_8C0 stores -1 (no sound) in patrolSound/pursuitSound: li r0, -0x1 (0x914);
+  // stw r0, 0x2e8(r31) (0x924) and stw r0, 0x2ec(r31) (0x92c). Every other store of that
+  // ctor already matches this one: 3 at +0x38 is SLdrEditorProperties' (0x8d4 call),
+  // CColor(1,1,1,1) at +0x50 (0x950) and 0xF at +0xa0 (0x960) come from
+  // SLdrActorParameters' sub-ctors, active at +0xc0 (0x970), the floats +0x2b4..+0x2d4,
+  // the colors +0x2dc/+0x2e0, kInvalidAssetId at +0x2d8/+0x318, 20/127 at
+  // +0x310/+0x314 and false at +0x31c.
+  patrolSound = -1;
+  pursuitSound = -1;
+#endif
 }
 
 inline SLdrBacteriaSwarm::~SLdrBacteriaSwarm() {}

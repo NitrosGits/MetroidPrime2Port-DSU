@@ -68,6 +68,16 @@ inline SLdrIngSnatchingSwarm::SLdrIngSnatchingSwarm()
   sound_Idle = 0;
   sound_Move = 0;
   health = 50.0f;
+#ifdef TARGET_PC
+  // fn_33_744 stores -1 (no sound) in sound_Impact/sound_Idle/sound_Move: li r0, -0x1
+  // (0x778); stw r0, 0x90(r31) (0x780), 0x94 (0x784), 0x98 (0x788). The other stores match
+  // this ctor (kInvalidAssetId at +0x3c/+0x40/+0x48/+0x7c, floats +0x44..+0x78, impactDamage
+  // +0x80..+0x8c, health +0x9c); the inline 3 at +0x38 is SLdrEditorProperties' too
+  // (0x794/0x7a0).
+  sound_Impact = -1;
+  sound_Idle = -1;
+  sound_Move = -1;
+#endif
 }
 
 inline SLdrIngSnatchingSwarm::~SLdrIngSnatchingSwarm() {}
