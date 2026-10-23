@@ -1,0 +1,62 @@
+# Agon Wastes 0b_sand_hall L0: CPillBug e00280088/89/8a (planar 1, looping 9-12 waypoint paths, no
+# IS00 return waypoints; crawl vulnerability: bomb 100/immune, power bomb 200, boost 100, rest 0).
+# God-mode player (u0400): a bug placed at the player (InDetectionRange -> FastPatrol), a touch
+# facing the player (CollidedWith -> HitPlayer -> Pause -> AnimOver), beam shots (resisted arms), a
+# real morph-ball bomb laid and the bug put on it (ResistedDamage immune -> Bombed -> Fall -> Landed
+# -> Injured -> Delay -> HasReturnPath false -> Wander -> CloseToPath -> Patrol), shots and bombs at
+# the injured/wandering bug, a forced Turn (every shipped path loops, so PathOver never sets), and
+# a bomb kill.
+@f200 god 1; give morphBall 1; give morphBallBombs 1; give powerBomb 3; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give darkAmmo 100; give lightAmmo 100
+@f220 objs PillBug; objs CPlayer
+@f300 place e00280089 player 2
+@f360 place e00280089 player 1
+@f380 obj e00280089
+@f400 touch e00280089 u0400
+@f402 obj e00280089
+@f420 touch e00280089 u0400
+@f440 obj e00280089
+@f520 obj e00280089
+@f600 shoot e00280088
+@f620 obj e00280088
+@f640 beam dark; shoot e00280088
+@f680 beam light; shoot e00280088
+@f720 beam power; shoot e00280088 charged
+@f760 shoot e00280088 missile
+@f800 obj e00280088
+@f900 press x 20
+@f960 press a 4
+@f962 place e00280089 player 0
+@f1000 obj e00280089
+@f1040 obj e00280089
+@f1100 obj e00280089
+@f1160 press x 20
+@f1200 shoot e00280089
+@f1220 beam dark; shoot e00280089
+@f1260 beam power; obj e00280089
+@f1400 obj e00280089
+@f1500 shoot e00280089
+@f1540 obj e00280089
+@f1600 touch e00280089 u0400
+@f1700 obj e00280089
+@f1900 obj e00280089
+@f2100 obj e00280089
+@f2300 fsm e0028008a Turn
+@f2320 obj e0028008a
+@f2400 obj e0028008a
+@f2500 fsm e0028008a FastPatrol
+@f2520 fsm e0028008a Turn
+@f2600 obj e0028008a
+@f2700 press x 20
+@f2760 press a 4
+@f2762 place e0028008a player 0
+@f2840 obj e0028008a
+@f2900 press a 4
+@f2902 place e0028008a player 0
+@f2960 obj e0028008a
+@f3000 press a 4
+@f3002 place e0028008a player 0
+@f3060 obj e0028008a
+@f3100 press a 4
+@f3102 place e0028008a player 0
+@f3160 objs PillBug
+@f3300 objs PillBug

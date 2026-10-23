@@ -1,0 +1,23 @@
+# Agon Wastes 0d_sand_hall L0: CPillBug e00100053 (planar 2) and e0010004a/40/26/37 (planar 1),
+# looping 9-13 waypoint paths, no IS00. The planar-2 bug is bombed into Fall/Injured/Wander (the
+# Wander planar-2 arm), the others patrol, and a planar-1 bug is bombed after a touch.
+@f200 god 1; give morphBall 1; give morphBallBombs 1; give missile 50
+@f220 objs PillBug; objs CPlayer
+@f300 place e00100053 player 2
+@f360 obj e00100053
+@f400 press x 20
+@f460 press a 4
+@f462 place e00100053 player 0
+@f520 obj e00100053
+@f600 obj e00100053
+@f700 obj e00100053
+@f800 obj e00100053
+@f1000 obj e00100053
+@f1200 obj e00100053
+@f1300 place e0010004a player 0
+@f1310 press a 4
+@f1312 place e0010004a player 0
+@f1400 obj e0010004a
+@f1600 obj e0010004a
+@f1800 obj e0010004a; obj e00100053
+@f2000 objs PillBug
