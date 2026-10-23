@@ -4,3 +4,10 @@
 @f600 objs splitter
 @f1200 objs splitter
 @f1900 objs splitter
+
+@f1880 send u06c0 Activate
+@f1900 obj u06c0
+@f1960 obj u06c0
+@f2020 kill u06c0
+@f2080 objs splitter
+@f2140 objs splitter

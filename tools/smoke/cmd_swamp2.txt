@@ -4,3 +4,10 @@
 @f1260 objs swampboss
 @f1420 obj u05bb
 @f1850 objs swampboss
+
+@f1900 damage u06d9 100
+@f1920 obj u06d9
+@f1980 obj u06d9
+@f2040 objs swampboss
+@f2100 obj u06d9
+@f2180 objs swampboss
