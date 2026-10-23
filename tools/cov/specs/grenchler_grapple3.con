@@ -1,0 +1,119 @@
+# 08_swamp_grappleguardian_dark, layer 3: u052e and u04fa activated, forced chain as grenchler_grapple.con,
+# then at f1500 the forced (statecall) defaults: MorphballBite 3, GrappleBreak 3, Null 0.
+# Run as grenchler_grapple.con.
+@f300 layer 3
+@f400 god 1; give darkBeam 1; give lightBeam 1; give morphBall 1; give missile 250; give chargeBeam 1
+@f420 send u052e Activate; send u04fa Activate
+@f460 tp -168 25 -28
+@f470 face 0
+@f500 var u052e gren.scanned 1; var u052e gren.crystal 4; fsm u052e Pursue
+@f505 place u04fa player 5
+@f560 place u04fa player 5
+@f620 place u04fa player 5
+@f1000 tp -168 25 -28; face 0
+@f1010 var u052e gren.crystal 4; fsm u052e Pursue
+@f1150 tp -168 25 -28
+@f1155 tp -168 25 -28
+@f1160 tp -168 25 -28
+@f1165 tp -168 25 -28
+@f1170 tp -168 25 -28
+@f1175 tp -168 25 -28
+@f1180 tp -168 25 -28
+@f1185 tp -168 25 -28
+@f1190 tp -168 25 -28
+@f1195 tp -168 25 -28
+@f1200 tp -168 25 -28
+@f1205 tp -168 25 -28
+@f1210 tp -168 25 -28
+@f1215 tp -168 25 -28
+@f1220 tp -168 25 -28
+@f1225 tp -168 25 -28
+@f1230 tp -168 25 -28
+@f1235 tp -168 25 -28
+@f1240 tp -168 25 -28
+@f1245 tp -168 25 -28
+@f1250 tp -168 25 -28
+@f1255 tp -168 25 -28
+@f1260 tp -168 25 -28
+@f1265 tp -168 25 -28
+@f1270 tp -168 25 -28
+@f1275 tp -168 25 -28
+@f1280 tp -168 25 -28
+@f1285 tp -168 25 -28
+@f1290 tp -168 25 -28
+@f1295 tp -168 25 -28
+@f1300 tp -168 25 -28
+@f1305 tp -168 25 -28
+@f1310 tp -168 25 -28
+@f1315 tp -168 25 -28
+@f1320 tp -168 25 -28
+@f1325 tp -168 25 -28
+@f1330 tp -168 25 -28
+@f1335 tp -168 25 -28
+@f1340 tp -168 25 -28
+@f1345 tp -168 25 -28
+@f1350 tp -168 25 -28
+@f1355 tp -168 25 -28
+@f1360 tp -168 25 -28
+@f1365 tp -168 25 -28
+@f1370 tp -168 25 -28
+@f1375 tp -168 25 -28
+@f1380 tp -168 25 -28
+@f1385 tp -168 25 -28
+@f1390 tp -168 25 -28
+@f1395 tp -168 25 -28
+@f1400 tp -168 25 -28
+@f1405 tp -168 25 -28
+@f1410 tp -168 25 -28
+@f1415 tp -168 25 -28
+@f505 var u052e gren.action; status; obj u04fa
+@f525 var u052e gren.action; status; obj u04fa
+@f545 var u052e gren.action; status; obj u04fa
+@f565 var u052e gren.action; status; obj u04fa
+@f585 var u052e gren.action; status; obj u04fa
+@f605 var u052e gren.action; status; obj u04fa
+@f625 var u052e gren.action; status; obj u04fa
+@f645 var u052e gren.action; status; obj u04fa
+@f665 var u052e gren.action; status; obj u04fa
+@f685 var u052e gren.action; status; obj u04fa
+@f705 var u052e gren.action; status; obj u04fa
+@f725 var u052e gren.action; status; obj u04fa
+@f745 var u052e gren.action; status; obj u04fa
+@f765 var u052e gren.action; status; obj u04fa
+@f785 var u052e gren.action; status; obj u04fa
+@f805 var u052e gren.action; status; obj u04fa
+@f825 var u052e gren.action; status; obj u04fa
+@f845 var u052e gren.action; status; obj u04fa
+@f865 var u052e gren.action; status; obj u04fa
+@f885 var u052e gren.action; status; obj u04fa
+@f905 var u052e gren.action; status; obj u04fa
+@f925 var u052e gren.action; status; obj u04fa
+@f945 var u052e gren.action; status; obj u04fa
+@f965 var u052e gren.action; status; obj u04fa
+@f985 var u052e gren.action; status; obj u04fa
+@f1015 var u052e gren.action; status; obj u04fa
+@f1035 var u052e gren.action; status; obj u04fa
+@f1055 var u052e gren.action; status; obj u04fa
+@f1075 var u052e gren.action; status; obj u04fa
+@f1095 var u052e gren.action; status; obj u04fa
+@f1115 var u052e gren.action; status; obj u04fa
+@f1135 var u052e gren.action; status; obj u04fa
+@f1155 var u052e gren.action; status; obj u04fa
+@f1175 var u052e gren.action; status; obj u04fa
+@f1195 var u052e gren.action; status; obj u04fa
+@f1215 var u052e gren.action; status; obj u04fa
+@f1235 var u052e gren.action; status; obj u04fa
+@f1255 var u052e gren.action; status; obj u04fa
+@f1275 var u052e gren.action; status; obj u04fa
+@f1295 var u052e gren.action; status; obj u04fa
+@f1315 var u052e gren.action; status; obj u04fa
+@f1335 var u052e gren.action; status; obj u04fa
+@f1355 var u052e gren.action; status; obj u04fa
+@f1375 var u052e gren.action; status; obj u04fa
+@f1395 var u052e gren.action; status; obj u04fa
+@f1415 var u052e gren.action; status; obj u04fa
+@f1435 var u052e gren.action; status; obj u04fa
+@f1455 var u052e gren.action; status; obj u04fa
+@f1475 var u052e gren.action; status; obj u04fa
+@f1495 var u052e gren.action; status; obj u04fa
+@f1500 statecall u052e MorphballBite 3; statecall u052e GrappleBreak 3; statecall u052e Null 0

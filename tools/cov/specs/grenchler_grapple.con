@@ -1,0 +1,102 @@
+# 08_swamp_grappleguardian_dark (3dfd2249,08_swamp_grappleguardian_dark), layer 3: the guardian u052e
+# is put on the grapple chain with forced vars (its vulnerability is 0 for every weapon, as retail's
+# 0x10180): gren.scanned/gren.crystal + fsm Pursue, then gren.grappledmg, gren.tail 1 (DestroyTail,
+# guardian arm), ShakeOff and a second Pursue.  The @f..5 lines print gren.action every 20 frames.
+# Run: tools/cov/run.sh tools/cov/specs/grenchler.py <out> 3dfd2249,08_swamp_grappleguardian_dark --con <this> --fast --frames <past the last @f line>
+@f300 layer 3
+@f400 god 1; give darkBeam 1; give lightBeam 1; give morphBall 1; give missile 250; give chargeBeam 1; fastmorph 1
+@f420 send u052e Activate
+@f460 tp -168 25 -28
+@f470 face 0
+@f500 var u052e gren.scanned 1; var u052e gren.crystal 4; fsm u052e Pursue
+@f760 shoot u05bd missile; shoot u05be missile; shoot u05bf missile; shoot u05c0 missile; shoot u05c1 missile; shoot u05c2 missile
+@f800 var u052e gren.grappledmg 500
+@f1000 var u052e gren.tail 1; objs Tail
+@f1100 objs Tail
+@f1150 tp -168 25 -28; face 0
+@f1160 place u052e player 1
+@f1300 fsm u052e ShakeOff
+@f1450 tp -168 25 -28; face 0
+@f1460 var u052e gren.crystal 4; fsm u052e Pursue
+@f1480 press x 8
+@f505 obj u052e; var u052e gren.action; status
+@f525 obj u052e; var u052e gren.action; status
+@f545 obj u052e; var u052e gren.action; status
+@f565 obj u052e; var u052e gren.action; status
+@f585 obj u052e; var u052e gren.action; status
+@f605 obj u052e; var u052e gren.action; status
+@f625 obj u052e; var u052e gren.action; status
+@f645 obj u052e; var u052e gren.action; status
+@f665 obj u052e; var u052e gren.action; status
+@f685 obj u052e; var u052e gren.action; status
+@f705 obj u052e; var u052e gren.action; status
+@f725 obj u052e; var u052e gren.action; status
+@f745 obj u052e; var u052e gren.action; status
+@f765 obj u052e; var u052e gren.action; status
+@f785 obj u052e; var u052e gren.action; status
+@f805 obj u052e; var u052e gren.action; status
+@f825 obj u052e; var u052e gren.action; status
+@f845 obj u052e; var u052e gren.action; status
+@f865 obj u052e; var u052e gren.action; status
+@f885 obj u052e; var u052e gren.action; status
+@f905 obj u052e; var u052e gren.action; status
+@f925 obj u052e; var u052e gren.action; status
+@f945 obj u052e; var u052e gren.action; status
+@f965 obj u052e; var u052e gren.action; status
+@f985 obj u052e; var u052e gren.action; status
+@f1005 obj u052e; var u052e gren.action; status
+@f1025 obj u052e; var u052e gren.action; status
+@f1045 obj u052e; var u052e gren.action; status
+@f1065 obj u052e; var u052e gren.action; status
+@f1085 obj u052e; var u052e gren.action; status
+@f1105 obj u052e; var u052e gren.action; status
+@f1125 obj u052e; var u052e gren.action; status
+@f1145 obj u052e; var u052e gren.action; status
+@f1165 obj u052e; var u052e gren.action; status
+@f1185 obj u052e; var u052e gren.action; status
+@f1205 obj u052e; var u052e gren.action; status
+@f1225 obj u052e; var u052e gren.action; status
+@f1245 obj u052e; var u052e gren.action; status
+@f1265 obj u052e; var u052e gren.action; status
+@f1285 obj u052e; var u052e gren.action; status
+@f1305 obj u052e; var u052e gren.action; status
+@f1325 obj u052e; var u052e gren.action; status
+@f1345 obj u052e; var u052e gren.action; status
+@f1365 obj u052e; var u052e gren.action; status
+@f1385 obj u052e; var u052e gren.action; status
+@f1405 obj u052e; var u052e gren.action; status
+@f1425 obj u052e; var u052e gren.action; status
+@f1445 obj u052e; var u052e gren.action; status
+@f1465 obj u052e; var u052e gren.action; status
+@f1485 obj u052e; var u052e gren.action; status
+@f1505 obj u052e; var u052e gren.action; status
+@f1525 obj u052e; var u052e gren.action; status
+@f1545 obj u052e; var u052e gren.action; status
+@f1565 obj u052e; var u052e gren.action; status
+@f1585 obj u052e; var u052e gren.action; status
+@f1605 obj u052e; var u052e gren.action; status
+@f1625 obj u052e; var u052e gren.action; status
+@f1645 obj u052e; var u052e gren.action; status
+@f1665 obj u052e; var u052e gren.action; status
+@f1685 obj u052e; var u052e gren.action; status
+@f1705 obj u052e; var u052e gren.action; status
+@f1725 obj u052e; var u052e gren.action; status
+@f1745 obj u052e; var u052e gren.action; status
+@f1765 obj u052e; var u052e gren.action; status
+@f1785 obj u052e; var u052e gren.action; status
+@f1805 obj u052e; var u052e gren.action; status
+@f1825 obj u052e; var u052e gren.action; status
+@f1845 obj u052e; var u052e gren.action; status
+@f1865 obj u052e; var u052e gren.action; status
+@f1885 obj u052e; var u052e gren.action; status
+@f1905 obj u052e; var u052e gren.action; status
+@f1925 obj u052e; var u052e gren.action; status
+@f1945 obj u052e; var u052e gren.action; status
+@f1965 obj u052e; var u052e gren.action; status
+@f1985 obj u052e; var u052e gren.action; status
+@f2005 obj u052e; var u052e gren.action; status
+@f2025 obj u052e; var u052e gren.action; status
+@f2045 obj u052e; var u052e gren.action; status
+@f2065 obj u052e; var u052e gren.action; status
+@f2085 obj u052e; var u052e gren.action; status
+@f2105 obj u052e; var u052e gren.action; status

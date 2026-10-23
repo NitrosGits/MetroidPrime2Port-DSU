@@ -7,6 +7,7 @@
 
 static const rstl::string skRelName = rstl::string_l("Grenchler.rel");
 
+// @ fn_27_1536C
 CGrenchlerTail::CGrenchlerTail(TUniqueId uid, TAreaId areaId, const CModelData& modelData,
                                int animId, const CTransform4f& xf, bool isSmall)
 : CPhysicsActor(uid, rstl::string_l("Grenchler Tail"),
@@ -35,6 +36,7 @@ CGrenchlerTail::CGrenchlerTail(TUniqueId uid, TAreaId areaId, const CModelData& 
       CAxisAngle::FromQuaternion(CQuaternion::ZRotation(CRelAngle::FromDegrees(250.f * scale))));
 }
 
+// @ fn_27_152B8
 void CGrenchlerTail::Think(float dt, CStateManager& mgr) {
   AddMaterial(kMT_Solid, mgr);
   CActor::Think(dt, mgr);
@@ -45,6 +47,7 @@ void CGrenchlerTail::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_27_151E0
 rstl::optional_object< CAABox > CGrenchlerTail::GetTouchBounds() const {
   const CVector3f& pos = GetTranslation();
   rstl::optional_object< CAABox > bounds(
@@ -52,6 +55,7 @@ rstl::optional_object< CAABox > CGrenchlerTail::GetTouchBounds() const {
   return bounds;
 }
 
+// @ fn_27_1513C
 void CGrenchlerTail::PreRender(CStateManager& mgr) {
   CActor::PreRender(mgr);
   SetModelFlags(CModelFlags(CModelFlags::kT_Blend, 1.f - mElapsedTime / 6.f));
@@ -73,6 +77,7 @@ void CGrenchlerTail::CollidedWith(const TUniqueId& id, const CCollisionInfoList&
   }
 }
 
+// @ fn_27_14F70
 void CGrenchlerTail::StopMoving() {
   SetVelocityWR(CVector3f::Zero());
   SetMomentumWR(CVector3f::Zero());

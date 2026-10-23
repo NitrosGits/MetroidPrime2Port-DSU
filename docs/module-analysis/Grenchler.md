@@ -19,6 +19,19 @@ The module's code is upstream's `src/MetroidPrime/Enemies/CGrenchler.cpp` and `C
 The NaN fix duplicates the whole `if` statement in both branches: a block that only swaps the
 `if (...) {` header leaves the tools' body parser (asmcheck, retail_diff) one brace short.
 
+## Behaviour fixes (gren2, 2026-10-23)
+
+| function | retail | upstream had |
+|---|---|---|
+| fn_27_E1A4 YellowHitReact, Activate with the tail destroyed | 0xE258 `bl ResetBodyVulnerabilities` | `SetupBodyVulnerabilities` |
+| fn_27_E1A4 YellowHitReact, Deactivate | 0xE294 `bl SetupBodyVulnerabilities` | `ResetBodyVulnerabilities` |
+| fn_27_EAE4 Null | 0xEB24 `bl SetupBodyVulnerabilities` | `ResetBodyVulnerabilities` (gren1 marked Null before this fix) |
+| fn_27_8FC0 RestoreDefaultJointVulnerability | 0x8FEC `bl SetupBodyVulnerabilities` | `ResetBodyVulnerabilities` |
+| fn_27_FD2C AcceptScriptMsg, kSM_Landed | 0xFFF4 `bl RestoreDefaultJointVulnerability` | the Reset call inline |
+| fn_27_13C8 SLdrGrenchler ctor | 0x1438/0x143C: tailHitSound/tailDestroyedSound default -1 | 0 |
+
+The port's `ResetBodyVulnerabilities(mgr)` helper is gone (no PC caller left).
+
 ## Spawns that work
 
 | area | layers | ids (this save) | use |
@@ -92,3 +105,42 @@ Never ran: the guardian grapple chain (CGrenchlerTail, DestroyTail, SpawnTail, G
 entry, PullPlayer's arms, ReleasePlayer, the visor effects, UpdateBeamTrace, Jump's body after
 Activate). `grapple <id>` only takes CScriptGrapplePoint ids; the guardian's tail is not one, so a
 grapple run needs real lock-on (`press l`) on the tail or a new console command.
+
+## Guardian grapple chain (gren2)
+
+The guardian's vulnerability is 0 for every weapon (retail too, 0x10180), so the crystals cannot be
+broken in a run: the chain is entered with the console vars (`forced (var)`): `var u052e gren.scanned 1;
+var u052e gren.crystal 4; fsm u052e Pursue`, the tail broken with `var u052e gren.tail 1`, the
+non-guardian DestroyTail arm with `var u0596 gren.tail 1` in 01_swamp_entrance. Drivers:
+`grenchler_grapple.con`, `grenchler_grapple2.con`, `grenchler_grapple3.con` (08 dark; grapple3 ends with
+the `forced (statecall)` defaults MorphballBite 3, GrappleBreak 3, Null 0) and
+`grenchler_entrance_tail.con` (missile hits: PlayTailHitSound, contact damage 0x10758). The runs
+exercise gren1's DestroyTail (0xF434) and contact-damage (0x10758) fixes.
+
+Marked by gren2 (61; every line run and every arm taken or branch-free, asm checked):
+EndMorphballCapture, UpdateCapturedPlayer, Stuck, PlayerStuck, CrystalDamaged, Frustrated,
+TookKnockback, IncrementAttached, DecrementAttached, BeamHitSticky, BeamHitPlayer, RemoveExplosion,
+CanGrapple, PlayTailHitSound, PlayTailDestroyedSound, ShakeOff, AttackPatternOver, PauseOver,
+IsNearPath, PickJumpTarget, HasValidJumpTarget, IsPointVisibleToPlayer, CanBite, ReturnToPatrol,
+TurnToPlayer, UpdateChargeSteering, ResetSteering, CreateGrappleBeam, RemoveVisorEffect, GrabPlayer,
+Render, Alerted, Attacked, EnableGroundCollision, IsGuardianCharging, FacingPlayer,
+IsPlayerLookingAtMe, ForceGrapple, IsFacingTarget, GetAimPosition, GetOrbitPosition,
+PreRenderBoneTracking, ShouldTrackPlayer, FluidFXThink, UpdateGuardianBlend, PlayYellowHitReact,
+YellowHitReact (forced (var)), Submerged, GetPathArea, InBurstRange, InChargeRange,
+GetTargetPosition, SetPathArea, GetTailHealth, MorphballBite (default arm forced (statecall)),
+~CGrenchler (retail: member dtors only; the 9/14 gcov arms are the compiler's member-dtor checks),
+CGrenchlerTail ctor/Think/GetTouchBounds/PreRender/StopMoving. port_progress: Grenchler 92/377.
+
+Not marked (gcov line:arm untaken):
+
+| function | untaken |
+|---|---|
+| DestroyTail | 966:0/2, 973:3/5, 973:4/5 (ing-possessed arms; no ing-possessed Grenchler in the data) |
+| ReleasePlayer | 2/4 arms |
+| CreateDamageVisorEffect | 6/8 (its 0x10758 call ran) |
+| SpawnBeamHitEffect | 6/7 |
+| GrappleBreak | 4043:3/4 (the msg-3 statecall did not reach it) |
+| CGrenchlerTail::CollidedWith | 62:3/4 |
+| RestoreDefaultJointVulnerability | never ran |
+| UpdateDamageFlash | 3/9 lines |
+| GrappleSlide, GrappleSlideBonk, GrappleStruggle | not entered: no immune dynamic solid lies in the beam path in either area |
