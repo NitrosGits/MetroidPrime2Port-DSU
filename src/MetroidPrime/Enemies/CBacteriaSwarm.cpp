@@ -60,6 +60,7 @@ CTransform4f CBacteriaSwarm::ShortestRotationArcWrapped(const CVector3f& a, cons
       .BuildTransform4f();
 }
 
+// @ fn_6_6DB4
 CBacteriaSwarm::CBoid::CBoid(const CTransform4f& xf, uint index)
 : mTransform(xf)
 , mVelocity(0.f, 0.f, 0.f)
@@ -231,6 +232,7 @@ void CBacteriaSwarm::CreateBoid(CStateManager& mgr, int index, bool forceParticl
   }
 }
 
+// @ fn_6_560C
 void CBacteriaSwarm::PreRenderAllViewports(CStateManager& mgr) {
   const CAABox bounds = GetBoundingBox();
   SetOtherBounds(bounds);
@@ -238,6 +240,7 @@ void CBacteriaSwarm::PreRenderAllViewports(CStateManager& mgr) {
   UpdatePortalSystemState(mgr);
 }
 
+// @ fn_6_5574
 CAABox CBacteriaSwarm::GetBoundingBox() const {
   const CVector3f extent(0.5f * mBoundingBoxExtent.GetX(), 0.5f * mBoundingBoxExtent.GetY(),
                          0.5f * mBoundingBoxExtent.GetZ());
@@ -245,8 +248,10 @@ CAABox CBacteriaSwarm::GetBoundingBox() const {
   return bounds.GetTransformedAABox(GetTransform());
 }
 
+// @ fn_6_5538
 rstl::optional_object< CAABox > CBacteriaSwarm::GetTouchBounds() const { return mAabox; }
 
+// @ fn_6_54C0
 CVector3f CBacteriaSwarm::ProjectPointToPlane(const CVector3f& point, const CVector3f& planePoint,
                                               const CVector3f& normal) {
   return point - CVector3f::Dot(point - planePoint, normal) * normal;
@@ -256,6 +261,7 @@ CVector3f CBacteriaSwarm::ProjectVectorToPlane(const CVector3f& point, const CVe
   return point - CVector3f::Dot(point, normal) * normal;
 }
 
+// @ fn_6_5290
 bool CBacteriaSwarm::PointOnSurface(const CCollisionSurface& surface, const CVector3f& pos,
                                     const CPlane& plane) {
   const CVector3f projected = ProjectPointToPlane(pos, surface.GetVert(0), plane.GetNormal());
@@ -584,6 +590,7 @@ void CBacteriaSwarm::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_6_34CC
 void CBacteriaSwarm::UpdateAllBoidMovement(float dt) {
   uint count = mBoids.size();
   for (uint i = 0; i < count; ++i) {
@@ -591,8 +598,10 @@ void CBacteriaSwarm::UpdateAllBoidMovement(float dt) {
   }
 }
 
+// @ fn_6_34C8
 void CBacteriaSwarm::UpdateSwarmAnimations(CStateManager& mgr, float dt) {}
 
+// @ fn_6_340C
 void CBacteriaSwarm::MoveBoid(CBoid& boid, const CVector3f& offsetDelta, float dt) {
   if (boid.mActive) {
     boid.mVelocity = (1.f / dt) * boid.GetTransform().Rotate(offsetDelta);
@@ -628,6 +637,7 @@ void CBacteriaSwarm::UpdatePartition() {
   }
 }
 
+// @ fn_6_3064
 CBacteriaSwarm::CBoid* CBacteriaSwarm::GetListAt(const CVector3f& pos) {
   const CAABox bounds = GetBoundingBox();
   const CVector3f delta = pos - bounds.GetMinPoint();
@@ -640,6 +650,7 @@ CBacteriaSwarm::CBoid* CBacteriaSwarm::GetListAt(const CVector3f& pos) {
   return mPartitionedBoidLists[index];
 }
 
+// @ fn_6_2EA4
 CAABox CBacteriaSwarm::BoxForPosition(int x, int y, int z, float margin) const {
   const CAABox bounds = GetBoundingBox();
   const CVector3f extent = bounds.GetMaxPoint() - bounds.GetMinPoint();
@@ -652,6 +663,7 @@ CAABox CBacteriaSwarm::BoxForPosition(int x, int y, int z, float margin) const {
                           (z + 1) * size.GetZ() + bounds.GetMinPoint().GetZ() + margin));
 }
 
+// @ fn_6_2DBC
 void CBacteriaSwarm::PreRender(CStateManager& mgr) {
   bool active = false;
   for (rstl::vector< CBoid >::iterator it = mBoids.begin(); it != mBoids.end(); ++it) {
@@ -675,6 +687,7 @@ void CBacteriaSwarm::HardwareLight(const CStateManager& mgr, const CAABox& bound
   lights.ActivateLights();
 }
 
+// @ fn_6_2A40
 CColor CBacteriaSwarm::SoftwareLight(const CStateManager& mgr, const CAABox& bounds) const {
   CActorLights lights(8, CVector3f::Zero(), 4, 4);
   lights.SetNeedsRelight(true);
@@ -697,6 +710,7 @@ CColor CBacteriaSwarm::SoftwareLight(const CStateManager& mgr, const CAABox& bou
 
 bool CBacteriaSwarm::CanRenderUnsorted(const CStateManager& mgr) const { return true; }
 
+// @ fn_6_2A34
 void CBacteriaSwarm::RenderBoid(const CBoid* boid, uint& drawMask, const CModelFlags& flags) const {
 }
 
@@ -820,6 +834,7 @@ void CBacteriaSwarm::ApplySeparation(CBoid& boid, const CVector3f& pos, float ra
   }
 }
 
+// @ fn_6_2240
 void CBacteriaSwarm::ApplyCohesion(CBoid& boid, const rstl::reserved_vector< CBoid*, 50 >& nearList,
                                    CVector3f& ahead) {
   if (nearList.size() > 0) {
@@ -861,6 +876,7 @@ void CBacteriaSwarm::ApplyPlayerAttraction(CBoid& boid, const CVector3f& pos, co
   }
 }
 
+// @ fn_6_1E08
 void CBacteriaSwarm::ApplyBoundsAvoidance(CBoid& boid,
                                           const rstl::reserved_vector< CBoid*, 50 >& nearList,
                                           CVector3f& ahead) {
@@ -991,14 +1007,17 @@ void CBacteriaSwarm::UpdateEffects(CStateManager& mgr, CAnimData& animData, int 
   }
 }
 
+// @ fn_6_13FC
 CAreaCollisionCache CBacteriaSwarm::GetAreaCollisionCacheForPartition(int x, int y, int z) const {
   return CAreaCollisionCache(BoxForPosition(x, y, z, mBoidRadius + 0.5f));
 }
 
+// @ fn_6_13F4
 bool CBacteriaSwarm::ShouldBuildAreaCollisionCacheForPartition(int partitionIndex) const {
   return true;
 }
 
+// @ fn_6_12E0
 void CBacteriaSwarm::KillBoid(CBoid& boid, CStateManager& mgr, float deathRattleChance,
                               float deadChance) {
   AddParticle(boid.GetTransform());
@@ -1023,18 +1042,21 @@ void CBacteriaSwarm::AddParticle(const CTransform4f& xf) {
   }
 }
 
+// @ fn_6_1200
 void CBacteriaSwarm::UpdateParticles(float dt) {
   if (mDeathParticleGenerator.get()) {
     mDeathParticleGenerator->Update(dt);
   }
 }
 
+// @ fn_6_11BC
 void CBacteriaSwarm::RenderParticles() const {
   if (mDeathParticleGenerator.get()) {
     gpRender->AddParticleGen(*mDeathParticleGenerator);
   }
 }
 
+// @ fn_6_10F0
 void CBacteriaSwarm::PlayBoidSound(ushort sfx, const CVector3f& pos, float distanceSquared) {
   if (distanceSquared < mMaxAudibleDistance * mMaxAudibleDistance) {
     CAudioSys::C3DEmitterParmData parms(mMaxAudibleDistance, mSoundFallOff, 1, mMaxVolume,
@@ -1056,10 +1078,12 @@ CVector3f CBacteriaSwarm::GetAimPosition(const CStateManager& mgr, float dt) con
   return mLastOrbitPosition + dt * mBoids[mLockOnIndex].mVelocity;
 }
 
+// @ fn_6_FE4
 CVector3f CBacteriaSwarm::GetOrbitPosition(const CStateManager& mgr) const {
   return mLastOrbitPosition;
 }
 
+// @ fn_6_E28
 bool CBacteriaSwarm::IsBoidVisibleForLockOn(const CStateManager& mgr, const CBoid& boid,
                                             const CVector3f& cameraPos,
                                             const CVector3f& cameraForward) const {
@@ -1144,6 +1168,7 @@ void CBacteriaSwarm::UpdateLockOnBlend(int prevIndex, int newIndex, float dt) {
   }
 }
 
+// @ fn_6_A0
 CEntity* LoadBacteriaSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrBacteriaSwarm sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrBacteriaSwarm.inc"
