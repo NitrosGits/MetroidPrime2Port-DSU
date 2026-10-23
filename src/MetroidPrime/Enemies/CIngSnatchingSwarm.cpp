@@ -174,7 +174,15 @@ CIngSnatchingSwarm::CIngSnatchingSwarm(TUniqueId uid, const rstl::string& name,
 , mCheckCollision(false)
 , mHitWorld(false)
 , mLoiterEnded(false)
+#ifdef TARGET_PC
+, mVisible(false) {
+  // 0x4790 addi r3,r25,0x374 / 0x4840 bl CToken::Lock: retail locks the FSM2 token at the end
+  // of the ctor; without the lock GetStateMachine's IsLoaded never turns true.
+  mStateMachineToken->Lock();
+}
+#else
 , mVisible(false) {}
+#endif
 
 CIngSnatchingSwarm::~CIngSnatchingSwarm() {}
 
@@ -615,7 +623,12 @@ bool CIngSnatchingSwarm::FollowArc(float time) {
     const float duration = mArcLength / speed;
     if (duration > 0.f) {
       const float t = time / duration;
+#ifdef TARGET_PC
+      // 0x1830 fcmpo f1(1.0),f31(t); 0x1834 bge -> t: retail is Min(1, t), so a NaN t stays NaN.
+      const float clamped = 1.f < t ? 1.f : t;
+#else
       const float clamped = t < 1.f ? t : 1.f;
+#endif
       const CVector3f point = CMath::GetBezierPoint(mArcPoints[0], mArcPoints[1], mArcPoints[2],
                                                     mArcPoints[3], clamped);
       const CVector3f delta = point - GetTranslation();
