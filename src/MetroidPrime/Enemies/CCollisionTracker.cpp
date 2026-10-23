@@ -126,9 +126,16 @@ bool CSurfacePath::Trace(float distance, const CVector3f& start, const CVector3f
     const float cosine = normalDot * inverseMagnitude;
     if (CMath::AbsF(cosine) > 0.2f) {
       if (!SlideOffPlane(previous, triangle, magnitude, inverseMagnitude, velocity)) {
+#ifdef TARGET_PC
+        // 0x3F4: retail `fcmpo; bge` (break unless |cosine| < 0.8), not `cror; beq`.
+        if (!(CMath::AbsF(cosine) < 0.8f)) {
+          break;
+        }
+#else
         if (CMath::AbsF(cosine) >= 0.8f) {
           break;
         }
+#endif
         velocity = ProjectOntoPlane(velocity, normalDot, magnitude, normal);
       }
     } else {
