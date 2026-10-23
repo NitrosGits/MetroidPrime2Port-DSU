@@ -28,7 +28,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x134C	0x58	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_134C
 0x13A4	0xF8	SLdrSpacePirateWeaponData	SLdrSpacePirateWeaponData ctor	inline-hdr	H	109C	SLdrSpacePirate.hpp:35	not-port	fn_72_13A4
 0x149C	0x304	SLdrSpacePirateWeaponData	LoadTypedefSpacePirateWeaponData (prop 0xdc89cc3c)	inline-hdr	H	140	SLdrSpacePirate.hpp:60	not-port	fn_72_149C
-0x17A0	0x28	CSpacePirate	GetRagDoll -> xb30	virtual	B	data_8D8	the ragdoll pointer, ported 2026-10-22 (asm 0x17A4/0x17B0/0x17B8)	ported	fn_72_17A0
+0x17A0	0x28	CSpacePirate	GetRagDoll -> xb30	virtual	B	data_8D8	the ragdoll pointer, ported 2026-10-22 (asm 0x17A4/0x17B0/0x17B8); 0xb30 is set only by Think tail 0x2010 (new CPirateRagDoll = fn_50_1938, upstream CPirateRagDoll.cpp, built) after a BecomeRagDoll death, which the port arms but never completes (sp13)	blocked: ragdoll creation (Think tail 0x1F08)	fn_72_17A0
 0x17C8	0x8C	CSpacePirate	GetTouchBounds	virtual	B	data_8D8	-	marked	fn_72_17C8
 0x1854	0x68	CSpacePirate	GetTouchBounds helper: actor bounding box	method	B	17C8	the touch-bounds helper, ported 2026-10-21 (asm 0x1854)	marked	fn_72_1854
 0x18BC	0x74	CSpacePirate	TryToBeCaptured	virtual	B	data_8D8	-	marked	fn_72_18BC
@@ -63,12 +63,12 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x3AB4	0x34	CSpacePirate	GetDamageVulnerability()	virtual	B	data_8D8	-	marked	fn_72_3AB4
 0x3AE8	0x40	CSpacePirate	GetModelAlphau8	virtual	B	data_8D8	-	marked	fn_72_3AE8
 0x3B28	0x254	CSpacePirate	DoUserAnimEvent	virtual	B	data_8D8 jumptable_72_data_A20	-	marked	fn_72_3B28
-0x3D7C	0x2B4	CSpacePirate	SolveGrenadeLaunch	method	B	4174	SolveGrenadeLaunch: equal to the asm (the candidate loop and the accept / closest-miss paths, 0x3EB8-0x3F90); it runs only with a grenade spawn	ported	fn_72_3D7C
-0x4030	0x144	CSpacePirate	GetGrenadeAimPoint	method	B	4174	GetGrenadeAimPoint: equal to the asm (the eye height, the pull-back, 0x40A4-0x4110); it runs only with a grenade spawn	ported	fn_72_4030
-0x4174	0x3B8	CSpacePirate	SpawnGrenade	method	B	3B28	-	ported	fn_72_4174
-0x452C	0x20	CModelData	CModelData() default ctor	inline-dol	H	4174	CModelData::CModelData()	not-port	fn_72_452C
-0x454C	0x58	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	4174	compiler-emitted dtor	not-port	fn_72_454C
-0x45A4	0x54	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	454C	compiler-emitted dtor	not-port	fn_72_45A4
+0x3D7C	0x2B4	CSpacePirate	SolveGrenadeLaunch	method	B	4174	SolveGrenadeLaunch: equal to the asm (the candidate loop and the accept / closest-miss paths, 0x3EB8-0x3F90); it runs only with a grenade spawn; ALL-ARMS sp13 (specs/spacepirate_force11.py)	marked	fn_72_3D7C
+0x4030	0x144	CSpacePirate	GetGrenadeAimPoint	method	B	4174	GetGrenadeAimPoint: equal to the asm (the eye height, the pull-back, 0x40A4-0x4110); it runs only with a grenade spawn; ALL-ARMS sp13 (specs/spacepirate_force11.py)	marked	fn_72_4030
+0x4174	0x3B8	CSpacePirate	SpawnGrenade	method	B	3B28	SpawnGrenade: equal to the asm (sp13 re-check: target null -> 0x41FC to the epilogue, CanBeNormalized 0x42A0, GetAngleDiff > BD8 0x42F4 ble, Slerp x2, new 0x390 null 0x43C4, AddObject 0x4508); ALL-ARMS sp13 (specs/spacepirate_force11.py)	marked	fn_72_4174
+0x452C	0x20	CModelData	CModelData() default ctor	inline-dol	H	4174	CModelData::CModelData() (bl __ct__10CModelDataFv only, 0x4538); the host temporary CModelData() in 4174 is this call (sp13)	not-port	fn_72_452C
+0x454C	0x58	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	4174	CEntityInfo dtor of 4174 local 0xdc (null test 0x4564, 45A4 on +4, Free when r4 > 0 0x457C); the host temporary destructs at scope end (sp13)	not-port	fn_72_454C
+0x45A4	0x54	(weak)	dtor chain of a local (from 4174)	weak-dtor	H	454C	rstl::vector<SConnection> dtor (CEntityInfo +4; frees +0xc); host std scope (sp13)	not-port	fn_72_45A4
 0x45F8	0x4C0	CSpacePirate	FireProjectile	method	B	28F0	-	marked	fn_72_45F8
 0x4AB8	0x54	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	45F8	TToken copy (header inline)	not-port	fn_72_4AB8
 0x4B0C	0x5C	TToken/auto_ptr	TToken copy/dtor chain (from 45F8)	template	H	4AB8 4BD0	TToken copy (header inline)	not-port	fn_72_4B0C
@@ -218,7 +218,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xE2DC	0x38	CSpacePirate	CheckTargetable	method	B	28F0	-	marked	fn_72_E2DC
 0xE314	0x4	CSpacePirate	empty function (called from Dead, AcceptScriptMsg)	method	B	5C10 E498	-	not-port	fn_72_E314
 0xE318	0xC0	CSpacePirate	Listen	virtual	B	data_8D8	-	marked	fn_72_E318
-0xE3D8	0xC0	CSpacePirate	Touch	virtual	B	data_8D8	Touch: the ragdoll push, ported 2026-10-22 (asm 0xE3F8-0xE47C)	ported	fn_72_E3D8
+0xE3D8	0xC0	CSpacePirate	Touch	virtual	B	data_8D8	Touch: the ragdoll push, ported 2026-10-22 (asm 0xE3F8-0xE47C); 0xb30 is set only by Think tail 0x2010 (new CPirateRagDoll = fn_50_1938, upstream CPirateRagDoll.cpp, built) after a BecomeRagDoll death, which the port arms but never completes (sp13)	blocked: ragdoll creation (Think tail 0x1F08)	fn_72_E3D8
 0xE498	0x944	CSpacePirate	AcceptScriptMsg	virtual	B	data_8D8	-	marked	fn_72_E498
 0xEDDC	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_EDDC
 0xEDE4	0x8	(module)	returns 1, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_EDE4
