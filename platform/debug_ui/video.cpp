@@ -346,6 +346,25 @@ void DrawVideoCompatibility() {
   }
 }
 
+// Top-centre toasts stack downwards in draw order instead of overlapping: each takes the
+// next free y and, once drawn, pushes it below itself. Reset at the start of every frame. From
+// MP1's overlays.cpp.
+namespace {
+float sTopToastNextY = 0.f;
+} // namespace
+
+void BeginTopToastStack() { sTopToastNextY = 16.f; }
+
+void PlaceTopToast(const ImGuiViewport* viewport) {
+  ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x * 0.5f, viewport->Pos.y + sTopToastNextY),
+                          ImGuiCond_Always, ImVec2(0.5f, 0.f));
+}
+
+// Call between Begin and End of a toast placed with PlaceTopToast.
+void TopToastPlaced(const ImGuiViewport* viewport) {
+  sTopToastNextY = ImGui::GetWindowPos().y - viewport->Pos.y + ImGui::GetWindowSize().y + 8.f;
+}
+
 // While the startup compile runs (the pipeline cache, queued before the first frame): after half a
 // second, a count and a bar since the toast opened. Once that queue has drained, shaders met in
 // game compile without it. From MP1's overlays.cpp, top centre.
@@ -372,13 +391,13 @@ void DrawShaderCompilationToast() {
   const uint32_t done = stats->createdPipelines >= sBase ? stats->createdPipelines - sBase : 0;
   const uint32_t total = done + stats->queuedPipelines;
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x + viewport->Size.x * 0.5f, viewport->Pos.y + 16.f),
-                          ImGuiCond_Always, ImVec2(0.5f, 0.f));
+  PlaceTopToast(viewport);
   ImGui::SetNextWindowBgAlpha(0.7f);
   if (ImGui::Begin("##shader-compilation-toast", nullptr,
                    ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav |
                        ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoSavedSettings |
                        ImGuiWindowFlags_AlwaysAutoResize)) {
+    TopToastPlaced(viewport);
     char label[64];
     std::snprintf(label, sizeof(label), "Compiling shaders %u / %u", total, total); // widest, so the count doesn't jitter
     const float width = ImGui::CalcTextSize(label).x;
