@@ -211,6 +211,7 @@ The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui, kral, pssm, stod,
 pbug, szone, rptl, chog and drkc): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and plac): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, spor's 2000 updates leave only ~100 ms of uncapped run after the connect and
@@ -387,6 +388,7 @@ Shuffle -> Taunt -> Lurk -> Hurled -> Deactivate -> Start), the visors, touches,
 missile shots, damage and kills, then spawns a third ghost, with `objs ChozoGhost` before the
 steps and at the end. drkc drives Temple Grounds dark 06_temple_sacredpath_dark's two Dark Commandos u051a and u041c through
 Activate, placement, damage and `obj` reads, with `objs DarkCommando` listing both at f200 and f4000.
+to 132; plac drives Agon Wastes 00_mapstation_sand's two inactive PlayerActors u065b and u0446 through Activate, Deactivate and `obj` reads, with `objs ScriptPlayerActor` listing both at f200 and f1800.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
