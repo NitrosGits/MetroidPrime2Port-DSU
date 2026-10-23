@@ -1182,8 +1182,11 @@ void CSpacePirate::UpdateAimBodyState(float dt, CStateManager& mgr) {
     if (xb98_aimDelayTimer <= 0.f) {
       cmds.DeliverCmd(CBCAdditiveAimCmd());
       const CVector3f gunPos = GetLctrTransform(xa86_gunSeg).GetTranslation();
-      CVector3f offset = x8f7_29_inWallHang ? CVector3f::Zero() : GetTranslation() - gunPos;
-      CVector3f aim = GetTransform().TransposeMultiply(GetTargetPos(mgr) + offset);
+      // Only the offset's x and y are added (0x26FC/0x2704 load them; 0x2734 adds 0.0 to the
+      // target's z), so the aim height is the target's above the pirate's origin, not the gun's.
+      const CVector3f offset = x8f7_29_inWallHang ? CVector3f::Zero() : GetTranslation() - gunPos;
+      CVector3f aim = GetTransform().TransposeMultiply(
+          GetTargetPos(mgr) + CVector3f(offset.GetX(), offset.GetY(), 0.f));
       if (x8f7_29_inWallHang) {
         aim.SetX(-aim.GetX());
         aim.SetY(-aim.GetY());
