@@ -54,7 +54,7 @@ const ushort kSfxMistLoop = 0x20D6; // 0x000063A4
 const ushort kSfxMistOut = 0x20D8;  // 0x000064F0
 const ushort kSfxTentacle = 0x20D4; // fn_41_9A34 0x00009A70
 
-// The listening-AI list's patterned neighbours in the same area (fn_41_2024 0x00002068-0x00002094
+// The listening-AI list's patterned neighbours in the same area (CalculateSeparation 0x00002068-0x00002094
 // and the same walk in the Ing family).
 template < typename F >
 void ForEachSameAreaPatterned(CStateManager& mgr, const CPatterned& self, F f) {
@@ -435,6 +435,9 @@ void CMediumIng::UpdateMistEffect(CStateManager& mgr) {
   effect->SetGeneratorRate(rate);
 }
 
+// The flee CanBeNormalized-false arm (0x2298) is dead: retail Flee (0x800FA6xx) returns the
+// normalized delta or, when that can't be normalized, the transform's forward column, a unit vector.
+// @ fn_41_2024
 void CMediumIng::CalculateSeparation(CStateManager& mgr) {
   // CPatterned's steering (0x61C); radius rodata_30 (5) times the model's x scale; speed
   // rodata_38 (0.5); one command per neighbour.

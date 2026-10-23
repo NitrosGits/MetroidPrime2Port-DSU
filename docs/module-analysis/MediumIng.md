@@ -5,7 +5,7 @@ loader, the ctors and empty stubs; the port's bodies are in
 `src/MetroidPrime/Enemies/PortCMediumIng.cpp` (the upstream stubs they replace sit under
 `#ifndef TARGET_PC`). Function table: `MediumIng_functions.tsv` (class B/H/T, slice, marker).
 
-## Status (2026-10-23, lanes mi1 + mi2 + mi3 + mi4)
+## Status (2026-10-23, lanes mi1 + mi2 + mi3 + mi4 + mi5)
 
 - mi1 (slice 1, `PortCMediumIng.cpp`): Think, AcceptScriptMsg, PreRender, Render, Touch, Death,
   the mist/safe-zone/listen bodies, CalculateSeparation and the helpers UpdateTimers 3274,
@@ -30,6 +30,10 @@ loader, the ctors and empty stubs; the port's bodies are in
   (open arms in `MediumIng_states.md`). Plain-`bge` clamps (NaN -> 0 / keep left) fixed in Dead,
   SetDash, CalculateSeparation. 3064 is compiler glue (H). The upstream-matched bodies (triggers,
   ctors, loader) carry no marker: the port compiles upstream's code unchanged.
+- mi5: SelectTarget 698C, SetDashDestination 261C and CalculateSeparation 2024 marked (37/155 B)
+  from `mediuming_forced3.con` (console `pathfail`, `setarea`, `spawn AJMP`, `codecall`) merged
+  with the zone and play runs. CalculateSeparation's flee CanBeNormalized-false arm 0x2298 is dead:
+  retail Flee returns the normalized delta or the transform's forward column, both unit length.
 - asmcheck: the bitfield run mC0..mE2 (0xCFC..0xCFE, MSB first: mC0 = 0xCFC 0x80) has no stated
   anchor in the upstream header, so every bit is NOPOS/BIT. Checked by hand for the marked
   states.
@@ -77,7 +81,7 @@ death, kept by the lane in `/tmp/opencode/mi1-shots/`.
 | 93FC / 94A4 | T GetTouchBounds / GetProgress | 608 / 636 | - |
 | 91B0 | T Touch | mCanDamage 1 (400 cap) | mCanDamage 0 (early return) |
 | 9A34 / 9CE0 / 9ED0 | T Extend / Retract / UpdateShake | 2 / 2 / 2 | - |
-| 2024 | CalculateSeparation | via PathFind; zone loop (mi4 `mediuming_zone.con`) | flee CanBeNormalized false, other-area neighbour |
+| 2024 | CalculateSeparation | via PathFind; zone loop (mi4 `mediuming_zone.con`); other-area neighbour 0x2094 forced (`setarea u0417 40`, mi5) | flee CanBeNormalized false (dead) |
 
 ## States run (mi3)
 

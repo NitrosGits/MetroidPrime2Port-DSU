@@ -1,0 +1,24 @@
+# mediuming_states.py forced-arm driver (mi5), area 46: SelectTarget 698C, SetDashDestination 261C and
+# CalculateSeparation 2024 arms through `pathfail`, `spawn AJMP`, `setarea` and `codecall`.
+@f300 god 1; send u0451 Activate; send u0452 Activate; tp 237.9 -194.7 -39.9; face 180
+@f400 obj u0417; obj u0454; obj u0451
+# 698C: Search miss (0x6A30), then a normal one (the jump-point loop).
+@f410 pathfail u0454 on; codecall u0454 SelectTarget; pathfail u0454 off; codecall u0454 SelectTarget
+# AiJumpPoints: inactive (0x6A88), type 0 (0x6A94), type 1 in another area (0x6AA4), type 1 here.
+@f420 spawn AJMP inactive; spawn AJMP; spawn AJMP prop 0xf53dcdd6 1; spawn AJMP prop 0xf53dcdd6 1
+@f430 objs AJMP
+@f440 setarea e2eff02 40; codecall u0454 SelectTarget; obj u0454
+# 261C: the player in the active zone, candidates in it (0x2994).
+@f460 place u0454 player 2; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination
+@f470 place u0454 player 4; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination
+@f480 place u0454 player 6; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination
+# 261C: outside the zone, FindClosestReachablePoint misses (0x29E4).
+@f500 tp 208.5 -174 -46.5; face 90
+@f510 place u0454 player 8; pathfail u0454 on; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination; pathfail u0454 off
+@f520 place u0454 player 8; codecall u0454 SetDashDestination; codecall u0454 SetDashDestination
+# 2024: neighbour u0417 in another area (0x2094) while u0454 runs PathFind.
+@f540 setarea u0417 40; place u0454 player 10; fsm u0454 PathFind
+@f560 place u0454 player 10; fsm u0454 PathFind
+@f580 place u0454 player 10; fsm u0454 PathFind
+@f600 setarea u0417 46; obj u0417
+@f620 status

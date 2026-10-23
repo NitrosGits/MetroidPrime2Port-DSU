@@ -97,6 +97,12 @@ reaches only some of the body states, and the coverage runs need the others.
 `statecall <id> <state> <msg> [dt]` runs one FSM2 state body once (msg 0 Activate, 1 Update, 2
 Deactivate) outside the machine, from the actor's whole state table: states the FSM2 has no node for.
 `codecall <id> <code> [dt]` does the same for a code function (codes otherwise run only on transitions).
+`pathfail <id> on|off` makes a patterned actor's path search (its `GetSearchPath`) report a miss:
+`CPathFindSearch::Search` returns kR_NoPath and `FindClosestReachablePoint` kR_NoSourcePoint (a
+TARGET_PC hook), so the arms behind a failed search run on a mesh that reaches; pair it with
+`codecall` (`pathfail u0454 on; codecall u0454 SelectTarget; pathfail u0454 off`).
+`setarea <id> <area>` sets an entity's current area id (prints the old one), e.g. so a same-area
+filter sees a neighbour from another area; put the old id back after.
 `touch <mover id> <other id>` calls the mover's `CollidedWith` the way the collision code does
 (`CGameCollision::MakeCollisionCallbacks`): with a one-entry collision list whose 0x30 slot holds
 the *other* actor's material list. It needs no real collision, so a module whose own work is in

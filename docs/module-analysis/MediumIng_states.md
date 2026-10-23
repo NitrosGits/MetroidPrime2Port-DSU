@@ -29,11 +29,11 @@ Upstream triggers all match the asm; none changed.
 | BackUp | 2E70 | marked | |
 | Dead | 30B0 | marked (mi4) | both kills leave Dead by DeathDelete (0x31D0 `cmpwi 2` = kAS_LieOnGround, both ways): shot kill u0417 and console `damage u0454 999` (`mediuming_dead.con`). The mE1 drain 0x31E4..0x323C is dead: mE1's only writers are the ctor (0x88D4, 0) and SetFlagE1 0x1B04, which nothing references |
 | SelectTargetState | 30AC | marked | empty in retail |
-| SelectTarget | 698C | played, asm-checked (mi4) | Search fail 0x6A30; jump-point loop: only the not-a-jump-point arm ran (area 46's AiWaypoint list, mgr+0x838 = list 5, holds AI hints/cover points). No area that spawns a MING has an AJMP (disc scan, mi4), so the area-match arm 0x6AA4 onward is dead in shipped data; inactive/type/other-area arms 0x6A88/0x6A94/0x6AA4 need an AJMP loaded next to an Ing area. 6D08/6BFC get the mutated target (sp+0x28) |
+| SelectTarget | 698C | marked (mi5) | forced (`mediuming_forced3.con`): Search miss 0x6A30 (`pathfail u0454 on` + `codecall SelectTarget`); spawned AJMPs take inactive 0x6A88, type 0x6A94, other area 0x6AA4 (`setarea`) and the same-area type-1 null-land arm. From a land waypoint on (0x6AD8 safe-zone tests, 6D08/6BFC) it is dead in shipped data: no area that spawns a MING has an AJMP (mi4 disc scan). The AiWaypoint list is mgr+0x838 = list 5 |
 | SetLeashTarget | 6880 | played (`tp` to area 40) | danger-actor arm 0x6908 |
 | SetRetreatDestination | 2564 | played | retreat actor found 0x25D8 |
 | SetMeshPathDestination | 2A74 | played | reachable-point fail arm |
-| SetDashDestination | 261C | played, asm-checked (mi4) | point in safe zone 0x2994, reachable fail 0x29E4 (`mediuming_dash.con`: with the zone active the Ing retreats instead of dashing) |
+| SetDashDestination | 261C | marked (mi5) | every arm (gcov 12/12); forced (`mediuming_forced3.con`): candidate in the active zone 0x2994 (`codecall SetDashDestination` with the player in u0451), reachable miss 0x29E4 (`pathfail`) |
 | FindSafeZoneRetreatPoint | 13E4 | played | ran with no safe zone only (0x1424 ret 0) |
 | FindClosestRetreatActor | 1BA8 | played | FindClosestConnectedActor: no connection of the state matched |
 | FindClosestDangerActor | 1CE8 | played | same |
