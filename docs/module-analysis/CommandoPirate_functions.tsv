@@ -59,7 +59,7 @@ offset	size	fn	kind	class	port	note
 0x3900	0x15C	fn_9_3900	behaviour	B	marked	
 0x3A5C	0x260	fn_9_3A5C	behaviour	B	not-port	
 0x3CBC	0xA8	fn_9_3CBC	host-copy	H	marked	
-0x3D64	0xB8	fn_9_3D64	host-copy	H	not-port	
+0x3D64	0xB8	fn_9_3D64	behaviour	B	marked	the warp-out helper; every guard both ways (0x3D90/0x3D9C/0x3DA8/0x3DB4) and both argument values; flags/word via console `var`, block flag and alive bit forced; tail13 2026-10-23
 0x3E1C	0x324	fn_9_3E1C	behaviour	B	marked	
 0x4140	0x48	fn_9_4140	behaviour	H	not-port	single_ptr<CPirateRagDoll>::operator=(T*) (deletes old, no compare); host rstl/single_ptr.hpp:26 deletes too (cp7)
 0x4188	0xB8	fn_9_4188	host-copy	H	not-port	~CPirateRagDoll (vptr, reserved_vector 0xd4 trivial loop, ~CRagDoll fn_9_4240); host CPirateRagDoll dtor (cp8)

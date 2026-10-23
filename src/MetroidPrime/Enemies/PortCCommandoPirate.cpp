@@ -1319,27 +1319,36 @@ void CCommandoPirate::x1930_LeaveTeam(CStateManager& mgr) {
 // fn_9_3D64 (0xb8 bytes): the module's warp-out helper. It runs only while the actor is alive
 // (the byte at guest this+0x420's 0x40 bit), the module's flag byte at guest this+0xC65 has no
 // 0x10 bit, the module's word at guest this+0x920 is -1 and the block's flag byte at guest
-// this+0x91D has its 0x80 bit. Then it enters the WarpOut state of the state machine (the guest's
-// own object at guest this+0x350, the vtable slot 0x20 - the module's rodata string "WarpOut" at
-// 0x7A5) and sets the module's flag byte's 0x10 bit to the argument (0x00003DF4).
+// this+0x91D has its 0x80 bit (0x00003D88..0x00003DB4). Then it enters the WarpOut state of the
+// state machine (the guest's own object at guest this+0x350, the vtable slot 0x20 loaded at
+// 0x00003DE0 and called at 0x00003DE8 - the module's rodata string "WarpOut" at 0x7A5,
+// 0x00003DC4) and puts the argument into the module's flag byte's 0x10 bit (the rlwimi
+// r0,r31,4,27,27 at 0x00003DF8, mask 0x10, then one store at 0x00003DFC; MWCC emits that same
+// rlwimi for the if/else the port keeps).
+// Run: tail13 2026-10-23 (tools/cov/specs/commandopirate_tail13.py + its driver, Cliff entrance):
+// every guard both ways and both argument values, the flag/word writes forced with the console's
+// `var` and the block flag and the alive bit with force_ret. See CommandoPirate.md's tail13 table.
+// @ fn_9_3D64
 void CCommandoPirate::x3D64_SetWarpOut(CStateManager& mgr, bool warpOut) {
-  if (!GetAlive()) {           // 0x00003D88..0x00003D90
+  if (!GetAlive()) {           // guest this+0x420's 0x40 bit (extrwi. 1,25), 0x00003D88..0x00003D90
     return;
   }
-  if ((xc65_ & 0x10) != 0) {  // 0x00003D94..0x00003D9C
+  if ((xc65_ & 0x10) != 0) {  // extrwi. 1,27, 0x00003D94..0x00003D9C
     return;
   }
-  if (x920_ != -1) {          // 0x00003DA0..0x00003DA8
+  if (x920_ != -1) {          // cmpwi r0,-1, 0x00003DA0..0x00003DA8
     return;
   }
-  if ((mData.mFlags1 & 0x80) == 0) {  // 0x00003DAC..0x00003DB4
+  if ((mData.mFlags1 & 0x80) == 0) {  // extrwi. 1,24 (guest this+0x91d), 0x00003DAC..0x00003DB4
     return;
   }
-  StateMachineState().SetState(mgr, *this, rstl::string_l("WarpOut"));  // 0x00003DEC
+  // rstl::string_l("WarpOut") at 0x00003DC8, the destructor of the temporary at 0x00003DF0.
+  StateMachineState().SetState(mgr, *this, rstl::string_l("WarpOut"));  // 0x00003DC0..0x00003DE8
+  // 0x00003DF8 rlwimi r0,r31,4,27,27 (mask 0x10 <- the argument), one store at 0x00003DFC.
   if (warpOut) {
-    xc63_ |= 0x10;  // 0x00003DF4
+    xc63_ |= 0x10;
   } else {
-    xc63_ &= ~0x10;  // 0x00003DF4
+    xc63_ &= ~0x10;
   }
 }
 
