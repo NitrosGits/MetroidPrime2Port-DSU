@@ -1520,6 +1520,7 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
 //   0xE438-0xE448: the trigger's float 0x19c is above zero (GetForceMagnitude()),
 // and then the ragdoll's 0xb8, 0xbc and 0xc0 (CPirateRagDoll's torso impulse) add the trigger's
 // 0x190, 0x194 and 0x198 (the force field, asm 0xE44C-0xE47C, three lfs/fadds/stfs).
+// @ fn_72_E3D8
 void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   TraceCall(*this, "Touch", 0);
   CPatterned::Touch(actor, mgr);
