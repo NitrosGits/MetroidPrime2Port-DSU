@@ -1,0 +1,83 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_48_0	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+00010	fn_48_10	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+00018	fn_48_18	8	H	CPatterned::ProjectileInfo	-	weak copy / template instance	no
+00020	fn_48_20	8	H	CPatterned::GetSearchPath	-	weak copy / template instance	no
+00028	fn_48_28	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+00030	fn_48_30	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+00038	fn_48_38	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+00048	fn_48_48	C	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+00054	fn_48_54	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+0005C	fn_48_5C	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+00064	fn_48_64	8	H	CAi::IsListening	-	weak copy / template instance	no
+0006C	fn_48_6C	8	H	CAi::Listen	-	weak copy / template instance	no
+00074	fn_48_74	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+00090	fn_48_90	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+000BC	fn_48_BC	24	T	RELExit	-	REL runtime	no
+000E0	fn_48_E0	20	T	RELMain	-	REL runtime	no
+00100	fn_48_100	30	B	SetFuncPtrs	-	upstream body (CPillBug)	no
+00130	fn_48_130	5A4	B	LoadPillBug	-	upstream body (CPillBug)	no
+006D4	fn_48_6D4	40	H	ctor rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+00714	fn_48_714	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak copy / template instance	no
+00734	fn_48_734	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak copy / template instance	no
+0075C	fn_48_75C	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+00898	fn_48_898	6C	H	dtor rstl40optional_object<21TLockedToken<6CModel>>	-	weak copy / template instance	no
+00904	fn_48_904	54	H	TToken::~TToken	-	weak copy / template instance	no
+00958	fn_48_958	64	H	dtor rstl20auto_ptr<9CAnimData>	-	weak copy / template instance	no
+009BC	fn_48_9BC	60	H	dtor rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+00A1C	fn_48_A1C	88	B	SLdrPillBug::~SLdrPillBug	-	upstream body (CPillBug)	no
+00AA4	fn_48_AA4	134	B	SLdrPillBug::SLdrPillBug	-	upstream body (CPillBug)	no
+00BD8	fn_48_BD8	35C	B	CPillBug::Pause	-	upstream body (CPillBug)	no
+00F34	fn_48_F34	5C	H	CBCStepCmd::~CBCStepCmd	-	weak copy / template instance	no
+00F90	fn_48_F90	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+00FD8	fn_48_FD8	48	H	CCollisionPrimitive::~CCollisionPrimitive	-	weak copy / template instance	no
+01020	fn_48_1020	438	B	CPillBug::Wander	-	upstream body (CPillBug)	no
+01458	fn_48_1458	140	B	CPillBug::Turn	-	upstream body (CPillBug)	no
+01598	fn_48_1598	174	B	CPillBug::Injured	-	upstream body (CPillBug)	no
+0170C	fn_48_170C	5C	H	CBCLoopReactionCmd::~CBCLoopReactionCmd	-	weak copy / template instance	no
+01768	fn_48_1768	2F0	B	CPillBug::Fall	-	upstream body (CPillBug)	no
+01A58	fn_48_1A58	5BC	B	CPillBug::ReturnToPath	-	upstream body (CPillBug)	no
+02014	fn_48_2014	1C0	B	CPillBug::FastPatrol	pb1	upstream body (CPillBug)	yes
+021D4	fn_48_21D4	3C	B	CPillBug::Patrol	pb1	upstream body (CPillBug)	yes
+02210	fn_48_2210	53C	B	CPillBug::PatrolImpl	-	upstream body (CPillBug)	no
+0274C	fn_48_274C	1E4	B	CPillBug::CloseToPath	-	upstream body (CPillBug)	no
+02930	fn_48_2930	C	B	CPillBug::HitPlayer	pb1	upstream body (CPillBug)	yes
+0293C	fn_48_293C	C	B	CPillBug::Landed	pb1	upstream body (CPillBug)	yes
+02948	fn_48_2948	14	B	CPillBug::AnimOver	pb1	upstream body (CPillBug)	yes
+0295C	fn_48_295C	C	B	CPillBug::PathOver	pb1	upstream body (CPillBug)	yes
+02968	fn_48_2968	9C	B	CPillBug::HasReturnPath	pb1	upstream body (CPillBug)	yes
+02A04	fn_48_2A04	C	B	CPillBug::Bombed	pb1	upstream body (CPillBug)	yes
+02A10	fn_48_2A10	C	B	CPillBug::Attacked	pb1	upstream body (CPillBug)	yes
+02A1C	fn_48_2A1C	40	B	CPillBug::GetContactDamage	pb1	upstream body (CPillBug)	yes
+02A5C	fn_48_2A5C	90	H	CDamageInfo::CDamageInfo	-	weak copy / template instance	no
+02AEC	fn_48_2AEC	40	B	CPillBug::GetCurrentConstraint	-	upstream body (CPillBug)	no
+02B2C	fn_48_2B2C	248	B	CPillBug::FindReturnWaypoint	-	upstream body (CPillBug)	no
+02D74	fn_48_2D74	100	H	ctor rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+02E74	fn_48_2E74	54	H	dtor rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+02EC8	fn_48_2EC8	11C	B	CPillBug::GetClosestPathIndex	-	upstream body (CPillBug)	no
+02FE4	fn_48_2FE4	150	B	CPillBug::HasInnerPathLoop	-	upstream body (CPillBug)	no
+03134	fn_48_3134	190	B	CPillBug::BuildPath	-	upstream body (CPillBug)	no
+032C4	fn_48_32C4	194	B	CPillBug::GetNextWaypoint	-	upstream body (CPillBug)	no
+03458	fn_48_3458	CC	B	CPillBug::CollidedWith	pb1	upstream body (CPillBug)	yes
+03524	fn_48_3524	40	B	CPillBug::ThinkAboutMove	-	upstream body (CPillBug)	no
+03564	fn_48_3564	1C	B	CPillBug::GetAimPosition	pb1	upstream body (CPillBug)	yes
+03580	fn_48_3580	C	B	CPillBug::IsOnStaticGround	-	upstream body (CPillBug)	no
+0358C	fn_48_358C	C	B	CPillBug::IsOnGround	pb1	upstream body (CPillBug)	yes
+03598	fn_48_3598	B0	B	CPillBug::GetTouchBounds	pb1	upstream body (CPillBug)	yes
+03648	fn_48_3648	4C	B	CPillBug::GetDamageVulnerability	-	upstream body (CPillBug)	no
+03694	fn_48_3694	6C	B	CPillBug::SetupStateMachine	pb1	upstream body (CPillBug)	yes
+03700	fn_48_3700	140	B	CPillBug::Think	-	upstream body (CPillBug)	no
+03840	fn_48_3840	264	B	CPillBug::AcceptScriptMsg	-	upstream body (CPillBug)	no
+03AA4	fn_48_3AA4	88	B	CPillBug::~CPillBug	-	upstream body (CPillBug)	no
+03B2C	fn_48_3B2C	240	B	CPillBug::CPillBug	pb1	upstream body (CPillBug)	yes
+03D6C	fn_48_3D6C	3C	H	dtor rstl30reserved_vector<9CVector3f,24>	-	weak copy / template instance	no
+03DA8	fn_48_3DA8	5C	H	CDamageVulnerability::CDamageVulnerability	-	weak copy / template instance	no
+03E04	fn_48_3E04	54	H	dtor rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+03E58	fn_48_3E58	130	H	ctor rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+03F88	fn_48_3F88	A4	H	reserve__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance	no
+0402C	fn_48_402C	258	B	__sinit_CPillBug_cpp	-	upstream body (CPillBug)	no
+04284	fn_48_4284	C4	T	_unresolved	-	REL runtime	no
+04348	fn_48_4348	24	T	_epilog	-	REL runtime	no
+0436C	fn_48_436C	24	T	_prolog	-	REL runtime	no
+04390	fn_48_4390	4C	T	ModuleDestructors	-	REL runtime	no
+043DC	fn_48_43DC	4C	T	ModuleConstructors	-	REL runtime	no
