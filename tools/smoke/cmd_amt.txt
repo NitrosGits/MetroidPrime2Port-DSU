@@ -1,0 +1,44 @@
+# AIMannedTurret (module 1: CAIMannedTurret, script type AIMT - a pirate-manned turret AI that aims
+# at the player, telegraphs, fires an energy projectile from its muzzle and sweeps a patrol spline
+# when the player stays out of range; it drives the animated turret and the rider it is attached to).
+# Agon Wastes 06_sand_alamofront (world 42b935e4, layer 2): AIMT e001d0055 at (186.4,-67.8,28.1)
+# with its animated turret 001d005f and rider platform 001d0054 (the second AIMT e001d0238 sits at
+# 187.0,-112.7,27.2). The whole disc has only these two AIMT objects (docs/module-analysis/
+# AIMannedTurret.md), both with the same properties, so layer 2 is what brings the module in.
+# The steps repeat the start of the amt1 lane's tools/drivers/aimannedturret_alamofront.con:
+# `layer 2`, Activate on the turret and the rider, Start on the AIMT, tp moves around the turret for
+# the aim arms, `mpforce 1` for the multiplayer sfx arm of SpawnTelegraph, `tp 90 -68 10`
+# (> the 85 unit maxAttackRange) for the 5 s leash and Patrol, then two `damage` hits in Patrol
+# (TookDamage leads back to Attack). The lane's driver went on through Stop/Deactivate/Reset/
+# Activate/Start, AreaLoaded and Delete of the turret and the rider for the null-actor arms over
+# 14000 frames; this family stops after the two damage hits.
+# Evidence in the transcript: `obj e001d0055` on the AIMT (hp 5/5 until the hits, 4/5 and then 3/5
+# after them - `obj` prints no fsm line for this class, so the Attack/Patrol states are not
+# evidenced) and `objs AimannedTurret` listing both AIMT actors of the area (e001d0055,
+# e001d0238; the attached turret 001d005f and rider 001d0054 are other classes) plus the
+# `status`/`orbit` lines. The log's `init compiled module AIMannedTurret` line lists the whole
+# compiled-module table, so it says the module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. F=9400 in run.sh: the last check is f9200 and
+# the second damage hit is at f9100.
+@f600 god 1; layer 2
+@f700 send e001d005c Activate; send e001d005f Activate
+@f800 tp 180 -70 10
+@f820 send e001d0055 Start
+@f900 obj e001d0055
+@f1000 objs AimannedTurret
+@f2000 mpforce 1
+@f2600 mpforce 0
+@f2700 tp 186 -55 10
+@f3000 tp 186 -80 10
+@f3300 tp 175 -68 10
+@f3600 tp 197 -68 10
+@f3900 tp 194 -76 10
+@f4200 tp 90 -68 10
+@f4300 status; obj e001d0055
+@f8700 status; obj e001d0055
+@f8800 damage e001d0055 1
+@f8850 obj e001d0055
+@f9000 orbit e001d0055
+@f9100 damage e001d0055 1
+@f9150 obj e001d0055
+@f9200 objs AimannedTurret
