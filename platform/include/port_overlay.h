@@ -39,6 +39,7 @@ void SetAreaLayers(const CWorldLayerState* layers, int areaId);
 std::string RoomName(uint32_t worldId, int areaIndex);
 // Opens the window on the first page whose name starts with `name` (case-insensitive: "save"
 // is Save states), or closes it for "off"; false when no page matches (console `overlay`).
+// "<page>/<sub-tab>" also selects the first sub-tab whose name starts with the part after the slash.
 bool ShowPage(const std::string& name);
 // Toggles the window; safe to call from the event loop (F1).
 void Toggle();
@@ -142,6 +143,17 @@ bool GyroAim();
 int GyroMode();
 float GyroSensitivity();
 bool GyroCursorCamera();
+// MP1's "Separate vertical speed" for the gyro (`MP2_GYRO_SPLIT`): tilting up and down turns at
+// `MP2_GYRO_SENSITIVITY_Y` (same range); under pointer aim it scales the pointer's vertical travel.
+bool GyroSplit();
+float GyroSensitivityY();
+// The Reset aim binding recentres the pointer under pointer aim, else levels the camera;
+// `MP2_RESET_AIM_BOTH` makes it do both either way.
+bool ResetAimBoth();
+// MP1's "Separate menu buttons" (`MP2_MENU_STANDARD_BUTTONS`): menus and the map read the Remap
+// page's Menu rows instead of the gameplay layout. Off while the touch controls are in use.
+bool MenuStandardButtons();
+void SetMenuStandardButtons(bool enabled);
 void SetGyroAim(bool enabled);
 int GyroSource();
 int GyroSpace();
@@ -230,7 +242,7 @@ bool CrosshairColor(float rgb[3]);
 void SetCrosshairColor(float r, float g, float b);
 void ClearCrosshairColor();
 // The F1 window's size in percent of the display's own scale (`MP2_UI_SCALE=50..200`, F1 > Render,
-// console `uiscale`); the product is clamped to 1..4 by PortUi::UpdateUiScale.
+// console `uiscale`); the product is clamped to 1..4 by PortDebug::UpdateUiScale.
 const int kUiScaleMin = 50;
 const int kUiScaleMax = 200;
 int UiScale();
@@ -299,5 +311,41 @@ float AspectWiden();
 bool Visible();
 // Builds the window. Call once per presented frame, inside the open Aurora frame.
 void Draw();
+
+} // namespace PortOverlay
+
+// F1 > Video rows from the Prime 1 port (f1b). The settings are in port_overlay.cpp, applied by
+// platform/port_video.cpp (include/port_video.h); each `MP2_<KEY>` overrides the file for a run.
+namespace PortOverlay {
+
+// Dynamic resolution (`MP2_DYNAMIC_RES`, F1 > Video > Quality, only with a fixed EFB scale): draws
+// the EFB between DynamicResMin (`MP2_DYNAMIC_RES_MIN`: 0.5, 0.75, 1) and RenderScale to hold
+// DynamicResTarget fps (`MP2_DYNAMIC_RES_TARGET`; 0 = the display's rate, 60 under the cap).
+bool DynamicRes();
+int DynamicResTarget();
+float DynamicResMin();
+// Sharpening of a frame drawn smaller than the window (`MP2_UPSCALE_SHARPEN=off|dynamic|always`,
+// strength `MP2_UPSCALE_SHARPEN_AMOUNT` 0..100): 0 off, 1 while dynamic resolution has lowered the
+// scale, 2 always.
+int UpscaleSharpen();
+int UpscaleSharpenAmount();
+// The frame cap with the 60 FPS cap off (`MP2_FPS_CAP`, F1 > Video > Frame rate); 0 = unlimited.
+const int kFpsCapMin = 30;
+const int kFpsCapMax = 500;
+int ClampFpsCap(int fps);
+int FpsCap();
+// The startup toasts (`MP2_SHOW_SHADER_COMPILATION`, `MP2_SHOW_MENU_HINT`); on by default.
+bool ShowShaderCompilation();
+bool ShowMenuHint();
+// Aurora's per-pixel lighting (`MP2_PER_PIXEL_LIGHTING`, F1 > Video > Quality); off by default.
+bool PerPixelLighting();
+// F1 > Video > Compatibility, read when the GPU device is made (so after a restart):
+// OpenGL ES instead of Vulkan (`MP2_OPENGLES`, only where Aurora has the backend), the Adreno
+// storage clamp (-1 auto; Aurora reads `MP2_STORAGE_CLAMP` itself), the Dawn driver workarounds
+// (`MP2_DRIVER_WORKAROUNDS`) and the low-power adapter (Aurora reads `MP2_GPU_POWER=low`).
+bool OpenGles();
+int StorageClamp();
+unsigned DriverWorkarounds();
+bool LowPowerGpu();
 
 } // namespace PortOverlay

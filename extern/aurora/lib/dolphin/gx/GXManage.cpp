@@ -163,7 +163,7 @@ GXFifoObj* GXInit(void* base, u32 size) {
   GXSetCullMode(GX_CULL_BACK);
   GXSetClipMode(GX_CLIP_ENABLE);
   GXSetScissor(0, 0, rmode->fbWidth, rmode->efbHeight);
-  // GXSetScissorBoxOffset(0, 0);
+  GXSetScissorBoxOffset(0, 0);
 
   GXSetNumChans(0);
   GXSetChanCtrl(GX_COLOR0A0, GX_DISABLE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
@@ -421,9 +421,10 @@ void __GXSetVAT() {
 }
 
 static void __SetSURegs(u32 tmap, u32 tcoord) {
-  // Copy texture dimensions from tImage0 to SU registers
-  u32 w = GET_REG_FIELD(__gx->tImage0[tmap], 10, 0);
-  u32 h = GET_REG_FIELD(__gx->tImage0[tmap], 10, 10);
+  // Copy texture dimensions to SU registers. Port: from the full size, not tImage0's 10-bit fields,
+  // which wrap past 1024 (a viewport-sized texture on a >2.13:1 screen got a scale of ~19).
+  u32 w = __gx->tSizeM1[tmap][0];
+  u32 h = __gx->tSizeM1[tmap][1];
   SET_REG_FIELD(0, __gx->suTs0[tcoord], 16, 0, w);
   SET_REG_FIELD(0, __gx->suTs1[tcoord], 16, 0, h);
   // Bias from wrap mode

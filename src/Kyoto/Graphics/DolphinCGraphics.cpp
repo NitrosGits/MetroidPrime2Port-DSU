@@ -7,6 +7,7 @@
 
 #include "port_harness.h"
 #include "port_overlay.h"
+#include "port_video.h"
 #include "MetroidPrime/PortEfbCopy.hpp"
 
 #include <chrono>
@@ -52,10 +53,11 @@ int CopyTexelBytes(GXTexFmt fmt) {
   }
 }
 
-void PaceFrame(bool is50Hz) {
+// periodUs: the video rate under the 60 FPS cap, else 1/FpsCap (MP1's FPS cap slider, f1b).
+void PaceFrame(long periodUs) {
   using clock = std::chrono::steady_clock;
   static clock::time_point sDeadline = clock::now();
-  const clock::duration period = std::chrono::microseconds(is50Hz ? 20000 : 16667);
+  const clock::duration period = std::chrono::microseconds(periodUs);
   const clock::time_point now = clock::now();
   sDeadline += period;
   if (sDeadline > now) {
@@ -895,6 +897,8 @@ void CGraphics::BeginScene() {
   if (!AuroraFrameBegin()) {
     return;
   }
+  // F1 > Video > Compatibility's GPU self-test, between frames' GX work (PortVideo, f1b).
+  PortVideo::RunGpuSelfTestIfRequested();
   ClearBackAndDepthBuffers();
 }
 #else
@@ -1055,8 +1059,13 @@ void CGraphics::EndScene() {
   // Port: present this Aurora frame instead of waiting on the GP breakpoint.
   AuroraFrameEnd();
   // A fast run or a harness boot's load needs no video-rate wait (PortHarness::Unpaced).
+  // With the cap off, the FPS cap slider's rate, or none (0 = unlimited).
   if (!PortHarness::Unpaced()) {
-    PaceFrame(sIs50Hz);
+    if (PortOverlay::FrameLimit()) {
+      PaceFrame(sIs50Hz ? 20000 : 16667);
+    } else if (const int cap = PortOverlay::FpsCap(); cap > 0) {
+      PaceFrame(1000000 / cap);
+    }
   }
   mNumBreakpointsWaiting = 0;
   mFlippingState = 0;

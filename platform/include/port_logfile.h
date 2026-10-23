@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 
 // The log file (`MP2_LOG_FILE`, F1 > Testing > Log file): everything the process writes to
@@ -27,5 +28,7 @@ std::string Path();
 // Android: one line as the existing stdout/stderr pump sees it. Elsewhere a no-op (the copier
 // process writes the bytes itself).
 void Write(const std::string& line);
+// Bytes as they are, to wherever stderr goes (and so the log); async-signal-safe, for crash reports.
+void WriteRaw(const char* data, size_t size);
 
 } // namespace PortLogFile

@@ -12,7 +12,7 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 | --- | --- |
 | F1 debug overlay: skip cinematics, god mode, mouse/twin-stick aim, teleports, first-person FOV, hide helmet / hide visor effects, arm-cannon offset, MSAA / anisotropy, HUD scale | `platform/port_overlay.cpp`; rows are saved in `<user>/settings.cfg` (`platform/port_overlay_settings.cpp`), an `MP2_*` environment variable wins for one run. The user folder is `$XDG_DATA_HOME/Metroid Prime 2: Echoes` (SDL's preference path) unless `MP2_USER_PATH` names another |
 | F1 debug menu, the Prime 1 port's Cheats page (items then Teleport, as there): a filterable room picker (every MLVL area of the world, by name), a world picker built from the card's world table (front-end names, GuiSys markup stripped), Reload; and an items page with Echoes' abilities and keys, missiles / power bombs / dark+light ammo / energy tanks, Full health and Grant everything | `platform/port_overlay.cpp` (Cheats page); the grants are the console `give`/`take` path (`CScriptPickup`'s: capacity and amount together) and the warps are the `PortWarp` requests the console and `MP2_TELEPORT` use |
-| F1 pages, in the Prime 1 port's set where the feature exists here: Game (state, the area/world cycle buttons, Speedrun, Cutscenes), Controls, Video, Cheats (items then Teleport), **Save states**, **Randomizer** (status and Generate from the dump log), System, **Debug** (free camera and photo, the live state, the console) | `platform/port_overlay.cpp` (page list in `PortOverlaySearch::kPages`); the Randomizer page reads `platform/port_randomizer.cpp` |
+| F1 pages, in the Prime 1 port's set where the feature exists here: Game (state, the area/world cycle buttons, Speedrun, Cutscenes), Controls, Video, Cheats (items then Teleport), **Save states**, **Randomizer** (status and Generate from the dump log), System, **Debug** (free camera and photo, the live state, the console) | `platform/debug_ui/` (MP1's debug_ui files; page list in `debug_ui/search.cpp`); the Randomizer page reads `platform/port_randomizer.cpp` |
 | Aspect ratio, widescreen HUD, render scale, vsync, 60 fps cap, frame interpolation | F1 > Video/Render (`platform/port_overlay.cpp`: `aspect`, `hud_wide`, `render_scale`, `vsync`, `frame_limit`, `smooth_frames`), both in `settings.cfg` and as `MP2_*` for one run; `platform/main.cpp` still sets the viewport policy (`AURORA_VIEWPORT_FIT`) |
 | Skip / fast-forward cutscenes, cutscene speed, `MP2_SKIP_CINEMATICS`, `MP2_SKIP_INTRO` (level-load text + cinematic scene) | `platform/port_harness.cpp`, `CMFGame`, `CMFGameLoader` |
 | Boot logos (F1 > Game > Cutscenes, `boot_logos`, `MP2_BOOT_LOGOS=show\|skip\|off`, as the Prime 1 port's): Skip (default) ends the health warning or a Nintendo/Retro/Dolby logo with its 0.5 s fade on A or Start, no 2 s wait on the warning; Off goes from the progressive check straight to the front end. The log prints `[splash] <n> ended at <s>` per screen | `src/MetroidPrime/CSplashScreen.cpp` (`TARGET_PC`), `platform/port_overlay.cpp` |
@@ -84,7 +84,9 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
 - Port-side game changes go inside `#ifdef TARGET_PC`, with the non-PC text byte-identical; the
   upstream matching build must stay at `94.14% fuzzy, 63.29% matched` after each.
 - A new setting is one field in `platform/port_overlay.cpp` (with its `MP2_*` env var, which is what a
-  headless run uses), one row in the F1 overlay, and a getter in `platform/include/port_overlay.h`.
-  `platform/debug_ui.cpp` is in no CMake target - a setting added there compiles nowhere.
+  headless run uses), a key in `platform/debug_ui/settings.cpp` (documented in `docs/SETTINGS.md`), its
+  row on a page in `platform/debug_ui/` plus `platform/port_settings_index.inc` (ctest
+  `port_settings_index`), and a getter in `platform/include/port_overlay.h`. `platform/debug_ui.cpp`
+  (the old single file) is in no CMake target - a setting added there compiles nowhere.
 - Anything a test must drive also needs an `MP2_INPUT` token or a console command, because the sweep
   and the harness cannot press keys.

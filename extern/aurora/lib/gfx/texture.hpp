@@ -30,6 +30,8 @@ struct TextureFormatInfo {
 };
 TextureFormatInfo format_info(wgpu::TextureFormat format) noexcept;
 uint64_t calc_texture_size(wgpu::TextureFormat format, uint32_t width, uint32_t height, uint32_t mips) noexcept;
+// Refresh the cached Dawn memory totals (at most once a second); call from the thread that submits to Dawn.
+void sample_dawn_memory() noexcept;
 bool is_block_aligned(wgpu::TextureFormat format, uint32_t width, uint32_t height) noexcept;
 
 constexpr u32 InvalidTextureFormat = -1;
@@ -43,23 +45,40 @@ struct TextureRef {
   u32 gxFormat;
   bool hasArbitraryMips = false;
   bool isReplacement = false;
+  // The creation label (interned, so it outlives the texture), for the live-texture breakdown.
+  const char* label = nullptr;
 
   TextureRef(wgpu::Texture texture, wgpu::TextureView sampleTextureView, wgpu::TextureView attachmentTextureView,
-             wgpu::Extent3D size, wgpu::TextureFormat format, uint32_t mipCount, u32 gxFormat)
+             wgpu::Extent3D size, wgpu::TextureFormat format, uint32_t mipCount, u32 gxFormat,
+             const char* label = nullptr)
   : texture(std::move(texture))
   , sampleTextureView(std::move(sampleTextureView))
   , attachmentTextureView(std::move(attachmentTextureView))
   , size(size)
   , format(format)
   , mipCount(mipCount)
-  , gxFormat(gxFormat) {}
+  , gxFormat(gxFormat)
+  , label(label) {
+    count_live(1);
+  }
+  TextureRef(const TextureRef&) = delete;
+  TextureRef& operator=(const TextureRef&) = delete;
+  ~TextureRef() { count_live(-1); }
+
+private:
+  // Live totals for aurora_get_texture_stats (render targets apart from sampled textures).
+  void count_live(int sign) noexcept;
 };
 
 TextureHandle new_static_texture_2d(uint32_t width, uint32_t height, uint32_t mips, u32 gxFormat,
                                     ArrayRef<uint8_t> data, bool tlut, const char* label) noexcept;
 TextureHandle new_dynamic_texture_2d(uint32_t width, uint32_t height, uint32_t mips, u32 gxFormat,
                                      const char* label) noexcept;
-TextureHandle new_render_texture(uint32_t width, uint32_t height, u32 gxFormat, const char* label) noexcept;
+// mips > 1: the sample view spans every level; the attachment view is level 0 only.
+// format: Undefined is the surface format (an EFB copy's).
+TextureHandle new_render_texture(uint32_t width, uint32_t height, u32 gxFormat, const char* label,
+                                 uint32_t mips = 1,
+                                 wgpu::TextureFormat format = wgpu::TextureFormat::Undefined) noexcept;
 TextureHandle new_conv_texture(uint32_t width, uint32_t height, u32 gxFormat, const char* label) noexcept;
 void write_texture(TextureRef& ref, ArrayRef<uint8_t> data) noexcept;
 }; // namespace aurora::gfx
@@ -91,7 +110,7 @@ struct GXTexObj_ {
   GXTexWrapMode wrap_t() const noexcept { return static_cast<GXTexWrapMode>(get_bits(mode0, 2, 2)); }
   GXTexFilter min_filter() const noexcept {
     constexpr GXTexFilter kHwToGxFilter[8] = {
-        GX_NEAR, GX_NEAR_MIP_NEAR, GX_LIN_MIP_NEAR, GX_NEAR, GX_LINEAR, GX_NEAR_MIP_LIN, GX_LIN_MIP_LIN, GX_NEAR,
+        GX_NEAR, GX_NEAR_MIP_NEAR, GX_NEAR_MIP_LIN, GX_NEAR, GX_LINEAR, GX_LIN_MIP_NEAR, GX_LIN_MIP_LIN, GX_NEAR,
     };
     return kHwToGxFilter[get_bits(mode0, 3, 5)];
   }

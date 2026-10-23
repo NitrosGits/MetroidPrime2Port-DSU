@@ -454,16 +454,24 @@ endif()
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
         platform/port_save.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
+        platform/port_crash.cpp platform/port_watchdog.cpp platform/port_storage_report.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
-        platform/port_overlay_settings.cpp
         platform/port_gyro_motion.cpp
-        platform/port_overlay_search.cpp
+        platform/port_dynamic_res.cpp platform/port_video.cpp
+        platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
+        platform/debug_ui/game_sections.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
+        platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
+        platform/debug_ui/tabs.cpp platform/debug_ui/ui_common.cpp platform/debug_ui/video.cpp
+        platform/debug_ui/window.cpp
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
-        platform/port_ui_common.cpp platform/input/port_input_remap_ui.cpp
+        platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp
         platform/port_textures.cpp platform/port_prompts.cpp)
+    # port_crash.cpp prints MP_BUILD_REVISION in its report.
+    add_dependencies(mp_port_audio port_build_info)
     target_include_directories(mp_port_audio PRIVATE
+        "${CMAKE_BINARY_DIR}/generated"
         platform/include
         extern/aurora/include
         extern/musyx-port/include
@@ -481,8 +489,8 @@ if(AURORA_SDL3_TARGET)
     # platform/main.cpp turns fd 1 and fd 2 into logcat lines and resolves its directories
     # through SDL_GetPrefPath on Android, so the entry object needs SDL3's headers there.
     # AURORA_SDL3_TARGET only exists once Aurora has been added, which is why this is here
-    # rather than with the target itself; the desktop path includes no SDL header and is
-    # unaffected by the extra include directory.
+    # rather than with the target itself; the desktop path needs it for the disc message and
+    # picker.
     target_include_directories(mp_port_entry PRIVATE
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
 else()
@@ -517,6 +525,11 @@ endforeach()
 # test.
 if(AURORA_SDL3_TARGET)
     enable_testing()
+    # Every F1 row is in platform/port_settings_index.inc (the settings search) and every settings key
+    # in docs/SETTINGS.md (tools/check_settings_index.py, MP1's checker).
+    add_test(NAME port_settings_index COMMAND ${Python3_EXECUTABLE} -I
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_settings_index.py ${CMAKE_CURRENT_SOURCE_DIR})
+    set_tests_properties(port_settings_index PROPERTIES TIMEOUT 30 LABELS port)
     add_executable(port_touch_pad_tests tests/touch_pad.cpp platform/touch_pad.cpp)
     target_include_directories(port_touch_pad_tests PRIVATE platform/include extern/aurora/include
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
@@ -541,6 +554,11 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_tick_pair_tests PRIVATE platform/include)
     add_test(NAME port_tick_pair_tests COMMAND port_tick_pair_tests)
     set_tests_properties(port_tick_pair_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # Dynamic resolution's controller (platform/port_dynamic_res.cpp, MP1's) on modelled scenes.
+    add_executable(port_dynamic_res_tests tests/port_dynamic_res.cpp platform/port_dynamic_res.cpp)
+    target_include_directories(port_dynamic_res_tests PRIVATE platform/include)
+    add_test(NAME port_dynamic_res_tests COMMAND port_dynamic_res_tests)
+    set_tests_properties(port_dynamic_res_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The input engine (platform/input/port_input_engine.cpp): bindings, chords, contexts and
     # device profiles resolve to the right pad state. Engine-independent: no SDL, Aurora or game.
     add_executable(port_input_engine_tests tests/port_input_engine.cpp
@@ -548,6 +566,12 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_input_engine_tests PRIVATE platform/include)
     add_test(NAME port_input_engine_tests COMMAND port_input_engine_tests)
     set_tests_properties(port_input_engine_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The gyro filter (platform/port_gyro_motion.cpp, MP1's): calibration, manual calibration,
+    # spaces, smoothing and tightening over GamepadMotionHelpers. No SDL, Aurora or game.
+    add_executable(port_gyro_motion_tests tests/port_gyro_motion.cpp platform/port_gyro_motion.cpp)
+    target_include_directories(port_gyro_motion_tests PRIVATE platform/include)
+    add_test(NAME port_gyro_motion_tests COMMAND port_gyro_motion_tests)
+    set_tests_properties(port_gyro_motion_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The bindings parser/writer (platform/input/port_input_bindings.cpp): a controls file parses
     # into engine bindings and round-trips, with bad input rejected rather than half-applied.
     add_executable(port_input_bindings_tests tests/port_input_bindings.cpp

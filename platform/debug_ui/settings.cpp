@@ -3,7 +3,7 @@
 // debug_ui/settings.cpp; the keys and the variables they reach are MP2's. State shared with
 // port_overlay.cpp is in port_overlay_internal.h.
 
-#include "port_overlay_internal.h"
+#include "../port_overlay_internal.h"
 
 #include "port_env.h"
 #include "port_livesplit.h"
@@ -11,6 +11,7 @@
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_settings.h"
+#include "port_video.h"
 
 #include "Kyoto/Streams/CBitStreamReader.hpp"
 #include "Kyoto/Streams/CBitStreamWriter.hpp"
@@ -25,6 +26,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -190,6 +192,20 @@ const SettingKey kSettingKeys[] = {
      "2",
      "1"},
     BoolKey< &sGyroCursorCamera >("gyro_cursor_camera"),
+    BoolKey< &sGyroSplit >("gyro_split"),
+    {"gyro_sensitivity_y",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= PortOverlay::kGyroSensitivityMin &&
+           parsed <= PortOverlay::kGyroSensitivityMax)
+         sGyroSensitivityY = parsed;
+     },
+     [](std::ostream& out) { out << sGyroSensitivityY; },
+     false,
+     "2",
+     "1"},
+    BoolKey< &sResetAimBoth >("reset_aim_both"),
+    BoolKey< &sMenuStandardButtons >("menu_standard_buttons"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
     // Mouse and stick aim. These live in PortMouse rather than here, and the file is read by
     // PortMouse's own ReadEnv (the file first, the MP2_* environment on top), so the rows below
@@ -211,13 +227,32 @@ const SettingKey kSettingKeys[] = {
        }
      },
      [](std::ostream& out) { out << PortMouse::Sensitivity(); }, false, "0.0035", "0.007"},
+    {"mouse_sensitivity_split",
+     [](const std::string& value) { PortMouse::SetSensitivitySplit(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::SensitivitySplit()); }, false, "1", "0"},
+    {"mouse_sensitivity_y",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= 0.0001f && parsed <= 0.1f) {
+         PortMouse::SetSensitivityY(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortMouse::SensitivityY(); }, false, "0.0035", "0.007"},
+    {"mouse_dpi",
+     [](const std::string& value) {
+       int parsed = 0;
+       if (ParseInt(value, parsed) && parsed >= 100 && parsed <= 64000) {
+         PortMouse::SetMouseDpi(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortMouse::MouseDpi(); }, false, "800", "1600"},
     {"twin_stick",
      [](const std::string& value) { PortMouse::SetStickEnabled(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortMouse::StickEnabled()); }, false, "1", "0"},
     {"stick_aim_rate",
      [](const std::string& value) {
        float parsed = 0.f;
-       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 4000.f) {
+       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 10000.f) {
          PortMouse::SetStickAimRate(parsed);
        }
      },
@@ -228,7 +263,7 @@ const SettingKey kSettingKeys[] = {
     {"stick_aim_rate_y",
      [](const std::string& value) {
        float parsed = 0.f;
-       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 4000.f) {
+       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 10000.f) {
          PortMouse::SetStickAimRateY(parsed);
        }
      },
@@ -350,6 +385,65 @@ const SettingKey kSettingKeys[] = {
        }
      },
      [](std::ostream& out) { out << PortPhoto::Speed(); }, false, "4", "1.5"},
+    // Video > Quality, Frame rate and Compatibility rows from MP1 (f1b).
+    BoolKey< &sShowShaderCompilation >("show_shader_compilation"),
+    BoolKey< &sShowMenuHint >("show_menu_hint"),
+    BoolKey< &sPerPixelLighting >("per_pixel_lighting"),
+    BoolKey< &sDynamicRes >("dynamic_res"),
+    {"dynamic_res_target",
+     [](const std::string& value) { sDynamicResTarget = std::clamp(std::atoi(value.c_str()), 0, 240); },
+     [](std::ostream& out) { out << sDynamicResTarget; }, false, "0", "60"},
+    {"dynamic_res_min",
+     [](const std::string& value) {
+       const float f = static_cast< float >(std::atof(value.c_str()));
+       if (std::isfinite(f)) {
+         sDynamicResMin = std::clamp(f, 0.5f, 1.f);
+       }
+     },
+     [](std::ostream& out) { out << sDynamicResMin; }, false, "0.5", "0.75"},
+    {"upscale_sharpen",
+     [](const std::string& value) { sSharpenMode = value == "off" ? 0 : value == "always" ? 2 : 1; },
+     [](std::ostream& out) { out << (sSharpenMode == 0 ? "off" : sSharpenMode == 2 ? "always" : "dynamic"); },
+     false, "off", "always"},
+    {"upscale_sharpen_amount",
+     [](const std::string& value) { sSharpenAmount = std::clamp(std::atoi(value.c_str()), 0, 100); },
+     [](std::ostream& out) { out << sSharpenAmount; }, false, "0", "80"},
+    {"fps_cap", [](const std::string& value) { sFpsCap = PortOverlay::ClampFpsCap(std::atoi(value.c_str())); },
+     [](std::ostream& out) { out << sFpsCap; }, false, "0", "144"},
+    {"opengles",
+     [](const std::string& value) {
+       sOpenGles = ParseBool(value);
+       sOpenGlesAtStart = sOpenGles;
+     },
+     [](std::ostream& out) { WriteBool(out, sOpenGles); }, false, "1", "0"},
+    {"storage_clamp",
+     [](const std::string& value) {
+       const int v = std::atoi(value.c_str());
+       sStorageClamp = v < 0 ? -1 : (v > 0 ? 1 : 0);
+       sStorageClampAtStart = sStorageClamp;
+     },
+     [](std::ostream& out) { out << sStorageClamp; }, false, "-1", "1"},
+    {"low_power_gpu",
+     [](const std::string& value) {
+       sLowPowerGpu = ParseBool(value);
+       sLowPowerGpuAtStart = sLowPowerGpu;
+     },
+     [](std::ostream& out) { WriteBool(out, sLowPowerGpu); }, false, "1", "0"},
+    {"driver_workarounds",
+     [](const std::string& value) {
+       sDriverWorkarounds = PortVideo::ParseDriverWorkarounds(value);
+       sDriverWorkaroundsAtStart = sDriverWorkarounds;
+     },
+     [](std::ostream& out) {
+       const char* sep = "";
+       for (size_t i = 0; i < PortVideo::kDriverWorkaroundCount; ++i) {
+         if (sDriverWorkarounds & (1u << i)) {
+           out << sep << PortVideo::kDriverWorkarounds[i].key;
+           sep = ",";
+         }
+       }
+     },
+     true, "keep_depth", "unmonitored_fence,validation"},
     // Last, as in MP1: the game's options blob (PortOverlay::SyncGameOptions).
     {"game_options", [](const std::string& value) { sGameOptions = value; },
      [](std::ostream& out) { out << sGameOptions; }, true, "0a1b", "ff"},
@@ -447,12 +541,44 @@ void LoadSettings() {
     ApplySettingsText(lines);
   }
   sBaseline = SettingsText();
-  // The settings in effect, in the log: on Android the file itself is in the app's private
-  // directory, so this is the only way to see from a device log what the run played with.
-  std::istringstream effective(sBaseline);
-  for (std::string line; std::getline(effective, line);) {
-    if (!line.empty() && line[0] != '#') {
-      std::fprintf(stderr, "port: setting %s\n", line.c_str());
+  // The settings in effect go to the log from LogSettings, once the log file has started.
+}
+
+// MP1's LogSettings: bug reports come with the log but rarely the settings file, so every setting
+// in effect is logged at startup, wrapped into lines of a readable length (keys in alphabetical
+// order, a value holding a path cut to its file name), then the MP2_* variables in effect.
+void LogSettings() {
+  std::string text;
+  {
+    std::lock_guard< std::recursive_mutex > lock(sMutex);
+    text = SettingsText();
+  }
+  std::string line;
+  const auto flush = [&line] {
+    if (!line.empty()) {
+      std::fprintf(stderr, "port: settings:%s\n", line.c_str());
+      line.clear();
+    }
+  };
+  for (const auto& [key, value] : SettingsValues(text)) {
+    const size_t slash = value.find_last_of("/\\");
+    const std::string entry =
+        " " + key + "=" + (slash == std::string::npos ? value : value.substr(slash + 1));
+    if (line.size() + entry.size() > 160) {
+      flush();
+    }
+    line += entry;
+  }
+  flush();
+  // MP2_* variables override the file for one run (already in the values above).
+#if defined(_WIN32)
+  char** env = _environ;
+#else
+  char** env = environ;
+#endif
+  for (; env != nullptr && *env != nullptr; ++env) {
+    if (std::strncmp(*env, "MP2_", 4) == 0) {
+      std::fprintf(stderr, "port: env: %s\n", *env);
     }
   }
 }

@@ -27,15 +27,15 @@
 #include <dolphin/dvd.h>
 #include <dolphin/gx/GXAurora.h>
 
+#include <algorithm>
 #include <cstdio>
+#include <vector>
 #include <csignal>
 #if defined(__ANDROID__)
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <time.h>
 #include <android/log.h>
-#else
-#include <execinfo.h>
 #endif
 #if defined(__linux__)
 #include <sys/prctl.h>
@@ -44,13 +44,12 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
-#if defined(__ANDROID__)
-// SDL owns the app's private directories on Android, and the port's own three are resolved
-// beneath them here, so the entry needs SDL's headers on Android. The include directory is
-// attached to this target in CMakeLists.txt, in the AURORA_SDL3_TARGET block, and nothing
-// outside this `#if` includes SDL.
+// SDL owns the app's private directories on Android, where the port's own three are resolved
+// beneath them, and shows the disc message and picker everywhere. The include directory is
+// attached to this target in CMakeLists.txt, in the AURORA_SDL3_TARGET block.
 #include <SDL3/SDL.h>
 #include <atomic>
+#if defined(__ANDROID__)
 #include <cerrno>
 #include <fstream>
 #include <thread>
@@ -78,6 +77,8 @@ extern void* gPortGameHeapHi;
 #endif
 #include "port_env.h"
 #include "port_breadcrumb.h"
+#include "port_crash.h"
+#include "port_storage_report.h"
 #include "port_logfile.h"
 #include "port_save.h"
 #include "port_overlay.h"
@@ -86,6 +87,7 @@ extern void* gPortGameHeapHi;
 #include "port_textures.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
+#include "port_video.h"
 
 // The decompilation's exported entry point; see src/MetroidPrime/main.cpp.
 namespace port {
@@ -620,81 +622,165 @@ void PortLogDrain() {}
 
 #endif
 
-} // namespace
-
-// A SIGSEGV that prints where it happened. `tools/boot_probe.sh` reports "died on signal 11"
-// and nothing else, which is enough to know the boot died and not enough to fix it: the last
-// `printf` before the marker says which *step*, and everything inside that step is a guess.
-// A backtrace turns the guess into a measurement, and it costs one signal handler.
-//
-// Deliberately not a substitute for a debugger: this has to work in the exact binary
-// `boot_probe.sh` builds, with the reach stubs linked and no debugger attached, because that
-// is the configuration that reproduces the fault. `-rdynamic` is already in the link line, so
-// `backtrace_symbols` can name our own functions rather than only addresses.
-//
-// bionic has no `execinfo.h`, so Android has no backtrace to print, and it discards stderr:
-// there the logcat line below is what says the port caught anything at all, and the fault
-// address is the one piece of information a tombstone alone makes awkward to pin down. The
-// re-raise is unchanged, so bionic still writes its own tombstone.
-#if defined(__ANDROID__)
-#include <dlfcn.h>
-#include <unwind.h>
-
-// The stack, as "module+0xoffset (symbol)" lines: bionic prints no backtrace of its own before the
-// re-raise, and the tombstone it writes is only readable with the app's unstripped .so to hand.
-// Printing the frames here means a crash is one `adb logcat -s mp2port` away, and the offsets
-// symbolise with `llvm-symbolizer --obj=<unstripped libmetroid_prime2_port.so> 0x<offset>`.
-// Formatted into a buffer and written with write(2): the signal handler may be on a thread whose
-// stdio locks are held.
-struct PortWalk {
-  int frame;
-};
-
-static _Unwind_Reason_Code PortWalkFrame(_Unwind_Context* context, void* argument) {
-  PortWalk* walk = static_cast< PortWalk* >(argument);
-  const uintptr_t pc = _Unwind_GetIP(context);
-  if (pc == 0 || walk->frame >= 32) {
-    return _URC_END_OF_STACK;
+// ---------------------------------------------------------------------------
+// The disc check after mounting (MP1's FindUnreadableDiscFile / AskPickDisc / AskForDiscImage).
+// ---------------------------------------------------------------------------
+// An image cut short by an interrupted download or copy still opens, since the header is at the
+// front, and the game only finds out a few frames in, when a read fails. Images store the disc in
+// order, so a cut loses the files that end last first: reading the last byte of those catches it
+// before the game starts. Returns the first file that can't be read, or an empty string.
+std::string FindUnreadableDiscFile() {
+  constexpr size_t kFilesToCheck = 8;
+  const Uint64 start = SDL_GetTicks();
+  const s32 count = aurora_dvd_base_entry_count();
+  std::vector<std::pair<int64_t, s32>> ends; // (end offset, entry), the last ones first
+  for (s32 entry = 1; entry < count; ++entry) {
+    const int64_t offset = aurora_dvd_base_offset(entry);
+    if (offset < 0) {
+      continue; // a directory
+    }
+    void* file = aurora_dvd_base_open(entry);
+    const int64_t size = file != nullptr ? aurora_dvd_base_seek(file, 0, SEEK_END) : -1;
+    aurora_dvd_base_close(file);
+    ends.emplace_back(offset + std::max<int64_t>(size, 0), entry);
   }
-  char line[384];
-  Dl_info symbol{};
-  int used = 0;
-  if (dladdr(reinterpret_cast< void* >(pc), &symbol) != 0 && symbol.dli_fname != nullptr) {
-    const char* name = std::strrchr(symbol.dli_fname, '/');
-    name = name != nullptr ? name + 1 : symbol.dli_fname;
-    used = std::snprintf(line, sizeof line, "[port]   #%d %s+0x%lx%s%s\n", walk->frame, name,
-                         static_cast< unsigned long >(
-                             pc - reinterpret_cast< uintptr_t >(symbol.dli_fbase)),
-                         symbol.dli_sname != nullptr ? " " : "",
-                         symbol.dli_sname != nullptr ? symbol.dli_sname : "");
-  } else {
-    used = std::snprintf(line, sizeof line, "[port]   #%d 0x%lx\n", walk->frame,
-                         static_cast< unsigned long >(pc));
+  std::sort(ends.begin(), ends.end(), std::greater<>());
+  ends.resize(std::min(ends.size(), kFilesToCheck));
+  for (const auto& [end, entry] : ends) {
+    void* file = aurora_dvd_base_open(entry);
+    const int64_t size = file != nullptr ? aurora_dvd_base_seek(file, 0, SEEK_END) : -1;
+    uint8_t last = 0;
+    const bool ok = size == 0 || (size > 0 && aurora_dvd_base_seek(file, size - 1, SEEK_SET) == size - 1 &&
+                                  aurora_dvd_base_read(file, &last, 1) == 1);
+    aurora_dvd_base_close(file);
+    if (!ok) {
+      char path[256] = {};
+      return DVDConvertEntrynumToPath(entry, path, sizeof(path)) ? std::string(path)
+                                                                 : "entry " + std::to_string(entry);
+    }
   }
-  if (used > 0) {
-    ::write(STDERR_FILENO, line, static_cast< size_t >(used < int(sizeof line) ? used : int(sizeof line) - 1));
-  }
-  ++walk->frame;
-  return _URC_NO_REASON;
+  std::fprintf(stderr, "metroid_prime2_port: disc image is complete (its last %zu files read in %llu ms)\n",
+               ends.size(), static_cast<unsigned long long>(SDL_GetTicks() - start));
+  return {};
 }
 
-// The handlers ours replaced (debuggerd's), by signal number, to chain to after the backtrace.
-constexpr int kPortFaultSignalSlots = 32;
-struct sigaction gPortPreviousFault[kPortFaultSignalSlots] = {};
+constexpr const char* kSupportedDisc = "Metroid Prime 2: Echoes for the GameCube is supported:\nUSA 1.00 (G2ME01).";
 
-static void PortFaultHandler(int sig, siginfo_t* info, void* /*context*/) {
-  const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
-  const void* faultAddress = info != nullptr ? info->si_addr : nullptr;
-  // Not "backtrace follows" as the desktop path says: bionic prints none, and the
-  // tombstone the re-raise produces is the stack this platform gets. The frames below are ours.
-  std::fprintf(stderr, "\n[port] caught %s (%d) - backtrace follows\n", name, sig);
-  PortBreadcrumb::Dump();
-  PortWalk walk{0};
-  _Unwind_Backtrace(PortWalkFrame, &walk);
-  std::fflush(stderr);
-  // Everything above went into the stderr pipe, and only the pump thread turns it into logcat
-  // lines: give it up to half a second to empty the pipe, or the process dies with the backtrace
-  // and the breadcrumbs still in it (a save-state crash on the tablet left nothing but the exit).
+// No box and no picker when nothing can answer them: MP2_NO_DISC_DIALOG, a headless run, a bounded
+// scripted run (MP2_FRAMES), or no window. A refused disc then ends the run, as it always did.
+SDL_Window* DiscDialogWindow() {
+  if (port::EnvFlag("MP2_NO_DISC_DIALOG") || port::EnvFlag("MP2_HEADLESS") ||
+      port::EnvString("MP2_FRAMES") != nullptr) {
+    return nullptr;
+  }
+  int windowCount = 0;
+  SDL_Window** windows = SDL_GetWindows(&windowCount);
+  SDL_Window* window = windows != nullptr && windowCount > 0 ? windows[0] : nullptr;
+  SDL_free(windows);
+  return window;
+}
+
+// Says on screen why the disc was refused (without it a refused disc looks like a crash on
+// start) and asks whether to pick another (true) or close the game. With offerPick false the
+// box only has Close.
+bool ShowDiscError(const std::string& problem, const std::string& path, bool offerPick) {
+  SDL_Window* window = DiscDialogWindow();
+  if (window == nullptr) {
+    return false;
+  }
+  // Short lines: some message boxes do not wrap (SDL's X11 one).
+  const std::string message = problem + "\n\n" + path + "\n\n" + kSupportedDisc;
+  enum { kClose, kPick };
+  const SDL_MessageBoxButtonData buttons[] = {
+      {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, kPick, "Pick another disc"},
+      {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT | (offerPick ? 0u : SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT), kClose,
+       "Close"},
+  };
+  SDL_MessageBoxData data{};
+  data.flags = SDL_MESSAGEBOX_ERROR;
+  data.window = window;
+  data.title = "Metroid Prime 2: wrong disc image";
+  data.message = message.c_str();
+  data.numbuttons = offerPick ? 2 : 1;
+  data.buttons = offerPick ? buttons : buttons + 1;
+  std::fprintf(stderr, "metroid_prime2_port: showing the disc message\n");
+  int answer = -1;
+  if (!SDL_ShowMessageBox(&data, &answer)) {
+    std::fprintf(stderr, "metroid_prime2_port: could not show the disc message: %s\n", SDL_GetError());
+    return false;
+  }
+  return offerPick && answer == kPick;
+}
+
+#if !defined(__ANDROID__)
+// The desktop's file dialog for another image, for this launch only (the desktop's disc comes
+// from the command line, MP2_DISC or the executable's folder, so nothing is remembered). SDL
+// answers on another thread, so this pumps events until it does; a quit or five minutes give up.
+std::string PickDiscImage() {
+  static std::atomic<bool> answered{false};
+  static std::string chosen;
+  answered.store(false);
+  chosen.clear();
+  SDL_Window* window = DiscDialogWindow();
+  if (window == nullptr) {
+    return {};
+  }
+  // Static: SDL reads the filters until the dialog closes, which can outlive this call.
+  static const SDL_DialogFileFilter filters[] = {
+      {"Metroid Prime 2: Echoes disc image (iso, gcm, rvz, wbfs, ciso, nkit)", "iso;gcm;rvz;wbfs;ciso;nkit"},
+      {"All files", "*"},
+  };
+  const SDL_PropertiesID props = SDL_CreateProperties();
+  SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_FILTERS_POINTER, const_cast<SDL_DialogFileFilter*>(filters));
+  SDL_SetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, 2);
+  SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_WINDOW_POINTER, window);
+  SDL_SetStringProperty(props, SDL_PROP_FILE_DIALOG_TITLE_STRING,
+                        "Select your Metroid Prime 2: Echoes disc image (GameCube, USA v1.00)");
+  SDL_ShowFileDialogWithProperties(
+      SDL_FILEDIALOG_OPENFILE,
+      [](void*, const char* const* files, int) {
+        if (files != nullptr && files[0] != nullptr) {
+          chosen = files[0];
+        }
+        answered.store(true);
+      },
+      nullptr, props);
+  SDL_DestroyProperties(props);
+  const Uint64 deadline = SDL_GetTicks() + 5 * 60 * 1000;
+  while (!answered.load()) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_EVENT_QUIT) {
+        std::fprintf(stderr, "metroid_prime2_port: disc selection cancelled\n");
+        return {};
+      }
+    }
+    if (SDL_GetTicks() > deadline) {
+      std::fprintf(stderr, "metroid_prime2_port: disc selection timed out\n");
+      return {};
+    }
+    SDL_Delay(10);
+  }
+  if (chosen.empty()) {
+    std::fprintf(stderr, "metroid_prime2_port: no disc image picked\n");
+  }
+  return chosen;
+}
+#endif
+
+} // namespace
+
+// Crash reports are PortCrash's (platform/port_crash.cpp): signal, fault address, module offset,
+// build, stack and breadcrumbs, written into the log, and the signal then goes on to the handler
+// that was there before (the default one, so the exit status still says "died on signal 11",
+// which boot_probe.sh greps; on Android debuggerd's, which writes the tombstone).
+#if defined(__ANDROID__)
+// Everything the report wrote went into the stderr pipe, and only the pump thread turns it into
+// logcat lines: give it up to half a second to empty the pipe, or the process dies with the stack
+// and the breadcrumbs still in it (a save-state crash on the tablet left nothing but the exit).
+// The main log turns over within seconds on a busy device; the crash buffer keeps the last line
+// (and the tombstone) for hours.
+static void PortCrashAfterReport(int sig, const void* faultAddress) {
   for (int waited = 0; waited < 50 && gLogPipeRead >= 0; ++waited) {
     int queued = 0;
     if (::ioctl(gLogPipeRead, FIONREAD, &queued) != 0 || (queued == 0 && gLogPumpIdle.load())) {
@@ -703,37 +789,8 @@ static void PortFaultHandler(int sig, siginfo_t* info, void* /*context*/) {
     const timespec tick = {0, 10 * 1000 * 1000};
     ::nanosleep(&tick, nullptr);
   }
-  // The main log turns over within seconds on a busy device; the crash buffer keeps this line
-  // (and the tombstone below) for hours.
-  __android_log_buf_print(LOG_ID_CRASH, ANDROID_LOG_FATAL, "mp2port", "[port] caught %s (%d) at %p",
-                          name, sig, faultAddress);
-  // Hand the signal on to the handler that was there before ours (debuggerd's), which writes
-  // the tombstone and then dies on the signal, so the exit status still says "died on signal 11".
-  // SIG_DFL here skipped debuggerd: no tombstone, only a "SIGNALED" exit record. The signal is
-  // blocked while this handler runs, so the raise is delivered to that handler on return.
-  if (sig > 0 && sig < kPortFaultSignalSlots) {
-    sigaction(sig, &gPortPreviousFault[sig], nullptr);
-  } else {
-    std::signal(sig, SIG_DFL);
-  }
-  std::raise(sig);
-}
-#else
-static void PortFaultHandler(int sig) {
-  const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
-  std::fprintf(stderr, "\n[port] caught %s (%d) - backtrace follows\n", name, sig);
-  std::fflush(stderr);
-  PortBreadcrumb::Dump();
-  void* frames[64];
-  const int n = ::backtrace(frames, 64);
-  ::backtrace_symbols_fd(frames, n, STDERR_FILENO);
-  std::fflush(stderr);
-  // Re-raise with the default handler so the exit status still says "died on signal 11",
-  // which is what boot_probe.sh greps for. A handler that swallows it would make the probe
-  // report a clean exit, and a clean exit from a segfaulting boot is the one lie worth
-  // being unable to tell.
-  std::signal(sig, SIG_DFL);
-  std::raise(sig);
+  __android_log_buf_print(LOG_ID_CRASH, ANDROID_LOG_FATAL, "mp2port", "[port] caught signal %d at %p", sig,
+                          faultAddress);
 }
 #endif
 
@@ -755,24 +812,6 @@ int main(int argc, char** argv) {
   if (const char* allow = getenv("MP2_ALLOW_PTRACE"); allow && allow[0] == '1') {
     prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
   }
-#endif
-
-#if defined(__ANDROID__)
-  // `signal(2)` never hands the handler the fault address, so Android installs the
-  // handler that can take one. Nothing else about the registration differs.
-  struct sigaction faultAction = {};
-  faultAction.sa_sigaction = PortFaultHandler;
-  faultAction.sa_flags = SA_SIGINFO;
-  sigemptyset(&faultAction.sa_mask);
-  sigaction(SIGSEGV, &faultAction, &gPortPreviousFault[SIGSEGV]);
-  sigaction(SIGBUS, &faultAction, &gPortPreviousFault[SIGBUS]);
-  sigaction(SIGILL, &faultAction, &gPortPreviousFault[SIGILL]);
-  sigaction(SIGFPE, &faultAction, &gPortPreviousFault[SIGFPE]);
-#else
-  std::signal(SIGSEGV, PortFaultHandler);
-  std::signal(SIGBUS, PortFaultHandler);
-  std::signal(SIGILL, PortFaultHandler);
-  std::signal(SIGFPE, PortFaultHandler);
 #endif
 
   // Android has no environment to set, so the app's own directories stand in where the
@@ -835,6 +874,19 @@ int main(int argc, char** argv) {
   // The log file (platform/port_logfile.cpp) starts here, before aurora_initialize below, so
   // Aurora's own startup lines and anything that aborts during it land in the file too.
   PortLogFile::Start(touchUser != nullptr ? touchUser : std::string());
+  // Crash reports into that log (MP2_CRASH_TEST=segv|abort crashes here to check one).
+#if defined(__ANDROID__)
+  PortCrash::SetAfterReport(PortCrashAfterReport);
+#endif
+  PortCrash::Install();
+  // Into that log, as MP1 does: every setting in effect and the MP2_* variables, then (from a
+  // background thread) how much space each folder the port writes to takes.
+  PortOverlaySettings::LogSettings();
+  {
+    const char* cache = EnvOrFallback("MP2_CACHE_PATH", appPaths.cache);
+    PortStorageReport::StartLogging({touchUser != nullptr ? touchUser : std::string(),
+                                     cache != nullptr ? cache : std::string()});
+  }
 
   // The save tools (platform/port_save.cpp) keep their backups beside controls.toml; the card's own
   // path comes from Aurora when a command needs it.
@@ -856,7 +908,7 @@ int main(int argc, char** argv) {
   // 720p by default, as the Prime 1 port: 16:9 unless the aspect setting is 4:3. The render mode
   // follows the setting (PortOverlay::ApplyAspect); Aurora upscales to the window either way.
   const bool widescreen = PortOverlay::AspectMode() != PortOverlay::kAspect_4_3;
-  const AuroraConfig config = {
+  AuroraConfig config = {
       .appName = kAppName,
       .userPath = EnvOrFallback("MP2_USER_PATH", appPaths.user),
       .cachePath = EnvOrFallback("MP2_CACHE_PATH", appPaths.cache),
@@ -873,7 +925,11 @@ int main(int argc, char** argv) {
       .mem2Size = ARAM_DEFAULT_SIZE,
   };
 
+  // F1 > Video > Compatibility (PortVideo, f1b): OpenGL ES, the storage clamp, the low-power
+  // adapter and the driver workarounds' Dawn toggles, all read when the GPU device is made.
+  PortVideo::BeginGpuStart(config.userPath != nullptr ? config.userPath : "", config);
   aurora_initialize(argc, argv, &config);
+  PortVideo::GpuStarted();
   // Keep the internal framebuffer at the game's aspect rather than the window's,
   // so a mismatched window shape letterboxes instead of stretching.
   AuroraSetViewportPolicy(AURORA_VIEWPORT_FIT);
@@ -909,7 +965,7 @@ int main(int argc, char** argv) {
     PortPrompts::Initialize(textures.empty() ? nullptr : textures.c_str());
   }
 
-  const std::string discImage =
+  std::string discImage =
 #if defined(__ANDROID__)
       // Resolved and, if need be, picked from the user's storage before Aurora started.
       androidDiscImage;
@@ -924,22 +980,50 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if (!aurora_dvd_open(discImage.c_str())) {
-    std::fprintf(stderr, "metroid_prime2_port: failed to open disc image: %s\n", discImage.c_str());
-    aurora_shutdown();
-    PortLogDrain();
-    return 1;
-  }
-
-  const DVDDiskID* discId = DVDGetCurrentDiskID();
-  if (discId == nullptr || !port::entry::IsSupportedDisc(*discId)) {
-    std::fprintf(stderr,
-                 "metroid_prime2_port: unsupported disc; expected Metroid Prime 2: Echoes "
-                 "(USA) (v1.00), G2ME01 revision 0.\n");
-    aurora_dvd_close();
-    aurora_shutdown();
-    PortLogDrain();
-    return 1;
+  // A disc that will not open, is not the one game this runs, or is cut short is said on screen
+  // and, on the desktop, asked for again (MP1's loop). A scripted or headless run, and Android
+  // (whose picker ran before Aurora), print the reason and end as before.
+  for (;;) {
+    std::string problem;
+    if (!aurora_dvd_open(discImage.c_str())) {
+      std::fprintf(stderr, "metroid_prime2_port: failed to open disc image: %s\n", discImage.c_str());
+      problem = "This file could not be read as a GameCube disc image.";
+    } else if (const DVDDiskID* discId = DVDGetCurrentDiskID();
+               discId == nullptr || !port::entry::IsSupportedDisc(*discId)) {
+      std::fprintf(stderr,
+                   "metroid_prime2_port: unsupported disc; expected Metroid Prime 2: Echoes "
+                   "(USA) (v1.00), G2ME01 revision 0.\n");
+      problem = "This disc image is not Metroid Prime 2: Echoes (USA) 1.00.";
+      aurora_dvd_close();
+    } else if (const std::string unreadable = FindUnreadableDiscFile(); !unreadable.empty()) {
+      std::fprintf(stderr, "metroid_prime2_port: disc image is incomplete: %s can't be read\n", unreadable.c_str());
+      problem = "This disc image is incomplete or damaged: part of it (" + unreadable +
+                ") can't be read.\nIt's probably an interrupted download or copy. Copy the file again.";
+      aurora_dvd_close();
+    }
+    if (problem.empty()) {
+      break;
+    }
+#if defined(__ANDROID__)
+    constexpr bool kCanPick = false;
+#else
+    constexpr bool kCanPick = true;
+#endif
+    if (!ShowDiscError(problem, discImage, kCanPick)) {
+      aurora_shutdown();
+      PortLogDrain();
+      return 1;
+    }
+#if !defined(__ANDROID__)
+    std::fprintf(stderr, "metroid_prime2_port: asking for the disc image again\n");
+    discImage = PickDiscImage();
+    if (discImage.empty()) {
+      ReportNoDisc(argc > 0 ? argv[0] : nullptr);
+      aurora_shutdown();
+      PortLogDrain();
+      return 1;
+    }
+#endif
   }
   std::printf("metroid_prime2_port: disc mounted: %s\n", discImage.c_str());
 
@@ -1012,7 +1096,13 @@ int main(int argc, char** argv) {
     // src/MetroidPrime/PortDefaultFont.cpp.
     void* defaultFont = port::LoadDefaultFont();
 
-    InvokeCMain(argc, argv, &osContext, nullptr, &memorySys, nullptr);
+    // An exception out of the game is logged with its type and what() before the abort, whose
+    // crash report follows; uncaught, it would end the run with only "terminate called".
+    try {
+      InvokeCMain(argc, argv, &osContext, nullptr, &memorySys, nullptr);
+    } catch (...) {
+      PortCrash::AbortOnException("the main loop");
+    }
 
     port::FreeDefaultFont(defaultFont);
     port::modules::ShutdownAll();
