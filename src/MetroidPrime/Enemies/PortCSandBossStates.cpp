@@ -407,9 +407,12 @@ void CSandBoss::SuckAir(CStateManager& mgr, EStateMsg msg, float dt) {
         IsBallInRange(*player)) {                                                   // fn_55_5B38
       const CVector3f mouth = GetLctrTransform(mArmorLocators[0]).GetTranslation(); // 0xF00
       const CVector3f toMouth = mouth - player->GetTranslation();
-      if (toMouth.IsMagnitudeSafe()) {
+      const float mag = toMouth.Magnitude(); // 0xB86C
+      // 0xB88C fcmpo (mag - 0.0), 1e-05 (rodata_130); 0xB890 blt skips: a NaN pulls.
+      if (!(mag < 1e-05f)) {
         // Mass scaled, so the pull speed does not depend on the player's mass (retail's 0x158).
-        const CVector3f impulse = toMouth.AsNormalized() * (dt * (player->GetMass() * 150.f));
+        // 0xB89C: the direction is toMouth * (1.0 / mag).
+        const CVector3f impulse = toMouth * (1.f / mag) * (dt * (player->GetMass() * 150.f));
         player->ApplyImpulseWR(impulse, CAxisAngle::Identity());
         player->UseCollisionImpulses();
         player->SetMinimalAccelerationTimer(dt * 2.f);
