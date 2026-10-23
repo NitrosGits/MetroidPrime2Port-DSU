@@ -5,7 +5,7 @@ loader, the ctors and empty stubs; the port's bodies are in
 `src/MetroidPrime/Enemies/PortCMediumIng.cpp` (the upstream stubs they replace sit under
 `#ifndef TARGET_PC`). Function table: `MediumIng_functions.tsv` (class B/H/T, slice, marker).
 
-## Status (2026-10-23, lanes mi1 + mi2 + mi3 + mi4 + mi5)
+## Status (2026-10-24, lanes mi1 + mi2 + mi3 + mi4 + mi5 + ming1)
 
 - mi1 (slice 1, `PortCMediumIng.cpp`): Think, AcceptScriptMsg, PreRender, Render, Touch, Death,
   the mist/safe-zone/listen bodies, CalculateSeparation and the helpers UpdateTimers 3274,
@@ -29,11 +29,20 @@ loader, the ctors and empty stubs; the port's bodies are in
   arm is dead (SetFlagE1 unreferenced). SelectTarget 698C / SetDashDestination 261C match the asm
   (open arms in `MediumIng_states.md`). Plain-`bge` clamps (NaN -> 0 / keep left) fixed in Dead,
   SetDash, CalculateSeparation. 3064 is compiler glue (H). The upstream-matched bodies (triggers,
-  ctors, loader) carry no marker: the port compiles upstream's code unchanged.
+  ctors, loader) carried no marker until ming1: the port compiles upstream's code unchanged.
 - mi5: SelectTarget 698C, SetDashDestination 261C and CalculateSeparation 2024 marked (37/155 B)
   from `mediuming_forced3.con` (console `pathfail`, `setarea`, `spawn AJMP`, `codecall`) merged
   with the zone and play runs. CalculateSeparation's flee CanBeNormalized-false arm 0x2298 is dead:
   retail Flee returns the normalized delta or the transform's forward column, both unit length.
+- ming1: gcov of the seven drivers (`mediuming_{play,forced,forced2,forced3,dead,zone,dash}.con`)
+  marks 20 upstream triggers/helpers whose every line and branch ran (1E28 1E4C 2328 2390 23E4
+  2438 2534 2558 2B74 2BCC 2BD8 2C2C 2E04 2E50 3268 4628 5BD8 5C24 5C68 5D7C; retail and host are
+  both branchless or both arms ran) and SetMeshPathDestination 2A74 (both reachable-point arms).
+  55 compiler-glue rows reclassified H. `tools/cov/specs/mediuming_triggers.py` (ret per trigger)
+  is too slow for full drivers (about 366 frames in 900 s); use it with short forced scripts only.
+  Still open: the Should*Attack/Leash/HasPattern/IsLuredBySafeZone/ValidateSafeZone arms, team AI
+  (QuitTeam/JoinTeam, Arm/MeleeAttack 0x890/0x961), IncrementFrustatedCounter/IsMisting (never
+  called), and the state arms in `MediumIng_states.md`.
 - asmcheck: the bitfield run mC0..mE2 (0xCFC..0xCFE, MSB first: mC0 = 0xCFC 0x80) has no stated
   anchor in the upstream header, so every bit is NOPOS/BIT. Checked by hand for the marked
   states.

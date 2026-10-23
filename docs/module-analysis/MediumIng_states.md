@@ -32,7 +32,7 @@ Upstream triggers all match the asm; none changed.
 | SelectTarget | 698C | marked (mi5) | forced (`mediuming_forced3.con`): Search miss 0x6A30 (`pathfail u0454 on` + `codecall SelectTarget`); spawned AJMPs take inactive 0x6A88, type 0x6A94, other area 0x6AA4 (`setarea`) and the same-area type-1 null-land arm. From a land waypoint on (0x6AD8 safe-zone tests, 6D08/6BFC) it is dead in shipped data: no area that spawns a MING has an AJMP (mi4 disc scan). The AiWaypoint list is mgr+0x838 = list 5 |
 | SetLeashTarget | 6880 | played (`tp` to area 40) | danger-actor arm 0x6908 |
 | SetRetreatDestination | 2564 | played | retreat actor found 0x25D8 |
-| SetMeshPathDestination | 2A74 | played | reachable-point fail arm |
+| SetMeshPathDestination | 2A74 | marked (ming1) | both FindClosestReachablePoint arms (0x2B40, gcov 8/8 lines); host-only static-guard contention arm dead |
 | SetDashDestination | 261C | marked (mi5) | every arm (gcov 12/12); forced (`mediuming_forced3.con`): candidate in the active zone 0x2994 (`codecall SetDashDestination` with the player in u0451), reachable miss 0x29E4 (`pathfail`) |
 | FindSafeZoneRetreatPoint | 13E4 | played | ran with no safe zone only (0x1424 ret 0) |
 | FindClosestRetreatActor | 1BA8 | played | FindClosestConnectedActor: no connection of the state matched |
