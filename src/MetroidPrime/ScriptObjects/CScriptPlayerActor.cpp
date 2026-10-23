@@ -198,7 +198,13 @@ void CScriptPlayerActor::Think(float dt, CStateManager& mgr) {
     } else if (HasGunModelData() && player->GetCameraManager()->IsInCinematicCamera()) {
       CancelBeamLoad();
     } else {
+#ifdef TARGET_PC
+      // fn_61_2630 0x27d4 lwz r4,0xebc(r31) (mPlayerGun); 0x27dc lwz r4,0x778(r4): the gun's
+      // mNextBeamId (GetPrimaryDestWeaponId), not mCurrentBeamId at 0x774.
+      LoadBeam(player->GetPlayerGun()->GetPrimaryDestWeaponId());
+#else
       LoadBeam(player->GetPlayerGun()->GetPrimaryWeaponId());
+#endif
     }
     if (mBeamModelLoading) {
       PumpBeamModel(mgr);
