@@ -41,6 +41,10 @@ public:
   float GetSkyFogStart() const { return x50; }
   float GetSkyFogEnd() const { return x54; }
   const CColor& GetSkyFogColor() const { return m_color; }
+#ifdef TARGET_PC
+  // The flag kSM_Create hands to CStateManager::SetIsDarkWorld (0x8013C668: lbz 0x24, extrwi 1,25).
+  bool PortIsDarkWorld() const { return m_isDarkWorld; }
+#endif
 
   void AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&) override;
 };

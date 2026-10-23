@@ -2464,6 +2464,10 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
         break;
       }
     }
+    if (editorId == kInvalidEditorId) {
+      Fail("spawn: no free editor id left in 0xFF00..0xFFFE of this area");
+      return;
+    }
     const CVector3f pos =
         player->GetTranslation() + dir * dist + right * (3.f * (n - (count - 1) * 0.5f));
     SSpawnBlob blob;

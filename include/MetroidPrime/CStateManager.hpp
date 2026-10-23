@@ -183,6 +183,8 @@ public:
   // Consumed once per update, so a request waits until a world is there to take it.
   void PortWarpTick();
   void PortWarpToArea(TAreaId aid);
+  void PortSetDarkWorldFromArea(TAreaId aid);
+  void PortDarkWorldTick();
   void PortWarpToWorld(CAssetId worldId, CAssetId areaId);
   CAssetId PortFirstAreaOfWorld(CAssetId worldId) const;
   void PortWarpToDock();
@@ -239,9 +241,9 @@ public:
   TAreaId mPortSpawnAtArea = kInvalidAreaId;
   uint mPortSpawnAtFrame = 0;
   bool mPortSpawnWarned = false;
-  // The dark-world flag as it was before a hop was handed to the game's transition, so the flip
-  // PrepareAreaTransition performs can be undone (a warp is not a light<->dark portal crossing).
-  bool mPortIsDarkWorld = false;
+  // An arrival whose dark-world flag waits for the area's map area (PortDarkWorldTick).
+  TAreaId mPortDarkFlagArea = kInvalidAreaId;
+  uint mPortDarkFlagUntil = 0;
   // A layer activation asked for by a test token (`MP2_INPUT`'s `LAYER<layer>`): the layer has to
   // stream in before its script objects can be created, so the request is remembered here and
   // finished by PortLayerTick once the layer reports itself ready.
