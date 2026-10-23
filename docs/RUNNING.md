@@ -220,6 +220,7 @@ differently at the two update rates, and pbug's PillBug fsm reads differ the sam
 vs Turn)).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
 Forty of the families keep a checked module's actors loading: grenchler (Torvus
+Thirty-one of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -241,6 +242,9 @@ Grounds 0b_temple_hall), gbug (Great Temple 0i_temple_hall), pssm (Torvus Bog 0g
 12_temple_finalgate), chog (Agon Wastes 08_sand_casualpirates, which spawns two ChozoGhosts with a
 borrowed SpacePirate body and drives every state) and drkc (Temple Grounds dark
 06_temple_sacredpath_dark)
+dark 0d_swamp_hall_dark) and scriptgui (the FrontEnd world 69802220, which is the one family that
+needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
+and plct (Agon Wastes 05_portalpuzzle)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
