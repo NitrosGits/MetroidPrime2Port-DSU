@@ -1,0 +1,30 @@
+# Rezbit natural play, Sanctuary Fortress 02_cliff_reactorcore layers 3+4 (modules.tsv row 53).
+# No fsm forcing: the Rezbit is put in front of the player at attack-band distances, damaged and
+# shot with real beam projectiles, and the player (GODMODE) stands still while it fights back.
+@f600 status
+@f1000 layer 3
+@f1300 layer 4
+@f1500 obj e0005011b
+@f1600 objs rezbit
+@f1700 place e0005011b player 10
+@f1800 damage e0005011b 1
+@f2200 obj e0005011b
+@f3000 place e0005011b player 20
+@f3400 shoot e0005011b
+@f4200 obj e0005011b
+@f5000 place e0005011b player 35
+@f6000 damage e0005011b 2
+@f7000 obj e0005011b
+@f8000 place e0005011b player 12
+@f9000 shoot e0005011b 0 6
+@f10000 obj e0005011b
+@f11000 place e0005011b player 50
+@f12000 damage e0005011b 3
+@f13000 obj e0005011b
+@f14000 place e0005011b player 18
+@f15000 obj e0005011b
+@f16000 objs rezbit
+@f17000 status
+@f18000 place e00050065 player 15
+@f19000 damage e00050065 1
+@f19500 objs rezbit

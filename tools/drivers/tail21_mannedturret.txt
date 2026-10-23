@@ -1,0 +1,27 @@
+# AIMannedTurret 5: activate the attached CScriptActors before Start (the animated object's
+# AnimationData), stay in range long enough to aim and telegraph, then leave its range (leash).
+@f600 status
+@f900 layer 2
+@f1100 send e001d005c Activate
+@f1150 send e001d005f Activate
+@f1300 tp 180 -70 10
+@f1400 place e001d0055 player 12
+@f1450 send e001d0055 Start
+@f1500 damage e001d0055 1
+@f2000 obj e001d0055
+@f2400 tp 182 -68 10
+@f2600 damage e001d0055 1
+@f3200 obj e001d0055
+@f4000 tp 150 -85 10
+@f4600 obj e001d0055
+@f5200 obj e001d0055
+@f6000 tp 181 -68 10
+@f7000 obj e001d0055
+@f8000 obj e001d0055
+@f9000 kill e001d0238
+@f9600 obj e001d0238
+@f10000 tp 182 -110 10
+@f10400 place e001d0238 player 10
+@f10800 damage e001d0238 1
+@f11400 obj e001d0238
+@f12000 status

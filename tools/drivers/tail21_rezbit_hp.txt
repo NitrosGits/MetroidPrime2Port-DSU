@@ -1,0 +1,48 @@
+# Rezbit 3: close range (virus band), shot repeatedly (shield break), HP walked down (de-rez),
+# noise (Listen), one killed (Death/Dead). Natural play only; no fsm/statecall.
+@f600 status
+@f1000 layer 3
+@f1300 layer 4
+@f1500 obj e0005011b
+@f1600 place e0005011b player 4
+@f1700 damage e0005011b 1
+@f1800 shoot e0005011b
+@f2000 shoot e0005011b charged
+@f2200 shoot e0005011b
+@f2400 shoot e0005011b charged
+@f2600 obj e0005011b
+@f2800 place e0005011b player 5
+@f3000 shoot e0005011b
+@f3200 shoot e0005011b
+@f3400 shoot e0005011b
+@f3600 obj e0005011b
+@f4000 place e00050065 player 4
+@f4200 damage e00050065 1
+@f4400 shoot e00050065
+@f4600 shoot e00050065
+@f4800 obj e00050065
+@f5200 obj e0005011b
+@f6000 damage e0005011b 40
+@f6600 obj e0005011b
+@f7000 damage e0005011b 40
+@f7600 obj e0005011b
+@f8000 damage e0005011b 40
+@f8600 obj e0005011b
+@f9000 damage e0005011b 40
+@f9600 obj e0005011b
+@f10000 damage e0005011b 40
+@f10600 obj e0005011b
+@f11000 damage e0005011b 40
+@f11600 obj e0005011b
+@f12000 place e0005011b player 8
+@f12600 obj e0005011b
+@f13500 obj e0005011b
+@f14000 obj e0005011b
+@f14500 obj e0005011b
+@f15000 noise 0
+@f15500 noise 1
+@f16000 obj e0005011b
+@f17000 kill e00050047
+@f17600 obj e00050047
+@f18000 objs rezbit
+@f19000 status
