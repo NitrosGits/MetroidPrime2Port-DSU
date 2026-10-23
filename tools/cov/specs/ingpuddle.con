@@ -1,0 +1,34 @@
+# Agon Wastes 06_sand_alamofront_dark layer 2: the disc's seven IngPuddles, all inactive at load.
+# e082600c1/c2 (hp 5) and e08260040/44 (hp 10000) follow Patrol waypoints, e0826013f/140/142 have no
+# path (Idle). Activate wakes them; a Deactivate on a puddle never activated takes the wasActive=0
+# arm, Activate+Deactivate in one step the no-emitter arm. Deleting c2's first waypoint ends its
+# patrol (Patrol -> Idle); `damage` (the player, not a weapon) takes HandleDamage's null-weapon
+# return, a power shot the normal arm and kills c1 on patrol, a charged shot the heavy arm and
+# kills c2 from Idle (Idle Deactivate -> Dead). `fsm` refuses: CIngPuddle is no CPatterned.
+# For tools/cov/specs/ingpuddle.py.
+@f300 layer 2
+@f360 god 1; give missile 50; give chargeBeam 1
+@f380 send e08260140 Deactivate
+@f400 send e082600c1 Activate; send e082600c2 Activate; send e08260040 Activate; send e08260044 Activate; send e0826013f Activate; send e08260142 Activate
+@f402 obj e082600be; send e082600be Delete; send e002600be Delete
+@f420 tp 132 -88 54
+@f440 send e08260140 Activate; send e08260140 Deactivate
+@f700 obj e082600c1; obj e082600c2; obj e0826013f
+@f900 shoot e08260040
+@f960 shoot e08260040 missile
+@f1020 shoot e08260040 charged
+@f1060 obj e08260040
+@f1100 damage e08260044 5
+@f1400 send e0826013f Deactivate
+@f1460 send e0826013f Activate
+@f1600 obj e082600c1; obj e082600c2
+@f1700 obj e082600c2
+@f1800 damage e082600c2 1
+@f1860 obj e082600c2
+@f2200 shoot e082600c1
+@f2260 obj e082600c1
+@f2400 shoot e082600c2 charged
+@f2460 obj e082600c2
+@f2700 objs IngPuddle
+@f2800 send e08260142 Delete
+@f2900 objs IngPuddle
