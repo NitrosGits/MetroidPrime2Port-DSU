@@ -1,0 +1,52 @@
+# PlantScarabSwarm (module 49: CPlantScarabSwarm, the PSSM "Morphology: Seedburster"): the swarm's
+# boids fly out as launched boids, run their attack animation at the player and drop grenades, take
+# shared-model render and the launched-boid touch, then tear down through its own health.
+# Torvus Bog 0g_swamp_hall (world 3dfd2249), layer 3, its only placement e001e00b6 - which the layer
+# loads active; the steps Activate it all the same, as the coverage driver does.
+# The steps repeat the pss1 lane's tools/cov/specs/plantscarabswarm_swamp.con: `layer 3` first, god
+# mode with the morph ball, boost ball, missiles and the three beams, `objs PlantScarabSwarm`,
+# Activate, a `tp` beside the boids so they launch, `obj` reads through the run (the boid counts and
+# the launched boids' own lines), `tp` steps in front of, in and behind the swarm with two `press x`
+# holds (the launched-boid touch), a `tp` away and back, `lockon`, an uncharged and a charged shot and
+# a missile, `obj` again (hp 2/2 -> 0/2), Deactivate/Activate, and the `Delete` - with `objs
+# PlantScarabSwarm` before it and after it.
+# Evidence in the transcript: `objs PlantScarabSwarm` listing the area's one CPlantScarabSwarm at
+# (-157.4, -63.1, 39.5) at f340 (1 objects) and `0 objects` at f2960 once the Delete has run; `obj`
+# reading hp 2/2 and the swarm's own line (active=1 gen=1 pending=0, boids=23/50 created=38/50 at
+# f600, 0/50 at f2000) plus its
+# message map (on DeathRattle send SetToZero to the generator 001e00b7, on Dead to the pickup
+# generator 001e0060, on Patrol send Follow to the waypoint 001e00ef); the shots answering
+# `shot ... at u0632 from 3.0 units`, `(charged)` and `missile ...: 1 in flight, 254 left`, the hp
+# down to 0/2 at f2500; every step answering `=> ok`. The log's `init compiled module
+# PlantScarabSwarm` line lists the whole compiled-module table, so it says the module is registered,
+# not that it ran.
+# Checks are game updates (@f<n>), never wall seconds, and the family is capped: unpaced its 3000
+# updates run from 0.2 s to 0.9/1.5 s (~2000-4000 a second) against con.py's 0.5 s connect, and two
+# unpaced runs' transcripts are not even the same read (a boot's object ids differ, u049e against
+# u0618, and the boid counts 2/50 against 4/50 follow the update rate - the swarm generates boids
+# per update), so the rate would decide the baseline. Capped, its 3000 updates take ~46 s (2.1 s ->
+# 48.1 s in the log) and two runs are byte-identical. F=3000, last check f2960.
+@f220 layer 3
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; fastmorph 1
+@f340 objs PlantScarabSwarm
+@f380 send e001e00b6 Activate
+@f420 tp -153.0 -66.0 37.0
+@f600 obj e001e00b6
+@f1000 tp -150.5 -67.5 36.0
+@f1220 press x 30
+@f1400 tp -150.5 -67.5 36.0
+@f1600 press x 30
+@f1640 tp -146.0 -70.0 36.0
+@f1840 tp -157.4 -63.1 39.5
+@f2000 obj e001e00b6
+@f2020 tp 142.6 -63.1 119.5
+@f2200 tp -153.0 -66.0 37.0
+@f2400 lockon 1
+@f2420 shoot e001e00b6; shoot e001e00b6 charged
+@f2460 shoot e001e00b6 missile
+@f2500 obj e001e00b6
+@f2600 send e001e00b6 Deactivate
+@f2640 send e001e00b6 Activate
+@f2700 tp -153.0 -66.0 37.0
+@f2900 send e001e00b6 Delete
+@f2960 objs PlantScarabSwarm

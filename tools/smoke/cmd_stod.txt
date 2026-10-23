@@ -1,0 +1,46 @@
+# StoneToad (module 77: CStoneToad, the WATCH "Mechanoid: Watchdrone"): it sleeps on its start
+# position and the room's safe zone wakes it - WakeUp, ReactToSafeZone, MoveAway to its first active
+# waypoint, Wait - and sends it back (MoveBack, GoToSleep, Sleep) when the zone is switched off and
+# it is Decremented. A direct hit does nothing; beam and missile shots provoke ReactToWeapon. It
+# turns its head at the player with four additive aim animations (UpdateLookAt).
+# Torvus Bog dark 09_swamp_catacombs_dark (world 3dfd2249), layer 0: its two toads e00410048
+# (-46.1, -197.3, -45.0) and e00410066 (-22.3, -184.7, -45.1), both hp 5 and asleep, and the safe
+# zone e00410043 that provokes e00410048.
+# The steps repeat the st1 lane's tools/cov/specs/stonetoad.con: god mode with the light beam,
+# `objs StoneToad` and an `obj` of each toad, Activate on the safe zone (e00410048: Touch ->
+# ReactToSafeZone -> WakeUp -> MoveAway -> Wait), the direct hit on e00410066 and a beam shot, `obj`
+# pairs through the run, the zone's Deactivate plus e00410048's Decrement (MoveBack -> GoToSleep ->
+# Sleep), a missile and the Increment/Decrement/AIUpdateDisabled messages on e00410066,
+# Deactivate/Activate on it, `kill` on e00410066 and a final `obj`/`objs StoneToad`.
+# Evidence in the transcript: `objs StoneToad` listing both toads at their spawn positions at f300;
+# `obj` reading hp 5/5, body state 5 and each toad's message map (on APRC send Follow to its own
+# 0041006x/0041002e CScriptAIWaypoint, on Attack send ResetAndStart to its 0041006x/0041004a
+# CScriptTimer), with e00410048 walking its fsm ReactToSafeZone -> MoveAway -> MoveBack -> GoToSleep
+# -> Sleep and e00410066 woken by the missile (Sleep -> WakeUp -> MoveAway, body state 12 on the
+# wake's first read) and `inactive` after its Deactivate at f1100; the direct hit answering
+# hp 5.0 -> 5.0 (a CStoneToad only reacts to WeaponHits); `kill` answering `killed`, with the toad
+# still listed by the f1300 `objs` (killed actors are deleted on their own timer, so the list is the
+# check, not a count); every step answering `=> ok`. The log's `init compiled module StoneToad` line
+# lists the whole compiled-module table, so it says the module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds, and the family is capped: unpaced, its 1500
+# updates are over (0.2 s -> 0.5 s) at the very moment con.py connects at 0.5 s - spor's failure
+# mode, where a faster machine would drive an area that had already stopped - so it stays capped
+# (~21 s: 2.1 s -> 23.1 s in the log); its capped transcript is byte-identical between runs.
+# F=1500, last check f1300.
+@f300 god 1; give LightBeam 1; beam light; objs StoneToad; obj e00410048; obj e00410066
+@f320 send e00410043 Activate
+@f330 damage e00410066 1
+@f340 shoot e00410066
+@f380 obj e00410048; obj e00410066
+@f460 obj e00410048; obj e00410066
+@f560 obj e00410048; obj e00410066
+@f600 send e00410043 Deactivate; send e00410048 Decrement
+@f660 obj e00410048; obj e00410066
+@f760 obj e00410048; obj e00410066; shoot e00410066 missile
+@f860 obj e00410048; obj e00410066; send e00410066 Increment
+@f960 obj e00410048; obj e00410066; send e00410066 Decrement
+@f1060 obj e00410048; obj e00410066; send e00410066 AIUpdateDisabled
+@f1100 send e00410066 Deactivate; obj e00410066
+@f1140 send e00410066 Activate; obj e00410066
+@f1200 obj e00410048; kill e00410066
+@f1300 obj e00410048; objs StoneToad
