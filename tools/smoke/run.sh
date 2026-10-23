@@ -76,7 +76,7 @@ fi
 # script is timed in game updates (`@f<n>`, gameplay from ~f240), never in wall seconds.
 # The module families (grenchler, grenguard, flyingpirate, mediuming, metroid, sporb, blogg, swarm,
 # gunturret, rezbit, parasite, lumite, shrieker, ingswarm, darktrooper, bacteriaswarm, tryclops,
-# wisptentacle)
+# wisptentacle, octapede)
 # boot the area the module lanes' coverage drivers used and repeat their console steps, so a checked
 # module's actors keep loading: tools/cov/specs/{grenchler_entrance,grenchler_guardian,
 # flyingpirate_sandfalls,mediuming_dead,metroid_player,sporb_hall,blogg_shaft,swarmbasics_sand,
@@ -84,7 +84,7 @@ fi
 # ingsnatchingswarm_pathofeyes,bacteriaswarm_temple}.con and tools/drivers/ (lumite and shrieker repeat
 # tools/drivers/lumite_states.py and shrieker_greatbridge.con, darktrooper
 # tools/drivers/darktrooper_unknown.con, tryclops tryclops_grab.con and wisptentacle
-# wisptentacle_hall.con).
+# wisptentacle_hall.con, octapede octapede_cliffhall.con).
 # Append a new family at the end of ALL (its X display is its index) and give it the next free
 # console port.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
@@ -122,7 +122,8 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [darktrooper]="3bfa3eff,04_temple_unknownenemies"
                [bacteriaswarm]="3bfa3eff,04_temple_unknownenemies_dark"
                [tryclops]="1baa96c2,42c85ad9"
-               [wisptentacle]="3bfa3eff,0t_temple_hall_dark" )
+               [wisptentacle]="3bfa3eff,0t_temple_hall_dark"
+               [octapede]="1baa96c2,0p_cliff_hall" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
@@ -130,7 +131,7 @@ declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boos
                [flyingpirate]=2400 [mediuming]=2400 [metroid]=2400 [sporb]=2400 [blogg]=2400
                [swarm]=2400 [gunturret]=2400 [rezbit]=2400 [parasite]=2400
                [lumite]=2400 [shrieker]=2400 [ingswarm]=2400 [darktrooper]=2400
-               [bacteriaswarm]=2400 [tryclops]=2600 [wisptentacle]=6200 )
+               [bacteriaswarm]=2400 [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280
@@ -138,7 +139,7 @@ declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=
                [flyingpirate]=280 [mediuming]=280 [metroid]=280 [sporb]=280 [blogg]=280
                [swarm]=280 [gunturret]=280 [rezbit]=280 [parasite]=280
                [lumite]=280 [shrieker]=280 [ingswarm]=280 [darktrooper]=280
-               [bacteriaswarm]=280 [tryclops]=280 [wisptentacle]=280 )
+               [bacteriaswarm]=280 [tryclops]=280 [wisptentacle]=280 [octapede]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709
                [boostg_fsm]=49710 [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714
@@ -147,7 +148,7 @@ declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [
                [metroid]=49723 [sporb]=49724 [blogg]=49725 [swarm]=49726
                [gunturret]=49727 [rezbit]=49728 [parasite]=49729
                [lumite]=49730 [shrieker]=49731 [ingswarm]=49732 [darktrooper]=49733
-               [bacteriaswarm]=49734 [tryclops]=49735 [wisptentacle]=49736 )
+               [bacteriaswarm]=49734 [tryclops]=49735 [wisptentacle]=49736 [octapede]=49737 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
@@ -160,7 +161,7 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [parasite]=cmd_parasite.txt [lumite]=cmd_lumite.txt [shrieker]=cmd_shrieker.txt
                [ingswarm]=cmd_ingswarm.txt [darktrooper]=cmd_darktrooper.txt
                [bacteriaswarm]=cmd_bacteriaswarm.txt [tryclops]=cmd_tryclops.txt
-               [wisptentacle]=cmd_wisptentacle.txt )
+               [wisptentacle]=cmd_wisptentacle.txt [octapede]=cmd_octapede.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
@@ -170,7 +171,8 @@ declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # gets a console connection - it stays capped (~40 s, ~110 s for wisptentacle's 6200), or nothing
 # would be driven at all.
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
-declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1 )
+declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
+               [octapede]=1 )
 declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=1"
                [ing]="MP2_DEBUG_ING=1 MP2_DEBUG_BEAM=1" )
 
@@ -178,7 +180,7 @@ declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=
 ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spacepirate
      ing ep plain emp3 turret agon54 darksamus splitter grenchler grenguard flyingpirate
      mediuming metroid sporb blogg swarm gunturret rezbit parasite lumite shrieker
-     ingswarm darktrooper bacteriaswarm tryclops wisptentacle)
+     ingswarm darktrooper bacteriaswarm tryclops wisptentacle octapede)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 
