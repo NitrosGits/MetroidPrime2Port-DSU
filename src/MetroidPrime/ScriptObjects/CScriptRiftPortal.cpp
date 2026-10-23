@@ -37,6 +37,7 @@ void PSMTX44Trans(Mtx44 m, f32 xT, f32 yT, f32 zT);
 #include <float.h>
 #include <math.h>
 
+// @ fn_64_28B4
 CScriptRiftPortal::CScriptRiftPortal(TUniqueId uid, const rstl::string& name,
                                      const CEntityInfo& info, const CModelData& model,
                                      const CModelData& backgroundModel,
@@ -59,12 +60,11 @@ CScriptRiftPortal::CScriptRiftPortal(TUniqueId uid, const rstl::string& name,
 , mOpening(false)
 , mOpen(false)
 , mRipPortal(ripPortal)
-, mDrawnOnce(false) {
 #ifdef TARGET_PC
+, mDrawnOnce(false) {
   // Retail tail (fn_64_28B4, 0x2A70..0x2B04): draw enabled (x153 bit 0x20) and particle DB
-  // rendered inside (x152 bit 0x20); the actor moves mScale.x along its local Y and turns
-  // lbl_64_rodata_3C = pi/2 about local X. Render undoes exactly this. Retail calls
-  // CActor::SetTransformAlt, which the host CActor lacks; SetTransform stands in.
+  // rendered inside (x152 bit 0x20); moves mScale.x along local Y, turns rodata_3C = pi/2 about
+  // local X (Render undoes this). Retail's CActor::SetTransformAlt = host SetTransform.
   SetDrawEnabled(true);
   SetRenderParticleDatabaseInside(true);
   CTransform4f portalXf(xf);
@@ -73,11 +73,15 @@ CScriptRiftPortal::CScriptRiftPortal(TUniqueId uid, const rstl::string& name,
   portalXf.RotateLocalX(CRelAngle::FromRadians(M_PIF / 2.f));
   portalXf.SetTranslation(pos);
   SetTransform(portalXf);
-#endif
 }
+#else
+, mDrawnOnce(false) {}
+#endif
 
+// @ fn_64_0
 CScriptRiftPortal::~CScriptRiftPortal() {}
 
+// @ fn_64_2500
 void CScriptRiftPortal::UpdateProjectiles(CStateManager& mgr, float dt) {
   if (mProjectileAttraction == 0) {
     return;
@@ -132,6 +136,7 @@ void CScriptRiftPortal::AdvanceModel(CModelData& model, CStateManager& mgr, floa
   }
 }
 
+// @ fn_64_2194
 void CScriptRiftPortal::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -166,6 +171,7 @@ void CScriptRiftPortal::Think(float dt, CStateManager& mgr) {
   UpdateProjectiles(mgr, dt);
 }
 
+// @ fn_64_1CE4
 void CScriptRiftPortal::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case 'XALD': { // Guessed message
@@ -238,6 +244,7 @@ void CScriptRiftPortal::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
   CActor::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_64_1C38
 void CScriptRiftPortal::AddToRenderer(const CStateManager& mgr) const {
   if (mgr.IsActorVisible(*this)) {
     EnsureRendered(mgr);
@@ -248,6 +255,7 @@ void CScriptRiftPortal::AddToRenderer(const CStateManager& mgr) const {
 }
 
 // Guessed name: copies a region of the frame buffer into a texture.
+// @ fn_64_1B44
 static void CopyFrameBufferRegion(bool halfSize, void* dest, GXTexFmt format, bool clear, uint left,
                                   uint top, uint width, uint height) {
   const bool videoFilter = CGraphics::GetUseVideoFilter();
@@ -498,6 +506,7 @@ void CScriptRiftPortal::Render(const CStateManager& mgr) const {
   CGX::SetFog(fogType, fogStartZ, fogEndZ, fogNearZ, fogFarZ, fogColor);
 }
 
+// @ fn_64_C38
 void CScriptRiftPortal::PreRender(CStateManager& mgr) {
   CActor::PreRender(mgr);
   if (!mOpening && mOpen) {
@@ -509,6 +518,7 @@ void CScriptRiftPortal::PreRender(CStateManager& mgr) {
 
 bool CScriptRiftPortal::CanRenderUnsorted(const CStateManager& mgr) const { return false; }
 
+// @ fn_64_B68
 void CScriptRiftPortal::PreRenderAllViewports(CStateManager& mgr) {
   const CAABox bounds(GetTranslation(), GetTranslation());
   SetOtherBounds(bounds);
@@ -516,11 +526,13 @@ void CScriptRiftPortal::PreRenderAllViewports(CStateManager& mgr) {
   UpdatePortalSystemState(mgr);
 }
 
+// @ fn_64_B2C
 void CScriptRiftPortal::SetActive(bool active) {
   CActor::SetActive(active);
   SetDrawEnabled(true);
 }
 
+// @ fn_64_128
 CEntity* LoadRiftPortal(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrRiftPortal sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrRiftPortal.inc"
@@ -565,13 +577,16 @@ CEntity* LoadRiftPortal(CStateManager& mgr, CInputStream& input, CEntityInfo& in
 }
 
 #ifndef MONOLITHIC
+// @ fn_64_F8
 static void SetFuncPtrs() {
   static SRiftPortal_FuncPtrs funcPtrs;
   funcPtrs.mLoadRiftPortal = &LoadRiftPortal;
   SetSRiftPortal_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_64_D8
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_64_B4
 extern "C" void RELExit() { SetSRiftPortal_FuncPtrs(nullptr); }
 #endif

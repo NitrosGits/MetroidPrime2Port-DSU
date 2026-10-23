@@ -1,7 +1,10 @@
 # Rift portal driver (tools/cov/specs/riftportal.py): Temple Grounds 12_temple_finalgate has one
 # portal (e00070073, inactive at load). The player stands 12 units in front of it; Activate draws
 # it, Increment plays the line animation until the portal opens, shots go through its projectile
-# box, AreaLoaded rebuilds the box, Decrement stops the animations, Deactivate hides it.
+# box, AreaLoaded rebuilds the box, Decrement stops the animations, Deactivate hides it. Then the
+# player steps close (the portal overfills the screen), turns its centre off-screen (copy-rect
+# clamp), looks away (culled), drops from above, and lays morph-ball bombs in the projectile box
+# (a kMT_Projectile actor that is not a CGameProjectile).
 @f300 god 1; obj e00070073; tp 4.5 118.7 -16.6; face 0
 @f340 send e00070073 Activate; obj e00070073
 @f400 screenshot
@@ -17,4 +20,20 @@
 @f1200 send e00070073 Deactivate; obj e00070073
 @f1260 send e00070073 Increment
 @f1300 send e00070073 Activate; send e00070073 Increment
-@f1500 obj e00070073; objs RiftPortal
+@f1420 tp 4.5 124.7 -16.6; face 0
+@f1440 screenshot
+@f1460 face 40
+@f1490 face 320
+@f1520 face 65
+@f1550 face 295
+@f1580 face 180
+@f1610 tp 4.5 124.7 13.4; face 0
+@f1670 tp 4.5 118.7 13.4
+@f1730 tp 4.5 110.7 13.4
+@f1790 face 0; tp 4.5 127.7 -16.6; give morphBall 1; give morphBallBombs 1; fastmorph 1
+@f1800 press x 10
+@f1830 press a 4
+@f1850 press a 4
+@f1870 press a 4
+@f1930 press x 10
+@f1980 obj e00070073; objs RiftPortal

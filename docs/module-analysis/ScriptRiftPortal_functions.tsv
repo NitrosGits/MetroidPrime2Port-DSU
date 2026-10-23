@@ -1,0 +1,35 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_64_0	88	B	CScriptRiftPortal::~CScriptRiftPortal()	srp1	dtor (cpp:82)	yes
+00088	fn_64_88	2C	H	CScriptRiftPortal::Accept(IVisitor&)	-	weak vtable copy	no
+000B4	fn_64_B4	24	B	RELExit	srp1	clears the loader (cpp:591)	yes
+000D8	fn_64_D8	20	B	RELMain	srp1	calls SetFuncPtrs (cpp:588)	yes
+000F8	fn_64_F8	30	B	SetFuncPtrs	srp1	registers LoadRiftPortal (cpp:581)	yes
+00128	fn_64_128	634	B	LoadRiftPortal(CStateManager&, CInputStream&, CEntityInfo&)	srp1	SLdr read, model data, new actor (cpp:536); TARGET_PC guard cpp:550	yes
+0075C	fn_64_75C	40	H	TLockedToken<CModel> helper	-	weak/template copy	no
+0079C	fn_64_79C	20	H	TLockedToken<CModel> helper	-	weak/template copy	no
+007BC	fn_64_7BC	28	H	TLockedToken<CModel> helper	-	weak/template copy	no
+007E4	fn_64_7E4	13C	H	TLockedToken<CModel> copy (CToken + Lock)	-	weak/template copy	no
+00920	fn_64_920	6C	H	token deleting dtor	-	weak/template copy	no
+0098C	fn_64_98C	54	H	token deleting dtor	-	weak/template copy	no
+009E0	fn_64_9E0	64	H	weak deleting dtor	-	weak/template copy	no
+00A44	fn_64_A44	60	H	CModelData deleting dtor	-	weak/template copy	no
+00AA4	fn_64_AA4	88	H	SLdrRiftPortal::~SLdrRiftPortal()	-	weak/template copy	no
+00B2C	fn_64_B2C	3C	B	CScriptRiftPortal::SetActive(bool)	srp1	cpp:530	yes
+00B68	fn_64_B68	C8	B	CScriptRiftPortal::PreRenderAllViewports(CStateManager&)	srp1	point bounds + portal state (cpp:522)	yes
+00C30	fn_64_C30	8	B	CScriptRiftPortal::CanRenderUnsorted(const CStateManager&) const	srp1	returns false (cpp:519); never called in a run	no
+00C38	fn_64_C38	50	B	CScriptRiftPortal::PreRender(CStateManager&)	srp1	cpp:510	yes
+00C88	fn_64_C88	EBC	B	CScriptRiftPortal::Render(const CStateManager&) const	srp1	frame-buffer copy + portal draw (cpp:273); TARGET_PC GX constants	no
+01B44	fn_64_1B44	F4	B	CopyFrameBufferRegion (guessed name)	srp1	GX tex copy (cpp:259)	yes
+01C38	fn_64_1C38	AC	B	CScriptRiftPortal::AddToRenderer(const CStateManager&) const	srp1	cpp:248	yes
+01CE4	fn_64_1CE4	4B0	B	CScriptRiftPortal::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	srp1	cpp:175	yes
+02194	fn_64_2194	214	B	CScriptRiftPortal::Think(float, CStateManager&)	srp1	cpp:140	yes
+023A8	fn_64_23A8	50	H	rc_ptr deleting dtor	-	weak/template copy	no
+023F8	fn_64_23F8	108	B	CScriptRiftPortal::AdvanceModel(CModelData&, CStateManager&, float)	srp1	particle POI loop (cpp:124)	no
+02500	fn_64_2500	378	B	CScriptRiftPortal::UpdateProjectiles(CStateManager&, float)	srp1	projectile attraction (cpp:85)	yes
+02878	fn_64_2878	3C	H	weak deleting dtor	-	weak/template copy	no
+028B4	fn_64_28B4	284	B	CScriptRiftPortal::CScriptRiftPortal(...)	srp1	ctor (cpp:41); TARGET_PC tail cpp:63	yes
+02B38	_unresolved	C4	T	_unresolved	-	REL runtime	no
+02BFC	_epilog	24	T	_epilog	-	REL runtime (dtor runner)	no
+02C20	_prolog	24	T	_prolog	-	REL runtime (ctor runner)	no
+02C44	fn_64_2C44	4C	T	ctor/dtor table walker	-	REL runtime	no
+02C90	fn_64_2C90	4C	T	ctor/dtor table walker	-	REL runtime	no
