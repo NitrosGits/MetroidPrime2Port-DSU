@@ -52,6 +52,7 @@ struct SLdrFlyingPirate {
   float unknown_0x7ac85cb6;                 // 0x7ac85cb6
 };
 
+// @ fn_22_12BC
 inline SLdrFlyingPirate::SLdrFlyingPirate()
 : editorProperties()
 , patterned()
@@ -80,12 +81,22 @@ inline SLdrFlyingPirate::SLdrFlyingPirate()
   patterned.health.hI_KnockBackResistance = 5.0f;
   patterned.collisionHeight = 6.0f;
   patterned.stepUpHeight = 0.30000001f;
+#ifdef TARGET_PC
+  // fn_22_12BC: white ambient light (CColor(1,1,1,1) to 0x294 at 0x1434) and visor flags 0xf
+  // (0x2E4 at 0x1444), as the other loaders set them.
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
   searchRadius = 20.0f;
   hearingRadius = 20.0f;
   unknown_0x20daf45e = 0;
   projectileDamage.dI_WeaponType = 9;
   projectileDamage.dI_Damage = 5.0f;
+#ifdef TARGET_PC
+  sound_Projectile = -1; // fn_22_12BC: -1 to 0x318 at 0x1300
+#else
   sound_Projectile = 0;
+#endif
   missileDamage.dI_WeaponType = 9;
   missileDamage.dI_Damage = 10.0f;
   missileDamage.dI_Radius = 5.0f;
@@ -99,13 +110,23 @@ inline SLdrFlyingPirate::SLdrFlyingPirate()
   minimumMissileTime = 10.0f;
   missileTimeVariation = 10.0f;
   flightThrust = 1000.0f;
+#ifdef TARGET_PC
+  sound_Impact = -1; // fn_22_12BC: -1 to 0x360/0x364 at 0x1328/0x1338
+  sound_Spiral = -1;
+#else
   sound_Impact = 0;
   sound_Spiral = 0;
+#endif
   landChance = 25.0f;
   intraBurstShotTime = 0.1f;
   intraBurstShotVariation = 0.050000001f;
+#ifdef TARGET_PC
+  sound_Hurled = -1; // fn_22_12BC: -1 to 0x380/0x384 at 0x1378/0x1388
+  sound_Death = -1;
+#else
   sound_Hurled = 0;
   sound_Death = 0;
+#endif
   doubleAttackChance = 25.0f;
   unknown_0x3427d27f = 25.0f;
   stopHomingRange = 8.0f;
