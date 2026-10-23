@@ -16,6 +16,9 @@
 #include "Kyoto/Math/CPlane.hpp"
 #include "rstl/list.hpp"
 #include "rstl/optional_object.hpp"
+#include "rstl/single_ptr.hpp"
+
+class CPirateRagDoll;
 
 // Host copy of the properties the SpacePirate loader reads (retail: CSpacePirateData, 0x134 bytes
 // at 0x7c0, built by fn_72_10A10). Only the fields milestone 1a keeps are held; the retail offset
@@ -389,7 +392,9 @@ private:
   float xb24_timeSinceHitByPlayer;        // 0xb24 (FLT_MAX)
   float xb28_lowHealthFrenzyTimer;        // 0xb28 (FLT_MAX)
   float xb2c_ragdollDelayTimer;           // 0xb2c
-  void* xb30_;                            // 0xb30 (null; GetRagDoll's slot, unidentified)
+  // 0xb30: module 50's CPirateRagDoll (0x11c bytes). The ctor stores 0 (0xFA14), the dtor frees it
+  // (0xF188), Think's tail (0x1F08-0x2030) builds it once xb2c runs out.
+  rstl::single_ptr< CPirateRagDoll > xb30_ragDoll;
   CIkChain xb34_ikChain;                  // 0xb34 (fn_72_10568 is CIkChain's default ctor)
   float xb7c_cloakDelayTimer;             // 0xb7c
   float xb80_electricParticleTimer;       // 0xb80

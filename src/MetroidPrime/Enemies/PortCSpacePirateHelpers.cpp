@@ -12,6 +12,7 @@
 
 #include "Kyoto/Audio/CSfxManager.hpp"
 #include "MetroidPrime/CRagDoll.hpp"
+#include "MetroidPrime/Enemies/CPirateRagDoll.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CValidEntityPredicate.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWaypoint.hpp"
@@ -57,10 +58,10 @@ rstl::optional_object< CAABox > CSpacePirate::GetActorTouchBounds() const {
 // Retail fn_72_17A0 (0x28): the ragdoll (0xb30) is returned only while it is live: the ragdoll's
 // flag byte 0x70 has to carry 0x40 (asm 0x17B0-0x17B4) and 0x80 (asm 0x17B8-0x17BC), else null
 // (asm 0x17C0).  The DOL's CRagDoll keeps them as mPrimed (0x40, Prime's rlwimi at 0x80160610) and
-// mRenderBoundsValid (0x80, UpdateRenderBounds at 0x8015E374); the port's
-// 0xb30 is never set (the ragdoll is not in this port), so the body is the null arm in every run.
+// mRenderBoundsValid (0x80, UpdateRenderBounds at 0x8015E374). Think's tail builds the ragdoll.
+// @ fn_72_17A0
 CRagDoll* CSpacePirate::GetRagDoll() const {
-  CRagDoll* ragdoll = static_cast< CRagDoll* >(xb30_);
+  CRagDoll* ragdoll = xb30_ragDoll.get();
   if (ragdoll == nullptr) {
     return nullptr; // 0x17A4-0x17A8
   }
