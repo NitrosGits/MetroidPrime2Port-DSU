@@ -71,9 +71,9 @@ Merged (`tools/cov/gcov_report.py build-port-cov /tmp/opencode/sppx1_{A..G}/gcov
 | DropCoins 190C | 13/16 | `denominationMode != 1` (237/246): dead, the only caller is `bl fn_62_190C` at 0x1DE4 in Think after `li r8, 0x1` (0x1DE0), and nothing else in the module's asm names fn_62_190C |
 | Think 1C44 | 37/38 | 366 true arm: the COIN game mode with a first player calls `CGMCoin::SetCanRespawn`; on the port's CGMSinglePlayer that cast corrupts memory, so it is live but unforceable |
 | LoadPlayerController 188 | 8/12 | model present (0x4BC `bne`), proxyType < 0 / > 10 (0x4E8/0x4F0): no shipped PLCT has a type outside 0..10 (§3); the model arm is live data |
-| OnGameEvent 2644, NotifyProxies 11C4, AddDamageOverTime DF8, ClearDamageOverTime D94, CListener::OnGameEvent, GetPlayerMask 1314 | not run | only the multiplayer game modes post game events; CGMSinglePlayer has no listener dispatch |
+| OnGameEvent 2644, NotifyProxies 11C4, AddDamageOverTime DF8, ClearDamageOverTime D94, CListener::OnGameEvent, GetPlayerMask 1314 | not in the gcov runs | only the multiplayer game modes post game events; CGMSinglePlayer has no listener dispatch. Now driven by the port console `gameevent` command (§6) |
 
-Marked (`// @ fn_62_`, 20): 0, EA4, 131C, 13D8, 1448, 16B4, 1718, 1778, 1868, 190C, 1BDC, 1ED8, 1F0C,
+Marked (`// @ fn_62_`, 25): 0, D94, DF8, 11C4, 1314, 2F70, EA4, 131C, 13D8, 1448, 16B4, 1718, 1778, 1868, 190C, 1BDC, 1ED8, 1F0C,
 1F44, 2118, 21DC, 222C, 23D4, 2C58, 2CA8.
 
 `tools/asmcheck.py check ScriptPlayerProxy src/MetroidPrime/ScriptObjects/CScriptPlayerProxy.cpp` leaves 7
@@ -83,23 +83,24 @@ and their conditions; EA4 calls the `reserved_vector::erase` template (fn_62_113
 
 The ctor bitfields carry header position comments (`// 0x230 0x80` / `0x40`).
 
-## 5. Smoke family `plct` (extension proposed)
+## 5. Smoke family `plct` (extension implemented)
 
-`tools/smoke/cmd_plct.txt` drives u0523 on Agon `05_portalpuzzle`, but its header calls u0523 a
-PlayerMessageRelay. In fact u0523 is editor 00120402, the EchoVisorWatcher (proxyType 8). Increment and Decrement
-reach no handler for that type, and the family never switches visors, so InitVisors/CheckVisors' visor
-arms and SendStateToPlayer stay cold. Proposed additions (F stays 2200, last check f2000), natural arms
-only, no forcing:
+`tools/smoke/cmd_plct.txt` drives u0523 on Agon `05_portalpuzzle` (editor 00120402, the EchoVisorWatcher,
+proxyType 8; the header said PlayerMessageRelay before). Steps f420-f740 give the echo visor, switch
+echo/combat/echo/combat with `visor` read-backs, send `AreaLoaded` twice (InitVisors/CheckVisors arms),
+then `gameevent spawn`/`generic` on the natural type (no-op arms, the dispatch itself). A broken visor path
+fails on the `visor` read-backs (combat 0 / echo 1) and on any `[port] caught`/`reach-stub`; the last check
+stays @f2000 (F=2200).
 
-    @f420 god 1; give echoVisor 1
-    @f440 visor echo
-    @f500 obj u0523
-    @f520 visor combat
-    @f560 send u0523 AreaLoaded
-    @f600 visor echo
-    @f640 send u0523 AreaLoaded
-    @f700 obj u0523
-    @f720 visor combat
+## 6. `gameevent` console command (OnGameEvent family)
 
-That adds Think's visor path, CheckVisors Entered/Exited, InitVisors both visor arms and HandleVisorMessage
-to the family. The header line should read "EchoVisorWatcher (proxyType 8)".
+`gameevent <score|kill|generic|scan|damage|stop|spawn> [src] [tgt] [value] [as <proxyType>]` calls
+`CScriptPlayerProxy::PortDeliverGameEvent`, which mimics `CGMMultiplayer::NotifyListeners` (single player's
+`AddListener` is a no-op): every proxy whose player mask has the target bit gets `CListener::OnGameEvent`.
+`as N` retypes the proxy for the call only (not 1, CoinCollector: its arm casts the game mode to CGMCoin).
+Asm walk of OnGameEvent 2644 (all 11 jump-table slots: 0/4 relay+counter reset, 2 archenemy, 9 message
+relay, 10 DOT, 1 coin, 3/5-8 none), NotifyProxies, Add/ClearDamageOverTime, CListener::OnGameEvent and
+GetPlayerMask matches the source line by line. Marked: D94, DF8, 11C4, 1314, 2F70. OnGameEvent is not
+marked: the CoinCollector arm was compared by reading only, it cannot run on CGMSinglePlayer.
+Runs (plct on Agon, 0 caught, 0 reach-stub): every event on the natural type, `as 0/2/4/9/10` with the
+events each arm handles, `as 9 generic 0x454e5452` (NotifyProxies' state match), out-of-range index errors.

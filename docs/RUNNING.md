@@ -127,6 +127,12 @@ guardian's crystals need), `gren.crystal` (crystal state; 4 = ForceGrapple), `gr
 `gren.grappledmg`, `gren.tailhp`, `gren.action` (read-only attack state), `gren.tail` (1 runs DestroyTail).
 The guardian grapple chain: `var <id> gren.scanned 1; var <id> gren.crystal 4; fsm <id> Pursue`
 (`tools/cov/specs/grenchler_grapple*.con`).
+`gameevent <score|kill|generic|scan|damage|stop|spawn> [src] [tgt] [value] [as <proxyType>]` delivers a
+multiplayer game event (CGMMultiplayer::NotifyListeners) to every CScriptPlayerProxy listener whose mask
+holds tgt (0), which CGMSinglePlayer never registers: CListener::OnGameEvent -> OnGameEvent, and through it
+NotifyProxies/AddDOT/ClearDOT. value: float for damage, state for generic. `as N` retypes each proxy for the
+call (shipped single-player ones are EchoVisorWatcher, which ignores events; not 1, CoinCollector, whose arm
+casts the mode to CGMCoin). Prints the proxies reached.
 `scaninfo <id>` prints the 'SCAN' asset an actor's GetScannableObjectInfo answers (no scanning needed).
 `a; b; c` on one line runs all of them in the same game tick (a one-frame window); one reply each.
 `grapple <id> [d]` (ids from `objs grapple`) wakes a grapple point, stands the player d (8) units

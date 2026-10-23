@@ -33,16 +33,19 @@ static EMaterialTypes sDamageMaterial = kMT_Solid; // Guessed name.
 // @ fn_62_0
 CScriptPlayerProxy::~CScriptPlayerProxy() {}
 
+// @ fn_62_2F70 (forced: gameevent as N)
 void CScriptPlayerProxy::CListener::OnGameEvent(CStateManager& mgr, uint sourceIndex,
                                                 uint targetIndex, uint event, const void* value) {
   mOwner->OnGameEvent(mgr, sourceIndex, targetIndex, event, value);
 }
 
+// @ fn_62_D94 (forced: gameevent as N)
 void CScriptPlayerProxy::ClearDamageOverTime(CStateManager& mgr) {
   mDamageOverTime.clear();
   mDamageActive = false;
 }
 
+// @ fn_62_DF8 (forced: gameevent as N)
 void CScriptPlayerProxy::AddDamageOverTime(uint sourceIndex, TUniqueId attacker,
                                            CStateManager& mgr) {
   float damage = mgr.Random()->Range(mCurrentMinDamage, mCurrentMaxDamage);
@@ -93,6 +96,7 @@ void CScriptPlayerProxy::UpdateDamageOverTime(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_62_11C4 (forced: gameevent as N)
 bool CScriptPlayerProxy::NotifyProxies(CStateManager& mgr, CPlayer& player,
                                        EScriptObjectState state) {
   bool sent = false;
@@ -117,6 +121,31 @@ bool CScriptPlayerProxy::NotifyProxies(CStateManager& mgr, CPlayer& player,
   return sent;
 }
 
+#ifdef TARGET_PC
+int CScriptPlayerProxy::PortDeliverGameEvent(CStateManager& mgr, uint sourceIndex,
+                                             uint targetIndex, uint event, const void* value,
+                                             int asType) {
+  int reached = 0;
+  const CObjectList& list = mgr.GetObjectListById(kOL_All);
+  for (int idx = list.GetFirstObjectIndex(); idx != -1; idx = list.GetNextObjectIndex(idx)) {
+    CScriptPlayerProxy* proxy =
+        TCastToPtr< CScriptPlayerProxy >(const_cast< CEntity* >(list[idx]));
+    if (proxy == nullptr || (proxy->GetPlayerMask() & (1u << targetIndex)) == 0) {
+      continue;
+    }
+    const int savedType = proxy->mProxyType;
+    if (asType >= 0) {
+      proxy->mProxyType = asType;
+    }
+    proxy->mListener.OnGameEvent(mgr, sourceIndex, targetIndex, event, value);
+    proxy->mProxyType = savedType;
+    ++reached;
+  }
+  return reached;
+}
+#endif
+
+// @ fn_62_1314
 uint CScriptPlayerProxy::GetPlayerMask() const { return mListener.GetPlayerMask(); }
 
 // @ fn_62_131C
