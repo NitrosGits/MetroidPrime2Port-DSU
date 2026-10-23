@@ -2111,19 +2111,20 @@ void CBlogg::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       CHealthInfo* colHealth = colAct->HealthInfo();
       const float initialHP = HealthInfo()->GetInitialHP();
       if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touchedId))) {
-#ifdef TARGET_PC
-        // fn_7_8F7C 0x98B4-0x98C4 loads weapon+0x2c/0x3c/0x4c: transform column 2 (up), not forward.
-        const CVector3f position = weapon->GetTransform().GetUp();
-#else
         const CVector3f position = weapon->GetTransform().GetForward();
-#endif
         if (senderId == xac4_ && IsHitInMouthDirection(position) && mMouthClosed == 0) {
           ApplyCollisionActorDamage(mgr, senderId, mMouthDamageMultiplier);
           mHitByPlayerProjectile = true;
           mDamageCooldownTimer = skDamageHitTime;
           xbc4_24_ = true;
         } else {
+#ifdef TARGET_PC
+          // fn_7_8F7C: the weapon vector is its forward (0x9824 weapon+0x28/0x38/0x48, mTransform
+          // at 0x24); 0x98B4-0x98C4 dots it with this+0x2c/0x3c/0x4c, the Blogg's column 2 (up).
+          const CVector3f forward = GetTransform().GetUp();
+#else
           const CVector3f forward = GetTransform().GetForward();
+#endif
           if (CVector3f::Dot(position.AsNormalized(), forward) > 0.f) {
             ApplyCollisionActorDamage(mgr, senderId, mBodyDamageMultiplier);
             mHitByPlayerProjectile = true;
