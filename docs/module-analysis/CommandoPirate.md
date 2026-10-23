@@ -2225,3 +2225,43 @@ Dead state with `fsm`, cp.c64/c66/c4c (new console var) written in the Dead entr
 word is reset between ticks, 0x1D0C), the two optionals cleared on calls 0/2 mod 4. The spec's c38
 key read 0 on every entry, but `CSfxManager::RemoveEmitter` is only called from 2048 in this
 extent (its other Kyoto callers go to `S3dRemoveEmitter`), so the call count is the evidence.
+
+## The cp9 rows (2026-10-23)
+
+The last eleven class-B rows: read against the asm, fixed, every live arm covered by gcov
+(`build-port-cov`, one run: `BUILD=build-port-cov COV_GDB_SCRIPT=tools/cov/force_ret.py
+tools/cov/force.sh tools/cov/specs/commandopirate_cp9.py <out> 'swamp,05_swamp_timber!' --fast
+--frames 9000 --driver 'python3 tools/drivers/commandopirate_cp9.py {port} <out>/drv.txt'`, rc 0,
+0 caught, 0 reach-stub), then marked. New console vars: cp.xb88, cp.ba0x/y/z, cp.wpdest, cp.anim,
+cp.fluid, cp.mkjump (fake AiJumpPoint: no commando area ships one), cp.mkaiwp (fake AIWaypoint
+with a given flag word), cp.chargemin/chargemax, cp.attarget. `force_ret.py` gained FORCE_INNER
+(a write at a callee's return while an outer body runs; `$rax` is the answer).
+
+**Fixes.** 2A98: the speed gate is `fcmpo`/`ble` 0x2AD4 (NaN fails); the up vector is the
+transform's up column (xbac). 2474: NaN gate (0x24B8), the forward column saved before the turn,
+the factor's max/min order and `(v*speed)*dt`. 3A5C: the timer's `cror`. 2D0C: the 0xC66 0x20
+shield effect only inside the collision-actor branch (`beq` 0x2D50 skips it). 168: the grenade's
+damage is the block's own grenadeDamage (`addi r4,r1,0xc48` 0x5E4, LdrToDamageInfo 0x5E8), not
+the blade's. 3090: the drown explosion uses the ctor's xc28 token (0x31CC test, 0x3294 argument).
+961C: the destination is set once (0x96CC). 9F24: `cror` 0x9F70 and `bge` 0xA090 NaN gates.
+B250, 45A4 and 9BB4 match the asm.
+
+**Forced.** 9F24: fake jump points (every area waypoint, type 1, another area, inactive, no
+waypoint); in use via `mTimeRemaining = 1` on GetInUse calls 0 mod 3. 961C: fake AIWPs with 0x02
+and 0x04 (no shipped AIWP has 0x04: 246 have none of 0x26, 27 have 0x02, 15 have 0x20). 2A98: fake
+AIWP 0x20 without a NEXT link (0x2B80). B250: every gate through `trigcall`, the three rays
+(F, TF, TTF, TTT) and CanStartAttack's yes forced at the callee's return; delta zero through
+cp.attarget with chargemin 0. 2D0C: reaction 3 after the knock-back on every second call; the ray
+under the commando clear while xb54 = 4242 (the last commando's shots: death plus damage source,
+then a weapon-less Damage). 3A5C/2D0C: the shield id set to the player (no collision actor). 3090:
+the fluid list forced (player, inactive water, active water above/below the head; the first
+commando drowns).
+
+**Dead arms.** 3090 explosion (1018): all 9 shipped CMDO have property 0x467c3d94 = 0xFFFFFFFF,
+so xD904_LockEffect leaves xc28 empty (the guest's `lbz 0xc34` test at 0x31CC never passes).
+45A4 null casts (0x46E4, 0x4810): CCollisionActorManager's sphere path adds the actor and sets
+its id (CCollisionActorManager.cpp:183-214) before 0x46B8/0x47E8 read it. 2474's unsafe delta
+(0x254C): its only caller (`bl` 0x7E54) runs it only when delta^2 > the box depth^2
+(0x7DDC..0x7DF0). 168's empty model (0x06B0): all 9 CMDO carry ANCS 0x8169653A. The switch
+defaults of 961C/9BB4: the machine sends only EStateMsg 0..2. 2D0C's
+`RecordDamageSource(*this, id, info, true, false)` is the host's UpdateHealthCause (0x3068).

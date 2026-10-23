@@ -343,6 +343,7 @@ void CCommandoPirate::PostEGrenadeAttack(CStateManager& mgr, EStateMsg msg, floa
 // 0xd, 0x00009D34) the jump command goes out (fn_9_9EA8 builds it: the target, type 0, state 0,
 // variant 0, facing flags 2, 0x00009D44..0x00009D5C; fn_9_9DB0 delivers it, 0x00009D6C).
 // Deactivate: not ready (0x00009D90).
+// @ fn_9_9BB4
 void CCommandoPirate::JetBoost(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {                                           // 0x00009BF8

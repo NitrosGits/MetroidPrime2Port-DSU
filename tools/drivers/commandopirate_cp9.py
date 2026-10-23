@@ -12,8 +12,13 @@ charge: the waypoint picker (fn_9_2A98) and the turn helper (fn_9_2474) from the
 hit: the hit-object helper (fn_9_3A5C) and the knock-back helper (fn_9_2D0C): HitObject/Damage
   messages from the shield's and the blade's collision actors (`send ... from`), `touch` for the
   collision actor's last touched object, the flag bytes forced.
+aiwp: fake AI waypoints (`var <id> cp.mkaiwp <flags>`, no NEXT link) for the picker and the follow
+  state's flag arms.
+shield: the ShouldShieldCharge trigger (fn_9_B250) through `trigcall`, each gate forced in one tick
+  (the charge band cp.chargemin/chargemax; the rays and the team answer forced by the spec).
 drown: fn_9_3090 with the fluid list forced (`var <id> cp.fluid`): none, not water, the inactive
-  water, an active water above and below the head. The last commando drowns.
+  water, an active water above and below the head. The first commando drowns; the last one dies
+  in the air from a shot (the knock-back helper's clear ray).
 
 usage: commandopirate_cp9.py <port> [outfile|-] [sections (default: all)]
 """
@@ -134,7 +139,7 @@ def jump(cid, player):
     log("--- jump %s" % cid)
     # fake jump points: type 0 with waypoints 0..4, type 1, another area, inactive, no waypoint
     jps = {}
-    for v in (0x00, 0x10, 0x20, 0x30, 0x40, 0x01, 0x100, 0x200, 0xF0):
+    for v in [w << 4 for w in range(15)] + [0x01, 0x100, 0x1F0, 0x200, 0xF0]:
         jps[v] = var(cid, "mkjump", v)
     log("jump points %s" % jps)
     jpf = "statecall %s JumpPointFind" % cid
@@ -193,6 +198,8 @@ def follow(cid, player, aiwps, wps):
              "var %s cp.xbca 65535" % cid, fap + " 1")
     tick("var %s cp.wpdest 65535" % cid, "bodystate %s 13" % cid,
          "var %s cp.xbca %d" % (cid, num(player)), fap + " 1")
+    tick("var %s cp.wpdest 65535" % cid, "bodystate %s 13" % cid,
+         "var %s cp.xbca 65535" % cid, fap + " 1", "var %s cp.xbca %d" % (cid, num(player)))
     tick(fap + " 2", "bodystate %s 5" % cid, "var %s cp.xbca %d" % (cid, num(player)))
     run("place %s player 6" % cid)
     wait(20)
@@ -253,33 +260,135 @@ def hit(cid, player, last):
             tick(*(others + ["touch %s %s" % (actor, player), hits + actor]))
         wait(40)
     tick("var %s cp.c65 %d" % (cid, c65))
-    # the knock-back helper: Damage with the shield up (0x0C), in the air (no ray hit) except last
-    p = pos_of(cid)
+    # the hit-object helper with a shield id that is no collision actor (0x00003AA8)
+    tick("var %s cp.c65 %d" % (cid, c65 | 0x04), "var %s cp.xbc6 %d" % (cid, num(player)),
+         hits + player, "var %s cp.xbc6 %d" % (cid, shield), "var %s cp.c65 %d" % (cid, c65))
+    # the knock-back helper: Damage on the ground (the ray under the commando is blocked)
     dmg = "send %s Damage from " % cid
     up = "var %s cp.c65 %d" % (cid, c65 | 0x04)
-    if p is not None:
-        for c66v, c64v, sender in ((c66 & ~0x20 & 0xff, c64 & 0xfe, su), (c66 | 0x20, c64 & 0xfe, su),
-                                   (c66, c64 | 0x01, player), (c66, c64 & 0xfe, player)):
-            tick(at(cid, p, 0, 40.0), up, "var %s cp.c66 %d" % (cid, c66v),
-                 "var %s cp.c64 %d" % (cid, c64v), dmg + sender)
-            wait(5)
-        run(at(cid, p, 0))
-        wait(20)
-        tick("var %s cp.c65 %d" % (cid, c65), "var %s cp.c66 %d" % (cid, c66), "var %s cp.c64 %d" % (cid, c64))
-        # real weapons at the commando (the projectile is the sender), shield up and down
+    for c66v, c64v, sender in ((c66 & ~0x20 & 0xff, c64 & 0xfe, su), (c66 | 0x20, c64 & 0xfe, su),
+                               (c66, c64 | 0x01, player), (c66, c64 & 0xfe, player)):
+        tick(up, "var %s cp.c66 %d" % (cid, c66v), "var %s cp.c64 %d" % (cid, c64v), dmg + sender,
+             "var %s cp.c66 %d" % (cid, c66), "var %s cp.c64 %d" % (cid, c64))
+        wait(5)
+    # the shield id that is no collision actor (0x00002D50)
+    tick("var %s cp.xbc6 %d" % (cid, num(player)), dmg + player, "var %s cp.xbc6 %d" % (cid, shield))
+    tick("var %s cp.c65 %d" % (cid, c65))
+    # real weapons: at the commando (the projectile is the sender) and at the shield's collision
+    # actor (the actor is the sender, the projectile its last touched object), c64's 0x01 bit off/on
+    for target, c64v in ((cid, c64 & 0xfe), (cid, c64 | 0x01), (su, c64 & 0xfe), (su, c64 | 0x01)):
         for charged in ("", " charged"):
-            run("var %s cp.c65 %d" % (cid, c65 | 0x04))
-            run("shoot %s%s 4" % (cid, charged))
-            wait(30)
-        run("var %s cp.c65 %d" % (cid, c65))
+            run("place %s player 8" % cid)
+            tick("var %s cp.c65 %d" % (cid, c65 | 0x04), "var %s cp.c64 %d" % (cid, c64v),
+                 "shoot %s%s 4" % (target, charged))
+            wait(20)
+            tick("var %s cp.c65 %d" % (cid, c65), "var %s cp.c64 %d" % (cid, c64))
+            wait(20)
     if last:
-        # on the ground: the ray under the commando hits, the commando dies (0x00002FC4)
-        tick(up, dmg + su)
-        wait(60)
+        # in the air: the ray under the commando is clear and the commando dies (0x00002FC4),
+        # the weapon's damage recorded (0x00003068)
+        p = pos_of(cid)
+        # (the ray's answer forced clear by the spec while xb54 is 4242)
+        if p is not None:
+            tick("var %s cp.c65 %d" % (cid, c65 | 0x04), "var %s cp.xb54 4242" % cid, "shoot %s 4" % cid)
+            wait(40)
+            if pos_of(cid) is not None:
+                tick("var %s cp.c65 %d" % (cid, c65 | 0x04), "var %s cp.xb54 4242" % cid,
+                     "shoot %s charged 4" % cid)
+                wait(40)
+            # the dying commando once more without a weapon (the player sends): no damage source
+            if pos_of(cid) is not None:
+                tick("var %s cp.c65 %d" % (cid, c65 | 0x04), "var %s cp.xb54 4242" % cid,
+                     dmg + player)
 
 
-def drown(cid, waters, inactive, player):
+def aiwp(cid, player):
+    log("--- aiwp %s" % cid)
+    # fake AI waypoints without a NEXT link: the picker's flag 0x20 (fn_9_2A98 0x00002B80), the
+    # follow state's 0x02 and 0x04 (fn_9_961C 0x00009788, 0x00009790) and none
+    fakes = {f: var(cid, "mkaiwp", f) for f in (0x20, 0x02, 0x04, 0x00)}
+    log("fake AI waypoints %s" % fakes)
+    ssc = "statecall %s ScriptedShieldCharge" % cid
+    loop = "bodystate %s 9" % cid
+    c64 = var(cid, "c64")
+    tick("var %s cp.wpdest %d" % (cid, fakes[0x20]), ssc + " 0")
+    tick("var %s cp.wpdest %d" % (cid, fakes[0x20]), loop, "var %s cp.c64 %d" % (cid, c64 & 0xf3),
+         "var %s cp.b94ahead -2000" % cid, ssc + " 1")
+    tick(ssc + " 2", "var %s cp.c64 %d" % (cid, c64), "bodystate %s 5" % cid)
+    fap = "statecall %s FollowAttackPattern" % cid
+    aiwps = objs_of("Waypoint", "CScriptAIWaypoint")
+    p = pos_of(cid)
+    for f in (0x02, 0x04, 0x00):
+        w = "u%04x" % fakes[f]
+        wp = aiwps.get(w)
+        tick("var %s cp.wpdest %d" % (cid, fakes[f]), fap + " 1")      # 10 units away
+        if wp is not None:
+            tick(at(cid, wp, 0), "var %s cp.wpdest %d" % (cid, fakes[f]), fap + " 1")  # on it
+            tick(at(cid, (wp[0] + 60.0, wp[1], wp[2]), 0), "var %s cp.wpdest %d" % (cid, fakes[f]),
+                 fap + " 1")
+    tick(fap + " 2", "var %s cp.wpdest 65535" % cid)
+    if p is not None:
+        run(at(cid, p, 0))
+    run("place %s player 6" % cid)
+    wait(20)
+
+
+def shield(cid, player):
+    """ShouldShieldCharge (fn_9_B250) through `trigcall`, every gate forced in one tick."""
+    log("--- shield %s" % cid)
+    tc = "trigcall %s ShouldShieldCharge" % cid
+    names = ("c64", "flags1", "xb50", "xb54", "xbca", "team", "chargemin", "chargemax")
+    old = {n: var(cid, n) for n in names}
+    log("shield vars %s" % old)
+    pl = objs_of("player", "CPlayer").get(player)
+    others = [line.split()[0] for line in cmd("objs Relay").split(" | ")
+              if line.startswith("u") and "Relay" in line]
+    log("relays %s" % others[:3])
+
+    def go(*sets, place=None):
+        body = ["var %s cp.%s %d" % (cid, n, v) for n, v in sets]
+        if place is not None:
+            body.insert(0, place)
+        restore = ["var %s cp.%s %d" % (cid, n, old[n]) for n in names]
+        log("%s" % cmd("; ".join(body + [tc] + restore), len(body) + 1 + len(restore)))
+
+    base = [("c64", (old["c64"] | 0x40) & ~0x01 & 0xff), ("flags1", old["flags1"] & ~0x40 & 0xff),
+            ("xb50", 10), ("xb54", 0), ("xbca", num(player)), ("team", 0xffff),
+            ("chargemin", 2000), ("chargemax", 20000)]
+
+    def with_(**kw):
+        return [(n, kw.get(n, v)) for n, v in base]
+
+    go(*with_(c64=old["c64"] & ~0x40 & 0xff))                         # 0x0000B2BC
+    go(*with_(flags1=old["flags1"] | 0x40))                           # 0x0000B2C8
+    go(*with_(c64=old["c64"] | 0x41))                                 # 0x0000B2D0
+    go(*with_(xb50=0, xb54=0))                                        # 0x0000B2E0
+    go(*with_(xbca=0xffff))                                           # 0x0000B2FC
+    if others:
+        go(*with_(xbca=num(others[0])))                               # not an actor (host)
+    if pl is None:
+        return
+    def near(dx, dz=0.0):
+        return "place %s %.3f %.3f %.3f 0" % (cid, pl[0] + dx, pl[1], pl[2] + dz)
+    go(*base, place=near(10.0, 8.0))                                  # |dz| > 5, 0x0000B348
+    go(*base, place=near(1.0))                                        # too near, 0x0000B370
+    go(*base, place=near(40.0))                                       # too far, 0x0000B384
+    go(*(with_(chargemin=0) + [("attarget", 1)]))                     # no direction, 0x0000B394
+    go(*with_(team=num(player)), place=near(10.0))                    # the team says no (natural)
+    for k in range(4):                                                # the rays: F, TF, TTF, TTT
+        go(*with_(team=0xffff if k == 0 else num(player)), place=near(10.0))
+    run("place %s player 6" % cid)
+    wait(20)
+
+
+def drown(cid, player):
     log("--- drown %s" % cid)
+    waters = objs_of("Water", "CScriptWater")
+    inactive = None
+    for line in cmd("objs Water").split(" | "):
+        if "CScriptWater" in line and "inactive" in line:
+            inactive = num(line.split()[0])
+    log("waters %s inactive %s" % (list(waters), inactive))
     for fluid in (num(player), inactive, 0xffff):
         if fluid is not None:
             tick("var %s cp.fluid %d" % (cid, fluid))
@@ -290,8 +399,11 @@ def drown(cid, waters, inactive, player):
         wait(3)
     if waters and p is not None:
         w, wp = next(iter(waters.items()))
-        tick("var %s cp.fluid %d" % (cid, num(w)), at(cid, (p[0], p[1], wp[2] - 30.0), 0))
-        wait(10)
+        for _ in range(5):
+            tick(at(cid, (wp[0], wp[1], wp[2] - 30.0), 0), "var %s cp.fluid %d" % (cid, num(w)))
+            wait(2)
+            if pos_of(cid) is None:
+                break
         log("after drown: %s" % cmd("obj %s" % cid))
     tick("var %s cp.fluid 65535" % cid)
 
@@ -309,29 +421,30 @@ def main():
     player = players[0] if players else "u0000"
     aiwps = objs_of("Waypoint", "CScriptAIWaypoint")
     wps = objs_of("Waypoint", "CScriptWaypoint")
-    waters = objs_of("Water", "CScriptWater")
-    inactive = None
-    for line in cmd("objs Water").split(" | "):
-        if "CScriptWater" in line and "inactive" in line:
-            inactive = num(line.split()[0])
-    log("commandos %s player %s aiwps %d wps %d waters %s inactive %s (frame %d)"
-        % (ids, player, len(aiwps), len(wps), list(waters), inactive, frame()))
+    log("commandos %s player %s aiwps %d wps %d (frame %d)"
+        % (ids, player, len(aiwps), len(wps), frame()))
+    # the first commando runs every section and drowns; the last one (if another) dies in the air
     for i, cid in enumerate(ids):
-        last = i == len(ids) - 1
+        first, last = i == 0, i == len(ids) - 1
         log("=== commando %s ===" % cid)
         run("send %s Activate" % cid)
         run("place %s player 6" % cid)
         wait(20)
-        if want("jump"):
-            jump(cid, player)
-        if want("follow"):
-            follow(cid, player, aiwps, wps)
-        if want("charge"):
-            charge(cid, aiwps, wps)
+        if first:
+            if want("jump"):
+                jump(cid, player)
+            if want("follow"):
+                follow(cid, player, aiwps, wps)
+            if want("charge"):
+                charge(cid, aiwps, wps)
+            if want("aiwp"):
+                aiwp(cid, player)
+            if want("shield"):
+                shield(cid, player)
         if want("hit"):
-            hit(cid, player, last and not want("drown"))
-        if want("drown") and last:
-            drown(cid, waters, inactive, player)
+            hit(cid, player, last and not first)
+        if want("drown") and first:
+            drown(cid, player)
         log("state %s" % cmd("obj %s" % cid))
     log("done (frame %d)" % frame())
 

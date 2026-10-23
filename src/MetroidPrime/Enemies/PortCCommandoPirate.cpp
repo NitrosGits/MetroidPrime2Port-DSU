@@ -985,6 +985,7 @@ bool CCommandoPirate::x57A0_FireShot(CStateManager& mgr, float dt) {
 //   own scale, the white colour and the player index -1 (the constructor call at 0x000032B4).
 // 0x000032F4..0x00003318: the drowning sound (the block's +0x06 = guest this+0x7C6) is emitted at
 //   the actor's own position with the volume 0x7f.
+// @ fn_9_3090
 void CCommandoPirate::x3090_Drown(CStateManager& mgr) {
   if (!GetAlive()) {                                             // 0x000030A8..0x000030B8
     return;
@@ -1255,6 +1256,7 @@ void CCommandoPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
 // The guest then adds the bit 0x8000 of the exclude list's high word (the filter's +0x08, the or
 // at 0x0000485C) - the material 47, kMT_CollisionActor - to the actor's own material filter, so
 // the commando does not collide with its own shield and blade spheres (0x00004830..0x0000487C).
+// @ fn_9_45A4
 void CCommandoPirate::x45A4_CreateCollisionActors(CStateManager& mgr) {
   {
     rstl::vector< CJointCollisionDescription > descriptions;
@@ -1350,6 +1352,7 @@ void CCommandoPirate::x3D64_SetWarpOut(CStateManager& mgr, bool warpOut) {
 // touched object has to be the player, the module's damage timer (guest this+0x440) has to be at
 // or below zero, and the damage is applied with the module's own material filter (its data word
 // 0x3B = kMT_Solid, the type 3 = kFT_IncludeExclude) and the actor's forward direction.
+// @ fn_9_3A5C
 void CCommandoPirate::x3A5C_HitObject(CStateManager& mgr, const CScriptMsg& msg) {
   TUniqueId actorId = kInvalidUniqueId;
   const CDamageInfo* damage = nullptr;
@@ -1459,6 +1462,7 @@ void CCommandoPirate::x2048_ShieldEffect(CStateManager& mgr) {
 // module keeps the waypoint it has (0x00002C0C..0x00002C3C). The module's time to the waypoint
 // (the float at guest this+0xB88) is the distance to it over the charge speed
 // (0x00002BF8..0x00002C04).
+// @ fn_9_2A98
 bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
   const float speed = mData.mShield.mChargeSpeed;  // guest this+0x8EC
   if (!(speed > 0.f)) {  // 0x00002AD0 fcmpo / 0x00002AD4 ble: a NaN speed fails too
@@ -1529,6 +1533,7 @@ bool CCommandoPirate::x2A98_PickWaypoint(CStateManager& mgr, bool useNext) {
 // charge speed and the frame time (0x00002918) moves the actor, and the module's own push vector
 // (guest this+0xBB8) does the same when it is not zero (0x0000291C..0x000029A4), after which the
 // push vector is cleared (0x000029A8..0x000029C0).
+// @ fn_9_2474
 void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
   const float speed = mData.mShield.mChargeSpeed;  // guest this+0x8EC
   if (!(speed > 0.f)) {  // 0x000024B4 fcmpo / 0x000024B8 ble: a NaN speed returns too
@@ -1606,6 +1611,7 @@ void CCommandoPirate::x2474_TurnToWaypoint(CStateManager& mgr, float dt) {
 // and its own forward direction (the vtable slot 0x98, 0x00003018), its health is zeroed (the
 // vtable slot 0x38, 0x0000302C), the damage source is recorded (0x00003044..0x00003068) and the
 // module's flag byte takes its 0x04 bit (0x0000306C..0x00003078).
+// @ fn_9_2D0C
 void CCommandoPirate::x2D0C_KnockBack(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   const CWeapon* weapon = nullptr;
@@ -2688,6 +2694,7 @@ bool CCommandoPirate::ShouldArmShield(CStateManager& mgr, const CTriggerData& da
 // (kMT_Solid) and excludes the materials 32 (kMT_Player) and 49 (kMT_Platform) - the module's
 // data words at lbl_9_data_7D0, lbl_9_data_7D4 and lbl_9_data_7D8, the two __shl2i calls at
 // 0x0000B3F0 and 0x0000B40C, the filter type 3 (kFT_IncludeExclude).
+// @ fn_9_B250
 bool CCommandoPirate::ShouldShieldCharge(CStateManager& mgr, const CTriggerData& data) const {
   if ((xc64_ & 0x40) == 0) {                                       // 0x0000B2B8..0x0000B2BC
     return false;
@@ -3235,6 +3242,7 @@ void CCommandoPirate::SetPathMeshDest(CStateManager& mgr, EStateMsg msg, float d
 // the limit lbl_9_rodata_4B8 = FLT_MAX). The path find search (the guest's GetSearchPath, the
 // vtable call at 0x0000A0A4) has to connect the actor to the jump point (the PathExists call at
 // 0x0000A0B0). The winner's id goes into guest this+0xBD0 (the store at 0x0000A0C4).
+// @ fn_9_9F24
 void CCommandoPirate::JumpPointFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg != kStateMsg_Activate) {
     return;                                     // 0x00009F44..0x00009F50
@@ -3473,6 +3481,7 @@ void CCommandoPirate::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
 //
 // On deactivate (the guest's message 2, 0x00009934) the byte at guest this+0xC66 loses its 0x80
 // bit (0x0000993C..0x00009940).
+// @ fn_9_961C
 void CCommandoPirate::FollowAttackPattern(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);  // 0x00009654..0x00009658
   switch (msg) {
@@ -4641,7 +4650,9 @@ float CCommandoPirate::GetGravityConstant() const { return 50.f; }
 // pending death (cp.pendingdeath); cp9: the time to the waypoint (cp.xb88, ms), the jump direction
 // (cp.ba0x/ba0y/ba0z, 1/1000), the waypoint navigation's destination (cp.wpdest), the animation
 // state (cp.anim), the counters xb50/xb54 (cp.xb50, cp.xb54), the block's flag byte (cp.flags1),
-// the fluid list (cp.fluid) and a fake jump point (cp.mkjump).
+// the fluid list (cp.fluid), a fake jump point (cp.mkjump), a fake AI waypoint (cp.mkaiwp) and
+// the shield charge's distance band (cp.chargemin/chargemax, 1/1000) and a move onto the target
+// (cp.attarget).
 bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* value,
                                      int& current) {
   // No TCastToPtr for the module's class: a patterned actor whose machine's "ShieldCharge" is
@@ -4732,6 +4743,15 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
       cp->mData.mShield.mChargeSpeed = static_cast< float >(*value) / 1000.f;
     }
     current = static_cast< int >(cp->mData.mShield.mChargeSpeed * 1000.f);
+    return true;
+  }
+  if (strcmp(name, "chargemin") == 0 || strcmp(name, "chargemax") == 0) {
+    float& field = name[7] == 'i' ? cp->mData.mShield.mChargeMinAttackDist
+                                  : cp->mData.mShield.mChargeMaxAttackDist;  // "chargem[i]n"
+    if (value != nullptr) {
+      field = static_cast< float >(*value) / 1000.f;
+    }
+    current = static_cast< int >(field * 1000.f);
     return true;
   }
   if (strcmp(name, "fsmtime") == 0) {
@@ -4842,6 +4862,36 @@ bool CCommandoPirate::PortConsoleVar(CEntity& ent, const char* name, const int* 
     current = jp->GetUniqueId().value;
     return true;
   }
+  if (strcmp(name, "attarget") == 0) {
+    // Set: the commando moved onto its target's (xbca) exact position. Reads -1.
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    const CActor* target =
+        mgr != nullptr ? TCastToConstPtr< CActor >(mgr->GetObjectById(cp->xbca_)) : nullptr;
+    if (value != nullptr && target != nullptr) {
+      cp->SetTranslation(target->GetTranslation());
+      current = 1;
+    }
+    return true;
+  }
+  if (strcmp(name, "mkaiwp") == 0) {
+    // A fake AIWaypoint 10 units in front of the commando, with no connection: the value is its
+    // flag word (low 16 bits). Reads -1; set answers the new id.
+    CStateManager* mgr = PortConsole::VarManager();
+    current = -1;
+    if (value == nullptr || mgr == nullptr) {
+      return true;
+    }
+    CTransform4f xf = cp->GetTransform();
+    xf.SetTranslation(cp->GetTranslation() + cp->GetTransform().GetForward() * 10.f);
+    CScriptAIWaypoint* wp = rs_new CScriptAIWaypoint(
+        mgr->AllocateUniqueId(), rstl::string_l("cp9 fake AI waypoint"),
+        CEntityInfo(cp->GetCurrentAreaId(), CEntity::NullConnectionList, true, kInvalidEditorId),
+        xf, 1.f, 0.f, *value & 0xffff, 0, 0);
+    mgr->AddObject(wp);
+    current = wp->GetUniqueId().value;
+    return true;
+  }
   if (strcmp(name, "b94ahead") == 0) {
     const CVector3f forward = cp->GetTransform().GetForward();
     if (value != nullptr) {
@@ -4886,6 +4936,7 @@ static void xE30_SoundDefaults(SLdrCommandoPirate& sldr) {
 
 // fn_9_168. The property ids and their order are the generated SLdrCommandoPirate reader's, which
 // the REL's own switch matches id by id (fn_9_168 @0x000001C8..0x00000568).
+// @ fn_9_168
 static CEntity* PortLoadCommandoPirate(CStateManager& mgr, CInputStream& input,
                                         CEntityInfo& info) {
   SLdrCommandoPirate sldrThis;

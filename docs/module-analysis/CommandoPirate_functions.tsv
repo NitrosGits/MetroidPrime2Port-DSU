@@ -16,7 +16,7 @@ offset	size	fn	kind	class	port	note
 0xF4	0x24	RELExit	rel-entry	H	not-port	
 0x118	0x20	RELMain	rel-entry	H	not-port	
 0x138	0x30	fn_9_138	host-copy	H	not-port	
-0x168	0x76C	fn_9_168	behaviour	B	not-port	
+0x168	0x76C	fn_9_168	behaviour	B	marked	cp9: grenade damage = grenadeDamage (0x5E4/0x5E8); empty-model arm data-dead (9/9 CMDO ANCS 0x8169653A)
 0x8D4	0x60	fn_9_8D4	host-copy	H	not-port	
 0x934	0x58	fn_9_934	host-copy	H	not-port	
 0x98C	0x94	fn_9_98C	host-copy	H	not-port	CBouncyGrenadeData ctor (0x50 bytes: mass, unknown, the blade CDamageInfo, bounces, 3 assets, 2 sounds, 0.1f/150.f twice, the 0x80 flag byte from the caller's 1); one caller fn_9_168 0x684; host: the header's CCommandoPirateGrenadeData ctor stores the same fields (CCommandoPirate.hpp:44-55), loader PortCCommandoPirate.cpp:4777-4784
@@ -46,18 +46,18 @@ offset	size	fn	kind	class	port	note
 0x2378	0x58	fn_9_2378	behaviour	H	not-port	~CEntityInfo (vector<SConnection> at +4 freed via fn_9_23D0; temporaries in 2048/3090/5410); host implicit dtor. Not a string dtor (cp7)
 0x23D0	0x54	fn_9_23D0	host-copy	H	not-port	
 0x2424	0x50	fn_9_2424	host-copy	H	not-port	
-0x2474	0x580	fn_9_2474	behaviour	B	ported	
+0x2474	0x580	fn_9_2474	behaviour	B	marked	cp9: NaN gate, saved forward, max/min factor, (v*speed)*dt; unsafe-delta arm dead (only caller 0x7E54 gates delta^2 > depth^2)
 0x29F4	0x5C	fn_9_29F4	host-copy	H	not-port	
 0x2A50	0x48	fn_9_2A50	host-copy	H	not-port	
-0x2A98	0x214	fn_9_2A98	behaviour	B	not-port	
+0x2A98	0x214	fn_9_2A98	behaviour	B	marked	cp9: NaN speed gate (ble 0x2AD4), up = GetUp; every arm (fake AIWP 0x20 without NEXT for 0x2B80)
 0x2CAC	0x60	fn_9_2CAC	host-copy	H	not-port	
-0x2D0C	0x384	fn_9_2D0C	behaviour	B	not-port	
-0x3090	0x2A8	fn_9_3090	behaviour	B	ported	
+0x2D0C	0x384	fn_9_2D0C	behaviour	B	marked	cp9: 0xC66 0x20 effect inside the collision-actor branch (0x2D50); every arm (reaction and clear ray forced)
+0x3090	0x2A8	fn_9_3090	behaviour	B	marked	cp9: drown token = ctor xc28 (0x31CC/0x3294); explosion arm data-dead (9/9 CMDO 0x467c3d94 = -1); water forced
 0x3338	0x148	fn_9_3338	behaviour	B	marked	
 0x3480	0x1F8	fn_9_3480	behaviour	B	marked	PickMeleeAttack; cov: every arm
 0x3678	0x288	fn_9_3678	behaviour	B	marked	
 0x3900	0x15C	fn_9_3900	behaviour	B	marked	
-0x3A5C	0x260	fn_9_3A5C	behaviour	B	not-port	
+0x3A5C	0x260	fn_9_3A5C	behaviour	B	marked	cp9: timer cror fixed; every arm (shield id not a collision actor for 0x3AAC)
 0x3CBC	0xA8	fn_9_3CBC	host-copy	H	marked	
 0x3D64	0xB8	fn_9_3D64	host-copy	H	not-port	
 0x3E1C	0x324	fn_9_3E1C	behaviour	B	marked	
@@ -70,7 +70,7 @@ offset	size	fn	kind	class	port	note
 0x4460	0x84	fn_9_4460	host-copy	H	not-port	
 0x44E4	0x84	fn_9_44E4	host-copy	H	not-port	
 0x4568	0x3C	fn_9_4568	host-copy	H	not-port	
-0x45A4	0x304	fn_9_45A4	behaviour	B	not-port	
+0x45A4	0x304	fn_9_45A4	behaviour	B	marked	cp9: asm matches; null-cast arms host-dead (CCollisionActorManager adds the actor and sets its id first)
 0x48A8	0x60	fn_9_48A8	host-copy	H	not-port	rstl::vector<CJointCollisionDescription>::clear (vector.hpp:266-269): begin = mItems +0xC (0x48C8/0x48D8), end = mItems + mCount*0x68 (mulli 0x48CC, add 0x48D4), destroy fn_9_4908 (H) at 0x48E8, then count = 0 (0x48EC/0x48F0); only caller fn_9_45A4 at 0x476C, host vector at PortCCommandoPirate.cpp:1255/1268
 0x4908	0x38	fn_9_4908	host-copy	H	not-port	rstl::destroy(begin,end) for rstl::vector<CJointCollisionDescription> (construct.hpp:151-160): the two pointers 0x4910/0x491C, then the 0x68-stride loop fn_9_4940 (element string at +0x2C); host vector at PortCCommandoPirate.cpp:1255
 0x4940	0x60	fn_9_4940	host-copy	H	not-port	
@@ -136,14 +136,14 @@ offset	size	fn	kind	class	port	note
 0x9064	0x528	fn_9_9064	fsm-trigger	B	marked	WarpIn
 0x958C	0x3C	fn_9_958C	host-copy	H	not-port	
 0x95C8	0x54	fn_9_95C8	host-copy	H	not-port	
-0x961C	0x350	fn_9_961C	fsm-trigger	B	ported	FollowAttackPattern
+0x961C	0x350	fn_9_961C	fsm-trigger	B	marked	FollowAttackPattern; cp9: destination set once (0x96CC); every arm (fake AIWP 0x02/0x04); switch default dead (EStateMsg 0..2)
 0x996C	0x140	fn_9_996C	behaviour	B	marked	
 0x9AAC	0x108	fn_9_9AAC	fsm-trigger	B	marked	PathFind
-0x9BB4	0x1FC	fn_9_9BB4	fsm-trigger	B	ported	JetBoost
+0x9BB4	0x1FC	fn_9_9BB4	fsm-trigger	B	marked	JetBoost; cp9: asm matches; every arm (fake AiJumpPoints); switch default dead (EStateMsg 0..2)
 0x9DB0	0x9C	fn_9_9DB0	data-thunk	T	not-port	
 0x9E4C	0x5C	fn_9_9E4C	host-copy	H	not-port	
 0x9EA8	0x7C	fn_9_9EA8	data-thunk	T	not-port	
-0x9F24	0x1EC	fn_9_9F24	fsm-trigger	B	ported	JumpPointFind
+0x9F24	0x1EC	fn_9_9F24	fsm-trigger	B	marked	JumpPointFind; cp9: NaN gates (cror 0x9F70, bge 0xA090); every arm (fake AiJumpPoints, in-use forced)
 0xA110	0x1DC	fn_9_A110	fsm-trigger	B	marked	PostEGrenadeAttack
 0xA2EC	0x174	fn_9_A2EC	fsm-trigger	B	marked	EGrenadeAttack
 0xA460	0x5C	fn_9_A460	host-copy	H	not-port	
@@ -171,7 +171,7 @@ offset	size	fn	kind	class	port	note
 0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	marked	IsAggressive
 0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	marked	AbortShieldCharge
 0xB1E0	0x70	fn_9_B1E0	fsm-trigger	B	marked	ShouldBoost
-0xB250	0x410	fn_9_B250	fsm-trigger	B	ported	ShouldShieldCharge
+0xB250	0x410	fn_9_B250	fsm-trigger	B	marked	ShouldShieldCharge; cp9: asm matches; every arm (trigcall, rays and team answer forced at the callee return)
 0xB660	0x30	fn_9_B660	fsm-trigger	T	marked	ShouldArmShield
 0xB690	0xDC	fn_9_B690	fsm-trigger	H	marked	ShouldDodge
 0xB76C	0x90	fn_9_B76C	fsm-trigger	H	marked	TooClose
