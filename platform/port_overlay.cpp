@@ -9,6 +9,7 @@
 
 #include "port_gyro_motion.h"
 #include "port_photo.h"
+#include "port_video.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
 #include "port_logfile.h"
@@ -269,7 +270,8 @@ void ApplyRenderScale() {
   if (PortPhoto::Capturing()) {
     return;
   }
-  const float scale = PortOverlay::RenderScale();
+  // Dynamic resolution's scale while it has one (PortVideo, f1b).
+  const float scale = PortVideo::DrawScale();
   if (sAppliedRenderScale == scale) {
     return;
   }
@@ -1101,9 +1103,107 @@ void Draw() {
   // Even with the window closed: the env vars are settings, and a headless run never opens it.
   ApplyGraphicsQuality();
   ApplyVsync();
+  PortVideo::Frame();
   ApplyRenderScale();
   SyncGameOptions();
   PortDebug::DrawUI();
+}
+
+} // namespace PortOverlay
+
+// F1 > Video rows from the Prime 1 port (f1b): their settings (port_overlay_internal.h) and
+// accessors. platform/port_video.cpp applies them.
+namespace PortOverlayState {
+bool sDynamicRes = false;
+int sDynamicResTarget = 0;
+float sDynamicResMin = 1.f;
+int sSharpenMode = 1;
+int sSharpenAmount = 50;
+int sFpsCap = 0;
+bool sShowShaderCompilation = true;
+bool sShowMenuHint = true;
+bool sPerPixelLighting = false;
+bool sOpenGles = false;
+bool sOpenGlesAtStart = false;
+int sStorageClamp = -1;
+int sStorageClampAtStart = -1;
+unsigned sDriverWorkarounds = 0;
+unsigned sDriverWorkaroundsAtStart = 0;
+bool sLowPowerGpu = false;
+bool sLowPowerGpuAtStart = false;
+} // namespace PortOverlayState
+
+namespace PortOverlay {
+
+bool DynamicRes() {
+  ReadEnv();
+  return EnvBool("MP2_DYNAMIC_RES", sDynamicRes);
+}
+
+int DynamicResTarget() {
+  ReadEnv();
+  return EnvIntIn("MP2_DYNAMIC_RES_TARGET", sDynamicResTarget, 0, 240);
+}
+
+float DynamicResMin() {
+  ReadEnv();
+  return EnvFloatIn("MP2_DYNAMIC_RES_MIN", sDynamicResMin, 0.5f, 1.f);
+}
+
+int UpscaleSharpen() {
+  ReadEnv();
+  if (const char* env = port::EnvString("MP2_UPSCALE_SHARPEN"); env != nullptr && env[0] != '\0') {
+    const std::string value = env;
+    return value == "off" ? 0 : value == "always" ? 2 : 1;
+  }
+  return sSharpenMode;
+}
+
+int UpscaleSharpenAmount() {
+  ReadEnv();
+  return EnvIntIn("MP2_UPSCALE_SHARPEN_AMOUNT", sSharpenAmount, 0, 100);
+}
+
+int ClampFpsCap(int fps) { return fps <= 0 ? 0 : std::clamp(fps, kFpsCapMin, kFpsCapMax); }
+
+int FpsCap() {
+  ReadEnv();
+  return ClampFpsCap(port::EnvInt("MP2_FPS_CAP", sFpsCap));
+}
+
+bool ShowShaderCompilation() {
+  ReadEnv();
+  return EnvBool("MP2_SHOW_SHADER_COMPILATION", sShowShaderCompilation);
+}
+
+bool ShowMenuHint() {
+  ReadEnv();
+  return EnvBool("MP2_SHOW_MENU_HINT", sShowMenuHint);
+}
+
+bool PerPixelLighting() {
+  ReadEnv();
+  return EnvBool("MP2_PER_PIXEL_LIGHTING", sPerPixelLighting);
+}
+
+bool OpenGles() {
+  ReadEnv();
+  return EnvBool("MP2_OPENGLES", sOpenGles);
+}
+
+int StorageClamp() {
+  ReadEnv();
+  return sStorageClamp;
+}
+
+unsigned DriverWorkarounds() {
+  ReadEnv();
+  return sDriverWorkarounds;
+}
+
+bool LowPowerGpu() {
+  ReadEnv();
+  return sLowPowerGpu;
 }
 
 } // namespace PortOverlay
