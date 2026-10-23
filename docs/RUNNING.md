@@ -226,7 +226,9 @@ PowerDown/PowerUp, and kills a top; rezbit wakes e0005016d with `send Activate`,
 through BecomeDeRezzed/BecomeRezzed and reachability attacks and breaks its shield; parasite loads
 layer 9 for the three Brizgees u05e5/u05d9/u05d6 and their shell collision actors, takes the shells'
 beam hits, walks the state machine (GetUp, TelegraphAttack, PathFind, TargetPlayer, Crouch - never
-Generate/Attack/Retreat/Halt/Jump, which crash a Brizgee's host when forced), kills one with the
+Generate/Attack/Retreat/Halt/Jump, states a Brizgee's FSM never enters and whose body cmds its PAS
+cannot play: the console drops such a cmd and says so since brz1; retail plays anim -1 into
+CAnimData::BuildAnimationTree, unchecked at 0x80029BAC), kills one with the
 console and one with damage; lumite wakes one of the four Lumites hopping through 0a_sand_hall,
 walks Turn/SmallShot/BigShot/Taunt/Hop, takes a beam hit and a missile hit and finishes it with
 lethal damage (never `fsm Dead`: a lethal Lumite is deleted outright, so Dead only runs forced);

@@ -47,9 +47,11 @@ Build `-B build-port-cov -DMP_PORT_COVERAGE=ON`; runs (each con's header has its
 The fights are natural (beams, missiles, kills); the `_forced` drivers run every state body
 (`statecall` 0/1/2), trigger (`trigcall`) and script message (`send`), walk the machine (`fsm`) and
 put the actors on the player (contact damage). The Brizgee driver leaves out
-Generate/Deactivate/Attack/Retreat/Halt: their body commands need anims the Brizgee ANCS lacks and
-the host crashes in CBSGenerate/CBSJump::Start on the bad anim index (forced only; the Brizgee FSM
-never enters them). The Crystallite runs Deactivate last (its Activate deletes the actor).
+Generate/Deactivate/Attack/Retreat/Halt: their body commands need anims the Brizgee ANCS lacks, and
+retail plays the resulting anim -1 into CAnimData::BuildAnimationTree, which indexes the anim list
+unchecked at 0x80029BAC (undefined behaviour, a host crash before brz1; forced only, the Brizgee FSM
+never enters them). The console now drops such a command instead and prints a message, so forcing
+these states is safe. The Crystallite runs Deactivate last (its Activate deletes the actor).
 
 Marked by para1 (31; every live arm taken or branch-free with every line run; objdiff 100% except
 PreRender, see above): ~CParasite, PreThink, GetAimPosition, ThinkAboutMove, Stuck, AttackOver,

@@ -4,8 +4,10 @@
 # and parasite_sandfalls_forced.con (the para1 lane's drivers): bring them to a god-mode player, let
 # them crawl/telegraph/attack, take the beam shots on the shells, walk the state machine, then
 # missiles, the console kill and lethal damage.
-# Not Generate/Attack/Retreat/Halt/Jump: a Brizgee's FSM never enters them and forcing them crashes
-# the host in CBSGenerate/CBSJump::Start (bad anim index, BodyState; forced arms only).
+# Not Generate/Attack/Retreat/Halt/Jump: a Brizgee's FSM never enters them (forced arms only). Forcing
+# one no longer crashes (brz1): the console drops the body cmd the PAS cannot play and prints a message
+# instead. Retail would play that cmd's anim -1 into CAnimData::BuildAnimationTree, which indexes the
+# anim list unchecked at 0x80029BAC.
 # Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2320.
 # In fast mode the console connects at ~f1425, so the early steps fire in one burst; every step that
 # needs frames between it and the next is at f1550 or later.

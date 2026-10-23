@@ -1,6 +1,8 @@
 # FORCED arms, 02_sand_sandfalls (layer 9): run the CParasite state bodies (statecall 0/1/2), triggers
 # (trigcall) and script messages (send) on a Brizgee, walk the machine through states (fsm), kill all.
-# Not Generate/Deactivate/Attack/Retreat/Halt: their body cmds need anims the Brizgee ANCS lacks (crash).
+# Not Generate/Deactivate/Attack/Retreat/Halt: their body cmds need anims the Brizgee ANCS lacks, so
+# retail plays anim -1 into CAnimData::BuildAnimationTree (unchecked index, 0x80029BAC). The console
+# drops such a cmd and says so (brz1), so these states can be forced now.
 # Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/parasite.py <out> 42b935e4,02_sand_sandfalls --con <this> --fast --frames 1250
 @f300 god 1; give missile 50
 @f302 layer 9
