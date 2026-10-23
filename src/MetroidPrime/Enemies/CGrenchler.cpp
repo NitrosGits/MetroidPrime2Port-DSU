@@ -339,6 +339,7 @@ bool CGrenchler::SConeVulnerability::GetCollisionResponseType(
   return true;
 }
 
+// @ fn_27_134FC
 CGrenchler::SReflectInfo::SReflectInfo()
 : mJumpPosition(CVector3f::Zero())
 , mLandingPosition(CVector3f::Zero())
@@ -359,6 +360,7 @@ CGrenchler::SBiteAttack::SBiteAttack(const CDamageInfo& damage, float minRange, 
 , mDamageRadius(damageRadius)
 , mLastBiteTime(-1000.f) {}
 
+// @ fn_27_130E8
 CGrenchler::SBeamAttack::SBeamAttack(const CDamageInfo& damage, const SLdrAudioPlaybackParms& sound,
                                      float minRange, float maxRange, float minPause, float maxPause,
                                      float maxAngle)
@@ -927,6 +929,7 @@ bool CGrenchler::CanCrystalTakeDamage() const {
   return mScanned;
 }
 
+// @ fn_27_FC7C
 float CGrenchler::GetVulnerableAngle() const {
   return mIsGrappleGuardian == true ? 0.7853982f : 1.3089969f;
 }
@@ -999,6 +1002,7 @@ CVector3f CGrenchler::GetTargetPosition(CStateManager& mgr) const {
   return mgr.GetPlayer(0)->GetTranslation();
 }
 
+// @ fn_27_F080
 bool CGrenchler::Bored(CStateManager& mgr, const CTriggerData& data) const {
   if (mIsGrappleGuardian == true) {
     return false;
@@ -1020,6 +1024,7 @@ bool CGrenchler::ClearPathToPlayer(CStateManager& mgr, const CTriggerData&) cons
   return false;
 }
 
+// @ fn_27_EE1C
 bool CGrenchler::InRange(CStateManager& mgr, float minRange, float maxRange) const {
   const float distanceSquared = (GetTargetPosition(mgr) - GetTranslation()).MagSquared();
   return distanceSquared > minRange * minRange && distanceSquared < maxRange * maxRange;
@@ -1077,6 +1082,7 @@ void CGrenchler::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   DeliverCommand(msg, pas::kAS_Taunt, CBCTauntCmd(mTauntType));
 }
 
+// @ fn_27_EAE4
 void CGrenchler::Null(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     ResetBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
@@ -1355,6 +1361,7 @@ void CGrenchler::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_DA18
 void CGrenchler::PreThink(float dt, CStateManager& mgr) {
   mBoneTracking.PreThink(*AnimationData());
   CPatterned::PreThink(dt, mgr);
@@ -1457,6 +1464,7 @@ void CGrenchler::UpdateMovement(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_27_D2D0
 void CGrenchler::UpdateTeammateScan(float dt, CStateManager& mgr) {
   if (GetTeamAiMgr(mgr) != nullptr) {
     mTeammateScanTimer -= dt;
@@ -1710,6 +1718,7 @@ void CGrenchler::UpdateEffects(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_27_C234
 CVector3f CGrenchler::GetPlayerBeamTargetPosition(CStateManager& mgr) const {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f position = player->GetAimPosition(mgr, 0.f);
@@ -1748,6 +1757,7 @@ CVector3f CGrenchler::GetPlayerTargetPosition(CStateManager& mgr) const {
 
 bool CGrenchler::ShouldTrackPlayer() const { return mTrackPlayer; }
 
+// @ fn_27_BF54
 void CGrenchler::ThinkBoneTracking(float dt, CStateManager& mgr) {
   if (!ShouldTrackPlayer()) {
     mBoneTracking.SetActive(false);
@@ -1842,6 +1852,7 @@ const CGenericFSM2* CGrenchler::GetStateMachine() const {
   return *machine;
 }
 
+// @ fn_27_B6B8
 void CGrenchler::SetupStateMachineHelper(CStateManager& mgr) {
   InitializeStateMachine(mgr);
   mStateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
@@ -1941,6 +1952,7 @@ void CGrenchler::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
 }
 
+// @ fn_27_B110
 void CGrenchler::SetAttackState(EAction state, EStateMsg msg) {
   if (msg == kStateMsg_Deactivate) {
     PushAttackHistory(mAttackHistory, mCurrentAction);
@@ -1950,6 +1962,7 @@ void CGrenchler::SetAttackState(EAction state, EStateMsg msg) {
   }
 }
 
+// @ fn_27_AFE8
 void CGrenchler::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_Lurk, msg);
   switch (msg) {
@@ -1974,6 +1987,7 @@ void CGrenchler::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_AEAC
 void CGrenchler::BiteAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_BiteAttack, msg);
   if (msg == kStateMsg_Activate) {
@@ -2040,6 +2054,7 @@ CVector3f CGrenchler::GetAimPosition(const CStateManager& mgr, float dt) const {
   return CVector3f::Lerp(mEyePosition, aim, mGuardianFacingBlend);
 }
 
+// @ fn_27_AAC8
 bool CGrenchler::IsFacing(const CVector3f& position, float maxAngle) const {
   CVector2f toTarget = (position - GetTranslation()).ToVec2f();
   CVector2f forward = GetTransform().GetForward().ToVec2f();
@@ -2098,6 +2113,7 @@ bool CGrenchler::ShouldBackstep(CStateManager& mgr, const CTriggerData& data) co
   return mBiteCount >= 2 + (mTailDestroyed == 1 ? 1 : 0);
 }
 
+// @ fn_27_A6B0
 void CGrenchler::Backstep(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_Backstep, msg);
   mBiteCount = 0;
@@ -2308,6 +2324,7 @@ void CGrenchler::SetupBodyVulnerabilities(CStateManager& mgr,
   }
 }
 
+// @ fn_27_98C4
 void CGrenchler::DisableGroundCollision(CStateManager& mgr) {
   mVerticalMovement = true;
   mOnGround = false;
@@ -2777,9 +2794,6 @@ void CGrenchler::CreateGrappleHitVisorEffect(CStateManager& mgr) {
 #ifdef TARGET_PC
     // retail 0x7C20: fcmpo mag, 23; bgt skip (NaN takes the effect arm)
     if (!(offset.Magnitude() > 23.f)) {
-#else
-    if (offset.Magnitude() <= 23.f) {
-#endif
       const float nearClip = CHUDBillboardEffect::GetNearClipDistance(mgr, 0);
       const CVector3f scale = CHUDBillboardEffect::GetScaleForPOV(mgr);
       if (mGrappleEffect.mEffect) {
@@ -2790,6 +2804,19 @@ void CGrenchler::CreateGrappleHitVisorEffect(CStateManager& mgr) {
         mgr.AddObject(effect);
       }
     }
+#else
+    if (offset.Magnitude() <= 23.f) {
+      const float nearClip = CHUDBillboardEffect::GetNearClipDistance(mgr, 0);
+      const CVector3f scale = CHUDBillboardEffect::GetScaleForPOV(mgr);
+      if (mGrappleEffect.mEffect) {
+        CHUDBillboardEffect* effect = rs_new CHUDBillboardEffect(
+            mGrappleEffect.mEffect, rstl::optional_object_null(), mgr.AllocateUniqueId(), true,
+            rstl::string_l("Visor Grenchler Shakeoff Splotches"), nearClip, scale, 0,
+            CColor::White(), CVector3f::One(), CVector3f::Zero(), false);
+        mgr.AddObject(effect);
+      }
+    }
+#endif
   }
 }
 
@@ -2908,6 +2935,7 @@ void CGrenchler::ApplyBurstDamage(CStateManager& mgr) {
   }
 }
 
+// @ fn_27_6BB8
 void CGrenchler::ApplyBiteDamage(CStateManager& mgr) {
   ++mBiteCount;
   if (InBiteRange(mgr, CTriggerData(0.f)) == true) {
@@ -2976,6 +3004,7 @@ void CGrenchler::Charge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_6708
 bool CGrenchler::ChargeFinished(CStateManager& mgr, const CTriggerData& data) const {
   CVector3f totalOffset = mChargeAttack.mTargetPosition - mChargeAttack.mStartPosition;
   totalOffset.SetZ(0.f);
@@ -3010,6 +3039,7 @@ void CGrenchler::IssueDeathBodyCommand(CStateManager& mgr, const CVector3f& dire
   }
 }
 
+// @ fn_27_6320
 float CGrenchler::GetFadeOnDeathTime() const {
   if (mSubmerged == false) {
     return CPatterned::GetFadeOnDeathTime();
@@ -3021,6 +3051,7 @@ bool CGrenchler::ReturnToPatrol(CStateManager& mgr, const CTriggerData& data) co
   return mReturnToPatrol;
 }
 
+// @ fn_27_62A8
 bool CGrenchler::PlayerSubmerged(CStateManager& mgr, const CTriggerData& data) const {
   const CPlayer* player = mgr.GetPlayer(0);
   if (player->IsOnGround() == true) {
@@ -3169,6 +3200,7 @@ bool CGrenchler::ClearLineOfFire(CStateManager& mgr, const CTriggerData& data) c
   return HasClearShotAtPlayer(mgr, 0.87266463f);
 }
 
+// @ fn_27_5854
 float CGrenchler::GetManeuverRangeWeight(float range, const CVector3f& a,
                                          const CVector3f& b) const {
   const float distance = CVector3f(a - b).Magnitude();
@@ -3256,6 +3288,7 @@ void CGrenchler::Maneuver(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_52A8
 bool CGrenchler::ManeuverDone(CStateManager& mgr, const CTriggerData& data) const {
   if (mIsGrappleGuardian == true) {
     return true;
@@ -3273,6 +3306,7 @@ bool CGrenchler::CancelManeuvering(CStateManager& mgr, const CTriggerData& data)
   return IsDeeplySubmerged(mgr, *mgr.GetPlayer(0)) != IsDeeplySubmerged(mgr, *this);
 }
 
+// @ fn_27_512C
 void CGrenchler::PushAttackHistory(rstl::reserved_vector< EAction, 3 >& history, EAction attack) {
   if (history.size() == 3) {
     history.erase(history.begin());
@@ -3315,6 +3349,7 @@ bool CGrenchler::HasValidJumpTarget(CStateManager&, const CTriggerData&) const {
 
 void CGrenchler::PickJumpTarget(CStateManager& mgr, float dt) { FindJumpTarget(mgr, false); }
 
+// @ fn_27_4DD0
 void CGrenchler::SReflectInfo::Reset() {
   mApexOffset = 2.f;
   mLaunched = mStartedSubmerged = mWaterCrossed = mTargetValid = mLanded = x1c_5_ = false;
@@ -3380,6 +3415,7 @@ bool CGrenchler::IsNearPath(const CVector3f& pos, float padding) const {
   return mPathFindSearch.NearlyOnPath(pos, padding) == CPathFindSearch::kR_Success;
 }
 
+// @ fn_27_49C4
 void CGrenchler::ChargeFailed(CStateManager& mgr, EStateMsg msg, float dt) {
   DeliverCommand(msg, pas::kAS_Taunt, CBCTauntCmd(pas::kTT_Zero));
   if (msg == kStateMsg_Deactivate) {
@@ -3406,6 +3442,7 @@ bool CGrenchler::JustHit(CStateManager& mgr, const CTriggerData&) const {
   return 0.2f + mLastHitTime > mElapsedTime;
 }
 
+// @ fn_27_4870
 bool CGrenchler::JustBiteAttacked(CStateManager&, const CTriggerData&) const {
   if (GetLastAttackState() == 2) {
     if (0.2f + mBiteAttack.mLastBiteTime > mElapsedTime) {
@@ -3439,6 +3476,7 @@ bool CGrenchler::JustBurstAttacked(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_27_46A8
 void CGrenchler::TurnToFaceTarget(CStateManager& mgr) {
   CVector3f faceVec = CVector3f::Zero();
   if (!IsFacingTarget(mgr, 0.61086524f)) {
@@ -3464,6 +3502,7 @@ void CGrenchler::PauseBetweenBites(CStateManager& mgr, EStateMsg msg, float dt) 
   TurnToFaceTarget(mgr);
 }
 
+// @ fn_27_4538
 void CGrenchler::PauseBetweenBeams(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mPauseEndTime = mElapsedTime + mBeamAttack.mMinPause;
@@ -3479,6 +3518,7 @@ bool CGrenchler::PauseOver(CStateManager&, const CTriggerData&) const {
   return mElapsedTime > mPauseEndTime;
 }
 
+// @ fn_27_44C8
 bool CGrenchler::HasAttackPattern(CStateManager& mgr, const CTriggerData&) const {
   return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
@@ -3979,6 +4019,7 @@ void CGrenchler::GrappleBreak(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_27_21F4
 void CGrenchler::GrappleAbort(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_GrappleAbort, msg);
   BodyController()->SetLocomotionType(pas::kLT_Relaxed);
