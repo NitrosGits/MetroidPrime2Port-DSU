@@ -325,12 +325,22 @@ void shutdown() {
   }
 }
 
+bool enabled() noexcept { return g_enabled; }
+
 void request_snapshot() noexcept {
   if (!g_enabled) {
     return;
   }
   std::lock_guard lock{g_mutex};
   g_snapshotRequested = true;
+}
+
+bool snapshot_wanted() noexcept {
+  if (!g_enabled) {
+    return false;
+  }
+  std::lock_guard lock{g_mutex};
+  return g_snapshotRequested;
 }
 
 bool read_latest(uint16_t x, uint16_t y, uint32_t& z) noexcept {

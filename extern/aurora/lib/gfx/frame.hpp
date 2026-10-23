@@ -9,8 +9,6 @@ namespace aurora::gfx::detail {
 
 inline constexpr size_t FrameSlotCount = 2;
 inline constexpr size_t StagingBufferCount = FrameSlotCount + 3;
-inline constexpr uint64_t StagingBufferSize = UniformBufferSize + VertexBufferSize + IndexBufferSize +
-                                              StorageBufferSize + (UseTextureBuffer ? TextureUploadSize : 0);
 
 const wgpu::Buffer& staging_buffer(size_t slot);
 
@@ -31,6 +29,8 @@ std::optional<RegisteredEncoderTaskType> find_runtime_encoder_task_type(EncoderT
 } // namespace aurora::gfx::detail
 
 namespace aurora::gfx {
+// The 8-bit display EFB (g_frameBuffer), whichever target scene_render_target_layout() reports.
+RenderTargetLayout display_render_target_layout() noexcept;
 void initialize();
 void shutdown();
 bool begin_frame();

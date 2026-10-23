@@ -3,6 +3,11 @@
 // These allow the test binary to link without pulling in WebGPU runtime.
 
 #include "gx/gx.hpp"
+#include "gfx/bloom.hpp"
+#include "gfx/volfog.hpp"
+#include "gfx/thermal.hpp"
+#include "gfx/xray.hpp"
+#include "gfx/shadow.hpp"
 #include "gfx/clear.hpp"
 #include "gfx/resources.hpp"
 #include "gfx/depth_peek.hpp"
@@ -50,7 +55,18 @@ void increment_merged_draw_count() noexcept {}
 
 namespace aurora::webgpu {
 GraphicsConfig g_graphicsConfig{};
+bool g_dualSourceBlendingSupported = false;
+// Tests clear it to see GXPortSceneHdr fail closed.
+bool g_testSceneHdrSupported = true;
+bool scene_hdr_supported() noexcept { return g_testSceneHdrSupported; }
 } // namespace aurora::webgpu
+
+#include "webgpu/gpu_prof.hpp"
+namespace aurora::webgpu::gpu_prof {
+void set_enabled(bool) {}
+bool supported() { return false; }
+Result results() { return {}; }
+} // namespace aurora::webgpu::gpu_prof
 
 // --- GXState ---
 namespace aurora::gx {
@@ -69,6 +85,7 @@ void configure(const GXRenderModeObj*) noexcept {}
 // --- get_texture ---
 namespace aurora::gx {
 const gfx::TextureBind& get_texture(GXTexMapID id) noexcept { return g_gxState.textures[id]; }
+bool shader_has_cut_caster(const ShaderConfig&) noexcept { return false; }
 namespace texture {
 void invalidate_bindings() noexcept {}
 uint64_t current_bind_generation() noexcept { return 1; }
@@ -97,6 +114,7 @@ void evict_copy_texture(const void* dest) noexcept {
     }
   }
 }
+void trim_copy_sizes(const void* dest, size_t keep) noexcept {}
 void shutdown() noexcept {}
 Vec2<uint32_t> logical_fb_size() noexcept { return {640, 480}; }
 gfx::Viewport map_logical_viewport(const gfx::Viewport& logicalViewport) noexcept { return logicalViewport; }
@@ -114,27 +132,90 @@ void set_render_scissor(const gfx::ClipRect& scissor) noexcept { g_gxState.rende
 } // namespace aurora::gx
 
 // --- Shader/pipeline stubs ---
+namespace aurora::gfx {
+bool scene_hdr_pass_active() noexcept;
+} // namespace aurora::gfx
 namespace aurora::gx {
+// How many times a draw rebuilt its pipeline config; the HDR bit is taken as the real one takes it.
+uint32_t g_testPopulateCount = 0;
 void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXVtxFmt fmt) noexcept {
-  // No-op for tests
+  ++g_testPopulateCount;
+  config.shaderConfig.sceneHdr = gfx::scene_hdr_pass_active();
 }
+bool per_pixel_lighting() noexcept { return false; }
+// The GPU self-test is not linked here; its blocking lookups stay off.
+bool blocking_pipelines() noexcept { return false; }
 GXBindGroups build_bind_groups(const ShaderInfo& info) noexcept { return {}; }
-ShaderInfo build_shader_info(const ShaderConfig& config) noexcept { return {}; }
-gfx::Range build_uniform(const ShaderInfo& info) noexcept { return {.size = 1}; }
+ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
+  ShaderInfo info{};
+  info.usesHdrTone = config.sceneHdr && !config.pbr;
+  return info;
+}
+uint32_t g_testUniformBuildCount = 0;
+bool g_testUniformCompatSrcAlphaAdditive = false;
+gfx::Range build_uniform(const ShaderInfo& info) noexcept {
+  ++g_testUniformBuildCount;
+  g_testUniformCompatSrcAlphaAdditive = info.usesHdrTone && g_gxState.blendMode == GX_BM_BLEND &&
+                                        g_gxState.blendFacSrc == GX_BL_SRCALPHA &&
+                                        (g_gxState.blendFacDst == GX_BL_ONE || g_gxState.blendFacDst == GX_BL_INVSRCALPHA);
+  return {.offset = g_testUniformBuildCount, .size = 1};
+}
 void resolve_sampled_textures(const ShaderInfo& info) noexcept {}
+u32 dump_shaders(const char* dir) noexcept { return 0; }
+void set_shader_override_dir(const char* dir) noexcept {}
+void set_draw_shader_log(bool on) noexcept {}
+void note_draw_shader(u32 serial, const ShaderConfig& config) noexcept {}
+u64 draw_shader_hash(u32 serial) noexcept { return 0; }
+bool shader_overridden(u64 hash) noexcept { return false; }
 } // namespace aurora::gx
+namespace aurora::gfx {
+void drop_pipelines() {}
+} // namespace aurora::gfx
+extern "C" {
+void aurora_set_pipeline_eviction(uint32_t) {}
+void aurora_trim_pipelines(uint32_t) {}
+uint32_t aurora_get_pipeline_count(void) { return 0; }
+}
 
 // --- Buffer push stubs ---
 namespace aurora::gfx {
 Range push_verts(const uint8_t* data, size_t length, size_t alignment) { return {}; }
 Range push_indices(const uint8_t* data, size_t length, size_t alignment) { return {}; }
 Range push_uniform(const uint8_t* data, size_t length) { return {}; }
-Range push_storage(const uint8_t* data, size_t length) { return {}; }
+// Tests set it to see draws dropped for want of storage room.
+bool g_testStorageFull = false;
+Range push_storage(const uint8_t* data, size_t length) { return g_testStorageFull ? OverflowRange : Range{}; }
+
+// The resident regions: tests set them, and see the uploads.
+Range g_testResidentRegions[3]{};
+uint32_t g_testResidentUploads = 0;
+Range resident_region(ResidentBuffer kind) noexcept { return g_testResidentRegions[static_cast<int>(kind)]; }
+bool queue_resident_upload(ResidentBuffer kind, uint32_t offset, const uint8_t* data, size_t size) {
+  ++g_testResidentUploads;
+  return true;
+}
 
 Vec2<uint32_t> get_render_target_size() noexcept { return {640, 480}; }
 void set_viewport(const Viewport& viewport) noexcept {}
 void set_scissor(uint32_t x, uint32_t y, uint32_t w, uint32_t h) noexcept {}
 uint32_t get_sample_count() noexcept { return 1; }
+// The scene HDR mode the FIFO set, and how many switches it asked for.
+bool g_testSceneHdr = false;
+uint32_t g_testSceneHdrSwitches = 0;
+// Tests set it to see a refused switch.
+bool g_testSceneHdrRefuse = false;
+bool set_scene_hdr(bool on) {
+  if (g_testSceneHdrRefuse) {
+    return false;
+  }
+  ++g_testSceneHdrSwitches;
+  g_testSceneHdr = on;
+  return true;
+}
+bool scene_hdr_active() noexcept { return g_testSceneHdr; }
+// Tests set it to stand for an offscreen pass while the HDR scene is on.
+bool g_testSceneHdrOffscreen = false;
+bool scene_hdr_pass_active() noexcept { return g_testSceneHdr && !g_testSceneHdrOffscreen; }
 RenderTargetLayout get_render_target_layout() noexcept {
   return {
       .colorAttachmentCount = 1,
@@ -174,6 +255,9 @@ template <>
 PipelineRef pipeline_ref<gx::PipelineConfig>(const gx::PipelineConfig& config) {
   return 0;
 }
+PipelineRef pipeline_ref(const gx::PipelineConfig& config, bool blocking) { return 0; }
+// Never live, so the shader-info memo is rebuilt on every draw.
+bool touch_pipeline(PipelineRef ref) { return false; }
 gx::DrawData g_testLastDraw{};
 uint32_t g_testDrawCount = 0;
 std::atomic<uint32_t> g_testProcessedDrawCount{0};
@@ -205,7 +289,15 @@ TextureHandle new_dynamic_texture_2d(uint32_t width, uint32_t height, uint32_t m
                                      const char* label) noexcept {
   return {};
 }
-TextureHandle new_render_texture(uint32_t width, uint32_t height, u32 gxFormat, const char* label) noexcept {
+namespace testing {
+// The last new_render_texture's mip count and format.
+uint32_t lastRenderTextureMips = 0;
+wgpu::TextureFormat lastRenderTextureFormat = wgpu::TextureFormat::Undefined;
+} // namespace testing
+TextureHandle new_render_texture(uint32_t width, uint32_t height, u32 gxFormat, const char* label, uint32_t mips,
+                                 wgpu::TextureFormat format) noexcept {
+  testing::lastRenderTextureMips = mips;
+  testing::lastRenderTextureFormat = format;
   return {};
 }
 TextureHandle new_conv_texture(uint32_t width, uint32_t height, u32 gxFormat, const char* label) noexcept { return {}; }
@@ -220,12 +312,37 @@ std::atomic<uint32_t> endOffscreenCount{0};
 std::atomic<uint32_t> resolvePassCount{0};
 std::atomic<uint32_t> offscreenWidth{0};
 std::atomic<uint32_t> offscreenHeight{0};
+// The last resolve_pass_into's ResolveHdr (hdr::Tone{} / false when it passed none).
+bool lastResolveHasHdr = false;
+ResolveHdr lastResolveHdr{};
+bool lastResolveMips = false;
 } // namespace testing
 
 void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
-                       Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat) {
+                       Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat, int probeFace,
+                       bool resolveMips, const ResolveHdr* hdr, bool opaqueAlpha) {
   testing::resolvePassCount.fetch_add(1, std::memory_order_release);
+  testing::lastResolveHasHdr = hdr != nullptr;
+  testing::lastResolveHdr = hdr != nullptr ? *hdr : ResolveHdr{};
+  testing::lastResolveMips = resolveMips;
 }
+namespace probe {
+TextureHandle face(uint32_t face) { return {}; }
+void create_cube(uint32_t id, uint32_t size, uint32_t mipCount, const uint8_t* texels, size_t length) {}
+void destroy_cube(uint32_t id) {}
+bool has_cube(uint32_t id) { return false; }
+bool blend_cubes(uint32_t dst, const uint32_t* src, const float* weights, uint32_t count) { return false; }
+void create_volume(uint32_t id, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const uint8_t* texels, size_t length) {}
+void destroy_volume(uint32_t id) {}
+bool set_brdf_lut(const uint8_t* texels, size_t length) { return length == 256; }
+bool has_volume(uint32_t id) { return false; }
+bool lightmap_available() { return false; }
+bool lightmap_bc_supported() { return false; }
+void create_lightmap(uint32_t id, uint32_t width, uint32_t height, uint32_t layers, uint32_t format,
+                     const uint8_t* texels, size_t length) {}
+void destroy_lightmap(uint32_t id) {}
+bool has_lightmap(uint32_t id) { return false; }
+} // namespace probe
 void begin_offscreen(uint32_t width, uint32_t height) {
   testing::offscreenWidth.store(width, std::memory_order_relaxed);
   testing::offscreenHeight.store(height, std::memory_order_relaxed);
@@ -234,6 +351,93 @@ void begin_offscreen(uint32_t width, uint32_t height) {
 void end_offscreen() { testing::endOffscreenCount.fetch_add(1, std::memory_order_release); }
 bool is_offscreen() noexcept { return false; }
 } // namespace aurora::gfx
+
+namespace aurora::gfx::bloom {
+namespace testing {
+// Whether ensure_task succeeds, and what the POST_PROCESS handler recorded.
+bool task = false;
+uint32_t records = 0;
+Params lastRecord{};
+bool leaveScene = false; // record leaves the HDR scene, as the real one does
+} // namespace testing
+bool push(const Params& params) { return false; }
+bool ensure_task() { return testing::task; }
+bool record(const Params& params) {
+  ++testing::records;
+  testing::lastRecord = params;
+  if (testing::leaveScene) {
+    g_testSceneHdr = false;
+  }
+  return testing::task;
+}
+void set_grade_lut(uint32_t id, const uint8_t* rgba) {}
+void after_submit() noexcept {}
+bool frame_radiance(float out[3], uint32_t& serial) { return false; }
+void shutdown() {}
+} // namespace aurora::gfx::bloom
+
+namespace aurora::gfx::volfog {
+bool ensure_task() { return false; }
+bool record(const Params& params) { return false; }
+void shutdown() {}
+} // namespace aurora::gfx::volfog
+
+namespace aurora::gfx::thermal {
+bool set_lut(const uint8_t*, uint32_t) { return false; }
+bool has_lut() { return false; }
+bool ensure_task() { return false; }
+bool record(const Params& params) { return false; }
+void shutdown() {}
+} // namespace aurora::gfx::thermal
+
+namespace aurora::gfx::xray {
+bool ensure_task() { return false; }
+bool record(const Params& params) { return false; }
+void shutdown() {}
+} // namespace aurora::gfx::xray
+
+namespace aurora::gfx::shadow {
+bool ensure_task() { return false; }
+bool set_frame(const float worldToView[3][4], const cascade::Frustum& frustum, const float sunDir[3], float distance,
+               const float color[3], Uniform& out) {
+  return false;
+}
+bool fit_frame(const float worldToView[3][4], const cascade::Frustum& frustum, const float sunDir[3], float distance,
+               cascade::Fit out[cascade::Count]) {
+  return false;
+}
+bool box_casts(const float worldToView[3][4], const cascade::Frustum& frustum, const float sunDir[3], float distance,
+               const float min[3], const float max[3]) {
+  return false;
+}
+uint32_t last_caster_count() { return 0; }
+void add_caster(const gx::DrawData& draw) {}
+bool record() { return false; }
+const wgpu::TextureView& map_view() {
+  static const wgpu::TextureView view;
+  return view;
+}
+const wgpu::Sampler& sampler() {
+  static const wgpu::Sampler sampler;
+  return sampler;
+}
+void shutdown() {}
+} // namespace aurora::gfx::shadow
+
+namespace aurora::gfx::actor_shadow {
+bool ensure_task() { return false; }
+void add_caster(uint32_t layer, const gx::DrawData& draw) {}
+bool record() { return false; }
+const wgpu::TextureView& map_view() {
+  static const wgpu::TextureView view;
+  return view;
+}
+const wgpu::Sampler& sampler() {
+  static const wgpu::Sampler sampler;
+  return sampler;
+}
+void shutdown() {}
+} // namespace aurora::gfx::actor_shadow
 
 namespace aurora::gfx::depth_peek {
 namespace {
@@ -277,8 +481,12 @@ void set_latest(uint32_t width, uint32_t height, const std::vector<uint32_t>& da
 } // namespace testing
 } // namespace aurora::gfx::depth_peek
 
+namespace aurora::gfx::testing {
+// When set, RGB565 needs a conversion, as it does on a real device (tex_copy_conv's pipelines).
+bool copyConvertsRgb565 = false;
+} // namespace aurora::gfx::testing
 namespace aurora::gfx::tex_copy_conv {
-bool needs_conversion(GXTexFmt fmt) { return false; }
+bool needs_conversion(GXTexFmt fmt) { return testing::copyConvertsRgb565 && fmt == GX_TF_RGB565; }
 } // namespace aurora::gfx::tex_copy_conv
 
 namespace aurora::gfx::tex_palette_conv {

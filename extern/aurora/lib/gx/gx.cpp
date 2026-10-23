@@ -6,9 +6,14 @@
 #include "../webgpu/gpu.hpp"
 #include "../internal.hpp"
 #include "../window.hpp"
+#include "../gfx/hash.hpp"
 #include "../gfx/resources.hpp"
+#include "../gfx/probe.hpp"
 #include "../gfx/recording.hpp"
 #include "../gfx/resource_cache.hpp"
+#include "../gfx/shadow.hpp"
+#include "../gfx/actor_shadow.hpp"
+#include "../gfx/volfog.hpp"
 #include "../gfx/texture.hpp"
 #include "gx_fmt.hpp"
 
@@ -20,7 +25,12 @@
 #include <cfloat>
 #include <cmath>
 #include <mutex>
+#include <algorithm>
+#include <cstddef>
+#include <cstdlib>
+#include <cstring>
 #include <utility>
+#include "../gfx/texture_sites.hpp"
 
 static aurora::Module Log("aurora::gx");
 
@@ -33,6 +43,11 @@ wgpu::BindGroup g_emptyTextureBindGroup;
 
 namespace {
 wgpu::Sampler sEmptySampler;
+// The sampler each texture slot took last, by its descriptor's value fields (build_bind_groups)
+constexpr auto kSamplerKeyOffset = offsetof(wgpu::SamplerDescriptor, addressModeU);
+constexpr auto kSamplerKeySize = offsetof(wgpu::SamplerDescriptor, maxAnisotropy) + sizeof(uint16_t) - kSamplerKeyOffset;
+std::array<std::array<u8, kSamplerKeySize>, MaxTextures> sSlotSamplerKeys{};
+std::array<wgpu::Sampler, MaxTextures> sSlotSamplers;
 wgpu::Texture sEmptyTexture;
 wgpu::TextureView sEmptyTextureView;
 std::mutex sBindGroupLayoutMutex;
@@ -41,6 +56,11 @@ absl::flat_hash_map<u32, std::pair<wgpu::BindGroupLayout, wgpu::BindGroupLayout>
 wgpu::BindGroupLayout sTextureBindGroupLayout;
 wgpu::BindGroupLayout sSamplerBindGroupLayout;
 wgpu::PipelineLayout sPipelineLayout;
+// A shadow receiver's group 2 (the shadow map in the froxel's slots) and its pipeline layout, and the
+// shadow map pass's layout, which has no group 2.
+wgpu::BindGroupLayout sShadowTextureBindGroupLayout;
+wgpu::PipelineLayout sShadowRecvPipelineLayout;
+wgpu::PipelineLayout sShadowPipelineLayout;
 
 std::atomic<int> sPendingViewportPolicy{-1};
 // Last GXSetDrawSync token whose FIFO command has been processed.
@@ -111,7 +131,7 @@ wgpu::CompareFunction to_compare_function(GXCompare func) {
 }
 
 wgpu::BlendState to_blend_state(GXBlendMode mode, GXBlendFactor srcFac, GXBlendFactor dstFac, GXLogicOp op,
-                                u32 dstAlpha, bool dualSrcAlpha) {
+                                u32 dstAlpha, bool dualSource) {
   wgpu::BlendComponent colorBlendComponent;
   switch (mode) {
     DEFAULT_FATAL("unsupported blend mode {}", underlying(mode));
@@ -163,19 +183,19 @@ wgpu::BlendState to_blend_state(GXBlendMode mode, GXBlendFactor srcFac, GXBlendF
     }
     break;
   }
-  if (dualSrcAlpha) {
-    // The TEV alpha is at blend source 1 (ShaderConfig::dualSrcAlpha); source 0's alpha is 1.0.
-    const auto toSrc1 = [](wgpu::BlendFactor f) {
-      if (f == wgpu::BlendFactor::SrcAlpha) {
+  if (dualSource) {
+    // The TEV alpha is the second source; the first's alpha is 1 (DstAlphaMode::DualSource).
+    const auto remap = [](wgpu::BlendFactor factor) {
+      if (factor == wgpu::BlendFactor::SrcAlpha) {
         return wgpu::BlendFactor::Src1Alpha;
       }
-      if (f == wgpu::BlendFactor::OneMinusSrcAlpha) {
+      if (factor == wgpu::BlendFactor::OneMinusSrcAlpha) {
         return wgpu::BlendFactor::OneMinusSrc1Alpha;
       }
-      return f;
+      return factor;
     };
-    colorBlendComponent.srcFactor = toSrc1(colorBlendComponent.srcFactor);
-    colorBlendComponent.dstFactor = toSrc1(colorBlendComponent.dstFactor);
+    colorBlendComponent.srcFactor = remap(colorBlendComponent.srcFactor);
+    colorBlendComponent.dstFactor = remap(colorBlendComponent.dstFactor);
   }
   wgpu::BlendComponent alphaBlendComponent;
   if (dstAlpha != UINT32_MAX) {
@@ -224,7 +244,15 @@ wgpu::PrimitiveState to_primitive_state(GXCullMode gx_cullMode) {
       .cullMode = cullMode,
   };
 }
+std::atomic_bool sPerPixelLighting{false};
+std::atomic_bool sBlockingPipelines{false};
 } // namespace
+
+void set_per_pixel_lighting(bool enabled) noexcept { sPerPixelLighting.store(enabled, std::memory_order_relaxed); }
+bool per_pixel_lighting() noexcept { return sPerPixelLighting.load(std::memory_order_relaxed); }
+
+void set_blocking_pipelines(bool enabled) noexcept { sBlockingPipelines.store(enabled, std::memory_order_relaxed); }
+bool blocking_pipelines() noexcept { return sBlockingPipelines.load(std::memory_order_relaxed); }
 
 void set_viewport_policy(AuroraViewportPolicy policy) noexcept {
   sPendingViewportPolicy.store(policy, std::memory_order_release);
@@ -284,12 +312,15 @@ gfx::ClipRect map_logical_scissor(const gfx::ClipRect& logicalScissor) noexcept 
   const float right = static_cast<float>(logicalScissor.x + logicalScissor.width) * scaleX;
   const float bottom = static_cast<float>(logicalScissor.y + logicalScissor.height) * scaleY;
 
-  const auto mappedLeft = std::clamp(static_cast<int32_t>(std::floor(left)), 0, static_cast<int32_t>(targetWidth));
-  const auto mappedTop = std::clamp(static_cast<int32_t>(std::floor(top)), 0, static_cast<int32_t>(targetHeight));
+  // Every edge rounds the same way, so rects that share a logical edge share a target one. Flooring
+  // the left and ceiling the right overlapped them by a pixel at non-integer scales, and a model
+  // drawn in abutting scissored slices (the widescreen HUD warp) blended that column twice.
+  const auto mappedLeft = std::clamp(static_cast<int32_t>(std::lround(left)), 0, static_cast<int32_t>(targetWidth));
+  const auto mappedTop = std::clamp(static_cast<int32_t>(std::lround(top)), 0, static_cast<int32_t>(targetHeight));
   const auto mappedRight =
-      std::clamp(static_cast<int32_t>(std::ceil(right)), mappedLeft, static_cast<int32_t>(targetWidth));
+      std::clamp(static_cast<int32_t>(std::lround(right)), mappedLeft, static_cast<int32_t>(targetWidth));
   const auto mappedBottom =
-      std::clamp(static_cast<int32_t>(std::ceil(bottom)), mappedTop, static_cast<int32_t>(targetHeight));
+      std::clamp(static_cast<int32_t>(std::lround(bottom)), mappedTop, static_cast<int32_t>(targetHeight));
 
   return {
       .x = mappedLeft,
@@ -333,9 +364,64 @@ u16 draw_sync_token() noexcept { return sDrawSyncToken.load(std::memory_order_ac
 
 const gfx::TextureBind& get_texture(GXTexMapID id) noexcept { return g_gxState.textures[static_cast<size_t>(id)]; }
 
+DstAlphaMode dst_alpha_mode(const PipelineConfig& config) noexcept {
+  // A zero constant times any source alpha is still zero.
+  if (config.shadowPass != 0 || !config.alphaUpdate || config.dstAlpha == UINT32_MAX || config.dstAlpha == 0) {
+    return DstAlphaMode::None;
+  }
+  // The draw-id and actor-decal shaders end in their own return (alpha 1).
+  const auto& sc = config.shaderConfig;
+  if (sc.drawId || (sc.actorDecal != 0 && sc.lineMode == 0)) {
+    return DstAlphaMode::None;
+  }
+  const auto usesSourceAlpha = [](GXBlendFactor factor) {
+    return factor == GX_BL_SRCALPHA || factor == GX_BL_INVSRCALPHA;
+  };
+  const bool needsSourceAlpha = config.colorUpdate && config.blendMode == GX_BM_BLEND &&
+                                (usesSourceAlpha(config.blendFacSrc) || usesSourceAlpha(config.blendFacDst));
+  if (!needsSourceAlpha) {
+    return DstAlphaMode::Replace;
+  }
+  return webgpu::g_dualSourceBlendingSupported ? DstAlphaMode::DualSource : DstAlphaMode::None;
+}
+
 wgpu::RenderPipeline build_pipeline(const PipelineConfig& config, ArrayRef<wgpu::VertexBufferLayout> vtxBuffers,
-                                    wgpu::ShaderModule shader, const char* label) noexcept {
+                                    wgpu::ShaderModule shader, const char* label, DstAlphaMode dstAlphaMode) noexcept {
   ZoneScoped;
+  if (config.shadowPass != 0) {
+    // The sun's shadow map: depth only, culled as the draw is, with Remastered's shadow pass bias
+    // (2 units, slope 4, no clamp).
+    const wgpu::DepthStencilState depthStencil{
+        .format = gfx::shadow::MapFormat,
+        .depthWriteEnabled = true,
+        .depthCompare = wgpu::CompareFunction::Less,
+        .depthBias = 2,
+        .depthBiasSlopeScale = 4.0f,
+    };
+    // Pass 2 alpha-tests (a Remastered cutout): its fragment stage samples the draw's own textures, so it
+    // takes the colour pass's plain texture layout (never the receiver one, which holds this map) and has no colour target.
+    const bool cut = config.shadowPass == 2;
+    const wgpu::FragmentState cutFragment{
+        .module = shader,
+        .entryPoint = "fs_shadow",
+        .targetCount = 0,
+    };
+    const wgpu::RenderPipelineDescriptor descriptor{
+        .label = label,
+        .layout = cut ? sPipelineLayout : sShadowPipelineLayout,
+        .vertex =
+            {
+                .module = shader,
+                .entryPoint = cut ? "vs_shadow_cut" : "vs_shadow",
+                .bufferCount = static_cast<uint32_t>(vtxBuffers.size()),
+                .buffers = vtxBuffers.data(),
+            },
+        .primitive = to_primitive_state(config.cullMode),
+        .depthStencil = &depthStencil,
+        .fragment = cut ? &cutFragment : nullptr,
+    };
+    return g_device.CreateRenderPipeline(&descriptor);
+  }
   const float depthBias = (UseReversedZ ? -1.0f : 1.0f) * std::bit_cast<float>(config.polygonOffsetBits);
   const float depthBiasSlopeScale = (UseReversedZ ? -1.0f : 1.0f) * std::bit_cast<float>(config.polygonOffsetScaleBits);
   const float depthBiasClamp = webgpu::g_hasCoreFeatures ? std::bit_cast<float>(config.polygonOffsetClampBits) : 0.0f;
@@ -349,9 +435,10 @@ wgpu::RenderPipeline build_pipeline(const PipelineConfig& config, ArrayRef<wgpu:
   };
   const auto blendState =
       to_blend_state(config.blendMode, config.blendFacSrc, config.blendFacDst, config.blendOp, config.dstAlpha,
-                     config.shaderConfig.dualSrcAlpha);
+                     dstAlphaMode == DstAlphaMode::DualSource);
   const std::array colorTargets{wgpu::ColorTargetState{
-      .format = g_graphicsConfig.surfaceConfiguration.format,
+      // The HDR scene's RGBA16F target is a different format from every other pass's.
+      .format = config.shaderConfig.sceneHdr ? webgpu::SceneHdrFormat : g_graphicsConfig.surfaceConfiguration.format,
       .blend = &blendState,
       .writeMask = to_write_mask(config.colorUpdate, config.alphaUpdate),
   }};
@@ -363,7 +450,7 @@ wgpu::RenderPipeline build_pipeline(const PipelineConfig& config, ArrayRef<wgpu:
   };
   const wgpu::RenderPipelineDescriptor descriptor{
       .label = label,
-      .layout = sPipelineLayout,
+      .layout = shadow_receives(config.shaderConfig) ? sShadowRecvPipelineLayout : sPipelineLayout,
       .vertex =
           {
               .module = shader,
@@ -382,13 +469,67 @@ wgpu::RenderPipeline build_pipeline(const PipelineConfig& config, ArrayRef<wgpu:
   return g_device.CreateRenderPipeline(&descriptor);
 }
 
+// How a draw after the volumetric fog fogs itself. Remastered fogs its transparents per vertex,
+// over a frame the full-screen pass has already fogged: an alpha-blended surface as colour T +
+// in-scatter, an additive one as colour T, so it adds no in-scatter of its own. Blends that
+// multiply or subtract the frame are left alone: fogging them would fog what is behind twice.
+// Particles are the exception to the additive rule: Remastered's particle renderers inject only
+// the colour T + in-scatter block, and an additive or premultiplied particle (blend mode 2 or 1)
+// carries the static render state's "no fog" flag, so it is not fogged at all. So does a
+// particle with DFOG 1, whatever its blend (CreateGPSM/CreateSWSH set the flag from it).
+static u8 vol_fog_mode(bool depthOnly) noexcept {
+  if (!g_gxState.volFog || depthOnly || !g_gxState.colorUpdate ||
+      g_gxState.particleFog == GXState::kParticleUnfogged) {
+    return VolFogNone;
+  }
+  const auto src = g_gxState.blendFacSrc;
+  const auto dst = g_gxState.blendFacDst;
+  if (g_gxState.blendMode == GX_BM_NONE ||
+      (g_gxState.blendMode == GX_BM_BLEND && src == GX_BL_ONE && dst == GX_BL_ZERO)) {
+    return VolFogOpaque;
+  }
+  if (g_gxState.blendMode != GX_BM_BLEND) {
+    return VolFogNone;
+  }
+  const bool srcScales = src == GX_BL_ONE || src == GX_BL_SRCALPHA || src == GX_BL_INVSRCALPHA;
+  if (srcScales && dst == GX_BL_ONE) {
+    return g_gxState.particleFog ? VolFogNone : VolFogAdditive;
+  }
+  if (src == GX_BL_SRCALPHA && dst == GX_BL_INVSRCALPHA) {
+    return VolFogBlended;
+  }
+  if (src == GX_BL_ONE && dst == GX_BL_INVSRCALPHA) {
+    return g_gxState.particleFog ? VolFogNone : VolFogPremultiplied;
+  }
+  return VolFogNone;
+}
+
 void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXVtxFmt fmt) noexcept {
   ZoneScoped;
 
   const auto& vtxFmt = g_gxState.vtxFmts[fmt];
   config.shaderConfig = {};
+  // From the pass being recorded (the replayed FIFO's), so an offscreen pass or the next frame's
+  // LDR scene never takes an HDR pipeline.
+  config.shaderConfig.sceneHdr = gfx::scene_hdr_pass_active();
   config.shaderConfig.fogType = g_gxState.fog.type;
   config.shaderConfig.fogRangeEnabled = g_gxState.fog.rangeEnabled;
+  config.shaderConfig.pbr = g_gxState.pbr;
+  if (g_gxState.pbr != 0) {
+    config.shaderConfig.pbrKind = static_cast<u8>(std::clamp(std::lround(g_gxState.pbrLayer.y()), 0L, 255L));
+    // The lightmap's UV attribute, when the bound vertex format has it (and the device a slot for the lightmap).
+    const u8 lightmapAttr = g_gxState.pbrLightmapAttr;
+    if (webgpu::g_lightmapBinding && lightmapAttr >= GX_VA_TEX0 && lightmapAttr <= GX_VA_TEX7 &&
+        g_gxState.vtxDesc[lightmapAttr] != GX_NONE) {
+      config.shaderConfig.pbrLightmapAttr = lightmapAttr;
+    }
+  }
+  if (bind_pos_active()) {
+    config.shaderConfig.pbrBindPos = true;
+    config.shaderConfig.pbrBindLe = g_gxState.arrays[GX_VA_TEX7].le;
+  }
+  config.shaderConfig.sdf = g_gxState.sdf;
+  config.shaderConfig.hudSample = g_gxState.hudSample;
   u8 vtxOffset = 0;
   for (int i = GX_VA_PNMTXIDX; i <= GX_VA_TEX7; ++i) {
     const auto attr = static_cast<GXAttr>(i);
@@ -460,6 +601,7 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
       };
     }
   }
+  config.shaderConfig.perPixelLight = wants_per_pixel_light(config.shaderConfig);
   for (u8 i = 0; i < g_gxState.numTexGens; ++i) {
     config.shaderConfig.tcgs[i] = g_gxState.tcgs[i];
   }
@@ -468,44 +610,132 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
   }
   const auto cullMode = config.shaderConfig.lineMode == 0 ? g_gxState.cullMode : GX_CULL_NONE;
   const auto [polygonOffset, polygonOffsetScale] = polygon_offset_for_cull_mode(cullMode);
-  config = {
-      .msaaSamples = gfx::get_sample_count(),
-      .shaderConfig = config.shaderConfig,
-      .depthFunc = g_gxState.depthFunc,
-      .cullMode = cullMode,
-      .blendMode = g_gxState.blendMode,
-      .blendFacSrc = g_gxState.blendFacSrc,
-      .blendFacDst = g_gxState.blendFacDst,
-      .blendOp = g_gxState.blendOp,
-      .dstAlpha = g_gxState.dstAlpha,
-      .polygonOffsetBits = std::bit_cast<uint32_t>(polygonOffset),
-      .polygonOffsetScaleBits = std::bit_cast<uint32_t>(polygonOffsetScale),
-      .polygonOffsetClampBits = std::bit_cast<uint32_t>(g_gxState.clamp),
-      .depthCompare = g_gxState.depthCompare,
-      .depthUpdate = g_gxState.depthUpdate,
-      .alphaUpdate = g_gxState.alphaUpdate,
-      .colorUpdate = g_gxState.colorUpdate,
+  // GX_AURORA_PORT_DEPTH_PREPASS: pass 1 writes only the depth, pass 2 shades where it is equal.
+  // Both keep the vertex stage and the polygon offset, so their depths match exactly (the
+  // position is @invariant).
+  const bool writesDepth = g_gxState.depthCompare && g_gxState.depthUpdate;
+  const bool depthOnly = g_gxState.depthPrepass == 1;
+  const bool depthEqual = g_gxState.depthPrepass == 2 && writesDepth;
+  config.shaderConfig.depthOnly = depthOnly;
+  // The "drawid" view: flat colours that must reach the frame as they are, so no fog and no blend (a
+  // depth-only pass stays one).
+  const bool drawId = g_gxState.drawIdMode && !depthOnly;
+  config.shaderConfig.drawId = drawId;
+  if (drawId) {
+    config.shaderConfig.fogType = GX_FOG_NONE;
+    config.shaderConfig.fogRangeEnabled = false;
+  }
+  config.shaderConfig.volFog = drawId ? VolFogNone : vol_fog_mode(depthOnly);
+  config.shaderConfig.shadow = g_gxState.shadowCaster && g_gxState.shadowActive && config.shaderConfig.lineMode == 0;
+  if (g_gxState.actorDecal && config.shaderConfig.shadow && !drawId && !depthOnly) {
+    // Remastered's actor shadow decal: the receiver's geometry multiplies the frame by the shadow
+    // alone, so none of the draw's own shading, fog or PBR reaches the shader.
+    auto& sc = config.shaderConfig;
+    sc.actorDecal = 1;
+    sc.pbr = 0;
+    sc.pbrKind = 0;
+    sc.pbrBindPos = false;
+    sc.pbrBindLe = false;
+    sc.pbrLightmapAttr = GX_VA_NULL;
+    sc.sdf = 0;
+    sc.hudSample = 0;
+    sc.perPixelLight = 0;
+    sc.fogType = GX_FOG_NONE;
+    sc.fogRangeEnabled = false;
+    sc.volFog = VolFogNone;
+    sc.alphaCompare = {};
+    sc.numIndStages = 0;
+    sc.indStages = {};
+    for (auto& ts : sc.tevStages) {
+      ts = {};
+    }
+    sc.tevStageCount = 1;
+  } else if (g_gxState.actorDecal) {
+    config.shaderConfig.shadow = false;
+  }
+  // Field by field: an aggregate assignment would copy the 2.7 KB shader config twice more on
+  // every pipeline switch. Every field outside shaderConfig is written here.
+  config.version = GXPipelineConfigVersion;
+  config.msaaSamples = gfx::get_sample_count();
+  config.depthFunc = depthEqual ? GX_EQUAL : g_gxState.depthFunc;
+  config.cullMode = cullMode;
+  config.blendMode = drawId ? GX_BM_NONE : g_gxState.blendMode;
+  // An EFB without alpha: its alpha reads as 1 and is never written (nor is GXSetDstAlpha's).
+  const bool hasAlpha = efb_has_alpha(g_gxState.pixelFmt);
+  const auto blendFactor = [hasAlpha](GXBlendFactor factor) {
+    if (!hasAlpha && factor == GX_BL_DSTALPHA) {
+      return GX_BL_ONE;
+    }
+    if (!hasAlpha && factor == GX_BL_INVDSTALPHA) {
+      return GX_BL_ZERO;
+    }
+    return factor;
   };
-  // Port: one draw instead of push_gx_draw's alpha-only second draw (ShaderConfig::dualSrcAlpha).
-  // Only GX_BM_BLEND reads the source alpha; the GX pipeline has one colour target (location 0),
-  // which dual-source blending requires.
-  const auto readsSrcAlpha = [](GXBlendFactor f) { return f == GX_BL_SRCALPHA || f == GX_BL_INVSRCALPHA; };
-  config.shaderConfig.dualSrcAlpha =
-      webgpu::g_dualSourceBlendingSupported && g_gxState.dstAlpha != UINT32_MAX && g_gxState.alphaUpdate &&
-      g_gxState.blendMode == GX_BM_BLEND &&
-      (readsSrcAlpha(g_gxState.blendFacSrc) || readsSrcAlpha(g_gxState.blendFacDst));
+  config.blendFacSrc = blendFactor(g_gxState.blendFacSrc);
+  config.blendFacDst = blendFactor(g_gxState.blendFacDst);
+  config.blendOp = g_gxState.blendOp;
+  config.dstAlpha = hasAlpha && g_gxState.alphaUpdate ? g_gxState.dstAlpha : UINT32_MAX;
+  config.polygonOffsetBits = std::bit_cast<uint32_t>(polygonOffset);
+  config.polygonOffsetScaleBits = std::bit_cast<uint32_t>(polygonOffsetScale);
+  config.polygonOffsetClampBits = std::bit_cast<uint32_t>(g_gxState.clamp);
+  config.shadowPass = 0;
+  config.depthCompare = g_gxState.depthCompare;
+  config.depthUpdate = g_gxState.depthUpdate && !depthEqual;
+  if (config.shaderConfig.actorDecal != 0) {
+    // Framebuffer *= the decal (DstColor, Zero), LEQUAL against the world's depth without writing,
+    // back faces culled; the pipeline state of Remastered's actor shadow draw.
+    config.blendMode = GX_BM_BLEND;
+    config.blendFacSrc = GX_BL_SRCCLR;
+    config.blendFacDst = GX_BL_ZERO;
+    config.depthFunc = GX_LEQUAL;
+    config.depthCompare = true;
+    config.depthUpdate = false;
+    // The receiver keeps its own cull (back faces for the world's geometry), as Remastered's
+    // decal draw does.
+  }
+  config.alphaUpdate = hasAlpha && g_gxState.alphaUpdate && !depthOnly;
+  config.colorUpdate = g_gxState.colorUpdate && !depthOnly;
+  static_assert(sizeof(PipelineConfig) == sizeof(ShaderConfig) + 13 * sizeof(uint32_t) + 4 * sizeof(bool),
+                "a new PipelineConfig field must be written above");
 }
+
+// The lightmap's slot is the last binding, left out of group 2 when the device has no room for it.
+static size_t texture_binding_count() noexcept { return kTextureBindings - (webgpu::g_lightmapBinding ? 0 : 1); }
 
 GXBindGroups build_bind_groups(const ShaderInfo& info) noexcept {
   ZoneScoped;
 
-  if (!info.sampledTextures.any() && !info.sampledIndTextures.any()) {
+  if (!info.sampledTextures.any() && !info.sampledIndTextures.any() && !info.usesVolFog && !info.shadowReceive &&
+      !info.usesLightmap) {
     // Don't bother re-binding anything
     return {};
   }
 
   // Using C WGPU types instead of C++ wrappers to avoid destructor overhead
-  std::array<WGPUBindGroupEntry, MaxTextures * 2> textureEntries{};
+  std::array<WGPUBindGroupEntry, kTextureBindings> textureEntries{};
+  textureEntries[MaxTextures * 2].binding = MaxTextures * 2;
+  textureEntries[MaxTextures * 2].textureView = gfx::probe::cube_view(g_gxState.pbrCube).Get();
+  textureEntries[MaxTextures * 2 + 1].binding = MaxTextures * 2 + 1;
+  textureEntries[MaxTextures * 2 + 1].sampler = gfx::probe::sampler().Get();
+  for (u32 i = 0; i < gfx::probe::VolumeTextures; ++i) {
+    textureEntries[MaxTextures * 2 + 2 + i].binding = MaxTextures * 2 + 2 + i;
+    textureEntries[MaxTextures * 2 + 2 + i].textureView = gfx::probe::volume_view(g_gxState.pbrVolume, i).Get();
+  }
+  textureEntries[kLightmapBinding].binding = kLightmapBinding;
+  textureEntries[kLightmapBinding].textureView = gfx::probe::lightmap_view(g_gxState.pbrLightmap).Get();
+  textureEntries[kBrdfLutBinding].binding = kBrdfLutBinding;
+  textureEntries[kBrdfLutBinding].textureView = gfx::probe::brdf_lut_view().Get();
+  textureEntries[kVolFogFroxelBinding].binding = kVolFogFroxelBinding;
+  textureEntries[kVolFogFroxelBinding].textureView = gfx::volfog::froxel_view().Get();
+  textureEntries[kVolFogSamplerBinding].binding = kVolFogSamplerBinding;
+  textureEntries[kVolFogSamplerBinding].sampler = gfx::volfog::sampler().Get();
+  if (info.shadowReceive && info.actorDecal) {
+    textureEntries[kShadowMapBinding].textureView = gfx::actor_shadow::map_view().Get();
+    textureEntries[kShadowSamplerBinding].sampler = gfx::actor_shadow::sampler().Get();
+  } else if (info.shadowReceive) {
+    textureEntries[kShadowMapBinding].textureView = gfx::shadow::map_view().Get();
+    textureEntries[kShadowSamplerBinding].sampler = gfx::shadow::sampler().Get();
+  }
   for (u32 i = 0; i < MaxTextures; ++i) {
     const auto& tex = g_gxState.textures[i];
     WGPUBindGroupEntry& textureEntry = textureEntries[i * 2];
@@ -514,7 +744,32 @@ GXBindGroups build_bind_groups(const ShaderInfo& info) noexcept {
     samplerEntry.binding = i * 2 + 1;
     if (tex && (info.sampledTextures[i] || info.sampledIndTextures[i])) {
       textureEntry.textureView = tex.ref->sampleTextureView.Get();
-      samplerEntry.sampler = gfx::sampler_ref(tex.get_descriptor()).Get();
+      auto samplerDescriptor = tex.get_descriptor();
+      // A mod's native maps under PBR tile many times over a floor. Anisotropic filtering keeps
+      // them sharp across the view and averages them along it, so each screen column shows the
+      // mean of one line through the repeated tile: a fan of streaks towards the horizon that
+      // slides as the camera turns. Seen from 4x up, in every map, so they all take the limit.
+      static const int pbrAniso = getenv("MP2_PBR_ANISO") ? std::clamp(atoi(getenv("MP2_PBR_ANISO")), 1, 16) : 2;
+      if (g_gxState.pbr && tex.ref->isReplacement && samplerDescriptor.maxAnisotropy > pbrAniso) {
+        samplerDescriptor.maxAnisotropy = pbrAniso;
+      }
+      // Cost tests 8 and 9 (GXSetPBRCostTest) shade in full with cheaper filtering of the
+      // mod's maps: 8 without anisotropy, 9 also without blending between mips.
+      const u32 costTest = g_gxState.pbr ? g_gxState.pbr - 1u : 0u;
+      if (tex.ref->isReplacement && (costTest == 8 || costTest == 9)) {
+        samplerDescriptor.maxAnisotropy = 1;
+        if (costTest == 9) {
+          samplerDescriptor.mipmapFilter = wgpu::MipmapFilterMode::Nearest;
+        }
+      }
+      // Each slot keeps the sampler it took last: slots mostly see the same sampler state, and the cache
+      // never drops a sampler before shutdown, so this saves the hash and the lock.
+      const auto* samplerKey = reinterpret_cast<const u8*>(&samplerDescriptor) + kSamplerKeyOffset;
+      if (!sSlotSamplers[i] || std::memcmp(sSlotSamplerKeys[i].data(), samplerKey, kSamplerKeySize) != 0) {
+        sSlotSamplers[i] = gfx::sampler_ref(samplerDescriptor);
+        std::memcpy(sSlotSamplerKeys[i].data(), samplerKey, kSamplerKeySize);
+      }
+      samplerEntry.sampler = sSlotSamplers[i].Get();
     } else {
       textureEntry.textureView = sEmptyTextureView.Get();
       samplerEntry.sampler = sEmptySampler.Get();
@@ -522,18 +777,88 @@ GXBindGroups build_bind_groups(const ShaderInfo& info) noexcept {
   }
   const WGPUBindGroupDescriptor textureBindGroupDescriptor{
       .label = {"GX Texture Bind Group", WGPU_STRLEN},
-      .layout = sTextureBindGroupLayout.Get(),
-      .entryCount = textureEntries.size(),
+      .layout = info.shadowReceive ? sShadowTextureBindGroupLayout.Get() : sTextureBindGroupLayout.Get(),
+      .entryCount = texture_binding_count(),
       .entries = textureEntries.data(),
   };
+  // Every entry holds only a texture view or a sampler at a fixed binding, so those handles and the layout
+  // identify the bind group; hashing them is far cheaper than hashing the whole entries.
+  std::array<const void*, kTextureBindings + 1> key{};
+  key[0] = textureBindGroupDescriptor.layout;
+  for (size_t i = 0; i < textureBindGroupDescriptor.entryCount; ++i) {
+    key[i + 1] = textureEntries[i].textureView ? static_cast<const void*>(textureEntries[i].textureView)
+                                               : static_cast<const void*>(textureEntries[i].sampler);
+  }
   return {
-      .textureBindGroup = gfx::bind_group_ref(textureBindGroupDescriptor),
+      .textureBindGroup = gfx::bind_group_ref(xxh3_hash(key), textureBindGroupDescriptor),
   };
 }
 
 void initialize() noexcept {
   {
-    std::array<wgpu::BindGroupLayoutEntry, MaxTextures * 2> textureEntries;
+    std::array<wgpu::BindGroupLayoutEntry, kTextureBindings> textureEntries;
+    // The PBR environment probe (GX_AURORA_COPY_PROBE_FACE)
+    textureEntries[MaxTextures * 2] = {
+        .binding = MaxTextures * 2,
+        .visibility = wgpu::ShaderStage::Fragment,
+        .texture =
+            {
+                .sampleType = wgpu::TextureSampleType::Float,
+                .viewDimension = wgpu::TextureViewDimension::Cube,
+            },
+    };
+    textureEntries[MaxTextures * 2 + 1] = {
+        .binding = MaxTextures * 2 + 1,
+        .visibility = wgpu::ShaderStage::Fragment,
+        .sampler = {.type = wgpu::SamplerBindingType::Filtering},
+    };
+    // The PBR ambient volume (GX_AURORA_SET_PBR_VOLUME), which shares the probe's sampler
+    for (u32 i = 0; i < gfx::probe::VolumeTextures; ++i) {
+      textureEntries[MaxTextures * 2 + 2 + i] = {
+          .binding = MaxTextures * 2 + 2 + i,
+          .visibility = wgpu::ShaderStage::Fragment,
+          .texture =
+              {
+                  .sampleType = wgpu::TextureSampleType::Float,
+                  .viewDimension = wgpu::TextureViewDimension::e3D,
+              },
+      };
+    }
+    // The baked lightmap (GX_AURORA_SET_PBR_LIGHTMAP), the 17th sampled texture: only on a device that has it
+    textureEntries[kLightmapBinding] = {
+        .binding = kLightmapBinding,
+        .visibility = wgpu::ShaderStage::Fragment,
+        .texture =
+            {
+                .sampleType = wgpu::TextureSampleType::Float,
+                .viewDimension = wgpu::TextureViewDimension::e2DArray,
+            },
+    };
+    // The PBR environment BRDF table (GX_AURORA_SET_PBR_BRDF_LUT), also read with the probe's sampler
+    textureEntries[kBrdfLutBinding] = {
+        .binding = kBrdfLutBinding,
+        .visibility = wgpu::ShaderStage::Fragment,
+        .texture =
+            {
+                .sampleType = wgpu::TextureSampleType::Float,
+                .viewDimension = wgpu::TextureViewDimension::e2D,
+            },
+    };
+    // The volumetric fog's froxels (GX_AURORA_PORT_VOLUMETRIC_FOG), read per vertex or per pixel
+    textureEntries[kVolFogFroxelBinding] = {
+        .binding = kVolFogFroxelBinding,
+        .visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment,
+        .texture =
+            {
+                .sampleType = wgpu::TextureSampleType::Float,
+                .viewDimension = wgpu::TextureViewDimension::e3D,
+            },
+    };
+    textureEntries[kVolFogSamplerBinding] = {
+        .binding = kVolFogSamplerBinding,
+        .visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment,
+        .sampler = {.type = wgpu::SamplerBindingType::Filtering},
+    };
     for (u32 i = 0; i < MaxTextures; ++i) {
       textureEntries[i * 2] = {
           .binding = i * 2,
@@ -552,10 +877,31 @@ void initialize() noexcept {
     }
     const wgpu::BindGroupLayoutDescriptor descriptor{
         .label = "GX Texture Bind Group Layout",
-        .entryCount = textureEntries.size(),
+        .entryCount = texture_binding_count(),
         .entries = textureEntries.data(),
     };
     sTextureBindGroupLayout = g_device.CreateBindGroupLayout(&descriptor);
+    // A shadow receiver's: the sun's shadow map and its comparison sampler in the froxel's slots
+    textureEntries[kShadowMapBinding] = {
+        .binding = kShadowMapBinding,
+        .visibility = wgpu::ShaderStage::Fragment,
+        .texture =
+            {
+                .sampleType = wgpu::TextureSampleType::Depth,
+                .viewDimension = wgpu::TextureViewDimension::e2DArray,
+            },
+    };
+    textureEntries[kShadowSamplerBinding] = {
+        .binding = kShadowSamplerBinding,
+        .visibility = wgpu::ShaderStage::Fragment,
+        .sampler = {.type = wgpu::SamplerBindingType::Comparison},
+    };
+    const wgpu::BindGroupLayoutDescriptor shadowDescriptor{
+        .label = "GX Shadow Receiver Texture Bind Group Layout",
+        .entryCount = texture_binding_count(),
+        .entries = textureEntries.data(),
+    };
+    sShadowTextureBindGroupLayout = g_device.CreateBindGroupLayout(&shadowDescriptor);
   }
   {
     constexpr wgpu::SamplerDescriptor descriptor{.label = "Empty sampler"};
@@ -568,11 +914,42 @@ void initialize() noexcept {
         .size = {1, 1},
         .format = wgpu::TextureFormat::RGBA8Unorm,
     };
+    AURORA_NOTE_TEXTURE(&descriptor);
     sEmptyTexture = g_device.CreateTexture(&descriptor);
     sEmptyTextureView = sEmptyTexture.CreateView();
   }
   {
-    std::array<wgpu::BindGroupEntry, MaxTextures * 2> entries;
+    std::array<wgpu::BindGroupEntry, kTextureBindings> entries;
+    entries[MaxTextures * 2] = {
+        .binding = MaxTextures * 2,
+        .textureView = gfx::probe::cube_view(),
+    };
+    entries[MaxTextures * 2 + 1] = {
+        .binding = MaxTextures * 2 + 1,
+        .sampler = gfx::probe::sampler(),
+    };
+    for (u32 i = 0; i < gfx::probe::VolumeTextures; ++i) {
+      entries[MaxTextures * 2 + 2 + i] = {
+          .binding = MaxTextures * 2 + 2 + i,
+          .textureView = gfx::probe::volume_view(0, i),
+      };
+    }
+    entries[kLightmapBinding] = {
+        .binding = kLightmapBinding,
+        .textureView = gfx::probe::lightmap_view(0),
+    };
+    entries[kBrdfLutBinding] = {
+        .binding = kBrdfLutBinding,
+        .textureView = gfx::probe::brdf_lut_view(),
+    };
+    entries[kVolFogFroxelBinding] = {
+        .binding = kVolFogFroxelBinding,
+        .textureView = gfx::volfog::froxel_view(),
+    };
+    entries[kVolFogSamplerBinding] = {
+        .binding = kVolFogSamplerBinding,
+        .sampler = gfx::volfog::sampler(),
+    };
     for (u32 i = 0; i < MaxTextures; ++i) {
       entries[i * 2] = {
           .binding = i * 2,
@@ -586,7 +963,7 @@ void initialize() noexcept {
     const wgpu::BindGroupDescriptor desc{
         .label = "GX Empty Texture Bind Group",
         .layout = sTextureBindGroupLayout,
-        .entryCount = entries.size(),
+        .entryCount = texture_binding_count(),
         .entries = entries.data(),
     };
     g_emptyTextureBindGroup = g_device.CreateBindGroup(&desc);
@@ -605,12 +982,43 @@ void initialize() noexcept {
     };
     sPipelineLayout = g_device.CreatePipelineLayout(&desc);
   }
+  {
+    const std::array layouts{
+        gfx::detail::resources().staticBindGroupLayout,
+        gfx::detail::resources().uniformBindGroupLayout,
+        sShadowTextureBindGroupLayout,
+    };
+    const wgpu::PipelineLayoutDescriptor desc{
+        .label = "GX Shadow Receiver Pipeline Layout",
+        .bindGroupLayoutCount = layouts.size(),
+        .bindGroupLayouts = layouts.data(),
+        .immediateSize = sizeof(DrawImmediateData),
+    };
+    sShadowRecvPipelineLayout = g_device.CreatePipelineLayout(&desc);
+  }
+  {
+    const std::array layouts{
+        gfx::detail::resources().staticBindGroupLayout,
+        gfx::detail::resources().uniformBindGroupLayout,
+    };
+    const wgpu::PipelineLayoutDescriptor desc{
+        .label = "GX Shadow Map Pipeline Layout",
+        .bindGroupLayoutCount = layouts.size(),
+        .bindGroupLayouts = layouts.data(),
+        .immediateSize = sizeof(DrawImmediateData),
+    };
+    sShadowPipelineLayout = g_device.CreatePipelineLayout(&desc);
+  }
 }
 
 void shutdown() noexcept {
   // TODO we should probably store this all in g_state.gx instead
   sSamplerBindGroupLayout = {};
   sTextureBindGroupLayout = {};
+  sShadowTextureBindGroupLayout = {};
+  sShadowRecvPipelineLayout = {};
+  sShadowPipelineLayout = {};
+  sSlotSamplers.fill({});
   {
     std::lock_guard lock{sBindGroupLayoutMutex};
     sUniformBindGroupLayouts.clear();
@@ -622,6 +1030,7 @@ void shutdown() noexcept {
   g_gxState.loadedTextures.fill({});
   g_gxState.loadedTluts.fill({});
   clear_copy_texture_cache();
+  g_gxState.copySceneLinear = false;
   texture::shutdown();
 }
 } // namespace aurora::gx
