@@ -1,0 +1,74 @@
+# ScriptSafeZone (REL 66: CScriptSafeZone, script type SAFE - the safe-zone trigger ellipsoid: a fog
+# and echo volume with a countdown of inhabitants, its Increment/Decrement arms, the InternalMessages
+# that pick its zone type and its activate/deactivate/area-loaded path) and ScriptSafeZoneCrystal
+# (SFZC: CScriptSafeZoneCrystal, the crystal with its own hp and damage vulnerability, which
+# collapses, entangles, expands, turns hurtful or echo).
+# Agon Wastes dark 02_sand_sandfalls_dark (world 42b935e4, layer 0): the area's safe zone u0474 with
+# its crystal u0473 (both active), u04d4 + u04d3 (inactive), u04be + u04bf and u04b0 + u04b1.
+# The steps repeat the lane's tools/cov/specs/safezone_sand.con: god mode with all four beams, charge
+# and unlimited ammo, `tp` into the zones, each crystal shot with the beam it answers (light, dark,
+# power, annihilator, charged and missile), the zone's Increment/Decrement, its InternalMessage0-3,
+# Deactivate/Activate/AreaLoaded, the crystal's InternalMessage0-6 and Deactivate/Activate, two
+# damage hits per crystal (a small light hit and a lethal dark/power one), the `noise` listener and
+# the three Activate/Deactivate sends, then the zone's Delete - with `objs SafeZone` around the
+# steps.
+# Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): in fast mode
+# the shot object ids and the late `objs SafeZone` listings vary between runs, so the transcript is
+# not a fixed baseline. Capped, its 2400 updates take ~40 s. F=2400, last check f2300.
+@f300 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give chargeBeam 1; give unlimitedBeamAmmo 1; give missile 50
+@f310 beam light
+@f320 tp -82.3 -75.0 5.1
+@f340 objs SafeZone; obj u0474; obj u0473
+@f360 shoot u0473
+@f400 shoot u0473 charged
+@f430 obj u0474; obj u0473
+@f440 tp -121.0 -86.3 -6.0
+@f450 shoot u04d3
+@f480 shoot u04d3 charged
+@f500 obj u04d4; obj u04d3
+@f520 tp -120.6 -86.5 -11.0
+@f560 beam dark
+@f570 shoot u04d3; shoot u0473
+@f600 shoot u04d3 charged; shoot u0473 charged
+@f640 beam power
+@f650 shoot u04bf; shoot u04bf charged
+@f680 beam annihilator
+@f690 shoot u04b1; shoot u04b1 charged
+@f720 obj u04be; obj u04bf; obj u04b0; obj u04b1
+@f740 beam light
+@f760 tp -82.3 -75.0 5.1
+@f770 shoot u0474; shoot u0474 missile
+@f800 send u0474 Increment
+@f830 send u0474 Increment
+@f860 send u0474 Decrement
+@f890 send u0474 Decrement
+@f920 send u0474 InternalMessage0
+@f950 send u0474 InternalMessage1
+@f980 send u0474 InternalMessage2
+@f1010 send u0474 InternalMessage3
+@f1040 send u0474 Deactivate
+@f1070 send u0474 InternalMessage3
+@f1100 send u0474 Activate
+@f1130 send u0474 AreaLoaded
+@f1160 obj u0474
+@f1200 send u0473 InternalMessage0
+@f1230 send u0473 InternalMessage1
+@f1260 send u0473 InternalMessage2
+@f1290 send u0473 InternalMessage3
+@f1320 send u0473 InternalMessage4
+@f1350 send u0473 InternalMessage5
+@f1380 send u0473 InternalMessage6
+@f1410 send u0473 Deactivate
+@f1440 send u0473 Activate
+@f1460 obj u0473
+@f1500 damage u0473 5 light; damage u04d3 5 light
+@f1540 damage u0473 500 dark; damage u04d3 500 power
+@f1600 objs SafeZone; obj u0473; obj u04d3
+@f1640 tp -141.1 -85.9 -10.3
+@f1700 noise 6 -82.3 -75.0 5.1
+@f1760 send u04d4 Activate; send u04be Activate; send u043a Activate
+@f1800 tp -50.6 -91.6 1.8
+@f1900 send u04d4 Deactivate
+@f2000 tp -141.1 -85.9 -10.3
+@f2100 send u0474 Delete
+@f2300 objs SafeZone

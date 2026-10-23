@@ -219,6 +219,7 @@ differently at the two update rates).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
 Thirty-two of the families keep a checked module's actors loading: grenchler (Torvus
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and pbug): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and szone): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
@@ -247,6 +248,7 @@ needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family envir
 pssm (Torvus Bog 0g_swamp_hall) and stod (Torvus Bog dark 09_swamp_catacombs_dark)
 needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
 and pbug (Agon Wastes 0b_sand_hall)
+and szone (Agon Wastes dark 02_sand_sandfalls_dark)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -374,6 +376,14 @@ CloseToPath -> Patrol), shots and bombs at the injured/wandering bug, a forced T
 shipped path loops, so PathOver never sets), a bomb kill, and `objs PillBug` counting three at
 f320 and zero at f3400, with `obj` reads (hp 25/25, fsm FastPatrol, body state 5, message map)
 around them. The PillBug fsm reads follow the update rate, so the family stays capped (NC).
+to 132; szone drives Agon Wastes dark 02_sand_sandfalls_dark's safe zones u0474/u04d4/u04be/u04b0 and
+their crystals u0473/u04d3/u04bf/u04b1 through beam shots (light/dark/power/annihilator, charged
+and missile), the zone's Increment/Decrement and InternalMessage0-3, Deactivate/Activate/AreaLoaded,
+the crystal's InternalMessage0-6 and Deactivate/Activate, two damage hits per crystal, the `noise`
+listener and the three Activate/Deactivate sends, then the zone's Delete, with `objs SafeZone`
+counting the zones at f340 and after the Delete at f2300, and `obj` reads (hp/fsm/body/message map)
+around them. The shot ids and late `objs SafeZone` listings follow the update rate, so the
+family stays capped (NC).
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
