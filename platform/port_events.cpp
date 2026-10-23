@@ -320,7 +320,7 @@ void PortRearmPad0() {
 // the 60 FPS cap, sleeps to the next 60 Hz deadline. A frame that overran by more than a period
 // resets the deadline instead of racing to catch up.
 void PortPaceFrame() {
-  if (!PortOverlay::FrameLimit()) {
+  if (!PortOverlay::FrameLimit() || PortHarness::Unpaced()) {
     sNextFrameDeadline = 0;
     return;
   }

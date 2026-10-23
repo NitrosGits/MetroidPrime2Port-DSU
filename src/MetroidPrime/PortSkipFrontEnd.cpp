@@ -39,6 +39,7 @@
 #include "MetroidPrime/CIOWinManager.hpp"
 
 #include "port_harness.h"
+#include "port_warp.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -326,6 +327,8 @@ bool StartGame() {
   }
 
   gpMain->SetRestartMode(CMain::kRM_Default);
+  // MP2_WORLD="<world>,<area>": start in the destination rather than the save's world.
+  PortWarp::DirectBoot();
   fprintf(stderr, "[skip] the save is the running state at %.1f s: world %08x, desired area %08x\n",
           PortHarness::Seconds(), gpGameState->CurrentWorldAssetId(),
           gpGameState->CurrentWorldState().GetDesiredAreaAssetId());

@@ -30,6 +30,20 @@ bool ExitRequested();
 // script that counted iterations put its early tokens somewhere the game never reached.
 unsigned GameUpdates();
 
+// A direct boot (CStateManager::PortDirectBoot) starts the game in the area a save-world boot only
+// reached after its warp, kDirectBootUpdates game updates later. Starting the count there keeps every
+// number keyed on it - MP2_FRAMES, `@f` lines, `frame`, `at`, MP2_INPUT tokens, "gameplay reached
+// (frame 240)" - meaning what it meant. Called once, before the first game update.
+constexpr unsigned kDirectBootUpdates = 120;
+void StartCountAt(unsigned updates);
+
+// True while a loop iteration needs no 60 Hz pacing: a fixed-tick fast run (MP2_TICKS_PER_FRAME with
+// MP2_FRAME_LIMIT=0, whose ticks are not wall time anyway), or MP2_FAST_LOAD=1 with
+// MP2_SKIP_FRONTEND before the game's first update (pak loading and the world load, where no game
+// time passes and no front end is shown). Both pacers ask it: CGraphics::EndScene's and the main
+// loop's 60 FPS cap.
+bool Unpaced();
+
 // Called every loop iteration by the platform's event poll. Prints one line, once, when the game
 // has stopped updating for a while after having updated at least once - a paused game (START
 // opens the pause menu, and a paused game calls no CStateManager::Update) or a wedged load look

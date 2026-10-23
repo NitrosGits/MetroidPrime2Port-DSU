@@ -61,6 +61,11 @@ bool Pending();
 // leaves the destination's scripted camera filters applying their flash for the rest of the run;
 // a warp issued once the game is running - a console `warp`, an `MP2_INPUT` token - is clean.
 bool PendingIsBoot();
+// A copy of the pending boot request (MP2_WORLD / MP2_TELEPORT), left pending; false when none.
+bool PeekBoot(SRequest& out);
+// Serve a MP2_WORLD="<world>,<area>" boot request before the first world loads (defined in
+// src/MetroidPrime/CStateManager.cpp, beside the resolvers it uses); true when it did.
+bool DirectBoot();
 // Takes the pending request, if any. One at a time on purpose: a warp reloads the world, which
 // invalidates anything resolved against the old one.
 bool Consume(SRequest& out);

@@ -82,9 +82,10 @@ gcov_env "$BUILD" "$OUT/gcov_$TAG"
 
 case "$KIND" in
   generic)
-    # tools/drivers/con.py sends the command file's lines and answers when the game is up.
+    # tools/drivers/con.py sends the command file's lines and answers when the game is up (it retries
+    # the connect itself, and queues `@f` lines with `at`, so it must be connected before gameplay).
     if [ "$CMDF" != "-" ]; then
-      ( sleep 2; python3 "$ROOT/tools/drivers/con.py" "$PORT" "$CMDF" "$CON" >/dev/null 2>&1 ) &
+      ( python3 "$ROOT/tools/drivers/con.py" "$PORT" "$CMDF" "$CON" >/dev/null 2>&1 ) &
       CONPID=$!
     fi
     ;;

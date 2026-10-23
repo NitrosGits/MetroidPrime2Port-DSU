@@ -10,6 +10,11 @@
 #   [SECS=<timeout>] [DISPLAY_NUM=:<n>] [CACHEDIR=<dir>] [TELEPORT=<area>] [RUNTAG=<tag>]
 #   [GODMODE=1] (MP2_GODMODE: the player takes no damage; default off, an ordinary run takes damage)
 #   [LOG=<file>] [ASAN=1] [BUILD=<build dir>] tools/run_gameplay.sh
+#   [FAST_LOAD=0|1] (default 1: MP2_FAST_LOAD, the boot's pak and world loading runs without the 60 Hz
+#   pacing; no game time passes there, so only wall time changes)
+#
+# `WORLD=<world>,<area>` boots straight into that area (the direct boot, MP2_DIRECT_BOOT=0 for the old
+# route through the save's world): the update count then starts at 120, so frame numbers match.
 #
 # `WORLD`/`TELEPORT`/the `MP2_INPUT` tokens are hex asset ids or names (an area may also be its MLVL name,
 # `0b_sand_hall`, and a world a part of its MLVL name, `sand_world`; `WORLD=0b_sand_hall` finds the world); the player's own run length is
@@ -78,7 +83,7 @@ echo "run: tag=${RUNTAG:-run} log=$LOG build=$BUILD secs=${SECS:-460} display=$D
 envs=(
   "MP2_DEBUG_IDS=1" "MP2_SKIP_CINEMATICS=${SKIP_CINEMATICS:-1}" "MP2_SKIP_FRONTEND=${SKIP_FRONTEND:-1}" "MP2_SKIP_INTRO=${SKIP_INTRO:-1}" "MP2_DISC=$DISC"
   "MP2_INPUT=$IN" "MP2_USER_PATH=$USERDIR" "MP2_CACHE_PATH=$CACHEDIR"
-  "MP2_FRAMES=${FRAMES:-16000}"
+  "MP2_FRAMES=${FRAMES:-16000}" "MP2_FAST_LOAD=${FAST_LOAD:-1}"
 )
 [ -n "${GODMODE:-}" ] && envs+=("MP2_GODMODE=$GODMODE")
 [ -n "${WORLD:-}" ] && envs+=("MP2_WORLD=$WORLD")

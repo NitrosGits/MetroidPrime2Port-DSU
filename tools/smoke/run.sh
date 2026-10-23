@@ -13,6 +13,7 @@
 #   --save          the memory card each family copies as its user dir (default /tmp/opencode/mi_u)
 #   --display-base  first X display number used (default 760)
 #   --list          print the family table and exit
+#   --capped        run every family under the 60 FPS cap (SMOKE_FAST=0 does the same)
 #
 # With no family names every family runs. Per family it writes <out>/log_<family>.log (the game's
 # log), <out>/con_<family>.out (the console transcript), <out>/u_<family>/ (the card copy),
@@ -29,6 +30,7 @@ JOBS=${SMOKE_JOBS:-4}
 SAVE=${SMOKE_SAVE:-/tmp/opencode/mi_u}
 DISPBASE=${SMOKE_DISPLAY_BASE:-760}
 LIST=0
+FAST=${SMOKE_FAST:-1}
 FAMS=()
 
 while [ $# -gt 0 ]; do
@@ -39,6 +41,7 @@ while [ $# -gt 0 ]; do
     --save) SAVE=$2; shift 2 ;;
     --display-base) DISPBASE=$2; shift 2 ;;
     --list) LIST=1; shift ;;
+    --capped) FAST=0; shift ;;
     -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
     *) FAMS+=("$1"); shift ;;
   esac
@@ -101,6 +104,10 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [agon54]=cmd_agon54.txt [splitter]=cmd_splitter.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
+# Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
+# script is timed in game updates (cmd_*.txt via con.py). The V drivers time their steps in wall
+# seconds, so those families stay under the cap.
+FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
 declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=1"
                [ing]="MP2_DEBUG_ING=1 MP2_DEBUG_BEAM=1" )
 
@@ -131,7 +138,7 @@ done
 mkdir -p "$OUT" || exit 2
 [ -x "$BUILD/metroid_prime2_port" ] || { echo "[smoke] no game in $BUILD" >&2; exit 2; }
 
-echo "[smoke] out=$OUT build=$BUILD jobs=$JOBS save=$SAVE families=${FAMS[*]}"
+echo "[smoke] out=$OUT build=$BUILD jobs=$JOBS save=$SAVE fast=$FAST families=${FAMS[*]}"
 # A coverage build (CMake option MP_PORT_COVERAGE) writes its .gcda files per family, under
 # <out>/gcov_<family>/gcov: the families run concurrently and would otherwise write over each
 # other. fam.sh sets it; nothing changes for a normal build.
@@ -143,6 +150,10 @@ run_one() {   # <tag>: one family; its own display, port, card copy and cache di
   local tag=$1 rc
   local extra=() cmd="-" inp="-"
   read -ra extra <<< "${X[$tag]:-}"
+  if [ "$FAST" = 1 ] && [ -z "${V[$tag]:-}" ]; then
+    read -ra fastenv <<< "$FASTENV"
+    extra+=("${fastenv[@]}")
+  fi
   [ -n "${C[$tag]:-}" ] && cmd="$HERE/${C[$tag]}"
   [ -n "${I[$tag]:-}" ] && inp="$HERE/${I[$tag]}"
   echo "[smoke] $tag start $(date +%T) display=:$((DISPBASE + IDX[$tag])) port=$((P[$tag] + PORTOFF))"
