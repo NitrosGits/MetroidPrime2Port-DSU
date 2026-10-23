@@ -32,6 +32,12 @@
 #include "MetroidPrime/TCastTo.hpp"
 #include "REL/REL_Setup.h"
 
+#ifdef TARGET_PC
+#include "MetroidPrime/ScriptObjects/CScriptSafeZone.hpp"
+#include "MetroidPrime/Weapons/CBomb.hpp"
+#include "MetroidPrime/Weapons/CGameProjectile.hpp"
+#endif
+
 static EMaterialTypes skSolidMaterial = kMT_Solid;
 
 static const char* skJointNameList[] = {
@@ -599,6 +605,43 @@ bool CMetroid::AttachToTarget(CStateManager& mgr) {
   return false;
 }
 
+#ifdef TARGET_PC
+// Absent upstream. The pirate the metroid latches onto takes hold of it and is brought to one
+// below its x-damage threshold, so its next hit knocks it into the reaction.
+bool CMetroid::PreDamageSpacePirate(CStateManager& mgr) {
+  if (mAttackTarget == kInvalidUniqueId) { // 0x4328-0x4334 lhz 0x9b4; cmplw kInvalidUniqueId; beq
+    return false;                          // 0x4494 li r3, 0
+  }
+  CSpacePirate* pirate = TCastToPtr< CSpacePirate >(mgr.ObjectById(mAttackTarget)); // 0x4348
+  if (pirate == nullptr) {                                                         // 0x4354 beq
+    return false;
+  }
+  if (!IsPirateValidTarget(*pirate)) { // 0x4360-0x4368 clrlwi.; beq
+    return false;
+  }
+  if (!pirate->AttachActorToPirate(GetUniqueId())) { // 0x4380 bl fn_72_E0D8; 0x4388 beq
+    return false;
+  }
+  // 0x43AC lfs f1, 0x3fc(r29): CPatterned 0x3fc is mXDamageThreshold (CPatterned ctor 0x80079F98
+  // stfs from CPatternedInfo 0xbc). It is protected in CPatterned and read through another
+  // CPatterned, so take it through a pointer to member named via CMetroid.
+  float CPatterned::*const xDamageThreshold = &CMetroid::mXDamageThreshold;
+  // 0x4394-0x43D4: CWeaponMode type 0 (kWT_Power), the 0x8000/0x4000/0x2000 bits cleared.
+  // 0x43A4 lbl_40_rodata_84 = 1.0f; 0x43BC fsubs: damage and radius damage = threshold - 1.
+  // 0x43C0 lbl_40_rodata_A8 = 0.0f: radius and knockback. 0x43E8 rlwimi 7,24,24 sets byte 0x1a
+  // 0x80 (mNoImmunity), 0x43FC rlwimi 6,25,25 clears 0x40 (mApplyRadiusDamage).
+  const CDamageInfo info(CWeaponMode(kWT_Power), pirate->*xDamageThreshold - 1.f, 0.f, 0.f,
+                         true);
+  // 0x4428 __shl2i 1 << skSolidMaterial (include), 0x4454/0x4460 exclude 0, 0x4464 type 3
+  // (kFT_IncludeExclude); 0x4488 ApplyDamage(this, mAttackTarget, this, ..., sZeroVector).
+  mgr.ApplyDamage(GetUniqueId(), mAttackTarget, GetUniqueId(), info,
+                  CMaterialFilter::MakeIncludeExclude(CMaterialList(skSolidMaterial),
+                                                      CMaterialList()),
+                  CVector3f::Zero());
+  return true; // 0x448C li r3, 1
+}
+#endif
+
 bool CMetroid::AttackOver(CStateManager& mgr, const CTriggerData&) const {
   if (mState == kAiState_Two && !GetBodyController()->IsFrozen()) {
     const CVector3f targetPos = GetAttackTargetPos(mgr);
@@ -1076,6 +1119,34 @@ void CMetroid::ApplyGrowth(float damage, CStateManager& mgr) {
   mScale1 = CVector3f(newScale, newScale, newScale);
   TakeDamage(CVector3f::Zero(), 0.f);
 }
+
+#ifdef TARGET_PC
+// @ fn_40_3FC0
+// Absent upstream. kSM_Damage / kSM_ResistedDamage: a projectile that hurts the metroid, or any
+// bomb, grows it by the damage it would take; an energized safe zone kills it outright.
+void CMetroid::ApplyDamageGrowth(CStateManager& mgr, TUniqueId sender) {
+  CEntity* entity = const_cast< CEntity* >(mgr.GetObjectById(sender)); // 0x3FF4
+  if (entity == nullptr) {                                             // 0x3FFC beq
+    return;
+  }
+  CGameProjectile* projectile = TCastToPtr< CGameProjectile >(entity); // 0x4000
+  // 0x4014 vtable 0x40 = slot 16 GetDamageVulnerability(); 0x4020 addi 0x19c = mCurDamageInfo's
+  // weapon mode; 0x4028 clrlwi.; beq falls through to the bomb test.
+  if (projectile != nullptr &&
+      GetDamageVulnerability()->WeaponHurts(projectile->GetCurrentDamageInfo().GetWeaponMode())) {
+    // 0x404C GetVulnerableDamage(*GetDamageVulnerability()), 0x4058 ApplyGrowth.
+    ApplyGrowth(projectile->GetCurrentDamageInfo().GetVulnerableDamage(*GetDamageVulnerability()),
+                mgr);
+  } else if (CBomb* bomb = TCastToPtr< CBomb >(entity)) { // 0x4064; 0x406C beq
+    // 0x408C GetVulnerableDamage(*GetDamageVulnerability()), 0x4098 ApplyGrowth.
+    ApplyGrowth(bomb->GetCurrentDamageInfo().GetVulnerableDamage(*GetDamageVulnerability()), mgr);
+  } else if (CScriptSafeZone* zone = TCastToPtr< CScriptSafeZone >(entity)) { // 0x40A4; 0x40AC
+    if (zone->GetZoneType() != CScriptSafeZone::kZT_Normal) { // 0x40B0-0x40B8 cmpwi 0x3f0, 0
+      MassiveDeath(mgr);            // 0x40C8 vtable 0xd4 = slot 53 MassiveDeath
+    }
+  }
+}
+#endif
 
 void CMetroid::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {

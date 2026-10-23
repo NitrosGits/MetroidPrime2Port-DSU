@@ -1,0 +1,16 @@
+# Agon 09_sand_testtubepuzzle_dark layer 4 (metroids): kSM_Damage sent from safe zones
+# (forced sender: `send ... from`), ApplyDamageGrowth's safe-zone arm. For metroid_growth.py.
+@f300 layer 4
+@f500 obj u054a; obj u0449; obj u04e0
+@f520 send u05f8 Damage from u054a
+@f540 obj u05f8
+@f560 send u05e6 Damage from u0449
+@f580 obj u05e6
+@f600 send u05ec Damage from u04e0
+@f620 obj u05ec
+@f700 status
+# Hurtful zone (kSM_Increment -> kZT_Hurtful): the MassiveDeath arm.
+@f800 send u054a Increment
+@f820 send u05f8 Damage from u054a
+@f860 obj u05f8
+@f900 status

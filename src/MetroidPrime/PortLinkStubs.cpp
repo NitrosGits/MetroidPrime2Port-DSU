@@ -118,14 +118,6 @@ extern "C" void reachstub_182() { mpReachStub("_ZN5CMath6FloorFEf", "CMath::Floo
 extern "C" void reachstub_183() asm("_ZN5CMath9SlowSineREf");
 extern "C" void reachstub_183() { mpReachStub("_ZN5CMath9SlowSineREf", "CMath::SlowSineR(float)"); }
 
-// CMetroid::ApplyDamageGrowth(CStateManager&, TUniqueId)
-extern "C" void reachstub_211() asm("_ZN8CMetroid17ApplyDamageGrowthER13CStateManager9TUniqueId");
-extern "C" void reachstub_211() { mpReachStub("_ZN8CMetroid17ApplyDamageGrowthER13CStateManager9TUniqueId", "CMetroid::ApplyDamageGrowth(CStateManager&, TUniqueId)"); }
-
-// CMetroid::PreDamageSpacePirate(CStateManager&)
-extern "C" void reachstub_212() asm("_ZN8CMetroid20PreDamageSpacePirateER13CStateManager");
-extern "C" void reachstub_212() { mpReachStub("_ZN8CMetroid20PreDamageSpacePirateER13CStateManager", "CMetroid::PreDamageSpacePirate(CStateManager&)"); }
-
 // CMatrix4f::CMatrix4f(CMatrix4f const&)
 extern "C" void reachstub_300() asm("_ZN9CMatrix4fC1ERKS_");
 extern "C" void reachstub_300() { mpReachStub("_ZN9CMatrix4fC1ERKS_", "CMatrix4f::CMatrix4f(CMatrix4f const&)"); }
