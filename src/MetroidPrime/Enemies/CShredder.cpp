@@ -101,7 +101,12 @@ void CShredder::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     mHitByPlayerProjectile = true;
     Explode(mgr);
+#ifdef TARGET_PC
+    // 0x1fe0 bl Explode, then 0x1fe4 is the 'XRDG' body: no branch, the case falls through
+    [[fallthrough]];
+#else
     break;
+#endif
   }
   case 'XRDG': { // Guessed message
     if (CWeapon* weapon = TCastToPtr< CWeapon >(mgr.ObjectById(msg.GetSenderId()))) {
@@ -279,10 +284,18 @@ void CShredder::Touch(CActor& other, CStateManager& mgr) {
   if (!mLurking) {
     if (CEnergyProjectile* projectile = TCastToPtr< CEnergyProjectile >(other)) {
       const CWeaponMode& mode = projectile->GetCurrentDamageInfo().GetWeaponMode();
+#ifdef TARGET_PC
+      // 0x10f8 cmpwi type,6 (missile) / 0x10fc beq 0x1114: missiles take the heavy knockback;
+      // 0x1104 extrwi. 1,24 (charged) bne 0x1114, 0x110c extrwi. 1,25 (comboed) beq 0x1120
+      mKnockbackSpeed = (mode.GetType() == kWT_Missile || mode.IsCharged() || mode.IsComboed())
+                            ? mHeavyKnockback   // 0x1114 lfs 0x800
+                            : mNormalKnockback; // 0x1120 lfs 0x7fc
+#else
       if (mode.GetType() != kWT_Missile) {
         mKnockbackSpeed =
             (mode.IsCharged() || mode.IsComboed()) ? mHeavyKnockback : mNormalKnockback;
       }
+#endif
     }
   }
 }
