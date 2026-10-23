@@ -206,7 +206,7 @@ tryclops, wisptentacle and octapede): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~110 s for wisptentacle's 6200).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
-Nineteen of the families keep a checked module's actors loading: grenchler (Torvus
+Twenty-four of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -214,7 +214,10 @@ Nineteen of the families keep a checked module's actors loading: grenchler (Torv
 lumite (Agon 0a_sand_hall), shrieker (Torvus 02_swamp_greatbridge), ingswarm (Temple Grounds
 10_temple_pathofeyes), darktrooper (Temple Grounds 04_temple_unknownenemies), bacteriaswarm
 (Temple Grounds 04_temple_unknownenemies_dark), tryclops (Sanctuary Fortress 0f_cliff_hall),
-wisptentacle (Temple Grounds 0t_temple_hall_dark) and octapede (Sanctuary Fortress 0p_cliff_hall)
+wisptentacle (Temple Grounds 0t_temple_hall_dark), octapede (Sanctuary Fortress 0p_cliff_hall),
+amt (Agon 06_sand_alamofront), dbar (Agon 08_sand_casualpirates, whose fifteen barriers no area
+places: the family spawns them), sjguard (Agon 02_sand_sandfalls_dark), fishcloud (Temple Grounds
+06_temple_sacredpath) and spa (Agon 03_sand_temple_dark)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -263,7 +266,20 @@ Octapede` printing each one's wall position), takes the shared Damage arms (powe
 6.5, dark 8 -> 6), kills a head with a charged shot (left at hp -42 in fsm Dead), forces `fsm Dead`
 on a live head, runs `kill` on a follower, and follows the chain counts down (16 -> 11 -> 4) as
 Death, Bounce and Explode take the chains apart, the four chain-tail segments still crawling the
-wall at the end.
+wall at the end; amt aims the AIMT e001d0055 at a `tp`-moving player, takes `mpforce 1` for the
+multiplayer telegraph sfx, walks out past its 85-unit maxAttackRange so the 5 s leash reaches Patrol,
+and takes two hits there (hp 5/5 -> 3/5); dbar `spawn`s the fifteen barriers e0036ff00..ff0e with
+area CMDLs and PARTs and takes every damage arm (a small hit, beam/charged/missile shots, the chunk
+lower, the 1 s and the zero delays, a hit with no damager, split-offs hit twice in one tick), the
+Reset raise/lower cycle and a Delete while the barrier moves; sjguard fights the Jump Guardian u051f
+from under its landing zone through nineteen uncharged, ten charged and ten missile shots
+alternating the light and dark beams (hp 1060/1100 -> 0, `fsm Dead`), with the `noise 0`/`noise 6`
+listener pair and a `kill` for the Death its own script deletes; fishcloud stands in each of Sacred
+Path's three clouds and shoots it (uncharged, charged, missile, and the power and dark beams),
+morphs and boosts inside e00340081 for Touch's spawned-morph arm, and deletes the attractor
+e00340143 and the cloud; spa drives the two dark-temple suit actors e0024022f and e00240396 through
+Activate (LoadSuit), Increment (the suit swap), Left, Deactivate's reset, a Reset while inactive and
+a Delete, `objs PlayerActor` counting the suits down.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.

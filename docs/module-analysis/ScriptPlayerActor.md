@@ -59,5 +59,5 @@ positions; objdiff matched the bit stores) and `CALL` to unmarked callees.
 
 ## 5. Smoke family (proposed)
 
-`scriptplayeractor`: Agon Wastes 42b935e4, 03_sand_temple_dark, `tools/drivers/spa_sandtempledark.con`,
+`spa`: Agon Wastes 42b935e4, 03_sand_temple_dark, `tools/drivers/spa_sandtempledark.con`,
 ~2000 frames fast: Activate/Increment/Deactivate/Reset/Delete on two suit-swap actors.
