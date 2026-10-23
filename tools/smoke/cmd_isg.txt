@@ -1,0 +1,21 @@
+# IngSpiderballGuardian (module 35: CIngSpiderballGuardian, the Spider Guardian). Sanctuary Fortress
+# 06_cliff_spiderballguardian (world 1baa96c2, layer 13): its only placement, e0014007a, loads
+# after the `layer 13` switch and starts inactive. The steps enable the layer, list it, activate it,
+# damage it (hp drops), force a Patrol fsm state, shoot it and delete it, with the object count
+# dropping to 0.
+# Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): its layer
+# loads after boot. F=3000, last check f2800.
+@f300 god 1; layer 13; give missile 50; give morphBall 1; give morphBallBombs 1; give powerBomb 5
+@f900 objs IngSpiderballGuardian
+@f1000 send e0014007a Activate
+@f1060 obj e0014007a
+@f1300 obj e0014007a
+@f1400 damage e0014007a 5 0 power
+@f1430 obj e0014007a
+@f1500 fsm e0014007a Patrol
+@f1600 damage e0014007a 5 0 bomb
+@f1630 obj e0014007a
+@f1800 shoot e0014007a
+@f2000 send e0014007a Delete
+@f2200 objs IngSpiderballGuardian
+@f2800 objs IngSpiderballGuardian
