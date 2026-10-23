@@ -2112,16 +2112,22 @@ void CIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     LogState("PathFind");
     const bool lured = mLureSafeZoneId != kInvalidUniqueId;
-    // [?] the slow speed range when neither aggressive nor lured.
-    BodyController()->CommandMgr().SetSteeringSpeedRange(mAggressive || lured ? 1.f : 0.5f,
-                                                         mAggressive || lured ? 1.f : 0.5f);
+    // 0x886C/0x887C/0x8880: walk speed over run speed (GetLocomotionSpeed 1 / 2 of the body
+    // state info); aggressive (0xe5c 0x10) or lured gives rodata_64 = 1.0 (0x88B8).
+    const CBodyStateInfo& info = BodyController()->GetBodyStateInfo();
+    const float slow = info.GetLocomotionSpeed(pas::kLA_Walk) / info.GetLocomotionSpeed(pas::kLA_Run);
+    const float speed = mAggressive || lured ? 1.f : slow;
+    BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_FullSpeed); // 0x88C8/0x88D0: li 1
+    BodyController()->CommandMgr().SetSteeringSpeedRange(speed, speed);   // 0x88DC (f1 = f2)
     if (lured) {
       mPathFindSearch.SetFlags(1);
     }
+    // 0x8910-0x8924: no path find (0x9d0 bit 0x2) or no movement position (0xe5c bit 0x8)
+    // leaves the moved flag (r31) clear, so the tail Stop()s the Ing (0x8A04).
     if (canPathFind) {
       mPathFindNavigation.PathFind(mgr, msg, dt, *this);
+      moved = true; // 0x8940
     }
-    moved = true;
     mRecalcPath = false;
   } else if (msg == kStateMsg_Update) {
     if (canPathFind) {
@@ -2134,8 +2140,7 @@ void CIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
       }
     }
   } else if (msg == kStateMsg_Deactivate) {
-    mPathFindSearch.SetFlags(0x301);
-    moved = true;
+    mPathFindSearch.SetFlags(0x301); // 0x89F0; r31 stays 0, so the tail Stop()s (0x8A04)
   }
   if (!moved) {
     Stop();
@@ -2514,13 +2519,16 @@ void CIng::SelectTarget(CStateManager& mgr, EStateMsg msg, float) {
     return;
   }
   LogState("SelectTarget");
+  // 0x7550/0x7558: a live target skips the whole arm (bne to the epilogue at 0x75A8).
   if (mgr.GetObjectById(mTargetId) == nullptr) {
     if (const CPlayer* player = mgr.GetPlayer(0)) {
-      mTargetId = player->GetUniqueId();
+      mTargetId = player->GetUniqueId(); // 0x7568/0x756C: the player's id into 0xd6c
     }
+    mLineOfSight.SetTarget(mTargetId); // 0x7578: fn_801F585C on 0xd88
+    // 0x7580/0x7594: lis 0x4154 + addi 0x544b = 'ATTK' (kSS_Attack), uid kInvalidUniqueId
+    // (0x759C), msg -1 = kSM_None (0x75A0), SendScriptMsgs at 0x75A4.
+    SendScriptMsgs(kSS_Attack, mgr, kInvalidUniqueId, kSM_None);
   }
-  mLineOfSight.SetTarget(mTargetId);
-  // [?] retail sends script messages here; which state/message pair was not read.
 }
 
 // @ fn_29_7244
