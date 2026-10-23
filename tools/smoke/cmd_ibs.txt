@@ -1,0 +1,15 @@
+# CIngBlobSwarm (module 31: CIngBlobSwarm). Sanctuary 0b_cliff_hall_dark (world 1baa96c2,
+# layer 4) holds two IngBlobSwarms u0451/u044c. The steps exercise one of them (u044c 0033002b):
+# activate it, read its swarm state, damage it twice (hp 2 -> 1 -> 0), delete it, with `obj` reads
+# and `objs IngBlobSwarm` before and after. IngBlobSwarm is a CActor, so it has no FSM to force.
+# Checks are game updates (@f<n>), never wall seconds.
+# F=2600, last check f2300.
+@f200 layer 4
+@f240 god 1; objs IngBlobSwarm
+@f280 send u044c Activate
+@f320 obj u044c
+@f360 damage u044c 1; obj u044c
+@f400 damage u044c 1; obj u044c
+@f440 send u044c Delete
+@f480 objs IngBlobSwarm
+@f2300 objs IngBlobSwarm

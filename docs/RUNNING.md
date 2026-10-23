@@ -413,6 +413,9 @@ to two.
 shrd drives Torvus Bog 01_swamp_entrance's three Shredders u04e6/u04e3/u04e2 (layer 3): create and
 place u04e2, send Alert, force Generate/Lurk, send an XRDG message, damage it (hp 500 -> 500),
 kill it and send XDMG to explode it, with `objs Shredder` counting three down to two.
+ibs drives Sanctuary 0b_cliff_hall_dark's two IngBlobSwarms u0451/u044c (layer 4): activate u044c,
+read its swarm state, damage it (hp 2 -> 1 -> 0), delete it, with `objs IngBlobSwarm` counting two
+down to one.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
