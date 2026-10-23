@@ -72,6 +72,10 @@ void StandIn(const char* what) {
 // HasDockingTarget (fn_75_57F0), the HasTarget (fn_75_57B4) and the InDetectionRange
 // (fn_75_5944) triggers, the Start (fn_75_5564) and the Scanning (fn_75_523C) states, the NotifyDocking code (fn_75_3EEC) and the RaiseShields code (fn_75_3B20);
 // the rest are once-logging shells for the retail function they name.
+// fn_75_7C80 is straight-line code (no arms): `tools/fsm_ctor_tables.py <asm dir> fn_75_7C80
+// lbl_75_data_CC:17 lbl_75_data_284:14 lbl_75_data_3B8:7` replays it (134 stores, every entry
+// {0, 0xFFFFFFFF, fn}) and the names and functions match the tables below in order, so the marker
+// sits above them (the MinorIng fn_44_ABCC precedent).
 #define SPLITTER_TRIGGER(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterCommandModule::name) }
 #define SPLITTER_STATE(name) \
@@ -88,6 +92,7 @@ void StandIn(const char* what) {
   { #name, static_cast< CPatterned::StateMachine::CodeFunc >(&CSplitterCommandModule::name) }
 
 
+// @ fn_75_7C80
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(StateOver),
     SPLITTER_TRIGGER_PORTED(InDetectionRange),
@@ -809,6 +814,11 @@ void CSplitterCommandModule::PortStartLaserSweep(const CVector3f& first, const C
 // (0x4790 fn_75_1974, the laser shot at that end), any other stage ends (-1). Otherwise both
 // vectors Slerp toward those by the turn (0x47A4-0x4824). Deactivate (0x4838): the projectile
 // despawns (fn_75_1790) and the stage ends (-1).
+// Arms: ALL-ARMS, splitter_split25 (tools/cov/specs/splitter_split25.py, 914f1381, gcov merged): activate with
+// the ends swapped, not swapped and without the target; update with a zero frame time, the end
+// over the locator (flat unsafe), ahead at stages 0 (fires) and 1 (ends), to the side (both
+// Slerps); deactivate and an out-of-range message, by gdb calls.
+// @ fn_75_44DC
 void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mLookAtOffset = GetTransform().GetColumn(kDY);
@@ -826,7 +836,8 @@ void CSplitterCommandModule::LaserSweep(CStateManager& mgr, EStateMsg msg, float
                             GetTranslation(), 0x7F, GetCurrentAreaId().Value(), true, false,
                             CSfxManager::kMedPriority);
   } else if (msg == kStateMsg_Update) {
-    if (dt <= 0.f) {
+    // 0x463C fcmpo, 0x4640 ble: only for a frame time above 0.0f (a NaN time leaves).
+    if (!(dt > 0.f)) {
       return;
     }
     const CVector3f end = mLaserSweepStage == 0 ? mLaserSweepStart : mLaserSweepEnd;
@@ -1944,8 +1955,12 @@ void CSplitterCommandModule::FindBestDodgeDirection(CStateManager& mgr, float) {
 // (right, 0x2958) or -1 (0x2768).
 // The near-AI arms and -1 ran forced (place): the other chassis parked beside the head. The left
 // pick ran forced (fsm): the head sent back into LaserPulse until the random bit picked it.
-// fn_75_270C (not marked, the 19-run gcov of 2026-10-21: the walk's null and other-area arms and
-// the both-sides-open pick never ran on this build)
+// Arms: 33/34, splitter_split25 (tools/cov/specs/splitter_split25.py, 914f1381, gcov merged): the
+// chassis in another area, beside the head on each side (one and two AIs: a side already closed)
+// and past 60 degrees, a short distance eight times (both picks), by gdb calls. The null entry
+// (0x2794-0x2798) is dead: the walk follows the list's links (0x2780 lha 0x2008, the next index),
+// and a linked entry always holds its object (CObjectList unlinks an entry before clearing it).
+// @ fn_75_270C
 int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
   const float dist = mDodgeDistance;
   const CVector3f pos = GetTranslation();
@@ -1961,14 +1976,18 @@ int CSplitterCommandModule::PortDodgeDirection(CStateManager& mgr) {
       continue;
     }
     const CVector3f delta = other->GetTranslation() - pos;
-    if (delta.MagSquared() >= dist * dist) {
+    // 0x27EC fcmpo, 0x27F0 bge: skips when !(dist^2 < range^2) (a NaN distance is skipped).
+    if (!(delta.MagSquared() < dist * dist)) {
       continue;
     }
+    // 0x2814 fcmpo, 0x2818 cror eq,gt,eq, 0x281C bne: at or above 0.0f is the right (a NaN dot
+    // is the left).
     if (CVector3f::Dot(delta, right) >= 0.f) {
+      // 0x283C fcmpo, 0x2840 bge: closes only under 60 degrees (a NaN angle leaves it open).
       if (rightOpen && CVector3f::GetAngleDiff(right, delta) < 1.0471976f) {
         rightOpen = false;
       }
-    } else if (leftOpen && CVector3f::GetAngleDiff(-right, delta) < 1.0471976f) {
+    } else if (leftOpen && CVector3f::GetAngleDiff(-right, delta) < 1.0471976f) {  // 0x2880-0x2884
       leftOpen = false;
     }
   }
@@ -2399,6 +2418,10 @@ bool CSplitterCommandModule::CanBeIngPossessed(CStateManager& mgr) const {
 // SLdrSplitterCommandModule reader's, which the analysis checked against the REL's switch id by
 // id: the loader's dispatch tree reads all four blocks (0x255a4580 editor properties, 0xB3774750
 // patterned AI, 0x7E397FED actor parameters, 0x560CF813 the command module data).
+// The SLdr defaults the REL writes inline (0x13C-0x1A4) equal the generated reader's. Arms: 17/18
+// in every run; the null model (0x2DC) is dead in the data: tools/scan_splitter_loader.py finds
+// an ANCS in all 28 placements and no unknown top-level id (the ReadBytes skip, 0x280).
+// @ fn_75_FC
 CEntity* PortLoadSplitterCommandModule(CStateManager& mgr, CInputStream& input,
                                        CEntityInfo& info) {
   SLdrSplitterCommandModule sldrThis;

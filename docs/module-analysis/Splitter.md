@@ -1640,3 +1640,23 @@ split23's con and member writes, one batch of gdb calls at the 6000th head Think
 | 23F0, 8EC8, 91E4 | null cast dead: `CListeningAiList::IsQualified` admits only a CPatterned | marked |
 | C8F4 | 9/10 here; swarm-present Update arm from 6c363cd4, unchanged since e3b85b8f7 | marked |
 
+
+## split25 (2026-10-23)
+
+Forced runs on one build-port-cov build (`tools/cov/specs/splitter_split25.py`: split24's run plus
+one batch of gdb calls at the 6100th head Think, `splitter_split25_calls.py`; B2A0's split23 gates
+now cycle the flag bits 0x30/0x20/0x10 and another area, with the player orbiting the chassis and
+the player's id plus the live energy projectile put in front of its near list), 914f1381,
+caught 0; one run (cov5) on the final build takes every live arm.
+
+| rows | finding | result |
+|---|---|---|
+| B57C | NaN-equivalent already; rewritten in retail's three-compare shape (0xB604/0xB618/0xB640 ble) | forced ALL-ARMS (no target, four legs) |
+| B678 | NaN-equivalent; rewritten in retail's two-branch shape (0xB7F4/0xB804/0xB868 ble); target read is retail's uncast vtable 0x54 (0xCC0 holds only the player id) | forced ALL-ARMS → marked |
+| 270C | 0x27F0 bge → `!(d² < r²)` | forced 33/34 (the null entry is dead: linked entries hold their object) → marked |
+| B2A0 | 0xB308 bge → `!(D34 < 1)`, 0xB324 → `!(D1C <= 0)`, 0xB34C → `!(roll <= chance)` | forced ALL-ARMS → marked |
+| ECA4 | 0xECF0 ble → `!(D30 > 0.2f)`, 0xEE8C → `!(damage <= 0)` | forced ALL-ARMS → marked |
+| 44DC | 0x4640 ble → `!(dt > 0)` | forced ALL-ARMS (with fn_75_1974) → marked |
+| FC, 82B0 | match: inline SLdr defaults (0x13C-0x1A4 / 0x82F0-0x8358) = the generated reader's; 791C is H | 17/18, 14/15: the null model (0x2DC / 0x8490) is dead in the data (`tools/scan_splitter_loader.py`: 28 placements, all with an ANCS, no unknown top-level id) → marked |
+| 7C80, FED0 | `tools/fsm_ctor_tables.py` replays the initialisers: 38 + 61 entries {0, 0xFFFFFFFF, fn}, 0 bad, = §b and the port's tables in order | straight-line → marked on the tables |
+| 10778, 10F1C | beam effect Render (0x64C) / PreRender (0x760): rendering stand-ins | remaining (own slice) |
