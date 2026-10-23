@@ -217,6 +217,8 @@ public:
   // The pose skinning should draw: a blend of the last two tick poses while a presented frame is
   // drawn, otherwise the sim pose.
   const CPoseAsTransforms_Linear& PortPresentedPose() const;
+  // Port: the ANCS this animation data was built from (the console's `spawn ... ancs <actor>`).
+  CAssetId PortSelfId() const { return mSelfId; }
   struct SPortPoseHistory;
   // Owns mPortPoseHistory; never copied.
   CAnimData(const CAnimData&) = delete;
