@@ -220,6 +220,7 @@ differently at the two update rates).
 Thirty-two of the families keep a checked module's actors loading: grenchler (Torvus
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and pbug): their areas
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and szone): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and rptl): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
@@ -250,6 +251,7 @@ needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family envir
 and pbug (Agon Wastes 0b_sand_hall)
 and szone (Agon Wastes dark 02_sand_sandfalls_dark)
 splinter (Temple Grounds 02_temple_exploration)
+and rptl (Temple Grounds 12_temple_finalgate)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -389,6 +391,14 @@ to 132; splinter wakes Temple Grounds 02_temple_exploration's three Splinters
 u055b/u055c/u057c (inactive at load), alerts them, takes the 6 -> 4 -> -6 hp steps on u055b/u055c
 and the missile hit on u057c, and `objs Splinter` counts three at f340 and zero at f3100, with `obj`
 reads of u055b/u057c (hp/fsm/body/message map) at f1200.
+to 132; rptl drives Temple Grounds 12_temple_finalgate's rift portal e00070073 through Activate,
+Increment (line animation until it opens), beam/missile/charged shots through its projectile box,
+AreaLoaded (rebuilds the box), Decrement (stops the animations) and Deactivate (hides it), the
+player stepping close (the portal overfills the screen), the centre turned off-screen (copy-rect
+clamp), looking away (culled), dropping from above and laying morph-ball bombs in the projectile
+box (a kMT_Projectile that is not a CGameProjectile), with `objs RiftPortal` before and after.
+The portal's projectile box and late `objs RiftPortal` listings follow the update rate, so the
+family stays capped (NC).
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
