@@ -230,11 +230,21 @@ void CIngSpaceJumpGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
         mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
     break;
   case kSM_OffGround:
+#ifdef TARGET_PC
+    // 0x59EC-0x59F8: stfs to +0x1c0/+0x1c4/+0x1c8 = CPhysicsActor::mMomentum.
+    SetMomentumWR(CVector3f(0.f, 0.f, -(GetMass() * GetGravityConstant())));
+#else
     SetConstantForceWR(CVector3f(0.f, 0.f, -(GetMass() * GetGravityConstant())));
+#endif
     break;
   case kSM_Launching:
     CPatterned::AcceptScriptMsg(mgr, CScriptMsg(GetUniqueId(), GetUniqueId(), kSM_OffGround));
+#ifdef TARGET_PC
+    // 0x5A84-0x5A8C: stfs to +0x1c0/+0x1c4/+0x1c8 = CPhysicsActor::mMomentum.
+    SetMomentumWR(CVector3f(0.f, 0.f, -(GetMass() * GetGravityConstant())));
+#else
     SetConstantForceWR(CVector3f(0.f, 0.f, -(GetMass() * GetGravityConstant())));
+#endif
     ComputeJumpVelocity(mgr);
     break;
   case kSM_Landed:
@@ -304,7 +314,12 @@ void CIngSpaceJumpGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POIN
     CameraShake(mgr, node.GetLocatorName());
     break;
   case kUE_EventStart:
+#ifdef TARGET_PC
+    // 0x5578 addi r5, r30, 0x30: the node's locator name goes to SpawnShockWave.
+    SpawnShockWave(mgr, node.GetLocatorName());
+#else
     SpawnShockWave(mgr);
+#endif
     break;
   case kUE_EffectOn:
     AnimationData()->SetEffectState(rstl::string_l(skEyesName), true, mgr);
@@ -742,7 +757,12 @@ void CIngSpaceJumpGuardian::SelectJumpTarget(CStateManager& mgr, float dt) {
     if (const CScriptAiJumpPoint* jumpPoint =
             static_cast< const CScriptAiJumpPoint* >(mgr.GetObjectById(candidates[index]))) {
       mLastJumpPoint = candidates[index];
+#ifdef TARGET_PC
+      // 0x35BC lhz r0, 0x180(r7): the jump point's +0x180 (GetJumpPoint), not +0x182.
+      mJumpTarget = jumpPoint->GetJumpPoint();
+#else
       mJumpTarget = jumpPoint->GetJumpTarget();
+#endif
       mHasJumpPath = true;
       mPathFindNavigation.SetDestination(jumpPoint->GetTranslation());
       mPathFindNavigation.SetFaceTarget(kInvalidUniqueId);
@@ -816,7 +836,12 @@ void CIngSpaceJumpGuardian::ComputeJumpVelocity(CStateManager& mgr) {
       const float startZ = GetTranslation().GetZ();
       const float targetZ = target->GetTranslation().GetZ();
       const float gravity = GetGravityConstant();
+#ifdef TARGET_PC
+      // 0x2FA8 fcmpo f28, f27 / bge: plain bge keeps startZ on NaN.
+      const float apex = mJumpApexHeight + (startZ < targetZ ? targetZ : startZ);
+#else
       const float apex = mJumpApexHeight + (startZ >= targetZ ? startZ : targetZ);
+#endif
       const float vz = CMath::SqrtF(2.f * gravity * (apex - startZ));
       velocity.SetZ(vz);
       const float time = vz / gravity + CMath::SqrtF(2.f * (apex - targetZ) / gravity);
@@ -883,7 +908,12 @@ void CIngSpaceJumpGuardian::CollisionDamage(CStateManager& mgr, TUniqueId sender
       const float hp = health->GetHP();
       if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touched))) {
         const float damage = initialHP - colHealth->GetHP();
+#ifdef TARGET_PC
+        // 0x25F8-0x2624 lfs 0x28/0x38/0x48(r29): the weapon transform's forward column.
+        CVector3f position = weapon->GetTransform().GetForward();
+#else
         CVector3f position = weapon->GetTranslation();
+#endif
         TakeDamage(position, damage);
         if (hp > damage || (mDamageable && mLastJumpToWaypoint)) {
           health->SetHP(hp - damage);
@@ -893,7 +923,12 @@ void CIngSpaceJumpGuardian::CollisionDamage(CStateManager& mgr, TUniqueId sender
           mgr.RecordDamageSource(*this, weapon->GetUniqueId(), weapon->GetCurrentDamageInfo(), true,
                                  false);
         }
+#ifdef TARGET_PC
+        // 0x26BC lbz 0xa34 / extrwi. r0, r0, 1, 28: bit 0x08 = mDamageable.
+        if (mDamageable) {
+#else
         if (mLastJumpToWaypoint) {
+#endif
           CKnockBackInfo knockBack(position, weapon->GetOwnerId(), touched,
                                    weapon->GetCurrentDamageInfo(), true);
           KnockBack(mgr, knockBack);
@@ -939,8 +974,14 @@ void CIngSpaceJumpGuardian::UpdateLight(float dt, CStateManager& mgr) {
 }
 
 void CIngSpaceJumpGuardian::CameraShake(CStateManager& mgr, const rstl::string& locatorName) {
+#ifdef TARGET_PC
+  // 0x1C60 bl FindConnectedObject__7CEntity: first matching connection, no RNG draw.
+  const TUniqueId shakerId =
+      FindConnectedObject(mgr, mJumpMode == kJM_Waypoint ? kSS_Retreat : kSS_Play, kSM_Attach);
+#else
   const TUniqueId shakerId =
       GetConnectedObject(mgr, mJumpMode == kJM_Waypoint ? kSS_Retreat : kSS_Play, kSM_Attach);
+#endif
   if (const CScriptCameraShaker* shaker =
           TCastToConstPtr< CScriptCameraShaker >(mgr.ObjectById(shakerId))) {
     CCameraShakerData data = shaker->GetShakeData();
@@ -948,6 +989,21 @@ void CIngSpaceJumpGuardian::CameraShake(CStateManager& mgr, const rstl::string& 
     mgr.CameraManager(0)->CameraShakerManager()->AddCameraShaker(data, mgr, false, false);
   }
 }
+
+#ifdef TARGET_PC
+// 0x1928-0x1930: retail passes the caller's locator name (r5) to GetLctrTransform.
+void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr, const rstl::string& locatorName) {
+  if (mJumpMode == kJM_Waypoint) {
+    const CVector3f origin = GetLctrTransform(locatorName).GetTranslation();
+    const CShockWaveInfo shockWaveInfo(mData.shockWaveInfo);
+    CShockWave* shockWave = rs_new CShockWave(
+        mgr.AllocateUniqueId(), rstl::string_l("Shock Wave"),
+        CEntityInfo(GetCurrentAreaId(), CEntity::NullConnectionList, true),
+        CTransform4f::Translate(origin), GetUniqueId(), shockWaveInfo, 0.f, 1.75f);
+    mgr.AddObject(shockWave);
+  }
+}
+#endif
 
 void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr) {
   if (mJumpMode == kJM_Waypoint) {
@@ -987,10 +1043,20 @@ CIngSpaceJumpGuardian::FilterJumpPoints(CStateManager& mgr,
       if (const CScriptAiJumpPoint* jumpPoint =
               static_cast< const CScriptAiJumpPoint* >(mgr.GetObjectById(*it))) {
         if (const CScriptWaypoint* waypoint =
+#ifdef TARGET_PC
+                // 0x16F0 lhz r0, 0x180(r23): +0x180 = GetJumpPoint.
+                TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(jumpPoint->GetJumpPoint()))) {
+#else
                 TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(jumpPoint->GetJumpTarget()))) {
+#endif
           if (!mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, waypoint->GetTranslation())) {
+#ifdef TARGET_PC
+            // 0x172C lhz r0, 0x180(r23): +0x180 = GetJumpPoint.
+            if (TCastToConstPtr< CScriptAIWaypoint >(mgr.GetObjectById(jumpPoint->GetJumpPoint()))) {
+#else
             if (TCastToConstPtr< CScriptAIWaypoint >(
                     mgr.GetObjectById(jumpPoint->GetJumpTarget()))) {
+#endif
               waypointLinked.push_back(*it);
             } else {
               others.push_back(*it);

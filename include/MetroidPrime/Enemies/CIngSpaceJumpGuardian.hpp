@@ -103,6 +103,9 @@ private:
                    const rstl::vector< TUniqueId >& points);             // Guessed name
   const SLdrIngSpaceJumpGuardianStruct* GetCurrentStruct() const;        // Guessed name
   void SpawnShockWave(CStateManager& mgr);                               // Guessed name
+#ifdef TARGET_PC
+  void SpawnShockWave(CStateManager& mgr, const rstl::string& locatorName);
+#endif
   void CameraShake(CStateManager& mgr, const rstl::string& locatorName); // Guessed name
   void UpdateLight(float dt, CStateManager& mgr);                        // Guessed name
   void CreateLight(CStateManager& mgr);                                  // Guessed name
