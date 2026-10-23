@@ -202,11 +202,13 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
-tryclops, wisptentacle, octapede, amt, spa, wallwalker and isbg): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor and scriptgui): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
-wisptentacle's 6200). `--capped` or `SMOKE_FAST=0` runs everything capped.
-Twenty-eight of the families keep a checked module's actors loading: grenchler (Torvus
+wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
+while scriptgui's front end reads a widget's state differently at the two update rates).
+`--capped` or `SMOKE_FAST=0` runs everything capped.
+Thirty of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -219,7 +221,9 @@ amt (Agon 06_sand_alamofront), dbar (Agon 08_sand_casualpirates, whose fifteen b
 places: the family spawns them), sjguard (Agon 02_sand_sandfalls_dark), fishcloud (Temple Grounds
 06_temple_sacredpath), spa (Agon 03_sand_temple_dark), wallwalker (Sanctuary Fortress
 09_cliff_temple layer 3), isbg (Sanctuary Fortress 06_cliff_spiderballguardian layer 13), spp
-(Temple Grounds dark 01_temple_landingsite_dark) and mysf (Temple Grounds 0e_temple_hall)
+(Temple Grounds dark 01_temple_landingsite_dark), mysf (Temple Grounds 0e_temple_hall), spor (Torvus
+dark 0d_swamp_hall_dark) and scriptgui (the FrontEnd world 69802220, which is the one family that
+needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -302,7 +306,19 @@ sending Follow to its own waypoint on Attack), takes a 6 -> 5 knock-back on e003
 6, hp 5/6 from then on), forces Approach (after a `tp` onto the waypoint's line), Dodge, Attack
 (body state 18), Hover and GoToPatrol, runs both CalcLineOfSight/ResetAttack codecalls, kills
 e00310101 and Deactivates/Deletes the other two, `objs MysteryFlyer` counting the three down to
-none - a killed wasp is gone by its next `obj`, so the count is the check.
+none - a killed wasp is gone by its next `obj`, so the count is the check; spor drives Torvus dark
+0d_swamp_hall_dark's only Phlogus e00150015 (the area loads it active) through the shell steps -
+`place` 8 units from the player, the forced InActive and a 1-damage hit (hp 1000000 -> 999999, body
+state 7), `touch`, Attack, the five `tp` steps onto its shell, Run, the forced body state 0, then
+TurnAround, GetUp and the four diagonal `tp` steps, a `press x` while morphed on it, InActive again
+for the press-x-while-hovering arm, Run, the dark, light and power beams and the aimed and missile
+shots (hp 999982 by f1720) - with `objs PuddleSpore` listing it at f340 and `0 objects` after the
+Delete; scriptgui drives the FrontEnd area's own short-id objects, e0's Unlock first (without it
+StartSelectedGame faults on a null save screen), the menu e2ab through Activate/Alert and its
+Open/Close/Lock/Unlock and SetToMax/SetToZero/InternalMessage arms plus the four menu pads and the
+x/y/z/start presses, and the slider e21c through Activate/Alert, Increment/Decrement, a held right
+and left, Deactivate/Activate and its Delete, `objs Gui` counting the area's 133 script objects down
+to 132.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
