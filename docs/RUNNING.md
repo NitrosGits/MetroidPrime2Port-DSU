@@ -85,6 +85,10 @@ instead of `charged` fires a real player missile through the launcher's own path
 way player aim is and homing on its id, granting 10 missiles if the ammo has none; it leaves from
 the gun, so `d` and `dir` do not apply), for the modules that only react to a missile such as
 Rezbit's `DeflectMissiles`).
+The default beam direction runs from the player's eye to the target; a shot still collides with
+intervening walls/doors. `beam` changes asynchronously: allow the gun to finish switching before
+testing a particular weapon. A completed `scan` soft-pauses projectile updates; `visor combat`
+ends that scan and releases the console's held L before switching back.
 `struggle <0..1>|off` holds the player's attached-actor struggle value (`CPlayer::
 mAttachedActorStruggle`) at that value, applied in the player's own morph-ball update and cleared by
 `off`: the game only grows it from held turn/jump buttons while the morph ball is grabbed, so 1
@@ -345,11 +349,13 @@ two units from the player, Increment/Decrement (WarpOut and the WarpIn that foll
 and combat visors and `kill` on e0010008f (the driver's `setarea` step is left out: area 0 is not
 loaded there, so it could only answer an error), `objs Kralee` counting the two down to one - and gbug drives Great
 Temple 0i_temple_hall's three Glowbugs e000500f0/f8/f9 through Create/Activate, the 6/12/3/20/3-unit
-`place` window, a beam and a missile that kill e000500f8 (hp 0/30, fsm Dead, removed by its own
+`place` window, a beam and a missile that kill e000500f8 (hp 30 -> 28 -> -2/30, fsm Dead, removed by its own
 DeathDelete: the late checks are `obj` reads and the count, not an `obj` of a dead bug) and the
 repeated `scan` of e000500f9 (orbit locked, visor flags f), then Deactivate/Delete it, `objs Glowbug`
-counting three down to none - the two missiles at e000500f0 fire (`1 in flight, 58 left`) but never
-hit it, 3 units from the player as at 0.5 and 6 (a suspected port bug, open). pssm drives Torvus Bog 0g_swamp_hall's single PlantScarabSwarm e001e00b6 through the
+counting three down to none. The post-scan shots at e000500f0 now hit: `visor combat` exits the scan's
+soft pause, and the beam helper aims from eye height rather than through the floor from the feet.
+The family checks the scan state, beam damage and missile kill before DeathDelete removes the bug.
+pssm drives Torvus Bog 0g_swamp_hall's single PlantScarabSwarm e001e00b6 through the
 boids launching, the attack animation and grenade drop, the shared-model render and the launched-boid
 touch, the `tp` steps around and behind the swarm, the uncharged and charged shots and the missile
 (hp 2/2 -> 0/2), `Deactivate`/`Activate`, and the `Delete` (`objs PlantScarabSwarm` counting one at
@@ -376,7 +382,10 @@ the crystal's InternalMessage0-6 and Deactivate/Activate, two damage hits per cr
 listener and the three Activate/Deactivate sends, then the zone's Delete, with `objs SafeZone`
 counting the zones at f340 and after the Delete at f2300, and `obj` reads (hp/fsm/body/message map)
 around them. The shot ids and late `objs SafeZone` listings follow the update rate, so the
-family stays capped (NC). splinter wakes Temple Grounds 02_temple_exploration's three Splinters
+family stays capped (NC). Its added power-shot check forces crystal u04d3 Entangled after the gun
+switch settles: 0.5/3-unit shots give hp 5 -> 3 -> 1; re-entangle and a clear 6-unit shot gives 5 -> 3.
+Other crystal beam reactions reset HP via script connections, so unchanged HP alone is not a miss.
+splinter wakes Temple Grounds 02_temple_exploration's three Splinters
 u055b/u055c/u057c (inactive at load), alerts them, takes the 6 -> 4 -> -6 hp steps on u055b/u055c
 and the missile hit on u057c, and `objs Splinter` counts three at f340 and zero at f3100, with `obj`
 reads of u055b/u057c (hp/fsm/body/message map) at f1200. rptl drives Temple Grounds 12_temple_finalgate's rift portal e00070073 through Activate,

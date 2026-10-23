@@ -12,6 +12,12 @@
 # damage hits per crystal (a small light hit and a lethal dark/power one), the `noise` listener and
 # the three Activate/Deactivate sends, then the zone's Delete - with `objs SafeZone` around the
 # steps.
+# Projectile-health regression: f1650 selects power and leaves time for the gun's asynchronous
+# switch (a shot immediately after `beam` still uses the old beam). f1820 forces u04d3 Entangled;
+# 0.5- and 3-unit power shots give hp 5 -> 3 -> 1. Re-entangle/reset, then a 6-unit shot gives 5 -> 3.
+# The last shot comes from the other side: 6 units along +Y starts behind a wall. Light/dark/
+# annihilator reactions normally reset crystal HP via its own InternalMessage connections, and
+# light crystals pass non-dark shots through unless entangled. Constant HP alone is not a miss.
 # Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): in fast mode
 # the shot object ids and the late `objs SafeZone` listings vary between runs, so the transcript is
 # not a fixed baseline. Capped, its 2400 updates take ~40 s. F=2400, last check f2300.
@@ -65,9 +71,17 @@
 @f1540 damage u0473 500 dark; damage u04d3 500 power
 @f1600 objs SafeZone; obj u0473; obj u04d3
 @f1640 tp -141.1 -85.9 -10.3
+@f1650 beam power
 @f1700 noise 6 -82.3 -75.0 5.1
 @f1760 send u04d4 Activate; send u04be Activate; send u043a Activate
 @f1800 tp -50.6 -91.6 1.8
+@f1820 send u04d3 InternalMessage1; obj u04d3
+@f1830 shoot u04d3 0.5 dir 0 1 0
+@f1840 obj u04d3
+@f1850 shoot u04d3 3 dir 0 1 0
+@f1860 obj u04d3
+@f1870 send u04d3 InternalMessage1; shoot u04d3 6 dir 0 -1 0
+@f1880 obj u04d3
 @f1900 send u04d4 Deactivate
 @f2000 tp -141.1 -85.9 -10.3
 @f2100 send u0474 Delete
