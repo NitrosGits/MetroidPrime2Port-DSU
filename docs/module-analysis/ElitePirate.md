@@ -1036,3 +1036,8 @@ the yaw-180 asks f909/f941/f980/f1180/f1300) and false 12, 0 caught/reach-stub, 
 1600 updates. With the early-outs above every arm ran: both ids marked. gcov's 16/16 is ep2's
 (the body's C++ is unchanged since); gcov cannot see 0x67F4 (no branch of its own), gdb's `ret` does.
 
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- fn_15_2284 (called by B fn_15_6618) and fn_15_9988 are now B.
+- Kept H: the base-identical GetOrigin fn_15_BC, GetHealthInfo fn_15_D8, and fn_15_10, which only calls the base.

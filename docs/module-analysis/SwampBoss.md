@@ -966,3 +966,8 @@ FSM2 tables (`fn_79_`):
 | 18 | ShouldDropFlyer | 9F7C | | | |
 
 Code function: ResetAttackPhase 72FC.
+
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- fn_78_19FC, the tongue block ctor (0x158), goes from H to B, unmarked: it builds two CModelData and calls `fn_78_19A4` ResetTongueState at 0x1B30, so it is not only a CModelData copy. The port side is ctor fn_78_AA50 (`PortCSwampBossStage1.cpp:168`) and `ResetTongueState` (`:1143`). It needs a slice that marks it.

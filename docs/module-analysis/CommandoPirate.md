@@ -2435,3 +2435,9 @@ its id (CCollisionActorManager.cpp:183-214) before 0x46B8/0x47E8 read it. 2474's
 (0x7DDC..0x7DF0). 168's empty model (0x06B0): all 9 CMDO carry ANCS 0x8169653A. The switch
 defaults of 961C/9BB4: the machine sends only EStateMsg 0..2. 2D0C's
 `RecordDamageSource(*this, id, info, true, false)` is the host's UpdateHealthCause (0x3068).
+
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- All 32 marked H/T rows are now B. The T label meant "small thunk", not dead; the triggers sit in the FSM tables `lbl_9_data_198`/`568`.
+- fn_9_9DB0 (inline `CBodyStateCmdMgr::DeliverCmd(const CBCJumpCmd&)`) and fn_9_9EA8 (the `CBCJumpCmd` ctor) go from T to H. Both are called by B fn_9_9BB4 (0x9D5C/0x9D6C); the port's JetBoost uses the host copies.

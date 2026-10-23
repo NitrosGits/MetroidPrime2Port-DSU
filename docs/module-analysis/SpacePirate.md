@@ -827,3 +827,9 @@ branches (the one left is the host echo guard's null arm), `17A0` 8/8, `17C8` 8/
 1. `x8f4_24` mask is `flags & 3` (MP1 `& 1`): a 2-bit field or a different flag.
 2. 0xa18 (pInfo+0x58) is the starting HP (`pInfo.GetHealthInfo().GetHP()`, ctor 0xF89C/0xF8B8; sp20). 0xb30 is the ragdoll (section 14).
 3. The [?] rows of section 1 (`253C`, `28F0`, `3220`, `3D7C`, `CB30`, `EDEC`).
+
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- fn_72_64 is now B.
+- Kept T: 5D0C/5EA4/602C/99F0, which are not in the shipped AFSMs.

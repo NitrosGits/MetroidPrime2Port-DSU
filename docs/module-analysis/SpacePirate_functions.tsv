@@ -9,7 +9,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x48	0xC	CPatterned (weak)	IsOnGround (x34c bit)	inline-dol	H	data_8D8	CPatterned::IsOnGround (CPatterned.hpp:184)	not-port	fn_72_48
 0x54	0x8	CPatterned (weak)	GetDeathExplosionParticle (+0x754)	inline-dol	H	data_8D8	CPatterned::GetDeathExplosionParticle (CPatterned.hpp:190)	not-port	fn_72_54
 0x5C	0x8	CAi (weak)	CanBeShot -> true	inline-dol	H	data_8D8	CAi::CanBeShot (CAi.hpp:44)	not-port	fn_72_5C
-0x64	0x2C	CActor (weak)	GetHealthInfo -> HealthInfo() [slot 0x38]	inline-dol	H	data_8D8	CActor::GetHealthInfo (header inline)	marked	fn_72_64
+0x64	0x2C	CActor (weak)	GetHealthInfo -> HealthInfo() [slot 0x38]	inline-dol	B	data_8D8	ht2: B (was H) - the port's class implements it (PortCSpacePirate.cpp:1699); asm auto_04_00000000_data.s:975 in lbl_72_data_8D8: .4byte fn_72_64; CActor::GetHealthInfo (header inline)	marked	fn_72_64
 0x90	0x24	(module)	RELExit	rel-entry	B	-	-	not-port	RELExit
 0xB4	0x20	(module)	RELMain	rel-entry	B	-	-	not-port	RELMain
 0xD4	0x6C	(module)	RegisterFuncPtrs (SSpacePirate_FuncPtrs)	rel-entry	B	RELMain	-	not-port	fn_72_D4

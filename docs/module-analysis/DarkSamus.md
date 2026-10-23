@@ -2416,3 +2416,13 @@ asmcheck/retail_diff on 1FA14 report the ctor's calls missing ("C++ body 0", 18 
 conditions): the parser reads only the body after the init list, while the sub-constructors,
 token helpers (fn_10_21104, fn_10_895C) and sfx ternaries sit in the init list or in the header's
 default member initializers (CDarkSamus.hpp ~1119). Each of the 33 asm calls was matched by hand.
+
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- All 36 marked H/T rows are now B.
+- New B rows, unmarked; each waits for a slice:
+  - fn_10_F84C GetCollisionResponseType, vtable `lbl_10_data_CBC` slot 24. The port at `PortCDarkSamus.cpp:888` matches the asm, but a coverage run of player shots at u04f7 got 0 hits.
+  - fn_10_E7C `CScattershotProjectile::Render` (0xCA8), the `lbl_10_data_40` slot after AddToRenderer. Its port body is at `PortCScattershotProjectile.cpp:541`. It was wrongly listed as unreferenced.
+  - fn_10_CF44, the loader (0xE98). Its address is taken in fn_10_CF14 and passed to `SetSDarkSamus_FuncPtrs`. The port is `PortLoadDarkSamus`.
+- Kept T: fn_10_153EC SideDash, which has no FSM2 node.

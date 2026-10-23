@@ -1,9 +1,9 @@
 offset	size	owner	name	kind	class	callers	dol_counterpart	package
-0x0	0x8	CSandBoss	CSandBoss::IsScanVisorSelfRender -> true	virtual	T	vtable lbl_55_data_760 word 70; no direct bl caller	-	SB1
-0x8	0x8	CSandBoss	CSandBoss::IsListening -> true	virtual	T	vtable lbl_55_data_760 word 43; no direct bl caller	-	SB1
+0x0	0x8	CSandBoss	CSandBoss::IsScanVisorSelfRender -> true	virtual	B	vtable lbl_55_data_760 word 70; no direct bl caller	ht2: B (was T) - the port's class implements it (PortCSandBoss.cpp:210); asm auto_04_00000000_data.s:868 in lbl_55_data_760: .4byte fn_55_0; -	SB1
+0x8	0x8	CSandBoss	CSandBoss::IsListening -> true	virtual	B	vtable lbl_55_data_760 word 43; no direct bl caller	ht2: B (was T) - the port's class implements it (PortCSandBoss.cpp:214); asm auto_04_00000000_data.s:841 in lbl_55_data_760: .4byte fn_55_8; -	SB1
 0x10	0x3C	CSandBoss	CSandBoss::GetTouchBounds	virtual	B	vtable lbl_55_data_760 word 18	-	SB1
 0x4C	0x10	CSandBoss	CSandBoss::TakeDamage	virtual	B	vtable lbl_55_data_760 word 41	-	SB1
-0x5C	0x8	CSandBoss	CSandBoss::GetModelAlphau8 -> mModelAlpha (byte at +0x44F)	virtual	T	vtable lbl_55_data_760 word 50; no direct bl caller	-	SB1
+0x5C	0x8	CSandBoss	CSandBoss::GetModelAlphau8 -> mModelAlpha (byte at +0x44F)	virtual	B	vtable lbl_55_data_760 word 50; no direct bl caller	ht2: B (was T) - the port's class implements it (PortCSandBoss.cpp:223); asm auto_04_00000000_data.s:848 in lbl_55_data_760: .4byte fn_55_5C; -	SB1
 0x64	0x8	CSandBoss	CSandBoss::GetSearchPath -> null	virtual	T	vtable lbl_55_data_760 word 56; no direct bl caller	-	SB1
 0x6C	0x8	CSandBoss	CSandBoss::GetPointSearchPath -> null	virtual	T	vtable lbl_55_data_760 word 57; no direct bl caller	-	SB1
 0x74	0x8	CSandBoss	CSandBoss::GetRagDoll -> null	virtual	T	vtable lbl_55_data_760 word 61; no direct bl caller	-	SB1
@@ -12,9 +12,9 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x98	0xC	CSandBoss	CSandBoss::GetGravityConstant -> kDefaultGravityAccel	virtual	T	vtable lbl_55_data_760 word 69; no direct bl caller	-	SB1
 0xA4	0x8	CSandBoss	CSandBoss::GetDeathExplosionParticle -> &mDeathExplosion (+0x754)	virtual	T	vtable lbl_55_data_760 word 73; no direct bl caller	-	SB1
 0xAC	0x8	CSandBoss	CSandBoss::CanBeShot -> true	virtual	T	vtable lbl_55_data_760 word 42; no direct bl caller	-	SB1
-0xB4	0x8	CSandBoss	CSandBoss::Listen -> false	virtual	T	vtable lbl_55_data_760 word 44; no direct bl caller	-	SB1
+0xB4	0x8	CSandBoss	CSandBoss::Listen -> false	virtual	B	vtable lbl_55_data_760 word 44; no direct bl caller	ht2: B (was T) - the port's class implements it (PortCSandBoss.cpp:264); asm auto_04_00000000_data.s:842 in lbl_55_data_760: .4byte fn_55_B4; -	SB1
 0xBC	0x1C	CSandBoss	CSandBoss::GetOrigin -> the transform origin	virtual	T	vtable lbl_55_data_760 word 45; no direct bl caller	-	SB1
-0xD8	0x2C	CSandBoss	GetHealthInfo() -> CActor::HealthInfo()	inline-dol	H	vtable lbl_55_data_760 word 15	CActor::GetHealthInfo (header inline)	SB1
+0xD8	0x2C	CSandBoss	GetHealthInfo() -> CActor::HealthInfo()	inline-dol	B	vtable lbl_55_data_760 word 15	ht2: B (was H) - the port's class implements it (PortCSandBoss.cpp:272); asm auto_04_00000000_data.s:813 in lbl_55_data_760: .4byte fn_55_D8; CActor::GetHealthInfo (header inline)	SB1
 0x104	0x24	(module)	RELExit (crtexe REL runtime stub)	rel-entry	H	bl:11BF4	platform REL runtime (RELExit)	SB0
 0x128	0x20	(module)	RELMain (crtexe REL runtime stub)	rel-entry	H	bl:11C18	platform REL runtime (RELMain)	SB0
 0x148	0x30	(module)	REL init hook: stores the loader pointer in bss_4, calls the DOL register	rel-entry	H	bl:128	platform REL runtime (RELMain / SetSSandBoss_FuncPtrs)	SB0
@@ -235,16 +235,16 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0xCC54	0x30	CSandBoss	inlined vector copy	inline-dol	H	bl:CB30,D6BC	CVector3f copy (inline)	SB1
 0xCC84	0x12C	CSandBoss	CSandBoss::GetScanVisorRenderBounds	virtual	B	vtable lbl_55_data_760 word 71	-	SB1
 0xCDB0	0x40	CSandBoss	CSandBoss::GetScannableObjectInfo	virtual	B	vtable lbl_55_data_760 word 29	-	SB1
-0xCDF0	0x8	CSandBoss	CSandBoss::ProjectileInfo -> &mDarkBeamInfo (+0xE00)	virtual	T	vtable lbl_55_data_760 word 55; no direct bl caller	-	SB1
+0xCDF0	0x8	CSandBoss	CSandBoss::ProjectileInfo -> &mDarkBeamInfo (+0xE00)	virtual	B	vtable lbl_55_data_760 word 55; no direct bl caller	ht2: B (was T) - the port's class implements it (PortCSandBoss.cpp:277); asm auto_04_00000000_data.s:853 in lbl_55_data_760: .4byte fn_55_CDF0; -	SB1
 0xCDF8	0x108	CSandBoss	CSandBoss::GetAimPosition	virtual	B	vtable lbl_55_data_760 word 21	-	SB1
 0xCF00	0x6C	CSandBoss	inlined vector copy	inline-dol	H	bl:CDF8	CVector3f copy (inline)	SB1
-0xCF6C	0x20	CSandBoss	GetDamageVulnerability() -> CDamageVulnerability::PassThruVulnerability()	inline-dol	H	vtable lbl_55_data_760 word 16	CDamageVulnerability::PassThruVulnerability (inline)	SB1
+0xCF6C	0x20	CSandBoss	GetDamageVulnerability() -> CDamageVulnerability::PassThruVulnerability()	inline-dol	B	vtable lbl_55_data_760 word 16	ht2: B (was H) - the port's class implements it (PortCSandBoss.cpp:280); asm auto_04_00000000_data.s:814 in lbl_55_data_760: .4byte fn_55_CF6C; CDamageVulnerability::PassThruVulnerability (inline)	SB1
 0xCF8C	0x100	CSandBoss	CSandBoss::GetSortingBounds	virtual	B	vtable lbl_55_data_760 word 27	-	SB1
 0xD08C	0x140	CSandBoss	CSandBoss::PreRenderAllViewports	virtual	B	vtable lbl_55_data_760 word 13	-	SB1
 0xD1CC	0x3C	CSandBoss	operator delete wrapper	weak-dtor	H	no reference in .text/.data/.rodata/.bss (dead)	compiler-emitted dtor	SB1
 0xD208	0x88	CSandBoss	CSandBoss::AddToRenderer	virtual	B	vtable lbl_55_data_760 word 10	-	SB1
 0xD290	0x74	CSandBoss	CSandBoss::PreRender	virtual	B	vtable lbl_55_data_760 word 9	-	SB1
-0xD304	0x4	CSandBoss	CSandBoss::RenderSystemsToBeDrawnLast -> (empty)	virtual	T	vtable lbl_55_data_760 word 47; no direct bl caller	-	SB1
+0xD304	0x4	CSandBoss	CSandBoss::RenderSystemsToBeDrawnLast -> (empty)	virtual	B	vtable lbl_55_data_760 word 47; no direct bl caller	ht2: B (was T) - the port's class implements it (PortCSandBoss.cpp:792); asm auto_04_00000000_data.s:845 in lbl_55_data_760: .4byte fn_55_D304; -	SB1
 0xD308	0x7C	CSandBoss	CSandBoss::Render	virtual	B	vtable lbl_55_data_760 word 11	-	SB1
 0xD384	0x29C	CSandBoss	CSandBoss::DoUserAnimEvent	virtual	B	vtable lbl_55_data_760 word 28	-	SB1
 0xD620	0x9C	CSandBoss	CSandBoss::Think	virtual	B	vtable lbl_55_data_760 word 5	-	SB1

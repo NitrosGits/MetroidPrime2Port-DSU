@@ -1,17 +1,17 @@
 offset	size	fn	kind	class	port	note
-0x0	0x8	fn_9_0	vtable-override	T	marked	
-0x8	0x8	fn_9_8	vtable-override	T	marked	
+0x0	0x8	fn_9_0	vtable-override	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2245); asm auto_04_00000000_data.s:988 in lbl_9_data_828: .4byte fn_9_0
+0x8	0x8	fn_9_8	vtable-override	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2229); asm auto_04_00000000_data.s:975 in lbl_9_data_828: .4byte fn_9_8
 0x10	0xC	fn_9_10	vtable-override	T	ported	
 0x1C	0x3C	fn_9_1C	vtable-override	H	not-port	slot 0x48 GetTouchBounds = the host's CPatterned::GetTouchBounds (CPatterned.hpp:443, the same GetBoundingBox); asm: GetBoundingBox 0x34, the optional ctor 0xF9BC at 0x40, no branch
 0x58	0x10	fn_9_58	data-thunk	T	not-port	
-0x68	0x8	fn_9_68	vtable-override	T	marked	
+0x68	0x8	fn_9_68	vtable-override	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirateCore.cpp:106); asm auto_04_00000000_data.s:982 in lbl_9_data_828: .4byte fn_9_68
 0x70	0x8	fn_9_70	vtable-override	T	ported	
 0x78	0x8	fn_9_78	vtable-override	T	ported	
 0x80	0x10	fn_9_80	vtable-override	T	ported	
 0x90	0xC	fn_9_90	data-thunk	T	not-port	
 0x9C	0x8	fn_9_9C	data-thunk	T	not-port	
 0xA4	0x8	fn_9_A4	vtable-override	T	ported	
-0xAC	0x1C	fn_9_AC	vtable-override	T	marked	
+0xAC	0x1C	fn_9_AC	vtable-override	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirateCore.cpp:113); asm auto_04_00000000_data.s:977 in lbl_9_data_828: .4byte fn_9_AC
 0xC8	0x2C	fn_9_C8	data-thunk	T	not-port	
 0xF4	0x24	RELExit	rel-entry	H	not-port	
 0x118	0x20	RELMain	rel-entry	H	not-port	
@@ -58,7 +58,7 @@ offset	size	fn	kind	class	port	note
 0x3678	0x288	fn_9_3678	behaviour	B	marked	
 0x3900	0x15C	fn_9_3900	behaviour	B	marked	
 0x3A5C	0x260	fn_9_3A5C	behaviour	B	marked	cp9: timer cror fixed; every arm (shield id not a collision actor for 0x3AAC)
-0x3CBC	0xA8	fn_9_3CBC	host-copy	H	marked	
+0x3CBC	0xA8	fn_9_3CBC	host-copy	B	marked	ht2: B (was H) - the port's class implements it (PortCCommandoPirate.cpp:3002); asm auto_00_00000000_text.s:3800 in fn_9_3480: bl fn_9_3CBC
 0x3D64	0xB8	fn_9_3D64	behaviour	B	marked	the warp-out helper; every guard both ways (0x3D90/0x3D9C/0x3DA8/0x3DB4) and both argument values; flags/word via console `var`, block flag and alive bit forced; tail13 2026-10-23
 0x3E1C	0x324	fn_9_3E1C	behaviour	B	marked	
 0x4140	0x48	fn_9_4140	behaviour	H	not-port	single_ptr<CPirateRagDoll>::operator=(T*) (deletes old, no compare); host rstl/single_ptr.hpp:26 deletes too (cp7)
@@ -140,9 +140,9 @@ offset	size	fn	kind	class	port	note
 0x996C	0x140	fn_9_996C	behaviour	B	marked	
 0x9AAC	0x108	fn_9_9AAC	fsm-trigger	B	marked	PathFind
 0x9BB4	0x1FC	fn_9_9BB4	fsm-trigger	B	marked	JetBoost; cp9: asm matches; every arm (fake AiJumpPoints); switch default dead (EStateMsg 0..2)
-0x9DB0	0x9C	fn_9_9DB0	data-thunk	T	not-port	
+0x9DB0	0x9C	fn_9_9DB0	data-thunk	H	not-port	ht2: H (was T) - inline CBodyStateCmdMgr::DeliverCmd(const CBCJumpCmd&) (CBodyStateCmdMgr.hpp), called by B fn_9_9BB4; port uses the host copy; asm auto_00_00000000_text.s:11161 in fn_9_9BB4: bl fn_9_9DB0
 0x9E4C	0x5C	fn_9_9E4C	host-copy	H	not-port	
-0x9EA8	0x7C	fn_9_9EA8	data-thunk	T	not-port	
+0x9EA8	0x7C	fn_9_9EA8	data-thunk	H	not-port	ht2: H (was T) - CBCJumpCmd ctor (CBodyStateCmdMgr.hpp), called by B fn_9_9BB4; port JetBoost uses the host CBCJumpCmd; asm auto_00_00000000_text.s:11157 in fn_9_9BB4: bl fn_9_9EA8
 0x9F24	0x1EC	fn_9_9F24	fsm-trigger	B	marked	JumpPointFind; cp9: NaN gates (cror 0x9F70, bge 0xA090); every arm (fake AiJumpPoints, in-use forced)
 0xA110	0x1DC	fn_9_A110	fsm-trigger	B	marked	PostEGrenadeAttack
 0xA2EC	0x174	fn_9_A2EC	fsm-trigger	B	marked	EGrenadeAttack
@@ -157,50 +157,50 @@ offset	size	fn	kind	class	port	note
 0xAB08	0xD4	fn_9_AB08	fsm-trigger	B	marked	SelectTarget
 0xABDC	0x1C4	fn_9_ABDC	fsm-trigger	B	marked	FaceTarget
 0xADA0	0x34	fn_9_ADA0	fsm-trigger	B	marked	Ambush
-0xADD4	0x30	fn_9_ADD4	data-thunk	T	marked	
+0xADD4	0x30	fn_9_ADD4	data-thunk	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2926); asm auto_04_00000000_data.s:390 in lbl_9_data_3B8: .4byte fn_9_ADD4
 0xAE04	0x158	fn_9_AE04	fsm-trigger	B	marked	Alert
 0xAF5C	0x5C	fn_9_AF5C	host-copy	H	not-port	
-0xAFB8	0x1C	fn_9_AFB8	fsm-trigger	T	marked	AbortSeekCover
+0xAFB8	0x1C	fn_9_AFB8	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2912); asm auto_04_00000000_data.s:243 in lbl_9_data_18C: .4byte fn_9_AFB8; AbortSeekCover
 0xAFD4	0xE0	fn_9_AFD4	fsm-trigger	B	marked	CoverBlown
-0xB0B4	0x20	fn_9_B0B4	fsm-trigger	T	marked	ShouldCoverAttack
-0xB0D4	0x20	fn_9_B0D4	fsm-trigger	T	marked	FoundCover
-0xB0F4	0x20	fn_9_B0F4	fsm-trigger	T	marked	ShouldCover
+0xB0B4	0x20	fn_9_B0B4	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2899); asm auto_04_00000000_data.s:229 in lbl_9_data_174: .4byte fn_9_B0B4; ShouldCoverAttack
+0xB0D4	0x20	fn_9_B0D4	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2888); asm auto_04_00000000_data.s:222 in lbl_9_data_168: .4byte fn_9_B0D4; FoundCover
+0xB0F4	0x20	fn_9_B0F4	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2878); asm auto_04_00000000_data.s:215 in lbl_9_data_15C: .4byte fn_9_B0F4; ShouldCover
 0xB114	0x54	fn_9_B114	fsm-trigger	B	marked	ShouldWallHang
 0xB168	0x40	fn_9_B168	fsm-trigger	B	marked	ShouldCrouch
-0xB1A8	0x20	fn_9_B1A8	fsm-trigger	T	marked	FoundJumpPoint
-0xB1C8	0xC	fn_9_B1C8	fsm-trigger	T	marked	IsAggressive
-0xB1D4	0xC	fn_9_B1D4	fsm-trigger	T	marked	AbortShieldCharge
+0xB1A8	0x20	fn_9_B1A8	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2834); asm auto_04_00000000_data.s:194 in lbl_9_data_138: .4byte fn_9_B1A8; FoundJumpPoint
+0xB1C8	0xC	fn_9_B1C8	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2821); asm auto_04_00000000_data.s:187 in lbl_9_data_12C: .4byte fn_9_B1C8; IsAggressive
+0xB1D4	0xC	fn_9_B1D4	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2811); asm auto_04_00000000_data.s:180 in lbl_9_data_120: .4byte fn_9_B1D4; AbortShieldCharge
 0xB1E0	0x70	fn_9_B1E0	fsm-trigger	B	marked	ShouldBoost
 0xB250	0x410	fn_9_B250	fsm-trigger	B	marked	ShouldShieldCharge; cp9: asm matches; every arm (trigcall, rays and team answer forced at the callee return)
-0xB660	0x30	fn_9_B660	fsm-trigger	T	marked	ShouldArmShield
-0xB690	0xDC	fn_9_B690	fsm-trigger	H	marked	ShouldDodge
-0xB76C	0x90	fn_9_B76C	fsm-trigger	H	marked	TooClose
+0xB660	0x30	fn_9_B660	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2667); asm auto_04_00000000_data.s:159 in lbl_9_data_FC: .4byte fn_9_B660; ShouldArmShield
+0xB690	0xDC	fn_9_B690	fsm-trigger	B	marked	ht2: B (was H) - the port's class implements it (PortCCommandoPirate.cpp:2636); asm auto_04_00000000_data.s:152 in lbl_9_data_F0: .4byte fn_9_B690; ShouldDodge
+0xB76C	0x90	fn_9_B76C	fsm-trigger	B	marked	ht2: B (was H) - the port's class implements it (PortCCommandoPirate.cpp:2611); asm auto_04_00000000_data.s:145 in lbl_9_data_E4: .4byte fn_9_B76C; TooClose
 0xB7FC	0x1C	fn_9_B7FC	fsm-trigger	B	marked	AttackPatternOver
 0xB818	0xE8	fn_9_B818	fsm-trigger	B	marked	IsFacingTarget
 0xB900	0x58	fn_9_B900	fsm-trigger	B	marked	HasAttackPattern
 0xB958	0x38	fn_9_B958	fsm-trigger	B	marked	IsOffPath
-0xB990	0x48	fn_9_B990	fsm-trigger	T	marked	PathOver
-0xB9D8	0x48	fn_9_B9D8	fsm-trigger	T	marked	PathShagged
+0xB990	0x48	fn_9_B990	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2544); asm auto_04_00000000_data.s:110 in lbl_9_data_A8: .4byte fn_9_B990; PathOver
+0xB9D8	0x48	fn_9_B9D8	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2534); asm auto_04_00000000_data.s:103 in lbl_9_data_9C: .4byte fn_9_B9D8; PathShagged
 0xBA20	0x58	fn_9_BA20	fsm-trigger	B	marked	HasNewTarget
-0xBA78	0x3C	fn_9_BA78	fsm-trigger	H	marked	HasTarget
-0xBAB4	0x1C	fn_9_BAB4	fsm-trigger	T	marked	HeardShot
-0xBAD0	0x1C	fn_9_BAD0	fsm-trigger	T	marked	UnderFire
-0xBAEC	0xC	fn_9_BAEC	fsm-trigger	T	marked	HasLineOfSight
-0xBAF8	0xC	fn_9_BAF8	fsm-trigger	T	marked	BreakAmbush
-0xBB04	0xC	fn_9_BB04	fsm-trigger	T	marked	ShouldAmbush
+0xBA78	0x3C	fn_9_BA78	fsm-trigger	B	marked	ht2: B (was H) - the port's class implements it (PortCCommandoPirate.cpp:2514); asm auto_00_00000000_text.s:13266 in fn_9_BA20: bl fn_9_BA78; HasTarget
+0xBAB4	0x1C	fn_9_BAB4	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2502); asm auto_04_00000000_data.s:82 in lbl_9_data_78: .4byte fn_9_BAB4; HeardShot
+0xBAD0	0x1C	fn_9_BAD0	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2490); asm auto_04_00000000_data.s:75 in lbl_9_data_6C: .4byte fn_9_BAD0; UnderFire
+0xBAEC	0xC	fn_9_BAEC	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2477); asm auto_04_00000000_data.s:68 in lbl_9_data_60: .4byte fn_9_BAEC; HasLineOfSight
+0xBAF8	0xC	fn_9_BAF8	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2468); asm auto_04_00000000_data.s:61 in lbl_9_data_54: .4byte fn_9_BAF8; BreakAmbush
+0xBB04	0xC	fn_9_BB04	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2453); asm auto_04_00000000_data.s:54 in lbl_9_data_48: .4byte fn_9_BB04; ShouldAmbush
 0xBB10	0x6C	fn_9_BB10	fsm-trigger	B	marked	ShouldJumpBack
-0xBB7C	0x4C	fn_9_BB7C	fsm-trigger	T	marked	ShouldRetreat
+0xBB7C	0x4C	fn_9_BB7C	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2391); asm auto_04_00000000_data.s:40 in lbl_9_data_30: .4byte fn_9_BB7C; ShouldRetreat
 0xBBC8	0xF0	fn_9_BBC8	fsm-trigger	B	marked	ShouldFireEGrenade
-0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	H	marked	ShouldMeleeAttack
-0xBD98	0x34	fn_9_BD98	fsm-trigger	T	marked	ShouldWarpIn
-0xBDCC	0x14	fn_9_BDCC	fsm-trigger	T	marked	StateOver
+0xBCB8	0xE0	fn_9_BCB8	fsm-trigger	B	marked	ht2: B (was H) - the port's class implements it (PortCCommandoPirate.cpp:2319); asm auto_04_00000000_data.s:26 in lbl_9_data_18: .4byte fn_9_BCB8; ShouldMeleeAttack
+0xBD98	0x34	fn_9_BD98	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2298); asm auto_04_00000000_data.s:19 in lbl_9_data_C: .4byte fn_9_BD98; ShouldWarpIn
+0xBDCC	0x14	fn_9_BDCC	fsm-trigger	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2285); asm auto_04_00000000_data.s:12 in lbl_9_data_0: .4byte fn_9_BDCC; StateOver
 0xBDE0	0x6C	fn_9_BDE0	vtable-override	B	marked	
 0xBE4C	0xF8	fn_9_BE4C	vtable-override	B	marked	
 0xBF44	0x2B0	fn_9_BF44	vtable-override	B	marked	shield collision
 0xC1F4	0xD8	fn_9_C1F4	vtable-override	B	marked	
-0xC2CC	0x34	fn_9_C2CC	vtable-override	T	marked	
+0xC2CC	0x34	fn_9_C2CC	vtable-override	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:1795); asm auto_04_00000000_data.s:948 in lbl_9_data_828: .4byte fn_9_C2CC
 0xC300	0x1FC	fn_9_C300	vtable-override	B	marked	
-0xC4FC	0x20	fn_9_C4FC	vtable-override	T	marked	
+0xC4FC	0x20	fn_9_C4FC	vtable-override	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:1729); asm auto_04_00000000_data.s:942 in lbl_9_data_828: .4byte fn_9_C4FC
 0xC51C	0x7C	fn_9_C51C	vtable-override	B	marked	
 0xC598	0x13C	fn_9_C598	vtable-override	B	marked	Render; cov: every arm
 0xC6D4	0xC4	fn_9_C6D4	vtable-override	B	marked	
@@ -211,7 +211,7 @@ offset	size	fn	kind	class	port	note
 0xD294	0x5C	fn_9_D294	behaviour	H	not-port	CDamageVulnerability implicit copy ctor (__copy 0x15 bytes = mWeaponIndices, words +0x18/+0x1c, vector +0x20 via fn_9_D344); host implicit copy (cp7)
 0xD2F0	0x54	fn_9_D2F0	host-copy	H	not-port	
 0xD344	0x130	fn_9_D344	host-copy	H	not-port	
-0xD474	0x8	fn_9_D474	vtable-override	T	marked	
+0xD474	0x8	fn_9_D474	vtable-override	B	marked	ht2: B (was T) - the port's class implements it (PortCCommandoPirate.cpp:2238); asm auto_04_00000000_data.s:987 in lbl_9_data_828: .4byte fn_9_D474
 0xD47C	0x1B8	fn_9_D47C	host-copy	H	not-port	CCommandoPirate::~CCommandoPirate, vtable slot 0x08 (lbl_9_data_828 word at .data:0x830 = data asm line 934): own vptr 0xD49C/0xD4A8, then 0xC40/0xC3C CElementGen, 0xC28/0xC18/0xC08 optional tokens (present bytes 0xC34/0xC24/0xC14), 0xBFC fn_9_D8AC, the block's 0x8B4 and 0xA44 vulnerabilities, 0xA40/0xA3C managers, 0xA14 token, base via fn_9_D634 0xD604, Free on the delete flag (0xD608/0xD614); host body PortCCommandoPirate.cpp:387 {} + the same members (CCommandoPirate.hpp:280-370)
 0xD634	0x1E4	fn_9_D634	host-copy	H	not-port	CPatterned::~CPatterned emitted in the REL: base vptr __vt__10CPatterned (0xD658/0xD664), 0x780/0x764/0x754 tokens, 0x620 fn_9_D818, 0x4A0 SLdrIngPossessionData, 0x48C CBodyController (0xD71C..0xD730), 0x47C/0x470 tokens, 0x39C mIngScanInfo, 0x36C vulnerability, 0x350 ing model, bl __dt__3CAiFv 0xD7E4 + Free; only caller fn_9_D47C at 0xD604; host CPatterned.hpp:115 {} over the same members (CPatterned.hpp:341-414)
 0xD818	0x94	fn_9_D818	host-copy	H	not-port	
@@ -238,7 +238,7 @@ offset	size	fn	kind	class	port	note
 0xF314	0x104	fn_9_F314	host-copy	H	not-port	
 0xF418	0xF4	fn_9_F418	behaviour	B	marked	E-grenade ctor
 0xF50C	0x80	fn_9_F50C	host-copy	H	not-port	CCommandoPirateGrenadeData ctor: the base copy (fn_9_ED04 0xF548) then the eight floats at +0x50/+0x54/+0x58/+0x5C/+0x60/+0x64/+0x68/+0x6C from f1/f4/f2/f3/f5/f6/f7/f8 (0xF54C..0xF56C); one caller fn_9_168 0x6B0; host: the same header ctor (CCommandoPirate.hpp:56-63) with the loader's fields in field order (PortCCommandoPirate.cpp:4783-4784)
-0xF58C	0x110	fn_9_F58C	host-copy	H	marked	shield effect factory; cov: every arm
+0xF58C	0x110	fn_9_F58C	host-copy	B	marked	ht2: B (was H) - the port's class implements it (PortCCommandoPirateCore.cpp:659); asm auto_00_00000000_text.s:16007 in fn_9_D904: bl fn_9_F58C; shield effect factory; cov: every arm
 0xF69C	0x40	fn_9_F69C	behaviour	B	marked	waypoint predicate IsValid (vtable lbl_9_data_A50); host CCommandoPirateWaypointPredicate::IsValid (cp7)
 0xF6DC	0x40	fn_9_F6DC	behaviour	B	marked	waypoint predicate IsValid (vtable lbl_9_data_A84), same body as F69C (cp7)
 0xF71C	0x98	fn_9_F71C	host-copy	H	not-port	rstl::vector<CWeaponTypeVulnerability>::reserve: capacity +0x8 compared 0xF73C, allocate 0xF748, uninitialized_copy (fn_9_F7B4 0xF784), Free 0xF78C, the two stores 0xF790/0xF794; caller fn_9_E72C 0xE784; host: include/rstl/vector.hpp:158-170
