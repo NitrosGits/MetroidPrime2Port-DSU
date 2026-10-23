@@ -1,0 +1,62 @@
+# BacteriaSwarm (module 6: CBacteriaSwarm, the Ingstorm - a boid swarm in a box that patrols, chases
+# the player and shifts colour while pursuing; a CActor with its own CBoid type, not a CSwarmBasics).
+# Temple Grounds 04_temple_unknownenemies_dark (world 3bfa3eff, area 61) layer 0 holds three swarms;
+# the target is BSWM e003d0023 (u041f) with the other two in the same dark side room. The steps follow
+# the bsw1 lane's tools/cov/specs/bacteriaswarm_temple.con: a god-mode player in the swarm, every
+# beam (charge and missile too), the scan-visor lock that makes `orbit` print a live boid position,
+# a walk out and back with the player taking no damage, then Deactivate/Activate and the Delete
+# teardown.
+# Evidence in the transcript: `init compiled module BacteriaSwarm` in the log, the object in `objs`
+# with its DeathRattle -> SetToZero connection in `obj`, the locked boid's position moving between
+# the four `orbit` prints (UpdateAllBoidMovement/UpdateBoid running, the boid chasing the walking
+# player), `obj` showing it inactive after Deactivate and active again after Activate, and `objs`
+# losing it after `Delete`.
+# Left out on purpose: there is no per-boid console view and a boid is not an entity, so a boid kill
+# (KillBoid, which a projectile or the player's Touch only runs where a boid box actually overlaps)
+# cannot be shown here - the same limit the swarm family documents for CSwarmBasics. Weapon hits at
+# a healthless actor do nothing by design: CBacteriaSwarm carries a CDamageInfo (what it deals) and
+# no CHealthInfo, so the console `damage`/`kill` refuse it as they refuse a CSwarmBasics and the
+# family never uses them. The god-off walk shows that too: the player stands and walks inside the
+# boid band and `status` keeps its health (the shipped mDamageRadius is 0, so Touch falls back to
+# mTouchRadius, and the boids wander in a box big enough that a boid box never overlaps the player).
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+# The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before con.py
+# gets a console connection, so nothing would be driven.
+@f150 god 1; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f200 objs Bact; obj e003d0023
+@f260 tp 181.9 147.5 -28.9
+# The scan visor plus lock-on is what fills mLastOrbitPosition, so `orbit` names a live boid.
+@f300 visor scan; lockon 1
+@f340 orbit e003d0023
+@f360 visor combat
+@f400 beam dark; shoot e003d0023
+@f430 shoot e003d0023 charged
+@f460 beam light
+@f470 shoot e003d0023; shoot e003d0023 charged
+@f500 beam annihilator
+@f510 shoot e003d0023; shoot e003d0023 charged
+@f540 beam power
+@f560 shoot e003d0023 missile
+@f600 shoot e003d0023 charged
+@f620 visor scan; orbit e003d0023
+# The scan itself (the console holds L for ~30 updates between repeats).
+@f640 scan e003d0023 10 60
+@f700 scan e003d0023 10 60; orbit e003d0023
+# Boid movement while the player walks: god mode off, the player drops to the floor the boids hover
+# over and walks both ways in the boid band (the boid the lock is on follows him).
+@f800 god 0; tp 181 126 -33
+@f820 face 0; stick 0 127 300
+@f1200 status; orbit e003d0023
+@f1260 face 180; stick 0 127 300
+@f1650 status; orbit e003d0023
+@f1700 god 1; visor combat; lockon 0
+# Deactivate/Activate: `obj` shows the inactive flag, and the swarm goes on thinking boids after it.
+@f1800 send e003d0023 Deactivate; obj e003d0023
+@f1900 send e003d0023 Activate; obj e003d0023
+@f2000 objs Bact
+# The teardown the driver ends with: charged shots, then Deactivate and the `Delete` that removes it.
+@f2250 shoot e003d0023 charged; shoot e003d0023 charged
+@f2280 objs Bact
+@f2320 send e003d0023 Deactivate; obj e003d0023
+@f2330 send e003d0023 Delete
+@f2350 objs Bact; status

@@ -190,17 +190,19 @@ console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Re
 reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
-batch (~4.6 min, ing ~266 s), and so do ingswarm and darktrooper (run.sh's `NC` set): their areas
+batch (~4.6 min, ing ~266 s), and so do ingswarm, darktrooper and bacteriaswarm (run.sh's `NC` set):
+their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40 s each capped). `--capped` or `SMOKE_FAST=0` runs
 everything capped.
-Fifteen of the families keep a checked module's actors loading: grenchler (Torvus
+Sixteen of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
 0i_sand_hall), rezbit (Sanctuary 02_cliff_reactorcore), parasite (Agon 02_sand_sandfalls layer 9),
 lumite (Agon 0a_sand_hall), shrieker (Torvus 02_swamp_greatbridge), ingswarm (Temple Grounds
-10_temple_pathofeyes) and darktrooper (Temple Grounds 04_temple_unknownenemies)
+10_temple_pathofeyes), darktrooper (Temple Grounds 04_temple_unknownenemies) and bacteriaswarm
+(Temple Grounds 04_temple_unknownenemies_dark)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -226,7 +228,13 @@ arm and the IsDead -> Dead teardown (it has no `fsm`/`kill`: `CIngSnatchingSwarm
 its states stay the coverage driver's); darktrooper loads layers 2 and 3 for the three Dark
 Troopers u049d/u0488/u0487, wakes and alerts them, walks Pursue/SmallShotAttack/MissileAttack/
 MeleeAttack, takes a small-shot hit with god mode off (99 -> 92 health), damages them with power
-and missile and kills all three (power, missile, dark burst). A new family is appended at the end of the `ALL` table in
+and missile and kills all three (power, missile, dark burst); bacteriaswarm stands the player in the
+dark side room's three Ingstorms and fires every beam at BSWM `e003d0023`, scans it with the scan
+visor (its orbit lock prints a live boid position, and the locked boid follows the player walking
+through the boid band with god mode off - it takes no damage: a boid box never overlaps the player,
+and the swarm carries a `CDamageInfo` but no `CHealthInfo`, so `damage`/`kill` refuse it as they
+refuse a `CSwarmBasics`), then ends with `Deactivate`/`Activate` and the `Delete` that removes it.
+A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
 
@@ -253,9 +261,10 @@ first game update 5.2 s -> 4.1 s wall. "Gameplay reached" stays ~9.1 s: it is a 
 at 60 Hz (frame pacing, `CGraphics::EndScene`), which headless does not change. Full smoke
 (`--jobs 4`, shared machine): the 18-family suite measured wall 364 s windowed -> 356 s headless,
 CPU (user+sys of every game) 193 s -> 121 s; counts, positions and `[warp]`/`[ids]` lines match
-within run-to-run noise. The 33-family suite (2026-10-23, `--jobs 2`, ingswarm and darktrooper
-added) measured 326 s headless; the 31-family one (lumite and shrieker added) 269 s at `--jobs 4`:
-the wall-clock drivers ing, ep and darksamus still bound it (ing ~266 s), not the family count.
+within run-to-run noise. The 34-family suite (2026-10-23, `--jobs 2`, bacteriaswarm added on top of
+ingswarm and darktrooper) measured 314 s headless; the 33-family one 326 s `--jobs 2`, the 31-family
+one (lumite and shrieker added) 269 s at `--jobs 4`: the wall-clock drivers ing, ep and darksamus
+still bound it (ing ~266 s), not the family count.
 
 ## Branch coverage of the port module bodies (gcov)
 
