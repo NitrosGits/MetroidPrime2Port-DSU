@@ -1,0 +1,88 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_35_0	8	B	CIngSpiderballGuardian::IsListening	-	upstream body (CIngSpiderballGuardian)	no
+00008	fn_35_8	3C	H	CPatterned::GetTouchBounds	-	weak copy / template instance	no
+00044	fn_35_44	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+00054	fn_35_54	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+0005C	fn_35_5C	8	H	CPatterned::ProjectileInfo	-	weak copy / template instance	no
+00064	fn_35_64	8	H	CPatterned::GetSearchPath	-	weak copy / template instance	no
+0006C	fn_35_6C	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+00074	fn_35_74	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+0007C	fn_35_7C	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+0008C	fn_35_8C	C	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+00098	fn_35_98	C	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+000A4	fn_35_A4	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+000AC	fn_35_AC	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+000B4	fn_35_B4	8	H	CAi::Listen	-	weak copy / template instance	no
+000BC	fn_35_BC	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+000D8	fn_35_D8	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+00104	fn_35_104	24	T	RELExit	isbg1	REL runtime (module entry)	yes
+00128	fn_35_128	20	T	RELMain	isbg1	REL runtime (module entry)	yes
+00148	fn_35_148	30	B	SetFuncPtrs	isbg1	upstream body (CIngSpiderballGuardian)	yes
+00178	fn_35_178	330	B	LoadIngSpiderballGuardian	-	upstream body (CIngSpiderballGuardian)	no
+004A8	fn_35_4A8	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+004E8	fn_35_4E8	20	H	rstl::construct<10CModelData>	-	weak copy / template instance	no
+00508	fn_35_508	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak copy / template instance	no
+00530	fn_35_530	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+0066C	fn_35_66C	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak copy / template instance	no
+006D8	fn_35_6D8	54	H	TToken::~TToken	-	weak copy / template instance	no
+0072C	fn_35_72C	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
+00790	fn_35_790	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
+007F0	fn_35_7F0	7C	B	SLdrIngSpiderballGuardian::~SLdrIngSpiderballGuardian	-	upstream body (CIngSpiderballGuardian)	no
+0086C	fn_35_86C	298	B	LoadTypedefIngSpiderballGuardianData	-	upstream body (CIngSpiderballGuardian)	no
+00B04	fn_35_B04	E8	B	SLdrIngSpiderballGuardianData::~SLdrIngSpiderballGuardianData	-	upstream body (CIngSpiderballGuardian)	no
+00BEC	fn_35_BEC	D8	B	SLdrIngSpiderballGuardianData::SLdrIngSpiderballGuardianData	-	upstream body (CIngSpiderballGuardian)	no
+00CC4	fn_35_CC4	19C	B	LoadTypedefIngSpiderballGuardianStruct	-	upstream body (CIngSpiderballGuardian)	no
+00E60	fn_35_E60	3C	B	SLdrIngSpiderballGuardianStruct::~SLdrIngSpiderballGuardianStruct	-	upstream body (CIngSpiderballGuardian)	no
+00E9C	fn_35_E9C	80	B	SLdrIngSpiderballGuardianStruct::SLdrIngSpiderballGuardianStruct	-	upstream body (CIngSpiderballGuardian)	no
+00F1C	fn_35_F1C	70	B	CIngSpiderballGuardian::GetPhaseProperties	isbg1	upstream body (CIngSpiderballGuardian)	yes
+00F8C	fn_35_F8C	F8	B	CIngSpiderballGuardian::ApplyStunDamage	isbg1	upstream body (CIngSpiderballGuardian)	yes
+01084	fn_35_1084	250	B	CIngSpiderballGuardian::SetGuardianState	-	upstream body (CIngSpiderballGuardian)	no
+012D4	fn_35_12D4	1A8	B	CIngSpiderballGuardian::UpdateRollSound	-	upstream body (CIngSpiderballGuardian)	no
+0147C	fn_35_147C	E4	B	CIngSpiderballGuardian::UpdateStateTimers	-	upstream body (CIngSpiderballGuardian)	no
+01560	fn_35_1560	2C8	B	CIngSpiderballGuardian::UpdateEffects	-	upstream body (CIngSpiderballGuardian)	no
+01828	fn_35_1828	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+01878	fn_35_1878	158	B	CIngSpiderballGuardian::ApplyProximityDamage	-	upstream body (CIngSpiderballGuardian)	no
+019D0	fn_35_19D0	3C0	B	CIngSpiderballGuardian::MoveAlongWaypoints	-	upstream body (CIngSpiderballGuardian)	no
+01D90	fn_35_1D90	52C	B	CIngSpiderballGuardian::SelectNextWaypoint	-	upstream body (CIngSpiderballGuardian)	no
+022BC	fn_35_22BC	100	H	__ct__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>FRCQ24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+023BC	fn_35_23BC	54	H	__dt__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+02410	fn_35_2410	60	H	CEffectWaypointPredicate::~CEffectWaypointPredicate	-	weak copy / template instance	no
+02470	fn_35_2470	30	B	CIngSpiderballGuardian::BeginNextPuzzleSection	isbg1	upstream body (CIngSpiderballGuardian)	yes
+024A0	fn_35_24A0	94	B	CIngSpiderballGuardian::EnableEnergyBar	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02534	fn_35_2534	B0	B	CIngSpiderballGuardian::Dead	isbg1	upstream body (CIngSpiderballGuardian)	yes
+025E4	fn_35_25E4	2E4	B	CIngSpiderballGuardian::StunnedReaction	-	upstream body (CIngSpiderballGuardian)	no
+028C8	fn_35_28C8	5C	H	CBCKnockBackCmd::~CBCKnockBackCmd	-	weak copy / template instance	no
+02924	fn_35_2924	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+0296C	fn_35_296C	29C	B	CIngSpiderballGuardian::DamageReaction	-	upstream body (CIngSpiderballGuardian)	no
+02C08	fn_35_2C08	12C	B	CIngSpiderballGuardian::Patrol	-	upstream body (CIngSpiderballGuardian)	no
+02D34	fn_35_2D34	4	B	CIngSpiderballGuardian::Start	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02D38	fn_35_2D38	C	B	CIngSpiderballGuardian::Stunned	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02D44	fn_35_2D44	18	B	CIngSpiderballGuardian::Damaged	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02D5C	fn_35_2D5C	14	B	CIngSpiderballGuardian::StateOver	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02D70	fn_35_2D70	8C	B	CIngSpiderballGuardian::SetupStateMachine	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02DFC	fn_35_2DFC	138	B	CIngSpiderballGuardian::Death	-	upstream body (CIngSpiderballGuardian)	no
+02F34	fn_35_2F34	5C	H	CBCKnockDownCmd::~CBCKnockDownCmd	-	weak copy / template instance	no
+02F90	fn_35_2F90	2C	B	CIngSpiderballGuardian::GetAimPosition	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02FBC	fn_35_2FBC	20	B	CIngSpiderballGuardian::GetDamageVulnerability	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02FDC	fn_35_2FDC	20	B	CIngSpiderballGuardian::AddToRenderer	isbg1	upstream body (CIngSpiderballGuardian)	yes
+02FFC	fn_35_2FFC	20	B	CIngSpiderballGuardian::PreRender	isbg1	upstream body (CIngSpiderballGuardian)	yes
+0301C	fn_35_301C	20	B	CIngSpiderballGuardian::Render	isbg1	upstream body (CIngSpiderballGuardian)	yes
+0303C	fn_35_303C	164	B	CIngSpiderballGuardian::DoUserAnimEvent	-	upstream body (CIngSpiderballGuardian)	no
+031A0	fn_35_31A0	74	B	CIngSpiderballGuardian::Think	isbg1	upstream body (CIngSpiderballGuardian)	yes
+03214	fn_35_3214	358	B	CIngSpiderballGuardian::AcceptScriptMsg	-	upstream body (CIngSpiderballGuardian)	no
+0356C	fn_35_356C	70	B	CIngSpiderballGuardian::~CIngSpiderballGuardian	-	upstream body (CIngSpiderballGuardian)	no
+035DC	fn_35_35DC	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
+037C0	fn_35_37C0	94	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
+03854	fn_35_3854	2CC	B	CIngSpiderballGuardian::CIngSpiderballGuardian	-	upstream body (CIngSpiderballGuardian)	no
+03B20	fn_35_3B20	3C	H	CPASAnimParmData::~CPASAnimParmData	-	weak copy / template instance	no
+03B5C	fn_35_3B5C	184	H	CPASAnimParmData::CPASAnimParmData	-	weak copy / template instance	no
+03CE0	fn_35_3CE0	3C	H	__dt__Q24rstl33reserved_vector<12CPASAnimParm,8>Fv	-	weak copy / template instance	no
+03D1C	fn_35_3D1C	2D4	B	SLdrIngSpiderballGuardianData::SLdrIngSpiderballGuardianData (copy)	-	upstream body (CIngSpiderballGuardian)	no
+03FF0	fn_35_3FF0	40	H	CEffectWaypointPredicate::IsValid	-	weak copy / template instance	no
+04030	fn_35_4030	3C	H	__ct__Q24rstl24optional_object<6CAABox>FRC6CAABox	-	weak copy / template instance	no
+0406C	fn_35_406C	194	B	__sinit_CIngSpiderballGuardian_cpp	-	upstream body (CIngSpiderballGuardian)	no
+04200	fn_35_4200	C4	T	_unresolved	-	REL runtime	no
+042C4	fn_35_42C4	24	T	_epilog	-	REL runtime	no
+042E8	fn_35_42E8	24	T	_prolog	-	REL runtime	no
+0430C	fn_35_430C	4C	T	ModuleDestructors	-	REL runtime	no
+04358	fn_35_4358	4C	T	ModuleConstructors	-	REL runtime	no

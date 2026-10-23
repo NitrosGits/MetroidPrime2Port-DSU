@@ -118,6 +118,7 @@ CIngSpiderballGuardian::CIngSpiderballGuardian(TUniqueId uid, const rstl::string
 
 CIngSpiderballGuardian::~CIngSpiderballGuardian() {}
 
+// fn_35_3214
 void CIngSpiderballGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const TUniqueId senderId = msg.GetSenderId();
   const EScriptObjectMessage message = msg.GetMessage();
@@ -182,6 +183,7 @@ void CIngSpiderballGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMs
   }
 }
 
+// @ fn_35_31A0
 void CIngSpiderballGuardian::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     CPatterned::Think(dt, mgr);
@@ -191,6 +193,7 @@ void CIngSpiderballGuardian::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// fn_35_303C
 void CIngSpiderballGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                              EUserEventType type, float dt) {
   bool handled = false;
@@ -214,22 +217,28 @@ void CIngSpiderballGuardian::DoUserAnimEvent(CStateManager& mgr, const CInt32POI
   }
 }
 
+// @ fn_35_301C
 void CIngSpiderballGuardian::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_35_2FFC
 void CIngSpiderballGuardian::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_35_2FDC
 void CIngSpiderballGuardian::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
+// @ fn_35_2FBC
 const CDamageVulnerability* CIngSpiderballGuardian::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_35_2F90
 CVector3f CIngSpiderballGuardian::GetAimPosition(const CStateManager& mgr, float dt) const {
   return CPatterned::GetAimPosition(mgr, dt);
 }
 
+// fn_35_2DFC
 void CIngSpiderballGuardian::Death(CStateManager& mgr, const CVector3f& direction,
                                    EScriptObjectState state) {
   BodyController()->CommandMgr().DeliverCmd(CBCKnockDownCmd(direction, pas::kS_One));
@@ -238,6 +247,7 @@ void CIngSpiderballGuardian::Death(CStateManager& mgr, const CVector3f& directio
   }
 }
 
+// @ fn_35_2D70
 void CIngSpiderballGuardian::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -246,20 +256,25 @@ void CIngSpiderballGuardian::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_35_2D5C
 bool CIngSpiderballGuardian::StateOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimationState.IsOver();
 }
 
+// @ fn_35_2D44
 bool CIngSpiderballGuardian::Damaged(CStateManager& mgr, const CTriggerData& data) const {
   return mHitByPlayerProjectile;
 }
 
+// @ fn_35_2D38
 bool CIngSpiderballGuardian::Stunned(CStateManager& mgr, const CTriggerData& data) const {
   return mStunned;
 }
 
+// @ fn_35_2D34
 void CIngSpiderballGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// fn_35_2C08
 void CIngSpiderballGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -282,6 +297,7 @@ void CIngSpiderballGuardian::Patrol(CStateManager& mgr, EStateMsg msg, float dt)
   }
 }
 
+// fn_35_296C
 void CIngSpiderballGuardian::DamageReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -317,6 +333,7 @@ void CIngSpiderballGuardian::DamageReaction(CStateManager& mgr, EStateMsg msg, f
   }
 }
 
+// fn_35_25E4
 void CIngSpiderballGuardian::StunnedReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -356,6 +373,7 @@ void CIngSpiderballGuardian::StunnedReaction(CStateManager& mgr, EStateMsg msg, 
   }
 }
 
+// @ fn_35_2534
 void CIngSpiderballGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -372,16 +390,20 @@ void CIngSpiderballGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_35_24A0
 void CIngSpiderballGuardian::EnableEnergyBar(CStateManager& mgr, float dt) {
+  // 0x24FC bl GetStringIndexByName__12CStringTableCFPCc: CStringTable::GetStringIndex here
   mgr.SetBossParams(GetUniqueId(), GetHealthInfo()->GetInitialHP(),
                     gpStringTable->GetStringIndex("BossSpiderBallGuardian"));
 }
 
+// @ fn_35_2470
 void CIngSpiderballGuardian::BeginNextPuzzleSection(CStateManager& mgr, float dt) {
   ++mPhase;
   SetGuardianState(mgr, kGS_Patrol);
 }
 
+// fn_35_1D90
 void CIngSpiderballGuardian::SelectNextWaypoint(CStateManager& mgr) {
   const TUniqueId previousId = mPrevWaypointId;
   CScriptWaypoint* waypoint = TCastToPtr< CScriptWaypoint >(mgr.ObjectById(mTargetWaypointId));
@@ -465,6 +487,7 @@ void CIngSpiderballGuardian::SelectNextWaypoint(CStateManager& mgr) {
   }
 }
 
+// fn_35_19D0
 void CIngSpiderballGuardian::MoveAlongWaypoints(CStateManager& mgr, float dt) {
   const CScriptWaypoint* waypoint =
       TCastToConstPtr< CScriptWaypoint >(mgr.GetObjectById(mTargetWaypointId));
@@ -507,6 +530,7 @@ void CIngSpiderballGuardian::MoveAlongWaypoints(CStateManager& mgr, float dt) {
   SetTransform(CTransform4f::LookAt(newPosition, newPosition + direction, newUp));
 }
 
+// fn_35_1878
 void CIngSpiderballGuardian::ApplyProximityDamage(CStateManager& mgr) {
   if (mEffectsActive && mProximityDamageEnabled && mCurDamageRemTime <= 0.f) {
     CPlayer* player = mgr.GetPlayer(0);
@@ -521,6 +545,7 @@ void CIngSpiderballGuardian::ApplyProximityDamage(CStateManager& mgr) {
   }
 }
 
+// fn_35_1560
 void CIngSpiderballGuardian::UpdateEffects(CStateManager& mgr, bool active) {
   mEffectsActive = active;
   CAnimData* animData = AnimationData();
@@ -549,6 +574,7 @@ void CIngSpiderballGuardian::UpdateEffects(CStateManager& mgr, bool active) {
   }
 }
 
+// fn_35_147C
 void CIngSpiderballGuardian::UpdateStateTimers(CStateManager& mgr, float dt) {
   switch (mState) {
   case kGS_Stunned:
@@ -568,6 +594,7 @@ void CIngSpiderballGuardian::UpdateStateTimers(CStateManager& mgr, float dt) {
   }
 }
 
+// fn_35_12D4
 void CIngSpiderballGuardian::UpdateRollSound() {
   if (mRolling) {
     if (mSoundState != mState) {
@@ -601,6 +628,7 @@ void CIngSpiderballGuardian::UpdateRollSound() {
   }
 }
 
+// fn_35_1084
 void CIngSpiderballGuardian::SetGuardianState(CStateManager& mgr, EGuardianState state) {
   const SLdrIngSpiderballGuardianStruct& props = GetPhaseProperties();
   if (mState == kGS_Stunned && state != kGS_Charging && state != mState) {
@@ -650,6 +678,7 @@ void CIngSpiderballGuardian::SetGuardianState(CStateManager& mgr, EGuardianState
   }
 }
 
+// @ fn_35_F8C
 void CIngSpiderballGuardian::ApplyStunDamage(CStateManager& mgr, float damage) {
   switch (mState) {
   case kGS_Patrol:
@@ -671,6 +700,7 @@ void CIngSpiderballGuardian::ApplyStunDamage(CStateManager& mgr, float damage) {
   }
 }
 
+// @ fn_35_F1C
 const SLdrIngSpiderballGuardianStruct& CIngSpiderballGuardian::GetPhaseProperties() const {
   switch (mPhase) {
   case 5:
@@ -690,6 +720,7 @@ const SLdrIngSpiderballGuardianStruct& CIngSpiderballGuardian::GetPhasePropertie
   }
 }
 
+// fn_35_178
 CEntity* LoadIngSpiderballGuardian(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngSpiderballGuardian sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngSpiderballGuardian.inc"
@@ -709,13 +740,16 @@ CEntity* LoadIngSpiderballGuardian(CStateManager& mgr, CInputStream& input, CEnt
 }
 
 #ifndef MONOLITHIC
+// @ fn_35_148
 static void SetFuncPtrs() {
   static SIngSpiderballGuardian_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadIngSpiderballGuardian;
   SetSIngSpiderballGuardian_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_35_128
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_35_104
 extern "C" void RELExit() { SetSIngSpiderballGuardian_FuncPtrs(nullptr); }
 #endif

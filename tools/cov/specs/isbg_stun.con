@@ -1,0 +1,59 @@
+# IngSpiderballGuardian stun driver, for tools/cov/specs/isbg_force.py (force.sh): real player shots
+# (`shoot`), turned into kSM_ResistedDamage by the force spec, drive ApplyStunDamage -> Damaged and
+# Stunned (the spec drops the stun health on every 10th hit), StunnedReaction, IM4 while stunned,
+# IM0 (no stun damage, the stun timer held), IM1, the charge from Patrol and from Stunned, and the
+# stun (25 s) and charge (15 s) timers running out.
+@f300 god 1; layer 13; give missile 50
+@f1000 send e0014007a Activate
+@f1060 obj e0014007a
+@f1100 shoot e0014007a
+@f1125 shoot e0014007a
+@f1150 shoot e0014007a
+@f1175 shoot e0014007a
+@f1200 shoot e0014007a
+@f1225 shoot e0014007a
+@f1250 obj e0014007a
+@f1290 shoot e0014007a
+@f1315 shoot e0014007a
+@f1340 shoot e0014007a
+@f1365 send e0014007a InternalMessage4
+@f1385 obj e0014007a
+@f1425 send e0014007a InternalMessage0
+@f1445 shoot e0014007a
+@f1470 shoot e0014007a
+@f1495 shoot e0014007a
+@f1520 obj e0014007a
+@f3220 obj e0014007a
+@f3240 send e0014007a InternalMessage1
+@f3540 obj e0014007a
+@f3580 send e0014007a InternalMessage4
+@f3590 send e0014007a InternalMessage4
+@f3600 send e0014007a InternalMessage4
+@f3610 send e0014007a InternalMessage4
+@f3620 send e0014007a InternalMessage4
+@f3630 send e0014007a InternalMessage4
+@f3640 obj e0014007a
+@f3660 shoot e0014007a
+@f3685 shoot e0014007a
+@f3710 shoot e0014007a
+@f3735 obj e0014007a
+@f4835 obj e0014007a
+@f4875 shoot e0014007a
+@f4900 shoot e0014007a
+@f4925 shoot e0014007a
+@f4950 shoot e0014007a
+@f4975 shoot e0014007a
+@f5000 shoot e0014007a
+@f5025 shoot e0014007a
+@f5050 shoot e0014007a
+@f5075 obj e0014007a
+@f5095 send e0014007a InternalMessage4
+@f5105 send e0014007a InternalMessage4
+@f5115 send e0014007a InternalMessage4
+@f5125 send e0014007a InternalMessage4
+@f5135 send e0014007a InternalMessage4
+@f5145 send e0014007a InternalMessage4
+@f5155 obj e0014007a
+@f6255 obj e0014007a
+@f6295 tp 199.6 190 -8.2
+@f6895 obj e0014007a

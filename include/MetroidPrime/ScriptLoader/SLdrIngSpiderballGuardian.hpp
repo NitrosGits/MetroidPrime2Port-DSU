@@ -227,6 +227,12 @@ inline SLdrIngSpiderballGuardian::SLdrIngSpiderballGuardian()
   patterned.health.health = 150.0f;
   patterned.health.hI_KnockBackResistance = 2.0f;
   patterned.creatureSize = 1;
+#ifdef TARGET_PC
+  // fn_35_178: retail defaults upstream lacks (0x208 bl __ct__6CColorFffff(1,1,1,1), 0x224 stw r3,0x694(r1)
+  // = actorInformation+0x14 ambientColor; 0x210-0x214 li r0,0xf; stw r0,0x6e4(r1) = actorInformation+0x64)
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrIngSpiderballGuardian::~SLdrIngSpiderballGuardian() {}
