@@ -3863,16 +3863,20 @@ void CIng::Touch(CActor& actor, CStateManager& mgr) {
 //     area 57 run of 2026-10-21;
 //   - the contact list is empty (asm 0x0000B710): the body does nothing - 6 calls in that run;
 //   - a contact whose material is not one of the six splat surfaces (asm 0x0000B720): the next
-//     contact is tried - **open**, that run had no such contact;
+//     contact is tried - 262 contacts in the ing30 runs of 2026-10-23, forced on the first
+//     contact (tools/cov/specs/ing30_force.py zeroes its material);
 //   - a contact whose material meets the mask (asm 0x0000B738): the normal is stored, the splat
 //     flag is set and the first hit wins (asm 0x0000B760) - 1 call in that run.
+// @ fn_29_B534
 void CIng::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr); // asm 0x0000B550
   if (mForm != kForm_BodyProjectile) {
     return; // asm 0x0000B558: cmpwi mForm (0x9d4), 4
   }
-  if (mBodyProjectileTime < 0.5f) {
-    return; // asm 0x0000B56C: fcmpo mBodyProjectileTime (0xe58), 0.5f (rodata_B4)
+  // asm 0x0000B56C-0x0000B574: fcmpo mBodyProjectileTime (0xe58), 0.5f (rodata_B4); cror eq,gt,eq;
+  // bne: the body goes on only when the time is >= 0.5, so a NaN time returns too.
+  if (!(mBodyProjectileTime >= 0.5f)) {
+    return;
   }
   // The mask retail builds once into lbl_29_bss_8 (asm 0x0000B588-0x0000B6F0) from the six bit
   // indices in lbl_29_data_9DC..0x9F0 (0x1d, 0x1e, 0x1f, 0x3b, 0x2b, 0x2a): Ceiling, Wall, Floor,
