@@ -1,0 +1,17 @@
+# CEmperorIngStage2Tentacle (module 17). Great Temple 07_temple_mothlordsanctuary_dark
+# (world 863fcd72, layer 3) holds eleven stage-2 tentacles; u05a1 000b0042 is exercised: create it,
+# force Retracted/Attack, damage it (hp 30 -> 30, unchanged; a shot also leaves it unchanged),
+# kill it, with `obj` reads and `objs EmperorIngStage2Tentacle` before and after. Checks are game
+# updates (@f<n>), never wall seconds.
+# F=1200, last check f900.
+@f200 layer 3
+@f240 god 1; objs EmperorIngStage2Tentacle
+@f260 send u05a1 Create
+@f300 obj u05a1
+@f340 fsm u05a1 Attack; obj u05a1
+@f380 fsm u05a1 Retracted; obj u05a1
+@f420 damage u05a1 10; obj u05a1
+@f460 shoot u05a1; obj u05a1
+@f500 kill u05a1
+@f540 objs EmperorIngStage2Tentacle
+@f900 objs EmperorIngStage2Tentacle

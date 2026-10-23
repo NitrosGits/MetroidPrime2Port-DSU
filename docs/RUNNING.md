@@ -417,6 +417,11 @@ kill it and send XDMG to explode it, with `objs Shredder` counting three down to
 ibs drives Sanctuary 0b_cliff_hall_dark's two IngBlobSwarms u0451/u044c (layer 4): activate u044c,
 read its swarm state, damage it (hp 2 -> 1 -> 0), delete it, with `objs IngBlobSwarm` counting two
 down to one.
+rubk drives Sanctuary Fortress 07cliff_gyro's two Rubiks puzzles u05b3/u06c0 (layers 4 and 5):
+load both layers, activate both, send InternalMessage0 to both, delete both, with `objs RubiksPuzzle`
+counting two down to zero. emp2 drives Great Temple 07_temple_mothlordsanctuary_dark's eleven stage-2
+tentacles (layer 3): create u05a1, force Attack/Retracted, damage and shoot it (hp 30 -> 30, unchanged),
+kill it, with `objs EmperorIngStage2Tentacle` counting eleven down to ten.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.

@@ -1,0 +1,15 @@
+# CScriptRubiksPuzzle (module 4: CScriptRubiksPuzzle). Sanctuary Fortress 07cliff_gyro
+# (world 1baa96c2, layers 4 and 5) holds two Rubiks puzzles u05b3/u06c0. The steps load both
+# layers, activate both puzzles, send InternalMessage0 to queue a button press, then delete both,
+# with `objs RubiksPuzzle` before and after. RubiksPuzzle is a CEntity, so it has no health or FSM
+# to force. Checks are game updates (@f<n>), never wall seconds.
+# F=1000, last check f800.
+@f200 layer 4
+@f240 layer 5
+@f280 objs RubiksPuzzle
+@f300 send u05b3 Activate; send u06c0 Activate
+@f340 send u05b3 InternalMessage0; send u06c0 InternalMessage0
+@f380 objs RubiksPuzzle
+@f420 send u05b3 Delete; send u06c0 Delete
+@f460 objs RubiksPuzzle
+@f800 objs RubiksPuzzle
