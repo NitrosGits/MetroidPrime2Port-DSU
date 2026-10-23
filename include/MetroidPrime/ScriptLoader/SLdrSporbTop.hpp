@@ -16,7 +16,17 @@ struct SLdrSporbTop {
   SLdrActorParameters actorInformation;  // 0x7e397fed
 };
 
+#ifdef TARGET_PC
+inline SLdrSporbTop::SLdrSporbTop() : editorProperties(), patterned(), actorInformation() {
+  // LoadSporbTop fn_76_3B8 (0x3F4..0x430): 2.0 (rodata 0x0) at sp+0x480 (patterned +0x4C),
+  // CColor(1.0 x4, rodata 0x4) at +0x68C (actor +0x14), 0xF at +0x6DC (actor +0x64).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+}
+#else
 inline SLdrSporbTop::SLdrSporbTop() : editorProperties(), patterned(), actorInformation() {}
+#endif
 
 inline SLdrSporbTop::~SLdrSporbTop() {}
 

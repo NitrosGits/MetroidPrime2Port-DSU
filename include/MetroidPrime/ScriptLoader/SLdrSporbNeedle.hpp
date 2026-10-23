@@ -46,6 +46,17 @@ inline SLdrSporbNeedle::SLdrSporbNeedle()
   hitPlayerSound = 0;
   collisionSound = 0;
   explosionSound = 0;
+#ifdef TARGET_PC
+  // fn_76_102CC: CColor(1.0 x4, rodata 0x380) at +0x50 (actor +0x14), 0xF at +0xA0 (actor
+  // +0x64), and -1 in the five sound words +0xDC..+0xEC.
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+  launchSound = -1;
+  flightSound = -1;
+  hitPlayerSound = -1;
+  collisionSound = -1;
+  explosionSound = -1;
+#endif
 }
 
 inline SLdrSporbNeedle::~SLdrSporbNeedle() {}

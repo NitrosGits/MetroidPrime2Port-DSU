@@ -150,6 +150,28 @@ inline SLdrSporbBase::SLdrSporbBase()
   ballEscapeSound = 0;
   needleTelegraphSound = 0;
   grabberTelegraphSound = 0;
+#ifdef TARGET_PC
+  // fn_76_39D8: 3 at +0x38 (editor), 2.0 (rodata 0xBC) at +0x88 (patterned +0x4C), 1 at +0x26C
+  // (patterned +0x230), CColor(1.0 x4, rodata 0xC0) at +0x294 (actor +0x14), 0xF at +0x2E4
+  // (actor +0x64), and -1 in the sound words +0x388 and +0x3A0..+0x3C8.
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+  powerBombProjectileSound = -1;
+  grabberFireSound = -1;
+  grabberFlightSound = -1;
+  grabberHitPlayerSound = -1;
+  grabberHitWorldSound = -1;
+  grabberRetractSound = -1;
+  grabberRetractMissedPlayerSound = -1;
+  morphballSpitSound = -1;
+  grabberExplosionSound = -1;
+  ballEscapeSound = -1;
+  needleTelegraphSound = -1;
+  grabberTelegraphSound = -1;
+#endif
 }
 
 inline SLdrSporbBase::~SLdrSporbBase() {}

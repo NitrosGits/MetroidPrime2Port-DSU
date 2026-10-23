@@ -269,8 +269,14 @@ CSporbBase::CSporbBase(
   if (right.first > FLT_EPSILON) {
     mRightLeanAnim = right.second;
   }
+#ifdef TARGET_PC
+  // retail 0xCC48-0xCCB4: eight NoParameter parms (no FromEnum), state 0x17, FindBestAnimation.
+  const rstl::pair< float, int > flinch = GetAnimationData()->GetPASDatabase().FindBestAnimation(
+      CPASAnimParmData(pas::kAS_AdditiveFlinch), -1);
+#else
   const rstl::pair< float, int > flinch = GetAnimationData()->GetPASDatabase().FindBestAnimation(
       CPASAnimParmData(pas::kAS_AdditiveFlinch, CPASAnimParm::FromEnum(7)), -1);
+#endif
   if (flinch.first > FLT_EPSILON) {
     mFlinchAnim = flinch.second;
   }
@@ -1124,6 +1130,28 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
           const CVector3f next = attachWorld + dt * velocity;
           const float nextDistSq = (next - GetTranslation()).MagSquared();
           const float aimDistSq = (mAimTarget - GetTranslation()).MagSquared();
+#ifdef TARGET_PC
+          // retail 0x7934/0x7958/0x795C `fcmpo dot,0; cror eq,lt,eq; beq hold`, 0x7978/0x797C
+          // `fcmpo |dot|,1e-5; blt hold`, 0x7998/0x799C `fcmpo next,aim; ble extend`: a NaN extends.
+          if (!(dot <= 0.f) && !(CMath::AbsF(dot) < 1e-5f) && !(nextDistSq > aimDistSq)) {
+            projectile->SetVelocityWR(velocity);
+          } else {
+            projectile->SetTranslation(mAimTarget - (attachWorld - projectile->GetTranslation()));
+            mGrabberState = kGS_Hold;
+            projectile->Stop();
+            projectile->SetState(CSporbProjectile::kS_Close);
+            StopLoopedSounds();
+            ProcessSoundEvent(mHitPlayerSound, 1.f, 0, 0.1f, 1000.f, CSegId(0), 0, 0, 0.f, 20, 127,
+                              GetDistanceToCamera(mgr), projectile->GetTranslation(),
+                              mgr.GetNextAreaId().Value(), mgr, true);
+            sGrabbingSporb = GetUniqueId();
+            mgr.GetPlayer(0)->GetMorphBall()->StopParticleWakes();
+            mgr.ApplyDamage(
+                GetUniqueId(), mgr.GetPlayer(0)->GetUniqueId(), GetUniqueId(), mGrabDamage,
+                CMaterialFilter::MakeIncludeExclude(CMaterialList(skDamageSolid), CMaterialList()),
+                CVector3f::Zero());
+          }
+#else
           if (dot > 0.f && CMath::AbsF(dot) >= 1e-5f && nextDistSq <= aimDistSq) {
             projectile->SetVelocityWR(velocity);
           } else {
@@ -1142,6 +1170,7 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
                 CMaterialFilter::MakeIncludeExclude(CMaterialList(skDamageSolid), CMaterialList()),
                 CVector3f::Zero());
           }
+#endif
         } else {
           if (CSporbTop* top = TCastToPtr< CSporbTop >(mgr.ObjectById(mTopId))) {
             if (!mIsPowerBombGuardian) {
@@ -1247,7 +1276,13 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
             projectile->SetPassable(false);
             projectile->SetCarryingBall(false);
             projectile->SetState(CSporbProjectile::kS_Open);
+#ifdef TARGET_PC
+            // retail 0x84EC-0x84F8 `lwz r7,0x14fc(r29); lbz r0,0x1144(r7); rlwimi r0,r8,7,24,24;
+            // stb r0,0x1144(r7)`: EnableLeaveMorphBall(true), no SetAsProjectile call here.
+            mgr.GetPlayer(0)->EnableLeaveMorphBall(true);
+#else
             player->GetMorphBall()->SetAsProjectile(true);
+#endif
             mBallEscaped = true;
             sGrabbingSporb = kInvalidUniqueId;
             const CTransform4f unusedXf =

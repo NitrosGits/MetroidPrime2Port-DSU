@@ -19,12 +19,27 @@ struct SLdrSporbProjectile {
   CAssetId ballEscapeParticleEffect;     // 0xaaff1884
 };
 
+#ifdef TARGET_PC
+inline SLdrSporbProjectile::SLdrSporbProjectile()
+: editorProperties()
+, patterned()
+, actorInformation()
+, ballSpitParticleEffect(kInvalidAssetId)
+, ballEscapeParticleEffect(kInvalidAssetId) {
+  // LoadSporbProjectile fn_76_DE60 (0xDE9C..0xDEE4): 2.0 (rodata 0x290) at sp+0x488 (patterned
+  // +0x4C), CColor(1.0 x4, rodata 0x294) at +0x694 (actor +0x14), 0xF at +0x6E4 (actor +0x64).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+}
+#else
 inline SLdrSporbProjectile::SLdrSporbProjectile()
 : editorProperties()
 , patterned()
 , actorInformation()
 , ballSpitParticleEffect(kInvalidAssetId)
 , ballEscapeParticleEffect(kInvalidAssetId) {}
+#endif
 
 inline SLdrSporbProjectile::~SLdrSporbProjectile() {}
 
