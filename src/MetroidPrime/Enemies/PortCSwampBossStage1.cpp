@@ -2265,7 +2265,7 @@ void CSwampBossStage1::TakeDamage(const CVector3f& dir, float amount) {
 
 namespace {
 // The module's static initialiser fn_78_BD0C builds these three tables: `tools/fsm_ctor_tables.py
-// <asm dir> fn_78_BD0C lbl_78_data_D0:17 lbl_78_data_30C:25 lbl_78_data_4CC:4` replays it (138
+// <asm dir> fn_78_BD0C lbl_78_data_D0:17 lbl_78_data_30C:25 lbl_78_data_4CC:4` replays it (164
 // stores, every entry {0, 0xFFFFFFFF, fn}) and the names and functions match in order; MinHealth
 // and SplashWait are adapters over the marked fn_78_6548 / fn_78_4D3C bodies.
 // @ fn_78_BD0C
