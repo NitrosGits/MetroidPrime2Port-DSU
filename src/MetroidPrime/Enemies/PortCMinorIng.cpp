@@ -292,11 +292,6 @@ static rstl::optional_object< TLockedToken< CGenDescription > > OptionalPart(CAs
       TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
 }
 
-CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
-                     const CTransform4f& xf, const CModelData& modelData,
-                     const CPatternedInfo& pInfo, const CActorParameters& actParms,
-                     const CMinorIngData& data)
-// @ fn_44_9D58
 // EPatternedAI 0x4b, flavor 0, movement 0 (ground), collider 1, body 1 (bipedal): the retail
 // constructor's arguments to CPatterned (fn_44_9D58).
 //
@@ -314,6 +309,11 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 //   (asm 0xA344) and the timers (asm 0xA23C-0xA278),
 // - the health tracker (asm 0xA24C: the patterned info's health), the animation ids (asm 0xA264)
 //   and the lock-on locator (asm 0xA27C).
+// @ fn_44_9D58
+CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
+                     const CTransform4f& xf, const CModelData& modelData,
+                     const CPatternedInfo& pInfo, const CActorParameters& actParms,
+                     const CMinorIngData& data)
 : CPatterned(static_cast< EPatternedAI >(0x4b), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
 , mData(data)
@@ -337,7 +337,7 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mSafeZoneId(kInvalidUniqueId)
 , mBlobEffectId(kInvalidUniqueId)
 , mCollisionActorId(kInvalidUniqueId)
-, mUnusedZeros{0, 0}
+, mUnusedZeros() // value-initialised: both zero (0xA5B4 fn_44_A5D0 fills two zero entries)
 , mTargetPos(CVector3f::Zero())
 , mModelScale(modelData.GetScale())
 , mAttackTimer(0.f)
