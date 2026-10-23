@@ -10,9 +10,26 @@ CFactoryFnReturn FRuleSetFactory(const SObjectTag& tag, CInputStream& in,
 }
 
 CRuleSet::CRuleSet(CInputStream& input) {
+#ifdef TARGET_PC
+  // The port can supply an empty/short stream for a missing or failed resource.
+  // Retail assumes its 4-byte magic, 1-byte version, 4-byte parent and 2-byte count exist.
+  const unsigned long pos = input.GetReadPosition();
+  if (pos > input.GetBufferSize() || input.GetBufferSize() - pos < 11) {
+    return;
+  }
+#endif
   input.ReadInt32(); // magic
   input.ReadInt8();  // version
   CAssetId parentRule = static_cast< CAssetId >(input.ReadInt32());
+#ifdef TARGET_PC
+  // Missing resources also arrive as zero-filled buffers. Loading their parent 0
+  // re-enters this factory before the first RULE 0 has finished loading, until OOM.
+  // Retail only skips parent -1 (0x801F6540 addis / 0x801F6544 cmplwi / 0x801F6548 beq);
+  // no shipped RULE has parent 0. Treat this invalid resource as no rules.
+  if (parentRule == 0) {
+    return;
+  }
+#endif
   if (parentRule != kInvalidAssetId) {
     mParentRule = TLockedToken< CRuleSet >(gpSimplePool->GetObj(SObjectTag('RULE', parentRule)));
   }

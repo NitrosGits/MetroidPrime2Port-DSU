@@ -142,7 +142,7 @@ and what the options add, so every other SLdr default applies. Each gets editor 
 `ancs`/`model` take a hex asset id or an actor (`u`/`e` id) whose ANCS+character or static model is
 borrowed as a stand-in body (the types' own assets are in no pak); `fsm` sets the patterned state
 machine; `ancs u<id>` keeps the donor's own character unless `char` follows; a patterned spawn
-writes `knockbackRules` 393ca543 (in every Metroid*.pak; the SLdr's -1 recurses to OOM), `rules <id>`
+writes `knockbackRules` 393ca543 (in every Metroid*.pak; the SLdr's -1 supplies no rules), `rules <id>`
 another RULE (`ffffffff` keeps -1); CHOG's two projectile WPSC props default to 681f3907 (refused
 when absent), `wpsc <id>` sets them, or another type's common `projectile` prop (ef485db9);
 `conn <state> <msg> <id>` adds a script connection (names as `obj` prints them; `<id>` is `u<id>`,
@@ -511,4 +511,3 @@ prefix dirs may be given: their counters are merged, so the arms of a natural ru
 one add up. The id of a body is the `// @ fn_<mod>_<hex>` marker above it (or the id its comment
 block names). gdb is still what forces an arm no run reaches (`tools/cov/force.sh`): coverage says
 which arm is missing, not how to reach it.
-

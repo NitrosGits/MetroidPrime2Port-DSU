@@ -6,7 +6,17 @@
 CRuleSetEvaluator::CRuleSetEvaluator(CAssetId rules)
 : mRules(gpSimplePool->GetObj(SObjectTag('RULE', rules))) {}
 
+#ifdef TARGET_PC
+void CRuleSetEvaluator::EvaluateRules() {
+  // A failed factory may leave a token with no ruleset payload.
+  // Retail 0x801F5D54-0x801F5D58 assumes the cached pointer is valid.
+  if (*mRules != nullptr) {
+    EvaluateRuleSet(**mRules);
+  }
+}
+#else
 void CRuleSetEvaluator::EvaluateRules() { EvaluateRuleSet(**mRules); }
+#endif
 
 void CRuleSetEvaluator::EvaluateRuleSet(const CRuleSet& rules) {
   const rstl::vector< CRuleSetRule >& ruleList = rules.GetRules();
@@ -35,6 +45,12 @@ void CRuleSetEvaluator::EvaluateRuleSet(const CRuleSet& rules) {
 
   const rstl::optional_object< TLockedToken< CRuleSet > >& parent = rules.GetParentRule();
   if (parent.valid()) {
+#ifdef TARGET_PC
+    // Retail 0x801F5D1C-0x801F5D30 checks only the optional's presence, not its payload.
+    if (*parent.data() == nullptr) {
+      return;
+    }
+#endif
     EvaluateRuleSet(**parent.data());
   }
 }
