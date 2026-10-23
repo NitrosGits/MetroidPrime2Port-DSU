@@ -1,0 +1,165 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_53_0	8	B	CRezbit::GetSearchPath	-	upstream body (CRezbit)	no
+00008	fn_53_8	8	B	CRezbit::IsListening	-	upstream body (CRezbit)	no
+00010	fn_53_10	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0004C	fn_53_4C	10	H	unnamed	-	unnamed (weak copy / template instance)	no
+0005C	fn_53_5C	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+00064	fn_53_64	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+0006C	fn_53_6C	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+00074	fn_53_74	10	H	unnamed	-	unnamed (weak copy / template instance)	no
+00084	fn_53_84	C	H	unnamed	-	unnamed (weak copy / template instance)	no
+00090	fn_53_90	C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0009C	fn_53_9C	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+000A4	fn_53_A4	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+000AC	fn_53_AC	1C	H	unnamed	-	unnamed (weak copy / template instance)	no
+000C8	fn_53_C8	2C	H	unnamed	-	unnamed (weak copy / template instance)	no
+000F4	fn_53_F4	24	T	RELExit	-	REL runtime	no
+00118	fn_53_118	20	T	RELMain	-	REL runtime	no
+00138	fn_53_138	30	H	unnamed	-	unnamed (weak copy / template instance)	no
+00168	fn_53_168	330	B	LoadRezbit (SLdrRezbit ctor inlined)	rez1	upstream body (SLdrRezbit, header inline); rez1 fix	no
+00498	fn_53_498	40	H	unnamed	-	unnamed (weak copy / template instance)	no
+004D8	fn_53_4D8	20	H	unnamed	-	unnamed (weak copy / template instance)	no
+004F8	fn_53_4F8	28	H	unnamed	-	unnamed (weak copy / template instance)	no
+00520	fn_53_520	13C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0065C	fn_53_65C	6C	H	unnamed	-	unnamed (weak copy / template instance)	no
+006C8	fn_53_6C8	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+0071C	fn_53_71C	64	H	unnamed	-	unnamed (weak copy / template instance)	no
+00780	fn_53_780	60	H	unnamed	-	unnamed (weak copy / template instance)	no
+007E0	fn_53_7E0	7C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0085C	fn_53_85C	708	B	LoadTypedefRezbitData	-	upstream body (SLdrRezbit, header inline)	no
+00F64	fn_53_F64	DC	B	SLdrRezbitData::~SLdrRezbitData	-	upstream body (SLdrRezbit, header inline)	no
+01040	fn_53_1040	288	B	SLdrRezbitData::SLdrRezbitData	rez1	upstream body (SLdrRezbit, header inline); rez1 fix	no
+012C8	fn_53_12C8	A8	B	CRezbit::QuitTeam	-	upstream body (CRezbit)	no
+01370	fn_53_1370	AC	B	CRezbit::JoinTeam	rez1	upstream body (CRezbit); rez1 fix	no
+0141C	fn_53_141C	19C	B	CRezbit::CheckVerticalClearance	rez1	upstream body (CRezbit); rez1 fix	no
+015B8	fn_53_15B8	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+01614	fn_53_1614	278	B	CRezbit::CheckNeighbors	-	upstream body (CRezbit)	no
+0188C	fn_53_188C	1A4	B	CRezbit::FindStrafeDirection	rez1	upstream body (CRezbit)	yes
+01A30	fn_53_1A30	8C	H	unnamed	-	unnamed (weak copy / template instance)	no
+01ABC	fn_53_1ABC	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+01AF8	fn_53_1AF8	148	B	CRezbit::CanStrafe	rez1	upstream body (CRezbit)	yes
+01C40	fn_53_1C40	170	B	CRezbit::UpdateSeparation	-	upstream body (CRezbit)	no
+01DB0	fn_53_1DB0	98	T	CRezbit::UpdateDeflectSfx	-	unreferenced (no retail caller)	no
+01E48	fn_53_1E48	514	B	CRezbit::DeflectMissiles	rez1	upstream body (CRezbit); rez1 fix	no
+0235C	fn_53_235C	40	H	unnamed	-	unnamed (weak copy / template instance)	no
+0239C	fn_53_239C	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+023D8	fn_53_23D8	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+02414	fn_53_2414	24C	B	CRezbit::StartVirusAttack	rez1	upstream body (CRezbit); rez1 fix	no
+02660	fn_53_2660	330	B	CRezbit::FireEnergyBolt	rez1	upstream body (CRezbit); rez1 fix	no
+02990	fn_53_2990	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+029E4	fn_53_29E4	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+02A40	fn_53_2A40	20	H	unnamed	-	unnamed (weak copy / template instance)	no
+02A60	fn_53_2A60	48	H	unnamed	-	unnamed (weak copy / template instance)	no
+02AA8	fn_53_2AA8	48	H	unnamed	-	unnamed (weak copy / template instance)	no
+02AF0	fn_53_2AF0	B4	H	unnamed	-	unnamed (weak copy / template instance)	no
+02BA4	fn_53_2BA4	40	H	unnamed	-	unnamed (weak copy / template instance)	no
+02BE4	fn_53_2BE4	20	H	unnamed	-	unnamed (weak copy / template instance)	no
+02C04	fn_53_2C04	28	H	unnamed	-	unnamed (weak copy / template instance)	no
+02C2C	fn_53_2C2C	80	H	unnamed	-	unnamed (weak copy / template instance)	no
+02CAC	fn_53_2CAC	6C	H	unnamed	-	unnamed (weak copy / template instance)	no
+02D18	fn_53_2D18	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+02D6C	fn_53_2D6C	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+02DA8	fn_53_2DA8	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+02DE4	fn_53_2DE4	A4	B	CRezbit::DeleteLaser	rez1	upstream body (CRezbit)	yes
+02E88	fn_53_2E88	130	B	CRezbit::UpdateLaser	-	upstream body (CRezbit)	no
+02FB8	fn_53_2FB8	290	B	CRezbit::SpawnLaser	rez1	upstream body (CRezbit); rez1 fix	yes
+03248	fn_53_3248	50	H	unnamed	-	unnamed (weak copy / template instance)	no
+03298	fn_53_3298	94	H	unnamed	-	unnamed (weak copy / template instance)	no
+0332C	fn_53_332C	20C	B	CRezbit::SetupLaserTargets	-	upstream body (CRezbit)	no
+03538	fn_53_3538	1CC	B	CRezbit::UpdatePatrolMovement	-	upstream body (CRezbit)	no
+03704	fn_53_3704	250	B	CRezbit::BreakShield	-	upstream body (CRezbit)	no
+03954	fn_53_3954	58	H	unnamed	-	unnamed (weak copy / template instance)	no
+039AC	fn_53_39AC	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+03A00	fn_53_3A00	48	H	unnamed	-	unnamed (weak copy / template instance)	no
+03A48	fn_53_3A48	130	B	CRezbit::LowerShields	rez1	upstream body (CRezbit); rez1 fix	no
+03B78	fn_53_3B78	F0	B	CRezbit::UpdateWobble	rez1	upstream body (CRezbit)	yes
+03C68	fn_53_3C68	23C	B	CRezbit::UpdateShield	rez1	upstream body (CRezbit); rez1 fix	no
+03EA4	fn_53_3EA4	60	B	CRezbit::UpdateTimers	rez1	upstream body (CRezbit)	yes
+03F04	fn_53_3F04	94	B	CRezbit::CheckShieldBroken	-	upstream body (CRezbit)	no
+03F98	fn_53_3F98	FC	B	CRezbit::HandleShieldHit	-	upstream body (CRezbit)	no
+04094	fn_53_4094	1E0	B	CRezbit::CreateShieldCollisionActor	rez1	upstream body (CRezbit)	yes
+04274	fn_53_4274	230	B	CRezbit::BuildDerezModel	-	upstream body (CRezbit)	no
+044A4	fn_53_44A4	6C	H	unnamed	-	unnamed (weak copy / template instance)	no
+04510	fn_53_4510	58	H	unnamed	-	unnamed (weak copy / template instance)	no
+04568	fn_53_4568	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+045BC	fn_53_45BC	C8	H	unnamed	-	unnamed (weak copy / template instance)	no
+04684	fn_53_4684	6C	H	unnamed	-	unnamed (weak copy / template instance)	no
+046F0	fn_53_46F0	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+04744	fn_53_4744	58	H	unnamed	-	unnamed (weak copy / template instance)	no
+0479C	fn_53_479C	48	H	unnamed	-	unnamed (weak copy / template instance)	no
+047E4	fn_53_47E4	74	H	unnamed	-	unnamed (weak copy / template instance)	no
+04858	fn_53_4858	90	H	unnamed	-	unnamed (weak copy / template instance)	no
+048E8	fn_53_48E8	78	H	unnamed	-	unnamed (weak copy / template instance)	no
+04960	fn_53_4960	90	H	unnamed	-	unnamed (weak copy / template instance)	no
+049F0	fn_53_49F0	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+04A4C	fn_53_4A4C	48	H	unnamed	-	unnamed (weak copy / template instance)	no
+04A94	fn_53_4A94	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+04AE8	fn_53_4AE8	58	H	unnamed	-	unnamed (weak copy / template instance)	no
+04B40	fn_53_4B40	58	H	unnamed	-	unnamed (weak copy / template instance)	no
+04B98	fn_53_4B98	C8	B	CRezbit::SetDeRezzedState	-	upstream body (CRezbit)	no
+04C60	fn_53_4C60	C8	B	CRezbit::SetNormalRezState	rez1	upstream body (CRezbit)	yes
+04D28	fn_53_4D28	14C	B	CRezbit::RaiseShields	-	upstream body (CRezbit)	no
+04E74	fn_53_4E74	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+04ED0	fn_53_4ED0	98	B	CRezbit::ResetAttackTimes	-	upstream body (CRezbit)	no
+04F68	fn_53_4F68	188	B	CRezbit::SetTargetDest	-	upstream body (CRezbit)	no
+050F0	fn_53_50F0	BC	B	CRezbit::SelectStrafeDirection	-	upstream body (CRezbit)	no
+051AC	fn_53_51AC	40	B	CRezbit::SelectTarget	rez1	upstream body (CRezbit)	yes
+051EC	fn_53_51EC	84	B	CRezbit::Dead	-	upstream body (CRezbit)	no
+05270	fn_53_5270	200	B	CRezbit::VirusAttack	-	upstream body (CRezbit)	no
+05470	fn_53_5470	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+054CC	fn_53_54CC	2FC	B	CRezbit::EnergyBoltAttack	-	upstream body (CRezbit)	no
+057C8	fn_53_57C8	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+05824	fn_53_5824	254	B	CRezbit::CuttingLaserAttack	-	upstream body (CRezbit)	no
+05A78	fn_53_5A78	1BC	B	CRezbit::BecomeDeRezzed	-	upstream body (CRezbit)	no
+05C34	fn_53_5C34	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+05C90	fn_53_5C90	1BC	B	CRezbit::BecomeRezzed	-	upstream body (CRezbit)	no
+05E4C	fn_53_5E4C	210	B	CRezbit::Strafe	-	upstream body (CRezbit)	no
+0605C	fn_53_605C	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+060B8	fn_53_60B8	10C	B	CRezbit::PathFind	-	upstream body (CRezbit)	no
+061C4	fn_53_61C4	B4	B	CRezbit::FollowAttackPath	rez1	upstream body (CRezbit); rez1 fix	yes
+06278	fn_53_6278	70	B	CRezbit::Patrol	rez1	upstream body (CRezbit)	yes
+062E8	fn_53_62E8	1FC	B	CRezbit::Alert	-	upstream body (CRezbit)	no
+064E4	fn_53_64E4	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+06540	fn_53_6540	4	B	CRezbit::Idle	-	upstream body (CRezbit)	no
+06544	fn_53_6544	4	B	CRezbit::Start	rez1	upstream body (CRezbit)	yes
+06548	fn_53_6548	140	B	CRezbit::ShouldVirusAttack	-	upstream body (CRezbit)	no
+06688	fn_53_6688	158	B	CRezbit::ShouldEnergyBoltAttack	-	upstream body (CRezbit)	no
+067E0	fn_53_67E0	16C	B	CRezbit::ShouldLaserAttack	-	upstream body (CRezbit)	no
+0694C	fn_53_694C	18	B	CRezbit::FoundStrafeDirection	rez1	upstream body (CRezbit)	yes
+06964	fn_53_6964	90	B	CRezbit::ShouldStrafe	-	upstream body (CRezbit)	no
+069F4	fn_53_69F4	C	B	CRezbit::HasLineOfSight	rez1	upstream body (CRezbit)	yes
+06A00	fn_53_6A00	90	B	CRezbit::ShouldBecomeDeRezzed	-	upstream body (CRezbit)	no
+06A90	fn_53_6A90	40	B	CRezbit::ShouldBecomeRezzed	rez1	upstream body (CRezbit)	yes
+06AD0	fn_53_6AD0	1C	B	CRezbit::AttackPathOver	rez1	upstream body (CRezbit)	yes
+06AEC	fn_53_6AEC	58	B	CRezbit::HasAttackPath	rez1	upstream body (CRezbit)	yes
+06B44	fn_53_6B44	C	B	CRezbit::IsAlert	rez1	upstream body (CRezbit)	yes
+06B50	fn_53_6B50	14	B	CRezbit::IsDeRezzed	-	upstream body (CRezbit)	no
+06B64	fn_53_6B64	14	B	CRezbit::StateOver	rez1	upstream body (CRezbit)	yes
+06B78	fn_53_6B78	8C	B	CRezbit::SetupStateMachine	rez1	upstream body (CRezbit)	yes
+06C04	fn_53_6C04	B8	B	CRezbit::Listen	-	upstream body (CRezbit)	no
+06CBC	fn_53_6CBC	C8	B	CRezbit::Death	-	upstream body (CRezbit)	no
+06D84	fn_53_6D84	2C	B	CRezbit::GetAimPosition	rez1	upstream body (CRezbit)	yes
+06DB0	fn_53_6DB0	20	B	CRezbit::GetDamageVulnerability	rez1	upstream body (CRezbit)	yes
+06DD0	fn_53_6DD0	8	B	CRezbit::ProjectileInfo	rez1	upstream body (CRezbit)	yes
+06DD8	fn_53_6DD8	20	B	CRezbit::AddToRenderer	rez1	upstream body (CRezbit)	yes
+06DF8	fn_53_6DF8	20	B	CRezbit::PreRender	rez1	upstream body (CRezbit)	yes
+06E18	fn_53_6E18	1AC	B	CRezbit::Render	-	upstream body (CRezbit)	no
+06FC4	fn_53_6FC4	1C8	B	CRezbit::DoUserAnimEvent	-	upstream body (CRezbit)	no
+0718C	fn_53_718C	B4	B	CRezbit::Think	-	upstream body (CRezbit)	no
+07240	fn_53_7240	294	B	CRezbit::AcceptScriptMsg	rez1	upstream body (CRezbit); rez1 fix	no
+074D4	fn_53_74D4	110	B	CRezbit::~CRezbit (deleting)	-	upstream body (CRezbit)	no
+075E4	fn_53_75E4	1E4	B	CRezbit::~CRezbit	-	upstream body (CRezbit)	no
+077C8	fn_53_77C8	94	H	unnamed	-	unnamed (weak copy / template instance)	no
+0785C	fn_53_785C	6C8	B	CRezbit::CRezbit	-	upstream body (CRezbit)	no
+07F24	fn_53_7F24	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+07F60	fn_53_7F60	184	H	unnamed	-	unnamed (weak copy / template instance)	no
+080E4	fn_53_80E4	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+08120	fn_53_8120	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0817C	fn_53_817C	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+081B8	fn_53_81B8	58	H	unnamed	-	unnamed (weak copy / template instance)	no
+08210	fn_53_8210	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0824C	fn_53_824C	308	H	unnamed	-	unnamed (weak copy / template instance)	no
+08554	fn_53_8554	2BC	H	unnamed	-	unnamed (weak copy / template instance)	no
+08810	fn_53_8810	94	H	unnamed	-	unnamed (weak copy / template instance)	no
+088A4	fn_53_88A4	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+088E0	fn_53_88E0	504	B	__sinit_CRezbit_cpp	-	static init (state/trigger tables)	no
