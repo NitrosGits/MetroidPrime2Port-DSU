@@ -30,7 +30,7 @@ in one of the module session's files; `header` = the body is an inline in `CSpac
 | 0xD4 | 0x6C | RegisterFuncPtrs (SSpacePirate_FuncPtrs) | rel entry | the host's module registry (`platform/compiled_modules.cpp`) | - |
 | 0x140 | 0xACC | LoadSpacePirate | loader | module (`PortLoadSpacePirate`) | - (the host's loader, not retail's body) |
 | 0xC0C | 0x94 | CSpacePirateData::BuildGrenadeData | method | header (`BuildGrenadeData()`) | - |
-| 0x17A0 | 0x28 | GetRagDoll (`lwz r3, 0xb30(r3)`) | virtual | header | - (blocked: retail creates the CPirateRagDoll in Think's tail (fn_72_1980 0x1F08-0x2030), unported, so 0xb30 stays null in the port; it is non-null in shipped play (sp13)) |
+| 0x17A0 | 0x28 | GetRagDoll (`lwz r3, 0xb30(r3)`) | virtual | header | marked (sp14: Think's tail builds the ragdoll; all arms, SpacePirate.md section 14) |
 | 0x17C8 | 0x8C | GetTouchBounds | virtual | module | marked (module) |
 | 0x1854 | 0x68 | GetTouchBounds helper (the actor's bounding box) | method | **added** | this lane (section 3) |
 | 0x18BC | 0x74 | TryToBeCaptured | virtual | module | this lane (section 3) |
@@ -86,7 +86,7 @@ in one of the module session's files; `header` = the body is an inline in `CSpac
 | 0xE2DC | 0x38 | CheckTargetable | method | module | marked (module) |
 | 0xE314 | 0x4 | the empty function (Dead, AcceptScriptMsg) | method | - | - (a `blr` only; the port does not need the symbol) |
 | 0xE318 | 0xC0 | Listen | virtual | module | marked (module) |
-| 0xE3D8 | 0xC0 | Touch | virtual | module | - (blocked: retail creates the CPirateRagDoll in Think's tail (fn_72_1980 0x1F08-0x2030), unported, so 0xb30 stays null in the port; it is non-null in shipped play (sp13)) |
+| 0xE3D8 | 0xC0 | Touch | virtual | module | marked (sp14: Think's tail builds the ragdoll; all arms, SpacePirate.md section 14) |
 | 0xE498 | 0x944 | AcceptScriptMsg | virtual | module | marked (module) |
 | 0xEDEC | 0x1E8 | ChooseTarget | method | module | - (the arms are not all traced) |
 | 0xEFD4 | 0xCC | ChooseTeamTarget | method | module | this lane (section 3) |
@@ -314,3 +314,7 @@ so this lane only reports them:
   (asm 0xEF50-0xEFA4: a valid squad whose member is within 20 units returns the attack target).
   The port's body is therefore not retail's, which is why it carries no marker.
 (The Touch push and the GetRagDoll flag test were fixed in this round - section 3.)
+
+sp14 (2026-10-23): `17A0` and `E3D8` are marked; the ragdoll is built (Think `1980`'s tail) and
+every arm ran, natural or forced (docs/module-analysis/SpacePirate.md section 14). The sections
+above that call 0xb30 null in the port predate it.

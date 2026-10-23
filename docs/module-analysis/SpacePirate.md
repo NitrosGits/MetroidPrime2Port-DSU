@@ -136,7 +136,7 @@ All offsets [proven] by a store in `fn_72_F49C` unless tagged.
 | 0xb1c/0xb20 | anim distances | |
 | 0xb24/0xb28 | FLT_MAX ×2 | |
 | 0xb2c | 0 | |
-| 0xb30 | pointer = null (the ragdoll) | confirmed by run 2026-10-22 (tail3): `17A0` entered 3 times after console `shoot` on a live trooper, `xb30_` = 0 every time and its return null; it stays 0 after `damage` kills the pirate (the creation is the unported `1980` tail) |
+| 0xb30 | `rstl::single_ptr<CPirateRagDoll> xb30_ragDoll`, null (ctor 0xFA14) | built by Think's tail (0x1F08-0x2030) when the BecomeRagDoll delay 0xb2c runs out; reset `fn_72_2060`, deleting dtor `fn_72_20A8` (sp14, section 14) |
 | 0xb34 | object via `fn_72_10568` (CIkChain?) | [?] |
 | 0xb7c..0xbd0 | floats/vectors from data+0xa8..0xb0, +0xa0 (cloak, dodge-break, gun track delay) | |
 | 0xbd4 | CProjectileInfo, built only if projectile asset valid | |
@@ -276,17 +276,17 @@ cannot fire in this area (for retail as well). The decode is exact, not a mis-re
 generated reader and `fn_72_140` id for id, `ReadFloat`/`ReadInt32`/`ReadUint16` all byte-swap under
 TARGET_PC, and the properties after them (42-byte damage infos, 200-byte weapon data, 90-byte editor
 properties, per-actor flags 0x10000/0x829c/0x40000) line up.
-| `E0D8` `AttachActorToPirate` | ported 2026-10-20, unmarked. Refuses a second actor (0xa84 != invalid, 0xE0E4 -> false at 0xE118), sets the ragdoll's flag byte 0x118 bit 0x40 (PPC bit 25, 0xE100) and stores the id at 0xa84 (0xE108/0xE10C). The ragdoll is unported (0xb30 is never set), so the flag write stays a comment |
-| `E0AC` `DetachActorFromPirate` | ported 2026-10-20, unmarked. 0xa84 = kInvalidUniqueId (0xE0B4) and the ragdoll's flag byte 0x118 bit 0x40 cleared (0xE0CC) |
+| `E0D8` `AttachActorToPirate` | ported 2026-10-20, unmarked. Refuses a second actor (0xa84 != invalid, 0xE0E4 -> false at 0xE118), sets the ragdoll's flag byte 0x118 bit 0x40 (PPC bit 25, 0xE100) and stores the id at 0xa84 (0xE108/0xE10C). sp14: the 0x118 0x40 write is `SetActorAttached(true)`; all arms forced (`pirateattach`, section 14) |
+| `E0AC` `DetachActorFromPirate` | ported 2026-10-20, unmarked. 0xa84 = kInvalidUniqueId (0xE0B4) and the ragdoll's flag byte 0x118 bit 0x40 cleared (0xE0CC) ; sp14: `SetActorAttached(false)`, all arms forced (`pirateattach`, section 14) |
 | `3AB4` `GetDamageVulnerability()` | ported 2026-10-20, unmarked. 0xc04 != -1 (0x3AC0/0x3AC4) -> the DOL's pass-through vulnerability (0x3ACC `PassThroughVulnerabilty`), else `CPatterned::GetDamageVulnerability()` (0x3AD4); 0xc04 is the warp point |
 | `3A88` `GetDamageVulnerability(pos,dir,dmg)` | ported 2026-10-20, unmarked. A tail call through the vtable slot 0x40 (0x3A94-0x3AA0), which for CSpacePirate is the **no-argument** override `3AB4`; the three arguments are not read |
-| `17C8` `GetTouchBounds` | ported 2026-10-20, unmarked. With a ragdoll (0xb30) whose byte 0x70 has bit 0x40 set and bit 0x80 clear, the bounds are the ragdoll's (ragdoll+0x58..0x70); else the actor's own bounding box (0x183C `fn_72_1854` = `GetBoundingBox`). The ragdoll is unported, so that branch stays a comment |
+| `17C8` `GetTouchBounds` | ported 2026-10-20, unmarked. With a ragdoll (0xb30) whose byte 0x70 has bits 0x40 and 0x80 set (sp14: the earlier "0x80 clear" was wrong), the bounds are the ragdoll's (ragdoll+0x58..0x70); else the actor's own bounding box (0x183C `fn_72_1854` = `GetBoundingBox`). sp14: the ragdoll arm is code (`GetCachedRenderBounds`), all arms run |
 | `35CC` `GetSortingBounds` | ported 2026-10-20, unmarked. The model's bounds in the actor's transform (0x35F0 `GetBounds`), their centre (0x362C `GetCenterPoint`), then `CAABox(centre - 0.25*size, centre + 0.25*size)` (rodata BC0 = 0.25, 0x364C-0x3684, ctor at 0x36B4) |
 | `E090` `GetOrigin` | ported 2026-10-20, unmarked. The pirate's own translation (this+0x54/0x58/0x5c, 0xE090-0xE0A4) |
 | `E120` `SetAttackTarget` | ported 2026-10-20, unmarked. 0xa94 = the target (0xE138), `fn_72_DE5C` = UpdateTeamTarget (0xE13C), 0xa98 = 1 (the burst type, 0xE148) and 0xa90 = 0 (the attack time, 0xE150) |
 | `253C` `UpdateAimBodyState` | fixed 2026-10-20: the aim block runs while `xb98` **<= 0** (0x2614 `fcmpo` + 0x2618 `cror eq,lt,eq`), not only at 0 |
 | 2026-10-20 run #4 (08_sand_casualpirates, 3200 frames) | the new bodies ran: `3AB4` and `3A88` once each (the shot), `17C8` and `35CC` once each, `E090` and `E120` never (no team AI and no CMetroid in the area); 8 KnockBack reactions, 0 reach-stubs, frame limit at 58.4 s |
-| `3A0C` `PreRenderAllViewports` | ported 2026-10-20, unmarked. With a live ragdoll (xb30_'s byte 0x70 bit 0x40 set) the ragdoll renders (0x3A50, the rodata B6C float) and `UpdatePortalSystemState(mgr)` runs (0x3A5C); otherwise `CPatterned::PreRenderAllViewports(mgr)` (0x3A6C). The ragdoll is outside the port, so that branch stays a comment |
+| `3A0C` `PreRenderAllViewports` | ported 2026-10-20, unmarked. With a live ragdoll (xb30_'s byte 0x70 bit 0x40 set) the ragdoll renders (0x3A50, the rodata B6C float) and `UpdatePortalSystemState(mgr)` runs (0x3A5C); otherwise `CPatterned::PreRenderAllViewports(mgr)` (0x3A6C). sp14: the ragdoll arm is code (`PreRenderAllViewports(*this, 0.2)`), all arms run (one forced) |
 | `18BC` `TryToBeCaptured` | ported 2026-10-20, unmarked. The state machine's virtual slot 0x20 (`SetState`) with the name "Captured" (rodata 0xF42) and the return is always true (0x1918) |
 | `343C` `GetScanVisorRenderBounds` | ported 2026-10-20, unmarked. The model's vertex bounds (`CalcBoundingBoxFromModelVerts`, 0x3498), the model's scale (0x34D4) and the negated translation (0x34F0) build the transform `Translate(-pos) * this->0x24 * Scale(modelScale)` (0x3514-0x3540); the box is transformed with it (0x3550) |
 | `339C` `ScanVisorRender` | ported 2026-10-20, unmarked. Unless the body model data `IsNull()` (+0x10 anim data, +0x28 normal model), `Render(kWM_Normal, xf, no lights, flags)` (0x3404), then `36CC` (0x3418). `36CC` (0xD4): `GetRenderAlphaBufferAlpha` != -1 brackets the draw with gpRender slot 0x128 `SetDestinationAlpha` / 0x12C `DisableDestinationAlpha` (proven from `__vt__13CCubeRenderer`: entry 74 = 0x128); vtable slot 0xC8 `GetModelAlphau8` != 0 and the launcher model valid (0xc54) -> it renders at `xf * GetScaledLocatorTransform(R_wrist 0xa88)` with the actor lights (0xbc). Retail 0xc08..0xc58 is `rstl::optional_object<CModelData>` (dtor `F10C` tests 0xc54); host `xc08_launcherModel` |
@@ -777,7 +777,53 @@ temporaries destruct the same objects at scope end.
   would build a ragdoll that nothing updates or renders.
 
 
+## 14. sp14 slice (2026-10-23): the ragdoll, Think 1980 and its consumers
+
+`xb30_` is `rstl::single_ptr<CPirateRagDoll> xb30_ragDoll` (one pointer at 0xb30). `fn_72_2060` is
+its reset (the old one is null at 0x2010) and `fn_72_20A8` the CPirateRagDoll deleting dtor (tsv rows
+fixed). Think `1980` is marked: head 0x19A8-0x1C9C (echo bounds, `!IsMultiplayer()` 0x1A20, the
+cinematic collision 0x1A44-0x1A70, the timers, the attack helpers), the ragdoll choice 0x1CA0-0x1D58
+(none, or unprimed on a sinking corpse: CPatterned Think + bone tracking unless 100% frozen 0x1CEC;
+else CActor Think, UpdateAlphaDelta, UpdateHitDamageTime, `UpdateIngPossession` 0x1D44, UnFreeze),
+Prime 0x1D74-0x1DD0 (identity rotation, translation kept, playback rate B9C = 0) or Update
+0x1DD8-0x1E94 (water top: BA0 = -2^127 unless an active CScriptWater fluid, its trigger max z;
+dt * death time scale; AdvanceParticles), over and still 0x1E98-0x1F04 (momentum 0, Stop, then once
+mFadeToDeath, alpha delta BA4 = -1/3, 0x8f8 0x02), and the tail 0x1F08-0x2030 (NaN skips, 0x1F2C
+`cror`; flags `(0x8f5 0x01 ? 4 : 0) | (0x8f5 0x02 ? 3 : 0)`, gravity B70 = 50, floating BA8 = -3,
+radii B04 = 0.45 0.52 0.35 0.1 0.15 0.35 0.1 0.15 0.25 x6, `RemoveMaterial(Orbit, Target)`).
+One host guard: the echo emitter (this+0xc8) is null-tested before its bounds store (0x19C0-0x1A00);
+retail stores without a test, the emitter exists only when the pInfo's echo flag is set (ctor
+0xFFCC). Its null arm is the host's, not a retail arm.
+
+Consumers re-read against the asm: `17A0` (0x40 and 0x80, both needed), `17C8` (primed and bounds
+valid -> `GetCachedRenderBounds`), `24C4` (the 0x24F0 primed bit), `38E4` (ragdoll PreRender 0x392C
+when primed; bone tracking/ik chain only without a primed one), `3A0C`, `E0AC`/`E0D8` (0x118 0x40,
+`CPirateRagDoll::SetActorAttached`, a TARGET_PC setter in the shared header), `E3D8` (the force field
+added to the torso impulse 0xb8), `E498` kSM_Decrement 0xE924-0xE950 (clears 0x04 NoOverTimer and
+0x20 ContinueSmallMovements; the old TODO).
+
+Coverage (build-port-cov, gcov_report merged): natural runs `specs/spacepirate_ragdoll.py` +
+`tools/drivers/spacepirate_ragdoll_drive.py` in 07_sand_alamoportalobservation L3, 08_sand_casualpirates
+(floating corpses on water) and 06_sand_alamofront L2; forced runs `specs/spacepirate_ragdoll_force.py`
+(`COV_GDB_SCRIPT=tools/cov/force_ret.py`, header has the commands). Result: `1980` 92/92 lines, 76/77
+branches (the one left is the host echo guard's null arm), `17A0` 8/8, `17C8` 8/8, `24C4` 4/4, `38E4`
+8/8, `3A0C` 4/4, `E3D8` 14/14, `E0AC` 2/2, `E0D8` 4/4, `E498`'s Decrement arms both; 0 caught/reach-stub.
+
+| arm | how |
+| --- | --- |
+| no ragdoll / unprimed / primed, sinking and floating, Prime, Update in and out of water, over and still, fade once, the tail with flags 0 and 3 | natural |
+| Think: multiplayer (0x1A28) | forced (FORCE_INNER `IsMultiplayer` -> 1); pirates are single-player only |
+| Think: cinematic on/off and its exit with 0x8f5 0x01 (0x1A40-0x1A70) | forced (`IsInCinematicCamera` -> 1; 0x8f5 0x01 written for one call) |
+| Think: in a projectile's path (0x1B0C) | forced (0x8f7 0x10 written, the body clears it) |
+| Think: 100% frozen (0x1C78, 0x1CEC); frozen body with a ragdoll (0x1D4C) | forced (`GetPercentageFrozen` -> 1.0; `mFrozen` for one call) |
+| Think: fluid id that is no water, an inactive water (0x1E24, 0x1E38) | forced (`InFluidId` -> the pirate; -> water 0x0443 after the driver's `send Deactivate`) |
+| Think: delay ends with a ragdoll there (0x1F34); creation flag 4 (0x8f5 0x01) | forced (xb2c = 0.0001 for one call; the flag for one call). No shipped placement sets 0x20000 (scan of every SpacePirate SCLY) |
+| `17A0` unprimed (0x17B4), bounds invalid (0x17BC) | forced (after Prime: unprimed for even ids; after every second Update: bounds invalid), run in alamoportalobservation with only these two |
+| `38E4`/`3A0C` unprimed ragdoll | forced (3A0C entry leaves it unprimed until the next Think) |
+| `E3D8` inactive trigger (0xE428) | forced (a water touching a primed ragdoll deactivated, not restored) |
+| `E0AC`/`E0D8` all | forced (`pirateattach` console command: alive and ragdolled, twice, then `-`); the port's CMetroid only detaches |
+
 
 1. `x8f4_24` mask is `flags & 3` (MP1 `& 1`): a 2-bit field or a different flag.
-2. 0xa18 (pInfo+0x58) is the starting HP (`pInfo.GetHealthInfo().GetHP()`, ctor 0xF89C/0xF8B8; sp20). Identity of 0xb30 (null pointer; ragdoll slot?).
+2. 0xa18 (pInfo+0x58) is the starting HP (`pInfo.GetHealthInfo().GetHP()`, ctor 0xF89C/0xF8B8; sp20). 0xb30 is the ragdoll (section 14).
 3. The [?] rows of section 1 (`253C`, `28F0`, `3220`, `3D7C`, `CB30`, `EDEC`).

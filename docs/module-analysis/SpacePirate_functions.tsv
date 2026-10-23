@@ -28,14 +28,14 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x134C	0x58	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_134C
 0x13A4	0xF8	SLdrSpacePirateWeaponData	SLdrSpacePirateWeaponData ctor	inline-hdr	H	109C	SLdrSpacePirate.hpp:35	not-port	fn_72_13A4
 0x149C	0x304	SLdrSpacePirateWeaponData	LoadTypedefSpacePirateWeaponData (prop 0xdc89cc3c)	inline-hdr	H	140	SLdrSpacePirate.hpp:60	not-port	fn_72_149C
-0x17A0	0x28	CSpacePirate	GetRagDoll -> xb30	virtual	B	data_8D8	the ragdoll pointer, ported 2026-10-22 (asm 0x17A4/0x17B0/0x17B8); 0xb30 is set only by Think tail 0x2010 (new CPirateRagDoll = fn_50_1938, upstream CPirateRagDoll.cpp, built) after a BecomeRagDoll death, which the port arms but never completes (sp13)	blocked: ragdoll creation (Think tail 0x1F08)	fn_72_17A0
-0x17C8	0x8C	CSpacePirate	GetTouchBounds	virtual	B	data_8D8	-	marked	fn_72_17C8
+0x17A0	0x28	CSpacePirate	GetRagDoll -> xb30	virtual	B	data_8D8	the ragdoll pointer while primed (0x40) with valid render bounds (0x80), asm 0x17A4/0x17B0/0x17B8; all arms, sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_17A0
+0x17C8	0x8C	CSpacePirate	GetTouchBounds	virtual	B	data_8D8	ragdoll arm (primed + bounds valid -> GetCachedRenderBounds), sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_17C8
 0x1854	0x68	CSpacePirate	GetTouchBounds helper: actor bounding box	method	B	17C8	the touch-bounds helper, ported 2026-10-21 (asm 0x1854)	marked	fn_72_1854
 0x18BC	0x74	CSpacePirate	TryToBeCaptured	virtual	B	data_8D8	-	marked	fn_72_18BC
 0x1930	0x50	rstl::string	static string dtor (registered by 10E50)	template	H	10E50(addr)	rstl::basic_string dtor	not-port	fn_72_1930
-0x1980	0x6E0	CSpacePirate	Think	virtual	B	data_8D8	-	blocked: ragdoll tail 0x1F08	fn_72_1980
-0x2060	0x48	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	1980	rstl::vector dtor	not-port	fn_72_2060
-0x20A8	0xB8	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2060 F444	rstl::vector dtor	not-port	fn_72_20A8
+0x1980	0x6E0	CSpacePirate	Think	virtual	B	data_8D8	Think with the ragdoll arms 0x1CA0-0x1F04 and the tail 0x1F08-0x2030; one host guard (echo emitter null), sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_1980
+0x2060	0x48	rstl::single_ptr	xb30_ragDoll reset (stores the new CPirateRagDoll, deletes the old)	template	H	1980	rstl::single_ptr<CPirateRagDoll> assignment, sp14 2026-10-23 (SpacePirate.md section 14)	not-port	fn_72_2060
+0x20A8	0xB8	CPirateRagDoll	CPirateRagDoll deleting dtor (from 2060 and ~CSpacePirate F444)	template	H	2060 F444	upstream CPirateRagDoll dtor, sp14 2026-10-23 (SpacePirate.md section 14)	not-port	fn_72_20A8
 0x2160	0x94	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	20A8	rstl::vector dtor	not-port	fn_72_2160
 0x21F4	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_21F4
 0x2278	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_2278
@@ -43,7 +43,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x2380	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_2380
 0x2404	0x84	rstl::vector	member vector/reserved_vector dtor chain (from ~CSpacePirate)	template	H	2160	rstl::vector dtor	not-port	fn_72_2404
 0x2488	0x3C	(weak)	weak/EH-only destructor (no REL caller)	weak-dtor	H	-	compiler-emitted dtor	not-port	fn_72_2488
-0x24C4	0x78	CSpacePirate	PreThink	virtual	B	data_8D8	-	marked	fn_72_24C4
+0x24C4	0x78	CSpacePirate	PreThink	virtual	B	data_8D8	ragdoll arm: the 0x24F0 primed bit, sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_24C4
 0x253C	0x310	CSpacePirate	UpdateAttacks (Think helper)	method	B	1980	-	marked	fn_72_253C
 0x284C	0x5C	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_B14	CBodyStateCmd subclass dtor	not-port	fn_72_284C
 0x28A8	0x48	CBodyStateCmd (weak)	deleting dtor of a CBC*Cmd (vtables data_A8C..B20)	weak-dtor	H	data_B20	CBodyStateCmd subclass dtor	not-port	fn_72_28A8
@@ -57,8 +57,8 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x35CC	0x100	CSpacePirate	GetSortingBounds	virtual	B	data_8D8	-	marked	fn_72_35CC
 0x36CC	0xF8	CSpacePirate	RenderLauncherModel	method	B	339C 37C4	-	marked	fn_72_36CC
 0x37C4	0x120	CSpacePirate	Render	virtual	B	data_8D8	-	marked	fn_72_37C4
-0x38E4	0x128	CSpacePirate	PreRender	virtual	B	data_8D8	-	marked	fn_72_38E4
-0x3A0C	0x7C	CSpacePirate	PreRenderAllViewports	virtual	B	data_8D8	-	marked	fn_72_3A0C
+0x38E4	0x128	CSpacePirate	PreRender	virtual	B	data_8D8	ragdoll arms 0x3900-0x3950, sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_38E4
+0x3A0C	0x7C	CSpacePirate	PreRenderAllViewports	virtual	B	data_8D8	ragdoll arm 0x3A28-0x3A5C, sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_3A0C
 0x3A88	0x2C	CSpacePirate	GetDamageVulnerability(pos,dir,info) -> slot 0x40	virtual	B	data_8D8	-	marked	fn_72_3A88
 0x3AB4	0x34	CSpacePirate	GetDamageVulnerability()	virtual	B	data_8D8	-	marked	fn_72_3AB4
 0x3AE8	0x40	CSpacePirate	GetModelAlphau8	virtual	B	data_8D8	-	marked	fn_72_3AE8
@@ -211,15 +211,15 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xDF2C	0xA8	CSpacePirate	SquadAdd (team membership)	method	B	E498	-	marked	fn_72_DF2C
 0xDFD4	0xBC	CSpacePirate	SquadJoin	method	B	B59C C1A4	SquadJoin, marked by the module lane (the arms agree with the forcing run)	marked	fn_72_DFD4
 0xE090	0x1C	CSpacePirate	GetOrigin	virtual	B	data_8D8	-	marked	fn_72_E090
-0xE0AC	0x2C	CSpacePirate	DetachActorFromPirate (PMF)	method	B	data_8CC	-	marked	fn_72_E0AC
-0xE0D8	0x48	CSpacePirate	AttachActorToPirate (PMF)	method	B	data_8C0	-	marked	fn_72_E0D8
+0xE0AC	0x2C	CSpacePirate	DetachActorFromPirate (PMF)	method	B	data_8CC	ragdoll 0x118 0x40 clear, forced (pirateattach), sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_E0AC
+0xE0D8	0x48	CSpacePirate	AttachActorToPirate (PMF)	method	B	data_8C0	ragdoll 0x118 0x40 set, forced (pirateattach), sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_E0D8
 0xE120	0x48	CSpacePirate	SetAttackTarget	virtual	B	data_8D8	-	marked	fn_72_E120
 0xE168	0x174	CSpacePirate	SetVelocityForJump	method	B	E498	-	marked	fn_72_E168
 0xE2DC	0x38	CSpacePirate	CheckTargetable	method	B	28F0	-	marked	fn_72_E2DC
 0xE314	0x4	CSpacePirate	empty function (called from Dead, AcceptScriptMsg)	method	B	5C10 E498	-	not-port	fn_72_E314
 0xE318	0xC0	CSpacePirate	Listen	virtual	B	data_8D8	-	marked	fn_72_E318
-0xE3D8	0xC0	CSpacePirate	Touch	virtual	B	data_8D8	Touch: the ragdoll push, ported 2026-10-22 (asm 0xE3F8-0xE47C); 0xb30 is set only by Think tail 0x2010 (new CPirateRagDoll = fn_50_1938, upstream CPirateRagDoll.cpp, built) after a BecomeRagDoll death, which the port arms but never completes (sp13)	blocked: ragdoll creation (Think tail 0x1F08)	fn_72_E3D8
-0xE498	0x944	CSpacePirate	AcceptScriptMsg	virtual	B	data_8D8	-	marked	fn_72_E498
+0xE3D8	0xC0	CSpacePirate	Touch	virtual	B	data_8D8	Touch: the force field onto the ragdoll torso impulse (asm 0xE3F8-0xE47C); all arms, sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_E3D8
+0xE498	0x944	CSpacePirate	AcceptScriptMsg	virtual	B	data_8D8	kSM_Decrement ragdoll arm 0xE924-0xE950, sp14 2026-10-23 (SpacePirate.md section 14)	marked	fn_72_E498
 0xEDDC	0x8	(module)	returns 0, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_EDDC
 0xEDE4	0x8	(module)	returns 1, no reference anywhere	unreferenced	T	-	-	not-port	fn_72_EDE4
 0xEDEC	0x1E8	CSpacePirate	ChooseTarget	method	B	1980	the team-target flag (asm 0xEE74/0xEF48) and the squad branch (asm 0xEF50-0xEFA4), fixed by the module lane	marked	fn_72_EDEC

@@ -65,6 +65,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CObjectList.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/Enemies/CSpacePirate.hpp"
 #include "MetroidPrime/Enemies/CSwarmBasics.hpp"
 #include "MetroidPrime/CGenericFSM2State.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAIHint.hpp"
@@ -559,6 +560,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
       "                           list, the way the collision code does (no real collision needed)\n"
+      "pirateattach <pirate> <id>|-  AttachActorToPirate(id) (- : DetachActorFromPirate) through the\n"
+      "                           module's table, as a Metroid latching on does (coverage)\n"
       "material <id> [+|-]<m> ...  show or add/remove an actor's materials (name w/o kMT_, or bit; -solid)\n"
       "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"
       "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
@@ -1907,6 +1910,35 @@ void CmdTouch(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// A Metroid latching onto a space pirate (and letting go) calls the pirate module's attach and
+// detach entries through its table (SSpacePirate_FuncPtrs); the port's CMetroid only detaches.
+void CmdPirateAttach(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() != 3) {
+    Fail("usage: pirateattach <pirate id> <actor id>|-");
+    return;
+  }
+  CEntity* ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  CSpacePirate* pirate = ent != nullptr ? TCastToPtr< CSpacePirate >(ent) : nullptr;
+  if (pirate == nullptr) {
+    Fail("not a space pirate");
+    return;
+  }
+  char line[96];
+  if (args[2] == "-") {
+    pirate->DetachActorFromPirate();
+    std::snprintf(line, sizeof(line), "detached, held u%04x\n", pirate->GetAttachedActor().value);
+  } else {
+    const CEntity* actor = ResolveObject(mgr, args[2]);
+    if (actor == nullptr) {
+      return;
+    }
+    const bool taken = pirate->AttachActorToPirate(actor->GetUniqueId());
+    std::snprintf(line, sizeof(line), "attach %s, held u%04x\n", taken ? "taken" : "refused",
+                  pirate->GetAttachedActor().value);
+  }
+  out += line;
+}
+
 // The state/trigger function the actor's own table registered under `name`, from either machine
 // type: the FSM2 (GetType() 1, CGenericFSM2State) or the AFSM (0, TStateMachineState).
 CPatterned::StateMachine::StateFunc PortFindStateFunction(CPatterned& patterned, const char* name) {
@@ -3187,6 +3219,7 @@ constexpr SCommand kCommands[] = {
     {"hurt", CmdHurt, true},
     {"fsm", CmdFsm, true},
     {"touch", CmdTouch, true},
+    {"pirateattach", CmdPirateAttach, true},
     {"bodystate", CmdBodyState, true},
     {"statecall", CmdStateCall, true},
     {"trigcall", CmdTrigCall, true},

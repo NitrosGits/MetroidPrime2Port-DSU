@@ -24,6 +24,8 @@
 #include "MetroidPrime/Enemies/CTeamAiRole.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/CRagDoll.hpp"
+#include "MetroidPrime/Enemies/CPirateRagDoll.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCoverPoint.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTrigger.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTargetingPoint.hpp"
@@ -200,7 +202,7 @@ CSpacePirate::CSpacePirate(TUniqueId uid, const rstl::string& name, const CEntit
 , mAttackTarget(kInvalidUniqueId)
 , mBurstFire(skBursts, static_cast< int >(data.mFirstBurstCount))
 , xb14_jumpPoint(kInvalidUniqueId)
-, xb30_(nullptr)
+, xb30_ragDoll(nullptr)
 , xba0_teamAiMgrId(kInvalidUniqueId)
 , mPortalPlane(0.f, CUnitVector3f(CVector3f::Forward())) {
   // Flag bits 0x8f4_24..0x8f6_24, unpacked from the data's flags word (0xF51C-0xF638); every other
@@ -416,10 +418,9 @@ bool CSpacePirate::PortAttachActor(TUniqueId id) {
   if (mAttachedActor != kInvalidUniqueId) { // 0xE0E4 cmplw 0xa84 with kInvalidUniqueId
     return false;                            // 0xE118 li r3, 0
   }
-  if (xb30_ != nullptr) { // 0xE0F0 cmplwi 0xb30, 0
-    // 0xE100 rlwimi sets PowerPC bit 25 of the ragdoll's byte 0x118 (mask 0x40). The ragdoll is
-    // not ported (xb30_ is never set), so there is no host member to set; port it with the ragdoll.
-    // Never write retail offsets into a host object.
+  if (xb30_ragDoll.get() != nullptr) { // 0xE0EC-0xE0F4 cmplwi 0xb30, 0
+    // 0xE0F8-0xE104: rlwimi r0,r5(1),6,25,25 sets the ragdoll's byte 0x118 0x40 (mActorAttached).
+    xb30_ragDoll->SetActorAttached(true);
   }
   mAttachedActor = id; // 0xE108 lhz 0x0(r4), 0xE10C sth 0xa84
   return true;        // 0xE110 li r3, 1
@@ -428,17 +429,18 @@ bool CSpacePirate::PortAttachActor(TUniqueId id) {
 // @ fn_72_E0AC (DetachActorFromPirate): the pirate lets go of the actor it was holding.
 void CSpacePirate::PortDetachActor() {
   mAttachedActor = kInvalidUniqueId; // 0xE0B4 sth 0xa84
-  if (xb30_ != nullptr) { // 0xE0BC cmplwi 0xb30, 0
-    // 0xE0CC rlwimi clears PowerPC bit 25 of the ragdoll's byte 0x118 (mask 0x40); see Attach.
+  if (xb30_ragDoll.get() != nullptr) { // 0xE0B8-0xE0C0 cmplwi 0xb30, 0; beqlr
+    // 0xE0C4-0xE0D0: rlwimi r0,r3(0),6,25,25 clears the ragdoll's byte 0x118 0x40 (mActorAttached).
+    xb30_ragDoll->SetActorAttached(false);
   }
 }
 
 // @ fn_72_24C4
 void CSpacePirate::PreThink(float dt, CStateManager& mgr) {
   EnsureBodyActive(mgr);
-  // Retail skips the head tracking while the ragdoll is primed (xb30_ is never set yet).
-  if (xb30_ == nullptr) {
-    mBoneTracking.PreThink(*ModelData()->AnimationData());
+  // 0x24E8-0x24FC: the head tracking pre-thinks unless a primed ragdoll (+0x70 0x40) is there.
+  if (xb30_ragDoll.get() == nullptr || !xb30_ragDoll->IsPrimed()) {
+    mBoneTracking.PreThink(*ModelData()->AnimationData()); // 0x250C
   }
   CPatterned::PreThink(dt, mgr);
 }
@@ -482,15 +484,34 @@ void TraceState(CSpacePirate& self, const char* name) {
 }
 } // namespace
 
-// fn_72_1980 (unmarked: retail's tail at 0x1F08..0x2030 decrements xb2c and calls fn_50_1938 to
-// create the rag doll; that path waits for the rag doll port)
+static const float skSpacePirateRagDollRadii[14] = {
+    0.45f, 0.52f, 0.35f, 0.1f,  0.15f, 0.35f, 0.1f,
+    0.15f, 0.25f, 0.25f, 0.25f, 0.25f, 0.25f, 0.25f,
+};  // lbl_72_rodata_B04 (0x38 bytes)
+// @ fn_72_1980 (Think). The head: the echo bounds, the cinematic collision, the timers and the
+// attack helpers (0x19A8-0x1C9C). Then the ragdoll (0xb30) picks the think: none, or one not yet
+// primed on a sinking corpse, runs CPatterned's Think and the bone tracking (0x1CCC-0x1D00);
+// a primed one, or any ragdoll on a floating corpse (0x8f5 0x02), runs only the actor's Think,
+// the fade, the hit-damage timer and the Ing possession, and unfreezes the body (0x1D04-0x1D58).
+// A ragdoll is primed from the actor (0x1D74-0x1DD0) or stepped (0x1DD8-0x1E94), and once it is
+// over and still the pirate stops and starts its fade (0x1E98-0x1F04). The tail (0x1F08-0x2030)
+// builds the ragdoll when the BecomeRagDoll delay (xb2c) runs out. Arms: SpacePirate.md section 14
+// (natural runs, plus the forced ones of tools/cov/specs/spacepirate_ragdoll_force.py).
 void CSpacePirate::Think(float dt, CStateManager& mgr) {
-  if (!GetActive()) {
+  if (!GetActive()) { // 0x19A8-0x19BC (0x20 0x80)
     return;
   }
-  EnsureBodyActive(mgr);
+  // 0x19C0-0x1A00: the echo emitter's bounds (this+0xc8, +0x14) collapse onto the translation.
+  // Retail stores without a test; the host keeps one because the emitter exists only when the
+  // pInfo's echo parameters ask for it (the ctor's 0xFFCC test), and a null store faults here.
+  if (EchoEmitter() != nullptr) {
+    EchoEmitter()->SetBounds(CAABox(GetTranslation(), GetTranslation()));
+  }
+  EnsureBodyActive(mgr); // 0x1A04-0x1A1C (0x594 0x40, Activate(mgr, -1))
   CBodyController* body = BodyController();
-  const bool inCineCam = mgr.GetCameraManager(0)->IsInCinematicCamera();
+  // 0x1A20-0x1A44: not multiplayer and the camera manager (0x151c) in a cinematic.
+  const bool inCineCam =
+      !mgr.IsMultiplayer() && mgr.GetCameraManager(0)->IsInCinematicCamera();
   if (inCineCam && !x8f7_31_prevInCineCam) {
     SetCinematicCollision(mgr);
   } else if (!inCineCam && x8f7_31_prevInCineCam && !x8f5_31_ragdollNoAiCollision) {
@@ -535,9 +556,73 @@ void CSpacePirate::Think(float dt, CStateManager& mgr) {
     UpdateAimBodyState(dt, mgr);
     xb34_ikChain.Update(dt);
   }
-  CPatterned::Think(dt, mgr);
-  if (body->GetPercentageFrozen() != 1.f) {
-    mBoneTracking.Think(dt);
+  // 0x1CA0-0x1CAC: cntlzw/srwi, one when there is no ragdoll.
+  const bool noRagDoll = xb30_ragDoll.get() == nullptr;
+  if (noRagDoll ||
+      (!x8f5_30_floatingCorpse &&           // 0x1CB4-0x1CBC (0x8f5 0x02)
+       !xb30_ragDoll->IsPrimed())) {        // 0x1CC0-0x1CC8 (+0x70 0x40)
+    CPatterned::Think(dt, mgr);             // 0x1CD8
+    if (body->GetPercentageFrozen() != 1.f) { // 0x1CEC fcmpu B54 (1.0), beq
+      mBoneTracking.Think(dt);              // 0x1CFC
+    }
+  } else {
+    CActor::Think(dt, mgr);                 // 0x1D10
+    UpdateAlphaDelta(mgr, dt);              // 0x1D20
+    UpdateHitDamageTime(dt);                // vtable +0xec, 0x1D38
+    UpdateIngPossession(dt);                // 0x1D44
+    if (body->IsFrozen()) {                 // 0x1D4C-0x1D54 (0x594 0x20)
+      body->UnFreeze();                     // 0x1D58
+    }
+  }
+  if (!noRagDoll) {                         // 0x1D5C-0x1D60
+    CPirateRagDoll* ragDoll = xb30_ragDoll.get();
+    if (!ragDoll->IsPrimed()) {             // 0x1D68-0x1D70 (+0x70 0x40)
+      ragDoll->Prime(mgr, GetTransform(), *ModelData()); // vtable +0x8, 0x1D8C
+      const CVector3f translation = GetTranslation();    // 0x1D90-0x1DB0
+      SetTransform(CTransform4f::Identity());            // 0x1DB4
+      SetTranslation(translation);                       // 0x1DC0
+      body->SetPlaybackRate(0.f);                        // rodata B9C, 0x1DD0
+    } else {
+      float waterTop = -1.7014118e38f;                   // rodata BA0 (-2^127), 0x1DE8
+      if (InFluidId() != kInvalidUniqueId) {             // 0x1DEC-0x1E00
+        CScriptWater* water = TCastToPtr< CScriptWater >(mgr.ObjectById(InFluidId())); // 0x1E24
+        if (water != nullptr && water->GetActive()) {    // 0x1E28-0x1E38 (+0x20 0x80)
+          waterTop = water->GetTriggerBoundsWR().GetMaxPoint().GetZ(); // 0x1E44-0x1E48
+        }
+      }
+      ragDoll->Update(mgr, dt * GetDeathTimeScale(), waterTop); // +0x128, +0xc, 0x1E5C-0x1E80
+      ModelData()->AdvanceParticles(GetTransform(), dt, mgr);   // 0x1E94
+    }
+    if (ragDoll->IsOver() &&                       // 0x1EA0 (+0x70 0x01)
+        !ragDoll->WillContinueSmallMovements()) {  // 0x1EA8 (+0x70 0x20)
+      SetMomentumWR(CVector3f::Zero());            // 0x1EB0-0x1ECC (0x1c0..0x1c8)
+      Stop();                                      // 0x1ED0
+      if (!mFadeToDeath) {                         // 0x1ED4-0x1EDC (0x420 0x10)
+        mFadeToDeath = true;                       // 0x1EEC
+        mAlphaDelta = -0.33333334f;                // rodata BA4, 0x1EF8 (0x40c)
+        mAllEnergyDrained = true;                  // 0x1F00 rlwimi 1,30,30 (0x8f8 0x02)
+      }
+    }
+  }
+  // 0x1F08-0x1F18: `fcmpo; ble`, NaN skips the tail.
+  if (xb2c_ragdollDelayTimer > 0.f) {
+    xb2c_ragdollDelayTimer -= dt;                  // 0x1F1C-0x1F20
+    if (xb2c_ragdollDelayTimer <= 0.f) {           // 0x1F28-0x1F30 `cror eq,lt,eq; bne`
+      if (xb30_ragDoll.get() == nullptr) {         // 0x1F34-0x1F3C
+        const rstl::reserved_vector< float, 14 > radii(
+            skSpacePirateRagDollRadii, skSpacePirateRagDollRadii + 14); // rodata B04, 0x1F40-0x1F80
+        // 0x1FA4-0x1FFC: 4 when 0x8f5 has 0x01 (ragdollNoAiCollision), | 3 when it has 0x02
+        // (floatingCorpse).
+        const uint flags = (x8f5_31_ragdollNoAiCollision ? 4u : 0u) |
+                           (x8f5_30_floatingCorpse ? 3u : 0u);
+        // 0x1F98 new 0x11c, 0x2004 fn_50_1938: impact sound 0x848, gravity rodata B70 (50.0),
+        // floating gravity rodata BA8 (-3.0); 0x2010 fn_72_2060 stores it (the old one is null).
+        xb30_ragDoll = rs_new CPirateRagDoll(mgr, this, mData.mImpactSfx, flags, 50.f, -3.f,
+                                             radii);
+        RemoveMaterial(kMT_Orbit, kMT_Target, mgr); // 0x29, 0x28, 0x2024
+      }
+      xb2c_ragdollDelayTimer = 0.f;                // rodata B9C, 0x2030
+    }
   }
   TraceState(*this, StateMachineState().GetName());
 }
@@ -1091,7 +1176,7 @@ void CSpacePirate::UpdateAimBodyState(float dt, CStateManager& mgr) {
   CBodyController* body = BodyController();
   CBodyStateCmdMgr& cmds = body->CommandMgr();
   if (mAlive && mEnableAim && !body->IsFrozen() && !body->IsElectrocuting() && !x8f4_27_melee &&
-      xb30_ == nullptr && (!x8f5_26_seated || x8f9_28_satUp) && !x8fa_30_) {
+      xb30_ragDoll.get() == nullptr && (!x8f5_26_seated || x8f9_28_satUp) && !x8fa_30_) {
     xb98_aimDelayTimer = CMath::Max(0.f, xb98_aimDelayTimer - dt);
     // 0x2614 fcmpo + 0x2618 cror eq,lt,eq: the block runs while xb98 <= 0.f, not only at 0.
     if (xb98_aimDelayTimer <= 0.f) {
@@ -1194,8 +1279,12 @@ void CSpacePirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   }
   case kSM_Decrement:
-    // TODO(fn_72_E498): retail clears the ragdoll's no-over-timer and small-movement flags;
-    // there is no ragdoll yet (xb30_ stays null).
+    // 0xE924-0xE950: with a ragdoll, its byte 0x70 loses 0x04 (rlwimi 2,29,29: mNoOverTimer) and
+    // then 0x20 (rlwimi 5,26,26: mContinueSmallMovements).
+    if (xb30_ragDoll.get() != nullptr) { // 0xE928-0xE92C
+      xb30_ragDoll->SetNoOverTimer(false);
+      xb30_ragDoll->SetContinueSmallMovements(false);
+    }
     break;
   case kSM_Create: {
     if (x8f4_25_ceilingAmbush && x8f5_27_shadowPirate) {
@@ -1336,17 +1425,21 @@ void CSpacePirate::SetVelocityForJump() {
 // @ fn_72_38E4 (PreRender): the ragdoll pre-renders instead of the model while a ragdoll is
 // live; then the patterned pre-render, the bone tracking and the ik chain.
 void CSpacePirate::PreRender(CStateManager& mgr) {
-  // 0x3900: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3918 calls the ragdoll's own
-  // pre-render (its vtable slot 0x10) with the actor's translation and the model data. The ragdoll
-  // is outside the port (xb30_ is never set), so that branch stays a comment.
+  // 0x3900-0x3914: a primed ragdoll (+0x70 0x40) pre-renders first (its vtable slot 0x10, 0x392C)
+  // with the actor's translation (0x54) and the model data (0x60).
+  if (xb30_ragDoll.get() != nullptr && xb30_ragDoll->IsPrimed()) {
+    xb30_ragDoll->PreRender(GetTranslation(), *ModelData());
+  }
   // 0x3938: the patterned pre-render.
   CPatterned::PreRender(mgr);
-  // 0x393C-0x3950: the bone tracking and the ik chain run only while no ragdoll is live.
-  // 0x398C: the bone tracking: (mgr, the anim data, the transform, the model's scale, the body).
-  mBoneTracking.PreRender(mgr, *ModelData()->AnimationData(), GetTransform(),
-                          ModelData()->GetScale(), *BodyController());
-  // 0x39C0: the ik chain: (the anim data, the transform, the model's scale).
-  xb34_ikChain.PreRender(*ModelData()->AnimationData(), GetTransform(), ModelData()->GetScale());
+  // 0x393C-0x3950: the bone tracking and the ik chain run only without a primed ragdoll.
+  if (xb30_ragDoll.get() == nullptr || !xb30_ragDoll->IsPrimed()) {
+    // 0x398C: the bone tracking: (mgr, the anim data, the transform, the model's scale, the body).
+    mBoneTracking.PreRender(mgr, *ModelData()->AnimationData(), GetTransform(),
+                            ModelData()->GetScale(), *BodyController());
+    // 0x39C0: the ik chain: (the anim data, the transform, the model's scale).
+    xb34_ikChain.PreRender(*ModelData()->AnimationData(), GetTransform(), ModelData()->GetScale());
+  }
   // 0x39C4: while the portal plane is set (|its d| > 0), 0x39E8 writes an uninitialised word into
   // the draw flags' first word and 0x39F0 sets bit 0x8000 in their high half. The plane is never
   // set in the port and the retail's word is undefined, so that stays a comment.
@@ -1425,14 +1518,12 @@ void CSpacePirate::Render(const CStateManager& mgr) const {
 //   0xE42C-0xE434: the trigger's word 0x1a0 carries 0x8000 (rlwinm. r0,r0,0,16,16 =
 //     kTFL_DetectAI),
 //   0xE438-0xE448: the trigger's float 0x19c is above zero (GetForceMagnitude()),
-// and then the ragdoll's 0xb8, 0xbc and 0xc0 take the trigger's 0x190, 0x194 and 0x198 (the
-// force field, asm 0xE44C-0xE47C).  0xb8..0xc0 lie past the DOL CRagDoll (0xa0): they belong to
-// the module's own pirate ragdoll (MP1's CPirateRagDoll::x84_torsoImpulse), which the port does
-// not have - xb30_ is never set, so the push is left out.
+// and then the ragdoll's 0xb8, 0xbc and 0xc0 (CPirateRagDoll's torso impulse) add the trigger's
+// 0x190, 0x194 and 0x198 (the force field, asm 0xE44C-0xE47C, three lfs/fadds/stfs).
 void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   TraceCall(*this, "Touch", 0);
   CPatterned::Touch(actor, mgr);
-  CRagDoll* ragdoll = static_cast< CRagDoll* >(xb30_);
+  CPirateRagDoll* ragdoll = xb30_ragDoll.get();
   if (ragdoll == nullptr) {
     return; // 0xE3FC-0xE400
   }
@@ -1452,8 +1543,7 @@ void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   if (trigger->GetForceMagnitude() <= 0.f) {
     return; // 0xE438-0xE448
   }
-  // 0xE44C-0xE47C: the pirate ragdoll's torso impulse += trigger->GetForceField() (not ported,
-  // see above).
+  ragdoll->TorsoImpulse() += trigger->GetForceField(); // 0xE44C-0xE47C
 }
 
 // Retail fn_72_C538.
@@ -1474,7 +1564,7 @@ void CSpacePirate::Death(CStateManager& mgr, const CVector3f& direction,
 // Retail fn_72_C684.
 // @ fn_72_C684
 void CSpacePirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
-  if ((x8f4_25_ceilingAmbush && mAlive) || xb30_ != nullptr) {
+  if ((x8f4_25_ceilingAmbush && mAlive) || xb30_ragDoll.get() != nullptr) {
     return;
   }
   mKnockBackController.EnableKnockBackPhysics(!x8f4_31_noKnockbackImpulseReset);
@@ -1594,12 +1684,14 @@ void CSpacePirate::SetAttackTarget(CStateManager& mgr, TUniqueId target) {
 // @ fn_72_3A0C (PreRenderAllViewports): with a live ragdoll the ragdoll renders instead of
 // the model and the portal system is updated; otherwise the patterned path.
 void CSpacePirate::PreRenderAllViewports(CStateManager& mgr) {
-  // 0x3A28: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set, 0x3A50 renders the ragdoll
-  // (PreRenderAllViewports__8CRagDollFR6CActorf, the rodata B6C float) and 0x3A5C calls
-  // UpdatePortalSystemState(mgr). The ragdoll is outside the port (xb30_ is never set), so that
-  // branch stays a comment.
-  // 0x3A6C: the patterned path.
-  CPatterned::PreRenderAllViewports(mgr);
+  // 0x3A28-0x3A3C: a primed ragdoll (+0x70 0x40) renders instead (0x3A50, rodata B6C = 0.2) and
+  // 0x3A5C updates the portal system state.
+  if (xb30_ragDoll.get() != nullptr && xb30_ragDoll->IsPrimed()) {
+    xb30_ragDoll->PreRenderAllViewports(*this, 0.2f);
+    UpdatePortalSystemState(mgr);
+  } else {
+    CPatterned::PreRenderAllViewports(mgr); // 0x3A6C: the patterned path.
+  }
 }
 
 // @ fn_72_64
@@ -1629,9 +1721,12 @@ const CDamageVulnerability* CSpacePirate::GetDamageVulnerability(const CVector3f
 // @ fn_72_17C8 (GetTouchBounds): the ragdoll's own bounds while a ragdoll is live, otherwise
 // the actor's bounding box (fn_72_1854).
 rstl::optional_object< CAABox > CSpacePirate::GetTouchBounds() const {
-  // 0x17DC-0x1834: with a ragdoll (xb30_) whose byte 0x70 has bit 0x40 set and bit 0x80 clear, the
-  // touch bounds are the ragdoll's (ragdoll+0x58..0x70). The ragdoll is outside the port (xb30_
-  // is never set), so there is no host member to read: port it with the ragdoll.
+  // 0x17DC-0x1834: with a ragdoll whose byte 0x70 has 0x40 (0x17EC mPrimed) and 0x80 (0x17F4
+  // mRenderBoundsValid), the touch bounds are the ragdoll's cached render bounds (+0x58..0x6c).
+  const CRagDoll* ragdoll = xb30_ragDoll.get();
+  if (ragdoll != nullptr && ragdoll->IsPrimed() && ragdoll->IsRenderBoundsValid()) {
+    return ragdoll->GetCachedRenderBounds();
+  }
   // 0x183C bl fn_72_1854: the actor's own bounding box (GetBoundingBox).
   return GetActorTouchBounds();
 }

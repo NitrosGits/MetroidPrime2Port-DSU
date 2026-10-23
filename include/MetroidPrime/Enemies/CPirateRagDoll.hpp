@@ -23,6 +23,11 @@ public:
   void CheckStatic(float dt) override;
 
   CVector3f& TorsoImpulse() { return mTorsoImpulse; }
+#ifdef TARGET_PC
+  // Guessed name. The 0x118 byte's 0x40 bit; SpacePirate's AttachActorToPirate (fn_72_E0D8, 0xE100)
+  // sets it and DetachActorFromPirate (fn_72_E0AC, 0xE0CC) clears it.
+  void SetActorAttached(bool attached) { mActorAttached = attached; }
+#endif
 
 private:
   // Guessed names.
