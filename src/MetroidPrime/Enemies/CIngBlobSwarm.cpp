@@ -19,6 +19,7 @@
 #include "MetroidPrime/TGameTypes.hpp"
 #include "WorldFormat/CCollisionSurface.hpp"
 
+// @ fn_31_1EB8
 CIngBlobSwarm::CIngBlobSwarm(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CVector3f& boundingBoxExtent, const CTransform4f& xf,
                              const CAnimRes& animRes, CActorParameters actorParameters,
@@ -66,12 +67,15 @@ CIngBlobSwarm::CIngBlobSwarm(TUniqueId uid, const rstl::string& name, const CEnt
   }
 }
 
+// @ fn_31_1A80
 CIngBlobSwarm::~CIngBlobSwarm() {}
 
+// @ fn_31_1A60
 void CIngBlobSwarm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CSwarmBasics::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_31_1744
 void CIngBlobSwarm::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -123,6 +127,7 @@ void CIngBlobSwarm::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_31_13F8
 void CIngBlobSwarm::AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhichModel which) {
   const uint count = mAttackModels.size();
   mAttackModelStates.reserve(count);
@@ -137,6 +142,7 @@ void CIngBlobSwarm::AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhich
   CSwarmBasics::AllocateSkinnedModels(mgr, which);
 }
 
+// @ fn_31_1230
 void CIngBlobSwarm::UpdateSwarmAnimations(CStateManager& mgr, float dt) {
   CSwarmBasics::UpdateSwarmAnimations(mgr, dt);
   const uint count = mAttackModels.size();
@@ -156,6 +162,7 @@ void CIngBlobSwarm::UpdateSwarmAnimations(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_31_111C
 void CIngBlobSwarm::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
   const uint count = mBoids.size();
   if (mAnimated) {
@@ -175,6 +182,7 @@ void CIngBlobSwarm::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_31_B00
 void CIngBlobSwarm::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, float dt,
                                CBoid& boid, int partitionIndex) {
   boid.mPartitionIndex = partitionIndex;
@@ -229,13 +237,21 @@ void CIngBlobSwarm::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, f
   }
 }
 
+// @ fn_31_A10
 void CIngBlobSwarm::PreRenderBoid(CBoid* boid, uint* drawMask) {
   if (boid->mAttacking) {
     const int slot = boid->mAttackSlot;
     if (slot == -1) {
       if (*drawMask & (1 << mSharedAttackBit)) {
         CachePose(*mSharedAttackModel, *mSharedAttackState);
+#ifdef TARGET_PC
+        // Retail tests mSharedAttackBit (0xA48 lwz 0x5f4) but clears the first attack slot's
+        // bit (0xA6C lwz 0x5f8 mAttackModelBitBase; 0xA7C andc), so the shared pose is
+        // re-cached per launched boid and slot 0 may keep its previous pose this frame.
+        *drawMask &= ~(1 << mAttackModelBitBase);
+#else
         *drawMask &= ~(1 << mSharedAttackBit);
+#endif
       }
     } else {
       if (*drawMask & (1 << (mAttackModelBitBase + slot))) {
@@ -248,6 +264,7 @@ void CIngBlobSwarm::PreRenderBoid(CBoid* boid, uint* drawMask) {
   }
 }
 
+// @ fn_31_9B8
 void CIngBlobSwarm::RenderBoid(CBoid* boid) const {
   if (boid->mAttacking) {
     if (boid->mAttackSlot == -1) {
@@ -260,6 +277,7 @@ void CIngBlobSwarm::RenderBoid(CBoid* boid) const {
   }
 }
 
+// @ fn_31_98C
 void CIngBlobSwarm::ApplySteeringBehaviors(CStateManager& mgr, CBoid& boid, CVector3f& ahead,
                                            const rstl::reserved_vector< CBoid*, 50 >& nearList) {
   if (!boid.mAttacking) {
@@ -267,10 +285,12 @@ void CIngBlobSwarm::ApplySteeringBehaviors(CStateManager& mgr, CBoid& boid, CVec
   }
 }
 
+// @ fn_31_924
 void CIngBlobSwarm::BoidCollidedCallback(CStateManager& mgr, CBoid& boid) {
   KillBoid(boid, mgr, CWeaponMode());
 }
 
+// @ fn_31_8A8
 void CIngBlobSwarm::BoidCollidedWithPlayerCallback(CStateManager& mgr, CBoid& boid) {
   if (boid.mLaunched) {
     KillBoid(boid, mgr, CWeaponMode());
@@ -279,6 +299,7 @@ void CIngBlobSwarm::BoidCollidedWithPlayerCallback(CStateManager& mgr, CBoid& bo
   }
 }
 
+// @ fn_31_714
 void CIngBlobSwarm::LaunchBoid(CBoid& boid, const CVector3f& target) {
   // Ballistic arc that peaks mMaxAttackHeight above the higher of the two endpoints.
   const float gravity = kDefaultGravityAccel * mMass;
@@ -295,6 +316,7 @@ void CIngBlobSwarm::LaunchBoid(CBoid& boid, const CVector3f& target) {
   boid.mRemainingLaunchNotOnSurfaceFrames = 5;
 }
 
+// @ fn_31_6A4
 void CIngBlobSwarm::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponMode& weapon) {
   CSwarmBasics::KillBoid(boid, mgr, weapon);
   if (boid.mAttackSlot != -1) {
@@ -305,6 +327,7 @@ void CIngBlobSwarm::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponMode&
   }
 }
 
+// @ fn_31_D8
 CEntity* LoadIngBlobSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngBlobSwarm sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngBlobSwarm.inc"

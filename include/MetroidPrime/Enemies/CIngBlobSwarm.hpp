@@ -61,7 +61,7 @@ private:
   float mMass;                                                // Guessed name
   float mMaxAttackHeight;                                     // Guessed name
   CVector3f mAttackAimOffset;                                 // Guessed name
-  bool mSharedAttackActive : 1;                               // Guessed name
+  bool mSharedAttackActive : 1;                               // 0x618_24 Guessed name
 };
 CHECK_SIZEOF(CIngBlobSwarm, 0x620)
 
