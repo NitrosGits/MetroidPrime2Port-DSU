@@ -1115,6 +1115,10 @@ void CIngSpaceJumpGuardian::SpawnBlobEffect(CStateManager& mgr,
       CCollisionTracker::skDefaultExtents);
   if (effect != nullptr) {
     effect->SetParticleEmissionRateScalar(0.f);
+#ifdef TARGET_PC
+    // 0x1118 lhz r0, 0x8(r30) / 0x112C sth r0, 0x12a(r29): the blob draws after its owner.
+    effect->SetNextDrawNode(GetUniqueId());
+#endif
     mgr.AddObject(effect);
   }
 }
