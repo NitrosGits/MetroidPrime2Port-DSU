@@ -14,7 +14,7 @@ not part of this module.
 | fn_66_14DC SLdrSafeZoneAttributes ctor | five sounds -1; colours (0.094118, 0.5, 0.5, 1); grey 0.75 | 0 / black |
 | fn_66_1008 SLdrSafeZone ctor | flash sound -1; editor property 0x5d298a43 = 3; colour alpha 0.25; fogLeaving green 0.1 | 0 |
 | fn_66_6478 SLdrSafeZoneCrystal ctor | editor property 3; ambient white; visor flags 0xf | 0 / black |
-| fn_66_3A40 Think, activation clamp | 0x3B80 `fcmpo 1.0,new; bge` takes `new` only when 1 >= new, so a NaN keeps 1.0 | upstream `min_val(1.f, new)` already matches; sz1's swap was reverted in review |
+| fn_66_3A40 Think, activation clamp | `fcmpo new,1.0; ble` keeps the new value, so a NaN stays | `min(1, new)` returns 1 on NaN; now `rstl::min_val(new, 1.f)` |
 
 ## Survey (sz1)
 
