@@ -29,13 +29,16 @@ static const rstl::string skParts[] = {
 // Guessed name. Selects the AI waypoints that pin particles of the ragdoll.
 class CAIWaypointPredicate : public CValidEntityPredicate {
 public:
+  // @ fn_50_2500
   ~CAIWaypointPredicate() override {}
 
+  // @ fn_50_298C
   bool IsValid(const CStateManager& mgr, TUniqueId id) const override {
     return TCastToConstPtr< CScriptAIWaypoint >(mgr.GetObjectById(id)) != nullptr;
   }
 };
 
+// @ fn_50_1938
 CPirateRagDoll::CPirateRagDoll(CStateManager& mgr, CPatterned* actor, ushort thudSfx, uint flags,
                                float gravity, float floatingGravity,
                                const rstl::reserved_vector< float, 14 >& radii)
@@ -151,6 +154,7 @@ CPirateRagDoll::CPirateRagDoll(CStateManager& mgr, CPatterned* actor, ushort thu
   SatisfyWorldConstraintsOnConstruction(mgr);
 }
 
+// @ fn_50_1874
 void CPirateRagDoll::Prime(CStateManager& mgr, const CTransform4f& xf, CModelData& modelData) {
   const CAABox& bounds = mActor->GetBaseBoundingBox();
   CVector3f max = bounds.GetMaxPoint();
@@ -161,6 +165,7 @@ void CPirateRagDoll::Prime(CStateManager& mgr, const CTransform4f& xf, CModelDat
   CRagDoll::Prime(mgr, xf, modelData);
 }
 
+// @ fn_50_1610
 void CPirateRagDoll::CheckStatic(float dt) {
   mImpactCount = 0;
   mImpactVel = 0.f;
@@ -212,6 +217,7 @@ void CPirateRagDoll::CheckStatic(float dt) {
   mPrevMovingSlowly = movingSlowly;
 }
 
+// @ fn_50_E10
 void CPirateRagDoll::Update(CStateManager& mgr, float dt, float waterTop) {
   if (!IsOver() || WillContinueSmallMovements()) {
     if (mActorAttached) {
@@ -340,6 +346,7 @@ void CPirateRagDoll::Update(CStateManager& mgr, float dt, float waterTop) {
   mPrevWaterTop = waterTop;
 }
 
+// @ fn_50_4F8
 void CPirateRagDoll::PreRender(const CVector3f& pos, CModelData& modelData) {
   if (!IsOver() || WillContinueSmallMovements()) {
     CAnimData* animData = modelData.AnimationData();
@@ -394,6 +401,7 @@ void CPirateRagDoll::PreRender(const CVector3f& pos, CModelData& modelData) {
   }
 }
 
+// @ fn_50_3B4
 void CPirateRagDoll::UpdateImpactSfx(CStateManager& mgr) {
   if (mImpactVel > mMinImpactVelocity && mSfxTimer < 0.f) {
     const CVector3f delta = mActor->GetTranslation() - mLastSfxPos;
@@ -415,6 +423,7 @@ void CPirateRagDoll::UpdateImpactSfx(CStateManager& mgr) {
   }
 }
 
+// @ fn_50_10C
 void CPirateRagDoll::AlignShoulderPad(CJointData_LinearStorage& pose, int shoulder, int elbow,
                                       const CSegId& padId, const CVector3f& axis, float side) {
   if (padId == CSegId::Invalid()) {
