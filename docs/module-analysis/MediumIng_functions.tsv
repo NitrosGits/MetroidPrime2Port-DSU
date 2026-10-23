@@ -32,7 +32,7 @@ offset	fn	size	class	name	slice	what	marker
 00FE8	fn_41_FE8	54	H	fn_41_FE8	-	rstl vector/list dtor chain; compiler glue (ming1)	no
 0103C	fn_41_103C	E8	H	fn_41_103C	-	loader typedef ctor/dtor (rstl container glue); compiler glue (ming1)	no
 01124	fn_41_1124	254	H	fn_41_1124	-	loader typedef ctor/dtor (rstl container glue); compiler glue (ming1)	no
-01378	fn_41_1378	6C	B	ValidateSafeZone (upstream)	2	upstream body or slice 2	no
+01378	fn_41_1378	6C	B	ValidateSafeZone (upstream)	2	upstream body; played, every live arm (ming4 gcov)	yes
 013E4	fn_41_13E4	178	B	FindSafeZoneRetreatPoint	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
 0155C	fn_41_155C	124	B	UpdateCurrentSafeZone	1	slice 1 body (PortCMediumIng.cpp)	yes
 01680	fn_41_1680	2B0	B	UpdateMistEffect	1	slice 1 body (PortCMediumIng.cpp)	yes
@@ -46,8 +46,8 @@ offset	fn	size	class	name	slice	what	marker
 01E28	fn_41_1E28	24	B	IsPointInSafeZone	2	upstream body; played, every live arm (ming1 gcov)	yes
 01E4C	fn_41_1E4C	2C	B	IsInSafeZone	2	upstream body; played, every live arm (ming1 gcov)	yes
 01E78	fn_41_1E78	58	B	WaitForLocomotion	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
-01ED0	fn_41_1ED0	A8	B	QuitTeam	2	upstream body or slice 2	no
-01F78	fn_41_1F78	AC	B	JoinTeam	2	upstream body or slice 2	no
+01ED0	fn_41_1ED0	A8	B	QuitTeam	2	upstream body; played, every live arm (ming4 gcov)	yes
+01F78	fn_41_1F78	AC	B	JoinTeam	2	upstream body; played, every live arm; null-cast arm dead (ming4 gcov + proof)	yes
 02024	fn_41_2024	304	B	CalculateSeparation	1	slice 1 body (PortCMediumIng.cpp); marked mi5 (other-area neighbour 0x2094 forced setarea; flee CanBeNormalized false 0x2298 dead: Flee returns a unit vector)	fn_41_2024
 02328	fn_41_2328	68	B	ShouldBackUp	2	upstream body; played, every live arm (ming1 gcov)	yes
 02390	fn_41_2390	54	B	ShouldDoubleDash	2	upstream body; played, every live arm (ming1 gcov)	yes
@@ -66,7 +66,7 @@ offset	fn	size	class	name	slice	what	marker
 02BCC	fn_41_2BCC	C	B	ShouldEvaporate	2	upstream body; played, every live arm (ming1 gcov)	yes
 02BD8	fn_41_2BD8	54	B	ShouldDoSafezoneReaction	2	upstream body; played, every live arm (ming1 gcov)	yes
 02C2C	fn_41_2C2C	40	B	IsFrustated	2	upstream body; played, every live arm (ming1 gcov)	yes
-02C6C	fn_41_2C6C	198	B	IsDestInsideCurrentRegion	2	upstream body or slice 2	no
+02C6C	fn_41_2C6C	198	B	IsDestInsideCurrentRegion	2	upstream body; played, every live arm; true arm needs the player at world coords inside the local octree (ming4 gcov)	yes
 02E04	fn_41_2E04	4C	B	IsOffPath	2	upstream body; played, every live arm (ming1 gcov)	yes
 02E50	fn_41_2E50	20	B	HasJumpPoint	2	upstream body; played, every live arm (ming1 gcov)	yes
 02E70	fn_41_2E70	198	B	BackUp	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
@@ -77,9 +77,9 @@ offset	fn	size	class	name	slice	what	marker
 03260	fn_41_3260	8	H	fn_41_3260	-	accessor (lwz 0x254; inlined); compiler glue (ming1)	no
 03268	fn_41_3268	C	B	HasLineOfSight	2	upstream body; played, every live arm (ming1 gcov)	yes
 03274	fn_41_3274	108	B	UpdateTimers	1	slice 1 body (PortCMediumIng.cpp)	yes
-0337C	fn_41_337C	19C	B	ShouldMistAttack	2	upstream body or slice 2	no
-03518	fn_41_3518	128	B	ShouldMeleeAttack	2	upstream body or slice 2	no
-03640	fn_41_3640	170	B	ShouldArmAttack	2	upstream body or slice 2	no
+0337C	fn_41_337C	19C	B	ShouldMistAttack	2	upstream body; played, every live arm (ming4 gcov)	yes
+03518	fn_41_3518	128	B	ShouldMeleeAttack	2	upstream body; played, every live arm (ming4 gcov)	yes
+03640	fn_41_3640	170	B	ShouldArmAttack	2	upstream body; played, every live arm (ming4 gcov)	yes
 037B0	fn_41_37B0	2D8	B	MistAttack	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
 03A88	fn_41_3A88	5C	H	fn_41_3A88	-	deleting dtor of a local/token class (vtable reset + Free); compiler glue (ming1)	no
 03AE4	fn_41_3AE4	458	B	MeleeAttack	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
@@ -108,7 +108,7 @@ offset	fn	size	class	name	slice	what	marker
 05C68	fn_41_5C68	C	B	IsAggressive	2	upstream body; played, every live arm (ming1 gcov)	yes
 05C74	fn_41_5C74	38	H	HasMist (inlined in the port)	-	HasMist (inlined in the port; checked with its callers) (ming1)	no
 05CAC	fn_41_5CAC	20	B	IsMisting	2	upstream body; dead (no callers) (ming3)	yes
-05CCC	fn_41_5CCC	B0	B	Leash	2	upstream body or slice 2	no
+05CCC	fn_41_5CCC	B0	B	Leash	2	upstream body; played, every live arm (ming4 gcov)	yes
 05D7C	fn_41_5D7C	4C	B	PathShagged	2	upstream body; played, every live arm (ming1 gcov)	yes
 05DC8	fn_41_5DC8	44	B	IsMistDecayed	1	slice 1 body (PortCMediumIng.cpp)	yes
 05E0C	fn_41_5E0C	224	B	IsBlocked	1	slice 1 body (PortCMediumIng.cpp)	yes

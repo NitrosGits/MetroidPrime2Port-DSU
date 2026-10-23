@@ -844,6 +844,10 @@ bool CMediumIng::PortConsoleVar(CEntity& ent, const char* name, const int* value
   MING_B(mD2, "d2") MING_B(mD3, "d3") MING_B(mD4, "d4") MING_B(mD5, "d5") MING_B(mD6, "d6")
   MING_B(mD7, "d7") MING_B(mE0, "e0") MING_B(mE1, "e1") MING_B(mE2, "e2")
 #undef MING_B
+  if (strcmp(n, "los") == 0) { // read-only: the line-of-sight tracker's last result
+    current = ing->mLineOfSightTracker.HasLineOfSight() ? 1 : 0;
+    return true;
+  }
   if (strcmp(n, "safezone") == 0) { // mSafeZoneId (-1 = none)
     if (value != nullptr) {
       ing->mSafeZoneId = *value < 0 ? kInvalidUniqueId : TUniqueId(static_cast< ushort >(*value));
