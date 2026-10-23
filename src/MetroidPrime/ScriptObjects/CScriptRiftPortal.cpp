@@ -59,7 +59,22 @@ CScriptRiftPortal::CScriptRiftPortal(TUniqueId uid, const rstl::string& name,
 , mOpening(false)
 , mOpen(false)
 , mRipPortal(ripPortal)
-, mDrawnOnce(false) {}
+, mDrawnOnce(false) {
+#ifdef TARGET_PC
+  // Retail tail (fn_64_28B4, 0x2A70..0x2B04): draw enabled (x153 bit 0x20) and particle DB
+  // rendered inside (x152 bit 0x20); the actor moves mScale.x along its local Y and turns
+  // lbl_64_rodata_3C = pi/2 about local X. Render undoes exactly this. Retail calls
+  // CActor::SetTransformAlt, which the host CActor lacks; SetTransform stands in.
+  SetDrawEnabled(true);
+  SetRenderParticleDatabaseInside(true);
+  CTransform4f portalXf(xf);
+  const CVector3f pos =
+      portalXf.GetTranslation() + portalXf.Rotate(CVector3f(0.f, mScale.GetX(), 0.f));
+  portalXf.RotateLocalX(CRelAngle::FromRadians(M_PIF / 2.f));
+  portalXf.SetTranslation(pos);
+  SetTransform(portalXf);
+#endif
+}
 
 CScriptRiftPortal::~CScriptRiftPortal() {}
 
@@ -280,8 +295,14 @@ void CScriptRiftPortal::Render(const CStateManager& mgr) const {
   const uint copyY = CCast::ToUint32((1.f - 0.5f * clampedY) * viewportHeight) & ~1u;
   const float offsetY = 2.f * (1.f - static_cast< float >(copyY) / viewportHeight) - 1.f;
   const float offsetX = 2.f * (static_cast< float >(copyX) / viewportWidth) - 1.f;
+#ifdef TARGET_PC
+  // Retail copies RGBA8 (fn_64_C88 0x1188: li r5, 0x6), not RGB565.
+  CopyFrameBufferRegion(false, CGraphics::GetDolphinSpareBuffer(), GX_TF_RGBA8, false, copyX,
+                        copyY, viewportWidth / 2, viewportHeight / 2);
+#else
   CopyFrameBufferRegion(false, CGraphics::GetDolphinSpareBuffer(), GX_TF_RGB565, false, copyX,
                         copyY, viewportWidth / 2, viewportHeight / 2);
+#endif
 
   CGraphics::SetCullMode(kCM_None);
   const CTransform4f modelXf =
@@ -317,19 +338,39 @@ void CScriptRiftPortal::Render(const CStateManager& mgr) const {
                0.f);
   PSMTX44Concat(translation, viewProjection, viewProjection);
   Mtx texMtx;
+#ifdef TARGET_PC
+  // Retail keeps rows 0, 1 and 3 of the 4x4 (0x1430..0x143C read row 3 into texMtx row 2): the
+  // texgen then yields (s, t, w) for the projective lookup.
+  for (int col = 0; col < 4; ++col) {
+    texMtx[0][col] = viewProjection[0][col];
+    texMtx[1][col] = viewProjection[1][col];
+    texMtx[2][col] = viewProjection[3][col];
+  }
+#else
   for (int row = 0; row < 3; ++row) {
     for (int col = 0; col < 4; ++col) {
       texMtx[row][col] = viewProjection[row][col];
     }
   }
+#endif
   GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX3x4);
 
   static const GXVtxDescList skVtxDesc[] = {
       {GX_VA_POS, GX_DIRECT}, {GX_VA_TEX0, GX_DIRECT}, {GX_VA_NULL, GX_NONE}}; // Guessed name
   CGX::SetVtxDescv(skVtxDesc);
+#ifdef TARGET_PC
+  // Retail texgen source is GX_TG_TEX0 (0x1488 / 0x1924: li r5, 0x4).
+  CGX::SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_TEX0, GX_TEXMTX0, false, GX_PTIDENTITY);
+#else
   CGX::SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0, false, GX_PTIDENTITY);
+#endif
   CGX::SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
+#ifdef TARGET_PC
+  // Retail KColorSel is GX_TEV_KCSEL_1_8 (0x14B8 / 0x1954: li r4, 0x7).
+  CGX::SetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_1_8);
+#else
   CGX::SetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_1);
+#endif
   CGraphics::SetFog(kRFM_None, 0.f, 0.f, CColor::Black());
   CGraphics::SetAlphaCompare(kAF_Never, 0, kAO_And, kAF_Always, 0);
   renderer->SetDestinationAlpha(255);
@@ -377,7 +418,13 @@ void CScriptRiftPortal::Render(const CStateManager& mgr) const {
     for (CCubeSurface surface = cubeModel->GetNormalSurfaces(); surface.IsValid();
          surface = surface.GetNextSurface()) {
       cubeModel->GetMaterial(surface).SetCurrent(flags, surface, *cubeModel);
+#ifdef TARGET_PC
+      // Retail blends by destination alpha (0x17E8..0x17F8: SetBlendMode(1, 6, 7, 0)), the
+      // portal area stamped above.
+      CGraphics::SetBlendMode(kBM_Blend, kBF_DstAlpha, kBF_InvDstAlpha, kLO_Clear);
+#else
       CGraphics::SetBlendMode(kBM_Blend, kBF_SrcAlpha, kBF_InvSrcAlpha, kLO_Clear);
+#endif
       CGX::CallDisplayList(surface.GetDisplayList(), surface.GetDisplayListSize());
     }
   }
@@ -395,9 +442,19 @@ void CScriptRiftPortal::Render(const CStateManager& mgr) const {
   CGX::SetTevDirect(GX_TEVSTAGE0);
   CGX::SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
   CGX::SetVtxDescv(skVtxDesc);
+#ifdef TARGET_PC
+  // Retail texgen source is GX_TG_TEX0 (0x1488 / 0x1924: li r5, 0x4).
+  CGX::SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_TEX0, GX_TEXMTX0, false, GX_PTIDENTITY);
+#else
   CGX::SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0, false, GX_PTIDENTITY);
+#endif
   CGX::SetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
+#ifdef TARGET_PC
+  // Retail KColorSel is GX_TEV_KCSEL_1_8 (0x14B8 / 0x1954: li r4, 0x7).
+  CGX::SetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_1_8);
+#else
   CGX::SetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_1);
+#endif
   CGX::SetNumTevStages(1);
   CGX::SetNumTexGens(1);
   CGX::SetNumChans(0);
@@ -420,8 +477,14 @@ void CScriptRiftPortal::Render(const CStateManager& mgr) const {
     }
   } else {
     if (GetModelData()->HasAnimation()) {
+#ifdef TARGET_PC
+      // Retail loads the copy as RGBA8 (0x1A3C: li r5, 0x6).
+      CGraphics::LoadDolphinSpareTexture(viewportWidth / 2, viewportHeight / 2, GX_TF_RGBA8,
+                                         nullptr, GX_TEXMAP0);
+#else
       CGraphics::LoadDolphinSpareTexture(viewportWidth / 2, viewportHeight / 2, GX_TF_RGB565,
                                          nullptr, GX_TEXMAP0);
+#endif
       const CAnimData* animData = GetAnimationData();
       animData->SetupRender();
       animData->GetModelData()->DolphinDrawWithFlags(&animData->Pose(), 14,
@@ -472,9 +535,25 @@ CEntity* LoadRiftPortal(CStateManager& mgr, CInputStream& input, CEntityInfo& in
       CVector3f::One(), sldrThis.incandescentModel, sldrThis.incandescentAnimation, true));
   rstl::optional_object< CModelData > lineModel(
       LdrToModelData(CVector3f::One(), sldrThis.lineModel, sldrThis.lineAnimation, true));
+#ifdef TARGET_PC
+  // Retail (fn_64_128, 0x550..0x558: lbz 0x2cc(r1); cmplwi; bne) checks only the main model's
+  // optional; the other three go to the ctor as-is, unconstructed if empty. Render dereferences
+  // the background's static model unguarded, so the host still refuses a portal without one; a
+  // missing incandescent or line model becomes a null CModelData (Render checks HasAnimation).
+  if (!model || !backgroundModel) {
+    return nullptr;
+  }
+  if (!incandescentModel) {
+    incandescentModel = CModelData::CModelDataNull();
+  }
+  if (!lineModel) {
+    lineModel = CModelData::CModelDataNull();
+  }
+#else
   if (!model || !backgroundModel || !incandescentModel || !lineModel) {
     return nullptr;
   }
+#endif
 
   return rs_new CScriptRiftPortal(
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name,

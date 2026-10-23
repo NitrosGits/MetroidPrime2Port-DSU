@@ -1,0 +1,20 @@
+# Rift portal driver (tools/cov/specs/riftportal.py): Temple Grounds 12_temple_finalgate has one
+# portal (e00070073, inactive at load). The player stands 12 units in front of it; Activate draws
+# it, Increment plays the line animation until the portal opens, shots go through its projectile
+# box, AreaLoaded rebuilds the box, Decrement stops the animations, Deactivate hides it.
+@f300 god 1; obj e00070073; tp 4.5 118.7 -16.6; face 0
+@f340 send e00070073 Activate; obj e00070073
+@f400 screenshot
+@f420 send e00070073 Increment
+@f480 shoot e00070073; obj e00070073
+@f560 shoot e00070073 missile
+@f640 shoot e00070073 charged
+@f900 obj e00070073; screenshot
+@f940 shoot e00070073
+@f1000 send e00070073 AreaLoaded; shoot e00070073 missile
+@f1060 shoot e00070073 2
+@f1120 send e00070073 Decrement; obj e00070073
+@f1200 send e00070073 Deactivate; obj e00070073
+@f1260 send e00070073 Increment
+@f1300 send e00070073 Activate; send e00070073 Increment
+@f1500 obj e00070073; objs RiftPortal
