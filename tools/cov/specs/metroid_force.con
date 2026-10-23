@@ -1,0 +1,37 @@
+# Agon 08_sand_casualpirates layers 6+7: the forced run (tools/cov/force.sh with
+# tools/cov/specs/metroid_force.py). First GetOrigin's actor branch with a zero direction: the
+# player is teleported away, the pirate u04d8 and the metroid u0547 are placed on the same point
+# (exactly equal X/Y, so (this - target).ToVec2f() cannot be normalized) and the metroid takes the
+# pirate as its target; the team manager positions its members every few frames, so the placement
+# is re-done over a window. Then damage (GetGrowthStage), nine Deactivate messages so SwarmRemove
+# runs with each forced team id in turn (three each: kInvalidUniqueId, an id no object has, the
+# other team), and four Attacks on the pirate's target for PreDamageSpacePirate.
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give morphBall 1; give powerBombs 5; give missile 20
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate
+@f600 tp 300 -300 0
+@f610 place u04d8 355.43 -240.26 3.79; place u0547 355.43 -240.26 3.79; fsm u0547 SelectTarget
+@f700 place u04d8 355.43 -240.26 3.79; place u0547 355.43 -240.26 3.79
+@f800 place u04d8 355.43 -240.26 3.79; place u0547 355.43 -240.26 3.79
+@f900 place u04d8 355.43 -240.26 3.79; place u0547 355.43 -240.26 3.79
+@f1000 place u04d8 355.43 -240.26 3.79; place u0547 355.43 -240.26 3.79
+@f1100 place u04d8 355.43 -240.26 3.79; place u0547 355.43 -240.26 3.79
+@f1200 obj u0547; obj u04d8
+@f1300 hurt u0547 1; hurt u053d 1
+@f1350 damage u0547 40 0 powerbomb
+@f1400 send u0547 Deactivate
+@f1500 send u0547 Deactivate
+@f1600 send u0547 Deactivate
+@f1700 send u0547 Deactivate
+@f1800 send u0547 Deactivate
+@f1900 send u0547 Deactivate
+@f2000 send u0547 Deactivate
+@f2100 send u0547 Deactivate
+@f2200 send u0547 Deactivate
+@f2300 place u0539 355.43 -240.26 3.79; fsm u0539 SelectTarget
+@f2400 fsm u0539 Attack
+@f2500 statecall u0539 Attack 0
+@f2600 statecall u0539 Attack 0
+@f2700 statecall u0539 Attack 0
+@f2800 obj u0539

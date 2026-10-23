@@ -352,6 +352,7 @@ bool CMetroid::CanStartAttack(CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_40_3E88
 void CMetroid::SwarmRemove(CStateManager& mgr) {
   if (mTeamAiManagerId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiManagerId))) {
@@ -527,6 +528,7 @@ void CMetroid::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_4E44
 void CMetroid::WallHang(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -588,6 +590,7 @@ void CMetroid::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_40_44EC
 float CMetroid::GetGrowthStage() const {
   if (mGrowthEnergy < mMetroidData.mStage2GrowthEnergy) {
     return 1.f + mGrowthEnergy / mMetroidData.mStage2GrowthEnergy;
@@ -605,6 +608,7 @@ float CMetroid::GetDamageMultiplier() const {
   return result;
 }
 
+// @ fn_40_3DCC
 bool CMetroid::AttachToTarget(CStateManager& mgr) {
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mAttackTarget))) {
     if (player->AttachActorToPlayer(GetUniqueId(), false)) {
@@ -620,6 +624,7 @@ bool CMetroid::AttachToTarget(CStateManager& mgr) {
 #ifdef TARGET_PC
 // Absent upstream. The pirate the metroid latches onto takes hold of it and is brought to one
 // below its x-damage threshold, so its next hit knocks it into the reaction.
+// @ fn_40_4300
 bool CMetroid::PreDamageSpacePirate(CStateManager& mgr) {
   if (mAttackTarget == kInvalidUniqueId) { // 0x4328-0x4334 lhz 0x9b4; cmplw kInvalidUniqueId; beq
     return false;                          // 0x4494 li r3, 0
@@ -711,6 +716,7 @@ void CMetroid::ApplySeparationBehavior(CStateManager& mgr) {
   }
 }
 
+// @ fn_40_3B18
 void CMetroid::DetachFromTarget(CStateManager& mgr, bool fromDock) {
   CActor* target = nullptr;
   CVector3f direction = CVector3f::Forward();
@@ -749,6 +755,7 @@ void CMetroid::DetachFromTarget(CStateManager& mgr, bool fromDock) {
   }
 }
 
+// @ fn_40_47AC
 void CMetroid::SetPatrolDest(CStateManager& mgr, float) {
   BodyController()->SetLocomotionType(pas::kLT_Relaxed);
   BodyController()->CommandMgr().SetSteeringBlendMode(kSBM_Normal);
@@ -821,6 +828,7 @@ void CMetroid::UpdateAttackTarget(CStateManager& mgr) {
   }
 }
 
+// @ fn_40_5AC0
 void CMetroid::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -898,6 +906,7 @@ bool CMetroid::InDetectionRange(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_1698
 CVector3f CMetroid::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                               const CVector3f& aimPos) const {
   CVector3f result = GetTranslation();

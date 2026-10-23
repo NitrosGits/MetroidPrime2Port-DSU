@@ -1,0 +1,57 @@
+# Agon 08_sand_casualpirates layers 6+7: the console-only arms of CMetroid (met2). statecall runs a
+# state body with any message (3 = the switch default) and codecall a code function, both outside
+# the machine, so SetPatrolDest (never called by the shipped FSM) and the switch defaults run.
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give morphBall 1; give morphBallBombs 1; give powerBombs 5; fastmorph 1; give missile 20
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate; send u0538 Activate; send u0535 Activate
+@f600 objs team
+@f610 obj u0547
+@f620 obj u053d
+
+# WallHang: msg switch default (3), then the mState arms Zero -> One -> Two -> Over, then the mState
+# switch default with mState == Over (Dodge's Update writes Over).
+@f700 fsm u0547 WallHang
+@f760 statecall u0547 WallHang 3
+@f780 statecall u0547 WallHang 1
+@f800 send u0547 Alert
+@f820 statecall u0547 WallHang 1
+@f900 statecall u0547 WallHang 1
+@f1000 statecall u0547 WallHang 1
+@f1100 statecall u0547 WallHang 1
+@f1120 obj u0547
+@f1200 fsm u0547 Dodge
+@f1300 statecall u0547 WallHang 1
+
+# SelectTarget: msg switch default (3), then the mState switch default (mState Over after Dodge).
+@f1400 statecall u0547 SelectTarget 3
+@f1420 statecall u0547 SelectTarget 1
+@f1500 fsm u0547 SelectTarget
+@f1600 statecall u0547 SelectTarget 1
+@f1700 codecall u0547 SetPatrolDest
+@f1800 codecall u0547 SwarmAdd
+@f1900 codecall u0547 SwarmRemove
+
+# Latch on the god-mode player: AttachToTarget, the unmorphed and morphed DetachFromTarget arms.
+@f2000 place u0547 player 2; fsm u0547 SelectTarget
+@f2100 place u0547 player 2; fsm u0547 Attack
+@f2300 obj u0547; status
+@f2400 place u053d player 2; fsm u053d SelectTarget
+@f2600 press x 4
+@f2700 place u053d player 2; fsm u053d Attack
+@f2900 obj u053d; status
+@f3000 kill u053d
+@f3100 obj u0547; obj u053d
+
+# Two metroids latch at once: the second AttachActorToPlayer fails (AttachToTarget's false return).
+@f3200 place u0539 player 2; fsm u0539 SelectTarget
+@f3220 place u0538 player 2; fsm u0538 SelectTarget
+@f3300 place u0539 player 2; fsm u0539 Attack
+@f3310 place u0538 player 2; fsm u0538 Attack
+@f3400 obj u0539; obj u0538
+@f3500 damage u0547 60 0 powerbomb
+@f3600 hurt u0547 999
+@f3700 obj u0547; status
+@f3800 place u0547 player 0; fsm u0547 SelectTarget
+@f3900 place u0547 player 0; fsm u0547 Attack
+@f4100 obj u0547; status

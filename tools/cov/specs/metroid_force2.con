@@ -1,0 +1,19 @@
+# Agon 08_sand_casualpirates layers 6+7: the SelectTarget force run (metroid_force2.py). Damage
+# first (GetGrowthStage), then the metroid keeps a target on the pirate and is put in SelectTarget
+# again and again so mState passes through Two several times with the forced (invalid) target.
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give morphBall 1; give missile 20
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate
+@f600 hurt u0547 1; hurt u053d 1
+@f620 damage u0547 40 0 powerbomb
+@f700 place u04d8 355.43 -240.26 3.79; place u0547 355.43 -240.26 3.79; fsm u0547 SelectTarget
+@f900 obj u0547
+@f1000 fsm u0547 SelectTarget
+@f1100 place u0547 player 2; fsm u0547 SelectTarget
+@f1200 fsm u0547 SelectTarget
+@f1300 place u0547 player 2; fsm u0547 SelectTarget
+@f1400 fsm u0547 SelectTarget
+@f1500 place u0547 player 2; fsm u0547 SelectTarget
+@f1600 fsm u0547 SelectTarget
+@f1700 obj u0547; status

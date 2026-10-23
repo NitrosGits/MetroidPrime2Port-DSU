@@ -1,0 +1,18 @@
+# Agon 08_sand_casualpirates layers 6+7: a metroid latched onto the god-mode player and draining, so
+# GetGrowthStage is asked repeatedly (SuckEnergyFromTarget) with the forced growth energy.
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give missile 20
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate
+@f600 tp 300 -300 0
+@f620 place u0547 player 2; fsm u0547 SelectTarget
+@f650 place u0547 player 2; fsm u0547 Attack
+@f700 obj u0547; status
+@f900 obj u0547; status
+@f1100 obj u0547; status
+@f1300 obj u0547; status
+@f1500 obj u0547
+@f1700 place u053d player 2; fsm u053d SelectTarget
+@f1750 place u053d player 2; fsm u053d Attack
+@f1800 obj u053d
+@f2100 obj u053d

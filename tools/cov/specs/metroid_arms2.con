@@ -1,0 +1,63 @@
+# Agon 08_sand_casualpirates layers 6+7 (met2, run 2): the latch-driven arms. statecall runs a
+# state body directly, so the sequence of AttachToTarget / DetachFromTarget calls is deterministic:
+# a second metroid attacking a player that already holds one (AttachToTarget false), the morphed
+# detach, and a pirate detach (the pirate's branch of DetachFromTarget), plus GetOrigin with a
+# player target in both morph states and with the metroid exactly on the player (zero direction).
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give morphBall 1; give morphBallBombs 1; give powerBombs 5; fastmorph 1; give missile 20
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate; send u0538 Activate; send u0535 Activate
+@f600 objs metroid
+@f620 objs pirate
+
+# SelectTarget: One -> Two with a target (the SetTargetVector arm).
+@f700 place u0547 player 2; fsm u0547 SelectTarget
+@f720 statecall u0547 SelectTarget 1
+@f760 statecall u0547 SelectTarget 1
+@f800 statecall u0547 SelectTarget 1
+
+# AttachToTarget: u0547 takes the player, then u0538's Attack cannot (the player already holds one).
+@f900 place u0547 player 2; fsm u0547 SelectTarget
+@f920 place u0547 player 2; fsm u0547 Attack
+@f950 obj u0547
+@f980 place u0538 player 2; fsm u0538 SelectTarget
+@f1000 statecall u0538 Attack 0
+@f1020 obj u0538
+
+# DetachFromTarget with the player morphed (the quaternion arm), then back to unmorphed.
+@f1100 press x 4
+@f1200 obj u0547; status
+@f1300 statecall u0547 Attack 2
+@f1400 obj u0547; status
+@f1450 press x 4
+
+# DetachFromTarget on a pirate: u0539 latches u04d8, then u053d's Attack finds the pirate taken
+# (PreDamageSpacePirate's IsPirateValidTarget false), then u0539 leaves (the pirate branch).
+@f1500 place u0539 366 -279 3
+@f1520 fsm u0539 SelectTarget
+@f1560 fsm u0539 Attack
+@f1600 obj u0539
+@f1620 objs pirate
+@f1660 place u053d 366 -279 3; fsm u053d SelectTarget
+@f1700 statecall u053d Attack 0
+@f1720 obj u053d
+@f1800 statecall u0539 Attack 2
+@f1850 obj u0539
+
+# GetOrigin with a player target: unmorphed, then morphed, then the metroid exactly on the player
+# (the zero-direction arm), then unmorphed again.
+@f1900 place u0547 player 2; fsm u0547 SelectTarget
+@f2000 press x 4
+@f2100 place u0547 player 0
+@f2200 obj u0547; status
+@f2300 place u0547 player 0
+@f2400 press x 4
+@f2500 place u0547 player 2
+@f2600 obj u0547; status
+
+# SwarmRemove / death paths: a metroid with no team manager, then the team members' Delete.
+@f2700 kill u0535
+@f2800 send u0538 Deactivate
+@f2900 kill u0538
+@f3000 send u0547 Deactivate
+@f3100 obj u0547; status

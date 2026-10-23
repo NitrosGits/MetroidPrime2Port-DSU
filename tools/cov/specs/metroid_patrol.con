@@ -1,0 +1,18 @@
+# Agon 09_sand_testtubepuzzle_dark layer 4: SetPatrolDest's HasPatrolPath-true arm. The disc scan
+# (CPatterned::HasPatrolPath is a kSS_Patrol/kSM_Follow connection) finds the metroid placements
+# with a patrol path here (and in 09_sand_testtubepuzzle L3/L5) and none in the casual pirates
+# area, so the false arm is the run there and this is the true one: codecall reaches the code
+# function the shipped FSM never asks for.
+@f300 layer 4
+@f400 layer 1
+@f560 god 1
+@f580 send u05f8 Activate; send u05ec Activate; send u05e6 Activate
+@f620 objs metroid
+@f700 codecall u05f8 SetPatrolDest
+@f800 codecall u05ec SetPatrolDest
+@f900 codecall u05e6 SetPatrolDest
+@f1000 obj u05f8
+@f1100 codecall u05f8 SetPatrolDest
+@f1200 codecall u05ec SetPatrolDest
+@f1300 codecall u05e6 SetPatrolDest
+@f1400 obj u05f8
