@@ -1,0 +1,41 @@
+# ScriptPlayerProxy (module 62: CScriptPlayerProxy, script type PLCT - a scripted proxy of the
+# player: it watches a visor or a game event and relays its Entered/Exited messages to the ACTV/relay
+# targets, Think running the visor check each frame and AcceptScriptMsg taking the
+# Activate/Deactivate arms).
+# Temple Grounds dark 01_temple_landingsite_dark (world 3bfa3eff, layer 0): the area's two
+# DarkVisorWatcher PLCTs, e0023008c and e00230084; the console drives e00230084, which starts
+# inactive, and e0023008c is left as the active one.
+# The steps repeat the spp1 lane's tools/cov/specs/spp_dark_landingsite.con: god mode with the echo,
+# dark and scan visors, `objs ScriptPlayerProxy` and `obj` on the watched proxy, visor switches in
+# and out of dark (Entered/Exited), a Deactivate (a no-op while it is already inactive) with two
+# further visor switches, the Activate that brings it up and takes a non-area-loaded message through
+# HandleVisorMessage, then the visors it does not watch (combat, scan, echo) and dark again before
+# the last `obj`.
+# Evidence in the transcript: `objs ScriptPlayerProxy` listing both PLCTs in area a35 at f340 (the
+# driven one at 0.0, 0.0, 0.0) and again at f1100 with both at -76.0, -133.2, -36.7 once the proxy
+# has updated its transform, `obj e00230084` reading `inactive` at f360 and f460 and after the f600
+# Deactivate, and with no state word from f1000 on - the f700 Activate is what brings it up - while
+# it prints the watcher's relay map (on Entered send Start to 0023002b CScriptSpecialFunction, on
+# Exited send Stop, on Entered/Exited send Deactivate/Activate to 00230089 CScriptPlatform), every
+# `visor -> <name>` switch answering `=> ok`, and every step answering `=> ok`. The log's `init
+# compiled module ScriptPlayerProxy` line lists the whole compiled-module table, so it says the
+# module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. The family runs fast like the rest: both PLCTs
+# are layer 0 of the booted area, so no layer step can trail the fast updates, and its transcript is
+# identical capped and uncapped. F=1700, last check f1600.
+@f300 god 1; give echoVisor 1; give darkVisor 1; give scanVisor 1
+@f340 objs ScriptPlayerProxy
+@f360 obj e00230084
+@f440 visor dark
+@f460 obj e00230084
+@f540 visor combat
+@f600 send e00230084 Deactivate
+@f640 visor dark
+@f700 send e00230084 Activate
+@f760 visor combat
+@f820 visor scan
+@f880 visor echo
+@f940 visor dark
+@f1000 obj e00230084
+@f1100 objs ScriptPlayerProxy
+@f1600 obj e00230084

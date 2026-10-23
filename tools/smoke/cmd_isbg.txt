@@ -1,0 +1,70 @@
+# IngSpiderballGuardian (module 35: CIngSpiderballGuardian, the Spider Guardian - the Ing boss of the
+# Sanctuary spider-ball puzzle: it rolls its AIWP waypoint chain, damages the player by proximity,
+# stuns when its per-phase stun health is used up, walks the GetPhaseProperties rows on the relay
+# messages and tears down through Death/Dead).
+# Sanctuary Fortress 06_cliff_spiderballguardian (world 1baa96c2, layer 13): its only placement,
+# e0014007a, loads about 500 frames after the `layer 13` switch and starts inactive (in game the
+# area's trigger activates it; its FSM is set up on the first active Think), so the console asks
+# `objs IngSpiderballGuardian` before it sends Activate.
+# The steps repeat the isbg1 lane's tools/cov/specs/isbg.con: god mode with missiles, morph ball,
+# ball bombs and power bombs, the layer switch, `objs IngSpiderballGuardian`, Activate, then one hit
+# per weapon (power, bomb, missile, a 50 bomb, another bomb) with an `obj` after each, the driver's
+# 25 s stun / 15 s charge allowance between f1730 and f3200, the relay messages IM04 and IM05, the
+# IM00-IM03 group with EnableEnergyBar and six BeginNextPuzzleSection calls, `place` 1 unit in front
+# of the player, `kill` and Deactivate/Delete.
+# Evidence in the transcript: `objs IngSpiderballGuardian` listing u0604 e0014007a `inactive` at f900
+# and 0 objects after the Delete, `obj e0014007a` reading hp 600/600, fsm Patrol, body state 5 with
+# its message map (InternalState0/1/2 send SetToZero to relays 001402c8/001402c5/0014039e, Patrol
+# send Follow to the AIWP 00140022, InternalState3 to 0014052f/00140530, not loaded), the power hit
+# hp 600.0 -> 595.0 with fsm DamageReaction, back in Patrol by f1730, the bomb, missile and 50-bomb
+# hits reading 595.0 -> 595.0 (console damage arrives as kSM_Damage, which ApplyStunDamage never
+# takes - only the forcing driver's kSM_ResistedDamage reaches it, so the stun and charge arms of the
+# f1730-f3200 gap stay quiet here), the codecalls answering `codecall ...` => ok, `place` printing
+# the guardian's moved position 200.44 154.69 -10.23, and `kill` leaving hp 0/600 in fsm Dead. Every
+# step answers `=> ok`. The log's `init compiled module IngSpiderballGuardian` line lists the whole
+# compiled-module table, so it says the module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. The family is NC: unpaced, con.py's 0.5 s
+# connect lands around update 300 - the `layer 13` step itself - and the guardian's ~500-frame spawn
+# then leaves only ~200 updates before the f1000 Activate, so a faster machine would activate
+# nothing; capped, it is in for f900 as in its driver. Capped, its 5700 updates take ~95 s. F=5700,
+# last check f5500.
+@f300 god 1; layer 13; give missile 50; give morphBall 1; give morphBallBombs 1; give powerBomb 5
+@f900 objs IngSpiderballGuardian
+@f1000 send e0014007a Activate
+@f1060 obj e0014007a
+@f1300 obj e0014007a
+@f1400 damage e0014007a 5 0 power
+@f1430 obj e0014007a
+@f1460 damage e0014007a 5 0 bomb
+@f1490 obj e0014007a
+@f1520 damage e0014007a 5 0 missile
+@f1550 obj e0014007a
+@f1580 damage e0014007a 50 0 bomb
+@f1610 obj e0014007a
+@f1700 damage e0014007a 5 0 bomb
+@f1730 obj e0014007a
+@f3200 obj e0014007a
+@f3300 send e0014007a InternalMessage4
+@f3330 obj e0014007a
+@f3400 damage e0014007a 5 0 bomb
+@f3430 send e0014007a InternalMessage5
+@f3460 obj e0014007a
+@f4300 obj e0014007a
+@f4320 send e0014007a InternalMessage0
+@f4340 damage e0014007a 5 0 bomb
+@f4360 send e0014007a InternalMessage1; send e0014007a InternalMessage2; send e0014007a InternalMessage3
+@f4380 codecall e0014007a EnableEnergyBar
+@f4400 codecall e0014007a BeginNextPuzzleSection
+@f4500 codecall e0014007a BeginNextPuzzleSection
+@f4600 codecall e0014007a BeginNextPuzzleSection
+@f4700 codecall e0014007a BeginNextPuzzleSection
+@f4800 codecall e0014007a BeginNextPuzzleSection
+@f4900 codecall e0014007a BeginNextPuzzleSection
+@f4920 obj e0014007a
+@f5000 place e0014007a player 1
+@f5100 obj e0014007a
+@f5200 kill e0014007a
+@f5240 obj e0014007a
+@f5400 send e0014007a Deactivate
+@f5450 send e0014007a Delete
+@f5500 objs IngSpiderballGuardian
