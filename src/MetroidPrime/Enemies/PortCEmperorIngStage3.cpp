@@ -2888,12 +2888,10 @@ void CEmperorIngStage3::JumpSlideAttack(CStateManager& mgr, EStateMsg msg, float
 // health (the vtable slot 0x3C), clamped to 0..1 (rodata 0x258, 0x264).
 static float HealthLost(const CHealthInfo& health) {
   float ratio = health.GetHP() / health.GetInitialHP();
-  if (ratio >= 1.f) {
-    ratio = 1.f;
-  }
-  if (0.f > ratio) {
-    ratio = 0.f;
-  }
+  // 0xA54 fcmpo ratio, 1.0; bge -> 1.0: `ratio < 1 ? ratio : 1`, so a 0/0 NaN becomes 1.
+  ratio = ratio < 1.f ? ratio : 1.f;
+  // 0xA74 fcmpo 0.0, ratio; bge -> 0.0: `0 < ratio ? ratio : 0`.
+  ratio = 0.f < ratio ? ratio : 0.f;
   return 1.f - ratio;
 }
 
