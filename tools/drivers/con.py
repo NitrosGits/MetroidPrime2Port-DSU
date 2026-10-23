@@ -122,10 +122,13 @@ def run_at_batch(batch):
     queued = 0
     ran = 0
     s.settimeout(None)  # a deferred reply comes when the game gets there; EOF ends a dead game
+    alive = True
     while queued < want_queued or ran < want_queued:
         b = read_block()
         if b is None:
-            return False
+            # The game ended (a check past MP2_FRAMES, or a crash): still emit what did run.
+            alive = False
+            break
         if b[0].startswith('[at '):
             head = b[0]
             upd = int(head[4:head.index(']')])
@@ -162,7 +165,7 @@ def run_at_batch(batch):
         for l in out:
             emit('   ' + l)
         emit('   ' + (first_err or last))
-    return True
+    return alive
 
 
 frame = -1
