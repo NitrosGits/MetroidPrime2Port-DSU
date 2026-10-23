@@ -291,7 +291,7 @@ enum {
 
 const float kFacingAngle = 0.34906584f; // lbl_29_rodata_E8: 20 degrees (fn_29_B0E0 0x0000B198)
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface normal.
-const float kWallLaunchAngle = 0.7853981f; // 45 degrees
+const float kWallLaunchAngle = 0.7853982f; // 45 degrees, rodata_104 (0x3F490FDB; fn_29_8FE8 0x934C)
 
 // fn_29_3190's seven joint spheres: Ing.rel's own rodata_0 table, seven (locator, radius) pairs.
 // Every radius is 1.5 (0x3FC00000); the pivot point is the zero vector and the mass is 1000.0
@@ -1918,9 +1918,12 @@ void CIng::BecomeBodyProjectile(CStateManager& mgr, EStateMsg msg, float) {
 // fn_29_8FE8 (0x464, asm 0x00008FE8-0x0000944C): the BecomeWallProjectile state. The arms: the
 // message (asm 0x00009014, 0x00009024, 0x00009028, 0x00009034 and 0x00009038), the cross
 // product's magnitude (asm 0x000090CC) and the body command (asm 0x000091BC and 0x000091E4).
-// The run of 2026-10-21 (the Agon Wastes area, the state forced with `fsm <ing>
-// BecomeWallProjectile`) ran the three messages (the probe's keys 0, 5 and 9, four calls
-// each); the cross product and the body command arms did not run. Not marked.
+// Every arm ran in the Agon Wastes runs of 2026-10-23 (lane ing30, tools/drivers/ing30.py:
+// `fsm <ing> BecomeWallProjectile`, `bodystate <ing> 9|5`, `statecall` with messages 1, 2, 3
+// and -1): the cross product safe and not (forced, tools/cov/specs/ing30_force.py: a wall or a
+// floor triangle at Activate), the command issued, the loop attack running, neither, take-off
+// or form 4, no aim target, and the direction inside and outside the 45-degree cone.
+// @ fn_29_8FE8
 void CIng::BecomeWallProjectile(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate: {
