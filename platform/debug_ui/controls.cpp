@@ -58,6 +58,9 @@ void DrawControlsOptions() {
   }
   ImGui::SetItemTooltip("Turn speed with the crosshair at the screen edge.");
   ImGui::EndDisabled();
+  Changed(ImGui::Checkbox("Reset aim resets pointer and camera", &sResetAimBoth));
+  ItemHelp("Reset aim (unbound by default) recentres the crosshair with pointer aim on, or levels "
+           "the camera with it off. On: it does both.");
 
   ImGui::SeparatorText("Morph ball");
   Changed(ImGui::Checkbox("Fast Morph", &sFastMorph));
@@ -84,13 +87,40 @@ void DrawControlsKeyboardMouse() {
     PortMouse::SetEnabled(mouseAim);
     Changed(true);
   }
-  // Radians per pixel is a poor thing to read, so the slider shows a multiplier over the default.
-  float scale = PortMouse::Sensitivity() / 0.0035f;
-  if (ImGui::SliderFloat("Sensitivity", &scale, 0.1f, 5.f, "%.2fx")) {
-    PortMouse::SetSensitivity(0.0035f * scale);
+  // Shown on the Quake/Source/Apex scale (0.022 degrees a count per unit), stored in radians.
+  float sourceSensitivity = PortMouse::SourceFromRadians(PortMouse::Sensitivity());
+  if (ImGui::SliderFloat("Sensitivity", &sourceSensitivity, 0.05f, 30.f, "%.3f",
+                         ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat)) {
+    PortMouse::SetSensitivity(PortMouse::RadiansFromSource(sourceSensitivity));
     Changed(true);
   }
-  ImGui::SetItemTooltip("A multiple of the default turn per mouse count.\nCtrl+click to type a value.");
+  ImGui::SetItemTooltip("Same scale as Quake, Source and Apex games: the same number turns the "
+                        "same.\nCtrl+click to type a value.");
+  bool mouseSplit = PortMouse::SensitivitySplit();
+  if (ImGui::Checkbox("Separate vertical speed##mouse", &mouseSplit)) {
+    if (mouseSplit) PortMouse::SetSensitivityY(PortMouse::Sensitivity());
+    PortMouse::SetSensitivitySplit(mouseSplit);
+    Changed(true);
+  }
+  ItemHelp("Own sensitivity for looking up and down; Sensitivity then sets left and right only.");
+  if (PortMouse::SensitivitySplit()) {
+    float sourceSensitivityY = PortMouse::SourceFromRadians(PortMouse::SensitivityY());
+    if (ImGui::SliderFloat("Vertical sensitivity", &sourceSensitivityY, 0.05f, 30.f, "%.3f",
+                           ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat)) {
+      PortMouse::SetSensitivityY(PortMouse::RadiansFromSource(sourceSensitivityY));
+      Changed(true);
+    }
+  }
+  int mouseDpi = PortMouse::MouseDpi();
+  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 6.f);
+  if (ImGui::InputInt("Mouse DPI", &mouseDpi, 0, 0)) {
+    PortMouse::SetMouseDpi(mouseDpi);
+    Changed(true);
+  }
+  ImGui::SameLine();
+  const float cmPer360 = PortMouse::CentimetresPer360(PortMouse::Sensitivity(), float(PortMouse::MouseDpi()));
+  ImGui::TextDisabled("%.1f cm (%.1f in) per 360 degrees", cmPer360, cmPer360 / 2.54f);
+  ImGui::SetItemTooltip("Only used for this readout.");
   bool invertX = PortMouse::InvertX();
   if (ImGui::Checkbox("Invert X", &invertX)) {
     PortMouse::SetInvertX(invertX);
@@ -133,7 +163,7 @@ void DrawControlsController() {
   // Shown only with twin stick on, as MP1 does.
   if (PortMouse::StickEnabled()) {
     float rate = PortMouse::StickAimRate();
-    if (ImGui::SliderFloat("Stick aim speed", &rate, 200.f, 2000.f, "%.0f px/s")) {
+    if (ImGui::SliderFloat("Stick aim speed", &rate, 100.f, 8100.f, "%.0f px/s", ImGuiSliderFlags_Logarithmic)) {
       PortMouse::SetStickAimRate(rate);
       Changed(true);
     }
@@ -141,13 +171,16 @@ void DrawControlsController() {
                                         : "How fast the right stick turns the camera at full tilt.");
     bool split = PortMouse::StickAimSplit();
     if (ImGui::Checkbox("Separate vertical speed", &split)) {
+      // Start vertical where the shared speed was, so turning the split on changes nothing yet.
+      if (split) PortMouse::SetStickAimRateY(PortMouse::StickAimRate());
       PortMouse::SetStickAimSplit(split);
       Changed(true);
     }
     ItemHelp("Own speed for looking up and down; Stick aim speed then sets left and right only.");
     if (PortMouse::StickAimSplit()) {
       float rateY = PortMouse::StickAimRateY();
-      if (ImGui::SliderFloat("Vertical stick aim speed", &rateY, 200.f, 2000.f, "%.0f px/s")) {
+      if (ImGui::SliderFloat("Vertical stick aim speed", &rateY, 100.f, 8100.f, "%.0f px/s",
+                             ImGuiSliderFlags_Logarithmic)) {
         PortMouse::SetStickAimRateY(rateY);
         Changed(true);
       }
@@ -255,6 +288,18 @@ void DrawControlsTouchGyro() {
   if (ImGui::SliderFloat("Touch aim speed", &speed, 0.5f, 6.f, "%.2f px/dp", ImGuiSliderFlags_Logarithmic)) {
     PortTouch::SetAimSpeed(speed);
   }
+  b = PortTouch::AimSplit();
+  if (ImGui::Checkbox("Separate vertical speed##touch", &b)) {
+    if (b) PortTouch::SetAimSpeedY(PortTouch::AimSpeed());
+    PortTouch::SetAimSplit(b);
+  }
+  if (PortTouch::AimSplit()) {
+    float speedY = PortTouch::AimSpeedY();
+    if (ImGui::SliderFloat("Vertical touch aim speed", &speedY, 0.5f, 6.f, "%.2f px/dp",
+                           ImGuiSliderFlags_Logarithmic)) {
+      PortTouch::SetAimSpeedY(speedY);
+    }
+  }
   b = PortTouch::SpringSwipeEnabled();
   if (ImGui::Checkbox("Spring Ball on swipe up", &b)) {
     PortTouch::SetSpringSwipe(b);
@@ -293,28 +338,32 @@ void DrawControlsTouchGyro() {
     }
     Changed(true);
   }
-  ItemHelp("Tilt the pad or phone to move the pointer. Hold to aim: only while the Gyro aim button is "
-           "held. Hold to pause: always, except while it is held (to recentre). Toggle: press to "
-           "start and stop. The button is right stick click or left Ctrl (Remap page). Needs Pointer "
-           "aim (Controls > Options).");
+  ItemHelp("Tilt the pad or phone to aim (with Pointer aim, to move the pointer). Hold to aim: only "
+           "while the Gyro aim button is held. Hold to pause: always, except while it is held (to "
+           "recentre). Toggle: press to start and stop. The button is right stick click or left Ctrl "
+           "(Remap page). Needs mouse aim, twin stick or the touch controls' aim.");
   ImGui::BeginDisabled(!sGyroAim);
   const char* gyroSources[] = {"Auto", "Controller", "Phone"};
   if (ImGui::Combo("Source", &sGyroSource, gyroSources, 3)) {
     Changed(true);
   }
   ImGui::Text("Gyro: %s", PortInputDevices::GyroStatus());
-  // The gyro moves the pointer at its own speed; the camera sensitivity then only matters if the
-  // gyro also turns the camera.
-  if (ImGui::SliderFloat("Pointer speed##gyro", &sGyroCursorAngle, PortOverlay::kGyroCursorAngleMin,
-                         PortOverlay::kGyroCursorAngleMax, "%.0f deg across the screen")) {
-    sGyroCursorAngle = std::clamp(sGyroCursorAngle, PortOverlay::kGyroCursorAngleMin, PortOverlay::kGyroCursorAngleMax);
-    Changed(true);
+  // With pointer aim the gyro moves the pointer at its own speed; the camera sensitivity then only
+  // matters if the gyro also turns the camera.
+  const bool gyroPointer = sPointerAim;
+  if (gyroPointer) {
+    if (ImGui::SliderFloat("Pointer speed##gyro", &sGyroCursorAngle, PortOverlay::kGyroCursorAngleMin,
+                           PortOverlay::kGyroCursorAngleMax, "%.0f deg across the screen")) {
+      sGyroCursorAngle =
+          std::clamp(sGyroCursorAngle, PortOverlay::kGyroCursorAngleMin, PortOverlay::kGyroCursorAngleMax);
+      Changed(true);
+    }
+    ItemHelp("How far the pad turns to sweep the pointer across the screen. Smaller is faster.");
+    Changed(ImGui::Checkbox("Gyro also turns the camera", &sGyroCursorCamera));
+    ItemHelp("Also turns the camera with the gyro, at the Sensitivity below, while it moves the "
+             "pointer.");
   }
-  ItemHelp("How far the pad turns to sweep the pointer across the screen. Smaller is faster.");
-  Changed(ImGui::Checkbox("Gyro also turns the camera", &sGyroCursorCamera));
-  ItemHelp("Also turns the camera with the gyro, at the Sensitivity below, while it moves the "
-           "pointer.");
-  ImGui::BeginDisabled(!sGyroCursorCamera);
+  ImGui::BeginDisabled(gyroPointer && !sGyroCursorCamera);
   // The ## suffix keeps its ImGui id apart from the mouse Sensitivity slider.
   if (ImGui::SliderFloat("Sensitivity##gyro", &sGyroSensitivity, PortOverlay::kGyroSensitivityMin,
                          PortOverlay::kGyroSensitivityMax, "%.2fx", ImGuiSliderFlags_Logarithmic)) {
@@ -322,8 +371,22 @@ void DrawControlsTouchGyro() {
         std::clamp(sGyroSensitivity, PortOverlay::kGyroSensitivityMin, PortOverlay::kGyroSensitivityMax);
     Changed(true);
   }
-  ItemHelp("How far the camera turns per turn of the pad: at 1.00x a 90 degree turn gives 90. It "
-           "applies only if the gyro also turns the camera.");
+  ItemHelp("How far the camera turns per turn of the pad: at 1.00x a 90 degree turn gives 90. With "
+           "pointer aim it applies only if the gyro also turns the camera.");
+  if (ImGui::Checkbox("Separate vertical speed##gyro", &sGyroSplit)) {
+    if (sGyroSplit) sGyroSensitivityY = sGyroSensitivity;
+    Changed(true);
+  }
+  ItemHelp("Own sensitivity for tilting up and down; Sensitivity then sets left and right only. "
+           "With pointer aim it scales the pointer's vertical travel.");
+  if (sGyroSplit) {
+    if (ImGui::SliderFloat("Vertical sensitivity##gyro", &sGyroSensitivityY, PortOverlay::kGyroSensitivityMin,
+                           PortOverlay::kGyroSensitivityMax, "%.2fx", ImGuiSliderFlags_Logarithmic)) {
+      sGyroSensitivityY =
+          std::clamp(sGyroSensitivityY, PortOverlay::kGyroSensitivityMin, PortOverlay::kGyroSensitivityMax);
+      Changed(true);
+    }
+  }
   ImGui::EndDisabled();
   // Listed by how common they are; the setting keeps PortGyro::Space's numbers.
   static constexpr int kSpaceOrder[] = {PortGyro::kPlayer, PortGyro::kWorld, PortGyro::kLocal, PortGyro::kLocalRoll,
@@ -354,7 +417,12 @@ void DrawControlsTouchGyro() {
            "for a couple of seconds. Needs an accelerometer. Only in menus learns only with this "
            "menu open or outside free aim, and keeps it while you play.");
   const float countdown = PortInputDevices::GyroRecalibrationCountdown();
-  if (countdown >= 0.f) {
+  const float manual = PortInputDevices::GyroManualCalibrationProgress();
+  if (manual >= 0.f) {
+    ImGui::BeginDisabled();
+    ImGui::Button(("Calibrating, keep the pad still... " + std::to_string(int(manual * 100.f)) + "%").c_str());
+    ImGui::EndDisabled();
+  } else if (countdown >= 0.f) {
     ImGui::BeginDisabled();
     ImGui::Button(("Calibrating in " + std::to_string(int(std::ceil(countdown))) + "...").c_str());
     ImGui::EndDisabled();
@@ -365,8 +433,8 @@ void DrawControlsTouchGyro() {
   } else if (ImGui::Button("Recalibrate")) {
     PortInputDevices::StartGyroRecalibration();
   }
-  ItemHelp("Waits 5 seconds so you can put the pad down, then clears the gyro's drift measurement and "
-           "learns it again.");
+  ItemHelp("Waits 5 seconds so you can put the pad down, then measures drift for 3. Needs the gyro "
+           "in use.");
   const float confidence = PortInputDevices::GyroCalibrationConfidence();
   if (confidence >= 0.f) {
     ImGui::Text("Calibration: %d%%%s", int(confidence * 100.f + 0.5f),

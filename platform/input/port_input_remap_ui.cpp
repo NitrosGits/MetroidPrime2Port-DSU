@@ -4,6 +4,7 @@
 #include "port_controls.h"
 #include "port_input_bindings.h"
 #include "port_input_devices.h"
+#include "port_overlay.h"
 
 #include <dolphin/pad.h>
 #include <imgui.h>
@@ -910,12 +911,9 @@ const std::vector<SGroup>& Groups() {
           Action::VisorPrev},
          true},
         {"Morph Ball", {Action::SpringBall}, true},
-        {"Gyro", {Action::GyroAim}, true},
-        // Rows whose action has no consumer in this port yet are kept, named as such, so the
-        // bindings stay where MP1 puts them; binding one does nothing until its feature lands.
-        {"Reset aim (not in this port yet)", {Action::ResetAim}, true},
+        {"Gyro", {Action::GyroAim, Action::ResetAim}, true},
         // Read instead of the game buttons in menus and on the map ("Separate menu buttons").
-        {"Menus and map (not in this port yet)",
+        {"Menus and map",
          {Action::MenuA, Action::MenuB, Action::MenuX, Action::MenuY, Action::MenuL, Action::MenuR,
           Action::MenuLAnalog, Action::MenuRAnalog, Action::MenuUp, Action::MenuDown, Action::MenuLeft,
           Action::MenuRight},
@@ -1466,8 +1464,15 @@ void Draw() {
 
   ImGui::SameLine();
   DrawReset(views);
-  // MP2: MP1's "Separate menu buttons", "Point and click menus" and "Swap map finger gestures"
-  // switches are not here; this port has no separate menu buttons and no pointer menus.
+  bool menuStandard = PortOverlay::MenuStandardButtons();
+  if (ImGui::Checkbox("Separate menu buttons", &menuStandard)) PortOverlay::SetMenuStandardButtons(menuStandard);
+  ImGui::SetItemTooltip(
+      "On: menus and the map use the controller's \"Menus and map\" rows (by default A\n"
+      "confirms, B backs out, the triggers page and zoom). Start and the map button keep\n"
+      "their gameplay inputs. Keys and mouse buttons on those rows replace their\n"
+      "gameplay action there.\nOff: menus and the map follow your gameplay bindings.");
+  // MP2: MP1's "Point and click menus" and "Swap map finger gestures" are not here; this port
+  // has no pointer menus.
   ImGui::Separator();
 
   const bool editorOnTop = sEditing != kEditNone && !sEditRowShown;
