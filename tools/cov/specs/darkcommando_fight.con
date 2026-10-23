@@ -1,0 +1,13 @@
+# Temple Grounds 06_temple_sacredpath_dark (3bfa3eff,06_temple_sacredpath_dark): wake both Dark
+# Commandos and let them fight the (god-mode) player; `obj` shows their state and target.
+@f200 objs DarkCommando
+@f220 send u051a Activate; send u041c Activate
+@f240 place u051a player 10
+@f600 obj u051a
+@f1000 obj u051a
+@f1500 obj u051a; place u051a player 15
+@f2000 obj u051a
+@f2500 obj u051a; place u041c player 12
+@f3000 obj u041c
+@f3500 obj u041c; obj u051a
+@f4000 obj u041c; obj u051a

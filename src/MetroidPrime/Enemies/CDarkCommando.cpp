@@ -130,6 +130,7 @@ static const float skRagDollParticleRadii[] = {0.45f, 0.52f, 0.35f, 0.1f,  0.15f
 
 static rstl::string skRELName = rstl::string_l("DarkCommando.rel");
 
+// @ fn_3_9890
 CShadowDecoy::~CShadowDecoy() {}
 
 static CElementGen* CreateShadowDecoyEffect(CAssetId effect) {
@@ -220,10 +221,13 @@ void CShadowDecoy::Touch(CActor& actor, CStateManager&) {
   }
 }
 
+// @ fn_3_9970
 CVector3f CShadowDecoy::GetOrbitPosition(const CStateManager&) const { return mOrbitPosition; }
 
+// @ fn_3_998C
 CVector3f CShadowDecoy::GetAimPosition(const CStateManager&, float) const { return mOrbitPosition; }
 
+// @ fn_3_8F18
 CDarkCommandoGrenade::CDarkCommandoGrenade(TUniqueId uid, const rstl::string& name,
                                            const CEntityInfo& info, const CTransform4f& xf,
                                            const CModelData& modelData,
@@ -243,13 +247,23 @@ CDarkCommandoGrenade::CDarkCommandoGrenade(TUniqueId uid, const rstl::string& na
   ++sRelUseCount;
 }
 
+// @ fn_3_8D84
 CDarkCommandoGrenade::~CDarkCommandoGrenade() { --sRelUseCount; }
 
 void CDarkCommandoGrenade::Think(float dt, CStateManager& mgr) {
   UpdateGrenadeFX(dt, mgr);
+#ifdef TARGET_PC
+  // 0x8C20-0x8C28: lbz r0,0x388; extrwi. r0,r0,1,24; beq 0x8D5C -- the EMP and delete run
+  // only once exploded.
+  if (!HasExploded()) {
+    return;
+  }
+  mEMPTime += dt;
+#else
   if (HasExploded()) {
     mEMPTime += dt;
   }
+#endif
   if (mData.eMPDuration > 0.f) {
     for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
       const float distance = (mgr.GetPlayer(i)->GetTranslation() - GetTranslation()).Magnitude();
@@ -308,6 +322,7 @@ void CDarkCommandoChargeBeam::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_3_852C
 void CDarkCommandoChargeBeam::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CEnergyProjectile::AcceptScriptMsg(mgr, msg);
@@ -343,6 +358,7 @@ void CDarkCommandoChargeBeam::ResolveCollisionWithActor(const CRayCastResult& re
   CEnergyProjectile::ResolveCollisionWithActor(result, actor, mgr);
 }
 
+// @ fn_3_7E70
 CDarkCommandoChargeBeam::~CDarkCommandoChargeBeam() {}
 
 CDarkCommando::CDarkCommando(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
@@ -396,6 +412,7 @@ CDarkCommando::CDarkCommando(TUniqueId uid, const rstl::string& name, const CEnt
   mChargeBeamSegId = AnimationData()->GetLocatorSegId(rstl::string_l("gun_LCTR"));
 }
 
+// @ fn_3_6BF8
 CDarkCommando::~CDarkCommando() {}
 
 void CDarkCommando::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
@@ -433,6 +450,7 @@ void CDarkCommando::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_3_69D0
 void CDarkCommando::PreThink(float dt, CStateManager& mgr) {
   if (!mRagDoll.get() || !mRagDoll->IsPrimed()) {
     mBoneTracking.PreThink(*AnimationData());
@@ -543,6 +561,7 @@ void CDarkCommando::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_3_64AC
 void CDarkCommando::PreRenderAllViewports(CStateManager& mgr) {
   if (mRagDoll.get() && mRagDoll->IsPrimed()) {
     mRagDoll->PreRenderAllViewports(*this, 0.2f);
@@ -552,6 +571,7 @@ void CDarkCommando::PreRenderAllViewports(CStateManager& mgr) {
   }
 }
 
+// @ fn_3_648C
 void CDarkCommando::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
@@ -599,12 +619,15 @@ const CDamageVulnerability* CDarkCommando::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_3_6258
 CVector3f CDarkCommando::GetAimPosition(const CStateManager& mgr, float dt) const {
   return CPatterned::GetAimPosition(mgr, dt);
 }
 
+// @ fn_3_6250
 CProjectileInfo* CDarkCommando::ProjectileInfo() { return &mChargeBeamInfo; }
 
+// @ fn_3_61C4
 void CDarkCommando::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -613,18 +636,22 @@ void CDarkCommando::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodes, ARRAY_SIZE(skCodes));
 }
 
+// @ fn_3_61B0
 bool CDarkCommando::StateOver(CStateManager&, const CTriggerData&) const {
   return mAnimationState.GetState() == CAnimationState::kAS_Over;
 }
 
+// @ fn_3_619C
 bool CDarkCommando::ShouldTaunt(CStateManager&, const CTriggerData&) const {
   return mCurrentAction == 1;
 }
 
+// @ fn_3_6188
 bool CDarkCommando::ShouldFireEMP(CStateManager&, const CTriggerData&) const {
   return mCurrentAction == 3;
 }
 
+// @ fn_3_6174
 bool CDarkCommando::ShouldFireChargeBeam(CStateManager&, const CTriggerData&) const {
   return mCurrentAction == 2;
 }
@@ -649,6 +676,7 @@ bool CDarkCommando::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&) c
   return false;
 }
 
+// @ fn_3_6064
 bool CDarkCommando::ShouldWarpOut(CStateManager&, const CTriggerData&) const {
   return mWarpOutRequested;
 }
@@ -663,6 +691,7 @@ bool CDarkCommando::ShouldGetUp(CStateManager&, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_3_602C
 void CDarkCommando::Start(CStateManager&, EStateMsg, float) {}
 
 void CDarkCommando::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -959,6 +988,7 @@ void CDarkCommando::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_3_4690
 void CDarkCommando::SelectAttackTarget(CStateManager& mgr, float) {
   mTargetId = mgr.GetPlayer(0)->GetUniqueId();
   mBoneTracking.SetActive(true);
@@ -1106,6 +1136,7 @@ void CDarkCommando::DeactivateCloak(CStateManager&, float) {
   }
 }
 
+// @ fn_3_3B0C
 void CDarkCommando::SetCloakTarget(float target, float duration) {
   target = CMath::Min(1.f, target);
   target = CMath::Max(0.f, target);
@@ -1227,9 +1258,17 @@ void CDarkCommando::BuildActionChoices(CStateManager& mgr,
       CMaterialList(LineOfSightCharacterMaterial, LineOfSightPlayerMaterial,
                     LineOfSightCollisionActorMaterial, LineOfSightNoPlatformMaterial,
                     LineOfSightExcludeMaterial));
+#ifdef TARGET_PC
+  // 0x33F0-0x33F8: bl RayCollideWorld; clrlwi. r0,r3,24; beq 0x34A4 -- bail when the line of
+  // sight is blocked (RayCollideWorld returns true when clear).
+  if (!mgr.RayCollideWorld(start, end, filter, this)) {
+    return;
+  }
+#else
   if (mgr.RayCollideWorld(start, end, filter, this)) {
     return;
   }
+#endif
 
   if (InEMPRange(mgr)) {
     choices.push_back(TActionChoice(skEMPActionId, mData.eMPAttackChance));
@@ -1415,6 +1454,7 @@ void CDarkCommando::SolveGrenadeLaunch(const CVector3f& target, const CVector3f&
   }
 }
 
+// @ fn_3_2010
 const CScriptAIHint* CDarkCommando::GetHint(const CStateManager& mgr) const {
   const CScriptAIHint* hint = nullptr;
   if (mHintId != kInvalidUniqueId) {
@@ -1423,6 +1463,7 @@ const CScriptAIHint* CDarkCommando::GetHint(const CStateManager& mgr) const {
   return hint;
 }
 
+// @ fn_3_1FA0
 void CDarkCommando::ReleaseHint(CStateManager& mgr) {
   if (CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(mHintId))) {
     hint->SetInUse(false);
