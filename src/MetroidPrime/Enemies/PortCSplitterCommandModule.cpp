@@ -2420,10 +2420,27 @@ bool CSplitterCommandModule::CanBeIngPossessed(CStateManager& mgr) const {
 // The SLdr defaults the REL writes inline (0x13C-0x1A4) equal the generated reader's. Arms: 17/18
 // in every run; the null model (0x2DC) is dead in the data: tools/scan_splitter_loader.py finds
 // an ANCS in all 28 placements and no unknown top-level id (the ReadBytes skip, 0x280).
+// Retail fn_75_F00: SLdrSplitterCommandModuleData's constructor, which the loader calls at
+// 0x00000138. Its `li r0,-0x1` at 0x00000F3C feeds seven stores over the data's 0xc4..0xdc, the
+// sound ids sound_LaserSweep..sound_ShieldOn; the guest's default is -1 (no sound) and the
+// generated header stores 0. The .inc reader below overwrites each one the instance carries.
+//   fn_75_F00  li r0,-0x1 0x00000F3C; stw r0,0xc4..0xdc(r31) 0x00000F44..0x00000F5C
+static void xF00_SoundDefaults(SLdrSplitterCommandModule& sldr) {
+  SLdrSplitterCommandModuleData& data = sldr.commandModuleProperties;
+  data.sound_LaserSweep = -1;    // 0x00000F44 (field 0xc4)
+  data.sound_LaserChargeUp = -1; // 0x00000F48 (0xc8)
+  data.sound_Docking = -1;       // 0x00000F4C (0xcc)
+  data.sound_Scanning = -1;      // 0x00000F50 (0xd0)
+  data.sound_LightShield = -1;   // 0x00000F54 (0xd4)
+  data.sound_DarkShield = -1;    // 0x00000F58 (0xd8)
+  data.sound_ShieldOn = -1;      // 0x00000F5C (0xdc)
+}
+
 // @ fn_75_FC
 CEntity* PortLoadSplitterCommandModule(CStateManager& mgr, CInputStream& input,
                                        CEntityInfo& info) {
   SLdrSplitterCommandModule sldrThis;
+  xF00_SoundDefaults(sldrThis); // fn_75_F00's -1 sound ids (the call at 0x00000138)
 #include "MetroidPrime/ScriptLoader/SLdrSplitterCommandModule.inc"
 
   rstl::optional_object< CModelData > modelData(

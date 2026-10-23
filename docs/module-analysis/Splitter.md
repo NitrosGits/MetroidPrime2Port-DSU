@@ -194,7 +194,7 @@ stands in for.
 | 0x60 | int `unknown_0xd5f34476` (4) | 0x888 |
 | 0x64 | f32 `spinAttackMaxTime` (30) | 0x88C |
 | 0x68 | `SLdrDamageInfo spinAttackDamage` (0x10): type 11, dmg 20, kb 5 | 0x7DC (converted) + 0x890 (raw) |
-| 0x78 | int `sound_Alerted` (0) | 0x8A0 |
+| 0x78 | int `sound_Alerted` (-1: fn_75_8BF0 0x8C1C; the port sets it in x8BF0_SoundDefaults) | 0x8A0 |
 | 0x7C | `SLdrIngPossessionData ingPossessionData` (0x17C) | 0x8A4 |
 | 0x1F8 | `SLdrDamageVulnerability spinAttackVulnerability` (0x30) | 0x7F8 (converted) + 0xA20 (raw) |
 
@@ -217,7 +217,7 @@ Chain: loader struct → runtime struct (`fn_75_FD58`: `legStabDamage` at +0x00,
 | 0x4C | `SLdrDamageInfo laserSweepDamage` (0x10): type 11, dmg 10 | 0x80C (raw) + 0xCF0 (converted) |
 | 0x5C | `SLdrPlasmaBeamInfo laserSweepBeamInfo` (0x48): len 500, exp 4, life 1, pulse 20, shut 0.25 | 0x81C |
 | 0xA4 | `SLdrUnknownStruct42` (0x20): angle 20, 4 colours, scale/fade/open speed | 0x864 (angle), 0x868-0x880 |
-| 0xC4-0xDC | the seven sound ids `sound_LaserSweep`, `sound_LaserChargeUp`, `sound_Docking`, `sound_Scanning`, `sound_LightShield`, `sound_DarkShield`, `sound_ShieldOn` (all 0) | 0x884-0x89C |
+| 0xC4-0xDC | the seven sound ids `sound_LaserSweep`, `sound_LaserChargeUp`, `sound_Docking`, `sound_Scanning`, `sound_LightShield`, `sound_DarkShield`, `sound_ShieldOn` (all -1: fn_75_F00 0xF44-0xF5C; the header says 0, the port sets -1 in xF00_SoundDefaults) | 0x884-0x89C |
 | 0xE0 | `SLdrIngPossessionData ingPossessionData` (0x17C) | 0x8A0 |
 | 0x25C | `SLdrDamageVulnerability lightShieldVulnerability` (0x30) | 0xA1C (raw) + 0xD0C (converted) |
 | 0x3B8 | `SLdrDamageVulnerability darkShieldVulnerability` (0x30) | 0xA4C (raw) + 0xD3C (converted) |

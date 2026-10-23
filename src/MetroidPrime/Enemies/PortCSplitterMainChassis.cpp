@@ -2923,10 +2923,18 @@ void CSplitterMainChassis::PortStartDeathTimer(float time) {
 // The SLdr defaults the REL writes inline (0x82F0-0x8358) equal the generated reader's. Arms: 14/15
 // in every run; the null model (0x8490) is dead in the data: tools/scan_splitter_loader.py finds
 // an ANCS in all 28 placements and no unknown top-level id (the ReadBytes skip, 0x8434).
+// Retail fn_75_8BF0: SLdrSplitterMainChassisData's constructor, which the loader calls at
+// 0x000082EC. It stores -1 (li r0,-0x1 0x00008C14) at 0x78, sound_Alerted (0x00008C1C); the
+// generated header stores 0. The .inc reader below overwrites it when the instance carries it.
+static void x8BF0_SoundDefaults(SLdrSplitterMainChassis& sldr) {
+  sldr.splitterMainChassisData.sound_Alerted = -1; // 0x00008C1C (field 0x78)
+}
+
 // @ fn_75_82B0
 static CEntity* PortLoadSplitterMainChassis(CStateManager& mgr, CInputStream& input,
                                              CEntityInfo& info) {
   SLdrSplitterMainChassis sldrThis;
+  x8BF0_SoundDefaults(sldrThis); // fn_75_8BF0's -1 sound id (the call at 0x000082EC)
 #include "MetroidPrime/ScriptLoader/SLdrSplitterMainChassis.inc"
 
   rstl::optional_object< CModelData > modelData(
