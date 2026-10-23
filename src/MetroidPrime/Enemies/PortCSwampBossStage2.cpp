@@ -2439,10 +2439,27 @@ CVector3f CSwampBossStage2::GetIngSnatchingPoint(float t) const {
 // --------------------------------------------------------------------------------------------
 // Loader
 
+// Retail fn_79_134C: SLdrSwampBossStage2Data's constructor, called by the loader at 0x00000864 on
+// its stack object. Two of its `li r0,-0x1` runs feed sound ids the generated header stores as 0
+// (the guest's "no sound" is -1): the 0x128 (0x000013B0) store's neighbour 0x124 (0x000013AC) is
+// the spitVisorEffect CAssetId, already kInvalidAssetId in the header. The other sound is inside
+// the block's SLdrUnknownStruct38 at 0x1b8: fn_79_134C calls its constructor fn_79_1714 at
+// 0x000013E0, which stores -1 at its 0x8 (0x0000171C) - soundEffect. SLdrSwampBossStage2Data's
+// layout is the guest's, and so is SLdrUnknownStruct38's, so the field paths below are the guest
+// offsets. The .inc readers overwrite them when the instance's data carries the property.
+//   fn_79_134C  li r0,-0x1 0x000013A4; stw r0,0x128(r31) 0x000013B0
+//   fn_79_1714  li r0,-0x1 0x00001714; stw r0,0x8(r3)    0x0000171C  (block 0x1b8 + 0x8)
+static void x79134C_SoundDefaults(SLdrSwampBossStage2& sldr) {
+  sldr.swampBossStage2Properties.sound_SpitVisor = -1; // 0x000013B0 (field 0x128)
+  sldr.swampBossStage2Properties.unknown_0x9347820e.soundEffect =
+      -1; // 0x0000171C (block 0x1b8, field 0x8)
+}
+
 // fn_79_170
 static CEntity* PortLoadSwampBossStage2(CStateManager& mgr, CInputStream& input,
                                         CEntityInfo& info) {
   SLdrSwampBossStage2 sldrThis;
+  x79134C_SoundDefaults(sldrThis); // fn_79_134C's -1 sound ids (the call at 0x00000864)
 #include "MetroidPrime/ScriptLoader/SLdrSwampBossStage2.inc"
   rstl::optional_object< CModelData > modelData(
       LdrToModelData(sldrThis.editorProperties.transform.scale, kInvalidAssetId,
