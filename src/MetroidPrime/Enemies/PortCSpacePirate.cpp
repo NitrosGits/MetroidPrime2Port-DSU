@@ -1541,7 +1541,8 @@ void CSpacePirate::Touch(CActor& actor, CStateManager& mgr) {
   if ((trigger->GetTriggerFlags() & kTFL_DetectAI) == 0) {
     return; // 0xE42C-0xE434
   }
-  if (trigger->GetForceMagnitude() <= 0.f) {
+  // 0xE444 fcmpo / 0xE448 ble: a plain ble, so a NaN magnitude skips the push too.
+  if (!(trigger->GetForceMagnitude() > 0.f)) {
     return; // 0xE438-0xE448
   }
   ragdoll->TorsoImpulse() += trigger->GetForceField(); // 0xE44C-0xE47C
