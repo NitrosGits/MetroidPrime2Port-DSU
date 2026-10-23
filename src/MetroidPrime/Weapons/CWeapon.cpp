@@ -23,6 +23,13 @@ CWeapon::CWeapon(TUniqueId uid, TAreaId areaId, bool active, TUniqueId owner, EW
 , mDamageDuration(0.f)
 , mInterferenceDuration(0.f) {
   // TODO: attribute 0x02000000 also sets the unresolved CActor flag x154_7_.
+#ifdef TARGET_PC
+  // 0x800DB29C rlwinm. r0,r25(attribs),0,6,6 tests 0x02000000 (kPA_Bombs); 0x800DB384 beq skips,
+  // else 0x800DB390 rlwimi r0,r3(=1),0,31,31 sets byte 0x154 bit 0x01 (mAlphaSorted).
+  if ((attribs & kPA_Bombs) != 0) {
+    SetUseAlphaSorting(true);
+  }
+#endif
 }
 
 CWeapon::~CWeapon() {}

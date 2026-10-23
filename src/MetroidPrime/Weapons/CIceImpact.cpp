@@ -260,7 +260,13 @@ void CIceImpact::Touch(CActor& actor, CStateManager& mgr) {
       return;
     }
 
+#ifdef TARGET_PC
+    // 0x8013AA34 li r5,0 / 0x8013AA3C rlwimi r3,r5,7,24,24 clears 0x80 (mNoImmunity);
+    // 0x8013AA14 li r7,1 / 0x8013AA5C rlwimi r0,r7,6,25,25 sets 0x40 (mApplyRadiusDamage).
+    const CDamageInfo damageInfo(CWeaponMode(kWT_Dark, true), 1.6666666f, 0.1f, 1.f, false, true);
+#else
     const CDamageInfo damageInfo(CWeaponMode(kWT_Dark, true), 1.6666666f, 0.1f, 1.f);
+#endif
     if (CPatterned* patterned = TCastToPtr< CPatterned >(&actor)) {
       const CAABox expanded(touchBounds->GetMinPoint() - CVector3f(0.f, 0.f, 0.5f),
                             touchBounds->GetMaxPoint() + CVector3f(0.f, 0.f, 0.5f));
