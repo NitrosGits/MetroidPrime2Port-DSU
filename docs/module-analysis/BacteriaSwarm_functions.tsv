@@ -1,0 +1,110 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_6_0	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+0002C	fn_6_2C	24	T	RELExit	-	REL runtime	no
+00050	fn_6_50	20	T	RELMain	-	REL runtime	no
+00070	fn_6_70	30	T	SetFuncPtrs	-	REL runtime	no
+000A0	fn_6_A0	74C	B	LoadBacteriaSwarm	-	upstream body (CBacteriaSwarm)	yes
+007EC	fn_6_7EC	58	H	CBasicSwarmData::~CBasicSwarmData	-	weak copy / template instance	no
+00844	fn_6_844	7C	B	SLdrBacteriaSwarm::~SLdrBacteriaSwarm	-	upstream body (CBacteriaSwarm)	no
+008C0	fn_6_8C0	1CC	B	SLdrBacteriaSwarm::SLdrBacteriaSwarm	-	upstream body (CBacteriaSwarm)	no
+00A8C	fn_6_A8C	B8	B	CBacteriaSwarm::UpdateLockOnBlend	-	upstream body (CBacteriaSwarm)	no
+00B44	fn_6_B44	1C8	B	CBacteriaSwarm::FindBestLockOnIndex	-	upstream body (CBacteriaSwarm)	no
+00D0C	fn_6_D0C	11C	B	CBacteriaSwarm::GetLockOnIndex	-	upstream body (CBacteriaSwarm)	no
+00E28	fn_6_E28	160	B	CBacteriaSwarm::IsBoidVisibleForLockOn	-	upstream body (CBacteriaSwarm)	yes
+00F88	fn_6_F88	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
+00FE4	fn_6_FE4	1C	B	CBacteriaSwarm::GetOrbitPosition	-	upstream body (CBacteriaSwarm)	yes
+01000	fn_6_1000	F0	B	CBacteriaSwarm::GetAimPosition	-	upstream body (CBacteriaSwarm)	no
+010F0	fn_6_10F0	CC	B	CBacteriaSwarm::PlayBoidSound	-	upstream body (CBacteriaSwarm)	yes
+011BC	fn_6_11BC	44	B	CBacteriaSwarm::RenderParticles	-	upstream body (CBacteriaSwarm)	yes
+01200	fn_6_1200	38	B	CBacteriaSwarm::UpdateParticles	-	upstream body (CBacteriaSwarm)	yes
+01238	fn_6_1238	A8	B	CBacteriaSwarm::AddParticle	-	upstream body (CBacteriaSwarm)	no
+012E0	fn_6_12E0	114	B	CBacteriaSwarm::KillBoid	-	upstream body (CBacteriaSwarm)	yes
+013F4	fn_6_13F4	8	B	CBacteriaSwarm::ShouldBuildAreaCollisionCacheForPartition	-	upstream body (CBacteriaSwarm)	yes
+013FC	fn_6_13FC	4C	B	CBacteriaSwarm::GetAreaCollisionCacheForPartition	-	upstream body (CBacteriaSwarm)	yes
+01448	fn_6_1448	1F4	B	CBacteriaSwarm::UpdateEffects	-	upstream body (CBacteriaSwarm)	no
+0163C	fn_6_163C	1C0	B	CBacteriaSwarm::FindClosestCell	-	upstream body (CBacteriaSwarm)	no
+017FC	fn_6_17FC	278	B	CBacteriaSwarm::Touch	-	upstream body (CBacteriaSwarm)	no
+01A74	fn_6_1A74	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
+01AB0	fn_6_1AB0	174	B	CBacteriaSwarm::GetWaypointForState	-	upstream body (CBacteriaSwarm)	no
+01C24	fn_6_1C24	54	H	rstl::vector<TUniqueId, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+01C78	fn_6_1C78	190	B	CBacteriaSwarm::ApplySafeZoneAvoidance	-	upstream body (CBacteriaSwarm)	no
+01E08	fn_6_1E08	170	B	CBacteriaSwarm::ApplyBoundsAvoidance	-	upstream body (CBacteriaSwarm)	yes
+01F78	fn_6_1F78	1A8	B	CBacteriaSwarm::ApplyPlayerAttraction	-	upstream body (CBacteriaSwarm)	no
+02120	fn_6_2120	120	B	CBacteriaSwarm::ApplyCohesion	-	upstream body (CBacteriaSwarm)	no
+02240	fn_6_2240	F4	B	CBacteriaSwarm::ApplyCohesion	-	upstream body (CBacteriaSwarm)	yes
+02334	fn_6_2334	124	B	CBacteriaSwarm::ApplySeparation	-	upstream body (CBacteriaSwarm)	no
+02458	fn_6_2458	CC	B	CBacteriaSwarm::ApplySeparation	-	upstream body (CBacteriaSwarm)	no
+02524	fn_6_2524	108	B	CBacteriaSwarm::BuildBoidNearList	-	upstream body (CBacteriaSwarm)	no
+0262C	fn_6_262C	3AC	B	CBacteriaSwarm::Render	-	upstream body (CBacteriaSwarm)	no
+029D8	fn_6_29D8	5C	B	CBacteriaSwarm::AddToRenderer	-	upstream body (CBacteriaSwarm)	no
+02A34	fn_6_2A34	4	B	CBacteriaSwarm::RenderBoid	-	upstream body (CBacteriaSwarm)	yes
+02A38	fn_6_2A38	8	B	CBacteriaSwarm::CanRenderUnsorted	-	upstream body (CBacteriaSwarm)	no
+02A40	fn_6_2A40	274	B	CBacteriaSwarm::SoftwareLight	-	upstream body (CBacteriaSwarm)	yes
+02CB4	fn_6_2CB4	108	B	CBacteriaSwarm::HardwareLight	-	upstream body (CBacteriaSwarm)	no
+02DBC	fn_6_2DBC	E8	B	CBacteriaSwarm::PreRender	-	upstream body (CBacteriaSwarm)	yes
+02EA4	fn_6_2EA4	1C0	B	CBacteriaSwarm::BoxForPosition	-	upstream body (CBacteriaSwarm)	yes
+03064	fn_6_3064	108	B	CBacteriaSwarm::GetListAt	-	upstream body (CBacteriaSwarm)	yes
+0316C	fn_6_316C	2A0	B	CBacteriaSwarm::UpdatePartition	-	upstream body (CBacteriaSwarm)	no
+0340C	fn_6_340C	BC	B	CBacteriaSwarm::MoveBoid	-	upstream body (CBacteriaSwarm)	yes
+034C8	fn_6_34C8	4	B	CBacteriaSwarm::UpdateSwarmAnimations	-	upstream body (CBacteriaSwarm)	yes
+034CC	fn_6_34CC	A4	B	CBacteriaSwarm::UpdateAllBoidMovement	-	upstream body (CBacteriaSwarm)	yes
+03570	fn_6_3570	8AC	B	CBacteriaSwarm::Think	-	upstream body (CBacteriaSwarm)	no
+03E1C	fn_6_3E1C	8	H	CElementGen::GetParticleCount	-	weak copy / template instance	no
+03E24	fn_6_3E24	7C	H	CAreaCollisionCache::CAreaCollisionCache	-	weak copy / template instance	no
+03EA0	fn_6_3EA0	50	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::~reserved_vector	-	weak copy / template instance	no
+03EF0	fn_6_3EF0	84	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::destroy_elements	-	weak copy / template instance	no
+03F74	fn_6_3F74	44	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::reserved_vector	-	weak copy / template instance	no
+03FB8	fn_6_3FB8	68	H	rstl::uninitialized_copy_n<const CMetroidAreaCollider::COctreeLeafCache*, CMetroidAreaCollider::COctreeLeafCache*>	-	weak copy / template instance	no
+04020	fn_6_4020	20	H	rstl::construct<CMetroidAreaCollider::COctreeLeafCache>	-	weak copy / template instance	no
+04040	fn_6_4040	28	H	rstl::construction_policy<CMetroidAreaCollider::COctreeLeafCache, 0>::construct	-	weak copy / template instance	no
+04068	fn_6_4068	5C	H	CMetroidAreaCollider::COctreeLeafCache::COctreeLeafCache	-	weak copy / template instance	no
+040C4	fn_6_40C4	8C	H	rstl::reserved_vector<CAreaOctTree::Node, 64>::~reserved_vector	-	weak copy / template instance	no
+04150	fn_6_4150	44	H	rstl::reserved_vector<CAreaOctTree::Node, 64>::reserved_vector	-	weak copy / template instance	no
+04194	fn_6_4194	68	H	rstl::uninitialized_copy_n<const CAreaOctTree::Node*, CAreaOctTree::Node*>	-	weak copy / template instance	no
+041FC	fn_6_41FC	20	H	rstl::construct<CAreaOctTree::Node>	-	weak copy / template instance	no
+0421C	fn_6_421C	28	H	rstl::construction_policy<CAreaOctTree::Node, 0>::construct	-	weak copy / template instance	no
+04244	fn_6_4244	4C	H	CAreaOctTree::Node::Node	-	weak copy / template instance	no
+04290	fn_6_4290	58	H	CAreaCollisionCache::~CAreaCollisionCache	-	weak copy / template instance	no
+042E8	fn_6_42E8	218	B	CBacteriaSwarm::AddDoorRepulsors	-	upstream body (CBacteriaSwarm)	no
+04500	fn_6_4500	234	B	CBacteriaSwarm::ApplySteeringBehaviors	-	upstream body (CBacteriaSwarm)	no
+04734	fn_6_4734	4EC	B	CBacteriaSwarm::UpdateBoid	-	upstream body (CBacteriaSwarm)	no
+04C20	fn_6_4C20	54	H	CCollisionSurface::CCollisionSurface	-	weak copy / template instance	no
+04C74	fn_6_4C74	3C	H	rstl::reserved_vector<CBacteriaSwarm::CBoid*, 50>::~reserved_vector	-	weak copy / template instance	no
+04CB0	fn_6_4CB0	24C	B	CBacteriaSwarm::FindBestSurface	-	upstream body (CBacteriaSwarm)	no
+04EFC	fn_6_4EFC	5C	H	CCollisionSurface::CCollisionSurface	-	weak copy / template instance	no
+04F58	fn_6_4F58	338	B	CBacteriaSwarm::FindBestCollisionInBox	-	upstream body (CBacteriaSwarm)	no
+05290	fn_6_5290	1A4	B	CBacteriaSwarm::PointOnSurface	-	upstream body (CBacteriaSwarm)	yes
+05434	fn_6_5434	40	H	CVector3f::Cross	-	weak copy / template instance	no
+05474	fn_6_5474	4C	B	CBacteriaSwarm::ProjectVectorToPlane	-	upstream body (CBacteriaSwarm)	no
+054C0	fn_6_54C0	78	B	CBacteriaSwarm::ProjectPointToPlane	-	upstream body (CBacteriaSwarm)	yes
+05538	fn_6_5538	3C	B	CBacteriaSwarm::GetTouchBounds	-	upstream body (CBacteriaSwarm)	yes
+05574	fn_6_5574	98	B	CBacteriaSwarm::GetBoundingBox	-	upstream body (CBacteriaSwarm)	yes
+0560C	fn_6_560C	D0	B	CBacteriaSwarm::PreRenderAllViewports	-	upstream body (CBacteriaSwarm)	yes
+056DC	fn_6_56DC	3B0	B	CBacteriaSwarm::CreateBoid	-	upstream body (CBacteriaSwarm)	no
+05A8C	fn_6_5A8C	13C	B	CBacteriaSwarm::AcceptScriptMsg	-	upstream body (CBacteriaSwarm)	no
+05BC8	fn_6_5BC8	38	H	rstl::vector<CBacteriaSwarm::CBoid, rstl::rmemory_allocator>::push_back_unsafe	-	weak copy / template instance	no
+05C00	fn_6_5C00	20	H	rstl::construct<CBacteriaSwarm::CBoid>	-	weak copy / template instance	no
+05C20	fn_6_5C20	28	H	rstl::construction_policy<CBacteriaSwarm::CBoid, 0>::construct	-	weak copy / template instance	no
+05C48	fn_6_5C48	90	H	CBacteriaSwarm::CBoid::CBoid	-	implicit copy ctor	no
+05CD8	fn_6_5CD8	130	B	CBacteriaSwarm::~CBacteriaSwarm	-	upstream body (CBacteriaSwarm)	no
+05E08	fn_6_5E08	84	H	rstl::vector<CBacteriaSwarm::CBoid, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+05E8C	fn_6_5E8C	84	H	rstl::vector<CBacteriaSwarm::CRepulsor, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+05F10	fn_6_5F10	99C	B	CBacteriaSwarm::CBacteriaSwarm	-	upstream body (CBacteriaSwarm)	no
+068AC	fn_6_68AC	C8	H	rstl::optional_object<TLockedToken<CGenDescription>>::operator=	-	weak copy / template instance	no
+06974	fn_6_6974	58	H	TLockedToken<CGenDescription>::~TLockedToken	-	weak copy / template instance	no
+069CC	fn_6_69CC	54	H	TToken<CGenDescription>::~TToken	-	weak copy / template instance	no
+06A20	fn_6_6A20	6C	H	rstl::single_ptr<CElementGen>::~single_ptr	-	weak copy / template instance	no
+06A8C	fn_6_6A8C	6C	H	rstl::optional_object<TLockedToken<CGenDescription>>::~optional_object	-	weak copy / template instance	no
+06AF8	fn_6_6AF8	3C	H	rstl::reserved_vector<CBacteriaSwarm::CBoid*, 125>::~reserved_vector	-	weak copy / template instance	no
+06B34	fn_6_6B34	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+06C70	fn_6_6C70	6C	H	rstl::optional_object<TLockedToken<CModel>>::~optional_object	-	weak copy / template instance	no
+06CDC	fn_6_6CDC	54	H	TToken<CModel>::~TToken	-	weak copy / template instance	no
+06D30	fn_6_6D30	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr	-	weak copy / template instance	no
+06D94	fn_6_6D94	20	H	CModelData::None	-	weak copy / template instance	no
+06DB4	fn_6_6DB4	128	B	CBacteriaSwarm::CBoid::CBoid	-	upstream body (CBacteriaSwarm)	yes
+06EDC	fn_6_6EDC	1A8	B	CBacteriaSwarm::ShortestRotationArcWrapped	-	upstream body (CBacteriaSwarm)	no
+07084	fn_6_7084	A4	H	rstl::vector<TUniqueId, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+07128	fn_6_7128	B8	H	rstl::vector<CBacteriaSwarm::CBoid, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+071E0	fn_6_71E0	68	H	rstl::uninitialized_copy<rstl::pointer_iterator<CBacteriaSwarm::CBoid, rstl::vector<CBacteriaSwarm::CBoid, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CBacteriaSwarm::CBoid*>	-	weak copy / template instance	no
+07248	fn_6_7248	B8	H	rstl::vector<CBacteriaSwarm::CRepulsor, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+07300	fn_6_7300	4C	H	rstl::uninitialized_copy<rstl::pointer_iterator<CBacteriaSwarm::CRepulsor, rstl::vector<CBacteriaSwarm::CRepulsor, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CBacteriaSwarm::CRepulsor*>	-	weak copy / template instance	no
