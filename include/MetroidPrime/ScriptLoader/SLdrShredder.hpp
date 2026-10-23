@@ -28,6 +28,7 @@ struct SLdrShredderData {
   float desiredDistance;          // 0x60be35a1
 };
 
+// @ fn_68_B20
 inline SLdrShredderData::SLdrShredderData() : explosionDamage() {
   startState = 10;
   minHeight = 4.0f;
@@ -46,6 +47,7 @@ inline SLdrShredderData::SLdrShredderData() : explosionDamage() {
 
 inline SLdrShredderData::~SLdrShredderData() {}
 
+// @ fn_68_838
 inline void LoadTypedefShredderData(SLdrShredderData& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
