@@ -3998,6 +3998,7 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   PortWarpSettle();
   PortLayerTick();
   PortPlaceArrivalTick();
+  PortDarkWorldTick();
   // MP2_FRAMES: a test run ends itself after so many game updates, so a load test costs seconds
   // instead of a timeout (see platform/include/port_harness.h). The report names where the run got
   // to, which is what a log's last line should say.
@@ -4732,21 +4733,49 @@ void CStateManager::PortSetDarkWorldFromArea(TAreaId aid) {
     const CMapWorld* mapWorld = world->IGetMapWorld();
     const CMapArea* mapArea = mapWorld != nullptr ? mapWorld->GetMapArea(aid.Value()) : nullptr;
     if (mapArea == nullptr) {
-      std::fprintf(stderr,
-                   "[warp] area %d has no area attributes and no loaded map area; dark-world flag "
-                   "stays %d\n",
-                   aid.Value(), mIsDarkWorld ? 1 : 0);
+      // TravelToArea has only just asked for it (CWorld::TravelToArea -> SetWhichMapAreasLoaded
+      // around the new area), so PortDarkWorldTick asks again until it has streamed in.
+      if (mPortDarkFlagArea != aid) {
+        mPortDarkFlagArea = aid;
+        mPortDarkFlagUntil = mUpdateFrameIdx + 600;
+        std::fprintf(stderr,
+                     "[warp] area %d has no area attributes and its map area is still loading; "
+                     "dark-world flag %d until it is in\n",
+                     aid.Value(), mIsDarkWorld ? 1 : 0);
+      }
       return;
     }
     dark = mapArea->IsInDarkWorld();
     source = "its map area";
   }
+  mPortDarkFlagArea = kInvalidAreaId;
   // One line per arrival, so a sweep can check the flag against the area's side.
   std::fprintf(stderr, "[warp] area %d: dark-world flag %d (%s; was %d)\n", aid.Value(),
                dark ? 1 : 0, source, mIsDarkWorld ? 1 : 0);
   if (dark != mIsDarkWorld) {
     SetIsDarkWorld(dark);
   }
+}
+
+// Finishes a PortSetDarkWorldFromArea that had to wait for the area's map area.
+void CStateManager::PortDarkWorldTick() {
+  if (mPortDarkFlagArea == kInvalidAreaId) {
+    return;
+  }
+  CWorld* world = World();
+  // mNextAreaId, not the world's current area: SetCurrentAreaId only sets the former, and the
+  // world follows on its next TravelToArea.
+  if (world == nullptr || mNextAreaId != mPortDarkFlagArea) {
+    mPortDarkFlagArea = kInvalidAreaId;
+    return;
+  }
+  if (mUpdateFrameIdx > mPortDarkFlagUntil) {
+    std::fprintf(stderr, "[warp] area %d: its map area never loaded; dark-world flag stays %d\n",
+                 mPortDarkFlagArea.Value(), mIsDarkWorld ? 1 : 0);
+    mPortDarkFlagArea = kInvalidAreaId;
+    return;
+  }
+  PortSetDarkWorldFromArea(mPortDarkFlagArea);
 }
 
 // The game's own transition carries a hop the direct route was too tight for. This places the player

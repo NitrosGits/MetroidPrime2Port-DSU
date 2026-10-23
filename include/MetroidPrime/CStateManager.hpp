@@ -184,6 +184,7 @@ public:
   void PortWarpTick();
   void PortWarpToArea(TAreaId aid);
   void PortSetDarkWorldFromArea(TAreaId aid);
+  void PortDarkWorldTick();
   void PortWarpToWorld(CAssetId worldId, CAssetId areaId);
   CAssetId PortFirstAreaOfWorld(CAssetId worldId) const;
   void PortWarpToDock();
@@ -240,6 +241,9 @@ public:
   TAreaId mPortSpawnAtArea = kInvalidAreaId;
   uint mPortSpawnAtFrame = 0;
   bool mPortSpawnWarned = false;
+  // An arrival whose dark-world flag waits for the area's map area (PortDarkWorldTick).
+  TAreaId mPortDarkFlagArea = kInvalidAreaId;
+  uint mPortDarkFlagUntil = 0;
   // A layer activation asked for by a test token (`MP2_INPUT`'s `LAYER<layer>`): the layer has to
   // stream in before its script objects can be created, so the request is remembered here and
   // finished by PortLayerTick once the layer reports itself ready.
