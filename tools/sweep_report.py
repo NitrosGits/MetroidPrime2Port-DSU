@@ -2,6 +2,12 @@
 """Digest a `tools/sweep_areas.sh` run into a per-area verdict table.
 
     python3 tools/sweep_report.py '/tmp/opencode/log_tg_*.log'
+    python3 tools/sweep_report.py '/tmp/opencode/log_all_*_*.log'   # a WORLD=all sweep: every world
+
+Logs of several sweeps (tags) can be read at once: a shard is named by its tag and index, and a
+sweep run with `WORLD=` names its world and its slot list in the manifest, so areas are printed with
+their MLVL names, and the `== worlds` table says per world (and per light/dark side) how many slots
+were asked for, played, clean and failing.
 
 The sweep's logs are the only record of what each area did, and a raw one is ~500 lines of
 `[aram]`/`[ids]` noise per shard. This reads them and answers the two questions a sweep is for:
@@ -40,6 +46,8 @@ Verdicts, worst first:
              save's own area again. A sweep that presses `A` does this (the action button activates
              the save stations the arrival spawn points sit in); the reload is the finding, and the
              stall report next to it is only a symptom.
+    STUB     a `[reach-stub ...]` (a body the port has not written was called) or a `... is a port
+             stand-in` line was printed in this phase: the area played, but on code that is not the game's.
     POOL     the id pool came within 64 ids of full in this phase - legal in itself, but it is the
              headroom the next hop needs, which is what the port's pre-stream drop exists to keep.
     OK       the area loaded, played, and nothing above happened.
@@ -65,6 +73,9 @@ HOP_RE = re.compile(r"^\[warp\] area (\d+): (.*)$")
 MOVED_RE = re.compile(r"^\[warp\] (?:moved to|the game's own transition arrived in) area (\d+)")
 RES_RE = re.compile(r"^\[res\] (.*)$")
 CREDITS_RE = re.compile(r"^\[end\] the credits are rolling$")
+# The port serving a `MP2_WORLD` request: `[warp] world <id> area <mrea>`. Before it, a `WORLD=` sweep
+# shard is still in the save's own world, whose `[area] 0` is not the target world's slot 0.
+WARP_WORLD_RE = re.compile(r"^\[warp\] world ([0-9a-f]{8}) area ")
 FATAL = ("[port] caught",)
 ABORT = ("Object list full", "assert", "Assert", "ASSERT")
 # Lines that are ordinary in every area and say nothing about the area being tested.
@@ -84,7 +95,7 @@ BENIGN = (
 @dataclass
 class Phase:
     area: int
-    shard: int
+    shard: tuple[str, int]
     first_frame: int | None = None
     last_frame: int | None = None
     min_frame: int | None = None
@@ -101,6 +112,7 @@ class Phase:
     credits: list[str] = field(default_factory=list)
     fatal_index: int = -1
     stubs: int = 0
+    stub_lines: list[str] = field(default_factory=list)
     jumped_back: bool = False
     notable: list[str] = field(default_factory=list)
 
@@ -152,19 +164,22 @@ class Phase:
             return "ABORT"
         if self.reloaded:
             return "RELOAD"
+        if self.stubs:
+            return "STUB"
         if self.pool_size and self.max_ids >= self.pool_size - 64:
             return "POOL"
         return "OK"
 
     @property
     def evidence(self) -> list[str]:
-        return self.fatal + self.abort + self.died + self.credits + self.misses + self.notable
+        return (self.fatal + self.abort + self.died + self.credits + self.misses + self.stub_lines
+                + self.notable)
 
 
 @dataclass
 class Shard:
     path: Path
-    index: int
+    index: tuple[str, int]
     world: str = ""
     world_areas: list[int] = field(default_factory=list)
     exit_code: int | None = None
@@ -177,9 +192,40 @@ class Shard:
     expected_count: int | None = None
 
 
-def read_manifest(logs: list[Path]) -> dict[int, tuple[int, int]]:
-    """`sweep_areas.sh` writes `sweep_<tag>.txt` next to the logs: shard -> (first area, count)."""
-    slices: dict[int, tuple[int, int]] = {}
+@dataclass
+class Slice:
+    first: int
+    count: int
+    world: str = "save"
+    # slot -> (light|dark, MLVL name), from the sweep's `areas_<tag>.txt` (`tools/world_areas.py`).
+    areas: dict[int, tuple[str, str]] = field(default_factory=dict)
+    world_name: str = ""
+
+
+def read_areas(path: str) -> tuple[str, dict[int, tuple[str, str]]]:
+    areas: dict[int, tuple[str, str]] = {}
+    name = ""
+    try:
+        lines = Path(path).read_text(errors="replace").splitlines()
+    except OSError:
+        return name, areas
+    for line in lines:
+        words = line.split()
+        if words and words[0] == "world":
+            name = " ".join(words[4:]) or (words[2] if len(words) > 2 else "")
+        elif len(words) >= 4 and words[0].isdigit():
+            areas[int(words[0])] = (words[2], words[3])
+    return name, areas
+
+
+def shard_label(key: tuple[str, int]) -> str:
+    return f"{key[0]}/{key[1]}"
+
+
+def read_manifest(logs: list[Path]) -> dict[tuple[str, int], Slice]:
+    """`sweep_areas.sh` writes `sweep_<tag>.txt` next to the logs: shard -> its slice (first area,
+    count, and for a `WORLD=` sweep the world id and the slot list's file)."""
+    slices: dict[tuple[str, int], Slice] = {}
     tags = set()
     for path in logs:
         m = re.match(r"log_(.+)_(\d+)\.log$", path.name)
@@ -190,8 +236,11 @@ def read_manifest(logs: list[Path]) -> dict[int, tuple[int, int]]:
             for line in Path(manifest).read_text(errors="replace").splitlines():
                 fields = dict(zip(line.split()[0::2], line.split()[1::2]))
                 if "shard" in fields and "first" in fields:
-                    slices[int(fields["shard"])] = (int(fields["first"]),
-                                                    int(fields.get("count", 0)))
+                    entry = Slice(int(fields["first"]), int(fields.get("count", 0)),
+                                  fields.get("world", "save"))
+                    if fields.get("areas", "-") != "-":
+                        entry.world_name, entry.areas = read_areas(fields["areas"])
+                    slices[(tag, int(fields["shard"]))] = entry
     return slices
 
 
@@ -202,13 +251,16 @@ def log_dir(logs: list[Path]) -> Path:
     return Path("/tmp/opencode")
 
 
-def shard_index(path: Path) -> int:
-    m = re.search(r"_(\d+)\.log$", path.name)
-    return int(m.group(1)) if m else 0
+def shard_index(path: Path) -> tuple[str, int]:
+    m = re.match(r"log_(.+)_(\d+)\.log$", path.name)
+    return (m.group(1), int(m.group(2))) if m else (path.stem, 0)
 
 
-def parse(path: Path) -> tuple[Shard, list[Phase]]:
+def parse(path: Path, target: str = "save", first: int = 0) -> tuple[Shard, list[Phase]]:
     shard = Shard(path=path, index=shard_index(path))
+    # A `WORLD=` sweep's phases start once the target world is warped to (see WARP_WORLD_RE).
+    in_target = target == "save"
+    warp_phase: Phase | None = None
     info = path.with_suffix(".log.info")
     if info.exists():
         shard.head = info.read_text(errors="replace").strip()
@@ -222,7 +274,24 @@ def parse(path: Path) -> tuple[Shard, list[Phase]]:
             # second one for the world it actually entered, so the last line is the one to report.
             shard.world = m.group(1)
             shard.world_areas = len(line.split("areas:", 1)[1].split())
+        elif (m := WARP_WORLD_RE.match(line)) and m.group(1) == target and not in_target:
+            # The warp lands in the shard's first slot. `[area] N` is printed only when the slot
+            # index changes, so a first slot equal to the save's own (0) prints no arrival line.
+            in_target = True
+            current = warp_phase = Phase(area=first, shard=shard.index)
+            phases.append(current)
+            shard.arrived.append(current.area)
+        elif (m := AREA_RE.match(line)) and not in_target:
+            current = None
+        elif (m := AREA_RE.match(line)) and warp_phase is not None and current is warp_phase \
+                and current.area == int(m.group(1)):
+            # The arrival line of the phase the warp line opened: the id samples taken before it
+            # were the outgoing world's.
+            warp_phase = None
+            current.first_frame = current.last_frame = current.min_frame = current.max_frame = None
+            current.max_ids = 0
         elif (m := AREA_RE.match(line)):
+            warp_phase = None
             current = Phase(area=int(m.group(1)), shard=shard.index)
             phases.append(current)
             shard.arrived.append(current.area)
@@ -262,8 +331,11 @@ def parse(path: Path) -> tuple[Shard, list[Phase]]:
                 current.stall = True
                 current.stalling_index = index
                 current.notable.append(line.strip())
-            elif "reach-stub" in line:
+            elif "reach-stub" in line or "is a port stand-in" in line:
                 current.stubs += 1
+                text = re.sub(r"^\[reach-stub \d+\]", "[reach-stub]", line.strip())
+                if text not in current.stub_lines:
+                    current.stub_lines.append(text)
             elif any(p in line for p in FATAL):
                 current.fatal.append(line.strip())
                 if current.fatal_index < 0:
@@ -274,6 +346,44 @@ def parse(path: Path) -> tuple[Shard, list[Phase]]:
                 current.notable.append(line.strip())
     shard.tail = path.read_text(errors="replace").splitlines()[-14:]
     return shard, phases
+
+
+def print_worlds(slices: dict[tuple[str, int], Slice], phases: list[Phase],
+                 seen: dict[str, str]) -> None:
+    """Per world and side: slots asked for, slots played, clean (every phase of the slot OK) and
+    failing (some phase not OK). A slot played twice (two shards, or a reload) counts once, by its
+    worst verdict. Logs without a manifest are left out: their slice is unknown."""
+    if not slices:
+        return
+    rows: dict[str, dict[str, list[set[int]]]] = {}
+    tag_world: dict[str, str] = {}
+    for (tag, _), entry in slices.items():
+        world = entry.world_name or entry.world
+        if world == "save":
+            world = "save " + seen.get(tag, "?")
+        tag_world[tag] = world
+        for area in range(entry.first, entry.first + entry.count):
+            side = entry.areas.get(area, ("all", ""))[0]
+            for key in (side, "total"):
+                cell = rows.setdefault(world, {}).setdefault(key, [set(), set(), set(), set()])
+                cell[0].add(area)
+    for phase in phases:
+        world = tag_world.get(phase.shard[0])
+        entry = slices.get(phase.shard)
+        if world is None:
+            continue
+        side = entry.areas.get(phase.area, ("all", ""))[0] if entry else "all"
+        for key in (side, "total"):
+            cell = rows.setdefault(world, {}).setdefault(key, [set(), set(), set(), set()])
+            cell[1].add(phase.area)
+            (cell[2] if phase.verdict == "OK" else cell[3]).add(phase.area)
+    print("\n== worlds: world side asked played clean failing [failing slots]")
+    for world in sorted(rows):
+        for key in sorted(rows[world], key=lambda k: (k == "total", k)):
+            asked, played, ok, bad = rows[world][key]
+            clean = ok - bad
+            print(f"  {world:<20} {key:<5} {len(asked):>4} {len(played):>6} {len(clean):>5} "
+                  f"{len(bad):>7}  {sorted(bad) if bad else ''}")
 
 
 def main() -> int:
@@ -291,10 +401,17 @@ def main() -> int:
     if not paths:
         return 2
 
+    slices = read_manifest(paths)
     shards: list[Shard] = []
     phases: list[Phase] = []
     for path in paths:
-        shard, shard_phases = parse(path)
+        entry = slices.get(shard_index(path))
+        shard, shard_phases = parse(path, entry.world if entry else "save",
+                                    entry.first if entry else 0)
+        if entry and entry.areas:
+            # The port's `[warp] world <id> areas:` line is printed as the warp is asked for, from
+            # the outgoing CWorld, so its count is the save world's; the disc's slot list is right.
+            shard.world_areas = len(entry.areas)
         shards.append(shard)
         phases.extend(shard_phases)
 
@@ -309,14 +426,13 @@ def main() -> int:
             last_frame[phase.shard] = phase.last_frame
 
     print("== shards")
-    slices = read_manifest(paths)
     for shard in sorted(shards, key=lambda s: s.index):
         end = "still running" if shard.exit_code is None else f"exit={shard.exit_code}"
         bad = [p for p in phases if p.shard == shard.index and p.verdict != "OK"]
         played = sorted({p.area for p in phases if p.shard == shard.index})
         slice_text = ""
         if shard.index in slices:
-            first, count = slices[shard.index]
+            first, count = slices[shard.index].first, slices[shard.index].count
             if first not in played:
                 slice_text = f", asked for {first}..{first + count - 1}, reached none of it"
             else:
@@ -329,40 +445,48 @@ def main() -> int:
         if shard.head:
             print(f"    {shard.head}")
 
-    print("\n== areas: slot shard verdict updates id-high-water res route stubs")
-    for phase in sorted(phases, key=lambda p: (p.area, p.shard)):
+    def area_name(phase: Phase) -> str:
+        entry = slices.get(phase.shard)
+        if entry is None or phase.area not in entry.areas:
+            return ""
+        side, name = entry.areas[phase.area]
+        return f"  {side:<5} {name}"
+
+    print("\n== areas: slot shard verdict updates id-high-water res route stubs [side name]")
+    for phase in sorted(phases, key=lambda p: (p.shard[0], p.area, p.shard[1])):
         pool = f"{phase.max_ids}/{phase.pool_size}" if phase.pool_size else "?"
         note = ""
         if phase.reloaded:
             note = " (reloaded: the update counter went backwards in this phase)"
         elif phase.sampled:
             note = " (fault sampled after the stall)"
-        print(f"  {phase.area:>3}  shard{phase.shard}  {phase.verdict:<6} {phase.updates:>5}  "
-              f"{pool:>9}  {len(phase.misses):>2}  {phase.route or '-':<6}  {phase.stubs}{note}")
+        print(f"  {phase.area:>3}  {shard_label(phase.shard)}  {phase.verdict:<6} {phase.updates:>5}  "
+              f"{pool:>9}  {len(phase.misses):>2}  {phase.route or '-':<6}  {phase.stubs}"
+              f"{area_name(phase)}{note}")
 
     # Coverage against the manifest: a shard's slice should have been walked in order, so the first
     # area it did not reach says where it stopped. An area inside the walked range that no shard
     # played is the interesting one - a token that never fired, or a hop that never arrived.
-    played = {p.area for p in phases}
-    requested = {a for shard in shards for a in shard.requested}
+    requested = {(shard.index[0], a) for shard in shards for a in shard.requested}
     if slices:
         print("\n== coverage")
         for index in sorted(slices):
-            first, count = slices[index]
+            first, count = slices[index].first, slices[index].count
             want = list(range(first, first + count))
+            played = {p.area for p in phases if p.shard[0] == index[0]}
             missing = [a for a in want if a not in played]
             if not missing:
                 continue
             shard = next((s for s in shards if s.index == index), None)
             end = "unknown" if shard is None or shard.exit_code is None else str(shard.exit_code)
             wall = [p for p in phases if p.shard == index and p.verdict != "OK"]
-            inside = [a for a in missing if a in requested]
+            inside = [a for a in missing if (index[0], a) in requested]
             if wall and wall[-1].verdict == "CREDITS":
                 # The ending is a run of its own areas (`game_end_partN`): once one is entered the
                 # game walks the rest itself, so the slots after it are never visited by the tokens.
                 # They are not gaps in the sweep, and naming one as "first missing" reads as a hole.
                 ending = wall[-1].area
-                print(f"  shard {index}: reached {len(want) - len(missing)}/{len(want)} of "
+                print(f"  shard {shard_label(index)}: reached {len(want) - len(missing)}/{len(want)} of "
                       f"{first}..{first + count - 1}; the ending took over at area {ending} "
                       f"(CREDITS)")
                 print(f"     not walked once the ending took over: {missing} - the game runs the "
@@ -374,7 +498,7 @@ def main() -> int:
                 reason = "the run played to its frame limit, so a hop's stream never completed"
             else:
                 reason = "the run ended before the slice was walked (exit %s)" % end
-            print(f"  shard {index}: reached {len(want) - len(missing)}/{len(want)} of "
+            print(f"  shard {shard_label(index)}: reached {len(want) - len(missing)}/{len(want)} of "
                   f"{first}..{first + count - 1}; first missing {missing[0]} - {reason}")
             if inside:
                 print(f"     asked for but never arrived: {inside}")
@@ -383,7 +507,8 @@ def main() -> int:
     if walls:
         print("\n== walls")
         for phase in sorted(walls, key=lambda p: (p.verdict != "CRASH", p.shard, p.area)):
-            print(f"  -- area {phase.area} (shard {phase.shard}): {phase.verdict}")
+            print(f"  -- area {phase.area}{area_name(phase)} (shard {shard_label(phase.shard)}): "
+                  f"{phase.verdict}")
             for line in phase.evidence[:10]:
                 print(f"       {line}")
     elif args.verbose:
@@ -393,15 +518,17 @@ def main() -> int:
         print("\n== every phase's notable lines")
         for phase in sorted(phases, key=lambda p: (p.shard, p.area)):
             if phase.notable:
-                print(f"  area {phase.area} (shard {phase.shard}):")
+                print(f"  area {phase.area} (shard {shard_label(phase.shard)}):")
                 for line in phase.notable:
                     print(f"       {line}")
 
-    misses = sorted({(p.area, line) for p in phases for line in p.misses})
+    misses = sorted({(p.shard[0], p.area, line) for p in phases for line in p.misses})
     if misses:
         print("\n== missing resources by area")
-        for area, line in misses:
-            print(f"  area {area}: {line}")
+        for tag, area, line in misses:
+            print(f"  {tag} area {area}: {line}")
+
+    print_worlds(slices, phases, {s.index[0]: s.world for s in shards if s.world})
 
     bad_exits = [s for s in shards if s.exit_code not in (None, 0)]
     if bad_exits:

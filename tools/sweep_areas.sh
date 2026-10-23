@@ -1,12 +1,23 @@
 #!/bin/bash
 # Area regression sweep: boots the save's own world (no `MP2_WORLD`), teleports each shard to its
 # first area with `MP2_TELEPORT`, then walks the rest of its slice with `NEXTAREA` tokens and ends
-# every run with `MP2_FRAMES`. Built on `tools/run_gameplay.sh` (see its header for the traps it
+# every run with `MP2_FRAMES`. With `WORLD=<world>` it sweeps that world instead (see below). Built on `tools/run_gameplay.sh` (see its header for the traps it
 # checks: a user dir without the memory card, and an input script that presses `START` - the generated
 # script never presses `START`, but it does press `A`, see `write_input` below for why that matters).
 #
-#   USERDIR=<dir holding the card> [SHARD=<n>|all] [SHARDS=4] [COUNT=63] [DWELL=1400]
+#   USERDIR=<dir holding the card> [WORLD=<world>|all] [SHARD=<n>|all] [SHARDS=4] [COUNT=63] [DWELL=1400]
 #   [TAIL=1400] [HEAL=400] [AREAS=first:count, one shard over that run] [TAG=sweep] [DISPLAY_BASE=86] [ASAN=1] tools/sweep_areas.sh
+#
+# `WORLD` sweeps any world: an MLVL id, a display name (`agon`, `torvus`, `sanctuary`, `great temple`,
+# `temple grounds`) or a part of the MLVL name - whatever `tools/world_areas.py` resolves (it reads the
+# disc's MLVL, so it needs no boot). `COUNT` then defaults to that world's own slot count, and every
+# shard boots with the single world+area request `MP2_WORLD="<world id>,<first slot's MREA id>"`
+# (docs/RUNNING.md, "Booting into a world and an area": a separate `MP2_TELEPORT` is served before the
+# world loads, and a plain slot index in `MP2_WORLD` is read as an asset id). The slot list goes to
+# `areas_<TAG>.txt` and the manifest names it, so `tools/sweep_report.py` can print area names and the
+# light/dark split. `WORLD=all` sweeps the five campaign worlds one after another, each with the tag
+# `<TAG>_<world id>`; `SHARDS` stays the number of games running at once. Unset, `WORLD` keeps the
+# original sweep: the save's world (Temple Grounds) by `MP2_TELEPORT`.
 #
 # `COUNT` is the number of area *slots* in the world (Temple Grounds has 63, slots 0..62); the sweep
 # asks for them by index, which is what `[warp] world <id> areas:` prints and what the warp's `kArea`
@@ -32,6 +43,24 @@ set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 USERDIR=${USERDIR:-}
+WORLD=${WORLD:-}
+if [ "$WORLD" = "all" ]; then
+  rc=0
+  for w in $(python3 "$ROOT/tools/world_areas.py" --campaign); do
+    WORLD=$w TAG="${TAG:-sweep}_$w" "$0" || rc=1
+  done
+  exit $rc
+fi
+WORLD_ID=""
+AREAFILE=""
+if [ -n "$WORLD" ]; then
+  AREAFILE="${LOGDIR:-/tmp/opencode}/areas_${TAG:-sweep}.txt"
+  mkdir -p "$(dirname "$AREAFILE")"
+  python3 "$ROOT/tools/world_areas.py" "$WORLD" > "$AREAFILE" || exit 2
+  read -r _ WORLD_ID _ WORLD_COUNT _ < "$AREAFILE"
+  COUNT=${COUNT:-$WORLD_COUNT}
+  echo "[sweep] world $WORLD -> $(head -1 "$AREAFILE" | cut -d' ' -f2-); slots in $AREAFILE"
+fi
 COUNT=${COUNT:-63}
 SHARDS=${SHARDS:-4}
 DWELL=${DWELL:-1400}
@@ -127,8 +156,8 @@ PY
 # The manifest is what makes the report able to say whether an unplayed area is a hole in the token
 # cycle or simply the point a run died at: the logs alone cannot tell those apart.
 manifest_write() { # <index> <first> <count> <frames> <input> <log>
-  printf 'shard %s first %s count %s frames %s input %s log %s\n' "$1" "$2" "$3" "$4" "$5" "$6" \
-    >> "$LOGDIR/sweep_$TAG.txt"
+  printf 'shard %s first %s count %s frames %s input %s log %s world %s areas %s\n' "$1" "$2" "$3" \
+    "$4" "$5" "$6" "${WORLD_ID:-save}" "${AREAFILE:--}" >> "$LOGDIR/sweep_$TAG.txt"
 }
 
 run_shard() { # <index>
@@ -151,8 +180,14 @@ run_shard() { # <index>
   manifest_write "$i" "$first" "$n" "$frames" "$input" "$LOGDIR/log_${TAG}_$i.log"
   echo "[sweep] shard $i: areas $first..$(( first + n - 1 )) ($n), $frames updates, display :$display," \
        "$tokens tokens, log $LOGDIR/log_${TAG}_$i.log"
+  # The boot: the save's world by slot index, or another world by its id and the slot's MREA id.
+  local world="" teleport="$first"
+  if [ -n "$WORLD_ID" ]; then
+    world="$WORLD_ID,$(awk -v i="$first" '$1 == i { print $2 }' "$AREAFILE")"
+    teleport=""
+  fi
   RUNTAG="${TAG}_$i" DISPLAY_NUM=":$display" USERDIR="$user" INPUT_FILE="$input" \
-    TELEPORT="$first" FRAMES="$frames" SECS="$secs" LOG="$LOGDIR/log_${TAG}_$i.log" \
+    WORLD="$world" TELEPORT="$teleport" FRAMES="$frames" SECS="$secs" LOG="$LOGDIR/log_${TAG}_$i.log" \
     GODMODE="$GODMODE" ASAN="${ASAN:-}" STOP_ON_STALL=1 "$ROOT/tools/run_gameplay.sh"
   local rc=$?
   echo "[sweep] shard $i: exit=$rc (0 clean, 124 timeout, 125 stalled and stopped early, 134 abort, 139 crash)"

@@ -93,10 +93,21 @@ A bare `tp` + `press l` misses: the lock-on press needs the orbit candidate list
 `scan <id> [d] [updates]` twice ~30 updates apart (scan visor + L, then tp d (40) units, forced orbit lock) scans an actor; `scan` alone prints progress (game state 1 = scan display up).
 Ids may be `e<editor id>` (unique ids are reused across layer loads); `covdump` writes a coverage build's gcov counters mid-run (runs that hang in shutdown keep them).
 
-## Area regression sweep (63 Temple Grounds areas, 4 shards, START-free)
+## Area regression sweep (any world, shards, START-free)
 
     USERDIR=/tmp/opencode/u_a10 tools/sweep_areas.sh            # TAG/SHARDS/DWELL/COUNT to taste
     python3 tools/sweep_report.py '/tmp/opencode/log_<tag>_*.log'
+    # every campaign world, 2 games at a time, ~8 min in fast mode:
+    MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8 USERDIR=... WORLD=all TAG=all SHARDS=2 tools/sweep_areas.sh
+    python3 tools/sweep_report.py '/tmp/opencode/log_all_*_*.log'   # ends with a per-world light/dark table
+
+Without `WORLD` the sweep walks the save's world (Temple Grounds, 63 slots) by `MP2_TELEPORT`.
+`WORLD=<id|agon|torvus|sanctuary|great temple|temple grounds|MLVL name part|all>` sweeps that world:
+`tools/world_areas.py` reads its slot list from the disc (`--list` shows every MLVL), `COUNT`
+defaults to its slot count and each shard boots with `MP2_WORLD="<world>,<first slot's MREA>"`.
+`AREAS=<first>:<count> SHARD=0` re-runs one slice. Temple Grounds' ending (slots 47/50/53/56/58)
+rolls the credits and ends a shard, so slots 48, 49, 54, 55, 57, 59-62 need their own `AREAS=`
+runs, and 58 (`game_end_part5`) stops on its save prompt.
 
 Parallel software-Vulkan shards can lose the device; confirm verdicts with lone runs.
 
@@ -107,8 +118,9 @@ Parallel software-Vulkan shards can lose the device; confirm verdicts with lone 
 served *before* the world is loaded, so the area is looked up in the old world and the run ends
 with "[warp] area -1 does not exist in this world". **Give the world and the area in one
 request**: `MP2_WORLD="1baa96c2,2735236b"` (the world, a comma, the area) or
-`MP2_WORLD="42b935e4,01_sand_entrance_dark"` (the area's MLVL name). The area can also be the
-area index, but the index is the one of the world being loaded, so the name is safer.
+`MP2_WORLD="42b935e4,01_sand_entrance_dark"` (the area's MLVL name). The area can **not** be a
+slot index here: `MP2_WORLD="863fcd72,7"` resolves `7` as asset id 00000007 and lands in slot 0 with
+no error (measured 2026-10-23); `tools/world_areas.py <world>` gives each slot's MREA id.
 
 ## Batch smoke (every family, in parallel)
 
