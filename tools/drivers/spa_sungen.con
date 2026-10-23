@@ -1,0 +1,12 @@
+# ScriptPlayerActor: Great Temple 08_temple_sungenerator (863fcd72) layer 8: e0007025c (flags 0x5, render
+# gun override 1 = power beam: LoadBeam(0)) and e000702e6 (flags 0x5, no override: the player's beam).
+@f260 layer 8
+@f300 god 1; give darkBeam 1
+@f320 obj e0007025c; obj e000702e6
+@f340 send e0007025c Activate
+@f360 send e000702e6 Activate
+@f600 beam dark
+@f700 obj e0007025c
+@f720 send e0007025c Increment
+@f1000 send e000702e6 Deactivate
+@f1300 send e0007025c Delete

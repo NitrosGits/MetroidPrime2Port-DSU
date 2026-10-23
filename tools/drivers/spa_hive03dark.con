@@ -1,0 +1,12 @@
+# ScriptPlayerActor: Temple Grounds 01_temple_hive03_dark (3bfa3eff) layer 2: e001b013d "Samus" (flags
+# 0x104: 0x100 = gun drawn before the suit, 0x4). With the grapple beam the cinematic grapple model loads
+# (UpdateGrappleModel, PumpGrappleModel, RenderGrapple); taking it back drops the grapple models.
+@f260 layer 2
+@f300 god 1; give grappleBeam 1
+@f320 obj e001b013d
+@f340 send e001b013d Activate
+@f700 obj e001b013d
+@f720 send e001b013d Increment
+@f900 take grappleBeam
+@f1000 send e001b013d Deactivate
+@f1300 send e001b013d Delete

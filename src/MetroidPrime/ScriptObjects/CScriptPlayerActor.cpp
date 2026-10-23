@@ -29,6 +29,7 @@
 #include "MetroidPrime/Tweaks/CTweakPlayerRes.hpp"
 #include "REL/REL_Setup.h"
 
+// @ fn_61_2FC8
 CScriptPlayerActor::CScriptPlayerActor(TUniqueId uid, const rstl::string& name, CEntityInfo& info,
                                        const CTransform4f& xf, const CAnimRes& animRes,
                                        const CModelData& modelData, int characterCount,
@@ -83,6 +84,7 @@ CScriptPlayerActor::CScriptPlayerActor(TUniqueId uid, const rstl::string& name, 
   mIsPlayerActor = true;
 }
 
+// @ fn_61_29F0 forced (send Deactivate; mFlags 0x10 via tools/cov/specs/scriptplayeractor_force.py)
 void CScriptPlayerActor::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_AreaLoaded:
@@ -198,7 +200,13 @@ void CScriptPlayerActor::Think(float dt, CStateManager& mgr) {
     } else if (HasGunModelData() && player->GetCameraManager()->IsInCinematicCamera()) {
       CancelBeamLoad();
     } else {
+#ifdef TARGET_PC
+      // fn_61_2630 0x27d4 lwz r4,0xebc(r31) (mPlayerGun); 0x27dc lwz r4,0x778(r4): the gun's
+      // mNextBeamId (GetPrimaryDestWeaponId), not mCurrentBeamId at 0x774.
+      LoadBeam(player->GetPlayerGun()->GetPrimaryDestWeaponId());
+#else
       LoadBeam(player->GetPlayerGun()->GetPrimaryWeaponId());
+#endif
     }
     if (mBeamModelLoading) {
       PumpBeamModel(mgr);
@@ -231,10 +239,12 @@ void CScriptPlayerActor::Think(float dt, CStateManager& mgr) {
   CScriptActor::Think(dt, mgr);
 }
 
+// @ fn_61_25C4
 CTransform4f CScriptPlayerActor::GetGunTransform() const {
   return GetTransform() * GetModelData()->GetScaledLocatorTransform(rstl::string_l(kGunLocator));
 }
 
+// @ fn_61_2508
 CTransform4f CScriptPlayerActor::GetGrappleTransform() const {
   return GetTransform() *
          GetModelData()->GetScaledLocatorTransform(rstl::string_l(kGrappleLocator));
@@ -252,6 +262,7 @@ void CScriptPlayerActor::RenderGun(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_61_2490
 void CScriptPlayerActor::Render(const CStateManager& mgr) const {
   const bool gunFirst = (mFlags & 0x100) != 0;
   if (gunFirst) {
@@ -306,16 +317,19 @@ void CScriptPlayerActor::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_61_1FEC
 void CScriptPlayerActor::BuildBeamModelData() {
   const CStaticRes res(gpTweakPlayerRes->GetCinematicBeamResId(mSetBeamId), mSuitRes.GetScale());
   mBeamModelData = rs_new CModelData(res);
 }
 
+// @ fn_61_1F58
 void CScriptPlayerActor::BuildGrappleModelData() {
   const CStaticRes res(gpTweakPlayerRes->GetCinematicGrappleResId(), mSuitRes.GetScale());
   mGrappleModelData = rs_new CModelData(res);
 }
 
+// @ fn_61_13A4
 void CScriptPlayerActor::UsePlayerBeamModel(CPlayer& player) {
   mPreviousSetBeamId = mSetBeamId;
   mSetBeamId = CPlayerState::kBI_Invalid;
@@ -351,6 +365,7 @@ void CScriptPlayerActor::SetupOfflineModelData() {
   AnimationData()->SetSkinnedModel(mSuitModelData->GetAnimationData()->GetModelData());
 }
 
+// @ fn_61_1A20
 void CScriptPlayerActor::LoadSuit(int charIdx) {
   if (charIdx == mLoadedCharIdx) {
     return;
@@ -367,6 +382,7 @@ void CScriptPlayerActor::LoadSuit(int charIdx) {
   mLoadedCharIdx = charIdx;
 }
 
+// @ fn_61_1914
 void CScriptPlayerActor::LoadBeam(CPlayerState::EBeamId beam) {
   if (beam == mSetBeamId) {
     return;
@@ -508,6 +524,7 @@ void CScriptPlayerActor::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_61_BF4
 void CScriptPlayerActor::SetActive(const bool active) {
   CActor::SetActive(active);
   SetDrawEnabled(true);
@@ -617,6 +634,7 @@ CEntity* LoadPlayerActor(CStateManager& mgr, CInputStream& input, CEntityInfo& i
 }
 
 #ifndef MONOLITHIC
+// @ fn_61_70
 static void SetFuncPtrs() {
   static SPlayerActor_FuncPtrs funcPtrs;
   funcPtrs.mLoadPlayerActor = &LoadPlayerActor;

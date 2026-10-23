@@ -1,0 +1,9 @@
+# ScriptPlayerActor: Temple Grounds 12_temple_finalgate (3bfa3eff) layer 3: e000701cf "PlayerActor Samus"
+# (flags 0x44: 0x40 = no gun render, 0x4). Grapple beam given, so the grapple model is drawn too.
+@f260 layer 3
+@f300 god 1; give grappleBeam 1
+@f320 obj e000701cf
+@f340 send e000701cf Activate
+@f700 obj e000701cf
+@f900 send e000701cf Deactivate
+@f1300 send e000701cf Delete

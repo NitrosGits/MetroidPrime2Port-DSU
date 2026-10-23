@@ -1,0 +1,12 @@
+# ScriptPlayerActor: Agon Wastes 0m_sand_hall (42b935e4) layer 2: e0031007f "Low rez Samus" (flags 0x4,
+# render gun override 5 = the player's own beam model: UsePlayerBeamModel). Activate, Increment with
+# 0x80 clear and 0x1 clear (plain base arm), Deactivate (0x4 reset), Activate again.
+@f260 layer 2
+@f300 god 1
+@f320 obj e0031007f
+@f340 send e0031007f Activate
+@f700 obj e0031007f
+@f720 send e0031007f Increment
+@f900 send e0031007f Deactivate
+@f920 send e0031007f Activate
+@f1300 send e0031007f Delete

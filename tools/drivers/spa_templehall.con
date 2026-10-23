@@ -1,0 +1,12 @@
+# ScriptPlayerActor: Temple Grounds 0n_temple_hall (3bfa3eff) layer 0: e0008005c "PlayerActor Samus"
+# (flags 0x84: 0x80 = wait for Increment). AreaLoaded while active defers the load until Increment
+# (Think returns early), then Increment clears the wait.
+@f300 god 1
+@f320 obj e0008005c
+@f340 send e0008005c Activate
+@f500 send e0008005c AreaLoaded
+@f700 obj e0008005c
+@f720 send e0008005c Increment
+@f900 obj e0008005c
+@f1000 send e0008005c Deactivate
+@f1300 send e0008005c Delete

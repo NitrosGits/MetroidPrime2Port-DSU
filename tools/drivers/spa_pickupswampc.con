@@ -1,0 +1,10 @@
+# ScriptPlayerActor: Torvus Bog 00_pickup_swamp_c (3dfd2249) layer 0: e0042008f "PlayerActor Samus"
+# (flags 0x404: 0x400 = no suit re-check in Think). Activate, beam change while loaded, Deactivate.
+@f300 god 1; give darkBeam 1; give lightBeam 1
+@f320 obj e0042008f
+@f340 send e0042008f Activate
+@f700 beam dark
+@f760 obj e0042008f
+@f900 send e0042008f Deactivate
+@f920 send e0042008f Activate
+@f1300 send e0042008f Delete

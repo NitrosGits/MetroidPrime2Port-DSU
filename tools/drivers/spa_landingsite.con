@@ -1,0 +1,10 @@
+# ScriptPlayerActor: Temple Grounds 01_Temple_LandingSite (3bfa3eff) layer 0: e00000065 "Samus" (flags 0:
+# Deactivate keeps the models, no reset). Activate, Deactivate, Activate, AreaLoaded while active.
+@f300 god 1
+@f320 obj e00000065
+@f340 send e00000065 Activate
+@f700 send e00000065 Deactivate
+@f760 obj e00000065
+@f800 send e00000065 Activate
+@f900 send e00000065 AreaLoaded
+@f1300 send e00000065 Delete

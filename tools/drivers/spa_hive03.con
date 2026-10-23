@@ -1,0 +1,11 @@
+# ScriptPlayerActor: Temple Grounds 01_temple_hive03 (3bfa3eff) layer 2: e001100e6 "Samus" (flags 0xC:
+# 0x8 = count the area's loading player actors, 0x4). The layer switch sends AreaLoaded with the area
+# tracking arm; Activate, the load finishes (Arrived, count back down), Deactivate.
+@f260 layer 2
+@f300 god 1
+@f320 obj e001100e6
+@f340 send e001100e6 Activate
+@f700 obj e001100e6
+@f900 send e001100e6 Deactivate
+@f920 send e001100e6 Activate
+@f1300 send e001100e6 Delete
