@@ -165,12 +165,12 @@ private:
   int mSavedSfxVolume;
   int mSavedMusicVolume;
   int mSavedSurroundMode;
-  bool mCardDriverReset : 1;
-  bool mSaveScreenBusy : 1;
-  bool mSaveScreenFailed : 1;
-  bool mGameStarted : 1;
-  bool mOptionsDirty : 1;
-  bool mMultipleControllers : 1;
+  bool mCardDriverReset : 1; // 0x368 bit 0x80
+  bool mSaveScreenBusy : 1; // 0x368 bit 0x40
+  bool mSaveScreenFailed : 1; // 0x368 bit 0x20
+  bool mGameStarted : 1; // 0x368 bit 0x10
+  bool mOptionsDirty : 1; // 0x368 bit 0x08
+  bool mMultipleControllers : 1; // 0x368 bit 0x04
 };
 CHECK_SIZEOF(CScriptGuiFrontEndScreen, 0x370)
 

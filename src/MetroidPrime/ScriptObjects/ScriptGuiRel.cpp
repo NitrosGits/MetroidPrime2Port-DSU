@@ -10,6 +10,7 @@ CEntity* LoadGuiPlayerJoinManager(CStateManager& mgr, CInputStream& input, CEnti
 #ifndef MONOLITHIC
 SGuiWidget_FuncPtrs REL_loader_GuiWidget;
 
+// @ fn_60_9C68
 void SetRelLoaderFunctionToLoader() {
   REL_loader_GuiWidget.mLoadGuiWidget = LoadGuiWidget;
   REL_loader_GuiWidget.mLoadGuiScreen = LoadGuiScreen;

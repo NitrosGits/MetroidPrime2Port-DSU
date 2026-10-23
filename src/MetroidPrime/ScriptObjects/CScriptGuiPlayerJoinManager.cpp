@@ -28,6 +28,7 @@ static const EScriptObjectState skPlayerCountStates[4] = {kSS_InternalState16, k
 static CScriptGuiPlayerJoinManager::EJoinState sInitialJoinState[1] = {
     CScriptGuiPlayerJoinManager::kJS_Disconnected};
 
+// @ fn_60_980
 CScriptGuiPlayerJoinManager::CScriptGuiPlayerJoinManager(TUniqueId uid, const rstl::string& name,
                                                          const CEntityInfo& info)
 : CEntity(uid, info, name, 0), mJoinStates(sInitialJoinState[0]), mPlayerCountState(0) {}
@@ -206,6 +207,7 @@ bool CScriptGuiPlayerJoinManager::NoPlayersJoined() const {
 
 bool CScriptGuiPlayerJoinManager::HasEnoughPlayers() const { return mPlayerCountState != 0; }
 
+// @ fn_60_B8
 CEntity* LoadGuiPlayerJoinManager(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGuiPlayerJoinManager sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrGuiPlayerJoinManager.inc"
@@ -214,4 +216,5 @@ CEntity* LoadGuiPlayerJoinManager(CStateManager& mgr, CInputStream& input, CEnti
                                             LdrToEntityInfo(info, sldrThis.editorProperties));
 }
 
+// @ fn_60_0
 CScriptGuiPlayerJoinManager::~CScriptGuiPlayerJoinManager() {}

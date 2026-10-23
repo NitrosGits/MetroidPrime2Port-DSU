@@ -9,6 +9,7 @@
 
 #include "rstl/math.hpp"
 
+// @ fn_60_8CE0
 CScriptGuiMenu::CScriptGuiMenu(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                bool wrap, bool vertical, int controller, const rstl::string& label,
                                bool locked, ushort selectionChangedSfx)
@@ -105,6 +106,7 @@ void CScriptGuiMenu::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_60_8770
 void CScriptGuiMenu::BuildItemList(CStateManager& mgr) {
   if (mItems.size() != 0) {
     return;
@@ -131,6 +133,7 @@ void CScriptGuiMenu::BuildItemList(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_85D8
 void CScriptGuiMenu::SetSelection(int idx, CStateManager& mgr) {
   if (idx == mSelection) {
     return;
@@ -252,6 +255,7 @@ bool CScriptGuiMenu::ProcessMenuInput(const CFinalInput& input, CStateManager& m
   return prev || next;
 }
 
+// @ fn_60_7D20
 CEntity* LoadGuiMenu(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGuiMenu sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrGuiMenu.inc"
@@ -265,4 +269,5 @@ CEntity* LoadGuiMenu(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
                                sldrThis.widgetProperties.isLocked, sldrThis.selectionChangedSound);
 }
 
+// @ fn_60_7CB0
 CScriptGuiMenu::~CScriptGuiMenu() {}
