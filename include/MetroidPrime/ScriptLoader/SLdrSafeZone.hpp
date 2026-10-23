@@ -61,8 +61,20 @@ inline SLdrSafeZoneAttributes::SLdrSafeZoneAttributes()
   shell2AnimatedVertRate = 0.029999999f;
   shell2ScaleHoriz = 3.0f;
   shell2ScaleVert = 1.0f;
+#ifdef TARGET_PC
+  // fn_66_14DC 0x14E8-0x1508: li r0,-1; stw r0 at 0x0/0x8/0xc/0x10/0x14 (the five sounds).
+  turnOnSound = -1;
+  activeLoopSound = -1;
+  turnOffSound = -1;
+  playerEnterSound = -1;
+  playerExitSound = -1;
+  // 0x15A4/0x15C4 rodata 0x40 = 0.5 (g, b); 0x15CC fmr f3,f2; 0x15E8 rodata 0x34 = 0.75.
+  shellColor = CColor(0.094117999f, 0.5f, 0.5f, 1.0f);
+  unknown_0xe68b1fa8 = CColor(0.75f, 0.75f, 0.75f, 1.0f);
+#else
   shellColor = CColor(0.094117999f, 0.49803901f, 0.49803901f, 1.0f);
   unknown_0xe68b1fa8 = CColor(0.74901998f, 0.74901998f, 0.74901998f, 1.0f);
+#endif
 }
 
 inline SLdrSafeZoneAttributes::~SLdrSafeZoneAttributes() {}
@@ -304,11 +316,23 @@ inline SLdrSafeZone::SLdrSafeZone()
   insideFadeMinAlpha = 0.25f;
   flashTime = 1.0f;
   flashBrightness = 0.5f;
+#ifdef TARGET_PC
+  // fn_66_1008 0x1058/0x1060: li r0,-1; stw r0,0x1b0(r31).
+  flashSound = -1;
+  // 0x10F8/0x1100: li r0,3; stw r0,0x38(r31).
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+#else
   flashSound = 0;
+#endif
   safezoneShape = 0;
   mobile = false;
   generateMobileLight = false;
+#ifdef TARGET_PC
+  // 0x1328-0x1330: f4 = rodata 0x3C = 0.25 (alpha), stored at 0x1c8.
+  unknown_0xe71b43e1 = CColor(0.73725498f, 1.0f, 1.0f, 0.25f);
+#else
   unknown_0xe71b43e1 = CColor(0.73725498f, 1.0f, 1.0f, 0.247059f);
+#endif
   unknown_0x9f638987 = 0.2f;
   fogEntering.enabled = false;
   fogEntering.mode = 1;
@@ -320,7 +344,12 @@ inline SLdrSafeZone::SLdrSafeZone()
   fogEntering.distanceRate.y = 5000.0f;
   fogLeaving.enabled = false;
   fogLeaving.mode = 1;
+#ifdef TARGET_PC
+  // fn_66_1008 0x13CC: f2 = rodata 0x54 = 0.1 (green), stored at 0x1f8.
+  fogLeaving.color = CColor(0.0f, 0.1f, 0.0f, 0.0f);
+#else
   fogLeaving.color = CColor(0.0f, 0.098039001f, 0.0f, 0.0f);
+#endif
   fogLeaving.nearFarPlane.x = 0.0f;
   fogLeaving.nearFarPlane.y = 1000.0f;
   fogLeaving.colorRate = 5.0f;

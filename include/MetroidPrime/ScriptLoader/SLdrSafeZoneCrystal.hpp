@@ -75,6 +75,13 @@ inline SLdrSafeZoneCrystal::SLdrSafeZoneCrystal()
   unknown_0xec9c01b2 = 1.0f;
   powerBeamHP = 5.0f;
   hitRadius = CVector3f(1.0f, 1.0f, 1.0f);
+#ifdef TARGET_PC
+  // fn_66_6478 0x6530/0x653C: li r0,3; stw r0,0x38. 0x6534-0x6560: CColor(rodata 0xC0 = 1.0 x4)
+  // at 0x50 (actor +0x14). 0x6564/0x6570: li r0,0xf; stw r0,0xa0 (actor +0x64).
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  actorParameters.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorParameters.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrSafeZoneCrystal::~SLdrSafeZoneCrystal() {}

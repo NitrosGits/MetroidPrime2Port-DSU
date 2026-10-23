@@ -198,7 +198,13 @@ void CScriptSafeZone::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     if (mgr.GetIsDarkWorld()) {
       if (mActivation < 1.f) {
+#ifdef TARGET_PC
+        // fn_66_3A40 0x3B80 fcmpo f0(1.0),f1(new); 0x3B84 bge -> new: (1 < new) ? 1 : new, so a
+        // NaN step keeps the new value.
+        mActivation = rstl::min_val((1.f / mActivationTime) * dt + mActivation, 1.f);
+#else
         mActivation = rstl::min_val(1.f, (1.f / mActivationTime) * dt + mActivation);
+#endif
         changed = true;
       } else if (mShellPulse > 0.f) {
         mShellPulse = rstl::max_val(mShellPulse - (1.f / mActivationTime) * dt, 0.f);
@@ -846,6 +852,28 @@ CEntity* LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info
   const TUniqueId uid = mgr.AllocateUniqueId();
   const CScriptTriggerEllipsoid::EShapeType shape =
       static_cast< CScriptTriggerEllipsoid::EShapeType >(sldrThis.safezoneShape);
+#ifdef TARGET_PC
+  // fn_66_CC (LoadSafeZone): the flash floats go in swapped. 0x0578-0x0580 property 0x48b4b865
+  // (flashTime) -> 0x528(r1), 0x0588-0x0590 0x452f7876 (flashBrightness) -> 0x52c(r1); at the ctor
+  // call 0x0A2C lfs f8,0x52c(r1) (the `flashTime` slot) and 0x09F0/0x09F4 lfs f0,0x528(r1);
+  // stfs 0x54(r1) (the `flashBrightness` slot). UpdateFlash divides by the second (0x244).
+  const float flashTimeArg = sldrThis.flashBrightness;
+  const float flashBrightnessArg = sldrThis.flashTime;
+  return rs_new CScriptSafeZone(
+      uid, sldrThis.editorProperties.name, LdrToEntityInfo(info, sldrThis.editorProperties), scale,
+      LdrToTransform4f(sldrThis.editorProperties), LdrToDamageInfo(sldrThis.trigger.damage),
+      forceField, sldrThis.activationTime, sldrThis.deactivationTime, sldrThis.lifetime,
+      sldrThis.randomLifetimeOffset, sldrThis.insideFadeStart,
+      sldrThis.insideFadeStart + sldrThis.insideFadeTime, sldrThis.insideFadeMinAlpha,
+      flashTimeArg, sldrThis.trigger.flagsTrigger, sldrThis.deactivateOnEnter,
+      sldrThis.deactivateOnExit, sldrThis.impactEffect, infos[0], infos[1], infos[2],
+      LdrToDamageInfo(sldrThis.normalDamage), LdrToDamageInfo(sldrThis.hurtfulDamage),
+      sldrThis.filterSoundEffects, sldrThis.filterCutoffFrequency, sldrThis.ignoreCinematicCamera,
+      sldrThis.mobile, sldrThis.generateMobileLight, sldrThis.mobileLightOffset, shape,
+      LdrToSafeZoneFog(sldrThis.fogEntering), LdrToSafeZoneFog(sldrThis.fogLeaving),
+      LdrToEchoParameters(sldrThis.echoParameters), flashBrightnessArg, sldrThis.flashSound,
+      sldrThis.unknown_0xe71b43e1, sldrThis.unknown_0x9f638987);
+#else
   return rs_new CScriptSafeZone(
       uid, sldrThis.editorProperties.name, LdrToEntityInfo(info, sldrThis.editorProperties), scale,
       LdrToTransform4f(sldrThis.editorProperties), LdrToDamageInfo(sldrThis.trigger.damage),
@@ -860,6 +888,7 @@ CEntity* LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info
       LdrToSafeZoneFog(sldrThis.fogEntering), LdrToSafeZoneFog(sldrThis.fogLeaving),
       LdrToEchoParameters(sldrThis.echoParameters), sldrThis.flashBrightness, sldrThis.flashSound,
       sldrThis.unknown_0xe71b43e1, sldrThis.unknown_0x9f638987);
+#endif
 }
 
 #ifndef MONOLITHIC
