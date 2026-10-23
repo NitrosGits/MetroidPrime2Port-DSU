@@ -263,6 +263,7 @@ void CIngSpaceJumpGuardian::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg
   }
 }
 
+// @ fn_34_56C8
 void CIngSpaceJumpGuardian::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     CPatterned::Think(dt, mgr);
@@ -345,12 +346,15 @@ void CIngSpaceJumpGuardian::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_34_5228
 void CIngSpaceJumpGuardian::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_34_5208
 void CIngSpaceJumpGuardian::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
+// @ fn_34_51E8
 const CDamageVulnerability* CIngSpaceJumpGuardian::GetDamageVulnerability() const {
   return &CDamageVulnerability::PassThroughVulnerabilty();
 }
@@ -371,6 +375,7 @@ CVector3f CIngSpaceJumpGuardian::GetAimPosition(const CStateManager& mgr, float 
   return CPatterned::GetAimPosition(mgr, dt);
 }
 
+// @ fn_34_4F98 forced (noise)
 bool CIngSpaceJumpGuardian::Listen(CStateManager& mgr, const CVector3f& position,
                                    EListenNoiseType type) {
   bool heard = false;
@@ -389,6 +394,7 @@ bool CIngSpaceJumpGuardian::Listen(CStateManager& mgr, const CVector3f& position
   return heard;
 }
 
+// @ fn_34_4F0C
 void CIngSpaceJumpGuardian::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -397,18 +403,22 @@ void CIngSpaceJumpGuardian::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, 9);
 }
 
+// @ fn_34_4EF8
 bool CIngSpaceJumpGuardian::StateOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimationState.GetState() == CAnimationState::kAS_Over;
 }
 
+// @ fn_34_4EA0
 bool CIngSpaceJumpGuardian::HasIntroPattern(CStateManager& mgr, const CTriggerData& data) const {
   return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
 
+// @ fn_34_4E84
 bool CIngSpaceJumpGuardian::IntroPatternOver(CStateManager& mgr, const CTriggerData& data) const {
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// @ fn_34_4E18
 bool CIngSpaceJumpGuardian::ShouldJump(CStateManager& mgr, const CTriggerData& data) const {
   if (mJumpTarget != mWaypointNavigation.GetLastDestination()) {
     const CScriptAIWaypoint* waypoint = TCastToConstPtr< CScriptAIWaypoint >(
@@ -424,6 +434,7 @@ bool CIngSpaceJumpGuardian::ShouldJump(CStateManager& mgr, const CTriggerData& d
   return false;
 }
 
+// @ fn_34_4DF8
 bool CIngSpaceJumpGuardian::HasJumpTarget(CStateManager& mgr, const CTriggerData& data) const {
   return mJumpTarget != kInvalidUniqueId;
 }
@@ -449,25 +460,30 @@ bool CIngSpaceJumpGuardian::IsFacingWaypoint(CStateManager& mgr, const CTriggerD
   return true;
 }
 
+// @ fn_34_4C70 forced (trigcall)
 bool CIngSpaceJumpGuardian::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
   return mAttackAction == kAA_Taunt;
 }
 
+// @ fn_34_4C5C
 bool CIngSpaceJumpGuardian::ShouldMiniPortalAttack(CStateManager& mgr,
                                                    const CTriggerData& data) const {
   return mAttackAction == kAA_MiniPortal;
 }
 
+// @ fn_34_4C48
 bool CIngSpaceJumpGuardian::FoundMiniPortalAttack(CStateManager& mgr,
                                                   const CTriggerData& data) const {
   return mPortalCount != 0;
 }
 
+// @ fn_34_4C38
 bool CIngSpaceJumpGuardian::SkipToNextJumpPoint(CStateManager& mgr,
                                                 const CTriggerData& data) const {
   return mAttackAction == kAA_Jump;
 }
 
+// @ fn_34_4BF0 forced (trigcall)
 bool CIngSpaceJumpGuardian::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!mHasJumpPath || CPatterned::PathOver(mgr, data)) {
@@ -480,12 +496,14 @@ bool CIngSpaceJumpGuardian::PathShagged(CStateManager& mgr, const CTriggerData& 
   return mHeardNoise || CPatterned::PathShagged(mgr, data);
 }
 
+// @ fn_34_4B38
 bool CIngSpaceJumpGuardian::PathExists(CStateManager& mgr, const CTriggerData& data) const {
   return mPathFindSearch.PathExists(GetTranslation() + CVector3f::Up(),
                                     mPathFindNavigation.GetDestinationPosition()) ==
          CPathFindSearch::kR_Success;
 }
 
+// @ fn_34_4B34
 void CIngSpaceJumpGuardian::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 void CIngSpaceJumpGuardian::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -737,11 +755,13 @@ void CIngSpaceJumpGuardian::SteerToDest(CStateManager& mgr, EStateMsg msg, float
   }
 }
 
+// @ fn_34_3624
 void CIngSpaceJumpGuardian::EnableEnergyBar(CStateManager& mgr, float dt) {
   mgr.SetBossParams(GetUniqueId(), GetHealthInfo()->GetInitialHP(),
                     gpStringTable->GetStringIndex("BossSpaceJumpGuardian"));
 }
 
+// @ fn_34_3614
 void CIngSpaceJumpGuardian::SelectTarget(CStateManager& mgr, float dt) {
   mPlayerId = mgr.GetPlayer(0)->GetUniqueId();
 }
@@ -782,6 +802,7 @@ void CIngSpaceJumpGuardian::SelectAttackAction(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_34_30E4 forced (codecall)
 void CIngSpaceJumpGuardian::FindBestMiniPortals(CStateManager& mgr, float dt) {
   mPortalCount = 0;
   if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mPlayerId))) {
@@ -809,20 +830,24 @@ void CIngSpaceJumpGuardian::FindBestMiniPortals(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_34_30A8
 void CIngSpaceJumpGuardian::SetIntroJumpTarget(CStateManager& mgr, float dt) {
   mJumpTarget = mWaypointNavigation.GetDestination();
   mJumpApexHeight = 10.f;
   BodyController()->CommandMgr().Reset();
 }
 
+// @ fn_34_309C
 void CIngSpaceJumpGuardian::SetFaceJumpTarget(CStateManager& mgr, float dt) {
   mFaceTarget = mJumpTarget;
 }
 
+// @ fn_34_3090
 void CIngSpaceJumpGuardian::SetFaceAttackTarget(CStateManager& mgr, float dt) {
   mFaceTarget = mPlayerId;
 }
 
+// @ fn_34_3084
 void CIngSpaceJumpGuardian::SetFaceWaypoint(CStateManager& mgr, float dt) {
   mFaceTarget = mWaypointNavigation.GetDestination();
 }
@@ -855,6 +880,7 @@ void CIngSpaceJumpGuardian::ComputeJumpVelocity(CStateManager& mgr) {
   }
 }
 
+// @ fn_34_29EC
 void CIngSpaceJumpGuardian::SetupCollision(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > descriptions;
   descriptions.reserve(7);
@@ -950,6 +976,7 @@ void CIngSpaceJumpGuardian::SetCollisionVulnerability(CStateManager& mgr,
   }
 }
 
+// @ fn_34_2324
 void CIngSpaceJumpGuardian::CreateLight(CStateManager& mgr) {
   AnimationData()->SetEffectState(rstl::string_l(skEyesName), true, mgr);
   mLightId = mgr.AllocateUniqueId();
@@ -1004,6 +1031,7 @@ void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr) {
 #ifdef TARGET_PC
 
 // 0x1928-0x1930: retail passes the caller's locator name (r5) to GetLctrTransform.
+// @ fn_34_1904
 void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr, const rstl::string& locatorName) {
   if (mJumpMode == kJM_Waypoint) {
     const CVector3f origin = GetLctrTransform(locatorName).GetTranslation();
@@ -1017,6 +1045,7 @@ void CIngSpaceJumpGuardian::SpawnShockWave(CStateManager& mgr, const rstl::strin
 }
 #endif
 
+// @ fn_34_187C
 const SLdrIngSpaceJumpGuardianStruct* CIngSpaceJumpGuardian::GetCurrentStruct() const {
   const float hp = GetHealthInfo()->GetHP();
   if (hp <= mData.ingSpaceJumpGuardianStruct_0xd0db5f7a.unknown_0x3e370622) {
@@ -1106,6 +1135,7 @@ rstl::vector< TUniqueId > CIngSpaceJumpGuardian::FindJumpPoints(CStateManager& m
   return result;
 }
 
+// @ fn_34_1024
 void CIngSpaceJumpGuardian::SpawnBlobEffect(CStateManager& mgr,
                                             const TLockedToken< CGenDescription >& desc) {
   mBlobId = mgr.AllocateUniqueId();
