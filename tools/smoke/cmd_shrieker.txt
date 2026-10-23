@@ -1,0 +1,33 @@
+# Shrieker (module 69: CShrieker). Torvus Bog 02_swamp_greatbridge (world 3dfd2249, area 9) boots
+# three buried Shriekers at once, no layer switch: e000900c9 (u0528), e0009007b (u0523) and
+# e00090071 (u0520), hp 60/60, all on team e0009007a. The steps follow the shr1 lane's
+# tools/drivers/shrieker_greatbridge.con and tools/cov/specs/shrieker.py: a god-mode player walks up
+# to the first one (rustle 15, pop 10 make it unbury and chase), the state table by `fsm`, missiles
+# into the deflection field, then lethal damage; the second one stays buried as the contrast.
+# Left out on purpose: the approach's Bury/Retreat/UprootShriek walk and the dark-combo death of the
+# 6400-update coverage driver (they need the frames a 2400-update family does not have).
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2320.
+@f300 god 1; give missile 50
+@f350 objs shrieker
+@f400 obj e000900c9
+# Walk up to it: it rustles, pops out of the ground (Buried -> UprootShriek -> TargetPlayer).
+@f1560 place e000900c9 player 14
+@f1620 obj e000900c9
+# The state table, the states the coverage driver walked without incident.
+@f1700 fsm e000900c9 ShriekAttack
+@f1750 fsm e000900c9 Melee
+@f1800 fsm e000900c9 Dodge
+@f1850 fsm e000900c9 Patrol
+@f1900 fsm e000900c9 TargetPlayer
+@f1950 obj e000900c9
+# Close in, a real missile (the deflection field eats missiles that are not close enough), then a
+# missile hit through the damage command and a look at what is left.
+@f2000 place e000900c9 player 8
+@f2050 shoot e000900c9 missile
+@f2100 damage e000900c9 5 missile
+@f2150 obj e000900c9
+# Lethal damage on the first Shrieker, then the second one untouched and still buried.
+@f2200 damage e000900c9 999
+@f2250 objs shrieker
+@f2300 obj e0009007b
+@f2320 status

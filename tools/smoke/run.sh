@@ -75,11 +75,12 @@ fi
 # port, the command file, the input file, the console driver and extra environment. A cmd_*.txt
 # script is timed in game updates (`@f<n>`, gameplay from ~f240), never in wall seconds.
 # The module families (grenchler, grenguard, flyingpirate, mediuming, metroid, sporb, blogg, swarm,
-# gunturret, rezbit, parasite)
+# gunturret, rezbit, parasite, lumite, shrieker)
 # boot the area the module lanes' coverage drivers used and repeat their console steps, so a checked
 # module's actors keep loading: tools/cov/specs/{grenchler_entrance,grenchler_guardian,
 # flyingpirate_sandfalls,mediuming_dead,metroid_player,sporb_hall,blogg_shaft,swarmbasics_sand,
-# gunturret_0i_sand_hall,tail21_rezbit,parasite_sandfalls_fight}.con and tools/drivers/.
+# gunturret_0i_sand_hall,tail21_rezbit,parasite_sandfalls_fight}.con and tools/drivers/
+# (lumite and shrieker repeat tools/drivers/lumite_states.py and shrieker_greatbridge.con).
 # Append a new family at the end of ALL (its X display is its index) and give it the next free
 # console port.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
@@ -110,26 +111,31 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [swarm]="42b935e4,01_sand_entrance"
                [gunturret]="42b935e4,0i_sand_hall"
                [rezbit]="1baa96c2,02_cliff_reactorcore"
-               [parasite]="42b935e4,02_sand_sandfalls" )
+               [parasite]="42b935e4,02_sand_sandfalls"
+               [lumite]="42b935e4,0a_sand_hall"
+               [shrieker]="3dfd2249,02_swamp_greatbridge" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
                [darksamus]=4000 [splitter]=2000 [grenchler]=2400 [grenguard]=2400
                [flyingpirate]=2400 [mediuming]=2400 [metroid]=2400 [sporb]=2400 [blogg]=2400
-               [swarm]=2400 [gunturret]=2400 [rezbit]=2400 [parasite]=2400 )
+               [swarm]=2400 [gunturret]=2400 [rezbit]=2400 [parasite]=2400
+               [lumite]=2400 [shrieker]=2400 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280
                [darksamus]=280 [splitter]=280 [grenchler]=280 [grenguard]=280
                [flyingpirate]=280 [mediuming]=280 [metroid]=280 [sporb]=280 [blogg]=280
-               [swarm]=280 [gunturret]=280 [rezbit]=280 [parasite]=280 )
+               [swarm]=280 [gunturret]=280 [rezbit]=280 [parasite]=280
+               [lumite]=280 [shrieker]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709
                [boostg_fsm]=49710 [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714
                [ep]=49715 [darksamus]=49716 [plain]=49717 [splitter]=49718
                [grenchler]=49719 [grenguard]=49720 [flyingpirate]=49721 [mediuming]=49722
                [metroid]=49723 [sporb]=49724 [blogg]=49725 [swarm]=49726
-               [gunturret]=49727 [rezbit]=49728 [parasite]=49729 )
+               [gunturret]=49727 [rezbit]=49728 [parasite]=49729
+               [lumite]=49730 [shrieker]=49731 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
@@ -139,7 +145,7 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [flyingpirate]=cmd_flyingpirate.txt [mediuming]=cmd_mediuming.txt
                [metroid]=cmd_metroid.txt [sporb]=cmd_sporb.txt [blogg]=cmd_blogg.txt
                [swarm]=cmd_swarm.txt [gunturret]=cmd_gunturret.txt [rezbit]=cmd_rezbit.txt
-               [parasite]=cmd_parasite.txt )
+               [parasite]=cmd_parasite.txt [lumite]=cmd_lumite.txt [shrieker]=cmd_shrieker.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
@@ -152,7 +158,7 @@ declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=
 # The order fixes each family's X display, so two runs of the suite never share one.
 ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spacepirate
      ing ep plain emp3 turret agon54 darksamus splitter grenchler grenguard flyingpirate
-     mediuming metroid sporb blogg swarm gunturret rezbit parasite)
+     mediuming metroid sporb blogg swarm gunturret rezbit parasite lumite shrieker)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 

@@ -191,11 +191,12 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s). `--capped` or `SMOKE_FAST=0` runs everything capped.
-Eleven of the families keep a checked module's actors loading: grenchler (Torvus
+Thirteen of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
-0i_sand_hall), rezbit (Sanctuary 02_cliff_reactorcore) and parasite (Agon 02_sand_sandfalls layer 9)
+0i_sand_hall), rezbit (Sanctuary 02_cliff_reactorcore), parasite (Agon 02_sand_sandfalls layer 9),
+lumite (Agon 0a_sand_hall) and shrieker (Torvus 02_swamp_greatbridge)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -208,7 +209,13 @@ through BecomeDeRezzed/BecomeRezzed and reachability attacks and breaks its shie
 layer 9 for the three Brizgees u05e5/u05d9/u05d6 and their shell collision actors, takes the shells'
 beam hits, walks the state machine (GetUp, TelegraphAttack, PathFind, TargetPlayer, Crouch - never
 Generate/Attack/Retreat/Halt/Jump, which crash a Brizgee's host when forced), kills one with the
-console and one with damage. A new family is appended at the end of the `ALL` table in
+console and one with damage; lumite wakes one of the four Lumites hopping through 0a_sand_hall,
+walks Turn/SmallShot/BigShot/Taunt/Hop, takes a beam hit and a missile hit and finishes it with
+lethal damage (never `fsm Dead`: a lethal Lumite is deleted outright, so Dead only runs forced);
+shrieker walks up to the first of the three buried Shriekers on 02_swamp_greatbridge (it unburied
+from Buried to TargetPlayer on its own), forces ShriekAttack/Melee/Dodge/Patrol/TargetPlayer, fires
+a missile into the deflection field, damages it and kills it, leaving the second one buried as the
+contrast. A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
 
@@ -235,9 +242,9 @@ first game update 5.2 s -> 4.1 s wall. "Gameplay reached" stays ~9.1 s: it is a 
 at 60 Hz (frame pacing, `CGraphics::EndScene`), which headless does not change. Full smoke
 (`--jobs 4`, shared machine): the 18-family suite measured wall 364 s windowed -> 356 s headless,
 CPU (user+sys of every game) 193 s -> 121 s; counts, positions and `[warp]`/`[ids]` lines match
-within run-to-run noise. The 26-family suite (2026-10-23) measured 273 s headless; the 28-family
-one (gunturret and rezbit added) 277 s: the wall-clock drivers ing, ep and darksamus still bound it
-(ing ~266 s), not the family count.
+within run-to-run noise. The 31-family suite (2026-10-23, `--jobs 4`, lumite and shrieker added)
+measured 269 s headless; the 28-family one (gunturret and rezbit added) 277 s: the wall-clock
+drivers ing, ep and darksamus still bound it (ing ~266 s), not the family count.
 
 ## Branch coverage of the port module bodies (gcov)
 

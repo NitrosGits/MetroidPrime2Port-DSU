@@ -1,0 +1,36 @@
+# Lumite (module 39: CLumite, the hopping sunlight-shy crawler of Agon Wastes). Agon Wastes
+# 0a_sand_hall (world 42b935e4, area 1) boots four Lumites u045a u0438 u041a u0418 (editor ids
+# 000100ce/cb/c8/c7) hopping on the hall floor; no layer switch. The steps follow the lum1 lane's
+# tools/drivers/lumite_states.py and tools/cov/specs/lumite.py: wake one Lumite, bring it to a
+# god-mode player, walk a few states of the module's state table, then shoot it and finish it with
+# lethal damage.
+# Not the Dead state: a real lethal damage deletes a Lumite at once (CPatterned's massive-death
+# path), so Dead only ever runs forced (`fsm <id> Dead`) in the coverage driver - not here.
+# The shots stay partial on purpose: a Lumite has hp 6/6, a power beam hit takes 2 and a charged
+# shot killed it in the lane's own run, so the charge goes unused and the console's lethal damage
+# ends it. Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last
+# check f2320.
+@f300 god 1; give missile 50
+@f350 objs lumite; objs collision
+@f400 obj u045a
+# One Lumite, awake and next to the player (the driver's order: Activate, then place).
+@f1560 send u045a Activate; place u045a player 5
+@f1620 obj u045a
+# A few states of the state machine the coverage driver walked (Turn, SmallShot, BigShot, Taunt,
+# Hop); the anim-body states it was warned about do not exist for this module.
+@f1700 fsm u045a Turn
+@f1750 fsm u045a SmallShot
+@f1800 fsm u045a BigShot
+@f1850 fsm u045a Taunt
+@f1900 fsm u045a Hop
+@f1950 obj u045a
+# The player's shots: a power beam hit, then a missile hit through the damage command (the weapon
+# type a damageable trigger is looked up by), both non-lethal.
+@f2050 shoot u045a
+@f2100 obj u045a
+@f2150 damage u045a 3 missile
+@f2200 obj u045a
+# Lethal damage: the Lumite's own Dead state never runs, the object is deleted outright.
+@f2250 damage u045a 999
+@f2280 objs lumite
+@f2320 status
