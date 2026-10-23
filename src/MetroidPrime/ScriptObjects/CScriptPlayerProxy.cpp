@@ -128,6 +128,7 @@ void CScriptPlayerProxy::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_62_13D8
 void CScriptPlayerProxy::SendStateToPlayer(EScriptObjectState state, CStateManager& mgr,
                                            uint playerIndex) {
   UpdateTransform(mgr, playerIndex);
@@ -390,6 +391,7 @@ void CScriptPlayerProxy::HandleDamageOverTimeMessage(EScriptObjectMessage msg, T
   }
 }
 
+// @ fn_62_1F0C
 void CScriptPlayerProxy::HandleVisorMessage(EScriptObjectMessage msg, TUniqueId sender,
                                             CStateManager& mgr, uint playerIndex) {
   if (msg == kSM_AreaLoaded) {
@@ -689,6 +691,7 @@ static uint BuildPlayerMask(const CStateManager& mgr, uint mask) {
   return playerMask;
 }
 
+// @ fn_62_2CA8
 CScriptPlayerProxy::CScriptPlayerProxy(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CModelData& model,
     CStateManager& mgr, uint playerMask, int proxyType, const CVector3f& playerOffset,

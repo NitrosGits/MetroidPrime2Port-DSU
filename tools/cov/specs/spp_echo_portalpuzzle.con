@@ -1,0 +1,17 @@
+# Agon Wastes 05_portalpuzzle layer 0: EchoVisorWatcher PLCT e00120402. For tools/cov/specs/scriptplayerproxy.py:
+# visor switches in and out of echo (Entered/Exited), the same while Deactivated (Think's inactive return), then
+# Activate (a non-AreaLoaded message through HandleVisorMessage) and the other visors (not the watched one).
+@f300 god 1; give echoVisor 1; give darkVisor 1; give scanVisor 1
+@f340 obj e00120402
+@f360 visor echo
+@f440 obj e00120402
+@f460 visor combat
+@f540 visor echo
+@f600 send e00120402 Deactivate
+@f640 visor combat
+@f700 send e00120402 Activate
+@f760 visor scan
+@f820 visor dark
+@f880 visor echo
+@f940 visor combat
+@f1000 obj e00120402

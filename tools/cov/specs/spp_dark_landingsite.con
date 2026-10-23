@@ -1,0 +1,17 @@
+# Temple Grounds dark 01_temple_landingsite_dark layer 0: DarkVisorWatcher PLCTs e00230084, e0023008c. For tools/cov/specs/scriptplayerproxy.py:
+# visor switches in and out of dark (Entered/Exited), the same while Deactivated (Think's inactive return), then
+# Activate (a non-AreaLoaded message through HandleVisorMessage) and the other visors (not the watched one).
+@f300 god 1; give echoVisor 1; give darkVisor 1; give scanVisor 1
+@f340 obj e00230084
+@f360 visor dark
+@f440 obj e00230084
+@f460 visor combat
+@f540 visor dark
+@f600 send e00230084 Deactivate
+@f640 visor combat
+@f700 send e00230084 Activate
+@f760 visor scan
+@f820 visor echo
+@f880 visor dark
+@f940 visor combat
+@f1000 obj e00230084

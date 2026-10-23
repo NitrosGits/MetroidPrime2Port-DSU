@@ -1,0 +1,12 @@
+# Temple Grounds dark 01_temple_landingsite_dark layer 0: DarkVisorWatcher PLCT e00230084, forced (it starts inactive: Activate first). For
+# tools/cov/specs/scriptplayerproxy.py: AreaLoaded re-sent while the dark visor is already on (InitVisors'
+# "in the watched visor" arm, then CheckVisors sends Entered), then Delete (KillListener).
+@f300 god 1; give darkVisor 1; give echoVisor 1
+@f330 send e00230084 Activate
+@f340 visor dark
+@f440 send e00230084 AreaLoaded
+@f500 obj e00230084
+@f540 visor combat
+@f600 send e00230084 AreaLoaded
+@f700 send e00230084 Delete
+@f760 objs PLCT
