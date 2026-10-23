@@ -143,6 +143,7 @@ CWispTentacle::CWispTentacle(TUniqueId uid, const rstl::string& name, const CEnt
   }
 }
 
+// @ fn_86_0
 CWispTentacle::~CWispTentacle() {}
 
 void CWispTentacle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
@@ -273,6 +274,7 @@ void CWispTentacle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_86_29AC
 void CWispTentacle::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -280,26 +282,33 @@ void CWispTentacle::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_86_2980
 bool CWispTentacle::ShouldSleep(CStateManager& mgr, const CTriggerData& data) const {
   return !ShouldPatrol(mgr, data);
 }
 
+// @ fn_86_295C
 bool CWispTentacle::ShouldPatrol(CStateManager& mgr, const CTriggerData&) const {
   return IsPlayerNearby(mWakeUpDistance, mgr);
 }
 
+// @ fn_86_2938
 bool CWispTentacle::ShouldSearch(CStateManager& mgr, const CTriggerData&) const {
   return IsPlayerNearby(mSearchDistance, mgr);
 }
 
+// @ fn_86_2914
 bool CWispTentacle::ShouldAttack(CStateManager& mgr, const CTriggerData&) const {
   return IsPlayerNearby(mAttackDistance, mgr);
 }
 
+// @ fn_86_290C
 bool CWispTentacle::ShouldGrab(CStateManager&, const CTriggerData&) const { return mShouldGrab; }
 
+// @ fn_86_2900
 bool CWispTentacle::Attacked(CStateManager&, const CTriggerData&) const { return mAttacked; }
 
+// @ fn_86_2888
 bool CWispTentacle::Delay(CStateManager&, const CTriggerData&) const {
   if (mAttacked) {
     if (mStateMachine->GetTime() > mHurtSleepDelay) {
@@ -311,6 +320,7 @@ bool CWispTentacle::Delay(CStateManager&, const CTriggerData&) const {
   return true;
 }
 
+// @ fn_86_27CC
 bool CWispTentacle::IsPlayerNearby(float distance, CStateManager& mgr) const {
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
     const CVector3f playerPos = mgr.GetPlayer(i)->GetTranslation();
@@ -325,10 +335,12 @@ bool CWispTentacle::IsPlayerNearby(float distance, CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_86_27AC
 bool CWispTentacle::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_86_2708
 void CWispTentacle::Sleep(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -344,6 +356,7 @@ void CWispTentacle::Sleep(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_24D0
 void CWispTentacle::Spawn(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -368,6 +381,7 @@ void CWispTentacle::Spawn(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_2220
 void CWispTentacle::Withdraw(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -392,6 +406,7 @@ void CWispTentacle::Withdraw(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_2188
 void CWispTentacle::Patrol(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -406,6 +421,7 @@ void CWispTentacle::Patrol(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_2128
 void CWispTentacle::Search(CStateManager&, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -418,6 +434,7 @@ void CWispTentacle::Search(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_1F20
 void CWispTentacle::Attack(CStateManager&, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -436,6 +453,7 @@ void CWispTentacle::Attack(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_1DA4
 void CWispTentacle::Flinch(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -476,6 +494,7 @@ void CWispTentacle::UpdateGrabbedPirate(float dt, CStateManager& mgr) {
   pirate->SetPortalPlane(mPortalPlane);
 }
 
+// @ fn_86_19E4
 void CWispTentacle::Grab(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -495,6 +514,7 @@ void CWispTentacle::Grab(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_86_17CC
 void CWispTentacle::Pull(CStateManager&, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -525,6 +545,7 @@ void CWispTentacle::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_86_1724
 void CWispTentacle::Render(const CStateManager& mgr) const {
   if (mState != kS_Sleep) {
     GetModelData()->SetupWorldSpacePortalPlane(GetTransform(), mPortalPlane);
@@ -570,8 +591,10 @@ void CWispTentacle::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_86_13B4
 void CWispTentacle::Touch(CActor& actor, CStateManager& mgr) { CPatterned::Touch(actor, mgr); }
 
+// @ fn_86_1140
 CVector3f CWispTentacle::GetAimPosition(const CStateManager&, float dt) const {
   CVector3f offset = CVector3f::Zero();
   if (dt > 0.f) {
@@ -592,6 +615,7 @@ CVector3f CWispTentacle::GetAimPosition(const CStateManager&, float dt) const {
   return offset;
 }
 
+// @ fn_86_FD8
 CVector3f CWispTentacle::GetOrbitPosition(const CStateManager& mgr) const {
   const CVector3f base = CPatterned::GetOrbitPosition(mgr);
 #ifdef TARGET_PC
@@ -642,6 +666,7 @@ void CWispTentacle::SnapWaypointToFloor(CStateManager& mgr) {
   }
 }
 
+// @ fn_86_D14
 void CWispTentacle::KnockBack(CStateManager&, const CKnockBackInfo& info) {
   if (info.GetDamageInfo().GetVulnerableDamage(*GetDamageVulnerability()) > 0.f) {
     mAttacked = true;
@@ -649,6 +674,7 @@ void CWispTentacle::KnockBack(CStateManager&, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_86_468
 CEntity* LoadWispTentacle(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrWispTentacle sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrWispTentacle.inc"
