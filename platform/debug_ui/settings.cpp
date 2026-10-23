@@ -26,6 +26,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -540,12 +541,44 @@ void LoadSettings() {
     ApplySettingsText(lines);
   }
   sBaseline = SettingsText();
-  // The settings in effect, in the log: on Android the file itself is in the app's private
-  // directory, so this is the only way to see from a device log what the run played with.
-  std::istringstream effective(sBaseline);
-  for (std::string line; std::getline(effective, line);) {
-    if (!line.empty() && line[0] != '#') {
-      std::fprintf(stderr, "port: setting %s\n", line.c_str());
+  // The settings in effect go to the log from LogSettings, once the log file has started.
+}
+
+// MP1's LogSettings: bug reports come with the log but rarely the settings file, so every setting
+// in effect is logged at startup, wrapped into lines of a readable length (keys in alphabetical
+// order, a value holding a path cut to its file name), then the MP2_* variables in effect.
+void LogSettings() {
+  std::string text;
+  {
+    std::lock_guard< std::recursive_mutex > lock(sMutex);
+    text = SettingsText();
+  }
+  std::string line;
+  const auto flush = [&line] {
+    if (!line.empty()) {
+      std::fprintf(stderr, "port: settings:%s\n", line.c_str());
+      line.clear();
+    }
+  };
+  for (const auto& [key, value] : SettingsValues(text)) {
+    const size_t slash = value.find_last_of("/\\");
+    const std::string entry =
+        " " + key + "=" + (slash == std::string::npos ? value : value.substr(slash + 1));
+    if (line.size() + entry.size() > 160) {
+      flush();
+    }
+    line += entry;
+  }
+  flush();
+  // MP2_* variables override the file for one run (already in the values above).
+#if defined(_WIN32)
+  char** env = _environ;
+#else
+  char** env = environ;
+#endif
+  for (; env != nullptr && *env != nullptr; ++env) {
+    if (std::strncmp(*env, "MP2_", 4) == 0) {
+      std::fprintf(stderr, "port: env: %s\n", *env);
     }
   }
 }

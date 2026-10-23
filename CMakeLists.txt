@@ -454,6 +454,7 @@ endif()
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
         platform/port_save.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
+        platform/port_crash.cpp platform/port_watchdog.cpp platform/port_storage_report.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_gyro_motion.cpp
@@ -467,7 +468,10 @@ if(AURORA_SDL3_TARGET)
         platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp
         platform/port_textures.cpp platform/port_prompts.cpp)
+    # port_crash.cpp prints MP_BUILD_REVISION in its report.
+    add_dependencies(mp_port_audio port_build_info)
     target_include_directories(mp_port_audio PRIVATE
+        "${CMAKE_BINARY_DIR}/generated"
         platform/include
         extern/aurora/include
         extern/musyx-port/include
@@ -485,8 +489,8 @@ if(AURORA_SDL3_TARGET)
     # platform/main.cpp turns fd 1 and fd 2 into logcat lines and resolves its directories
     # through SDL_GetPrefPath on Android, so the entry object needs SDL3's headers there.
     # AURORA_SDL3_TARGET only exists once Aurora has been added, which is why this is here
-    # rather than with the target itself; the desktop path includes no SDL header and is
-    # unaffected by the extra include directory.
+    # rather than with the target itself; the desktop path needs it for the disc message and
+    # picker.
     target_include_directories(mp_port_entry PRIVATE
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
 else()

@@ -150,6 +150,11 @@ void DrawVideoCompatibility();
 // Drawn every frame, the window open or not (DrawUI).
 void DrawShaderCompilationToast();
 void DrawMenuHintToast();
+// Top-centre toasts stack instead of overlapping: BeginTopToastStack once per frame before them,
+// then PlaceTopToast before each Begin and TopToastPlaced inside it (MP1's API).
+void BeginTopToastStack();
+void PlaceTopToast(const ImGuiViewport* viewport);
+void TopToastPlaced(const ImGuiViewport* viewport);
 
 // controls.cpp
 void DrawControlsOptions();

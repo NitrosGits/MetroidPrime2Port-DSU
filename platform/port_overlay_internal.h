@@ -107,6 +107,9 @@ std::string SettingsText();
 // Reads <user>/settings.cfg once per run (a later call does nothing; one before
 // PortSettings::Initialize is ignored, and main.cpp calls it right after). Never writes.
 void LoadSettings();
+// Logs every setting in effect ("port: settings: k=v ...") and the MP2_* variables; main.cpp calls
+// it once the log file has started.
+void LogSettings();
 // Writes the file when a setter or row marked it dirty and the text now differs from what was last
 // read or saved.
 void SaveSettings();
