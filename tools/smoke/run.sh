@@ -57,10 +57,11 @@ done
 # is what keeps two suites apart: at 20 the 23-family table of 2026-10-23 overlapped the next slot,
 # and at 40 the 41-family table of 2026-10-23 (fishcloud, the last, at index 40) did too. It must
 # exceed the last index of the table (spp was 44 in the 45-family table of 2026-10-23, which SLOTSTEP
-# 45 still cleared, but scriptgui is 47 in the 48-family table, so it is 50 and has room for two more).
+# 45 still cleared, and 50 was full at drkc, the 49th; it is 100, and the check after ALL below fails
+# the run if the table outgrows it).
 # Slot 0 (the bare table) is left to copies of this script that predate the slots.
 # An explicit --display-base / SMOKE_DISPLAY_BASE keeps the old fixed numbering.
-SLOTSTEP=50
+SLOTSTEP=100
 PORTOFF=0
 if [ "$LIST" = 0 ] && [ -z "${SMOKE_DISPLAY_BASE:-}" ] && [ "$DISPBASE" = 760 ]; then
   mkdir -p /tmp/opencode/locks
@@ -242,6 +243,9 @@ ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spac
      fishcloud spa wallwalker isbg spp mysf spor scriptgui)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
+if [ ${#ALL[@]} -ge $SLOTSTEP ]; then
+  echo "[smoke] ${#ALL[@]} families do not fit SLOTSTEP=$SLOTSTEP: raise it" >&2; exit 2
+fi
 
 if [ "$LIST" = 1 ]; then
   printf "%-12s %-9s %-6s %-5s %-7s %-22s %s\n" family frames secs port display world extra
