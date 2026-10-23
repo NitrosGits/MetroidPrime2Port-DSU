@@ -56,11 +56,11 @@ done
 # or a console port. SLOTSTEP is wider than the family table (one display and one port each), which
 # is what keeps two suites apart: at 20 the 23-family table of 2026-10-23 overlapped the next slot,
 # and at 40 the 41-family table of 2026-10-23 (fishcloud, the last, at index 40) did too. It must
-# exceed the last index of the table (spp is 44 in the 45-family table of 2026-10-23, so SLOTSTEP 45
-# still clears it, but the next family would land on 45 and needs a bigger SLOTSTEP).
+# exceed the last index of the table (spp was 44 in the 45-family table of 2026-10-23, which SLOTSTEP
+# 45 still cleared, but mysf is 45 in the 46-family table, so it is 50 and has room for four more).
 # Slot 0 (the bare table) is left to copies of this script that predate the slots.
 # An explicit --display-base / SMOKE_DISPLAY_BASE keeps the old fixed numbering.
-SLOTSTEP=45
+SLOTSTEP=50
 PORTOFF=0
 if [ "$LIST" = 0 ] && [ -z "${SMOKE_DISPLAY_BASE:-}" ] && [ "$DISPBASE" = 760 ]; then
   mkdir -p /tmp/opencode/locks
@@ -79,7 +79,7 @@ fi
 # script is timed in game updates (`@f<n>`, gameplay from ~f240), never in wall seconds.
 # The module families (grenchler, grenguard, flyingpirate, mediuming, metroid, sporb, blogg, swarm,
 # gunturret, rezbit, parasite, lumite, shrieker, ingswarm, darktrooper, bacteriaswarm, tryclops,
-# wisptentacle, octapede, amt, dbar, sjguard, fishcloud, spa, wallwalker, isbg, spp)
+# wisptentacle, octapede, amt, dbar, sjguard, fishcloud, spa, wallwalker, isbg, spp, mysf)
 # boot the area the module lanes' coverage drivers used and repeat their console steps, so a checked
 # module's actors keep loading: tools/cov/specs/{grenchler_entrance,grenchler_guardian,
 # flyingpirate_sandfalls,mediuming_dead,metroid_player,sporb_hall,blogg_shaft,swarmbasics_sand,
@@ -90,7 +90,7 @@ fi
 # wisptentacle_hall.con, octapede octapede_cliffhall.con, amt aimannedturret_alamofront.con, dbar
 # destructiblebarrier_forced.con, sjguard ingspacejumpguardian_sandfalls.con, fishcloud
 # fishcloud_sacredpath.con, spa tools/drivers/spa_sandtempledark.con, wallwalker
-# wallwalker_temple.con, isbg isbg.con and spp spp_dark_landingsite.con).
+# wallwalker_temple.con, isbg isbg.con, spp spp_dark_landingsite.con and mysf mysteryflyer.con).
 # Append a new family at the end of ALL (its X display is its index) and give it the next free
 # console port.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
@@ -135,7 +135,8 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [spa]="42b935e4,03_sand_temple_dark"
                [wallwalker]="1baa96c2,09_cliff_temple"
                [isbg]="1baa96c2,06_cliff_spiderballguardian"
-               [spp]="3bfa3eff,01_temple_landingsite_dark" )
+               [spp]="3bfa3eff,01_temple_landingsite_dark"
+               [mysf]="3bfa3eff,0e_temple_hall" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
@@ -145,7 +146,7 @@ declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boos
                [lumite]=2400 [shrieker]=2400 [ingswarm]=2400 [darktrooper]=2400
                [bacteriaswarm]=2400 [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000
                [amt]=9400 [dbar]=1200 [sjguard]=6000 [fishcloud]=2500 [spa]=2000 [wallwalker]=3600
-               [isbg]=5700 [spp]=1700 )
+               [isbg]=5700 [spp]=1700 [mysf]=3200 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280
@@ -155,7 +156,7 @@ declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=
                [lumite]=280 [shrieker]=280 [ingswarm]=280 [darktrooper]=280
                [bacteriaswarm]=280 [tryclops]=280 [wisptentacle]=280 [octapede]=280
                [amt]=280 [dbar]=280 [sjguard]=280 [fishcloud]=280 [spa]=280
-               [wallwalker]=280 [isbg]=280 [spp]=280 )
+               [wallwalker]=280 [isbg]=280 [spp]=280 [mysf]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709
                [boostg_fsm]=49710 [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714
@@ -166,7 +167,8 @@ declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [
                [lumite]=49730 [shrieker]=49731 [ingswarm]=49732 [darktrooper]=49733
                [bacteriaswarm]=49734 [tryclops]=49735 [wisptentacle]=49736 [octapede]=49737
                [amt]=49738 [dbar]=49739 [sjguard]=49740 [fishcloud]=49741
-               [spa]=49742 [wallwalker]=49743 [isbg]=49744 [spp]=49745 )
+               [spa]=49742 [wallwalker]=49743 [isbg]=49744 [spp]=49745
+               [mysf]=49746 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
@@ -182,7 +184,8 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [wisptentacle]=cmd_wisptentacle.txt [octapede]=cmd_octapede.txt
                [amt]=cmd_amt.txt [dbar]=cmd_dbar.txt [sjguard]=cmd_sjguard.txt
                [fishcloud]=cmd_fishcloud.txt [spa]=cmd_spa.txt
-               [wallwalker]=cmd_wallwalker.txt [isbg]=cmd_isbg.txt [spp]=cmd_spp.txt )
+               [wallwalker]=cmd_wallwalker.txt [isbg]=cmd_isbg.txt [spp]=cmd_spp.txt
+               [mysf]=cmd_mysf.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
@@ -206,7 +209,9 @@ declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # at f1000 is only ~200 updates behind that, so a faster machine would activate nothing. Capped,
 # the guardian is in for f900 as in its driver; its 5700 updates take ~95 s. spp runs fast: its two
 # PLCTs are layer 0 of the booted area, so no layer step can trail, and its transcript is identical
-# capped and uncapped.
+# capped and uncapped. mysf is spp's case: its three wasps are layer 0 of 0e_temple_hall and already
+# listed `inactive` in the f340 `objs`, and its 3200-update transcript is byte-identical capped and
+# uncapped.
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
 declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
                [octapede]=1 [amt]=1 [spa]=1 [wallwalker]=1 [isbg]=1 )
@@ -218,7 +223,7 @@ ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spac
      ing ep plain emp3 turret agon54 darksamus splitter grenchler grenguard flyingpirate
      mediuming metroid sporb blogg swarm gunturret rezbit parasite lumite shrieker
      ingswarm darktrooper bacteriaswarm tryclops wisptentacle octapede amt dbar sjguard
-     fishcloud spa wallwalker isbg spp)
+     fishcloud spa wallwalker isbg spp mysf)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 

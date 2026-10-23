@@ -1,0 +1,62 @@
+# MysteryFlyer (module 45: CMysteryFlyer, the MYSF "Morphology: War Wasp" - it patrols, follows its
+# attack path once alerted, then hovers, approaches, dodges and shoots; it joins no TeamAiMgr in this
+# area and tears down through FadeOut/Dead, a `kill` removing it outright).
+# Temple Grounds 0e_temple_hall (world 3bfa3eff, layer 0): the area's three wasps, e003100fe,
+# e003100ff and e00310101, start inactive - their generator's relay activates them in game - so the
+# console asks `objs MysteryFlyer` before it sends Activate.
+# The steps repeat the mf1 lane's tools/cov/specs/mysteryflyer.con: god mode with missiles, `objs
+# MysteryFlyer`, Activate all three, `place` them at 12/30/6 units from the player, Alert all three
+# (FollowAttackPath to their attack waypoints, then Hover/Approach/Attack/Dodge on their own), an
+# `obj` triple every ~300 updates through the run, `damage` on e00310101 (the knock-back, hp 6 -> 5),
+# the forced states (fsm Approach with a `tp` to the waypoint's line, Dodge, Attack, Hover,
+# GoToPatrol), the two line-of-sight codecalls plus ResetAttack, `kill` on e00310101, then
+# Deactivate/Delete on e003100ff and on e003100fe, with `objs MysteryFlyer` around the steps.
+# Evidence in the transcript: `objs MysteryFlyer` listing the three CMysteryFlyer objects of area a49
+# `inactive` at f340 (the spawn positions -0.6, 310.3, -47.1 etc.), 3 objects and no state word at
+# f460 and f700 once the Activate and the `place` have them moving (each `place` answering with the
+# wasp's new position), and 0 objects after the Deletes at f3000; `obj` reading hp 6/6, fsm
+# FollowAttackPath, body state 5 and the wasp's message map (on Attack send Follow to its own
+# 0031010x CScriptWaypoint, on Dead send SetToZero to the generator 003100b1 and the pickup
+# generator 003100e4) for each of the three, unchanged through f2000; the damage hit hp 6.0 -> 5.0
+# with body state 6 (the flinch) and hp 5/6 by the end; the fsm forcing answering
+# `fsm FollowAttackPath -> Approach [sub-machine Approach]`, `Dodge`, `Approach -> Attack [top
+# machine]` with body state 18, `Hover` and `GoToPatrol`, and the codecalls `CalcLineOfSight` and
+# `ResetAttack`. A killed wasp is gone by its next `obj`: `obj e00310101` five updates after the
+# `kill` answers "no object with editor id", which is why the checks count the objects instead.
+# Every step answers `=> ok`. The log's `init compiled module MysteryFlyer` line lists the whole
+# compiled-module table, so it says the module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. The family runs fast like the rest: its three
+# wasps are layer 0 of the booted area and already listed `inactive` at f340 under the fast updates,
+# so no load step can trail them. F=3200, last check f3000.
+@f300 god 1; give missile 50
+@f340 objs MysteryFlyer
+@f400 send e003100fe Activate; send e003100ff Activate; send e00310101 Activate
+@f460 objs MysteryFlyer
+@f500 place e003100fe player 12; place e003100ff player 30; place e00310101 player 6
+@f600 send e003100fe Alert; send e003100ff Alert; send e00310101 Alert
+@f700 objs MysteryFlyer
+@f800 obj e003100fe; obj e003100ff; obj e00310101
+@f1100 obj e003100fe; obj e003100ff; obj e00310101
+@f1400 obj e003100fe; obj e003100ff; obj e00310101
+@f1700 obj e003100fe; obj e003100ff; obj e00310101
+@f2000 obj e003100fe; obj e003100ff; obj e00310101
+@f2100 damage e00310101 1 0 power
+@f2110 obj e00310101
+@f2200 fsm e003100fe Approach
+@f2210 tp 30 280 -38
+@f2300 obj e003100fe
+@f2400 fsm e003100ff Dodge
+@f2450 obj e003100ff
+@f2500 fsm e003100fe Attack
+@f2560 obj e003100fe
+@f2600 fsm e003100ff Hover
+@f2620 fsm e00310101 GoToPatrol
+@f2650 codecall e003100fe CalcLineOfSight
+@f2660 codecall e003100fe CalcLineOfSight; codecall e003100fe ResetAttack
+@f2700 obj e003100fe; obj e003100ff; obj e00310101
+@f2800 kill e00310101
+@f2900 send e003100ff Deactivate
+@f2950 send e003100ff Delete
+@f2960 send e003100fe Deactivate
+@f2980 send e003100fe Delete
+@f3000 objs MysteryFlyer

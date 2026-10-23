@@ -206,7 +206,7 @@ tryclops, wisptentacle, octapede, amt, spa, wallwalker and isbg): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200). `--capped` or `SMOKE_FAST=0` runs everything capped.
-Twenty-seven of the families keep a checked module's actors loading: grenchler (Torvus
+Twenty-eight of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -218,8 +218,8 @@ wisptentacle (Temple Grounds 0t_temple_hall_dark), octapede (Sanctuary Fortress 
 amt (Agon 06_sand_alamofront), dbar (Agon 08_sand_casualpirates, whose fifteen barriers no area
 places: the family spawns them), sjguard (Agon 02_sand_sandfalls_dark), fishcloud (Temple Grounds
 06_temple_sacredpath), spa (Agon 03_sand_temple_dark), wallwalker (Sanctuary Fortress
-09_cliff_temple layer 3), isbg (Sanctuary Fortress 06_cliff_spiderballguardian layer 13) and spp
-(Temple Grounds dark 01_temple_landingsite_dark)
+09_cliff_temple layer 3), isbg (Sanctuary Fortress 06_cliff_spiderballguardian layer 13), spp
+(Temple Grounds dark 01_temple_landingsite_dark) and mysf (Temple Grounds 0e_temple_hall)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -295,7 +295,14 @@ six BeginNextPuzzleSection, places it in front of the player, kills it (hp 0/600
 deletes it; spp drives the dark landingsite's DarkVisorWatcher e00230084 (it starts inactive, so the
 Deactivate is a no-op and the later Activate is what brings it up) through the visor switches it
 watches and the ones it does not, `obj`/`objs ScriptPlayerProxy` showing its relay map and the area's
-two proxies.
+two proxies; mysf drives 0e_temple_hall's three wasps e003100fe/e003100ff/e00310101, which start
+inactive (`objs MysteryFlyer` listing all three with their spawn positions before the Activate),
+places them around the player, alerts them into FollowAttackPath (hp 6/6, body state 5, each
+sending Follow to its own waypoint on Attack), takes a 6 -> 5 knock-back on e00310101 (body state
+6, hp 5/6 from then on), forces Approach (after a `tp` onto the waypoint's line), Dodge, Attack
+(body state 18), Hover and GoToPatrol, runs both CalcLineOfSight/ResetAttack codecalls, kills
+e00310101 and Deactivates/Deletes the other two, `objs MysteryFlyer` counting the three down to
+none - a killed wasp is gone by its next `obj`, so the count is the check.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
