@@ -171,6 +171,7 @@ CRezbit::CRezbit(TUniqueId uid, const rstl::string& name, const CEntityInfo& inf
 
 CRezbit::~CRezbit() {}
 
+// @ fn_53_6B78
 void CRezbit::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -206,18 +207,23 @@ void CRezbit::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjec
   }
 }
 
+// @ fn_53_6D84
 CVector3f CRezbit::GetAimPosition(const CStateManager& mgr, float dt) const {
   return CPatterned::GetAimPosition(mgr, dt);
 }
 
+// @ fn_53_6DB0
 const CDamageVulnerability* CRezbit::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_53_6DD0
 CProjectileInfo* CRezbit::ProjectileInfo() { return &mEnergyBoltInfo; }
 
+// @ fn_53_6DD8
 void CRezbit::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
 
+// @ fn_53_6DF8
 void CRezbit::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
 void CRezbit::Render(const CStateManager& mgr) const {
@@ -330,14 +336,28 @@ void CRezbit::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     }
     break;
   case kSM_Alert:
+#ifdef TARGET_PC
+    // 0x7434 lbz/rlwimi r0,r3,7,24,24/stb 0x420: retail sets CPatterned's hit-by-player bit;
+    // UpdateTimers turns it into mAlert on the next Think.
+    SetHitByPlayerProjectile(true);
+#else
     mAlert = true;
+#endif
     break;
   case kSM_Damage:
+#ifdef TARGET_PC
+    SetHitByPlayerProjectile(true); // 0x7448 stb 0x420
+#else
     mAlert = true;
+#endif
     HandleShieldHit(mgr, sender);
     break;
   case kSM_ResistedDamage:
+#ifdef TARGET_PC
+    SetHitByPlayerProjectile(true); // 0x7474 stb 0x420
+#else
     mAlert = true;
+#endif
     break;
   case kSM_AreaLoaded:
     mPathFindSearch.SetArea(
@@ -346,6 +366,7 @@ void CRezbit::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_53_6544
 void CRezbit::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 void CRezbit::Idle(CStateManager& mgr, EStateMsg msg, float dt) {}
@@ -381,6 +402,7 @@ void CRezbit::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_6278
 void CRezbit::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   switch (msg) {
@@ -393,11 +415,17 @@ void CRezbit::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_61C4
 void CRezbit::FollowAttackPath(CStateManager& mgr, EStateMsg msg, float dt) {
   mWaypointNavigation.Patrol(mgr, msg, dt, *this);
   switch (msg) {
   case kStateMsg_Activate:
+#ifdef TARGET_PC
+    // 0x6240 sth r3,0x6c0(r29): retail sets the destination, not the last destination (0x6c2).
+    mWaypointNavigation.SetDestination(GetConnectedObject(mgr, kSS_Attack, kSM_Follow));
+#else
     mWaypointNavigation.SetLastDestination(GetConnectedObject(mgr, kSS_Attack, kSM_Follow));
+#endif
     mAttackKind = 4;
     break;
   case kStateMsg_Deactivate:
@@ -607,6 +635,7 @@ void CRezbit::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_53_51AC
 void CRezbit::SelectTarget(CStateManager& mgr, float dt) {
   mTargetId = mgr.GetPlayer(0)->GetUniqueId();
   mLineOfSight.SetTarget(mTargetId);
@@ -678,6 +707,7 @@ void CRezbit::RaiseShields(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_4C60
 void CRezbit::SetNormalRezState(CStateManager& mgr, float dt) {
   if (mRezState != 0) {
     mRezState = 0;
@@ -703,6 +733,7 @@ void CRezbit::SetDeRezzedState(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_6B64
 bool CRezbit::StateOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimationState.IsOver();
 }
@@ -711,16 +742,20 @@ bool CRezbit::IsDeRezzed(CStateManager& mgr, const CTriggerData& data) const {
   return mRezState == 1;
 }
 
+// @ fn_53_6B44
 bool CRezbit::IsAlert(CStateManager& mgr, const CTriggerData& data) const { return mAlert; }
 
+// @ fn_53_6AEC
 bool CRezbit::HasAttackPath(CStateManager& mgr, const CTriggerData& data) const {
   return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
 
+// @ fn_53_6AD0
 bool CRezbit::AttackPathOver(CStateManager& mgr, const CTriggerData& data) const {
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// @ fn_53_6A90
 bool CRezbit::ShouldBecomeRezzed(CStateManager& mgr, const CTriggerData& data) const {
   return mAttackKind == -1 && mRezState != 0 && mDerezTimer <= 0.f;
 }
@@ -733,6 +768,7 @@ bool CRezbit::ShouldBecomeDeRezzed(CStateManager& mgr, const CTriggerData& data)
   return false;
 }
 
+// @ fn_53_69F4
 bool CRezbit::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
   return mLineOfSight.HasLineOfSight();
 }
@@ -745,6 +781,7 @@ bool CRezbit::ShouldStrafe(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
+// @ fn_53_694C
 bool CRezbit::FoundStrafeDirection(CStateManager& mgr, const CTriggerData& data) const {
   return mStrafeIndex != -1;
 }
@@ -831,8 +868,14 @@ void CRezbit::JoinTeam(CStateManager& mgr) {
   }
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
+#ifdef TARGET_PC
+      // 0x13F4 li r5,1 / 0x13F8 li r6,2 / 0x13FC li r7,-1: Melee, Projectile, Invalid.
+      team->JoinTeam(*this, CTeamAiRole::kTAR_Melee, CTeamAiRole::kTAR_Projectile,
+                     CTeamAiRole::kTAR_Invalid);
+#else
       team->JoinTeam(*this, CTeamAiRole::kTAR_Projectile, CTeamAiRole::kTAR_Unknown,
                      CTeamAiRole::kTAR_Invalid);
+#endif
     }
   }
 }
@@ -841,6 +884,10 @@ void CRezbit::CheckVerticalClearance(CStateManager& mgr,
                                      rstl::reserved_vector< bool, 4 >& available) {
   const CVector3f position = GetTranslation();
   const CEntity* target = mgr.GetObjectById(mTargetId);
+#ifdef TARGET_PC
+  // 0x146C cmplwi r3,0 / beq 0x14C0: retail skips the target-height checks without a target.
+  if (target) {
+#endif
   const float heightAboveTarget =
       position.GetZ() - static_cast< const CActor* >(target)->GetTranslation().GetZ();
   if (mStrafeDistance + heightAboveTarget > 16.f) {
@@ -849,6 +896,9 @@ void CRezbit::CheckVerticalClearance(CStateManager& mgr,
   if (heightAboveTarget - mStrafeDistance < 3.f) {
     available[3] = false;
   }
+#ifdef TARGET_PC
+  }
+#endif
   if (available[2] || available[3]) {
     const CRayCastResult result = mgr.RayStaticIntersection(
         position, CVector3f::Down(), 16.f, CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid)));
@@ -896,6 +946,7 @@ void CRezbit::CheckNeighbors(CStateManager& mgr, rstl::reserved_vector< bool, 4 
   }
 }
 
+// @ fn_53_188C
 int CRezbit::FindStrafeDirection(CStateManager& mgr) {
   rstl::reserved_vector< bool, 4 > available(4, true);
   CheckVerticalClearance(mgr, available);
@@ -916,6 +967,7 @@ int CRezbit::FindStrafeDirection(CStateManager& mgr) {
   return -1;
 }
 
+// @ fn_53_1AF8
 bool CRezbit::CanStrafe(CStateManager& mgr, float distance, const CVector3f& direction) {
   const CVector3f center = GetBoundingBox().GetCenterPoint();
   const CVector3f end = center + direction * distance;
@@ -984,11 +1036,23 @@ void CRezbit::DeflectMissiles(CStateManager& mgr) {
       const CVector3f dir = delta + (projectile->GetTranslation() - projectile->GetPreviousPos());
       const CVector3f axis = CVector3f::Cross(dir, delta);
       if (axis.CanBeNormalized()) {
+#ifdef TARGET_PC
+        // 0x2170 fmuls f0,f1(0.017453292),f0: one degrees-to-radians multiply, not two.
+        const CQuaternion rotation = CQuaternion::AxisAngle(
+            CUnitVector3f(axis), CRelAngle::FromDegrees(mData.missileDeflectRate));
+#else
         const CQuaternion rotation = CQuaternion::AxisAngle(
             CUnitVector3f(axis), CRelAngle::FromDegrees(0.017453292f * mData.missileDeflectRate));
+#endif
         weapon.SetWorldSpaceOrientation(rotation.BuildTransform4f() *
                                         weapon.GetTransform().GetRotation());
       }
+#ifdef TARGET_PC
+      // 0x2204 lwz r0,0xc08 / cmpwi r0,5 / beq 0x2228: stop once mDeflectedMissiles is full.
+      if (mDeflectedMissiles.size() == 5) {
+        break;
+      }
+#endif
     }
   }
 
@@ -1022,9 +1086,18 @@ void CRezbit::StartVirusAttack(CStateManager& mgr, const rstl::string& locator) 
       const CVector3f start = GetLctrTransform(locator).GetTranslation();
       const CVector3f end = player->GetTranslation();
       if (mgr.RayCollideWorld(start, end,
+#ifdef TARGET_PC
+                              // 0x24CC-0x2574: include 0x80 = Solid|Character|CollisionActor
+                              // (data_3A8/3AC/3B0), exclude 0x88 = Player|ProjectilePassthrough
+                              // (data_3B4/3B8), type 0x90 = 3.
+                              CMaterialFilter::MakeIncludeExclude(
+                                  CMaterialList(kMT_Solid, kMT_Character, kMT_CollisionActor),
+                                  CMaterialList(kMT_Player, kMT_ProjectilePassthrough)),
+#else
                               CMaterialFilter::MakeInclude(
                                   CMaterialList(kMT_Solid, kMT_Character, kMT_CollisionActor,
                                                 kMT_Player, kMT_ProjectilePassthrough)),
+#endif
                               this)) {
         player->StartRezbitState(
             mgr, CRezbitEffectOptions(mData.virusMorphballFx, mData.sound_VirusHUD,
@@ -1038,6 +1111,12 @@ void CRezbit::StartVirusAttack(CStateManager& mgr, const rstl::string& locator) 
 
 void CRezbit::FireEnergyBolt(CStateManager& mgr, float dt) {
   const CEntity* target = mgr.GetObjectById(mTargetId);
+#ifdef TARGET_PC
+  // 0x26B0 mr. r29,r3 / beq 0x295C: no target, no bolt.
+  if (!target) {
+    return;
+  }
+#endif
   const CVector3f gunPos = GetLctrTransform(CSegId(1)).GetTranslation();
   CVector3f aimPos = static_cast< const CActor* >(target)->GetAimPosition(mgr, 0.f);
   if (const CPlayer* player = TCastToConstPtr< CPlayer >(target)) {
@@ -1054,12 +1133,18 @@ void CRezbit::FireEnergyBolt(CStateManager& mgr, float dt) {
     }
     const CTransform4f xf = CTransform4f::LookAt(gunPos, aimPos, CVector3f::Up());
     LaunchProjectile(xf, mgr, 6, 0, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+#ifdef TARGET_PC
+    // 0x2900 addi r5,r1,0x84: the sound plays at gunPos (stored 0x26F4-0x2708).
+    PlayCustomSound(gunPos, GetTransform().GetForward(), mData.sound_EnergyBolt, false);
+#else
     PlayCustomSound(GetTranslation(), GetTransform().GetForward(), mData.sound_EnergyBolt, false);
+#endif
     ++mBoltCount;
     mLastBoltDirection = aimPos - gunPos;
   }
 }
 
+// @ fn_53_2DE4
 void CRezbit::DeleteLaser(CStateManager& mgr) {
   if (CPlasmaProjectile* laser = static_cast< CPlasmaProjectile* >(mgr.ObjectById(mLaserId))) {
     laser->ResetBeam(mgr, false);
@@ -1080,6 +1165,7 @@ void CRezbit::UpdateLaser(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_53_2FB8
 void CRezbit::SpawnLaser(CStateManager& mgr, float dt) {
   const CBeamInfo beamInfo = TLdrToBeamInfo(mData.cuttingLaserBeamInfo, 0x291);
   const TUniqueId uid = mgr.AllocateUniqueId();
@@ -1096,7 +1182,12 @@ void CRezbit::SpawnLaser(CStateManager& mgr, float dt) {
     laser->SetDamageDuration(1.f);
     mgr.AddObject(*laser);
     laser->SetNextDrawNode(GetUniqueId());
+#ifdef TARGET_PC
+    // 0x31F8 addi r5,r29,0xcfc: the laser sound starts at mLaserEnd.
+    mLaserSfx = PlayCustomSound(mLaserEnd, CVector3f::Up(), mData.sound_CuttingLaser, true);
+#else
     mLaserSfx = PlayCustomSound(GetTranslation(), CVector3f::Up(), mData.sound_CuttingLaser, true);
+#endif
     mLaserId = uid;
   }
 }
@@ -1179,8 +1270,14 @@ void CRezbit::LowerShields(CStateManager& mgr) {
   if (BodyController()->BodyStateInfo().GetCurrentAdditiveStateId() ==
       pas::kAS_AdditiveLoopReaction) {
     BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_AdditiveIdle));
+#ifdef TARGET_PC
+    // 0x3A7C bne 0x3AD8: the timer is only rearmed when the shield was up.
+    mShieldTimer = mData.shieldDownTime + mgr.Random()->Range(0.f, mData.shieldDownTimeVariance);
+#endif
   }
+#ifndef TARGET_PC
   mShieldTimer = mData.shieldDownTime + mgr.Random()->Range(0.f, mData.shieldDownTimeVariance);
+#endif
   if (CEntity* shield = mgr.ObjectById(mShieldActorId)) {
     shield->SetActive(false);
   }
@@ -1191,6 +1288,7 @@ void CRezbit::LowerShields(CStateManager& mgr) {
   }
 }
 
+// @ fn_53_3B78
 void CRezbit::UpdateWobble(CStateManager& mgr) {
   const float a = mgr.Random()->Range(-1.f, 1.f);
   const float b = mgr.Random()->Range(-1.f, 1.f);
@@ -1227,16 +1325,25 @@ void CRezbit::UpdateShield(CStateManager& mgr, float dt) {
       const CTransform4f bottomLeft = GetLctrTransform(mShieldBottomLeftSeg);
       const CTransform4f topRight = GetLctrTransform(mShieldTopRightSeg);
       shield->SetTranslation(0.5f * (bottomLeft.GetTranslation() + topRight.GetTranslation()));
+#ifndef TARGET_PC
       if (mShieldSfx) {
         CSfxManager::UpdateEmitter(mShieldSfx, GetTranslation(), GetTransform().GetForward(), 0x7f);
       }
+#endif
     }
+#ifdef TARGET_PC
+    // 0x3D5C beq 0x3E0C: the emitter update (0x3E0C-0x3E48) runs with or without the shield actor.
+    if (mShieldSfx) {
+      CSfxManager::UpdateEmitter(mShieldSfx, GetTranslation(), GetTransform().GetForward(), 0x7f);
+    }
+#endif
   } else if (BodyController()->BodyStateInfo().GetCurrentAdditiveStateId() ==
              pas::kAS_AdditiveLoopReaction) {
     BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_Unknown33));
   }
 }
 
+// @ fn_53_3EA4
 void CRezbit::UpdateTimers(float dt) {
   if (mHitByPlayerProjectile) {
     mAlert = true;
@@ -1273,6 +1380,7 @@ void CRezbit::HandleShieldHit(CStateManager& mgr, const TUniqueId& id) {
   }
 }
 
+// @ fn_53_4094
 void CRezbit::CreateShieldCollisionActor(CStateManager& mgr) {
   const TUniqueId uid = mgr.AllocateUniqueId();
   const CVector3f halfExtents = GetModelData()->GetScale() * skShieldHalfExtents;

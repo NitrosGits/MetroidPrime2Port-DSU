@@ -1,0 +1,18 @@
+# Rezbit forced arms, Sanctuary Fortress 02_cliff_reactorcore layers 3+4 (e0005011b):
+# FollowAttackPath (fsm), then Deactivate/Activate/Alert/ResistedDamage messages (send).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/rezbit.py <out> 1baa96c2,02_cliff_reactorcore \
+#        --con tools/drivers/rezbit_forced.con --fast --frames 4200
+@f600 god 1
+@f1000 layer 3
+@f1300 layer 4
+@f1500 place e0005011b player 15
+@f1600 fsm e0005011b FollowAttackPath
+@f1900 obj e0005011b
+@f2200 fsm e0005011b Patrol
+@f2500 send e0005011b Deactivate
+@f2600 send e0005011b Activate
+@f2800 send e0005011b Alert
+@f3000 send e0005011b ResistedDamage
+@f3300 obj e0005011b
+@f3600 damage e0005011b 1
+@f4000 objs rezbit
