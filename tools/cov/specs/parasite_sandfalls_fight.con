@@ -1,0 +1,20 @@
+# 02_sand_sandfalls (layer 9): three Brizgees (CParasite kPT_IceZoomer) u05e5 u05d9 u05d6. Bring them
+# to a god-mode player, let them crawl/attack, break their shells with beam shots, then kill them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/parasite.py <out> 42b935e4,02_sand_sandfalls --con <this> --fast --frames 3600
+@f300 god 1; give missile 50
+@f302 layer 9
+@f310 objs parasite; objs collision
+@f320 obj u05e5
+@f330 place u05e5 player 5; place u05d9 player 7; place u05d6 player 9
+@f700 obj u05e5; obj u05d9; obj u05d6
+@f1000 obj u05e5; obj u05d9
+@f1300 shoot u05e5; shoot u05d9; shoot u05d6
+@f1340 shoot u05e5; shoot u05d9; shoot u05d6
+@f1380 shoot u05e5 charged; shoot u05d9 charged; shoot u05d6 charged
+@f1420 obj u05e5; obj u05d9; obj u05d6
+@f1800 obj u05e5; obj u05d9; obj u05d6
+@f2200 place u05e5 player 3; place u05d9 player 3
+@f2600 obj u05e5; obj u05d9; obj u05d6
+@f2800 shoot u05e5 missile; shoot u05d9 missile; shoot u05d6 missile
+@f3000 damage u05e5 50; damage u05d9 50; damage u05d6 50 missile
+@f3300 objs parasite

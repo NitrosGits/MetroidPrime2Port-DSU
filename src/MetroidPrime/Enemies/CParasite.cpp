@@ -178,6 +178,7 @@ CParasite::CParasite(TUniqueId uid, const rstl::string& name, EFlavorType flavor
   }
 }
 
+// @ fn_47_6628
 CParasite::~CParasite() {}
 
 // Ported from the Prime 1 port's CWallWalker::ProjectVectorToPlane (its CWallWalker.cpp:53): the
@@ -329,6 +330,7 @@ void CParasite::AddDoorRepulsors(CStateManager& mgr) {
   }
 }
 
+// @ fn_47_5DF0
 void CParasite::PreThink(float dt, CStateManager& mgr) { CWallCrawler::PreThink(dt, mgr); }
 
 void CParasite::Think(float dt, CStateManager& mgr) {
@@ -504,20 +506,25 @@ void CParasite::UpdateJumpVelocity() {
   SetVelocityWR(velocity);
 }
 
+// @ fn_47_530C
 CVector3f CParasite::GetAimPosition(const CStateManager&, float) const { return GetTranslation(); }
 
+// @ fn_47_52C4
 void CParasite::ThinkAboutMove(float dt) {
   if (!GetMaterialList().HasMaterial(kMT_GroundCollider)) {
     CPatterned::ThinkAboutMove(dt);
   }
 }
 
+// @ fn_47_52AC
 bool CParasite::Stuck(CStateManager&, const CTriggerData&) const {
   return mStuckTime > mStuckTimeThreshold;
 }
 
+// @ fn_47_52A0
 bool CParasite::AttackOver(CStateManager&, const CTriggerData&) const { return mAttackOver; }
 
+// @ fn_47_5260
 bool CParasite::ShotAt(CStateManager&, const CTriggerData&) const {
   switch (mType) {
   case kPT_Crystallite:
@@ -528,6 +535,7 @@ bool CParasite::ShotAt(CStateManager&, const CTriggerData&) const {
   }
 }
 
+// @ fn_47_5244
 bool CParasite::PatrolPathOver(CStateManager&, const CTriggerData&) const {
   return mDestObj == kInvalidUniqueId;
 }
@@ -567,6 +575,7 @@ void CParasite::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list
   }
 }
 
+// @ fn_47_4EFC
 bool CParasite::IsOnGround() const { return mOnGround; }
 
 TUniqueId CParasite::RecursiveFindClosestWayPoint(CStateManager& mgr, TUniqueId id,
@@ -602,8 +611,10 @@ TUniqueId CParasite::GetClosestWaypointForState(EScriptObjectState state,
   return ret;
 }
 
+// @ fn_47_4D28
 bool CParasite::AnimOver(CStateManager&, const CTriggerData&) const { return mStateProgress == 2; }
 
+// @ fn_47_4D1C
 bool CParasite::Landed(CStateManager&, const CTriggerData&) const { return mLanded; }
 
 bool CParasite::HitSomething(CStateManager& mgr, const CTriggerData&) const {
@@ -619,6 +630,7 @@ bool CParasite::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const
          (shouldAttack || InDetectionRange(mgr, CTriggerData(0.f)));
 }
 
+// @ fn_47_4A68
 void CParasite::Generate(CStateManager&, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -645,6 +657,7 @@ void CParasite::Generate(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_4874
 void CParasite::Deactivate(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -668,8 +681,10 @@ void CParasite::Deactivate(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_4870
 void CParasite::Run(CStateManager&, EStateMsg, float) {}
 
+// @ fn_47_4774
 void CParasite::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -693,6 +708,7 @@ void CParasite::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_47_4630
 void CParasite::Jump(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -769,6 +785,7 @@ void CParasite::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_47_4348
 void CParasite::FaceTarget(CVector3f target) {
   CVector3f delta = target - GetTranslation();
   delta.SetZ(0.f);
@@ -853,6 +870,7 @@ void CParasite::Retreat(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_3BC4
 void CParasite::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -868,6 +886,7 @@ void CParasite::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_47_3B14
 void CParasite::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   CPhysicsActor::Stop();
   TelegraphAttack(mgr, kStateMsg_Activate, 0.f);
@@ -927,6 +946,7 @@ void CParasite::Halt(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_3710
 void CParasite::Crouch(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -956,6 +976,7 @@ void CParasite::Crouch(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_3660
 void CParasite::GetUp(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -974,8 +995,10 @@ void CParasite::GetUp(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_47_3640
 void CParasite::Touch(CActor& actor, CStateManager& mgr) { CPatterned::Touch(actor, mgr); }
 
+// @ fn_47_363C
 void CParasite::UpdatePFDestination(CStateManager&) {}
 
 static EMaterialTypes skFlockMaterial = kMT_Character;
@@ -1065,6 +1088,7 @@ void CParasite::DoFlockingBehavior(CStateManager& mgr) {
   }
 }
 
+// @ fn_47_2DE4
 void CParasite::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
   if (mType == kPT_Crystallite) {
@@ -1072,8 +1096,10 @@ void CParasite::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_47_2DC4
 void CParasite::Render(const CStateManager& mgr) const { CWallCrawler::Render(mgr); }
 
+// @ fn_47_2D40
 const CDamageVulnerability* CParasite::GetDamageVulnerability() const {
   switch (mType) {
   case kPT_Oculus:
@@ -1126,6 +1152,7 @@ CDamageInfo CParasite::GetContactDamage() const {
   }
 }
 
+// @ fn_47_26C8
 void CParasite::SetupIceZoomerCollision(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > descs;
   descs.reserve(2);
@@ -1143,6 +1170,7 @@ void CParasite::SetupIceZoomerCollision(CStateManager& mgr) {
       rs_new CCollisionActorManager(mgr, GetUniqueId(), GetCurrentAreaId(), descs, GetActive());
 }
 
+// @ fn_47_26A4
 void CParasite::DestroyActorManager(CStateManager& mgr) { mCollisionActorManager->Destroy(mgr); }
 
 void CParasite::SetupIceZoomerVulnerability(CStateManager& mgr, const CDamageVulnerability& dVuln,
@@ -1186,10 +1214,12 @@ void CParasite::UpdateCollisionActors(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_47_22B8
 void CParasite::MassiveDeath(CStateManager& mgr) { CPatterned::MassiveDeath(mgr); }
 
 void CParasite::MassiveFrozenDeath(CStateManager& mgr) { CPatterned::MassiveFrozenDeath(mgr); }
 
+// @ fn_47_222C
 void CParasite::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -1306,6 +1336,7 @@ CEntity* LoadCrystallite(CStateManager& mgr, CInputStream& input, CEntityInfo& i
 }
 
 #ifndef MONOLITHIC
+// @ fn_47_100
 static void SetFuncPtrs() {
   static SParasite_FuncPtrs funcPtrs;
   funcPtrs.mLoadParasite = &LoadParasite;
