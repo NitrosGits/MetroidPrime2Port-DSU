@@ -1,0 +1,21 @@
+# CScriptPlayerProxy (module 62: CScriptPlayerProxy, scan type PLCT). Agon Wastes
+# 05_portalpuzzle (world 42b935e4, area 18) holds one CScriptPlayerProxy u0523, a
+# PlayerMessageRelay whose Entered/Exited connections drive a CScriptSpecialFunction.
+# The steps repeat the lane's manual driver: list the proxy, send Activate/Deactivate/
+# ToggleActive and the Increment/Decrement messages it reacts to (HandleMessage), read
+# its `obj` state to see the active flag flip, and list it again at the end.
+# Checks are game updates (@f<n>), never wall seconds. F=2000, last check f2000.
+@f200 objs ScriptPlayerProxy
+@f220 send u0523 Activate
+@f240 send u0523 Deactivate
+@f260 send u0523 Activate
+@f280 send u0523 ToggleActive
+@f300 send u0523 Activate
+@f320 obj u0523
+@f340 send u0523 Increment
+@f360 send u0523 Decrement
+@f400 obj u0523
+@f800 objs ScriptPlayerProxy
+@f1200 obj u0523
+@f1600 objs ScriptPlayerProxy
+@f2000 objs ScriptPlayerProxy
