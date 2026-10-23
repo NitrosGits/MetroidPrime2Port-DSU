@@ -252,7 +252,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x10D24	0x14	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9E64	rstl::list::remove	not-port	fn_72_10D24
 0x10D38	0xA4	rstl::vector	vector reserve (from 7078)	template	H	7078	rstl::vector::reserve	not-port	fn_72_10D38
 0x10DDC	0x74	rstl::list<TUniqueId>	list remove(id) and erase (from 99F0, E498)	template	H	9EB0	rstl::list::remove	not-port	fn_72_10DDC
-0x10E50	0xB6C	(module)	static init: trigger/state name tables	static-init	H	-	port static tables skTriggers/skStates	ported	fn_72_10E50
+0x10E50	0xB6C	(module)	static init: trigger/state name tables	static-init	B	-	marked	marked	fn_72_10E50
 0x119BC	0x74	(weak)	dtor registered by static init (list free)	weak-dtor	H	10E50(addr)	compiler-emitted dtor	not-port	fn_72_119BC
 0x11A30	0x58	REL runtime	__destroy_global_chain	runtime	H	-	REL runtime	not-port	__destroy_global_chain
 0x11A88	0x1C	REL runtime	__register_global_object	runtime	H	10E50	REL runtime	not-port	__register_global_object

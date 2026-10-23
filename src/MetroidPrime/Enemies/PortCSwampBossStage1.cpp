@@ -2252,6 +2252,11 @@ void CSwampBossStage1::TakeDamage(const CVector3f& dir, float amount) {
   { #name, reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CSwampBossStage1::name) }
 
 namespace {
+// The module's static initialiser fn_78_BD0C builds these three tables: `tools/fsm_ctor_tables.py
+// <asm dir> fn_78_BD0C lbl_78_data_D0:17 lbl_78_data_30C:25 lbl_78_data_4CC:4` replays it (138
+// stores, every entry {0, 0xFFFFFFFF, fn}) and the names and functions match in order; MinHealth
+// and SplashWait are adapters over the marked fn_78_6548 / fn_78_4D3C bodies.
+// @ fn_78_BD0C
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SB1_TRIGGER(BeachAttackOver), SB1_TRIGGER(EnoughSplashing),   SB1_TRIGGER(GivingUp),
     SB1_TRIGGER(HeavyHit),        SB1_TRIGGER(InVomitRange),      SB1_TRIGGER(LightHit),

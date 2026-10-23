@@ -163,6 +163,10 @@ void StandInFn(const char* fn) {
 #define CMDO_STATE(name)                                                                           \
   { #name, reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CCommandoPirate::name) }
 
+// fn_9_F9F8 runs straight-line up to its first call: `tools/fsm_ctor_tables.py <asm dir> fn_9_F9F8
+// lbl_9_data_198:34 lbl_9_data_568:36` replays it (244 stores, every entry {0, 0xFFFFFFFF, fn}) and
+// the names and functions match the tables below in order (the Splitter fn_75_7C80 precedent).
+// @ fn_9_F9F8
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     CMDO_TRIGGER(StateOver), CMDO_TRIGGER(ShouldWarpIn), CMDO_TRIGGER(ShouldMeleeAttack),
     CMDO_TRIGGER(ShouldFireEGrenade), CMDO_TRIGGER(ShouldRetreat), CMDO_TRIGGER(ShouldJumpBack),

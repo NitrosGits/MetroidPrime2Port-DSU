@@ -9,7 +9,9 @@ The initialisers (Splitter fn_75_7C80 / fn_75_FED0) are straight-line lis/addi/l
 that copies the three-word records {0, 0xFFFFFFFF, fn} of .data into the 16-byte entries
 {name, 0, 0xFFFFFFFF, fn} of the tables. This replays that code symbolically (a register holds a
 .data address or a loaded word) over the .data dump and prints, per entry, the name string and
-the words the body stored at +4, +8 and +0xC. Any other instruction stops it with an error.
+the words the body stored at +4, +8 and +0xC. The replay ends at the first `bl` (CommandoPirate
+fn_9_F9F8 and SpacePirate fn_72_10E50 build their global strings after the tables); any other
+unhandled instruction stops it with an error.
 """
 import re
 import sys
@@ -72,6 +74,9 @@ def run(asm_dir, fn):
         kind, v = base
         if kind == 'stack':
             return ('stack', v + d)
+        if kind == 'other':
+            # a .bss/.rodata static the initialiser also fills (CP fn_9_F9F8, SP fn_72_10E50)
+            return ('other', v, d)
         if kind != 'addr':
             raise ValueError('not an address: %r' % (base,))
         return ('data', v + d)
@@ -81,6 +86,8 @@ def run(asm_dir, fn):
             return mem[a]
         if a[0] == 'data':
             return ('word', words.get(a[1], '?'))
+        if a[0] == 'other':
+            return ('word', '?')
         raise ValueError('stack read before write %r' % (a,))
 
     def parse_mem(op):
@@ -95,16 +102,29 @@ def run(asm_dir, fn):
             if ins == 'stwu':
                 continue
             continue
-        if ins == 'lis':
+        if ins == 'mflr':
+            reg[ops[0]] = ('lr', 0)
+            continue
+        if ins == 'mtlr':
+            continue
+        if ins == 'bl':
+            # CommandoPirate fn_9_F9F8 / SpacePirate fn_72_10E50: the tables are done before the
+            # first call (the global strings' ctors and __register_global_object follow)
+            break
+        if ins == 'li':
+            reg[ops[0]] = ('word', '0x%08X' % (int(ops[1], 0) & 0xFFFFFFFF))
+        elif ins == 'or' and ops[1] == ops[2]:
+            reg[ops[0]] = reg[ops[1]]
+        elif ins == 'lis':
             lab = ops[1].split('@')[0]
-            reg[ops[0]] = ('addr', labels[lab])
+            reg[ops[0]] = ('addr', labels[lab]) if lab in labels else ('other', lab)
         elif ins == 'addi':
             if ops[2].endswith('@l'):
                 lab = ops[2].split('@')[0]
-                reg[ops[0]] = ('addr', labels[lab])
+                reg[ops[0]] = ('addr', labels[lab]) if lab in labels else ('other', lab)
             else:
                 k, v = reg[ops[1]]
-                reg[ops[0]] = (k, v + int(ops[2], 0))
+                reg[ops[0]] = (k, v) if k == 'other' else (k, v + int(ops[2], 0))
         elif ins in ('lwz', 'lwzu'):
             base, d = parse_mem(ops[1])
             a = addr(base, d)

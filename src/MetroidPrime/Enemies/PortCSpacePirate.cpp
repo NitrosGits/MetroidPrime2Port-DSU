@@ -1630,6 +1630,10 @@ namespace {
 #define SP_STATE(name)                                                                             \
   { #name, reinterpret_cast< CPatterned::StateMachine::StateFunc >(&CSpacePirate::name) }
 
+// fn_72_10E50 runs straight-line up to its first call: `tools/fsm_ctor_tables.py <asm dir>
+// fn_72_10E50 lbl_72_data_1D8:39 lbl_72_data_604:37` replays it (271 stores, every entry
+// {0, 0xFFFFFFFF, fn}) and the names and functions match the tables below in order.
+// @ fn_72_10E50
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SP_TRIGGER(Stuck),           SP_TRIGGER(PatternShagged),  SP_TRIGGER(HearShot),
     SP_TRIGGER(HearPlayer),      SP_TRIGGER(AggressionCheck), SP_TRIGGER(CoverCheck),

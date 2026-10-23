@@ -247,7 +247,7 @@ offset	size	fn	kind	class	port	note
 0xF8B0	0x68	fn_9_F8B0	host-copy	H	not-port	rstl::uninitialized_copy<CJointCollisionDescription> (0x68 element): the 0x68-stride construct loop 0xF8D8..0xF8F4 returns the new end; caller fn_9_F7F0 0xF850; host: include/rstl/construct.hpp:157-165, used by the host vector's own reserve/push_back (PortCCommandoPirate.cpp:1255-1268)
 0xF918	0xA4	fn_9_F918	host-copy	H	not-port	
 0xF9BC	0x3C	fn_9_F9BC	behaviour	H	not-port	optional_object<CAABox>(const CAABox&) (valid flag +0x18); host rstl optional_object ctor (cp7)
-0xF9F8	0xA88	fn_9_F9F8	rel-runtime	H	not-port	
+0xF9F8	0xA88	fn_9_F9F8	static-init	B	marked	
 0x10480	0x58	__destroy_global_chain	rel-runtime	H	not-port	
 0x104D8	0x1C	__register_global_object	rel-runtime	H	not-port	
 0x104F4	0xC4	_unresolved	rel-runtime	H	not-port	
