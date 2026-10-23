@@ -465,7 +465,7 @@ offset	size	class	kind	name	callers	marked	state
 0x1F87C	0xAC	H	host-copy	fn_10_1F87C	1	no	ds42: CDarkSamus dtor member 0xEF0: auto_ptr +4/+8, optional token +0x10 (valid 0x1C)
 0x1F928	0x98	H	host-copy	fn_10_1F928	1	no	ds42: CDarkSamus dtor member 0xF80: optional info + CDamageVulnerability +0x50 + auto_ptr +0xA4/0xA8
 0x1F9C0	0x54	H	host-copy	fn_10_1F9C0	1	no	ds42: CDarkSamus dtor member: ~optional<CProjectileInfo> mPhazonSuperMissileInfo (0x1064)
-0x1FA14	0xB98	B	ctor	fn_10_1FA14	1	no	
+0x1FA14	0xB98	B	ctor	fn_10_1FA14	1	yes	
 0x205AC	0x54	H	host-copy	fn_10_205AC	0	no	
 0x20600	0xC8	H	host-copy	fn_10_20600	1	no	ds43: optional<TLockedToken> assign
 0x206C8	0x54	H	host-copy	fn_10_206C8	0	no	

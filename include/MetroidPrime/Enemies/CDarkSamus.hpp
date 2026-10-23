@@ -716,7 +716,7 @@ private:
   uchar mFlags90C;                 // guest 0x90C, the flag byte: bit 6 (0x40) is the "starts in
                                    // the air" flag (fn_10_F924) and bit 7 (0x80) the "alerted" one
                                    // (fn_10_F840); the constructor's rlwimi chain (0x0001FBF8..)
-                                   // only clears them, so they start at 0
+                                   // clears bit 7 and copies startsInTheAir into bit 6 (0x0001FC08)
   uchar mTurnDone;                 // guest 0xD4C, the "done turning" flag: fn_10_FE18 sets it and
                                    // fn_10_F864 (the DoneTurning trigger) reads it
   uchar mPissedOff;                // guest 0xD58, the flag the PissedOff state clears (fn_10_F930)
@@ -1059,7 +1059,8 @@ private:
                                     // EnrageHitReact state (fn_10_7A14) writes the health
   CAABox mGuest102C = CAABox::MakeNullBox(); // guest 0x102C, the base box (mskNullBox, 0x00020FE4)
   bool mGuest1044 = false;           // guest 0x1044 bit 0x80, 0x102C is kept
-  int mGuest1058 = 0;                // guest 0x1058, the phazon volleys to fire (0x00020218);
+  int mGuest1058 = 4;                // guest 0x1058, the phazon volleys to fire: the ctor's
+                                    // `li r0, 0x4` (0x000201E8), `stw r0, 0x1058` (0x00020218);
                                     // the EnrageHitReact state (fn_10_7A14) reads it as the
                                     // multiplier of its step (the `mulhw` at 0x00007A8C)
   int mGuest105C = 0;                // guest 0x105C, the phazon volleys fired (0x0002021C); the
