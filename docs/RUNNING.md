@@ -218,6 +218,14 @@ kral's 1300 are over (0.3 s) before it, while scriptgui's front end reads a widg
 differently at the two update rates).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
 Thirty-two of the families keep a checked module's actors loading: grenchler (Torvus
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and pbug): their areas
+boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
+connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
+wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
+while scriptgui's front end reads a widget's state differently at the two update rates, and pbug's
+PillBug fsm reads differ the same way (FastPatrol vs Turn)).
+`--capped` or `SMOKE_FAST=0` runs everything capped.
+Thirty-one of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -237,6 +245,8 @@ Grounds 0b_temple_hall) and gbug (Great Temple 0i_temple_hall)
 dark 0d_swamp_hall_dark) and scriptgui (the FrontEnd world 69802220, which is the one family that
 needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table),
 pssm (Torvus Bog 0g_swamp_hall) and stod (Torvus Bog dark 09_swamp_catacombs_dark)
+needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
+and pbug (Agon Wastes 0b_sand_hall)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -355,6 +365,15 @@ Sleep), the missile and Increment/Decrement/AIUpdateDisabled messages, Deactivat
 on e00410066 and a final `obj`/`objs StoneToad`, with `obj` reads (hp, fsm, body state, message
 map) around them; its 1500 updates finish in ~0.5 s, before con.py connects, so the family stays
 capped (NC).
+to 132; pbug drives Agon Wastes 0b_sand_hall's three PillBugs e00280088/e00280089/e0028008a
+(planar 1 looping paths) through a bug placed at the player (InDetectionRange -> FastPatrol), a
+touch (CollidedWith -> HitPlayer -> Pause -> AnimOver), the power/dark/light beam and missile
+shots (all resisted), a real morph-ball bomb laid with the bug put on it (ResistedDamage immune
+-> Bombed -> Fall -> Landed -> Injured -> Delay -> HasReturnPath false -> Wander ->
+CloseToPath -> Patrol), shots and bombs at the injured/wandering bug, a forced Turn (every
+shipped path loops, so PathOver never sets), a bomb kill, and `objs PillBug` counting three at
+f320 and zero at f3400, with `obj` reads (hp 25/25, fsm FastPatrol, body state 5, message map)
+around them. The PillBug fsm reads follow the update rate, so the family stays capped (NC).
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
