@@ -1,0 +1,48 @@
+# Agon 08_sand_casualpirates: metroid_casualpirates.con, then a second metroid on the pirate the
+# first holds (PortAttachActor answers false) and that pirate killed: PreDamageSpacePirate's
+# early false returns. For tools/cov/specs/metroid_growth.py.
+@f300 layer 6
+@f340 layer 7
+@f580 send u0539 Activate; send u0547 Activate
+@f600 place u0539 366 -279 3
+@f620 give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give morphBallBombs 1
+@f700 obj u0547
+@f900 objs pirate
+@f1000 shoot u0547
+@f1040 beam dark
+@f1060 shoot u0547
+@f1100 beam light
+@f1120 shoot u0547
+@f1160 beam annihilator
+@f1180 shoot u0547
+@f1220 obj u0547
+@f1300 beam dark
+@f1310 shoot u0539
+@f1340 beam light
+@f1350 shoot u0539
+@f1400 obj u0539
+@f1420 tp 366 -262 3
+@f1430 face 180
+@f1440 screenshot
+@f1450 hurt u0547 1
+@f1460 objs safezone
+@f1500 press x 4
+@f1600 press a 2
+@f1603 objs bomb
+@f1612 place u0547 player 0
+@f1625 objs bomb
+@f1640 place u0547 player 0
+@f1660 obj u0547
+@f1700 press a 2
+@f1712 place u0547 player 0
+@f1730 place u0547 player 0
+@f1760 obj u0547
+@f1800 status
+# Then a second metroid on the held pirate u04d8 (PortAttachActor answers false) and the pirate
+# killed under the first: PreDamageSpacePirate's early false returns.
+@f1850 obj u0539; obj u04d8; send u053d Activate
+@f1860 place u053d 378 -283 11
+@f1900 place u053d 378 -283 11; fsm u053d Attack
+@f1950 obj u053d; obj u0539; fsm u053d Attack
+@f2000 damage u04d8 100000
+@f2100 obj u0539; obj u053d; obj u04d8

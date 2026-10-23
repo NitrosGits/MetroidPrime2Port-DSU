@@ -1,0 +1,40 @@
+# Agon 08_sand_casualpirates layers 6+7 (metroids): a metroid next to pirate 003600fa (u04d0)
+# latches on (AttachToTarget -> PreDamageSpacePirate); beam shots and bombs on the metroids run
+# ApplyDamageGrowth. For tools/cov/specs/metroid_growth.py.
+@f300 layer 6
+@f340 layer 7
+@f580 send u0539 Activate; send u0547 Activate
+@f600 place u0539 366 -279 3
+@f620 give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give morphBallBombs 1
+@f700 obj u0547
+@f900 objs pirate
+@f1000 shoot u0547
+@f1040 beam dark
+@f1060 shoot u0547
+@f1100 beam light
+@f1120 shoot u0547
+@f1160 beam annihilator
+@f1180 shoot u0547
+@f1220 obj u0547
+@f1300 beam dark
+@f1310 shoot u0539
+@f1340 beam light
+@f1350 shoot u0539
+@f1400 obj u0539
+@f1420 tp 366 -262 3
+@f1430 face 180
+@f1440 screenshot
+@f1450 hurt u0547 1
+@f1460 objs safezone
+@f1500 press x 4
+@f1600 press a 2
+@f1603 objs bomb
+@f1612 place u0547 player 0
+@f1625 objs bomb
+@f1640 place u0547 player 0
+@f1660 obj u0547
+@f1700 press a 2
+@f1712 place u0547 player 0
+@f1730 place u0547 player 0
+@f1760 obj u0547
+@f1800 status

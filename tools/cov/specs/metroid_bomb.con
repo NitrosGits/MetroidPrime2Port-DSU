@@ -1,0 +1,22 @@
+# Agon 08_sand_casualpirates layers 6+7: a real morph-ball bomb under metroid u0547,
+# ApplyDamageGrowth's CBomb arm. For tools/cov/specs/metroid_growth.py.
+@f300 layer 6
+@f340 layer 7
+@f580 send u0547 Activate
+@f620 give morphBall 1; give morphBallBombs 1; fastmorph 1; god 1
+@f700 tp 366 -262 3
+@f720 press x 10
+@f760 status
+@f800 press a 2
+@f803 objs bomb
+@f804 place u0547 player 0
+@f808 place u0547 player 0
+@f812 place u0547 player 0; objs bomb
+@f820 place u0547 player 0
+@f840 obj u0547
+@f900 press a 2
+@f903 objs bomb; place u0547 player 0
+@f908 place u0547 player 0
+@f914 place u0547 player 0
+@f920 place u0547 player 0
+@f960 status
