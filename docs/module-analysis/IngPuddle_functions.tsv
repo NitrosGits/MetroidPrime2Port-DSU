@@ -1,0 +1,69 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_32_0	8	B	CIngPuddle::HealthInfo()	-	upstream body (CIngPuddle)	no
+00008	fn_32_8	2C	H	CActor::GetHealthInfo() const	-	weak/template copy	no
+00034	fn_32_34	24	T	RELExit	ipd1	REL runtime (module entry)	yes
+00058	fn_32_58	20	T	RELMain	ipd1	REL runtime (module entry)	yes
+00078	fn_32_78	30	B	SetFuncPtrs()	ipd1	upstream body (CIngPuddle)	yes
+000A8	fn_32_A8	1E4	B	LoadIngPuddle(CStateManager&, CInputStream&, CEntityInfo&)	ipd1	upstream body (CIngPuddle)	yes
+0028C	fn_32_28C	70	H	SLdrIngPuddle::~SLdrIngPuddle()	-	weak/template copy	no
+002FC	fn_32_2FC	2A0	H	LoadTypedefIngPuddleData(SLdrIngPuddleData&, CInputStream&)	-	weak/template copy	no
+0059C	fn_32_59C	64	H	SLdrIngPuddleData::~SLdrIngPuddleData()	-	weak/template copy	no
+00600	fn_32_600	88	H	SLdrIngPuddleData::SLdrIngPuddleData()	-	weak/template copy (SLdr defaults; TARGET_PC sounds fix)	no
+00688	fn_32_688	2EC	B	CIngPuddle::HandleDamage(CStateManager&, TUniqueId)	ipd1	upstream body (CIngPuddle)	yes
+00974	fn_32_974	58	H	CEntityInfo::~CEntityInfo()	-	weak/template copy	no
+009CC	fn_32_9CC	54	H	rstl::vector<SConnection, rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+00A20	fn_32_A20	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string()	-	weak/template copy	no
+00A70	fn_32_A70	F4	B	CIngPuddle::UpdateTouchBounds()	ipd1	upstream body (CIngPuddle)	yes
+00B64	fn_32_B64	200	B	CIngPuddle::MoveAlongSurface(const CVector3f&, float, float)	ipd1	upstream body (CIngPuddle)	yes
+00D64	fn_32_D64	14C	B	CIngPuddle::UpdateBlobEffect(CStateManager&, float)	ipd1	upstream body (CIngPuddle)	yes
+00EB0	fn_32_EB0	120	B	CIngPuddle::SpawnBlobEffect(CStateManager&, const TLockedToken<CGenDescription>&)	ipd1	upstream body (CIngPuddle)	yes
+00FD0	fn_32_FD0	C8	B	CIngPuddle::InitializeStateMachine(CStateManager&)	ipd1	upstream body (CIngPuddle)	yes
+01098	fn_32_1098	68	B	CIngPuddle::GetStateMachine() const	ipd1	upstream body (CIngPuddle)	yes
+01100	fn_32_1100	54	H	TToken<CGenericFSM2>::~TToken()	-	weak/template copy	no
+01154	fn_32_1154	33C	B	CIngPuddle::Patrol(CStateManager&, int, float)	-	upstream body (CIngPuddle)	no
+01490	fn_32_1490	198	B	CIngPuddle::Dead(CStateManager&, int, float)	ipd1	upstream body (CIngPuddle)	yes
+01628	fn_32_1628	D8	B	CIngPuddle::Idle(CStateManager&, int, float)	-	upstream body (CIngPuddle)	no
+01700	fn_32_1700	4	B	CIngPuddle::Start(CStateManager&, int, float)	ipd1	upstream body (CIngPuddle)	yes
+01704	fn_32_1704	58	B	CIngPuddle::HasPatrolPath(CStateManager&, const float&)	ipd1	upstream body (CIngPuddle)	yes
+0175C	fn_32_175C	20	B	CIngPuddle::IsDead(CStateManager&, const float&)	ipd1	upstream body (CIngPuddle)	yes
+0177C	fn_32_177C	14	B	CIngPuddle::StateOver(CStateManager&, const float&)	ipd1	upstream body (CIngPuddle)	yes
+01790	fn_32_1790	48	B	CIngPuddle::GetTouchBounds() const	ipd1	upstream body (CIngPuddle)	yes
+017D8	fn_32_17D8	20	B	CIngPuddle::Touch(CActor&, CStateManager&)	ipd1	upstream body (CIngPuddle)	yes
+017F8	fn_32_17F8	2C	B	CIngPuddle::GetAimPosition(const CStateManager&, float) const	ipd1	upstream body (CIngPuddle)	yes
+01824	fn_32_1824	8	B	CIngPuddle::GetDamageVulnerability() const	ipd1	upstream body (CIngPuddle)	yes
+0182C	fn_32_182C	23C	B	CIngPuddle::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	ipd1	upstream body (CIngPuddle)	yes
+01A68	fn_32_1A68	58	H	TLockedToken<CGenDescription>::~TLockedToken()	-	weak/template copy	no
+01AC0	fn_32_1AC0	54	H	TToken<CGenDescription>::~TToken()	-	weak/template copy	no
+01B14	fn_32_1B14	C4	B	CIngPuddle::Think(float, CStateManager&)	ipd1	upstream body (CIngPuddle)	yes
+01BD8	fn_32_1BD8	15C	B	CIngPuddle::PreThink(float, CStateManager&)	ipd1	upstream body (CIngPuddle)	yes
+01D34	fn_32_1D34	138	B	CIngPuddle::~CIngPuddle()	ipd1	upstream body (CIngPuddle)	yes
+01E6C	fn_32_1E6C	94	H	CGenericFSM2State<CPatterned>::~CGenericFSM2State()	-	weak/template copy	no
+01F00	fn_32_1F00	54	H	rstl::vector<void (CPatterned::*)(CStateManager&, EStateMsg, float), rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+01F54	fn_32_1F54	54	H	rstl::vector<void (CPatterned::*)(CStateManager&, float), rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+01FA8	fn_32_1FA8	54	H	rstl::vector<bool (CPatterned::*)(CStateManager&, const CTriggerData&) const, rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+01FFC	fn_32_1FFC	84	H	rstl::vector<CGenericFSM2State<CPatterned>::SSubMachine, rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+02080	fn_32_2080	38	H	fn_32_2080	-	weak/template copy	no
+020B8	fn_32_20B8	68	H	fn_32_20B8	-	weak/template copy	no
+02120	fn_32_2120	58	H	CSurfaceAlignmentHelper::~CSurfaceAlignmentHelper()	-	weak/template copy	no
+02178	fn_32_2178	58	H	rstl::single_ptr<CCollisionCache>::~single_ptr()	-	weak/template copy	no
+021D0	fn_32_21D0	58	H	CCollisionCache::~CCollisionCache()	-	weak/template copy	no
+02228	fn_32_2228	98	H	rstl::vector<unsigned short, rstl::locked_cache_allocator>::~vector()	-	weak/template copy	no
+022C0	fn_32_22C0	7AC	B	CIngPuddle::CIngPuddle(TUniqueId, const rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>&, const CEntityInfo&, const CTransform4f&, const CVector3f&, const CActorParameters&, const SLdrIngPuddleData&)	ipd1	upstream body (CIngPuddle)	yes
+02A6C	fn_32_2A6C	6C	H	rstl::optional_object<TLockedToken<CGenDescription>>::~optional_object()	-	weak/template copy	no
+02AD8	fn_32_2AD8	60	H	rstl::optional_object<CToken>::~optional_object()	-	weak/template copy	no
+02B38	fn_32_2B38	3C	H	rstl::optional_object<CAABox>::~optional_object()	-	weak/template copy	no
+02B74	fn_32_2B74	5C	H	CDamageVulnerability::CDamageVulnerability(const CDamageVulnerability&)	-	weak/template copy	no
+02BD0	fn_32_2BD0	54	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+02C24	fn_32_2C24	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector(const rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>&)	-	weak/template copy	no
+02D54	fn_32_2D54	54	H	CHealthInfo::CHealthInfo(const CHealthInfo&)	-	weak/template copy	no
+02DA8	fn_32_2DA8	A4	H	SLdrIngPuddleData::SLdrIngPuddleData(const SLdrIngPuddleData&)	-	weak/template copy	no
+02E4C	fn_32_2E4C	2BC	H	SLdrDamageVulnerability::SLdrDamageVulnerability(const SLdrDamageVulnerability&)	-	weak/template copy	no
+03108	fn_32_3108	68	H	SMoverData::SMoverData(float, const CVector3f&, const CAxisAngle&, const CVector3f&, const CAxisAngle&)	-	weak/template copy	no
+03170	fn_32_3170	20	H	CModelData::None()	-	weak/template copy	no
+03190	fn_32_3190	64	H	rstl::rc_ptr<CGenericFSM2State<CPatterned>>::ReleaseData()	-	weak/template copy	no
+031F4	fn_32_31F4	104	H	__sinit_CIngPuddle_cpp	-	compiler/static	no
+032F8	fn_32_32F8	C4	T	_unresolved	-	REL runtime	no
+033BC	fn_32_33BC	24	T	_epilog	-	REL runtime	no
+033E0	fn_32_33E0	24	T	_prolog	-	REL runtime	no
+03404	fn_32_3404	4C	T	ModuleDestructors	-	REL runtime	no
+03450	fn_32_3450	4C	T	ModuleConstructors	-	REL runtime	no

@@ -38,6 +38,7 @@ static EMaterialTypes skMaterial0 = kMT_NonSolidDamageable; // Guessed name
 static EMaterialTypes skMaterial1 = kMT_Target;             // Guessed name
 static EMaterialTypes skMaterial2 = kMT_RadarObject;        // Guessed name
 
+// @ fn_32_22C0
 CIngPuddle::CIngPuddle(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        const CTransform4f& xf, const CVector3f& scale,
                        const CActorParameters& actorParams, const SLdrIngPuddleData& data)
@@ -75,21 +76,30 @@ CIngPuddle::CIngPuddle(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mSfxHandle()
 , mIdling(false) {}
 
+// @ fn_32_1D34
 CIngPuddle::~CIngPuddle() {}
 
+// @ fn_32_1BD8
 void CIngPuddle::PreThink(float dt, CStateManager& mgr) {
   if (GetActive()) {
     const CPlane plane = mSurfaceAlignment.GetSurface().GetPlane();
     if (CVector3f::Dot(mMoveDirection, plane.GetNormal()) < 0.95f) {
       const float distance = plane.GetHeight(GetTranslation());
       const CVector3f onSurface = GetTranslation() - (distance - 0.1f) * plane.GetNormal();
+#ifdef TARGET_PC
+      // fn_32_1BD8 scales dt by rodata_28 = 0x3F199999 (0.59999996f), not 0.6f (rodata_10,
+      // 0x3F19999A): lis/lfs lbl_32_rodata_28 (0x1C64/0x1C68); fmuls f11, f1, f31 (0x1C78).
+      SetTranslation(CVector3f::Lerp(GetTranslation(), onSurface, 0.59999996f * dt));
+#else
       SetTranslation(CVector3f::Lerp(GetTranslation(), onSurface, 0.6f * dt));
+#endif
     }
     mMoveDirection = CVector3f::Zero();
   }
   CEntity::PreThink(dt, mgr);
 }
 
+// @ fn_32_1B14
 void CIngPuddle::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     if (mStateMachine.HasState()) {
@@ -103,6 +113,7 @@ void CIngPuddle::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_32_182C
 void CIngPuddle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const float wasActive = GetActive();
   const EScriptObjectMessage message = msg.GetMessage();
@@ -139,28 +150,36 @@ void CIngPuddle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_32_1824
 const CDamageVulnerability* CIngPuddle::GetDamageVulnerability() const {
   return &mDamageVulnerability;
 }
 
+// @ fn_32_17F8
 CVector3f CIngPuddle::GetAimPosition(const CStateManager& mgr, float dt) const {
   return CPhysicsActor::GetAimPosition(mgr, dt);
 }
 
+// @ fn_32_17D8
 void CIngPuddle::Touch(CActor& actor, CStateManager& mgr) { CActor::Touch(actor, mgr); }
 
+// @ fn_32_1790
 rstl::optional_object< CAABox > CIngPuddle::GetTouchBounds() const { return mTouchBounds; }
 
+// @ fn_32_177C
 bool CIngPuddle::StateOver(CStateManager& mgr, const float& arg) {
   return mPatrolState == kPS_Finished;
 }
 
+// @ fn_32_175C
 bool CIngPuddle::IsDead(CStateManager& mgr, const float& arg) { return mHealthInfo.GetHP() <= 0.f; }
 
+// @ fn_32_1704
 bool CIngPuddle::HasPatrolPath(CStateManager& mgr, const float& arg) {
   return CheckConnectedObject(mgr, kSS_Patrol, kSM_Follow) != kInvalidUniqueId;
 }
 
+// @ fn_32_1700
 void CIngPuddle::Start(CStateManager& mgr, int msg, float dt) {}
 
 void CIngPuddle::Idle(CStateManager& mgr, int msg, float dt) {
@@ -185,6 +204,7 @@ void CIngPuddle::Idle(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_32_1490
 void CIngPuddle::Dead(CStateManager& mgr, int msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -259,6 +279,7 @@ void CIngPuddle::Patrol(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_32_1098
 const CGenericFSM2* CIngPuddle::GetStateMachine() const {
   if (mStateMachineToken->IsLoaded()) {
     TToken< CGenericFSM2 > machine(*mStateMachineToken);
@@ -267,6 +288,7 @@ const CGenericFSM2* CIngPuddle::GetStateMachine() const {
   return nullptr;
 }
 
+// @ fn_32_FD0
 void CIngPuddle::InitializeStateMachine(CStateManager& mgr) {
   const CGenericFSM2* machine = GetStateMachine();
   if (machine != nullptr) {
@@ -277,6 +299,7 @@ void CIngPuddle::InitializeStateMachine(CStateManager& mgr) {
   }
 }
 
+// @ fn_32_EB0
 void CIngPuddle::SpawnBlobEffect(CStateManager& mgr, const TLockedToken< CGenDescription >& desc) {
   const TUniqueId id = mgr.AllocateUniqueId();
   CCollisionTracker* effect =
@@ -290,6 +313,7 @@ void CIngPuddle::SpawnBlobEffect(CStateManager& mgr, const TLockedToken< CGenDes
   }
 }
 
+// @ fn_32_D64
 void CIngPuddle::UpdateBlobEffect(CStateManager& mgr, float dt) {
   if (CCollisionTracker* effect =
           static_cast< CCollisionTracker* >(mgr.ObjectById(mBlobEffectId))) {
@@ -306,6 +330,7 @@ void CIngPuddle::UpdateBlobEffect(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_32_B64
 void CIngPuddle::MoveAlongSurface(const CVector3f& direction, float speed, float dt) {
   const CVector3f position = GetTranslation();
   const CVector3f normal = mSurfaceAlignment.GetSurface().GetNormal();
@@ -321,12 +346,14 @@ void CIngPuddle::MoveAlongSurface(const CVector3f& direction, float speed, float
   }
 }
 
+// @ fn_32_A70
 void CIngPuddle::UpdateTouchBounds() {
   const CVector3f position = GetTranslation();
   const CVector3f extent(2.f, 2.f, 2.f);
   mTouchBounds = CAABox(position - extent, position + extent);
 }
 
+// @ fn_32_688
 void CIngPuddle::HandleDamage(CStateManager& mgr, TUniqueId weaponId) {
   CWeapon* weapon = TCastToPtr< CWeapon >(const_cast< CEntity* >(mgr.GetObjectById(weaponId)));
   if (weapon == nullptr) {
@@ -357,6 +384,7 @@ void CIngPuddle::HandleDamage(CStateManager& mgr, TUniqueId weaponId) {
   }
 }
 
+// @ fn_32_A8
 CEntity* LoadIngPuddle(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngPuddle sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngPuddle.inc"
@@ -369,13 +397,16 @@ CEntity* LoadIngPuddle(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
 }
 
 #ifndef MONOLITHIC
+// @ fn_32_78
 static void SetFuncPtrs() {
   static SIngPuddle_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadIngPuddle;
   SetSIngPuddle_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_32_58
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_32_34
 extern "C" void RELExit() { SetSIngPuddle_FuncPtrs(nullptr); }
 #endif

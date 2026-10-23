@@ -43,6 +43,17 @@ inline SLdrIngPuddleData::SLdrIngPuddleData()
   sound_HitNormalDamage = 0;
   sound_HitHeavyDamage = 0;
   sound_IngSpotDeath = 0;
+#ifdef TARGET_PC
+  // fn_32_600 stores -1 (no sound) in all five sounds: li r0, -0x1 (0x624); stw r0 to +0x20,
+  // +0x24, +0x28, +0x2c, +0x30 (0x63C-0x64C). With 0, a puddle without the property would play
+  // sfx 0 (Idle/Patrol/HandleDamage/Dead AddEmitter). knockback 2.0 (rodata_4) and speed 20.0
+  // (rodata_8) already match.
+  sound_IngSpotIdle = -1;
+  sound_IngSpotMove = -1;
+  sound_HitNormalDamage = -1;
+  sound_HitHeavyDamage = -1;
+  sound_IngSpotDeath = -1;
+#endif
 }
 
 inline SLdrIngPuddleData::~SLdrIngPuddleData() {}
