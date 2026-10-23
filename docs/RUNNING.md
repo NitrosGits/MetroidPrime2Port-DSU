@@ -430,6 +430,9 @@ activate it, delete it, with `objs SkyRipple` counting one down to zero.
 dsbs drives Agon Wastes 10_sand_alamostorage's three DarkSamusBattleStages u073e/u0739/u072f
 (layer 6): load layer 6, activate u073e, read it and the Dark Samus u0732, deactivate and reactivate
 it, read both again, delete it, with `objs DarkSamusBattleStage` counting three down to two.
+ingp drives Agon Wastes 06_sand_alamofront_dark's seven IngPuddles (layer 2): activate them,
+delete u0548 (u0526's waypoint) to end its patrol, shoot and damage them (hp 5 -> -6 on u04f7),
+deactivate/reactivate u0541/u0513, delete u0517, with `objs IngPuddle` counting seven down to five.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
