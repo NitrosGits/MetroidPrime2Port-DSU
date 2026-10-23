@@ -2360,11 +2360,16 @@ the string's destructor argument store, not the call) plus the marker line.
 
 kSM_Activate sets the caller's 0xC63 0x20 bit whenever the block's +0x91D 0x80 bit is set
 (0x0000CD7C) - and that 0x80 bit is the body's own last guard, so every actor that can warp out has
-the caller's guard set by its own spawn Activate. No shipped message clears 0xC63 0x20 (the port
-has no other writer; the retail's stores to 0xC63 are the ctor and the states' own 0x01/0x02/0x04/
-0x08/0x40/0x80 bits). The run therefore clears it through the port console's `var <id> cp.c63` -
-a host debug accessor, no guest code - in the same tick as the message, and the body itself is
-reached without any forcing.
+the caller's guard set by its own spawn Activate. The bit is cleared again in shipped play: WarpIn's
+(fn_9_9064) kSM_Deactivate arm clears it (0x00009544 li r3,0; 0x0000955C rlwimi r0,r3,5,26,26;
+0x00009560 stb 0xC63 - PortCCommandoPirateCore.cpp `xc63_ &= ~0x20`), so a commando that has
+finished warping in passes both caller guards naturally (review28 correction: the earlier text said
+no retail store clears it; the full list of 0xC63 stores is 0x3A24 0x3DFC 0x5768 0x6744 0x67C0
+0x6858 0x70E0 0x70F4 0x8AF4 0x9560 0x9B30 0xAA08 0xBEC0 0xCD80 0xCF1C 0xD058 and the ctor's
+0xE0F8..0xE14C, and only 0x9560, 0xCD80 and the ctor touch 0x20). The tail13 run cleared it
+through the port console's `var <id> cp.c63` - a host debug accessor, no guest code - in the same
+tick as the message instead of waiting for a WarpIn to end; the body itself is reached without any
+forcing.
 
 ### Run (`tools/cov/specs/commandopirate_tail13.py` + `tools/drivers/commandopirate_tail13.py`)
 
