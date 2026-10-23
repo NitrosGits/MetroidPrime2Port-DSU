@@ -70,6 +70,8 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "Kyoto/Streams/CMemoryInStream.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/BodyState/CBodyController.hpp"
+#include "Kyoto/Animation/CPASDatabase.hpp"
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
 #include "MetroidPrime/Enemies/CSwarmBasics.hpp"
 #include "MetroidPrime/CGenericFSM2State.hpp"
@@ -1808,6 +1810,86 @@ std::string StateNameList(const rstl::vector< rstl::string >& names) {
   return out;
 }
 
+// Forced states and the actor's animation set. A state body forced with `fsm`/`statecall` can
+// command a body state the actor's ANCS has no anims for (a Brizgee's Generate/Deactivate deliver
+// kBSC_Generate, its Attack/Retreat kBSC_Jump, Halt kBSC_LoopReaction; its PAS has none of those
+// states, and its FSM never enters these state bodies). CPASDatabase::FindBestAnimation then answers anim -1 (0x80298CE8) and
+// CAnimData::BuildAnimationTree indexes the animation index list with it unchecked (0x80029BAC
+// slwi r0,r0,2; 0x80029BB4 lwzx r30,r7,r0; only animB is compared with -1, 0x80029BA8), so retail
+// reads the word in front of the list: undefined behaviour no natural run reaches, a host SIGSEGV in
+// CBSGenerate/CBSJump::Start here. Every actor the console forced is checked after each tick's
+// commands; the state machine delivers after the body update (CPatterned::Think), so a command waits
+// for the next frame and is dropped here first, with the frame's other commands
+// (CBodyStateCmdMgr::Reset). Actors the console never forced are not touched.
+std::vector< TUniqueId > sForcedActors;
+std::vector< std::pair< ushort, int > > sUnplayableReported;
+
+struct UnplayableBodyCmd {
+  EBodyStateCmd cmd;
+  pas::EAnimationState state;
+  const char* name;
+};
+// The action commands and the body state each enters (CBSLocomotion::GetBodyStateTransition);
+// the damage reactions (Hurled, KnockDown, KnockBack, LoopHitReaction) and Cover/WallHang/Scripted
+// are left alone.
+const UnplayableBodyCmd kUnplayableBodyCmds[] = {
+    {kBSC_Slide, pas::kAS_Slide, "Slide"},
+    {kBSC_Generate, pas::kAS_Generate, "Generate"},
+    {kBSC_MeleeAttack, pas::kAS_MeleeAttack, "MeleeAttack"},
+    {kBSC_ProjectileAttack, pas::kAS_ProjectileAttack, "ProjectileAttack"},
+    {kBSC_LoopAttack, pas::kAS_LoopAttack, "LoopAttack"},
+    {kBSC_LoopReaction, pas::kAS_LoopReaction, "LoopReaction"},
+    {kBSC_Jump, pas::kAS_Jump, "Jump"},
+    {kBSC_Taunt, pas::kAS_Taunt, "Taunt"},
+    {kBSC_Step, pas::kAS_Step, "Step"},
+};
+
+void NoteForced(const CPatterned& patterned) {
+  const TUniqueId uid = patterned.GetUniqueId();
+  if (std::find(sForcedActors.begin(), sForcedActors.end(), uid) == sForcedActors.end()) {
+    sForcedActors.push_back(uid);
+  }
+}
+
+// Drops the pending body commands of forced actors whose body state the PAS has no entry for;
+// says so once per actor and command (into `out` when given, else stderr).
+void DropUnplayableBodyCmds(CStateManager& mgr, std::string* out) {
+  for (size_t i = 0; i < sForcedActors.size();) {
+    CPatterned* patterned = TCastToPtr< CPatterned >(const_cast< CEntity* >(mgr.GetObjectById(sForcedActors[i])));
+    if (patterned == nullptr) {
+      sForcedActors.erase(sForcedActors.begin() + i);
+      continue;
+    }
+    ++i;
+    CBodyController* body = patterned->BodyController();
+    if (body == nullptr) {
+      continue;
+    }
+    CBodyStateCmdMgr& cmds = body->CommandMgr();
+    for (const UnplayableBodyCmd& entry : kUnplayableBodyCmds) {
+      if (cmds.GetCmd(entry.cmd) == nullptr || body->GetPASDatabase().HasState(entry.state)) {
+        continue;
+      }
+      cmds.Reset();
+      const std::pair< ushort, int > key(patterned->GetUniqueId().value, entry.cmd);
+      if (std::find(sUnplayableReported.begin(), sUnplayableReported.end(), key) ==
+          sUnplayableReported.end()) {
+        sUnplayableReported.push_back(key);
+        char line[192];
+        std::snprintf(line, sizeof(line),
+                      "u%04x: body cmd %s dropped: its PAS has no %s state (retail plays anim -1)\n",
+                      key.first, entry.name, entry.name);
+        if (out != nullptr) {
+          *out += line;
+        } else {
+          std::fprintf(stderr, "[console] %s", line);
+        }
+      }
+      break;
+    }
+  }
+}
+
 // fsm <id> <state>: put a patterned actor's state machine in a named state, through the machine's
 // own SetState (the AFSM and FSM2 dispatchers both take a name), so a run can enter a state whose
 // trigger it cannot reach. The leave/enter callbacks run as they would in game.
@@ -1826,6 +1908,7 @@ void CmdFsm(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("not a patterned actor");
     return;
   }
+  NoteForced(*patterned);
   TStateMachineStateBase< CPatterned >* machine = &patterned->StateMachineState();
   const std::string before = machine->HasState() && machine->GetName() != nullptr ? machine->GetName() : "?";
   // string_l borrows the characters: keep the std::string alive for every use of `name`.
@@ -1995,8 +2078,10 @@ void CmdStateCall(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("no state function '" + wanted + "'");
     return;
   }
+  NoteForced(*patterned);
   (patterned->*fn)(mgr, static_cast< EStateMsg >(msg), dt);
   out += "statecall " + wanted + " msg " + std::to_string(msg) + "\n";
+  DropUnplayableBodyCmds(mgr, &out);
 }
 
 // trigcall <id> <trigger> [arg]: evaluate one trigger of an FSM2 actor once with its argument
@@ -3827,6 +3912,7 @@ void Tick(CStateManager& mgr) {
   PortSaveState::Tick(mgr);
   sTickedSinceIdle = true;
   RunCommands(mgr);
+  DropUnplayableBodyCmds(mgr, nullptr);
 }
 
 void IdleTick(CStateManager& mgr) {
