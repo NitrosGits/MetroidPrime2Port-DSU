@@ -2329,3 +2329,64 @@ Named as not taken: the ctor's `EnableKnockBackPhysics(false)` argument (no body
 write `mData` before it is built), `x3D64_SetWarpOut`'s pair (the Escape guard), and `KnockBack`'s
 torso arm (no rag doll in the Cliff entrance's corpse knock-backs). The `+0xC63 0x20` bit the
 Escape path needs can be cleared with a `!`-write in a follow-up spec if the arm pair matters.
+
+## tail13: fn_9_3D64 `x3D64_SetWarpOut` reclassified and marked (2026-10-23)
+
+The tsv row said `host-copy`/H, which is wrong: the body is module behaviour (four of the ports'
+own members decide it and it writes two of them), so the row is `behaviour`/`B`/`marked` now.
+
+### The body against the asm (`auto_00_00000000_text.s`, 0x3D64..0x3E1C)
+
+| asm | retail | `PortCCommandoPirate.cpp` | match |
+|---|---|---|---|
+| 0x3D88..0x3D90 | `lbz 0x420`; `extrwi. 1,25` (0x40); `beq .L_00003E00` | `if (!GetAlive()) return;` (CPatterned's 0x420 bit 25) | yes |
+| 0x3D94..0x3D9C | `lbz 0xC65`; `extrwi. 1,27` (0x10); `bne` | `if ((xc65_ & 0x10) != 0) return;` | yes |
+| 0x3DA0..0x3DA8 | `lwz 0x920`; `cmpwi r0,-1`; `bne` | `if (x920_ != -1) return;` | yes |
+| 0x3DAC..0x3DB4 | `lbz 0x91D`; `extrwi. 1,24` (0x80); `beq` | `if ((mData.mFlags1 & 0x80) == 0) return;` | yes |
+| 0x3DB8..0x3DC8 | `lis lbl_9_rodata_504`; `addi r4,r4,0x2A1` (0x504+0x2A1 = 0x7A5 = "WarpOut"); `bl string_l` | `rstl::string_l("WarpOut")` | yes |
+| 0x3DCC..0x3DE8 | `lwz r3,0x350(r29)`; r4 = mgr, r5 = this, r6 = the string; `lwz r12,0(r3)`; `lwz r12,0x20(r12)`; `bctrl` | `StateMachineState().SetState(mgr, *this, ...)` (the same slot 0x20 the GetUp call at 0x0000C508 uses) | yes |
+| 0x3DEC..0x3DF0 | `addi r3,r1,8`; `bl internal_dereference...` (the temporary's destructor) | the temporary's destructor at the end of the full expression | yes |
+| 0x3DF4..0x3DFC | `lbz 0xC63`; `rlwimi r0,r31,4,27,27`; `stb 0xC63` | `xc63_ |= 0x10` / `&= ~0x10` on the bool | yes (mask 0x10 = the argument's LSB via the shift of 4; the mask 27..27 is 0x10, and `rotl(r31,4)` bit 27 is r31's bit 31) |
+
+Only the line comments changed (0x3D8C's mask, the vcall range - the old `0x00003DEC` pointed at
+the string's destructor argument store, not the call) plus the marker line.
+
+### The callers and the guard that shipped data cannot clear
+
+| caller | retail | argument |
+|---|---|---|
+| kSM_Escape | `cmplwi r31,0` (wasActive); `extrwi. 1,26` (0xC63 0x20); `li r5,1` at 0x0000CF48; `bl fn_9_3D64` 0x0000CF4C | `warpOut` = true |
+| kSM_SetToZero | the same two tests at 0x0000CEF8..0x0000CF08; `xc63_ \|= 0x40` at 0x0000CF14; `li r5,0`; `bl fn_9_3D64` 0x0000CF24 | false |
+
+kSM_Activate sets the caller's 0xC63 0x20 bit whenever the block's +0x91D 0x80 bit is set
+(0x0000CD7C) - and that 0x80 bit is the body's own last guard, so every actor that can warp out has
+the caller's guard set by its own spawn Activate. No shipped message clears 0xC63 0x20 (the port
+has no other writer; the retail's stores to 0xC63 are the ctor and the states' own 0x01/0x02/0x04/
+0x08/0x40/0x80 bits). The run therefore clears it through the port console's `var <id> cp.c63` -
+a host debug accessor, no guest code - in the same tick as the message, and the body itself is
+reached without any forcing.
+
+### Run (`tools/cov/specs/commandopirate_tail13.py` + `tools/drivers/commandopirate_tail13.py`)
+
+`COV_GDB_SCRIPT=tools/cov/force_ret.py tools/cov/force.sh <spec> <out>
+1baa96c2,01_cliff_entrance --fast --frames 4000 --driver ...` (six commandos, the Cliff's entrance;
+shipped word 0x00000104 -> mFlags1 0x80): game exit 0, `[port] caught`/`reach-stub` 0, 30 hits,
+5 distinct keys x 6 each. FORCE_RET writes one guard per call (period 5, restored at the call's
+return), so the first four sends of every commando take the four early returns and the fifth is
+left natural:
+
+| arm | asm | how | hits |
+|---|---|---|---|
+| the alive bit clear -> return | 0x3D90 | forced (`$this->mAlive = 0` at the entry) | 6 |
+| alive, the 0xC65 0x10 bit set -> return | 0x3D9C | forced (`xc65_ \|= 0x10` at the entry) | 6 |
+| alive, +0x920 != -1 -> return | 0x3DA8 | forced (`x920_ = 0` at the entry) | 6 |
+| alive, the block flag 0x80 clear -> return | 0x3DB4 | forced (`mData.mFlags1 &= ~0x80`) | 6 |
+| all four clear, warpOut = true | 0x3DC0..0x3DFC | natural: Escape, `li r5,1` (0x0000CF48) | 3 |
+| all four clear, warpOut = false | 0x3DC0..0x3DFC | natural: SetToZero, `li r5,0` (0x0000CF0C..) | 3 |
+
+Every key of the 30 hits has the caller's 0xC63 0x20 bit clear at the body's entry (0, ...), so
+both caller guards passed. The argument's two values are proved in the same tick as the send by
+reading `cp.c63` back: the Escape instances read 0x12/0x12/0x13 (0x10 set), the SetToZero ones
+0x42/0x42/0x46 (0x10 clear, the 0x40 is the caller's own store at 0x0000CF14). `obj <id>` reports
+`fsm WarpIn` before and `fsm WarpOut` after the natural call, so the vcall at 0x3DE8 entered the
+named state.
