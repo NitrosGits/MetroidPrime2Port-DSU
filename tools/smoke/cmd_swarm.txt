@@ -1,0 +1,51 @@
+# SwarmBasics (module 80, exercised through CFlyerSwarm): Agon 01_sand_entrance layer 2 holds the
+# flyer swarms u041d, u04ff, u05c4 and u05c6. The steps follow tools/cov/specs/swarmbasics_sand.con
+# (the swarm1 coverage driver: god-mode player in the swarm, every beam, charge and missile, morph
+# ball, the Increment/Decrement and InternalMessage0 messages, Deactivate/Activate).
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400,
+# last check f2350.
+@f300 layer 2
+@f340 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give screwAttack 1; fastmorph 1
+@f380 send u041d Activate; send u04ff Activate; obj u041d
+@f420 tp -338.4 -87.7 -6.7
+@f700 obj u041d
+@f720 lockon 1
+@f740 shoot u041d
+@f770 shoot u041d charged
+@f800 shoot u041d missile
+@f830 beam dark
+@f840 shoot u041d; shoot u04ff
+@f870 shoot u041d charged
+@f900 beam light
+@f910 shoot u041d
+@f940 shoot u041d charged
+@f980 beam annihilator
+@f990 shoot u041d; shoot u04ff charged
+@f1030 beam power
+@f1040 noise 6
+@f1060 tp -338.4 -87.7 -6.7
+@f1080 press x 0
+@f1320 damage u041d 5 0 boostball
+@f1340 damage u041d 50 0 cannonball
+@f1450 send u041d Decrement
+@f1500 send u041d Increment
+@f1520 send u041d InternalMessage0; send u041d InternalMessage0; send u041d InternalMessage0; send u041d InternalMessage0
+@f1600 send u041d Deactivate
+@f1640 send u041d Activate
+@f1700 obj u041d
+@f1720 send u041d InternalMessage0; send u041d InternalMessage0; send u041d InternalMessage0; send u041d InternalMessage0; send u041d InternalMessage0; send u041d InternalMessage0; send u041d InternalMessage0; send u041d InternalMessage0
+@f1800 obj u041d
+# The kill near the end. A CFlyerSwarm has no Death of its own - CSwarmBasics is a CActor, so the
+# console `kill` refuses it ("not a patterned actor with health") and its boids die one by one in
+# KillBoid, which only runs where a projectile or the cannon ball actually overlaps a boid box; the
+# swarm hovers ~25 units over the floor here (the tp drops the player below it), so no shot reaches a
+# boid and the boid count stays at 5/7. The script ends the way swarmbasics_sand.con does: charged
+# shots at the swarm, then its teardown, Deactivate and the `Delete` that runs StopLocomotionSounds'
+# empty-handle arm (swarm1's forced arm). The morph ball is held from f1080 (one console press: the
+# fast suite's console attaches late, so `press x` then `boost` in one tick would be unmorphed).
+@f1900 tp -338.4 -87.7 -6.7
+@f2020 obj u041d
+@f2250 shoot u041d charged; shoot u041d charged
+@f2320 send u041d Deactivate; obj u041d
+@f2330 send u041d Delete
+@f2350 objs swarm; status

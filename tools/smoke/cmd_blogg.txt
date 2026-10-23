@@ -1,0 +1,42 @@
+# Blogg (module 7): Torvus 07_swamp_shaft (area 40) layers 2/3/5 hold the Bloggs; they are inactive
+# until Activate. The steps follow tools/cov/specs/blogg_shaft.con (the blogg1 coverage driver: the
+# natural fight, every beam, missiles, charged shots, the ball grab, a kill). The family names the
+# Bloggs by editor id (`e<hex>`): unique ids are reused as the layer load swaps objects in, and the
+# two more of this area (e00280219, e00280228) stream in ~250 frames after the switch, so the fight
+# uses the two the switch leaves there. Checks are game updates (@f<n>; gameplay from ~f240), not wall
+# seconds; the family runs F=2400, last check f2350.
+@f300 layer 2
+@f310 layer 3
+@f320 layer 5
+@f340 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give missile 50; give morphBall 1; give morphBallBombs 1
+@f360 objs blogg
+@f380 send e002800df Activate; send e0028009a Activate
+@f400 tp -160 -120 -48
+@f410 face 0
+@f500 obj e002800df
+@f520 shoot e002800df
+@f560 shoot e002800df charged
+@f600 shoot e0028009a missile
+@f640 beam dark
+@f650 shoot e002800df
+@f660 beam light
+@f670 shoot e0028009a
+@f680 beam annihilator
+@f690 shoot e002800df
+@f700 beam power
+@f720 obj e002800df; obj e0028009a
+@f1000 tp -168 -117 -40
+@f1100 place e0028009a player 3
+@f1140 shoot e0028009a charged
+@f1200 obj e002800df
+@f1300 tp -175 -118 -52
+@f1400 obj e0028009a
+@f1500 damage e0028009a 5
+@f1520 damage e002800df 5 1 missile
+@f1700 objs blogg
+@f1900 obj e002800df; obj e0028009a
+# The kill: 400 a missile through a Blogg's vulnerability is what blogg_shaft.con kills with (a light
+# beam takes the other), and `obj` straight after shows hp 0 and the Death state.
+@f2100 damage e0028009a 400 0 light
+@f2250 damage e002800df 400 0 missile; obj e002800df
+@f2350 objs blogg; status
