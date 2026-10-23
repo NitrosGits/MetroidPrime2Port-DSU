@@ -289,14 +289,8 @@ private:
 };
 
 // Port: the dark world cloud texture. Retail Render loads the renderer's own token
-// (*(CCubeRenderer::sRenderer + 0x510), mDarkWorldCloud), which is private; the same resource is
-// looked up by the name the renderer's ctor uses. The token is never released, as the renderer
-// never releases its own.
-CTexture& PortDarkWorldCloud() {
-  static TLockedToken< CTexture >* sToken =
-      new TLockedToken< CTexture >(gpSimplePool->GetObj("TXTR_DarkWorldCloud"));
-  return **(*sToken);
-}
+// (*(CCubeRenderer::sRenderer + 0x510), mDarkWorldCloud).
+CTexture& PortDarkWorldCloud() { return CCubeRenderer::That()->GetDarkWorldCloud(); }
 
 } // namespace
 

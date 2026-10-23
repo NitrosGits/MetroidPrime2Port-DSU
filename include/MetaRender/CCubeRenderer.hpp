@@ -371,6 +371,9 @@ public:
   static constexpr int MeasuredOffsetOfDarkLightWorldPalette() {
     return (int)offsetof(CCubeRenderer, mDarkLightWorldPalette);
   }
+  // Host: the Splitter command module's Render loads the renderer's own cloud texture (retail
+  // *(sRenderer + 0x510)).
+  CTexture& GetDarkWorldCloud() { return **mDarkWorldCloud; }
 
 private:
 #endif

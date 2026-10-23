@@ -623,14 +623,12 @@ bool CMetroid::PreDamageSpacePirate(CStateManager& mgr) {
     return false;
   }
   // 0x43AC lfs f1, 0x3fc(r29): CPatterned 0x3fc is mXDamageThreshold (CPatterned ctor 0x80079F98
-  // stfs from CPatternedInfo 0xbc). It is protected in CPatterned and read through another
-  // CPatterned, so take it through a pointer to member named via CMetroid.
-  float CPatterned::*const xDamageThreshold = &CMetroid::mXDamageThreshold;
+  // stfs from CPatternedInfo 0xbc), read through CPatterned::GetXDamageThreshold.
   // 0x4394-0x43D4: CWeaponMode type 0 (kWT_Power), the 0x8000/0x4000/0x2000 bits cleared.
   // 0x43A4 lbl_40_rodata_84 = 1.0f; 0x43BC fsubs: damage and radius damage = threshold - 1.
   // 0x43C0 lbl_40_rodata_A8 = 0.0f: radius and knockback. 0x43E8 rlwimi 7,24,24 sets byte 0x1a
   // 0x80 (mNoImmunity), 0x43FC rlwimi 6,25,25 clears 0x40 (mApplyRadiusDamage).
-  const CDamageInfo info(CWeaponMode(kWT_Power), pirate->*xDamageThreshold - 1.f, 0.f, 0.f,
+  const CDamageInfo info(CWeaponMode(kWT_Power), pirate->GetXDamageThreshold() - 1.f, 0.f, 0.f,
                          true);
   // 0x4428 __shl2i 1 << skSolidMaterial (include), 0x4454/0x4460 exclude 0, 0x4464 type 3
   // (kFT_IncludeExclude); 0x4488 ApplyDamage(this, mAttackTarget, this, ..., sZeroVector).

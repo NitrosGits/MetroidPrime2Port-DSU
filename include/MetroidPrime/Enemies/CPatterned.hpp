@@ -307,6 +307,9 @@ public:
   // Host: the Splitter REL's fn_75_1790 tests the base's flag byte at 0x420 (its 0x20 bit, the
   // retail's word bit 26 - the host's x420_26_ field).
   bool GetFlag26() const { return x420_26_ != 0; }
+
+  // Host: the Metroid REL's fn_40_4300 reads another patterned's mXDamageThreshold (retail 0x3FC).
+  float GetXDamageThreshold() const { return mXDamageThreshold; }
 #endif
 
   // Guessed name
