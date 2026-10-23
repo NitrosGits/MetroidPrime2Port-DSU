@@ -70,7 +70,7 @@ FFC	fn_12_FFC	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk
 21A0	fn_12_21A0	1E0	B	MarkPathRegion__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
 2380	fn_12_2380	34	B	GetPathArea__12CDarkTrooperCFR13CStateManager	-	upstream body (CDarkTrooper)	yes
 23B4	fn_12_23B4	90	B	UnmarkPathRegion__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
-2444	fn_12_2444	28	B	InMissileRange__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	no
+2444	fn_12_2444	28	B	InMissileRange__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
 246C	fn_12_246C	28	B	InSmallShotRange__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
 2494	fn_12_2494	28	B	InMeleeRange__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
 24BC	fn_12_24BC	308	B	Pursue__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	no
