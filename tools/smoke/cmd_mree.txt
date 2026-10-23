@@ -1,0 +1,27 @@
+# Metaree (module 42: CMetaree, "Morphology: Shriekbat" - a flyer that hangs inactive, then drops
+# and attacks the player; on contact it explodes, applying its radius damage).
+# Agon Wastes 0c_sand_hall (world 42b935e4, area a21): eleven CMetaree objects (editor ids
+# 0015002f/2e/2d/...), inactive at load, with the god-mode player u0400.
+# The steps wake three of them: Create makes u044d/u044b/u044a drop (Active), u044a is killed
+# at once (11 -> 8 objects), u044b takes a shot, and u044d is forced to Halt and takes a 1-damage
+# hit (hp 2/2 -> 1/2) before it transitions to Attack. `objs Metaree` brackets the run.
+# Evidence in the transcript: `objs Metaree` listing 11 inactive CMetaree objects at f320; the
+# Create sends; `shot ... at u044b`; `killed` on u044a; `obj u044d` reading hp 2/2 fsm Active,
+# then hp 1/2 fsm Attack; and `objs Metaree` counting 8 at f470 and after. Every step answers
+# `=> ok`. F=2400, last check f2200.
+@f300 god 1
+@f320 objs Metaree
+@f330 send u044d Activate; send u044d Start; send u044d Create
+@f335 send u044b Activate; send u044b Start; send u044b Create
+@f336 shoot u044b
+@f340 send u044a Activate; send u044a Start; send u044a Create
+@f345 kill u044a
+@f360 obj u044d
+@f370 fsm u044d Halt
+@f380 obj u044d
+@f390 damage u044d 1 power
+@f400 obj u044d
+@f470 objs Metaree
+@f600 objs Metaree
+@f1200 objs Metaree
+@f2200 objs Metaree

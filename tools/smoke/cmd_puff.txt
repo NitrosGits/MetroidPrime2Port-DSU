@@ -1,0 +1,26 @@
+# Puffer (module 52: CPuffer, "Morphology: Preed"/"Morphology: Dark Preed" - a hovering flyer
+# that patrols a waypoint and releases a damaging gas cloud on death).
+# Agon Wastes dark 07_sand_alamoportalobservation_dark (world 42b935e4, area a50): one CPuffer
+# u05d9 (editor id 003201b8), hp 5/5, fsm Patrol, with the god-mode player u0400.
+# The steps wake it with Activate, force PathFind and Start, take a 1-damage hit (hp 5/5 -> 4/5),
+# a shot (hp 4/5 -> 2/5), then kill it (0 objects). `objs CPuffer` brackets the run.
+# Evidence in the transcript: `objs CPuffer` listing the CPuffer at f320; `obj u05d9` reading
+# hp 5/5 fsm Patrol; `fsm u05d9 PathFind`/`Start`; `damage ... hp 5.0 -> 4.0`; `shot ...`;
+# `killed`; and `0 objects` at f540. Every step answers `=> ok`. F=2400, last check f2200.
+@f300 god 1
+@f320 objs CPuffer
+@f330 send u05d9 Activate
+@f340 obj u05d9
+@f360 fsm u05d9 PathFind
+@f380 obj u05d9
+@f400 damage u05d9 1 power
+@f420 obj u05d9
+@f440 shoot u05d9
+@f460 obj u05d9
+@f480 fsm u05d9 Start
+@f500 obj u05d9
+@f520 kill u05d9
+@f540 objs CPuffer
+@f600 objs CPuffer
+@f1200 objs CPuffer
+@f2200 objs CPuffer

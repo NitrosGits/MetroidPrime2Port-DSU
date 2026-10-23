@@ -417,6 +417,12 @@ kill it and send XDMG to explode it, with `objs Shredder` counting three down to
 ibs drives Sanctuary 0b_cliff_hall_dark's two IngBlobSwarms u0451/u044c (layer 4): activate u044c,
 read its swarm state, damage it (hp 2 -> 1 -> 0), delete it, with `objs IngBlobSwarm` counting two
 down to one.
+mree wakes three of Agon Wastes 0c_sand_hall's eleven CMetarees (u044d/u044b/u044a): Create drops
+them (hp 2/2), u044a is killed at once (11 -> 8 objects), u044b takes a shot, and u044d is forced
+to Halt and takes a 1-damage hit (hp 2/2 -> 1/2) before it transitions to Attack, with `objs
+Metaree` at f320 and f2200. puff wakes Agon Wastes dark 07_sand_alamoportalobservation_dark's
+CPuffer u05d9 (hp 5/5), forces PathFind and Start, takes a 1-damage hit (hp 5/5 -> 4/5) and a
+shot (hp 4/5 -> 2/5), then kills it (0 objects), with `objs CPuffer` at f320 and f2200.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
