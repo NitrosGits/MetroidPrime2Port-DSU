@@ -2411,3 +2411,8 @@ alternate scan (the actor's own SCAN, mAltScanInfo locked). 176/178 lines, 125/1
 untaken ones are all exception-unwind arms (the CSkinnedModel rs_new line, 2, and the ctor's closing
 brace, 32). Dead: rs_new returning null (0x000202E0, 0x000204B8), the stack-address-null tests
 (0x000203E0, 0x00020418) and the 0x92C non-null test at 0x00020518 (0x0001FC38 stores 0).
+
+asmcheck/retail_diff on 1FA14 report the ctor's calls missing ("C++ body 0", 18 branches, no
+conditions): the parser reads only the body after the init list, while the sub-constructors,
+token helpers (fn_10_21104, fn_10_895C) and sfx ternaries sit in the init list or in the header's
+default member initializers (CDarkSamus.hpp ~1119). Each of the 33 asm calls was matched by hand.
