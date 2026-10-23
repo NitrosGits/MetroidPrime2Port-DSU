@@ -102,7 +102,11 @@ Deactivate) outside the machine, from the actor's whole state table: states the 
 TARGET_PC hook), so the arms behind a failed search run on a mesh that reaches; pair it with
 `codecall` (`pathfail u0454 on; codecall u0454 SelectTarget; pathfail u0454 off`).
 `setarea <id> <area>` sets an entity's current area id (prints the old one), e.g. so a same-area
-filter sees a neighbour from another area; put the old id back after.
+filter sees a neighbour from another area; put the old id back after. An area that exists but is
+not loaded is refused (`CActor::UpdatePortalSystemState` reads its portal data on the next update).
+`obj <id>` prints, besides hp, connections and a patterned actor's `fsm` state, its `body state`
+(the `pas::EAnimationState` index `bodystate` takes). Non-patterned actors with their own private
+FSM2 (CIngSnatchingSwarm) have no generic accessor, so `obj` prints no state for them.
 `touch <mover id> <other id>` calls the mover's `CollidedWith` the way the collision code does
 (`CGameCollision::MakeCollisionCallbacks`): with a one-entry collision list whose 0x30 slot holds
 the *other* actor's material list. It needs no real collision, so a module whose own work is in
@@ -118,15 +122,22 @@ The guardian grapple chain: `var <id> gren.scanned 1; var <id> gren.crystal 4; f
 from it and holds L: with `give grappleBeam 1` the player locks on and grapples (`status`: orbit 5).
 A bare `tp` + `press l` misses: the lock-on press needs the orbit candidate lists, rebuilt every 20 updates.
 `scan <id> [d] [updates]` twice ~30 updates apart (scan visor + L, then tp d (40) units, forced orbit lock) scans an actor; `scan` alone prints progress (game state 1 = scan display up).
-`spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive]
-[prop <propid> <value>]...` creates n (1) script objects of a type through its `ScriptLoader` entry,
+`spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [rules <id>] [wpsc <id>]
+[conn <state> <msg> <id>]... [model <id>|u<id>] [inactive] [prop <propid> <value>]...` creates n (1) script objects of a type through its `ScriptLoader` entry,
 d (8) units in front of the player and facing it, for loaders no disc placement reaches (CHOG, COIN,
 DBAR, RIPR, RSFA, SPNK): the property stream holds only EditorProperties (name, transform, active)
 and what the options add, so every other SLdr default applies. Each gets editor id
 `<area>FF00`+ in layer 0 (so `e0036ff00` names the first in area 0x36), AddObject and kSM_AreaLoaded.
 `ancs`/`model` take a hex asset id or an actor (`u`/`e` id) whose ANCS+character or static model is
 borrowed as a stand-in body (the types' own assets are in no pak); `fsm` sets the patterned state
-machine; `prop` adds a raw 4-byte top-level property (`1.5` is a float, else an integer). Refusals
+machine; `ancs u<id>` keeps the donor's own character unless `char` follows; a patterned spawn
+writes `knockbackRules` 393ca543 (in every Metroid*.pak; the SLdr's -1 recurses to OOM), `rules <id>`
+another RULE (`ffffffff` keeps -1); CHOG's two projectile WPSC props default to 681f3907 (refused
+when absent), `wpsc <id>` sets them, or another type's common `projectile` prop (ef485db9);
+`conn <state> <msg> <id>` adds a script connection (names as `obj` prints them; `<id>` is `u<id>`,
+`e<hex>` or a bare editor id, e.g. a DBAR's GRNT); the reply lists ancs/char/anim, rules and wpsc
+(`tools/drivers/con1_console.con`);
+`prop` adds a raw 4-byte top-level property (`1.5` is a float, else an integer). Refusals
 (logged, no crash): no loader for the type, an asset not in the resource factory, a loader that
 returns null (patterned types without `ancs`), DBAR without `model` (its ctor needs the left chunk
 model). A patterned actor whose body controller is still off after AreaLoaded (CHOG without its own

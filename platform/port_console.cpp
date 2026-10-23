@@ -560,13 +560,16 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
       "pathfail <id> on|off        the actor's path search fails (Search, FindClosestReachablePoint)\n"
-      "setarea <id> <area>         set an entity's current area id (put it back after; obj shows it)\n"
+      "setarea <id> <area>         set an entity's current area id (put it back after; obj shows it; loaded areas only)\n"
       "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "orbit [id]                  lock-on state; with id: orbit position, ValidateOrbitTargetId\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive] [prop <pid> <v>]  create script objects via their loader\n"
+      "                            [rules <id>] knockback RULE (patterned default 393ca543; ffffffff = none)\n"
+      "                            [conn <state> <msg> <id>] add a script connection (names as obj prints them)\n"
+      "                            [wpsc <id>] projectile WPSC (CHOG's two; else prop ef485db9; CHOG default 681f3907)\n"
       "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
       "                           list, the way the collision code does (no real collision needed)\n"
       "pirateattach <pirate> <id>|-  AttachActorToPirate(id) (- : DetachActorFromPirate) through the\n"
@@ -1656,6 +1659,12 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
     } else {
       out += "  fsm (unnamed)\n";
     }
+    // The body controller's state (pas::EAnimationState, the `bodystate` index).
+    if (const CBodyController* body = patterned->GetBodyController()) {
+      char line[48];
+      std::snprintf(line, sizeof(line), "  body state %d\n", int(body->GetCurrentStateId()));
+      out += line;
+    }
   }
   for (const SConnection& conn : ent->GetConnectionList()) {
     const CEntity* target = mgr.GetObjectById(mgr.GetIdForScript(conn.objId));
@@ -2084,7 +2093,8 @@ void CmdPathFail(CStateManager& mgr, const Args& args, std::string& out) {
 }
 
 // setarea <id> <area>: set an entity's current area id (CEntity +0x4), e.g. so a same-area filter
-// sees a neighbour from another area. Nothing else moves; put the old id back afterwards.
+// sees a neighbour from another area. Nothing else moves; put the old id back afterwards. An area
+// that exists but is not loaded is refused.
 void CmdSetArea(CStateManager& mgr, const Args& args, std::string& out) {
   CEntity* ent = args.size() == 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
   float area = 0.f;
@@ -2092,8 +2102,21 @@ void CmdSetArea(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("usage: setarea <id> <area index>");
     return;
   }
+  // An actor's UpdatePortalSystemState reads the area's post-constructed portal data whenever
+  // the area exists (CActor.cpp UpdatePortalSystemState), so an existing area that is not loaded
+  // crashes the next update (oct1). -1 and ids past the world's areas are skipped there.
+  const TAreaId newArea(static_cast< int >(area));
+  const CWorld* world = mgr.GetWorld();
+  if (world != nullptr && world->DoesAreaExist(newArea) &&
+      (!world->GetArea(newArea)->IsLoaded() ||
+       world->GetArea(newArea)->GetPostConstructed() == nullptr)) {
+    char why[64];
+    std::snprintf(why, sizeof(why), "setarea: area %d is not loaded", newArea.Value());
+    Fail(why);
+    return;
+  }
   const int old = ent->GetCurrentAreaId().Value();
-  ent->SetCurrentAreaId(TAreaId(static_cast< int >(area)));
+  ent->SetCurrentAreaId(newArea);
   char line[64];
   std::snprintf(line, sizeof(line), "area %d -> %d\n", old, ent->GetCurrentAreaId().Value());
   out += line;
@@ -2399,7 +2422,9 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
 // u<id>/e<id> whose ANCS+character or static model is borrowed as a stand-in body), `prop` adds a raw 4-byte top-level property
 // (a value with a '.' is a float, else an integer, hex with 0x). Asset ids are checked against the
 // resource factory first, so a missing asset is a refusal, not a CStaticRes on nothing. Each object
-// `fsm <id>` sets PatternedAITypedef.stateMachine (an AFSM/FSM2 asset); `inactive` spawns it
+// `fsm <id>` sets PatternedAITypedef.stateMachine (an AFSM/FSM2 asset), `rules <id>` its
+// knockbackRules (default 393ca543), `wpsc <id>` the type's projectile WPSC, `conn <state> <msg>
+// <id>` adds a script connection (CEntityInfo's list, as SCLY gives it); `inactive` spawns it
 // inactive (a COIN only rolls its lifetime and impulse on the Activate that wakes it, so spawn it
 // inactive and `send e<id> activate`). Each object
 // gets a free editor id 0xFF00+ in layer 0 of the player's area (`e<id>` works) and, like
@@ -2431,7 +2456,8 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
   CPlayer* player = mgr.GetPlayer(0);
   if (args.size() < 2 || args[1].size() != 4 || player == nullptr) {
     Fail("usage: spawn <fourcc> [count] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] "
-         "[model <id>|u<id>] [inactive] [prop <propid> <value>]...   (needs a player)");
+         "[rules <id>] [wpsc <id>] [conn <state> <msg> <id>] [model <id>|u<id>] [inactive] [prop <propid> <value>]... "
+         "(needs a player)");
     return;
   }
   FourCC type = 0;
@@ -2465,7 +2491,15 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
   uint fsm = 0;
   bool haveFsm = false;
   bool startActive = true;
+  // PatternedAITypedef.knockbackRules: the SLdr default -1 reads as an all-zero RULE whose parent
+  // rule 0 is itself, and CKnockBackController recurses until the allocator fails. 393ca543 is in
+  // every Metroid*.pak; `rules ffffffff` keeps the SLdr default.
+  uint rules = 0x393ca543;
+  bool haveRules = false;
+  uint wpsc = 0;
+  bool haveWpsc = false;
   std::vector< std::pair< uint, uint > > props;
+  rstl::vector< SConnection > connections;
   size_t i = 2;
   if (i < args.size() && std::isdigit(static_cast< unsigned char >(args[i][0]))) {
     uint n = 0;
@@ -2495,9 +2529,14 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
       }
       haveAncs = true;
       ++i;
-      if (i + 1 < args.size() && parseU32(args[i + 1], character)) {
+      // parseU32 stores its strtoul result even when the text is no number, so parse into a
+      // scratch: the next option's name (`fsm`) must not reset the donor's character to 0.
+      uint number = 0;
+      if (i + 1 < args.size() && parseU32(args[i + 1], number)) {
+        character = number;
         ++i;
-        if (i + 1 < args.size() && parseU32(args[i + 1], anim)) {
+        if (i + 1 < args.size() && parseU32(args[i + 1], number)) {
+          anim = number;
           ++i;
         }
       }
@@ -2515,10 +2554,41 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
       }
       haveModel = true;
       ++i;
+    } else if (args[i] == "conn" && i + 3 < args.size()) {
+      // conn <state> <msg> <target>: a script connection on the spawned object, the way an area's
+      // SCLY lists them (CEntity::mConnections, editor ids). The target is u<id> (that object's
+      // editor id), e<hex> or a bare hex editor id (it need not be loaded yet).
+      const int state = EnumValue(kStateNames, kStateCount, args[i + 1]);
+      const int msg = EnumValue(kMessageNames, kMessageCount, args[i + 2]);
+      uint target = 0;
+      if (args[i + 3][0] == 'u') {
+        const CEntity* ent = ResolveObject(mgr, args[i + 3]);
+        if (ent == nullptr) {
+          return;
+        }
+        target = ent->GetEditorId().Value();
+      } else if (!parseHexId(args[i + 3][0] == 'e' ? args[i + 3].substr(1) : args[i + 3], target)) {
+        target = kInvalidEditorId.Value();
+      }
+      if (state < 0 || msg < 0 || target == kInvalidEditorId.Value()) {
+        Fail("spawn: conn <state> <msg> <target>: bad " +
+             Str(state < 0 ? args[i + 1] : msg < 0 ? args[i + 2] : args[i + 3]));
+        return;
+      }
+      connections.push_back(SConnection(static_cast< EScriptObjectState >(state),
+                                        static_cast< EScriptObjectMessage >(msg),
+                                        TEditorId(target)));
+      i += 3;
     } else if (args[i] == "inactive") {
       startActive = false;
     } else if (args[i] == "fsm" && i + 1 < args.size() && parseHexId(args[i + 1], fsm)) {
       haveFsm = true;
+      ++i;
+    } else if (args[i] == "rules" && i + 1 < args.size() && parseHexId(args[i + 1], rules)) {
+      haveRules = true;
+      ++i;
+    } else if (args[i] == "wpsc" && i + 1 < args.size() && parseHexId(args[i + 1], wpsc)) {
+      haveWpsc = true;
       ++i;
     } else if (args[i] == "prop" && i + 2 < args.size()) {
       uint id = 0, value = 0;
@@ -2569,6 +2639,56 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     Fail(why);
     return;
   }
+  const bool patternedTypedef = haveAncs || haveFsm || haveRules;
+  if (patternedTypedef && rules != kInvalidAssetId &&
+      gpResourceFactory->GetResourceTypeById(rules) != 'RULE') {
+    if (haveRules) {
+      char why[64];
+      std::snprintf(why, sizeof(why), "spawn: rules %08x is not a RULE asset here", rules);
+      Fail(why);
+      return;
+    }
+    rules = kInvalidAssetId; // the default RULE is not in this area's paks: SLdr default
+  }
+  const bool writeRules = patternedTypedef && rules != kInvalidAssetId;
+  // The projectile WPSC properties a type's SLdr leaves at -1: CProjectileInfo then holds a token
+  // on nothing and the first shot crashes. `wpsc <id>` writes them; without it a type listed here
+  // gets the default 681f3907 (the WPSC the ChozoGhost runs used) when it is here, and is refused otherwise.
+  // Other types take `wpsc` as their common top-level `projectile` (0xef485db9).
+  static const uint kChozoGhostWpsc[] = {0x54151870, 0x3a58089c};
+  static const uint kCommonWpsc[] = {0xef485db9};
+  const uint* wpscProps = nullptr;
+  int wpscCount = 0;
+  if (type == 'CHOG') {
+    wpscProps = kChozoGhostWpsc;
+    wpscCount = 2;
+  } else if (haveWpsc) {
+    wpscProps = kCommonWpsc;
+    wpscCount = 1;
+  }
+  if (wpscProps != nullptr) {
+    // A raw `prop` naming one of these wins over both.
+    int explicitProps = 0;
+    for (int w = 0; w < wpscCount; ++w) {
+      for (const std::pair< uint, uint >& p : props) {
+        explicitProps += p.first == wpscProps[w] ? 1 : 0;
+      }
+    }
+    if (!haveWpsc) {
+      wpsc = 0x681f3907;
+    }
+    if (explicitProps == wpscCount) {
+      wpscProps = nullptr;
+      wpscCount = 0;
+    } else if (gpResourceFactory->GetResourceTypeById(wpsc) != 'WPSC') {
+      char why[96];
+      std::snprintf(why, sizeof(why), "spawn %s refused: %s WPSC %08x is not here (`wpsc <id>`)",
+                    typeName, haveWpsc ? "the" : "the default", wpsc);
+      std::printf("[console] %s\n", why);
+      Fail(why);
+      return;
+    }
+  }
   TAreaId area = player->GetCurrentAreaId();
   if (area == kInvalidAreaId) {
     area = mgr.GetNextAreaId();
@@ -2599,7 +2719,8 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     SSpawnBlob blob;
     const bool isCoin = type == 'COIN', isBarrier = type == 'DBAR';
     const int modelProps = haveModel ? (isCoin ? 1 : isBarrier ? 6 : 0) : 0;
-    blob.U16(1 + (haveAncs || haveFsm ? 1 : 0) + modelProps + static_cast< int >(props.size()));
+    blob.U16(1 + (patternedTypedef ? 1 : 0) + modelProps + wpscCount +
+             static_cast< int >(props.size()));
     const size_t editor = blob.BeginProp(0x255a4580); // EditorProperties
     blob.U16(3);
     const size_t name = blob.BeginProp('INAM');
@@ -2624,9 +2745,9 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     blob.U8(startActive ? 1 : 0);
     blob.EndProp(active);
     blob.EndProp(editor);
-    if (haveAncs || haveFsm) {
+    if (patternedTypedef) {
       const size_t patterned = blob.BeginProp(0xb3774750); // PatternedAITypedef
-      blob.U16((haveAncs ? 1 : 0) + (haveFsm ? 1 : 0));
+      blob.U16((haveAncs ? 1 : 0) + (haveFsm ? 1 : 0) + (writeRules ? 1 : 0));
       if (haveAncs) {
         const size_t animSet = blob.BeginProp(0xe25fb08c); // animationInformation
         blob.U32(ancs);
@@ -2639,6 +2760,11 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
         blob.U32(fsm);
         blob.EndProp(machine);
       }
+      if (writeRules) {
+        const size_t knockback = blob.BeginProp(0x87011652); // knockbackRules
+        blob.U32(rules);
+        blob.EndProp(knockback);
+      }
       blob.EndProp(patterned);
     }
     static const uint kBarrierModels[] = {0x014a0c36, 0x90f55c5d, 0xe1975355,
@@ -2648,13 +2774,19 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
       blob.U32(model);
       blob.EndProp(prop);
     }
+    // Before the raw props: the loader keeps the last value, so a `prop` naming one wins.
+    for (int w = 0; w < wpscCount; ++w) {
+      const size_t prop = blob.BeginProp(wpscProps[w]);
+      blob.U32(wpsc);
+      blob.EndProp(prop);
+    }
     for (const std::pair< uint, uint >& p : props) {
       const size_t prop = blob.BeginProp(p.first);
       blob.U32(p.second);
       blob.EndProp(prop);
     }
     CMemoryInStream in(blob.bytes.data(), blob.bytes.size());
-    CEntityInfo info(area, CEntity::NullConnectionList, startActive, editorId);
+    CEntityInfo info(area, connections, startActive, editorId);
     CEntity* entity = loader(mgr, in, info);
     char line[160];
     if (entity == nullptr) {
@@ -2672,6 +2804,16 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
                   pos.GetX(), pos.GetY(), pos.GetZ());
     std::printf("[console] %s", line);
     out += line;
+    if (haveAncs) {
+      std::snprintf(line, sizeof(line), "   ancs %08x char %u anim %u\n", ancs, character, anim);
+      out += line;
+    }
+    if (writeRules || wpscCount != 0) {
+      std::snprintf(line, sizeof(line), "   knockback rules %08x, wpsc %08x on %d properties\n",
+                    writeRules ? rules : kInvalidAssetId, wpscCount != 0 ? wpsc : kInvalidAssetId,
+                    wpscCount);
+      out += line;
+    }
     // A patterned actor whose body controller is still off would crash in its first Think
     // (CPatterned::ThinkAboutMove reads the current body state). Placed actors get it from their
     // state machine (CChozoGhost::InActive) or their Registered handler; a spawn without the
