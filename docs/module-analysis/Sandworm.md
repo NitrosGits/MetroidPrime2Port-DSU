@@ -1281,3 +1281,9 @@ One finding for the shared code: `asmcheck.py` cannot place the bit of `mActive`
 (`include/MetroidPrime/CActor.hpp:422` and `:438` ✓) - the REL's copy reads the flag as the bit
 0x80 of the byte at 0x20 (asm 0xC3D4 ✓) while the host's header states no bit position for it, so
 `fn_56_C3D0` gets a NOPOS ✓. The member is in the DOL's header ✓, so this lane did not touch it ✓.
+
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- All 15 marked rows are now B, including Issue*Cmd, which has no host equivalent.
+- Kept T: C350/C3D0. No FSM2 asks for them and they have 0 coverage.

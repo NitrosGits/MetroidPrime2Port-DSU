@@ -1087,3 +1087,9 @@ confirm they are inline copies of host types, not module behaviour: `CC54` (quat
 `x`, `-y`, `-z`, `-w`), `CF00` (0x34-byte struct copy), `10688`/`106E0`/`10760`/`1073C` (a
 0x29-byte struct's ctor, copy and default ctor: float, vector, vector4, two words, a bool),
 `10C78` (`rstl::optional_object<CAABox>` ctor).
+
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- Now B: T fn_55_0, 8, 5C, B4, CDF0, D304 and H fn_55_D8, CF6C.
+- Kept H: the GetOrigin copy fn_55_BC.

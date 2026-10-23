@@ -9,12 +9,12 @@ offset	size	class	kind	name	callers	marked	state
 0xB04	0x24	H	host-copy	fn_10_B04	1	no	ds41: CRayCastResult::MakeInvalid() header inline (CRayCastResult.hpp:25) over B28
 0xB28	0x50	H	host-copy	fn_10_B28	1	no	ds41: CRayCastResult() header inline ctor
 0xB78	0xE4	B	method	fn_10_B78	1	yes	
-0xC5C	0x3C	T	unreferenced	fn_10_C5C	0	yes	
+0xC5C	0x3C	B	unreferenced	fn_10_C5C	0	yes	ht2: B (was T) - the port's class implements it (PortCScattershotProjectile.cpp:150); asm auto_04_00000000_data.s:108 in lbl_10_data_40: .4byte fn_10_C5C
 0xC98	0x130	B	method	fn_10_C98	2	yes	
 0xDC8	0x48	H	host-copy	fn_10_DC8	1	no	ds41: rstl::reserved_vector<SShot>::push_back (count +0, 0x20 stride)
 0xE10	0x4C	H	host-copy	fn_10_E10	1	no	ds41: rstl placement construct (beqlr null test + 0x1D-byte shot copy)
-0xE5C	0x20	H	host-copy	fn_10_E5C	0	yes	
-0xE7C	0xCA8	T	unreferenced	fn_10_E7C	0	no	
+0xE5C	0x20	B	host-copy	fn_10_E5C	0	yes	ht2: B (was H) - the port's class implements it (PortCScattershotProjectile.cpp:144); asm auto_04_00000000_data.s:100 in lbl_10_data_40: .4byte fn_10_E5C
+0xE7C	0xCA8	B	unreferenced	fn_10_E7C	0	no	ht2: B (was T, not unreferenced) - CScattershotProjectile::Render, slot after AddToRenderer fn_10_E5C; port body PortCScattershotProjectile.cpp unmarked: proposed slice; asm auto_04_00000000_data.s:101 in lbl_10_data_40: .4byte fn_10_E7C
 0x1B24	0x40	H	host-copy	fn_10_1B24	2	no	ds41: CVector3f::Cross header inline (CVector3f.hpp:60)
 0x1B64	0xA4	H	host-copy	fn_10_1B64	1	no	ds42: CTevPass ctor (sNextUniquePass++, CTevCombiners.hpp:156); its caller E7C is the scattershot Render vtable entry
 0x1C08	0x184	B	method	fn_10_1C08	1	yes	
@@ -25,17 +25,17 @@ offset	size	class	kind	name	callers	marked	state
 0x213C	0x118	B	method	fn_10_213C	2	yes	
 0x2254	0x544	B	method	fn_10_2254	1	yes	
 0x2798	0x180	B	method	fn_10_2798	1	yes	
-0x2918	0xC4	T	unreferenced	fn_10_2918	0	yes	
-0x29DC	0x20	H	host-copy	fn_10_29DC	0	yes	
+0x2918	0xC4	B	unreferenced	fn_10_2918	0	yes	ht2: B (was T) - the port's class implements it (PortCScattershotProjectile.cpp:122); asm auto_04_00000000_data.s:95 in lbl_10_data_40: .4byte fn_10_2918
+0x29DC	0x20	B	host-copy	fn_10_29DC	0	yes	ht2: B (was H) - the port's class implements it (PortCScattershotProjectile.cpp:138); asm auto_04_00000000_data.s:96 in lbl_10_data_40: .4byte fn_10_29DC
 0x29FC	0xD4	H	host-copy	fn_10_29FC	0	no	
 0x2AD0	0x374	B	method	fn_10_2AD0	1	yes	
 0x2E44	0x20	H	host-copy	fn_10_2E44	2	no	ds41: CModelData::CModelDataNull() header inline (CModelData.hpp:158)
-0x2E64	0x98	H	host-copy	fn_10_2E64	0	yes	
+0x2E64	0x98	B	host-copy	fn_10_2E64	0	yes	ht2: B (was H) - the port's class implements it (PortCDarkSamusHelpers.cpp:1130); asm auto_04_00000000_data.s:185 in lbl_10_data_104: .4byte fn_10_2E64
 0x2EFC	0x8	B	method	fn_10_2EFC	1	yes	
 0x2F04	0xC	B	method	fn_10_2F04	1	yes	
 0x2F10	0xF8	B	method	fn_10_2F10	1	yes	
-0x3008	0x16C	H	host-copy	fn_10_3008	0	yes	
-0x3174	0x70	H	host-copy	fn_10_3174	0	yes	
+0x3008	0x16C	B	host-copy	fn_10_3008	0	yes	ht2: B (was H) - the port's class implements it (PortCDarkSamusHelpers.cpp:1176); asm auto_04_00000000_data.s:194 in lbl_10_data_104: .4byte fn_10_3008
+0x3174	0x70	B	host-copy	fn_10_3174	0	yes	ht2: B (was H) - the port's class implements it (PortCDarkSamusHelpers.cpp:1199); asm auto_04_00000000_data.s:192 in lbl_10_data_104: .4byte fn_10_3174
 0x31E4	0x304	B	method	fn_10_31E4	1	yes	
 0x34E8	0x38	H	host-copy	fn_10_34E8	1	no	ds41: rstl::vector<CJointCollisionDescription>::push_back (reserved, no growth)
 0x3520	0x20	H	host-copy	fn_10_3520	2	no	ds41: rstl::construct wrapper over 3540
@@ -46,10 +46,10 @@ offset	size	class	kind	name	callers	marked	state
 0x36E4	0x60	H	host-copy	fn_10_36E4	1	no	ds42: rstl destroy range of CJointCollisionDescription
 0x3744	0x5C	H	host-copy	fn_10_3744	5	no	ds42: CDamageVulnerability operator= (mWeaponIndices 0x15-byte __copy, x18/x1C, vector 0x20 via 37A0/10010)
 0x37A0	0x130	H	host-copy	fn_10_37A0	1	no	ds43: vector<12-byte elem> copy (caller 3744)
-0x38D0	0x64	H	host-copy	fn_10_38D0	0	yes	
-0x3934	0x64	H	host-copy	fn_10_3934	0	yes	
-0x3998	0x170	T	unreferenced	fn_10_3998	0	yes	
-0x3B08	0xBC	T	unreferenced	fn_10_3B08	0	yes	
+0x38D0	0x64	B	host-copy	fn_10_38D0	0	yes	ht2: B (was H) - the port's class implements it (PortCDarkSamusHelpers.cpp:1328); asm auto_04_00000000_data.s:204 in lbl_10_data_104: .4byte fn_10_38D0
+0x3934	0x64	B	host-copy	fn_10_3934	0	yes	ht2: B (was H) - the port's class implements it (PortCDarkSamusHelpers.cpp:1322); asm auto_04_00000000_data.s:203 in lbl_10_data_104: .4byte fn_10_3934
+0x3998	0x170	B	unreferenced	fn_10_3998	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusHelpers.cpp:1288); asm auto_04_00000000_data.s:189 in lbl_10_data_104: .4byte fn_10_3998
+0x3B08	0xBC	B	unreferenced	fn_10_3B08	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusHelpers.cpp:1263); asm auto_04_00000000_data.s:188 in lbl_10_data_104: .4byte fn_10_3B08
 0x3BC4	0x3AC	B	method	fn_10_3BC4	1	yes	
 0x3F70	0x68	H	host-copy	fn_10_3F70	2	no	ds42: SMoverData(mass, vel, angVel, momentum, unk) host ctor
 0x3FD8	0x390	B	method	fn_10_3FD8	1	yes	
@@ -63,7 +63,7 @@ offset	size	class	kind	name	callers	marked	state
 0x48C8	0x44	B	method	fn_10_48C8	2	yes	
 0x490C	0x19C	B	method	fn_10_490C	2	yes	
 0x4AA8	0x14	B	method	fn_10_4AA8	1	yes	
-0x4ABC	0xC	T	fsm-thunk	fn_10_4ABC	0	yes	BreakPhazonAttack
+0x4ABC	0xC	B	fsm-thunk	fn_10_4ABC	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1166); asm auto_04_00000000_data.s:1639 in lbl_10_data_CBC: .4byte fn_10_4ABC; BreakPhazonAttack
 0x4AC8	0xD4	B	fsm-state	fn_10_4AC8	0	yes	PhazonSuck
 0x4B9C	0x5C	H	host-copy	fn_10_4B9C	0	no	
 0x4BF8	0x48	H	host-copy	fn_10_4BF8	0	no	
@@ -112,12 +112,12 @@ offset	size	class	kind	name	callers	marked	state
 0x7BC0	0x140	B	fsm-state	fn_10_7BC0	0	yes	PhazonEnraged
 0x7D00	0x298	B	method	fn_10_7D00	1	yes	
 0x7F98	0x17C	B	method	fn_10_7F98	3	yes	
-0x8114	0x18	T	fsm-thunk	fn_10_8114	0	yes	PickedPhazonEnrage
+0x8114	0x18	B	fsm-thunk	fn_10_8114	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1385); asm auto_04_00000000_data.s:1659 in lbl_10_data_CBC: .4byte fn_10_8114; PickedPhazonEnrage
 0x812C	0x4C	B	method	fn_10_812C	3	yes	
 0x8178	0x5C	B	method	fn_10_8178	1	yes	
 0x81D4	0x450	B	fsm-state	fn_10_81D4	0	yes	PhazonAttack
 0x8624	0x5C	H	host-copy	fn_10_8624	0	no	
-0x8680	0x18	T	fsm-thunk	fn_10_8680	0	yes	PickedPhazonAttack
+0x8680	0x18	B	fsm-thunk	fn_10_8680	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1377); asm auto_04_00000000_data.s:1658 in lbl_10_data_CBC: .4byte fn_10_8680; PickedPhazonAttack
 0x8698	0xCC	B	method	fn_10_8698	7	yes	
 0x8764	0x10C	B	method	fn_10_8764	11	yes	
 0x8870	0xEC	B	method	fn_10_8870	4	yes	
@@ -163,7 +163,7 @@ offset	size	class	kind	name	callers	marked	state
 0xC798	0xC4	B	method	fn_10_C798	3	yes	
 0xC85C	0x1B0	B	method	fn_10_C85C	1	yes	
 0xCA0C	0x394	B	fsm-state	fn_10_CA0C	0	yes	SweepBeam; ds45: marked
-0xCDA0	0x18	T	fsm-thunk	fn_10_CDA0	0	yes	PickedSweepBeam
+0xCDA0	0x18	B	fsm-thunk	fn_10_CDA0	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1410); asm auto_04_00000000_data.s:1662 in lbl_10_data_CBC: .4byte fn_10_CDA0; PickedSweepBeam
 0xCDB8	0x94	T	unreferenced	fn_10_CDB8	0	no	
 0xCE4C	0x8	T	virtual-thunk	fn_10_CE4C	0	no	
 0xCE54	0x8	T	virtual-thunk	fn_10_CE54	0	no	
@@ -180,7 +180,7 @@ offset	size	class	kind	name	callers	marked	state
 0xCED0	0x24	H	rel-entry	RELExit	0	no	
 0xCEF4	0x20	T	rel-entry	RELMain	0	no	
 0xCF14	0x30	B	method	fn_10_CF14	1	yes	
-0xCF44	0xE98	T	loader	fn_10_CF44	0	no	
+0xCF44	0xE98	B	loader	fn_10_CF44	0	no	ht2: B (was T) - module loader, address taken in fn_10_CF14 and passed to SetSDarkSamus_FuncPtrs; port PortLoadDarkSamus (PortCDarkSamus.cpp) unmarked: proposed slice; asm auto_00_0000CE4C_text.s:118 in fn_10_CF14: lis r4, fn_10_CF44@ha
 0xDDDC	0x40	H	host-copy	fn_10_DDDC	1	no	ds41: rstl::optional_object copy ctor (valid byte 0x4C), loader only
 0xDE1C	0x20	H	host-copy	fn_10_DE1C	1	no	ds41: rstl::construct wrapper over DE3C
 0xDE3C	0x28	H	host-copy	fn_10_DE3C	1	no	ds41: rstl placement construct (null test + copy DE64)
@@ -217,12 +217,12 @@ offset	size	class	kind	name	callers	marked	state
 0xF654	0xBC	B	method	fn_10_F654	1	yes	
 0xF710	0xF0	B	method	fn_10_F710	1	yes	
 0xF800	0x40	B	fsm-trigger	fn_10_F800	0	yes	WallCollision
-0xF840	0xC	T	fsm-thunk	fn_10_F840	0	yes	Alerted
-0xF84C	0x18	T	virtual-thunk	fn_10_F84C	0	no	
-0xF864	0x8	T	fsm-thunk	fn_10_F864	0	yes	DoneTurning
+0xF840	0xC	B	fsm-thunk	fn_10_F840	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1044); asm auto_04_00000000_data.s:1631 in lbl_10_data_CBC: .4byte fn_10_F840; Alerted
+0xF84C	0x18	B	virtual-thunk	fn_10_F84C	0	no	ht2: B (was T) - GetCollisionResponseType, vtable lbl_10_data_CBC slot 24 (`lbz r0,0xcd0(r3); li r3,0x2e; cmplwi r0,1; bnelr; li r3,0x6a`); port CDarkSamus::GetCollisionResponseType (PortCDarkSamus.cpp:888, matches the asm) but unmarked: a coverage run (player shots at u04f7, cliff_rooftop) got 0 hits, so it waits for a slice; asm auto_04_00000000_data.s:1573 in lbl_10_data_CBC: .4byte fn_10_F84C
+0xF864	0x8	B	fsm-thunk	fn_10_F864	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1266); asm auto_04_00000000_data.s:1645 in lbl_10_data_CBC: .4byte fn_10_F864; DoneTurning
 0xF86C	0xB4	B	fsm-state	fn_10_F86C	0	yes	FallFromTheAir
-0xF920	0x4	T	fsm-thunk	fn_10_F920	0	yes	Start
-0xF924	0xC	T	fsm-thunk	fn_10_F924	0	yes	StartsInTheAir
+0xF920	0x4	B	fsm-thunk	fn_10_F920	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:3645); asm auto_04_00000000_data.s:1716 in lbl_10_data_CBC: .4byte fn_10_F920; Start
+0xF924	0xC	B	fsm-thunk	fn_10_F924	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1594); asm auto_04_00000000_data.s:1676 in lbl_10_data_CBC: .4byte fn_10_F924; StartsInTheAir
 0xF930	0x1C4	B	fsm-state	fn_10_F930	0	yes	PissedOff
 0xFAF4	0x98	B	fsm-trigger	fn_10_FAF4	0	yes	ReachedPissedOff
 0xFB8C	0xD8	B	fsm-state	fn_10_FB8C	0	yes	TravelToPissedOff
@@ -243,7 +243,7 @@ offset	size	class	kind	name	callers	marked	state
 0x10634	0x24	B	fsm-trigger	fn_10_10634	0	yes	CanMeleeAttack
 0x10658	0x40	B	fsm-trigger	fn_10_10658	0	yes	PlayerTooClose
 0x10698	0x60	B	fsm-trigger	fn_10_10698	0	yes	TooMuchDamage
-0x106F8	0x18	T	fsm-thunk	fn_10_106F8	0	yes	BreakPause
+0x106F8	0x18	B	fsm-thunk	fn_10_106F8	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1158); asm auto_04_00000000_data.s:1638 in lbl_10_data_CBC: .4byte fn_10_106F8; BreakPause
 0x10710	0x154	B	fsm-state	fn_10_10710	0	yes	Pause
 0x10864	0x17C	B	method	fn_10_10864	1	yes	
 0x109E0	0x40	H	host-copy	fn_10_109E0	1	no	ds41: CHierarchyPoseBuilder::Insert(seg, quat) (host CIkChain.cpp:54)
@@ -262,22 +262,22 @@ offset	size	class	kind	name	callers	marked	state
 0x11334	0xF8	B	method	fn_10_11334	6	yes	
 0x1142C	0x118	B	fsm-state	fn_10_1142C	0	yes	Patrol
 0x11544	0x1B4	B	fsm-state	fn_10_11544	0	yes	Taunt
-0x116F8	0x18	T	fsm-thunk	fn_10_116F8	0	yes	PickedBoostBall
-0x11710	0x14	T	fsm-thunk	fn_10_11710	0	yes	PickedMeleeDash
-0x11724	0x14	T	fsm-thunk	fn_10_11724	0	yes	PickedMovingSShot
-0x11738	0x14	T	fsm-thunk	fn_10_11738	0	yes	PickedScatterShot
-0x1174C	0x14	T	fsm-thunk	fn_10_1174C	0	yes	PickedDiveAttack
-0x11760	0x18	T	fsm-thunk	fn_10_11760	0	yes	PickedFreezeBeam
-0x11778	0x14	T	fsm-thunk	fn_10_11778	0	yes	PickedSuperMissile
-0x1178C	0x14	T	fsm-thunk	fn_10_1178C	0	yes	PickedMissileJump
+0x116F8	0x18	B	fsm-thunk	fn_10_116F8	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1300); asm auto_04_00000000_data.s:1649 in lbl_10_data_CBC: .4byte fn_10_116F8; PickedBoostBall
+0x11710	0x14	B	fsm-thunk	fn_10_11710	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1332); asm auto_04_00000000_data.s:1653 in lbl_10_data_CBC: .4byte fn_10_11710; PickedMeleeDash
+0x11724	0x14	B	fsm-thunk	fn_10_11724	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1348); asm auto_04_00000000_data.s:1655 in lbl_10_data_CBC: .4byte fn_10_11724; PickedMovingSShot
+0x11738	0x14	B	fsm-thunk	fn_10_11738	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1393); asm auto_04_00000000_data.s:1660 in lbl_10_data_CBC: .4byte fn_10_11738; PickedScatterShot
+0x1174C	0x14	B	fsm-thunk	fn_10_1174C	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1316); asm auto_04_00000000_data.s:1650 in lbl_10_data_CBC: .4byte fn_10_1174C; PickedDiveAttack
+0x11760	0x18	B	fsm-thunk	fn_10_11760	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1308); asm auto_04_00000000_data.s:1651 in lbl_10_data_CBC: .4byte fn_10_11760; PickedFreezeBeam
+0x11778	0x14	B	fsm-thunk	fn_10_11778	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1401); asm auto_04_00000000_data.s:1661 in lbl_10_data_CBC: .4byte fn_10_11778; PickedSuperMissile
+0x1178C	0x14	B	fsm-thunk	fn_10_1178C	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1340); asm auto_04_00000000_data.s:1654 in lbl_10_data_CBC: .4byte fn_10_1178C; PickedMissileJump
 0x117A0	0x38	B	fsm-trigger	fn_10_117A0	0	yes	PickedNormalMissile
-0x117D8	0x14	T	fsm-thunk	fn_10_117D8	0	yes	PickedMelee
-0x117EC	0x14	T	fsm-thunk	fn_10_117EC	0	yes	PickedTaunt
-0x11800	0x14	T	fsm-thunk	fn_10_11800	0	yes	PickedPause
+0x117D8	0x14	B	fsm-thunk	fn_10_117D8	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1324); asm auto_04_00000000_data.s:1652 in lbl_10_data_CBC: .4byte fn_10_117D8; PickedMelee
+0x117EC	0x14	B	fsm-thunk	fn_10_117EC	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1418); asm auto_04_00000000_data.s:1663 in lbl_10_data_CBC: .4byte fn_10_117EC; PickedTaunt
+0x11800	0x14	B	fsm-thunk	fn_10_11800	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1368); asm auto_04_00000000_data.s:1657 in lbl_10_data_CBC: .4byte fn_10_11800; PickedPause
 0x11814	0x160	B	method	fn_10_11814	2	yes	
 0x11974	0x164	B	method	fn_10_11974	2	yes	
 0x11AD8	0x17C	B	fsm-state	fn_10_11AD8	0	yes	MovingScatterShot
-0x11C54	0xC	T	fsm-thunk	fn_10_11C54	0	yes	BreakDiveAttack
+0x11C54	0xC	B	fsm-thunk	fn_10_11C54	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1140); asm auto_04_00000000_data.s:1635 in lbl_10_data_CBC: .4byte fn_10_11C54; BreakDiveAttack
 0x11C60	0x17C	B	method	fn_10_11C60	1	yes	
 0x11DDC	0xDC	B	method	fn_10_11DDC	1	yes	
 0x11EB8	0xEC	B	method	fn_10_11EB8	1	yes	
@@ -318,7 +318,7 @@ offset	size	class	kind	name	callers	marked	state
 0x142CC	0x28	B	fsm-trigger	fn_10_142CC	0	yes	FacingPlayer
 0x142F4	0xB4	B	method	fn_10_142F4	3	yes	
 0x143A8	0xA0	B	fsm-state	fn_10_143A8	0	yes	Dead
-0x14448	0x4	T	fsm-thunk	fn_10_14448	0	yes	Null
+0x14448	0x4	B	fsm-thunk	fn_10_14448	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:3359); asm auto_04_00000000_data.s:1704 in lbl_10_data_CBC: .4byte fn_10_14448; Null
 0x1444C	0x198	B	method	fn_10_1444C	1	yes	
 0x145E4	0x64	B	method	fn_10_145E4	3	yes	
 0x14648	0x330	B	method	fn_10_14648	2	yes	
@@ -343,9 +343,9 @@ offset	size	class	kind	name	callers	marked	state
 0x16ADC	0x8	B	method	fn_10_16ADC	2	yes	
 0x16AE4	0x38	H	host-copy	fn_10_16AE4	0	no	
 0x16B1C	0x2C	B	method	fn_10_16B1C	5	yes	
-0x16B48	0xC	T	fsm-thunk	fn_10_16B48	0	yes	BreakFreezeBeam
-0x16B54	0x8	T	fsm-thunk	fn_10_16B54	0	yes	BreakSuperMissile
-0x16B5C	0x8	T	fsm-thunk	fn_10_16B5C	0	yes	BreakNormalMissile
+0x16B48	0xC	B	fsm-thunk	fn_10_16B48	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1120); asm auto_04_00000000_data.s:1636 in lbl_10_data_CBC: .4byte fn_10_16B48; BreakFreezeBeam
+0x16B54	0x8	B	fsm-thunk	fn_10_16B54	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1176); asm auto_04_00000000_data.s:1640 in lbl_10_data_CBC: .4byte fn_10_16B54; BreakSuperMissile
+0x16B5C	0x8	B	fsm-thunk	fn_10_16B5C	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1150); asm auto_04_00000000_data.s:1637 in lbl_10_data_CBC: .4byte fn_10_16B5C; BreakNormalMissile
 0x16B64	0x28	B	method	fn_10_16B64	11	yes	
 0x16B8C	0x150	B	method	fn_10_16B8C	5	yes	
 0x16CDC	0x1F0	B	fsm-state	fn_10_16CDC	0	yes	FreezeBeam

@@ -576,3 +576,8 @@ missing: []
 extra: []
 ```
 
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- The marked T rows (the vtable slots plus LightSwarm) are now B.
+- The header-inline/SLdr H rows stay H. Their markers are stacked comment lines, not bodies of their own: fn_18_E0, 3AC, 1CCC, 3648, 39A0, 4080, A2EC..A8D8, C1FC, C290, CE70..D9F8, DB28.

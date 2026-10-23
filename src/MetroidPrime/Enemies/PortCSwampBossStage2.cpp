@@ -312,6 +312,7 @@ CVector3f CSwampBossStage2::CenterPosition(const CStateManager& mgr) const {
 }
 
 // @ fn_79_60A0: the point the states steer at. fn_79_2E7C is its mSwoopTarget branch.
+// @ fn_79_2E7C: the mSwoopTarget accessor (`addi r3,r3,0xdf4`), inlined as the head-mode return.
 CVector3f CSwampBossStage2::TargetPoint(const CStateManager& mgr) const {
   if (mHeadMode) { // 0x60B4: xc74 & 0x80
     return mSwoopTarget;

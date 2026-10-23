@@ -17,7 +17,7 @@ offset	fn	size	class	marked	what	callers
 0x000FC	RELExit	0x24	H	no		-
 0x00120	RELMain	0x20	H	no		-
 0x00140	fn_79_140	0x30	H	no		RELMain
-0x00170	fn_79_170	0x2F0	H	no	`PortLoadSwampBossStage2`, `RELMain`/`RELExit`	-
+0x00170	fn_79_170	0x2F0	B	no	ht2: B (was H) - module loader (every other module's loader is B); port PortLoadSwampBossStage2 unmarked: proposed slice; asm auto_00_00000000_text.s:160 in fn_79_140: lis r4, fn_79_170@ha; `PortLoadSwampBossStage2`, `RELMain`/`RELExit`	-
 0x00460	fn_79_460	0x40	H	no		fn_79_170 fn_79_A59C fn_79_CBF4
 0x004A0	fn_79_4A0	0x20	H	no		fn_79_460 fn_79_69A4
 0x004C0	fn_79_4C0	0x28	H	no		fn_79_4A0
@@ -59,7 +59,7 @@ offset	fn	size	class	marked	what	callers
 0x02D3C	fn_79_2D3C	0x58	H	no		fn_79_2A84 fn_79_3578 fn_79_3774 fn_79_3900
 0x02D94	fn_79_2D94	0x54	H	no		fn_79_2D3C
 0x02DE8	fn_79_2DE8	0x94	B	yes		fn_79_4324 fn_79_4C1C fn_79_4D20
-0x02E7C	fn_79_2E7C	0x8	T	no		fn_79_60A0
+0x02E7C	fn_79_2E7C	0x8	B	yes	ht2: B (was T) - accessor `addi r3,r3,0xdf4` called by B fn_79_60A0; port inlines it as TargetPoint's mSwoopTarget branch (PortCSwampBossStage2.cpp); asm auto_00_00000000_text.s:7031 in fn_79_60A0: bl fn_79_2E7C	fn_79_60A0
 0x02E84	fn_79_2E84	0x33C	B	yes	`PickSwoopTarget`	fn_79_9754
 0x031C0	fn_79_31C0	0x100	H	no		fn_79_2E84 fn_79_50AC fn_79_543C
 0x032C0	fn_79_32C0	0x54	H	no		fn_79_2E84 fn_79_50AC fn_79_543C fn_79_B3CC fn_79_B8D4

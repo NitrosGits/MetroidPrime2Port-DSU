@@ -1314,3 +1314,9 @@ state's transition list names the code node (6) - so the marker rests on a force
 The body is the retail's (`li r0, 0; stw r0, 0xc98; blr`) and `tools/asmcheck.py check
 SwampBossStage2 src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp fn_79_72FC --all` finds
 nothing. Both rows leave the unmarked B list: the module is 99 of 99 B rows marked.
+
+## ht2 class audit (2026-10-23, base 2275ab065)
+
+A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
+- fn_79_2E7C, the `addi r3,r3,0xdf4` accessor called by B fn_79_60A0, goes from T to B. It is marked at `CSwampBossStage2::TargetPoint`, which inlines it.
+- fn_79_170, the loader (0x2F0), goes from H to B, unmarked: every other module's loader is B. The port is `PortLoadSwampBossStage2`. Proposed slice, which also reviews fn_79_830, 134C, 1714 and 1AA0.

@@ -51,7 +51,7 @@ offset	size	name	kind	class	callers	marker	reason
 0x1F2C	0x94	fn_15_1F2C ResetAttackTimer	method	B	bl:fn_15_4AE0 fn_15_4D18 fn_15_50BC	fn_15_1F2C	the module's own body; the port's marker is over it
 0x1FC0	0x244	fn_15_1FC0 PlanPath	method	B	bl:fn_15_5CBC	fn_15_1FC0	the module's own body; the port's marker is over it
 0x2204	0x80	fn_15_2204 UpdatePositionHistory	method	B	bl:fn_15_9598	fn_15_2204	the module's own body; the port's marker is over it
-0x2284	0xC0	fn_15_2284	method	H	bl:fn_15_6618	fn_15_2284	ported as CElitePirate::GetLockOnPosition; ALL-ARMS forced (trigcall ShouldFire) (ep1 2026-10-22)
+0x2284	0xC0	fn_15_2284	method	B	bl:fn_15_6618	fn_15_2284	ht2: B (was H) - the port's class implements it (PortCElitePirate.cpp:279); asm auto_00_00000000_text.s:7548 in fn_15_6618: bl fn_15_2284; ported as CElitePirate::GetLockOnPosition; ALL-ARMS forced (trigcall ShouldFire) (ep1 2026-10-22)
 0x2344	0x50	fn_15_2344	method	H	-	-	body identical to DOL `__dt__10CMemorySysFv` @ 0x802ce648
 0x2394	0xB4	fn_15_2394 UpdateLauncherTransform	method	B	bl:fn_15_9598	fn_15_2394	the module's own body; the port's marker is over it
 0x2448	0xA8	fn_15_2448 SendLauncherMsg	method	B	bl:fn_15_24F0	fn_15_2448	the module's own body; the port's marker is over it
@@ -185,7 +185,7 @@ offset	size	name	kind	class	callers	marker	reason
 0x9840	0x8C	fn_15_9840 InstallStateMachine	virtual	B	data:lbl_15_data_634	fn_15_9840	the module's own body; the port's marker is over it
 0x98CC	0x68	fn_15_98CC	method	H	-	-	host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile)
 0x9934	0x54	fn_15_9934	method	H	-	-	host class code (rstl / CToken / CJointCollisionDescription / CCollisionActorManager / CGameProjectile)
-0x9988	0xEC	fn_15_9988	method	H	bl:fn_15_A190	fn_15_9988	ported as CElitePirate::IsInitialIdle (ep1 2026-10-22)
+0x9988	0xEC	fn_15_9988	method	B	bl:fn_15_A190	fn_15_9988	ht2: B (was H) - the port's class implements it (PortCElitePirate.cpp:265); asm auto_00_00000000_text.s:12056 in fn_15_A190: bl fn_15_9988; ported as CElitePirate::IsInitialIdle (ep1 2026-10-22)
 0x9A74	0x3C	fn_15_9A74	method	H	-	-	body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0
 0x9AB0	0x184	fn_15_9AB0	compiler-dtor	H	bl:fn_15_9988	-	body identical to DOL `__ct__16CPASAnimParmDataFQ23pas15EAnimationStateRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParm` @ 0x80079a60
 0x9C34	0x3C	fn_15_9C34	method	H	-	-	body identical to DOL `"__dt__Q24rstl24reserved_vector<PFv_v,4>Fv"` @ 0x803274b0

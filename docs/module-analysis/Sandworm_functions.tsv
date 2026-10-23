@@ -36,8 +36,8 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x22A0	0x7C	CSandwormEye	[?] SetTargetable (Add/RemoveMaterial)	method	B	441C	-	WP2
 0x231C	0x34	CSandwormEye	SetTouchBounds (x2D0 CAABox)	method	B	441C	-	WP2
 0x2350	0x3C	CSandwormEye	GetTouchBounds [slot 0x48]	virtual	B	data_740	-	WP2
-0x238C	0x1C	CSandwormEye	GetAimPosition [slot 0x54] (x2E8)	virtual	T	data_74C	-	WP2
-0x23A8	0x1C	CSandwormEye	GetOrbitPosition [slot 0x50] (x2E8)	virtual	T	data_748	-	WP2
+0x238C	0x1C	CSandwormEye	GetAimPosition [slot 0x54] (x2E8)	virtual	B	data_74C	ht2: B (was T) - the port's class implements it (PortCSandwormEye.cpp:82); asm auto_04_00000000_data.s:793 in lbl_56_data_6F8: .4byte fn_56_238C; -	WP2
+0x23A8	0x1C	CSandwormEye	GetOrbitPosition [slot 0x50] (x2E8)	virtual	B	data_748	ht2: B (was T) - the port's class implements it (PortCSandwormEye.cpp:87); asm auto_04_00000000_data.s:792 in lbl_56_data_6F8: .4byte fn_56_23A8; -	WP2
 0x23C4	0x70	CSandwormEye	~CSandwormEye [slot 0x08]	dtor	B	data_700	-	WP2
 0x2434	0x208	CSandwormEye	CSandwormEye::CSandwormEye(uid,name,info,xf)	ctor	B	5060	-	WP2
 0x263C	0x68	SMoverData	[?] SMoverData ctor (inline)	inline-dol	H	2434	[?] SMoverData::SMoverData	-
@@ -53,7 +53,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x2C30	0xBC	CSandworm	GetOrbitPosition [slot 0x50] (eye-based)	virtual	B	data_8D4	-	WP2
 0x2CEC	0x35C	CSandworm	[?] FindGrabAIHint (TCastToPtr<CScriptAIHint>)	method	B	59A8 C168	-	WP4
 0x3048	0xA8	CSandworm	[?] AIHint helper	method	B	C168 CBB4	-	WP4
-0x30F0	0x8	CSandworm	CanBeUnPossessed [slot 0xFC] -> false	virtual	T	data_980	-	WP1
+0x30F0	0x8	CSandworm	CanBeUnPossessed [slot 0xFC] -> false	virtual	B	data_980	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:820); asm auto_04_00000000_data.s:962 in lbl_56_data_884: .4byte fn_56_30F0; -	WP1
 0x30F8	0x34	CSandworm	CanBeIngPossessed [slot 0xF8] (Bomb Guardian only)	virtual	B	data_97C	-	WP1
 0x312C	0x54	CSandworm	GetIngSnatchingPoint [slot 0x13C] (cubic of x1388..x13A8)	virtual	B	data_9C0	-	WP1
 0x3180	0x9C	CSandworm	GetIngSnatchingNormal [slot 0x138]	virtual	B	data_9BC	-	WP1
@@ -130,7 +130,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x63B8	0x58	CSandworm	[?] SendGrabMsgs	method	B	646C BF44	-	WP4
 0x6410	0x5C	CSandworm	[?] SendAttackMsgs	method	B	646C	-	WP4
 0x646C	0x324	CSandworm	DoUserAnimEvent [slot 0x70] (jumptable data_790)	virtual	B	data_8F4	-	WP4
-0x6790	0x8	CSandworm	ProjectileInfo [slot 0xDC] -> &x1528	virtual	T	data_960	-	WP1
+0x6790	0x8	CSandworm	ProjectileInfo [slot 0xDC] -> &x1528	virtual	B	data_960	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:793); asm auto_04_00000000_data.s:954 in lbl_56_data_884: .4byte fn_56_6790; -	WP1
 0x6798	0x16C	CSandworm	ChargeOver [trigger slot 0x168]	fsm-trigger	B	data_9EC	-	WP4
 0x6904	0xD8	CSandworm	FacingPlayerForCharge [trigger slot 0x17c]	fsm-trigger	B	data_A00	-	WP4
 0x69DC	0x74	CSandworm	SpitAngleOK [trigger slot 0x1d8]	fsm-trigger	B	data_A5C	-	WP4
@@ -188,7 +188,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x97F0	0xC	CSandworm	ReadyToCharge [trigger slot 0x1c4]	fsm-trigger	B	data_A48	-	WP4
 0x97FC	0x20	CSandworm	SnatchEnded [trigger slot 0x1d4]	fsm-trigger	B	data_A58	-	WP3
 0x981C	0x44	CSandworm	SnatchStarted [trigger slot 0x1d0]	fsm-trigger	B	data_A54	-	WP3
-0x9860	0xC	CSandworm	GetIngSnatchingModelOverlapSize [slot 0x140] -> 6.0	virtual	T	data_9C4	-	WP1
+0x9860	0xC	CSandworm	GetIngSnatchingModelOverlapSize [slot 0x140] -> 6.0	virtual	B	data_9C4	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:860); asm auto_04_00000000_data.s:979 in lbl_56_data_884: .4byte fn_56_9860; -	WP1
 0x986C	0x134	CSandworm	Snatch [state slot 0x224]	fsm-state	B	data_AA8	-	WP3
 0x99A0	0xB8	CSandworm	ChargeWindUp [state slot 0x1ec]	fsm-state	B	data_A70	-	WP4
 0x9A58	0x1B8	CSandworm	[?] UpdateShadow	method	B	9CD8	-	WP7
@@ -197,7 +197,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x9CD8	0x374	CSandworm	PreRenderAllViewports [slot 0x34]	virtual	B	data_8B8	-	WP7
 0xA04C	0x2FC	CSandworm	[?] ComputeBounds	method	B	43A4 9CD8	-	WP7
 0xA348	0x1A8	CSandworm	[?] UpdateLocatorTransforms	method	B	11078 9CD8	-	WP7
-0xA4F0	0x20	CSandworm	PreRender [slot 0x24] -> CPatterned::PreRender	virtual	T	data_8A8	-	WP7
+0xA4F0	0x20	CSandworm	PreRender [slot 0x24] -> CPatterned::PreRender	virtual	B	data_8A8	ht2: B (was T) - the port's class implements it (PortCSandwormRender.cpp:183); asm auto_04_00000000_data.s:908 in lbl_56_data_884: .4byte fn_56_A4F0; -	WP7
 0xA510	0x1F8	CSandworm	[?] AddAnimatedScale per segment	method	B	E764	-	WP5
 0xA708	0x1D8	CSandworm	[?] FollowPath	method	B	74B8 8190	-	WP3
 0xA8E0	0x114	CSandworm	[?] NearlyOnPath test	method	B	5978 6798 A708	-	WP3
@@ -311,7 +311,7 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x112E8	0x48	CSandworm	Null [state slot 0x20c]	fsm-state	B	data_A90	-	WP3
 0x11330	0x44	CSandworm	[?] AcceptScriptMsg helper	method	B	11374	-	WP2
 0x11374	0x974	CSandworm	AcceptScriptMsg [slot 0x18]	virtual	B	data_89C	-	WP2
-0x11CE8	0x10	CSandworm	TakeDamage [slot 0xA4] (x448 = skDamageHitTime)	virtual	T	data_928	-	WP1
+0x11CE8	0x10	CSandworm	TakeDamage [slot 0xA4] (x448 = skDamageHitTime)	virtual	B	data_928	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:863); asm auto_04_00000000_data.s:940 in lbl_56_data_884: .4byte fn_56_11CE8; -	WP1
 0x11CF8	0x100	CSandworm	[?] AngleBetween	method	B	11374	-	WP2
 0x11DF8	0x5C	CSandworm	[?] RemoveAdditiveFlinch	method	B	4AD8	-	WP2
 0x11E54	0x158	CSandworm	[?] AddAdditiveFlinch	method	B	4AD8	-	WP2
@@ -354,23 +354,23 @@ offset	size	owner	name	kind	class	callers	dol_counterpart	package
 0x13FD4	0x3C	(weak)	[?] weak/EH-only destructor (no REL caller; Free/~CToken body)	weak-dtor	H	-	[?] compiler-emitted dtor	-
 0x14010	0x9C4	CSandworm	CSandworm::CSandworm (Bomb Guardian form)	ctor	B	DC	-	WP1
 0x149D4	0x90	CSandworm	SGrab x19A8 ctor (Bomb Guardian)	member-ctor	B	14010	-	WP1
-0x14A64	0x8	CSandworm	GetSearchPath [slot 0xE0] -> &x7C4	virtual	T	data_964	-	WP1
+0x14A64	0x8	CSandworm	GetSearchPath [slot 0xE0] -> &x7C4	virtual	B	data_964	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:796); asm auto_04_00000000_data.s:955 in lbl_56_data_884: .4byte fn_56_14A64; -	WP1
 0x14A6C	0x8	CSandworm	[?] slot 0x23C -> 0	virtual	T	data_AC0	-	WP1
 0x14A74	0x68	CSandworm	GetTouchBounds [slot 0x48] (GetBoundingBox)	virtual	B	data_8CC	-	WP1
-0x14ADC	0x8	CSandworm	GetModelAlphau8 [slot 0xC8] (x44F)	virtual	T	data_94C	-	WP1
+0x14ADC	0x8	CSandworm	GetModelAlphau8 [slot 0xC8] (x44F)	virtual	B	data_94C	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:790); asm auto_04_00000000_data.s:949 in lbl_56_data_884: .4byte fn_56_14ADC; -	WP1
 0x14AE4	0x8	CSandworm	GetPointSearchPath [slot 0xE4] -> null	virtual	T	data_968	-	WP1
 0x14AEC	0x8	CSandworm	GetRagDoll [slot 0xF4] -> null	virtual	T	data_978	-	WP1
-0x14AF4	0x10	CSandworm	GetAttackTarget [slot 0x10C] -> invalid	virtual	T	data_990	-	WP1
-0x14B04	0xC	CSandworm	IsOnGround [slot 0x110] (x34C)	virtual	T	data_994	-	WP1
+0x14AF4	0x10	CSandworm	GetAttackTarget [slot 0x10C] -> invalid	virtual	B	data_990	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:823); asm auto_04_00000000_data.s:966 in lbl_56_data_884: .4byte fn_56_14AF4; -	WP1
+0x14B04	0xC	CSandworm	IsOnGround [slot 0x110] (x34C)	virtual	B	data_994	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:826); asm auto_04_00000000_data.s:967 in lbl_56_data_884: .4byte fn_56_14B04; -	WP1
 0x14B10	0xC	CSandworm	GetGravityConstant [slot 0x114] -> kDefaultGravityAccel	virtual	T	data_998	-	WP1
 0x14B1C	0x8	CSandworm	GetDeathExplosionParticle [slot 0x124] -> &x754	virtual	T	data_9A8	-	WP1
 0x14B24	0x8	CSandworm	CanBeShot [slot 0xA8] -> true	virtual	T	data_92C	-	WP1
-0x14B2C	0x8	CSandworm	IsListening [slot 0xAC] -> false	virtual	T	data_930	-	WP1
+0x14B2C	0x8	CSandworm	IsListening [slot 0xAC] -> false	virtual	B	data_930	ht2: B (was T) - the port's class implements it (PortCSandworm.cpp:872); asm auto_04_00000000_data.s:942 in lbl_56_data_884: .4byte fn_56_14B2C; -	WP1
 0x14B34	0x8	CSandworm	Listen [slot 0xB0] -> false	virtual	T	data_934	-	WP1
 0x14B3C	0x1C	CSandworm	GetOrigin [slot 0xB4]	virtual	T	data_938	-	WP1
-0x14B58	0xCC	CSandworm	[?] IssueTauntCmd (CAnimationState-style, kBSC_Taunt)	template	H	3484 99A0	-	WP1
-0x14C24	0x11C	CSandworm	[?] IssueGenerateCmd (kBSC_Generate)	template	H	B320 B50C	-	WP1
-0x14D40	0x10C	CSandworm	[?] IssueMeleeAttackCmd (kBSC_MeleeAttack)	template	H	B6DC B8B8 BAB8 BC8C BF44	-	WP1
+0x14B58	0xCC	CSandworm	[?] IssueTauntCmd (CAnimationState-style, kBSC_Taunt)	template	B	3484 99A0	ht2: B (was H) - the port's class implements it (PortCSandworm.cpp:716); asm auto_00_00000000_text.s:3855 in fn_56_3484: bl fn_56_14B58; -	WP1
+0x14C24	0x11C	CSandworm	[?] IssueGenerateCmd (kBSC_Generate)	template	B	B320 B50C	ht2: B (was H) - the port's class implements it (PortCSandworm.cpp:734); asm auto_00_00000000_text.s:12958 in fn_56_B320: bl fn_56_14C24; -	WP1
+0x14D40	0x10C	CSandworm	[?] IssueMeleeAttackCmd (kBSC_MeleeAttack)	template	B	B6DC B8B8 BAB8 BC8C BF44	ht2: B (was H) - the port's class implements it (PortCSandworm.cpp:753); asm auto_00_00000000_text.s:13239 in fn_56_B6DC: bl fn_56_14D40; -	WP1
 0x14E4C	0x34	CTransform4f	CTransform4f copy (inline)	inline-dol	H	12D68 14010	CTransform4f::CTransform4f(const&)	-
 0x14E80	0xC0	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	H	CC8C	rstl::vector<CJointCollisionDescription>	-
 0x14F40	0x68	rstl::vector<CJointCollisionDescription>	[?] vector dtor/push_back/reserve (template)	template	H	14E80	rstl::vector<CJointCollisionDescription>	-
