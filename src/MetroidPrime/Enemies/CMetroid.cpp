@@ -53,11 +53,13 @@ static CDamageVulnerability::TWeaponVulnerability skFaceHugOverrides[] = {
         kWT_PowerBomb, CWeaponTypeVulnerability(1.f, CWeaponTypeVulnerability::kE_Normal, false)),
 };
 
+// @ fn_40_85AC
 static CDamageVulnerability FaceHugVulnerability() {
   return CDamageVulnerability(CDamageVulnerability::ImmuneVulnerabilty(), skFaceHugOverrides, 1,
                               CDamageVulnerability::kOF_Normal);
 }
 
+// @ fn_40_7B3C
 CMetroid::CMetroid(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                    const CTransform4f& xf, const CModelData& mData, const CPatternedInfo& pInfo,
                    const CActorParameters& aParms, const CMetroidData& metroidData)
@@ -104,8 +106,10 @@ CMetroid::CMetroid(TUniqueId uid, const rstl::string& name, const CEntityInfo& i
   SetCoefficientOfRestitutionModifier(0.9f);
 }
 
+// @ fn_40_781C
 CMetroid::~CMetroid() {}
 
+// @ fn_40_774C
 void CMetroid::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -121,6 +125,7 @@ void CMetroid::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
 }
 
+// @ fn_40_75A0
 void CMetroid::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   const TUniqueId sender = msg.GetSenderId();
@@ -158,6 +163,7 @@ void CMetroid::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_40_7580
 void CMetroid::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
 const CDamageVulnerability* CMetroid::GetDamageVulnerability() const {
@@ -176,6 +182,7 @@ const CDamageVulnerability* CMetroid::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_40_74B0
 const CDamageVulnerability* CMetroid::GetDamageVulnerability(const CVector3f&, const CVector3f&,
                                                              const CDamageInfo&) const {
   return GetDamageVulnerability();
@@ -206,6 +213,7 @@ void CMetroid::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, EU
   }
 }
 
+// @ fn_40_71B4
 void CMetroid::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   CPatterned::Death(mgr, direction, state);
   mVerticalMovement = false;
@@ -311,6 +319,7 @@ bool CMetroid::IsTargetGettingSucked(const CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_40_1504
 void CMetroid::UpdateAILogicTimers(float dt, CStateManager& mgr) {
   if (IsTargetGettingSucked(mgr)) {
     const float variation = mAttackTimeVariation;
@@ -479,6 +488,7 @@ bool CMetroid::ShouldTurn(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_61B8
 void CMetroid::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -490,6 +500,7 @@ void CMetroid::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
 }
 
+// @ fn_40_5A5C
 void CMetroid::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   mPathFindNavigation.PathFind(mgr, msg, dt, *this);
   switch (msg) {
@@ -588,6 +599,7 @@ float CMetroid::GetGrowthStage() const {
   return 3.f;
 }
 
+// @ fn_40_44B4
 float CMetroid::GetDamageMultiplier() const {
   float result = 0.5f * (GetGrowthStage() - 1.f) + 1.f;
   return result;
@@ -779,6 +791,7 @@ TUniqueId CMetroid::FindNearestTarget(CStateManager& mgr, TUniqueId ignore) cons
   return result;
 }
 
+// @ fn_40_12CC
 void CMetroid::SelectNewTarget(CStateManager& mgr) {
   if (mAttackTarget == kInvalidUniqueId) {
     mAttackTarget = FindNearestTarget(mgr, kInvalidUniqueId);
@@ -977,6 +990,7 @@ void CMetroid::RestoreSolidCollision(CStateManager& mgr) {
   }
 }
 
+// @ fn_40_304C
 void CMetroid::DisableSolidCollision(CMetroid& target) {
   CMaterialFilter filter = target.GetMaterialFilter();
   filter.ExcludeList().Add(CMaterialList(kMT_Character, kMT_Player));
@@ -1025,6 +1039,7 @@ bool CMetroid::InAttackPosition(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_40_2718
 void CMetroid::InterpolateToPosRot(CStateManager& mgr, float dt) {
   CVector3f targetPos = CVector3f::Zero();
   CQuaternion targetRot = CQuaternion::NoRotation();
@@ -1035,6 +1050,7 @@ void CMetroid::InterpolateToPosRot(CStateManager& mgr, float dt) {
   SetRotation(rot.BuildNormalized());
 }
 
+// @ fn_40_263C
 void CMetroid::ComputeSuckTargetPosRot(CStateManager& mgr, CVector3f& pos, CQuaternion& rot) const {
   pos = GetTranslation();
   rot = GetRotation();
@@ -1553,20 +1569,26 @@ void CMetroid::ComputeSuckPlayerPosRot(const CPlayer& player, CStateManager& mgr
   }
 }
 
+// @ fn_40_7578
 const CCollisionPrimitive* CMetroid::GetCollisionPrimitive() const { return &mCollisionPrimitive; }
 
+// @ fn_40_71A0
 bool CMetroid::StateOver(CStateManager&, const CTriggerData&) const {
   return mState == kAiState_Over;
 }
 
+// @ fn_40_6DB0
 bool CMetroid::ShotAt(CStateManager&, const CTriggerData&) const { return mShotAt; }
 
+// @ fn_40_65A4
 bool CMetroid::SpotPlayer(CStateManager&, const CTriggerData&) const { return false; }
 
+// @ fn_40_6250
 bool CMetroid::ShouldWallHang(CStateManager&, const CTriggerData&) const {
   return mMetroidData.mStartsInWall;
 }
 
+// @ fn_40_6248
 bool CMetroid::ShouldDodge(CStateManager&, const CTriggerData&) const { return false; }
 
 void CMetroid::OnDockTouch(CStateManager& mgr) {
@@ -1617,6 +1639,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
     {"SetPatrolDest", static_cast< CPatterned::StateMachine::CodeFunc >(&CMetroid::SetPatrolDest)},
 };
 
+// @ fn_40_FF4
 void CMetroid::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);

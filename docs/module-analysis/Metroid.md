@@ -40,8 +40,56 @@ pirate threshold 1000000 -> ApplyDamage 999999, hp 60 -> -999939). Its four earl
 (no target, target not a pirate, IsPirateValidTarget false, AttachActorToPirate false) were not
 reached, also with a second metroid forced (`fsm u053d Attack`, `metroid_latch2.con`): it latched
 another pirate. (up2, 2026-10-23: four natural runs, `damage`/`send Delete` on the target pirates at f700-f1200,
-still none of the first three; the fourth is dead: IsPirateValidTarget already requires
+still none of the first three (met1's `metroid_forced2.con` did take the IsPirateValidTarget-false
+arm, gcov 619:0/2; no target and not-a-pirate stay untaken); the fourth is dead: IsPirateValidTarget already requires
 `GetAttachedActor()==kInvalidUniqueId` and PortAttachActor only fails when it is set.)
 
 fn_40_2EC8 `ShouldReleaseFromTarget`: the pirate branch now checks AllEnergyDrained (0x8f8 bit 0x02,
 0x2FD4-0x2FE0) before IsDead, as retail does; the check ran in every up2 run, never true.
+
+## Survey (met1, 2026-10-23)
+
+Upstream CMetroid/CBabyMetroid are 96-100% fuzzy against retail. Objdiff of every function under 100%
+(FindNearestTarget, ComputeSuckPiratePosRot, SuckEnergyFromTarget, ComputeSuckPlayerPosRot,
+SelectTarget, Generate, InAttackPosition, ctor, sinit, ApplySeparationBehavior; CBabyMetroid Generate,
+Dodge, Think) shows only regalloc, scheduling, fmadds and stack offsets. The only behaviour differences
+were fn_40_3FC0, fn_40_4300 and fn_40_2EC8, already fixed in TARGET_PC blocks. `tools/upstream_hollow.py
+Metroid`: no hollow bodies (with `--min 0`, 12 eight-byte empty getters that match retail). Not
+deep-checked: the SLdrMetroidAlpha ctor (56%); the loader overwrites its defaults.
+
+Per-function table: `Metroid_functions.tsv` (B upstream body, H weak copy, T REL runtime).
+
+## Coverage (met1)
+
+Build `-B build-port-cov -DMP_PORT_COVERAGE=ON`; each run:
+`BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/metroid_growth.py <out> 42b935e4,08_sand_casualpirates --con <con> --fast --frames N`,
+then `python3 tools/cov/gcov_report.py build-port-cov <gcov dirs...> --module Metroid`.
+Drivers: `metroid_casualpirates.con`, `metroid_bomb.con`, `metroid_testtube_dark.con` (testtube area),
+`metroid_player.con` (latch on the god-mode player, morph/bombs/power bomb), `metroid_forced.con`
+(WallHang, Dodge, missile/charged shots, TurnAround, TelegraphAttack), `metroid_forced2.con`
+(AreaLoaded twice, double latch, dark charged shot on a latched metroid, latch on the morphed player
+then kill). Latch on the player: `place uX player 2; fsm uX SelectTarget`, then `fsm uX Attack`.
+
+Marked by met1 (all arms or branch-free, asmcheck clean apart from inlined helpers): ctor, dtor, Think,
+AcceptScriptMsg, Render, GetDamageVulnerability(3-arg), Death, UpdateAILogicTimers, Patrol, PathFind,
+GetDamageMultiplier, SelectNewTarget, DisableSolidCollision, InterpolateToPosRot,
+ComputeSuckTargetPosRot, GetCollisionPrimitive, StateOver, ShotAt, SpotPlayer, ShouldWallHang,
+ShouldDodge, SetupStateMachine, FaceHugVulnerability.
+
+Near-complete, not marked (gcov line:arm untaken):
+
+| function | untaken |
+|---|---|
+| WallHang | 520:3/4 msg switch default, 528:3/4 mState default (not provably dead) |
+| DetachFromTarget | 724:0/2 |
+| AttachToTarget | 598:1/2 |
+| SetPatrolDest | 746:0/2 |
+| GetGrowthStage | 584:1/2 |
+| SelectTarget | 830:1/2, 831:1/2 |
+| GetOrigin | 910:1/2 |
+| SwarmRemove | 348:1/2 |
+| GetDamageVulnerability() | 170:3/4, 173:0/2 |
+| DoUserAnimEvent | 198:0/2 |
+| PreDamageSpacePirate | 612:0/2, 616:0/2 (622:0/2 dead) |
+
+Never ran: Leash, CanBeIngPossessed, all of CBabyMetroid (no spawn known).

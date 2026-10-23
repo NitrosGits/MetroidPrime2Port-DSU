@@ -1,0 +1,32 @@
+# Agon 08_sand_casualpirates layers 6+7: forced CMetroid states (WallHang, Dodge, TurnAround,
+# TelegraphAttack) and weapon arms of KnockBack / GetCollisionResponseType (missile, charged,
+# dark-charged entangle = frozen).
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give missile 20; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate
+@f620 place u0547 player 8
+@f640 fsm u0547 WallHang
+@f700 obj u0547
+@f720 send u0547 Alert
+@f800 obj u0547
+@f820 fsm u0547 Dodge
+@f860 obj u0547
+@f900 place u053d player 10
+@f920 shoot u053d missile
+@f960 obj u053d
+@f1000 shoot u053d charged
+@f1040 obj u053d
+@f1060 beam dark
+@f1080 shoot u053d charged
+@f1100 obj u053d
+@f1120 shoot u053d
+@f1140 obj u053d
+@f1200 beam power
+@f1220 shoot u053d missile
+@f1260 obj u053d
+@f1300 fsm u0539 TurnAround
+@f1340 obj u0539
+@f1400 fsm u0539 TelegraphAttack
+@f1460 obj u0539
+@f1600 obj u0547; obj u053d; obj u0539
