@@ -19,6 +19,7 @@
 #include "port_textures.h"
 #include "port_touch.h"
 #include "port_warp.h"
+#include "port_watchdog.h"
 
 #include <chrono>
 #include <cstdio>
@@ -350,6 +351,10 @@ void PortPaceFrame() {
 
 // Runs aurora_update (window, input and GX housekeeping); true once the window asks to quit.
 bool PortPumpEvents() {
+  // The hang watchdog's heartbeat: the game loop asks this once per iteration, so a frame that
+  // never returns here is the one the watchdog reports (phase and stack).
+  static unsigned sFrame = 0;
+  PortWatchdog::Heartbeat(++sFrame);
   PortWarp::ApplyEnvOnce();
   // The aspect setting: widens the render mode before anything this iteration draws.
   PortOverlay::ApplyAspect();

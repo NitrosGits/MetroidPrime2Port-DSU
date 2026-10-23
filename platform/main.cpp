@@ -34,8 +34,6 @@
 #include <sys/ioctl.h>
 #include <time.h>
 #include <android/log.h>
-#else
-#include <execinfo.h>
 #endif
 #if defined(__linux__)
 #include <sys/prctl.h>
@@ -78,6 +76,7 @@ extern void* gPortGameHeapHi;
 #endif
 #include "port_env.h"
 #include "port_breadcrumb.h"
+#include "port_crash.h"
 #include "port_logfile.h"
 #include "port_save.h"
 #include "port_overlay.h"
@@ -623,79 +622,17 @@ void PortLogDrain() {}
 
 } // namespace
 
-// A SIGSEGV that prints where it happened. `tools/boot_probe.sh` reports "died on signal 11"
-// and nothing else, which is enough to know the boot died and not enough to fix it: the last
-// `printf` before the marker says which *step*, and everything inside that step is a guess.
-// A backtrace turns the guess into a measurement, and it costs one signal handler.
-//
-// Deliberately not a substitute for a debugger: this has to work in the exact binary
-// `boot_probe.sh` builds, with the reach stubs linked and no debugger attached, because that
-// is the configuration that reproduces the fault. `-rdynamic` is already in the link line, so
-// `backtrace_symbols` can name our own functions rather than only addresses.
-//
-// bionic has no `execinfo.h`, so Android has no backtrace to print, and it discards stderr:
-// there the logcat line below is what says the port caught anything at all, and the fault
-// address is the one piece of information a tombstone alone makes awkward to pin down. The
-// re-raise is unchanged, so bionic still writes its own tombstone.
+// Crash reports are PortCrash's (platform/port_crash.cpp): signal, fault address, module offset,
+// build, stack and breadcrumbs, written into the log, and the signal then goes on to the handler
+// that was there before (the default one, so the exit status still says "died on signal 11",
+// which boot_probe.sh greps; on Android debuggerd's, which writes the tombstone).
 #if defined(__ANDROID__)
-#include <dlfcn.h>
-#include <unwind.h>
-
-// The stack, as "module+0xoffset (symbol)" lines: bionic prints no backtrace of its own before the
-// re-raise, and the tombstone it writes is only readable with the app's unstripped .so to hand.
-// Printing the frames here means a crash is one `adb logcat -s mp2port` away, and the offsets
-// symbolise with `llvm-symbolizer --obj=<unstripped libmetroid_prime2_port.so> 0x<offset>`.
-// Formatted into a buffer and written with write(2): the signal handler may be on a thread whose
-// stdio locks are held.
-struct PortWalk {
-  int frame;
-};
-
-static _Unwind_Reason_Code PortWalkFrame(_Unwind_Context* context, void* argument) {
-  PortWalk* walk = static_cast< PortWalk* >(argument);
-  const uintptr_t pc = _Unwind_GetIP(context);
-  if (pc == 0 || walk->frame >= 32) {
-    return _URC_END_OF_STACK;
-  }
-  char line[384];
-  Dl_info symbol{};
-  int used = 0;
-  if (dladdr(reinterpret_cast< void* >(pc), &symbol) != 0 && symbol.dli_fname != nullptr) {
-    const char* name = std::strrchr(symbol.dli_fname, '/');
-    name = name != nullptr ? name + 1 : symbol.dli_fname;
-    used = std::snprintf(line, sizeof line, "[port]   #%d %s+0x%lx%s%s\n", walk->frame, name,
-                         static_cast< unsigned long >(
-                             pc - reinterpret_cast< uintptr_t >(symbol.dli_fbase)),
-                         symbol.dli_sname != nullptr ? " " : "",
-                         symbol.dli_sname != nullptr ? symbol.dli_sname : "");
-  } else {
-    used = std::snprintf(line, sizeof line, "[port]   #%d 0x%lx\n", walk->frame,
-                         static_cast< unsigned long >(pc));
-  }
-  if (used > 0) {
-    ::write(STDERR_FILENO, line, static_cast< size_t >(used < int(sizeof line) ? used : int(sizeof line) - 1));
-  }
-  ++walk->frame;
-  return _URC_NO_REASON;
-}
-
-// The handlers ours replaced (debuggerd's), by signal number, to chain to after the backtrace.
-constexpr int kPortFaultSignalSlots = 32;
-struct sigaction gPortPreviousFault[kPortFaultSignalSlots] = {};
-
-static void PortFaultHandler(int sig, siginfo_t* info, void* /*context*/) {
-  const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
-  const void* faultAddress = info != nullptr ? info->si_addr : nullptr;
-  // Not "backtrace follows" as the desktop path says: bionic prints none, and the
-  // tombstone the re-raise produces is the stack this platform gets. The frames below are ours.
-  std::fprintf(stderr, "\n[port] caught %s (%d) - backtrace follows\n", name, sig);
-  PortBreadcrumb::Dump();
-  PortWalk walk{0};
-  _Unwind_Backtrace(PortWalkFrame, &walk);
-  std::fflush(stderr);
-  // Everything above went into the stderr pipe, and only the pump thread turns it into logcat
-  // lines: give it up to half a second to empty the pipe, or the process dies with the backtrace
-  // and the breadcrumbs still in it (a save-state crash on the tablet left nothing but the exit).
+// Everything the report wrote went into the stderr pipe, and only the pump thread turns it into
+// logcat lines: give it up to half a second to empty the pipe, or the process dies with the stack
+// and the breadcrumbs still in it (a save-state crash on the tablet left nothing but the exit).
+// The main log turns over within seconds on a busy device; the crash buffer keeps the last line
+// (and the tombstone) for hours.
+static void PortCrashAfterReport(int sig, const void* faultAddress) {
   for (int waited = 0; waited < 50 && gLogPipeRead >= 0; ++waited) {
     int queued = 0;
     if (::ioctl(gLogPipeRead, FIONREAD, &queued) != 0 || (queued == 0 && gLogPumpIdle.load())) {
@@ -704,37 +641,8 @@ static void PortFaultHandler(int sig, siginfo_t* info, void* /*context*/) {
     const timespec tick = {0, 10 * 1000 * 1000};
     ::nanosleep(&tick, nullptr);
   }
-  // The main log turns over within seconds on a busy device; the crash buffer keeps this line
-  // (and the tombstone below) for hours.
-  __android_log_buf_print(LOG_ID_CRASH, ANDROID_LOG_FATAL, "mp2port", "[port] caught %s (%d) at %p",
-                          name, sig, faultAddress);
-  // Hand the signal on to the handler that was there before ours (debuggerd's), which writes
-  // the tombstone and then dies on the signal, so the exit status still says "died on signal 11".
-  // SIG_DFL here skipped debuggerd: no tombstone, only a "SIGNALED" exit record. The signal is
-  // blocked while this handler runs, so the raise is delivered to that handler on return.
-  if (sig > 0 && sig < kPortFaultSignalSlots) {
-    sigaction(sig, &gPortPreviousFault[sig], nullptr);
-  } else {
-    std::signal(sig, SIG_DFL);
-  }
-  std::raise(sig);
-}
-#else
-static void PortFaultHandler(int sig) {
-  const char* name = (sig == SIGSEGV) ? "SIGSEGV" : (sig == SIGBUS ? "SIGBUS" : "signal");
-  std::fprintf(stderr, "\n[port] caught %s (%d) - backtrace follows\n", name, sig);
-  std::fflush(stderr);
-  PortBreadcrumb::Dump();
-  void* frames[64];
-  const int n = ::backtrace(frames, 64);
-  ::backtrace_symbols_fd(frames, n, STDERR_FILENO);
-  std::fflush(stderr);
-  // Re-raise with the default handler so the exit status still says "died on signal 11",
-  // which is what boot_probe.sh greps for. A handler that swallows it would make the probe
-  // report a clean exit, and a clean exit from a segfaulting boot is the one lie worth
-  // being unable to tell.
-  std::signal(sig, SIG_DFL);
-  std::raise(sig);
+  __android_log_buf_print(LOG_ID_CRASH, ANDROID_LOG_FATAL, "mp2port", "[port] caught signal %d at %p", sig,
+                          faultAddress);
 }
 #endif
 
@@ -756,24 +664,6 @@ int main(int argc, char** argv) {
   if (const char* allow = getenv("MP2_ALLOW_PTRACE"); allow && allow[0] == '1') {
     prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY, 0, 0, 0);
   }
-#endif
-
-#if defined(__ANDROID__)
-  // `signal(2)` never hands the handler the fault address, so Android installs the
-  // handler that can take one. Nothing else about the registration differs.
-  struct sigaction faultAction = {};
-  faultAction.sa_sigaction = PortFaultHandler;
-  faultAction.sa_flags = SA_SIGINFO;
-  sigemptyset(&faultAction.sa_mask);
-  sigaction(SIGSEGV, &faultAction, &gPortPreviousFault[SIGSEGV]);
-  sigaction(SIGBUS, &faultAction, &gPortPreviousFault[SIGBUS]);
-  sigaction(SIGILL, &faultAction, &gPortPreviousFault[SIGILL]);
-  sigaction(SIGFPE, &faultAction, &gPortPreviousFault[SIGFPE]);
-#else
-  std::signal(SIGSEGV, PortFaultHandler);
-  std::signal(SIGBUS, PortFaultHandler);
-  std::signal(SIGILL, PortFaultHandler);
-  std::signal(SIGFPE, PortFaultHandler);
 #endif
 
   // Android has no environment to set, so the app's own directories stand in where the
@@ -836,6 +726,11 @@ int main(int argc, char** argv) {
   // The log file (platform/port_logfile.cpp) starts here, before aurora_initialize below, so
   // Aurora's own startup lines and anything that aborts during it land in the file too.
   PortLogFile::Start(touchUser != nullptr ? touchUser : std::string());
+  // Crash reports into that log (MP2_CRASH_TEST=segv|abort crashes here to check one).
+#if defined(__ANDROID__)
+  PortCrash::SetAfterReport(PortCrashAfterReport);
+#endif
+  PortCrash::Install();
 
   // The save tools (platform/port_save.cpp) keep their backups beside controls.toml; the card's own
   // path comes from Aurora when a command needs it.
@@ -1017,7 +912,13 @@ int main(int argc, char** argv) {
     // src/MetroidPrime/PortDefaultFont.cpp.
     void* defaultFont = port::LoadDefaultFont();
 
-    InvokeCMain(argc, argv, &osContext, nullptr, &memorySys, nullptr);
+    // An exception out of the game is logged with its type and what() before the abort, whose
+    // crash report follows; uncaught, it would end the run with only "terminate called".
+    try {
+      InvokeCMain(argc, argv, &osContext, nullptr, &memorySys, nullptr);
+    } catch (...) {
+      PortCrash::AbortOnException("the main loop");
+    }
 
     port::FreeDefaultFont(defaultFont);
     port::modules::ShutdownAll();
