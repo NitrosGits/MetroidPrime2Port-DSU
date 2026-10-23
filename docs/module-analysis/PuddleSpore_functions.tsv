@@ -1,0 +1,97 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_51_0	78	H	CPuddleSpore::~CPuddleSpore()	-	weak/template copy	no
+00078	fn_51_78	1E4	H	CPatterned::~CPatterned()	-	weak/template copy	no
+0025C	fn_51_25C	94	H	CAiKnockBackMgr::~CAiKnockBackMgr()	-	weak/template copy	no
+002F0	fn_51_2F0	10	H	CPatterned::TakeDamage(const CVector3f&, float)	-	weak/template copy	no
+00300	fn_51_300	8	H	CPatterned::GetModelAlphau8(const CStateManager&) const	-	weak/template copy	no
+00308	fn_51_308	8	H	CPatterned::ProjectileInfo()	-	weak/template copy	no
+00310	fn_51_310	8	H	CPatterned::GetSearchPath()	-	weak/template copy	no
+00318	fn_51_318	8	H	CPatterned::GetPointSearchPath()	-	weak/template copy	no
+00320	fn_51_320	8	H	CPatterned::GetRagDoll() const	-	weak/template copy	no
+00328	fn_51_328	10	H	CPatterned::GetAttackTarget() const	-	weak/template copy	no
+00338	fn_51_338	C	H	CPatterned::IsOnGround() const	-	weak/template copy	no
+00344	fn_51_344	C	H	CPatterned::GetGravityConstant() const	-	weak/template copy	no
+00350	fn_51_350	8	H	CPatterned::GetDeathExplosionParticle() const	-	weak/template copy	no
+00358	fn_51_358	8	H	CAi::CanBeShot(const CStateManager&, int)	-	weak/template copy	no
+00360	fn_51_360	8	H	CAi::IsListening() const	-	weak/template copy	no
+00368	fn_51_368	8	H	CAi::Listen(CStateManager&, const CVector3f&, EListenNoiseType)	-	weak/template copy	no
+00370	fn_51_370	1C	H	CAi::GetOrigin(const CStateManager&, const CTeamAiRole&, const CVector3f&) const	-	weak/template copy	no
+0038C	fn_51_38C	2C	H	CActor::GetHealthInfo() const	-	weak/template copy	no
+003B8	fn_51_3B8	24	T	RELExit	ps1	REL runtime (module entry)	yes
+003DC	fn_51_3DC	20	T	RELMain	ps1	REL runtime (module entry)	yes
+003FC	fn_51_3FC	30	B	SetFuncPtrs()	ps1	upstream body (CPuddleSpore)	yes
+0042C	fn_51_42C	4C0	B	LoadPuddleSpore(CStateManager&, CInputStream&, CEntityInfo&)	-	upstream body (CPuddleSpore)	no
+008EC	fn_51_8EC	58	H	SPuddleSporeData::SPuddleSporeData(float, float, float, float, float, float, float, unsigned short, const CShockWaveInfo&)	-	weak/template copy	no
+00944	fn_51_944	8C	H	CShockWaveInfo::CShockWaveInfo(const CShockWaveInfo&)	-	weak/template copy	no
+009D0	fn_51_9D0	CC	H	CShockWaveInfo::CShockWaveInfo(const SLdrShockWaveInfo&)	-	weak/template copy	no
+00A9C	fn_51_A9C	40	H	rstl::optional_object<CModelData>::optional_object(const rstl::optional_object<CModelData>&)	-	weak/template copy	no
+00ADC	fn_51_ADC	20	H	rstl::construct<CModelData>(void*, const CModelData&)	-	compiler/static	no
+00AFC	fn_51_AFC	28	H	rstl::construction_policy<CModelData, 0>::construct(void*, const CModelData&)	-	weak/template copy	no
+00B24	fn_51_B24	13C	H	CModelData::CModelData(const CModelData&)	-	weak/template copy	no
+00C60	fn_51_C60	6C	H	rstl::optional_object<TLockedToken<CModel>>::~optional_object()	-	weak/template copy	no
+00CCC	fn_51_CCC	54	H	TToken<CModel>::~TToken()	-	weak/template copy	no
+00D20	fn_51_D20	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr()	-	weak/template copy	no
+00D84	fn_51_D84	60	H	rstl::optional_object<CModelData>::~optional_object()	-	weak/template copy	no
+00DE4	fn_51_DE4	7C	H	SLdrPuddleSpore::~SLdrPuddleSpore()	-	weak/template copy	no
+00E60	fn_51_E60	160	H	SLdrPuddleSpore::SLdrPuddleSpore()	-	weak/template copy	no
+00FC0	fn_51_FC0	128	B	CPuddleSpore::Attack(CStateManager&, EStateMsg, float)	ps1	upstream body (CPuddleSpore)	yes
+010E8	fn_51_10E8	5C	H	CBCMeleeAttackCmd::~CBCMeleeAttackCmd()	-	weak/template copy	no
+01144	fn_51_1144	48	H	CBodyStateCmd::~CBodyStateCmd()	-	weak/template copy	no
+0118C	fn_51_118C	174	B	CPuddleSpore::GetUp(CStateManager&, EStateMsg, float)	ps1	upstream body (CPuddleSpore)	yes
+01300	fn_51_1300	5C	H	CBCGetupCmd::~CBCGetupCmd()	-	weak/template copy	no
+0135C	fn_51_135C	1BC	B	CPuddleSpore::TurnAround(CStateManager&, EStateMsg, float)	-	upstream body (CPuddleSpore)	no
+01518	fn_51_1518	5C	H	CBCKnockDownCmd::~CBCKnockDownCmd()	-	weak/template copy	no
+01574	fn_51_1574	188	B	CPuddleSpore::Run(CStateManager&, EStateMsg, float)	-	upstream body (CPuddleSpore)	no
+016FC	fn_51_16FC	5C	H	CBCLoopReactionCmd::~CBCLoopReactionCmd()	-	weak/template copy	no
+01758	fn_51_1758	A4	B	CPuddleSpore::Active(CStateManager&, EStateMsg, float)	ps1	upstream body (CPuddleSpore)	yes
+017FC	fn_51_17FC	5C	B	CPuddleSpore::InActive(CStateManager&, EStateMsg, float)	ps1	upstream body (CPuddleSpore)	yes
+01858	fn_51_1858	14	B	CPuddleSpore::StateOver(CStateManager&, const CTriggerData&) const	ps1	upstream body (CPuddleSpore)	yes
+0186C	fn_51_186C	14	B	CPuddleSpore::AnimOver(CStateManager&, const CTriggerData&) const	ps1	upstream body (CPuddleSpore)	yes
+01880	fn_51_1880	10C	B	CPuddleSpore::ShouldTurn(CStateManager&, const CTriggerData&) const	-	upstream body (CPuddleSpore)	no
+0198C	fn_51_198C	1C	B	CPuddleSpore::ShouldAttack(CStateManager&, const CTriggerData&) const	ps1	upstream body (CPuddleSpore)	yes
+019A8	fn_51_19A8	1C	B	CPuddleSpore::InAttackPosition(CStateManager&, const CTriggerData&) const	ps1	upstream body (CPuddleSpore)	yes
+019C4	fn_51_19C4	4DC	B	CPuddleSpore::SetupCollisionManager(CStateManager&)	-	upstream body (CPuddleSpore)	no
+01EA0	fn_51_1EA0	38	H	rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>::push_back_unsafe(const CJointCollisionDescription&)	-	weak/template copy	no
+01ED8	fn_51_1ED8	20	H	rstl::construct<CJointCollisionDescription>(void*, const CJointCollisionDescription&)	-	compiler/static	no
+01EF8	fn_51_1EF8	28	H	rstl::construction_policy<CJointCollisionDescription, 0>::construct(void*, const CJointCollisionDescription&)	-	weak/template copy	no
+01F20	fn_51_1F20	C0	H	CJointCollisionDescription::CJointCollisionDescription(const CJointCollisionDescription&)	-	weak/template copy	no
+01FE0	fn_51_1FE0	5C	H	CJointCollisionDescription::~CJointCollisionDescription()	-	weak/template copy	no
+0203C	fn_51_203C	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string()	-	weak/template copy	no
+0208C	fn_51_208C	84	H	rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+02110	fn_51_2110	38	H	rstl::destroy<rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>>(rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>, rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>)	-	compiler/static	no
+02148	fn_51_2148	60	H	fn_51_2148	-	compiler/static	no
+021A8	fn_51_21A8	4	B	CPuddleSpore::UpdateEffects(CStateManager&)	ps1	upstream body (CPuddleSpore)	yes
+021AC	fn_51_21AC	218	B	CPuddleSpore::SetState(CStateManager&, CPuddleSpore::EPuddleState)	ps1	upstream body (CPuddleSpore)	yes
+023C4	fn_51_23C4	2C	B	CPuddleSpore::SetCollisionActive(CStateManager&, bool)	-	upstream body (CPuddleSpore)	no
+023F0	fn_51_23F0	688	B	CPuddleSpore::UpdatePlayerContact(float, CStateManager&)	-	upstream body (CPuddleSpore)	no
+02A78	fn_51_2A78	E4	H	CPhysicsState::CPhysicsState(const CPhysicsState&)	-	weak/template copy	no
+02B5C	fn_51_2B5C	3C	H	rstl::optional_object<CAABox>::~optional_object()	-	weak/template copy	no
+02B98	fn_51_2B98	180	B	CPuddleSpore::KnockOffPlayers(float, CStateManager&)	-	upstream body (CPuddleSpore)	no
+02D18	fn_51_2D18	44	B	CPuddleSpore::GetDamageVulnerability() const	ps1	upstream body (CPuddleSpore)	yes
+02D5C	fn_51_2D5C	34	B	CPuddleSpore::GetCollisionResponseType(const CVector3f&, const CVector3f&, const CWeaponMode&, int) const	ps1	upstream body (CPuddleSpore)	yes
+02D90	fn_51_2D90	14	B	CPuddleSpore::IsOpen() const	ps1	upstream body (CPuddleSpore)	yes
+02DA4	fn_51_2DA4	104	B	CPuddleSpore::WeaponHitsWeakSpot(const CVector3f&, const CWeaponMode&) const	-	upstream body (CPuddleSpore)	no
+02EA8	fn_51_2EA8	3C	B	CPuddleSpore::GetTouchBounds() const	ps1	upstream body (CPuddleSpore)	yes
+02EE4	fn_51_2EE4	A0	B	CPuddleSpore::Touch(CActor&, CStateManager&)	-	upstream body (CPuddleSpore)	no
+02F84	fn_51_2F84	2C	B	CPuddleSpore::CollidedWith(const TUniqueId&, const CCollisionInfoList&, CStateManager&)	ps1	upstream body (CPuddleSpore)	yes
+02FB0	fn_51_2FB0	254	B	CPuddleSpore::DoUserAnimEvent(CStateManager&, const CInt32POINode&, EUserEventType, float)	-	upstream body (CPuddleSpore)	no
+03204	fn_51_3204	58	H	CEntityInfo::~CEntityInfo()	-	weak/template copy	no
+0325C	fn_51_325C	54	H	rstl::vector<SConnection, rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+032B0	fn_51_32B0	5C	B	CPuddleSpore::KnockBack(CStateManager&, const CKnockBackInfo&)	-	upstream body (CPuddleSpore)	no
+0330C	fn_51_330C	1B0	B	CPuddleSpore::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	-	upstream body (CPuddleSpore)	no
+034BC	fn_51_34BC	4	B	CPuddleSpore::FluidFXThink(CActor::EFluidState, CScriptWater&, CStateManager&)	ps1	upstream body (CPuddleSpore)	yes
+034C0	fn_51_34C0	20	B	CPuddleSpore::Render(const CStateManager&) const	ps1	upstream body (CPuddleSpore)	yes
+034E0	fn_51_34E0	234	B	CPuddleSpore::Think(float, CStateManager&)	-	upstream body (CPuddleSpore)	no
+03714	fn_51_3714	6C	B	CPuddleSpore::SetupStateMachine(CStateManager&)	ps1	upstream body (CPuddleSpore)	yes
+03780	fn_51_3780	54	B	CPuddleSpore::PreThink(float, CStateManager&)	ps1	upstream body (CPuddleSpore)	yes
+037D4	fn_51_37D4	19C	B	CPuddleSpore::CPuddleSpore(TUniqueId, const rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>&, CPatterned::EFlavorType, const CEntityInfo&, const CTransform4f&, const CModelData&, const CPatternedInfo&, CPatterned::EColliderType, const CActorParameters&, const SPuddleSporeData&)	ps1	upstream body (CPuddleSpore)	yes
+03970	fn_51_3970	58	H	rstl::single_ptr<CCollisionActorManager>::~single_ptr()	-	weak/template copy	no
+039C8	fn_51_39C8	7C	H	SPuddleSporeData::SPuddleSporeData(const SPuddleSporeData&)	-	weak/template copy	no
+03A44	fn_51_3A44	C0	H	rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>::reserve(int)	-	weak/template copy	no
+03B04	fn_51_3B04	68	H	rstl::uninitialized_copy<rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CJointCollisionDescription*>(rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>, rstl::pointer_iterator<CJointCollisionDescription, rstl::vector<CJointCollisionDescription, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CJointCollisionDescription*)	-	compiler/static	no
+03B6C	fn_51_3B6C	1C4	H	__sinit_CPuddleSpore_cpp	-	compiler/static	no
+03D30	fn_51_3D30	C4	T	_unresolved	-	REL runtime	no
+03DF4	fn_51_3DF4	24	T	_epilog	-	REL runtime	no
+03E18	fn_51_3E18	24	T	_prolog	-	REL runtime	no
+03E3C	fn_51_3E3C	4C	T	ModuleDestructors	-	REL runtime	no
+03E88	fn_51_3E88	4C	T	ModuleConstructors	-	REL runtime	no

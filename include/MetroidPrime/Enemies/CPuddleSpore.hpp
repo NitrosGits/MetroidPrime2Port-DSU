@@ -107,9 +107,9 @@ private:
   int mAnimPhase;                                                    // Guessed name
   TUniqueId mShockWaveId;                                            // Guessed name
   CSfxHandle mShockWaveSfx;                                          // Guessed name
-  bool mStateTimerRunning : 1;                                       // Guessed name
-  bool mSecondaryTimerRunning : 1;                                   // Guessed name
-  bool mOpen : 1;                                                    // Guessed name
+  bool mStateTimerRunning : 1;                                       // Guessed name (0x85c 0x80)
+  bool mSecondaryTimerRunning : 1;                                   // Guessed name (0x85c 0x40)
+  bool mOpen : 1;                                                    // Guessed name (0x85c 0x20)
 };
 CHECK_SIZEOF(CPuddleSpore, 0x860)
 

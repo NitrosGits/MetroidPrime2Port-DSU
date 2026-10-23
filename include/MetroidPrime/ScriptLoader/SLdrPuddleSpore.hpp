@@ -49,6 +49,15 @@ inline SLdrPuddleSpore::SLdrPuddleSpore()
   hitDetectionAngle = 30.0f;
   shockWaveHeight = 0.0f;
   sound_ShockWaveTravelSound = 0;
+#ifdef TARGET_PC
+  // fn_51_E60: retail defaults upstream lacks (sldr base r31; actorInformation +0x284):
+  // 0xE88 li r0,-0x1 / 0xE90 stw r0,0x31c(r31) = sound_ShockWaveTravelSound;
+  // 0xF34 bl __ct__6CColorFffff (rodata_38 = 1.0) / 0xF48 stw r0,0x298(r31) = ambientColor;
+  // 0xF4C li r0,0xf / 0xF58 stw r0,0x2e8(r31) = visorFlags.
+  sound_ShockWaveTravelSound = -1;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrPuddleSpore::~SLdrPuddleSpore() {}
