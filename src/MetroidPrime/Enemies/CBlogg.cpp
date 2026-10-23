@@ -769,10 +769,20 @@ TUniqueId CBlogg::FindNearestHint(CStateManager& mgr, const CVector3f& position,
         if (checkLineOfSight) {
           const CRayCastResult result = CGameCollision::RayStaticIntersection(
               mgr, position, offset.AsNormalized(), offset.Magnitude(), filter);
+#ifdef TARGET_PC
+          // fn_7_1C0C 0x1E44-0x1E4C: lbz r0,0xc0(r1); cmplwi r0,0; bne .L_1E98 -- a blocked
+          // ray skips the rest of the loop body, including the facing-dot update.
+          if (result.IsValid()) {
+            continue;
+          }
+          nearestDistance = distance;
+          nearest = id;
+#else
           if (!result.IsValid()) {
             nearestDistance = distance;
             nearest = id;
           }
+#endif
         } else {
           nearestDistance = distance;
           nearest = id;
@@ -2047,7 +2057,12 @@ void CBlogg::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         if (senderId == xac4_) {
           if (mState == kBS_ChargeAttack) {
             damage.SetDamage(mChargeDamage);
+#ifdef TARGET_PC
+            // fn_7_8F7C 0x9774 rlwimi r0,r3,1,30,30 sets 0xbc4 bit 0x2 (mChargeOver), not 0x40.
+            mChargeOver = true;
+#else
             xbc4_25_ = true;
+#endif
           } else if (mState == kBS_MeleeAttack) {
             damage.SetDamage(mBiteDamage);
           }
@@ -2063,7 +2078,12 @@ void CBlogg::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       CHealthInfo* colHealth = colAct->HealthInfo();
       const float initialHP = HealthInfo()->GetInitialHP();
       if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touchedId))) {
+#ifdef TARGET_PC
+        // fn_7_8F7C 0x98B4-0x98C4 loads weapon+0x2c/0x3c/0x4c: transform column 2 (up), not forward.
+        const CVector3f position = weapon->GetTransform().GetUp();
+#else
         const CVector3f position = weapon->GetTransform().GetForward();
+#endif
         if (senderId == xac4_ && IsHitInMouthDirection(position) && mMouthClosed == 0) {
           ApplyCollisionActorDamage(mgr, senderId, mMouthDamageMultiplier);
           mHitByPlayerProjectile = true;
