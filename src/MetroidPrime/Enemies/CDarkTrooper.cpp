@@ -836,6 +836,7 @@ bool CDarkTrooper::InSmallShotRange(CStateManager& mgr, const CTriggerData&) con
   return InRange(mgr, mRangedAttackMinRange, mRangedAttackMaxRange);
 }
 
+// @ fn_12_2444
 bool CDarkTrooper::InMissileRange(CStateManager& mgr, const CTriggerData&) const {
   return InRange(mgr, mRangedAttackMinRange, mRangedAttackMaxRange);
 }

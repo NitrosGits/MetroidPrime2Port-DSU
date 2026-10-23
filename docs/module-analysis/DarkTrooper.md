@@ -47,8 +47,8 @@ dead arm: msg outside Activate/Update/Deactivate (EStateMsg has three enumerator
 
 | function | missing arm |
 |---|---|
-| FireMissile | no missile projectile on these troopers (only the early return ran) |
-| CanMissileAttack, ShouldPause, InMissileRange | mFiresMissiles never true (no Dark Missile Trooper) |
+| FireMissile | dtr3 forced run (`tools/cov/specs/darktrooper_missile_force.py`: mFiresMissiles=1, missile optional m_valid=1, ProjectileInfo redirected to the small shot; forced, not natural): 25/26 lines, launch arm ran 191x; untaken 388:1/2 (gate false), 390, 408, 412, 427 arms (LOS/range/facing) — not marked |
+| CanMissileAttack, ShouldPause | forced mFiresMissiles=1: CanMissileAttack 5/6 (untaken 1029:1/4), ShouldPause 1/4 (InRange / mShouldPause arms unseen) — not marked. InMissileRange 2/2, no branches, asm-verified: marked |
 | CanSmallShotAttack, InRange, ApplyMeleeDamage | one short-circuit / out-of-range arm |
 | Think, Sleep, Pursue, Dead, CreateRagDoll, ThinkRagDoll, Touch, KnockBack, PreRender, DoUserAnimEvent, AcceptScriptMsg, GetAimPosition, FireSmallShot | 1-10 arms each (gcov_report rows) |
 | UnmarkPathRegion, MarkPathRegion, GetContactDamage, GetRagDoll, Null, ctor, dtor | not or partly reached |
