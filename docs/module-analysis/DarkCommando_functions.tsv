@@ -1,6 +1,6 @@
 offset	fn	size	class	name	slice	what	marker
 00000	fn_3_0	8	H	fn_3_0	-	unnamed static (weak copy / template instance)	no
-00008	fn_3_8	C	B	CDarkCommando::GetGravityConstant	-	upstream body (CDarkCommando)	no
+00008	fn_3_8	C	B	CDarkCommando::GetGravityConstant	dc4	all live arms verified (dc4 note)	yes
 00014	fn_3_14	68	H	CPatterned::GetTouchBounds	-	weak copy / template instance	no
 0007C	fn_3_7C	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
 0008C	fn_3_8C	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
@@ -16,8 +16,8 @@ offset	fn	size	class	name	slice	what	marker
 000FC	fn_3_FC	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
 00128	fn_3_128	24	T	RELExit	-	REL runtime	no
 0014C	fn_3_14C	20	T	RELMain	-	REL runtime	no
-0016C	fn_3_16C	30	B	SetFuncPtrs	-	upstream body (CDarkCommando)	no
-0019C	fn_3_19C	33C	B	LoadDarkCommando	-	upstream body (CDarkCommando)	no
+0016C	fn_3_16C	30	B	SetFuncPtrs	dc4	all live arms verified (dc4 note)	yes
+0019C	fn_3_19C	33C	B	LoadDarkCommando	dc4	all live arms verified (dc4 note)	yes
 004D8	fn_3_4D8	40	H	rstl::optional_object<CModelData>::optional_object	-	weak copy / template instance	no
 00518	fn_3_518	20	H	rstl::construct<CModelData>	-	weak copy / template instance	no
 00538	fn_3_538	28	H	construct__Q24rstl35construction_policy<10CModelData	-	weak copy / template instance	no
@@ -26,23 +26,23 @@ offset	fn	size	class	name	slice	what	marker
 00708	fn_3_708	54	H	TToken<CModel>::~TToken	-	weak copy / template instance	no
 0075C	fn_3_75C	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr	-	weak copy / template instance	no
 007C0	fn_3_7C0	60	H	rstl::optional_object<CModelData>::~optional_object	-	weak copy / template instance	no
-00820	fn_3_820	7C	B	SLdrDarkCommando::~SLdrDarkCommando	-	upstream body (CDarkCommando)	no
-0089C	fn_3_89C	1E4	B	LoadTypedefDarkCommandoData	-	upstream body (CDarkCommando)	no
-00A80	fn_3_A80	94	B	SLdrDarkCommandoData::~SLdrDarkCommandoData (static)	-	upstream body (CDarkCommando)	no
-00B14	fn_3_B14	B4	B	SLdrDarkCommandoData::SLdrDarkCommandoData (static)	-	upstream body (CDarkCommando)	no
-00BC8	fn_3_BC8	1EC	B	LoadTypedefDarkCommandoShadowDashData	-	upstream body (CDarkCommando)	no
-00DB4	fn_3_DB4	88	B	SLdrDarkCommandoShadowDashData::~SLdrDarkCommandoShadowDashData	-	upstream body (CDarkCommando)	no
-00E3C	fn_3_E3C	90	B	SLdrDarkCommando::SLdrDarkCommando	-	upstream body (CDarkCommando)	no
-00ECC	fn_3_ECC	1AC	B	LoadTypedefDarkCommandoChargeBeamData	-	upstream body (CDarkCommando)	no
-01078	fn_3_1078	70	B	SLdrDarkCommandoChargeBeamData::~SLdrDarkCommandoChargeBeamData	-	upstream body (CDarkCommando)	no
-010E8	fn_3_10E8	B0	B	SLdrDarkCommandoChargeBeamData::SLdrDarkCommandoChargeBeamData (static)	-	upstream body (CDarkCommando)	no
-01198	fn_3_1198	2C8	B	LoadTypedefDarkCommandoEMPData	-	upstream body (CDarkCommando)	no
-01460	fn_3_1460	58	B	SLdrDarkCommandoEMPData::~SLdrDarkCommandoEMPData	-	upstream body (CDarkCommando)	no
-014B8	fn_3_14B8	F0	B	SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData	-	upstream body (CDarkCommando)	no
+00820	fn_3_820	7C	B	SLdrDarkCommando::~SLdrDarkCommando	dc4	stack lifetime; ABI null/delete arms dead (dc4 note)	yes
+0089C	fn_3_89C	1E4	B	LoadTypedefDarkCommandoData	dc4	all properties and unknown skip verified	yes
+00A80	fn_3_A80	94	B	SLdrDarkCommandoData::~SLdrDarkCommandoData (static)	dc4	stack/member lifetime; ABI null/delete arms dead	yes
+00B14	fn_3_B14	B4	B	SLdrDarkCommandoData::SLdrDarkCommandoData (static)	dc4	branch-free retail ctor; normal host path verified	yes
+00BC8	fn_3_BC8	1EC	B	LoadTypedefDarkCommandoShadowDashData	dc4	all properties and unknown skip verified	yes
+00DB4	fn_3_DB4	88	B	SLdrDarkCommandoShadowDashData::~SLdrDarkCommandoShadowDashData	dc4	member lifetime; ABI null/delete arms dead	yes
+00E3C	fn_3_E3C	90	B	SLdrDarkCommandoShadowDashData::SLdrDarkCommandoShadowDashData	dc4	corrected identity; branch-free retail ctor verified	yes
+00ECC	fn_3_ECC	1AC	B	LoadTypedefDarkCommandoChargeBeamData	dc4	all properties and unknown skip verified	yes
+01078	fn_3_1078	70	B	SLdrDarkCommandoChargeBeamData::~SLdrDarkCommandoChargeBeamData	dc4	member lifetime; ABI null/delete arms dead	yes
+010E8	fn_3_10E8	B0	B	SLdrDarkCommandoChargeBeamData::SLdrDarkCommandoChargeBeamData (static)	dc4	branch-free retail ctor; normal host path verified	yes
+01198	fn_3_1198	2C8	B	LoadTypedefDarkCommandoEMPData	dc4	all properties and unknown skip verified	yes
+01460	fn_3_1460	58	B	SLdrDarkCommandoEMPData::~SLdrDarkCommandoEMPData	dc4	member lifetime; ABI null/delete arms dead	yes
+014B8	fn_3_14B8	F0	B	SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData	dc4	branch-free retail ctor; normal host path verified	yes
 015A8	fn_3_15A8	A8	B	CDarkCommando::LeaveTeam	dc2	upstream body (CDarkCommando)	yes
 01650	fn_3_1650	AC	B	CDarkCommando::JoinTeam	dc2	upstream body (CDarkCommando)	yes
-016FC	fn_3_16FC	A4	B	CDarkCommando::UpdateSfx	-	upstream body (CDarkCommando)	no
-017A0	fn_3_17A0	330	B	CDarkCommando::ThinkRagDoll	-	upstream body (CDarkCommando)	no
+016FC	fn_3_16FC	A4	B	CDarkCommando::UpdateSfx	dc4	6/6 branches; four sound-query cases	yes
+017A0	fn_3_17A0	330	B	CDarkCommando::ThinkRagDoll	dc4	28/28 branches including active/inactive water	yes
 01AD0	fn_3_1AD0	48	H	rstl::single_ptr<CPirateRagDoll>::operator=	-	weak copy / template instance	no
 01B18	fn_3_1B18	B8	H	CPirateRagDoll::~CPirateRagDoll	-	weak copy / template instance	no
 01BD0	fn_3_1BD0	94	H	CRagDoll::~CRagDoll	-	weak copy / template instance	no
@@ -111,21 +111,21 @@ offset	fn	size	class	name	slice	what	marker
 061C4	fn_3_61C4	8C	B	CDarkCommando::SetupStateMachine	dc1	upstream body (CDarkCommando)	yes
 06250	fn_3_6250	8	B	CDarkCommando::ProjectileInfo	dc1	upstream body (CDarkCommando)	yes
 06258	fn_3_6258	2C	B	CDarkCommando::GetAimPosition	dc1	upstream body (CDarkCommando)	yes
-06284	fn_3_6284	4C	B	CDarkCommando::GetDamageVulnerability	-	upstream body (CDarkCommando)	no
-062D0	fn_3_62D0	1BC	B	CDarkCommando::KnockBack	-	upstream body (CDarkCommando)	no
+06284	fn_3_6284	4C	B	CDarkCommando::GetDamageVulnerability	dc4	6/6 branches	yes
+062D0	fn_3_62D0	1BC	B	CDarkCommando::KnockBack	dc4	24/24 branches; 13 cases and 65 assertions PASS	yes
 0648C	fn_3_648C	20	B	CDarkCommando::AddToRenderer	dc1	upstream body (CDarkCommando)	yes
 064AC	fn_3_64AC	7C	B	CDarkCommando::PreRenderAllViewports	dc1	upstream body (CDarkCommando)	yes
-06528	fn_3_6528	13C	B	CDarkCommando::PreRender	-	upstream body (CDarkCommando)	no
-06664	fn_3_6664	E4	B	CDarkCommando::Render	-	upstream body (CDarkCommando)	no
-06748	fn_3_6748	16C	B	CDarkCommando::DoUserAnimEvent	-	upstream body (CDarkCommando)	no
-068B4	fn_3_68B4	11C	B	CDarkCommando::Think	-	upstream body (CDarkCommando)	no
+06528	fn_3_6528	13C	B	CDarkCommando::PreRender	dc4	16/16 branches	yes
+06664	fn_3_6664	E4	B	CDarkCommando::Render	dc4	10/10 branches	yes
+06748	fn_3_6748	16C	B	CDarkCommando::DoUserAnimEvent	dc4	16/16 branches	yes
+068B4	fn_3_68B4	11C	B	CDarkCommando::Think	dc4	12/12 branches	yes
 069D0	fn_3_69D0	78	B	CDarkCommando::PreThink	dc1	upstream body (CDarkCommando)	yes
-06A48	fn_3_6A48	1B0	B	CDarkCommando::AcceptScriptMsg	-	upstream body (CDarkCommando)	no
+06A48	fn_3_6A48	1B0	B	CDarkCommando::AcceptScriptMsg	dc4	8/8 branches	yes
 06BF8	fn_3_6BF8	D8	B	CDarkCommando::~CDarkCommando	dc1	upstream body (CDarkCommando)	yes
 06CD0	fn_3_6CD0	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
 06EB4	fn_3_6EB4	94	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
 06F48	fn_3_6F48	58	H	rstl::single_ptr<CPirateRagDoll>::~single_ptr	-	weak copy / template instance	no
-06FA0	fn_3_6FA0	550	B	__ct__13CDarkCommandoF9TUniqueIdRCQ24rstl66basic_string<c	-	upstream body (CDarkCommando)	no
+06FA0	fn_3_6FA0	550	B	__ct__13CDarkCommandoF9TUniqueIdRCQ24rstl66basic_string<c	dc4	present/absent mold; remaining host EH-only edges (dc4 note)	yes
 074F0	fn_3_74F0	54	H	TToken<CGenDescription>::~TToken	-	weak copy / template instance	no
 07544	fn_3_7544	6C	H	rstl::optional_object<TLockedToken<CGenDescription>>::~optional_object	-	weak copy / template instance	no
 075B0	fn_3_75B0	58	H	TLockedToken<CGenDescription>::~TLockedToken	-	weak copy / template instance	no
@@ -134,11 +134,11 @@ offset	fn	size	class	name	slice	what	marker
 076B8	fn_3_76B8	130	H	__ct__Q24rstl61vector<24CWeaponTypeVulnerability	-	weak copy / template instance	no
 077E8	fn_3_77E8	5C	H	CProjectileInfo::~CProjectileInfo	-	weak copy / template instance	no
 07844	fn_3_7844	3C	H	CBoneTracking::~CBoneTracking	-	weak copy / template instance	no
-07880	fn_3_7880	FC	B	SLdrDarkCommandoData::SLdrDarkCommandoData	-	upstream body (CDarkCommando)	no
-0797C	fn_3_797C	108	B	SLdrDarkCommandoShadowDashData::SLdrDarkCommandoShadowDashData	-	upstream body (CDarkCommando)	no
+07880	fn_3_7880	FC	B	SLdrDarkCommandoData::SLdrDarkCommandoData (copy)	dc4	implicit host copy; 100% match; marker/classification pending	no
+0797C	fn_3_797C	108	B	SLdrDarkCommandoShadowDashData::SLdrDarkCommandoShadowDashData (copy)	dc4	implicit host copy; 100% match; marker/classification pending	no
 07A84	fn_3_7A84	2BC	H	SLdrDamageVulnerability::SLdrDamageVulnerability	-	weak copy / template instance	no
-07D40	fn_3_7D40	9C	B	SLdrDarkCommandoChargeBeamData::SLdrDarkCommandoChargeBeamData	-	upstream body (CDarkCommando)	no
-07DDC	fn_3_7DDC	94	B	SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData	-	upstream body (CDarkCommando)	no
+07D40	fn_3_7D40	9C	B	SLdrDarkCommandoChargeBeamData::SLdrDarkCommandoChargeBeamData (copy)	dc4	implicit host copy; 100% match; marker/classification pending	no
+07DDC	fn_3_7DDC	94	B	SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData (copy)	dc4	implicit host copy; 100% match; marker/classification pending	no
 07E70	fn_3_7E70	9C	B	CDarkCommandoChargeBeam::~CDarkCommandoChargeBeam	dc1	upstream body (CDarkCommando)	yes
 07F0C	fn_3_7F0C	84	H	fn_3_7F0C	-	unnamed static (weak copy / template instance)	no
 07F90	fn_3_7F90	7C	H	fn_3_7F90	-	unnamed static (weak copy / template instance)	no

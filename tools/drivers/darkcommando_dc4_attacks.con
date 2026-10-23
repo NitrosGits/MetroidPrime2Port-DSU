@@ -1,0 +1,24 @@
+@f300 layer 8
+@f400 objs DarkCommando; objs Team
+@f450 send u065c Activate; place u065c player 8
+@f500 codecall u065c SelectAttackTarget; codecall u065c SelectDashTarget
+@f650 statecall u065c FireChargeBeam 0; statecall u065c FireChargeBeam 1; statecall u065c FireChargeBeam 2
+@f680 statecall u065c FireChargeBeam 0; statecall u065c FireChargeBeam 1; statecall u065c FireChargeBeam 2
+@f710 statecall u065c FireChargeBeam 0; statecall u065c FireChargeBeam 1; statecall u065c FireChargeBeam 2
+@f740 statecall u065c FireEMP 0; statecall u065c FireEMP 1; statecall u065c FireEMP 2
+@f770 statecall u065c FireEMP 0; statecall u065c FireEMP 1; statecall u065c FireEMP 2
+@f800 statecall u065c FireEMP 0; statecall u065c FireEMP 1; statecall u065c FireEMP 2
+@f830 statecall u065c FireEMP 1; statecall u065c FireEMP 1
+@f860 statecall u065c MeleeAttack 0; statecall u065c MeleeAttack 1; statecall u065c MeleeAttack 2
+@f890 statecall u065c MeleeAttack 0; statecall u065c MeleeAttack 1; statecall u065c MeleeAttack 2
+@f920 statecall u065c MeleeAttack 0; statecall u065c MeleeAttack 1; statecall u065c MeleeAttack 2
+@f950 statecall u065c MeleeAttack 1
+@f1000 codecall u065c DeactivateCloak; fsm u065c FireChargeBeam
+@f1200 codecall u065c ActivateCloak; visor dark
+@f1300 codecall u065c DeactivateCloak; fsm u065c FireChargeBeam
+@f1500 codecall u065c ActivateCloak; visor echo
+@f1600 codecall u065c DeactivateCloak; fsm u065c FireChargeBeam
+@f1800 codecall u065c ActivateCloak; visor combat
+@f1900 codecall u065c DeactivateCloak; fsm u065c FireChargeBeam
+@f2100 codecall u065c ActivateCloak
+@f2300 status; objs DarkCommando

@@ -1,0 +1,26 @@
+@f300 send u051a Activate; place u051a player 8
+@f310 send u041c Activate; place u041c player 6
+@f350 fsm u051a Lurk
+@f400 send u051a OffGround; send u051a OffGround; send u051a Escape
+@f420 uevent u051a 12; uevent u051a 12; uevent u051a 13; uevent u051a 13
+@f440 uevent u051a 14; uevent u051a 0; uevent u051a 0; uevent u051a 0; uevent u051a 999
+@f460 uevent u051a 19
+@f480 codecall u051a SetTargetFaceVect; codecall u051a SelectDashTarget; codecall u051a SelectAction
+@f500 trigcall u051a ShouldMeleeAttack; statecall u051a MeleeAttack 0; statecall u051a MeleeAttack 1; statecall u051a MeleeAttack 2
+@f520 statecall u051a GetUp 0; statecall u051a GetUp 1; statecall u051a GetUp 1; statecall u051a GetUp 2
+@f550 damage u051a 1; damage u051a 1; damage u051a 1; damage u051a 1
+@f600 visor dark
+@f700 visor combat
+@f720 spawn WATR 1 d 30 inactive
+@f750 send u051a Deactivate; send u051a Activate
+@f800 spawn DRKC 1 inactive
+@f850 codecall u051a DeactivateCloak; fsm u051a Dead; kill u051a; uevent u051a 19
+@f1100 objs Water; objs DarkCommando
+@f1200 statecall u041c WarpOut 0; statecall u041c WarpOut 2
+@f1220 statecall u041c WarpOut 1
+@f1240 statecall u041c WarpOut 1
+@f1260 statecall u041c WarpOut 1
+@f1280 statecall u041c WarpOut 1
+@f1300 statecall u041c WarpOut 1
+@f1320 statecall u041c WarpOut 1
+@f1500 objs DarkCommando; status
