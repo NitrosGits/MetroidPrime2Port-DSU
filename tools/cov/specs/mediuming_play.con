@@ -1,0 +1,61 @@
+# mediuming_states.py natural-play driver (mi3): stand near the Ings (god mode), print their FSM state
+# every 100 updates, shoot u0417 every 300.
+@f300 god 1; tp 208.5 -174 -46.5; face 180
+@f320 obj u0417; obj u0454; screenshot
+@f400 obj u0417; obj u0454
+@f500 obj u0417; obj u0454
+@f600 obj u0417; obj u0454; shoot u0417
+@f700 obj u0417; obj u0454
+@f800 obj u0417; obj u0454
+@f900 obj u0417; obj u0454; shoot u0417; screenshot
+@f1000 obj u0417; obj u0454
+@f1100 obj u0417; obj u0454
+@f1200 obj u0417; obj u0454; shoot u0417
+@f1300 obj u0417; obj u0454
+@f1400 obj u0417; obj u0454
+@f1500 obj u0417; obj u0454; shoot u0417; screenshot
+@f1600 obj u0417; obj u0454
+@f1700 obj u0417; obj u0454
+@f1800 obj u0417; obj u0454; shoot u0417
+@f1900 obj u0417; obj u0454
+@f2000 obj u0417; obj u0454
+@f2100 obj u0417; obj u0454; shoot u0417
+@f2200 obj u0417; obj u0454
+@f2300 obj u0417; obj u0454
+@f2400 obj u0417; obj u0454; shoot u0417; screenshot
+@f2500 obj u0417; obj u0454
+@f2600 obj u0417; obj u0454
+@f2700 obj u0417; obj u0454; shoot u0417
+@f2800 obj u0417; obj u0454
+@f2900 obj u0417; obj u0454
+@f3000 obj u0417; obj u0454; shoot u0417
+@f3100 obj u0417; obj u0454
+@f3200 obj u0417; obj u0454
+@f3300 obj u0417; obj u0454; shoot u0417
+@f3400 obj u0417; obj u0454
+@f3500 obj u0417; obj u0454
+@f3600 obj u0417; obj u0454; shoot u0417; screenshot
+@f3700 obj u0417; obj u0454
+@f3800 obj u0417; obj u0454
+@f3900 obj u0417; obj u0454; shoot u0417
+@f4000 obj u0417; obj u0454
+@f4100 obj u0417; obj u0454
+@f4200 obj u0417; obj u0454; shoot u0417
+@f4300 obj u0417; obj u0454
+@f4400 obj u0417; obj u0454
+@f4500 obj u0417; obj u0454; shoot u0417
+@f4600 obj u0417; obj u0454
+@f4700 obj u0417; obj u0454
+@f4800 obj u0417; obj u0454; shoot u0417; screenshot
+@f4900 obj u0417; obj u0454
+@f5000 obj u0417; obj u0454
+@f5100 obj u0417; obj u0454; shoot u0417
+@f5200 obj u0417; obj u0454
+@f5300 obj u0417; obj u0454
+@f5400 obj u0417; obj u0454; shoot u0417
+@f5500 obj u0417; obj u0454
+@f5600 obj u0417; obj u0454
+@f5700 obj u0417; obj u0454; shoot u0417
+@f5800 obj u0417; obj u0454
+@f5900 obj u0417; obj u0454
+@f5900 status; objs ing

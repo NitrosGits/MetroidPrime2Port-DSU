@@ -718,6 +718,7 @@ void CMediumIng::SetTentaclesActive(CStateManager& mgr, bool active) {
   }
 }
 
+// @ fn_41_7394
 void CMediumIng::SubStart(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -739,6 +740,7 @@ void CMediumIng::SubStart(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_72C4
 void CMediumIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   mPathFindNavigation.PathFind(mgr, msg, dt, *this);
   switch (msg) {
@@ -751,7 +753,7 @@ void CMediumIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
     }
     break;
   case kStateMsg_Update:
-    CalculateSeparation(mgr);
+    CalculateSeparation(mgr); // 0x7374 fn_41_2024
     break;
   default:
     break;
@@ -1016,10 +1018,11 @@ void CMediumIng::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_37B0
 void CMediumIng::MistAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
-    if (HasMist()) {
+    if (HasMist()) { // 0x37FC fn_41_5C74
       mC7 = true; // 0x3810
     }
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x3820
@@ -1129,6 +1132,7 @@ void CMediumIng::Dash(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_4E1C
 void CMediumIng::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   // rodata_0: the two taunt types.
   static const pas::ETauntType skTauntTypes[] = {pas::kTT_One, pas::kTT_Four};
@@ -1152,6 +1156,7 @@ void CMediumIng::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_1E78
 void CMediumIng::WaitForLocomotion(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1170,6 +1175,7 @@ void CMediumIng::WaitForLocomotion(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
+// @ fn_41_5724
 void CMediumIng::Idle(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 void CMediumIng::SafezoneReaction(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1229,6 +1235,7 @@ void CMediumIng::MoveToSafeZone(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_2E70
 void CMediumIng::BackUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1287,6 +1294,7 @@ void CMediumIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_41_30AC
 void CMediumIng::SelectTargetState(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 void CMediumIng::SelectTarget(CStateManager& mgr, float dt) {

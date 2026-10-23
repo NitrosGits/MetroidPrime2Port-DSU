@@ -1,0 +1,56 @@
+# mediuming_states.py second forced driver (mi3): safe zone (XENZ from the crystal zone u0451),
+# noise 6 at it, MistAttack/Follow*/Idle by fsm, Escape and a far teleport (leash), kills.
+@f300 god 1; tp 208.5 -174 -46.5; face 180; send u0451 Activate; send u0452 Activate
+@f400 obj u0451; obj u0454; obj u0417
+@f450 send u0454 XENZ from u0451; obj u0454
+@f550 obj u0454
+@f650 send u0454 XEXZ from u0451; obj u0454
+@f700 noise 6 237.9 -194.7 -39.9
+@f720 obj u0454; obj u0417
+@f800 obj u0454; obj u0417
+@f850 fsm u0454 MoveToSafeZone
+@f870 obj u0454
+@f950 obj u0454
+@f1000 place u0417 player 5; fsm u0417 MistAttack
+@f1020 obj u0417; screenshot
+@f1060 place u0417 player 3; obj u0417
+@f1120 obj u0417
+@f1200 send u0454 Escape; obj u0454
+@f1250 obj u0454
+@f1300 obj u0454
+@f1400 obj u0454
+@f1500 obj u0454; screenshot
+@f1600 fsm u0417 FollowAttackPattern
+@f1650 obj u0417
+@f1700 fsm u0417 FollowApproachPattern
+@f1750 obj u0417
+@f1800 fsm u0417 Idle
+@f1820 obj u0417
+@f1850 fsm u0417 SelectTargetState
+@f1870 obj u0417
+@f1900 tp 245.6 -99.4 -37.5
+@f2000 obj u0417; obj u0454
+@f2200 obj u0417; obj u0454
+@f2400 obj u0417; obj u0454
+@f2600 obj u0417; obj u0454
+@f2700 tp 208.5 -174 -46.5; face 180
+@f2800 obj u0417; obj u0454
+@f2900 obj u0417; obj u0454
+@f3000 place u0454 player 8; damage u0454 999 30
+@f3050 obj u0454
+@f3300 obj u0454
+@f3400 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3430 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3460 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3490 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3520 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3550 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3580 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3610 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3640 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3670 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3700 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3730 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3760 place u0417 player 8; shoot u0417 charged; obj u0417
+@f3790 place u0417 player 8; shoot u0417 charged; obj u0417
+@f4000 obj u0417; obj u0454; objs ing; status
