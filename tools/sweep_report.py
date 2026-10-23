@@ -348,7 +348,8 @@ def parse(path: Path, target: str = "save", first: int = 0) -> tuple[Shard, list
     return shard, phases
 
 
-def print_worlds(slices: dict[tuple[str, int], Slice], phases: list[Phase]) -> None:
+def print_worlds(slices: dict[tuple[str, int], Slice], phases: list[Phase],
+                 seen: dict[str, str]) -> None:
     """Per world and side: slots asked for, slots played, clean (every phase of the slot OK) and
     failing (some phase not OK). A slot played twice (two shards, or a reload) counts once, by its
     worst verdict. Logs without a manifest are left out: their slice is unknown."""
@@ -358,6 +359,8 @@ def print_worlds(slices: dict[tuple[str, int], Slice], phases: list[Phase]) -> N
     tag_world: dict[str, str] = {}
     for (tag, _), entry in slices.items():
         world = entry.world_name or entry.world
+        if world == "save":
+            world = "save " + seen.get(tag, "?")
         tag_world[tag] = world
         for area in range(entry.first, entry.first + entry.count):
             side = entry.areas.get(area, ("all", ""))[0]
@@ -525,7 +528,7 @@ def main() -> int:
         for tag, area, line in misses:
             print(f"  {tag} area {area}: {line}")
 
-    print_worlds(slices, phases)
+    print_worlds(slices, phases, {s.index[0]: s.world for s in shards if s.world})
 
     bad_exits = [s for s in shards if s.exit_code not in (None, 0)]
     if bad_exits:
