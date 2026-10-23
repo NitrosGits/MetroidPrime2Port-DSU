@@ -3,7 +3,7 @@
 # fire at the player start. Steps follow tools/cov/specs/gunturret_0i_sand_hall.con (the gt1
 # coverage driver: the fight, the base's FSM states, the top's PowerDown/PowerUp and Death).
 # This is not the `turret` family: that one runs M06_ShootingGallery, the player's own turret.
-# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2600, last check f2360.
 @f300 god 1; give missile 50
 @f400 objs GunTurret; obj u043d; obj u043a
 @f500 tp 350 -180 20
@@ -30,4 +30,6 @@
 # The kill: the top's Death through the console, which is what DestroyGun runs when the top dies.
 @f2250 kill u0424
 @f2300 obj u0424
+@f2340 send u0424 Delete
 @f2350 objs GunTurret; status
+@f2360 objs GunTurret

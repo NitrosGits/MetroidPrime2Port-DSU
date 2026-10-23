@@ -63,6 +63,8 @@
 @f4920 obj e0014007a
 @f5000 place e0014007a player 1
 @f5100 obj e0014007a
+@f5120 damage e0014007a 5 0 power; obj e0014007a
+@f5140 obj e0014007a
 @f5200 kill e0014007a
 @f5240 obj e0014007a
 @f5400 send e0014007a Deactivate

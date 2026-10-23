@@ -16,6 +16,8 @@
 @f600 shoot u041d
 @f640 shoot u041d missile
 @f680 obj u041d
+@f700 damage u041d 1 0 powerbomb; obj u041d
+@f710 obj u041d
 @f720 kill u041d
 @f760 objs EyeBall
 @f1800 objs EyeBall
