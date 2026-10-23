@@ -165,6 +165,7 @@ SBloggPhaseData::SBloggPhaseData(const SLdrBloggStruct& data)
 , mUnknownB(data.unknown_0x1e74f1ec)
 , mUnknownC(data.unknown_0xecba9fb2) {}
 
+// @ fn_7_18D4
 CBloggBodyVulnerability::CBloggBodyVulnerability(const CDamageVulnerability& vulnerability,
                                                  const CDamageVulnerability& otherVulnerability,
                                                  bool flag)
@@ -182,6 +183,7 @@ const CDamageVulnerability* CBloggBodyVulnerability::GetDamageVulnerability(
   return &mVulnerability;
 }
 
+// @ fn_7_182C
 bool CBloggBodyVulnerability::GetCollisionResponseType(const CVector3f& position,
                                                        const CVector3f& direction,
                                                        const CWeaponMode& mode, int attributes,
@@ -197,6 +199,7 @@ bool CBloggBodyVulnerability::GetCollisionResponseType(const CVector3f& position
   return true;
 }
 
+// @ fn_7_1764
 CBloggMouthVulnerability::CBloggMouthVulnerability(const CDamageVulnerability& vulnerability,
                                                    const CDamageVulnerability& otherVulnerability,
                                                    bool flag)
@@ -226,6 +229,7 @@ const CDamageVulnerability* CBloggMouthVulnerability::GetDamageVulnerability(
   return &mVulnerability;
 }
 
+// @ fn_7_1680
 bool CBloggMouthVulnerability::GetCollisionResponseType(const CVector3f& position,
                                                         const CVector3f& direction,
                                                         const CWeaponMode& mode, int attributes,
@@ -431,11 +435,13 @@ void CBlogg::SyncCollisionActorHealth(CStateManager& mgr) {
   }
 }
 
+// @ fn_7_137C
 void CBlogg::SetIngPossessed(bool possessed, float duration, CStateManager& mgr) {
   CPatterned::SetIngPossessed(possessed, duration, mgr);
   SyncCollisionActorHealth(mgr);
 }
 
+// @ fn_7_13C0
 void CBlogg::SetIngPossessed(bool possessed, CStateManager& mgr) {
   CPatterned::SetIngPossessed(possessed, mgr);
   SyncCollisionActorHealth(mgr);
@@ -452,6 +458,7 @@ CVector3f CBlogg::GetIngSnatchingPoint(float t) const {
 
 CVector3f CBlogg::GetIngSnatchingNormal(float) const { return -GetTransform().GetForward(); }
 
+// @ fn_7_B7A0
 CBlogg::~CBlogg() {}
 
 CPlayer* CBlogg::GetPlayer(CStateManager& mgr) const {
@@ -472,6 +479,7 @@ bool CBlogg::IsPlayerWithin(CStateManager& mgr, float distance) const {
   return false;
 }
 
+// @ fn_7_8E90
 bool CBlogg::IsHitInMouthDirection(const CVector3f& direction) const {
   const CTransform4f mouthTransform =
       GetTransform() * GetScaledLocatorTransform(rstl::string_l(skMouthLocatorName));
@@ -479,18 +487,23 @@ bool CBlogg::IsHitInMouthDirection(const CVector3f& direction) const {
   return dot < static_cast< float >(cos(rstl::max_val(1.5707964f, 3.1415927f - mMouthDamageAngle)));
 }
 
+// @ fn_7_2790
 uchar CBlogg::HasCollisionTimeElapsed() const { return mCollisionTime >= mMaxCollisionTime; }
 
 bool CBlogg::IsAtAttackPosition() const {
   return CPatterned::GetSearchPath()->IsOver() && mState == kBS_MoveToAttackPosition;
 }
 
+// @ fn_7_8788
 void CBlogg::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_7_8768
 void CBlogg::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
 
+// @ fn_7_87A8
 void CBlogg::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_7_9FA0
 void CBlogg::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -499,36 +512,45 @@ void CBlogg::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_7_7E40
 void CBlogg::ComputeTauntProbability(CStateManager& mgr, float dt) {
   if (mgr.Random()->Float() < 0.2f) {
     mTauntReady = true;
   }
 }
 
+// @ fn_7_7E2C
 void CBlogg::EndMeleePursuit(CStateManager& mgr, float dt) { mMeleePursuitEnded = true; }
 
 bool CBlogg::ShouldPatrol(CStateManager& mgr, const CTriggerData& data) const { return false; }
 
+// @ fn_7_633C
 bool CBlogg::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_7_62F8
 bool CBlogg::ShouldPrepareToAttack(CStateManager& mgr, const CTriggerData& data) const {
   return xbc4_24_ || xbc5_26_ || xbc5_30_;
 }
 
+// @ fn_7_612C
 bool CBlogg::IsPlayerStunned(CStateManager& mgr, const CTriggerData& data) const { return false; }
 
+// @ fn_7_5CBC
 bool CBlogg::CollidedWithWall(CStateManager& mgr, const CTriggerData& data) const {
   return HasCollisionTimeElapsed();
 }
 
+// @ fn_7_5CB0
 bool CBlogg::CanBitePlayer(CStateManager& mgr, const CTriggerData& data) const { return mCanBite; }
 
+// @ fn_7_5C8C
 bool CBlogg::InMeleeRange(CStateManager& mgr, const CTriggerData& data) const {
   return IsPlayerWithin(mgr, mMaxMeleeRange);
 }
 
+// @ fn_7_5C58
 bool CBlogg::InBiteRange(CStateManager& mgr, const CTriggerData& data) const {
   return IsPlayerWithin(mgr, 3.f * GetModelData()->GetScale().GetX());
 }
@@ -539,10 +561,12 @@ bool CBlogg::InProjectileRange(CStateManager& mgr, const CTriggerData& data) con
 
 bool CBlogg::CantMoveToPlayer(CStateManager& mgr, const CTriggerData& data) const { return false; }
 
+// @ fn_7_594C
 bool CBlogg::BallGrabbed(CStateManager& mgr, const CTriggerData& data) const {
   return mBallGrabbed;
 }
 
+// @ fn_7_6328
 bool CBlogg::ShouldAbortBallGrab(CStateManager& mgr, const CTriggerData& data) const {
   return mAbortBallGrab;
 }
@@ -575,6 +599,7 @@ bool CBlogg::IsInhabitingFluid(CStateManager& mgr, TUniqueId waterId, TUniqueId 
   return false;
 }
 
+// @ fn_7_221C
 bool CBlogg::CanReachPlayer(CStateManager& mgr, CPlayer* player) const {
   TUniqueId waterId = kInvalidUniqueId;
   CAABox waterBounds = CAABox::MakeNullBox();
@@ -587,10 +612,12 @@ bool CBlogg::CanReachPlayer(CStateManager& mgr, CPlayer* player) const {
   return false;
 }
 
+// @ fn_7_629C
 bool CBlogg::InAttackPosition(CStateManager& mgr, const CTriggerData& data) const {
   return IsAtAttackPosition() || xbc5_26_ || xbc5_30_;
 }
 
+// @ fn_7_61EC
 bool CBlogg::InValidPosition(CStateManager& mgr, const CTriggerData& data) const {
   bool result = true;
   const bool valid = mStateMachine->GetTime() > 1.f && !HasCollisionTimeElapsed();
@@ -600,12 +627,14 @@ bool CBlogg::InValidPosition(CStateManager& mgr, const CTriggerData& data) const
   return result;
 }
 
+// @ fn_7_6134
 bool CBlogg::IsFacingPlayer(CStateManager& mgr, const CTriggerData& data) const {
   const CVector3f direction(GetDirectionToPlayer(mgr));
   const CVector3f forward = GetTransform().GetForward();
   return CVector3f::GetAngleDiff(direction, forward) < 0.17453292f;
 }
 
+// @ fn_7_608C
 bool CBlogg::ProjectileAttackDelay(CStateManager& mgr, const CTriggerData& data) const {
   return mStateMachine->GetTime() > mProjectileDelay;
 }
@@ -625,6 +654,7 @@ bool CBlogg::ShouldCharge(CStateManager& mgr, const CTriggerData& data) const {
   return result;
 }
 
+// @ fn_7_5CEC
 bool CBlogg::IsChargeOver(CStateManager& mgr, const CTriggerData& data) const {
   return mChargeOver != 0;
 }
@@ -769,10 +799,20 @@ TUniqueId CBlogg::FindNearestHint(CStateManager& mgr, const CVector3f& position,
         if (checkLineOfSight) {
           const CRayCastResult result = CGameCollision::RayStaticIntersection(
               mgr, position, offset.AsNormalized(), offset.Magnitude(), filter);
+#ifdef TARGET_PC
+          // fn_7_1C0C 0x1E44-0x1E4C: lbz r0,0xc0(r1); cmplwi r0,0; bne .L_1E98 -- a blocked
+          // ray skips the rest of the loop body, including the facing-dot update.
+          if (result.IsValid()) {
+            continue;
+          }
+          nearestDistance = distance;
+          nearest = id;
+#else
           if (!result.IsValid()) {
             nearestDistance = distance;
             nearest = id;
           }
+#endif
         } else {
           nearestDistance = distance;
           nearest = id;
@@ -961,6 +1001,7 @@ void CBlogg::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list, C
   CPatterned::CollidedWith(id, list, mgr);
 }
 
+// @ fn_7_2CD4
 void CBlogg::Touch(CActor& actor, CStateManager& mgr) {
   CFishCloud* fishCloud = TCastToPtr< CFishCloud >(actor);
   if (fishCloud != nullptr) {
@@ -1324,6 +1365,7 @@ void CBlogg::GrabBall(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_7_8CF8
 bool CBlogg::IsPlayerWithinChargeRange(CStateManager& mgr, CPlayer* player) const {
   const CVector3f offset = GetTranslation() - player->GetAimPosition(mgr, 0.f);
   const float health = GetHealthInfo()->GetHP();
@@ -1732,6 +1774,7 @@ void CBlogg::ComputeAttackPositions(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_7_5550
 void CBlogg::UpdateAimWeights() {
   const CTransform4f& xf = GetTransform();
   const CTransform4f inverse(xf.GetQuickInverse());
@@ -2047,7 +2090,12 @@ void CBlogg::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
         if (senderId == xac4_) {
           if (mState == kBS_ChargeAttack) {
             damage.SetDamage(mChargeDamage);
+#ifdef TARGET_PC
+            // fn_7_8F7C 0x9774 rlwimi r0,r3,1,30,30 sets 0xbc4 bit 0x2 (mChargeOver), not 0x40.
+            mChargeOver = true;
+#else
             xbc4_25_ = true;
+#endif
           } else if (mState == kBS_MeleeAttack) {
             damage.SetDamage(mBiteDamage);
           }
@@ -2063,7 +2111,12 @@ void CBlogg::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       CHealthInfo* colHealth = colAct->HealthInfo();
       const float initialHP = HealthInfo()->GetInitialHP();
       if (const CWeapon* weapon = TCastToConstPtr< CWeapon >(mgr.GetObjectById(touchedId))) {
+#ifdef TARGET_PC
+        // fn_7_8F7C 0x98B4-0x98C4 loads weapon+0x2c/0x3c/0x4c: transform column 2 (up), not forward.
+        const CVector3f position = weapon->GetTransform().GetUp();
+#else
         const CVector3f position = weapon->GetTransform().GetForward();
+#endif
         if (senderId == xac4_ && IsHitInMouthDirection(position) && mMouthClosed == 0) {
           ApplyCollisionActorDamage(mgr, senderId, mMouthDamageMultiplier);
           mHitByPlayerProjectile = true;

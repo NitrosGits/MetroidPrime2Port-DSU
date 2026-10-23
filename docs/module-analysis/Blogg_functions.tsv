@@ -1,0 +1,213 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_7_0	94	B	CBloggMouthVulnerability::~CBloggMouthVulnerability	-	upstream body (CBlogg)	no
+00094	fn_7_94	24	T	RELExit	-	REL runtime	no
+000B8	fn_7_B8	20	T	RELMain	-	REL runtime	no
+000D8	fn_7_D8	30	B	SetFuncPtrs	-	upstream body (CBlogg)	no
+00108	fn_7_108	96C	B	LoadBlogg	-	upstream body (CBlogg)	no
+00A74	fn_7_A74	40	H	rstl::optional_object<CModelData>::optional_object	-	weak copy / template instance	no
+00AB4	fn_7_AB4	20	H	rstl::construct<CModelData>	-	weak copy / template instance	no
+00AD4	fn_7_AD4	28	H	rstl::construction_policy<CModelData, 0>::construct	-	weak copy / template instance	no
+00AFC	fn_7_AFC	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+00C38	fn_7_C38	6C	H	rstl::optional_object<TLockedToken<CModel>>::~optional_object	-	weak copy / template instance	no
+00CA4	fn_7_CA4	54	H	TToken<CModel>::~TToken	-	weak copy / template instance	no
+00CF8	fn_7_CF8	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr	-	weak copy / template instance	no
+00D5C	fn_7_D5C	60	H	rstl::optional_object<CModelData>::~optional_object	-	weak copy / template instance	no
+00DBC	fn_7_DBC	A0	H	SLdrBlogg::~SLdrBlogg	-	weak copy / template instance	no
+00E5C	fn_7_E5C	248	B	SLdrBlogg::SLdrBlogg	blogg1	fixed (blogg1): loader defaults	no
+010A4	fn_7_10A4	3C	H	SLdrBloggStruct::~SLdrBloggStruct	-	weak copy / template instance	no
+010E0	fn_7_10E0	140	B	LoadTypedefBloggStruct	-	upstream body (CBlogg)	no
+01220	fn_7_1220	9C	B	CBlogg::ChoosePhaseValue	-	upstream body (CBlogg)	no
+012BC	fn_7_12BC	94	B	CBlogg::GetHealthPhase	-	upstream body (CBlogg)	no
+01350	fn_7_1350	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+0137C	fn_7_137C	44	B	CBlogg::SetIngPossessed	blogg1	upstream body (CBlogg)	yes
+013C0	fn_7_13C0	44	B	CBlogg::SetIngPossessed	blogg1	upstream body (CBlogg)	yes
+01404	fn_7_1404	F0	B	CBlogg::SyncCollisionActorHealth	-	upstream body (CBlogg)	no
+014F4	fn_7_14F4	164	B	CBlogg::GetIngSnatchingPoint	-	upstream body (CBlogg)	no
+01658	fn_7_1658	28	B	CBlogg::GetIngSnatchingNormal	-	upstream body (CBlogg)	no
+01680	fn_7_1680	10	B	CBloggMouthVulnerability::GetCollisionResponseType	blogg1	upstream body (CBlogg)	yes
+01690	fn_7_1690	D4	B	CBloggMouthVulnerability::GetDamageVulnerability	-	upstream body (CBlogg)	no
+01764	fn_7_1764	44	B	CBloggMouthVulnerability::CBloggMouthVulnerability	blogg1	upstream body (CBlogg)	yes
+017A8	fn_7_17A8	84	B	CBloggBodyVulnerability::~CBloggBodyVulnerability	-	upstream body (CBlogg)	no
+0182C	fn_7_182C	58	B	CBloggBodyVulnerability::GetCollisionResponseType	blogg1	upstream body (CBlogg)	yes
+01884	fn_7_1884	50	B	CBloggBodyVulnerability::GetDamageVulnerability	-	upstream body (CBlogg)	no
+018D4	fn_7_18D4	7C	B	CBloggBodyVulnerability::CBloggBodyVulnerability	blogg1	upstream body (CBlogg)	yes
+01950	fn_7_1950	5C	H	CDamageVulnerability::CDamageVulnerability	-	weak copy / template instance	no
+019AC	fn_7_19AC	54	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+01A00	fn_7_1A00	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector	-	weak copy / template instance	no
+01B30	fn_7_1B30	48	H	fn_7_1B30	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+01B78	fn_7_1B78	94	B	CBlogg::ReleaseHints	-	upstream body (CBlogg)	no
+01C0C	fn_7_1C0C	308	B	CBlogg::FindNearestHint	blogg1	fixed (blogg1): blocked ray skips facing dot	no
+01F14	fn_7_1F14	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
+01F70	fn_7_1F70	100	B	CBlogg::CollectHints	-	upstream body (CBlogg)	no
+02070	fn_7_2070	E0	B	CBlogg::UpdateCollisionActorMaterials	-	upstream body (CBlogg)	no
+02150	fn_7_2150	CC	B	CBlogg::FindFluid	-	upstream body (CBlogg)	no
+0221C	fn_7_221C	120	B	CBlogg::CanReachPlayer	blogg1	upstream body (CBlogg)	yes
+0233C	fn_7_233C	64	B	CBlogg::StopPlayer	-	upstream body (CBlogg)	no
+023A0	fn_7_23A0	154	B	CBlogg::AttachPlayerToMouth	-	upstream body (CBlogg)	no
+024F4	fn_7_24F4	50	H	fn_7_24F4	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+02544	fn_7_2544	C4	B	CBlogg::IsPlayerWithin	-	upstream body (CBlogg)	no
+02608	fn_7_2608	188	B	CBlogg::PathToAttackPosition	-	upstream body (CBlogg)	no
+02790	fn_7_2790	1C	B	CBlogg::HasCollisionTimeElapsed	blogg1	upstream body (CBlogg)	yes
+027AC	fn_7_27AC	1F0	B	CBlogg::CollidedWith	-	upstream body (CBlogg)	no
+0299C	fn_7_299C	6C	B	CBlogg::IsAtAttackPosition	-	upstream body (CBlogg)	no
+02A08	fn_7_2A08	8	B	CBlogg::GetSearchPath	-	upstream body (CBlogg)	no
+02A10	fn_7_2A10	60	B	CBlogg::GetNextPositionIndex	-	upstream body (CBlogg)	no
+02A70	fn_7_2A70	16C	B	CBlogg::ApplyContactDamage	-	upstream body (CBlogg)	no
+02BDC	fn_7_2BDC	F8	B	CBlogg::IsPlayerInMouthRange	-	upstream body (CBlogg)	no
+02CD4	fn_7_2CD4	A8	B	CBlogg::Touch	blogg1	upstream body (CBlogg)	yes
+02D7C	fn_7_2D7C	184	B	CBlogg::Death	-	upstream body (CBlogg)	no
+02F00	fn_7_2F00	1B0	B	CBlogg::MeleeAttack	-	upstream body (CBlogg)	no
+030B0	fn_7_30B0	5C	H	fn_7_30B0	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0310C	fn_7_310C	48	H	fn_7_310C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+03154	fn_7_3154	2A8	B	CBlogg::SpitBall	-	upstream body (CBlogg)	no
+033FC	fn_7_33FC	5C	H	fn_7_33FC	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+03458	fn_7_3458	230	B	CBlogg::Thrash	-	upstream body (CBlogg)	no
+03688	fn_7_3688	23C	B	CBlogg::Taunt	-	upstream body (CBlogg)	no
+038C4	fn_7_38C4	E4	B	CBlogg::Dead	-	upstream body (CBlogg)	no
+039A8	fn_7_39A8	174	H	fn_7_39A8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+03B1C	fn_7_3B1C	500	B	CBlogg::FindAttackPositions	-	upstream body (CBlogg)	no
+0401C	fn_7_401C	98	H	fn_7_401C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+040B4	fn_7_40B4	64	H	fn_7_40B4	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+04118	fn_7_4118	20	H	fn_7_4118	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+04138	fn_7_4138	28	H	fn_7_4138	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+04160	fn_7_4160	5C	H	fn_7_4160	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+041BC	fn_7_41BC	44	H	fn_7_41BC	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+04200	fn_7_4200	84	H	fn_7_4200	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+04284	fn_7_4284	A8	B	CBlogg::LeaveTeam	-	upstream body (CBlogg)	no
+0432C	fn_7_432C	AC	B	CBlogg::JoinTeam	-	upstream body (CBlogg)	no
+043D8	fn_7_43D8	200	B	CBlogg::LaunchBloggProjectile	-	upstream body (CBlogg)	no
+045D8	fn_7_45D8	8	B	CBlogg::ProjectileInfo	-	upstream body (CBlogg)	no
+045E0	fn_7_45E0	4C	B	CBlogg::GetPlayer	-	upstream body (CBlogg)	no
+0462C	fn_7_462C	FC	B	CBlogg::GetDirectionToPlayer	-	upstream body (CBlogg)	no
+04728	fn_7_4728	338	B	CBlogg::ApplyCollisionActorDamage	-	upstream body (CBlogg)	no
+04A60	fn_7_4A60	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+04A70	fn_7_4A70	90	H	CDamageInfo::CDamageInfo	-	weak copy / template instance	no
+04B00	fn_7_4B00	4C	B	CBlogg::GetContactDamage	-	upstream body (CBlogg)	no
+04B4C	fn_7_4B4C	4E4	B	CBlogg::DoUserAnimEvent	-	upstream body (CBlogg)	no
+05030	fn_7_5030	A4	H	fn_7_5030	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+050D4	fn_7_50D4	3C	H	fn_7_50D4	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05110	fn_7_5110	3C	H	fn_7_5110	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0514C	fn_7_514C	5C	H	fn_7_514C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+051A8	fn_7_51A8	20	H	fn_7_51A8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+051C8	fn_7_51C8	48	H	fn_7_51C8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05210	fn_7_5210	40	H	fn_7_5210	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05250	fn_7_5250	20	H	fn_7_5250	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05270	fn_7_5270	28	H	fn_7_5270	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05298	fn_7_5298	80	H	fn_7_5298	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05318	fn_7_5318	6C	H	fn_7_5318	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05384	fn_7_5384	54	H	fn_7_5384	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+053D8	fn_7_53D8	54	H	fn_7_53D8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0542C	fn_7_542C	70	H	fn_7_542C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0549C	fn_7_549C	B4	H	fn_7_549C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05550	fn_7_5550	38C	B	CBlogg::UpdateAimWeights	blogg1	upstream body (CBlogg)	yes
+058DC	fn_7_58DC	C	H	fn_7_58DC	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+058E8	fn_7_58E8	60	H	fn_7_58E8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+05948	fn_7_5948	4	H	fn_7_5948	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0594C	fn_7_594C	C	B	CBlogg::BallGrabbed	blogg1	upstream body (CBlogg)	yes
+05958	fn_7_5958	140	B	CBlogg::CanGrabBall	-	upstream body (CBlogg)	no
+05A98	fn_7_5A98	5C	B	CBlogg::DetectBall	-	upstream body (CBlogg)	no
+05AF4	fn_7_5AF4	54	B	CBlogg::PlayerInBallMode	-	upstream body (CBlogg)	no
+05B48	fn_7_5B48	AC	B	CBlogg::ShouldEndBallPursuit	-	upstream body (CBlogg)	no
+05BF4	fn_7_5BF4	5C	B	CBlogg::ShouldEndPursuit	-	upstream body (CBlogg)	no
+05C50	fn_7_5C50	8	B	CBlogg::CantMoveToPlayer	-	upstream body (CBlogg)	no
+05C58	fn_7_5C58	34	B	CBlogg::InBiteRange	blogg1	upstream body (CBlogg)	yes
+05C8C	fn_7_5C8C	24	B	CBlogg::InMeleeRange	blogg1	upstream body (CBlogg)	yes
+05CB0	fn_7_5CB0	C	B	CBlogg::CanBitePlayer	blogg1	upstream body (CBlogg)	yes
+05CBC	fn_7_5CBC	30	B	CBlogg::CollidedWithWall	blogg1	upstream body (CBlogg)	yes
+05CEC	fn_7_5CEC	18	B	CBlogg::IsChargeOver	blogg1	upstream body (CBlogg)	yes
+05D04	fn_7_5D04	84	B	CBlogg::CanTaunt	-	upstream body (CBlogg)	no
+05D88	fn_7_5D88	F8	B	CBlogg::CanRangedAttack	-	upstream body (CBlogg)	no
+05E80	fn_7_5E80	13C	B	CBlogg::CanMeleeAttack	-	upstream body (CBlogg)	no
+05FBC	fn_7_5FBC	D0	B	CBlogg::ShouldCharge	-	upstream body (CBlogg)	no
+0608C	fn_7_608C	4C	B	CBlogg::ProjectileAttackDelay	blogg1	upstream body (CBlogg)	yes
+060D8	fn_7_60D8	54	B	CBlogg::IsPlayerReachable	-	upstream body (CBlogg)	no
+0612C	fn_7_612C	8	B	CBlogg::IsPlayerStunned	blogg1	upstream body (CBlogg)	yes
+06134	fn_7_6134	88	B	CBlogg::IsFacingPlayer	blogg1	upstream body (CBlogg)	yes
+061BC	fn_7_61BC	30	B	CBlogg::InProjectileRange	-	upstream body (CBlogg)	no
+061EC	fn_7_61EC	B0	B	CBlogg::InValidPosition	blogg1	upstream body (CBlogg)	yes
+0629C	fn_7_629C	5C	B	CBlogg::InAttackPosition	blogg1	upstream body (CBlogg)	yes
+062F8	fn_7_62F8	30	B	CBlogg::ShouldPrepareToAttack	blogg1	upstream body (CBlogg)	yes
+06328	fn_7_6328	C	B	CBlogg::ShouldAbortBallGrab	blogg1	upstream body (CBlogg)	yes
+06334	fn_7_6334	8	B	CBlogg::ShouldPatrol	-	upstream body (CBlogg)	no
+0633C	fn_7_633C	20	B	CBlogg::AnimOver	blogg1	upstream body (CBlogg)	yes
+0635C	fn_7_635C	298	B	CBlogg::MoveToPlayer	-	upstream body (CBlogg)	no
+065F4	fn_7_65F4	3DC	B	CBlogg::GrabBall	-	upstream body (CBlogg)	no
+069D0	fn_7_69D0	2C4	B	CBlogg::Stunned	-	upstream body (CBlogg)	no
+06C94	fn_7_6C94	594	B	CBlogg::ChargeAttack	-	upstream body (CBlogg)	no
+07228	fn_7_7228	23C	B	CBlogg::ChargeTelegraph	-	upstream body (CBlogg)	no
+07464	fn_7_7464	3BC	B	CBlogg::ProjectileAttack	-	upstream body (CBlogg)	no
+07820	fn_7_7820	5C	H	fn_7_7820	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0787C	fn_7_787C	258	B	CBlogg::FacePlayer	-	upstream body (CBlogg)	no
+07AD4	fn_7_7AD4	19C	B	CBlogg::MoveToValidPosition	-	upstream body (CBlogg)	no
+07C70	fn_7_7C70	1BC	B	CBlogg::MoveToAttackPosition	-	upstream body (CBlogg)	no
+07E2C	fn_7_7E2C	14	B	CBlogg::EndMeleePursuit	blogg1	upstream body (CBlogg)	yes
+07E40	fn_7_7E40	50	B	CBlogg::ComputeTauntProbability	blogg1	upstream body (CBlogg)	yes
+07E90	fn_7_7E90	580	B	CBlogg::ComputeAttackPositions	-	upstream body (CBlogg)	no
+08410	fn_7_8410	358	B	CBlogg::Patrol	-	upstream body (CBlogg)	no
+08768	fn_7_8768	20	B	CBlogg::AddToRenderer	blogg1	upstream body (CBlogg)	yes
+08788	fn_7_8788	20	B	CBlogg::PreRender	blogg1	upstream body (CBlogg)	yes
+087A8	fn_7_87A8	20	B	CBlogg::Render	blogg1	upstream body (CBlogg)	yes
+087C8	fn_7_87C8	530	B	CBlogg::Think	-	upstream body (CBlogg)	no
+08CF8	fn_7_8CF8	12C	B	CBlogg::IsPlayerWithinChargeRange	blogg1	upstream body (CBlogg)	yes
+08E24	fn_7_8E24	6C	B	CBlogg::IsInhabitingFluid	-	upstream body (CBlogg)	no
+08E90	fn_7_8E90	EC	B	CBlogg::IsHitInMouthDirection	blogg1	upstream body (CBlogg)	yes
+08F7C	fn_7_8F7C	C60	B	CBlogg::AcceptScriptMsg	blogg1	fixed (blogg1): HitObject charge flag, Damage weapon up-vector	no
+09BDC	fn_7_9BDC	5C	H	fn_7_9BDC	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09C38	fn_7_9C38	54	H	fn_7_9C38	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09C8C	fn_7_9C8C	38	H	fn_7_9C8C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09CC4	fn_7_9CC4	20	H	fn_7_9CC4	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09CE4	fn_7_9CE4	28	H	fn_7_9CE4	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09D0C	fn_7_9D0C	C0	H	fn_7_9D0C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09DCC	fn_7_9DCC	5C	H	fn_7_9DCC	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09E28	fn_7_9E28	5C	H	fn_7_9E28	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09E84	fn_7_9E84	84	H	fn_7_9E84	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09F08	fn_7_9F08	38	H	fn_7_9F08	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09F40	fn_7_9F40	60	H	fn_7_9F40	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+09FA0	fn_7_9FA0	8C	B	CBlogg::SetupStateMachine	blogg1	upstream body (CBlogg)	yes
+0A02C	fn_7_A02C	EDC	B	CBlogg::CBlogg	-	upstream body (CBlogg)	no
+0AF08	fn_7_AF08	50	H	fn_7_AF08	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0AF58	fn_7_AF58	54	H	fn_7_AF58	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0AFAC	fn_7_AFAC	50	H	fn_7_AFAC	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0AFFC	fn_7_AFFC	54	H	fn_7_AFFC	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B050	fn_7_B050	3C	H	fn_7_B050	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B08C	fn_7_B08C	184	H	fn_7_B08C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B210	fn_7_B210	3C	H	fn_7_B210	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B24C	fn_7_B24C	84	H	fn_7_B24C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B2D0	fn_7_B2D0	54	H	fn_7_B2D0	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B324	fn_7_B324	50	H	fn_7_B324	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B374	fn_7_B374	54	H	fn_7_B374	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B3C8	fn_7_B3C8	3C	H	fn_7_B3C8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B404	fn_7_B404	5C	H	fn_7_B404	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B460	fn_7_B460	3C	H	fn_7_B460	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B49C	fn_7_B49C	58	H	fn_7_B49C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B4F4	fn_7_B4F4	1E4	H	fn_7_B4F4	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B6D8	fn_7_B6D8	94	H	fn_7_B6D8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B76C	fn_7_B76C	2C	B	SBloggPhaseData::SBloggPhaseData	-	upstream body (CBlogg)	no
+0B798	fn_7_B798	8	H	fn_7_B798	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B7A0	fn_7_B7A0	FC	B	CBlogg::~CBlogg	blogg1	upstream body (CBlogg)	yes
+0B89C	fn_7_B89C	3C	H	CPatterned::GetTouchBounds	-	weak copy / template instance	no
+0B8D8	fn_7_B8D8	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+0B8E0	fn_7_B8E0	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+0B8E8	fn_7_B8E8	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+0B8F0	fn_7_B8F0	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+0B900	fn_7_B900	C	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+0B90C	fn_7_B90C	C	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+0B918	fn_7_B918	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+0B920	fn_7_B920	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+0B928	fn_7_B928	8	H	CAi::IsListening	-	weak copy / template instance	no
+0B930	fn_7_B930	8	H	CAi::Listen	-	weak copy / template instance	no
+0B938	fn_7_B938	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+0B954	fn_7_B954	24	H	fn_7_B954	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B978	fn_7_B978	24	H	fn_7_B978	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0B99C	fn_7_B99C	A4	H	fn_7_B99C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BA40	fn_7_BA40	C0	H	fn_7_BA40	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BB00	fn_7_BB00	68	H	fn_7_BB00	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BB68	fn_7_BB68	B8	H	fn_7_BB68	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BC20	fn_7_BC20	54	H	fn_7_BC20	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BC74	fn_7_BC74	B8	H	fn_7_BC74	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BD2C	fn_7_BD2C	68	H	fn_7_BD2C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BD94	fn_7_BD94	64	H	fn_7_BD94	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BDF8	fn_7_BDF8	64	H	fn_7_BDF8	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BE5C	fn_7_BE5C	64	H	fn_7_BE5C	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BEC0	fn_7_BEC0	3C	H	fn_7_BEC0	-	unpaired (no upstream symbol): weak copy / template instance, or inlined helper	no
+0BEFC	fn_7_BEFC	688	B	__sinit_CBlogg_cpp	-	upstream body (CBlogg)	no

@@ -125,6 +125,18 @@ inline SLdrBlogg::SLdrBlogg()
 , bloggStruct_0x97dd1aa7()
 , bloggStruct_0xf2ba21e1() {
   patterned.creatureSize = 1;
+#ifdef TARGET_PC
+  // fn_7_E5C: retail defaults upstream lacks (0xF28 0x38 = 3, 0xF2C 0x88 = 2.0,
+  // 0xF34 0x26c = 1, 0xF38-0xF4C 0x294 = CColor(1,1,1,1), 0xF5C 0x2e4 = 0xF,
+  // 0x1078/0x107C 0x4e4 = 150.0, 0x4e8 = 2.0).
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+  ingPossessionData.ingPossessedHealth.health = 150.0f;
+  ingPossessionData.ingPossessedHealth.hI_KnockBackResistance = 2.0f;
+#endif
   minAttackAngle = 30.0f;
   maxAttackAngle = 30.0f;
   minDelayBetweenProjectileAttacks = 2.0f;
@@ -154,7 +166,12 @@ inline SLdrBlogg::SLdrBlogg()
   maxBallPursuitTime = 5.0f;
   minDelayBetweenMeleeAttacks = 2.0f;
   maxCollisionTime = 0.2f;
+#ifdef TARGET_PC
+  // fn_7_E5C 0xEA0/0xEA8: li r0,-1; stw r0,0x4d0(r31).
+  mouthOpenSound = -1;
+#else
   mouthOpenSound = 0;
+#endif
   isMegaBlogg = false;
   projectileBlurRadius = 4.0f;
   projectileBlurTime = 4.0f;
