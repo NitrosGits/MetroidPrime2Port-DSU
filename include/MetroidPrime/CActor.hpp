@@ -276,6 +276,9 @@ public:
   uint GetAddedToken() const { return mAddedToken; }
   void SetAddedToken(uint token) const { mAddedToken = token; }
   bool UsesAlphaSorting() const { return mAlphaSorted; }             // Guessed accessor name.
+#ifdef TARGET_PC
+  void SetUseAlphaSorting(bool b) { mAlphaSorted = b; } // Guessed accessor name.
+#endif
   bool UsesPortalVisibility() const { return mUsePortalVisibility; } // Guessed accessor name.
 
   void SetDrawToken(uint token) const { mDrawnToken = token; }

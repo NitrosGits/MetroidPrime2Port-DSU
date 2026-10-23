@@ -36,7 +36,15 @@ public:
   , mDamageLoopSfxId(0xffff)
   , mSamusVoiceSfxId(0xffff)
   , mNoImmunity(noImmunity)
+#ifdef TARGET_PC
+  // Retail's inline stores clear 0x40 (mApplyRadiusDamage) whatever noImmunity is:
+  // CWeapon::Think 0x800DB094 li r6,0 / 0x800DB0B8 rlwimi r0,r6,6,25,25, and likewise
+  // CPlayerKnockBackMgr 0x801BF720/0x801BFFCC, CBouncyGrenade::Explode 0x8016E72C,
+  // CGunWeapon::GetDamageInfo 0x801DA2B8, CScriptTrigger 0x80072898, DropPowerBomb 0x801CA190.
+  , mApplyRadiusDamage(false) {}
+#else
   , mApplyRadiusDamage(!noImmunity) {}
+#endif
 
   CDamageInfo(const CWeaponMode& mode, float damage, float radius, float knockback, bool noImmunity,
               bool applyRadiusDamage)
