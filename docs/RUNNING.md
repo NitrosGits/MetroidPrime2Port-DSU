@@ -393,6 +393,12 @@ steps and at the end. drkc drives Temple Grounds dark 06_temple_sacredpath_dark'
 Activate, placement, damage and `obj` reads, with `objs DarkCommando` listing both at f200 and f4000.
 plac drives Agon Wastes 00_mapstation_sand's two inactive PlayerActors u065b and u0446 through Activate, Deactivate and `obj` reads, with `objs ScriptPlayerActor` listing both at f200 and f1800.
 ming boots Agon Wastes 0a_sand_hall_dark with the two MinorIngs u0455/u0432 (hp 20/20), Activates the inactive one, forces Patrol/PointPathFind/Dead, shoots one (20 -> 15 hp), damages it (15 -> 13), deletes it and closes with `objs MinorIng` (1 object left); snak boots Torvus Bog 01_swamp_entrance with SnakeWeedSwarm u0481 (41 weeds), Create/Activates it, places it 4 units from the player, shoots it twice (beam + charged, ScareSnakeWeeds), Deactivates/Activates and Deletes it (0 objects at the end). Both are NC (fast mode would finish before con.py connects).
+eyeb drives Temple Grounds dark 0q_temple_hall_dark's four Corrupted Sentreyes u047a/u0476/u0452/u041d:
+activate and place u041d, force Active/Cover/Flinch, send Alert, shoot it (power beam and missile),
+kill it, with `objs EyeBall` counting four down to three. kroc drives Torvus Bog 0h_swamp_hall's three
+Krocusses u045b/u0447/u0441: activate and place u045b, force Sniff/Stop, send Increment/Decrement,
+damage it (hp 60 -> 50 -> 40) once its wings open, kill it, with `objs Krocuss` counting three down
+to two.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
