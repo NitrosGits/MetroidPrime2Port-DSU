@@ -53,6 +53,14 @@ inline SLdrPillBug::SLdrPillBug()
   unknown_0x0f991bf1 = 1.5f;
   unknown_0x385a1bed = 0.60000002f;
   unknown_0xcf4ea141 = 1.5f;
+#ifdef TARGET_PC
+  // fn_48_AA4: 2.0 (rodata 0x0) at +0x88 (0xAE8 lfs f0 / 0xAF4 stfs f0,0x88), CColor(1.0 x4,
+  // rodata 0x4) at +0x294 (0xAEC lfs f1 / 0xB04 bl CColor / 0xB18 stw r0,0x294), 0xF at +0x2E4
+  // (0xB1C li r0,0xf / 0xB28 stw r0,0x2e4).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrPillBug::~SLdrPillBug() {}

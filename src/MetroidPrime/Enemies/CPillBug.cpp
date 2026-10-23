@@ -42,6 +42,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"ReturnToPath", static_cast< CPatterned::StateMachine::StateFunc >(&CPillBug::ReturnToPath)},
 };
 
+// @ fn_48_3B2C
 CPillBug::CPillBug(TUniqueId uid, const rstl::string& name, EFlavorType flavor, CEntityInfo& info,
                    const CTransform4f& xf, const CModelData& modelData,
                    const CPatternedInfo& patternedInfo, const CActorParameters& actorParams,
@@ -150,6 +151,7 @@ void CPillBug::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_48_3694
 void CPillBug::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -167,6 +169,7 @@ const CDamageVulnerability* CPillBug::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_48_3598
 rstl::optional_object< CAABox > CPillBug::GetTouchBounds() const {
   const float radius = mColSphere.GetSphere().GetRadius();
   const CVector3f position = GetTranslation();
@@ -174,10 +177,12 @@ rstl::optional_object< CAABox > CPillBug::GetTouchBounds() const {
                                                 position + CVector3f(radius, radius, radius)));
 }
 
+// @ fn_48_358C
 bool CPillBug::IsOnGround() const { return mLanded; }
 
 bool CPillBug::IsOnStaticGround() const { return mTouchingStaticGround; }
 
+// @ fn_48_3564
 CVector3f CPillBug::GetAimPosition(const CStateManager& mgr, float dt) const {
   return GetTranslation();
 }
@@ -188,6 +193,7 @@ void CPillBug::ThinkAboutMove(float dt) {
   }
 }
 
+// @ fn_48_3458
 void CPillBug::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                             CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr);
@@ -386,6 +392,7 @@ int CPillBug::GetCurrentConstraint() const {
   return mPlanarConstraint;
 }
 
+// @ fn_48_2A1C
 CDamageInfo CPillBug::GetContactDamage() const {
   if (mMode == kM_Injured) {
     return CDamageInfo();
@@ -393,10 +400,13 @@ CDamageInfo CPillBug::GetContactDamage() const {
   return CPatterned::GetContactDamage();
 }
 
+// @ fn_48_2A10
 bool CPillBug::Attacked(CStateManager& mgr, const CTriggerData& data) const { return mAttacked; }
 
+// @ fn_48_2A04
 bool CPillBug::Bombed(CStateManager& mgr, const CTriggerData& data) const { return mBombed; }
 
+// @ fn_48_2968
 bool CPillBug::HasReturnPath(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   const TUniqueId connected = FindConnectedObject(mgr, kSS_InternalState0, kSM_None);
@@ -408,14 +418,18 @@ bool CPillBug::HasReturnPath(CStateManager& mgr, const CTriggerData& data) const
   return result;
 }
 
+// @ fn_48_295C
 bool CPillBug::PathOver(CStateManager& mgr, const CTriggerData& data) const { return mPathOver; }
 
+// @ fn_48_2948
 bool CPillBug::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimSubState == 2;
 }
 
+// @ fn_48_293C
 bool CPillBug::Landed(CStateManager& mgr, const CTriggerData& data) const { return mLanded; }
 
+// @ fn_48_2930
 bool CPillBug::HitPlayer(CStateManager& mgr, const CTriggerData& data) const { return mHitPlayer; }
 
 bool CPillBug::CloseToPath(CStateManager& mgr, const CTriggerData& data) const {
@@ -520,6 +534,7 @@ void CPillBug::PatrolImpl(CStateManager& mgr, EStateMsg msg, float dt, bool fast
   }
 }
 
+// @ fn_48_21D4
 void CPillBug::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     x861_24_ = true;
@@ -527,6 +542,7 @@ void CPillBug::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   PatrolImpl(mgr, msg, dt, false);
 }
 
+// @ fn_48_2014
 void CPillBug::FastPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mColSphere = CCollidableSphere(CSphere(CVector3f::Zero(), mRollRadius), GetMaterialList());
