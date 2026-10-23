@@ -1,0 +1,30 @@
+# con1: console spawn/obj/setarea fixes, in 08_sand_casualpirates (area 54 = 0x36).
+# ancs u04d0 followed by an option keeps the donor's character 1; rules/wpsc defaults; refusals;
+# conn; obj body state; the Attack state firing with the default WPSC; setarea on an unloaded area.
+@f300 god 1
+@f330 spawn CHOG ancs u04d0 fsm 5652a12f
+@f332 spawn CHOG ancs u04d0 fsm 5652a12f wpsc deadbeef
+@f333 spawn CHOG ancs u04d0 fsm 5652a12f rules deadbeef
+@f336 spawn CHOG inactive ancs u04d0 fsm 5652a12f conn Dead Activate e0036ff00 conn Dead Reset u04d0
+@f340 obj e0036ff01; obj e0036ff00
+@f342 place e0036ff00 player 6; statecall e0036ff00 Attack 0
+@f343 statecall e0036ff00 Attack 1 0.1
+@f344 statecall e0036ff00 Attack 1 0.1; uevent e0036ff00 0; objs projectile
+@f345 statecall e0036ff00 Attack 1 0.1
+@f346 statecall e0036ff00 Attack 1 0.1; uevent e0036ff00 0
+@f347 statecall e0036ff00 Attack 1 0.1
+@f348 statecall e0036ff00 Attack 1 0.1
+@f349 statecall e0036ff00 Attack 1 0.1
+@f350 statecall e0036ff00 Attack 1 0.1
+@f352 statecall e0036ff00 Attack 1 0.1
+@f354 statecall e0036ff00 Attack 1 0.1
+@f356 statecall e0036ff00 Attack 1 0.1
+@f358 statecall e0036ff00 Attack 1 0.1
+@f360 statecall e0036ff00 Attack 2
+@f362 objs projectile; objs bolt
+@f420 setarea u04d0 0
+@f421 setarea u04d0 54
+@f430 obj u04d0
+@f600 obj e0036ff00
+@f700 kill e0036ff01
+@f720 obj e0036ff00
