@@ -1,0 +1,18 @@
+# AtomicBeta (module 5: CAtomicBeta, script type ATMB - "Diligence" Class Drone, a flyer with
+# electric beams and static interference; states Patrol/Dead).
+# Sanctuary Fortress 0b_cliff_hall (world 1baa96c2, layer 3): four AtomicBetas, e0c030091,
+# e0c03009f, e0c0300a2 and e0c0300a3; layer 3 holds them. The steps enable the layer, list them,
+# activate and place one, damage it so its hp drops, shoot it, and damage a second one.
+# Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): its layer
+# loads after boot. F=2400, last check f2200.
+@f260 god 1; layer 3
+@f300 objs AtomicBeta
+@f320 send e0c030091 Activate; send e0c03009f Activate
+@f340 place e0c030091 player 6
+@f400 damage e0c030091 2 dark
+@f420 obj e0c030091
+@f500 shoot e0c030091
+@f600 damage e0c03009f 2 dark
+@f620 obj e0c03009f
+@f900 objs AtomicBeta
+@f2200 objs AtomicBeta

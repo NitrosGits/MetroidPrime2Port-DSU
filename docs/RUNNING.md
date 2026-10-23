@@ -239,7 +239,8 @@ Grounds 0b_temple_hall), gbug (Great Temple 0i_temple_hall), pssm (Torvus Bog 0g
 02_sand_sandfalls_dark), splinter (Temple Grounds 02_temple_exploration), rptl (Temple Grounds
 12_temple_finalgate), chog (Agon Wastes 08_sand_casualpirates, which spawns two ChozoGhosts with a
 borrowed SpacePirate body and drives every state) and drkc (Temple Grounds dark
-06_temple_sacredpath_dark)
+06_temple_sacredpath_dark), atma (Great Temple 0l_temple_hall,
+two AtomicAlphas) and atmb (Sanctuary Fortress 0b_cliff_hall layer 3, AtomicBetas)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),

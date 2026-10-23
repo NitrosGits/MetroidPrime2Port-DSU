@@ -1,0 +1,20 @@
+# AtomicAlpha (module 2: CAtomicAlpha, script type ATMA - "Harmony" Class Drone, a flyer that
+# drops bombs and reacts to a charged beam; states Patrol/Pathfind/Attack/Dead).
+# Great Temple 0l_temple_hall (world 863fcd72, layer 0): two AtomicAlphas, e000300a4 and
+# e000300b4. The steps boot the area, list them, activate and place one, damage it so its hp
+# drops, force its Attack state, shoot it, and damage the second one.
+# Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): its area
+# boots quickly. F=2400, last check f2200.
+@f280 god 1
+@f300 objs AtomicAlpha
+@f320 send e000300a4 Activate; send e000300b4 Activate
+@f340 place e000300a4 player 6
+@f400 damage e000300a4 10
+@f420 obj e000300a4
+@f500 fsm e000300a4 Attack
+@f520 obj e000300a4
+@f600 shoot e000300a4
+@f700 damage e000300b4 10
+@f720 obj e000300b4
+@f900 objs AtomicAlpha
+@f2200 objs AtomicAlpha
