@@ -506,11 +506,26 @@ bool CSnakeWeedSwarm::PlaceSnakeWeedAtPoint(const CVector3f& point, CStateManage
   return false;
 }
 
+// Retail fn_71_69C: SLdrSnakeWeedSwarm's constructor, the loader's defaults (the call at fn_71_DC
+// 0xFC, on the loader's stack object). The generated header's inline constructor stores the same
+// floats and damage info, except the sound ids: the guest's default for every sound id is -1 (no
+// sound), the header's 0. Those -1 stores are written over it here. The generated struct is 0xC
+// bytes larger than the guest's from the actor-parameters block on, so guest 0x10c is the port's
+// sound_Looped (0x118): the three stores the `li r0,-0x1` at 0x000006CC feeds, 0x10c
+// (0x000006D4), 0x110 (0x000006E4) and 0x114 (0x000006F0). A property in the instance's data
+// overwrites any of them.
+static void x69C_SoundDefaults(SLdrSnakeWeedSwarm& sldr) {
+  sldr.sound_Looped = -1;      // 0x000006D4 (0x10c)
+  sldr.sound_IntoGround = -1;  // 0x000006E4 (0x110)
+  sldr.sound_OutofGround = -1; // 0x000006F0 (0x114)
+}
+
 // Retail fn_71_DC (0x544). Property ids and order are the generated SLdrSnakeWeedSwarm reader's;
 // the REL's switch compares the same 22 ids. The REL then builds a CAnimRes on its stack (ancs,
 // character, scale 1,1,1, initial animation, loop true) and constructs the 0x298-byte object.
 static CEntity* PortLoadSnakeWeedSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSnakeWeedSwarm sldrThis;
+  x69C_SoundDefaults(sldrThis);  // fn_71_69C's -1 sound ids (0xFC)
 #include "MetroidPrime/ScriptLoader/SLdrSnakeWeedSwarm.inc"
 
   // Host guard (retail builds the CModelData unconditionally): an object with no character set
