@@ -41,6 +41,7 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/Cameras/CFirstPersonCamera.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
+#include "MetroidPrime/CSlideShow.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
 #include "MetroidPrime/Player/CMorphBall.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
@@ -610,6 +611,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "screenshot                  the F12 capture; the log names the file it wrote\n"
       "at <update> <command>       run one command on that game update (`frame`), not on arrival,\n"
       "                            so runs at different speeds act on the same tick\n"
+      "gallery [mask]              the slideshow gallery unlock mask (0..63): print, or set via PercentScans/mode flags\n"
       "help                        this list\n"
       "a; b; c                     run several commands in the same game tick (one reply each)\n";
 }
@@ -1245,6 +1247,48 @@ void CmdLiveSplit(CStateManager&, const Args& args, std::string& out) {
   if (!error.empty()) {
     out += "last error: " + error + "\n";
   }
+}
+
+// gallery [mask]: the gallery unlock mask CSlideShow::GetGalleriesUnlocked() returns (0x2B14 in the
+// ScriptGui module deactivates the gallery entry on 0; a forced ShowSlideShow with 0 faults in retail
+// too). The mask is derived, not stored: bits 0-3 are PercentScans >= 40/60/80/100, bit 4 is
+// NormalModeCompleted, bit 5 HardModeCompleted. A set writes those three variables, so only a mask
+// whose low four bits are contiguous (0, 1, 3, 7, 15 plus 16/32) is representable.
+void CmdGallery(CStateManager&, const Args& args, std::string& out) {
+  if (gpGameState == nullptr) {
+    Fail("no game state");
+    return;
+  }
+  if (args.size() > 2) {
+    Fail("gallery [mask]");
+    return;
+  }
+  if (args.size() == 2) {
+    char* end = nullptr;
+    const std::string text(args[1]);
+    const unsigned long mask = std::strtoul(text.c_str(), &end, 0);
+    if (end == text.c_str() || *end != '\0' || mask > 63) {
+      Fail("gallery [mask]: mask is 0..63");
+      return;
+    }
+    const unsigned low = mask & 15;
+    if (low != 0 && (low & (low + 1)) != 0) {
+      Fail("gallery: bits 0-3 must be contiguous from bit 0 (0, 1, 3, 7, 15)");
+      return;
+    }
+    static const int kPercent[] = {0, 40, 60, 80, 100};
+    int count = 0;
+    while ((low >> count) & 1) {
+      ++count;
+    }
+    CGameStateEnvVarManager& vars = gpGameState->SystemOptions().EnvVars();
+    vars.FindEnvironmentVariable("PercentScans")->Set(kPercent[count]);
+    vars.FindEnvironmentVariable("NormalModeCompleted")->Set((mask & 16) != 0 ? 1 : 0);
+    vars.FindEnvironmentVariable("HardModeCompleted")->Set((mask & 32) != 0 ? 1 : 0);
+  }
+  char line[64];
+  std::snprintf(line, sizeof(line), "gallery mask %u\n", CSlideShow::GetGalleriesUnlocked());
+  out += line;
 }
 
 // logfile [0|1]: the F1 Testing row (`MP2_LOG_FILE`) - everything the process prints also goes
@@ -4010,6 +4054,7 @@ constexpr SCommand kCommands[] = {
     {"cardbackup", CmdCardBackup, true},
     {"logfile", CmdLogFile, true},
     {"livesplit", CmdLiveSplit, true},
+    {"gallery", CmdGallery, true},
     {"settings", CmdSettings, true},
     {"gunoffset", CmdGunOffset, true},
     {"msaa", CmdMsaaAniso, true},

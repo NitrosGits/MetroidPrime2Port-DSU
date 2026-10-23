@@ -70,6 +70,10 @@ Console scripts for `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmd
 `@f<n> <cmd>` or `@<secs> <cmd>`. Each run of `@f` lines is queued up front through the console's
 `at <n> <cmd>` (one `at` per `;` part), so a command runs exactly at update n even unpaced;
 `CON_POLL=1` restores the old polling of `frame` (late by many updates in a fast run).
+`gallery [mask]` prints the slideshow gallery unlock mask (0..63) or sets it (via PercentScans and the
+normal/hard-mode flags); the front-end driver `tools/drivers/slideshow_gallery.con` (FrontEnd world,
+`SKIP_FRONTEND=0`) sets 63 and opens the slideshow. KNOWN: with mask 63 the update loop stops once the
+slideshow is up, so the console no longer answers and the run ends by timeout.
 Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`; a state in
 an FSM2 sub-machine is entered through it, and the reply names the machine; a name the machine does
 not have is reported as `unknown state 'X'; valid names: ...` with the names it has - the actor's

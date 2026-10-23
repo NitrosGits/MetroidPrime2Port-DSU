@@ -1,0 +1,17 @@
+# Gallery slideshow smoke (FrontEnd 69802220,cee3af0d, run with SKIP_FRONTEND=0): `gallery 63` unlocks
+# all six galleries (a forced ShowSlideShow with mask 0 faults in retail too), `send e0
+# InternalMessage13` is ShowSlideShow. The update counter stops while the slideshow runs (`@f` lines
+# after it never fire), so the steps after it are unprefixed (sent once the previous one is
+# answered) and the presses hold until the next one (`0` updates): right x3, a, left, then B exits.
+@f100 send e0 Unlock
+@f110 gallery
+@f120 gallery 63
+@f200 send e0 InternalMessage13
+@3 status
+press right 0
+press right 0
+press right 0
+press a 0
+press left 0
+press b 0
+status
