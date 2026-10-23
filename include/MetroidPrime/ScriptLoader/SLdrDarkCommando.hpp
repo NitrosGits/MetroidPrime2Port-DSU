@@ -32,6 +32,7 @@ struct SLdrDarkCommandoEMPData {
   int sound_GrenadeExplode;     // 0xaf6aad88
 };
 
+// @ fn_3_14B8
 inline SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData()
 : grenadeDamage()
 , grenadeExplosion(kInvalidAssetId)
@@ -59,8 +60,10 @@ inline SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData()
 #endif
 }
 
+// @ fn_3_1460
 inline SLdrDarkCommandoEMPData::~SLdrDarkCommandoEMPData() {}
 
+// @ fn_3_1198
 inline void LoadTypedefDarkCommandoEMPData(SLdrDarkCommandoEMPData& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
@@ -148,6 +151,7 @@ struct SLdrDarkCommandoChargeBeamData {
   SLdrAudioPlaybackParms sound_Mold; // 0xf5cfb8af
 };
 
+// @ fn_3_10E8
 inline SLdrDarkCommandoChargeBeamData::SLdrDarkCommandoChargeBeamData()
 : damage(), projectile(kInvalidAssetId), moldEffect(kInvalidAssetId), moldDamage(), sound_Mold() {
   postFireIdleTime = 2.0f;
@@ -160,8 +164,10 @@ inline SLdrDarkCommandoChargeBeamData::SLdrDarkCommandoChargeBeamData()
   moldDamage.dI_Damage = 0.083329998f;
 }
 
+// @ fn_3_1078
 inline SLdrDarkCommandoChargeBeamData::~SLdrDarkCommandoChargeBeamData() {}
 
+// @ fn_3_ECC
 inline void LoadTypedefDarkCommandoChargeBeamData(SLdrDarkCommandoChargeBeamData& sldrThis,
                                                   CInputStream& input) {
   const int propertyCount = input.ReadUint16();
@@ -224,6 +230,7 @@ struct SLdrDarkCommandoShadowDashData {
   SLdrDamageVulnerability shadowDashVulnerability;  // 0xed067447
 };
 
+// @ fn_3_E3C
 inline SLdrDarkCommandoShadowDashData::SLdrDarkCommandoShadowDashData()
 : shadowDecoyFx(kInvalidAssetId)
 , sound_ShadowDecoy()
@@ -237,8 +244,10 @@ inline SLdrDarkCommandoShadowDashData::SLdrDarkCommandoShadowDashData()
   shadowDecoyHP = 20.0f;
 }
 
+// @ fn_3_DB4
 inline SLdrDarkCommandoShadowDashData::~SLdrDarkCommandoShadowDashData() {}
 
+// @ fn_3_BC8
 inline void LoadTypedefDarkCommandoShadowDashData(SLdrDarkCommandoShadowDashData& sldrThis,
                                                   CInputStream& input) {
   const int propertyCount = input.ReadUint16();
@@ -309,6 +318,7 @@ struct SLdrDarkCommandoData {
   SLdrDarkCommandoShadowDashData shadowDashInfo;       // 0x18247aec
 };
 
+// @ fn_3_B14
 inline SLdrDarkCommandoData::SLdrDarkCommandoData()
 : bladeDamage()
 , sound_ImpactRagDoll()
@@ -325,8 +335,10 @@ inline SLdrDarkCommandoData::SLdrDarkCommandoData()
   bladeDamage.dI_KnockBackPower = 10.0f;
 }
 
+// @ fn_3_A80
 inline SLdrDarkCommandoData::~SLdrDarkCommandoData() {}
 
+// @ fn_3_89C
 inline void LoadTypedefDarkCommandoData(SLdrDarkCommandoData& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
@@ -407,6 +419,7 @@ inline SLdrDarkCommando::SLdrDarkCommando()
 #endif
 }
 
+// @ fn_3_820
 inline SLdrDarkCommando::~SLdrDarkCommando() {}
 
 #endif

@@ -378,6 +378,7 @@ void CDarkCommandoChargeBeam::ResolveCollisionWithActor(const CRayCastResult& re
 // @ fn_3_7E70
 CDarkCommandoChargeBeam::~CDarkCommandoChargeBeam() {}
 
+// @ fn_3_6FA0
 CDarkCommando::CDarkCommando(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CTransform4f& xf, const CModelData& modelData,
                              const CActorParameters& actorParams,
@@ -432,6 +433,7 @@ CDarkCommando::CDarkCommando(TUniqueId uid, const rstl::string& name, const CEnt
 // @ fn_3_6BF8
 CDarkCommando::~CDarkCommando() {}
 
+// @ fn_3_6A48
 void CDarkCommando::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -475,6 +477,7 @@ void CDarkCommando::PreThink(float dt, CStateManager& mgr) {
   CPatterned::PreThink(dt, mgr);
 }
 
+// @ fn_3_68B4
 void CDarkCommando::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -501,6 +504,7 @@ void CDarkCommando::Think(float dt, CStateManager& mgr) {
   UpdateSfx();
 }
 
+// @ fn_3_6748
 void CDarkCommando::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                     EUserEventType type, float dt) {
   bool handled = false;
@@ -543,6 +547,7 @@ void CDarkCommando::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& nod
   }
 }
 
+// @ fn_3_6664
 void CDarkCommando::Render(const CStateManager& mgr) const {
   const float alpha = mColor.GetAlpha();
   if (mAlive && mCloakFading) {
@@ -556,6 +561,7 @@ void CDarkCommando::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_3_6528
 void CDarkCommando::PreRender(CStateManager& mgr) {
   if (mRagDoll.get() && mRagDoll->IsPrimed()) {
     mRagDoll->PreRender(GetTranslation(), *ModelData());
@@ -593,6 +599,7 @@ void CDarkCommando::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
+// @ fn_3_62D0
 void CDarkCommando::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (mRagDoll.get()) {
     return;
@@ -626,6 +633,7 @@ void CDarkCommando::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_3_6284
 const CDamageVulnerability* CDarkCommando::GetDamageVulnerability() const {
   if (mWarpingIn || mWarpingOut) {
     return &CDamageVulnerability::PassThroughVulnerabilty();
@@ -1536,6 +1544,7 @@ void CDarkCommando::ReserveHint(CStateManager& mgr, TUniqueId id) {
   }
 }
 
+// @ fn_3_17A0
 void CDarkCommando::ThinkRagDoll(float dt, CStateManager& mgr, bool noRagDoll) {
   if (!noRagDoll) {
     if (!mRagDoll->IsPrimed()) {
@@ -1581,6 +1590,7 @@ void CDarkCommando::ThinkRagDoll(float dt, CStateManager& mgr, bool noRagDoll) {
   }
 }
 
+// @ fn_3_16FC
 void CDarkCommando::UpdateSfx() {
   if (mSfxHandle) {
     if (CSfxManager::IsPlaying(mSfxHandle) || CSfxManager::IsQueued(mSfxHandle)) {
@@ -1623,6 +1633,7 @@ void CDarkCommando::LeaveTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_3_19C
 CEntity* LoadDarkCommando(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDarkCommando sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrDarkCommando.inc"
@@ -1642,6 +1653,7 @@ CEntity* LoadDarkCommando(CStateManager& mgr, CInputStream& input, CEntityInfo& 
 }
 
 #ifndef MONOLITHIC
+// @ fn_3_16C
 static void SetFuncPtrs() {
   static SDarkCommando_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadDarkCommando;

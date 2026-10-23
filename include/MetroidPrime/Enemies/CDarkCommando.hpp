@@ -58,6 +58,7 @@ public:
 
   // CPatterned
   CProjectileInfo* ProjectileInfo() override;
+  // @ fn_3_8
   float GetGravityConstant() const override { return 50.f; }
   void SetupStateMachine(CStateManager& mgr) override;
 

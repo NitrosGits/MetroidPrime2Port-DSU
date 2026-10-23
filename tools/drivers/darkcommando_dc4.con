@@ -1,0 +1,24 @@
+# Queue all inputs before a fast run advances; each semicolon has its own reply.
+@f300 send u051a Activate; place u051a player 8
+@f350 fsm u051a Lurk
+@f450 codecall u051a DeactivateCloak; damage u051a 1
+@f480 codecall u051a DeactivateCloak; damage u051a 1
+@f510 codecall u051a DeactivateCloak; damage u051a 1
+@f540 codecall u051a DeactivateCloak; damage u051a 1
+@f570 codecall u051a DeactivateCloak; damage u051a 1
+@f600 codecall u051a DeactivateCloak; damage u051a 1
+@f630 codecall u051a DeactivateCloak; damage u051a 1
+@f660 codecall u051a DeactivateCloak; damage u051a 1
+@f690 codecall u051a DeactivateCloak; damage u051a 1
+@f720 codecall u051a DeactivateCloak; damage u051a 1
+@f750 codecall u051a DeactivateCloak; damage u051a 1
+@f780 codecall u051a DeactivateCloak; damage u051a 1
+@f810 codecall u051a DeactivateCloak; damage u051a 1
+@f840 codecall u051a DeactivateCloak; damage u051a 1
+@f870 codecall u051a DeactivateCloak; damage u051a 1
+@f900 codecall u051a DeactivateCloak; damage u051a 1
+@f930 codecall u051a DeactivateCloak; damage u051a 1
+@f960 codecall u051a DeactivateCloak; damage u051a 1
+@f990 codecall u051a DeactivateCloak; damage u051a 1
+@f1020 codecall u051a DeactivateCloak; damage u051a 1
+@f1100 obj u051a; status

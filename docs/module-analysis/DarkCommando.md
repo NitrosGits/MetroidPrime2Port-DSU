@@ -222,3 +222,150 @@ These are **not** evidence of dead code; their behaviour is settled by the asm t
 - `review_decomp_diff.sh 58da92ffc` after commit: MARK 32, with the body/arm evidence above;
   no code removals or shared-code edits. The script's ASM pass only selects Port*.cpp; the explicit
   full/correctness asmcheck runs above cover this upstream-named file.
+
+## dc4 runtime closure (2026-10-24)
+
+Base `39af4e5ef1cc103b37ac5136939952bdd8bbad8e`, branch `decomp/dc4`. **26 additional markers,
+96/100 B rows marked; four implicit copy constructors remain unmarked.** No new gameplay
+divergence was demonstrated: all three C++/header diffs contain marker comments only. The
+following evidence strengthens the earlier asm-only markers as well as closing the new bodies.
+It does not turn dc3's entire runtime-gap list into an all-arms claim.
+
+### New markers: per-body evidence
+
+`F` below means forced with the committed GDB spec plus console driver. Counts are compiler
+coverage, excluding `throw:true` edges. Host EH cleanup descendants need the further qualification
+below. These are executions of the real module bodies; dependency return values are forced only
+where explicitly stated. Retail source is the `auto_00_00000000_text.s` path cited in dc3.
+
+| fn_3_ | body | evidence / live arms |
+|---|---|---|
+| 8 | GetGravityConstant | Retail 0x8/0xC loads rodata_0 = 50; host inline getter ran 611 times in the final loader run (1/1 blocks). |
+| 16C | SetFuncPtrs | Branch-free registration; matching 100%; inlined into RELMain, whose 2/2 blocks ran once before the loader was called. |
+| 19C | LoadDarkCommando | Host CPP 10/10 branches; valid model and `spawn DRKC 1 inactive` missing-model refusal. F(loader spec): top-level actor-parameters hash changed to 0xfeedbeef, same encoded size, bytes restored at return; default actor parameters retained for that one actor. Final `.inc` coverage hits every case, default, loop entry/exit; consumed 4963/4963 bytes. Retail allocation caveat below. |
+| 820 | ~SLdrDarkCommando | Host stack teardown ran 3 times, 5/5 blocks; retail wrapper null/deleting arms have no references (see lifetime proof). |
+| 89C | LoadTypedefDarkCommandoData | 28/28 blocks, every property and unknown skip; F(loader spec) replaces lurkChance hash and restores its value; consumed 2934/2934 bytes. |
+| A80 | ~SLdrDarkCommandoData | Host 7/7 blocks; stack/member teardown, null/deleting wrapper proof below. |
+| B14 | SLdrDarkCommandoData default ctor | Branch-free retail initializer sequence at 0xB2C–0xBBC; normal host initialization ran; remaining host blocks are EH cleanup. |
+| BC8 | LoadTypedefDarkCommandoShadowDashData | 28/28 blocks; F(loader spec) replaces unknown_0xa0d037ee hash, then restores scalar; consumed 2293/2293 bytes. |
+| DB4 | ~SLdrDarkCommandoShadowDashData | Host 6/6 blocks; member teardown, wrapper proof below. |
+| E3C | SLdrDarkCommandoShadowDashData default ctor | Corrected the TSV's mistaken top-level-loader identity. Retail 0xE54 writes invalid asset at +0x10; 0xE5C/64/6C construct three audio records at +0x14/+0x2c/+0x44; 0xE74/7C construct vulnerabilities at +0x5c/+0x1b8. Stores 0xEA0/AC/B0/B4 initialize 25,40,25,20 (rodata_7C/8C/84). Branch-free normal initialization ran. The matching report retains the old, wrong symbol name; it is not identity evidence here. |
+| ECC | LoadTypedefDarkCommandoChargeBeamData | 24/24 blocks; F(loader spec) replaces postFireIdleTime hash, then restores scalar; consumed 213/213 bytes. |
+| 1078 | ~SLdrDarkCommandoChargeBeamData | Host 4/4 blocks; member teardown, wrapper proof below. |
+| 10E8 | SLdrDarkCommandoChargeBeamData default ctor | Branch-free retail defaults including two damage records and audio; normal host path ran, EH-only blocks excluded. |
+| 1198 | LoadTypedefDarkCommandoEMPData | 38/38 blocks; F(loader spec) replaces preFireIdleTime hash, then restores scalar; consumed 190/190 bytes. |
+| 1460 | ~SLdrDarkCommandoEMPData | Empty host destructor is elided; enclosing data/grenade teardown ran. Retail non-deleting member path is branch-free after its ABI guards, proven below; matching 100%. |
+| 14B8 | SLdrDarkCommandoEMPData default ctor | 2/2 host blocks; branch-free retail defaults, including dc1's -1 sound defaults. |
+| 16FC | UpdateSfx | 6/6 branches. F(lifecycle): zero handle; nonzero playing; queued; neither. Real queries run, their returns are forced; all four handle assertions PASS. |
+| 17A0 | ThinkRagDoll | 34/34 lines, 28/28 host branches. F(lifecycle + `kill`/`uevent 19`/`spawn WATR`): no ragdoll, creation/timer expiry, unprimed/primed, invalid fluid/wrong type/inactive/active water, over/continuing/fading/alpha conditions. Real physics Update runs before its over/continue result is forced. 0x193C–44 uses inclusive alpha >=1; 0x19A4/19A8 uses timer >0; 0x19B8–C0 uses timer <=0: unchanged NaN behavior. |
+| 6284 | GetDamageVulnerability | 6/6 branches. F(lifecycle + four `damage` calls): warp-in, warp-out, shadow dash, ordinary vulnerability. |
+| 62D0 | KnockBack | 21/21 lines, 24/24 branches; 13 F(knock spec + `damage`) cases, 65/65 assertions PASS. Covers existing ragdoll, knocked/dashing/alive gates, freeze, flinch/knock/hurl, dead non-hurl, four suppressed death followups and audible death. Checks all EnableAnimReaction arguments, base-call count, flags, freeze calls and sound-call count. Real base KnockBack runs; its reaction/followup outputs are replaced afterward to isolate this REL's logic from the DOL RULE evaluator. |
+| 6528 | PreRender | 16/16 branches. F(lifecycle): absent/unprimed/primed ragdoll, fade/warp flags, ordinary visibility. Retail warp bits at 0x658C/6594 and base fade flag agree. |
+| 6664 | Render | 10/10 branches. F(lifecycle): alive/dead, fading/not, alpha byte 0/128/255; both draw paths. Retail 0x66D4/D8 and 0x670C/10 are plain >0 comparisons, preserved. |
+| 6748 | DoUserAnimEvent | 16/16 branches. F(lifecycle + `uevent`): projectile EMP/beam/neither, dash begin/end on/off, animation end, ragdoll event, unhandled event/base fallback. |
+| 68B4 | Think | 12/12 branches. F(lifecycle): active/inactive, ragdoll priming, live/dead and frozen/unfrozen; one frozen result reapplied after real base Think to reach the subsequent bone-tracking gate. |
+| 6A48 | AcceptScriptMsg | 8/8 branches. F(`send` and lifecycle): activation/deactivation/delete/escape, OffGround frozen/unfrozen; base handler still runs. |
+| 6FA0 | CDarkCommando ctor | 45/45 lines, 28/32 reported non-throw edges; all normal-return branches ran. F(loader spec) invalidates the first mold asset temporarily; first actor retains an absent optional, second retains a real token. Four untaken edges descend solely from exception-cleanup blocks 42/53 in the original gcov metadata. Member copies are implicit, not missing implementations (pending marker treatment below). |
+
+### Lifetimes and ABI qualifications
+
+- Retail A80/DB4/1078/1460 are MWCC destructors with `this==0` and signed deleting-flag
+  guards. All direct call sites pass `r4=-1` and nonnull stack/member addresses: 0x398, 0x498,
+  0x848, 0xAA8, 0xAB4, 0xAC0, 0x6C94, 0x8DD8. The module's text/data references contain no
+  address-taken use of those wrappers; 820 has no references at all. Live stack teardown is
+  inlined in the loader. Therefore the wrapper's null/deleting arms are dead for these lifetimes,
+  while the host ordinary destructors and automatic member cleanup reproduce the live work.
+- Default constructors and the main ctor contain host exception-cleanup landing pads not present
+  in the retail body. Raw gcov (including `throw:true` edges and block ids) distinguishes them
+  from gameplay branches. Do not interpret 28/32 as four missing ordinary ctor decisions.
+- Retail `__nw` null guards are **not proven dead retail branches**. Host `rs_new` is ordinary
+  throwing `new` (`include/Kyoto/Alloc/CMemory.hpp:52–63`), so those null-return paths cannot be
+  forced by normal host allocation failure. The new markers cover the host normal-return paths;
+  retail OOM behavior remains an explicit ABI limitation, also applicable to the older decoy/beam
+  allocation markers. No fake null result was injected into throwing `new`.
+
+### Earlier-marker coverage strengthened
+
+| bodies | forced setup and outcome |
+|---|---|
+| GetUp / WarpOut | `statecall` messages 0/1/2 plus lifecycle spec: GetUp 7/8 (only invalid EStateMsg final else untaken; retail enum is 0..2), WarpOut 14/14. Ready/not-ready command gate; generation/not-generation; cloak alpha; frozen; deletion tail all ran. |
+| Null target paths | Lifecycle spec clears target for SelectMeleeVariant, ShouldMeleeAttack, SetTargetFaceVect, SelectDashTarget, BuildActionChoices, LaunchGrenade, FireChargeBeamShot and UpdateAdditiveAim. Attack spec covers MeleeAttack, FireChargeBeam, FireEMP before/after warmup. These are forced executions, not dead-code claims. |
+| MeleeAttack / FireEMP / FireChargeBeam | Grand Puzzle layer 8, real team manager: temporary capacity/time inputs produce no-team, permitted and denied Starts for all three states; **9/9 readiness assertions PASS**, plus corresponding EndAttack permutations. Only MeleeAttack's variant result is forced to 0 after its real selector returns, to isolate team permission. MeleeAttack 15/16 and FireChargeBeam 13/14 have only invalid-message else untaken; FireEMP retains angle/valid-target gaps (20/24). |
+| ChargeBeam Think / collision | Real projectile/mold lifecycle, safe-zone query returns forced false/true after real calls; timer >=5, invalid player/effect paths. Think 16/16. Collision ran both safe-zone outcomes but remains 14/20; this is not full collision coverage. |
+| CShadowDecoy | Missing effect, zero health, forced deletable result, ordinary update and Delete emitter cleanup. Think 9/10: redundant final effect-null arm is dead by the dc3 same-pointer/no-intervening-writer proof; AcceptScriptMsg 4/4. Visor attempts include dark/echo/combat and null effect, but AddToRenderer remains 7/8: one live visor arm still lacks proof. |
+| UpdateCloak | 16/16 in the combined dc4 runs, including real combat/dark visor switches. |
+
+Other previous-marker gaps remain, including collision optional/token gates, beam ctor optional
+copy, several attack geometry/aim/choice paths, and decoy constructor effect-null. Counts in the
+retained coverage table are the authoritative scope of these runs, not evidence that older markers
+were all exercised. The four remaining **B** rows are `7880`, `797C`, `7D40`, `7DDC`: implicit
+copies of main/shadow/charge/EMP data, respectively. Each compiler-generated retail copy is
+100% matching and copies run through actor/projectile construction. There is no explicit source
+body to place a conventional marker above. Their B classifications are unchanged; marker versus
+host-copy treatment is left to the orchestrator. No artificial copy implementation was introduced.
+
+### Reproduction and retained evidence
+
+Run `tools/games_running.sh --wait` before each; all use the coverage-enabled `build-port-link`:
+
+    MP2_FAST_LOAD=1 SECS=360 tools/cov/force.sh tools/cov/specs/darkcommando_dc4.py <knock> \
+      3bfa3eff,06_temple_sacredpath_dark --con tools/drivers/darkcommando_dc4.con --frames 2000 --fast
+    MP2_FAST_LOAD=1 SECS=360 tools/cov/force.sh tools/cov/specs/darkcommando_dc4_loaders.py <loaders> \
+      3bfa3eff,06_temple_sacredpath_dark --con tools/drivers/darkcommando_dc4_lifecycle.con --frames 2400 --fast
+    MP2_FAST_LOAD=1 SECS=360 tools/cov/force.sh tools/cov/specs/darkcommando_dc4_attacks.py <attacks> \
+      3bfa3eff,11_temple_grandpuzzle --con tools/drivers/darkcommando_dc4_attacks.con --frames 2700 --fast
+
+Successful original runs: knock (2000 updates), loaders (2400), attacks2 (2700); final loader
+rerun (2400) adds the top-level `.inc` default arm. All exited normally; `[port] caught` /
+`reach-stub` / Python exceptions / failed assertions **0**. Sacred Path is area 55; Grand Puzzle
+is area 29. Artificial entry inputs generally restore at return; injected dependency outputs
+and deliberate object lifecycle changes can persist for the run. No source probes.
+
+Evidence: `/tmp/opencode/reports/dc4-evidence/` contains successful game/console/forcing logs,
+the 65-check list, coverage summary, raw JSON, asm/check logs and matching-module report.
+Original `.gcno` plus `knock.gcda`, `loaders.gcda`, `attacks2.gcda` belong together; the final
+loader rebuild has a separate `loaders-final.gcno`/`.gcda` pair. Rename each copied pair to
+`CDarkCommando.cpp.gcno`/`.gcda` in scratch when running gcov. Never merge the two build cohorts.
+The original `coverage.txt` was generated after marker comments shifted source lines: identify
+rows by demangled function name, **not** its stale/missing retail-id column. Loader `.inc` and
+header coverage must be inspected in raw JSON; the CPP-only summary omits them.
+
+### Check findings and final gates
+
+- Host `ninja -C build-port-link metroid_prime2_port`: link completed, **0 FAILED**.
+  `gen_files_cmake.py --check`: rc 0. All four new Python specs compile syntactically.
+- TARGET_PC strip-diff: **CLEAN**; stronger check confirms all three edited source/header files
+  are byte-identical to base after removing marker comments, in both PC and non-PC paths.
+  `configure.py` and matching ninja succeeded: All **77.98% fuzzy / 54.39% matched**, Game Code
+  **94.14% / 63.29%**. Explicit `build/tools/dtk shasum -c config/G2ME01/build.sha1`:
+  **87 entries OK**, rc 0 (the incremental ninja run did not need to repeat CHECK).
+- `asmcheck` all tags: CPP 12 bodies / 48 findings (+ NOPOS), loader header 13 / 77.
+  Getter's one-line inline definition is not parsed (`MISSING fn_3_8`, 0 findings): manually
+  checked rodata 50 and 100% match. SetFuncPtrs is branch-free/100% matching and runtime
+  registration is established above. No unresolved gameplay divergence in these findings.
+- BIT/NOPOS: use dc3's 0xcb4/0xcb5 mapping. Ctor 0x732C–0x73B4 clears all twelve named flags;
+  Escape sets warp-request, events test dash/EMP/beam and set dash-moving, Render tests fading,
+  PreRender tests warp flags, KnockBack tests dash/knocked and sets knocked/hurled, vulnerability
+  tests warp/dash. The checker's offset-named fields are absent because upstream uses named
+  bitfields. Base fade-to-death is 0x420 mask 0x10 (`0x1950 rlwimi r0,r5,4,27,27`); all tests/stores agree.
+- CPP CALL/BRANCH/CALLS: constructor initializers implement bone tracking, projectile info,
+  vulnerability and main-data copies; temporary strings clean themselves up. Ctor optional
+  and copied vulnerability containers account for conditional work hidden from the lexical
+  checker. `TCastToConstPtr<CScriptWater>` and retail mutable cast perform the same lookup/type
+  test. Ragdoll `fn_3_1AD0` is the actual `single_ptr` assignment. Loader default constructors,
+  `CColor` defaults, member destructors and optional model copy are automatic C++ work;
+  `.inc` supplies the parsers/ReadBytes; LdrToActorParameters/LdrToTransform4f are the named
+  equivalents of retail LoadActorParameters/LoadEditorTransform.
+- Loader-header XSTORE: every cited `x<8-digit>` value is a **property hash comment**, not an
+  object byte offset (the checker even sums nested hashes). No stores were added. Actual
+  constructor offsets/defaults agree with the audited retail initializer sequences, including
+  dc1's PC defaults. CALL/CALLS: damage/audio/vulnerability constructors and member destructors
+  are implicit; LoadTypedefSLdrDamageInfo is named LoadTypedefDamageInfo here. `Free` is the
+  unreachable deleting-destructor wrapper arm covered by the lifetime proof above.
+- `retail_diff` (25 parsed new bodies): 3 call and 3 constant leads. Loader `89C` is in `.inc`,
+  `4D8` is the optional-model copy; 360 is `patterned.turnSpeed` in the loader header.
+  Ragdoll `1AD0` is `single_ptr` assignment. PreRender 255 and Render 1/255 are inlined CColor
+  float/byte conversions. No compare/NaN changes.
+- `review_decomp_diff.sh <base>`: the 26 MARK entries are resolved by the per-body table and
+  qualifications above. No gameplay code added/removed. The script's ASM pass selects only
+  Port*.cpp; explicit upstream-named CPP/header checks above supply the required review.
