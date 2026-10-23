@@ -1,0 +1,38 @@
+# FORCED arms (no shipped DBAR): the GRNT section arms of DestructibleBarrier (REL 13), which need a
+# GRNT script connection to a generated script object. 08_sand_casualpirates (42b935e4) has 79 SCGN
+# objects; 00360244 is a CScriptDebris, 00360245 a CScriptPickup. The player stands at (355.43,
+# -240.26, 3.79) and the barriers at the same height, chunks 1.0 high (the SLdr default), 5 hp each:
+# `damage 6` with the player teleported to a chunk's height destroys exactly that chunk (TakeDamage's
+# actor arm aims at the damage source's position).
+# A (e0036ff00): 1x1x10, a non-GRNT connection before the GRNT one; five hits from the top down give
+# five split-offs, the fifth past the four-section cap. B (e0036ff01): 1x1x6 to the pickup, which the
+# console deletes (PreRender/RenderChunks meet the gone actor before Think drops the section). C
+# (e0036ff02): GRNT to an editor id with no SCGN entry (GenerateScriptObject returns no object). D
+# (e0036ff03): 1x1x10, two split-offs in one tick: `damage` only queues the Damage message (a second
+# `damage` in the tick adds to the same hit), so `send Damage` runs TakeDamage at once and the second
+# split finds the generated sfx already played. E (e0036ff04): no base/full-row/full-layer model, in
+# view and never damaged (RenderChunks' null-model arms). The damage radius is 20, so the player is
+# teleported next to C and D.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/destructiblebarrier.py <out> \
+#   42b935e4,08_sand_casualpirates --con tools/drivers/destructiblebarrier_grnt.con --fast --frames 1000
+@f200 god 1
+@f210 spawn DBAR d 10 model c809d6aa prop cd4f7e71 1 prop 609c6240 1 prop a7f551f7 10 prop 605847b9 100.0 prop cd9c67fe 0.0 conn Down Activate e0036ff00 conn 0x47524e54 Activate e00360244
+@f212 spawn DBAR d 16 model c809d6aa prop cd4f7e71 1 prop 609c6240 1 prop a7f551f7 6 prop 605847b9 100.0 prop cd9c67fe 0.0 conn 0x47524e54 Activate e00360245
+@f214 spawn DBAR d 22 model c809d6aa prop cd4f7e71 1 prop 609c6240 1 prop a7f551f7 6 prop 605847b9 100.0 prop cd9c67fe 0.0 conn 0x47524e54 Activate e0036ffff
+@f216 spawn DBAR d 28 model c809d6aa prop cd4f7e71 1 prop 609c6240 1 prop a7f551f7 10 prop 605847b9 100.0 prop cd9c67fe 0.0 conn 0x47524e54 Activate e00360244
+@f218 spawn DBAR d 5 model c809d6aa prop a7f551f7 2 prop 605847b9 100.0 prop cd9c67fe 0.0 prop 396660b4 0xffffffff prop 48e25884 0xffffffff prop f1abb2c7 0xffffffff
+@f220 tp 355.43 -240.26 12.29; damage e0036ff00 6
+@f222 objs debris
+@f230 tp 355.43 -240.26 10.29; damage e0036ff00 6
+@f240 tp 355.43 -240.26 8.29; damage e0036ff00 6
+@f250 tp 355.43 -240.26 6.29; damage e0036ff00 6
+@f260 tp 355.43 -240.26 3.79; damage e0036ff00 6
+@f262 objs debris
+@f270 tp 355.43 -240.26 3.79; damage e0036ff01 6; tp 360 -258 3.79; damage e0036ff02 6
+@f272 objs pickup
+@f280 tp 360 -262 11.29; damage e0036ff03 6; send e0036ff03 Damage; tp 360 -262 7.29; damage e0036ff03 6; send e0036ff03 Damage
+@f282 objs debris
+@f290 tp 355.43 -240.26 3.79
+@f300 send e00360245 Delete
+@f320 objs pickup
+@f600 objs debris

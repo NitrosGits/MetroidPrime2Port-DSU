@@ -12,10 +12,10 @@ offset	fn	size	class	name	slice	what	marker
 00C1C	fn_13_C1C	15C	B	__ct__23SLdrDestructibleBarrierFv	db1	SLdr ctor: sound ids -1 fixed (db1), in the header	yes
 00D78	fn_13_D78	5C	B	MakeChunkModel__FUi	db1	upstream body; all arms (forced, spawn DBAR)	yes
 00DD4	fn_13_DD4	20	H	CModelDataNull__10CModelDataFv	db1	weak copy / implicit / template instance	no
-00DF4	fn_13_DF4	3D8	B	RenderChunks__26CScriptDestructibleBarrierCFRC13CStateManager	db1	section arms (876-882) need a GRNT connection; unmarked	no
+00DF4	fn_13_DF4	3D8	B	RenderChunks__26CScriptDestructibleBarrierCFRC13CStateManager	db2	upstream body; all live arms (forced, spawn DBAR + GRNT conn, db2); the IsNull anim-data arm is dead (MakeChunkModel builds only CModelDataNull or CStaticRes models)	yes
 011CC	fn_13_11CC	A8	B	Render__26CScriptDestructibleBarrierCFRC13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
 01274	fn_13_1274	50	B	AddToRenderer__26CScriptDestructibleBarrierCFRC13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
-012C4	fn_13_12C4	3B8	B	PreRender__26CScriptDestructibleBarrierFR13CStateManager	db1	section arms (802-806) need a GRNT connection; unmarked	no
+012C4	fn_13_12C4	3B8	B	PreRender__26CScriptDestructibleBarrierFR13CStateManager	db2	upstream body; all arms (forced, spawn DBAR + GRNT conn + send Delete at 1 tick/frame, db2)	yes
 0167C	fn_13_167C	3C	H	__dt__Q24rstl24optional_object<6CAABox>Fv	db1	weak copy / implicit / template instance	no
 016B8	fn_13_16B8	48	B	PreRenderAllViewports__26CScriptDestructibleBarrierFR13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
 01700	fn_13_1700	A8	B	GetAimPosition__26CScriptDestructibleBarrierCFRC13CStateManagerf	db1	upstream body; all arms (forced, spawn DBAR)	yes
@@ -27,7 +27,7 @@ offset	fn	size	class	name	slice	what	marker
 01934	fn_13_1934	24	B	GetPrimitiveTransform__26CScriptDestructibleBarrierCFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
 01958	fn_13_1958	34	B	GetCollisionPrimitive__26CScriptDestructibleBarrierCFv	db1	all arms but the null-mCollision fallback: mCollision only ever holds BuildCollision results	yes
 0198C	fn_13_198C	17C	B	OnChunkDestroyed__26CScriptDestructibleBarrierFRC9CVector3i	db1	upstream body; all arms (forced, spawn DBAR)	yes
-01B08	fn_13_1B08	6F8	B	TakeDamage__26CScriptDestructibleBarrierFR13CStateManager	db1	generator/section arms (701-723) need a GRNT connection; split-loop sfx-already-played arm (726) needs two splits in one hit; unmarked	no
+01B08	fn_13_1B08	6F8	B	TakeDamage__26CScriptDestructibleBarrierFR13CStateManager	db2	upstream body; all live arms (forced, spawn DBAR + GRNT conn + send Damage, db2); generated non-actor arm dead (every SCGN object type in the 291 areas is a CActor); EH-only pads	yes
 02200	fn_13_2200	78	H	__dt__Q24rstl35auto_ptr<23CCollidableOBBTreeGroup>Fv	db1	weak copy / implicit / template instance	no
 02278	fn_13_2278	48	H	push_back__Q24rstl36reserved_vector<15SBarrierSection,4>FRC15SBarrierSection	db1	weak copy / implicit / template instance	no
 022C0	fn_13_22C0	20	H	construct<15SBarrierSection>__4rstlFPvRC15SBarrierSection	db1	weak copy / implicit / template instance	no
@@ -47,7 +47,7 @@ offset	fn	size	class	name	slice	what	marker
 026A4	fn_13_26A4	104	B	AcceptScriptMsg__26CScriptDestructibleBarrierFR13CStateManagerRC10CScriptMsg	db1	upstream body; all arms (forced, spawn DBAR)	yes
 027A8	fn_13_27A8	8	B	GetDamageVulnerability__26CScriptDestructibleBarrierCFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
 027B0	fn_13_27B0	8	B	HealthInfo__26CScriptDestructibleBarrierFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
-027B8	fn_13_27B8	560	B	Think__26CScriptDestructibleBarrierFfR13CStateManager	db1	generator/section arms (545-549) need a GRNT connection; unmarked	no
+027B8	fn_13_27B8	560	B	Think__26CScriptDestructibleBarrierFfR13CStateManager	db2	upstream body; all arms (forced, spawn DBAR + GRNT conn, db2)	yes
 02D18	fn_13_2D18	E4	H	__as__17CBarrierChunkGridFRC17CBarrierChunkGrid	db1	weak copy / implicit / template instance	no
 02DFC	fn_13_2DFC	B0	H	__as__Q24rstl36vector<f,Q24rstl17rmemory_allocator>FRCQ24rstl36vector<f,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
 02EAC	fn_13_2EAC	C	H	clear__Q24rstl36vector<f,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no

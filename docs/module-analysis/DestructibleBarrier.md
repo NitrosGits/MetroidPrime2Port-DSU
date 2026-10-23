@@ -63,12 +63,49 @@ Dead or unreachable arms:
 
 Left unmarked:
 
-- Think 545-549, TakeDamage 701-723, PreRender 802-806 and RenderChunks 876-882 need a section, i.e. an
-  SConnection with state GRNT to a generator. `spawn` cannot add connections (needs a console option).
-- TakeDamage 726 (sfx already played inside the split loop): needs two split-offs from one hit.
+- TakeDamage/Think/PreRender/RenderChunks: marked by db2 (below).
 - Ctor: all lines ran, but gcov cannot attribute the six `IsNull() ? false : !IsDefinitelyOpaque()`
   ternary arms one by one.
 - SetDamageVulnerability: only other modules call it; never ran.
+
+## GRNT section arms (db2, 2026-10-23)
+
+A GRNT connection (`conn 0x47524e54 <msg> <editor id>`) names a generated (SCGN) script object that
+TakeDamage instantiates for each split-off top (`GenerateScriptObject`, asm 0x1FF4) while fewer than
+four sections exist (0x1FB4 `lwz 0x664; cmpwi 4; beq`), moves it to `mRenderXf * Translate(spawnPos)`
+(0x2028-0x2044), stores its id in the section (0x2048 `sth 0x214`), pushes the section and sends it
+Activate ('ACTV', 0x205C/0x2074). Think drops sections whose actor is gone (0x2868-0x28AC); PreRender
+(0x1330-0x13D8) and RenderChunks (0xFD4-0x11A4) bound and draw each section's grid at the actor's
+transform less the pivot (main grid bounds 0x364, section grid 0x4(section), actor flags 0xFC). The
+port matches all of it; no fix. Driver `tools/drivers/destructiblebarrier_grnt.con` (08_sand_casualpirates
+SCGN: 00360244 a CScriptDebris, 00360245 a CScriptPickup), **1 tick per frame** (the gone-actor arms of
+PreRender/RenderChunks need a render between the delete and the next Think; fast mode's 8 ticks per
+render always let Think drop the section first):
+
+    BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/destructiblebarrier.py <out> \
+      42b935e4,08_sand_casualpirates --con tools/drivers/destructiblebarrier_grnt.con --frames 1000
+    python3 tools/cov/gcov_report.py build-port-cov <db1 forced out>/gcov <out>/gcov --module DestructibleBarrier
+
+| arm | how |
+|---|---|
+| non-GRNT connection skipped, GRNT found | A: `conn Down Activate` before the GRNT one |
+| generated section, actor moved, Activate | A (debris), B (pickup) |
+| four-section cap (0x1FB8 beq) | A's fifth split-off (hit chunk 0 after 8, 6, 4, 2) |
+| no SCGN entry (0x200C beq) | C: GRNT to e0036ffff |
+| sfx already played inside the split loop (0x2098 bne) | D: two `damage` + `send Damage` in one tick |
+| Think erase / PreRender / RenderChunks gone actor | `send e00360245 Delete` (B's pickup) |
+
+Notes: `damage` only queues the Damage message, so two `damage` in a tick add up to one TakeDamage;
+`send <id> Damage` runs TakeDamage at once. TakeDamage's damage radius is 20 and aims at the damage
+source, so the driver teleports the player to the height of the chunk to destroy.
+
+Dead arms (db2):
+
+- TakeDamage 0x201C `beq` (generated object not a CActor): an SCGN scan of all 291 areas' generated
+  layers finds 19 types (DBR2 PCKP SOND MYSF MNNG EFCT ISSW SPBN SPLU SHRD SPLL SAFE PUFR GBUG MTDA
+  WAYP VGOO RADD), all CActor-derived. Line 738's other zero pair is an EH landing pad.
+- RenderChunks/GetChunkModel IsNull anim-data arm (e.g. 0x1040 `lwz r0,0x514(r25); cmplwi; bne`, the full-layer model's CAnimData): chunk models come
+  from MakeChunkModel (CModelDataNull or CStaticRes), never an animated model.
 
 Smoke family proposal `dbar`: area 42b935e4,08_sand_casualpirates, `tools/drivers/destructiblebarrier_forced.con`,
 1200 frames, god 1.

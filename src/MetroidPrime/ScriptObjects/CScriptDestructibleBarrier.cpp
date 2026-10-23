@@ -549,6 +549,7 @@ void CScriptDestructibleBarrier::Touch(CActor& actor, CStateManager& mgr) {
 // @ fn_13_3118
 void CScriptDestructibleBarrier::PreThink(float dt, CStateManager& mgr) {}
 
+// @ fn_13_27B8
 void CScriptDestructibleBarrier::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -682,6 +683,7 @@ static inline CTransform4f GetSpawnXf(const CTransform4f& xf, const SBarrierSect
   return xf * CTransform4f::Translate(section.mSpawnPos);
 }
 
+// @ fn_13_1B08
 void CScriptDestructibleBarrier::TakeDamage(CStateManager& mgr) {
   const float damage = GetHealthInfo()->GetInitialHP() - GetHealthInfo()->GetHP();
   HealthInfo()->SetHP(HealthInfo()->GetInitialHP());
@@ -822,6 +824,7 @@ void CScriptDestructibleBarrier::PreRenderAllViewports(CStateManager& mgr) {
   }
 }
 
+// @ fn_13_12C4
 void CScriptDestructibleBarrier::PreRender(CStateManager& mgr) {
   CAABox bounds = mGrid.GetBounds().GetTransformedAABox(mRenderXf);
   for (const SBarrierSection* it = mSections.begin(); it != mSections.end(); ++it) {
@@ -890,6 +893,7 @@ static inline const CModel* GetChunkModel(const CModelData& model) {
   return model.IsNull() ? nullptr : *model.PickStaticModel(CModelData::kWM_Normal);
 }
 
+// @ fn_13_DF4
 void CScriptDestructibleBarrier::RenderChunks(const CStateManager& mgr) const {
   GetActorLights()->ActivateLights();
   if (!mBaseModel.IsNull()) {
