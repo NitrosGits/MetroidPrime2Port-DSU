@@ -27,7 +27,7 @@ The NaN fix duplicates the whole `if` statement in both branches: a block that o
 | fn_27_E1A4 YellowHitReact, Deactivate | 0xE294 `bl SetupBodyVulnerabilities` | `ResetBodyVulnerabilities` |
 | fn_27_EAE4 Null | 0xEB24 `bl SetupBodyVulnerabilities` | `ResetBodyVulnerabilities` (gren1 marked Null before this fix) |
 | fn_27_8FC0 RestoreDefaultJointVulnerability | 0x8FEC `bl SetupBodyVulnerabilities` | `ResetBodyVulnerabilities` |
-| fn_27_FD2C AcceptScriptMsg, kSM_Landed | 0xFFF4 `bl RestoreDefaultJointVulnerability` | the Reset call inline |
+| fn_27_FD2C AcceptScriptMsg, kSM_Landed | 0xFFF4 `bl RestoreDefaultJointVulnerability` | `ResetBodyVulnerabilities(mgr)` (Reset, not Setup) |
 | fn_27_13C8 SLdrGrenchler ctor | 0x1438/0x143C: tailHitSound/tailDestroyedSound default -1 | 0 |
 
 The port's `ResetBodyVulnerabilities(mgr)` helper is gone (no PC caller left).
