@@ -345,18 +345,8 @@ void CDarkTrooper::FireSmallShot(CStateManager& mgr) {
       target += CVector3f(0.f, 0.f, 2.5f);
     }
 #ifdef TARGET_PC
-    // fn_12_46B4 0x4764/0x4780/0x479C: the three Range(-0.3, 0.3) draws land in z, y, then x (argument evaluation order
-    // is unspecified on the host).
-    {
-      const float jitterZ = mgr.Random()->Range(-0.3f, 0.3f);
-      const float jitterY = mgr.Random()->Range(-0.3f, 0.3f);
-      const float jitterX = mgr.Random()->Range(-0.3f, 0.3f);
-      target += CVector3f(jitterX, jitterY, jitterZ);
-    }
-#else
-#ifdef TARGET_PC
-    // fn_12_3F8C 0x403C/0x4058/0x4074, fadds 0x4088-0x4094: the three Range(-0.3, 0.3) draws land in z, y, then x (argument evaluation order
-    // is unspecified on the host).
+    // fn_12_46B4 0x4764/0x4780/0x479C: the three Range(-0.3, 0.3) draws
+    // land in z, y, then x (argument evaluation order is unspecified on the host).
     {
       const float jitterZ = mgr.Random()->Range(-0.3f, 0.3f);
       const float jitterY = mgr.Random()->Range(-0.3f, 0.3f);
@@ -367,7 +357,6 @@ void CDarkTrooper::FireSmallShot(CStateManager& mgr) {
     target += CVector3f(mgr.Random()->Range(-0.3f, 0.3f), mgr.Random()->Range(-0.3f, 0.3f),
                         mgr.Random()->Range(-0.3f, 0.3f));
 #endif
-#endif
     CVector3f toTarget = mGunTransform.GetTranslation() - target;
     toTarget.SetZ(0.f);
     if (toTarget.CanBeNormalized()) {
@@ -376,20 +365,15 @@ void CDarkTrooper::FireSmallShot(CStateManager& mgr) {
       forward.SetZ(0.f);
       if (forward.CanBeNormalized() && CVector3f::GetAngleDiff(forward, toTarget) < 0.7853982f) {
 #ifdef TARGET_PC
-        // fn_12_46B4 0x4868-0x48A8: LookAt's up vector is the gun transform's Z column (0x8c4/0x8d4/0x8e4).
-        LaunchProjectile(
-            CTransform4f::LookAt(mGunTransform.GetTranslation(), target, mGunTransform.GetColumn(kDZ)),
-            mgr, 5, kPA_None, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
-#else
-#ifdef TARGET_PC
-        // fn_12_3F8C 0x414C-0x418C: LookAt's up vector is the gun transform's Z column (0x8c4/0x8d4/0x8e4).
-        LaunchProjectile(
-            CTransform4f::LookAt(mGunTransform.GetTranslation(), target, mGunTransform.GetColumn(kDZ)),
-            mgr, 5, kPA_None, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+        // fn_12_46B4 0x4868-0x48A8: LookAt's up vector is the gun transform's Z column
+        // (0x8c4/0x8d4/0x8e4).
+        LaunchProjectile(CTransform4f::LookAt(mGunTransform.GetTranslation(), target,
+                                              mGunTransform.GetColumn(kDZ)),
+                         mgr, 5, kPA_None, false, CImpactVisorEffect::None(),
+                         CVector3f(1.f, 1.f, 1.f));
 #else
         LaunchProjectile(CTransform4f::LookAt(mGunTransform.GetTranslation(), target), mgr, 5,
                          kPA_None, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
-#endif
 #endif
       }
     }
@@ -406,8 +390,19 @@ void CDarkTrooper::FireMissile(CStateManager& mgr) {
     if (mgr.GetPlayer(0)->GetMorphballTransitionState() == CPlayer::kMS_Unmorphed) {
       target += CVector3f(0.f, 0.f, 2.5f);
     }
+#ifdef TARGET_PC
+    // fn_12_3F8C 0x403C/0x4058/0x4074, fadds 0x4088-0x4094: the three Range(-0.3, 0.3) draws
+    // land in z, y, then x (argument evaluation order is unspecified on the host).
+    {
+      const float jitterZ = mgr.Random()->Range(-0.3f, 0.3f);
+      const float jitterY = mgr.Random()->Range(-0.3f, 0.3f);
+      const float jitterX = mgr.Random()->Range(-0.3f, 0.3f);
+      target += CVector3f(jitterX, jitterY, jitterZ);
+    }
+#else
     target += CVector3f(mgr.Random()->Range(-0.3f, 0.3f), mgr.Random()->Range(-0.3f, 0.3f),
                         mgr.Random()->Range(-0.3f, 0.3f));
+#endif
     CVector3f toTarget = mGunTransform.GetTranslation() - target;
     toTarget.SetZ(0.f);
     if (toTarget.CanBeNormalized()) {
@@ -416,8 +411,17 @@ void CDarkTrooper::FireMissile(CStateManager& mgr) {
       forward.SetZ(0.f);
       if (forward.CanBeNormalized() && CVector3f::GetAngleDiff(forward, toTarget) < 0.7853982f &&
           mLineOfSightTracker.HasLineOfSight()) {
+#ifdef TARGET_PC
+        // fn_12_3F8C 0x414C-0x418C: LookAt's up vector is the gun transform's Z column
+        // (0x8c4/0x8d4/0x8e4).
+        LaunchProjectile(CTransform4f::LookAt(mGunTransform.GetTranslation(), target,
+                                              mGunTransform.GetColumn(kDZ)),
+                         mgr, 5, kPA_None, false, CImpactVisorEffect::None(),
+                         CVector3f(1.f, 1.f, 1.f));
+#else
         LaunchProjectile(CTransform4f::LookAt(mGunTransform.GetTranslation(), target), mgr, 5,
                          kPA_None, false, CImpactVisorEffect::None(), CVector3f(1.f, 1.f, 1.f));
+#endif
       }
     }
     if (!FacingPlayer(mgr, CTriggerData(0.f)) ||
@@ -905,7 +909,8 @@ void CDarkTrooper::SmallShotAttack(CStateManager& mgr, EStateMsg msg, float dt) 
     if (mSmallShotAttack.mFinished) {
       EndSmallShotAttack();
 #ifdef TARGET_PC
-      // fn_12_1D68 0x1EAC-0x1EB0 (b 0x1FE4): returns straight after the End call, skipping RotateToPoint/DeliverCommand.
+      // fn_12_1D68 0x1EAC-0x1EB0 (b 0x1FE4): returns straight after the End call, skipping
+      // RotateToPoint/DeliverCommand.
       return;
 #endif
     } else {
@@ -934,7 +939,8 @@ void CDarkTrooper::MissileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
     if (mMissileAttack.mFinished) {
       EndMissileAttack();
 #ifdef TARGET_PC
-      // fn_12_19C0 0x1B04-0x1B08 (b 0x1C40): returns straight after the End call, skipping RotateToPoint/DeliverCommand.
+      // fn_12_19C0 0x1B04-0x1B08 (b 0x1C40): returns straight after the End call, skipping
+      // RotateToPoint/DeliverCommand.
       return;
 #endif
     } else {
