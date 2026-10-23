@@ -49,8 +49,14 @@ inline SLdrDarkCommandoEMPData::SLdrDarkCommandoEMPData()
   grenadeMaxLaunchSpeed = 50.0f;
   grenadeNumBounces = 0;
   eMPDuration = 8.0f;
+#ifdef TARGET_PC
+  // __ct__23SLdrDarkCommandoEMPDataFv 0x14D4/0x150C/0x151C: li r0,-1; stw r0,0x40/0x44(r31).
+  sound_GrenadeBounce = -1;
+  sound_GrenadeExplode = -1;
+#else
   sound_GrenadeBounce = 0;
   sound_GrenadeExplode = 0;
+#endif
 }
 
 inline SLdrDarkCommandoEMPData::~SLdrDarkCommandoEMPData() {}
@@ -391,6 +397,14 @@ inline SLdrDarkCommando::SLdrDarkCommando()
   patterned.health.health = 150.0f;
   patterned.health.hI_KnockBackResistance = 2.0f;
   patterned.creatureSize = 1;
+#ifdef TARGET_PC
+  // LoadDarkCommando 0x218-0x254 (inlined ctor, struct at r1+0x400): retail defaults upstream
+  // lacks (stw 0x438 = 3, stb 0x66c = 1, stw 0x6e4 = 0xF, stw 0x694 = CColor(1,1,1,1)).
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrDarkCommando::~SLdrDarkCommando() {}

@@ -247,9 +247,18 @@ CDarkCommandoGrenade::~CDarkCommandoGrenade() { --sRelUseCount; }
 
 void CDarkCommandoGrenade::Think(float dt, CStateManager& mgr) {
   UpdateGrenadeFX(dt, mgr);
+#ifdef TARGET_PC
+  // 0x8C20-0x8C28: lbz r0,0x388; extrwi. r0,r0,1,24; beq 0x8D5C -- the EMP and delete run
+  // only once exploded.
+  if (!HasExploded()) {
+    return;
+  }
+  mEMPTime += dt;
+#else
   if (HasExploded()) {
     mEMPTime += dt;
   }
+#endif
   if (mData.eMPDuration > 0.f) {
     for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
       const float distance = (mgr.GetPlayer(i)->GetTranslation() - GetTranslation()).Magnitude();
@@ -1227,9 +1236,17 @@ void CDarkCommando::BuildActionChoices(CStateManager& mgr,
       CMaterialList(LineOfSightCharacterMaterial, LineOfSightPlayerMaterial,
                     LineOfSightCollisionActorMaterial, LineOfSightNoPlatformMaterial,
                     LineOfSightExcludeMaterial));
+#ifdef TARGET_PC
+  // 0x33F0-0x33F8: bl RayCollideWorld; clrlwi. r0,r3,24; beq 0x34A4 -- bail when the line of
+  // sight is blocked (RayCollideWorld returns true when clear).
+  if (!mgr.RayCollideWorld(start, end, filter, this)) {
+    return;
+  }
+#else
   if (mgr.RayCollideWorld(start, end, filter, this)) {
     return;
   }
+#endif
 
   if (InEMPRange(mgr)) {
     choices.push_back(TActionChoice(skEMPActionId, mData.eMPAttackChance));
