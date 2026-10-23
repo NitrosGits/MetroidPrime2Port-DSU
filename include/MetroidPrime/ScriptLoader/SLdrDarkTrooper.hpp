@@ -60,6 +60,16 @@ inline SLdrDarkTrooper::SLdrDarkTrooper()
   rangedAttackMaxRange = 18.0f;
   ragdollImpactSound = 0;
   firesMissiles = false;
+#ifdef TARGET_PC
+  // fn_12_B28: -1 at +0x4B0 (0xB74; retail never stores 0 there), 2.0 (rodata 0x50) at +0x88
+  // (0xBB8), 1 at +0x26C (0xBF4), CColor(1.0 x4) at +0x294 (0xBF8/0xC0C), 0xF at +0x2E4
+  // (0xC10 li r0,0xf / 0xC1C).
+  ragdollImpactSound = -1;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrDarkTrooper::~SLdrDarkTrooper() {}
