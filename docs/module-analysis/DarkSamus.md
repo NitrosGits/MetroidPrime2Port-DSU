@@ -165,7 +165,7 @@ The host does not reproduce the guest layout (the host object is larger than ret
 |---|---|---|
 | `mPathFindSearch` | 0x7C0 | the `CPathFindSearch` the retail builds; `GetSearchPath` returns it |
 | `mData` (`CDarkSamusData`) | - | the loader's 60 properties, named after the property each comes from. Retail spreads them over the sub-objects above; the host keeps them in one block for the later milestones |
-| `mGuestCD0` | 0xCD0 | the first byte of the sub-object `fn_10_E560` builds; `GetCollisionResponseType` reads it (0x6A when it is 1, else 0x2E). It stays 0 in the port, so the actor always answers 0x2E |
+| `mGuestCD0` | 0xCD0 | the first byte of the sub-object `fn_10_E560` builds; `GetCollisionResponseType` reads it (0x6A when it is 1, else 0x2E). fn_10_105F4 sets it during SuperMissileAttack / FreezeBeam, where player shots answer 0x6A and do no damage (Slice ds10) |
 | `mPissedOff` | 0xD58 | the flag the PissedOff state clears (fn_10_F930) and the fight script sets; fn_10_FD30 reads it |
 | `mFadeOut` | 0xDEC | the fade flag; fn_10_117A0 and fn_10_BBE4 read it |
 | `mPickedAttack` | 0x984 | the word the fight script writes: the picked attack's id (the `Picked*` triggers compare it) |
@@ -2422,7 +2422,38 @@ default member initializers (CDarkSamus.hpp ~1119). Each of the 33 asm calls was
 A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
 - All 36 marked H/T rows are now B.
 - New B rows, unmarked; each waits for a slice:
-  - fn_10_F84C GetCollisionResponseType, vtable `lbl_10_data_CBC` slot 24. The port at `PortCDarkSamus.cpp:888` matches the asm, but a coverage run of player shots at u04f7 got 0 hits.
-  - fn_10_E7C `CScattershotProjectile::Render` (0xCA8), the `lbl_10_data_40` slot after AddToRenderer. Its port body is at `PortCScattershotProjectile.cpp:541`. It was wrongly listed as unreferenced.
-  - fn_10_CF44, the loader (0xE98). Its address is taken in fn_10_CF14 and passed to `SetSDarkSamus_FuncPtrs`. The port is `PortLoadDarkSamus`.
+  - fn_10_F84C GetCollisionResponseType, vtable `lbl_10_data_CBC` slot 24. The port at `PortCDarkSamus.cpp:888` matches the asm, but a coverage run of player shots at u04f7 got 0 hits. Marked in Slice ds10.
+  - fn_10_E7C `CScattershotProjectile::Render` (0xCA8), the `lbl_10_data_40` slot after AddToRenderer. Its port body is at `PortCScattershotProjectile.cpp:541`. It was wrongly listed as unreferenced. Marked in Slice ds10.
+  - fn_10_CF44, the loader (0xE98). Its address is taken in fn_10_CF14 and passed to `SetSDarkSamus_FuncPtrs`. The port is `PortLoadDarkSamus`. Marked in Slice ds10.
 - Kept T: fn_10_153EC SideDash, which has no FSM2 node.
+
+## Slice ds10 (2026-10-23): fn_10_F84C, fn_10_E7C, fn_10_CF44 marked
+
+- **F84C GetCollisionResponseType**: the body already matched (`lbz r0,0xcd0(r3); li r3,0x2e;
+  cmplwi r0,1; bnelr; li r3,0x6a`). Player shots only reach her after `fsm DiveFromBoost`: in
+  BoostBallRoll the boost ball's 2.3-unit CCollisionActor sphere encloses her and takes every shot.
+  The driver `tools/drivers/darksamus_ds10_shots.con` (spec `tools/cov/specs/darksamus_ds10_f84c.py`)
+  landed 12 power-beam hits on u04f7. 6 had CD0=0 (Pause, HP 1500 to 1494 to 1488). 6 had CD0=1
+  (SuperMissileAttack / FreezeBeam, set by fn_10_105F4) and did no damage.
+- **E7C CScattershotProjectile::Render**: checked against the asm. One fix: at 0x1098..0x10D0
+  retail stores lbl_10_rodata_14 = 127.5f through `psq_st ... qr2` into the alpha byte of all four
+  colours (sp+0x4B B1, 0x47 B2, 0x43 TSCL, 0x3F TECL). This runs on every path, after the element
+  reads. The port now calls `SetAlpha(0.5f)` (= 127, truncated) on each. The rest matched: the blend
+  factors (src 4, dst 5 or 1 by the +0x66 bits 0x4/0x2/0x1), the final cull 1, and the trail
+  (`ble` at 0x195C, which is not taken on NaN, half-size side, 0.5 * side start).
+- **CF44 loader**: the 63-id switch matches SLdrDarkSamus.inc, with the same field offsets from
+  sp+0x624. The -1 sound defaults are already in the SLdrDarkSamus.hpp TARGET_PC ctor (fn_10_E23C).
+  `tools/scan_darksamus_props.py` shows that all 4 shipped DRKS placements carry all 63 ids and no
+  unknown one, so the default ReadBytes arm (0xD9F0) is dead in the shipped data.
+
+| fn | arms | run |
+|---|---|---|
+| F84C | CD0 0 / 1 | forced state (`fsm`), real projectile collisions |
+| E7C | elements present | natural (`tools/drivers/darksamus_scat.con`) |
+| E7C | B1RT/B2RT present, elements null, textures null, blend bits flipped, zero trail side (shot at the view point), BillboardAxes rotation | forced (`tools/cov/specs/darksamus_ds10_e7c.py`) |
+| CF44 | every property read | natural |
+| CF44 | null model (0xDA3C) | forced (`tools/cov/specs/darksamus_ds10_cf44.py`, FORCE_INNER on LdrToModelData) |
+
+- Not covered: line 596 in Render (3 of 7 branches) is the host's function-static guard for
+  `sPass`. It is not a retail arm.
+
