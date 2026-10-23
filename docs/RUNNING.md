@@ -191,21 +191,26 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s). `--capped` or `SMOKE_FAST=0` runs everything capped.
-Ten of the families keep a checked module's actors loading: grenchler (Torvus 01_swamp_entrance),
-grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate (Agon
-02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
+Eleven of the families keep a checked module's actors loading: grenchler (Torvus
+01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
+(Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
-0i_sand_hall) and rezbit (Sanctuary 02_cliff_reactorcore) boot the area the module lanes' coverage
-driver used and repeat its console steps (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill
-near the end - the console `kill` where a weapon cannot take the actor (the Sporb base's
-vulnerability, the Grenguard's reflected weapons), and for the swarm, which has no Death of its own
-(`CSwarmBasics` is a `CActor`), charged shots and the driver's `Deactivate`/`Delete` teardown.
+0i_sand_hall), rezbit (Sanctuary 02_cliff_reactorcore) and parasite (Agon 02_sand_sandfalls layer 9)
+boot the area the module lanes' coverage driver used and repeat its console steps
+(`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
+weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
+and for the swarm, which has no Death of its own (`CSwarmBasics` is a `CActor`), charged shots and
+the driver's `Deactivate`/`Delete` teardown.
 gunturret is not the `turret` family (that one runs M06_ShootingGallery, the player's own turret): it
 fights the Luminoth bases u043d/u0423 with their tops, forces the base FSM states and the top's
 PowerDown/PowerUp, and kills a top; rezbit wakes e0005016d with `send Activate`, walks its HP down
-through BecomeDeRezzed/BecomeRezzed and reachability attacks and breaks its shield. A new family is
-appended at the end of the `ALL` table in `tools/smoke/run.sh` (its index is its X display) with the
-next free console port, and added to `tools/smoke/compare.py`.
+through BecomeDeRezzed/BecomeRezzed and reachability attacks and breaks its shield; parasite loads
+layer 9 for the three Brizgees u05e5/u05d9/u05d6 and their shell collision actors, takes the shells'
+beam hits, walks the state machine (GetUp, TelegraphAttack, PathFind, TargetPlayer, Crouch - never
+Generate/Attack/Retreat/Halt/Jump, which crash a Brizgee's host when forced), kills one with the
+console and one with damage. A new family is appended at the end of the `ALL` table in
+`tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
+`tools/smoke/compare.py`.
 
 ## Headless runs
 
