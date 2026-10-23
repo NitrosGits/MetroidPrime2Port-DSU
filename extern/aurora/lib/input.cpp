@@ -174,6 +174,9 @@ void ensure_port_preferences_loaded() {
 }
 
 void save_port_preferences() {
+  if (io::config_persistence_disabled()) {
+    return;
+  }
   const auto path = port_preferences_path();
   if (path.empty()) {
     return;
@@ -289,6 +292,45 @@ void apply_port_preferences() noexcept {
     }
   }
 }
+
+// The port's Android touch overlay is an SDL virtual gamepad, attached on the first touch. Once it
+// holds player 1, a real pad connected later gets player 2, which a single-player game never reads.
+// Keep player 1 for a real pad when one is connected, and hand it back to the virtual pad when the
+// last real one leaves. An explicitly configured first port is left alone.
+void prefer_real_controller_on_first_port() noexcept {
+  ensure_port_preferences_loaded();
+  if (g_portPreferences[0].state != PortPreferenceState::Unset) {
+    return;
+  }
+
+  GameController* first = nullptr;
+  GameController* real = nullptr;
+  GameController* virt = nullptr;
+  for (auto& [instance, controller] : g_GameControllers) {
+    if (SDL_GetGamepadPlayerIndex(controller.m_controller) == 0) {
+      first = &controller;
+    } else if (!SDL_IsJoystickVirtual(instance)) {
+      real = real != nullptr ? real : &controller;
+    } else {
+      virt = virt != nullptr ? virt : &controller;
+    }
+  }
+
+  // A real pad on port 0 stays, and a virtual pad only takes port 0 when it is empty
+  const bool firstIsReal = first != nullptr && !SDL_IsJoystickVirtual(first->m_index);
+  GameController* wanted = real != nullptr ? real : virt;
+  if (wanted == nullptr || firstIsReal || (first != nullptr && wanted == virt)) {
+    return;
+  }
+  const int32_t freed = SDL_GetGamepadPlayerIndex(wanted->m_controller);
+  if (first != nullptr) {
+    SDL_SetGamepadPlayerIndex(first->m_controller, freed);
+  }
+  SDL_SetGamepadPlayerIndex(wanted->m_controller, 0);
+  Log.info("Controller '{}' moved to port 0", SDL_GetGamepadName(wanted->m_controller) != nullptr
+                                                  ? SDL_GetGamepadName(wanted->m_controller)
+                                                  : "unknown");
+}
 } // namespace
 
 GameController* get_controller_for_player(uint32_t player) noexcept {
@@ -329,9 +371,76 @@ Sint32 get_instance_for_player(uint32_t player) noexcept {
   return {};
 }
 
+#ifdef SDL_PLATFORM_ANDROID
+// SDL's mapping for an Android pad it doesn't know covers buttons 0-14 and
+// analog trigger axes only. Digital L2/R2 keys arrive as raw buttons 15 and 16
+// and reach nothing, so handhelds such as the RG Rotate (#81) can't bind them.
+// Map them to the triggers when the pad has no trigger of its own.
+//
+// Anbernic's built-in "retrogame_joypad" (484b:1101, the RG Rotate) also
+// declares LTRIGGER/RTRIGGER/BRAKE/GAS axes that never move: L2/R2 only ever
+// arrive as keys. SDL maps the triggers to those dead axes, so on that pad
+// the buttons replace the axis bindings.
+static bool has_dead_trigger_axes(SDL_Gamepad* ctrl) noexcept {
+  return SDL_GetGamepadVendor(ctrl) == 0x484b && SDL_GetGamepadProduct(ctrl) == 0x1101;
+}
+
+static void map_digital_triggers(SDL_Gamepad* ctrl) noexcept {
+  const int buttons = SDL_GetNumJoystickButtons(SDL_GetGamepadJoystick(ctrl));
+  if (buttons <= 15) {
+    return;
+  }
+  const bool deadAxes = has_dead_trigger_axes(ctrl);
+  int count = 0;
+  SDL_GamepadBinding** bindings = SDL_GetGamepadBindings(ctrl, &count);
+  if (bindings == nullptr) {
+    return;
+  }
+  bool hasTrigger = false;
+  for (int i = 0; i < count; ++i) {
+    if (bindings[i]->output_type == SDL_GAMEPAD_BINDTYPE_AXIS &&
+        (bindings[i]->output.axis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER ||
+         bindings[i]->output.axis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)) {
+      hasTrigger = true;
+    }
+  }
+  SDL_free(bindings);
+  char* mapping = SDL_GetGamepadMapping(ctrl);
+  if ((hasTrigger && !deadAxes) || mapping == nullptr) {
+    SDL_free(mapping);
+    return;
+  }
+  std::string updated;
+  {
+    // Copy the mapping without its trigger entries.
+    std::string_view rest = mapping;
+    while (!rest.empty()) {
+      const size_t comma = rest.find(',');
+      const std::string_view entry = rest.substr(0, comma);
+      if (!entry.starts_with("lefttrigger:") && !entry.starts_with("righttrigger:") && !entry.empty()) {
+        updated.append(entry);
+        updated += ',';
+      }
+      rest = comma == std::string_view::npos ? std::string_view{} : rest.substr(comma + 1);
+    }
+  }
+  SDL_free(mapping);
+  updated += "lefttrigger:b15,";
+  if (buttons > 16) {
+    updated += "righttrigger:b16,";
+  }
+  if (SDL_AddGamepadMapping(updated.c_str()) < 0) {
+    Log.warn("Failed to map digital triggers: {}", SDL_GetError());
+  }
+}
+#endif
+
 SDL_JoystickID add_controller(SDL_JoystickID which) noexcept {
   auto* ctrl = SDL_OpenGamepad(which);
   if (ctrl != nullptr) {
+#ifdef SDL_PLATFORM_ANDROID
+    map_digital_triggers(ctrl);
+#endif
     GameController controller;
     controller.m_controller = ctrl;
     controller.m_index = which;
@@ -351,11 +460,12 @@ SDL_JoystickID add_controller(SDL_JoystickID which) noexcept {
     controller.m_hasRumble = SDL_GetBooleanProperty(props, SDL_PROP_GAMEPAD_CAP_RUMBLE_BOOLEAN, true);
     controller.m_hasRgbLed = SDL_GetBooleanProperty(props, SDL_PROP_GAMEPAD_CAP_RGB_LED_BOOLEAN, false);
     SDL_JoystickID instance = SDL_GetJoystickID(SDL_GetGamepadJoystick(ctrl));
-    Log.info("Added controller '{}' (instance {}, vid {:04x}, pid {:04x}, type {})",
-             SDL_GetGamepadName(ctrl) != nullptr ? SDL_GetGamepadName(ctrl) : "unknown", instance, controller.m_vid,
-             controller.m_pid, static_cast<int>(SDL_GetGamepadType(ctrl)));
     g_GameControllers[instance] = controller;
     apply_port_preferences();
+    prefer_real_controller_on_first_port();
+    Log.info("Added controller '{}' (instance {}, vid {:04x}, pid {:04x}, type {}, port {})",
+             SDL_GetGamepadName(ctrl) != nullptr ? SDL_GetGamepadName(ctrl) : "unknown", instance, controller.m_vid,
+             controller.m_pid, static_cast<int>(SDL_GetGamepadType(ctrl)), SDL_GetGamepadPlayerIndex(ctrl));
     return instance;
   }
 
@@ -371,6 +481,7 @@ void remove_controller(Uint32 instance) noexcept {
     SDL_CloseGamepad(it->second.m_controller);
     g_GameControllers.erase(it);
     apply_port_preferences();
+    prefer_real_controller_on_first_port();
   }
 }
 

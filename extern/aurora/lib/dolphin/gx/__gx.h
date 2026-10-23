@@ -67,7 +67,8 @@
 
 #define SET_REG_FIELD(line, reg, size, shift, val)                                                                     \
   do {                                                                                                                 \
-    (reg) = ((u32)(reg) & ~(((1u << (size)) - 1) << (shift))) | ((u32)(val) << (shift));                               \
+    constexpr int kMask = ((1u << (size)) - 1) << (shift);                                                             \
+    (reg) = (u32(reg) & ~kMask) | ((u32(val) << (shift)) & kMask);                                                     \
   } while (0)
 
 #define GX_WRITE_AURORA(cmd)     \
@@ -130,6 +131,7 @@ struct __GXData_struct {
   u32 genMode;      // general mode (numTexGens, numChans, numTevStages, cullMode, numIndStages)
 
   u32 tImage0[8];   // texture image 0 registers
+  u16 tSizeM1[8][2]; // port: full width-1/height-1 (image0's 10-bit fields wrap past 1024)
   u32 tMode0[8];    // texture mode 0 registers
   u32 texmapId[16]; // texture map ID tracking
 
@@ -176,4 +178,8 @@ void __GXSetGenMode();
 void __GXSetMatrixIndex(GXAttr matIdxAttr);
 void __GXSendFlushPrim();
 void __GXFlushTextureState();
+
+// Port extension: makes GXPortCopySerial change, so a game-thread cache keyed on it (the glass copy,
+// CCubeModel) copies again. Game thread only: the counter is never written from the FIFO side.
+void __GXPortInvalidateCopySerial();
 };

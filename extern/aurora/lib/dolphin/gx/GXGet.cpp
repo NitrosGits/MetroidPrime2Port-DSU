@@ -237,10 +237,10 @@ void GXGetProjectionv(f32* p) {
 void GXGetScissor(u32* left, u32* top, u32* wd, u32* ht) {
   CHECK(left != nullptr && top != nullptr && wd != nullptr && ht != nullptr, "null scissor output");
 
-  const u32 tp = GET_REG_FIELD(__gx->suScis0, 11, 0);
-  const u32 lf = GET_REG_FIELD(__gx->suScis0, 11, 12);
-  const u32 bm = GET_REG_FIELD(__gx->suScis1, 11, 0);
-  const u32 rt = GET_REG_FIELD(__gx->suScis1, 11, 12);
+  const u32 tp = GET_REG_FIELD(__gx->suScis0, 12, 0);
+  const u32 lf = GET_REG_FIELD(__gx->suScis0, 12, 12);
+  const u32 bm = GET_REG_FIELD(__gx->suScis1, 12, 0);
+  const u32 rt = GET_REG_FIELD(__gx->suScis1, 12, 12);
 
   *left = lf - 342;
   *top = tp - 342;
@@ -317,15 +317,6 @@ GXTexWrapMode GXGetTexObjWrapT(GXTexObj* tex_obj) { return reinterpret_cast<cons
 GXBool GXGetTexObjMipMap(GXTexObj* tex_obj) { return reinterpret_cast<const GXTexObj_*>(tex_obj)->has_mips(); }
 
 // TODO GXGetTexObjAll
-// TODO GXGetTexObjMinFilt
-// TODO GXGetTexObjMagFilt
-// TODO GXGetTexObjMinLOD
-// TODO GXGetTexObjMaxLOD
-// TODO GXGetTexObjLODBias
-// TODO GXGetTexObjBiasClamp
-// TODO GXGetTexObjEdgeLOD
-// TODO GXGetTexObjMaxAniso
-// TODO GXGetTexObjLODAll
 u32 GXGetTexObjTlut(const GXTexObj* tex_obj) { return reinterpret_cast<const GXTexObj_*>(tex_obj)->tlut; }
 // TODO GXGetTlutObjData
 // TODO GXGetTlutObjFmt
