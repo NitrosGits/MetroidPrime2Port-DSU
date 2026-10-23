@@ -1,0 +1,38 @@
+# Parasite (module 47: CParasite, the Brizgee and Crystallite loaders). Agon Wastes
+# 02_sand_sandfalls layer 9 holds three Brizgees (kPT_IceZoomer) u05e5 u05d9 u05d6, hp 12, each with
+# a shell collision actor (u0610-u0612). Steps follow tools/cov/specs/parasite_sandfalls_fight.con
+# and parasite_sandfalls_forced.con (the para1 lane's drivers): bring them to a god-mode player, let
+# them crawl/telegraph/attack, take the beam shots on the shells, walk the state machine, then
+# missiles, the console kill and lethal damage.
+# Not Generate/Attack/Retreat/Halt/Jump: a Brizgee's FSM never enters them and forcing them crashes
+# the host in CBSGenerate/CBSJump::Start (bad anim index, BodyState; forced arms only).
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2320.
+# In fast mode the console connects at ~f1425, so the early steps fire in one burst; every step that
+# needs frames between it and the next is at f1550 or later.
+@f300 god 1; give missile 50
+@f302 layer 9
+@f350 objs parasite; objs collision
+@f400 obj u05e5
+@f1550 place u05e5 player 5; place u05d9 player 7; place u05d6 player 9
+@f1700 obj u05e5; obj u05d9
+# The shells: beams hit the shell collision actors first, so the Brizgee's own hp stays 12/12.
+@f1750 shoot u05e5; shoot u05d9; shoot u05d6
+@f1800 shoot u05e5; shoot u05d9
+@f1840 shoot u05e5 charged; shoot u05d9 charged
+@f1880 obj u05e5
+# The machine, forced the way the coverage driver forces it (the states a fight only reaches when
+# the player waits them out); none of the anim-body states named above.
+@f1900 fsm u05e5 GetUp
+@f1940 fsm u05e5 TelegraphAttack
+@f1980 fsm u05e5 PathFind
+@f2020 fsm u05e5 TargetPlayer
+@f2060 fsm u05e5 Crouch
+@f2100 obj u05e5
+# A real missile, then the console kill of one Brizgee (hp to 0, Death) and lethal damage on another.
+@f2120 shoot u05e5 missile
+@f2150 obj u05e5
+@f2180 kill u05d9
+@f2200 obj u05d9
+@f2240 damage u05e5 50; damage u05d6 4
+@f2280 obj u05d6
+@f2320 objs parasite; status
