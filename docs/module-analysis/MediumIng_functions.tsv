@@ -1,0 +1,180 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_41_0	8	B	GetSearchPath	2	upstream body or slice 2	no
+00008	fn_41_8	3C	H	GetTouchBounds	-	CPatterned::GetTouchBounds weak copy	no
+00044	fn_41_44	8	H	GetModelAlphau8	-	CPatterned weak copy	no
+0004C	fn_41_4C	8	H	ProjectileInfo	-	CPatterned weak copy	no
+00054	fn_41_54	8	H	GetPointSearchPath	-	CPatterned weak copy	no
+0005C	fn_41_5C	8	H	GetRagDoll	-	CPatterned weak copy	no
+00064	fn_41_64	10	H	GetAttackTarget	-	CPatterned weak copy	no
+00074	fn_41_74	C	H	IsOnGround	-	CPatterned weak copy	no
+00080	fn_41_80	C	H	GetGravityConstant	-	CPatterned weak copy	no
+0008C	fn_41_8C	8	H	GetDeathExplosionParticle	-	CPatterned weak copy	no
+00094	fn_41_94	1C	H	GetOrigin	-	CAi::GetOrigin weak copy	no
+000B0	fn_41_B0	2C	H	GetHealthInfo	-	CActor::GetHealthInfo weak copy	no
+000DC	fn_41_DC	24	T	RELExit	-	REL runtime	no
+00100	fn_41_100	20	T	RELMain	-	REL runtime	no
+00120	fn_41_120	30	T	SetFuncPtrs	-	REL runtime (function table)	no
+00150	fn_41_150	868	B	LoadMediumIng	2	upstream body or slice 2	no
+009B8	fn_41_9B8	88	B	__dt__14CMediumIngData	2	upstream body or slice 2	no
+00A40	fn_41_A40	70	B	fn_41_A40	2	unidentified helper (slice 2 survey)	no
+00AB0	fn_41_AB0	40	B	fn_41_AB0	2	unidentified helper (slice 2 survey)	no
+00AF0	fn_41_AF0	20	B	fn_41_AF0	2	unidentified helper (slice 2 survey)	no
+00B10	fn_41_B10	28	B	fn_41_B10	2	unidentified helper (slice 2 survey)	no
+00B38	fn_41_B38	13C	B	fn_41_B38	2	unidentified helper (slice 2 survey)	no
+00C74	fn_41_C74	6C	B	fn_41_C74	2	unidentified helper (slice 2 survey)	no
+00CE0	fn_41_CE0	54	B	fn_41_CE0	2	unidentified helper (slice 2 survey)	no
+00D34	fn_41_D34	64	B	fn_41_D34	2	unidentified helper (slice 2 survey)	no
+00D98	fn_41_D98	60	B	fn_41_D98	2	unidentified helper (slice 2 survey)	no
+00DF8	fn_41_DF8	AC	B	fn_41_DF8	2	unidentified helper (slice 2 survey)	no
+00EA4	fn_41_EA4	E0	B	fn_41_EA4	2	unidentified helper (slice 2 survey)	no
+00F84	fn_41_F84	C	B	fn_41_F84	2	unidentified helper (slice 2 survey)	no
+00F90	fn_41_F90	58	B	fn_41_F90	2	unidentified helper (slice 2 survey)	no
+00FE8	fn_41_FE8	54	B	fn_41_FE8	2	unidentified helper (slice 2 survey)	no
+0103C	fn_41_103C	E8	B	fn_41_103C	2	unidentified helper (slice 2 survey)	no
+01124	fn_41_1124	254	B	fn_41_1124	2	unidentified helper (slice 2 survey)	no
+01378	fn_41_1378	6C	B	ValidateSafeZone (upstream)	2	upstream body or slice 2	no
+013E4	fn_41_13E4	178	B	FindSafeZoneRetreatPoint	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+0155C	fn_41_155C	124	B	UpdateCurrentSafeZone	1	slice 1 body (PortCMediumIng.cpp)	yes
+01680	fn_41_1680	2B0	B	UpdateMistEffect	1	slice 1 body (PortCMediumIng.cpp)	yes
+01930	fn_41_1930	5C	H	fn_41_1930	-	CRayCastResult copy (inlined)	no
+0198C	fn_41_198C	128	B	CreateMistEffect	1	slice 1 body (PortCMediumIng.cpp)	yes
+01AB4	fn_41_1AB4	50	B	fn_41_1AB4	2	unidentified helper (slice 2 survey)	no
+01B04	fn_41_1B04	14	T	SetFlagE1	1	no reference in the REL (a global export nothing calls)	no
+01B18	fn_41_1B18	90	B	Death	1	slice 1 body (PortCMediumIng.cpp)	yes
+01BA8	fn_41_1BA8	140	B	FindClosestRetreatActor	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+01CE8	fn_41_1CE8	140	B	FindClosestDangerActor	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+01E28	fn_41_1E28	24	B	IsPointInSafeZone	2	upstream body or slice 2	no
+01E4C	fn_41_1E4C	2C	B	IsInSafeZone	2	upstream body or slice 2	no
+01E78	fn_41_1E78	58	B	WaitForLocomotion	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
+01ED0	fn_41_1ED0	A8	B	QuitTeam	2	upstream body or slice 2	no
+01F78	fn_41_1F78	AC	B	JoinTeam	2	upstream body or slice 2	no
+02024	fn_41_2024	304	B	CalculateSeparation	1	slice 1 body (PortCMediumIng.cpp); ran via PathFind (mi3), arms open: hx<hy, zone loop	no
+02328	fn_41_2328	68	B	ShouldBackUp	2	upstream body or slice 2	no
+02390	fn_41_2390	54	B	ShouldDoubleDash	2	upstream body or slice 2	no
+023E4	fn_41_23E4	54	B	ShouldTaunt	2	upstream body or slice 2	no
+02438	fn_41_2438	1C	B	PatternOver	2	upstream body or slice 2	no
+02454	fn_41_2454	70	B	HasApproachPattern	2	upstream body or slice 2	no
+024C4	fn_41_24C4	70	B	HasAttackPattern	2	upstream body or slice 2	no
+02534	fn_41_2534	14	B	CanBeShot	2	upstream body or slice 2	no
+02548	fn_41_2548	10	B	IncrementFrustatedCounter	2	upstream body or slice 2	no
+02558	fn_41_2558	C	B	ResetFrustatedCounter	2	upstream body or slice 2	no
+02564	fn_41_2564	B8	B	SetRetreatDestination	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+0261C	fn_41_261C	458	B	SetDashDestination	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+02A74	fn_41_2A74	100	B	SetMeshPathDestination	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+02B74	fn_41_2B74	20	B	StillLuredBySafeZone	2	upstream body or slice 2	no
+02B94	fn_41_2B94	38	B	IsLuredBySafeZone	2	upstream body or slice 2	no
+02BCC	fn_41_2BCC	C	B	ShouldEvaporate	2	upstream body or slice 2	no
+02BD8	fn_41_2BD8	54	B	ShouldDoSafezoneReaction	2	upstream body or slice 2	no
+02C2C	fn_41_2C2C	40	B	IsFrustated	2	upstream body or slice 2	no
+02C6C	fn_41_2C6C	198	B	IsDestInsideCurrentRegion	2	upstream body or slice 2	no
+02E04	fn_41_2E04	4C	B	IsOffPath	2	upstream body or slice 2	no
+02E50	fn_41_2E50	20	B	HasJumpPoint	2	upstream body or slice 2	no
+02E70	fn_41_2E70	198	B	BackUp	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
+03008	fn_41_3008	5C	B	fn_41_3008	2	unidentified helper (slice 2 survey)	no
+03064	fn_41_3064	48	B	fn_41_3064	2	unidentified helper (slice 2 survey)	no
+030AC	fn_41_30AC	4	B	SelectTargetState	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
+030B0	fn_41_30B0	1B0	B	Dead	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+03260	fn_41_3260	8	B	fn_41_3260	2	unidentified helper (slice 2 survey)	no
+03268	fn_41_3268	C	B	HasLineOfSight	2	upstream body or slice 2	no
+03274	fn_41_3274	108	B	UpdateTimers	1	slice 1 body (PortCMediumIng.cpp)	yes
+0337C	fn_41_337C	19C	B	ShouldMistAttack	2	upstream body or slice 2	no
+03518	fn_41_3518	128	B	ShouldMeleeAttack	2	upstream body or slice 2	no
+03640	fn_41_3640	170	B	ShouldArmAttack	2	upstream body or slice 2	no
+037B0	fn_41_37B0	2D8	B	MistAttack	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
+03A88	fn_41_3A88	5C	B	fn_41_3A88	2	unidentified helper (slice 2 survey)	no
+03AE4	fn_41_3AE4	458	B	MeleeAttack	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+03F3C	fn_41_3F3C	3CC	B	ArmAttack	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+04308	fn_41_4308	E0	B	ExtendTentacle	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+043E8	fn_41_43E8	88	B	RetractTentacles	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+04470	fn_41_4470	128	B	PositionTentacles	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+04598	fn_41_4598	90	B	SetTentaclesActive	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+04628	fn_41_4628	1C	B	TakeDamage	2	upstream body or slice 2	no
+04644	fn_41_4644	34C	B	ScanProjectileThreats	1	slice 1 body (PortCMediumIng.cpp)	yes
+04990	fn_41_4990	3C	B	fn_41_4990	2	unidentified helper (slice 2 survey)	no
+049CC	fn_41_49CC	1C0	B	SetMistCollision	1	slice 1 body (PortCMediumIng.cpp)	yes
+04B8C	fn_41_4B8C	234	B	MistOut	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+04DC0	fn_41_4DC0	5C	B	fn_41_4DC0	2	unidentified helper (slice 2 survey)	no
+04E1C	fn_41_4E1C	170	B	Taunt	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
+04F8C	fn_41_4F8C	5C	B	fn_41_4F8C	2	unidentified helper (slice 2 survey)	no
+04FE8	fn_41_4FE8	258	B	Dash	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+05240	fn_41_5240	180	B	MoveToSafeZone	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+053C0	fn_41_53C0	6C	B	fn_41_53C0	2	unidentified helper (slice 2 survey)	no
+0542C	fn_41_542C	2F8	B	SafezoneReaction	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+05724	fn_41_5724	4	B	Idle	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
+05728	fn_41_5728	150	B	Jump	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+05878	fn_41_5878	360	B	MistIn	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+05BD8	fn_41_5BD8	4C	B	ShouldGenerate	2	upstream body or slice 2	no
+05C24	fn_41_5C24	44	B	GetDamageVulnerability	2	upstream body or slice 2	no
+05C68	fn_41_5C68	C	B	IsAggressive	2	upstream body or slice 2	no
+05C74	fn_41_5C74	38	B	HasMist (inlined in the port)	2	unidentified helper (slice 2 survey)	no
+05CAC	fn_41_5CAC	20	B	IsMisting	2	upstream body or slice 2	no
+05CCC	fn_41_5CCC	B0	B	Leash	2	upstream body or slice 2	no
+05D7C	fn_41_5D7C	4C	B	PathShagged	2	upstream body or slice 2	no
+05DC8	fn_41_5DC8	44	B	IsMistDecayed	1	slice 1 body (PortCMediumIng.cpp)	yes
+05E0C	fn_41_5E0C	224	B	IsBlocked	1	slice 1 body (PortCMediumIng.cpp)	yes
+06030	fn_41_6030	48	B	fn_41_6030	2	unidentified helper (slice 2 survey)	no
+06078	fn_41_6078	6E8	B	UpdateMistState	1	slice 1 body (PortCMediumIng.cpp)	yes
+06760	fn_41_6760	A4	H	fn_41_6760	-	struct copy (inlined)	no
+06804	fn_41_6804	3C	B	fn_41_6804	2	unidentified helper (slice 2 survey)	no
+06840	fn_41_6840	C	B	fn_41_6840	2	unidentified helper (slice 2 survey)	no
+0684C	fn_41_684C	34	B	GetPathArea (inlined in the port)	2	unidentified helper (slice 2 survey)	no
+06880	fn_41_6880	10C	B	SetLeashTarget	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+0698C	fn_41_698C	270	B	SelectTarget	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+06BFC	fn_41_6BFC	10C	B	SearchJumpRoute	2	mi2 body (CMediumIng.cpp); not run (no AiJumpPoint in area 46)	no
+06D08	fn_41_6D08	210	B	JumpRouteEstimate	2	mi2 body (CMediumIng.cpp); not run (no AiJumpPoint in area 46)	no
+06F18	fn_41_6F18	19C	B	PathCostSquared	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+070B4	fn_41_70B4	108	B	FollowApproachPattern	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+071BC	fn_41_71BC	108	B	FollowAttackPattern	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+072C4	fn_41_72C4	D0	B	PathFind	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
+07394	fn_41_7394	E4	B	SubStart	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
+07478	fn_41_7478	78	B	Listen	1	slice 1 body (PortCMediumIng.cpp)	yes
+074F0	fn_41_74F0	8	B	IsListening	2	upstream body or slice 2	no
+074F8	fn_41_74F8	AC	B	Render	1	slice 1 body (PortCMediumIng.cpp)	yes
+075A4	fn_41_75A4	78	B	PreRender	1	slice 1 body (PortCMediumIng.cpp)	yes
+0761C	fn_41_761C	1E8	B	Touch	1	slice 1 body (PortCMediumIng.cpp)	yes
+07804	fn_41_7804	1C4	B	Think	1	slice 1 body (PortCMediumIng.cpp)	yes
+079C8	fn_41_79C8	644	B	AcceptScriptMsg	1	slice 1 body (PortCMediumIng.cpp)	yes
+0800C	fn_41_800C	58	B	fn_41_800C	2	unidentified helper (slice 2 survey)	no
+08064	fn_41_8064	54	B	fn_41_8064	2	unidentified helper (slice 2 survey)	no
+080B8	fn_41_80B8	8C	B	SetupStateMachine	2	upstream body or slice 2	no
+08144	fn_41_8144	7C	H	__dt__10CMediumIng	1	compiler-generated dtor (the host compiler emits the same member teardown)	no
+081C0	fn_41_81C0	1E4	B	fn_41_81C0	2	unidentified helper (slice 2 survey)	no
+083A4	fn_41_83A4	94	B	fn_41_83A4	2	unidentified helper (slice 2 survey)	no
+08438	fn_41_8438	58	B	fn_41_8438	2	unidentified helper (slice 2 survey)	no
+08490	fn_41_8490	58	B	fn_41_8490	2	unidentified helper (slice 2 survey)	no
+084E8	fn_41_84E8	58	B	fn_41_84E8	2	unidentified helper (slice 2 survey)	no
+08540	fn_41_8540	98	B	fn_41_8540	2	unidentified helper (slice 2 survey)	no
+085D8	fn_41_85D8	340	B	__ct__10CMediumIng	2	upstream body or slice 2	no
+08918	fn_41_8918	3C	B	fn_41_8918	2	unidentified helper (slice 2 survey)	no
+08954	fn_41_8954	208	B	__ct__14CMediumIngData	2	upstream body or slice 2	no
+08B5C	fn_41_8B5C	AC	B	fn_41_8B5C	2	unidentified helper (slice 2 survey)	no
+08C08	fn_41_8C08	AC	B	fn_41_8C08	2	unidentified helper (slice 2 survey)	no
+08CB4	fn_41_8CB4	1D0	B	fn_41_8CB4	2	unidentified helper (slice 2 survey)	no
+08E84	fn_41_8E84	94	B	fn_41_8E84	2	unidentified helper (slice 2 survey)	no
+08F18	fn_41_8F18	7C	B	fn_41_8F18	2	unidentified helper (slice 2 survey)	no
+08F94	fn_41_8F94	5C	B	fn_41_8F94	2	unidentified helper (slice 2 survey)	no
+08FF0	fn_41_8FF0	54	B	fn_41_8FF0	2	unidentified helper (slice 2 survey)	no
+09044	fn_41_9044	130	B	fn_41_9044	2	unidentified helper (slice 2 survey)	no
+09174	fn_41_9174	3C	B	fn_41_9174	2	unidentified helper (slice 2 survey)	no
+091B0	fn_41_91B0	210	B	Touch	1	slice 1 body (PortCMediumIng.cpp)	yes
+093C0	fn_41_93C0	3C	B	fn_41_93C0	2	unidentified helper (slice 2 survey)	no
+093FC	fn_41_93FC	A8	B	GetTouchBounds	1	slice 1 body (PortCMediumIng.cpp)	yes
+094A4	fn_41_94A4	24	B	GetProgress	1	slice 1 body (PortCMediumIng.cpp)	yes
+094C8	fn_41_94C8	560	B	PreRender	1	slice 1 body (PortCMediumIng.cpp)	yes
+09A28	fn_41_9A28	C	H	fn_41_9A28	-	empty helper	no
+09A34	fn_41_9A34	258	B	Extend	1	slice 1 body (PortCMediumIng.cpp)	yes
+09C8C	fn_41_9C8C	54	H	fn_41_9C8C	-	rstl::vector<CVector3f> dtor	no
+09CE0	fn_41_9CE0	1F0	B	Retract	1	slice 1 body (PortCMediumIng.cpp)	yes
+09ED0	fn_41_9ED0	B4	B	UpdateShake	1	slice 1 body (PortCMediumIng.cpp)	yes
+09F84	fn_41_9F84	13C	B	Think	1	slice 1 body (PortCMediumIng.cpp)	yes
+0A0C0	fn_41_A0C0	1D4	B	__ct__18CMediumIngTentacle	2	upstream body or slice 2	no
+0A294	fn_41_A294	58	B	fn_41_A294	2	unidentified helper (slice 2 survey)	no
+0A2EC	fn_41_A2EC	54	B	fn_41_A2EC	2	unidentified helper (slice 2 survey)	no
+0A340	fn_41_A340	334	B	__ct__14CMediumIngData	2	upstream body or slice 2	no
+0A674	fn_41_A674	94	H	__dt__18CMediumIngTentacle	1	compiler-generated dtor (the host compiler emits the same member teardown)	no
+0A708	fn_41_A708	3C	B	fn_41_A708	2	unidentified helper (slice 2 survey)	no
+0A744	fn_41_A744	98	H	fn_41_A744	-	rstl::vector reserve	no
+0A7DC	fn_41_A7DC	3C	B	fn_41_A7DC	2	unidentified helper (slice 2 survey)	no
+0A818	fn_41_A818	98	B	fn_41_A818	2	unidentified helper (slice 2 survey)	no
+0A8B0	fn_41_A8B0	5C	B	fn_41_A8B0	2	unidentified helper (slice 2 survey)	no
+0A90C	fn_41_A90C	724	T		-	static initialiser (rodata/tables)	no

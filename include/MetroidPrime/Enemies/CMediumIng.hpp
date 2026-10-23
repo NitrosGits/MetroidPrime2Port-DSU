@@ -97,6 +97,14 @@ public:
   void Extend(CStateManager& mgr, const CVector3f& target); // Guessed name
   void Retract(CStateManager& mgr);                         // Guessed name
   float GetProgress() const;                                // Guessed name
+#ifdef TARGET_PC
+  // Port: `var <id> ming.extend|ming.retract 1` (PortCMediumIng.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+  // CMediumIng::ArmAttack (fn_41_3F3C) writes the retract bit (retail 0x31C |= 0x20) and reads
+  // the length scale (retail 0x328) of each tentacle directly.
+  void SetRetracting(bool v) { mRetracting = v; }
+  float GetLengthScale() const { return mLengthScale; }
+#endif
 
 private:
   void UpdateShake(CStateManager& mgr, float dt); // Guessed name
@@ -107,9 +115,9 @@ private:
   CDamageInfo mDamage;                        // Guessed name
   rstl::optional_object< CAABox > mTipBounds; // Guessed name
   rstl::vector< CVector3f > mSplinePoints;    // Guessed name
-  bool mCanDamage : 1;                        // Guessed name
-  bool mExtending : 1;                        // Guessed name
-  bool mRetracting : 1;                       // Guessed name
+  bool mCanDamage : 1;                        // Guessed name; 0x31c 0x80
+  bool mExtending : 1;                        // Guessed name; 0x31c 0x40
+  bool mRetracting : 1;                       // Guessed name; 0x31c 0x20
   float mElapsedTime;                         // Guessed name
   float mRetractTime;                         // Guessed name
   float mLengthScale;                         // Guessed name
@@ -200,6 +208,10 @@ public:
   bool ShouldEvaporate(CStateManager& mgr, const CTriggerData& data) const;
   bool IsLuredBySafeZone(CStateManager& mgr, const CTriggerData& data) const;
   bool StillLuredBySafeZone(CStateManager& mgr, const CTriggerData& data) const;
+#ifdef TARGET_PC
+  // Port: `var <id> ming.c1 [0|1]` (PortCMediumIng.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+#endif
 
 private:
   // Guessed names for all private helpers.
@@ -218,6 +230,15 @@ private:
   void QuitTeam(CStateManager& mgr);
   void JoinTeam(CStateManager& mgr);
   void CalculateSeparation(CStateManager& mgr);
+#ifdef TARGET_PC
+  // Port: retail's unnamed helpers that slice 1's bodies call (PortCMediumIng.cpp).
+  void ScanProjectileThreats(CStateManager& mgr, float dt);     // fn_41_4644
+  void UpdateMistState(CStateManager& mgr, float dt);           // fn_41_6078
+  void UpdateTimers(CStateManager& mgr, float dt);              // fn_41_3274
+  bool IsMistDecayed() const;                                   // fn_41_5DC8
+  void SetMistCollision(bool solid);                            // fn_41_49CC
+  bool IsBlocked(CStateManager& mgr, const CVector3f& offset);  // fn_41_5E0C
+#endif
 
   CPathFindSearch mPathFindSearch;           // Guessed name
   CLineOfSightTracker mLineOfSightTracker;   // Guessed name
@@ -261,25 +282,33 @@ private:
   int mTauntAnim;
   int mFrustratedCounter;
   int mSafeZoneReactionCount;
-  bool mC0 : 1;
-  bool mC1 : 1;
-  bool mC2 : 1;
-  bool mC3 : 1;
-  bool mC4 : 1;
-  bool mC5 : 1;
-  bool mC6 : 1;
-  bool mC7 : 1;
-  bool mD0 : 1;
-  bool mD1 : 1;
-  bool mD2 : 1;
-  bool mD3 : 1;
-  bool mD4 : 1;
-  bool mD5 : 1;
-  bool mD6 : 1;
-  bool mD7 : 1;
-  bool mE0 : 1;
-  bool mE1 : 1;
-  bool mE2 : 1;
+  bool mC0 : 1; // 0xcfc 0x80
+  bool mC1 : 1; // 0xcfc 0x40
+  bool mC2 : 1; // 0xcfc 0x20
+  bool mC3 : 1; // 0xcfc 0x10
+  bool mC4 : 1; // 0xcfc 0x08
+  bool mC5 : 1; // 0xcfc 0x04
+  bool mC6 : 1; // 0xcfc 0x02
+  bool mC7 : 1; // 0xcfc 0x01
+  bool mD0 : 1; // 0xcfd 0x80
+  bool mD1 : 1; // 0xcfd 0x40
+  bool mD2 : 1; // 0xcfd 0x20
+  bool mD3 : 1; // 0xcfd 0x10
+  bool mD4 : 1; // 0xcfd 0x08
+  bool mD5 : 1; // 0xcfd 0x04
+  bool mD6 : 1; // 0xcfd 0x02
+  bool mD7 : 1; // 0xcfd 0x01
+  bool mE0 : 1; // 0xcfe 0x80
+  bool mE1 : 1; // 0xcfe 0x40
+  bool mE2 : 1; // 0xcfe 0x20
+#ifdef TARGET_PC
+  // Guessed names: unnamed retail helpers the states call (fn_41_<off>).
+  void ExtendTentacle(CStateManager& mgr, int index);                // fn_41_4308
+  void RetractTentacles(CStateManager& mgr);                         // fn_41_43E8
+  void PositionTentacles(CStateManager& mgr);                        // fn_41_4470
+  void SetTentaclesActive(CStateManager& mgr, bool active);          // fn_41_4598
+  void FaceTarget(CStateManager& mgr, float dt);
+#endif
 };
 
 CHECK_SIZEOF(CMediumIng, 0xD00)

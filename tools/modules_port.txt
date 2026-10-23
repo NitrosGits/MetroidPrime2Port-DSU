@@ -58,3 +58,4 @@ SwampBossStage2;src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp
 WallCrawlerSwarm;src/MetroidPrime/PortModuleStubs.cpp
 ElitePirate;src/MetroidPrime/Enemies/PortCElitePirateCombat.cpp
 ElitePirate;src/MetroidPrime/Enemies/PortCElitePirateMove.cpp
+MediumIng;src/MetroidPrime/Enemies/PortCMediumIng.cpp
