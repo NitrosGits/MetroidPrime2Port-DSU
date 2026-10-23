@@ -77,6 +77,7 @@ extern void* gPortGameHeapHi;
 #include "port_env.h"
 #include "port_breadcrumb.h"
 #include "port_crash.h"
+#include "port_storage_report.h"
 #include "port_logfile.h"
 #include "port_save.h"
 #include "port_overlay.h"
@@ -731,6 +732,14 @@ int main(int argc, char** argv) {
   PortCrash::SetAfterReport(PortCrashAfterReport);
 #endif
   PortCrash::Install();
+  // Into that log, as MP1 does: every setting in effect and the MP2_* variables, then (from a
+  // background thread) how much space each folder the port writes to takes.
+  PortOverlaySettings::LogSettings();
+  {
+    const char* cache = EnvOrFallback("MP2_CACHE_PATH", appPaths.cache);
+    PortStorageReport::StartLogging({touchUser != nullptr ? touchUser : std::string(),
+                                     cache != nullptr ? cache : std::string()});
+  }
 
   // The save tools (platform/port_save.cpp) keep their backups beside controls.toml; the card's own
   // path comes from Aurora when a command needs it.
