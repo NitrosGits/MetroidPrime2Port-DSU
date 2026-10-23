@@ -208,7 +208,7 @@ connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5
 wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
 while scriptgui's front end reads a widget's state differently at the two update rates).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
-Thirty of the families keep a checked module's actors loading: grenchler (Torvus
+Thirty-one of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -223,7 +223,8 @@ places: the family spawns them), sjguard (Agon 02_sand_sandfalls_dark), fishclou
 09_cliff_temple layer 3), isbg (Sanctuary Fortress 06_cliff_spiderballguardian layer 13), spp
 (Temple Grounds dark 01_temple_landingsite_dark), mysf (Temple Grounds 0e_temple_hall), spor (Torvus
 dark 0d_swamp_hall_dark) and scriptgui (the FrontEnd world 69802220, which is the one family that
-needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
+needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table),
+splinter (Temple Grounds 02_temple_exploration)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -318,7 +319,10 @@ StartSelectedGame faults on a null save screen), the menu e2ab through Activate/
 Open/Close/Lock/Unlock and SetToMax/SetToZero/InternalMessage arms plus the four menu pads and the
 x/y/z/start presses, and the slider e21c through Activate/Alert, Increment/Decrement, a held right
 and left, Deactivate/Activate and its Delete, `objs Gui` counting the area's 133 script objects down
-to 132.
+to 132; splinter wakes Temple Grounds 02_temple_exploration's three Splinters
+u055b/u055c/u057c (inactive at load), alerts them, takes the 6 -> 4 -> -6 hp steps on u055b/u055c
+and the missile hit on u057c, and `objs Splinter` counts three at f340 and zero at f3100, with `obj`
+reads of u055b/u057c (hp/fsm/body/message map) at f1200.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
