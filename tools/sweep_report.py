@@ -409,8 +409,9 @@ def main() -> int:
         shard, shard_phases = parse(path, entry.world if entry else "save",
                                     entry.first if entry else 0)
         if entry and entry.areas:
-            # The port's `[warp] world <id> areas:` line is printed as the warp is asked for, from
-            # the outgoing CWorld, so its count is the save world's; the disc's slot list is right.
+            # The port's `[warp] world <id> areas:` line now prints only once the loaded CWorld is
+            # the game state's world, so its count is the target world's; the disc's slot list is
+            # still the authority (a log from before that fix carries the save world's count).
             shard.world_areas = len(entry.areas)
         shards.append(shard)
         phases.extend(shard_phases)
