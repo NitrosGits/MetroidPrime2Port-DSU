@@ -145,10 +145,41 @@ inline SLdrIngBoostBallGuardianData::SLdrIngBoostBallGuardianData()
   miniPortalBeamInfo.pulseSpeed = 20.0f;
   miniPortalBeamInfo.shutdownTime = 0.25f;
   miniPortalBeamInfo.pulseEffectScale = 2.0f;
+#ifdef TARGET_PC
+  // fn_30_2CCC: the REL's beam colors are 0.5 (rodata 0x80) and 0.6/0/0.5 (rodata 0xd8, 0x70,
+  // 0x80): CColor(0.5,0.5,0.5,0.5) at 0x2fe8 is stored to +0x12c (0x3000) and
+  // CColor(0.6,0.6,0,0.5) at 0x301c to +0x130 (0x3034).
+  miniPortalBeamInfo.innerColor = CColor(0.5f, 0.5f, 0.5f, 0.5f);
+  miniPortalBeamInfo.outerColor = CColor(0.6f, 0.6f, 0.0f, 0.5f);
+#else
   miniPortalBeamInfo.innerColor = CColor(0.49803901f, 0.49803901f, 0.49803901f, 0.49803901f);
   miniPortalBeamInfo.outerColor = CColor(0.60000002f, 0.60000002f, 0.0f, 0.49803901f);
+#endif
   lightColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
   lightAttenuation = 5.0f;
+#ifdef TARGET_PC
+  // fn_30_2CCC (REL 30, the SLdrIngBoostBallGuardianData ctor the top-level ctor calls at
+  // +0x2f8): every sound id starts at -1 -- li r0, -0x1 (0x2cd8/0x2d3c) and stw
+  // r0,0x2c/0x30/0x34/0x38/0x3c(r31) (0x2cf8..0x2d08), 0x60/0x64/0x68/0x6c/0x70
+  // (0x2d1c..0x2d2c), 0xc4/0xc8 (0x2d48/0x2d4c), 0xdc (0x2d54). Every other store matches this
+  // one: -1 into the effect/asset ids +0x1c..+0x28/+0x40..+0x50/+0xb0/+0xd8, the floats
+  // +0x4/+0x8/+0xc/+0x10/+0x14/+0x18, +0x4c..+0x5c, +0x74..+0x84, the damage blocks
+  // +0x88/+0x98/+0xe0 and the beam block +0x108..+0x124, 0 into miniPortalBeamInfo's leading
+  // word +0xf0 (0x2fc4), lightColor white (0x3044) and 5 at +0x13c.
+  sound_IngSpotIdle = -1;
+  sound_IngSpotMove = -1;
+  sound_HitNormalDamage = -1;
+  sound_HitHeavyDamage = -1;
+  sound_IngSpotDeath = -1;
+  sound_SwarmMove = -1;
+  sound_InsideHost = -1;
+  sound_ExitHost = -1;
+  sound_ExitHostSafeZone = -1;
+  sound = -1;
+  sound_BodyProjectile = -1;
+  sound_BodyProjectileSplatWall = -1;
+  sound_MiniPortal = -1;
+#endif
 }
 
 inline SLdrIngBoostBallGuardianData::~SLdrIngBoostBallGuardianData() {}
@@ -624,6 +655,20 @@ inline SLdrBoostBallGuardianData::SLdrBoostBallGuardianData()
   ingBoostBallGuardianStruct_0xc2784287.unknown_0xa9b15734 = 10;
   ingBoostBallGuardianStruct_0xc2784287.locomotionSpeedScale = 1.0f;
   ingBoostBallGuardianStruct_0xc2784287.ingSpotSpeedScale = 1.0f;
+#ifdef TARGET_PC
+  // fn_30_160C (REL 30, SLdrBoostBallGuardianData ctor, called at +0x594): the six sound ids
+  // start at -1 -- li r0, -0x1 (0x1654) and stw r0,0x90/0x94/0x98/0x9c/0xa0/0xa4(r31)
+  // (0x165c..0x1670). The rest matches this one: the -1 asset ids +0x80..0x8c, +0x234..+0x23c,
+  // the damage blocks +0x58/+0x68/+0x214/+0x224, 1.8/150/0.5 at +0x0../+0x10, 10/3 at
+  // +0x78/+0x7c, 2/3/80/0.2 at +0x204..+0x210, and the three ingBoostBallGuardianStruct blocks
+  // +0x240/+0x278/+0x2b0 (15, 0.5, 90, 10, 2, 5, 3, 3, 1, 5, 6, 10, 1, 1 each).
+  sound_Bounce = -1;
+  sound_IntoBall = -1;
+  sound_OutofBall = -1;
+  sound = -1;
+  sound_Boost = -1;
+  sound_Rolling = -1;
+#endif
 }
 
 inline SLdrBoostBallGuardianData::~SLdrBoostBallGuardianData() {}
@@ -784,6 +829,17 @@ inline SLdrIngBoostBallGuardian::SLdrIngBoostBallGuardian()
   patterned.health.health = 150.0f;
   patterned.health.hI_KnockBackResistance = 2.0f;
   patterned.creatureSize = 1;
+#ifdef TARGET_PC
+  // fn_30_1540 (REL 30, the SLdrIngBoostBallGuardian ctor called from REL_Load fn_30_130):
+  // after the member ctors the REL stores stb r0(1),0x26c(r31) (0x169c) into
+  // patterned.echoParameters.isEchoEmitter, the CColor(1,1,1,1) built at 0x16bc into the
+  // ambient color at actor +0x14 (stw 0x294, 0x16cc) and li r0,0xf at actor +0x64
+  // (stw 0x2e4, 0x16d0) into the visor flags. turnSpeed 360 (+0x44), minAttackRange 0 (+0x54),
+  // health 150/knock-back 2 (+0x84/+0x88) and creatureSize 1 (+0x268) above already match.
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrIngBoostBallGuardian::~SLdrIngBoostBallGuardian() {}
