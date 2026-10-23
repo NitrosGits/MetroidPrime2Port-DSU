@@ -19,7 +19,7 @@ FAMILIES = ["swamp1", "swamp2", "sandboss", "sandworm", "boostg", "boostg_fsm", 
             "agon54", "darksamus", "splitter", "grenchler", "grenguard", "flyingpirate",
             "mediuming", "metroid", "sporb", "blogg", "swarm", "gunturret", "rezbit", "parasite",
             "lumite", "shrieker", "ingswarm", "darktrooper", "bacteriaswarm", "tryclops",
-            "wisptentacle"]
+            "wisptentacle", "octapede"]
 # the old suite named some logs after the family alone
 ALIASES = {"ing": "ing.log", "ep": "ep.log", "plain": "plain.log"}
 

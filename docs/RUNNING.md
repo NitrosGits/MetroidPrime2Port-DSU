@@ -191,19 +191,19 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
-tryclops and wisptentacle): their areas
+tryclops, wisptentacle and octapede): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
-connection, so nothing would be driven (~40 s each capped, ~110 s for wisptentacle's 6200).
+connection, so nothing would be driven (~40-50 s each capped, ~110 s for wisptentacle's 6200).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
-Eighteen of the families keep a checked module's actors loading: grenchler (Torvus
+Nineteen of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
 0i_sand_hall), rezbit (Sanctuary 02_cliff_reactorcore), parasite (Agon 02_sand_sandfalls layer 9),
 lumite (Agon 0a_sand_hall), shrieker (Torvus 02_swamp_greatbridge), ingswarm (Temple Grounds
 10_temple_pathofeyes), darktrooper (Temple Grounds 04_temple_unknownenemies), bacteriaswarm
-(Temple Grounds 04_temple_unknownenemies_dark), tryclops (Sanctuary Fortress 0f_cliff_hall) and
-wisptentacle (Temple Grounds 0t_temple_hall_dark)
+(Temple Grounds 04_temple_unknownenemies_dark), tryclops (Sanctuary Fortress 0f_cliff_hall),
+wisptentacle (Temple Grounds 0t_temple_hall_dark) and octapede (Sanctuary Fortress 0p_cliff_hall)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -245,7 +245,12 @@ Sleep through Patrol and Search to Attack, stands at the arm end for the contact
 (Withdraw -> Sleep, `orbit` printing the live GetAimPosition), sends `Alert` for Grab/Pull, re-walks
 the approach and forces the re-issue and Decrement arms with `statecall` before killing it (its
 health is deliberately 1,000,000, `CWispTentacle.cpp:560`, so `damage` cannot show a hit - the state
-does).
+does); octapede attacks the four wall chains of Sanctuary 0p_cliff_hall (16 segments, `objs
+Octapede` printing each one's wall position), takes the shared Damage arms (power 8 -> 7, light ->
+6.5, dark 8 -> 6), kills a head with a charged shot (left at hp -42 in fsm Dead), forces `fsm Dead`
+on a live head, runs `kill` on a follower, and follows the chain counts down (16 -> 11 -> 4) as
+Death, Bounce and Explode take the chains apart, the four chain-tail segments still crawling the
+wall at the end.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
@@ -273,12 +278,13 @@ first game update 5.2 s -> 4.1 s wall. "Gameplay reached" stays ~9.1 s: it is a 
 at 60 Hz (frame pacing, `CGraphics::EndScene`), which headless does not change. Full smoke
 (`--jobs 4`, shared machine): the 18-family suite measured wall 364 s windowed -> 356 s headless,
 CPU (user+sys of every game) 193 s -> 121 s; counts, positions and `[warp]`/`[ids]` lines match
-within run-to-run noise. The 36-family suite (2026-10-23, `--jobs 2`, tryclops and wisptentacle
-added on top of bacteriaswarm) measured 416 s headless on a shared machine with a second full suite
-running; the 34-family one 314 s `--jobs 2`, the 33-family one 326 s, the 31-family one (lumite and
-shrieker added) 269 s at `--jobs 4`. The wall-clock drivers ing, ep and darksamus still bound it
-(ing ~266 s), not the family count, and the two new families cost ~42 s (tryclops, 2600 frames) and
-~103 s (wisptentacle, 6200) on top of it.
+within run-to-run noise. The 37-family suite (2026-10-23, `--jobs 2`, octapede added on top of
+tryclops and wisptentacle) measured 418 s headless (18:26:15-18:33:13); the 36-family one 416 s
+headless on a shared machine with a second full suite running; the 34-family one 314 s `--jobs 2`,
+the 33-family one 326 s, the 31-family one (lumite and shrieker added) 269 s at `--jobs 4`. The
+wall-clock drivers ing, ep and darksamus still bound it (ing ~266 s), not the family count, and the
+three newest families cost ~42 s (tryclops, 2600 frames), ~103 s (wisptentacle, 6200) and ~49 s
+(octapede, 3000, capped) on top of it.
 
 ## Branch coverage of the port module bodies (gcov)
 

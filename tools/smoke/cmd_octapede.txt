@@ -1,0 +1,56 @@
+# OctapedeSegment (module 46: COctapedeSegment, in-game "Octapede" - one link of a wall-crawling
+# chain; the head follows its waypoints and the other segments trail the one in front).
+# Sanctuary Fortress 0p_cliff_hall (world 1baa96c2, area 0p_cliff_hall, layer 0): 16 placements in
+# four chains of four, all on the walls around the player's ledge. Chain A u0483 (followers u0467 <-
+# u047e <- u0474) and chain B u0480 (u046b <- u046f <- u0487) at x -218, chains u0450 and u0442 at
+# x -178. A follower links to the segment it follows by APRC -> Activate; a head holds APRC ->
+# Action connections to its children (`obj` prints both).
+# The steps repeat the oct1 lane's tools/drivers/octapede_cliffhall.con (the loader's actors, the
+# shared AcceptScriptMsg Damage arms with power/light/dark hits, a charged shot, and the lethal
+# steps) and then take the death path itself: `fsm u0483 Dead` forces the Dead arm of a live head
+# (state change, not a kill), `kill u0487` runs Death on a follower, and `objs Octapede` after each
+# step gives the count (16 -> 16 -> 16 -> 11 -> 4) and the segments' wall positions, which move every
+# frame as the chains crawl and the dead ones bounce away.
+# Evidence in the transcript: `init compiled module OctapedeSegment` in the log, the 16 segments in
+# `objs` with their wall positions, `obj` fsm Patrol (hp 8/8), the three Damage hits (hp 8 -> 7 ->
+# 6.5, dark 8 -> 6), the charged shot leaving u045a at hp -42 in fsm Dead, `fsm u0483 Dead -> Dead
+# [top machine]` with u0483 then reading hp 0/8 fsm Dead, `kill u0487`'s `killed` with u0487 left in
+# fsm Dead, and the chain counts falling as Death, Bounce and Explode tear the chains apart - the
+# four chain B tail segments u0446/u0442/u043d/u043c survive and keep crawling the wall.
+# Checks are game updates (@f<n>), never wall seconds. The family is NC: 0p_cliff_hall boots so fast
+# that an unpaced 3000 would be over before con.py connects. F=3000, last check f2990.
+@f120 god 1
+@f130 tp -198 119 -124
+@f140 face 270
+@f200 obj u0487
+@f210 obj u0483
+@f220 obj u045a
+@f230 obj u043c
+@f240 objs Octapede
+# The shared Damage arms: power, light (0.5x) and dark (2x), on live segments.
+@f300 damage u0483 1
+@f320 damage u0483 1 light
+@f340 damage u0480 1 dark
+# A charged shot on chain B's head: the hit itself and the fsm it leaves it in.
+@f360 shoot u045a charged
+@f380 obj u045a
+@f420 objs Octapede
+# Dead forced on a live head whose hp is intact: the forced state change, then its run-around and
+# the Explode that starts taking its chain apart.
+@f440 fsm u0483 Dead
+@f460 obj u0483
+@f480 objs Octapede
+# Death on a follower.
+@f560 kill u0487
+@f580 obj u0487
+@f600 objs Octapede
+@f800 objs Octapede
+@f1000 objs Octapede
+@f1400 objs Octapede
+@f1600 tp -160 119 -124
+@f1610 face 90
+@f1720 objs Octapede
+@f2000 objs Octapede
+@f2400 objs Octapede
+@f2800 objs Octapede
+@f2990 objs Octapede
