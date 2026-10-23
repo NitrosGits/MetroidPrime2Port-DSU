@@ -1,0 +1,77 @@
+# PillBug (module 42: CPillBug, the Agon Wastes "Morphology: PillBug" - it crawls its looping
+# waypoint path in Patrol/FastPatrol, runs in to hit the player, and is immune to everything but
+# morph-ball bombs, which bomb it into Injured/Wander).
+# Agon Wastes 0b_sand_hall (world 42b935e4, layer 0): three PillBugs e00280088/89/8a on planar 1
+# looping paths, with the god-mode player u0400.
+# The steps repeat tools/cov/specs/pillbug_sandhall.con: god mode with morph ball/bombs, power bombs,
+# missiles and beams, `objs PillBug`/`objs CPlayer`, a bug placed at the player (InDetectionRange ->
+# FastPatrol), a touch (CollidedWith -> HitPlayer -> Pause -> AnimOver), the beam shots (resisted
+# arms), a real morph-ball bomb laid and the bug put on it (ResistedDamage immune -> Bombed -> Fall ->
+# Landed -> Injured -> Delay -> HasReturnPath false -> Wander -> CloseToPath -> Patrol), shots and
+# bombs at the injured/wandering bug, a forced Turn (every shipped path loops, so PathOver never
+# sets), a bomb kill, and `objs PillBug` around the steps. `obj` reads (hp/fsm/body/message map)
+# replace the late `objs` positions, which vary between runs.
+# Evidence in the transcript: `objs PillBug` listing the three CPillBug objects of area a40 at f320;
+# `obj e00280089` reading hp 25/25, fsm FastPatrol, body state 5 and its message map; the damage
+# shots answering `shot ... at u046c/u0489`; the forced fsm `Turn`/`FastPatrol`; the bomb kill; and
+# `0 objects` at f3400 once the Deletes have run. Every step answers `=> ok`.
+# Checks are game updates (@f<n>), never wall seconds. The state follows the update rate (FastPatrol
+# vs Turn etc.), so the family stays capped (NC). F=3600, last check f3400.
+@f300 god 1; give morphBall 1; give morphBallBombs 1; give powerBomb 3; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give darkAmmo 100; give lightAmmo 100
+@f320 objs PillBug; objs CPlayer
+@f400 place e00280089 player 2
+@f460 place e00280089 player 1
+@f480 obj e00280089
+@f500 touch e00280089 u0400
+@f502 obj e00280089
+@f520 touch e00280089 u0400
+@f540 obj e00280089
+@f620 obj e00280089
+@f700 shoot e00280088
+@f720 obj e00280088
+@f740 beam dark; shoot e00280088
+@f780 beam light; shoot e00280088
+@f820 beam power; shoot e00280088 charged
+@f860 shoot e00280088 missile
+@f900 obj e00280088
+@f1000 press x 20
+@f1060 press a 4
+@f1062 place e00280089 player 0
+@f1100 obj e00280089
+@f1140 obj e00280089
+@f1200 obj e00280089
+@f1260 press x 20
+@f1300 shoot e00280089
+@f1320 beam dark; shoot e00280089
+@f1360 beam power; obj e00280089
+@f1500 obj e00280089
+@f1600 shoot e00280089
+@f1640 obj e00280089
+@f1700 touch e00280089 u0400
+@f1800 obj e00280089
+@f2000 obj e00280089
+@f2200 obj e00280089
+@f2400 fsm e0028008a Turn
+@f2420 obj e0028008a
+@f2500 obj e0028008a
+@f2600 fsm e0028008a FastPatrol
+@f2620 fsm e0028008a Turn
+@f2700 obj e0028008a
+@f2800 press x 20
+@f2860 press a 4
+@f2862 place e0028008a player 0
+@f2940 obj e0028008a
+@f3000 press a 4
+@f3002 place e0028008a player 0
+@f3060 obj e0028008a
+@f3100 press a 4
+@f3102 place e0028008a player 0
+@f3160 obj e0028008a
+@f3200 kill e0028008a
+@f3210 obj e0028008a
+@f3220 kill e00280089
+@f3230 kill e00280088
+@f3260 send e0028008a Delete
+@f3280 send e00280089 Delete
+@f3290 send e00280088 Delete
+@f3400 objs PillBug

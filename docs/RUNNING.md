@@ -202,13 +202,14 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor and scriptgui): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and pbug): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
-while scriptgui's front end reads a widget's state differently at the two update rates).
+while scriptgui's front end reads a widget's state differently at the two update rates, and pbug's
+PillBug fsm reads differ the same way (FastPatrol vs Turn)).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
-Thirty of the families keep a checked module's actors loading: grenchler (Torvus
+Thirty-one of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -224,6 +225,7 @@ places: the family spawns them), sjguard (Agon 02_sand_sandfalls_dark), fishclou
 (Temple Grounds dark 01_temple_landingsite_dark), mysf (Temple Grounds 0e_temple_hall), spor (Torvus
 dark 0d_swamp_hall_dark) and scriptgui (the FrontEnd world 69802220, which is the one family that
 needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
+and pbug (Agon Wastes 0b_sand_hall)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -318,7 +320,15 @@ StartSelectedGame faults on a null save screen), the menu e2ab through Activate/
 Open/Close/Lock/Unlock and SetToMax/SetToZero/InternalMessage arms plus the four menu pads and the
 x/y/z/start presses, and the slider e21c through Activate/Alert, Increment/Decrement, a held right
 and left, Deactivate/Activate and its Delete, `objs Gui` counting the area's 133 script objects down
-to 132.
+to 132; pbug drives Agon Wastes 0b_sand_hall's three PillBugs e00280088/e00280089/e0028008a
+(planar 1 looping paths) through a bug placed at the player (InDetectionRange -> FastPatrol), a
+touch (CollidedWith -> HitPlayer -> Pause -> AnimOver), the power/dark/light beam and missile
+shots (all resisted), a real morph-ball bomb laid with the bug put on it (ResistedDamage immune
+-> Bombed -> Fall -> Landed -> Injured -> Delay -> HasReturnPath false -> Wander ->
+CloseToPath -> Patrol), shots and bombs at the injured/wandering bug, a forced Turn (every
+shipped path loops, so PathOver never sets), a bomb kill, and `objs PillBug` counting three at
+f320 and zero at f3400, with `obj` reads (hp 25/25, fsm FastPatrol, body state 5, message map)
+around them. The PillBug fsm reads follow the update rate, so the family stays capped (NC).
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
