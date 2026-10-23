@@ -161,10 +161,11 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   (`recording.cpp`, from upstream aurora 9c0bf66f1e), the dstAlpha alpha-only pass
   (`command_processor.cpp` `push_gx_draw`, `67f337a57`) and `AURORA_PRESENT_EVERY` (`aurora.cpp`
   end_frame).
-- **Full list of vendored-Aurora additions** (keep all on re-vendor): 32 MiB uniform buffer, efb_copy and scan_peek shutdowns outside the lock, `PADSetPortOverride`, partial `GXCopyTex` clear, dstAlpha alpha-only pass (now dual-source when supported, `AURORA_DUAL_SOURCE=0` = old), `GXSnapshotDepth`/`GXPeekZRegion` (flare occlusion), `aurora/perf.h` counters (`MP2_PERF_COUNTERS=1`), `AURORA_PRESENT_EVERY`, `AURORA_RENDER_EVERY` (fifo copy-destination table), Dawn `ImplicitDeviceSynchronization` (`AURORA_IMPLICIT_SYNC=0` = off; without it GPU ring resets).
+- **Full list of vendored-Aurora additions** (keep all on re-vendor): 32 MiB uniform buffer, efb_copy and scan_peek shutdowns outside the lock, `PADSetPortOverride`, partial `GXCopyTex` clear, dstAlpha alpha-only pass (now dual-source when supported, `AURORA_DUAL_SOURCE=0` = old), `GXSnapshotDepth`/`GXPeekZRegion` (flare occlusion), `GXRequestScanPeekEx` flags (`GX_SCAN_PEEK_DEPTH_ONLY` no alpha warning, `GX_SCAN_PEEK_IF_RENDERED` no forced full frame; Splitter beam), `aurora/perf.h` counters (`MP2_PERF_COUNTERS=1`), `AURORA_PRESENT_EVERY`, `AURORA_RENDER_EVERY` (fifo copy-destination table), Dawn `ImplicitDeviceSynchronization` (`AURORA_IMPLICIT_SYNC=0` = off; without it GPU ring resets).
 - **Aurora's scan peek (`extern/aurora/lib/gfx/scan_peek.cpp`) is a vendored addition with a
   shutdown fix.** `GXRequestScanPeek` feeds the scan visor and, since split26, the Splitter beam's
-  depth read-back (every frame, so a map is nearly always pending at exit). `shutdown()` must free
+  depth read-back (every rendered frame, through `GXRequestScanPeekEx` with `GX_SCAN_PEEK_IF_RENDERED`, so it does not force
+  frames rendered under `AURORA_RENDER_EVERY`; a map is nearly always pending at exit). `shutdown()` must free
   the read-back buffers *after* releasing `g_mutex`: freeing one with a map pending runs its
   callback at once, which takes the same lock and deadlocks the exit (`932feb7c4`). Keep both on a
   re-vendor. Its depth words come back byte-swapped (big-endian in memory), like the GX Z16 copy.

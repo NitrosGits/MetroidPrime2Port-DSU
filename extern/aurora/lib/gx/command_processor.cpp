@@ -6,6 +6,7 @@
 #include "../internal.hpp"
 #include "dolphin/gd/GDGeometry.h"
 #include "dolphin/gx/GXAurora.h"
+#include "dolphin/gx/GXCpu2Efb.h"
 #include "fifo.hpp"
 #include "gx.hpp"
 #include "pipeline.hpp"
@@ -840,7 +841,7 @@ void handle_aurora(ByteReader& reader) noexcept {
     gfx::depth_peek::request_snapshot();
   } else if (subCmd == GX_AURORA_SNAPSHOT_DEPTH) {
     gfx::split_pass_for_depth_snapshot();
-  } else if (subCmd == GX_AURORA_REQUEST_SCAN_PEEK) {
+  } else if (subCmd == GX_AURORA_REQUEST_SCAN_PEEK || subCmd == GX_AURORA_REQUEST_SCAN_PEEK_EX) {
     const s32 left = static_cast<s32>(reader.read<u32>());
     const s32 top = static_cast<s32>(reader.read<u32>());
     const u32 width = reader.read<u32>();
@@ -849,6 +850,11 @@ void handle_aurora(ByteReader& reader) noexcept {
     auto* depthHighOut = reinterpret_cast<void*>(reader.read<u64>());
     auto* depthLowOut = reinterpret_cast<void*>(reader.read<u64>());
     auto* sequence = reinterpret_cast<u32*>(reader.read<u64>());
+    u32 flags = 0;
+    if (subCmd == GX_AURORA_REQUEST_SCAN_PEEK_EX) {
+      flags = reader.read<u32>();
+      reader.read<u32>(); // padding
+    }
     // The game's coordinates are logical, as GXSetTexCopySrc's are: map them the same way the
     // copy path does, so the peek reads the texels the copy would have written.
     const auto rect = map_logical_scissor({left, top, static_cast<int32_t>(width), static_cast<int32_t>(height)});
@@ -863,6 +869,8 @@ void handle_aurora(ByteReader& reader) noexcept {
         .srcHeight = rect.height,
         .width = width,
         .height = height,
+        .depthOnly = (flags & GX_SCAN_PEEK_DEPTH_ONLY) != 0,
+        .ifRendered = (flags & GX_SCAN_PEEK_IF_RENDERED) != 0,
     });
   } else if (subCmd == GX_AURORA_REQUEST_EFB_COPY) {
     const auto staging = reinterpret_cast<void*>(reader.read<u64>());

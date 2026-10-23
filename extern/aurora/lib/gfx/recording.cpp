@@ -936,8 +936,15 @@ void queue_scan_peek(scan_peek::Request req) {
     return;
   }
   // Port: AURORA_RENDER_EVERY: the peek reads the EFB, so the frame that carries it is rendered in
-  // full (see resolve_pass_into).
-  gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Readback);
+  // full (see resolve_pass_into), unless the caller only wants it on frames rendered anyway
+  // (GX_SCAN_PEEK_IF_RENDERED): then a frame that is not rendered drops it.
+  if (req.ifRendered) {
+    if (!gx::fifo::frame_rendered()) {
+      return;
+    }
+  } else {
+    gx::fifo::force_frame_rendered(gx::fifo::FrameRenderReason::Readback);
+  }
   renderPass.scanPeek = std::move(req);
 }
 
