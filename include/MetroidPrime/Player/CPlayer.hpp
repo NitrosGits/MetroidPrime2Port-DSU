@@ -477,6 +477,10 @@ public:
   // UpdateMouseAim turns the body to the mouse yaw. CFirstPersonCamera reads the same angles
   // for the view; see platform/include/port_mouse.h.
   bool MouseAimAllowed(const CStateManager& mgr) const;
+  // Direct aim, locked onto an empty orbit point (MP1 #169): the camera keeps its pitch and the
+  // point sits on the flat forward at eye height instead of levelling the view.
+  bool PortEmptyLockKeepsPitch() const;
+  bool PortDirectAimControls() const;
   void UpdateMouseAim(CStateManager& mgr, float dt);
   // The right stick, cached from ProcessInput for UpdateMouseAim (twin-stick aim).
   float mPortLookX = 0.f;
