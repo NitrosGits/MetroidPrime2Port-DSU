@@ -5,7 +5,7 @@ loader, the ctors and empty stubs; the port's bodies are in
 `src/MetroidPrime/Enemies/PortCMediumIng.cpp` (the upstream stubs they replace sit under
 `#ifndef TARGET_PC`). Function table: `MediumIng_functions.tsv` (class B/H/T, slice, marker).
 
-## Status (2026-10-23, lanes mi1 + mi2 + mi3)
+## Status (2026-10-23, lanes mi1 + mi2 + mi3 + mi4)
 
 - mi1 (slice 1, `PortCMediumIng.cpp`): Think, AcceptScriptMsg, PreRender, Render, Touch, Death,
   the mist/safe-zone/listen bodies, CalculateSeparation and the helpers UpdateTimers 3274,
@@ -16,17 +16,20 @@ loader, the ctors and empty stubs; the port's bodies are in
 - mi3: one definition each for 49CC/5DC8/5E0C (mi1's kept; both equal to the asm); the states
   played in area 46. 32 of 156 B functions marked; per-state open arms: `MediumIng_states.md`.
 - Unmarked bodies with open arms: most states (team-AI, jump-point, safe-zone-success and null
-  guards), CalculateSeparation 2024 (hx < hy, the zone loop). JumpRouteEstimate 6D08 /
+  guards), CalculateSeparation 2024 (flee CanBeNormalized false 0x2298, other-area neighbour 0x2094;
+  the zone loop ran with `mediuming_zone.con`). JumpRouteEstimate 6D08 /
   SearchJumpRoute 6BFC never ran: area 46 has no AiJumpPoint.
 - Death runs more than once per kill, as in retail: 1B18 has no guard (CPatterned::Death, then
   RemoveEmitter 0xce8/0xcec, AddMaterial 0x25) and CPatterned::Death guards on mAlive. The first
   call comes from CStateManager::ApplyLocalDamage (mAlive 1); later ones (mAlive 0) come from
   CPatterned::KnockBack under projectile damage while the dead Ing is still shot (gdb
   `$_any_caller_matches(".*KnockBack", 12)`: 27 of 28 in the forced run).
-- Dead 30B0 removes the Ing only by DeathDelete when the body state is kAS_LieOnGround (0x31D0
-  `cmpwi 2`; mi2 had kAS_Death = 4, fixed in review33, so the arm never ran), or by
-  DeleteObjectRequest once the mist effect drains (mE1, 0x31E8). The mi3 observations (console
-  kill stays in Dead, the shot kill deleted by an untraced path) predate that fix: re-check.
+- mi4: Dead 30B0 and PathCostSquared 6F18 marked (34/155 B). Dead leaves by DeathDelete
+  (0x31D0 kAS_LieOnGround) after a shot kill and after console `damage <id> 999`; its mE1 drain
+  arm is dead (SetFlagE1 unreferenced). SelectTarget 698C / SetDashDestination 261C match the asm
+  (open arms in `MediumIng_states.md`). Plain-`bge` clamps (NaN -> 0 / keep left) fixed in Dead,
+  SetDash, CalculateSeparation. 3064 is compiler glue (H). The upstream-matched bodies (triggers,
+  ctors, loader) carry no marker: the port compiles upstream's code unchanged.
 - asmcheck: the bitfield run mC0..mE2 (0xCFC..0xCFE, MSB first: mC0 = 0xCFC 0x80) has no stated
   anchor in the upstream header, so every bit is NOPOS/BIT. Checked by hand for the marked
   states.
@@ -74,7 +77,7 @@ death, kept by the lane in `/tmp/opencode/mi1-shots/`.
 | 93FC / 94A4 | T GetTouchBounds / GetProgress | 608 / 636 | - |
 | 91B0 | T Touch | mCanDamage 1 (400 cap) | mCanDamage 0 (early return) |
 | 9A34 / 9CE0 / 9ED0 | T Extend / Retract / UpdateShake | 2 / 2 / 2 | - |
-| 2024 | CalculateSeparation | not run | slice 2 (PathFind) |
+| 2024 | CalculateSeparation | via PathFind; zone loop (mi4 `mediuming_zone.con`) | flee CanBeNormalized false, other-area neighbour |
 
 ## States run (mi3)
 
