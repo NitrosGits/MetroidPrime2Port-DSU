@@ -631,3 +631,31 @@ void OnAnimLoaded(uint assetId, int format, float seconds) {
 class CAABox;
 
 void DebugDrawAABox(const CAABox&, float, float, float, float) {}
+
+// DebugDrawOBB - retail's body is empty, so this one is empty too
+//
+// `src/MetroidPrime/Enemies/CSpankWeed.cpp:29` declares it and `:572` (CSpankWeed::Render) calls
+// it, once per box of the animation's spatial primitive, right after building the world-space box
+// (`bl __ct__6COBBoxFRC12CTransform4fRC9CVector3f`) with 1.0f in f1..f4. Retail's REL SpankWeed
+// Render does exactly that (`build/G2ME01/SpankWeed/asm/MetroidPrime/Enemies/CSpankWeed.s`,
+// `Render__10CSpankWeedCFRC13CStateManager`, `/* 00000D50 00000E0C  48 00 30 59 */ bl
+// DebugDrawOBB__FRC6COBBoxffff`).
+//
+// The DOL body is four bytes and no more: `DebugDrawOBB__FRC6COBBoxffff = .text:0x80083FD8;
+// size:0x4 align:4` (`config/G2ME01/symbols.txt:2341`), and the split build's own asm
+// (`build/G2ME01/asm/MetroidPrime/Weapons/CBomb.s:1187`) reads:
+//
+//   # .text:0x10F0 | 0x80083FD8 | size: 0x4
+//   /* 80083FD8 00080DD8  4E 80 00 20 */  blr   ; this one
+//   /* 80083FDC 00080DDC  4E 80 00 20 */  blr   ; fn_80083FDC, DebugDrawAABox
+//   /* 80083FE0 00080DE0  94 21 FF C0 */  stwu  ; CPlayerState::RemoveId, the next real body
+//
+// (raw bytes out of `build/G2ME01/main.elf`: .text at VMA 0x80003840 is file offset 0x920, so
+// 0x80083FD8 is file 0x810B8 = `4e 80 00 20`.) So the shipping game draws nothing here, and an
+// empty body is the faithful port, not a stand-in. It replaces the empty definition the upstream
+// merge added to `src/MetroidPrime/PortLinkStubs.cpp` (the anonymous `reachstub_r5`).
+// ---------------------------------------------------------------------------
+
+class COBBox;
+
+void DebugDrawOBB(const COBBox&, float, float, float, float) {}
