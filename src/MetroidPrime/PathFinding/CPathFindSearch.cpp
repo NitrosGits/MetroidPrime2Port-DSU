@@ -4,7 +4,6 @@
 
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CloseEnough.hpp"
-
 #ifdef TARGET_PC
 #include "port_console.h"
 #endif
