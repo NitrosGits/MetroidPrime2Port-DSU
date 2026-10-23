@@ -1,0 +1,83 @@
+# PuddleSpore (module 51: CPuddleSpore, the Phlogus), the swamp's shelled spore: it lies in wait in
+# InActive, runs its usr animations through DoUserAnimEvent, gets up to Attack when the player comes
+# close, knocks players off its shell and tears down through Dead.
+# Torvus Bog dark 0d_swamp_hall_dark (world 3dfd2249, layer 0), its only placement e00150015, which
+# the area loads active.
+# The steps repeat the ps1 lane's tools/cov/specs/puddlespore.con: god mode with the morph ball and
+# missiles, `place` 8 units from the player, the forced InActive and a `damage` (the knock-off arm),
+# `touch`, Attack, the five `tp` steps onto its shell (the gaps its state reads), Run, the forced
+# body state 0 (Turbo), TurnAround, another `touch`, GetUp with the four diagonal `tp` steps, a `press
+# x` while morphed on it, InActive again for the press-x-while-hovering arm, GetUp, Run, the three
+# beams and the aimed and missile shots, then `objs PuddleSpore` before the `send Delete` and after it.
+# Evidence in the transcript: `objs PuddleSpore` listing e00150015 (u045f) at f340 - the object the
+# area loaded - and `0 objects` at f1850 once the Delete has run; `place` answering with its new
+# position 150.69 -33.56 38.13; the damage hit hp 1000000.0 -> 999999.0 (the Phlogus' health is
+# 1,000,000) with `obj e00150015` reading fsm Active and body state 7 (the flinch) and then its
+# message map (on Closed send Activate to the trigger 00150060 and the safe zone 00150022, on Open
+# send Deactivate); the fsm forcing answering `Attack -> InActive [top machine]`, `Active -> Attack`,
+# `TurnAround -> Run`, `Run -> TurnAround` and `TurnAround -> GetUp`, the `bodystate` step taking
+# body state 0 -> 2 and the `touch` steps answering `touch e00150015 -> u0000`; the beams answering
+# `beam -> dark`/`-> light`/`-> power` and the shots `shot ... at u045f from 3.0 units` and
+# `missile at u045f: 1 in flight, 84 left`, the hp down to 999982 by the f1720 `obj`; every step
+# answering `=> ok`. The log's `init compiled module PuddleSpore` line lists the whole
+# compiled-module table, so it says the module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds, and they are the driver's own stable reads:
+# the coverage driver's `status` steps are dropped (they print the frame rate and the camera, which
+# differ every run), and so is its `objs Player` (the two CScriptPlayerProxy objects of area a15
+# appear a few updates apart, so their count is not a fixed line). F=2000, last check f1850.
+@f300 god 1; give morphBall 1; give missile 50; fastmorph 1
+@f340 objs PuddleSpore
+@f400 place e00150015 player 8
+@f600 fsm e00150015 InActive
+@f605 damage e00150015 1 1
+@f610 obj e00150015
+@f650 touch e00150015 u0000
+@f660 fsm e00150015 Attack
+@f700 tp 150.69 -33.56 50
+@f720 tp 150.69 -33.56 50
+@f740 tp 150.69 -33.56 50
+@f760 tp 150.69 -33.56 50
+@f780 tp 150.69 -33.56 50; obj e00150015
+@f800 fsm e00150015 Run
+@f860 obj e00150015
+@f870 bodystate e00150015 0
+@f880 obj e00150015
+@f900 fsm e00150015 TurnAround
+@f960 touch e00150015 u0000
+@f1000 fsm e00150015 GetUp
+@f1002 tp 158.69 -33.56 38.3
+@f1010 tp 142.69 -33.56 38.3
+@f1018 tp 150.69 -25.56 38.3
+@f1026 tp 150.69 -41.56 38.3
+@f1034 tp 150.69 -33.56 70
+@f1036 tp 150.69 -33.56 38.3
+@f1050 obj e00150015
+@f1100 tp 150.69 -33.56 38.13
+@f1102 obj e00150015
+@f1200 tp 160 -33.56 38.3; press x 30
+@f1250 obj e00150015
+@f1260 fsm e00150015 InActive
+@f1262 tp 158.69 -33.56 55
+@f1290 tp 142.69 -33.56 55
+@f1320 tp 150.69 -25.56 55
+@f1350 tp 150.69 -41.56 55
+@f1380 fsm e00150015 GetUp
+@f1382 tp 158.69 -33.56 38.3
+@f1390 tp 142.69 -33.56 38.3
+@f1398 tp 150.69 -25.56 38.3
+@f1406 tp 150.69 -41.56 38.3
+@f1414 tp 150.69 -33.56 38.3
+@f1430 obj e00150015
+@f1500 tp 160 -33.56 40; press x 30
+@f1560 fsm e00150015 Run
+@f1570 beam 1
+@f1580 shoot e00150015
+@f1600 fsm e00150015 Run; beam 2
+@f1610 shoot e00150015
+@f1640 fsm e00150015 Run; beam 0
+@f1650 shoot e00150015 1 dir 0 0.2 1
+@f1680 fsm e00150015 Run
+@f1690 shoot e00150015 missile
+@f1720 obj e00150015
+@f1800 send e00150015 Delete
+@f1850 objs PuddleSpore

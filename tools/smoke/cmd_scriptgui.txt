@@ -1,0 +1,73 @@
+# ScriptGui (module 60: CScriptGuiScreen/Menu/Widget/Slider ... the front end's GWIG/GMNU/GSLD/GSCR
+# script objects - the menus, widgets and sliders that draw and drive the front end screens).
+# FrontEnd (world 69802220, area cee3af0d), which the run boots with SKIP_FRONTEND=0: with the front
+# end skipped the FrontEnd area never loads and the script objects never appear. Its object ids are
+# the area's short editor ids, e0 (the front end screen) and e2ab / e21c / e245 (menu, slider,
+# widget), so a driver has to drive only a few of them - the area boots at about 1008/1024 object
+# ids, and mass activation exhausts the pool (docs/module-analysis/ScriptGui.md).
+# The steps repeat the gui1 lane's tools/cov/specs/gui_menu_slider.con: `send e0 Unlock` first
+# (without it StartSelectedGame faults on a null save screen), the menu's Activate/Alert and its
+# forced Open/Close/Lock/Unlock arms, the four menu pads' presses (down/up four times each, the
+# wrap arms), SetToMax/SetToZero and the three InternalMessages, the x/y/z/start presses, the
+# Follow message, then the slider e21c: Activate/Alert, Increment/Decrement, a held right and a held
+# left `press`, Deactivate and Activate again, and its Delete - with `objs Gui` before the steps and
+# `obj` reads of the menu and slider around them.
+# Evidence in the transcript: `objs Gui` listing the area's CScriptGui objects (the front end
+# screen, the menus and the slider) before the driver sends anything, `obj e2ab` and `obj e21c`
+# reading each object's state and message map (the menu's Open/Close/Lock/Unlock and the slider's
+# Increment/Decrement/SetToMax/SetToZero arms), every `send` and `press` answering `=> ok` with the
+# object it reached (`sent Activate to u0674 000002ab`), and the slider's Delete dropping the list
+# from 133 objects at f130 to 132 at f600 - that count is the Delete's check (an `obj e21c` after it
+# could only answer "no object with editor id", which con.py reports as a step error). The log's
+# `init compiled module ScriptGui` line lists the whole compiled-module table, so it says the module
+# is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. The area boots at about 1008/1024 object ids,
+# so the steps stay the driver's own few objects and its late checks are `obj` (a forced menu state
+# and message map - stable) rather than an `objs` list of moved positions. F=700, last check f600.
+@f100 send e0 Unlock
+@f130 objs Gui
+@f140 obj e2ab; obj e21c
+@f200 send e2ab Activate
+@f202 send e2ab Alert
+@f210 send e2ab Open
+@f212 send e2ab Close
+@f214 send e2ab Lock
+@f216 send e2ab Unlock
+@f220 press down 4
+@f230 press down 4
+@f240 press down 4
+@f250 press down 4
+@f260 press down 4
+@f270 press up 4
+@f280 press up 4
+@f290 press up 4
+@f300 press up 4
+@f310 press up 4
+@f320 send e2ab SetToMax
+@f324 send e2ab SetToZero
+@f328 send e2ab InternalMessage0
+@f330 send e2ab InternalMessage1
+@f332 send e2ab InternalMessage2
+@f340 press x 4
+@f350 press y 4
+@f360 press z 4
+@f370 press start 4
+@f380 send e2ab Follow from e245
+@f390 press down 4
+@f400 press up 4
+@f410 press a 4
+@f420 send e2ab Escape
+@f430 send e2ab Deactivate
+@f440 send e21c Activate
+@f442 send e21c Alert
+@f445 obj e2ab
+@f450 send e21c Increment
+@f470 send e21c Decrement
+@f490 press right 40
+@f500 obj e21c
+@f510 send e21c Deactivate
+@f520 send e21c Activate
+@f530 press left 40
+@f540 obj e21c
+@f545 send e21c Delete
+@f600 objs Gui
