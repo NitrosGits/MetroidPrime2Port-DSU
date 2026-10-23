@@ -5,7 +5,7 @@ loader, the ctors and empty stubs; the port's bodies are in
 `src/MetroidPrime/Enemies/PortCMediumIng.cpp` (the upstream stubs they replace sit under
 `#ifndef TARGET_PC`). Function table: `MediumIng_functions.tsv` (class B/H/T, slice, marker).
 
-## Status (2026-10-24, lanes mi1 + mi2 + mi3 + mi4 + mi5 + ming1)
+## Status (2026-10-24, lanes mi1 + mi2 + mi3 + mi4 + mi5 + ming1 + ming3)
 
 - mi1 (slice 1, `PortCMediumIng.cpp`): Think, AcceptScriptMsg, PreRender, Render, Touch, Death,
   the mist/safe-zone/listen bodies, CalculateSeparation and the helpers UpdateTimers 3274,
@@ -115,3 +115,13 @@ to area 40, and mist states 1 and 4. Screenshots: `/tmp/opencode/mi3-shots/`.
 - `CHealthInfo::GetLastDamageWeaponMode()` is a TARGET_PC getter for the Touch arm.
 - Touch's static interference reads `mgr.PlayerState(0)` (retail: mgr+0x150C).
 - CalculateSeparation uses CPatterned's steering (0x61C), not CMediumIng's own `mSteering`.
+
+## ming3 (partial)
+
+- Driver `tools/cov/specs/mediuming_ming3.con`, new `ming.{quitteam,jointeam,validate,conn,destx/y/z,destme}` console vars.
+- Marked: HasApproachPattern (fn_41_2454), HasAttackPattern (fn_41_24C4): all 4/4 arms taken.
+- Dead proofs: IncrementFrustatedCounter (fn_41_2548), IsMisting (fn_41_5CAC): the name appears only in the
+  CMediumIng.cpp func-ptr tables, no caller in /tmp/opencode/pseudo/MediumIng/, 0 refs in the 110 FSM2/AFSM assets on disc.
+- Still open (unmarked): QuitTeam (346 not-in-team arm), JoinTeam (358 cast-null arm, likely dead: the team predicate
+  guarantees CScriptTeamAiMgr), Leash (495), ValidateSafeZone (522 Echo-keep arm), IsDestInsideCurrentRegion (543 true arm:
+  FindClosestRegion returns null at the Ing in area 46 on the host), ShouldMist/Melee/ArmAttack (need line of sight).

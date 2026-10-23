@@ -53,10 +53,10 @@ offset	fn	size	class	name	slice	what	marker
 02390	fn_41_2390	54	B	ShouldDoubleDash	2	upstream body; played, every live arm (ming1 gcov)	yes
 023E4	fn_41_23E4	54	B	ShouldTaunt	2	upstream body; played, every live arm (ming1 gcov)	yes
 02438	fn_41_2438	1C	B	PatternOver	2	upstream body; played, every live arm (ming1 gcov)	yes
-02454	fn_41_2454	70	B	HasApproachPattern	2	upstream body or slice 2	no
-024C4	fn_41_24C4	70	B	HasAttackPattern	2	upstream body or slice 2	no
+02454	fn_41_2454	70	B	HasApproachPattern	played, every live arm	upstream body or slice 2	yes
+024C4	fn_41_24C4	70	B	HasAttackPattern	played, every live arm	upstream body or slice 2	yes
 02534	fn_41_2534	14	B	CanBeShot	2	upstream body; played, every live arm (ming1 gcov)	yes
-02548	fn_41_2548	10	B	IncrementFrustatedCounter	2	upstream body or slice 2	no
+02548	fn_41_2548	10	B	IncrementFrustatedCounter	dead (no callers)	upstream body or slice 2	yes
 02558	fn_41_2558	C	B	ResetFrustatedCounter	2	upstream body; played, every live arm (ming1 gcov)	yes
 02564	fn_41_2564	B8	B	SetRetreatDestination	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
 0261C	fn_41_261C	458	B	SetDashDestination	2	mi2 body (CMediumIng.cpp); marked mi5 (0x2994 and 0x29E4 forced: codecall in the zone, pathfail)	fn_41_261C
@@ -107,7 +107,7 @@ offset	fn	size	class	name	slice	what	marker
 05C24	fn_41_5C24	44	B	GetDamageVulnerability	2	upstream body; played, every live arm (ming1 gcov)	yes
 05C68	fn_41_5C68	C	B	IsAggressive	2	upstream body; played, every live arm (ming1 gcov)	yes
 05C74	fn_41_5C74	38	H	HasMist (inlined in the port)	-	HasMist (inlined in the port; checked with its callers) (ming1)	no
-05CAC	fn_41_5CAC	20	B	IsMisting	2	upstream body or slice 2	no
+05CAC	fn_41_5CAC	20	B	IsMisting	dead (no callers)	upstream body or slice 2	yes
 05CCC	fn_41_5CCC	B0	B	Leash	2	upstream body or slice 2	no
 05D7C	fn_41_5D7C	4C	B	PathShagged	2	upstream body; played, every live arm (ming1 gcov)	yes
 05DC8	fn_41_5DC8	44	B	IsMistDecayed	1	slice 1 body (PortCMediumIng.cpp)	yes

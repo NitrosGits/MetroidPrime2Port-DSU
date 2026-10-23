@@ -383,6 +383,7 @@ bool CMediumIng::PatternOver(CStateManager& mgr, const CTriggerData& data) const
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// @ fn_41_2454
 bool CMediumIng::HasApproachPattern(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!mD0) {
@@ -393,6 +394,7 @@ bool CMediumIng::HasApproachPattern(CStateManager& mgr, const CTriggerData& data
   return result;
 }
 
+// @ fn_41_24C4
 bool CMediumIng::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!mD0) {
@@ -406,6 +408,7 @@ bool CMediumIng::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) 
 // @ fn_41_2534
 bool CMediumIng::CanBeShot(const CStateManager& mgr, int type) { return !mC1; }
 
+// @ fn_41_2548 (dead: only named in the func-ptr table; no caller in the pseudo-C, 0 refs in 110 FSM2/AFSM assets)
 void CMediumIng::IncrementFrustatedCounter(CStateManager& mgr, float dt) { ++mFrustratedCounter; }
 
 // @ fn_41_2558
@@ -481,6 +484,7 @@ bool CMediumIng::IsAggressive(CStateManager& mgr, const CTriggerData& data) cons
 
 bool CMediumIng::HasMist() const { return !(CMath::AbsF(mMistAmount - 0.f) < 0.00001f); }
 
+// @ fn_41_5CAC (dead: only named in the func-ptr table; no caller in the pseudo-C, 0 refs in 110 FSM2/AFSM assets)
 bool CMediumIng::IsMisting(CStateManager& mgr, const CTriggerData& data) const { return HasMist(); }
 
 bool CMediumIng::Leash(CStateManager& mgr, const CTriggerData& data) const {

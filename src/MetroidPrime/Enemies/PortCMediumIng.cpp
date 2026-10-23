@@ -851,6 +851,95 @@ bool CMediumIng::PortConsoleVar(CEntity& ent, const char* name, const int* value
     current = static_cast< int >(ing->mSafeZoneId.value);
     return true;
   }
+  CStateManager* vmgr = PortConsole::VarManager();
+  if (vmgr != nullptr) {
+    // Calls with no trigger/code name: ming.quitteam / jointeam / validate run the body once.
+    if (strcmp(n, "quitteam") == 0) {
+      if (value != nullptr && *value != 0) {
+        ing->QuitTeam(*vmgr);
+      }
+      current = ing->mTeamAiMgrId.value;
+      return true;
+    }
+    if (strcmp(n, "jointeam") == 0) {
+      if (value != nullptr && *value != 0) {
+        ing->JoinTeam(*vmgr);
+      }
+      current = ing->mTeamAiMgrId.value;
+      return true;
+    }
+    if (strcmp(n, "validate") == 0) {
+      if (value != nullptr && *value != 0) {
+        ing->ValidateSafeZone(*vmgr);
+      }
+      current = ing->mSafeZoneId.value;
+      return true;
+    }
+    // ming.conn is a bitmask of the connections the pattern/team triggers look for, all pointing at
+    // the Ing itself: 1 Approach/Follow, 2 GeneratorConnection/Follow, 4 Active/Play (the team
+    // link; clearing it keeps the originals and setting it restores them).
+    if (strcmp(n, "conn") == 0) {
+      static rstl::vector< SConnection > sSavedTeam;
+      rstl::vector< SConnection >& list = ing->ConnectionList();
+      auto has = [&](EScriptObjectState s, EScriptObjectMessage m) {
+        for (const SConnection& c : list) {
+          if (c.state == s && c.msg == m) {
+            return true;
+          }
+        }
+        return false;
+      };
+      auto drop = [&](EScriptObjectState s, EScriptObjectMessage m, bool save) {
+        for (size_t i = list.size(); i-- > 0;) {
+          if (list[i].state == s && list[i].msg == m) {
+            if (save) {
+              sSavedTeam.push_back(list[i]);
+            }
+            list.erase(list.begin() + i);
+          }
+        }
+      };
+      if (value != nullptr) {
+        const int bits = *value;
+        drop(kSS_Approach, kSM_Follow, false);
+        drop(kSS_GeneratorConnection, kSM_Follow, false);
+        if ((bits & 1) != 0) {
+          list.push_back(SConnection(kSS_Approach, kSM_Follow, ing->GetEditorId()));
+        }
+        if ((bits & 2) != 0) {
+          list.push_back(SConnection(kSS_GeneratorConnection, kSM_Follow, ing->GetEditorId()));
+        }
+        if ((bits & 4) == 0) {
+          drop(kSS_Active, kSM_Play, true);
+        } else if (!has(kSS_Active, kSM_Play)) {
+          for (const SConnection& c : sSavedTeam) {
+            list.push_back(c);
+          }
+          sSavedTeam.clear();
+        }
+      }
+      current = (has(kSS_Approach, kSM_Follow) ? 1 : 0) |
+                (has(kSS_GeneratorConnection, kSM_Follow) ? 2 : 0) |
+                (has(kSS_Active, kSM_Play) ? 4 : 0);
+      return true;
+    }
+    if (strncmp(n, "dest", 4) == 0 && n[4] != '\0' && n[5] == '\0') { // destx/desty/destz
+      CVector3f& d = ing->mDestPos;
+      if (value != nullptr) {
+        const float v = static_cast< float >(*value);
+        n[4] == 'x' ? d.SetX(v) : n[4] == 'y' ? d.SetY(v) : d.SetZ(v);
+      }
+      current = static_cast< int >(n[4] == 'x' ? d.GetX() : n[4] == 'y' ? d.GetY() : d.GetZ());
+      return true;
+    }
+    if (strcmp(n, "destme") == 0) { // mDestPos = the Ing's own position
+      if (value != nullptr && *value != 0) {
+        ing->mDestPos = ing->GetTranslation();
+      }
+      current = 0;
+      return true;
+    }
+  }
   if (strcmp(n, "team") == 0) { // mTeamAiMgrId
     if (value != nullptr) {
       ing->mTeamAiMgrId = *value < 0 ? kInvalidUniqueId : TUniqueId(static_cast< ushort >(*value));
