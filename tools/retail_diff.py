@@ -7,9 +7,12 @@ compares the port body with the retail body (asm and rodata read through tools/a
   call   a retail `bl` target the port body never names: a ported module callee by its port name,
          an unported one by fn_<mod>_<off> or an x<OFF>_ name (in code or a comment), a DOL callee
          by its demangled base name (runtime helpers, rstl, ctors/dtors, operators skipped).
-         Unmarked port helpers the body calls are expanded 2 levels; callees missed at >= half of
-         their (>= 3) call sites (port-model differences) and unported module callees of a ctor or
-         dtor (member ctors/dtors) are hidden unless --strict
+         Port helpers the body calls (any def of that name, the caller's class when several) are
+         expanded 2 levels; DOL callees the port names another way (DOL_ALIAS: ObjectById,
+         AsNormalized, SetDrawShadow...) count as named. Hidden unless --strict: callees missed at
+         >= half of their (>= 3) call sites (port-model differences), unported module callees of a
+         ctor or dtor (member ctors/dtors), unported rstl/string/allocation template instances,
+         CToken::GetObj. A marker inside a body (a switch arm) checks that body (no shape check)
   const  a float constant retail loads from module rodata that appears nowhere in the port file
          as a literal (0 and the int->float conversion magic skipped)
   shape  conditional-branch count far from the port's if/?:/loops/&&/|| count, or a big retail body
@@ -51,6 +54,23 @@ MAGIC = {4503601774854144.0, 4503599627370496.0}
 SMALL = 0x10  # callee size at or under which a missing call is not reported
 CONDB = re.compile(r"^b(?:eq|ne|lt|le|gt|ge|nl|ng|so|ns|un|nu)(?:lr|ctr)?$")
 PORT_COND = re.compile(r"\bif\b|\bwhile\b|\bfor\b|\?|&&|\|\||\bcase\b")
+# DOL callees the port names another way (same behaviour): base name -> regex over the port body
+DOL_ALIAS = {
+    "GetObjectById": r"(?:Get)?ObjectById", "ObjectById": r"(?:Get)?ObjectById",
+    "Normalize": r"Normalize\w*|AsNormalized|Normalized|CUnitVector3f",
+    "AsNormalized": r"Normalize\w*|AsNormalized|Normalized|CUnitVector3f",
+    "IsActorVisibleInPortals": r"IsActorVisible\w*",
+    "AccumulateBounds": r"AccumulateBounds|Include",
+    "DeliverScriptMsg": r"(?:Deliver|Send)ScriptMsgs?",
+    "CreateShadow": r"CreateShadow|SetDrawShadow",
+    "SetTransformAlt": r"SetTransform\w*|SetRotation",
+    "BuildTransform4f": r"BuildTransform4f|SetRotation",
+    "CheckConnectedObject_if": r"(?:Check|Find)ConnectedObject_if",
+    "InitializeStateMachine": r"InitializeStateMachine|SetupStateMachine",
+}
+SKIP_DOL = ("GetObj",)
+INBODY = set()  # CToken::GetObj: a token dereference (`*tok`, `tok->`), never a behaviour
+PLUMB = re.compile(r"rstl|allocate|Free__7CMemory|string_l|internal_dereference|__ct__|__dt__|__nw|__dl")
 SKIP_CALL = ("__ct__", "__dt__", "__nw", "__dl", "__as", "__pl", "__mi", "__ml", "__dv", "__eq", "__ne",
              "__lt", "__gt", "__le", "__ge", "__vc", "__cl", "__rf", "__apl", "__ami", "__aml", "__adv")
 
@@ -225,7 +245,9 @@ def port_functions(paths, display=None):
             continue
         shown = display.get(str(p), p) if display else p
         texts[shown] = text
-        want = {norm_id(m.group(0)[m.group(0).index("fn_"):]) for m in MARKER_FILE.finditer(text)}
+        mk = [(norm_id(m.group(0)[m.group(0).index("fn_"):]), text.count("\n", 0, m.start()) + 1)
+              for m in MARKER_FILE.finditer(text)]
+        want = {k for k, _ in mk}
         for f in defs:
             f.file = shown
             if f.marked:
@@ -233,8 +255,16 @@ def port_functions(paths, display=None):
                     k = norm_id(x)
                     if k:
                         funcs.setdefault(k, f)
-            else:   # unmarked (port-only, or citing a retail id it was not checked against)
-                helpers.setdefault(f.short, []).append(f.code)
+            # every def, marked or not, is a helper a caller may have inlined
+            helpers.setdefault(f.short, []).append((f.cls, f.code))
+        for k, ln in mk:   # a marker inside a body (a switch arm) is that body's
+            if k is None or k in funcs:
+                continue
+            for f in defs:
+                if f.line < ln <= f.end_line:
+                    funcs[k] = f
+                    INBODY.add(k)   # the enclosing body has more code than the retail fn: no shape
+                    break
         for k in want - set(funcs):
             if k is None:
                 continue
@@ -245,15 +275,20 @@ def port_functions(paths, display=None):
     return funcs, helpers, texts
 
 
-def expand(code, helpers, depth=2):
+def expand(code, helpers, depth=2, cls=None):
     seen, todo, out = set(), [code], [code]
     for _ in range(depth):
         nxt = []
         for b in todo:
             for name in set(re.findall(r"(~?\w+)\s*\(", b)):
-                if name in helpers and name not in seen and len(helpers[name]) == 1:
+                if name not in helpers or name in seen:
+                    continue
+                cands = helpers[name]
+                if len(cands) > 1:
+                    cands = [c for c in cands if c[0] == cls]
+                if len(cands) == 1 and cands[0][1] != code:
                     seen.add(name)
-                    nxt += helpers[name]
+                    nxt.append(cands[0][1])
         out += nxt
         todo = nxt
     return "\n".join(out)
@@ -298,11 +333,37 @@ def port_compares(code):
 
 # ---------------------------------------------------------------- compare
 
+def plumbing(ck, ctx, depth=0):
+    """An unported module function whose calls are all rstl/string/allocation plumbing (or more
+    such functions), at least one: a template instance (vector reserve, string copy)."""
+    if ck in ctx["plumb"]:
+        return ctx["plumb"][ck]
+    ctx["plumb"][ck] = False
+    m = ctx["ids"].get(ck[0])
+    fn = ctx["retail"][m][1].get(ck[1]) if m else None
+    ok = False
+    if fn is not None and depth < 3:
+        calls = [i.args[0].strip('"') for i in fn.ins if i.op == "bl" and i.args]
+        ok = bool(calls)
+        for c in calls:
+            mm = FNID.match(c)
+            if mm:
+                sub = (int(mm.group(1)), int(mm.group(2), 16))
+                if sub in ctx["pnames"] or not plumbing(sub, ctx, depth + 1):
+                    ok = False
+            elif not (PLUMB.search(c) or ac.is_runtime(c)):
+                ok = False
+            if not ok:
+                break
+    ctx["plumb"][ck] = ok
+    return ok
+
+
 def check(key, f, retail, ctx):
     mod, fn = retail
     calls, consts, conds, fcmps = retail_facts(mod, fn)
     code = f.code
-    body = expand(code, ctx["helpers"])
+    body = expand(code, ctx["helpers"], cls=f.cls)
     comments = "\n".join(t for _, t in f.comment_lines)
     names_text = body + "\n" + comments
     out = []
@@ -326,6 +387,8 @@ def check(key, f, retail, ctx):
             off = ck[1]
             if re.search(rf"fn_{ck[0]}_0*{off:X}\b|\bx0*{off:X}_|\b0x0*{off:X}\b", names_text, re.I):
                 continue
+            if ck not in ctx["pnames"] and plumbing(ck, ctx) and not ctx["strict"]:
+                continue    # an rstl/string/allocation template instance the port's containers are
             if ck in ctx["pnames"]:
                 pn = ctx["pnames"][ck]
                 cf = ctx["funcs"][ck]
@@ -343,7 +406,9 @@ def check(key, f, retail, ctx):
                 short = r"TCastTo(?:Const)?Ptr"
             if ac.is_runtime(dname) or dname.startswith(SKIP_CALL):
                 continue
-            pat = short if short.startswith("TCastTo") else re.escape(short)
+            if short in SKIP_DOL and not ctx["strict"]:
+                continue
+            pat = short if short.startswith("TCastTo") else DOL_ALIAS.get(short, re.escape(short))
             if not short or re.search(rf"\b{pat}\b", names_text):
                 continue
             out.append(("call", f"{dname[:60]} not named", ck))
@@ -366,14 +431,17 @@ def check(key, f, retail, ctx):
     nonblank = [x for x in code.split("\n") if x.strip()]
     shape_body = code if len(nonblank) > 5 else body
     pc = len(PORT_COND.findall(strip_strings(shape_body)))
+    pc_own = len(PORT_COND.findall(strip_strings(code)))   # too many: the body's own, not its helpers'
     plines = len([x for x in shape_body.split("\n") if x.strip()])
-    if f.short.startswith("~"):
-        pass        # member dtors inline into retail's
-    elif conds >= 4 and pc == 0:
+    marked_ids = [norm_id(x) for x in f.ids if norm_id(x)]
+    if f.short.startswith("~") or key in INBODY or (len(marked_ids) > 1 and key != marked_ids[0]):
+        pass        # also a body that carries several ids: its shape is the first one's        # member dtors inline into retail's; an arm marked inside a bigger body
+    elif conds >= 4 and pc == 0 and f.short != f.cls:   # a ctor's branches are its members' ctors
         out.append(("shape", f"{conds} retail conditional branches, no port conditions"))
-    elif pc > 2 * conds + 4:
+    elif pc_own > 2 * conds + 4:
+        pc = pc_own
         out.append(("shape", f"{pc} port conditions vs {conds} retail conditional branches"))
-    if len(fn.ins) >= 80 and plines <= 6:
+    if len(fn.ins) >= 80 and plines <= 6 and not (f.short.startswith("~") or f.short == f.cls):
         out.append(("shape", f"{len(fn.ins)} retail instructions behind a {plines}-line port body"))
     if fcmps:
         s, n, ns, nn = port_compares(body)
@@ -430,7 +498,8 @@ def main():
     retail, ids, sizes = load_retail(mods)
     funcs, helpers, texts = port_functions(marker_files())
     ctx = {"helpers": helpers, "texts": texts, "sizes": sizes, "dol": dol_symbols(), "lits": {}, "sites": {},
-           "pnames": {k: f.short for k, f in funcs.items()}, "funcs": funcs, "strict": args.strict}
+           "pnames": {k: f.short for k, f in funcs.items()}, "funcs": funcs, "strict": args.strict,
+           "retail": retail, "ids": ids, "plumb": {}}
     marks = port_progress.markers()
     found_by, nobody = {}, []
     for k in sorted(marks):
