@@ -452,8 +452,17 @@ void persist_controller_for_player(uint32_t player, const GameController* contro
 void initialize() noexcept {
   /* Make sure we initialize everything input related now, this will automatically add all of the connected controllers
    * as expected */
-  AURORA_ASSERT(SDL_Init(SDL_INIT_HAPTIC | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR),
-                "Failed to initialize SDL subsystems: {}", SDL_GetError());
+  SDL_InitFlags flags = SDL_INIT_HAPTIC | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD | SDL_INIT_SENSOR;
+  if (headless()) {
+    // Port: AURORA_HEADLESS: a test run reads no host controller (the virtual pads still work).
+    // SDL opens every /dev/input/event* device to probe it, and each close costs ~16 ms, which
+    // was ~0.6 s of every start-up: classic enumeration only probes /dev/input/js*, HIDAPI is
+    // off and the haptic subsystem (another probe of every event device) is not started.
+    SDL_SetHint(SDL_HINT_JOYSTICK_LINUX_CLASSIC, "1");
+    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "0");
+    flags &= ~SDL_INIT_HAPTIC;
+  }
+  AURORA_ASSERT(SDL_Init(flags), "Failed to initialize SDL subsystems: {}", SDL_GetError());
 }
 
 struct MouseScrollStatus {

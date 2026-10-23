@@ -66,6 +66,19 @@ uint32_t render_every() {
   return n;
 }
 
+// Port: AURORA_HEADLESS=1: a test run that needs no picture. No window surface is made (SDL's
+// offscreen video driver needs no X server), the WebGPU device is Dawn's Null backend, and no
+// frame is rendered: the FIFO is still processed (the register state the game reads back), but
+// nothing is drawn, encoded, submitted or presented, and the EFB read-backs (scan peek, EFB CPU
+// copy, depth snapshots) never land, so the game keeps its own "no read-back yet" values.
+bool headless_flag() noexcept {
+  static const bool on = [] {
+    const char* env = std::getenv("AURORA_HEADLESS");
+    return env != nullptr && env[0] != '\0' && std::string_view(env) != "0";
+  }();
+  return on;
+}
+
 // The frame counter that picks the rendered frames. It advances once per frame, so with the same
 // n as AURORA_PRESENT_EVERY the rendered frames are the presented ones.
 uint32_t g_renderFrameCounter = 0;
@@ -278,7 +291,12 @@ AuroraInfo initialize(int argc, char* argv[], const AuroraConfig& config) noexce
   /* Attempt to create a window using the calling application's desired backend */
   AuroraBackend selectedBackend = config.desiredBackend;
   bool windowCreated = false;
-  if (selectedBackend != BACKEND_AUTO && window::create_window(selectedBackend)) {
+  if (headless()) {
+    // Port: AURORA_HEADLESS: a window (no surface is made from it) and the Null device.
+    Log.info("AURORA_HEADLESS: Null WebGPU device, no surface, no frame is rendered");
+    selectedBackend = BACKEND_NULL;
+    windowCreated = window::create_window(BACKEND_NULL) && webgpu::initialize(BACKEND_NULL, true);
+  } else if (selectedBackend != BACKEND_AUTO && window::create_window(selectedBackend)) {
     if (webgpu::initialize(selectedBackend, config.allowCpuAdapter)) {
       windowCreated = true;
     } else {
@@ -304,7 +322,7 @@ AuroraInfo initialize(int argc, char* argv[], const AuroraConfig& config) noexce
   AURORA_ASSERT(windowCreated, "Error creating window: {}", SDL_GetError());
 
   // Initialize SDL_Renderer for ImGui when we can't use a Dawn backend
-  if (webgpu::g_backendType == wgpu::BackendType::Null) {
+  if (webgpu::g_backendType == wgpu::BackendType::Null && !headless()) {
     AURORA_ASSERT(window::create_renderer(), "Failed to initialize SDL renderer: {}", SDL_GetError());
   }
 #else
@@ -322,6 +340,7 @@ AuroraInfo initialize(int argc, char* argv[], const AuroraConfig& config) noexce
 #ifdef AURORA_ENABLE_GX
   gfx::initialize();
   gx::fifo::init();
+  gx::fifo::set_headless(headless());
   imgui::create_context();
 #endif
   const auto size = window::get_window_size();
@@ -383,6 +402,9 @@ const AuroraEvent* update() noexcept {
 // gx::fifo::force_frame_rendered). A screenshot is always taken from a rendered frame, and so is
 // the frame after it.
 bool render_this_frame() {
+  if (headless()) {
+    return false;
+  }
   const uint32_t every = render_every();
   const uint32_t frameIndex = g_renderFrameCounter++;
   const bool screenshotPending = g_screenshotRequested.load(std::memory_order_acquire);
@@ -403,7 +425,8 @@ bool render_this_frame() {
 bool begin_frame() noexcept {
   ZoneScoped;
 #ifdef AURORA_ENABLE_GX
-  {
+  // Port: AURORA_HEADLESS has no surface to check or rebuild.
+  if (!headless()) {
     const bool invalidated = window::consume_surface_invalidated();
     if (!window::is_presentable() || (invalidated && webgpu::surface_window_changed())) {
       static int sNotPresentable = 0;
@@ -664,13 +687,31 @@ void end_frame() noexcept {
 }
 } // namespace
 
+bool headless() noexcept { return headless_flag(); }
+
+// Port: AURORA_HEADLESS renders no frame, so there is no picture to take.
+static bool refuse_headless_screenshot() noexcept {
+  if (!headless()) {
+    return false;
+  }
+  Log.warn("AURORA_HEADLESS: no frame is rendered, so the screenshot is not taken");
+  return true;
+}
+
 void request_screenshot() noexcept {
 #ifdef AURORA_ENABLE_GX
+  if (refuse_headless_screenshot()) {
+    return;
+  }
   g_screenshotRequested.store(true, std::memory_order_release);
 #endif
 }
 void request_screenshot_png(const char* path) noexcept {
 #ifdef AURORA_ENABLE_GX
+  if (refuse_headless_screenshot()) {
+    g_pngState.store(-1, std::memory_order_release);
+    return;
+  }
   {
     std::lock_guard lock{g_pngMutex};
     g_pngPath = path != nullptr ? path : "";

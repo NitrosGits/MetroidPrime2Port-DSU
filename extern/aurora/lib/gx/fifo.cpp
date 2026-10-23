@@ -252,7 +252,16 @@ void set_frame_rendered(bool rendered) noexcept { sFrameRendered.store(rendered,
 
 bool frame_rendered() noexcept { return sFrameRendered.load(std::memory_order_acquire); }
 
+static bool sHeadless = false;
+
+void set_headless(bool headless) noexcept { sHeadless = headless; }
+
+bool headless() noexcept { return sHeadless; }
+
 void force_frame_rendered(FrameRenderReason reason) noexcept {
+  if (sHeadless) {
+    return;
+  }
   if (!sFrameRendered.exchange(true, std::memory_order_acq_rel)) {
     sFramesForcedRendered.fetch_add(1, std::memory_order_acq_rel);
     if (reason == FrameRenderReason::Readback) {

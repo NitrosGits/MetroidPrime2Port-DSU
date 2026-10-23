@@ -46,6 +46,10 @@ enum class FrameRenderReason : uint8_t {
   Readback, // a read-back of the EFB the game asks for (the spare buffer, the scan target)
 };
 void force_frame_rendered(FrameRenderReason reason) noexcept;
+// Port: AURORA_HEADLESS: no frame is rendered, not even one that holds an EFB copy or a read-back
+// (force_frame_rendered does nothing; the read-back requests are dropped where they are queued).
+void set_headless(bool headless) noexcept;
+bool headless() noexcept;
 // How many frames were raised this way (logged at shutdown), and how many of them were read-backs.
 uint32_t frames_forced_rendered() noexcept;
 uint32_t frames_forced_by_readback() noexcept;

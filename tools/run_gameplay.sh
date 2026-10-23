@@ -9,7 +9,10 @@
 #   [SKIP_FRONTEND=0|1] (default 1: MP2_SKIP_FRONTEND; 0 boots the title screen and the front end)
 #   [SECS=<timeout>] [DISPLAY_NUM=:<n>] [CACHEDIR=<dir>] [TELEPORT=<area>] [RUNTAG=<tag>]
 #   [GODMODE=1] (MP2_GODMODE: the player takes no damage; default off, an ordinary run takes damage)
-#   [LOG=<file>] [ASAN=1] [BUILD=<build dir>] tools/run_gameplay.sh
+#   [LOG=<file>] [ASAN=1] [BUILD=<build dir>] [HEADLESS=1] tools/run_gameplay.sh
+#
+# HEADLESS=1 (MP2_HEADLESS): no picture - no Xvfb, no GPU device, no frame rendered; the game logic
+# runs as usual (docs/RUNNING.md "Headless runs"). Screenshots and the EFB read-backs are off.
 #
 # `WORLD`/`TELEPORT`/the `MP2_INPUT` tokens are hex asset ids or names (an area may also be its MLVL name,
 # `0b_sand_hall`, and a world a part of its MLVL name, `sand_world`; `WORLD=0b_sand_hall` finds the world); the player's own run length is
@@ -88,7 +91,9 @@ envs=(
 # the run ends, so no caller has to start one (callers that did left 110 idle servers behind, ~3 GB).
 # A server that was already up is left running for whoever started it.
 XVFB_PID=
-if ! xdpyinfo -display "$DISPLAY_NUM" >/dev/null 2>&1; then
+if [ "${HEADLESS:-0}" != 0 ]; then
+  :   # no X server: the game uses SDL's offscreen video driver
+elif ! xdpyinfo -display "$DISPLAY_NUM" >/dev/null 2>&1; then
   Xvfb "$DISPLAY_NUM" -screen 0 1280x720x24 -ac > "$LOG.xvfb" 2>&1 &
   XVFB_PID=$!
   trap 'kill "$XVFB_PID" 2>/dev/null; rm -f "$LOG.xvfb"' EXIT
@@ -109,7 +114,12 @@ fi
 # RENDER_EVERY=<n> (default: PRESENT_EVERY): build one frame in n; the frames in between are
 # dropped before they are recorded, so the game spends no CPU on the frames it never shows.
 PRESENT_EVERY_VALUE=${PRESENT_EVERY:-6}
-DISPLAY=$DISPLAY_NUM SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dummy \
+if [ "${HEADLESS:-0}" != 0 ]; then
+  VIDEO=(-u DISPLAY -u WAYLAND_DISPLAY MP2_HEADLESS=1)
+else
+  VIDEO=(DISPLAY=$DISPLAY_NUM SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw)
+fi
+env "${VIDEO[@]}" SDL_AUDIODRIVER=dummy \
   AURORA_PRESENT_EVERY=$PRESENT_EVERY_VALUE AURORA_RENDER_EVERY=${RENDER_EVERY:-$PRESENT_EVERY_VALUE} \
   env "${envs[@]}" "${SLOT[@]}" timeout -k 10 "${SECS:-460}" ./metroid_prime2_port > "$LOG" 2>&1 &
 GAME=$!

@@ -183,6 +183,9 @@ namespace aurora {
 extern AuroraConfig g_config;
 extern uint32_t g_sdlCustomEventsStart;
 extern char g_gameName[4];
+// Port: AURORA_HEADLESS=1 (aurora.cpp): no window surface, a Null WebGPU device, and no frame is
+// ever rendered; EFB read-backs never land. For test runs that need no picture.
+bool headless() noexcept;
 
 template <typename T>
 class ArrayRef {

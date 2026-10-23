@@ -845,6 +845,14 @@ int main(int argc, char** argv) {
   // queued here and run inside the state manager's update, where the world is live.
   PortConsole::Start();
 
+  // MP2_HEADLESS=1: a test run with no picture (docs/RUNNING.md "Headless runs"). Aurora makes no
+  // window surface and uses Dawn's Null device (AURORA_HEADLESS), and SDL's offscreen video driver
+  // needs no X server, so the run skips the GPU start-up and takes no GPU time.
+  if (port::EnvFlag("MP2_HEADLESS")) {
+    ::setenv("AURORA_HEADLESS", "1", 1);
+    ::setenv("SDL_VIDEODRIVER", "offscreen", 1);
+  }
+
   // 720p by default, as the Prime 1 port: 16:9 unless the aspect setting is 4:3. The render mode
   // follows the setting (PortOverlay::ApplyAspect); Aurora upscales to the window either way.
   const bool widescreen = PortOverlay::AspectMode() != PortOverlay::kAspect_4_3;
