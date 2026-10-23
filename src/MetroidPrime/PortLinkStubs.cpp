@@ -43,8 +43,8 @@ extern "C" void reachstub_10() asm("_Z10TCastToPtrI18CFirstPersonCameraEPT_R7CEn
 extern "C" void reachstub_10() { mpReachStub("_Z10TCastToPtrI18CFirstPersonCameraEPT_R7CEntity", "CFirstPersonCamera* TCastToPtr<CFirstPersonCamera>(CEntity&)"); }
 
 // DebugDrawAABox(CAABox const&, float, float, float, float)
-extern "C" void reachstub_18() asm("_Z14DebugDrawAABoxRK6CAABoxffff");
-extern "C" void reachstub_18() { mpReachStub("_Z14DebugDrawAABoxRK6CAABoxffff", "DebugDrawAABox(CAABox const&, float, float, float, float)"); }
+// (removed: retail's body at DOL 0x80083FDC is a bare `blr`, and the real definition now lives in
+// src/Kyoto/Graphics/PortDrawDebug.cpp.)
 
 // LoadAreaAttributes(CStateManager&, CInputStream&, CEntityInfo&)
 extern "C" void reachstub_25() asm("_Z18LoadAreaAttributesR13CStateManagerR12CInputStreamR11CEntityInfo");
