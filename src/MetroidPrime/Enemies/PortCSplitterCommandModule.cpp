@@ -530,14 +530,22 @@ void CSplitterBeamEffect::PreRender(CStateManager& mgr) {
   mgr.BuildNearList(nearList, nearBox, CMaterialFilter::GetPassEverything(), nullptr);
   for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
-    const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(*it));
-    // 0x11440 beq: none; 0x1144C beq: !CanDrawStatic; 0x11458 extrwi 0x154 bit 0x10 / 0x1145C
-    // beq: does not take projected shadows; 0x11470 beq: its other bounds are outside the
-    // frustum; 0x11484 beq: they do not overlap the near box.
-    if (actor == nullptr || !actor->CanDrawStatic() || !actor->GetTakesProjectedShadow() ||
-        !frustum.BoxInFrustumPlanes(actor->GetOtherBounds()) ||
-        !nearBox.DoBoundsOverlap(actor->GetOtherBounds())) {
-      continue;
+    // 0x1142C-0x1143C: the near list holds actors; no type check.
+    const CActor* actor = static_cast< const CActor* >(mgr.GetObjectById(*it));
+    if (actor == nullptr) {
+      continue; // 0x11440 beq
+    }
+    if (!actor->CanDrawStatic()) {
+      continue; // 0x1144C beq
+    }
+    if (!actor->GetTakesProjectedShadow()) {
+      continue; // 0x11458 extrwi. 0x154 bit 0x10 / 0x1145C beq
+    }
+    if (!frustum.BoxInFrustumPlanes(actor->GetOtherBounds())) {
+      continue; // 0x11474 beq: the other bounds are outside the frustum
+    }
+    if (!nearBox.DoBoundsOverlap(actor->GetOtherBounds())) {
+      continue; // 0x11488 beq: they miss the near box
     }
     // 0x1148C-0x11504: transform times the model's scale (vtable slot 0x40), then the normal
     // static model drawn flat (flags 2).
