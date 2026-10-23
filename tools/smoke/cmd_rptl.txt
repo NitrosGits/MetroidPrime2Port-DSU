@@ -1,0 +1,49 @@
+# ScriptRiftPortal (REL 64: CScriptRiftPortal, script type RPTL - the rift portal: an inactive
+# ellipsoid at load that Activate draws, Increment plays the line animation until it opens, shots
+# go through its projectile box, AreaLoaded rebuilds the box, Decrement stops the animations and
+# Deactivate hides it). Temple Grounds 12_temple_finalgate (world 3bfa3eff, layer 0): one portal
+# e00070073, inactive at load. The player stands 12 units in front of it; Activate draws it,
+# Increment plays the line animation until the portal opens, shots go through its projectile box,
+# AreaLoaded rebuilds the box, Decrement stops the animations, Deactivate hides it. Then the player
+# steps close (the portal overfills the screen), turns its centre off-screen (copy-rect clamp),
+# looks away (culled), drops from above, and lays morph-ball bombs in the projectile box (a
+# kMT_Projectile actor that is not a CGameProjectile).
+# The steps repeat the lane's tools/cov/specs/riftportal.con: god mode, the portal's
+# Activate/Increment/Decrement/Deactivate and AreaLoaded, beam and missile shots through it, the
+# close-up overfill and copy-rect clamp, the cull and the morph-ball bomb run, with `objs RiftPortal`
+# around the steps.
+# Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): the portal's
+# projectile box and late `objs RiftPortal` listings follow the update rate, so the transcript is
+# not a fixed baseline. Capped, its 2040 updates take ~35 s. F=2040, last check f1980.
+@f300 objs RiftPortal; god 1; obj e00070073; tp 4.5 118.7 -16.6; face 0
+@f340 send e00070073 Activate; obj e00070073
+@f400 screenshot
+@f420 send e00070073 Increment
+@f480 shoot e00070073; obj e00070073
+@f560 shoot e00070073 missile
+@f640 shoot e00070073 charged
+@f900 obj e00070073; screenshot
+@f940 shoot e00070073
+@f1000 send e00070073 AreaLoaded; shoot e00070073 missile
+@f1060 shoot e00070073 2
+@f1120 send e00070073 Decrement; obj e00070073
+@f1200 send e00070073 Deactivate; obj e00070073
+@f1260 send e00070073 Increment
+@f1300 send e00070073 Activate; send e00070073 Increment
+@f1420 tp 4.5 124.7 -16.6; face 0
+@f1440 screenshot
+@f1460 face 40
+@f1490 face 320
+@f1520 face 65
+@f1550 face 295
+@f1580 face 180
+@f1610 tp 4.5 124.7 13.4
+@f1670 tp 4.5 118.7 13.4
+@f1730 tp 4.5 110.7 13.4
+@f1790 face 0; tp 4.5 127.7 -16.6; give morphBall 1; give morphBallBombs 1; fastmorph 1
+@f1800 press x 10
+@f1830 press a 4
+@f1850 press a 4
+@f1870 press a 4
+@f1930 press x 10
+@f1980 obj e00070073; objs RiftPortal
