@@ -1,0 +1,49 @@
+# 0i_sand_hall: scan the top u043a, then the base u043d, holding the scan (repeat every 30 updates) so
+# ScanVisorRender/GetScanVisorRenderBounds run with the scan target set; statecall the empty Flinch.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/gunturret.py <out> 42b935e4,0i_sand_hall --con <this> --fast --frames 2000
+@f300 god 1
+@f305 visor
+@f320 scan u043a 15 300
+@f350 scan u043a 15 300
+@f380 scan u043a 15 300
+@f410 scan u043a 15 300
+@f440 scan u043a 15 300
+@f470 scan u043a 15 300
+@f500 scan u043a 15 300
+@f530 scan u043a 15 300
+@f560 scan u043a 15 300
+@f590 scan u043a 15 300
+@f620 scan u043a 15 300
+@f650 scan u043a 15 300
+@f680 scan u043a 15 300
+@f710 scan u043a 15 300
+@f740 scan u043a 15 300
+@f770 scan u043a 15 300
+@f800 scan u043a 15 300
+@f830 scan u043d 15 300
+@f860 scan u043d 15 300
+@f890 scan u043d 15 300
+@f920 scan u043d 15 300
+@f950 scan u043d 15 300
+@f980 scan u043d 15 300
+@f1010 scan u043d 15 300
+@f1040 scan u043d 15 300
+@f1070 scan u043d 15 300
+@f1100 scan u043d 15 300
+@f1130 scan u043d 15 300
+@f1160 scan u043d 15 300
+@f1190 scan u043d 15 300
+@f1220 scan u043d 15 300
+@f1250 scan u043d 15 300
+@f1280 scan u043d 15 300
+@f1310 scan u043d 15 300
+@f1340 scan u043d 15 300
+@f1370 scan u043d 15 300
+@f1400 scan u043d 15 300
+@f1420 statecall u0423 Flinch 0
+@f1422 statecall u0423 Flinch 1 0.016
+@f1424 statecall u0423 Flinch 2
+@f1430 fsm u0423 Withdraw
+@f1700 fsm u0423 IntoPan
+@f1720 statecall u0423 IntoPan 0
+@f1980 objs GunTurret

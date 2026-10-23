@@ -1,0 +1,166 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_28_0	E8	B	CGunTurretBase::~CGunTurretBase	-	upstream body (CGunTurretBase)	no
+000E8	fn_28_E8	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
+002CC	fn_28_2CC	94	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
+00360	fn_28_360	8	B	CGunTurretBase::IsScanVisorSelfRender	-	upstream body (CGunTurretBase)	no
+00368	fn_28_368	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+00378	fn_28_378	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+00380	fn_28_380	8	H	CPatterned::ProjectileInfo	-	weak copy / template instance	no
+00388	fn_28_388	8	H	CPatterned::GetSearchPath	-	weak copy / template instance	no
+00390	fn_28_390	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+00398	fn_28_398	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+003A0	fn_28_3A0	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+003B0	fn_28_3B0	C	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+003BC	fn_28_3BC	C	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+003C8	fn_28_3C8	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+003D0	fn_28_3D0	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+003D8	fn_28_3D8	8	H	CAi::IsListening	-	weak copy / template instance	no
+003E0	fn_28_3E0	8	H	CAi::Listen	-	weak copy / template instance	no
+003E8	fn_28_3E8	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+00404	fn_28_404	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+00430	fn_28_430	24	T	RELExit	-	REL runtime	no
+00454	fn_28_454	20	T	RELMain	-	REL runtime	no
+00474	fn_28_474	3C	T	SetRelLoaderFunctionToLoader	-	REL runtime	no
+004B0	fn_28_4B0	B4C	B	LoadGunTurretBase	-	upstream body (module)	no
+00FFC	fn_28_FFC	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+0103C	fn_28_103C	20	H	construct<10CModelData>	-	weak copy / template instance	no
+0105C	fn_28_105C	28	H	construct	-	weak copy / template instance	no
+01084	fn_28_1084	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+011C0	fn_28_11C0	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak copy / template instance	no
+0122C	fn_28_122C	54	H	__dt__15TToken<6CModel>Fv	-	weak copy / template instance	no
+01280	fn_28_1280	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
+012E4	fn_28_12E4	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
+01344	fn_28_1344	7C	B	SLdrGunTurretBase::~SLdrGunTurretBase	-	upstream body (SLdrGunTurretBase)	no
+013C0	fn_28_13C0	19C	B	SLdrGunTurretBase::SLdrGunTurretBase	gt1	upstream body (SLdrGunTurretBase); gt1 fix	no
+0155C	fn_28_155C	20	B	CGunTurretBase::GetRenderAlpha	-	upstream body (CGunTurretBase)	no
+0157C	fn_28_157C	190	B	CGunTurretBase::GetModelBounds	gt1	upstream body (CGunTurretBase)	yes
+0170C	fn_28_170C	190	B	CGunTurretBase::ScanVisorRender	-	upstream body (CGunTurretBase)	no
+0189C	fn_28_189C	50	H	__dt__Q24rstl66basic_string<cQ24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+018EC	fn_28_18EC	264	B	CGunTurretBase::GetScanVisorRenderBounds	-	upstream body (CGunTurretBase)	no
+01B50	fn_28_1B50	48	B	CGunTurretBase::LowerGun	gt1	upstream body (CGunTurretBase)	yes
+01B98	fn_28_1B98	2C	B	CGunTurretBase::RaiseGun	gt1	upstream body (CGunTurretBase)	yes
+01BC4	fn_28_1BC4	74	B	CGunTurretBase::GetTouchBounds	gt1	upstream body (CGunTurretBase)	yes
+01C38	fn_28_1C38	8	B	CGunTurretBase::GetCollisionPrimitive	-	upstream body (CGunTurretBase)	no
+01C40	fn_28_1C40	50	B	CGunTurretBase::InDetectionHeight	-	upstream body (CGunTurretBase)	no
+01C90	fn_28_1C90	F0	B	CGunTurretBase::GetClosestCameraDistanceSq	gt1	upstream body (CGunTurretBase)	yes
+01D80	fn_28_1D80	94	B	CGunTurretBase::DoUserAnimEvent	-	upstream body (CGunTurretBase)	no
+01E14	fn_28_1E14	3A4	B	CGunTurretBase::LaunchProjectile	gt1	upstream body (CGunTurretBase); gt1 fix	no
+021B8	fn_28_21B8	8C	H	ParticleEffect	-	weak copy / template instance	no
+02244	fn_28_2244	B4	H	__ct__18CImpactVisorEffectFRCQ24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>RCQ24rstl52optional_object<Q218CImpactVisorEffect11SBlurEffect>RCQ24rstl34optional_object<Q24rstl9pair<if>>	-	weak copy / template instance	no
+022F8	fn_28_22F8	40	H	__ct__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>FRCQ24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>	-	weak copy / template instance	no
+02338	fn_28_2338	20	H	construct<Q218CImpactVisorEffect15SParticleEffect>	-	weak copy / template instance	no
+02358	fn_28_2358	28	H	construct	-	weak copy / template instance	no
+02380	fn_28_2380	80	H	__ct__Q218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+02400	fn_28_2400	6C	H	__dt__Q24rstl50optional_object<31TLockedToken<15CGenDescription>>Fv	-	weak copy / template instance	no
+0246C	fn_28_246C	54	H	__dt__25TToken<15CGenDescription>Fv	-	weak copy / template instance	no
+024C0	fn_28_24C0	3C	H	__dt__Q24rstl34optional_object<Q24rstl9pair<if>>Fv	-	weak copy / template instance	no
+024FC	fn_28_24FC	3C	H	__dt__Q24rstl52optional_object<Q218CImpactVisorEffect11SBlurEffect>Fv	-	weak copy / template instance	no
+02538	fn_28_2538	5C	H	__dt__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>Fv	-	weak copy / template instance	no
+02594	fn_28_2594	20	H	fn_28_2594	-	unnamed REL-local copy (header inline / template)	no
+025B4	fn_28_25B4	48	H	destroy<Q218CImpactVisorEffect15SParticleEffect>	-	weak copy / template instance	no
+025FC	fn_28_25FC	38	H	__ct__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>FRCQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+02634	fn_28_2634	70	H	__dt__Q218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+026A4	fn_28_26A4	78	H	__ct__Q218CImpactVisorEffect15SParticleEffectFRCQ24rstl50optional_object<31TLockedToken<15CGenDescription>>Usb	-	weak copy / template instance	no
+0271C	fn_28_271C	54	H	CImpactVisorEffect::~CImpactVisorEffect	-	weak copy / template instance	no
+02770	fn_28_2770	60	B	CGunTurretBase::InRange	gt1	upstream body (CGunTurretBase)	yes
+027D0	fn_28_27D0	138	B	CGunTurretBase::GetGunFirePosition	-	upstream body (CGunTurretBase)	no
+02908	fn_28_2908	14C	B	CGunTurretBase::ResetAttack	gt1	upstream body (CGunTurretBase)	yes
+02A54	fn_28_2A54	644	B	CGunTurretBase::UpdateAttack	-	upstream body (CGunTurretBase)	no
+03098	fn_28_3098	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
+030F4	fn_28_30F4	3C	H	__dt__Q24rstl32reserved_vector<9TUniqueId1024>Fv	-	weak copy / template instance	no
+03130	fn_28_3130	3F0	B	CGunTurretBase::FindTarget	-	upstream body (CGunTurretBase)	no
+03520	fn_28_3520	4C4	B	CGunTurretBase::UpdateGunOrientation	-	upstream body (CGunTurretBase)	no
+039E4	fn_28_39E4	374	B	CGunTurretBase::UpdateGunPose	-	upstream body (CGunTurretBase)	no
+03D58	fn_28_3D58	12C	B	CGunTurretBase::DestroyGun	gt1	upstream body (CGunTurretBase)	yes
+03E84	fn_28_3E84	20	B	CGunTurretBase::Touch	gt1	upstream body (CGunTurretBase)	yes
+03EA4	fn_28_3EA4	718	B	CGunTurretBase::Think	-	upstream body (CGunTurretBase)	no
+045BC	fn_28_45BC	48	H	CCollisionPrimitive::~CCollisionPrimitive	-	weak copy / template instance	no
+04604	fn_28_4604	64	B	CGunTurretBase::Render	gt1	upstream body (CGunTurretBase)	yes
+04668	fn_28_4668	50	B	CGunTurretBase::PreRender	gt1	upstream body (CGunTurretBase)	yes
+046B8	fn_28_46B8	4	B	CGunTurretBase::Flinch	gt1	upstream body (CGunTurretBase)	yes
+046BC	fn_28_46BC	38	B	CGunTurretBase::AttackExit	gt1	upstream body (CGunTurretBase)	yes
+046F4	fn_28_46F4	100	B	CGunTurretBase::Attack	gt1	upstream body (CGunTurretBase)	yes
+047F4	fn_28_47F4	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+0483C	fn_28_483C	94	B	CGunTurretBase::Patrol	gt1	upstream body (CGunTurretBase)	yes
+048D0	fn_28_48D0	9C	B	CGunTurretBase::Sleep	gt1	upstream body (CGunTurretBase)	yes
+0496C	fn_28_496C	1F4	B	CGunTurretBase::Spawn	gt1	upstream body (CGunTurretBase)	yes
+04B60	fn_28_4B60	5C	H	CDamageVulnerability::__as	-	weak copy / template instance	no
+04BBC	fn_28_4BBC	C0	H	__as__Q24rstl61vector<24CWeaponTypeVulnerabilityQ24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+04C7C	fn_28_4C7C	C	H	clear	-	weak copy / template instance	no
+04C88	fn_28_4C88	330	B	CGunTurretBase::Withdraw	-	upstream body (CGunTurretBase)	no
+04FB8	fn_28_4FB8	23C	B	CGunTurretBase::PanRight	-	upstream body (CGunTurretBase)	no
+051F4	fn_28_51F4	5C	H	CBCGenerateCmd::~CBCGenerateCmd	-	weak copy / template instance	no
+05250	fn_28_5250	23C	B	CGunTurretBase::PanLeft	-	upstream body (CGunTurretBase)	no
+0548C	fn_28_548C	2E4	B	CGunTurretBase::IntoPan	-	upstream body (CGunTurretBase)	no
+05770	fn_28_5770	23C	B	CGunTurretBase::CloseDoor	-	upstream body (CGunTurretBase)	no
+059AC	fn_28_59AC	23C	B	CGunTurretBase::OpenDoor	-	upstream body (CGunTurretBase)	no
+05BE8	fn_28_5BE8	1C	B	CGunTurretBase::WithdrawOver	gt1	upstream body (CGunTurretBase)	yes
+05C04	fn_28_5C04	18	B	CGunTurretBase::SpawnOver	gt1	upstream body (CGunTurretBase)	yes
+05C1C	fn_28_5C1C	20	B	CGunTurretBase::AnimOver	gt1	upstream body (CGunTurretBase)	yes
+05C3C	fn_28_5C3C	338	B	CGunTurretBase::PlayerInRange	-	upstream body (CGunTurretBase)	no
+05F74	fn_28_5F74	44	B	CGunTurretBase::ShouldPan	-	upstream body (CGunTurretBase)	no
+05FB8	fn_28_5FB8	18	B	CGunTurretBase::WithdrawDelay	gt1	upstream body (CGunTurretBase)	yes
+05FD0	fn_28_5FD0	4C	B	CGunTurretBase::PatrolDelay	gt1	upstream body (CGunTurretBase)	yes
+0601C	fn_28_601C	7C	B	CGunTurretBase::Delay	-	upstream body (CGunTurretBase)	no
+06098	fn_28_6098	20	B	CGunTurretBase::Attacked	-	upstream body (CGunTurretBase)	no
+060B8	fn_28_60B8	8	B	CGunTurretBase::GunDestroyed	gt1	upstream body (CGunTurretBase)	yes
+060C0	fn_28_60C0	AC	B	CGunTurretBase::AttackExitDone	-	upstream body (CGunTurretBase)	no
+0616C	fn_28_616C	64	B	CGunTurretBase::ShouldAttack	gt1	upstream body (CGunTurretBase)	yes
+061D0	fn_28_61D0	18	B	CGunTurretBase::ShouldPatrol	gt1	upstream body (CGunTurretBase)	yes
+061E8	fn_28_61E8	6C	B	CGunTurretBase::SetupStateMachine	gt1	upstream body (CGunTurretBase)	yes
+06254	fn_28_6254	2C4	B	CGunTurretBase::AcceptScriptMsg	-	upstream body (CGunTurretBase)	no
+06518	fn_28_6518	A78	B	CGunTurretBase::CGunTurretBase	-	upstream body (CGunTurretBase)	no
+06F90	fn_28_6F90	3C	H	CPASAnimParmData::~CPASAnimParmData	-	weak copy / template instance	no
+06FCC	fn_28_6FCC	184	H	CPASAnimParmData::CPASAnimParmData	-	weak copy / template instance	no
+07150	fn_28_7150	3C	H	__dt__Q24rstl33reserved_vector<12CPASAnimParm8>Fv	-	weak copy / template instance	no
+0718C	fn_28_718C	5C	H	CDamageVulnerability::CDamageVulnerability	-	weak copy / template instance	no
+071E8	fn_28_71E8	54	H	__dt__Q24rstl61vector<24CWeaponTypeVulnerabilityQ24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+0723C	fn_28_723C	130	H	__ct__Q24rstl61vector<24CWeaponTypeVulnerabilityQ24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+0736C	fn_28_736C	8C	H	CProjectileInfo::CProjectileInfo	-	weak copy / template instance	no
+073F8	fn_28_73F8	58	H	__dt__34TCachedToken<18CWeaponDescription>Fv	-	weak copy / template instance	no
+07450	fn_28_7450	54	H	__dt__28TToken<18CWeaponDescription>Fv	-	weak copy / template instance	no
+074A4	fn_28_74A4	5C	H	CProjectileInfo::~CProjectileInfo	-	weak copy / template instance	no
+07500	fn_28_7500	58	H	__dt__31TLockedToken<15CGenDescription>Fv	-	weak copy / template instance	no
+07558	fn_28_7558	58	H	__dt__38TCachedToken<22CCollisionResponseData>Fv	-	weak copy / template instance	no
+075B0	fn_28_75B0	54	H	__dt__32TToken<22CCollisionResponseData>Fv	-	weak copy / template instance	no
+07604	fn_28_7604	98	H	reserve	-	weak copy / template instance	no
+0769C	fn_28_769C	3C	H	uninitialized_copy<Q24rstl142pointer_iterator<24CWeaponTypeVulnerabilityQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P24CWeaponTypeVulnerability>	-	weak copy / template instance	no
+076D8	fn_28_76D8	41C	B	__sinit_CGunTurretBase_cpp	-	upstream body (module)	no
+07AF4	fn_28_7AF4	60	B	CGunTurretTop::~CGunTurretTop	gt1	upstream body (CGunTurretTop)	yes
+07B54	fn_28_7B54	8	B	CGunTurretTop::IsScanVisorSelfRender	-	upstream body (CGunTurretTop)	no
+07B5C	fn_28_7B5C	3C	B	CGunTurretTop::GetTouchBounds	gt1	upstream body (CGunTurretTop)	yes
+07B98	fn_28_7B98	420	B	LoadGunTurretTop	-	upstream body (module)	no
+07FB8	fn_28_7FB8	E4	B	SLdrGunTurretTop::SLdrGunTurretTop	gt1	upstream body (SLdrGunTurretTop); gt1 fix	no
+0809C	fn_28_809C	B0	B	CGunTurretTop::SetChargeEffect	gt1	upstream body (CGunTurretTop)	yes
+0814C	fn_28_814C	F0	B	CGunTurretTop::GetClosestCameraDistanceSq	gt1	upstream body (CGunTurretTop)	yes
+0823C	fn_28_823C	1E4	B	CGunTurretTop::Revive	gt1	upstream body (CGunTurretTop)	yes
+08420	fn_28_8420	12C	B	CGunTurretTop::Death	gt1	upstream body (CGunTurretTop)	yes
+0854C	fn_28_854C	20	B	CGunTurretTop::Touch	gt1	upstream body (CGunTurretTop)	yes
+0856C	fn_28_856C	11C	B	CGunTurretTop::Think	-	upstream body (CGunTurretTop)	no
+08688	fn_28_8688	15C	B	CGunTurretTop::GetModelBounds	gt1	upstream body (CGunTurretTop)	yes
+087E4	fn_28_87E4	224	B	CGunTurretTop::GetScanVisorRenderBounds	-	upstream body (CGunTurretTop)	no
+08A08	fn_28_8A08	150	B	CGunTurretTop::ScanVisorRender	-	upstream body (CGunTurretTop)	no
+08B58	fn_28_8B58	20	B	CGunTurretTop::Render	gt1	upstream body (CGunTurretTop)	yes
+08B78	fn_28_8B78	20	B	CGunTurretTop::PreRender	gt1	upstream body (CGunTurretTop)	yes
+08B98	fn_28_8B98	1C	B	CGunTurretTop::Attack	gt1	upstream body (CGunTurretTop)	yes
+08BB4	fn_28_8BB4	144	B	CGunTurretTop::PowerDown	gt1	upstream body (CGunTurretTop)	yes
+08CF8	fn_28_8CF8	140	B	CGunTurretTop::PowerUp	gt1	upstream body (CGunTurretTop)	yes
+08E38	fn_28_8E38	9C	B	CGunTurretTop::Patrol	gt1	upstream body (CGunTurretTop)	yes
+08ED4	fn_28_8ED4	9C	B	CGunTurretTop::Sleep	gt1	upstream body (CGunTurretTop)	yes
+08F70	fn_28_8F70	20	B	CGunTurretTop::AnimOver	-	upstream body (CGunTurretTop)	no
+08F90	fn_28_8F90	4C	B	CGunTurretTop::PowerDownOver	gt1	upstream body (CGunTurretTop)	yes
+08FDC	fn_28_8FDC	4C	B	CGunTurretTop::PowerUpOver	gt1	upstream body (CGunTurretTop)	yes
+09028	fn_28_9028	20	B	CGunTurretTop::Attacked	-	upstream body (CGunTurretTop)	no
+09048	fn_28_9048	8	B	CGunTurretTop::ShouldPatrol	gt1	upstream body (CGunTurretTop)	yes
+09050	fn_28_9050	8	B	CGunTurretTop::ShouldAttack	gt1	upstream body (CGunTurretTop)	yes
+09058	fn_28_9058	6C	B	CGunTurretTop::SetupStateMachine	gt1	upstream body (CGunTurretTop)	yes
+090C4	fn_28_90C4	2CC	B	CGunTurretTop::AcceptScriptMsg	-	upstream body (CGunTurretTop)	no
+09390	fn_28_9390	378	B	CGunTurretTop::CGunTurretTop	-	upstream body (CGunTurretTop)	no
+09708	fn_28_9708	94	H	__dt__Q216CCECharacterInfo16CParticleResData	-	weak copy / template instance	no
+0979C	fn_28_979C	80	H	__ct__Q216CCECharacterInfo16CParticleResDataFRCQ24rstl37vector<UiQ24rstl17rmemory_allocator>RCQ24rstl37vector<Ui,Q24rstl17rmemory_allocator>RCQ24rstl37vector<Ui,Q24rstl17rmemory_allocator>RCQ24rstl37vector<Ui,Q24rstl17rmemory_allocator>RCQ24rstl37vector<Ui,Q24rstl17rmemory_allocator>RCQ24rstl37vector<Ui,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+0981C	fn_28_981C	100	H	__ct__Q24rstl37vector<UiQ24rstl17rmemory_allocator>FRCQ24rstl37vector<Ui,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+0991C	fn_28_991C	54	H	__dt__Q24rstl37vector<UiQ24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+09970	fn_28_9970	54	H	CHealthInfo::CHealthInfo	-	weak copy / template instance	no
+099C4	fn_28_99C4	A4	H	reserve	-	weak copy / template instance	no
+09A68	fn_28_9A68	3C	H	__ct__Q24rstl24optional_object<6CAABox>FRC6CAABox	-	weak copy / template instance	no
+09AA4	fn_28_9AA4	1BC	B	__sinit_CGunTurretTop_cpp	-	upstream body (module)	no

@@ -1,0 +1,6 @@
+# Discovery: list the turrets of the current area for each layer. Run with --frames 900.
+@f300 god 1
+@f302 objs GunTurret; objs turret
+@f305 layer 2; layer 3
+@f320 objs GunTurret; objs turret; status
+@f600 objs GunTurret; objs turret

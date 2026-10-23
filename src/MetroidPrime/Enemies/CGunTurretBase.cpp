@@ -278,6 +278,7 @@ static CVector3f skPanLeftVector =
 static CVector3f skPanRightVector =
     CMatrix3f::RotateZ(CRelAngle::FromDegrees(-85.f)) * CVector3f::Forward();
 
+// @ fn_28_61E8
 void CGunTurretBase::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -285,10 +286,12 @@ void CGunTurretBase::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_28_61D0
 bool CGunTurretBase::ShouldPatrol(CStateManager&, const CTriggerData&) const {
   return mLeashTimer < mPlayerLeashTime;
 }
 
+// @ fn_28_616C
 bool CGunTurretBase::ShouldAttack(CStateManager& mgr, const CTriggerData&) const {
   const CPhysicsActor* target = TCastToConstPtr< CPhysicsActor >(mgr.GetObjectById(mHitTarget));
   bool ret = false;
@@ -307,6 +310,7 @@ bool CGunTurretBase::AttackExitDone(CStateManager&, const CTriggerData&) const {
   return CVector3f::GetAngleDiff(gunDir, forward) < CRelAngle::FromDegrees(1.f).AsRadians();
 }
 
+// @ fn_28_60B8
 bool CGunTurretBase::GunDestroyed(CStateManager&, const CTriggerData&) const {
   return mGunDestroyed;
 }
@@ -326,11 +330,13 @@ bool CGunTurretBase::Delay(CStateManager&, const CTriggerData&) const {
   return true;
 }
 
+// @ fn_28_5FD0
 bool CGunTurretBase::PatrolDelay(CStateManager&, const CTriggerData&) const {
   const bool over = mStateMachine->GetTime() > mPatrolDelay;
   return over;
 }
 
+// @ fn_28_5FB8
 bool CGunTurretBase::WithdrawDelay(CStateManager&, const CTriggerData&) const {
   return mDelayTimer > mWithdrawDelay;
 }
@@ -380,14 +386,17 @@ bool CGunTurretBase::PlayerInRange(CStateManager& mgr, float range) const {
   return false;
 }
 
+// @ fn_28_5C1C
 bool CGunTurretBase::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_28_5C04
 bool CGunTurretBase::SpawnOver(CStateManager&, const CTriggerData&) const {
   return mRaise == mMaxRaise;
 }
 
+// @ fn_28_5BE8
 bool CGunTurretBase::WithdrawOver(CStateManager&, const CTriggerData&) const {
   return mRaise == 0.f;
 }
@@ -533,6 +542,7 @@ void CGunTurretBase::Withdraw(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_496C
 void CGunTurretBase::Spawn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -556,6 +566,7 @@ void CGunTurretBase::Spawn(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_48D0
 void CGunTurretBase::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -573,6 +584,7 @@ void CGunTurretBase::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_483C
 void CGunTurretBase::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -590,6 +602,7 @@ void CGunTurretBase::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_46F4
 void CGunTurretBase::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -611,6 +624,7 @@ void CGunTurretBase::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_46BC
 void CGunTurretBase::AttackExit(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -624,13 +638,16 @@ void CGunTurretBase::AttackExit(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_46B8
 void CGunTurretBase::Flinch(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_28_4668
 void CGunTurretBase::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
   UpdateGunPose(mgr, 1.f / 60.f);
 }
 
+// @ fn_28_4604
 void CGunTurretBase::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
   DebugDrawAABox(x9b4_.GetTransformedAABox(CTransform4f::Translate(GetTranslation())), 1.f, 1.f,
@@ -735,8 +752,10 @@ void CGunTurretBase::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_28_3E84
 void CGunTurretBase::Touch(CActor& actor, CStateManager& mgr) { CPatterned::Touch(actor, mgr); }
 
+// @ fn_28_3D58
 void CGunTurretBase::DestroyGun(CStateManager& mgr) {
   mGunDestroyed = true;
   mGunHit = false;
@@ -979,6 +998,7 @@ void CGunTurretBase::UpdateAttack(CStateManager& mgr, float dt) {
   mShotTimer = rstl::min_val(mShotTimer, 10000.f);
 }
 
+// @ fn_28_2908
 void CGunTurretBase::ResetAttack(CStateManager& mgr) {
   mTimeBetweenAttacks = mMinTimeBetweenAttacks +
                         (mMaxTimeBetweenAttacks - mMinTimeBetweenAttacks) * mgr.Random()->Float();
@@ -1010,6 +1030,7 @@ CVector3f CGunTurretBase::GetGunFirePosition(CStateManager& mgr) const {
   return GetTranslation();
 }
 
+// @ fn_28_2770
 bool CGunTurretBase::InRange(const CActor& actor, float range) const {
   return (actor.GetTranslation() - GetTranslation()).MagSquared() < range * range;
 }
@@ -1072,6 +1093,7 @@ void CGunTurretBase::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& no
   }
 }
 
+// @ fn_28_1C90
 float CGunTurretBase::GetClosestCameraDistanceSq(CStateManager& mgr) const {
   float distanceSquared = 3.4028235e38f;
   const CVector3f position = GetTranslation();
@@ -1095,16 +1117,19 @@ bool CGunTurretBase::InDetectionHeight(const CActor& actor, float up, float down
   return false;
 }
 
+// @ fn_28_1BC4
 rstl::optional_object< CAABox > CGunTurretBase::GetTouchBounds() const {
   return rstl::optional_object< CAABox >(
       mCollisionPrimitive.GetBox().GetTransformedAABox(GetTransform()));
 }
 
+// @ fn_28_1B98
 void CGunTurretBase::RaiseGun(float dt) {
   const float delta = mRaiseSpeed * dt;
   mRaise = rstl::min_val(mMaxRaise, mRaise + delta);
 }
 
+// @ fn_28_1B50
 void CGunTurretBase::LowerGun(float dt) {
   float speed;
   if (mGunDestroyed) {
@@ -1148,6 +1173,7 @@ void CGunTurretBase::ScanVisorRender(const CStateManager& mgr, const CTransform4
   }
 }
 
+// @ fn_28_157C
 CAABox CGunTurretBase::GetModelBounds() const {
   CAABox box = CAABox::MakeMaxInvertedBox();
   box = GetAnimationData()->CalcBoundingBoxFromModelVerts();

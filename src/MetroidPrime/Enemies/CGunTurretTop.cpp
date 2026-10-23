@@ -138,6 +138,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Patrol", static_cast< CPatterned::StateMachine::StateFunc >(&CGunTurretTop::Patrol)},
 };
 
+// @ fn_28_9058
 void CGunTurretTop::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -145,10 +146,12 @@ void CGunTurretTop::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_28_9050
 bool CGunTurretTop::ShouldAttack(CStateManager&, const CTriggerData&) const {
   return mShouldAttack;
 }
 
+// @ fn_28_9048
 bool CGunTurretTop::ShouldPatrol(CStateManager&, const CTriggerData&) const {
   return mShouldPatrol;
 }
@@ -157,11 +160,13 @@ bool CGunTurretTop::Attacked(CStateManager& mgr, const CTriggerData& data) const
   return CPatterned::Attacked(mgr, data);
 }
 
+// @ fn_28_8FDC
 bool CGunTurretTop::PowerUpOver(CStateManager&, const CTriggerData&) const {
   const bool over = mStateMachine->GetTime() > mPowerUpTime;
   return over;
 }
 
+// @ fn_28_8F90
 bool CGunTurretTop::PowerDownOver(CStateManager&, const CTriggerData&) const {
   const bool over = mStateMachine->GetTime() > mPowerDownTime;
   return over;
@@ -171,6 +176,7 @@ bool CGunTurretTop::AnimOver(CStateManager& mgr, const CTriggerData& data) const
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_28_8ED4
 void CGunTurretTop::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -188,6 +194,7 @@ void CGunTurretTop::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_8E38
 void CGunTurretTop::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -205,6 +212,7 @@ void CGunTurretTop::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_8CF8
 void CGunTurretTop::PowerUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -223,6 +231,7 @@ void CGunTurretTop::PowerUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_8BB4
 void CGunTurretTop::PowerDown(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -242,6 +251,7 @@ void CGunTurretTop::PowerDown(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_8B98
 void CGunTurretTop::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -254,8 +264,10 @@ void CGunTurretTop::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_28_8B78
 void CGunTurretTop::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_28_8B58
 void CGunTurretTop::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
 void CGunTurretTop::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
@@ -289,6 +301,7 @@ CAABox CGunTurretTop::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return bounds;
 }
 
+// @ fn_28_8688
 CAABox CGunTurretTop::GetModelBounds() const {
   CAABox box = GetAnimationData()->CalcBoundingBoxFromModelVerts();
   box = box.GetTransformedAABox(CTransform4f::Translate(-GetTranslation()) * GetTransform() *
@@ -317,8 +330,10 @@ void CGunTurretTop::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_28_854C
 void CGunTurretTop::Touch(CActor& actor, CStateManager& mgr) { CPatterned::Touch(actor, mgr); }
 
+// @ fn_28_8420
 void CGunTurretTop::Death(CStateManager& mgr, const CVector3f& direction,
                           EScriptObjectState state) {
   AnimationData()->SetEffectState(rstl::string_l("Generator"), false, mgr);
@@ -334,6 +349,7 @@ void CGunTurretTop::Death(CStateManager& mgr, const CVector3f& direction,
   SendScriptMsgs(state, mgr);
 }
 
+// @ fn_28_823C
 void CGunTurretTop::Revive(CStateManager& mgr) {
   mStateMachine->SetState(mgr, *this, rstl::string_l("Start"));
   SetActive(true);
@@ -350,6 +366,7 @@ void CGunTurretTop::Revive(CStateManager& mgr) {
   BodyController()->UnFreeze();
 }
 
+// @ fn_28_814C
 float CGunTurretTop::GetClosestCameraDistanceSq(CStateManager& mgr) const {
   float distanceSquared = 3.4028235e38f;
   const CVector3f position = GetTranslation();
@@ -364,6 +381,7 @@ float CGunTurretTop::GetClosestCameraDistanceSq(CStateManager& mgr) const {
   return distanceSquared;
 }
 
+// @ fn_28_809C
 void CGunTurretTop::SetChargeEffect(CStateManager& mgr, bool active, bool pirate) {
   AnimationData()->SetEffectState(
       pirate ? rstl::string_l("PirateCharge") : rstl::string_l("GFCharge"), active, mgr);
@@ -407,6 +425,8 @@ CEntity* LoadGunTurretTop(CStateManager& mgr, CInputStream& input, CEntityInfo& 
                               sldrThis.lightColor, sldrThis.sound, sldrThis.sound_0x5d9ed447);
 }
 
+// @ fn_28_7B5C
 rstl::optional_object< CAABox > CGunTurretTop::GetTouchBounds() const { return GetBoundingBox(); }
 
+// @ fn_28_7AF4
 CGunTurretTop::~CGunTurretTop() {}
