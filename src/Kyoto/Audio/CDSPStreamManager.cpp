@@ -92,6 +92,32 @@ void CDSPStreamManager::Initialize() {
 }
 
 void CDSPStreamManager::Shutdown() {
+#ifdef TARGET_PC
+  // Deallocate holds the stream lock while DVDClose waits for a read in flight, and that read's
+  // completion (DVDCallback, on Aurora's DVD worker) needs the lock: a shutdown during a refill hung
+  // for good (~1 harness run in 5). Deallocate only once no read is pending, checked under the same
+  // lock so the audio thread's refill can't issue one in between; a later completion is the
+  // worker's own and needs no lock to retire. Past ~2 s, fall through to the old path.
+  for (int attempt = 0; attempt < 2000; ++attempt) {
+    {
+      CInterruptGuard guard;
+      bool pending = false;
+      for (int i = 0; i < 2; ++i) {
+        pending |= sStreams[i].mState != kSS_Idle && sStreams[i].mReadsPending > 0;
+      }
+      if (!pending) {
+        for (int i = 0; i < 2; ++i) {
+          if (sStreams[i].mState != kSS_Idle) {
+            sStreams[i].Deallocate();
+          }
+        }
+        break;
+      }
+    }
+    const timespec wait = {0, 1000000};
+    nanosleep(&wait, nullptr);
+  }
+#endif
   for (int i = 0; i < 2; ++i) {
     if (sStreams[i].mState != kSS_Idle) {
       sStreams[i].Deallocate();
