@@ -146,6 +146,30 @@ console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Re
 `/tmp/opencode/mi_u`), and `tools/smoke/compare.py <new out> <old out>` prints exit, caught,
 reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
 
+## Headless runs
+
+For runs that need no picture (console scripts, logic checks, the smoke): `MP2_HEADLESS=1` (the
+game sets `AURORA_HEADLESS=1` and `SDL_VIDEODRIVER=offscreen`), `HEADLESS=1 tools/run_gameplay.sh`
+(no Xvfb, `DISPLAY`/`WAYLAND_DISPLAY` unset) or `tools/smoke/run.sh --headless`
+(`SMOKE_HEADLESS=1`). Aurora makes Dawn's Null device and no surface, and renders no frame: the
+FIFO is still processed (the register state the game reads back), but nothing is drawn, encoded,
+submitted or presented. The host input scan is skipped too (no hidapi, no haptics: closing every
+`/dev/input/event*` cost ~0.6 s of each boot); the console and `PADSetPortOverride` still drive pads.
+
+What differs from a normal run (render side only; the game logic is the same):
+- Screenshots (F12, console `screenshot`, `MP_SMOKE_SHOT`, PNG requests) are refused with a warning.
+- Read-backs never land: scan peeks and EFB CPU copies are dropped and `GXPeekZRegion` returns
+  false, so the game keeps its own "nothing read yet" values (Splitter beam length at the far
+  plane, scan target 0xFF) and `CVisorFlare::UpdateOcclusion` takes its retail `GXCopyTex` path
+  (console `status` shows ~30 copies and ~47 draws a frame instead of 1-2).
+- No copy destination is ever recorded, so `perf` counters describe recording, not rendering.
+
+Measured 2026-10-23 (agon54, one game): Aurora init 0.53 s -> 0.01 s, input probe 0.6 s -> 0,
+first game update 5.2 s -> 4.1 s wall. "Gameplay reached" stays ~9.1 s: it is a frame-count wait
+at 60 Hz (frame pacing, `CGraphics::EndScene`), which headless does not change. Full smoke
+(`--jobs 4`, 18 families, shared machine): wall 364 s -> 356 s, CPU (user+sys of every game)
+193 s -> 121 s; counts, positions and `[warp]`/`[ids]` lines match within run-to-run noise.
+
 ## Branch coverage of the port module bodies (gcov)
 
 The decomp lanes prove "every arm of a ported body ran" with gdb breakpoints, one spec per
