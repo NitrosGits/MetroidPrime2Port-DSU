@@ -1,5 +1,5 @@
 offset	fn	size	class	name	slice	what	marker
-00000	fn_76_0	70	B	CSporbTop::~CSporbTop	-	upstream body (CSporbTop)	no
+00000	fn_76_0	70	B	CSporbTop::~CSporbTop	sporb2	upstream body (CSporbTop)	yes
 00070	fn_76_70	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
 00254	fn_76_254	94	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
 002E8	fn_76_2E8	8	B	CSporbTop::IsScanVisorSelfRender	-	upstream body (CSporbTop)	no
@@ -33,13 +33,13 @@ offset	fn	size	class	name	slice	what	marker
 01164	fn_76_1164	50	B	CSporbTop::Freeze	-	upstream body (CSporbTop)	no
 011B4	fn_76_11B4	1C	B	CSporbTop::GetOrbitPosition	sporb1	upstream body (CSporbTop)	yes
 011D0	fn_76_11D0	4	H	fn_76_11D0	-	unnamed (weak copy / template instance)	no
-011D4	fn_76_11D4	14	B	CSporbTop::ShouldSpit	-	upstream body (CSporbTop)	no
-011E8	fn_76_11E8	10	B	CSporbTop::ShouldClose	-	upstream body (CSporbTop)	no
-011F8	fn_76_11F8	1C	B	CSporbTop::ShouldReload	-	upstream body (CSporbTop)	no
-01214	fn_76_1214	1C	B	CSporbTop::ShouldFire	-	upstream body (CSporbTop)	no
-01230	fn_76_1230	20	B	CSporbTop::AnimOver	-	upstream body (CSporbTop)	no
-01250	fn_76_1250	1C	B	CSporbTop::ShouldAttack	-	upstream body (CSporbTop)	no
-0126C	fn_76_126C	1C	B	CSporbTop::ShouldPatrol	-	upstream body (CSporbTop)	no
+011D4	fn_76_11D4	14	B	CSporbTop::ShouldSpit	sporb2	upstream body (CSporbTop)	yes
+011E8	fn_76_11E8	10	B	CSporbTop::ShouldClose	sporb2	upstream body (CSporbTop)	yes
+011F8	fn_76_11F8	1C	B	CSporbTop::ShouldReload	sporb2	upstream body (CSporbTop)	yes
+01214	fn_76_1214	1C	B	CSporbTop::ShouldFire	sporb2	upstream body (CSporbTop)	yes
+01230	fn_76_1230	20	B	CSporbTop::AnimOver	sporb2	upstream body (CSporbTop)	yes
+01250	fn_76_1250	1C	B	CSporbTop::ShouldAttack	sporb2	upstream body (CSporbTop)	yes
+0126C	fn_76_126C	1C	B	CSporbTop::ShouldPatrol	sporb2	upstream body (CSporbTop)	yes
 01288	fn_76_1288	23C	B	CSporbTop::Reload	-	upstream body (CSporbTop)	no
 014C4	fn_76_14C4	5C	H	CBCGenerateCmd::~CBCGenerateCmd	-	weak copy / template instance	no
 01520	fn_76_1520	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
@@ -53,8 +53,8 @@ offset	fn	size	class	name	slice	what	marker
 01F2C	fn_76_1F2C	68	B	CSporbTop::Patrol	sporb1	upstream body (CSporbTop)	yes
 01F94	fn_76_1F94	68	B	CSporbTop::Sleep	sporb1	upstream body (CSporbTop)	yes
 01FFC	fn_76_1FFC	20	B	CSporbTop::AddToRenderer	sporb1	upstream body (CSporbTop)	yes
-0201C	fn_76_201C	20	B	CSporbTop::PreRender	-	upstream body (CSporbTop)	no
-0203C	fn_76_203C	20	B	CSporbTop::Render	-	upstream body (CSporbTop)	no
+0201C	fn_76_201C	20	B	CSporbTop::PreRender	sporb2	upstream body (CSporbTop)	yes
+0203C	fn_76_203C	20	B	CSporbTop::Render	sporb2	upstream body (CSporbTop)	yes
 0205C	fn_76_205C	20	B	CSporbTop::Think	sporb1	upstream body (CSporbTop)	yes
 0207C	fn_76_207C	11C	B	CSporbTop::AcceptScriptMsg	-	upstream body (CSporbTop)	no
 02198	fn_76_2198	6C	B	CSporbTop::SetupStateMachine	sporb1	upstream body (CSporbTop)	yes
@@ -199,7 +199,7 @@ offset	fn	size	class	name	slice	what	marker
 0D928	fn_76_D928	C4	H	fn_76_D928	-	unnamed (weak copy / template instance)	no
 0D9EC	fn_76_D9EC	44	H	fn_76_D9EC	-	unnamed (weak copy / template instance)	no
 0DA30	fn_76_DA30	3B0	H	__sinit_CSporbBase_cpp	-	weak copy / template instance	no
-0DDE0	fn_76_DDE0	70	B	CSporbProjectile::~CSporbProjectile	-	upstream body (CSporbProjectile)	no
+0DDE0	fn_76_DDE0	70	B	CSporbProjectile::~CSporbProjectile	sporb2	upstream body (CSporbProjectile)	yes
 0DE50	fn_76_DE50	8	B	CSporbProjectile::GetCollisionPrimitive	-	upstream body (CSporbProjectile)	no
 0DE58	fn_76_DE58	8	B	CSporbProjectile::IsScanVisorSelfRender	-	upstream body (CSporbProjectile)	no
 0DE60	fn_76_DE60	32C	B	LoadSporbProjectile	-	upstream body (CSporbProjectile)	no
@@ -230,8 +230,8 @@ offset	fn	size	class	name	slice	what	marker
 0EF8C	fn_76_EF8C	4C	B	CSporbProjectile::Patrol	sporb1	upstream body (CSporbProjectile)	yes
 0EFD8	fn_76_EFD8	4C	B	CSporbProjectile::Sleep	sporb1	upstream body (CSporbProjectile)	yes
 0F024	fn_76_F024	20	B	CSporbProjectile::AddToRenderer	sporb1	upstream body (CSporbProjectile)	yes
-0F044	fn_76_F044	20	B	CSporbProjectile::PreRender	-	upstream body (CSporbProjectile)	no
-0F064	fn_76_F064	20	B	CSporbProjectile::Render	-	upstream body (CSporbProjectile)	no
+0F044	fn_76_F044	20	B	CSporbProjectile::PreRender	sporb2	upstream body (CSporbProjectile)	yes
+0F064	fn_76_F064	20	B	CSporbProjectile::Render	sporb2	upstream body (CSporbProjectile)	yes
 0F084	fn_76_F084	21C	B	CSporbProjectile::Think	-	upstream body (CSporbProjectile)	no
 0F2A0	fn_76_F2A0	188	B	CSporbProjectile::AcceptScriptMsg	-	upstream body (CSporbProjectile)	no
 0F428	fn_76_F428	6C	B	CSporbProjectile::SetupStateMachine	sporb1	upstream body (CSporbProjectile)	yes
@@ -253,28 +253,28 @@ offset	fn	size	class	name	slice	what	marker
 10C98	fn_76_10C98	8C	B	CSporbNeedle::AddToRenderer	-	upstream body (CSporbNeedle)	no
 10D24	fn_76_10D24	C0	B	CSporbNeedle::Render	-	upstream body (CSporbNeedle)	no
 10DE4	fn_76_10DE4	358	B	CSporbNeedle::CollidedWith	-	upstream body (CSporbNeedle)	no
-1113C	fn_76_1113C	20	B	CSporbNeedle::Touch	-	upstream body (CSporbNeedle)	no
+1113C	fn_76_1113C	20	B	CSporbNeedle::Touch	sporb2	upstream body (CSporbNeedle)	yes
 1115C	fn_76_1115C	210	B	CSporbNeedle::Think	sporb1	upstream body (CSporbNeedle)	yes
-1136C	fn_76_1136C	20	B	CSporbNeedle::PreThink	-	upstream body (CSporbNeedle)	no
+1136C	fn_76_1136C	20	B	CSporbNeedle::PreThink	sporb2	upstream body (CSporbNeedle)	yes
 1138C	fn_76_1138C	88	B	CSporbNeedle::AcceptScriptMsg	sporb1	upstream body (CSporbNeedle)	yes
 11414	fn_76_11414	C0	B	CSporbNeedle::~CSporbNeedle	-	upstream body (CSporbNeedle)	no
 114D4	fn_76_114D4	408	B	CSporbNeedle::CSporbNeedle	-	upstream body (CSporbNeedle)	no
 118DC	fn_76_118DC	68	H	SMoverData::SMoverData	-	weak copy / template instance	no
 11944	fn_76_11944	10C	B	CreateElementGen	-	upstream body (CSporbNeedle)	no
-11A50	fn_76_11A50	60	B	CSporbPowerBomb::~CSporbPowerBomb	-	upstream body (CSporbPowerBomb)	no
+11A50	fn_76_11A50	60	B	CSporbPowerBomb::~CSporbPowerBomb	sporb2	upstream body (CSporbPowerBomb)	yes
 11AB0	fn_76_11AB0	84	H	fn_76_11AB0	-	unnamed (weak copy / template instance)	no
 11B34	fn_76_11B34	7C	H	fn_76_11B34	-	unnamed (weak copy / template instance)	no
 11BB0	fn_76_11BB0	70	H	fn_76_11BB0	-	unnamed (weak copy / template instance)	no
 11C20	fn_76_11C20	58	H	fn_76_11C20	-	unnamed (weak copy / template instance)	no
 11C78	fn_76_11C78	54	H	fn_76_11C78	-	unnamed (weak copy / template instance)	no
-11CCC	fn_76_11CCC	1C	B	CSporbPowerBomb::GetExplosionNormal	-	upstream body (CSporbPowerBomb)	no
-11CE8	fn_76_11CE8	C	B	CSporbPowerBomb::GetImpactParticle	-	upstream body (CSporbPowerBomb)	no
-11CF4	fn_76_11CF4	20	B	CSporbPowerBomb::Render	-	upstream body (CSporbPowerBomb)	no
-11D14	fn_76_11D14	30	B	CSporbPowerBomb::RayCollisionCheckWithWorld	-	upstream body (CSporbPowerBomb)	no
-11D44	fn_76_11D44	74	B	CSporbPowerBomb::ResolveCollisionWithActor	-	upstream body (CSporbPowerBomb)	no
-11DB8	fn_76_11DB8	6C	B	CSporbPowerBomb::ResolveCollisionWithWorld	-	upstream body (CSporbPowerBomb)	no
-11E24	fn_76_11E24	40C	B	CSporbPowerBomb::Think	-	upstream body (CSporbPowerBomb)	no
-12230	fn_76_12230	190	B	CSporbPowerBomb::CSporbPowerBomb	-	upstream body (CSporbPowerBomb)	no
+11CCC	fn_76_11CCC	1C	B	CSporbPowerBomb::GetExplosionNormal	sporb2	upstream body (CSporbPowerBomb)	yes
+11CE8	fn_76_11CE8	C	B	CSporbPowerBomb::GetImpactParticle	sporb2	upstream body (CSporbPowerBomb)	yes
+11CF4	fn_76_11CF4	20	B	CSporbPowerBomb::Render	sporb2	upstream body (CSporbPowerBomb)	yes
+11D14	fn_76_11D14	30	B	CSporbPowerBomb::RayCollisionCheckWithWorld	sporb2	upstream body (CSporbPowerBomb)	yes
+11D44	fn_76_11D44	74	B	CSporbPowerBomb::ResolveCollisionWithActor	sporb2	upstream body (CSporbPowerBomb)	yes
+11DB8	fn_76_11DB8	6C	B	CSporbPowerBomb::ResolveCollisionWithWorld	sporb2	upstream body (CSporbPowerBomb)	yes
+11E24	fn_76_11E24	40C	B	CSporbPowerBomb::Think	sporb2	upstream body (CSporbPowerBomb)	yes
+12230	fn_76_12230	190	B	CSporbPowerBomb::CSporbPowerBomb	sporb2	upstream body (CSporbPowerBomb)	yes
 123C0	fn_76_123C0	74	H	fn_76_123C0	-	unnamed (weak copy / template instance)	no
 12434	fn_76_12434	C4	T	_unresolved	-	REL runtime	no
 124F8	fn_76_124F8	24	T	_epilog	-	REL runtime	no
