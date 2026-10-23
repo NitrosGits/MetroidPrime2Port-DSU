@@ -706,7 +706,7 @@ void CMediumIng::ExtendTentacle(CStateManager& mgr, int index) {
     return;
   }
   CEntity* entity = mgr.ObjectById(mTentacleIds[index]);
-  if (!entity) {
+  if (!entity) { // 0x4360
     return;
   }
   if (index % 2 == 0) { // 0x4364..0x4374
@@ -726,7 +726,7 @@ void CMediumIng::RetractTentacles(CStateManager& mgr) {
 void CMediumIng::PositionTentacles(CStateManager& mgr) {
   for (int i = 0; i < mTentacleIds.size(); ++i) {
     CActor* tentacle = TCastToPtr< CActor >(mgr.ObjectById(mTentacleIds[i]));
-    if (!tentacle) {
+    if (!tentacle) { // 0x44B8
       continue;
     }
     // 0x44D8 rodata_80 = -1.078, 0x44D4 rodata_40 = 0.
