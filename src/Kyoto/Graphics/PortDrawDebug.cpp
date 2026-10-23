@@ -601,3 +601,33 @@ void OnAnimLoaded(uint assetId, int format, float seconds) {
                name.empty() ? "" : " ", name.substr(0, 48).c_str(), format, seconds);
 }
 } // namespace PortDrawDebug
+
+// ---------------------------------------------------------------------------
+// DebugDrawAABox - retail's body is empty, so this one is empty too
+//
+// `src/MetroidPrime/Enemies/CGunTurretBase.cpp:37` declares it and `:636` (CGunTurretBase::Render)
+// calls it, right after `CPatterned::Render`, with `x9b4_.GetTransformedAABox(Translate(
+// GetTranslation()))` in r3 and 1.0f in f1..f4. Retail's REL 28 Render does exactly that
+// (`build/G2ME01/GunTurret/asm/auto_00_00000404_text.s`, fn_28_4604: `bl
+// GetTransformedAABox__6CAABoxCFRC12CTransform4f`, `lfs f1,lbl_28_rodata_10` copied to f2/f3/f4,
+// `bl fn_80083FDC`).
+//
+// The DOL body is four bytes and no more: `fn_80083FDC = .text:0x80083FDC; size:0x4 align:4`
+// (`config/G2ME01/symbols.txt:2342`, the entry after `DebugDrawOBB__FRC6COBBoxffff` at 0x80083FD8,
+// also size 0x4). Read out of `build/G2ME01/main.elf` (.text at VMA 0x80003840, file offset 0x920,
+// so 0x80083FDC is file 0x810BC):
+//
+//   80083fd8:  4e 80 00 20   blr     ; DebugDrawOBB
+//   80083fdc:  4e 80 00 20   blr     ; this one
+//   80083fe0:  94 21 ff c0   stwu    ; CPlayerState::RemoveId, the next real body
+//
+// So the shipping game draws nothing here - the debug-draw variant that would emit an AABB is not
+// in the DOL - and an empty body is the faithful port, not a stand-in. The reach stub this
+// replaces (`src/MetroidPrime/PortLinkStubs.cpp`) announced `[reach-stub]` on every turret Render,
+// which the all-worlds sweep (`/tmp/opencode/reports/sweep1.md` item 3) reported as a STUB in
+// Sanctuary Fortress 1, Temple Grounds 45/48 and Agon Wastes 48.
+// ---------------------------------------------------------------------------
+
+class CAABox;
+
+void DebugDrawAABox(const CAABox&, float, float, float, float) {}

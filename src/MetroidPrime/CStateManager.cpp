@@ -4384,9 +4384,18 @@ void CStateManager::PortWarpTick() {
   // One line per world, so a sweep can see which area slots are real (a slot with an invalid MREA
   // is not an area the game can travel to) and so a test can wait for the game world without
   // needing a pending request: "the front end's world, then mine".
+  //
+  // The slots listed below are the *loaded* CWorld's, so the id in the line has to be that CWorld's
+  // too. `gpGameState->CurrentWorldAssetId()` changes when the game state is told to travel, a frame
+  // or more before the new CWorld replaces this one: keying only on it printed the outgoing world's
+  // slot list under the incoming world's id (the all-worlds sweep, `/tmp/opencode/reports/sweep1.md`
+  // item 4, whose report had to take the slot count from the disc instead). So wait until the two
+  // agree, and skip the world in between.
   static CAssetId sLoggedWorld = kInvalidAssetId;
-  if (gpGameState != nullptr && sLoggedWorld != gpGameState->CurrentWorldAssetId()) {
-    sLoggedWorld = gpGameState->CurrentWorldAssetId();
+  const CAssetId loadedWorld = world->IGetWorldAssetId();
+  if (gpGameState != nullptr && sLoggedWorld != loadedWorld &&
+      loadedWorld == gpGameState->CurrentWorldAssetId()) {
+    sLoggedWorld = loadedWorld;
     std::fprintf(stderr, "[warp] world %08x areas:", sLoggedWorld);
     for (int i = 0; i < world->IGetAreaCount(); ++i) {
       // The MLVL carries every area's internal name, loaded or not (an unloaded area's slot is a
