@@ -17,11 +17,16 @@ FORCE = [
      ['$this->mBurning = ($this->mEditorId.value & 0x3ffffff) == 0x25009e ? 1 : $this->mBurning',
       '$this->mIngPossessionTarget = ($this->mEditorId.value & 0x3ffffff) == 0x250156 ? 1.0 : '
       '$this->mIngPossessionTarget',
+      '$this->mIngPossessionBlend = ($this->mEditorId.value & 0x3ffffff) == 0x250156 ? 1.0 : '
+      '$this->mIngPossessionBlend',
       '$this->mHealthInfo.mDeathWeaponMode.mWeaponType = ($this->mEditorId.value & '
-      '0x3ffffff) == 0x25014e ? 1 : $this->mHealthInfo.mDeathWeaponMode.mWeaponType',
+      '0x3ffffff) == 0x25014e || ($this->mEditorId.value & 0x3ffffff) == 0x250156 ? 1 : '
+      '$this->mHealthInfo.mDeathWeaponMode.mWeaponType',
       '$this->mHealthInfo.mDeathWeaponMode.mCharged = ($this->mEditorId.value & '
-      '0x3ffffff) == 0x25014e ? 1 : $this->mHealthInfo.mDeathWeaponMode.mCharged'], 0,
+      '0x3ffffff) == 0x25014e ? 1 : (($this->mEditorId.value & 0x3ffffff) == 0x250156 ? 0 : '
+      '$this->mHealthInfo.mDeathWeaponMode.mCharged)'], 0,
      'e0025009e burning when it dies: the burning arms of Dead (356) and Think (317); e00250156 '
-     'Ing-possessed (no Ing here; the exploded Think keeps it): the DarkXDamage arm (322); e0025014e '
+     'Ing-possessed (target and blend; Death clears the target) and killed by an uncharged dark shot: '
+     'the uncharged-dark and DarkXDamage arms (320, 322); e0025014e '
      'killed by a charged dark shot (the console hurt has no charge flag): the IceXDamage arm (320)'),
 ]
