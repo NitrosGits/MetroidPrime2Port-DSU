@@ -1,0 +1,114 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_8_0	D8	H	__dt__11CChozoGhostFv	-	weak copy / template instance	no
+000D8	fn_8_D8	1E4	H	__dt__10CPatternedFv	-	weak copy / template instance	no
+002BC	fn_8_2BC	94	H	__dt__15CAiKnockBackMgrFv	-	weak copy / template instance	no
+00350	fn_8_350	C	H	GetGravityConstant__11CChozoGhostCFv	-	weak copy / template instance	no
+0035C	fn_8_35C	3C	H	GetTouchBounds__10CPatternedCFv	-	weak copy / template instance	no
+00398	fn_8_398	10	H	TakeDamage__10CPatternedFRC9CVector3ff	-	weak copy / template instance	no
+003A8	fn_8_3A8	8	H	GetSearchPath__10CPatternedFv	-	weak copy / template instance	no
+003B0	fn_8_3B0	8	H	GetPointSearchPath__10CPatternedFv	-	weak copy / template instance	no
+003B8	fn_8_3B8	8	H	GetRagDoll__10CPatternedCFv	-	weak copy / template instance	no
+003C0	fn_8_3C0	10	H	GetAttackTarget__10CPatternedCFv	-	weak copy / template instance	no
+003D0	fn_8_3D0	8	H	GetDeathExplosionParticle__10CPatternedCFv	-	weak copy / template instance	no
+003D8	fn_8_3D8	8	H	IsListening__3CAiCFv	-	weak copy / template instance	no
+003E0	fn_8_3E0	8	H	Listen__3CAiFR13CStateManagerRC9CVector3f16EListenNoiseType	-	weak copy / template instance	no
+003E8	fn_8_3E8	2C	H	GetHealthInfo__6CActorCFv	-	weak copy / template instance	no
+00414	fn_8_414	24	T	RELExit	cg1	REL runtime	yes
+00438	fn_8_438	20	T	RELMain	cg1	REL runtime	yes
+00458	fn_8_458	30	H	SetFuncPtrs__Fv	-	weak copy / template instance	no
+00488	fn_8_488	768	B	LoadChozoGhost__FR13CStateManagerR12CInputStreamR11CEntityInfo	cg1	upstream loader	yes
+00BF0	fn_8_BF0	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+00C30	fn_8_C30	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak copy / template instance	no
+00C50	fn_8_C50	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak copy / template instance	no
+00C78	fn_8_C78	13C	H	__ct__10CModelDataFRC10CModelData	-	weak copy / template instance	no
+00DB4	fn_8_DB4	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak copy / template instance	no
+00E20	fn_8_E20	54	H	__dt__15TToken<6CModel>Fv	-	weak copy / template instance	no
+00E74	fn_8_E74	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
+00ED8	fn_8_ED8	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
+00F38	fn_8_F38	88	H	__dt__14SLdrChozoGhostFv	-	weak copy / template instance	no
+00FC0	fn_8_FC0	2E4	H	__ct__14SLdrChozoGhostFv	cg1	inline SLdr ctor (header); cg1 defaults fix	no
+012A4	fn_8_12A4	3C	H	__dt__15SLdrGhostBehaveFv	-	weak copy / template instance	no
+012E0	fn_8_12E0	180	H	LoadTypedefGhostBehave__FR15SLdrGhostBehaveR12CInputStream	-	weak copy / template instance	no
+01460	fn_8_1460	6C	B	SetupStateMachine__11CChozoGhostFR13CStateManager	cg1	upstream body (CChozoGhost)	yes
+014CC	fn_8_14CC	A4	B	Think__11CChozoGhostFfR13CStateManager	cg1	upstream body (CChozoGhost)	yes
+01570	fn_8_1570	60	B	PreThink__11CChozoGhostFfR13CStateManager	cg1	upstream body (CChozoGhost)	yes
+015D0	fn_8_15D0	12C	B	KnockBack__11CChozoGhostFR13CStateManagerRC14CKnockBackInfo	-	upstream body (CChozoGhost)	no
+016FC	fn_8_16FC	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+0174C	fn_8_174C	3B8	B	DoUserAnimEvent__11CChozoGhostFR13CStateManagerRC13CInt32POINode14EUserEventTypef	-	upstream body (CChozoGhost)	no
+01B04	fn_8_1B04	54	H	__dt__18CImpactVisorEffectFv	-	weak copy / template instance	no
+01B58	fn_8_1B58	5C	H	__dt__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>Fv	-	weak copy / template instance	no
+01BB4	fn_8_1BB4	20	H	fn_8_1BB4	-	weak copy / template instance	no
+01BD4	fn_8_1BD4	48	H	destroy<Q218CImpactVisorEffect15SParticleEffect>__4rstlFPQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+01C1C	fn_8_1C1C	8C	H	ParticleEffect__18CImpactVisorEffectFRCQ24rstl50optional_object<31TLockedToken<15CGenDescription>>Usb	-	weak copy / template instance	no
+01CA8	fn_8_1CA8	B4	H	__ct__18CImpactVisorEffectFRCQ24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>RCQ24rstl52optional_object<Q218CImpactVisorEffect11SBlurEffect>RCQ24rstl34optional_object<Q24rstl9pair<i,f>>	-	weak copy / template instance	no
+01D5C	fn_8_1D5C	40	H	__ct__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>FRCQ24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>	-	weak copy / template instance	no
+01D9C	fn_8_1D9C	20	H	construct<Q218CImpactVisorEffect15SParticleEffect>__4rstlFPvRCQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+01DBC	fn_8_1DBC	28	H	construct__Q24rstl62construction_policy<Q218CImpactVisorEffect15SParticleEffect,0>FPvRCQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+01DE4	fn_8_1DE4	80	H	__ct__Q218CImpactVisorEffect15SParticleEffectFRCQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+01E64	fn_8_1E64	6C	H	__dt__Q24rstl50optional_object<31TLockedToken<15CGenDescription>>Fv	-	weak copy / template instance	no
+01ED0	fn_8_1ED0	54	H	__dt__25TToken<15CGenDescription>Fv	-	weak copy / template instance	no
+01F24	fn_8_1F24	3C	H	__dt__Q24rstl34optional_object<Q24rstl9pair<i,f>>Fv	-	weak copy / template instance	no
+01F60	fn_8_1F60	3C	H	__dt__Q24rstl52optional_object<Q218CImpactVisorEffect11SBlurEffect>Fv	-	weak copy / template instance	no
+01F9C	fn_8_1F9C	38	H	__ct__Q24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>FRCQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+01FD4	fn_8_1FD4	70	H	__dt__Q218CImpactVisorEffect15SParticleEffectFv	-	weak copy / template instance	no
+02044	fn_8_2044	78	H	__ct__Q218CImpactVisorEffect15SParticleEffectFRCQ24rstl50optional_object<31TLockedToken<15CGenDescription>>Usb	-	weak copy / template instance	no
+020BC	fn_8_20BC	1C	B	ProjectileInfo__11CChozoGhostFv	-	upstream body (CChozoGhost)	no
+020D8	fn_8_20D8	B0	B	Dead__11CChozoGhostFR13CStateManager9EStateMsgf	cg1	upstream body (CChozoGhost)	yes
+02188	fn_8_2188	19C	B	Deactivate__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+02324	fn_8_2324	5C	H	__dt__14CBCGenerateCmdFv	-	weak copy / template instance	no
+02380	fn_8_2380	48	H	__dt__13CBodyStateCmdFv	-	weak copy / template instance	no
+023C8	fn_8_23C8	C	B	AggressionCheck__11CChozoGhostCFR13CStateManagerRC12CTriggerData	cg1	upstream body (CChozoGhost)	yes
+023D4	fn_8_23D4	C	B	ShouldFlinch__11CChozoGhostCFR13CStateManagerRC12CTriggerData	cg1	upstream body (CChozoGhost)	yes
+023E0	fn_8_23E0	48	B	Leash__11CChozoGhostCFR13CStateManagerRC12CTriggerData	-	upstream body (CChozoGhost)	no
+02428	fn_8_2428	14	B	ShouldMove__11CChozoGhostCFR13CStateManagerRC12CTriggerData	cg1	upstream body (CChozoGhost)	yes
+0243C	fn_8_243C	60	B	Lurk__11CChozoGhostFR13CStateManager9EStateMsgf	cg1	upstream body (CChozoGhost)	yes
+0249C	fn_8_249C	29C	B	Hurled__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+02738	fn_8_2738	5C	H	__ct__14CRayCastResultFRC14CRayCastResult	-	weak copy / template instance	no
+02794	fn_8_2794	118	B	Taunt__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+028AC	fn_8_28AC	5C	H	__dt__11CBCTauntCmdFv	-	weak copy / template instance	no
+02908	fn_8_2908	14	B	ShouldTaunt__11CChozoGhostCFR13CStateManagerRC12CTriggerData	cg1	upstream body (CChozoGhost)	yes
+0291C	fn_8_291C	180	B	Shuffle__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+02A9C	fn_8_2A9C	78	B	Land__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+02B14	fn_8_2B14	368	B	Attack__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+02E7C	fn_8_2E7C	5C	H	__dt__17CBCMeleeAttackCmdFv	-	weak copy / template instance	no
+02ED8	fn_8_2ED8	14	B	ShouldAttack__11CChozoGhostCFR13CStateManagerRC12CTriggerData	cg1	upstream body (CChozoGhost)	yes
+02EEC	fn_8_2EEC	2C	B	SelectTarget__11CChozoGhostFR13CStateManager9EStateMsgf	cg1	upstream body (CChozoGhost)	yes
+02F18	fn_8_2F18	C	B	InRange__11CChozoGhostCFR13CStateManagerRC12CTriggerData	cg1	upstream body (CChozoGhost)	yes
+02F24	fn_8_2F24	244	B	Run__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+03168	fn_8_3168	224	B	WallDetach__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+0338C	fn_8_338C	2B0	B	Generate__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+0363C	fn_8_363C	9C	H	DeliverCmd__16CBodyStateCmdMgrFRC10CBCJumpCmd	-	weak copy / template instance	no
+036D8	fn_8_36D8	5C	H	__dt__10CBCJumpCmdFv	-	weak copy / template instance	no
+03734	fn_8_3734	7C	H	__ct__10CBCJumpCmdFRC9CVector3fQ23pas9EJumpTypeQ23pas10EJumpStateii	-	weak copy / template instance	no
+037B0	fn_8_37B0	104	B	Growth__11CChozoGhostFR13CStateManager9EStateMsgf	cg1	upstream body (CChozoGhost)	yes
+038B4	fn_8_38B4	2C	B	AIStage__11CChozoGhostCFR13CStateManagerRC12CTriggerData	cg1	upstream body (CChozoGhost)	yes
+038E0	fn_8_38E0	100	B	InActive__11CChozoGhostFR13CStateManager9EStateMsgf	-	upstream body (CChozoGhost)	no
+039E0	fn_8_39E0	190	B	SetWarpPosition__11CChozoGhostFR13CStateManagerRC9CVector3f	cg1	upstream body (CChozoGhost)	yes
+03B70	fn_8_3B70	90	B	ChooseBehaveChanceRange__11CChozoGhostCFR13CStateManager	cg1	upstream body (CChozoGhost)	yes
+03C00	fn_8_3C00	5E4	B	FindBestAnchor__11CChozoGhostFR13CStateManager	-	upstream body (CChozoGhost)	no
+041E4	fn_8_41E4	C	B	IsOnGround__11CChozoGhostCFv	cg1	upstream body (CChozoGhost)	yes
+041F0	fn_8_41F0	58	B	FloatToLevel__11CChozoGhostFff	cg1	upstream body (CChozoGhost)	yes
+04248	fn_8_4248	A8	B	RemoveFromTeam__11CChozoGhostFR13CStateManager	-	upstream body (CChozoGhost)	no
+042F0	fn_8_42F0	AC	B	AddToTeam__11CChozoGhostFR13CStateManager	-	upstream body (CChozoGhost)	no
+0439C	fn_8_439C	1C	B	GetOrigin__11CChozoGhostCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f	-	upstream body (CChozoGhost)	no
+043B8	fn_8_43B8	38	B	IsVisibleEnough__11CChozoGhostCFRC13CStateManager	cg1	upstream body (CChozoGhost)	yes
+043F0	fn_8_43F0	78	B	Render__11CChozoGhostCFRC13CStateManager	cg1	upstream body (CChozoGhost)	yes
+04468	fn_8_4468	208	B	PreRender__11CChozoGhostFR13CStateManager	-	upstream body (CChozoGhost)	no
+04670	fn_8_4670	1C	B	GetModelAlphau8__11CChozoGhostCFRC13CStateManager	cg1	upstream body (CChozoGhost)	yes
+0468C	fn_8_468C	34	B	GetDamageVulnerability__11CChozoGhostCFv	cg1	upstream body (CChozoGhost)	yes
+046C0	fn_8_46C0	8	B	GetCollisionResponseType__11CChozoGhostCFRC9CVector3fRC9CVector3fRC11CWeaponModei	cg1	upstream body (CChozoGhost)	yes
+046C8	fn_8_46C8	20	B	CanBeShot__11CChozoGhostFRC13CStateManageri	cg1	upstream body (CChozoGhost)	yes
+046E8	fn_8_46E8	12C	B	Touch__11CChozoGhostFR6CActorR13CStateManager	-	upstream body (CChozoGhost)	no
+04814	fn_8_4814	1B4	B	AcceptScriptMsg__11CChozoGhostFR13CStateManagerRC10CScriptMsg	cg1	upstream body (CChozoGhost)	yes
+049C8	fn_8_49C8	6FC	B	__ct__11CChozoGhostF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC16CActorParametersRC14CPatternedInfoffffUiRC11CDamageInfoUiRC11CDamageInfoRCQ211CChozoGhost13CBehaveChanceRCQ211CChozoGhost13CBehaveChanceRCQ211CChozoGhost13CBehaveChanceUsfUsUsUifUifUiUsffUiUi	-	upstream body (CChozoGhost)	no
+050C4	fn_8_50C4	84	H	__as__Q24rstl50optional_object<31TLockedToken<15CGenDescription>>FRC31TLockedToken<15CGenDescription>	-	weak copy / template instance	no
+05148	fn_8_5148	58	H	__dt__31TLockedToken<15CGenDescription>Fv	-	weak copy / template instance	no
+051A0	fn_8_51A0	3C	H	__dt__16CPASAnimParmDataFv	-	weak copy / template instance	no
+051DC	fn_8_51DC	184	H	__ct__16CPASAnimParmDataFQ23pas15EAnimationStateRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParm	-	weak copy / template instance	no
+05360	fn_8_5360	3C	H	__dt__Q24rstl33reserved_vector<12CPASAnimParm,8>Fv	-	weak copy / template instance	no
+0539C	fn_8_539C	3C	H	__dt__13CBoneTrackingFv	-	weak copy / template instance	no
+053D8	fn_8_53D8	5C	H	__dt__15CProjectileInfoFv	-	weak copy / template instance	no
+05434	fn_8_5434	13C	B	GetBehave__Q211CChozoGhost13CBehaveChanceCFQ211CChozoGhost11EBehaveTypeR13CStateManager	-	upstream body (CChozoGhost)	no
+05570	fn_8_5570	74	B	__ct__Q211CChozoGhost13CBehaveChanceFffffffUi	cg1	upstream body (CChozoGhost)	yes
+055E4	fn_8_55E4	3C	H	__ct__Q24rstl24optional_object<6CAABox>FRC6CAABox	-	weak copy / template instance	no
+05620	fn_8_5620	3CC	H	__sinit_CChozoGhost_cpp	-	static init	no

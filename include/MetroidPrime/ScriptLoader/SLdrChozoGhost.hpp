@@ -23,6 +23,18 @@ struct SLdrGhostBehave {
 };
 
 inline SLdrGhostBehave::SLdrGhostBehave() {
+#ifdef TARGET_PC
+  // Inlined three times in fn_8_FC0 (far 0x1034..0x109C, mid 0x10AC..0x10E8, near
+  // 0x10F0..0x1108): f31 = rodata_4 (25.0) -> +0x0/+0x4/+0x8/+0xC, f13 = rodata_8 (2.0) -> +0x10,
+  // f12 = rodata_C (50.0) -> +0x14, li r30,0x1 -> +0x18.
+  lurk = 25.0f;
+  heckle = 25.0f;
+  attack = 25.0f;
+  move = 25.0f;
+  lurkTime = 2.0f;
+  chargeAttack = 50.0f;
+  numBolts = 1;
+#else
   lurk = -0.0f;
   heckle = 0.0f;
   attack = 0.0f;
@@ -30,6 +42,7 @@ inline SLdrGhostBehave::SLdrGhostBehave() {
   lurkTime = 0.0f;
   chargeAttack = 0.0f;
   numBolts = 0;
+#endif
 }
 
 inline SLdrGhostBehave::~SLdrGhostBehave() {}
@@ -168,6 +181,29 @@ inline SLdrChozoGhost::SLdrChozoGhost()
   midToFarDistance = 45.0f;
   nearChance = 40;
   midChance = 40;
+#ifdef TARGET_PC
+  // fn_8_FC0 stores upstream lacks or gets wrong:
+  //   0x1098 li r12,-0x1; 0x110C/0x1110/0x1114/0x111C stw r12 -> +0x384/+0x38C/+0x390/+0x3A8
+  //     (sound_Impact, sound_PhazeIn, sound_PhazeOut, sound_ProjectileVisor = -1; no 0 store)
+  //   0x1150 bl CColor(1,1,1,1) (f1..f4 = rodata_20 1.0); 0x1164 stw -> +0x294 (ambient color)
+  //   0x1168 li r0,0xf; 0x1174 stw -> +0x2E4 (visorFlags)
+  //   far 0x11FC stfs rodata_38 (0.0) -> +0x334, 0x122C -> +0x344 (heckle, chargeAttack);
+  //   near 0x124C/0x1250/0x1258 rodata_38 (0.0) -> +0x368/+0x36C/+0x374 (lurk, heckle, move):
+  //   they override the SLdrGhostBehave defaults above.
+  // No +0x38 / +0x26C store here (editor default and echo emitter stay the sub-ctors'), and
+  // +0x88 is 10.0 (rodata_28, 0x1144), as upstream has.
+  sound_Impact = -1;
+  sound_PhazeIn = -1;
+  sound_PhazeOut = -1;
+  sound_ProjectileVisor = -1;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+  far.heckle = 0.0f;
+  far.chargeAttack = 0.0f;
+  near.lurk = 0.0f;
+  near.heckle = 0.0f;
+  near.move = 0.0f;
+#endif
 }
 
 inline SLdrChozoGhost::~SLdrChozoGhost() {}
