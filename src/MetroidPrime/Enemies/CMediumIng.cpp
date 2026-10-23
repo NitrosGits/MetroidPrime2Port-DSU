@@ -1502,6 +1502,9 @@ void CMediumIngTentacle::Extend(CStateManager& mgr, const CVector3f& target) {}
 void CMediumIngTentacle::Retract(CStateManager& mgr) {}
 float CMediumIngTentacle::GetProgress() const { return 0.f; }
 void CMediumIngTentacle::UpdateShake(CStateManager& mgr, float dt) {}
+bool CMediumIng::FindSafeZoneRetreatPoint(const CStateManager& mgr, CVector3f& outPoint) {
+  return false;
+}
 void CMediumIng::UpdateCurrentSafeZone(const CStateManager& mgr, const CVector3f& point) {}
 void CMediumIng::UpdateMistEffect(CStateManager& mgr) {}
 void CMediumIng::CreateMistEffect(CStateManager& mgr, const TLockedToken< CGenDescription >& desc) {

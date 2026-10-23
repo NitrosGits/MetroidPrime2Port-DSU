@@ -23,8 +23,8 @@ loader, the ctors and empty stubs; the port's bodies are in
   call comes from CStateManager::ApplyLocalDamage (mAlive 1); later ones (mAlive 0) come from
   CPatterned::KnockBack under projectile damage while the dead Ing is still shot (gdb
   `$_any_caller_matches(".*KnockBack", 12)`: 27 of 28 in the forced run).
-- Dead 30B0 deletes only through DeathDelete when the body state is kAS_Death (0x31D0) or when
-  the mist effect drains (mE1). A console kill (`damage <id> 999` without knockback) leaves the
+- Dead 30B0 removes the Ing only by DeathDelete when the body state is kAS_Death (0x31D0), or by
+  DeleteObjectRequest once the mist effect drains (mE1, 0x31E8). A console kill (`damage <id> 999` without knockback) leaves the
   Ing in Dead indefinitely; a shot kill gets it deleted. Treat the console case as a harness
   artefact.
 - asmcheck: the bitfield run mC0..mE2 (0xCFC..0xCFE, MSB first: mC0 = 0xCFC 0x80) has no stated
