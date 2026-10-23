@@ -88,7 +88,7 @@ inline uint PackBgDataFlags(uint raw) {
 const float kFacingAngle = 0.34906584f; // rodata_104: 20 degrees
 // rodata_104: the wall projectile's launch direction is clamped to this angle from the surface
 // normal.
-const float kWallLaunchAngle = 0.7853981f; // 45 degrees
+const float kWallLaunchAngle = 0.7853982f; // 45 degrees
 
 // The seven joint spheres: lbl_30_rodata_0 (the Ing REL's own rodata_0 table is the same), seven (locator, radius) pairs. Every
 // radius is 1.5 (0x3FC00000); the pivot point is the zero vector and the mass is 1000.0 (rodata_C4).
