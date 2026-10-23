@@ -73,6 +73,15 @@ inline SLdrSplinter::SLdrSplinter()
   megaSplinterSpitProjectileDamage.dI_Damage = 5.0f;
   unknown_0x51be00d3 = 2.5f;
   unknown_0xb7deaf32 = 5.0f;
+#ifdef TARGET_PC
+  // fn_74_C3C: 3 at +0x38 (0xCB4 li r0,3 / 0xCBC), 2.0 (rodata 0x54) at +0x88 (0xD04), 1 at
+  // +0x26C (0xD2C), CColor(1.0 x4, rodata 0x5C) at +0x294 (0xD44), 0xF at +0x2E4 (0xD54).
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrSplinter::~SLdrSplinter() {}

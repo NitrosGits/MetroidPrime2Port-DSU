@@ -146,7 +146,13 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
 };
 
 CSplinter::SSurfaceAlignment::SSurfaceAlignment()
+#ifdef TARGET_PC
+// 0xBE90-0xBE98: li r3,-1 (include all), li r5,0, li r0,2 (kFT_Exclude): retail excludes
+// ceiling+wall (bits 29|30) instead of including them.
+: CSurfaceAlignmentHelper(CMaterialFilter::MakeExclude(CMaterialList(kMT_Ceiling, kMT_Wall)))
+#else
 : CSurfaceAlignmentHelper(CMaterialFilter::MakeInclude(CMaterialList(kMT_Ceiling, kMT_Wall)))
+#endif
 , mLastSurfacePosition(0.f, 0.f, -100000.f) {}
 
 CSplinter::SStateMachine2::SStateMachine2(CAssetId stateMachine) {
@@ -489,19 +495,34 @@ void CSplinter::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, E
     if (IsMega() == true) {
       mSpit->mSpitting = false;
     }
+#ifdef TARGET_PC
+    // 0x177C bne / 0x1790 b 0x1824: falls into the CPatterned::DoUserAnimEvent call.
+    break;
+#else
     return;
+#endif
   case kUE_Unknown38:
     if (IsMega() == true) {
       mSpit->mOrbitPosition = GetOrbitPosition(mgr);
       mSpit->mOrbitValid = true;
     }
+#ifdef TARGET_PC
+    // 0x17A4 bne / 0x17EC b 0x1824: falls into the base call.
+    break;
+#else
     return;
+#endif
   case kUE_Unknown39:
     if (IsMega() == true) {
       mSpit->mOrbitValid = false;
       RemoveMaterial(kMT_Target, kMT_Orbit, mgr);
     }
+#ifdef TARGET_PC
+    // 0x17FC bne 0x1824 and fallthrough to 0x1824: falls into the base call.
+    break;
+#else
     return;
+#endif
   default:
     break;
   }
@@ -2280,10 +2301,18 @@ void CSplinter::ApplyAmbushVelocity(bool playerMorphed) {
   float dy = mJump.mStart.GetY() - GetTranslation().GetY();
   float gravity = GetGravityConstant();
   float height = mJump.mHeight + static_cast< float >(playerMorphed == true);
+#ifdef TARGET_PC
+  // 0xA9EC lfs f3,rodata_60 (0.0); 0xA9F8 fcmpu f0,f3 / 0xA9FC beq -> 0xAA08 lfs f3,rodata_8C
+  // (0.8); 0xAA28 fadds f28,f3,f0. The height only picks the 0.8 lift: a nonzero (or NaN)
+  // height adds 0.0, not itself.
+  float apex = (height == 0.f ? 0.8f : 0.f) +
+               rstl::max_val(GetTranslation().GetZ(), mJump.mStart.GetZ());
+#else
   if (height == 0.f) {
     height = 0.8f;
   }
   float apex = height + rstl::max_val(GetTranslation().GetZ(), mJump.mStart.GetZ());
+#endif
   velocity.SetZ(CMath::SqrtF(2.f * gravity * (apex - GetTranslation().GetZ())));
   float time =
       velocity.GetZ() / gravity + CMath::SqrtF(2.f * (apex - mJump.mStart.GetZ()) / gravity);
