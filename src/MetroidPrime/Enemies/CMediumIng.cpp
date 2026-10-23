@@ -1276,7 +1276,7 @@ void CMediumIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
       amount = 0.f;
     }
     mFD0 = amount;
-    if (BodyController()->GetCurrentStateId() == pas::kAS_Death) { // 0x31D0 cmpwi 2
+    if (BodyController()->GetCurrentStateId() == pas::kAS_LieOnGround) { // 0x31D0 cmpwi 2
       DeathDelete(mgr);
     }
     if (mE1) { // 0x31E8 0xCFE & 0x40

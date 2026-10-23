@@ -2,8 +2,8 @@
 // non-state functions, ported for behaviour from the retail asm
 // (build/G2ME01/MediumIng/asm/MetroidPrime/Enemies/CMediumIng.s; docs/module-analysis/MediumIng.md).
 // Functions marked `// @ fn_41_<off>` ran in play and were checked against that retail function.
-// The upstream file keeps its empty stubs under #ifndef TARGET_PC. Not here (slice 2): the FSM
-// states, SelectTarget*, Set*Destination, FindSafeZoneRetreatPoint and FindClosest*.
+// The upstream file keeps its empty stubs under #ifndef TARGET_PC. The FSM states, SelectTarget*,
+// Set*Destination, FindSafeZoneRetreatPoint and FindClosest* are in CMediumIng.cpp's TARGET_PC block.
 #include "MetroidPrime/Enemies/CMediumIng.hpp"
 #include "port_console.h"
 

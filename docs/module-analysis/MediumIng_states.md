@@ -27,7 +27,7 @@ Upstream triggers all match the asm; none changed.
 | SafezoneReaction | 542C | played, forced (`send u0454 XENZ from u0451`) | mD1 0x54EC |
 | MoveToSafeZone | 5240 | played, forced (`fsm u0454 MoveToSafeZone`) | FindSafeZoneRetreatPoint success 0x52A0, 0x5380 |
 | BackUp | 2E70 | marked | |
-| Dead | 30B0 | played | kAS_Death arm 0x31D0 (`lwz 0x37c; cmpwi 2`) and the mist-effect drain 0x31E8..0x3204 stayed untaken (gcov), though the shot-killed u0417 was deleted (~f1600, forced run) by a path not traced |
+| Dead | 30B0 | played | kAS_LieOnGround arm 0x31D0 (`lwz 0x37c; cmpwi 2`; was kAS_Death = 4 until review33) and the mist-effect drain 0x31E8..0x3204 stayed untaken (gcov, before the fix), though the shot-killed u0417 was deleted (~f1600, forced run) by a path not traced |
 | SelectTargetState | 30AC | marked | empty in retail |
 | SelectTarget | 698C | played | the jump-point loop (no AiJumpPoint). 6D08/6BFC get the mutated target (sp+0x28) |
 | SetLeashTarget | 6880 | played (`tp` to area 40) | danger-actor arm 0x6908 |
