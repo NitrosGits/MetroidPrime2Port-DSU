@@ -50,6 +50,13 @@ public:
   // CScriptPlayerProxy
   void OnGameEvent(CStateManager& mgr, uint sourceIndex, uint targetIndex, uint event,
                    const void* value); // Guessed name
+#ifdef TARGET_PC
+  // Port console `gameevent`: what CGMMultiplayer::NotifyListeners does, for every proxy whose
+  // listener mask holds targetIndex (CGMSinglePlayer::AddListener drops listeners). asType >= 0
+  // retypes each proxy for the call. Returns the proxies reached.
+  static int PortDeliverGameEvent(CStateManager& mgr, uint sourceIndex, uint targetIndex,
+                                  uint event, const void* value, int asType);
+#endif
 
 private:
   // Guessed name; forwards the multiplayer game events to the owning proxy.

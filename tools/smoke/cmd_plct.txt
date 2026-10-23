@@ -1,10 +1,14 @@
 # CScriptPlayerProxy (module 62: CScriptPlayerProxy, scan type PLCT). Agon Wastes
-# 05_portalpuzzle (world 42b935e4, area 18) holds one CScriptPlayerProxy u0523, a
-# PlayerMessageRelay whose Entered/Exited connections drive a CScriptSpecialFunction.
-# The steps repeat the lane's manual driver: list the proxy, send Activate/Deactivate/
-# ToggleActive and the Increment/Decrement messages it reacts to (HandleMessage), read
-# its `obj` state to see the active flag flip, and list it again at the end.
-# Checks are game updates (@f<n>), never wall seconds. F=2200, last check f2000.
+# 05_portalpuzzle (world 42b935e4, area 18) holds one CScriptPlayerProxy u0523, editor id
+# 00120402, an EchoVisorWatcher (proxyType 8) whose Entered/Exited connections drive a
+# CScriptSpecialFunction. Steps: list the proxy, send Activate/Deactivate/ToggleActive and
+# Increment/Decrement (HandleMessage; no handler for this type), read its `obj` state, then give
+# the echo visor and switch echo/combat/echo/combat around two `send u0523 AreaLoaded` (Think's visor
+# path, CheckVisors Entered/Exited, InitVisors both visor arms, HandleVisorMessage). The `visor`
+# lines print the current visor and fail the step if the switch is refused; `obj u0523` shows the
+# watcher's active flag and connections. `gameevent` delivers a game event to the proxy listener
+# (OnGameEvent default arm for this type). Checks are game updates (@f<n>), never wall seconds.
+# F=2200, last check f2000.
 @f200 objs ScriptPlayerProxy
 @f220 send u0523 Activate
 @f240 send u0523 Deactivate
@@ -15,6 +19,22 @@
 @f340 send u0523 Increment
 @f360 send u0523 Decrement
 @f400 obj u0523
+@f420 god 1; give echoVisor 1
+@f430 visor
+@f440 visor echo
+@f460 visor
+@f500 obj u0523
+@f520 visor combat
+@f540 visor
+@f560 send u0523 AreaLoaded
+@f600 visor echo
+@f620 visor
+@f640 send u0523 AreaLoaded
+@f660 gameevent spawn 0 0
+@f680 gameevent generic 0 0 1
+@f700 obj u0523
+@f720 visor combat
+@f740 visor
 @f800 objs ScriptPlayerProxy
 @f1200 obj u0523
 @f1600 objs ScriptPlayerProxy

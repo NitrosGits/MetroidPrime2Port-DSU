@@ -81,6 +81,8 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/ScriptObjects/CScriptConditionalRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptGrapplePoint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptPlayerProxy.hpp"
+#include "MetroidPrime/Player/CGMMultiplayer.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "Collision/CMaterialFilter.hpp"
 
@@ -541,6 +543,9 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"
       "boost                       boost-ball release on the morphed player\n"
       "noise <type> [x y z]        InformListeners at the player (6 = safe-zone noise)\n"
+      "gameevent <ev> [src] [tgt] [value] [as <proxyType>]  deliver a game event to every\n"
+      "                            CScriptPlayerProxy listener (ev: score kill generic scan\n"
+      "                            damage stop spawn; value: float for damage, state for generic)\n"
       "fastmorph <0|1>             fast morph: the morph transition takes 0.2 s, not a second\n"
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"
@@ -1085,6 +1090,76 @@ void CmdNoise(CStateManager& mgr, const Args& args, std::string& out) {
   char line[96];
   std::snprintf(line, sizeof(line), "noise %d at (%.1f, %.1f, %.1f)\n", type, pos.GetX(),
                 pos.GetY(), pos.GetZ());
+  out += line;
+}
+
+// gameevent <ev> [src] [tgt] [value] [as <proxyType>]: the multiplayer game-event dispatch
+// (CGMMultiplayer::NotifyListeners) for the ScriptPlayerProxy listeners, which CGMSinglePlayer never
+// registers. src/tgt are player indices (0). `as N` retypes each proxy for the call (the shipped
+// single-player ones are EchoVisorWatcher, which ignores events). Not 1 (CoinCollector): its arm
+// casts the single-player mode to CGMCoin.
+void CmdGameEvent(CStateManager& mgr, const Args& args, std::string& out) {
+  static const struct {
+    const char* name;
+    uint event;
+  } kEvents[] = {
+      {"score", CGMMultiplayer::kGE_Score},     {"kill", CGMMultiplayer::kGE_Kill},
+      {"generic", CGMMultiplayer::kGE_Generic}, {"scan", CGMMultiplayer::kGE_Scan},
+      {"damage", CGMMultiplayer::kGE_Damage},   {"stop", CGMMultiplayer::kGE_Stop},
+      {"spawn", CGMMultiplayer::kGE_Spawn},
+  };
+  const char* usage = "usage: gameevent <score|kill|generic|scan|damage|stop|spawn> [src] [tgt] "
+                      "[value] [as <proxyType 0..10, not 1>]";
+  if (args.size() < 2) {
+    Fail(usage);
+    return;
+  }
+  uint event = 0;
+  for (const auto& e : kEvents) {
+    if (args[1] == e.name) {
+      event = e.event;
+    }
+  }
+  if (event == 0) {
+    Fail(usage);
+    return;
+  }
+  int asType = -1;
+  std::vector< std::string_view > pos;
+  for (size_t i = 2; i < args.size(); ++i) {
+    if (args[i] == "as" && i + 1 < args.size()) {
+      asType = ArgToInt(args[++i], -1);
+    } else {
+      pos.push_back(args[i]);
+    }
+  }
+  if (asType == 1 || asType > 10) {
+    Fail(usage);
+    return;
+  }
+  const uint src = pos.size() > 0 ? uint(ArgToInt(pos[0], 0)) : 0;
+  const uint tgt = pos.size() > 1 ? uint(ArgToInt(pos[1], 0)) : 0;
+  if (tgt >= uint(mgr.GetNumPlayers()) || src >= uint(mgr.GetNumPlayers())) {
+    Fail("gameevent: player index out of range");
+    return;
+  }
+  float fvalue = 0.f;
+  uint uvalue = 0;
+  const void* value = nullptr;
+  if (event == CGMMultiplayer::kGE_Damage) {
+    if (pos.size() > 2 && !ParseFloat(pos[2], fvalue)) {
+      Fail("gameevent: bad damage");
+      return;
+    }
+    value = &fvalue;
+  } else if (event == CGMMultiplayer::kGE_Generic) {
+    uvalue = pos.size() > 2 ? uint(ArgToInt(pos[2], 0)) : 0;
+    value = &uvalue;
+  }
+  const int reached = CScriptPlayerProxy::PortDeliverGameEvent(mgr, src, tgt, event, value, asType);
+  char line[96];
+  std::snprintf(line, sizeof(line), "gameevent %.*s %u->%u: %d proxies\n", int(args[1].size()),
+                args[1].data(), src, tgt, reached);
   out += line;
 }
 
@@ -3927,6 +4002,7 @@ constexpr SCommand kCommands[] = {
     {"fastmorph", CmdFastMorph, true},
     {"boost", CmdBoost, true},
     {"noise", CmdNoise, true},
+    {"gameevent", CmdGameEvent, true},
     {"springball", CmdSpringBall, true},
     {"lockon", CmdLockOn, true},
     {"sticky", CmdSticky, true},

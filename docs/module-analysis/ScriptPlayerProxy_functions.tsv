@@ -21,12 +21,12 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xBA4	0x50	CScriptPlayerProxy	-	func	H	-	`rstl::string` dtor: host copy	not-port	fn_62_BA4
 0xBF4	0x80	CScriptPlayerProxy	-	func	H	-	`SLdrPlayerController` dtor: host copy (header inline)	not-port	fn_62_BF4
 0xC74	0x120	CScriptPlayerProxy	-	func	H	-	`SLdrPlayerController` ctor: host copy (header inline)	not-port	fn_62_C74
-0xD94	0x64	CScriptPlayerProxy	ClearDamageOverTime	func	B	-	objdiff 100%; DamageOverTime proxies are multiplayer-only (M0x worlds)	upstream	fn_62_D94
-0xDF8	0xAC	CScriptPlayerProxy	AddDamageOverTime	func	B	-	objdiff 100%; multiplayer-only (DamageOverTime)	upstream	fn_62_DF8
+0xD94	0x64	CScriptPlayerProxy	ClearDamageOverTime	func	B	-	objdiff 100%; DamageOverTime proxies are multiplayer-only (M0x worlds); ran via `gameevent ... as 9/10`	marked	fn_62_D94
+0xDF8	0xAC	CScriptPlayerProxy	AddDamageOverTime	func	B	-	objdiff 100%; multiplayer-only (DamageOverTime); ran via `gameevent ... as 9/10`	marked	fn_62_DF8
 0xEA4	0x298	CScriptPlayerProxy	UpdateDamageOverTime	func	B	-	objdiff 100%; all arms forced (SPP_RUN=E, DamageOverTime; list emptied on the 20th hit)	marked	fn_62_EA4
 0x113C	0x88	CScriptPlayerProxy	-	func	H	-	`reserved_vector<SDamageOverTime,8>::erase`: template	not-port	fn_62_113C
-0x11C4	0x150	CScriptPlayerProxy	NotifyProxies	func	B	-	objdiff 98.8% (0x12FC bool return); multiplayer game-mode events only	upstream	fn_62_11C4
-0x1314	0x8	CScriptPlayerProxy	GetPlayerMask	func	B	-	objdiff 100%; not called in the runs	upstream	fn_62_1314
+0x11C4	0x150	CScriptPlayerProxy	NotifyProxies	func	B	-	objdiff 98.8% (0x12FC bool return); multiplayer game-mode events only; ran via `gameevent ... as 9/10`	marked	fn_62_11C4
+0x1314	0x8	CScriptPlayerProxy	GetPlayerMask	func	B	-	objdiff 100%; ran via `gameevent` (mask test)	marked	fn_62_1314
 0x131C	0xBC	CScriptPlayerProxy	AddToRenderer	virtual	B	-	objdiff 100%; all arms forced (SPP_RUN=A follower draw, SPP_RUN=B render index 0/1)	marked	fn_62_131C
 0x13D8	0x70	CScriptPlayerProxy	SendStateToPlayer	func	B	-	objdiff 100%; ran (visor Entered/Exited); asmcheck CALL/BRANCH only from unmarked UpdateTransform	marked	fn_62_13D8
 0x1448	0x26C	CScriptPlayerProxy	UpdateTransform	func	B	-	objdiff 98.8% (scheduling); all arms forced (SPP_RUN=A/B); 150:1/2 is an inlined IsNonZero component edge	marked	fn_62_1448
@@ -45,12 +45,12 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x222C	0x158	CScriptPlayerProxy	HandleArchenemyMessage	func	B	-	hand-checked vs asm (unpaired); all arms forced (SPP_RUN=B)	marked	fn_62_222C
 0x2384	0x50	CScriptPlayerProxy	-	func	H	-	`rstl::wstring` dtor: host copy	not-port	fn_62_2384
 0x23D4	0x270	CScriptPlayerProxy	AcceptScriptMsg	virtual	B	-	objdiff 100%; all arms (natural + SPP_RUN=A..G, type 11/-1 forced in C)	marked	fn_62_23D4
-0x2644	0x614	CScriptPlayerProxy	OnGameEvent	func	B	-	objdiff 98.8% (0x2A68 equality idiom); multiplayer game events only; PersistentCounterReset pick-0 quirk kept	upstream	fn_62_2644
+0x2644	0x614	CScriptPlayerProxy	OnGameEvent	func	B	-	objdiff 98.8% (0x2A68 equality idiom); multiplayer game events only; PersistentCounterReset pick-0 quirk kept; asm walk of all 11 jump-table arms matches; ran via `gameevent` (EventRelay, PersistentCounterReset, Archenemy, PlayerMessageRelay, DamageOverTime); CoinCollector arm unforceable (CGMCoin cast on CGMSinglePlayer), so not marked	upstream	fn_62_2644
 0x2C58	0x50	CScriptPlayerProxy	BuildPlayerMask	func	B	-	objdiff 97.8% (registers); all arms, team bit forced (SPP_RUN=G)	marked	fn_62_2C58
 0x2CA8	0x1DC	CScriptPlayerProxy	CScriptPlayerProxy	ctor	B	-	objdiff 100%; ran; asmcheck CALL/CALLS only (init-list calls)	marked	fn_62_2CA8
 0x2E84	0x8C	CScriptPlayerProxy	-	func	H	-	`reserved_vector<SDamageOverTime,8>` dtor: template	not-port	fn_62_2E84
 0x2F10	0x60	CScriptPlayerProxy::CListener	~CListener	virtual	B	-	objdiff 100%	upstream	fn_62_2F10
-0x2F70	0x24	CScriptPlayerProxy::CListener	OnGameEvent	virtual	B	-	objdiff 100%; forwards to OnGameEvent (multiplayer)	upstream	fn_62_2F70
+0x2F70	0x24	CScriptPlayerProxy::CListener	OnGameEvent	virtual	B	-	objdiff 100%; forwards to OnGameEvent (multiplayer); ran via `gameevent`	marked	fn_62_2F70
 0x2F94	0xC4	REL runtime	_unresolved	runtime	T	-	REL setup	not-port	_unresolved
 0x3058	0x24	REL runtime	_epilog	runtime	T	-	REL setup	not-port	_epilog
 0x307C	0x24	REL runtime	_prolog	runtime	T	-	REL setup	not-port	_prolog
