@@ -1,0 +1,25 @@
+# SnakeWeedSwarm (module 71: CSnakeWeedSwarm, "Morphology: Snake Weed" - a field of boids that
+# rise out of the ground and retreat when shot; an MP1 swarm ported onto Echoes' CActor).
+# Torvus Bog 01_swamp_entrance (world 3dfd2249, layer 0): one swarm u0481 with 41 weeds.
+# The steps repeat the lane's coverage driver: god mode, `objs SnakeWeedSwarm` and an `obj` of
+# the swarm, Create and Activate (its `snakeweed` log lines fire), a place 4 units from the
+# player, a beam shot and a charged shot (which ScareSnakeWeeds the boids), Deactivate/Activate,
+# Delete and a closing `objs SnakeWeedSwarm`.
+# Evidence in the transcript: `objs SnakeWeedSwarm` listing the one CSnakeWeedSwarm at f320;
+# `send u0481 Create`/`Activate` answering `sent Create/Activate to u0481`; `place ... 4` with the
+# new position; `shot u... at u0481` for both beams; and `0 objects` at f800 once the Delete has
+# run. Every step answers `=> ok`. F=1000, last check f800.
+@f300 god 1
+@f320 objs SnakeWeedSwarm; obj u0481
+@f340 send u0481 Create
+@f360 send u0481 Activate
+@f400 obj u0481
+@f440 place u0481 player 4
+@f480 shoot u0481
+@f520 shoot u0481 charged
+@f560 obj u0481
+@f600 send u0481 Deactivate
+@f640 send u0481 Activate
+@f680 obj u0481
+@f720 send u0481 Delete
+@f800 objs SnakeWeedSwarm
