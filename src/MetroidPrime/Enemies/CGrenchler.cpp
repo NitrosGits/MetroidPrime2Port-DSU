@@ -880,7 +880,12 @@ void CGrenchler::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
           mCurDamageRemTime = mDamageWaitTime;
           if (mIsGrappleGuardian == true && GetAlive() == true && mTailDestroyed == 1) {
             SendScriptMsgs(kSS_InternalState3, mgr, GetUniqueId(), kSM_None);
+#ifdef TARGET_PC
+            // retail 0x10758: bl CreateDamageVisorEffect
+            CreateDamageVisorEffect(mgr);
+#else
             CreateVisorEffect(mgr);
+#endif
           }
         }
       }
@@ -937,7 +942,12 @@ void CGrenchler::DestroyTail(CStateManager& mgr) {
     RemoveMaterial(kMT_Orbit, kMT_Target, kMT_SeekerTarget, mgr);
     UpdateChargeSteering();
   } else {
+#ifdef TARGET_PC
+    // retail 0xF434: bl SetupBodyVulnerabilities
+    SetupBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
+#else
     ResetBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
+#endif
   }
   const bool ingPossessed = IsIngPossessed() == true;
   rstl::optional_object< TLockedToken< CSkinnedModel > >& skinnedModel =
@@ -1252,7 +1262,12 @@ void CGrenchler::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
     mReflectInfo.Reset();
     MoveToTarget(mgr, 0.f, target);
     mBoredThreshold = mgr.Random()->Range(5.f, 13.f);
+#ifdef TARGET_PC
+    // retail 0xDC08: bl SetupBodyVulnerabilities
+    SetupBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
+#else
     ResetBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
+#endif
     break;
   case kStateMsg_Update: {
     if (!mIsGrappleGuardian) {
@@ -1432,7 +1447,12 @@ void CGrenchler::UpdateMovement(float dt, CStateManager& mgr) {
                                                   mBeamAttack.mHornXf.GetTranslation() -
                                                       CVector3f(0.f, 0.f, 1.f),
                                                   CVector3f::Up(), distance, filter)) {
+#ifdef TARGET_PC
+      // retail 0xD71C-0xD77C: 0.15 (rodata_254) * (-1 (rodata_148) * Forward), no 2x
+      MoveInOneFrameOR(0.15f * (-1.f * CVector3f::Forward()), dt);
+#else
       MoveInOneFrameOR(2.f * (0.15f * (-1.f * CVector3f::Forward())), dt);
+#endif
     }
   }
 }
@@ -2374,7 +2394,12 @@ void CGrenchler::Jump(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
     mAnimationState.SetState(CAnimationState::kAS_Ready);
+#ifdef TARGET_PC
+    // retail 0x9080: bl ResetBodyVulnerabilities
+    ResetBodyVulnerabilities(mgr, CDamageVulnerability::ReflectVulnerabilty());
+#else
     SetupBodyVulnerabilities(mgr, CDamageVulnerability::ReflectVulnerabilty());
+#endif
     mSurfaceAlignment.SetMode(CSurfaceAlignmentHelper::kM_WorldUp);
     break;
   case kStateMsg_Update:
@@ -2749,7 +2774,12 @@ void CGrenchler::ReleasePlayer(CStateManager& mgr) {
 void CGrenchler::CreateGrappleHitVisorEffect(CStateManager& mgr) {
   if (IsPlayerLookingAtMe(mgr)) {
     const CVector3f offset(mgr.GetPlayer(0)->GetTranslation() - GetTranslation());
+#ifdef TARGET_PC
+    // retail 0x7C20: fcmpo mag, 23; bgt skip (NaN takes the effect arm)
+    if (!(offset.Magnitude() > 23.f)) {
+#else
     if (offset.Magnitude() <= 23.f) {
+#endif
       const float nearClip = CHUDBillboardEffect::GetNearClipDistance(mgr, 0);
       const CVector3f scale = CHUDBillboardEffect::GetScaleForPOV(mgr);
       if (mGrappleEffect.mEffect) {
