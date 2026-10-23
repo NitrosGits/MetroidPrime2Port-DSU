@@ -1,0 +1,19 @@
+# Shredder driver (tools/cov/specs/shredder.py), Torvus 01_swamp_entrance area 2: three lurking
+# Shredders (A u04e6 e000200a8, B u04e3 e000200a7, C u04e2 e00020081) by the pool u0459.
+# Create and an unsourced resisted-damage message (XRDG) reach C; Alert wakes A and B, which
+# fly at the player side by side (separation). B takes a missile, then a normal shot whose
+# projectile is the source of A's Damage message (XDMG with a weapon, exploding A). The player
+# then stands in the pool, below C, which is alerted (start state 1 -> 3, the downward
+# generate), attacks under water and takes a shot there (knockback in the fluid).
+@f200 layer 3
+@f300 god 1; objs Shredder; send u04e2 Create; send u04e2 0x58524447
+@f310 send u04e6 Alert; send u04e3 Alert
+@f420 obj u04e6; obj u04e3
+@f540 shoot u04e3 missile
+@f600 shoot u04e3; send u04e6 Damage from u0596
+@f620 objs Shredder; obj u04e3
+@f700 tp 154 -80 23
+@f760 send u04e2 Alert
+@f860 obj u04e2; objs Shredder
+@f900 shoot u04e2
+@f1000 obj u04e2; objs Shredder

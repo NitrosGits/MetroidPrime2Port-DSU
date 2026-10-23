@@ -58,11 +58,11 @@ private:
   float mNormalKnockback;
   float mHeavyKnockback;
   float mKnockbackDecline;
-  bool mIsDarkShredder : 1;
-  bool mAttacking : 1;
-  bool mWokenUp : 1;
-  bool mLurking : 1;
-  bool mExploded : 1;
+  bool mIsDarkShredder : 1; // 0x808 0x80
+  bool mAttacking : 1;      // 0x808 0x40
+  bool mWokenUp : 1;        // 0x808 0x20
+  bool mLurking : 1;        // 0x808 0x10
+  bool mExploded : 1;       // 0x808 0x08
   float mDamageTaken;
   float mFuseProgress;
   float mFuseRate;

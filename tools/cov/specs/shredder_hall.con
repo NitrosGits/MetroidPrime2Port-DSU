@@ -1,0 +1,11 @@
+# Second Shredder driver (tools/cov/specs/shredder.py), Torvus 0d_swamp_hall area 3, layer 2:
+# seven lurking Shredders. u0442 (e00030043) is alerted with the player beside it, flies into the
+# player and explodes (CollidedWith); the noise wakes the lurking u043e (e0003001f, 2.6 away),
+# which explodes on the player too, and u043b (e00030031), which generates (Listen in radius).
+@f200 layer 2
+@f300 god 1; tp 132 -30 37; send u0442 Alert
+@f420 objs Shredder
+@f560 objs Shredder; obj u043b
+@f760 objs Shredder
+@f900 objs Shredder
+@f1100 objs Shredder; status

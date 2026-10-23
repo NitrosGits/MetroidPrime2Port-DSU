@@ -28,6 +28,7 @@ struct SLdrShredderData {
   float desiredDistance;          // 0x60be35a1
 };
 
+// @ fn_68_B20
 inline SLdrShredderData::SLdrShredderData() : explosionDamage() {
   startState = 10;
   minHeight = 4.0f;
@@ -46,6 +47,7 @@ inline SLdrShredderData::SLdrShredderData() : explosionDamage() {
 
 inline SLdrShredderData::~SLdrShredderData() {}
 
+// @ fn_68_838
 inline void LoadTypedefShredderData(SLdrShredderData& sldrThis, CInputStream& input) {
   const int propertyCount = input.ReadUint16();
   for (int i = 0; i < propertyCount; ++i) {
@@ -127,6 +129,16 @@ struct SLdrShredder {
 
 inline SLdrShredder::SLdrShredder() : editorProperties(), patterned(), actorInformation(), data() {
   patterned.creatureSize = 1;
+#ifdef TARGET_PC
+  // fn_68_168 (LoadShredder, ctor inlined; sldr base sp+0x400, patterned +0x3c,
+  // actorInformation +0x280): retail defaults upstream lacks:
+  // 0x1B8 lfs f0 (rodata_0 = 2.0) / 0x1D0 stfs f0,0x488(r1) = health.hI_KnockBackResistance;
+  // 0x1D4 bl __ct__6CColorFffff (rodata_4 = 1.0) / 0x1F0 stw r3,0x694(r1) = ambientColor;
+  // 0x1DC li r0,0xf / 0x1E0 stw r0,0x6e4(r1) = visorFlags.
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrShredder::~SLdrShredder() {}

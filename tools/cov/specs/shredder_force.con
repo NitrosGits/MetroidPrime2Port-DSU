@@ -1,0 +1,12 @@
+# Driver for tools/cov/specs/shredder_force.py (Torvus 01_swamp_entrance, layer 3): B is put in
+# the pool while it lurks and is then woken; A wakes by detection and is parked 6 from the player.
+@f200 layer 3
+@f300 god 1; tp 154 -80 23
+@f320 place u04e3 player 1
+@f340 obj u04e3; obj u04e6
+@f380 send u04e3 Alert
+@f440 objs Shredder; obj u04e6; obj u04e3
+@f480 tp 210 -90 34
+@f520 place u04e6 player 6; obj u04e6
+@f560 place u04e6 player 6; objs Shredder
+@f640 obj u04e6; objs Shredder

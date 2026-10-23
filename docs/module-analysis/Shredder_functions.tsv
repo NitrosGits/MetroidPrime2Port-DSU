@@ -1,0 +1,63 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_68_0	3C	H	GetTouchBounds__10CPatternedCFv	-	weak/template copy	no
+0003C	fn_68_3C	10	H	TakeDamage__10CPatternedFRC9CVector3ff	-	weak/template copy	no
+0004C	fn_68_4C	8	H	GetModelAlphau8__10CPatternedCFRC13CStateManager	-	weak/template copy	no
+00054	fn_68_54	8	H	ProjectileInfo__10CPatternedFv	-	weak/template copy	no
+0005C	fn_68_5C	8	H	GetSearchPath__10CPatternedFv	-	weak/template copy	no
+00064	fn_68_64	8	H	GetPointSearchPath__10CPatternedFv	-	weak/template copy	no
+0006C	fn_68_6C	8	H	GetRagDoll__10CPatternedCFv	-	weak/template copy	no
+00074	fn_68_74	10	H	GetAttackTarget__10CPatternedCFv	-	weak/template copy	no
+00084	fn_68_84	C	H	IsOnGround__10CPatternedCFv	-	weak/template copy	no
+00090	fn_68_90	C	H	GetGravityConstant__10CPatternedCFv	-	weak/template copy	no
+0009C	fn_68_9C	8	H	GetDeathExplosionParticle__10CPatternedCFv	-	weak/template copy	no
+000A4	fn_68_A4	8	H	CanBeShot__3CAiFRC13CStateManageri	-	weak/template copy	no
+000AC	fn_68_AC	1C	H	GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f	-	weak/template copy	no
+000C8	fn_68_C8	2C	H	GetHealthInfo__6CActorCFv	-	weak/template copy	no
+000F4	fn_68_F4	24	T	RELExit	-	REL runtime	no
+00118	fn_68_118	20	T	RELMain	-	REL runtime	no
+00138	fn_68_138	30	B	SetFuncPtrs__Fv	shr1	upstream body (CShredder)	yes
+00168	fn_68_168	30C	B	LoadShredder__FR13CStateManagerR12CInputStreamR11CEntityInfo	shr1	upstream body + TARGET_PC SLdr defaults (SLdrShredder.hpp)	yes
+00474	fn_68_474	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak/template copy	no
+004B4	fn_68_4B4	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak/template copy	no
+004D4	fn_68_4D4	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak/template copy	no
+004FC	fn_68_4FC	13C	H	__ct__10CModelDataFRC10CModelData	-	weak/template copy	no
+00638	fn_68_638	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak/template copy	no
+006A4	fn_68_6A4	54	H	__dt__15TToken<6CModel>Fv	-	weak/template copy	no
+006F8	fn_68_6F8	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak/template copy	no
+0075C	fn_68_75C	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak/template copy	no
+007BC	fn_68_7BC	7C	H	__dt__12SLdrShredderFv	-	compiler-generated dtor	no
+00838	fn_68_838	290	B	LoadTypedefShredderData(SLdrShredderData&, CInputStream&)	shr1	upstream body (every hash -> field checked vs asm)	yes
+00AC8	fn_68_AC8	58	H	__dt__16SLdrShredderDataFv	-	compiler-generated dtor	no
+00B20	fn_68_B20	D0	B	SLdrShredderData::SLdrShredderData()	shr1	upstream body (SLdrShredder.hpp); defaults checked; symbols.txt calls it __ct__12SLdrShredder	yes
+00BF0	fn_68_BF0	144	B	Render__9CShredderCFRC13CStateManager	shr1	upstream body (CShredder)	yes
+00D34	fn_68_D34	178	B	ApplySeparation__9CShredderFR13CStateManager	shr1	upstream body (CShredder)	yes
+00EAC	fn_68_EAC	D4	B	IsUnderWater__9CShredderCFRC13CStateManager	shr1	upstream body (CShredder)	yes
+00F80	fn_68_F80	54	B	ShouldWakeUp__9CShredderCFR13CStateManagerRC12CTriggerData	shr1	upstream body (CShredder)	yes
+00FD4	fn_68_FD4	DC	B	Listen__9CShredderFR13CStateManagerRC9CVector3f16EListenNoiseType	shr1	upstream body (CShredder)	yes
+010B0	fn_68_10B0	8	B	IsListening__9CShredderCFv	shr1	upstream body (CShredder)	yes
+010B8	fn_68_10B8	88	B	Touch__9CShredderFR6CActorR13CStateManager	shr1	upstream body (CShredder)	yes
+01140	fn_68_1140	58	B	AddReactionAnimation__9CShredderFv	shr1	upstream body (CShredder)	yes
+01198	fn_68_1198	D4	B	Explode__9CShredderFR13CStateManager	shr1	upstream body (CShredder)	yes
+0126C	fn_68_126C	7C	B	CollidedWith__9CShredderFRC9TUniqueIdRC18CCollisionInfoListR13CStateManager	shr1	upstream body (CShredder)	yes
+012E8	fn_68_12E8	208	B	Think__9CShredderFfR13CStateManager	shr1	upstream body (CShredder)	yes
+014F0	fn_68_14F0	238	B	AttackPlayer__9CShredderFR13CStateManager9EStateMsgf	shr1	upstream body (CShredder)	yes
+01728	fn_68_1728	610	B	Generate__9CShredderFR13CStateManager9EStateMsgf	shr1	upstream body (CShredder)	yes
+01D38	fn_68_1D38	5C	H	__dt__14CBCGenerateCmdFv	-	weak/template copy	no
+01D94	fn_68_1D94	48	H	__dt__13CBodyStateCmdFv	-	weak/template copy	no
+01DDC	fn_68_1DDC	C4	B	Lurk__9CShredderFR13CStateManager9EStateMsgf	shr1	upstream body (CShredder)	yes
+01EA0	fn_68_1EA0	1FC	B	AcceptScriptMsg__9CShredderFR13CStateManagerRC10CScriptMsg	shr1	upstream body (CShredder)	yes
+0209C	fn_68_209C	6C	B	SetupStateMachine__9CShredderFR13CStateManager	shr1	upstream body (CShredder)	yes
+02108	fn_68_2108	60	B	__dt__9CShredderFv	shr1	upstream body (CShredder)	yes
+02168	fn_68_2168	1E4	H	__dt__10CPatternedFv	-	base dtor copy (inlined into ~CShredder)	no
+0234C	fn_68_234C	94	H	__dt__15CAiKnockBackMgrFv	-	base dtor copy (inlined into ~CShredder)	no
+023E0	fn_68_23E0	270	B	__ct__9CShredderF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC16CActorParametersRC14CPatternedInfoRC16SLdrShredderData	shr1	upstream body (CShredder)	yes
+02650	fn_68_2650	3C	H	__dt__16CPASAnimParmDataFv	-	weak/template copy	no
+0268C	fn_68_268C	184	H	__ct__16CPASAnimParmDataFQ23pas15EAnimationStateRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParm	-	weak/template copy	no
+02810	fn_68_2810	3C	H	__dt__Q24rstl33reserved_vector<12CPASAnimParm,8>Fv	-	weak/template copy	no
+0284C	fn_68_284C	3C	H	__ct__Q24rstl24optional_object<6CAABox>FRC6CAABox	-	weak/template copy	no
+02888	fn_68_2888	B8	H	__sinit_CShredder_cpp	-	compiler/static	no
+02940	fn_68_2940	C4	T	_unresolved	-	REL runtime	no
+02A04	fn_68_2A04	24	T	_epilog	-	REL runtime	no
+02A28	fn_68_2A28	24	T	_prolog	-	REL runtime	no
+02A4C	fn_68_2A4C	4C	T	ModuleDestructors	-	REL runtime	no
+02A98	fn_68_2A98	4C	T	ModuleConstructors	-	REL runtime	no

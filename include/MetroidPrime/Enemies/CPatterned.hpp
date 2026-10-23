@@ -376,7 +376,7 @@ protected:
   float mPendingShockDamage;
   float mBurnThinkRateTimer;
   EFlavorType mFlavor;
-  uint mHitByPlayerProjectile : 1;
+  uint mHitByPlayerProjectile : 1; // 0x420 0x80
   uint mAlive : 1;           // 0x420 0x40
   uint x420_26_ : 1;
   uint mFadeToDeath : 1;
