@@ -1,0 +1,31 @@
+# 02_temple_exploration_dark area 46 (3bfa3eff,02_temple_exploration_dark): safe zone u0451 +
+# crystal u0452 (inactive) and Medium Ings u0454/u0417. Light the crystal, put the Ings inside the
+# zone (InhabitantIdle -> DamageActor, normal then hurtful), walk in and out, shoot through it.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/safezone.py <out> 3bfa3eff,02_temple_exploration_dark --con <this> --fast --frames 2200
+@f300 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give chargeBeam 1; give unlimitedBeamAmmo 1; give darkVisor 1
+@f310 beam light; tp 237.9 -186.0 -38.0
+@f330 shoot u0452; shoot u0452 charged
+@f360 obj u0451; obj u0452
+@f380 send u0451 Activate
+@f400 place u0454 237.9 -194.7 -39.9; place u0417 238.5 -194.0 -39.9
+@f520 obj u0454; obj u0417
+@f540 send u0451 Increment
+@f600 place u0454 237.9 -194.7 -39.9
+@f700 obj u0454; obj u0451
+@f720 send u0451 Increment
+@f760 send u0451 Decrement; send u0451 Decrement
+@f800 tp 237.9 -194.7 -39.9
+@f860 beam power; shoot u0452 20; shoot u0452 3
+@f900 shoot u0454 30; shoot u0417 30
+@f940 visor dark
+@f1000 tp 237.9 -170.0 -38.0; aim 180 -5
+@f1060 visor combat; beam dark
+@f1070 shoot u0452 30; shoot u0452 charged 30
+@f1100 beam annihilator; shoot u0452 30
+@f1200 send u0451 Deactivate
+@f1300 send u0451 Activate
+@f1400 send u0452 InternalMessage0; send u0452 InternalMessage1
+@f1500 send u0451 Deactivate; send u0451 Activate
+@f1600 damage u0452 50 light
+@f1800 obj u0451; obj u0452
+@f2100 objs SafeZone; status
