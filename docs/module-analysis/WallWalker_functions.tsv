@@ -1,0 +1,112 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_85_0	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+00010	fn_85_10	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+00018	fn_85_18	8	H	CPatterned::ProjectileInfo	-	weak copy / template instance	no
+00020	fn_85_20	8	H	CPatterned::GetSearchPath	-	weak copy / template instance	no
+00028	fn_85_28	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+00030	fn_85_30	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+00038	fn_85_38	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+00048	fn_85_48	C	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+00054	fn_85_54	C	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+00060	fn_85_60	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+00068	fn_85_68	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+00070	fn_85_70	8	H	CAi::IsListening	-	weak copy / template instance	no
+00078	fn_85_78	8	H	CAi::Listen	-	weak copy / template instance	no
+00080	fn_85_80	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+0009C	fn_85_9C	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+000C8	fn_85_C8	24	T	RELExit	-	REL runtime	no
+000EC	fn_85_EC	20	T	RELMain	-	REL runtime	no
+0010C	fn_85_10C	30	B	SetRelLoaderFunctionToLoader	ww1	upstream body (CWallWalker)	yes
+0013C	fn_85_13C	804	B	LoadWallWalker	-	upstream body (CWallWalker)	no
+00940	fn_85_940	9C	H	CWallWalkerData::~CWallWalkerData	-	weak copy / template instance	no
+009DC	fn_85_9DC	100	H	CWallWalkerData::CWallWalkerData	-	weak copy / template instance	no
+00ADC	fn_85_ADC	BC	H	CBouncyGrenadeData::CBouncyGrenadeData	-	weak copy / template instance	no
+00B98	fn_85_B98	AC	H	CCameraShakerData::CCameraShakerData	-	weak copy / template instance	no
+00C44	fn_85_C44	58	H	CMayaSpline::~CMayaSpline	-	weak copy / template instance	no
+00C9C	fn_85_C9C	54	H	 dt__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_alloc	-	weak copy / template instance	no
+00CF0	fn_85_CF0	AC	H	CMayaSpline::CMayaSpline	-	weak copy / template instance	no
+00D9C	fn_85_D9C	1D0	H	 ct__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_alloc	-	weak copy / template instance	no
+00F6C	fn_85_F6C	5C	H	CDamageVulnerability::CDamageVulnerability	-	weak copy / template instance	no
+00FC8	fn_85_FC8	54	H	 dt__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmem	-	weak copy / template instance	no
+0101C	fn_85_101C	130	H	 ct__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmem	-	weak copy / template instance	no
+0114C	fn_85_114C	70	H	CCameraShakerData::~CCameraShakerData	-	weak copy / template instance	no
+011BC	fn_85_11BC	94	H	CBouncyGrenadeData::CBouncyGrenadeData	-	weak copy / template instance	no
+01250	fn_85_1250	58	H	 dt__31TLockedToken<15CGenDescription>Fv	-	weak copy / template instance	no
+012A8	fn_85_12A8	54	H	 dt__25TToken<15CGenDescription>Fv	-	weak copy / template instance	no
+012FC	fn_85_12FC	58	H	 dt__34TLockedToken<18CWeaponDescription>Fv	-	weak copy / template instance	no
+01354	fn_85_1354	54	H	 dt__28TToken<18CWeaponDescription>Fv	-	weak copy / template instance	no
+013A8	fn_85_13A8	40	H	 ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29option	-	weak copy / template instance	no
+013E8	fn_85_13E8	20	H	construct<10CModelData> 4rstlFPvRC10CModelData	-	weak copy / template instance	no
+01408	fn_85_1408	28	H	construct Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelDat	-	weak copy / template instance	no
+01430	fn_85_1430	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+0156C	fn_85_156C	6C	H	 dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak copy / template instance	no
+015D8	fn_85_15D8	54	H	 dt__15TToken<6CModel>Fv	-	weak copy / template instance	no
+0162C	fn_85_162C	64	H	 dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
+01690	fn_85_1690	60	H	 dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
+016F0	fn_85_16F0	A0	H	SLdrWallWalker::~SLdrWallWalker	-	weak copy / template instance	no
+01790	fn_85_1790	14C	B	SLdrWallWalker::SLdrWallWalker	ww1	upstream body (CWallWalker)	yes
+018DC	fn_85_18DC	34C	B	CWallWalker::LaunchProjectiles	ww1	upstream body (CWallWalker)	yes
+01C28	fn_85_1C28	90	H	CDamageInfo::CDamageInfo	-	weak copy / template instance	no
+01CB8	fn_85_1CB8	8C	H	CImpactVisorEffect::ParticleEffect	-	weak copy / template instance	no
+01D44	fn_85_1D44	B4	H	CImpactVisorEffect::CImpactVisorEffect	-	weak copy / template instance	no
+01DF8	fn_85_1DF8	40	H	 ct__Q24rstl56optional_object<Q218CImpactVisorEffect15SPartic	-	weak copy / template instance	no
+01E38	fn_85_1E38	20	H	construct<Q218CImpactVisorEffect15SParticleEffect> 4rstlFPvRCQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+01E58	fn_85_1E58	28	H	construct Q24rstl62construction_policy<Q218CImpactVisorEffect15SPartic	-	weak copy / template instance	no
+01E80	fn_85_1E80	80	H	 ct__Q218CImpactVisorEffect15SParticleEffectFRCQ218CImpactVis	-	weak copy / template instance	no
+01F00	fn_85_1F00	3C	H	 dt__Q24rstl34optional_object<Q24rstl9pair<i,f>>Fv	-	weak copy / template instance	no
+01F3C	fn_85_1F3C	3C	H	 dt__Q24rstl52optional_object<Q218CImpactVisorEffect11SBlurEf	-	weak copy / template instance	no
+01F78	fn_85_1F78	5C	H	 dt__Q24rstl56optional_object<Q218CImpactVisorEffect15SPartic	-	weak copy / template instance	no
+01FD4	fn_85_1FD4	20	H	destroy<Q218CImpactVisorEffect15SParticleEffect> 4rstlFPQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+01FF4	fn_85_1FF4	48	H	destroy_impl<Q218CImpactVisorEffect15SParticleEffect> 4rstlFPQ218CImpactVisorEffect15SParticleEffect	-	weak copy / template instance	no
+0203C	fn_85_203C	38	H	 ct__Q24rstl56optional_object<Q218CImpactVisorEffect15SPartic	-	weak copy / template instance	no
+02074	fn_85_2074	70	H	 dt__Q218CImpactVisorEffect15SParticleEffectFv	-	weak copy / template instance	no
+020E4	fn_85_20E4	78	H	 ct__Q218CImpactVisorEffect15SParticleEffectFRCQ24rstl50optio	-	weak copy / template instance	no
+0215C	fn_85_215C	54	H	CImpactVisorEffect::~CImpactVisorEffect	-	weak copy / template instance	no
+021B0	fn_85_21B0	6C	H	 dt__Q24rstl50optional_object<31TLockedToken<15CGenDescriptio	-	weak copy / template instance	no
+0221C	fn_85_221C	124	B	CWallWalker::DoUserAnimEvent	ww1	upstream body (CWallWalker)	yes
+02340	fn_85_2340	2EC	B	CWallWalker::Dead	ww1	upstream body (CWallWalker)	yes
+0262C	fn_85_262C	20	H	CModelData::CModelDataNull	-	weak copy / template instance	no
+0264C	fn_85_264C	50	H	 dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl1	-	weak copy / template instance	no
+0269C	fn_85_269C	58	H	CEntityInfo::~CEntityInfo	-	weak copy / template instance	no
+026F4	fn_85_26F4	54	H	 dt__Q24rstl48vector<11SConnection,Q24rstl17rmemory_allocator	-	weak copy / template instance	no
+02748	fn_85_2748	14C	B	RandomVectorInCone	ww1	upstream body (CWallWalker)	yes
+02894	fn_85_2894	20	B	CWallWalker::Death	ww1	upstream body (CWallWalker)	yes
+028B4	fn_85_28B4	208	B	CWallWalker::Think	ww1	upstream body (CWallWalker)	yes
+02ABC	fn_85_2ABC	140	B	CWallWalker::UpdateCollisionManager	-	upstream body (CWallWalker)	no
+02BFC	fn_85_2BFC	4C	B	CWallWalker::DestroyCollisionManager	ww1	upstream body (CWallWalker)	yes
+02C48	fn_85_2C48	23C	B	CWallWalker::SetupCollisionManager	ww1	upstream body (CWallWalker)	yes
+02E84	fn_85_2E84	38	H	push_back_unsafe Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemor	-	weak copy / template instance	no
+02EBC	fn_85_2EBC	20	H	construct<26CJointCollisionDescription> 4rstlFPvRC26CJointCollisionDescription	-	weak copy / template instance	no
+02EDC	fn_85_2EDC	28	H	construct Q24rstl51construction_policy<26CJointCollisionDescription,0>	-	weak copy / template instance	no
+02F04	fn_85_2F04	C0	H	CJointCollisionDescription::CJointCollisionDescription	-	weak copy / template instance	no
+02FC4	fn_85_2FC4	5C	H	CJointCollisionDescription::~CJointCollisionDescription	-	weak copy / template instance	no
+03020	fn_85_3020	84	H	 dt__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rm	-	weak copy / template instance	no
+030A4	fn_85_30A4	38	H	destroy<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>> 4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescriptio	-	weak copy / template instance	no
+030DC	fn_85_30DC	60	H	destroy_impl<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>> 4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescriptio	-	weak copy / template instance	no
+0313C	fn_85_313C	3C	B	CWallWalker::SetNumberShots	ww1	upstream body (CWallWalker)	yes
+03178	fn_85_3178	108	B	CWallWalker::ShouldShootProjectile	ww1	upstream body (CWallWalker)	yes
+03280	fn_85_3280	20	B	CWallWalker::AreBothLegsHit	ww1	upstream body (CWallWalker)	yes
+032A0	fn_85_32A0	C	B	CWallWalker::IsRightLegHit	ww1	upstream body (CWallWalker)	yes
+032AC	fn_85_32AC	C	B	CWallWalker::IsLeftLegHit	ww1	upstream body (CWallWalker)	yes
+032B8	fn_85_32B8	128	B	CWallWalker::ShootProjectile	ww1	upstream body (CWallWalker)	yes
+033E0	fn_85_33E0	5C	H	CBCProjectileAttackCmd::~CBCProjectileAttackCmd	-	weak copy / template instance	no
+0343C	fn_85_343C	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+03484	fn_85_3484	184	B	CWallWalker::RightLegHitReaction	ww1	upstream body (CWallWalker)	yes
+03608	fn_85_3608	5C	H	CBCKnockBackCmd::~CBCKnockBackCmd	-	weak copy / template instance	no
+03664	fn_85_3664	17C	B	CWallWalker::LeftLegHitReaction	ww1	upstream body (CWallWalker)	yes
+037E0	fn_85_37E0	1F4	B	CWallWalker::Patrol	-	upstream body (CWallWalker)	no
+039D4	fn_85_39D4	5C	H	CBCGenerateCmd::~CBCGenerateCmd	-	weak copy / template instance	no
+03A30	fn_85_3A30	1F8	B	CWallWalker::AcceptScriptMsg	-	upstream body (CWallWalker)	no
+03C28	fn_85_3C28	5C	H	CBCAdditive::~CBCAdditive	-	weak copy / template instance	no
+03C84	fn_85_3C84	8C	B	CWallWalker::SetupStateMachine	ww1	upstream body (CWallWalker)	yes
+03D10	fn_85_3D10	C8	B	CWallWalker::~CWallWalker	ww1	upstream body (CWallWalker)	yes
+03DD8	fn_85_3DD8	260	B	CWallWalker::CWallWalker	ww1	upstream body (CWallWalker)	yes
+04038	fn_85_4038	58	H	 dt__Q24rstl36single_ptr<22CCollisionActorManager>Fv	-	weak copy / template instance	no
+04090	fn_85_4090	C0	H	reserve Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemor	-	weak copy / template instance	no
+04150	fn_85_4150	68	H	uninitialized_copy<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P26CJointCollisionDescription> 4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescriptio	-	weak copy / template instance	no
+041B8	fn_85_41B8	194	B	__sinit_CWallWalker_cpp	-	upstream body (CWallWalker)	no
+0434C	fn_85_434C	C4	T	_unresolved	-	REL runtime	no
+04410	fn_85_4410	24	T	_epilog	-	REL runtime	no
+04434	fn_85_4434	24	T	_prolog	-	REL runtime	no
+04458	fn_85_4458	4C	T	ModuleDestructors	-	REL runtime	no
+044A4	fn_85_44A4	4C	T	ModuleConstructors	-	REL runtime	no
