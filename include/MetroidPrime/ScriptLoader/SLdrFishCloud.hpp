@@ -83,7 +83,15 @@ inline SLdrFishCloud::SLdrFishCloud()
   deathEffect1Count = 0;
   deathEffect2Count = 0;
   deathEffect3Count = 0;
+#ifdef TARGET_PC
+  // fn_20_DFC stores -1 (no sound) in deathSound: li r0, -0x1 (0xe48); stw r0, 0xc0(r31)
+  // (0xe94). The zero stores (0xf68..0xf74) cover only the four death effect counts
+  // (+0xa4/+0xac/+0xb4/+0xbc). The extra `stw r28(=3), 0x38(r31)` (0xea4) re-stores
+  // SLdrEditorProperties' unknown_0x5d298a43 default, already 3.
+  deathSound = -1;
+#else
   deathSound = 0;
+#endif
   unknown_0xc320a050 = true;
   isHighlightedInDarkVisor = true;
 }
