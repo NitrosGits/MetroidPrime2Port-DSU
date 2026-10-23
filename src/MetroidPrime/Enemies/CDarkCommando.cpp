@@ -215,6 +215,7 @@ const CDamageVulnerability* CShadowDecoy::GetDamageVulnerability() const { retur
 
 rstl::optional_object< CAABox > CShadowDecoy::GetTouchBounds() const { return mBounds; }
 
+// @ fn_3_9184
 void CShadowDecoy::Touch(CActor& actor, CStateManager&) {
   if (CWeapon* weapon = TCastToPtr< CWeapon >(&actor)) {
     mHealth -= weapon->GetCurrentDamageInfo().GetDamage(*GetDamageVulnerability());
@@ -250,6 +251,7 @@ CDarkCommandoGrenade::CDarkCommandoGrenade(TUniqueId uid, const rstl::string& na
 // @ fn_3_8D84
 CDarkCommandoGrenade::~CDarkCommandoGrenade() { --sRelUseCount; }
 
+// @ fn_3_8BEC
 void CDarkCommandoGrenade::Think(float dt, CStateManager& mgr) {
   UpdateGrenadeFX(dt, mgr);
 #ifdef TARGET_PC
@@ -681,6 +683,7 @@ bool CDarkCommando::ShouldWarpOut(CStateManager&, const CTriggerData&) const {
   return mWarpOutRequested;
 }
 
+// @ fn_3_6030
 bool CDarkCommando::ShouldGetUp(CStateManager&, const CTriggerData&) const {
   if (mAlive) {
     const pas::EAnimationState state = mBodyController->GetCurrentStateId();
@@ -709,6 +712,7 @@ void CDarkCommando::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_3_5DA8
 void CDarkCommando::WarpIn(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -744,6 +748,7 @@ void CDarkCommando::WarpOut(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_3_5A2C
 void CDarkCommando::Lurk(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -762,6 +767,7 @@ void CDarkCommando::Lurk(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// @ fn_3_58D8
 void CDarkCommando::Taunt(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -952,6 +958,7 @@ void CDarkCommando::ShadowDash(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_3_484C
 void CDarkCommando::FaceTarget(CStateManager&, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1178,6 +1185,7 @@ void CDarkCommando::UpdateCloak(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_3_3690
 void CDarkCommando::ApplyMeleeDamage(CStateManager& mgr, CPhysicsActor& target) {
   if (mMeleeAttacking && !mMeleeDamageApplied) {
     const CAABox targetBounds = target.GetBoundingBox();
@@ -1278,6 +1286,7 @@ void CDarkCommando::BuildActionChoices(CStateManager& mgr,
   }
 }
 
+// @ fn_3_3054
 bool CDarkCommando::InEMPRange(const CStateManager& mgr) const {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId));
   if (target) {
@@ -1296,6 +1305,7 @@ bool CDarkCommando::InEMPRange(const CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_3_2FA4
 bool CDarkCommando::InChargeBeamRange(const CStateManager& mgr) const {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId));
   if (target) {
@@ -1314,6 +1324,7 @@ bool CDarkCommando::InChargeBeamRange(const CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_3_2D24
 void CDarkCommando::UpdateAdditiveAim(CStateManager& mgr) {
   if (mAlive && mFiringChargeBeam) {
     const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId));
@@ -1472,6 +1483,7 @@ void CDarkCommando::ReleaseHint(CStateManager& mgr) {
   }
 }
 
+// @ fn_3_1F34
 void CDarkCommando::ReserveHint(CStateManager& mgr, TUniqueId id) {
   if (CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(mgr.ObjectById(id))) {
     hint->SetInUse(true);
@@ -1535,7 +1547,15 @@ void CDarkCommando::UpdateSfx() {
   }
 }
 
+// @ fn_3_1650
 void CDarkCommando::JoinTeam(CStateManager& mgr) {
+#ifdef TARGET_PC
+  // 0x1674-0x1680: lhz r5,0xc90; cmplw r5,kInvalidUniqueId; bne 0x16E4 -- an already set team
+  // id skips the whole join (re-joining reset the member's role every shadow dash).
+  if (mTeamAiMgrId != kInvalidUniqueId) {
+    return;
+  }
+#endif
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
   }
@@ -1547,6 +1567,7 @@ void CDarkCommando::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_3_15A8
 void CDarkCommando::LeaveTeam(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
