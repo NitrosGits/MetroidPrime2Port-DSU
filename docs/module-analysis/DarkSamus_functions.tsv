@@ -14,7 +14,7 @@ offset	size	class	kind	name	callers	marked	state
 0xDC8	0x48	H	host-copy	fn_10_DC8	1	no	ds41: rstl::reserved_vector<SShot>::push_back (count +0, 0x20 stride)
 0xE10	0x4C	H	host-copy	fn_10_E10	1	no	ds41: rstl placement construct (beqlr null test + 0x1D-byte shot copy)
 0xE5C	0x20	B	host-copy	fn_10_E5C	0	yes	ht2: B (was H) - the port's class implements it (PortCScattershotProjectile.cpp:144); asm auto_04_00000000_data.s:100 in lbl_10_data_40: .4byte fn_10_E5C
-0xE7C	0xCA8	B	unreferenced	fn_10_E7C	0	no	ht2: B (was T, not unreferenced) - CScattershotProjectile::Render, slot after AddToRenderer fn_10_E5C; port body PortCScattershotProjectile.cpp unmarked: proposed slice; asm auto_04_00000000_data.s:101 in lbl_10_data_40: .4byte fn_10_E7C
+0xE7C	0xCA8	B	virtual	fn_10_E7C	0	yes	ds10: CScattershotProjectile::Render (PortCScattershotProjectile.cpp), vtable lbl_10_data_40 slot after E5C; the 127.5f alpha override at 0x1098..0x10D0 added; all arms: natural rooftop + forced (darksamus_ds10_e7c.py: elements/textures null, blend bits flipped, shot at the view, B1RT/B2RT set, BillboardAxes rotation)
 0x1B24	0x40	H	host-copy	fn_10_1B24	2	no	ds41: CVector3f::Cross header inline (CVector3f.hpp:60)
 0x1B64	0xA4	H	host-copy	fn_10_1B64	1	no	ds42: CTevPass ctor (sNextUniquePass++, CTevCombiners.hpp:156); its caller E7C is the scattershot Render vtable entry
 0x1C08	0x184	B	method	fn_10_1C08	1	yes	
@@ -180,7 +180,7 @@ offset	size	class	kind	name	callers	marked	state
 0xCED0	0x24	H	rel-entry	RELExit	0	no	
 0xCEF4	0x20	T	rel-entry	RELMain	0	no	
 0xCF14	0x30	B	method	fn_10_CF14	1	yes	
-0xCF44	0xE98	B	loader	fn_10_CF44	0	no	ht2: B (was T) - module loader, address taken in fn_10_CF14 and passed to SetSDarkSamus_FuncPtrs; port PortLoadDarkSamus (PortCDarkSamus.cpp) unmarked: proposed slice; asm auto_00_0000CE4C_text.s:118 in fn_10_CF14: lis r4, fn_10_CF44@ha
+0xCF44	0xE98	B	loader	fn_10_CF44	0	yes	ds10: loader PortLoadDarkSamus (PortCDarkSamus.cpp); 63-id switch = SLdrDarkSamus.inc, -1 sound defaults in the SLdrDarkSamus.hpp TARGET_PC ctor; all 4 shipped DRKS carry all 63 ids (tools/scan_darksamus_props.py: default ReadBytes arm dead in the data); null-model arm forced (darksamus_ds10_cf44.py)
 0xDDDC	0x40	H	host-copy	fn_10_DDDC	1	no	ds41: rstl::optional_object copy ctor (valid byte 0x4C), loader only
 0xDE1C	0x20	H	host-copy	fn_10_DE1C	1	no	ds41: rstl::construct wrapper over DE3C
 0xDE3C	0x28	H	host-copy	fn_10_DE3C	1	no	ds41: rstl placement construct (null test + copy DE64)
@@ -218,7 +218,7 @@ offset	size	class	kind	name	callers	marked	state
 0xF710	0xF0	B	method	fn_10_F710	1	yes	
 0xF800	0x40	B	fsm-trigger	fn_10_F800	0	yes	WallCollision
 0xF840	0xC	B	fsm-thunk	fn_10_F840	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1044); asm auto_04_00000000_data.s:1631 in lbl_10_data_CBC: .4byte fn_10_F840; Alerted
-0xF84C	0x18	B	virtual-thunk	fn_10_F84C	0	no	ht2: B (was T) - GetCollisionResponseType, vtable lbl_10_data_CBC slot 24 (`lbz r0,0xcd0(r3); li r3,0x2e; cmplwi r0,1; bnelr; li r3,0x6a`); port CDarkSamus::GetCollisionResponseType (PortCDarkSamus.cpp:888, matches the asm) but unmarked: a coverage run (player shots at u04f7, cliff_rooftop) got 0 hits, so it waits for a slice; asm auto_04_00000000_data.s:1573 in lbl_10_data_CBC: .4byte fn_10_F84C
+0xF84C	0x18	B	virtual-thunk	fn_10_F84C	0	yes	ds10: GetCollisionResponseType (PortCDarkSamus.cpp), vtable lbl_10_data_CBC slot 24; player power-beam hits on u04f7: 6 with CD0=0 (Pause), 6 with CD0=1 (SuperMissileAttack/FreezeBeam), darksamus_ds10_f84c.py + darksamus_ds10_shots.con
 0xF864	0x8	B	fsm-thunk	fn_10_F864	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:1266); asm auto_04_00000000_data.s:1645 in lbl_10_data_CBC: .4byte fn_10_F864; DoneTurning
 0xF86C	0xB4	B	fsm-state	fn_10_F86C	0	yes	FallFromTheAir
 0xF920	0x4	B	fsm-thunk	fn_10_F920	0	yes	ht2: B (was T) - the port's class implements it (PortCDarkSamusFsm.cpp:3645); asm auto_04_00000000_data.s:1716 in lbl_10_data_CBC: .4byte fn_10_F920; Start

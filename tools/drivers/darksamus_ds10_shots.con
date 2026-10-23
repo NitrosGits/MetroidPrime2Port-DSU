@@ -1,0 +1,32 @@
+# Dark Samus fn_10_F84C: real player beam shots (`shoot`, a CEnergyProjectile from the player's gun
+# through CEnergyProjectile::ResolveCollisionWithActor) landing on the boss in both shield states.
+# Sanctuary 10_cliff_rooftop layer 2 (MP2_WORLD="1baa96c2,10_cliff_rooftop" MP2_INPUT="LAYER2@400"),
+# boss u04f7; spec tools/cov/specs/darksamus_ds10_f84c.py. Activate starts the BoostBallRoll, whose
+# ball's 2.3-unit collision sphere encloses the boss and takes every shot, so DiveFromBoost deletes
+# the ball (fn_10_9AC4) first. Pause leaves the shield byte 0xCD0 at 0 (response 0x2E, the shots
+# damage), SuperMissileAttack and FreezeBeam set it through fn_10_105F4 (response 0x6A, no damage).
+@f1200 send u04f7 Activate
+@f1300 place u04f7 player 8
+@f1305 fsm u04f7 DiveFromBoost
+@f1330 objs CDarkSamusBoostBall
+@f1340 place u04f7 player 8; fsm u04f7 Pause
+@f1346 shoot u04f7 1.5 dir 0 0 -1
+@f1352 shoot u04f7 1.5 dir 1 0 0
+@f1358 shoot u04f7 1.5 dir -1 0 0
+@f1364 obj u04f7
+@f1374 place u04f7 player 8; fsm u04f7 SuperMissileAttack
+@f1380 shoot u04f7 1.5 dir 0 0 -1
+@f1386 shoot u04f7 1.5 dir 1 0 0
+@f1392 shoot u04f7 1.5 dir -1 0 0
+@f1398 obj u04f7
+@f1408 place u04f7 player 8; fsm u04f7 FreezeBeam
+@f1414 shoot u04f7 1.5 dir 0 0 -1
+@f1420 shoot u04f7 1.5 dir 1 0 0
+@f1426 shoot u04f7 1.5 dir -1 0 0
+@f1432 obj u04f7
+@f1442 place u04f7 player 8; fsm u04f7 Pause
+@f1448 shoot u04f7 1.5 dir 0 0 -1
+@f1454 shoot u04f7 1.5 dir 1 0 0
+@f1460 shoot u04f7 1.5 dir -1 0 0
+@f1466 obj u04f7
+@f1476 status
