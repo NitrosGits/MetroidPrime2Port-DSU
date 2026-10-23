@@ -1,0 +1,63 @@
+# WispTentacle (REL 86) in Temple Grounds 0t_temple_hall_dark (3bfa3eff,0t_temple_hall_dark), layer 0.
+# Tentacle e00240036 at (8.4 -39.3 -33.4): wake 30 / search 22 / attack 13, hurt-sleep delay 7.
+# Far -> Sleep; 25 -> Spawn/Patrol; 18 -> Search; 8 -> Attack (contact damage, HitObject);
+# shots -> KnockBack -> Flinch -> Withdraw; Alert -> Grab -> Pull (no pirate: retail data has no
+# connections); Decrement / Activate / AIUpdateDisabled messages.
+@f120 god 1
+@f130 tp 8.4 -80 -33
+@f200 objs Wisp
+@f220 obj e00240036
+@f230 trigcall e00240036 ShouldSleep
+@f400 tp 8.4 -62 -33
+@f700 obj e00240036
+@f800 tp 8.4 -55 -33
+@f1000 obj e00240036
+@f1100 tp 8.4 -47 -33
+@f1400 obj e00240036
+@f1410 trigcall e00240036 ShouldSleep
+@f1500 shoot e00240036
+@f1520 shoot e00240036 missile
+@f1560 obj e00240036
+@f1600 damage e00240036 10
+@f1700 obj e00240036
+@f2400 obj e00240036
+@f2500 orbit e00240036
+@f2600 send e00240036 Alert
+@f2700 obj e00240036
+@f3000 obj e00240036
+@f3100 send e00240036 Decrement
+@f3110 send e00240036 Activate
+@f3200 obj e00240036
+@f3300 tp 8.4 -95 -33
+@f3700 obj e00240036
+@f3800 send e00240036 AIUpdateDisabled
+@f3900 obj e00240036
+# Second pass: walk back in for Search -> Attack, orbit both ways, stand at the arm end for contact
+# damage (HitObject), then force the re-issue arms (`statecall` Activate and Update in one tick, so
+# the body has not taken the command yet), Decrement in each state, orbit from Patrol and from
+# Attack/Search entered out of order; a zero-damage hit last.
+@f4000 tp 8.4 -55 -33
+@f4300 tp 8.4 -47 -33
+@f4600 tp 8.4 -42 -33
+@f4700 obj e00240036
+@f4720 orbit e00240036
+@f4800 tp 0.7 -39 -33.4
+@f4900 obj e00240036
+@f5000 tp 8.4 -50 -33
+@f5100 obj e00240036
+@f5120 orbit e00240036
+@f5300 tp 8.4 -95 -33
+@f5700 obj e00240036
+@f5800 statecall e00240036 Withdraw 0; statecall e00240036 Withdraw 1; send e00240036 Decrement; statecall e00240036 Withdraw 2
+@f5810 statecall e00240036 Spawn 0; statecall e00240036 Spawn 1; send e00240036 Decrement; statecall e00240036 Spawn 2
+@f5820 statecall e00240036 Flinch 0; statecall e00240036 Flinch 1; send e00240036 Decrement; statecall e00240036 Flinch 2
+@f5830 statecall e00240036 Grab 0; statecall e00240036 Grab 1; statecall e00240036 Grab 2
+@f5840 statecall e00240036 Pull 0; statecall e00240036 Pull 1; statecall e00240036 Pull 2
+@f5850 statecall e00240036 Attack 1; send e00240036 Decrement; statecall e00240036 Attack 2
+@f5860 statecall e00240036 Search 0; send e00240036 Decrement
+@f5870 statecall e00240036 Patrol 0; orbit e00240036; statecall e00240036 Patrol 2; statecall e00240036 Attack 0; orbit e00240036
+@f5875 statecall e00240036 Search 0; orbit e00240036
+@f5880 fsm e00240036 Sleep
+@f5900 damage e00240036 0
+@f5910 damage e00240036 1 dark
+@f6000 obj e00240036

@@ -36,6 +36,14 @@ inline SLdrWispTentacle::SLdrWispTentacle()
   spawnFromPortal = false;
   hurtSleepDelay = 2.0f;
   grabBlendTime = 0.2f;
+#ifdef TARGET_PC
+  // fn_86_C1C (__ct__16SLdrWispTentacle): 2.0 (rodata 0x20) at +0xB4 = patterned +0x4C (0xCE4),
+  // CColor(1.0 x4) at +0x2C0 = actorInformation +0x14 (0xCE8/0xCF8), 0xF at +0x310 =
+  // actorInformation +0x64 (0xCF0 li r0,0xf / 0xCFC).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrWispTentacle::~SLdrWispTentacle() {}
