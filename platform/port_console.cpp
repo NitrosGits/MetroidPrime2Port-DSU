@@ -1450,11 +1450,26 @@ const CEntity* ResolveObject(CStateManager& mgr, std::string_view text) {
     const unsigned long editorId = std::strtoul(hex.c_str(), &end, 16);
     if (end != nullptr && *end == '\0') {
       const CObjectList& list = mgr.GetObjectListById(kOL_All);
+      // An area's SCLY writes an id with its layer in bits 26..31 (e2824022f = layer 10), but the
+      // object stores the id without them (TEditorId::Value() is value & 0x3ffffff: e0024022f), so
+      // a command carrying the SCLY form would never match. The exact id wins; a layer-masked
+      // match is the fallback, and with layer bits of zero the two are the same comparison.
+      const uint wantId = static_cast< uint >(editorId) & 0x3ffffff;
+      const CEntity* masked = nullptr;
       for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
         const CEntity* ent = list[i];
-        if (ent != nullptr && ent->GetEditorId().Value() == editorId) {
+        if (ent == nullptr) {
+          continue;
+        }
+        if (ent->GetEditorId().value == editorId) {
           return ent;
         }
+        if (masked == nullptr && ent->GetEditorId().Value() == wantId) {
+          masked = ent;
+        }
+      }
+      if (masked != nullptr) {
+        return masked;
       }
       char why[48];
       std::snprintf(why, sizeof(why), "no object with editor id %08lx", editorId);
