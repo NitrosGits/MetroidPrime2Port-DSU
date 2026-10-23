@@ -1,0 +1,29 @@
+# MinorIng (module 44: CMinorIng, "Morphology: Inglet" - the Agon Wastes inglet that walks its
+# waypoint path, turns corporeal/puddle, attacks with bouncy grenades and dies into a puddle).
+# Agon Wastes 0a_sand_hall_dark (world 42b935e4, layer 0): two MinorIngs u0455 (active) and
+# u0432 (inactive until Activated), each hp 20/20.
+# The steps repeat the minoring lane's coverage driver: god mode with the dark/light beams and
+# charge, `objs MinorIng` and `obj` reads of both actors, Activate the inactive one, force Patrol
+# and PointPathFind (its fsm shows "entered and left at once"), a beam shot (hp 20 -> 18), a
+# direct power damage hit (15 -> 13), a forced Dead (hp 13/20, fsm Dead), Delete and a closing
+# `objs MinorIng`.
+# Evidence in the transcript: `objs MinorIng` listing the two CMinorIngs at f320; `obj` reading
+# hp 20/20, fsm PointPathFind, body state 5 and each inglet's message map; the shot
+# `shot ... at u0455`; the damage `damaged u0455 ... 15/20`; fsm Dead; and `1 object` at f900 once
+# u0455 is Deleted. Every step answers `=> ok`. F=1200, last check f900.
+@f300 god 1; give darkBeam 1; give lightBeam 1; give chargeBeam 1
+@f320 objs MinorIng; obj u0455; obj u0432
+@f360 send u0432 Activate
+@f400 obj u0432
+@f440 fsm u0455 Patrol
+@f480 obj u0455
+@f520 fsm u0455 PointPathFind
+@f560 obj u0455
+@f600 shoot u0455
+@f640 obj u0455
+@f680 damage u0455 5 power
+@f720 obj u0455
+@f760 fsm u0455 Dead
+@f800 obj u0455
+@f840 send u0455 Delete
+@f900 objs MinorIng

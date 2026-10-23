@@ -393,6 +393,7 @@ missile shots, damage and kills, then spawns a third ghost, with `objs ChozoGhos
 steps and at the end. drkc drives Temple Grounds dark 06_temple_sacredpath_dark's two Dark Commandos u051a and u041c through
 Activate, placement, damage and `obj` reads, with `objs DarkCommando` listing both at f200 and f4000.
 to 132; plac drives Agon Wastes 00_mapstation_sand's two inactive PlayerActors u065b and u0446 through Activate, Deactivate and `obj` reads, with `objs ScriptPlayerActor` listing both at f200 and f1800.
+ming boots Agon Wastes 0a_sand_hall_dark with the two MinorIngs u0455/u0432 (hp 20/20), Activates the inactive one, forces Patrol/PointPathFind/Dead, shoots one (20 -> 15 hp), damages it (15 -> 13), deletes it and closes with `objs MinorIng` (1 object left); snak boots Torvus Bog 01_swamp_entrance with SnakeWeedSwarm u0481 (41 weeds), Create/Activates it, places it 4 units from the player, shoots it twice (beam + charged, ScareSnakeWeeds), Deactivates/Activates and Deletes it (0 objects at the end). Both are NC (fast mode would finish before con.py connects).
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
