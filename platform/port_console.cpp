@@ -46,6 +46,8 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Weapons/CGunWeapon.hpp"
+#include "MetroidPrime/Weapons/CGameProjectile.hpp"
+#include "Weapons/CWeaponDescription.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/CActor.hpp"
 #include "MetroidPrime/CPhysicsActor.hpp"
@@ -1696,8 +1698,9 @@ void CmdObj(CStateManager& mgr, const Args& args, std::string& out) {
   }
 }
 
-// `damage <id> <amount> [knockback]`: what a player power-beam shot does, through ApplyDamage, so
-// the target's TakeDamage / KnockBack / Death run. The player is the damager and the owner.
+// `damage <id> <amount> [knockback] [weapon]`: an immediate player-owned impact through
+// ApplyDamage. Weapon messages need a weapon sender (Shredder fn_68_1EA0, 0x1FFC..0x203C),
+// and CPatterned's hit flag needs a CGameProjectile. Body attacks still come from the player.
 void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
   float amount = 0.f;
   float knockback = 0.f;
@@ -1764,13 +1767,53 @@ void CmdDamage(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("not an actor with health (or no player)");
     return;
   }
+  const TUniqueId targetId = actor->GetUniqueId();
+  const TUniqueId ownerId = player->GetUniqueId();
   const float before = actor->GetHealthInfo()->GetHP();
   const CDamageInfo info(CWeaponMode(weapon, false, comboed), amount, 0.f, knockback);
-  const CVector3f direction = actor->GetTranslation() - player->GetTranslation();
-  mgr.ApplyDamage(player->GetUniqueId(), actor->GetUniqueId(), player->GetUniqueId(), info,
+  const CVector3f target = actor->GetAimPosition(mgr, 0.f);
+  CVector3f direction = target - player->GetAimPosition(mgr, 0.f);
+  direction = direction.CanBeNormalized() ? direction.AsNormalized() : CVector3f(0.f, 1.f, 0.f);
+  TUniqueId sourceId = ownerId;
+  if (weapon <= kWT_Missile) {
+    sourceId = mgr.AllocateUniqueId();
+    if (sourceId == kInvalidUniqueId) {
+      Fail("damage: no free object id for the impact");
+      return;
+    }
+    // The source is at the impact, facing into the target, as directional vulnerabilities expect.
+    const CTransform4f xf = CTransform4f::LookAt(target - direction * 0.01f, target,
+                                                 CVector3f::Up());
+    CWeapon* impact = nullptr;
+    if (weapon == kWT_Bomb || weapon == kWT_PowerBomb) {
+      impact = rs_new CWeapon(sourceId, actor->GetCurrentAreaId(), false, ownerId, weapon,
+                              rstl::string_l("Console damage"), xf,
+                              CMaterialFilter::GetPassEverything(), CMaterialList(), info,
+                              weapon == kWT_Bomb ? CWeapon::kPA_Bombs : CWeapon::kPA_PowerBombs,
+                              CModelData());
+    } else {
+      // An effect-free projectile needs no loaded gun/resource and cannot hit anything a second
+      // time. Its real type/owner/damage remain available during Damage/ResistedDamage dispatch.
+      TToken< CWeaponDescription > description(rs_new CWeaponDescription());
+      description->mHOMG = false;
+      impact = rs_new CGameProjectile(
+          false, description, rstl::string_l("Console damage"), weapon, xf, kMT_Player, info,
+          sourceId, actor->GetCurrentAreaId(), ownerId, targetId,
+          comboed ? CWeapon::kPA_ComboShot : CWeapon::kPA_None, false, CVector3f::One(),
+          CImpactVisorEffect::None());
+    }
+    mgr.AddObject(impact);
+  }
+  // CGameProjectile::ApplyDamageToOneActor (DOL 0x800342B4..0x800342D8) likewise passes the
+  // projectile's id as damager and its player's id as owner; neither bypasses vulnerability.
+  mgr.ApplyDamage(sourceId, targetId, ownerId, info,
                   CMaterialFilter::GetPassEverything(), direction);
+  if (sourceId != ownerId) {
+    // FIFO deletion follows the queued damage message, so its receiver can still resolve sourceId.
+    mgr.DeleteObjectRequest(sourceId);
+  }
   // The actor may have been deleted by its own death; look it up again.
-  const CActor* after = TCastToConstPtr< CActor >(mgr.GetObjectById(actor->GetUniqueId()));
+  const CActor* after = TCastToConstPtr< CActor >(mgr.GetObjectById(targetId));
   char line[96];
   if (after != nullptr && after->GetHealthInfo() != nullptr) {
     std::snprintf(line, sizeof(line), "hp %.1f -> %.1f\n", before, after->GetHealthInfo()->GetHP());
@@ -2347,7 +2390,8 @@ void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
 // (default 3) away, travelling along dir (default: from the player's eye), straight at an actor's aim
 // position (a joint collision actor's own position), homing on it. The shot is a real
 // CEnergyProjectile with the beam's damage, so a module that only counts projectile hits (a
-// weak-spot joint's last toucher) sees it, unlike `damage`. `missile` fires a real player missile
+// weak-spot joint's last toucher) sees it. Unlike `damage`, this tests flight and collision too.
+// `missile` fires a real player missile
 // instead, through the launcher's own path (CPlayerGun::FireSecondary): weapon type kWT_Missile
 // and gpTweakPlayerGun's missile damage, aimed at the actor the way player aim is
 // (PortSetPointerAimPoint, CPlayer.cpp:1016-1017) and homing on its id. It leaves from the gun, so

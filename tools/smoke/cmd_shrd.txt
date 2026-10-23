@@ -16,4 +16,8 @@
 @f500 send u04e2 0x58444d47
 @f540 objs Shredder
 @f580 objs Shredder
+# Sender regression: resisted power adds 5x damage to the fuse (not HP), then the actor
+# must explode without `kill`/XDMG. The other Shredder is a missile HP-drop control.
+@f600 place u04e3 player 20; damage u04e3 100; obj u04e3
+@f610 damage u04e6 1 missile; obj u04e6
 @f800 objs Shredder
