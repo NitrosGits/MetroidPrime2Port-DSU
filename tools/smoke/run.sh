@@ -62,17 +62,27 @@ done
 # Slot 0 (the bare table) is left to copies of this script that predate the slots.
 # An explicit --display-base / SMOKE_DISPLAY_BASE keeps the old fixed numbering.
 SLOTSTEP=100
+# The lock files name 50-wide blocks (block b = displays 760+50b.., ports +50b..), the unit older
+# copies of this script (SLOTSTEP 50, one lock per slot) still take: a run holds every block its
+# SLOTSTEP spans, so a SLOTSTEP-100 run and an old run never share a display or port (with one lock
+# per slot they did, and killed each other's games, 2026-10-23).
+BLOCK=50
 PORTOFF=0
 if [ "$LIST" = 0 ] && [ -z "${SMOKE_DISPLAY_BASE:-}" ] && [ "$DISPBASE" = 760 ]; then
   mkdir -p /tmp/opencode/locks
-  for slot in $(seq 1 16); do
-    exec {SLOTFD}>"/tmp/opencode/locks/smoke-slot.$slot"
-    if flock -n "$SLOTFD"; then
-      DISPBASE=$((760 + slot * SLOTSTEP)); PORTOFF=$((slot * SLOTSTEP)); break
+  NB=$((SLOTSTEP / BLOCK))
+  for first in $(seq 1 "$NB" 32); do
+    FDS=()
+    for b in $(seq "$first" $((first + NB - 1))); do
+      exec {fd}>"/tmp/opencode/locks/smoke-slot.$b"
+      if flock -n "$fd"; then FDS+=("$fd"); else exec {fd}>&-; break; fi
+    done
+    if [ ${#FDS[@]} = "$NB" ]; then
+      DISPBASE=$((760 + first * BLOCK)); PORTOFF=$((first * BLOCK)); break
     fi
-    exec {SLOTFD}>&-
+    for fd in "${FDS[@]}"; do exec {fd}>&-; done
   done
-  [ "$PORTOFF" = 0 ] && { echo "[smoke] no free slot (16 runs at once?)" >&2; exit 2; }
+  [ "$PORTOFF" = 0 ] && { echo "[smoke] no free slot (too many runs at once?)" >&2; exit 2; }
 fi
 
 # The family table: the world to boot into, the game updates to run, the backstop, the console
