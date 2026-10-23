@@ -1,0 +1,25 @@
+# Agon 08_sand_casualpirates layer 2: the four aerotroopers fight the god-mode player for a long
+# stretch (cover, missiles, dodges), then trigger calls on each and deaths in flight from knock-back.
+@f300 layer 2
+@f560 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f580 send u0545 Activate; send u053d Activate; send u0539 Activate; send u0537 Activate
+@f600 tp 355 -265 4
+@f610 face 0
+@f1000 shoot u0545
+@f1300 shoot u053d missile
+@f1600 shoot u0539
+@f1900 shoot u0537 missile
+@f2200 tp 340 -250 4
+@f2210 face 300
+@f2400 trigcall u0545 InPosition; trigcall u053d InPosition; trigcall u0539 InPosition; trigcall u0537 InPosition; trigcall u0545 CoverFind; trigcall u053d CoverFind; trigcall u0545 ShouldSpecialAttack; trigcall u053d ShouldSpecialAttack; trigcall u0539 Landed; trigcall u0537 Stuck; trigcall u0545 InRange
+@f2500 obj u0545; obj u053d; obj u0539; obj u0537
+@f2600 damage u0545 80
+@f2610 damage u0545 20 40 missile
+@f2700 damage u053d 89 0 dark
+@f2710 shoot u053d charged
+@f2800 damage u0539 89 0 light
+@f2810 shoot u0539 missile
+@f3000 obj u0545; obj u053d; obj u0539; obj u0537
+@f3100 damage u0537 85
+@f3110 damage u0537 10 80 missile
+@f3300 status
