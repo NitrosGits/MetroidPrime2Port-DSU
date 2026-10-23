@@ -76,7 +76,7 @@ private:
   rstl::optional_object< TLockedToken< CGenDescription > > mNormalHitEffect; // Guessed name
   rstl::optional_object< TLockedToken< CGenDescription > > mHeavyHitEffect;  // Guessed name
   CSfxHandle mSfxHandle;                                                     // Guessed name
-  bool mIdling : 1;                                                          // Guessed name
+  bool mIdling : 1;                                                          // Guessed name (0x5ec 0x80)
 };
 CHECK_SIZEOF(CIngPuddle, 0x5f0)
 
