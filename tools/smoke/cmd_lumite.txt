@@ -8,7 +8,7 @@
 # path), so Dead only ever runs forced (`fsm <id> Dead`) in the coverage driver - not here.
 # The shots stay partial on purpose: a Lumite has hp 6/6, a power beam hit takes 2 and a charged
 # shot killed it in the lane's own run, so the charge goes unused and the console's lethal damage
-# ends it. Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last
+# ends it. Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2600, last
 # check f2320.
 @f300 god 1; give missile 50
 @f350 objs lumite; objs collision
