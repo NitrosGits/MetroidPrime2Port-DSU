@@ -1,0 +1,22 @@
+# ScriptPlayerActor: Agon Wastes 03_sand_temple_dark (42b935e4) layer 10: e0024022f "Samus DarkSuit"
+# (flags 0x5: suit swap 0x1, Deactivate resets 0x4; ACTV>INCR to itself) and e00240396 "Samus VariaSuit"
+# (flags 0x7: + 0x2 alternate next suit). Both start inactive. Activate (LoadSuit(GetNextSuitCharIdx)),
+# Increment (the 0x1 arm: AsyncLoadSuit, offline model), Left, Deactivate (0x4 falls into the reset),
+# Reset while inactive, re-Activate and Delete.
+@f260 layer 10
+@f300 god 1; give darkSuit 1; give lightSuit 1
+@f320 obj e0024022f; obj e00240396
+@f340 send e0024022f Activate
+@f360 send e00240396 Activate
+@f700 obj e0024022f
+@f720 send e0024022f Increment
+@f740 send e00240396 Increment
+@f1000 send e0024022f Left
+@f1020 send e00240396 Deactivate
+@f1040 send e00240396 Reset
+@f1060 send e00240396 Activate
+@f1400 send e0024022f Deactivate
+@f1420 send e0024022f Activate
+@f1700 send e0024022f Reset
+@f1720 send e00240396 Delete
+@f1800 obj e0024022f

@@ -1,0 +1,58 @@
+offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
+0x0	0x2C	CScriptPlayerActor	GetHealthInfo	virtual	H	-	`CActor::GetHealthInfo` (the DOL inline, emitted in the REL)	not-port	fn_61_0
+0x2C	0x24	REL runtime	RELExit	runtime	T	-	the REL linker's entry/exit	not-port	RELExit
+0x50	0x20	REL runtime	RELMain	runtime	T	-	the REL linker's entry/exit	not-port	RELMain
+0x70	0x50	CScriptPlayerActor	SetFuncPtrs	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_70
+0xC0	0x660	CScriptPlayerActor	LoadPlayerActor	func	B	-	LoadPlayerActor: missing-ACS return arm untaken (data-dead)	upstream	fn_61_C0
+0x720	0x20	CScriptPlayerActor	-	func	H	-	`None__10CModelDataFv`: a host copy of DOL/template code	not-port	fn_61_720
+0x740	0x58	CScriptPlayerActor	-	func	T	-	dead: a CToken-holder destructor with no `bl` and no table naming it	not-port	fn_61_740
+0x798	0x54	CScriptPlayerActor	-	func	H	-	`__dt__27TToken<17CCharacterFactory>Fv`: a host copy of DOL/template code	not-port	fn_61_798
+0x7EC	0x88	CScriptPlayerActor	-	func	H	-	`__dt__15SLdrPlayerActorFv`: a host copy of DOL/template code	not-port	fn_61_7EC
+0x874	0xFC	CScriptPlayerActor	-	func	H	-	`__ct__15SLdrPlayerActorFv`: a host copy of DOL/template code	not-port	fn_61_874
+0x970	0x148	CScriptPlayerActor	SetIntoStateManager	func	B	-	SetIntoStateManager: 556 actor-not-player-actor arm untaken (needs a non-player actor in the chain)	upstream	fn_61_970
+0xAB8	0x13C	CScriptPlayerActor	SetupEnvFx	func	B	-	SetupEnvFx: rain arm (no rainy world with a placement reached) and 0x20 no-shadow arm (data-dead) untaken	upstream	fn_61_AB8
+0xBF4	0x3C	CScriptPlayerActor	SetActive	virtual	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_BF4
+0xC30	0x224	CScriptPlayerActor	PreRender	virtual	B	-	PreRender: backup-model countdown and shadow-without-gun arms untaken	upstream	fn_61_C30
+0xE54	0xC8	CScriptPlayerActor	-	func	H	-	`__as__Q24rstl48optional_object<29TLockedToken<13CSkinnedModel>>FRCQ24rstl48optio`: a host copy of DOL/template code	not-port	fn_61_E54
+0xF1C	0x54	CScriptPlayerActor	-	func	H	-	`__dt__23TToken<13CSkinnedModel>Fv`: a host copy of DOL/template code	not-port	fn_61_F1C
+0xF70	0x6C	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl48optional_object<29TLockedToken<13CSkinnedModel>>Fv`: a host copy of DOL/template code	not-port	fn_61_F70
+0xFDC	0x60	CScriptPlayerActor	GetSuitCharIdx	func	B	-	GetSuitCharIdx: charIdx >= character count arms untaken (data: every ANCS has enough characters)	upstream	fn_61_FDC
+0x103C	0x78	CScriptPlayerActor	GetNextSuitCharIdx	func	B	-	GetNextSuitCharIdx: 0x2 with mSuit Light and the switch's Varia arm untaken	upstream	fn_61_103C
+0x10B4	0xA0	CScriptPlayerActor	PumpGrappleModel	func	B	-	PumpGrappleModel: null-token arm untaken (only called while loading)	upstream	fn_61_10B4
+0x1154	0xA0	CScriptPlayerActor	PumpBeamModel	func	B	-	PumpBeamModel: null-token arm untaken (only called while loading)	upstream	fn_61_1154
+0x11F4	0x1B0	CScriptPlayerActor	PumpSuitModel	func	B	-	PumpSuitModel: null-token and not-loaded arms untaken	upstream	fn_61_11F4
+0x13A4	0xA4	CScriptPlayerActor	UsePlayerBeamModel	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_13A4
+0x1448	0x13C	CScriptPlayerActor	-	func	H	-	`__ct__10CModelDataFRC10CModelData`: a host copy of DOL/template code	not-port	fn_61_1448
+0x1584	0x6C	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv`: a host copy of DOL/template code	not-port	fn_61_1584
+0x15F0	0x54	CScriptPlayerActor	-	func	H	-	`__dt__15TToken<6CModel>Fv`: a host copy of DOL/template code	not-port	fn_61_15F0
+0x1644	0x64	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl20auto_ptr<9CAnimData>Fv`: a host copy of DOL/template code	not-port	fn_61_1644
+0x16A8	0x70	CScriptPlayerActor	CancelGrappleLoad	func	B	-	CancelGrappleLoad: no caller ran	upstream	fn_61_16A8
+0x1718	0x184	CScriptPlayerActor	UpdateGrappleModel	func	B	-	UpdateGrappleModel: one short-circuit arm (405) untaken	upstream	fn_61_1718
+0x189C	0x78	CScriptPlayerActor	CancelBeamLoad	func	B	-	CancelBeamLoad: not-loading arm only	upstream	fn_61_189C
+0x1914	0x10C	CScriptPlayerActor	LoadBeam	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_1914
+0x1A20	0x208	CScriptPlayerActor	LoadSuit	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_1A20
+0x1C28	0x114	CScriptPlayerActor	SetupOfflineModelData	func	B	-	SetupOfflineModelData: IsMaxSpeed arm untaken	upstream	fn_61_1C28
+0x1D3C	0x84	CScriptPlayerActor	-	func	H	-	`__as__Q24rstl48optional_object<29TLockedToken<13CSkinnedModel>>FRC29TLockedToken`: a host copy of DOL/template code	not-port	fn_61_1D3C
+0x1DC0	0x198	CScriptPlayerActor	SetupOnlineModelData	func	B	-	SetupOnlineModelData: early-return arm (335) and no-bounding-box arm untaken	upstream	fn_61_1DC0
+0x1F58	0x94	CScriptPlayerActor	BuildGrappleModelData	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_1F58
+0x1FEC	0x98	CScriptPlayerActor	BuildBeamModelData	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_1FEC
+0x2084	0x5C	CScriptPlayerActor	AddToRenderer	virtual	B	-	AddToRenderer: inactive arm untaken	upstream	fn_61_2084
+0x20E0	0x158	CScriptPlayerActor	TouchModels_Internal	func	B	-	TouchModels_Internal: no-model-data arms untaken	upstream	fn_61_20E0
+0x2238	0xB0	CScriptPlayerActor	TouchModels	virtual	B	-	TouchModels: chain-break arm untaken	upstream	fn_61_2238
+0x22E8	0xD4	CScriptPlayerActor	RenderGrapple	func	B	-	RenderGrapple: grapple-without-model arms untaken	upstream	fn_61_22E8
+0x23BC	0xD4	CScriptPlayerActor	RenderGun	func	B	-	RenderGun: gun-without-model arms untaken	upstream	fn_61_23BC
+0x2490	0x78	CScriptPlayerActor	Render	virtual	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_2490
+0x2508	0x6C	CScriptPlayerActor	GetGrappleTransform	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_2508
+0x2574	0x50	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator`: a host copy of DOL/template code	not-port	fn_61_2574
+0x25C4	0x6C	CScriptPlayerActor	GetGunTransform	func	B	-	all arms ran; equal to the asm (ScriptPlayerActor.md section 2)	marked	fn_61_25C4
+0x2630	0x3C0	CScriptPlayerActor	Think	virtual	B	-	Think: fixed under TARGET_PC (0x27DC reads the gun's mNextBeamId); Think: model-not-loaded short-circuit arms (219/224/225) untaken	upstream	fn_61_2630
+0x29F0	0x44C	CScriptPlayerActor	AcceptScriptMsg	virtual	B	-	all arms; the 0x10 keep-in-manager arm forced (scriptplayeractor_force.py)	marked	fn_61_29F0
+0x2E3C	0x18C	CScriptPlayerActor	dtor	virtual	B	-	equal to the asm: the single_ptr<CProjectedShadow> member dtor differs only in how MWCC instantiates it (incomplete type in the header); both free the shadow	upstream	fn_61_2E3C
+0x2FC8	0x308	CScriptPlayerActor	ctor	func	B	-	all arms (the closing brace's two unwind edges untaken)	marked	fn_61_2FC8
+0x32D0	0x64	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl24auto_ptr<12CActorLights>Fv`: a host copy of DOL/template code	not-port	fn_61_32D0
+0x3334	0x58	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl30single_ptr<16CProjectedShadow>Fv`: a host copy of DOL/template code	not-port	fn_61_3334
+0x338C	0x74	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl34single_ptr<20TToken<10CSkinRules>>Fv`: a host copy of DOL/template code	not-port	fn_61_338C
+0x3400	0x78	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl35single_ptr<21TCachedToken<6CModel>>Fv`: a host copy of DOL/template code	not-port	fn_61_3400
+0x3478	0x74	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl29single_ptr<15TToken<6CModel>>Fv`: a host copy of DOL/template code	not-port	fn_61_3478
+0x34EC	0x58	CScriptPlayerActor	-	func	H	-	`__dt__Q24rstl24single_ptr<10CModelData>Fv`: a host copy of DOL/template code	not-port	fn_61_34EC
+0x3544	0x90	CScriptPlayerActor	-	func	H	-	`__ct__11CDamageInfoFv`: a host copy of DOL/template code	not-port	fn_61_3544
