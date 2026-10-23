@@ -749,7 +749,12 @@ void CGrenchler::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     break;
   case kSM_Landed:
     if (mCurrentAction == 12) {
+#ifdef TARGET_PC
+      // retail 0xFFF4: bl RestoreDefaultJointVulnerability
+      RestoreDefaultJointVulnerability(mgr);
+#else
       ResetBodyVulnerabilities(mgr);
+#endif
     }
     break;
   case kSM_OffGround:
@@ -1090,7 +1095,12 @@ void CGrenchler::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
 // @ fn_27_EAE4
 void CGrenchler::Null(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
+#ifdef TARGET_PC
+    // retail 0xEB24: bl SetupBodyVulnerabilities
+    SetupBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
+#else
     ResetBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
+#endif
   }
 }
 
@@ -1234,6 +1244,17 @@ void CGrenchler::WalkTowardPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
 void CGrenchler::YellowHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(kGA_YellowHitReact, msg);
   DeliverCommand(msg, pas::kAS_Taunt, CBCTauntCmd(pas::kTT_Nine));
+#ifdef TARGET_PC
+  // retail 0xE258 (Activate, tail destroyed): bl ResetBodyVulnerabilities;
+  // 0xE294 (Deactivate): bl SetupBodyVulnerabilities
+  if (msg == kStateMsg_Activate) {
+    if (mTailDestroyed == 1) {
+      ResetBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
+    }
+  } else if (msg == kStateMsg_Deactivate) {
+    SetupBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
+  }
+#else
   if (msg == kStateMsg_Activate) {
     if (mTailDestroyed == 1) {
       SetupBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
@@ -1241,6 +1262,7 @@ void CGrenchler::YellowHitReact(CStateManager& mgr, EStateMsg msg, float dt) {
   } else if (msg == kStateMsg_Deactivate) {
     ResetBodyVulnerabilities(mgr, CPatterned::GetDamageVulnerability()->MakeIgnoreRadius());
   }
+#endif
 }
 
 bool CGrenchler::PlayYellowHitReact(CStateManager& mgr, const CTriggerData& data) const {
@@ -2465,7 +2487,12 @@ void CGrenchler::Jump(CStateManager& mgr, EStateMsg msg, float) {
 }
 
 void CGrenchler::RestoreDefaultJointVulnerability(CStateManager& mgr) {
+#ifdef TARGET_PC
+  // retail 0x8FEC: bl SetupBodyVulnerabilities
+  SetupBodyVulnerabilities(mgr, *CPatterned::GetDamageVulnerability());
+#else
   ResetBodyVulnerabilities(mgr, *CPatterned::GetDamageVulnerability());
+#endif
   mReflectInfo.mLaunched = false;
 }
 
@@ -4270,10 +4297,6 @@ float CGrenchler::GetWaterSurfaceHeight(const CStateManager& mgr) const {
 
 bool CGrenchler::IsNearAvoidHint(CStateManager& mgr) const {
   return const_cast< CGrenchler* >(this)->IsNearAvoidHint(mgr);
-}
-
-void CGrenchler::ResetBodyVulnerabilities(CStateManager& mgr) {
-  ResetBodyVulnerabilities(mgr, *CPatterned::GetDamageVulnerability());
 }
 
 // Host: the console's `var <id> gren.<field> [value]`. gren.scanned is the scan-done flag
