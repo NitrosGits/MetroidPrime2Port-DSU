@@ -834,7 +834,8 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
     SDL_Delay(10);
   }
 #endif
-  if (!create_surface()) {
+  // Port: AURORA_HEADLESS: no surface; the Null adapter needs none.
+  if (!headless() && !create_surface()) {
     return false;
   }
   {
@@ -1092,6 +1093,29 @@ bool initialize(AuroraBackend auroraBackend, bool allowCpu) {
   }
   g_queue = g_device.GetQueue();
 
+  if (headless()) {
+    // Port: AURORA_HEADLESS: no surface to ask; the framebuffers are made as usual.
+    const auto size = window::get_window_size();
+    g_graphicsConfig = GraphicsConfig{
+        .surfaceConfiguration =
+            wgpu::SurfaceConfiguration{
+                .format = wgpu::TextureFormat::BGRA8Unorm,
+                .usage = wgpu::TextureUsage::RenderAttachment,
+                .width = size.native_fb_width,
+                .height = size.native_fb_height,
+                .presentMode = wgpu::PresentMode::Fifo,
+            },
+        .depthFormat = wgpu::TextureFormat::Depth32Float,
+        .msaaSamples = g_config.msaa,
+        .textureAnisotropy = g_config.maxTextureAnisotropy,
+    };
+    create_copy_pipeline();
+    create_resample_pipeline();
+    gpu_prof::initialize();
+    resize_swapchain(size.fb_width, size.fb_height, size.native_fb_width, size.native_fb_height, true);
+    g_initialized = true;
+    return true;
+  }
   const wgpu::Status status = g_surface.GetCapabilities(g_adapter, &g_surfaceCapabilities);
   if (status != wgpu::Status::Success) {
     Log.error("Failed to get surface capabilities: {}", magic_enum::enum_name(status));
@@ -1166,7 +1190,8 @@ void release_surface() noexcept {
 
 static void resize_swapchain_internal(uint32_t width, uint32_t height, uint32_t nativeWidth, uint32_t nativeHeight,
                                       bool force) {
-  if (!g_surface || !g_device || width == 0 || height == 0 || nativeHeight == 0 || nativeWidth == 0) {
+  if ((!g_surface && !headless()) || !g_device || width == 0 || height == 0 || nativeHeight == 0 ||
+      nativeWidth == 0) {
     return;
   }
   const bool sizeChanged = g_graphicsConfig.surfaceConfiguration.width != nativeWidth ||
@@ -1183,7 +1208,7 @@ static void resize_swapchain_internal(uint32_t width, uint32_t height, uint32_t 
   g_graphicsConfig.surfaceConfiguration.height = nativeHeight;
   auto surfaceConfiguration = g_graphicsConfig.surfaceConfiguration;
   surfaceConfiguration.device = g_device;
-  {
+  if (g_surface) {
     window::SurfaceLock surfaceLock;
     g_surface.Configure(&surfaceConfiguration);
   }
@@ -1195,7 +1220,7 @@ static void resize_swapchain_internal(uint32_t width, uint32_t height, uint32_t 
 
 bool refresh_surface(bool recreate) {
   gfx::gpu_synchronize();
-  if (!g_instance || !g_device) {
+  if (!g_instance || !g_device || headless()) {
     return false;
   }
   if (!window::is_presentable()) {

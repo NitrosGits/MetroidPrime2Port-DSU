@@ -938,6 +938,11 @@ void queue_scan_peek(scan_peek::Request req) {
   // Port: AURORA_RENDER_EVERY: the peek reads the EFB, so the frame that carries it is rendered in
   // full (see resolve_pass_into), unless the caller only wants it on frames rendered anyway
   // (GX_SCAN_PEEK_IF_RENDERED): then a frame that is not rendered drops it.
+  // Port: AURORA_HEADLESS: nothing is ever rendered, so the peek never lands (the caller keeps
+  // whatever it had, as before the first read-back).
+  if (gx::fifo::headless()) {
+    return;
+  }
   if (req.ifRendered) {
     if (!gx::fifo::frame_rendered()) {
       return;
@@ -956,6 +961,10 @@ void queue_efb_cpu_copy(efb_copy::Request req) {
     // One read-back per pass: the game makes at most one spare-buffer copy per pass, and a second
     // request would have to share the same slot.
     Log.warn("EFB copy read-back dropped: pass {} already has one", g_recorder.currentRenderPass);
+    return;
+  }
+  // Port: AURORA_HEADLESS: nothing is ever rendered; the read-back never lands.
+  if (gx::fifo::headless()) {
     return;
   }
   // Port: AURORA_RENDER_EVERY: the copy reads the EFB, so the frame that carries it is rendered in

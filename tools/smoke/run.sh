@@ -4,7 +4,7 @@
 # card copy and cache dir.
 #
 #   tools/smoke/run.sh [--build <dir>] [--out <dir>] [--jobs N] [--save <dir>]
-#                      [--display-base <n>] [--list] [family ...]
+#                      [--display-base <n>] [--headless] [--list] [family ...]
 #
 #   --build         build dir with metroid_prime2_port (default <repo>/build-port-link)
 #   --out           output dir (default /tmp/opencode/smoke-<git short hash>)
@@ -12,6 +12,8 @@
 #                   run slots (tools/run_gameplay.sh -> slotrun.sh), so this is not the real cap.
 #   --save          the memory card each family copies as its user dir (default /tmp/opencode/mi_u)
 #   --display-base  first X display number used (default 760)
+#   --headless      no picture: no Xvfb, no GPU device (HEADLESS=1 for tools/run_gameplay.sh,
+#                   docs/RUNNING.md "Headless runs"); also SMOKE_HEADLESS=1
 #   --list          print the family table and exit
 #   --capped        run every family under the 60 FPS cap (SMOKE_FAST=0 does the same)
 #
@@ -31,6 +33,7 @@ SAVE=${SMOKE_SAVE:-/tmp/opencode/mi_u}
 DISPBASE=${SMOKE_DISPLAY_BASE:-760}
 LIST=0
 FAST=${SMOKE_FAST:-1}
+HEADLESS=${SMOKE_HEADLESS:-0}
 FAMS=()
 
 while [ $# -gt 0 ]; do
@@ -42,7 +45,8 @@ while [ $# -gt 0 ]; do
     --display-base) DISPBASE=$2; shift 2 ;;
     --list) LIST=1; shift ;;
     --capped) FAST=0; shift ;;
-    -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
+    --headless) HEADLESS=1; shift ;;
+    -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
     *) FAMS+=("$1"); shift ;;
   esac
 done
@@ -138,7 +142,9 @@ done
 mkdir -p "$OUT" || exit 2
 [ -x "$BUILD/metroid_prime2_port" ] || { echo "[smoke] no game in $BUILD" >&2; exit 2; }
 
-echo "[smoke] out=$OUT build=$BUILD jobs=$JOBS save=$SAVE fast=$FAST families=${FAMS[*]}"
+echo "[smoke] out=$OUT build=$BUILD jobs=$JOBS save=$SAVE fast=$FAST headless=$HEADLESS families=${FAMS[*]}"
+# fam.sh -> run_gameplay.sh read it from the environment.
+export HEADLESS
 # A coverage build (CMake option MP_PORT_COVERAGE) writes its .gcda files per family, under
 # <out>/gcov_<family>/gcov: the families run concurrently and would otherwise write over each
 # other. fam.sh sets it; nothing changes for a normal build.
