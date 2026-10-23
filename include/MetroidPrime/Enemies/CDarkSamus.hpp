@@ -1126,7 +1126,7 @@ private:
   float mGuestE38 = 0.f;             // guest 0xE38 (fn_10_9E00)
   CVector3f mGuestEE4 = CVector3f::Zero(); // guest 0xEE4, the path find's fallback destination
   TUniqueId mGuestF78 = kInvalidUniqueId; // guest 0xF78 (fn_10_4868, fn_10_48C8)
-  float mGuestF7C;               // guest 0xF7C (fn_10_48C8)
+  float mGuestF7C = 0.f;         // guest 0xF7C (fn_10_48C8); no ctor stores it, read only after 490C writes it (tail14)
   CSfxHandle mGuestF60;          // guest 0xF60 (fn_10_812C)
   // The phazon beam (the 0xEF0 sub-object, fn_10_45F8, whose ctor arguments are the loader's
   // pART_0x908b06e9 into 0xEF0, pART_0x494de4a4 into 0xEFC (its locked token 0xF00), damageInfo
