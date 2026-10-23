@@ -53,10 +53,16 @@ because their destination was fresh`).
 ## Fast runs and console scripts
 
 `MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=<1..16>` runs exactly that many fixed 1/60 s ticks per loop
-iteration (`platform/include/port_timing.h`), as fast as the machine allows: 1000 updates in area 59
-took 7.4 s at 8 vs 26 s capped (2026-10-21). `MP2_FRAMES` still counts ticks. Console scripts for
-`MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines `@f<n> <cmd>` (after game
-update n, polled with `frame`; a few updates late at high tick counts) or `@<secs> <cmd>`.
+iteration (`platform/include/port_timing.h`), as fast as the machine allows. Such a run is
+*unpaced* (`PortHarness::Unpaced`): neither `CGraphics::EndScene`'s 60 Hz `PaceFrame` nor
+`PortPaceFrame` waits, so a loop iteration costs only its work (~4500 updates/s in agon54; 600
+updates from launch to exit in ~1.9 s, 2026-10-23). `MP2_FAST_LOAD=1` (with `MP2_SKIP_FRONTEND`;
+`run_gameplay.sh` sets it, `FAST_LOAD=0` turns it off) does the same for a capped run until its first
+game update, so the pre-loop pak loading isn't paced either. `MP2_FRAMES` still counts ticks.
+Console scripts for `MP2_CONSOLE=<port>` runs: `tools/drivers/con.py <port> <cmdfile> [out]`, lines
+`@f<n> <cmd>` or `@<secs> <cmd>`. Each run of `@f` lines is queued up front through the console's
+`at <n> <cmd>` (one `at` per `;` part), so a command runs exactly at update n even unpaced;
+`CON_POLL=1` restores the old polling of `frame` (late by many updates in a fast run).
 Reach states with `fsm <id> <state>` (an FSM2 state left at once reports `entered; now X`; a state in
 an FSM2 sub-machine is entered through it, and the reply names the machine; a name the machine does
 not have is reported as `unknown state 'X'; valid names: ...` with the names it has - the actor's
@@ -137,6 +143,22 @@ request**: `MP2_WORLD="1baa96c2,2735236b"` (the world, a comma, the area) or
 slot index here: `MP2_WORLD="863fcd72,7"` resolves `7` as asset id 00000007 and lands in slot 0 with
 no error (measured 2026-10-23); `tools/world_areas.py <world>` gives each slot's MREA id.
 
+**Direct boot** (default for a world+area `MP2_WORLD`): `PortSkipFrontEnd::StartGame` writes the world
+and area into the game state before any world loads (`PortWarp::DirectBoot`), so the save's world is
+never loaded and there is no 120-update wait or restart. The update count then starts at 120
+(`[harness] direct boot: the update count starts at 120`), so `MP2_FRAMES`, `@f`, `frame`, `at` and
+`MP2_INPUT` keep their meaning and gameplay is still frame 240. One difference: on a new-game card
+(the 0% `mi_u`) the first spawn now happens at the destination, so the player gets that spawn
+point's inventory instead of the save world's start loadout (ing area: power/dark/light beams, 6
+tanks, 150 ammo; agon54: the start loadout). `MP2_DIRECT_BOOT=0` restores the old route and loadout;
+`MP2_TELEPORT`, and a request that names no area of the world, always take it.
+
+Startup, agon54, 600 updates (2026-10-23): capped 17.8 -> 10.0 s wall per run (gameplay ~11.7 ->
+3.6 s after launch); fast 5.5 -> 2.0 s per run (10-run loop 55 -> 20 s). Aurora/Dawn init (~1.3 s)
+is the floor. A save-state start was rejected: `port_savestate.cpp` states are a CGameState blob +
+a world restart + room restore, not a memory image, so they reload the area from disc and can't
+beat a direct boot.
+
 ## Batch smoke (every family, in parallel)
 
 `tools/smoke/run.sh [--build <dir>] [--out <dir>] [--jobs N] [family ...]` boots every family area
@@ -145,6 +167,9 @@ console scripts in `tools/smoke/cmd_*.txt`; `--list` prints the family table. Re
 `/tmp/opencode/smoke-<git hash>` by default (the card copied per family is `--save`, default
 `/tmp/opencode/mi_u`), and `tools/smoke/compare.py <new out> <old out>` prints exit, caught,
 reach-stub, stand-in and gameplay seconds per family, failing when a family regressed.
+The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
+~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
+batch (~4.6 min, ing ~266 s). `--capped` or `SMOKE_FAST=0` runs everything capped.
 
 ## Branch coverage of the port module bodies (gcov)
 

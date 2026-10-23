@@ -5,6 +5,7 @@
 // Port: Aurora brackets a presented frame around the game's scene.
 #include <aurora/aurora.h>
 
+#include "port_harness.h"
 #include "port_overlay.h"
 #include "MetroidPrime/PortEfbCopy.hpp"
 
@@ -1053,7 +1054,10 @@ void CGraphics::EndScene() {
   }
   // Port: present this Aurora frame instead of waiting on the GP breakpoint.
   AuroraFrameEnd();
-  PaceFrame(sIs50Hz);
+  // A fast run or a harness boot's load needs no video-rate wait (PortHarness::Unpaced).
+  if (!PortHarness::Unpaced()) {
+    PaceFrame(sIs50Hz);
+  }
   mNumBreakpointsWaiting = 0;
   mFlippingState = 0;
 #else

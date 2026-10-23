@@ -3,6 +3,9 @@
 
 #include "port_harness.h"
 
+#include "port_overlay.h"
+#include "port_timing.h"
+
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -13,6 +16,7 @@ namespace {
 bool sReadEnv = false;
 int sLimit = 0;   // 0 = no limit
 int sUpdates = 0;
+int sCountStart = 0; // StartCountAt: the count the game's first update starts after
 bool sExitRequested = false;
 
 // The stall report: the wall time of the last game update, and whether this stall has been
@@ -81,7 +85,7 @@ namespace PortHarness {
 
 bool GameUpdate() {
   ReadEnvOnce();
-  if (++sUpdates == 1) {
+  if (++sUpdates == sCountStart + 1) {
     // The first game update is the moment the game is up and running (the world the flow asked for
     // has been loaded), which is the number most test timings are compared against.
     std::fprintf(stderr, "[harness] the first game update is at %.1f s\n", Seconds());
@@ -104,8 +108,30 @@ bool ExitRequested() { return sExitRequested; }
 
 unsigned GameUpdates() { return static_cast< unsigned >(sUpdates); }
 
+void StartCountAt(unsigned updates) {
+  if (sUpdates != sCountStart) {
+    return; // the game has updated already: too late to move the count
+  }
+  sCountStart = sUpdates = static_cast< int >(updates);
+  std::fprintf(stderr, "[harness] direct boot: the update count starts at %u, where a save-world "
+                       "boot served its warp (MP2_FRAMES, @f and `frame` keep their meaning)\n",
+               updates);
+}
+
+bool Unpaced() {
+  static const bool sFastLoad = [] {
+    const char* load = std::getenv("MP2_FAST_LOAD");
+    const char* skip = std::getenv("MP2_SKIP_FRONTEND");
+    return load != nullptr && load[0] == '1' && skip != nullptr && skip[0] != '\0' && skip[0] != '0';
+  }();
+  if (PortTiming::FixedTicksPerFrame() != 0 && !PortOverlay::FrameLimit()) {
+    return true;
+  }
+  return sFastLoad && sUpdates == sCountStart;
+}
+
 void IdleCheck() {
-  if (sUpdates == 0) {
+  if (sUpdates == sCountStart) {
     // Nothing to compare against until the game has updated once: the boot's own loading is long
     // and is not a stall.
     return;

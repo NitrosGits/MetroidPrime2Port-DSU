@@ -4766,8 +4766,28 @@ void CStateManager::PortSetDarkWorldFromArea(TAreaId aid) {
   }
 }
 
-// Finishes a PortSetDarkWorldFromArea that had to wait for the area's map area.
+// The arrival area of a direct boot (PortWarp::DirectBoot, at the end of this file), until the first
+// world has loaded it.
+static CAssetId sPortDirectBootArea = kInvalidAssetId;
+
+// Finishes a PortSetDarkWorldFromArea that had to wait for the area's map area. Also resolves the
+// flag for a direct boot's arrival: that route skips the warp, so nothing else takes the flag from
+// the destination - the state manager starts light (mIsDarkWorld(false)) and only an AreaAttributes
+// object's Create sets it, which areas without one never send.
 void CStateManager::PortDarkWorldTick() {
+  if (sPortDirectBootArea != kInvalidAssetId) {
+    CWorld* bootWorld = World();
+    // Fully initialized: the init phase has streamed the desired area in (kIP_Done) - where a warp
+    // resolves its arrival too (PortWarpSettle, PortPlaceArrivalTick).
+    if (bootWorld == nullptr || !IsFullyInitialized()) {
+      return;
+    }
+    const TAreaId bootArea = bootWorld->IGetAreaId(sPortDirectBootArea);
+    sPortDirectBootArea = kInvalidAssetId;
+    std::fprintf(stderr, "[warp] direct boot arrived in area %d\n", bootArea.Value());
+    PortSetDarkWorldFromArea(bootArea);
+    return;
+  }
   if (mPortDarkFlagArea == kInvalidAreaId) {
     return;
   }
@@ -5710,5 +5730,52 @@ void CStateManager::PortWarpToWorld(CAssetId worldId, CAssetId areaId) {
   gpGameState->CurrentWorldState().SetDesiredAreaAssetId(areaId);
   gpMain->SetRestartMode(CMain::kRM_None);
   QuitGame();
+}
+
+// The direct boot (PortWarp::DirectBoot, asked by PortSkipFrontEnd::StartGame once the card's save
+// is the running state, before any world is loaded). A boot request for a world and an area
+// (MP2_WORLD="<world>,<area>") is written into the game state as the world and its desired area -
+// what PortWarpToWorld does at frame 120 of the save's world - so the first world the game loads is
+// the destination: no save-world load, no 120-update wait, no restart. The update count starts at
+// 120 (PortHarness::StartCountAt) so the run's frame numbers keep their meaning. A request that does
+// not resolve to an area of the world here (no area, MP2_TELEPORT, an area index) stays pending for
+// PortWarpTick, the old route. MP2_DIRECT_BOOT=0 turns it off.
+bool PortWarp::DirectBoot() {
+  const char* env = getenv("MP2_DIRECT_BOOT");
+  if (env != nullptr && env[0] == '0') {
+    return false;
+  }
+  PortWarp::SRequest request;
+  if (!PortWarp::PeekBoot(request) || request.kind != PortWarp::EKind::kWorld ||
+      request.area[0] == '\0' || gpGameState == nullptr || gpMain == nullptr) {
+    return false;
+  }
+  CAssetId worldId = kInvalidAssetId;
+  CAssetId areaId = kInvalidAssetId;
+  ResolveWarpWorld(request.world, request.area, &worldId, &areaId);
+  bool inWorld = false;
+  if (worldId != kInvalidAssetId && areaId != kInvalidAssetId) {
+    PortWithMlvl(worldId, [&](CDummyWorld& world, CResLoader&) {
+      inWorld = world.IGetAreaId(areaId) != kInvalidAreaId;
+    });
+  }
+  if (!inWorld) {
+    std::fprintf(stderr, "[warp] direct boot: '%s,%s' names no area of a world here; the request "
+                         "waits for the save's world (the old route)\n",
+                 request.world, request.area);
+    return false;
+  }
+  PortWarp::Consume(request);
+  sPortDirectBootArea = areaId;
+  gpMain->EnsureWorldPakReady(worldId);
+  const CAssetId saveWorld = gpGameState->CurrentWorldAssetId();
+  gpGameState->SetCurrentWorldId(worldId);
+  gpGameState->CurrentWorldState().SetDesiredAreaAssetId(areaId);
+  // The first spawn now happens at the destination, so a new-game card (init-powerups flag set) gets
+  // the destination spawn point's inventory, not the save world's start loadout (the old route's).
+  std::fprintf(stderr, "[warp] direct boot: world %08x area %08x instead of the save's world %08x\n",
+               worldId, areaId, saveWorld);
+  PortHarness::StartCountAt(PortHarness::kDirectBootUpdates);
+  return true;
 }
 #endif
