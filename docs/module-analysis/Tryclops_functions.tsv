@@ -1,0 +1,115 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_81_0	8	B	CTryclops::GetSearchPath	-	header inline (CTryclops.hpp)	no
+00008	fn_81_8	8	B	CTryclops::IsListening	-	header inline (CTryclops.hpp)	no
+00010	fn_81_10	60	H	CPatterned::GetTouchBounds	-	weak copy / template instance	no
+0004C	fn_81_4C	16	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+0005C	fn_81_5C	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+00064	fn_81_64	8	H	CPatterned::ProjectileInfo	-	weak copy / template instance	no
+0006C	fn_81_6C	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+00074	fn_81_74	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+0007C	fn_81_7C	16	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+0008C	fn_81_8C	12	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+00098	fn_81_98	12	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+000A4	fn_81_A4	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+000AC	fn_81_AC	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+000B4	fn_81_B4	8	H	CAi::Listen	-	weak copy / template instance	no
+000BC	fn_81_BC	28	H	CAi::GetOrigin	-	weak copy / template instance	no
+000D8	fn_81_D8	44	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+00104	fn_81_104	36	T	RELExit	try1	REL runtime	yes
+00128	fn_81_128	32	T	RELMain	try1	REL runtime	yes
+00148	fn_81_148	48	B	SetFuncPtrs	-	upstream body (CTryclops)	no
+00178	fn_81_178	780	B	LoadTryclops	try1	upstream body (CTryclops)	yes
+00484	fn_81_484	64	H	rstl::optional_object<CModelData>::optional_object	-	weak copy / template instance	no
+004C4	fn_81_4C4	32	H	rstl::construct<CModelData>	-	weak copy / template instance	no
+004E4	fn_81_4E4	40	H	rstl::construction_policy<CModelData, 0>::construct	-	weak copy / template instance	no
+0050C	fn_81_50C	316	H	CModelData::CModelData	-	weak copy / template instance	no
+00648	fn_81_648	108	H	rstl::optional_object<TLockedToken<CModel>>::~optional_object	-	weak copy / template instance	no
+006B4	fn_81_6B4	84	H	TToken<CModel>::~TToken	-	weak copy / template instance	no
+00708	fn_81_708	100	H	rstl::auto_ptr<CAnimData>::~auto_ptr	-	weak copy / template instance	no
+0076C	fn_81_76C	96	H	rstl::optional_object<CModelData>::~optional_object	-	weak copy / template instance	no
+007CC	fn_81_7CC	112	H	SLdrTryclops::~SLdrTryclops	-	loader struct; inlined into LoadTryclops on host	no
+0083C	fn_81_83C	256	H	SLdrTryclops::SLdrTryclops	-	loader struct; inlined into LoadTryclops on host	no
+0093C	fn_81_93C	544	B	CTryclops::SetupCollisionManager	try1	upstream body (CTryclops)	yes
+00B5C	fn_81_B5C	56	H	rstl::vector<CJointCollisionDescription>::push_back_unsafe	-	weak copy / template instance	no
+00B94	fn_81_B94	32	H	rstl::construct<CJointCollisionDescription>	-	weak copy / template instance	no
+00BB4	fn_81_BB4	40	H	rstl::construction_policy<CJointCollisionDescription, 0>::construct	-	weak copy / template instance	no
+00BDC	fn_81_BDC	192	H	CJointCollisionDescription::CJointCollisionDescription	-	weak copy / template instance	no
+00C9C	fn_81_C9C	92	H	CJointCollisionDescription::~CJointCollisionDescription	-	weak copy / template instance	no
+00CF8	fn_81_CF8	80	H	rstl::basic_string<char>::~basic_string	-	weak copy / template instance	no
+00D48	fn_81_D48	132	H	rstl::vector<CJointCollisionDescription>::~vector	-	weak copy / template instance	no
+00DCC	fn_81_DCC	56	H	rstl::destroy<pointer_iterator<CJointCollisionDescription>>	-	weak copy / template instance	no
+00E04	fn_81_E04	96	H	rstl::destroy_impl<pointer_iterator<CJointCollisionDescription>>	-	weak copy / template instance	no
+00E64	fn_81_E64	92	B	CTryclops::GrabPlayer	try1	upstream body (CTryclops)	yes
+00EC0	fn_81_EC0	100	B	CTryclops::ReleasePlayer	try1	upstream body (CTryclops)	yes
+00F24	fn_81_F24	108	B	CTryclops::SetupStateMachine	try1	upstream body (CTryclops)	yes
+00F90	fn_81_F90	864	B	CTryclops::BallCloseToCollision	-	upstream body (CTryclops)	no
+012F0	fn_81_12F0	60	H	rstl::reserved_vector<TUniqueId, 1024>::~reserved_vector	-	weak copy / template instance	no
+0132C	fn_81_132C	72	H	CCollisionPrimitive::~CCollisionPrimitive	-	weak copy / template instance	no
+01374	fn_81_1374	576	B	CTryclops::Dizzy	try1	upstream body (CTryclops)	yes
+015B4	fn_81_15B4	92	H	CBCMeleeAttackCmd::~CBCMeleeAttackCmd	-	weak copy / template instance	no
+01610	fn_81_1610	72	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+01658	fn_81_1658	264	B	CTryclops::TargetPlayer	-	upstream body (CTryclops)	no
+01760	fn_81_1760	124	B	CTryclops::Patrol	try1	upstream body (CTryclops)	yes
+017DC	fn_81_17DC	328	B	CTryclops::ApplySeparationBehavior	-	upstream body (CTryclops)	no
+01924	fn_81_1924	88	B	CTryclops::HasRetreatPattern	try1	upstream body (CTryclops)	yes
+0197C	fn_81_197C	144	B	CTryclops::ShouldRetreat	-	upstream body (CTryclops)	no
+01A0C	fn_81_1A0C	12	B	CTryclops::IsDizzy	try1	upstream body (CTryclops)	yes
+01A18	fn_81_1A18	68	B	CTryclops::CoverBlown	-	upstream body (CTryclops)	no
+01A5C	fn_81_1A5C	4	B	CTryclops::FixedDelay	try1	upstream body (CTryclops)	yes
+01A60	fn_81_1A60	168	B	CTryclops::Cover	try1	upstream body (CTryclops)	yes
+01B08	fn_81_1B08	80	B	CTryclops::TargetPatrol	try1	upstream body (CTryclops)	yes
+01B58	fn_81_1B58	252	B	CTryclops::Death	try1	upstream body (CTryclops)	yes
+01C54	fn_81_1C54	52	B	CTryclops::GetDamageVulnerability	try1	upstream body (CTryclops)	yes
+01C88	fn_81_1C88	52	B	CTryclops::GetDamageVulnerability	try1	upstream body (CTryclops)	yes
+01CBC	fn_81_1CBC	308	B	CTryclops::DoUserAnimEvent	-	upstream body (CTryclops)	no
+01DF0	fn_81_1DF0	1028	B	CTryclops::TurnAround	-	upstream body (CTryclops)	no
+021F4	fn_81_21F4	324	B	CTryclops::SpotPlayer	-	upstream body (CTryclops)	no
+02338	fn_81_2338	344	B	CTryclops::ShootBomb	-	upstream body (CTryclops)	no
+02490	fn_81_2490	636	B	CTryclops::ShootPlayer	-	upstream body (CTryclops)	no
+0270C	fn_81_270C	356	B	CTryclops::GetUp	try1	upstream body (CTryclops)	yes
+02870	fn_81_2870	564	B	CTryclops::Attack	try1	upstream body (CTryclops)	yes
+02AA4	fn_81_2AA4	204	B	CTryclops::SetBombPosition	try1	upstream body (CTryclops)	yes
+02B70	fn_81_2B70	200	B	CTryclops::SetPlayerPosition	try1	upstream body (CTryclops)	yes
+02C38	fn_81_2C38	360	B	CTryclops::PathFindEx	try1	upstream body (CTryclops)	yes
+02DA0	fn_81_2DA0	112	B	CTryclops::Approach	try1	upstream body (CTryclops)	yes
+02E10	fn_81_2E10	32	B	CTryclops::Shuffle	-	upstream body (CTryclops)	no
+02E30	fn_81_2E30	260	B	CTryclops::PathFind	-	upstream body (CTryclops)	no
+02F34	fn_81_2F34	308	B	CTryclops::JumpBack	try1	upstream body (CTryclops)	yes
+03068	fn_81_3068	488	B	CTryclops::Crouch	try1	upstream body (CTryclops)	yes
+03250	fn_81_3250	232	B	CTryclops::CenterPlayer	try1	upstream body (CTryclops)	yes
+03338	fn_81_3338	308	B	CTryclops::AttractBomb	try1	upstream body (CTryclops)	yes
+0346C	fn_81_346C	404	B	CTryclops::AttractPlayer	-	upstream body (CTryclops)	no
+03600	fn_81_3600	160	B	CTryclops::SelectTarget	try1	upstream body (CTryclops)	yes
+036A0	fn_81_36A0	216	B	CTryclops::Suck	try1	upstream body (CTryclops)	yes
+03778	fn_81_3778	156	B	CTryclops::HearShot	try1	upstream body (CTryclops)	yes
+03814	fn_81_3814	132	B	CTryclops::InPosition	try1	upstream body (CTryclops)	yes
+03898	fn_81_3898	196	B	CTryclops::Inside	try1	upstream body (CTryclops)	yes
+0395C	fn_81_395C	188	B	CTryclops::TargetCaught	try1	upstream body (CTryclops)	yes
+03A18	fn_81_3A18	908	B	CTryclops::ObjectInVortexArea	-	upstream body (CTryclops)	no
+03DA4	fn_81_3DA4	184	B	CTryclops::InRange	try1	upstream body (CTryclops)	yes
+03E5C	fn_81_3E5C	60	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
+03E98	fn_81_3E98	480	B	CTryclops::InAttackPosition	-	upstream body (CTryclops)	no
+04078	fn_81_4078	156	B	CTryclops::TargetCover	try1	upstream body (CTryclops)	yes
+04114	fn_81_4114	340	B	CTryclops::Think	-	upstream body (CTryclops)	no
+04268	fn_81_4268	272	B	CTryclops::InDetectionRange	-	upstream body (CTryclops)	no
+04378	fn_81_4378	640	B	CTryclops::InMaxRange	-	upstream body (CTryclops)	no
+045F8	fn_81_45F8	260	B	CTryclops::AcceptScriptMsg	try1	upstream body (CTryclops)	yes
+046FC	fn_81_46FC	132	B	CTryclops::~CTryclops	try1	upstream body (CTryclops)	yes
+04780	fn_81_4780	484	H	CPatterned::~CPatterned	-	weak copy / template instance	no
+04964	fn_81_4964	148	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
+049F8	fn_81_49F8	528	B	CTryclops::CTryclops	try1	upstream body (CTryclops)	yes
+04C08	fn_81_4C08	92	H	CDamageVulnerability::CDamageVulnerability	-	weak copy / template instance	no
+04C64	fn_81_4C64	84	H	rstl::vector<CWeaponTypeVulnerability>::~vector	-	weak copy / template instance	no
+04CB8	fn_81_4CB8	304	H	rstl::vector<CWeaponTypeVulnerability>::vector	-	weak copy / template instance	no
+04DE8	fn_81_4DE8	60	H	CPathFindSearch::~CPathFindSearch	-	weak copy / template instance	no
+04E24	fn_81_4E24	88	H	rstl::single_ptr<CCollisionActorManager>::~single_ptr	-	weak copy / template instance	no
+04E7C	fn_81_4E7C	72	B	MakePowerBombVulnerability	try1	upstream body (CTryclops)	yes
+04EC4	fn_81_4EC4	192	H	rstl::vector<CJointCollisionDescription>::reserve	-	weak copy / template instance	no
+04F84	fn_81_4F84	104	H	rstl::uninitialized_copy<pointer_iterator<CJointCollisionDescription>, CJointCollisionDescription*>	-	weak copy / template instance	no
+04FEC	fn_81_4FEC	60	H	rstl::optional_object<CAABox>::optional_object	-	weak copy / template instance	no
+05028	fn_81_5028	1220	B	__sinit_CTryclops_cpp	-	upstream body (CTryclops)	no
+054EC	fn_81_54EC	196	T	_unresolved	-	REL runtime	no
+055B0	fn_81_55B0	36	T	_epilog	-	REL runtime	no
+055D4	fn_81_55D4	36	T	_prolog	-	REL runtime	no
+055F8	fn_81_55F8	76	T	ModuleDestructors	-	REL runtime	no
+05644	fn_81_5644	76	T	ModuleConstructors	-	REL runtime	no

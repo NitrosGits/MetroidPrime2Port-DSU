@@ -77,11 +77,13 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"FixedDelay", static_cast< CPatterned::StateMachine::StateFunc >(&CTryclops::FixedDelay)},
 };
 
+// @ fn_81_4E7C
 static CDamageVulnerability MakePowerBombVulnerability() {
   return CDamageVulnerability(CDamageVulnerability::ImmuneVulnerabilty(), &skPowerBombVulnerability,
                               1, CDamageVulnerability::kOF_Normal);
 }
 
+// @ fn_81_49F8
 CTryclops::CTryclops(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& mData, const CPatternedInfo& pInfo,
                      const CActorParameters& actParms, float suckForceMultiplier, float suckAngle,
@@ -111,8 +113,10 @@ CTryclops::CTryclops(TUniqueId uid, const rstl::string& name, const CEntityInfo&
   mLookAtDeathDir = false;
 }
 
+// @ fn_81_46FC
 CTryclops::~CTryclops() {}
 
+// @ fn_81_45F8
 void CTryclops::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -222,6 +226,7 @@ void CTryclops::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_81_4078
 void CTryclops::TargetCover(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -263,6 +268,7 @@ bool CTryclops::InAttackPosition(CStateManager& mgr, const CTriggerData&) const 
   return mTargetPlayerId != kInvalidUniqueId;
 }
 
+// @ fn_81_3DA4
 bool CTryclops::InRange(CStateManager& mgr, const CTriggerData&) const {
   if (mBombId != kInvalidUniqueId) {
     if (const CBomb* bomb = TCastToConstPtr< CBomb >(mgr.GetObjectById(mBombId))) {
@@ -304,12 +310,14 @@ bool CTryclops::ObjectInVortexArea(const CVector3f& pos, const CVector3f& center
   return false;
 }
 
+// @ fn_81_395C
 bool CTryclops::TargetCaught(const CVector3f& pos, float range) const {
   const CTransform4f xf = GetLctrTransform(rstl::string_l(kMouthLctr));
   const CVector3f delta = pos - xf.GetTranslation();
   return delta.MagSquared() <= range;
 }
 
+// @ fn_81_3898
 bool CTryclops::Inside(CStateManager& mgr, const CTriggerData& data) const {
   if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(mTargetPlayerId))) {
     const CTransform4f& xf = player->GetTransform();
@@ -321,6 +329,7 @@ bool CTryclops::Inside(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
+// @ fn_81_3814
 bool CTryclops::InPosition(CStateManager& mgr, const CTriggerData& data) const {
   if (mBombId != kInvalidUniqueId) {
     if (const CBomb* bomb = TCastToConstPtr< CBomb >(mgr.GetObjectById(mBombId))) {
@@ -330,6 +339,7 @@ bool CTryclops::InPosition(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
+// @ fn_81_3778
 bool CTryclops::HearShot(CStateManager& mgr, const CTriggerData&) const {
   mVulnerable = false;
   if (mBombId != kInvalidUniqueId) {
@@ -343,6 +353,7 @@ bool CTryclops::HearShot(CStateManager& mgr, const CTriggerData&) const {
   return true;
 }
 
+// @ fn_81_36A0
 void CTryclops::Suck(CStateManager& mgr, EStateMsg msg, float dt) {
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetPlayerId))) {
     switch (msg) {
@@ -361,6 +372,7 @@ void CTryclops::Suck(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_81_3600
 void CTryclops::SelectTarget(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Deactivate:
@@ -397,6 +409,7 @@ void CTryclops::AttractPlayer(CPlayer& player, CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_81_3338
 void CTryclops::AttractBomb(CStateManager& mgr, float dt) {
   if (CBomb* bomb = TCastToPtr< CBomb >(mgr.ObjectById(mBombId))) {
     const CTransform4f xf = GetLctrTransform(rstl::string_l(kMouthLctr));
@@ -406,6 +419,7 @@ void CTryclops::AttractBomb(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_81_3250
 void CTryclops::CenterPlayer(CPlayer& player, CStateManager& mgr, const CVector3f& pos, float dt) {
   const float ballRadius = player.GetMorphBall()->GetBallRadius();
   const CVector3f center = player.GetTranslation() + CVector3f(0.f, 0.f, ballRadius);
@@ -414,6 +428,7 @@ void CTryclops::CenterPlayer(CPlayer& player, CStateManager& mgr, const CVector3
   player.SetVelocityWR(velocity);
 }
 
+// @ fn_81_3068
 void CTryclops::Crouch(CStateManager& mgr, EStateMsg msg, float) {
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetPlayerId))) {
     switch (msg) {
@@ -445,6 +460,7 @@ void CTryclops::Crouch(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_81_2F34
 void CTryclops::JumpBack(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Deactivate:
@@ -485,6 +501,7 @@ void CTryclops::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
 
 void CTryclops::Shuffle(CStateManager& mgr, EStateMsg msg, float dt) { PathFind(mgr, msg, dt); }
 
+// @ fn_81_2DA0
 void CTryclops::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::PathFind(mgr, msg, dt);
   ApplySeparationBehavior(mgr);
@@ -498,6 +515,7 @@ void CTryclops::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_81_2C38
 void CTryclops::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::PathFind(mgr, msg, dt);
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetPlayerId))) {
@@ -522,6 +540,7 @@ void CTryclops::PathFindEx(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_81_2B70
 void CTryclops::SetPlayerPosition(CPlayer& player, CStateManager& mgr, const CVector3f&) {
   GrabPlayer(player, mgr);
   CTransform4f xf = GetLctrTransform(rstl::string_l(kMouthLctr)) * mPlayerRotation;
@@ -529,6 +548,7 @@ void CTryclops::SetPlayerPosition(CPlayer& player, CStateManager& mgr, const CVe
   player.SetTransform(xf);
 }
 
+// @ fn_81_2AA4
 void CTryclops::SetBombPosition(CStateManager& mgr) {
   if (CBomb* bomb = TCastToPtr< CBomb >(mgr.ObjectById(mBombId))) {
     CTransform4f xf = GetLctrTransform(rstl::string_l(kMouthLctr));
@@ -537,6 +557,7 @@ void CTryclops::SetBombPosition(CStateManager& mgr) {
   }
 }
 
+// @ fn_81_2870
 void CTryclops::Attack(CStateManager& mgr, EStateMsg msg, float) {
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetPlayerId))) {
     switch (msg) {
@@ -568,6 +589,7 @@ void CTryclops::Attack(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_81_270C
 void CTryclops::GetUp(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -728,6 +750,7 @@ void CTryclops::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node, E
   }
 }
 
+// @ fn_81_1C88
 const CDamageVulnerability* CTryclops::GetDamageVulnerability() const {
   if (mVulnerable) {
     return CPatterned::GetDamageVulnerability();
@@ -735,6 +758,7 @@ const CDamageVulnerability* CTryclops::GetDamageVulnerability() const {
   return &mPowerBombVulnerability;
 }
 
+// @ fn_81_1C54
 const CDamageVulnerability* CTryclops::GetDamageVulnerability(const CVector3f&, const CVector3f&,
                                                               const CDamageInfo&) const {
   if (mVulnerable) {
@@ -743,6 +767,7 @@ const CDamageVulnerability* CTryclops::GetDamageVulnerability(const CVector3f&, 
   return &mPowerBombVulnerability;
 }
 
+// @ fn_81_1B58
 void CTryclops::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   if (mAlive) {
     CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetPlayerId));
@@ -760,6 +785,7 @@ void CTryclops::Death(CStateManager& mgr, const CVector3f& direction, EScriptObj
   CPatterned::Death(mgr, direction, state);
 }
 
+// @ fn_81_1B08
 void CTryclops::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -772,6 +798,7 @@ void CTryclops::TargetPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_81_1A60
 void CTryclops::Cover(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -787,6 +814,7 @@ void CTryclops::Cover(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_81_1A5C
 void CTryclops::FixedDelay(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 bool CTryclops::CoverBlown(CStateManager&, const CTriggerData&) const {
@@ -798,6 +826,7 @@ bool CTryclops::CoverBlown(CStateManager&, const CTriggerData&) const {
   }
 }
 
+// @ fn_81_1A0C
 bool CTryclops::IsDizzy(CStateManager&, const CTriggerData&) const { return mDizzy; }
 
 bool CTryclops::ShouldRetreat(CStateManager& mgr, const CTriggerData&) const {
@@ -809,6 +838,7 @@ bool CTryclops::ShouldRetreat(CStateManager& mgr, const CTriggerData&) const {
   return false;
 }
 
+// @ fn_81_1924
 bool CTryclops::HasRetreatPattern(CStateManager& mgr, const CTriggerData&) const {
   return GetConnectedObject(mgr, kSS_Retreat, kSM_Follow) != kInvalidUniqueId;
 }
@@ -829,6 +859,7 @@ void CTryclops::ApplySeparationBehavior(CStateManager& mgr) {
   }
 }
 
+// @ fn_81_1760
 void CTryclops::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
   switch (msg) {
@@ -865,6 +896,7 @@ void CTryclops::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_81_1374
 void CTryclops::Dizzy(CStateManager& mgr, EStateMsg msg, float) {
   if (CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(mTargetPlayerId))) {
     switch (msg) {
@@ -933,6 +965,7 @@ bool CTryclops::BallCloseToCollision(const CPlayer& player, const CStateManager&
   return false;
 }
 
+// @ fn_81_F24
 void CTryclops::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -940,18 +973,21 @@ void CTryclops::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_81_EC0
 void CTryclops::ReleasePlayer(CPlayer& player, CStateManager& mgr) {
   mCollisionActorManager->SetActive(mgr, false);
   player.EnableLeaveMorphBall(true);
   player.AddMaterial(kMT_Solid, mgr);
 }
 
+// @ fn_81_E64
 void CTryclops::GrabPlayer(CPlayer& player, CStateManager& mgr) {
   mCollisionActorManager->SetActive(mgr, true);
   player.Stop();
   player.RemoveMaterial(kMT_Solid, mgr);
 }
 
+// @ fn_81_93C
 void CTryclops::SetupCollisionManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(1);
@@ -970,6 +1006,7 @@ void CTryclops::SetupCollisionManager(CStateManager& mgr) {
                                                         CMaterialList(kMT_CollisionActor)));
 }
 
+// @ fn_81_178
 CEntity* LoadTryclops(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrTryclops sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrTryclops.inc"
@@ -996,7 +1033,9 @@ static void SetFuncPtrs() {
   SetSTryclops_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_81_128
 void RELMain() { SetFuncPtrs(); }
 
+// @ fn_81_104
 void RELExit() { SetSTryclops_FuncPtrs(nullptr); }
 #endif

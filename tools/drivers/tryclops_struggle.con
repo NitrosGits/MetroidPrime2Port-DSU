@@ -1,0 +1,19 @@
+# Grab then hold struggle 1: Tryclops PathFindEx's Activate attaches the ball (CTryclops.cpp:509).
+@f600 tp 148 213.3 -13.0
+@f620 press x 40
+@f700 struggle 1
+@f760 obj u047b
+@f820 press l 30
+@f900 obj u047b
+@f960 tp 148 213.3 -13.0
+@f1000 press a 5
+@f1120 press l 60
+@f1200 status
+@f1320 obj u047b
+@f1380 press a 5
+@f1440 press l 60
+@f1500 status
+@f1700 obj u047b
+@f1900 status
+@f2000 struggle off
+@f2100 status

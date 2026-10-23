@@ -1,0 +1,23 @@
+# Tryclops forced arms (with tools/cov/specs/tryclops_force.py): Deactivate message, stale-target
+# state bodies, bomb-gone bodies, kill unattached / attached, GetUp after a throw.
+@f560 send u0455 Deactivate
+@f580 send u0455 Activate
+@f600 trigcall u047b InAttackPosition ; statecall u047b Attack 1 ; statecall u047b Suck 0 ; statecall u047b Crouch 0 ; statecall u047b PathFindEx 1 ; statecall u047b Dizzy 1 ; statecall u047b TurnAround 1 ; trigcall u047b Inside
+@f620 statecall u047b TargetCover 0
+@f630 trigcall u047b HearShot
+@f640 trigcall u047b InRange ; trigcall u047b InPosition ; trigcall u047b SpotPlayer
+@f650 statecall u047b JumpBack 0
+@f660 kill u0455
+@f700 tp 148 213.3 -13.0
+@f720 press x 40
+@f780 obj u047b
+@f840 obj u047b
+@f900 obj u047b
+@f1000 obj u047b
+@f1100 obj u047b ; status
+@f1200 statecall u047b GetUp 1 ; obj u047b
+@f1300 tp 148 213.3 -13.0
+@f1360 obj u047b ; status
+@f1400 obj u047b ; status
+@f1440 kill u047b
+@f1500 status
