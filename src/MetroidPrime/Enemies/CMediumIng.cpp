@@ -363,18 +363,22 @@ void CMediumIng::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_41_2328
 bool CMediumIng::ShouldBackUp(CStateManager& mgr, const CTriggerData& data) const {
   return (mgr.GetPlayer(0)->GetTranslation() - GetTranslation()).MagSquared() < 25.f;
 }
 
+// @ fn_41_2390
 bool CMediumIng::ShouldDoubleDash(CStateManager& mgr, const CTriggerData& data) const {
   return mData.mDoubleDashChance >= mgr.Random()->Range(0.f, 100.f);
 }
 
+// @ fn_41_23E4
 bool CMediumIng::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
   return mData.mTauntChance >= mgr.Random()->Range(0.f, 100.f);
 }
 
+// @ fn_41_2438
 bool CMediumIng::PatternOver(CStateManager& mgr, const CTriggerData& data) const {
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
@@ -399,12 +403,15 @@ bool CMediumIng::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) 
   return result;
 }
 
+// @ fn_41_2534
 bool CMediumIng::CanBeShot(const CStateManager& mgr, int type) { return !mC1; }
 
 void CMediumIng::IncrementFrustatedCounter(CStateManager& mgr, float dt) { ++mFrustratedCounter; }
 
+// @ fn_41_2558
 void CMediumIng::ResetFrustatedCounter(CStateManager& mgr, float dt) { mFrustratedCounter = 0; }
 
+// @ fn_41_2B74
 bool CMediumIng::StillLuredBySafeZone(CStateManager& mgr, const CTriggerData& data) const {
   return mSafeZoneId != kInvalidUniqueId;
 }
@@ -417,8 +424,10 @@ bool CMediumIng::IsLuredBySafeZone(CStateManager& mgr, const CTriggerData& data)
   return result;
 }
 
+// @ fn_41_2BCC
 bool CMediumIng::ShouldEvaporate(CStateManager& mgr, const CTriggerData& data) const { return mE1; }
 
+// @ fn_41_2BD8
 bool CMediumIng::ShouldDoSafezoneReaction(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!HasMist() && mSafeZoneReactionCount > 0) {
@@ -427,27 +436,33 @@ bool CMediumIng::ShouldDoSafezoneReaction(CStateManager& mgr, const CTriggerData
   return result;
 }
 
+// @ fn_41_2C2C
 bool CMediumIng::IsFrustated(CStateManager& mgr, const CTriggerData& data) const {
   return static_cast< float >(mFrustratedCounter) > data.GetFloat();
 }
 
+// @ fn_41_2E04
 bool CMediumIng::IsOffPath(CStateManager& mgr, const CTriggerData& data) const {
   return GetSearchPath()->OnPath(GetTranslation()) != CPathFindSearch::kR_Success;
 }
 
+// @ fn_41_2E50
 bool CMediumIng::HasJumpPoint(CStateManager& mgr, const CTriggerData& data) const {
   return mJumpPointId != kInvalidUniqueId;
 }
 
+// @ fn_41_3268
 bool CMediumIng::HasLineOfSight(CStateManager& mgr, const CTriggerData& data) const {
   return mLineOfSightTracker.HasLineOfSight();
 }
 
+// @ fn_41_4628
 void CMediumIng::TakeDamage(const CVector3f& direction, float magnitude) {
   mDamageCooldownTimer = skDamageHitTime;
   mDamageSinceMist += magnitude;
 }
 
+// @ fn_41_5BD8
 bool CMediumIng::ShouldGenerate(CStateManager& mgr, const CTriggerData& data) const {
   if (CPatterned::InDetectionRange(mgr, data) || mD4) {
     return true;
@@ -455,10 +470,12 @@ bool CMediumIng::ShouldGenerate(CStateManager& mgr, const CTriggerData& data) co
   return false;
 }
 
+// @ fn_41_5C24
 const CDamageVulnerability* CMediumIng::GetDamageVulnerability() const {
   return HasMist() ? &mData.mMistingVulnerability : CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_41_5C68
 bool CMediumIng::IsAggressive(CStateManager& mgr, const CTriggerData& data) const { return mC2; }
 
 bool CMediumIng::HasMist() const { return !(CMath::AbsF(mMistAmount - 0.f) < 0.00001f); }
@@ -480,6 +497,7 @@ bool CMediumIng::Leash(CStateManager& mgr, const CTriggerData& data) const {
   return false;
 }
 
+// @ fn_41_5D7C
 bool CMediumIng::PathShagged(CStateManager& mgr, const CTriggerData& data) const {
   if (CPatterned::PathShagged(mgr, data) || mC4) {
     return true;
@@ -487,10 +505,12 @@ bool CMediumIng::PathShagged(CStateManager& mgr, const CTriggerData& data) const
   return false;
 }
 
+// @ fn_41_1E28
 bool CMediumIng::IsPointInSafeZone(const CStateManager& mgr, const CVector3f& pos) const {
   return mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, pos);
 }
 
+// @ fn_41_1E4C
 bool CMediumIng::IsInSafeZone(const CStateManager& mgr) const {
   return mgr.GetSafeZoneManager()->IsObjectInSafeZone(*mgr.GetPlayer(0), mgr);
 }
@@ -1372,15 +1392,16 @@ void CMediumIng::SetRetreatDestination(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_41_2A74
 void CMediumIng::SetMeshPathDestination(CStateManager& mgr, float dt) {
-  static const CVector3f skLift(0.f, 0.f, 3.f); // 0x2AC0 rodata_54
-  mJumpPointId = kInvalidUniqueId;
+  static const CVector3f skLift(0.f, 0.f, 3.f); // guard 0x2A9C, 0x2AC0 rodata_54
+  mJumpPointId = kInvalidUniqueId;                // 0x2A98
   CVector3f dest = mgr.GetPlayer(0)->GetTranslation();
   if (GetSearchPath()->FindClosestReachablePoint(dest + skLift, dest) ==
       CPathFindSearch::kR_Success) { // 0x2B3C
-    SetDestPos(dest);
+    SetDestPos(dest); // 0x2B4C
   } else {
-    SetDestPos(GetTranslation());
+    SetDestPos(GetTranslation()); // 0x2B5C
   }
 }
 
