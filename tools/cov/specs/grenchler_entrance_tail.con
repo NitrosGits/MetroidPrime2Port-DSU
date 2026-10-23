@@ -1,0 +1,59 @@
+# 01_swamp_entrance (3dfd2249,01_swamp_entrance), layers 4 and 8: u05c4 u05be u0596 woken, missile hits
+# (PlayTailHitSound, contact damage 0x10758) and the forced (var) non-guardian DestroyTail arm via
+# var u0596 gren.tail 1.
+# Run: tools/cov/run.sh tools/cov/specs/grenchler.py <out> 3dfd2249,01_swamp_entrance --con <this> --fast --frames <past the last @f line>
+@f300 layer 4
+@f340 layer 8
+@f400 god 1; give missileLauncher 1; give missile 250; give chargeBeam 1
+@f440 send u05c4 Activate; send u05be Activate; send u0596 Activate
+@f460 tp 165 -81 27
+@f470 face 200
+@f600 shoot u05c4 missile; shoot u05be missile
+@f620 shoot u05c4 missile; shoot u05be missile
+@f640 shoot u05c4 missile; shoot u05be missile
+@f660 shoot u05c4 missile; shoot u05be missile
+@f680 shoot u05c4 missile; shoot u05be missile
+@f700 shoot u05c4 missile; shoot u05be missile
+@f720 shoot u05c4 missile; shoot u05be missile
+@f740 shoot u05c4 missile; shoot u05be missile
+@f760 shoot u05c4 missile; shoot u05be missile
+@f780 shoot u05c4 missile; shoot u05be missile
+@f800 shoot u05c4 missile; shoot u05be missile
+@f820 shoot u05c4 missile; shoot u05be missile
+@f840 shoot u05c4 missile; shoot u05be missile
+@f860 shoot u05c4 missile; shoot u05be missile
+@f880 shoot u05c4 missile; shoot u05be missile
+@f900 shoot u05c4 missile; shoot u05be missile
+@f920 shoot u05c4 missile; shoot u05be missile
+@f940 shoot u05c4 missile; shoot u05be missile
+@f960 shoot u05c4 missile; shoot u05be missile
+@f980 shoot u05c4 missile; shoot u05be missile
+@f1000 shoot u05c4 missile; shoot u05be missile
+@f1020 shoot u05c4 missile; shoot u05be missile
+@f1040 shoot u05c4 missile; shoot u05be missile
+@f1060 shoot u05c4 missile; shoot u05be missile
+@f1080 shoot u05c4 missile; shoot u05be missile
+@f1100 shoot u05c4 missile; shoot u05be missile
+@f1120 shoot u05c4 missile; shoot u05be missile
+@f1140 shoot u05c4 missile; shoot u05be missile
+@f1160 shoot u05c4 missile; shoot u05be missile
+@f1180 shoot u05c4 missile; shoot u05be missile
+@f1300 var u0596 gren.tail 1
+@f600 obj u05c4; obj u05be; obj u0596; objs Tail
+@f650 obj u05c4; obj u05be; obj u0596; objs Tail
+@f700 obj u05c4; obj u05be; obj u0596; objs Tail
+@f750 obj u05c4; obj u05be; obj u0596; objs Tail
+@f800 obj u05c4; obj u05be; obj u0596; objs Tail
+@f850 obj u05c4; obj u05be; obj u0596; objs Tail
+@f900 obj u05c4; obj u05be; obj u0596; objs Tail
+@f950 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1000 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1050 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1100 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1150 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1200 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1250 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1300 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1350 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1400 obj u05c4; obj u05be; obj u0596; objs Tail
+@f1450 obj u05c4; obj u05be; obj u0596; objs Tail

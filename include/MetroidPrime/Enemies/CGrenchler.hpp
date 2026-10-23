@@ -39,6 +39,11 @@ class CWeaponDescription;
 // Guessed class: a tailed, bipedal-water enemy (also used as a grapple guardian).
 class CGrenchler : public CPatterned {
 public:
+#ifdef TARGET_PC
+  // The console's `var <id> gren.<field> [value]` (end of CGrenchler.cpp): the guardian's scan
+  // flag and crystal/tail fields, so the grapple chain runs without a full scan-and-shoot fight.
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+#endif
   // Guessed names; kind of attack queued in the attack pattern.
   enum EAttackType { kAT_Burst, kAT_Beam, kAT_Bite };
 

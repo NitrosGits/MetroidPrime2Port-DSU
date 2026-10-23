@@ -33,35 +33,35 @@ offset	fn	size	class	name	slice	what	marker
 019F0	fn_27_19F0	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
 01A2C	fn_27_1A2C	3C	B	CGrenchler::OnScanStateChange	-	upstream body (CGrenchler)	no
 01A68	fn_27_1A68	B4	B	CGrenchler::GetContactDamage	-	upstream body (CGrenchler)	no
-01B1C	fn_27_1B1C	58	B	CGrenchler::EndMorphballCapture	-	upstream body (CGrenchler)	no
+01B1C	fn_27_1B1C	58	B	CGrenchler::EndMorphballCapture	-	upstream body (CGrenchler)	yes
 01B74	fn_27_1B74	5C	B	CGrenchler::BeginMorphballCapture	-	upstream body (CGrenchler)	no
-01BD0	fn_27_1BD0	114	B	CGrenchler::UpdateCapturedPlayer	-	upstream body (CGrenchler) 67.1%	no
-01CE4	fn_27_1CE4	190	B	CGrenchler::MorphballBite	-	upstream body (CGrenchler)	no
+01BD0	fn_27_1BD0	114	B	CGrenchler::UpdateCapturedPlayer	-	upstream body (CGrenchler) 67.1%	yes
+01CE4	fn_27_1CE4	190	B	CGrenchler::MorphballBite	-	upstream body (CGrenchler)	yes
 01E74	fn_27_1E74	5C	H	CBCMeleeAttackCmd::~CBCMeleeAttackCmd	-	weak copy / template instance	no
 01ED0	fn_27_1ED0	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
 01F18	fn_27_1F18	2C	B	CGrenchler::GrapplingMorphball	-	upstream body (CGrenchler)	no
-01F44	fn_27_1F44	20	B	CGrenchler::Stuck	-	upstream body (CGrenchler)	no
-01F64	fn_27_1F64	1C	B	CGrenchler::PlayerStuck	-	upstream body (CGrenchler)	no
-01F80	fn_27_1F80	2C	B	CGrenchler::CrystalDamaged	-	upstream body (CGrenchler) 90.0%	no
+01F44	fn_27_1F44	20	B	CGrenchler::Stuck	-	upstream body (CGrenchler)	yes
+01F64	fn_27_1F64	1C	B	CGrenchler::PlayerStuck	-	upstream body (CGrenchler)	yes
+01F80	fn_27_1F80	2C	B	CGrenchler::CrystalDamaged	-	upstream body (CGrenchler) 90.0%	yes
 01FAC	fn_27_1FAC	D8	B	CGrenchler::UpdateDamageFlash	-	upstream body (CGrenchler) 84.7%	no
-02084	fn_27_2084	1C	B	CGrenchler::Frustrated	-	upstream body (CGrenchler)	no
+02084	fn_27_2084	1C	B	CGrenchler::Frustrated	-	upstream body (CGrenchler)	yes
 020A0	fn_27_20A0	8C	B	CGrenchler::TakeDamage	-	upstream body (CGrenchler)	no
-0212C	fn_27_212C	18	B	CGrenchler::TookKnockback	-	upstream body (CGrenchler)	no
+0212C	fn_27_212C	18	B	CGrenchler::TookKnockback	-	upstream body (CGrenchler)	yes
 02144	fn_27_2144	44	B	CGrenchler::StruggleOver	-	upstream body (CGrenchler)	no
 02188	fn_27_2188	6C	B	CGrenchler::StopStruggling	-	upstream body (CGrenchler)	no
 021F4	fn_27_21F4	A4	B	CGrenchler::GrappleAbort	gren1	upstream body (CGrenchler)	yes
 02298	fn_27_2298	A8	B	CGrenchler::GrappleBreak	-	upstream body (CGrenchler)	no
-02340	fn_27_2340	28	B	CGrenchler::IncrementAttached	-	upstream body (CGrenchler)	no
-02368	fn_27_2368	28	B	CGrenchler::DecrementAttached	-	upstream body (CGrenchler)	no
+02340	fn_27_2340	28	B	CGrenchler::IncrementAttached	-	upstream body (CGrenchler)	yes
+02368	fn_27_2368	28	B	CGrenchler::DecrementAttached	-	upstream body (CGrenchler)	yes
 02390	fn_27_2390	118	B	CGrenchler::SendAttachedMessage	-	upstream body (CGrenchler)	no
 024A8	fn_27_24A8	5D0	B	CGrenchler::GrapplePull	-	upstream body (CGrenchler) 95.3%	no
 02A78	fn_27_2A78	23C	B	CGrenchler::PullPlayer	-	upstream body (CGrenchler) 99.5%	no
 02CB4	fn_27_2CB4	12C	B	CGrenchler::GrappleStruggle	-	upstream body (CGrenchler) 100.0%	no
-02DE0	fn_27_2DE0	14	B	CGrenchler::BeamHitSticky	-	upstream body (CGrenchler)	no
-02DF4	fn_27_2DF4	14	B	CGrenchler::BeamHitPlayer	-	upstream body (CGrenchler)	no
+02DE0	fn_27_2DE0	14	B	CGrenchler::BeamHitSticky	-	upstream body (CGrenchler)	yes
+02DF4	fn_27_2DF4	14	B	CGrenchler::BeamHitPlayer	-	upstream body (CGrenchler)	yes
 02E08	fn_27_2E08	114	B	CGrenchler::BeamBadAngle	-	upstream body (CGrenchler)	no
 02F1C	fn_27_2F1C	30	B	CGrenchler::BeamHitWall	-	upstream body (CGrenchler)	no
-02F4C	fn_27_2F4C	60	B	CGrenchler::RemoveExplosion	-	upstream body (CGrenchler)	no
+02F4C	fn_27_2F4C	60	B	CGrenchler::RemoveExplosion	-	upstream body (CGrenchler)	yes
 02FAC	fn_27_2FAC	9C	B	CGrenchler::UpdateExplosionHeight	-	upstream body (CGrenchler)	no
 03048	fn_27_3048	180	B	CGrenchler::SpawnBeamHitEffect	-	upstream body (CGrenchler) 100.0%	no
 031C8	fn_27_31C8	58	H	CEntityInfo::~CEntityInfo	-	weak copy / template instance	no
@@ -76,17 +76,17 @@ offset	fn	size	class	name	slice	what	marker
 03C1C	fn_27_3C1C	1FC	B	CGrenchler::IsBeamBlockedByHint	-	upstream body (CGrenchler) 87.0%	no
 03E18	fn_27_3E18	D4	H	CLineSeg::CLineSeg	-	weak copy / template instance	no
 03EEC	fn_27_3EEC	114	B	CGrenchler::IsNearAvoidHint	-	upstream body (CGrenchler)	no
-04000	fn_27_4000	8	B	CGrenchler::CanGrapple	-	upstream body (CGrenchler)	no
-04008	fn_27_4008	48	B	CGrenchler::PlayTailHitSound	-	upstream body (CGrenchler)	no
-04050	fn_27_4050	48	B	CGrenchler::PlayTailDestroyedSound	-	upstream body (CGrenchler)	no
-04098	fn_27_4098	A8	B	CGrenchler::ShakeOff	-	upstream body (CGrenchler)	no
+04000	fn_27_4000	8	B	CGrenchler::CanGrapple	-	upstream body (CGrenchler)	yes
+04008	fn_27_4008	48	B	CGrenchler::PlayTailHitSound	-	upstream body (CGrenchler)	yes
+04050	fn_27_4050	48	B	CGrenchler::PlayTailDestroyedSound	-	upstream body (CGrenchler)	yes
+04098	fn_27_4098	A8	B	CGrenchler::ShakeOff	-	upstream body (CGrenchler)	yes
 04140	fn_27_4140	5C	H	CBCTauntCmd::~CBCTauntCmd	-	weak copy / template instance	no
 0419C	fn_27_419C	18	B	CGrenchler::TailIntact	-	upstream body (CGrenchler)	no
 041B4	fn_27_41B4	A8	B	CGrenchler::EmergedFromWater	-	upstream body (CGrenchler)	no
 0425C	fn_27_425C	250	B	CGrenchler::FollowAttackPattern	-	upstream body (CGrenchler) 96.7%	no
-044AC	fn_27_44AC	1C	B	CGrenchler::AttackPatternOver	-	upstream body (CGrenchler)	no
+044AC	fn_27_44AC	1C	B	CGrenchler::AttackPatternOver	-	upstream body (CGrenchler)	yes
 044C8	fn_27_44C8	58	B	CGrenchler::HasAttackPattern	gren1	upstream body (CGrenchler)	yes
-04520	fn_27_4520	18	B	CGrenchler::PauseOver	-	upstream body (CGrenchler)	no
+04520	fn_27_4520	18	B	CGrenchler::PauseOver	-	upstream body (CGrenchler)	yes
 04538	fn_27_4538	9C	B	CGrenchler::PauseBetweenBeams	gren1	upstream body (CGrenchler)	yes
 045D4	fn_27_45D4	D4	B	CGrenchler::PauseBetweenBites	-	upstream body (CGrenchler)	no
 046A8	fn_27_46A8	100	B	CGrenchler::TurnToFaceTarget	gren1	upstream body (CGrenchler)	yes
@@ -96,11 +96,11 @@ offset	fn	size	class	name	slice	what	marker
 048C8	fn_27_48C8	B0	B	CGrenchler::JustHit	-	upstream body (CGrenchler) 90.7%	no
 04978	fn_27_4978	4C	B	CGrenchler::TookDamage	-	upstream body (CGrenchler)	no
 049C4	fn_27_49C4	B4	B	CGrenchler::ChargeFailed	gren1	upstream body (CGrenchler)	yes
-04A78	fn_27_4A78	2C	B	CGrenchler::IsNearPath	-	upstream body (CGrenchler)	no
+04A78	fn_27_4A78	2C	B	CGrenchler::IsNearPath	-	upstream body (CGrenchler)	yes
 04AA4	fn_27_4AA4	32C	B	CGrenchler::FindJumpTarget	-	upstream body (CGrenchler) 93.6%	no
 04DD0	fn_27_4DD0	A8	B	CGrenchler::SReflectInfo::Reset	gren1	upstream body (CGrenchler)	yes
-04E78	fn_27_4E78	24	B	CGrenchler::PickJumpTarget	-	upstream body (CGrenchler)	no
-04E9C	fn_27_4E9C	C	B	CGrenchler::HasValidJumpTarget	-	upstream body (CGrenchler)	no
+04E78	fn_27_4E78	24	B	CGrenchler::PickJumpTarget	-	upstream body (CGrenchler)	yes
+04E9C	fn_27_4E9C	C	B	CGrenchler::HasValidJumpTarget	-	upstream body (CGrenchler)	yes
 04EA8	fn_27_4EA8	230	B	CGrenchler::GetJumpCost	-	upstream body (CGrenchler) 80.9%	no
 050D8	fn_27_50D8	54	B	CGrenchler::SetLastActionAsBeam	-	upstream body (CGrenchler)	no
 0512C	fn_27_512C	6C	B	CGrenchler::PushAttackHistory	gren1	upstream body (CGrenchler)	yes
@@ -111,11 +111,11 @@ offset	fn	size	class	name	slice	what	marker
 05640	fn_27_5640	214	B	CGrenchler::GetManeuverTarget	-	upstream body (CGrenchler) 99.1%	no
 05854	fn_27_5854	B8	B	CGrenchler::GetManeuverRangeWeight	gren1	upstream body (CGrenchler)	yes
 0590C	fn_27_590C	68	B	CGrenchler::ClearLineOfFire	-	upstream body (CGrenchler)	no
-05974	fn_27_5974	164	B	CGrenchler::IsPointVisibleToPlayer	-	upstream body (CGrenchler) 99.9%	no
+05974	fn_27_5974	164	B	CGrenchler::IsPointVisibleToPlayer	-	upstream body (CGrenchler) 99.9%	yes
 05AD8	fn_27_5AD8	268	B	CGrenchler::HasClearShotAtPlayer	-	upstream body (CGrenchler)	no
 05D40	fn_27_5D40	9C	B	CGrenchler::CanBurstAttack	-	upstream body (CGrenchler)	no
 05DDC	fn_27_5DDC	164	B	CGrenchler::CanBeamAttack	-	upstream body (CGrenchler)	no
-05F40	fn_27_5F40	68	B	CGrenchler::CanBite	-	upstream body (CGrenchler)	no
+05F40	fn_27_5F40	68	B	CGrenchler::CanBite	-	upstream body (CGrenchler)	yes
 05FA8	fn_27_5FA8	110	B	CGrenchler::CanCharge	-	upstream body (CGrenchler)	no
 060B8	fn_27_60B8	5C	B	CGrenchler::GetTeamRole	-	upstream body (CGrenchler)	no
 06114	fn_27_6114	A0	B	CGrenchler::QuitTeam	-	upstream body (CGrenchler)	no
@@ -123,36 +123,36 @@ offset	fn	size	class	name	slice	what	marker
 06240	fn_27_6240	34	B	CGrenchler::GetTeamAiMgr	-	upstream body (CGrenchler)	no
 06274	fn_27_6274	34	B	CGrenchler::GetTeamAiMgr	-	upstream body (CGrenchler)	no
 062A8	fn_27_62A8	6C	B	CGrenchler::PlayerSubmerged	gren1	upstream body (CGrenchler)	yes
-06314	fn_27_6314	C	B	CGrenchler::ReturnToPatrol	-	upstream body (CGrenchler)	no
+06314	fn_27_6314	C	B	CGrenchler::ReturnToPatrol	-	upstream body (CGrenchler)	yes
 06320	fn_27_6320	38	B	CGrenchler::GetFadeOnDeathTime	gren1	upstream body (CGrenchler)	yes
 06358	fn_27_6358	2D0	B	CGrenchler::IssueDeathBodyCommand	-	upstream body (CGrenchler) 85.3%	no
 06628	fn_27_6628	5C	H	CBCKnockDownCmd::~CBCKnockDownCmd	-	weak copy / template instance	no
 06684	fn_27_6684	5C	H	CBCHurledCmd::~CBCHurledCmd	-	weak copy / template instance	no
-066E0	fn_27_66E0	28	B	CGrenchler::TurnToPlayer	-	upstream body (CGrenchler)	no
+066E0	fn_27_66E0	28	B	CGrenchler::TurnToPlayer	-	upstream body (CGrenchler)	yes
 06708	fn_27_6708	B8	B	CGrenchler::ChargeFinished	gren1	upstream body (CGrenchler)	yes
 067C0	fn_27_67C0	310	B	CGrenchler::Charge	-	upstream body (CGrenchler) 95.6%	no
-06AD0	fn_27_6AD0	A8	B	CGrenchler::UpdateChargeSteering	-	upstream body (CGrenchler)	no
-06B78	fn_27_6B78	40	B	CGrenchler::ResetSteering	-	upstream body (CGrenchler)	no
+06AD0	fn_27_6AD0	A8	B	CGrenchler::UpdateChargeSteering	-	upstream body (CGrenchler)	yes
+06B78	fn_27_6B78	40	B	CGrenchler::ResetSteering	-	upstream body (CGrenchler)	yes
 06BB8	fn_27_6BB8	EC	B	CGrenchler::ApplyBiteDamage	gren1	upstream body (CGrenchler)	yes
 06CA4	fn_27_6CA4	12C	B	CGrenchler::ApplyBurstDamage	-	upstream body (CGrenchler)	no
 06DD0	fn_27_6DD0	188	B	CGrenchler::DestroyGrappleBeam	-	upstream body (CGrenchler)	no
 06F58	fn_27_6F58	78	H	rstl::auto_ptr<CElementGen>::~auto_ptr	-	weak copy / template instance	no
-06FD0	fn_27_6FD0	384	B	CGrenchler::CreateGrappleBeam	-	upstream body (CGrenchler) 100.0%	no
+06FD0	fn_27_6FD0	384	B	CGrenchler::CreateGrappleBeam	-	upstream body (CGrenchler) 100.0%	yes
 07354	fn_27_7354	54	H	TToken<CWeaponDescription>::~TToken	-	weak copy / template instance	no
 073A8	fn_27_73A8	B4	B	CGrenchler::StopElectricBeam	-	upstream body (CGrenchler)	no
 0745C	fn_27_745C	290	B	CGrenchler::StartElectricBeam	-	upstream body (CGrenchler) 72.0%	no
 076EC	fn_27_76EC	58	H	CElectricBeamInfo::~CElectricBeamInfo	-	weak copy / template instance	no
 07744	fn_27_7744	54	H	TToken<CElectricDescription>::~TToken	-	weak copy / template instance	no
 07798	fn_27_7798	50	B	CGrenchler::UpdateBeamTarget	-	upstream body (CGrenchler)	no
-077E8	fn_27_77E8	60	B	CGrenchler::RemoveVisorEffect	-	upstream body (CGrenchler)	no
+077E8	fn_27_77E8	60	B	CGrenchler::RemoveVisorEffect	-	upstream body (CGrenchler)	yes
 07848	fn_27_7848	188	B	CGrenchler::CreateVisorEffect	-	upstream body (CGrenchler) 100.0%	no
 079D0	fn_27_79D0	68	H	rstl::optional_object<TToken<CElectricDescription>>::~optional_object	-	weak copy / template instance	no
 07A38	fn_27_7A38	16C	B	CGrenchler::CreateDamageVisorEffect	-	upstream body (CGrenchler) 100.0%	no
 07BA4	fn_27_7BA4	1D0	B	CGrenchler::CreateGrappleHitVisorEffect	-	upstream body (CGrenchler); TARGET_PC fix at 0x7C20 96.2%	no
 07D74	fn_27_7D74	144	B	CGrenchler::ReleasePlayer	-	upstream body (CGrenchler)	no
-07EB8	fn_27_7EB8	9C	B	CGrenchler::GrabPlayer	-	upstream body (CGrenchler)	no
+07EB8	fn_27_7EB8	9C	B	CGrenchler::GrabPlayer	-	upstream body (CGrenchler)	yes
 07F54	fn_27_7F54	390	B	CGrenchler::DoUserAnimEvent	-	upstream body (CGrenchler)	no
-082E4	fn_27_82E4	94	B	CGrenchler::Render	-	upstream body (CGrenchler)	no
+082E4	fn_27_82E4	94	B	CGrenchler::Render	-	upstream body (CGrenchler)	yes
 08378	fn_27_8378	108	B	CGrenchler::AddToRenderer	-	upstream body (CGrenchler)	no
 08480	fn_27_8480	8	H	CElementGen::GetParticleEmission	-	weak copy / template instance	no
 08488	fn_27_8488	13C	B	CGrenchler::BurstAttack	-	upstream body (CGrenchler)	no
@@ -170,8 +170,8 @@ offset	fn	size	class	name	slice	what	marker
 08E4C	fn_27_8E4C	28	H	rstl::construction_policy<CJointCollisionDescription, 0>::construct	-	weak copy / template instance	no
 08E74	fn_27_8E74	C0	H	CJointCollisionDescription::CJointCollisionDescription	-	weak copy / template instance	no
 08F34	fn_27_8F34	5C	H	CJointCollisionDescription::~CJointCollisionDescription	-	weak copy / template instance	no
-08F90	fn_27_8F90	C	B	CGrenchler::Alerted	-	upstream body (CGrenchler)	no
-08F9C	fn_27_8F9C	18	B	CGrenchler::Attacked	-	upstream body (CGrenchler)	no
+08F90	fn_27_8F90	C	B	CGrenchler::Alerted	-	upstream body (CGrenchler)	yes
+08F9C	fn_27_8F9C	18	B	CGrenchler::Attacked	-	upstream body (CGrenchler)	yes
 08FB4	fn_27_8FB4	C	B	CGrenchler::JumpLanded	-	upstream body (CGrenchler)	no
 08FC0	fn_27_8FC0	58	B	CGrenchler::RestoreDefaultJointVulnerability	-	upstream body (CGrenchler)	no
 09018	fn_27_9018	270	B	CGrenchler::Jump	-	upstream body (CGrenchler); TARGET_PC fix at 0x9080 100.0%	no
@@ -184,12 +184,12 @@ offset	fn	size	class	name	slice	what	marker
 09610	fn_27_9610	D0	B	CGrenchler::NotifyFalling	-	upstream body (CGrenchler)	no
 096E0	fn_27_96E0	160	B	CGrenchler::LaunchToJumpTarget	-	upstream body (CGrenchler) 93.0%	no
 09840	fn_27_9840	3C	B	CGrenchler::SetGroundCollision	-	upstream body (CGrenchler)	no
-0987C	fn_27_987C	48	B	CGrenchler::EnableGroundCollision	-	upstream body (CGrenchler) 77.2%	no
+0987C	fn_27_987C	48	B	CGrenchler::EnableGroundCollision	-	upstream body (CGrenchler) 77.2%	yes
 098C4	fn_27_98C4	48	B	CGrenchler::DisableGroundCollision	gren1	upstream body (CGrenchler)	yes
 0990C	fn_27_990C	1C8	B	CGrenchler::SetupBodyVulnerabilities	-	upstream body (CGrenchler)	no
 09AD4	fn_27_9AD4	A4	B	CGrenchler::ResetBodyVulnerabilities	-	upstream body (CGrenchler)	no
 09B78	fn_27_9B78	B0	B	CGrenchler::TooMuchTurning	-	upstream body (CGrenchler)	no
-09C28	fn_27_9C28	2C	B	CGrenchler::IsGuardianCharging	-	upstream body (CGrenchler)	no
+09C28	fn_27_9C28	2C	B	CGrenchler::IsGuardianCharging	-	upstream body (CGrenchler)	yes
 09C54	fn_27_9C54	34C	B	CGrenchler::Turn	-	upstream body (CGrenchler)	no
 09FA0	fn_27_9FA0	8C	B	CGrenchler::AbortCharge	-	upstream body (CGrenchler)	no
 0A02C	fn_27_A02C	E8	B	CGrenchler::GrappleSlideBonk	-	upstream body (CGrenchler)	no
@@ -205,13 +205,13 @@ offset	fn	size	class	name	slice	what	marker
 0A7C4	fn_27_A7C4	12C	B	CGrenchler::ShouldBackstep	-	upstream body (CGrenchler)	no
 0A8F0	fn_27_A8F0	48	B	CGrenchler::ShouldSlide	-	upstream body (CGrenchler)	no
 0A938	fn_27_A938	34	B	CGrenchler::ShouldTurn	-	upstream body (CGrenchler)	no
-0A96C	fn_27_A96C	28	B	CGrenchler::FacingPlayer	-	upstream body (CGrenchler)	no
-0A994	fn_27_A994	CC	B	CGrenchler::IsPlayerLookingAtMe	-	upstream body (CGrenchler)	no
-0AA60	fn_27_AA60	14	B	CGrenchler::ForceGrapple	-	upstream body (CGrenchler)	no
-0AA74	fn_27_AA74	54	B	CGrenchler::IsFacingTarget	-	upstream body (CGrenchler)	no
+0A96C	fn_27_A96C	28	B	CGrenchler::FacingPlayer	-	upstream body (CGrenchler)	yes
+0A994	fn_27_A994	CC	B	CGrenchler::IsPlayerLookingAtMe	-	upstream body (CGrenchler)	yes
+0AA60	fn_27_AA60	14	B	CGrenchler::ForceGrapple	-	upstream body (CGrenchler)	yes
+0AA74	fn_27_AA74	54	B	CGrenchler::IsFacingTarget	-	upstream body (CGrenchler)	yes
 0AAC8	fn_27_AAC8	CC	B	CGrenchler::IsFacing	gren1	upstream body (CGrenchler)	yes
-0AB94	fn_27_AB94	C8	B	CGrenchler::GetAimPosition	-	upstream body (CGrenchler)	no
-0AC5C	fn_27_AC5C	40	B	CGrenchler::GetOrbitPosition	-	upstream body (CGrenchler)	no
+0AB94	fn_27_AB94	C8	B	CGrenchler::GetAimPosition	-	upstream body (CGrenchler)	yes
+0AC5C	fn_27_AC5C	40	B	CGrenchler::GetOrbitPosition	-	upstream body (CGrenchler)	yes
 0AC9C	fn_27_AC9C	54	B	CGrenchler::GetScanObjectIndicatorPosition	-	upstream body (CGrenchler)	no
 0ACF0	fn_27_ACF0	1BC	B	CGrenchler::GrappleBite	-	upstream body (CGrenchler)	no
 0AEAC	fn_27_AEAC	13C	B	CGrenchler::BiteAttack	gren1	upstream body (CGrenchler)	yes
@@ -225,47 +225,47 @@ offset	fn	size	class	name	slice	what	marker
 0B800	fn_27_B800	24	B	CGrenchler::IsDeeplySubmerged	-	upstream body (CGrenchler)	no
 0B824	fn_27_B824	CC	B	CGrenchler::IsDeeplySubmerged	-	upstream body (CGrenchler)	no
 0B8F0	fn_27_B8F0	C0	B	CGrenchler::GetWaterSurfaceHeight	-	upstream body (CGrenchler)	no
-0B9B0	fn_27_B9B0	58	B	CGrenchler::PreRenderBoneTracking	-	upstream body (CGrenchler) 84.6%	no
+0B9B0	fn_27_B9B0	58	B	CGrenchler::PreRenderBoneTracking	-	upstream body (CGrenchler) 84.6%	yes
 0BA08	fn_27_BA08	178	B	CGrenchler::GetBlendedLocatorPosition	-	upstream body (CGrenchler)	no
 0BB80	fn_27_BB80	3D4	B	CGrenchler::PreRender	-	upstream body (CGrenchler) 100.0%	no
 0BF54	fn_27_BF54	90	B	CGrenchler::ThinkBoneTracking	gren1	upstream body (CGrenchler)	yes
-0BFE4	fn_27_BFE4	C	B	CGrenchler::ShouldTrackPlayer	-	upstream body (CGrenchler)	no
+0BFE4	fn_27_BFE4	C	B	CGrenchler::ShouldTrackPlayer	-	upstream body (CGrenchler)	yes
 0BFF0	fn_27_BFF0	FC	B	CGrenchler::GetPlayerTargetPosition	-	upstream body (CGrenchler)	no
 0C0EC	fn_27_C0EC	148	B	CGrenchler::GetHornTargetPosition	-	upstream body (CGrenchler)	no
 0C234	fn_27_C234	B8	B	CGrenchler::GetPlayerBeamTargetPosition	gren1	upstream body (CGrenchler)	yes
 0C2EC	fn_27_C2EC	E18	B	CGrenchler::UpdateEffects	-	upstream body (CGrenchler) 96.8%	no
 0D104	fn_27_D104	8	H	CElementGen::GetParticleCount	-	weak copy / template instance	no
-0D10C	fn_27_D10C	4	B	CGrenchler::FluidFXThink	-	upstream body (CGrenchler)	no
+0D10C	fn_27_D10C	4	B	CGrenchler::FluidFXThink	-	upstream body (CGrenchler)	yes
 0D110	fn_27_D110	68	B	CGrenchler::IsWadingInWater	-	upstream body (CGrenchler)	no
 0D178	fn_27_D178	94	B	CGrenchler::UpdateFacingDirection	-	upstream body (CGrenchler)	no
-0D20C	fn_27_D20C	C4	B	CGrenchler::UpdateGuardianBlend	-	upstream body (CGrenchler) 97.8%	no
+0D20C	fn_27_D20C	C4	B	CGrenchler::UpdateGuardianBlend	-	upstream body (CGrenchler) 97.8%	yes
 0D2D0	fn_27_D2D0	F4	B	CGrenchler::UpdateTeammateScan	gren1	upstream body (CGrenchler)	yes
 0D3C4	fn_27_D3C4	41C	B	CGrenchler::UpdateMovement	-	upstream body (CGrenchler); TARGET_PC fix at 0xD71C 86.0%	no
 0D7E0	fn_27_D7E0	238	B	CGrenchler::Think	-	upstream body (CGrenchler)	no
 0DA18	fn_27_DA18	60	B	CGrenchler::PreThink	gren1	upstream body (CGrenchler)	yes
 0DA78	fn_27_DA78	710	B	CGrenchler::Pursue	-	upstream body (CGrenchler); TARGET_PC fix at 0xDC08 94.7%	no
 0E188	fn_27_E188	8	B	CGrenchler::CanBeUnPossessed	-	upstream body (CGrenchler)	no
-0E190	fn_27_E190	14	B	CGrenchler::PlayYellowHitReact	-	upstream body (CGrenchler)	no
-0E1A4	fn_27_E1A4	11C	B	CGrenchler::YellowHitReact	-	upstream body (CGrenchler)	no
+0E190	fn_27_E190	14	B	CGrenchler::PlayYellowHitReact	-	upstream body (CGrenchler)	yes
+0E1A4	fn_27_E1A4	11C	B	CGrenchler::YellowHitReact	-	upstream body (CGrenchler)	yes
 0E2C0	fn_27_E2C0	2C	B	CGrenchler::WalkTowardPlayer	-	upstream body (CGrenchler)	no
-0E2EC	fn_27_E2EC	8	B	CGrenchler::Submerged	-	upstream body (CGrenchler)	no
+0E2EC	fn_27_E2EC	8	B	CGrenchler::Submerged	-	upstream body (CGrenchler)	yes
 0E2F4	fn_27_E2F4	9C	B	CGrenchler::SetSubmerged	-	upstream body (CGrenchler)	no
 0E390	fn_27_E390	1E0	B	CGrenchler::MarkPathRegion	-	upstream body (CGrenchler) 99.2%	no
-0E570	fn_27_E570	34	B	CGrenchler::GetPathArea	-	upstream body (CGrenchler)	no
+0E570	fn_27_E570	34	B	CGrenchler::GetPathArea	-	upstream body (CGrenchler)	yes
 0E5A4	fn_27_E5A4	90	B	CGrenchler::UnmarkPathRegion	-	upstream body (CGrenchler)	no
 0E634	fn_27_E634	230	B	CGrenchler::FindJumpPoint	-	upstream body (CGrenchler) 90.6%	no
 0E864	fn_27_E864	280	B	CGrenchler::MoveToTarget	-	upstream body (CGrenchler)	no
 0EAE4	fn_27_EAE4	68	B	CGrenchler::Null	gren1	upstream body (CGrenchler)	yes
 0EB4C	fn_27_EB4C	104	B	CGrenchler::Taunt	-	upstream body (CGrenchler)	no
 0EC50	fn_27_EC50	138	B	CGrenchler::InBiteRange	-	upstream body (CGrenchler) 93.4%	no
-0ED88	fn_27_ED88	28	B	CGrenchler::InBurstRange	-	upstream body (CGrenchler)	no
+0ED88	fn_27_ED88	28	B	CGrenchler::InBurstRange	-	upstream body (CGrenchler)	yes
 0EDB0	fn_27_EDB0	44	B	CGrenchler::InBeamRange	-	upstream body (CGrenchler) 81.4%	no
-0EDF4	fn_27_EDF4	28	B	CGrenchler::InChargeRange	-	upstream body (CGrenchler)	no
+0EDF4	fn_27_EDF4	28	B	CGrenchler::InChargeRange	-	upstream body (CGrenchler)	yes
 0EE1C	fn_27_EE1C	C4	B	CGrenchler::InRange	gren1	upstream body (CGrenchler)	yes
 0EEE0	fn_27_EEE0	1A0	B	CGrenchler::ClearPathToPlayer	-	upstream body (CGrenchler)	no
 0F080	fn_27_F080	A8	B	CGrenchler::Bored	gren1	upstream body (CGrenchler) 89.4%	yes
-0F128	fn_27_F128	20	B	CGrenchler::GetTargetPosition	-	upstream body (CGrenchler)	no
-0F148	fn_27_F148	38	B	CGrenchler::SetPathArea	-	upstream body (CGrenchler)	no
+0F128	fn_27_F128	20	B	CGrenchler::GetTargetPosition	-	upstream body (CGrenchler)	yes
+0F148	fn_27_F148	38	B	CGrenchler::SetPathArea	-	upstream body (CGrenchler)	yes
 0F180	fn_27_F180	48	B	CGrenchler::GetDamageVulnerability	-	upstream body (CGrenchler)	no
 0F1C8	fn_27_F1C8	1D0	B	CGrenchler::SpawnTail	-	upstream body (CGrenchler) 93.5%	no
 0F398	fn_27_F398	308	B	CGrenchler::DestroyTail	-	upstream body (CGrenchler); TARGET_PC fix at 0xF434 77.3%	no
@@ -289,11 +289,11 @@ offset	fn	size	class	name	slice	what	marker
 107EC	fn_27_107EC	AC	B	CGrenchler::GetFacingAngleDiff	-	upstream body (CGrenchler)	no
 10898	fn_27_10898	1B8	B	CGrenchler::StartHitReaction	-	upstream body (CGrenchler)	no
 10A50	fn_27_10A50	5C	H	CBCKnockBackCmd::~CBCKnockBackCmd	-	weak copy / template instance	no
-10AAC	fn_27_10AAC	8	B	CGrenchler::GetTailHealth	-	upstream body (CGrenchler)	no
+10AAC	fn_27_10AAC	8	B	CGrenchler::GetTailHealth	-	upstream body (CGrenchler)	yes
 10AB4	fn_27_10AB4	A4	B	CGrenchler::IsCrystalActor	-	upstream body (CGrenchler)	no
 10B58	fn_27_10B58	A0	B	CGrenchler::IsBodyActor	-	upstream body (CGrenchler)	no
 10BF8	fn_27_10BF8	78	B	CGrenchler::GetScannableObjectInfo	-	upstream body (CGrenchler)	no
-10C70	fn_27_10C70	304	B	CGrenchler::~CGrenchler	-	upstream body (CGrenchler) 89.9%	no
+10C70	fn_27_10C70	304	B	CGrenchler::~CGrenchler	-	upstream body (CGrenchler) 89.9%	yes
 10F74	fn_27_10F74	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
 11158	fn_27_11158	94	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
 111EC	fn_27_111EC	58	H	CSurfaceAlignmentHelper::~CSurfaceAlignmentHelper	-	weak copy / template instance	no
@@ -361,12 +361,12 @@ offset	fn	size	class	name	slice	what	marker
 141D0	fn_27_141D0	64	H	rstl::rc_ptr<CNonUniformVulnerability>::ReleaseData	-	weak copy / template instance	no
 14234	fn_27_14234	CCC	B	__sinit_CGrenchler_cpp	-	upstream body (CGrenchler) 98.9%	no
 14F00	fn_27_14F00	70	B	CGrenchlerTail::~CGrenchlerTail	-	upstream body (CGrenchlerTail)	no
-14F70	fn_27_14F70	70	B	CGrenchlerTail::StopMoving	-	upstream body (CGrenchlerTail)	no
+14F70	fn_27_14F70	70	B	CGrenchlerTail::StopMoving	-	upstream body (CGrenchlerTail)	yes
 14FE0	fn_27_14FE0	15C	B	CGrenchlerTail::CollidedWith	-	upstream body (CGrenchlerTail)	no
-1513C	fn_27_1513C	A4	B	CGrenchlerTail::PreRender	-	upstream body (CGrenchlerTail) 99.7%	no
-151E0	fn_27_151E0	D8	B	CGrenchlerTail::GetTouchBounds	-	upstream body (CGrenchlerTail)	no
-152B8	fn_27_152B8	B4	B	CGrenchlerTail::Think	-	upstream body (CGrenchlerTail)	no
-1536C	fn_27_1536C	308	B	CGrenchlerTail::CGrenchlerTail	-	upstream body (CGrenchlerTail) 99.9%	no
+1513C	fn_27_1513C	A4	B	CGrenchlerTail::PreRender	-	upstream body (CGrenchlerTail) 99.7%	yes
+151E0	fn_27_151E0	D8	B	CGrenchlerTail::GetTouchBounds	-	upstream body (CGrenchlerTail)	yes
+152B8	fn_27_152B8	B4	B	CGrenchlerTail::Think	-	upstream body (CGrenchlerTail)	yes
+1536C	fn_27_1536C	308	B	CGrenchlerTail::CGrenchlerTail	-	upstream body (CGrenchlerTail) 99.9%	yes
 15674	fn_27_15674	68	H	SMoverData::SMoverData	-	weak copy / template instance	no
 156DC	fn_27_156DC	5C	B	__sinit_CGrenchlerTail_cpp	-	upstream body (CGrenchlerTail)	no
 15738	fn_27_15738	58	T	__destroy_global_chain	-	REL runtime	no

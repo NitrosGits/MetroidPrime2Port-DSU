@@ -134,8 +134,14 @@ inline SLdrGrenchler::SLdrGrenchler()
   tailDestroyedHealth = 50.0f;
   isGrappleGuardian = false;
   hasHealthBar = false;
+#ifdef TARGET_PC
+  // fn_27_13C8: the REL's sound defaults are -1 (0x1438/0x143C: 0x49C/0x4A0).
+  tailHitSound = -1;
+  tailDestroyedSound = -1;
+#else
   tailHitSound = 0;
   tailDestroyedSound = 0;
+#endif
   minTimeBetweenCharges = 4.5f;
   unknown_0x7bd1a35f = -1.0f;
   chargeAttackMinRange = 8.0f;
