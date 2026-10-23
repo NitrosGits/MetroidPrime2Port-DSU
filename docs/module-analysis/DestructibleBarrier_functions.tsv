@@ -1,0 +1,113 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_13_0	2C	H	GetHealthInfo__6CActorCFv	db1	weak copy / implicit / template instance	no
+0002C	fn_13_2C	24	T	RELExit	db1	REL runtime	yes
+00050	fn_13_50	20	T	RELMain	db1	REL runtime	yes
+00070	fn_13_70	30	H	SetFuncPtrs__Fv	db1	weak copy / implicit / template instance	no
+000A0	fn_13_A0	8A0	B	LoadDestructibleBarrier__FR13CStateManagerR12CInputStreamR11CEntityInfo	db1	upstream body; all arms (forced, spawn DBAR)	yes
+00940	fn_13_940	13C	H	__ct__10CModelDataFRC10CModelData	db1	weak copy / implicit / template instance	no
+00A7C	fn_13_A7C	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	db1	weak copy / implicit / template instance	no
+00AE8	fn_13_AE8	54	H	__dt__15TToken<6CModel>Fv	db1	weak copy / implicit / template instance	no
+00B3C	fn_13_B3C	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	db1	weak copy / implicit / template instance	no
+00BA0	fn_13_BA0	7C	B	__dt__23SLdrDestructibleBarrierFv	db1	SLdr dtor (header)	no
+00C1C	fn_13_C1C	15C	B	__ct__23SLdrDestructibleBarrierFv	db1	SLdr ctor: sound ids -1 fixed (db1), in the header	yes
+00D78	fn_13_D78	5C	B	MakeChunkModel__FUi	db1	upstream body; all arms (forced, spawn DBAR)	yes
+00DD4	fn_13_DD4	20	H	CModelDataNull__10CModelDataFv	db1	weak copy / implicit / template instance	no
+00DF4	fn_13_DF4	3D8	B	RenderChunks__26CScriptDestructibleBarrierCFRC13CStateManager	db1	section arms (876-882) need a GRNT connection; unmarked	no
+011CC	fn_13_11CC	A8	B	Render__26CScriptDestructibleBarrierCFRC13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
+01274	fn_13_1274	50	B	AddToRenderer__26CScriptDestructibleBarrierCFRC13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
+012C4	fn_13_12C4	3B8	B	PreRender__26CScriptDestructibleBarrierFR13CStateManager	db1	section arms (802-806) need a GRNT connection; unmarked	no
+0167C	fn_13_167C	3C	H	__dt__Q24rstl24optional_object<6CAABox>Fv	db1	weak copy / implicit / template instance	no
+016B8	fn_13_16B8	48	B	PreRenderAllViewports__26CScriptDestructibleBarrierFR13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
+01700	fn_13_1700	A8	B	GetAimPosition__26CScriptDestructibleBarrierCFRC13CStateManagerf	db1	upstream body; all arms (forced, spawn DBAR)	yes
+017A8	fn_13_17A8	40	B	GetOrbitPosition__26CScriptDestructibleBarrierCFRC13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
+017E8	fn_13_17E8	24	B	SetDamageVulnerability__26CScriptDestructibleBarrierFRC20CDamageVulnerability	db1	only other modules call it; never ran; unmarked	no
+0180C	fn_13_180C	5C	H	__as__20CDamageVulnerabilityFRC20CDamageVulnerability	db1	weak copy / implicit / template instance	no
+01868	fn_13_1868	C0	H	__as__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+01928	fn_13_1928	C	H	clear__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+01934	fn_13_1934	24	B	GetPrimitiveTransform__26CScriptDestructibleBarrierCFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
+01958	fn_13_1958	34	B	GetCollisionPrimitive__26CScriptDestructibleBarrierCFv	db1	all arms but the null-mCollision fallback: mCollision only ever holds BuildCollision results	yes
+0198C	fn_13_198C	17C	B	OnChunkDestroyed__26CScriptDestructibleBarrierFRC9CVector3i	db1	upstream body; all arms (forced, spawn DBAR)	yes
+01B08	fn_13_1B08	6F8	B	TakeDamage__26CScriptDestructibleBarrierFR13CStateManager	db1	generator/section arms (701-723) need a GRNT connection; split-loop sfx-already-played arm (726) needs two splits in one hit; unmarked	no
+02200	fn_13_2200	78	H	__dt__Q24rstl35auto_ptr<23CCollidableOBBTreeGroup>Fv	db1	weak copy / implicit / template instance	no
+02278	fn_13_2278	48	H	push_back__Q24rstl36reserved_vector<15SBarrierSection,4>FRC15SBarrierSection	db1	weak copy / implicit / template instance	no
+022C0	fn_13_22C0	20	H	construct<15SBarrierSection>__4rstlFPvRC15SBarrierSection	db1	weak copy / implicit / template instance	no
+022E0	fn_13_22E0	28	H	construct__Q24rstl40construction_policy<15SBarrierSection,0>FPvRC15SBarrierSection	db1	weak copy / implicit / template instance	no
+02308	fn_13_2308	5C	H	__ct__15SBarrierSectionFRC15SBarrierSection	db1	weak copy / implicit / template instance	no
+02364	fn_13_2364	64	H	__dt__Q24rstl29auto_ptr<17CBarrierChunkGrid>Fv	db1	weak copy / implicit / template instance	no
+023C8	fn_13_23C8	70	H	__dt__17CBarrierChunkGridFv	db1	weak copy / implicit / template instance	no
+02438	fn_13_2438	54	H	__dt__Q24rstl36vector<i,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+0248C	fn_13_248C	54	H	__dt__Q24rstl36vector<f,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+024E0	fn_13_24E0	40	H	__ct__Q24rstl34optional_object<15SBarrierSection>FRCQ24rstl34optional_object<15SBarrierSection>	db1	weak copy / implicit / template instance	no
+02520	fn_13_2520	5C	H	__dt__Q24rstl34optional_object<15SBarrierSection>Fv	db1	weak copy / implicit / template instance	no
+0257C	fn_13_257C	20	H	destroy<15SBarrierSection>__4rstlFP15SBarrierSection	db1	weak copy / implicit / template instance	no
+0259C	fn_13_259C	24	H	destroy_impl<15SBarrierSection>__4rstlFP15SBarrierSection	db1	weak copy / implicit / template instance	no
+025C0	fn_13_25C0	54	H	__dt__15SBarrierSectionFv	db1	weak copy / implicit / template instance	no
+02614	fn_13_2614	3C	H	__dt__Q24rstl42optional_object<23TFunctor1<RC9CVector3i>>Fv	db1	weak copy / implicit / template instance	no
+02650	fn_13_2650	54	H	Function__62TNonStaticCallback1<26CScriptDestructibleBarrier,RC9CVector3i>FPCvPCvRC9CVector3i	db1	weak copy / implicit / template instance	no
+026A4	fn_13_26A4	104	B	AcceptScriptMsg__26CScriptDestructibleBarrierFR13CStateManagerRC10CScriptMsg	db1	upstream body; all arms (forced, spawn DBAR)	yes
+027A8	fn_13_27A8	8	B	GetDamageVulnerability__26CScriptDestructibleBarrierCFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
+027B0	fn_13_27B0	8	B	HealthInfo__26CScriptDestructibleBarrierFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
+027B8	fn_13_27B8	560	B	Think__26CScriptDestructibleBarrierFfR13CStateManager	db1	generator/section arms (545-549) need a GRNT connection; unmarked	no
+02D18	fn_13_2D18	E4	H	__as__17CBarrierChunkGridFRC17CBarrierChunkGrid	db1	weak copy / implicit / template instance	no
+02DFC	fn_13_2DFC	B0	H	__as__Q24rstl36vector<f,Q24rstl17rmemory_allocator>FRCQ24rstl36vector<f,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+02EAC	fn_13_2EAC	C	H	clear__Q24rstl36vector<f,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+02EB8	fn_13_2EB8	B0	H	__as__Q24rstl36vector<i,Q24rstl17rmemory_allocator>FRCQ24rstl36vector<i,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+02F68	fn_13_2F68	C	H	clear__Q24rstl36vector<i,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+02F74	fn_13_2F74	B8	H	erase__Q24rstl36reserved_vector<15SBarrierSection,4>FP15SBarrierSection	db1	weak copy / implicit / template instance	no
+0302C	fn_13_302C	7C	H	__as__15SBarrierSectionFRC15SBarrierSection	db1	weak copy / implicit / template instance	no
+030A8	fn_13_30A8	70	H	__as__Q24rstl29auto_ptr<17CBarrierChunkGrid>FRCQ24rstl29auto_ptr<17CBarrierChunkGrid>	db1	weak copy / implicit / template instance	no
+03118	fn_13_3118	4	B	PreThink__26CScriptDestructibleBarrierFfR13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
+0311C	fn_13_311C	48	B	Touch__26CScriptDestructibleBarrierFR6CActorR13CStateManager	db1	upstream body; all arms (forced, spawn DBAR)	yes
+03164	fn_13_3164	54	B	GetTouchBounds__26CScriptDestructibleBarrierCFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
+031B8	fn_13_31B8	278	B	UpdateTransforms__26CScriptDestructibleBarrierFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
+03430	fn_13_3430	1A4	B	__dt__26CScriptDestructibleBarrierFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
+035D4	fn_13_35D4	50	H	__dt__Q24rstl36reserved_vector<15SBarrierSection,4>Fv	db1	weak copy / implicit / template instance	no
+03624	fn_13_3624	60	H	destroy_elements__Q24rstl36reserved_vector<15SBarrierSection,4>Fv	db1	weak copy / implicit / template instance	no
+03684	fn_13_3684	994	B	__ct__26CScriptDestructibleBarrierF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC16CActorParametersRC11CHealthInfoRC20CDamageVulnerabilityRC9CVector3iRC9CVector3fRC10CModelDataRC10CModelDataRC10CModelDataRC10CModelDataRC10CModelDataRC10CModelDataUiiUiiUiiUiiiiiiibfff	db1	ctor: all lines ran, but the six model-transparency ternaries cannot be confirmed arm by arm (gcov ternary data); unmarked	no
+04018	fn_13_4018	6C	H	__dt__Q24rstl25single_ptr<11CElementGen>Fv	db1	weak copy / implicit / template instance	no
+04084	fn_13_4084	54	H	__dt__25TToken<15CGenDescription>Fv	db1	weak copy / implicit / template instance	no
+040D8	fn_13_40D8	5C	H	__ct__20CDamageVulnerabilityFRC20CDamageVulnerability	db1	weak copy / implicit / template instance	no
+04134	fn_13_4134	54	H	__dt__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+04188	fn_13_4188	130	H	__ct__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+042B8	fn_13_42B8	54	H	__ct__11CHealthInfoFRC11CHealthInfo	db1	weak copy / implicit / template instance	no
+0430C	fn_13_430C	68	H	__ct__10SMoverDataFfRC9CVector3fRC10CAxisAngleRC9CVector3fRC10CAxisAngle	db1	weak copy / implicit / template instance	no
+04374	fn_13_4374	3FC	B	Render__17CBarrierChunkGridCFRC12CTransform4fRC11CModelFlagsPC6CModelPC6CModelPC6CModelPC6CModelPC6CModel	db1	upstream body; all arms (forced, spawn DBAR)	yes
+04770	fn_13_4770	13C	B	BuildCollision__17CBarrierChunkGridCFRC13CMaterialList	db1	upstream body; all arms (forced, spawn DBAR)	yes
+048AC	fn_13_48AC	64	H	__dt__Q24rstl19auto_ptr<8COBBTree>Fv	db1	weak copy / implicit / template instance	no
+04910	fn_13_4910	AC	H	__dt__Q28COBBTree10SIndexDataFv	db1	weak copy / implicit / template instance	no
+049BC	fn_13_49BC	54	H	__dt__Q24rstl37vector<Ux,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+04A10	fn_13_4A10	54	H	__dt__Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+04A64	fn_13_4A64	54	H	__dt__Q24rstl51vector<14CCollisionEdge,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+04AB8	fn_13_4AB8	54	H	__dt__Q24rstl37vector<Us,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+04B0C	fn_13_4B0C	54	H	__dt__Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+04B60	fn_13_4B60	68	H	__ct__Q28COBBTree10SIndexDataFv	db1	weak copy / implicit / template instance	no
+04BC8	fn_13_4BC8	24C	B	BuildNode__17CBarrierChunkGridCFRQ28COBBTree10SIndexDataRC9CVector3iRC9CVector3i	db1	upstream body; all arms (forced, spawn DBAR)	yes
+04E14	fn_13_4E14	400	B	BuildRowNode__17CBarrierChunkGridCFRQ28COBBTree10SIndexDataRC9CVector3i	db1	upstream body; all arms (forced, spawn DBAR)	yes
+05214	fn_13_5214	1DC	B	BuildBoxNode__17CBarrierChunkGridCFRQ28COBBTree10SIndexDataRC9CVector3iRC9CVector3i	db1	unreferenced (no bl in retail); unmarked	no
+053F0	fn_13_53F0	43C	B	AddBoxGeometry__17CBarrierChunkGridCFRQ28COBBTree10SIndexDataRQ24rstl37vector<Us,Q24rstl17rmemory_allocator>RC9CVector3fRC9CVector3f	db1	upstream body; all arms (forced, spawn DBAR)	yes
+0582C	fn_13_582C	48	H	insert<Q24rstl100const_pointer_iterator<Uc,Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>>__Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>FQ24rstl94pointer_iterator<Uc,Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl100const_pointer_iterator<Uc,Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl100const_pointer_iterator<Uc,Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+05874	fn_13_5874	430	H	insert_into<Q24rstl100const_pointer_iterator<Uc,Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>>__Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>FQ24rstl94pointer_iterator<Uc,Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>iQ24rstl100const_pointer_iterator<Uc,Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+05CA4	fn_13_5CA4	B8	H	__as__Q24rstl37vector<Ux,Q24rstl17rmemory_allocator>FRCQ24rstl37vector<Ux,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+05D5C	fn_13_5D5C	C	H	clear__Q24rstl37vector<Ux,Q24rstl17rmemory_allocator>Fv	db1	weak copy / implicit / template instance	no
+05D68	fn_13_5D68	12C	B	SplitBox__17CBarrierChunkGridFRC9CVector3iRC9CVector3iR9CVector3iR9CVector3iR9CVector3iR9CVector3i	db1	upstream body; all arms (forced, spawn DBAR)	yes
+05E94	fn_13_5E94	BC	B	DamageChunk__17CBarrierChunkGridFiiif	db1	upstream body; all arms (forced, spawn DBAR)	yes
+05F50	fn_13_5F50	288	B	ApplyDamage__17CBarrierChunkGridFR13CStateManagerRC9CVector3fffRCQ24rstl42optional_object<23TFunctor1<RC9CVector3i>>	db1	all arms but 152 (empty callback): every caller passes a functor	yes
+061D8	fn_13_61D8	3C	H	__dt__Q24rstl27optional_object<9CVector3i>Fv	db1	weak copy / implicit / template instance	no
+06214	fn_13_6214	160	B	GetChunkAt__17CBarrierChunkGridCFRC9CVector3ff	db1	upstream body; all arms (forced, spawn DBAR)	yes
+06374	fn_13_6374	378	B	SplitOffTop__17CBarrierChunkGridFv	db1	upstream body; all arms (forced, spawn DBAR)	yes
+066EC	fn_13_66EC	38	H	__ct__Q24rstl34optional_object<15SBarrierSection>FRC15SBarrierSection	db1	weak copy / implicit / template instance	no
+06724	fn_13_6724	58	H	__ct__15SBarrierSectionFP17CBarrierChunkGridRC9CVector3fRC9CVector3fi	db1	weak copy / implicit / template instance	no
+0677C	fn_13_677C	E4	H	__ct__17CBarrierChunkGridFRC17CBarrierChunkGrid	db1	weak copy / implicit / template instance	no
+06860	fn_13_6860	100	H	__ct__Q24rstl36vector<f,Q24rstl17rmemory_allocator>FRCQ24rstl36vector<f,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+06960	fn_13_6960	100	H	__ct__Q24rstl36vector<i,Q24rstl17rmemory_allocator>FRCQ24rstl36vector<i,Q24rstl17rmemory_allocator>	db1	weak copy / implicit / template instance	no
+06A60	fn_13_6A60	308	B	__ct__17CBarrierChunkGridFRC9CVector3iRC9CVector3ff	db1	upstream body; all arms (forced, spawn DBAR)	yes
+06D68	fn_13_6D68	A4	H	reserve__Q24rstl36vector<i,Q24rstl17rmemory_allocator>Fi	db1	weak copy / implicit / template instance	no
+06E0C	fn_13_6E0C	98	H	reserve__Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>Fi	db1	weak copy / implicit / template instance	no
+06EA4	fn_13_6EA4	3C	H	uninitialized_copy<Q24rstl110pointer_iterator<9CVector3f,Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P9CVector3f>__4rstlFQ24rstl110pointer_iterator<9CVector3f,Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl110pointer_iterator<9CVector3f,Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P9CVector3f	db1	weak copy / implicit / template instance	no
+06EE0	fn_13_6EE0	A0	H	reserve__Q24rstl36vector<f,Q24rstl17rmemory_allocator>Fi	db1	weak copy / implicit / template instance	no
+06F80	fn_13_6F80	98	H	reserve__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>Fi	db1	weak copy / implicit / template instance	no
+07018	fn_13_7018	3C	H	uninitialized_copy<Q24rstl142pointer_iterator<24CWeaponTypeVulnerability,Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P24CWeaponTypeVulnerability>__4rstlFQ24rstl142pointer_iterator<24CWeaponTypeVulnerability,Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl142pointer_iterator<24CWeaponTypeVulnerability,Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P24CWeaponTypeVulnerability	db1	weak copy / implicit / template instance	no
+07054	fn_13_7054	AC	H	reserve__Q24rstl37vector<Ux,Q24rstl17rmemory_allocator>Fi	db1	weak copy / implicit / template instance	no
+07100	fn_13_7100	108	H	reserve__Q24rstl37vector<Uc,Q24rstl17rmemory_allocator>Fi	db1	weak copy / implicit / template instance	no
+07208	fn_13_7208	AC	H	reserve__Q24rstl51vector<14CCollisionEdge,Q24rstl17rmemory_allocator>Fi	db1	weak copy / implicit / template instance	no
+072B4	fn_13_72B4	A4	H	reserve__Q24rstl37vector<Us,Q24rstl17rmemory_allocator>Fi	db1	weak copy / implicit / template instance	no

@@ -22,6 +22,7 @@
 #include "WorldFormat/CCollidableOBBTreeGroup.hpp"
 #include "WorldFormat/COBBTreeGroup.hpp"
 
+// @ fn_13_6A60
 CBarrierChunkGrid::CBarrierChunkGrid(const CVector3i& dims, const CVector3f& chunkSize,
                                      float chunkHealth)
 : mDims(dims)
@@ -41,6 +42,7 @@ CBarrierChunkGrid::CBarrierChunkGrid(const CVector3i& dims, const CVector3f& chu
   }
 }
 
+// @ fn_13_6374
 rstl::optional_object< SBarrierSection > CBarrierChunkGrid::SplitOffTop() {
   int split = -1;
   const int dimX = mDims.GetX();
@@ -115,6 +117,7 @@ rstl::optional_object< SBarrierSection > CBarrierChunkGrid::SplitOffTop() {
   return rstl::optional_object< SBarrierSection >();
 }
 
+// @ fn_13_6214
 rstl::optional_object< CVector3i > CBarrierChunkGrid::GetChunkAt(const CVector3f& pos,
                                                                  float radius) const {
   CVector3f closest = pos;
@@ -127,6 +130,7 @@ rstl::optional_object< CVector3i > CBarrierChunkGrid::GetChunkAt(const CVector3f
                    rstl::min_val(rstl::max_val(int(local.GetZ()), 0), mDims.GetZ() - 1));
 }
 
+// @ fn_13_5F50
 bool CBarrierChunkGrid::ApplyDamage(CStateManager& mgr, const CVector3f& pos, float damage,
                                     float radius,
                                     const rstl::optional_object< ChunkCallback >& callback) {
@@ -165,6 +169,7 @@ bool CBarrierChunkGrid::ApplyDamage(CStateManager& mgr, const CVector3f& pos, fl
   return destroyed;
 }
 
+// @ fn_13_5E94
 rstl::pair< bool, float > CBarrierChunkGrid::DamageChunk(int x, int y, int z, float damage) {
   float& health = mChunkHealths[x + (y + z * mDims.GetY()) * mDims.GetX()];
   const float remaining = damage - health;
@@ -181,6 +186,7 @@ rstl::pair< bool, float > CBarrierChunkGrid::DamageChunk(int x, int y, int z, fl
   return rstl::pair< bool, float >(false, remaining);
 }
 
+// @ fn_13_5D68
 int CBarrierChunkGrid::SplitBox(const CVector3i& min, const CVector3i& size, CVector3i& minA,
                                 CVector3i& sizeA, CVector3i& minB, CVector3i& sizeB) {
   if (size.GetY() > 1) {
@@ -206,6 +212,7 @@ int CBarrierChunkGrid::SplitBox(const CVector3i& min, const CVector3i& size, CVe
   return 0;
 }
 
+// @ fn_13_53F0
 void CBarrierChunkGrid::AddBoxGeometry(COBBTree::SIndexData& data, rstl::vector< ushort >& surfaces,
                                        const CVector3f& center, const CVector3f& extent) const {
   const COBBTree::SIndexData& cube =
@@ -269,6 +276,7 @@ COBBTree::CNode* CBarrierChunkGrid::BuildBoxNode(COBBTree::SIndexData& data, con
   return rs_new COBBTree::CNode(xf, extent, nullptr, nullptr, rs_new COBBTree::CLeafData(surfaces));
 }
 
+// @ fn_13_4E14
 COBBTree::CNode* CBarrierChunkGrid::BuildRowNode(COBBTree::SIndexData& data,
                                                  const CVector3i& row) const {
   rstl::vector< ushort > surfaces;
@@ -313,6 +321,7 @@ COBBTree::CNode* CBarrierChunkGrid::BuildRowNode(COBBTree::SIndexData& data,
   return rs_new COBBTree::CNode(xf, extent, nullptr, nullptr, rs_new COBBTree::CLeafData(surfaces));
 }
 
+// @ fn_13_4BC8
 COBBTree::CNode* CBarrierChunkGrid::BuildNode(COBBTree::SIndexData& data, const CVector3i& min,
                                               const CVector3i& size) const {
   CVector3i minA = CVector3i::Zero();
@@ -331,6 +340,7 @@ COBBTree::CNode* CBarrierChunkGrid::BuildNode(COBBTree::SIndexData& data, const 
                                 BuildNode(data, minB, sizeB), nullptr);
 }
 
+// @ fn_13_4770
 rstl::auto_ptr< CCollidableOBBTreeGroup >
 CBarrierChunkGrid::BuildCollision(const CMaterialList& material) const {
   COBBTree::CNode::SetAllocator(nullptr);
@@ -340,6 +350,7 @@ CBarrierChunkGrid::BuildCollision(const CMaterialList& material) const {
   return rs_new CCollidableOBBTreeGroup(rs_new COBBTreeGroup(tree), material);
 }
 
+// @ fn_13_4374
 void CBarrierChunkGrid::Render(const CTransform4f& xfIn, const CModelFlags& flags,
                                const CModel* left, const CModel* center, const CModel* right,
                                const CModel* fullRow, const CModel* fullLayer) const {
@@ -490,8 +501,10 @@ CScriptDestructibleBarrier::CScriptDestructibleBarrier(
       (mBaseModel.IsNull() ? false : !mBaseModel.IsDefinitelyOpaque(CModelData::kWM_Normal));
 }
 
+// @ fn_13_3430
 CScriptDestructibleBarrier::~CScriptDestructibleBarrier() {}
 
+// @ fn_13_31B8
 void CScriptDestructibleBarrier::UpdateTransforms() {
   mRenderXf = GetTransform();
   CVector3f center = mGrid.GetBounds().GetCenterPoint();
@@ -518,6 +531,7 @@ void CScriptDestructibleBarrier::UpdateTransforms() {
   }
 }
 
+// @ fn_13_3164
 rstl::optional_object< CAABox > CScriptDestructibleBarrier::GetTouchBounds() const {
   if (GetActive()) {
     return mTouchBounds;
@@ -525,12 +539,14 @@ rstl::optional_object< CAABox > CScriptDestructibleBarrier::GetTouchBounds() con
   return rstl::optional_object< CAABox >();
 }
 
+// @ fn_13_311C
 void CScriptDestructibleBarrier::Touch(CActor& actor, CStateManager& mgr) {
   if (TCastToPtr< CPlayer >(&actor)) {
     mTouchedByPlayer = true;
   }
 }
 
+// @ fn_13_3118
 void CScriptDestructibleBarrier::PreThink(float dt, CStateManager& mgr) {}
 
 void CScriptDestructibleBarrier::Think(float dt, CStateManager& mgr) {
@@ -629,12 +645,15 @@ void CScriptDestructibleBarrier::Think(float dt, CStateManager& mgr) {
   mPlayedSfx = false;
 }
 
+// @ fn_13_27B0
 CHealthInfo* CScriptDestructibleBarrier::HealthInfo() { return &mHealthInfo; }
 
+// @ fn_13_27A8
 const CDamageVulnerability* CScriptDestructibleBarrier::GetDamageVulnerability() const {
   return &mDamageVulnerability;
 }
 
+// @ fn_13_26A4
 void CScriptDestructibleBarrier::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Reset:
@@ -744,6 +763,7 @@ void CScriptDestructibleBarrier::TakeDamage(CStateManager& mgr) {
   }
 }
 
+// @ fn_13_198C
 void CScriptDestructibleBarrier::OnChunkDestroyed(const CVector3i& chunk) {
   const CVector3f pos =
       mRenderXf * CVector3f(mChunkSize.GetX() * chunk.GetX(), mChunkSize.GetY() * chunk.GetY(),
@@ -766,6 +786,7 @@ void CScriptDestructibleBarrier::OnChunkDestroyed(const CVector3i& chunk) {
   }
 }
 
+// @ fn_13_1958
 const CCollisionPrimitive* CScriptDestructibleBarrier::GetCollisionPrimitive() const {
   if (mCollision.get() == nullptr) {
     return CPhysicsActor::GetCollisionPrimitive();
@@ -773,16 +794,19 @@ const CCollisionPrimitive* CScriptDestructibleBarrier::GetCollisionPrimitive() c
   return mCollision.get();
 }
 
+// @ fn_13_1934
 CTransform4f CScriptDestructibleBarrier::GetPrimitiveTransform() const { return mRenderXf; }
 
 void CScriptDestructibleBarrier::SetDamageVulnerability(const CDamageVulnerability& dVuln) {
   mDamageVulnerability = dVuln;
 }
 
+// @ fn_13_17A8
 CVector3f CScriptDestructibleBarrier::GetOrbitPosition(const CStateManager& mgr) const {
   return GetAimPosition(mgr, 0.f);
 }
 
+// @ fn_13_1700
 CVector3f CScriptDestructibleBarrier::GetAimPosition(const CStateManager& mgr, float dt) const {
   if (GetTouchBounds()) {
     return GetTouchBounds()->GetCenterPoint();
@@ -790,6 +814,7 @@ CVector3f CScriptDestructibleBarrier::GetAimPosition(const CStateManager& mgr, f
   return CPhysicsActor::GetAimPosition(mgr, dt);
 }
 
+// @ fn_13_16B8
 void CScriptDestructibleBarrier::PreRenderAllViewports(CStateManager& mgr) {
   if (GetRenderBoundsDirty()) {
     UpdatePortalSystemState(mgr);
@@ -834,6 +859,7 @@ void CScriptDestructibleBarrier::PreRender(CStateManager& mgr) {
   CActor::PreRender(mgr);
 }
 
+// @ fn_13_1274
 void CScriptDestructibleBarrier::AddToRenderer(const CStateManager& mgr) const {
   if (!mHasTransparency) {
     RenderChunks(mgr);
@@ -841,6 +867,7 @@ void CScriptDestructibleBarrier::AddToRenderer(const CStateManager& mgr) const {
   CActor::AddToRenderer(mgr);
 }
 
+// @ fn_13_11CC
 void CScriptDestructibleBarrier::Render(const CStateManager& mgr) const {
   if (mHasTransparency) {
     RenderChunks(mgr);
@@ -883,6 +910,7 @@ void CScriptDestructibleBarrier::RenderChunks(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_13_D78
 static CModelData MakeChunkModel(CAssetId id) {
   if (id == kInvalidAssetId) {
     return CModelData::CModelDataNull();
@@ -890,6 +918,7 @@ static CModelData MakeChunkModel(CAssetId id) {
   return CModelData(CStaticRes(id, CVector3f(1.f, 1.f, 1.f)));
 }
 
+// @ fn_13_A0
 CEntity* LoadDestructibleBarrier(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrDestructibleBarrier sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrDestructibleBarrier.inc"
@@ -923,7 +952,9 @@ static void SetFuncPtrs() {
   SetSDestructibleBarrier_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_13_50
 void RELMain() { SetFuncPtrs(); }
 
+// @ fn_13_2C
 void RELExit() { SetSDestructibleBarrier_FuncPtrs(nullptr); }
 #endif

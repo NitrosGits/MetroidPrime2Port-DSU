@@ -47,6 +47,7 @@ struct SLdrDestructibleBarrier {
   SLdrActorParameters actorInformation;  // 0x7e397fed
 };
 
+// @ fn_13_C1C
 inline SLdrDestructibleBarrier::SLdrDestructibleBarrier()
 : editorProperties()
 , chunkSize(CVector3f::Zero())
