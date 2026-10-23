@@ -1,0 +1,53 @@
+# Tryclops (module 81: CTryclops - the Sanctuary Fortress Cyclops that sucks in a morph-ball player
+# or a bomb and throws it back).
+# Sanctuary Fortress 0f_cliff_hall (world 1baa96c2, area 42c85ad9): u047b (eid 0x1b0082) stands at
+# (148, 214.9, -13.2) next to u0455 (133, 213.1, -13.2); the floor is z -13.234. Both have
+# Retreat/Follow waypoints (001b007e/001b007f) and a Death that sets its pickup generators off.
+# The steps repeat the try1 lane's tools/drivers/tryclops_grab.con: a god-mode player morphs into a
+# ball on the Cyclops' own floor, is sucked in and held, struggles, is thrown, and the approach is
+# repeated; then the grab states are forced with `fsm` and it is killed with the hit its data allows.
+# Evidence in the transcript: `init compiled module Tryclops` in the log, both actors in `objs` with
+# their waypoints in `obj`, the fsm across the passes (Patrol/PathFind/PathFindEx/Suck/GetUp/
+# Approach), and `struggle 1` naming the player's attached actor - `attached 047b` while the vortex
+# holds the ball, `ffff` once it is thrown.
+# `damage 25 power` is refused by design: with mVulnerable false GetDamageVulnerability returns
+# mPowerBombVulnerability (CTryclops.cpp:755) and mVulnerable is set only while it targets a bomb,
+# so `obj` keeps hp 5/5. `damage 2000 powerbomb` is the hit the data allows: the Death runs and
+# `objs tryclops` then lists u0455 alone. The tail sits at f1720-f1960 on purpose: with it later, at
+# f2000, `obj u047b` already answered `no object u047b` in both capped runs - the third pass leaves
+# u047b gone without a console kill, deterministically (u0455 stays in Patrol).
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds: F=2600, last check f1960.
+@f150 god 1
+@f200 objs tryclops; obj u047b
+@f600 tp 148 213.3 -13.0
+@f620 press x 40
+@f640 struggle 1; obj u047b
+@f700 status
+@f760 struggle 1
+@f800 struggle 1
+@f840 obj u047b; struggle 1
+@f900 struggle 1
+@f960 tp 148 213.3 -13.0
+@f1000 press a 5
+@f1060 obj u047b
+@f1120 press l 60
+@f1200 struggle 1
+@f1260 tp 148 213.3 -13.0
+@f1320 obj u047b
+@f1380 press a 5
+# Forced states: the grab bodies the natural loop may skip (PathFindEx' Activate attaches the ball,
+# Suck and GetUp run on the way out).
+@f1440 fsm u047b PathFindEx
+@f1480 obj u047b; struggle 1
+@f1520 fsm u047b Suck
+@f1560 obj u047b
+@f1600 fsm u047b GetUp
+@f1640 obj u047b
+@f1680 struggle off
+# Damage and kill: the refused power hit, then the power bomb that lands.
+@f1720 damage u047b 25 power
+@f1760 obj u047b
+@f1800 damage u047b 2000 powerbomb
+@f1840 objs tryclops
+@f1900 obj u0455
+@f1960 objs tryclops

@@ -75,14 +75,16 @@ fi
 # port, the command file, the input file, the console driver and extra environment. A cmd_*.txt
 # script is timed in game updates (`@f<n>`, gameplay from ~f240), never in wall seconds.
 # The module families (grenchler, grenguard, flyingpirate, mediuming, metroid, sporb, blogg, swarm,
-# gunturret, rezbit, parasite, lumite, shrieker, ingswarm, darktrooper, bacteriaswarm)
+# gunturret, rezbit, parasite, lumite, shrieker, ingswarm, darktrooper, bacteriaswarm, tryclops,
+# wisptentacle)
 # boot the area the module lanes' coverage drivers used and repeat their console steps, so a checked
 # module's actors keep loading: tools/cov/specs/{grenchler_entrance,grenchler_guardian,
 # flyingpirate_sandfalls,mediuming_dead,metroid_player,sporb_hall,blogg_shaft,swarmbasics_sand,
 # gunturret_0i_sand_hall,tail21_rezbit,parasite_sandfalls_fight,
 # ingsnatchingswarm_pathofeyes,bacteriaswarm_temple}.con and tools/drivers/ (lumite and shrieker repeat
 # tools/drivers/lumite_states.py and shrieker_greatbridge.con, darktrooper
-# tools/drivers/darktrooper_unknown.con).
+# tools/drivers/darktrooper_unknown.con, tryclops tryclops_grab.con and wisptentacle
+# wisptentacle_hall.con).
 # Append a new family at the end of ALL (its X display is its index) and give it the next free
 # console port.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
@@ -118,7 +120,9 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [shrieker]="3dfd2249,02_swamp_greatbridge"
                [ingswarm]="3bfa3eff,10_temple_pathofeyes"
                [darktrooper]="3bfa3eff,04_temple_unknownenemies"
-               [bacteriaswarm]="3bfa3eff,04_temple_unknownenemies_dark" )
+               [bacteriaswarm]="3bfa3eff,04_temple_unknownenemies_dark"
+               [tryclops]="1baa96c2,42c85ad9"
+               [wisptentacle]="3bfa3eff,0t_temple_hall_dark" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
@@ -126,7 +130,7 @@ declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boos
                [flyingpirate]=2400 [mediuming]=2400 [metroid]=2400 [sporb]=2400 [blogg]=2400
                [swarm]=2400 [gunturret]=2400 [rezbit]=2400 [parasite]=2400
                [lumite]=2400 [shrieker]=2400 [ingswarm]=2400 [darktrooper]=2400
-               [bacteriaswarm]=2400 )
+               [bacteriaswarm]=2400 [tryclops]=2600 [wisptentacle]=6200 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280
@@ -134,7 +138,7 @@ declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=
                [flyingpirate]=280 [mediuming]=280 [metroid]=280 [sporb]=280 [blogg]=280
                [swarm]=280 [gunturret]=280 [rezbit]=280 [parasite]=280
                [lumite]=280 [shrieker]=280 [ingswarm]=280 [darktrooper]=280
-               [bacteriaswarm]=280 )
+               [bacteriaswarm]=280 [tryclops]=280 [wisptentacle]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709
                [boostg_fsm]=49710 [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714
@@ -143,7 +147,7 @@ declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [
                [metroid]=49723 [sporb]=49724 [blogg]=49725 [swarm]=49726
                [gunturret]=49727 [rezbit]=49728 [parasite]=49729
                [lumite]=49730 [shrieker]=49731 [ingswarm]=49732 [darktrooper]=49733
-               [bacteriaswarm]=49734 )
+               [bacteriaswarm]=49734 [tryclops]=49735 [wisptentacle]=49736 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
@@ -155,16 +159,18 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [swarm]=cmd_swarm.txt [gunturret]=cmd_gunturret.txt [rezbit]=cmd_rezbit.txt
                [parasite]=cmd_parasite.txt [lumite]=cmd_lumite.txt [shrieker]=cmd_shrieker.txt
                [ingswarm]=cmd_ingswarm.txt [darktrooper]=cmd_darktrooper.txt
-               [bacteriaswarm]=cmd_bacteriaswarm.txt )
+               [bacteriaswarm]=cmd_bacteriaswarm.txt [tryclops]=cmd_tryclops.txt
+               [wisptentacle]=cmd_wisptentacle.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
 # script is timed in game updates (cmd_*.txt via con.py). The V drivers time their steps in wall
 # seconds, so those families stay under the cap. NC is the second exception: a family whose area
-# boots so quickly that 2400 unpaced updates are over (0.3 s) before con.py's 0.5 s retry gets a
-# console connection - it stays capped (~40 s), or nothing would be driven at all.
+# boots so quickly that its unpaced updates are over (0.3 s for 2400) before con.py's 0.5 s retry
+# gets a console connection - it stays capped (~40 s, ~110 s for wisptentacle's 6200), or nothing
+# would be driven at all.
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
-declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 )
+declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1 )
 declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=1"
                [ing]="MP2_DEBUG_ING=1 MP2_DEBUG_BEAM=1" )
 
@@ -172,7 +178,7 @@ declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=
 ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spacepirate
      ing ep plain emp3 turret agon54 darksamus splitter grenchler grenguard flyingpirate
      mediuming metroid sporb blogg swarm gunturret rezbit parasite lumite shrieker
-     ingswarm darktrooper bacteriaswarm)
+     ingswarm darktrooper bacteriaswarm tryclops wisptentacle)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 
