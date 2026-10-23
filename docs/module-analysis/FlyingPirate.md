@@ -1,7 +1,8 @@
 # FlyingPirate REL (module 22): analysis notes
 
 Pirate Aerotrooper. The module's code is upstream's `src/MetroidPrime/Enemies/CFlyingPirate.cpp`
-(no `TARGET_PC` blocks; the port compiles it as-is). Retail asm:
+(no `TARGET_PC` blocks; the port compiles it as-is; the SLdr defaults fix is in
+`include/MetroidPrime/ScriptLoader/SLdrFlyingPirate.hpp`). Retail asm:
 `build/G2ME01/FlyingPirate/asm/MetroidPrime/Enemies/CFlyingPirate.s` (after `python3 configure.py && $T/ninja`).
 Per-function table: `FlyingPirate_functions.tsv` (B upstream body, H weak/implicit copy, T REL runtime).
 
@@ -12,11 +13,11 @@ Unit 97.2% fuzzy. Every function is 100% except:
 | function | fuzzy | objdiff verdict |
 |---|---|---|
 | LoadFlyingPirate fn_22_5D4 | 99.4 | scheduling |
-| SLdrFlyingPirate ctor fn_22_12BC | 52.6 | not deep-checked; the loader overwrites its defaults (as SLdrMetroidAlpha) |
+| SLdrFlyingPirate ctor fn_22_12BC | 52.6 | five sound defaults and two actor-parameter defaults differed: fixed (fp2, below); rest is the inline ctor order |
 | CVector3f::Cross fn_22_22A8 | 92.1 | weak inline copy |
 | PreRender fn_22_25C0 | 96.3 | retail reloads `lwz r5,0x60(r30)` at 0x2610 before `lwz r5,0x10(r5)`; same value |
 | DoUserAnimEvent fn_22_2738 | 92.1 | `info.Token().IsLoaded()` (0x2798-0x27E4): retail's inline also caches the object pointer (`GetObj`, `stw r0,0x8(r31)` at 0x27D8) when the locked token is loaded; same truth value. Header inline (CToken), not this module; rest is stack layout |
-| CFlyingPirateData ctor fn_22_A684 | 92.7 | scheduling of the CDamageInfo copies |
+| CFlyingPirateData ctor fn_22_A684 | 92.7 | scheduling of the CDamageInfo copies; every store's field and order checked (fp2) |
 | fn_22_2A28..2D78 (10) | 0 | unnamed CImpactVisorEffect/rstl helpers called from CImpactVisorEffect::None (fn_22_29E0); `upstream_hollow.py` clears them |
 
 No behaviour difference found. `tools/upstream_hollow.py --min 0 FlyingPirate`: only 8-byte getters
@@ -84,3 +85,61 @@ cover point), ShouldSpecialAttack (flavor One with an attack object), ShouldRetr
 GetTargetPos, GetUp, Bounce, Dodge, InRange, StartSpinToDeath, TargetPatrol, UpdateLandingSmoke,
 UpdateParticleEffects (aqua arms: no aqua pirate in these areas), ctor, LoadFlyingPirate. Not run:
 SLdr ctor deep check, CFlyingPirateData ctor marker (92.7%).
+
+## Coverage and checks (fp2, 2026-10-23)
+
+Forced runs on the coverage build (`force_ret.py`: each write is undone when the call returns, unless
+the entry says it stays), merged with fp1's five runs:
+`COV_GDB_SCRIPT=tools/cov/force_ret.py BUILD=$PWD/build-port-cov tools/cov/force.sh tools/cov/specs/flyingpirate_fp2.py <out> <world,area> --con <con> --fast --frames N`
+with `flyingpirate_fp2.con` (sandfalls: HearPlayer/fsm/place, 4200 f), `flyingpirate_sandfalls.con`
+(3700 f) and `flyingpirate_casual.con` (casualpirates, 4500 f; the kills feed KnockBack/Dead). No
+`[port] caught`/reach-stub. Lines are gcov lines of `CFlyingPirate.cpp` at d0ab81f9c (before fp2's markers).
+
+Marked (17):
+
+| function | arms / how |
+|---|---|
+| Listen 9034 | natural; 406/407 forced (Listen height) |
+| UpdateParticleEffects 8E3C | natural; aqua arms 427-445 forced (UpdateParticleEffects aqua) |
+| AddToTeam 8AC8 | natural; 498 forced (AddToTeam not a team) |
+| GetTargetPos 7EC4 | natural; 663/664 forced (the spec's TargetBp: mTargetId = another live pirate, active / inactive for the call) |
+| CheckFireMissiles 7C04 | natural; 680 forced (CheckFireMissiles blocked) |
+| HearPlayer 6ACC | natural; 913 forced (HearPlayer deaf) |
+| Taunt 6800 | natural; 946/947 area arm forced (Taunt other area) |
+| Lurk 6244 | natural; 1031 forced (Lurk dest = self) |
+| Attack 5A24 | natural; 1164 forced (Attack checked), 1183 forced (Attack on player) |
+| InRange 58E4 | natural; 1208/1209 forced (InRange ranges: min 0, 1e6/1e6, 1e6/0). Retail tests the player's absolute Z and translation, not a delta (0x58E4-0x5930); the C++ does the same |
+| ShouldDodge 4B64 | natural; 1365 forced (ShouldDodge shot at); 1361 `x6a1_25_` (0xbb9 mask 0x40) is dead: only ever stored 0 (0x64DC Lurk deactivate, 0x9A9C ctor) |
+| Dodge 4900 | natural; 1378 forced (Dodge no direction); 0x4000 picks 2 (left), else 3 (right) |
+| ShouldSpecialAttack 4718 | false arm natural (5853); the rest is dead: `mFlavor` (0x41c) is always 0 (ctor `li r7,0` at 0x9714), so `cmpwi r0,1` at 0x4738 never matches |
+| Stuck 3C48 | natural; 1570 forced (Stuck no path), base arm forced (Stuck base stuck) |
+| Dead 386C | natural; 1610 forced (Dead spin time 7: mSpinToDeath 1 + GetTime() 7 on Update; the fights' spins end on a collision before Dead sees them) |
+| CFlyingPirateData ctor A684 | branch-free; asm stores match the C++ field for field (0x54 = default CDamageInfo for mWpscDamage) |
+| SLdrFlyingPirate ctor 12BC (in SLdrFlyingPirate.hpp) | fixed: see below |
+
+SLdr ctor fix (`#ifdef TARGET_PC`, each citing its store): sound_Projectile -1 (0x318 at 0x1300),
+sound_Impact/sound_Spiral -1 (0x360/0x364), sound_Hurled/sound_Death -1 (0x380/0x384); the hpp had 0.
+Added `actorInformation.lighting.ambientColor = CColor(1,1,1,1)` (0x294 at 0x1434) and
+`actorInformation.visor.visorFlags = 0xf` (0x2E4 at 0x1444). Every other default matches the rodata.
+
+`asmcheck.py check` on the 16 CFlyingPirate-file marks: 41 findings, all tool limits (no bitfield
+position table for this module: BIT/NOPOS name the wrong field, e.g. 4718's `xbb9_04` is mIsMoving;
+inlined CCollisionPrimitive/TCastToPtr calls; Dodge's BRANCH count is the inlined helpers).
+
+Gotcha: a flyer runs with `mVerticalMovement` set, so KnockBack's untaken arm at 705 is the *false*
+side (force 0, not 1). A gcov `f` (fallthrough) arm is not the true side of the source condition.
+
+Not marked (untaken after fp2):
+
+| function | untaken |
+|---|---|
+| DeliverGetUp 8FA4 | 420 lie-on-ground arm (inlined into its callers in the coverage build: no entry to force) |
+| RemoveFromTeam 8A20 | 508 IsPartOfTeam false (the FORCE_INNER never fired) |
+| KnockBack 78B0 | 722 Hurled while frozen (IsFrozen is inline); 705/708/733/742 now taken (forced) |
+| FireProjectile 2E34 | 1714 `distance < 6 && dot <= 0.5`, 1731 no additive reaction anim |
+| DoUserAnimEvent 2738 | 1747 projectile token not loaded |
+| CollidedWith 23F4 | 1806 one arm, 1808 SharesMaterials false |
+
+The rest of fp1's "partly covered" list is unchanged (cover-point arms: no shipped cover point in
+these areas; Think, Patrol, PathFind, Retreat, TurnAround, Walk, GetUp, Bounce, TargetPatrol, ...).
+

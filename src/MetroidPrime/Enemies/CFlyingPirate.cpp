@@ -156,6 +156,7 @@ static rstl::string skSparks = rstl::string_l("Sparks");
 static rstl::string skLandingSmoke = rstl::string_l("LandingSmoke");
 static rstl::string skEyes = rstl::string_l("Eyes");
 
+// @ fn_22_A684
 CFlyingPirate::CFlyingPirateData::CFlyingPirateData(
     float maxCoverDistance, float hearingDistance, uint type, CAssetId projectile,
     const CDamageInfo& projectileDamage, ushort gunSfx, CAssetId missile,
@@ -397,6 +398,7 @@ void CFlyingPirate::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_22_9034
 bool CFlyingPirate::Listen(CStateManager& mgr, const CVector3f& pos, EListenNoiseType type) {
   bool heard = false;
   if (mAlive) {
@@ -422,6 +424,7 @@ void CFlyingPirate::DeliverGetUp() {
   }
 }
 
+// @ fn_22_8E3C
 void CFlyingPirate::UpdateParticleEffects(CStateManager& mgr, float intensity, bool active) {
   CAnimData* animData = AnimationData();
   const rstl::string& name = mIsAquaPirate ? skScubaGear : skJetPack;
@@ -490,6 +493,7 @@ CVector3f CFlyingPirate::GetOrigin(const CStateManager& mgr, const CTeamAiRole& 
   return GetTranslation();
 }
 
+// @ fn_22_8AC8
 void CFlyingPirate::AddToTeam(CStateManager& mgr) {
   if (mTeamAiMgr == kInvalidUniqueId) {
     mTeamAiMgr = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -658,6 +662,7 @@ pas::EStepDirection CFlyingPirate::GetDodgeDirection(CStateManager& mgr, float a
   return direction;
 }
 
+// @ fn_22_7EC4
 CVector3f CFlyingPirate::GetTargetPos(CStateManager& mgr) {
   if (mTargetId != mgr.GetPlayer(0)->GetUniqueId()) {
     if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mTargetId))) {
@@ -671,6 +676,7 @@ CVector3f CFlyingPirate::GetTargetPos(CStateManager& mgr) {
   return mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f);
 }
 
+// @ fn_22_7C04
 void CFlyingPirate::CheckFireMissiles(CStateManager& mgr) {
   if (mFireMissilesCheck < 4) {
     if (mFireMissilesCheck == 0) {
@@ -905,6 +911,7 @@ bool CFlyingPirate::HearShot(CStateManager& mgr, const CTriggerData& data) const
   return heard;
 }
 
+// @ fn_22_6ACC
 bool CFlyingPirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) const {
   const CPlayer& player = *mgr.GetPlayer(0);
   bool heard = false;
@@ -917,6 +924,7 @@ bool CFlyingPirate::HearPlayer(CStateManager& mgr, const CTriggerData& data) con
   return heard;
 }
 
+// @ fn_22_6800
 void CFlyingPirate::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1010,6 +1018,7 @@ void CFlyingPirate::Bounce(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_6244
 void CFlyingPirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1157,6 +1166,7 @@ bool CFlyingPirate::ShouldAttack(CStateManager& mgr, const CTriggerData& data) c
   return shouldAttack;
 }
 
+// @ fn_22_5A24
 void CFlyingPirate::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1202,6 +1212,7 @@ bool CFlyingPirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) con
   return CVector3f::Dot(dir, GetTransform().GetForward()) > distance * angle;
 }
 
+// @ fn_22_58E4
 bool CFlyingPirate::InRange(CStateManager& mgr, const CTriggerData& data) const {
   const CPlayer& player = *mgr.GetPlayer(0);
   const CVector3f pos = player.GetTranslation();
@@ -1356,6 +1367,7 @@ void CFlyingPirate::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_4B64
 bool CFlyingPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) const {
   bool dodge = mMissilePathBlocked;
   if (!mMissilePathBlocked && !x6a1_25_) {
@@ -1370,6 +1382,7 @@ bool CFlyingPirate::ShouldDodge(CStateManager& mgr, const CTriggerData& data) co
   return dodge;
 }
 
+// @ fn_22_4900
 void CFlyingPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1405,6 +1418,7 @@ bool CFlyingPirate::Attacked(CStateManager& mgr, const CTriggerData& data) const
   return mTimeSinceAttacked < (data.GetFloat() ? data.GetFloat() : 0.5f);
 }
 
+// @ fn_22_4718
 bool CFlyingPirate::ShouldSpecialAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mFlavor == kFT_One && mAttackObjectId != kInvalidUniqueId && mSpecialAttackTimer <= 0.f) {
     const_cast< CFlyingPirate* >(this)->mSpecialAttackTimer = 15.f * mgr.Random()->Float() + 15.f;
@@ -1564,6 +1578,7 @@ bool CFlyingPirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) con
   return true;
 }
 
+// @ fn_22_3C48
 bool CFlyingPirate::Stuck(CStateManager& mgr, const CTriggerData& data) const {
   return mStateMachine->GetTime() > 0.5f &&
          (CPatterned::Stuck(mgr, data) ||
@@ -1589,6 +1604,7 @@ void CFlyingPirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_386C
 void CFlyingPirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Dead(mgr, msg, dt);
   switch (msg) {

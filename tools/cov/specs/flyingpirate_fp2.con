@@ -1,0 +1,41 @@
+# fp2: Agon 02_sand_sandfalls layer 8, for tools/cov/specs/flyingpirate_fp2.py (forced arms).
+# The ordinary fight of flyingpirate_sandfalls.con, plus HearPlayer asked while the player
+# walks, Taunt / Dodge / Lurk entered on u06de, and u06cf put next to the player to shoot.
+@f300 layer 8
+@f560 god 1; give missiles 50; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f600 tp -95 -100 -8
+@f610 face 180
+@f700 stick 0 127 60
+@f710 trigcall u06de HearPlayer; trigcall u06cf HearPlayer
+@f720 trigcall u06de HearPlayer; trigcall u06cf HearPlayer
+@f730 trigcall u06de HearPlayer; trigcall u06cf HearPlayer
+@f740 trigcall u06de HearPlayer; trigcall u06cf HearPlayer
+@f760 noise 0; noise 1; noise 2; noise 3; noise 4; noise 5
+@f800 fsm u06de Taunt
+@f900 fsm u06de Lurk
+@f1000 fsm u06de Dodge
+@f1100 fsm u06de Taunt
+@f1150 fsm u06de Attack
+@f1200 shoot u06de
+@f1230 shoot u06de
+@f1260 shoot u06de missile
+@f1300 place u06cf player 4
+@f1340 place u06cf player 4
+@f1380 place u06cf player 3
+@f1400 noise 0; noise 1; noise 2
+@f1500 shoot u06cf charged
+@f1600 damage u06cf 5 10
+@f1650 fsm u06de Lurk
+@f1800 fsm u06de Dodge
+@f1900 fsm u06de Attack
+@f2000 damage u06de 10 0 missile
+@f2100 stick 0 127 40
+@f2110 trigcall u06de HearPlayer; trigcall u06cf HearPlayer
+@f2120 trigcall u06de HearPlayer; trigcall u06cf HearPlayer
+@f2200 fsm u06de Taunt
+@f2300 fsm u06de Lurk
+@f2400 damage u06cf 1000
+@f2700 obj u06cf
+@f3000 damage u06de 1000 0 dark
+@f3300 obj u06de
+@f3500 status
