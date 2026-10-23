@@ -1,0 +1,22 @@
+# 01_sand_entrance_dark (layer 2): two Crystallites (CParasite kPT_Crystallite) u052d u04fc. Bring them
+# to a god-mode player, shoot them with the power, dark and light beams (resisted -> UpdateShell),
+# let them fight, then kill them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/parasite.py <out> 42b935e4,01_sand_entrance_dark --con <this> --fast --frames 3600
+@f300 god 1; give missile 50; give darkBeam 1; give lightBeam 1; give darkAmmo 100; give lightAmmo 100
+@f302 layer 2
+@f310 objs parasite; obj u052d
+@f330 place u052d player 5; place u04fc player 8
+@f700 obj u052d; obj u04fc
+@f1000 shoot u052d; shoot u04fc
+@f1040 obj u052d; obj u04fc
+@f1100 beam dark; shoot u052d; shoot u04fc
+@f1140 obj u052d; obj u04fc
+@f1400 beam light; shoot u052d; shoot u04fc
+@f1440 obj u052d; obj u04fc
+@f1800 beam power; shoot u052d; shoot u04fc
+@f2200 beam light; shoot u052d; shoot u04fc
+@f2240 obj u052d; obj u04fc
+@f2600 place u052d player 3; place u04fc player 3
+@f2900 damage u052d 50 light; damage u04fc 50 dark
+@f3000 damage u052d 50; damage u04fc 50 missile
+@f3300 objs parasite

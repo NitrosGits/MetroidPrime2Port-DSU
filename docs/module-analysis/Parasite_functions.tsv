@@ -1,0 +1,132 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_47_0	10	H	TakeDamage__10CPatternedFRC9CVector3ff	-	weak copy / template instance	no
+00010	fn_47_10	8	H	GetModelAlphau8__10CPatternedCFRC13CStateManager	-	weak copy / template instance	no
+00018	fn_47_18	8	H	ProjectileInfo__10CPatternedFv	-	weak copy / template instance	no
+00020	fn_47_20	8	H	GetSearchPath__10CPatternedFv	-	weak copy / template instance	no
+00028	fn_47_28	8	H	GetPointSearchPath__10CPatternedFv	-	weak copy / template instance	no
+00030	fn_47_30	8	H	GetRagDoll__10CPatternedCFv	-	weak copy / template instance	no
+00038	fn_47_38	10	H	GetAttackTarget__10CPatternedCFv	-	weak copy / template instance	no
+00048	fn_47_48	C	H	GetGravityConstant__10CPatternedCFv	-	weak copy / template instance	no
+00054	fn_47_54	8	H	GetDeathExplosionParticle__10CPatternedCFv	-	weak copy / template instance	no
+0005C	fn_47_5C	8	H	CanBeShot__3CAiFRC13CStateManageri	-	weak copy / template instance	no
+00064	fn_47_64	8	H	IsListening__3CAiCFv	-	weak copy / template instance	no
+0006C	fn_47_6C	8	H	Listen__3CAiFR13CStateManagerRC9CVector3f16EListenNoiseType	-	weak copy / template instance	no
+00074	fn_47_74	1C	H	GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f	-	weak copy / template instance	no
+00090	fn_47_90	2C	H	GetHealthInfo__6CActorCFv	-	weak copy / template instance	no
+000BC	fn_47_BC	24	T	RELExit	-	REL runtime	no
+000E0	fn_47_E0	20	T	RELMain	-	REL runtime	no
+00100	fn_47_100	48	B	SetFuncPtrs__Fv	para1	upstream body (CParasite)	yes
+00148	fn_47_148	618	B	LoadCrystallite__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	no
+00760	fn_47_760	5C	H	__ct__20CDamageVulnerabilityFRC20CDamageVulnerability	-	weak copy / template instance	no
+007BC	fn_47_7BC	54	H	__dt__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+00810	fn_47_810	130	H	__ct__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+00940	fn_47_940	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+00980	fn_47_980	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak copy / template instance	no
+009A0	fn_47_9A0	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak copy / template instance	no
+009C8	fn_47_9C8	13C	H	__ct__10CModelDataFRC10CModelData	-	weak copy / template instance	no
+00B04	fn_47_B04	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak copy / template instance	no
+00B70	fn_47_B70	54	H	__dt__15TToken<6CModel>Fv	-	weak copy / template instance	no
+00BC4	fn_47_BC4	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
+00C28	fn_47_C28	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
+00C88	fn_47_C88	70	H	__dt__15SLdrCrystalliteFv	-	weak copy / template instance	no
+00CF8	fn_47_CF8	6AC	B	LoadBrizgee__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	no
+013A4	fn_47_13A4	94	H	__dt__11SLdrBrizgeeFv	-	weak copy / template instance	no
+01438	fn_47_1438	130	H	__ct__11SLdrBrizgeeFv	para1	loader defaults (SLdr ctor); para1 fix	no
+01568	fn_47_1568	69C	B	LoadParasite__FR13CStateManagerR12CInputStreamR11CEntityInfo	para1	upstream loader; para1 defaults fix	no
+01C04	fn_47_1C04	90	H	__ct__11CDamageInfoFv	-	weak copy / template instance	no
+01C94	fn_47_1C94	70	H	__dt__12SLdrParasiteFv	-	weak copy / template instance	no
+01D04	fn_47_1D04	238	H	__ct__12SLdrParasiteFv	para1	loader defaults (SLdr ctor); para1 fix	no
+01F3C	fn_47_1F3C	2F0	B	UpdateShell__9CParasiteFR13CStateManageri	-	upstream body (CParasite)	no
+0222C	fn_47_222C	6C	B	SetupStateMachine__9CParasiteFR13CStateManager	para1	upstream body (CParasite)	yes
+02298	fn_47_2298	20	B	MassiveFrozenDeath__9CParasiteFR13CStateManager	-	upstream body (CParasite)	no
+022B8	fn_47_22B8	20	B	MassiveDeath__9CParasiteFR13CStateManager	para1	upstream body (CParasite)	yes
+022D8	fn_47_22D8	23C	B	UpdateCollisionActors__9CParasiteFfR13CStateManager	-	upstream body (CParasite)	no
+02514	fn_47_2514	5C	H	__dt__17CBCMeleeAttackCmdFv	-	weak copy / template instance	no
+02570	fn_47_2570	48	H	__dt__13CBodyStateCmdFv	-	weak copy / template instance	no
+025B8	fn_47_25B8	EC	B	SetupIceZoomerVulnerability__9CParasiteFR13CStateManagerRC20CDamageVulnerabilityRC11CHealthInfo	-	upstream body (CParasite)	no
+026A4	fn_47_26A4	24	B	DestroyActorManager__9CParasiteFR13CStateManager	para1	upstream body (CParasite)	yes
+026C8	fn_47_26C8	1D0	B	SetupIceZoomerCollision__9CParasiteFR13CStateManager	para1	upstream body (CParasite)	yes
+02898	fn_47_2898	38	H	push_back_unsafe__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>FRC26CJointCollisionDescription	-	weak copy / template instance	no
+028D0	fn_47_28D0	20	H	construct<26CJointCollisionDescription>__4rstlFPvRC26CJointCollisionDescription	-	weak copy / template instance	no
+028F0	fn_47_28F0	28	H	construct__Q24rstl51construction_policy<26CJointCollisionDescription,0>FPvRC26CJointCollisionDescription	-	weak copy / template instance	no
+02918	fn_47_2918	C0	H	__ct__26CJointCollisionDescriptionFRC26CJointCollisionDescription	-	weak copy / template instance	no
+029D8	fn_47_29D8	5C	H	__dt__26CJointCollisionDescriptionFv	-	weak copy / template instance	no
+02A34	fn_47_2A34	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+02A84	fn_47_2A84	84	H	__dt__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+02B08	fn_47_2B08	38	H	destroy<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>>__4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+02B40	fn_47_2B40	60	H	fn_47_2B40	-	unnamed static (CJointCollisionDescription vector destroy)	no
+02BA0	fn_47_2BA0	118	B	GetContactDamage__9CParasiteCFv	-	upstream body (CParasite)	no
+02CB8	fn_47_2CB8	88	B	GetCollisionResponseType__9CParasiteCFRC9CVector3fRC9CVector3fRC11CWeaponModei	-	upstream body (CParasite)	no
+02D40	fn_47_2D40	84	B	GetDamageVulnerability__9CParasiteCFv	para1	upstream body (CParasite)	yes
+02DC4	fn_47_2DC4	20	B	Render__9CParasiteCFRC13CStateManager	para1	upstream body (CParasite)	yes
+02DE4	fn_47_2DE4	48	B	PreRender__9CParasiteFR13CStateManager	para1	upstream body (CParasite)	yes
+02E2C	fn_47_2E2C	7D4	B	DoFlockingBehavior__9CParasiteFR13CStateManager	-	upstream body (CParasite)	no
+03600	fn_47_3600	3C	H	__dt__Q24rstl32reserved_vector<9TUniqueId,1024>Fv	-	weak copy / template instance	no
+0363C	fn_47_363C	4	B	UpdatePFDestination__9CParasiteFR13CStateManager	para1	upstream body (CParasite)	yes
+03640	fn_47_3640	20	B	Touch__9CParasiteFR6CActorR13CStateManager	para1	upstream body (CParasite)	yes
+03660	fn_47_3660	B0	B	GetUp__9CParasiteFR13CStateManager9EStateMsgf	para1	upstream body (CParasite)	yes
+03710	fn_47_3710	E0	B	Crouch__9CParasiteFR13CStateManager9EStateMsgf	para1	upstream body (CParasite)	yes
+037F0	fn_47_37F0	1A8	B	Halt__9CParasiteFR13CStateManager9EStateMsgf	-	upstream body (CParasite)	no
+03998	fn_47_3998	5C	H	__dt__18CBCLoopReactionCmdFv	-	weak copy / template instance	no
+039F4	fn_47_39F4	120	B	TelegraphAttack__9CParasiteFR13CStateManager9EStateMsgf	-	upstream body (CParasite)	no
+03B14	fn_47_3B14	B0	B	Death__9CParasiteFR13CStateManagerRC9CVector3f18EScriptObjectState	para1	upstream body (CParasite)	yes
+03BC4	fn_47_3BC4	110	B	TargetPlayer__9CParasiteFR13CStateManager9EStateMsgf	para1	upstream body (CParasite)	yes
+03CD4	fn_47_3CD4	1F0	B	Retreat__9CParasiteFR13CStateManager9EStateMsgf	-	upstream body (CParasite)	no
+03EC4	fn_47_3EC4	9C	H	DeliverCmd__16CBodyStateCmdMgrFRC10CBCJumpCmd	-	weak copy / template instance	no
+03F60	fn_47_3F60	5C	H	__dt__10CBCJumpCmdFv	-	weak copy / template instance	no
+03FBC	fn_47_3FBC	7C	H	__ct__10CBCJumpCmdFRC9CVector3fQ23pas9EJumpTypeQ23pas10EJumpStateii	-	weak copy / template instance	no
+04038	fn_47_4038	310	B	Attack__9CParasiteFR13CStateManager9EStateMsgf	-	upstream body (CParasite)	no
+04348	fn_47_4348	D8	B	FaceTarget__9CParasiteF9CVector3f	para1	upstream body (CParasite)	yes
+04420	fn_47_4420	188	B	Patrol__9CParasiteFR13CStateManager9EStateMsgf	-	upstream body (CParasite)	no
+045A8	fn_47_45A8	88	B	TargetPatrol__9CParasiteFR13CStateManager9EStateMsgf	-	upstream body (CParasite)	no
+04630	fn_47_4630	144	B	Jump__9CParasiteFR13CStateManager9EStateMsgf	para1	upstream body (CParasite)	yes
+04774	fn_47_4774	FC	B	PathFind__9CParasiteFR13CStateManager9EStateMsgf	para1	upstream body (CParasite)	yes
+04870	fn_47_4870	4	B	Run__9CParasiteFR13CStateManager9EStateMsgf	para1	upstream body (CParasite)	yes
+04874	fn_47_4874	198	B	Deactivate__9CParasiteFR13CStateManager9EStateMsgf	para1	upstream body (CParasite)	yes
+04A0C	fn_47_4A0C	5C	H	__dt__14CBCGenerateCmdFv	-	weak copy / template instance	no
+04A68	fn_47_4A68	16C	B	Generate__9CParasiteFR13CStateManager9EStateMsgf	para1	upstream body (CParasite)	yes
+04BD4	fn_47_4BD4	E4	B	ShouldAttack__9CParasiteCFR13CStateManagerRC12CTriggerData	-	upstream body (CParasite)	no
+04CB8	fn_47_4CB8	64	B	HitSomething__9CParasiteCFR13CStateManagerRC12CTriggerData	-	upstream body (CParasite)	no
+04D1C	fn_47_4D1C	C	B	Landed__9CParasiteCFR13CStateManagerRC12CTriggerData	para1	upstream body (CParasite)	yes
+04D28	fn_47_4D28	14	B	AnimOver__9CParasiteCFR13CStateManagerRC12CTriggerData	para1	upstream body (CParasite)	yes
+04D3C	fn_47_4D3C	EC	B	GetClosestWaypointForState__9CParasiteCF18EScriptObjectStateR13CStateManager	-	upstream body (CParasite)	no
+04E28	fn_47_4E28	D4	B	RecursiveFindClosestWayPoint__9CParasiteCFR13CStateManager9TUniqueIdRf	-	upstream body (CParasite)	no
+04EFC	fn_47_4EFC	C	B	IsOnGround__9CParasiteCFv	para1	upstream body (CParasite)	yes
+04F08	fn_47_4F08	180	B	CollidedWith__9CParasiteFRC9TUniqueIdRC18CCollisionInfoListR13CStateManager	-	upstream body (CParasite)	no
+05088	fn_47_5088	174	B	CloseToWall__9CParasiteCFR13CStateManager	-	upstream body (CParasite)	no
+051FC	fn_47_51FC	48	H	__dt__19CCollisionPrimitiveFv	-	weak copy / template instance	no
+05244	fn_47_5244	1C	B	PatrolPathOver__9CParasiteCFR13CStateManagerRC12CTriggerData	para1	upstream body (CParasite)	yes
+05260	fn_47_5260	40	B	ShotAt__9CParasiteCFR13CStateManagerRC12CTriggerData	para1	upstream body (CParasite)	yes
+052A0	fn_47_52A0	C	B	AttackOver__9CParasiteCFR13CStateManagerRC12CTriggerData	para1	upstream body (CParasite)	yes
+052AC	fn_47_52AC	18	B	Stuck__9CParasiteCFR13CStateManagerRC12CTriggerData	para1	upstream body (CParasite)	yes
+052C4	fn_47_52C4	48	B	ThinkAboutMove__9CParasiteFf	para1	upstream body (CParasite)	yes
+0530C	fn_47_530C	1C	B	GetAimPosition__9CParasiteCFRC13CStateManagerf	para1	upstream body (CParasite)	yes
+05328	fn_47_5328	2B0	B	UpdateJumpVelocity__9CParasiteFv	-	upstream body (CParasite)	no
+055D8	fn_47_55D8	30	B	UpdateWalkerAnimation__9CParasiteFR13CStateManagerf	-	upstream body (CParasite)	no
+05608	fn_47_5608	7AC	B	Think__9CParasiteFfR13CStateManager	-	upstream body (CParasite)	no
+05DB4	fn_47_5DB4	3C	H	__dt__Q24rstl24optional_object<6CAABox>Fv	-	weak copy / template instance	no
+05DF0	fn_47_5DF0	20	B	PreThink__9CParasiteFfR13CStateManager	para1	upstream body (CParasite)	yes
+05E10	fn_47_5E10	1C8	B	AddDoorRepulsors__9CParasiteFR13CStateManager	-	upstream body (CParasite)	no
+05FD8	fn_47_5FD8	5F4	B	AcceptScriptMsg__9CParasiteFR13CStateManagerRC10CScriptMsg	-	upstream body (CParasite)	no
+065CC	fn_47_65CC	5C	H	__dt__20CBCAdditiveFlinchCmdFv	-	weak copy / template instance	no
+06628	fn_47_6628	C4	B	__dt__9CParasiteFv	para1	upstream body (CParasite)	yes
+066EC	fn_47_66EC	84	H	__dt__Q24rstl57vector<Q29CParasite9CRepulsor,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+06770	fn_47_6770	7B0	B	__ct__9CParasiteF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Q210CPatterned11EFlavorTypeR11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfo9EBodyTypeffffffffffffffffffbQ29CParasite13EParasiteTypeRC20CDamageVulnerabilityRC11CDamageInfoUsUsUsUiUiffRC11CDamageInfoRC16CActorParameters	-	upstream body (CParasite)	no
+06F20	fn_47_6F20	48	H	__ct__29TLockedToken<13CSkinnedModel>FP13CSkinnedModel	-	weak copy / template instance	no
+06F68	fn_47_6F68	54	H	__dt__23TToken<13CSkinnedModel>Fv	-	weak copy / template instance	no
+06FBC	fn_47_6FBC	74	H	__ct__23TToken<13CSkinnedModel>FP13CSkinnedModel	-	weak copy / template instance	no
+07030	fn_47_7030	90	H	__dt__41TObjOwnerDerivedFromIObj<13CSkinnedModel>Fv	-	weak copy / template instance	no
+070C0	fn_47_70C0	78	H	__dt__Q24rstl53auto_ptr<41TObjOwnerDerivedFromIObj<13CSkinnedModel>>Fv	-	weak copy / template instance	no
+07138	fn_47_7138	90	H	GetNewDerivedObject__41TObjOwnerDerivedFromIObj<13CSkinnedModel>FP13CSkinnedModel	-	weak copy / template instance	no
+071C8	fn_47_71C8	5C	H	__dt__31CObjOwnerDerivedFromIObjUntypedFv	-	weak copy / template instance	no
+07224	fn_47_7224	48	H	__dt__4IObjFv	-	weak copy / template instance	no
+0726C	fn_47_726C	54	H	__dt__20TToken<10CSkinRules>Fv	-	weak copy / template instance	no
+072C0	fn_47_72C0	58	H	__dt__21TLockedToken<6CModel>Fv	-	weak copy / template instance	no
+07318	fn_47_7318	58	H	__dt__26TLockedToken<10CSkinRules>Fv	-	weak copy / template instance	no
+07370	fn_47_7370	78	H	__dt__Q24rstl43single_ptr<29TLockedToken<13CSkinnedModel>>Fv	-	weak copy / template instance	no
+073E8	fn_47_73E8	58	H	__dt__Q24rstl36single_ptr<22CCollisionActorManager>Fv	-	weak copy / template instance	no
+07440	fn_47_7440	C0	H	reserve__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance	no
+07500	fn_47_7500	68	H	uninitialized_copy<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P26CJointCollisionDescription>__4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P26CJointCollisionDescription	-	weak copy / template instance	no
+07568	fn_47_7568	B8	H	reserve__Q24rstl57vector<Q29CParasite9CRepulsor,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance	no
+07620	fn_47_7620	4C	H	uninitialized_copy<Q24rstl134pointer_iterator<Q29CParasite9CRepulsor,Q24rstl57vector<Q29CParasite9CRepulsor,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,PQ29CParasite9CRepulsor>__4rstlFQ24rstl134pointer_iterator<Q29CParasite9CRepulsor,Q24rstl57vector<Q29CParasite9CRepulsor,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl134pointer_iterator<Q29CParasite9CRepulsor,Q24rstl57vector<Q29CParasite9CRepulsor,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>PQ29CParasite9CRepulsor	-	weak copy / template instance	no
+0766C	fn_47_766C	3D8	H	__sinit_CParasite_cpp	-	static init	no

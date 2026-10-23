@@ -31,6 +31,14 @@ inline SLdrCrystallite::SLdrCrystallite() : editorProperties(), patterned(), act
   visibleDistance = 40.0f;
   forwardMovingPriority = 0.2f;
   stunTime = 1.5f;
+#ifdef TARGET_PC
+  // Inlined in LoadCrystallite (fn_47_148, struct at r1+0x508): 2.0 (rodata 0x14) at +0x88
+  // (0x198 stfs 0x590), CColor(1.0 x4, rodata 0x18) at +0x294 (0x21C stw 0x79c, ambientColor),
+  // 0xF at +0x2E4 (0x1F0 li / 0x220 stw 0x7ec).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrCrystallite::~SLdrCrystallite() {}

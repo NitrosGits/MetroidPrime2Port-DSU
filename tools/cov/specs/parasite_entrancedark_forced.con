@@ -1,0 +1,114 @@
+# FORCED arms, 01_sand_entrance_dark (layer 2): every CParasite state body (statecall 0/1/2), trigger
+# (trigcall) and script message (send) on the Crystallites, the machine walked through each state
+# (fsm), light/dark resisted hits on the shell, then kills; Deactivate (deletes the actor) runs last.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/parasite.py <out> 42b935e4,01_sand_entrance_dark --con <this> --fast --frames 1600
+@f300 god 1; give missile 50; give darkBeam 1; give lightBeam 1; give darkAmmo 100; give lightAmmo 100
+@f302 layer 2
+@f310 objs parasite
+@f330 place u052d player 5; place u04fc player 8
+@f400 statecall u052d Generate 0; statecall u052d Generate 1; statecall u052d Generate 1 0.5; statecall u052d Generate 2
+@f406 statecall u052d PathFind 0; statecall u052d PathFind 1; statecall u052d PathFind 1 0.5; statecall u052d PathFind 2
+@f412 statecall u052d TargetPatrol 0; statecall u052d TargetPatrol 1; statecall u052d TargetPatrol 1 0.5; statecall u052d TargetPatrol 2
+@f418 statecall u052d Patrol 0; statecall u052d Patrol 1; statecall u052d Patrol 1 0.5; statecall u052d Patrol 2
+@f424 statecall u052d Run 0; statecall u052d Run 1; statecall u052d Run 1 0.5; statecall u052d Run 2
+@f430 statecall u052d Attack 0; statecall u052d Attack 1; statecall u052d Attack 1 0.5; statecall u052d Attack 2
+@f436 statecall u052d TelegraphAttack 0; statecall u052d TelegraphAttack 1; statecall u052d TelegraphAttack 1 0.5; statecall u052d TelegraphAttack 2
+@f442 statecall u052d Jump 0; statecall u052d Jump 1; statecall u052d Jump 1 0.5; statecall u052d Jump 2
+@f448 statecall u052d TargetPlayer 0; statecall u052d TargetPlayer 1; statecall u052d TargetPlayer 1 0.5; statecall u052d TargetPlayer 2
+@f454 statecall u052d Retreat 0; statecall u052d Retreat 1; statecall u052d Retreat 1 0.5; statecall u052d Retreat 2
+@f460 statecall u052d Halt 0; statecall u052d Halt 1; statecall u052d Halt 1 0.5; statecall u052d Halt 2
+@f466 statecall u052d Crouch 0; statecall u052d Crouch 1; statecall u052d Crouch 1 0.5; statecall u052d Crouch 2
+@f472 statecall u052d GetUp 0; statecall u052d GetUp 1; statecall u052d GetUp 1 0.5; statecall u052d GetUp 2
+@f478 trigcall u052d Stuck; trigcall u052d AttackOver; trigcall u052d ShotAt; trigcall u052d PatrolPathOver; trigcall u052d AnimOver; trigcall u052d Landed; trigcall u052d HitSomething; trigcall u052d ShouldAttack; trigcall u052d ShouldAttack 1; trigcall u052d HitSomething 1
+@f484 send u052d Activate; send u052d Deactivate; send u052d ResistedDamage; send u052d ReflectedDamage; send u052d Launching; send u052d AreaLoaded; send u052d AIUpdateDisabled
+@f490 send u052d Activate
+@f500 fsm u052d Generate
+@f540 obj u052d
+@f542 fsm u052d Jump
+@f582 obj u052d
+@f584 fsm u052d Attack
+@f624 obj u052d
+@f626 fsm u052d Retreat
+@f666 obj u052d
+@f668 fsm u052d Halt
+@f708 obj u052d
+@f710 fsm u052d PathFind
+@f750 obj u052d
+@f752 fsm u052d TargetPlayer
+@f792 obj u052d
+@f794 fsm u052d Crouch
+@f834 obj u052d
+@f836 fsm u052d GetUp
+@f876 obj u052d
+@f878 fsm u052d Patrol
+@f888 statecall u052d Jump 0
+@f918 statecall u052d Jump 2
+@f924 statecall u052d Generate 0; statecall u052d Generate 1
+@f926 statecall u052d Generate 1
+@f930 statecall u052d Generate 1
+@f934 statecall u052d Generate 1
+@f938 statecall u052d Generate 1
+@f942 statecall u052d Generate 1
+@f946 statecall u052d Generate 1
+@f950 statecall u052d Generate 1
+@f954 statecall u052d Generate 1
+@f958 statecall u052d Generate 1
+@f962 statecall u052d Generate 1
+@f966 statecall u052d Generate 1
+@f970 statecall u052d Generate 1
+@f974 statecall u052d Generate 1
+@f978 statecall u052d Generate 1
+@f982 statecall u052d Generate 1
+@f986 statecall u052d Generate 1
+@f990 statecall u052d Generate 1
+@f994 statecall u052d Generate 1
+@f998 statecall u052d Generate 1
+@f1002 statecall u052d Generate 1
+@f1006 statecall u052d Generate 1
+@f1010 statecall u052d Generate 1
+@f1014 statecall u052d Generate 1
+@f1018 statecall u052d Generate 1
+@f1022 statecall u052d Generate 1
+@f1026 statecall u052d Generate 1
+@f1030 statecall u052d Generate 1
+@f1034 statecall u052d Generate 1
+@f1038 statecall u052d Generate 1
+@f1042 statecall u052d Generate 1
+@f1046 statecall u052d Generate 1
+@f1050 statecall u052d Generate 1
+@f1054 statecall u052d Generate 1
+@f1058 statecall u052d Generate 1
+@f1062 statecall u052d Generate 1
+@f1066 statecall u052d Generate 1
+@f1070 statecall u052d Generate 1
+@f1074 statecall u052d Generate 1
+@f1078 statecall u052d Generate 1
+@f1082 statecall u052d Generate 1
+@f1086 statecall u052d Generate 0; statecall u052d Deactivate 1
+@f1088 statecall u052d Deactivate 1
+@f1092 statecall u052d Deactivate 1
+@f1096 statecall u052d Deactivate 1
+@f1100 statecall u052d Deactivate 1
+@f1104 statecall u052d Deactivate 1
+@f1108 statecall u052d Deactivate 1
+@f1112 statecall u052d Deactivate 1
+@f1116 statecall u052d Deactivate 1
+@f1120 statecall u052d Deactivate 1
+@f1124 statecall u052d Deactivate 1
+@f1128 statecall u052d Deactivate 1
+@f1132 statecall u052d Deactivate 1
+@f1136 statecall u052d Deactivate 1
+@f1140 statecall u052d Deactivate 1
+@f1144 statecall u052d Deactivate 1
+@f1148 statecall u052d Deactivate 1
+@f1152 statecall u052d Deactivate 1
+@f1156 statecall u052d Deactivate 1
+@f1160 statecall u052d Deactivate 1
+@f1164 statecall u052d Deactivate 1
+@f1168 fsm u052d Patrol; place u052d player 0.5
+@f1228 obj u052d
+@f1232 place u04fc player 0.5
+@f1292 beam dark; shoot u04fc; beam light; shoot u04fc
+@f1352 damage u04fc 50 dark
+@f1452 statecall u052d Deactivate 1; statecall u052d Deactivate 2; statecall u052d Deactivate 0
+@f1552 objs parasite

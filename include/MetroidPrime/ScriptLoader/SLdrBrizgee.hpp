@@ -57,6 +57,17 @@ inline SLdrBrizgee::SLdrBrizgee()
   shellBreakSound = 0;
   poisonHitSound = 0;
   playerPoisonSound = 0;
+#ifdef TARGET_PC
+  // fn_47_1438: -1 at +0x4A0/+0x4A4/+0x4A8 (0x1484 li r0,-1; 0x148C/0x1498/0x14A4 stw): the three
+  // sounds; 2.0 (rodata 0x14) at +0x88 (0x14B4, hI_KnockBackResistance); CColor(1.0 x4, rodata
+  // 0x18) at +0x294 (0x14CC, ambientColor); 0xF at +0x2E4 (0x14D0 li / 0x14DC stw).
+  shellBreakSound = -1;
+  poisonHitSound = -1;
+  playerPoisonSound = -1;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrBrizgee::~SLdrBrizgee() {}

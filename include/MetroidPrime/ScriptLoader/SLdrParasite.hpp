@@ -70,6 +70,13 @@ inline SLdrParasite::SLdrParasite() : editorProperties(), patterned(), actorInfo
   playerAvoidancePriority = 0.2f;
   parasiteVisibleDistance = 40.0f;
   initiallyPaused = false;
+#ifdef TARGET_PC
+  // fn_47_1D04: 2.0 (rodata 0x14) at +0x8C (0x1E00, hI_KnockBackResistance); CColor(1.0 x4,
+  // rodata 0x18) at +0x298 (0x1E24, ambientColor); 0xF at +0x2E8 (0x1E28 li / 0x1E34 stw).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrParasite::~SLdrParasite() {}

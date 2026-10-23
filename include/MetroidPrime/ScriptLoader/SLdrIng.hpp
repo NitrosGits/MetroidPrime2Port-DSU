@@ -169,8 +169,16 @@ inline SLdrIng::SLdrIng()
   miniPortalBeamInfo.pulseSpeed = 20.0f;
   miniPortalBeamInfo.shutdownTime = 0.25f;
   miniPortalBeamInfo.pulseEffectScale = 2.0f;
+#ifdef TARGET_PC
+  // fn_29_16AC: the REL's beam colors are 0.5 (rodata 0xb4) and 0.6/0/0.5 (rodata 0xb8, 0x6c,
+  // 0xb4): CColor(0.5,0.5,0.5,0.5) at 0x19a4 is stored to +0x428 (0x19bc) and
+  // CColor(0.6,0.6,0,0.5) at 0x19d8 to +0x42c (0x19ec).
+  miniPortalBeamInfo.innerColor = CColor(0.5f, 0.5f, 0.5f, 0.5f);
+  miniPortalBeamInfo.outerColor = CColor(0.6f, 0.6f, 0.0f, 0.5f);
+#else
   miniPortalBeamInfo.innerColor = CColor(0.49803901f, 0.49803901f, 0.49803901f, 0.49803901f);
   miniPortalBeamInfo.outerColor = CColor(0.60000002f, 0.60000002f, 0.0f, 0.49803901f);
+#endif
   unknown_0x67f6c10e = 30.0f;
   exitGrappleDamage.dI_WeaponType = 11;
   exitGrappleDamage.dI_Damage = 10.0f;
@@ -183,6 +191,37 @@ inline SLdrIng::SLdrIng()
   postGrappleBallWaitTime = 10.0f;
   lightColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
   lightAttenuation = 5.0f;
+#ifdef TARGET_PC
+  // fn_29_16AC (the SLdrIng ctor REL 29, called from REL_Load fn_29_130 at sp+0x8c0): every sound
+  // id starts at -1 -- li r0, -0x1 (0x16d4/0x1734/0x1764) and stw r0,0x328/0x32c/0x330/0x334/
+  // 0x338(r31) (0x16f0..0x1700), 0x35c/0x360/0x364/0x368/0x36c (0x1714..0x1724), 0x3c0/0x3c4
+  // (0x1740/0x1744), 0x3d8 (0x174c), 0x44c/0x450 (0x1768/0x176c). The REL also stores the
+  // patterned/actor defaults the port's sub-ctors leave alone: stb r0(1),0x26c(r31) (0x17f8) is
+  // patterned.echoParameters.isEchoEmitter, the CColor(1,1,1,1) built at 0x17fc is the ambient
+  // color at actor +0x14 (stw 0x294, 0x180c), and li r0,0xf at actor +0x64 (stw 0x2e4, 0x181c)
+  // the visor flags. Every other store matches: turnSpeed 360/health 150/knock-back 2/
+  // minAttackRange 0/creatureSize 1 into patterned (+0x44/0x84/0x88/0x54/0x268), ingFlagsIng 0
+  // (+0x2f8), the twelve floats +0x300..+0x314, kInvalidAssetId +0x318..+0x344/+0x34c and the
+  // damage/beam/damage-info blocks.
+  sound_IngSpotIdle = -1;
+  sound_IngSpotMove = -1;
+  sound_HitNormalDamage = -1;
+  sound_HitHeavyDamage = -1;
+  sound_IngSpotDeath = -1;
+  sound_SwarmMove = -1;
+  sound_InsideHost = -1;
+  sound_ExitHost = -1;
+  sound_ExitHostSafeZone = -1;
+  sound = -1;
+  sound_BodyProjectile = -1;
+  sound_BodyProjectileSplatWall = -1;
+  sound_MiniPortal = -1;
+  sound_Grapple = -1;
+  sound_ExitGrapple = -1;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrIng::~SLdrIng() {}
