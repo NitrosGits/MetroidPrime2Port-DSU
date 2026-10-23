@@ -1,0 +1,7 @@
+# 0i_sand_hall: put both bases in AttackExit a few times, for tools/cov/specs/gunturret_force3.py.
+@f300 god 1
+@f400 fsm u043d AttackExit; fsm u0423 AttackExit
+@f600 fsm u043d Attack; fsm u0423 Attack
+@f700 fsm u043d AttackExit; fsm u0423 AttackExit
+@f900 fsm u043d AttackExit; fsm u0423 AttackExit
+@f1100 objs GunTurret

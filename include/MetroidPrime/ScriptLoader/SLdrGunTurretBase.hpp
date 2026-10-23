@@ -114,6 +114,15 @@ inline SLdrGunTurretBase::SLdrGunTurretBase()
   poleSparksSound = 0;
   maxAudibleDistance = 100.0f;
   soundFallOff = 0.0f;
+#ifdef TARGET_PC
+  // fn_28_13C0: 2.0 (rodata 0x8) at guest +0x13C = patterned +0x4C (0x1528), 1 at +0x320 =
+  // patterned +0x230 (0x152C), CColor(1.0 x4, rodata 0x10) at +0x348 = actor +0x14 (0x1540), 0xF
+  // at +0x398 = actor +0x64 (0x1544).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrGunTurretBase::~SLdrGunTurretBase() {}

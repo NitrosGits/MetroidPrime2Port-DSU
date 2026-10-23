@@ -1,0 +1,35 @@
+# 0m_cliff_hall: GunTurret bases u0501/u04fc, tops u0506/u04fd. Scan both parts, force the base FSM states and the top's
+# PowerDown/PowerUp, hurt and kill the top, then leave so the leash runs out (Withdraw).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/gunturret.py <out> 1baa96c2,0m_cliff_hall --con <this> --fast --frames 3400
+@f300 god 1; give missile 50
+@f320 scan u0506 15 300
+@f330 scan u0501 15 300
+@f600 fsm u0501 IntoPan
+@f700 fsm u0501 PanLeft
+@f800 fsm u0501 PanRight
+@f900 fsm u0501 AttackExit
+@f1000 fsm u0501 Flinch
+@f1100 fsm u0501 CloseDoor
+@f1200 fsm u0501 OpenDoor
+@f1300 fsm u0501 Withdraw
+@f1400 fsm u0506 PowerDown
+@f1500 fsm u0506 PowerUp
+@f1550 fsm u0501 Attack
+@f1600 damage u0506 5
+@f1700 damage u0506 5 missile
+@f1800 fsm u04fc Patrol
+@f1900 statecall u04fc IntoPan 0
+@f1902 statecall u04fc IntoPan 1 0.016
+@f1904 statecall u04fc IntoPan 2
+@f1910 statecall u04fc AttackExit 0
+@f1912 statecall u04fc AttackExit 1 0.016
+@f1914 statecall u04fc AttackExit 2
+@f1920 statecall u04fc Withdraw 0
+@f1922 statecall u04fc Withdraw 1 0.016
+@f1924 statecall u04fc Withdraw 2
+@f2000 kill u0506
+@f2200 obj u0501; obj u0506
+@f2300 tp 4 60 -104
+@f2900 obj u0501; obj u04fc
+@f3000 kill u04fd
+@f3300 objs GunTurret
