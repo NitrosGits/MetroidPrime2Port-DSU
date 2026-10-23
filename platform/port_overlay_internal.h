@@ -65,6 +65,31 @@ extern int sUiTheme;
 
 } // namespace PortOverlayState
 
+// F1 > Video rows from the Prime 1 port (f1b): dynamic resolution, upscale sharpening, the FPS cap,
+// the startup toasts, per-pixel lighting and the Compatibility tab. Defined in port_overlay.cpp,
+// applied by platform/port_video.cpp. The *AtStart copies are what this run's GPU device got.
+namespace PortOverlayState {
+
+extern bool sDynamicRes;
+extern int sDynamicResTarget;   // fps; 0 = the display's refresh rate (60 under the cap)
+extern float sDynamicResMin;    // 0.5, 0.75 or 1
+extern int sSharpenMode;        // 0 off, 1 while dynamic resolution has lowered the scale, 2 always
+extern int sSharpenAmount;      // 0..100
+extern int sFpsCap;             // with the 60 FPS cap off; 0 = unlimited
+extern bool sShowShaderCompilation;
+extern bool sShowMenuHint;
+extern bool sPerPixelLighting;
+extern bool sOpenGles;
+extern bool sOpenGlesAtStart;
+extern int sStorageClamp;       // -1 auto, 0 off, 1 on
+extern int sStorageClampAtStart;
+extern unsigned sDriverWorkarounds; // bit i = PortVideo::kDriverWorkarounds[i]
+extern unsigned sDriverWorkaroundsAtStart;
+extern bool sLowPowerGpu;
+extern bool sLowPowerGpuAtStart;
+
+} // namespace PortOverlayState
+
 namespace PortOverlaySettings {
 
 // False for a key nothing reads.

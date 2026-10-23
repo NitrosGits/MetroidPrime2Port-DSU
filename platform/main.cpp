@@ -86,6 +86,7 @@ extern void* gPortGameHeapHi;
 #include "port_textures.h"
 #include "port_touch.h"
 #include "port_tweaks.h"
+#include "port_video.h"
 
 // The decompilation's exported entry point; see src/MetroidPrime/main.cpp.
 namespace port {
@@ -856,7 +857,7 @@ int main(int argc, char** argv) {
   // 720p by default, as the Prime 1 port: 16:9 unless the aspect setting is 4:3. The render mode
   // follows the setting (PortOverlay::ApplyAspect); Aurora upscales to the window either way.
   const bool widescreen = PortOverlay::AspectMode() != PortOverlay::kAspect_4_3;
-  const AuroraConfig config = {
+  AuroraConfig config = {
       .appName = kAppName,
       .userPath = EnvOrFallback("MP2_USER_PATH", appPaths.user),
       .cachePath = EnvOrFallback("MP2_CACHE_PATH", appPaths.cache),
@@ -873,7 +874,11 @@ int main(int argc, char** argv) {
       .mem2Size = ARAM_DEFAULT_SIZE,
   };
 
+  // F1 > Video > Compatibility (PortVideo, f1b): OpenGL ES, the storage clamp, the low-power
+  // adapter and the driver workarounds' Dawn toggles, all read when the GPU device is made.
+  PortVideo::BeginGpuStart(config.userPath != nullptr ? config.userPath : "", config);
   aurora_initialize(argc, argv, &config);
+  PortVideo::GpuStarted();
   // Keep the internal framebuffer at the game's aspect rather than the window's,
   // so a mismatched window shape letterboxes instead of stretching.
   AuroraSetViewportPolicy(AURORA_VIEWPORT_FIT);

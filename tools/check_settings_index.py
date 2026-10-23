@@ -7,8 +7,9 @@ Checks, each problem printed on its own line:
   (a) every row parses, its page is a kDebugPages name and its sub-tab is a
       SubTab("page", "sub") pair in the overlay's sources ("" when the page
       has none);
-  (b) every row's label appears as a string literal in platform/**/*.cpp or
-      the overlay's internal header ("label" or "label##...");
+  (b) every row's label appears as a string literal in platform/**/*.cpp,
+      the overlay's internal header or port_video.h (the driver-workaround
+      table, which MP1 keeps in the internal header) ("label" or "label##...");
   (c) every ImGui widget in the overlay's sources (platform/debug_ui/*.cpp)
       whose label is a literal with visible
       text (before "##") is a label in the index or listed in EXCLUDED;
@@ -33,6 +34,8 @@ INDEX = pathlib.Path("platform/port_settings_index.inc")
 DEBUG_UI_PARTS = pathlib.Path("platform/debug_ui")
 SETTINGS_SRC = DEBUG_UI_PARTS / "settings.cpp"
 SETTINGS_DOC = pathlib.Path("docs/SETTINGS.md")
+# PortVideo::kDriverWorkarounds: labels drawn from a table, not a widget literal.
+VIDEO_HEADER = pathlib.Path("platform/include/port_video.h")
 
 
 def debug_ui_sources(root):
@@ -108,11 +111,11 @@ def main(argv):
 
     sources = "\n".join(p.read_text(encoding="utf-8", errors="replace")
                         for p in sorted((root / "platform").rglob("*.cpp"))
-                        + sorted((root / DEBUG_UI_PARTS).glob("*.h")))
+                        + sorted((root / DEBUG_UI_PARTS).glob("*.h")) + [root / VIDEO_HEADER])
     for lineno, _page, _sub, _section, label, _keywords in rows:
         if f'"{label}"' not in sources and f'"{label}##' not in sources:
-            problems.append(f"{INDEX}:{lineno}: label '{label}' is not a string literal in platform/**/*.cpp "
-                            f"or {DEBUG_UI_PARTS}/*.h")
+            problems.append(f"{INDEX}:{lineno}: label '{label}' is not a string literal in platform/**/*.cpp, "
+                            f"{DEBUG_UI_PARTS}/*.h or {VIDEO_HEADER}")
 
     index_labels = {row[4] for row in rows}
     for path, text in debug_files:

@@ -85,6 +85,34 @@ Video > Quality and Frame rate:
 - `frame_limit`: Frame rate > 60 FPS cap (target).
 - `smooth_frames`, `pose_interpolation`, `particle_interpolation`, `look_interpolation`: Frame
   rate > Smooth uncapped frames, Smooth animation, Smooth effects, Smooth look.
+- `show_shader_compilation`, `show_menu_hint`: Quality > Show shader compilation (a toast while
+  the startup pipeline queue compiles), Show F1 hint at launch; env `MP2_SHOW_SHADER_COMPILATION`,
+  `MP2_SHOW_MENU_HINT`.
+- `per_pixel_lighting`: Quality > Per-pixel lighting (Aurora lights per pixel); env
+  `MP2_PER_PIXEL_LIGHTING`.
+- `dynamic_res`, `dynamic_res_target`, `dynamic_res_min`: Quality > Dynamic resolution, Target
+  (0 = display rate, else 30..240 fps), Lowest scale (0.5..1); env `MP2_DYNAMIC_RES`,
+  `MP2_DYNAMIC_RES_TARGET`, `MP2_DYNAMIC_RES_MIN`. `MP2_DYNRES_GPU_TIMES=0` steers on the frame
+  rate alone, without GPU timestamps.
+- `upscale_sharpen` (`off`, `dynamic`, `always`), `upscale_sharpen_amount` (0..100): Quality >
+  Sharpen when upscaled, Sharpening; env `MP2_UPSCALE_SHARPEN`, `MP2_UPSCALE_SHARPEN_AMOUNT`.
+- `fps_cap`: Frame rate > FPS cap with the 60 FPS cap off (0 = Unlimited, else 30..500); env
+  `MP2_FPS_CAP`.
+
+Video > Compatibility (read once, when the GPU starts: a change applies after a restart):
+
+- `opengles`: Use OpenGL ES (shown only where Aurora has the backend); env `MP2_OPENGLES`. A start
+  that crashes leaves the marker `opengles_starting` in the user folder and the next start goes
+  back to the default backend.
+- `storage_clamp`: Adreno shader fix, -1 Auto, 0 Off, 1 On; sets Aurora's `MP2_STORAGE_CLAMP`
+  unless that is already set.
+- `low_power_gpu`: Low-power GPU (no MP1 row); sets Aurora's `MP2_GPU_POWER=low` unless set.
+- `driver_workarounds`: Driver workarounds, comma-separated `keep_depth`, `gpu_constants`,
+  `unmonitored_fence`, `validation` (validation lasts one start). `MP2_DRIVER_WORKAROUNDS` replaces
+  them for a run; a start that fails leaves `driver_workarounds_starting` and the next start
+  clears them.
+- GPU self-test (button, no key): logs one PASS/FAIL line per feature; `MP2_GPU_SELFTEST=1` runs
+  it at start. Console `gpuselftest` runs it too.
 
 System and Debug:
 

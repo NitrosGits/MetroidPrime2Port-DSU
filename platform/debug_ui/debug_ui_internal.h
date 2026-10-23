@@ -146,6 +146,10 @@ void DrawLogSection();
 // video.cpp
 void DrawVideoDisplay();
 void DrawVideoQuality();
+void DrawVideoCompatibility();
+// Drawn every frame, the window open or not (DrawUI).
+void DrawShaderCompilationToast();
+void DrawMenuHintToast();
 
 // controls.cpp
 void DrawControlsOptions();

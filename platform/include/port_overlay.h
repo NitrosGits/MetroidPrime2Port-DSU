@@ -302,3 +302,39 @@ bool Visible();
 void Draw();
 
 } // namespace PortOverlay
+
+// F1 > Video rows from the Prime 1 port (f1b). The settings are in port_overlay.cpp, applied by
+// platform/port_video.cpp (include/port_video.h); each `MP2_<KEY>` overrides the file for a run.
+namespace PortOverlay {
+
+// Dynamic resolution (`MP2_DYNAMIC_RES`, F1 > Video > Quality, only with a fixed EFB scale): draws
+// the EFB between DynamicResMin (`MP2_DYNAMIC_RES_MIN`: 0.5, 0.75, 1) and RenderScale to hold
+// DynamicResTarget fps (`MP2_DYNAMIC_RES_TARGET`; 0 = the display's rate, 60 under the cap).
+bool DynamicRes();
+int DynamicResTarget();
+float DynamicResMin();
+// Sharpening of a frame drawn smaller than the window (`MP2_UPSCALE_SHARPEN=off|dynamic|always`,
+// strength `MP2_UPSCALE_SHARPEN_AMOUNT` 0..100): 0 off, 1 while dynamic resolution has lowered the
+// scale, 2 always.
+int UpscaleSharpen();
+int UpscaleSharpenAmount();
+// The frame cap with the 60 FPS cap off (`MP2_FPS_CAP`, F1 > Video > Frame rate); 0 = unlimited.
+const int kFpsCapMin = 30;
+const int kFpsCapMax = 500;
+int ClampFpsCap(int fps);
+int FpsCap();
+// The startup toasts (`MP2_SHOW_SHADER_COMPILATION`, `MP2_SHOW_MENU_HINT`); on by default.
+bool ShowShaderCompilation();
+bool ShowMenuHint();
+// Aurora's per-pixel lighting (`MP2_PER_PIXEL_LIGHTING`, F1 > Video > Quality); off by default.
+bool PerPixelLighting();
+// F1 > Video > Compatibility, read when the GPU device is made (so after a restart):
+// OpenGL ES instead of Vulkan (`MP2_OPENGLES`, only where Aurora has the backend), the Adreno
+// storage clamp (-1 auto; Aurora reads `MP2_STORAGE_CLAMP` itself), the Dawn driver workarounds
+// (`MP2_DRIVER_WORKAROUNDS`) and the low-power adapter (Aurora reads `MP2_GPU_POWER=low`).
+bool OpenGles();
+int StorageClamp();
+unsigned DriverWorkarounds();
+bool LowPowerGpu();
+
+} // namespace PortOverlay

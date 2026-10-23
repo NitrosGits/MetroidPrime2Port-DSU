@@ -307,6 +307,8 @@ void DrawUI() {
   UpdateControllerNav();
   // While the window is open the cursor belongs to it, not to the game's aim.
   PortMouse::SetUiActive(sVisible);
+  DrawMenuHintToast();
+  DrawShaderCompilationToast();
   if (!sVisible) {
     sTouchScroll = TouchScroll{};
     return;

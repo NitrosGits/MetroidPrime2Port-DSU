@@ -457,6 +457,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
         platform/port_gyro_motion.cpp
+        platform/port_dynamic_res.cpp platform/port_video.cpp
         platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
         platform/debug_ui/game_sections.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
         platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
@@ -549,6 +550,11 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_tick_pair_tests PRIVATE platform/include)
     add_test(NAME port_tick_pair_tests COMMAND port_tick_pair_tests)
     set_tests_properties(port_tick_pair_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # Dynamic resolution's controller (platform/port_dynamic_res.cpp, MP1's) on modelled scenes.
+    add_executable(port_dynamic_res_tests tests/port_dynamic_res.cpp platform/port_dynamic_res.cpp)
+    target_include_directories(port_dynamic_res_tests PRIVATE platform/include)
+    add_test(NAME port_dynamic_res_tests COMMAND port_dynamic_res_tests)
+    set_tests_properties(port_dynamic_res_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The input engine (platform/input/port_input_engine.cpp): bindings, chords, contexts and
     # device profiles resolve to the right pad state. Engine-independent: no SDL, Aurora or game.
     add_executable(port_input_engine_tests tests/port_input_engine.cpp

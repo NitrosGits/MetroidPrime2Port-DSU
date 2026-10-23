@@ -11,6 +11,7 @@
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_settings.h"
+#include "port_video.h"
 
 #include "Kyoto/Streams/CBitStreamReader.hpp"
 #include "Kyoto/Streams/CBitStreamWriter.hpp"
@@ -350,6 +351,65 @@ const SettingKey kSettingKeys[] = {
        }
      },
      [](std::ostream& out) { out << PortPhoto::Speed(); }, false, "4", "1.5"},
+    // Video > Quality, Frame rate and Compatibility rows from MP1 (f1b).
+    BoolKey< &sShowShaderCompilation >("show_shader_compilation"),
+    BoolKey< &sShowMenuHint >("show_menu_hint"),
+    BoolKey< &sPerPixelLighting >("per_pixel_lighting"),
+    BoolKey< &sDynamicRes >("dynamic_res"),
+    {"dynamic_res_target",
+     [](const std::string& value) { sDynamicResTarget = std::clamp(std::atoi(value.c_str()), 0, 240); },
+     [](std::ostream& out) { out << sDynamicResTarget; }, false, "0", "60"},
+    {"dynamic_res_min",
+     [](const std::string& value) {
+       const float f = static_cast< float >(std::atof(value.c_str()));
+       if (std::isfinite(f)) {
+         sDynamicResMin = std::clamp(f, 0.5f, 1.f);
+       }
+     },
+     [](std::ostream& out) { out << sDynamicResMin; }, false, "0.5", "0.75"},
+    {"upscale_sharpen",
+     [](const std::string& value) { sSharpenMode = value == "off" ? 0 : value == "always" ? 2 : 1; },
+     [](std::ostream& out) { out << (sSharpenMode == 0 ? "off" : sSharpenMode == 2 ? "always" : "dynamic"); },
+     false, "off", "always"},
+    {"upscale_sharpen_amount",
+     [](const std::string& value) { sSharpenAmount = std::clamp(std::atoi(value.c_str()), 0, 100); },
+     [](std::ostream& out) { out << sSharpenAmount; }, false, "0", "80"},
+    {"fps_cap", [](const std::string& value) { sFpsCap = PortOverlay::ClampFpsCap(std::atoi(value.c_str())); },
+     [](std::ostream& out) { out << sFpsCap; }, false, "0", "144"},
+    {"opengles",
+     [](const std::string& value) {
+       sOpenGles = ParseBool(value);
+       sOpenGlesAtStart = sOpenGles;
+     },
+     [](std::ostream& out) { WriteBool(out, sOpenGles); }, false, "1", "0"},
+    {"storage_clamp",
+     [](const std::string& value) {
+       const int v = std::atoi(value.c_str());
+       sStorageClamp = v < 0 ? -1 : (v > 0 ? 1 : 0);
+       sStorageClampAtStart = sStorageClamp;
+     },
+     [](std::ostream& out) { out << sStorageClamp; }, false, "-1", "1"},
+    {"low_power_gpu",
+     [](const std::string& value) {
+       sLowPowerGpu = ParseBool(value);
+       sLowPowerGpuAtStart = sLowPowerGpu;
+     },
+     [](std::ostream& out) { WriteBool(out, sLowPowerGpu); }, false, "1", "0"},
+    {"driver_workarounds",
+     [](const std::string& value) {
+       sDriverWorkarounds = PortVideo::ParseDriverWorkarounds(value);
+       sDriverWorkaroundsAtStart = sDriverWorkarounds;
+     },
+     [](std::ostream& out) {
+       const char* sep = "";
+       for (size_t i = 0; i < PortVideo::kDriverWorkaroundCount; ++i) {
+         if (sDriverWorkarounds & (1u << i)) {
+           out << sep << PortVideo::kDriverWorkarounds[i].key;
+           sep = ",";
+         }
+       }
+     },
+     true, "keep_depth", "unmonitored_fence,validation"},
     // Last, as in MP1: the game's options blob (PortOverlay::SyncGameOptions).
     {"game_options", [](const std::string& value) { sGameOptions = value; },
      [](std::ostream& out) { out << sGameOptions; }, true, "0a1b", "ff"},

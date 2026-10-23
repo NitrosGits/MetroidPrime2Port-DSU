@@ -4,6 +4,7 @@
 #include "debug_ui_internal.h"
 
 #include "port_overlay.h"
+#include "port_video.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -18,6 +19,18 @@ void DrawPerformanceTab() {
     PortOverlay::SetFrameLimit(frameLimit);
   }
   ItemHelp("Holds the game to 60 frames a second, the rate it was written for (F10).");
+  // Read by PortPaceFrame with the 60 FPS cap off; the top notch is Unlimited (0).
+  ImGui::BeginDisabled(sFrameLimit);
+  int cap = sFpsCap > 0 ? sFpsCap : PortOverlay::kFpsCapMax + 1;
+  if (ImGui::SliderInt("FPS cap", &cap, PortOverlay::kFpsCapMin, PortOverlay::kFpsCapMax + 1,
+                       cap > PortOverlay::kFpsCapMax ? "Unlimited" : "%d FPS", ImGuiSliderFlags_AlwaysClamp)) {
+    sFpsCap = cap > PortOverlay::kFpsCapMax ? 0 : PortOverlay::ClampFpsCap(cap);
+    PortVideo::ResetDynamicRes();
+    Changed(true);
+  }
+  ImGui::EndDisabled();
+  ItemHelp("The most frames drawn a second with the 60 FPS cap off. Vsync still limits it to the "
+           "display's refresh rate.");
   ImGui::Text("Presented %.1f FPS    Frame %.2f ms", sFps,
               static_cast< double >(ImGui::GetIO().DeltaTime) * 1000.0);
 
