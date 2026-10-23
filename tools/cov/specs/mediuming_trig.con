@@ -1,0 +1,52 @@
+# MediumIng ming2 trigger driver: `var` forces the members the triggers read, `trigcall` evaluates once.
+# u0451 safe zone = unique id 1105, u0453 team AI mgr = 1107 (MP2_DEBUG_IDS ids are the unique ids).
+@f300 god 1; tp 208.5 -174 -46.5; face 180
+@f336 codecall u0417 SelectTarget
+@f340 place u0417 player 6; place u0417 player 6
+@f345 var u0417 ming.fb4 0; var u0417 ming.mist 0; trigcall u0417 ShouldMistAttack
+@f346 var u0417 ming.fb4 5; var u0417 ming.mist 0; var u0417 ming.fc0 0; trigcall u0417 ShouldMistAttack
+@f347 var u0417 ming.fc0 99; var u0417 ming.c2 1; trigcall u0417 ShouldMistAttack
+@f348 var u0417 ming.c2 0; trigcall u0417 ShouldMistAttack
+@f349 var u0417 ming.mist 1; var u0417 ming.c2 1; trigcall u0417 ShouldMistAttack
+@f350 var u0417 ming.mist 0; var u0417 ming.c2 0; trigcall u0417 ShouldMistAttack
+@f351 place u0417 player 60; place u0417 player 60
+@f356 var u0417 ming.fb4 5; var u0417 ming.fc0 99; trigcall u0417 ShouldMistAttack
+@f357 place u0417 player 6; place u0417 player 6
+@f362 var u0417 ming.mist 0; var u0417 ming.fb4 5; var u0417 ming.fbc 99; var u0417 ming.team -1; trigcall u0417 ShouldMeleeAttack
+@f363 var u0417 ming.fbc 0; trigcall u0417 ShouldMeleeAttack
+@f364 var u0417 ming.fb4 0; var u0417 ming.fbc 99; trigcall u0417 ShouldMeleeAttack
+@f365 var u0417 ming.fb4 5; var u0417 ming.mist 1; trigcall u0417 ShouldMeleeAttack
+@f366 var u0417 ming.mist 0; var u0417 ming.team 1107; trigcall u0417 ShouldMeleeAttack
+@f367 var u0417 ming.team -1; trigcall u0417 ShouldMeleeAttack
+@f368 place u0417 player 80; place u0417 player 80
+@f373 var u0417 ming.fbc 99; var u0417 ming.fb4 5; trigcall u0417 ShouldMeleeAttack
+@f374 place u0417 player 6; place u0417 player 6
+@f379 var u0417 ming.fc4 0; trigcall u0417 ShouldArmAttack
+@f380 var u0417 ming.fc4 5; var u0417 ming.fb4 5; var u0417 ming.mist 0; var u0417 ming.fb8 99; trigcall u0417 ShouldArmAttack
+@f381 var u0417 ming.fb8 0; trigcall u0417 ShouldArmAttack
+@f382 var u0417 ming.fb4 0; var u0417 ming.fb8 99; trigcall u0417 ShouldArmAttack
+@f383 var u0417 ming.fb4 5; var u0417 ming.mist 1; trigcall u0417 ShouldArmAttack
+@f384 var u0417 ming.mist 0; var u0417 ming.fc4 0; var u0417 ming.team 1107; trigcall u0417 ShouldArmAttack
+@f385 var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f386 place u0417 player 2; place u0417 player 2
+@f391 var u0417 ming.fc4 0; var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f392 place u0417 player 20; place u0417 player 20
+@f397 var u0417 ming.fc4 0; var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f398 place u0417 player 40; place u0417 player 40
+@f403 var u0417 ming.fc4 0; var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f404 place u0417 player 120; place u0417 player 120
+@f409 var u0417 ming.fc4 0; var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f410 place u0417 player 6; place u0417 player 6
+@f415 var u0417 ming.e2 1; trigcall u0417 Leash
+@f416 var u0417 ming.e2 0; var u0417 ming.fc8 0; trigcall u0417 Leash
+@f417 var u0417 ming.fc8 99; trigcall u0417 Leash
+@f418 place u0417 player 150; place u0417 player 150
+@f423 var u0417 ming.fc8 99; trigcall u0417 Leash
+@f424 place u0417 player 6; place u0417 player 6
+@f429 var u0417 ming.d0 1; trigcall u0417 HasApproachPattern; trigcall u0417 HasAttackPattern
+@f430 var u0417 ming.d0 0; trigcall u0417 HasApproachPattern; trigcall u0417 HasAttackPattern
+@f431 var u0417 ming.c1 0; var u0417 ming.c0 0; var u0417 ming.safezone -1; trigcall u0417 IsLuredBySafeZone
+@f432 var u0417 ming.c1 1; trigcall u0417 IsLuredBySafeZone
+@f433 var u0417 ming.c1 0; var u0417 ming.c0 1; trigcall u0417 IsLuredBySafeZone
+@f434 var u0417 ming.c0 0; var u0417 ming.safezone 1105; trigcall u0417 IsLuredBySafeZone
+@f435 trigcall u0417 IsDestInsideCurrentRegion

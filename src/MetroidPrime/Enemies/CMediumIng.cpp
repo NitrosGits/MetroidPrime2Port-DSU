@@ -416,6 +416,7 @@ bool CMediumIng::StillLuredBySafeZone(CStateManager& mgr, const CTriggerData& da
   return mSafeZoneId != kInvalidUniqueId;
 }
 
+// @ fn_41_2B94
 bool CMediumIng::IsLuredBySafeZone(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (!mC1 && !mC0 && mSafeZoneId != kInvalidUniqueId) {

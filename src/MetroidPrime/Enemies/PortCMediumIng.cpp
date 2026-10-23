@@ -815,14 +815,50 @@ void CMediumIngTentacle::PreRender(CStateManager& mgr) {
 // the player (one unit above its feet), or Retract and set mRetracting (0x41CC).
 bool CMediumIng::PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current) {
   CMediumIng* ing = dynamic_cast< CMediumIng* >(&ent); // a host-only helper
-  if (ing == nullptr || strcmp(name, "ming.c1") != 0) {
+  if (ing == nullptr || strncmp(name, "ming.", 5) != 0) {
     return false;
   }
-  if (value != nullptr) {
-    ing->mC1 = *value != 0;
+  const char* n = name + 5;
+  // Float timers/ranges (int values as float units) the trigger arms read.
+#define MING_F(field, label)                                                                       \
+  if (strcmp(n, label) == 0) {                                                                     \
+    if (value != nullptr) {                                                                        \
+      ing->field = static_cast< float >(*value);                                                   \
+    }                                                                                              \
+    current = static_cast< int >(ing->field);                                                      \
+    return true;                                                                                   \
   }
-  current = ing->mC1 ? 1 : 0;
-  return true;
+  MING_F(mFB4, "fb4") MING_F(mFB8, "fb8") MING_F(mFBC, "fbc") MING_F(mFC0, "fc0")
+  MING_F(mFC4, "fc4") MING_F(mFC8, "fc8") MING_F(mMistAmount, "mist")
+#undef MING_F
+#define MING_B(field, label)                                                                       \
+  if (strcmp(n, label) == 0) {                                                                     \
+    if (value != nullptr) {                                                                        \
+      ing->field = *value != 0;                                                                    \
+    }                                                                                              \
+    current = ing->field ? 1 : 0;                                                                  \
+    return true;                                                                                   \
+  }
+  MING_B(mC0, "c0") MING_B(mC1, "c1") MING_B(mC2, "c2") MING_B(mC3, "c3") MING_B(mC4, "c4")
+  MING_B(mC5, "c5") MING_B(mC6, "c6") MING_B(mC7, "c7") MING_B(mD0, "d0") MING_B(mD1, "d1")
+  MING_B(mD2, "d2") MING_B(mD3, "d3") MING_B(mD4, "d4") MING_B(mD5, "d5") MING_B(mD6, "d6")
+  MING_B(mD7, "d7") MING_B(mE0, "e0") MING_B(mE1, "e1") MING_B(mE2, "e2")
+#undef MING_B
+  if (strcmp(n, "safezone") == 0) { // mSafeZoneId (-1 = none)
+    if (value != nullptr) {
+      ing->mSafeZoneId = *value < 0 ? kInvalidUniqueId : TUniqueId(static_cast< ushort >(*value));
+    }
+    current = static_cast< int >(ing->mSafeZoneId.value);
+    return true;
+  }
+  if (strcmp(n, "team") == 0) { // mTeamAiMgrId
+    if (value != nullptr) {
+      ing->mTeamAiMgrId = *value < 0 ? kInvalidUniqueId : TUniqueId(static_cast< ushort >(*value));
+    }
+    current = static_cast< int >(ing->mTeamAiMgrId.value);
+    return true;
+  }
+  return false;
 }
 
 bool CMediumIngTentacle::PortConsoleVar(CEntity& ent, const char* name, const int* value,
