@@ -41,6 +41,22 @@
 #include "MetroidPrime/CActorParameters.hpp"
 #include "MetroidPrime/CModelData.hpp"
 
+#include "Collision/CMaterialFilter.hpp"
+#include "Kyoto/CSimplePool.hpp"
+#include "Kyoto/Graphics/CGX.hpp"
+#include "Kyoto/Graphics/CGraphics.hpp"
+#include "Kyoto/Graphics/CModel.hpp"
+#include "Kyoto/Math/CFrustumPlanes.hpp"
+#include "Kyoto/PVS/CPVSVisOctree.hpp"
+#include "Kyoto/PVS/CPVSVisSet.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
+#include "WorldFormat/CPVSAreaSet.hpp"
+
+#include <dolphin/gx.h>
+#include <dolphin/gx/GXCpu2Efb.h>
+
+#include <atomic>
+#include <cstring>
 #include <math.h>
 #include <stdio.h>
 
@@ -161,6 +177,120 @@ CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 // The DOL's CSfxManager::UpdateEmitter (the sound the look-at plays).
 
 
+// Port: the beam's depth read-back. Retail's PreRender copies the EFB depth of its small viewport
+// into the beam texture (GXCopyTex, GX_TF_Z16) and Render reads that texture's bytes back on the
+// CPU; on the host the copy only lands in a GPU texture, so PreRender also asks Aurora for a scan
+// peek of the same region (left 0, top 0, the texture's size) and Render fills the texture's
+// bytes from the latest one. The peek writes each depth as the console's Z16 (the top 16 bits of
+// the 24-bit z, high byte first), so the texture holds what the copy would have left there. The
+// staging is a static pool rather than a member so a read-back that completes after the beam is
+// gone never writes freed memory.
+constexpr int kBeamPeekSlots = 4;
+constexpr int kBeamPeekPixels = 256; // the head's beam is 4 x 0x40 texels
+
+struct SBeamPeekStaging {
+  // The seqlock scan_peek.hpp describes: odd while the render thread writes, then even again.
+  // Only read or written through std::atomic_ref.
+  uint32_t sequence;
+  uint8_t id[kBeamPeekPixels];
+  uint16_t depthHigh[kBeamPeekPixels];
+  uint8_t depthLow[kBeamPeekPixels];
+  uint32_t consumed;
+  bool used;
+};
+
+SBeamPeekStaging sBeamPeeks[kBeamPeekSlots];
+
+class CPortBeamDepthPeek {
+public:
+  CPortBeamDepthPeek() = default;
+  CPortBeamDepthPeek(const CPortBeamDepthPeek&) = delete;
+  CPortBeamDepthPeek& operator=(const CPortBeamDepthPeek&) = delete;
+  ~CPortBeamDepthPeek() {
+    if (mSlot >= 0) {
+      sBeamPeeks[mSlot].used = false;
+    }
+  }
+
+  // Called just before PreRender's GXCopyTex, which ends the pass the peek reads. The first call
+  // takes a slot and fills the texture with 0xFF (the far plane, a full-length cone) until the
+  // first read-back lands; with no slot free, or a texture too big for one, the cone stays at
+  // full length (a port limit).
+  void Request(CTexture& texture) {
+    const int width = texture.GetWidth();
+    const int height = texture.GetHeight();
+    if (width <= 0 || height <= 0 || width * height > kBeamPeekPixels) {
+      return;
+    }
+    if (mSlot < 0) {
+      for (int i = 0; i < kBeamPeekSlots; ++i) {
+        if (!sBeamPeeks[i].used) {
+          mSlot = i;
+          break;
+        }
+      }
+      if (mSlot < 0) {
+        return;
+      }
+      SBeamPeekStaging& staging = sBeamPeeks[mSlot];
+      staging.used = true;
+      // A snapshot already in the slot belongs to its previous owner.
+      staging.consumed = std::atomic_ref< uint32_t >(staging.sequence).load(std::memory_order_acquire);
+      memset(texture.GetBitMapData(0), 0xFF, static_cast< size_t >(width * height * 2));
+    }
+    SBeamPeekStaging& staging = sBeamPeeks[mSlot];
+    GXRequestScanPeek(0, 0, static_cast< u32 >(width), static_cast< u32 >(height), staging.id,
+                      staging.depthHigh, staging.depthLow, &staging.sequence);
+  }
+
+  // Called by Render before it reads the texture: copies the newest whole read-back into the
+  // texture's bytes in the console's IA8 layout (4x4 texel tiles, which for the 4-texel-wide beam
+  // texture is simply row-major).
+  void Fill(CTexture& texture) const {
+    if (mSlot < 0) {
+      return;
+    }
+    const int width = texture.GetWidth();
+    const int height = texture.GetHeight();
+    if (width <= 0 || height <= 0 || width * height > kBeamPeekPixels) {
+      return;
+    }
+    SBeamPeekStaging& staging = sBeamPeeks[mSlot];
+    std::atomic_ref< uint32_t > sequence(staging.sequence);
+    const uint32_t before = sequence.load(std::memory_order_acquire);
+    if ((before & 1u) != 0 || before == staging.consumed) {
+      return;
+    }
+    uint16_t depth[kBeamPeekPixels];
+    memcpy(depth, staging.depthHigh, static_cast< size_t >(width * height) * sizeof(uint16_t));
+    if (sequence.load(std::memory_order_acquire) != before) {
+      return; // torn: keep the previous snapshot for this frame
+    }
+    staging.consumed = before;
+    uchar* data = static_cast< uchar* >(texture.GetBitMapData(0));
+    const int tilesWide = (width + 3) / 4;
+    for (int y = 0; y < height; ++y) {
+      for (int x = 0; x < width; ++x) {
+        const int texel = ((y / 4) * tilesWide + x / 4) * 16 + (y % 4) * 4 + x % 4;
+        memcpy(data + texel * 2, &depth[y * width + x], 2);
+      }
+    }
+  }
+
+private:
+  int mSlot = -1;
+};
+
+// Port: the dark world cloud texture. Retail Render loads the renderer's own token
+// (*(CCubeRenderer::sRenderer + 0x510), mDarkWorldCloud), which is private; the same resource is
+// looked up by the name the renderer's ctor uses. The token is never released, as the renderer
+// never releases its own.
+CTexture& PortDarkWorldCloud() {
+  static TLockedToken< CTexture >* sToken =
+      new TLockedToken< CTexture >(gpSimplePool->GetObj("TXTR_DarkWorldCloud"));
+  return **(*sToken);
+}
+
 } // namespace
 
 // The head's beam effect (0x1A0 bytes; the REL has no type name for it, so the name is a guess):
@@ -206,12 +336,22 @@ private:
   float mUnknown190;      // 0x190
   float mUnknown194;      // 0x194
   bool mOpening;          // 0x198
+
+  // Port: the depth read-back that stands in for reading the GXCopyTex result (see above).
+  CPortBeamDepthPeek mPortDepthPeek;
 };
 
 namespace {
 // lbl_75_bss_38, set by the REL's static initialiser fn_75_11AAC from lbl_75_rodata_884: the
 // cone's closed angle, one degree in radians.
 const float kBeamEffectClosedAngle = 0.017453292f;
+
+// lbl_75_rodata_7C0: Render's fade ramp, an 8x4 GX_TF_I8 texture (one tile) falling from 0xFF to 0
+// along s.
+alignas(32) const uchar kBeamFadeRamp[32] = {
+    0xFF, 0xDB, 0xB7, 0x93, 0x6F, 0x4B, 0x27, 0x00, 0xFF, 0xDB, 0xB7, 0x93, 0x6F, 0x4B, 0x27, 0x00,
+    0xFF, 0xDB, 0xB7, 0x93, 0x6F, 0x4B, 0x27, 0x00, 0xFF, 0xDB, 0xB7, 0x93, 0x6F, 0x4B, 0x27, 0x00,
+};
 
 // The wrap both the head (0x12F4-0x1330) and the beam (0x10E9C-0x10ECC) do: x minus whole turns
 // (fctiwz of x / 2pi, lbl_75_rodata_78 / 7C), plus a turn when that is below 0.0f.
@@ -313,10 +453,122 @@ void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
                         kBeamEffectClosedAngle);
 }
 
-// fn_75_10F1C (PreRender, 0x10F1C-0x1167C): draws the visible area geometry and the near actors
-// flat into the EFB and copies it into the texture (GXCopyTex) for the cone's distortion. Not
-// ported yet: a once-logging stand-in.
-void CSplitterBeamEffect::PreRender(CStateManager&) { StandInBeamEffect("fn_75_10F1C (the beam effect's PreRender, 0x760)"); }
+// fn_75_10F1C (PreRender, 0x10F1C-0x1167C): renders the depth the cone sees. From the beam's own
+// viewpoint, in a viewport the texture's size at the EFB's top left, the visible area geometry
+// and the near actors that take projected shadows are drawn flat with depth writes, and the depth
+// is copied into the texture (GX_TF_Z16) for Render to read back; then the view state is put
+// back, the clip flag set from the actor's visibility, and the two colour blends re-rolled.
+// Port: the copy only reaches a GPU texture, so a scan peek of the same region (CPortBeamDepthPeek)
+// is requested just before it.
+void CSplitterBeamEffect::PreRender(CStateManager& mgr) {
+  ++mUnknown184; // 0x10F4C-0x10F58
+
+  // 0x10F5C-0x10FF4: the projection state, view matrix, viewport and depth range are saved.
+  const CGraphics::CProjectionState savedProjection = CGraphics::GetProjectionState();
+  const CTransform4f savedView = CGraphics::GetViewMatrix();
+  const CViewport savedViewport = CGraphics::GetViewport();
+  const float savedNear = CGraphics::GetDepthNear();
+  const float savedFar = CGraphics::GetDepthFar();
+  const bool useVideoFilter = CGraphics::GetUseVideoFilter(); // 0x10FF8
+  CGraphics::SetUseVideoFilter(false);                        // 0x11000-0x11004
+
+  // 0x11008-0x11040: viewport (0, efbHeight - height, width, height) through vtable slot 0x68.
+  gpRender->SetViewport(0, CGraphics::GetRenderMode().efbHeight - mTexture->GetHeight(),
+                        mTexture->GetWidth(), mTexture->GetHeight());
+  CGraphics::SetDepthRange(0.f, 1.f); // lbl_75_rodata_85C / 848, 0x11044-0x11054
+  gpRender->SetWorldViewpoint(GetTransform()); // vtable slot 0x58, 0x11058-0x11074
+  CGraphics::SetModelMatrix(CTransform4f::Identity()); // 0x11078-0x11080
+
+  // 0x11084-0x110F0: the near box, the translation plus and minus the length on every axis.
+  const CVector3f reach = CVector3f(mLength, mLength, mLength);
+  const CAABox nearBox(GetTranslation() - reach, GetTranslation() + reach);
+
+  CGX::SetNumChans(0);          // 0x110F4-0x110F8
+  CGraphics::DisableAllLights(); // 0x110FC
+
+  // 0x11100-0x11250: the visibility set is out of bounds unless the area has a PVS and PVS is on,
+  // when it is the octree's set at the actor's position in area space.
+  CPVSVisSet visSet(kVSS_OutOfBounds); // 0x11100-0x11108
+  const CGameArea& area = mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()); // 0x1110C-0x11128
+  const CPVSAreaSet* areaPVS = area.GetPostConstructed()->mPvs.get(); // 0x1112C-0x11130
+  // 0x11134 cmplwi 0 / 0x11138 beq: no PVS; 0x11144 cmpwi gkPVSEnabled, 1 / 0x11148 bne.
+  if (areaPVS != nullptr && gkPVSEnabled == 1) {
+    visSet = areaPVS->GetVisOctree().GetVisSet(area.GetPostConstructed()->mInverseTransform *
+                                               GetTranslation()); // 0x1114C-0x1124C
+  }
+
+  // 0x11250-0x112CC: aspect = pixel aspect * width / height; the frustum from the transform with
+  // the cone's angle, near 0.2f (lbl_75_rodata_860), far the length.
+  const float aspect = CGraphics::GetPixelAspectRatio() *
+                       (static_cast< float >(mTexture->GetWidth()) /
+                        static_cast< float >(mTexture->GetHeight()));
+  const CFrustumPlanes frustum(GetTransform(), mAngle, aspect, 0.2f, true, mLength);
+  // 0x112D0-0x11308: vtable slot 0x60, fovy in degrees (lbl_75_rodata_880, 57.295776f).
+  gpRender->SetPerspective(57.295776f * mAngle, aspect, 0.2f, mLength);
+
+  // 0x1130C-0x113D8: one stage that writes only depth (colour ONE, alpha KONST, no texture).
+  CGX::SetNumTevStages(1);
+  CGX::SetNumTexGens(1);
+  CGX::SetNumIndStages(0);
+  CGX::SetTevDirect(GX_TEVSTAGE0);
+  CGX::SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ONE);
+  CGX::SetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_KONST);
+  CGX::SetTevKAlphaSel(GX_TEVSTAGE0, GX_TEV_KASEL_1);
+  CGX::SetStandardTevColorAlphaOp(GX_TEVSTAGE0);
+  CGX::SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR_NULL);
+  CGX::SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_POS, GX_IDENTITY, false, GX_PTIDENTITY);
+  CGX::SetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
+  CGX::SetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
+  CGX::SetZMode(true, GX_LEQUAL, true);
+
+  // 0x113DC-0x113F8: the area geometry the vis set and frustum pass, culled by the other bounds.
+  CCubeRenderer::That()->DrawVisibleAreaGeometry(GetCurrentAreaId().Value(), visSet, frustum,
+                                                 GetOtherBounds());
+
+  // 0x113FC-0x1151C: every actor near the box.
+  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  mgr.BuildNearList(nearList, nearBox, CMaterialFilter::GetPassEverything(), nullptr);
+  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+       it != nearList.end(); ++it) {
+    const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(*it));
+    // 0x11440 beq: none; 0x1144C beq: !CanDrawStatic; 0x11458 extrwi 0x154 bit 0x10 / 0x1145C
+    // beq: does not take projected shadows; 0x11470 beq: its other bounds are outside the
+    // frustum; 0x11484 beq: they do not overlap the near box.
+    if (actor == nullptr || !actor->CanDrawStatic() || !actor->GetTakesProjectedShadow() ||
+        !frustum.BoxInFrustumPlanes(actor->GetOtherBounds()) ||
+        !nearBox.DoBoundsOverlap(actor->GetOtherBounds())) {
+      continue;
+    }
+    // 0x1148C-0x11504: transform times the model's scale (vtable slot 0x40), then the normal
+    // static model drawn flat (flags 2).
+    const CModelData& modelData = *actor->GetModelData();
+    gpRender->SetModelMatrix(actor->GetTransform() * CTransform4f::Scale(modelData.GetScale()));
+    modelData.PickStaticModel(CModelData::kWM_Normal)->DolphinDrawFlat(
+        static_cast< CModel::EDrawFlatFlags >(2));
+  }
+
+  // 0x11520-0x11590: the depth copy (GX_TF_Z16 0x13, no mips) into the locked texture, clearing.
+  GXSetTexCopySrc(0, 0, static_cast< u16 >(mTexture->GetWidth()),
+                  static_cast< u16 >(mTexture->GetHeight()));
+  GXSetTexCopyDst(static_cast< u16 >(mTexture->GetWidth()),
+                  static_cast< u16 >(mTexture->GetHeight()), GX_TF_Z16, false);
+  mPortDepthPeek.Request(*mTexture); // port: before the copy ends the pass
+  GXCopyTex(mTexture->Lock(), true);
+  mTexture->UnLock();
+  GXPixModeSync();
+
+  // 0x11594-0x115F8: the saved state goes back.
+  CGraphics::SetDepthRange(savedNear, savedFar);
+  CGraphics::SetUseVideoFilter(useVideoFilter);
+  CGraphics::SetProjectionState(savedProjection);
+  gpRender->SetWorldViewpoint(savedView);
+  gpRender->SetViewport(savedViewport.mLeft, savedViewport.mTop, savedViewport.mWidth,
+                        savedViewport.mHeight);
+
+  SetPreRenderClipped(!mgr.IsActorVisible(*this)); // 0x115FC-0x1161C
+  mUnknown190 = mRandom.Float();                   // 0x11618-0x11624
+  mUnknown194 = mRandom.Float();                   // 0x11628-0x11634
+}
 
 // fn_75_10EF0 (AddToRenderer, 0x10EF0-0x10F1C): unless the actor is out of the frustum (0x150's
 // low bit, 0x10EFC-0x10F04) it is rendered (0x10F08 EnsureRendered).
@@ -329,9 +581,125 @@ void CSplitterBeamEffect::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
-// fn_75_10778 (Render, 0x10778-0x10DC4): the cone as a textured fan with the cloud and add
-// colours. Not ported yet: a once-logging stand-in.
-void CSplitterBeamEffect::Render(const CStateManager&) const { StandInBeamEffect("fn_75_10778 (the beam effect's Render, 0x64C)"); }
+// fn_75_10778 (Render, 0x10778-0x10DC4): the cone as an additive triangle fan in the beam's
+// plane. Once two PreRenders have copied depth, each of the texture's rows gives the distance
+// the cone reaches along that ray (the depth of the texture's middle column, unprojected with
+// near 0.2f and far the length), so the fan stops at walls. Stage 0 is the dark world cloud
+// times the cloud colour, stage 1 a second cloud sample times that plus the add colour, stage 2
+// the result faded along the length by an 8-texel ramp; the colours are lerped by the two
+// randoms PreRender rolls.
+// Port: the texture's bytes come from CPortBeamDepthPeek, filled just before they are read.
+void CSplitterBeamEffect::Render(const CStateManager&) const {
+  // 0x107A4 lwz 0x184 / 0x107A8 cmpwi 2 / 0x107AC blt (signed): nothing before two copies.
+  if (mUnknown184 < 2) {
+    return;
+  }
+  CGraphics::SetModelMatrix(GetTransform()); // 0x107B0-0x107B4
+
+  // 0x107B8-0x10824: half the cone's height at distance 1 (tan of half the angle,
+  // lbl_75_rodata_840 0.5f) and the step between rows, 2.0f (844) times that over height - 1.0f
+  // (848); the height is converted signed (lbl_75_rodata_868).
+  const float height = static_cast< float >(mTexture->GetHeight());
+  float spread = static_cast< float >(tan(0.5f * mAngle));
+  const float spreadStep = 2.f * spread / (height - 1.f);
+
+  // 0x10808-0x10854: KCOLOR0 the cloud colours by 0x194, KCOLOR1 the add colours by 0x190.
+  CGX::SetTevKColor(GX_KCOLOR0, CColor::Lerp(mCloudColor1, mCloudColor2, mUnknown194).GetGXColor());
+  CGX::SetTevKColor(GX_KCOLOR1, CColor::Lerp(mAddColor1, mAddColor2, mUnknown190).GetGXColor());
+
+  // 0x10858-0x1096C: the three stages.
+  CGX::SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_KONST, GX_CC_ZERO);
+  CGX::SetTevColorIn(GX_TEVSTAGE1, GX_CC_ZERO, GX_CC_TEXC, GX_CC_CPREV, GX_CC_KONST);
+  CGX::SetTevColorIn(GX_TEVSTAGE2, GX_CC_ZERO, GX_CC_TEXC, GX_CC_CPREV, GX_CC_ZERO);
+  CGX::SetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_KONST);
+  CGX::SetTevAlphaIn(GX_TEVSTAGE1, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
+  CGX::SetTevAlphaIn(GX_TEVSTAGE2, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_APREV);
+  CGX::SetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_K0);
+  CGX::SetTevKAlphaSel(GX_TEVSTAGE0, GX_TEV_KASEL_1);
+  CGX::SetTevKColorSel(GX_TEVSTAGE1, GX_TEV_KCSEL_K1);
+  CGX::SetStandardTevColorAlphaOp(GX_TEVSTAGE0);
+  CGX::SetStandardTevColorAlphaOp(GX_TEVSTAGE1);
+  CGX::SetStandardTevColorAlphaOp(GX_TEVSTAGE2);
+  CGX::SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR_NULL);
+  CGX::SetTevOrder(GX_TEVSTAGE1, GX_TEXCOORD2, GX_TEXMAP1, GX_COLOR_NULL);
+  CGX::SetTevOrder(GX_TEVSTAGE2, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
+  CGX::SetNumTevStages(3);
+  CGX::SetNumChans(0);
+
+  // 0x10970-0x109DC: TEXMTX0 from the zero template lbl_75_rodata_7E0: s = y / fadeOffSize +
+  // 1.0f - length / fadeOffSize, so the ramp ends at the cone's far end.
+  float fadeMtx[2][4] = {{0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f}};
+  fadeMtx[0][1] = 1.f / mFadeOffSize;
+  fadeMtx[0][3] = 1.f + -mLength / mFadeOffSize;
+  // 0x109E0-0x10AFC: the two cloud matrices (zero templates 800 and 820) scroll with the time:
+  // TEXMTX1 (y, z) / cloudScale + (t, 0.5f t); TEXMTX2 (1.4f z, 1.5f y) / cloudScale +
+  // (0.3f t, 1.15f t) (lbl_75_rodata_84C/850/854/858).
+  const float time = CGraphics::GetSecondsMod900();
+  const float invScale = 1.f / mCloudScale;
+  float cloudMtx1[2][4] = {{0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f}};
+  cloudMtx1[0][1] = invScale;
+  cloudMtx1[0][3] = time;
+  cloudMtx1[1][2] = invScale;
+  cloudMtx1[1][3] = 0.5f * time;
+  float cloudMtx2[2][4] = {{0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f}};
+  cloudMtx2[0][2] = 1.4f * invScale;
+  cloudMtx2[0][3] = 0.3f * time;
+  cloudMtx2[1][1] = 1.5f * invScale;
+  cloudMtx2[1][3] = 1.15f * time;
+  GXLoadTexMtxImm(fadeMtx, GX_TEXMTX0, GX_MTX2x4);   // 0x10B00
+  GXLoadTexMtxImm(cloudMtx1, GX_TEXMTX1, GX_MTX2x4); // 0x10B10
+  GXLoadTexMtxImm(cloudMtx2, GX_TEXMTX2, GX_MTX2x4); // 0x10B20
+  CGX::SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_POS, GX_TEXMTX0, false, GX_PTIDENTITY);
+  CGX::SetTexCoordGen(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_POS, GX_TEXMTX1, false, GX_PTIDENTITY);
+  CGX::SetTexCoordGen(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_POS, GX_TEXMTX2, false, GX_PTIDENTITY);
+  CGX::SetNumTexGens(3); // 0x10B78
+
+  // 0x10B80-0x10BE8: TEXMAP0 is the ramp (lbl_75_rodata_7C0, 8x4 GX_TF_I8, clamped, linear).
+  CTexture::InvalidateTexmap(GX_TEXMAP0);
+  GXTexObj rampObj;
+  GXInitTexObj(&rampObj, const_cast< uchar* >(kBeamFadeRamp), 8, 4, GX_TF_I8, GX_CLAMP, GX_CLAMP,
+               false);
+  GXInitTexObjLOD(&rampObj, GX_LINEAR, GX_LINEAR, 0.f, 0.f, 0.f, true, false, GX_ANISO_1);
+  GXLoadTexObj(&rampObj, GX_TEXMAP0);
+  // 0x10BEC-0x10C04: TEXMAP1 the renderer's dark world cloud, mirrored.
+  PortDarkWorldCloud().Load(GX_TEXMAP1, CTexture::kCM_Mirror);
+
+  // 0x10C08-0x10C5C: additive, no alpha test, depth test without writes, both faces.
+  CGraphics::SetBlendMode(kBM_Blend, kBF_One, kBF_One, kLO_Clear);
+  CGraphics::SetAlphaCompare(kAF_Always, 0, kAO_Or, kAF_Always, 0);
+  gpRender->SetDepthReadWrite(true, false); // vtable slot 0x6C
+  CGraphics::SetCullMode(kCM_None);
+
+  // 0x10C60-0x10CA8: a fan of height + 1 positions from the origin.
+  CGX::ResetVtxDescv();
+  CGX::SetVtxDesc(GX_VA_POS, GX_DIRECT);
+  CGX::Begin(GX_TRIANGLEFAN, GX_VTXFMT0, static_cast< ushort >(mTexture->GetHeight() + 1));
+  GXPosition3f32(0.f, 0.f, 0.f);
+
+  mPortDepthPeek.Fill(*mTexture); // port: the copy's bytes
+  const ushort* depth = static_cast< const ushort* >(mTexture->GetConstBitMapData(0)); // 0x10CB0
+  // 0x10CB4-0x10D64: one vertex per row i (re-reading the height, signed compare at 0x10D60/
+  // 0x10D64 blt): the Z16 at the middle column (width / 2, rounded toward zero), byte-swapped
+  // (0x10D20 lhbrx), over 65535.0f (lbl_75_rodata_864) is d; the distance is
+  // (0.2f * -length) / (d * (length - 0.2f) - length), the inverse of the perspective depth.
+  const float nearTimesFar = 0.2f * -mLength;
+  const float farMinusNear = mLength - 0.2f;
+  const int half = mTexture->GetWidth() / 2;
+  for (int i = 0, row = 0; i < mTexture->GetHeight(); ++i, row += mTexture->GetWidth()) {
+    const ushort raw = depth[half + row];
+    const ushort swapped = static_cast< ushort >((raw << 8) | (raw >> 8));
+    const float d = static_cast< float >(swapped) / 65535.f;
+    const float distance = nearTimesFar / (d * farMinusNear - mLength);
+    GXPosition3f32(0.f, distance, spread * distance);
+    spread -= spreadStep;
+  }
+  CGX::End(); // 0x10D68
+
+  // 0x10D6C-0x10D8C: the texture's bytes are invalidated for the next copy.
+  DCInvalidateRange(const_cast< ushort* >(depth),
+                    (mTexture->GetWidth() * mTexture->GetHeight() * 2 + 0x1F) & ~0x1F);
+  CGraphics::SetCullMode(kCM_Front); // 0x10D90-0x10D94
+}
 
 // fn_75_1167C (PreRenderAllViewports, 0x1167C-0x11804): the bounds start at the translation
 // (0x116A4-0x116CC) and take the two cone edges, (0, length, +-length * tan(angle / 2))
