@@ -1,0 +1,24 @@
+# Temple Grounds 01_Temple_LandingSite L0: CFishCloud e0000000f (animated, repel 1, ball priority 0.8) with
+# four swirling repulsors (e000000e8, e000001d7, e000001d8, e000001d9) following it. The player stands in
+# the cloud, morphs; one repulsor is deactivated twice (RemoveRepulsor found, not found), activated twice (insert, found) and deleted.
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 50; give chargeBeam 1
+@f320 obj e000001d9
+@f340 tp -87.6 -186.4 -39.9
+@f500 shoot e0000000f
+@f540 shoot e0000000f missile
+@f600 press x 30
+@f700 boost
+@f760 tp -87.6 -186.4 -39.9
+@f800 boost
+@f900 press x 30
+@f1000 send e000001d9 Deactivate
+@f1020 send e000001d9 Deactivate
+@f1050 send e000001d9 Activate
+@f1100 send e000001d9 Activate
+@f1150 visor scan
+@f1250 visor combat
+@f1300 send e000001d8 Delete
+@f1400 tp -86.0 -201.1 -43.7
+@f1600 send e0000000f Deactivate
+@f1700 send e0000000f Activate
+@f1900 objs Fish

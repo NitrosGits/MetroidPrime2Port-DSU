@@ -44,11 +44,13 @@ static inline CVector3f VecDiv(const CVector3f& vec, const float f) {
   return CVector3f(x, y, z);
 }
 
+// @ fn_20_6BEC
 CFishCloudModifier::~CFishCloudModifier() {}
 
 // Local copy of CModelData::CModelDataNull.
 static CModelData CModelDataNull() { return CModelData(); }
 
+// @ fn_20_6AAC
 CFishCloudModifier::CFishCloudModifier(TUniqueId uid, const rstl::string& name,
                                        const CEntityInfo& info, const CVector3f& pos,
                                        bool isRepulsor, bool swirl, float radius, float priority)
@@ -59,6 +61,7 @@ CFishCloudModifier::CFishCloudModifier(TUniqueId uid, const rstl::string& name,
 , mIsRepulsor(isRepulsor)
 , mSwirl(swirl) {}
 
+// @ fn_20_69F0
 void CFishCloudModifier::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CActor::AcceptScriptMsg(mgr, msg);
@@ -120,10 +123,12 @@ void CFishCloudModifier::RemoveSelf(CStateManager& mgr) {
   }
 }
 
+// @ fn_20_67B4
 CFishCloud::CModifierSource::CModifierSource(const TUniqueId& source, bool repulsor, bool swirl,
                                              float radius, float priority)
 : mSource(source), mRadius(radius), mPriority(priority), mIsRepulsor(repulsor), mIsSwirl(swirl) {}
 
+// @ fn_20_6784
 bool CFishCloud::CModifierSource::operator<(const CModifierSource& other) const {
   if (mSource == other.mSource) {
     return mIsRepulsor < other.mIsRepulsor;
@@ -131,6 +136,7 @@ bool CFishCloud::CModifierSource::operator<(const CModifierSource& other) const 
   return mSource < other.mSource;
 }
 
+// @ fn_20_673C
 CFishCloud::CBoid::CBoid(const CVector3f& pos, const CVector3f& vel, float scale)
 : mPos(pos), mVel(vel), mScale(scale), mNext(nullptr), mActive(true) {}
 
@@ -224,8 +230,10 @@ CFishCloud::CFishCloud(TUniqueId uid, const rstl::string& name, const CEntityInf
                                 1.f / mPartitionPitch.GetZ());
 }
 
+// @ fn_20_53B0
 CFishCloud::~CFishCloud() {}
 
+// @ fn_20_4F74
 void CFishCloud::InitAnimBoids(CStateManager& mgr, CModelData::EWhichModel which) {
   mModelStates.clear();
   for (int i = 0; i < 4; ++i) {
@@ -239,6 +247,7 @@ void CFishCloud::InitAnimBoids(CStateManager& mgr, CModelData::EWhichModel which
   }
 }
 
+// @ fn_20_4EA4
 void CFishCloud::PreRenderAllViewports(CStateManager& mgr) {
   const CAABox aabb = GetBoundingBox();
   SetOtherBounds(aabb);
@@ -246,16 +255,19 @@ void CFishCloud::PreRenderAllViewports(CStateManager& mgr) {
   UpdatePortalSystemState(mgr);
 }
 
+// @ fn_20_4E28
 CAABox CFishCloud::GetBoundingBox() const {
   const CAABox aabb = GetUntransformedBoundingBox();
   return aabb.GetTransformedAABox(GetTransform());
 }
 
+// @ fn_20_4DBC
 CAABox CFishCloud::GetUntransformedBoundingBox() const {
   const CVector3f extent(0.75f * mScale.GetX(), 0.75f * mScale.GetY(), 0.75f * mScale.GetZ());
   return CAABox(-extent, extent);
 }
 
+// @ fn_20_4D04
 bool CFishCloud::PointInBox(const CAABox& aabb, const CVector3f& point) const {
   if (!mWorldSpace) {
     return aabb.PointInside(point);
@@ -355,6 +367,7 @@ void CFishCloud::PlaceBoid(CStateManager& mgr, CBoid& boid, const CAABox& aabb) 
   }
 }
 
+// @ fn_20_4088
 void CFishCloud::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CActor::AcceptScriptMsg(mgr, msg);
@@ -388,6 +401,7 @@ void CFishCloud::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_20_3F2C
 bool CFishCloud::AddAttractor(TUniqueId source, bool swirl, float radius, float priority) {
   const CModifierSource modifier(source, false, swirl, radius, priority);
   TModifierSourceVector::iterator it =
@@ -406,6 +420,7 @@ bool CFishCloud::AddAttractor(TUniqueId source, bool swirl, float radius, float 
   return false;
 }
 
+// @ fn_20_3A88
 bool CFishCloud::AddRepulsor(TUniqueId source, bool swirl, float radius, float priority) {
   const CModifierSource modifier(source, true, swirl, radius, priority);
   TModifierSourceVector::iterator it =
@@ -424,6 +439,7 @@ bool CFishCloud::AddRepulsor(TUniqueId source, bool swirl, float radius, float p
   return false;
 }
 
+// @ fn_20_3990
 void CFishCloud::RemoveAttractor(TUniqueId source) {
   const CModifierSource modifier(source, false, false, 0.f, 0.f);
   TModifierSourceVector::iterator it =
@@ -433,6 +449,7 @@ void CFishCloud::RemoveAttractor(TUniqueId source) {
   }
 }
 
+// @ fn_20_3798
 void CFishCloud::RemoveRepulsor(TUniqueId source) {
   const CModifierSource modifier(source, true, false, 0.f, 0.f);
   TModifierSourceVector::iterator it =
@@ -442,6 +459,7 @@ void CFishCloud::RemoveRepulsor(TUniqueId source) {
   }
 }
 
+// @ fn_20_3730
 rstl::optional_object< CAABox > CFishCloud::GetTouchBounds() const { return GetBoundingBox(); }
 
 void CFishCloud::Think(float dt, CStateManager& mgr) {
@@ -564,6 +582,7 @@ void CFishCloud::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_20_2FD8
 void CFishCloud::PreRender(CStateManager& mgr) {
   CActor::PreRender(mgr);
   if (mValidModel) {
@@ -574,6 +593,7 @@ void CFishCloud::PreRender(CStateManager& mgr) {
   SetPreRenderClipped(false);
 }
 
+// @ fn_20_2EC4
 void CFishCloud::RenderBoid(int idx, const CBoid& boid, uint& drawMask) const {
   const uint modelIndex = idx & 3;
   uint mask = drawMask;
@@ -594,6 +614,7 @@ void CFishCloud::RenderBoid(int idx, const CBoid& boid, uint& drawMask) const {
   drawMask = mask;
 }
 
+// @ fn_20_2BD8
 void CFishCloud::Render(const CStateManager& mgr) const {
   if (!GetActive()) {
     return;
@@ -640,6 +661,7 @@ void CFishCloud::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_20_2B04
 void CFishCloud::KillBoid(CBoid& boid) {
   boid.mActive = false;
   AddParticles(boid.mPos);
@@ -749,6 +771,7 @@ void CFishCloud::Touch(CActor& other, CStateManager& mgr) {
   }
 }
 
+// @ fn_20_22AC
 void CFishCloud::CreatePartitionList() {
   const CAABox bounds = GetBoundingBox();
   mBoidPartitionLists.reserve(343);
@@ -859,6 +882,7 @@ void CFishCloud::OldBuildBoidNearList(const CVector3f& pos, float radius,
   }
 }
 
+// @ fn_20_1C00
 static CVector3f FishCloudCross(const CVector3f& lhs, const CVector3f& rhs) {
   const float lX = lhs.GetX();
   const float lY = lhs.GetY();
@@ -869,6 +893,7 @@ static CVector3f FishCloudCross(const CVector3f& lhs, const CVector3f& rhs) {
   return CVector3f(lY * rZ - rY * lZ, lZ * rX - rZ * lX, lX * rY - rX * lY);
 }
 
+// @ fn_20_1A1C
 void CFishCloud::ApplyRotation(CBoid& boid, float magnitude, const CVector3f& point, float radius,
                                bool clockwise) {
   CVector3f delta = boid.mPos - point;
@@ -883,6 +908,7 @@ void CFishCloud::ApplyRotation(CBoid& boid, float magnitude, const CVector3f& po
   boid.mVel += weightedAngle * (magnitude * align);
 }
 
+// @ fn_20_18A0
 void CFishCloud::ApplyAlignment(CBoid& boid, const rstl::reserved_vector< CBoid*, 25 >& nearList) {
   if (nearList.size() > 0) {
     CVector3f average(0.f, 0.f, 0.f);
@@ -897,6 +923,7 @@ void CFishCloud::ApplyAlignment(CBoid& boid, const rstl::reserved_vector< CBoid*
   }
 }
 
+// @ fn_20_1780
 void CFishCloud::ApplyWander(CStateManager& mgr, CBoid& boid) {
   const float x = boid.mVel.GetX();
   const float y = boid.mVel.GetY();
@@ -906,6 +933,7 @@ void CFishCloud::ApplyWander(CStateManager& mgr, CBoid& boid) {
   boid.mVel += mScatterVel * scatter;
 }
 
+// @ fn_20_168C
 void CFishCloud::ApplyCohesion(CBoid& boid, const rstl::reserved_vector< CBoid*, 25 >& nearList) {
   if (nearList.size() > 0) {
     CVector3f average(0.f, 0.f, 0.f);
@@ -918,6 +946,7 @@ void CFishCloud::ApplyCohesion(CBoid& boid, const rstl::reserved_vector< CBoid*,
   }
 }
 
+// @ fn_20_1570
 void CFishCloud::ApplyCohesion(CBoid& boid, const CVector3f& point, float radius, float magnitude) {
   const CVector3f delta = point - boid.GetTranslation();
   if (delta.CanBeNormalized()) {
@@ -927,6 +956,7 @@ void CFishCloud::ApplyCohesion(CBoid& boid, const CVector3f& point, float radius
   }
 }
 
+// @ fn_20_14AC
 void CFishCloud::ApplySeparation(CBoid& boid, const rstl::reserved_vector< CBoid*, 25 >& nearList) {
   if (nearList.size() > 0) {
     CVector3f nearest(0.f, 0.f, 0.f);
@@ -944,6 +974,7 @@ void CFishCloud::ApplySeparation(CBoid& boid, const rstl::reserved_vector< CBoid
   }
 }
 
+// @ fn_20_1388
 void CFishCloud::ApplySeparation(CBoid& boid, const CVector3f& point, float radius,
                                  float magnitude) {
   const CVector3f delta = boid.GetTranslation() - point;
@@ -970,11 +1001,13 @@ void CFishCloud::ApplyAttraction(CBoid& boid, const CVector3f& point, float radi
   }
 }
 
+// @ fn_20_1244
 void CFishCloud::ApplyRepulsion(CBoid& boid, const CVector3f& point, float radius,
                                 float magnitude) {
   ApplySeparation(boid, point, radius, magnitude);
 }
 
+// @ fn_20_1144
 void CFishCloud::ApplyContainment(CBoid& boid, const CAABox& aabb) {
   const float radius = mContainmentRadius;
   if (boid.mVel.CanBeNormalized()) {
@@ -985,6 +1018,7 @@ void CFishCloud::ApplyContainment(CBoid& boid, const CAABox& aabb) {
   }
 }
 
+// @ fn_20_109C
 void CFishCloud::AddParticles(const CVector3f& pos) {
   for (int i = 0; i < mParticleGens.size(); ++i) {
     mParticleGens[i]->SetParticleEmission(true);
@@ -994,18 +1028,21 @@ void CFishCloud::AddParticles(const CVector3f& pos) {
   }
 }
 
+// @ fn_20_1020
 void CFishCloud::UpdateParticles(float dt) {
   for (int i = 0; i < mParticleGens.size(); ++i) {
     mParticleGens[i]->Update(dt);
   }
 }
 
+// @ fn_20_FA0
 void CFishCloud::RenderParticles() const {
   for (int i = 0; i < mParticleGens.size(); ++i) {
     gpRender->AddParticleGen(*mParticleGens[i]);
   }
 }
 
+// @ fn_20_340
 CEntity* LoadFishCloud(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrFishCloud sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrFishCloud.inc"
@@ -1031,6 +1068,7 @@ CEntity* LoadFishCloud(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
       sldrThis.deathSound, sldrThis.unknown_0xc320a050, actParms);
 }
 
+// @ fn_20_AC
 CEntity* LoadFishCloudModifier(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrFishCloudModifier sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrFishCloudModifier.inc"
@@ -1045,6 +1083,7 @@ CEntity* LoadFishCloudModifier(CStateManager& mgr, CInputStream& input, CEntityI
 #ifndef MONOLITHIC
 SFishCloud_FuncPtrs REL_loader_FishCloud;
 
+// @ fn_20_70
 void SetRelLoaderFunctionToLoader() {
   REL_loader_FishCloud.mLoadFishCloud = LoadFishCloud;
   REL_loader_FishCloud.mLoadFishCloudModifier = LoadFishCloudModifier;
