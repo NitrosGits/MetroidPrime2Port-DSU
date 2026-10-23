@@ -22,7 +22,8 @@ compares the port body with the retail body (asm and rodata read through tools/a
          needs `<=`/`>=`. Negating a C compare flips its NaN arm together with its sense, so
          `!(a <= b)` is NOT `a > b` on a NaN: it matches a cror+beq, never a plain ble. Flagged:
          the port has fewer strict (or non-strict) compares than retail has plain (cror) float
-         compares, or more negated `!(a <= b)` forms than retail has crors. Counts only: leads.
+         compares, or more negated `!(a <= b)` forms than retail has crors. rstl::min_val/max_val,
+         CMath::Min/Max count as one strict compare, CMath::Clamp as two. Counts only: leads.
 Findings are hints for a human (inlined callees, constants named in another file show up); a clean
 function is a good sign, not proof.
 
@@ -338,6 +339,10 @@ def port_compares(code):
                 ns += 1
             else:
                 nn += 1
+    # inline helpers whose body is a strict compare (rstl/math.hpp, CMath.hpp): retail inlines them
+    # as a plain fcmpo + b<cond>; Clamp is two
+    s += len(re.findall(r"\b(?:min_val|max_val|CMath::Min|CMath::Max)\s*(?:<[^<>()]*>)?\s*\(", code))
+    s += 2 * len(re.findall(r"\bCMath::Clamp\s*(?:<[^<>()]*>)?\s*\(", code))
     return s, n, ns, nn
 
 
