@@ -1,0 +1,124 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_66_0	2C	H	GetHealthInfo__6CActorCFv	-	weak copy / template instance / unnamed REL-local (100%)	no
+0002C	fn_66_2C	24	T	RELExit	sz1	REL runtime (100%)	yes
+00050	fn_66_50	20	T	RELMain	sz1	REL runtime (100%)	yes
+00070	fn_66_70	5C	T	SetRelLoaderFunctionToLoader__Fv	sz1	REL runtime (100%)	yes
+000CC	fn_66_CC	9A4	B	LoadSafeZone__FR13CStateManagerR12CInputStreamR11CEntityInfo	sz1	upstream body (97%); flash args swapped (TARGET_PC)	no
+00A70	fn_66_A70	48	H	push_back__Q24rstl35reserved_vector<14CDarkWorldInfo,3>FRC14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
+00AB8	fn_66_AB8	20	H	construct<14CDarkWorldInfo>__4rstlFPvRC14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
+00AD8	fn_66_AD8	28	H	construct__Q24rstl39construction_policy<14CDarkWorldInfo,0>FPvRC14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
+00B00	fn_66_B00	168	B	__ct__14CDarkWorldInfoFRC14CDarkWorldInfo	-	upstream body (100%)	no
+00C68	fn_66_C68	58	H	__dt__23TLockedToken<8CTexture>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+00CC0	fn_66_CC0	6C	H	__dt__Q24rstl42optional_object<23TLockedToken<8CTexture>>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+00D2C	fn_66_D2C	54	H	__dt__17TToken<8CTexture>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+00D80	fn_66_D80	CC	B	__dt__14CDarkWorldInfoFv	-	upstream body (100%)	no
+00E4C	fn_66_E4C	50	H	__dt__Q24rstl35reserved_vector<14CDarkWorldInfo,3>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+00E9C	fn_66_E9C	60	H	destroy_elements__Q24rstl35reserved_vector<14CDarkWorldInfo,3>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+00EFC	fn_66_EFC	20	H	destroy<14CDarkWorldInfo>__4rstlFP14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
+00F1C	fn_66_F1C	24	H	destroy_impl<14CDarkWorldInfo>__4rstlFP14CDarkWorldInfo	-	weak copy / template instance / unnamed REL-local (100%)	no
+00F40	fn_66_F40	C8	B	__dt__12SLdrSafeZoneFv	-	upstream body (100%)	no
+01008	fn_66_1008	434	B	__ct__12SLdrSafeZoneFv	sz1	upstream body (68%); loader defaults (TARGET_PC)	no
+0143C	fn_66_143C	64	B	__dt__15SLdrSafeZoneFogFv	-	upstream body (100%)	no
+014A0	fn_66_14A0	3C	B	__dt__22SLdrSafeZoneAttributesFv	-	upstream body (100%)	no
+014DC	fn_66_14DC	154	B	__ct__22SLdrSafeZoneAttributesFv	sz1	upstream body (66%); loader defaults (TARGET_PC)	no
+01630	fn_66_1630	74	B	LdrToSafeZoneFog__FRC15SLdrSafeZoneFog	sz1	upstream body (100%)	yes
+016A4	fn_66_16A4	178	B	LoadTypedefSafeZoneFog__FR15SLdrSafeZoneFogR12CInputStream	-	upstream body (100%)	no
+0181C	fn_66_181C	3C8	B	LoadTypedefSafeZoneAttributes__FR22SLdrSafeZoneAttributesR12CInputStream	-	upstream body (100%)	no
+01BE4	fn_66_1BE4	38	B	__ct__12CSafeZoneFogFb11ERglFogModeRC6CColorRC9CVector2ffRC9CVector2f	sz1	upstream body (100%)	yes
+01C1C	fn_66_1C1C	20	B	IsHurtful__15CScriptSafeZoneCFv	sz1	upstream body (100%)	yes
+01C3C	fn_66_1C3C	174	B	ModifyObstruction__15CScriptSafeZoneFR13CStateManagerii	-	upstream body (100%)	no
+01DB0	fn_66_1DB0	A0	B	UpdateObstruction__15CScriptSafeZoneFR13CStateManagerb	sz1	upstream body (100%)	yes
+01E50	fn_66_1E50	130	B	DamageActor__15CScriptSafeZoneFR13CStateManager9TUniqueIdf	sz1	upstream body (100%)	yes
+01F80	fn_66_1F80	88	B	InhabitantIdle__15CScriptSafeZoneFR6CActorR13CStateManagerf	sz1	upstream body (100%)	yes
+02008	fn_66_2008	410	B	ApplyRenderEffect__15CScriptSafeZoneFR13CStateManager	-	upstream body (94%)	no
+02418	fn_66_2418	5C	B	Render__15CScriptSafeZoneCFRC13CStateManager	-	upstream body (100%)	no
+02474	fn_66_2474	36C	B	RenderDarkVisorSpot__15CScriptSafeZoneCFRC13CStateManager	-	upstream body (100%)	no
+027E0	fn_66_27E0	30	B	ShouldSendScriptMsgs__15CScriptSafeZoneCFR6CActorR13CStateManager	sz1	upstream body (100%)	yes
+02810	fn_66_2810	90	B	AddToRenderer__15CScriptSafeZoneCFRC13CStateManager	-	upstream body (100%)	no
+028A0	fn_66_28A0	F0	B	UpdatePlayerInside__15CScriptSafeZoneFR6CActorbR13CStateManager	-	upstream body (97%)	no
+02990	fn_66_2990	1E0	B	SpawnImpactEffect__15CScriptSafeZoneFRC9CVector3ff	-	upstream body (100%)	no
+02B70	fn_66_2B70	28	H	push_back__Q24rstl65list<Q24rstl23auto_ptr<11CElementGen>,Q24rstl17rmemory_allocator>FRCQ24rstl23auto_ptr<11CElementGen>	-	weak copy / template instance / unnamed REL-local (100%)	no
+02B98	fn_66_2B98	A8	H	do_insert_before__Q24rstl65list<Q24rstl23auto_ptr<11CElementGen>,Q24rstl17rmemory_allocator>FPQ34rstl65list<Q24rstl23auto_ptr<11CElementGen>,Q24rstl17rmemory_allocator>4nodeRCQ24rstl23auto_ptr<11CElementGen>	-	weak copy / template instance / unnamed REL-local (100%)	no
+02C40	fn_66_2C40	78	H	__dt__Q24rstl23auto_ptr<11CElementGen>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+02CB8	fn_66_2CB8	8	H	fn_66_2CB8	-	weak copy / template instance / unnamed REL-local (0%)	no
+02CC0	fn_66_2CC0	54	H	__dt__25TToken<15CGenDescription>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+02D14	fn_66_2D14	244	B	HandleProjectile__15CScriptSafeZoneFR6CActorR13CStateManager	-	upstream body (100%)	no
+02F58	fn_66_2F58	2A0	B	RayCylinderIntersection__FRC9CVector3fRC9CVector3fRC9CVector3fRfR9CVector3ffff	-	upstream body (98%)	no
+031F8	fn_66_31F8	A0	B	InhabitantExited__15CScriptSafeZoneFR6CActorR13CStateManager	sz1	upstream body (100%)	yes
+03298	fn_66_3298	148	B	InhabitantAdded__15CScriptSafeZoneFR6CActorR13CStateManager	-	upstream body (100%)	no
+033E0	fn_66_33E0	28	H	push_back__Q24rstl43list<9TUniqueId,Q24rstl17rmemory_allocator>FRC9TUniqueId	-	weak copy / template instance / unnamed REL-local (100%)	no
+03408	fn_66_3408	90	H	do_insert_before__Q24rstl43list<9TUniqueId,Q24rstl17rmemory_allocator>FPQ34rstl43list<9TUniqueId,Q24rstl17rmemory_allocator>4nodeRC9TUniqueId	-	weak copy / template instance / unnamed REL-local (100%)	no
+03498	fn_66_3498	184	B	PreRenderAllViewports__15CScriptSafeZoneFR13CStateManager	sz1	upstream body (93%)	yes
+0361C	fn_66_361C	3C	H	__dt__Q24rstl24optional_object<6CAABox>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+03658	fn_66_3658	88	B	ApplyFog__15CScriptSafeZoneFR13CStateManagerRC12CSafeZoneFog	-	upstream body (100%)	no
+036E0	fn_66_36E0	6C	B	ApplyInsideFilter__15CScriptSafeZoneFR13CStateManager	sz1	upstream body (100%)	yes
+0374C	fn_66_374C	1A8	B	UpdateSafeZoneManager__15CScriptSafeZoneFR13CStateManager	-	upstream body (100%)	no
+038F4	fn_66_38F4	14C	B	UpdateEchoEmitter__15CScriptSafeZoneFfR13CStateManager	sz1	upstream body (100%)	yes
+03A40	fn_66_3A40	544	B	Think__15CScriptSafeZoneFfR13CStateManager	sz1	upstream body (98%); activation min NaN order (TARGET_PC)	no
+03F84	fn_66_3F84	98	B	UpdateInsideAlpha__15CScriptSafeZoneFfR13CStateManager	sz1	upstream body (100%)	yes
+0401C	fn_66_401C	38	B	UpdateFlash__15CScriptSafeZoneFfR13CStateManager	sz1	upstream body (100%)	yes
+04054	fn_66_4054	90	B	UpdateLoopSound__15CScriptSafeZoneFfR13CStateManager	-	upstream body (100%)	no
+040E4	fn_66_40E4	660	B	AcceptScriptMsg__15CScriptSafeZoneFR13CStateManagerRC10CScriptMsg	-	upstream body (100%)	no
+04744	fn_66_4744	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+04794	fn_66_4794	70	B	SetLowPassFilter__15CScriptSafeZoneFb	-	upstream body (100%)	no
+04804	fn_66_4804	5C	B	PlayActivateSound__15CScriptSafeZoneFR13CStateManager	sz1	upstream body (100%)	yes
+04860	fn_66_4860	50	B	PlayDeactivateSound__15CScriptSafeZoneFR13CStateManager	sz1	upstream body (100%)	yes
+048B0	fn_66_48B0	BC	B	PlaySound__15CScriptSafeZoneFR13CStateManagerUsUi	sz1	upstream body (100%)	yes
+0496C	fn_66_496C	5C	B	SetZoneType__15CScriptSafeZoneFQ215CScriptSafeZone9EZoneType	-	upstream body (100%)	no
+049C8	fn_66_49C8	124	B	BuildLight__15CScriptSafeZoneCFv	-	upstream body (100%)	no
+04AEC	fn_66_4AEC	A4	H	__ct__6CLightFRC6CLight	-	weak copy / template instance / unnamed REL-local (0%)	no
+04B90	fn_66_4B90	20	B	SetActive__15CScriptSafeZoneFb	sz1	upstream body (100%)	yes
+04BB0	fn_66_4BB0	C8	B	__dt__15CScriptSafeZoneFv	sz1	upstream body (100%)	yes
+04C78	fn_66_4C78	4D0	H	__ct__15CScriptSafeZoneF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>R11CEntityInfoRC9CVector3fRC12CTransform4fRC11CDamageInfoRC9CVector3fffffffffUibbUiRC14CDarkWorldInfoRC14CDarkWorldInfoRC14CDarkWorldInfoRC11CDamageInfoRC11CDamageInfobibbbRC9CVector3fQ223CScriptTriggerEllipsoid10EShapeTypeRC12CSafeZoneFogRC12CSafeZoneFogRC15SEchoParametersfUs6CColorf	sz1	weak copy / template instance / unnamed REL-local (100%)	yes
+05148	fn_66_5148	60	H	__dt__23CScriptTriggerEllipsoidFv	-	weak copy / template instance / unnamed REL-local (100%)	no
+051A8	fn_66_51A8	258	B	__ct__14CDarkWorldInfoFUsUsUsUsUsfUifRC9CVector2fRC9CVector2fRC9CVector2fRC9CVector2fUiUiUi6CColor6CColor	-	upstream body (99%)	no
+05400	fn_66_5400	E0	B	LoadOptionalTexture__14CDarkWorldInfoFUi	-	upstream body (100%)	no
+054E0	fn_66_54E0	74	H	do_erase__Q24rstl43list<9TUniqueId,Q24rstl17rmemory_allocator>FPQ34rstl43list<9TUniqueId,Q24rstl17rmemory_allocator>4node	-	weak copy / template instance / unnamed REL-local (100%)	no
+05554	fn_66_5554	74	H	__dt__Q24rstl43list<9TUniqueId,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+055C8	fn_66_55C8	B4	H	do_erase__Q24rstl65list<Q24rstl23auto_ptr<11CElementGen>,Q24rstl17rmemory_allocator>FPQ34rstl65list<Q24rstl23auto_ptr<11CElementGen>,Q24rstl17rmemory_allocator>4node	-	weak copy / template instance / unnamed REL-local (100%)	no
+0567C	fn_66_567C	B4	H	__dt__Q24rstl65list<Q24rstl23auto_ptr<11CElementGen>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+05730	fn_66_5730	938	B	LoadSafeZoneCrystal__FR13CStateManagerR12CInputStreamR11CEntityInfo	-	upstream body (100%)	no
+06068	fn_66_6068	13C	H	__ct__10CModelDataFRC10CModelData	-	weak copy / template instance / unnamed REL-local (100%)	no
+061A4	fn_66_61A4	20	H	CModelDataNull__10CModelDataFv	-	weak copy / template instance / unnamed REL-local (100%)	no
+061C4	fn_66_61C4	AC	H	__as__11CMayaSplineFRC11CMayaSpline	-	weak copy / template instance / unnamed REL-local (100%)	no
+06270	fn_66_6270	E0	H	__as__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>FRCQ24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>	-	weak copy / template instance / unnamed REL-local (100%)	no
+06350	fn_66_6350	C	H	clear__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+0635C	fn_66_635C	58	H	__dt__11CMayaSplineFv	-	weak copy / template instance / unnamed REL-local (100%)	no
+063B4	fn_66_63B4	54	H	__dt__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance / unnamed REL-local (100%)	no
+06408	fn_66_6408	70	B	__dt__19SLdrSafeZoneCrystalFv	-	upstream body (100%)	no
+06478	fn_66_6478	158	B	__ct__19SLdrSafeZoneCrystalFv	sz1	upstream body (70%); loader defaults (TARGET_PC)	no
+065D0	fn_66_65D0	78	H	__ct__22SSafeZoneCrystalModelsFRC10CModelDataRC10CModelDataRC10CModelDataRC10CModelData	sz1	weak copy / template instance / unnamed REL-local (100%)	yes
+06648	fn_66_6648	80	B	GetScannableObjectInfo__22CScriptSafeZoneCrystalCFv	-	upstream body (100%)	no
+066C8	fn_66_66C8	FC	B	LoadScannableInfo__FUi	-	upstream body (100%)	no
+067C4	fn_66_67C4	8	B	GetDamageVulnerability__22CScriptSafeZoneCrystalCFv	sz1	upstream body (100%)	yes
+067CC	fn_66_67CC	128	B	UpdateEffect__22CScriptSafeZoneCrystalCFfP11CElementGenbRC9CVector3fQ222CScriptSafeZoneCrystal6EStatef	-	upstream body (100%)	no
+068F4	fn_66_68F4	48	B	KillEffectIfInactive__22CScriptSafeZoneCrystalCFP11CElementGenQ222CScriptSafeZoneCrystal6EState	sz1	upstream body (100%)	yes
+0693C	fn_66_693C	194	B	UpdateEffectsVisibility__22CScriptSafeZoneCrystalFfR13CStateManager	-	upstream body (100%)	no
+06AD0	fn_66_6AD0	130	B	UpdateRefreshEffect__22CScriptSafeZoneCrystalFfR13CStateManager	-	upstream body (100%)	no
+06C00	fn_66_6C00	D0	B	UpdateRegeneration__22CScriptSafeZoneCrystalFfR13CStateManager	sz1	upstream body (100%)	yes
+06CD0	fn_66_6CD0	10C	B	UpdateStateTimer__22CScriptSafeZoneCrystalFfR13CStateManager	-	upstream body (100%)	no
+06DDC	fn_66_6DDC	24C	B	Think__22CScriptSafeZoneCrystalFfR13CStateManager	sz1	upstream body (100%)	yes
+07028	fn_66_7028	3C	B	GetTouchBounds__22CScriptSafeZoneCrystalCFv	sz1	upstream body (100%)	yes
+07064	fn_66_7064	C8	B	UpdateBounds__22CScriptSafeZoneCrystalFv	sz1	upstream body (100%)	yes
+0712C	fn_66_712C	F4	B	UpdateModel__22CScriptSafeZoneCrystalFR13CStateManager	-	upstream body (100%)	no
+07220	fn_66_7220	88	B	UpdateVulnerability__22CScriptSafeZoneCrystalFv	sz1	upstream body (100%)	yes
+072A8	fn_66_72A8	1F4	B	SetState__22CScriptSafeZoneCrystalFR13CStateManagerQ222CScriptSafeZoneCrystal6EState	-	upstream body (100%)	no
+0749C	fn_66_749C	290	B	AcceptScriptMsg__22CScriptSafeZoneCrystalFR13CStateManagerRC10CScriptMsg	-	upstream body (100%)	no
+0772C	fn_66_772C	1C	B	ResetHealth__22CScriptSafeZoneCrystalFv	sz1	upstream body (100%)	yes
+07748	fn_66_7748	8	B	HealthInfo__22CScriptSafeZoneCrystalFv	sz1	upstream body (100%)	yes
+07750	fn_66_7750	8C	B	AddToRenderer__22CScriptSafeZoneCrystalCFRC13CStateManager	sz1	upstream body (100%)	yes
+077DC	fn_66_77DC	80	B	AddEffectToRenderer__22CScriptSafeZoneCrystalFP11CElementGen	-	upstream body (100%)	no
+0785C	fn_66_785C	130	B	SpawnRefreshEffect__22CScriptSafeZoneCrystalFv	-	upstream body (100%)	no
+0798C	fn_66_798C	1A0	B	Touch__22CScriptSafeZoneCrystalFR6CActorR13CStateManager	-	upstream body (100%)	no
+07B2C	fn_66_7B2C	29C	B	__dt__22CScriptSafeZoneCrystalFv	sz1	upstream body (100%)	yes
+07DC8	fn_66_7DC8	5F0	H	__ct__22CScriptSafeZoneCrystalF9TUniqueIdRC11CEntityInfoRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC12CTransform4fRC16CActorParametersUiUiUiUiRC10CModelDataRC10CModelDataRC10CModelDataRC10CModelDataUiUiUiUiUiUifffffffbbRC9CVector3fRC9CVector3fRC9CVector3fRC11CMayaSpline	-	weak copy / template instance / unnamed REL-local (100%)	no
+083B8	fn_66_83B8	AC	H	__ct__11CMayaSplineFRC11CMayaSpline	-	weak copy / template instance / unnamed REL-local (100%)	no
+08464	fn_66_8464	1D0	H	__ct__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>FRCQ24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>	-	weak copy / template instance / unnamed REL-local (100%)	no
+08634	fn_66_8634	5C	H	__ct__20CDamageVulnerabilityFRC20CDamageVulnerability	-	weak copy / template instance / unnamed REL-local (100%)	no
+08690	fn_66_8690	130	H	__ct__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	-	weak copy / template instance / unnamed REL-local (100%)	no
+087C0	fn_66_87C0	E8	B	LoadOptionalEffect__FUi	-	upstream body (100%)	no
+088A8	fn_66_88A8	74	B	GetCrystalVulnerability__Fb	sz1	upstream body (100%)	yes
+0891C	fn_66_891C	108	B	CreateEffect__FUi	-	upstream body (100%)	no
+08A24	fn_66_8A24	98	H	reserve__Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance / unnamed REL-local (100%)	no
+08ABC	fn_66_8ABC	5C	H	uninitialized_copy<Q24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P15CMayaSplineKnot>__4rstlFQ24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl124pointer_iterator<15CMayaSplineKnot,Q24rstl52vector<15CMayaSplineKnot,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P15CMayaSplineKnot	-	weak copy / template instance / unnamed REL-local (100%)	no
+08B18	fn_66_8B18	-	B	__sinit_CScriptSafeZoneCrystal_cpp	-	upstream body (82%)	no
