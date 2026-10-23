@@ -70,7 +70,7 @@ private:
   TUniqueId mUniqueId;
   TEditorId mEditorId;
   rstl::vector< SConnection > mConnections;
-  uint mActive : 1;
+  uint mActive : 1; // 0x20 0x80
   uint mNotInArea : 1;
   uint mCastFlags : 4;
   // Guessed names, based on the update dispatch.

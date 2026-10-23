@@ -377,7 +377,7 @@ protected:
   float mBurnThinkRateTimer;
   EFlavorType mFlavor;
   uint mHitByPlayerProjectile : 1;
-  uint mAlive : 1;
+  uint mAlive : 1;           // 0x420 0x40
   uint x420_26_ : 1;
   uint mFadeToDeath : 1;
   uint mPendingMassiveDeath : 1;
@@ -389,7 +389,7 @@ protected:
   uint mPendingDeath : 1;
   uint mLostMassiveFrozenHP : 1;
   uint mDieIf80PercFrozen : 1;
-  uint mIsMakingBigStrike : 1; // Guessed Prime name; native gun strike reaction.
+  uint mIsMakingBigStrike : 1; // Guessed Prime name; native gun strike reaction; 0x421 0x02
   uint mDrawParticles : 1;
   uint mEnableStateMachine : 1;
   uint mStateControlledMassiveDeath : 1;
