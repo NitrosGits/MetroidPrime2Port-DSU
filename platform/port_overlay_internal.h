@@ -1,8 +1,8 @@
 // The F1 overlay's live settings and the settings file's functions, shared by port_overlay.cpp
-// (which owns the variables and the UI) and port_overlay_settings.cpp (the key table, MP1's
-// debug_ui/settings.cpp ported). The variables hold the file's and the UI's values; an `MP2_<KEY>`
-// environment variable is applied when a value is read (the accessors in port_overlay.cpp), never
-// stored here.
+// (which owns the variables), debug_ui/settings.cpp (the key table, MP1's debug_ui/settings.cpp
+// ported) and the pages in debug_ui/. The variables hold the file's and the UI's values; an
+// `MP2_<KEY>` environment variable is applied when a value is read (the accessors in
+// port_overlay.cpp), never stored here.
 #pragma once
 
 #include <iosfwd>
@@ -34,6 +34,10 @@ extern float sGyroCursorAngle;
 extern int sGyroMode;
 extern float sGyroSensitivity;
 extern bool sGyroCursorCamera;
+extern bool sGyroSplit;
+extern float sGyroSensitivityY;
+extern bool sResetAimBoth;
+extern bool sMenuStandardButtons;
 extern bool sMouseButtons;
 extern bool sCardBackup;
 extern float sFirstPersonFov;
@@ -65,6 +69,31 @@ extern int sUiTheme;
 
 } // namespace PortOverlayState
 
+// F1 > Video rows from the Prime 1 port (f1b): dynamic resolution, upscale sharpening, the FPS cap,
+// the startup toasts, per-pixel lighting and the Compatibility tab. Defined in port_overlay.cpp,
+// applied by platform/port_video.cpp. The *AtStart copies are what this run's GPU device got.
+namespace PortOverlayState {
+
+extern bool sDynamicRes;
+extern int sDynamicResTarget;   // fps; 0 = the display's refresh rate (60 under the cap)
+extern float sDynamicResMin;    // 0.5, 0.75 or 1
+extern int sSharpenMode;        // 0 off, 1 while dynamic resolution has lowered the scale, 2 always
+extern int sSharpenAmount;      // 0..100
+extern int sFpsCap;             // with the 60 FPS cap off; 0 = unlimited
+extern bool sShowShaderCompilation;
+extern bool sShowMenuHint;
+extern bool sPerPixelLighting;
+extern bool sOpenGles;
+extern bool sOpenGlesAtStart;
+extern int sStorageClamp;       // -1 auto, 0 off, 1 on
+extern int sStorageClampAtStart;
+extern unsigned sDriverWorkarounds; // bit i = PortVideo::kDriverWorkarounds[i]
+extern unsigned sDriverWorkaroundsAtStart;
+extern bool sLowPowerGpu;
+extern bool sLowPowerGpuAtStart;
+
+} // namespace PortOverlayState
+
 namespace PortOverlaySettings {
 
 // False for a key nothing reads.
@@ -78,6 +107,9 @@ std::string SettingsText();
 // Reads <user>/settings.cfg once per run (a later call does nothing; one before
 // PortSettings::Initialize is ignored, and main.cpp calls it right after). Never writes.
 void LoadSettings();
+// Logs every setting in effect ("port: settings: k=v ...") and the MP2_* variables; main.cpp calls
+// it once the log file has started.
+void LogSettings();
 // Writes the file when a setter or row marked it dirty and the text now differs from what was last
 // read or saved.
 void SaveSettings();
@@ -90,38 +122,3 @@ std::string EnvName(const std::string& key);
 int SettingsSelfTest(std::string& report);
 
 } // namespace PortOverlaySettings
-
-// The F1 window's pages and the settings search, the Prime 1 port's debug_ui/search.cpp ported
-// (port_overlay_search.cpp). The pages are port_overlay.cpp's.
-namespace PortOverlaySearch {
-
-struct Page {
-  const char* name;
-  void (*draw)();
-};
-extern const Page kPages[];
-extern const int kPageCount;
-
-// One row of port_settings_index.inc.
-struct SettingsIndexRow {
-  const char* page;
-  const char* sub;
-  const char* section;
-  const char* label;
-  const char* keywords;
-};
-extern char sSearch[128];
-// The page a search result asked for, once (-1 when none).
-int TakeJumpPage();
-// A page's inner tab (BeginTabItem), opened when a search result names it; end with EndTabItem.
-bool SubTab(const char* page, const char* name);
-// Draws a page's rows, where a jump looks for its widget.
-void DrawPageBody(const Page& page);
-// Around the window: install and remove the item hooks a jump finds its widget with, and flash it.
-void BeginSearchJump();
-void EndSearchJump();
-void DrawSearchField();
-bool Searching();
-void DrawSearchResults();
-
-} // namespace PortOverlaySearch

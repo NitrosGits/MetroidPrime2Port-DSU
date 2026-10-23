@@ -2878,6 +2878,15 @@ void CPlayer::UpdateFreeLook(float dt) {
 // R is held. The Android overlay's touch aim and the twin-stick both arrive through the same
 // state, so the gates below ask about all three sources.
 bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
+  // A target lock keeps the native camera; the mouse aims again once it is released.
+  return PortDirectAimControls() && (mOrbitState == kOS_NoOrbit || mOrbitState == kOS_Grapple);
+}
+
+bool CPlayer::PortEmptyLockKeepsPitch() const {
+  return PortDirectAimControls() && mOrbitState == kOS_OrbitPoint;
+}
+
+bool CPlayer::PortDirectAimControls() const {
   if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
     return false;
   }
@@ -2885,11 +2894,7 @@ bool CPlayer::MouseAimAllowed(const CStateManager& mgr) const {
   if (cameras == nullptr || !cameras->IsInFPCamera() || cameras->IsInCinematicCamera()) {
     return false;
   }
-  if (mMorphBallState != kMS_Unmorphed || IsMorphBallTransitioning() || GetFrozenState()) {
-    return false;
-  }
-  // A target lock keeps the native camera; the mouse aims again once it is released.
-  return mOrbitState == kOS_NoOrbit || mOrbitState == kOS_Grapple;
+  return mMorphBallState == kMS_Unmorphed && !IsMorphBallTransitioning() && !GetFrozenState();
 }
 
 void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {

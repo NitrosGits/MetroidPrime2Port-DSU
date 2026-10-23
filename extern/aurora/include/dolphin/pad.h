@@ -88,6 +88,7 @@ extern "C" {
 #endif
 
 #define PAD_NATIVE_BUTTON_INVALID 0xFFFFFFFF
+/* An analog trigger as a button mapping's native button: pressed past half travel. */
 #define PAD_NATIVE_BUTTON_TRIGGER_LEFT 0x1000
 #define PAD_NATIVE_BUTTON_TRIGGER_RIGHT 0x1001
 
@@ -201,6 +202,12 @@ PADKeyButtonBinding* PADGetKeyButtonBindings(u32 port, u32* buttonCount);
 BOOL PADSetKeyAxisBinding(u32 port, PADKeyAxisBinding binding);
 BOOL PADSetKeyAxisBindings(u32 port, PADKeyAxisBinding bindings[PAD_BUTTON_COUNT]);
 PADKeyAxisBinding* PADGetKeyAxisBindings(u32 port, u32* axisCount);
+/* Each pad input takes up to PAD_KEY_SLOT_COUNT keys; the calls above use slot 0. */
+#define PAD_KEY_SLOT_COUNT 2
+BOOL PADSetKeyButtonBindingSlot(u32 port, u32 slot, PADKeyButtonBinding binding);
+PADKeyButtonBinding* PADGetKeyButtonBindingsSlot(u32 port, u32 slot, u32* buttonCount);
+BOOL PADSetKeyAxisBindingSlot(u32 port, u32 slot, PADKeyAxisBinding binding);
+PADKeyAxisBinding* PADGetKeyAxisBindingsSlot(u32 port, u32 slot, u32* axisCount);
 void PADClearKeyBindings(u32 port);
 void PADSetKeyboardActive(u32 port, BOOL active);
 
@@ -227,8 +234,11 @@ void PADBlockInput(bool block);
 void PADSetVirtualStatus(u32 port, const PADStatus* status);
 void PADClearVirtualStatus(u32 port);
 void PADClearAllVirtualStatus();
-/* Port addition to the vendored Aurora: replace port's controller + keyboard read with status on the
- * next PADRead only (the virtual status still merges on top); nullptr clears it. */
+/* The next PADRead takes this status for the port in place of its own keyboard
+ * and controller mapping (blocking, unblock suppression, the virtual status,
+ * rumble and LEDs still apply). One read only. An err other than PAD_ERR_NONE
+ * means nothing is pressed: the port then reports no controller when it has
+ * none, as without the override. */
 void PADSetPortOverride(u32 port, const PADStatus* status);
 
 /* The unmapped state of the port's controller: SDL gamepad buttons in bits

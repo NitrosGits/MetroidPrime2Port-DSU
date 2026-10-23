@@ -55,17 +55,21 @@ PADStatus Poll();
 // Runs the port's own actions (port menu, screenshot) from their bindings; called once a
 // loop iteration from port_events.cpp, so they work while the game is paused.
 void PollPortActions();
-// Gyro aim (MP1's PollGyro, pointer branch only): reads pad 0's gyro (or the phone's) and moves
-// the pointer (and the camera, with F1's "Gyro also turns the camera"), while F1's gyro aim and
-// pointer aim are both on and the Gyro aim button's mode lets it. Once a loop iteration.
+// Gyro aim (MP1's PollGyro, without the spring flick): reads the player's pad's gyro (or the
+// phone's) while F1's gyro aim and mouse aim, twin stick or touch aim are on and the Gyro aim
+// button's mode lets it. Under pointer aim it moves the pointer (and the camera, with F1's "Gyro
+// also turns the camera"); otherwise it turns the camera. Once a loop iteration.
 void PollGyro();
 // The Gyro aim binding's held state, from PollPortActions: drives the hold / pause / toggle modes.
 void SetGyroButton(bool held);
-// MP1's Recalibrate: Motion.Reset() 5 s after Start (the pad can be put down meanwhile).
+// MP1's Recalibrate: 5 s after Start (the pad can be put down meanwhile) the gyro averages the
+// still pad for 3 s and takes that as its drift.
 void StartGyroRecalibration();
 void CancelGyroRecalibration();
-// Seconds until the reset, or -1 when none is pending.
+// Seconds until the measurement starts, or -1 when none is pending.
 float GyroRecalibrationCountdown();
+// The measurement's progress 0..1, or -1 when none is running.
+float GyroManualCalibrationProgress();
 // F1's readout: "off", "controller", "phone", "no gyro found", ...; whether the drift is being
 // learned now; and the calibration confidence 0..1 (-1 without an accelerometer).
 const char* GyroStatus();

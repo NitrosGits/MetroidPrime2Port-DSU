@@ -3,7 +3,9 @@
 #include "pipeline_cache.hpp"
 #include "efb_copy.hpp"
 #include "scan_peek.hpp"
+#include "resources.hpp"
 #include "types.hpp"
+#include "tex_copy_conv.hpp"
 #include "tex_palette_conv.hpp"
 #include "texture.hpp"
 
@@ -11,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -23,6 +26,16 @@ struct StagingHighWater {
   uint32_t storage = 0;
   uint32_t textureUpload = 0;
   size_t textureUploadCount = 0;
+  size_t bufferUploadCount = 0;
+};
+
+// A copy into a shared buffer's resident region (queue_resident_upload).
+struct BufferUpload {
+  wgpu::Buffer src;
+  // Which buffer is looked up when it is encoded, as a frame can grow it (grow_frame_buffer).
+  ResidentBuffer dst = ResidentBuffer::Vertex;
+  uint64_t dstOffset = 0;
+  uint64_t size = 0;
 };
 
 struct CustomDrawCommand {
@@ -97,6 +110,14 @@ struct RenderPass {
   // A CPU read-back of this pass's EFB copy, requested from the FIFO by GXRequestEfbCpuCopy
   // and consumed once the pass has been resolved (see efb_copy.hpp).
   std::optional<efb_copy::Request> efbCpuCopy;
+  Range resolveMipsUniformRange;
+  bool resolveMips = false; // resolveTarget has a mip chain to fill after the copy
+  // What the colour copy makes of the source (an HDR scene pass's copies are not Display) and,
+  // for HdrDisplay, the tone curve it was recorded with.
+  tex_copy_conv::CopyDomain resolveDomain = tex_copy_conv::CopyDomain::Display;
+  Range resolveToneRange;
+  int probeFace = -1; // resolveTarget is this face of the PBR probe
+  Range probeUniformRange;
   wgpu::Texture snapshotColorDst;
   wgpu::TextureView snapshotDepthDst;
   float clearDepthValue = 1.f;
@@ -191,9 +212,25 @@ struct FrameOp {
   EncoderTask* encoderTask = nullptr;
   StagingHighWater highWater;
   std::vector<const TextureUpload*> textureUploads;
+  std::vector<const BufferUpload*> bufferUploads;
 };
 
 using RenderPassList = std::deque<RenderPass>;
+
+// Where a frame's vertex, uniform, index or storage data goes once its staging buffer is full:
+// memory allocated at the first overflow (address-space only until written), laid out after
+// the staging part so offsets stay contiguous, and copied to the device buffer through a
+// transient buffer. The ByteBuffer then reads as full (size() == capacity()).
+struct SpillBuffer {
+  std::unique_ptr<uint8_t[]> data;
+  size_t capacity = 0;
+  size_t length = 0;
+};
+
+// Bytes a frame has written to a kind of buffer, staging and spill together.
+inline size_t logical_size(const ByteBuffer& staging, const SpillBuffer& spill) noexcept {
+  return staging.size() + spill.length;
+}
 
 struct FramePacket {
   RenderPassList renderPasses;
@@ -201,6 +238,7 @@ struct FramePacket {
   std::deque<EncoderTask> encoderTasks;
   std::deque<FrameOp> ops;
   std::deque<TextureUpload> textureUploads;
+  std::deque<BufferUpload> bufferUploads;
 #ifdef AURORA_GFX_DEBUG_GROUPS
   std::vector<std::string> debugMarkers;
 #endif
@@ -209,6 +247,10 @@ struct FramePacket {
   ByteBuffer indices;
   ByteBuffer storage;
   ByteBuffer textureUpload;
+  SpillBuffer spillVerts;
+  SpillBuffer spillUniforms;
+  SpillBuffer spillIndices;
+  SpillBuffer spillStorage;
   wgpu::CommandEncoder encoder;
   std::vector<AfterSubmitCallback> afterSubmitCallbacks;
   uint64_t frameId = 0;

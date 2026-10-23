@@ -7,6 +7,18 @@ namespace PortMouse {
 constexpr float kMaxPitch = 1.52f; // approximately 87 degrees, short of the pole
 constexpr float kPi = 3.14159265358979323846f;
 
+// MP1's: mouse sensitivity on the Quake/Source/Apex scale (0.022 degrees a count per unit).
+constexpr double kSourceRadiansPerUnit = 0.022 * 3.14159265358979323846 / 180.0;
+inline float SourceFromRadians(float radiansPerCount) {
+  return float(radiansPerCount / kSourceRadiansPerUnit);
+}
+inline float RadiansFromSource(float source) { return float(source * kSourceRadiansPerUnit); }
+// Hand travel for a full turn at a mouse's counts per inch.
+inline float CentimetresPer360(float radiansPerCount, float dpi) {
+  if (!(radiansPerCount > 0.f) || !(dpi > 0.f)) return 0.f;
+  return float(2.0 * 3.14159265358979323846 / radiansPerCount / dpi * 2.54);
+}
+
 struct Planar {
   float right;
   float forward;
@@ -222,6 +234,10 @@ bool TouchAimActive();
 // 0.25..10; MP2_TOUCH_AIM_SPEED overrides it the lazy way MP2_MOUSE_SENS does.
 float TouchAimSpeed();
 void SetTouchAimSpeed(float pixelsPerDp);
+// The vertical drag's speed (PortTouch's "Separate vertical speed"; the same as TouchAimSpeed
+// with the split off), same clamp.
+float TouchAimSpeedY();
+void SetTouchAimSpeedY(float pixelsPerDp);
 // The debug overlay owns the cursor while it is open: no capture, no aim applied.
 void SetUiActive(bool active);
 bool UiActive();
@@ -229,11 +245,19 @@ bool UiActive();
 // turns the pending deltas into this tick's deltas.
 void AddMotion(float dx, float dy);
 // Gyro aim on the pointer (MP1's PollGyro pointer branch): yaw (right) and pitch (up) in rad/s
-// over dt seconds; `sweep` radians of pad turn move the pointer across the screen.
-void AddGyroPointer(float yaw, float pitch, float dt, float sweep);
-// "Gyro also turns the camera" (MP1's gyro camera pending): with pointer aim, the view turns by
-// `sensitivity` times the pad's turn (yaw right, pitch up, rad/s over dt) beside the pointer.
-void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity);
+// over dt seconds; `sweep` radians of pad turn move the pointer across the screen, and the
+// vertical travel is scaled by `scaleY` (the gyro's vertical over horizontal sensitivity).
+void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY = 1.f);
+// Gyro camera travel (MP1's gyro pending): the view turns by `sensitivity` (`sensitivityY` up and
+// down) times the pad's turn (yaw right, pitch up, rad/s over dt). Without pointer aim this is
+// the gyro's aim; with it, "Gyro also turns the camera" beside the pointer.
+void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float sensitivityY);
+// Set by PollGyro each loop while the gyro is read and aiming: under pointer aim the stick then
+// turns the camera instead of moving the pointer.
+void SetGyroDrivesAim(bool drives);
+// The Reset aim binding: the next UpdateAim recentres the pointer under pointer aim, otherwise
+// levels the view (pitch 0); `both` does both.
+void RequestResetAim(bool both);
 // Latches the pending travel for the tick about to run (MP1's per-tick latch): called beside
 // PortTiming::BeginTick in CMain, so a frame that runs no tick (the cap off) loses nothing.
 void BeginTick();
@@ -277,6 +301,15 @@ float Yaw();
 float Pitch();
 float Sensitivity();
 void SetSensitivity(float radiansPerPixel);
+// MP1's "Separate vertical speed": vertical mouse counts turn at SensitivityY (rad per count);
+// `MP2_MOUSE_SENS_SPLIT`, `MP2_MOUSE_SENS_Y`.
+bool SensitivitySplit();
+void SetSensitivitySplit(bool enabled);
+float SensitivityY();
+void SetSensitivityY(float radiansPerPixel);
+// The mouse's counts per inch, 100..64000; only for F1's cm/360 readout.
+int MouseDpi();
+void SetMouseDpi(int dpi);
 bool InvertX();
 bool InvertY();
 void SetInvertX(bool invert);

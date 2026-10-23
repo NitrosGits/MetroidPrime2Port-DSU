@@ -1,10 +1,11 @@
-// See port_ui_common.h. ApplyTouchStyle and ApplyPrimeTheme/FillThemeColors are the Prime 1 port's
-// (MetroidPrimePort/platform/debug_ui/ui_common.cpp), reduced to the Prime theme.
-#include "port_ui_common.h"
+// F1 overlay: the window's style, theme and scale, controller navigation, and the row helpers
+// (ItemHelp). The Prime 1 port's debug_ui/ui_common.cpp, with its Prime and Plain themes (no
+// Remastered), without its menu sounds (no MP2 effect ids yet) and its GPU self-test. State and
+// helpers shared with the other parts are in debug_ui_internal.h.
+#include "debug_ui_internal.h"
 
 #include "port_env.h"
 #include "port_input_remap_ui.h"
-#include "port_overlay_internal.h"
 
 #include <SDL3/SDL.h>
 #include <dolphin/pad.h>
@@ -15,7 +16,7 @@
 #include <cmath>
 #include <cstdio>
 
-namespace PortUi {
+namespace PortDebug {
 namespace {
 
 struct Rgb {
@@ -122,14 +123,16 @@ void ApplyTouchStyle(ImGuiStyle& style) {
 // unscaled units times the applied UI scale (ScaleAllSizes has already run for the paddings).
 // sUiAppliedScale is the scale UpdateUiScale has applied to the style so far, sThemeAppliedScale
 // the one the theme's borders and rounding were last set for.
+} // namespace
 float sUiAppliedScale = 1.f;
+namespace {
 float sThemeAppliedScale = 0.f;
 enum UiThemeId { kThemeAuto = 0, kThemePrime = 1, kThemePlain = 2 };
 int sThemeApplied = -1;
 
 int ResolveTheme() {
-  if (PortOverlayState::sUiTheme != kThemeAuto) {
-    return PortOverlayState::sUiTheme;
+  if (sUiTheme != kThemeAuto) {
+    return sUiTheme;
   }
   return kThemePrime;
 }
@@ -167,28 +170,6 @@ void ApplyPrimeTheme(ImGuiStyle& style, int theme) {
 }
 
 constexpr bool kThemed = true;
-
-// The env var and description under a control (themed), or beside/under it (the original look).
-void Lines(const char* env, const char* description, bool sameLine) {
-  if (kThemed) {
-    if (env != nullptr) {
-      Help(env);
-    }
-    if (description != nullptr) {
-      Help(description);
-    }
-    return;
-  }
-  if (env != nullptr) {
-    if (sameLine) {
-      ImGui::SameLine();
-    }
-    ImGui::TextDisabled("(%s)", env);
-  }
-  if (description != nullptr) {
-    ImGui::TextDisabled("%s", description);
-  }
-}
 
 } // namespace
 
@@ -276,45 +257,8 @@ bool PageLayout() {
   return true;
 #else
   static const bool sForced = port::EnvFlag("MP_TOUCH_UI");
-  return sForced || !PortOverlayState::sOverlayWindowed;
+  return sForced || !sOverlayWindowed;
 #endif
-}
-
-void Help(const char* text) {
-  ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-  ImGui::TextWrapped("%s", text);
-  ImGui::PopStyleColor();
-}
-
-void Note(const char* env, const char* description, bool sameLine) {
-  Lines(env, description, sameLine);
-}
-
-bool Toggle(const char* label, bool* value, const char* env, const char* description) {
-  const bool changed = ImGui::Checkbox(label, value);
-  Lines(env, description, true);
-  return changed;
-}
-
-bool SliderFloat(const char* label, float* value, float min, float max, const char* format,
-                 const char* env, const char* description) {
-  const bool changed = ImGui::SliderFloat(label, value, min, max, format);
-  Lines(env, description, false);
-  return changed;
-}
-
-bool SliderInt(const char* label, int* value, int min, int max, const char* format,
-               const char* env, const char* description) {
-  const bool changed = ImGui::SliderInt(label, value, min, max, format);
-  Lines(env, description, false);
-  return changed;
-}
-
-bool Combo(const char* label, int* current, const char* items, const char* env,
-           const char* description) {
-  const bool changed = ImGui::Combo(label, current, items);
-  Lines(env, description, true);
-  return changed;
 }
 
 void UpdateControllerNav() {
@@ -330,7 +274,10 @@ void UpdateControllerNav() {
 
   // While the Controls page captures a pad input, the pad binds instead of navigating (releasing
   // everything here also ends any nav press in progress); a pad that went away releases it too.
-  SDL_Gamepad* pad = PADGetSDLGamepadForIndex(0);
+  // Navigate with the player's pad (port 0), which can move to a pad connected mid-game.
+  const s32 portIndex = PADGetIndexForPort(PAD_CHAN0);
+  const u32 padIndex = portIndex >= 0 ? static_cast< u32 >(portIndex) : 0;
+  SDL_Gamepad* pad = PADGetSDLGamepadForIndex(padIndex);
   const bool capturing = pad == nullptr || PortInputRemap::Capturing();
   const auto held = [pad, capturing](SDL_GamepadButton button) {
     return !capturing && SDL_GetGamepadButton(pad, button);
@@ -349,7 +296,7 @@ void UpdateControllerNav() {
                  held(SDL_GAMEPAD_BUTTON_DPAD_RIGHT) || axis(SDL_GAMEPAD_AXIS_LEFTX) > kStickThreshold);
   // ImGui activates with FaceDown and cancels with FaceRight. On a Nintendo pad (A on the right)
   // confirm on A.
-  const PADControllerType padType = pad != nullptr ? PADGetControllerTypeForIndex(0) : PAD_TYPE_UNKNOWN;
+  const PADControllerType padType = pad != nullptr ? PADGetControllerTypeForIndex(padIndex) : PAD_TYPE_UNKNOWN;
   const bool nintendo = padType == PAD_TYPE_SWITCH_PROCON || padType == PAD_TYPE_JOYCON_PAIR;
   io.AddKeyEvent(ImGuiKey_GamepadFaceDown, held(nintendo ? SDL_GAMEPAD_BUTTON_EAST : SDL_GAMEPAD_BUTTON_SOUTH));
   io.AddKeyEvent(ImGuiKey_GamepadFaceRight, held(nintendo ? SDL_GAMEPAD_BUTTON_SOUTH : SDL_GAMEPAD_BUTTON_EAST));
@@ -359,4 +306,37 @@ void UpdateControllerNav() {
   io.AddKeyEvent(ImGuiKey_GamepadR1, held(SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER));
 }
 
-} // namespace PortUi
+ImVec4 ThemeWarnColor(const ImVec4& plain) {
+  return ResolveTheme() == kThemePrime ? ImVec4(1.f, 0.88f, 0.32f, 1.f) : plain; // yellow, apart from the amber accent
+}
+
+ImVec4 ThemeGoodColor(const ImVec4& plain) {
+  return ResolveTheme() == kThemePrime ? ImVec4(0.45f, 0.95f, 0.55f, 1.f) : plain;
+}
+
+ImVec4 ThemeBadColor(const ImVec4& plain) {
+  return ResolveTheme() == kThemePrime ? ImVec4(1.f, 0.42f, 0.35f, 1.f) : plain;
+}
+
+// What a setting does (kInlineHelp: printed under it on Android, a tooltip elsewhere).
+void ItemHelp(const char* text) {
+  if (kInlineHelp) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+    ImGui::TextWrapped("%s", text);
+    ImGui::PopStyleColor();
+  } else if (ImGui::BeginItemTooltip()) {
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 32.f);
+    ImGui::TextUnformatted(text);
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+  }
+}
+
+// SameLine, except after an ItemHelp that printed its text on Android.
+void SameLineAfterHelp() {
+  if (!kInlineHelp) {
+    ImGui::SameLine();
+  }
+}
+
+} // namespace PortDebug

@@ -1,5 +1,6 @@
 #include "imgui.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cmath>
 #include <cstring>
@@ -22,6 +23,7 @@
 #include "backends/imgui_impl_sdlrenderer3.h"
 #include "backends/imgui_impl_wgpu.h"
 #include "tracy/Tracy.hpp"
+#include "gfx/texture_sites.hpp"
 
 namespace aurora::imgui {
 namespace {
@@ -31,7 +33,11 @@ std::string g_imguiLog{};
 bool g_useSdlRenderer = false;
 
 std::vector<SDL_Texture*> g_sdlTextures;
-std::vector<wgpu::Texture> g_wgpuTextures;
+struct WgpuTexture {
+  ImTextureID id;
+  wgpu::Texture texture;
+};
+std::vector<WgpuTexture> g_wgpuTextures;
 
 wgpu::Buffer create_texture_upload_buffer(uint32_t width, uint32_t height, const uint8_t* data,
                                           uint32_t copyBytesPerRow) {
@@ -50,13 +56,13 @@ wgpu::Buffer create_texture_upload_buffer(uint32_t width, uint32_t height, const
     dst += copyBytesPerRow;
     data += rowBytes;
   }
-  buffer.Unmap();
   return buffer;
 }
 
 void enqueue_texture_upload(wgpu::Buffer buffer, wgpu::TexelCopyTextureInfo dst, wgpu::TexelCopyBufferLayout layout,
                             wgpu::Extent3D size) {
   gfx::render_worker::enqueue_work([buffer = std::move(buffer), dst = std::move(dst), layout, size] {
+    buffer.Unmap();
     const wgpu::CommandEncoderDescriptor encoderDesc{
         .label = "imgui texture upload encoder",
     };
@@ -98,8 +104,10 @@ void initialize() noexcept {
   ZoneScoped;
   SDL_Renderer* renderer = window::get_sdl_renderer();
   ImGui_ImplSDL3_InitForSDLRenderer(window::get_sdl_window(), renderer);
-  // The application feeds the gamepad keys itself (PortUi::UpdateControllerNav). Two writers that
-  // disagree about one key each queue a change per frame while ImGui applies one.
+  // The application feeds the gamepad keys itself (it knows which pad is the
+  // player's and remaps some inputs). Two writers that disagree about one key
+  // each queue a change per frame while ImGui applies one, so the input queue
+  // grows and everything behind it, mouse clicks included, arrives late.
   ImGui_ImplSDL3_SetGamepadMode(ImGui_ImplSDL3_GamepadMode_Manual, nullptr, 0);
   g_useSdlRenderer = renderer != nullptr;
   if (g_useSdlRenderer) {
@@ -281,6 +289,7 @@ ImTextureID add_texture(uint32_t width, uint32_t height, const uint8_t* data) no
       .mipLevelCount = WGPU_MIP_LEVEL_COUNT_UNDEFINED,
       .arrayLayerCount = WGPU_ARRAY_LAYER_COUNT_UNDEFINED,
   };
+  AURORA_NOTE_TEXTURE(&textureDescriptor);
   auto texture = webgpu::g_device.CreateTexture(&textureDescriptor);
   auto textureView = texture.CreateView(&textureViewDescriptor);
   {
@@ -295,8 +304,29 @@ ImTextureID add_texture(uint32_t width, uint32_t height, const uint8_t* data) no
     enqueue_texture_upload(create_texture_upload_buffer(width, height, data, copyBytesPerRow), dstView, dataLayout,
                            size);
   }
-  g_wgpuTextures.push_back(texture);
-  return reinterpret_cast<ImTextureID>(textureView.MoveToCHandle());
+  const auto id = reinterpret_cast<ImTextureID>(textureView.MoveToCHandle());
+  g_wgpuTextures.push_back({id, texture});
+  return id;
+}
+
+void remove_texture(ImTextureID id) noexcept {
+  if (g_useSdlRenderer || window::get_sdl_renderer() != nullptr) {
+    const auto found = std::find(g_sdlTextures.begin(), g_sdlTextures.end(), reinterpret_cast<SDL_Texture*>(id));
+    if (found != g_sdlTextures.end()) {
+      SDL_DestroyTexture(*found);
+      g_sdlTextures.erase(found);
+    }
+    return;
+  }
+  const auto found = std::find_if(g_wgpuTextures.begin(), g_wgpuTextures.end(),
+                                  [id](const WgpuTexture& entry) { return entry.id == id; });
+  if (found == g_wgpuTextures.end()) {
+    return;
+  }
+  // The view was handed out as a raw handle; take it back so it is released with the texture.
+  [[maybe_unused]] const auto view = wgpu::TextureView::Acquire(reinterpret_cast<WGPUTextureView>(id));
+  found->texture.Destroy();
+  g_wgpuTextures.erase(found);
 }
 } // namespace aurora::imgui
 
@@ -305,4 +335,6 @@ extern "C" {
 ImTextureID aurora_imgui_add_texture(uint32_t width, uint32_t height, const void* rgba8) {
   return aurora::imgui::add_texture(width, height, static_cast<const uint8_t*>(rgba8));
 }
+
+void aurora_imgui_remove_texture(ImTextureID texture) { aurora::imgui::remove_texture(texture); }
 }

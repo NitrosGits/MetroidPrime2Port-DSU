@@ -21,7 +21,7 @@
 #include "port_savestate.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
-#include "port_ui_common.h"
+#include "port_video.h"
 #include "port_warp.h"
 #ifdef MP_PORT_COVERAGE
 #include "port_coverage.h"
@@ -524,7 +524,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "layer <n>                   activate a layer of the current area\n"
       "god <0|1>                   god mode (the F1 cheat)\n"
       "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"
-      "overlay <page|off>          open the F1 window on a page (name prefix: `overlay save`)\n"
+      "overlay <page>[/<sub>]|off  open the F1 window on a page (name prefixes: `overlay video/qual`)\n"
+      "gpuselftest                 run the GPU self-test next frame; PASS/FAIL lines go to the log\n"
       "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"
       "gunoffset [<r> <f> <u>]     arm cannon offset in metres (+-1), as the F1 Render row does\n"
@@ -3792,7 +3793,7 @@ void CmdScreenshot(CStateManager&, const Args&, std::string& out) {
 // overlay <page|off>: open the F1 window on a page (a name prefix: `overlay save`), for screenshots.
 void CmdOverlay(CStateManager&, const Args& args, std::string& out) {
   if (args.size() < 2 || !PortOverlay::ShowPage(std::string(args[1]))) {
-    Fail("usage: overlay <page name prefix|off>");
+    Fail("usage: overlay <page name prefix>[/<sub-tab prefix>] | off");
     return;
   }
   out += args[1] == "off" ? std::string("overlay closed\n") : "overlay open on " + std::string(args[1]) + "\n";
@@ -3836,6 +3837,12 @@ void CmdItems(CStateManager& mgr, const Args&, std::string& out) {
                   state->GetItemAmount(type), capacity);
     out += line;
   }
+}
+
+// gpuselftest: Video > Compatibility > GPU self-test (PortVideo::RunGpuSelfTestIfRequested).
+void CmdGpuSelfTest(CStateManager&, const Args&, std::string& out) {
+  PortVideo::RequestGpuSelfTest();
+  out += "gpu self-test requested (results in the log)\n";
 }
 
 struct SCommand {
@@ -3930,6 +3937,7 @@ constexpr SCommand kCommands[] = {
     {"overlay", CmdOverlay, true},
     {"state", CmdState, true},
     {"at", CmdAt, true},
+    {"gpuselftest", CmdGpuSelfTest, true},
 };
 
 void Execute(CStateManager& mgr, const std::string& line, std::string& out) {

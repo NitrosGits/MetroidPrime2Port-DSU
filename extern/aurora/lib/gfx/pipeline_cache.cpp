@@ -1,6 +1,7 @@
 #include "pipeline_cache.hpp"
 
 #include "clear.hpp"
+#include "fx_pipelines.hpp"
 #include "resources.hpp"
 #include "hash.hpp"
 #include "../gx/pipeline.hpp"
@@ -10,18 +11,27 @@
 #endif
 #include "../sqlite_utils.hpp"
 #include "../webgpu/gpu.hpp"
+#include <aurora/gfx.h>
 
 #include <algorithm>
 #include <atomic>
 #include <condition_variable>
+#include <chrono>
+#include <cstdint>
+#include <cstdlib>
 #include <deque>
 #include <filesystem>
 #include <limits>
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <type_traits>
+#include <vector>
 
 #include <SDL3/SDL_iostream.h>
+#if defined(__GLIBC__) || defined(__ANDROID__)
+#include <malloc.h>
+#endif
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
 #include <fmt/format.h>
@@ -32,11 +42,18 @@ static Module Log("aurora::gfx::pipeline_cache");
 
 constexpr int PipelineCacheSchema = 1;
 constexpr const char* InitialPipelineCacheName = "initial_pipeline_cache.db";
+// The name the seed VFS maps to AuroraConfig::pipelineCacheSeedData instead of a file.
+constexpr const char* EmbeddedSeedName = ":embedded-initial-pipeline-cache:";
 constexpr const char* SdlVfsName = "aurora_pipeline_cache_sdl_vfs";
+
+// Frames begun by the draw thread (begin_pipeline_frame). Pipelines are stamped with it when a draw
+// looks them up, which is what idle eviction goes by.
+static std::atomic_uint32_t g_pipelineFrame = 0;
 
 struct CachedPipeline {
   wgpu::RenderPipeline pipeline;
   uint32_t firstFrameUsed = UINT32_MAX;
+  uint32_t lastUsedFrame = g_pipelineFrame.load(std::memory_order_relaxed);
 };
 
 struct PendingPipeline {
@@ -67,20 +84,25 @@ constexpr size_t BuildPipelinesPerFrame = 5;
 #else
 constexpr size_t BuildPipelinesPerFrame = 1;
 #endif
-static std::thread g_pipelineThread;
+static std::vector<std::thread> g_pipelineThreads;
 static std::atomic_bool g_pipelineThreadEnd = false;
 static std::condition_variable g_pipelineQueueCv;
 static std::condition_variable g_pipelineReadyCv;
 static absl::flat_hash_map<PipelineRef, CachedPipeline> g_pipelines;
 static std::deque<PendingPipeline> g_pipelineQueue;
 static std::deque<PendingPipeline> g_backgroundPipelineQueue;
+// Set by set_background_pipelines_paused: background builds wait, lookups still compile.
+static bool g_backgroundPipelinesPaused = false;
 static absl::flat_hash_set<PipelineRef> g_pendingPipelines;
 static std::atomic_bool g_gpuCachePrunePending = false;
+static std::chrono::steady_clock::time_point g_pipelineLoadStart;
 
 static sqlite3* g_pipelineCacheDb = nullptr;
 static sqlite3_stmt* g_pipelineCacheLoadStmt = nullptr;
 static sqlite3_stmt* g_pipelineCacheUpsertStmt = nullptr;
 static bool g_pipelineCacheBroken = false;
+// A failed operation found the file damaged; pipeline_cache_abort() deletes it.
+static std::atomic_bool g_pipelineCacheCorrupt = false;
 static std::thread g_pipelineCacheWriterThread;
 static std::condition_variable g_pipelineCacheWriterCv;
 static std::mutex g_pipelineCacheWriterMutex;
@@ -206,7 +228,13 @@ static int sdl_vfs_open(sqlite3_vfs*, sqlite3_filename name, sqlite3_file* file,
     return SQLITE_CANTOPEN;
   }
 
-  vfsFile->io = SDL_IOFromFile(name, "rb");
+  if (std::strcmp(name, EmbeddedSeedName) == 0) {
+    vfsFile->io = g_config.pipelineCacheSeedData != nullptr
+                      ? SDL_IOFromConstMem(g_config.pipelineCacheSeedData, g_config.pipelineCacheSeedSize)
+                      : nullptr;
+  } else {
+    vfsFile->io = SDL_IOFromFile(name, "rb");
+  }
   if (vfsFile->io == nullptr) {
     return SQLITE_CANTOPEN;
   }
@@ -367,12 +395,6 @@ static auto find_pending_pipeline(Queue& queue, PipelineRef hash) {
   return std::find_if(queue.begin(), queue.end(), [=](const PendingPipeline& pending) { return pending.hash == hash; });
 }
 
-enum class PipelinePriority {
-  Background, // loaded from cache
-  Normal,     // async skip draw
-  Blocking,   // block until compiled
-};
-
 static PendingPipeline* touch_pending_pipeline(PipelineRef hash, PipelinePriority priority) {
   auto priorityIt = find_pending_pipeline(g_pipelineQueue, hash);
   if (priorityIt != g_pipelineQueue.end()) {
@@ -418,9 +440,47 @@ static std::optional<PendingPipeline> take_pending_pipeline(PipelineRef hash) {
   return std::nullopt;
 }
 
+// Slow-pipeline diagnostics (issue #8 hangs in pipeline creation): every GX
+// render pipeline creation is timed here, slow ones are named, and a summary
+// lands in the log as the count crosses 100, 500 and 1000.
+static std::atomic<uint64_t> g_compileCount = 0;
+static std::atomic<uint64_t> g_compileTotalMs = 0;
+static std::atomic<uint64_t> g_compileSlowestMs = 0;
+static std::atomic<uint64_t> g_compileFailures = 0;
+constexpr int64_t kSlowPipelineMs = 200;
+
+static wgpu::RenderPipeline create_pipeline_timed(PipelineRef hash, NewPipelineCallback&& create) {
+  const auto start = std::chrono::steady_clock::now();
+  wgpu::RenderPipeline pipeline = create();
+  const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+  const uint64_t count = g_compileCount.fetch_add(1, std::memory_order_relaxed) + 1;
+  g_compileTotalMs.fetch_add(static_cast<uint64_t>(ms.count()), std::memory_order_relaxed);
+  uint64_t slowest = g_compileSlowestMs.load(std::memory_order_relaxed);
+  while (static_cast<uint64_t>(ms.count()) > slowest &&
+         !g_compileSlowestMs.compare_exchange_weak(slowest, static_cast<uint64_t>(ms.count()),
+                                                   std::memory_order_relaxed)) {
+  }
+  if (!pipeline) {
+    g_compileFailures.fetch_add(1, std::memory_order_relaxed);
+    Log.error("pipeline: creation failed (hash {:016x})", hash);
+  } else if (ms.count() > kSlowPipelineMs) {
+    Log.warn("pipeline: compile took {} ms (hash {:016x})", ms.count(), hash);
+  }
+  if (count == 100 || count == 500 || count == 1000) {
+    Log.info("pipelines: {} compiled, total {} ms, slowest {} ms, {} failed", count,
+             g_compileTotalMs.load(std::memory_order_relaxed), g_compileSlowestMs.load(std::memory_order_relaxed),
+             g_compileFailures.load(std::memory_order_relaxed));
+  }
+  return pipeline;
+}
+
 static void notify_pipeline_ready(bool queued) {
   ++createdPipelines;
   if (queued && --queuedPipelines == 0 && g_gpuCachePrunePending.exchange(false, std::memory_order_acq_rel)) {
+    Log.info("pipeline cache: {} pipelines ready {} ms after startup", static_cast<uint32_t>(createdPipelines),
+             std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
+                                                                   g_pipelineLoadStart)
+                 .count());
     // Prune GPU cache entries after fully loading the pipeline cache.
     webgpu::cache_prune();
   }
@@ -428,19 +488,48 @@ static void notify_pipeline_ready(bool queued) {
 }
 
 static PipelineRef g_lastPipelineRef = std::numeric_limits<PipelineRef>::max();
+// The frame g_lastPipelineRef was last stamped in: the same-pipeline shortcut only holds within it.
+static uint32_t g_lastPipelineStampFrame = 0;
+static std::atomic_bool g_dropPipelines = false;
+// Idle eviction (see evict_idle_pipelines): never evicts anything used in the last MinEvictIdleFrames.
+constexpr uint32_t MinEvictIdleFrames = 16;
+constexpr uint32_t EvictSweepFrames = 600;
+constexpr uint32_t NoTrimRequest = UINT32_MAX;
+static std::atomic_uint32_t g_pipelineEvictFrames = 0;
+static std::atomic_uint32_t g_pipelineTrimRequest = NoTrimRequest;
+
+// drop_pipelines() only raises a flag; the next lookup (on the thread that builds draws) does the
+// work, so no draw loses its pipeline in the middle of one.
+static void apply_pipeline_drop() {
+  std::scoped_lock guard{g_pipelineMutex};
+  g_pipelines.clear();
+  g_pipelineQueue.clear();
+  g_backgroundPipelineQueue.clear();
+  g_pendingPipelines.clear();
+  g_lastPipelineRef = std::numeric_limits<PipelineRef>::max();
+}
 
 template <typename PipelineConfig>
 static PipelineRef find_pipeline_impl(ShaderType type, const PipelineConfig& config, NewPipelineCallback&& cb,
                                       PipelinePriority priority = PipelinePriority::Normal,
-                                      std::optional<uint32_t> firstFrameUsedOverride = std::nullopt) {
+                                      std::optional<uint32_t> firstFrameUsedOverride = std::nullopt,
+                                      bool renderThread = false) {
   ZoneScoped;
 
+  // The pipeline drop and g_lastPipelineRef belong to the thread that records draws.
+  if (!renderThread && g_dropPipelines.exchange(false, std::memory_order_acq_rel)) {
+    apply_pipeline_drop();
+  }
   const PipelineRef hash = xxh3_hash(config, static_cast<HashType>(type));
   const bool blocking = priority == PipelinePriority::Blocking;
-  if (!blocking && hash == g_lastPipelineRef) {
+  const uint32_t frameNow = g_pipelineFrame.load(std::memory_order_relaxed);
+  if (!blocking && hash == g_lastPipelineRef && g_lastPipelineStampFrame == frameNow) {
     return g_lastPipelineRef;
   }
-  g_lastPipelineRef = hash;
+  if (!renderThread) {
+    g_lastPipelineRef = hash;
+    g_lastPipelineStampFrame = frameNow;
+  }
   const uint32_t firstFrameUsed = firstFrameUsedOverride.value_or(current_frame());
   bool notifyWorker = false;
   bool persist = priority != PipelinePriority::Background;
@@ -453,6 +542,7 @@ static PipelineRef find_pipeline_impl(ShaderType type, const PipelineConfig& con
     auto pipelineIt = g_pipelines.find(hash);
     if (pipelineIt != g_pipelines.end()) {
       pipelineReady = true;
+      pipelineIt->second.lastUsedFrame = frameNow;
       if (persist && firstFrameUsed < pipelineIt->second.firstFrameUsed) {
         pipelineIt->second.firstFrameUsed = firstFrameUsed;
         cacheWrite = make_pipeline_cache_write(type, hash, config, firstFrameUsed);
@@ -468,7 +558,7 @@ static PipelineRef find_pipeline_impl(ShaderType type, const PipelineConfig& con
             }
           }
           g_pipelines.try_emplace(hash, CachedPipeline{
-                                            .pipeline = pending->create(),
+                                            .pipeline = create_pipeline_timed(hash, std::move(pending->create)),
                                             .firstFrameUsed = pending->firstFrameUsed,
                                         });
           pipelineReady = true;
@@ -490,7 +580,7 @@ static PipelineRef find_pipeline_impl(ShaderType type, const PipelineConfig& con
       }
     } else if (!g_hasPipelineThread && (blocking || g_pipelinesPerFrame < BuildPipelinesPerFrame)) {
       g_pipelines.try_emplace(hash, CachedPipeline{
-                                        .pipeline = cb(),
+                                        .pipeline = create_pipeline_timed(hash, std::move(cb)),
                                         .firstFrameUsed = firstFrameUsed,
                                     });
       pipelineReady = true;
@@ -555,8 +645,21 @@ static PipelineRef find_pipeline_impl(ShaderType type, const PipelineConfig& con
   return hash;
 }
 
+static std::string pipeline_cache_path() {
+  return io::fs_path_to_string(io::fs_path_from_string(g_config.cachePath) / "pipeline_cache.db");
+}
+
+static void note_pipeline_cache_corrupt() {
+  if (g_pipelineCacheDb != nullptr && sqlite::is_corrupt(g_pipelineCacheDb)) {
+    g_pipelineCacheCorrupt = true;
+  }
+}
+
+// Stops using the cache for this session. A damaged database is deleted so the
+// next start rebuilds it.
 static void pipeline_cache_abort() {
   g_pipelineCacheBroken = true;
+  note_pipeline_cache_corrupt();
   if (g_pipelineCacheLoadStmt != nullptr) {
     sqlite3_finalize(g_pipelineCacheLoadStmt);
     g_pipelineCacheLoadStmt = nullptr;
@@ -569,11 +672,18 @@ static void pipeline_cache_abort() {
     sqlite3_close(g_pipelineCacheDb);
     g_pipelineCacheDb = nullptr;
   }
+  if (g_pipelineCacheCorrupt.exchange(false)) {
+    Log.warn("Pipeline cache is damaged; deleting it");
+    sqlite::delete_db_files(pipeline_cache_path(), Log);
+  }
 }
 
 static bool write_pipeline_cache_record(const PipelineCacheWrite& write);
 
 static std::string pipeline_cache_seed_path() {
+  if (g_config.pipelineCacheSeedData != nullptr && g_config.pipelineCacheSeedSize != 0) {
+    return EmbeddedSeedName;
+  }
   if (g_config.resourcesPath == nullptr || g_config.resourcesPath[0] == '\0') {
     return InitialPipelineCacheName;
   }
@@ -621,7 +731,8 @@ static sqlite3* open_pipeline_cache_seed_db(const std::string& path) {
 }
 
 static void seed_pipeline_cache() {
-  if (g_pipelineCacheBroken || g_pipelineCacheDb == nullptr || g_pipelineCacheUpsertStmt == nullptr) {
+  if (g_config.pipelineCacheNoSeed || g_pipelineCacheBroken || g_pipelineCacheDb == nullptr ||
+      g_pipelineCacheUpsertStmt == nullptr) {
     return;
   }
 
@@ -727,10 +838,10 @@ static bool prepare_pipeline_cache_db() {
     return true;
   }
 
-  const auto path = io::fs_path_to_string(io::fs_path_from_string(g_config.cachePath) / "pipeline_cache.db");
-  auto ret = sqlite3_open(path.c_str(), &g_pipelineCacheDb);
+  const auto path = pipeline_cache_path();
+  auto ret = sqlite::open_cache_db(path, &g_pipelineCacheDb, Log);
   if (ret != SQLITE_OK) {
-    Log.error("Failed to open pipeline cache database: {}", sqlite3_errmsg(g_pipelineCacheDb));
+    Log.error("Failed to open pipeline cache database {}", path);
     pipeline_cache_abort();
     return false;
   }
@@ -866,12 +977,31 @@ static void prune_old_pipeline_cache_versions() {
   if (ret != SQLITE_OK) {
     Log.error("Failed to prune RmlUi pipeline cache rows: {}", sqlite3_errmsg(g_pipelineCacheDb));
     pipeline_cache_abort();
+    return;
   }
 #endif
+
+  const auto vfxDelete = fmt::format("DELETE FROM pipeline_cache WHERE type = {} AND config_version < {}",
+                                     underlying(ShaderType::Vfx), vfx::VfxPipelineConfigVersion);
+  ret = sqlite::exec(g_pipelineCacheDb, vfxDelete.c_str());
+  if (ret != SQLITE_OK) {
+    Log.error("Failed to prune VFX pipeline cache rows: {}", sqlite3_errmsg(g_pipelineCacheDb));
+    pipeline_cache_abort();
+    return;
+  }
+
+  const auto waterDelete = fmt::format("DELETE FROM pipeline_cache WHERE type = {} AND config_version < {}",
+                                       underlying(ShaderType::Water), water::WaterPipelineConfigVersion);
+  ret = sqlite::exec(g_pipelineCacheDb, waterDelete.c_str());
+  if (ret != SQLITE_OK) {
+    Log.error("Failed to prune water pipeline cache rows: {}", sqlite3_errmsg(g_pipelineCacheDb));
+    pipeline_cache_abort();
+  }
 }
 
 static bool write_pipeline_cache_record(const PipelineCacheWrite& write) {
   const auto fail = [&]() {
+    note_pipeline_cache_corrupt();
     sqlite3_reset(g_pipelineCacheUpsertStmt);
     sqlite3_clear_bindings(g_pipelineCacheUpsertStmt);
     return false;
@@ -968,18 +1098,17 @@ static void pipeline_worker() {
   tracy::SetThreadName("Pipeline compilation thread");
 #endif
 
-  bool hasMore = false;
   while (g_hasPipelineThread || g_pipelinesPerFrame < BuildPipelinesPerFrame) {
     PendingPipeline pending;
     {
       std::unique_lock lock{g_pipelineMutex};
       if (g_hasPipelineThread) {
-        if (!hasMore) {
-          g_pipelineQueueCv.wait(lock, [] {
-            return !g_pipelineQueue.empty() || !g_backgroundPipelineQueue.empty() || g_pipelineThreadEnd;
-          });
-        }
-      } else if (g_pipelineQueue.empty() && g_backgroundPipelineQueue.empty()) {
+        // Several workers share the queues, so check them again under the lock every time.
+        g_pipelineQueueCv.wait(lock, [] {
+          return !g_pipelineQueue.empty() || (!g_backgroundPipelinesPaused && !g_backgroundPipelineQueue.empty()) ||
+                 g_pipelineThreadEnd;
+        });
+      } else if (g_pipelineQueue.empty() && (g_backgroundPipelinesPaused || g_backgroundPipelineQueue.empty())) {
         return;
       }
       if (g_pipelineThreadEnd) {
@@ -989,7 +1118,7 @@ static void pipeline_worker() {
       pending = std::move(source.front());
       source.pop_front();
     }
-    auto result = pending.create();
+    auto result = create_pipeline_timed(pending.hash, std::move(pending.create));
     {
       std::lock_guard lock{g_pipelineMutex};
       g_pipelines.try_emplace(pending.hash, CachedPipeline{
@@ -997,13 +1126,32 @@ static void pipeline_worker() {
                                                 .firstFrameUsed = pending.firstFrameUsed,
                                             });
       g_pendingPipelines.erase(pending.hash);
-      hasMore = !g_pipelineQueue.empty() || !g_backgroundPipelineQueue.empty();
     }
     if (!g_hasPipelineThread) {
       ++g_pipelinesPerFrame;
     }
     notify_pipeline_ready(true);
   }
+}
+
+// Pipelines compile on a pool: Tint and the driver's compiler are single threaded, so one
+// worker left a cold cache (a new install, a driver update) compiling for over a minute on
+// phones. GL keeps one worker, since its contexts are per thread. MP2_PIPELINE_THREADS
+// overrides the count.
+static size_t pipeline_thread_count() {
+  if (webgpu::g_backendType == wgpu::BackendType::OpenGL || webgpu::g_backendType == wgpu::BackendType::OpenGLES) {
+    return 1;
+  }
+  if (const char* env = std::getenv("MP2_PIPELINE_THREADS"); env != nullptr && *env != '\0') {
+    return std::clamp<size_t>(std::strtoul(env, nullptr, 10), 1, 16);
+  }
+  // D3D11 is only picked where D3D12 and Vulkan failed: old GPUs, whose drivers often can't
+  // create objects concurrently, so the runtime runs every Create* under one lock. More workers
+  // only queue on it, and the game thread's buffer and texture creation waits behind them all.
+  if (webgpu::g_backendType == wgpu::BackendType::D3D11) {
+    return 1;
+  }
+  return std::clamp<size_t>(std::thread::hardware_concurrency() / 2, 1, 8);
 }
 
 template <typename PipelineConfig, typename CreateFn>
@@ -1026,6 +1174,8 @@ static size_t load_pipeline_cache_entries(ShaderType type, uint32_t configVersio
   }
 
   size_t acceptedRows = 0;
+  size_t skippedIncompatibleRows = 0;
+  size_t skippedPbrRows = 0;
   while ((ret = sqlite3_step(g_pipelineCacheLoadStmt)) == SQLITE_ROW) {
     const auto* configBlob = static_cast<const uint8_t*>(sqlite3_column_blob(g_pipelineCacheLoadStmt, 0));
     const auto configSize = sqlite3_column_bytes(g_pipelineCacheLoadStmt, 0);
@@ -1040,6 +1190,18 @@ static size_t load_pipeline_cache_entries(ShaderType type, uint32_t configVersio
       continue;
     }
 
+    if constexpr (std::is_same_v<PipelineConfig, gx::PipelineConfig>) {
+      if (!gx::pipeline_config_compatible(config, webgpu::g_lightmapBinding)) {
+        ++skippedIncompatibleRows;
+        continue;
+      }
+      // Left in the database, and built by find_pipeline on the first draw that wants it.
+      if (g_config.pipelineCacheSkipPbr && config.shaderConfig.pbr != 0) {
+        ++skippedPbrRows;
+        continue;
+      }
+    }
+
     find_pipeline_impl(type, config, [=] { return create(config); }, PipelinePriority::Background, firstFrameUsed);
     ++acceptedRows;
   }
@@ -1051,6 +1213,13 @@ static size_t load_pipeline_cache_entries(ShaderType type, uint32_t configVersio
 
   sqlite3_reset(g_pipelineCacheLoadStmt);
   sqlite3_clear_bindings(g_pipelineCacheLoadStmt);
+  if constexpr (std::is_same_v<PipelineConfig, gx::PipelineConfig>) {
+    Log.info("pipeline cache: skipped {} incompatible GX rows", skippedIncompatibleRows);
+    if (g_config.pipelineCacheSkipPbr) {
+      Log.info("pipeline cache: {} PBR rows skipped ({})", skippedPbrRows,
+               g_config.pipelineCacheSkipPbrReason != nullptr ? g_config.pipelineCacheSkipPbrReason : "no PBR");
+    }
+  }
   return acceptedRows;
 }
 
@@ -1063,6 +1232,15 @@ static size_t load_pipeline_cache() {
     return 0;
   }
 
+  g_pipelineEvictFrames.store(g_config.pipelineEvictFrames, std::memory_order_relaxed);
+  g_pipelineTrimRequest.store(NoTrimRequest, std::memory_order_relaxed);
+  if (g_config.pipelineCacheLazy) {
+    // The rows stay in the database (and keep recording what is used); nothing is queued, so
+    // queuedPipelines stays 0 and nothing waits on a startup compile.
+    Log.info("pipeline cache: lazy, rows not compiled at startup");
+    return 0;
+  }
+
   size_t acceptedRows = 0;
 #ifdef AURORA_ENABLE_RMLUI
   acceptedRows += load_pipeline_cache_entries<rmlui::PipelineConfig>(ShaderType::Rml, rmlui::RmlPipelineConfigVersion,
@@ -1072,6 +1250,10 @@ static size_t load_pipeline_cache() {
       ShaderType::Clear, clear::ClearPipelineConfigVersion, clear::create_pipeline);
   acceptedRows +=
       load_pipeline_cache_entries<gx::PipelineConfig>(ShaderType::GX, gx::GXPipelineConfigVersion, gx::create_pipeline);
+  acceptedRows += load_pipeline_cache_entries<vfx::PipelineConfig>(ShaderType::Vfx, vfx::VfxPipelineConfigVersion,
+                                                                   vfx::create_pipeline);
+  acceptedRows += load_pipeline_cache_entries<water::PipelineConfig>(
+      ShaderType::Water, water::WaterPipelineConfigVersion, water::create_pipeline);
   return acceptedRows;
 }
 
@@ -1109,6 +1291,52 @@ PipelineRef find_pipeline(ShaderType type, const gx::PipelineConfig& config, New
   return find_pipeline_impl(type, config, std::move(cb));
 }
 
+PipelineRef find_pipeline(ShaderType type, const gx::PipelineConfig& config, NewPipelineCallback&& cb,
+                          PipelinePriority priority) {
+  return find_pipeline_impl(type, config, std::move(cb), priority);
+}
+
+bool touch_pipeline(PipelineRef ref) {
+  if (g_dropPipelines.exchange(false, std::memory_order_acq_rel)) {
+    apply_pipeline_drop();
+  }
+  const uint32_t frameNow = g_pipelineFrame.load(std::memory_order_relaxed);
+  if (ref == g_lastPipelineRef && g_lastPipelineStampFrame == frameNow) {
+    return true;
+  }
+  std::scoped_lock guard{g_pipelineMutex};
+  if (const auto it = g_pipelines.find(ref); it != g_pipelines.end()) {
+    it->second.lastUsedFrame = frameNow;
+  } else {
+    if (!g_pendingPipelines.contains(ref)) {
+      return false;
+    }
+    touch_pending_pipeline(ref, PipelinePriority::Normal);
+  }
+  g_lastPipelineRef = ref;
+  g_lastPipelineStampFrame = frameNow;
+  return true;
+}
+
+template <typename Config>
+static wgpu::RenderPipeline require_pipeline_impl(ShaderType type, const Config& config, NewPipelineCallback&& cb) {
+  const PipelineRef ref =
+      find_pipeline_impl(type, config, std::move(cb), PipelinePriority::Blocking, std::nullopt, true);
+  wgpu::RenderPipeline pipeline;
+  get_pipeline(ref, pipeline);
+  return pipeline;
+}
+
+template <>
+wgpu::RenderPipeline require_pipeline(ShaderType type, const vfx::PipelineConfig& config, NewPipelineCallback&& cb) {
+  return require_pipeline_impl(type, config, std::move(cb));
+}
+
+template <>
+wgpu::RenderPipeline require_pipeline(ShaderType type, const water::PipelineConfig& config, NewPipelineCallback&& cb) {
+  return require_pipeline_impl(type, config, std::move(cb));
+}
+
 #ifdef AURORA_ENABLE_RMLUI
 template <>
 PipelineRef find_pipeline(ShaderType type, const rmlui::PipelineConfig& config, NewPipelineCallback&& cb) {
@@ -1118,15 +1346,27 @@ PipelineRef find_pipeline(ShaderType type, const rmlui::PipelineConfig& config, 
 
 void initialize_pipeline_cache() {
   g_pipelineCacheBroken = false;
+  g_compileCount.store(0, std::memory_order_relaxed);
+  g_compileTotalMs.store(0, std::memory_order_relaxed);
+  g_compileSlowestMs.store(0, std::memory_order_relaxed);
+  g_compileFailures.store(0, std::memory_order_relaxed);
   g_pipelineCacheWriterStop = false;
   g_pipelineThreadEnd = false;
   g_gpuCachePrunePending = false;
+  // See pipeline_thread_count: under D3D11 a build blocks the game thread's buffer and texture
+  // creation, so the seed waits until the app resumes background builds (in game, for the port).
+  g_backgroundPipelinesPaused = webgpu::g_backendType == wgpu::BackendType::D3D11;
 
+  g_pipelineLoadStart = std::chrono::steady_clock::now();
   if (webgpu::g_backendType == wgpu::BackendType::WebGPU) {
     g_hasPipelineThread = false;
   } else {
     g_hasPipelineThread = true;
-    g_pipelineThread = std::thread(pipeline_worker);
+    const size_t threads = pipeline_thread_count();
+    for (size_t i = 0; i < threads; ++i) {
+      g_pipelineThreads.emplace_back(pipeline_worker);
+    }
+    Log.info("pipeline cache: {} compile thread(s)", threads);
   }
 
   const size_t loadedCount = load_pipeline_cache();
@@ -1144,7 +1384,10 @@ void shutdown_pipeline_cache() {
     g_pipelineThreadEnd = true;
     g_pipelineQueueCv.notify_all();
     g_pipelineReadyCv.notify_all();
-    g_pipelineThread.join();
+    for (auto& thread : g_pipelineThreads) {
+      thread.join();
+    }
+    g_pipelineThreads.clear();
   }
   g_hasPipelineThread = false;
 
@@ -1162,9 +1405,80 @@ void shutdown_pipeline_cache() {
   createdPipelines = 0;
 }
 
+void drop_pipelines() { g_dropPipelines.store(true, std::memory_order_release); }
+
+void set_background_pipelines_paused(bool paused) {
+  {
+    std::lock_guard lock{g_pipelineMutex};
+    if (g_backgroundPipelinesPaused == paused) {
+      return;
+    }
+    g_backgroundPipelinesPaused = paused;
+  }
+  Log.info("pipeline cache: background builds {}", paused ? "paused" : "resumed");
+  if (!paused) {
+    g_pipelineQueueCv.notify_all();
+  }
+}
+
+// Releases the built pipelines no draw has looked up for `minIdle` frames. Their cache rows stay, so
+// the next draw that wants one rebuilds it. Draw thread, at frame start only.
+//
+// Why a pipeline in use is never released: every draw stamps its pipeline (find_pipeline,
+// touch_pipeline) with the frame it records in, and a draw reaches the render worker at most a few
+// frames later, where get_pipeline reads it. minIdle is at least MinEvictIdleFrames, well above the
+// frames in flight, so a pipeline a pending frame draws with was stamped within that window. A
+// reference kept across frames (the command processor's memo) goes through touch_pipeline, which
+// stamps it or reports it gone so the caller looks the config up again. Queued builds are not in
+// g_pipelines and are untouched; a build finishing later is stamped at insertion.
+static uint32_t evict_idle_pipelines(uint32_t minIdle, uint32_t* totalOut) {
+  const uint32_t frameNow = g_pipelineFrame.load(std::memory_order_relaxed);
+  uint32_t evicted = 0;
+  std::scoped_lock guard{g_pipelineMutex};
+  for (auto it = g_pipelines.begin(); it != g_pipelines.end();) {
+    if (frameNow - it->second.lastUsedFrame >= minIdle) {
+      g_pipelines.erase(it++);
+      ++evicted;
+    } else {
+      ++it;
+    }
+  }
+  *totalOut = static_cast<uint32_t>(g_pipelines.size());
+  if (evicted != 0) {
+    g_lastPipelineRef = std::numeric_limits<PipelineRef>::max();
+  }
+  return evicted;
+}
+
+static void log_eviction(const char* reason, uint32_t minIdle) {
+  uint32_t kept = 0;
+  const uint32_t evicted = evict_idle_pipelines(minIdle, &kept);
+#if defined(__GLIBC__) || defined(__ANDROID__)
+  // Dawn and the driver free the pipelines' state into the malloc heap, which keeps the pages
+  // unless asked to give them back.
+  if (evicted != 0) {
+#if defined(__ANDROID__)
+    mallopt(M_PURGE, 0); // bionic has no malloc_trim
+#else
+    malloc_trim(0);
+#endif
+  }
+#endif
+  Log.info("pipeline cache: evicted {} pipelines unused for {} frames ({}), {} kept", evicted, minIdle, reason, kept);
+}
+
 void begin_pipeline_frame() {
   if (!g_hasPipelineThread) {
     g_pipelinesPerFrame = 0;
+  }
+  const uint32_t frame = g_pipelineFrame.fetch_add(1, std::memory_order_relaxed) + 1;
+  if (const uint32_t trim = g_pipelineTrimRequest.exchange(NoTrimRequest, std::memory_order_acq_rel);
+      trim != NoTrimRequest) {
+    log_eviction(trim == MinEvictIdleFrames ? "memory trim" : "requested", std::max(trim, MinEvictIdleFrames));
+  }
+  const uint32_t idle = g_pipelineEvictFrames.load(std::memory_order_relaxed);
+  if (idle != 0 && frame % EvictSweepFrames == 0) {
+    log_eviction("idle", std::max(idle, MinEvictIdleFrames));
   }
 }
 
@@ -1185,3 +1499,18 @@ bool get_pipeline(PipelineRef ref, wgpu::RenderPipeline& pipeline) {
 }
 
 } // namespace aurora::gfx
+
+extern "C" {
+void aurora_set_pipeline_eviction(uint32_t idleFrames) {
+  aurora::gfx::g_pipelineEvictFrames.store(idleFrames, std::memory_order_relaxed);
+}
+
+void aurora_trim_pipelines(uint32_t idleFrames) {
+  aurora::gfx::g_pipelineTrimRequest.store(idleFrames, std::memory_order_release);
+}
+
+uint32_t aurora_get_pipeline_count(void) {
+  std::lock_guard guard{aurora::gfx::g_pipelineMutex};
+  return static_cast<uint32_t>(aurora::gfx::g_pipelines.size());
+}
+}

@@ -139,8 +139,10 @@ elseif (_aurora_sdl3_provider STREQUAL "vendor")
     endif ()
 
     include(FetchContent)
+    aurora_url_hash(_sdl3_url_hash sdl3 "${AURORA_SDL3_REF}_source" "")
     FetchContent_Declare(SDL
       URL "https://github.com/libsdl-org/SDL/archive/${AURORA_SDL3_REF}.tar.gz"
+      ${_sdl3_url_hash}
       DOWNLOAD_EXTRACT_TIMESTAMP FALSE
       PATCH_COMMAND ${CMAKE_COMMAND}
         -DSDL_SOURCE_DIR=<SOURCE_DIR>
@@ -148,6 +150,9 @@ elseif (_aurora_sdl3_provider STREQUAL "vendor")
       COMMAND ${CMAKE_COMMAND}
         -DSDL_SOURCE_DIR=<SOURCE_DIR>
         -P "${CMAKE_CURRENT_LIST_DIR}/patches/apply-sdl3-android-security-exception.cmake"
+      COMMAND ${CMAKE_COMMAND}
+        -DSDL_SOURCE_DIR=<SOURCE_DIR>
+        -P "${CMAKE_CURRENT_LIST_DIR}/patches/apply-sdl3-windows-process-no-window.cmake"
       EXCLUDE_FROM_ALL
     )
     FetchContent_MakeAvailable(SDL)
