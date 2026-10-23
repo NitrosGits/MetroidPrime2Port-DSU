@@ -1,0 +1,18 @@
+# CKrocuss (module 38: CKrocuss, "Morphology: Krocuss"). Torvus Bog 0h_swamp_hall (world 3dfd2249,
+# area 0h) holds three Krocusses u045b/u0447/u0441. The steps exercise one of them (u045b 000e00bb):
+# activate and place it, force Patrol/Sniff/Stop, send Increment/Decrement, damage it once its wings
+# open (hp 60 -> 50 -> 40), then kill it, with `obj` reads and `objs Krocuss` before and after.
+# Checks are game updates (@f<n>), never wall seconds.
+# F=2000, last check f1800.
+@f240 objs Krocuss
+@f260 obj u045b
+@f280 send u045b Activate; place u045b player 5
+@f320 obj u045b
+@f360 fsm u045b Sniff; obj u045b
+@f400 fsm u045b Stop; send u045b Increment; send u045b Decrement
+@f440 obj u045b
+@f480 damage u045b 10 power; obj u045b
+@f520 damage u045b 10 power; obj u045b
+@f560 kill u045b
+@f600 objs Krocuss
+@f1800 objs Krocuss

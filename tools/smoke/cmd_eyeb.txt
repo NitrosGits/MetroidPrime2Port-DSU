@@ -1,0 +1,21 @@
+# CEyeBall (module 19: CEyeBall, "Mechanism: Corrupted Sentreye"). Temple Grounds dark
+# 0q_temple_hall_dark (world 3bfa3eff, area 0q) holds four Corrupted Sentreyes u047a/u0476/u0452/u041d.
+# The steps exercise one of them (u041d 001c002e): activate and place it, force InActive/Active/
+# Cover/Flinch, send Alert, shoot it (power beam and missile), then kill it, with `obj` reads and
+# `objs EyeBall` before and after. Checks are game updates (@f<n>), never wall seconds.
+# F=2000, last check f1800.
+@f240 objs EyeBall
+@f280 obj u041d
+@f320 send u041d Activate; place u041d player 5
+@f360 obj u041d
+@f400 fsm u041d Active; obj u041d
+@f440 fsm u041d Cover; obj u041d
+@f480 fsm u041d Flinch; obj u041d
+@f520 send u041d Alert
+@f560 obj u041d
+@f600 shoot u041d
+@f640 shoot u041d missile
+@f680 obj u041d
+@f720 kill u041d
+@f760 objs EyeBall
+@f1800 objs EyeBall

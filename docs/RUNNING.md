@@ -387,6 +387,12 @@ Shuffle -> Taunt -> Lurk -> Hurled -> Deactivate -> Start), the visors, touches,
 missile shots, damage and kills, then spawns a third ghost, with `objs ChozoGhost` before the
 steps and at the end. drkc drives Temple Grounds dark 06_temple_sacredpath_dark's two Dark Commandos u051a and u041c through
 Activate, placement, damage and `obj` reads, with `objs DarkCommando` listing both at f200 and f4000.
+eyeb drives Temple Grounds dark 0q_temple_hall_dark's four Corrupted Sentreyes u047a/u0476/u0452/u041d:
+activate and place u041d, force Active/Cover/Flinch, send Alert, shoot it (power beam and missile),
+kill it, with `objs EyeBall` counting four down to three. kroc drives Torvus Bog 0h_swamp_hall's three
+Krocusses u045b/u0447/u0441: activate and place u045b, force Sniff/Stop, send Increment/Decrement,
+damage it (hp 60 -> 50 -> 40) once its wings open, kill it, with `objs Krocuss` counting three down
+to two.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
