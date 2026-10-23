@@ -3102,10 +3102,34 @@ void CEmperorIngStage1::SetTentacleFlags(uint flag) {
 // ---------------------------------------------------------------------------------------------
 // The module's loader (fn_16_A2A0) and entry points.
 
+// Retail fn_16_AF7C: SLdrEmperorIngStage1Data's constructor, called by the loader at 0x0000A2DC
+// on its stack object. It calls each sub-struct's constructor - fn_16_B8F4 for the tentacle block
+// (+0x000), fn_16_B6BC for melee (+0x580), fn_16_B584 for the projectile block (+0x590),
+// fn_16_B3DC for the warp block (+0x5a8), fn_16_B188 for the taunt block (+0x5d8) and
+// fn_16_AAD4 for the beam attack (+0x614) - and between them they write -1 to five sound ids,
+// where the generated header stores 0 (the guest's "no sound" is -1, the header's 0). Their
+// other -1 stores land on CAssetIds (warp portalEffect 0x0, projectile 0x0/0x14) and on the two
+// warp ints 0x20/0x24, which the header already has right, as it has fn_16_AF7C's own 0x6a4
+// vulnerabilityChangeSound. The sub-struct layout is the guest's here (no editor-properties
+// padding inside SLdrEmperorIngStage1Data). A property in the instance's data overwrites any of
+// these, so this runs before the .inc reader below.
+//   fn_16_B8F4  li r0,-0x1 0x0000B930; stw r0,0x57c(r31) 0x0000B93C
+//   fn_16_B3DC  li r0,-0x1 0x0000B408; stw r0,0x28(r31) 0x0000B418, 0x2c(r31) 0x0000B41C
+//   fn_16_B188  li r0,-0x1 0x0000B1A8; stw r0,0x38(r31) 0x0000B1AC
+//   fn_16_AAD4  li r0,-0x1 0x0000AAF4; stw r0,0x58(r31) 0x0000AAFC
+static void xAF7C_SoundDefaults(SLdrEmperorIngStage1& sldr) {
+  sldr.data.tentacle.tentacleDamagedSound = -1;    // 0x0000B93C (block 0x0, field 0x57c)
+  sldr.data.warp.sound = -1;                       // 0x0000B418 (block 0x5a8, field 0x28)
+  sldr.data.warp.sound_0xa93f0198 = -1;            // 0x0000B41C (block 0x5a8, field 0x2c)
+  sldr.data.tauntAttack.shockWaveTravelSound = -1; // 0x0000B1AC (block 0x5d8, field 0x38)
+  sldr.data.beamAttack.sound = -1;                 // 0x0000AAFC (block 0x614, field 0x58)
+}
+
 // @ fn_16_A2A0
 static CEntity* PortLoadEmperorIngStage1(CStateManager& mgr, CInputStream& input,
                                          CEntityInfo& info) {
   SLdrEmperorIngStage1 sldrThis;
+  xAF7C_SoundDefaults(sldrThis); // fn_16_AF7C's -1 sound ids (the call at 0x0000A2DC)
 #include "MetroidPrime/ScriptLoader/SLdrEmperorIngStage1.inc"
   // The retail's reader (fn_16_ABD0) and its helpers - fn_16_AEDC, fn_16_AF7C, fn_16_B014,
   // fn_16_B130, fn_16_B188, fn_16_B1D8, fn_16_B378, fn_16_B3DC, fn_16_B434, fn_16_B52C,
