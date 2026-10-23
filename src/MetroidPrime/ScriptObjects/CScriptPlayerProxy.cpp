@@ -128,6 +128,7 @@ void CScriptPlayerProxy::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_62_13D8
 void CScriptPlayerProxy::SendStateToPlayer(EScriptObjectState state, CStateManager& mgr,
                                            uint playerIndex) {
   UpdateTransform(mgr, playerIndex);
@@ -179,6 +180,7 @@ uint CScriptPlayerProxy::GetArchenemyIndex(const CStateManager& mgr) const {
   return archenemy;
 }
 
+// @ fn_62_1778
 void CScriptPlayerProxy::CheckVisors(CStateManager& mgr) {
   uint playerMask = mListener.GetPlayerMask();
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
@@ -199,6 +201,7 @@ void CScriptPlayerProxy::CheckVisors(CStateManager& mgr) {
   }
 }
 
+// @ fn_62_1868 forced (send AreaLoaded with the watched visor on; tools/cov/specs/spp_dark_arealoaded.con)
 void CScriptPlayerProxy::InitVisors(CStateManager& mgr) {
   uint playerMask = mListener.GetPlayerMask();
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
@@ -390,6 +393,7 @@ void CScriptPlayerProxy::HandleDamageOverTimeMessage(EScriptObjectMessage msg, T
   }
 }
 
+// @ fn_62_1F0C
 void CScriptPlayerProxy::HandleVisorMessage(EScriptObjectMessage msg, TUniqueId sender,
                                             CStateManager& mgr, uint playerIndex) {
   if (msg == kSM_AreaLoaded) {
@@ -689,6 +693,7 @@ static uint BuildPlayerMask(const CStateManager& mgr, uint mask) {
   return playerMask;
 }
 
+// @ fn_62_2CA8
 CScriptPlayerProxy::CScriptPlayerProxy(
     TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CModelData& model,
     CStateManager& mgr, uint playerMask, int proxyType, const CVector3f& playerOffset,

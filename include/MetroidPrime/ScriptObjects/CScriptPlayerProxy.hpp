@@ -124,8 +124,8 @@ private:
   float mCurrentMinDamage;                                     // Guessed name
   float mCurrentMaxDamage;                                     // Guessed name
   int mCurrentWeaponType;                                      // Guessed name
-  bool mDamageActive : 1;                                      // Guessed name
-  bool mFollowing : 1;                                         // Guessed name
+  bool mDamageActive : 1;                                      // 0x230 0x80, guessed name
+  bool mFollowing : 1;                                         // 0x230 0x40, guessed name
 };
 CHECK_SIZEOF(CScriptPlayerProxy, 0x238)
 
