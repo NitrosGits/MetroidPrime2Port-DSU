@@ -97,7 +97,14 @@ CWispTentacle::CWispTentacle(TUniqueId uid, const rstl::string& name, const CEnt
 , mGrabBlendTime(grabBlendTime)
 , mAttacked(false) {
   mKnockBackController.EnableKnockBackPhysics(false);
+#ifdef TARGET_PC
+  // 0x38B0 lbz r0,0x681(r29); 0x38B8 rlwimi r0,r3(0),4,27,27; 0x38C0 stb r0,0x681(r29): bit
+  // 0x10 of the knock-back manager (0x381C addi r3,r29,0x620; + 0x61) = burn off. Retail never
+  // touches mPendingDeath (0x421 0x10) here.
+  mKnockBackController.EnableBurn(false);
+#else
   SetPendingDeath(false);
+#endif
   SetDrawShadow(false);
 
   if (mSpawnFromPortal) {
@@ -587,7 +594,13 @@ CVector3f CWispTentacle::GetAimPosition(const CStateManager&, float dt) const {
 
 CVector3f CWispTentacle::GetOrbitPosition(const CStateManager& mgr) const {
   const CVector3f base = CPatterned::GetOrbitPosition(mgr);
+#ifdef TARGET_PC
+  // 0x1038 lfs f7,1.0; 0x103C fcmpo f7,f1(time); 0x1040 bge -> time: (1 < time) ? 1 : time,
+  // so a NaN time stays NaN.
+  float t = rstl::min_val(mStateMachine->GetTime(), 1.f);
+#else
   float t = rstl::min_val(1.f, mStateMachine->GetTime());
+#endif
   const CVector3f lockOnPosition = GetTranslation() + mLockOnOffset;
   if (mState == kS_Attack && mPreviousState == kS_Search) {
     return CVector3f::Lerp(base, lockOnPosition, t);
