@@ -230,6 +230,9 @@ public:
         }
       }
       if (mSlot < 0) {
+        // No staging slot (more than kBeamPeekSlots beams): Fill never runs, so give Render the
+        // far plane rather than uninitialised host bytes.
+        memset(texture.GetBitMapData(0), 0xFF, static_cast< size_t >(width * height * 2));
         return;
       }
       SBeamPeekStaging& staging = sBeamPeeks[mSlot];
