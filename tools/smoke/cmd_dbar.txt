@@ -1,0 +1,77 @@
+# DestructibleBarrier (module 13: CScriptDestructibleBarrier - a scripted wall of chunk models that
+# takes damage, lowers into the floor (chunk models, sfx and particles) and raises again on Reset).
+# Agon Wastes 08_sand_casualpirates (world 42b935e4): no DBAR ships in the game, so the steps repeat
+# the dbar lane's tools/drivers/destructiblebarrier_forced.con and `spawn` the fifteen barriers
+# e0036ff00..e0036ff0e with area CMDLs as chunk models and area PARTs as chunk-destroy particles
+# (A: full 3x2x5 grid, B: starts down with no row/layer/base model, C: 1 s lower delay, D: delay 0,
+# E/F: other models, G: 1x1x5 split-off top, H: no center/right/base model, I: never lowers, J..O:
+# 2x1x4 that never lower with dead chunks above the split).
+# The steps then take every damage arm: a small player hit (no chunk destroyed), beam/charged/missile
+# shots (the projectile arm), `damage 12`/`200` (a chunk destroyed and the lower), the 1 s delay and
+# the zero delay, `hurt` with no damager, the split-offs hit twice in one tick, the move emitter's
+# Reset raise/lower cycle, Deactivate/Activate around a shot, and Delete while moving.
+# Evidence in the transcript: `objs Barrier` listing the fifteen spawned barriers (A..O,
+# e0036ff00..ff0e) with their positions, and the damage/Reset steps answering `=> ok` as the barriers
+# lower, split and rise. The log's `init compiled module DestructibleBarrier` line lists the whole
+# compiled-module table, so it says the module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. F=1200, last check f930.
+@f200 god 1; give missile 50; give chargeBeam 1
+@f210 spawn DBAR d 10 model c809d6aa prop cd4f7e71 3 prop 609c6240 2 prop 1eb90d06 0x5d2926fc prop 982d7fa8 0xcdcbdf04 prop 5371ac0d 0x5d2926fc prop 4e749cb5 0xcdcbdf04 prop 6e4a9d27 0x10 prop bc2381a6 0x11 prop 6575a3d5 0x12 prop c91b0946 0x13 prop 4b2d5a37 0x14
+@f212 spawn DBAR d 20 model 9a3fc483 prop 396660b4 0xffffffff prop 48e25884 0xffffffff prop f1abb2c7 0xffffffff prop 6575a3d5 0x12 prop c91b0946 0x13 prop 4b2d5a37 0x14 prop 4d3109e3 0x01000000
+@f214 spawn DBAR d 30 model 3801de98 prop cd9c67fe 1.0 prop 396660b4 0xffffffff prop 48e25884 0xffffffff
+@f216 spawn DBAR d 40 model bfb4a8ee prop cd9c67fe 0.0
+@f218 spawn DBAR d 50 model f964d6e0
+@f220 spawn DBAR d 60 model d87334fa
+@f222 spawn DBAR d 12 model 66f3b2a7 prop cd4f7e71 1 prop 609c6240 1 prop 396660b4 0xffffffff prop 48e25884 0xffffffff
+@f224 spawn DBAR d 8 model c809d6aa prop 90f55c5d 0xffffffff prop e1975355 0xffffffff prop f1abb2c7 0xffffffff
+@f226 spawn DBAR d 16 model c809d6aa prop cd4f7e71 4 prop 609c6240 2 prop 605847b9 100.0 prop cd9c67fe 0.0
+@f228 spawn DBAR 6 d 14 model 9a3fc483 prop a7f551f7 4 prop 605847b9 100.0 prop cd9c67fe 0.0
+@f230 objs Barrier; orbit e0036ff03
+# A: small player hit (no chunk destroyed), beam/charged/missile shots (projectile arm), big hit (lower)
+@f240 damage e0036ff00 1
+@f250 shoot e0036ff00
+@f270 shoot e0036ff00 charged
+@f290 shoot e0036ff00 missile
+@f330 damage e0036ff00 12
+@f360 damage e0036ff00 200
+@f362 damage e0036ff00 200
+@f366 send e0036ff00 Reset
+# B starts down: raise it with the player inside (touch arm), then move it away
+@f300 place e0036ff01 player 0
+@f302 send e0036ff01 Reset
+@f340 place e0036ff01 player 25
+# C: a hit, then the 1 s lower delay; D: a hit with delay 0; far barriers: player out of radius
+@f380 place e0036ff02 player 6; damage e0036ff02 12
+@f382 shoot e0036ff03
+@f384 damage e0036ff04 5
+@f386 damage e0036ff05 5
+# G: split the top off
+@f400 damage e0036ff06 12
+@f420 damage e0036ff06 30
+# H: damage with no damager (hurt), so TakeDamage sees no source actor; I: chunk draws; J..O: split-offs, two hits per tick
+@f430 hurt e0036ff07 12
+@f432 damage e0036ff08 12
+@f434 damage e0036ff08 12
+@f440 damage e0036ff09 17; damage e0036ff09 17
+@f442 damage e0036ff0a 17; damage e0036ff0a 17
+@f444 damage e0036ff0b 12; damage e0036ff0b 22
+@f446 damage e0036ff0c 22; damage e0036ff0c 12
+@f448 damage e0036ff0d 17; damage e0036ff0d 17
+@f450 damage e0036ff0e 27
+@f460 damage e0036ff09 12; damage e0036ff0a 12; damage e0036ff0b 12; damage e0036ff0c 12; damage e0036ff0d 12; damage e0036ff0e 12
+@f470 obj e0036ff00; obj e0036ff06; obj e0036ff07
+# A after lowering (state 2): raise it (Reset), lower it again (Reset in state 0), raise it
+@f500 send e0036ff00 Reset
+@f600 send e0036ff00 Reset
+@f700 send e0036ff00 Reset
+@f720 send e0036ff02 Reset
+# inactive: Think early return, GetTouchBounds/GetAimPosition empty arm
+@f800 send e0036ff03 Deactivate
+@f802 shoot e0036ff03
+@f830 send e0036ff03 Activate
+# delete while moving (Delete with a live move emitter)
+@f900 send e0036ff00 Reset
+@f902 send e0036ff00 Delete
+@f904 send e0036ff01 Reset
+@f906 send e0036ff01 Delete
+@f930 objs Barrier

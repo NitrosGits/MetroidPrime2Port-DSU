@@ -54,10 +54,11 @@ done
 # Concurrent runs (lanes, batch gates) each hold a slot, a flock kept for the script's life, and
 # shift their displays and console ports by SLOTSTEP per slot, so two runs never share an X display
 # or a console port. SLOTSTEP is wider than the family table (one display and one port each), which
-# is what keeps two suites apart: at 20 the 23-family table of 2026-10-23 overlapped the next slot.
+# is what keeps two suites apart: at 20 the 23-family table of 2026-10-23 overlapped the next slot,
+# and at 40 the 41-family table of 2026-10-23 (fishcloud, the last, at index 40) did too.
 # Slot 0 (the bare table) is left to copies of this script that predate the slots.
 # An explicit --display-base / SMOKE_DISPLAY_BASE keeps the old fixed numbering.
-SLOTSTEP=40
+SLOTSTEP=45
 PORTOFF=0
 if [ "$LIST" = 0 ] && [ -z "${SMOKE_DISPLAY_BASE:-}" ] && [ "$DISPBASE" = 760 ]; then
   mkdir -p /tmp/opencode/locks
@@ -76,7 +77,7 @@ fi
 # script is timed in game updates (`@f<n>`, gameplay from ~f240), never in wall seconds.
 # The module families (grenchler, grenguard, flyingpirate, mediuming, metroid, sporb, blogg, swarm,
 # gunturret, rezbit, parasite, lumite, shrieker, ingswarm, darktrooper, bacteriaswarm, tryclops,
-# wisptentacle, octapede)
+# wisptentacle, octapede, amt, dbar, sjguard, fishcloud)
 # boot the area the module lanes' coverage drivers used and repeat their console steps, so a checked
 # module's actors keep loading: tools/cov/specs/{grenchler_entrance,grenchler_guardian,
 # flyingpirate_sandfalls,mediuming_dead,metroid_player,sporb_hall,blogg_shaft,swarmbasics_sand,
@@ -84,7 +85,9 @@ fi
 # ingsnatchingswarm_pathofeyes,bacteriaswarm_temple}.con and tools/drivers/ (lumite and shrieker repeat
 # tools/drivers/lumite_states.py and shrieker_greatbridge.con, darktrooper
 # tools/drivers/darktrooper_unknown.con, tryclops tryclops_grab.con and wisptentacle
-# wisptentacle_hall.con, octapede octapede_cliffhall.con).
+# wisptentacle_hall.con, octapede octapede_cliffhall.con, amt aimannedturret_alamofront.con, dbar
+# destructiblebarrier_forced.con, sjguard ingspacejumpguardian_sandfalls.con and fishcloud
+# fishcloud_sacredpath.con).
 # Append a new family at the end of ALL (its X display is its index) and give it the next free
 # console port.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
@@ -123,7 +126,9 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [bacteriaswarm]="3bfa3eff,04_temple_unknownenemies_dark"
                [tryclops]="1baa96c2,42c85ad9"
                [wisptentacle]="3bfa3eff,0t_temple_hall_dark"
-               [octapede]="1baa96c2,0p_cliff_hall" )
+               [octapede]="1baa96c2,0p_cliff_hall"
+               [amt]="42b935e4,06_sand_alamofront" [dbar]="42b935e4,08_sand_casualpirates"
+               [sjguard]="42b935e4,02_sand_sandfalls_dark" [fishcloud]="3bfa3eff,06_temple_sacredpath" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
@@ -131,7 +136,8 @@ declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boos
                [flyingpirate]=2400 [mediuming]=2400 [metroid]=2400 [sporb]=2400 [blogg]=2400
                [swarm]=2400 [gunturret]=2400 [rezbit]=2400 [parasite]=2400
                [lumite]=2400 [shrieker]=2400 [ingswarm]=2400 [darktrooper]=2400
-               [bacteriaswarm]=2400 [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000 )
+               [bacteriaswarm]=2400 [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000
+               [amt]=9400 [dbar]=1200 [sjguard]=6000 [fishcloud]=2500 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280
@@ -139,7 +145,8 @@ declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=
                [flyingpirate]=280 [mediuming]=280 [metroid]=280 [sporb]=280 [blogg]=280
                [swarm]=280 [gunturret]=280 [rezbit]=280 [parasite]=280
                [lumite]=280 [shrieker]=280 [ingswarm]=280 [darktrooper]=280
-               [bacteriaswarm]=280 [tryclops]=280 [wisptentacle]=280 [octapede]=280 )
+               [bacteriaswarm]=280 [tryclops]=280 [wisptentacle]=280 [octapede]=280
+               [amt]=280 [dbar]=280 [sjguard]=280 [fishcloud]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709
                [boostg_fsm]=49710 [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714
@@ -148,7 +155,8 @@ declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [
                [metroid]=49723 [sporb]=49724 [blogg]=49725 [swarm]=49726
                [gunturret]=49727 [rezbit]=49728 [parasite]=49729
                [lumite]=49730 [shrieker]=49731 [ingswarm]=49732 [darktrooper]=49733
-               [bacteriaswarm]=49734 [tryclops]=49735 [wisptentacle]=49736 [octapede]=49737 )
+               [bacteriaswarm]=49734 [tryclops]=49735 [wisptentacle]=49736 [octapede]=49737
+               [amt]=49738 [dbar]=49739 [sjguard]=49740 [fishcloud]=49741 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
@@ -161,7 +169,9 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [parasite]=cmd_parasite.txt [lumite]=cmd_lumite.txt [shrieker]=cmd_shrieker.txt
                [ingswarm]=cmd_ingswarm.txt [darktrooper]=cmd_darktrooper.txt
                [bacteriaswarm]=cmd_bacteriaswarm.txt [tryclops]=cmd_tryclops.txt
-               [wisptentacle]=cmd_wisptentacle.txt [octapede]=cmd_octapede.txt )
+               [wisptentacle]=cmd_wisptentacle.txt [octapede]=cmd_octapede.txt
+               [amt]=cmd_amt.txt [dbar]=cmd_dbar.txt [sjguard]=cmd_sjguard.txt
+               [fishcloud]=cmd_fishcloud.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
@@ -169,10 +179,11 @@ declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # seconds, so those families stay under the cap. NC is the second exception: a family whose area
 # boots so quickly that its unpaced updates are over (0.3 s for 2400) before con.py's 0.5 s retry
 # gets a console connection - it stays capped (~40 s, ~110 s for wisptentacle's 6200), or nothing
-# would be driven at all.
+# would be driven at all. amt is the tight case: unpaced, con.py connects at 0.5 s when the run is
+# already at ~560 of its 9400 updates (its first check is f600), so it stays capped (~155 s).
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
 declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
-               [octapede]=1 )
+               [octapede]=1 [amt]=1 )
 declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=1"
                [ing]="MP2_DEBUG_ING=1 MP2_DEBUG_BEAM=1" )
 
@@ -180,7 +191,8 @@ declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=
 ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spacepirate
      ing ep plain emp3 turret agon54 darksamus splitter grenchler grenguard flyingpirate
      mediuming metroid sporb blogg swarm gunturret rezbit parasite lumite shrieker
-     ingswarm darktrooper bacteriaswarm tryclops wisptentacle octapede)
+     ingswarm darktrooper bacteriaswarm tryclops wisptentacle octapede amt dbar sjguard
+     fishcloud)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 
