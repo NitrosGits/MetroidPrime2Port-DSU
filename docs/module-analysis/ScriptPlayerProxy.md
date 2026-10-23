@@ -43,41 +43,63 @@ One retail quirk is kept on purpose. In `OnGameEvent`, the PersistentCounterRese
 
 Single player therefore reaches only the visor-watcher paths. Everything else needs the multiplayer game mode, which the port does not boot. The Combat and Scan arms of `SetVisorFromProxyType` are data-dead.
 
-## 4. Coverage (build-port-cov, `tools/cov/specs/scriptplayerproxy.py`)
+## 4. Coverage (build-port-cov)
 
-Three runs were merged. The drivers are in `tools/cov/specs/`.
+Lane spp1 (2026-10-23) ran three natural visor-watcher runs (`tools/cov/specs/scriptplayerproxy.py` with
+`spp_echo_portalpuzzle.con`, `spp_dark_landingsite.con`, `spp_dark_arealoaded.con`). Lane sppx1 (2026-10-24)
+added seven forced runs, `SPP_RUN=A..G` of `tools/cov/specs/scriptplayerproxy_force.py`, each with its
+`spp_force_<run>.con` (Agon 42b935e4 `05_portalpuzzle`, 2000 frames, `--fast`; command line in the spec header).
+Each run retypes the one EchoVisorWatcher there (u0523, editor 00120402) into another proxyType at its first
+AreaLoaded/Create, so single player reaches the multiplayer arms:
 
-- `spp_echo_portalpuzzle.con`: Agon 42b935e4 `05_portalpuzzle`, EchoVisorWatcher e00120402. It cycles visors and sends Deactivate/Activate.
-- `spp_dark_landingsite.con`: Temple 3bfa3eff `01_temple_landingsite_dark`, DarkVisorWatcher e00230084. The same sequence with the dark visor.
-- `spp_dark_arealoaded.con` (forced): sends Activate, switches to the dark visor, sends `send e00230084 AreaLoaded` with the visor on and off, then sends Delete.
+| run | forced (`SPP_RUN=`) | arms |
+|---|---|---|
+| A | PlayerFollower (3) | Think follower, UpdateTransform both arms (vector param on/off), AddToRenderer draw, HandleFollowerMessage |
+| B | ArchenemyMarker (2), render index 0/1 | Set/GetArchenemyIndex, HandleArchenemyMessage, UpdateTransform archenemy, AddToRenderer index arms |
+| C | EventRelay (0), then type 11 on Activate and -1 on Reset | HandleMessage (GiveScore/EndGame/ZERO), AcceptScriptMsg range arms |
+| D | CoinCollector (1), HP 0 for the first Thinks | Think pending-coins and coin arms, DropCoins (amplified both ways, all four counts) |
+| E | DamageOverTime (10), list emptied on the 20th hit | UpdateDamageOverTime, HandleDamageOverTimeMessage |
+| F | PersistentCounterReset (4) | HandleRespawnMessage |
+| G | DarkVisorWatcher (7), mask 0 on CheckVisors calls 2/4/6 and InitVisors call 5, team bit 4 on odd ctors | CheckVisors/InitVisors not-in-mask and both visor arms, BuildPlayerMask team bit |
+
+Merged (`tools/cov/gcov_report.py build-port-cov /tmp/opencode/sppx1_{A..G}/gcov --module ScriptPlayerProxy`):
+16 of 23 functions with branches have every arm. All ten runs: 0 `[port] caught`, 0 `reach-stub`.
 
 | fn | result | untaken |
 |---|---|---|
-| ctor 2CA8 | all arms | — |
-| HandleVisorMessage 1F0C | all arms | — |
-| SendStateToPlayer 13D8 | 4/4 lines | — |
-| CheckVisors 1778 | 9/10 branches | 185 player not in mask (one player) |
-| InitVisors 1868 | 5/6, in-visor arm forced (`send AreaLoaded`) | 205 player not in mask |
-| AcceptScriptMsg 23D4 | 12/23 | Create → Archenemy/default, range-check false arms, non-visor handler switch (multiplayer) |
-| Think 1C44 | visor arm only | DOT, coin, follower and archenemy arms (multiplayer) |
-| UpdateTransform 1448 | 8/19, else arm | Follower/Archenemy arms |
-| LoadPlayerController 188 | 8/12 | model present, proxyType out of range |
-| BuildPlayerMask 2C58 | — | team-bit arm |
-| AddToRenderer 131C | ran, no draw | draw arms (Follower/Archenemy) |
-| DOT, NotifyProxies, DropCoins, Archenemy, HandleMessage/Respawn/Follower/Archenemy/DOT, OnGameEvent | not run | multiplayer only |
+| UpdateTransform 1448 | 19/19 lines, 7/8 | 150:1/2 is a component edge of the inlined `CVector3f::IsNonZero` (the run's vector had X = 0); both if bodies ran |
+| DropCoins 190C | 13/16 | `denominationMode != 1` (237/246): dead, the only caller is `bl fn_62_190C` at 0x1DE4 in Think after `li r8, 0x1` (0x1DE0), and nothing else in the module's asm names fn_62_190C |
+| Think 1C44 | 37/38 | 366 true arm: the COIN game mode with a first player calls `CGMCoin::SetCanRespawn`; on the port's CGMSinglePlayer that cast corrupts memory, so it is live but unforceable |
+| LoadPlayerController 188 | 8/12 | model present (0x4BC `bne`), proxyType < 0 / > 10 (0x4E8/0x4F0): no shipped PLCT has a type outside 0..10 (§3); the model arm is live data |
+| OnGameEvent 2644, NotifyProxies 11C4, AddDamageOverTime DF8, ClearDamageOverTime D94, CListener::OnGameEvent, GetPlayerMask 1314 | not run | only the multiplayer game modes post game events; CGMSinglePlayer has no listener dispatch |
 
-Marked (`// @ fn_62_`): 13D8, 1F0C, 2CA8.
+Marked (`// @ fn_62_`, 20): 0, EA4, 131C, 13D8, 1448, 16B4, 1718, 1778, 1868, 190C, 1BDC, 1ED8, 1F0C,
+1F44, 2118, 21DC, 222C, 23D4, 2C58, 2CA8.
 
-- **CheckVisors and InitVisors:** their single untaken arm needs a second player (multiplayer), so it is live but not run; they stay unmarked.
-
-`tools/asmcheck.py check ScriptPlayerProxy` reports only tool artifacts:
-
-- **13D8:** a CALL to the unmarked `UpdateTransform` (fn_62_1448), plus a BRANCH count that the merged helper inflates.
-- **2CA8:** a CALL to the unmarked `BuildPlayerMask` (fn_62_2C58), plus CALLS 5 vs 0, because init-list calls are not counted.
+`tools/asmcheck.py check ScriptPlayerProxy src/MetroidPrime/ScriptObjects/CScriptPlayerProxy.cpp` leaves 7
+findings, all compiler-emitted calls: the dtor (0) has implicit member dtors, the `Free` of the deleting dtor
+and their conditions; EA4 calls the `reserved_vector::erase` template (fn_62_113C, class H); 222C has a
+`rstl::wstring` temporary dtor; 2CA8 has init-list calls (CALLS 5 vs 0).
 
 The ctor bitfields carry header position comments (`// 0x230 0x80` / `0x40`).
 
-## 5. Smoke family (proposed)
+## 5. Smoke family `plct` (extension proposed)
 
-- **`scriptplayerproxy`:** Temple Grounds 3bfa3eff `01_temple_landingsite_dark`, driver `tools/cov/specs/spp_dark_landingsite.con`, about 1100 frames with `--fast`. It covers ctor, AcceptScriptMsg, Think, InitVisors/CheckVisors and SendStateToPlayer.
-- **Alternative:** Agon `05_portalpuzzle` with `spp_echo_portalpuzzle.con`.
+`tools/smoke/cmd_plct.txt` drives u0523 on Agon `05_portalpuzzle`, but its header calls u0523 a
+PlayerMessageRelay. In fact u0523 is editor 00120402, the EchoVisorWatcher (proxyType 8). Increment and Decrement
+reach no handler for that type, and the family never switches visors, so InitVisors/CheckVisors' visor
+arms and SendStateToPlayer stay cold. Proposed additions (F stays 2200, last check f2000), natural arms
+only, no forcing:
+
+    @f420 god 1; give echoVisor 1
+    @f440 visor echo
+    @f500 obj u0523
+    @f520 visor combat
+    @f560 send u0523 AreaLoaded
+    @f600 visor echo
+    @f640 send u0523 AreaLoaded
+    @f700 obj u0523
+    @f720 visor combat
+
+That adds Think's visor path, CheckVisors Entered/Exited, InitVisors both visor arms and HandleVisorMessage
+to the family. The header line should read "EchoVisorWatcher (proxyType 8)".
