@@ -1,0 +1,91 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_77_0	84	B	CStoneToad::~CStoneToad()	-	upstream body (CStoneToad); implicit dtor, not driven arm by arm	no
+00084	fn_77_84	1E4	H	__dt__10CPatternedFv	-	weak/template copy	no
+00268	fn_77_268	94	H	__dt__15CAiKnockBackMgrFv	-	weak/template copy	no
+002FC	fn_77_2FC	54	H	__dt__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+00350	fn_77_350	3C	H	GetTouchBounds__10CPatternedCFv	-	weak/template copy	no
+0038C	fn_77_38C	10	H	TakeDamage__10CPatternedFRC9CVector3ff	-	weak/template copy	no
+0039C	fn_77_39C	8	H	GetModelAlphau8__10CPatternedCFRC13CStateManager	-	weak/template copy	no
+003A4	fn_77_3A4	8	H	ProjectileInfo__10CPatternedFv	-	weak/template copy	no
+003AC	fn_77_3AC	8	H	GetSearchPath__10CPatternedFv	-	weak/template copy	no
+003B4	fn_77_3B4	8	H	GetPointSearchPath__10CPatternedFv	-	weak/template copy	no
+003BC	fn_77_3BC	8	H	GetRagDoll__10CPatternedCFv	-	weak/template copy	no
+003C4	fn_77_3C4	10	H	GetAttackTarget__10CPatternedCFv	-	weak/template copy	no
+003D4	fn_77_3D4	C	H	IsOnGround__10CPatternedCFv	-	weak/template copy	no
+003E0	fn_77_3E0	C	H	GetGravityConstant__10CPatternedCFv	-	weak/template copy	no
+003EC	fn_77_3EC	8	H	GetDeathExplosionParticle__10CPatternedCFv	-	weak/template copy	no
+003F4	fn_77_3F4	8	H	CanBeShot__3CAiFRC13CStateManageri	-	weak/template copy	no
+003FC	fn_77_3FC	8	H	IsListening__3CAiCFv	-	weak/template copy	no
+00404	fn_77_404	8	H	Listen__3CAiFR13CStateManagerRC9CVector3f16EListenNoiseType	-	weak/template copy	no
+0040C	fn_77_40C	1C	H	GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f	-	weak/template copy	no
+00428	fn_77_428	2C	H	GetHealthInfo__6CActorCFv	-	weak/template copy	no
+00454	fn_77_454	24	T	RELExit	st1	REL runtime (module entry)	yes
+00478	fn_77_478	20	T	RELMain	st1	REL runtime (module entry)	yes
+00498	fn_77_498	30	B	SetFuncPtrs()	st1	upstream body (CStoneToad)	yes
+004C8	fn_77_4C8	2C0	B	LoadStoneToad(CStateManager&, CInputStream&, CEntityInfo&)	-	upstream body (CStoneToad); open: 555 (no model data); SLdr ctor inlined, fixed	no
+00788	fn_77_788	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak/template copy	no
+007C8	fn_77_7C8	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak/template copy	no
+007E8	fn_77_7E8	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak/template copy	no
+00810	fn_77_810	13C	H	__ct__10CModelDataFRC10CModelData	-	weak/template copy	no
+0094C	fn_77_94C	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak/template copy	no
+009B8	fn_77_9B8	54	H	__dt__15TToken<6CModel>Fv	-	weak/template copy	no
+00A0C	fn_77_A0C	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak/template copy	no
+00A70	fn_77_A70	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak/template copy	no
+00AD0	fn_77_AD0	70	H	__dt__13SLdrStoneToadFv	-	weak/template copy	no
+00B40	fn_77_B40	8	B	CStoneToad::GetCollisionResponseType(...) const	st1	upstream body (CStoneToad)	yes
+00B48	fn_77_B48	518	B	CStoneToad::UpdateLookAt(CStateManager&)	-	upstream body (CStoneToad); open: 524 look.GetX()<0 never ran; 497 1/2 inlined constant-false	no
+01060	fn_77_1060	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+010B0	fn_77_10B0	12C	B	CStoneToad::GetMoveDirection(EMoveType) const	-	upstream body (CStoneToad); open: 479 default (dead), 481 zero away pos, 490 1/2	no
+011DC	fn_77_11DC	F8	B	CStoneToad::IsMovingBackToStart() const	-	upstream body (CStoneToad); open: 471 1/2 (exactly at start, data)	no
+012D4	fn_77_12D4	F8	B	CStoneToad::IsMovingAwayFromStart() const	-	upstream body (CStoneToad); open: 461 1/2 (exactly at away pos, data)	no
+013CC	fn_77_13CC	AC	B	CStoneToad::Touch(CActor&, CStateManager&)	st1	upstream body (CStoneToad)	yes
+01478	fn_77_1478	14	B	CStoneToad::HitByWeapon(...) const	-	upstream body (CStoneToad); not run: weapon provoke never reached	no
+0148C	fn_77_148C	10	B	CStoneToad::HitBySafeZone(...) const	st1	upstream body (CStoneToad)	yes
+0149C	fn_77_149C	2C	B	CStoneToad::MoveBackFinished(...) const	st1	upstream body (CStoneToad)	yes
+014C8	fn_77_14C8	20	B	CStoneToad::ShouldMoveBack(...) const	-	upstream body (CStoneToad); open: 432 1/2 (provoked && return requested)	no
+014E8	fn_77_14E8	4C	B	CStoneToad::ShouldMoveAway(...) const	st1	upstream body (CStoneToad)	yes
+01534	fn_77_1534	2C	B	CStoneToad::MoveAwayFinished(...) const	st1	upstream body (CStoneToad)	yes
+01560	fn_77_1560	C	B	CStoneToad::ShouldPatrol(...) const	st1	upstream body (CStoneToad)	yes
+0156C	fn_77_156C	20	B	CStoneToad::AnimOver(...) const	st1	upstream body (CStoneToad)	yes
+0158C	fn_77_158C	23C	B	CStoneToad::GoToSleep(CStateManager&, EStateMsg, float)	-	upstream body (CStoneToad); open: 397 default (dead), 405 0/2 (timing)	no
+017C8	fn_77_17C8	5C	H	__dt__14CBCGenerateCmdFv	-	weak/template copy	no
+01824	fn_77_1824	48	H	__dt__13CBodyStateCmdFv	-	weak/template copy	no
+0186C	fn_77_186C	D0	B	CStoneToad::MoveBack(CStateManager&, EStateMsg, float)	st1	upstream body (CStoneToad)	yes
+0193C	fn_77_193C	3C	B	CStoneToad::Wait(CStateManager&, EStateMsg, float)	st1	upstream body (CStoneToad)	yes
+01978	fn_77_1978	D0	B	CStoneToad::MoveAway(CStateManager&, EStateMsg, float)	st1	upstream body (CStoneToad)	yes
+01A48	fn_77_1A48	23C	B	CStoneToad::ReactToWeapon(CStateManager&, EStateMsg, float)	-	upstream body (CStoneToad); not run: weapon provoke never reached	no
+01C84	fn_77_1C84	23C	B	CStoneToad::ReactToSafeZone(CStateManager&, EStateMsg, float)	-	upstream body (CStoneToad); open: 312 default (dead), 320 0/2 (timing)	no
+01EC0	fn_77_1EC0	2A8	B	CStoneToad::WakeUp(CStateManager&, EStateMsg, float)	-	upstream body (CStoneToad); open: 282 default (dead), 291 0/2, 298/301 waypoint arms	no
+02168	fn_77_2168	1C	B	CStoneToad::Sleep(CStateManager&, EStateMsg, float)	st1	upstream body (CStoneToad)	yes
+02184	fn_77_2184	20	B	CStoneToad::AddToRenderer(const CStateManager&) const	st1	upstream body (CStoneToad)	yes
+021A4	fn_77_21A4	20	B	CStoneToad::PreRender(CStateManager&)	st1	upstream body (CStoneToad)	yes
+021C4	fn_77_21C4	20	B	CStoneToad::Render(const CStateManager&) const	st1	upstream body (CStoneToad)	yes
+021E4	fn_77_21E4	F0	B	CStoneToad::Think(float, CStateManager&)	-	upstream body (CStoneToad); open: 254 1/2 (no collision actor manager)	no
+022D4	fn_77_22D4	20	B	CStoneToad::PreThink(float, CStateManager&)	st1	upstream body (CStoneToad)	yes
+022F4	fn_77_22F4	8AC	B	CStoneToad::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	-	upstream body (CStoneToad); open: weapon arm 215-226, 129/137/143/144/166/194/241	no
+02BA0	fn_77_2BA0	54	H	__ct__11CHealthInfoFRC11CHealthInfo	-	weak/template copy	no
+02BF4	fn_77_2BF4	38	H	push_back_unsafe__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>FRC26CJointCollisionDescription	-	weak/template copy	no
+02C2C	fn_77_2C2C	20	H	construct<26CJointCollisionDescription>__4rstlFPvRC26CJointCollisionDescription	-	weak/template copy	no
+02C4C	fn_77_2C4C	28	H	construct__Q24rstl51construction_policy<26CJointCollisionDescription,0>FPvRC26CJointCollisionDescription	-	weak/template copy	no
+02C74	fn_77_2C74	C0	H	__ct__26CJointCollisionDescriptionFRC26CJointCollisionDescription	-	weak/template copy	no
+02D34	fn_77_2D34	5C	H	__dt__26CJointCollisionDescriptionFv	-	weak/template copy	no
+02D90	fn_77_2D90	5C	H	__pl__4rstlFRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>	-	weak/template copy	no
+02DEC	fn_77_2DEC	84	H	__dt__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+02E70	fn_77_2E70	38	H	fn_77_2E70	-	weak copy (rstl string/vector helper)	no
+02EA8	fn_77_2EA8	60	H	fn_77_2EA8	-	weak copy (rstl string/vector helper)	no
+02F08	fn_77_2F08	6C	B	CStoneToad::SetupStateMachine(CStateManager&)	st1	upstream body (CStoneToad)	yes
+02F74	fn_77_2F74	440	B	CStoneToad::CStoneToad(...)	-	upstream body (CStoneToad); open: 85/92/99/106 (missing look anims, data)	no
+033B4	fn_77_33B4	3C	H	__dt__16CPASAnimParmDataFv	-	weak/template copy	no
+033F0	fn_77_33F0	184	H	__ct__16CPASAnimParmDataFQ23pas15EAnimationStateRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParmRC12CPASAnimParm	-	weak/template copy	no
+03574	fn_77_3574	3C	H	__dt__Q24rstl33reserved_vector<12CPASAnimParm,8>Fv	-	weak/template copy	no
+035B0	fn_77_35B0	58	H	__dt__Q24rstl36single_ptr<22CCollisionActorManager>Fv	-	weak/template copy	no
+03608	fn_77_3608	A4	H	reserve__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fi	-	weak/template copy	no
+036AC	fn_77_36AC	C0	H	reserve__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fi	-	weak/template copy	no
+0376C	fn_77_376C	68	H	uninitialized_copy<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P26CJointCollisionDescription>__4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P26CJointCollisionDescription	-	weak/template copy	no
+037D4	fn_77_37D4	3C	H	__ct__Q24rstl24optional_object<6CAABox>FRC6CAABox	-	weak/template copy	no
+03810	fn_77_3810	258	H	__sinit_CStoneToad_cpp	-	upstream body (CStoneToad); static init, not driven	no
+03A68	fn_77_3A68	C4	T	_unresolved	-	REL runtime	no
+03B2C	fn_77_3B2C	24	T	_epilog	-	REL runtime	no
+03B50	fn_77_3B50	24	T	_prolog	-	REL runtime	no
+03B74	fn_77_3B74	4C	T	ModuleDestructors	-	REL runtime	no
+03BC0	fn_77_3BC0	4C	T	ModuleConstructors	-	REL runtime	no

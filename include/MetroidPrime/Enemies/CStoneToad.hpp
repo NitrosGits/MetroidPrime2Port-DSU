@@ -95,8 +95,8 @@ private:
   float mLookLeftWeight;                                             // Guessed name
   float mLookRightWeight;                                            // Guessed name
   rstl::single_ptr< CCollisionActorManager > mCollisionActorManager; // Guessed name
-  bool mProvoked : 1;                                                // Guessed name
-  bool mReturnRequested : 1;                                         // Guessed name
+  bool mProvoked : 1;                                                // Guessed name; 0x860 0x80
+  bool mReturnRequested : 1;                                         // Guessed name; 0x860 0x40
   EProvoker mProvoker;                                               // Guessed name
 };
 CHECK_SIZEOF(CStoneToad, 0x868)
