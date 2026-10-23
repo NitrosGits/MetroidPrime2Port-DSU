@@ -191,8 +191,7 @@ __attribute__((aligned(32))) char reachdata_416[0x400] = {};
 extern "C" __attribute__((aligned(32))) char reachdata_417[0x400] asm("lbl_804199CC");
 __attribute__((aligned(32))) char reachdata_417[0x400] = {};
 
-// Added 2026-10-14 after the upstream merge: declared and called upstream, never defined.
 // DebugDrawOBB(COBBox const&, float, float, float, float)
-extern "C" void reachstub_r5() asm("_Z12DebugDrawOBBRK6COBBoxffff");
-extern "C" void reachstub_r5() {}
+// (removed: retail's body at DOL 0x80083FD8 is a bare `blr`, and the real definition now lives in
+// src/Kyoto/Graphics/PortDrawDebug.cpp.)
 
