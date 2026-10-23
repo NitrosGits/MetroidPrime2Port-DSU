@@ -77,7 +77,7 @@ bool sGyroCursorCamera = false;
 bool sRapidCharge = false;
 bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
-// Saves, `cardbackup`).
+// System > Memory card, `cardbackup`).
 bool sCardBackup = false;
 // First-person field of view in degrees, or 0 for the game's own 55 (CCameraManager::sFirstPersonFOV).
 float sFirstPersonFov = 0.f;
