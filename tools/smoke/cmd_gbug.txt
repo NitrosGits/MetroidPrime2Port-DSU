@@ -16,15 +16,18 @@
 # the pickup generator 000500c4, on DeathRattle send SetToZero to the generator 00050118 and the
 # relay 0005011a), the Create/Activate sends answering `sent Create to u0420 000500f0`, each `place`
 # with its new position (71.58 -42.25 -20.14 for 6 units), the beam shot `shot u0629 at u044f from
-# 3.0 units` and the missile `missile at u044f: 1 in flight, 59 left` (hp 0/30, fsm Dead by f1450,
+# 3.0 units` (hp 30 -> 28 at f1360) and the missile (hp -2/30, fsm Dead by f1450,
 # and gone from the f2200 list: its DeathDelete removes it, which is why the late checks are `obj`
 # reads and the count, never an `obj e000500f8` - con.py reports "no object with editor id" as a
 # step error), the scans `scan u0460 (orbit point 82.3, -42.0, -19.3, visor flags f, download 1.5 s)
-# ... orbit locked`, and `objs Glowbug` counting 2 objects at f2200 and 0 at f2500 once e000500f9 is
-# Deleted. Every step answers `=> ok`. Measured caveat: the two missiles at e000500f0 fire (`1 in
-# flight, 58 left` then `2 in flight, 57 left`) but the bug still reads hp 30/30 fsm Patrol at f2150
-# and is still listed at f2200 - 3 units from the player they do not reach it, so this family never
-# sees the second Glowbug die. The log's `init compiled module Glowbug` line lists the whole
+# ... orbit locked`. `scan` at f1899 reads game state 1 (soft-paused); after `visor combat`, f2001
+# reads combat/state 0. The 0.5/3/6-unit beam shots at e000500f0 and the two missiles then run before
+# its hp/Dead check at f2070 (before DeathDelete). The 6-unit shot comes from inside the room: the
+# default line at that distance starts behind the door and correctly hits the door instead.
+# `objs Glowbug` counts one at f2200 and zero at f2500 after e000500f9's Delete. This catches the
+# former helper bugs: beams aimed from the player's feet hit the floor, and `visor combat` left
+# a completed scan soft-paused, freezing missiles until the scan target was deleted.
+# The log's `init compiled module Glowbug` line lists the whole
 # compiled-module table, so it says the module is registered, not that it ran.
 # Checks are game updates (@f<n>), never wall seconds. The family runs fast like the rest, measured:
 # unpaced, its 2600 updates run from 0.1 s to 0.6-0.8 s and con.py connects at 0.5 s, the margin
@@ -42,6 +45,7 @@
 @f1050 place e000500f8 player 3
 @f1300 obj e000500f8
 @f1350 shoot e000500f8
+@f1360 obj e000500f8
 @f1400 shoot e000500f8 missile
 @f1450 obj e000500f8
 @f1500 place e000500f9 player 20
@@ -53,10 +57,18 @@
 @f1810 scan e000500f9 20 150
 @f1840 scan e000500f9 20 150
 @f1870 scan e000500f9
+@f1899 scan
 @f1900 visor combat
 @f2000 obj e000500f9
+@f2001 scan
+@f2010 shoot e000500f0 0.5
+@f2020 obj e000500f0
+@f2025 shoot e000500f0 3
+@f2030 obj e000500f0
+@f2035 shoot e000500f0 6 dir -1 0 -0.2
+@f2045 obj e000500f0
 @f2050 shoot e000500f0 missile; shoot e000500f0 missile
-@f2150 obj e000500f0
+@f2070 obj e000500f0
 @f2200 objs Glowbug
 @f2300 send e000500f9 Deactivate
 @f2400 send e000500f9 Delete

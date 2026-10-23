@@ -2344,7 +2344,7 @@ void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
 }
 
 // shoot <id> [charged] [missile] [dist] [dir x y z]: fire the player's current beam from dist units
-// (default 3) away, travelling along dir (default: from the player), straight at an actor's aim
+// (default 3) away, travelling along dir (default: from the player's eye), straight at an actor's aim
 // position (a joint collision actor's own position), homing on it. The shot is a real
 // CEnergyProjectile with the beam's damage, so a module that only counts projectile hits (a
 // weak-spot joint's last toucher) sees it, unlike `damage`. `missile` fires a real player missile
@@ -2369,7 +2369,9 @@ void CmdShoot(CStateManager& mgr, const Args& args, std::string& out) {
   float dist = 3.f;
   bool missile = false;
   const CVector3f target = actor->GetAimPosition(mgr, 0.f);
-  CVector3f dir = target - player->GetTranslation();
+  // GetTranslation is the player's feet: a low target then sends the shot through the floor
+  // (Glowbug in 0i_temple_hall). GetAimPosition includes the eye/ball height, as player aim does.
+  CVector3f dir = target - player->GetAimPosition(mgr, 0.f);
   for (size_t i = 2; i < args.size(); ++i) {
     float x = 0.f, y = 0.f, z = 0.f;
     if (args[i] == "charged") {
@@ -3192,9 +3194,17 @@ void CmdVisor(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("visor '" + Str(args[1]) + "' not owned");
     return;
   }
+  // A completed scan soft-pauses Think, including the visor transition itself. The command
+  // bypasses UpdateVisorState's "not scanning" gate, so end the scan before requesting a switch.
+  // Release the console's held L too, or it can immediately start the same scan again.
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player != nullptr && visor != CPlayerState::kPV_Scan &&
+      state->GetCurrentVisor() == CPlayerState::kPV_Scan) {
+    PortInput::Hold(0, 0, 0, 0, 0, 0);
+    player->SetScanningState(CPlayer::kSS_NotScanning, mgr);
+  }
   state->StartTransitionToVisor(visor);
   // What CPlayer::UpdateVisorState does after a switch: the scan visor holsters the gun.
-  CPlayer* player = mgr.GetPlayer(0);
   CPlayerGun* gun = player != nullptr ? player->GetPlayerGun() : nullptr;
   if (gun != nullptr) {
     if (visor == CPlayerState::kPV_Scan) {
