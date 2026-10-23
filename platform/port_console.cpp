@@ -568,6 +568,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive] [prop <pid> <v>]  create script objects via their loader\n"
       "                            [rules <id>] knockback RULE (patterned default 393ca543; ffffffff = none)\n"
+      "                            [conn <state> <msg> <id>] add a script connection (names as obj prints them)\n"
       "                            [wpsc <id>] projectile WPSC (CHOG's two; else prop ef485db9; CHOG default 681f3907)\n"
       "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
       "                           list, the way the collision code does (no real collision needed)\n"
@@ -2402,7 +2403,8 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
 // (a value with a '.' is a float, else an integer, hex with 0x). Asset ids are checked against the
 // resource factory first, so a missing asset is a refusal, not a CStaticRes on nothing. Each object
 // `fsm <id>` sets PatternedAITypedef.stateMachine (an AFSM/FSM2 asset), `rules <id>` its
-// knockbackRules (default 393ca543), `wpsc <id>` the type's projectile WPSC; `inactive` spawns it
+// knockbackRules (default 393ca543), `wpsc <id>` the type's projectile WPSC, `conn <state> <msg>
+// <id>` adds a script connection (CEntityInfo's list, as SCLY gives it); `inactive` spawns it
 // inactive (a COIN only rolls its lifetime and impulse on the Activate that wakes it, so spawn it
 // inactive and `send e<id> activate`). Each object
 // gets a free editor id 0xFF00+ in layer 0 of the player's area (`e<id>` works) and, like
@@ -2434,7 +2436,7 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
   CPlayer* player = mgr.GetPlayer(0);
   if (args.size() < 2 || args[1].size() != 4 || player == nullptr) {
     Fail("usage: spawn <fourcc> [count] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] "
-         "[rules <id>] [wpsc <id>] [model <id>|u<id>] [inactive] [prop <propid> <value>]... "
+         "[rules <id>] [wpsc <id>] [conn <state> <msg> <id>] [model <id>|u<id>] [inactive] [prop <propid> <value>]... "
          "(needs a player)");
     return;
   }
@@ -2477,6 +2479,7 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
   uint wpsc = 0;
   bool haveWpsc = false;
   std::vector< std::pair< uint, uint > > props;
+  rstl::vector< SConnection > connections;
   size_t i = 2;
   if (i < args.size() && std::isdigit(static_cast< unsigned char >(args[i][0]))) {
     uint n = 0;
@@ -2531,6 +2534,31 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
       }
       haveModel = true;
       ++i;
+    } else if (args[i] == "conn" && i + 3 < args.size()) {
+      // conn <state> <msg> <target>: a script connection on the spawned object, the way an area's
+      // SCLY lists them (CEntity::mConnections, editor ids). The target is u<id> (that object's
+      // editor id), e<hex> or a bare hex editor id (it need not be loaded yet).
+      const int state = EnumValue(kStateNames, kStateCount, args[i + 1]);
+      const int msg = EnumValue(kMessageNames, kMessageCount, args[i + 2]);
+      uint target = 0;
+      if (args[i + 3][0] == 'u') {
+        const CEntity* ent = ResolveObject(mgr, args[i + 3]);
+        if (ent == nullptr) {
+          return;
+        }
+        target = ent->GetEditorId().Value();
+      } else if (!parseHexId(args[i + 3][0] == 'e' ? args[i + 3].substr(1) : args[i + 3], target)) {
+        target = kInvalidEditorId.Value();
+      }
+      if (state < 0 || msg < 0 || target == kInvalidEditorId.Value()) {
+        Fail("spawn: conn <state> <msg> <target>: bad " +
+             Str(state < 0 ? args[i + 1] : msg < 0 ? args[i + 2] : args[i + 3]));
+        return;
+      }
+      connections.push_back(SConnection(static_cast< EScriptObjectState >(state),
+                                        static_cast< EScriptObjectMessage >(msg),
+                                        TEditorId(target)));
+      i += 3;
     } else if (args[i] == "inactive") {
       startActive = false;
     } else if (args[i] == "fsm" && i + 1 < args.size() && parseHexId(args[i + 1], fsm)) {
@@ -2738,7 +2766,7 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
       blob.EndProp(prop);
     }
     CMemoryInStream in(blob.bytes.data(), blob.bytes.size());
-    CEntityInfo info(area, CEntity::NullConnectionList, startActive, editorId);
+    CEntityInfo info(area, connections, startActive, editorId);
     CEntity* entity = loader(mgr, in, info);
     char line[160];
     if (entity == nullptr) {
