@@ -29,13 +29,16 @@ static const rstl::string skParts[] = {
 // Guessed name. Selects the AI waypoints that pin particles of the ragdoll.
 class CAIWaypointPredicate : public CValidEntityPredicate {
 public:
+  // @ fn_50_2500
   ~CAIWaypointPredicate() override {}
 
+  // @ fn_50_298C
   bool IsValid(const CStateManager& mgr, TUniqueId id) const override {
     return TCastToConstPtr< CScriptAIWaypoint >(mgr.GetObjectById(id)) != nullptr;
   }
 };
 
+// @ fn_50_1938
 CPirateRagDoll::CPirateRagDoll(CStateManager& mgr, CPatterned* actor, ushort thudSfx, uint flags,
                                float gravity, float floatingGravity,
                                const rstl::reserved_vector< float, 14 >& radii)
@@ -151,6 +154,7 @@ CPirateRagDoll::CPirateRagDoll(CStateManager& mgr, CPatterned* actor, ushort thu
   SatisfyWorldConstraintsOnConstruction(mgr);
 }
 
+// @ fn_50_1874
 void CPirateRagDoll::Prime(CStateManager& mgr, const CTransform4f& xf, CModelData& modelData) {
   const CAABox& bounds = mActor->GetBaseBoundingBox();
   CVector3f max = bounds.GetMaxPoint();
@@ -161,6 +165,7 @@ void CPirateRagDoll::Prime(CStateManager& mgr, const CTransform4f& xf, CModelDat
   CRagDoll::Prime(mgr, xf, modelData);
 }
 
+// @ fn_50_1610
 void CPirateRagDoll::CheckStatic(float dt) {
   mImpactCount = 0;
   mImpactVel = 0.f;
@@ -186,7 +191,13 @@ void CPirateRagDoll::CheckStatic(float dt) {
     }
     if (mParticles[i].IsImpactPending()) {
       ++mImpactCount;
+#ifdef TARGET_PC
+      // fn_50_1610 0x1754 fcmpo f2(frame velocity), f0(mImpactVel); 0x1758 bge -> the frame
+      // velocity: retail is max_val(frame, mImpactVel), which keeps the frame velocity on a NaN.
+      mImpactVel = rstl::max_val(mParticles[i].GetImpactFrameVelocity(), mImpactVel);
+#else
       mImpactVel = rstl::max_val(mImpactVel, mParticles[i].GetImpactFrameVelocity());
+#endif
     }
     mParticles[i].ClearImpactFrameVelocity();
   }
@@ -206,6 +217,7 @@ void CPirateRagDoll::CheckStatic(float dt) {
   mPrevMovingSlowly = movingSlowly;
 }
 
+// @ fn_50_E10
 void CPirateRagDoll::Update(CStateManager& mgr, float dt, float waterTop) {
   if (!IsOver() || WillContinueSmallMovements()) {
     if (mActorAttached) {
@@ -228,9 +240,17 @@ void CPirateRagDoll::Update(CStateManager& mgr, float dt, float waterTop) {
 
     CVector3f oldCenter = mParticles[8].GetPosition() * 0.25f +
                           mParticles[11].GetPosition() * 0.25f + mParticles[0].GetPosition() * 0.5f;
+#ifdef TARGET_PC
+    // fn_50_E10 0x1090 fcmpo f3(particle 8 bottom), f2(particle 11 bottom); 0x1094 bge -> particle
+    // 11: retail is min_val(p11, p8), which keeps particle 11 on a NaN.
+    oldCenter[kDZ] =
+        rstl::min_val(mParticles[11].GetPosition().GetZ() - mParticles[11].GetRadius(),
+                      mParticles[8].GetPosition().GetZ() - mParticles[8].GetRadius());
+#else
     oldCenter[kDZ] =
         rstl::min_val(mParticles[8].GetPosition().GetZ() - mParticles[8].GetRadius(),
                       mParticles[11].GetPosition().GetZ() - mParticles[11].GetRadius());
+#endif
     oldCenter[kDZ] = rstl::min_val(oldCenter[kDZ],
                                    mParticles[0].GetPosition().GetZ() - mParticles[0].GetRadius());
     if (oldCenter.GetZ() < 0.5f + waterTop) {
@@ -247,9 +267,18 @@ void CPirateRagDoll::Update(CStateManager& mgr, float dt, float waterTop) {
       if (waterTop != mPrevWaterTop) {
         needsUpdate = true;
       }
+#ifdef TARGET_PC
+      // fn_50_E10 0x121C-0x1240: fcmpu of f2/f1/f0 - the acceleration computed at 0x113C-0x1150,
+      // still live - against sZeroVector; mTorsoImpulse was zeroed at 0x11C4-0x11D8 before the
+      // test. So an impulse on a settled ragdoll wakes it.
+      if (!needsUpdate && !(acceleration == CVector3f::Zero())) {
+        needsUpdate = true;
+      }
+#else
       if (!needsUpdate && !(mTorsoImpulse == CVector3f::Zero())) {
         needsUpdate = true;
       }
+#endif
       if (!needsUpdate) {
         for (int i = 0; i < mWaypointIds.size(); ++i) {
           const CActor* waypoint = static_cast< const CActor* >(mgr.GetObjectById(mWaypointIds[i]));
@@ -287,9 +316,17 @@ void CPirateRagDoll::Update(CStateManager& mgr, float dt, float waterTop) {
 
     CVector3f newCenter = mParticles[8].GetPosition() * 0.25f +
                           mParticles[11].GetPosition() * 0.25f + mParticles[0].GetPosition() * 0.5f;
+#ifdef TARGET_PC
+    // fn_50_E10 0x14C4 fcmpo f0(particle 8 bottom), f1(particle 11 bottom); 0x14C8 bge -> particle
+    // 11: min_val(p11, p8) as for oldCenter.
+    newCenter[kDZ] =
+        rstl::min_val(mParticles[11].GetPosition().GetZ() - mParticles[11].GetRadius(),
+                      mParticles[8].GetPosition().GetZ() - mParticles[8].GetRadius());
+#else
     newCenter[kDZ] =
         rstl::min_val(mParticles[8].GetPosition().GetZ() - mParticles[8].GetRadius(),
                       mParticles[11].GetPosition().GetZ() - mParticles[11].GetRadius());
+#endif
     newCenter[kDZ] = rstl::min_val(newCenter[kDZ],
                                    mParticles[0].GetPosition().GetZ() - mParticles[0].GetRadius());
     const CVector3f velocity = (1.f / dt) * (newCenter - oldCenter);
@@ -309,6 +346,7 @@ void CPirateRagDoll::Update(CStateManager& mgr, float dt, float waterTop) {
   mPrevWaterTop = waterTop;
 }
 
+// @ fn_50_4F8
 void CPirateRagDoll::PreRender(const CVector3f& pos, CModelData& modelData) {
   if (!IsOver() || WillContinueSmallMovements()) {
     CAnimData* animData = modelData.AnimationData();
@@ -363,11 +401,18 @@ void CPirateRagDoll::PreRender(const CVector3f& pos, CModelData& modelData) {
   }
 }
 
+// @ fn_50_3B4
 void CPirateRagDoll::UpdateImpactSfx(CStateManager& mgr) {
   if (mImpactVel > mMinImpactVelocity && mSfxTimer < 0.f) {
     const CVector3f delta = mActor->GetTranslation() - mLastSfxPos;
     if (mInitSfx || delta.MagSquared() > 0.1f) {
+#ifdef TARGET_PC
+      // fn_50_3B4 0x45C fcmpo f0(scale * velocity), f1(mMaxImpactVolume); 0x460 bge -> the max:
+      // retail is min_val(max, scaled), which takes the max on a NaN.
+      float volume = rstl::min_val(mMaxImpactVolume, mImpactVolumeScale * mImpactVel);
+#else
       float volume = rstl::min_val(mImpactVolumeScale * mImpactVel, mMaxImpactVolume);
+#endif
       CSfxManager::AddEmitter(mThudSfx, mActor->GetTranslation(), CCast::ToUint8(volume),
                               mActor->GetCurrentAreaId().Value(), true, false,
                               CSfxManager::kMedPriority);
@@ -378,6 +423,7 @@ void CPirateRagDoll::UpdateImpactSfx(CStateManager& mgr) {
   }
 }
 
+// @ fn_50_10C
 void CPirateRagDoll::AlignShoulderPad(CJointData_LinearStorage& pose, int shoulder, int elbow,
                                       const CSegId& padId, const CVector3f& axis, float side) {
   if (padId == CSegId::Invalid()) {

@@ -1,0 +1,42 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_50_0	36	T	RELExit	-	REL runtime	no
+00024	fn_50_24	32	T	RELMain	-	REL runtime	no
+00044	fn_50_44	48	B	SetFuncPtrs__Fv	-	registers factory	no
+00074	fn_50_74	152	B	CreatePirateRagDoll__FR13CStateManagerP10CPatternedUsUiffRCQ24rstl21reserved_vector<f,14>	-	factory (host callers use rs_new)	no
+0010C	fn_50_10C	680	B	AlignShoulderPad__14CPirateRagDollFR24CJointData_LinearStorageiiRC6CSegIdRC9CVector3ff	prd1	shoulder-pad pose fix-up	yes
+003B4	fn_50_3B4	324	B	UpdateImpactSfx__14CPirateRagDollFR13CStateManager	prd1	impact sfx (fix: min form 0x45C)	yes
+004F8	fn_50_4F8	1844	B	PreRender__14CPirateRagDollFRC9CVector3fR10CModelData	prd1	pose from particles	yes
+00C2C	fn_50_C2C	48	H	BuildInverted__11CQuaternionCFv	-	weak copy/template	no
+00C5C	fn_50_C5C	240	H	GetFromParentUnrotated__15CCharLayoutInfoCFRC6CSegId	-	weak copy/template	no
+00D4C	fn_50_D4C	52	H	ContainsDataFor__28TSegIdMap<15CCharLayoutNode>CFRC6CSegId	-	weak copy/template	no
+00D80	fn_50_D80	64	H	Cross__9CVector3fFRC9CVector3fRC9CVector3f	-	weak copy/template	no
+00DC0	fn_50_DC0	80	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy/template	no
+00E10	fn_50_E10	2048	B	Update__14CPirateRagDollFR13CStateManagerff	prd1	ragdoll step (fixes: z min 0x1090/0x14C4, impulse wake 0x121C)	yes
+01610	fn_50_1610	612	B	CheckStatic__14CPirateRagDollFf	prd1	static detection (fix: max form 0x1754)	yes
+01874	fn_50_1874	196	B	Prime__14CPirateRagDollFR13CStateManagerRC12CTransform4fR10CModelData	prd1	initial pose	yes
+01938	fn_50_1938	2676	B	__ct__14CPirateRagDollFR13CStateManagerP10CPatternedUsUiffRCQ24rstl21reserved_vector<f,14>	prd1	ctor: particles, constraints, waypoint pins	yes
+023AC	fn_50_23AC	256	H	__ct__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>FRCQ24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>	-	weak copy/template	no
+024AC	fn_50_24AC	84	H	__dt__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fv	-	weak copy/template	no
+02500	fn_50_2500	96	B	__dt__20CAIWaypointPredicateFv	prd1	predicate dtor (delete arm dead: stack object)	yes
+02560	fn_50_2560	60	H	__dt__Q24rstl20reserved_vector<b,6>Fv	-	weak copy/template	no
+0259C	fn_50_259C	140	H	__dt__Q24rstl20reserved_vector<l,6>Fv	-	weak copy/template	no
+02628	fn_50_2628	60	H	__dt__Q24rstl29reserved_vector<9TUniqueId,6>Fv	-	weak copy/template	no
+02664	fn_50_2664	148	H	__dt__8CRagDollFv	-	weak copy/template	no
+026F8	fn_50_26F8	132	H	__dt__Q24rstl72vector<Q28CRagDoll24CRagDollLengthConstraint,Q24rstl17rmemory_allocator>Fv	-	weak copy/template	no
+0277C	fn_50_277C	132	H	__dt__Q24rstl71vector<Q28CRagDoll23CRagDollJointConstraint,Q24rstl17rmemory_allocator>Fv	-	weak copy/template	no
+02800	fn_50_2800	132	H	__dt__Q24rstl71vector<Q28CRagDoll23CRagDollPlaneConstraint,Q24rstl17rmemory_allocator>Fv	-	weak copy/template	no
+02884	fn_50_2884	132	H	__dt__Q24rstl70vector<Q28CRagDoll22CRagDollKneeConstraint,Q24rstl17rmemory_allocator>Fv	-	weak copy/template	no
+02908	fn_50_2908	132	H	__dt__Q24rstl64vector<Q28CRagDoll16CRagDollParticle,Q24rstl17rmemory_allocator>Fv	-	weak copy/template	no
+0298C	fn_50_298C	64	B	IsValid__20CAIWaypointPredicateCFRC13CStateManager9TUniqueId	prd1	AIWP filter	yes
+029CC	fn_50_29CC	184	H	reserve__Q24rstl72vector<Q28CRagDoll24CRagDollLengthConstraint,Q24rstl17rmemory_allocator>Fi	-	weak copy/template	no
+02A84	fn_50_2A84	76	H	uninitialized_copy<Q24rstl164pointer_iterator<Q28CRagDoll24CRagDollLengthConstraint,Q24rstl72vector<Q28CRagDoll24CRagDollLengthConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,PQ28CRagDoll24CRagDollLengthConstraint>__4rstlFQ24rstl164pointer_iterator<Q28CRagDoll24CRagDollLengthConstraint,Q24rstl72vector<Q28CRagDoll24CRagDollLengthConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl164pointer_iterator<Q28CRagDoll24CRagDollLengthConstraint,Q24rstl72vector<Q28CRagDoll24CRagDollLengthConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>PQ28CRagDoll24CRagDollLengthConstraint	-	weak copy/template	no
+02AD0	fn_50_2AD0	184	H	reserve__Q24rstl71vector<Q28CRagDoll23CRagDollJointConstraint,Q24rstl17rmemory_allocator>Fi	-	weak copy/template	no
+02B88	fn_50_2B88	92	H	uninitialized_copy<Q24rstl162pointer_iterator<Q28CRagDoll23CRagDollJointConstraint,Q24rstl71vector<Q28CRagDoll23CRagDollJointConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,PQ28CRagDoll23CRagDollJointConstraint>__4rstlFQ24rstl162pointer_iterator<Q28CRagDoll23CRagDollJointConstraint,Q24rstl71vector<Q28CRagDoll23CRagDollJointConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl162pointer_iterator<Q28CRagDoll23CRagDollJointConstraint,Q24rstl71vector<Q28CRagDoll23CRagDollJointConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>PQ28CRagDoll23CRagDollJointConstraint	-	weak copy/template	no
+02BE4	fn_50_2BE4	184	H	reserve__Q24rstl70vector<Q28CRagDoll22CRagDollKneeConstraint,Q24rstl17rmemory_allocator>Fi	-	weak copy/template	no
+02C9C	fn_50_2C9C	84	H	uninitialized_copy<Q24rstl160pointer_iterator<Q28CRagDoll22CRagDollKneeConstraint,Q24rstl70vector<Q28CRagDoll22CRagDollKneeConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,PQ28CRagDoll22CRagDollKneeConstraint>__4rstlFQ24rstl160pointer_iterator<Q28CRagDoll22CRagDollKneeConstraint,Q24rstl70vector<Q28CRagDoll22CRagDollKneeConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl160pointer_iterator<Q28CRagDoll22CRagDollKneeConstraint,Q24rstl70vector<Q28CRagDoll22CRagDollKneeConstraint,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>PQ28CRagDoll22CRagDollKneeConstraint	-	weak copy/template	no
+02CF0	fn_50_2CF0	184	H	reserve__Q24rstl64vector<Q28CRagDoll16CRagDollParticle,Q24rstl17rmemory_allocator>Fi	-	weak copy/template	no
+02DA8	fn_50_2DA8	104	H	uninitialized_copy<Q24rstl148pointer_iterator<Q28CRagDoll16CRagDollParticle,Q24rstl64vector<Q28CRagDoll16CRagDollParticle,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,PQ28CRagDoll16CRagDollParticle>__4rstlFQ24rstl148pointer_iterator<Q28CRagDoll16CRagDollParticle,Q24rstl64vector<Q28CRagDoll16CRagDollParticle,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl148pointer_iterator<Q28CRagDoll16CRagDollParticle,Q24rstl64vector<Q28CRagDoll16CRagDollParticle,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>PQ28CRagDoll16CRagDollParticle	-	weak copy/template	no
+02E10	fn_50_2E10	32	H	construct<Q28CRagDoll16CRagDollParticle>__4rstlFPvRCQ28CRagDoll16CRagDollParticle	-	weak copy/template	no
+02E30	fn_50_2E30	40	H	construct__Q24rstl52construction_policy<Q28CRagDoll16CRagDollParticle,0>FPvRCQ28CRagDoll16CRagDollParticle	-	weak copy/template	no
+02E58	fn_50_2E58	140	H	__ct__Q28CRagDoll16CRagDollParticleFRCQ28CRagDoll16CRagDollParticle	-	weak copy/template	no
+02EE4	fn_50_2EE4	976	B	__sinit_CPirateRagDoll_cpp	-	skParts strings	no
