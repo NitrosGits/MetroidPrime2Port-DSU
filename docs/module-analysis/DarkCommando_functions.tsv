@@ -55,55 +55,55 @@ offset	fn	size	class	name	slice	what	marker
 01F34	fn_3_1F34	6C	B	CDarkCommando::ReserveHint	dc2	upstream body (CDarkCommando)	yes
 01FA0	fn_3_1FA0	70	B	CDarkCommando::ReleaseHint	dc1	upstream body (CDarkCommando)	yes
 02010	fn_3_2010	48	B	CDarkCommando::GetHint	dc1	upstream body (CDarkCommando)	yes
-02058	fn_3_2058	2B4	B	CDarkCommando::SolveGrenadeLaunch	-	upstream body (CDarkCommando)	no
-0230C	fn_3_230C	154	B	CDarkCommando::GetGrenadeTargetPosition	-	upstream body (CDarkCommando)	no
-02460	fn_3_2460	360	B	CDarkCommando::LaunchGrenade	-	upstream body (CDarkCommando)	no
+02058	fn_3_2058	2B4	B	CDarkCommando::SolveGrenadeLaunch	dc3	asm audit (see note)	yes
+0230C	fn_3_230C	154	B	CDarkCommando::GetGrenadeTargetPosition	dc3	asm audit (see note)	yes
+02460	fn_3_2460	360	B	CDarkCommando::LaunchGrenade	dc3	asm audit (see note)	yes
 027C0	fn_3_27C0	20	H	CModelData::CModelDataNull	-	weak copy / template instance	no
 027E0	fn_3_27E0	50	H	__dt__Q24rstl66basic_string<c	-	weak copy / template instance	no
 02830	fn_3_2830	58	H	CEntityInfo::~CEntityInfo	-	weak copy / template instance	no
 02888	fn_3_2888	54	H	__dt__Q24rstl48vector<11SConnection	-	weak copy / template instance	no
-028DC	fn_3_28DC	448	B	CDarkCommando::FireChargeBeamShot	-	upstream body (CDarkCommando)	no
+028DC	fn_3_28DC	448	B	CDarkCommando::FireChargeBeamShot	dc3	asm audit (see note)	yes
 02D24	fn_3_2D24	1DC	B	CDarkCommando::UpdateAdditiveAim	dc2	upstream body (CDarkCommando)	yes
 02F00	fn_3_2F00	5C	H	CBCAdditiveAimCmd::~CBCAdditiveAimCmd	-	weak copy / template instance	no
 02F5C	fn_3_2F5C	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
 02FA4	fn_3_2FA4	B0	B	CDarkCommando::InChargeBeamRange	dc2	upstream body (CDarkCommando)	yes
 03054	fn_3_3054	B0	B	CDarkCommando::InEMPRange	dc2	upstream body (CDarkCommando)	yes
-03104	fn_3_3104	3B4	B	BuildActionChoices__13CDarkCommandoFR13CStateManagerRQ24rstl36reserved_vector<Q24rstl9pair<i	-	upstream body (CDarkCommando)	no
-034B8	fn_3_34B8	1D8	B	CDarkCommando::SelectMeleeVariant	-	upstream body (CDarkCommando)	no
+03104	fn_3_3104	3B4	B	BuildActionChoices__13CDarkCommandoFR13CStateManagerRQ24rstl36reserved_vector<Q24rstl9pair<i	dc3	asm audit (see note)	yes
+034B8	fn_3_34B8	1D8	B	CDarkCommando::SelectMeleeVariant	dc3	asm audit (see note)	yes
 03690	fn_3_3690	31C	B	CDarkCommando::ApplyMeleeDamage	dc2	upstream body (CDarkCommando)	yes
-039AC	fn_3_39AC	160	B	CDarkCommando::UpdateCloak	-	upstream body (CDarkCommando)	no
+039AC	fn_3_39AC	160	B	CDarkCommando::UpdateCloak	dc3	asm audit (see note)	yes
 03B0C	fn_3_3B0C	8C	B	CDarkCommando::SetCloakTarget	dc1	upstream body (CDarkCommando)	yes
-03B98	fn_3_3B98	AC	B	CDarkCommando::DeactivateCloak	-	upstream body (CDarkCommando)	no
-03C44	fn_3_3C44	304	B	CDarkCommando::ActivateCloak	-	upstream body (CDarkCommando)	no
-03F48	fn_3_3F48	DC	B	CDarkCommando::SetTargetFaceVect	-	upstream body (CDarkCommando)	no
-04024	fn_3_4024	AC	B	CDarkCommando::SetDashFaceVect	-	upstream body (CDarkCommando)	no
-040D0	fn_3_40D0	1B4	B	CDarkCommando::SelectAction	-	upstream body (CDarkCommando)	no
+03B98	fn_3_3B98	AC	B	CDarkCommando::DeactivateCloak	dc3	asm audit (see note)	yes
+03C44	fn_3_3C44	304	B	CDarkCommando::ActivateCloak	dc3	whole-body cloak guard fixed and forced	yes
+03F48	fn_3_3F48	DC	B	CDarkCommando::SetTargetFaceVect	dc3	asm audit (see note)	yes
+04024	fn_3_4024	AC	B	CDarkCommando::SetDashFaceVect	dc3	asm audit (see note)	yes
+040D0	fn_3_40D0	1B4	B	CDarkCommando::SelectAction	dc3	asm audit (see note)	yes
 04284	fn_3_4284	8C	H	__dt__Q24rstl36reserved_vector<Q24rstl9pair<i	-	weak copy / template instance	no
-04310	fn_3_4310	344	B	CDarkCommando::SelectDashTarget	-	upstream body (CDarkCommando)	no
+04310	fn_3_4310	344	B	CDarkCommando::SelectDashTarget	dc3	asm audit (see note)	yes
 04654	fn_3_4654	3C	H	__dt__Q24rstl31reserved_vector<9TUniqueId	-	weak copy / template instance	no
 04690	fn_3_4690	54	B	CDarkCommando::SelectAttackTarget	dc1	upstream body (CDarkCommando)	yes
-046E4	fn_3_46E4	10C	B	CDarkCommando::GetUp	-	upstream body (CDarkCommando)	no
+046E4	fn_3_46E4	10C	B	CDarkCommando::GetUp	dc3	asm audit (see note)	yes
 047F0	fn_3_47F0	5C	H	CBCGetupCmd::~CBCGetupCmd	-	weak copy / template instance	no
 0484C	fn_3_484C	138	B	CDarkCommando::FaceTarget	dc2	upstream body (CDarkCommando)	yes
-04984	fn_3_4984	4F8	B	CDarkCommando::ShadowDash	-	upstream body (CDarkCommando)	no
+04984	fn_3_4984	4F8	B	CDarkCommando::ShadowDash	dc3	asm audit (see note)	yes
 04E7C	fn_3_4E7C	5C	H	CBCLoopAttackCmd::~CBCLoopAttackCmd	-	weak copy / template instance	no
-04ED8	fn_3_4ED8	19C	B	CDarkCommando::PostFireChargeBeam	-	upstream body (CDarkCommando)	no
-05074	fn_3_5074	208	B	CDarkCommando::FireChargeBeam	-	upstream body (CDarkCommando)	no
+04ED8	fn_3_4ED8	19C	B	CDarkCommando::PostFireChargeBeam	dc3	asm audit (see note)	yes
+05074	fn_3_5074	208	B	CDarkCommando::FireChargeBeam	dc3	asm audit (see note)	yes
 0527C	fn_3_527C	5C	H	CBCProjectileAttackCmd::~CBCProjectileAttackCmd	-	weak copy / template instance	no
-052D8	fn_3_52D8	33C	B	CDarkCommando::FireEMP	-	upstream body (CDarkCommando)	no
-05614	fn_3_5614	268	B	CDarkCommando::MeleeAttack	-	upstream body (CDarkCommando)	no
+052D8	fn_3_52D8	33C	B	CDarkCommando::FireEMP	dc3	asm audit (see note)	yes
+05614	fn_3_5614	268	B	CDarkCommando::MeleeAttack	dc3	asm audit (see note)	yes
 0587C	fn_3_587C	5C	H	CBCMeleeAttackCmd::~CBCMeleeAttackCmd	-	weak copy / template instance	no
 058D8	fn_3_58D8	F8	B	CDarkCommando::Taunt	dc2	upstream body (CDarkCommando)	yes
 059D0	fn_3_59D0	5C	H	CBCTauntCmd::~CBCTauntCmd	-	weak copy / template instance	no
 05A2C	fn_3_5A2C	140	B	CDarkCommando::Lurk	dc2	upstream body (CDarkCommando)	yes
-05B6C	fn_3_5B6C	1E0	B	CDarkCommando::WarpOut	-	upstream body (CDarkCommando)	no
+05B6C	fn_3_5B6C	1E0	B	CDarkCommando::WarpOut	dc3	asm audit (see note)	yes
 05D4C	fn_3_5D4C	5C	H	CBCGenerateCmd::~CBCGenerateCmd	-	weak copy / template instance	no
 05DA8	fn_3_5DA8	1B4	B	CDarkCommando::WarpIn	dc2	upstream body (CDarkCommando)	yes
-05F5C	fn_3_5F5C	D0	B	CDarkCommando::Dead	-	upstream body (CDarkCommando)	no
+05F5C	fn_3_5F5C	D0	B	CDarkCommando::Dead	dc3	asm audit (see note)	yes
 0602C	fn_3_602C	4	B	CDarkCommando::Start	dc1	upstream body (CDarkCommando)	yes
 06030	fn_3_6030	34	B	CDarkCommando::ShouldGetUp	dc2	upstream body (CDarkCommando)	yes
 06064	fn_3_6064	C	B	CDarkCommando::ShouldWarpOut	dc1	upstream body (CDarkCommando)	yes
-06070	fn_3_6070	104	B	CDarkCommando::ShouldMeleeAttack	-	upstream body (CDarkCommando)	no
+06070	fn_3_6070	104	B	CDarkCommando::ShouldMeleeAttack	dc3	asm audit (see note)	yes
 06174	fn_3_6174	14	B	CDarkCommando::ShouldFireChargeBeam	dc1	upstream body (CDarkCommando)	yes
 06188	fn_3_6188	14	B	CDarkCommando::ShouldFireEMP	dc1	upstream body (CDarkCommando)	yes
 0619C	fn_3_619C	14	B	CDarkCommando::ShouldTaunt	dc1	upstream body (CDarkCommando)	yes
@@ -149,12 +149,12 @@ offset	fn	size	class	name	slice	what	marker
 08124	fn_3_8124	70	H	fn_3_8124	-	unnamed static (weak copy / template instance)	no
 08194	fn_3_8194	58	H	fn_3_8194	-	unnamed static (weak copy / template instance)	no
 081EC	fn_3_81EC	54	H	fn_3_81EC	-	unnamed static (weak copy / template instance)	no
-08240	fn_3_8240	21C	B	CDarkCommandoChargeBeam::ResolveCollisionWithActor	-	upstream body (CDarkCommando)	no
+08240	fn_3_8240	21C	B	CDarkCommandoChargeBeam::ResolveCollisionWithActor	dc3	asm audit (see note)	yes
 0845C	fn_3_845C	68	H	rstl::optional_object<TToken<CGenDescription>>::~optional_object	-	weak copy / template instance	no
 084C4	fn_3_84C4	68	H	rstl::optional_object<TToken<CElectricDescription>>::~optional_object	-	weak copy / template instance	no
 0852C	fn_3_852C	6C	B	CDarkCommandoChargeBeam::AcceptScriptMsg	dc1	upstream body (CDarkCommando)	yes
-08598	fn_3_8598	20C	B	CDarkCommandoChargeBeam::Think	-	upstream body (CDarkCommando)	no
-087A4	fn_3_87A4	1CC	B	CDarkCommandoChargeBeam::CDarkCommandoChargeBeam	-	upstream body (CDarkCommando)	no
+08598	fn_3_8598	20C	B	CDarkCommandoChargeBeam::Think	dc3	asm audit (see note)	yes
+087A4	fn_3_87A4	1CC	B	CDarkCommandoChargeBeam::CDarkCommandoChargeBeam	dc3	asm audit (see note)	yes
 08970	fn_3_8970	48	H	CImpactVisorEffect::None	-	weak copy / template instance	no
 089B8	fn_3_89B8	B4	H	__ct__18CImpactVisorEffectFRCQ24rstl56optional_object<Q218CImpactVisorEffect15SParticleEffect>RCQ24rstl52optional_object<Q218CImpactVisorEffect11SBlurEffect>RCQ24rstl34optional_object<Q24rstl9pair<i	-	weak copy / template instance	no
 08A6C	fn_3_8A6C	40	H	rstl::optional_object<CImpactVisorEffect::SParticleEffect>::optional_object	-	weak copy / template instance	no
@@ -169,14 +169,14 @@ offset	fn	size	class	name	slice	what	marker
 08F18	fn_3_8F18	1D8	B	__ct__20CDarkCommandoGrenadeF9TUniqueIdRCQ24rstl66basic_string<c	dc1	upstream body (CDarkCommando)	yes
 090F0	fn_3_90F0	94	H	CBouncyGrenadeData::CBouncyGrenadeData	-	weak copy / template instance	no
 09184	fn_3_9184	6C	B	CShadowDecoy::Touch	dc2	upstream body (CDarkCommando)	yes
-091F0	fn_3_91F0	8	B	CShadowDecoy::GetDamageVulnerability	-	upstream body (CDarkCommando)	no
-091F8	fn_3_91F8	20	B	CShadowDecoy::Render	-	upstream body (CDarkCommando)	no
-09218	fn_3_9218	8C	B	CShadowDecoy::AddToRenderer	-	upstream body (CDarkCommando)	no
-092A4	fn_3_92A4	100	B	CShadowDecoy::Think	-	upstream body (CDarkCommando)	no
-093A4	fn_3_93A4	70	B	CShadowDecoy::AcceptScriptMsg	-	upstream body (CDarkCommando)	no
-09414	fn_3_9414	2D4	B	CShadowDecoy::CShadowDecoy	-	upstream body (CDarkCommando)	no
+091F0	fn_3_91F0	8	B	CShadowDecoy::GetDamageVulnerability	dc3	asm audit (see note)	yes
+091F8	fn_3_91F8	20	B	CShadowDecoy::Render	dc3	asm audit (see note)	yes
+09218	fn_3_9218	8C	B	CShadowDecoy::AddToRenderer	dc3	asm audit (see note)	yes
+092A4	fn_3_92A4	100	B	CShadowDecoy::Think	dc3	asm audit (see note)	yes
+093A4	fn_3_93A4	70	B	CShadowDecoy::AcceptScriptMsg	dc3	asm audit (see note)	yes
+09414	fn_3_9414	2D4	B	CShadowDecoy::CShadowDecoy	dc3	asm audit (see note)	yes
 096E8	fn_3_96E8	6C	H	rstl::single_ptr<CElementGen>::~single_ptr	-	weak copy / template instance	no
-09754	fn_3_9754	110	B	CreateShadowDecoyEffect	-	upstream body (CDarkCommando)	no
+09754	fn_3_9754	110	B	CreateShadowDecoyEffect	dc3	eager token load restored and verified	yes
 09864	fn_3_9864	C	H	CEnergyProjectile::GetImpactParticle	-	weak copy / template instance	no
 09870	fn_3_9870	20	H	CEnergyProjectile::GetExplosionNormal	-	weak copy / template instance	no
 09890	fn_3_9890	A4	B	CShadowDecoy::~CShadowDecoy	dc1	upstream body (CDarkCommando)	yes
