@@ -57,6 +57,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
      reinterpret_cast< CPatterned::StateMachine::CodeFunc >(&CAIMannedTurret::TookDamage)},
 };
 
+// @ fn_1_3F00
 CAIMannedTurret::CAIMannedTurret(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                  const CTransform4f& xf, const CModelData& modelData,
                                  const CMaterialList& materials, const CHealthInfo& health,
@@ -108,8 +109,10 @@ CAIMannedTurret::CAIMannedTurret(TUniqueId uid, const rstl::string& name, const 
   }
 }
 
+// @ fn_1_3D70
 CAIMannedTurret::~CAIMannedTurret() {}
 
+// @ fn_1_3C80
 void CAIMannedTurret::SetupStateMachine(CStateManager& mgr) {
   CGenericFSM2* machine = GetStateMachine2();
   if (machine != nullptr) {
@@ -123,6 +126,7 @@ void CAIMannedTurret::SetupStateMachine(CStateManager& mgr) {
   }
 }
 
+// @ fn_1_3694
 void CAIMannedTurret::AttachToActors(CStateManager& mgr) {
   mTurretId = FindConnectedObject(mgr, kSS_AttachedAnimatedObject, kSM_Attach);
   if (CActor* turret = TCastToPtr< CActor >(mgr.ObjectById(mTurretId))) {
@@ -148,6 +152,7 @@ void CAIMannedTurret::AttachToActors(CStateManager& mgr) {
   }
 }
 
+// @ fn_1_328C
 void CAIMannedTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CAi::AcceptScriptMsg(mgr, msg);
   if (GetActive()) {
@@ -203,6 +208,7 @@ void CAIMannedTurret::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg)
   }
 }
 
+// @ fn_1_31F4
 CVector3f CAIMannedTurret::GetAimPosition(const CStateManager& mgr, float dt) const {
   if (const CActor* rider = TCastToConstPtr< CActor >(mgr.GetObjectById(mRiderId))) {
     return rider->GetTranslation();
@@ -210,6 +216,7 @@ CVector3f CAIMannedTurret::GetAimPosition(const CStateManager& mgr, float dt) co
   return CPhysicsActor::GetAimPosition(mgr, 0.f);
 }
 
+// @ fn_1_3168
 CVector3f CAIMannedTurret::GetOrbitPosition(const CStateManager& mgr) const {
   if (const CActor* rider = TCastToConstPtr< CActor >(mgr.GetObjectById(mRiderId))) {
     return rider->GetTranslation();
@@ -217,6 +224,7 @@ CVector3f CAIMannedTurret::GetOrbitPosition(const CStateManager& mgr) const {
   return CPhysicsActor::GetOrbitPosition(mgr);
 }
 
+// @ fn_1_2FA0
 void CAIMannedTurret::Start(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mElevation = 0.f;
@@ -278,6 +286,7 @@ void CAIMannedTurret::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   UpdateAim(mgr, dt, false);
 }
 
+// @ fn_1_2AA8
 void CAIMannedTurret::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -304,20 +313,25 @@ void CAIMannedTurret::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_1_2AA4
 void CAIMannedTurret::Dead(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_1_2A98
 bool CAIMannedTurret::CheckReady(CStateManager& mgr, const CTriggerData& data) const {
   return mReady;
 }
 
+// @ fn_1_2A8C
 bool CAIMannedTurret::CheckDead(CStateManager& mgr, const CTriggerData& data) const {
   return mDead;
 }
 
+// @ fn_1_2A78
 bool CAIMannedTurret::CheckAlive(CStateManager& mgr, const CTriggerData& data) const {
   return !mDead;
 }
 
+// @ fn_1_298C
 bool CAIMannedTurret::CheckPatrol(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (TCastToPtr< CActor >(mgr.ObjectById(mRiderId))) {
@@ -329,6 +343,7 @@ bool CAIMannedTurret::CheckPatrol(CStateManager& mgr, const CTriggerData& data) 
   return result;
 }
 
+// @ fn_1_28A4
 bool CAIMannedTurret::CheckAttack(CStateManager& mgr, const CTriggerData& data) const {
   bool result = false;
   if (TCastToPtr< CActor >(mgr.ObjectById(mRiderId))) {
@@ -343,10 +358,13 @@ bool CAIMannedTurret::CheckAttack(CStateManager& mgr, const CTriggerData& data) 
   return result;
 }
 
+// @ fn_1_2890
 void CAIMannedTurret::TookDamage(CStateManager& mgr, float dt) { mTookDamage = false; }
 
+// @ fn_1_2870
 void CAIMannedTurret::AddToRenderer(const CStateManager& mgr) const { EnsureRendered(mgr); }
 
+// @ fn_1_2730
 void CAIMannedTurret::PreRender(CStateManager& mgr) {
   if (CActor* turret = TCastToPtr< CActor >(mgr.ObjectById(mTurretId))) {
     CModelFlags flags(mTurretModelFlags);
@@ -359,6 +377,7 @@ void CAIMannedTurret::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_1_2698
 void CAIMannedTurret::Render(const CStateManager& mgr) const {
   if (mTelegraphGen1.get() != nullptr) {
     mTelegraphGen1->Render();
@@ -420,7 +439,12 @@ void CAIMannedTurret::UpdateAim(CStateManager& mgr, float dt, bool snap) {
     }
     const float diff = mTargetElevation - mElevation;
     const float step = dt * mData.vertSpeed;
+#ifdef TARGET_PC
+    // 0x23EC fcmpo |diff|,0.1 / 0x23F0 blt (NaN falls into the step arm, not the snap arm)
+    if (!(CMath::AbsF(diff) < 0.1f) && !snap) {
+#else
     if (CMath::AbsF(diff) >= 0.1f && !snap) {
+#endif
       const float scaledStep =
           step * (1.f - CMath::PhongBlob(CMath::Clamp(0.f, CMath::AbsF(diff / 20.f), 1.f), 8.f));
       if (diff > 0.f) {
@@ -445,6 +469,7 @@ void CAIMannedTurret::UpdateAim(CStateManager& mgr, float dt, bool snap) {
   UpdateRider(mgr, dt);
 }
 
+// @ fn_1_1E14
 void CAIMannedTurret::UpdateRider(CStateManager& mgr, float dt) {
   CActor* turret = TCastToPtr< CActor >(mgr.ObjectById(mTurretId));
   CActor* rider = TCastToPtr< CActor >(mgr.ObjectById(mRiderId));
@@ -454,6 +479,7 @@ void CAIMannedTurret::UpdateRider(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_1_19C4
 void CAIMannedTurret::Think(float dt, CStateManager& mgr) {
   if (CActor* turret = TCastToPtr< CActor >(mgr.ObjectById(mTurretId))) {
     if (mTelegraphGen1.get() != nullptr) {
@@ -503,6 +529,7 @@ void CAIMannedTurret::Death(CStateManager& mgr, const CVector3f& direction,
 
 void CAIMannedTurret::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {}
 
+// @ fn_1_1494
 void CAIMannedTurret::SpawnTelegraph(CStateManager& mgr) {
   mTelegraphTimer = 0.5f;
   CActor* turret = TCastToPtr< CActor >(mgr.ObjectById(mTurretId));
@@ -541,6 +568,7 @@ void CAIMannedTurret::SpawnTelegraph(CStateManager& mgr) {
   }
 }
 
+// @ fn_1_13EC
 CTransform4f CAIMannedTurret::GetMuzzleTransform(CStateManager& mgr) const {
   CTransform4f xf = GetTransform();
   if (const CActor* turret = TCastToConstPtr< CActor >(mgr.GetObjectById(mTurretId))) {
@@ -575,6 +603,7 @@ void CAIMannedTurret::Fire(CStateManager& mgr) {
   }
 }
 
+// @ fn_1_D4
 CEntity* LoadAIMannedTurret(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrAIMannedTurret sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrAIMannedTurret.inc"
