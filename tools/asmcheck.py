@@ -602,13 +602,20 @@ def rlw_decode(op, a):
     return None
 
 
+CRBIT_NAMES = {'lt': 0, 'gt': 1, 'eq': 2, 'so': 3, 'un': 3}
+
+
 def crbit_index(s):
+    """CR bit operand -> 0..31, or None for a form we do not know.
+
+    `6`, `cr1eq` (dtk's short form for 4*cr1+eq), `4*cr1+eq` and a bare `eq`/`lt`/`gt`/`so`
+    (an unnumbered compare field, 4*cr0+bit) all name one bit."""
     s = s.strip()
-    m = re.fullmatch(r'(?:4\s*\*\s*cr(\d)\s*\+\s*)?(lt|gt|eq|so|un)', s)
+    m = re.fullmatch(r'(?:4\s*\*\s*cr(\d)\s*\+\s*|cr(\d))?(lt|gt|eq|so|un)', s)
     if m:
-        return 4 * int(m.group(1) or 0) + {'lt': 0, 'gt': 1, 'eq': 2, 'so': 3, 'un': 3}[m.group(2)]
-    v = num(s)
-    return v
+        field = m.group(1) or m.group(2) or 0
+        return 4 * int(field) + CRBIT_NAMES[m.group(3)]
+    return num(s)
 
 
 class Analysis:
@@ -693,6 +700,8 @@ class Analysis:
         return (regs, crf, crx)
 
     def crbit(s, st, b):
+        if b is None:
+            return None         # unparsed condition-bit operand
         crf, crx = st[1], st[2]
         if b in crx:
             return crx[b]
@@ -814,11 +823,15 @@ class Analysis:
                 bb = crbit_index(a[2]) if len(a) > 2 else ba
             except IndexError:
                 return
+            if bt is None:
+                return          # destination bit not understood: record nothing
+            if base in ('crset', 'crclr'):
+                st[2].pop(bt, None)     # a constant bit: no compare behind it
+                s.note(i, 'cr%d%s = %d' % (bt // 4, COND_NAMES[bt % 4], 1 if base == 'crset' else 0))
+                return
             A, B = s.crbit(st, ba), s.crbit(st, bb)
             res = None
-            if base in ('crset', 'crclr'):
-                res = None
-            elif A and B and A[0] is B[0]:
+            if A and B and A[0] is B[0]:
                 x, y = A[1], B[1]
                 res = {'cror': x | y, 'crmove': x, 'crnor': ALL3 - (x | y), 'crnot': ALL3 - x, 'crand': x & y,
                        'crandc': x - y, 'crxor': x ^ y, 'creqv': ALL3 - (x ^ y), 'crorc': x | (ALL3 - y),
