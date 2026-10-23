@@ -4148,6 +4148,12 @@ void CIng::SetupStateMachine(CStateManager& mgr) {
   }
 }
 
+// @ fn_29_130
+// The property loop's arms (asm 0x1A0-0xC60: 69 `cmpw r0, <id>` cases, 0xC4C the unknown-id skip)
+// and the no-model return (0xCA0 lbz 0x3f4 / 0xCA8 bne): tools/drivers/ing_loader_scan.py finds
+// every one of the disc's 40 INGS placements carrying all 69 ids and no other, each with an ANCS,
+// so every load takes all 69 case arms and the skip and no-model arms are dead in the shipped data
+// (lane ing31, IngFamily.md A.36). 0xF80 beq is operator new's null result.
 // Retail fn_29_130. The property ids and their order are the generated SLdrIng reader's, which the
 // analysis checked against the REL id by id: it reads all 69. facePlateModel (0xbdcce71b) is
 // parsed and then never read, here as in retail. The model data's move is the retail's fn_29_1294
