@@ -567,6 +567,8 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
       "spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive] [prop <pid> <v>]  create script objects via their loader\n"
+      "                            [rules <id>] knockback RULE (patterned default 393ca543; ffffffff = none)\n"
+      "                            [wpsc <id>] projectile WPSC (CHOG's two; else prop ef485db9; CHOG default 681f3907)\n"
       "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
       "                           list, the way the collision code does (no real collision needed)\n"
       "pirateattach <pirate> <id>|-  AttachActorToPirate(id) (- : DetachActorFromPirate) through the\n"
@@ -2399,7 +2401,8 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
 // u<id>/e<id> whose ANCS+character or static model is borrowed as a stand-in body), `prop` adds a raw 4-byte top-level property
 // (a value with a '.' is a float, else an integer, hex with 0x). Asset ids are checked against the
 // resource factory first, so a missing asset is a refusal, not a CStaticRes on nothing. Each object
-// `fsm <id>` sets PatternedAITypedef.stateMachine (an AFSM/FSM2 asset); `inactive` spawns it
+// `fsm <id>` sets PatternedAITypedef.stateMachine (an AFSM/FSM2 asset), `rules <id>` its
+// knockbackRules (default 393ca543), `wpsc <id>` the type's projectile WPSC; `inactive` spawns it
 // inactive (a COIN only rolls its lifetime and impulse on the Activate that wakes it, so spawn it
 // inactive and `send e<id> activate`). Each object
 // gets a free editor id 0xFF00+ in layer 0 of the player's area (`e<id>` works) and, like
@@ -2431,7 +2434,8 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
   CPlayer* player = mgr.GetPlayer(0);
   if (args.size() < 2 || args[1].size() != 4 || player == nullptr) {
     Fail("usage: spawn <fourcc> [count] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] "
-         "[model <id>|u<id>] [inactive] [prop <propid> <value>]...   (needs a player)");
+         "[rules <id>] [wpsc <id>] [model <id>|u<id>] [inactive] [prop <propid> <value>]... "
+         "(needs a player)");
     return;
   }
   FourCC type = 0;
@@ -2465,6 +2469,13 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
   uint fsm = 0;
   bool haveFsm = false;
   bool startActive = true;
+  // PatternedAITypedef.knockbackRules: the SLdr default -1 reads as an all-zero RULE whose parent
+  // rule 0 is itself, and CKnockBackController recurses until the allocator fails. 393ca543 is in
+  // every Metroid*.pak; `rules ffffffff` keeps the SLdr default.
+  uint rules = 0x393ca543;
+  bool haveRules = false;
+  uint wpsc = 0;
+  bool haveWpsc = false;
   std::vector< std::pair< uint, uint > > props;
   size_t i = 2;
   if (i < args.size() && std::isdigit(static_cast< unsigned char >(args[i][0]))) {
@@ -2525,6 +2536,12 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     } else if (args[i] == "fsm" && i + 1 < args.size() && parseHexId(args[i + 1], fsm)) {
       haveFsm = true;
       ++i;
+    } else if (args[i] == "rules" && i + 1 < args.size() && parseHexId(args[i + 1], rules)) {
+      haveRules = true;
+      ++i;
+    } else if (args[i] == "wpsc" && i + 1 < args.size() && parseHexId(args[i + 1], wpsc)) {
+      haveWpsc = true;
+      ++i;
     } else if (args[i] == "prop" && i + 2 < args.size()) {
       uint id = 0, value = 0;
       float f = 0.f;
@@ -2574,6 +2591,56 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     Fail(why);
     return;
   }
+  const bool patternedTypedef = haveAncs || haveFsm || haveRules;
+  if (patternedTypedef && rules != kInvalidAssetId &&
+      gpResourceFactory->GetResourceTypeById(rules) != 'RULE') {
+    if (haveRules) {
+      char why[64];
+      std::snprintf(why, sizeof(why), "spawn: rules %08x is not a RULE asset here", rules);
+      Fail(why);
+      return;
+    }
+    rules = kInvalidAssetId; // the default RULE is not in this area's paks: SLdr default
+  }
+  const bool writeRules = patternedTypedef && rules != kInvalidAssetId;
+  // The projectile WPSC properties a type's SLdr leaves at -1: CProjectileInfo then holds a token
+  // on nothing and the first shot crashes. `wpsc <id>` writes them; without it a type listed here
+  // gets the default 681f3907 (the WPSC the ChozoGhost runs used) when it is here, and is refused otherwise.
+  // Other types take `wpsc` as their common top-level `projectile` (0xef485db9).
+  static const uint kChozoGhostWpsc[] = {0x54151870, 0x3a58089c};
+  static const uint kCommonWpsc[] = {0xef485db9};
+  const uint* wpscProps = nullptr;
+  int wpscCount = 0;
+  if (type == 'CHOG') {
+    wpscProps = kChozoGhostWpsc;
+    wpscCount = 2;
+  } else if (haveWpsc) {
+    wpscProps = kCommonWpsc;
+    wpscCount = 1;
+  }
+  if (wpscProps != nullptr) {
+    // A raw `prop` naming one of these wins over both.
+    int explicitProps = 0;
+    for (int w = 0; w < wpscCount; ++w) {
+      for (const std::pair< uint, uint >& p : props) {
+        explicitProps += p.first == wpscProps[w] ? 1 : 0;
+      }
+    }
+    if (!haveWpsc) {
+      wpsc = 0x681f3907;
+    }
+    if (explicitProps == wpscCount) {
+      wpscProps = nullptr;
+      wpscCount = 0;
+    } else if (gpResourceFactory->GetResourceTypeById(wpsc) != 'WPSC') {
+      char why[96];
+      std::snprintf(why, sizeof(why), "spawn %s refused: %s WPSC %08x is not here (`wpsc <id>`)",
+                    typeName, haveWpsc ? "the" : "the default", wpsc);
+      std::printf("[console] %s\n", why);
+      Fail(why);
+      return;
+    }
+  }
   TAreaId area = player->GetCurrentAreaId();
   if (area == kInvalidAreaId) {
     area = mgr.GetNextAreaId();
@@ -2604,7 +2671,8 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     SSpawnBlob blob;
     const bool isCoin = type == 'COIN', isBarrier = type == 'DBAR';
     const int modelProps = haveModel ? (isCoin ? 1 : isBarrier ? 6 : 0) : 0;
-    blob.U16(1 + (haveAncs || haveFsm ? 1 : 0) + modelProps + static_cast< int >(props.size()));
+    blob.U16(1 + (patternedTypedef ? 1 : 0) + modelProps + wpscCount +
+             static_cast< int >(props.size()));
     const size_t editor = blob.BeginProp(0x255a4580); // EditorProperties
     blob.U16(3);
     const size_t name = blob.BeginProp('INAM');
@@ -2629,9 +2697,9 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     blob.U8(startActive ? 1 : 0);
     blob.EndProp(active);
     blob.EndProp(editor);
-    if (haveAncs || haveFsm) {
+    if (patternedTypedef) {
       const size_t patterned = blob.BeginProp(0xb3774750); // PatternedAITypedef
-      blob.U16((haveAncs ? 1 : 0) + (haveFsm ? 1 : 0));
+      blob.U16((haveAncs ? 1 : 0) + (haveFsm ? 1 : 0) + (writeRules ? 1 : 0));
       if (haveAncs) {
         const size_t animSet = blob.BeginProp(0xe25fb08c); // animationInformation
         blob.U32(ancs);
@@ -2644,6 +2712,11 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
         blob.U32(fsm);
         blob.EndProp(machine);
       }
+      if (writeRules) {
+        const size_t knockback = blob.BeginProp(0x87011652); // knockbackRules
+        blob.U32(rules);
+        blob.EndProp(knockback);
+      }
       blob.EndProp(patterned);
     }
     static const uint kBarrierModels[] = {0x014a0c36, 0x90f55c5d, 0xe1975355,
@@ -2651,6 +2724,12 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     for (int m = 0; m < modelProps; ++m) {
       const size_t prop = blob.BeginProp(isCoin ? 0xc27ffa8f : kBarrierModels[m]);
       blob.U32(model);
+      blob.EndProp(prop);
+    }
+    // Before the raw props: the loader keeps the last value, so a `prop` naming one wins.
+    for (int w = 0; w < wpscCount; ++w) {
+      const size_t prop = blob.BeginProp(wpscProps[w]);
+      blob.U32(wpsc);
       blob.EndProp(prop);
     }
     for (const std::pair< uint, uint >& p : props) {
@@ -2679,6 +2758,12 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
     out += line;
     if (haveAncs) {
       std::snprintf(line, sizeof(line), "   ancs %08x char %u anim %u\n", ancs, character, anim);
+      out += line;
+    }
+    if (writeRules || wpscCount != 0) {
+      std::snprintf(line, sizeof(line), "   knockback rules %08x, wpsc %08x on %d properties\n",
+                    writeRules ? rules : kInvalidAssetId, wpscCount != 0 ? wpsc : kInvalidAssetId,
+                    wpscCount);
       out += line;
     }
     // A patterned actor whose body controller is still off would crash in its first Think
