@@ -297,8 +297,9 @@ def drive(con, game, res, mod, filters, layers, no_fsm, world_hex):
     for o in targets:
         if o.get("hp") is None:
             continue
-        for _ in range(3):
-            if not obj_info(con, o["uid"])["exists"]:
+        for _ in range(8):  # a state that ignores damage (a dash, a shield) ends on its own
+            info = obj_info(con, o["uid"])
+            if not info["exists"] or (info["hp"] is not None and info["hp"] <= 0):
                 break
             con.cmd(f"damage {o['uid']} 99999 {weapon}")
             con.wait_frame(con.frame() + 60, game)
@@ -435,14 +436,14 @@ def run_module(r, args, idx, area_override=None):
     return res
 
 
-def game_pids(pgid):
-    """The game binaries in a run's process group."""
+def game_pids(sid):
+    """The game binaries in a run's session (`timeout` puts the game in its own process group)."""
     out = []
     for d in pathlib.Path("/proc").iterdir():
         if not d.name.isdigit():
             continue
         try:
-            if os.getpgid(int(d.name)) != pgid:
+            if os.getsid(int(d.name)) != sid:
                 continue
             if os.readlink(d / "exe").endswith("/metroid_prime2_port"):
                 out.append(int(d.name))
