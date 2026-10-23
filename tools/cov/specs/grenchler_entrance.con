@@ -1,0 +1,32 @@
+# Torvus Bog 01_swamp_entrance layers 4+8: three Grenchlers (u05c4, u05be, u0596). God-mode player
+# stands among them and lets them fight, then beams/missiles/damage to death. For tools/cov/specs/grenchler.py.
+@f300 layer 4
+@f340 layer 8
+@f400 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give missileLauncher 1; give grappleBeam 1
+@f420 obj u05c4
+@f430 fsm u05c4 Bogus
+@f440 send u05c4 Activate; send u05be Activate; send u0596 Activate
+@f460 tp 165 -81 27
+@f470 face 200
+@f1200 obj u05c4
+@f1300 shoot u05c4
+@f1320 shoot u05c4 charged
+@f1360 shoot u05be missile
+@f1400 beam dark
+@f1420 shoot u05c4
+@f1440 beam light
+@f1460 shoot u05be
+@f1480 beam annihilator
+@f1500 shoot u0596
+@f1520 beam power
+@f1600 tp 154 -84 25
+@f2000 obj u05c4
+@f2100 damage u05c4 5
+@f2140 damage u05be 5 1 missile
+@f2400 obj u05be
+@f2600 tp 140 -75 27
+@f3000 damage u05c4 400
+@f3100 damage u05be 400 0 dark
+@f3200 damage u0596 400 0 light
+@f3300 obj u05c4
+@f3500 obj u0596

@@ -1,0 +1,59 @@
+# Torvus Bog 01_swamp_entrance layers 4+8: the three Grenchlers forced through their FSM states
+# (fsm/statecall), the player in reach and in morph ball. For tools/cov/specs/grenchler.py.
+@f300 layer 4
+@f340 layer 8
+@f400 god 1; give morphBall 1; give morphBallBombs 1; fastmorph 1
+@f440 send u05c4 Activate; send u05be Activate; send u0596 Activate
+@f460 tp 160 -84 26
+@f470 face 250
+@f500 fsm u05c4 Jump
+@f520 fsm u05be Taunt
+@f540 fsm u0596 YellowHitReact
+@f600 fsm u05c4 TurnToJumpEnd
+@f620 fsm u05be BeamAttack
+@f640 fsm u0596 Charge
+@f700 fsm u05c4 Patrol
+@f720 fsm u05be PauseBetweenBeams
+@f740 fsm u0596 ChargeFailed
+@f800 fsm u05c4 Turn
+@f820 fsm u05be BurstAttack
+@f840 fsm u0596 WalkTowardPlayer
+@f900 fsm u05c4 BeamAttack
+@f960 fsm u05be Charge
+@f1000 fsm u0596 Jump
+@f1100 place u05c4 player 4
+@f1110 fsm u05c4 Bogus
+@f1120 press x 10
+@f1200 fsm u05c4 MorphballBite
+@f1210 place u05be player 3
+@f1220 fsm u05be MorphballBite
+@f1400 press x 10
+@f1500 fsm u05c4 GrappleSlide
+@f1540 fsm u05be GrappleSlideBonk
+@f1600 fsm u0596 Taunt
+@f1700 statecall u05c4 GrappleLoop 0
+@f1702 statecall u05c4 GrappleLoop 1 0.016
+@f1704 statecall u05c4 GrappleLoop 2
+@f1710 statecall u05c4 GrappleStruggle 0
+@f1712 statecall u05c4 GrappleStruggle 1 0.016
+@f1714 statecall u05c4 GrappleStruggle 2
+@f1720 statecall u05c4 GrapplePull 0
+@f1722 statecall u05c4 GrapplePull 1 0.016
+@f1724 statecall u05c4 GrapplePull 2
+@f1730 statecall u05c4 GrappleBite 0
+@f1732 statecall u05c4 GrappleBite 1 0.016
+@f1734 statecall u05c4 GrappleBite 2
+@f1740 statecall u05c4 GrappleBreak 0
+@f1742 statecall u05c4 GrappleBreak 1 0.016
+@f1744 statecall u05c4 GrappleBreak 2
+@f1750 statecall u05c4 GrappleAbort 0
+@f1752 statecall u05c4 GrappleAbort 1 0.016
+@f1754 statecall u05c4 GrappleAbort 2
+@f1800 fsm u05c4 Lurk
+@f1900 tp 150 -60 30
+@f2000 fsm u0596 BeamAttack
+@f2100 fsm u05be FollowAttackPattern
+@f2400 damage u05c4 400
+@f2420 damage u05be 400 0 annihilator
+@f2440 damage u0596 400 0 powerbomb
+@f2600 obj u0596

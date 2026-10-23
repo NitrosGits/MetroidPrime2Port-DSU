@@ -1,0 +1,31 @@
+# Torvus Bog 08_swamp_grappleguardian_dark layer 3: two Grenchlers (u052e, u04fa); the player
+# fights them, grapples them, beams and missiles the tail, then kills them. For tools/cov/specs/grenchler.py.
+@f300 layer 3
+@f400 god 1; give grappleBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give morphBall 1; fastmorph 1
+@f420 send u052e Activate; send u04fa Activate
+@f440 obj u052e
+@f450 obj u04fa
+@f460 tp -168 25 -28
+@f470 face 0
+@f900 obj u052e
+@f910 obj u04fa
+@f1000 grapple u052e 10
+@f1100 orbit
+@f1200 obj u052e
+@f1300 grapple u04fa 10
+@f1400 obj u04fa
+@f1500 press r 30
+@f1600 press l 0
+@f1700 shoot u052e missile
+@f1720 shoot u04fa missile
+@f1800 shoot u052e charged
+@f1820 shoot u04fa charged
+@f1900 obj u052e
+@f1910 obj u04fa
+@f2000 tp -168 10 -26
+@f2400 obj u052e
+@f2410 obj u04fa
+@f2800 damage u052e 1000
+@f2820 damage u04fa 1000 0 missile
+@f3000 obj u052e
+@f3010 obj u04fa
