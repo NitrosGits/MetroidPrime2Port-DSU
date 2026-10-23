@@ -153,7 +153,8 @@ public:
   // with them), so they are real, not stand-ins.
   CProjectileInfo* ProjectileInfo() override { return nullptr; }
   using CPatterned::GetSearchPath;
-  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
+  // @ fn_75_81F8
+  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; } // `addi r3, r3, 0xb7c` (0x81F8)
   using CPatterned::GetPointSearchPath;
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; }
   uchar GetModelAlphau8(const CStateManager&) const override { return mColor.GetAlphau8(); }

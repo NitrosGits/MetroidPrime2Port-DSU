@@ -128,9 +128,11 @@ public:
 
   // CPatterned. The accessors below are the REL's own one-line bodies (the module's .text starts
   // with them), so they are real, not stand-ins.
-  CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; }
+  // @ fn_75_8
+  CProjectileInfo* ProjectileInfo() override { return &mProjectileInfo; } // `addi r3, r3, 0xe5c` (0x8)
   using CPatterned::GetSearchPath;
-  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; }
+  // @ fn_75_0
+  CPathFindSearch* GetSearchPath() override { return &mPathFindSearch; } // `addi r3, r3, 0xd6c` (0x0)
   using CPatterned::GetPointSearchPath;
   CPathFindPointSearch* GetPointSearchPath() override { return nullptr; }
   uchar GetModelAlphau8(const CStateManager&) const override { return mColor.GetAlphau8(); }

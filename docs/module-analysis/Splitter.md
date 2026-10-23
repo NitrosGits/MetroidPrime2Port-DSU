@@ -1592,8 +1592,7 @@ docks to u0532).
 | CCF0 | ray miss, landed, activate/deactivate / ray hit, still falling | ran (t9d) / forced under gdb (fqC) → marked |
 | 5498 | all | ran (t9d) → marked |
 | E4DC, 55B0, 5568 | false arms / true arms | ran (fqA) / forced under gdb (fqA, fqD, fqE) → marked |
-| E62C, E58C, E530, E494, BBC0 | | not reachable in shipped data (above) → unmarked |
-| 5864 / 57D4, 3FE0 | true arm / all | dead in shipped data (no CONN/FOLW); 5864's false arm never evaluated → unmarked |
+| E58C, E530, E494, BBC0 / 5864, 3FE0 | | not reachable in shipped data (above); every arm forced in split24 (below) → marked; E62C → T; 57D4 unmarked |
 
 CCF0's ray (Solid+Floor include, 1000 down) missed in every natural run. Retail's filter is the
 same (2026-10-21): include (1<<59 kMT_Solid)|(1<<31 kMT_Floor) built by `__shl2i` from
@@ -1621,3 +1620,23 @@ at 0x828 with its two top bits; retail's `rlwinm. 30,30` and `clrlwi. 31` are 0x
 The constructors now keep the retail's initial state: the chassis starts with 0xD00 = 5 and
 0xD40's 0x80 set for the shipped flag word 0x7C (bits 0x1 and 0x8 of the word, F5F8 0xF7EC/0xF86C),
 the head with 0xF6A = 0x92 and the chassis timer 0xF14 = 3.0f.
+
+## split24 (2026-10-23)
+
+Four forced runs on one build-port-cov build (r3-r6, `tools/cov/specs/splitter_split24.py`:
+split23's con and member writes, one batch of gdb calls at the 6000th head Think and one at the
+20th beam Think, return overrides gated by convenience variables; r5/r6 with `SPLIT24_KB=0`),
+914f1381, caught 0; gcov merged.
+
+| rows | finding | result |
+|---|---|---|
+| 0, 8, 81F8, 616C, EF24 | accessors: `addi r3,r3,0xd6c` / `0xe5c` / `0xb7c` / `0xeac`; EF24 `bl fn_800DBB50` (PassThroughVulnerabilty) | marked by asm identity |
+| E62C | IsIntact: no shipped FSM2 names it | → T |
+| 10DC4, 4D04, 91E4 | NaN senses fixed (c71842361); Hover moves pos + (0,0,±step) | forced ALL-ARMS → marked |
+| 6798, F560 | dtors delete the collision actor manager | marked |
+| 6490 | lazy manager creation removed: retail 0x64C8 lwz → 0x64D4 bl, no null test (built at XCRT, 0x662C); host guard only | marked (3/4: the guard) |
+| 10EF0, 1167C, 5864, 3FE0, 523C, 5A54, 4E90, 6178, 3EEC | match the asm | forced ALL-ARMS → marked |
+| BC70, 909C, BE28, E58C, E530, E494, BBC0, F0E8, EB04, EBF4 | match the asm (BC70's CActor cast = retail's uncast read: 0xCC0 holds only the player id) | forced ALL-ARMS → marked |
+| 23F0, 8EC8, 91E4 | null cast dead: `CListeningAiList::IsQualified` admits only a CPatterned | marked |
+| C8F4 | 9/10 here; swarm-present Update arm from 6c363cd4, unchanged since e3b85b8f7 | marked |
+

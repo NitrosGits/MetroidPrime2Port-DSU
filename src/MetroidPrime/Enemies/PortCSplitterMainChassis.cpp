@@ -180,7 +180,7 @@ void CSplitterMainChassis::Start(CStateManager&, EStateMsg, float) {}
 // The Should* triggers below each look the target up (GetObjectById, the null test) and build
 // it inline from the two actors' positions (0x54, 0x58 and 0x5C).
 // The -1 (no target) answer is unreachable from the chassis's triggers: they all run from
-// PathFind, which the FSM only enters after SelectTarget (fn_75_BE28) stored the player's id at
+// PathFind, which the FSM only enters after SelectTarget (0xBE28) stored the player's id at
 // 0xCC0, the one writer of that id, and the player is never deleted.
 static float PortTargetDistanceSq(const CSplitterMainChassis& self, const CStateManager& mgr) {
   const CActor* target = TCastToConstPtr< CActor >(mgr.GetObjectById(self.GetSyncId()));
@@ -329,6 +329,13 @@ bool CSplitterMainChassis::ShouldLaserSweep(CStateManager& mgr, const CTriggerDa
 // 0xBD44-0xBD98, lbl_75_rodata_3A8 0.5f, fcmpo with cror eq, gt, eq). Then the base's path
 // navigation (0x6F4) gets the destination (0xBDEC SetDestination) and its face target (0x718)
 // kInvalidUniqueId (0xBDF0-0xBE04), and the team join runs (0xBE08 fn_75_8DF8).
+// The retail reads the object's position without a cast (0xBCCC mr.); the port's CActor cast is
+// the same answer: 0xCC0's only writer is SelectTarget (0xBE28, the player's id).
+// Arms: 10/10, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): no
+// target and no line of sight in play; with line of sight a null role, a melee role and a
+// projectile role near and far forced (CScriptTeamAiMgr::GetTeamAiRole answering a calloc'd
+// CTeamAiRole).
+// @ fn_75_BC70
 void CSplitterMainChassis::SetTargetDest(CStateManager& mgr, float) {
   CVector3f dest = GetTranslation();
   mFlagsD40 &= ~0x20;
@@ -447,7 +454,9 @@ void CSplitterMainChassis::FindBestStabLeg(CStateManager& mgr, float) {
 // filter that includes kMT_Solid (lbl_75_data_CA4, 0x3B) and excludes kMT_CollisionActor
 // (lbl_75_data_CA8, 0x2F) RayCollideWorld must answer true (0x9190-0x9198, the ray is clear) and
 // the end must be on the path search's mesh (0x91A4 OnPath at 0xB7C, kR_Success).
-// fn_75_909C (not marked, the 19-run gcov of 2026-10-21: no run reached it, 0/7 lines)
+// Arms: 4/4, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): rays
+// blocked and clear, on and off the path mesh, by gdb calls.
+// @ fn_75_909C
 bool CSplitterMainChassis::PortDodgeIsClear(CStateManager& mgr, const CVector3f& dir,
                                             float length) {
   const CVector3f start = GetBoundingBox().GetCenterPoint();
@@ -469,6 +478,10 @@ bool CSplitterMainChassis::PortDodgeIsClear(CStateManager& mgr, const CVector3f&
 // side still open must also be clear (fn_75_909C with the step distance, 0x943C-0x949C); with
 // both open the random number's 0x4000 bit (0x94B4 Next, 0x94B8) closes the opposite side, else
 // the axis side. The answer is the opposite side's value, else the axis side's, else -1.
+// Arms: 37/38, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// every step direction answer (forced), step distances 0 to 1000, another area, both heads twice
+// on each side (a side already closed); the null cast is dead (IsQualified, as fn_75_23F0).
+// @ fn_75_91E4
 int CSplitterMainChassis::PortFindDodgeDirection(CStateManager& mgr, const CVector3f& away) {
   const float rangeSq = mStepDistance * mStepDistance;
   CVector3f axis = GetTransform().GetColumn(kDX);
@@ -503,16 +516,19 @@ int CSplitterMainChassis::PortFindDodgeDirection(CStateManager& mgr, const CVect
       continue;
     }
     const CVector3f offset = other->GetTranslation() - GetTranslation();
-    // 0x9378 fcmpo, 0x937C bge: only an actor nearer than the step distance blocks (a NaN
-    // distance skips).
+    // 0x9378 fcmpo, 0x937C bge (taken when !(dist < range)): only an actor nearer than the step
+    // distance is tested (a NaN distance is skipped).
     if (!(offset.MagSquared() < rangeSq)) {
       continue;
     }
+    // 0x93A0 fcmpo, 0x93A4 cror eq, gt, eq, 0x93A8 bne: a NaN dot takes the opposite side.
     if (CVector3f::Dot(offset, axis) >= 0.f) {
+      // 0x93C8 fcmpo, 0x93CC bge (taken when !(diff < 60 degrees)): the side closes only under
+      // 60 degrees (a NaN angle leaves it open).
       if (axisOpen && CVector3f::GetAngleDiff(axis, offset) < 1.0471976f) {
         axisOpen = false;
       }
-    } else if (oppositeOpen && CVector3f::GetAngleDiff(-axis, offset) < 1.0471976f) {
+    } else if (oppositeOpen && CVector3f::GetAngleDiff(-axis, offset) < 1.0471976f) {  // 0x940C-0x9410
       oppositeOpen = false;
     }
   }
@@ -769,7 +785,7 @@ bool CSplitterMainChassis::SpunIntoPlayer(CStateManager&, const CTriggerData&) c
 // the target-to-chassis offset (0xB22C-0xB258); its z is 0.0f (lbl_75_rodata_390, 0xB264). The
 // bounce time at 0xD24 is 0.75f (lbl_75_rodata_3B4) when 0xD40's 0x02 bit (the boost break-out)
 // is set, else 0.5f (lbl_75_rodata_3A8, 0xB268-0xB288). The no-target arm is dead: 0xCC0's one
-// writer (fn_75_BE28) stores the player's id, and the spin needs it (ShouldSpinAttack).
+// writer (SelectTarget, 0xBE28) stores the player's id, and the spin needs it (ShouldSpinAttack).
 // @ fn_75_B1D8
 void CSplitterMainChassis::BounceOffPlayer(CStateManager& mgr, float) {
   mBounceVector = -mSpinVector;
@@ -1145,8 +1161,9 @@ void CSplitterMainChassis::PortUpdatePath(CStateManager& mgr) {
 // (0x00008F78-0x00008FB4); a safe-magnitude result (0x00008FD4) is normalized and summed and the
 // count (lbl_75_rodata_390, 0.0f) goes up by 1.0f (lbl_75_rodata_364). A count above 0.0f
 // (0x0000903C fcmpo, 0x00009040 ble) divides the sum by it (0x0000904C fdivs).
-// fn_75_8EC8 (not marked, the 19-run gcov of 2026-10-21: a null cast never came up in the
-// listening-AI walk; not proven dead)
+// Arms: 22/23, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged):
+// other area forced; the null cast is dead (IsQualified, as fn_75_23F0).
+// @ fn_75_8EC8
 CVector3f CSplitterMainChassis::PortSeparationVector(CStateManager& mgr) {
   CObjectList& list = mgr.ObjectListById(kOL_ListeningAi);
   CVector3f sum = CVector3f::Zero();
@@ -1381,7 +1398,9 @@ bool CSplitterMainChassis::HasTarget(CStateManager&, const CTriggerData&) const 
 // chassis's position, volume 0x7F, its area, acoustics on, not looped, medium priority
 // (0xBE78-0xBEA0). The four timers are copied (0xBEA8 fn_75_8EA4) and the chassis sends its
 // "ATTK" state with its own id and no message (0xBEAC-0xBED0, li r7 -1).
-// fn_75_BE28 (not marked: the headless arm, no AddEmitter, never ran)
+// Arms: 2/2, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): with
+// a head in play, headless by a gdb call.
+// @ fn_75_BE28
 void CSplitterMainChassis::SelectTarget(CStateManager& mgr, float) {
   mSyncId = mgr.GetPlayer(0)->GetUniqueId();
   mVisualKnowledge.SetTarget(mSyncId); // fn_801F585C
@@ -1441,7 +1460,10 @@ bool CSplitterMainChassis::IsIntact(CStateManager&, const CTriggerData&) const {
 
 // Not reachable in shipped data: AttackLogic (FSM2 f548e6e4) tests it only under HasRetreatPoint
 // and in PathFind #7/#8, which only SetRetreatDest enters; no Splitter in any SCLY or SCGN layer has an RTRT/FOLW link, so HasRetreatPoint (fn_75_E56C) is
-// always false in shipped data. No marker.
+// always false in shipped data.
+// Arms: both values by gdb calls, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py,
+// 914f1381, gcov merged).
+// @ fn_75_E58C
 bool CSplitterMainChassis::HasHead(CStateManager&, const CTriggerData&) const {
   return mCommandModuleId != kInvalidUniqueId;
 }
@@ -1450,7 +1472,10 @@ bool CSplitterMainChassis::HasHead(CStateManager&, const CTriggerData&) const {
 // while the target is valid and the counter at 0xC48 is not zero, fn_75_AFE8) below 3.0f
 // (lbl_75_rodata_378, fcmpo/mfcr lt).
 // Not reachable in shipped data: the same HasRetreatPoint / PathFind #8 gate as HasHead
-// (fn_75_E58C). No marker.
+// (fn_75_E58C).
+// Arms: both values (0xD3C 0.0f and 5.0f) by gdb calls, splitter_split24 r3-r6
+// (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged).
+// @ fn_75_E530
 bool CSplitterMainChassis::CanReachTarget(CStateManager&, const CTriggerData&) const {
   return mTimerD3C < 3.f;
 }
@@ -1468,7 +1493,10 @@ bool CSplitterMainChassis::PathShagged(CStateManager& mgr, const CTriggerData& d
 // destination is the target's, SetTargetDest/SetRetreatDest) set the base's PathOver decides
 // (0xE4A8 extrwi with the word's bit 26, 0xE4B4); without it the path is over.
 // Not reachable in shipped data: tested only in PathFind #7, which only SetRetreatDest enters
-// (see HasHead, fn_75_E58C). No marker.
+// (see HasHead, fn_75_E58C).
+// Arms: 4/4, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): 0x20
+// clear and set; the base's PathOver answering true forced.
+// @ fn_75_E494
 bool CSplitterMainChassis::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return (mFlagsD40 & 0x20) == 0 || CPatterned::PathOver(mgr, data);
 }
@@ -1590,7 +1618,10 @@ void CSplitterMainChassis::Dodge(CStateManager& mgr, EStateMsg msg, float) {
 // (0xBC1C-0xBC40). The base's path navigation (0x6F4) gets the destination (0xBC4C) and its face
 // target (0x718) kInvalidUniqueId.
 // Not reachable in shipped data: entered only through HasRetreatPoint; no Splitter in any SCLY or SCGN layer has an RTRT/FOLW link, so HasRetreatPoint (fn_75_E56C) is
-// always false in shipped data. No marker.
+// always false in shipped data.
+// Arms: 2/2, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): no
+// follow object and the waypoint 0x51c, gdb calls.
+// @ fn_75_BBC0
 void CSplitterMainChassis::SetRetreatDest(CStateManager& mgr, float) {
   CVector3f dest = GetTranslation();
   mFlagsD40 &= ~0x20;
@@ -1665,8 +1696,11 @@ void CSplitterMainChassis::SpawnDrop(CStateManager& mgr, EStateMsg msg, float) {
 // 0xCBC is no longer a CIngSnatchingSwarm (0xC974) it is cleared. Deactivate (0xC990): the head's
 // shield is reset (0xC9B4 fn_75_5D50), the id at 0xCBC is cleared and the spin penalty timer at
 // 0xD14 is the data's spin attack interval (0x874; the penalty is 0x878).
-// Arms: every arm ran in 09_cliff_temple (6c363cd4; the swarm from GENR 82500e1) - with a head,
-// and without one after `kill <head>`; swarm gone and still there both ran.
+// Arms: 9/10 in splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged)
+// (every message, with and without a head); the swarm-still-there Update arm ran in
+// 09_cliff_temple (6c363cd4, the swarm from GENR 82500e1) and is unchanged since (e3b85b8f7
+// fixed only the Deactivate constant).
+// @ fn_75_C8F4
 void CSplitterMainChassis::WaitForSnatch(CStateManager& mgr, EStateMsg msg, float) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1958,7 +1992,14 @@ CSplitterMainChassis::CSplitterMainChassis(TUniqueId uid, const rstl::string& na
   KnockBackController().EnableKnockBackPhysics(false);
 }
 
-CSplitterMainChassis::~CSplitterMainChassis() {}
+// vtable slot 0x08 = fn_75_F560 (0xF560-0xF5F8): the collision actor manager 0xC68 is deleted
+// (0xF594 lwz, 0xF59C bl __dt__22CCollisionActorManager with r4 = 1), then the parameter block's
+// members (0xF5B0 fn_75_8B74 on 0x828, 0xF5BC the vulnerability 0x7F8), the base's (0xF5C8
+// fn_75_6890) and, with the delete flag (0xF5CC extsh., ble), CMemory::Free (0xF5D8). The
+// member-address tests (0xF584, 0xF5A0 addic.) are the compiler's, never null. The host's implicit
+// member destructors do the rest; the manager is a raw pointer, so it is deleted here.
+// @ fn_75_F560
+CSplitterMainChassis::~CSplitterMainChassis() { delete mCollisionActorManager; }
 
 // A body state is only ever installed by CBodyController::Activate, and CPatterned::Think /
 // ThinkAboutMove / Death / KnockBack all dereference the current state. The analysis does not say
@@ -2021,20 +2062,22 @@ bool CSplitterMainChassis::PortAcceptHead(CStateManager& mgr, TUniqueId headId) 
 // (0xF118), the docking link (the partner id at 0xC68, 0xF11C lwz and 0xF120 cmplwi 0: with no
 // partner the retail looks for one, 0xF130 fn_75_A4E4, otherwise it updates the dock, 0xF144
 // fn_80135D84), the line-of-sight tracker (the tracker at 0xC70, 0xF154 fn_801F55F0) and the
-// module's own three calls (0xF164 fn_75_AFE8, 0xF174 fn_75_ACEC, 0xF180 fn_75_9520). The first
-// and the last are ported (PortUpdateTimers, PortUpdateFade); the middle one is over 0x80 and
-// stays a once-logging shell, so the function carries no port marker yet.
+// module's own three calls (0xF164 fn_75_AFE8, 0xF174 fn_75_ACEC, 0xF180 fn_75_9520): the
+// timers (PortUpdateTimers), the head placement (PortPlaceHead) and the fade (PortUpdateFade).
+// With no collision actor manager at 0xC68 the Think builds it (0xF130 fn_75_A4E4,
+// PortCreateCollisionActorManager) instead of updating it. Every callee is ported and marked.
+// EnsureBodyActive is the port's Activate-before-Think guard (GOTCHAS), not retail code.
 // vtable slot 0x14.
+// Arms: 4/4, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): the
+// inactive arm by a gdb call.
+// @ fn_75_F0E8
 void CSplitterMainChassis::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
   }
   EnsureBodyActive(mgr);
   CPatterned::Think(dt, mgr);
-  if (mCollisionActorManager == nullptr) {
-    // port limit: the retail builds the collision actor manager in fn_75_A4E4 (0x418), which
-    // is one of the module's own functions; the port makes an empty one instead,
-    // as the command module does.
+  if (mCollisionActorManager == nullptr) {  // 0xF11C lwz 0xC68, 0xF120 cmplwi 0, 0xF124 bne
     PortCreateCollisionActorManager(mgr);
   } else {
     mCollisionActorManager->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
@@ -2466,7 +2509,9 @@ void CSplitterMainChassis::Render(const CStateManager& mgr) const { CPatterned::
 const CHealthInfo* CSplitterMainChassis::GetHealthInfo() const { return CPatterned::GetHealthInfo(); }
 
 // vtable slot 0x40 = fn_75_EF24: it returns the static pass-through vulnerability, so the body
-// cannot be damaged at all.
+// cannot be damaged at all: `bl fn_800DBB50` (0xEF30, CDamageVulnerability::PassThroughVulnerabilty)
+// in a stack frame, its r3 returned.
+// @ fn_75_EF24
 const CDamageVulnerability* CSplitterMainChassis::GetDamageVulnerability() const {
   return &CDamageVulnerability::PassThroughVulnerabilty();
 }
@@ -2637,6 +2682,10 @@ void CSplitterMainChassis::PortReleaseDock(TUniqueId head) {
 // 0x28, 0x29) and, with its head there (0xEBB0-0xEBBC), resets the head's shield (0xEBC4
 // fn_75_5D50) and lets the head go (0xEBD0: the id at 0xC6C cleared). The head's chassis check
 // (fn_75_31A8) then sees the chassis no longer holds it and undocks.
+// Arms: 6/6, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): the
+// null collision actor cast forced (the first description's actor id invalid for one call); the
+// headless return by split23's forced lethal hit (fn_75_A0A0 call 11 on the headless u0521).
+// @ fn_75_EB04
 void CSplitterMainChassis::Death(CStateManager& mgr, const CVector3f& direction,
                                   EScriptObjectState state) {
   CPatterned::Death(mgr, direction, state);
@@ -2670,6 +2719,10 @@ void CSplitterMainChassis::Death(CStateManager& mgr, const CVector3f& direction,
 // type (the info's 0x10) decides: 7 (asm 0xEC24, 0xEC28) turns the knock back reaction on (asm
 // 0xEC3C) and any other type turns it off (asm 0xEC50).  Then the base's knock back runs (asm
 // 0xEC84).
+// Arms: 4/4, splitter_split24 r3-r6 (tools/cov/specs/splitter_split24.py, 914f1381, gcov merged): the
+// 0x80 arm in play (SPLIT24_KB=0); the boost ball and the other weapon types with the bit
+// cleared for the call.
+// @ fn_75_EBF4
 void CSplitterMainChassis::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if ((mFlagsD41 & 0x80) != 0) {  // 0xEC18-0xEC1C
     KnockBackController().EnableAnimReaction(CKnockBackMgr::kAR_Flinch, false);  // 0xEC64
