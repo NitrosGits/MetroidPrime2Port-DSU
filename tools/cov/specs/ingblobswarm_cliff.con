@@ -1,0 +1,42 @@
+# Sanctuary 0b_cliff_hall_dark layer 4: CIngBlobSwarm e1033002b, e1033007c (5 attackers, attack
+# proximity 20, attack angle 50). For tools/cov/specs/swarmbasics.py: the god-mode player stands at
+# the swarms so boids turn, play the into-attack model, launch and hit the player or a surface, then
+# moves above and below them (LaunchBoid's drop sign), shoots attackers, and deletes one swarm.
+@f200 layer 4
+@f300 god 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f380 send e1033002b Activate; send e1033007c Activate
+@f420 tp 64 -20 -147
+@f500 obj e1033002b
+@f520 lockon 1
+@f540 shoot e1033002b
+@f560 shoot e1033002b
+@f580 tp 60 -22 -148
+@f600 shoot e1033002b
+@f620 shoot e1033002b
+@f640 shoot e1033002b
+@f660 obj e1033002b
+@f700 tp 52 -24 -150
+@f720 shoot e1033002b
+@f740 shoot e1033002b
+@f760 shoot e1033002b
+@f800 tp 46 -26 -151
+@f820 shoot e1033002b
+@f840 shoot e1033002b
+@f900 obj e1033002b
+@f950 tp 64 -20 -147
+@f1000 shoot e1033002b
+@f1050 shoot e1033002b
+@f1100 obj e1033002b
+@f1150 tp 55.6 -59.8 -147.8
+@f1300 obj e1033002b
+@f1340 shoot e1033002b charged
+@f1400 shoot e1033007c missile
+@f1430 beam light
+@f1440 shoot e1033002b; shoot e1033007c
+@f1480 beam power
+@f1500 tp 55.6 -64.8 -152.8
+@f1700 tp 50.6 -59.8 -145.8
+@f1900 obj e1033007c
+@f2100 tp 55.6 -59.8 -147.8
+@f2400 send e1033007c Delete
+@f2500 obj e1033002b
