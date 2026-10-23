@@ -84,10 +84,10 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00005104	0x48	fn_29_5104	H	host-copy		lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x0000514C	0x44	fn_29_514C	B	behaviour			not yet exercised in a run): the team attack ends, but the Ing keeps its team role	yes
 0x00005190	0x40	fn_29_5190	B	behaviour			StartRangedAttack: CScriptTeamAiMgr::StartAttack(kAT_Projectile)	yes
-0x000051D0	0x210	fn_29_51D0	B	behaviour		lbl_29_rodata_94,lbl_29_rodata_EC	not yet exercised in a run): the point-graph route to the lure point - the flag-1	no
+0x000051D0	0x210	fn_29_51D0	B	behaviour		lbl_29_rodata_94,lbl_29_rodata_EC	SetLuredPointDest: the point-graph route to the lure point (PortIngLuredPointDest, shared with fn_44_22B0); every arm covered, lane ing30	yes
 0x000053E0	0x108	fn_29_53E0	B	behaviour			the lure point is the nav-mesh point below the lure safe zone when the mesh path exists (0x53E0-0x54E8)	yes
 0x000054E8	0x22C	fn_29_54E8	B	behaviour		lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_F0		yes
-0x00005714	0x10C	fn_29_5714	B	behaviour		lbl_29_rodata_94	the point-graph route to the cover hint: two closest-point queries 20 apart, then the point search (0x5714-0x5820)	no
+0x00005714	0x10C	fn_29_5714	B	behaviour		lbl_29_rodata_94	the point-graph route to the cover hint: two closest-point queries 20 apart, then the point search (0x5714-0x5820); every arm covered, lane ing30	yes
 0x00005820	0x1B0	fn_29_5820	B	behaviour		lbl_29_rodata_94,lbl_29_rodata_F0		yes
 0x000059D0	0xF4	fn_29_59D0	B	behaviour		lbl_29_rodata_94		yes
 0x00005AC4	0x9C	fn_29_5AC4	B	behaviour				yes
@@ -122,7 +122,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00008CF4	0x1A0	fn_29_8CF4	B	behaviour		lbl_29_data_C20,lbl_29_data_C50,lbl_29_rodata_64	the SafeZoneReaction state: the zone sound, the knock-back and the one-second end (0x8CF4-0x8E94)	yes
 0x00008E94	0x5C	fn_29_8E94	H	host-copy		lbl_29_data_C20,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x00008EF0	0xF8	fn_29_8EF0	B	behaviour		lbl_29_data_C2C,lbl_29_data_C50,lbl_29_rodata_6C		yes
-0x00008FE8	0x464	fn_29_8FE8	B	behaviour		lbl_29_data_C14,lbl_29_data_C50,lbl_29_rodata_104,lbl_29_rodata_40,lbl_29_rodata_6C	not yet exercised in a run	no
+0x00008FE8	0x464	fn_29_8FE8	B	behaviour		lbl_29_data_C14,lbl_29_data_C50,lbl_29_rodata_104,lbl_29_rodata_40,lbl_29_rodata_6C	BecomeWallProjectile; 45-degree limit rodata_104 = 0x3F490FDB; every arm covered, lane ing30	yes
 0x0000944C	0x5C	fn_29_944C	H	host-copy		lbl_29_data_C14,lbl_29_data_C50	the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x000094A8	0x40	fn_29_94A8	H	host-copy	fn_29_8FE8		the plain struct copies - the host's own code does the same	no
 0x000094E8	0x268	fn_29_94E8	B	behaviour		lbl_29_data_C14,lbl_29_data_C50,lbl_29_rodata_40,lbl_29_rodata_6C		yes
@@ -185,7 +185,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x0000B208	0x8C	fn_29_B208	B	behaviour		lbl_29_data_250,lbl_29_data_6BC,lbl_29_data_91C	's: 49 triggers, 29 states and 12 code functions, all registered under the REL's own	yes
 0x0000B294	0x130	fn_29_B294	B	behaviour		lbl_29_rodata_110,lbl_29_rodata_6C		yes
 0x0000B3C4	0x170	fn_29_B3C4	B	behaviour		lbl_29_rodata_120,lbl_29_rodata_64		yes
-0x0000B534	0x250	fn_29_B534	B	behaviour		lbl_29_bss_0,lbl_29_bss_8,lbl_29_data_9DC,lbl_29_data_9E0,lbl_29_data_9E4,lbl_29_data_9E8,lbl_29_data_9EC,lbl_29_data_9F0,lbl_29_rodata_B4	's CollidedWith); it is zero until then. rodata_64 is 1.0f.	no
+0x0000B534	0x250	fn_29_B534	B	behaviour		lbl_29_bss_0,lbl_29_bss_8,lbl_29_data_9DC,lbl_29_data_9E0,lbl_29_data_9E4,lbl_29_data_9E8,lbl_29_data_9EC,lbl_29_data_9F0,lbl_29_rodata_B4	CollidedWith: form 4 after 0.5 s (NaN returns) stores the first splat-surface contact's normal; every arm covered, lane ing30	yes
 0x0000B784	0x10C	fn_29_B784	B	behaviour		lbl_29_rodata_6C		yes
 0x0000B890	0x30	fn_29_B890	B	behaviour			0x30, asm 0x0000B890-0x0000B8BC): the two host forms (0, 1) and the evaporating	yes
 0x0000B8C0	0xB0	fn_29_B8C0	B	behaviour				yes
@@ -215,7 +215,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x0000D3F8	0x58	fn_29_D3F8	H	host-copy	fn_29_D3A0		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x0000D450	0x58	fn_29_D450	H	host-copy	fn_29_D3F8		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x0000D4A8	0x98	fn_29_D4A8	H	host-copy	fn_29_D450		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
-0x0000D540	0x1110	fn_29_D540	B	behaviour	fn_29_130	lbl_29_data_A24,lbl_29_rodata_118,lbl_29_rodata_11C,lbl_29_rodata_120,lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_8C,lbl_29_rodata_98,lbl_29_rodata_D0,lbl_29_rodata_F4	@0x0000D5F4: (null area, flags 0x301, the patterned info's pathfinding index at	no
+0x0000D540	0x1110	fn_29_D540	B	behaviour	fn_29_130	lbl_29_data_A24,lbl_29_rodata_118,lbl_29_rodata_11C,lbl_29_rodata_120,lbl_29_rodata_64,lbl_29_rodata_6C,lbl_29_rodata_8C,lbl_29_rodata_98,lbl_29_rodata_D0,lbl_29_rodata_F4	the constructor; only branches are the seven effect-token id tests (both arms, forced); lane ing30 fixed touch box, portal plane, light blend, found-pos bit, search size	yes
 0x0000E650	0x3C	fn_29_E650	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x0000E68C	0x6C	fn_29_E68C	H	host-copy			deleting dtor (A.20)	no
 0x0000E6F8	0x58	fn_29_E6F8	H	host-copy			the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
@@ -249,7 +249,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00010944	0x40C	fn_29_10944	B	behaviour	fn_29_10F58	lbl_29_rodata_798,lbl_29_rodata_7A8,lbl_29_rodata_7C0,lbl_29_rodata_7C4		yes
 0x00010D50	0x9C	fn_29_10D50	B	behaviour	fn_29_1105C		the child-particle-system builder both exit-host tokens go through (0x10D50-0x10DEC)	yes
 0x00010DEC	0x78	fn_29_10DEC	B	behaviour				yes
-0x00010E64	0x50	fn_29_10E64	B	behaviour			the exit-host effect's Render: dead on the host, nothing queues the actor (0x10E64-0x10EB4)	no
+0x00010E64	0x50	fn_29_10E64	T	vtable			the exit-host effect's Render: vtable data_C60 slot 0x2C, never dispatched - AddToRenderer 10DEC submits only the two particle gens and nothing calls AddDrawableActor/RenderLast for it (lane ing30)	no
 0x00010EB4	0xA4	fn_29_10EB4	B	behaviour				yes
 0x00010F58	0x104	fn_29_10F58	B	behaviour		lbl_29_rodata_798		yes
 0x0001105C	0x3DC	fn_29_1105C	B	behaviour	fn_29_9D68	lbl_29_data_C60,lbl_29_rodata_798,lbl_29_rodata_7A8,lbl_29_rodata_7C8		yes
