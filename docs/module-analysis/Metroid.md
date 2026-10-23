@@ -39,4 +39,9 @@ fn_40_4300 `PreDamageSpacePirate` (not marked): the true path ran (AttachToTarge
 pirate threshold 1000000 -> ApplyDamage 999999, hp 60 -> -999939). Its four early false returns
 (no target, target not a pirate, IsPirateValidTarget false, AttachActorToPirate false) were not
 reached, also with a second metroid forced (`fsm u053d Attack`, `metroid_latch2.con`): it latched
-another pirate.
+another pirate. (up2, 2026-10-23: four natural runs, `damage`/`send Delete` on the target pirates at f700-f1200,
+still none of the first three; the fourth is dead: IsPirateValidTarget already requires
+`GetAttachedActor()==kInvalidUniqueId` and PortAttachActor only fails when it is set.)
+
+fn_40_2EC8 `ShouldReleaseFromTarget`: the pirate branch now checks AllEnergyDrained (0x8f8 bit 0x02,
+0x2FD4-0x2FE0) before IsDead, as retail does; the check ran in every up2 run, never true.
