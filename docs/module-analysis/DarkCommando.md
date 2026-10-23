@@ -32,11 +32,25 @@ CDarkCommando ctor (inline CSfxHandle store). `upstream_hollow.py DarkCommando`:
 Noted, not changed: CreateShadowDecoyEffect locks the token in retail (TLockedToken/GetObj), upstream
 keeps a plain TToken.
 
+## Behaviour fixes (dc2, 2026-10-23)
+
+| function | retail | upstream had |
+|---|---|---|
+| fn_3_1650 JoinTeam | 0x1674-0x1680 `lhz r5,0xc90; cmplw r5,kInvalidUniqueId; bne 0x16E4`: a set team id skips the whole join | re-joined on every SelectDashTarget; `CScriptTeamAiMgr::JoinTeam` then reset the member's role |
+
+Checked equivalent (dc2): ShouldMeleeAttack, AcceptScriptMsg (OffGround `lbz 0x594; extrwi 1,26`
+= frozen, skip), ApplyMeleeDamage (wrist 0xc79 / blade 0xc78 min/max, 3*scale.y, `<= 0` timer),
+LeaveTeam, ReserveHint, CShadowDecoy::Touch, ShouldGetUp (states 0xe Hurled / 2 LieOnGround),
+UpdateAdditiveAim (null target: no AdditiveIdle either), WarpIn, Lurk, Taunt, FaceTarget (`<=`
+0.1745 via cror, NaN skips), InEMPRange/InChargeBeamRange (same shape, 0x814/0x818 vs 0x85c/0x860).
+
 ## Spawns
 
 Temple Grounds dark (world 3bfa3eff) 06_temple_sacredpath_dark (area 55): two Dark Commandos, u051a
 (e0037014e, near (-6.4,282.4,-38.7)) and u041c (e00370056, (5.6,244.6,-30.4), inactive until
-`send u041c Activate`); 650 hp each. Others: docs/modules.tsv row DarkCommando.
+`send u041c Activate`); 650 hp each. Team: 3bfa3eff 11_temple_grandpuzzle layer 8 has three commandos
+(u065c/u065a/u0659) and their CScriptTeamAiMgr u065b (`layer 8` activates them). Others:
+docs/modules.tsv row DarkCommando.
 
 ## Coverage (dc1)
 
@@ -71,3 +85,35 @@ InEMPRange/InChargeBeamRange, the CShadowDecoy bodies, the charge-beam ctor/Thin
 ThinkRagDoll, JoinTeam/LeaveTeam, UpdateSfx, LoadDarkCommando (one arm), the CDarkCommando ctor.
 Next: a melee driver (player within melee range, `fsm MeleeAttack` until the blade hits), force the
 grenade's EMP duration and the team (`CTeamAiMgr`) arms.
+
+## Coverage (dc2)
+
+Drivers/specs: `tools/drivers/darkcommando_melee.py <port> [log] [layer|-] [leave]` (activates every
+commando, places one at several distances, forces `fsm MeleeAttack`, then FireEMP at 12-30 units;
+`leave` ends with 3x `send Deactivate`); `tools/cov/specs/darkcommando_force.py` (gdb forces,
+self-restoring); `darkcommando_emp_force.py` (grenade EMP duration only). Runs merged (force first):
+
+    MP2_GODMODE=1 BUILD=build-port-cov tools/cov/force.sh tools/cov/specs/darkcommando_force.py <f> 3bfa3eff,11_temple_grandpuzzle \
+      --driver 'python3 tools/drivers/darkcommando_melee.py {port} <f>/melee.log 8 leave' --frames 9000
+    BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/darkcommando.py <t> 3bfa3eff,11_temple_grandpuzzle \
+      --driver 'python3 tools/drivers/darkcommando_melee.py {port} <t>/melee.log 8' --frames 9000 --env MP2_GODMODE=1
+    (+ the dc1 states run, and the melee driver in 06_temple_sacredpath_dark, 9000 frames, godmode)
+
+Merged: 88 bodies, 64 with branches, 11 with every arm taken. Marked by dc2 (14):
+
+| fn | arms | note |
+|---|---|---|
+| fn_3_8BEC CDarkCommandoGrenade::Think | 12/12 | duration arms forced (darkcommando_force: eMPDuration) |
+| fn_3_9184 CShadowDecoy::Touch | 2/2 | natural |
+| fn_3_15A8 LeaveTeam | 6/6 | not-a-member / not-a-team forced (darkcommando_force: LeaveTeam calls 2/3) |
+| fn_3_2D24 UpdateAdditiveAim, fn_3_6030 ShouldGetUp | all | natural |
+| fn_3_1650 JoinTeam | 5/6 | cast-null dead: the id comes from GetAssociatedTeamId in the same call (after the fix) |
+| fn_3_1F34 ReserveHint | 1/2 | cast-null dead: the only caller (SelectDashTarget) passes hint ids it collected from the AiWaypoint list in the same call |
+| fn_3_5DA8 WarpIn, fn_3_5A2C Lurk, fn_3_58D8 Taunt, fn_3_484C FaceTarget | all but 1 | the `else if (msg == kStateMsg_Deactivate)` false arm is dead (EStateMsg is 0..2); Lurk/Taunt knocked-back and FaceTarget zero vector forced |
+| fn_3_3690 ApplyMeleeDamage | 9/10 | `!mMeleeDamageApplied` false arm dead: 0xcb4 bit 0x01 is only written 0 (0x5664 MeleeAttack Activate, 0x7388 ctor); not-attacking / zero blade forced |
+| fn_3_3054 InEMPRange, fn_3_2FA4 InChargeBeamRange | 9/10 | target-null dead: the only caller, BuildActionChoices, returns on a null target first; min range forced |
+
+Still unmarked: ShouldMeleeAttack, SelectMeleeVariant, MeleeAttack, FireChargeBeam (target-null
+arms reachable from the FSM but not run), BuildActionChoices (1238-1245 arms this run),
+DeactivateCloak (1/4), UpdateCloak (2/4 dark-visor arm), FireEMP, ShadowDash, PostFireChargeBeam,
+WarpOut and GetUp (0%: never entered), KnockBack, ThinkRagDoll, the charge beam and decoy bodies.
