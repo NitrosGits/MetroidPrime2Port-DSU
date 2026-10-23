@@ -1,0 +1,146 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_69_0	8	B	CShrieker::GetSearchPath	-	upstream body (CShrieker)	no
+00008	fn_69_8	8	B	CShrieker::IsListening	-	upstream body (CShrieker)	no
+00010	fn_69_10	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0004C	fn_69_4C	10	H	unnamed	-	unnamed (weak copy / template instance)	no
+0005C	fn_69_5C	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+00064	fn_69_64	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+0006C	fn_69_6C	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+00074	fn_69_74	10	H	unnamed	-	unnamed (weak copy / template instance)	no
+00084	fn_69_84	C	H	unnamed	-	unnamed (weak copy / template instance)	no
+00090	fn_69_90	C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0009C	fn_69_9C	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+000A4	fn_69_A4	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+000AC	fn_69_AC	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+000B4	fn_69_B4	2C	H	unnamed	-	unnamed (weak copy / template instance)	no
+000E0	fn_69_E0	24	T	RELExit	-	REL runtime	no
+00104	fn_69_104	20	T	RELMain	-	REL runtime	no
+00124	fn_69_124	30	T	SetFuncPtrs	-	REL runtime	no
+00154	fn_69_154	7D8	B	LoadShrieker	-	upstream body (CShrieker)	no
+0092C	fn_69_92C	58	H	unnamed	-	unnamed (weak copy / template instance)	no
+00984	fn_69_984	224	B	CShriekerData::CShriekerData	shr1	upstream body (CShrieker)	yes
+00BA8	fn_69_BA8	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+00C04	fn_69_C04	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+00C58	fn_69_C58	130	H	unnamed	-	unnamed (weak copy / template instance)	no
+00D88	fn_69_D88	40	H	unnamed	-	unnamed (weak copy / template instance)	no
+00DC8	fn_69_DC8	20	H	unnamed	-	unnamed (weak copy / template instance)	no
+00DE8	fn_69_DE8	28	H	unnamed	-	unnamed (weak copy / template instance)	no
+00E10	fn_69_E10	13C	H	unnamed	-	unnamed (weak copy / template instance)	no
+00F4C	fn_69_F4C	6C	H	unnamed	-	unnamed (weak copy / template instance)	no
+00FB8	fn_69_FB8	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+0100C	fn_69_100C	64	H	unnamed	-	unnamed (weak copy / template instance)	no
+01070	fn_69_1070	60	H	unnamed	-	unnamed (weak copy / template instance)	no
+010D0	fn_69_10D0	A0	B	SLdrShrieker::~SLdrShrieker	-	upstream body (SLdrShrieker, header inline)	no
+01170	fn_69_1170	240	B	SLdrShrieker::SLdrShrieker	shr1	upstream body (SLdrShrieker, header inline); shr1 fix	no
+013B0	fn_69_13B0	BC	B	CShrieker::ResetAttackTimer	-	upstream body (CShrieker)	no
+0146C	fn_69_146C	214	B	CShrieker::ApplySeparation	-	upstream body (CShrieker)	no
+01680	fn_69_1680	80	B	CShrieker::SetTeamMemberTarget	-	upstream body (CShrieker)	no
+01700	fn_69_1700	50	B	CShrieker::EndTeamAttack	shr1	upstream body (CShrieker)	yes
+01750	fn_69_1750	A8	B	CShrieker::QuitTeam	-	upstream body (CShrieker)	no
+017F8	fn_69_17F8	AC	B	CShrieker::JoinTeam	-	upstream body (CShrieker)	no
+018A4	fn_69_18A4	1C	B	CShrieker::GetTranslationCopy	-	upstream body (CShrieker)	no
+018C0	fn_69_18C0	148	B	CShrieker::SetBuriedCollision	shr1	upstream body (CShrieker)	yes
+01A08	fn_69_1A08	9C	B	CShrieker::GetHeightAboveMesh	shr1	upstream body (CShrieker)	yes
+01AA4	fn_69_1AA4	188	B	CShrieker::FaceTarget	shr1	upstream body (CShrieker); shr1 fix	no
+01C2C	fn_69_1C2C	528	B	CShrieker::DeflectMissiles	-	upstream body (CShrieker)	no
+02154	fn_69_2154	40	H	unnamed	-	unnamed (weak copy / template instance)	no
+02194	fn_69_2194	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+021D0	fn_69_21D0	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0220C	fn_69_220C	2E8	B	CShrieker::DetectPlayer	-	upstream body (CShrieker)	no
+024F4	fn_69_24F4	450	B	CShrieker::ApplyMeleeDamage	-	upstream body (CShrieker)	no
+02944	fn_69_2944	28	H	unnamed	-	unnamed (weak copy / template instance)	no
+0296C	fn_69_296C	90	H	unnamed	-	unnamed (weak copy / template instance)	no
+029FC	fn_69_29FC	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+02A38	fn_69_2A38	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+02A40	fn_69_2A40	8	H	unnamed	-	unnamed (weak copy / template instance)	no
+02A48	fn_69_2A48	8	B	CShrieker::ProjectileInfo	shr1	upstream body (CShrieker)	yes
+02A50	fn_69_2A50	D0	B	CShrieker::InMaxRange	shr1	upstream body (CShrieker); shr1 fix	no
+02B20	fn_69_2B20	244	B	CShrieker::ShouldDodge	-	upstream body (CShrieker)	no
+02D64	fn_69_2D64	1A4	B	CShrieker::ShouldMelee	-	upstream body (CShrieker)	no
+02F08	fn_69_2F08	11C	B	CShrieker::ShouldFire	-	upstream body (CShrieker)	no
+03024	fn_69_3024	14C	B	CShrieker::IsFacingTarget	-	upstream body (CShrieker)	no
+03170	fn_69_3170	C	B	CShrieker::LineOfSight	shr1	upstream body (CShrieker)	yes
+0317C	fn_69_317C	8C	B	CShrieker::CloseToStart	-	upstream body (CShrieker)	no
+03208	fn_69_3208	50	B	CShrieker::LeavePatrol	-	upstream body (CShrieker)	no
+03258	fn_69_3258	34	B	CShrieker::PlayerLeashReached	-	upstream body (CShrieker)	no
+0328C	fn_69_328C	C	B	CShrieker::HasPatrolPath	shr1	upstream body (CShrieker)	yes
+03298	fn_69_3298	C	B	CShrieker::EnterUprootShriek	shr1	upstream body (CShrieker)	yes
+032A4	fn_69_32A4	14	B	CShrieker::PlayerLeavesProximity	-	upstream body (CShrieker)	no
+032B8	fn_69_32B8	C	B	CShrieker::PlayerEntersProximity	shr1	upstream body (CShrieker)	yes
+032C4	fn_69_32C4	78	B	CShrieker::PathShagged	-	upstream body (CShrieker)	no
+0333C	fn_69_333C	33C	B	CShrieker::DoUserAnimEvent	-	upstream body (CShrieker)	no
+03678	fn_69_3678	78	H	unnamed	-	unnamed (weak copy / template instance)	no
+036F0	fn_69_36F0	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+03744	fn_69_3744	54	H	unnamed	-	unnamed (weak copy / template instance)	no
+03798	fn_69_3798	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+037F4	fn_69_37F4	20	H	unnamed	-	unnamed (weak copy / template instance)	no
+03814	fn_69_3814	48	H	unnamed	-	unnamed (weak copy / template instance)	no
+0385C	fn_69_385C	48	H	unnamed	-	unnamed (weak copy / template instance)	no
+038A4	fn_69_38A4	B4	H	unnamed	-	unnamed (weak copy / template instance)	no
+03958	fn_69_3958	40	H	unnamed	-	unnamed (weak copy / template instance)	no
+03998	fn_69_3998	20	H	unnamed	-	unnamed (weak copy / template instance)	no
+039B8	fn_69_39B8	28	H	unnamed	-	unnamed (weak copy / template instance)	no
+039E0	fn_69_39E0	80	H	unnamed	-	unnamed (weak copy / template instance)	no
+03A60	fn_69_3A60	6C	H	unnamed	-	unnamed (weak copy / template instance)	no
+03ACC	fn_69_3ACC	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+03B08	fn_69_3B08	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+03B44	fn_69_3B44	78	B	CShrieker::Dead	shr1	upstream body (CShrieker)	yes
+03BBC	fn_69_3BBC	A4	B	CShrieker::Patrol	shr1	upstream body (CShrieker)	yes
+03C60	fn_69_3C60	200	B	CShrieker::Bury	shr1	upstream body (CShrieker)	yes
+03E60	fn_69_3E60	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+03EBC	fn_69_3EBC	48	H	unnamed	-	unnamed (weak copy / template instance)	no
+03F04	fn_69_3F04	D8	B	CShrieker::Dodge	shr1	upstream body (CShrieker)	yes
+03FDC	fn_69_3FDC	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+04038	fn_69_4038	188	B	CShrieker::Melee	shr1	upstream body (CShrieker)	yes
+041C0	fn_69_41C0	40	H	unnamed	-	unnamed (weak copy / template instance)	no
+04200	fn_69_4200	64	H	unnamed	-	unnamed (weak copy / template instance)	no
+04264	fn_69_4264	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+042C0	fn_69_42C0	4	B	CShrieker::Retreat	shr1	upstream body (CShrieker)	yes
+042C4	fn_69_42C4	1CC	B	CShrieker::ReturnToStart	shr1	upstream body (CShrieker)	yes
+04490	fn_69_4490	170	B	CShrieker::ShriekAttack	shr1	upstream body (CShrieker)	yes
+04600	fn_69_4600	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+0465C	fn_69_465C	1D0	B	CShrieker::PathFind	-	upstream body (CShrieker)	no
+0482C	fn_69_482C	A4	B	CShrieker::TargetPlayer	shr1	upstream body (CShrieker)	yes
+048D0	fn_69_48D0	A0	B	CShrieker::UpdateTargetPosition	-	upstream body (CShrieker)	no
+04970	fn_69_4970	1E8	B	CShrieker::FindTarget	-	upstream body (CShrieker)	no
+04B58	fn_69_4B58	1D8	B	CShrieker::UprootShriek	shr1	upstream body (CShrieker)	yes
+04D30	fn_69_4D30	38	B	CShrieker::BuriedRumbling	shr1	upstream body (CShrieker)	yes
+04D68	fn_69_4D68	40	B	CShrieker::Buried	shr1	upstream body (CShrieker)	yes
+04DA8	fn_69_4DA8	184	B	CShrieker::KnockBack	-	upstream body (CShrieker)	no
+04F2C	fn_69_4F2C	2C	B	CShrieker::GetDamageVulnerability	shr1	upstream body (CShrieker)	yes
+04F58	fn_69_4F58	34	B	CShrieker::GetDamageVulnerability	shr1	upstream body (CShrieker)	yes
+04F8C	fn_69_4F8C	78	B	CShrieker::AddToRenderer	shr1	upstream body (CShrieker)	yes
+05004	fn_69_5004	20	B	CShrieker::PreRender	shr1	upstream body (CShrieker)	yes
+05024	fn_69_5024	1BC	B	CShrieker::Render	shr1	upstream body (CShrieker); shr1 fix	no
+051E0	fn_69_51E0	210	B	CShrieker::Think	-	upstream body (CShrieker)	no
+053F0	fn_69_53F0	EC	B	CShrieker::UpdateValidTarget	shr1	upstream body (CShrieker)	yes
+054DC	fn_69_54DC	78	B	CShrieker::FadeAlpha	shr1	upstream body (CShrieker)	yes
+05554	fn_69_5554	26C	B	CShrieker::ReactToDamage	-	upstream body (CShrieker)	no
+057C0	fn_69_57C0	2C	H	unnamed	-	unnamed (weak copy / template instance)	no
+057EC	fn_69_57EC	84	H	unnamed	-	unnamed (weak copy / template instance)	no
+05870	fn_69_5870	C8	H	unnamed	-	unnamed (weak copy / template instance)	no
+05938	fn_69_5938	50	H	unnamed	-	unnamed (weak copy / template instance)	no
+05988	fn_69_5988	460	B	CShrieker::AcceptScriptMsg	-	upstream body (CShrieker)	no
+05DE8	fn_69_5DE8	6C	B	CShrieker::SetupStateMachine	shr1	upstream body (CShrieker)	yes
+05E54	fn_69_5E54	120	B	CShrieker::~CShrieker	shr1	upstream body (CShrieker)	yes
+05F74	fn_69_5F74	1E4	H	CShrieker::~CShrieker (deleting copy)	-	unnamed (weak copy / template instance)	no
+06158	fn_69_6158	94	H	unnamed	-	unnamed (weak copy / template instance)	no
+061EC	fn_69_61EC	50	H	unnamed	-	unnamed (weak copy / template instance)	no
+0623C	fn_69_623C	84	H	unnamed	-	unnamed (weak copy / template instance)	no
+062C0	fn_69_62C0	56C	B	CShrieker::CShrieker	-	upstream body (CShrieker)	no
+0682C	fn_69_682C	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+06868	fn_69_6868	184	H	unnamed	-	unnamed (weak copy / template instance)	no
+069EC	fn_69_69EC	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+06A28	fn_69_6A28	84	H	unnamed	-	unnamed (weak copy / template instance)	no
+06AAC	fn_69_6AAC	58	H	unnamed	-	unnamed (weak copy / template instance)	no
+06B04	fn_69_6B04	B0	H	unnamed	-	unnamed (weak copy / template instance)	no
+06BB4	fn_69_6BB4	38	H	unnamed	-	unnamed (weak copy / template instance)	no
+06BEC	fn_69_6BEC	84	H	unnamed	-	unnamed (weak copy / template instance)	no
+06C70	fn_69_6C70	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+06CAC	fn_69_6CAC	5C	H	unnamed	-	unnamed (weak copy / template instance)	no
+06D08	fn_69_6D08	1DC	B	CShriekerData::CShriekerData (copy)	-	upstream body (CShrieker)	no
+06EE4	fn_69_6EE4	3C	H	unnamed	-	unnamed (weak copy / template instance)	no
+06F20	fn_69_6F20	11C	B	CShrieker::DeliverCommand<CBCStepCmd>	shr1	upstream body (CShrieker)	yes
+0703C	fn_69_703C	74	H	unnamed	-	unnamed (weak copy / template instance)	no
+070B0	fn_69_70B0	74	H	unnamed	-	unnamed (weak copy / template instance)	no
+07124	fn_69_7124	4E8	B	__sinit_CShrieker_cpp	-	static init (state/trigger tables)	no

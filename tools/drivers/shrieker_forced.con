@@ -1,0 +1,24 @@
+# Shrieker (REL 69) forced arms, Torvus Bog 02_swamp_greatbridge (area 9): the echo visor on a
+# faded (buried) Shrieker (Render), ReturnToStart at its start point (CloseToStart arm),
+# BuriedRumbling and Retreat bodies (statecall), a dark combo on a buried one (KnockBack hurled
+# while buried) and a second hit after death (mDeathKnockBackStarted).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/shrieker.py <out> 3dfd2249,02_swamp_greatbridge \
+#        --con tools/drivers/shrieker_forced.con --fast --frames 4000
+@f600 god 1
+@f700 visor echo
+@f900 place e000900c9 player 12
+@f1000 obj e000900c9
+@f1200 visor combat
+@f1300 statecall e00090071 BuriedRumbling 0
+@f1310 statecall e00090071 BuriedRumbling 1
+@f1320 statecall e00090071 BuriedRumbling 2
+@f1330 statecall e00090071 Retreat 1
+@f1400 fsm e00090071 ReturnToStart
+@f1800 obj e00090071
+@f2000 obj e0009007b
+@f2100 damage e0009007b 999 0 darkburst
+@f2110 damage e0009007b 5
+@f2400 place e00090071 player 8
+@f2700 damage e00090071 999
+@f2710 damage e00090071 5
+@f3000 objs shrieker

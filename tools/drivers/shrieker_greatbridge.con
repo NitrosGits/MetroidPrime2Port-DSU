@@ -1,0 +1,40 @@
+# Shrieker (REL 69), Torvus Bog 02_swamp_greatbridge (area 9; three Shriekers load at boot:
+# e000900c9, e0009007b, e00090071). Natural approach (rustle 15, pop 10 radius), then the state
+# table (fsm), missiles into the deflection field, messages (send), and three deaths: unburied
+# (power), buried (MassiveDeath) and a dark combo (hurled).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/shrieker.py <out> 3dfd2249,02_swamp_greatbridge \
+#        --con tools/drivers/shrieker_greatbridge.con --fast --frames 6400
+@f600 god 1
+@f700 obj e000900c9
+@f800 place e000900c9 player 14
+@f1100 obj e000900c9
+@f1200 place e000900c9 player 8
+@f1600 obj e000900c9
+@f1800 fsm e000900c9 ShriekAttack
+@f2100 fsm e000900c9 Melee
+@f2400 place e000900c9 player 4
+@f2500 fsm e000900c9 Dodge
+@f2700 fsm e000900c9 PathFind
+@f2900 fsm e000900c9 ReturnToStart
+@f3100 fsm e000900c9 Patrol
+@f3300 fsm e000900c9 TargetPlayer
+@f3400 place e000900c9 player 10
+@f3450 shoot e000900c9 missile
+@f3500 shoot e000900c9 missile
+@f3600 fsm e000900c9 Bury
+@f3900 fsm e000900c9 Retreat
+@f4000 send e000900c9 Alert
+@f4100 send e000900c9 Increment
+@f4200 send e000900c9 Decrement
+@f4300 send e000900c9 Deactivate
+@f4400 send e000900c9 Activate
+@f4500 fsm e000900c9 UprootShriek
+@f4800 damage e000900c9 2 0 missile
+@f4900 damage e000900c9 2 0 bomb
+@f5000 damage e000900c9 999
+@f5300 obj e000900c9
+@f5400 damage e0009007b 999
+@f5700 obj e0009007b
+@f5800 place e00090071 player 8
+@f6000 damage e00090071 999 0 darkburst
+@f6300 objs shrieker

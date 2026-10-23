@@ -101,6 +101,7 @@ static CVector3f skCloseToStartTolerance(1.f, 1.f, 0.1f);
 static rstl::string skRootLocatorName = rstl::string_l("Skeleton_Root");
 static rstl::string skHoverReferenceLocatorName = rstl::string_l("HoverReference_LCTR");
 
+// @ fn_69_984
 CShriekerData::CShriekerData(
     float detectionHeight, float rustleDetectionRadius, float popDetectionRadius,
     float morphballDetectionRadius, CAssetId shriekEffect, const CDamageInfo& shriekDamage,
@@ -199,8 +200,10 @@ CShrieker::CShrieker(TUniqueId uid, const rstl::string& name, const CEntityInfo&
   mLineOfSightTracker.SetSegment(mRootSegId);
 }
 
+// @ fn_69_5E54
 CShrieker::~CShrieker() {}
 
+// @ fn_69_5DE8
 void CShrieker::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -302,8 +305,10 @@ void CShrieker::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_69_5004
 void CShrieker::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_69_4F8C
 void CShrieker::AddToRenderer(const CStateManager& mgr) const {
   for (int i = 0; i < 2; ++i) {
     if (mEffectGens[i].get() != nullptr) {
@@ -333,12 +338,18 @@ void CShrieker::Render(const CStateManager& mgr) const {
       if (projectile) {
         const float ratio =
             (center - projectile->GetTranslation()).Magnitude() / mData.mMissileDeflectionRadius;
+#ifdef TARGET_PC
+        // 0x5164 fcmpo 0,ratio; ble / 0x517C fcmpo 1,ratio; bge: retail clamps to [0, 1].
+        mgr.DrawSpaceWarp(projectile->GetTranslation(), 1.f - CMath::Clamp(0.f, ratio, 1.f));
+#else
         mgr.DrawSpaceWarp(projectile->GetTranslation(), 1.f - rstl::min_val(ratio, 1.f));
+#endif
       }
     }
   }
 }
 
+// @ fn_69_4F58
 const CDamageVulnerability* CShrieker::GetDamageVulnerability() const {
   if (mBuried) {
     return &mData.mBuriedVulnerability;
@@ -346,6 +357,7 @@ const CDamageVulnerability* CShrieker::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_69_4F2C
 const CDamageVulnerability* CShrieker::GetDamageVulnerability(const CVector3f&, const CVector3f&,
                                                               const CDamageInfo&) const {
   return GetDamageVulnerability();
@@ -432,6 +444,7 @@ void CShrieker::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_69_2A48
 CProjectileInfo* CShrieker::ProjectileInfo() { return &mProjectileInfo; }
 
 void CShrieker::ResetAttackTimer(CStateManager& mgr, int type) {
@@ -483,6 +496,7 @@ void CShrieker::SetTeamMemberTarget(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_1700
 void CShrieker::EndTeamAttack(CStateManager& mgr, bool projectile) {
   CScriptTeamAiMgr::EndAttack(projectile ? CScriptTeamAiMgr::kAT_Projectile
                                          : CScriptTeamAiMgr::kAT_Melee,
@@ -514,6 +528,7 @@ void CShrieker::JoinTeam(CStateManager& mgr) {
 
 CVector3f CShrieker::GetTranslationCopy() const { return GetTranslation(); }
 
+// @ fn_69_18C0
 void CShrieker::SetBuriedCollision(CStateManager& mgr, bool buried) {
   CMaterialList exclude = GetMaterialFilter().GetExcludeList();
   if (buried) {
@@ -527,6 +542,7 @@ void CShrieker::SetBuriedCollision(CStateManager& mgr, bool buried) {
       CMaterialFilter::MakeIncludeExclude(GetMaterialFilter().GetIncludeList(), exclude));
 }
 
+// @ fn_69_1A08
 bool CShrieker::GetHeightAboveMesh(float& height) const {
   const CTransform4f lctr = GetLctrTransform(mHoverSegId);
   if (mPathFindSearch.GetHeightOfPointAboveMesh(lctr.GetTranslation(), height, 0.f) == 0) {
@@ -542,7 +558,12 @@ void CShrieker::FaceTarget(CStateManager& mgr, float dt) {
     if (direction.CanBeNormalized()) {
       direction.Normalize();
       BodyController()->FaceDirection(direction, dt);
+#ifdef TARGET_PC
+      // 0x1B40 extrwi. r0,r0,1,28 / 0x1B44 bne: retail tests 0x08 (mChasing), not mBuried (0x10).
+      if (!mChasing) {
+#else
       if (!mBuried) {
+#endif
         float height = 0.f;
         if (GetHeightAboveMesh(height) && CMath::AbsF(height) > 0.5f) {
           BodyController()->CommandMgr().ClearLocomotionCmds();
@@ -757,6 +778,7 @@ void CShrieker::FindTarget(CStateManager& mgr) {
   mSeparating = false;
 }
 
+// @ fn_69_53F0
 void CShrieker::UpdateValidTarget(CStateManager& mgr) {
   bool valid = !mBuried;
   if (valid) {
@@ -780,6 +802,7 @@ void CShrieker::UpdateValidTarget(CStateManager& mgr) {
   }
 }
 
+// @ fn_69_54DC
 void CShrieker::FadeAlpha(CStateManager& mgr, bool fadeIn, bool immediate) {
   if (immediate) {
     mColor.SetAlpha(1.f);
@@ -829,6 +852,7 @@ void CShrieker::ReactToDamage(CStateManager& mgr, TUniqueId senderId) {
   }
 }
 
+// @ fn_69_4D68
 void CShrieker::Buried(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -841,6 +865,7 @@ void CShrieker::Buried(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_4D30
 void CShrieker::BuriedRumbling(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -852,6 +877,7 @@ void CShrieker::BuriedRumbling(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_482C
 void CShrieker::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -869,6 +895,7 @@ void CShrieker::TargetPlayer(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_4B58
 void CShrieker::UprootShriek(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -932,6 +959,7 @@ void CShrieker::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_4490
 void CShrieker::ShriekAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -954,6 +982,7 @@ void CShrieker::ShriekAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_3C60
 void CShrieker::Bury(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -983,6 +1012,7 @@ void CShrieker::Bury(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_3BBC
 void CShrieker::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -997,6 +1027,7 @@ void CShrieker::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
 }
 
+// @ fn_69_42C4
 void CShrieker::ReturnToStart(CStateManager& mgr, EStateMsg msg, float dt) {
   bool pathFind = true;
   switch (msg) {
@@ -1024,8 +1055,10 @@ void CShrieker::ReturnToStart(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_42C0
 void CShrieker::Retreat(CStateManager&, EStateMsg, float) {}
 
+// @ fn_69_4038
 void CShrieker::Melee(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1049,6 +1082,7 @@ void CShrieker::Melee(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_3F04
 void CShrieker::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   DeliverCommand(msg, pas::kAS_Step,
                  CBCStepCmd(mDodgeRight ? pas::kSD_Right : pas::kSD_Left, pas::kStep_Dodge));
@@ -1062,6 +1096,7 @@ void CShrieker::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_69_3B44
 void CShrieker::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1078,6 +1113,7 @@ bool CShrieker::PathShagged(CStateManager& mgr, const CTriggerData& data) const 
   return CPatterned::PathShagged(mgr, data) && PlayerLeashReached(mgr, data);
 }
 
+// @ fn_69_32B8
 bool CShrieker::PlayerEntersProximity(CStateManager&, const CTriggerData&) const {
   return mPlayerInProximity;
 }
@@ -1086,10 +1122,12 @@ bool CShrieker::PlayerLeavesProximity(CStateManager&, const CTriggerData&) const
   return !mPlayerInProximity;
 }
 
+// @ fn_69_3298
 bool CShrieker::EnterUprootShriek(CStateManager&, const CTriggerData&) const {
   return mShriekTriggered;
 }
 
+// @ fn_69_328C
 bool CShrieker::HasPatrolPath(CStateManager&, const CTriggerData&) const { return mHasPatrolPath; }
 
 bool CShrieker::PlayerLeashReached(CStateManager&, const CTriggerData&) const {
@@ -1114,6 +1152,7 @@ bool CShrieker::CloseToStart(CStateManager&, const CTriggerData&) const {
   return result;
 }
 
+// @ fn_69_3170
 bool CShrieker::LineOfSight(CStateManager&, const CTriggerData&) const {
   return mLineOfSightTracker.HasLineOfSight();
 }
@@ -1194,12 +1233,18 @@ bool CShrieker::ShouldDodge(CStateManager& mgr, const CTriggerData&) const {
 bool CShrieker::InMaxRange(CStateManager& mgr, const CTriggerData&) const {
   if (const CActor* target = TCastToPtr< CActor >(mgr.ObjectById(mTargetId))) {
     const CVector3f delta = target->GetTranslation() - GetTranslation();
+#ifdef TARGET_PC
+    // 0x2AAC extrwi. r0,r0,1,28 / 0x2AD4 beq: retail tests 0x08 (mChasing), not mBuried (0x10).
+    const float range = mMaxAttackRange - (mChasing ? 0.25f * mMaxAttackRange : 0.f);
+#else
     const float range = mMaxAttackRange - (mBuried ? 0.25f * mMaxAttackRange : 0.f);
+#endif
     return delta.MagSquared() < range * range;
   }
   return false;
 }
 
+// @ fn_69_6F20
 template < typename T >
 void CShrieker::DeliverCommand(EStateMsg msg, pas::EAnimationState state, const T& cmd) {
   switch (msg) {
