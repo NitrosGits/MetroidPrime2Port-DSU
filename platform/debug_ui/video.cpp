@@ -1,4 +1,4 @@
-// F1 overlay: The Video page's Display, Quality and Compatibility tabs. State and helpers shared
+// F1 overlay: The Video page's Display and Quality tabs. State and helpers shared
 // with the other parts are in debug_ui_internal.h.
 
 #include "debug_ui_internal.h"
@@ -146,12 +146,6 @@ void DrawVideoQuality() {
       Changed(true);
     }
   }
-}
-
-// MP1 files its renderer workarounds (texture copy paths, backend and API choices) here; this port
-// has no such knob yet, so the tab says so rather than inventing one.
-void DrawVideoCompatibility() {
-  ImGui::TextDisabled("No compatibility options in this port yet.");
 }
 
 } // namespace PortDebug

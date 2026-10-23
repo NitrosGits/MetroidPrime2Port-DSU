@@ -143,7 +143,6 @@ void DrawLogSection();
 // video.cpp
 void DrawVideoDisplay();
 void DrawVideoQuality();
-void DrawVideoCompatibility();
 
 // controls.cpp
 void DrawControlsOptions();
