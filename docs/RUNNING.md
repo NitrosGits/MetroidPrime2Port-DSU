@@ -244,6 +244,8 @@ borrowed SpacePirate body and drives every state) and drkc (Temple Grounds dark
 dark 0d_swamp_hall_dark) and scriptgui (the FrontEnd world 69802220, which is the one family that
 needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
 and plct (Agon Wastes 05_portalpuzzle)
+06_temple_sacredpath_dark), atma (Great Temple 0l_temple_hall,
+two AtomicAlphas) and atmb (Sanctuary Fortress 0b_cliff_hall layer 3, AtomicBetas)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
