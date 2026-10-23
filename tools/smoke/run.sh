@@ -52,16 +52,19 @@ while [ $# -gt 0 ]; do
 done
 
 # Concurrent runs (lanes, batch gates) each hold a slot, a flock kept for the script's life, and
-# shift their displays and console ports by 20 per slot, so two runs never share an X display or a
-# console port. Slot 0 (the bare table) is left to copies of this script that predate the slots.
+# shift their displays and console ports by SLOTSTEP per slot, so two runs never share an X display
+# or a console port. SLOTSTEP is wider than the family table (one display and one port each), which
+# is what keeps two suites apart: at 20 the 23-family table of 2026-10-23 overlapped the next slot.
+# Slot 0 (the bare table) is left to copies of this script that predate the slots.
 # An explicit --display-base / SMOKE_DISPLAY_BASE keeps the old fixed numbering.
+SLOTSTEP=40
 PORTOFF=0
 if [ "$LIST" = 0 ] && [ -z "${SMOKE_DISPLAY_BASE:-}" ] && [ "$DISPBASE" = 760 ]; then
   mkdir -p /tmp/opencode/locks
   for slot in $(seq 1 16); do
     exec {SLOTFD}>"/tmp/opencode/locks/smoke-slot.$slot"
     if flock -n "$SLOTFD"; then
-      DISPBASE=$((760 + slot * 20)); PORTOFF=$((slot * 20)); break
+      DISPBASE=$((760 + slot * SLOTSTEP)); PORTOFF=$((slot * SLOTSTEP)); break
     fi
     exec {SLOTFD}>&-
   done
@@ -71,6 +74,11 @@ fi
 # The family table: the world to boot into, the game updates to run, the backstop, the console
 # port, the command file, the input file, the console driver and extra environment. A cmd_*.txt
 # script is timed in game updates (`@f<n>`, gameplay from ~f240), never in wall seconds.
+# The module families (grenchler, grenguard, flyingpirate, mediuming, metroid) boot the area the
+# module lanes' coverage drivers used and repeat their console steps, so a checked module's actors
+# keep loading: tools/cov/specs/{grenchler_entrance,grenchler_guardian,flyingpirate_sandfalls,
+# mediuming_dead,metroid_player}.con. Append a new family at the end of ALL (its X display is its
+# index) and give it the next free console port.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [swamp2]="3dfd2249,04_swamp_temple_dark"
                [sandboss]="42b935e4,7575048a"
@@ -88,24 +96,36 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [turret]="M06_ShootingGallery,06_ShootingGallery"
                [agon54]="42b935e4,08_sand_casualpirates"
                [darksamus]="42b935e4,10_sand_alamostorage"
-               [splitter]="1baa96c2,0q_cliff_hall" )
+               [splitter]="1baa96c2,0q_cliff_hall"
+               [grenchler]="3dfd2249,01_swamp_entrance"
+               [grenguard]="3dfd2249,08_swamp_grappleguardian_dark"
+               [flyingpirate]="42b935e4,02_sand_sandfalls"
+               [mediuming]="3bfa3eff,02_temple_exploration_dark"
+               [metroid]="42b935e4,08_sand_casualpirates" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
-               [darksamus]=4000 [splitter]=2000 )
+               [darksamus]=4000 [splitter]=2000 [grenchler]=2400 [grenguard]=2400
+               [flyingpirate]=2400 [mediuming]=2400 [metroid]=2400 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280
-               [darksamus]=280 [splitter]=280 )
+               [darksamus]=280 [splitter]=280 [grenchler]=280 [grenguard]=280
+               [flyingpirate]=280 [mediuming]=280 [metroid]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709
                [boostg_fsm]=49710 [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714
-               [ep]=49715 [darksamus]=49716 [plain]=49717 [splitter]=49718 )
+               [ep]=49715 [darksamus]=49716 [plain]=49717 [splitter]=49718
+               [grenchler]=49719 [grenguard]=49720 [flyingpirate]=49721 [mediuming]=49722
+               [metroid]=49723 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
                [spacepirate]=cmd_spacepirate.txt [emp3]=cmd_emp3.txt [turret]=cmd_turret.txt
-               [agon54]=cmd_agon54.txt [splitter]=cmd_splitter.txt )
+               [agon54]=cmd_agon54.txt [splitter]=cmd_splitter.txt
+               [grenchler]=cmd_grenchler.txt [grenguard]=cmd_grenguard.txt
+               [flyingpirate]=cmd_flyingpirate.txt [mediuming]=cmd_mediuming.txt
+               [metroid]=cmd_metroid.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
@@ -117,7 +137,8 @@ declare -A X=( [boostg_fsm]="MP2_BG_FSM=1" [spacepirate]="MP2_DEBUG_SPACEPIRATE=
 
 # The order fixes each family's X display, so two runs of the suite never share one.
 ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spacepirate
-     ing ep plain emp3 turret agon54 darksamus splitter)
+     ing ep plain emp3 turret agon54 darksamus splitter grenchler grenguard flyingpirate
+     mediuming metroid)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 

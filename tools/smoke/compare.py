@@ -16,7 +16,8 @@ import sys
 
 FAMILIES = ["swamp1", "swamp2", "sandboss", "sandworm", "boostg", "boostg_fsm", "digig",
             "cmdpirate", "emp1", "spacepirate", "ing", "ep", "plain", "emp3", "turret",
-            "agon54", "darksamus", "splitter"]
+            "agon54", "darksamus", "splitter", "grenchler", "grenguard", "flyingpirate",
+            "mediuming", "metroid"]
 # the old suite named some logs after the family alone
 ALIASES = {"ing": "ing.log", "ep": "ep.log", "plain": "plain.log"}
 

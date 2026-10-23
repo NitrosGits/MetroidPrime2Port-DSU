@@ -1,0 +1,21 @@
+# Grenchler (module 27): Torvus 01_swamp_entrance layers 4 and 8 hold three Grenchlers (u05c4,
+# u05be, u0596 on this save) and they stay inactive until sent Activate. The steps follow
+# tools/cov/specs/grenchler_entrance.con (the gren1/gren2 coverage driver). Checks are game
+# updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2400, last check f2250.
+@f300 layer 4
+@f340 layer 8
+@f400 god 1; give darkBeam 1; give lightBeam 1; give missile 5
+@f420 send u05c4 Activate; send u05be Activate; send u0596 Activate
+@f440 objs grenchler; obj u05c4
+@f460 tp 165 -81 27
+@f470 face 200
+@f1200 objs grenchler; obj u05c4
+@f1300 shoot u05c4
+@f1320 shoot u05c4 charged
+@f1360 shoot u05be missile
+@f1400 beam dark; shoot u05c4
+@f1420 beam power
+@f1600 tp 154 -84 25
+@f2000 obj u05c4; obj u05be
+@f2140 damage u05be 5 1 missile
+@f2250 damage u05c4 400; damage u0596 400 0 light; objs grenchler

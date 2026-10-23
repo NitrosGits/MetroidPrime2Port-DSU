@@ -191,6 +191,12 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s). `--capped` or `SMOKE_FAST=0` runs everything capped.
+Five of the families keep a checked module's actors loading: grenchler (Torvus 01_swamp_entrance),
+grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate (Agon
+02_sand_sandfalls), mediuming (area 46) and metroid (Agon 08_sand_casualpirates) boot the area the
+module lanes' coverage driver used and repeat its console steps (`tools/cov/specs/*.con`), with a
+kill near the end. A new family is appended at the end of the `ALL` table in `tools/smoke/run.sh`
+(its index is its X display) with the next free console port, and added to `tools/smoke/compare.py`.
 
 ## Headless runs
 

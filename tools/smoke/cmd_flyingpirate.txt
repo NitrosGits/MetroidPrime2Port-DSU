@@ -1,0 +1,22 @@
+# FlyingPirate (module 22): Agon 02_sand_sandfalls layer 8 holds the aerotroopers u06de and u06cf
+# (they patrol on their own; Activate makes the body controller run its first Think, docs/GOTCHAS).
+# The steps follow tools/cov/specs/flyingpirate_sandfalls.con (the fp1 coverage driver: patrol,
+# spot, burst fire, dodge, knock-back, deaths). Checks are game updates (@f<n>; gameplay from
+# ~f240), not wall seconds; the family runs F=2400, last check f2250.
+@f300 layer 8
+@f560 god 1; give missile 50; give darkBeam 1; give lightBeam 1
+@f580 send u06de Activate; send u06cf Activate
+@f590 objs flyingpirate
+@f600 tp -95 -100 -8
+@f610 face 180
+@f900 obj u06de; obj u06cf
+@f1200 shoot u06de
+@f1230 shoot u06de
+@f1260 shoot u06de missile
+@f1400 obj u06de; obj u06cf
+@f1500 shoot u06cf charged
+@f1700 obj u06de; obj u06cf
+@f2000 damage u06de 10 0 missile
+@f2200 objs flyingpirate
+@f2250 damage u06cf 1000; obj u06cf
+@f2350 objs flyingpirate

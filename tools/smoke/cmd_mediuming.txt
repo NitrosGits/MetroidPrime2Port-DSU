@@ -1,0 +1,23 @@
+# MediumIng (module 41): Sky Temple Grounds 02_temple_exploration_dark (area 46) holds the Hunter
+# Ings u0417 and u0454, the area the mi4/mi5 lanes ran. The steps follow
+# tools/cov/specs/mediuming_dead.con: the god-mode player stands where u0417 can be shot and six
+# charged shots take it out (Dead, then DeathDelete drops it from the world around f1000), then
+# u0454 is killed the same way. Direct `damage` does not get through the hunter ing's mist
+# vulnerability (retail's table too), so that kill is the console `kill`, which zeroes the health
+# and runs Death as ApplyDamage does. Checks are game updates (@f<n>; gameplay from ~f240), not
+# wall seconds; the family runs F=2400, last check f2250.
+@f300 god 1; tp 208.5 -174 -46.5; face 180
+@f310 objs mediuming; obj u0417
+@f500 shoot u0417 charged
+@f540 shoot u0417 charged
+@f580 shoot u0417 charged
+@f620 shoot u0417 charged
+@f700 shoot u0417 charged; obj u0417
+@f900 shoot u0417 charged; objs mediuming
+@f1100 objs mediuming; obj u0454
+@f1300 tp 208.5 -174 -46.5; obj u0454
+@f1500 obj u0454; status
+@f1900 place u0454 player 8; obj u0454
+@f2000 objs mediuming
+@f2100 kill u0454; obj u0454
+@f2250 obj u0454; objs mediuming
