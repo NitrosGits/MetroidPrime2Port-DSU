@@ -2346,8 +2346,41 @@ static CMinorIngData BuildMinorIngData(const SLdrMinorIng& sldrThis, const CIngS
       sldrThis.unknown_0x3da35851.unknown_0x47f99fbc);
 }
 
+// Retail fn_44_1830: SLdrMinorIngIngSpot's constructor, called by SLdrMinorIng's (fn_44_14D8
+// 0x1514) from the loader fn_44_110 (0x130). The generated headers' inline constructors store the
+// same floats, damage info and asset ids, except the sound ids: the guest's default for every sound
+// id is -1 (no sound), the header's 0. Those -1 stores are written over it here. The ing-spot struct
+// has the guest's layout (its sounds sit at 0x3c..0x4c in both), so the `li r0,-0x1` at 0x00001848
+// feeds nine stores, the last five of them sound ids: sound_Idle 0x3c (0x00001860), sound_Move 0x40
+// (0x00001864), sound_HitNormalDamage 0x44 (0x00001868), sound_HitHeavyDamage 0x48 (0x0000186C) and
+// sound_Death 0x4c (0x00001870); the first four (0x2c..0x38, 0x00001850..0x0000185C) are the
+// CAssetIds blobEffect, hitNormalDamage, hitHeavyDamage and death, already kInvalidAssetId from the
+// header's initializer list. The inglet block (SLdrUnknownStruct34, the constructor fn_44_16C4
+// called at fn_44_14D8 0x151C) keeps its two sound ids for x16C4_SoundDefaults below. A property in
+// the instance's data overwrites any of them.
+static void x1830_SoundDefaults(SLdrMinorIng& sldr) {
+  sldr.ingSpot.sound_Idle = -1;            // fn_44_1830 0x00001860 (+0x3c)
+  sldr.ingSpot.sound_Move = -1;            // fn_44_1830 0x00001864 (+0x40)
+  sldr.ingSpot.sound_HitNormalDamage = -1; // fn_44_1830 0x00001868 (+0x44)
+  sldr.ingSpot.sound_HitHeavyDamage = -1;  // fn_44_1830 0x0000186C (+0x48)
+  sldr.ingSpot.sound_Death = -1;           // fn_44_1830 0x00001870 (+0x4c)
+}
+
+// Retail fn_44_16C4: SLdrUnknownStruct34's (the inglet block's) constructor, called from
+// SLdrMinorIng's at 0x151C. Same story as x1830_SoundDefaults: its two sound ids default to -1 in
+// the guest and 0 in the generated header. This struct also has the guest's layout, and the
+// `li r0,-0x1` at 0x000016E4 feeds five stores: sound_Bounce 0x38 (0x0000171C), sound_Explode 0x3c
+// (0x0000172C), and the CAssetIds explosion 0x18, effect 0x1c and trail 0x20
+// (0x000016EC..0x000016F4), already kInvalidAssetId from the header.
+static void x16C4_SoundDefaults(SLdrMinorIng& sldr) {
+  sldr.unknown_0x3da35851.sound_Bounce = -1;  // fn_44_16C4 0x0000171C (+0x38)
+  sldr.unknown_0x3da35851.sound_Explode = -1; // fn_44_16C4 0x0000172C (+0x3c)
+}
+
 static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMinorIng sldrThis;
+  x1830_SoundDefaults(sldrThis);  // fn_44_1830's -1 sound ids (fn_44_14D8 0x1514)
+  x16C4_SoundDefaults(sldrThis);  // fn_44_16C4's -1 sound ids (fn_44_14D8 0x151C)
 #include "MetroidPrime/ScriptLoader/SLdrMinorIng.inc"
 
   rstl::optional_object< CModelData > modelData(

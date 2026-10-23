@@ -892,9 +892,34 @@ int CSandworm::Unknown23C() const { return 0; }
 
 // Loader and REL entry points.
 
+// Retail fn_56_1478: SLdrSandworm's constructor, the loader's defaults (the call at fn_56_DC
+// 0xFC, on the loader's stack object). The generated header's inline constructor stores the same
+// floats, damage infos and asset ids, except the sound ids: the guest's default for every sound id
+// is -1 (no sound), the header's 0. Those -1 stores are written over it here. The generated struct
+// is 0xC bytes larger than the guest's from the actor-parameters block on, so the guest offsets
+// below are the port's +0xC. The `li r0,-0x1` at 0x000014A0 feeds eight stores: walkSound 0x300
+// (0x000014A8), walkVocalSound 0x304 (0x000014AC), meleeAttackSound 0x308 (0x000014B0),
+// eyeKilledSound 0x30c (0x000014B4), then guest 0x310/0x314/0x320/0x330 (0x000014B8/0x000014BC/
+// 0x000014C0/0x000014C4), which are CAssetIds in the port (pincerL, pincerR, spitAttackVisorEffect,
+// projectile), already kInvalidAssetId from the header's initializer list. The five stores of the
+// `li r0,-0x1` at 0x000014DC (guest 0x394..0x3a4, 0x000014E4..0x000014F4) are the five CAssetIds
+// eyeGlow, pART, pART_0x8b2a15ee, ingBossBombFX and ingBossBombExplosionFX, also already set. The
+// pair the `li r0,-0x1` at 0x000014FC feeds are the last two sound ids: bombBounceSound 0x3bc
+// (0x00001504) and bombExplodeSound 0x3c0 (0x00001508). A property in the instance's data
+// overwrites any of them.
+static void x1478_SoundDefaults(SLdrSandworm& sldr) {
+  sldr.walkSound = -1;        // 0x000014A8 (0x300)
+  sldr.walkVocalSound = -1;   // 0x000014AC (0x304)
+  sldr.meleeAttackSound = -1; // 0x000014B0 (0x308)
+  sldr.eyeKilledSound = -1;   // 0x000014B4 (0x30c)
+  sldr.bombBounceSound = -1;  // 0x00001504 (0x3bc)
+  sldr.bombExplodeSound = -1; // 0x00001508 (0x3c0)
+}
+
 // @ fn_56_DC
 static CEntity* PortLoadSandworm(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSandworm sldrThis;
+  x1478_SoundDefaults(sldrThis);  // fn_56_1478's -1 sound ids (0xFC)
 #include "MetroidPrime/ScriptLoader/SLdrSandworm.inc"
 
   rstl::optional_object< CModelData > modelData(

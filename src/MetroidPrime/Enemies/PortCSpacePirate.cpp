@@ -1892,6 +1892,29 @@ static void PortInitLauncherBlock(CSpacePirateData& data, const SLdrSpacePirateW
   data.mGrenadeMaxAttackDist = weapon.grenadeMaxAttackDist;    // 0x10CC0 stfs f31 (f4), 0x68
 }
 
+// Retail fn_72_109C: SLdrSpacePirate's constructor, the loader's defaults (the call at fn_72_140
+// 0x160, on the loader's stack object at sp+0x714). The generated header's inline constructor
+// stores the same floats, damage infos and asset ids, except the sound ids: the guest's default
+// for every sound id is -1 (no sound), the header's 0. Those -1 stores are written over it here.
+// The generated struct is 0xC bytes larger than the guest's from the actor-parameters block on, so
+// guest 0x4a8 is the port's sound_Projectile (0x4b4): sound_Projectile 0x4a8 (`li r0,-0x1`
+// 0x000010DC, `stw` 0x000010E4), then the run the `li r0,-0x1` at 0x000010FC feeds, sound_Impact
+// 0x4d8 (0x00001104), sound_Alert 0x4ec (0x00001108), sound_Hurled 0x508 (0x0000110C) and
+// sound_Death 0x50c (0x00001110); and in the
+// weapon-data block's constructor (fn_72_13A4, called at 0x00001114) the grenade pair +0x44/+0x48
+// (`li r0,-0x1` 0x000013C8, `stw` 0x00001400/0x00001410). The constructors' other -1 stores (0x494,
+// 0x4c0; the sub-constructor's 0x4, 0x24, 0x28, 0x2c) are CAssetIds, already kInvalidAssetId from
+// the headers' initializer lists. A property in the instance's data overwrites any of them.
+static void x109C_SoundDefaults(SLdrSpacePirate& sldr) {
+  sldr.sound_Projectile = -1;                // 0x000010E4 (0x4a8)
+  sldr.sound_Impact = -1;                    // 0x00001104 (0x4d8)
+  sldr.sound_Alert = -1;                     // 0x00001108 (0x4ec)
+  sldr.sound_Hurled = -1;                    // 0x0000110C (0x508)
+  sldr.sound_Death = -1;                     // 0x00001110 (0x50c)
+  sldr.weaponData.sound_GrenadeBounce = -1;  // fn_72_13A4 0x00001400 (+0x44)
+  sldr.weaponData.sound_GrenadeExplode = -1; // fn_72_13A4 0x00001410 (+0x48)
+}
+
 // Retail fn_72_140. Property ids and order are the generated SLdrSpacePirate reader's, which the
 // analysis checked against the REL id by id.
 // Coverage (sp20, 2026-10-22): every arm but `!modelData` (retail 0x7A4, an empty optional when the
@@ -1900,6 +1923,7 @@ static void PortInitLauncherBlock(CSpacePirateData& data, const SLdrSpacePirateW
 // @ fn_72_140
 static CEntity* PortLoadSpacePirate(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSpacePirate sldrThis;
+  x109C_SoundDefaults(sldrThis);  // fn_72_109C's -1 sound ids (0x160)
 #include "MetroidPrime/ScriptLoader/SLdrSpacePirate.inc"
 
   rstl::optional_object< CModelData > modelData(
