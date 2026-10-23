@@ -560,7 +560,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "statecall <id> <state> <msg> [dt]  run one FSM2 state body once (msg 0/1/2), also states with no FSM node\n"
       "codecall <id> <code> [dt]   run one FSM2 code function once (codes run on transitions)\n"
       "pathfail <id> on|off        the actor's path search fails (Search, FindClosestReachablePoint)\n"
-      "setarea <id> <area>         set an entity's current area id (put it back after; obj shows it)\n"
+      "setarea <id> <area>         set an entity's current area id (put it back after; obj shows it; loaded areas only)\n"
       "var <id> <name> [value]     a module field a port registered (dghd.attack, dghd.flags, dghd.sweeptime); var player spawnmorph [n]\n"
       "scaninfo <id>               the SCAN asset an actor's GetScannableObjectInfo answers\n"
       "orbit [id]                  lock-on state; with id: orbit position, ValidateOrbitTargetId\n"
@@ -2093,7 +2093,8 @@ void CmdPathFail(CStateManager& mgr, const Args& args, std::string& out) {
 }
 
 // setarea <id> <area>: set an entity's current area id (CEntity +0x4), e.g. so a same-area filter
-// sees a neighbour from another area. Nothing else moves; put the old id back afterwards.
+// sees a neighbour from another area. Nothing else moves; put the old id back afterwards. An area
+// that exists but is not loaded is refused.
 void CmdSetArea(CStateManager& mgr, const Args& args, std::string& out) {
   CEntity* ent = args.size() == 3 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
   float area = 0.f;
@@ -2101,8 +2102,21 @@ void CmdSetArea(CStateManager& mgr, const Args& args, std::string& out) {
     Fail("usage: setarea <id> <area index>");
     return;
   }
+  // An actor's UpdatePortalSystemState reads the area's post-constructed portal data whenever
+  // the area exists (CActor.cpp UpdatePortalSystemState), so an existing area that is not loaded
+  // crashes the next update (oct1). -1 and ids past the world's areas are skipped there.
+  const TAreaId newArea(static_cast< int >(area));
+  const CWorld* world = mgr.GetWorld();
+  if (world != nullptr && world->DoesAreaExist(newArea) &&
+      (!world->GetArea(newArea)->IsLoaded() ||
+       world->GetArea(newArea)->GetPostConstructed() == nullptr)) {
+    char why[64];
+    std::snprintf(why, sizeof(why), "setarea: area %d is not loaded", newArea.Value());
+    Fail(why);
+    return;
+  }
   const int old = ent->GetCurrentAreaId().Value();
-  ent->SetCurrentAreaId(TAreaId(static_cast< int >(area)));
+  ent->SetCurrentAreaId(newArea);
   char line[64];
   std::snprintf(line, sizeof(line), "area %d -> %d\n", old, ent->GetCurrentAreaId().Value());
   out += line;
