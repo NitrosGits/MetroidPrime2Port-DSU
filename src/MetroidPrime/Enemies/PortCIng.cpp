@@ -4100,8 +4100,9 @@ void CIng::TakeDamage(const CVector3f& direction, float magnitude) {
 
 // @ fn_29_B294 (with its helper fn_29_1DF4, 0x128)
 bool CIng::Listen(CStateManager& mgr, const CVector3f& position, EListenNoiseType type) {
-  // The retail's gate (asm 0xB2A8-0xB2B0): the Ing must be alive (the byte at 0x420, bit 6).
-  if (!GetAlive() || !GetActive()) {
+  // The retail's gate (asm 0xB2A8-0xB2B0): the Ing must be alive (the byte at 0x420, bit 6);
+  // there is no active (0x20 0x80) test.
+  if (!GetAlive()) {
     return false;
   }
   const CVector3f delta = position - GetTranslation();
