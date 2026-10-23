@@ -1,0 +1,11 @@
+# Sanctuary Fortress 0n_cliff_hall layer 3: two Mekenobites (WLWK) whose Patrol follows a CScriptWaypoint
+# (WAYP, not an AIWP: Patrol's cast to CScriptAIWaypoint fails, no Generate). The player stands under
+# e0020007d (-49.8 43.0 0.0) and kills it with a missile. For tools/cov/specs/wallwalker.py.
+@f300 god 1; layer 3; give missile 50
+@f330 objs WallWalker
+@f360 obj e0020007d
+@f400 tp -49 40 -4
+@f900 obj e0020007d
+@f1200 shoot e0020007d missile
+@f1260 obj e0020007d
+@f1600 objs WallWalker
