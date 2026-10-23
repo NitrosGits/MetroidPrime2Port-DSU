@@ -1,0 +1,30 @@
+# Rezbit 8: the shield actor (u061e) shot directly and with every weapon type, to see what lowers
+# its 1.0 hp and whether the Rezbit then runs CheckShieldBroken/BreakShield.
+@f600 status
+@f1000 layer 3
+@f1300 layer 4
+@f1500 place e0005011b player 12
+@f1700 damage e0005011b 1
+@f2400 obj u061e
+@f2600 damage u061e 50 light
+@f2800 obj u061e
+@f3000 damage u061e 50 dark
+@f3200 damage u061e 50 missile
+@f3400 damage u061e 50 annihilator
+@f3600 obj u061e
+@f3800 shoot u061e 15
+@f4000 shoot u061e charged 15
+@f4200 shoot u061e 15
+@f4400 shoot u061e charged 15
+@f4600 shoot u061e 15
+@f4800 shoot u061e charged 15
+@f5000 obj u061e
+@f5200 shoot u061e 15
+@f5400 shoot u061e charged 15
+@f5600 shoot u061e 15
+@f5800 shoot u061e charged 15
+@f6000 obj u061e
+@f6400 objs collision
+@f6800 obj e0005011b
+@f7200 objs rezbit
+@f7600 status
