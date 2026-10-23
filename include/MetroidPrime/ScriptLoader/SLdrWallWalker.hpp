@@ -40,6 +40,7 @@ struct SLdrWallWalker {
   SLdrCameraShakerData projectileExplosionShaker; // 0x22bbdd0a
 };
 
+// @ fn_85_1790
 inline SLdrWallWalker::SLdrWallWalker()
 : editorProperties()
 , patterned()
@@ -61,8 +62,19 @@ inline SLdrWallWalker::SLdrWallWalker()
   grenadeMass = 4.0f;
   unknown_0xed086ce0 = 0.5f;
   grenadeNumBounces = 5;
+#ifdef TARGET_PC
+  // fn_85_1790 stores -1 (no sound) in both grenade sounds: li r0, -0x1 (0x17C8);
+  // stw r0, 0x48c(r31) (0x17DC), stw r0, 0x490(r31) (0x17E0). Upstream stored 0. Every shipped
+  // WLWK sets both (466 / 367), so the default only shows on spawned or stripped placements.
+  // The other stores the ctor makes and upstream lacks re-store sub-ctor defaults:
+  // 0x1814 stfs 2.0 -> +0x88 (health.hI_KnockBackResistance, already 2.0), 0x1828 CColor(1,1,1,1)
+  // -> +0x294 (ambientColor), 0x1840 li r0,0xf -> +0x2e4 (visorFlags).
+  grenadeSoundBounce = -1;
+  grenadeSoundExplode = -1;
+#else
   grenadeSoundBounce = 0;
   grenadeSoundExplode = 0;
+#endif
   projectileInterval = 2.0f;
   projectileStopHomingRange = 5.0f;
 }

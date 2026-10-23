@@ -1,0 +1,32 @@
+# Forcing driver for tools/cov/specs/wallwalker_force.py: wallwalker_temple.con, but every walker is killed
+# by console damage (e002500f9 at f1700, e0025009e at f3100 before its Delete).
+@f300 god 1; layer 3; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f330 objs WallWalker
+@f360 obj e002500f9
+@f400 tp 100 20 -25
+@f700 objs CollisionActor
+@f720 shoot u05fd
+@f760 obj e002500f9
+@f900 shoot u05fc
+@f940 obj e002500f9
+@f1100 shoot u05fd missile
+@f1140 obj e002500f9
+@f1300 shoot u05fc missile
+@f1340 obj e002500f9
+@f1500 shoot u05fd missile; shoot u05fc missile
+@f1540 obj e002500f9
+@f1700 hurt u05fd 10 6; hurt u05fc 10 6
+@f1740 obj e002500f9
+@f1800 objs Grenade
+@f1900 obj e002500f9
+@f2100 objs WallWalker
+@f2200 tp 47 22 -30
+@f2400 beam dark; shoot e0025014e charged; hurt e0025014e 10 9
+@f2440 obj e0025014e
+@f2700 hurt e00250156 10 9
+@f2740 obj e00250156
+@f2900 send e0025009e Activate
+@f3000 obj e0025009e
+@f3100 hurt e0025009e 10 9
+@f3300 send e0025009e Delete
+@f3350 objs WallWalker
