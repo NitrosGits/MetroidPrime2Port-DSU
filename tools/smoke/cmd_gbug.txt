@@ -1,0 +1,63 @@
+# Glowbug (module 26: CGlowbug, "Mechanism: Lightflyer" - a small floating bug that patrols and, once
+# the player is inside its 12-unit attack range, telegraphs and fires an electric beam; it dies with
+# a flash, falls and breaks apart).
+# Great Temple 0i_temple_hall (world 863fcd72, layer 0, the light world) holds the disc's three
+# light-world GBUGs, e000500f0, e000500f8 and e000500f9.
+# The steps repeat the gb2 lane's tools/cov/specs/glowbug_templehall.con: god mode with missiles and
+# the scan visor, `objs Glowbug` and an `obj` of each bug, `Create` and `Activate` on all three, then
+# `place` at 6, 12, 3, 20 and 0.5 units from the player (the attack-range window), a beam shot and a
+# missile at e000500f8, the repeated `scan` of e000500f9 (ScanVisorRender), a combat-visor `obj`,
+# two missiles at e000500f0, another `objs Glowbug`, then Deactivate and Delete of e000500f9 and the
+# closing `objs Glowbug`.
+# Evidence in the transcript: `objs Glowbug` listing the disc's three light-world bugs at f320 -
+# u0460 000500f9 at (75.4, -47.8, -14.7), u044f 000500f8 at (114.1, -73.5, -16.7) and u0420
+# 000500f0 at (86.8, -57.6, -19.4), 3 objects - `obj` reading hp 30/30, body state 5 and each bug's
+# message map (on Patrol send Follow to its own waypoint 000500ed/f4/fb, on Dead send SetToZero to
+# the pickup generator 000500c4, on DeathRattle send SetToZero to the generator 00050118 and the
+# relay 0005011a), the Create/Activate sends answering `sent Create to u0420 000500f0`, each `place`
+# with its new position (71.58 -42.25 -20.14 for 6 units), the beam shot `shot u0629 at u044f from
+# 3.0 units` and the missile `missile at u044f: 1 in flight, 59 left` (hp 0/30, fsm Dead by f1450,
+# and gone from the f2200 list: its DeathDelete removes it, which is why the late checks are `obj`
+# reads and the count, never an `obj e000500f8` - con.py reports "no object with editor id" as a
+# step error), the scans `scan u0460 (orbit point 82.3, -42.0, -19.3, visor flags f, download 1.5 s)
+# ... orbit locked`, and `objs Glowbug` counting 2 objects at f2200 and 0 at f2500 once e000500f9 is
+# Deleted. Every step answers `=> ok`. Measured caveat: the two missiles at e000500f0 fire (`1 in
+# flight, 58 left` then `2 in flight, 57 left`) but the bug still reads hp 30/30 fsm Patrol at f2150
+# and is still listed at f2200 - 0.5 units from the player they do not reach it, so this family never
+# sees the second Glowbug die. The log's `init compiled module Glowbug` line lists the whole
+# compiled-module table, so it says the module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. The family runs fast like the rest, measured:
+# unpaced, its 2600 updates run from 0.1 s to 0.6-0.8 s and con.py connects at 0.5 s, the margin
+# fishcloud (0.8 s) and gunturret (0.9 s) already run with; the transcript is byte-identical capped
+# and uncapped, and between two runs of each. F=2600, last check f2500.
+@f300 god 1; give missile 50; give scanVisor 1
+@f320 objs Glowbug; obj e000500f0; obj e000500f8; obj e000500f9
+@f340 send e000500f0 Create; send e000500f8 Create; send e000500f9 Create
+@f360 send e000500f0 Activate; send e000500f8 Activate; send e000500f9 Activate
+@f400 obj e000500f0; obj e000500f8; obj e000500f9
+@f450 place e000500f0 player 6
+@f700 obj e000500f0
+@f750 place e000500f0 player 12
+@f1000 obj e000500f0
+@f1050 place e000500f8 player 3
+@f1300 obj e000500f8
+@f1350 shoot e000500f8
+@f1400 shoot e000500f8 missile
+@f1450 obj e000500f8
+@f1500 place e000500f9 player 20
+@f1600 place e000500f0 player 0.5
+@f1650 obj e000500f0
+@f1700 obj e000500f9
+@f1750 scan e000500f9 20 150
+@f1780 scan e000500f9 20 150
+@f1810 scan e000500f9 20 150
+@f1840 scan e000500f9 20 150
+@f1870 scan e000500f9
+@f1900 visor combat
+@f2000 obj e000500f9
+@f2050 shoot e000500f0 missile; shoot e000500f0 missile
+@f2150 obj e000500f0
+@f2200 objs Glowbug
+@f2300 send e000500f9 Deactivate
+@f2400 send e000500f9 Delete
+@f2500 objs Glowbug

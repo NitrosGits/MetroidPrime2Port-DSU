@@ -57,7 +57,8 @@ done
 # is what keeps two suites apart: at 20 the 23-family table of 2026-10-23 overlapped the next slot,
 # and at 40 the 41-family table of 2026-10-23 (fishcloud, the last, at index 40) did too. It must
 # exceed the last index of the table (spp was 44 in the 45-family table of 2026-10-23, which SLOTSTEP
-# 45 still cleared, but scriptgui is 47 in the 48-family table, so it is 50 and has room for two more).
+# 45 still cleared; scriptgui was 47 in the 48-family table, and gbug is 49, the last, in the
+# 50-family table of 2026-10-23, so it is 50 and has no room left for a 51st).
 # Slot 0 (the bare table) is left to copies of this script that predate the slots.
 # An explicit --display-base / SMOKE_DISPLAY_BASE keeps the old fixed numbering.
 SLOTSTEP=50
@@ -80,7 +81,7 @@ fi
 # The module families (grenchler, grenguard, flyingpirate, mediuming, metroid, sporb, blogg, swarm,
 # gunturret, rezbit, parasite, lumite, shrieker, ingswarm, darktrooper, bacteriaswarm, tryclops,
 # wisptentacle, octapede, amt, dbar, sjguard, fishcloud, spa, wallwalker, isbg, spp, mysf, spor,
-# scriptgui)
+# scriptgui, kral, gbug)
 # boot the area the module lanes' coverage drivers used and repeat their console steps, so a checked
 # module's actors keep loading: tools/cov/specs/{grenchler_entrance,grenchler_guardian,
 # flyingpirate_sandfalls,mediuming_dead,metroid_player,sporb_hall,blogg_shaft,swarmbasics_sand,
@@ -92,8 +93,9 @@ fi
 # destructiblebarrier_forced.con, sjguard ingspacejumpguardian_sandfalls.con, fishcloud
 # fishcloud_sacredpath.con, spa tools/drivers/spa_sandtempledark.con, wallwalker
 # wallwalker_temple.con, isbg isbg.con, spp spp_dark_landingsite.con, mysf mysteryflyer.con,
-# spor puddlespore.con and scriptgui gui_menu_slider.con - scriptgui boots the FrontEnd world, which
-# needs SKIP_FRONTEND=0 in the X table below).
+# spor puddlespore.con, scriptgui gui_menu_slider.con, kral kralee.con and gbug
+# glowbug_templehall.con - scriptgui boots the FrontEnd world, which needs SKIP_FRONTEND=0 in the X
+# table below).
 # Append a new family at the end of ALL (its X display is its index) and give it the next free
 # console port.
 declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
@@ -140,7 +142,8 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark"
                [isbg]="1baa96c2,06_cliff_spiderballguardian"
                [spp]="3bfa3eff,01_temple_landingsite_dark"
                [mysf]="3bfa3eff,0e_temple_hall"
-               [spor]="3dfd2249,cbc72d79" [scriptgui]="69802220,cee3af0d" )
+               [spor]="3dfd2249,cbc72d79" [scriptgui]="69802220,cee3af0d"
+               [kral]="3bfa3eff,0b_temple_hall" [gbug]="863fcd72,0i_temple_hall" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
@@ -150,7 +153,8 @@ declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boos
                [lumite]=2400 [shrieker]=2400 [ingswarm]=2400 [darktrooper]=2400
                [bacteriaswarm]=2400 [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000
                [amt]=9400 [dbar]=1200 [sjguard]=6000 [fishcloud]=2500 [spa]=2000 [wallwalker]=3600
-               [isbg]=5700 [spp]=1700 [mysf]=3200 [spor]=2000 [scriptgui]=700 )
+               [isbg]=5700 [spp]=1700 [mysf]=3200 [spor]=2000 [scriptgui]=700
+               [kral]=1300 [gbug]=2600 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280
@@ -160,7 +164,8 @@ declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=
                [lumite]=280 [shrieker]=280 [ingswarm]=280 [darktrooper]=280
                [bacteriaswarm]=280 [tryclops]=280 [wisptentacle]=280 [octapede]=280
                [amt]=280 [dbar]=280 [sjguard]=280 [fishcloud]=280 [spa]=280
-               [wallwalker]=280 [isbg]=280 [spp]=280 [mysf]=280 [spor]=280 [scriptgui]=280 )
+               [wallwalker]=280 [isbg]=280 [spp]=280 [mysf]=280 [spor]=280 [scriptgui]=280
+               [kral]=280 [gbug]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709
                [boostg_fsm]=49710 [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714
@@ -172,7 +177,7 @@ declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [
                [bacteriaswarm]=49734 [tryclops]=49735 [wisptentacle]=49736 [octapede]=49737
                [amt]=49738 [dbar]=49739 [sjguard]=49740 [fishcloud]=49741
                [spa]=49742 [wallwalker]=49743 [isbg]=49744 [spp]=49745
-               [mysf]=49746 [spor]=49747 [scriptgui]=49748 )
+               [mysf]=49746 [spor]=49747 [scriptgui]=49748 [kral]=49749 [gbug]=49750 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
@@ -189,7 +194,8 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [amt]=cmd_amt.txt [dbar]=cmd_dbar.txt [sjguard]=cmd_sjguard.txt
                [fishcloud]=cmd_fishcloud.txt [spa]=cmd_spa.txt
                [wallwalker]=cmd_wallwalker.txt [isbg]=cmd_isbg.txt [spp]=cmd_spp.txt
-               [mysf]=cmd_mysf.txt [spor]=cmd_spor.txt [scriptgui]=cmd_scriptgui.txt )
+               [mysf]=cmd_mysf.txt [spor]=cmd_spor.txt [scriptgui]=cmd_scriptgui.txt
+               [kral]=cmd_kral.txt [gbug]=cmd_gbug.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
@@ -222,10 +228,16 @@ declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # its 2000 updates take ~33 s. scriptgui has room but not determinism: unpaced its 700 updates run
 # from 0.3 s to 1.0 s, and one `objs Gui` line reads `inactive` uncapped but active capped - the
 # widget's state follows the update rate, so the transcript is not a fixed baseline. Capped, the
-# front end's 700 updates take ~25 s.
+# front end's 700 updates take ~25 s. kral is spor's case, measured: unpaced its 1300 updates run from
+# 0.1 s to 0.3 s (the frame limit is up before con.py's 0.5 s connect) so the whole script only runs
+# in the shutdown window - identical there, but nothing guarantees it. Capped, its 1300 updates take
+# ~20 s. gbug keeps fast: its 2600 updates run from 0.1 s to 0.6-0.8 s, the margin fishcloud (0.8 s)
+# and gunturret (0.9 s) already run with, its three bugs are layer 0 of 0i_temple_hall, and its
+# transcript is byte-identical capped and uncapped (41 s capped).
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
 declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
-               [octapede]=1 [amt]=1 [spa]=1 [wallwalker]=1 [isbg]=1 [spor]=1 [scriptgui]=1 )
+               [octapede]=1 [amt]=1 [spa]=1 [wallwalker]=1 [isbg]=1 [spor]=1 [scriptgui]=1
+               [kral]=1 )
 # Extra environment per family: tools/run_gameplay.sh's variables, not the game's directly. The
 # harness passes them on to the game, and run_gameplay.sh maps a few of its own onto MP2_* names
 # (SKIP_FRONTEND -> MP2_SKIP_FRONTEND, SKIP_INTRO, SKIP_CINEMATICS, FAST_LOAD). scriptgui needs the
@@ -239,7 +251,7 @@ ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spac
      ing ep plain emp3 turret agon54 darksamus splitter grenchler grenguard flyingpirate
      mediuming metroid sporb blogg swarm gunturret rezbit parasite lumite shrieker
      ingswarm darktrooper bacteriaswarm tryclops wisptentacle octapede amt dbar sjguard
-     fishcloud spa wallwalker isbg spp mysf spor scriptgui)
+     fishcloud spa wallwalker isbg spp mysf spor scriptgui kral gbug)
 declare -A IDX=()
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 
