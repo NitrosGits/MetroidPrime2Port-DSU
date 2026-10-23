@@ -2631,6 +2631,13 @@ void CPlayer::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
           mAttachedActorStruggle = 0.f;
         }
       }
+#ifdef TARGET_PC
+      // The console's `struggle`: hold the value the game has just moved, because only a held
+      // turn/jump button ever reaches 1.f and the harness cannot press one for sure.
+      if (mPortStruggleOverride >= 0.f) {
+        mAttachedActorStruggle = mPortStruggleOverride;
+      }
+#endif
     }
   }
 

@@ -72,7 +72,17 @@ whose machine was never set up (it was not created yet) says `the actor has no s
 (is it active?)`), `place`,
 `send`, `damage` (direct, no projectile; also the combos `darkburst`/`sunburst`/`sonicboom` and
 `powerbomb`, which knockback rule sets tell apart) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
-from d units, travelling along dir, for modules that only count projectile hits on a joint).
+from d units, travelling along dir, for modules that only count projectile hits on a joint; `missile`
+instead of `charged` fires a real player missile through the launcher's own path
+(`CPlayerGun::FireSecondary`: weapon type kWT_Missile, the missile's damage, aimed at the actor the
+way player aim is and homing on its id, granting 10 missiles if the ammo has none; it leaves from
+the gun, so `d` and `dir` do not apply), for the modules that only react to a missile such as
+Rezbit's `DeflectMissiles`).
+`struggle <0..1>|off` holds the player's attached-actor struggle value (`CPlayer::
+mAttachedActorStruggle`) at that value, applied in the player's own morph-ball update and cleared by
+`off`: the game only grows it from held turn/jump buttons while the morph ball is grabbed, so 1
+(Tryclops' `Think` reads exactly 1.f for its dizzy gore, then `BallCloseToCollision`) is otherwise
+out of reach.
 `place <id> <x> <y> <z>` moves an actor and `place <id> player [d]` puts it d (6) units in front
 of the player; both take an optional rotation after the point: `place <id> <x> <y> <z> <yaw> [pitch
 [roll]]` in degrees (the yaw about the world's up, the pitch about the right one, the roll about the
