@@ -493,7 +493,7 @@ void CScattershotProjectile::InitRenderParams() {
 }
 
 namespace {
-// One camera-facing quad (fn_10_E7C's billboard): `right`/`up` are the view's first and third
+// One camera-facing quad (Render's billboard): `right`/`up` are the view's first and third
 // columns times the size; the corners go (+r +u), (-r +u), (-r -u), (+r -u) with the UVs' max/min.
 void StreamBillboard(const CColor& color, const SUVElementSet& uv, const CVector3f& right,
                      const CVector3f& up) {
@@ -538,6 +538,8 @@ void BillboardAxes(float size, float degrees, CVector3f& right, CVector3f& up) {
 // TSZE * 0.5f wide across the view (the cross of the view ray and the direction, fn_10_1B24) and
 // TLEN * TSZE long behind the shot, TSCL at the head and TECL at the tail. Culling back to front
 // and the normal matrix on at the end (0x00001AD0).
+// asmcheck: x24c_01 is the shot's kF_Dead flag; fn_10_1B64 (the TEV pass's ctor) is sPass below.
+// @ fn_10_E7C
 void CScattershotProjectile::Render(const CStateManager& mgr) const {
   CParticleGlobals::SetEmitterTime(0);
   CParticleGlobals::SetParticleLifetime(0);
@@ -579,6 +581,12 @@ void CScattershotProjectile::Render(const CStateManager& mgr) const {
       desc->mTECL->GetValue(0, trailEndColor);
     }
   }
+  // 0x00001098..0x000010D0: every colour's alpha byte becomes 127.5f (lbl_10_rodata_14) through
+  // qr2, whatever the elements gave, on every path.
+  b1Color.SetAlpha(0.5f);
+  b2Color.SetAlpha(0.5f);
+  trailStartColor.SetAlpha(0.5f);
+  trailEndColor.SetAlpha(0.5f);
   CGraphics::SetUseNormalMatrix(false);
 
   // lbl_10_bss_4: colour (zero, raster, texture, zero), alpha (zero, raster, texture, zero).
