@@ -1,0 +1,22 @@
+# FlyerSwarm (module 21: CFlyerSwarm, script type FSWM - a flying swarm of boids that follow
+# waypoints, Sandbats/Nightbarbs/Hydlings). Agon Wastes 0e_sand_hall (world 42b935e4, layer 0)
+# holds two swarms, e000400af and e000400c2. The steps list them, activate and place one,
+# damage it so its hp drops, shoot it, and damage the second one, with Activate/Deactivate
+# around it.
+# Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): its area
+# boots quickly. F=2400, last check f2200.
+@f280 god 1
+@f300 objs FlyerSwarm
+@f320 send e000400af Activate; send e000400c2 Activate
+@f340 place e000400af player 6
+@f400 damage e000400af 10
+@f420 obj e000400af
+@f500 shoot e000400af
+@f600 damage e000400c2 10
+@f620 obj e000400c2
+@f700 send e000400af Deactivate
+@f720 send e000400af Activate
+@f800 send e000400af Delete
+@f820 objs FlyerSwarm
+@f900 objs FlyerSwarm
+@f2200 objs FlyerSwarm

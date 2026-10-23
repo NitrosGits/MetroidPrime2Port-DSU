@@ -1,0 +1,31 @@
+# IngSnatchingSwarm (module 33: CIngSnatchingSwarm, script type ISSW - a swarm that snatches
+# targets, flies arc paths and explodes). Temple Grounds 10_temple_pathofeyes (world 3bfa3eff,
+# layer 2): GENR e000e018c generates ISSW e000e018b beside Space Pirates e000e0197/e000e0196/
+# e000e019b. The steps repeat the coverage driver ingsnatchingswarm_pathofeyes.con: activate the
+# pirates, fire the generator, observe the swarm, kill the pirates and re-fire so it targets the
+# player, place it on the player, damage it (500) so its hp drops, and re-list it.
+# Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC): its area
+# boots quickly. F=3000, last check f2800.
+@f150 god 1
+@f220 send e000e0197 Activate
+@f221 send e000e0196 Activate
+@f222 send e000e019b Activate
+@f230 send e000e018c SetToZero
+@f300 objs Snatch
+@f900 objs Snatch
+@f1200 kill e000e0197
+@f1201 kill e000e0196
+@f1202 kill e000e019b
+@f1210 send e000e018c SetToZero
+@f1600 tp -252 140 -34
+@f1610 send e000e018c SetToZero
+@f1680 place e000e018b player 3
+@f1710 place e000e018b player 2
+@f2000 send e000e018c SetToZero
+@f2015 damage e000e018b 500
+@f2020 obj e000e018b
+@f2040 send e000e018c SetToZero
+@f2080 place e000e018b player 1
+@f2085 place e000e018b player 0.5
+@f2300 objs Snatch
+@f2800 objs Snatch

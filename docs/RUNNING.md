@@ -210,7 +210,7 @@ The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui, kral, pssm, stod,
-pbug, szone, rptl, chog, drkc, plac, plct, ming, snak, eyeb, kroc, atma and atmb): their areas
+pbug, szone, rptl, chog, drkc, plac, plct, ming, snak, eyeb, kroc, atma, atmb, fsw and iss): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, spor's 2000 updates leave only ~100 ms of uncapped run after the connect and
@@ -245,7 +245,8 @@ dark 0d_swamp_hall_dark) and scriptgui (the FrontEnd world 69802220, which is th
 needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
 and plct (Agon Wastes 05_portalpuzzle)
 06_temple_sacredpath_dark), atma (Great Temple 0l_temple_hall,
-two AtomicAlphas) and atmb (Sanctuary Fortress 0b_cliff_hall layer 3, AtomicBetas)
+two AtomicAlphas), atmb (Sanctuary Fortress 0b_cliff_hall layer 3, AtomicBetas), fsw (Agon
+Wastes 0e_sand_hall, FlyerSwarms) and iss (Temple Grounds 10_temple_pathofeyes, IngSnatchingSwarm)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
