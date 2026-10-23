@@ -70,14 +70,16 @@ inline SLdrPlantScarabSwarm::SLdrPlantScarabSwarm()
   grenadeExplosionSoundFallOff = 0.0f;
   grenadeExplosionMaxAudibleDistance = 100.0f;
 #ifdef TARGET_PC
-  // fn_49_858 stores -1 (no sound) in grenadeBounceSound/grenadeExplosionSound: li r0, -0x1
-  // (0x89c); stw r0, 0x2fc(r31) (0x8c8) and stw r0, 0x308(r31) (0x8cc). The other stores match
-  // this ctor: intoAttackAnimation/attackAnimation -1 at +0x2b4/+0x2b8, 3 at +0x2d4,
-  // grenadeDamage ctor at +0x2d8, kInvalidAssetId at +0x2ec..+0x2f8, the floats and the
-  // 0/100 sound fall-off pairs; CColor(1,1,1,1) at +0x50 (0x8e4), 0xF at +0xa0 (0x8f4) and
-  // active at +0xc0 (0x904) come from the actor sub-ctors / header.
+  // fn_49_858 retail defaults upstream lacks (sldr base r31; actorInformation +0x3c):
+  // 0x89c li r0,-0x1 / 0x8c8 stw r0,0x2fc(r31) = grenadeBounceSound,
+  //                    0x8cc stw r0,0x308(r31) = grenadeExplosionSound;
+  // 0x8d0 bl __ct__6CColorFffff (rodata_0 = 1.0) / 0x8e4 stw r0,0x50(r31) = ambientColor;
+  // 0x8e8 li r0,0xf / 0x8f4 stw r0,0xa0(r31) = visorFlags.
+  // The rest match this ctor (active 1 at +0xc0 is 0x904 stb).
   grenadeBounceSound = -1;
   grenadeExplosionSound = -1;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
 #endif
 }
 

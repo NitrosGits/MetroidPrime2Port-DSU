@@ -74,8 +74,10 @@ CPlantScarabSwarm::CPlantScarabSwarm(
   }
 }
 
+// @ fn_49_1EC8
 CPlantScarabSwarm::~CPlantScarabSwarm() {}
 
+// @ fn_49_1EA8
 void CPlantScarabSwarm::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CSwarmBasics::AcceptScriptMsg(mgr, msg);
 }
@@ -130,6 +132,7 @@ void CPlantScarabSwarm::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_49_1818
 void CPlantScarabSwarm::AllocateSkinnedModels(CStateManager& mgr, CModelData::EWhichModel which) {
   const uint count = mAttackModels.size();
   mAttackModelStates.reserve(count);
@@ -144,6 +147,7 @@ void CPlantScarabSwarm::AllocateSkinnedModels(CStateManager& mgr, CModelData::EW
   CSwarmBasics::AllocateSkinnedModels(mgr, which);
 }
 
+// @ fn_49_1654
 void CPlantScarabSwarm::UpdateSwarmAnimations(CStateManager& mgr, float dt) {
   CSwarmBasics::UpdateSwarmAnimations(mgr, dt);
   const uint count = mAttackModels.size();
@@ -163,6 +167,7 @@ void CPlantScarabSwarm::UpdateSwarmAnimations(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_49_1570
 void CPlantScarabSwarm::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
   const uint count = mBoids.size();
   if (mAnimated) {
@@ -182,6 +187,7 @@ void CPlantScarabSwarm::UpdateAllBoidMovement(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_49_139C
 void CPlantScarabSwarm::UpdateBoid(CAreaCollisionCache& cache, CStateManager& mgr, float dt,
                                    CBoid& boid, int partitionIndex) {
   boid.mPartitionIndex = partitionIndex;
@@ -211,7 +217,13 @@ void CPlantScarabSwarm::PreRenderBoid(CBoid* boid, uint* drawMask) {
     if (slot == -1) {
       if (*drawMask & (1 << mSharedAttackBit)) {
         CachePose(*mSharedAttackModel, *mSharedAttackState);
+#ifdef TARGET_PC
+        // Retail clears the slot-0 bit, not the shared one: 0x12E8 lwz r0,0x5f4(r30) tests
+        // mSharedAttackBit, 0x1308 lwz r0,0x5f8(r30) / 0x1314 andc clears mAttackModelBitBase.
+        *drawMask &= ~(1 << mAttackModelBitBase);
+#else
         *drawMask &= ~(1 << mSharedAttackBit);
+#endif
       }
     } else {
       if (*drawMask & (1 << (mAttackModelBitBase + slot))) {
@@ -256,6 +268,7 @@ void CPlantScarabSwarm::BoidCollidedWithPlayerCallback(CStateManager& mgr, CBoid
   }
 }
 
+// @ fn_49_10D0
 void CPlantScarabSwarm::KillBoid(CBoid& boid, CStateManager& mgr, const CWeaponMode& weapon) {
   CSwarmBasics::KillBoid(boid, mgr, weapon);
   if (boid.mAttackSlot != -1) {
@@ -303,14 +316,17 @@ void CPlantScarabSwarm::SpawnGrenades(CStateManager& mgr, CAnimData& animData, i
   }
 }
 
+// @ fn_49_C24
 CVector3f CPlantScarabSwarm::GetBoidTopPosition(const CBoid& boid) const {
   return boid.GetTranslation() + 0.1f * boid.GetTransform().GetUp();
 }
 
+// @ fn_49_974
 CAABox CPlantScarabSwarm::GetGrenadeBounds() const {
   return CAABox(CVector3f(-0.1f, -0.1f, -0.1f), CVector3f(0.1f, 0.1f, 0.1f));
 }
 
+// @ fn_49_9C8
 bool CPlantScarabSwarm::IsSpaceAboveBoidClear(const CStateManager& mgr, const CBoid& boid) const {
   const CVector3f top = GetBoidTopPosition(boid);
   const CAABox grenadeBounds = GetGrenadeBounds();
@@ -324,6 +340,7 @@ bool CPlantScarabSwarm::IsSpaceAboveBoidClear(const CStateManager& mgr, const CB
                                                  nearList);
 }
 
+// @ fn_49_D8
 CEntity* LoadPlantScarabSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrPlantScarabSwarm sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrPlantScarabSwarm.inc"
@@ -350,13 +367,16 @@ CEntity* LoadPlantScarabSwarm(CStateManager& mgr, CInputStream& input, CEntityIn
 }
 
 #ifndef MONOLITHIC
+// @ fn_49_A8
 static void SetFuncPtrs() {
   static SPlantScarabSwarm_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadPlantScarabSwarm;
   SetSPlantScarabSwarm_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_49_88
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_49_64
 extern "C" void RELExit() { SetSPlantScarabSwarm_FuncPtrs(nullptr); }
 #endif
