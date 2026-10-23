@@ -1,0 +1,12 @@
+# 01_temple_hive02 (layers 4): Splinters u0636 u0633 u0630 u05ac u0594 u0591 u0584. Wake them, then let them fight a god-mode player, hurt and kill them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,01_temple_hive02 --con <this> --fast --frames 3400
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 4
+@f305 send u0636 Activate; send u0633 Activate; send u0630 Activate; send u05ac Activate; send u0594 Activate; send u0591 Activate; send u0584 Activate
+@f310 tp 92 -345 -89
+@f330 send u0636 Alert; send u0633 Alert; send u0630 Alert; send u05ac Alert; send u0594 Alert; send u0591 Alert; send u0584 Alert
+@f1200 obj u0636; obj u0633; obj u0630
+@f2200 damage u0636 2; damage u0633 2; damage u0630 2; damage u05ac 2; damage u0594 2; damage u0591 2; damage u0584 2
+@f2500 damage u0636 2 kb; damage u0633 2 kb; damage u0630 2 kb; damage u05ac 2 kb; damage u0594 2 kb; damage u0591 2 kb; damage u0584 2 kb
+@f2800 damage u0636 20 missile; damage u0633 20 missile; damage u0630 20 missile; damage u05ac 20 missile; damage u0594 20 missile; damage u0591 20 missile; damage u0584 20 missile
+@f3300 objs Splinter

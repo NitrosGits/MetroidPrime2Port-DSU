@@ -1,0 +1,7 @@
+# 02_temple_exploration: the layers the module table lists (4, 6), then list the Splinters.
+@f300 god 1
+@f305 layer 4
+@f310 layer 6
+@f340 objs Splinter
+@f350 objs SplinterAcidSac
+@f360 status

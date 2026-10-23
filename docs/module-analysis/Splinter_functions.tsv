@@ -1,0 +1,272 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_74_0	8	B	CSplinter::GetSearchPath	-	upstream body (CSplinter)	no
+00008	fn_74_8	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+00018	fn_74_18	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+00020	fn_74_20	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+00028	fn_74_28	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+00030	fn_74_30	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+00040	fn_74_40	C	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+0004C	fn_74_4C	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+00054	fn_74_54	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+0005C	fn_74_5C	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+00078	fn_74_78	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+000A4	fn_74_A4	24	T	RELExit	-	REL runtime	no
+000C8	fn_74_C8	20	T	RELMain	-	REL runtime	no
+000E8	fn_74_E8	30	T	SetFuncPtrs	-	REL runtime	no
+00118	fn_74_118	724	B	LoadSplinter	-	upstream body (CSplinter)	no
+0083C	fn_74_83C	40	H	fn_74_83C	-	unnamed (weak copy / template instance)	no
+0087C	fn_74_87C	20	H	fn_74_87C	-	unnamed (weak copy / template instance)	no
+0089C	fn_74_89C	28	H	fn_74_89C	-	unnamed (weak copy / template instance)	no
+008C4	fn_74_8C4	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+00A00	fn_74_A00	6C	H	fn_74_A00	-	unnamed (weak copy / template instance)	no
+00A6C	fn_74_A6C	54	H	fn_74_A6C	-	unnamed (weak copy / template instance)	no
+00AC0	fn_74_AC0	64	H	fn_74_AC0	-	unnamed (weak copy / template instance)	no
+00B24	fn_74_B24	60	H	fn_74_B24	-	unnamed (weak copy / template instance)	no
+00B84	fn_74_B84	B8	B	SLdrSplinter::~SLdrSplinter	-	upstream body (SLdrSplinter)	no
+00C3C	fn_74_C3C	1D4	B	SLdrSplinter::SLdrSplinter	splin1	upstream body (SLdrSplinter, header inline)	no
+00E10	fn_74_E10	254	B	CSplinter::SSpitData::SSpitData	-	upstream body (CSplinter)	no
+01064	fn_74_1064	54	H	fn_74_1064	-	unnamed (weak copy / template instance)	no
+010B8	fn_74_10B8	6C	H	fn_74_10B8	-	unnamed (weak copy / template instance)	no
+01124	fn_74_1124	58	H	fn_74_1124	-	unnamed (weak copy / template instance)	no
+0117C	fn_74_117C	5C	H	fn_74_117C	-	unnamed (weak copy / template instance)	no
+011D8	fn_74_11D8	B8	B	CSplinter::SStateMachine2::SStateMachine2	-	upstream body (CSplinter)	no
+01290	fn_74_1290	60	H	fn_74_1290	-	unnamed (weak copy / template instance)	no
+012F0	fn_74_12F0	1F0	B	CSplinter::SParticleData::SParticleData	-	upstream body (CSplinter)	no
+014E0	fn_74_14E0	88	B	CSplinter::GetContactDamage	splin1	upstream body (CSplinter)	yes
+01568	fn_74_1568	8	B	CSplinter::ProjectileInfo	-	upstream body (CSplinter)	no
+01570	fn_74_1570	90	B	CSplinter::GetOrbitPosition	splin1	upstream body (CSplinter)	yes
+01600	fn_74_1600	264	B	CSplinter::DoUserAnimEvent	splin1	upstream body (CSplinter)	no
+01864	fn_74_1864	54	H	fn_74_1864	-	unnamed (weak copy / template instance)	no
+018B8	fn_74_18B8	5C	H	fn_74_18B8	-	unnamed (weak copy / template instance)	no
+01914	fn_74_1914	20	H	fn_74_1914	-	unnamed (weak copy / template instance)	no
+01934	fn_74_1934	48	H	fn_74_1934	-	unnamed (weak copy / template instance)	no
+0197C	fn_74_197C	8C	H	fn_74_197C	-	unnamed (weak copy / template instance)	no
+01A08	fn_74_1A08	B4	H	CImpactVisorEffect::CImpactVisorEffect	-	weak copy / template instance	no
+01ABC	fn_74_1ABC	40	H	fn_74_1ABC	-	unnamed (weak copy / template instance)	no
+01AFC	fn_74_1AFC	20	H	fn_74_1AFC	-	unnamed (weak copy / template instance)	no
+01B1C	fn_74_1B1C	28	H	fn_74_1B1C	-	unnamed (weak copy / template instance)	no
+01B44	fn_74_1B44	80	H	CImpactVisorEffect::SParticleEffect::SParticleEffect	-	weak copy / template instance	no
+01BC4	fn_74_1BC4	3C	H	fn_74_1BC4	-	unnamed (weak copy / template instance)	no
+01C00	fn_74_1C00	3C	H	fn_74_1C00	-	unnamed (weak copy / template instance)	no
+01C3C	fn_74_1C3C	38	H	rstl::optional_object<CImpactVisorEffect::SParticleEffect>::optional_object	-	weak copy / template instance	no
+01C74	fn_74_1C74	70	H	fn_74_1C74	-	unnamed (weak copy / template instance)	no
+01CE4	fn_74_1CE4	78	H	CImpactVisorEffect::SParticleEffect::SParticleEffect	-	weak copy / template instance	no
+01D5C	fn_74_1D5C	9C	B	CSplinter::QuitTeam	-	upstream body (CSplinter)	no
+01DF8	fn_74_1DF8	8C	B	CSplinter::JoinTeam	-	upstream body (CSplinter)	no
+01E84	fn_74_1E84	6C	B	CSplinter::SetupStateMachineHelper	splin1	upstream body (CSplinter)	yes
+01EF0	fn_74_1EF0	68	H	fn_74_1EF0	-	unnamed (weak copy / template instance)	no
+01F58	fn_74_1F58	54	H	fn_74_1F58	-	unnamed (weak copy / template instance)	no
+01FAC	fn_74_1FAC	3C	B	CSplinter::SSacData::~SSacData	splin1	upstream body (CSplinter)	yes
+01FE8	fn_74_1FE8	6C	B	CSplinter::DetachMorphBall	-	upstream body (CSplinter)	no
+02054	fn_74_2054	80	B	CSplinter::AttachMorphBall	-	upstream body (CSplinter)	no
+020D4	fn_74_20D4	84	B	CSplinter::Retreat	-	upstream body (CSplinter)	no
+02158	fn_74_2158	54	B	CSplinter::GrabMBall	-	upstream body (CSplinter)	no
+021AC	fn_74_21AC	110	B	CSplinter::PlayStepAnim	-	upstream body (CSplinter)	no
+022BC	fn_74_22BC	3C	H	fn_74_22BC	-	unnamed (weak copy / template instance)	no
+022F8	fn_74_22F8	184	H	CPASAnimParmData::CPASAnimParmData	-	weak copy / template instance	no
+0247C	fn_74_247C	3C	H	fn_74_247C	-	unnamed (weak copy / template instance)	no
+024B8	fn_74_24B8	B0	B	CSplinter::MBallMoved	-	upstream body (CSplinter)	no
+02568	fn_74_2568	28	B	CSplinter::ReachedMBall	-	upstream body (CSplinter)	no
+02590	fn_74_2590	8	B	CSplinter::MorphballWaiting	-	upstream body (CSplinter)	no
+02598	fn_74_2598	20	B	CSplinter::SacMissing	splin1	upstream body (CSplinter)	yes
+025B8	fn_74_25B8	84	B	CSplinter::FindConnectedId	-	upstream body (CSplinter)	no
+0263C	fn_74_263C	180	B	CSplinter::CreateSac	-	upstream body (CSplinter)	no
+027BC	fn_74_27BC	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string	-	weak copy / template instance	no
+0280C	fn_74_280C	2C	B	CSplinter::CableShot	-	upstream body (CSplinter)	no
+02838	fn_74_2838	58	B	CSplinter::IsSacMissing	-	upstream body (CSplinter)	no
+02890	fn_74_2890	24	B	CSplinter::DropCompleted	-	upstream body (CSplinter)	no
+028B4	fn_74_28B4	40	B	CSplinter::HasUnpoppedSac	-	upstream body (CSplinter)	no
+028F4	fn_74_28F4	48	B	CSplinter::GetSac	-	upstream body (CSplinter)	no
+0293C	fn_74_293C	50	B	CSplinter::PopSac	-	upstream body (CSplinter)	no
+0298C	fn_74_298C	90	B	CSplinter::DropAndExplode	-	upstream body (CSplinter)	no
+02A1C	fn_74_2A1C	64	B	CSplinter::Drop	splin1	upstream body (CSplinter)	yes
+02A80	fn_74_2A80	14C	B	CSplinter::KillSelf	-	upstream body (CSplinter)	no
+02BCC	fn_74_2BCC	1CC	B	CSplinter::Rise	-	upstream body (CSplinter)	no
+02D98	fn_74_2D98	A4	B	CSplinter::GrabSac	-	upstream body (CSplinter)	no
+02E3C	fn_74_2E3C	1B4	B	CSplinter::Descend	-	upstream body (CSplinter)	no
+02FF0	fn_74_2FF0	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
+0304C	fn_74_304C	1DC	B	CSplinter::WaitOnCable	-	upstream body (CSplinter)	no
+03228	fn_74_3228	64	B	CSplinter::ShouldDrop	-	upstream body (CSplinter)	no
+0328C	fn_74_328C	C	B	CSplinter::HoldingSac	-	upstream body (CSplinter)	no
+03298	fn_74_3298	24	B	CSplinter::ReachedTop	-	upstream body (CSplinter)	no
+032BC	fn_74_32BC	1C	B	CSplinter::GrabbedIt	-	upstream body (CSplinter)	no
+032D8	fn_74_32D8	74	B	CSplinter::ReachedSac	-	upstream body (CSplinter)	no
+0334C	fn_74_334C	30	B	CSplinter::IsGrabbingPlayer	-	upstream body (CSplinter)	no
+0337C	fn_74_337C	4C	B	CSplinter::GetGrabbed	-	upstream body (CSplinter)	no
+033C8	fn_74_33C8	50	B	CSplinter::FindGrabbed	-	upstream body (CSplinter)	no
+03418	fn_74_3418	4C	B	CSplinter::SacPresent	-	upstream body (CSplinter)	no
+03464	fn_74_3464	5C	B	CSplinter::IsMegaLight	splin1	upstream body (CSplinter)	yes
+034C0	fn_74_34C0	60	B	CSplinter::IsMegaDark	-	upstream body (CSplinter)	no
+03520	fn_74_3520	154	B	CSplinter::KnockBack	-	upstream body (CSplinter)	no
+03674	fn_74_3674	98	B	CSplinter::GoToPad	splin1	upstream body (CSplinter)	yes
+0370C	fn_74_370C	1FC	B	CSplinter::GoToTarget	-	upstream body (CSplinter)	no
+03908	fn_74_3908	E8	B	CSplinter::IsOnPad	-	upstream body (CSplinter)	no
+039F0	fn_74_39F0	88	B	CSplinter::FindPadHint	-	upstream body (CSplinter)	no
+03A78	fn_74_3A78	C	B	CSplinter::IsOnCable	splin1	upstream body (CSplinter)	yes
+03A84	fn_74_3A84	40	B	CSplinter::IngSwarmIncoming	-	upstream body (CSplinter)	no
+03AC4	fn_74_3AC4	38	B	CSplinter::Stuck	-	upstream body (CSplinter)	no
+03AFC	fn_74_3AFC	1AC	B	CSplinter::PreRender	splin1	upstream body (CSplinter)	yes
+03CA8	fn_74_3CA8	174	B	CSplinter::GetTouchBounds	-	upstream body (CSplinter)	no
+03E1C	fn_74_3E1C	3C	H	fn_74_3E1C	-	unnamed (weak copy / template instance)	no
+03E58	fn_74_3E58	68	H	CPatterned::GetTouchBounds	-	weak copy / template instance	no
+03EC0	fn_74_3EC0	40	B	CSplinter::PlayerIsInSafeZone	splin1	upstream body (CSplinter)	yes
+03F00	fn_74_3F00	48	B	CSplinter::IsWorkerSplinter	splin1	upstream body (CSplinter)	yes
+03F48	fn_74_3F48	20	B	CSplinter::IsDarkSplinter	splin1	upstream body (CSplinter)	yes
+03F68	fn_74_3F68	A4	B	CSplinter::TooMuchTurning	-	upstream body (CSplinter)	no
+0400C	fn_74_400C	C	B	CSplinter::AlertMessageReceived	splin1	upstream body (CSplinter)	yes
+04018	fn_74_4018	18	B	CSplinter::StuckOnTeammate	splin1	upstream body (CSplinter)	yes
+04030	fn_74_4030	D4	B	CSplinter::SlideOff	splin1	upstream body (CSplinter)	yes
+04104	fn_74_4104	5C	H	fn_74_4104	-	unnamed (weak copy / template instance)	no
+04160	fn_74_4160	48	H	fn_74_4160	-	unnamed (weak copy / template instance)	no
+041A8	fn_74_41A8	F4	B	CSplinter::RecoverCollision	splin1	upstream body (CSplinter)	yes
+0429C	fn_74_429C	3C	H	fn_74_429C	-	unnamed (weak copy / template instance)	no
+042D8	fn_74_42D8	58	H	CAreaCollisionCache::~CAreaCollisionCache	-	weak copy / template instance	no
+04330	fn_74_4330	50	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::~reserved_vector	-	weak copy / template instance	no
+04380	fn_74_4380	84	H	rstl::reserved_vector<CMetroidAreaCollider::COctreeLeafCache, 3>::destroy_elements	-	weak copy / template instance	no
+04404	fn_74_4404	20	B	CSplinter::FleesFromPlayer	splin1	upstream body (CSplinter)	yes
+04424	fn_74_4424	88	B	CSplinter::HasRetreatPath	splin1	upstream body (CSplinter)	yes
+044AC	fn_74_44AC	4C	B	CSplinter::NeedsToSlideOff	-	upstream body (CSplinter)	no
+044F8	fn_74_44F8	248	B	CSplinter::ExplodeSac	-	upstream body (CSplinter)	no
+04740	fn_74_4740	58	H	fn_74_4740	-	unnamed (weak copy / template instance)	no
+04798	fn_74_4798	54	H	fn_74_4798	-	unnamed (weak copy / template instance)	no
+047EC	fn_74_47EC	44	B	CSplinter::MassiveDeath	splin1	upstream body (CSplinter)	yes
+04830	fn_74_4830	8C	B	CSplinter::Dead	splin1	upstream body (CSplinter)	yes
+048BC	fn_74_48BC	C8	B	CSplinter::AddEvadeCheck	splin1	upstream body (CSplinter)	yes
+04984	fn_74_4984	5C	H	rstl::reserved_vector<CSplinter::SEvadeCheck, 4>::push_back	-	weak copy / template instance	no
+049E0	fn_74_49E0	A8	H	rstl::reserved_vector<CSplinter::SEvadeCheck, 4>::erase	-	weak copy / template instance	no
+04A88	fn_74_4A88	4C4	B	CSplinter::CanEvade	-	upstream body (CSplinter)	no
+04F4C	fn_74_4F4C	58	B	CSplinter::TeamAttacked	splin1	upstream body (CSplinter)	yes
+04FA4	fn_74_4FA4	14	B	CSplinter::GetHeckleRange	splin1	upstream body (CSplinter)	yes
+04FB8	fn_74_4FB8	AC	B	CSplinter::InHeckleRange	splin1	upstream body (CSplinter)	yes
+05064	fn_74_5064	98	B	CSplinter::IsHeckler	-	upstream body (CSplinter)	no
+050FC	fn_74_50FC	88	B	CSplinter::IsMelee	-	upstream body (CSplinter)	no
+05184	fn_74_5184	1AC	B	CSplinter::FastTurn	-	upstream body (CSplinter)	no
+05330	fn_74_5330	1F0	B	CSplinter::TurnToPlayer	-	upstream body (CSplinter)	no
+05520	fn_74_5520	9C	B	CSplinter::RotateToPlayer	splin1	upstream body (CSplinter)	yes
+055BC	fn_74_55BC	50	B	CSplinter::FacingPlayerExactly	-	upstream body (CSplinter)	no
+0560C	fn_74_560C	A0	B	CSplinter::FacingPlayer	-	upstream body (CSplinter)	no
+056AC	fn_74_56AC	F0	B	CSplinter::GetPlayerTargetPosition	splin1	upstream body (CSplinter)	yes
+0579C	fn_74_579C	3A0	B	CSplinter::AttackPointIsLegal	-	upstream body (CSplinter)	no
+05B3C	fn_74_5B3C	134	B	CSplinter::IsAttackBlocked	-	upstream body (CSplinter)	no
+05C70	fn_74_5C70	1FC	B	CSplinter::FindHideHint	-	upstream body (CSplinter)	no
+05E6C	fn_74_5E6C	174	B	CSplinter::HasClearPathTo	-	upstream body (CSplinter)	no
+05FE0	fn_74_5FE0	D8	B	CSplinter::IsFacing	-	upstream body (CSplinter)	no
+060B8	fn_74_60B8	98	B	CSplinter::PounceTimeOut	-	upstream body (CSplinter)	no
+06150	fn_74_6150	2C	B	CSplinter::IsNearPath	splin1	upstream body (CSplinter)	yes
+0617C	fn_74_617C	30	B	CSplinter::ShouldEmergeFromCocoon	splin1	upstream body (CSplinter)	yes
+061AC	fn_74_61AC	50	B	CSplinter::Listen	-	upstream body (CSplinter)	no
+061FC	fn_74_61FC	158	B	CSplinter::RunAndHide	-	upstream body (CSplinter)	no
+06354	fn_74_6354	38	B	CSplinter::ShouldUnHide	-	upstream body (CSplinter)	no
+0638C	fn_74_638C	A0	B	CSplinter::ShotFromOtherArea	-	upstream body (CSplinter)	no
+0642C	fn_74_642C	8	B	CSplinter::IsListening	splin1	upstream body (CSplinter)	yes
+06434	fn_74_6434	28	B	CSplinter::GetGravityConstant	-	upstream body (CSplinter)	no
+0645C	fn_74_645C	A0	B	CSplinter::Render	-	upstream body (CSplinter)	no
+064FC	fn_74_64FC	C	B	CSplinter::HasValidJumpTarget	splin1	upstream body (CSplinter)	yes
+06508	fn_74_6508	1EC	B	CSplinter::Patrol	-	upstream body (CSplinter)	no
+066F4	fn_74_66F4	5C	H	fn_74_66F4	-	unnamed (weak copy / template instance)	no
+06750	fn_74_6750	AC	B	CSplinter::GetPatrolDelay	-	upstream body (CSplinter)	no
+067FC	fn_74_67FC	18C	B	CSplinter::Alert	-	upstream body (CSplinter)	no
+06988	fn_74_6988	7C	B	CSplinter::SetupStateMachine	-	upstream body (CSplinter)	no
+06A04	fn_74_6A04	178	B	CSplinter::GetAttackPosition	splin1	upstream body (CSplinter)	yes
+06B7C	fn_74_6B7C	D8	B	CSplinter::UpdateAlignment	splin1	upstream body (CSplinter)	yes
+06C54	fn_74_6C54	9C	B	CSplinter::UpdateSwarmGrab	-	upstream body (CSplinter)	no
+06CF0	fn_74_6CF0	98	B	CSplinter::UpdateEyes	splin1	upstream body (CSplinter)	yes
+06D88	fn_74_6D88	DC	B	CSplinter::UpdateHealthMessage	-	upstream body (CSplinter)	no
+06E64	fn_74_6E64	2F4	B	CSplinter::Think	-	upstream body (CSplinter)	no
+07158	fn_74_7158	34	B	CSplinter::FindTeamAiMgr	splin1	upstream body (CSplinter)	yes
+0718C	fn_74_718C	34	B	CSplinter::GetTeamAiMgr	splin1	upstream body (CSplinter)	yes
+071C0	fn_74_71C0	344	B	CSplinter::PathFind	-	upstream body (CSplinter)	no
+07504	fn_74_7504	DC	B	CSplinter::SJumpData::Reset	splin1	upstream body (CSplinter)	yes
+075E0	fn_74_75E0	21C	B	CSplinter::CheckFooting	-	upstream body (CSplinter)	no
+077FC	fn_74_77FC	84	B	CSplinter::StartPathTo	splin1	upstream body (CSplinter)	yes
+07880	fn_74_7880	3C	B	CSplinter::FaceTargetAtPlayer	splin1	upstream body (CSplinter)	yes
+078BC	fn_74_78BC	38C	B	CSplinter::FallFromCocoon	-	upstream body (CSplinter)	no
+07C48	fn_74_7C48	9C	H	CBodyStateCmdMgr::DeliverCmd	-	weak copy / template instance	no
+07CE4	fn_74_7CE4	5C	H	fn_74_7CE4	-	unnamed (weak copy / template instance)	no
+07D40	fn_74_7D40	7C	H	CBCJumpCmd::CBCJumpCmd	-	weak copy / template instance	no
+07DBC	fn_74_7DBC	64	B	CSplinter::SJumpData::SJumpData	splin1	upstream body (CSplinter)	yes
+07E20	fn_74_7E20	3C	H	fn_74_7E20	-	unnamed (weak copy / template instance)	no
+07E5C	fn_74_7E5C	68	B	CSplinter::HasAnyLandPoints	-	upstream body (CSplinter)	no
+07EC4	fn_74_7EC4	5C	B	CSplinter::SetUnhideTime	-	upstream body (CSplinter)	no
+07F20	fn_74_7F20	C0	B	CSplinter::WaitInCocoon	-	upstream body (CSplinter)	no
+07FE0	fn_74_7FE0	80	B	CSplinter::Sidestep	splin1	upstream body (CSplinter)	yes
+08060	fn_74_8060	344	B	CSplinter::DoEvasion	-	upstream body (CSplinter)	no
+083A4	fn_74_83A4	74	B	CSplinter::Taunt	splin1	upstream body (CSplinter)	yes
+08418	fn_74_8418	1D0	B	CSplinter::ChooseEvasion	splin1	upstream body (CSplinter)	yes
+085E8	fn_74_85E8	38	B	CSplinter::Scream	-	upstream body (CSplinter)	no
+08620	fn_74_8620	C	B	CSplinter::SkipAlert	splin1	upstream body (CSplinter)	yes
+0862C	fn_74_862C	14	B	CSplinter::ShouldTaunt	splin1	upstream body (CSplinter)	yes
+08640	fn_74_8640	3F4	B	CSplinter::CollidedWith	-	upstream body (CSplinter)	no
+08A34	fn_74_8A34	C	B	CSplinter::Landed	splin1	upstream body (CSplinter)	yes
+08A40	fn_74_8A40	3C	B	CSplinter::UpdateAlignmentMode	splin1	upstream body (CSplinter)	yes
+08A7C	fn_74_8A7C	164	B	CSplinter::JumpToPoint	-	upstream body (CSplinter)	no
+08BE0	fn_74_8BE0	228	B	CSplinter::Pounce	-	upstream body (CSplinter)	no
+08E08	fn_74_8E08	5C	H	fn_74_8E08	-	unnamed (weak copy / template instance)	no
+08E64	fn_74_8E64	124	B	CSplinter::CanSeePlayer	splin1	upstream body (CSplinter)	yes
+08F88	fn_74_8F88	8C	B	CSplinter::CanPounce	-	upstream body (CSplinter)	no
+09014	fn_74_9014	330	B	CSplinter::Jump	-	upstream body (CSplinter)	no
+09344	fn_74_9344	384	B	CSplinter::IsNearWall	-	upstream body (CSplinter)	no
+096C8	fn_74_96C8	22C	B	CSplinter::ScoreJump	-	upstream body (CSplinter)	no
+098F4	fn_74_98F4	C8	B	CSplinter::FindJump	-	upstream body (CSplinter)	no
+099BC	fn_74_99BC	200	B	CSplinter::FindJumpPoints	-	upstream body (CSplinter)	no
+09BBC	fn_74_9BBC	C0	B	CSplinter::MegaSplinterSpit	-	upstream body (CSplinter)	no
+09C7C	fn_74_9C7C	80	B	CSplinter::Null	splin1	upstream body (CSplinter)	yes
+09CFC	fn_74_9CFC	80	B	CSplinter::InAttackRange	-	upstream body (CSplinter)	no
+09D7C	fn_74_9D7C	C	B	CSplinter::InCocoon	splin1	upstream body (CSplinter)	yes
+09D88	fn_74_9D88	134	B	CSplinter::UpdatePitchBend	-	upstream body (CSplinter)	no
+09EBC	fn_74_9EBC	38	B	CSplinter::InitPathArea	splin1	upstream body (CSplinter)	yes
+09EF4	fn_74_9EF4	80	B	CSplinter::SetCableMovement	splin1	upstream body (CSplinter)	yes
+09F74	fn_74_9F74	6AC	B	CSplinter::AcceptScriptMsg	-	upstream body (CSplinter)	no
+0A620	fn_74_A620	5C	H	fn_74_A620	-	unnamed (weak copy / template instance)	no
+0A67C	fn_74_A67C	14C	B	CSplinter::ApplyJumpVelocity	-	upstream body (CSplinter)	no
+0A7C8	fn_74_A7C8	160	B	CSplinter::ApplyLaunchVelocity	-	upstream body (CSplinter)	no
+0A928	fn_74_A928	270	B	CSplinter::ApplyAmbushVelocity	splin1	upstream body (CSplinter)	no
+0AB98	fn_74_AB98	8	B	CSplinter::IsMega	splin1	upstream body (CSplinter)	yes
+0ABA0	fn_74_ABA0	138	B	CSplinter::~CSplinter	-	upstream body (CSplinter)	no
+0ACD8	fn_74_ACD8	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
+0AEBC	fn_74_AEBC	94	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
+0AF50	fn_74_AF50	54	B	CSplinter::SSurfaceAlignment::~SSurfaceAlignment	-	upstream body (CSplinter)	no
+0AFA4	fn_74_AFA4	58	H	fn_74_AFA4	-	unnamed (weak copy / template instance)	no
+0AFFC	fn_74_AFFC	58	H	fn_74_AFFC	-	unnamed (weak copy / template instance)	no
+0B054	fn_74_B054	58	H	fn_74_B054	-	unnamed (weak copy / template instance)	no
+0B0AC	fn_74_B0AC	98	H	rstl::vector<unsigned short, rstl::locked_cache_allocator>::~vector	-	weak copy / template instance	no
+0B144	fn_74_B144	5C	H	fn_74_B144	-	unnamed (weak copy / template instance)	no
+0B1A0	fn_74_B1A0	20	H	fn_74_B1A0	-	unnamed (weak copy / template instance)	no
+0B1C0	fn_74_B1C0	24	H	fn_74_B1C0	-	unnamed (weak copy / template instance)	no
+0B1E4	fn_74_B1E4	9C	B	CSplinter::SSpitData::~SSpitData	-	upstream body (CSplinter)	no
+0B280	fn_74_B280	4E4	B	CSplinter::CSplinter	-	upstream body (CSplinter)	no
+0B764	fn_74_B764	30	H	rstl::optional_object<CSplinter::SSpitData>::operator=	-	weak copy / template instance	no
+0B794	fn_74_B794	48	H	fn_74_B794	-	unnamed (weak copy / template instance)	no
+0B7DC	fn_74_B7DC	F0	B	CSplinter::SSpitData::operator=	-	upstream body (CSplinter)	no
+0B8CC	fn_74_B8CC	C8	H	rstl::optional_object<TLockedToken<CGenDescription>>::operator=	-	weak copy / template instance	no
+0B994	fn_74_B994	20	H	fn_74_B994	-	unnamed (weak copy / template instance)	no
+0B9B4	fn_74_B9B4	28	H	fn_74_B9B4	-	unnamed (weak copy / template instance)	no
+0B9DC	fn_74_B9DC	EC	B	CSplinter::SSpitData::SSpitData	-	upstream body (CSplinter)	no
+0BAC8	fn_74_BAC8	8C	H	fn_74_BAC8	-	unnamed (weak copy / template instance)	no
+0BB54	fn_74_BB54	58	H	fn_74_BB54	-	unnamed (weak copy / template instance)	no
+0BBAC	fn_74_BBAC	54	H	fn_74_BBAC	-	unnamed (weak copy / template instance)	no
+0BC00	fn_74_BC00	70	H	fn_74_BC00	-	unnamed (weak copy / template instance)	no
+0BC70	fn_74_BC70	64	H	fn_74_BC70	-	unnamed (weak copy / template instance)	no
+0BCD4	fn_74_BCD4	DC	B	CSplinter::SSacData::SSacData	splin1	upstream body (CSplinter)	yes
+0BDB0	fn_74_BDB0	8C	H	fn_74_BDB0	-	unnamed (weak copy / template instance)	no
+0BE3C	fn_74_BE3C	C0	B	CSplinter::SSurfaceAlignment::SSurfaceAlignment	splin1	upstream body (CSplinter)	yes
+0BEFC	fn_74_BEFC	3C	H	fn_74_BEFC	-	unnamed (weak copy / template instance)	no
+0BF38	fn_74_BF38	3C	H	fn_74_BF38	-	unnamed (weak copy / template instance)	no
+0BF74	fn_74_BF74	CC	B	CSplinter::DeliverCommand<CBCTauntCmd>	-	upstream body (CSplinter)	no
+0C040	fn_74_C040	11C	B	CSplinter::DeliverCommand<CBCStepCmd>	-	upstream body (CSplinter)	no
+0C15C	fn_74_C15C	10C	B	CSplinter::DeliverCommand<CBCMeleeAttackCmd>	-	upstream body (CSplinter)	no
+0C268	fn_74_C268	A40	B	__sinit_CSplinter_cpp	-	upstream body (CSplinter)	no
+0CCA8	fn_74_CCA8	7C	B	CSplinterAcidSac::~CSplinterAcidSac	-	upstream body (CSplinterAcidSac)	no
+0CD24	fn_74_CD24	8	B	CSplinterAcidSac::IsPopped	splin1	upstream body (CSplinterAcidSac)	yes
+0CD2C	fn_74_CD2C	8	B	CSplinterAcidSac::HealthInfo	-	upstream body (CSplinterAcidSac)	no
+0CD34	fn_74_CD34	8	B	CSplinterAcidSac::GetDamageVulnerability	-	upstream body (CSplinterAcidSac)	no
+0CD3C	fn_74_CD3C	6C	B	CSplinterAcidSac::AcceptScriptMsg	-	upstream body (CSplinterAcidSac)	no
+0CDA8	fn_74_CDA8	94	B	CSplinterAcidSac::Pop	-	upstream body (CSplinterAcidSac)	no
+0CE3C	fn_74_CE3C	15C	B	CSplinterAcidSac::GetTouchBounds	splin1	upstream body (CSplinterAcidSac)	yes
+0CF98	fn_74_CF98	C0	B	CSplinterAcidSac::PreRender	splin1	upstream body (CSplinterAcidSac)	yes
+0D058	fn_74_D058	20	B	CSplinterAcidSac::Render	splin1	upstream body (CSplinterAcidSac)	yes
+0D078	fn_74_D078	CC	B	CSplinterAcidSac::Think	splin1	upstream body (CSplinterAcidSac)	yes
+0D144	fn_74_D144	1BC	B	CSplinterAcidSac::CSplinterAcidSac	-	upstream body (CSplinterAcidSac)	no
+0D300	fn_74_D300	5C	H	fn_74_D300	-	unnamed (weak copy / template instance)	no
+0D35C	fn_74_D35C	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector	-	weak copy / template instance	no
+0D48C	fn_74_D48C	58	H	fn_74_D48C	-	unnamed (weak copy / template instance)	no

@@ -1,0 +1,13 @@
+# 02_temple_exploration area 10: wake the Splinters, then sit in morph ball among them (MBall
+# triggers, GrabMBall), boost away and back.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,02_temple_exploration --con <this> --fast --frames 3200
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f305 send u055b Activate; send u055c Activate; send u057c Activate
+@f310 tp 205 -215 -40
+@f330 send u055b Alert; send u055c Alert; send u057c Alert
+@f600 tp 212 -222 -40
+@f610 press x 30
+@f1200 obj u055b; obj u055c; obj u057c
+@f1800 boost
+@f2000 boost
+@f2400 obj u055b; obj u055c; obj u057c

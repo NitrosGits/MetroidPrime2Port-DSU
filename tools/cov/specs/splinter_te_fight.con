@@ -1,0 +1,13 @@
+# 02_temple_exploration area 10: wake the three Splinters (u055b/u055c/u057c) and let them fight a
+# god-mode player, then hurt and kill them (dead state, sac explode).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,02_temple_exploration --con <this> --fast --frames 3200
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f305 send u055b Activate; send u055c Activate; send u057c Activate
+@f310 tp 205 -215 -40
+@f330 send u055b Alert; send u055c Alert; send u057c Alert
+@f1200 obj u055b; obj u057c
+@f1800 damage u055b 2; damage u055c 2
+@f2000 damage u055b 2 kb
+@f2300 damage u055b 10; damage u055c 10 missile
+@f2600 damage u057c 10 missile
+@f3100 objs Splinter

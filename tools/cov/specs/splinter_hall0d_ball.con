@@ -1,0 +1,16 @@
+# 0d_temple_hall (layers 3): Splinters u047e u0478 u0470 u0461. Wake them, then sit in morph ball among them, boost away, then kill them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,0d_temple_hall --con <this> --fast --frames 3400
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 3
+@f305 send u047e Activate; send u0478 Activate; send u0470 Activate; send u0461 Activate
+@f310 tp 132 272 -43
+@f330 send u047e Alert; send u0478 Alert; send u0470 Alert; send u0461 Alert
+@f600 press x 30
+@f1400 boost
+@f1600 boost
+@f1900 press x 30
+@f1200 obj u047e; obj u0478; obj u0470
+@f2200 damage u047e 2; damage u0478 2; damage u0470 2; damage u0461 2
+@f2500 damage u047e 2 kb; damage u0478 2 kb; damage u0470 2 kb; damage u0461 2 kb
+@f2800 damage u047e 20 missile; damage u0478 20 missile; damage u0470 20 missile; damage u0461 20 missile
+@f3300 objs Splinter

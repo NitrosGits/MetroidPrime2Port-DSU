@@ -1,0 +1,11 @@
+# 02_temple_exploration (3bfa3eff,02_temple_exploration) area 10: three Splinters u055b/u055c/u057c
+# around (214, -224, -40), inactive at load. Activate, alert, and stand among them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,02_temple_exploration --con <this> --fast --frames 3000
+@f300 god 1; give missile 50; give morphBall 1; give bombs 1; fastmorph 1
+@f305 send u055b Activate; send u055c Activate; send u057c Activate
+@f310 tp 205 -215 -40
+@f320 obj u055b
+@f330 send u055b Alert; send u055c Alert; send u057c Alert
+@f600 obj u055b; obj u055c; obj u057c
+@f1000 obj u055b
+@f1500 obj u055b; status

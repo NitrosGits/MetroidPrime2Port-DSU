@@ -1,0 +1,15 @@
+# 0h_sand_hall_dark (layers default): Splinters u0444 u043f. Wake them, then sit in morph ball among them, boost away, then kill them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 42b935e4,0h_sand_hall_dark --con <this> --fast --frames 3400
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f305 send u0444 Activate; send u043f Activate
+@f310 tp 262 -85 21.5
+@f330 send u0444 Alert; send u043f Alert
+@f600 press x 30
+@f1400 boost
+@f1600 boost
+@f1900 press x 30
+@f1200 obj u0444; obj u043f
+@f2200 damage u0444 2; damage u043f 2
+@f2500 damage u0444 2 kb; damage u043f 2 kb
+@f2800 damage u0444 20 missile; damage u043f 20 missile
+@f3300 objs Splinter

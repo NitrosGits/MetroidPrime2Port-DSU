@@ -1,0 +1,6 @@
+# Discovery with the Splinter layers of the module table (2, 3, 4) on: list the Splinter parts.
+@f300 god 1
+@f305 layer 2; layer 3; layer 4
+@f340 objs Splinter
+@f350 objs SplinterAcidSac
+@f360 status

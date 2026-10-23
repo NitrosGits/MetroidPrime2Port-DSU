@@ -145,6 +145,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"WaitOnCable", static_cast< CPatterned::StateMachine::StateFunc >(&CSplinter::WaitOnCable)},
 };
 
+// @ fn_74_BE3C
 CSplinter::SSurfaceAlignment::SSurfaceAlignment()
 #ifdef TARGET_PC
 // 0xBE90-0xBE98: li r3,-1 (include all), li r5,0, li r0,2 (kFT_Exclude): retail excludes
@@ -168,12 +169,14 @@ CSplinter::SParticleData::SParticleData(CAssetId particle, const CDamageInfo& da
                                       : rstl::optional_object< TLockedToken< CGenDescription > >())
 , mDamage(damage) {}
 
+// @ fn_74_7DBC
 CSplinter::SJumpData::SJumpData() {
   mStart = CVector3f::Zero();
   mTarget = CVector3f::Zero();
   Reset();
 }
 
+// @ fn_74_7504
 void CSplinter::SJumpData::Reset() {
   mHeight = 0.f;
   mLanded = mIsHighJump = mUnknown2 = mHasValidTarget = mHasTarget = mJumping = mVelocitySet =
@@ -183,6 +186,7 @@ void CSplinter::SJumpData::Reset() {
   mPhase = 0;
 }
 
+// @ fn_74_BCD4
 CSplinter::SSacData::SSacData(int a, int b, int c, int d, bool e, bool f)
 : mGrabbedId(kInvalidUniqueId)
 , mDescendStartZ(0.f)
@@ -200,6 +204,7 @@ CSplinter::SSacData::SSacData(int a, int b, int c, int d, bool e, bool f)
 , mSacOffset(CVector3f::Zero())
 , mDropHeight(50.f) {}
 
+// @ fn_74_1FAC
 CSplinter::SSacData::~SSacData() {}
 
 CSplinter::SSpitData::SSpitData(float f1, CAssetId projectile, float f2, const CDamageInfo& damage,
@@ -318,6 +323,7 @@ void CSplinter::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_74_1E84
 void CSplinter::SetupStateMachineHelper(CStateManager& mgr) {
   InitializeStateMachine(mgr);
   mStateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
@@ -333,6 +339,7 @@ void CSplinter::SetupStateMachine(CStateManager& mgr) {
   }
 }
 
+// @ fn_74_642C
 bool CSplinter::IsListening() const { return true; }
 
 float CSplinter::GetGravityConstant() const {
@@ -344,6 +351,7 @@ float CSplinter::GetGravityConstant() const {
 
 CProjectileInfo* CSplinter::ProjectileInfo() { return &mSpit->mProjectileInfo; }
 
+// @ fn_74_14E0
 CDamageInfo CSplinter::GetContactDamage() const {
   if (mJump.mJumping == true) {
     CDamageInfo damage = CPatterned::GetContactDamage();
@@ -356,6 +364,7 @@ CDamageInfo CSplinter::GetContactDamage() const {
   return CPatterned::GetContactDamage();
 }
 
+// @ fn_74_1570
 CVector3f CSplinter::GetOrbitPosition(const CStateManager& mgr) const {
   if (IsMega() == true && mSpit->mOrbitValid == true) {
     return mSpit->mOrbitPosition;
@@ -443,6 +452,7 @@ bool CSplinter::HoldingSac(CStateManager& mgr, const CTriggerData& data) const {
   return mSac.mHoldingSac;
 }
 
+// @ fn_74_3464
 bool CSplinter::IsMegaLight(CStateManager& mgr, const CTriggerData& data) const {
   return !IsIngPossessed() && IsMega() == true;
 }
@@ -451,10 +461,12 @@ bool CSplinter::IsMegaDark(CStateManager& mgr, const CTriggerData& data) const {
   return IsIngPossessed() == true && IsMega() == true;
 }
 
+// @ fn_74_400C
 bool CSplinter::AlertMessageReceived(CStateManager& mgr, const CTriggerData& data) const {
   return mAlertMessageReceived;
 }
 
+// @ fn_74_3F00
 bool CSplinter::IsWorkerSplinter(CStateManager& mgr, const CTriggerData& data) const {
   if (IsIngPossessed() == true) {
     return false;
@@ -462,12 +474,16 @@ bool CSplinter::IsWorkerSplinter(CStateManager& mgr, const CTriggerData& data) c
   return mIsWorker;
 }
 
+// @ fn_74_8620
 bool CSplinter::SkipAlert(CStateManager& mgr, const CTriggerData& data) const { return mSkipAlert; }
 
+// @ fn_74_9D7C
 bool CSplinter::InCocoon(CStateManager& mgr, const CTriggerData& data) const { return mInCocoon; }
 
+// @ fn_74_8A34
 bool CSplinter::Landed(CStateManager& mgr, const CTriggerData& data) const { return mJump.mLanded; }
 
+// @ fn_74_64FC
 bool CSplinter::HasValidJumpTarget(CStateManager& mgr, const CTriggerData& data) const {
   return mJump.mHasValidTarget;
 }
@@ -561,6 +577,7 @@ bool CSplinter::IsSacMissing(const CStateManager& mgr) const {
   return false;
 }
 
+// @ fn_74_2598
 bool CSplinter::SacMissing(CStateManager& mgr, const CTriggerData& data) const {
   return IsSacMissing(mgr);
 }
@@ -630,6 +647,7 @@ CSplinterAcidSac::CSplinterAcidSac(TUniqueId uid, TAreaId area, const rstl::stri
   AnimationData()->SetAnimation(CAnimPlaybackParms(initialAnimation, -1, 1.f, true), false);
 }
 
+// @ fn_74_CD24
 bool CSplinterAcidSac::IsPopped() const { return mPopped; }
 
 CHealthInfo* CSplinterAcidSac::HealthInfo() { return &mHealthInfo; }
@@ -654,6 +672,7 @@ void CSplinterAcidSac::Pop() {
   }
 }
 
+// @ fn_74_CE3C
 rstl::optional_object< CAABox > CSplinterAcidSac::GetTouchBounds() const {
   const CVector3f& position = GetTranslation();
   rstl::optional_object< CAABox > bounds(
@@ -664,6 +683,7 @@ rstl::optional_object< CAABox > CSplinterAcidSac::GetTouchBounds() const {
   return bounds;
 }
 
+// @ fn_74_CF98
 void CSplinterAcidSac::PreRender(CStateManager& mgr) {
   CActor::PreRender(mgr);
   if (mPopTimer > 0.f) {
@@ -675,8 +695,10 @@ void CSplinterAcidSac::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_74_D058
 void CSplinterAcidSac::Render(const CStateManager& mgr) const { CActor::Render(mgr); }
 
+// @ fn_74_D078
 void CSplinterAcidSac::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     AddMaterial(kMT_Solid, mgr);
@@ -739,6 +761,7 @@ void CSplinter::CreateSac(CStateManager& mgr) {
   }
 }
 
+// @ fn_74_3A78
 bool CSplinter::IsOnCable(CStateManager& mgr, const CTriggerData& data) const {
   return mSac.mSacOnCable;
 }
@@ -751,18 +774,22 @@ bool CSplinter::IngSwarmIncoming(CStateManager& mgr, const CTriggerData& data) c
   return incoming;
 }
 
+// @ fn_74_3F48
 bool CSplinter::IsDarkSplinter(CStateManager& mgr, const CTriggerData& data) const {
   return IsIngPossessed();
 }
 
+// @ fn_74_4018
 bool CSplinter::StuckOnTeammate(CStateManager& mgr, const CTriggerData& data) const {
   return mStuckDeadline > mTime;
 }
 
+// @ fn_74_862C
 bool CSplinter::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
   return mUnknown9b0 > 0;
 }
 
+// @ fn_74_9EF4
 void CSplinter::SetCableMovement(CStateManager& mgr, bool onCable) {
   if (onCable == true) {
     mVerticalMovement = true;
@@ -848,6 +875,7 @@ void CSplinter::DropAndExplode(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_2A1C
 void CSplinter::Drop(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     PlayStepAnim(mgr, 2, false);
@@ -887,14 +915,17 @@ void CSplinter::Descend(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_718C
 const CScriptTeamAiMgr* CSplinter::GetTeamAiMgr(const CStateManager& mgr) const {
   return TCastToConstPtr< CScriptTeamAiMgr >(mgr.GetObjectById(mTeamAiMgrId));
 }
 
+// @ fn_74_7158
 CScriptTeamAiMgr* CSplinter::FindTeamAiMgr(CStateManager& mgr) const {
   return TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId));
 }
 
+// @ fn_74_4F4C
 bool CSplinter::TeamAttacked(CStateManager& mgr, const CTriggerData& data) const {
   if (GetTeamAiMgr(mgr) != nullptr) {
     return GetTeamAiMgr(mgr)->GetWasHit();
@@ -935,6 +966,7 @@ bool CSplinter::NeedsToSlideOff(CStateManager& mgr, const CTriggerData& data) co
   return mUnknownadc == false;
 }
 
+// @ fn_74_4424
 bool CSplinter::HasRetreatPath(CStateManager& mgr) const {
   if (IsIngPossessed() == true) {
     return false;
@@ -942,12 +974,15 @@ bool CSplinter::HasRetreatPath(CStateManager& mgr) const {
   return GetConnectedObject(mgr, kSS_Retreat, kSM_Follow) != kInvalidUniqueId;
 }
 
+// @ fn_74_4404
 bool CSplinter::FleesFromPlayer(CStateManager& mgr, const CTriggerData& data) const {
   return HasRetreatPath(mgr);
 }
 
+// @ fn_74_4FA4
 float CSplinter::GetHeckleRange() const { return 10.f + mMinAttackRange; }
 
+// @ fn_74_4FB8
 bool CSplinter::InHeckleRange(CStateManager& mgr, const CTriggerData& data) const {
   float minRange = mMinAttackRange;
   float distSq = (mgr.GetPlayer(0)->GetTranslation() - GetTranslation()).MagSquared();
@@ -962,6 +997,7 @@ bool CSplinter::Stuck(CStateManager& mgr, const CTriggerData& data) const {
   return mPredictedLeashTime > 1.f;
 }
 
+// @ fn_74_3EC0
 bool CSplinter::PlayerIsInSafeZone(CStateManager& mgr, const CTriggerData& data) const {
   if (mgr.GetIsDarkWorld()) {
     return mgr.GetSafeZoneManager()->IsObjectInHurtfulSafeZone(*mgr.GetPlayer(0), mgr);
@@ -981,6 +1017,7 @@ bool CSplinter::TooMuchTurning(CStateManager& mgr, const CTriggerData& data) con
   return result;
 }
 
+// @ fn_74_56AC
 CVector3f CSplinter::GetPlayerTargetPosition(CStateManager& mgr) const {
   CPlayer* player = mgr.GetPlayer(0);
   float x, y, targetZ;
@@ -1027,15 +1064,18 @@ bool CSplinter::FacingPlayer(CStateManager& mgr, const CTriggerData& data) const
   return IsFacing(GetPlayerTargetPosition(mgr), 0.15707964f);
 }
 
+// @ fn_74_5520
 void CSplinter::RotateToPlayer(CStateManager& mgr, float dt, float turnSpeed, float aimOffset) {
   RotateToPoint(CVector3f(mgr.GetPlayer(0)->GetAimPosition(mgr, aimOffset)), dt, turnSpeed);
 }
 
+// @ fn_74_7880
 void CSplinter::FaceTargetAtPlayer(CStateManager& mgr) {
   BodyController()->CommandMgr().SetTargetVector(mgr.GetPlayer(0)->GetTranslation() -
                                                  GetTranslation());
 }
 
+// @ fn_74_6150
 bool CSplinter::IsNearPath(const CVector3f& position, float tolerance) const {
   return mPathFindSearch.NearlyOnPath(position, tolerance) == CPathFindSearch::kR_Success;
 }
@@ -1068,6 +1108,7 @@ bool CSplinter::IsOnPad(CStateManager& mgr, const CTriggerData& data) const {
   return delta.Magnitude() < radius;
 }
 
+// @ fn_74_77FC
 void CSplinter::StartPathTo(CStateManager& mgr, const CVector3f& position, float dt) {
   mPathDestination = position;
   mPathFindNavigation.SetDestination(mPathDestination);
@@ -1096,6 +1137,7 @@ void CSplinter::GoToTarget(CStateManager& mgr, EStateMsg msg, const CActor* targ
   }
 }
 
+// @ fn_74_3674
 void CSplinter::GoToPad(CStateManager& mgr, EStateMsg msg, float dt) {
   GoToTarget(mgr, msg, FindPadHint(mgr), dt);
   if (msg == kStateMsg_Activate) {
@@ -1139,6 +1181,7 @@ void CSplinter::WaitOnCable(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_41A8
 void CSplinter::RecoverCollision(CStateManager& mgr) {
   CAABox bounds = GetMotionVolume(0.f);
   CAreaCollisionCache cache(bounds);
@@ -1167,6 +1210,7 @@ void CSplinter::DeliverCommand(EStateMsg msg, pas::EAnimationState state, const 
   }
 }
 
+// @ fn_74_4030
 void CSplinter::SlideOff(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     RecoverCollision(mgr);
@@ -1182,6 +1226,7 @@ void CSplinter::Scream(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_9C7C
 void CSplinter::Null(CStateManager& mgr, EStateMsg msg, float dt) { mJump = SJumpData(); }
 
 void CSplinter::WaitInCocoon(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1205,6 +1250,7 @@ void CSplinter::MegaSplinterSpit(CStateManager& mgr, EStateMsg msg, float dt) {
   DeliverCommand(msg, pas::kAS_MeleeAttack, CBCMeleeAttackCmd(pas::kS_One));
 }
 
+// @ fn_74_48BC
 void CSplinter::AddEvadeCheck(const CVector3f& start, const CVector3f& end, bool clear) {
   while (mEvadeChecks.size() >= 4) {
     mEvadeChecks.erase(mEvadeChecks.begin());
@@ -1279,6 +1325,7 @@ bool CSplinter::CanEvade(CStateManager& mgr, EEvadeDirection direction) {
   return true;
 }
 
+// @ fn_74_8418
 int CSplinter::ChooseEvasion(CStateManager& mgr, bool preferStep) {
   static const int skCloseOrder[] = {5, 0, 2, 3, 4, 1, 6};
   static const int skStepOrder[] = {0, 2, 5, 6, 1, 3, 4};
@@ -1336,6 +1383,7 @@ void CSplinter::DoEvasion(CStateManager& mgr, EStateMsg msg) {
   FaceTargetAtPlayer(mgr);
 }
 
+// @ fn_74_7FE0
 void CSplinter::Sidestep(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mPrevEvasion = mEvasion;
@@ -1346,6 +1394,7 @@ void CSplinter::Sidestep(CStateManager& mgr, EStateMsg msg, float dt) {
   mStuckDeadline = 0.f;
 }
 
+// @ fn_74_83A4
 void CSplinter::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mPrevEvasion = mEvasion;
@@ -1355,11 +1404,13 @@ void CSplinter::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   DoEvasion(mgr, msg);
 }
 
+// @ fn_74_47EC
 void CSplinter::MassiveDeath(CStateManager& mgr) {
   CPatterned::MassiveDeath(mgr);
   ExplodeSac(mgr);
 }
 
+// @ fn_74_4830
 void CSplinter::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Dead(mgr, msg, dt);
   switch (msg) {
@@ -1382,6 +1433,7 @@ bool CSplinter::PounceTimeOut(CStateManager& mgr, const CTriggerData& data) cons
   return mTime > 2.5f + mSpit->mUnknown58;
 }
 
+// @ fn_74_617C
 bool CSplinter::ShouldEmergeFromCocoon(CStateManager& mgr, const CTriggerData& data) const {
   float unhideTime = mUnhideTime;
   if (0.f == unhideTime) {
@@ -1702,6 +1754,7 @@ void CSplinter::Alert(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_74_6A04
 CVector3f CSplinter::GetAttackPosition(CStateManager& mgr) const {
   const CVector3f& playerPosition = mgr.GetPlayer(0)->GetTranslation();
   float px = playerPosition.GetX();
@@ -1721,6 +1774,7 @@ CVector3f CSplinter::GetAttackPosition(CStateManager& mgr) const {
   return CVector3f(px + delta.GetX(), py + delta.GetY(), pz + delta.GetZ());
 }
 
+// @ fn_74_6B7C
 void CSplinter::UpdateAlignment(CStateManager& mgr, float dt) {
   if (mJump.mJumping != true) {
     if (mAlignment.GetMode() == CSurfaceAlignmentHelper::kM_NearbySurface) {
@@ -1745,6 +1799,7 @@ void CSplinter::UpdateSwarmGrab(CStateManager& mgr) {
   }
 }
 
+// @ fn_74_6CF0
 void CSplinter::UpdateEyes(CStateManager& mgr) {
   if (mIngEffectActive != IsIngPossessed()) {
     mIngEffectActive = IsIngPossessed();
@@ -1764,6 +1819,7 @@ void CSplinter::UpdateHealthMessage(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_74_8A40
 void CSplinter::UpdateAlignmentMode(EStateMsg msg) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1929,6 +1985,7 @@ void CSplinter::UpdatePitchBend() {
       static_cast< int >(CMath::Clamp(0.f, inverse * (high - low) + low, 16383.f)));
 }
 
+// @ fn_74_9EBC
 void CSplinter::InitPathArea(CStateManager& mgr) {
   mPathFindSearch.SetArea(
       mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea);
@@ -1996,6 +2053,7 @@ bool CSplinter::CanPounce(CStateManager& mgr, const CTriggerData& data) const {
   return mTime > mSpit->mUnknown58;
 }
 
+// @ fn_74_8E64
 bool CSplinter::CanSeePlayer(CStateManager& mgr, const CTriggerData& data) const {
   if (IsWorkerSplinter(mgr, CTriggerData(0.f)) == true ||
       !InDetectionRange(mgr, CTriggerData(0.f)) || !SpotPlayer(mgr, CTriggerData(0.f))) {
@@ -2448,6 +2506,7 @@ void CSplinter::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_74_3AFC
 void CSplinter::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
   if (mSac.mSacId != kInvalidUniqueId) {
@@ -2487,6 +2546,7 @@ void CSplinter::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_74_AB98
 bool CSplinter::IsMega() const { return mSpit; }
 
 CEntity* LoadSplinter(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
