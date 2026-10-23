@@ -14,6 +14,8 @@
 #include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResLoader.hpp"
 #include "MetroidPrime/CDummyWorld.hpp"
+#include "MetroidPrime/CMapArea.hpp"
+#include "MetroidPrime/CMapWorld.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptAreaProperties.hpp"
 #endif
 #include "Collision/CMRay.hpp"
@@ -4716,15 +4718,32 @@ void CStateManager::PortSetDarkWorldFromArea(TAreaId aid) {
       area != nullptr && area->GetPostConstructed() != nullptr
           ? area->GetPostConstructed()->mAreaAttributes
           : nullptr;
-  if (attributes == nullptr) {
-    std::fprintf(stderr, "[warp] area %d has no area attributes; dark-world flag stays %d\n",
-                 aid.Value(), mIsDarkWorld ? 1 : 0);
-    return;
+  bool dark;
+  const char* source;
+  if (attributes != nullptr) {
+    dark = attributes->PortIsDarkWorld();
+    source = "its area attributes";
+  } else {
+    // Some areas have no AreaAttributes object on any layer (Temple Grounds 11 01_temple_hive_04).
+    // Retail never needs one there: such an area is only entered from its own side, so the flag
+    // carries over. A warp can come from either side, so it asks the area's map instead: the
+    // automapper's own light/dark split (CMapArea flag bit 0, CMapWorld::DrawAreas'
+    // IsInDarkWorld colours).
+    const CMapWorld* mapWorld = world->IGetMapWorld();
+    const CMapArea* mapArea = mapWorld != nullptr ? mapWorld->GetMapArea(aid.Value()) : nullptr;
+    if (mapArea == nullptr) {
+      std::fprintf(stderr,
+                   "[warp] area %d has no area attributes and no loaded map area; dark-world flag "
+                   "stays %d\n",
+                   aid.Value(), mIsDarkWorld ? 1 : 0);
+      return;
+    }
+    dark = mapArea->IsInDarkWorld();
+    source = "its map area";
   }
   // One line per arrival, so a sweep can check the flag against the area's side.
-  const bool dark = attributes->PortIsDarkWorld();
-  std::fprintf(stderr, "[warp] area %d: dark-world flag %d (its area attributes; was %d)\n",
-               aid.Value(), dark ? 1 : 0, mIsDarkWorld ? 1 : 0);
+  std::fprintf(stderr, "[warp] area %d: dark-world flag %d (%s; was %d)\n", aid.Value(),
+               dark ? 1 : 0, source, mIsDarkWorld ? 1 : 0);
   if (dark != mIsDarkWorld) {
     SetIsDarkWorld(dark);
   }
