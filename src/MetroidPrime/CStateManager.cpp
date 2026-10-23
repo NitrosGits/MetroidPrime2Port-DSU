@@ -14,6 +14,9 @@
 #include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResLoader.hpp"
 #include "MetroidPrime/CDummyWorld.hpp"
+#include "MetroidPrime/CMapArea.hpp"
+#include "MetroidPrime/CMapWorld.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAreaProperties.hpp"
 #endif
 #include "Collision/CMRay.hpp"
 #include "Collision/CRayCastResult.hpp"
@@ -3995,6 +3998,7 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   PortWarpSettle();
   PortLayerTick();
   PortPlaceArrivalTick();
+  PortDarkWorldTick();
   // MP2_FRAMES: a test run ends itself after so many game updates, so a load test costs seconds
   // instead of a timeout (see platform/include/port_harness.h). The report names where the run got
   // to, which is what a log's last line should say.
@@ -4707,6 +4711,82 @@ void CStateManager::PortLogIdPressure() {
   }
 }
 
+// Retail decides the dark-world flag per area: the area's AreaAttributes object hands its flag to
+// SetIsDarkWorld on kSM_Create (CScriptAreaProperties::AcceptScriptMsg, 0x8013C658 'XCRT' ->
+// 0x8013C668 lbz r0,0x24; extrwi r4,r0,1,25; bl SetIsDarkWorld), and a portal crossing flips it
+// (PrepareAreaTransition's SetIsDarkWorld(!mIsDarkWorld)). A warp is neither: its Create can come
+// before the handed flow's flip, or from a neighbour preloaded on the other side, so after a warp
+// the flag is taken from the destination's attributes (registered on kSM_AreaLoaded,
+// 0x8013C69C SetAreaAttributes).
+void CStateManager::PortSetDarkWorldFromArea(TAreaId aid) {
+  CWorld* world = World();
+  if (world == nullptr || !world->DoesAreaExist(aid)) {
+    return;
+  }
+  const CGameArea* area = world->Area(aid);
+  const CScriptAreaProperties* attributes =
+      area != nullptr && area->GetPostConstructed() != nullptr
+          ? area->GetPostConstructed()->mAreaAttributes
+          : nullptr;
+  bool dark;
+  const char* source;
+  if (attributes != nullptr) {
+    dark = attributes->PortIsDarkWorld();
+    source = "its area attributes";
+  } else {
+    // Some areas have no AreaAttributes object on any layer (Temple Grounds 11 01_temple_hive_04).
+    // Retail never needs one there: such an area is only entered from its own side, so the flag
+    // carries over. A warp can come from either side, so it asks the area's map instead: the
+    // automapper's own light/dark split (CMapArea flag bit 0, CMapWorld::DrawAreas'
+    // IsInDarkWorld colours).
+    const CMapWorld* mapWorld = world->IGetMapWorld();
+    const CMapArea* mapArea = mapWorld != nullptr ? mapWorld->GetMapArea(aid.Value()) : nullptr;
+    if (mapArea == nullptr) {
+      // TravelToArea has only just asked for it (CWorld::TravelToArea -> SetWhichMapAreasLoaded
+      // around the new area), so PortDarkWorldTick asks again until it has streamed in.
+      if (mPortDarkFlagArea != aid) {
+        mPortDarkFlagArea = aid;
+        mPortDarkFlagUntil = mUpdateFrameIdx + 600;
+        std::fprintf(stderr,
+                     "[warp] area %d has no area attributes and its map area is still loading; "
+                     "dark-world flag %d until it is in\n",
+                     aid.Value(), mIsDarkWorld ? 1 : 0);
+      }
+      return;
+    }
+    dark = mapArea->IsInDarkWorld();
+    source = "its map area";
+  }
+  mPortDarkFlagArea = kInvalidAreaId;
+  // One line per arrival, so a sweep can check the flag against the area's side.
+  std::fprintf(stderr, "[warp] area %d: dark-world flag %d (%s; was %d)\n", aid.Value(),
+               dark ? 1 : 0, source, mIsDarkWorld ? 1 : 0);
+  if (dark != mIsDarkWorld) {
+    SetIsDarkWorld(dark);
+  }
+}
+
+// Finishes a PortSetDarkWorldFromArea that had to wait for the area's map area.
+void CStateManager::PortDarkWorldTick() {
+  if (mPortDarkFlagArea == kInvalidAreaId) {
+    return;
+  }
+  CWorld* world = World();
+  // mNextAreaId, not the world's current area: SetCurrentAreaId only sets the former, and the
+  // world follows on its next TravelToArea.
+  if (world == nullptr || mNextAreaId != mPortDarkFlagArea) {
+    mPortDarkFlagArea = kInvalidAreaId;
+    return;
+  }
+  if (mUpdateFrameIdx > mPortDarkFlagUntil) {
+    std::fprintf(stderr, "[warp] area %d: its map area never loaded; dark-world flag stays %d\n",
+                 mPortDarkFlagArea.Value(), mIsDarkWorld ? 1 : 0);
+    mPortDarkFlagArea = kInvalidAreaId;
+    return;
+  }
+  PortSetDarkWorldFromArea(mPortDarkFlagArea);
+}
+
 // The game's own transition carries a hop the direct route was too tight for. This places the player
 // once it is done: CMFGame clears mPendingDockArea when its transition finishes, and it never spawns
 // the player itself (a dock crossing keeps the player where they were standing), so a warp has to do
@@ -4747,13 +4827,7 @@ void CStateManager::PortPlaceArrivalTick() {
     std::fprintf(stderr, "[warp] ending the portal transition the hand-over left running\n");
     gpGameState->WorldTransitionManager()->DisableTransition();
   }
-  if (mIsDarkWorld != mPortIsDarkWorld) {
-    // Put back the flag the transition flipped (see the hand-over): the log says what it was, so a
-    // run in the dark worlds can tell whether the flag needs to follow the destination instead.
-    std::fprintf(stderr, "[warp] the transition had set the dark-world flag to %d; restoring %d\n",
-                 mIsDarkWorld ? 1 : 0, mPortIsDarkWorld ? 1 : 0);
-    SetIsDarkWorld(mPortIsDarkWorld);
-  }
+  PortSetDarkWorldFromArea(area);
 
   CObjectList* objects = mObjectLists[kOL_All].get();
   for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
@@ -4861,9 +4935,8 @@ void CStateManager::PortWarpSettle() {
         mPortSpawnAtArea = mPortPendingWarpArea;
         mPortSpawnAtFrame = mUpdateFrameIdx;
         // PrepareAreaTransition ends with SetIsDarkWorld(!mIsDarkWorld), which is what a light<->dark
-        // portal crossing does. This hop is not a portal crossing, so the flag is put back once the
-        // flow is done - a warp must not decide the area is the other world's half.
-        mPortIsDarkWorld = mIsDarkWorld;
+        // portal crossing does. This hop is not a portal crossing, so PortPlaceArrivalTick sets the
+        // flag from the destination's own area attributes once the flow is done.
         mPortPendingWarpArea = kInvalidAreaId;
         mPortWarpStreamStarted = false;
         mPortWarpWaitingForIds = false;
@@ -4924,6 +4997,7 @@ void CStateManager::PortWarpSettle() {
     }
     std::fprintf(stderr, "[warp] moved to area %d\n", target.Value());
   }
+  PortSetDarkWorldFromArea(target);
 
   CObjectList* objects = mObjectLists[kOL_All].get();
   for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
