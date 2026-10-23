@@ -27,13 +27,13 @@ Upstream triggers all match the asm; none changed.
 | SafezoneReaction | 542C | played, forced (`send u0454 XENZ from u0451`) | mD1 0x54EC |
 | MoveToSafeZone | 5240 | played, forced (`fsm u0454 MoveToSafeZone`) | FindSafeZoneRetreatPoint success 0x52A0, 0x5380 |
 | BackUp | 2E70 | marked | |
-| Dead | 30B0 | played | kAS_LieOnGround arm 0x31D0 (`lwz 0x37c; cmpwi 2`; was kAS_Death = 4 until review33) and the mist-effect drain 0x31E8..0x3204 stayed untaken (gcov, before the fix), though the shot-killed u0417 was deleted (~f1600, forced run) by a path not traced |
+| Dead | 30B0 | marked (mi4) | both kills leave Dead by DeathDelete (0x31D0 `cmpwi 2` = kAS_LieOnGround, both ways): shot kill u0417 and console `damage u0454 999` (`mediuming_dead.con`). The mE1 drain 0x31E4..0x323C is dead: mE1's only writers are the ctor (0x88D4, 0) and SetFlagE1 0x1B04, which nothing references |
 | SelectTargetState | 30AC | marked | empty in retail |
-| SelectTarget | 698C | played | the jump-point loop (no AiJumpPoint). 6D08/6BFC get the mutated target (sp+0x28) |
+| SelectTarget | 698C | played, asm-checked (mi4) | Search fail 0x6A30; jump-point loop: only the not-a-jump-point arm ran (area 46's AiWaypoint list, mgr+0x838 = list 5, holds AI hints/cover points). No area that spawns a MING has an AJMP (disc scan, mi4), so the area-match arm 0x6AA4 onward is dead in shipped data; inactive/type/other-area arms 0x6A88/0x6A94/0x6AA4 need an AJMP loaded next to an Ing area. 6D08/6BFC get the mutated target (sp+0x28) |
 | SetLeashTarget | 6880 | played (`tp` to area 40) | danger-actor arm 0x6908 |
 | SetRetreatDestination | 2564 | played | retreat actor found 0x25D8 |
 | SetMeshPathDestination | 2A74 | played | reachable-point fail arm |
-| SetDashDestination | 261C | played | point in safe zone 0x298C, reachable fail |
+| SetDashDestination | 261C | played, asm-checked (mi4) | point in safe zone 0x2994, reachable fail 0x29E4 (`mediuming_dash.con`: with the zone active the Ing retreats instead of dashing) |
 | FindSafeZoneRetreatPoint | 13E4 | played | ran with no safe zone only (0x1424 ret 0) |
 | FindClosestRetreatActor | 1BA8 | played | FindClosestConnectedActor: no connection of the state matched |
 | FindClosestDangerActor | 1CE8 | played | same |
@@ -41,6 +41,6 @@ Upstream triggers all match the asm; none changed.
 Helpers (TARGET_PC, guessed names): ExtendTentacle 4308 (index 0..7 against 4 tentacles: 0x4330
 returns for the out-of-range ones, as retail; null tentacle 0x4360 open), RetractTentacles 43E8,
 PositionTentacles 4470, SetTentaclesActive 4598 (null-tentacle guards open); file-static
-PathCostSquared 6F18 (all arms), JumpRouteEstimate 6D08 and SearchJumpRoute 6BFC (not run: no
+PathCostSquared 6F18 (marked, mi4), JumpRouteEstimate 6D08 and SearchJumpRoute 6BFC (not run: no
 AiJumpPoint). mi2's UpdateCollisionFilter/ShouldUseWideSearch/IsSweepBlocked were duplicates of
 mi1's SetMistCollision 49CC / IsMistDecayed 5DC8 / IsBlocked 5E0C and are gone (mi3).

@@ -48,7 +48,7 @@ offset	fn	size	class	name	slice	what	marker
 01E78	fn_41_1E78	58	B	WaitForLocomotion	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
 01ED0	fn_41_1ED0	A8	B	QuitTeam	2	upstream body or slice 2	no
 01F78	fn_41_1F78	AC	B	JoinTeam	2	upstream body or slice 2	no
-02024	fn_41_2024	304	B	CalculateSeparation	1	slice 1 body (PortCMediumIng.cpp); ran via PathFind (mi3), arms open: hx<hy, zone loop	no
+02024	fn_41_2024	304	B	CalculateSeparation	1	slice 1 body (PortCMediumIng.cpp); zone loop ran (mi4 mediuming_zone.con); open: flee CanBeNormalized false 0x2298, other-area neighbour 0x2094	no
 02328	fn_41_2328	68	B	ShouldBackUp	2	upstream body or slice 2	no
 02390	fn_41_2390	54	B	ShouldDoubleDash	2	upstream body or slice 2	no
 023E4	fn_41_23E4	54	B	ShouldTaunt	2	upstream body or slice 2	no
@@ -59,7 +59,7 @@ offset	fn	size	class	name	slice	what	marker
 02548	fn_41_2548	10	B	IncrementFrustatedCounter	2	upstream body or slice 2	no
 02558	fn_41_2558	C	B	ResetFrustatedCounter	2	upstream body or slice 2	no
 02564	fn_41_2564	B8	B	SetRetreatDestination	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
-0261C	fn_41_261C	458	B	SetDashDestination	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+0261C	fn_41_261C	458	B	SetDashDestination	2	mi2 body (CMediumIng.cpp); asm-checked mi4; open: safe-zone 0x2994, reachable fail 0x29E4	no
 02A74	fn_41_2A74	100	B	SetMeshPathDestination	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
 02B74	fn_41_2B74	20	B	StillLuredBySafeZone	2	upstream body or slice 2	no
 02B94	fn_41_2B94	38	B	IsLuredBySafeZone	2	upstream body or slice 2	no
@@ -71,9 +71,9 @@ offset	fn	size	class	name	slice	what	marker
 02E50	fn_41_2E50	20	B	HasJumpPoint	2	upstream body or slice 2	no
 02E70	fn_41_2E70	198	B	BackUp	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
 03008	fn_41_3008	5C	B	fn_41_3008	2	unidentified helper (slice 2 survey)	no
-03064	fn_41_3064	48	B	fn_41_3064	2	unidentified helper (slice 2 survey)	no
+03064	fn_41_3064	48	H	fn_41_3064	2	deleting dtor of the local class whose vtable is data_770 (built in BackUp/MistAttack); compiler glue	no
 030AC	fn_41_30AC	4	B	SelectTargetState	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
-030B0	fn_41_30B0	1B0	B	Dead	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+030B0	fn_41_30B0	1B0	B	Dead	2	mi2 body (CMediumIng.cpp); marked mi4 (mE1 arm dead: SetFlagE1 unreferenced)	fn_41_30B0
 03260	fn_41_3260	8	B	fn_41_3260	2	unidentified helper (slice 2 survey)	no
 03268	fn_41_3268	C	B	HasLineOfSight	2	upstream body or slice 2	no
 03274	fn_41_3274	108	B	UpdateTimers	1	slice 1 body (PortCMediumIng.cpp)	yes
@@ -119,10 +119,10 @@ offset	fn	size	class	name	slice	what	marker
 06840	fn_41_6840	C	B	fn_41_6840	2	unidentified helper (slice 2 survey)	no
 0684C	fn_41_684C	34	B	GetPathArea (inlined in the port)	2	unidentified helper (slice 2 survey)	no
 06880	fn_41_6880	10C	B	SetLeashTarget	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
-0698C	fn_41_698C	270	B	SelectTarget	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+0698C	fn_41_698C	270	B	SelectTarget	2	mi2 body (CMediumIng.cpp); asm-checked mi4; open: Search fail 0x6A30, jump-point arms (MediumIng_states.md)	no
 06BFC	fn_41_6BFC	10C	B	SearchJumpRoute	2	mi2 body (CMediumIng.cpp); not run (no AiJumpPoint in area 46)	no
 06D08	fn_41_6D08	210	B	JumpRouteEstimate	2	mi2 body (CMediumIng.cpp); not run (no AiJumpPoint in area 46)	no
-06F18	fn_41_6F18	19C	B	PathCostSquared	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
+06F18	fn_41_6F18	19C	B	PathCostSquared	2	mi2 body (CMediumIng.cpp); marked mi4 (all arms)	fn_41_6F18
 070B4	fn_41_70B4	108	B	FollowApproachPattern	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
 071BC	fn_41_71BC	108	B	FollowAttackPattern	2	mi2 body (CMediumIng.cpp); played, arms open (MediumIng_states.md)	no
 072C4	fn_41_72C4	D0	B	PathFind	2	mi2 body (CMediumIng.cpp); played, every live arm (mi3)	yes
