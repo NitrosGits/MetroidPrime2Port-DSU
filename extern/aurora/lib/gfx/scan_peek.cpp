@@ -162,7 +162,7 @@ void write_snapshot(Slot& slot, const uint8_t* colorData, const float* depthData
   sequence.store(current + 2, std::memory_order_release);
 
   const uint64_t count = ++g_peekCount;
-  if (count == 1 || count % DiagnoseEvery == 0) {
+  if (!req.depthOnly && (count == 1 || count % DiagnoseEvery == 0)) {
     if (nonZeroIds == 0) {
       Log.warn("EFB alpha peek {}: all {}x{} pixels are zero, so no scan id reaches the framebuffer",
                count, req.width, req.height);

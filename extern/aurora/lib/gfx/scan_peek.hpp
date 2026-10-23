@@ -28,6 +28,9 @@ struct Request {
   int32_t srcHeight = 0;
   uint32_t width = 0;  // pixels the caller wants out
   uint32_t height = 0;
+  // Port: GX_SCAN_PEEK_DEPTH_ONLY / GX_SCAN_PEEK_IF_RENDERED (GXCpu2Efb.h).
+  bool depthOnly = false;  // no EFB-alpha diagnostics: the caller reads only depth
+  bool ifRendered = false; // do not force the frame rendered; dropped on a frame that is not
 };
 
 // Copies a snapshot of a region of `color` and `depth` to the buffers in `req`, once the frame

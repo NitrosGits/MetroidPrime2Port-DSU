@@ -41,6 +41,21 @@ void GXRequestScanPeek(s32 left, s32 top, u32 width, u32 height, void* idOut, vo
   GX_WRITE_U64(reinterpret_cast<u64>(sequence));
 }
 
+void GXRequestScanPeekEx(s32 left, s32 top, u32 width, u32 height, void* idOut, void* depthHighOut,
+                         void* depthLowOut, u32* sequence, u32 flags) {
+  GX_WRITE_AURORA(GX_AURORA_REQUEST_SCAN_PEEK_EX);
+  GX_WRITE_U32(static_cast<u32>(left));
+  GX_WRITE_U32(static_cast<u32>(top));
+  GX_WRITE_U32(width);
+  GX_WRITE_U32(height);
+  GX_WRITE_U64(reinterpret_cast<u64>(idOut));
+  GX_WRITE_U64(reinterpret_cast<u64>(depthHighOut));
+  GX_WRITE_U64(reinterpret_cast<u64>(depthLowOut));
+  GX_WRITE_U64(reinterpret_cast<u64>(sequence));
+  GX_WRITE_U32(flags);
+  GX_WRITE_U32(0); // padding: keep the command stream 64-bit aligned
+}
+
 void GXRequestEfbCpuCopy(void* staging, u32* sequence, u32 capacity) {
   GX_WRITE_AURORA(GX_AURORA_REQUEST_EFB_COPY);
   GX_WRITE_U64(reinterpret_cast<u64>(staging));

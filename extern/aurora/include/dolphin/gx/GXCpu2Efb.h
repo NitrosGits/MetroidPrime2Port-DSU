@@ -20,6 +20,15 @@ void GXPokeZ(u16 x, u16 y, u32 z);
 // `sequence` changes from even to its next even value. See lib/gfx/scan_peek.cpp.
 void GXRequestScanPeek(s32 left, s32 top, u32 width, u32 height, void* idOut, void* depthHighOut,
                        void* depthLowOut, u32* sequence);
+// Port: GXRequestScanPeek with flags.
+// GX_SCAN_PEEK_DEPTH_ONLY: the caller reads only the depth outputs, so the peek logs no EFB-alpha
+// (scan id) diagnostics. GX_SCAN_PEEK_IF_RENDERED: the peek does not force its frame to be
+// rendered under AURORA_RENDER_EVERY; on a frame that is not rendered it is dropped (the sequence
+// does not move and the caller keeps its previous snapshot).
+#define GX_SCAN_PEEK_DEPTH_ONLY 0x1u
+#define GX_SCAN_PEEK_IF_RENDERED 0x2u
+void GXRequestScanPeekEx(s32 left, s32 top, u32 width, u32 height, void* idOut, void* depthHighOut,
+                         void* depthLowOut, u32* sequence, u32 flags);
 // Aurora-only: writes the bytes the next `GXCopyTex` would have copied to its main-memory
 // destination into `staging`, converting them to the copy's texel format, a frame or two later.
 // `sequence` is the seqlock (odd while the bytes are being written). Use the current copy state

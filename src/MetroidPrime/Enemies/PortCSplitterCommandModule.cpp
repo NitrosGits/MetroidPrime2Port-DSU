@@ -242,8 +242,12 @@ public:
       memset(texture.GetBitMapData(0), 0xFF, static_cast< size_t >(width * height * 2));
     }
     SBeamPeekStaging& staging = sBeamPeeks[mSlot];
-    GXRequestScanPeek(0, 0, static_cast< u32 >(width), static_cast< u32 >(height), staging.id,
-                      staging.depthHigh, staging.depthLow, &staging.sequence);
+    // Depth only (no scan-id diagnostics), and only on frames that are rendered anyway: under
+    // AURORA_RENDER_EVERY a skipped frame records no draw, so its EFB holds nothing to read, and
+    // forcing it rendered would defeat the skipping. The beam keeps the last snapshot meanwhile.
+    GXRequestScanPeekEx(0, 0, static_cast< u32 >(width), static_cast< u32 >(height), staging.id,
+                        staging.depthHigh, staging.depthLow, &staging.sequence,
+                        GX_SCAN_PEEK_DEPTH_ONLY | GX_SCAN_PEEK_IF_RENDERED);
   }
 
   // Called by Render before it reads the texture: copies the newest whole read-back into the

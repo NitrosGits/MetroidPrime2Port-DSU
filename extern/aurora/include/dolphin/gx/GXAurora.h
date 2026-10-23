@@ -116,6 +116,12 @@ extern "C" {
 #define GX_AURORA_SNAPSHOT_DEPTH 0x003D
 
 /**
+ * Port: GX_AURORA_REQUEST_SCAN_PEEK with flags. Same operands, then a u32 of GX_SCAN_PEEK_*
+ * flags (GXCpu2Efb.h) and four bytes of padding to keep the stream on 64-bit boundaries.
+ */
+#define GX_AURORA_REQUEST_SCAN_PEEK_EX 0x003E
+
+/**
  * Draw primitives with the vertex count derived from a byte length, as written by
  * GXBegin(prim, fmt, GX_AUTO). Must be followed by a u8 draw opcode (vtxfmt|prim),
  * a u32 vertex data byte length, then that many bytes of vertex data. The byte length
