@@ -50,6 +50,11 @@
 // flavor 0 (`li r7, 0x0` at 0x0001FB08), movement 0 / collider 1 / body 8 (the constants stored to
 // the stack arguments at 0x0001FA84..0x0001FABC), all passed to CPatterned at 0x0001FB2C. The
 // body type 8 is the host's kBT_4WayBlended (include/Kyoto/Animation/CharacterCommon.hpp).
+// Arms (ds47, tools/cov/specs/darksamus_ds47_ctor.py): the shipped data takes every valid sound
+// and asset arm, DS47_FORCE=1 the -1 sound / invalid asset arms and startsInTheAir 1, DS47_FORCE=2
+// the valid sweep beam sounds and alternate scan. Dead: rs_new returning null (0x000202E0,
+// 0x000204B8) and the 0x92C non-null test at 0x00020518 (0x0001FC38 stored 0 there).
+// @ fn_10_1FA14
 CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        const CTransform4f& xf, const CModelData& modelData,
                        const CPatternedInfo& pInfo, const CActorParameters& actParms,
@@ -60,7 +65,9 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
                   CPFRegion::kRP_Center) // 0x0001FB44: fn_8013E6A0, the CPathFindSearch at 0x7C0
 , mData(data)
 , mGuestCD0(0)
-, mFlags90C(0)
+, mFlags90C((data.mStartsInTheAir & 1) << 6) // 0x0001FC00 `lbz r0, 0x1d3(r1)` (the loader's
+  // startsInTheAir, its 0x92C at 0x0000DBC0), `rlwimi r5, r0, 6, 25, 25` (0x0001FC08) = bit 0x40;
+  // bits 0x80 and 0x20 are r6 = 0 (0x0001FBF8, 0x0001FC14)
 , mTurnDone(0)
 , mPissedOff(0)
 , mFadeOut(0)
@@ -87,25 +94,28 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mAttackHistoryCount(0)
 , mAccumulatedDamage(0.f)
 , mLastHealth(-1.f)
-, mDamageDecay(1.f)
+, mDamageDecay(data.mUnknownF317F4D5) // `stfs f31, 0xccc` at 0x0001FF64, f31 the stack float
+  // `lfs f31, 0x218(r1)` (0x0001FB14) = the loader's 0x9D8 (0x0000DC6C), property 0xF317F4D5
+  // (`lis r3, 0xf318; subi r3, r3, 0xb2b` at 0x0000D21C, ReadFloat stored at 0x0000D750)
 , mDamageThreshold(data.mDamageInterruptThreshold)
 , mStillTime(0.f)
 , mDashStuckCount(0)
 , mStillPosition(CVector3f(0.f, 0.f, 0.f))
-, mLastWallHitTime(0.f)
+, mLastWallHitTime(-1000.f) // `stfs f2, 0xc44` at 0x0001FF38, f2 = lbl_10_rodata_410 = -1000.0f
+                            // (`lfs f2, 0x0(r7)` at 0x0001FED4)
 , mElapsedTime(0.f)
 , mPathFindDestination(CVector3f(0.f, 0.f, 0.f))
 , mAdditiveAnim(-1)
 , mGlideSfxId(data.mGlideSound == -1 ? CSfxManager::kInternalInvalidSfxId
                                     : static_cast< ushort >(data.mGlideSound))
 , mGlideSfx()
-, mSavedSpeed(0.f)
+, mSavedSpeed(1.f) // `stfs f1, 0x96c` at 0x0001FCB8, f1 = lbl_10_rodata_3E8 = 1.0f (0x0001FC6C)
 , mDash()
 , mGuestC00(0.f)
 , mSafePos(CVector3f(0.f, 0.f, 0.f))
 , mHasSafePos(0)
 , mSeparationDir(CVector3f(0.f, 0.f, 0.f))
-, mContactTime(0.f)
+, mContactTime(-1000.f) // `stfs f2, 0xc34` at 0x0001FF1C, f2 = lbl_10_rodata_410 = -1000.0f
 , mContactPoint(CVector3f(0.f, 0.f, 0.f))
 , mLastMeleeTime(-1000.f) // lbl_10_rodata_410, fn_10_EA24 `stfs f0, 0x1c(r31)` at 0x0000EAAC
 , mAttackMask(0)
@@ -187,7 +197,10 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
 , mGuest1050(0.f)
 , mBss118(160.f)
 , mReflectChanceCount(0)                         // 0x00020270
-, mReflectChances() {
+, mReflectChances()
+, mHitDirection(CVector3f::Zero())     // sZeroVector, 0x0001FBA8..0x0001FBBC
+, mHitDirectionFlat(CVector3f::Zero()) // sZeroVector, 0x0001FEE8..0x0001FEFC
+{
   mBoostBallFlag20 = false; // 0xEBC bit 0x20: the retail heap is zeroed, the host's is not
   // fn_10_215FC (the call at 0x0001FE80) builds the two projectile infos: fn_10_20C2C the first
   // from scatterShotProjectile (0x0002163C), then the second from scatterShotProjectile2
@@ -266,9 +279,9 @@ CDarkSamus::CDarkSamus(TUniqueId uid, const rstl::string& name, const CEntityInf
   // (0x0001FCF8), the accumulated damage at 0xCC0 is 0.0f (0x0001FF58), the last health at 0xCC4
   // is -1.0f (0x0001FF5C), the damage threshold at 0xCC8 is the constructor's 8th float argument
   // (0x0001FF60 - the loader's damageInterruptThreshold, the property id 0x8f70d3f2), the damage
-  // decay at 0xCCC is 1.0f (0x0001FF64), the still timer at 0x964 is 0.0f (0x0001FCB0) and its
-  // reference position at 0x958/0x95C/0x960 is the zero vector (0x0001FC64..0x0001FC74), the wall
-  // collision time at 0xC44 is 0.0f (0x0001FF38) and the elapsed time at 0x8B0 is 0.0f
+  // decay at 0xCCC is the stack float unknown_0xf317f4d5 (0x0001FF64), the still timer at 0x964
+  // is 0.0f (0x0001FCB0) and its reference position at 0x958/0x95C/0x960 is the zero vector (0x0001FC64..0x0001FC74), the wall
+  // collision time at 0xC44 is -1000.0f (0x0001FF38) and the elapsed time at 0x8B0 is 0.0f
   // (0x0001FB88).
   KnockBackController().EnableKnockBackPhysics(false);
   // Bits 25, 27..30 of 0x681: freeze, burn, burn death, explode death, lagged burn death.

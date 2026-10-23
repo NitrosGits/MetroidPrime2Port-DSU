@@ -101,8 +101,8 @@ Size [proven]: the loader's `__nw__FUlPCcPCc` is `li r3, 0x1128` at 0x0000DA78. 
 | 0x8C0 / 0x8C4 / 0x8C8 | three zeroed floats | `sZeroVector` |
 | 0x8CC | **`CTransform4f` = identity (0x30)** | `__ct__12CTransform4fFRC12CTransform4f(sIdentity)` at 0x0001FBC0 |
 | 0x8FC / 0x900 / 0x904 | three zeroed floats | |
-| 0x908 | float = the ctor's first float argument | `stfs f24, 0x908` (0x0001FBF0) |
-| 0x90C | flag byte | three `rlwimi`s (bits 24, 25, 26) at 0x0001FBF8..0x0001FC18 |
+| 0x908 | float = the ctor's f2 argument, unknown_0x74fa22f0 (the host reads mData) | `stfs f24, 0x908` (0x0001FBF0) |
+| 0x90C | flag byte: bit 0x40 = startsInTheAir (`lbz r0, 0x1d3(r1)` at 0x0001FC00, `rlwimi r5, r0, 6, 25, 25` at 0x0001FC08), bits 0x80/0x20 cleared | three `rlwimi`s at 0x0001FBF8..0x0001FC18 (ds47) |
 | 0x910 / 0x914 / 0x918 | three zeroed floats | |
 | 0x928 | byte 0 | |
 | 0x92C | **`CToken`** | `fn_10_21D14(this+0x94C, ...)` builds the object at 0x94C; the token at 0x92C is the 'SCAN' tag [probable] |
@@ -111,7 +111,7 @@ Size [proven]: the loader's `__nw__FUlPCcPCc` is `li r3, 0x1128` at 0x0000DA78. 
 | 0x958 / 0x95C / 0x960 | the position the still timer measures from | the constructor writes the zero vector (`stfs` at 0x0001FC64..0x0001FC74); `fn_10_1D794` moves it to the actor's position when the actor walks away [proven] |
 | 0x964 | the still timer: how long the actor has stood still | the constructor writes 0.0f (`stfs f2, 0x964` at 0x0001FCB0, f2 = `lbl_10_rodata_3FC`); `fn_10_1D794` adds dt to it while the actor stays within 0.6 of 0x958 [proven] |
 | 0x968 | byte 0 | |
-| 0x96C | float | |
+| 0x96C | float 1.0 (the saved speed) | `stfs f1, 0x96c` at 0x0001FCB8, f1 = `lbl_10_rodata_3E8` (0x0001FC6C) (ds47) |
 | 0x970 | int = −1 | |
 | 0x974 | `TUniqueId` = `kInvalidUniqueId` | `lhz`/`sth` at 0x0001FCC0/0x0001FCC4 |
 | 0x978 | int 0 | |
@@ -132,11 +132,11 @@ Size [proven]: the loader's `__nw__FUlPCcPCc` is `li r3, 0x1128` at 0x0000DA78. 
 | 0xC24 | a `TUniqueId` | the constructor writes `kInvalidUniqueId` (0x0001FF08); `fn_10_1E26C` writes a uid into it (0x0001E288) [proven] |
 | 0xC28 | the number of uids in 0xC2C | the constructor writes 0 (0x0001FF14); `fn_10_1E26C` counts them up (0x0001E2D0) [proven] |
 | 0xC2C | the uids (at most two) | `fn_10_1E26C` pushes a uid here (0x0001E2C4) and trims the oldest when there are two (`fn_10_1E2E8` at 0x0001E2B0) [proven] |
-| 0xC44 | **the time of the last wall collision** (inside the 0xB50 sub-object) | the constructor writes 0.0f (0x0001FF38); `fn_10_1CF84` (0x0001D02C/0x0001D074) and `fn_10_1DF74` (0x0001E0BC) write it [proven] |
+| 0xC44 | **the time of the last wall collision** (inside the 0xB50 sub-object) | the constructor writes -1000.0f (0x0001FF38, f2 = `lbl_10_rodata_410`, ds47); `fn_10_1CF84` (0x0001D02C/0x0001D074) and `fn_10_1DF74` (0x0001E0BC) write it [proven] |
 | 0xCC0 | the damage the actor has taken | the constructor writes 0.0f (0x0001FF58); `fn_10_1E178` adds the health that is gone and decays it (0x0001E200/0x0001E238) [proven] |
 | 0xCC4 | the health at the last damage check | the constructor writes `lbl_10_rodata_3EC` = −1.0f (0x0001FF5C); `fn_10_1E178` compares it with the health info's current health (the vtable slot 0x3C, `GetHealthInfo`, and the float at its +4) [proven] |
 | 0xCC8 | the threshold `TooMuchDamage` compares the damage with | the constructor writes its 8th float argument (0x0001FF60), which is the loader's `damageInterruptThreshold` (the property id 0x8f70d3f2) [proven: the loader's dispatch compares the property id at 0x0000D00C] |
-| 0xCCC | the rate the damage decays at | the constructor writes `lbl_10_rodata_3E8` = 1.0f (0x0001FF64); `fn_10_1E178` subtracts it times dt (0x0001E22C) [proven] |
+| 0xCCC | the rate the damage decays at | the constructor writes unknown_0xf317f4d5 (`lfs f31, 0x218(r1)` at 0x0001FB14, default 4.0; `stfs f31, 0xccc` at 0x0001FF64, ds47); `fn_10_1E178` subtracts it times dt (0x0001E22C) [proven] |
 | 0xCD0 | sub-object built by `fn_10_E560`; **its first byte** is what `fn_10_F84C` and `fn_10_FF20` test | [proven] |
 | 0xD64 | the CMdl/Cskr token pair built by `fn_10_20600` | [probable: the 'CMdl'/'Cskr' tag is read at 0x000202E8/0x0002033C] |
 | 0xD74 | sub-object built by `fn_10_8DB4` | [proven] call |
@@ -146,7 +146,7 @@ Size [proven]: the loader's `__nw__FUlPCcPCc` is `li r3, 0x1128` at 0x0000DA78. 
 | 0xF68 | sub-object built by `fn_10_21104` | [proven] call |
 | 0xF80 | sub-object built by `fn_10_20F50` | [proven] call |
 | 0x1048..0x1054 | floats (0x1054 = `lbl_10_rodata_3FC` = 0.0) | |
-| 0x1058 | int 4 | `li r0, 0x4` at 0x000201E8 |
+| 0x1058 | int 4 | `li r0, 0x4` at 0x000201E8, `stw` at 0x00020218 (the host had 0 until ds47) |
 | 0x105C | int 0 | |
 | 0x1060 | flag byte (bit 24) | |
 | 0x1064 | sub-object built by `fn_10_20BFC` | [proven] call |
@@ -451,7 +451,7 @@ state) and, for `fn_10_1D794`, also from `fn_10_FB8C` (`TravelToPissedOff`). `fn
 **The walk** (2026-10-21, with the three triggers ported): `Start` -> `TurnToFacePlayer` ->
 `TravelToCoverPoints` -> `Dash`. The last step is `WallCollision` (the FSM2 dump: the trigger
 `WallCollision` of `TravelToCoverPoints` leads to `Dash`), and it fires because the wall
-collision time at 0xC44 is 0.0f after the constructor and the elapsed time at 0x8B0 is still
+collision time at 0xC44 was 0.0f after the port's constructor (retail writes -1000.0f, fixed in ds47) and the elapsed time at 0x8B0 is still
 below 0.2 seconds - the port grew the elapsed time only while the actor was active, while
 retail's `fn_10_1B1FC` grows it in every Think, also while the actor is inactive. With the
 elapsed time grown in every Think the walk stays in `TravelToCoverPoints`.
@@ -2382,3 +2382,32 @@ platform casts and the dash arms of CollidedWith.
 | no slot matches the best -> slot 1 | forced (all weights -1.0, clearance 1.0) |
 
 gcov: PickDash 91/91 lines, 46/46 branches, ALL-ARMS.
+
+## Slice ds47 (2026-10-23): the constructor fn_10_1FA14, field by field
+
+Every store of 0x0001FA14..0x000205AC was checked against the port's init list and body (the asm
+in `/tmp/opencode/ds47/ctor.s`; the loader's call at 0x0000DB94..0x0000DD84 passes caller
+sp+(X-0x1c0) for the callee's stack slot X, f1..f8 = 72edeb7d, 74fa22f0, 2c6a3344, diveHorizontal,
+diveVertical, 378285b9, the scatter PPS, damageInterruptThreshold). The sub-constructors' arguments
+match; their bodies are earlier lanes' H rows. Fixed:
+
+| member | was | retail |
+|---|---|---|
+| 0x90C bit 0x40 | 0 | startsInTheAir (`lbz r0, 0x1d3(r1)` 0x0001FC00, `rlwimi r5, r0, 6, 25, 25` 0x0001FC08) |
+| 0xCCC mDamageDecay | 1.0 | unknown_0xf317f4d5 (`lfs f31, 0x218(r1)` 0x0001FB14, `stfs f31, 0xccc` 0x0001FF64; default 4.0) |
+| 0xC44 mLastWallHitTime | 0 | -1000.0 (`stfs f2, 0xc44` 0x0001FF38, f2 = rodata_410 loaded at 0x0001FED4) |
+| 0xC34 mContactTime | 0 | -1000.0 (`stfs f2, 0xc34` 0x0001FF1C) |
+| 0x96C mSavedSpeed | 0 | 1.0 (`stfs f1, 0x96c` 0x0001FCB8, f1 = rodata_3E8) |
+| 0x1058 mGuest1058 | 0 | 4 (`li r0, 0x4` 0x000201E8, `stw` 0x00020218) |
+| mHitDirection / mHitDirectionFlat | uninitialised | zero (0x0001FBA8..0x0001FBBC, 0x0001FEE8..0x0001FEFC) |
+
+No host member: 0x908 and 0x10A0 (f2/f1, read from mData), 0xEDC/0xEE0 (converted at use), 0x8AC = -1
+(0x0001FB74, no reader in the module). Not written by 1FA14 or 45F8: mGuestF7C.
+
+Arms (gcov, `tools/cov/specs/darksamus_ds47_ctor.py`, rooftop LAYER2@400, three runs): the shipped data
+takes the valid sound/asset arms; DS47_FORCE=1 takes the -1 sounds, the invalid assets and
+startsInTheAir 1 (mFlags90C 0x40); DS47_FORCE=2 the valid sweep beam sounds (8076/303) and the
+alternate scan (the actor's own SCAN, mAltScanInfo locked). 176/178 lines, 125/159 branches; the
+untaken ones are all exception-unwind arms (the CSkinnedModel rs_new line, 2, and the ctor's closing
+brace, 32). Dead: rs_new returning null (0x000202E0, 0x000204B8), the stack-address-null tests
+(0x000203E0, 0x00020418) and the 0x92C non-null test at 0x00020518 (0x0001FC38 stores 0).
