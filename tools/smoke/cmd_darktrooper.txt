@@ -1,0 +1,48 @@
+# DarkTrooper (module 12: CDarkTrooper, the Morphology Dark Trooper). Temple Grounds
+# 04_temple_unknownenemies (world 3bfa3eff, area 4) layers 2 and 3 hold three Dark Troopers u049d
+# u0488 u0487 (editor ids 00270177 / 0027017b / 002700d3). The steps follow the dt1 lane's
+# tools/drivers/darktrooper_unknown.con and tools/cov/specs/darktrooper.py: load both layers, wake
+# and alert all three, walk u049d through the state table (Pursue, SmallShotAttack, MissileAttack,
+# MeleeAttack), let it fight a god-mode player, then damage it with two weapon types, kill it, and
+# kill the other two with a missile and a dark burst.
+# Left out on purpose: the driver's Sleep/Rise/Pause walk and its `damage ... kb` line (`kb` is not
+# a weapon `damage` knows, so the console answers `=> err`); the states kept are the ones a 2400
+# update family has frames for.
+# Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; F=2400, last check f2350.
+# The family stays capped (run.sh NC): a fast run of 2400 updates is over in 0.3 s, before con.py
+# gets a console connection, so nothing would be driven.
+@f300 god 1; give missile 50
+@f302 layer 2; layer 3
+@f310 tp 160 180 -39
+@f330 send u049d Activate; send u0488 Activate; send u0487 Activate
+@f340 send u049d Alert; send u0488 Alert; send u0487 Alert
+@f500 objs DarkTrooper
+@f700 fsm u049d Pursue
+# The state table, on the troopers the driver walked it with.
+@f1500 place u049d player 12; obj u049d
+@f1550 fsm u049d SmallShotAttack
+@f1600 obj u049d
+@f1650 fsm u049d MissileAttack
+@f1700 place u049d player 2
+@f1750 fsm u049d MeleeAttack
+@f1800 fsm u049d Pursue
+@f1850 obj u049d
+# Small-shot attacks: god mode off for the trooper's shot (it goes Pursue -> SmallShotAttack on its
+# own at contact range), the player's health line at f2050 is what landed, then god mode back on.
+@f1860 god 0
+@f1950 place u049d player 8
+@f2050 status; obj u049d
+@f2060 god 1
+# Damage: a power beam hit and a missile hit on u049d, a power hit on u0488, all non-lethal.
+@f2090 damage u049d 2
+@f2120 damage u049d 2 missile
+@f2150 damage u0488 2
+@f2190 obj u049d; obj u0488
+# A lethal hit on u049d (its ragdoll death), then u0488 with a missile and u0487 with a dark burst.
+@f2220 damage u049d 999
+@f2250 objs DarkTrooper
+@f2280 damage u0488 999 missile
+@f2300 place u0487 player 8
+@f2320 damage u0487 999 darkburst
+@f2340 objs DarkTrooper
+@f2350 status
