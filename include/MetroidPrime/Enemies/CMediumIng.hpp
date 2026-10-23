@@ -97,6 +97,12 @@ public:
   void Extend(CStateManager& mgr, const CVector3f& target); // Guessed name
   void Retract(CStateManager& mgr);                         // Guessed name
   float GetProgress() const;                                // Guessed name
+#ifdef TARGET_PC
+  // CMediumIng::ArmAttack (fn_41_3F3C) writes the retract bit (retail 0x31C |= 0x20) and reads
+  // the length scale (retail 0x328) of each tentacle directly.
+  void SetRetracting(bool v) { mRetracting = v; }
+  float GetLengthScale() const { return mLengthScale; }
+#endif
 
 private:
   void UpdateShake(CStateManager& mgr, float dt); // Guessed name
@@ -280,6 +286,17 @@ private:
   bool mE0 : 1;
   bool mE1 : 1;
   bool mE2 : 1;
+#ifdef TARGET_PC
+  // Guessed names: unnamed retail helpers the states call (fn_41_<off>).
+  void UpdateCollisionFilter(bool solid);                            // fn_41_49CC
+  bool ShouldUseWideSearch() const;                                  // fn_41_5DC8
+  bool IsSweepBlocked(CStateManager& mgr, const CVector3f& delta);   // fn_41_5E0C
+  void ExtendTentacle(CStateManager& mgr, int index);                // fn_41_4308
+  void RetractTentacles(CStateManager& mgr);                         // fn_41_43E8
+  void PositionTentacles(CStateManager& mgr);                        // fn_41_4470
+  void SetTentaclesActive(CStateManager& mgr, bool active);          // fn_41_4598
+  void FaceTarget(CStateManager& mgr, float dt);
+#endif
 };
 
 CHECK_SIZEOF(CMediumIng, 0xD00)

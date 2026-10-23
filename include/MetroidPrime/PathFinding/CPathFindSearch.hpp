@@ -31,6 +31,9 @@ public:
   void SetArea(CPFArea* area) { mArea = area; }
   void SetPadding(const float pad) { mPadding = pad; }
   void SetFlags(uint flags) { mFlags = flags; } // Guessed name
+#ifdef TARGET_PC
+  uint GetFlags() const { return mFlags; } // Guessed name; MediumIng fn_41_13E4 saves and restores it.
+#endif
 
   const CVector3f& GetPoint() const {
     return mCurWaypoint + 1 < mWaypoints.size() ? mWaypoints[mCurWaypoint + 1]
