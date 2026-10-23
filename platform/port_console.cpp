@@ -63,6 +63,10 @@ extern bool gPortForceMultiplayer; // CStateManager.cpp, console `mpforce`
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/RenderGeometryRayCast.hpp"
 #include "MetroidPrime/CObjectList.hpp"
+#include "MetroidPrime/ScriptLoader.hpp"
+#include "MetroidPrime/CAnimData.hpp"
+#include "Kyoto/Graphics/CModel.hpp"
+#include "Kyoto/Streams/CMemoryInStream.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/Enemies/CSpacePirate.hpp"
@@ -558,6 +562,7 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "orbit [id]                  lock-on state; with id: orbit position, ValidateOrbitTargetId\n"
       "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"
       "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"
+      "spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive] [prop <pid> <v>]  create script objects via their loader\n"
       "touch <mover id> <other id>  call the mover's CollidedWith with the other actor's material\n"
       "                           list, the way the collision code does (no real collision needed)\n"
       "pirateattach <pirate> <id>|-  AttachActorToPirate(id) (- : DetachActorFromPirate) through the\n"
@@ -2257,6 +2262,297 @@ void CmdPlace(CStateManager& mgr, const Args& args, std::string& out) {
   out += line;
 }
 
+// spawn <fourcc> [count] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive]
+//   [prop <propid> <value>]...:
+// create script objects of a type through its ScriptLoader entry, the way an area load does, for
+// loaders no disc placement reaches (CHOG, COIN, DBAR, RIPR, RSFA, SPNK). The property stream is
+// built here: the EditorProperties struct (name, transform `dist` (8) units in front of the player
+// facing it, active) and only what the options add, so every other SLdr default applies. Options:
+// `ancs` adds PatternedAITypedef.animationInformation (patterned loaders refuse without one),
+// `model` sets COIN's model / every DBAR chunk model (both take a hex asset id or an actor id
+// u<id>/e<id> whose ANCS+character or static model is borrowed as a stand-in body), `prop` adds a raw 4-byte top-level property
+// (a value with a '.' is a float, else an integer, hex with 0x). Asset ids are checked against the
+// resource factory first, so a missing asset is a refusal, not a CStaticRes on nothing. Each object
+// `fsm <id>` sets PatternedAITypedef.stateMachine (an AFSM/FSM2 asset); `inactive` spawns it
+// inactive (a COIN only rolls its lifetime and impulse on the Activate that wakes it, so spawn it
+// inactive and `send e<id> activate`). Each object
+// gets a free editor id 0xFF00+ in layer 0 of the player's area (`e<id>` works) and, like
+// RegisterScriptObjects, AddObject + kSM_AreaLoaded. A loader returning null is reported.
+struct SSpawnBlob {
+  std::vector< uint8_t > bytes;
+  void U8(uint v) { bytes.push_back(static_cast< uint8_t >(v)); }
+  void U16(uint v) { U8(v >> 8); U8(v); }
+  void U32(uint v) { U16(v >> 16); U16(v & 0xFFFF); }
+  void F32(float f) {
+    uint v;
+    std::memcpy(&v, &f, sizeof(v));
+    U32(v);
+  }
+  // A property header; EndProp patches the u16 size once the body is written.
+  size_t BeginProp(uint id) {
+    U32(id);
+    U16(0);
+    return bytes.size();
+  }
+  void EndProp(size_t start) {
+    const size_t size = bytes.size() - start;
+    bytes[start - 2] = static_cast< uint8_t >(size >> 8);
+    bytes[start - 1] = static_cast< uint8_t >(size);
+  }
+};
+
+void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  if (args.size() < 2 || args[1].size() != 4 || player == nullptr) {
+    Fail("usage: spawn <fourcc> [count] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] "
+         "[model <id>|u<id>] [inactive] [prop <propid> <value>]...   (needs a player)");
+    return;
+  }
+  FourCC type = 0;
+  for (char c : args[1]) {
+    type = (type << 8) | static_cast< uint8_t >(std::toupper(static_cast< unsigned char >(c)));
+  }
+  char typeName[5] = {static_cast< char >(type >> 24), static_cast< char >(type >> 16),
+                      static_cast< char >(type >> 8), static_cast< char >(type), 0};
+  const FScriptLoader loader = GetScriptLoaderForType(type);
+  if (loader == nullptr) {
+    Fail(std::string("no ScriptLoader entry for '") + typeName + "'");
+    return;
+  }
+  auto parseU32 = [](std::string_view text, uint& value) {
+    const std::string s(text);
+    char* end = nullptr;
+    value = static_cast< uint >(std::strtoul(s.c_str(), &end, 0));
+    return !s.empty() && end != nullptr && *end == '\0';
+  };
+  auto parseHexId = [](std::string_view text, uint& value) {
+    const std::string s(text);
+    char* end = nullptr;
+    value = static_cast< uint >(std::strtoul(s.c_str(), &end, 16));
+    return !s.empty() && end != nullptr && *end == '\0';
+  };
+  int count = 1;
+  float dist = 8.f;
+  bool haveAncs = false;
+  uint ancs = 0, character = 0, anim = 0, model = 0;
+  bool haveModel = false;
+  uint fsm = 0;
+  bool haveFsm = false;
+  bool startActive = true;
+  std::vector< std::pair< uint, uint > > props;
+  size_t i = 2;
+  if (i < args.size() && std::isdigit(static_cast< unsigned char >(args[i][0]))) {
+    uint n = 0;
+    if (!parseU32(args[i], n) || n < 1 || n > 32) {
+      Fail("spawn: count is 1..32");
+      return;
+    }
+    count = static_cast< int >(n);
+    ++i;
+  }
+  for (; i < args.size(); ++i) {
+    if (args[i] == "d" && i + 1 < args.size() && ParseFloat(args[i + 1], dist)) {
+      ++i;
+    } else if (args[i] == "ancs" && i + 1 < args.size() &&
+               (args[i + 1][0] == 'u' || args[i + 1][0] == 'e' || parseHexId(args[i + 1], ancs))) {
+      // ancs u<id>|e<id>: borrow an animated actor's ANCS and character (a stand-in body for a
+      // type whose own assets are not in this area's paks).
+      if (args[i + 1][0] == 'u' || args[i + 1][0] == 'e') {
+        const CActor* donor = TCastToConstPtr< CActor >(ResolveObject(mgr, args[i + 1]));
+        const CModelData* data = donor != nullptr ? donor->GetModelData() : nullptr;
+        if (data == nullptr || !data->HasAnimation()) {
+          Fail("spawn: ancs " + Str(args[i + 1]) + " is not an animated actor");
+          return;
+        }
+        ancs = data->GetAnimationData()->PortSelfId();
+        character = static_cast< uint >(data->GetAnimationData()->GetCharacterIndex());
+      }
+      haveAncs = true;
+      ++i;
+      if (i + 1 < args.size() && parseU32(args[i + 1], character)) {
+        ++i;
+        if (i + 1 < args.size() && parseU32(args[i + 1], anim)) {
+          ++i;
+        }
+      }
+    } else if (args[i] == "model" && i + 1 < args.size() &&
+               (args[i + 1][0] == 'u' || args[i + 1][0] == 'e' || parseHexId(args[i + 1], model))) {
+      // model u<id>|e<id>: borrow an actor's static model.
+      if (args[i + 1][0] == 'u' || args[i + 1][0] == 'e') {
+        CActor* donor = TCastToPtr< CActor >(const_cast< CEntity* >(ResolveObject(mgr, args[i + 1])));
+        CModelData* data = donor != nullptr ? const_cast< CModelData* >(donor->GetModelData()) : nullptr;
+        if (data == nullptr || !data->HasNormalModel()) {
+          Fail("spawn: model " + Str(args[i + 1]) + " is not an actor with a static model");
+          return;
+        }
+        model = static_cast< const TToken< CModel >& >(*data->NormalModel()).GetTag().id;
+      }
+      haveModel = true;
+      ++i;
+    } else if (args[i] == "inactive") {
+      startActive = false;
+    } else if (args[i] == "fsm" && i + 1 < args.size() && parseHexId(args[i + 1], fsm)) {
+      haveFsm = true;
+      ++i;
+    } else if (args[i] == "prop" && i + 2 < args.size()) {
+      uint id = 0, value = 0;
+      float f = 0.f;
+      if (!parseHexId(args[i + 1], id)) {
+        Fail("spawn: bad property id '" + Str(args[i + 1]) + "'");
+        return;
+      }
+      if (args[i + 2].find('.') != std::string_view::npos && ParseFloat(args[i + 2], f)) {
+        std::memcpy(&value, &f, sizeof(value));
+      } else if (!parseU32(args[i + 2], value)) {
+        Fail("spawn: bad property value '" + Str(args[i + 2]) + "'");
+        return;
+      }
+      props.emplace_back(id, value);
+      i += 2;
+    } else {
+      Fail("spawn: unknown option '" + Str(args[i]) + "'");
+      return;
+    }
+  }
+  // CScriptDestructibleBarrier's ctor uses its base (left chunk) model's CModelData
+  // unconditionally (SetRenderUnsortedParts), so a barrier without one dereferences null.
+  if (type == 'DBAR' && !haveModel) {
+    Fail("spawn DBAR refused: the barrier needs a chunk model (`model <id>`)");
+    std::printf("[console] spawn DBAR refused: no chunk model\n");
+    return;
+  }
+  // A missing asset would reach CAnimRes/CStaticRes with nothing behind it.
+  if (haveFsm && gpResourceFactory->GetResourceTypeById(fsm) != 'AFSM' &&
+      gpResourceFactory->GetResourceTypeById(fsm) != 'FSM2') {
+    Fail("spawn: fsm " + Str(args[1]) + " is not an AFSM/FSM2 asset here");
+    std::printf("[console] spawn %s refused: no state machine asset %08x\n", typeName, fsm);
+    return;
+  }
+  if ((haveAncs && gpResourceFactory->GetResourceTypeById(ancs) != 'ANCS') ||
+      (haveModel && gpResourceFactory->GetResourceTypeById(model) != 'CMDL')) {
+    char why[96];
+    std::snprintf(why, sizeof(why), "spawn %s refused: %s %08x is not loadable here", typeName,
+                  haveAncs && gpResourceFactory->GetResourceTypeById(ancs) != 'ANCS' ? "ANCS"
+                                                                                      : "CMDL",
+                  haveAncs && gpResourceFactory->GetResourceTypeById(ancs) != 'ANCS' ? ancs : model);
+    std::printf("[console] %s\n", why);
+    Fail(why);
+    return;
+  }
+  TAreaId area = player->GetCurrentAreaId();
+  if (area == kInvalidAreaId) {
+    area = mgr.GetNextAreaId();
+  }
+  CVector3f dir = player->GetTransform().GetForward();
+  dir.SetZ(0.f);
+  dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, 1.f, 0.f);
+  const CVector3f right(dir.GetY(), -dir.GetX(), 0.f);
+  // The editor's Z rotation turns forward (0,1,0) into (-sin a, cos a); face the player (-dir).
+  const float yawDeg = std::atan2(dir.GetX(), -dir.GetY()) * 57.29578f;
+  uint nextIndex = 0xFF00;
+  for (int n = 0; n < count; ++n) {
+    TEditorId editorId(kInvalidEditorId);
+    for (; nextIndex <= 0xFFFE; ++nextIndex) {
+      const TEditorId candidate((static_cast< uint >(area.Value()) & 0x3FF) << 16 | nextIndex);
+      if (mgr.GetIdForScript(candidate) == kInvalidUniqueId) {
+        editorId = candidate;
+        ++nextIndex;
+        break;
+      }
+    }
+    const CVector3f pos =
+        player->GetTranslation() + dir * dist + right * (3.f * (n - (count - 1) * 0.5f));
+    SSpawnBlob blob;
+    const bool isCoin = type == 'COIN', isBarrier = type == 'DBAR';
+    const int modelProps = haveModel ? (isCoin ? 1 : isBarrier ? 6 : 0) : 0;
+    blob.U16(1 + (haveAncs || haveFsm ? 1 : 0) + modelProps + static_cast< int >(props.size()));
+    const size_t editor = blob.BeginProp(0x255a4580); // EditorProperties
+    blob.U16(3);
+    const size_t name = blob.BeginProp('INAM');
+    const std::string label = std::string("spawn ") + typeName;
+    for (char c : label) {
+      blob.U8(static_cast< uint8_t >(c));
+    }
+    blob.U8(0);
+    blob.EndProp(name);
+    const size_t xfrm = blob.BeginProp('XFRM');
+    blob.F32(pos.GetX());
+    blob.F32(pos.GetY());
+    blob.F32(pos.GetZ());
+    blob.F32(0.f);
+    blob.F32(0.f);
+    blob.F32(yawDeg);
+    blob.F32(1.f);
+    blob.F32(1.f);
+    blob.F32(1.f);
+    blob.EndProp(xfrm);
+    const size_t active = blob.BeginProp('ACTV');
+    blob.U8(startActive ? 1 : 0);
+    blob.EndProp(active);
+    blob.EndProp(editor);
+    if (haveAncs || haveFsm) {
+      const size_t patterned = blob.BeginProp(0xb3774750); // PatternedAITypedef
+      blob.U16((haveAncs ? 1 : 0) + (haveFsm ? 1 : 0));
+      if (haveAncs) {
+        const size_t animSet = blob.BeginProp(0xe25fb08c); // animationInformation
+        blob.U32(ancs);
+        blob.U32(character);
+        blob.U32(anim);
+        blob.EndProp(animSet);
+      }
+      if (haveFsm) {
+        const size_t machine = blob.BeginProp(0x55744160); // stateMachine
+        blob.U32(fsm);
+        blob.EndProp(machine);
+      }
+      blob.EndProp(patterned);
+    }
+    static const uint kBarrierModels[] = {0x014a0c36, 0x90f55c5d, 0xe1975355,
+                                          0x396660b4, 0x48e25884, 0xf1abb2c7};
+    for (int m = 0; m < modelProps; ++m) {
+      const size_t prop = blob.BeginProp(isCoin ? 0xc27ffa8f : kBarrierModels[m]);
+      blob.U32(model);
+      blob.EndProp(prop);
+    }
+    for (const std::pair< uint, uint >& p : props) {
+      const size_t prop = blob.BeginProp(p.first);
+      blob.U32(p.second);
+      blob.EndProp(prop);
+    }
+    CMemoryInStream in(blob.bytes.data(), blob.bytes.size());
+    CEntityInfo info(area, CEntity::NullConnectionList, startActive, editorId);
+    CEntity* entity = loader(mgr, in, info);
+    char line[160];
+    if (entity == nullptr) {
+      std::snprintf(line, sizeof(line),
+                    "spawn %s refused: the loader returned null (a patterned type needs `ancs <id>`)",
+                    typeName);
+      std::printf("[console] %s\n", line);
+      Fail(line);
+      return;
+    }
+    mgr.AddObject(entity);
+    mgr.DeliverScriptMsg(CScriptMsg(kInvalidUniqueId, entity->GetUniqueId(), kSM_AreaLoaded));
+    std::snprintf(line, sizeof(line), "spawned %s u%04x e%08x %s at %.2f %.2f %.2f\n", typeName,
+                  entity->GetUniqueId().value, editorId.Value(), ClassName(*entity).c_str(),
+                  pos.GetX(), pos.GetY(), pos.GetZ());
+    std::printf("[console] %s", line);
+    out += line;
+    // A patterned actor whose body controller is still off would crash in its first Think
+    // (CPatterned::ThinkAboutMove reads the current body state). Placed actors get it from their
+    // state machine (CChozoGhost::InActive) or their Registered handler; a spawn without the
+    // type's own state machine asset has neither, so the console turns it on and says so.
+    if (CPatterned* patterned = TCastToPtr< CPatterned >(entity)) {
+      if (patterned->BodyController() != nullptr && !patterned->BodyController()->GetIsActive()) {
+        patterned->BodyController()->Activate(mgr, pas::kAS_Invalid);
+        const char* note = "   body controller was off after AreaLoaded: activated by spawn\n";
+        std::printf("[console] %s", note + 3);
+        out += note;
+      }
+    }
+  }
+}
+
 // material <id> [+|-]<name|bit> ...: show an actor's material list, or add (+, the default) or
 // remove (-) materials on it (CActor::AddMaterial/RemoveMaterial, which also re-sort the actor in
 // the near list).  Names are the EMaterialTypes ones without kMT_, any case, or the bit number.
@@ -3229,6 +3525,7 @@ constexpr SCommand kCommands[] = {
     {"uevent", CmdUEvent, true},
     {"frame", CmdFrame, true},
     {"place", CmdPlace, true},
+    {"spawn", CmdSpawn, true},
     {"material", CmdMaterial, true},
     {"shoot", CmdShoot, true},
     {"visor", CmdVisor, true},

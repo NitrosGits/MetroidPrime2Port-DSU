@@ -91,6 +91,21 @@ that callback can be driven (the SwampBossStage1 "player touched" flag, the reta
 from it and holds L: with `give grappleBeam 1` the player locks on and grapples (`status`: orbit 5).
 A bare `tp` + `press l` misses: the lock-on press needs the orbit candidate lists, rebuilt every 20 updates.
 `scan <id> [d] [updates]` twice ~30 updates apart (scan visor + L, then tp d (40) units, forced orbit lock) scans an actor; `scan` alone prints progress (game state 1 = scan display up).
+`spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive]
+[prop <propid> <value>]...` creates n (1) script objects of a type through its `ScriptLoader` entry,
+d (8) units in front of the player and facing it, for loaders no disc placement reaches (CHOG, COIN,
+DBAR, RIPR, RSFA, SPNK): the property stream holds only EditorProperties (name, transform, active)
+and what the options add, so every other SLdr default applies. Each gets editor id
+`<area>FF00`+ in layer 0 (so `e0036ff00` names the first in area 0x36), AddObject and kSM_AreaLoaded.
+`ancs`/`model` take a hex asset id or an actor (`u`/`e` id) whose ANCS+character or static model is
+borrowed as a stand-in body (the types' own assets are in no pak); `fsm` sets the patterned state
+machine; `prop` adds a raw 4-byte top-level property (`1.5` is a float, else an integer). Refusals
+(logged, no crash): no loader for the type, an asset not in the resource factory, a loader that
+returns null (patterned types without `ancs`), DBAR without `model` (its ctor needs the left chunk
+model). A patterned actor whose body controller is still off after AreaLoaded (CHOG without its own
+state machine) is activated by `spawn`, which says so. A COIN rolls its lifetime and impulse only on
+the Activate that wakes it: `spawn COIN 3 inactive model u<actor> prop 54a8c481 20.0 prop 7dd63999 30.0`
+then `send e<area>ff00 Activate`.
 Ids may be `e<editor id>` (unique ids are reused across layer loads); `covdump` writes a coverage build's gcov counters mid-run (runs that hang in shutdown keep them).
 
 ## Area regression sweep (any world, shards, START-free)
