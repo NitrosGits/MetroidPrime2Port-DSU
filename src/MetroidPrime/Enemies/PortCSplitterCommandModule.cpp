@@ -485,9 +485,11 @@ void CSplitterBeamEffect::PreRender(CStateManager& mgr) {
   gpRender->SetWorldViewpoint(GetTransform()); // vtable slot 0x58, 0x11058-0x11074
   CGraphics::SetModelMatrix(CTransform4f::Identity()); // 0x11078-0x11080
 
-  // 0x11084-0x110F0: the near box, the translation plus and minus the length on every axis.
+  // 0x11084-0x110F0: the near box, the transform's translation (0x30/0x40/0x50, not the cached
+  // 0x54) plus and minus the length on every axis.
   const CVector3f reach = CVector3f(mLength, mLength, mLength);
-  const CAABox nearBox(GetTranslation() - reach, GetTranslation() + reach);
+  const CVector3f origin = GetTransform().GetTranslation();
+  const CAABox nearBox(origin - reach, origin + reach);
 
   CGX::SetNumChans(0);          // 0x110F4-0x110F8
   CGraphics::DisableAllLights(); // 0x110FC
