@@ -150,7 +150,7 @@ declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boos
                [lumite]=2400 [shrieker]=2400 [ingswarm]=2400 [darktrooper]=2400
                [bacteriaswarm]=2400 [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000
                [amt]=9400 [dbar]=1200 [sjguard]=6000 [fishcloud]=2500 [spa]=2000 [wallwalker]=3600
-               [isbg]=5700 [spp]=1700 [mysf]=3200 [spor]=2000 [scriptgui]=700 [plct]=2000 )
+               [isbg]=5700 [spp]=1700 [mysf]=3200 [spor]=2000 [scriptgui]=700 [plct]=2200 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280
                [boostg_fsm]=280 [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280
                [ing]=420 [ep]=330 [plain]=280 [emp3]=280 [turret]=280 [agon54]=280

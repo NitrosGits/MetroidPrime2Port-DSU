@@ -4,7 +4,7 @@
 # The steps repeat the lane's manual driver: list the proxy, send Activate/Deactivate/
 # ToggleActive and the Increment/Decrement messages it reacts to (HandleMessage), read
 # its `obj` state to see the active flag flip, and list it again at the end.
-# Checks are game updates (@f<n>), never wall seconds. F=2000, last check f2000.
+# Checks are game updates (@f<n>), never wall seconds. F=2200, last check f2000.
 @f200 objs ScriptPlayerProxy
 @f220 send u0523 Activate
 @f240 send u0523 Deactivate
