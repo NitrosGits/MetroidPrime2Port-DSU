@@ -2,4 +2,11 @@
 @f1000 layer 4
 @f1420 objs emperoring
 @f1830 objs emperoring
+@f1500 obj e000b0094
+@f1600 damage e000b0094 10
+@f1620 obj e000b0094
+@f1700 fsm e000b0094 Idle
+@f1720 obj e000b0094
+@f1800 send e000b0094 Delete
+@f1820 objs emperoring
 @f2250 objs emperoring

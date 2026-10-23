@@ -8,4 +8,10 @@
 @f1290 send e00350060 Activate; send e0035000f Activate
 @f1460 objs digital
 @f1570 obj e00350060
+@f1600 damage e00350060 10
+@f1620 obj e00350060
+@f1700 fsm e00350060 Idle
+@f1720 obj e00350060
+@f1800 send e00350060 Delete
+@f1820 objs digital
 @f1850 objs digital

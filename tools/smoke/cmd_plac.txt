@@ -15,4 +15,8 @@
 @f900 obj u065b
 @f1200 obj u065b
 @f1500 obj u065b; obj u0446
+@f1600 damage u065b 1
+@f1620 obj u065b
+@f1700 send u065b Delete
+@f1720 objs ScriptPlayerActor
 @f1800 objs ScriptPlayerActor

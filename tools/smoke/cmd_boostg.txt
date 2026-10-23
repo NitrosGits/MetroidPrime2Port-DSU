@@ -3,4 +3,10 @@
 @f960 send u052b Activate
 @f1240 objs boostball
 @f1520 obj u052b
+@f1600 damage e001c016e 10
+@f1620 obj e001c016e
+@f1700 fsm e001c016e Patrol
+@f1720 obj e001c016e
+@f1780 kill e001c016e
+@f1800 objs boostball
 @f1850 objs boostball

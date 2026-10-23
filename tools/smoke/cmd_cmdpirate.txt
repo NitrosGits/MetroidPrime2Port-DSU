@@ -1,4 +1,11 @@
 # Checks are game updates (@f<n>; gameplay from ~f240), not wall seconds; the family runs F=2000, last check f1850.
 @f880 objs commando
 @f1330 objs commando
+@f1500 obj e003b010e
+@f1600 damage e003b010e 10
+@f1620 obj e003b010e
+@f1700 fsm e003b010e Alert
+@f1720 obj e003b010e
+@f1800 send e003b010e Delete
+@f1820 objs commando
 @f1850 objs commando
