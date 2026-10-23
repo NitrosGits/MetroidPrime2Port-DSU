@@ -96,8 +96,10 @@ CKralee::CKralee(TUniqueId uid, const rstl::string& name, CEntityInfo& info, con
   mSpeed = mAnimSpeedScalar;
 }
 
+// @ fn_37_23DC
 CKralee::~CKralee() {}
 
+// @ fn_37_1D24
 void CKralee::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -106,11 +108,17 @@ void CKralee::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_37_1BA0
 void CKralee::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case 'XCRT': // Guessed message
     if (!BodyController()->GetIsActive()) {
+#ifdef TARGET_PC
+      // fn_37_1BA0: 0x1C40 li r4,0x7 / 0x1C44 bl SetLocomotionType (Patrol's 0x2120 is li r4,0x1).
+      BodyController()->SetLocomotionType(pas::kLT_Internal7);
+#else
       BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+#endif
       BodyController()->Activate(mgr, pas::kAS_Invalid);
     }
     if (mWarpState == kWS_Invisible) {
@@ -135,6 +143,7 @@ void CKralee::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CWallCrawler::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_37_13C8
 void CKralee::Think(float dt, CStateManager& mgr) {
   static float skLookAheadTime = 0.02f;
   if (!GetActive()) {
@@ -277,6 +286,7 @@ void CKralee::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
+// @ fn_37_13A8
 void CKralee::Render(const CStateManager& mgr) const { CWallCrawler::Render(mgr); }
 
 void CKralee::WarpIn(CStateManager& mgr) {
@@ -360,6 +370,7 @@ void CKralee::WarpOut(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_37_E18
 void CKralee::WarpOutExit(CStateManager& mgr, float dt) {
   char name[100];
   sprintf(name, "KRALEE_EFFECT%d-%d", mWarpOutParticleEffect, mEffectIndex++);
@@ -374,12 +385,15 @@ void CKralee::WarpOutExit(CStateManager& mgr, float dt) {
                     true);
 }
 
+// @ fn_37_1DB0
 bool CKralee::ShouldPatrol(CStateManager& mgr, const CTriggerData& data) const { return true; }
 
+// @ fn_37_13A0
 bool CKralee::ShouldWarpOut(CStateManager& mgr, const CTriggerData& data) const {
   return mWantsWarpOut;
 }
 
+// @ fn_37_1378
 bool CKralee::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
@@ -411,13 +425,16 @@ CEntity* LoadKralee(CStateManager& mgr, CInputStream& input, CEntityInfo& info) 
 }
 
 #ifndef MONOLITHIC
+// @ fn_37_10C
 static void SetFuncPtrs() {
   static SKralee_FuncPtrs funcPtrs;
   funcPtrs.mLoadKralee = &LoadKralee;
   SetSKralee_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_37_EC
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_37_C8
 extern "C" void RELExit() { SetSKralee_FuncPtrs(nullptr); }
 #endif

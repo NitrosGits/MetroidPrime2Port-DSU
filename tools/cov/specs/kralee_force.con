@@ -1,0 +1,16 @@
+# Kralee forcing driver (tools/cov/specs/kralee_force.py): the forced timers cycle both Kralees;
+# Create while invisible and active, a hit during Decrement, deactivation, other areas, a kill.
+@f300 god 1; give DarkVisor 1; give EchoVisor 1; objs Kralee
+@f350 place e00100090 player 2; hurt e00100090 1; send e00100090 Decrement
+@f600 send e0010008f Create; obj e0010008f
+@f660 send e0010008f Create; obj e0010008f
+@f720 send e0010008f Create; obj e0010008f
+@f780 send e0010008f Deactivate
+@f820 send e0010008f Activate
+@f860 setarea e0010008f 15; obj e0010008f
+@f880 setarea e0010008f 17; obj e0010008f
+@f900 setarea e0010008f 14; obj e0010008f
+@f920 setarea e0010008f 16; obj e0010008f
+@f950 place e0010008f player 4; hurt e0010008f 100; visor echo
+@f1000 visor dark
+@f1100 visor combat; objs Kralee

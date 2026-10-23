@@ -1,0 +1,68 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_37_0	10	H	CPatterned::TakeDamage(const CVector3f&, float)	-	weak/template copy	no
+00010	fn_37_10	8	H	CPatterned::GetModelAlphau8(const CStateManager&) const	-	weak/template copy	no
+00018	fn_37_18	8	H	CPatterned::ProjectileInfo()	-	weak/template copy	no
+00020	fn_37_20	8	H	CPatterned::GetSearchPath()	-	weak/template copy	no
+00028	fn_37_28	8	H	CPatterned::GetPointSearchPath()	-	weak/template copy	no
+00030	fn_37_30	8	H	CPatterned::GetRagDoll() const	-	weak/template copy	no
+00038	fn_37_38	10	H	CPatterned::GetAttackTarget() const	-	weak/template copy	no
+00048	fn_37_48	C	H	CPatterned::IsOnGround() const	-	weak/template copy	no
+00054	fn_37_54	C	H	CPatterned::GetGravityConstant() const	-	weak/template copy	no
+00060	fn_37_60	8	H	CPatterned::GetDeathExplosionParticle() const	-	weak/template copy	no
+00068	fn_37_68	8	H	CAi::CanBeShot(const CStateManager&, int)	-	weak/template copy	no
+00070	fn_37_70	8	H	CAi::IsListening() const	-	weak/template copy	no
+00078	fn_37_78	8	H	CAi::Listen(CStateManager&, const CVector3f&, EListenNoiseType)	-	weak/template copy	no
+00080	fn_37_80	1C	H	CAi::GetOrigin(const CStateManager&, const CTeamAiRole&, const CVector3f&) const	-	weak/template copy	no
+0009C	fn_37_9C	2C	H	CActor::GetHealthInfo() const	-	weak/template copy	no
+000C8	fn_37_C8	24	T	RELExit	kr1	REL runtime (module entry)	yes
+000EC	fn_37_EC	20	T	RELMain	kr1	REL runtime (module entry)	yes
+0010C	fn_37_10C	30	B	SetFuncPtrs()	kr1	upstream body (CKralee)	yes
+0013C	fn_37_13C	704	B	LoadKralee(CStateManager&, CInputStream&, CEntityInfo&)	-	upstream body (CKralee)	no
+00840	fn_37_840	40	H	rstl::optional_object<CModelData>::optional_object(const rstl::optional_object<CModelData>&)	-	weak/template copy	no
+00880	fn_37_880	20	H	rstl::construct<CModelData>(void*, const CModelData&)	-	weak/template copy	no
+008A0	fn_37_8A0	28	H	rstl::construction_policy<CModelData, 0>::construct(void*, const CModelData&)	-	weak/template copy	no
+008C8	fn_37_8C8	13C	H	CModelData::CModelData(const CModelData&)	-	weak/template copy	no
+00A04	fn_37_A04	6C	H	rstl::optional_object<TLockedToken<CModel>>::~optional_object()	-	weak/template copy	no
+00A70	fn_37_A70	54	H	TToken<CModel>::~TToken()	-	weak/template copy	no
+00AC4	fn_37_AC4	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr()	-	weak/template copy	no
+00B28	fn_37_B28	60	H	rstl::optional_object<CModelData>::~optional_object()	-	weak/template copy	no
+00B88	fn_37_B88	70	H	SLdrKralee::~SLdrKralee()	-	weak/template copy	no
+00BF8	fn_37_BF8	220	B	SLdrKralee::SLdrKralee()	-	upstream body (SLdrKralee)	no
+00E18	fn_37_E18	1B0	B	CKralee::WarpOutExit(CStateManager&, float)	kr1	upstream body (CKralee)	yes
+00FC8	fn_37_FC8	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string()	-	weak/template copy	no
+01018	fn_37_1018	68	B	CKralee::AddToRenderer(const CStateManager&) const	-	upstream body (CKralee)	no
+01080	fn_37_1080	FC	B	CKralee::PreRender(CStateManager&)	-	upstream body (CKralee)	no
+0117C	fn_37_117C	1FC	B	CKralee::WarpIn(CStateManager&)	-	upstream body (CKralee)	no
+01378	fn_37_1378	20	B	CKralee::AnimOver(CStateManager&, const CTriggerData&) const	kr1	upstream body (CKralee)	yes
+01398	fn_37_1398	8	T	fn_37_1398	-	unreferenced (li r3,0; blr)	no
+013A0	fn_37_13A0	8	B	CKralee::ShouldWarpOut(CStateManager&, const CTriggerData&) const	kr1	upstream body (CKralee)	yes
+013A8	fn_37_13A8	20	B	CKralee::Render(const CStateManager&) const	kr1	upstream body (CKralee)	yes
+013C8	fn_37_13C8	6B0	B	CKralee::Think(float, CStateManager&)	kr1	upstream body (CKralee)	yes
+01A78	fn_37_1A78	5C	H	CDamageVulnerability::operator=(const CDamageVulnerability&)	-	weak/template copy	no
+01AD4	fn_37_1AD4	C0	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::operator=(const rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>&)	-	weak/template copy	no
+01B94	fn_37_1B94	C	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::clear()	-	weak/template copy	no
+01BA0	fn_37_1BA0	184	B	CKralee::AcceptScriptMsg(CStateManager&, const CScriptMsg&)	kr1	upstream body (CKralee)	yes
+01D24	fn_37_1D24	8C	B	CKralee::SetupStateMachine(CStateManager&)	kr1	upstream body (CKralee)	yes
+01DB0	fn_37_1DB0	8	B	CKralee::ShouldPatrol(CStateManager&, const CTriggerData&) const	kr1	upstream body (CKralee)	yes
+01DB8	fn_37_1DB8	280	B	CKralee::WarpOut(CStateManager&, EStateMsg, float)	-	upstream body (CKralee)	no
+02038	fn_37_2038	5C	H	CBCGenerateCmd::~CBCGenerateCmd()	-	weak/template copy	no
+02094	fn_37_2094	48	H	CBodyStateCmd::~CBodyStateCmd()	-	weak/template copy	no
+020DC	fn_37_20DC	300	B	CKralee::Patrol(CStateManager&, EStateMsg, float)	-	upstream body (CKralee)	no
+023DC	fn_37_23DC	70	B	CKralee::~CKralee()	kr1	upstream body (CKralee)	yes
+0244C	fn_37_244C	448	B	CKralee::CKralee(TUniqueId, const rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>&, CEntityInfo&, const CTransform4f&, const CModelData&, const CPatternedInfo&, const CActorParameters&, float, float, float, float, float, float, float, float, bool, float, float, float, float, float, unsigned int, unsigned int, unsigned short, unsigned short, bool, float, float, float, float)	-	upstream body (CKralee)	no
+02894	fn_37_2894	94	H	CCECharacterInfo::CParticleResData::~CParticleResData()	-	weak/template copy	no
+02928	fn_37_2928	80	H	CCECharacterInfo::CParticleResData::CParticleResData(const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&, const rstl::vector<unsigned int, rstl::rmemory_allocator>&)	-	weak/template copy	no
+029A8	fn_37_29A8	100	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::vector(const rstl::vector<unsigned int, rstl::rmemory_allocator>&)	-	weak/template copy	no
+02AA8	fn_37_2AA8	54	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+02AFC	fn_37_2AFC	5C	H	CDamageVulnerability::CDamageVulnerability(const CDamageVulnerability&)	-	weak/template copy	no
+02B58	fn_37_2B58	54	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::~vector()	-	weak/template copy	no
+02BAC	fn_37_2BAC	130	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::vector(const rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>&)	-	weak/template copy	no
+02CDC	fn_37_2CDC	A4	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::reserve(int)	-	weak/template copy	no
+02D80	fn_37_2D80	98	H	rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>::reserve(int)	-	weak/template copy	no
+02E18	fn_37_2E18	3C	H	rstl::uninitialized_copy<rstl::pointer_iterator<CWeaponTypeVulnerability, rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CWeaponTypeVulnerability*>(rstl::pointer_iterator<CWeaponTypeVulnerability, rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>, rstl::rmemory_allocator>, rstl::pointer_iterator<CWeaponTypeVulnerability, rstl::vector<CWeaponTypeVulnerability, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CWeaponTypeVulnerability*)	-	weak/template copy	no
+02E54	fn_37_2E54	EC	H	__sinit_CKralee_cpp	-	compiler/static	no
+02F40	fn_37_2F40	C4	T	_unresolved	-	REL runtime	no
+03004	fn_37_3004	24	T	_epilog	-	REL runtime	no
+03028	fn_37_3028	24	T	_prolog	-	REL runtime	no
+0304C	fn_37_304C	4C	T	ModuleDestructors	-	REL runtime	no
+03098	fn_37_3098	4C	T	ModuleConstructors	-	REL runtime	no

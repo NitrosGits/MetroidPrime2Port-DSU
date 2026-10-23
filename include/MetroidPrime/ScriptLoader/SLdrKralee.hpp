@@ -88,6 +88,18 @@ inline SLdrKralee::SLdrKralee()
   warpInSound = 0;
   initiallyPaused = false;
   initiallyInvisible = false;
+#ifdef TARGET_PC
+  // fn_37_BF8: retail defaults upstream lacks (sldr base r31; patterned +0x40, health +0x4C,
+  // actorInformation +0x284):
+  // 0xC20 li r0,-0x1 / 0xC48 stw r0,0x350(r31) = warpInSound;
+  // 0xD0C stfs f6,0x8c(r31) (rodata_20 = 2.0) = health.hI_KnockBackResistance;
+  // 0xD1C bl __ct__6CColorFffff (rodata_2C = 1.0) / 0xD30 stw r0,0x298(r31) = ambientColor;
+  // 0xD34 li r0,0xf / 0xD40 stw r0,0x2e8(r31) = visorFlags.
+  warpInSound = -1;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrKralee::~SLdrKralee() {}
