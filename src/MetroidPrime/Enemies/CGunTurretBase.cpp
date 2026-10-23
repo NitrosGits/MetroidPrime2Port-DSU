@@ -1152,8 +1152,42 @@ int CGunTurretBase::GetRenderAlpha(const CStateManager& mgr) const {
   return GetRenderAlphaBufferAlpha(mgr);
 }
 
+#ifdef TARGET_PC
+// Retail fn_28_13C0: SLdrGunTurretBase's constructor, which the loader fn_28_4B0 calls at
+// 0x000004D0 on its stack object. Its `li r0,-0x1` at 0x000013E0 feeds 16 stores over guest
+// 0xa8..0xe4 (0x000013E8..0x00001424). The first three are the CAssetIds cRSC,
+// pirateProjectileEffect and pirateProjectileVisorEffect, already kInvalidAssetId in the
+// generated header; the 13 that follow are sound ids, which the guest defaults to -1 (no sound)
+// and the header to 0, so sfx 0 plays when a placement omits one. The port's
+// SLdrEditorProperties is 0xC bytes larger than the guest's (0x48 vs 0x3C), so every guest
+// offset from 0x3C on is the port's +0xC: guest 0xb4..0xe4 are the port's 0xc0..0xf0. The .inc
+// reader below overwrites a field when the instance's data carries that property.
+//   0x000013F4 stw r0,0xb4(r31)  0x000013F8 stw r0,0xb8(r31)  0x000013FC stw r0,0xbc(r31)
+//   0x00001400 stw r0,0xc0(r31)  0x00001404 stw r0,0xc4(r31)  0x00001408 stw r0,0xc8(r31)
+//   0x0000140C stw r0,0xcc(r31)  0x00001410 stw r0,0xd0(r31)  0x00001414 stw r0,0xd4(r31)
+//   0x00001418 stw r0,0xd8(r31)  0x0000141C stw r0,0xdc(r31)  0x00001420 stw r0,0xe0(r31)
+//   0x00001424 stw r0,0xe4(r31)
+static void x13C0_SoundDefaults(SLdrGunTurretBase& sldr) {
+  sldr.gFFireShotSound = -1;                // 0x000013F4 (guest 0xb4, port 0xc0)
+  sldr.pirateFireShotSound = -1;            // 0x000013F8 (guest 0xb8, port 0xc4)
+  sldr.lockOnSound = -1;                    // 0x000013FC (guest 0xbc, port 0xc8)
+  sldr.gunPanSound = -1;                    // 0x00001400 (guest 0xc0, port 0xcc)
+  sldr.gFGunChargeSound = -1;               // 0x00001404 (guest 0xc4, port 0xd0)
+  sldr.pirateGunChargeSound = -1;           // 0x00001408 (guest 0xc8, port 0xd4)
+  sldr.gunLowerLoopedSound = -1;            // 0x0000140C (guest 0xcc, port 0xd8)
+  sldr.gunLowerOffSound = -1;               // 0x00001410 (guest 0xd0, port 0xdc)
+  sldr.gunRaiseLoopedSound = -1;            // 0x00001414 (guest 0xd4, port 0xe0)
+  sldr.gunRaiseOffSound = -1;               // 0x00001418 (guest 0xd8, port 0xe4)
+  sldr.pirateGunDeathLowerLoopedSound = -1; // 0x0000141C (guest 0xdc, port 0xe8)
+  sldr.gFGunDeathLowerLoopedSound = -1;     // 0x00001420 (guest 0xe0, port 0xec)
+  sldr.poleSparksSound = -1;                // 0x00001424 (guest 0xe4, port 0xf0)
+}
+#endif
 CEntity* LoadGunTurretBase(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGunTurretBase sldrThis;
+#ifdef TARGET_PC
+  x13C0_SoundDefaults(sldrThis); // fn_28_13C0's -1 sound ids (the call at 0x000004D0)
+#endif
 #include "MetroidPrime/ScriptLoader/SLdrGunTurretBase.inc"
 
   rstl::optional_object< CModelData > modelData(

@@ -369,8 +369,26 @@ void CGunTurretTop::SetChargeEffect(CStateManager& mgr, bool active, bool pirate
       pirate ? rstl::string_l("PirateCharge") : rstl::string_l("GFCharge"), active, mgr);
 }
 
+#ifdef TARGET_PC
+// Retail fn_28_7FB8: SLdrGunTurretTop's constructor, which the loader fn_28_7B98 calls at
+// 0x00007BB8 on its stack object. Its `li r0,-0x1` at 0x00007FEC feeds two sound ids, which the
+// guest defaults to -1 (no sound) and the generated header to 0. The run's earlier stores are
+// pART/pART_0xaf6e671a (0x44/0x48, already kInvalidAssetId) and alwaysFF/alwaysFF_0x68d8b844
+// (0x4c/0x50, already -1), and 0x54 is the lightColor. The port's SLdrEditorProperties is 0xC
+// bytes larger than the guest's, so every guest offset from 0x3C on is the port's +0xC: guest
+// 0x58/0x5c are the port's 0x64/0x68. The .inc reader below overwrites a field when the
+// instance's data carries that property.
+//   0x00007FF8 stw r0,0x58(r31)   0x00007FFC stw r0,0x5c(r31)
+static void x7FB8_SoundDefaults(SLdrGunTurretTop& sldr) {
+  sldr.sound = -1;            // 0x00007FF8 (guest 0x58, port 0x64)
+  sldr.sound_0x5d9ed447 = -1; // 0x00007FFC (guest 0x5c, port 0x68)
+}
+#endif
 CEntity* LoadGunTurretTop(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGunTurretTop sldrThis;
+#ifdef TARGET_PC
+  x7FB8_SoundDefaults(sldrThis); // fn_28_7FB8's -1 sound ids (the call at 0x00007BB8)
+#endif
 #include "MetroidPrime/ScriptLoader/SLdrGunTurretTop.inc"
 
   rstl::optional_object< CModelData > modelData(
