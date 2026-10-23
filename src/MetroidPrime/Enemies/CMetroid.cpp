@@ -1234,6 +1234,12 @@ bool CMetroid::ShouldReleaseFromTarget(CStateManager& mgr) {
       // TODO: the original also returns true when the pirate's energy is fully drained (bit 0x02
       // of CSpacePirate+0x8F8); CSpacePirate.hpp is claimed by the SpacePirate REL work.
       bool ret = true;
+#ifdef TARGET_PC
+      // fn_40_2EC8 +0x10C: lbz r0,0x8f8(r3); li r31,1; extrwi. r0,r0,1,30; bne -> return 1.
+      if (pirate->AllEnergyDrained()) {
+        return ret;
+      }
+#endif
       if (!pirate->GetBodyController()->GetBodyStateInfo().GetCurrentState()->IsDead()) {
         ret = false;
       }
