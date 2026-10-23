@@ -62,6 +62,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Land", static_cast< CPatterned::StateMachine::StateFunc >(&CChozoGhost::Land)},
 };
 
+// @ fn_8_5570
 CChozoGhost::CBehaveChance::CBehaveChance(float lurk, float taunt, float attack, float move,
                                           float lurkTime, float chargeAttack, uint numBolts)
 : mLurk(lurk)
@@ -208,6 +209,7 @@ CChozoGhost::CChozoGhost(
   SetDrawShadow(false);
 }
 
+// @ fn_8_4814
 void CChozoGhost::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -261,14 +263,17 @@ void CChozoGhost::Touch(CActor& act, CStateManager& mgr) {
   CPatterned::Touch(act, mgr);
 }
 
+// @ fn_8_46C8
 bool CChozoGhost::CanBeShot(const CStateManager& mgr, int w1) { return IsVisibleEnough(mgr); }
 
+// @ fn_8_46C0
 EWeaponCollisionResponseTypes CChozoGhost::GetCollisionResponseType(const CVector3f&,
                                                                     const CVector3f&,
                                                                     const CWeaponMode&, int) const {
   return kWCR_ChozoGhost;
 }
 
+// @ fn_8_468C
 const CDamageVulnerability* CChozoGhost::GetDamageVulnerability() const {
   if (x665_24_) {
     return &CDamageVulnerability::PassThroughVulnerabilty();
@@ -277,6 +282,7 @@ const CDamageVulnerability* CChozoGhost::GetDamageVulnerability() const {
   return CPatterned::GetDamageVulnerability();
 }
 
+// @ fn_8_4670
 uchar CChozoGhost::GetModelAlphau8(const CStateManager& mgr) const {
   uchar ret = 255;
   if (!GetAlive()) {
@@ -316,6 +322,7 @@ void CChozoGhost::PreRender(CStateManager& mgr) {
                           GetModelData()->GetScale(), *mBodyController);
 }
 
+// @ fn_8_43F0
 void CChozoGhost::Render(const CStateManager& mgr) const {
   if (mSpaceWarpTime > 0.f) {
     mgr.DrawSpaceWarp(mSpaceWarpPosition, CMath::FastSinR(M_PIF * mSpaceWarpTime / mFadeOutDelay));
@@ -323,6 +330,7 @@ void CChozoGhost::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
 }
 
+// @ fn_8_43B8
 bool CChozoGhost::IsVisibleEnough(const CStateManager& mgr) const {
   return GetModelAlphau8(mgr) > 31;
 }
@@ -359,6 +367,7 @@ void CChozoGhost::RemoveFromTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_8_41F0
 void CChozoGhost::FloatToLevel(const float f1, const float dt) {
   CVector3f translation = GetTranslation();
   const float floatAmt = ((f1 - translation.GetZ()) * 4.f);
@@ -366,6 +375,7 @@ void CChozoGhost::FloatToLevel(const float f1, const float dt) {
   SetTranslation(translation);
 }
 
+// @ fn_8_41E4
 bool CChozoGhost::IsOnGround() const { return mOnGround; }
 
 static EMaterialTypes AnchorFloorMaterial = kMT_Floor;
@@ -462,6 +472,7 @@ void CChozoGhost::FindBestAnchor(CStateManager& mgr) {
   }
 }
 
+// @ fn_8_3B70
 const CChozoGhost::CBehaveChance& CChozoGhost::ChooseBehaveChanceRange(CStateManager& mgr) const {
   const float dist = (GetTranslation() - mgr.GetPlayer(0)->GetTranslation()).Magnitude();
   if (dist < x654_) {
@@ -476,6 +487,7 @@ const CChozoGhost::CBehaveChance& CChozoGhost::ChooseBehaveChanceRange(CStateMan
 
 static EMaterialTypes WarpSolidMaterial = kMT_Solid;
 
+// @ fn_8_39E0
 void CChozoGhost::SetWarpPosition(CStateManager& mgr, const CVector3f& dir) {
   const CVector3f center = GetBoundingBox().GetCenterPoint();
   float distance = 8.f;
@@ -514,11 +526,13 @@ void CChozoGhost::InActive(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_38B4
 bool CChozoGhost::AIStage(CStateManager& mgr, const CTriggerData& data) const {
   const float arg = data.GetFloat();
   return static_cast< int >(arg) == x63c_;
 }
 
+// @ fn_8_37B0
 void CChozoGhost::Growth(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -678,8 +692,10 @@ void CChozoGhost::Run(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_2F18
 bool CChozoGhost::InRange(CStateManager& mgr, const CTriggerData& data) const { return mInRange; }
 
+// @ fn_8_2EEC
 void CChozoGhost::SelectTarget(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -689,6 +705,7 @@ void CChozoGhost::SelectTarget(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_2ED8
 bool CChozoGhost::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mBehaveType == kBT_Attack;
 }
@@ -786,6 +803,7 @@ void CChozoGhost::Shuffle(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_2908
 bool CChozoGhost::ShouldTaunt(CStateManager& mgr, const CTriggerData& data) const {
   return mBehaveType == kBT_Taunt;
 }
@@ -846,6 +864,7 @@ void CChozoGhost::Hurled(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_243C
 void CChozoGhost::Lurk(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -857,6 +876,7 @@ void CChozoGhost::Lurk(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_2428
 bool CChozoGhost::ShouldMove(CStateManager& mgr, const CTriggerData& data) const {
   return mBehaveType == kBT_Move;
 }
@@ -865,10 +885,12 @@ bool CChozoGhost::Leash(CStateManager& mgr, const CTriggerData& data) const {
   return mPlayerInLeashRange || CPatterned::Leash(mgr, data);
 }
 
+// @ fn_8_23D4
 bool CChozoGhost::ShouldFlinch(CStateManager& mgr, const CTriggerData& data) const {
   return mFlinch;
 }
 
+// @ fn_8_23C8
 bool CChozoGhost::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
   return mAggressive;
 }
@@ -895,6 +917,7 @@ void CChozoGhost::Deactivate(CStateManager& mgr, EStateMsg msg, float arg) {
   }
 }
 
+// @ fn_8_20D8
 void CChozoGhost::Dead(CStateManager& mgr, EStateMsg msg, float arg) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1011,11 +1034,13 @@ void CChozoGhost::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_8_1570
 void CChozoGhost::PreThink(float dt, CStateManager& mgr) {
   mBoneTracking.PreThink(*AnimationData());
   CPatterned::PreThink(dt, mgr);
 }
 
+// @ fn_8_14CC
 void CChozoGhost::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -1026,6 +1051,7 @@ void CChozoGhost::Think(float dt, CStateManager& mgr) {
   SetValidTarget(0, IsVisibleEnough(mgr));
 }
 
+// @ fn_8_1460
 void CChozoGhost::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -1033,6 +1059,7 @@ void CChozoGhost::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_8_488
 CEntity* LoadChozoGhost(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrChozoGhost sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrChozoGhost.inc"
@@ -1076,7 +1103,9 @@ static void SetFuncPtrs() {
   SetSChozoGhost_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_8_438
 void RELMain() { SetFuncPtrs(); }
 
+// @ fn_8_414
 void RELExit() { SetSChozoGhost_FuncPtrs(nullptr); }
 #endif
