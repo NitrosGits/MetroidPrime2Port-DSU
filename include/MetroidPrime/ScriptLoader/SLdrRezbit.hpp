@@ -111,8 +111,14 @@ inline SLdrRezbitData::SLdrRezbitData()
   virusDamage.dI_WeaponType = 11;
   virusDamage.dI_Damage = 20.0f;
   virusDamage.dI_KnockBackPower = 5.0f;
+#ifdef TARGET_PC
+  // fn_53_1040 0x10AC li r0,-1 / 0x10B8 stw 0x124 / 0x10BC stw 0x128.
+  sound_VirusHUD = -1;
+  sound_HUDReboot = -1;
+#else
   sound_VirusHUD = 0;
   sound_HUDReboot = 0;
+#endif
   cuttingLaserMinAttackDist = 20.0f;
   cuttingLaserMaxAttackDist = 40.0f;
   cuttingLaserDamage.dI_WeaponType = 11;
@@ -124,8 +130,14 @@ inline SLdrRezbitData::SLdrRezbitData()
   cuttingLaserBeamInfo.pulseSpeed = 20.0f;
   cuttingLaserBeamInfo.shutdownTime = 0.25f;
   cuttingLaserBeamInfo.pulseEffectScale = 2.0f;
+#ifdef TARGET_PC
+  // fn_53_1040 0x1270 CColor(0.5 x4) -> 0x198, 0x12A4 CColor(0.6, 0.6, 0, 0.5 rodata_50) -> 0x19c.
+  cuttingLaserBeamInfo.innerColor = CColor(0.5f, 0.5f, 0.5f, 0.5f);
+  cuttingLaserBeamInfo.outerColor = CColor(0.60000002f, 0.60000002f, 0.0f, 0.5f);
+#else
   cuttingLaserBeamInfo.innerColor = CColor(0.49803901f, 0.49803901f, 0.49803901f, 0.49803901f);
   cuttingLaserBeamInfo.outerColor = CColor(0.60000002f, 0.60000002f, 0.0f, 0.49803901f);
+#endif
 }
 
 inline SLdrRezbitData::~SLdrRezbitData() {}
@@ -340,6 +352,12 @@ inline SLdrRezbit::SLdrRezbit()
   patterned.health.health = 150.0f;
   patterned.health.hI_KnockBackResistance = 2.0f;
   patterned.creatureSize = 1;
+#ifdef TARGET_PC
+  // LoadRezbit fn_53_168 0x1F8 CColor(1.0 x4, rodata_24) -> 0x694 (+0x294), 0x200 li r0,0xf /
+  // 0x204 stw 0x6e4 (+0x2e4); struct at r1+0x400.
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrRezbit::~SLdrRezbit() {}
