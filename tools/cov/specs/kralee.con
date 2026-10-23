@@ -1,0 +1,17 @@
+# Kralee driver (tools/cov/specs/kralee.py): Temple Grounds 0b_temple_hall has two Kralees
+# (e00100090, e0010008f). Decrement warps one out next to the player (warp damage), the visors
+# reach the invisible arms, Increment warps it back in, setarea occludes the other, kill ends it.
+@f300 god 1; give DarkVisor 1; give EchoVisor 1; objs Kralee; obj e0010008f
+@f340 place e00100090 player 2; send e00100090 Increment; send e00100090 Decrement
+@f380 send e00100090 Decrement; obj e00100090
+@f460 obj e00100090; visor dark
+@f520 visor echo
+@f580 visor combat; place e00100090 player 2; send e00100090 Increment
+@f700 obj e00100090; send e00100090 Decrement
+@f800 visor dark
+@f860 send e00100090 Increment; visor combat
+@f900 setarea e0010008f 0; obj e0010008f
+@f960 setarea e0010008f 16; obj e0010008f
+@f1000 kill e0010008f
+@f1100 visor dark
+@f1160 visor combat; objs Kralee
