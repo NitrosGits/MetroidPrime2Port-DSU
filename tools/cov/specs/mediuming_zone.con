@@ -1,0 +1,58 @@
+# mediuming_states.py safe-zone driver (mi4): active zone u0451, the player stepped out from its centre
+# (2..20 units) while u0454 is held in PathFind next to it: CalculateSeparation's zone-flee arms (0x2210..0x22E0).
+@f300 god 1; send u0451 Activate; send u0452 Activate; tp 208.5 -174 -46.5
+@f400 tp 238.9 -194.7 -39.5; face 90
+@f410 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f460 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f510 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f560 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f610 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f660 tp 240.9 -194.7 -39.5; face 90
+@f670 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f720 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f770 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f820 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f870 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f920 tp 242.9 -194.7 -39.5; face 90
+@f930 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f980 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1030 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1080 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1130 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1180 tp 244.9 -194.7 -39.5; face 90
+@f1190 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1240 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1290 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1340 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1390 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1440 tp 246.9 -194.7 -39.5; face 90
+@f1450 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1500 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1550 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1600 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1650 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1700 tp 248.9 -194.7 -39.5; face 90
+@f1710 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1760 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1810 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1860 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1910 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f1960 tp 250.9 -194.7 -39.5; face 90
+@f1970 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2020 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2070 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2120 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2170 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2220 tp 253.9 -194.7 -39.5; face 90
+@f2230 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2280 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2330 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2380 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2430 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2480 tp 257.9 -194.7 -39.5; face 90
+@f2490 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2540 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2590 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2640 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2690 place u0454 player 10; fsm u0454 PathFind; obj u0454
+@f2740 status

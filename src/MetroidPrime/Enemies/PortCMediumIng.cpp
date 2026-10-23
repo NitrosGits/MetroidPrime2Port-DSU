@@ -450,7 +450,7 @@ void CMediumIng::CalculateSeparation(CStateManager& mgr) {
     return;
   }
   // Flee the safe zones the player stands near: weight falls from 1 at the zone's radius to 0 at
-  // rodata_54 (3) beyond it. Every compare is `fcmpo; bge`, so NaNs keep the left operand.
+  // rodata_54 (3) beyond it. Every compare is `fcmpo; bge` (taken on NaN), hence the `!(a < b)`.
   const CVector3f playerPos = mgr.GetPlayer(0)->GetTranslation();
   const rstl::reserved_vector< CSafeZoneManager::SZone, 64 >& zones =
       mgr.GetSafeZoneManager()->GetZones();
@@ -458,18 +458,18 @@ void CMediumIng::CalculateSeparation(CStateManager& mgr) {
     const CSafeZoneManager::SZone& zone = zones[i];
     const float hx = zone.mHalfExtents.GetX();
     const float hy = zone.mHalfExtents.GetY();
-    const float r = hx >= hy ? hx : hy;
+    const float r = !(hx < hy) ? hx : hy; // 0x21B4 fcmpo hx,hy; bge -> hx
     const float outer = 3.f + r;
     const float dist = (zone.mPosition - playerPos).Magnitude();
-    if (dist >= outer) {
+    if (!(dist < outer)) { // 0x2210 fcmpo dist,outer; bge skip
       continue;
     }
     float over = dist - r;
-    if (0.f >= over) {
+    if (!(0.f < over)) { // 0x2224 fcmpo rodata_40,over; bge
       over = 0.f;
     }
     float w = 1.f - over / (outer - r);
-    if (0.f >= w) {
+    if (!(0.f < w)) { // 0x2250 fcmpo rodata_40,w; bge
       w = 0.f;
     }
     const CVector3f flee = mSteeringBehaviors.Flee(*this, zone.mPosition);

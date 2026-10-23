@@ -615,10 +615,11 @@ static const char* const skTentacleLocators[] = {
     "R_TopArm_LCTR", "L_TopArm_LCTR", "R_BotArm_LCTR", "L_BotArm_LCTR",
 };
 
-// fn_41_6F18: the summed squared segment lengths of a waypoint list (no square roots).
+// The summed squared segment lengths of a waypoint list (no square roots).
+// @ fn_41_6F18
 static float PathCostSquared(const rstl::reserved_vector< CVector3f, 16 >& waypoints) {
-  float cost = 0.f; // 0x6F2C
-  for (int i = 0; i < waypoints.size() - 1; ++i) {
+  float cost = 0.f; // 0x6F2C rodata_40
+  for (int i = 0; i < waypoints.size() - 1; ++i) { // 0x6F28 subic. size-1; ble (signed)
     cost += (waypoints[i + 1] - waypoints[i]).MagSquared();
   }
   return cost;
@@ -1256,6 +1257,9 @@ void CMediumIng::BackUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// mE1's arm (0x31E4..0x323C) is dead: its only writers are the ctor (0x88D4, false) and
+// SetFlagE1 0x1B04, which nothing in the REL references.
+// @ fn_41_30B0
 void CMediumIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1267,12 +1271,13 @@ void CMediumIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
     SetMomentumWR(CVector3f::Zero()); // 0x3124
     FaceTarget(mgr, dt);
     float amount = mFCC - dt;
-    if (0.f >= amount) { // 0x3184 fcmpo rodata_40, bge
+    // 0x3184 fcmpo rodata_40 (0), plain bge: NaN clamps to 0 too, hence !(0 < x).
+    if (!(0.f < amount)) {
       amount = 0.f;
     }
     mFCC = amount;
     amount = mFD0 - 0.33f * dt; // 0x31B0 rodata_6C
-    if (0.f >= amount) {        // 0x31B4
+    if (!(0.f < amount)) {      // 0x31B4 fcmpo + bge, as above
       amount = 0.f;
     }
     mFD0 = amount;
@@ -1400,7 +1405,7 @@ void CMediumIng::SetDashDestination(CStateManager& mgr, float dt) {
         mgr.RayStaticIntersection(start, dir, len, CMaterialFilter()); // 0x28F0
     if (result.IsValid()) { // 0x2904
       float back = result.GetTime() - 5.f; // 0x2920 rodata_30
-      if (0.f >= back) {                   // 0x2924 fcmpo rodata_40 + bge
+      if (!(0.f < back)) {                 // 0x2924 fcmpo rodata_40 + plain bge (NaN -> 0)
         back = 0.f;
       }
       cand = GetTranslation() + back * dir;

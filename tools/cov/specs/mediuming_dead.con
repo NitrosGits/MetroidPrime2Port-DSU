@@ -1,0 +1,69 @@
+# mediuming_states.py Dead driver (mi4): u0417 killed by charged shots (natural death), u0454 by
+# console 'damage u0454 999' (no knockback); obj every 100 updates shows each one leave Dead.
+@f300 god 1; tp 208.5 -174 -46.5; face 180
+@f310 objs safezone; objs jump; objs waypoint; objs teamai
+@f500 shoot u0417 charged; obj u0417
+@f540 shoot u0417 charged
+@f580 shoot u0417 charged
+@f620 shoot u0417 charged
+@f660 shoot u0417 charged
+@f700 shoot u0417 charged; obj u0417
+@f740 shoot u0417 charged
+@f780 shoot u0417 charged
+@f820 shoot u0417 charged
+@f860 shoot u0417 charged
+@f900 shoot u0417 charged; obj u0417
+@f940 shoot u0417 charged
+@f980 shoot u0417 charged
+@f1020 shoot u0417 charged
+@f1060 shoot u0417 charged
+@f1100 shoot u0417 charged; obj u0417
+@f1140 shoot u0417 charged
+@f1180 shoot u0417 charged
+@f1220 shoot u0417 charged
+@f1260 shoot u0417 charged
+@f1300 place u0417 player 6; shoot u0417 charged; obj u0417
+@f1325 place u0417 player 6; shoot u0417 charged
+@f1350 place u0417 player 6; shoot u0417 charged
+@f1375 place u0417 player 6; shoot u0417 charged
+@f1400 place u0417 player 6; shoot u0417 charged; obj u0417
+@f1425 place u0417 player 6; shoot u0417 charged
+@f1450 place u0417 player 6; shoot u0417 charged
+@f1475 place u0417 player 6; shoot u0417 charged
+@f1500 place u0417 player 6; shoot u0417 charged; obj u0417
+@f1525 place u0417 player 6; shoot u0417 charged
+@f1550 place u0417 player 6; shoot u0417 charged
+@f1575 place u0417 player 6; shoot u0417 charged
+@f1600 place u0417 player 6; shoot u0417 charged; obj u0417
+@f1625 place u0417 player 6; shoot u0417 charged
+@f1650 place u0417 player 6; shoot u0417 charged
+@f1675 place u0417 player 6; shoot u0417 charged
+@f3000 obj u0417; obj u0454
+@f3200 place u0454 player 8; damage u0454 999
+@f3230 obj u0454
+@f3300 obj u0454; screenshot
+@f3500 obj u0454
+@f3600 shoot u0417 charged; damage u0417 999
+@f3630 obj u0417
+@f3800 obj u0417; screenshot
+@f4100 obj u0417; obj u0454; objs ing; status
+@f1700 obj u0417; obj u0454
+@f1800 obj u0417; obj u0454
+@f1900 tp 208.5 -174 -46.5; place u0454 player 8; obj u0454
+@f1950 damage u0454 999; obj u0454
+@f2000 obj u0417; obj u0454; objs ing
+@f2100 obj u0417; obj u0454; objs ing
+@f2200 obj u0417; obj u0454; objs ing
+@f2300 obj u0417; obj u0454; objs ing
+@f2400 obj u0417; obj u0454; objs ing
+@f2500 obj u0417; obj u0454; objs ing
+@f2600 obj u0417; obj u0454; objs ing
+@f2700 obj u0417; obj u0454; objs ing
+@f2800 obj u0417; obj u0454; objs ing
+@f2900 obj u0417; obj u0454; objs ing
+@f3000 obj u0417; obj u0454; objs ing
+@f3100 obj u0417; obj u0454; objs ing
+@f3200 obj u0417; obj u0454; objs ing
+@f3300 obj u0417; obj u0454; objs ing
+@f3400 obj u0417; obj u0454; objs ing
+@f3500 status; screenshot

@@ -1,0 +1,55 @@
+# mediuming_states.py SetDashDestination driver (mi4): player inside the active safe zone u0451, u0454 placed
+# around the player so its dash candidates land in the zone (0x298C).
+@f300 god 1; send u0451 Activate; send u0452 Activate; tp 237.9 -194.7 -39.9; face 180
+@f400 place u0454 player 9; shoot u0454; obj u0454
+@f460 place u0454 player 9; shoot u0454; obj u0454
+@f520 place u0454 player 9; shoot u0454; obj u0454
+@f580 place u0454 player 9; shoot u0454; obj u0454
+@f640 place u0454 player 9; shoot u0454; obj u0454
+@f700 place u0454 player 9; shoot u0454; obj u0454
+@f760 place u0454 player 9; shoot u0454; obj u0454
+@f820 place u0454 player 9; shoot u0454; obj u0454
+@f880 place u0454 player 9; shoot u0454; obj u0454
+@f940 place u0454 player 9; shoot u0454; obj u0454
+@f1000 place u0454 player 9; shoot u0454; obj u0454
+@f1060 place u0454 player 9; shoot u0454; obj u0454
+@f1120 place u0454 player 9; shoot u0454; obj u0454
+@f1180 place u0454 player 9; shoot u0454; obj u0454
+@f1240 place u0454 player 9; shoot u0454; obj u0454
+@f1300 place u0454 player 9; shoot u0454; obj u0454
+@f1360 place u0454 player 9; shoot u0454; obj u0454
+@f1420 place u0454 player 9; shoot u0454; obj u0454
+@f1480 place u0454 player 9; shoot u0454; obj u0454
+@f1540 place u0454 player 9; shoot u0454; obj u0454
+@f1600 place u0454 player 9; shoot u0454; obj u0454
+@f1660 place u0454 player 9; shoot u0454; obj u0454
+@f1720 place u0454 player 9; shoot u0454; obj u0454
+@f1780 place u0454 player 9; shoot u0454; obj u0454
+@f1840 place u0454 player 9; shoot u0454; obj u0454
+@f1900 place u0454 player 9; shoot u0454; obj u0454
+@f1960 place u0454 player 9; shoot u0454; obj u0454
+@f2020 place u0454 player 9; shoot u0454; obj u0454
+@f2080 place u0454 player 9; shoot u0454; obj u0454
+@f2140 place u0454 player 9; shoot u0454; obj u0454
+@f2200 place u0454 player 9; shoot u0454; obj u0454
+@f2260 place u0454 player 9; shoot u0454; obj u0454
+@f2320 place u0454 player 9; shoot u0454; obj u0454
+@f2380 place u0454 player 9; shoot u0454; obj u0454
+@f2440 place u0454 player 9; shoot u0454; obj u0454
+@f2500 place u0454 player 9; shoot u0454; obj u0454
+@f2560 place u0454 player 9; shoot u0454; obj u0454
+@f2620 place u0454 player 9; shoot u0454; obj u0454
+@f2680 place u0454 player 9; shoot u0454; obj u0454
+@f2740 place u0454 player 9; shoot u0454; obj u0454
+@f2800 place u0454 player 9; shoot u0454; obj u0454
+@f2860 place u0454 player 9; shoot u0454; obj u0454
+@f2920 place u0454 player 9; shoot u0454; obj u0454
+@f2980 place u0454 player 9; shoot u0454; obj u0454
+@f3040 place u0454 player 9; shoot u0454; obj u0454
+@f3100 place u0454 player 9; shoot u0454; obj u0454
+@f3160 place u0454 player 9; shoot u0454; obj u0454
+@f3220 place u0454 player 9; shoot u0454; obj u0454
+@f3280 place u0454 player 9; shoot u0454; obj u0454
+@f3340 place u0454 player 9; shoot u0454; obj u0454
+@f3400 place u0454 player 9; shoot u0454; obj u0454
+@f3500 status
