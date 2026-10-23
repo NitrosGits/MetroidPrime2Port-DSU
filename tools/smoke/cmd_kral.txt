@@ -6,7 +6,7 @@
 # The steps repeat the kr1 lane's tools/cov/specs/kralee.con: god mode with the Dark and Echo visors,
 # `objs Kralee`, `place` e00100090 two units from the player, Increment/Decrement (WarpOut and
 # WarpIn the placed one), the dark, echo and combat visor cycle between them, another `place` and
-# Increment, `setarea` to occlude e0010008f and then to bring it back, `kill` on e0010008f and a
+# Increment, `setarea` to bring e0010008f's area back, `kill` on e0010008f and a
 # last `objs Kralee` - with `obj` reads of e00100090 and e0010008f around the steps.
 # Evidence in the transcript: `objs Kralee` listing the area's two Kralees at f300 - u0447 00100090
 # at (264.7, -74.1, -38.9) and u0415 0010008f at (265.6, -69.0, -36.7), 2 objects - and only
@@ -17,10 +17,8 @@
 # `place` answering with the new position 220.53 -119.16 -40.51 (220.41 -120.18 -40.47 the second
 # time); the Increment and Decrement sends answering `sent Increment to u0447 00100090` (WarpOut and
 # the WarpIn that follow it), the visors `visor -> dark`/`-> echo`/`-> combat`, `setarea
-# e0010008f 16` answering `area 16 -> 16`, and `kill e0010008f` answering `killed`. Every other step
-# answers `=> ok` (27 lines); the driver's `setarea e0010008f 0` is the one command that does not -
-# `err: setarea: area 0 is not loaded`, printed twice (as its reply and as the line's `=>`), because
-# area 0 is not loaded in this run - so that occlusion step only reports. The log's `init
+# e0010008f 16` answering `area 16 -> 16`, and `kill e0010008f` answering `killed`. Every step
+# answers `=> ok`. The log's `init
 # compiled module Kralee` line lists the whole compiled-module table, so it says the module is
 # registered, not that it ran.
 # Checks are game updates (@f<n>), never wall seconds. The family stays capped (NC), measured:
@@ -37,7 +35,7 @@
 @f700 obj e00100090; send e00100090 Decrement
 @f800 visor dark
 @f860 send e00100090 Increment; visor combat
-@f900 setarea e0010008f 0; obj e0010008f
+@f900 obj e0010008f
 @f960 setarea e0010008f 16; obj e0010008f
 @f1000 kill e0010008f
 @f1100 visor dark

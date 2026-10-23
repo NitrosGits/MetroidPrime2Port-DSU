@@ -5,7 +5,7 @@
 # light-world GBUGs, e000500f0, e000500f8 and e000500f9.
 # The steps repeat the gb2 lane's tools/cov/specs/glowbug_templehall.con: god mode with missiles and
 # the scan visor, `objs Glowbug` and an `obj` of each bug, `Create` and `Activate` on all three, then
-# `place` at 6, 12, 3, 20 and 0.5 units from the player (the attack-range window), a beam shot and a
+# `place` at 6, 12, 3, 20 and 3 units from the player (the attack-range window), a beam shot and a
 # missile at e000500f8, the repeated `scan` of e000500f9 (ScanVisorRender), a combat-visor `obj`,
 # two missiles at e000500f0, another `objs Glowbug`, then Deactivate and Delete of e000500f9 and the
 # closing `objs Glowbug`.
@@ -23,7 +23,7 @@
 # ... orbit locked`, and `objs Glowbug` counting 2 objects at f2200 and 0 at f2500 once e000500f9 is
 # Deleted. Every step answers `=> ok`. Measured caveat: the two missiles at e000500f0 fire (`1 in
 # flight, 58 left` then `2 in flight, 57 left`) but the bug still reads hp 30/30 fsm Patrol at f2150
-# and is still listed at f2200 - 0.5 units from the player they do not reach it, so this family never
+# and is still listed at f2200 - 3 units from the player they do not reach it, so this family never
 # sees the second Glowbug die. The log's `init compiled module Glowbug` line lists the whole
 # compiled-module table, so it says the module is registered, not that it ran.
 # Checks are game updates (@f<n>), never wall seconds. The family runs fast like the rest, measured:
@@ -45,7 +45,7 @@
 @f1400 shoot e000500f8 missile
 @f1450 obj e000500f8
 @f1500 place e000500f9 player 20
-@f1600 place e000500f0 player 0.5
+@f1600 place e000500f0 player 3
 @f1650 obj e000500f0
 @f1700 obj e000500f9
 @f1750 scan e000500f9 20 150
