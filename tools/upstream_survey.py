@@ -46,14 +46,18 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 TSV = ROOT / "docs" / "modules.tsv"
 WORLDS = {"Agon Wastes": "42b935e4", "Torvus Bog": "3dfd2249", "Sanctuary Fortress": "1baa96c2",
           "Temple Grounds": "3bfa3eff", "Great Temple": "863fcd72"}
-# Modules with no object of their own: their code runs inside other modules' actors (the swarm
-# base, the pirate rag doll, the blob collision trackers) or at boot (the tweaks).
-NO_OBJECT = {"SwarmBasics", "PirateRagDoll", "GeomBlobV2", "Tweaks"}
+# Modules with no object of their own run at boot (the tweaks); the ones whose code runs inside
+# other modules' actors are driven through those (FILTERS below).
+NO_OBJECT = {"Tweaks"}
 # Class-name filters (`objs` matches a substring of the demangled class name) where the source
 # file names are not the class names.
 FILTERS = {"ScriptGui": ["CScriptGui"], "Metroid": ["CMetroid", "CBabyMetroid"],
            "GunTurret": ["CGunTurret"], "Sporb": ["CSporb"], "Grenchler": ["CGrenchler"],
-           "ScriptSafeZone": ["CScriptSafeZone"]}
+           "ScriptSafeZone": ["CScriptSafeZone"],
+           # no object of their own: the actors that use them (the swarm base under the flyer
+           # swarms, the rag doll a dying pirate makes, the Ing blob collision trackers)
+           "SwarmBasics": ["CFlyerSwarm"], "PirateRagDoll": ["CSpacePirate"],
+           "GeomBlobV2": ["CMinorIng", "CIng"]}
 WEAPONS = ["power", "dark", "light", "annihilator", "missile", "powerbomb", "bomb", "boostball",
            "screwattack", "sonicboom"]
 OBJ_RE = re.compile(r"^\s*u([0-9a-f]{4}) ([0-9a-f]{8})\s+(\S+)\s+a(-?\d+)(?: \(([^)]*)\))?(\s+inactive)?")
@@ -100,6 +104,56 @@ def first_spawn(spawns):
         elif world in WORLDS:  # not the multiplayer stations
             return spawn
     return frontend
+
+
+def scan_placements(path):
+    """{fourcc: [(world, area, layer, editor id)]} of every script type an upstream module lists,
+    from the disc (modules.tsv's spawns are the layers whose module list names the module, which
+    is not always a layer with a placement: MysteryFlyer, Puffer, IngSnatchingSwarm)."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import echoes_disc as ed
+    iso = ed.Iso(ed.find_iso())
+    paks = ed.load_paks(iso)
+    owner = {}
+    for pk in paks:
+        for rid, (t, *_rest) in pk.res.items():
+            owner.setdefault((t, rid), pk)
+    names = {int(v, 16): k for k, v in WORLDS.items()}
+    fcc = {t.strip("*").strip() for r in modules() for t in r["script_types"].split(",")}
+    occ, seen = {}, set()
+    for pk in paks:
+        for nm, (t, mid) in pk.names.items():
+            if t != "MLVL" or mid in seen:
+                continue
+            seen.add(mid)
+            try:
+                w = ed.parse_mlvl(pk.get(mid))
+            except Exception:
+                continue
+            for a in w["areas"]:
+                layers = ed.mrea_layers(owner[("MREA", a["mrea"])].get(a["mrea"]))
+                for li, sec in enumerate(layers):
+                    for t4, eid, _body in ed.scly_objects(sec):
+                        if t4 in fcc:
+                            occ.setdefault(t4, []).append((names.get(mid, nm), a["iname"], li, eid))
+    pathlib.Path(path).write_text(json.dumps(occ))
+    return occ
+
+
+def placement_spawn(r, occ):
+    """The spawn to boot for a module from the disc placements: the modules.tsv area when a
+    placement is there, else the first single-player placement on layer 0, else the first one."""
+    places = []
+    for t in r["script_types"].split(","):
+        places += [tuple(p) for p in occ.get(t.strip("*").strip(), [])]
+    places = [p for p in places if p[0] in WORLDS] or places
+    if not places:
+        return None
+    tsv = first_spawn(r["spawns"])
+    pick = next((p for p in places if tsv and (p[0], p[1]) == (tsv[0], tsv[1])), None) \
+        or next((p for p in places if p[2] == 0), None) or places[0]
+    layers = sorted({p[2] for p in places if (p[0], p[1]) == (pick[0], pick[1])})
+    return pick[0], pick[1], layers
 
 
 def filters_of(r):
@@ -348,7 +402,7 @@ def run_module(r, args, idx, area_override=None):
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
-    spawn = area_override or first_spawn(r["spawns"])
+    spawn = area_override or placement_spawn(r, args.occ) or first_spawn(r["spawns"])
     res = {"module": mod, "area": None, "spawned": False, "phase": "start"}
     if spawn is None:
         res["phase"] = "no spawn area"
@@ -521,6 +575,8 @@ def main():
     ap.add_argument("--no-fsm", action="store_true")
     ap.add_argument("--frontend-secs", type=int, default=90)
     ap.add_argument("--area", help="override the spawn: <world>/<area>[Ln,..]")
+    ap.add_argument("--placements", default="/tmp/opencode/up1_placements.json",
+                    help="the disc's placements of the modules' script types (scanned once)")
     ap.add_argument("--report", action="store_true")
     ap.add_argument("--write-cov-list", action="store_true")
     args = ap.parse_args()
@@ -531,6 +587,8 @@ def main():
         report(args)
         return
     rows = [r for r in modules() if not args.modules or r["module"] in args.modules]
+    args.occ = json.loads(pathlib.Path(args.placements).read_text()) \
+        if pathlib.Path(args.placements).exists() else scan_placements(args.placements)
     override = first_spawn(args.area.replace("/", "/", 1)) if args.area else None
     pathlib.Path(args.out).mkdir(parents=True, exist_ok=True)
     with concurrent.futures.ThreadPoolExecutor(args.jobs) as ex:
