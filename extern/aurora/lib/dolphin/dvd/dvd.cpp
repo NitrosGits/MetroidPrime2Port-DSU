@@ -49,6 +49,8 @@ namespace aurora::dvd::impl {
 
 namespace {
 
+void (*s_readErrorCallback)() = nullptr;
+
 class CommandDataBase {
 public:
   virtual ~CommandDataBase() = default;
@@ -59,17 +61,32 @@ public:
 class CommandDataNod final : public CommandDataBase {
 public:
   NodHandle* handle;
+  // Port: false for files of a second image (aurora_disc_image_*), whose failures aren't the game disc's.
+  bool reportErrors = true;
   explicit CommandDataNod(NodHandle* nod_handle) : handle(nod_handle) { }
   ~CommandDataNod() override {
     nod_free(handle);
   }
 
   int64_t read(uint8_t* buf, size_t len) override {
-    return nod_read(handle, buf, len);
+    const int64_t result = nod_read(handle, buf, len);
+    return reportErrors ? reportFailure(result) : result;
   }
 
   int64_t seek(int64_t offset, int32_t whence) override {
-    return nod_seek(handle, offset, whence);
+    const int64_t result = nod_seek(handle, offset, whence);
+    return reportErrors ? reportFailure(result) : result;
+  }
+
+private:
+  // Port: a failed read of the image itself (not an overlay file) means it is cut
+  // short or damaged; tell the port once so it can refuse the image next launch.
+  static int64_t reportFailure(int64_t result) {
+    static std::atomic_bool s_reported{false};
+    if (result < 0 && s_readErrorCallback != nullptr && !s_reported.exchange(true)) {
+      s_readErrorCallback();
+    }
+    return result;
   }
 };
 
@@ -237,14 +254,28 @@ s32 readFromHandle(CommandDataBase* handle, void* out, s32 length, s32 offset, u
   u8* writePtr = static_cast<u8*>(out);
   s32 totalRead = 0;
   s32 remaining = length;
+  bool retried = false;
   while (remaining > 0) {
     const int64_t read = handle->read(writePtr + totalRead, static_cast<size_t>(remaining));
     if (read < 0) {
       return DVD_RESULT_FATAL_ERROR;
     }
     if (read == 0) {
-      break;
+      // Port: 0 is end of file only at the file's end. Short of it (a failed
+      // block fetch), it used to finish the read as a silent success with the
+      // buffer unfilled; retry once from where it stopped, then fail.
+      const int64_t end = handle->seek(0, 2);
+      const int64_t at = static_cast<int64_t>(offset) + totalRead;
+      if (end >= 0 && at >= end) {
+        break;
+      }
+      if (retried || end < 0 || handle->seek(at, 0) != at) {
+        return DVD_RESULT_FATAL_ERROR;
+      }
+      retried = true;
+      continue;
     }
+    retried = false;
     totalRead += static_cast<s32>(read);
     remaining -= static_cast<s32>(read);
   }
@@ -1100,6 +1131,137 @@ BOOL DVDFastOpen(s32 entrynum, DVDFileInfo* fileInfo) {
 
   atomic_store_release(fileInfo->cb.state, DVD_STATE_END);
   return TRUE;
+}
+
+// The base disc's EntryNums are its own FST indexes, which nod opens directly.
+// No FST lock: overlay open callbacks run under it.
+void* aurora_dvd_base_open(s32 entrynum) {
+  if (s_partition == nullptr || entrynum <= 0 || entrynum >= s_baseEntryCount) {
+    return nullptr;
+  }
+  NodHandle* handle = nullptr;
+  if (nod_partition_open_file(s_partition, entrynum, &handle) != NOD_RESULT_OK || handle == nullptr) {
+    return nullptr;
+  }
+  return new CommandDataNod(handle);
+}
+
+int64_t aurora_dvd_base_read(void* handle, uint8_t* buf, size_t len) {
+  return handle != nullptr ? static_cast<CommandDataNod*>(handle)->read(buf, len) : -1;
+}
+
+int64_t aurora_dvd_base_seek(void* handle, int64_t offset, int32_t whence) {
+  return handle != nullptr ? static_cast<CommandDataNod*>(handle)->seek(offset, whence) : -1;
+}
+
+void aurora_dvd_base_close(void* handle) { delete static_cast<CommandDataNod*>(handle); }
+
+void aurora_dvd_set_read_error_callback(void (*callback)(void)) { s_readErrorCallback = callback; }
+
+// Port: a second, read-only image beside the game's disc.
+struct AuroraDiscImage {
+  NodHandle* disc = nullptr;
+  NodHandle* partition = nullptr;
+};
+
+AuroraDiscImage* aurora_disc_image_open(const char* path, char gameId[6], u8* discNumber, u8* discVersion) {
+  if (path == nullptr) {
+    return nullptr;
+  }
+  SDL_IOStream* io = SDL_IOFromFile(path, "rb");
+  if (io == nullptr) {
+    return nullptr;
+  }
+  const NodDiscStream stream{
+      .user_data = io,
+      .read_at = sdlStreamReadAt,
+      .stream_len = sdlStreamLen,
+      .close = sdlStreamClose,
+  };
+  const NodDiscOptions options{
+      .preloader_threads = 1,
+  };
+  auto* image = new AuroraDiscImage;
+  if (nod_disc_open_stream(&stream, &options, &image->disc) != NOD_RESULT_OK || image->disc == nullptr ||
+      nod_disc_open_partition_kind(image->disc, NOD_PARTITION_KIND_DATA, nullptr, &image->partition) !=
+          NOD_RESULT_OK ||
+      image->partition == nullptr) {
+    aurora_disc_image_close(image);
+    return nullptr;
+  }
+  NodDiscHeader header{};
+  if (nod_disc_header(image->disc, &header) != NOD_RESULT_OK) {
+    aurora_disc_image_close(image);
+    return nullptr;
+  }
+  if (gameId != nullptr) {
+    std::memcpy(gameId, header.game_id, 6);
+  }
+  if (discNumber != nullptr) {
+    *discNumber = header.disc_num;
+  }
+  if (discVersion != nullptr) {
+    *discVersion = header.disc_version;
+  }
+  return image;
+}
+
+void aurora_disc_image_list(AuroraDiscImage* image, void (*callback)(u32 index, const char* name, u32 size, void* user),
+                            void* user) {
+  if (image == nullptr || callback == nullptr) {
+    return;
+  }
+  struct Context {
+    void (*callback)(u32, const char*, u32, void*);
+    void* user;
+  } context{callback, user};
+  nod_partition_iterate_fst(
+      image->partition,
+      [](uint32_t index, NodNodeKind kind, const char* name, uint32_t size, void* data) -> uint32_t {
+        auto* ctx = static_cast<Context*>(data);
+        if (kind == NOD_NODE_KIND_FILE) {
+          ctx->callback(index, name, size, ctx->user);
+        }
+        return index + 1;
+      },
+      &context);
+}
+
+void* aurora_disc_image_file_open(AuroraDiscImage* image, u32 index) {
+  NodHandle* handle = nullptr;
+  if (image == nullptr || nod_partition_open_file(image->partition, index, &handle) != NOD_RESULT_OK ||
+      handle == nullptr) {
+    return nullptr;
+  }
+  auto* file = new CommandDataNod(handle);
+  file->reportErrors = false;
+  return file;
+}
+
+void aurora_disc_image_close(AuroraDiscImage* image) {
+  if (image == nullptr) {
+    return;
+  }
+  nod_free(image->partition);
+  nod_free(image->disc);
+  delete image;
+}
+
+// Port: from the raw fst.bin, whose 12-byte entries hold a file's offset at +4
+// (big-endian; Wii stores it divided by 4).
+int64_t aurora_dvd_base_offset(s32 entrynum) {
+  NodPartitionMeta meta{};
+  if (s_partition == nullptr || entrynum <= 0 || entrynum >= s_baseEntryCount ||
+      nod_partition_meta(s_partition, &meta) != NOD_RESULT_OK || meta.raw_fst.data == nullptr ||
+      meta.raw_fst.size < (static_cast<size_t>(entrynum) + 1) * 12) {
+    return -1;
+  }
+  const u8* entry = meta.raw_fst.data + static_cast<size_t>(entrynum) * 12;
+  if (entry[0] != 0) {
+    return -1; // a directory
+  }
+  const int64_t offset = (int64_t{entry[4]} << 24) | (entry[5] << 16) | (entry[6] << 8) | entry[7];
+  return nod_partition_is_wii(s_partition) ? offset * 4 : offset;
 }
 
 BOOL DVDOpen(const char* fileName, DVDFileInfo* fileInfo) {

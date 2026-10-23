@@ -4,6 +4,7 @@
 #include "../../gfx/tex_copy_conv.hpp"
 #include "../../gfx/texture.hpp"
 #include "../../gfx/recording.hpp"
+#include "../../gfx/probe.hpp"
 #include "../../window.hpp"
 #include "../../gfx/clear.hpp"
 #include "../../webgpu/gpu.hpp"
@@ -11,6 +12,10 @@
 #include "../../gx/fifo.hpp"
 #include "../../gfx/perf.hpp"
 #include "../vi/vi_internal.hpp"
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <algorithm>
 #include <cstdlib>
@@ -37,48 +42,60 @@ aurora::Vec2<uint32_t> scale_copy_dst(u32 logicalWidth, u32 logicalHeight) {
 } // namespace
 
 namespace aurora::gx {
+// An EFB copy of the HDR scene keeps the tone curve as it is now; linear: GXPortCopyScene's.
+static gfx::ResolveHdr resolve_hdr(bool linear) noexcept {
+  gfx::ResolveHdr hdr{.linear = linear};
+  static_assert(sizeof(hdr.tone) == sizeof(g_gxState.pbrTone));
+  std::memcpy(hdr.tone.data(), g_gxState.pbrTone.data(), sizeof(hdr.tone));
+  return hdr;
+}
+
 void copy_tex(const void* dest, GXBool clear) noexcept {
   const auto rect = map_logical_scissor(g_gxState.texCopySrc);
   const auto [dstWidth, dstHeight] = scale_copy_dst(g_gxState.texCopyDstWidth, g_gxState.texCopyDstHeight);
   const auto texCopyFmt = g_gxState.texCopyFmt;
+  // GXPortCopyScene in the HDR scene's own pass, of a plain colour format: the linear RGBA16F
+  // scene, in its own texture (the key's linear), never RGB565's 8-bit conversion. Every other
+  // copy, of the HDR scene too, is the display copy it always was.
+  const bool linear = g_gxState.copySceneLinear && gfx::scene_hdr_pass_active() && !is_depth_format(texCopyFmt) &&
+                      (texCopyFmt == GX_TF_RGB565 || !gfx::tex_copy_conv::needs_conversion(texCopyFmt));
+  // A mip chain only for plain colour copies (converted formats keep one level). A linear copy is
+  // never converted (RGB565's is RGBA16F with alpha 1), so it keeps the chain it asked for.
+  const bool copyMips =
+      g_gxState.texCopyMips && (linear || !gfx::tex_copy_conv::needs_conversion(texCopyFmt));
+  uint32_t mipCount = 1;
+  if (copyMips) {
+    for (u32 edge = std::max(dstWidth, dstHeight); edge > 1; edge >>= 1) {
+      ++mipCount;
+    }
+  }
 
   const GXState::CopyTextureKey key{
       .dest = dest,
       .width = dstWidth,
       .height = dstHeight,
       .format = texCopyFmt,
+      .mips = mipCount > 1,
+      .linear = linear,
   };
-  // Port: the cache is keyed by size, and nothing evicts it unless the game calls GXDestroyCopyTex,
-  // which MP2 never does. The scan visor copies into the same buffers at a different size on most
-  // frames while its window opens, so each size kept a screen-scaled texture alive for good (the
-  // tablet was OOM-killed minutes after scanning). Keep a few recent entries per destination,
-  // since one buffer can take more than one size or format in a frame, and drop the oldest.
-  static u64 sCopyUse = 0;
-  constexpr size_t MaxCopyTexturesPerDest = 4;
+  static u64 s_copySerial = 0;
   auto it = g_gxState.copyTextureCache.find(key);
   if (it == g_gxState.copyTextureCache.end()) {
-    size_t sameDest = 0;
-    auto oldest = g_gxState.copyTextureCache.end();
-    for (auto cit = g_gxState.copyTextureCache.begin(); cit != g_gxState.copyTextureCache.end(); ++cit) {
-      if (cit->first.dest != dest) {
-        continue;
-      }
-      ++sameDest;
-      if (oldest == g_gxState.copyTextureCache.end() || cit->second.lastUse < oldest->second.lastUse) {
-        oldest = cit;
-      }
-    }
-    if (sameDest >= MaxCopyTexturesPerDest) {
-      // Its palette conversions go with it: they are keyed by the copy texture's address and are
-      // as large as the copy, so on the tablet (3195x1864) each stale one held ~24 MB for the
-      // 600-frame idle sweep, and the scan visor made one per frame - over 1 GB in two seconds.
-      if (oldest->second.handle) {
-        evict_dynamic_palettes(oldest->second.handle.get());
-      }
-      g_gxState.copyTextureCache.erase(oldest);
-    }
+    // Port: MP2 keeps 4 sizes per destination (MP1 keeps 16 for its fog volumes). The scan visor
+    // copies into the same buffers at a new size on most frames while its window opens, and each
+    // size is a screen-scaled texture (~24 MB on the tablet), so 16 of them OOM-killed it.
+    constexpr size_t kSizesPerDest = 4;
+    trim_copy_sizes(dest, kSizesPerDest - 1);
     gfx::TextureHandle handle;
-    if (gfx::tex_copy_conv::needs_conversion(texCopyFmt)) {
+    if (linear) {
+      // RGBA16F; gxFormat only picks the alpha-1 swizzle, as for "Resolved Texture".
+      const auto fmt = texCopyFmt == GX_TF_RGB565 || g_gxState.pixelFmt == GX_PF_RGB8_Z24 ||
+                               g_gxState.pixelFmt == GX_PF_RGB565_Z16
+                           ? GX_TF_RGB565
+                           : GX_TF_RGBA8;
+      handle = gfx::new_render_texture(dstWidth, dstHeight, fmt, "Linear Scene Copy", mipCount,
+                                       wgpu::TextureFormat::RGBA16Float);
+    } else if (gfx::tex_copy_conv::needs_conversion(texCopyFmt)) {
       handle = gfx::new_conv_texture(dstWidth, dstHeight, texCopyFmt, "Copy Conv Texture");
     } else {
       // Configure the texture swizzle to use alpha 1.0 if targeting RGB565 or EFB doesn't have alpha
@@ -86,27 +103,20 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
           texCopyFmt == GX_TF_RGB565 || g_gxState.pixelFmt == GX_PF_RGB8_Z24 || g_gxState.pixelFmt == GX_PF_RGB565_Z16
               ? GX_TF_RGB565
               : GX_TF_RGBA8;
-      handle = gfx::new_render_texture(dstWidth, dstHeight, fmt, "Resolved Texture");
+      handle = gfx::new_render_texture(dstWidth, dstHeight, fmt, "Resolved Texture", mipCount);
     }
     it = g_gxState.copyTextureCache.emplace(key, GXState::CopyTextureRef{.handle = handle, .revision = 0}).first;
+    static const bool logNew = aurora::env_flag("MP2_LOG_COPY_TEX");
+    if (logNew) {
+      std::fprintf(stderr, "[copytex] new %p %ux%u (logical %ux%u) fmt %u%s, %zu cached\n", dest, dstWidth,
+                   dstHeight, g_gxState.texCopyDstWidth, g_gxState.texCopyDstHeight,
+                   static_cast<unsigned>(texCopyFmt), linear ? " linear" : "", g_gxState.copyTextureCache.size());
+    }
   }
   auto& handle = it->second;
-  handle.lastUse = ++sCopyUse;
 
-  if (g_gxState.alphaUpdate && g_gxState.dstAlpha != UINT32_MAX) {
-    if (!clear) {
-      // TODO: figure out the right behavior here.
-      // should the copy have a specific alpha value but the EFB remains untouched?
-    }
-    // Overwrite alpha before resolving
-    gfx::push_draw_command(gfx::clear::DrawData{
-        .pipeline =
-            gfx::pipeline_ref(gfx::clear::make_pipeline_config(gfx::get_render_target_layout(), false, true, false)),
-        .color = wgpu::Color{0.f, 0.f, 0.f, g_gxState.dstAlpha / 255.f},
-    });
-  }
   const auto clearColor = clear && g_gxState.colorUpdate;
-  const auto clearAlpha = clear && g_gxState.alphaUpdate;
+  const auto clearAlpha = clear && g_gxState.alphaUpdate && efb_has_alpha(g_gxState.pixelFmt);
   const auto clearDepth = clear && g_gxState.depthUpdate;
   // Port: AURORA_RENDER_EVERY: the copy's destination decides whether the frame has to be rendered
   // in full. A new or one-shot destination (a render-to-texture at an area load) has to be
@@ -115,9 +125,17 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
   // The decision is made before the pass that carries the copy is sealed below.
   fifo::note_copy_destination(reinterpret_cast<uint64_t>(dest), dstWidth, dstHeight,
                                static_cast<uint32_t>(texCopyFmt));
-  gfx::resolve_pass_into(handle.handle, rect, clearColor, clearAlpha, clearDepth, g_gxState.clearColor,
-                         clear_depth_value(), texCopyFmt);
+  // Cost test 11 measures what the copies' pass breaks cost; a copy that clears still has to.
+  if (clear || GXGetPBRCostTest() != 11) {
+    const auto hdr = resolve_hdr(linear);
+    gfx::resolve_pass_into(handle.handle, rect, clearColor, clearAlpha, clearDepth, g_gxState.clearColor,
+                           clear_depth_value(), texCopyFmt, -1, mipCount > 1, &hdr,
+                           !efb_has_alpha(g_gxState.pixelFmt));
+  }
   ++handle.revision;
+  handle.lastCopy = ++s_copySerial;
+  handle.width = g_gxState.texCopyDstWidth;
+  handle.height = g_gxState.texCopyDstHeight;
   {
     // Port diagnostic (temporary): keep the copy out of the CPU-destination map, so the game's own
     // upload of that pointer (the CPU bytes) is what gets bound.
@@ -127,6 +145,13 @@ void copy_tex(const void* dest, GXBool clear) noexcept {
     }
   }
   texture::invalidate_bindings();
+}
+
+void copy_probe_face(u32 face) noexcept {
+  const auto rect = map_logical_scissor(g_gxState.texCopySrc);
+  const auto hdr = resolve_hdr(false);
+  gfx::resolve_pass_into(gfx::probe::face(face), rect, true, true, true, g_gxState.clearColor, clear_depth_value(),
+                         GX_TF_RGBA8, static_cast<int>(face % 6), false, &hdr);
 }
 } // namespace aurora::gx
 
@@ -197,8 +222,8 @@ void GXAdjustForOverscan(GXRenderModeObj* rmin, GXRenderModeObj* rmout, u16 hor,
   // Games size their viewports from the shrunk EFB (Echoes passes ver=16 and draws a
   // 640x448 view); a 640x480 logical framebuffer left that view unscaled and inset.
   // The sizes stay logical: never copy the OS window's pixel size into fbWidth (the GX
-  // scissor is an 11-bit field biased by 342, so 2351 wraps it to zero width and clips
-  // every draw away). Aurora scales the logical framebuffer up to the window instead.
+  // scissor is a 12-bit field biased by 342, width <= 3754, so 4096 wraps it to zero width
+  // and clips every draw away). Aurora scales the logical framebuffer up to the window instead.
   const u16 hor2 = static_cast< u16 >(hor * 2);
   const u16 ver2 = static_cast< u16 >(ver * 2);
   *rmout = *rmin;
@@ -269,8 +294,16 @@ void GXSetDispCopyGamma(GXGamma gamma) {}
 
 void GXCopyDisp(void* dest, GXBool clear) {}
 
+// Port extension: counts EFB copies made from the game thread (GXPortCopySerial).
+static u32 sCopySerial = 0;
+
+u32 GXPortCopySerial(void) { return sCopySerial; }
+
+void __GXPortInvalidateCopySerial() { ++sCopySerial; }
+
 void GXCopyTex(void* dest, GXBool clear) {
   aurora::perf::copy_site(__builtin_return_address(0));
+  ++sCopySerial;
   GX_WRITE_AURORA(GX_AURORA_LOAD_COPY_DEST);
   GX_WRITE_U64(reinterpret_cast<u64>(dest));
 
@@ -279,6 +312,14 @@ void GXCopyTex(void* dest, GXBool clear) {
   SET_REG_FIELD(0, __gx->cpTex, 8, 24, 0x52);
   GX_WRITE_RAS_REG(__gx->cpTex);
   aurora::gx::fifo::publish();
+}
+
+void GXPortCopyScene(void* dest, GXBool clear) {
+  GX_WRITE_AURORA(GX_AURORA_PORT_COPY_SCENE);
+  GX_WRITE_U8(1);
+  GXCopyTex(dest, clear);
+  GX_WRITE_AURORA(GX_AURORA_PORT_COPY_SCENE);
+  GX_WRITE_U8(0);
 }
 
 // TODO GXGetYScaleFactor

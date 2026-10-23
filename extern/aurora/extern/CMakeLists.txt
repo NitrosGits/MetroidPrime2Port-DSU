@@ -13,6 +13,14 @@ function(aurora_find_package_global)
   find_package(${ARGV} GLOBAL)
 endfunction()
 
+# AURORA_BUNDLED_DEPS: skip the system search for abseil, fmt, libpng, freetype
+# and sqlite3, so they are always fetched and linked statically.
+function(aurora_find_system_package_global)
+  if (NOT AURORA_BUNDLED_DEPS)
+    find_package(${ARGV} GLOBAL)
+  endif ()
+endfunction()
+
 if (AURORA_ENABLE_GX)
   include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/AuroraDawnProvider.cmake)
   set(AURORA_DAWN_IS_SHARED "${AURORA_DAWN_IS_SHARED}" PARENT_SCOPE)
@@ -21,7 +29,7 @@ endif ()
 # Abseil is needed for core libraries. It normally comes via Dawn's vendor build.
 # Otherwise prefer a system package and only fetch it as a last resort.
 if (NOT TARGET absl::flat_hash_map OR NOT TARGET absl::btree)
-  aurora_find_package_global(absl CONFIG QUIET GLOBAL)
+  aurora_find_system_package_global(absl CONFIG QUIET GLOBAL)
 endif ()
 
 if (TARGET absl::flat_hash_map AND TARGET absl::btree)
@@ -36,6 +44,7 @@ else ()
   set(ABSL_PROPAGATE_CXX_STD ON)
   FetchContent_Declare(abseil-cpp
     URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20240722.0.tar.gz
+    URL_HASH SHA256=f50e5ac311a81382da7fa75b97310e4b9006474f9560ac46f54a9967f07d4ae3
     DOWNLOAD_EXTRACT_TIMESTAMP FALSE
     EXCLUDE_FROM_ALL
   )
@@ -92,7 +101,7 @@ else ()
 endif ()
 
 if (NOT TARGET fmt::fmt)
-  aurora_find_package_global(fmt 11 QUIET)
+  aurora_find_system_package_global(fmt 11 QUIET)
   if (NOT TARGET fmt::fmt)
     message(STATUS "aurora: Fetching fmt")
     FetchContent_Declare(fmt
@@ -129,7 +138,8 @@ if (AURORA_ENABLE_GX)
     set(ZLIB_BUILD_TESTING OFF CACHE BOOL "Enable Zlib Examples as tests" FORCE)
     set(ZLIB_INSTALL OFF CACHE BOOL "Enable installation of zlib" FORCE)
     set(ZLIB_COMPAT ON CACHE BOOL "Use the compat version of zlib instead of the newer zlib-ng" FORCE)
-    if (MSVC AND CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    if (MSVC AND CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_SYSTEM_PROCESSOR MATCHES "^([Aa][Rr][Mm]64|aarch64)$")
+      # (Windows reports the processor as ARM64, in capitals.)
       # zlib-ng's NEON LD4 probe passes GNU-style -march flags that clang-cl rejects
       set(NEON_HAS_LD4 1 CACHE INTERNAL "")
     endif ()
@@ -157,8 +167,8 @@ if (AURORA_ENABLE_GX)
     elseif (TARGET png_static)
       add_library(PNG::PNG ALIAS png_static)
     else ()
-      aurora_find_package_global(PNG QUIET)
-      if (NOT TARGET PNG::PNG)
+      aurora_find_system_package_global(PNG QUIET)
+      if (NOT TARGET PNG::PNG AND NOT AURORA_BUNDLED_DEPS)
         find_package(PkgConfig)
         if (PkgConfig_FOUND AND NOT CMAKE_CROSSCOMPILING)
           pkg_check_modules(libpng IMPORTED_TARGET GLOBAL libpng)
@@ -194,8 +204,8 @@ if (AURORA_ENABLE_GX)
     message(STATUS "aurora: Using existing libpng")
   endif ()
 
-  aurora_find_package_global(Freetype QUIET)
-  if (NOT TARGET Freetype::Freetype)
+  aurora_find_system_package_global(Freetype QUIET)
+  if (NOT TARGET Freetype::Freetype AND NOT AURORA_BUNDLED_DEPS)
     find_package(PkgConfig)
     if (PkgConfig_FOUND AND NOT CMAKE_CROSSCOMPILING)
       pkg_check_modules(freetype2 IMPORTED_TARGET GLOBAL freetype2)
@@ -209,6 +219,7 @@ if (AURORA_ENABLE_GX)
     set(FT_DISABLE_BROTLI ON CACHE BOOL "" FORCE)
     set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "" FORCE)
     set(FT_DISABLE_PNG ON CACHE BOOL "" FORCE)
+    set(FT_DISABLE_BZIP2 ON CACHE BOOL "" FORCE)
     FetchContent_Declare(Freetype
       URL https://files.twilitrealm.dev/freetype-2.14.3.tar.gz
       URL_HASH SHA256=e61b31ab26358b946e767ed7eb7f4bb2e507da1cfefeb7a8861ace7fd5c899a1
@@ -269,14 +280,14 @@ if (AURORA_ENABLE_GX)
     target_link_libraries(imgui PRIVATE ${AURORA_SDL3_TARGET})
   endif ()
 
-  aurora_find_package_global(SQLite3)
+  aurora_find_system_package_global(SQLite3)
   if (TARGET SQLite3::SQLite3)
     message(STATUS "aurora: Using existing sqlite3")
     add_library(sqlite3 ALIAS SQLite3::SQLite3)
   elseif (TARGET SQLite::SQLite3) # CMake < 4.3
     message(STATUS "aurora: Using existing sqlite3")
     add_library(sqlite3 ALIAS SQLite::SQLite3)
-  else ()
+  elseif (NOT AURORA_BUNDLED_DEPS)
     find_package(PkgConfig)
     if (PkgConfig_FOUND AND NOT CMAKE_CROSSCOMPILING)
       pkg_check_modules(sqlite3 IMPORTED_TARGET GLOBAL sqlite3)

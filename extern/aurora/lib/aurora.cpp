@@ -1,16 +1,20 @@
 #include <aurora/aurora.h>
+#include <aurora/phase.hpp>
 #include <aurora/time.hpp>
 
 #ifdef AURORA_ENABLE_GX
 #include "gfx/resources.hpp"
 #include "gfx/frame.hpp"
+#include "gfx/pipeline_cache.hpp"
 #include "gfx/recording.hpp"
+#include "gfx/texture.hpp"
 #include "gfx/render_worker.hpp"
 #include "gx/command_processor.hpp"
 #include "gx/fifo.hpp"
 #include "gx/gx.hpp"
 #include "gx/texture.hpp"
 #include "imgui.hpp"
+#include "io.hpp"
 #include "webgpu/gpu.hpp"
 #include "webgpu/gpu_prof.hpp"
 #include <webgpu/webgpu_cpp.h>
@@ -26,7 +30,9 @@
 #include "thread.hpp"
 #include "window.hpp"
 
+#include <SDL3/SDL_init.h>
 #include <SDL3/SDL_filesystem.h>
+#include <SDL3/SDL_messagebox.h>
 #include <SDL3/SDL_surface.h>
 #include <magic_enum.hpp>
 
@@ -36,6 +42,7 @@
 #include <mutex>
 #include <string>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 
 #include "system_info.hpp"
@@ -160,10 +167,9 @@ void record_screenshot(wgpu::CommandEncoder& encoder, std::vector<gfx::AfterSubm
           // alpha channel saves an image every viewer shows as fully transparent (a 32-bit BMP
           // with an alpha mask, or a PNG whose alpha is 0). The X formats drop it: SDL writes a
           // 24-bit BMP and converts to opaque RGBA for PNG.
-          const SDL_PixelFormat format = png ? (bgra ? SDL_PIXELFORMAT_BGRX32 : SDL_PIXELFORMAT_RGBX32)
-                                             : (bgra ? SDL_PIXELFORMAT_BGRA32 : SDL_PIXELFORMAT_RGBA32);
           SDL_Surface* surface = SDL_CreateSurfaceFrom(
-              static_cast<int>(width), static_cast<int>(height), format, const_cast<void*>(pixels),
+              static_cast<int>(width), static_cast<int>(height),
+              bgra ? SDL_PIXELFORMAT_BGRX32 : SDL_PIXELFORMAT_RGBX32, const_cast<void*>(pixels),
               static_cast<int>(bytesPerRow));
           if (surface == nullptr) {
             Log.warn("Unable to create screenshot surface: {}", SDL_GetError());
@@ -304,13 +310,21 @@ AuroraInfo initialize(int argc, char* argv[], const AuroraConfig& config) noexce
     }
   }
 
-  if (!windowCreated) {
+  // Without a usable GPU (a virtual machine without 3D acceleration, a broken driver), a software
+  // adapter such as llvmpipe or WARP still draws a picture, slowly; the Null backend draws nothing.
+  // So unless CPU adapters are allowed from the start, a second pass takes them before Null.
+  const int passes = config.allowCpuAdapter ? 1 : 2;
+  for (int pass = 0; pass < passes && !windowCreated; ++pass) {
+    const bool allowCpu = config.allowCpuAdapter || pass == 1;
     for (const auto backendType : PreferredBackendOrder) {
+      if (pass + 1 < passes && backendType == BACKEND_NULL) {
+        continue;
+      }
       selectedBackend = backendType;
       if (!window::create_window(selectedBackend)) {
         continue;
       }
-      if (webgpu::initialize(selectedBackend, config.allowCpuAdapter)) {
+      if (webgpu::initialize(selectedBackend, allowCpu)) {
         windowCreated = true;
         break;
       } else {
@@ -320,6 +334,15 @@ AuroraInfo initialize(int argc, char* argv[], const AuroraConfig& config) noexce
   }
 
   AURORA_ASSERT(windowCreated, "Error creating window: {}", SDL_GetError());
+
+  if (webgpu::g_backendType == wgpu::BackendType::Null && config.noGraphicsMessage != nullptr) {
+    Log.error("No graphics device could be started; exiting");
+    // No parent: the window isn't shown yet, and a box owned by a hidden window may not show either.
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, config.appName, config.noGraphicsMessage, nullptr);
+    window::destroy_window();
+    SDL_Quit();
+    std::exit(1);
+  }
 
   // Initialize SDL_Renderer for ImGui when we can't use a Dawn backend
   if (webgpu::g_backendType == wgpu::BackendType::Null && !headless()) {
@@ -384,6 +407,7 @@ void shutdown() noexcept {
 
 const AuroraEvent* update() noexcept {
   ZoneScoped;
+  phase::set(phase::Main, "window event pump");
   if (g_initialFrame) {
     g_initialFrame = false;
     input::initialize();
@@ -391,7 +415,41 @@ const AuroraEvent* update() noexcept {
 #ifdef AURORA_ENABLE_GX
   gx::update();
 #endif
-  return window::poll_events();
+  const AuroraEvent* events = window::poll_events();
+  phase::set(phase::Main, "game update");
+  return events;
+}
+
+#ifdef AURORA_ENABLE_GX
+// Returns false (after dropping the surface where needed) when no frame can be drawn
+// because the surface is changing or gone.
+static bool service_surface(const char* caller) noexcept {
+  // Android keeps the native window across surfaceChanged. Releasing the surface here
+  // would rebuild it on that same window while the old swapchain is still connected,
+  // which fails with VK_ERROR_NATIVE_WINDOW_IN_USE_KHR (a lost device). Skip the frame.
+  if (window::is_surface_changing()) {
+    return false;
+  }
+  const bool invalidated = window::consume_surface_invalidated();
+  if (!window::is_presentable() || (invalidated && webgpu::surface_window_changed())) {
+    static int sNotPresentable = 0;
+    if (sNotPresentable++ < 3) {
+      Log.warn("{}: not presentable - surfaceReady={} backgrounded={} invalidated={}", caller,
+               window::is_surface_ready(), window::is_backgrounded(), invalidated);
+    }
+    webgpu::release_surface();
+    return false;
+  }
+  return true;
+}
+#endif
+
+void release_lost_surface() noexcept {
+#ifdef AURORA_ENABLE_GX
+  if (g_surface) {
+    service_surface("release_lost_surface");
+  }
+#endif
 }
 
 #ifdef AURORA_ENABLE_GX
@@ -427,14 +485,7 @@ bool begin_frame() noexcept {
 #ifdef AURORA_ENABLE_GX
   // Port: AURORA_HEADLESS has no surface to check or rebuild.
   if (!headless()) {
-    const bool invalidated = window::consume_surface_invalidated();
-    if (!window::is_presentable() || (invalidated && webgpu::surface_window_changed())) {
-      static int sNotPresentable = 0;
-      if (sNotPresentable++ < 3) {
-        Log.warn("begin_frame: not presentable - surfaceReady={} backgrounded={} invalidated={}",
-                 window::is_surface_ready(), window::is_backgrounded(), invalidated);
-      }
-      webgpu::release_surface();
+    if (!service_surface("begin_frame")) {
       return false;
     }
     if (window::is_paused()) {
@@ -451,12 +502,12 @@ bool begin_frame() noexcept {
         return false;
       }
     }
-    if (const uint32_t quality = g_pendingQuality.exchange(0, std::memory_order_acq_rel);
-        quality != 0) {
-      webgpu::set_quality(quality >> 16, static_cast< uint16_t >(quality & 0xFFFF));
+    if (const uint32_t quality = g_pendingQuality.exchange(0, std::memory_order_acq_rel); quality != 0) {
+      webgpu::set_quality(quality >> 16, static_cast<uint16_t>(quality & 0xFFFF));
     }
   }
 
+  phase::set(phase::Main, "begin_frame (waiting for a frame slot)");
   if (!gfx::begin_frame()) {
     return false;
   }
@@ -475,7 +526,21 @@ bool begin_frame() noexcept {
 
 void end_frame() noexcept {
   ZoneScoped;
+  // The frames just after an EFB resize, timed for its log line (webgpu::resize_swapchain).
+  struct ResizeFrameTimer {
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    bool timed = webgpu::g_resizeFramesToTime > 0;
+    ~ResizeFrameTimer() {
+      if (timed) {
+        const int index = 3 - webgpu::g_resizeFramesToTime--;
+        const double ms =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+        Log.info("EFB resize: frame {} after it took {:.1f} ms to record, submit and present", index, ms);
+      }
+    }
+  } resizeFrameTimer;
 #ifdef AURORA_ENABLE_GX
+  phase::set(phase::Main, "end_frame (recording and queueing the frame)");
   gx::fifo::drain();
   gx::fifo::end_frame();
   gx::texture::end_frame();
@@ -507,6 +572,7 @@ void end_frame() noexcept {
     wgpu::Texture currentTexture;
     wgpu::TextureView currentView;
     auto surfaceStatus = wgpu::SurfaceGetCurrentTextureStatus::Error;
+    bool acquireAttempted = false;
     // Port: AURORA_PRESENT_EVERY=<n> presents one frame in n (test runs on Xvfb, where each present
     // is a CPU copy under MESA_VK_WSI_DEBUG=sw). The frame is still rendered; screenshots read the EFB.
     static const uint32_t presentEvery = [] {
@@ -537,8 +603,11 @@ void end_frame() noexcept {
       window::SurfaceLock surfaceLock;
       if (!skipPresent && window::is_presentable() && g_surface) {
         ZoneScopedN("Acquire texture");
+        phase::set(phase::Render, "surface GetCurrentTexture");
         wgpu::SurfaceTexture surfaceTexture;
         g_surface.GetCurrentTexture(&surfaceTexture);
+        phase::set(phase::Render, "present blit recording");
+        acquireAttempted = true;
         surfaceStatus = surfaceTexture.status;
         if (surfaceStatus == wgpu::SurfaceGetCurrentTextureStatus::SuccessOptimal) {
           currentTexture = std::move(surfaceTexture.texture);
@@ -583,23 +652,8 @@ void end_frame() noexcept {
           pass.SetBindGroup(0, rmlBindGroup, 0, nullptr);
           pass.Draw(3);
         }
-        pass.End();
-      }
-      {
-        const std::array attachments{
-            wgpu::RenderPassColorAttachment{
-                .view = currentView,
-                .loadOp = wgpu::LoadOp::Load,
-                .storeOp = wgpu::StoreOp::Store,
-            },
-        };
-        const wgpu::RenderPassDescriptor renderPassDescriptor{
-            .label = "ImGui render pass",
-            .colorAttachmentCount = attachments.size(),
-            .colorAttachments = attachments.data(),
-            .timestampWrites = webgpu::gpu_prof::pass_writes("ImGui"),
-        };
-        const auto pass = encoder.BeginRenderPass(&renderPassDescriptor);
+        // ImGui draws in the same pass: a second pass would write the whole swapchain image out
+        // and read it back in, which costs a tile-based (mobile) GPU a full-screen round trip.
         pass.SetViewport(0.f, 0.f, static_cast<float>(webgpu::g_graphicsConfig.surfaceConfiguration.width),
                          static_cast<float>(webgpu::g_graphicsConfig.surfaceConfiguration.height), 0.f, 1.f);
         imgui::render(pass, imguiDrawData);
@@ -613,8 +667,11 @@ void end_frame() noexcept {
     const auto buffer = encoder.Finish(&cmdBufDescriptor);
     {
       ZoneScopedN("Queue Submit");
+      phase::set(phase::Render, "queue submit");
       g_queue.Submit(1, &buffer);
     }
+    gfx::sample_dawn_memory();
+    phase::set(phase::Render, "after submit");
     webgpu::gpu_prof::after_submit();
     if (canPresent && g_surface) {
       ZoneScopedN("Present");
@@ -622,16 +679,22 @@ void end_frame() noexcept {
       {
         window::SurfaceLock surfaceLock;
         if (window::is_presentable()) {
+          phase::set(phase::Render, "surface Present");
           status = g_surface.Present();
         }
       }
+      phase::set(phase::Render, "after present");
       if (status) {
         gfx::after_present();
       } else {
         Log.warn("Surface present failed");
         webgpu::release_surface();
       }
-    } else if (g_surface && !skipPresent) {
+    } else if (g_surface && acquireAttempted) {
+      // Without an attempt, surfaceStatus is only the Error placeholder: the window was briefly
+      // not presentable (an Android surfaceChanged, say). Dropping the surface then made
+      // begin_frame build a second VkSurface on the same ANativeWindow while the old swapchain
+      // was still connected, which fails with VK_ERROR_NATIVE_WINDOW_IN_USE_KHR (device lost).
       switch (surfaceStatus) {
       case wgpu::SurfaceGetCurrentTextureStatus::Timeout:
         Log.warn("Surface texture acquisition timed out");
@@ -647,7 +710,8 @@ void end_frame() noexcept {
         break;
       case wgpu::SurfaceGetCurrentTextureStatus::Error:
         Log.warn("Surface texture is {}, dropping surface", magic_enum::enum_name(surfaceStatus));
-        webgpu::release_surface(); // Port: was `g_surface = {}`, see gpu.cpp release_surface_locked
+        g_surface = {};
+        window::set_surface_held(false);
         break;
       default:
         if (!window::is_presentable()) {
@@ -754,8 +818,22 @@ AuroraInfo aurora_initialize(int argc, char* argv[], const AuroraConfig* config)
 void aurora_shutdown() { aurora::shutdown(); }
 const AuroraEvent* aurora_update() { return aurora::update(); }
 bool aurora_begin_frame() { return aurora::begin_frame(); }
+void aurora_release_lost_surface() { aurora::release_lost_surface(); }
+bool aurora_is_suspended() {
+  return aurora::window::is_backgrounded() || !aurora::window::is_surface_ready() ||
+         aurora::window::is_surface_changing();
+}
 void aurora_end_frame() { aurora::end_frame(); }
+void aurora_set_background_pipelines_paused(bool paused) { aurora::gfx::set_background_pipelines_paused(paused); }
+void aurora_disable_config_persistence() { aurora::io::disable_config_persistence(); }
 AuroraBackend aurora_get_backend() { return aurora::g_config.desiredBackend; }
+const char* aurora_get_gpu_driver() {
+  static std::string driver;
+  const wgpu::StringView description = aurora::webgpu::g_adapterInfo.description;
+  driver = description.IsUndefined() ? std::string() : std::string(description.data, description.length);
+  return driver.c_str();
+}
+bool aurora_vulkan_library_failed() { return aurora::webgpu::g_vulkanLibraryFailed; }
 const AuroraBackend* aurora_get_available_backends(size_t* count) {
   if (count != nullptr) {
     *count = aurora::PreferredBackendOrder.size();
@@ -775,9 +853,23 @@ void aurora_set_resampler(AuroraSampler sampler) {
   (void)sampler;
 #endif
 }
+
+void aurora_set_present_sharpness(float sharpness) {
+#ifdef AURORA_ENABLE_GX
+  aurora::webgpu::set_present_sharpness(sharpness);
+#else
+  (void)sharpness;
+#endif
+}
 void aurora_set_graphics_quality(uint32_t msaa, uint16_t maxTextureAnisotropy) {
-  aurora::g_pendingQuality.store(std::min(msaa, 4u) << 16 | maxTextureAnisotropy,
-                                 std::memory_order_release);
+  aurora::g_pendingQuality.store(std::min(msaa, 4u) << 16 | maxTextureAnisotropy, std::memory_order_release);
+}
+void aurora_set_per_pixel_lighting(bool enabled) {
+#ifdef AURORA_ENABLE_GX
+  aurora::gx::set_per_pixel_lighting(enabled);
+#else
+  (void)enabled;
+#endif
 }
 void aurora_set_timescale(float scale) { aurora::time::set_scale(scale); }
 float aurora_get_timescale() { return aurora::time::scale(); }

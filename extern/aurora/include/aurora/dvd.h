@@ -122,6 +122,55 @@ void aurora_dvd_overlay_files(const AuroraOverlayFile* files, size_t nFiles, s32
  */
 s32 aurora_dvd_base_entry_count();
 
+/**
+ * \brief Opens a file of the loaded disc by its base EntryNum, ignoring overlays.
+ *
+ * Lets an overlay serve a patched version of the file it replaces. Does not take the FST lock, so it may be called
+ * from overlay callbacks. Returns null for directories, EntryNums past aurora_dvd_base_entry_count(), or with no disc
+ * open. The handle must be closed with aurora_dvd_base_close before the disc is closed.
+ */
+void* aurora_dvd_base_open(s32 entrynum);
+
+/** \brief Reads from a handle from aurora_dvd_base_open. Returns the amount read, or -1 on error. */
+int64_t aurora_dvd_base_read(void* handle, uint8_t* buf, size_t len);
+
+/** \brief Seeks a handle from aurora_dvd_base_open. Returns the resulting position, or -1 on error. */
+int64_t aurora_dvd_base_seek(void* handle, int64_t offset, int32_t whence);
+
+/** \brief Closes a handle from aurora_dvd_base_open. */
+void aurora_dvd_base_close(void* handle);
+
+/** \brief Disc offset of a base file's data, or -1 for directories and invalid EntryNums. */
+int64_t aurora_dvd_base_offset(s32 entrynum);
+
+/**
+ * \brief Called the first time a read of the disc image itself fails (overlay files don't count).
+ *
+ * Runs on whichever thread did the read, so it must be thread safe. Pass null to remove it.
+ */
+void aurora_dvd_set_read_error_callback(void (*callback)(void));
+
+/**
+ * \brief A second disc image, read-only and separate from the game's disc (e.g. another region's, for its text).
+ */
+typedef struct AuroraDiscImage AuroraDiscImage;
+
+/** \brief Opens an image; writes its 6-character game id, disc number and version. Returns null on failure. */
+AuroraDiscImage* aurora_disc_image_open(const char* path, char gameId[6], u8* discNumber, u8* discVersion);
+
+/** \brief Calls `callback` for every file (not directory) of the image's data partition, with its FST index. */
+void aurora_disc_image_list(AuroraDiscImage* image, void (*callback)(u32 index, const char* name, u32 size, void* user),
+                            void* user);
+
+/**
+ * \brief Opens a file of the image by FST index. Read, seek and close it with the aurora_dvd_base_* calls (its
+ * failures aren't reported to the read error callback). Close it before the image.
+ */
+void* aurora_disc_image_file_open(AuroraDiscImage* image, u32 index);
+
+/** \brief Closes an image from aurora_disc_image_open. */
+void aurora_disc_image_close(AuroraDiscImage* image);
+
 #ifdef __cplusplus
 }
 #endif

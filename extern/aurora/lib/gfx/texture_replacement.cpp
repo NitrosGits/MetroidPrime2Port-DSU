@@ -24,6 +24,7 @@
 #include <charconv>
 #include <chrono>
 #include <condition_variable>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <filesystem>
@@ -38,12 +39,39 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "texture_sites.hpp"
 
 namespace aurora::texture {
 namespace {
 constexpr Module Log{"aurora::texture"};
 
-constexpr uint64_t kReplacementCacheBudgetBytes = 4294967296; // 4GB
+// Phones and tablets share their RAM with the GPU, and a Remastered import's maps are 2048 (four times the
+// memory of 1024 for a difference a phone screen barely shows), so there they load at most 1024 and keep less
+// cached. MP2_TEXTURE_MAX_DIM (0 = no limit) and MP2_TEXTURE_CACHE_MB override either.
+#ifdef __ANDROID__
+constexpr uint32_t kDefaultReplacementMaxDim = 1024;
+constexpr uint64_t kDefaultReplacementCacheMB = 1024;
+#else
+constexpr uint32_t kDefaultReplacementMaxDim = 0;
+constexpr uint64_t kDefaultReplacementCacheMB = 4096;
+#endif
+
+uint32_t replacement_max_dim() noexcept {
+  static const uint32_t value = [] {
+    const char* env = std::getenv("MP2_TEXTURE_MAX_DIM");
+    return env != nullptr ? static_cast<uint32_t>(std::strtoul(env, nullptr, 10)) : kDefaultReplacementMaxDim;
+  }();
+  return value;
+}
+
+uint64_t replacement_cache_budget() noexcept {
+  static const uint64_t value = [] {
+    const char* env = std::getenv("MP2_TEXTURE_CACHE_MB");
+    const uint64_t mb = env != nullptr ? std::strtoull(env, nullptr, 10) : kDefaultReplacementCacheMB;
+    return std::max<uint64_t>(mb, 64) << 20;
+  }();
+  return value;
+}
 constexpr uint64_t kReplacementWildcardTextureHash = kWildcardTextureHash;
 constexpr uint64_t kReplacementWildcardTlutHash = kWildcardTlutHash;
 
@@ -90,6 +118,7 @@ struct SelectedCache {
   uint64_t bytes = 0;
   std::list<ReplacementKey>::iterator lruIt;
   Tier tier = Tier::Full;
+  uint64_t lastUseFrame = 0;
 };
 
 struct EntryLoadSnapshot {
@@ -139,6 +168,8 @@ absl::flat_hash_set<uint64_t> s_failedIds;
 absl::flat_hash_set<TextureSourceKey, SourceKeyHash> s_reportedMisses;
 std::list<ReplacementKey> s_replacementLru;
 uint64_t s_replacementCacheBytes = 0;
+// Counts end_frame calls, for the idle sweep (sweep_idle_cache).
+uint64_t s_replacementFrame = 0;
 uint64_t s_nextRegistrationId = 1;
 uint64_t s_nextSequence = 1;
 uint32_t s_sourceEntryCount = 0;
@@ -788,6 +819,26 @@ std::optional<gfx::dds::MipTail> load_thumbnail(const EntryLoadSnapshot& entry) 
   return gfx::dds::parse_dds_mip_tail({bytes.data(), bytes.size()}, gx::texture::ReplacementThumbnailDim);
 }
 
+// A full load, from the first mip that fits replacement_max_dim() when one is set.
+std::optional<gfx::ConvertedTexture> load_full_replacement(const EntryLoadSnapshot& entry) noexcept {
+  if (const uint32_t maxDim = replacement_max_dim(); maxDim != 0 && is_dds_entry(entry)) {
+    std::optional<gfx::dds::MipTail> tail;
+    if (entry.kind == EntryKind::File) {
+      tail = gfx::dds::load_dds_mip_tail(entry.path, maxDim);
+    } else if (entry.kind == EntryKind::Virtual) {
+      std::vector<uint8_t> bytes;
+      if (guarded_virtual_read(entry.virtualReadState, entry.source, entry.virtualPath.c_str(), bytes)) {
+        tail = gfx::dds::parse_dds_mip_tail({bytes.data(), bytes.size()}, maxDim);
+      }
+    }
+    if (tail.has_value()) {
+      return std::move(tail->texture);
+    }
+    // No mip fits (a chain cut short): the whole texture, as without a limit.
+  }
+  return entry.kind == EntryKind::File ? load_file_replacement(entry) : load_virtual_replacement(entry);
+}
+
 void worker_main(std::stop_token token) {
   std::stop_callback notifyOnStop{token, [] { s_jobCv.notify_all(); }};
   while (true) {
@@ -818,10 +869,8 @@ void worker_main(std::stop_token token) {
         texture = std::move(thumbnail->texture);
         thumbnailIncludesBase = thumbnail->includesBase;
       }
-    } else if (job.entry.kind == EntryKind::File) {
-      texture = load_file_replacement(job.entry);
-    } else if (job.entry.kind == EntryKind::Virtual) {
-      texture = load_virtual_replacement(job.entry);
+    } else if (job.entry.kind == EntryKind::File || job.entry.kind == EntryKind::Virtual) {
+      texture = load_full_replacement(job.entry);
     }
 
     if (job.tier == Tier::Thumbnail && texture.has_value() && !is_unsupported_texture_format(texture->format) &&
@@ -989,13 +1038,14 @@ gfx::TextureHandle create_converted_texture_handle(const EntryLoadSnapshot& entr
   };
   const wgpu::TextureDescriptor textureDescriptor{
       .label = label.c_str(),
-      .usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst,
+      .usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::CopySrc,
       .dimension = wgpu::TextureDimension::e2D,
       .size = size,
       .format = replacement.format,
       .mipLevelCount = replacement.mips,
       .sampleCount = 1,
   };
+  AURORA_NOTE_TEXTURE(&textureDescriptor);
   auto texture = webgpu::g_device.CreateTexture(&textureDescriptor);
   const auto viewLabel = fmt::format("{} view", label);
   const wgpu::TextureViewDescriptor textureViewDescriptor{
@@ -1048,6 +1098,7 @@ void erase_cache_locked(const ReplacementKey& key) noexcept {
 }
 
 void touch_cached_replacement(decltype(s_cacheByKey)::iterator it) noexcept {
+  it->second.lastUseFrame = s_replacementFrame;
   if (it->second.lruIt != s_replacementLru.begin()) {
     s_replacementLru.splice(s_replacementLru.begin(), s_replacementLru, it->second.lruIt);
     it->second.lruIt = s_replacementLru.begin();
@@ -1055,7 +1106,7 @@ void touch_cached_replacement(decltype(s_cacheByKey)::iterator it) noexcept {
 }
 
 void evict_replacement_cache_if_needed() noexcept {
-  while (s_replacementCacheBytes > kReplacementCacheBudgetBytes && !s_replacementLru.empty()) {
+  while (s_replacementCacheBytes > replacement_cache_budget() && !s_replacementLru.empty()) {
     const auto key = s_replacementLru.back();
     const auto cache = s_cacheByKey.find(key);
     const uint64_t id = cache == s_cacheByKey.end() ? 0 : cache->second.id;
@@ -1081,9 +1132,18 @@ void cache_replacement_locked(const ReplacementKey& key, uint64_t id, gfx::Textu
                                 .bytes = replacementBytes,
                                 .lruIt = s_replacementLru.begin(),
                                 .tier = tier,
+                                .lastUseFrame = s_replacementFrame,
                             });
   s_replacementCacheBytes += replacementBytes;
   evict_replacement_cache_if_needed();
+  // One line per new 128 MiB high-water mark, so a log shows how much replacement texture
+  // memory a session reached (a phone's GPU memory is its RAM).
+  static uint64_t s_loggedStep = 0;
+  if (const uint64_t step = s_replacementCacheBytes >> 27; step > s_loggedStep) {
+    s_loggedStep = step;
+    Log.info("texture_replacement: cache {} MiB of {} MiB ({} textures)", s_replacementCacheBytes >> 20,
+             replacement_cache_budget() >> 20, s_cacheByKey.size());
+  }
 }
 
 const ReplacementEntry* select_entry(const std::vector<ReplacementEntry>& entries) noexcept {
@@ -1148,8 +1208,7 @@ gfx::TextureHandle load_entry_handle(const ReplacementKey& key, const Replacemen
   gfx::TextureHandle handle;
   if (entry.kind == EntryKind::File || entry.kind == EntryKind::Virtual) {
     const auto snapshot = snapshot_entry(key, entry);
-    const auto replacement =
-        entry.kind == EntryKind::File ? load_file_replacement(snapshot) : load_virtual_replacement(snapshot);
+    const auto replacement = load_full_replacement(snapshot);
     if (!replacement.has_value()) {
       s_failedIds.insert(entry.id);
       return {};
@@ -1385,10 +1444,8 @@ void clear_replacement_runtime_state_locked(std::vector<std::shared_ptr<VirtualR
 
 bool is_source_key(const ReplacementKey& key) noexcept { return std::holds_alternative<TextureSourceKey>(key); }
 
-ReplacementRegistration register_file_replacement(TextureSourceKey key, std::filesystem::path path,
-                                                  ReplacementOptions options) {
-  std::lock_guard lk(s_registryMutex);
-  ReplacementKey replacementKey{key};
+ReplacementRegistration register_file_replacement_locked(ReplacementKey replacementKey, std::filesystem::path path,
+                                                         ReplacementOptions options) {
   ReplacementRegistration registration{
       .id = s_nextRegistrationId++,
       .key = replacementKey,
@@ -1403,11 +1460,13 @@ ReplacementRegistration register_file_replacement(TextureSourceKey key, std::fil
       .label = fmt::format("TextureReplacement {}", io::fs_path_to_string(path.filename())),
       .path = std::move(path),
   });
-  ++s_sourceEntryCount;
   const auto snapshot = snapshot_entry(replacementKey, entries.back());
   queue_thumbnail_load(snapshot);
   erase_cache_locked(replacementKey);
-  gx::clear_static_texture_cache();
+  if (is_source_key(replacementKey)) {
+    ++s_sourceEntryCount;
+    gx::clear_static_texture_cache();
+  }
   return registration;
 }
 } // namespace
@@ -1542,6 +1601,15 @@ ReplacementRegistration register_replacement(ReplacementKey key, RawTextureRepla
   return registration;
 }
 
+ReplacementRegistration register_file_replacement(ReplacementKey key, const std::filesystem::path& path,
+                                                  ReplacementOptions options) {
+  if (std::holds_alternative<TexturePointerKey>(key) && std::get<TexturePointerKey>(key).data == nullptr) {
+    return {};
+  }
+  std::lock_guard lk(s_registryMutex);
+  return register_file_replacement_locked(key, path, options);
+}
+
 void unregister_replacement(const ReplacementRegistration& registration) {
   if (registration.id == 0) {
     return;
@@ -1552,9 +1620,14 @@ void unregister_replacement(const ReplacementRegistration& registration) {
   {
     std::lock_guard lk(s_registryMutex);
     removed = unregister_replacement_locked(registration, waitStates);
-    if (removed) {
+    if (removed && is_source_key(registration.key)) {
       gx::clear_static_texture_cache();
     }
+  }
+  if (removed && !is_source_key(registration.key)) {
+    // A pointer key names one texture, so only the objects that took this entry go stale.
+    gx::texture::invalidate_replacement(registration.id);
+    gx::texture::invalidate_bindings();
   }
   wait_for_virtual_reads(waitStates);
 }
@@ -1709,7 +1782,9 @@ ReplacementGroup load_replacement_directory(const std::filesystem::path& root, R
       continue;
     }
     registeredKeys.insert(*parsed);
-    group.registrations.push_back(register_file_replacement(*parsed, candidate.path, options));
+    std::lock_guard lk(s_registryMutex);
+    group.registrations.push_back(
+        register_file_replacement_locked(ReplacementKey{*parsed}, candidate.path, options));
   }
 
   Log.info("Loaded {} texture replacement registrations from {}", group.registrations.size(),
@@ -1739,6 +1814,35 @@ using namespace aurora::texture;
 void shutdown() noexcept {
   clear_replacements();
   stop_worker_pool();
+}
+
+// Port: the cache otherwise frees nothing until it reaches its budget (4 GiB on a desktop),
+// so a session's replacement memory climbed room by room. A replacement nothing else holds
+// any more (the texture object caches let go of a texture some seconds after its last use)
+// and not looked up for a minute is freed; it loads again if a room asks for it.
+void sweep_idle_cache() noexcept {
+  constexpr uint64_t kSweepFrames = 600;
+  constexpr uint64_t kIdleFrames = 3600;
+  constexpr uint64_t kKeepBytes = uint64_t(256) << 20;
+  if (++s_replacementFrame % kSweepFrames != 0) {
+    return;
+  }
+  std::lock_guard lock{s_registryMutex};
+  if (s_replacementCacheBytes <= kKeepBytes) {
+    return;
+  }
+  for (auto lru = s_replacementLru.end(); lru != s_replacementLru.begin() && s_replacementCacheBytes > kKeepBytes;) {
+    --lru;
+    const auto cache = s_cacheByKey.find(*lru);
+    if (cache == s_cacheByKey.end() || cache->second.handle.use_count() > 1 ||
+        s_replacementFrame - cache->second.lastUseFrame < kIdleFrames) {
+      continue;
+    }
+    // erase_cache_locked removes this list node; step past it first.
+    const auto key = *lru;
+    lru = std::next(lru);
+    erase_cache_locked(key);
+  }
 }
 
 StreamingStats process_streaming() noexcept {
@@ -1863,6 +1967,13 @@ std::optional<ReplacementResult> find_pointer_replacement(const GXTexObj_& obj) 
   }
 
   std::lock_guard lk(s_registryMutex);
+  // The object's user data first: a key that stays put while the texel buffer is reallocated.
+  if (obj.userData != nullptr) {
+    ReplacementKey userKey{TexturePointerKey{.data = obj.userData}};
+    if (s_entriesByKey.contains(userKey)) {
+      return find_replacement_for_key_locked(userKey);
+    }
+  }
   ReplacementKey pointerKey{TexturePointerKey{.data = obj.data}};
   if (!s_entriesByKey.contains(pointerKey)) {
     return std::nullopt;

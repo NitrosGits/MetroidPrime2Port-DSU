@@ -12,6 +12,13 @@ if (NOT TARGET gtest)
     EXCLUDE_FROM_ALL
   )
   FetchContent_MakeAvailable(googletest)
+  # googletest builds itself with -Werror, and newer clang flags its own
+  # char8_t printers (-Wcharacter-conversion)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    foreach (target gtest gtest_main)
+      target_compile_options(${target} PRIVATE -Wno-error)
+    endforeach ()
+  endif ()
 endif ()
 
 add_executable(io_tests
@@ -35,6 +42,14 @@ target_include_directories(time_tests PRIVATE
 target_link_libraries(time_tests PRIVATE gtest gtest_main)
 gtest_discover_tests(time_tests)
 
+add_executable(shadow_cascade_tests
+  shadow_cascade_test.cpp
+  ../lib/gfx/shadow_cascade.cpp
+)
+target_include_directories(shadow_cascade_tests PRIVATE ../lib)
+target_link_libraries(shadow_cascade_tests PRIVATE gtest gtest_main)
+gtest_discover_tests(shadow_cascade_tests)
+
 add_executable(os_time_tests
   os_time_test.cpp
   os_time_test_stubs.cpp
@@ -54,6 +69,7 @@ if (AURORA_ENABLE_GX)
   # Compile GX sources directly to avoid pulling in the full renderer/WebGPU runtime
   add_executable(gx_fifo_tests
     gx_fifo_test.cpp
+    gx_pipeline_compatibility_test.cpp
     gx_test_stubs.cpp
     # GX API implementations (encoders)
     ../lib/dolphin/gx/GXBump.cpp
@@ -80,11 +96,14 @@ if (AURORA_ENABLE_GX)
     ../lib/gx/command_processor.cpp
     ../lib/gfx/perf.cpp
     ../lib/gx/regs.cpp
+    ../lib/gx/resident.cpp
     ../lib/thread.cpp
     # Display list reader/optimizer
     ../lib/gx/attr_fmt.cpp
     ../lib/gx/dl.cpp
     gx_dl_test.cpp
+    gx_resident_test.cpp
+    gx_scene_hdr_fifo_test.cpp
   )
 
   target_include_directories(gx_fifo_tests PRIVATE
@@ -172,7 +191,15 @@ if (AURORA_ENABLE_GX)
 
   add_executable(gfx_recording_tests
     gfx_recording_test.cpp
+    gx_uniform_limit_test.cpp
+    gx_suit_glass_test.cpp
+    gx_inventory_visor_test.cpp
+    vfx_blend_test.cpp
+    vfx_cluster_test.cpp
     render_target_layout_test.cpp
+    scene_hdr_test.cpp
+    scene_hdr_writer_test.cpp
+    scene_hdr_water_fog_test.cpp
   )
   target_include_directories(gfx_recording_tests PRIVATE
     ../include
@@ -184,10 +211,28 @@ if (AURORA_ENABLE_GX)
     aurora::vi
     gtest
     gtest_main
+    absl::btree # gx.hpp includes absl headers; aurora_gx only gets them privately
+    absl::flat_hash_map
   )
   aurora_copy_runtime_dlls(gfx_recording_tests)
   gtest_discover_tests(gfx_recording_tests)
 endif () # AURORA_ENABLE_GX
+
+# The bloom readback slots' locking, on the CPU: a header of its own, so no renderer is needed.
+add_executable(bloom_readback_slots_tests
+  bloom_readback_slots_test.cpp
+)
+target_include_directories(bloom_readback_slots_tests PRIVATE
+  ../include
+  ../lib
+)
+target_compile_definitions(bloom_readback_slots_tests PRIVATE AURORA TARGET_PC)
+target_link_libraries(bloom_readback_slots_tests PRIVATE
+  gtest
+  gtest_main
+)
+aurora_copy_runtime_dlls(bloom_readback_slots_tests)
+gtest_discover_tests(bloom_readback_slots_tests)
 
 # DVD API tests
 if (TARGET aurora::dvd)

@@ -9,7 +9,10 @@ namespace aurora::gfx::depth_peek {
 void initialize();
 void shutdown();
 
+bool enabled() noexcept;
 void request_snapshot() noexcept;
+// Whether a GXPeekZ is waiting for a snapshot; a frame recorded without one needs no depth stored.
+bool snapshot_wanted() noexcept;
 bool read_latest(uint16_t x, uint16_t y, uint32_t& z) noexcept;
 // Copies a w x h region of the latest snapshot (z24 per texel, row-major) into `out`. False when
 // there is none, it is older than `maxAgeMs`, or the region is outside it.
