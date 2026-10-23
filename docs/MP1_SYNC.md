@@ -58,4 +58,4 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-- 2026-10-23: plan written. Nothing started; lanes wait for an Opus slot (cap 3, all busy).
+- 2026-10-23: f1a (F1 menu, ../wt-mp2-f1a, sync/f1a) and aur1 (Aurora resync, ../wt-mp2-aur1, sync/aur1) running; user allowed going over the 3-lane cap for these.
