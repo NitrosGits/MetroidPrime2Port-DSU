@@ -1,0 +1,74 @@
+# tail23 misc4: struggle only while attached. CPlayer::ProcessInput needs the morphed ball ATTACHED
+# to the Cyclops (mAttachedActor) for turn/jump presses to add to mAttachedActorStruggle, so the
+# presses start after the grab (fsm PathFindEx/Attack) and run through the throw.
+@f600 tp 148 213.3 -13.0
+@f620 press x 20
+@f700 obj u047b
+@f720 press b 3
+@f735 press left 3
+@f750 press b 3
+@f765 press right 3
+@f780 press b 3
+@f795 press up 3
+@f797 obj u047b
+@f810 press b 3
+@f825 press down 3
+@f840 press b 3
+@f855 press left 3
+@f870 press b 3
+@f885 press right 3
+@f887 obj u047b
+@f889 trigcall u047b IsDizzy
+@f900 press b 3
+@f915 press up 3
+@f930 press b 3
+@f945 press down 3
+@f960 press b 3
+@f975 press left 3
+@f977 obj u047b
+@f990 press b 3
+@f1005 press right 3
+@f1020 press b 3
+@f1035 press up 3
+@f1050 press b 3
+@f1065 press down 3
+@f1067 obj u047b
+@f1069 trigcall u047b IsDizzy
+@f1080 press b 3
+@f1095 press left 3
+@f1110 press b 3
+@f1125 press right 3
+@f1140 press b 3
+@f1155 press up 3
+@f1157 obj u047b
+@f1170 press b 3
+@f1185 press down 3
+@f1200 press b 3
+@f1215 press left 3
+@f1230 press b 3
+@f1245 press right 3
+@f1247 obj u047b
+@f1249 trigcall u047b IsDizzy
+@f1260 press b 3
+@f1275 press up 3
+@f1290 press b 3
+@f1305 press down 3
+@f1320 press b 3
+@f1335 press left 3
+@f1337 obj u047b
+@f1350 press b 3
+@f1365 press right 3
+@f1380 press b 3
+@f1395 press up 3
+@f1410 press b 3
+@f1425 press down 3
+@f1427 obj u047b
+@f1429 trigcall u047b IsDizzy
+@f1440 press b 3
+@f1455 press left 3
+@f1470 press b 3
+@f1485 press right 3
+@f1520 obj u047b
+@f1560 status
+@f1600 trigcall u047b IsDizzy
+@f1640 status

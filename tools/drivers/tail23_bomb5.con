@@ -1,0 +1,23 @@
+# tail23 bomb chain v5: bomb laid with the Cyclops 8 m away, ball lifted 2 m (out of the height
+# band) and the Cyclops placed onto the bomb ~30 frames later, while the bomb is still alive.
+@f600 place u047b 140 205 -13.2
+@f620 tp 148 213.3 -13.0
+@f640 give morphBallBombs 1
+@f660 press x 20
+@f700 press a 1
+@f730 tp 148 211 -11
+@f734 place u047b 148 213.3 -13.2
+@f738 trigcall u047b InMaxRange
+@f742 trigcall u047b InMaxRange
+@f746 objs CBomb ; trigcall u047b InMaxRange
+@f760 obj u047b
+@f780 trigcall u047b InMaxRange ; obj u047b
+@f820 obj u047b
+@f860 trigcall u047b IsDizzy ; obj u047b
+@f900 obj u047b
+@f950 trigcall u047b InMaxRange
+@f1000 obj u047b
+@f1100 obj u047b
+@f1200 trigcall u047b InMaxRange ; obj u047b
+@f1300 obj u047b
+@f1400 obj u047b

@@ -1,0 +1,31 @@
+# tail23 bomb arm: bombs within 5 m of a Cyclops (InMaxRange -> SelectTarget etc.)
+@f600 tp 148 213.3 -13.0
+@f620 press x 40
+@f700 place u047b player 2
+@f720 press a 3
+@f760 trigcall u047b InMaxRange
+@f800 place u047b player 3
+@f820 press a 3
+@f860 trigcall u047b InMaxRange
+@f900 obj u047b
+@f960 tp 148 211 -11
+@f1000 trigcall u047b InMaxRange
+@f1040 place u047b player 3
+@f1060 trigcall u047b InMaxRange
+@f1100 tp 148 213.3 -13.0
+@f1140 press a 3
+@f1180 place u047b player 2
+@f1220 press a 3
+@f1260 trigcall u047b InMaxRange
+@f1300 objs CBomb
+@f1360 press a 3
+@f1400 place u047b player 3
+@f1440 trigcall u047b InMaxRange
+@f1500 obj u047b
+@f1600 press a 5
+@f1700 trigcall u047b InRange
+@f1760 trigcall u047b InPosition
+@f1800 trigcall u047b SpotPlayer
+@f1840 trigcall u047b HearShot
+@f1900 obj u047b
+@f2000 status

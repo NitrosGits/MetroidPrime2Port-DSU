@@ -1,0 +1,22 @@
+# tail23 bomb chain v7: as v5, but the Cyclops is placed 3 m from the bomb (not onto it: a bomb
+# placed on top of the Cyclops disappears), still inside the 5 m / 1 m box, while the ball sits
+# 2 m up out of the detection height band.
+@f600 place u047b 140 205 -13.2
+@f620 tp 148 213.3 -13.0
+@f640 give morphBallBombs 1
+@f660 press x 20
+@f700 press a 1
+@f730 tp 148 211 -11
+@f734 place u047b 151 213.3 -13.2
+@f738 trigcall u047b InMaxRange
+@f742 trigcall u047b InMaxRange
+@f746 objs CBomb ; trigcall u047b InMaxRange
+@f760 obj u047b
+@f780 trigcall u047b InMaxRange ; obj u047b
+@f820 obj u047b
+@f900 obj u047b
+@f1000 obj u047b
+@f1100 obj u047b
+@f1200 trigcall u047b InMaxRange ; obj u047b
+@f1300 obj u047b
+@f1400 obj u047b
