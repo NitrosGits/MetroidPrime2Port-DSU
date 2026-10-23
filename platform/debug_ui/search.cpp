@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iterator>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -92,14 +93,35 @@ bool TakeJumpSub(const char* page, const char* name) {
   return true;
 }
 
-// A page's inner tab, opened first when MP2_DEBUG_TAB or a search result names it. The caller
+namespace {
+// The console's `overlay <page>/<sub-tab>`: set on the console's thread, read by the window's.
+std::mutex sShowSubMutex;
+std::string sShowSub;
+} // namespace
+
+void SetShowSub(std::string sub) {
+  std::lock_guard< std::mutex > lock(sShowSubMutex);
+  sShowSub = std::move(sub);
+}
+
+// True once for the sub-tab the console asked for.
+static bool TakeShowSub(const char* name) {
+  std::lock_guard< std::mutex > lock(sShowSubMutex);
+  if (sShowSub.empty() || SDL_strncasecmp(name, sShowSub.c_str(), sShowSub.size()) != 0) {
+    return false;
+  }
+  sShowSub.clear();
+  return true;
+}
+
+// A page's inner tab, opened first when MP2_DEBUG_TAB, the console or a search result names it. The caller
 // ends the item with EndTabItem when this returns true.
 bool SubTab(const char* page, const char* name) {
   static bool pending = !GetStartTarget().sub.empty();
   const StartTarget& target = GetStartTarget();
   const bool start = pending && SDL_strcasecmp(target.page.c_str(), page) == 0 &&
                      SDL_strcasecmp(target.sub.c_str(), name) == 0;
-  const bool jump = TakeJumpSub(page, name);
+  const bool jump = TakeJumpSub(page, name) || TakeShowSub(name);
   const bool inPage = std::exchange(sJump.inPage, false); // the tab is not a setting
   const bool shown =
       ImGui::BeginTabItem(name, nullptr, start || jump ? ImGuiTabItemFlags_SetSelected : 0);

@@ -55,6 +55,9 @@ extern std::vector< SLayerEntry > sLayers;
 extern int sLayersArea;
 // A page the console's `overlay <page>` asked for, taken by the next frame's window (-1: none).
 extern std::atomic< int > sShowPage;
+// The sub-tab (a name prefix, case-insensitive) that `overlay <page>/<sub-tab>` asked for; empty
+// clears it. Set before sShowPage, taken by the first SubTab it matches.
+void SetShowSub(std::string sub);
 // The card's world names without their text markup.
 std::string PlainWorldName(const wchar_t* text);
 // Clamps and stores the arm cannon offset (NaN becomes 0).

@@ -463,9 +463,12 @@ bool ShowPage(const std::string& name) {
     }
     return true;
   }
+  const size_t slash = name.find('/');
+  const std::string pageName = name.substr(0, slash);
   for (int i = 0; i < kDebugPageCount; ++i) {
     const char* page = kDebugPages[i].name;
-    if (!name.empty() && SDL_strncasecmp(page, name.c_str(), name.size()) == 0) {
+    if (!pageName.empty() && SDL_strncasecmp(page, pageName.c_str(), pageName.size()) == 0) {
+      SetShowSub(slash == std::string::npos ? std::string() : name.substr(slash + 1));
       sShowPage.store(i);
       if (!sVisible) {
         Toggle();
