@@ -489,8 +489,8 @@ if(AURORA_SDL3_TARGET)
     # platform/main.cpp turns fd 1 and fd 2 into logcat lines and resolves its directories
     # through SDL_GetPrefPath on Android, so the entry object needs SDL3's headers there.
     # AURORA_SDL3_TARGET only exists once Aurora has been added, which is why this is here
-    # rather than with the target itself; the desktop path includes no SDL header and is
-    # unaffected by the extra include directory.
+    # rather than with the target itself; the desktop path needs it for the disc message and
+    # picker.
     target_include_directories(mp_port_entry PRIVATE
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)
 else()

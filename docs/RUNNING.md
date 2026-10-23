@@ -11,6 +11,13 @@ Commands; all runs need `Xvfb :86 -screen 0 1280x720x24 -ac` (check with `pgrep 
       timeout -k 5 120 gdb -q -batch -ex run -ex bt ./metroid_prime2_port > /tmp/mp2boot.log 2>&1
     grep -n 'reach-stub\|signal\|^#[0-9]\|exited\|ssert\|fatal' /tmp/mp2boot.log
 
+A disc that won't open, isn't G2ME01 or is cut short (last 8 files unreadable) is refused at mount;
+with a window and no `MP2_FRAMES`/`MP2_HEADLESS`/`MP2_NO_DISC_DIALOG=1` a message box then asks for
+another image (blocks a scripted run until killed), otherwise the run exits 1.
+
+Robustness logs: `port: settings:`/`port: env:`/`port: storage:` at start; `watchdog:` after 5 s without
+a frame (`MP2_WATCHDOG_TEST_STALL=<frame>`); `port: crashed:` with the stack (`MP2_CRASH_TEST=segv`).
+
 Sample a running boot: `gdb ... -x tools/gdb_interrupt.py -ex run -ex 'thread apply all bt 14'`
 (`MP_SAMPLE_SECS=240`). Screenshot: `ffmpeg -f x11grab -video_size 1280x720 -i :86 -frames:v 1 x.png`.
 
