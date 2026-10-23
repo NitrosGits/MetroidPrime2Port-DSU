@@ -90,13 +90,13 @@ private:
   float mStunTimer;                    // Guessed name
   float mRecoveryDelay;                // Guessed name
   float mChargeTimer;                  // Guessed name
-  bool mEffectsActive : 1;             // Guessed name
-  bool mProximityDamageEnabled : 1;    // Guessed name
-  bool mRolling : 1;                   // Guessed name
-  bool mStunned : 1;                   // Guessed name
-  bool mCanBeDamaged : 1;              // Guessed name
-  bool mPlayStunSound : 1;             // Guessed name
-  bool mReturnToPatrolRequested : 1;   // Guessed name
+  bool mEffectsActive : 1;             // 0x994_24 Guessed name
+  bool mProximityDamageEnabled : 1;    // 0x994_25 Guessed name
+  bool mRolling : 1;                   // 0x994_26 Guessed name
+  bool mStunned : 1;                   // 0x994_27 Guessed name
+  bool mCanBeDamaged : 1;              // 0x994_28 Guessed name
+  bool mPlayStunSound : 1;             // 0x994_29 Guessed name
+  bool mReturnToPatrolRequested : 1;   // 0x994_30 Guessed name
 };
 CHECK_SIZEOF(CIngSpiderballGuardian, 0x998)
 

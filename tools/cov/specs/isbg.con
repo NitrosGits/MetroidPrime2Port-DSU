@@ -1,0 +1,46 @@
+# Sanctuary Fortress 06_cliff_spiderballguardian layer 13: the Spider Guardian (ISBG e0014007a,
+# CIngSpiderballGuardian) loads a few hundred frames after `layer 13` and starts inactive (its layer-3 trigger activates it; the FSM is set up on the first active Think) and patrols the AIWP
+# chain from 00140022. The console activates it, hits it with each weapon, stuns it (stunned hit
+# points 40), lets the stun (25 s) and charge (15 s) timers run out, sends the IM00-IM05 messages
+# its relays send, walks the six puzzle phases, brings it to the player, kills it and deletes it.
+# For tools/cov/specs/isbg.py.
+@f300 god 1; layer 13; give missile 50; give morphBall 1; give morphBallBombs 1; give powerBomb 5
+@f900 objs IngSpiderball
+@f1000 send e0014007a Activate
+@f1060 obj e0014007a
+@f1300 obj e0014007a
+@f1400 damage e0014007a 5 0 power
+@f1430 obj e0014007a
+@f1460 damage e0014007a 5 0 bomb
+@f1490 obj e0014007a
+@f1520 damage e0014007a 5 0 missile
+@f1550 obj e0014007a
+@f1580 damage e0014007a 50 0 bomb
+@f1610 obj e0014007a
+@f1700 damage e0014007a 5 0 bomb
+@f1730 obj e0014007a
+@f3200 obj e0014007a
+@f3300 send e0014007a InternalMessage4
+@f3330 obj e0014007a
+@f3400 damage e0014007a 5 0 bomb
+@f3430 send e0014007a InternalMessage5
+@f3460 obj e0014007a
+@f4300 obj e0014007a
+@f4320 send e0014007a InternalMessage0
+@f4340 damage e0014007a 5 0 bomb
+@f4360 send e0014007a InternalMessage1; send e0014007a InternalMessage2; send e0014007a InternalMessage3
+@f4380 codecall e0014007a EnableEnergyBar
+@f4400 codecall e0014007a BeginNextPuzzleSection
+@f4500 codecall e0014007a BeginNextPuzzleSection
+@f4600 codecall e0014007a BeginNextPuzzleSection
+@f4700 codecall e0014007a BeginNextPuzzleSection
+@f4800 codecall e0014007a BeginNextPuzzleSection
+@f4900 codecall e0014007a BeginNextPuzzleSection
+@f4920 obj e0014007a
+@f5000 place e0014007a player 1
+@f5100 obj e0014007a
+@f5200 kill e0014007a
+@f5240 obj e0014007a
+@f5400 send e0014007a Deactivate
+@f5450 send e0014007a Delete
+@f5500 objs IngSpiderball
