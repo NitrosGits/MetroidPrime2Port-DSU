@@ -1,0 +1,35 @@
+# 0e_swamp_hall, Sporb u0470 (top u046e) moved down to z 49 (the ceiling is out of grab range): a morphed player in grab range (grab, hold, spit), boosts
+# while held (ball escape), the top hurt (flinch, fake death), then GoToSleep/Flail/Spit by fsm.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/sporb.py <out> 3dfd2249,0e_swamp_hall --con <this> --fast --frames 3000
+@f300 god 1; give morphBall 1; give boostBall 1; give powerBomb 5; give missile 50; fastmorph 1
+@f305 tp 2 -51 43
+@f330 place u0470 -4 -51 49
+@f310 press x 30
+@f340 send u0470 Alert; fsm u0470 WakeUp
+@f1100 tp 2 -51 43
+@f1250 boost
+@f1300 boost
+@f1350 boost
+@f1400 boost
+@f1450 boost
+@f1700 damage u046e 1
+@f1900 damage u046e 100
+@f2300 fsm u0470 GoToSleep
+@f2500 fsm u0470 Flail
+@f2650 fsm u0470 Spit
+@f2800 fsm u0470 Patrol
+@f400 obj u0470; status
+@f500 obj u0470
+@f600 obj u0470
+@f700 obj u0470
+@f800 obj u0470
+@f900 obj u0470
+@f1000 obj u0470
+@f1200 obj u0470
+@f1500 obj u0470
+@f1800 obj u0470
+@f2000 obj u0470; obj u046e
+@f2200 obj u0470
+@f2400 obj u0470
+@f2900 obj u0470; status
+

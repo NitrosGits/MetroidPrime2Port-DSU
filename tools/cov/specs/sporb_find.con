@@ -1,0 +1,5 @@
+# Discovery: list the Sporb parts of an area.
+@f300 objs Sporb
+@f310 objs SPB
+@f320 objs Needle
+@f330 status

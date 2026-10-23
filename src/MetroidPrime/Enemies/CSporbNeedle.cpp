@@ -182,6 +182,7 @@ CSporbNeedle::CSporbNeedle(TUniqueId uid, const rstl::string& name, const CEntit
 
 CSporbNeedle::~CSporbNeedle() {}
 
+// @ fn_76_1138C
 void CSporbNeedle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_Create:
@@ -197,6 +198,7 @@ void CSporbNeedle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 
 void CSporbNeedle::PreThink(float dt, CStateManager& mgr) { CEntity::PreThink(dt, mgr); }
 
+// @ fn_76_1115C
 void CSporbNeedle::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
   if (!mLaunchSoundPlayed) {
@@ -349,6 +351,7 @@ void CSporbNeedle::Explode(CStateManager& mgr, TUniqueId hitId) {
   }
 }
 
+// @ fn_76_10560
 void CSporbNeedle::UpdateFuse(float dt, CStateManager& mgr) {
   if (!mExploded && mHitWorld) {
     mFuseTimer += dt;
@@ -359,6 +362,7 @@ void CSporbNeedle::UpdateFuse(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_76_10470
 float CSporbNeedle::GetClosestCameraDistanceSq(CStateManager& mgr) const {
   float distanceSquared = 3.4028235e38f;
   const CVector3f position = GetTranslation();
@@ -373,6 +377,7 @@ float CSporbNeedle::GetClosestCameraDistanceSq(CStateManager& mgr) const {
   return distanceSquared;
 }
 
+// @ fn_76_103B8
 rstl::optional_object< CAABox > CSporbNeedle::GetTouchBounds() const {
   return GetCollisionPrimitive()->CalculateAABox(GetPrimitiveTransform());
 }

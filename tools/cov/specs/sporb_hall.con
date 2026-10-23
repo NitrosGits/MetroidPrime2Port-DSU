@@ -1,0 +1,25 @@
+# 0e_swamp_hall (3dfd2249,0e_swamp_hall): Sporb u0470 (base) / u046e (top) / u0471 (grabber) at
+# (-4, -51, 55). Stand near it unmorphed (needles), morph (grab, hold, BallInside), boost out,
+# get grabbed again and spat, then hurt it into fake death.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/sporb.py <out> 3dfd2249,0e_swamp_hall --con <this> --fast --frames 3000
+@f300 god 1; give morphBall 1; give boostBall 1; give powerBomb 5; give missile 50; fastmorph 1
+@f320 tp 6 -51 53.5
+@f330 fsm u0470 Nosuchstate
+@f340 send u0470 Alert; fsm u0470 WakeUp
+@f1310 fsm u0470 WakeUp
+@f700 press x 30
+@f1100 boost
+@f1300 tp 6 -51 53.5
+@f1900 press x 30
+@f2000 damage u0470 50
+@f2300 damage u0470 500
+@f400 obj u0470
+@f600 obj u0470
+@f800 obj u0470
+@f1000 obj u0470
+@f1200 obj u0470
+@f1500 obj u0470
+@f1800 obj u0470
+@f2100 obj u0470
+@f2400 obj u0470
+@f2700 obj u0470; status
