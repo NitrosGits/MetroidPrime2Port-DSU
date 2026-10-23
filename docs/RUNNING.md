@@ -422,6 +422,11 @@ load both layers, activate both, send InternalMessage0 to both, delete both, wit
 counting two down to zero. emp2 drives Great Temple 07_temple_mothlordsanctuary_dark's eleven stage-2
 tentacles (layer 3): create u05a1, force Attack/Retracted, damage and shoot it (hp 30 -> 30, unchanged),
 kill it, with `objs EmperorIngStage2Tentacle` counting eleven down to ten.
+cball drives Agon Wastes 04_sand_mining's two CannonBalls u0561/u04c1: activate u0561, send Create,
+delete it, with `objs CannonBall` counting two down to one. fobj drives Agon Wastes 05_portalpuzzle's
+single ForgottenObject u0423: activate it, delete it, with `objs ForgottenObject` counting one down to
+zero. skyr drives Temple Grounds 03_temple_combattraining's SkyRipple (layer 5) u0589: load layer 5,
+activate it, delete it, with `objs SkyRipple` counting one down to zero.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.

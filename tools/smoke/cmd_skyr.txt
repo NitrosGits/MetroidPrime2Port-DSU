@@ -1,0 +1,12 @@
+# CScriptSkyRipple (module ?: CScriptSkyRipple). Temple Grounds 03_temple_combattraining
+# (world 3bfa3eff, layer 5) holds one SkyRipple u0589. The steps load layer 5, activate it, read
+# its connections, delete it, with `objs SkyRipple` before and after. CScriptSkyRipple is a CActor
+# with no health or FSM. Checks are game updates (@f<n>), never wall seconds.
+# F=800, last check f600.
+@f200 layer 5
+@f240 objs SkyRipple
+@f260 send u0589 Activate
+@f300 obj u0589
+@f340 send u0589 Delete
+@f380 objs SkyRipple
+@f600 objs SkyRipple
