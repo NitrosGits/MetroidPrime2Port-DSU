@@ -202,11 +202,11 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
-tryclops, wisptentacle and octapede): their areas
+tryclops, wisptentacle, octapede, amt, spa and wallwalker): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~110 s for wisptentacle's 6200).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
-Twenty-four of the families keep a checked module's actors loading: grenchler (Torvus
+Twenty-five of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -217,7 +217,8 @@ lumite (Agon 0a_sand_hall), shrieker (Torvus 02_swamp_greatbridge), ingswarm (Te
 wisptentacle (Temple Grounds 0t_temple_hall_dark), octapede (Sanctuary Fortress 0p_cliff_hall),
 amt (Agon 06_sand_alamofront), dbar (Agon 08_sand_casualpirates, whose fifteen barriers no area
 places: the family spawns them), sjguard (Agon 02_sand_sandfalls_dark), fishcloud (Temple Grounds
-06_temple_sacredpath) and spa (Agon 03_sand_temple_dark)
+06_temple_sacredpath), spa (Agon 03_sand_temple_dark) and wallwalker (Sanctuary Fortress
+09_cliff_temple layer 3)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -279,7 +280,12 @@ Path's three clouds and shoots it (uncharged, charged, missile, and the power an
 morphs and boosts inside e00340081 for Touch's spawned-morph arm, and deletes the attractor
 e00340143 and the cloud; spa drives the two dark-temple suit actors e0024022f and e00240396 through
 Activate (LoadSuit), Increment (the suit swap), Left, Deactivate's reset, a Reset while inactive and
-a Delete, `objs PlayerActor` counting the suits down.
+a Delete, `objs PlayerActor` counting the suits down; wallwalker loads layer 3 of Sanctuary
+09_cliff_temple for the four Mekenobites, shoots e002500f9's leg collision actors u05fc/u05fd with
+the power beam and missiles (fsm ShootProjectile/RightLegHitReaction) and then the body (its own HP
+is 1: the legs are the target, so nothing here needs `kill`), fires a charged dark shot at
+e0025014e and `damage` at e00250156, and wakes the inactive e0025009e with Activate before its
+Delete, `obj`/`objs WallWalker` counting four walkers down to three.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.

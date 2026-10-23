@@ -1,0 +1,55 @@
+# WallWalker (module 85: CWallWalker, in-game "Mekenobite" - a wall crawler that patrols its AIWP
+# waypoints, generates and fires targetable volleys, flinches when a leg collision actor is hit and
+# dies to leg missile hits or a killed body).
+# Sanctuary Fortress 09_cliff_temple (world 1baa96c2, layer 3): four WLWK, every one following AIWP
+# with flags 0x200 (Patrol's Generate arm). e002500f9 (its legs u05fc/u05fd, the collision actors
+# 5 HP each and always refilled), e0025014e, e00250156, and e0025009e, which starts inactive.
+# The steps repeat the ww1 lane's tools/cov/specs/wallwalker_temple.con, whose first line is the
+# `layer 3` switch: god mode with every beam and missiles, `objs WallWalker` for the four walkers,
+# `obj` on e002500f9, the player standing under it so it shoots (ShootProjectile,
+# ShouldShootProjectile/LaunchProjectiles) through power-beam and missile hits on its legs
+# (RightLegHitReaction, mLegHitByMissile) and on the body, then a tp to e0025014e and e00250156 for
+# a charged dark shot and a `damage`, and e0025009e's Activate/Delete at the end.
+# Evidence in the transcript: `objs WallWalker` listing the four walkers with their wall positions
+# at f330 and f2100 and three once e0025009e is deleted, the 23 collision actors at f700 with the
+# legs u05fc/u05fd among them, the per-step `obj e002500f9` fsm lane Patrol -> ShootProjectile ->
+# RightLegHitReaction -> Patrol (hp 1/1 throughout: the body's own HP is 1, so the leg hits show as
+# the flinch), `obj e0025009e` reading `inactive` with fsm (none) before its Activate and fsm Patrol
+# after it, `beam -> dark` and the charged shot at u0607, `damage e00250156 10` reading hp 1.0 ->
+# 1.0, and every step answering `=> ok`. The log's `init compiled module WallWalker` line lists the
+# whole compiled-module table, so it says the module is registered, not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. The family is NC: unpaced, con.py's 0.5 s
+# connect lands at ~update 300 - the script's own first step, at ~1500 updates a second measured -
+# so `layer 3` and the f330 `objs` would arrive with no margin between them; capped, the layer is in
+# by f330 as in the driver. Capped, its 3600 updates take ~62 s. F=3600, last check f3500.
+@f300 god 1; layer 3; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f330 objs WallWalker
+@f360 obj e002500f9
+@f400 tp 100 20 -25
+@f700 objs CollisionActor
+@f720 shoot u05fd
+@f760 obj e002500f9
+@f900 shoot u05fc
+@f940 obj e002500f9
+@f1100 shoot u05fd missile
+@f1140 obj e002500f9
+@f1300 shoot u05fc missile
+@f1340 obj e002500f9
+@f1500 shoot u05fd missile; shoot u05fc missile
+@f1540 obj e002500f9
+@f1700 shoot e002500f9
+@f1740 obj e002500f9
+@f1800 objs Grenade
+@f1900 obj e002500f9
+@f2100 objs WallWalker
+@f2200 tp 47 22 -30
+@f2400 beam dark; shoot e0025014e charged
+@f2440 obj e0025014e
+@f2700 damage e00250156 10
+@f2740 obj e00250156
+@f2860 obj e0025009e
+@f2900 send e0025009e Activate
+@f3000 obj e0025009e
+@f3200 send e0025009e Delete
+@f3300 objs WallWalker
+@f3500 obj e002500f9
