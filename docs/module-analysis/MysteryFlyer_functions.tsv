@@ -1,0 +1,84 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_45_0	8	B	CMysteryFlyer::IsListening	-	upstream body (CMysteryFlyer)	no
+00008	fn_45_8	8	B	CMysteryFlyer::GetSearchPath	-	upstream body (CMysteryFlyer)	no
+00010	fn_45_10	3C	H	CPatterned::GetTouchBounds	-	weak copy / template instance	no
+0004C	fn_45_4C	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+0005C	fn_45_5C	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+00064	fn_45_64	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+0006C	fn_45_6C	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+00074	fn_45_74	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+00084	fn_45_84	C	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+00090	fn_45_90	C	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+0009C	fn_45_9C	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+000A4	fn_45_A4	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+000AC	fn_45_AC	8	H	CAi::Listen	-	weak copy / template instance	no
+000B4	fn_45_B4	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+000D0	fn_45_D0	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+000FC	fn_45_FC	24	T	RELExit	mf1	REL runtime (module entry)	yes
+00120	fn_45_120	20	T	RELMain	mf1	REL runtime (module entry)	yes
+00140	fn_45_140	30	B	SetFuncPtrs	mf1	upstream body (CMysteryFlyer)	yes
+00170	fn_45_170	30C	B	LoadMysteryFlyer	-	upstream body (CMysteryFlyer)	no
+0047C	fn_45_47C	40	H	rstl::optional_object<CModelData>::optional_object	-	weak copy / template instance	no
+004BC	fn_45_4BC	20	H	rstl::construct<CModelData>	-	weak copy / template instance	no
+004DC	fn_45_4DC	28	H	rstl::construction_policy<CModelData, 0>::construct	-	weak copy / template instance	no
+00504	fn_45_504	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+00640	fn_45_640	6C	H	rstl::optional_object<TLockedToken<CModel>>::~optional_object	-	weak copy / template instance	no
+006AC	fn_45_6AC	54	H	TToken<CModel>::~TToken	-	weak copy / template instance	no
+00700	fn_45_700	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr	-	weak copy / template instance	no
+00764	fn_45_764	60	H	rstl::optional_object<CModelData>::~optional_object	-	weak copy / template instance	no
+007C4	fn_45_7C4	7C	B	SLdrMysteryFlyer::SLdrMysteryFlyer	-	upstream body (CMysteryFlyer)	no
+00840	fn_45_840	170	B	LoadTypedefMysteryFlyerData	-	upstream body (CMysteryFlyer)	no
+009B0	fn_45_9B0	58	B	SLdrMysteryFlyerData::~SLdrMysteryFlyerData	-	upstream body (CMysteryFlyer)	no
+00A08	fn_45_A08	7C	B	SLdrMysteryFlyer::~SLdrMysteryFlyer	-	upstream body (CMysteryFlyer)	no
+00A84	fn_45_A84	E4	B	CMysteryFlyer::UpdateLineOfSight	mf1	upstream body (CMysteryFlyer)	yes
+00B68	fn_45_B68	A8	B	CMysteryFlyer::QuitTeam	-	upstream body (CMysteryFlyer)	no
+00C10	fn_45_C10	AC	B	CMysteryFlyer::JoinTeam	-	upstream body (CMysteryFlyer)	no
+00CBC	fn_45_CBC	288	B	CMysteryFlyer::CalculateSeparation	-	upstream body (CMysteryFlyer)	no
+00F44	fn_45_F44	6C	B	CMysteryFlyer::FaceTarget	mf1	upstream body (CMysteryFlyer)	yes
+00FB0	fn_45_FB0	C0	B	CMysteryFlyer::UpdateSteering	mf1	upstream body (CMysteryFlyer)	yes
+01070	fn_45_1070	2D8	B	CMysteryFlyer::UpdateMovement	mf1	upstream body (CMysteryFlyer)	yes
+01348	fn_45_1348	20	B	CMysteryFlyer::CalcLineOfSight	mf1	upstream body (CMysteryFlyer)	yes
+01368	fn_45_1368	88	B	CMysteryFlyer::ResetAttack	mf1	upstream body (CMysteryFlyer)	yes
+013F0	fn_45_13F0	160	B	CMysteryFlyer::Dodge	mf1	upstream body (CMysteryFlyer)	yes
+01550	fn_45_1550	5C	H	CBCStepCmd::~CBCStepCmd	-	weak copy / template instance	no
+015AC	fn_45_15AC	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+015F4	fn_45_15F4	38	B	CMysteryFlyer::Dead	mf1	upstream body (CMysteryFlyer)	yes
+0162C	fn_45_162C	1C8	B	CMysteryFlyer::Attack	mf1	upstream body (CMysteryFlyer)	yes
+017F4	fn_45_17F4	5C	H	CBCProjectileAttackCmd::~CBCProjectileAttackCmd	-	weak copy / template instance	no
+01850	fn_45_1850	148	B	CMysteryFlyer::Approach	mf1	upstream body (CMysteryFlyer)	yes
+01998	fn_45_1998	6C	B	CMysteryFlyer::Hover	mf1	upstream body (CMysteryFlyer)	yes
+01A04	fn_45_1A04	120	B	CMysteryFlyer::FollowAttackPath	-	upstream body (CMysteryFlyer)	no
+01B24	fn_45_1B24	C8	B	CMysteryFlyer::Patrol	mf1	upstream body (CMysteryFlyer)	yes
+01BEC	fn_45_1BEC	228	B	CMysteryFlyer::GoToPatrol	-	upstream body (CMysteryFlyer)	no
+01E14	fn_45_1E14	160	B	CMysteryFlyer::Generate	-	upstream body (CMysteryFlyer)	no
+01F74	fn_45_1F74	5C	H	CBCGenerateCmd::~CBCGenerateCmd	-	weak copy / template instance	no
+01FD0	fn_45_1FD0	4	B	CMysteryFlyer::Start	mf1	upstream body (CMysteryFlyer)	yes
+01FD4	fn_45_1FD4	C	B	CMysteryFlyer::LineOfSight	-	upstream body (CMysteryFlyer)	no
+01FE0	fn_45_1FE0	1C	B	CMysteryFlyer::Stuck	mf1	upstream body (CMysteryFlyer)	yes
+01FFC	fn_45_1FFC	30	B	CMysteryFlyer::PathOver	-	upstream body (CMysteryFlyer)	no
+0202C	fn_45_202C	78	B	CMysteryFlyer::ShouldApproach	mf1	upstream body (CMysteryFlyer)	yes
+020A4	fn_45_20A4	20	B	CMysteryFlyer::Leash	-	upstream body (CMysteryFlyer)	no
+020C4	fn_45_20C4	E8	B	CMysteryFlyer::ShouldAttack	-	upstream body (CMysteryFlyer)	no
+021AC	fn_45_21AC	30	B	CMysteryFlyer::AttackPathOver	-	upstream body (CMysteryFlyer)	no
+021DC	fn_45_21DC	48	B	CMysteryFlyer::InDetectionRange	-	upstream body (CMysteryFlyer)	no
+02224	fn_45_2224	3C	B	CMysteryFlyer::NearPatrol	-	upstream body (CMysteryFlyer)	no
+02260	fn_45_2260	14	B	CMysteryFlyer::StateOver	mf1	upstream body (CMysteryFlyer)	yes
+02274	fn_45_2274	8	B	CMysteryFlyer::ProjectileInfo	mf1	upstream body (CMysteryFlyer)	yes
+0227C	fn_45_227C	8C	B	CMysteryFlyer::SetupStateMachine	mf1	upstream body (CMysteryFlyer)	yes
+02308	fn_45_2308	74	B	CMysteryFlyer::Think	mf1	upstream body (CMysteryFlyer)	yes
+0237C	fn_45_237C	3C	B	CMysteryFlyer::DoUserAnimEvent	-	upstream body (CMysteryFlyer)	no
+023B8	fn_45_23B8	204	B	CMysteryFlyer::AcceptScriptMsg	-	upstream body (CMysteryFlyer)	no
+025BC	fn_45_25BC	5C	H	CBCKnockBackCmd::~CBCKnockBackCmd	-	weak copy / template instance	no
+02618	fn_45_2618	94	B	CMysteryFlyer::~CMysteryFlyer	mf1	upstream body (CMysteryFlyer)	yes
+026AC	fn_45_26AC	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
+02890	fn_45_2890	94	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
+02924	fn_45_2924	200	B	CMysteryFlyer::CMysteryFlyer	mf1	upstream body (CMysteryFlyer)	yes
+02B24	fn_45_2B24	3C	H	CPathFindSearch::~CPathFindSearch	-	weak copy / template instance	no
+02B60	fn_45_2B60	5C	H	CProjectileInfo::~CProjectileInfo	-	weak copy / template instance	no
+02BBC	fn_45_2BBC	3C	H	rstl::optional_object<CAABox>::optional_object	-	weak copy / template instance	no
+02BF8	fn_45_2BF8	354	B	__sinit_CMysteryFlyer_cpp	-	upstream body (CMysteryFlyer)	no
+02F4C	fn_45_2F4C	C4	T	_unresolved	-	REL runtime	no
+03010	fn_45_3010	24	T	_epilog	-	REL runtime	no
+03034	fn_45_3034	24	T	_prolog	-	REL runtime	no
+03058	fn_45_3058	4C	T	ModuleDestructors	-	REL runtime	no
+030A4	fn_45_30A4	4C	T	ModuleConstructors	-	REL runtime	no

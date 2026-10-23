@@ -81,7 +81,19 @@ struct SLdrMysteryFlyer {
 };
 
 inline SLdrMysteryFlyer::SLdrMysteryFlyer()
-: editorProperties(), patterned(), actorInformation(), mysteryFlyerProperties() {}
+: editorProperties(), patterned(), actorInformation(), mysteryFlyerProperties() {
+#ifdef TARGET_PC
+  // fn_45_170: retail defaults upstream lacks (sldr at r1+0x400, patterned +0x3C, actorInformation
+  // +0x280): 0x1BC li r0,1 / 0x1CC stb r0,0x66c(r1) = patterned+0x230 echoParameters.isEchoEmitter;
+  // 0x1C0 lfs rodata_0 (2.0) / 0x1D8 stfs f0,0x488(r1) = patterned+0x4C hI_KnockBackResistance;
+  // 0x1DC bl __ct__6CColorFffff(rodata_4 = 1.0 x4) / 0x1F8 stw r3,0x694(r1) = actorInformation+0x14
+  // ambientColor; 0x1E4 li r0,0xf / 0x1E8 stw r0,0x6e4(r1) = actorInformation+0x64 visorFlags.
+  patterned.echoParameters.isEchoEmitter = true;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
+}
 
 inline SLdrMysteryFlyer::~SLdrMysteryFlyer() {}
 

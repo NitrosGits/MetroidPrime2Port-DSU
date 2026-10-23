@@ -68,10 +68,10 @@ private:
   uint mGenerateAnimId;                // Guessed name
   TUniqueId mPatrolWaypointId;         // Guessed name
   CProjectileInfo mShotProjectileInfo; // Guessed name
-  bool mMoving : 1;                    // Guessed name
-  bool mHasLineOfSight : 1;            // Guessed name
-  bool mAlerted : 1;                   // Guessed name
-  bool mHasAttackPath : 1;             // Guessed name
+  bool mMoving : 1;                    // Guessed name; 0x814 0x80 (`rlwimi r0, r3, 7, 24, 24` at 0x00001B70)
+  bool mHasLineOfSight : 1;            // Guessed name; 0x814 0x40 (`rlwimi` at 0x00000B40)
+  bool mAlerted : 1;                   // Guessed name; 0x814 0x20
+  bool mHasAttackPath : 1;             // Guessed name; 0x814 0x10
   CPathFindSearch mPathFindSearch;     // Guessed name
   CSteeringBehaviors mSteering;        // Guessed name
   float mAttackInterval;               // Guessed name

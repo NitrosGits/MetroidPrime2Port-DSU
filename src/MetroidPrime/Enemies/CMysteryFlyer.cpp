@@ -55,6 +55,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
      static_cast< CPatterned::StateMachine::CodeFunc >(&CMysteryFlyer::CalcLineOfSight)},
 };
 
+// @ fn_45_2924
 CMysteryFlyer::CMysteryFlyer(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                              const CTransform4f& xf, const CModelData& modelData,
                              const CActorParameters& actorParams,
@@ -83,8 +84,10 @@ CMysteryFlyer::CMysteryFlyer(TUniqueId uid, const rstl::string& name, const CEnt
   mShotProjectileInfo.Token().Lock();
 }
 
+// @ fn_45_2618
 CMysteryFlyer::~CMysteryFlyer() {}
 
+// @ fn_45_227C
 void CMysteryFlyer::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -93,6 +96,7 @@ void CMysteryFlyer::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_45_2308
 void CMysteryFlyer::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
   if (GetActive()) {
@@ -101,6 +105,7 @@ void CMysteryFlyer::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// fn_45_23B8
 void CMysteryFlyer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CPatterned::AcceptScriptMsg(mgr, msg);
@@ -130,6 +135,7 @@ void CMysteryFlyer::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// fn_45_237C
 void CMysteryFlyer::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                     EUserEventType type, float dt) {
   if (!(type == kUE_FadeIn ? true : false)) {
@@ -137,10 +143,13 @@ void CMysteryFlyer::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& nod
   }
 }
 
+// @ fn_45_2274
 CProjectileInfo* CMysteryFlyer::ProjectileInfo() { return &mShotProjectileInfo; }
 
+// @ fn_45_1FD0
 void CMysteryFlyer::Start(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// fn_45_1E14
 void CMysteryFlyer::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   if (mData.needsToGenerate) {
     switch (msg) {
@@ -160,6 +169,7 @@ void CMysteryFlyer::Generate(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_45_1BEC
 void CMysteryFlyer::GoToPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -195,6 +205,7 @@ void CMysteryFlyer::GoToPatrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_45_1B24
 void CMysteryFlyer::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -213,6 +224,7 @@ void CMysteryFlyer::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_45_1A04
 void CMysteryFlyer::FollowAttackPath(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -239,6 +251,7 @@ void CMysteryFlyer::FollowAttackPath(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_45_1998
 void CMysteryFlyer::Hover(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -251,13 +264,23 @@ void CMysteryFlyer::Hover(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_45_1850
 void CMysteryFlyer::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
     const CTransform4f& playerXf = mgr.GetPlayer(0)->GetTransform();
+#ifdef TARGET_PC
+    // fn_45_1850: retail sums left to right, (translation + range * forward) + height * up:
+    // 0x18E4/0x18EC/0x18F4 fadds f5/f3/f1 = translation (0x40/0x50/0x30) + x3E0 * forward,
+    // then 0x1908-0x1910 fadds += x924 * sUpVector.
+    mPathFindNavigation.SetDestination(
+        (playerXf.GetTranslation() + mMaxAttackRange * playerXf.GetForward()) +
+        mHoverHeight * CVector3f::Up());
+#else
     mPathFindNavigation.SetDestination(
         playerXf.GetTranslation() +
         (mMaxAttackRange * playerXf.GetForward() + mHoverHeight * CVector3f::Up()));
+#endif
     mMoving = true;
     break;
   }
@@ -272,6 +295,7 @@ void CMysteryFlyer::Approach(CStateManager& mgr, EStateMsg msg, float dt) {
   mPathFindNavigation.PathFind(mgr, msg, dt, *this);
 }
 
+// @ fn_45_162C
 void CMysteryFlyer::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -294,6 +318,7 @@ void CMysteryFlyer::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_45_13F0
 void CMysteryFlyer::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -311,6 +336,7 @@ void CMysteryFlyer::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_45_15F4
 void CMysteryFlyer::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -319,6 +345,7 @@ void CMysteryFlyer::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_45_1368
 void CMysteryFlyer::ResetAttack(CStateManager& mgr, float dt) {
   const float attackTimeVariation = mAttackTimeVariation;
   const float averageAttackTime = GetAverageAttackTime();
@@ -326,12 +353,15 @@ void CMysteryFlyer::ResetAttack(CStateManager& mgr, float dt) {
   mAttackTimer = 0.f;
 }
 
+// @ fn_45_1348
 void CMysteryFlyer::CalcLineOfSight(CStateManager& mgr, float dt) { UpdateLineOfSight(mgr); }
 
+// @ fn_45_2260
 bool CMysteryFlyer::StateOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimationState.IsOver();
 }
 
+// fn_45_2224
 bool CMysteryFlyer::NearPatrol(CStateManager& mgr, const CTriggerData& data) const {
   bool nearPatrol = true;
   if (mPatrolWaypointId != kInvalidUniqueId) {
@@ -340,14 +370,17 @@ bool CMysteryFlyer::NearPatrol(CStateManager& mgr, const CTriggerData& data) con
   return nearPatrol;
 }
 
+// fn_45_21DC
 bool CMysteryFlyer::InDetectionRange(CStateManager& mgr, const CTriggerData& data) const {
   return mAlerted || CPatterned::InDetectionRange(mgr, data);
 }
 
+// fn_45_21AC
 bool CMysteryFlyer::AttackPathOver(CStateManager& mgr, const CTriggerData& data) const {
   return !mHasAttackPath || mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// fn_45_20C4
 bool CMysteryFlyer::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   bool shouldAttack = false;
   if (mAttackTimer > mAttackInterval) {
@@ -361,28 +394,34 @@ bool CMysteryFlyer::ShouldAttack(CStateManager& mgr, const CTriggerData& data) c
   return shouldAttack;
 }
 
+// fn_45_20A4
 bool CMysteryFlyer::Leash(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Leash(mgr, data);
 }
 
+// @ fn_45_202C
 bool CMysteryFlyer::ShouldApproach(CStateManager& mgr, const CTriggerData& data) const {
   const CVector3f toPlayer = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
   const float maxAttackRange = mMaxAttackRange;
   return toPlayer.Magnitude() > maxAttackRange;
 }
 
+// fn_45_1FFC
 bool CMysteryFlyer::PathOver(CStateManager& mgr, const CTriggerData& data) const {
   return mPathFindSearch.GetResult() || mPathFindSearch.IsOver();
 }
 
+// @ fn_45_1FE0
 bool CMysteryFlyer::Stuck(CStateManager& mgr, const CTriggerData& data) const {
   return mStuckTimer > 0.5f;
 }
 
+// fn_45_1FD4
 bool CMysteryFlyer::LineOfSight(CStateManager& mgr, const CTriggerData& data) const {
   return mHasLineOfSight;
 }
 
+// fn_45_C10
 void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -395,6 +434,7 @@ void CMysteryFlyer::JoinTeam(CStateManager& mgr) {
   }
 }
 
+// fn_45_B68
 void CMysteryFlyer::QuitTeam(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
@@ -406,12 +446,14 @@ void CMysteryFlyer::QuitTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_45_F44
 void CMysteryFlyer::FaceTarget(CStateManager& mgr, float dt) {
   CVector3f toPlayer = mgr.GetPlayer(0)->GetTranslation() - GetTranslation();
   toPlayer.SetZ(0.f);
   BodyController()->FaceDirection(toPlayer, dt);
 }
 
+// @ fn_45_A84
 bool CMysteryFlyer::UpdateLineOfSight(CStateManager& mgr) {
   if (mLineOfSightTimer > 0.7f) {
     mLineOfSightTimer = 0.f;
@@ -422,6 +464,7 @@ bool CMysteryFlyer::UpdateLineOfSight(CStateManager& mgr) {
   return mHasLineOfSight;
 }
 
+// fn_45_CBC
 CVector3f CMysteryFlyer::CalculateSeparation(CStateManager& mgr) {
   CVector3f total = CVector3f::Zero();
   float count = 0.f;
@@ -461,6 +504,7 @@ CVector3f CMysteryFlyer::CalculateSeparation(CStateManager& mgr) {
   return total;
 }
 
+// @ fn_45_1070
 void CMysteryFlyer::UpdateMovement(CStateManager& mgr, float dt) {
   CVector3f desired = BodyController()->GetCommandMgr().GetMoveVector();
   desired = desired + CalculateSeparation(mgr);
@@ -494,6 +538,7 @@ void CMysteryFlyer::UpdateMovement(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_45_FB0
 void CMysteryFlyer::UpdateSteering(CStateManager& mgr, float dt) {
   CVector3f direction = GetTransform().GetForward();
   const TUniqueId destinationId = mWaypointNavigation.GetDestination();
@@ -505,6 +550,7 @@ void CMysteryFlyer::UpdateSteering(CStateManager& mgr, float dt) {
   BodyController()->FaceDirection(direction, dt);
 }
 
+// fn_45_170
 CEntity* LoadMysteryFlyer(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMysteryFlyer sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrMysteryFlyer.inc"
@@ -524,13 +570,16 @@ CEntity* LoadMysteryFlyer(CStateManager& mgr, CInputStream& input, CEntityInfo& 
 }
 
 #ifndef MONOLITHIC
+// @ fn_45_140
 static void SetFuncPtrs() {
   static SMysteryFlyer_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadMysteryFlyer;
   SetSMysteryFlyer_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_45_120
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_45_FC
 extern "C" void RELExit() { SetSMysteryFlyer_FuncPtrs(nullptr); }
 #endif
