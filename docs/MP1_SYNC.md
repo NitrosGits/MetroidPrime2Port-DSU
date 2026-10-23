@@ -58,4 +58,4 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-- 2026-10-23: F1a merged (13f9548dc; omitted MP1 rows: /tmp/opencode/reports/f1a.md); Aurora re-vendored from MP1 174975c2c (38e3b7dea; /tmp/opencode/reports/aur1.md). Running (resumed 2026-10-23 after the sync session was lost): inp1 finish (../wt-mp2-inp1, ses_e96210bd1ffe4jyJnTtJ4SaMPb), f1b from WIP 5bd211fe2 (../wt-mp2-f1a, ses_e96210bd0ffeH0F6dSz1WHkK8O), rob1 package 4 (../wt-mp2-rob1, ses_e96210bcfffeHnafwVZE1CD0ud). Reports /tmp/opencode/reports/<lane>.md.
+- 2026-10-23: F1a merged (13f9548dc; omitted MP1 rows: /tmp/opencode/reports/f1a.md); Aurora re-vendored from MP1 174975c2c (38e3b7dea; /tmp/opencode/reports/aur1.md). Running (resumed 2026-10-23 after the sync session was lost): inp1 finish (../wt-mp2-inp1, ses_e96210bd1ffe4jyJnTtJ4SaMPb), f1b from WIP 5bd211fe2 (../wt-mp2-f1a, ses_e96210bd0ffeH0F6dSz1WHkK8O), rob1 package 4 (../wt-mp2-rob1, ses_e96210bcfffeHnafwVZE1CD0ud). Reports /tmp/opencode/reports/<lane>.md. User: once these three finish (review, merge), start nothing else.
