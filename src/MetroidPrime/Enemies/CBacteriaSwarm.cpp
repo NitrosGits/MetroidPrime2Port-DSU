@@ -762,6 +762,11 @@ void CBacteriaSwarm::Render(const CStateManager& mgr) const {
       RenderBoid(boid, drawMask, flags);
     }
   }
+#ifdef TARGET_PC
+  // 0x2980 bl DisableAllLights__9CGraphicsFv: retail turns the lights off after the outlier
+  // loop, before the particle generator renders (0x2984 lwz r3,0x458(r30)).
+  CGraphics::DisableAllLights();
+#endif
   if (mBoidParticleGenerator.get()) {
     mBoidParticleGenerator->Render();
   }
@@ -1143,7 +1148,13 @@ CEntity* LoadBacteriaSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo&
   SLdrBacteriaSwarm sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrBacteriaSwarm.inc"
 
+#ifdef TARGET_PC
+  // fn_6_A0 never copies the loaded active (+0xc0, stored at 0x3E4 stb r0,0x2a8(r1)) into
+  // editorProperties.active: after the property loop (0x614 blt) it goes straight to
+  // 0x62C bl __nw__FUlPCcPCc, and LdrToEntityInfo (0x69C) reads editorProperties (r1+0x1e8).
+#else
   sldrThis.editorProperties.active = sldrThis.active;
+#endif
   return rs_new CBacteriaSwarm(
       mgr.AllocateUniqueId(), sldrThis.editorProperties.name,
       LdrToEntityInfo(info, sldrThis.editorProperties), sldrThis.editorProperties.transform.scale,
