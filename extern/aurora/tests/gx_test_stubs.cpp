@@ -11,7 +11,9 @@
 #include "gfx/clear.hpp"
 #include "gfx/resources.hpp"
 #include "gfx/depth_peek.hpp"
+#include "gfx/efb_copy.hpp"
 #include "gfx/recording.hpp"
+#include "gfx/scan_peek.hpp"
 #include "gfx/tex_copy_conv.hpp"
 #include "gfx/tex_palette_conv.hpp"
 #include "gfx/texture.hpp"
@@ -350,7 +352,19 @@ void begin_offscreen(uint32_t width, uint32_t height) {
 }
 void end_offscreen() { testing::endOffscreenCount.fetch_add(1, std::memory_order_release); }
 bool is_offscreen() noexcept { return false; }
+// MP2's renderer hooks: a pass is always open, and the readbacks are dropped.
+bool has_render_pass() noexcept { return true; }
+void split_pass_for_depth_snapshot() {}
+void queue_scan_peek(scan_peek::Request req) {}
+void queue_efb_cpu_copy(efb_copy::Request req) {}
+namespace efb_copy {
+bool has_cpu_format(GXTexFmt format) noexcept { return false; }
+} // namespace efb_copy
 } // namespace aurora::gfx
+namespace aurora::gx {
+// No dst-alpha mode, so push_gx_draw adds no alpha-only draw.
+DstAlphaMode dst_alpha_mode(const PipelineConfig& config) noexcept { return DstAlphaMode::None; }
+} // namespace aurora::gx
 
 namespace aurora::gfx::bloom {
 namespace testing {
@@ -461,6 +475,9 @@ bool read_latest(uint16_t x, uint16_t y, uint32_t& z) noexcept {
   }
   z = s_data[static_cast<size_t>(y) * s_width + x] & 0x00ffffffu;
   return true;
+}
+bool read_region(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t* out, uint32_t maxAgeMs) noexcept {
+  return false;
 }
 
 namespace testing {
