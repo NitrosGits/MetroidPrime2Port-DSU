@@ -2281,7 +2281,13 @@ SLdrBasicSwarmProperties::SLdrBasicSwarmProperties()
   unknown_0x7eb5d9e8 = false;
   isOrbitable = true;
   individuallyTargetable = false;
+#ifdef TARGET_PC
+  // DOL __ct__24SLdrBasicSwarmPropertiesFv: li r0, -0x1 (0x8023C1F4); stw r0, 0x1d0(r31)
+  // (0x8023C20C) stores -1 (no sound), not 0.
+  locomotionLoopedSound = -1;
+#else
   locomotionLoopedSound = 0;
+#endif
   soundFallOff = 0.0f;
   maxAudibleDistance = 100.0f;
   minVolume = 20;
