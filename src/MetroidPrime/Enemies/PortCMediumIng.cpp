@@ -369,7 +369,8 @@ void CMediumIng::UpdateCurrentSafeZone(const CStateManager& mgr, const CVector3f
     return;
   }
   const float d2 = (point - pos).MagSquared();
-  const CActor* current = TCastToConstPtr< CActor >(mgr.GetObjectById(mSafeZoneId));
+  const CScriptSafeZone* current = // 0x160C
+      TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mSafeZoneId));
   // Retail keeps the current zone only when it is nearer (`fcmpo; bge` keep: NaN sets).
   if (mSafeZoneId == kInvalidUniqueId || current == nullptr ||
       !(d2 >= (current->GetTranslation() - pos).MagSquared())) {
@@ -393,7 +394,8 @@ void CMediumIng::CreateMistEffect(CStateManager& mgr, const TLockedToken< CGenDe
 
 // @ fn_41_1680
 void CMediumIng::UpdateMistEffect(CStateManager& mgr) {
-  // Retail uses the object unchecked: mMistEffectId is only ever the CSurfaceParticleEffect.
+  // Retail tests the object for null (0x16C0) but not its type: mMistEffectId is only ever the
+  // CSurfaceParticleEffect.
   CSurfaceParticleEffect* effect =
       static_cast< CSurfaceParticleEffect* >(mgr.ObjectById(mMistEffectId));
   if (effect == nullptr) {
