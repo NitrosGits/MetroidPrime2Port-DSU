@@ -222,6 +222,7 @@ tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui an
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and szone): their areas
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and rptl): their areas
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and chog): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and drkc): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
@@ -255,6 +256,7 @@ splinter (Temple Grounds 02_temple_exploration)
 and rptl (Temple Grounds 12_temple_finalgate)
 and chog (Agon Wastes 08_sand_casualpirates, which spawns two ChozoGhosts with a borrowed
 SpacePirate body and drives every state)
+and drkc (Temple Grounds dark 06_temple_sacredpath_dark)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -408,6 +410,8 @@ to 132; chog spawns two ChozoGhosts (e0036ff00/e0036ff01) in Agon Wastes
 Shuffle -> Taunt -> Lurk -> Hurled -> Deactivate -> Start), the visors, touches, charged and
 missile shots, damage and kills, then spawns a third ghost, with `objs ChozoGhost` before the
 steps and at the end.
+to 132; drkc drives Temple Grounds dark 06_temple_sacredpath_dark's two Dark Commandos u051a and u041c through
+Activate, placement, damage and `obj` reads, with `objs DarkCommando` listing both at f200 and f4000.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.

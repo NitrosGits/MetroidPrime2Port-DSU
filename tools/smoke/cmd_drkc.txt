@@ -1,0 +1,27 @@
+# CDarkCommando (module 3: CDarkCommando, the Morphology Dark Commando). Temple Grounds dark
+# 06_temple_sacredpath_dark (world 3bfa3eff, area 06) holds two Dark Commandos u051a and u041c.
+# The steps repeat the lane's tools/cov/specs/darkcommando_fight.con: wake both commandos, place
+# one at melee distance of the player, read its state and target across the fight, and damage both
+# so their hp drops. Both commandos are activated and stay active (god mode keeps the player
+# alive); `obj` reads show their fsm state and target, `damage` lowers their hp.
+# Checks are game updates (@f<n>), not wall seconds. The family stays capped (NC): its area boots
+# quickly. F=4100, last check f4000.
+@f200 objs DarkCommando
+@f220 send u051a Activate; send u041c Activate
+@f240 place u051a player 10
+@f300 damage u051a 25
+@f320 damage u041c 25
+@f400 obj u051a; obj u041c
+@f600 obj u051a
+@f800 damage u051a 25; damage u041c 25
+@f1000 obj u051a
+@f1200 obj u041c
+@f1500 obj u051a; place u051a player 15
+@f1800 damage u051a 10
+@f2000 obj u051a
+@f2200 obj u041c
+@f2500 obj u051a; place u041c player 12
+@f2800 damage u041c 10
+@f3000 obj u041c
+@f3500 obj u041c; obj u051a
+@f4000 objs DarkCommando
