@@ -426,6 +426,13 @@ CSegId PortArmSegId(const CModelData& model, const char* name) {
 
 } // namespace
 
+// fn_29_D540 (0x1110, asm 0xD540-0xE650): the constructor. Its only branches are the seven effect
+// tokens' id tests (0xD688 `cmplwi r0,0xffff` / 0xD68C beq and the same before each token:
+// OptionalPart); both arms ran in the Agon Wastes run of 2026-10-23 (lane ing30, every second id
+// forced to no asset by tools/cov/specs/ing30_force.py). The locator lookups have no null test in
+// retail (0xE3E0 reads the anim data straight from the model data); PortHeadSegId/PortArmSegId's
+// null-anim arm is the host's.
+// @ fn_29_D540
 CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
            const CModelData& modelData, const CActorParameters& actParms,
            const CPatternedInfo& pInfo, const CIngData& data)
@@ -443,7 +450,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mIngSpotPathFindNavigation()  // fn_29_D540 @0x0000D618, the DOL's fn_801F8258
 , mForm(kForm_Corporeal)
 , mDesiredForm(-1)
-, mTouchBox()
+, mTouchBox(CAABox::MakeNullBox()) // 0xD61C-0xD678: 0xcc0..0xcd4 = mskNullBox, engaged (0xcd8 = 1)
 , mHostId(kInvalidUniqueId)
 , mPossessedEffectId(kInvalidUniqueId)                            // 0xcde
 , mSwarmEffect(OptionalPart(data.mSwarm.mPART))                   // 0xce0, CIngData+0x1e4
@@ -481,12 +488,14 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mTargetPos(CVector3f::Zero())
 , mSurfaceNormal(CVector3f::Zero())
 , mSurfaceMoveDir(CVector3f::Zero())
-, mPortalPlaneNormal(CVector3f::Zero())
-, mPortalPlaneConstant(0.f)
+// 0xE1D4-0xE240: (rodata_6C, rodata_6C, rodata_64) = (0, 0, 1) normalised into 0xdf0; 0xE27C-0xE2A4:
+// 0xdfc = dot(translation (0x54/0x58/0x5c), that normal).
+, mPortalPlaneNormal(CVector3f(0.f, 0.f, 1.f).AsNormalized())
+, mPortalPlaneConstant(CVector3f::Dot(xf.GetTranslation(), mPortalPlaneNormal))
 , mSwipeArm(-1)
 , mModelScale(modelData.GetScale())
 , mMiniPortalCount(0)
-, mMiniPortalPositions()
+, mMiniPortalPositions() // host: fn_29_D540 never writes 0xe04..0xe24
 , mMiniPortalIndex(-1)
 , mSafeZoneCount(0)
 , mHeardShotTime(1.5f)
@@ -497,15 +506,17 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mFrustrationTimer(0.f)
 , mBallCooldown(0.f)
 , mHitReactionTime(0.f)
-, mLightBlend(0.f)
+, mLightBlend(1.f) // 0xE2D4 stfs f1 (rodata_64 = 1.0f), 0xe50
 , mDeadFade(0.f)
 , mBodyProjectileTime(0.f)
 , mEvaporate(false)
 , mTaunt(false)
 , mBodyProjectileAllowed(false)
 , mAggressive(false)
-, mFoundMovementPos(false)
+, mFoundMovementPos(true) // 0xE314 rlwimi r3,r4,3,28,28 with r4 = 1: 0xe5c bit 3 set
 , mRecalcPath(false)
+, xE5C_1(false)   // 0xE32C: 0xe5c bit 1 = 0
+, mTakeOff(false) // 0xE338: 0xe5c bit 0 = 0
 , mRenderModel(true)
 , mPortalPlane(false)
 , mStartAsIngSpot((data.mFlags210 & kFlag_StartAsIngSpot) != 0)
@@ -529,12 +540,13 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
   // and stops the actor drawing a shadow (@0x0000E634).
   KnockBackController().EnableKnockBackPhysics(false);
   SetDrawShadow(false);
-  // [?] MinorIng's surface helper mode and search radii (fn_44_9D58); the same DOL helpers.
-  mSurfaceAlignment.SetMode(static_cast< CSurfaceAlignmentHelper::EMode >(1));
-  mPathFindSearch.SetCharacterHeight(mModelScale.GetY() * 3.f);
-  mPathFindSearch.SetCharacterRadius(mModelScale.GetZ() * 5.f);
-  mLineOfSight.SetRayFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
+  // The search's size from the model scale (0x60 -> scale at +0): 0xE618-0xE630
+  //   lfs f0, rodata_98 (5.0f); lfs f1, 0x4(r6) (y); lfs f3, 0x8(r6) (z); f1 = rodata_D0 (3.0f) * y;
+  //   f0 = 5 * z; stfs f1, 0xab0 (search+0xd4, mChRadius); stfs f0, 0xaac (search+0xd0, mChHeight).
+  // The ctor sets no surface-alignment mode (0xca4 is stored only at 0x9140/0x9830/0x9B6C/0x9D18) and
+  // leaves the line-of-sight tracker's own ray filter.
+  mPathFindSearch.SetCharacterHeight(mModelScale.GetZ() * 5.f);
+  mPathFindSearch.SetCharacterRadius(mModelScale.GetY() * 3.f);
 }
 
 // fn_29_CF64 (0x1C4): the retail's destructor frees the data block (fn_29_10F8, 0x94) and the
