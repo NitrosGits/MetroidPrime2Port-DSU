@@ -119,6 +119,11 @@ Build `$T/ninja -C build-port-link metroid_prime2_port` 0 FAILED; `python3 tools
 area, frames, `[port] caught` / `reach-stub` count 0; upstream-file edits: TARGET_PC strip-diff clean
 and `python3 configure.py && $T/ninja` "87 files OK".
 
+Test only what materially changed (user, 2026-10-24): run the gates and runs that touch the code
+your diff changed, the bodies you marked and their callers' area, nothing wider. Don't re-run
+unchanged families, whole-module sweeps or smoke; say in the report what you skipped. The orchestrator
+reviews every diff itself.
+
 ## Report
 
 Write `/tmp/opencode/reports/<lane>.md` (overwrite) and reply with it, under ~400 tokens in the reply:
