@@ -1,0 +1,41 @@
+# AIMannedTurret (REL 1) coverage, Agon 06_sand_alamofront layer 2 (amt1). Turret AI 001d0055 at
+# (186.4,-67.8,28.1): animated turret 001d005f, rider platform 001d0054. Player at ground z 10.
+# Attack (telegraph, fire, MP sfx arm), aim clamps around the turret, leash -> Patrol (spline wrap),
+# damage in Patrol (TookDamage -> Attack), Stop -> Dead, Deactivate/Activate -> Start with the
+# actors attached, then the rider and turret deleted for the null-actor arms.
+@f600 layer 2
+@f700 send e001d005c Activate; send e001d005f Activate
+@f800 tp 180 -70 10
+@f820 send e001d0055 Start
+@f2000 mpforce 1
+@f2600 mpforce 0
+@f2700 tp 186 -55 10
+@f3000 tp 186 -80 10
+@f3300 tp 175 -68 10
+@f3600 tp 197 -68 10
+@f3900 tp 194 -76 10
+@f4200 tp 90 -68 10
+@f4300 status
+@f8700 status
+@f8800 damage e001d0055 1
+@f9000 orbit e001d0055
+@f9100 damage e001d0055 1
+@f9600 tp 90 -68 10
+@f10200 send e001d0055 Increment
+@f10300 send e001d0055 Stop
+@f10500 send e001d0055 Deactivate
+@f10520 send e001d0055 Reset
+@f10600 send e001d0055 Activate
+@f10700 tp 180 -70 10
+@f10720 send e001d0055 Start
+@f11400 send e001d005f Delete
+@f12000 orbit e001d0055
+@f12100 send e001d0055 Stop
+@f12200 send e001d0055 AreaLoaded
+@f12300 send e001d0055 Start
+@f12800 send e001d0054 Delete
+@f12900 orbit e001d0055
+@f13000 send e001d0055 Stop
+@f13100 send e001d0055 AreaLoaded
+@f13200 send e001d0055 Start
+@f13800 status
