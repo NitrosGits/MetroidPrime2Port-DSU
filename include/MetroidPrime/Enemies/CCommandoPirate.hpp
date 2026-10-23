@@ -22,14 +22,14 @@
 class CPirateRagDoll;
 
 // The E-grenade half of the REL's parameter block (guest data+0x68, 0x70 bytes). The guest block
-// is built by fn_9_98C (the blade damage plus the grenade property block) and fn_9_F50C (the eight
+// is built by fn_9_98C (the grenade property block, its own damage info included) and fn_9_F50C (the eight
 // floats on top); the guest offsets are the REL's and the host layout is its own. The four
 // constants 0.1f/150.f/0.1f/150.f are the guest's (fn_9_98C stores them from its own arguments at
 // 0x0000098C..0x00000A0C); the flag byte at guest +0x4C gets its 0x80 bit (0x00000A14) from the
 // caller's 1 (fn_9_168 @0x00000610), so CBouncyGrenadeData::x4c_ is true.
 struct CCommandoPirateGrenadeData {
   CCommandoPirateGrenadeData(float grenadeMass, float unknownED086CE0,
-                             const CDamageInfo& bladeDamage, int grenadeNumBounces,
+                             const CDamageInfo& grenadeDamage, int grenadeNumBounces,
                              CAssetId grenadeExplosion, CAssetId grenadeExplosion2,
                              CAssetId grenadeTrail, CAssetId grenadeEffect,
                              ushort soundGrenadeBounce, ushort soundGrenadeExplode,
@@ -40,7 +40,7 @@ struct CCommandoPirateGrenadeData {
                              float grenadeMaxLaunchSpeed)
   : mGrenadeMass(grenadeMass)
   , mUnknownED086CE0(unknownED086CE0)
-  , mBladeDamage(bladeDamage)
+  , mGrenadeDamage(grenadeDamage)
   , mGrenadeNumBounces(grenadeNumBounces)
   , mGrenadeExplosion(grenadeExplosion)
   , mGrenadeExplosion2(grenadeExplosion2)
@@ -64,7 +64,7 @@ struct CCommandoPirateGrenadeData {
 
   float mGrenadeMass;              // guest +0x00, fn_9_98C @0x0000098C
   float mUnknownED086CE0;          // guest +0x04, fn_9_98C @0x00000994
-  CDamageInfo mBladeDamage;        // guest +0x08 (0x1c), fn_9_98C @0x0000099C..0x000009D8
+  CDamageInfo mGrenadeDamage;      // guest +0x08 (0x1c), fn_9_98C @0x0000099C..0x000009D8
   int mGrenadeNumBounces;          // guest +0x24, fn_9_98C @0x000009E4
   CAssetId mGrenadeExplosion;      // guest +0x28, fn_9_98C @0x000009E8
   CAssetId mGrenadeExplosion2;     // guest +0x2c, fn_9_98C @0x000009EC (the same asset again)
@@ -493,7 +493,7 @@ private:
   float xb90_;                            // 0xb90, 0.f from the ctor (fn_9_D904 @0x0000DB0C)
   CVector3f xb94_;                         // 0xb94, the target's position; zero from the ctor
   CVector3f xba0_;                         // 0xba0, the charge direction; fn_9_8028 sets it
-  CVector3f xbac_;                         // 0xbac, the waypoint's forward; fn_9_2A98 sets it
+  CVector3f xbac_;                         // 0xbac, the waypoint's up column; fn_9_2A98 sets it
   CVector3f xbb8_;                         // 0xbb8, the fourth vector; fn_9_BF44 stores a normal
   float xbec_;                            // 0xbec, a float of the jump-back helper fn_9_3900
   CVector3f xbf0_;                         // 0xbf0, the jump-back target; fn_9_3900 reads it
