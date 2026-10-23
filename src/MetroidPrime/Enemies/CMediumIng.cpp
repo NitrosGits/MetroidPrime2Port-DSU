@@ -192,6 +192,10 @@ CMediumIngTentacle::CMediumIngTentacle(TUniqueId uid, TAreaId areaId, const rstl
 , mDamage(data.mAttackTentacleDamage)
 , mTipBounds()
 , mSplinePoints()
+#ifdef TARGET_PC
+// Port: retail leaves mCanDamage to the heap; the host heap isn't zeroed.
+, mCanDamage(false)
+#endif
 , mExtending(false)
 , mRetracting(false)
 , mElapsedTime(0.f)
@@ -593,17 +597,22 @@ void CMediumIng::SetRetreatDestination(CStateManager& mgr, float dt) {}
 void CMediumIng::SetMeshPathDestination(CStateManager& mgr, float dt) {}
 void CMediumIng::SetDashDestination(CStateManager& mgr, float dt) {}
 CMediumIng::~CMediumIng() {}
+#ifndef TARGET_PC // the real bodies are in PortCMediumIng.cpp
 void CMediumIng::Think(float dt, CStateManager& mgr) {}
 void CMediumIng::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {}
 void CMediumIng::PreRender(CStateManager& mgr) {}
 void CMediumIng::Render(const CStateManager& mgr) const {}
 void CMediumIng::Touch(CActor& actor, CStateManager& mgr) {}
 void CMediumIng::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {}
+#endif
 bool CMediumIng::IsListening() const { return true; }
+#ifndef TARGET_PC
 bool CMediumIng::Listen(CStateManager& mgr, const CVector3f& pos, EListenNoiseType type) {
   return false;
 }
+#endif
 CMediumIngTentacle::~CMediumIngTentacle() {}
+#ifndef TARGET_PC
 void CMediumIngTentacle::Think(float dt, CStateManager& mgr) {}
 void CMediumIngTentacle::PreRender(CStateManager& mgr) {}
 rstl::optional_object< CAABox > CMediumIngTentacle::GetTouchBounds() const {
@@ -614,14 +623,17 @@ void CMediumIngTentacle::Extend(CStateManager& mgr, const CVector3f& target) {}
 void CMediumIngTentacle::Retract(CStateManager& mgr) {}
 float CMediumIngTentacle::GetProgress() const { return 0.f; }
 void CMediumIngTentacle::UpdateShake(CStateManager& mgr, float dt) {}
+#endif
 bool CMediumIng::FindSafeZoneRetreatPoint(const CStateManager& mgr, CVector3f& outPoint) {
   return false;
 }
+#ifndef TARGET_PC
 void CMediumIng::UpdateCurrentSafeZone(const CStateManager& mgr, const CVector3f& point) {}
 void CMediumIng::UpdateMistEffect(CStateManager& mgr) {}
 void CMediumIng::CreateMistEffect(CStateManager& mgr, const TLockedToken< CGenDescription >& desc) {
 }
 void CMediumIng::SetFlagE1() {}
+#endif
 TUniqueId CMediumIng::FindClosestRetreatActor(const CStateManager& mgr,
                                               const CVector3f& pos) const {
   return kInvalidUniqueId;
@@ -629,4 +641,6 @@ TUniqueId CMediumIng::FindClosestRetreatActor(const CStateManager& mgr,
 TUniqueId CMediumIng::FindClosestDangerActor(const CStateManager& mgr, const CVector3f& pos) const {
   return kInvalidUniqueId;
 }
+#ifndef TARGET_PC
 void CMediumIng::CalculateSeparation(CStateManager& mgr) {}
+#endif
