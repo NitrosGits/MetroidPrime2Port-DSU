@@ -1,0 +1,122 @@
+# MediumIng ming4 driver: the whole ming3 script (to f488), then the ming4 arms: team not-joined quit, far Leash with LOS held, Echo zone kept, Should*Attack with LOS/in-zone/team-role, then the region true arm (world coords inside the local octree).
+# u0417 = the Ing, 1105 = safe zone (Echo), 1107 = team AI mgr. `var ming.conn` bits: 1 Approach/Follow, 2 GeneratorConnection/Follow, 4 Active/Play.
+@f300 god 1; tp 208.5 -174 -46.5; face 180
+@f336 codecall u0417 SelectTarget
+@f340 place u0417 player 6; place u0417 player 6
+@f345 var u0417 ming.fb4 0; var u0417 ming.mist 0; trigcall u0417 ShouldMistAttack
+@f346 var u0417 ming.fb4 5; var u0417 ming.mist 0; var u0417 ming.fc0 0; trigcall u0417 ShouldMistAttack
+@f347 var u0417 ming.fc0 99; var u0417 ming.c2 1; trigcall u0417 ShouldMistAttack
+@f348 var u0417 ming.c2 0; trigcall u0417 ShouldMistAttack
+@f349 var u0417 ming.mist 1; var u0417 ming.c2 1; trigcall u0417 ShouldMistAttack
+@f350 var u0417 ming.mist 0; var u0417 ming.c2 0; trigcall u0417 ShouldMistAttack
+@f351 place u0417 player 60; place u0417 player 60
+@f356 var u0417 ming.fb4 5; var u0417 ming.fc0 99; trigcall u0417 ShouldMistAttack
+@f357 place u0417 player 6; place u0417 player 6
+@f362 var u0417 ming.mist 0; var u0417 ming.fb4 5; var u0417 ming.fbc 99; var u0417 ming.team -1; trigcall u0417 ShouldMeleeAttack
+@f363 var u0417 ming.fbc 0; trigcall u0417 ShouldMeleeAttack
+@f364 var u0417 ming.fb4 0; var u0417 ming.fbc 99; trigcall u0417 ShouldMeleeAttack
+@f365 var u0417 ming.fb4 5; var u0417 ming.mist 1; trigcall u0417 ShouldMeleeAttack
+@f366 var u0417 ming.mist 0; var u0417 ming.team 1107; trigcall u0417 ShouldMeleeAttack
+@f367 var u0417 ming.team -1; trigcall u0417 ShouldMeleeAttack
+@f368 place u0417 player 80; place u0417 player 80
+@f373 var u0417 ming.fbc 99; var u0417 ming.fb4 5; trigcall u0417 ShouldMeleeAttack
+@f374 place u0417 player 6; place u0417 player 6
+@f379 var u0417 ming.fc4 0; trigcall u0417 ShouldArmAttack
+@f380 var u0417 ming.fc4 5; var u0417 ming.fb4 5; var u0417 ming.mist 0; var u0417 ming.fb8 99; trigcall u0417 ShouldArmAttack
+@f381 var u0417 ming.fb8 0; trigcall u0417 ShouldArmAttack
+@f382 var u0417 ming.fb4 0; var u0417 ming.fb8 99; trigcall u0417 ShouldArmAttack
+@f383 var u0417 ming.fb4 5; var u0417 ming.mist 1; trigcall u0417 ShouldArmAttack
+@f384 var u0417 ming.mist 0; var u0417 ming.fc4 0; var u0417 ming.team 1107; trigcall u0417 ShouldArmAttack
+@f385 var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f386 place u0417 player 2; place u0417 player 2
+@f391 var u0417 ming.fc4 0; var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f392 place u0417 player 20; place u0417 player 20
+@f397 var u0417 ming.fc4 0; var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f398 place u0417 player 40; place u0417 player 40
+@f403 var u0417 ming.fc4 0; var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f404 place u0417 player 120; place u0417 player 120
+@f409 var u0417 ming.fc4 0; var u0417 ming.team -1; trigcall u0417 ShouldArmAttack
+@f410 place u0417 player 6; place u0417 player 6
+@f415 var u0417 ming.e2 1; trigcall u0417 Leash
+@f416 var u0417 ming.e2 0; var u0417 ming.fc8 0; trigcall u0417 Leash
+@f417 var u0417 ming.fc8 99; trigcall u0417 Leash
+@f418 place u0417 player 150; place u0417 player 150
+@f423 var u0417 ming.fc8 99; trigcall u0417 Leash
+@f424 place u0417 player 6; place u0417 player 6
+@f429 var u0417 ming.d0 1; trigcall u0417 HasApproachPattern; trigcall u0417 HasAttackPattern
+@f430 var u0417 ming.d0 0; trigcall u0417 HasApproachPattern; trigcall u0417 HasAttackPattern
+@f431 var u0417 ming.c1 0; var u0417 ming.c0 0; var u0417 ming.safezone -1; trigcall u0417 IsLuredBySafeZone
+@f432 var u0417 ming.c1 1; trigcall u0417 IsLuredBySafeZone
+@f433 var u0417 ming.c1 0; var u0417 ming.c0 1; trigcall u0417 IsLuredBySafeZone
+@f434 var u0417 ming.c0 0; var u0417 ming.safezone 1105; trigcall u0417 IsLuredBySafeZone
+@f435 trigcall u0417 IsDestInsideCurrentRegion
+# HasApproachPattern / HasAttackPattern: connections present (d0 clear), then d0 set with them present
+@f440 var u0417 ming.d0 0; var u0417 ming.conn 3; trigcall u0417 HasApproachPattern; trigcall u0417 HasAttackPattern
+@f441 var u0417 ming.d0 1; trigcall u0417 HasApproachPattern; trigcall u0417 HasAttackPattern
+@f442 var u0417 ming.d0 0; var u0417 ming.conn 1; trigcall u0417 HasApproachPattern; trigcall u0417 HasAttackPattern
+@f443 var u0417 ming.conn 2; trigcall u0417 HasApproachPattern; trigcall u0417 HasAttackPattern
+# team: leave (valid team -> quit), leave again (no team), rejoin with the Active/Play link, join while joined,
+# join with no link (association invalid), restore the link
+@f450 var u0417 ming.team; var u0417 ming.quitteam 1; var u0417 ming.team
+@f451 var u0417 ming.quitteam 1; var u0417 ming.team
+@f452 var u0417 ming.conn 4; var u0417 ming.jointeam 1; var u0417 ming.team
+@f453 var u0417 ming.jointeam 1; var u0417 ming.team
+@f454 var u0417 ming.quitteam 1; var u0417 ming.conn 0; var u0417 ming.jointeam 1; var u0417 ming.team
+@f455 var u0417 ming.conn 4; var u0417 ming.jointeam 1; var u0417 ming.team
+# QuitTeam with a team id that is not a team (the Ing's own id 1105 is a safe zone; the cast is null) and one the Ing is not part of
+@f456 var u0417 ming.team 1105; var u0417 ming.quitteam 1; var u0417 ming.team
+@f457 var u0417 ming.quitteam 1; var u0417 ming.team -1; var u0417 ming.jointeam 1; var u0417 ming.team
+# ValidateSafeZone: no zone, a non-zone id, an inactive zone, a non-Echo zone, then the Echo zone again
+@f460 var u0417 ming.safezone -1; var u0417 ming.validate 1
+@f461 var u0417 ming.safezone 1107; var u0417 ming.validate 1; var u0417 ming.safezone
+@f462 var u0417 ming.safezone 1105; var u0417 ming.validate 1; var u0417 ming.safezone
+@f463 send u0451 Deactivate
+@f465 var u0417 ming.safezone 1105; var u0417 ming.validate 1; var u0417 ming.safezone
+@f466 send u0451 Activate; send u0451 Decrement
+@f468 var u0417 ming.safezone 1105; var u0417 ming.validate 1; var u0417 ming.safezone
+# IsDestInsideCurrentRegion: dest near (same region), dest far
+@f470 var u0417 ming.destme 1; trigcall u0417 IsDestInsideCurrentRegion
+@f471 var u0417 ming.destx 100000; trigcall u0417 IsDestInsideCurrentRegion
+# Leash: the Ing in no area, then back
+@f475 var u0417 ming.e2 0; var u0417 ming.fc8 0; setarea u0417 -1; trigcall u0417 Leash; setarea u0417 46
+@f476 trigcall u0417 Leash
+# the trigger arms with the player facing away / toward the Ing (angle test) and at 2 distances
+@f480 face 0; var u0417 ming.fb4 5; var u0417 ming.fc0 99; var u0417 ming.c2 0; var u0417 ming.mist 0; trigcall u0417 ShouldMistAttack
+@f481 face 180; trigcall u0417 ShouldMistAttack
+@f482 place u0417 player 200; place u0417 player 200
+@f487 var u0417 ming.fc0 99; var u0417 ming.fb4 5; trigcall u0417 ShouldMistAttack
+@f488 place u0417 player 6; place u0417 player 6
+# --- ming4 ---
+# QuitTeam: valid team id the Ing has left (not a member)
+@f500 var u0417 ming.quitteam 1; var u0417 ming.conn 4; var u0417 ming.team 1107; var u0417 ming.quitteam 1; var u0417 ming.team
+@f501 var u0417 ming.jointeam 1; var u0417 ming.team
+# Leash far with line of sight held: fc8 <= 5 is false
+@f505 place u0417 player 150; place u0417 player 150
+@f510 var u0417 ming.los; var u0417 ming.e2 0; var u0417 ming.fc8 0; trigcall u0417 Leash
+@f511 place u0417 player 6; place u0417 player 6
+# Should*Attack with clear line and the player facing the Ing: HasMist+fb4 (mist ready), mist but fb4 low, melee with the team role (CanStart true), arm with the role
+@f530 var u0417 ming.los; face 180; var u0417 ming.mist 1; var u0417 ming.fb4 5; var u0417 ming.fc0 99; var u0417 ming.c2 0; trigcall u0417 ShouldMistAttack
+@f531 var u0417 ming.mist 1; var u0417 ming.fb4 0; trigcall u0417 ShouldMistAttack
+@f532 var u0417 ming.mist 1; var u0417 ming.fb4 5; var u0417 ming.c2 1; trigcall u0417 ShouldMistAttack
+@f533 var u0417 ming.mist 0; var u0417 ming.fb4 5; var u0417 ming.c2 1; trigcall u0417 ShouldMistAttack
+@f534 var u0417 ming.mist 0; var u0417 ming.fb4 5; var u0417 ming.c2 0; var u0417 ming.fbc 99; var u0417 ming.team; trigcall u0417 ShouldMeleeAttack
+@f535 var u0417 ming.fc4 0; var u0417 ming.fb8 99; trigcall u0417 ShouldArmAttack
+@f536 var u0417 ming.fc4 5; trigcall u0417 ShouldArmAttack
+# the Echo zone u0451 active, the player inside it: IsInSafeZone true (Melee false; Arm true even when too close)
+@f540 send u0451 Activate; send u0452 Activate; tp 238.9 -194.7 -39.5; face 90; obj u0417
+@f545 obj u0417
+@f550 obj u0417
+@f560 obj u0417; place u0417 player 6; obj u0417
+@f565 obj u0417
+@f570 obj u0417
+@f580 var u0417 ming.los; var u0417 ming.safezone 1105; var u0417 ming.validate 1; var u0417 ming.safezone; var u0417 ming.mist 0; var u0417 ming.fb4 5; var u0417 ming.fbc 99; trigcall u0417 ShouldMeleeAttack
+@f581 var u0417 ming.fc4 5; var u0417 ming.fb8 99; trigcall u0417 ShouldArmAttack
+@f582 place u0417 player 1; place u0417 player 1
+@f590 place u0417 player 1; var u0417 ming.team 65535; var u0417 ming.los; var u0417 ming.fc4 5; var u0417 ming.fb8 99; trigcall u0417 ShouldArmAttack
+# (Echo zone type: an Ing placed inside an Echo zone vanishes, so the Echo keep arm runs last, player outside)
+# region true arm: both points are world coordinates tested against the area-local octree, so stand where the world position falls inside a local region
+@f600 tp -21.26 21.08 18.5; face 180
+@f610 place u0417 player 0
+@f620 var u0417 ming.destme 1; trigcall u0417 IsDestInsideCurrentRegion
+@f640 send u0451 InternalMessage0; send u0451 Activate
+@f642 var u0417 ming.safezone 1105; var u0417 ming.validate 1; var u0417 ming.safezone

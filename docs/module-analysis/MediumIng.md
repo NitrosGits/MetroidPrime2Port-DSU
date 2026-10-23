@@ -5,7 +5,7 @@ loader, the ctors and empty stubs; the port's bodies are in
 `src/MetroidPrime/Enemies/PortCMediumIng.cpp` (the upstream stubs they replace sit under
 `#ifndef TARGET_PC`). Function table: `MediumIng_functions.tsv` (class B/H/T, slice, marker).
 
-## Status (2026-10-24, lanes mi1 + mi2 + mi3 + mi4 + mi5 + ming1 + ming3)
+## Status (2026-10-24, lanes mi1 + mi2 + mi3 + mi4 + mi5 + ming1 + ming3 + ming4)
 
 - mi1 (slice 1, `PortCMediumIng.cpp`): Think, AcceptScriptMsg, PreRender, Render, Touch, Death,
   the mist/safe-zone/listen bodies, CalculateSeparation and the helpers UpdateTimers 3274,
@@ -125,3 +125,16 @@ to area 40, and mist states 1 and 4. Screenshots: `/tmp/opencode/mi3-shots/`.
 - Still open (unmarked): QuitTeam (346 not-in-team arm), JoinTeam (358 cast-null arm, likely dead: the team predicate
   guarantees CScriptTeamAiMgr), Leash (495), ValidateSafeZone (522 Echo-keep arm), IsDestInsideCurrentRegion (543 true arm:
   FindClosestRegion returns null at the Ing in area 46 on the host), ShouldMist/Melee/ArmAttack (need line of sight).
+
+## ming4
+
+- Driver `tools/cov/specs/mediuming_ming4.con` (ming3 steps to f488, then f500+); new read-only console var `ming.los` (LOS tracker).
+- Marked, all live arms run (ming4 gcov): QuitTeam (1ED0), JoinTeam (1F78), Leash (5CCC), ValidateSafeZone (1378),
+  IsDestInsideCurrentRegion (2C6C), ShouldMist/Melee/ArmAttack (337C/3518/3640).
+- JoinTeam null-cast arm is dead: GetAssociatedTeamId = CheckConnectedObject_if(CTeamAiPredicate), only CScriptTeamAiMgr matches.
+- IsDestInsideCurrentRegion: retail fn_41_2C6C passes the Ing's WORLD position and mDestPos straight to
+  CPFArea FindClosestRegion (CPathFindArea.cpp:386-423), which works in area-local space; unlike CPathFindSearch.cpp:73-74 there is
+  no TransposeMultiply. Area 46's transform translates (201.17,-177.64,-62.69), so the world point is outside every region bound and
+  null is returned: faithful retail quirk, no shared-code bug. True arm: player at world (-21.26,21.08,18.5), `place u0417 player 0`.
+- An Ing placed inside an Echo (InternalMessage0) active zone vanishes within ~5 frames; Echo-keep ValidateSafeZone is run with the player outside.
+- Arm too-close arm: needs IsInSafeZone (active zone, player inside) and the team id cleared (`ming.team 65535`) so CanStartAttack passes.

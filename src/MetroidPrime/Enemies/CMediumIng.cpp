@@ -340,6 +340,7 @@ extern "C" void RELMain() { SetFuncPtrs(); }
 extern "C" void RELExit() { SetSMediumIng_FuncPtrs(nullptr); }
 #endif
 
+// @ fn_41_1ED0
 void CMediumIng::QuitTeam(CStateManager& mgr) {
   if (mTeamAiMgrId != kInvalidUniqueId) {
     if (CScriptTeamAiMgr* team = TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId))) {
@@ -351,6 +352,8 @@ void CMediumIng::QuitTeam(CStateManager& mgr) {
   }
 }
 
+// The null-cast arm is dead: GetAssociatedTeamId only returns objects that pass CTeamAiPredicate (a CScriptTeamAiMgr).
+// @ fn_41_1F78
 void CMediumIng::JoinTeam(CStateManager& mgr) {
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
@@ -487,6 +490,7 @@ bool CMediumIng::HasMist() const { return !(CMath::AbsF(mMistAmount - 0.f) < 0.0
 // @ fn_41_5CAC (dead: only named in the func-ptr table; no caller in the pseudo-C, 0 refs in 110 FSM2/AFSM assets)
 bool CMediumIng::IsMisting(CStateManager& mgr, const CTriggerData& data) const { return HasMist(); }
 
+// @ fn_41_5CCC
 bool CMediumIng::Leash(CStateManager& mgr, const CTriggerData& data) const {
   if (mE2) {
     return true;
@@ -520,6 +524,7 @@ bool CMediumIng::IsInSafeZone(const CStateManager& mgr) const {
   return mgr.GetSafeZoneManager()->IsObjectInSafeZone(*mgr.GetPlayer(0), mgr);
 }
 
+// @ fn_41_1378
 void CMediumIng::ValidateSafeZone(const CStateManager& mgr) {
   const CScriptSafeZone* safeZone =
       TCastToConstPtr< CScriptSafeZone >(mgr.GetObjectById(mSafeZoneId));
@@ -532,6 +537,7 @@ CPFArea* CMediumIng::GetPathArea(CStateManager& mgr) const {
   return mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea;
 }
 
+// @ fn_41_2C6C
 bool CMediumIng::IsDestInsideCurrentRegion(CStateManager& mgr, const CTriggerData& data) const {
   const CVector3f position = GetTranslation();
   const CVector3f dest = mDestPos;
@@ -550,6 +556,7 @@ bool CMediumIng::IsDestInsideCurrentRegion(CStateManager& mgr, const CTriggerDat
   return result;
 }
 
+// @ fn_41_337C
 bool CMediumIng::ShouldMistAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (mLineOfSightTracker.HasLineOfSight()) {
     bool mistReady = false;
@@ -572,6 +579,7 @@ bool CMediumIng::ShouldMistAttack(CStateManager& mgr, const CTriggerData& data) 
   return false;
 }
 
+// @ fn_41_3518
 bool CMediumIng::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data) const {
   if (!IsInSafeZone(mgr) && !HasMist() && mFB4 > 1.f && mLineOfSightTracker.HasLineOfSight() &&
       (mTeamAiMgrId == kInvalidUniqueId ||
@@ -586,6 +594,7 @@ bool CMediumIng::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData& data)
   return false;
 }
 
+// @ fn_41_3640
 bool CMediumIng::ShouldArmAttack(CStateManager& mgr, const CTriggerData& data) const {
   const bool armReady = mFC4 < 1.f;
   if ((armReady || (mFB4 > 1.f && !HasMist())) &&
