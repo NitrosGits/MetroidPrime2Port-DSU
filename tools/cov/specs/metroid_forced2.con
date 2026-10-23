@@ -1,0 +1,23 @@
+# Agon 08_sand_casualpirates layers 6+7: AreaLoaded twice (team id already set), two metroids
+# latching on the player at once (the second AttachToTarget fails), a charged dark shot entangling
+# the latched metroid (frozen while sucking), a latch on the morphed player killed (morphed detach).
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give morphBall 1; give darkBeam 1; give powerBombs 5; fastmorph 1; give missile 20
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate
+@f600 send u0547 AreaLoaded
+@f610 send u0547 AreaLoaded
+@f620 place u0547 player 2; fsm u0547 SelectTarget; place u053d player 3; fsm u053d SelectTarget
+@f700 place u0547 player 2; fsm u0547 Attack
+@f720 place u053d player 2; fsm u053d Attack
+@f800 obj u0547; obj u053d
+@f850 beam dark
+@f860 shoot u0547 charged 3
+@f900 obj u0547
+@f950 obj u0547; obj u053d
+@f1000 press x 4
+@f1100 place u053d player 2; fsm u053d SelectTarget
+@f1150 place u053d player 2; fsm u053d Attack
+@f1250 obj u053d; status
+@f1300 kill u053d
+@f1400 obj u053d; obj u0547

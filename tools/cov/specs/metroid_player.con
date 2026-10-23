@@ -1,0 +1,31 @@
+# Agon 08_sand_casualpirates layers 6+7: metroid u0547 latches onto the player (god mode) and
+# drains; the player morphs and lays bombs while held, unmorphs, then a power bomb. CMetroid
+# player arms: Attack, SuckEnergyFromTarget, ComputeSuckPlayerPosRot, DetachFromTarget.
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give morphBall 1; give morphBallBombs 1; give powerBombs 5; fastmorph 1
+@f580 send u0547 Activate; send u053d Activate
+
+@f620 place u0547 player 2; fsm u0547 SelectTarget
+@f700 obj u0547
+@f760 place u0547 player 2; fsm u0547 Attack
+@f800 obj u0547
+@f900 obj u0547; status
+@f1000 obj u0547; status
+@f1100 press x 4
+@f1200 obj u0547; status
+@f1260 press a 2
+@f1300 obj u0547
+@f1400 press x 4
+@f1500 obj u0547; status
+@f1600 place u0547 player 2; fsm u0547 Attack
+@f1800 obj u0547; status
+@f1900 damage u0547 50 0 powerbomb
+@f2000 obj u0547; status
+@f2100 place u053d player 2; fsm u053d SelectTarget
+@f2200 press x 4
+@f2300 place u053d player 2; fsm u053d Attack
+@f2400 obj u053d; status
+@f2700 obj u053d; status
+@f2800 press y 2
+@f2900 obj u053d; status
