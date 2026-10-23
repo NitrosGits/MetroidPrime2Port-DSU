@@ -1,0 +1,34 @@
+# Temple Grounds 0e_temple_hall layer 0: three War Wasps (MYSF e003100fe/ff, e00310101), inactive
+# until their generator's relay activates them (Generate, then GoToPatrol/Patrol). The console
+# activates them near the player, alerts them (FollowAttackPath to their attack waypoints, then
+# Hover/Approach/Attack/Dodge on their own), damages one (knock-back), forces the states the
+# natural run misses, runs the line-of-sight code twice (timer over 0.7 s, then
+# under), kills one and deletes one. For tools/cov/specs/mysteryflyer.py.
+@f300 god 1; give missile 50
+@f400 send e003100fe Activate; send e003100ff Activate; send e00310101 Activate
+@f500 place e003100fe player 12; place e003100ff player 30; place e00310101 player 6
+@f600 send e003100fe Alert; send e003100ff Alert; send e00310101 Alert
+@f800 obj e003100fe; obj e003100ff; obj e00310101
+@f1100 obj e003100fe; obj e003100ff; obj e00310101
+@f1400 obj e003100fe; obj e003100ff; obj e00310101
+@f1700 obj e003100fe; obj e003100ff; obj e00310101
+@f2000 obj e003100fe; obj e003100ff; obj e00310101
+@f2100 damage e00310101 1 0 power
+@f2110 obj e00310101
+@f2200 fsm e003100fe Approach
+@f2210 tp 30 280 -38
+@f2300 obj e003100fe
+@f2400 fsm e003100ff Dodge
+@f2450 obj e003100ff
+@f2500 fsm e003100fe Attack
+@f2560 obj e003100fe
+@f2600 fsm e003100ff Hover
+@f2620 fsm e00310101 GoToPatrol
+@f2650 codecall e003100fe CalcLineOfSight
+@f2660 codecall e003100fe CalcLineOfSight; codecall e003100fe ResetAttack
+@f2700 obj e003100fe; obj e003100ff; obj e00310101
+@f2800 kill e00310101
+@f2830 obj e00310101
+@f2900 send e003100ff Deactivate
+@f2950 send e003100ff Delete
+@f3000 objs MysteryFlyer
