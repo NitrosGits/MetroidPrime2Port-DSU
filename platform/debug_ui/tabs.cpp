@@ -60,6 +60,10 @@ void DrawVideoTab() {
     DrawPerformanceTab();
     ImGui::EndTabItem();
   }
+  if (SubTab("Video", "Compatibility")) {
+    DrawVideoCompatibility();
+    ImGui::EndTabItem();
+  }
   ImGui::EndTabBar();
 }
 
