@@ -3,7 +3,7 @@
 // debug_ui/settings.cpp; the keys and the variables they reach are MP2's. State shared with
 // port_overlay.cpp is in port_overlay_internal.h.
 
-#include "port_overlay_internal.h"
+#include "../port_overlay_internal.h"
 
 #include "port_env.h"
 #include "port_livesplit.h"

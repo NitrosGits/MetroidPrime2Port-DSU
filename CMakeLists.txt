@@ -456,11 +456,14 @@ if(AURORA_SDL3_TARGET)
         platform/port_save.cpp platform/port_savestate.cpp platform/port_savestate_room.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp
-        platform/port_overlay_settings.cpp
         platform/port_gyro_motion.cpp
-        platform/port_overlay_search.cpp
+        platform/debug_ui/cheats.cpp platform/debug_ui/controls.cpp platform/debug_ui/debug.cpp
+        platform/debug_ui/game_sections.cpp platform/debug_ui/performance.cpp platform/debug_ui/randomizer.cpp
+        platform/debug_ui/savestates.cpp platform/debug_ui/search.cpp platform/debug_ui/settings.cpp
+        platform/debug_ui/tabs.cpp platform/debug_ui/ui_common.cpp platform/debug_ui/video.cpp
+        platform/debug_ui/window.cpp
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
-        platform/port_ui_common.cpp platform/input/port_input_remap_ui.cpp
+        platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp
         platform/port_textures.cpp platform/port_prompts.cpp)
     target_include_directories(mp_port_audio PRIVATE
@@ -517,6 +520,11 @@ endforeach()
 # test.
 if(AURORA_SDL3_TARGET)
     enable_testing()
+    # Every F1 row is in platform/port_settings_index.inc (the settings search) and every settings key
+    # in docs/SETTINGS.md (tools/check_settings_index.py, MP1's checker).
+    add_test(NAME port_settings_index COMMAND ${Python3_EXECUTABLE} -I
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_settings_index.py ${CMAKE_CURRENT_SOURCE_DIR})
+    set_tests_properties(port_settings_index PROPERTIES TIMEOUT 30 LABELS port)
     add_executable(port_touch_pad_tests tests/touch_pad.cpp platform/touch_pad.cpp)
     target_include_directories(port_touch_pad_tests PRIVATE platform/include extern/aurora/include
         $<TARGET_PROPERTY:${AURORA_SDL3_TARGET},INTERFACE_INCLUDE_DIRECTORIES>)

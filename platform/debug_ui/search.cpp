@@ -1,8 +1,7 @@
-// F1 overlay: the settings search (index, jumps, results), the Prime 1 port's
-// platform/debug_ui/search.cpp ported. Its pages are port_overlay.cpp's kPages; the Controls page
-// has sub-tabs (SubTab), so the index's sub column names one there and is "" elsewhere.
+// F1 overlay: Pages and sub-tabs, and the settings search (index, jumps, results). State and
+// helpers shared with the other parts are in debug_ui_internal.h.
 
-#include "port_overlay_internal.h"
+#include "debug_ui_internal.h"
 
 #include "port_env.h"
 #include "port_strings.h"
@@ -16,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iterator>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -26,13 +26,44 @@ extern void (*gImGuiItemAddHook)(ImGuiContext* ctx, ImGuiID id, const ImRect& re
 extern void (*gImGuiItemInfoHook)(ImGuiContext* ctx, ImGuiID id, const char* label,
                                   ImGuiItemStatusFlags flags);
 
-namespace PortOverlaySearch {
+namespace PortDebug {
+
+const DebugPage kDebugPages[] = {
+    {"Game", DrawGameTab},
+    {"Controls", DrawControlsTab},
+    {"Video", DrawVideoTab},
+    {"Randomizer", DrawRandomizerTab},
+    {"Cheats", DrawCheatsTab},
+    {"Save states", DrawSaveStatesTab},
+    {"System", DrawSystemTab},
+    {"Debug", DrawDebugTab},
+};
+const int kDebugPageCount = static_cast< int >(std::size(kDebugPages));
+
+// MP2_DEBUG_TAB=<page>[/<sub-tab>], case-insensitive.
+const StartTarget& GetStartTarget() {
+  static const StartTarget target = [] {
+    StartTarget t;
+    const char* env = port::EnvString("MP2_DEBUG_TAB");
+    if (env == nullptr || *env == '\0') {
+      return t;
+    }
+    std::string raw = env;
+    if (const size_t slash = raw.find('/'); slash != std::string::npos) {
+      t.sub = raw.substr(slash + 1);
+      raw.resize(slash);
+    }
+    t.page = raw;
+    return t;
+  }();
+  return target;
+}
 
 namespace {
 // A settings search result being opened (see JumpTo).
 struct SearchJump {
   const SettingsIndexRow* row = nullptr;
-  int page = -1;      // kPages index still to select
+  int page = -1;      // kDebugPages index still to select
   bool sub = false;   // the row's sub-tab is still to select
   int occurrence = 0; // which of the items with this label on the page
   int seen = 0;       // items with the label drawn so far this frame
@@ -49,7 +80,9 @@ SearchJump sJump;
 int TakeJumpPage() {
   const int page = sJump.page;
   sJump.page = -1;
-  return page;
+  // The console's `overlay <page>` (PortOverlay::ShowPage) comes second.
+  const int shown = sShowPage.exchange(-1);
+  return page >= 0 ? page : shown;
 }
 
 bool TakeJumpSub(const char* page, const char* name) {
@@ -60,18 +93,47 @@ bool TakeJumpSub(const char* page, const char* name) {
   return true;
 }
 
-// A page's inner tab, selected when a search result names it. The caller ends the item with
-// EndTabItem when this returns true.
+namespace {
+// The console's `overlay <page>/<sub-tab>`: set on the console's thread, read by the window's.
+std::mutex sShowSubMutex;
+std::string sShowSub;
+} // namespace
+
+void SetShowSub(std::string sub) {
+  std::lock_guard< std::mutex > lock(sShowSubMutex);
+  sShowSub = std::move(sub);
+}
+
+// True once for the sub-tab the console asked for.
+static bool TakeShowSub(const char* name) {
+  std::lock_guard< std::mutex > lock(sShowSubMutex);
+  if (sShowSub.empty() || SDL_strncasecmp(name, sShowSub.c_str(), sShowSub.size()) != 0) {
+    return false;
+  }
+  sShowSub.clear();
+  return true;
+}
+
+// A page's inner tab, opened first when MP2_DEBUG_TAB, the console or a search result names it. The caller
+// ends the item with EndTabItem when this returns true.
 bool SubTab(const char* page, const char* name) {
-  const bool jump = TakeJumpSub(page, name);
+  static bool pending = !GetStartTarget().sub.empty();
+  const StartTarget& target = GetStartTarget();
+  const bool start = pending && SDL_strcasecmp(target.page.c_str(), page) == 0 &&
+                     SDL_strcasecmp(target.sub.c_str(), name) == 0;
+  const bool jump = TakeJumpSub(page, name) || TakeShowSub(name);
   const bool inPage = std::exchange(sJump.inPage, false); // the tab is not a setting
-  const bool shown = ImGui::BeginTabItem(name, nullptr, jump ? ImGuiTabItemFlags_SetSelected : 0);
+  const bool shown =
+      ImGui::BeginTabItem(name, nullptr, start || jump ? ImGuiTabItemFlags_SetSelected : 0);
   sJump.inPage = inPage;
+  if (start) {
+    pending = false;
+  }
   return shown;
 }
 
 // A page's settings, where a jump looks for its widget.
-void DrawPageBody(const Page& page) {
+void DrawPageBody(const DebugPage& page) {
   sJump.inPage = true;
   page.draw();
   sJump.inPage = false;
@@ -82,7 +144,7 @@ void DrawPageBody(const Page& page) {
 // widget and flashes it. The widget is found by its label through ImGui's item
 // hook, which reports items only while a jump is under way.
 constexpr SettingsIndexRow kSettingsIndex[] = {
-#include "port_settings_index.inc"
+#include "../port_settings_index.inc"
 };
 
 constexpr double kJumpTimeout = 2.0; // gives up on a widget that is never drawn
@@ -169,8 +231,8 @@ void SearchItemHook(ImGuiContext* ctx, ImGuiID id, const char* label, ImGuiItemS
 
 void JumpTo(const SettingsIndexRow& row) {
   sJump = SearchJump{};
-  for (int i = 0; i < kPageCount; ++i) {
-    if (std::strcmp(kPages[i].name, row.page) == 0) {
+  for (int i = 0; i < kDebugPageCount; ++i) {
+    if (std::strcmp(kDebugPages[i].name, row.page) == 0) {
       sJump.page = i;
     }
   }
@@ -347,4 +409,18 @@ void DrawSearchResults() {
   }
 }
 
-} // namespace PortOverlaySearch
+// The innermost window under the finger that can actually scroll vertically,
+// climbing out of child windows (a table, the page list) that cannot.
+ImGuiWindow* ScrollableWindowAt(ImGuiWindow* window) {
+  for (; window != nullptr; window = window->ParentWindow) {
+    if (window->ScrollMax.y > 0.f && (window->Flags & ImGuiWindowFlags_NoScrollWithMouse) == 0) {
+      return window;
+    }
+    if ((window->Flags & ImGuiWindowFlags_ChildWindow) == 0) {
+      break;
+    }
+  }
+  return nullptr;
+}
+
+} // namespace PortDebug

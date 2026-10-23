@@ -1,4 +1,4 @@
-// The debug free camera (F1 > Game > Free camera, the Photo mode key); see port_freecam.h.
+// The debug free camera (F1 > Debug > Camera > Free camera, the Photo mode key); see port_freecam.h.
 // Stage 1: no tick-blended presentation (MP2 has no per-actor tick generation), no mouse look.
 #include "port_freecam.h"
 

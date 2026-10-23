@@ -39,6 +39,7 @@ void SetAreaLayers(const CWorldLayerState* layers, int areaId);
 std::string RoomName(uint32_t worldId, int areaIndex);
 // Opens the window on the first page whose name starts with `name` (case-insensitive: "save"
 // is Save states), or closes it for "off"; false when no page matches (console `overlay`).
+// "<page>/<sub-tab>" also selects the first sub-tab whose name starts with the part after the slash.
 bool ShowPage(const std::string& name);
 // Toggles the window; safe to call from the event loop (F1).
 void Toggle();
@@ -230,7 +231,7 @@ bool CrosshairColor(float rgb[3]);
 void SetCrosshairColor(float r, float g, float b);
 void ClearCrosshairColor();
 // The F1 window's size in percent of the display's own scale (`MP2_UI_SCALE=50..200`, F1 > Render,
-// console `uiscale`); the product is clamped to 1..4 by PortUi::UpdateUiScale.
+// console `uiscale`); the product is clamped to 1..4 by PortDebug::UpdateUiScale.
 const int kUiScaleMin = 50;
 const int kUiScaleMax = 200;
 int UiScale();
