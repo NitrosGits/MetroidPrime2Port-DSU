@@ -1,0 +1,23 @@
+# mediuming.py's driver (Sky Temple Grounds area 46: Ings u0417 u0454, tentacles u0491..u049b).
+# Without the slice-2 states mC1 stays set; `var <id> ming.c1 0` clears it (what SubStart does),
+# `ming.extend` / `ming.retract` do ArmAttack's tentacle calls (PortCMediumIng.cpp).
+@f300 god 1; tp 208.5 -174 -46.5; face 180
+@f340 status; obj u0417
+@f360 screenshot
+@f380 var u0417 ming.c1 0; var u0454 ming.c1 0
+@f430 obj u0417; screenshot
+@f440 visor scan
+@f460 screenshot
+@f470 visor combat
+@f480 noise 6; noise 4
+@f500 shoot u0417
+@f530 shoot u0417 charged
+@f570 place u0417 player 1
+@f600 send u0491 Activate; place u0491 player 10; send u0492 Activate; place u0492 player 12
+@f620 var u0491 ming.extend 1; var u0492 ming.extend 1
+@f630 screenshot; obj u0491
+@f700 var u0491 ming.retract 1; var u0492 ming.retract 1
+@f720 screenshot
+@f800 var u0491 ming.retract; obj u0491; place u0417 player 8; damage u0417 999
+@f840 obj u0417; screenshot
+@f900 status; objs ing

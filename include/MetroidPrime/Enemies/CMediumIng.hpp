@@ -97,6 +97,10 @@ public:
   void Extend(CStateManager& mgr, const CVector3f& target); // Guessed name
   void Retract(CStateManager& mgr);                         // Guessed name
   float GetProgress() const;                                // Guessed name
+#ifdef TARGET_PC
+  // Port: `var <id> ming.extend|ming.retract 1` (PortCMediumIng.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+#endif
 
 private:
   void UpdateShake(CStateManager& mgr, float dt); // Guessed name
@@ -200,6 +204,10 @@ public:
   bool ShouldEvaporate(CStateManager& mgr, const CTriggerData& data) const;
   bool IsLuredBySafeZone(CStateManager& mgr, const CTriggerData& data) const;
   bool StillLuredBySafeZone(CStateManager& mgr, const CTriggerData& data) const;
+#ifdef TARGET_PC
+  // Port: `var <id> ming.c1 [0|1]` (PortCMediumIng.cpp).
+  static bool PortConsoleVar(CEntity& ent, const char* name, const int* value, int& current);
+#endif
 
 private:
   // Guessed names for all private helpers.
@@ -218,6 +226,15 @@ private:
   void QuitTeam(CStateManager& mgr);
   void JoinTeam(CStateManager& mgr);
   void CalculateSeparation(CStateManager& mgr);
+#ifdef TARGET_PC
+  // Port: retail's unnamed helpers that slice 1's bodies call (PortCMediumIng.cpp).
+  void ScanProjectileThreats(CStateManager& mgr, float dt);     // fn_41_4644
+  void UpdateMistState(CStateManager& mgr, float dt);           // fn_41_6078
+  void UpdateTimers(CStateManager& mgr, float dt);              // fn_41_3274
+  bool IsMistDecayed() const;                                   // fn_41_5DC8
+  void SetMistCollision(bool solid);                            // fn_41_49CC
+  bool IsBlocked(CStateManager& mgr, const CVector3f& offset);  // fn_41_5E0C
+#endif
 
   CPathFindSearch mPathFindSearch;           // Guessed name
   CLineOfSightTracker mLineOfSightTracker;   // Guessed name

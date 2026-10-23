@@ -29,6 +29,9 @@ public:
   // The guest's CHealthInfo + 0x18 (the archive's uidC): the owner of the last damage. The
   // ScriptPlayerTurret's damage message reads it (fn_63_1BE8 at 0x00002338).
   TUniqueId GetLastDamageOwner() const { return mLastDamageOwner; }
+  // The guest's CHealthInfo + 0x14: the MediumIng's kSM_Damage arm reads its weapon type
+  // (fn_41_79C8).
+  const CWeaponMode& GetLastDamageWeaponMode() const { return mLastDamageWeaponMode; }
   // The guest's CHealthInfo + 0x14 (the last damage's weapon mode, a word) read as a float by the
   // ScriptPlayerTurret's kSM_Stop case (fn_63_1BE8 at 0x000020B0: `lfs f1, 0x14(r5)`).  The guest's
   // CWeaponMode packs its bit fields from the top (PowerPC is big-endian), so the word is rebuilt
