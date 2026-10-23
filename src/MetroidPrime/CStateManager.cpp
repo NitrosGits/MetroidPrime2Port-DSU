@@ -14,6 +14,7 @@
 #include "Kyoto/CFrameDelayedKiller.hpp"
 #include "Kyoto/CResLoader.hpp"
 #include "MetroidPrime/CDummyWorld.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptAreaProperties.hpp"
 #endif
 #include "Collision/CMRay.hpp"
 #include "Collision/CRayCastResult.hpp"
@@ -4698,6 +4699,37 @@ void CStateManager::PortLogIdPressure() {
   }
 }
 
+// Retail decides the dark-world flag per area: the area's AreaAttributes object hands its flag to
+// SetIsDarkWorld on kSM_Create (CScriptAreaProperties::AcceptScriptMsg, 0x8013C658 'XCRT' ->
+// 0x8013C668 lbz r0,0x24; extrwi r4,r0,1,25; bl SetIsDarkWorld), and a portal crossing flips it
+// (PrepareAreaTransition's SetIsDarkWorld(!mIsDarkWorld)). A warp is neither: its Create can come
+// before the handed flow's flip, or from a neighbour preloaded on the other side, so after a warp
+// the flag is taken from the destination's attributes (registered on kSM_AreaLoaded,
+// 0x8013C69C SetAreaAttributes).
+void CStateManager::PortSetDarkWorldFromArea(TAreaId aid) {
+  CWorld* world = World();
+  if (world == nullptr || !world->DoesAreaExist(aid)) {
+    return;
+  }
+  const CGameArea* area = world->Area(aid);
+  const CScriptAreaProperties* attributes =
+      area != nullptr && area->GetPostConstructed() != nullptr
+          ? area->GetPostConstructed()->mAreaAttributes
+          : nullptr;
+  if (attributes == nullptr) {
+    std::fprintf(stderr, "[warp] area %d has no area attributes; dark-world flag stays %d\n",
+                 aid.Value(), mIsDarkWorld ? 1 : 0);
+    return;
+  }
+  // One line per arrival, so a sweep can check the flag against the area's side.
+  const bool dark = attributes->PortIsDarkWorld();
+  std::fprintf(stderr, "[warp] area %d: dark-world flag %d (its area attributes; was %d)\n",
+               aid.Value(), dark ? 1 : 0, mIsDarkWorld ? 1 : 0);
+  if (dark != mIsDarkWorld) {
+    SetIsDarkWorld(dark);
+  }
+}
+
 // The game's own transition carries a hop the direct route was too tight for. This places the player
 // once it is done: CMFGame clears mPendingDockArea when its transition finishes, and it never spawns
 // the player itself (a dock crossing keeps the player where they were standing), so a warp has to do
@@ -4738,13 +4770,7 @@ void CStateManager::PortPlaceArrivalTick() {
     std::fprintf(stderr, "[warp] ending the portal transition the hand-over left running\n");
     gpGameState->WorldTransitionManager()->DisableTransition();
   }
-  if (mIsDarkWorld != mPortIsDarkWorld) {
-    // Put back the flag the transition flipped (see the hand-over): the log says what it was, so a
-    // run in the dark worlds can tell whether the flag needs to follow the destination instead.
-    std::fprintf(stderr, "[warp] the transition had set the dark-world flag to %d; restoring %d\n",
-                 mIsDarkWorld ? 1 : 0, mPortIsDarkWorld ? 1 : 0);
-    SetIsDarkWorld(mPortIsDarkWorld);
-  }
+  PortSetDarkWorldFromArea(area);
 
   CObjectList* objects = mObjectLists[kOL_All].get();
   for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
@@ -4852,9 +4878,8 @@ void CStateManager::PortWarpSettle() {
         mPortSpawnAtArea = mPortPendingWarpArea;
         mPortSpawnAtFrame = mUpdateFrameIdx;
         // PrepareAreaTransition ends with SetIsDarkWorld(!mIsDarkWorld), which is what a light<->dark
-        // portal crossing does. This hop is not a portal crossing, so the flag is put back once the
-        // flow is done - a warp must not decide the area is the other world's half.
-        mPortIsDarkWorld = mIsDarkWorld;
+        // portal crossing does. This hop is not a portal crossing, so PortPlaceArrivalTick sets the
+        // flag from the destination's own area attributes once the flow is done.
         mPortPendingWarpArea = kInvalidAreaId;
         mPortWarpStreamStarted = false;
         mPortWarpWaitingForIds = false;
@@ -4915,6 +4940,7 @@ void CStateManager::PortWarpSettle() {
     }
     std::fprintf(stderr, "[warp] moved to area %d\n", target.Value());
   }
+  PortSetDarkWorldFromArea(target);
 
   CObjectList* objects = mObjectLists[kOL_All].get();
   for (int i = objects->GetFirstObjectIndex(); i != -1; i = objects->GetNextObjectIndex(i)) {
