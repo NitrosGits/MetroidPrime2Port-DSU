@@ -2291,10 +2291,23 @@ void CSwampBossStage1::SetupStateMachine(CStateManager& mgr) {
 // --------------------------------------------------------------------------------------------
 // Loader
 
+// Retail fn_78_D50: SLdrSwampBossStage1Data's constructor, called by the loader at 0x0000019C on
+// its stack object. Its `li r0,-0x1` at 0x00000DB0 feeds two stores: 0x1e8 (0x00000DB8), the
+// spitVisorEffect CAssetId the generated header already has as kInvalidAssetId, and 0x1ec
+// (0x00000DBC), sound_SpitVisor, which is a sound id - the guest's default is -1 (no sound) and
+// the header stores 0. SLdrSwampBossStage1Data's layout is the guest's (no editor-properties
+// padding in the sub-struct), so 0x1ec is the port offset too. The .inc reader below overwrites
+// it when the instance's data carries the property.
+//   fn_78_D50  li r0,-0x1 0x00000DB0; stw r0,0x1ec(r31) 0x00000DBC
+static void x78D50_SoundDefaults(SLdrSwampBossStage1& sldr) {
+  sldr.swampBossStage1Properties.sound_SpitVisor = -1; // 0x00000DBC (field 0x1ec)
+}
+
 // @ fn_78_160
 static CEntity* PortLoadSwampBossStage1(CStateManager& mgr, CInputStream& input,
                                         CEntityInfo& info) {
   SLdrSwampBossStage1 sldrThis;
+  x78D50_SoundDefaults(sldrThis); // fn_78_D50's -1 sound id (the call at 0x0000019C)
 #include "MetroidPrime/ScriptLoader/SLdrSwampBossStage1.inc"
   rstl::optional_object< CModelData > modelData(
       LdrToModelData(sldrThis.editorProperties.transform.scale, kInvalidAssetId,
