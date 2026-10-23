@@ -717,7 +717,12 @@ bool CLumite::FacingHint(const CVector3f& point) const {
   if (direction.CanBeNormalized()) {
     direction.Normalize();
   }
+#ifdef TARGET_PC
+  // 0x3EBC: retail compares against the forward column (mTransform 0x28/0x38/0x48).
+  return CVector3f::GetAngleDiff(direction, GetTransform().GetForward()) < 0.7853982f;
+#else
   return CVector3f::GetAngleDiff(direction, GetTransform().GetRight()) < 0.7853982f;
+#endif
 }
 
 // Attack
@@ -815,7 +820,12 @@ void CLumite::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
           }
           mHop.mDidSideTaunt = true;
         }
+#ifdef TARGET_PC
+      // 0x39E4: retail compares against rodata_A4 = 0.8, not 0.75.
+      } else if (r < 0.8f) {
+#else
       } else if (r < 0.75f) {
+#endif
         mTauntType = pas::kTT_Zero;
       } else {
         mTauntType = pas::kTT_One;
@@ -862,7 +872,13 @@ void CLumite::TurnTowards(EStateMsg msg, const CVector3f& target) {
     break;
   }
   case kStateMsg_Update:
+#ifdef TARGET_PC
+    // 0x3628: retail re-readies when the body controller's animation is over (0x594 bit 0x80),
+    // not on mTurnActive.
+    if (BodyController()->IsAnimationOver()) {
+#else
     if (mTurnActive) {
+#endif
       mAnimationState.SetState(CAnimationState::kAS_Ready);
     }
     break;
@@ -913,11 +929,17 @@ void CLumite::TurnToHopPoint(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 void CLumite::Hop(CStateManager& mgr, EStateMsg msg, float dt) {
+#ifndef TARGET_PC
   SetAttackState(0, msg);
+#endif
   if (mHop.mAborted) {
     BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState));
     return;
   }
+#ifdef TARGET_PC
+  // 0x26D0: retail sets the attack state only after the aborted-hop early return.
+  SetAttackState(0, msg);
+#endif
 
   switch (msg) {
   case kStateMsg_Activate:
@@ -1042,9 +1064,17 @@ void CLumite::SelectHopTarget(CStateManager& mgr, const TUniqueId& hintId) {
 
   CVector3f cross = CVector3f::Cross(mHop.mLaunchDirection, mHop.mPlane.GetNormal());
   while (!cross.CanBeNormalized() && mgr.IsRandomAvailable()) {
+#ifdef TARGET_PC
+    // 0x18D0..0x1924: retail draws x, then y, then z; host argument order is unspecified.
+    const float jitterX = mgr.Random()->Range(-0.1f, 0.1f);
+    const float jitterY = mgr.Random()->Range(-0.1f, 0.1f);
+    const float jitterZ = mgr.Random()->Range(-0.1f, 0.1f);
+    mHop.mLaunchDirection += CVector3f(jitterX, jitterY, jitterZ);
+#else
     mHop.mLaunchDirection +=
         CVector3f(mgr.Random()->Range(-0.1f, 0.1f), mgr.Random()->Range(-0.1f, 0.1f),
                   mgr.Random()->Range(-0.1f, 0.1f));
+#endif
     if (mHop.mLaunchDirection.CanBeNormalized()) {
       mHop.mLaunchDirection.Normalize();
       cross = CVector3f::Cross(mHop.mLaunchDirection, mHop.mPlane.GetNormal());
@@ -1096,7 +1126,12 @@ CScriptSafeZone* CLumite::FindSafeZone(CStateManager& mgr, const CVector3f& posi
       CScriptSafeZone* zone = TCastToPtr< CScriptSafeZone >(mgr.ObjectById(id));
       if (zone != nullptr && zone->GetActive() &&
           (zone->GetTranslation() - position).CanBeNormalized() &&
+#ifdef TARGET_PC
+          // 0x1E3C blt rejects; a NaN scale is accepted.
+          !(zone->GetScale().MagSquared() < 1.f)) {
+#else
           zone->GetScale().MagSquared() >= 1.f) {
+#endif
         return zone;
       }
     }
@@ -1173,7 +1208,12 @@ void CLumite::BuildHopCandidates(CStateManager& mgr) {
   mHop.mHopSelected = false;
   mHop.mHopFailed = false;
 
+#ifdef TARGET_PC
+  // 0x22DC lwz r31, 0x838(r27): retail walks the AI waypoint list (mObjectLists[5]), not kOL_All.
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
+#else
   CObjectList& list = mgr.ObjectListById(kOL_All);
+#endif
   for (int i = list.GetFirstObjectIndex(); i != -1 && mHop.mCandidates.size() < 16;
        i = list.GetNextObjectIndex(i)) {
     CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
@@ -1191,7 +1231,12 @@ void CLumite::BuildHopCandidates(CStateManager& mgr) {
     const CVector3f referencePosition =
         mLatestLeashPosition == CVector3f::Zero() ? GetTranslation() : mLatestLeashPosition;
     const float distance = (hint->GetTranslation() - referencePosition).Magnitude();
+#ifdef TARGET_PC
+    // 0x2414 blt / 0x2420 bgt skip the hint; a NaN distance is kept.
+    if (!(distance < mHop.mMinDistance) && !(distance > mHop.mMaxDistance)) {
+#else
     if (distance >= mHop.mMinDistance && distance <= mHop.mMaxDistance) {
+#endif
       if (type == CScriptAIHint::kHT_SunlightHop) {
         const CScriptSafeZone* zone = FindSafeZone(mgr, hint->GetTranslation());
         if (zone == nullptr || !zone->GetActive() || zone->IsHurtful()) {
