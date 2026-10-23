@@ -1,0 +1,67 @@
+# Torvus Bog 07_swamp_shaft layers 2/3/5: the Bloggs forced through their FSM states (fsm/statecall),
+# the player in reach and in morph ball for GrabBall/SpitBall. For tools/cov/specs/blogg.py.
+@f300 layer 2
+@f320 layer 3
+@f340 layer 5
+@f400 god 1; give morphBall 1; give morphBallBombs 1; give missile 50; fastmorph 1
+@f440 send u05fc Activate; send u05f1 Activate; send u05da Activate; send u05c5 Activate; send u0598 Activate; send u0589 Activate
+@f460 tp -160 -120 -48
+@f470 face 0
+@f500 fsm u05fc Patrol
+@f520 fsm u05f1 MoveToAttackPosition
+@f540 fsm u05da MoveToValidPosition
+@f560 fsm u05c5 FacePlayer
+@f580 fsm u0598 ProjectileAttack
+@f600 fsm u0589 ChargeTelegraph
+@f700 fsm u05fc ChargeAttack
+@f720 fsm u05f1 MeleeAttack
+@f740 fsm u05da Stunned
+@f760 fsm u05c5 Taunt
+@f780 fsm u0598 MoveToPlayer
+@f800 fsm u0589 Thrash
+@f900 fsm u05fc ProjectileAttack
+@f920 fsm u05f1 ChargeTelegraph
+@f940 fsm u05da ChargeAttack
+@f960 fsm u05c5 MeleeAttack
+@f980 fsm u0598 Taunt
+@f1000 fsm u0589 Stunned
+@f1100 place u05c5 player 3
+@f1110 fsm u05c5 MeleeAttack
+@f1120 press x 10
+@f1200 fsm u05c5 GrabBall
+@f1210 place u05da player 3
+@f1220 fsm u05da GrabBall
+@f1300 fsm u05c5 Thrash
+@f1340 fsm u05c5 SpitBall
+@f1400 press x 10
+@f1500 statecall u05f1 GrabBall 0
+@f1502 statecall u05f1 GrabBall 1 0.016
+@f1504 statecall u05f1 GrabBall 2
+@f1510 statecall u05f1 Thrash 0
+@f1512 statecall u05f1 Thrash 1 0.016
+@f1514 statecall u05f1 Thrash 2
+@f1520 statecall u05f1 SpitBall 0
+@f1522 statecall u05f1 SpitBall 1 0.016
+@f1524 statecall u05f1 SpitBall 2
+@f1530 statecall u05f1 Stunned 0
+@f1532 statecall u05f1 Stunned 1 0.016
+@f1534 statecall u05f1 Stunned 2
+@f1540 statecall u05f1 Taunt 0
+@f1542 statecall u05f1 Taunt 1 0.016
+@f1544 statecall u05f1 Taunt 2
+@f1600 fsm u05fc MoveToPlayer
+@f1620 fsm u05f1 ChargeTelegraph
+@f1700 shoot u05f1 missile
+@f1720 shoot u05fc missile
+@f1900 tp -150 -122 -60
+@f2000 fsm u0598 ProjectileAttack
+@f2100 fsm u0589 MoveToValidPosition
+@f2200 fsm u0598 Dead
+@f2220 statecall u0589 Dead 0
+@f2222 statecall u0589 Dead 1 0.016
+@f2224 statecall u0589 Dead 2
+@f2400 damage u05fc 400
+@f2420 damage u05f1 400 0 missile
+@f2440 damage u05da 400 0 powerbomb
+@f2460 damage u05c5 400
+@f2600 obj u0598

@@ -1,0 +1,36 @@
+# Torvus Bog 07_swamp_shaft layers 2/3/5: six Bloggs (u05fc u05f1 u05da u05c5 u0598 u0589). God-mode
+# player in the water among them lets them fight, then beams/missiles/charged shots and kills.
+# For tools/cov/specs/blogg.py.
+@f300 layer 2
+@f320 layer 3
+@f340 layer 5
+@f400 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give missile 50; give morphBall 1; give morphBallBombs 1
+@f440 send u05fc Activate; send u05f1 Activate; send u05da Activate; send u05c5 Activate; send u0598 Activate; send u0589 Activate
+@f460 tp -160 -120 -48
+@f470 face 0
+@f900 obj u05c5
+@f1100 shoot u05c5
+@f1140 shoot u05c5 charged
+@f1180 shoot u05da missile
+@f1220 beam dark
+@f1240 shoot u05fc
+@f1260 beam light
+@f1280 shoot u05f1
+@f1300 beam annihilator
+@f1320 shoot u0598
+@f1340 beam power
+@f1400 tp -168 -117 -40
+@f1700 place u0589 player 3
+@f1720 shoot u0589 charged
+@f1800 tp -175 -118 -52
+@f1900 damage u05c5 5
+@f1920 damage u05da 5 1 missile
+@f2000 obj u05c5
+@f2200 tp -150 -122 -60
+@f2600 damage u05fc 400
+@f2620 damage u05f1 400 0 dark
+@f2640 damage u05da 400 0 light
+@f2660 damage u05c5 400 0 missile
+@f2680 damage u0598 400 0 annihilator
+@f2700 damage u0589 400
+@f2800 obj u05c5
