@@ -2495,9 +2495,14 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
       }
       haveAncs = true;
       ++i;
-      if (i + 1 < args.size() && parseU32(args[i + 1], character)) {
+      // parseU32 stores its strtoul result even when the text is no number, so parse into a
+      // scratch: the next option's name (`fsm`) must not reset the donor's character to 0.
+      uint number = 0;
+      if (i + 1 < args.size() && parseU32(args[i + 1], number)) {
+        character = number;
         ++i;
-        if (i + 1 < args.size() && parseU32(args[i + 1], anim)) {
+        if (i + 1 < args.size() && parseU32(args[i + 1], number)) {
+          anim = number;
           ++i;
         }
       }
@@ -2672,6 +2677,10 @@ void CmdSpawn(CStateManager& mgr, const Args& args, std::string& out) {
                   pos.GetX(), pos.GetY(), pos.GetZ());
     std::printf("[console] %s", line);
     out += line;
+    if (haveAncs) {
+      std::snprintf(line, sizeof(line), "   ancs %08x char %u anim %u\n", ancs, character, anim);
+      out += line;
+    }
     // A patterned actor whose body controller is still off would crash in its first Think
     // (CPatterned::ThinkAboutMove reads the current body state). Placed actors get it from their
     // state machine (CChozoGhost::InActive) or their Registered handler; a spawn without the
