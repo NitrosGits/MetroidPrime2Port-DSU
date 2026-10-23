@@ -1,0 +1,168 @@
+offset	fn	size	class	name	slice	what	marker
+0	fn_12_0	8	B	GetSearchPath__12CDarkTrooperFv	-	upstream body (CDarkTrooper)	no
+8	fn_12_8	10	H	TakeDamage__10CPatternedFRC9CVector3ff	-	host copy of a base-class inline	no
+18	fn_12_18	8	H	GetModelAlphau8__10CPatternedCFRC13CStateManager	-	host copy of a base-class inline	no
+20	fn_12_20	8	H	GetPointSearchPath__10CPatternedFv	-	host copy of a base-class inline	no
+28	fn_12_28	10	H	GetAttackTarget__10CPatternedCFv	-	host copy of a base-class inline	no
+38	fn_12_38	C	H	IsOnGround__10CPatternedCFv	-	host copy of a base-class inline	no
+44	fn_12_44	C	H	GetGravityConstant__10CPatternedCFv	-	host copy of a base-class inline	no
+50	fn_12_50	8	H	GetDeathExplosionParticle__10CPatternedCFv	-	host copy of a base-class inline	no
+58	fn_12_58	8	H	CanBeShot__3CAiFRC13CStateManageri	-	host copy of a base-class inline	no
+60	fn_12_60	8	H	IsListening__3CAiCFv	-	host copy of a base-class inline	no
+68	fn_12_68	8	H	Listen__3CAiFR13CStateManagerRC9CVector3f16EListenNoiseType	-	host copy of a base-class inline	no
+70	fn_12_70	1C	H	GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f	-	host copy of a base-class inline	no
+8C	fn_12_8C	2C	H	GetHealthInfo__6CActorCFv	-	host copy of a base-class inline	no
+B8	fn_12_B8	24	T	RELExit	-	rel-runtime	no
+DC	fn_12_DC	20	T	RELMain	-	rel-runtime	no
+FC	fn_12_FC	30	T	SetFuncPtrs__Fv	-	rel-runtime	no
+12C	fn_12_12C	614	B	LoadDarkTrooper__FR13CStateManagerR12CInputStreamR11CEntityInfo	-	upstream body (CDarkTrooper)	no
+740	fn_12_740	40	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+780	fn_12_780	20	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+7A0	fn_12_7A0	28	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+7C8	fn_12_7C8	13C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+904	fn_12_904	6C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+970	fn_12_970	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+9C4	fn_12_9C4	64	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+A28	fn_12_A28	60	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+A88	fn_12_A88	A0	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+B28	fn_12_B28	150	B	SLdrDarkTrooper::SLdrDarkTrooper	-	loader defaults (SLdrDarkTrooper.hpp, TARGET_PC fix)	no
+C78	fn_12_C78	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+CCC	fn_12_CCC	58	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+D24	fn_12_D24	B8	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+DDC	fn_12_DDC	94	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+E70	fn_12_E70	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+EF4	fn_12_EF4	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+F78	fn_12_F78	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+FFC	fn_12_FFC	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+1080	fn_12_1080	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+1104	fn_12_1104	28	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+112C	fn_12_112C	28	B	GetRagDoll__12CDarkTrooperCFv	-	upstream body (CDarkTrooper)	no
+1154	fn_12_1154	8C	B	GetTouchBounds__12CDarkTrooperCFv	-	upstream body (CDarkTrooper)	yes
+11E0	fn_12_11E0	68	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+1248	fn_12_1248	8	B	CanBeUnPossessed__12CDarkTrooperCFR13CStateManager	-	upstream body (CDarkTrooper)	yes
+1250	fn_12_1250	164	B	GetIngSnatchingPoint__12CDarkTrooperCFf	-	upstream body (CDarkTrooper)	yes
+13B4	fn_12_13B4	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+13F0	fn_12_13F0	94	B	GetIngSnatchingNormal__12CDarkTrooperCFf	-	upstream body (CDarkTrooper)	no
+1484	fn_12_1484	9C	B	GetContactDamage__12CDarkTrooperCFv	-	upstream body (CDarkTrooper)	no
+1520	fn_12_1520	7C	B	PreRenderBoneTracking__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	yes
+159C	fn_12_159C	90	B	ThinkBoneTracking__12CDarkTrooperFfR13CStateManager	-	upstream body (CDarkTrooper)	yes
+162C	fn_12_162C	38	B	ShouldTrack__12CDarkTrooperCFv	-	upstream body (CDarkTrooper)	yes
+1664	fn_12_1664	15C	B	PushPlayer__12CDarkTrooperFR13CStateManagerff	-	upstream body (CDarkTrooper)	yes
+17C0	fn_12_17C0	40	B	CanMissileAttack__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	no
+1800	fn_12_1800	44	B	CanSmallShotAttack__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	no
+1844	fn_12_1844	18	B	CanMeleeAttack__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+185C	fn_12_185C	C	B	Alerted__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+1868	fn_12_1868	C	B	IsSleeper__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+1874	fn_12_1874	14	B	ReadyToRumble__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+1888	fn_12_1888	18	B	DonePausing__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+18A0	fn_12_18A0	94	B	Pause__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	yes
+1934	fn_12_1934	68	B	ShouldPause__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	no
+199C	fn_12_199C	C	B	ClearLineOfFire__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+19A8	fn_12_19A8	C	B	BreakMissileAttack__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+19B4	fn_12_19B4	C	B	BreakSmallShotAttack__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+19C0	fn_12_19C0	2A8	B	MissileAttack__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	yes
+1C68	fn_12_1C68	5C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+1CC4	fn_12_1CC4	5C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+1D20	fn_12_1D20	48	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+1D68	fn_12_1D68	2A4	B	SmallShotAttack__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	yes
+200C	fn_12_200C	C4	B	InRange__12CDarkTrooperCFR13CStateManagerff	-	upstream body (CDarkTrooper)	no
+20D0	fn_12_20D0	D0	B	FacingPlayer__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+21A0	fn_12_21A0	1E0	B	MarkPathRegion__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
+2380	fn_12_2380	34	B	GetPathArea__12CDarkTrooperCFR13CStateManager	-	upstream body (CDarkTrooper)	yes
+23B4	fn_12_23B4	90	B	UnmarkPathRegion__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
+2444	fn_12_2444	28	B	InMissileRange__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	no
+246C	fn_12_246C	28	B	InSmallShotRange__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+2494	fn_12_2494	28	B	InMeleeRange__12CDarkTrooperCFR13CStateManagerRC12CTriggerData	-	upstream body (CDarkTrooper)	yes
+24BC	fn_12_24BC	308	B	Pursue__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	no
+27C4	fn_12_27C4	144	B	MeleeAttack__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	yes
+2908	fn_12_2908	5C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+2964	fn_12_2964	4C	B	SetAttackState__12CDarkTrooperFi9EStateMsg	-	upstream body (CDarkTrooper)	yes
+29B0	fn_12_29B0	6C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+2A1C	fn_12_2A1C	74	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+2A90	fn_12_2A90	20	B	GetTargetPosition__12CDarkTrooperCFR13CStateManager	-	upstream body (CDarkTrooper)	yes
+2AB0	fn_12_2AB0	144	B	CreateRagDoll__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
+2BF4	fn_12_2BF4	48	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+2C3C	fn_12_2C3C	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+2C78	fn_12_2C78	120	B	Dead__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	no
+2D98	fn_12_2D98	1E8	B	ThinkRagDoll__12CDarkTrooperFfR13CStateManager	-	upstream body (CDarkTrooper)	no
+2F80	fn_12_2F80	80	B	PreRenderAllViewports__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
+3000	fn_12_3000	D4	B	Touch__12CDarkTrooperFR6CActorR13CStateManager	-	upstream body (CDarkTrooper)	no
+30D4	fn_12_30D4	4	B	Null__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	no
+30D8	fn_12_30D8	E4	B	Rise__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	yes
+31BC	fn_12_31BC	448	B	Sleep__12CDarkTrooperFR13CStateManager9EStateMsgf	-	upstream body (CDarkTrooper)	no
+3604	fn_12_3604	48	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+364C	fn_12_364C	224	B	Think__12CDarkTrooperFfR13CStateManager	-	upstream body (CDarkTrooper)	no
+3870	fn_12_3870	78	B	PreThink__12CDarkTrooperFfR13CStateManager	-	upstream body (CDarkTrooper)	yes
+38E8	fn_12_38E8	38	B	SetPathArea__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	yes
+3920	fn_12_3920	B4	B	MoveToTarget__12CDarkTrooperFR13CStateManagerfRC9CVector3f	-	upstream body (CDarkTrooper)	yes
+39D4	fn_12_39D4	6C	B	SetupStateMachineHelper__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	yes
+3A40	fn_12_3A40	68	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+3AA8	fn_12_3AA8	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+3AFC	fn_12_3AFC	EC	B	ApplyMeleeDamage__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
+3BE8	fn_12_3BE8	90	B	EndMissileAttack__12CDarkTrooperFv	-	upstream body (CDarkTrooper)	yes
+3C78	fn_12_3C78	90	B	EndSmallShotAttack__12CDarkTrooperFv	-	upstream body (CDarkTrooper)	yes
+3D08	fn_12_3D08	284	B	DoUserAnimEvent__12CDarkTrooperFR13CStateManagerRC13CInt32POINode14EUserEventTypef	-	upstream body (CDarkTrooper)	no
+3F8C	fn_12_3F8C	2D4	B	FireMissile__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
+4260	fn_12_4260	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+42B4	fn_12_42B4	5C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+4310	fn_12_4310	20	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+4330	fn_12_4330	48	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+4378	fn_12_4378	48	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+43C0	fn_12_43C0	B4	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+4474	fn_12_4474	40	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+44B4	fn_12_44B4	20	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+44D4	fn_12_44D4	28	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+44FC	fn_12_44FC	80	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+457C	fn_12_457C	6C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+45E8	fn_12_45E8	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+463C	fn_12_463C	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+4678	fn_12_4678	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+46B4	fn_12_46B4	2C8	B	FireSmallShot__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
+497C	fn_12_497C	178	B	GetAimPosition__12CDarkTrooperCFRC13CStateManagerf	-	upstream body (CDarkTrooper)	no
+4AF4	fn_12_4AF4	6C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+4B60	fn_12_4B60	20	B	Render__12CDarkTrooperCFRC13CStateManager	-	upstream body (CDarkTrooper)	yes
+4B80	fn_12_4B80	164	B	PreRender__12CDarkTrooperFR13CStateManager	-	upstream body (CDarkTrooper)	no
+4CE4	fn_12_4CE4	270	B	KnockBack__12CDarkTrooperFR13CStateManagerRC14CKnockBackInfo	-	upstream body (CDarkTrooper)	no
+4F54	fn_12_4F54	7C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+4FD0	fn_12_4FD0	54	B	GetDamageVulnerability__12CDarkTrooperCFv	-	upstream body (CDarkTrooper)	yes
+5024	fn_12_5024	444	B	AcceptScriptMsg__12CDarkTrooperFR13CStateManagerRC10CScriptMsg	-	upstream body (CDarkTrooper)	no
+5468	fn_12_5468	34	B	ProjectileInfo__12CDarkTrooperFv	-	upstream body (CDarkTrooper)	no
+549C	fn_12_549C	84	B	GetScannableObjectInfo__12CDarkTrooperCFv	-	upstream body (CDarkTrooper)	no
+5520	fn_12_5520	140	B	__dt__12CDarkTrooperFv	-	upstream body (CDarkTrooper)	no
+5660	fn_12_5660	1E4	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+5844	fn_12_5844	94	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+58D8	fn_12_58D8	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+592C	fn_12_592C	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+5980	fn_12_5980	74	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+59F4	fn_12_59F4	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+5A48	fn_12_5A48	76C	B	"__ct__12CDarkTrooperF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfoUifffffbbiRC11CDamageInfoUiRC11CDamageInfobUiRC11CDamageInfoUsUiRC16CActorParameters"	-	upstream body (CDarkTrooper)	no
+61B4	fn_12_61B4	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6208	fn_12_6208	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6244	fn_12_6244	184	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+63C8	fn_12_63C8	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6404	fn_12_6404	30	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6434	fn_12_6434	80	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+64B4	fn_12_64B4	68	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+651C	fn_12_651C	30	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+654C	fn_12_654C	94	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+65E0	fn_12_65E0	20	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6600	fn_12_6600	28	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6628	fn_12_6628	8C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+66B4	fn_12_66B4	58	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+670C	fn_12_670C	54	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6760	fn_12_6760	5C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+67BC	fn_12_67BC	70	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+682C	fn_12_682C	30	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+685C	fn_12_685C	60	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+68BC	fn_12_68BC	64	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6920	fn_12_6920	90	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+69B0	fn_12_69B0	8C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6A3C	fn_12_6A3C	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6A78	fn_12_6A78	50	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6AC8	fn_12_6AC8	78	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6B40	fn_12_6B40	3C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6B7C	fn_12_6B7C	84	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6C00	fn_12_6C00	60	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6C60	fn_12_6C60	EC	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6D4C	fn_12_6D4C	10C	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no
+6E58	fn_12_6E58	380	H	unnamed	-	unnamed (weak copy / template instance / dtor thunk)	no

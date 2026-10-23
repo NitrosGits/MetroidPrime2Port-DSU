@@ -891,6 +891,7 @@ bool CDarkTrooper::InRange(CStateManager& mgr, float minRange, float maxRange) c
   return distanceSquared > minRange * minRange && distanceSquared < maxRange * maxRange;
 }
 
+// @ fn_12_1D68
 void CDarkTrooper::SmallShotAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(5, msg);
   const CVector3f target = GetTargetPosition(mgr);
@@ -919,6 +920,7 @@ void CDarkTrooper::SmallShotAttack(CStateManager& mgr, EStateMsg msg, float dt) 
   DeliverCommand(msg, pas::kAS_LoopAttack, CBCLoopAttackCmd(pas::kLAT_Zero));
 }
 
+// @ fn_12_19C0
 void CDarkTrooper::MissileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(1, msg);
   const CVector3f target = GetTargetPosition(mgr);
