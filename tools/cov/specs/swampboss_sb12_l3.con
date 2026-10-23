@@ -1,0 +1,4 @@
+# sb12: layer 3 of the Torvus swamp temple (area 32), asked for once the warp has landed there; the boss is built on the layer load.
+@f400 layer 3
+@f1600 objs swampboss
+@f3000 objs swampboss

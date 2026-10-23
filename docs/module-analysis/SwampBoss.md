@@ -971,3 +971,16 @@ Code function: ResetAttackPhase 72FC.
 
 A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
 - fn_78_19FC, the tongue block ctor (0x158), goes from H to B, unmarked: it builds two CModelData and calls `fn_78_19A4` ResetTongueState at 0x1B30, so it is not only a CModelData copy. The port side is ctor fn_78_AA50 (`PortCSwampBossStage1.cpp:168`) and `ResetTongueState` (`:1143`). It needs a slice that marks it.
+
+### fn_78_19FC tongue block ctor marked (2026-10-23, sb12)
+
+The block is this+0xc0c, built in fn_78_AA50's initializer list (marker there). Retail 0x1A84 stores
+rodata_15C (1.f) at block+0x34 = xc40_tongueAmp; the port had 0.f (fixed). The ctor body now ends
+with ResetTongueState() as 0x1B30 does. Both CModelData are always built in retail (fn_78_1B54 sets
+the engaged byte); the port's MakeModel leaves the optional empty for an invalid id (host limit).
+
+| arm | run (tools/cov/specs/swampboss_sb12.py + _l3.con, area 32 layer 3) |
+|---|---|
+| block built, both models engaged, amp 1.f, xce4 bits 0x80/0x40 clear | 1 hit (1,1,1,0,0) |
+| ResetTongueState from the ctor (1B30) | 1 hit, amp == 1 |
+| MakeModel empty optional (port-only, invalid id) | not taken: the one shipped instance has both ids |

@@ -1320,3 +1320,18 @@ nothing. Both rows leave the unmarked B list: the module is 99 of 99 B rows mark
 A marked H/T row whose port body is this class's own override, method or FSM trigger/state is B; `tools/ht_audit.py` flagged them and lane ht2 reclassified them. Each tsv note starts with `ht2:` and gives the first asm reference.
 - fn_79_2E7C, the `addi r3,r3,0xdf4` accessor called by B fn_79_60A0, goes from T to B. It is marked at `CSwampBossStage2::TargetPoint`, which inlines it.
 - fn_79_170, the loader (0x2F0), goes from H to B, unmarked: every other module's loader is B. The port is `PortLoadSwampBossStage2`. Proposed slice, which also reviews fn_79_830, 134C, 1714 and 1AA0.
+
+### fn_79_170 loader marked (2026-10-23, sb12)
+
+The loader and its stack ctor chain fn_79_830 -> 134C -> 1714/1AA0 match `SLdrSwampBossStage2.hpp`
+field by field (guest offsets: Data 0x0..0x2c0, Phase 0x3c each, UnknownStruct38 at 0x1b8) except
+the two -1 sounds x79134C_SoundDefaults sets. fn_79_830's patterned/actor re-sets (0x868..0x968)
+equal the generated ctor's plus the shared ctors' own values (knockback resistance 2.f, white
+ambient, visor flags 0xf). fn_79_980's reader calls (23 ReadFloat, 9 audio, 4 phase, 3 damage,
+1 shock wave, 1 fn_79_1588) match the header's reader.
+
+| arm | run (tools/cov/specs/swampboss_sb12.py + _l6.con, area 32 layer 6) |
+|---|---|
+| property loop, five typedef readers | 1 hit (each reader once) |
+| model engaged -> rs_new + ctor (0x344..0x3D8) | 1 hit, retp=1 |
+| model empty -> return 0 (0x2E4 beq) | not taken: the one shipped instance has an ANCS |
