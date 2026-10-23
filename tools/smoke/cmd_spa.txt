@@ -1,0 +1,35 @@
+# ScriptPlayerActor (module 61: CScriptPlayerActor, script type PLAC - a scripted Samus copy that
+# loads a suit and a beam model for another player/mirror actor: LoadSuit/LoadBeam build the model
+# data, SetActive shows it, Increment swaps the suit, Deactivate/Reset tear it down).
+# Agon Wastes 03_sand_temple_dark (world 42b935e4, layer 10): e0024022f "Samus DarkSuit" (PLAC flags
+# 0x5: 0x1 suit swap, 0x4 Deactivate resets; ACTV>INCR to itself) and e00240396 "Samus VariaSuit"
+# (flags 0x7: + 0x2 alternate next suit). Both start inactive; layer 10 holds exactly these two PLAC
+# (tools/scan_area_actors.py PLAC; the area's third PlayerActor, e0024046f, is in another layer).
+# The steps repeat the spa1 lane's tools/drivers/spa_sandtempledark.con: Activate (LoadSuit
+# GetNextSuitCharIdx), wait for the offline model, Increment (the 0x1/0x2 arm: AsyncLoadSuit), Left,
+# Deactivate (0x4 falls into the reset), Reset while inactive, re-Activate, Reset and Delete.
+# Evidence in the transcript: `obj` prints "inactive" before the Activate and no state word after it,
+# `objs PlayerActor` lists the three suit actors with the two active ones at f400 and two left once
+# e00240396 is deleted, and every step answers `=> ok`. The log's `init compiled module
+# ScriptPlayerActor` line lists the whole compiled-module table, so it says the module is registered,
+# not that it ran.
+# Checks are game updates (@f<n>), never wall seconds. F=2000, last check f1800.
+@f300 god 1; layer 10
+@f320 give darkSuit 1; give lightSuit 1
+@f340 obj e0024022f; obj e00240396
+@f360 send e0024022f Activate
+@f380 send e00240396 Activate
+@f400 objs PlayerActor
+@f700 obj e0024022f
+@f720 send e0024022f Increment
+@f740 send e00240396 Increment
+@f1000 send e0024022f Left
+@f1020 send e00240396 Deactivate
+@f1040 send e00240396 Reset
+@f1060 send e00240396 Activate
+@f1400 send e0024022f Deactivate
+@f1420 send e0024022f Activate
+@f1700 send e0024022f Reset
+@f1720 send e00240396 Delete
+@f1740 objs PlayerActor
+@f1800 obj e0024022f
