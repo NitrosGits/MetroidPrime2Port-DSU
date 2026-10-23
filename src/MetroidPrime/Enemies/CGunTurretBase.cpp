@@ -1020,9 +1020,18 @@ void CGunTurretBase::LaunchProjectile(CStateManager& mgr) {
     return;
   }
   CTransform4f topXf = top->GetTransform();
+#ifdef TARGET_PC
+  // 0x1E6C-0x1EB4: TCachedToken::TryCache on mProjectileInfo's token (+0x884): the cached
+  // pointer (+0x88C), else the lock byte (+0x888) and the token's loaded word, then GetObj into
+  // +0x88C. Upstream's IsLoaded skips the lock test and never caches.
+  if (!mProjectileInfo.Token().TryCache()) {
+    return;
+  }
+#else
   if (!mProjectileInfo.Token().IsLoaded()) {
     return;
   }
+#endif
   if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 8)) {
     return;
   }

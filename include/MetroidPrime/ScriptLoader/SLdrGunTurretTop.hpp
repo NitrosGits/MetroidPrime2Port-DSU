@@ -41,6 +41,13 @@ inline SLdrGunTurretTop::SLdrGunTurretTop()
   lightColor = CColor(1.0f, 1.0f, 1.0f, 0.0f);
   sound = 0;
   sound_0x5d9ed447 = 0;
+#ifdef TARGET_PC
+  // fn_28_7FB8: 2.0 (rodata 0x1A4) at guest +0xAC = patterned +0x4C (0x806C), CColor(1.0 x4,
+  // rodata 0x19C) at +0x2B8 = actor +0x14 (0x8080), 0xF at +0x308 = actor +0x64 (0x8084).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrGunTurretTop::~SLdrGunTurretTop() {}
