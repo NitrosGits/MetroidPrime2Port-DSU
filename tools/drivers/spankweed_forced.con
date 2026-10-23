@@ -1,0 +1,20 @@
+# FORCED arms (no shipped SPNK, no registered states): a SpankWeed spawned in 08_sand_casualpirates
+# with a borrowed SpacePirate body (ANCS u04d0, character 1, anim 34), wake/search/attack radii
+# 30/20/10, hurtSleepDelay 2.  Messages from send, shots from damage, then Delete.
+# @f335: no ANCS, so LoadSpankWeed gets an empty model and returns null (0x4F4 arm).
+# Run with tools/cov/specs/spankweed.py (its header has the command line).
+@f300 god 1
+@f330 spawn SPNK ancs u04d0 1 34 prop 835adca1 30.0 prop ed9bf5a3 20.0 prop 7c11b995 10.0 prop 9b5a4744 2.0
+@f335 spawn SPNK
+@f340 send e0036ff00 Activate; objs spankweed
+@f342 place e0036ff00 player 6
+@f360 damage e0036ff00 5
+@f370 send e0036ff00 Decrement
+@f380 send e0036ff00 HitObject from player
+@f390 send e0036ff00 AIUpdateDisabled
+@f400 send e0036ff00 Deactivate
+@f410 send e0036ff00 Activate
+@f420 damage e0036ff00 5 kb missile
+@f600 covdump
+@f700 send e0036ff00 Delete
+@f800 covdump
