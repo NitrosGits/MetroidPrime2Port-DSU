@@ -1,0 +1,11 @@
+# Agon 01_sand_entrance_dark (42b935e4,01_sand_entrance_dark): Parasites in layers 1-3; put one on
+# the player for contact damage. With tools/cov/specs/dol1_para.py (force.sh: IceZoomer arm).
+@f30 layer 1; layer 2; layer 3
+@f150 objs Parasite
+@f160 send e0007005b Activate; place e0007005b player 0.5
+@f200 place e0007005b player 0.3
+@f260 place e0007005b player 0.3
+@f320 status
+@f400 place e0007027e player 0.3
+@f460 place e0007027e player 0.3
+@f520 status

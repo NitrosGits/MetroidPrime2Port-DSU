@@ -1,0 +1,21 @@
+# tail23 grab/throw: morph ball on the Cyclops' own floor (z -13.234), Sanctuary Fortress 0f_cliff_hall
+@f600 tp 148 213.3 -13.0
+@f620 press x 40
+@f700 status
+@f760 obj u047b
+@f820 press l 30
+@f900 obj u047b
+@f960 tp 148 213.3 -13.0
+@f1000 press a 5
+@f1060 obj u047b
+@f1120 press l 60
+@f1200 status
+@f1260 tp 148 213.3 -13.0
+@f1320 obj u047b
+@f1380 press a 5
+@f1440 press l 60
+@f1500 status
+@f1600 tp 148 213.3 -13.0
+@f1700 press a 5
+@f1800 obj u047b
+@f1900 status

@@ -1,0 +1,13 @@
+# Torvus 07_swamp_shaft (3dfd2249,07_swamp_shaft): bring a Blogg (layers 2,3,5) to the player and
+# force its ProjectileAttack; `status` health must drop (run with --env MP2_GODMODE=0).
+@f30 layer 2; layer 3; layer 5
+@f150 objs blog
+@f160 send e002800df Activate; place e002800df player 12
+@f200 fsm e002800df ProjectileAttack
+@f300 status
+@f400 place e002800df player 12; fsm e002800df ProjectileAttack
+@f600 status
+@f700 place e002800df player 10; fsm e002800df ProjectileAttack
+@f900 status
+@f1000 place e0028009a player 12; fsm e0028009a ProjectileAttack
+@f1300 status

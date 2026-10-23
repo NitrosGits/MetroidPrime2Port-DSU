@@ -94,10 +94,6 @@ extern "C" void reachstub_135() { mpReachStub("_ZN18CTransitionManagerD1Ev", "CT
 extern "C" void reachstub_136() asm("_ZN20CDamageVulnerabilityC1ERK23SLdrDamageVulnerability");
 extern "C" void reachstub_136() { mpReachStub("_ZN20CDamageVulnerabilityC1ERK23SLdrDamageVulnerability", "CDamageVulnerability::CDamageVulnerability(SLdrDamageVulnerability const&)"); }
 
-// rstl::operator==(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, char const*)
-extern "C" void reachstub_178() asm("_ZN4rstleqERKNS_12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEEPKc");
-extern "C" void reachstub_178() { mpReachStub("_ZN4rstleqERKNS_12basic_stringIcNS_11char_traitsIcEENS_17rmemory_allocatorEEEPKc", "rstl::operator==(rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator> const&, char const*)"); }
-
 // CMath::SlowCosineR(float)
 extern "C" void reachstub_179() asm("_ZN5CMath11SlowCosineREf");
 extern "C" void reachstub_179() { mpReachStub("_ZN5CMath11SlowCosineREf", "CMath::SlowCosineR(float)"); }
@@ -126,10 +122,6 @@ extern "C" void reachstub_300() { mpReachStub("_ZN9CMatrix4fC1ERKS_", "CMatrix4f
 // COsContext::GetOsKeyState(int) const
 extern "C" void reachstub_308() asm("_ZNK10COsContext13GetOsKeyStateEi");
 extern "C" void reachstub_308() { mpReachStub("_ZNK10COsContext13GetOsKeyStateEi", "COsContext::GetOsKeyState(int) const"); }
-
-// CDamageInfo::WithNoImmunity() const
-extern "C" void reachstub_311() asm("_ZNK11CDamageInfo14WithNoImmunityEv");
-extern "C" void reachstub_311() { mpReachStub("_ZNK11CDamageInfo14WithNoImmunityEv", "CDamageInfo::WithNoImmunity() const"); }
 
 // CStateManager::fn_800366e4(CActor const*) const
 extern "C" void reachstub_328() asm("_ZNK13CStateManager11fn_800366e4EPK6CActor");

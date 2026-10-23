@@ -1,0 +1,24 @@
+# tail23 bomb chain v3: move the Cyclops away, morph, lay bombs, lift the ball out of the height
+# band, place the Cyclops on the bombs, then let the machine run InMaxRange -> SelectTarget ->
+# GetUp -> ShootBomb (polled with obj).
+@f600 place u047b 140 205 -13.2
+@f620 tp 148 213.3 -13.0
+@f640 give morphBallBombs 1
+@f660 press x 20
+@f700 press a 10
+@f730 press a 10
+@f760 objs CBomb ; objs bomb
+@f780 status
+@f800 tp 148 211 -11
+@f820 place u047b 148 213.3 -13.2
+@f840 trigcall u047b InMaxRange
+@f860 obj u047b
+@f1000 obj u047b
+@f1100 trigcall u047b InMaxRange
+@f1200 obj u047b
+@f1300 trigcall u047b InMaxRange
+@f1400 obj u047b
+@f1500 trigcall u047b IsDizzy ; obj u047b
+@f1600 obj u047b
+@f1700 obj u047b
+@f1800 status

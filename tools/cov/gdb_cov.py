@@ -165,9 +165,9 @@ def install():
     order = sorted(range(len(syms)), key=lambda i: addrs[i])
 
     def extent_of(mangled):
-        for i in order:
+        for k, i in enumerate(order):
             if syms[i][0] == mangled:
-                return addrs[order[i + 1]] if i + 1 < len(order) else None
+                return addrs[order[k + 1]] if k + 1 < len(order) else None
         return None
     for label, where, exprs, flags in SPEC:
         results[label] = {'hits': 0, 'arms': {}, 'where': where, 'exprs': exprs}

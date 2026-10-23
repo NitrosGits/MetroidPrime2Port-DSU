@@ -1,0 +1,25 @@
+# tail23 misc3: struggle while attached. CPlayer::ProcessInput counts a press of turn-left /
+# turn-right / forward / backward / jump while morphed AND attached (dt*600 per press), so the
+# d-pad and B (jump) are pressed repeatedly while the ball is in the mouth.
+@f600 tp 148 213.3 -13.0
+@f620 press x 20
+@f680 obj u047b
+@f700 press left 5 ; press right 5 ; press up 5 ; press down 5 ; press b 5
+@f730 press right 5 ; press left 5 ; press b 5 ; press up 5
+@f760 press left 5 ; press right 5 ; press b 5 ; press left 5
+@f790 press right 5 ; press b 5 ; press down 5 ; press up 5
+@f820 press left 5 ; press b 5 ; press right 5
+@f850 obj u047b
+@f870 stick 127 127 4 ; stick -127 -127 4 ; stick 127 -127 4 ; stick -127 127 4
+@f900 press left 5 ; press b 5 ; press right 5 ; press b 5
+@f930 obj u047b
+@f950 trigcall u047b IsDizzy
+@f970 statecall u047b Dizzy 1
+@f1000 obj u047b
+@f1100 obj u047b
+@f1200 press left 5 ; press right 5 ; press b 5 ; press left 5 ; press b 5
+@f1260 obj u047b
+@f1300 status
+@f1400 press left 5 ; press right 5 ; press b 5 ; press right 5 ; press b 5
+@f1460 obj u047b
+@f1500 status

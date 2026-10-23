@@ -16,6 +16,7 @@ pointer to this file plus their slice, not a restatement of it.
   - `tools/rel_pseudo/` - REL plf -> ET_EXEC for REA/Ghidra, split per function, `relsim.py`
     REL similarity. (Supersedes `tools/rel_plf2exec.py`; don't add another linker.)
   - m2c pseudo-C over the whole REL; REA `batch_decompile`.
+  - `tools/upstream_hollow.py [--dol]` - upstream bodies that are skeletons of retail or reach stubs (needs the matching build; `docs/module-analysis/upstream_hollow.md`).
 - One orchestrator (the port session) runs every family and reviews every lane patch; there are
   no per-family orchestrator sessions. Lanes run only on MiniMax free
   (`opencode-go/minimax-m3.1-flash-free`, passed explicitly). At most three `claude` (Opus) lanes

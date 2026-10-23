@@ -1,0 +1,21 @@
+# tail23 bomb chain v6: lay a bomb under the ball, and in a following tick place the Cyclops onto
+# it and evaluate InMaxRange in the same tick (its fuse is disabled when it is found), so the
+# machine can later take the bomb (mBombId set, msgs to SelectTarget/GetUp/ShootBomb).
+@f600 tp 148 213.3 -13.0
+@f620 give morphBallBombs 1
+@f640 press x 20
+@f660 objs CBomb
+@f700 press a 2
+@f706 place u047b player 1 ; trigcall u047b InMaxRange
+@f712 trigcall u047b InMaxRange
+@f720 objs CBomb ; trigcall u047b InMaxRange
+@f740 obj u047b
+@f800 obj u047b
+@f860 trigcall u047b InMaxRange ; obj u047b
+@f920 obj u047b
+@f980 obj u047b
+@f1040 trigcall u047b InMaxRange ; obj u047b
+@f1100 obj u047b
+@f1200 obj u047b
+@f1300 obj u047b
+@f1400 obj u047b
