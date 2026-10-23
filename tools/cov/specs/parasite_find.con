@@ -1,0 +1,5 @@
+# Discovery: Parasite-class actors of an area with the module-table layers on.
+@f300 god 1
+@f305 layer 2; layer 3; layer 9
+@f340 objs parasite
+@f360 status

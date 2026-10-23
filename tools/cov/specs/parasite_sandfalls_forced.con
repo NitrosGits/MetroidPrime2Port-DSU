@@ -1,0 +1,38 @@
+# FORCED arms, 02_sand_sandfalls (layer 9): run the CParasite state bodies (statecall 0/1/2), triggers
+# (trigcall) and script messages (send) on a Brizgee, walk the machine through states (fsm), kill all.
+# Not Generate/Deactivate/Attack/Retreat/Halt: their body cmds need anims the Brizgee ANCS lacks (crash).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/parasite.py <out> 42b935e4,02_sand_sandfalls --con <this> --fast --frames 1250
+@f300 god 1; give missile 50
+@f302 layer 9
+@f310 objs parasite
+@f330 place u05e5 player 5; place u05d9 player 7; place u05d6 player 9
+@f400 statecall u05e5 PathFind 0; statecall u05e5 PathFind 1; statecall u05e5 PathFind 1 0.5; statecall u05e5 PathFind 2
+@f406 statecall u05e5 TargetPatrol 0; statecall u05e5 TargetPatrol 1; statecall u05e5 TargetPatrol 1 0.5; statecall u05e5 TargetPatrol 2
+@f412 statecall u05e5 Patrol 0; statecall u05e5 Patrol 1; statecall u05e5 Patrol 1 0.5; statecall u05e5 Patrol 2
+@f418 statecall u05e5 Run 0; statecall u05e5 Run 1; statecall u05e5 Run 1 0.5; statecall u05e5 Run 2
+@f424 statecall u05e5 TelegraphAttack 0; statecall u05e5 TelegraphAttack 1; statecall u05e5 TelegraphAttack 1 0.5; statecall u05e5 TelegraphAttack 2
+@f430 statecall u05e5 Jump 0; statecall u05e5 Jump 1; statecall u05e5 Jump 1 0.5; statecall u05e5 Jump 2
+@f436 statecall u05e5 TargetPlayer 0; statecall u05e5 TargetPlayer 1; statecall u05e5 TargetPlayer 1 0.5; statecall u05e5 TargetPlayer 2
+@f442 statecall u05e5 Crouch 0; statecall u05e5 Crouch 1; statecall u05e5 Crouch 1 0.5; statecall u05e5 Crouch 2
+@f448 statecall u05e5 GetUp 0; statecall u05e5 GetUp 1; statecall u05e5 GetUp 1 0.5; statecall u05e5 GetUp 2
+@f454 trigcall u05e5 Stuck; trigcall u05e5 AttackOver; trigcall u05e5 ShotAt; trigcall u05e5 PatrolPathOver; trigcall u05e5 AnimOver; trigcall u05e5 Landed; trigcall u05e5 HitSomething; trigcall u05e5 ShouldAttack; trigcall u05e5 ShouldAttack 1; trigcall u05e5 HitSomething 1
+@f460 send u05e5 Activate; send u05e5 Deactivate; send u05e5 ResistedDamage; send u05e5 ReflectedDamage; send u05e5 Launching; send u05e5 AreaLoaded; send u05e5 AIUpdateDisabled
+@f466 send u05e5 Activate
+@f476 fsm u05e5 PathFind
+@f516 obj u05e5
+@f518 fsm u05e5 TargetPlayer
+@f558 obj u05e5
+@f560 fsm u05e5 Crouch
+@f600 obj u05e5
+@f602 fsm u05e5 GetUp
+@f642 obj u05e5
+@f644 fsm u05e5 TelegraphAttack
+@f684 obj u05e5
+@f686 fsm u05e5 Patrol
+@f696 statecall u05e5 Jump 0
+@f726 statecall u05e5 Jump 2
+@f732 fsm u05e5 Patrol; place u05d9 player 0.5
+@f792 obj u05d9
+@f796 shoot u05d9; shoot u05d9 charged; shoot u05d9 missile
+@f836 damage u05e5 50; damage u05d9 50 missile; damage u05d6 50 missile
+@f1036 objs parasite
