@@ -1,0 +1,46 @@
+# tail23 bomb chain v2: give bombs, lay two on the Cyclops' floor, lift the ball out of the height
+# band, place the Cyclops on the bombs (InMaxRange -> mBombId -> mVulnerable), powerbomb damage,
+# struggle while attached (Dizzy / BallCloseToCollision), then each beam at the other Cyclops.
+@f600 tp 148 213.3 -13.0
+@f620 give morphBallBombs 1
+@f640 press x 20
+@f680 press a 1 ; press a 1 ; objs CBomb
+@f694 tp 148 211 -11
+@f700 objs CBomb ; trigcall u047b InMaxRange
+@f710 place u047b 148 213.3 -13.2
+@f720 trigcall u047b InMaxRange
+@f730 obj u047b
+@f740 damage u047b 2000 powerbomb
+@f750 obj u047b
+@f760 status
+@f800 tp 148 213.3 -13.0
+@f820 trigcall u047b InDetectionRange
+@f840 stick 127 0 6 ; stick -127 0 6 ; stick 127 0 6
+@f860 stick -127 0 6 ; stick 127 0 6 ; stick -127 0 6
+@f880 stick 127 0 6 ; stick -127 0 6
+@f900 obj u047b
+@f920 trigcall u047b IsDizzy
+@f940 statecall u047b Dizzy 0
+@f960 statecall u047b Dizzy 1
+@f980 statecall u047b GetUp 1
+@f1000 statecall u047b GetUp 0
+@f1020 statecall u047b GetUp 2
+@f1040 trigcall u047b InMaxRange
+@f1060 obj u047b
+@f1100 tp 148 211 -11
+@f1120 beam power ; shoot u047b 2
+@f1160 beam dark ; shoot u047b 2
+@f1200 beam light ; shoot u047b charged 2
+@f1240 beam annihilator ; shoot u047b charged 2
+@f1280 damage u047b 5000 powerbomb
+@f1320 obj u047b
+@f1340 obj u0455
+@f1360 beam power ; shoot u0455 2
+@f1400 damage u0455 5000 powerbomb
+@f1440 kill u047b
+@f1480 obj u047b
+@f1520 status
+@f1560 trigcall u0455 InMaxRange
+@f1600 statecall u0455 GetUp 1
+@f1640 trigcall u0455 SpotPlayer
+@f1680 status

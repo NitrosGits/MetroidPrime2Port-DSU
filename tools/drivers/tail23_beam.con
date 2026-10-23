@@ -1,0 +1,20 @@
+# tail23 beams + kill: each beam at u047b, then lethal damage / kill
+@f560 give darkBeam 1 ; give lightBeam 1 ; give annihilatorBeam 1
+@f600 tp 148 211 -11
+@f620 beam
+@f660 beam power ; shoot u047b 0 2
+@f720 beam dark ; shoot u047b 0 2
+@f780 beam light ; shoot u047b 1 2
+@f840 beam annihilator ; shoot u047b 1 2
+@f900 damage u047b 20 light
+@f940 damage u047b 20 dark
+@f980 damage u047b 20 annihilator
+@f1020 damage u047b 2000
+@f1080 obj u047b
+@f1120 obj u0455
+@f1160 damage u0455 5000
+@f1200 obj u0455
+@f1260 status
+@f1300 kill u047b
+@f1360 obj u047b
+@f1400 status

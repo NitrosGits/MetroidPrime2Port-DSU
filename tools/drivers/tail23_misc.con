@@ -1,0 +1,29 @@
+# tail23 misc: struggle while attached (GetAttachedActorStruggle -> BallCloseToCollision, mDizzy),
+# then the trigger and state bodies the grab does not reach.
+@f600 tp 148 213.3 -13.0
+@f620 press x 20
+@f700 obj u047b
+@f740 stick 127 0 5 ; stick -127 0 5 ; stick 127 0 5
+@f770 stick -127 0 5 ; stick 127 0 5 ; stick -127 0 5
+@f800 stick 127 0 5 ; stick -127 0 5 ; stick 127 0 5
+@f830 stick -127 0 5 ; stick 127 0 5
+@f860 obj u047b
+@f880 trigcall u047b IsDizzy
+@f900 trigcall u047b ShouldRetreat
+@f920 trigcall u047b CoverBlown
+@f940 trigcall u047b SpotPlayer
+@f960 trigcall u047b HearShot
+@f980 trigcall u047b InRange
+@f1000 trigcall u047b InPosition
+@f1020 statecall u047b Dizzy 0
+@f1050 statecall u047b Dizzy 1
+@f1080 statecall u047b Dizzy 2
+@f1110 statecall u047b GetUp 0
+@f1140 statecall u047b GetUp 1
+@f1170 statecall u047b GetUp 2
+@f1200 obj u047b
+@f1240 status
+@f1280 tp 148 211 -11
+@f1320 trigcall u047b SpotPlayer
+@f1360 trigcall u047b InRange
+@f1400 status

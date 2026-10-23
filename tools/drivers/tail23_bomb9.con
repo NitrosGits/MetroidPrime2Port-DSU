@@ -1,0 +1,28 @@
+# tail23 bomb9: bomb8's chain (mBombId set, fuse disabled) then a long tail with the ball out
+# of the way, so Patrol re-evaluates and can take the bomb path (polled via obj).
+@f600 place u047b 148 214.9 -13.2
+@f620 tp 154 213.3 -13.2
+@f640 give morphBallBombs 1
+@f660 press x 20
+@f700 press a 0
+@f740 objs CBomb
+@f750 place u047b 151.5 213.3 -13.2
+@f756 trigcall u047b InMaxRange
+@f770 objs CBomb ; trigcall u047b InMaxRange
+@f800 press x 1
+@f810 tp 148 211 -11
+@f900 obj u047b
+@f1080 obj u047b
+@f1260 obj u047b
+@f1440 obj u047b
+@f1620 obj u047b
+@f1800 obj u047b
+@f1980 obj u047b
+@f2160 obj u047b
+@f2340 obj u047b
+@f2520 obj u047b
+@f2700 obj u047b
+@f2880 obj u047b
+@f3060 trigcall u047b InMaxRange ; obj u047b
+@f3100 obj u047b
+@f3140 status

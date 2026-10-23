@@ -1,0 +1,23 @@
+# tail23 bomb chain v8: hold A so fresh bombs keep being laid at the ball's feet 6 m from the
+# Cyclops (outside its 5 m box), then place the Cyclops 2.5 m from the ball so a fresh bomb is
+# inside the box; InMaxRange disables that bomb's fuse and sets mBombId.
+@f600 place u047b 148 214.9 -13.2
+@f620 tp 154 213.3 -13.2
+@f640 give morphBallBombs 1
+@f660 press x 20
+@f700 press a 0
+@f720 objs CBomb
+@f740 objs CBomb
+@f750 place u047b 151.5 213.3 -13.2
+@f756 trigcall u047b InMaxRange
+@f762 trigcall u047b InMaxRange
+@f770 objs CBomb ; trigcall u047b InMaxRange
+@f780 obj u047b
+@f820 obj u047b
+@f860 trigcall u047b InMaxRange ; obj u047b
+@f900 obj u047b
+@f1000 obj u047b
+@f1100 trigcall u047b InMaxRange ; obj u047b
+@f1200 obj u047b
+@f1300 obj u047b
+@f1400 obj u047b

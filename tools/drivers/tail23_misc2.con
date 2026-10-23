@@ -1,0 +1,39 @@
+# tail23 misc2: long struggle while attached (GetAttachedActorStruggle -> BallCloseToCollision,
+# mDizzy -> Dizzy/GetUp), then the Dizzy/GetUp bodies with live state.
+@f600 tp 148 213.3 -13.0
+@f620 press x 20
+@f700 obj u047b
+@f720 stick 127 0 3
+@f728 stick -127 0 3
+@f736 stick 127 0 3
+@f744 stick -127 0 3
+@f752 stick 127 0 3
+@f760 stick -127 0 3
+@f768 stick 127 0 3
+@f776 stick -127 0 3
+@f784 stick 127 0 3
+@f792 stick -127 0 3
+@f800 stick 127 0 3
+@f808 stick -127 0 3
+@f816 stick 127 0 3
+@f824 stick -127 0 3
+@f832 stick 127 0 3
+@f840 stick -127 0 3
+@f848 stick 127 0 3
+@f856 stick -127 0 3
+@f864 stick 127 0 3
+@f872 stick -127 0 3
+@f880 stick 127 0 3
+@f888 stick -127 0 3
+@f896 stick 127 0 3
+@f904 stick -127 0 3
+@f912 obj u047b
+@f932 trigcall u047b IsDizzy
+@f952 statecall u047b Dizzy 1
+@f972 statecall u047b GetUp 1
+@f992 trigcall u047b ShouldRetreat
+@f1012 trigcall u047b CoverBlown
+@f1032 trigcall u047b InRange
+@f1052 trigcall u047b InPosition
+@f1072 obj u047b
+@f1112 status
