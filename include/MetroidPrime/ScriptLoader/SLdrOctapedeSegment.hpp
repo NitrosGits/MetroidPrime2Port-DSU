@@ -108,6 +108,20 @@ inline SLdrOctapedeSegment::SLdrOctapedeSegment()
   bounceSound = 0;
   explodeSound = 0;
   unknown_0x0c4763d7 = 0.0f;
+#ifdef TARGET_PC
+  // fn_46_DA4 (__ct__19SLdrOctapedeSegment): 2.0 (rodata 0x28) at +0x8C = patterned +0x4C
+  // (0x108/0x124), CColor(1.0 x4) at +0x298 = actorInformation +0x14 (0x134/0x148), 0xF at
+  // +0x2E8 = actorInformation +0x64 (0x14C li r0,0xf / 0x158), -1 at +0x374..+0x384 = the five
+  // sound ids (0x38 li r0,-0x1 / 0x40 0x50 0x60 0x70 0x80).
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+  walkSound = -1;
+  idleSound = -1;
+  seperateSound = -1;
+  bounceSound = -1;
+  explodeSound = -1;
+#endif
 }
 
 inline SLdrOctapedeSegment::~SLdrOctapedeSegment() {}

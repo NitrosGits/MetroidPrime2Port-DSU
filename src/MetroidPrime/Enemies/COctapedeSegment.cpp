@@ -48,6 +48,7 @@ static EMaterialTypes skFloorMaterial = kMT_Floor;
 
 static TUniqueId FindHeadSegment(CStateManager& mgr, TUniqueId segmentId);
 
+// @ fn_46_3B68
 COctapedeSegment::COctapedeSegment(
     TUniqueId uid, const rstl::string& name, CEntityInfo& info, const CTransform4f& xf,
     const CModelData& modelData, const CPatternedInfo& patternedInfo,
@@ -119,8 +120,10 @@ COctapedeSegment::COctapedeSegment(
       CMaterialList(skExcludeMaterialA, skExcludeMaterialB, skExcludeMaterialC)));
 }
 
+// @ fn_46_3A70
 COctapedeSegment::~COctapedeSegment() {}
 
+// @ fn_46_34C0
 void COctapedeSegment::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -212,6 +215,7 @@ void COctapedeSegment::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_46_3474
 void COctapedeSegment::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -283,6 +287,7 @@ void COctapedeSegment::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg
   CWallCrawler::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_46_309C
 void COctapedeSegment::PreThink(float dt, CStateManager& mgr) { CWallCrawler::PreThink(dt, mgr); }
 
 void COctapedeSegment::Think(float dt, CStateManager& mgr) {
@@ -372,6 +377,7 @@ void COctapedeSegment::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_46_28BC
 void COctapedeSegment::Render(const CStateManager& mgr) const {
   if (mElectric.get() && mSegmentState == kSegS_Attached) {
     mElectric->Render();
@@ -379,8 +385,10 @@ void COctapedeSegment::Render(const CStateManager& mgr) const {
   CWallCrawler::Render(mgr);
 }
 
+// @ fn_46_289C
 void COctapedeSegment::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_46_287C
 void COctapedeSegment::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
@@ -405,6 +413,7 @@ static TUniqueId FindHeadSegment(CStateManager& mgr, TUniqueId segmentId) {
   return segmentId;
 }
 
+// @ fn_46_20EC
 void COctapedeSegment::Death(CStateManager& mgr, const CVector3f& direction,
                              EScriptObjectState state) {
   if (BodyController()->IsFrozen()) {
@@ -470,6 +479,7 @@ void COctapedeSegment::Death(CStateManager& mgr, const CVector3f& direction,
   SendScriptMsgs(kSS_InternalState0, mgr, kInvalidUniqueId, kSM_None);
 }
 
+// @ fn_46_1DA4
 void COctapedeSegment::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -507,6 +517,7 @@ void COctapedeSegment::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_46_18B8
 void COctapedeSegment::Bounce(CStateManager& mgr, const CVector3f& normal, bool counts) {
   if (mBouncesRemaining > 0 && !mBounceLatch) {
     mBounceLatch = true;
@@ -624,12 +635,14 @@ void COctapedeSegment::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& 
   CPatterned::DoUserAnimEvent(mgr, node, type, dt);
 }
 
+// @ fn_46_11D0
 void COctapedeSegment::ThinkAboutMove(float dt) {
   if (mSegmentState != kSegS_Bouncing) {
     CPatterned::ThinkAboutMove(dt);
   }
 }
 
+// @ fn_46_10D0
 void COctapedeSegment::Freeze(CStateManager& mgr, const CVector3f& position,
                               CUnitVector3f direction, float duration, float intoFreezeDuration) {
   if (!BodyController()->IsFrozen()) {
@@ -660,6 +673,7 @@ void COctapedeSegment::Burn(CStateManager& mgr, float duration, float damage) {
   }
 }
 
+// @ fn_46_13C
 CEntity* LoadOctapedeSegment(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrOctapedeSegment sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrOctapedeSegment.inc"
@@ -689,13 +703,16 @@ CEntity* LoadOctapedeSegment(CStateManager& mgr, CInputStream& input, CEntityInf
 }
 
 #ifndef MONOLITHIC
+// @ fn_46_10C
 static void SetFuncPtrs() {
   static SOctapedeSegment_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadOctapedeSegment;
   SetSOctapedeSegment_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_46_EC
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_46_C8
 extern "C" void RELExit() { SetSOctapedeSegment_FuncPtrs(nullptr); }
 #endif

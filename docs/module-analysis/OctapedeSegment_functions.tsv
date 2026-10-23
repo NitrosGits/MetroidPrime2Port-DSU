@@ -1,0 +1,66 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_46_0	10	H	TakeDamage__10CPatternedFRC9CVector3ff	-	weak copy / template instance	no
+00010	fn_46_10	8	H	GetModelAlphau8__10CPatternedCFRC13CStateManager	-	weak copy / template instance	no
+00018	fn_46_18	8	H	ProjectileInfo__10CPatternedFv	-	weak copy / template instance	no
+00020	fn_46_20	8	H	GetSearchPath__10CPatternedFv	-	weak copy / template instance	no
+00028	fn_46_28	8	H	GetPointSearchPath__10CPatternedFv	-	weak copy / template instance	no
+00030	fn_46_30	8	H	GetRagDoll__10CPatternedCFv	-	weak copy / template instance	no
+00038	fn_46_38	10	H	GetAttackTarget__10CPatternedCFv	-	weak copy / template instance	no
+00048	fn_46_48	C	H	IsOnGround__10CPatternedCFv	-	weak copy / template instance	no
+00054	fn_46_54	C	H	GetGravityConstant__10CPatternedCFv	-	weak copy / template instance	no
+00060	fn_46_60	8	H	GetDeathExplosionParticle__10CPatternedCFv	-	weak copy / template instance	no
+00068	fn_46_68	8	H	CanBeShot__3CAiFRC13CStateManageri	-	weak copy / template instance	no
+00070	fn_46_70	8	H	IsListening__3CAiCFv	-	weak copy / template instance	no
+00078	fn_46_78	8	H	Listen__3CAiFR13CStateManagerRC9CVector3f16EListenNoiseType	-	weak copy / template instance	no
+00080	fn_46_80	1C	H	GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f	-	weak copy / template instance	no
+0009C	fn_46_9C	2C	H	GetHealthInfo__6CActorCFv	-	weak copy / template instance	no
+000C8	fn_46_C8	24	T	RELExit	oct1	REL runtime	yes
+000EC	fn_46_EC	20	T	RELMain	oct1	REL runtime	yes
+0010C	fn_46_10C	30	T	SetFuncPtrs__Fv	oct1	REL runtime	yes
+0013C	fn_46_13C	8A4	B	LoadOctapedeSegment__FR13CStateManagerR12CInputStreamR11CEntityInfo	oct1	upstream body	yes
+009E0	fn_46_9E0	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+00A20	fn_46_A20	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak copy / template instance	no
+00A40	fn_46_A40	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak copy / template instance	no
+00A68	fn_46_A68	13C	H	__ct__10CModelDataFRC10CModelData	-	weak copy / template instance	no
+00BA4	fn_46_BA4	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak copy / template instance	no
+00C10	fn_46_C10	54	H	__dt__15TToken<6CModel>Fv	-	weak copy / template instance	no
+00C64	fn_46_C64	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
+00CC8	fn_46_CC8	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
+00D28	fn_46_D28	7C	B	__dt__19SLdrOctapedeSegmentFv	oct1	SLdrOctapedeSegment dtor (header)	no
+00DA4	fn_46_DA4	270	B	__ct__19SLdrOctapedeSegmentFv	oct1	SLdrOctapedeSegment ctor: loader defaults fixed (oct1), in the header	no
+01014	fn_46_1014	BC	B	Burn__16COctapedeSegmentFR13CStateManagerff	oct1	Burn: burn-disabled arm not forceable	no
+010D0	fn_46_10D0	100	B	Freeze__16COctapedeSegmentFR13CStateManagerRC9CVector3f13CUnitVector3fff	oct1	upstream body	yes
+011D0	fn_46_11D0	2C	B	ThinkAboutMove__16COctapedeSegmentFf	oct1	upstream body	yes
+011FC	fn_46_11FC	11C	B	DoUserAnimEvent__16COctapedeSegmentFR13CStateManagerRC13CInt32POINode14EUserEventTypef	oct1	DoUserAnimEvent: non-SoundPlay default arm not reached (only SoundPlay events ship)	no
+01318	fn_46_1318	1C8	B	Explode__16COctapedeSegmentFR13CStateManager	oct1	Explode: TCastTo<CScriptEffect> fail arm data-dependent (all 0p targets are effects)	no
+014E0	fn_46_14E0	3D8	B	CollidedWith__16COctapedeSegmentFRC9TUniqueIdRC18CCollisionInfoListR13CStateManager	oct1	CollidedWith: list-count-0, live-segment and non-mask collision arms not reached	no
+018B8	fn_46_18B8	4AC	B	Bounce__16COctapedeSegmentFR13CStateManagerRC9CVector3fb	oct1	upstream body	yes
+01D64	fn_46_1D64	40	B	Cross__9CVector3fFRC9CVector3fRC9CVector3f	oct1	Cross: inlined vector helper; equivalent	no
+01DA4	fn_46_1DA4	348	B	Dead__16COctapedeSegmentFR13CStateManager9EStateMsgf	oct1	upstream body	yes
+020EC	fn_46_20EC	650	B	Death__16COctapedeSegmentFR13CStateManagerRC9CVector3f18EScriptObjectState	oct1	upstream body	yes
+0273C	fn_46_273C	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+0278C	fn_46_278C	F0	B	FindHeadSegment__FR13CStateManager9TUniqueId	oct1	FindHeadSegment: cast-fail arm data-dependent	no
+0287C	fn_46_287C	20	B	AddToRenderer__16COctapedeSegmentCFRC13CStateManager	oct1	upstream body	yes
+0289C	fn_46_289C	20	B	PreRender__16COctapedeSegmentFR13CStateManager	oct1	upstream body	yes
+028BC	fn_46_28BC	68	B	Render__16COctapedeSegmentCFRC13CStateManager	oct1	upstream body	yes
+02924	fn_46_2924	6E0	B	Think__16COctapedeSegmentFfR13CStateManager	oct1	Think: occlusion arms not reached	no
+03004	fn_46_3004	4C	H	SetOverrideFPos__17CParticleElectricFRC9CVector3f	-	weak copy / template instance	no
+03050	fn_46_3050	4C	H	SetOverrideIPos__17CParticleElectricFRC9CVector3f	-	weak copy / template instance	no
+0309C	fn_46_309C	20	B	PreThink__16COctapedeSegmentFfR13CStateManager	oct1	upstream body	yes
+030BC	fn_46_30BC	3AC	B	AcceptScriptMsg__16COctapedeSegmentFR13CStateManagerRC10CScriptMsg	oct1	AcceptScriptMsg: cast-fail and head==self arms data-dependent	no
+03468	fn_46_3468	C	H	clear__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+03474	fn_46_3474	4C	B	SetupStateMachine__16COctapedeSegmentFR13CStateManager	oct1	upstream body	yes
+034C0	fn_46_34C0	5B0	B	Patrol__16COctapedeSegmentFR13CStateManager9EStateMsgf	oct1	upstream body	yes
+03A70	fn_46_3A70	A4	B	__dt__16COctapedeSegmentFv	oct1	upstream body	yes
+03B14	fn_46_3B14	54	H	__dt__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+03B68	fn_46_3B68	638	B	__ct__16COctapedeSegmentF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>R11CEntityInfoRC12CTransform4fRC10CModelDataRC14CPatternedInfoRC16CActorParametersffffffffbfUiffffffffffiifRC11CDamageInfoUsUsUsUsUsf	oct1	upstream body	yes
+041A0	fn_46_41A0	78	H	__dt__Q24rstl29auto_ptr<17CParticleElectric>Fv	-	weak copy / template instance	no
+04218	fn_46_4218	54	H	__dt__30TToken<20CElectricDescription>Fv	-	weak copy / template instance	no
+0426C	fn_46_426C	58	H	__dt__36TCachedToken<20CElectricDescription>Fv	-	weak copy / template instance	no
+042C4	fn_46_42C4	A4	H	reserve__Q24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance	no
+04368	fn_46_4368	48	H	__sinit_COctapedeSegment_cpp	-	weak copy / template instance	no
+043B0	fn_46_43B0	C4	T	_unresolved	oct1	REL runtime	no
+04474	fn_46_4474	24	T	_epilog	oct1	REL runtime	no
+04498	fn_46_4498	24	T	_prolog	oct1	REL runtime	no
+044BC	fn_46_44BC	4C	T	ModuleDestructors	oct1	REL runtime	no
+04508	fn_46_4508	4C	T	ModuleConstructors	oct1	REL runtime	no

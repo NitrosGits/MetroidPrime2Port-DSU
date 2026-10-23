@@ -1,0 +1,39 @@
+# OctapedeSegment (REL 46) in Sanctuary Fortress 0p_cliff_hall (1baa96c2,0p_cliff_hall), layer 0.
+# Two Octapedes of 8 segments crawl on the walls: A u0467..u0487 (x -218), B u043c..u045a (x -178).
+# Patrol/AreaLoaded/Create run on load; hits on segments (power, dark, light) for the shared
+# freeze/burn arms of AcceptScriptMsg Damage; A dies by damage, B is frozen first.
+@f120 god 1
+@f130 tp -198 119 -124
+@f140 face 270
+@f200 obj u0487
+@f210 obj u0467
+@f220 obj u045a
+@f230 obj u043c
+@f300 damage u0483 1
+@f320 damage u0483 1 light
+@f340 damage u0480 1 dark
+@f360 shoot u0474 charged
+@f400 obj u0487
+@f500 beam light
+@f520 shoot u046f charged
+@f600 beam dark
+@f620 shoot u046b charged
+@f700 obj u046b
+@f800 damage u0467 200
+@f810 damage u0487 200
+@f820 objs Octapede
+@f900 objs Octapede
+@f1100 objs Octapede
+@f1400 objs Octapede
+@f1600 tp -160 119 -124
+@f1610 face 90
+@f1640 beam dark
+@f1650 shoot u045a charged
+@f1660 shoot u043c charged
+@f1680 obj u045a
+@f1700 damage u045a 200 dark
+@f1710 damage u043c 200 dark
+@f1720 objs Octapede
+@f2000 objs Octapede
+@f2400 objs Octapede
+@f2800 objs Octapede

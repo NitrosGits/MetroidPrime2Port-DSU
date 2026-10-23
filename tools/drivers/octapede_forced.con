@@ -1,0 +1,32 @@
+# OctapedeSegment (REL 46) forced arms, Sanctuary Fortress 0p_cliff_hall (1baa96c2,0p_cliff_hall) L0.
+# Four chains of four: heads u0483 (u0467 <- u047e <- u0474), u0480 (u046b <- u046f <- u0487),
+# u0450, u0442. A spawned segment u048e (ancs of u0487, no between-segments effect, loader
+# defaults: no connections, bounces 1..3 (prop 0x96b863c5), break-apart speeds 0) takes the no-effect, no-waypoint,
+# no-children and zero-velocity arms; `fsm Dead` on a live segment the not-broken-apart arm and,
+# after 15 s, an Explode that deletes a chain member (null child / null front arms).
+@f120 god 1
+@f130 tp -198 119 -124
+@f140 face 270
+@f300 spawn OCTS
+@f320 spawn OCTS ancs u0487 prop 0x1b58c5f1 0xffffffff prop 0x96b863c5 3
+@f330 send u048e Create; statecall u048e Patrol 0; statecall u048e Patrol 1
+@f340 statecall u0483 Patrol 2; statecall u0483 Patrol 0
+@f420 fsm u0467 Dead
+@f440 send u048e Deactivate
+@f460 send u048e Activate
+@f500 kill u048e; touch u048e e0011004c
+@f520 touch u048e e0011004c; touch u048e e0011004c
+@f540 obj u048e
+@f560 touch u048e u0480
+@f600 objs Octapede
+@f1400 objs Octapede
+@f1420 beam dark
+@f1440 shoot u0483 charged
+@f1460 damage u047e 1 dark
+@f1480 obj u0483
+@f1500 kill u0483
+@f1520 objs Octapede
+@f1600 kill u0480
+@f1602 send u046b Landed
+@f1700 objs Octapede
+@f2400 objs Octapede
