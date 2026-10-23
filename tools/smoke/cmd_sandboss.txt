@@ -8,3 +8,10 @@
 @f1000 objs sandboss
 @f1400 objs sandboss
 @f1800 objs sandboss
+
+@f1880 send u05da Activate
+@f1900 obj u05da
+@f1960 obj u05da
+@f2020 kill u05da
+@f2080 objs sandboss
+@f2140 objs sandboss

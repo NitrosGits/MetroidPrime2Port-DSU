@@ -6,3 +6,10 @@
 @f1330 objs sandworm
 @f1500 status
 @f1850 objs sandworm
+
+@f1900 damage u0596 100
+@f1920 obj u0596
+@f1980 obj u0596
+@f2040 objs sandworm
+@f2100 obj u0596
+@f2180 objs sandworm

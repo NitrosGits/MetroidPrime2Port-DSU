@@ -6,3 +6,11 @@
 @f1750 press a 2
 @f1960 press a 2
 @f2250 objs spacepirate
+
+@f1880 send u04d8 Activate
+@f1900 fsm u04d8 Patrol
+@f1920 damage u04d8 100
+@f1940 obj u04d8
+@f2000 objs spacepirate
+@f2060 obj u04d8
+@f2120 objs spacepirate
