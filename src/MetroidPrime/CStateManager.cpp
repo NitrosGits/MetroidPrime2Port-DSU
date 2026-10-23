@@ -4766,8 +4766,28 @@ void CStateManager::PortSetDarkWorldFromArea(TAreaId aid) {
   }
 }
 
-// Finishes a PortSetDarkWorldFromArea that had to wait for the area's map area.
+// The arrival area of a direct boot (PortWarp::DirectBoot, at the end of this file), until the first
+// world has loaded it.
+static CAssetId sPortDirectBootArea = kInvalidAssetId;
+
+// Finishes a PortSetDarkWorldFromArea that had to wait for the area's map area. Also resolves the
+// flag for a direct boot's arrival: that route skips the warp, so nothing else takes the flag from
+// the destination - the state manager starts light (mIsDarkWorld(false)) and only an AreaAttributes
+// object's Create sets it, which areas without one never send.
 void CStateManager::PortDarkWorldTick() {
+  if (sPortDirectBootArea != kInvalidAssetId) {
+    CWorld* bootWorld = World();
+    // Fully initialized: the init phase has streamed the desired area in (kIP_Done) - where a warp
+    // resolves its arrival too (PortWarpSettle, PortPlaceArrivalTick).
+    if (bootWorld == nullptr || !IsFullyInitialized()) {
+      return;
+    }
+    const TAreaId bootArea = bootWorld->IGetAreaId(sPortDirectBootArea);
+    sPortDirectBootArea = kInvalidAssetId;
+    std::fprintf(stderr, "[warp] direct boot arrived in area %d\n", bootArea.Value());
+    PortSetDarkWorldFromArea(bootArea);
+    return;
+  }
   if (mPortDarkFlagArea == kInvalidAreaId) {
     return;
   }
@@ -5746,6 +5766,7 @@ bool PortWarp::DirectBoot() {
     return false;
   }
   PortWarp::Consume(request);
+  sPortDirectBootArea = areaId;
   gpMain->EnsureWorldPakReady(worldId);
   const CAssetId saveWorld = gpGameState->CurrentWorldAssetId();
   gpGameState->SetCurrentWorldId(worldId);
