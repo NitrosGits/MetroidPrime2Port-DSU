@@ -298,6 +298,7 @@ void CSpankWeed::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_73_1D48
 void CSpankWeed::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -311,11 +312,19 @@ void CSpankWeed::Think(float dt, CStateManager& mgr) {
     offset = GetTransform().Rotate(offset);
     MoveCollisionPrimitive(offset);
     SetTransformDirty();
+#ifndef TARGET_PC
     mCollisionMgr->Update(dt, mgr, CCollisionActorManager::kUO_ObjectSpace);
+#endif
   }
+#ifdef TARGET_PC
+  // 0x1DD0 bne .L_00001E70 skips only the eye block: the Update at 0x1E80 runs on every active
+  // frame, with 0x1E7C li r5,0x1 (kUO_WorldSpace).
+  mCollisionMgr->Update(dt, mgr, CCollisionActorManager::kUO_WorldSpace);
+#endif
   CPatterned::Think(dt, mgr);
 }
 
+// @ fn_73_1D08
 void CSpankWeed::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (mCanKnockBack) {
     CPatterned::KnockBack(mgr, info);
@@ -534,6 +543,7 @@ CVector3f CSpankWeed::GetAimPosition(const CStateManager& mgr, float dt) const {
   return position;
 }
 
+// @ fn_73_DAC
 CVector3f CSpankWeed::GetOrbitPosition(const CStateManager& mgr) const {
   const CVector3f orbit = CPatterned::GetOrbitPosition(mgr);
   const float time = rstl::min_val(mStateMachine->GetTime(), 1.f);
@@ -574,8 +584,10 @@ void CSpankWeed::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_73_0
 CSpankWeed::~CSpankWeed() {}
 
+// @ fn_73_494
 CEntity* LoadSpankWeed(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrSpankWeed sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrSpankWeed.inc"

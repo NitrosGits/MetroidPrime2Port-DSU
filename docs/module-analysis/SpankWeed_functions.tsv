@@ -1,0 +1,100 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_73_0	78	B	__dt__10CSpankWeedFv	spw1	dtor	yes
+00078	fn_73_78	1E4	H	__dt__10CPatternedFv	-	weak copy / template instance	no
+0025C	fn_73_25C	94	H	__dt__15CAiKnockBackMgrFv	-	weak copy / template instance	no
+002F0	fn_73_2F0	68	H	GetTouchBounds__10CPatternedCFv	-	weak copy / template instance	no
+00358	fn_73_358	10	H	TakeDamage__10CPatternedFRC9CVector3ff	-	weak copy / template instance	no
+00368	fn_73_368	8	H	GetModelAlphau8__10CPatternedCFRC13CStateManager	-	weak copy / template instance	no
+00370	fn_73_370	8	H	ProjectileInfo__10CPatternedFv	-	weak copy / template instance	no
+00378	fn_73_378	8	H	GetSearchPath__10CPatternedFv	-	weak copy / template instance	no
+00380	fn_73_380	8	H	GetPointSearchPath__10CPatternedFv	-	weak copy / template instance	no
+00388	fn_73_388	8	H	GetRagDoll__10CPatternedCFv	-	weak copy / template instance	no
+00390	fn_73_390	10	H	GetAttackTarget__10CPatternedCFv	-	weak copy / template instance	no
+003A0	fn_73_3A0	C	H	IsOnGround__10CPatternedCFv	-	weak copy / template instance	no
+003AC	fn_73_3AC	C	H	GetGravityConstant__10CPatternedCFv	-	weak copy / template instance	no
+003B8	fn_73_3B8	8	H	GetDeathExplosionParticle__10CPatternedCFv	-	weak copy / template instance	no
+003C0	fn_73_3C0	8	H	CanBeShot__3CAiFRC13CStateManageri	-	weak copy / template instance	no
+003C8	fn_73_3C8	8	H	IsListening__3CAiCFv	-	weak copy / template instance	no
+003D0	fn_73_3D0	8	H	Listen__3CAiFR13CStateManagerRC9CVector3f16EListenNoiseType	-	weak copy / template instance	no
+003D8	fn_73_3D8	1C	H	GetOrigin__3CAiCFRC13CStateManagerRC11CTeamAiRoleRC9CVector3f	-	weak copy / template instance	no
+003F4	fn_73_3F4	2C	H	GetHealthInfo__6CActorCFv	-	weak copy / template instance	no
+00420	fn_73_420	24	T	RELExit	-	REL runtime	no
+00444	fn_73_444	20	T	RELMain	-	REL runtime	no
+00464	fn_73_464	30	T	SetFuncPtrs__Fv	-	REL runtime	no
+00494	fn_73_494	344	B	LoadSpankWeed__FR13CStateManagerR12CInputStreamR11CEntityInfo	spw1	loader: null model arm forced (spawn SPNK, no ancs)	yes
+007D8	fn_73_7D8	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+00818	fn_73_818	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak copy / template instance	no
+00838	fn_73_838	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak copy / template instance	no
+00860	fn_73_860	13C	H	__ct__10CModelDataFRC10CModelData	-	weak copy / template instance	no
+0099C	fn_73_99C	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak copy / template instance	no
+00A08	fn_73_A08	54	H	__dt__15TToken<6CModel>Fv	-	weak copy / template instance	no
+00A5C	fn_73_A5C	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak copy / template instance	no
+00AC0	fn_73_AC0	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak copy / template instance	no
+00B20	fn_73_B20	70	B	__dt__13SLdrSpankWeedFv	spw1	SLdr dtor (inline in header)	no
+00B90	fn_73_B90	FC	B	__ct__13SLdrSpankWeedFv	spw1	SLdr ctor (inline in header)	no
+00C8C	fn_73_C8C	EC	B	Render__10CSpankWeedCFRC13CStateManager	spw1	debug OBB draw (unmarked: spatial-primitive arms not run)	no
+00D78	fn_73_D78	20	T	Attacked__10CSpankWeedCFR13CStateManagerRC12CTriggerData	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+00D98	fn_73_D98	14	T	AnimOver__10CSpankWeedCFR13CStateManagerRC12CTriggerData	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+00DAC	fn_73_DAC	168	B	GetOrbitPosition__10CSpankWeedCFRC13CStateManager	spw1	state 3/2, 2/3 lerps dead (mState/mPreviousState written only by ctor and unregistered states)	yes
+00F14	fn_73_F14	1B8	B	GetAimPosition__10CSpankWeedCFRC13CStateManagerf	spw1	aim (unmarked: lockon locator arm not run)	no
+010CC	fn_73_10CC	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+0111C	fn_73_111C	6C	H	__ct__12CMotionStateFRC12CMotionState	-	weak copy / template instance	no
+01188	fn_73_1188	188	T	Flinch__10CSpankWeedFR13CStateManager9EStateMsgf	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01310	fn_73_1310	5C	H	__dt__15CBCKnockBackCmdFv	-	weak copy / template instance	no
+0136C	fn_73_136C	48	H	__dt__13CBodyStateCmdFv	-	weak copy / template instance	no
+013B4	fn_73_13B4	78	T	Delay__10CSpankWeedCFR13CStateManagerRC12CTriggerData	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+0142C	fn_73_142C	24	T	InRange__10CSpankWeedCFR13CStateManagerRC12CTriggerData	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01450	fn_73_1450	24	T	HearPlayer__10CSpankWeedCFR13CStateManagerRC12CTriggerData	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01474	fn_73_1474	24	T	InDetectionRange__10CSpankWeedCFR13CStateManagerRC12CTriggerData	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01498	fn_73_1498	BC	T	IsPlayerNear__10CSpankWeedCFR13CStateManagerf	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01554	fn_73_1554	1C0	T	Attack__10CSpankWeedFR13CStateManager9EStateMsgf	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01714	fn_73_1714	5C	H	__dt__17CBCMeleeAttackCmdFv	-	weak copy / template instance	no
+01770	fn_73_1770	88	T	TargetPatrol__10CSpankWeedFR13CStateManager9EStateMsgf	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+017F8	fn_73_17F8	98	T	Lurk__10CSpankWeedFR13CStateManager9EStateMsgf	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01890	fn_73_1890	178	T	FadeOut__10CSpankWeedFR13CStateManager9EStateMsgf	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01A08	fn_73_1A08	5C	H	__dt__10CBCStepCmdFv	-	weak copy / template instance	no
+01A64	fn_73_1A64	198	T	FadeIn__10CSpankWeedFR13CStateManager9EStateMsgf	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01BFC	fn_73_1BFC	10C	T	Patrol__10CSpankWeedFR13CStateManager9EStateMsgf	-	dead: no SetupStateMachine override registers SpankWeed states/triggers (retail and port)	no
+01D08	fn_73_1D08	40	B	KnockBack__10CSpankWeedFR13CStateManagerRC14CKnockBackInfo	spw1	mCanKnockBack true arm dead (only writer of 1 is unregistered FadeIn 0x1AB0)	yes
+01D48	fn_73_1D48	19C	B	Think__10CSpankWeedFfR13CStateManager	spw1	TARGET_PC fix: Update every active frame, kUO_WorldSpace; eye block forced	yes
+01EE4	fn_73_1EE4	6D0	B	AcceptScriptMsg__10CSpankWeedFR13CStateManagerRC10CScriptMsg	spw1	messages (unmarked: Create spatial-primitive loop, HitObject actor arm, others not run)	no
+025B4	fn_73_25B4	38	H	push_back_unsafe__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>FRC26CJointCollisionDescription	-	weak copy / template instance	no
+025EC	fn_73_25EC	20	H	construct<26CJointCollisionDescription>__4rstlFPvRC26CJointCollisionDescription	-	weak copy / template instance	no
+0260C	fn_73_260C	28	H	construct__Q24rstl51construction_policy<26CJointCollisionDescription,0>FPvRC26CJointCollisionDescription	-	weak copy / template instance	no
+02634	fn_73_2634	C0	H	__ct__26CJointCollisionDescriptionFRC26CJointCollisionDescription	-	weak copy / template instance	no
+026F4	fn_73_26F4	5C	H	__dt__26CJointCollisionDescriptionFv	-	weak copy / template instance	no
+02750	fn_73_2750	5C	H	__pl__4rstlFRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+027AC	fn_73_27AC	74	H	__dt__Q24rstl206map<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+02820	fn_73_2820	30	H	__ct__Q24rstl206map<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>FRCQ24rstl206map<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+02850	fn_73_2850	70	H	__dt__Q24rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+028C0	fn_73_28C0	A8	H	__ct__Q24rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>FRCQ24rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+02968	fn_73_2968	84	H	__dt__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+029EC	fn_73_29EC	38	H	fn_73_29EC	-	weak copy / template instance	no
+02A24	fn_73_2A24	60	H	fn_73_2A24	-	weak copy / template instance	no
+02A84	fn_73_2A84	3C4	B	__ct__10CSpankWeedF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC16CActorParametersRC14CPatternedInfoffff	spw1	ctor (unmarked: non-uniform scale and lockon-locator arms not run)	no
+02E48	fn_73_2E48	58	H	__dt__Q24rstl36single_ptr<22CCollisionActorManager>Fv	-	weak copy / template instance	no
+02EA0	fn_73_2EA0	288	T	UpdateBounds__24CSpankWeedCollisionActorFR13CStateManager	-	dead: CSpankWeedCollisionActor is never constructed in retail	no
+03128	fn_73_3128	9C	H	__as__Q24rstl24optional_object<6CAABox>FRCQ24rstl24optional_object<6CAABox>	-	weak copy / template instance	no
+031C4	fn_73_31C4	3C	H	__dt__Q24rstl24optional_object<6CAABox>Fv	-	weak copy / template instance	no
+03200	fn_73_3200	C	H	clear__Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+0320C	fn_73_320C	48	T	GetTouchBounds__24CSpankWeedCollisionActorCFv	-	dead: CSpankWeedCollisionActor is never constructed in retail	no
+03254	fn_73_3254	248	T	Touch__24CSpankWeedCollisionActorFR6CActorR13CStateManager	-	dead: CSpankWeedCollisionActor is never constructed in retail	no
+0349C	fn_73_349C	AC	H	__dt__Q24rstl54vector<17CCollidableSphere,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+03548	fn_73_3548	20	T	Think__24CSpankWeedCollisionActorFfR13CStateManager	-	dead: CSpankWeedCollisionActor is never constructed in retail	no
+03568	fn_73_3568	140	T	__ct__24CSpankWeedCollisionActorF9TUniqueId7TAreaIdRC13CMaterialListRC9TUniqueId	-	dead: CSpankWeedCollisionActor is never constructed in retail	no
+036A8	fn_73_36A8	54	H	__dt__Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+036FC	fn_73_36FC	20	H	None__10CModelDataFv	-	weak copy / template instance	no
+0371C	fn_73_371C	58	H	__dt__11CEntityInfoFv	-	weak copy / template instance	no
+03774	fn_73_3774	54	H	__dt__Q24rstl48vector<11SConnection,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+037C8	fn_73_37C8	70	T	__dt__24CSpankWeedCollisionActorFv	-	dead: CSpankWeedCollisionActor is never constructed in retail	no
+03838	fn_73_3838	B8	H	copy_from__Q24rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>FPQ34rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>4node	-	weak copy / template instance	no
+038F0	fn_73_38F0	78	H	create_node__Q24rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>FPQ34rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>4nodePQ34rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>4nodePQ34rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>4nodeQ24rstl10node_colorRCQ24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>	-	weak copy / template instance	no
+03968	fn_73_3968	80	H	free_node_and_sub_nodes__Q24rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>FPQ34rstl430red_black_tree<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>,0,Q24rstl109select1st<Q24rstl89pair<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>,6CSegId>>,Q24rstl81less<Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>>,Q24rstl17rmemory_allocator>4node	-	weak copy / template instance	no
+039E8	fn_73_39E8	98	H	reserve__Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance	no
+03A80	fn_73_3A80	3C	H	uninitialized_copy<Q24rstl110pointer_iterator<9CVector3f,Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P9CVector3f>__4rstlFQ24rstl110pointer_iterator<9CVector3f,Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl110pointer_iterator<9CVector3f,Q24rstl45vector<9CVector3f,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P9CVector3f	-	weak copy / template instance	no
+03ABC	fn_73_3ABC	C0	H	reserve__Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance	no
+03B7C	fn_73_3B7C	68	H	uninitialized_copy<Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P26CJointCollisionDescription>__4rstlFQ24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl146pointer_iterator<26CJointCollisionDescription,Q24rstl63vector<26CJointCollisionDescription,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P26CJointCollisionDescription	-	weak copy / template instance	no
+03BE4	fn_73_3BE4	C0	H	reserve__Q24rstl54vector<17CCollidableSphere,Q24rstl17rmemory_allocator>Fi	-	weak copy / template instance	no
+03CA4	fn_73_3CA4	68	H	uninitialized_copy<Q24rstl128pointer_iterator<17CCollidableSphere,Q24rstl54vector<17CCollidableSphere,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P17CCollidableSphere>__4rstlFQ24rstl128pointer_iterator<17CCollidableSphere,Q24rstl54vector<17CCollidableSphere,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl128pointer_iterator<17CCollidableSphere,Q24rstl54vector<17CCollidableSphere,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P17CCollidableSphere	-	weak copy / template instance	no
+03D0C	fn_73_3D0C	54	H	construct<17CCollidableSphere>__4rstlFPvRC17CCollidableSphere	-	weak copy / template instance	no
+03D60	fn_73_3D60	48	H	__dt__19CCollisionPrimitiveFv	-	weak copy / template instance	no
