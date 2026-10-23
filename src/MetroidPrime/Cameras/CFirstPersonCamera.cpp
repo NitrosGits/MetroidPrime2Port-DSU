@@ -23,6 +23,14 @@
 
 #ifdef TARGET_PC
 #include "port_mouse.h"
+
+namespace {
+// MP1 #169: the pitch an empty lock-on holds under direct aim, taken from the view when it began.
+// Stored as the view's rise and level length.
+bool sPortLockPitchHeld = false;
+float sPortLockPitchSin = 0.f;
+float sPortLockPitchCos = 1.f;
+} // namespace
 #endif
 
 CFirstPersonCamera::CFirstPersonCamera(const TUniqueId& uid, const CTransform4f& xf,
@@ -117,7 +125,21 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
   // so the two agree; while something else owns the view, track that direction instead. The
   // touch overlay's drag-to-aim is the same source through the same state, so it asks the
   // same question here - without this the body would turn and the view would not follow.
-  if (PortMouse::Enabled() || PortMouse::TouchEnabled()) {
+  const bool portLockPitch = player->PortEmptyLockKeepsPitch();
+  if (portLockPitch && !sPortLockPitchHeld) {
+    CVector3f forward = GetTransform().GetForward();
+    if (forward.IsMagnitudeSafe()) {
+      forward.Normalize();
+      sPortLockPitchSin = forward.GetZ();
+      forward[kDZ] = 0.f;
+      sPortLockPitchCos = forward.Magnitude();
+    } else {
+      sPortLockPitchSin = 0.f;
+      sPortLockPitchCos = 1.f;
+    }
+  }
+  sPortLockPitchHeld = portLockPitch;
+  if ((PortMouse::Enabled() || PortMouse::TouchEnabled()) && !portLockPitch) {
     if (PortMouse::Aiming() && PortMouse::Initialized()) {
       const float aimYaw = PortMouse::Yaw();
       const float aimPitch = PortMouse::Pitch();
@@ -156,6 +178,18 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
   case CPlayer::kOS_OrbitCarcass:
     if (!player->IsLookButtonHeld()) {
       lookDir = player->GetOrbitPoint() - eyePos;
+#ifdef TARGET_PC
+      // MP1 #169: yaw follows the orbit point, the pitch stays where the lock began.
+      if (portLockPitch && player->GetOrbitState() == CPlayer::kOS_OrbitPoint) {
+        CVector3f flatDir = lookDir;
+        flatDir[kDZ] = 0.f;
+        if (flatDir.IsMagnitudeSafe()) {
+          flatDir.Normalize();
+          lookDir = CVector3f(flatDir.GetX() * sPortLockPitchCos,
+                              flatDir.GetY() * sPortLockPitchCos, sPortLockPitchSin);
+        }
+      }
+#endif
     }
     break;
   case CPlayer::kOS_NoOrbit:
@@ -195,7 +229,11 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
   CQuaternion gunRotation = CQuaternion::NoRotation();
   CTransform4f gunXf = mGunFollowXf;
 #ifdef TARGET_PC
-  if (PortMouse::Aiming() && PortMouse::Initialized()) {
+  if (portLockPitch) {
+    // The aim follows the held view, so releasing the lock hands it back without a snap.
+    PortMouse::Synchronize(lookDir.GetX(), lookDir.GetY(), lookDir.GetZ());
+    gunXf = CTransform4f::LookAt(CVector3f::Zero(), lookDir);
+  } else if (PortMouse::Aiming() && PortMouse::Initialized()) {
     // Pixel deltas get no controller-style easing, and the gun-follow basis lands in the same
     // tick as the camera, so the view is immediate and the shot goes where the crosshair is.
     gunXf = CTransform4f::LookAt(CVector3f::Zero(), lookDir);

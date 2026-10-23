@@ -40,12 +40,19 @@ Controls > Options:
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),
   Dead box, Edge turn speed.
+- `reset_aim_both`: Aiming > Reset aim resets pointer and camera (the Reset aim binding, unbound
+  by default, recentres the pointer under pointer aim, else levels the view); env
+  `MP2_RESET_AIM_BOTH`.
 - `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (C-stick up).
 
 Controls > Mouse settings:
 
 - `mouse_aim`, `mouse_invert_x`, `mouse_invert_y`: Mouse aim > Mouse aim, Invert X, Invert Y.
-- `mouse_sensitivity`: Mouse aim > Sensitivity; env `MP2_MOUSE_SENS`.
+- `mouse_sensitivity`: Mouse aim > Sensitivity (radians per count; the row shows MP1's
+  Quake/Source scale, 0.022 degrees per unit); env `MP2_MOUSE_SENS`.
+- `mouse_sensitivity_split`, `mouse_sensitivity_y`: Mouse aim > Separate vertical speed, Vertical
+  sensitivity (same units); env `MP2_MOUSE_SENS_SPLIT`, `MP2_MOUSE_SENS_Y`.
+- `mouse_dpi`: Mouse aim > Mouse DPI (100..64000, default 800), only for the cm/360 readout.
 - `mouse_buttons`: Mouse aim > Weapon buttons.
 - `aim_crosshair`, `crosshair_size`: Mouse aim > Crosshair, Size.
 
@@ -53,7 +60,13 @@ Controls > Controller settings:
 
 - `twin_stick`: Stick aim > Twin stick (right stick aims).
 - `stick_aim_rate`, `stick_aim_split`, `stick_aim_rate_y`: Stick aim > Stick aim speed,
-  Separate vertical speed, Vertical stick aim speed.
+  Separate vertical speed, Vertical stick aim speed (px/s, 50..10000; the slider runs
+  100..8100).
+
+Controls > Remap:
+
+- `menu_standard_buttons`: Separate menu buttons (menus and the map read the "Menus and map"
+  rows; ignored while the touch controls are on); env `MP2_MENU_STANDARD_BUTTONS`.
 
 Controls > Touch & gyro (Gyro aim):
 
@@ -61,7 +74,14 @@ Controls > Touch & gyro (Gyro aim):
 - `gyro_source`, `gyro_space`, `gyro_auto_calibrate`: Source, Space, Auto calibrate.
 - `gyro_sensitivity`, `gyro_cursor_angle`, `gyro_cursor_camera`: Sensitivity, Pointer speed,
   Gyro also turns the camera.
+- `gyro_split`, `gyro_sensitivity_y`: Separate vertical speed, Vertical sensitivity (under
+  pointer aim it scales the pointer's vertical travel); env `MP2_GYRO_SPLIT`,
+  `MP2_GYRO_SENSITIVITY_Y`.
 - `gyro_smoothing`, `gyro_tightening`: Smoothing, Tightening.
+
+Gyro aim needs mouse aim, twin stick or the touch controls' aim; without pointer aim it turns the
+camera at Sensitivity. Touch aim's Separate vertical speed and Vertical touch aim speed are
+touch.cfg's `aim_split` and `aim_speed_y` (env `MP2_TOUCH_AIM_SPLIT`, `MP2_TOUCH_AIM_SPEED_Y`).
 
 Video > Display:
 

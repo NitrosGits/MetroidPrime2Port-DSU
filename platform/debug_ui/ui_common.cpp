@@ -274,7 +274,10 @@ void UpdateControllerNav() {
 
   // While the Controls page captures a pad input, the pad binds instead of navigating (releasing
   // everything here also ends any nav press in progress); a pad that went away releases it too.
-  SDL_Gamepad* pad = PADGetSDLGamepadForIndex(0);
+  // Navigate with the player's pad (port 0), which can move to a pad connected mid-game.
+  const s32 portIndex = PADGetIndexForPort(PAD_CHAN0);
+  const u32 padIndex = portIndex >= 0 ? static_cast< u32 >(portIndex) : 0;
+  SDL_Gamepad* pad = PADGetSDLGamepadForIndex(padIndex);
   const bool capturing = pad == nullptr || PortInputRemap::Capturing();
   const auto held = [pad, capturing](SDL_GamepadButton button) {
     return !capturing && SDL_GetGamepadButton(pad, button);
@@ -293,7 +296,7 @@ void UpdateControllerNav() {
                  held(SDL_GAMEPAD_BUTTON_DPAD_RIGHT) || axis(SDL_GAMEPAD_AXIS_LEFTX) > kStickThreshold);
   // ImGui activates with FaceDown and cancels with FaceRight. On a Nintendo pad (A on the right)
   // confirm on A.
-  const PADControllerType padType = pad != nullptr ? PADGetControllerTypeForIndex(0) : PAD_TYPE_UNKNOWN;
+  const PADControllerType padType = pad != nullptr ? PADGetControllerTypeForIndex(padIndex) : PAD_TYPE_UNKNOWN;
   const bool nintendo = padType == PAD_TYPE_SWITCH_PROCON || padType == PAD_TYPE_JOYCON_PAIR;
   io.AddKeyEvent(ImGuiKey_GamepadFaceDown, held(nintendo ? SDL_GAMEPAD_BUTTON_EAST : SDL_GAMEPAD_BUTTON_SOUTH));
   io.AddKeyEvent(ImGuiKey_GamepadFaceRight, held(nintendo ? SDL_GAMEPAD_BUTTON_SOUTH : SDL_GAMEPAD_BUTTON_EAST));

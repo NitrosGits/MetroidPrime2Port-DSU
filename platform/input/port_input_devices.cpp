@@ -646,7 +646,8 @@ void RouteDirectActions(const PortInput::Output& out) {
 // The port's own actions: polled every frame by PollPortActions, not with the game
 // ticks, so they work while the game is paused or the F1 overlay is open.
 bool IsPortAction(Action a) {
-  return a == Action::PortMenu || a == Action::Screenshot || a == Action::PhotoMode || a == Action::GyroAim;
+  return a == Action::PortMenu || a == Action::Screenshot || a == Action::PhotoMode || a == Action::GyroAim ||
+         a == Action::ResetAim;
 }
 
 // Keys pressed since the last PollPortActions, added by an SDL event watch: a short
@@ -973,7 +974,8 @@ static void BindMenuDefaults(Profile& p) {
 
 // MP1's "Separate menu buttons" setting (MenuStandardButtons, off under touch). MP2 has no such
 // setting yet, so it is off: menus read the gameplay layout, as they did before the engine.
-static bool MenuButtonsActive() { return false; }
+// MP1's: the touch controls keep the gameplay layout in menus.
+static bool MenuButtonsActive() { return PortOverlay::MenuStandardButtons() && !PortTouch::ControlsEnabled(); }
 
 // With the option on, menus and the map read the Menu rows instead of the gameplay
 // layout: pad bindings meant for everywhere stop applying there for the buttons
@@ -1223,7 +1225,8 @@ void PollPortActions() {
     return;
   }
   SetGyroButton(out.Held(Action::GyroAim));
-  // MP1 also routes reset aim and the Original toggle here.
+  if (out.Pressed(Action::ResetAim)) PortMouse::RequestResetAim(PortOverlay::ResetAimBoth());
+  // MP1 also routes the Original toggle here.
   if (out.Pressed(Action::PortMenu)) PortOverlay::Toggle();
   if (out.Pressed(Action::SaveState)) PortSaveState::RequestSave(PortSaveState::SelectedSlot());
   if (out.Pressed(Action::LoadState)) PortSaveState::RequestLoad(PortSaveState::SelectedSlot());
@@ -1242,9 +1245,12 @@ PortGyro::Filter sGyroFilter;
 PortGyro::Activation sGyroActivation;
 const char* sGyroStatus = "off";
 bool sGyroCalibrating = false;
-// MP1's Recalibrate: the reset fires this long after the press, so the pad can be put down.
+// MP1's Recalibrate: manual calibration starts this long after the press, so the pad can be
+// put down, and then averages the still pad for kManualCalibrationSeconds.
 constexpr double kRecalibrateSeconds = 5.0;
+constexpr double kManualCalibrationSeconds = 3.0;
 uint64_t sRecalibrateAtNs = 0;
+uint64_t sManualCalibrationEndNs = 0;
 const void* sGyroMotionSource = nullptr;
 bool sGyroHasAccel = false;
 SDL_Sensor* sPhoneGyro = nullptr;
@@ -1278,7 +1284,9 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
   const void* source = nullptr;
 
   if (wantController) {
-    if (SDL_Gamepad* pad = PADGetSDLGamepadForIndex(0)) {
+    // The player's pad: whichever controller Aurora has on port 0, not the first one opened.
+    const s32 padIndex = PADGetIndexForPort(kPort);
+    if (SDL_Gamepad* pad = padIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast<u32>(padIndex)) : nullptr) {
       if (SDL_GamepadHasSensor(pad, SDL_SENSOR_GYRO)) {
         // Asked per pad, so a reconnected or swapped pad gets its sensors on too.
         if (!SDL_GamepadSensorEnabled(pad, SDL_SENSOR_GYRO)) {
@@ -1368,15 +1376,21 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
   const bool calibrate = autoCalibrate == 1 || (autoCalibrate == 2 && inMenus);
   sGyroCalibrating = haveAccel && calibrate;
   sGyroMotion.Process(gyro, haveAccel ? accel : nullptr, dt, PortOverlay::GyroSpace(), calibrate, pitch,
-                      yaw, autoCalibrate == 2);
+                      yaw);
   sGyroFilter.Apply(pitch, yaw, dt, PortOverlay::GyroSmoothing(), PortOverlay::GyroTightening());
   return true;
 }
 
 void FireRecalibration() {
-  if (sRecalibrateAtNs != 0 && SDL_GetTicksNS() >= sRecalibrateAtNs) {
+  const uint64_t now = SDL_GetTicksNS();
+  if (sRecalibrateAtNs != 0 && now >= sRecalibrateAtNs) {
     sRecalibrateAtNs = 0;
-    sGyroMotion.Reset();
+    sGyroMotion.BeginManualCalibration();
+    sManualCalibrationEndNs = now + uint64_t(kManualCalibrationSeconds * 1e9);
+  }
+  if (sManualCalibrationEndNs != 0 && now >= sManualCalibrationEndNs) {
+    sManualCalibrationEndNs = 0;
+    sGyroMotion.EndManualCalibration();
   }
 }
 
@@ -1387,6 +1401,8 @@ void SetGyroButton(bool held) {
 }
 
 void StartGyroRecalibration() {
+  sGyroMotion.EndManualCalibration();
+  sManualCalibrationEndNs = 0;
   sRecalibrateAtNs = SDL_GetTicksNS() + uint64_t(kRecalibrateSeconds * 1e9);
 }
 
@@ -1400,9 +1416,18 @@ float GyroRecalibrationCountdown() {
   return float(double(sRecalibrateAtNs - SDL_GetTicksNS()) * 1e-9);
 }
 
+float GyroManualCalibrationProgress() {
+  FireRecalibration();
+  if (sManualCalibrationEndNs == 0 || !sGyroMotion.ManualCalibrating()) {
+    return -1.f;
+  }
+  const double left = double(sManualCalibrationEndNs - SDL_GetTicksNS()) * 1e-9;
+  return std::clamp(static_cast<float>(1.0 - left / kManualCalibrationSeconds), 0.f, 1.f);
+}
+
 const char* GyroStatus() { return sGyroStatus; }
 
-bool GyroCalibrating() { return sGyroCalibrating; }
+bool GyroCalibrating() { return sGyroCalibrating || sGyroMotion.ManualCalibrating(); }
 
 float GyroCalibrationConfidence() {
   return sGyroMotionSource != nullptr && sGyroHasAccel ? sGyroMotion.Confidence() : -1.f;
@@ -1413,17 +1438,18 @@ void PollGyro() {
   // the rates integrate over the real frame time.
   static uint64_t sLastNs = 0;
   FireRecalibration();
-  // Gyro aim moves the pointer (and, with "Gyro also turns the camera", the view), and only while
-  // pointer aim is applied (it needs mouse, twin stick or touch aim, as in MP1). Off, the sensors
-  // are never touched.
+  PortMouse::SetGyroDrivesAim(false);
+  // MP1's PollGyro: the gyro feeds the aim the mouse, twin stick and touch drag use, so it needs
+  // one of them on. With pointer aim it moves the pointer (and, with "Gyro also turns the
+  // camera", the view); without, it turns the view. Off, the sensors are never touched.
   if (!PortOverlay::GyroAim()) {
     sGyroStatus = "off";
     sGyroCalibrating = false;
     sLastNs = 0;
     return;
   }
-  if (!PortOverlay::PointerAim() || !PortMouse::PointerAimEnabled()) {
-    sGyroStatus = "needs pointer aim with mouse aim, twin stick or touch controls";
+  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
+    sGyroStatus = "needs mouse aim, twin stick or touch controls";
     sGyroCalibrating = false;
     sLastNs = 0;
     return;
@@ -1439,6 +1465,12 @@ void PollGyro() {
     sGyroCalibrating = false;
     return;
   }
+  if (sGyroMotion.ManualCalibrating()) {
+    // The pad is meant to lie still: nothing it reads now aims.
+    sGyroStatus = "calibrating, keep the pad still";
+    return;
+  }
+  PortMouse::SetGyroDrivesAim(true);
   // The "Gyro aim" binding (R3 / left ctrl by default) turns gyro on while held in hold to aim,
   // off in hold to pause, or flips it on each fresh press in toggle.
   if (!sGyroActivation.Active()) {
@@ -1448,9 +1480,16 @@ void PollGyro() {
   if (!std::isfinite(dt) || dt <= 0.f) {
     return;
   }
-  PortMouse::AddGyroPointer(yaw, pitch, dt, PortOverlay::GyroCursorAngle() * (PortMouse::kPi / 180.f));
+  const float sense = PortOverlay::GyroSensitivity();
+  const float senseY = PortOverlay::GyroSplit() ? PortOverlay::GyroSensitivityY() : sense;
+  if (!PortOverlay::PointerAim() || !PortMouse::PointerAimEnabled()) {
+    PortMouse::AddGyroCamera(yaw, pitch, dt, sense, senseY);
+    return;
+  }
+  PortMouse::AddGyroPointer(yaw, pitch, dt, PortOverlay::GyroCursorAngle() * (PortMouse::kPi / 180.f),
+                            senseY / sense);
   if (PortOverlay::GyroCursorCamera()) {
-    PortMouse::AddGyroCamera(yaw, pitch, dt, PortOverlay::GyroSensitivity());
+    PortMouse::AddGyroCamera(yaw, pitch, dt, sense, senseY);
   }
 }
 

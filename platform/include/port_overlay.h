@@ -143,6 +143,17 @@ bool GyroAim();
 int GyroMode();
 float GyroSensitivity();
 bool GyroCursorCamera();
+// MP1's "Separate vertical speed" for the gyro (`MP2_GYRO_SPLIT`): tilting up and down turns at
+// `MP2_GYRO_SENSITIVITY_Y` (same range); under pointer aim it scales the pointer's vertical travel.
+bool GyroSplit();
+float GyroSensitivityY();
+// The Reset aim binding recentres the pointer under pointer aim, else levels the camera;
+// `MP2_RESET_AIM_BOTH` makes it do both either way.
+bool ResetAimBoth();
+// MP1's "Separate menu buttons" (`MP2_MENU_STANDARD_BUTTONS`): menus and the map read the Remap
+// page's Menu rows instead of the gameplay layout. Off while the touch controls are in use.
+bool MenuStandardButtons();
+void SetMenuStandardButtons(bool enabled);
 void SetGyroAim(bool enabled);
 int GyroSource();
 int GyroSpace();

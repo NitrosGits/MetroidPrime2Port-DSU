@@ -75,6 +75,10 @@ float sGyroCursorAngle = PortOverlay::kGyroCursorAngleDefault;
 int sGyroMode = PortOverlay::kGyroModeDefault;
 float sGyroSensitivity = PortOverlay::kGyroSensitivityDefault;
 bool sGyroCursorCamera = false;
+bool sGyroSplit = false;
+float sGyroSensitivityY = PortOverlay::kGyroSensitivityDefault;
+bool sResetAimBoth = false;
+bool sMenuStandardButtons = false;
 bool sRapidCharge = false;
 bool sMouseButtons = true;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
@@ -832,6 +836,32 @@ float GyroSensitivity() {
 bool GyroCursorCamera() {
   ReadEnv();
   return EnvBool("MP2_GYRO_CURSOR_CAMERA", sGyroCursorCamera);
+}
+
+bool GyroSplit() {
+  ReadEnv();
+  return EnvBool("MP2_GYRO_SPLIT", sGyroSplit);
+}
+
+float GyroSensitivityY() {
+  ReadEnv();
+  return EnvFloatIn("MP2_GYRO_SENSITIVITY_Y", sGyroSensitivityY, kGyroSensitivityMin, kGyroSensitivityMax);
+}
+
+bool ResetAimBoth() {
+  ReadEnv();
+  return EnvBool("MP2_RESET_AIM_BOTH", sResetAimBoth);
+}
+
+bool MenuStandardButtons() {
+  ReadEnv();
+  return EnvBool("MP2_MENU_STANDARD_BUTTONS", sMenuStandardButtons);
+}
+
+void SetMenuStandardButtons(bool enabled) {
+  ReadEnv();
+  sMenuStandardButtons = enabled;
+  Persist();
 }
 
 bool RapidCharge() {

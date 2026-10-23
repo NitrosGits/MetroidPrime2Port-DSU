@@ -191,6 +191,20 @@ const SettingKey kSettingKeys[] = {
      "2",
      "1"},
     BoolKey< &sGyroCursorCamera >("gyro_cursor_camera"),
+    BoolKey< &sGyroSplit >("gyro_split"),
+    {"gyro_sensitivity_y",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= PortOverlay::kGyroSensitivityMin &&
+           parsed <= PortOverlay::kGyroSensitivityMax)
+         sGyroSensitivityY = parsed;
+     },
+     [](std::ostream& out) { out << sGyroSensitivityY; },
+     false,
+     "2",
+     "1"},
+    BoolKey< &sResetAimBoth >("reset_aim_both"),
+    BoolKey< &sMenuStandardButtons >("menu_standard_buttons"),
     BoolKey< &sMouseButtons >("mouse_buttons"),
     // Mouse and stick aim. These live in PortMouse rather than here, and the file is read by
     // PortMouse's own ReadEnv (the file first, the MP2_* environment on top), so the rows below
@@ -212,13 +226,32 @@ const SettingKey kSettingKeys[] = {
        }
      },
      [](std::ostream& out) { out << PortMouse::Sensitivity(); }, false, "0.0035", "0.007"},
+    {"mouse_sensitivity_split",
+     [](const std::string& value) { PortMouse::SetSensitivitySplit(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::SensitivitySplit()); }, false, "1", "0"},
+    {"mouse_sensitivity_y",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= 0.0001f && parsed <= 0.1f) {
+         PortMouse::SetSensitivityY(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortMouse::SensitivityY(); }, false, "0.0035", "0.007"},
+    {"mouse_dpi",
+     [](const std::string& value) {
+       int parsed = 0;
+       if (ParseInt(value, parsed) && parsed >= 100 && parsed <= 64000) {
+         PortMouse::SetMouseDpi(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortMouse::MouseDpi(); }, false, "800", "1600"},
     {"twin_stick",
      [](const std::string& value) { PortMouse::SetStickEnabled(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortMouse::StickEnabled()); }, false, "1", "0"},
     {"stick_aim_rate",
      [](const std::string& value) {
        float parsed = 0.f;
-       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 4000.f) {
+       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 10000.f) {
          PortMouse::SetStickAimRate(parsed);
        }
      },
@@ -229,7 +262,7 @@ const SettingKey kSettingKeys[] = {
     {"stick_aim_rate_y",
      [](const std::string& value) {
        float parsed = 0.f;
-       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 4000.f) {
+       if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 10000.f) {
          PortMouse::SetStickAimRateY(parsed);
        }
      },
