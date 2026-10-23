@@ -1352,6 +1352,8 @@ Still unmarked, arms that did not run: E1D0 (team refuses melee), BC70 (projecti
   and CModel::DolphinDrawFlat. Aurora has all of them: GXCopyTex resolves into a texture keyed by
   the destination pointer, and binding that same pointer samples it (PortEfbCopy, GOTCHAS). No
   Aurora feature is missing; they stay stand-ins only because of size (0x760 + 0x64C).
+  Superseded by split26: Render reads the copy's bytes on the CPU, which a GPU-only resolve cannot
+  give, so the port reads depth through a scan peek.
 
 ## Undocked head, HeadExplosion, bomb kill (2026-10-21)
 
@@ -1659,4 +1661,27 @@ caught 0; one run (cov5) on the final build takes every live arm.
 | 44DC | 0x4640 ble → `!(dt > 0)` | forced ALL-ARMS (with fn_75_1974) → marked |
 | FC, 82B0 | match: inline SLdr defaults (0x13C-0x1A4 / 0x82F0-0x8358) = the generated reader's; 791C is H | 17/18, 14/15: the null model (0x2DC / 0x8490) is dead in the data (`tools/scan_splitter_loader.py`: 28 placements, all with an ANCS, no unknown top-level id) → marked |
 | 7C80, FED0 | `tools/fsm_ctor_tables.py` replays the initialisers: 38 + 61 entries {0, 0xFFFFFFFF, fn}, 0 bad, = §b and the port's tables in order | straight-line → marked on the tables |
-| 10778, 10F1C | beam effect Render (0x64C) / PreRender (0x760): rendering stand-ins | remaining (own slice) |
+| 10778, 10F1C | beam effect Render (0x64C) / PreRender (0x760): rendering stand-ins | ported and marked in split26 |
+
+## split26 (2026-10-23)
+
+The beam effect's PreRender `fn_75_10F1C` and Render `fn_75_10778` follow the asm. PreRender
+renders the cone's view (visible area geometry plus near projected-shadow actors, flat) and copies
+depth as GX_TF_Z16; Render reads the middle column of each row, unprojects it (near 0.2f, far the
+length) and draws the additive fan only that far, with the dark world cloud on stages 0/1 and an
+8-texel fade ramp on stage 2. Port: `GXCopyTex` lands only in a GPU texture, so
+`CPortBeamDepthPeek` requests an Aurora scan peek (`GXRequestScanPeek`) of the same region just
+before it and fills the CTexture's IA8 bytes from it (big-endian Z16, byte-swapped like retail's
+`lhbrx`); the bitmap starts at 0xFF (far plane) because the peek lags 1-2 frames.
+`PortDarkWorldCloud()` loads `TXTR_DarkWorldCloud` itself: retail reads the private
+`CCubeRenderer` +0x510.
+
+PVS data: a disc scan of every Splitter area's MREA (inflating all sections) finds a VISI section
+only in 03_cliff_chicane (5571e89e); 1baa96c2's other Splitter areas have none.
+
+| run | area | result |
+|---|---|---|
+| cov4 (`splitter_split26.py`, `splitter_split23.con`) | 914f1381 L2 | Render 78/78, 4/4 ALL-ARMS (early return ran) |
+| cov5 (`splitter_split26_force.py`) | 914f1381 L2 | null actor, no projected shadow, near-box miss forced |
+| cov6 (`splitter_split26.py`, `splitter_split26_chicane.con`) | 5571e89e L3 | PVS arm 171x |
+| merged | | PreRender 79/79, 70/71; the untaken arm is 0x11148's bne, dead (`gkPVSEnabled` is `const int` 1) |

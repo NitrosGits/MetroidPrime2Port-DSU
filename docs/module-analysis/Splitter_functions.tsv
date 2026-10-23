@@ -292,10 +292,10 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xFD58	0x110	CSplitter	-	func	H	fn_75_82B0	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_FD58
 0xFE68	0x68	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_FE68
 0xFED0	0x8A8	CSplitter	-	static-init	B	-	marked	marked	fn_75_FED0
-0x10778	0x64C	CSplitter	-	virtual	B	lbl_75_data_E34+2C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10778
+0x10778	0x64C	CSplitter	-	virtual	B	lbl_75_data_E34+2C	marked	marked	fn_75_10778
 0x10DC4	0x12C	CSplitter	-	virtual	B	lbl_75_data_E34+14	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10DC4
 0x10EF0	0x2C	CSplitter	-	virtual	B	lbl_75_data_E34+28	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10EF0
-0x10F1C	0x760	CSplitter	-	virtual	B	lbl_75_data_E34+24	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10F1C
+0x10F1C	0x760	CSplitter	-	virtual	B	lbl_75_data_E34+24	marked	marked	fn_75_10F1C
 0x1167C	0x188	CSplitter	-	virtual	B	lbl_75_data_E34+34	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_1167C
 0x11804	0x80	CSplitter	-	virtual	B	lbl_75_data_E34+8	marked	marked	fn_75_11804
 0x11884	0x208	CSplitter	-	func	B	fn_75_1188	marked	marked	fn_75_11884

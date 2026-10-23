@@ -1,0 +1,15 @@
+# 03_cliff_chicane (5571e89e) layer 3: the two chassis woken and put at the player, so the beam
+# effect's PreRender (fn_75_10F1C) runs in the one Splitter area with a VISI (PVS) section.
+@f60 layer 3
+@f200 objs splitter
+@f210 send e0c0a025b Activate; send e0c0a0068 Activate
+@f220 objs splitter
+@f700 place e0c0a025b player 10
+@f760 noise 4
+@f780 noise 0
+@f800 noise 3
+@f1400 place e0c0a0068 player 12
+@f1500 noise 4
+@f2000 objs splitter
+@f2600 place e0c0a025b player 14
+@f3200 objs splitter

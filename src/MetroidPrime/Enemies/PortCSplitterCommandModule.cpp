@@ -460,6 +460,12 @@ void CSplitterBeamEffect::Think(float dt, CStateManager& mgr) {
 // back, the clip flag set from the actor's visibility, and the two colour blends re-rolled.
 // Port: the copy only reaches a GPU texture, so a scan peek of the same region (CPortBeamDepthPeek)
 // is requested just before it.
+// Arms: 70/71, split26 cov4-cov6 (tools/cov/specs/splitter_split26.py, gcov merged): cov4 914f1381
+// in play; cov6 03_cliff_chicane (5571e89e layer 3, splitter_split26_chicane.con, the one
+// Splitter area with a VISI section) for the PVS arm; the null actor, no projected shadow and
+// near-box miss forced in cov5 (splitter_split26_force.py). Untaken: 0x11148's bne, dead
+// (gkPVSEnabled is const 1).
+// @ fn_75_10F1C
 void CSplitterBeamEffect::PreRender(CStateManager& mgr) {
   ++mUnknown184; // 0x10F4C-0x10F58
 
@@ -597,6 +603,9 @@ void CSplitterBeamEffect::AddToRenderer(const CStateManager& mgr) const {
 // the result faded along the length by an 8-texel ramp; the colours are lerped by the two
 // randoms PreRender rolls.
 // Port: the texture's bytes come from CPortBeamDepthPeek, filled just before they are read.
+// Arms: ALL-ARMS, split26 cov4 (tools/cov/specs/splitter_split26.py, 914f1381, gcov): the early
+// return ran in play (the first frames after the beam spawns).
+// @ fn_75_10778
 void CSplitterBeamEffect::Render(const CStateManager&) const {
   // 0x107A4 lwz 0x184 / 0x107A8 cmpwi 2 / 0x107AC blt (signed): nothing before two copies.
   if (mUnknown184 < 2) {
