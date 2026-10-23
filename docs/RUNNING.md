@@ -209,7 +209,7 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor and scriptgui): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and plac): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
@@ -325,7 +325,7 @@ StartSelectedGame faults on a null save screen), the menu e2ab through Activate/
 Open/Close/Lock/Unlock and SetToMax/SetToZero/InternalMessage arms plus the four menu pads and the
 x/y/z/start presses, and the slider e21c through Activate/Alert, Increment/Decrement, a held right
 and left, Deactivate/Activate and its Delete, `objs Gui` counting the area's 133 script objects down
-to 132.
+to 132; plac drives Agon Wastes 00_mapstation_sand's two inactive PlayerActors u065b and u0446 through Activate, Deactivate and `obj` reads, with `objs ScriptPlayerActor` listing both at f200 and f1800.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
