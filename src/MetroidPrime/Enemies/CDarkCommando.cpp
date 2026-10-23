@@ -1536,6 +1536,13 @@ void CDarkCommando::UpdateSfx() {
 }
 
 void CDarkCommando::JoinTeam(CStateManager& mgr) {
+#ifdef TARGET_PC
+  // 0x1674-0x1680: lhz r5,0xc90; cmplw r5,kInvalidUniqueId; bne 0x16E4 -- an already set team
+  // id skips the whole join (re-joining reset the member's role every shadow dash).
+  if (mTeamAiMgrId != kInvalidUniqueId) {
+    return;
+  }
+#endif
   if (mTeamAiMgrId == kInvalidUniqueId) {
     mTeamAiMgrId = CScriptTeamAiMgr::GetAssociatedTeamId(*this, mgr);
   }
