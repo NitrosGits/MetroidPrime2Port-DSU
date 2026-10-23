@@ -32,8 +32,8 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x1448	0x26C	CScriptPlayerProxy	UpdateTransform	func	B	-	objdiff 98.8% (scheduling); ran only the plain-offset arm, Archenemy/Follower arms multiplayer-only	upstream	fn_62_1448
 0x16B4	0x64	CScriptPlayerProxy	SetArchenemyIndex	func	B	-	objdiff 100%; multiplayer-only (ArchenemyMarker)	upstream	fn_62_16B4
 0x1718	0x60	CScriptPlayerProxy	GetArchenemyIndex	func	B	-	objdiff 100%; multiplayer-only (ArchenemyMarker)	upstream	fn_62_1718
-0x1778	0xF0	CScriptPlayerProxy	CheckVisors	func	B	-	objdiff 95.3% (registers); all arms but player-not-in-mask (one player)	marked	fn_62_1778
-0x1868	0xA4	CScriptPlayerProxy	InitVisors	func	B	-	objdiff 100%; all arms but player-not-in-mask; in-visor arm forced (`send AreaLoaded`)	marked	fn_62_1868
+0x1778	0xF0	CScriptPlayerProxy	CheckVisors	func	B	-	objdiff 95.3% (registers); all arms but player-not-in-mask (one player)	open (player-not-in-mask arm needs multiplayer)	-
+0x1868	0xA4	CScriptPlayerProxy	InitVisors	func	B	-	objdiff 100%; all arms but player-not-in-mask; in-visor arm forced (`send AreaLoaded`)	open (player-not-in-mask arm needs multiplayer)	-
 0x190C	0x2D0	CScriptPlayerProxy	DropCoins	func	B	-	objdiff 95.7% (scheduling; states BIDG/BXDG/IDMG/XDMG equal); multiplayer-only (CoinCollector)	upstream	fn_62_190C
 0x1BDC	0x68	CScriptPlayerProxy	SetVisorFromProxyType	func	B	-	objdiff 100%; Dark/Echo arms ran, Combat/Scan data-dead (no shipped watcher), default unreachable	upstream	fn_62_1BDC
 0x1C44	0x294	CScriptPlayerProxy	Think	virtual	B	-	objdiff 98.9% (bool arg, cntlzw idiom); visor arm ran, the rest multiplayer-only	upstream	fn_62_1C44

@@ -180,7 +180,6 @@ uint CScriptPlayerProxy::GetArchenemyIndex(const CStateManager& mgr) const {
   return archenemy;
 }
 
-// @ fn_62_1778
 void CScriptPlayerProxy::CheckVisors(CStateManager& mgr) {
   uint playerMask = mListener.GetPlayerMask();
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
@@ -201,7 +200,6 @@ void CScriptPlayerProxy::CheckVisors(CStateManager& mgr) {
   }
 }
 
-// @ fn_62_1868 forced (send AreaLoaded with the watched visor on; tools/cov/specs/spp_dark_arealoaded.con)
 void CScriptPlayerProxy::InitVisors(CStateManager& mgr) {
   uint playerMask = mListener.GetPlayerMask();
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {

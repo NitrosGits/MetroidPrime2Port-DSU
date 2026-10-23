@@ -66,9 +66,9 @@ Three runs were merged. The drivers are in `tools/cov/specs/`.
 | AddToRenderer 131C | ran, no draw | draw arms (Follower/Archenemy) |
 | DOT, NotifyProxies, DropCoins, Archenemy, HandleMessage/Respawn/Follower/Archenemy/DOT, OnGameEvent | not run | multiplayer only |
 
-Marked (`// @ fn_62_`): 13D8, 1778, 1868 (forced), 1F0C, 2CA8.
+Marked (`// @ fn_62_`): 13D8, 1F0C, 2CA8.
 
-- **CheckVisors and InitVisors:** their single untaken arm needs a second player, so it is unreachable in single player. They are marked as fully exercised on that basis.
+- **CheckVisors and InitVisors:** their single untaken arm needs a second player (multiplayer), so it is live but not run; they stay unmarked.
 
 `tools/asmcheck.py check ScriptPlayerProxy` reports only tool artifacts:
 
