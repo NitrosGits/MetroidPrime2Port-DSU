@@ -115,6 +115,16 @@ inline SLdrIngSpaceJumpGuardianData::SLdrIngSpaceJumpGuardianData()
   miniPortalBeamInfo.pulseEffectScale = 2.0f;
   miniPortalBeamInfo.innerColor = CColor(0.49803901f, 0.49803901f, 0.49803901f, 0.49803901f);
   miniPortalBeamInfo.outerColor = CColor(0.60000002f, 0.60000002f, 0.0f, 0.49803901f);
+#ifdef TARGET_PC
+  // fn_34_B7C (__ct__28SLdrIngSpaceJumpGuardianData): -1 at +0x4 = sound (0xB88 li r0,-0x1 /
+  // 0xB9C) and +0x64 = sound_MiniPortal (0xBC4 / 0xBD4); 0.5 (rodata 0x90) for the beam colours:
+  // CColor(0.5 x4) at +0xB4 = innerColor (0xC7C/0xCD8), CColor(0.6, 0.6, 0.0, 0.5) at +0xB8 =
+  // outerColor (0xCCC-0xCEC/0xD00). 0.49803901f * 255 truncates to 126, retail's 0.5 to 127.
+  sound = -1;
+  sound_MiniPortal = -1;
+  miniPortalBeamInfo.innerColor = CColor(0.5f, 0.5f, 0.5f, 0.5f);
+  miniPortalBeamInfo.outerColor = CColor(0.60000002f, 0.60000002f, 0.0f, 0.5f);
+#endif
 }
 
 inline SLdrIngSpaceJumpGuardianData::~SLdrIngSpaceJumpGuardianData() {}
@@ -202,6 +212,13 @@ inline SLdrIngSpaceJumpGuardian::SLdrIngSpaceJumpGuardian()
   patterned.health.health = 150.0f;
   patterned.health.hI_KnockBackResistance = 2.0f;
   patterned.creatureSize = 1;
+#ifdef TARGET_PC
+  // LoadIngSpaceJumpGuardian (fn_34_170) inlines this ctor: CColor(1.0 x4) at sp+0x694 =
+  // actorInformation +0x14 (0x200 bl __ct__6CColorFffff / 0x21C), 0xF at sp+0x6E4 =
+  // actorInformation +0x64 (0x208 li r0,0xf / 0x20C).
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrIngSpaceJumpGuardian::~SLdrIngSpaceJumpGuardian() {}
