@@ -18,4 +18,6 @@
 @f800 objs ScriptPlayerProxy
 @f1200 obj u0523
 @f1600 objs ScriptPlayerProxy
+@f1700 send u0523 Delete
+@f1720 objs ScriptPlayerProxy
 @f2000 objs ScriptPlayerProxy

@@ -46,4 +46,6 @@
 @f1850 press a 4
 @f1870 press a 4
 @f1930 press x 10
-@f1980 obj e00070073; objs RiftPortal
+@f1900 send e00070073 Delete
+@f1920 objs RiftPortal
+@f1980 objs RiftPortal
