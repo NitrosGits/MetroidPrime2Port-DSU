@@ -1,0 +1,12 @@
+# Agon 05_portalpuzzle EchoVisorWatcher e00120402, retyped by scriptplayerproxy_force.py SPP_RUN=G (dark watcher): visor-mask arms, AreaLoaded re-inits, Delete.
+@f300 god 1; give darkVisor 1; obj e00120402
+@f360 visor dark
+@f420 send e00120402 AreaLoaded
+@f480 visor combat
+@f540 send e00120402 AreaLoaded
+@f600 visor dark
+@f660 send e00120402 AreaLoaded
+@f720 visor combat
+@f780 send e00120402 AreaLoaded
+@f1500 send e00120402 Delete
+@f1600 objs

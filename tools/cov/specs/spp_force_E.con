@@ -1,0 +1,4 @@
+# Agon 05_portalpuzzle EchoVisorWatcher e00120402, retyped by scriptplayerproxy_force.py SPP_RUN=E (DamageOverTime): the AreaLoaded parameters, another message, forced damage entries.
+@f300 god 1; obj e00120402
+@f400 send e00120402 Increment
+@f1500 obj e00120402

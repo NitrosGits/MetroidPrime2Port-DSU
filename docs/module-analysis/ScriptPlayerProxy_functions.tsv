@@ -1,10 +1,10 @@
 offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
-0x0	0xE8	CScriptPlayerProxy	~CScriptPlayerProxy	virtual	B	-	objdiff 100%; ran (area unload, `send Delete`)	upstream	fn_62_0
+0x0	0xE8	CScriptPlayerProxy	~CScriptPlayerProxy	virtual	B	-	objdiff 100%; ran (area unload, `send Delete`); asmcheck: implicit member dtors only	marked	fn_62_0
 0xE8	0x2C	CScriptPlayerProxy	GetHealthInfo	virtual	H	-	`CActor::GetHealthInfo` (the DOL inline, emitted in the REL)	not-port	fn_62_E8
 0x114	0x24	REL runtime	RELExit	runtime	T	-	the REL linker's entry/exit	not-port	RELExit
 0x138	0x20	REL runtime	RELMain	runtime	T	-	the REL linker's entry/exit	not-port	RELMain
 0x158	0x30	CScriptPlayerProxy	SetFuncPtrs	func	B	-	objdiff 100%; registers LoadPlayerController	upstream	fn_62_158
-0x188	0x4B0	CScriptPlayerProxy	LoadPlayerController	func	B	-	objdiff 99.6% (registers); model-present and proxyType-out-of-range arms untaken (data-dead in single player)	upstream	fn_62_188
+0x188	0x4B0	CScriptPlayerProxy	LoadPlayerController	func	B	-	objdiff 99.6% (registers); model-present arm untaken (live data), proxyType-out-of-range data-dead (shipped types 0..10)	upstream	fn_62_188
 0x638	0x30	CScriptPlayerProxy	-	func	H	-	`__as__optional_object<CModelData>`: host copy of DOL/template code	not-port	fn_62_638
 0x668	0x48	CScriptPlayerProxy	-	func	H	-	`optional_object<CModelData>::assign`: host copy	not-port	fn_62_668
 0x6B0	0xC4	CScriptPlayerProxy	-	func	H	-	`CModelData::operator=`: host copy	not-port	fn_62_6B0
@@ -23,30 +23,30 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xC74	0x120	CScriptPlayerProxy	-	func	H	-	`SLdrPlayerController` ctor: host copy (header inline)	not-port	fn_62_C74
 0xD94	0x64	CScriptPlayerProxy	ClearDamageOverTime	func	B	-	objdiff 100%; DamageOverTime proxies are multiplayer-only (M0x worlds)	upstream	fn_62_D94
 0xDF8	0xAC	CScriptPlayerProxy	AddDamageOverTime	func	B	-	objdiff 100%; multiplayer-only (DamageOverTime)	upstream	fn_62_DF8
-0xEA4	0x298	CScriptPlayerProxy	UpdateDamageOverTime	func	B	-	objdiff 100%; multiplayer-only (DamageOverTime)	upstream	fn_62_EA4
+0xEA4	0x298	CScriptPlayerProxy	UpdateDamageOverTime	func	B	-	objdiff 100%; all arms forced (SPP_RUN=E, DamageOverTime; list emptied on the 20th hit)	marked	fn_62_EA4
 0x113C	0x88	CScriptPlayerProxy	-	func	H	-	`reserved_vector<SDamageOverTime,8>::erase`: template	not-port	fn_62_113C
 0x11C4	0x150	CScriptPlayerProxy	NotifyProxies	func	B	-	objdiff 98.8% (0x12FC bool return); multiplayer game-mode events only	upstream	fn_62_11C4
 0x1314	0x8	CScriptPlayerProxy	GetPlayerMask	func	B	-	objdiff 100%; not called in the runs	upstream	fn_62_1314
-0x131C	0xBC	CScriptPlayerProxy	AddToRenderer	virtual	B	-	objdiff 100%; ran, draw arms are PlayerFollower/Archenemy only (multiplayer)	upstream	fn_62_131C
+0x131C	0xBC	CScriptPlayerProxy	AddToRenderer	virtual	B	-	objdiff 100%; all arms forced (SPP_RUN=A follower draw, SPP_RUN=B render index 0/1)	marked	fn_62_131C
 0x13D8	0x70	CScriptPlayerProxy	SendStateToPlayer	func	B	-	objdiff 100%; ran (visor Entered/Exited); asmcheck CALL/BRANCH only from unmarked UpdateTransform	marked	fn_62_13D8
-0x1448	0x26C	CScriptPlayerProxy	UpdateTransform	func	B	-	objdiff 98.8% (scheduling); ran only the plain-offset arm, Archenemy/Follower arms multiplayer-only	upstream	fn_62_1448
-0x16B4	0x64	CScriptPlayerProxy	SetArchenemyIndex	func	B	-	objdiff 100%; multiplayer-only (ArchenemyMarker)	upstream	fn_62_16B4
-0x1718	0x60	CScriptPlayerProxy	GetArchenemyIndex	func	B	-	objdiff 100%; multiplayer-only (ArchenemyMarker)	upstream	fn_62_1718
-0x1778	0xF0	CScriptPlayerProxy	CheckVisors	func	B	-	objdiff 95.3% (registers); all arms but player-not-in-mask (one player)	open (player-not-in-mask arm needs multiplayer)	-
-0x1868	0xA4	CScriptPlayerProxy	InitVisors	func	B	-	objdiff 100%; all arms but player-not-in-mask; in-visor arm forced (`send AreaLoaded`)	open (player-not-in-mask arm needs multiplayer)	-
-0x190C	0x2D0	CScriptPlayerProxy	DropCoins	func	B	-	objdiff 95.7% (scheduling; states BIDG/BXDG/IDMG/XDMG equal); multiplayer-only (CoinCollector)	upstream	fn_62_190C
-0x1BDC	0x68	CScriptPlayerProxy	SetVisorFromProxyType	func	B	-	objdiff 100%; Dark/Echo arms ran, Combat/Scan data-dead (no shipped watcher), default unreachable	upstream	fn_62_1BDC
-0x1C44	0x294	CScriptPlayerProxy	Think	virtual	B	-	objdiff 98.9% (bool arg, cntlzw idiom); visor arm ran, the rest multiplayer-only	upstream	fn_62_1C44
-0x1ED8	0x34	CScriptPlayerProxy	HandleDamageOverTimeMessage	func	B	-	hand-checked vs asm (objdiff unpaired: retail takes fewer args); multiplayer-only	upstream	fn_62_1ED8
+0x1448	0x26C	CScriptPlayerProxy	UpdateTransform	func	B	-	objdiff 98.8% (scheduling); all arms forced (SPP_RUN=A/B); 150:1/2 is an inlined IsNonZero component edge	marked	fn_62_1448
+0x16B4	0x64	CScriptPlayerProxy	SetArchenemyIndex	func	B	-	objdiff 100%; all arms forced (SPP_RUN=B, ArchenemyMarker)	marked	fn_62_16B4
+0x1718	0x60	CScriptPlayerProxy	GetArchenemyIndex	func	B	-	objdiff 100%; all arms forced (SPP_RUN=B, ArchenemyMarker)	marked	fn_62_1718
+0x1778	0xF0	CScriptPlayerProxy	CheckVisors	func	B	-	objdiff 95.3% (registers); all arms, not-in-mask forced (SPP_RUN=G, mask 0 on calls 2/4/6)	marked	fn_62_1778
+0x1868	0xA4	CScriptPlayerProxy	InitVisors	func	B	-	objdiff 100%; all arms, not-in-mask forced (SPP_RUN=G, mask 0 on call 5; `send AreaLoaded` dark/combat)	marked	fn_62_1868
+0x190C	0x2D0	CScriptPlayerProxy	DropCoins	func	B	-	objdiff 95.7% (scheduling); all live arms forced (SPP_RUN=D, CoinCollector); mode!=1 dead: sole caller 0x1DE4 after `li r8, 0x1`	marked	fn_62_190C
+0x1BDC	0x68	CScriptPlayerProxy	SetVisorFromProxyType	func	B	-	objdiff 100%; all arms (Dark/Echo natural, other types forced SPP_RUN=A..F)	marked	fn_62_1BDC
+0x1C44	0x294	CScriptPlayerProxy	Think	virtual	B	-	objdiff 98.9% (bool arg, cntlzw idiom); all arms forced (SPP_RUN=A..F) but 366 COIN-mode SetCanRespawn (unforceable on CGMSinglePlayer)	open (366 COIN-mode arm unforceable in single player)	fn_62_1C44
+0x1ED8	0x34	CScriptPlayerProxy	HandleDamageOverTimeMessage	func	B	-	hand-checked vs asm (unpaired); all arms forced (SPP_RUN=E)	marked	fn_62_1ED8
 0x1F0C	0x38	CScriptPlayerProxy	HandleVisorMessage	func	B	-	hand-checked vs asm (unpaired); both arms ran	marked	fn_62_1F0C
-0x1F44	0x1D4	CScriptPlayerProxy	HandleMessage	func	B	-	hand-checked vs asm (unpaired): GiveScore/EndGame vtable calls, ZERO ApplyDamage 1e6; multiplayer-only	upstream	fn_62_1F44
-0x2118	0xC4	CScriptPlayerProxy	HandleRespawnMessage	func	B	-	hand-checked vs asm (unpaired); multiplayer-only (PersistentCounterReset not shipped)	upstream	fn_62_2118
-0x21DC	0x50	CScriptPlayerProxy	HandleFollowerMessage	func	B	-	hand-checked vs asm (unpaired; 0x230 bit 0x40); multiplayer-only	upstream	fn_62_21DC
-0x222C	0x158	CScriptPlayerProxy	HandleArchenemyMessage	func	B	-	hand-checked vs asm (unpaired); ArchenemyMarker not shipped	upstream	fn_62_222C
+0x1F44	0x1D4	CScriptPlayerProxy	HandleMessage	func	B	-	hand-checked vs asm (unpaired): GiveScore/EndGame vtable calls, ZERO ApplyDamage 1e6; all arms forced (SPP_RUN=C)	marked	fn_62_1F44
+0x2118	0xC4	CScriptPlayerProxy	HandleRespawnMessage	func	B	-	hand-checked vs asm (unpaired); all arms forced (SPP_RUN=F)	marked	fn_62_2118
+0x21DC	0x50	CScriptPlayerProxy	HandleFollowerMessage	func	B	-	hand-checked vs asm (unpaired; 0x230 bit 0x40); all arms forced (SPP_RUN=A)	marked	fn_62_21DC
+0x222C	0x158	CScriptPlayerProxy	HandleArchenemyMessage	func	B	-	hand-checked vs asm (unpaired); all arms forced (SPP_RUN=B)	marked	fn_62_222C
 0x2384	0x50	CScriptPlayerProxy	-	func	H	-	`rstl::wstring` dtor: host copy	not-port	fn_62_2384
-0x23D4	0x270	CScriptPlayerProxy	AcceptScriptMsg	virtual	B	-	objdiff 100%; Create/Delete/AreaLoaded/visor arms ran, other proxy-type arms multiplayer-only	upstream	fn_62_23D4
+0x23D4	0x270	CScriptPlayerProxy	AcceptScriptMsg	virtual	B	-	objdiff 100%; all arms (natural + SPP_RUN=A..G, type 11/-1 forced in C)	marked	fn_62_23D4
 0x2644	0x614	CScriptPlayerProxy	OnGameEvent	func	B	-	objdiff 98.8% (0x2A68 equality idiom); multiplayer game events only; PersistentCounterReset pick-0 quirk kept	upstream	fn_62_2644
-0x2C58	0x50	CScriptPlayerProxy	BuildPlayerMask	func	B	-	objdiff 97.8% (registers); team-bit arm untaken (one player)	upstream	fn_62_2C58
+0x2C58	0x50	CScriptPlayerProxy	BuildPlayerMask	func	B	-	objdiff 97.8% (registers); all arms, team bit forced (SPP_RUN=G)	marked	fn_62_2C58
 0x2CA8	0x1DC	CScriptPlayerProxy	CScriptPlayerProxy	ctor	B	-	objdiff 100%; ran; asmcheck CALL/CALLS only (init-list calls)	marked	fn_62_2CA8
 0x2E84	0x8C	CScriptPlayerProxy	-	func	H	-	`reserved_vector<SDamageOverTime,8>` dtor: template	not-port	fn_62_2E84
 0x2F10	0x60	CScriptPlayerProxy::CListener	~CListener	virtual	B	-	objdiff 100%	upstream	fn_62_2F10

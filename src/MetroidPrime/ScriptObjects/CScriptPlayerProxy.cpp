@@ -30,6 +30,7 @@
 
 static EMaterialTypes sDamageMaterial = kMT_Solid; // Guessed name.
 
+// @ fn_62_0
 CScriptPlayerProxy::~CScriptPlayerProxy() {}
 
 void CScriptPlayerProxy::CListener::OnGameEvent(CStateManager& mgr, uint sourceIndex,
@@ -51,6 +52,7 @@ void CScriptPlayerProxy::AddDamageOverTime(uint sourceIndex, TUniqueId attacker,
   }
 }
 
+// @ fn_62_EA4
 void CScriptPlayerProxy::UpdateDamageOverTime(float dt, CStateManager& mgr) {
   uint firstPlayer = mListener.GetFirstPlayer(mgr);
   if (firstPlayer > mgr.GetNumPlayers()) {
@@ -117,6 +119,7 @@ bool CScriptPlayerProxy::NotifyProxies(CStateManager& mgr, CPlayer& player,
 
 uint CScriptPlayerProxy::GetPlayerMask() const { return mListener.GetPlayerMask(); }
 
+// @ fn_62_131C
 void CScriptPlayerProxy::AddToRenderer(const CStateManager& mgr) const {
   uint firstPlayer = mListener.GetFirstPlayer(mgr);
   if ((mProxyType == kPT_PlayerFollower && mFollowing) ||
@@ -135,6 +138,7 @@ void CScriptPlayerProxy::SendStateToPlayer(EScriptObjectState state, CStateManag
   SendScriptMsgs(state, mgr, GetUniqueId());
 }
 
+// @ fn_62_1448
 void CScriptPlayerProxy::UpdateTransform(CStateManager& mgr, uint playerIndex) {
   if (playerIndex == kInvalidPlayerIndex) {
     return;
@@ -162,6 +166,7 @@ void CScriptPlayerProxy::UpdateTransform(CStateManager& mgr, uint playerIndex) {
   SetTransform(xf);
 }
 
+// @ fn_62_16B4
 void CScriptPlayerProxy::SetArchenemyIndex(CStateManager& mgr, uint playerIndex) {
   uint firstPlayer = mListener.GetFirstPlayer(mgr);
   if (firstPlayer != kInvalidPlayerIndex) {
@@ -170,6 +175,7 @@ void CScriptPlayerProxy::SetArchenemyIndex(CStateManager& mgr, uint playerIndex)
   }
 }
 
+// @ fn_62_1718
 uint CScriptPlayerProxy::GetArchenemyIndex(const CStateManager& mgr) const {
   uint firstPlayer = mListener.GetFirstPlayer(mgr);
   uint archenemy = kInvalidPlayerIndex;
@@ -180,6 +186,7 @@ uint CScriptPlayerProxy::GetArchenemyIndex(const CStateManager& mgr) const {
   return archenemy;
 }
 
+// @ fn_62_1778
 void CScriptPlayerProxy::CheckVisors(CStateManager& mgr) {
   uint playerMask = mListener.GetPlayerMask();
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
@@ -200,6 +207,7 @@ void CScriptPlayerProxy::CheckVisors(CStateManager& mgr) {
   }
 }
 
+// @ fn_62_1868
 void CScriptPlayerProxy::InitVisors(CStateManager& mgr) {
   uint playerMask = mListener.GetPlayerMask();
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
@@ -216,6 +224,7 @@ void CScriptPlayerProxy::InitVisors(CStateManager& mgr) {
   CheckVisors(mgr);
 }
 
+// @ fn_62_190C
 void CScriptPlayerProxy::DropCoins(CStateManager& mgr, int amount, uint playerIndex, bool amplified,
                                    int denominationMode) {
   CPlayerState* state = mgr.PlayerState(playerIndex);
@@ -272,6 +281,7 @@ void CScriptPlayerProxy::DropCoins(CStateManager& mgr, int amount, uint playerIn
   }
 }
 
+// @ fn_62_1BDC
 void CScriptPlayerProxy::SetVisorFromProxyType() {
   switch (mProxyType) {
   case kPT_CombatVisorWatcher:
@@ -381,6 +391,7 @@ void CScriptPlayerProxy::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_62_1ED8
 void CScriptPlayerProxy::HandleDamageOverTimeMessage(EScriptObjectMessage msg, TUniqueId sender,
                                                      CStateManager& mgr, uint playerIndex) {
   if (msg == kSM_AreaLoaded) {
@@ -399,6 +410,7 @@ void CScriptPlayerProxy::HandleVisorMessage(EScriptObjectMessage msg, TUniqueId 
   }
 }
 
+// @ fn_62_1F44
 void CScriptPlayerProxy::HandleMessage(EScriptObjectMessage msg, TUniqueId sender,
                                        CStateManager& mgr, uint playerIndex) {
   const CGameState& gameState = *gpGameState;
@@ -421,6 +433,7 @@ void CScriptPlayerProxy::HandleMessage(EScriptObjectMessage msg, TUniqueId sende
   }
 }
 
+// @ fn_62_2118
 void CScriptPlayerProxy::HandleRespawnMessage(EScriptObjectMessage msg, TUniqueId sender,
                                               CStateManager& mgr, uint playerIndex) {
   const CGameState& gameState = *gpGameState;
@@ -437,6 +450,7 @@ void CScriptPlayerProxy::HandleRespawnMessage(EScriptObjectMessage msg, TUniqueI
   }
 }
 
+// @ fn_62_21DC
 void CScriptPlayerProxy::HandleFollowerMessage(EScriptObjectMessage msg, TUniqueId sender,
                                                CStateManager& mgr, uint playerIndex) {
   switch (msg) {
@@ -449,6 +463,7 @@ void CScriptPlayerProxy::HandleFollowerMessage(EScriptObjectMessage msg, TUnique
   }
 }
 
+// @ fn_62_222C
 void CScriptPlayerProxy::HandleArchenemyMessage(EScriptObjectMessage msg, TUniqueId sender,
                                                 CStateManager& mgr, uint playerIndex) {
   if (msg == kSM_Action) {
@@ -468,6 +483,7 @@ void CScriptPlayerProxy::HandleArchenemyMessage(EScriptObjectMessage msg, TUniqu
   }
 }
 
+// @ fn_62_23D4
 void CScriptPlayerProxy::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   TUniqueId sender = msg.GetSenderId();
   EScriptObjectMessage type = msg.GetMessage();
@@ -681,6 +697,7 @@ void CScriptPlayerProxy::OnGameEvent(CStateManager& mgr, uint sourceIndex, uint 
   }
 }
 
+// @ fn_62_2C58
 static uint BuildPlayerMask(const CStateManager& mgr, uint mask) {
   uint playerMask = mask & 0xF;
   for (int i = 0; i < mgr.GetNumPlayers(); ++i) {
