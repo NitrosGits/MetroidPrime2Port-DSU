@@ -29,8 +29,7 @@ lookup, no side effects); FireChargeBeamShot (retail inlines TCachedToken::IsLoa
 ProjectileInfo()->Token()); SelectDashTarget (target/self positions hoisted; same compares,
 `>=`/`<=` via `cror`, NaN falls to the else arm in both); ApplyMeleeDamage, UpdateAdditiveAim, the
 CDarkCommando ctor (inline CSfxHandle store). `upstream_hollow.py DarkCommando`: none.
-Noted, not changed: CreateShadowDecoyEffect locks the token in retail (TLockedToken/GetObj), upstream
-keeps a plain TToken.
+CreateShadowDecoyEffect's eager token load is restored by dc3 below.
 
 ## Behaviour fixes (dc2, 2026-10-23)
 
@@ -117,3 +116,109 @@ Still unmarked: ShouldMeleeAttack, SelectMeleeVariant, MeleeAttack, FireChargeBe
 arms reachable from the FSM but not run), BuildActionChoices (1238-1245 arms this run),
 DeactivateCloak (1/4), UpdateCloak (2/4 dark-visor arm), FireEMP, ShadowDash, PostFireChargeBeam,
 WarpOut and GetUp (0%: never entered), KnockBack, ThinkRagDoll, the charge beam and decoy bodies.
+
+## dc3 audit and fixes (2026-10-24)
+
+Base `58da92ffc`, branch `decomp/dc3`. **32 additional markers, 70/100 behaviour bodies.**
+The dc3 brief explicitly restricts new runtime forcing to changed behaviour or questions not settled
+by asm. Accordingly the new markers record complete asm audits, not new all-arm runtime coverage:
+the unchanged bodies retain the dc1/dc2 runtime limitations above. Null-target arms below are
+statically established, not asserted dead. The focused run tests the two changed bodies.
+
+Retail source: `../MetroidPrime2Port/build/G2ME01/DarkCommando/asm/auto_00_00000000_text.s`
+and its adjacent rodata/data; `tools/asmcheck.py annotate DarkCommando fn_3_<off> --all-ins`.
+The matching build's `build/G2ME01/report.json` supplies the supplementary match percentages.
+
+### Changes
+
+| body | defining asm | fix |
+|---|---|---|
+| fn_3_3C44 ActivateCloak | `0x3C74 fcmpo cr0,f0,f1; 0x3C78 bgt 0x3C88; 0x3C80 fcmpo cr0,f0,f1; 0x3C84 ble 0x3F34`; operands are alpha/target alpha and zero | The failed alpha gate exits the **whole** body, including decoy deletion/allocation and orbit redirection. Upstream only gated the fade/sound block. A TARGET_PC early return preserves `!(alpha > 0 || target > 0)`, including unordered comparisons; the existing hurled gate remains first. |
+| fn_3_9754 CreateShadowDecoyEffect | `0x97B4 bl CToken::CToken; 0x97BC bl CToken::GetObj; 0x97C0 lwz r0,4(r3); 0x97CC stw r0,0x28(r1)` precede `0x97EC bl __nw` | Use `TLockedToken<CGenDescription>` under TARGET_PC: copy/load/cache before allocation. Previously the plain token deferred loading to CElementGen's initializer. Valid and invalid asset paths stay the same; resource acquisition order now matches retail. |
+
+### Audited bodies and branches
+
+Every row is marked. `F` means the changed path was forced by `darkcommando_dc3.py`; `A` means
+asm audit with no new runtime-coverage claim. Existing dc1/dc2 runs remain applicable to unchanged
+code. No `<=`/`>=` was substituted for a plain PPC branch, or vice versa.
+
+| fn_3_ | body | evidence / branch result |
+|---|---|---|
+| 2058 | SolveGrenadeLaunch | A: 0x2194/0x21A0 selects upward start/negative step; 0x2204/0x2208 denominator `> FLT_EPSILON`; 0x2210-0x2224 inclusive speed interval; 0x2238-0x2250 nearest-error fallback; ten candidates. Retail seeds outputs internally; the only caller LaunchGrenade passes exactly those seeds, so failed-solve behaviour agrees for every live call. |
+| 230C | GetGrenadeTargetPosition | A: 100% matching; 0x2380/0x238C player/unmorphed gate, 0x23E8/0x23EC distance `> 6`, pull aim 3 units toward owner. |
+| 2460 | LaunchGrenade | A: 0x24DC null skips launch; 0x2588 non-normalizable horizontal uses forward; 0x25D4 plain `ble` caps only angles `> pi/3`; allocation/add tail. Retail computes the locator before the null check (no externally visible effect). |
+| 28DC | FireChargeBeamShot | A: 0x293C null exits; 0x29B4 player prediction; 0x2A9C plain `ble` gates angle `> pi/6`; 0x2B58-0x2BA0 loaded token gate; 0x2BC8 projectile budget; allocate/add. Retail lazily caches the already-locked weapon token; host IsLoaded tests the same availability and the projectile obtains the object. |
+| 3104 | BuildActionChoices | A: 0x3180-0x3188 alpha `<= 0` adds lurk, always taunt; 0x3224 null exits **after** those choices; 0x3238/0x3268 team permission; dc1's LOS fix at 0x33F8; 0x340C/0x3460 EMP/beam ranges. 0x3308-0x3318 computes/discards a normalized vector when magnitude `> 15`: omitted dead calculation, no field store or call with observable effect. |
+| 34B8 | SelectMeleeVariant | A: 0x3504 null returns -1; 0x3584-0x35C4 three inclusive max-angle tests; 0x35E0-0x365C inclusive weighted selection. Retail unrolls both three-element loops (nine cror compares); C++ has three comparison sites, with identical NaN exclusion. |
+| 39AC | UpdateCloak | A: 0x39CC fade flag; 0x39E4/0x3A08 `<`/`>` interpolation, 0x3A40 abs error `< 1e-5`; 0x3A78 positive alpha OR dark visor adds target material; 0x3AC4-0x3AF0 stale decoy reset. |
+| 3B98 | DeactivateCloak | A: 100% matching, 0x3BB8-0x3BC8 either alpha `< 1`; fade, visor/shadow and sound all inside that gate. |
+| 3C44 | ActivateCloak | F: whole-body hurled/alpha gate above. A: 0x3D14 existing decoy deletion, 0x3EC8 allocation guard, 0x3EF4 null/non-player skips **only orbit redirection**, 0x3F04 orbit id and 0x3F18 dark visor checks. |
+| 3F48 | SetTargetFaceVect | A: 0x3F8C null leaves forward default; 0x3FC8 unsafe XY does likewise; 0x3FF8/0x400C bone-tracking activation/target assignment still run in both cases. |
+| 4024 | SetDashFaceVect | A: 0x4058 missing hint and 0x4094 unsafe XY keep forward default, else normalized XY. |
+| 40D0 | SelectAction | A: 100% matching; sum weights, 0x41E8-0x41F0 inclusive selection, subtract failed weight, default lurk; 0x421C clears knocked-back even when no choice selected. |
+| 4310 | SelectDashTarget | A: 0x4390 null jumps to JoinTeam tail at 0x45F4, never an early return; 0x43F4-0x4460 active/type/in-use/area/previous/safe-zone filters; 0x449C-0x456C inclusive distance tests and preferred/fallback list resets; 0x4590 capacity 128; 0x45C4 empty list skips reserve; 0x45FC always joins via dc2's corrected helper. |
+| 46E4 | GetUp | A: 0x4720 ready + decloak + clear vertical movement/hurled; 0x475C command eligibility; exit 0x47CC not-ready + restore vertical movement. Previously unobserved runtime state, not proven dead. |
+| 4984 | ShadowDash | A: 0x49DC-0x4B04 ready/dash flags, missing hint sets over but still changes filter; 0x4B20 command eligibility; 0x4BBC/0x4BC8 loop-attack + moving; 0x4BDC missing hint exits body state; 0x4C24 distance `> speed*dt`, else snap/exit; deactivate aborts loop and restores all six material bits. |
+| 4ED8 | PostFireChargeBeam | A: 0x4F2C knocked-back OR 0x4F4C not `(time < idle)` sets over (NaN sets over); 0x4F68 null skips facing; 0x4FC8-0x4FD0 inclusive angle gate; ready/not-ready lifecycle. |
+| 5074 | FireChargeBeam | A: 0x50C4/0x50F0 team/no-team start; 0x512C command eligibility; 0x5148 null -> 0x521C over; valid aim command severity 2; exit clears firing and ends projectile attack. |
+| 52D8 | FireEMP | A: team/no-team start; 0x5394-0x539C time `>= prefire`; 0x53D0 null after warmup sets over, while 0x54D4 null before warmup exits without command; 0x54B8 knocked-back sets over; 0x5534-0x553C angle `>= pi/6`; exit resets/ends projectile attack. |
+| 5614 | MeleeAttack | A: 0x5674 variant -1 sets over; 0x5688/0x56B8 team permission; 0x5700 command eligibility, else 0x57E0 null/non-physics skips target vector AND damage; exit clears attacking/ends melee attack. |
+| 5B6C | WarpOut | A: 0x5BA8 clears flag on entry; 0x5BBC/0x5BCC pending generation/deletion; 0x5BF8 generation begins fade/removes target; 0x5C4C-0x5C60 alpha `>= 1` and unfrozen issue generation. Previously unobserved runtime state, not proven dead. |
+| 5F5C | Dead | A: entry 0x5FA4 gates alpha `< 1` and enables visibility; update 0x6000-0x6008 gates base Dead on alpha `>= 1`. 0x5FDC's 255 is the inlined CColor float-to-byte conversion. |
+| 6070 | ShouldMeleeAttack | A: 100% matching; 0x60A8 null -> false at 0x6154; team permission then inclusive squared range (0x6134-0x6148). |
+| 8240 | ChargeBeam::ResolveCollisionWithActor | A: 100% matching; player/mold/token gates, reserve billboard/player ids, safe-zone check, billboard flags run-indefinitely/finishing; 0x8444 always calls base collision (including null-player/billboard paths). |
+| 8598 | ChargeBeam::Think | A: 0x85D4 invalid billboard -> base Think; missing effect -> delete; 0x8640/0x8648/0x865C timer `>= 5`, missing player or safe zone accelerate effect expiry; otherwise damage scaled by dt; remaining `5 - emitterTime/60 > 0.3` uses a plain GT test at 0x86B4/0x86B8. |
+| 87A4 | ChargeBeam ctor | A: 100% matching including optional mold-token copy/lock, damage copy, invalid ids, zero timer and REL token. |
+| 91F0 | Decoy::GetDamageVulnerability | A: 100% matching, returns own vulnerability. |
+| 91F8 | Decoy::Render | A: 100% matching, base Render. |
+| 9218 | Decoy::AddToRenderer | A: 100% matching; base call, effect-present gate, exclude dark/echo visors, submit particles. |
+| 92A4 | Decoy::Think | A: 0x92D8/0x92F0/0x9308 missing effect, health `<= 0`, or deletable -> deletion/orbit reset/sound removal; else update. The C++ final effect recheck's false arm is dead: the same effect already passed the initial null check and no writer intervenes. |
+| 93A4 | Decoy::AcceptScriptMsg | A: 100% matching; base first; Delete removes/clears a valid emitter. |
+| 9414 | Decoy ctor | A + F through creation: copied bounds/vulnerability/health/owner/orbit fields; 0x95E0 effect guard for emission/orientation/translation/scale/sound; 0x9694-0x96C4 disable shadow, all visor flags on, scan/dark off. Sound argument is a value copy in C++ versus a reference in retail, with unchanged contents. |
+| 9754 | CreateShadowDecoyEffect | F: invalid asset -> null; valid asset -> eagerly locked token before CElementGen construction; normal orientation/flag one. Allocation failure remains statically audited, not forced. |
+
+### Focused runtime evidence
+
+    MP2_FAST_LOAD=1 tools/cov/force.sh tools/cov/specs/darkcommando_dc3.py <out> \
+      3bfa3eff,06_temple_sacredpath_dark --con tools/cov/specs/darkcommando_fight.con \
+      --frames 6000 --fast
+
+The spec saves/restores artificial alpha/flag/asset inputs and checks actual decoy constructor
+counts and id changes at return. **9/9 cases PASS**: positive alpha, both zero, both negative, both
+NaN, positive target only, hurled, invalid effect, NaN alpha/positive target, positive alpha/NaN
+target. Skipped cases made zero decoys; passing cases made one; the invalid effect made none of the
+particle generators; all four valid descriptions held their lock before the generator constructor.
+Area 55, 6000-frame limit, normal exit, `[port] caught` / `reach-stub` **0**. No source probes.
+
+Runtime gaps retained: unchanged null-target arms, GetUp/WarpOut entry, the previous team/attack,
+visor/safe-zone/decoy lifecycle coverage gaps, and allocation-failure arms were not newly forced.
+These are **not** evidence of dead code; their behaviour is settled by the asm table. Of the
+32 new markers only the changed cloak gate/resource load receive new targeted runtime evidence.
+
+### Check findings and gates
+
+- Host build: `ninja -C build-port-link metroid_prime2_port`, 0 FAILED. Manifest check rc 0.
+- TARGET_PC strip-diff against base: identical non-PC bytes after removing marker comments.
+  Matching build: `87 files OK`; final progress unchanged, All 77.98% fuzzy / 54.39% matched;
+  Game Code 94.14% fuzzy / 63.29% matched.
+- `asmcheck` correctness tags on all 32 additions: **0 findings**. All tags: 44 findings plus
+  NOPOS, manually resolved below (the shared header has guessed names without retail bit positions).
+- BIT/NOPOS: `0xcb4`: melee 0x80, EMP 0x40, beam 0x20, warp-in 0x10, warp-out 0x08,
+  fading 0x04, shadow-dash 0x02, damage-applied 0x01; `0xcb5`: dash-moving 0x80,
+  warp-request 0x40, knocked-back 0x20, hurled 0x10. All relevant tests/stores in the table match
+  the named C++ fields. GetUp's base vertical-movement field is `0x34c & 0x40`.
+- CALL/CALLS: ctor initializer lists supply CModelDataNull (27C0), vulnerability copy (7608),
+  impact-effect None (8970)/destructor (800C), optional locked-token copy/Lock and REL-token ctor;
+  temporary string/EntityInfo destructors (2830) are automatic C++ lifetime calls. Mutable vs const
+  TCastToPtr/GetObjectById wrappers share the same casts/lookups. FireChargeBeamShot's ProjectileInfo
+  calls are retail virtual slot `+0xdc` (0x29F0, 0x2B4C, 0x2C84, 0x2C9C); IsLoaded vs lazy caching
+  is described above. BuildActionChoices' unused vector math is described above.
+- BRANCH: SelectAction's vector loops are unrolled in retail; ResolveCollisionWithActor's optional
+  token/string temporaries add destruction/placement-new guards; Decoy AcceptScriptMsg/Think/Render
+  and ChargeBeam Think counts are inflated by the checker's helper folding of same-named methods
+  across classes (e.g. base Render is not another copy of CDarkCommando::Render).
+- `retail_diff`: only BuildActionChoices' unused Magnitude/AsNormalized/15, SelectMeleeVariant's
+  unrolled nine cror comparisons, and Dead's inlined 255 alpha conversion; no unresolved difference.
+- `review_decomp_diff.sh 58da92ffc` after commit: MARK 32, with the body/arm evidence above;
+  no code removals or shared-code edits. The script's ASM pass only selects Port*.cpp; the explicit
+  full/correctness asmcheck runs above cover this upstream-named file.

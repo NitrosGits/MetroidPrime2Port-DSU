@@ -133,14 +133,21 @@ static rstl::string skRELName = rstl::string_l("DarkCommando.rel");
 // @ fn_3_9890
 CShadowDecoy::~CShadowDecoy() {}
 
+// @ fn_3_9754
 static CElementGen* CreateShadowDecoyEffect(CAssetId effect) {
   if (effect == kInvalidAssetId) {
     return nullptr;
   }
+#ifdef TARGET_PC
+  // 0x97B4-0x97CC: copy CToken, GetObj, cache contents before allocating the generator.
+  TLockedToken< CGenDescription > token = gpSimplePool->GetObj(SObjectTag('PART', effect));
+#else
   TToken< CGenDescription > token = gpSimplePool->GetObj(SObjectTag('PART', effect));
+#endif
   return rs_new CElementGen(token, CElementGen::kMOT_Normal, CElementGen::kOSF_One);
 }
 
+// @ fn_3_9414
 CShadowDecoy::CShadowDecoy(TUniqueId uid, const CEntityInfo& info, TUniqueId owner,
                            const CTransform4f& xf, const CAABox& bounds, CAssetId effect,
                            const CDamageVulnerability& vulnerability, SLdrAudioPlaybackParms sound,
@@ -169,6 +176,7 @@ CShadowDecoy::CShadowDecoy(TUniqueId uid, const CEntityInfo& info, TUniqueId own
   SetVisorOrbitableFlags(CVisorParameters::kVOF_Dark, false);
 }
 
+// @ fn_3_93A4
 void CShadowDecoy::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
   CActor::AcceptScriptMsg(mgr, msg);
@@ -184,6 +192,7 @@ void CShadowDecoy::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_3_92A4
 void CShadowDecoy::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
   if (!mEffect.get() || mHealth <= 0.f || mEffect->IsSystemDeletable()) {
@@ -199,6 +208,7 @@ void CShadowDecoy::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_3_9218
 void CShadowDecoy::AddToRenderer(const CStateManager& mgr) const {
   CActor::AddToRenderer(mgr);
   if (mEffect.get()) {
@@ -209,8 +219,10 @@ void CShadowDecoy::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_3_91F8
 void CShadowDecoy::Render(const CStateManager& mgr) const { CActor::Render(mgr); }
 
+// @ fn_3_91F0
 const CDamageVulnerability* CShadowDecoy::GetDamageVulnerability() const { return &mVulnerability; }
 
 rstl::optional_object< CAABox > CShadowDecoy::GetTouchBounds() const { return mBounds; }
@@ -282,6 +294,7 @@ void CDarkCommandoGrenade::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_3_87A4
 CDarkCommandoChargeBeam::CDarkCommandoChargeBeam(
     const TToken< CWeaponDescription >& description, const CTransform4f& xf,
     const CDamageInfo& damage, TUniqueId uid, TAreaId areaId, TUniqueId owner,
@@ -297,6 +310,7 @@ CDarkCommandoChargeBeam::CDarkCommandoChargeBeam(
 , mPlayerId(kInvalidUniqueId)
 , mRelToken(skRELName, 0) {}
 
+// @ fn_3_8598
 void CDarkCommandoChargeBeam::Think(float dt, CStateManager& mgr) {
   if (mBillboardId == kInvalidUniqueId) {
     CEnergyProjectile::Think(dt, mgr);
@@ -337,6 +351,7 @@ void CDarkCommandoChargeBeam::AcceptScriptMsg(CStateManager& mgr, const CScriptM
   }
 }
 
+// @ fn_3_8240
 void CDarkCommandoChargeBeam::ResolveCollisionWithActor(const CRayCastResult& result, CActor& actor,
                                                         CStateManager& mgr) {
   if (TCastToPtr< CPlayer >(&actor) && mMoldEffect.valid()) {
@@ -658,6 +673,7 @@ bool CDarkCommando::ShouldFireChargeBeam(CStateManager&, const CTriggerData&) co
   return mCurrentAction == 2;
 }
 
+// @ fn_3_6070
 bool CDarkCommando::ShouldMeleeAttack(CStateManager& mgr, const CTriggerData&) const {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId));
   if (target) {
@@ -697,6 +713,7 @@ bool CDarkCommando::ShouldGetUp(CStateManager&, const CTriggerData&) const {
 // @ fn_3_602C
 void CDarkCommando::Start(CStateManager&, EStateMsg, float) {}
 
+// @ fn_3_5F5C
 void CDarkCommando::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     if (mCloakAlpha < 1.f) {
@@ -730,6 +747,7 @@ void CDarkCommando::WarpIn(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_3_5B6C
 void CDarkCommando::WarpOut(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mWarpingOut = false;
@@ -782,6 +800,7 @@ void CDarkCommando::Taunt(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// @ fn_3_5614
 void CDarkCommando::MeleeAttack(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAttackState = SelectMeleeVariant(mgr);
@@ -817,6 +836,7 @@ void CDarkCommando::MeleeAttack(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_3_52D8
 void CDarkCommando::FireEMP(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     if (mTeamAiMgrId == kInvalidUniqueId ||
@@ -860,6 +880,7 @@ void CDarkCommando::FireEMP(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_3_5074
 void CDarkCommando::FireChargeBeam(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     if (mTeamAiMgrId == kInvalidUniqueId ||
@@ -888,6 +909,7 @@ void CDarkCommando::FireChargeBeam(CStateManager& mgr, EStateMsg msg, float) {
   }
 }
 
+// @ fn_3_4ED8
 void CDarkCommando::PostFireChargeBeam(CStateManager& mgr, EStateMsg msg, float) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -910,6 +932,7 @@ void CDarkCommando::PostFireChargeBeam(CStateManager& mgr, EStateMsg msg, float)
   }
 }
 
+// @ fn_3_4984
 void CDarkCommando::ShadowDash(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -979,6 +1002,7 @@ void CDarkCommando::FaceTarget(CStateManager&, EStateMsg msg, float) {
   }
 }
 
+// @ fn_3_46E4
 void CDarkCommando::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mAnimationState.SetState(CAnimationState::kAS_Ready);
@@ -1002,6 +1026,7 @@ void CDarkCommando::SelectAttackTarget(CStateManager& mgr, float) {
   mBoneTracking.SetTarget(mTargetId);
 }
 
+// @ fn_3_4310
 void CDarkCommando::SelectDashTarget(CStateManager& mgr, float) {
   ReleaseHint(mgr);
   mBoneTracking.SetActive(false);
@@ -1054,6 +1079,7 @@ void CDarkCommando::SelectDashTarget(CStateManager& mgr, float) {
   JoinTeam(mgr);
 }
 
+// @ fn_3_40D0
 void CDarkCommando::SelectAction(CStateManager& mgr, float) {
   mCurrentAction = 0;
   rstl::reserved_vector< TActionChoice, 4 > choices;
@@ -1075,6 +1101,7 @@ void CDarkCommando::SelectAction(CStateManager& mgr, float) {
   mKnockedBack = false;
 }
 
+// @ fn_3_4024
 void CDarkCommando::SetDashFaceVect(CStateManager& mgr, float) {
   mFaceVector = GetTransform().GetColumn(kDY);
   if (const CScriptAIHint* hint = GetHint(mgr)) {
@@ -1086,6 +1113,7 @@ void CDarkCommando::SetDashFaceVect(CStateManager& mgr, float) {
   }
 }
 
+// @ fn_3_3F48
 void CDarkCommando::SetTargetFaceVect(CStateManager& mgr, float) {
   mFaceVector = GetTransform().GetColumn(kDY);
   if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId))) {
@@ -1099,10 +1127,18 @@ void CDarkCommando::SetTargetFaceVect(CStateManager& mgr, float) {
   mBoneTracking.SetTarget(mTargetId);
 }
 
+// @ fn_3_3C44
 void CDarkCommando::ActivateCloak(CStateManager& mgr, float) {
   if (mHurled) {
     return;
   }
+#ifdef TARGET_PC
+  // 0x3C74-0x3C84: neither alpha > 0 branches to 0x3F34 past the decoy too.
+  // bgt/ble test GT directly: unordered alphas must not start a cloak or replace its decoy.
+  if (!(mCloakAlpha > 0.f || mCloakTargetAlpha > 0.f)) {
+    return;
+  }
+#endif
   if (mCloakAlpha > 0.f || mCloakTargetAlpha > 0.f) {
     SetCloakTarget(0.f, 0.4f);
     SetVisorOrbitableFlags(CVisorParameters::kVOF_All, false);
@@ -1133,6 +1169,7 @@ void CDarkCommando::ActivateCloak(CStateManager& mgr, float) {
   }
 }
 
+// @ fn_3_3B98
 void CDarkCommando::DeactivateCloak(CStateManager&, float) {
   if (mCloakAlpha < 1.f || mCloakTargetAlpha < 1.f) {
     SetCloakTarget(1.f, 1.f);
@@ -1159,6 +1196,7 @@ void CDarkCommando::SetCloakTarget(float target, float duration) {
   }
 }
 
+// @ fn_3_39AC
 void CDarkCommando::UpdateCloak(float dt, CStateManager& mgr) {
   if (mCloakFading) {
     const float step = mCloakRate * dt;
@@ -1211,6 +1249,7 @@ void CDarkCommando::ApplyMeleeDamage(CStateManager& mgr, CPhysicsActor& target) 
   }
 }
 
+// @ fn_3_34B8
 int CDarkCommando::SelectMeleeVariant(CStateManager& mgr) const {
   int variant = -1;
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId));
@@ -1241,6 +1280,7 @@ int CDarkCommando::SelectMeleeVariant(CStateManager& mgr) const {
   return variant;
 }
 
+// @ fn_3_3104
 void CDarkCommando::BuildActionChoices(CStateManager& mgr,
                                        rstl::reserved_vector< TActionChoice, 4 >& choices) {
   choices.clear();
@@ -1342,6 +1382,7 @@ void CDarkCommando::UpdateAdditiveAim(CStateManager& mgr) {
   }
 }
 
+// @ fn_3_28DC
 void CDarkCommando::FireChargeBeamShot(CStateManager& mgr, float dt) {
   const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId));
   if (!target) {
@@ -1377,6 +1418,7 @@ void CDarkCommando::FireChargeBeamShot(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_3_2460
 void CDarkCommando::LaunchGrenade(CStateManager& mgr) {
   if (const CActor* target = static_cast< const CActor* >(mgr.GetObjectById(mTargetId))) {
     const CTransform4f launchXf = GetLctrTransform(mGrenadeSegId);
@@ -1409,6 +1451,7 @@ void CDarkCommando::LaunchGrenade(CStateManager& mgr) {
   }
 }
 
+// @ fn_3_230C
 CVector3f CDarkCommando::GetGrenadeTargetPosition(const CStateManager& mgr,
                                                   const CActor& target) const {
   CVector3f aim = target.GetAimPosition(mgr, 0.5f);
@@ -1424,6 +1467,7 @@ CVector3f CDarkCommando::GetGrenadeTargetPosition(const CStateManager& mgr,
   return aim;
 }
 
+// @ fn_3_2058
 void CDarkCommando::SolveGrenadeLaunch(const CVector3f& target, const CVector3f& origin,
                                        float& angle, float& speed) const {
   const float heightDelta = target.GetZ() - origin.GetZ();
