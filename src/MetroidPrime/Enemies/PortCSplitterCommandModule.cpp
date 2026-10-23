@@ -1256,23 +1256,22 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
 void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
   CSplitterMainChassis* chassis =
       TCastToPtr< CSplitterMainChassis >(mgr.ObjectById(mCheckedChassisId));
-  if (chassis == nullptr) {
-    return;
+  // 0x3F24 / 0x3F44: no chassis, or one that refuses the head, branch to 0x3FBC - the
+  // locomotion type below is still set.
+  if (chassis != nullptr && chassis->PortAcceptHead(mgr, GetUniqueId())) {
+    mChassisId = mCheckedChassisId;
+    mCheckedChassisId = kInvalidUniqueId;
+    mClearedId = mChassisId;
+    if ((mAutoDestructFlags & 0x2) == 0 || (mData.mUnknownBD80FD94 & 0x1) == 0) {
+      // 0x3F80-0x3FA8: the docking sound; its handle is dropped (the retail writes it to a stack
+      // slot it never reads).
+      CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundDocking & 0xFFFF),
+                              GetTranslation(), 0x7F, GetCurrentAreaId().Value(), true, false,
+                              CSfxManager::kMedPriority);
+    }
+    mAutoDestructFlags &= ~static_cast< uchar >(0x2);
   }
-  if (!chassis->PortAcceptHead(mgr, GetUniqueId())) {
-    return;
-  }
-  mChassisId = mCheckedChassisId;
-  mCheckedChassisId = kInvalidUniqueId;
-  mClearedId = mChassisId;
-  if ((mAutoDestructFlags & 0x2) == 0 || (mData.mUnknownBD80FD94 & 0x1) == 0) {
-    // 0x3F80-0x3FA8: the docking sound; its handle is dropped (the retail writes it to a stack
-    // slot it never reads).
-    CSfxManager::AddEmitter(static_cast< ushort >(mData.mSoundDocking & 0xFFFF), GetTranslation(),
-                            0x7F, GetCurrentAreaId().Value(), true, false, CSfxManager::kMedPriority);
-  }
-  mAutoDestructFlags &= ~static_cast< uchar >(0x2);
-  BodyController()->SetLocomotionType(pas::kLT_Relaxed);
+  BodyController()->SetLocomotionType(pas::kLT_Relaxed); // 0x3FBC-0x3FC4
 }
 
 // Arms: the flash weight above zero (asm 0x336C) and the countdown below zero (asm 0x3374), the
