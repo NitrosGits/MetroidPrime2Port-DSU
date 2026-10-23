@@ -16,7 +16,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x000000BC	0x24	RELExit	H	host-copy			the REL runtime - the host's own module runtime does the same	no
 0x000000E0	0x20	RELMain	H	host-copy			the REL runtime - the host's own module runtime does the same	no
 0x00000100	0x30	fn_29_100	B	behaviour	RELMain	lbl_29_bss_6C		yes
-0x00000130	0xFC8	fn_29_130	B	behaviour		lbl_29_rodata_120		no
+0x00000130	0xFC8	fn_29_130	B	behaviour		lbl_29_rodata_120	the loader; the shipped data takes all 69 property arms on every load, skip/no-model arms dead in the data (A.36)	yes
 0x000010F8	0x94	fn_29_10F8	H	host-copy	fn_29_130,fn_29_CF64		the module's own deleting destructors and the free-only thunks - the host's own code does the same	no
 0x0000118C	0x58	fn_29_118C	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
 0x000011E4	0x58	fn_29_11E4	H	host-copy			the loader's DOL-type temporaries - the host's own code does the same	no
@@ -58,7 +58,7 @@ offset	size	fn	class	kind	callers	tables	what	marker
 0x00003568	0x84	fn_29_3568	B	behaviour	fn_29_3190		0x84) destroys it. The host's rstl::vector of CJointCollisionDescription is the	yes
 0x000035EC	0x38	fn_29_35EC	H	host-copy	fn_29_3568		the rstl internals - the host's own code does the same	no
 0x00003624	0x60	fn_29_3624	H	host-copy	fn_29_35EC		the rstl internals - the host's own code does the same	no
-0x00003684	0xA8	fn_29_3684	B	behaviour	fn_29_C9A4			no
+0x00003684	0xA8	fn_29_3684	B	behaviour	fn_29_C9A4		LeaveTeam; all three tests both ways in Sand World 02_sand_sandfalls_dark layer 5 (A.33)	yes
 0x0000372C	0xAC	fn_29_372C	B	behaviour	fn_29_5B60			yes
 0x000037D8	0x170	fn_29_37D8	B	behaviour	fn_29_8684,fn_29_8808	lbl_29_rodata_7C,lbl_29_rodata_B4		yes
 0x00003948	0x208	fn_29_3948	B	behaviour	fn_29_6578,fn_29_75C0,fn_29_82D4,fn_29_8570,fn_29_8684	lbl_29_rodata_B8	, 0x880	yes

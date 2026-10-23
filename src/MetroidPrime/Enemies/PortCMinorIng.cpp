@@ -292,11 +292,6 @@ static rstl::optional_object< TLockedToken< CGenDescription > > OptionalPart(CAs
       TLockedToken< CGenDescription >(gpSimplePool->GetObj(SObjectTag('PART', id))));
 }
 
-CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
-                     const CTransform4f& xf, const CModelData& modelData,
-                     const CPatternedInfo& pInfo, const CActorParameters& actParms,
-                     const CMinorIngData& data)
-// @ fn_44_9D58
 // EPatternedAI 0x4b, flavor 0, movement 0 (ground), collider 1, body 1 (bipedal): the retail
 // constructor's arguments to CPatterned (fn_44_9D58).
 //
@@ -314,6 +309,11 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 //   (asm 0xA344) and the timers (asm 0xA23C-0xA278),
 // - the health tracker (asm 0xA24C: the patterned info's health), the animation ids (asm 0xA264)
 //   and the lock-on locator (asm 0xA27C).
+// @ fn_44_9D58
+CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
+                     const CTransform4f& xf, const CModelData& modelData,
+                     const CPatternedInfo& pInfo, const CActorParameters& actParms,
+                     const CMinorIngData& data)
 : CPatterned(static_cast< EPatternedAI >(0x4b), uid, name, kFT_Zero, info, xf, modelData, pInfo,
              kMT_Ground, kCT_One, kBT_BiPedal, actParms)
 , mData(data)
@@ -337,7 +337,7 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mSafeZoneId(kInvalidUniqueId)
 , mBlobEffectId(kInvalidUniqueId)
 , mCollisionActorId(kInvalidUniqueId)
-, mUnusedZeros{0, 0}
+, mUnusedZeros() // value-initialised: both zero (0xA5B4 fn_44_A5D0 fills two zero entries)
 , mTargetPos(CVector3f::Zero())
 , mModelScale(modelData.GetScale())
 , mAttackTimer(0.f)
@@ -350,6 +350,7 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mKnockDamage(0.f)
 , mTimerD1C(0.f)
 , mMoveAwayTimer(0.f)
+// 0xA25C stfs f1 (0.0f), 0xd24: the REL's only access of that word, so the host has no member.
 , mSafeZoneEnterCount(0)
 , mEvaporate(0.f)
 , mDamageFxTimer(0.f)
@@ -378,28 +379,50 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
 , mInsideSafeZone(false)          // 0xd3e 0x04 (asm 0xA320)
 , mShouldEvaporate(false)         // 0xd3e 0x02 (asm 0xA32C)
 {
-  // fn_44_9D58 locks the projectile's WPSC token (0x918); without it LaunchProjectile's TryCache
-  // never succeeds.
+  // fn_44_9D58 locks the projectile's WPSC token (0x918, 0xA350 bl Lock); without it
+  // LaunchProjectile's TryCache never succeeds.
   mProjectileInfo.Token().Lock();
-  // fn_44_9D58: the surface helper's mode word (0xc24) is 1, the path search's character
-  // height/radius are scale.y*3 and scale.z*5.
+  // 0xA354 li r0,1; 0xA35C stw r0,0xc24: the surface helper (0xbd8) mode word at +0x4c is 1.
   mSurfaceAlignment.SetMode(static_cast< CSurfaceAlignmentHelper::EMode >(1));
-  mPathFindSearch.SetCharacterHeight(mModelScale.GetY() * 3.f);
-  mPathFindSearch.SetCharacterRadius(mModelScale.GetZ() * 5.f);
-  // Knock-back physics off and the knock-back animation reaction widened to (2, 2).
+  // The search's size from the model scale copied to 0xcf8: 0xA364 lfs f2, rodata_38 (3.0f);
+  // 0xA374 lfs f1, rodata_48 (5.0f); 0xA37C f0 = 3 * scale.y (0xcfc), 0xA388 stfs 0xa34
+  // (search+0xd4, mChRadius); 0xA390 f0 = 5 * scale.z (0xd00), 0xA394 stfs 0xa30 (search+0xd0,
+  // mChHeight). So height 5*z, radius 3*y (the port had them swapped).
+  mPathFindSearch.SetCharacterRadius(mModelScale.GetY() * 3.f);
+  mPathFindSearch.SetCharacterHeight(mModelScale.GetZ() * 5.f);
+  // 0xA39C rlwimi r0,r5,6,25,25 (r5 = 0) on 0x6b0 (knock-back manager 0x620 + 0x90, bit 0x40):
+  // the hurl velocity off.
+  KnockBackController().SetHurlVelocityEnabled(false);
+  // 0xA3A4 knock-back physics off; 0xA3B4 the animation reaction range (2, 2).
   KnockBackController().EnableKnockBackPhysics(false);
   KnockBackController().SetAnimReactionRange(CKnockBackMgr::kAR_KnockBack,
                                              CKnockBackMgr::kAR_KnockBack);
-  // The lock-on locator ("lockon_target_SDK", 0xd3c) replaces mLockOnTarget when present, and
-  // the line-of-sight tracker casts from "Eye_LCTR" (the REL's next string, bss_40) through
-  // Solid minus Player/CollisionActor (bss_0 / DAT_80900d10 in fn_44_ABCC).
+  // 0xA3C0 rlwimi r0,r3,4,27,27 (r3 = 0) on 0x681 (manager + 0x61, bit 0x10): burn off.
+  KnockBackController().EnableBurn(false);
+  // The lock-on locator ("lockon_target_SDK", 0xA3E8 stb 0xd3c) replaces mLockOnTarget (0x7b8)
+  // when present (0xA3F0 cmplwi 0xff / 0xA3F4 beq), and the line-of-sight tracker casts from
+  // "Eye_LCTR" (bss_40, 0xA420 stb 0xc8a). The retail reads the anim data with no null test
+  // (0xA3D8); the host's guard is for a model without animation.
   if (const CAnimData* animData = GetModelData()->GetAnimationData()) {
     mLockOnLocator = animData->GetLocatorSegId(rstl::string_l("lockon_target_SDK"));
     if (mLockOnLocator != CSegId::Invalid()) {
       mLockOnTarget = mLockOnLocator;
     }
     mLineOfSight.SetSegment(animData->GetLocatorSegId(rstl::string_l("Eye_LCTR")));
+  }
+  // 0xA430-0xA444: the tracker's filter (0xc90..0xca0) = bss_0, which fn_44_ABCC builds as
+  // include 1<<59 (Solid, data_4 = 0x3B), exclude 1<<32 | 1<<47 (Player 0x20 / CollisionActor
+  // 0x2F, data_8/data_C), type 3 (IncludeExclude, 0xAC30 li r0,3).
+  mLineOfSight.SetRayFilter(CMaterialFilter::MakeIncludeExclude(
+      CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
+  // 0xA44C rlwimi r0,r5,7,24,24 (r5 = 0) on 0x34d (bit 0x80): mLookAtDeathDir off.
+  mLookAtDeathDir = false;
+  // 0xA454-0xA468: 0x1c0..0x1c8 (CPhysicsActor's momentum) = sZeroVector.
+  SetMomentumWR(CVector3f::Zero());
+  if (const CAnimData* animData = GetModelData()->GetAnimationData()) {
     // fn_44_AB78 keeps an animation only when its score is above FLT_EPSILON.
+    // 0xA4E4 li r4,0xc (Generate), FromEnum(0) -> 0xd2c; 0xA57C li r4,0xa (LoopReaction),
+    // FromEnum(3), FromEnum(0) -> 0xd30.
     const CPASDatabase& pas = animData->GetPASDatabase();
     mIntoCorporealAnim =
         FindBestAnimationId(pas, CPASAnimParmData(pas::kAS_Generate, CPASAnimParm::FromEnum(0)));
@@ -407,8 +430,8 @@ CMinorIng::CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo&
         pas, CPASAnimParmData(pas::kAS_LoopReaction, CPASAnimParm::FromEnum(3),
                               CPASAnimParm::FromEnum(0)));
   }
-  mLineOfSight.SetRayFilter(CMaterialFilter::MakeIncludeExclude(
-      CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_CollisionActor)));
+  // 0xA5B4 fn_44_A5D0 resizes the reserved vector at 0xce0 (count) to two zero entries: the two
+  // loop sfx handles at 0xce4/0xce8 (mLoopSfx, empty handles on the host).
 }
 
 // @ fn_44_97E4

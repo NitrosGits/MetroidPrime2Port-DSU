@@ -1783,8 +1783,13 @@ AddDrawableActor/AddDrawableActorPlane, CStateManager.cpp:324/332) and RendererD
 (drawables from AddDrawableActor), so the slot is never dispatched (tail8: 0 Render vs 22
 AddToRenderer).
 
-Follow-up: MinorIng's ctor (`PortCMinorIng.cpp:386-410`, fn_44_9D58) carries the same SetMode(1),
-height/radius order and ray-filter override the Ing ctor had; check it against its own asm.
+### A.36 MinorIng ctor fn_44_9D58 and the Ing loader fn_29_130 (2026-10-23, lane ing31)
+
+| fn | result | evidence |
+|---|---|---|
+| `44_9D58` | fixed, marked | height 5*z / radius 3*y swapped back (0xA37C-0xA394); hurl velocity off (0xA39C), burn off (0xA3C0), `mLookAtDeathDir` off (0xA44C), momentum zero (0xA454) added. SetMode(1) (0xA35C stw 0xc24) and the ray filter (0xA430 bss_0) are the MinorIng's own, kept. No null touch box (0xA174/0xA178 both optionals empty), no portal plane or light blend. Arms: 0x9E04/0x9F80 id tests and 0xA3F4 lock-on, natural and forced (`specs/minoring_ctor_force.py`), Agon area 13 |
+| `29_130` | marked | `tools/drivers/ing_loader_scan.py`: the 69 `cmpw` ids of the loop vs the disc's 40 INGS placements: all 69 in every placement, no other id, each with an ANCS. So every load runs all 69 case arms; the 0xC4C skip and 0xCA8 no-model arms are dead in the shipped data; 0xF80 is new's null test. `fn_29_10F8` (0x101C) is the data block's teardown (H) |
+| `29_3684` | tsv row only | marked since A.33; the tsv's marker column said `no` |
 
 ## D. Implementation order
 

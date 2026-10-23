@@ -240,20 +240,31 @@ What the retail's constructor fills, in its order (the host does the same):
   and 1.0/1.0 from the rodata at 0x44), the point search, the surface helper and the ing-spot
   navigation.
 - the form (asm 0xA198) and the ten ids (asm 0xA1B8-0xA204): the retail stores 0xffff in each.
-- the two-int container at 0xce0: `fn_44_A5D0` resizes it to two zero ints (asm 0xA5B4). Nothing
-  reads them; the retail's destructor (asm 0x9820) and `fn_44_396C` (asm 0x39A4) only test the
-  container for emptiness, which is never the case after the constructor. The host keeps the two
-  zeros as `mUnusedZeros`.
+- the reserved vector at 0xce0: `fn_44_A5D0` sets its count to 2 with two zero entries (asm
+  0xA5B4); the entries are the two loop sfx handles at 0xce4/0xce8 (read at 0x3A10/0x3A6C, written
+  at 0x3C60). The host keeps the count as `mUnusedZeros` and the handles as `mLoopSfx` (empty).
 - the health tracker at 0xd14: the retail reads the patterned info's health (asm 0xA1BC reads the
   `CPatternedInfo`'s health at +0x54), not the actor's own health info.
 - the flag bytes: the retail clears every flag of 0xd3d (asm 0xA284-0xA2DC) and every flag of
   0xd3e (asm 0xA2E4-0xA330), most significant bit first.
 
-The constructor is marked (`// @ fn_44_9D58`) and the check finds nothing in it. Its branches ran
-in the Temple Grounds' area 13 and in the Agon Wastes' `0a_sand_hall_dark`, each with a temporary
-hook that was reverted: the model has animation data (the Agon Wastes) or not (the Temple
-Grounds), the lock-on locator is valid (the Agon Wastes) or not, and the two hit-effect assets are
-set or not. The rest of the retail's branches (the token's own) are always taken.
+- after the members (lane ing31, 2026-10-23, each from this ctor's own asm): the WPSC lock
+  (0xA350), the surface helper mode 1 (0xA35C stw 0xc24 = helper 0xbd8 + 0x4c), the search's
+  height 5*scale.z at 0xa30 and radius 3*scale.y at 0xa34 (0xA364-0xA394; the port had them
+  swapped), hurl velocity off (0xA39C, 0x6b0 bit 0x40), knock-back physics off (0xA3A4), reaction
+  range (2, 2) (0xA3B4), burn off (0xA3C0, 0x681 bit 0x10), the lock-on locator (0xA3E8-0xA3F8),
+  the eye segment (0xA420), the tracker's ray filter from bss_0 (0xA430-0xA444: Solid include,
+  Player/CollisionActor exclude, IncludeExclude), `mLookAtDeathDir` off (0xA44C, 0x34d bit 0x80),
+  the momentum zeroed (0xA454-0xA468, 0x1c0), then the two animation ids. 0xd24 gets 0.0
+  (0xA25C) and is never accessed again, so the host has no member for it.
+
+The constructor is marked (`// @ fn_44_9D58`). Its three tests ran both ways in the Agon Wastes'
+area 13 (`3bfa3eff,686f5a1b`, 1500 frames `--fast`, `tools/cov/force.sh` with
+`tools/cov/specs/minoring_ctor_force.py`): the normal (0x9E04) and heavy (0x9F80) hit-effect ids
+natural (set) and forced (unset), the lock-on locator natural (found) and forced (not found, 0xA3F4).
+The rest of the retail's branches (the tokens' own cleanup) are always taken. `asmcheck` on the
+body leaves 9 findings, all tool limits: the two knock-back bits written through setters, member
+constructors it does not name, the token-cleanup conditions and the `fn_44_A680` template.
 
 ### The massive death (fn_44_7058)
 
@@ -495,10 +506,9 @@ ids and their order and the teardown order were checked by hand.
   another function, and asmcheck leaves that block out. The `fn_44_9D58` cites in
   the constructor's body and in `IsMoveClear` do that, so those blocks are not
   covered by the check.
-- `fn_44_9D58` (the retail constructor) is not checked at all: the host's
-  constructor is the host's own, so it carries no marker. It fills the same members in the
-  same order as the retail's, so the stored state matches. The same holds for
-  `fn_44_110` (the loader) and `fn_44_7058` (the massive death).
+- `fn_44_9D58` (the retail constructor) is checked since lane ing31 moved the marker above the
+  signature and dropped the `mUnusedZeros{0, 0}` brace init (the tool read the braces as the
+  body). `fn_44_110` (the loader) and `fn_44_7058` (the massive death) are the host's shape.
 - The container at 0xce0 is two zero ints in the host (`mUnusedZeros`); the check reports two
   `CMP` findings for it (`fn_44_396C` and `fn_44_97E4` test it for emptiness, which the retail's
   vector never is after the constructor). They are completeness findings, not correctness ones.
