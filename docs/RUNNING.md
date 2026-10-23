@@ -214,7 +214,7 @@ The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui, kral, pssm, stod,
-pbug, szone, rptl, chog, drkc, plac, plct, ming, snak, eyeb, kroc, atma, atmb, shrd, fsw, iss and ibs): their areas
+pbug, szone, rptl, chog, drkc, plac, plct, ming, snak, eyeb, kroc, atma, atmb, shrd, fsw, iss, ibs, mree and puff): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, spor's 2000 updates leave only ~100 ms of uncapped run after the connect and
