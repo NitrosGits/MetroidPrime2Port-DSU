@@ -109,6 +109,7 @@ CSporbProjectile::CSporbProjectile(TUniqueId uid, const rstl::string& name, cons
       rstl::vector< CAssetId >(), rstl::vector< CAssetId >()));
 }
 
+// @ fn_76_F428
 void CSporbProjectile::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -179,10 +180,12 @@ void CSporbProjectile::Render(const CStateManager& mgr) const { CPatterned::Rend
 
 void CSporbProjectile::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_76_F024
 void CSporbProjectile::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
+// @ fn_76_EFD8
 void CSporbProjectile::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -195,6 +198,7 @@ void CSporbProjectile::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EF8C
 void CSporbProjectile::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -207,6 +211,7 @@ void CSporbProjectile::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EF10
 void CSporbProjectile::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -223,6 +228,7 @@ void CSporbProjectile::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EED8
 void CSporbProjectile::WakeUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -234,6 +240,7 @@ void CSporbProjectile::WakeUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EEA0
 void CSporbProjectile::GoToSleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -245,6 +252,7 @@ void CSporbProjectile::GoToSleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EE68
 void CSporbProjectile::Launch(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -256,6 +264,7 @@ void CSporbProjectile::Launch(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EE14
 void CSporbProjectile::Close(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -271,6 +280,7 @@ void CSporbProjectile::Close(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EDDC
 void CSporbProjectile::Open(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -300,6 +310,7 @@ void CSporbProjectile::Fire(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_EB70
 void CSporbProjectile::Spit(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -330,10 +341,12 @@ void CSporbProjectile::Reload(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_E918
 bool CSporbProjectile::ShouldPatrol(CStateManager& mgr, const CTriggerData& data) const {
   return mState >= kS_Patrolling;
 }
 
+// @ fn_76_E8FC
 bool CSporbProjectile::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mState >= kS_Attacking;
 }
@@ -342,26 +355,32 @@ bool CSporbProjectile::AnimOver(CStateManager& mgr, const CTriggerData& data) co
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_76_E8C0
 bool CSporbProjectile::ShouldFire(CStateManager& mgr, const CTriggerData& data) const {
   return mState >= kS_Fire;
 }
 
+// @ fn_76_E8A4
 bool CSporbProjectile::ShouldReload(CStateManager& mgr, const CTriggerData& data) const {
   return mState >= kS_Reload;
 }
 
+// @ fn_76_E894
 bool CSporbProjectile::ShouldLaunch(CStateManager& mgr, const CTriggerData& data) const {
   return mState == kS_Launch;
 }
 
+// @ fn_76_E880
 bool CSporbProjectile::ShouldClose(CStateManager& mgr, const CTriggerData& data) const {
   return mState == kS_Close;
 }
 
+// @ fn_76_E86C
 bool CSporbProjectile::ShouldOpen(CStateManager& mgr, const CTriggerData& data) const {
   return mState == kS_Open;
 }
 
+// @ fn_76_E858
 bool CSporbProjectile::ShouldSpit(CStateManager& mgr, const CTriggerData& data) const {
   return mState == kS_Spit;
 }
@@ -406,6 +425,7 @@ void CSporbProjectile::PlayBallEscapeEffect(CStateManager& mgr) {
       GetModelData()->GetScale(), &mgr, GetCurrentAreaId(), false, 0);
 }
 
+// @ fn_76_E2BC
 rstl::optional_object< CAABox > CSporbProjectile::GetTouchBounds() const {
   return GetCollisionPrimitive()->CalculateAABox(GetTransform());
 }

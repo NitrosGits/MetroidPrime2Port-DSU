@@ -1,0 +1,41 @@
+# 0e_swamp_hall, Sporb u048e (top u048f, grabber u0491) over a resting morph ball: grabs forced by
+# tools/cov/specs/sporb_force.py; the first is held to the spit, boosts later free the ball.
+@f300 god 1; give morphBall 1; give boostBall 1; fastmorph 1
+@f305 tp 10.2 -55.2 42.5
+@f310 press x 30
+@f340 send u048e Alert; fsm u048e WakeUp
+@f400 fsm u048e Attack
+@f404 fsm u048e Fire
+@f700 obj u048e; status
+@f1000 obj u048e; status
+@f1300 boost
+@f1320 boost
+@f1340 boost
+@f1360 boost
+@f1380 boost
+@f1400 boost
+@f1420 boost
+@f1440 boost
+@f1460 boost
+@f1480 boost
+@f1500 boost
+@f1520 boost
+@f1540 boost
+@f1560 boost
+@f1580 boost
+@f1600 boost
+@f1620 boost
+@f1640 boost
+@f1660 boost
+@f1680 boost
+@f1700 boost
+@f1720 boost
+@f1740 boost
+@f1760 boost
+@f1780 boost
+@f1800 boost
+@f1820 boost
+@f1840 boost
+@f1860 boost
+@f1880 boost
+@f1950 obj u048e; status

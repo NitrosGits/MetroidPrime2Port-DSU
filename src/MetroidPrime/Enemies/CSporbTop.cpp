@@ -46,6 +46,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Flinch", static_cast< CPatterned::StateMachine::StateFunc >(&CSporbTop::Flinch)},
 };
 
+// @ fn_76_2204
 CSporbTop::CSporbTop(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CModelData& modelData,
                      const CPatternedInfo& patternedInfo, const CActorParameters& actorParams)
@@ -70,6 +71,7 @@ CSporbTop::CSporbTop(TUniqueId uid, const rstl::string& name, const CEntityInfo&
       include, CMaterialList(skExcludeCharacter, skExcludePlayer)));
 }
 
+// @ fn_76_2198
 void CSporbTop::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -100,14 +102,17 @@ void CSporbTop::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_76_205C
 void CSporbTop::Think(float dt, CStateManager& mgr) { CPatterned::Think(dt, mgr); }
 
 void CSporbTop::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
 void CSporbTop::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_76_1FFC
 void CSporbTop::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
 
+// @ fn_76_1F94
 void CSporbTop::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -120,6 +125,7 @@ void CSporbTop::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_1F2C
 void CSporbTop::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -132,6 +138,7 @@ void CSporbTop::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_1EF4
 void CSporbTop::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -216,6 +223,7 @@ void CSporbTop::Fire(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_15A0
 void CSporbTop::Spit(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -227,6 +235,7 @@ void CSporbTop::Spit(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_1568
 void CSporbTop::Close(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -287,6 +296,7 @@ bool CSporbTop::ShouldSpit(CStateManager& mgr, const CTriggerData& data) const {
 
 void CSporbTop::ResetAttack(CStateManager& mgr, bool flag) {}
 
+// @ fn_76_11B4
 CVector3f CSporbTop::GetOrbitPosition(const CStateManager& mgr) const { return mOrbitPosition; }
 
 void CSporbTop::Freeze(CStateManager& mgr, const CVector3f& position, CUnitVector3f direction,
@@ -297,12 +307,15 @@ void CSporbTop::Freeze(CStateManager& mgr, const CVector3f& position, CUnitVecto
   }
 }
 
+// @ fn_76_115C
 const CCollisionPrimitive* CSporbTop::GetCollisionPrimitive() const { return &mSphere; }
 
+// @ fn_76_10C0
 rstl::optional_object< CAABox > CSporbTop::GetTouchBounds() const {
   return GetCollisionPrimitive()->CalculateAABox(GetTransform());
 }
 
+// @ fn_76_1048
 void CSporbTop::StartFlinch(CStateManager& mgr) {
   mState = kS_Flinch;
   mStateMachine->SetState(mgr, *this, rstl::string_l("Flinch"));

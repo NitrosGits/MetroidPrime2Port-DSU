@@ -1,0 +1,26 @@
+# 06_swamp_boostballguardian, an ordinary Sporb u041b (top u041c, grabber u041d; its power bomb guardian
+# flag is 0 on disc): woken, shooting, stage messages, scan visor, hurt top (flinch, fake death).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/sporb.py <out>
+#   3dfd2249,06_swamp_boostballguardian --con tools/cov/specs/sporb_undertemple.con --fast --frames 2800
+@f300 god 1; give morphBall 1; give boostBall 1; give powerBomb 5; give missile 50
+@f305 obj u041b; status
+@f310 place u041b player 14
+@f320 send u041b Activate; send u041b Alert; fsm u041b WakeUp
+@f400 obj u041b; status
+@f420 fsm u041b Attack
+@f425 fsm u041b Fire
+@f700 obj u041b
+@f800 send u041b Increment
+@f820 fsm u041b Attack
+@f825 fsm u041b Fire
+@f1100 send u041b Increment
+@f1120 fsm u041b Attack
+@f1125 fsm u041b Fire
+@f1400 send u041b Decrement
+@f1500 visor scan
+@f1600 visor combat
+@f1700 damage u041c 1
+@f1900 damage u041c 2000
+@f2200 obj u041b; obj u041c
+@f2400 fsm u041b Flinch
+@f2700 obj u041b; status

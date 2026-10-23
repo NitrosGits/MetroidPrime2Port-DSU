@@ -1,0 +1,33 @@
+# 11_swamp_bloggtank_dark layer 2, the Power Bomb Guardian u05f8 (top u05f7, no grabber): woken,
+# power bomb shots at the player and at its target waypoints, stage steps, hurt top, scan visor.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/sporb.py <out>
+#   3dfd2249,11_swamp_bloggtank_dark --con tools/cov/specs/sporb_pbg.con --fast --frames 3200
+@f200 layer 2
+@f300 god 1; give morphBall 1; give boostBall 1; give powerBomb 5; give missile 50
+@f305 tp -159 -106 -138
+@f320 send u05f8 Activate; send u05f8 Alert; fsm u05f8 WakeUp
+@f400 status; obj u05f8
+@f420 fsm u05f8 Attack
+@f425 fsm u05f8 Fire
+@f700 send u069b Activate; send u069a Activate; send u0696 Activate
+@f720 fsm u05f8 Attack
+@f725 fsm u05f8 Fire
+@f900 send u05f8 Increment
+@f920 fsm u05f8 Attack
+@f925 fsm u05f8 Fire
+@f1150 send u05f8 Increment
+@f1170 fsm u05f8 Attack
+@f1175 fsm u05f8 Fire
+@f1400 send u05f8 Increment
+@f1420 fsm u05f8 Attack
+@f1425 fsm u05f8 Fire
+@f1650 send u05f8 Decrement
+@f1700 visor scan
+@f1800 visor combat
+@f1850 damage u05f7 1
+@f1950 fsm u05f8 Flinch
+@f2200 damage u05f7 5000
+@f2600 obj u05f8; obj u05f7; status
+@f2700 fsm u05f8 GoToSleep
+@f2900 fsm u05f8 WakeUp
+@f3100 status

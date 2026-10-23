@@ -1,0 +1,283 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_76_0	70	B	CSporbTop::~CSporbTop	-	upstream body (CSporbTop)	no
+00070	fn_76_70	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
+00254	fn_76_254	94	H	CAiKnockBackMgr::~CAiKnockBackMgr	-	weak copy / template instance	no
+002E8	fn_76_2E8	8	B	CSporbTop::IsScanVisorSelfRender	-	upstream body (CSporbTop)	no
+002F0	fn_76_2F0	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+00300	fn_76_300	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+00308	fn_76_308	8	H	CPatterned::ProjectileInfo	-	weak copy / template instance	no
+00310	fn_76_310	8	H	CPatterned::GetSearchPath	-	weak copy / template instance	no
+00318	fn_76_318	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+00320	fn_76_320	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+00328	fn_76_328	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+00338	fn_76_338	C	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+00344	fn_76_344	C	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+00350	fn_76_350	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+00358	fn_76_358	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+00360	fn_76_360	8	H	CAi::IsListening	-	weak copy / template instance	no
+00368	fn_76_368	8	H	CAi::Listen	-	weak copy / template instance	no
+00370	fn_76_370	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+0038C	fn_76_38C	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+003B8	fn_76_3B8	2BC	B	LoadSporbTop	-	upstream body (CSporbTop)	no
+00674	fn_76_674	40	H	__ct__Q24rstl29optional_object<10CModelData>FRCQ24rstl29optional_object<10CModelData>	-	weak copy / template instance	no
+006B4	fn_76_6B4	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak copy / template instance	no
+006D4	fn_76_6D4	28	H	construct__Q24rstl35construction_policy<10CModelData	-	weak copy / template instance	no
+006FC	fn_76_6FC	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+00838	fn_76_838	290	B	CSporbTop::Death	-	upstream body (CSporbTop)	no
+00AC8	fn_76_AC8	15C	B	CSporbTop::GetModelBounds	-	upstream body (CSporbTop)	no
+00C24	fn_76_C24	224	B	CSporbTop::GetScanVisorRenderBounds	-	upstream body (CSporbTop)	no
+00E48	fn_76_E48	200	B	CSporbTop::ScanVisorRender	-	upstream body (CSporbTop)	no
+01048	fn_76_1048	78	B	CSporbTop::StartFlinch	sporb1	upstream body (CSporbTop)	yes
+010C0	fn_76_10C0	9C	B	CSporbTop::GetTouchBounds	sporb1	upstream body (CSporbTop)	yes
+0115C	fn_76_115C	8	B	CSporbTop::GetCollisionPrimitive	sporb1	upstream body (CSporbTop)	yes
+01164	fn_76_1164	50	B	CSporbTop::Freeze	-	upstream body (CSporbTop)	no
+011B4	fn_76_11B4	1C	B	CSporbTop::GetOrbitPosition	sporb1	upstream body (CSporbTop)	yes
+011D0	fn_76_11D0	4	H	fn_76_11D0	-	unnamed (weak copy / template instance)	no
+011D4	fn_76_11D4	14	B	CSporbTop::ShouldSpit	-	upstream body (CSporbTop)	no
+011E8	fn_76_11E8	10	B	CSporbTop::ShouldClose	-	upstream body (CSporbTop)	no
+011F8	fn_76_11F8	1C	B	CSporbTop::ShouldReload	-	upstream body (CSporbTop)	no
+01214	fn_76_1214	1C	B	CSporbTop::ShouldFire	-	upstream body (CSporbTop)	no
+01230	fn_76_1230	20	B	CSporbTop::AnimOver	-	upstream body (CSporbTop)	no
+01250	fn_76_1250	1C	B	CSporbTop::ShouldAttack	-	upstream body (CSporbTop)	no
+0126C	fn_76_126C	1C	B	CSporbTop::ShouldPatrol	-	upstream body (CSporbTop)	no
+01288	fn_76_1288	23C	B	CSporbTop::Reload	-	upstream body (CSporbTop)	no
+014C4	fn_76_14C4	5C	H	CBCGenerateCmd::~CBCGenerateCmd	-	weak copy / template instance	no
+01520	fn_76_1520	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+01568	fn_76_1568	38	B	CSporbTop::Close	sporb1	upstream body (CSporbTop)	yes
+015A0	fn_76_15A0	38	B	CSporbTop::Spit	sporb1	upstream body (CSporbTop)	yes
+015D8	fn_76_15D8	23C	B	CSporbTop::Fire	-	upstream body (CSporbTop)	no
+01814	fn_76_1814	258	B	CSporbTop::GoToSleep	-	upstream body (CSporbTop)	no
+01A6C	fn_76_1A6C	254	B	CSporbTop::Flinch	-	upstream body (CSporbTop)	no
+01CC0	fn_76_1CC0	234	B	CSporbTop::WakeUp	-	upstream body (CSporbTop)	no
+01EF4	fn_76_1EF4	38	B	CSporbTop::Attack	sporb1	upstream body (CSporbTop)	yes
+01F2C	fn_76_1F2C	68	B	CSporbTop::Patrol	sporb1	upstream body (CSporbTop)	yes
+01F94	fn_76_1F94	68	B	CSporbTop::Sleep	sporb1	upstream body (CSporbTop)	yes
+01FFC	fn_76_1FFC	20	B	CSporbTop::AddToRenderer	sporb1	upstream body (CSporbTop)	yes
+0201C	fn_76_201C	20	B	CSporbTop::PreRender	-	upstream body (CSporbTop)	no
+0203C	fn_76_203C	20	B	CSporbTop::Render	-	upstream body (CSporbTop)	no
+0205C	fn_76_205C	20	B	CSporbTop::Think	sporb1	upstream body (CSporbTop)	yes
+0207C	fn_76_207C	11C	B	CSporbTop::AcceptScriptMsg	-	upstream body (CSporbTop)	no
+02198	fn_76_2198	6C	B	CSporbTop::SetupStateMachine	sporb1	upstream body (CSporbTop)	yes
+02204	fn_76_2204	22C	B	CSporbTop::CSporbTop	sporb1	upstream body (CSporbTop)	yes
+02430	fn_76_2430	278	H	__sinit_CSporbTop_cpp	-	weak copy / template instance	no
+026A8	fn_76_26A8	60	B	CTendrilGen::~CTendrilGen	-	upstream body (CTendrilGen)	no
+02708	fn_76_2708	8	H	fn_76_2708	-	unnamed (weak copy / template instance)	no
+02710	fn_76_2710	8	H	fn_76_2710	-	unnamed (weak copy / template instance)	no
+02718	fn_76_2718	8	H	fn_76_2718	-	unnamed (weak copy / template instance)	no
+02720	fn_76_2720	8	H	fn_76_2720	-	unnamed (weak copy / template instance)	no
+02728	fn_76_2728	8	H	fn_76_2728	-	unnamed (weak copy / template instance)	no
+02730	fn_76_2730	8	H	fn_76_2730	-	unnamed (weak copy / template instance)	no
+02738	fn_76_2738	8	H	fn_76_2738	-	unnamed (weak copy / template instance)	no
+02740	fn_76_2740	8	H	fn_76_2740	-	unnamed (weak copy / template instance)	no
+02748	fn_76_2748	C	H	fn_76_2748	-	unnamed (weak copy / template instance)	no
+02754	fn_76_2754	8	H	fn_76_2754	-	unnamed (weak copy / template instance)	no
+0275C	fn_76_275C	8	H	fn_76_275C	-	unnamed (weak copy / template instance)	no
+02764	fn_76_2764	5C	H	fn_76_2764	-	unnamed (weak copy / template instance)	no
+027C0	fn_76_27C0	24	T	RELExit	-	REL runtime	no
+027E4	fn_76_27E4	20	T	RELMain	-	REL runtime	no
+02804	fn_76_2804	54	B	SetFuncPtrs	-	upstream body (CSporbBase)	no
+02858	fn_76_2858	F0C	B	LoadSporbBase	-	upstream body (CSporbBase)	no
+03764	fn_76_3764	60	H	fn_76_3764	-	unnamed (weak copy / template instance)	no
+037C4	fn_76_37C4	5C	H	fn_76_37C4	-	unnamed (weak copy / template instance)	no
+03820	fn_76_3820	84	H	fn_76_3820	-	unnamed (weak copy / template instance)	no
+038A4	fn_76_38A4	68	H	fn_76_38A4	-	unnamed (weak copy / template instance)	no
+0390C	fn_76_390C	20	H	fn_76_390C	-	unnamed (weak copy / template instance)	no
+0392C	fn_76_392C	AC	H	fn_76_392C	-	unnamed (weak copy / template instance)	no
+039D8	fn_76_39D8	23C	H	fn_76_39D8	-	unnamed (weak copy / template instance)	no
+03C14	fn_76_3C14	3C	H	fn_76_3C14	-	unnamed (weak copy / template instance)	no
+03C50	fn_76_3C50	94	B	CTendrilGen::CTendrilGen	-	upstream body (CTendrilGen)	no
+03CE4	fn_76_3CE4	54	H	fn_76_3CE4	-	unnamed (weak copy / template instance)	no
+03D38	fn_76_3D38	174	B	CSporbBase::ClearTendrilParticles	-	upstream body (CSporbBase)	no
+03EAC	fn_76_3EAC	190	B	CSporbBase::GetModelBounds	-	upstream body (CSporbBase)	no
+0403C	fn_76_403C	18C	B	CSporbBase::ScanVisorRender	-	upstream body (CSporbBase)	no
+041C8	fn_76_41C8	1F8	B	CSporbBase::GetScanVisorRenderBounds	-	upstream body (CSporbBase)	no
+043C0	fn_76_43C0	B8	B	CSporbBase::GetScanObjectIndicatorPosition	-	upstream body (CSporbBase)	no
+04478	fn_76_4478	44	B	CSporbBase::GetGravity	-	upstream body (CSporbBase)	no
+044BC	fn_76_44BC	27C	B	CSporbBase::ShootPowerBomb	-	upstream body (CSporbBase)	no
+04738	fn_76_4738	1C	B	CSporbBase::ProjectileInfo	-	upstream body (CSporbBase)	no
+04754	fn_76_4754	C8	B	CSporbBase::PredictFlightTime	sporb1	upstream body (CSporbBase)	yes
+0481C	fn_76_481C	450	B	CSporbBase::PredictAimOffset	-	upstream body (CSporbBase)	no
+04C6C	fn_76_4C6C	5C	H	fn_76_4C6C	-	unnamed (weak copy / template instance)	no
+04CC8	fn_76_4CC8	3C	H	fn_76_4CC8	-	unnamed (weak copy / template instance)	no
+04D04	fn_76_4D04	6C	H	fn_76_4D04	-	unnamed (weak copy / template instance)	no
+04D70	fn_76_4D70	218	B	CSporbBase::CreatePowerBomb	-	upstream body (CSporbBase)	no
+04F88	fn_76_4F88	48	H	fn_76_4F88	-	unnamed (weak copy / template instance)	no
+04FD0	fn_76_4FD0	B4	H	fn_76_4FD0	-	unnamed (weak copy / template instance)	no
+05084	fn_76_5084	40	H	fn_76_5084	-	unnamed (weak copy / template instance)	no
+050C4	fn_76_50C4	20	H	fn_76_50C4	-	unnamed (weak copy / template instance)	no
+050E4	fn_76_50E4	28	H	fn_76_50E4	-	unnamed (weak copy / template instance)	no
+0510C	fn_76_510C	80	H	fn_76_510C	-	unnamed (weak copy / template instance)	no
+0518C	fn_76_518C	6C	H	fn_76_518C	-	unnamed (weak copy / template instance)	no
+051F8	fn_76_51F8	3C	H	fn_76_51F8	-	unnamed (weak copy / template instance)	no
+05234	fn_76_5234	3C	H	fn_76_5234	-	unnamed (weak copy / template instance)	no
+05270	fn_76_5270	5C	H	fn_76_5270	-	unnamed (weak copy / template instance)	no
+052CC	fn_76_52CC	20	H	fn_76_52CC	-	unnamed (weak copy / template instance)	no
+052EC	fn_76_52EC	48	H	fn_76_52EC	-	unnamed (weak copy / template instance)	no
+05334	fn_76_5334	54	H	fn_76_5334	-	unnamed (weak copy / template instance)	no
+05388	fn_76_5388	1D0	B	CSporbBase::GetTopAttachPosition	-	upstream body (CSporbBase)	no
+05558	fn_76_5558	4C	B	CSporbBase::GetLeanDirection	-	upstream body (CSporbBase)	no
+055A4	fn_76_55A4	314	B	CSporbBase::DoUserAnimEvent	-	upstream body (CSporbBase)	no
+058B8	fn_76_58B8	4C	B	CSporbBase::GetContactDamage	-	upstream body (CSporbBase)	no
+05904	fn_76_5904	90	H	fn_76_5904	-	unnamed (weak copy / template instance)	no
+05994	fn_76_5994	28	B	CSporbBase::StopTendril	sporb1	upstream body (CSporbBase)	yes
+059BC	fn_76_59BC	368	B	CSporbBase::PickTargetPosition	-	upstream body (CSporbBase)	no
+05D24	fn_76_5D24	54	H	fn_76_5D24	-	unnamed (weak copy / template instance)	no
+05D78	fn_76_5D78	2FC	B	CSporbBase::SpitPlayer	-	upstream body (CSporbBase)	no
+06074	fn_76_6074	154	B	CSporbBase::PickWaypointPosition	-	upstream body (CSporbBase)	no
+061C8	fn_76_61C8	54	H	fn_76_61C8	-	unnamed (weak copy / template instance)	no
+0621C	fn_76_621C	B0	B	CSporbBase::ResetAfterGrab	-	upstream body (CSporbBase)	no
+062CC	fn_76_62CC	C4	B	CSporbBase::BuildLookAtTransform	sporb1	upstream body (CSporbBase)	yes
+06390	fn_76_6390	494	B	CSporbBase::UpdateAim	-	upstream body (CSporbBase)	no
+06824	fn_76_6824	124	B	CSporbBase::GetTopHeadPosition	-	upstream body (CSporbBase)	no
+06948	fn_76_6948	174	B	CSporbBase::ResetShotTimers	-	upstream body (CSporbBase)	no
+06ABC	fn_76_6ABC	4B4	B	CSporbBase::UpdateShooting	-	upstream body (CSporbBase)	no
+06F70	fn_76_6F70	90	B	CSporbBase::GetLocatorPosition	sporb1	upstream body (CSporbBase)	yes
+07000	fn_76_7000	1AC	B	CSporbBase::AttachPlayer	-	upstream body (CSporbBase)	no
+071AC	fn_76_71AC	1B34	B	CSporbBase::UpdateGrabber	-	upstream body (CSporbBase)	no
+08CE0	fn_76_8CE0	44	B	CSporbBase::UpdateAttack	-	upstream body (CSporbBase)	no
+08D24	fn_76_8D24	10C	B	CSporbBase::GetAimAngle	sporb1	upstream body (CSporbBase)	yes
+08E30	fn_76_8E30	60	B	CSporbBase::IsWithinRange	sporb1	upstream body (CSporbBase)	yes
+08E90	fn_76_8E90	158	B	CSporbBase::FindTargetPlayer	-	upstream body (CSporbBase)	no
+08FE8	fn_76_8FE8	8	B	CSporbBase::SpitOver	sporb1	upstream body (CSporbBase)	yes
+08FF0	fn_76_8FF0	34	B	CSporbBase::AttackOver	-	upstream body (CSporbBase)	no
+09024	fn_76_9024	4C	B	CSporbBase::AttackExitOver	sporb1	upstream body (CSporbBase)	yes
+09070	fn_76_9070	14	B	CSporbBase::ShouldFlail	sporb1	upstream body (CSporbBase)	yes
+09084	fn_76_9084	8	B	CSporbBase::ShouldSpit	sporb1	upstream body (CSporbBase)	yes
+0908C	fn_76_908C	A4	B	CSporbBase::ShouldFire	-	upstream body (CSporbBase)	no
+09130	fn_76_9130	2C	B	CSporbBase::ShouldPatrol	sporb1	upstream body (CSporbBase)	yes
+0915C	fn_76_915C	148	B	CSporbBase::ShouldAttack	-	upstream body (CSporbBase)	no
+092A4	fn_76_92A4	20	B	CSporbBase::AnimOver	sporb1	upstream body (CSporbBase)	yes
+092C4	fn_76_92C4	40	B	CSporbBase::FakeDead	sporb1	upstream body (CSporbBase)	yes
+09304	fn_76_9304	328	B	CSporbBase::FakeDeath	-	upstream body (CSporbBase)	no
+0962C	fn_76_962C	2E8	B	CSporbBase::GoToSleep	-	upstream body (CSporbBase)	no
+09914	fn_76_9914	5C	H	fn_76_9914	-	unnamed (weak copy / template instance)	no
+09970	fn_76_9970	C0	H	fn_76_9970	-	unnamed (weak copy / template instance)	no
+09A30	fn_76_9A30	C	H	fn_76_9A30	-	unnamed (weak copy / template instance)	no
+09A3C	fn_76_9A3C	2B8	B	CSporbBase::WakeUp	-	upstream body (CSporbBase)	no
+09CF4	fn_76_9CF4	264	B	CSporbBase::Flinch	-	upstream body (CSporbBase)	no
+09F58	fn_76_9F58	4C	B	CSporbBase::ContinueFire	sporb1	upstream body (CSporbBase)	yes
+09FA4	fn_76_9FA4	1C	B	CSporbBase::SpitExit	sporb1	upstream body (CSporbBase)	yes
+09FC0	fn_76_9FC0	10C	B	CSporbBase::AttackExit	-	upstream body (CSporbBase)	no
+0A0CC	fn_76_A0CC	4	B	CSporbBase::ContinueSpit	sporb1	upstream body (CSporbBase)	yes
+0A0D0	fn_76_A0D0	4	B	CSporbBase::ContinueFlail	sporb1	upstream body (CSporbBase)	yes
+0A0D4	fn_76_A0D4	2A8	B	CSporbBase::Flail	-	upstream body (CSporbBase)	no
+0A37C	fn_76_A37C	2B0	B	CSporbBase::Spit	-	upstream body (CSporbBase)	no
+0A62C	fn_76_A62C	26C	B	CSporbBase::Fire	-	upstream body (CSporbBase)	no
+0A898	fn_76_A898	1F0	B	CSporbBase::Attack	-	upstream body (CSporbBase)	no
+0AA88	fn_76_AA88	D0	B	CSporbBase::Patrol	-	upstream body (CSporbBase)	no
+0AB58	fn_76_AB58	5C	B	CSporbBase::Sleep	sporb1	upstream body (CSporbBase)	yes
+0ABB4	fn_76_ABB4	C8	B	CSporbBase::AddToRenderer	-	upstream body (CSporbBase)	no
+0AC7C	fn_76_AC7C	3C	H	fn_76_AC7C	-	unnamed (weak copy / template instance)	no
+0ACB8	fn_76_ACB8	1AC	B	CSporbBase::PreRenderAllViewports	-	upstream body (CSporbBase)	no
+0AE64	fn_76_AE64	20	B	CSporbBase::PreRender	sporb1	upstream body (CSporbBase)	yes
+0AE84	fn_76_AE84	48	B	CSporbBase::Render	sporb1	upstream body (CSporbBase)	yes
+0AECC	fn_76_AECC	C0	B	CSporbBase::DecayAim	-	upstream body (CSporbBase)	no
+0AF8C	fn_76_AF8C	A58	B	CSporbBase::Think	-	upstream body (CSporbBase)	no
+0B9E4	fn_76_B9E4	654	B	CSporbBase::AcceptScriptMsg	-	upstream body (CSporbBase)	no
+0C038	fn_76_C038	6C	B	CSporbBase::SetupStateMachine	sporb1	upstream body (CSporbBase)	yes
+0C0A4	fn_76_C0A4	8C	B	CSporbBase::SetStage	-	upstream body (CSporbBase)	no
+0C130	fn_76_C130	D80	B	CSporbBase::CSporbBase	-	upstream body (CSporbBase)	no
+0CEB0	fn_76_CEB0	3C	H	fn_76_CEB0	-	unnamed (weak copy / template instance)	no
+0CEEC	fn_76_CEEC	184	H	fn_76_CEEC	-	unnamed (weak copy / template instance)	no
+0D070	fn_76_D070	3C	H	fn_76_D070	-	unnamed (weak copy / template instance)	no
+0D0AC	fn_76_D0AC	8C	H	fn_76_D0AC	-	unnamed (weak copy / template instance)	no
+0D138	fn_76_D138	B8	H	fn_76_D138	-	unnamed (weak copy / template instance)	no
+0D1F0	fn_76_D1F0	5C	H	fn_76_D1F0	-	unnamed (weak copy / template instance)	no
+0D24C	fn_76_D24C	5C	H	fn_76_D24C	-	unnamed (weak copy / template instance)	no
+0D2A8	fn_76_D2A8	54	H	fn_76_D2A8	-	unnamed (weak copy / template instance)	no
+0D2FC	fn_76_D2FC	130	H	fn_76_D2FC	-	unnamed (weak copy / template instance)	no
+0D42C	fn_76_D42C	6C	H	fn_76_D42C	-	unnamed (weak copy / template instance)	no
+0D498	fn_76_D498	78	H	fn_76_D498	-	unnamed (weak copy / template instance)	no
+0D510	fn_76_D510	15C	B	CSporbBase::~CSporbBase	-	upstream body (CSporbBase)	no
+0D66C	fn_76_D66C	8	H	fn_76_D66C	-	unnamed (weak copy / template instance)	no
+0D674	fn_76_D674	68	B	CSporbBase::GetTouchBounds	sporb1	upstream body (CSporbBase)	yes
+0D6DC	fn_76_D6DC	A4	H	fn_76_D6DC	-	unnamed (weak copy / template instance)	no
+0D780	fn_76_D780	98	H	fn_76_D780	-	unnamed (weak copy / template instance)	no
+0D818	fn_76_D818	3C	H	fn_76_D818	-	unnamed (weak copy / template instance)	no
+0D854	fn_76_D854	98	H	fn_76_D854	-	unnamed (weak copy / template instance)	no
+0D8EC	fn_76_D8EC	3C	H	fn_76_D8EC	-	unnamed (weak copy / template instance)	no
+0D928	fn_76_D928	C4	H	fn_76_D928	-	unnamed (weak copy / template instance)	no
+0D9EC	fn_76_D9EC	44	H	fn_76_D9EC	-	unnamed (weak copy / template instance)	no
+0DA30	fn_76_DA30	3B0	H	__sinit_CSporbBase_cpp	-	weak copy / template instance	no
+0DDE0	fn_76_DDE0	70	B	CSporbProjectile::~CSporbProjectile	-	upstream body (CSporbProjectile)	no
+0DE50	fn_76_DE50	8	B	CSporbProjectile::GetCollisionPrimitive	-	upstream body (CSporbProjectile)	no
+0DE58	fn_76_DE58	8	B	CSporbProjectile::IsScanVisorSelfRender	-	upstream body (CSporbProjectile)	no
+0DE60	fn_76_DE60	32C	B	LoadSporbProjectile	-	upstream body (CSporbProjectile)	no
+0E18C	fn_76_E18C	8C	B	CSporbProjectile::ScanVisorRender	-	upstream body (CSporbProjectile)	no
+0E218	fn_76_E218	A4	B	CSporbProjectile::GetScanVisorRenderBounds	-	upstream body (CSporbProjectile)	no
+0E2BC	fn_76_E2BC	9C	B	CSporbProjectile::GetTouchBounds	sporb1	upstream body (CSporbProjectile)	yes
+0E358	fn_76_E358	17C	B	CSporbProjectile::PlayBallEscapeEffect	-	upstream body (CSporbProjectile)	no
+0E4D4	fn_76_E4D4	17C	B	CSporbProjectile::PlayBallSpitEffect	-	upstream body (CSporbProjectile)	no
+0E650	fn_76_E650	208	B	CSporbProjectile::CollidedWith	-	upstream body (CSporbProjectile)	no
+0E858	fn_76_E858	14	B	CSporbProjectile::ShouldSpit	sporb1	upstream body (CSporbProjectile)	yes
+0E86C	fn_76_E86C	14	B	CSporbProjectile::ShouldOpen	sporb1	upstream body (CSporbProjectile)	yes
+0E880	fn_76_E880	14	B	CSporbProjectile::ShouldClose	sporb1	upstream body (CSporbProjectile)	yes
+0E894	fn_76_E894	10	B	CSporbProjectile::ShouldLaunch	sporb1	upstream body (CSporbProjectile)	yes
+0E8A4	fn_76_E8A4	1C	B	CSporbProjectile::ShouldReload	sporb1	upstream body (CSporbProjectile)	yes
+0E8C0	fn_76_E8C0	1C	B	CSporbProjectile::ShouldFire	sporb1	upstream body (CSporbProjectile)	yes
+0E8DC	fn_76_E8DC	20	B	CSporbProjectile::AnimOver	-	upstream body (CSporbProjectile)	no
+0E8FC	fn_76_E8FC	1C	B	CSporbProjectile::ShouldAttack	sporb1	upstream body (CSporbProjectile)	yes
+0E918	fn_76_E918	1C	B	CSporbProjectile::ShouldPatrol	sporb1	upstream body (CSporbProjectile)	yes
+0E934	fn_76_E934	23C	B	CSporbProjectile::Reload	-	upstream body (CSporbProjectile)	no
+0EB70	fn_76_EB70	38	B	CSporbProjectile::Spit	sporb1	upstream body (CSporbProjectile)	yes
+0EBA8	fn_76_EBA8	234	B	CSporbProjectile::Fire	-	upstream body (CSporbProjectile)	no
+0EDDC	fn_76_EDDC	38	B	CSporbProjectile::Open	sporb1	upstream body (CSporbProjectile)	yes
+0EE14	fn_76_EE14	54	B	CSporbProjectile::Close	sporb1	upstream body (CSporbProjectile)	yes
+0EE68	fn_76_EE68	38	B	CSporbProjectile::Launch	sporb1	upstream body (CSporbProjectile)	yes
+0EEA0	fn_76_EEA0	38	B	CSporbProjectile::GoToSleep	sporb1	upstream body (CSporbProjectile)	yes
+0EED8	fn_76_EED8	38	B	CSporbProjectile::WakeUp	sporb1	upstream body (CSporbProjectile)	yes
+0EF10	fn_76_EF10	7C	B	CSporbProjectile::Attack	sporb1	upstream body (CSporbProjectile)	yes
+0EF8C	fn_76_EF8C	4C	B	CSporbProjectile::Patrol	sporb1	upstream body (CSporbProjectile)	yes
+0EFD8	fn_76_EFD8	4C	B	CSporbProjectile::Sleep	sporb1	upstream body (CSporbProjectile)	yes
+0F024	fn_76_F024	20	B	CSporbProjectile::AddToRenderer	sporb1	upstream body (CSporbProjectile)	yes
+0F044	fn_76_F044	20	B	CSporbProjectile::PreRender	-	upstream body (CSporbProjectile)	no
+0F064	fn_76_F064	20	B	CSporbProjectile::Render	-	upstream body (CSporbProjectile)	no
+0F084	fn_76_F084	21C	B	CSporbProjectile::Think	-	upstream body (CSporbProjectile)	no
+0F2A0	fn_76_F2A0	188	B	CSporbProjectile::AcceptScriptMsg	-	upstream body (CSporbProjectile)	no
+0F428	fn_76_F428	6C	B	CSporbProjectile::SetupStateMachine	sporb1	upstream body (CSporbProjectile)	yes
+0F494	fn_76_F494	3E8	B	CSporbProjectile::CSporbProjectile	-	upstream body (CSporbProjectile)	no
+0F87C	fn_76_F87C	94	H	__dt__Q216CCECharacterInfo16CParticleResDataFv	-	weak copy / template instance	no
+0F910	fn_76_F910	80	H	__ct__Q216CCECharacterInfo16CParticleResDataFRCQ24rstl37vector<Ui	-	weak copy / template instance	no
+0F990	fn_76_F990	100	H	__ct__Q24rstl37vector<Ui	-	weak copy / template instance	no
+0FA90	fn_76_FA90	54	H	__dt__Q24rstl37vector<Ui	-	weak copy / template instance	no
+0FAE4	fn_76_FAE4	A4	H	reserve__Q24rstl37vector<Ui	-	weak copy / template instance	no
+0FB88	fn_76_FB88	2DC	H	__sinit_CSporbProjectile_cpp	-	weak copy / template instance	no
+0FE64	fn_76_FE64	468	B	LoadSporbNeedle	-	upstream body (CSporbNeedle)	no
+102CC	fn_76_102CC	EC	B	SLdrSporbNeedle::SLdrSporbNeedle	-	upstream body (SLdrSporbNeedle)	no
+103B8	fn_76_103B8	B0	B	CSporbNeedle::GetTouchBounds	sporb1	upstream body (CSporbNeedle)	yes
+10468	fn_76_10468	8	B	CSporbNeedle::GetCollisionPrimitive	-	upstream body (CSporbNeedle)	no
+10470	fn_76_10470	F0	B	CSporbNeedle::GetClosestCameraDistanceSq	sporb1	upstream body (CSporbNeedle)	yes
+10560	fn_76_10560	120	B	CSporbNeedle::UpdateFuse	sporb1	upstream body (CSporbNeedle)	yes
+10680	fn_76_10680	420	B	CSporbNeedle::Explode	-	upstream body (CSporbNeedle)	no
+10AA0	fn_76_10AA0	1F8	B	CSporbNeedle::UpdateEffects	-	upstream body (CSporbNeedle)	no
+10C98	fn_76_10C98	8C	B	CSporbNeedle::AddToRenderer	-	upstream body (CSporbNeedle)	no
+10D24	fn_76_10D24	C0	B	CSporbNeedle::Render	-	upstream body (CSporbNeedle)	no
+10DE4	fn_76_10DE4	358	B	CSporbNeedle::CollidedWith	-	upstream body (CSporbNeedle)	no
+1113C	fn_76_1113C	20	B	CSporbNeedle::Touch	-	upstream body (CSporbNeedle)	no
+1115C	fn_76_1115C	210	B	CSporbNeedle::Think	sporb1	upstream body (CSporbNeedle)	yes
+1136C	fn_76_1136C	20	B	CSporbNeedle::PreThink	-	upstream body (CSporbNeedle)	no
+1138C	fn_76_1138C	88	B	CSporbNeedle::AcceptScriptMsg	sporb1	upstream body (CSporbNeedle)	yes
+11414	fn_76_11414	C0	B	CSporbNeedle::~CSporbNeedle	-	upstream body (CSporbNeedle)	no
+114D4	fn_76_114D4	408	B	CSporbNeedle::CSporbNeedle	-	upstream body (CSporbNeedle)	no
+118DC	fn_76_118DC	68	H	SMoverData::SMoverData	-	weak copy / template instance	no
+11944	fn_76_11944	10C	B	CreateElementGen	-	upstream body (CSporbNeedle)	no
+11A50	fn_76_11A50	60	B	CSporbPowerBomb::~CSporbPowerBomb	-	upstream body (CSporbPowerBomb)	no
+11AB0	fn_76_11AB0	84	H	fn_76_11AB0	-	unnamed (weak copy / template instance)	no
+11B34	fn_76_11B34	7C	H	fn_76_11B34	-	unnamed (weak copy / template instance)	no
+11BB0	fn_76_11BB0	70	H	fn_76_11BB0	-	unnamed (weak copy / template instance)	no
+11C20	fn_76_11C20	58	H	fn_76_11C20	-	unnamed (weak copy / template instance)	no
+11C78	fn_76_11C78	54	H	fn_76_11C78	-	unnamed (weak copy / template instance)	no
+11CCC	fn_76_11CCC	1C	B	CSporbPowerBomb::GetExplosionNormal	-	upstream body (CSporbPowerBomb)	no
+11CE8	fn_76_11CE8	C	B	CSporbPowerBomb::GetImpactParticle	-	upstream body (CSporbPowerBomb)	no
+11CF4	fn_76_11CF4	20	B	CSporbPowerBomb::Render	-	upstream body (CSporbPowerBomb)	no
+11D14	fn_76_11D14	30	B	CSporbPowerBomb::RayCollisionCheckWithWorld	-	upstream body (CSporbPowerBomb)	no
+11D44	fn_76_11D44	74	B	CSporbPowerBomb::ResolveCollisionWithActor	-	upstream body (CSporbPowerBomb)	no
+11DB8	fn_76_11DB8	6C	B	CSporbPowerBomb::ResolveCollisionWithWorld	-	upstream body (CSporbPowerBomb)	no
+11E24	fn_76_11E24	40C	B	CSporbPowerBomb::Think	-	upstream body (CSporbPowerBomb)	no
+12230	fn_76_12230	190	B	CSporbPowerBomb::CSporbPowerBomb	-	upstream body (CSporbPowerBomb)	no
+123C0	fn_76_123C0	74	H	fn_76_123C0	-	unnamed (weak copy / template instance)	no
+12434	fn_76_12434	C4	T	_unresolved	-	REL runtime	no
+124F8	fn_76_124F8	24	T	_epilog	-	REL runtime	no
+1251C	fn_76_1251C	24	T	_prolog	-	REL runtime	no
+12540	fn_76_12540	4C	H	ModuleDestructors	-	weak copy / template instance	no
+1258C	fn_76_1258C	4C	H	ModuleConstructors	-	weak copy / template instance	no

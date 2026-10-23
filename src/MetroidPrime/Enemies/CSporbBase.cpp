@@ -94,6 +94,7 @@ public:
   CAABox mBounds; // Guessed name
 };
 
+// @ fn_76_D674
 rstl::optional_object< CAABox > CSporbBase::GetTouchBounds() const { return GetBoundingBox(); }
 
 CSporbBase::~CSporbBase() {}
@@ -314,6 +315,7 @@ void CSporbBase::SetStage(uchar stage) {
   }
 }
 
+// @ fn_76_C038
 void CSporbBase::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -591,6 +593,7 @@ void CSporbBase::DecayAim() {
   mRightLean = rstl::max_val(0.f, mRightLean - 0.025f);
 }
 
+// @ fn_76_AE84
 void CSporbBase::Render(const CStateManager& mgr) const {
   CPatterned::Render(mgr);
   if (mTendrilGen.get()) {
@@ -598,6 +601,7 @@ void CSporbBase::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_76_AE64
 void CSporbBase::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
 void CSporbBase::PreRenderAllViewports(CStateManager& mgr) {
@@ -632,6 +636,7 @@ void CSporbBase::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_76_AB58
 void CSporbBase::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -797,8 +802,10 @@ void CSporbBase::Flail(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_A0D0
 void CSporbBase::ContinueFlail(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_76_A0CC
 void CSporbBase::ContinueSpit(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 void CSporbBase::AttackExit(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -825,6 +832,7 @@ void CSporbBase::AttackExit(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_9FA4
 void CSporbBase::SpitExit(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -836,6 +844,7 @@ void CSporbBase::SpitExit(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_9F58
 void CSporbBase::ContinueFire(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -959,6 +968,7 @@ void CSporbBase::FakeDeath(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_92C4
 void CSporbBase::FakeDead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -971,6 +981,7 @@ void CSporbBase::FakeDead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_92A4
 bool CSporbBase::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
@@ -995,6 +1006,7 @@ bool CSporbBase::ShouldAttack(CStateManager& mgr, const CTriggerData& data) cons
   return false;
 }
 
+// @ fn_76_9130
 bool CSporbBase::ShouldPatrol(CStateManager& mgr, const CTriggerData& data) const {
   return mTimeSinceDetection < mPlayerLeashTime && mAlerted;
 }
@@ -1012,12 +1024,15 @@ bool CSporbBase::ShouldFire(CStateManager& mgr, const CTriggerData& data) const 
   return mReadyToFire && mStateMachine->GetTime() > mTimeBetweenAttacks;
 }
 
+// @ fn_76_9084
 bool CSporbBase::ShouldSpit(CStateManager& mgr, const CTriggerData& data) const { return mCanSpit; }
 
+// @ fn_76_9070
 bool CSporbBase::ShouldFlail(CStateManager& mgr, const CTriggerData& data) const {
   return mState == kS_Flailing;
 }
 
+// @ fn_76_9024
 bool CSporbBase::AttackExitOver(CStateManager& mgr, const CTriggerData& data) const {
   return mStateMachine->GetTime() > mTimeBetweenAttacks;
 }
@@ -1032,6 +1047,7 @@ bool CSporbBase::AttackOver(CStateManager& mgr, const CTriggerData& data) const 
   return false;
 }
 
+// @ fn_76_8FE8
 bool CSporbBase::SpitOver(CStateManager& mgr, const CTriggerData& data) const { return true; }
 
 void CSporbBase::FindTargetPlayer(CStateManager& mgr) {
@@ -1053,10 +1069,12 @@ void CSporbBase::FindTargetPlayer(CStateManager& mgr) {
   }
 }
 
+// @ fn_76_8E30
 bool CSporbBase::IsWithinRange(float range, const CActor& other) const {
   return (other.GetTranslation() - GetTranslation()).MagSquared() < range * range;
 }
 
+// @ fn_76_8D24
 float CSporbBase::GetAimAngle(const CStateManager& mgr) const {
   const CTransform4f& xf = GetTransform();
   const CTransform4f locatorXf(GetScaledLocatorTransform(rstl::string_l(skConnectLocator)));
@@ -1429,6 +1447,7 @@ void CSporbBase::AttachPlayer(CStateManager& mgr) {
   }
 }
 
+// @ fn_76_6F70
 CVector3f CSporbBase::GetLocatorPosition() const {
   const CTransform4f connectXf =
       GetTransform() * GetScaledLocatorTransform(rstl::string_l(skConnectLocator));
@@ -1588,6 +1607,7 @@ void CSporbBase::UpdateAim(CStateManager& mgr) {
   }
 }
 
+// @ fn_76_62CC
 CTransform4f CSporbBase::BuildLookAtTransform(CStateManager& mgr, const CVector3f& from) {
   const CUnitVector3f direction(mAimTarget - from);
   const CVector3f& forward = CVector3f::Forward();
@@ -1671,6 +1691,7 @@ void CSporbBase::SpitPlayer(CStateManager& mgr, float force) {
   }
 }
 
+// @ fn_76_5994
 void CSporbBase::StopTendril() {
   mTendrilParticleCount = 0;
   ClearTendrilParticles();
@@ -1875,6 +1896,7 @@ CVector3f CSporbBase::PredictAimOffset(float height, CStateManager& mgr,
   return spread;
 }
 
+// @ fn_76_4754
 float CSporbBase::PredictFlightTime(float height, float gravity, const CVector3f& from,
                                     const CVector3f& to) const {
   const float dz = from.GetZ() - to.GetZ();
