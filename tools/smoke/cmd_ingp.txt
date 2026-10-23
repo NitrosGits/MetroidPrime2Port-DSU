@@ -1,0 +1,33 @@
+# CIngPuddle (module 32: CIngPuddle). Agon Wastes 06_sand_alamofront_dark (world 42b935e4,
+# layer 2) holds seven IngPuddles: u04f7/u0526 (hp 5), u0527/u04fd (hp 10000), u0513/u0541/u0517
+# (no patrol path). The steps follow tools/cov/specs/ingpuddle.con with the save's uids: activate
+# them, deactivate u0541 before activation, delete u0548 (u0526's first waypoint) to end its patrol,
+# shoot and damage them, deactivate/reactivate u0513, delete u0517, with `obj` reads and `objs
+# IngPuddle` before and after. CIngPuddle is a CPhysicsActor, so it has no console FSM. Checks are
+# game updates (@f<n>), never wall seconds.
+# F=3200, last check f2900.
+@f300 layer 2
+@f360 god 1; give missile 50; give chargeBeam 1
+@f380 send u0541 Deactivate
+@f400 send u04f7 Activate; send u0526 Activate; send u0527 Activate; send u04fd Activate; send u0513 Activate; send u0517 Activate
+@f402 obj u0548; send u0548 Delete
+@f420 tp 132 -88 54
+@f440 send u0541 Activate; send u0541 Deactivate
+@f700 obj u04f7; obj u0526; obj u0513
+@f900 shoot u0527
+@f960 shoot u0527 missile
+@f1020 shoot u0527 charged
+@f1060 obj u0527
+@f1100 damage u04fd 5
+@f1400 send u0513 Deactivate
+@f1460 send u0513 Activate
+@f1600 obj u04f7; obj u0526
+@f1700 obj u0526
+@f1800 damage u0526 1
+@f1860 obj u0526
+@f2200 shoot u04f7
+@f2260 obj u04f7
+@f2400 shoot u0526 charged
+@f2700 objs IngPuddle
+@f2800 send u0517 Delete
+@f2900 objs IngPuddle

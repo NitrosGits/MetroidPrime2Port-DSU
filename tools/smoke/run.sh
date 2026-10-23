@@ -152,7 +152,8 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark" [swamp2]="3dfd2249,04_sw
                [rubk]="1baa96c2,07cliff_gyro" [emp2]="863fcd72,07_temple_mothlordsanctuary_dark"
                [cball]="42b935e4,04_sand_mining" [fobj]="42b935e4,05_portalpuzzle"
                [skyr]="3bfa3eff,03_temple_combattraining" [dsbs]="42b935e4,10_sand_alamostorage"
-               [isg]="1baa96c2,06_cliff_spiderballguardian" )
+               [isg]="1baa96c2,06_cliff_spiderballguardian"
+               [ingp]="42b935e4,06_sand_alamofront_dark" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
@@ -167,7 +168,7 @@ declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boos
                [drkc]=4100 [plac]=2000 [plct]=2200 [ming]=1200 [snak]=1000 [eyeb]=2000 [kroc]=2000
                [atma]=2400 [atmb]=2400 [shrd]=1100 [fsw]=2400 [iss]=3000 [ibs]=2600 [mree]=2400
                [puff]=2400 [rubk]=1000 [emp2]=1200 [cball]=1000 [fobj]=800 [skyr]=800 [dsbs]=2000
-               [isg]=3000 )
+               [isg]=3000 [ingp]=3200 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280 [boostg_fsm]=280
                [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280 [ing]=420 [ep]=330
                [plain]=280 [emp3]=280 [turret]=280 [agon54]=280 [darksamus]=280 [splitter]=280
@@ -180,7 +181,7 @@ declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=
                [splinter]=280 [rptl]=280 [chog]=280 [drkc]=280 [plac]=280 [plct]=280 [ming]=280
                [snak]=280 [eyeb]=280 [kroc]=280 [atma]=280 [atmb]=280 [shrd]=280 [fsw]=280 [iss]=280
                [ibs]=280 [mree]=280 [puff]=280 [rubk]=280 [emp2]=280 [cball]=280 [fobj]=280
-               [skyr]=280 [dsbs]=280 [isg]=280 )
+               [skyr]=280 [dsbs]=280 [isg]=280 [ingp]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709 [boostg_fsm]=49710
                [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714 [ep]=49715 [darksamus]=49716
@@ -195,7 +196,7 @@ declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [
                [chog]=49757 [drkc]=49758 [plac]=49759 [plct]=49760 [ming]=49761 [snak]=49762
                [eyeb]=49763 [kroc]=49764 [atma]=49765 [atmb]=49766 [shrd]=49767 [fsw]=49768
                [iss]=49769 [ibs]=49770 [mree]=49771 [puff]=49772 [rubk]=49773 [emp2]=49774
-               [cball]=49775 [fobj]=49776 [skyr]=49777 [dsbs]=49778 [isg]=49779 )
+               [cball]=49775 [fobj]=49776 [skyr]=49777 [dsbs]=49778 [isg]=49779 [ingp]=49780 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
@@ -219,7 +220,8 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [kroc]=cmd_kroc.txt [atma]=cmd_atma.txt [atmb]=cmd_atmb.txt [shrd]=cmd_shrd.txt
                [fsw]=cmd_fsw.txt [iss]=cmd_iss.txt [ibs]=cmd_ibs.txt [mree]=cmd_mree.txt
                [puff]=cmd_puff.txt [rubk]=cmd_rubk.txt [emp2]=cmd_emp2.txt [cball]=cmd_cball.txt
-               [fobj]=cmd_fobj.txt [skyr]=cmd_skyr.txt [dsbs]=cmd_dsbs.txt [isg]=cmd_isg.txt )
+               [fobj]=cmd_fobj.txt [skyr]=cmd_skyr.txt [dsbs]=cmd_dsbs.txt [isg]=cmd_isg.txt
+               [ingp]=cmd_ingp.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
@@ -272,7 +274,7 @@ ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spac
      blogg swarm gunturret rezbit parasite lumite shrieker ingswarm darktrooper bacteriaswarm
      tryclops wisptentacle octapede amt dbar sjguard fishcloud spa wallwalker isbg spp mysf spor
      scriptgui kral gbug pssm stod pbug szone splinter rptl chog drkc plac plct ming snak eyeb kroc
-     atma atmb shrd fsw iss ibs mree puff rubk emp2 cball fobj skyr dsbs isg)
+     atma atmb shrd fsw iss ibs mree puff rubk emp2 cball fobj skyr dsbs isg ingp)
 declare -A IDX=(  )
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 if [ ${#ALL[@]} -ge $SLOTSTEP ]; then
