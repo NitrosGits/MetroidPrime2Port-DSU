@@ -209,27 +209,16 @@ reach-stub, stand-in and gameplay seconds per family, failing when a family regr
 The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8`,
 ~2-3 s each instead of ~45 s); ing, ep and darksamus (wall-clock drivers) stay capped and bound the
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and kral): their areas
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui, pssm and stod): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui, kral, pssm, stod,
+pbug, szone, rptl, chog and drkc): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, spor's 2000 updates leave only ~100 ms of uncapped run after the connect and
 kral's 1300 are over (0.3 s) before it, while scriptgui's front end reads a widget's state
-differently at the two update rates).
+differently at the two update rates, and pbug's PillBug fsm reads differ the same way (FastPatrol
+vs Turn)).
 `--capped` or `SMOKE_FAST=0` runs everything capped.
-Thirty-two of the families keep a checked module's actors loading: grenchler (Torvus
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and pbug): their areas
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and szone): their areas
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and rptl): their areas
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and chog): their areas
-tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and drkc): their areas
-boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
-connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
-wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
-while scriptgui's front end reads a widget's state differently at the two update rates, and pbug's
-PillBug fsm reads differ the same way (FastPatrol vs Turn)).
-`--capped` or `SMOKE_FAST=0` runs everything capped.
-Thirty-one of the families keep a checked module's actors loading: grenchler (Torvus
+Forty of the families keep a checked module's actors loading: grenchler (Torvus
 01_swamp_entrance), grenguard (the Grapple Guardian's 08_swamp_grappleguardian_dark), flyingpirate
 (Agon 02_sand_sandfalls), mediuming (area 46), metroid (Agon 08_sand_casualpirates), sporb (Torvus
 0e_swamp_hall), blogg (Torvus 07_swamp_shaft), swarm (Agon 01_sand_entrance), gunturret (Agon
@@ -245,18 +234,12 @@ places: the family spawns them), sjguard (Agon 02_sand_sandfalls_dark), fishclou
 (Temple Grounds dark 01_temple_landingsite_dark), mysf (Temple Grounds 0e_temple_hall), spor (Torvus
 dark 0d_swamp_hall_dark), scriptgui (the FrontEnd world 69802220, which is the one family that needs
 the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table), kral (Temple
-Grounds 0b_temple_hall) and gbug (Great Temple 0i_temple_hall)
-dark 0d_swamp_hall_dark) and scriptgui (the FrontEnd world 69802220, which is the one family that
-needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table),
-pssm (Torvus Bog 0g_swamp_hall) and stod (Torvus Bog dark 09_swamp_catacombs_dark)
-needs the front end and so sets `SKIP_FRONTEND=0` in `run.sh`'s per-family environment table)
-and pbug (Agon Wastes 0b_sand_hall)
-and szone (Agon Wastes dark 02_sand_sandfalls_dark)
-splinter (Temple Grounds 02_temple_exploration)
-and rptl (Temple Grounds 12_temple_finalgate)
-and chog (Agon Wastes 08_sand_casualpirates, which spawns two ChozoGhosts with a borrowed
-SpacePirate body and drives every state)
-and drkc (Temple Grounds dark 06_temple_sacredpath_dark)
+Grounds 0b_temple_hall), gbug (Great Temple 0i_temple_hall), pssm (Torvus Bog 0g_swamp_hall), stod
+(Torvus Bog dark 09_swamp_catacombs_dark), pbug (Agon Wastes 0b_sand_hall), szone (Agon Wastes dark
+02_sand_sandfalls_dark), splinter (Temple Grounds 02_temple_exploration), rptl (Temple Grounds
+12_temple_finalgate), chog (Agon Wastes 08_sand_casualpirates, which spawns two ChozoGhosts with a
+borrowed SpacePirate body and drives every state) and drkc (Temple Grounds dark
+06_temple_sacredpath_dark)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -353,16 +336,14 @@ x/y/z/start presses, and the slider e21c through Activate/Alert, Increment/Decre
 and left, Deactivate/Activate and its Delete, `objs Gui` counting the area's 133 script objects down
 to 132; kral drives Temple Grounds 0b_temple_hall's two Kralees e00100090/e0010008f through `place`
 two units from the player, Increment/Decrement (WarpOut and the WarpIn that follows), the dark, echo
-and combat visors, `setarea` on e0010008f (area 0 is not loaded, so that step is the driver's one
-error) and `kill` on e0010008f, `objs Kralee` counting the two down to one - and gbug drives Great
-Temple 0i_temple_hall's three Glowbugs e000500f0/f8/f9 through Create/Activate, the 6/12/3/20/0.5-unit
+and combat visors and `kill` on e0010008f (the driver's `setarea` step is left out: area 0 is not
+loaded there, so it could only answer an error), `objs Kralee` counting the two down to one - and gbug drives Great
+Temple 0i_temple_hall's three Glowbugs e000500f0/f8/f9 through Create/Activate, the 6/12/3/20/3-unit
 `place` window, a beam and a missile that kill e000500f8 (hp 0/30, fsm Dead, removed by its own
 DeathDelete: the late checks are `obj` reads and the count, not an `obj` of a dead bug) and the
 repeated `scan` of e000500f9 (orbit locked, visor flags f), then Deactivate/Delete it, `objs Glowbug`
-counting three down to none - the two missiles at e000500f0 fire (`1 in flight, 58 left`) but 0.5
-units from the player they never reach it.
-to 132.
-pssm drives Torvus Bog 0g_swamp_hall's single PlantScarabSwarm e001e00b6 through the
+counting three down to none - the two missiles at e000500f0 fire (`1 in flight, 58 left`) but never
+hit it, 3 units from the player as at 0.5 and 6 (a suspected port bug, open). pssm drives Torvus Bog 0g_swamp_hall's single PlantScarabSwarm e001e00b6 through the
 boids launching, the attack animation and grenade drop, the shared-model render and the launched-boid
 touch, the `tp` steps around and behind the swarm, the uncharged and charged shots and the missile
 (hp 2/2 -> 0/2), `Deactivate`/`Activate`, and the `Delete` (`objs PlantScarabSwarm` counting one at
@@ -374,8 +355,7 @@ shot on e00410066 (ReactToWeapon), the zone's Deactivate plus Decrement (MoveBac
 Sleep), the missile and Increment/Decrement/AIUpdateDisabled messages, Deactivate/Activate, `kill`
 on e00410066 and a final `obj`/`objs StoneToad`, with `obj` reads (hp, fsm, body state, message
 map) around them; its 1500 updates finish in ~0.5 s, before con.py connects, so the family stays
-capped (NC).
-to 132; pbug drives Agon Wastes 0b_sand_hall's three PillBugs e00280088/e00280089/e0028008a
+capped (NC). pbug drives Agon Wastes 0b_sand_hall's three PillBugs e00280088/e00280089/e0028008a
 (planar 1 looping paths) through a bug placed at the player (InDetectionRange -> FastPatrol), a
 touch (CollidedWith -> HitPlayer -> Pause -> AnimOver), the power/dark/light beam and missile
 shots (all resisted), a real morph-ball bomb laid with the bug put on it (ResistedDamage immune
@@ -383,34 +363,29 @@ shots (all resisted), a real morph-ball bomb laid with the bug put on it (Resist
 CloseToPath -> Patrol), shots and bombs at the injured/wandering bug, a forced Turn (every
 shipped path loops, so PathOver never sets), a bomb kill, and `objs PillBug` counting three at
 f320 and zero at f3400, with `obj` reads (hp 25/25, fsm FastPatrol, body state 5, message map)
-around them. The PillBug fsm reads follow the update rate, so the family stays capped (NC).
-to 132; szone drives Agon Wastes dark 02_sand_sandfalls_dark's safe zones u0474/u04d4/u04be/u04b0 and
+around them. The PillBug fsm reads follow the update rate, so the family stays capped (NC). szone drives Agon Wastes dark 02_sand_sandfalls_dark's safe zones u0474/u04d4/u04be/u04b0 and
 their crystals u0473/u04d3/u04bf/u04b1 through beam shots (light/dark/power/annihilator, charged
 and missile), the zone's Increment/Decrement and InternalMessage0-3, Deactivate/Activate/AreaLoaded,
 the crystal's InternalMessage0-6 and Deactivate/Activate, two damage hits per crystal, the `noise`
 listener and the three Activate/Deactivate sends, then the zone's Delete, with `objs SafeZone`
 counting the zones at f340 and after the Delete at f2300, and `obj` reads (hp/fsm/body/message map)
 around them. The shot ids and late `objs SafeZone` listings follow the update rate, so the
-family stays capped (NC).
-to 132; splinter wakes Temple Grounds 02_temple_exploration's three Splinters
+family stays capped (NC). splinter wakes Temple Grounds 02_temple_exploration's three Splinters
 u055b/u055c/u057c (inactive at load), alerts them, takes the 6 -> 4 -> -6 hp steps on u055b/u055c
 and the missile hit on u057c, and `objs Splinter` counts three at f340 and zero at f3100, with `obj`
-reads of u055b/u057c (hp/fsm/body/message map) at f1200.
-to 132; rptl drives Temple Grounds 12_temple_finalgate's rift portal e00070073 through Activate,
+reads of u055b/u057c (hp/fsm/body/message map) at f1200. rptl drives Temple Grounds 12_temple_finalgate's rift portal e00070073 through Activate,
 Increment (line animation until it opens), beam/missile/charged shots through its projectile box,
 AreaLoaded (rebuilds the box), Decrement (stops the animations) and Deactivate (hides it), the
 player stepping close (the portal overfills the screen), the centre turned off-screen (copy-rect
 clamp), looking away (culled), dropping from above and laying morph-ball bombs in the projectile
 box (a kMT_Projectile that is not a CGameProjectile), with `objs RiftPortal` before and after.
 The portal's projectile box and late `objs RiftPortal` listings follow the update rate, so the
-family stays capped (NC).
-to 132; chog spawns two ChozoGhosts (e0036ff00/e0036ff01) in Agon Wastes
+family stays capped (NC). chog spawns two ChozoGhosts (e0036ff00/e0036ff01) in Agon Wastes
 08_sand_casualpirates with a borrowed SpacePirate body and AFSM 5652a12f, drives every state
 (InActive -> Growth -> Generate -> WallDetach -> Run -> SelectTarget -> Attack -> Land ->
 Shuffle -> Taunt -> Lurk -> Hurled -> Deactivate -> Start), the visors, touches, charged and
 missile shots, damage and kills, then spawns a third ghost, with `objs ChozoGhost` before the
-steps and at the end.
-to 132; drkc drives Temple Grounds dark 06_temple_sacredpath_dark's two Dark Commandos u051a and u041c through
+steps and at the end. drkc drives Temple Grounds dark 06_temple_sacredpath_dark's two Dark Commandos u051a and u041c through
 Activate, placement, damage and `obj` reads, with `objs DarkCommando` listing both at f200 and f4000.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
