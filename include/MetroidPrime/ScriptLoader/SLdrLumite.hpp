@@ -59,6 +59,18 @@ inline SLdrLumite::SLdrLumite()
   maxHopDistance = 45.0f;
   phaseInSound = 0;
   phaseOutSound = 0;
+#ifdef TARGET_PC
+  // fn_39_B08: -1 at +0x340/+0x344 (0xB78 li r0,-1 / 0xB88), 3 at +0x38 (0xB84 li r3,3 / 0xB98),
+  // 2.0 (rodata_C) at +0x88 (0xBB4), 1 at +0x26C (0xBCC), CColor(1.0 x4) at +0x294 (0xBD0..0xBE4),
+  // 0xF at +0x2E4 (0xBE8 / 0xBF4).
+  phaseInSound = -1;
+  phaseOutSound = -1;
+  editorProperties.unknown_0x5d298a43 = 0x00000003u;
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  patterned.echoParameters.isEchoEmitter = true;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrLumite::~SLdrLumite() {}

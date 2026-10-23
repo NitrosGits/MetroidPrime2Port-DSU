@@ -68,6 +68,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
 };
 
 // Guessed name; speed curve of a hop, accelerating towards the middle and slowing at the end.
+// @ fn_39_1228
 static float GetHopSpeedScale(float t) {
   if (t < 0.5f) {
     const float f = 2.f * t;
@@ -83,12 +84,14 @@ CLumite::SShotAttack::SShotAttack(CAssetId projectile, const CDamageInfo& damage
   mProjectile.Token().Lock();
 }
 
+// @ fn_39_6A84
 CLumite::SSurfaceTarget::SSurfaceTarget()
 : mPlane(0.f, CVector3f::Up())
 , mClosestPoint(CVector3f::Zero())
 , mKind(-1)
 , mZoneId(kInvalidUniqueId) {}
 
+// @ fn_39_6948
 CLumite::SHopPlan::SHopPlan(float minDistance, float maxDistance)
 : mTarget(CVector3f::Zero())
 , mLaunchDirection(CVector3f::Zero())
@@ -105,6 +108,7 @@ CLumite::SHopPlan::SHopPlan(float minDistance, float maxDistance)
   Reset();
 }
 
+// @ fn_39_3084
 void CLumite::SHopPlan::Reset() {
   mNextHopTime = -1000.f;
   mLaunchDirection = CVector3f::Zero();
@@ -123,12 +127,14 @@ void CLumite::SHopPlan::Reset() {
   mHopFailed = false;
 }
 
+// @ fn_39_6D6C
 CLumite::SSunlightEffect::SSunlightEffect(CAssetId id)
 : mId(id)
 , mParticle(nullptr)
 , mToken(gpSimplePool->GetObj(SObjectTag('PART', id)))
 , mExplosionId(kInvalidUniqueId) {}
 
+// @ fn_39_6634
 CLumite::CLumite(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                  const CTransform4f& xf, const CModelData& modelData,
                  const CPatternedInfo& patternedInfo, CAssetId stateMachine2, float attackTimeMin,
@@ -172,6 +178,7 @@ CLumite::CLumite(TUniqueId uid, const rstl::string& name, const CEntityInfo& inf
   mSurfaceAlign.SetMode(CSurfaceAlignmentHelper::kM_NearbySurface);
 }
 
+// @ fn_39_5404
 void CLumite::SetupStateMachineHelper(CStateManager& mgr) {
   InitializeStateMachine(mgr);
   mStateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
@@ -179,20 +186,25 @@ void CLumite::SetupStateMachineHelper(CStateManager& mgr) {
   mStateMachine->SetCodeFunctions(skCodeFuncs, ARRAY_SIZE(skCodeFuncs));
 }
 
+// @ fn_39_0
 rstl::optional_object< CAABox > CLumite::GetTouchBounds() const { return GetBoundingBox(); }
 
+// @ fn_39_D24
 CVector3f CLumite::GetOrbitPosition(const CStateManager& mgr) const {
   const rstl::optional_object< CAABox >& bounds = GetTouchBounds();
   return GetTranslation() + CVector3f(0.f, 0.f, 0.5f * bounds->GetDepth());
 }
 
+// @ fn_39_C58
 CVector3f CLumite::GetAimPosition(const CStateManager& mgr, float dt) const {
   const rstl::optional_object< CAABox >& bounds = GetTouchBounds();
   return GetTranslation() + CVector3f(0.f, 0.f, 0.5f * bounds->GetDepth());
 }
 
+// @ fn_39_F7C
 void CLumite::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
 
+// @ fn_39_5B1C
 void CLumite::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
 CScannableObjectInfo* CLumite::GetScannableObjectInfo() const {
@@ -242,6 +254,7 @@ void CLumite::Think(float dt, CStateManager& mgr) {
   DamageSafeZoneOccupant(mgr, dt);
 }
 
+// @ fn_39_5D08
 void CLumite::DisableGroundCollision(CStateManager& mgr) {
   mVerticalMovement = true;
   mOnGround = false;
@@ -262,6 +275,7 @@ void CLumite::StickToSurface(float dt) {
   mSurfaceAlign.OrientToSurfaceNormal(*this, mSurface.mPlane.GetNormal(), dt);
 }
 
+// @ fn_39_1544
 void CLumite::StickToNearestSurface(CStateManager& mgr, float dt) {
   SetVelocityWR(CVector3f::Zero());
   mSurfaceAlign.Update(*this, mgr, 1000.f);
@@ -269,6 +283,7 @@ void CLumite::StickToNearestSurface(CStateManager& mgr, float dt) {
   mSurface.mClosestPoint = mSurface.mPlane.GetClosestPoint(GetTranslation());
 }
 
+// @ fn_39_4FBC
 void CLumite::PlaySound(CStateManager& mgr, ushort sfx) {
   CAudioSys::C3DEmitterParmData parms(50.f, 0.1f, 1, 127, 20);
   parms.mPos = GetTranslation();
@@ -603,10 +618,12 @@ void CLumite::QuitTeam(CStateManager& mgr) {
   }
 }
 
+// @ fn_39_110C
 CScriptTeamAiMgr* CLumite::GetTeamAiMgr(CStateManager& mgr) {
   return TCastToPtr< CScriptTeamAiMgr >(mgr.ObjectById(mTeamAiMgrId));
 }
 
+// @ fn_39_1140
 const CScriptTeamAiMgr* CLumite::GetTeamAiMgr(const CStateManager& mgr) const {
   return TCastToConstPtr< CScriptTeamAiMgr >(mgr.GetObjectById(mTeamAiMgrId));
 }
@@ -645,6 +662,7 @@ bool CLumite::InBigShotRange(CStateManager& mgr, const CTriggerData& data) const
 
 bool CLumite::InSunlight(CStateManager& mgr, const CTriggerData& data) const { return mInSunlight; }
 
+// @ fn_39_3E24
 bool CLumite::FacingPlayer(CStateManager& mgr, const CTriggerData& data) const {
   return FacingHint(mgr.GetPlayer(0)->GetTranslation());
 }
@@ -675,10 +693,12 @@ bool CLumite::ReadyToMove(CStateManager& mgr, const CTriggerData& data) const {
   return mHop.mNextHopTime < mElapsedTime;
 }
 
+// @ fn_39_3200
 bool CLumite::Landed(CStateManager& mgr, const CTriggerData& data) const {
   return mHop.mAborted == 1 || mHop.mLanded == 1;
 }
 
+// @ fn_39_11FC
 bool CLumite::IsHeckler(CStateManager& mgr, const CTriggerData& data) const {
   return GetTeamRole(mgr) == CTeamAiRole::kTAR_Unknown;
 }
@@ -690,6 +710,7 @@ bool CLumite::CanTaunt(CStateManager& mgr, const CTriggerData& data) const {
   return mLastTauntTime + 3.5f < mElapsedTime;
 }
 
+// @ fn_39_2EBC
 bool CLumite::FacingHopPoint(CStateManager& mgr, const CTriggerData& data) const {
   return mHop.mHopFailed || (mHop.mHopSelected && FacingHint(mHop.mTarget));
 }
@@ -707,6 +728,7 @@ bool CLumite::ClearLineOfFire(CStateManager& mgr, const CTriggerData& data) cons
   return !result.IsValid();
 }
 
+// @ fn_39_49F0
 float CLumite::DistanceToPlayer(const CStateManager& mgr) const {
   return (GetTranslation() - mgr.GetPlayer(0)->GetTranslation()).Magnitude();
 }
@@ -717,11 +739,17 @@ bool CLumite::FacingHint(const CVector3f& point) const {
   if (direction.CanBeNormalized()) {
     direction.Normalize();
   }
+#ifdef TARGET_PC
+  // 0x3EBC: retail compares against the forward column (mTransform 0x28/0x38/0x48).
+  return CVector3f::GetAngleDiff(direction, GetTransform().GetForward()) < 0.7853982f;
+#else
   return CVector3f::GetAngleDiff(direction, GetTransform().GetRight()) < 0.7853982f;
+#endif
 }
 
 // Attack
 
+// @ fn_39_4920
 void CLumite::SetAttackState(int state, EStateMsg msg) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -742,8 +770,10 @@ void CLumite::ResetAttackTimer(CStateManager& mgr) {
 
 void CLumite::Null(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_39_4A54
 void CLumite::Pause(CStateManager& mgr, EStateMsg msg, float dt) {}
 
+// @ fn_39_47F4
 void CLumite::SmallShot(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(1, msg);
   if (msg == kStateMsg_Deactivate) {
@@ -753,6 +783,7 @@ void CLumite::SmallShot(CStateManager& mgr, EStateMsg msg, float dt) {
                  CBCProjectileAttackCmd(pas::kS_Zero, mgr.GetPlayer(0)->GetTranslation(), false));
 }
 
+// @ fn_39_46C4
 void CLumite::BigShot(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(2, msg);
   if (msg == kStateMsg_Deactivate) {
@@ -770,6 +801,7 @@ CVector3f CLumite::RandomVector(CStateManager& mgr, float scale) {
                    mgr.Random()->Range(-scale, scale));
 }
 
+// @ fn_39_44B4
 CTransform4f CLumite::BuildProjectileTransform(CStateManager& mgr, float spread) {
   CVector3f target = mgr.GetPlayer(0)->GetTranslation() + CVector3f(0.f, 0.f, 1.5f);
   target += RandomVector(mgr, spread);
@@ -778,6 +810,7 @@ CTransform4f CLumite::BuildProjectileTransform(CStateManager& mgr, float spread)
   return CTransform4f::LookAt(mSpitPosition, target, xf.GetUp());
 }
 
+// @ fn_39_4418
 void CLumite::FireSmallShot(CStateManager& mgr) {
   const CImpactVisorEffect visorEffect = CImpactVisorEffect::None();
   const CVector3f scale(1.f, 1.f, 1.f);
@@ -785,6 +818,7 @@ void CLumite::FireSmallShot(CStateManager& mgr) {
   LaunchProjectile(xf, mgr, 5, 0, false, visorEffect, scale);
 }
 
+// @ fn_39_3F28
 void CLumite::FireBigShot(CStateManager& mgr) {
   const CImpactVisorEffect visorEffect = CImpactVisorEffect::None();
   const CVector3f scale(1.f, 1.f, 1.f);
@@ -815,7 +849,12 @@ void CLumite::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
           }
           mHop.mDidSideTaunt = true;
         }
+#ifdef TARGET_PC
+      // 0x39E4: retail compares against rodata_A4 = 0.8, not 0.75.
+      } else if (r < 0.8f) {
+#else
       } else if (r < 0.75f) {
+#endif
         mTauntType = pas::kTT_Zero;
       } else {
         mTauntType = pas::kTT_One;
@@ -839,11 +878,13 @@ void CLumite::Taunt(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_39_3380
 void CLumite::Turn(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(4, msg);
   TurnTowards(msg, mgr.GetPlayer(0)->GetTranslation());
 }
 
+// @ fn_39_33DC
 void CLumite::TurnTowards(EStateMsg msg, const CVector3f& target) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -862,7 +903,13 @@ void CLumite::TurnTowards(EStateMsg msg, const CVector3f& target) {
     break;
   }
   case kStateMsg_Update:
+#ifdef TARGET_PC
+    // 0x3628: retail re-readies when the body controller's animation is over (0x594 bit 0x80),
+    // not on mTurnActive.
+    if (BodyController()->IsAnimationOver()) {
+#else
     if (mTurnActive) {
+#endif
       mAnimationState.SetState(CAnimationState::kAS_Ready);
     }
     break;
@@ -913,11 +960,17 @@ void CLumite::TurnToHopPoint(CStateManager& mgr, EStateMsg msg, float dt) {
 }
 
 void CLumite::Hop(CStateManager& mgr, EStateMsg msg, float dt) {
+#ifndef TARGET_PC
   SetAttackState(0, msg);
+#endif
   if (mHop.mAborted) {
     BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_NextState));
     return;
   }
+#ifdef TARGET_PC
+  // 0x26D0: retail sets the attack state only after the aborted-hop early return.
+  SetAttackState(0, msg);
+#endif
 
   switch (msg) {
   case kStateMsg_Activate:
@@ -1042,9 +1095,17 @@ void CLumite::SelectHopTarget(CStateManager& mgr, const TUniqueId& hintId) {
 
   CVector3f cross = CVector3f::Cross(mHop.mLaunchDirection, mHop.mPlane.GetNormal());
   while (!cross.CanBeNormalized() && mgr.IsRandomAvailable()) {
+#ifdef TARGET_PC
+    // 0x18D0..0x1924: retail draws x, then y, then z; host argument order is unspecified.
+    const float jitterX = mgr.Random()->Range(-0.1f, 0.1f);
+    const float jitterY = mgr.Random()->Range(-0.1f, 0.1f);
+    const float jitterZ = mgr.Random()->Range(-0.1f, 0.1f);
+    mHop.mLaunchDirection += CVector3f(jitterX, jitterY, jitterZ);
+#else
     mHop.mLaunchDirection +=
         CVector3f(mgr.Random()->Range(-0.1f, 0.1f), mgr.Random()->Range(-0.1f, 0.1f),
                   mgr.Random()->Range(-0.1f, 0.1f));
+#endif
     if (mHop.mLaunchDirection.CanBeNormalized()) {
       mHop.mLaunchDirection.Normalize();
       cross = CVector3f::Cross(mHop.mLaunchDirection, mHop.mPlane.GetNormal());
@@ -1096,7 +1157,12 @@ CScriptSafeZone* CLumite::FindSafeZone(CStateManager& mgr, const CVector3f& posi
       CScriptSafeZone* zone = TCastToPtr< CScriptSafeZone >(mgr.ObjectById(id));
       if (zone != nullptr && zone->GetActive() &&
           (zone->GetTranslation() - position).CanBeNormalized() &&
+#ifdef TARGET_PC
+          // 0x1E3C blt rejects; a NaN scale is accepted.
+          !(zone->GetScale().MagSquared() < 1.f)) {
+#else
           zone->GetScale().MagSquared() >= 1.f) {
+#endif
         return zone;
       }
     }
@@ -1173,7 +1239,12 @@ void CLumite::BuildHopCandidates(CStateManager& mgr) {
   mHop.mHopSelected = false;
   mHop.mHopFailed = false;
 
+#ifdef TARGET_PC
+  // 0x22DC lwz r31, 0x838(r27): retail walks the AI waypoint list (mObjectLists[5]), not kOL_All.
+  CObjectList& list = mgr.ObjectListById(kOL_AiWaypoint);
+#else
   CObjectList& list = mgr.ObjectListById(kOL_All);
+#endif
   for (int i = list.GetFirstObjectIndex(); i != -1 && mHop.mCandidates.size() < 16;
        i = list.GetNextObjectIndex(i)) {
     CScriptAIHint* hint = TCastToPtr< CScriptAIHint >(list[i]);
@@ -1191,7 +1262,12 @@ void CLumite::BuildHopCandidates(CStateManager& mgr) {
     const CVector3f referencePosition =
         mLatestLeashPosition == CVector3f::Zero() ? GetTranslation() : mLatestLeashPosition;
     const float distance = (hint->GetTranslation() - referencePosition).Magnitude();
+#ifdef TARGET_PC
+    // 0x2414 blt / 0x2420 bgt skip the hint; a NaN distance is kept.
+    if (!(distance < mHop.mMinDistance) && !(distance > mHop.mMaxDistance)) {
+#else
     if (distance >= mHop.mMinDistance && distance <= mHop.mMaxDistance) {
+#endif
       if (type == CScriptAIHint::kHT_SunlightHop) {
         const CScriptSafeZone* zone = FindSafeZone(mgr, hint->GetTranslation());
         if (zone == nullptr || !zone->GetActive() || zone->IsHurtful()) {
@@ -1279,11 +1355,16 @@ static void SetFuncPtrs() {
   SetSLumite_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_39_140
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_39_11C
 extern "C" void RELExit() { SetSLumite_FuncPtrs(nullptr); }
 #endif
 
+// @ fn_39_6FD0 (CBCStepCmd)
+// @ fn_39_70EC (CBCTauntCmd)
+// @ fn_39_71B8 (CBCProjectileAttackCmd)
 template < typename T >
 void CLumite::DeliverCommand(EStateMsg msg, pas::EAnimationState state, const T& cmd) {
   if (msg == kStateMsg_Activate) {
