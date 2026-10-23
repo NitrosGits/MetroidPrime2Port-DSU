@@ -256,7 +256,7 @@ def port_functions(paths, display=None):
                     if k:
                         funcs.setdefault(k, f)
             # every def, marked or not, is a helper a caller may have inlined
-            helpers.setdefault(f.short, []).append((f.cls, f.code))
+            helpers.setdefault(f.short, []).append((f.cls, f.code, shown))
         for k, ln in mk:   # a marker inside a body (a switch arm) is that body's
             if k is None or k in funcs:
                 continue
@@ -275,7 +275,19 @@ def port_functions(paths, display=None):
     return funcs, helpers, texts
 
 
-def expand(code, helpers, depth=2, cls=None):
+def pick_helper(cands, cls, file):
+    """The def a call by this name reaches: the only one; else one in the caller's file (a
+    file-static or anonymous-namespace helper, a helper struct's member; the caller's class or a
+    free one when several); else the caller's class."""
+    if len(cands) == 1:
+        return cands
+    local = [c for c in cands if c[2] == file]
+    if len(local) > 1:
+        local = [c for c in local if c[0] in (cls, None, "")]
+    return local or [c for c in cands if c[0] == cls]
+
+
+def expand(code, helpers, depth=2, cls=None, file=None):
     seen, todo, out = set(), [code], [code]
     for _ in range(depth):
         nxt = []
@@ -283,9 +295,7 @@ def expand(code, helpers, depth=2, cls=None):
             for name in set(re.findall(r"(~?\w+)\s*\(", b)):
                 if name not in helpers or name in seen:
                     continue
-                cands = helpers[name]
-                if len(cands) > 1:
-                    cands = [c for c in cands if c[0] == cls]
+                cands = pick_helper(helpers[name], cls, file)
                 if len(cands) == 1 and cands[0][1] != code:
                     seen.add(name)
                     nxt.append(cands[0][1])
@@ -363,7 +373,7 @@ def check(key, f, retail, ctx):
     mod, fn = retail
     calls, consts, conds, fcmps = retail_facts(mod, fn)
     code = f.code
-    body = expand(code, ctx["helpers"], cls=f.cls)
+    body = expand(code, ctx["helpers"], cls=f.cls, file=f.file)
     comments = "\n".join(t for _, t in f.comment_lines)
     names_text = body + "\n" + comments
     out = []
