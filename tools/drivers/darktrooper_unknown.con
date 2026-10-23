@@ -1,0 +1,32 @@
+# DarkTrooper (REL 12), Temple Grounds 04_temple_unknownenemies layers 2 3: Dark Troopers u049d u0488 u0487
+# (editor ids 00270177 0027017b 002700d3). Wake them, walk u049d through the state table (fsm), let
+# u0488 fight a god-mode player, then damage and kill all three (power, missile, dark burst).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/darktrooper.py <out> 3bfa3eff,04_temple_unknownenemies \
+#        --con tools/drivers/darktrooper_unknown.con --fast --frames 5200
+@f300 god 1; give missile 50
+@f302 layer 2; layer 3
+@f310 tp 160 180 -39
+@f330 send u049d Activate; send u0488 Activate; send u0487 Activate
+@f340 send u049d Alert; send u0488 Alert; send u0487 Alert
+@f500 obj u049d; obj u0488; obj u0487
+@f700 fsm u049d Pursue
+@f1000 place u049d player 12
+@f1010 fsm u049d SmallShotAttack
+@f1400 fsm u049d MissileAttack
+@f1700 place u049d player 2
+@f1710 fsm u049d MeleeAttack
+@f2000 fsm u049d Pause
+@f2300 fsm u049d Sleep
+@f2500 fsm u049d Rise
+@f2800 place u049d player 7
+@f2810 fsm u049d Pursue
+@f3000 obj u049d; obj u0488
+@f3100 damage u049d 2 kb
+@f3200 damage u049d 2 0 missile
+@f3300 damage u0488 2
+@f3500 damage u049d 999
+@f3900 obj u049d
+@f4000 damage u0488 999 0 missile
+@f4300 place u0487 player 8
+@f4400 damage u0487 999 0 darkburst
+@f4900 objs DarkTrooper

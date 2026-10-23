@@ -268,6 +268,7 @@ void CDarkTrooper::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_12_4FD0
 const CDamageVulnerability* CDarkTrooper::GetDamageVulnerability() const {
   if (mAlive && mTransitioning) {
     return &CDamageVulnerability::ImmuneVulnerabilty();
@@ -316,6 +317,7 @@ void CDarkTrooper::PreRender(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_4B60
 void CDarkTrooper::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
 CVector3f CDarkTrooper::GetAimPosition(const CStateManager&, float dt) const {
@@ -506,12 +508,14 @@ void CDarkTrooper::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   }
 }
 
+// @ fn_12_3C78
 void CDarkTrooper::EndSmallShotAttack() {
   mSmallShotAttack.mFinished = true;
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
   BodyController()->CommandMgr().DeliverAdditiveTargetVector(CVector3f::Zero());
 }
 
+// @ fn_12_3BE8
 void CDarkTrooper::EndMissileAttack() {
   mMissileAttack.mFinished = true;
   BodyController()->CommandMgr().DeliverCmd(CBodyStateCmd(kBSC_ExitState));
@@ -528,12 +532,14 @@ void CDarkTrooper::ApplyMeleeDamage(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_39D4
 void CDarkTrooper::SetupStateMachineHelper(CStateManager& mgr) {
   InitializeStateMachine(mgr);
   mStateMachine->SetTriggerFunctions(skTriggers, ARRAY_SIZE(skTriggers));
   mStateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_12_3920
 void CDarkTrooper::MoveToTarget(CStateManager& mgr, float dt, const CVector3f& target) {
   mPathFindSearch.SetAvoidanceFilter(2);
   UnmarkPathRegion(mgr);
@@ -543,8 +549,10 @@ void CDarkTrooper::MoveToTarget(CStateManager& mgr, float dt, const CVector3f& t
   MarkPathRegion(mgr);
 }
 
+// @ fn_12_38E8
 void CDarkTrooper::SetPathArea(CStateManager& mgr) { mPathFindSearch.SetArea(GetPathArea(mgr)); }
 
+// @ fn_12_3870
 void CDarkTrooper::PreThink(float dt, CStateManager& mgr) {
   if (!mRagDollHolder.mRagDoll.get() || !mRagDollHolder.mRagDoll->IsPrimed()) {
     mBoneTracking.PreThink(*AnimationData());
@@ -652,6 +660,7 @@ void CDarkTrooper::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_12_30D8
 void CDarkTrooper::Rise(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mTransitioning = true;
@@ -744,10 +753,12 @@ void CDarkTrooper::CreateRagDoll(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_2A90
 CVector3f CDarkTrooper::GetTargetPosition(CStateManager& mgr) const {
   return mgr.GetPlayer(0)->GetTranslation();
 }
 
+// @ fn_12_2964
 void CDarkTrooper::SetAttackState(int state, EStateMsg msg) {
   if (msg == kStateMsg_Deactivate) {
     if (mAttackHistory.size() == 3) {
@@ -760,6 +771,7 @@ void CDarkTrooper::SetAttackState(int state, EStateMsg msg) {
   }
 }
 
+// @ fn_12_27C4
 void CDarkTrooper::MeleeAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   SetAttackState(0, msg);
   if (msg == kStateMsg_Activate) {
@@ -810,10 +822,12 @@ void CDarkTrooper::Pursue(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_12_2494
 bool CDarkTrooper::InMeleeRange(CStateManager& mgr, const CTriggerData&) const {
   return InRange(mgr, mMeleeAttack.mMinRange, mMeleeAttack.mMaxRange);
 }
 
+// @ fn_12_246C
 bool CDarkTrooper::InSmallShotRange(CStateManager& mgr, const CTriggerData&) const {
   return InRange(mgr, mRangedAttackMinRange, mRangedAttackMaxRange);
 }
@@ -839,6 +853,7 @@ void CDarkTrooper::UnmarkPathRegion(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_2380
 CPFArea* CDarkTrooper::GetPathArea(CStateManager& mgr) const {
   return mgr.GetWorld()->GetAreaAlways(GetCurrentAreaId()).GetPostConstructed()->mPathArea;
 }
@@ -863,6 +878,7 @@ void CDarkTrooper::MarkPathRegion(CStateManager& mgr) {
   }
 }
 
+// @ fn_12_20D0
 bool CDarkTrooper::FacingPlayer(CStateManager& mgr, const CTriggerData&) const {
   const CVector3f toTarget = GetTargetPosition(mgr) - GetTranslation();
   const CVector3f forward = GetTransform().GetColumn(kDY);
@@ -931,14 +947,17 @@ void CDarkTrooper::MissileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   DeliverCommand(msg, pas::kAS_LoopAttack, CBCLoopAttackCmd(pas::kLAT_One));
 }
 
+// @ fn_12_19B4
 bool CDarkTrooper::BreakSmallShotAttack(CStateManager&, const CTriggerData&) const {
   return mSmallShotAttack.mBreakAttack;
 }
 
+// @ fn_12_19A8
 bool CDarkTrooper::BreakMissileAttack(CStateManager&, const CTriggerData&) const {
   return mMissileAttack.mBreakAttack;
 }
 
+// @ fn_12_199C
 bool CDarkTrooper::ClearLineOfFire(CStateManager&, const CTriggerData&) const {
   return mLineOfSightTracker.HasLineOfSight();
 }
@@ -953,6 +972,7 @@ bool CDarkTrooper::ShouldPause(CStateManager& mgr, const CTriggerData&) const {
   return mShouldPause;
 }
 
+// @ fn_12_18A0
 void CDarkTrooper::Pause(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     BodyController()->CommandMgr().ClearLocomotionCmds();
@@ -963,18 +983,23 @@ void CDarkTrooper::Pause(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_12_1888
 bool CDarkTrooper::DonePausing(CStateManager&, const CTriggerData&) const {
   return mPauseEndTime < mElapsedTime;
 }
 
+// @ fn_12_1874
 bool CDarkTrooper::ReadyToRumble(CStateManager&, const CTriggerData&) const {
   return !mTransitioning;
 }
 
+// @ fn_12_1868
 bool CDarkTrooper::IsSleeper(CStateManager&, const CTriggerData&) const { return mIsSleeper; }
 
+// @ fn_12_185C
 bool CDarkTrooper::Alerted(CStateManager&, const CTriggerData&) const { return mAlerted; }
 
+// @ fn_12_1844
 bool CDarkTrooper::CanMeleeAttack(CStateManager&, const CTriggerData&) const {
   return mMeleeAttack.mNextAttackTime < mElapsedTime;
 }
@@ -1001,6 +1026,7 @@ bool CDarkTrooper::CanMissileAttack(CStateManager&, const CTriggerData&) const {
 #endif
 }
 
+// @ fn_12_1664
 void CDarkTrooper::PushPlayer(CStateManager& mgr, float impulseScale, float verticalSpeed) {
   CPlayer* player = mgr.GetPlayer(0);
   CVector3f direction = player->GetTranslation() - GetTranslation();
@@ -1015,8 +1041,10 @@ void CDarkTrooper::PushPlayer(CStateManager& mgr, float impulseScale, float vert
       ->Rumble(mgr, kRFX_CameraShake, 1.f, kRP_Two);
 }
 
+// @ fn_12_162C
 bool CDarkTrooper::ShouldTrack() const { return !mTransitioning && mAlive; }
 
+// @ fn_12_159C
 void CDarkTrooper::ThinkBoneTracking(float dt, CStateManager& mgr) {
   if (!ShouldTrack()) {
     mBoneTracking.SetActive(false);
@@ -1027,6 +1055,7 @@ void CDarkTrooper::ThinkBoneTracking(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_12_1520
 void CDarkTrooper::PreRenderBoneTracking(CStateManager& mgr) {
   if (ShouldTrack()) {
     mBoneTracking.PreRender(mgr, *AnimationData(), GetTransform(), GetModelData()->GetScale(),
@@ -1053,6 +1082,7 @@ CVector3f CDarkTrooper::GetIngSnatchingNormal(float) const {
   return normal;
 }
 
+// @ fn_12_1250
 CVector3f CDarkTrooper::GetIngSnatchingPoint(float t) const {
   const rstl::optional_object< CAABox > bounds = GetTouchBounds();
   const CVector3f center = bounds->GetCenterPoint();
@@ -1064,8 +1094,10 @@ CVector3f CDarkTrooper::GetIngSnatchingPoint(float t) const {
          (mRootPosition + mHeadDirection * radius) * t3;
 }
 
+// @ fn_12_1248
 bool CDarkTrooper::CanBeUnPossessed(CStateManager&) const { return false; }
 
+// @ fn_12_1154
 rstl::optional_object< CAABox > CDarkTrooper::GetTouchBounds() const {
   if (mRagDollHolder.mRagDoll.get() && mRagDollHolder.mRagDoll->IsPrimed() &&
       mRagDollHolder.mRagDoll->IsRenderBoundsValid()) {
