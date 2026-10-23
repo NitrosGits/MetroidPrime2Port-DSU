@@ -30,7 +30,7 @@ in one of the module session's files; `header` = the body is an inline in `CSpac
 | 0xD4 | 0x6C | RegisterFuncPtrs (SSpacePirate_FuncPtrs) | rel entry | the host's module registry (`platform/compiled_modules.cpp`) | - |
 | 0x140 | 0xACC | LoadSpacePirate | loader | module (`PortLoadSpacePirate`) | - (the host's loader, not retail's body) |
 | 0xC0C | 0x94 | CSpacePirateData::BuildGrenadeData | method | header (`BuildGrenadeData()`) | - |
-| 0x17A0 | 0x28 | GetRagDoll (`lwz r3, 0xb30(r3)`) | virtual | header | - (the ragdoll arm is dead) |
+| 0x17A0 | 0x28 | GetRagDoll (`lwz r3, 0xb30(r3)`) | virtual | header | - (blocked: retail creates the CPirateRagDoll in Think's tail (fn_72_1980 0x1F08-0x2030), unported, so 0xb30 stays null in the port; it is non-null in shipped play (sp13)) |
 | 0x17C8 | 0x8C | GetTouchBounds | virtual | module | marked (module) |
 | 0x1854 | 0x68 | GetTouchBounds helper (the actor's bounding box) | method | **added** | this lane (section 3) |
 | 0x18BC | 0x74 | TryToBeCaptured | virtual | module | this lane (section 3) |
@@ -52,9 +52,9 @@ in one of the module session's files; `header` = the body is an inline in `CSpac
 | 0x3AB4 | 0x34 | GetDamageVulnerability() | virtual | module | marked (module) |
 | 0x3AE8 | 0x40 | GetModelAlphau8 | virtual | module | marked (module) |
 | 0x3B28 | 0x254 | DoUserAnimEvent | virtual | module | marked (module) |
-| 0x3D7C | 0x2B4 | SolveGrenadeLaunch | method | module | - (the solve's arms are not all traced) |
-| 0x4030 | 0x144 | GetGrenadeAimPoint | method | module | - (the arms are not all traced) |
-| 0x4174 | 0x3B8 | SpawnGrenade | method | module | - (the arms are not all traced) |
+| 0x3D7C | 0x2B4 | SolveGrenadeLaunch | method | module | marked (sp20; ALL-ARMS again sp13) |
+| 0x4030 | 0x144 | GetGrenadeAimPoint | method | module | marked (sp20; ALL-ARMS again sp13) |
+| 0x4174 | 0x3B8 | SpawnGrenade | method | module | marked (sp21; ALL-ARMS again sp13) |
 | 0x45F8 | 0x4C0 | FireProjectile | method | module | marked (module) |
 | 0x4F0C | 0x1C | ProjectileInfo (`&xbd4`) | virtual | module | marked (module) |
 | 0x4F28 | 0x9C | InitLauncherModel | method | module | marked (module) |
@@ -86,7 +86,7 @@ in one of the module session's files; `header` = the body is an inline in `CSpac
 | 0xE2DC | 0x38 | CheckTargetable | method | module | marked (module) |
 | 0xE314 | 0x4 | the empty function (Dead, AcceptScriptMsg) | method | - | - (a `blr` only; the port does not need the symbol) |
 | 0xE318 | 0xC0 | Listen | virtual | module | marked (module) |
-| 0xE3D8 | 0xC0 | Touch | virtual | module | - (the ragdoll's push is not ported) |
+| 0xE3D8 | 0xC0 | Touch | virtual | module | - (blocked: retail creates the CPirateRagDoll in Think's tail (fn_72_1980 0x1F08-0x2030), unported, so 0xb30 stays null in the port; it is non-null in shipped play (sp13)) |
 | 0xE498 | 0x944 | AcceptScriptMsg | virtual | module | marked (module) |
 | 0xEDEC | 0x1E8 | ChooseTarget | method | module | - (the arms are not all traced) |
 | 0xEFD4 | 0xCC | ChooseTeamTarget | method | module | this lane (section 3) |
@@ -166,14 +166,13 @@ Not marked, and why:
 
 | body | what is missing |
 |---|---|
-| `17A0` GetRagDoll | the ragdoll (0xb30) is never set in the port, so the "primed with valid render bounds" arm (asm 0x17AC-0x17BC) cannot run |
+| `17A0` GetRagDoll | the ragdoll (0xb30) is never set in the port: its creation is Think's unported tail (fn_72_1980 0x1F08-0x2030, `new CPirateRagDoll`), so the "primed with valid render bounds" arm (asm 0x17AC-0x17BC) cannot run. The arm is live in retail (sp13, SpacePirate.md section 13) |
 | `3220` ShouldFrenzy | the run armed the frenzy (the true result) and left it unarmed (the false one), but the four inner arms (the pending-chance bit, the charge-player list, the morphed target, the low-health path) are not all traced |
 | `51C8` TrooperWarpOut | 0 calls: the "WarpOut" script message never reached a trooper in the runs |
-| `3D7C` / `4030` / `4174` the grenade bodies | a forced call runs them (the no-target arm and the whole spawn), but the solve's arms (the candidate loop's accept / closest-miss paths) are not all traced |
 | `CE30` GetStrafeDir | 28 branches in the asm; the run's calls do not cover them all |
 | `D608` ShuffleRandomVector | marked (section 3) |
 | `EDEC` ChooseTarget | the port's body is not retail's yet (section 5): the retail's "a team target was chosen" flag (asm 0xEF48) and its squad branch (asm 0xEF50-0xEFA4) are missing, so the body cannot be marked |
-| `E3D8` Touch | the ragdoll's push (asm 0xE3F8-0xE47C) needs a ragdoll, which the port never creates |
+| `E3D8` Touch | the ragdoll's push (asm 0xE3F8-0xE47C) needs a ragdoll, which the port never creates (Think's unported tail, as `17A0`) |
 | `E314` the empty function | a `blr` only; the port does not need the symbol |
 
 ## 3b. The remaining unmarked stateless helpers (the gcov profile)
@@ -187,14 +186,14 @@ edges first.
 |---|---|---|---|---|
 | `D608` ShuffleRandomVector | 8/8 | 2/2 | 0 | **ALL-ARMS** (the natural draws and the forced seed merged) - marked |
 | `EDEC` ChooseTarget | 13/20 | 9/16 | 7 | the port's body is not retail's (section 5) - reported, not marked |
-| `4030` GetGrenadeAimPoint | 0/8 | 0/8 | 8 | the grenade spawn: the body's entry is never reached |
+| `4030` GetGrenadeAimPoint | 8/8 | 8/8 | 0 | **ALL-ARMS** (sp13, `specs/spacepirate_force11.py`; the unmorphed player forced) - marked |
 | `3220` ShouldFrenzy | 9/13 | 5/16 | 11 | the charge-player list arm (the body is not retail's, section 5) - reported, not marked |
-| `4174` SpawnGrenade | 0/28 | 0/12 | 12 | the grenade spawn (the body's entry is never reached) |
-| `3D7C` SolveGrenadeLaunch | 0/35 | 0/14 | 14 | the grenade spawn (the body's entry is never reached) |
+| `4174` SpawnGrenade | 28/28 | 12/12 | 0 | **ALL-ARMS** (sp13, `specs/spacepirate_force11.py`) - marked |
+| `3D7C` SolveGrenadeLaunch | 35/35 | 14/14 | 0 | **ALL-ARMS** (sp13, `specs/spacepirate_force11.py`) - marked |
 | `CE30` GetStrafeDir | 39/45 | 24/50 | 26 | other pirates in range, the path find mesh and the dynamic rays - the body needs a scene, not a member |
 | `10CE4` the waypoint predicate (this lane's) | no row (a class) | - | - | the host's `CheckConnectedObject` takes no predicate, so nothing calls it |
-| `17A0` GetRagDoll | 0/6 | 0/6 | 6 | the body is the retail's now, but it is never called: the port has no ragdoll (0xb30 is never set) |
-| `E3D8` Touch | 5/12 | 1/12 | 11 | the body is the retail's now, but the ragdoll is never set (0xb30), so the push's arms do not run |
+| `17A0` GetRagDoll | 3/6 | 1/6 | 5 | called (CGameProjectile), always with 0xb30 null: the port lacks Think's ragdoll creation tail |
+| `E3D8` Touch | 5/11 | 1/4 | 3 | the body is the retail's now, but the ragdoll is never set (0xb30, Think's unported tail), so the push's arms do not run |
 | `E314` the empty function | - | - | - | not ported (a `blr` only) |
 
 ## 4. The coverage runs
@@ -252,9 +251,9 @@ says how far each of the six got:
 |---|---|---|
 | `140` the loader | 65/65 lines, 13/16 branches | the three untaken edges are data-dead: the model's null (asm 0x1788's `if (!modelData)`) and the grenade damage's type (the two `LdrToDamageInfo` edges at 0x1833) - the shipped placements carry one type |
 | `C0C` BuildGrenadeData | no row of its own (it is an inline in the header) | it only runs with a grenade spawn |
-| `17A0` GetRagDoll | 0/6 lines | the body is never called: the port has no ragdoll, so 0xb30 is never set |
+| `17A0` GetRagDoll | 3/6 lines | called with 0xb30 null only: the port lacks Think's ragdoll creation tail (0x1F08-0x2030) |
 | `3220` ShouldFrenzy | 0/15 lines | the body is called from UpdateAttacks, and the coverage runs' pirates never attacked (the GPU stalls of the machine make the console-driven fight unreliable) |
-| `3D7C` / `4030` | 0/35, 0/8 lines | the grenade never spawned in the coverage runs (the state that owns the spawn is not entered in a normal fight) |
+| `3D7C` / `4030` | 35/35, 8/8 lines | ALL-ARMS (sp13 `uevent` grenades + `specs/spacepirate_force11.py`) |
 
 No new marker: the rule is to mark only the bodies the profile shows ALL-ARMS.
 

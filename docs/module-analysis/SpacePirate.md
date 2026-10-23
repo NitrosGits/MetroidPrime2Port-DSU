@@ -717,8 +717,64 @@ creates.
 Why the remaining arms cannot be forced the way ds42's were: a non-null `xb30_` at `17A0` makes
 `CGameProjectile` dereference it (`GetRagDoll()->ProjectileCollision(...)`), so a fabricated pointer
 crashes instead of covering an arm; only a real ragdoll object works, and the port's creation path
-is retail's `1980` tail (0x1F08-0x2030, `fn_50_1938`) which is unported. `E3D8` additionally needs
+is retail's `1980` tail (0x1F08-0x2030), which is unported (its callee `fn_50_1938` is the upstream
+CPirateRagDoll ctor, built - section 13). `E3D8` additionally needs
 a `CScriptTrigger` with `kTFL_DetectAI` and a force field as the touching actor.
+
+## 13. sp13 slice (2026-10-23): the grenade group re-check, the ragdoll blocker
+
+**Grenade bodies** (`3D7C`, `4030`, `4174`; marked since sp20/sp21): re-read against the asm, equal.
+`4174`: `--xc58` first (0x419C), gun locator 0xa86, angle seed B9C = 0.0, speed seed 0x8e4
+(`mGrenadeMinLaunchSpeed`), `GetObjectById(0xa94)` null -> epilogue (0x41FC), `4030`/`3D7C`, flat
+delta z = B9C, `CanBeNormalized` (0x42A4) else the gun forward (column 1: 0x18c/0x19c/0x1ac),
+`GetAngleDiff > BD8` (0.7853982, 0x42F4 `ble`) -> `Slerp` to BD8, `Slerp(horizontal, sUpVector,
+angle)`, `LookAt(origin, origin + dir, sUpVector)`, `new 0x390` null-tested (0x43C4) and
+`AddObject` only when non-null (0x4508); ctor args: name rodata F62, `CEntityInfo(area 0x4,
+NullConnectionList, true, kInvalidEditorId)`, owner 0x8, data `this+0x890`, B78 = 5.0,
+`mskInvertedBox`, kInvalidUniqueId, B9C = 0.0, 0, null, null. One host-only difference: the port
+casts the target to `CActor` (`TCastToConstPtr`) where retail passes the entity straight to `4030`
+(its vtable slot 0x54 call); the attack target is always an actor. `3D7C`: BD0 FLT_MAX, BD4 pi/40,
+BD8 pi/4, BDC 1.1920929e-7, B54/B58 the 1..10 counter, B44 0.5; senses as in section 10. `4030`:
+`TCastToPtr<CPlayer>`, 0x38c == 0 (unmorphed) -> z -= B44 * eye height, 0x8b4 (numBounces) != 0 and
+z <= pos.z + B60 (2.0, `cror lt,eq`) -> pos + BE0 (0.7) * (aim - pos).
+Coverage (build-port-cov, 07_sand_alamoportalobservation L3, `uevent <trooper> 0` x21,
+`specs/spacepirate_force11.py`): `3D7C` 14/14, `4030` 8/8, `4174` 12/12 ALL-ARMS, 0 caught. Forced
+(one call each, restored): self-target, morphed + 0 bounces, speed 0.1-0.2 / 200-201, player x/y NaN
+(flat aim not normalisable), no target (65535), and the **unmorphed player**: this area's harness
+player is morphed on every natural call (`press x` does not change it; the spec's SPEC reads 1).
+H rows confirmed: `452C` is only `bl __ct__10CModelDataFv` (0x4538, the `CModelData()` temporary);
+`454C` is the 0xdc local's `CEntityInfo` dtor (null test 0x4564, `45A4` on +4, `Free` when r4 > 0);
+`45A4` is the `rstl::vector<SConnection>` dtor (`Free(+0xc)`, then itself when r4 > 0). The host's
+temporaries destruct the same objects at scope end.
+
+**Ragdoll** (`17A0` GetRagDoll, `E3D8` Touch stay unmarked):
+- 0xb30 is an `rstl::auto_ptr<CPirateRagDoll>`: the ctor stores 0 (0xFA14), the dtor frees it (0xF188),
+  and the only other writer is Think's tail: `xb2c > 0` (0x1F18 `ble`) -> `xb2c -= dt`; `xb2c <= 0`
+  (0x1F2C `cror lt,eq`) and 0xb30 null (0x1F3C) -> `new 0x11c` `CPirateRagDoll(mgr, this, 0x848
+  sound, flags (0x8f5 bit 0x1 -> 4, bit 0x2 -> 3, 0x1FB4-0x1FFC), B70, BA8 = -3.0, a 14-float
+  reserved_vector from rodata B04)`, stored by `fn_72_2060` (auto_ptr reset, 0x2010),
+  `RemoveMaterial(0x29, 0x28)` (0x2024), `xb2c = 0` (0x2030).
+- **0xb30 is non-null in shipped play**: `xb2c` is armed by `kUE_BecomeRagDoll` (3B28; gcov: the
+  case ran 4 times for 4 kills by `damage <id> 1000` / `kill <id>` in the run above) and by a floating
+  corpse (E498). So every ordinary pirate death builds the ragdoll in retail; the port arms the
+  timer and never builds it (0xb30 null on all 71 `17A0` and 2000 `E3D8` calls,
+  `specs/spacepirate_ragdoll.py`).
+- `fn_50` is module 50 **PirateRagDoll** (13516 B text, 48 functions); `fn_50_1938` (0xA74) is
+  the `CPirateRagDoll` ctor. It is upstream code (`src/MetroidPrime/Enemies/CPirateRagDoll.cpp`,
+  in `files.cmake`), already built and used by CommandoPirate (`fn_9_3E1C` ->
+  `PortCCommandoPirate.cpp` `rs_new CPirateRagDoll`) and CDarkTrooper. Callers of the ctor in the
+  REL asm: SpacePirate `fn_72_1980` (0x2004) and CommandoPirate `fn_9_3E1C`. Not a blocker.
+- **The blocker is SpacePirate's own**: Think `1980`'s ragdoll arms (0x1CA0-0x1EA8: skip CPatterned
+  Think / bone tracking while primed, the transform from the ragdoll, its water, AdvanceParticles)
+  and its tail (0x1F08-0x2030), plus `xb30_` typed `void*` in `CSpacePirate.hpp`. Once a ragdoll
+  exists every consumer's ragdoll arm goes live, and these **marked** bodies carry that arm as a
+  comment or only in part (they were marked on "the arm is dead", which is false): `17C8`
+  GetTouchBounds, `24C4` PreThink (tests null only, not the 0x70 0x40 primed bit at 0x24F0),
+  `38E4` PreRender, `3A0C` PreRenderAllViewports, `E0AC`/`E0D8` Detach/AttachActorToPirate (the
+  0x118 0x40 write), `E498` AcceptScriptMsg (0xE924/0xE940, the TODO in the port). `253C`
+  UpdateAttacks (0x25B4) and `C684` KnockBack (0xC6C4) have the null test in code. A ragdoll slice
+  (follow CommandoPirate's `xbfc_ragDoll`) has to port all of them together; porting only the tail
+  would build a ragdoll that nothing updates or renders.
 
 
 
