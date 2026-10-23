@@ -1,0 +1,19 @@
+# CShredder (module 68: CShredder, "Morphology: Shredder"). Torvus Bog 01_swamp_entrance
+# (world 3dfd2249, layer 3) holds three Shredders u04e6/u04e3/u04e2. The steps exercise one of
+# them (u04e2 00020081): create/activate it, place it, send Alert, force Generate/Lurk, send an
+# XRDG resisted-damage message, damage it, kill it, then send XDMG to explode it, with `obj`
+# reads and `objs Shredder` before and after. Checks are game updates (@f<n>), never wall seconds.
+# F=1100, last check f800.
+@f200 layer 3
+@f240 god 1; objs Shredder
+@f260 place u04e2 player 6; send u04e2 Create
+@f300 send u04e2 Alert
+@f320 obj u04e2
+@f340 fsm u04e2 Generate; obj u04e2
+@f380 fsm u04e2 Lurk; obj u04e2
+@f420 damage u04e2 100; obj u04e2
+@f460 kill u04e2
+@f500 send u04e2 0x58444d47
+@f540 objs Shredder
+@f580 objs Shredder
+@f800 objs Shredder

@@ -215,6 +215,7 @@ The generic con.py families run in fast mode by default (`MP2_FRAME_LIMIT=0 MP2_
 batch (~4.6 min, ing ~266 s), and so do the `NC` families (ingswarm, darktrooper, bacteriaswarm,
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui, kral, pssm, stod,
 pbug, szone, rptl, chog, drkc, plac, plct, ming, snak, eyeb, kroc, atma and atmb): their areas
+pbug, szone, rptl, chog, drkc, plac, plct, ming, snak, eyeb, kroc and shrd): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, spor's 2000 updates leave only ~100 ms of uncapped run after the connect and
@@ -410,6 +411,9 @@ kill it, with `objs EyeBall` counting four down to three. kroc drives Torvus Bog
 Krocusses u045b/u0447/u0441: activate and place u045b, force Sniff/Stop, send Increment/Decrement,
 damage it (hp 60 -> 50 -> 40) once its wings open, kill it, with `objs Krocuss` counting three down
 to two.
+shrd drives Torvus Bog 01_swamp_entrance's three Shredders u04e6/u04e3/u04e2 (layer 3): create and
+place u04e2, send Alert, force Generate/Lurk, send an XRDG message, damage it (hp 500 -> 500),
+kill it and send XDMG to explode it, with `objs Shredder` counting three down to two.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
