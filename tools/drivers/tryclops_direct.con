@@ -1,0 +1,71 @@
+# tail23 direct: statecall/trigcall every Tryclops body once (console-driven, not natural play)
+@f600 tp 148 213.3 -13.0
+@f620 press x 40
+@f700 statecall u047b FixedDelay 0
+@f720 statecall u047b FixedDelay 1
+@f740 statecall u047b FixedDelay 2
+@f760 statecall u047b TargetPatrol 0
+@f780 statecall u047b TargetPatrol 1
+@f800 statecall u047b TargetPatrol 2
+@f820 statecall u047b TargetPlayer 0
+@f840 statecall u047b TargetPlayer 1
+@f860 statecall u047b TargetPlayer 2
+@f880 statecall u047b Cover 0
+@f900 statecall u047b Cover 1
+@f920 statecall u047b Cover 2
+@f940 statecall u047b TargetCover 0
+@f960 statecall u047b TargetCover 1
+@f980 statecall u047b TargetCover 2
+@f1000 statecall u047b Shuffle 0
+@f1020 statecall u047b Shuffle 1
+@f1040 statecall u047b Shuffle 2
+@f1060 statecall u047b Approach 0
+@f1080 statecall u047b Approach 1
+@f1100 statecall u047b Approach 2
+@f1120 statecall u047b PathFind 0
+@f1140 statecall u047b PathFind 1
+@f1160 statecall u047b PathFind 2
+@f1180 statecall u047b PathFindEx 0
+@f1200 statecall u047b PathFindEx 1
+@f1220 statecall u047b PathFindEx 2
+@f1240 statecall u047b TurnAround 0
+@f1260 statecall u047b TurnAround 1
+@f1280 statecall u047b TurnAround 2
+@f1300 statecall u047b Crouch 0
+@f1320 statecall u047b Crouch 1
+@f1340 statecall u047b Crouch 2
+@f1360 statecall u047b SelectTarget 0
+@f1380 statecall u047b SelectTarget 1
+@f1400 statecall u047b SelectTarget 2
+@f1420 statecall u047b Patrol 0
+@f1440 statecall u047b Patrol 1
+@f1460 statecall u047b Patrol 2
+@f1480 statecall u047b Attack 0
+@f1500 statecall u047b Attack 1
+@f1520 statecall u047b Attack 2
+@f1540 statecall u047b Suck 0
+@f1560 statecall u047b Suck 1
+@f1580 statecall u047b Suck 2
+@f1600 statecall u047b JumpBack 0
+@f1620 statecall u047b JumpBack 1
+@f1640 statecall u047b JumpBack 2
+@f1660 statecall u047b GetUp 0
+@f1680 statecall u047b GetUp 1
+@f1700 statecall u047b GetUp 2
+@f1720 statecall u047b Dizzy 0
+@f1740 statecall u047b Dizzy 1
+@f1760 statecall u047b Dizzy 2
+@f1780 trigcall u047b InDetectionRange
+@f1800 trigcall u047b InMaxRange
+@f1820 trigcall u047b InAttackPosition
+@f1840 trigcall u047b Inside
+@f1860 trigcall u047b InRange
+@f1880 trigcall u047b InPosition
+@f1900 trigcall u047b SpotPlayer
+@f1920 trigcall u047b HearShot
+@f1940 trigcall u047b CoverBlown
+@f1960 trigcall u047b IsDizzy
+@f1980 trigcall u047b ShouldRetreat
+@f2000 trigcall u047b HasRetreatPattern
+@f2020 obj u047b
+@f2060 status

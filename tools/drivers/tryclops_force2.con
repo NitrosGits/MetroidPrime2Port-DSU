@@ -1,0 +1,16 @@
+# Tryclops forced arms, part 2 (with tools/cov/specs/tryclops_force.py): u0455 grabs the ball, then
+# SelectTarget/Cover with the ball held, Crouch Deactivate and GetUp Update after the release;
+# u047b grabs it and is killed twice while holding it.
+@f600 tp 133 211.5 -13.0
+@f620 press x 40
+@f700 obj u0455
+@f720 obj u0455 ; status
+@f740 statecall u0455 SelectTarget 0 ; statecall u0455 Cover 0 ; obj u0455
+@f800 obj u0455 ; status
+@f900 statecall u0455 Crouch 2 ; statecall u0455 GetUp 1
+@f1000 tp 148 213.3 -13.0
+@f1060 obj u047b ; status
+@f1080 obj u047b ; status
+@f1100 obj u047b ; status
+@f1110 kill u047b ; kill u047b
+@f1200 status

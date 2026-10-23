@@ -1,0 +1,16 @@
+# tail23 beam2: each beam (given) at the second Cyclops u0455, then damage/kill.
+@f560 give darkBeam 1 ; give lightBeam 1 ; give annihilatorBeam 1
+@f600 tp 148 211 -11
+@f640 obj u0455
+@f680 beam power ; shoot u0455 2
+@f740 beam dark ; shoot u0455 2
+@f800 beam light ; shoot u0455 charged 2
+@f860 beam annihilator ; shoot u0455 charged 2
+@f920 beam power ; shoot u0455 charged 3
+@f980 damage u0455 20 power
+@f1020 damage u0455 20 missile
+@f1060 damage u0455 2000 powerbomb
+@f1100 obj u0455
+@f1140 status
+@f1180 kill u0455
+@f1220 obj u0455

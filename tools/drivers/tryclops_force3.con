@@ -1,0 +1,9 @@
+# Tryclops forced arms, part 3 (with tools/cov/specs/tryclops_force.py): SelectTarget/Cover with no
+# target, Crouch Deactivate after the throw (ball free); tryclops_force4.con kills u0455 while it holds the ball.
+@f560 trigcall u047b InAttackPosition ; statecall u047b SelectTarget 0 ; statecall u047b Cover 0
+@f600 tp 133 211.5 -13.0
+@f620 press x 40
+@f700 obj u0455
+@f760 obj u0455
+@f790 statecall u0455 Crouch 2 ; obj u0455
+@f950 status
