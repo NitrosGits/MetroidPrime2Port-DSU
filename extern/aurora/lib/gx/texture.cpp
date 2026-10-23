@@ -21,7 +21,9 @@
 #include <cstring>
 #include <list>
 #include <optional>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 #if defined(__linux__) || defined(__ANDROID__)
 #include <sys/mman.h>
@@ -138,6 +140,113 @@ std::atomic<uint64_t> s_pendingInvalidations = 0;
 std::atomic<uint64_t> s_pendingCacheClears = 0;
 TextureStats s_stats;
 
+// Leak detector. A texture object created anew every frame with new content (#95, #107) is
+// uploaded every frame and kept for ObjectCacheIdleFrames, so GPU memory grows until the OS
+// kills the game. Room loads upload in bursts; a leak uploads on most frames, window after
+// window. Nothing is evicted: the detector only logs what is being uploaded.
+constexpr uint64_t LeakWindowFrames = 300;
+constexpr uint64_t LeakWindowUploadFrames = LeakWindowFrames / 2;
+constexpr uint64_t LeakWindowsToWarn = 2;
+constexpr uint64_t LeakWindowsBetweenWarnings = 12;
+
+struct LeakSignatureStats {
+  uint64_t uploads = 0;
+  uint64_t bytes = 0;
+  uintptr_t lastData = 0;
+};
+
+// width, height, format, mip count
+using LeakSignature = std::tuple<u32, u32, u32, u32>;
+
+struct LeakUpload {
+  u32 texObjId = 0;
+  LeakSignature signature;
+  uint64_t bytes = 0;
+  uintptr_t data = 0;
+};
+
+struct LeakDetector {
+  uint64_t frames = 0;
+  uint64_t uploadFrames = 0;
+  uint64_t uploads = 0;
+  uint64_t bytes = 0;
+  uint64_t suspiciousWindows = 0;
+  uint64_t warnings = 0;
+  // This frame's uploads; one destroyed in the same frame (a movie frame) is dropped, as it isn't kept.
+  std::vector<LeakUpload> frameUploads;
+  absl::flat_hash_map<LeakSignature, LeakSignatureStats> signatures;
+};
+LeakDetector s_leak;
+
+uint64_t texture_handle_size(const gfx::TextureHandle& handle) noexcept;
+
+void note_new_object_upload(const GXTexObj_& obj, const gfx::TextureHandle& handle) {
+  s_leak.frameUploads.push_back({
+      .texObjId = obj.texObjId,
+      .signature = {obj.width(), obj.height(), obj.format(), obj.mip_count()},
+      .bytes = texture_handle_size(handle),
+      .data = reinterpret_cast<uintptr_t>(obj.data),
+  });
+}
+
+void forget_destroyed_upload(u32 texObjId) {
+  std::erase_if(s_leak.frameUploads, [texObjId](const LeakUpload& upload) { return upload.texObjId == texObjId; });
+}
+
+void log_suspected_leak() {
+  const auto top = std::max_element(s_leak.signatures.begin(), s_leak.signatures.end(), [](const auto& a, const auto& b) {
+    return a.second.uploads < b.second.uploads;
+  });
+  absl::flat_hash_set<const void*> handles;
+  uint64_t cacheBytes = 0;
+  for (const auto& [_, entry] : s_textureObjectCaches) {
+    if (entry.handle && handles.insert(entry.handle.get()).second) {
+      cacheBytes += texture_handle_size(entry.handle);
+    }
+  }
+  const auto& [width, height, format, mipCount] = top->first;
+  Log.warn("Possible texture leak: new texture objects with new content were uploaded on {}/{} frames for {} windows "
+           "in a row ({} uploads, {} KiB this window). Most uploaded: {}x{} format {} mips {} ({} uploads, {} KiB, "
+           "last data {:#x}). Object cache: {} entries, {} MiB of distinct textures.",
+           s_leak.uploadFrames, s_leak.frames, s_leak.suspiciousWindows, s_leak.uploads, s_leak.bytes / 1024, width,
+           height, format, mipCount, top->second.uploads, top->second.bytes / 1024, top->second.lastData,
+           s_textureObjectCaches.size(), cacheBytes / (1024 * 1024));
+  ++s_leak.warnings;
+}
+
+void update_leak_detector() {
+  ++s_leak.frames;
+  if (!s_leak.frameUploads.empty()) {
+    ++s_leak.uploadFrames;
+    for (const auto& upload : s_leak.frameUploads) {
+      ++s_leak.uploads;
+      s_leak.bytes += upload.bytes;
+      auto& signature = s_leak.signatures[upload.signature];
+      ++signature.uploads;
+      signature.bytes += upload.bytes;
+      signature.lastData = upload.data;
+    }
+    s_leak.frameUploads.clear();
+  }
+  if (s_leak.frames < LeakWindowFrames) {
+    return;
+  }
+  if (s_leak.uploadFrames >= LeakWindowUploadFrames) {
+    ++s_leak.suspiciousWindows;
+    if (s_leak.suspiciousWindows >= LeakWindowsToWarn &&
+        (s_leak.suspiciousWindows - LeakWindowsToWarn) % LeakWindowsBetweenWarnings == 0) {
+      log_suspected_leak();
+    }
+  } else {
+    s_leak.suspiciousWindows = 0;
+  }
+  const uint64_t warnings = s_leak.warnings;
+  const uint64_t suspiciousWindows = s_leak.suspiciousWindows;
+  s_leak = {};
+  s_leak.warnings = warnings;
+  s_leak.suspiciousWindows = suspiciousWindows;
+}
+
 #if DEBUG
 constexpr bool BuildSourceKeyForDebug = true;
 #else
@@ -155,6 +264,11 @@ void do_clear_static_texture_cache() noexcept {
 }
 
 void apply_pending_invalidations() noexcept {
+  // Plain loads first: this runs several times per draw, and an exchange is a locked write.
+  if (s_pendingCacheClears.load(std::memory_order_acquire) == 0 &&
+      s_pendingInvalidations.load(std::memory_order_acquire) == 0) {
+    return;
+  }
   const uint64_t pendingCacheClears = s_pendingCacheClears.exchange(0, std::memory_order_acq_rel);
   const uint64_t pendingInvalidations = s_pendingInvalidations.exchange(0, std::memory_order_acq_rel);
   if (pendingCacheClears != 0) {
@@ -290,7 +404,7 @@ struct TextureKeys {
 // for example a dumped bitmap reloaded after its area was evicted. The console
 // reads whatever is in MEM1; natively that can be an unmapped page, and hashing
 // it faults in the FIFO worker. Skip the source instead of crashing and log the
-// pointer so the offending texture can be identified (MP_LOG_TEX_INVALID=1).
+// pointer so the offending texture can be identified (MP2_LOG_TEX_INVALID=1).
 bool texture_source_is_mapped(const GXTexObj_& obj) noexcept {
 #if defined(__linux__) || defined(__ANDROID__)
   const long pageSize = sysconf(_SC_PAGESIZE);
@@ -319,8 +433,25 @@ bool texture_source_is_mapped(const GXTexObj_& obj) noexcept {
 #endif
 }
 
+// The EFB copy registered for obj's data pointer, if obj samples it. Games free
+// copy destinations without calling GXDestroyCopyTex, so a registration can
+// outlive its buffer; a texture later loaded at the same heap address would then
+// sample the stale copy (blank or garbled text, icons). A real copy target is
+// sampled at the size it was copied at, so a size mismatch means the address has
+// been reused for unrelated texture data.
+const GXState::CopyTextureRef* find_copy_texture(const GXTexObj_& obj) noexcept {
+  const auto it = g_gxState.copyTextures.find(obj.data);
+  if (it == g_gxState.copyTextures.end()) {
+    return nullptr;
+  }
+  if (obj.width() != it->second.width || obj.height() != it->second.height) {
+    return nullptr;
+  }
+  return &it->second;
+}
+
 void log_invalid_texture_source(const GXTexObj_& obj, const char* where) noexcept {
-  static const bool enabled = std::getenv("MP_LOG_TEX_INVALID") != nullptr;
+  static const bool enabled = std::getenv("MP2_LOG_TEX_INVALID") != nullptr;
   if (!enabled) {
     return;
   }
@@ -535,14 +666,14 @@ void touch_bound_texture(const GXTexObj_& obj) {
   if (!is_palette_format(obj.format()) || obj.tlut >= g_gxState.loadedTluts.size()) {
     return;
   }
-  const auto copyIt = g_gxState.copyTextures.find(obj.data);
-  if (copyIt == g_gxState.copyTextures.end()) {
+  const auto* copyRef = find_copy_texture(obj);
+  if (copyRef == nullptr) {
     return;
   }
   const auto& tlut = g_gxState.loadedTluts[obj.tlut];
   if (auto tlutIt = s_tlutObjectCaches.find(tlut.tlutObjId); tlutIt != s_tlutObjectCaches.end()) {
     tlutIt->second.lastUsedFrame = s_frameCount;
-    if (auto dynamicIt = tlutIt->second.dynamicPaletteTextures.find(make_dynamic_palette_key(obj, copyIt->second));
+    if (auto dynamicIt = tlutIt->second.dynamicPaletteTextures.find(make_dynamic_palette_key(obj, *copyRef));
         dynamicIt != tlutIt->second.dynamicPaletteTextures.end()) {
       dynamicIt->second.lastUsedFrame = s_frameCount;
     }
@@ -688,8 +819,11 @@ gfx::TextureHandle resolve_static_texture(const GXTexObj_& obj) {
   if (!obj.has_data()) {
     return {};
   }
+
+  bool knownObject = false;
   if (obj.texObjId != 0) {
     if (const auto it = s_textureObjectCaches.find(obj.texObjId); it != s_textureObjectCaches.end()) {
+      knownObject = true;
       auto& entry = it->second;
       if (entry.handle && entry.texDataVersion == obj.texDataVersion && entry.tlutObjId == 0) {
         entry.lastUsedFrame = s_frameCount;
@@ -737,6 +871,9 @@ gfx::TextureHandle resolve_static_texture(const GXTexObj_& obj) {
       perf::count(AURORA_PERF_TEX_UPLOAD);
       s_stats.uploadBytes += texture_handle_size(handle);
       cache_content_texture(std::move(keys->contentKey), handle);
+      if (!knownObject && obj.texObjId != 0 && !obj.no_cache()) {
+        note_new_object_upload(obj, handle);
+      }
     }
   }
   if (!obj.no_cache()) {
@@ -751,8 +888,11 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
   if (!obj.has_data()) {
     return {};
   }
+
+  bool knownObject = false;
   if (obj.texObjId != 0) {
     if (const auto it = s_textureObjectCaches.find(obj.texObjId); it != s_textureObjectCaches.end()) {
+      knownObject = true;
       auto& entry = it->second;
       if (entry.handle && entry.texDataVersion == obj.texDataVersion && entry.tlutObjId == tlut.tlutObjId &&
           entry.tlutDataVersion == tlut.tlutDataVersion) {
@@ -806,6 +946,9 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
       perf::count(AURORA_PERF_TEX_UPLOAD);
       s_stats.uploadBytes += texture_handle_size(handle);
       cache_content_texture(std::move(keys->contentKey), handle);
+      if (!knownObject && obj.texObjId != 0 && !obj.no_cache() && !tlut.no_cache()) {
+        note_new_object_upload(obj, handle);
+      }
     }
   }
   if (!obj.no_cache() && !tlut.no_cache()) {
@@ -816,6 +959,7 @@ gfx::TextureHandle resolve_static_palette_texture(const GXTexObj_& obj, const GX
 
 void end_frame() noexcept {
   const auto streamingStats = gfx::texture_replacement::process_streaming();
+  gfx::texture_replacement::sweep_idle_cache();
   s_stats.pendingLoads = streamingStats.pendingLoads;
   s_stats.publishes = streamingStats.publishes;
   s_stats.publishBytes = streamingStats.publishBytes;
@@ -835,10 +979,13 @@ void end_frame() noexcept {
   s_stats.pendingLoads = streamingStats.pendingLoads;
   s_stats.publishes = streamingStats.publishes;
   s_stats.publishBytes = streamingStats.publishBytes;
+  update_leak_detector();
   ++s_frameCount;
   apply_pending_invalidations();
   sweep_object_caches();
 }
+
+uint64_t leak_warning_count() noexcept { return s_leak.warnings; }
 
 void shutdown() noexcept {
   s_textureObjectCaches.clear();
@@ -854,6 +1001,7 @@ void shutdown() noexcept {
   s_pendingInvalidations.store(0, std::memory_order_release);
   s_pendingCacheClears.store(0, std::memory_order_release);
   s_stats = {};
+  s_leak = {};
 }
 
 void set_content_cache_budget_for_testing(uint64_t bytes) noexcept {
@@ -877,6 +1025,7 @@ void evict_texture_object(u32 texObjId) noexcept {
     s_textureObjectCaches.erase(it);
     clear_texture_dependency(texObjId, entry);
   }
+  forget_destroyed_upload(texObjId);
   // If there is a loaded slot with this ID, mark it as no_cache to avoid inserting it when it's resolved.
   // This also handles the case where the texture was created, loaded, and immediately destroyed before we resolved it.
   for (auto& obj : g_gxState.loadedTextures) {
@@ -914,6 +1063,30 @@ void clear_copy_texture_cache() noexcept {
   texture::invalidate_bindings();
 }
 
+void trim_copy_texture_cache() noexcept {
+  // A resize keeps the latest copy at each address: the copies are standalone
+  // textures, and a paused game keeps sampling one it took before the resize
+  // (Metroid Prime's pause backdrop), which a full clear turned black. Pooled
+  // copies nothing points to are freed, as they would mostly be at the old size.
+  absl::flat_hash_set<const void*> live;
+  for (const auto& [_, ref] : g_gxState.copyTextures) {
+    if (ref.handle) {
+      live.insert(ref.handle.get());
+    }
+  }
+  for (auto it = g_gxState.copyTextureCache.begin(); it != g_gxState.copyTextureCache.end();) {
+    if (!it->second.handle || !live.contains(it->second.handle.get())) {
+      g_gxState.copyTextureCache.erase(it++);
+    } else {
+      ++it;
+    }
+  }
+  for (auto& [_, cache] : s_tlutObjectCaches) {
+    cache.dynamicPaletteTextures.clear();
+  }
+  texture::invalidate_bindings();
+}
+
 void clear_static_texture_cache() noexcept { s_pendingCacheClears.fetch_add(1, std::memory_order_release); }
 
 // Port: a dynamic palette texture is keyed by its source copy texture's address and is as large as
@@ -933,7 +1106,9 @@ void evict_dynamic_palettes(const void* sourceIdentity) noexcept {
 
 void evict_copy_texture(const void* dest) noexcept {
   absl::flat_hash_set<const void*> sourceIdentities;
+  bool erased = false;
   if (const auto it = g_gxState.copyTextures.find(dest); it != g_gxState.copyTextures.end()) {
+    erased = true;
     if (it->second.handle) {
       sourceIdentities.insert(it->second.handle.get());
     }
@@ -942,6 +1117,7 @@ void evict_copy_texture(const void* dest) noexcept {
 
   for (auto it = g_gxState.copyTextureCache.begin(); it != g_gxState.copyTextureCache.end();) {
     if (it->first.dest == dest) {
+      erased = true;
       if (it->second.handle) {
         sourceIdentities.insert(it->second.handle.get());
       }
@@ -962,7 +1138,55 @@ void evict_copy_texture(const void* dest) noexcept {
       }
     }
   }
-  texture::invalidate_bindings();
+  // CTexture calls this for every texture it loads, almost always with nothing
+  // registered; keep those calls from dropping the bound textures.
+  if (erased) {
+    texture::invalidate_bindings();
+  }
+}
+
+// The copy pool is keyed by dest and size, and a dest copied at a size that follows the
+// screen (Metroid Prime's fog volumes copy a chunk the size of the volume's projected box
+// into two fixed buffers) gets a new texture for every size it reaches, none ever freed: on
+// a phone, where GPU memory is RAM, a walk round Magmoor grew past a gigabyte. Keep the
+// `keep` sizes written most recently for dest and free the rest.
+void trim_copy_sizes(const void* dest, size_t keep) noexcept {
+  size_t count = 0;
+  for (const auto& [key, _] : g_gxState.copyTextureCache) {
+    count += key.dest == dest;
+  }
+  if (count <= keep) {
+    return;
+  }
+  const auto current = g_gxState.copyTextures.find(dest);
+  const void* currentIdentity =
+      current != g_gxState.copyTextures.end() && current->second.handle ? current->second.handle.get() : nullptr;
+  absl::flat_hash_set<const void*> sourceIdentities;
+  for (; count > keep; --count) {
+    auto oldest = g_gxState.copyTextureCache.end();
+    for (auto it = g_gxState.copyTextureCache.begin(); it != g_gxState.copyTextureCache.end(); ++it) {
+      if (it->first.dest == dest && it->second.handle.get() != currentIdentity &&
+          (oldest == g_gxState.copyTextureCache.end() || it->second.lastCopy < oldest->second.lastCopy)) {
+        oldest = it;
+      }
+    }
+    if (oldest == g_gxState.copyTextureCache.end()) {
+      break;
+    }
+    if (oldest->second.handle) {
+      sourceIdentities.insert(oldest->second.handle.get());
+    }
+    g_gxState.copyTextureCache.erase(oldest);
+  }
+  for (auto& [_, cache] : s_tlutObjectCaches) {
+    for (auto it = cache.dynamicPaletteTextures.begin(); it != cache.dynamicPaletteTextures.end();) {
+      if (sourceIdentities.contains(it->first.sourceIdentity)) {
+        cache.dynamicPaletteTextures.erase(it++);
+      } else {
+        ++it;
+      }
+    }
+  }
 }
 
 void resolve_sampled_textures(const ShaderInfo& info) noexcept {
@@ -983,8 +1207,7 @@ void resolve_sampled_textures(const ShaderInfo& info) noexcept {
     }
 
     gfx::TextureHandle handle;
-    const auto copyIt = g_gxState.copyTextures.find(obj.data);
-    const GXState::CopyTextureRef* copyRef = copyIt != g_gxState.copyTextures.end() ? &copyIt->second : nullptr;
+    const GXState::CopyTextureRef* copyRef = find_copy_texture(obj);
     if (is_palette_format(obj.format())) {
       const auto tlutIdx = static_cast<size_t>(obj.tlut);
       if (tlutIdx < g_gxState.loadedTluts.size()) {

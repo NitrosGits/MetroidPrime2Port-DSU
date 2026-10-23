@@ -69,6 +69,8 @@ void set_source_replacement(aurora::texture::TextureSourceKey key, gfx::TextureH
 } // namespace aurora::gx
 
 namespace aurora::gfx {
+void TextureRef::count_live(int sign) noexcept {}
+
 uint64_t calc_texture_size(wgpu::TextureFormat format, uint32_t width, uint32_t height, uint32_t mips) noexcept {
   uint64_t total = 0;
   for (uint32_t mip = 0; mip < mips; ++mip) {
@@ -113,6 +115,7 @@ void queue_palette_conv(tex_palette_conv::ConvRequest req) { ++s_paletteConversi
 
 namespace aurora::gfx::texture_replacement {
 StreamingStats process_streaming() noexcept { return {}; }
+void sweep_idle_cache() noexcept {}
 
 std::optional<ReplacementResult> find_pointer_replacement(const GXTexObj_& obj) noexcept {
   return s_replacementId != 0 ? std::optional{ReplacementResult{.handle = s_replacement, .id = s_replacementId}}

@@ -7,6 +7,8 @@
 #include "efb_copy.hpp"
 #include "pipeline_cache.hpp"
 #include "scan_peek.hpp"
+#include "probe.hpp"
+#include "resource_cache.hpp"
 #include "tex_copy_conv.hpp"
 #include "tex_palette_conv.hpp"
 #include "../gx/gx.hpp"
@@ -36,6 +38,7 @@ using webgpu::g_queue;
 namespace {
 constexpr Module Log{"aurora::gfx"};
 PipelineRef g_currentPipeline;
+BindGroupRef g_currentTextureGroup;
 
 void apply_viewport(const wgpu::RenderPassEncoder& pass, const Viewport& vp) {
   const float minDepth = gx::UseReversedZ ? 1.f - vp.zfar : vp.znear;
@@ -122,6 +125,7 @@ void render_pass(const wgpu::RenderPassEncoder& pass, FramePacket& frame, Render
   // Bind bind group for the whole pass
   pass.SetBindGroup(0, resources().staticBindGroup);
   pass.SetBindGroup(2, gx::g_emptyTextureBindGroup);
+  g_currentTextureGroup = 0;
 
   for (auto& cmd : passInfo.commands) {
 #ifdef AURORA_GFX_DEBUG_GROUPS
@@ -166,6 +170,7 @@ void render_pass(const wgpu::RenderPassEncoder& pass, FramePacket& frame, Render
       g_currentPipeline = UINTPTR_MAX;
       pass.SetBindGroup(0, resources().staticBindGroup);
       pass.SetBindGroup(2, gx::g_emptyTextureBindGroup);
+      g_currentTextureGroup = 0;
       if (hasViewport) {
         apply_viewport(pass, currentViewport);
       }
@@ -251,7 +256,7 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
       .colorAttachmentCount = passInfo.colorAttachmentCount,
       .colorAttachments = attachments.data(),
       .depthStencilAttachment = depthStencilAttachmentPtr,
-      .timestampWrites = webgpu::gpu_prof::pass_writes(label),
+      .timestampWrites = webgpu::gpu_prof::pass_writes(passIndex == 0 ? "EFB pass (first)" : "EFB pass (later)"),
   };
 
   auto pass = cmd.BeginRenderPass(&renderPassDescriptor);
@@ -267,19 +272,30 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
   if (passInfo.resolveTarget) {
     const auto& dstSize = passInfo.resolveTarget->size;
     const bool needsConversion = tex_copy_conv::needs_conversion(passInfo.resolveFormat);
-    const bool needsScaling = dstSize.width != static_cast<uint32_t>(passInfo.resolveRect.width) ||
+    // A probe face is a layer of a cube texture, which only the blit addresses.
+    const bool needsScaling = passInfo.probeFace >= 0 ||
+                              dstSize.width != static_cast<uint32_t>(passInfo.resolveRect.width) ||
                               dstSize.height != static_cast<uint32_t>(passInfo.resolveRect.height);
     const bool isDepth = gx::is_depth_format(passInfo.resolveFormat);
     if (isDepth && passInfo.msaaSamples > 1) {
       Log.fatal("Depth tex copies from multisampled EFB targets are not supported");
     }
+    // Depth copies read the depth buffer, which an HDR scene pass leaves as it is.
+    const auto domain = isDepth ? tex_copy_conv::CopyDomain::Display : passInfo.resolveDomain;
     const tex_copy_conv::ConvRequest convReq{
         .fmt = passInfo.resolveFormat,
         .srcView = isDepth ? passInfo.copySourceDepthView : passInfo.copySourceView,
         .uniformRange = passInfo.resolveUniformRange,
         .dst = passInfo.resolveTarget,
         .sampleFilter = needsScaling ? tex_copy_conv::SampleFilter::Linear : tex_copy_conv::SampleFilter::Nearest,
+        .domain = domain,
+        .toneRange = passInfo.resolveToneRange,
     };
+    // A raw copy only between equal formats in the same domain: an HDR display copy always
+    // post-tones, and RGBA16F never goes to an 8-bit texture as is.
+    const bool rawCopy = domain == tex_copy_conv::CopyDomain::Display ||
+                         (domain == tex_copy_conv::CopyDomain::Linear &&
+                          passInfo.copySourceTexture.GetFormat() == passInfo.resolveTarget->format);
     {
       // Port diagnostic (temporary): what each EFB copy resolve actually copies.
       static const bool sLog = std::getenv("MP2_DEBUG_EFB_COPY") != nullptr;
@@ -305,7 +321,7 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
       // Intentionally leave the target unresolved.
     } else if (needsConversion) {
       tex_copy_conv::run(cmd, convReq);
-    } else if (needsScaling) {
+    } else if (needsScaling || !rawCopy) {
       if (isDepth) {
         // The passthrough blit samples a colour view, so binding a depth view to it is an invalid
         // descriptor - the draw then fetches through a garbage texture descriptor and the GPU faults
@@ -340,6 +356,41 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
           .depthOrArrayLayers = 1,
       };
       cmd.CopyTextureToTexture(&src, &dst, &size);
+    }
+    if (passInfo.resolveMips && passInfo.resolveTarget->mipCount > 1) {
+      // Each level is a 2:1 bilinear blit (a box filter) of the one above.
+      const webgpu::gpu_prof::Zone zone{cmd, "EFB copy mips"};
+      const auto& target = passInfo.resolveTarget;
+      for (uint32_t m = 1; m < target->mipCount; ++m) {
+        const auto level = [&](uint32_t mip) {
+          const wgpu::TextureViewDescriptor desc{
+              .label = "EFB copy mip view",
+              .format = target->format,
+              .dimension = wgpu::TextureViewDimension::e2D,
+              .baseMipLevel = mip,
+              .mipLevelCount = 1,
+          };
+          auto view = target->texture.CreateView(&desc);
+          const wgpu::Extent3D size{std::max(target->size.width >> mip, 1u), std::max(target->size.height >> mip, 1u),
+                                    1};
+          return std::make_shared<TextureRef>(target->texture, view, view, size, target->format, 1, target->gxFormat);
+        };
+        const auto src = level(m - 1);
+        tex_copy_conv::blit(cmd, tex_copy_conv::ConvRequest{
+                                     .fmt = GX_TF_RGBA8,
+                                     .srcView = src->sampleTextureView,
+                                     .uniformRange = passInfo.resolveMipsUniformRange,
+                                     .dst = level(m),
+                                     .sampleFilter = tex_copy_conv::SampleFilter::Linear,
+                                     // A linear copy's levels stay RGBA16F; display copies are 8-bit.
+                                     .domain = domain == tex_copy_conv::CopyDomain::Linear
+                                                   ? tex_copy_conv::CopyDomain::Linear
+                                                   : tex_copy_conv::CopyDomain::Display,
+                                 });
+      }
+    }
+    if (passInfo.probeFace >= 0) {
+      probe::encode_mips(cmd, passInfo.probeFace, passInfo.probeUniformRange);
     }
   }
 
@@ -380,30 +431,53 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
   }
 }
 
-constexpr uint64_t VertexStagingOffset = 0;
-constexpr uint64_t UniformStagingOffset = VertexStagingOffset + VertexBufferSize;
-constexpr uint64_t IndexStagingOffset = UniformStagingOffset + UniformBufferSize;
-constexpr uint64_t StorageStagingOffset = IndexStagingOffset + IndexBufferSize;
-constexpr uint64_t TextureUploadStagingOffset = StorageStagingOffset + StorageBufferSize;
-
 constexpr uint32_t align_down_copy_offset(uint32_t value) noexcept { return value & ~3u; }
 
+// Copies what the frame wrote since `copied`: from the staging buffer up to stagingSize, and
+// the rest (the frame's spill, which the staging buffer was too small for) through a transient
+// buffer. Only bytes below highWater are read, so the recording thread may still be appending.
+// The frame's data starts at dstBase in dst, after the resident region.
 void copy_staging_buffer_range(wgpu::CommandEncoder& cmd, const FramePacket& frame, uint32_t& copied,
-                               uint32_t highWater, uint64_t stagingOffset, const wgpu::Buffer& dst) {
+                               uint32_t highWater, uint64_t stagingOffset, uint64_t stagingSize,
+                               const SpillBuffer& spill, const wgpu::Buffer& dst, uint64_t dstBase) {
   if (highWater <= copied) {
     return;
   }
   const uint32_t copyStart = align_down_copy_offset(copied);
   const uint32_t copyEnd = AURORA_ALIGN(highWater, 4);
-  cmd.CopyBufferToBuffer(staging_buffer(frame.stagingBuffer), stagingOffset + copyStart, dst, copyStart,
-                         copyEnd - copyStart);
+  if (copyStart < stagingSize) {
+    const uint64_t end = std::min<uint64_t>(copyEnd, stagingSize);
+    cmd.CopyBufferToBuffer(staging_buffer(frame.stagingBuffer), stagingOffset + copyStart, dst,
+                           dstBase + copyStart, end - copyStart);
+  }
+  if (copyEnd > stagingSize) {
+    const uint64_t start = std::max<uint64_t>(copyStart, stagingSize);
+    const uint64_t size = copyEnd - start;
+    const wgpu::BufferDescriptor descriptor{
+        .label = "Spill Upload Buffer",
+        .usage = wgpu::BufferUsage::MapWrite | wgpu::BufferUsage::CopySrc,
+        .size = size,
+        .mappedAtCreation = true,
+    };
+    auto buffer = webgpu::g_device.CreateBuffer(&descriptor);
+    auto* mapped = static_cast<uint8_t*>(buffer.GetMappedRange(0, size));
+    const uint64_t valid = highWater - start;
+    memcpy(mapped, spill.data.get() + (start - stagingSize), valid);
+    if (size > valid) {
+      memset(mapped + valid, 0, size - valid);
+    }
+    buffer.Unmap();
+    // The command buffer keeps the buffer alive until the GPU is done with the copy.
+    cmd.CopyBufferToBuffer(buffer, 0, dst, dstBase + start, size);
+  }
   copied = highWater;
 }
 
 bool needs_staging_copy(const FramePacket& frame, const FrameOp& op) {
   const auto& highWater = op.highWater;
   if (highWater.verts > frame.copied.verts || highWater.uniforms > frame.copied.uniforms ||
-      highWater.indices > frame.copied.indices || highWater.storage > frame.copied.storage) {
+      highWater.indices > frame.copied.indices || highWater.storage > frame.copied.storage ||
+      op.bufferUploads.size() > frame.copied.bufferUploadCount) {
     return true;
   }
   if constexpr (UseTextureBuffer) {
@@ -419,12 +493,28 @@ void copy_staging_to_high_water(wgpu::CommandEncoder& cmd, FramePacket& frame, c
   const webgpu::gpu_prof::Zone zone{cmd, "Staging copies"};
   const auto& highWater = op.highWater;
   auto& res = resources();
-  copy_staging_buffer_range(cmd, frame, frame.copied.verts, highWater.verts, VertexStagingOffset, res.vertexBuffer);
+  const auto& sizes = frame_buffer_sizes();
+  const uint64_t VertexStagingOffset = 0;
+  const uint64_t UniformStagingOffset = VertexStagingOffset + sizes.vertex;
+  const uint64_t IndexStagingOffset = UniformStagingOffset + sizes.uniform;
+  const uint64_t StorageStagingOffset = IndexStagingOffset + sizes.index;
+  const uint64_t TextureUploadStagingOffset = StorageStagingOffset + sizes.storage;
+  copy_staging_buffer_range(cmd, frame, frame.copied.verts, highWater.verts, VertexStagingOffset, sizes.vertex,
+                            frame.spillVerts, res.vertexBuffer, sizes.base(StagingKind::Vertex));
   copy_staging_buffer_range(cmd, frame, frame.copied.uniforms, highWater.uniforms, UniformStagingOffset,
-                            res.uniformBuffer);
-  copy_staging_buffer_range(cmd, frame, frame.copied.indices, highWater.indices, IndexStagingOffset, res.indexBuffer);
+                            sizes.uniform, frame.spillUniforms, res.uniformBuffer, sizes.base(StagingKind::Uniform));
+  copy_staging_buffer_range(cmd, frame, frame.copied.indices, highWater.indices, IndexStagingOffset, sizes.index,
+                            frame.spillIndices, res.indexBuffer, sizes.base(StagingKind::Index));
   copy_staging_buffer_range(cmd, frame, frame.copied.storage, highWater.storage, StorageStagingOffset,
-                            res.storageBuffer);
+                            sizes.storage, frame.spillStorage, res.storageBuffer, sizes.base(StagingKind::Storage));
+  for (size_t i = frame.copied.bufferUploadCount; i < op.bufferUploads.size(); ++i) {
+    const auto& item = *op.bufferUploads[i];
+    const wgpu::Buffer& dst = item.dst == ResidentBuffer::Vertex  ? res.vertexBuffer
+                              : item.dst == ResidentBuffer::Index ? res.indexBuffer
+                                                                  : res.storageBuffer;
+    cmd.CopyBufferToBuffer(item.src, 0, dst, item.dstOffset, item.size);
+  }
+  frame.copied.bufferUploadCount = op.bufferUploads.size();
 
   if constexpr (UseTextureBuffer) {
     for (size_t i = frame.copied.textureUploadCount; i < op.textureUploads.size(); ++i) {
@@ -482,4 +572,14 @@ bool bind_pipeline(PipelineRef ref, const wgpu::RenderPassEncoder& pass) {
   g_currentPipeline = ref;
   return true;
 }
+
+void bind_texture_group(BindGroupRef ref, const wgpu::RenderPassEncoder& pass) {
+  if (ref == g_currentTextureGroup) {
+    return;
+  }
+  pass.SetBindGroup(2, find_bind_group(ref));
+  g_currentTextureGroup = ref;
+}
+
+void forget_texture_group() { g_currentTextureGroup = 0; }
 } // namespace aurora::gfx

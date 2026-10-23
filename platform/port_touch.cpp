@@ -64,6 +64,9 @@ struct Settings {
   float buttonInset = 0.f;
   float opacity = 100.f;
   float aimSpeed = kAimSpeed;
+  // MP1's "Separate vertical speed##touch": up and down drags use aimSpeedY.
+  bool aimSplit = false;
+  float aimSpeedY = kAimSpeed;
   bool springSwipe = true;
   std::string layout;
 };
@@ -132,6 +135,7 @@ void ApplyEnvironmentLocked() {
       {"MP2_TOUCH_VISOR_TAP_SCAN", &Settings::visorTapScan},
       {"MP2_TOUCH_CONTROLS", &Settings::controls},
       {"MP2_TOUCH_SPRING_SWIPE", &Settings::springSwipe},
+      {"MP2_TOUCH_AIM_SPLIT", &Settings::aimSplit},
   };
   for (const Flag& flag : kFlags) {
     if (const char* value = std::getenv(flag.name)) {
@@ -152,6 +156,7 @@ void ApplyEnvironmentLocked() {
       {"MP2_TOUCH_STICK_INSET", &Settings::stickInset, 0.f, 160.f},
       {"MP2_TOUCH_BUTTON_INSET", &Settings::buttonInset, 0.f, 160.f},
       {"MP2_TOUCH_OPACITY", &Settings::opacity, 10.f, 100.f},
+      {"MP2_TOUCH_AIM_SPEED_Y", &Settings::aimSpeedY, 0.25f, 10.f},
   };
   for (const Number& number : kNumbers) {
     if (const char* text = std::getenv(number.name)) {
@@ -241,6 +246,10 @@ void LoadConfig() {
       s.buttonInset = static_cast< float >(std::atof(value.c_str()));
     } else if (key == "aim_speed") {
       s.aimSpeed = static_cast< float >(std::atof(value.c_str()));
+    } else if (key == "aim_split") {
+      s.aimSplit = ParseBool(value);
+    } else if (key == "aim_speed_y") {
+      s.aimSpeedY = static_cast< float >(std::atof(value.c_str()));
     } else if (key == "spring_swipe") {
       s.springSwipe = ParseBool(value);
     } else if (key == "opacity") {
@@ -284,6 +293,8 @@ void SaveConfigLocked() {
     file << "button_inset=" << s.buttonInset << '\n';
     file << "opacity=" << s.opacity << '\n';
     file << "aim_speed=" << s.aimSpeed << '\n';
+    file << "aim_split=" << (s.aimSplit ? 1 : 0) << '\n';
+    file << "aim_speed_y=" << s.aimSpeedY << '\n';
     file << "spring_swipe=" << (s.springSwipe ? 1 : 0) << '\n';
     file << "layout=" << s.layout << '\n';
     file.flush();
@@ -481,6 +492,7 @@ void BeginFrame() {
     PortMouse::SetTouchAimDown(false);
   }
   PortMouse::SetTouchAimSpeed(AimSpeed());
+  PortMouse::SetTouchAimSpeedY(AimSplit() ? AimSpeedY() : AimSpeed());
 
   CPlayerState* const player = PlayerInPlay();
   ApplyRequests(player);
@@ -554,6 +566,8 @@ bool SpringBallRequested() { return SDL_GetTicksNS() < sSpringRequestUntilNs.loa
 bool AimEnabled() { return Read(&Settings::aim); }
 
 float AimSpeed() { return Read(&Settings::aimSpeed); }
+bool AimSplit() { return Read(&Settings::aimSplit); }
+float AimSpeedY() { return Read(&Settings::aimSpeedY); }
 
 bool Classic() { return Read(&Settings::classic); }
 bool TwinStick() { return Read(&Settings::twin); }
@@ -607,6 +621,7 @@ void SetFloatingStick(bool enabled) { SetSetting(&Settings::floating, enabled); 
 void SetWheelsEnabled(bool enabled) { SetSetting(&Settings::wheels, enabled); }
 void SetVisorTapScan(bool enabled) { SetSetting(&Settings::visorTapScan, enabled); }
 void SetSpringSwipe(bool enabled) { SetSetting(&Settings::springSwipe, enabled); }
+void SetAimSplit(bool enabled) { SetSetting(&Settings::aimSplit, enabled); }
 
 namespace {
 void SetNumber(float Settings::* field, float value, float low, float high) {
@@ -627,6 +642,7 @@ void SetStickInsetDp(float dp) { SetNumber(&Settings::stickInset, dp, 0.f, 300.f
 void SetButtonInsetDp(float dp) { SetNumber(&Settings::buttonInset, dp, 0.f, 300.f); }
 void SetOpacity(float percent) { SetNumber(&Settings::opacity, percent, 10.f, 100.f); }
 void SetAimSpeed(float pxPerDp) { SetNumber(&Settings::aimSpeed, pxPerDp, 0.5f, 6.f); }
+void SetAimSpeedY(float pxPerDp) { SetNumber(&Settings::aimSpeedY, pxPerDp, 0.5f, 6.f); }
 
 void RequestEdit() { sEditRequested.store(true, std::memory_order_release); }
 

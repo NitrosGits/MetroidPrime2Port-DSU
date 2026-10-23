@@ -8,6 +8,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>  // port: name the aborted resize
+#include <cstdlib>
 #include <cstring>
 #include <limits>
 #include <span>
@@ -287,7 +288,13 @@ public:
   [[nodiscard]] uint8_t* data() noexcept { return m_data; }
   [[nodiscard]] const uint8_t* data() const noexcept { return m_data; }
   [[nodiscard]] size_t size() const noexcept { return m_length; }
+  [[nodiscard]] size_t capacity() const noexcept { return m_capacity; }
+  // Marks the whole capacity used, for memory the buffer wraps.
+  void fill_to_capacity() noexcept { m_length = m_capacity; }
   [[nodiscard]] bool empty() const noexcept { return m_length == 0; }
+  // False when appending size bytes would grow a buffer that wraps memory it doesn't own,
+  // which aborts.
+  [[nodiscard]] bool can_append(size_t size) const noexcept { return m_owned || m_length + size <= m_capacity; }
 
   void append(const void* data, size_t size) {
     resize(m_length + size, false);
@@ -298,6 +305,14 @@ public:
   template <typename T>
   void append(const T& obj) {
     append(&obj, sizeof(T));
+  }
+
+  // Grows the buffer by size bytes left for the caller to fill.
+  [[nodiscard]] uint8_t* append_uninit(size_t size) {
+    resize(m_length + size, false);
+    uint8_t* out = m_data + m_length;
+    m_length += size;
+    return out;
   }
 
   void append_zeroes(size_t size) {
@@ -316,6 +331,8 @@ public:
   }
 
   void clear() { m_length = 0; }
+  // Drops everything past size bytes.
+  void truncate(size_t size) noexcept { m_length = std::min(m_length, size); }
   void reserve_extra(size_t size) { resize(m_length + size, true); }
 
   ByteBuffer clone() const {
@@ -432,4 +449,25 @@ private:
   size_t mSize;
   size_t mPosition = 0;
 };
+// The port's on/off rule for its MP_* debug variables (port::EnvFlag in the port's
+// port_env.h, which Aurora does not include): unset gives the fallback, and empty, 0,
+// false, off or no (any case) mean off.
+inline bool env_flag(const char* name, bool fallback = false) {
+  const char* value = std::getenv(name);
+  if (value == nullptr) {
+    return fallback;
+  }
+  for (const char* off : {"", "0", "false", "off", "no"}) {
+    const char* a = value;
+    const char* b = off;
+    while (*a != '\0' && *b != '\0' && (*a | 0x20) == *b) {
+      ++a;
+      ++b;
+    }
+    if (*a == '\0' && *b == '\0') {
+      return false;
+    }
+  }
+  return true;
+}
 } // namespace aurora

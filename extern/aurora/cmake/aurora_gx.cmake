@@ -1,4 +1,13 @@
 add_library(aurora_gx STATIC
+        lib/gfx/bloom.cpp
+        lib/gfx/volfog.cpp
+        lib/gfx/thermal.cpp
+        lib/gfx/xray.cpp
+        lib/gfx/shadow.cpp
+        lib/gfx/actor_shadow.cpp
+        lib/gfx/shadow_cascade.cpp
+        lib/gfx/vfx.cpp
+        lib/gfx/water.cpp
         lib/gfx/clear.cpp
         lib/gfx/depth_peek.cpp
         lib/gfx/efb_copy.cpp
@@ -6,9 +15,11 @@ add_library(aurora_gx STATIC
         lib/gfx/frame.cpp
         lib/gfx/perf.cpp
         lib/gfx/pipeline_cache.cpp
+        lib/gfx/probe.cpp
         lib/gfx/recording.cpp
         lib/gfx/render_worker.cpp
         lib/gfx/scan_peek.cpp
+        lib/gfx/selftest.cpp
         lib/gfx/resource_cache.cpp
         lib/gfx/dds_io.cpp
         lib/gfx/tex_copy_conv.cpp
@@ -20,6 +31,7 @@ add_library(aurora_gx STATIC
         lib/gx/attr_fmt.cpp
         lib/gx/command_processor.cpp
         lib/gx/regs.cpp
+        lib/gx/resident.cpp
         lib/gx/dl.cpp
         lib/gx/fifo.cpp
         lib/gx/gx.cpp

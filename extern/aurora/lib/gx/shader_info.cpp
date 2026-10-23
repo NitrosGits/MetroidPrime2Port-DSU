@@ -15,20 +15,12 @@ bool is_alpha_bump_channel(GXChannelID id) { return id == GX_ALPHA_BUMP || id ==
 Vec4<float> texture_size_bias(const gfx::TextureBind& tex) {
   auto width = static_cast<float>(tex.texObj.width());
   auto height = static_cast<float>(tex.texObj.height());
-  float vpBias = 0.f;
-  // The viewport-scale LOD bias compensates for texture *replacements* whose
-  // mip chain no longer matches the original resolution. Applying it to the
-  // game's own textures (which arb_mip_check can also flag) makes LOD
-  // fractional at non-integer EFB scales and samples the wrong mip, so restrict
-  // it to actual replacements and otherwise keep the console's LOD behaviour.
-  if (tex.ref && tex.ref->isReplacement) {
-    const float viewportScale =
-        std::min(g_gxState.renderViewport.width / std::max(g_gxState.logicalViewport.width, 1.f),
-                 g_gxState.renderViewport.height / std::max(g_gxState.logicalViewport.height, 1.f));
-    const float replacementScale = static_cast<float>(tex.ref->size.width) / std::max(width, 1.f);
-    vpBias = std::log2(viewportScale / std::max(replacementScale, 0.001f));
-  }
-  return {width, height, tex.texObj.lod_bias() + vpBias, 0.0f};
+  // No viewport-scale bias, which Aurora adds for arbitrary-mip textures to keep the
+  // console's mip choice: on the game's own textures it sampled the wrong mip at
+  // non-integer EFB scales, and on a replacement it reads the console's mip of a texture
+  // up to 32 times larger (a 1024 map over a 32 stub: 4 mips too fine), which shimmers
+  // and cost the phone a third of its frame rate. The GPU's own LOD fits both.
+  return {width, height, tex.texObj.lod_bias(), 0.0f};
 }
 
 void color_arg_reg_info(GXTevColorArg arg, const TevStage& stage, ShaderInfo& info) {
@@ -312,6 +304,23 @@ ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
     }
   }
 
+  // Texgens can consume a color channel even when TEV never reads it directly.
+  // Include these channels before calculating lighting and uniform requirements.
+  for (int i = 0; i < info.sampledTexCoords.size(); ++i) {
+    if (!info.sampledTexCoords.test(i)) {
+      continue;
+    }
+    const auto& tcg = config.tcgs[i];
+    if (tcg.type >= GX_TG_BUMP0 && tcg.type <= GX_TG_BUMP7) {
+      continue;
+    }
+    if (tcg.src == GX_TG_COLOR0) {
+      info.sampledColorChannels.set(0);
+    } else if (tcg.src == GX_TG_COLOR1) {
+      info.sampledColorChannels.set(1);
+    }
+  }
+
   info.uniformSize += info.loadsTevReg.count() * sizeof(Vec4<float>);
   for (int i = 0; i < info.sampledColorChannels.size(); ++i) {
     if (info.sampledColorChannels.test(i)) {
@@ -355,6 +364,22 @@ ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
       info.usesPTTexMtx.set(postMtxIdx);
     }
   }
+  if (config.pbr) {
+    info.usesPbr = true;
+    info.usesLightmap = config.pbrLightmapAttr != GX_VA_NULL;
+    // The probe, 7 single + ambient 6 + volume 6 + tone 3 + backlight 3 + light skip + light scale, then the
+    // linear light colours, then 3 HDR rows per light, then shield 8, the lightmap 4, the room lights and the model
+    // modulation (diffuse, incandescence, coverage)
+    info.uniformSize += sizeof(Mat3x4<float>) + sizeof(Vec4<float>) * (27 + GX::MaxLights * 4 + 8 + 4 + 1 + 3);
+  } else if (config.sceneHdr) {
+    // The TEV inverse tone curve and actual-blend compatibility flag (PBR reads pbr_tone).
+    info.usesHdrTone = true;
+    info.uniformSize += sizeof(Vec4<float>) * 4; // three tone rows, then hdr_tev_blend
+  }
+  if (config.hudSample >= 2) {
+    info.usesHudDyin = true;
+    info.uniformSize += sizeof(Vec4<float>);
+  }
   if (info.usesPTTexMtx.any()) {
     info.uniformSize += sizeof(Mat3x4<float>) * MaxPTTexMtx;
   }
@@ -362,11 +387,23 @@ ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
     info.usesFog = true;
     info.uniformSize += sizeof(Fog);
   }
+  if (config.volFog != VolFogNone) {
+    info.usesVolFog = true;
+    // near, range, exposure; the tone curve
+    info.uniformSize += sizeof(Vec4<float>) * 4;
+  }
   info.uniformSize += MaxTexCoord * sizeof(Vec4<float>);
   if (info.usedIndTexMtxs.any()) {
     info.uniformSize += MaxIndTexMtxs * sizeof(Mat2x4<float>);
   }
   info.uniformSize += info.sampledTextures.count() * sizeof(Vec4<float>);
+  if (config.shadow) {
+    info.usesShadow = true;
+    info.shadowReceive = shadow_receives(config);
+    info.actorDecal = info.shadowReceive && config.actorDecal != 0;
+    // The caster and receiver matrices, the sun's direction and colour (GXState::shadowUniform)
+    info.uniformSize += sizeof(g_gxState.shadowUniform);
+  }
   info.uniformSize = gfx::align_uniform(info.uniformSize);
   if (info.uniformSize > MaxUniformSize) {
     Log.fatal("Uniform size exceeds maximum: {} > {}", info.uniformSize, MaxUniformSize);
@@ -454,6 +491,91 @@ static void fill_uniform(ByteBuffer& buf, const ShaderInfo& info) noexcept {
       buf.append(g_gxState.kcolors[i]);
     }
   }
+  if (info.usesPbr) {
+    buf.append(g_gxState.pbrProbe);
+    buf.append(g_gxState.pbrEmissive);
+    buf.append(g_gxState.pbrBacklight);
+    buf.append(g_gxState.pbrLayer);
+    buf.append(g_gxState.pbrLayerHeight);
+    buf.append(g_gxState.pbrParam);
+    buf.append(g_gxState.pbrUp);
+    buf.append(g_gxState.pbrCubeParams);
+    for (const auto& v : g_gxState.pbrAmbient) {
+      buf.append(v);
+    }
+    for (const auto& v : g_gxState.pbrVolumeRows) {
+      buf.append(v);
+    }
+    for (const auto& v : g_gxState.pbrTone) {
+      buf.append(v);
+    }
+    for (const auto& v : g_gxState.pbrBacklightLights) {
+      buf.append(v);
+    }
+    // yzw carry the baked-light modulation.
+    Vec4<float> lightSkip = g_gxState.pbrLightSkip;
+    lightSkip.y() = g_gxState.pbrBakedLightModulation.x();
+    lightSkip.z() = g_gxState.pbrBakedLightModulation.y();
+    lightSkip.w() = g_gxState.pbrBakedLightModulation.z();
+    buf.append(lightSkip);
+    // z says whether the environment BRDF table is in use.
+    Vec4<float> lightScale = g_gxState.pbrLightScale;
+    lightScale.z() = g_gxState.pbrBrdfLut ? 1.f : 0.f;
+    buf.append(lightScale);
+    // The lights' colours made linear here once, not per light in every pixel. Lights rarely change
+    // between draws, so the last colours seen per slot are kept with their linear values.
+    static std::array<Vec4<float>, GX::MaxLights> lastColor{};
+    static std::array<Vec4<float>, GX::MaxLights> lastLinear{};
+    for (size_t i = 0; i < g_gxState.lights.size(); ++i) {
+      const auto& color = g_gxState.lights[i].color;
+      if (color.x() != lastColor[i].x() || color.y() != lastColor[i].y() || color.z() != lastColor[i].z()) {
+        const auto linear = [](float c) { return std::pow(std::max(c, 0.f), 2.2f); };
+        lastColor[i] = color;
+        lastLinear[i] = Vec4<float>{linear(color.x()), linear(color.y()), linear(color.z()), 0.f};
+      }
+      buf.append(lastLinear[i]);
+    }
+    for (const auto& v : g_gxState.pbrLightHdr) {
+      buf.append(v);
+    }
+    for (const auto& v : g_gxState.pbrShield) {
+      buf.append(v);
+    }
+    buf.append(g_gxState.pbrLightmapRect);
+    for (const auto& v : g_gxState.pbrLightmapAxes) {
+      buf.append(v);
+    }
+    buf.append(g_gxState.pbrRoomLights);
+    buf.append(g_gxState.pbrModelDiffuse);
+    buf.append(g_gxState.pbrModelIncan);
+    buf.append(g_gxState.pbrModelCoverage);
+  }
+  if (info.usesHdrTone) {
+    for (const auto& v : g_gxState.pbrTone) {
+      buf.append(v);
+    }
+    // x: a source weighted by its alpha, SRCALPHA/ONE (additive) or SRCALPHA/INVSRCALPHA (alpha over), goes
+    // through the inverse curve already weighted (hdr_tev_srcalpha_add). ONE/INVSRCALPHA needs nothing: its
+    // source is premultiplied, so the plain inverse already gives the source term exactly.
+    const bool compatSrcAlphaAdditive =
+        g_gxState.blendMode == GX_BM_BLEND && g_gxState.blendFacSrc == GX_BL_SRCALPHA &&
+        (g_gxState.blendFacDst == GX_BL_ONE || g_gxState.blendFacDst == GX_BL_INVSRCALPHA);
+    // y: the source colour scales the destination (hdr_tev_dst_factor): 1 dst * src, 2 dst * (1 + src).
+    float dstFactor = 0.f;
+    if (g_gxState.blendMode == GX_BM_BLEND) {
+      const auto src = g_gxState.blendFacSrc;
+      const auto dst = g_gxState.blendFacDst;
+      if ((src == GX_BL_ZERO && dst == GX_BL_SRCCLR) || (src == GX_BL_DSTCLR && dst == GX_BL_ZERO)) {
+        dstFactor = 1.f;
+      } else if (src == GX_BL_DSTCLR && dst == GX_BL_ONE) {
+        dstFactor = 2.f;
+      }
+    }
+    buf.append(Vec4<float>{compatSrcAlphaAdditive ? 1.f : 0.f, dstFactor, 0.f, 0.f});
+  }
+  if (info.usesHudDyin) {
+    buf.append(g_gxState.hudDyin);
+  }
   if (info.usesPTTexMtx.any()) {
     for (int i = 0; i < info.usesPTTexMtx.size(); ++i) {
       buf.append(g_gxState.ptTexMtxs[i]);
@@ -479,6 +601,12 @@ static void fill_uniform(ByteBuffer& buf, const ShaderInfo& info) noexcept {
     fog.rangeK[2][3] = fog.rangeK[2][1];
     buf.append(fog);
   }
+  if (info.usesVolFog) {
+    buf.append(g_gxState.volFogParams);
+    for (const auto& v : g_gxState.volFogTone) {
+      buf.append(v);
+    }
+  }
   for (const auto& scale : g_gxState.texCoordScales) {
     buf.append(Vec4{static_cast<f32>(scale.scaleS) + 1.0f, static_cast<f32>(scale.scaleT) + 1.0f, 0.0f, 0.0f});
   }
@@ -495,13 +623,25 @@ static void fill_uniform(ByteBuffer& buf, const ShaderInfo& info) noexcept {
     }
     buf.append(texture_size_bias(get_texture(static_cast<GXTexMapID>(i))));
   }
+  if (info.usesShadow) {
+    for (const auto& v : g_gxState.shadowUniform) {
+      buf.append(v);
+    }
+  }
 }
 
 gfx::Range build_uniform(const ShaderInfo& info) noexcept {
   ZoneScoped;
-  static ByteBuffer buf;
-  buf.clear();
+  // Filled in place in the frame's uniform buffer, inside a MaxUniformSize window (build_shader_info
+  // refuses anything larger), then trimmed to what was written.
+  uint8_t* out = nullptr;
+  auto range = gfx::map_uniform(out);
+  if (out == nullptr) {
+    return range;
+  }
+  ByteBuffer buf{out, MaxUniformSize};
   fill_uniform(buf, info);
-  return gfx::push_uniform(buf.data(), buf.size());
+  gfx::unmap_uniform(range, buf.size());
+  return range;
 }
 } // namespace aurora::gx

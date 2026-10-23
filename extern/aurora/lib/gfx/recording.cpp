@@ -1,11 +1,15 @@
 #include "recording.hpp"
 
+#include <aurora/phase.hpp>
+
 #include "encoding.hpp"
 #include "frame.hpp"
 #include "perf.hpp"
 #include "resource_cache.hpp"
 
+#include "bloom.hpp"
 #include "clear.hpp"
+#include "depth_peek.hpp"
 #include "pipeline_cache.hpp"
 #include "render_worker.hpp"
 #include "tex_copy_conv.hpp"
@@ -19,7 +23,9 @@
 #endif
 #include "../window.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <cstring>
 #include <new>
 #include <optional>
@@ -35,6 +41,7 @@
 #include <absl/hash/hash.h>
 #include <magic_enum.hpp>
 #include <tracy/Tracy.hpp>
+#include "texture_sites.hpp"
 
 namespace aurora::gfx {
 using namespace detail;
@@ -48,7 +55,12 @@ struct FrameRecorder {
   uint32_t currentRenderPass = UINT32_MAX;
   uint32_t drawCallCount = 0;
   uint32_t mergedDrawCallCount = 0;
+  uint32_t renderPassCount = 0;
   bool inOffscreen = false;
+  // EFB passes draw into the linear HDR scene (webgpu::g_sceneHdr) instead of g_frameBuffer; reset
+  // every frame. hdrSceneCleared: this frame's HDR scene was cleared, so a later enable loads it.
+  bool hdrScene = false;
+  bool hdrSceneCleared = false;
   std::optional<RenderPass> suspendedEfbPass;
   Viewport suspendedEfbViewport;
   ClipRect suspendedEfbScissor;
@@ -57,6 +69,19 @@ struct FrameRecorder {
   Viewport cachedViewport;
   ClipRect cachedScissor;
   bool suppressRenderWorker = false;
+  // DepthAfter::IfUnread's sealed pass and task, whose ops aren't handed to the render worker yet,
+  // and whether a draw in the pass after them may have tested against their depth.
+  struct HeldDepth {
+    uint32_t passOp;
+    uint32_t taskOp;
+    uint32_t sealedPass;
+    uint32_t nextPass;
+    bool read = false;
+  };
+  std::optional<HeldDepth> heldDepth;
+  // The nearest GX depth (0 near, 1 far) the EFB may hold: the least viewport near plane of this
+  // frame's depth-writing EFB draws, and its depth clears.
+  float efbDepthNear = 0.f;
 #ifdef AURORA_GFX_DEBUG_GROUPS
   std::vector<std::string> debugGroupStack;
 #endif
@@ -82,28 +107,38 @@ std::string pass_label(std::string_view kind) {
   return std::string{kind};
 }
 
+// The active EFB colour target: the HDR scene while it is on, else the display EFB.
+const webgpu::TextureWithSampler& efb_color() noexcept {
+  return g_recorder.hdrScene ? webgpu::g_sceneHdr : webgpu::g_frameBuffer;
+}
+const webgpu::TextureWithSampler& efb_color_resolved() noexcept {
+  return g_recorder.hdrScene ? webgpu::g_sceneHdrResolved : webgpu::g_frameBufferResolved;
+}
+
 void set_efb_targets(RenderPass& pass) {
   const auto layout = scene_render_target_layout();
+  const auto& color = efb_color();
+  const auto& resolved = efb_color_resolved();
   pass.colorAttachmentCount = layout.colorAttachmentCount;
   auto& sceneColor = pass.colorAttachments[SceneColorAttachmentIndex];
   sceneColor.semantic = ColorAttachmentSemantic::SceneColor;
   sceneColor.format = layout.colorAttachments[SceneColorAttachmentIndex].format;
-  sceneColor.size = webgpu::g_frameBuffer.size;
-  sceneColor.view = webgpu::g_frameBuffer.view;
-  sceneColor.resolveView = layout.sampleCount > 1 ? webgpu::g_frameBufferResolved.view : nullptr;
+  sceneColor.size = color.size;
+  sceneColor.view = color.view;
+  sceneColor.resolveView = layout.sampleCount > 1 ? resolved.view : nullptr;
   for (uint32_t i = SceneColorAttachmentIndex + 1; i < layout.colorAttachmentCount; ++i) {
-    auto& color = pass.colorAttachments[i];
-    color.semantic = layout.colorAttachments[i].semantic;
-    color.format = layout.colorAttachments[i].format;
+    auto& extra = pass.colorAttachments[i];
+    extra.semantic = layout.colorAttachments[i].semantic;
+    extra.format = layout.colorAttachments[i].format;
     AURORA_ASSERT(false, "Scene render-target attachment {} has no backing texture", i);
   }
   pass.depthStencilView = webgpu::g_depthBuffer.view;
   pass.depthStencilFormat = layout.depthStencilFormat;
-  pass.copySourceTexture =
-      webgpu::g_graphicsConfig.msaaSamples > 1 ? webgpu::g_frameBufferResolved.texture : webgpu::g_frameBuffer.texture;
-  pass.copySourceDepthTexture = webgpu::g_depthBuffer.texture;
-  pass.copySourceView =
-      webgpu::g_graphicsConfig.msaaSamples > 1 ? webgpu::g_frameBufferResolved.view : webgpu::g_frameBuffer.view;
+  // EFB copies read the active target; an RGBA16F one is converted per copy (resolve_pass_into's
+  // ResolveHdr, tex_copy_conv::CopyDomain).
+  pass.copySourceTexture = webgpu::g_graphicsConfig.msaaSamples > 1 ? resolved.texture : color.texture;
+  pass.copySourceDepthTexture = webgpu::g_depthBuffer.texture; // Port: depth EFB copies
+  pass.copySourceView = webgpu::g_graphicsConfig.msaaSamples > 1 ? resolved.view : color.view;
   pass.copySourceDepthView = webgpu::g_depthBuffer.view;
   pass.msaaSamples = layout.sampleCount;
   pass.hasDepth = true;
@@ -142,7 +177,8 @@ absl::flat_hash_map<OffscreenCacheKey, OffscreenCacheEntry> g_offscreenCache;
 // submitted its previous frame, and queue serialization orders the new frame's
 // copies after the old frame's reads.
 struct PassSnapshotEntry {
-  webgpu::TextureWithSampler color;
+  webgpu::TextureWithSampler color; // the pass's colour attachment format (RGBA16F in an HDR scene pass)
+  uint32_t colorSourceSamples = 0;  // the pass's MSAA count when color was made (the copy reads it resolved)
   webgpu::TextureWithSampler depth; // R32Float raw depth
 };
 struct PassSnapshotPool {
@@ -151,7 +187,10 @@ struct PassSnapshotPool {
 };
 std::array<PassSnapshotPool, FrameSlotCount> g_passSnapshotPools;
 
-PassSnapshotEntry& acquire_pass_snapshot(uint32_t width, uint32_t height, bool wantColor, bool wantDepth) {
+// format and sourceSamples: the snapshotted pass's colour attachment, which the raw copy reads
+// (resolved), so the snapshot has its format.
+PassSnapshotEntry& acquire_pass_snapshot(uint32_t width, uint32_t height, wgpu::TextureFormat format,
+                                         uint32_t sourceSamples, bool wantColor, bool wantDepth) {
   auto& pool = g_passSnapshotPools[g_recorder.frameSlot];
   if (pool.used == pool.entries.size()) {
     pool.entries.emplace_back();
@@ -159,8 +198,8 @@ PassSnapshotEntry& acquire_pass_snapshot(uint32_t width, uint32_t height, bool w
   auto& entry = pool.entries[pool.used++];
   const wgpu::Extent3D size{width, height, 1};
   if (wantColor && (!entry.color.texture || entry.color.size.width != width || entry.color.size.height != height ||
-                    entry.color.format != webgpu::g_graphicsConfig.surfaceConfiguration.format)) {
-    const auto format = webgpu::g_graphicsConfig.surfaceConfiguration.format;
+                    entry.color.format != format || entry.colorSourceSamples != sourceSamples)) {
+    entry.colorSourceSamples = sourceSamples;
     const wgpu::TextureDescriptor desc{
         .label = "Pass Snapshot Color",
         .usage = wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::TextureBinding,
@@ -170,6 +209,7 @@ PassSnapshotEntry& acquire_pass_snapshot(uint32_t width, uint32_t height, bool w
         .mipLevelCount = 1,
         .sampleCount = 1,
     };
+    AURORA_NOTE_TEXTURE(&desc);
     auto texture = webgpu::g_device.CreateTexture(&desc);
     auto view = texture.CreateView();
     entry.color = webgpu::TextureWithSampler{
@@ -189,6 +229,7 @@ PassSnapshotEntry& acquire_pass_snapshot(uint32_t width, uint32_t height, bool w
         .mipLevelCount = 1,
         .sampleCount = 1,
     };
+    AURORA_NOTE_TEXTURE(&desc);
     auto texture = webgpu::g_device.CreateTexture(&desc);
     auto view = texture.CreateView();
     entry.depth = webgpu::TextureWithSampler{
@@ -207,12 +248,13 @@ RenderPassList& current_render_passes() { return g_recorder.passes(); }
 
 StagingHighWater current_high_water(const FramePacket& frame) noexcept {
   return {
-      .verts = static_cast<uint32_t>(frame.verts.size()),
-      .uniforms = static_cast<uint32_t>(frame.uniforms.size()),
-      .indices = static_cast<uint32_t>(frame.indices.size()),
-      .storage = static_cast<uint32_t>(frame.storage.size()),
+      .verts = static_cast<uint32_t>(logical_size(frame.verts, frame.spillVerts)),
+      .uniforms = static_cast<uint32_t>(logical_size(frame.uniforms, frame.spillUniforms)),
+      .indices = static_cast<uint32_t>(logical_size(frame.indices, frame.spillIndices)),
+      .storage = static_cast<uint32_t>(logical_size(frame.storage, frame.spillStorage)),
       .textureUpload = static_cast<uint32_t>(frame.textureUpload.size()),
       .textureUploadCount = frame.textureUploads.size(),
+      .bufferUploadCount = frame.bufferUploads.size(),
   };
 }
 
@@ -233,6 +275,10 @@ FrameOp capture_frame_op(FramePacket& frame, FrameOpType type, uint32_t index) {
   for (size_t i = 0; i < op.highWater.textureUploadCount; ++i) {
     op.textureUploads.push_back(&frame.textureUploads[i]);
   }
+  op.bufferUploads.reserve(op.highWater.bufferUploadCount);
+  for (size_t i = 0; i < op.highWater.bufferUploadCount; ++i) {
+    op.bufferUploads.push_back(&frame.bufferUploads[i]);
+  }
   return op;
 }
 
@@ -247,22 +293,23 @@ void seal_pass(FramePacket& frame, uint32_t passIndex) {
   pass.sealed = true;
 }
 
-Range push(ByteBuffer& target, const uint8_t* data, size_t length, size_t alignment) {
-  if (alignment != 0) {
-    const size_t begin = target.size();
-    const size_t alignedBegin = AURORA_ALIGN(begin, alignment);
-    if (alignedBegin > begin) {
-      target.append_zeroes(alignedBegin - begin);
-    }
+// The frame's buffers wrap mapped staging memory of a fixed size; growing one past it aborts.
+static bool fits(const ByteBuffer& target, size_t length, size_t alignment) {
+  const size_t begin = alignment != 0 ? AURORA_ALIGN(target.size(), alignment) : target.size();
+  if (target.can_append(begin - target.size() + length))
+    LIKELY { return true; }
+  static bool warned = false;
+  if (!warned) {
+    warned = true;
+    Log.warn("frame buffer full at {} bytes: dropping a {}-byte push (warned once)", target.size(), length);
   }
-  const auto begin = target.size();
-  if (length > 0) {
-    target.append(data, length);
-  }
-  return {static_cast<uint32_t>(begin), static_cast<uint32_t>(length)};
+  return false;
 }
 
 Range map(ByteBuffer& target, size_t length, size_t alignment) {
+  if (!fits(target, length, alignment)) {
+    return OverflowRange;
+  }
   if (alignment != 0) {
     const size_t begin = target.size();
     const size_t alignedBegin = AURORA_ALIGN(begin, alignment);
@@ -275,6 +322,92 @@ Range map(ByteBuffer& target, size_t length, size_t alignment) {
     target.append_zeroes(length);
   }
   return {static_cast<uint32_t>(begin), static_cast<uint32_t>(length)};
+}
+
+// The device buffer's per-frame part grows, once and with a wait for the render worker, when
+// this frame needs more of it than it has.
+static void reserve_device_bytes(StagingKind kind, uint64_t end) {
+  if (end > frame_buffer_sizes().device(kind))
+    UNLIKELY { grow_frame_buffer(kind, end, current_frame_packet().encoder); }
+}
+
+// Space for length bytes at the next alignment in a frame buffer: in its staging buffer while
+// that has room, else (the first time is logged) in the spill, as far as the device buffer
+// can hold (its limit). The offset is where the data lands in the device buffer, after its
+// resident region. `window` is extra room the device buffer must have after it (a uniform's
+// bound window), not written. Null, and no space taken, when the frame outgrows the limit.
+static uint8_t* reserve_frame_bytes(ByteBuffer& target, SpillBuffer& spill, StagingKind kind, size_t length,
+                                    size_t alignment, size_t window, const char* what, uint32_t& offset) {
+  const auto& sizes = frame_buffer_sizes();
+  const uint64_t limit = sizes.limit(kind);
+  const uint64_t base = sizes.base(kind);
+  const size_t cap = target.capacity();
+  size_t begin = alignment != 0 ? AURORA_ALIGN(target.size() + spill.length, alignment) : target.size() + spill.length;
+  if (spill.length == 0 && begin + length <= cap && begin + length + window <= limit) {
+    reserve_device_bytes(kind, begin + length + window);
+    if (begin > target.size()) {
+      target.append_zeroes(begin - target.size());
+    }
+    offset = static_cast<uint32_t>(base + begin);
+    return length > 0 ? target.append_uninit(length) : target.data() + begin;
+  }
+  begin = std::max(begin, cap);
+  if (begin + length + window > limit) {
+    static bool warned = false;
+    if (!warned) {
+      warned = true;
+      Log.warn("frame {} buffer full at {} bytes: dropping a {}-byte push (warned once)", what, begin, length);
+    }
+    return nullptr;
+  }
+  reserve_device_bytes(kind, begin + length + window);
+  if (!spill.data) {
+    spill.capacity = static_cast<size_t>(limit - cap);
+    spill.data = std::unique_ptr<uint8_t[]>(new uint8_t[spill.capacity]);
+    Log.info("frame {} data outgrew its {} MiB staging buffer: spilling into a transient buffer (up to {} MiB)",
+             what, cap >> 20, limit >> 20);
+  }
+  target.fill_to_capacity();
+  const size_t at = begin - cap;
+  if (at > spill.length) {
+    memset(spill.data.get() + spill.length, 0, at - spill.length);
+  }
+  spill.length = at + length;
+  offset = static_cast<uint32_t>(base + begin);
+  return spill.data.get() + at;
+}
+
+static Range push(ByteBuffer& target, SpillBuffer& spill, StagingKind kind, const uint8_t* data, size_t length,
+                  size_t alignment, size_t window, const char* what) {
+  uint32_t offset = 0;
+  // An unaligned push is meant to continue the previous one (merged draws), so one that crosses the
+  // end of the staging buffer is split across it and the spill instead of moving to the spill.
+  const size_t cap = target.capacity();
+  const size_t used = target.size() + spill.length;
+  if (alignment == 0 && window == 0 && spill.length == 0 && used < cap && used + length > cap &&
+      used + length <= frame_buffer_sizes().limit(kind)) {
+    const size_t head = cap - used;
+    uint8_t* first = reserve_frame_bytes(target, spill, kind, head, 0, 0, what, offset);
+    if (first == nullptr) {
+      return OverflowRange;
+    }
+    memcpy(first, data, head);
+    uint32_t tailOffset = 0;
+    uint8_t* tail = reserve_frame_bytes(target, spill, kind, length - head, 0, 0, what, tailOffset);
+    if (tail == nullptr) {
+      return OverflowRange;
+    }
+    memcpy(tail, data + head, length - head);
+    return {offset, static_cast<uint32_t>(length)};
+  }
+  uint8_t* dst = reserve_frame_bytes(target, spill, kind, length, alignment, window, what, offset);
+  if (dst == nullptr) {
+    return OverflowRange;
+  }
+  if (length > 0) {
+    memcpy(dst, data, length);
+  }
+  return {offset, static_cast<uint32_t>(length)};
 }
 
 // For our public API, warn instead of fatal-ing when called outside an active recording frame.
@@ -344,6 +477,26 @@ void push_draw_command(DrawCommand data) {
   ++g_recorder.drawCallCount;
 }
 
+float gx_depth(float depth) { return gx::UseReversedZ ? 1.f - depth : depth; }
+
+// Every EFB draw says whether it may test against depth (reads) and write it (writes), for
+// DepthAfter::IfUnread. Its fragments' depths lie within the viewport's depth range.
+void note_draw_depth(bool reads, bool writes) {
+  if (g_recorder.inOffscreen) {
+    return;
+  }
+  const auto& vp = g_recorder.cachedViewport;
+  if (g_recorder.heldDepth) {
+    // A test that only meets depths nearer than the EFB's nearest passes or fails the same against
+    // a cleared depth buffer, whatever the compare function.
+    if (reads && std::max(vp.znear, vp.zfar) >= g_recorder.efbDepthNear) {
+      g_recorder.heldDepth->read = true;
+    }
+  } else if (writes) {
+    g_recorder.efbDepthNear = std::min(g_recorder.efbDepthNear, std::min(vp.znear, vp.zfar));
+  }
+}
+
 OffscreenCacheEntry get_offscreen_textures(uint32_t width, uint32_t height) {
   OffscreenCacheKey key{width, height};
   if (const auto it = g_offscreenCache.find(key); it != g_offscreenCache.end()) {
@@ -361,6 +514,7 @@ OffscreenCacheEntry get_offscreen_textures(uint32_t width, uint32_t height) {
       .mipLevelCount = 1,
       .sampleCount = 1,
   };
+  AURORA_NOTE_TEXTURE(&colorDesc);
   auto colorTexture = webgpu::g_device.CreateTexture(&colorDesc);
   auto colorView = colorTexture.CreateView();
   webgpu::TextureWithSampler color{
@@ -380,6 +534,7 @@ OffscreenCacheEntry get_offscreen_textures(uint32_t width, uint32_t height) {
       .mipLevelCount = 1,
       .sampleCount = 1,
   };
+  AURORA_NOTE_TEXTURE(&depthDesc);
   auto depthTexture = webgpu::g_device.CreateTexture(&depthDesc);
   auto depthView = depthTexture.CreateView();
   webgpu::TextureWithSampler depth{
@@ -396,7 +551,9 @@ OffscreenCacheEntry get_offscreen_textures(uint32_t width, uint32_t height) {
   return insertIt->second;
 }
 
-void enqueue_pass(FramePacket& frame, uint32_t passIndex);
+uint32_t enqueue_pass(FramePacket& frame, uint32_t passIndex, bool dispatch = true);
+void discard_dead_stores(RenderPass& pass, bool colorDead, bool depthDead);
+void release_held_depth(bool keep);
 
 void resume_efb_pass_loading(const RenderPass& prevPass) {
   RenderPass newPass{
@@ -430,6 +587,10 @@ void suspend_efb() {
                 "suspend_efb called outside of an active recording frame");
   AURORA_ASSERT(!g_recorder.inOffscreen, "suspend_efb called while offscreen rendering is active");
   AURORA_ASSERT(!g_recorder.suspendedEfbPass, "suspend_efb called with an EFB pass already suspended");
+  if (g_recorder.heldDepth) {
+    // The held pass's continuation may be moved out of the list below.
+    release_held_depth(true);
+  }
 
   auto& currentPass = current_render_passes()[g_recorder.currentRenderPass];
   if (!currentPass.has_consumer()) {
@@ -450,6 +611,7 @@ void finish_current_offscreen() {
 
   auto& offscreenPass = current_render_passes()[g_recorder.currentRenderPass];
   offscreenPass.discardable = !offscreenPass.has_consumer();
+  discard_dead_stores(offscreenPass, true, true);
   enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
   g_recorder.offscreenColor = {};
   g_recorder.offscreenDepth = {};
@@ -515,17 +677,48 @@ void restore_efb() {
   push_command(CommandType::SetScissor, Command::Data{.setScissor = g_recorder.cachedScissor});
 }
 
+void log_pass(const FramePacket& frame, const RenderPass& p);
+
+// Port: AURORA_RENDER_EVERY: the ops of the frame being recorded that enqueue_op held back.
+static std::vector<uint32_t> g_deferredOps;
+void dispatch_op(FramePacket& frame, uint32_t opIndex);
+
 void enqueue_op(FramePacket& frame, uint32_t opIndex) {
-  if (opIndex >= frame.ops.size() || g_recorder.suppressRenderWorker) {
+  if (g_recorder.heldDepth) {
+    // Whatever comes next may load the depth, so the held ops go first, keeping it.
+    release_held_depth(true);
+  }
+  if (opIndex >= frame.ops.size()) {
+    return;
+  }
+  if (frame.ops[opIndex].renderPass != nullptr) {
+    log_pass(frame, *frame.ops[opIndex].renderPass);
+  }
+  if (g_recorder.suppressRenderWorker) {
     return;
   }
   // Port: AURORA_RENDER_EVERY: a frame that is not rendered records no GPU work, so the render
   // worker does not encode it and the frame is never submitted. The EFB and the depth buffer keep
   // the last rendered frame's contents, which is what the read-backs (GXPeekZ, the EFB copy)
   // return for a frame that was not drawn.
+  // An op of a frame that is not (yet) rendered waits in g_deferredOps: a frame that holds an EFB
+  // copy is raised to "rendered" while it is recorded, and its earlier ops then go first, in order
+  // (the worker encodes them into one encoder in the order they are enqueued).
   if (!gx::fifo::frame_rendered()) {
+    g_deferredOps.push_back(opIndex);
     return;
   }
+  if (!g_deferredOps.empty()) {
+    const auto deferred = std::move(g_deferredOps);
+    g_deferredOps.clear();
+    for (const uint32_t index : deferred) {
+      dispatch_op(frame, index);
+    }
+  }
+  dispatch_op(frame, opIndex);
+}
+
+void dispatch_op(FramePacket& frame, uint32_t opIndex) {
   auto op = frame.ops[opIndex];
   render_worker::enqueue_encode_pass(frame.frameId, opIndex, [packet = &frame, op = std::move(op)] {
     if (op.renderPass == nullptr && op.textureCopy == nullptr && op.encoderTask == nullptr) {
@@ -535,10 +728,74 @@ void enqueue_op(FramePacket& frame, uint32_t opIndex) {
   });
 }
 
-void enqueue_pass(FramePacket& frame, uint32_t passIndex) {
+// Lets the GPU skip writing out attachments that nothing reads again, which saves a tile-based
+// (mobile) GPU a full-resolution store. colorDead and depthDead say no later pass loads the
+// contents (the next one clears them, or none follows). Call before the pass is enqueued.
+bool pass_copies_depth(const RenderPass& pass) {
+  return pass.snapshotDepthDst || (pass.resolveTarget && gx::is_depth_format(pass.resolveFormat)) ||
+         (pass.captureDepthSnapshot && depth_peek::enabled());
+}
+
+void discard_dead_stores(RenderPass& pass, bool colorDead, bool depthDead) {
+  auto& color = pass.colorAttachments[SceneColorAttachmentIndex];
+  // Without a resolve target the attachment itself is what copies and presentation read.
+  if (colorDead && pass.colorAttachmentCount > 0 && color.resolveView) {
+    color.storeOp = wgpu::StoreOp::Discard;
+  }
+  if (depthDead && pass.hasDepth && !pass_copies_depth(pass)) {
+    pass.depthStoreOp = wgpu::StoreOp::Discard;
+  }
+}
+
+void log_pass(const FramePacket& frame, const RenderPass& p) {
+  // MP2_PASS_LOG=N logs every pass of one frame in N, to find what breaks the frame up.
+  static const int every = [] {
+    const char* env = std::getenv("MP2_PASS_LOG");
+    return env != nullptr ? std::atoi(env) : 0;
+  }();
+  if (every <= 0 || frame.frameId % every != 0) {
+    return;
+  }
+  const auto& c = p.colorAttachments[SceneColorAttachmentIndex];
+  size_t draws = 0;
+  for (const auto& cmd : p.commands) {
+    draws += cmd.type == CommandType::Draw || cmd.type == CommandType::CustomDraw;
+  }
+  Log.info("pass f{} '{}' {}x{} msaa{} draws{} cload{} cstore{} dclear{} dstore{} resolve{} {}x{}+{},{} fmt{} probe{} "
+           "snapC{} snapD{} discardable{}",
+           frame.frameId, p.label, c.size.width, c.size.height, p.msaaSamples, draws,
+           c.clear ? "C" : "L", static_cast<int>(c.storeOp), p.clearDepth,
+           static_cast<int>(p.depthStoreOp), static_cast<bool>(p.resolveTarget), p.resolveRect.width,
+           p.resolveRect.height, p.resolveRect.x, p.resolveRect.y, static_cast<int>(p.resolveFormat), p.probeFace,
+           static_cast<bool>(p.snapshotColorDst), static_cast<bool>(p.snapshotDepthDst), p.discardable);
+}
+
+// Without dispatch the op is only recorded; enqueue_op hands it to the render worker later.
+uint32_t enqueue_pass(FramePacket& frame, uint32_t passIndex, bool dispatch) {
+  if (!frame.renderPasses[passIndex].discardable) {
+    ++g_recorder.renderPassCount;
+  }
   seal_pass(frame, passIndex);
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::RenderPass, passIndex));
+  if (dispatch) {
+    enqueue_op(frame, opIndex);
+  }
+  return opIndex;
+}
+
+// keep: the pass after the held ones loads their depth; else it clears it and their store is dropped.
+void release_held_depth(bool keep) {
+  const auto held = *g_recorder.heldDepth;
+  g_recorder.heldDepth.reset();
+  auto& frame = current_frame_packet();
+  if (keep) {
+    frame.renderPasses[held.nextPass].clearDepth = false;
+  } else {
+    discard_dead_stores(frame.renderPasses[held.sealedPass], false, true);
+  }
+  enqueue_op(frame, held.passOp);
+  enqueue_op(frame, held.taskOp);
 }
 } // namespace
 
@@ -552,16 +809,17 @@ namespace detail {
 // still holds those bytes. The table is cleared at each frame's begin_recording.
 static absl::flat_hash_map<uint64_t, Range> g_uniformDedup;
 
-// Port: AURORA_RENDER_EVERY: the frame's work is enqueued as a whole, at the end of the frame:
-// the frame's decision is final then (a frame that holds an EFB copy was raised to "rendered"
-// while it was recorded), so a frame that is rendered is encoded in full and a frame that is not
-// rendered is not encoded at all.
+// Port: AURORA_RENDER_EVERY: the frame's decision is final at its end (a frame that holds an EFB
+// copy was raised to "rendered" while it was recorded): a rendered frame's held-back ops are
+// enqueued now, and a frame that is not rendered is not encoded at all.
 void enqueue_frame_ops(FramePacket& frame) {
-  if (g_recorder.suppressRenderWorker) {
+  auto deferred = std::move(g_deferredOps);
+  g_deferredOps.clear();
+  if (g_recorder.suppressRenderWorker || !gx::fifo::frame_rendered()) {
     return;
   }
-  for (size_t i = 0; i < frame.ops.size(); ++i) {
-    enqueue_op(frame, static_cast<uint32_t>(i));
+  for (const uint32_t index : deferred) {
+    dispatch_op(frame, index);
   }
 }
 
@@ -572,8 +830,12 @@ void begin_recording(FramePacket& packet, size_t frameSlot) {
   g_passSnapshotPools[frameSlot].used = 0;
   g_recorder.drawCallCount = 0;
   g_recorder.mergedDrawCallCount = 0;
+  g_recorder.renderPassCount = 0;
+  g_deferredOps.clear(); // Port: see enqueue_op
   g_recorder.suspendedEfbPass.reset();
   g_uniformDedup.clear(); // Port: see push_uniform
+  g_recorder.hdrScene = false;
+  g_recorder.hdrSceneCleared = false;
 
   current_render_passes().emplace_back();
   auto& pass = current_render_passes()[0];
@@ -581,6 +843,8 @@ void begin_recording(FramePacket& packet, size_t frameSlot) {
   set_efb_targets(pass);
   pass.colorAttachments[SceneColorAttachmentIndex].clearValue = gx::g_gxState.clearColor;
   pass.clearDepthValue = gx::clear_depth_value();
+  g_recorder.heldDepth.reset();
+  g_recorder.efbDepthNear = gx_depth(pass.clearDepthValue);
   g_recorder.currentRenderPass = 0;
   g_recorder.cachedViewport = gx::map_logical_viewport(gx::g_gxState.logicalViewport);
   g_recorder.cachedScissor = gx::map_logical_scissor(gx::g_gxState.logicalScissor);
@@ -593,14 +857,48 @@ RecordedFrame end_recording() {
   AURORA_ASSERT(!g_recorder.inOffscreen, "end_frame called while offscreen rendering is active");
   AURORA_ASSERT(g_recorder.currentRenderPass == UINT32_MAX,
                 "end_frame called before finish finalized the current render pass");
+  if (g_recorder.heldDepth) {
+    release_held_depth(true);
+  }
   auto& frame = g_recorder.frame();
   frame.stats.drawCallCount = g_recorder.drawCallCount;
   frame.stats.mergedDrawCallCount = g_recorder.mergedDrawCallCount;
-  frame.stats.lastVertSize = frame.verts.size();
-  frame.stats.lastUniformSize = frame.uniforms.size();
-  frame.stats.lastIndexSize = frame.indices.size();
-  frame.stats.lastStorageSize = frame.storage.size();
+  frame.stats.renderPassCount = g_recorder.renderPassCount;
+  const size_t vertSize = logical_size(frame.verts, frame.spillVerts);
+  const size_t uniformSize = logical_size(frame.uniforms, frame.spillUniforms);
+  const size_t indexSize = logical_size(frame.indices, frame.spillIndices);
+  const size_t storageSize = logical_size(frame.storage, frame.spillStorage);
+  frame.stats.lastVertSize = vertSize;
+  frame.stats.lastUniformSize = uniformSize;
+  frame.stats.lastIndexSize = indexSize;
+  frame.stats.lastStorageSize = storageSize;
   frame.stats.lastTextureUploadSize = frame.textureUpload.size();
+  if (frame.spillVerts.length != 0) {
+    request_staging_growth(StagingKind::Vertex, vertSize);
+  }
+  if (frame.spillUniforms.length != 0) {
+    request_staging_growth(StagingKind::Uniform, uniformSize);
+  }
+  if (frame.spillIndices.length != 0) {
+    request_staging_growth(StagingKind::Index, indexSize);
+  }
+  if (frame.spillStorage.length != 0) {
+    request_staging_growth(StagingKind::Storage, storageSize);
+  }
+  {
+    // AURORA_FRAME_PEAKS=1 logs each new high-water mark of a frame's buffer use.
+    static const bool enabled = std::getenv("AURORA_FRAME_PEAKS") != nullptr;
+    static uint64_t peakVert, peakUniform, peakIndex, peakStorage;
+    if (enabled && (vertSize > peakVert || uniformSize > peakUniform || indexSize > peakIndex ||
+                    storageSize > peakStorage)) {
+      peakVert = std::max<uint64_t>(peakVert, vertSize);
+      peakUniform = std::max<uint64_t>(peakUniform, uniformSize);
+      peakIndex = std::max<uint64_t>(peakIndex, indexSize);
+      peakStorage = std::max<uint64_t>(peakStorage, storageSize);
+      Log.info("frame peaks: vertex {} uniform {} index {} storage {} (bytes)", peakVert, peakUniform, peakIndex,
+               peakStorage);
+    }
+  }
   perf::count(AURORA_PERF_DRAWS, g_recorder.drawCallCount);
   perf::end_frame();
 
@@ -616,6 +914,8 @@ RecordedFrame end_recording() {
   }
 #endif
   const RecordedFrame recorded{.packet = g_recorder.packet, .frameSlot = g_recorder.frameSlot};
+  g_recorder.hdrScene = false;
+  g_recorder.hdrSceneCleared = false;
   g_recorder.packet = nullptr;
   g_recorder.frameSlot = 0;
   return recorded;
@@ -630,7 +930,10 @@ void shutdown_recording() {
   g_recorder.offscreenColor = {};
   g_recorder.offscreenDepth = {};
   g_recorder.suspendedEfbPass.reset();
+  g_recorder.heldDepth.reset();
   g_recorder.inOffscreen = false;
+  g_recorder.hdrScene = false;
+  g_recorder.hdrSceneCleared = false;
   g_recorder.packet = nullptr;
   g_recorder.frameSlot = 0;
   g_recorder.suppressRenderWorker = false;
@@ -672,7 +975,7 @@ void queue_texture_upload_data(const uint8_t* data, uint32_t bytesPerRow, uint32
                                wgpu::TexelCopyTextureInfo tex, wgpu::Extent3D size) {
   const auto copyBytesPerRow = AURORA_ALIGN(bytesPerRow, 256);
   auto& frame = current_frame_packet();
-  if (frame.textureUpload.size() + copyBytesPerRow * rowsPerImage <= TextureUploadSize) {
+  if (frame.textureUpload.size() + copyBytesPerRow * rowsPerImage <= frame_buffer_sizes().textureUpload) {
     const auto range = push_texture_data(data, bytesPerRow, rowsPerImage);
     const wgpu::TexelCopyBufferLayout layout{
         .offset = range.offset,
@@ -705,6 +1008,42 @@ void queue_texture_upload_data(const uint8_t* data, uint32_t bytesPerRow, uint32
       .rowsPerImage = rowsPerImage,
   };
   queue_texture_upload(TextureUpload{layout, std::move(tex), size, std::move(buffer)});
+}
+
+bool queue_resident_upload(ResidentBuffer kind, uint32_t offset, const uint8_t* data, size_t size) {
+  if (size == 0) {
+    return true;
+  }
+  if (!check_recording("queue_resident_upload")) {
+    return false;
+  }
+  // A buffer copy moves whole words.
+  const uint64_t copySize = AURORA_ALIGN(uint64_t(size), 4);
+  const wgpu::BufferDescriptor descriptor{
+      .label = "Resident Upload Buffer",
+      .usage = wgpu::BufferUsage::MapWrite | wgpu::BufferUsage::CopySrc,
+      .size = copySize,
+      .mappedAtCreation = true,
+  };
+  auto buffer = webgpu::g_device.CreateBuffer(&descriptor);
+  auto* mapped = static_cast<uint8_t*>(buffer.GetMappedRange(0, copySize));
+  memcpy(mapped, data, size);
+  if (copySize > size) {
+    memset(mapped + size, 0, copySize - size);
+  }
+  buffer.Unmap();
+  if (g_recorder.currentRenderPass != UINT32_MAX) {
+    AURORA_ASSERT(!current_render_passes()[g_recorder.currentRenderPass].sealed,
+                  "Attempted to append buffer upload to sealed render pass {}", g_recorder.currentRenderPass);
+  }
+  // Copied with the staging data before the pass being recorded is encoded.
+  current_frame_packet().bufferUploads.emplace_back(BufferUpload{
+      .src = std::move(buffer),
+      .dst = kind,
+      .dstOffset = offset,
+      .size = copySize,
+  });
+  return true;
 }
 
 void queue_texture_copy(wgpu::TexelCopyTextureInfo src, wgpu::TexelCopyTextureInfo dst, wgpu::Extent3D size) {
@@ -830,39 +1169,65 @@ PipelineRef pipeline_ref(const clear::PipelineConfig& config) {
 }
 
 void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
-                       Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat) {
+                       Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat,
+                       int probeFace, bool resolveMips, const ResolveHdr* hdr, bool opaqueAlpha) {
   perf::pass_break(AURORA_PERF_BREAK_COPY);
+  if (scene_hdr_pass_active()) {
+    // The scene holds exposed linear light: a display copy post-tones it, a linear copy keeps it,
+    // and the clear colour (display-referred) goes in as the light that post-tones back to it.
+    const hdr::Tone tone = hdr != nullptr ? hdr->tone : hdr::Tone{};
+    auto& pass = current_render_passes()[g_recorder.currentRenderPass];
+    if (hdr != nullptr && hdr->linear) {
+      pass.resolveDomain = tex_copy_conv::CopyDomain::Linear;
+    } else {
+      pass.resolveDomain = tex_copy_conv::CopyDomain::HdrDisplay;
+      pass.resolveToneRange = push_uniform(tone);
+    }
+    clearColorValue = {hdr::exposed(clearColorValue.x(), tone), hdr::exposed(clearColorValue.y(), tone),
+                       hdr::exposed(clearColorValue.z(), tone), clearColorValue.w()};
+  }
   // Resolve current render pass
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
   prevPass.resolveTarget = std::move(texture);
   prevPass.resolveRect = rect;
   prevPass.resolveFormat = resolveFormat;
-  // Push UV transform uniform for tex_copy_conv (crop region in UV space)
+  prevPass.resolveMips = resolveMips;
+  if (resolveMips) {
+    prevPass.resolveMipsUniformRange = push_uniform(tex_copy_conv::Uniforms{});
+  }
+  // tex_copy_conv's uniforms: the crop region in UV space, and whether the source has alpha
   const auto srcW = static_cast<float>(prevPass.colorAttachments[SceneColorAttachmentIndex].size.width);
   const auto srcH = static_cast<float>(prevPass.colorAttachments[SceneColorAttachmentIndex].size.height);
-  const std::array uvTransform{
-      static_cast<float>(rect.x) / srcW,
-      static_cast<float>(rect.y) / srcH,
-      static_cast<float>(rect.width) / srcW,
-      static_cast<float>(rect.height) / srcH,
+  const tex_copy_conv::Uniforms uniforms{
+      .offset = {static_cast<float>(rect.x) / srcW, static_cast<float>(rect.y) / srcH},
+      .scale = {static_cast<float>(rect.width) / srcW, static_cast<float>(rect.height) / srcH},
+      .opaqueAlpha = opaqueAlpha,
   };
-  prevPass.resolveUniformRange = push_uniform(uvTransform);
+  prevPass.resolveUniformRange = push_uniform(uniforms);
+  if (probeFace >= 0) {
+    prevPass.probeFace = probeFace;
+    prevPass.probeUniformRange = push_uniform(tex_copy_conv::Uniforms{});
+  }
+  // GXCopyTex clears only the rectangle it copies: the whole target clears through the
+  // continuation's load ops, a part of it with a clear draw scissored to it.
+  const auto targetWidth = static_cast<int32_t>(prevPass.colorAttachments[SceneColorAttachmentIndex].size.width);
+  const auto targetHeight = static_cast<int32_t>(prevPass.colorAttachments[SceneColorAttachmentIndex].size.height);
+  const auto left = std::clamp<int32_t>(rect.x, 0, targetWidth);
+  const auto top = std::clamp<int32_t>(rect.y, 0, targetHeight);
+  const auto right = std::clamp<int32_t>(rect.x + rect.width, left, targetWidth);
+  const auto bottom = std::clamp<int32_t>(rect.y + rect.height, top, targetHeight);
+  const ClipRect clearRect{.x = left, .y = top, .width = right - left, .height = bottom - top};
+  const bool fullTarget = left == 0 && top == 0 && right == targetWidth && bottom == targetHeight;
+  // The continuation's load op clears whatever the copy clears.
+  discard_dead_stores(prevPass, clearColor && clearAlpha && fullTarget, clearDepth && fullTarget);
   enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
+  if (clearDepth && !g_recorder.inOffscreen) {
+    g_recorder.efbDepthNear = std::min(g_recorder.efbDepthNear, gx_depth(clearDepthValue));
+  }
 
   // Populate new render pass from previous
   const auto msaaSamples = prevPass.msaaSamples;
-  // Port addition (from upstream aurora 9c0bf66f1e "Partial GXCopyTex clears"): GX clears only the
-  // copied rectangle, so a copy of part of the EFB (a visor flare's occlusion test) must not wipe
-  // the rest of it. Clear-on-load only when the copy covers the whole target; otherwise draw the
-  // clear into the rectangle. Keep on re-vendor until upstream's version is merged.
   const auto& targetSize = prevPass.colorAttachments[SceneColorAttachmentIndex].size;
-  const auto left = std::clamp<int32_t>(rect.x, 0, static_cast<int32_t>(targetSize.width));
-  const auto top = std::clamp<int32_t>(rect.y, 0, static_cast<int32_t>(targetSize.height));
-  const auto right = std::clamp<int32_t>(rect.x + rect.width, left, static_cast<int32_t>(targetSize.width));
-  const auto bottom = std::clamp<int32_t>(rect.y + rect.height, top, static_cast<int32_t>(targetSize.height));
-  const ClipRect clearRect{.x = left, .y = top, .width = right - left, .height = bottom - top};
-  const bool fullTarget = left == 0 && top == 0 && right == static_cast<int32_t>(targetSize.width) &&
-                          bottom == static_cast<int32_t>(targetSize.height);
   RenderPass newPass{
       .label = pass_label(g_recorder.inOffscreen ? "Offscreen" : "EFB"),
       .colorAttachments = prevPass.colorAttachments,
@@ -884,6 +1249,8 @@ void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bo
     auto& color = newPass.colorAttachments[i];
     color.loadOp = wgpu::LoadOp::Undefined;
     color.clear = false;
+    // prevPass may have just discarded its store; this pass decides its own.
+    color.storeOp = wgpu::StoreOp::Store;
   }
   if (fullColorClear) {
     auto& sceneColor = newPass.colorAttachments[SceneColorAttachmentIndex];
@@ -898,7 +1265,7 @@ void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bo
   const bool drawClearAlpha = clearAlpha && !fullColorClear;
   const bool drawClearDepth = clearDepth && !fullTarget;
   if (clearRect.width > 0 && clearRect.height > 0 && (drawClearColor || drawClearAlpha || drawClearDepth)) {
-    // If we're only clearing a portion of the target (or only one of color/alpha), perform a clear draw
+    // Part of the target, or only its colour or alpha: a clear draw
     const auto targetLayout = current_render_passes()[g_recorder.currentRenderPass].target_layout();
     push_draw_command(clear::DrawData{
         .pipeline = pipeline_ref(
@@ -987,10 +1354,73 @@ RenderTargetLayout get_render_target_layout() noexcept {
   return current_render_passes()[g_recorder.currentRenderPass].target_layout();
 }
 
+bool scene_hdr_active() noexcept { return g_recorder.hdrScene; }
+
+bool scene_hdr_pass_active() noexcept {
+  // hdrScene stays set through offscreen and begin_color_pass passes: only the HDR target's own pass counts.
+  if (!g_recorder.hdrScene || !g_recorder.active() || g_recorder.inOffscreen ||
+      g_recorder.currentRenderPass == UINT32_MAX || !webgpu::g_sceneHdr.view) {
+    return false;
+  }
+  const auto& pass = current_render_passes()[g_recorder.currentRenderPass];
+  return pass.colorAttachments[SceneColorAttachmentIndex].view.Get() == webgpu::g_sceneHdr.view.Get();
+}
+
+bool set_scene_hdr(bool on) {
+  if (g_recorder.hdrScene == on) {
+    return true;
+  }
+  // Only between EFB draws: not outside a frame, offscreen, or in a begin_color_pass pass.
+  if (!g_recorder.active() || g_recorder.inOffscreen || g_recorder.currentRenderPass == UINT32_MAX) {
+    return false;
+  }
+  // The current pass must be the EFB itself: a null EFB view, or a pass on another target, is refused.
+  auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
+  if (!efb_color().view || !webgpu::g_depthBuffer.view ||
+      prevPass.colorAttachments[SceneColorAttachmentIndex].view.Get() != efb_color().view.Get() ||
+      prevPass.depthStencilView.Get() != webgpu::g_depthBuffer.view.Get()) {
+    return false;
+  }
+  // An HDR scene must be convertible before its first draw. Check the same FIFO-owned post budget
+  // used by bloom::record so an unsupported third segment falls back to the display EFB here.
+  if (on && !bloom::scene_post_available()) {
+    return false;
+  }
+  if (on && !webgpu::ensure_scene_hdr_target()) {
+    return false;
+  }
+
+  // Seal the current EFB pass and continue on the other target, loading depth (shared) and, unless
+  // this frame's HDR scene is new, colour.
+  prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
+  enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
+  resume_efb_pass_loading(prevPass);
+  g_recorder.hdrScene = on;
+  auto& pass = current_render_passes()[g_recorder.currentRenderPass];
+  set_efb_targets(pass);
+  if (on && !g_recorder.hdrSceneCleared) {
+    auto& color = pass.colorAttachments[SceneColorAttachmentIndex];
+    color.clear = true;
+    color.loadOp = wgpu::LoadOp::Clear;
+    color.clearValue = {0.f, 0.f, 0.f, 0.f};
+    g_recorder.hdrSceneCleared = true;
+  }
+  return true;
+}
+
 void clear_caches() noexcept {
   g_offscreenCache.clear();
   clear_bind_group_cache();
 }
+
+// What an EFB-scale change invalidates: the offscreen targets are kept per size, so the
+// old size's are only dead weight. Bind groups are cached by what they reference, so stale
+// ones are never hit; rebuilding all of them made the frame after a dynamic resolution step
+// slower still, so instead the ones the next frames do not use are dropped two frames on
+// (detail::expire_unused_bind_groups_soon), freeing the old size's targets.
+void clear_offscreen_cache() noexcept { g_offscreenCache.clear(); }
+
+bool recording_active() noexcept { return g_recorder.active(); }
 
 bool push_custom_draw(DrawTypeId type, const void* payload, size_t payloadSize) {
   if (type == InvalidDrawType) {
@@ -1023,6 +1453,7 @@ bool push_custom_draw(DrawTypeId type, const void* payload, size_t payloadSize) 
   if (payloadSize > 0) {
     std::memcpy(draw.payload.data(), payload, payloadSize);
   }
+  note_draw_depth(true, true);
   push_command(CommandType::CustomDraw, Command::Data{.customDraw = draw});
   ++g_recorder.drawCallCount;
   return true;
@@ -1071,6 +1502,28 @@ bool create_pass(uint32_t width, uint32_t height) {
   return true;
 }
 
+bool resolve_scene_copy(TextureHandle color, const ResolveHdr* hdr, wgpu::TextureView& depth) {
+  depth = {};
+  if (!color || !g_recorder.active() || g_recorder.currentRenderPass == UINT32_MAX || g_recorder.inOffscreen) {
+    return false;
+  }
+  auto& pass = current_render_passes()[g_recorder.currentRenderPass];
+  const auto& attachment = pass.colorAttachments[SceneColorAttachmentIndex];
+  const uint32_t width = attachment.size.width;
+  const uint32_t height = attachment.size.height;
+  if (pass.hasDepth && tex_copy_conv::snapshot_depth_supported()) {
+    auto& entry = acquire_pass_snapshot(width, height, attachment.format, pass.msaaSamples, false, true);
+    pass.snapshotDepthDst = entry.depth.view;
+    depth = entry.depth.view;
+  }
+  const bool mips = color->mipCount > 1;
+  resolve_pass_into(std::move(color), ClipRect{0, 0, int32_t(width), int32_t(height)}, false, false, false, {}, 0.f,
+                    GX_TF_RGBA8, -1, mips, hdr);
+  return true;
+}
+
+size_t current_frame_slot() noexcept { return g_recorder.frameSlot; }
+
 bool resolve_pass(const ResolveDesc& desc, ResolvedTargets& out) {
   out = {};
   gx::fifo::drain();
@@ -1091,7 +1544,8 @@ bool resolve_pass(const ResolveDesc& desc, ResolvedTargets& out) {
   const uint32_t height = prevPass.colorAttachments[SceneColorAttachmentIndex].size.height;
   // Requesting no snapshots is a plain pass break (or offscreen close, discarding its output).
   if (desc.color || wantDepth) {
-    auto& entry = acquire_pass_snapshot(width, height, desc.color, wantDepth);
+    auto& entry = acquire_pass_snapshot(width, height, prevPass.colorAttachments[SceneColorAttachmentIndex].format,
+                                        prevPass.msaaSamples, desc.color, wantDepth);
     if (desc.color) {
       prevPass.snapshotColorDst = entry.color.texture;
       out.color = entry.color.view;
@@ -1156,7 +1610,11 @@ bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSi
   }
 
   gx::fifo::drain();
+  return record_encoder_task(type, payload, payloadSize);
+}
 
+namespace {
+bool record_encoder_task_between(EncoderTaskId type, const void* payload, size_t payloadSize, DepthAfter depth) {
   if (!g_recorder.active() || g_recorder.currentRenderPass == UINT32_MAX) {
     Log.warn("push_encoder_task: called outside an active render pass");
     return false;
@@ -1173,7 +1631,10 @@ bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSi
   auto& frame = current_frame_packet();
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
   prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
-  enqueue_pass(frame, g_recorder.currentRenderPass);
+  discard_dead_stores(prevPass, false, depth == DepthAfter::Clear);
+  const bool hold = depth == DepthAfter::IfUnread;
+  const auto sealedPass = g_recorder.currentRenderPass;
+  const auto passOp = enqueue_pass(frame, sealedPass, !hold);
 
   const auto taskIndex = static_cast<uint32_t>(frame.encoderTasks.size());
   auto& task = frame.encoderTasks.emplace_back(EncoderTask{.type = type});
@@ -1183,26 +1644,96 @@ bool push_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSi
   }
   const auto opIndex = static_cast<uint32_t>(frame.ops.size());
   frame.ops.emplace_back(capture_frame_op(frame, FrameOpType::EncoderTask, taskIndex));
+  if (!hold) {
+    enqueue_op(frame, opIndex);
+  }
 
   resume_efb_pass_loading(prevPass);
+  if (depth != DepthAfter::Load) {
+    auto& pass = current_render_passes()[g_recorder.currentRenderPass];
+    pass.clearDepth = true;
+    pass.clearDepthValue = gx::UseReversedZ ? 0.f : 1.f;
+  }
+  if (hold) {
+    g_recorder.heldDepth = FrameRecorder::HeldDepth{
+        .passOp = passOp, .taskOp = opIndex, .sealedPass = sealedPass, .nextPass = g_recorder.currentRenderPass};
+  }
+  return true;
+}
+} // namespace
+
+bool record_encoder_task(EncoderTaskId type, const void* payload, size_t payloadSize) {
+  return record_encoder_task_between(type, payload, payloadSize, DepthAfter::Load);
+}
+
+bool record_encoder_task_overwriting(EncoderTaskId type, const void* payload, size_t payloadSize,
+                                     DrawTypeId drawType, DepthAfter depth, const void* drawPayload,
+                                     size_t drawPayloadSize, bool leaveSceneHdr) {
+  if (drawPayloadSize > InlineDrawPayloadSize || (drawPayloadSize > 0 && drawPayload == nullptr)) {
+    Log.warn("record_encoder_task_overwriting: bad draw payload ({} bytes)", drawPayloadSize);
+    return false;
+  }
+  if (leaveSceneHdr && (!scene_hdr_pass_active() || !webgpu::g_frameBuffer.view)) {
+    Log.warn("record_encoder_task_overwriting: no HDR scene pass to leave");
+    return false;
+  }
+  if (!record_encoder_task_between(type, payload, payloadSize, depth)) {
+    return false;
+  }
+  auto& pass = current_render_passes()[g_recorder.currentRenderPass];
+  if (leaveSceneHdr) {
+    // The continuation was made on the sealed pass's (HDR) targets: retarget it to the display EFB. Its
+    // colour is cleared below, so nothing of the display EFB is loaded; depth is shared.
+    g_recorder.hdrScene = false;
+    // A scene post ends one independent HDR scene. The next segment (e.g. scan zoom's main-world
+    // pass) starts from black rather than loading the already-composited, previous scene.
+    g_recorder.hdrSceneCleared = false;
+    set_efb_targets(pass);
+  }
+  pass.colorAttachments[SceneColorAttachmentIndex].clear = true;
+  CustomDrawCommand draw{};
+  draw.type = drawType;
+  draw.payloadSize = static_cast<uint32_t>(drawPayloadSize);
+  if (drawPayloadSize > 0) {
+    std::memcpy(draw.payload.data(), drawPayload, drawPayloadSize);
+  }
+  push_command(CommandType::CustomDraw, Command::Data{.customDraw = draw});
   return true;
 }
 
 template <>
 void push_draw_command(gx::DrawData data) {
+  note_draw_depth(gx::g_gxState.depthCompare, gx::g_gxState.depthCompare && gx::g_gxState.depthUpdate);
   push_draw_command(make_draw_command<gx::render>(data));
 }
 
 #ifdef AURORA_ENABLE_RMLUI
 template <>
 void push_draw_command(rmlui::DrawData data) {
+  note_draw_depth(true, true);
   push_draw_command(make_draw_command<rmlui::render>(data));
 }
 #endif
 
+// A GX draw's pipeline: blocking when the caller must not lose its draw (gx::blocking_pipelines).
+static PipelineRef gx_pipeline_ref(const gx::PipelineConfig& config, bool blocking) {
+  return find_pipeline(
+      ShaderType::GX, config,
+      [=] {
+        phase::Scope compiling(render_worker::is_worker_thread() ? phase::Render : phase::Main,
+                               "compiling a GX pipeline");
+        return create_pipeline(config);
+      },
+      blocking ? PipelinePriority::Blocking : PipelinePriority::Normal);
+}
+
 template <>
 PipelineRef pipeline_ref(const gx::PipelineConfig& config) {
-  return find_pipeline(ShaderType::GX, config, [=] { return create_pipeline(config); });
+  return gx_pipeline_ref(config, false);
+}
+
+PipelineRef pipeline_ref(const gx::PipelineConfig& config, bool blocking) {
+  return gx_pipeline_ref(config, blocking);
 }
 
 #ifdef AURORA_ENABLE_RMLUI
@@ -1220,9 +1751,21 @@ void finish() {
   AURORA_ASSERT(!g_recorder.inOffscreen, "finish called while offscreen rendering is active");
   if (g_recorder.currentRenderPass != UINT32_MAX) {
     auto& frame = current_frame_packet();
-    frame.uniforms.append_zeroes(gx::MaxUniformSize);
+    uint32_t padOffset = 0;
+    if (uint8_t* pad = reserve_frame_bytes(frame.uniforms, frame.spillUniforms, StagingKind::Uniform,
+                                           gx::MaxUniformSize, 0, 0, "uniform", padOffset)) {
+      memset(pad, 0, gx::MaxUniformSize);
+    }
     auto& pass = frame.renderPasses[g_recorder.currentRenderPass];
-    pass.captureDepthSnapshot = true;
+    // Only when a peek waits for it: the snapshot needs the depth stored, which a tile-based GPU
+    // would otherwise skip. A request that comes later is served by the next frame.
+    pass.captureDepthSnapshot = depth_peek::snapshot_wanted();
+    if (g_recorder.heldDepth) {
+      release_held_depth(g_recorder.heldDepth->read || g_recorder.heldDepth->nextPass != g_recorder.currentRenderPass ||
+                         pass_copies_depth(pass));
+    }
+    // The next frame starts by clearing the EFB.
+    discard_dead_stores(pass, true, true);
     enqueue_pass(frame, g_recorder.currentRenderPass);
     g_recorder.currentRenderPass = UINT32_MAX;
   }
@@ -1233,7 +1776,8 @@ Range push_verts(const uint8_t* data, size_t length, size_t alignment) {
   if (!check_recording("push_verts")) {
     return {};
   }
-  return push(current_frame_packet().verts, data, length, alignment);
+  auto& frame = current_frame_packet();
+  return push(frame.verts, frame.spillVerts, StagingKind::Vertex, data, length, alignment, 0, "vertex");
 }
 
 Range push_indices(const uint8_t* data, size_t length, size_t alignment) {
@@ -1241,7 +1785,8 @@ Range push_indices(const uint8_t* data, size_t length, size_t alignment) {
   if (!check_recording("push_indices")) {
     return {};
   }
-  return push(current_frame_packet().indices, data, length, alignment);
+  auto& frame = current_frame_packet();
+  return push(frame.indices, frame.spillIndices, StagingKind::Index, data, length, alignment, 0, "index");
 }
 
 Range push_uniform(const uint8_t* data, size_t length) {
@@ -1249,18 +1794,59 @@ Range push_uniform(const uint8_t* data, size_t length) {
   if (!check_recording("push_uniform")) {
     return {};
   }
+  auto& frame = current_frame_packet();
+  const auto alignment = resources().limits.minUniformBufferOffsetAlignment;
+  const uint64_t key =
+      length != 0 ? absl::HashOf(std::string_view(reinterpret_cast<const char*>(data), length)) : 0;
   if (length != 0) {
-    auto& uniforms = current_frame_packet().uniforms;
-    const uint64_t key = absl::HashOf(std::string_view(reinterpret_cast<const char*>(data), length));
-    if (const auto it = g_uniformDedup.find(key); it != g_uniformDedup.end() && it->second.size == length &&
-                                                  std::memcmp(uniforms.data() + it->second.offset, data, length) == 0) {
-      return it->second;
+    // Port: see g_uniformDedup. A block lies wholly in the staging buffer or wholly in the spill.
+    if (const auto it = g_uniformDedup.find(key); it != g_uniformDedup.end() && it->second.size == length) {
+      const size_t at = it->second.offset - frame_buffer_sizes().base(StagingKind::Uniform);
+      const size_t cap = frame.uniforms.capacity();
+      const uint8_t* prev = at + length <= frame.uniforms.size() ? frame.uniforms.data() + at
+                            : at >= cap && at - cap + length <= frame.spillUniforms.length
+                                ? frame.spillUniforms.data.get() + (at - cap)
+                                : nullptr;
+      if (prev != nullptr && std::memcmp(prev, data, length) == 0) {
+        return it->second;
+      }
     }
-    const Range range = push(uniforms, data, length, resources().limits.minUniformBufferOffsetAlignment);
-    g_uniformDedup[key] = range;
-    return range;
   }
-  return push(current_frame_packet().uniforms, data, length, resources().limits.minUniformBufferOffsetAlignment);
+  // A uniform is bound as a MaxUniformSize window, which must stay inside the buffer.
+  const Range range = push(frame.uniforms, frame.spillUniforms, StagingKind::Uniform, data, length, alignment,
+                           gx::MaxUniformSize, "uniform");
+  if (length != 0 && !overflowed(range)) {
+    g_uniformDedup[key] = range;
+  }
+  return range;
+}
+
+Range map_uniform(uint8_t*& out) {
+  out = nullptr;
+  if (!check_recording("map_uniform")) {
+    return {};
+  }
+  auto& frame = current_frame_packet();
+  const auto alignment = resources().limits.minUniformBufferOffsetAlignment;
+  uint32_t offset = 0;
+  out = reserve_frame_bytes(frame.uniforms, frame.spillUniforms, StagingKind::Uniform, gx::MaxUniformSize,
+                            alignment, 0, "uniform", offset);
+  if (out == nullptr) {
+    return OverflowRange;
+  }
+  return {offset, gx::MaxUniformSize};
+}
+
+void unmap_uniform(Range& range, size_t length) {
+  auto& frame = current_frame_packet();
+  const size_t end = range.offset - frame_buffer_sizes().base(StagingKind::Uniform) + length;
+  const size_t cap = frame.uniforms.capacity();
+  if (end >= cap && frame.spillUniforms.length != 0) {
+    frame.spillUniforms.length = end - cap;
+  } else {
+    frame.uniforms.truncate(end);
+  }
+  range.size = static_cast<uint32_t>(length);
 }
 
 Range push_storage(const uint8_t* data, size_t length) {
@@ -1268,23 +1854,28 @@ Range push_storage(const uint8_t* data, size_t length) {
   if (!check_recording("push_storage")) {
     return {};
   }
+  auto& frame = current_frame_packet();
   // Port diagnostic. A frame's storage is a fixed window into the staging buffer (8 MiB, see
   // frame.cpp), so a frame that uploads more than that dies inside ByteBuffer::resize with
   // nothing naming the producer. MP2_GX_STORAGE_LOG=1 prints each sizeable upload and the frame's
   // running total, which is what points at the draw or the vertex array responsible.
   static const bool sLog = std::getenv("MP2_GX_STORAGE_LOG") != nullptr;
-  auto& storage = current_frame_packet().storage;
+  auto& storage = frame.storage;
   if (sLog && length >= 4096) {
     std::fprintf(stderr, "[gx-storage] upload %zu bytes (frame total %zu -> %zu, window 8 MiB)\n",
                  length, storage.size(), storage.size() + length);
   }
-  return push(storage, data, length, resources().limits.minStorageBufferOffsetAlignment);
+  return push(frame.storage, frame.spillStorage, StagingKind::Storage, data, length,
+              resources().limits.minStorageBufferOffsetAlignment, 0, "storage");
 }
 
 Range push_texture_data(const uint8_t* data, u32 bytesPerRow, u32 rowsPerImage) {
   // For CopyBufferToTexture, we need an alignment of 256 per row (see Dawn kTextureBytesPerRowAlignment)
   const auto copyBytesPerRow = AURORA_ALIGN(bytesPerRow, 256);
   const auto range = map(current_frame_packet().textureUpload, copyBytesPerRow * rowsPerImage, 0);
+  if (overflowed(range)) {
+    return range;
+  }
   u8* dst = current_frame_packet().textureUpload.data() + range.offset;
   for (u32 i = 0; i < rowsPerImage; ++i) {
     memcpy(dst, data, bytesPerRow);

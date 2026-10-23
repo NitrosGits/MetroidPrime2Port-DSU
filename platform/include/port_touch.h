@@ -64,6 +64,10 @@ bool SpringBallRequested();
 bool AimEnabled();
 // Aim pixels per dp of drag (MP1's `touch_aim_speed`, 2.25); `MP2_TOUCH_AIM_SPEED`.
 float AimSpeed();
+// "Separate vertical speed##touch" (touch.cfg `aim_split`, `aim_speed_y`): up and down drags at
+// their own speed, same range.
+bool AimSplit();
+float AimSpeedY();
 
 // --- layouts and cosmetics (polled once per draw) ---
 
@@ -94,6 +98,8 @@ void SetStickInsetDp(float dp);
 void SetButtonInsetDp(float dp);
 void SetOpacity(float percent);
 void SetAimSpeed(float pxPerDp);
+void SetAimSplit(bool enabled);
+void SetAimSpeedY(float pxPerDp);
 float SideMarginDp();
 float StickInsetDp();
 float ButtonInsetDp();

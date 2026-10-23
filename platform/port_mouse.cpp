@@ -33,11 +33,16 @@ bool sCaptured = false;
 bool sAiming = false;
 bool sUiActive = false;
 float sSensitivity = 0.0035f; // radians per pixel, the Prime port's default
+// MP1's "Separate vertical speed" for the mouse: vertical counts turn at sSensitivityY.
+bool sSensitivitySplit = false;
+float sSensitivityY = 0.0035f;
+int sMouseDpi = 800; // only for F1's cm/360 readout
 float sStickAimRate = 900.f;  // aim pixels per second at full stick deflection
 // MP1's "Separate vertical speed": with the split on, up and down use their own rate.
 bool sStickAimSplit = false;
 float sStickAimRateY = 900.f;
 float sTouchAimSpeed = 2.25f; // aim pixels per dp, the Prime port's touch_aim_speed default
+float sTouchAimSpeedY = 2.25f; // PortTouch pushes its vertical speed (the same one, unsplit)
 bool sInvertX = false;
 bool sInvertY = false;
 // The aim's down state is set by the UI thread (a finger lift) and read every tick by the game
@@ -57,6 +62,13 @@ float sCameraPendingX = 0.f;
 float sCameraPendingY = 0.f;
 float sCameraFrameX = 0.f;
 float sCameraFrameY = 0.f;
+// The stick's part of the latched frame: under pointer aim with the gyro driving it turns the
+// camera instead of moving the pointer (MP1's sStickFrame).
+float sStickFrameX = 0.f;
+float sStickFrameY = 0.f;
+bool sGyroDrivesAim = false;
+// Reset aim (PollPortActions): 0 none, 1 the usual, 2 both pointer and camera.
+std::atomic<int> sResetAimRequest{0};
 // The stick's part of sPendingX/Y (PresentedAimDelta shows only a tick's fraction of it), and
 // whether the last tick applied the aim, with the dt it was given.
 float sStickPendingX = 0.f;
@@ -82,7 +94,7 @@ constexpr float kTouchSpringHoldSeconds = 0.35f;
 void ClearPendingTravel() {
   std::lock_guard< std::mutex > lock(sPendingMutex);
   sPendingX = sPendingY = sFrameX = sFrameY = 0.f;
-  sStickPendingX = sStickPendingY = 0.f;
+  sStickPendingX = sStickPendingY = sStickFrameX = sStickFrameY = 0.f;
   sCameraPendingX = sCameraPendingY = sCameraFrameX = sCameraFrameY = 0.f;
 }
 
@@ -131,6 +143,13 @@ void ReadEnv() {
     const float value = static_cast< float >(std::atof(sens));
     if (std::isfinite(value) && value > 0.f) {
       sSensitivity = value;
+    }
+  }
+  sSensitivitySplit = EnvFlagOr("MP2_MOUSE_SENS_SPLIT", sSensitivitySplit);
+  if (const char* sens = std::getenv("MP2_MOUSE_SENS_Y")) {
+    const float value = static_cast< float >(std::atof(sens));
+    if (std::isfinite(value) && value > 0.f) {
+      sSensitivityY = value;
     }
   }
   // No MP2_TOUCH_AIM flag here: `PortTouch` owns that switch (its AimEnabled) and turns this
@@ -308,7 +327,7 @@ void AddTouchAim(float dxDp, float dyDp) {
   sTouchAimLatched = true;
   std::lock_guard< std::mutex > lock(sPendingMutex);
   sPendingX += dxDp * sTouchAimSpeed;
-  sPendingY += dyDp * sTouchAimSpeed;
+  sPendingY += dyDp * sTouchAimSpeedY;
 }
 
 void SetTouchAimDown(bool down) {
@@ -339,6 +358,18 @@ void SetTouchAimSpeed(float pixelsPerDp) {
   }
 }
 
+float TouchAimSpeedY() {
+  ReadEnv();
+  return sTouchAimSpeedY;
+}
+
+void SetTouchAimSpeedY(float pixelsPerDp) {
+  ReadEnv();
+  if (std::isfinite(pixelsPerDp)) {
+    sTouchAimSpeedY = ClampTouchAimSpeed(pixelsPerDp);
+  }
+}
+
 void SetUiActive(bool active) {
   sUiActive = active;
   if (active) {
@@ -353,12 +384,19 @@ void AddMotion(float dx, float dy) {
   if (!sCaptured || !std::isfinite(dx) || !std::isfinite(dy)) {
     return;
   }
+  if (sSensitivitySplit) {
+    // Vertical counts become the horizontal-equivalent counts that turn at the Y sensitivity.
+    const float ratio = sSensitivityY / sSensitivity;
+    if (std::isfinite(ratio) && ratio > 0.f) {
+      dy *= ratio;
+    }
+  }
   sPendingX += dx;
   sPendingY += dy;
 }
 
-void AddGyroPointer(float yaw, float pitch, float dt, float sweep) {
-  if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sweep > 0.f)) {
+void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY) {
+  if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sweep > 0.f) || !std::isfinite(scaleY)) {
     return;
   }
   // MP1's PollGyro pointer branch: `sweep` radians of pad turn cross the screen (2 pointer units)
@@ -372,10 +410,10 @@ void AddGyroPointer(float yaw, float pitch, float dt, float sweep) {
   const float cursor = 2.f / sweep * dt / px;
   std::lock_guard< std::mutex > lock(sPendingMutex);
   sPendingX += yaw * cursor;
-  sPendingY -= pitch * cursor;
+  sPendingY -= pitch * cursor * scaleY;
 }
 
-void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity) {
+void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float sensitivityY) {
   ReadEnv();
   if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sSensitivity > 0.f)) {
     return;
@@ -386,10 +424,15 @@ void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity) {
   const float sx = sInvertX ? -1.f : 1.f;
   const float sy = sInvertY ? -1.f : 1.f;
   const float scale = sensitivity * dt / sSensitivity;
+  const float scaleY = sensitivityY * dt / sSensitivity;
   std::lock_guard< std::mutex > lock(sPendingMutex);
   sCameraPendingX += sx * yaw * scale;
-  sCameraPendingY -= sy * pitch * scale;
+  sCameraPendingY -= sy * pitch * scaleY;
 }
+
+void SetGyroDrivesAim(bool drives) { sGyroDrivesAim = drives; }
+
+void RequestResetAim(bool both) { sResetAimRequest.store(both ? 2 : 1, std::memory_order_release); }
 
 void BeginTick() {
   // The UI thread may be adding travel right now; latch and clear in one lock so a late
@@ -398,6 +441,8 @@ void BeginTick() {
   sAppliedLastTick = false;
   sFrameX = sPendingX;
   sFrameY = sPendingY;
+  sStickFrameX = sStickPendingX;
+  sStickFrameY = sStickPendingY;
   sPendingX = 0.f;
   sPendingY = 0.f;
   sStickPendingX = 0.f;
@@ -442,19 +487,39 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
   // started the lock would look released on the next tick and the lock would drop again. The
   // grab is the game's, not the free look's.
   SetCapture((owns || locked) && sEnabled);
+  // MP1's Reset aim: under pointer aim recentre the pointer, otherwise look level (pitch 0; yaw
+  // stays); `both` does both either way.
+  if (const int reset = sResetAimRequest.exchange(0, std::memory_order_acq_rel); reset != 0) {
+    if (sPointerEnabled || reset == 2) {
+      sPointer.Center();
+    }
+    if ((!sPointerEnabled || reset == 2) && sAim.initialized) {
+      sAim.pitch = 0.f;
+    }
+  }
   if (sPointerEnabled) {
     // MP1's pointer path: the travel moves the pointer, not the view. A lock (or anything that
     // stops free look) re-centres it, so lock-on, scan and grapple still aim through the centre.
+    // With the gyro driving the pointer, the stick turns the camera as it does without pointer
+    // aim (MP1 4b8117d16).
+    const bool stickTurns = sGyroDrivesAim;
     if (owns) {
       float sx = 0.f, sy = 0.f;
       PointerAimScale(sx, sy);
-      sPointer.Move(sFrameX * sx, sFrameY * sy);
+      if (stickTurns) {
+        sPointer.Move((sFrameX - sStickFrameX) * sx, (sFrameY - sStickFrameY) * sy);
+      } else {
+        sPointer.Move(sFrameX * sx, sFrameY * sy);
+      }
     } else {
       sPointer.Center();
     }
-    // The view turns only by the gyro's camera travel (zero unless it also turns the camera).
-    const bool applied = sAim.Update(active, held, x, y, z, owns ? sCameraFrameX : 0.f,
-                                     owns ? sCameraFrameY : 0.f, sSensitivity, sInvertX, sInvertY);
+    // The view turns only by the gyro's camera travel (zero unless it also turns the camera),
+    // and the stick's when it turns the camera.
+    const float cameraX = sCameraFrameX + (stickTurns ? sStickFrameX : 0.f);
+    const float cameraY = sCameraFrameY + (stickTurns ? sStickFrameY : 0.f);
+    const bool applied = sAim.Update(active, held, x, y, z, owns ? cameraX : 0.f, owns ? cameraY : 0.f,
+                                     sSensitivity, sInvertX, sInvertY);
     if (applied && owns) {
       float dyaw = 0.f, dpitch = 0.f;
       PortMouse::PointerAim::TurnAt(sPointer.x, sPointer.y, sPointerBox, sPointerTurnRate, dt,
@@ -466,18 +531,19 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt) {
       sPointer.Center();
     }
     if (applied) {
-      sFrameX = sFrameY = 0.f;
+      sFrameX = sFrameY = sStickFrameX = sStickFrameY = 0.f;
       sCameraFrameX = sCameraFrameY = 0.f;
     }
     sAppliedLastTick = applied && owns;
     return applied && owns;
   }
   sPointerFree = false;
-  sCameraFrameX = sCameraFrameY = 0.f;
-  const bool applied = sAim.Update(active, held, x, y, z, sFrameX, sFrameY, sSensitivity,
-                                   sInvertX, sInvertY);
+  // Without pointer aim the gyro's travel turns the view beside the mouse's, stick's and touch's.
+  const bool applied = sAim.Update(active, held, x, y, z, sFrameX + sCameraFrameX, sFrameY + sCameraFrameY,
+                                   sSensitivity, sInvertX, sInvertY);
   if (applied) {
-    sFrameX = sFrameY = 0.f;
+    sFrameX = sFrameY = sStickFrameX = sStickFrameY = 0.f;
+    sCameraFrameX = sCameraFrameY = 0.f;
   }
   sAppliedLastTick = applied && owns;
   return applied && owns;
@@ -509,14 +575,23 @@ bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch) {
     float sx = 0.f, sy = 0.f;
     PointerAimScale(sx, sy);
     PortMouse::PointerAim pointer = sPointer;
-    pointer.Move(dx * sx, dy * sy);
+    if (sGyroDrivesAim) {
+      // The stick turns the camera (UpdateAim's stickTurns): only its tick fraction shows.
+      const float stickX = dx - (sPendingX - sStickPendingX);
+      const float stickY = dy - (sPendingY - sStickPendingY);
+      pointer.Move((dx - stickX) * sx, (dy - stickY) * sy);
+      cx += stickX;
+      cy += stickY;
+    } else {
+      pointer.Move(dx * sx, dy * sy);
+    }
     next.Update(true, false, 0.f, 0.f, 0.f, cx, cy, sSensitivity, sInvertX, sInvertY);
     float turnYaw = 0.f, turnPitch = 0.f;
     PortMouse::PointerAim::TurnAt(pointer.x, pointer.y, sPointerBox, sPointerTurnRate,
                                   fraction * sLastTickDt, turnYaw, turnPitch);
     next.Turn(turnYaw, turnPitch);
   } else {
-    next.Update(true, false, 0.f, 0.f, 0.f, dx, dy, sSensitivity, sInvertX, sInvertY);
+    next.Update(true, false, 0.f, 0.f, 0.f, dx + cx, dy + cy, sSensitivity, sInvertX, sInvertY);
   }
   dyaw = static_cast< float >(std::remainder(double(next.yaw) - sAim.yaw, 2.0 * PortMouse::kPi));
   dpitch = next.pitch - sAim.pitch;
@@ -603,6 +678,38 @@ void SetSensitivity(float radiansPerPixel) {
   if (std::isfinite(radiansPerPixel) && radiansPerPixel > 0.f) {
     sSensitivity = radiansPerPixel;
   }
+}
+
+bool SensitivitySplit() {
+  ReadEnv();
+  return sSensitivitySplit;
+}
+
+void SetSensitivitySplit(bool enabled) {
+  ReadEnv();
+  sSensitivitySplit = enabled;
+}
+
+float SensitivityY() {
+  ReadEnv();
+  return sSensitivityY;
+}
+
+void SetSensitivityY(float radiansPerPixel) {
+  ReadEnv();
+  if (std::isfinite(radiansPerPixel) && radiansPerPixel > 0.f) {
+    sSensitivityY = radiansPerPixel;
+  }
+}
+
+int MouseDpi() {
+  ReadEnv();
+  return sMouseDpi;
+}
+
+void SetMouseDpi(int dpi) {
+  ReadEnv();
+  sMouseDpi = dpi < 100 ? 100 : dpi > 64000 ? 64000 : dpi;
 }
 
 bool InvertX() {
