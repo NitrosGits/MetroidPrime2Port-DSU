@@ -423,6 +423,19 @@ to Halt and takes a 1-damage hit (hp 2/2 -> 1/2) before it transitions to Attack
 Metaree` at f320 and f2200. puff wakes Agon Wastes dark 07_sand_alamoportalobservation_dark's
 CPuffer u05d9 (hp 5/5), forces PathFind and Start, takes a 1-damage hit (hp 5/5 -> 4/5) and a
 shot (hp 4/5 -> 2/5), then kills it (0 objects), with `objs CPuffer` at f320 and f2200.
+rubk drives Sanctuary Fortress 07cliff_gyro's two Rubiks puzzles u05b3/u06c0 (layers 4 and 5):
+load both layers, activate both, send InternalMessage0 to both, delete both, with `objs RubiksPuzzle`
+counting two down to zero. emp2 drives Great Temple 07_temple_mothlordsanctuary_dark's eleven stage-2
+tentacles (layer 3): create u05a1, force Attack/Retracted, damage and shoot it (hp 30 -> 30, unchanged),
+kill it, with `objs EmperorIngStage2Tentacle` counting eleven down to ten.
+cball drives Agon Wastes 04_sand_mining's two CannonBalls u0561/u04c1: activate u0561, send Create,
+delete it, with `objs CannonBall` counting two down to one. fobj drives Agon Wastes 05_portalpuzzle's
+single ForgottenObject u0423: activate it, delete it, with `objs ForgottenObject` counting one down to
+zero. skyr drives Temple Grounds 03_temple_combattraining's SkyRipple (layer 5) u0589: load layer 5,
+activate it, delete it, with `objs SkyRipple` counting one down to zero.
+dsbs drives Agon Wastes 10_sand_alamostorage's three DarkSamusBattleStages u073e/u0739/u072f
+(layer 6): load layer 6, activate u073e, read it and the Dark Samus u0732, deactivate and reactivate
+it, read both again, delete it, with `objs DarkSamusBattleStage` counting three down to two.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.

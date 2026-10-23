@@ -1,0 +1,21 @@
+# CDarkSamusBattleStage (module ?: CDarkSamusBattleStage). Agon Wastes 10_sand_alamostorage
+# (world 42b935e4, layer 6) holds three battle stages u073e/u0739/u072f and a Dark Samus u0732.
+# The steps load layer 6, activate u073e, read it and the Dark Samus, deactivate and reactivate it,
+# read both again, delete it, with `objs DarkSamusBattleStage` before and after. CDarkSamusBattleStage
+# is a CEntity, so it has no health or FSM; only Activate/Deactivate are handled. Checks are game
+# updates (@f<n>), never wall seconds.
+# F=2000, last check f1800.
+@f200 layer 6
+@f240 objs DarkSamusBattleStage
+@f260 send u073e Activate
+@f300 obj u073e
+@f320 obj u0732
+@f360 send u073e Deactivate
+@f400 obj u073e
+@f420 obj u0732
+@f460 send u073e Activate
+@f500 obj u073e
+@f520 obj u0732
+@f560 send u073e Delete
+@f600 objs DarkSamusBattleStage
+@f1800 objs DarkSamusBattleStage

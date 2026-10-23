@@ -1,0 +1,11 @@
+# CScriptForgottenObject (module ?: CScriptForgottenObject). Agon Wastes 05_portalpuzzle
+# (world 42b935e4) holds one ForgottenObject u0423. The steps activate it, read its connections,
+# delete it, with `objs ForgottenObject` before and after. CScriptForgottenObject is a CEntity with
+# no health or FSM. Checks are game updates (@f<n>), never wall seconds.
+# F=800, last check f600.
+@f200 objs ForgottenObject
+@f220 send u0423 Activate
+@f260 obj u0423
+@f300 send u0423 Delete
+@f340 objs ForgottenObject
+@f600 objs ForgottenObject

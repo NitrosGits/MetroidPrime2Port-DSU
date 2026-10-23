@@ -1,0 +1,20 @@
+# CScriptCannonBall (module ?: CScriptCannonBall). Agon Wastes 04_sand_mining (world 42b935e4)
+# holds two CannonBalls u0561/u04c1. The steps exercise one of them (u0561 000802bb): activate it,
+# send Create, send Increment from the player, deactivate and reactivate it, delete it, with `objs
+# CannonBall` before and after. CScriptCannonBall is a CActor with no health or FSM. Checks are
+# game updates (@f<n>), never wall seconds.
+# F=1000, last check f800.
+@f200 objs CannonBall
+@f220 send u0561 Activate
+@f260 obj u0561
+@f300 send u0561 Create
+@f340 obj u0561
+@f380 send u0561 Increment from 0
+@f420 obj u0561
+@f460 send u0561 Deactivate
+@f500 obj u0561
+@f540 send u0561 Activate
+@f580 obj u0561
+@f620 send u0561 Delete
+@f660 objs CannonBall
+@f800 objs CannonBall
