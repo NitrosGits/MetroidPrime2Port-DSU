@@ -420,7 +420,12 @@ void CAIMannedTurret::UpdateAim(CStateManager& mgr, float dt, bool snap) {
     }
     const float diff = mTargetElevation - mElevation;
     const float step = dt * mData.vertSpeed;
+#ifdef TARGET_PC
+    // 0x23EC fcmpo |diff|,0.1 / 0x23F0 blt (NaN falls into the step arm, not the snap arm)
+    if (!(CMath::AbsF(diff) < 0.1f) && !snap) {
+#else
     if (CMath::AbsF(diff) >= 0.1f && !snap) {
+#endif
       const float scaledStep =
           step * (1.f - CMath::PhongBlob(CMath::Clamp(0.f, CMath::AbsF(diff / 20.f), 1.f), 8.f));
       if (diff > 0.f) {
