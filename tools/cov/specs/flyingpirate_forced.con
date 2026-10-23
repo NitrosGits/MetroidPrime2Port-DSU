@@ -1,0 +1,41 @@
+# Agon 02_sand_sandfalls layer 8: forced AI states on u06de and script messages on u06cf, then
+# u06cf killed in the air by an ordinary shot at 1 hp (Dead, DeathOver, spin to death).
+@f300 layer 8
+@f560 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f600 tp -95 -100 -8
+@f610 face 180; objs player
+@f700 fsm u06de GetUp
+@f800 fsm u06de GetUpNow
+@f900 fsm u06de Bounce
+@f1000 fsm u06de Retreat
+@f1150 fsm u06de TurnAround
+@f1250 fsm u06de Dodge
+@f1350 fsm u06de Walk
+@f1500 fsm u06de Land
+@f1650 fsm u06de ProjectileAttack
+@f1800 fsm u06de Taunt
+@f1900 fsm u06de Enraged
+@f2000 fsm u06de ChooseWaypoint
+@f2150 fsm u06de Jump
+@f2300 fsm u06de Lurk
+@f2400 fsm u06de PathFind
+@f2500 obj u06de
+@f700 send u06cf Alert
+@f720 send u06cf OffGround
+@f760 send u06cf Landed
+@f800 send u06cf Launching
+@f840 send u06cf Stop
+@f900 send u06cf Start
+@f940 send u06cf SetToZero
+@f980 send u06cf Create
+@f1020 send u06cf AreaLoaded
+@f1100 noise 0; noise 1; noise 2; noise 3; noise 4; noise 5
+@f1200 touch u06cf u06de
+@f1300 obj u06cf
+@f2600 damage u06cf 89
+@f2620 shoot u06cf
+@f2700 obj u06cf
+@f2900 obj u06cf
+@f3000 fsm u06de Explode
+@f3100 obj u06de
+@f3300 status

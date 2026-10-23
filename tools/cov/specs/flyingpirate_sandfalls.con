@@ -1,0 +1,23 @@
+# Agon 02_sand_sandfalls layer 8: aerotroopers u06de and u06cf (this save). The god-mode player
+# walks up to them: patrol, spot, attack (burst fire, missiles), dodge shots, knock-back, deaths.
+# For tools/cov/specs/flyingpirate.py with the coverage build.
+@f300 layer 8
+@f560 god 1; give missiles 50; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f580 obj u06de; fsm u06de ?
+@f600 tp -95 -100 -8
+@f610 face 180
+@f900 obj u06de; obj u06cf
+@f1200 shoot u06de
+@f1230 shoot u06de
+@f1260 shoot u06de missile
+@f1400 obj u06de; obj u06cf
+@f1500 shoot u06cf charged
+@f1600 damage u06cf 5 10
+@f1700 obj u06de; obj u06cf
+@f2000 damage u06de 10 0 missile
+@f2200 obj u06de; obj u06cf
+@f2400 damage u06cf 1000
+@f2700 obj u06cf
+@f3000 damage u06de 1000 0 dark
+@f3300 obj u06de
+@f3500 status

@@ -1,0 +1,30 @@
+# Agon 02_sand_sandfalls layer 8: trigger bodies (trigcall, with and without an argument) and
+# state bodies run outside the machine (statecall; msg 3 takes a switch's default arm, which no
+# shipped caller sends) on aerotrooper u06de; u06cf keeps fighting the god-mode player.
+@f300 layer 8
+@f560 god 1
+@f600 tp -95 -100 -8
+@f610 face 180
+@f700 trigcall u06de HearPlayer; trigcall u06de ShotAt; trigcall u06de Attacked; trigcall u06de InPosition; trigcall u06de Landed; trigcall u06de ShouldSpecialAttack; trigcall u06de ShouldRetreat; trigcall u06de InRange; trigcall u06de Stuck; trigcall u06de CoverFind
+@f720 stick 0 127 60
+@f740 trigcall u06de HearPlayer
+@f800 shoot u06de
+@f805 trigcall u06de ShotAt 5; trigcall u06de Attacked 5; trigcall u06de ShotAt; trigcall u06de Attacked
+@f830 trigcall u06de ShotAt 5; trigcall u06de Attacked 5; trigcall u06de ShotAt; trigcall u06de Attacked
+@f900 send u06de SetToZero; trigcall u06de ShouldRetreat
+@f1000 statecall u06de Lurk 3; statecall u06de Land 3; statecall u06de ProjectileAttack 3; statecall u06de Taunt 3; statecall u06de GetUp 3; statecall u06de Attack 3; statecall u06de Dodge 3; statecall u06de Walk 3; statecall u06de PathFind 3; statecall u06de Bounce 3; statecall u06de Patrol 3; statecall u06de TurnAround 3; statecall u06de Retreat 3; statecall u06de Dead 3; statecall u06de Jump 3; statecall u06de Explode 3; statecall u06de Enraged 3; statecall u06de TargetPatrol 3; statecall u06de ChooseWaypoint 3
+@f1100 fsm u06de TurnAround
+@f1101 statecall u06de TurnAround 0
+@f1102 statecall u06de TurnAround 1
+@f1110 statecall u06de TurnAround 1
+@f1130 statecall u06de TurnAround 2
+@f1200 statecall u06de ChooseWaypoint 0; statecall u06de ChooseWaypoint 1; statecall u06de ChooseWaypoint 2
+@f1300 face 0
+@f1310 fsm u06de TurnAround
+@f1311 statecall u06de TurnAround 0; statecall u06de TurnAround 1
+@f1400 obj u06de; obj u06cf
+@f1500 statecall u06de Deactivate 1; statecall u06de Deactivate 2
+@f1600 trigcall u06cf HearPlayer; trigcall u06cf InPosition; trigcall u06cf Landed; trigcall u06cf ShouldSpecialAttack; trigcall u06cf InRange; trigcall u06cf Stuck; trigcall u06cf CoverFind; trigcall u06cf ShouldDodge
+@f1800 statecall u06de Deactivate 0
+@f2000 obj u06de
+@f2100 status

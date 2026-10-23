@@ -1,0 +1,157 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_22_0	164	B	~CFlyingPirate	-	upstream body (CFlyingPirate)	no
+00164	fn_22_164	1E4	H	~CPatterned	-	CPatterned weak copy	no
+00348	fn_22_348	94	H	~CAiKnockBackMgr	-	CAiKnockBackMgr weak copy	no
+003DC	fn_22_3DC	94	H	~reserved_vector	-	rstl weak copy	no
+00470	fn_22_470	8	B	GetSearchPath	-	upstream body (CFlyingPirate)	no
+00478	fn_22_478	8	B	IsListening	-	upstream body (CFlyingPirate)	no
+00480	fn_22_480	24	B	GetGravityConstant	-	upstream body (CFlyingPirate)	no
+004A4	fn_22_4A4	3C	H	GetTouchBounds	-	CPatterned weak copy	no
+004E0	fn_22_4E0	10	H	TakeDamage	-	CPatterned weak copy	no
+004F0	fn_22_4F0	8	H	GetModelAlphau8	-	CPatterned weak copy	no
+004F8	fn_22_4F8	8	H	GetPointSearchPath	-	CPatterned weak copy	no
+00500	fn_22_500	8	H	GetRagDoll	-	CPatterned weak copy	no
+00508	fn_22_508	10	H	GetAttackTarget	-	CPatterned weak copy	no
+00518	fn_22_518	C	H	IsOnGround	-	CPatterned weak copy	no
+00524	fn_22_524	8	H	GetDeathExplosionParticle	-	CPatterned weak copy	no
+0052C	fn_22_52C	8	H	CanBeShot	-	CAi weak copy	no
+00534	fn_22_534	2C	H	GetHealthInfo	-	CActor weak copy	no
+00560	fn_22_560	24	T	RELExit	-	REL runtime	no
+00584	fn_22_584	20	T	RELMain	-	REL runtime	no
+005A4	fn_22_5A4	30	T	SetRelLoaderFunctionToLoader	-	REL runtime	no
+005D4	fn_22_5D4	90C	B	LoadFlyingPirate	-	upstream body (CFlyingPirate) (99.4%)	no
+00EE0	fn_22_EE0	40	H	optional_object	-	rstl weak copy	no
+00F20	fn_22_F20	20	H	construct<CModelData>	-	rstl weak copy	no
+00F40	fn_22_F40	28	H	construct	-	rstl weak copy	no
+00F68	fn_22_F68	13C	H	CModelData	-	CModelData weak copy	no
+010A4	fn_22_10A4	6C	H	~optional_object	-	rstl weak copy	no
+01110	fn_22_1110	54	H	~TToken	-	TToken<CModel> weak copy	no
+01164	fn_22_1164	64	H	~auto_ptr	-	rstl weak copy	no
+011C8	fn_22_11C8	60	H	~optional_object	-	rstl weak copy	no
+01228	fn_22_1228	94	B	~SLdrFlyingPirate	-	upstream body (CFlyingPirate)	no
+012BC	fn_22_12BC	2B4	B	SLdrFlyingPirate	-	upstream body (CFlyingPirate) (52.6%)	no
+01570	fn_22_1570	6C	B	SetupStateMachine	fp1	upstream body (CFlyingPirate)	yes
+015DC	fn_22_15DC	CCC	B	Think	-	upstream body (CFlyingPirate)	no
+022A8	fn_22_22A8	40	H	Cross	-	CVector3f weak copy (92.1%)	no
+022E8	fn_22_22E8	5C	H	~CBCAdditiveAimCmd	-	CBCAdditiveAimCmd weak copy	no
+02344	fn_22_2344	48	H	~CBodyStateCmd	-	CBodyStateCmd weak copy	no
+0238C	fn_22_238C	8	H	CanShoot	-	CBodyState weak copy	no
+02394	fn_22_2394	60	B	PreThink	fp1	upstream body (CFlyingPirate)	yes
+023F4	fn_22_23F4	1AC	B	CollidedWith	-	upstream body (CFlyingPirate)	no
+025A0	fn_22_25A0	20	B	Render	fp1	upstream body (CFlyingPirate)	yes
+025C0	fn_22_25C0	74	B	PreRender	fp1	upstream body (CFlyingPirate) (96.3%)	yes
+02634	fn_22_2634	A8	B	AddToRenderer	fp1	upstream body (CFlyingPirate)	yes
+026DC	fn_22_26DC	3C	H	~optional_object	-	rstl weak copy	no
+02718	fn_22_2718	20	B	PreRenderAllViewports	fp1	upstream body (CFlyingPirate)	yes
+02738	fn_22_2738	2A8	B	DoUserAnimEvent	-	upstream body (CFlyingPirate) (92.1%)	no
+029E0	fn_22_29E0	48	H	None	-	CImpactVisorEffect weak copy	no
+02A28	fn_22_2A28	B4	H	fn_22_2A28	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02ADC	fn_22_2ADC	40	H	fn_22_2ADC	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02B1C	fn_22_2B1C	20	H	fn_22_2B1C	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02B3C	fn_22_2B3C	28	H	fn_22_2B3C	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02B64	fn_22_2B64	80	H	fn_22_2B64	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02BE4	fn_22_2BE4	6C	H	fn_22_2BE4	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02C50	fn_22_2C50	54	H	fn_22_2C50	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02CA4	fn_22_2CA4	3C	H	fn_22_2CA4	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02CE0	fn_22_2CE0	3C	H	fn_22_2CE0	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02D1C	fn_22_2D1C	5C	H	~optional_object	-	rstl weak copy	no
+02D78	fn_22_2D78	20	H	fn_22_2D78	-	unnamed helper (CImpactVisorEffect/rstl inline, no upstream symbol)	no
+02D98	fn_22_2D98	48	H	SParticleEffect>	-	rstl weak copy	no
+02DE0	fn_22_2DE0	54	H	~CImpactVisorEffect	-	CImpactVisorEffect weak copy	no
+02E34	fn_22_2E34	4F8	B	FireProjectile	-	upstream body (CFlyingPirate)	no
+0332C	fn_22_332C	3C	H	~CPASAnimParmData	-	CPASAnimParmData weak copy	no
+03368	fn_22_3368	184	H	CPASAnimParmData	-	CPASAnimParmData weak copy	no
+034EC	fn_22_34EC	3C	H	~reserved_vector	-	rstl weak copy	no
+03528	fn_22_3528	8	B	ProjectileInfo	fp1	upstream body (CFlyingPirate)	yes
+03530	fn_22_3530	58	B	HasAttackPattern	fp1	upstream body (CFlyingPirate)	yes
+03588	fn_22_3588	164	B	ShouldRetreat	-	upstream body (CFlyingPirate)	no
+036EC	fn_22_36EC	1C	B	Deactivate	fp1	upstream body (CFlyingPirate)	yes
+03708	fn_22_3708	DC	B	Explode	fp1	upstream body (CFlyingPirate)	yes
+037E4	fn_22_37E4	20	B	AnimOver	fp1	upstream body (CFlyingPirate)	yes
+03804	fn_22_3804	68	B	DeathOver	fp1	upstream body (CFlyingPirate)	yes
+0386C	fn_22_386C	23C	B	Dead	-	upstream body (CFlyingPirate)	no
+03AA8	fn_22_3AA8	48	H	~CCollisionPrimitive	-	CCollisionPrimitive weak copy	no
+03AF0	fn_22_3AF0	14C	B	Enraged	fp1	upstream body (CFlyingPirate)	yes
+03C3C	fn_22_3C3C	C	B	AggressionCheck	fp1	upstream body (CFlyingPirate)	yes
+03C48	fn_22_3C48	C0	B	Stuck	-	upstream body (CFlyingPirate)	no
+03D08	fn_22_3D08	164	B	ShouldMove	fp1	upstream body (CFlyingPirate)	yes
+03E6C	fn_22_3E6C	144	B	ProjectileAttack	fp1	upstream body (CFlyingPirate)	yes
+03FB0	fn_22_3FB0	5C	H	~CBCProjectileAttackCmd	-	CBCProjectileAttackCmd weak copy	no
+0400C	fn_22_400C	24C	B	Walk	-	upstream body (CFlyingPirate)	no
+04258	fn_22_4258	12C	B	Land	fp1	upstream body (CFlyingPirate)	yes
+04384	fn_22_4384	9C	H	DeliverCmd	-	CBodyStateCmdMgr weak copy	no
+04420	fn_22_4420	5C	H	~CBCJumpCmd	-	CBCJumpCmd weak copy	no
+0447C	fn_22_447C	7C	H	CBCJumpCmd	-	CBCJumpCmd weak copy	no
+044F8	fn_22_44F8	B4	B	InPosition	-	upstream body (CFlyingPirate)	no
+045AC	fn_22_45AC	18	B	Landed	fp1	upstream body (CFlyingPirate)	yes
+045C4	fn_22_45C4	154	B	Jump	fp1	upstream body (CFlyingPirate)	yes
+04718	fn_22_4718	180	B	ShouldSpecialAttack	-	upstream body (CFlyingPirate)	no
+04898	fn_22_4898	34	B	Attacked	fp1	upstream body (CFlyingPirate)	yes
+048CC	fn_22_48CC	34	B	ShotAt	fp1	upstream body (CFlyingPirate)	yes
+04900	fn_22_4900	208	B	Dodge	-	upstream body (CFlyingPirate)	no
+04B08	fn_22_4B08	5C	H	~CBCStepCmd	-	CBCStepCmd weak copy	no
+04B64	fn_22_4B64	EC	B	ShouldDodge	-	upstream body (CFlyingPirate)	no
+04C50	fn_22_4C50	1F0	B	TurnAround	-	upstream body (CFlyingPirate)	no
+04E40	fn_22_4E40	5AC	B	Retreat	-	upstream body (CFlyingPirate)	no
+053EC	fn_22_53EC	4F8	B	PathFind	-	upstream body (CFlyingPirate)	no
+058E4	fn_22_58E4	50	B	InRange	-	upstream body (CFlyingPirate)	no
+05934	fn_22_5934	C	B	LineOfSight	fp1	upstream body (CFlyingPirate)	yes
+05940	fn_22_5940	E4	B	SpotPlayer	fp1	upstream body (CFlyingPirate)	yes
+05A24	fn_22_5A24	25C	B	Attack	-	upstream body (CFlyingPirate)	no
+05C80	fn_22_5C80	CC	B	ShouldAttack	fp1	upstream body (CFlyingPirate)	yes
+05D4C	fn_22_5D4C	F0	B	UpdateCanFireMissiles	fp1	upstream body (CFlyingPirate)	yes
+05E3C	fn_22_5E3C	24	B	ResetFireMissilesCheck	fp1	upstream body (CFlyingPirate)	yes
+05E60	fn_22_5E60	1E0	B	ChooseWaypoint	-	upstream body (CFlyingPirate)	no
+06040	fn_22_6040	184	B	CoverFind	-	upstream body (CFlyingPirate) (99.0%)	no
+061C4	fn_22_61C4	80	B	CoverCheck	fp1	upstream body (CFlyingPirate)	yes
+06244	fn_22_6244	2C4	B	Lurk	-	upstream body (CFlyingPirate)	no
+06508	fn_22_6508	158	B	Bounce	-	upstream body (CFlyingPirate)	no
+06660	fn_22_6660	5C	H	~CBCGetupCmd	-	CBCGetupCmd weak copy	no
+066BC	fn_22_66BC	4	B	GetUpNow	fp1	upstream body (CFlyingPirate)	yes
+066C0	fn_22_66C0	140	B	GetUp	-	upstream body (CFlyingPirate)	no
+06800	fn_22_6800	270	B	Taunt	-	upstream body (CFlyingPirate)	no
+06A70	fn_22_6A70	5C	H	~CBCTauntCmd	-	CBCTauntCmd weak copy	no
+06ACC	fn_22_6ACC	84	B	HearPlayer	-	upstream body (CFlyingPirate)	no
+06B50	fn_22_6B50	1C	B	HearShot	fp1	upstream body (CFlyingPirate)	yes
+06B6C	fn_22_6B6C	20	B	PatternShagged	fp1	upstream body (CFlyingPirate)	yes
+06B8C	fn_22_6B8C	1C	B	PatternOver	fp1	upstream body (CFlyingPirate)	yes
+06BA8	fn_22_6BA8	394	B	StartSpinToDeath	-	upstream body (CFlyingPirate)	no
+06F3C	fn_22_6F3C	5C	H	~CBCLoopHitReactionCmd	-	CBCLoopHitReactionCmd weak copy	no
+06F98	fn_22_6F98	1B4	B	UpdatePatrolFacing	-	upstream body (CFlyingPirate)	no
+0714C	fn_22_714C	258	B	TargetPatrol	-	upstream body (CFlyingPirate)	no
+073A4	fn_22_73A4	218	B	Patrol	-	upstream body (CFlyingPirate)	no
+075BC	fn_22_75BC	1F8	B	MassiveDeath	fp1	upstream body (CFlyingPirate)	yes
+077B4	fn_22_77B4	58	H	~CEntityInfo	-	CEntityInfo weak copy	no
+0780C	fn_22_780C	54	H	~vector	-	rstl weak copy	no
+07860	fn_22_7860	50	H	~basic_string	-	rstl weak copy	no
+078B0	fn_22_78B0	354	B	KnockBack	-	upstream body (CFlyingPirate)	no
+07C04	fn_22_7C04	2C0	B	CheckFireMissiles	-	upstream body (CFlyingPirate)	no
+07EC4	fn_22_7EC4	EC	B	GetTargetPos	-	upstream body (CFlyingPirate)	no
+07FB0	fn_22_7FB0	500	B	GetDodgeDirection	-	upstream body (CFlyingPirate)	no
+084B0	fn_22_84B0	218	B	AvoidActors	-	upstream body (CFlyingPirate)	no
+086C8	fn_22_86C8	3C	H	~reserved_vector	-	rstl weak copy	no
+08704	fn_22_8704	8C	B	LineOfSightTest	fp1	upstream body (CFlyingPirate)	yes
+08790	fn_22_8790	290	B	CheckForProjectiles	-	upstream body (CFlyingPirate)	no
+08A20	fn_22_8A20	A8	B	RemoveFromTeam	-	upstream body (CFlyingPirate)	no
+08AC8	fn_22_8AC8	AC	B	AddToTeam	-	upstream body (CFlyingPirate)	no
+08B74	fn_22_8B74	1C	B	GetOrigin	fp1	upstream body (CFlyingPirate)	yes
+08B90	fn_22_8B90	250	B	UpdateLandingSmoke	-	upstream body (CFlyingPirate)	no
+08DE0	fn_22_8DE0	5C	H	CRayCastResult	-	CRayCastResult weak copy	no
+08E3C	fn_22_8E3C	168	B	UpdateParticleEffects	-	upstream body (CFlyingPirate) (98.7%)	no
+08FA4	fn_22_8FA4	90	B	DeliverGetUp	-	upstream body (CFlyingPirate)	no
+09034	fn_22_9034	A8	B	Listen	-	upstream body (CFlyingPirate)	no
+090DC	fn_22_90DC	5F8	B	AcceptScriptMsg	-	upstream body (CFlyingPirate)	no
+096D4	fn_22_96D4	AC8	B	CFlyingPirate	-	upstream body (CFlyingPirate) (99.9%)	no
+0A19C	fn_22_A19C	78	H	~auto_ptr	-	rstl weak copy	no
+0A214	fn_22_A214	3C	H	~reserved_vector	-	rstl weak copy	no
+0A250	fn_22_A250	3C	H	~CBurstFire	-	CBurstFire weak copy	no
+0A28C	fn_22_A28C	3C	H	~CBoneTracking	-	CBoneTracking weak copy	no
+0A2C8	fn_22_A2C8	3C	H	~CPathFindSearch	-	CPathFindSearch weak copy	no
+0A304	fn_22_A304	B0	H	~reserved_vector	-	rstl weak copy	no
+0A3B4	fn_22_A3B4	58	H	~TLockedToken	-	TLockedToken<CGenDescription> weak copy	no
+0A40C	fn_22_A40C	5C	H	~CProjectileInfo	-	CProjectileInfo weak copy	no
+0A468	fn_22_A468	21C	H	CFlyingPirateData	-	implicit copy ctor (CFlyingPirateData)	no
+0A684	fn_22_A684	334	B	CFlyingPirateData	-	upstream body (CFlyingPirate) (92.7%)	no
+0A9B8	fn_22_A9B8	90	H	CDamageInfo	-	CDamageInfo weak copy	no
+0AA48	fn_22_AA48	3C	H	optional_object	-	rstl weak copy	no
+0AA84	fn_22_AA84	7D8	B	__sinit_CFlyingPirate_cpp	-	upstream body (CFlyingPirate)	no

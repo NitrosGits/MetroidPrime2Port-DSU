@@ -1,0 +1,30 @@
+# Agon 08_sand_casualpirates layer 2: four aerotroopers (u0545 u053d u0539 u0537, inactive until
+# Activate). They fight the god-mode player; then each dies a different way: charged shots,
+# a missile at low health, a power bomb, the annihilator beam.
+@f300 layer 2
+@f560 god 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give morphBall 1; give morphBallBombs 1; give powerBombs 5
+@f580 send u0545 Activate; send u053d Activate; send u0539 Activate; send u0537 Activate
+@f600 tp 355 -265 4
+@f610 face 0
+@f900 obj u0545; obj u053d
+@f1200 shoot u0545; shoot u053d
+@f1260 shoot u0539 missile
+@f1500 obj u0545; obj u053d; obj u0539; obj u0537
+@f1800 shoot u0545 charged
+@f1830 shoot u0545 charged
+@f1860 shoot u0545 charged
+@f1900 shoot u0545 charged
+@f2000 obj u0545
+@f2100 damage u053d 85
+@f2120 shoot u053d missile
+@f2300 obj u053d
+@f2400 damage u0539 80 0 powerbomb
+@f2420 damage u0539 30 0 powerbomb
+@f2600 obj u0539
+@f2700 beam annihilator
+@f2720 shoot u0537 charged
+@f2760 shoot u0537 charged
+@f2800 damage u0537 80 0 annihilator
+@f2820 shoot u0537
+@f3000 obj u0537
+@f3200 status

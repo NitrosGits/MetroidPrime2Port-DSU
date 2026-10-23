@@ -484,6 +484,7 @@ void CFlyingPirate::UpdateLandingSmoke(CStateManager& mgr, bool active) {
   }
 }
 
+// @ fn_22_8B74
 CVector3f CFlyingPirate::GetOrigin(const CStateManager& mgr, const CTeamAiRole& role,
                                    const CVector3f& aimPos) const {
   return GetTranslation();
@@ -548,6 +549,7 @@ void CFlyingPirate::CheckForProjectiles(CStateManager& mgr) {
   }
 }
 
+// @ fn_22_8704
 bool CFlyingPirate::LineOfSightTest(CStateManager& mgr, const CVector3f& start,
                                     const CVector3f& end, const CMaterialList& exclude) {
   const CMaterialFilter filter =
@@ -751,6 +753,7 @@ void CFlyingPirate::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   }
 }
 
+// @ fn_22_75BC
 void CFlyingPirate::MassiveDeath(CStateManager& mgr) {
   CExplosion* explosion = rs_new CExplosion(
       mParticleGenDesc, mgr.AllocateUniqueId(),
@@ -885,14 +888,17 @@ void CFlyingPirate::StartSpinToDeath(CStateManager& mgr) {
   }
 }
 
+// @ fn_22_6B8C
 bool CFlyingPirate::PatternOver(CStateManager& mgr, const CTriggerData& data) const {
   return mWaypointNavigation.GetDestination() == kInvalidUniqueId;
 }
 
+// @ fn_22_6B6C
 bool CFlyingPirate::PatternShagged(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::Stuck(mgr, data);
 }
 
+// @ fn_22_6B50
 bool CFlyingPirate::HearShot(CStateManager& mgr, const CTriggerData& data) const {
   const bool heard = mHearShot;
   const_cast< CFlyingPirate* >(this)->mHearShot = false;
@@ -976,6 +982,7 @@ void CFlyingPirate::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_66BC
 void CFlyingPirate::GetUpNow(CStateManager& mgr, EStateMsg msg, float dt) {}
 
 void CFlyingPirate::Bounce(CStateManager& mgr, EStateMsg msg, float dt) {
@@ -1043,6 +1050,7 @@ void CFlyingPirate::Lurk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_61C4
 bool CFlyingPirate::CoverCheck(CStateManager& mgr, const CTriggerData& data) const {
   const float zero = 0.f;
   if (mCoverCheckTimer <= zero) {
@@ -1115,12 +1123,14 @@ void CFlyingPirate::ChooseWaypoint(CStateManager& mgr, EStateMsg msg, float dt) 
   }
 }
 
+// @ fn_22_5E3C
 void CFlyingPirate::ResetFireMissilesCheck() {
   mCanFireMissiles = false;
   mMissilePathBlocked = false;
   mFireMissilesCheck = 0;
 }
 
+// @ fn_22_5D4C
 void CFlyingPirate::UpdateCanFireMissiles(CStateManager& mgr) {
   const CTeamAiRole* role = CScriptTeamAiMgr::GetTeamAiRole(mgr, mTeamAiMgr, GetUniqueId());
   if ((role == nullptr || role->GetTeamAiRole() == CTeamAiRole::kTAR_Projectile) &&
@@ -1133,6 +1143,7 @@ void CFlyingPirate::UpdateCanFireMissiles(CStateManager& mgr) {
   }
 }
 
+// @ fn_22_5C80
 bool CFlyingPirate::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   bool shouldAttack = false;
   if (mCanFireMissiles && (mTeamAiMgr == kInvalidUniqueId ||
@@ -1183,6 +1194,7 @@ void CFlyingPirate::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_5940
 bool CFlyingPirate::SpotPlayer(CStateManager& mgr, const CTriggerData& data) const {
   const CVector3f dir = mgr.GetPlayer(0)->GetAimPosition(mgr, 0.f) - GetGunEyePos();
   float distance = dir.Magnitude();
@@ -1383,10 +1395,12 @@ void CFlyingPirate::Dodge(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_48CC
 bool CFlyingPirate::ShotAt(CStateManager& mgr, const CTriggerData& data) const {
   return mTimeSinceShotAt < (data.GetFloat() ? data.GetFloat() : 0.5f);
 }
 
+// @ fn_22_4898
 bool CFlyingPirate::Attacked(CStateManager& mgr, const CTriggerData& data) const {
   return mTimeSinceAttacked < (data.GetFloat() ? data.GetFloat() : 0.5f);
 }
@@ -1410,10 +1424,12 @@ bool CFlyingPirate::ShouldSpecialAttack(CStateManager& mgr, const CTriggerData& 
   return false;
 }
 
+// @ fn_22_5934
 bool CFlyingPirate::LineOfSight(CStateManager& mgr, const CTriggerData& data) const {
   return mLineOfSightTracker.HasLineOfSight();
 }
 
+// @ fn_22_45C4
 void CFlyingPirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -1438,6 +1454,7 @@ void CFlyingPirate::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_45AC
 bool CFlyingPirate::Landed(CStateManager& mgr, const CTriggerData& data) const {
   return GetBodyController()->GetCurrentStateId() == pas::kAS_LieOnGround;
 }
@@ -1451,6 +1468,7 @@ bool CFlyingPirate::InPosition(CStateManager& mgr, const CTriggerData& data) con
   return true;
 }
 
+// @ fn_22_4258
 void CFlyingPirate::Land(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1508,6 +1526,7 @@ void CFlyingPirate::Walk(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_3E6C
 void CFlyingPirate::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1528,6 +1547,7 @@ void CFlyingPirate::ProjectileAttack(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_22_3D08
 bool CFlyingPirate::ShouldMove(CStateManager& mgr, const CTriggerData& data) const {
   CVector3f delta = GetTranslation() - mgr.GetPlayer(0)->GetTranslation();
   float random = mgr.Random()->Float();
@@ -1551,10 +1571,12 @@ bool CFlyingPirate::Stuck(CStateManager& mgr, const CTriggerData& data) const {
               CPathFindSearch::kR_Success);
 }
 
+// @ fn_22_3C3C
 bool CFlyingPirate::AggressionCheck(CStateManager& mgr, const CTriggerData& data) const {
   return mAggressive;
 }
 
+// @ fn_22_3AF0
 void CFlyingPirate::Enraged(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Update:
@@ -1593,6 +1615,7 @@ void CFlyingPirate::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_3804
 bool CFlyingPirate::DeathOver(CStateManager& mgr, const CTriggerData& data) const {
   if (mBecameRagDoll) {
     return true;
@@ -1603,10 +1626,12 @@ bool CFlyingPirate::DeathOver(CStateManager& mgr, const CTriggerData& data) cons
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_22_37E4
 bool CFlyingPirate::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_22_3708
 void CFlyingPirate::Explode(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -1626,6 +1651,7 @@ void CFlyingPirate::Explode(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_22_36EC
 void CFlyingPirate::Deactivate(CStateManager& mgr, EStateMsg msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mPendingDeath = true;
@@ -1658,10 +1684,12 @@ bool CFlyingPirate::ShouldRetreat(CStateManager& mgr, const CTriggerData& data) 
   return shouldRetreat;
 }
 
+// @ fn_22_3530
 bool CFlyingPirate::HasAttackPattern(CStateManager& mgr, const CTriggerData& data) const {
   return GetConnectedObject(mgr, kSS_Attack, kSM_Follow) != kInvalidUniqueId;
 }
 
+// @ fn_22_3528
 CProjectileInfo* CFlyingPirate::ProjectileInfo() { return &mGunProjectileInfo; }
 
 bool CFlyingPirate::FireProjectile(CStateManager& mgr, float dt) {
@@ -1744,10 +1772,12 @@ void CFlyingPirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& nod
   }
 }
 
+// @ fn_22_2718
 void CFlyingPirate::PreRenderAllViewports(CStateManager& mgr) {
   CPatterned::PreRenderAllViewports(mgr);
 }
 
+// @ fn_22_2634
 void CFlyingPirate::AddToRenderer(const CStateManager& mgr) const {
   for (int i = 0; i < mParticleGens.size(); ++i) {
     CElementGen* gen = mParticleGens[i].get();
@@ -1758,12 +1788,14 @@ void CFlyingPirate::AddToRenderer(const CStateManager& mgr) const {
   CPatterned::AddToRenderer(mgr);
 }
 
+// @ fn_22_25C0
 void CFlyingPirate::PreRender(CStateManager& mgr) {
   CPatterned::PreRender(mgr);
   mBoneTracking.PreRender(mgr, *AnimationData(), GetTransform(), GetModelData()->GetScale(),
                           *BodyController());
 }
 
+// @ fn_22_25A0
 void CFlyingPirate::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
 void CFlyingPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
@@ -1784,6 +1816,7 @@ void CFlyingPirate::CollidedWith(const TUniqueId& id, const CCollisionInfoList& 
   }
 }
 
+// @ fn_22_2394
 void CFlyingPirate::PreThink(float dt, CStateManager& mgr) {
   mBoneTracking.PreThink(*AnimationData());
   CPatterned::PreThink(dt, mgr);
@@ -1951,6 +1984,7 @@ void CFlyingPirate::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_22_1570
 void CFlyingPirate::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
