@@ -1,0 +1,83 @@
+@f260 layer 2
+@f300 god 1; give lightBeam 1; give lightAmmo 99; give darkBeam 1; give darkAmmo 99; give missile 50; give chargeBeam 1; give unlimitedBeamAmmo 1
+@f320 beam light
+@f400 send u051f Activate
+@f420 tp -75 -110 -8
+@f600 beam light
+@f605 shoot u051f 
+@f660 obj u051f
+@f725 shoot u051f charged
+@f840 beam dark
+@f845 shoot u051f missile
+@f965 shoot u051f 
+@f1020 obj u051f
+@f1080 beam light
+@f1085 shoot u051f 
+@f1205 shoot u051f charged
+@f1320 beam dark
+@f1325 shoot u051f missile
+@f1380 obj u051f
+@f1445 shoot u051f 
+@f1560 beam light
+@f1565 shoot u051f 
+@f1685 shoot u051f charged
+@f1740 obj u051f
+@f1800 beam dark
+@f1805 shoot u051f missile
+@f1880 noise 0
+@f1925 shoot u051f 
+@f2040 beam light
+@f2045 shoot u051f 
+@f2100 obj u051f
+@f2120 noise 6 -75 -110 -8
+@f2165 shoot u051f charged
+@f2280 beam dark
+@f2285 shoot u051f missile
+@f2405 shoot u051f 
+@f2460 obj u051f
+@f2520 beam light
+@f2525 shoot u051f 
+@f2645 shoot u051f charged
+@f2760 beam dark
+@f2765 shoot u051f missile
+@f2820 obj u051f
+@f2885 shoot u051f 
+@f3000 beam light
+@f3005 shoot u051f 
+@f3125 shoot u051f charged
+@f3180 obj u051f
+@f3240 beam dark
+@f3245 shoot u051f missile
+@f3365 shoot u051f 
+@f3480 beam light
+@f3485 shoot u051f 
+@f3540 obj u051f
+@f3605 shoot u051f charged
+@f3720 beam dark
+@f3725 shoot u051f missile
+@f3845 shoot u051f 
+@f3900 obj u051f
+@f3960 beam light
+@f3965 shoot u051f 
+@f4085 shoot u051f charged
+@f4200 beam dark
+@f4205 shoot u051f missile
+@f4260 obj u051f
+@f4325 shoot u051f 
+@f4440 beam light
+@f4445 shoot u051f 
+@f4565 shoot u051f charged
+@f4620 obj u051f
+@f4680 beam dark
+@f4685 shoot u051f missile
+@f4805 shoot u051f 
+@f4920 beam light
+@f4925 shoot u051f 
+@f4980 obj u051f
+@f5045 shoot u051f charged
+@f5160 beam dark
+@f5165 shoot u051f missile
+@f5300 obj u051f
+@f5400 kill u051f
+@f5450 obj u051f
+@f5900 obj u051f

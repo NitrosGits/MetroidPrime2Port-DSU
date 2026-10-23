@@ -1,0 +1,144 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_34_0	8	B	GetSearchPath__21CIngSpaceJumpGuardianFv	sjg1	upstream body (100.0%)	no
+00008	fn_34_8	8	B	IsListening__21CIngSpaceJumpGuardianCFv	sjg1	upstream body (100.0%)	no
+00010	fn_34_10	C	B	GetGravityConstant__21CIngSpaceJumpGuardianCFv	sjg1	upstream body (100.0%)	no
+0001C	fn_34_1C	3C	H	fn_34_1C	-	weak copy / template instance	no
+00058	fn_34_58	10	H	fn_34_58	-	weak copy / template instance	no
+00068	fn_34_68	8	H	fn_34_68	-	weak copy / template instance	no
+00070	fn_34_70	8	H	fn_34_70	-	weak copy / template instance	no
+00078	fn_34_78	8	H	fn_34_78	-	weak copy / template instance	no
+00080	fn_34_80	8	H	fn_34_80	-	weak copy / template instance	no
+00088	fn_34_88	10	H	fn_34_88	-	weak copy / template instance	no
+00098	fn_34_98	C	H	fn_34_98	-	weak copy / template instance	no
+000A4	fn_34_A4	8	H	fn_34_A4	-	weak copy / template instance	no
+000AC	fn_34_AC	8	H	fn_34_AC	-	weak copy / template instance	no
+000B4	fn_34_B4	1C	H	fn_34_B4	-	weak copy / template instance	no
+000D0	fn_34_D0	2C	H	fn_34_D0	-	weak copy / template instance	no
+000FC	fn_34_FC	24	T	RELExit	-	REL runtime	no
+00120	fn_34_120	20	T	RELMain	-	REL runtime	no
+00140	fn_34_140	30	T	SetFuncPtrs__Fv	-	REL runtime	no
+00170	fn_34_170	330	B	LoadIngSpaceJumpGuardian__FR13CStateManagerR12CInputStreamR11CEntityInfo	sjg1	upstream body (73.0%)	no
+004A0	fn_34_4A0	40	H	fn_34_4A0	-	weak copy / template instance	no
+004E0	fn_34_4E0	20	H	fn_34_4E0	-	weak copy / template instance	no
+00500	fn_34_500	28	H	fn_34_500	-	weak copy / template instance	no
+00528	fn_34_528	13C	H	fn_34_528	-	weak copy / template instance	no
+00664	fn_34_664	6C	H	fn_34_664	-	weak copy / template instance	no
+006D0	fn_34_6D0	54	H	fn_34_6D0	-	weak copy / template instance	no
+00724	fn_34_724	64	H	fn_34_724	-	weak copy / template instance	no
+00788	fn_34_788	60	H	fn_34_788	-	weak copy / template instance	no
+007E8	fn_34_7E8	7C	B	fn_34_7E8	sjg1	SLdrIngSpaceJumpGuardian dtor (header)	no
+00864	fn_34_864	278	B	fn_34_864	sjg1	SLdr reader (header), inlined into Load	no
+00ADC	fn_34_ADC	A0	B	fn_34_ADC	sjg1	SLdr sub-struct dtor (header)	no
+00B7C	fn_34_B7C	19C	B	fn_34_B7C	sjg1	SLdrIngSpaceJumpGuardian ctor: loader defaults fixed (sjg1), in the header	no
+00D18	fn_34_D18	130	B	fn_34_D18	sjg1	SLdr sub-struct reader (header)	no
+00E48	fn_34_E48	3C	H	fn_34_E48	-	weak copy / template instance	no
+00E84	fn_34_E84	50	B	fn_34_E84	sjg1	SLdr sub-struct ctor (header)	no
+00ED4	fn_34_ED4	150	B	UpdateBlob__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (83.9%)	no
+01024	fn_34_1024	124	B	SpawnBlobEffect__21CIngSpaceJumpGuardianFR13CStateManagerRC25TToken<15CGenDescription>	sjg1	fixed: SetNextDrawNode	yes
+01148	fn_34_1148	50	H	fn_34_1148	-	weak copy / template instance	no
+01198	fn_34_1198	258	B	FindJumpPoints__21CIngSpaceJumpGuardianFR13CStateManager	sjg1	upstream body (89.2%)	no
+013F0	fn_34_13F0	100	H	fn_34_13F0	-	weak copy / template instance	no
+014F0	fn_34_14F0	B0	H	fn_34_14F0	-	weak copy / template instance	no
+015A0	fn_34_15A0	C	H	fn_34_15A0	-	weak copy / template instance	no
+015AC	fn_34_15AC	60	H	fn_34_15AC	-	weak copy / template instance	no
+0160C	fn_34_160C	54	H	fn_34_160C	-	weak copy / template instance	no
+01660	fn_34_1660	21C	B	FilterJumpPoints__21CIngSpaceJumpGuardianFR13CStateManagerRCQ24rstl45vector<9TUniqueId,Q24rstl17rmemory_allocator>	sjg1	fixed: jump-point lookup +0x180 (76.4%)	no
+0187C	fn_34_187C	88	B	GetCurrentStruct__21CIngSpaceJumpGuardianCFv	sjg1	upstream body (100.0%)	yes
+01904	fn_34_1904	180	B	SpawnShockWave__21CIngSpaceJumpGuardianFR13CStateManager	sjg1	fixed: locator-name overload (DoUserAnimEvent) (87.3%)	yes
+01A84	fn_34_1A84	58	H	fn_34_1A84	-	weak copy / template instance	no
+01ADC	fn_34_1ADC	54	H	fn_34_1ADC	-	weak copy / template instance	no
+01B30	fn_34_1B30	CC	H	fn_34_1B30	-	weak copy / template instance	no
+01BFC	fn_34_1BFC	12C	B	CameraShake__21CIngSpaceJumpGuardianFR13CStateManagerRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>	sjg1	fixed: FindConnectedObject (58.1%)	no
+01D28	fn_34_1D28	70	H	fn_34_1D28	-	weak copy / template instance	no
+01D98	fn_34_1D98	58	H	fn_34_1D98	-	weak copy / template instance	no
+01DF0	fn_34_1DF0	54	H	fn_34_1DF0	-	weak copy / template instance	no
+01E44	fn_34_1E44	AC	H	fn_34_1E44	-	weak copy / template instance	no
+01EF0	fn_34_1EF0	AC	H	fn_34_1EF0	-	weak copy / template instance	no
+01F9C	fn_34_1F9C	1D0	H	fn_34_1F9C	-	weak copy / template instance	no
+0216C	fn_34_216C	114	B	UpdateLight__21CIngSpaceJumpGuardianFfR13CStateManager	sjg1	upstream body (96.2%)	no
+02280	fn_34_2280	A4	H	fn_34_2280	-	weak copy / template instance	no
+02324	fn_34_2324	174	B	CreateLight__21CIngSpaceJumpGuardianFR13CStateManager	sjg1	upstream body (86.8%)	yes
+02498	fn_34_2498	9C	B	SetCollisionVulnerability__21CIngSpaceJumpGuardianFR13CStateManagerRC20CDamageVulnerability	sjg1	upstream body (99.9%)	no
+02534	fn_34_2534	210	B	CollisionDamage__21CIngSpaceJumpGuardianFR13CStateManager9TUniqueId	sjg1	fixed: forward column, knock-back gate 0x08 (93.5%)	no
+02744	fn_34_2744	130	B	TouchDamage__21CIngSpaceJumpGuardianFR13CStateManager9TUniqueId	sjg1	upstream body (100.0%)	no
+02874	fn_34_2874	124	B	UpdateCollisionVulnerabilities__21CIngSpaceJumpGuardianFR13CStateManager	sjg1	upstream body (100.0%)	no
+02998	fn_34_2998	54	H	fn_34_2998	-	weak copy / template instance	no
+029EC	fn_34_29EC	22C	B	SetupCollision__21CIngSpaceJumpGuardianFR13CStateManager	sjg1	upstream body (85.4%)	yes
+02C18	fn_34_2C18	38	H	fn_34_2C18	-	weak copy / template instance	no
+02C50	fn_34_2C50	20	H	fn_34_2C50	-	weak copy / template instance	no
+02C70	fn_34_2C70	28	H	fn_34_2C70	-	weak copy / template instance	no
+02C98	fn_34_2C98	C0	H	fn_34_2C98	-	weak copy / template instance	no
+02D58	fn_34_2D58	5C	H	fn_34_2D58	-	weak copy / template instance	no
+02DB4	fn_34_2DB4	84	H	fn_34_2DB4	-	weak copy / template instance	no
+02E38	fn_34_2E38	38	H	fn_34_2E38	-	weak copy / template instance	no
+02E70	fn_34_2E70	60	H	fn_34_2E70	-	weak copy / template instance	no
+02ED0	fn_34_2ED0	1B4	B	ComputeJumpVelocity__21CIngSpaceJumpGuardianFR13CStateManager	sjg1	fixed: apex max(startZ,targetZ) (84.6%)	no
+03084	fn_34_3084	C	B	SetFaceWaypoint__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (100.0%)	yes
+03090	fn_34_3090	C	B	SetFaceAttackTarget__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (100.0%)	yes
+0309C	fn_34_309C	C	B	SetFaceJumpTarget__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (100.0%)	yes
+030A8	fn_34_30A8	3C	B	SetIntroJumpTarget__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (100.0%)	yes
+030E4	fn_34_30E4	348	B	FindBestMiniPortals__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (86.2%)	yes
+0342C	fn_34_342C	A0	B	SelectAttackAction__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (100.0%)	no
+034CC	fn_34_34CC	148	B	SelectJumpTarget__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	fixed: jump-point lookup +0x180 (100.0%)	no
+03614	fn_34_3614	10	B	SelectTarget__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (100.0%)	yes
+03624	fn_34_3624	94	B	EnableEnergyBar__21CIngSpaceJumpGuardianFR13CStateManagerf	sjg1	upstream body (100.0%)	yes
+036B8	fn_34_36B8	1D0	B	SteerToDest__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	upstream body (95.1%)	no
+03888	fn_34_3888	1B4	B	PathFind__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	upstream body (92.5%)	no
+03A3C	fn_34_3A3C	18C	B	MiniPortalAttack__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	upstream body (100.0%)	no
+03BC8	fn_34_3BC8	5C	H	fn_34_3BC8	-	weak copy / template instance	no
+03C24	fn_34_3C24	48	H	fn_34_3C24	-	weak copy / template instance	no
+03C6C	fn_34_3C6C	E0	B	Taunt__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	upstream body (100.0%)	no
+03D4C	fn_34_3D4C	5C	H	fn_34_3D4C	-	weak copy / template instance	no
+03DA8	fn_34_3DA8	658	B	Jump__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	fixed: SetMomentumWR in OffGround/Launching (82.4%)	no
+04400	fn_34_4400	9C	H	fn_34_4400	-	weak copy / template instance	no
+0449C	fn_34_449C	5C	H	fn_34_449C	-	weak copy / template instance	no
+044F8	fn_34_44F8	7C	H	fn_34_44F8	-	weak copy / template instance	no
+04574	fn_34_4574	15C	B	FaceTarget__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	upstream body (100.0%)	no
+046D0	fn_34_46D0	194	B	FollowIntroPattern__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	upstream body (86.8%)	no
+04864	fn_34_4864	224	B	Dead__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	upstream body (95.2%)	no
+04A88	fn_34_4A88	58	H	fn_34_4A88	-	weak copy / template instance	no
+04AE0	fn_34_4AE0	54	H	fn_34_4AE0	-	weak copy / template instance	no
+04B34	fn_34_4B34	4	B	Start__21CIngSpaceJumpGuardianFR13CStateManager9EStateMsgf	sjg1	upstream body (100.0%)	yes
+04B38	fn_34_4B38	70	B	PathExists__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04BA8	fn_34_4BA8	48	B	PathShagged__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	no
+04BF0	fn_34_4BF0	48	B	PathOver__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04C38	fn_34_4C38	10	B	SkipToNextJumpPoint__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04C48	fn_34_4C48	14	B	FoundMiniPortalAttack__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04C5C	fn_34_4C5C	14	B	ShouldMiniPortalAttack__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04C70	fn_34_4C70	14	B	ShouldTaunt__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04C84	fn_34_4C84	C4	B	IsFacingWaypoint__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	no
+04D48	fn_34_4D48	B0	B	IsFacingTarget__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	no
+04DF8	fn_34_4DF8	20	B	HasJumpTarget__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04E18	fn_34_4E18	6C	B	ShouldJump__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04E84	fn_34_4E84	1C	B	IntroPatternOver__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04EA0	fn_34_4EA0	58	B	HasIntroPattern__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04EF8	fn_34_4EF8	14	B	StateOver__21CIngSpaceJumpGuardianCFR13CStateManagerRC12CTriggerData	sjg1	upstream body (100.0%)	yes
+04F0C	fn_34_4F0C	8C	B	SetupStateMachine__21CIngSpaceJumpGuardianFR13CStateManager	sjg1	upstream body (100.0%)	yes
+04F98	fn_34_4F98	74	B	Listen__21CIngSpaceJumpGuardianFR13CStateManagerRC9CVector3f16EListenNoiseType	sjg1	upstream body (94.1%)	yes
+0500C	fn_34_500C	170	B	GetAimPosition__21CIngSpaceJumpGuardianCFRC13CStateManagerf	sjg1	upstream body (74.5%)	no
+0517C	fn_34_517C	6C	H	fn_34_517C	-	weak copy / template instance	no
+051E8	fn_34_51E8	20	B	GetDamageVulnerability__21CIngSpaceJumpGuardianCFv	sjg1	upstream body (100.0%)	yes
+05208	fn_34_5208	20	B	AddToRenderer__21CIngSpaceJumpGuardianCFRC13CStateManager	sjg1	upstream body (100.0%)	yes
+05228	fn_34_5228	20	B	PreRender__21CIngSpaceJumpGuardianFR13CStateManager	sjg1	upstream body (100.0%)	yes
+05248	fn_34_5248	2C	B	Render__21CIngSpaceJumpGuardianCFRC13CStateManager	sjg1	upstream body (100.0%)	no
+05274	fn_34_5274	3E0	B	DoUserAnimEvent__21CIngSpaceJumpGuardianFR13CStateManagerRC13CInt32POINode14EUserEventTypef	sjg1	upstream body (83.3%)	no
+05654	fn_34_5654	74	H	fn_34_5654	-	weak copy / template instance	no
+056C8	fn_34_56C8	98	B	Think__21CIngSpaceJumpGuardianFfR13CStateManager	sjg1	upstream body (100.0%)	yes
+05760	fn_34_5760	3D0	B	AcceptScriptMsg__21CIngSpaceJumpGuardianFR13CStateManagerRC10CScriptMsg	sjg1	upstream body (94.8%)	no
+05B30	fn_34_5B30	B0	B	__dt__21CIngSpaceJumpGuardianFv	sjg1	upstream body (100.0%)	no
+05BE0	fn_34_5BE0	1E4	H	__dt__10CPatternedFv	-	weak copy / template instance	no
+05DC4	fn_34_5DC4	94	H	fn_34_5DC4	-	weak copy / template instance	no
+05E58	fn_34_5E58	43C	B	__ct__21CIngSpaceJumpGuardianF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC12CTransform4fRC10CModelDataRC16CActorParametersRC14CPatternedInfoRC28SLdrIngSpaceJumpGuardianData	sjg1	upstream body (47.3%)	no
+06294	fn_34_6294	3C	H	fn_34_6294	-	weak copy / template instance	no
+062D0	fn_34_62D0	6C	H	fn_34_62D0	-	weak copy / template instance	no
+0633C	fn_34_633C	3C	H	fn_34_633C	-	weak copy / template instance	no
+06378	fn_34_6378	58	H	fn_34_6378	-	weak copy / template instance	no
+063D0	fn_34_63D0	140	H	fn_34_63D0	-	weak copy / template instance	no
+06510	fn_34_6510	64	H	fn_34_6510	-	weak copy / template instance	no
+06574	fn_34_6574	94	H	fn_34_6574	-	weak copy / template instance	no
+06608	fn_34_6608	40	H	fn_34_6608	-	weak copy / template instance	no
+06648	fn_34_6648	A4	H	fn_34_6648	-	weak copy / template instance	no
+066EC	fn_34_66EC	C0	H	fn_34_66EC	-	weak copy / template instance	no
+067AC	fn_34_67AC	68	H	fn_34_67AC	-	weak copy / template instance	no
+06814	fn_34_6814	3C	H	fn_34_6814	-	weak copy / template instance	no
+06850	fn_34_6850	4A4	H	fn_34_6850	-	weak copy / template instance	no

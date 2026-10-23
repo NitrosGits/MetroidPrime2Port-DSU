@@ -1,0 +1,97 @@
+@f260 layer 2
+@f300 god 1; give lightBeam 1; give lightAmmo 99; give darkBeam 1; give darkAmmo 99; give missile 50; give chargeBeam 1; give unlimitedBeamAmmo 1
+@f320 beam light
+@f400 send u051f Activate
+@f420 tp -75 -110 -8
+@f600 trigcall u051f IsFacingTarget; trigcall u051f ShouldTaunt; trigcall u051f PathOver; trigcall u051f PathShagged; trigcall u051f IsFacingWaypoint
+@f610 codecall u051f SetFaceAttackTarget; trigcall u051f IsFacingTarget
+@f620 codecall u051f SetFaceJumpTarget; trigcall u051f IsFacingTarget
+@f630 codecall u051f SelectAttackAction; codecall u051f SelectAttackAction; codecall u051f SelectAttackAction; codecall u051f SelectAttackAction; codecall u051f SelectAttackAction; codecall u051f SelectAttackAction; codecall u051f SelectAttackAction; codecall u051f SelectAttackAction; codecall u051f SelectAttackAction; codecall u051f SelectAttackAction
+@f650 noise 4; noise 4 2000 2000 2000; noise 0
+@f700 send u051f Deactivate
+@f720 send u051f Activate
+@f800 statecall u051f Taunt 0; statecall u051f Taunt 1; statecall u051f Taunt 2
+@f820 statecall u051f MiniPortalAttack 0; statecall u051f MiniPortalAttack 1; statecall u051f MiniPortalAttack 2
+@f840 statecall u051f FaceTarget 0; statecall u051f FaceTarget 1; statecall u051f FaceTarget 2
+@f860 statecall u051f SteerToDest 0; statecall u051f SteerToDest 1; statecall u051f SteerToDest 2
+@f880 statecall u051f PathFind 0; statecall u051f PathFind 1; statecall u051f PathFind 2
+@f900 statecall u051f Jump 0; statecall u051f Jump 1; statecall u051f Jump 2
+@f940 codecall u051f SelectJumpTarget; codecall u051f FindBestMiniPortals; codecall u051f SetIntroJumpTarget
+@f960 obj u051f
+@f1100 beam light
+@f1105 shoot u051f 
+@f1160 obj u051f
+@f1205 shoot u051f charged
+@f1300 beam dark
+@f1305 shoot u051f missile
+@f1405 shoot u051f 
+@f1460 obj u051f
+@f1500 beam light
+@f1505 shoot u051f 
+@f1605 shoot u051f charged
+@f1700 beam dark
+@f1705 shoot u051f missile
+@f1760 obj u051f
+@f1805 shoot u051f 
+@f1900 beam light
+@f1905 shoot u051f 
+@f2005 shoot u051f charged
+@f2060 obj u051f
+@f2100 beam dark
+@f2105 shoot u051f missile
+@f2205 shoot u051f 
+@f2300 beam light
+@f2305 shoot u051f 
+@f2360 obj u051f
+@f2405 shoot u051f charged
+@f2500 beam dark
+@f2505 shoot u051f missile
+@f2605 shoot u051f 
+@f2660 obj u051f
+@f2700 beam light
+@f2705 shoot u051f 
+@f2805 shoot u051f charged
+@f2900 beam dark
+@f2905 shoot u051f missile
+@f2960 obj u051f
+@f3005 shoot u051f 
+@f3100 beam light
+@f3105 shoot u051f 
+@f3205 shoot u051f charged
+@f3260 obj u051f
+@f3300 beam dark
+@f3305 shoot u051f missile
+@f3405 shoot u051f 
+@f3500 beam light
+@f3505 shoot u051f 
+@f3560 obj u051f
+@f3605 shoot u051f charged
+@f3700 beam dark
+@f3705 shoot u051f missile
+@f3805 shoot u051f 
+@f3860 obj u051f
+@f3900 beam light
+@f3905 shoot u051f 
+@f4005 shoot u051f charged
+@f4100 beam dark
+@f4105 shoot u051f missile
+@f4160 obj u051f
+@f4205 shoot u051f 
+@f4300 beam light
+@f4305 shoot u051f 
+@f4405 shoot u051f charged
+@f4460 obj u051f
+@f4500 beam dark
+@f4505 shoot u051f missile
+@f4700 obj u051f
+@f4850 obj u051f
+@f5000 obj u051f
+@f5150 obj u051f
+@f5300 obj u051f
+@f5450 obj u051f
+@f5600 obj u051f
+@f5750 obj u051f
+@f5900 obj u051f
+@f6050 obj u051f
+@f6200 obj u051f
+@f6350 obj u051f
