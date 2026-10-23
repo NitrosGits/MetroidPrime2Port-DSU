@@ -1,0 +1,26 @@
+# IngSnatchingSwarm in Temple Grounds 10_temple_pathofeyes (3bfa3eff,10_temple_pathofeyes).
+# GENR 000e018c generates ISSW 000e018b on SetToZero (the layer-2 TIMR 000e0189 does it in play).
+# Part 1: pirates 000e0197/196/19b as targets -> SelectTarget/SetTargetDest/Dive/Snatch.
+# Part 2: pirates dead -> SetPlayerDest (from afar: HitWorld/Explode); swarm placed on the player -> HitPlayer/DamagePlayer;
+# HitWorld -> Explode; a 500 hit -> Damage arm, IsDead -> Dead.
+@f150 god 1
+@f220 send e000e0197 Activate
+@f221 send e000e0196 Activate
+@f222 send e000e019b Activate
+@f230 send e000e018c SetToZero
+@f300 objs Snatch
+@f900 objs Snatch
+@f1200 kill e000e0197
+@f1201 kill e000e0196
+@f1202 kill e000e019b
+@f1210 send e000e018c SetToZero
+@f1600 tp -252 140 -34
+@f1610 send e000e018c SetToZero
+@f1680 place e000e018b player 3
+@f1710 place e000e018b player 2
+@f2000 send e000e018c SetToZero
+@f2015 damage e000e018b 500
+@f2040 send e000e018c SetToZero
+@f2080 place e000e018b player 1
+@f2085 place e000e018b player 0.5
+@f2300 objs Snatch

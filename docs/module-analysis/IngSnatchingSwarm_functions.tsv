@@ -1,0 +1,98 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_33_0	8	B	CIngSnatchingSwarm::HealthInfo	-	upstream body (CIngSnatchingSwarm)	no
+00008	fn_33_8	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+00034	fn_33_34	24	T	RELExit	-	REL runtime / static init	no
+00058	fn_33_58	20	T	RELMain	-	REL runtime / static init	no
+00078	fn_33_78	30	T	SetFuncPtrs__Fv	-	REL runtime / static init	no
+000A8	fn_33_A8	5D4	B	LoadIngSnatchingSwarm	iss1	upstream body (CIngSnatchingSwarm)	yes
+0067C	fn_33_67C	58	H	SIngSnatchingSwarmData::~SIngSnatchingSwarmData	-	implicit copy / dtor	no
+006D4	fn_33_6D4	70	B	SLdrIngSnatchingSwarm::~SLdrIngSnatchingSwarm	-	SLdr loader (SLdrIngSnatchingSwarm.hpp, swsldr1)	no
+00744	fn_33_744	14C	B	SLdrIngSnatchingSwarm::SLdrIngSnatchingSwarm	-	SLdr loader (SLdrIngSnatchingSwarm.hpp, swsldr1)	no
+00890	fn_33_890	9C	B	CIngSnatchingSwarm::CreateParticle	iss1	upstream body (CIngSnatchingSwarm)	yes
+0092C	fn_33_92C	4C	B	CIngSnatchingSwarm::RemoveSfxEmitter	iss1	upstream body (CIngSnatchingSwarm)	yes
+00978	fn_33_978	A8	B	CIngSnatchingSwarm::UpdateSfxEmitter	iss1	upstream body (CIngSnatchingSwarm)	yes
+00A20	fn_33_A20	1B0	B	CIngSnatchingSwarm::CheckWorldCollision	iss1	upstream body (CIngSnatchingSwarm)	yes
+00BD0	fn_33_BD0	5C	H	CRayCastResult::CRayCastResult	-	weak copy / template instance	no
+00C2C	fn_33_C2C	F4	B	CIngSnatchingSwarm::UpdateTouchBounds	-	upstream body (CIngSnatchingSwarm)	no
+00D20	fn_33_D20	25C	B	CIngSnatchingSwarm::UpdateMovement	iss1	upstream body (CIngSnatchingSwarm)	yes
+00F7C	fn_33_F7C	464	B	CIngSnatchingSwarm::UpdateParticles	-	upstream body (CIngSnatchingSwarm)	no
+013E0	fn_33_13E0	9C	H	__as__Q24rstl24optional_object<6CAABox>FRCQ24rstl24optional_object<6CAABox>	-	weak copy / template instance	no
+0147C	fn_33_147C	3C	H	__dt__Q24rstl24optional_object<6CAABox>Fv	-	weak copy / template instance	no
+014B8	fn_33_14B8	4	H	CParticleGen::SetGeneratorRate	-	weak copy / template instance	no
+014BC	fn_33_14BC	58	H	__as__Q24rstl30reserved_vector<9CVector3f,60>FRCQ24rstl30reserved_vector<9CVector3f,60>	-	weak copy / template instance	no
+01514	fn_33_1514	3C	H	__dt__Q24rstl30reserved_vector<9CVector3f,60>Fv	-	weak copy / template instance	no
+01550	fn_33_1550	120	B	CIngSnatchingSwarm::RandomArcOffset	iss1	upstream body (CIngSnatchingSwarm)	yes
+01670	fn_33_1670	158	B	CIngSnatchingSwarm::MoveTowards	iss1	upstream body (CIngSnatchingSwarm)	yes
+017C8	fn_33_17C8	140	B	CIngSnatchingSwarm::FollowArc	-	upstream body (CIngSnatchingSwarm)	no
+01908	fn_33_1908	1F0	B	CIngSnatchingSwarm::CalculateArcLength	-	upstream body (CIngSnatchingSwarm)	no
+01AF8	fn_33_1AF8	E8	B	CIngSnatchingSwarm::InitializeStateMachine	-	upstream body (CIngSnatchingSwarm)	no
+01BE0	fn_33_1BE0	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+01C30	fn_33_1C30	68	B	CIngSnatchingSwarm::GetStateMachine	-	upstream body (CIngSnatchingSwarm)	no
+01C98	fn_33_1C98	54	H	TToken::~TToken	-	weak copy / template instance	no
+01CEC	fn_33_1CEC	22C	B	CIngSnatchingSwarm::Explode	-	upstream body (CIngSnatchingSwarm)	no
+01F18	fn_33_1F18	58	H	CEntityInfo::~CEntityInfo	-	weak copy / template instance	no
+01F70	fn_33_1F70	54	H	__dt__Q24rstl48vector<11SConnection,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+01FC4	fn_33_1FC4	A8	B	CIngSnatchingSwarm::DamagePlayer	iss1	upstream body (CIngSnatchingSwarm)	yes
+0206C	fn_33_206C	400	B	CIngSnatchingSwarm::SetTargetDest	-	upstream body (CIngSnatchingSwarm)	no
+0246C	fn_33_246C	380	B	CIngSnatchingSwarm::SetPlayerDest	-	upstream body (CIngSnatchingSwarm)	no
+027EC	fn_33_27EC	1BC	B	CIngSnatchingSwarm::SetPortalSwarmPath	iss1	upstream body (CIngSnatchingSwarm)	yes
+029A8	fn_33_29A8	2F0	B	CIngSnatchingSwarm::SelectTarget	-	upstream body (CIngSnatchingSwarm)	no
+02C98	fn_33_2C98	8C	H	__dt__Q24rstl40reserved_vector<16SSnatchCandidate,1024>Fv	-	weak copy / template instance	no
+02D24	fn_33_2D24	290	B	CIngSnatchingSwarm::SnatchTarget	-	upstream body (CIngSnatchingSwarm)	no
+02FB4	fn_33_2FB4	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+02FC4	fn_33_2FC4	5C	H	CBCKnockBackCmd::~CBCKnockBackCmd	-	weak copy / template instance	no
+03020	fn_33_3020	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+03068	fn_33_3068	C4	B	CIngSnatchingSwarm::DiveToTarget	-	upstream body (CIngSnatchingSwarm)	no
+0312C	fn_33_312C	78	B	CIngSnatchingSwarm::FollowArcPath	iss1	upstream body (CIngSnatchingSwarm)	yes
+031A4	fn_33_31A4	2E8	B	CIngSnatchingSwarm::ExitPortal	iss1	upstream body (CIngSnatchingSwarm)	yes
+0348C	fn_33_348C	16C	B	CIngSnatchingSwarm::Dead	-	upstream body (CIngSnatchingSwarm)	no
+035F8	fn_33_35F8	1C	B	CIngSnatchingSwarm::Start	iss1	upstream body (CIngSnatchingSwarm)	yes
+03614	fn_33_3614	C	B	CIngSnatchingSwarm::HitWorld	iss1	upstream body (CIngSnatchingSwarm)	yes
+03620	fn_33_3620	18	B	CIngSnatchingSwarm::HitTarget	iss1	upstream body (CIngSnatchingSwarm)	yes
+03638	fn_33_3638	40	B	CIngSnatchingSwarm::HitPlayer	iss1	upstream body (CIngSnatchingSwarm)	yes
+03678	fn_33_3678	90	B	CIngSnatchingSwarm::InSnatchingRange	-	upstream body (CIngSnatchingSwarm)	no
+03708	fn_33_3708	68	B	CIngSnatchingSwarm::HasTarget	iss1	upstream body (CIngSnatchingSwarm)	yes
+03770	fn_33_3770	18	B	CIngSnatchingSwarm::ShouldLoiter	iss1	upstream body (CIngSnatchingSwarm)	yes
+03788	fn_33_3788	24	B	CIngSnatchingSwarm::LifetimeOver	iss1	upstream body (CIngSnatchingSwarm)	yes
+037AC	fn_33_37AC	34	B	CIngSnatchingSwarm::IsDead	iss1	upstream body (CIngSnatchingSwarm)	yes
+037E0	fn_33_37E0	14	B	CIngSnatchingSwarm::StateOver	iss1	upstream body (CIngSnatchingSwarm)	yes
+037F4	fn_33_37F4	48	B	CIngSnatchingSwarm::GetTouchBounds	-	upstream body (CIngSnatchingSwarm)	no
+0383C	fn_33_383C	134	B	CIngSnatchingSwarm::Touch	-	upstream body (CIngSnatchingSwarm)	no
+03970	fn_33_3970	48	B	CIngSnatchingSwarm::GetAimPosition	iss1	upstream body (CIngSnatchingSwarm)	yes
+039B8	fn_33_39B8	8	B	CIngSnatchingSwarm::GetDamageVulnerability	iss1	upstream body (CIngSnatchingSwarm)	yes
+039C0	fn_33_39C0	74	B	CIngSnatchingSwarm::AddToRenderer	iss1	upstream body (CIngSnatchingSwarm)	yes
+03A34	fn_33_3A34	2C	B	CIngSnatchingSwarm::PreRender	iss1	upstream body (CIngSnatchingSwarm)	yes
+03A60	fn_33_3A60	60	B	CIngSnatchingSwarm::Render	-	upstream body (CIngSnatchingSwarm)	no
+03AC0	fn_33_3AC0	19C	B	CIngSnatchingSwarm::AcceptScriptMsg	-	upstream body (CIngSnatchingSwarm)	no
+03C5C	fn_33_3C5C	E4	B	CIngSnatchingSwarm::Think	-	upstream body (CIngSnatchingSwarm)	no
+03D40	fn_33_3D40	24	B	CIngSnatchingSwarm::PreThink	iss1	upstream body (CIngSnatchingSwarm)	yes
+03D64	fn_33_3D64	150	B	CIngSnatchingSwarm::~CIngSnatchingSwarm	-	upstream body (CIngSnatchingSwarm)	no
+03EB4	fn_33_3EB4	94	H	CGenericFSM2State::~CGenericFSM2State	-	weak copy / template instance	no
+03F48	fn_33_3F48	54	H	__dt__Q24rstl83vector<M10CPatternedFPCvPvR13CStateManager9EStateMsgf_v,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+03F9C	fn_33_3F9C	54	H	__dt__Q24rstl73vector<M10CPatternedFPCvPvR13CStateManagerf_v,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+03FF0	fn_33_3FF0	54	H	__dt__Q24rstl89vector<M10CPatternedFPCvPCvR13CStateManagerRC12CTriggerData_b,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+04044	fn_33_4044	84	H	__dt__Q24rstl83vector<Q231CGenericFSM2State<10CPatterned>11SSubMachine,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+040C8	fn_33_40C8	38	T	fn_33_40C8	-	rstl destroy helper	no
+04100	fn_33_4100	68	T	fn_33_4100	-	rstl destroy helper	no
+04168	fn_33_4168	64	H	CParticleGen::~CParticleGen	-	weak copy / template instance	no
+041CC	fn_33_41CC	690	B	CIngSnatchingSwarm::CIngSnatchingSwarm	-	upstream body (CIngSnatchingSwarm)	no
+0485C	fn_33_485C	3C	H	__dt__Q24rstl29reserved_vector<9CVector3f,4>Fv	-	weak copy / template instance	no
+04898	fn_33_4898	78	H	__dt__Q24rstl24auto_ptr<12CParticleGen>Fv	-	weak copy / template instance	no
+04910	fn_33_4910	60	H	__dt__Q24rstl24optional_object<6CToken>Fv	-	weak copy / template instance	no
+04970	fn_33_4970	54	H	TToken::~TToken	-	weak copy / template instance	no
+049C4	fn_33_49C4	6C	H	__dt__Q24rstl50optional_object<31TLockedToken<15CGenDescription>>Fv	-	weak copy / template instance	no
+04A30	fn_33_4A30	58	H	TLockedToken::~TLockedToken	-	weak copy / template instance	no
+04A88	fn_33_4A88	3C	H	CPathFindSearch::~CPathFindSearch	-	weak copy / template instance	no
+04AC4	fn_33_4AC4	134	H	SIngSnatchingSwarmData::SIngSnatchingSwarmData	-	implicit copy / dtor	no
+04BF8	fn_33_4BF8	5C	H	CDamageVulnerability::CDamageVulnerability	-	weak copy / template instance	no
+04C54	fn_33_4C54	54	H	__dt__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+04CA8	fn_33_4CA8	130	H	__ct__Q24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>FRCQ24rstl61vector<24CWeaponTypeVulnerability,Q24rstl17rmemory_allocator>	-	weak copy / template instance	no
+04DD8	fn_33_4DD8	20	H	CModelData::None	-	weak copy / template instance	no
+04DF8	fn_33_4DF8	130	B	SIngSnatchingSwarmData::SIngSnatchingSwarmData	iss1	upstream body (CIngSnatchingSwarm)	yes
+04F28	fn_33_4F28	8	H	fn_33_4F28	-	CParticleGen inline vtable copy (SetDrawFlags/GetGeneratorRate/GetDrawFlags/ShouldDraw)	no
+04F30	fn_33_4F30	C	H	fn_33_4F30	-	CParticleGen inline vtable copy (SetDrawFlags/GetGeneratorRate/GetDrawFlags/ShouldDraw)	no
+04F3C	fn_33_4F3C	8	H	fn_33_4F3C	-	CParticleGen inline vtable copy (SetDrawFlags/GetGeneratorRate/GetDrawFlags/ShouldDraw)	no
+04F44	fn_33_4F44	5C	H	fn_33_4F44	-	CParticleGen inline vtable copy (SetDrawFlags/GetGeneratorRate/GetDrawFlags/ShouldDraw)	no
+04FA0	fn_33_4FA0	64	H	ReleaseData__Q24rstl41rc_ptr<31CGenericFSM2State<10CPatterned>>Fv	-	weak copy / template instance	no
+05004	fn_33_5004	74	H	__dt__Q24rstl40list<P5CWarp,Q24rstl17rmemory_allocator>Fv	-	weak copy / template instance	no
+05078	fn_33_5078	31C	T	__sinit_CIngSnatchingSwarm_cpp	-	REL runtime / static init	no

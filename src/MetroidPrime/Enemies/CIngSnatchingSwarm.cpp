@@ -94,6 +94,7 @@ static EMaterialTypes skMaterial2 = kMT_RadarObject;                      // Gue
 static EMaterialTypes skCollisionSolid = kMT_Solid;                       // Guessed name
 static EMaterialTypes skCollisionPassthrough = kMT_ProjectilePassthrough; // Guessed name
 
+// @ fn_33_4DF8
 SIngSnatchingSwarmData::SIngSnatchingSwarmData(
     CAssetId stateMachine, CAssetId swarmParticle, CAssetId secondaryParticle,
     float loiterGeneratorRate, float trailDelayScale, float lifetime, float maxLinearSpeed,
@@ -174,10 +175,19 @@ CIngSnatchingSwarm::CIngSnatchingSwarm(TUniqueId uid, const rstl::string& name,
 , mCheckCollision(false)
 , mHitWorld(false)
 , mLoiterEnded(false)
+#ifdef TARGET_PC
+, mVisible(false) {
+  // 0x4790 addi r3,r25,0x374 / 0x4840 bl CToken::Lock: retail locks the FSM2 token at the end
+  // of the ctor; without the lock GetStateMachine's IsLoaded never turns true.
+  mStateMachineToken->Lock();
+}
+#else
 , mVisible(false) {}
+#endif
 
 CIngSnatchingSwarm::~CIngSnatchingSwarm() {}
 
+// @ fn_33_3D40
 void CIngSnatchingSwarm::PreThink(float dt, CStateManager& mgr) {
   mDeltaTime = dt;
   CEntity::PreThink(dt, mgr);
@@ -235,12 +245,14 @@ void CIngSnatchingSwarm::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_33_3A34
 void CIngSnatchingSwarm::PreRender(CStateManager& mgr) {
   if (mVisible) {
     CActor::PreRender(mgr);
   }
 }
 
+// @ fn_33_39C0
 void CIngSnatchingSwarm::AddToRenderer(const CStateManager& mgr) const {
   if (mVisible) {
     gpRender->AddParticleGen(*mSwarmParticle);
@@ -248,10 +260,12 @@ void CIngSnatchingSwarm::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_33_39B8
 const CDamageVulnerability* CIngSnatchingSwarm::GetDamageVulnerability() const {
   return &mData.mVulnerability;
 }
 
+// @ fn_33_3970
 CVector3f CIngSnatchingSwarm::GetAimPosition(const CStateManager& mgr, float dt) const {
   return GetTranslation() + (mSpeed * dt) * GetTransform().GetForward();
 }
@@ -277,22 +291,27 @@ void CIngSnatchingSwarm::Touch(CActor& actor, CStateManager& mgr) {
 
 rstl::optional_object< CAABox > CIngSnatchingSwarm::GetTouchBounds() const { return mTouchBounds; }
 
+// @ fn_33_37E0
 bool CIngSnatchingSwarm::StateOver(CStateManager& mgr, const float& arg) {
   return mPathState == kPS_Finished;
 }
 
+// @ fn_33_37AC
 bool CIngSnatchingSwarm::IsDead(CStateManager& mgr, const float& arg) {
   return mAlive && mHealthInfo.GetHP() <= 0.f;
 }
 
+// @ fn_33_3788
 bool CIngSnatchingSwarm::LifetimeOver(CStateManager& mgr, const float& arg) {
   return mAge >= mLoiterEndTime + mData.mLifetime;
 }
 
+// @ fn_33_3770
 bool CIngSnatchingSwarm::ShouldLoiter(CStateManager& mgr, const float& arg) {
   return mAge < mLoiterEndTime;
 }
 
+// @ fn_33_3708
 bool CIngSnatchingSwarm::HasTarget(CStateManager& mgr, const float& arg) {
   const CEntity* target = mgr.GetObjectById(mTargetId);
   if (target != nullptr) {
@@ -313,16 +332,20 @@ bool CIngSnatchingSwarm::InSnatchingRange(CStateManager& mgr, const float& arg) 
   return false;
 }
 
+// @ fn_33_3638
 bool CIngSnatchingSwarm::HitPlayer(CStateManager& mgr, const float& arg) {
   return TCastToConstPtr< CPlayer >(mgr.GetObjectById(mHitId)) != nullptr;
 }
 
+// @ fn_33_3620
 bool CIngSnatchingSwarm::HitTarget(CStateManager& mgr, const float& arg) {
   return mHitId == mTargetId;
 }
 
+// @ fn_33_3614
 bool CIngSnatchingSwarm::HitWorld(CStateManager& mgr, const float& arg) { return mHitWorld; }
 
+// @ fn_33_35F8
 void CIngSnatchingSwarm::Start(CStateManager& mgr, int msg, float dt) {
   if (msg == kStateMsg_Activate) {
     mStarted = true;
@@ -350,6 +373,7 @@ void CIngSnatchingSwarm::Dead(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_33_31A4
 void CIngSnatchingSwarm::ExitPortal(CStateManager& mgr, int msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -379,6 +403,7 @@ void CIngSnatchingSwarm::ExitPortal(CStateManager& mgr, int msg, float dt) {
   }
 }
 
+// @ fn_33_312C
 void CIngSnatchingSwarm::FollowArcPath(CStateManager& mgr, int msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -476,6 +501,7 @@ void CIngSnatchingSwarm::SelectTarget(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_33_27EC
 void CIngSnatchingSwarm::SetPortalSwarmPath(CStateManager& mgr, float dt) {
   mArcPoints.clear();
   mArcPoints.push_back(GetTranslation());
@@ -549,6 +575,7 @@ void CIngSnatchingSwarm::SetTargetDest(CStateManager& mgr, float dt) {
   mArcSpeedScale = 1.f - mgr.Random()->Range(0.f, 0.5f);
 }
 
+// @ fn_33_1FC4
 void CIngSnatchingSwarm::DamagePlayer(CStateManager& mgr, float dt) {
   mgr.ApplyDamage(
       GetUniqueId(), mHitId, GetUniqueId(), mData.mImpactDamage,
@@ -615,7 +642,12 @@ bool CIngSnatchingSwarm::FollowArc(float time) {
     const float duration = mArcLength / speed;
     if (duration > 0.f) {
       const float t = time / duration;
+#ifdef TARGET_PC
+      // 0x1830 fcmpo f1(1.0),f31(t); 0x1834 bge -> t: retail is Min(1, t), so a NaN t stays NaN.
+      const float clamped = 1.f < t ? 1.f : t;
+#else
       const float clamped = t < 1.f ? t : 1.f;
+#endif
       const CVector3f point = CMath::GetBezierPoint(mArcPoints[0], mArcPoints[1], mArcPoints[2],
                                                     mArcPoints[3], clamped);
       const CVector3f delta = point - GetTranslation();
@@ -629,6 +661,7 @@ bool CIngSnatchingSwarm::FollowArc(float time) {
   return false;
 }
 
+// @ fn_33_1670
 void CIngSnatchingSwarm::MoveTowards(const CVector3f& target, float speed, float dt) {
   mSpeed = 0.f;
   const CVector3f position = GetTranslation();
@@ -643,6 +676,7 @@ void CIngSnatchingSwarm::MoveTowards(const CVector3f& target, float speed, float
   }
 }
 
+// @ fn_33_1550
 CVector3f CIngSnatchingSwarm::RandomArcOffset(CStateManager& mgr) const {
   const CVector3f right = GetTransform().GetRight();
   const CVector3f up = GetTransform().GetUp();
@@ -693,6 +727,7 @@ void CIngSnatchingSwarm::UpdateParticles(CStateManager& mgr, float dt) {
   }
 }
 
+// @ fn_33_D20
 void CIngSnatchingSwarm::UpdateMovement(float dt) {
   const float maxSpeed = mData.mMaxLinearSpeed;
   const float magnitude = mVelocity.Magnitude();
@@ -725,6 +760,7 @@ void CIngSnatchingSwarm::UpdateTouchBounds() {
   mTouchBounds = CAABox(position - extent, position + extent);
 }
 
+// @ fn_33_A20
 void CIngSnatchingSwarm::CheckWorldCollision(CStateManager& mgr) {
   if (mCheckCollision) {
     const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
@@ -744,6 +780,7 @@ void CIngSnatchingSwarm::CheckWorldCollision(CStateManager& mgr) {
   }
 }
 
+// @ fn_33_978
 void CIngSnatchingSwarm::UpdateSfxEmitter() {
   if (mStarted) {
     if (!mSfxHandle) {
@@ -756,6 +793,7 @@ void CIngSnatchingSwarm::UpdateSfxEmitter() {
   }
 }
 
+// @ fn_33_92C
 void CIngSnatchingSwarm::RemoveSfxEmitter() {
   if (mSfxHandle) {
     CSfxManager::RemoveEmitter(mSfxHandle);
@@ -763,6 +801,7 @@ void CIngSnatchingSwarm::RemoveSfxEmitter() {
   }
 }
 
+// @ fn_33_890
 CParticleGen* CIngSnatchingSwarm::CreateParticle(const CVector3f& scale,
                                                  const CVector3f& translation,
                                                  const CToken& token) {
@@ -773,6 +812,7 @@ CParticleGen* CIngSnatchingSwarm::CreateParticle(const CVector3f& scale,
       CVector3f::One());
 }
 
+// @ fn_33_A8
 CEntity* LoadIngSnatchingSwarm(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrIngSnatchingSwarm sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrIngSnatchingSwarm.inc"

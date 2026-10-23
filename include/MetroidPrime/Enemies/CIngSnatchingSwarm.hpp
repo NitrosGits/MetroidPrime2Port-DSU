@@ -52,8 +52,8 @@ struct SIngSnatchingSwarmData {
   ushort mMoveSound;
   float mHealth;
   CDamageVulnerability mVulnerability;
-  bool mUseSteeringForMovement : 1;
-  bool mIgnorePlayer : 1;
+  bool mUseSteeringForMovement : 1; // 0x98_24
+  bool mIgnorePlayer : 1; // 0x98_25
 };
 CHECK_SIZEOF(SIngSnatchingSwarmData, 0x9c)
 
@@ -155,12 +155,12 @@ private:
   rstl::reserved_vector< CVector3f, 60 > mPositionHistory;                   // Guessed name
   int mHistoryIndex;                                                         // Guessed name
   CSfxHandle mSfxHandle;                                                     // Guessed name
-  bool mAlive : 1;                                                           // Guessed name
-  bool mStarted : 1;                                                         // Guessed name
-  bool mCheckCollision : 1;                                                  // Guessed name
-  bool mHitWorld : 1;                                                        // Guessed name
-  bool mLoiterEnded : 1;                                                     // Guessed name
-  bool mVisible : 1;                                                         // Guessed name
+  bool mAlive : 1;                                                           // 0x73c_24 Guessed name
+  bool mStarted : 1;                                                         // 0x73c_25 Guessed name
+  bool mCheckCollision : 1;                                                  // 0x73c_26 Guessed name
+  bool mHitWorld : 1;                                                        // 0x73c_27 Guessed name
+  bool mLoiterEnded : 1;                                                     // 0x73c_28 Guessed name
+  bool mVisible : 1;                                                         // 0x73c_29 Guessed name
 };
 CHECK_SIZEOF(CIngSnatchingSwarm, 0x740)
 
