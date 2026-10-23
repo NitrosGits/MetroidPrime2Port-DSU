@@ -48,10 +48,29 @@ Checked facts: CParticle is mEndFrame 0x0, mPos 0x4, mVel 0x1c, mStartFrame 0x28
 0x2c (0x38 bytes); SPE flag byte 0x176 is MSB-first (0x80 mHasRenderBounds, 0x40 mFlag); CT
 Think's cache update is policy 0 (`kCUP_KeepNearListIds`).
 
+## Coverage and markers (gb1b, 2026-10-23)
+
+Compiler coverage (build-port-cov) of the smoke family `ing` (1baa96c2,2735236b, ing_con.py, 16000
+updates), `gcov_report.py build-port-cov <gcov_ing> --module GeomBlobV2`. 21 marks, each ALL-ARMS or
+branchless with every line hit, and either 100% match or audited above: SSurfacePathSegment ctor
+1F74, CSurfacePath ctor 21E0, GetCurrentLength 3E78, IsFinished 36A0, ProjectOntoPlane 2124,
+SlideOffPlane D14, GetInverseArea 14E0, GetBarycentric 1334, FindExitEdge EAC, GetOppositeEdge
+1288, IsMovingAlongEdge 10F8, CT dtor 3F78, SetParticleEmissionRateScalar 256C, GetTouchBounds
+2578, BuildStrandTransform 3C98, RenderStrands 37D8, AddToRenderer 3F20, PreRenderAllViewports
+3F58, LoadGeomBlobV2 2490, Set/ClearSurfaceParticleEffectFuncPtrs 48CC/48A8.
+
+Not marked (arms the run did not take):
+- Trace (118, 194, 195, 208, 222), Think (inactive/occluded early-outs 643/646, VEL1-less
+  descriptions 656, strand-swap 672, 710), Simplify, IsSameTriangle, FindSharedEdge 430, CastRay
+  462, FindNearestTriangle 505, AddSegment 528 (the `startNew` arm).
+- AcceptScriptMsg: the light arms; the Ing blob's description has no light.
+- Render: the dark-visor alpha arms. GetPathPosition 782/784. The CT ctor misses one line.
+- The never-called accessors (ParticleSystem, Get/SetMinimumPathLength, GetParticleEmissionRateScalar, Touch).
+- All CSurfaceParticleEffect bodies but the func-ptr pair: the class is never created.
+
+Spec for call counts: `tools/cov/specs/geomblobv2.py`.
+
 ## Open
 
-- Coverage and markers not done: the gb1 coverage build failed on a full disk. Spec:
-  `tools/cov/specs/geomblobv2.py` (ing family area). Expected reach: CT Think, Trace and its
-  helpers, AddSegment, Simplify, IsFinished, GetPathPosition, Render/RenderStrands; SPE none.
 - SPE Think's fade index divides by `mEndFrame - mStartFrame` (0x5444 `divw`): zero would trap on
   the host, but the class is never created, so no guard was added.

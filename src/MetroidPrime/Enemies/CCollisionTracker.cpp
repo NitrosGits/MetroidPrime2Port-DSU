@@ -32,6 +32,7 @@ static EMaterialTypes sCacheExcludeMaterial0 = kMT_Character;
 static EMaterialTypes sCacheExcludeMaterial1 = kMT_Player;
 static EMaterialTypes sCacheExcludeMaterial2 = kMT_CollisionActor;
 
+// @ fn_25_1F74
 SSurfacePathSegment::SSurfacePathSegment(const CQuaternion& orientation, float length,
                                          const CVector3f& position, const CVector3f& direction)
 : mOrientation(orientation)
@@ -40,14 +41,17 @@ SSurfacePathSegment::SSurfacePathSegment(const CQuaternion& orientation, float l
 , mDirection(direction)
 , mLength(length) {}
 
+// @ fn_25_21E0
 CSurfacePath::CSurfacePath(int reserveCount) : mTotalLength(0.f), mRandom(99) {
   mSegments.reserve(reserveCount > 4 ? reserveCount : 4);
 }
 
+// @ fn_25_3E78
 float SBlobStrand::GetCurrentLength() const {
   return 2.f * (mStartLength + (mEndLength - mStartLength) * mAge / mLifetime);
 }
 
+// @ fn_25_36A0
 bool SBlobStrand::IsFinished() const {
   if (mAge >= mLifetime) {
     return true;
@@ -253,11 +257,13 @@ static bool IsSameTriangle(const STriangleSlot* a, const STriangleSlot* b) {
          close_enough(a->mTriangle.mSurface.GetVert(2), b->mTriangle.mSurface.GetVert(2), 0.0001f);
 }
 
+// @ fn_25_2124
 static CVector3f ProjectOntoPlane(const CVector3f& vector, float normalDot, float magnitude,
                                   const CVector3f& normal) {
   return (vector - normal * normalDot).AsNormalized() * magnitude;
 }
 
+// @ fn_25_D14
 static bool SlideOffPlane(const rstl::optional_object< STriangleSlot >& previous,
                           const STriangleSlot* triangle, float magnitude, float inverseMagnitude,
                           CVector3f& velocity) {
@@ -299,6 +305,7 @@ static int GetDominantAxis(const CVector3f& normal) {
   return axis;
 }
 
+// @ fn_25_14E0
 static float GetInverseArea(const STriangleSlot* triangle) {
   const CCollisionSurface& s = triangle->mTriangle.mSurface;
   const CVector3f& v0 = s.GetVert(0);
@@ -317,6 +324,7 @@ static float GetInverseArea(const STriangleSlot* triangle) {
   }
 }
 
+// @ fn_25_1334
 static CVector3f GetBarycentric(const STriangleSlot* triangle, const CVector3f& point,
                                 float inverseArea) {
   const CCollisionSurface& s = triangle->mTriangle.mSurface;
@@ -354,6 +362,7 @@ static CVector3f GetBarycentric(const STriangleSlot* triangle, const CVector3f& 
                    (c1 * a2 - a1 * c2) * inverseArea);
 }
 
+// @ fn_25_EAC
 static int FindExitEdge(const STriangleSlot* triangle, const CVector3f& position,
                         const CVector3f& velocity, CVector3f& barycentric, int enteredEdge,
                         float& distance) {
@@ -392,6 +401,7 @@ static int FindExitEdge(const STriangleSlot* triangle, const CVector3f& position
   return edge;
 }
 
+// @ fn_25_1288
 static CVector3f GetOppositeEdge(const STriangleSlot* triangle, int vertex) {
   const CCollisionSurface& s = triangle->mTriangle.mSurface;
   if (vertex == 0) {
@@ -403,6 +413,7 @@ static CVector3f GetOppositeEdge(const STriangleSlot* triangle, int vertex) {
   return s.GetVert(1) - s.GetVert(0);
 }
 
+// @ fn_25_10F8
 static bool IsMovingAlongEdge(const STriangleSlot* triangle, const CVector3f& velocity,
                               const CVector3f& barycentric, float magnitude) {
   for (int i = 0; i < 3; ++i) {
@@ -586,6 +597,7 @@ CCollisionTracker::CCollisionTracker(const TLockedToken< CGenDescription >& desc
   mStrands.reserve(8);
 }
 
+// @ fn_25_3F78
 CCollisionTracker::~CCollisionTracker() {}
 
 CElementGen* CCollisionTracker::ParticleSystem() const { return mParticleSystem.get(); }
@@ -600,12 +612,14 @@ float CCollisionTracker::GetParticleEmissionRateScalar() const {
   return mParticleEmissionRateScalar;
 }
 
+// @ fn_25_256C
 void CCollisionTracker::SetParticleEmissionRateScalar(float intensity) {
   mParticleEmissionRateScalar = intensity;
 }
 
 void CCollisionTracker::Touch(CActor&, CStateManager&) {}
 
+// @ fn_25_2578
 rstl::optional_object< CAABox > CCollisionTracker::GetTouchBounds() const {
   return rstl::optional_object_null();
 }
@@ -788,6 +802,7 @@ SPathPosition SBlobStrand::GetPathPosition(float offset) const {
   return SPathPosition(index, distance);
 }
 
+// @ fn_25_3C98
 CTransform4f CCollisionTracker::BuildStrandTransform(const SPathPosition& start,
                                                      const CVector3f& startPoint,
                                                      const SPathPosition& end,
@@ -815,6 +830,7 @@ CTransform4f CCollisionTracker::BuildStrandTransform(const SPathPosition& start,
   return CTransform4f(CMatrix3f(orientation.BuildTransform(), scale), middle);
 }
 
+// @ fn_25_37D8
 void CCollisionTracker::RenderStrands() const {
   CAnimMathUtils::sUseFastSlerp = true;
   CGraphics::DisableAllLights();
@@ -879,14 +895,17 @@ void CCollisionTracker::RenderStrands() const {
   CAnimMathUtils::sUseFastSlerp = false;
 }
 
+// @ fn_25_3F20
 void CCollisionTracker::AddToRenderer(const CStateManager& mgr) const {
   if (!GetPreRenderClipped()) {
     Render(mgr);
   }
 }
 
+// @ fn_25_3F58
 void CCollisionTracker::PreRenderAllViewports(CStateManager& mgr) { UpdatePortalSystemState(mgr); }
 
+// @ fn_25_2490
 CEffect* LoadGeomBlobV2(const TLockedToken< CGenDescription >& desc, TUniqueId uid, TAreaId area,
                         bool active, const rstl::string& name, const CTransform4f& xf,
                         TUniqueId owner, uint flags) {

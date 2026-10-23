@@ -6,7 +6,7 @@
 #     driver tools/smoke/drivers/ing_con.py), then gcov_report.py build-port-cov <prefix> --module GeomBlobV2
 #   calls: BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/geomblobv2.py <out> 1baa96c2,2735236b \
 #     --driver 'MP2_CONSOLE={port} python3 tools/smoke/drivers/ing_con.py <game log> 110' --frames 16000
-# (gb1 wrote this spec but could not run it: the disk was full, so no coverage build exists yet.)
+# gb1b ran the arms route (ing family, 16000 updates): docs/module-analysis/GeomBlobV2.md.
 # CSurfaceParticleEffect (the module's second class) is never created: its factory
 # (gFactory_SurfaceParticleEffect) is written by SetSurfaceParticleEffectFuncPtrs and read nowhere, in
 # the retail DOL, any REL or the port.

@@ -484,10 +484,12 @@ static CEffect* CreateSurfaceParticleEffect(const TLockedToken< CGenDescription 
                                        flags);
 }
 
+// @ fn_25_48CC
 void SetSurfaceParticleEffectFuncPtrs() {
   static SSurfaceParticleEffect_FuncPtrs funcPtrs;
   funcPtrs.mFactory = &CreateSurfaceParticleEffect;
   SetSSurfaceParticleEffect_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_25_48A8
 void ClearSurfaceParticleEffectFuncPtrs() { SetSSurfaceParticleEffect_FuncPtrs(nullptr); }
