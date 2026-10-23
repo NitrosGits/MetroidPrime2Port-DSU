@@ -17,7 +17,7 @@ offset	fn	size	class	marked	what	callers
 0x000FC	RELExit	0x24	H	no		-
 0x00120	RELMain	0x20	H	no		-
 0x00140	fn_79_140	0x30	H	no		RELMain
-0x00170	fn_79_170	0x2F0	B	no	ht2: B (was H) - module loader (every other module's loader is B); port PortLoadSwampBossStage2 unmarked: proposed slice; asm auto_00_00000000_text.s:160 in fn_79_140: lis r4, fn_79_170@ha; `PortLoadSwampBossStage2`, `RELMain`/`RELExit`	-
+0x00170	fn_79_170	0x2F0	B	yes	module loader: PortLoadSwampBossStage2 (PortCSwampBossStage2.cpp), chain fn_79_830/134C/1714/1AA0 checked field by field against SLdrSwampBossStage2.hpp (sb12)	-
 0x00460	fn_79_460	0x40	H	no		fn_79_170 fn_79_A59C fn_79_CBF4
 0x004A0	fn_79_4A0	0x20	H	no		fn_79_460 fn_79_69A4
 0x004C0	fn_79_4C0	0x28	H	no		fn_79_4A0

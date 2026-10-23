@@ -2456,7 +2456,17 @@ static void x79134C_SoundDefaults(SLdrSwampBossStage2& sldr) {
       -1; // 0x0000171C (block 0x1b8, field 0x8)
 }
 
-// fn_79_170
+// fn_79_170: the property loop (0x1BC..0x2A4) dispatches the five ids the .inc reads
+// (0x255A4580 -> 0x240, 0xB3774750 -> 0x250, 0x7E397FED -> 0x260, 0xE61748ED -> 0x270,
+// 0xB31B771D -> 0x280 fn_79_980) and skips the rest with ReadBytes(nullptr, size) (0x298). The
+// stack object's ctor fn_79_830 (0x190) runs the four struct ctors and fn_79_134C, then re-sets
+// the patterned/actor defaults the generated ctor sets (0x868..0x968; the 2.f at 0x88, the white
+// ambient at 0x294 and the visor flags 0xf at 0x2e4 are the shared ctors' own values).
+// fn_79_134C/fn_79_1714/fn_79_1AA0 match SLdrSwampBossStage2Data/SLdrUnknownStruct38/
+// SLdrSwampBossStage2Phase field by field except the two -1 sounds above. Then LdrToModelData
+// (scale editor+0x28, no CMDL, the patterned+0x1d4 anim set, true; 0x2BC); null when the optional
+// is empty (0x2E4 lbz 0x144, beq -> 0x33C li r3,0), else rs_new 0xf20 and fn_79_BE3C (0x3D8).
+// @ fn_79_170
 static CEntity* PortLoadSwampBossStage2(CStateManager& mgr, CInputStream& input,
                                         CEntityInfo& info) {
   SLdrSwampBossStage2 sldrThis;

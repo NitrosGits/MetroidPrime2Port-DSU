@@ -209,6 +209,17 @@ CSwampBossStage1::CSwampBossStage1(TUniqueId uid, const rstl::string& name,
 , xc00_tongues(0)
 , xc04_beachOver(false)
 , xc08_beachPhase(0)
+// The tongue block (this+0xc0c..0xcf3) is built by the module's own ctor, called at 0xAD18 with
+// the block and the two model ids (data 0x44/0x48 at 0xAD10/0xAD14): the three vectors from
+// sZeroVector (0x1A38..0x1A80), 0x34 = rodata_15C 1.f (0x1A84), the two CModelData from
+// CStaticRes(id, sOneVector) each copied into an engaged optional (0x1AA8/0x1AB4,
+// 0x1AEC/0x1AF8; fn_78_1B54 sets the engaged byte 0x4c at 0x1B6C), the 0xd8 bits 0x80 and 0x40
+// cleared (0x1B10 rlwimi 7,24,24 and 0x1B20 rlwimi 6,25,25), 0xe0/0xe4 = 0 (0x1B28/0x1B2C), and
+// fn_78_19A4 (ResetTongueState) on the block at 0x1B30, called at the end of the body below.
+// Port limit: MakeModel leaves the optional empty for an invalid id, where the retail builds a
+// model-less CModelData; the host CModelData would request CMDL -1. Render tests the engaged
+// byte either way (0x7B04/0x7B28).
+// @ fn_78_19FC
 , xc0c_tonguePos(CVector3f::Zero())
 , xc18_tongueTarget(CVector3f::Zero())
 , xc24_tongueTip(CVector3f::Zero())
@@ -216,7 +227,7 @@ CSwampBossStage1::CSwampBossStage1(TUniqueId uid, const rstl::string& name,
 , xc34_tongueState(kTS_Idle)
 , xc38_pullTime(0.f)
 , xc3c_pullSpeed(0.f)
-, xc40_tongueAmp(0.f)
+, xc40_tongueAmp(1.f) // 0x1A84: stfs f0,0x34(r29), f0 = rodata_15C (1.f, 0x1A34)
 , xc44_tongueModel(MakeModel(data.tongueParticleModel))
 , xc94_tipModel(MakeModel(data.tongueTipModel))
 , xce4_orbitMsg(false)
@@ -250,6 +261,7 @@ CSwampBossStage1::CSwampBossStage1(TUniqueId uid, const rstl::string& name,
   kb.EnableLaggedBurnDeath(false);
   kb.EnableKnockBackPhysics(false);
   kb.EnableSlow(false);
+  ResetTongueState(); // 0x1B30: the tongue block ctor's tail, bl fn_78_19A4
 }
 
 CSwampBossStage1::~CSwampBossStage1() {
