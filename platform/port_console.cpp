@@ -21,7 +21,6 @@
 #include "port_savestate.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
-#include "port_ui_common.h"
 #include "port_warp.h"
 #ifdef MP_PORT_COVERAGE
 #include "port_coverage.h"
