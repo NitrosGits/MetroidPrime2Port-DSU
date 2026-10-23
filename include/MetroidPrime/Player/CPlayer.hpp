@@ -481,6 +481,11 @@ public:
   // The right stick, cached from ProcessInput for UpdateMouseAim (twin-stick aim).
   float mPortLookX = 0.f;
   float mPortLookY = 0.f;
+  // Port (console `struggle`): the value mAttachedActorStruggle is held at every update, or -1 for
+  // the game's own (PortSetStruggleOverride). It is held because the game only grows it from held
+  // turn/jump buttons while grabbed and decays it otherwise (CPlayer.cpp:2616-2627).
+  float mPortStruggleOverride = -1.f;
+  void PortSetStruggleOverride(float value) { mPortStruggleOverride = value; }
 #endif
   float GetJumpCameraTimer() const { return mJumpCameraTimer; }
   float GetTimeSinceJump() const {

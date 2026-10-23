@@ -569,8 +569,11 @@ void CmdHelp(CStateManager&, const Args&, std::string& out) {
       "                           module's table, as a Metroid latching on does (coverage)\n"
       "material <id> [+|-]<m> ...  show or add/remove an actor's materials (name w/o kMT_, or bit; -solid)\n"
       "                           with x y z the yaw (and pitch, roll) in degrees may follow\n"
-      "shoot <id> [charged] [d] [dir x y z]  fire the beam in hand at an actor from d (3) units\n"
-      "                            (travelling along dir; default from the player): a real projectile\n"
+      "shoot <id> [charged|missile] [d] [dir x y z]  fire the beam in hand (or a real player\n"
+      "                            missile) at an actor from d (3) units; travelling along dir\n"
+      "                            (default from the player): a real projectile\n"
+      "struggle <0..1>|off         hold the player's attached-actor struggle (1 wakes a grabber's\n"
+      "                            dizzy gore; the game only grows it from held turn/jump buttons)\n"
       "visor [name|0-3]            show or switch the visor (combat, echo, scan, dark)\n"
       "beam [name|0-3]             show or switch the beam (power, dark, light, annihilator)\n"
       "tp <x> <y> <z>              teleport the player, keeping its facing\n"
@@ -2167,37 +2170,80 @@ void CmdUEvent(CStateManager& mgr, const Args& args, std::string& out) {
   out += "uevent " + std::string(args[1]) + " " + std::to_string(static_cast< int >(type)) + "\n";
 }
 
-// shoot <id> [charged] [dist] [dir x y z]: fire the player's current beam from dist units (default 3)
-// away, travelling along dir (default: from the player), straight at an actor's aim position (a joint collision actor's own position), homing on it. The
-// shot is a real CEnergyProjectile with the beam's damage, so a module that only counts projectile
-// hits (a weak-spot joint's last toucher) sees it, unlike `damage`.
+// shoot <id> [charged] [missile] [dist] [dir x y z]: fire the player's current beam from dist units
+// (default 3) away, travelling along dir (default: from the player), straight at an actor's aim
+// position (a joint collision actor's own position), homing on it. The shot is a real
+// CEnergyProjectile with the beam's damage, so a module that only counts projectile hits (a
+// weak-spot joint's last toucher) sees it, unlike `damage`. `missile` fires a real player missile
+// instead, through the launcher's own path (CPlayerGun::FireSecondary): weapon type kWT_Missile
+// and gpTweakPlayerGun's missile damage, aimed at the actor the way player aim is
+// (PortSetPointerAimPoint, CPlayer.cpp:1016-1017) and homing on its id. It leaves from the gun, so
+// `dist` and `dir` do not apply to it. A module that only reacts to missiles
+// (CRezbit::DeflectMissiles, CRezbit.cpp:975) needs it.
 void CmdShoot(CStateManager& mgr, const Args& args, std::string& out) {
   CEntity* ent = args.size() >= 2 ? const_cast< CEntity* >(ResolveObject(mgr, args[1])) : nullptr;
   CActor* actor = ent != nullptr ? TCastToPtr< CActor >(ent) : nullptr;
   CPlayer* player = mgr.GetPlayer(0);
-  CGunWeapon* beam = player != nullptr && player->GetPlayerGun() != nullptr
-                         ? player->GetPlayerGun()->PortCurrentBeam()
-                         : nullptr;
-  if (actor == nullptr || beam == nullptr) {
-    Fail("usage: shoot <id> [charged] [dist]   (id must be an actor; the player needs a beam)");
+  if (actor == nullptr) {
+    Fail("usage: shoot <id> [charged|missile] [dist]   (id must be an actor that still exists)");
+    return;
+  }
+  if (player == nullptr) {
+    Fail("there is no player");
     return;
   }
   CPlayerState::EChargeStage stage = CPlayerState::kCS_Normal;
   float dist = 3.f;
+  bool missile = false;
   const CVector3f target = actor->GetAimPosition(mgr, 0.f);
   CVector3f dir = target - player->GetTranslation();
   for (size_t i = 2; i < args.size(); ++i) {
     float x = 0.f, y = 0.f, z = 0.f;
     if (args[i] == "charged") {
       stage = CPlayerState::kCS_Charged;
+    } else if (args[i] == "missile") {
+      missile = true;
     } else if (args[i] == "dir" && i + 3 < args.size() && ParseFloat(args[i + 1], x) &&
                ParseFloat(args[i + 2], y) && ParseFloat(args[i + 3], z)) {
       dir = CVector3f(x, y, z); // the shot's travel direction, e.g. `dir 0 0 1` comes from below
       i += 3;
     } else if (!ParseFloat(args[i], dist) || dist <= 0.f) {
-      Fail("shoot: options are `charged`, a distance > 0 and `dir <x> <y> <z>`");
+      Fail("shoot: options are `charged`, `missile`, a distance > 0 and `dir <x> <y> <z>`");
       return;
     }
+  }
+  if (missile) {
+    // The launcher's own path. FireSecondary reads the missiles in the ammo and the gun's aim
+    // (which PortSetPointerAimPoint turns towards the actor), so it needs one; a harness run
+    // without the launcher gets them, and the reply says so.
+    CPlayerGun* gun = player->GetPlayerGun();
+    CPlayerState* state = mgr.PlayerState(0);
+    if (gun == nullptr || state == nullptr) {
+      Fail("no player gun or player state");
+      return;
+    }
+    const bool granted = state->GetItemAmount(CPlayerState::kIT_Missile, true) < 1;
+    if (granted) {
+      state->SetItemAmount(CPlayerState::kIT_Missile, 10);
+    }
+    gun->PortSetPointerAimPoint(true, target);
+    gun->FireSecondary(1.f / 60.f, mgr, actor->GetUniqueId(), 0, nullptr,
+                       CSfxManager::kInternalInvalidSfxId);
+    gun->PortSetPointerAimPoint(false, CVector3f::Zero());
+    char line[160];
+    std::snprintf(line, sizeof(line),
+                  "missile at u%04x: %d in flight, %d left%s\n", actor->GetUniqueId().value,
+                  mgr.GetWeaponIdCount(player->GetUniqueId(), kWT_Missile),
+                  state->GetItemAmount(CPlayerState::kIT_Missile, true),
+                  granted ? " (gave missile 10)" : "");
+    out += line;
+    return;
+  }
+  CGunWeapon* beam = player->GetPlayerGun() != nullptr ? player->GetPlayerGun()->PortCurrentBeam()
+                                                       : nullptr;
+  if (beam == nullptr) {
+    Fail("the player has no beam in hand (`beam <name>`); `missile` needs none");
+    return;
   }
   dir = dir.CanBeNormalized() ? dir.AsNormalized() : CVector3f(0.f, 1.f, 0.f);
   const CVector3f start = target - dir * dist;
@@ -2208,6 +2254,37 @@ void CmdShoot(CStateManager& mgr, const Args& args, std::string& out) {
   char line[128];
   std::snprintf(line, sizeof(line), "shot u%04x at u%04x from %.1f units%s\n", shot.value,
                 actor->GetUniqueId().value, dist, stage == CPlayerState::kCS_Charged ? " (charged)" : "");
+  out += line;
+}
+
+// struggle <value>|off: hold the player's attached-actor struggle (CPlayer::mAttachedActorStruggle,
+// CPlayer.cpp:2616-2627) at value 0..1, cleared by `off`. The game itself only grows it from held
+// turn/jump buttons while the morph ball is attached to a grabber, and decays it every update
+// otherwise, so a set value does not survive a frame on its own: this is a held override, applied
+// in CPlayer::Update's own morph-ball block. 1.f is what CTryclops::Think (CTryclops.cpp:212)
+// reads to run its dizzy gore and BallCloseToCollision (:900).
+void CmdStruggle(CStateManager& mgr, const Args& args, std::string& out) {
+  CPlayer* player = mgr.GetPlayer(0);
+  if (player == nullptr) {
+    Fail("no player");
+    return;
+  }
+  float value = -1.f;
+  if (args.size() < 2 ||
+      (args[1] != "off" && (!ParseFloat(args[1], value) || value < 0.f || value > 1.f))) {
+    Fail("usage: struggle <0..1>|off   (held every update; `off` clears it)");
+    return;
+  }
+  player->PortSetStruggleOverride(value);
+  char line[160];
+  if (value < 0.f) {
+    std::snprintf(line, sizeof(line), "struggle off (was %.3f)\n",
+                  static_cast< double >(player->GetAttachedActorStruggle()));
+  } else {
+    std::snprintf(line, sizeof(line), "struggle held at %.3f (attached %04x, value now %.3f)\n",
+                  static_cast< double >(value), player->GetAttachedActorId().value,
+                  static_cast< double >(player->GetAttachedActorStruggle()));
+  }
   out += line;
 }
 
@@ -3536,6 +3613,7 @@ constexpr SCommand kCommands[] = {
     {"spawn", CmdSpawn, true},
     {"material", CmdMaterial, true},
     {"shoot", CmdShoot, true},
+    {"struggle", CmdStruggle, true},
     {"visor", CmdVisor, true},
     {"beam", CmdBeam, true},
     {"tp", CmdTp, true},

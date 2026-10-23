@@ -1,0 +1,12 @@
+# Force the de-rezzed state (mRezState 1, which Think:288 gates DeflectMissiles on), then a missile.
+@f1000 layer 3
+@f1300 layer 4
+@f1500 objs rezbit
+@f1700 place e0005011b player 10
+@f1800 codecall e0005011b SetDeRezzedState 1
+@f1900 obj e0005011b
+@f2000 shoot e0005011b missile
+@f2100 status
+@f2200 shoot e0005011b missile
+@f2400 obj e0005011b
+@f2600 status
