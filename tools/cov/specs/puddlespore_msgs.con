@@ -1,0 +1,36 @@
+@f300 god 1; give missile 50; fastmorph 1
+@f400 place e00150015 player 8
+@f700 obj e00150015
+@f800 fsm e00150015 Run
+@f810 shoot e00150015
+@f812 obj e00150015
+@f830 obj e00150015
+@f900 obj e00150015
+@f1000 press x 2
+@f1060 tp 150.69 -33.56 42; status
+@f1070 obj e00150015
+@f1150 obj e00150015; status
+@f1250 obj e00150015; status
+@f1400 obj e00150015; status
+@f1500 press x 2
+@f1600 fsm e00150015 Run
+@f1610 shoot e00150015 4 dir 0 0 -1
+@f1612 obj e00150015
+@f1650 damage e00150015 1 1
+@f1652 obj e00150015
+@f1700 fsm e00150015 Attack
+@f1702 damage e00150015 1 1
+@f1800 tp 150.69 -33.56 42
+@f1810 status; obj e00150015
+@f1900 status; obj e00150015
+@f2000 fsm e00150015 TurnAround
+@f2100 obj e00150015; tp 150.69 -33.56 42
+@f2110 status
+@f2200 fsm e00150015 GetUp
+@f2210 status; obj e00150015
+@f2300 status; obj e00150015
+@f2400 send e00150015 Deactivate
+@f2450 send e00150015 Activate
+@f2500 send e00150015 AIUpdateDisabled
+@f2550 send e00150015 Delete
+@f2600 objs PuddleSpore

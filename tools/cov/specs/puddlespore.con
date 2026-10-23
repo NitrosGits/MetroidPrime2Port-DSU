@@ -1,0 +1,55 @@
+@f300 god 1; give morphBall 1; give missile 50; fastmorph 1; objs Player
+@f400 place e00150015 player 8
+@f600 fsm e00150015 InActive
+@f605 damage e00150015 1 1
+@f610 obj e00150015
+@f650 touch e00150015 u0000
+@f660 fsm e00150015 Attack
+@f700 tp 150.69 -33.56 50
+@f720 tp 150.69 -33.56 50
+@f740 tp 150.69 -33.56 50
+@f760 tp 150.69 -33.56 50
+@f780 tp 150.69 -33.56 50; obj e00150015
+@f800 fsm e00150015 Run
+@f860 obj e00150015
+@f870 bodystate e00150015 0
+@f880 obj e00150015
+@f900 fsm e00150015 TurnAround
+@f960 touch e00150015 u0000
+@f1000 fsm e00150015 GetUp
+@f1002 tp 158.69 -33.56 38.3
+@f1010 tp 142.69 -33.56 38.3
+@f1018 tp 150.69 -25.56 38.3
+@f1026 tp 150.69 -41.56 38.3
+@f1034 tp 150.69 -33.56 70
+@f1036 tp 150.69 -33.56 38.3
+@f1050 status; obj e00150015
+@f1100 tp 150.69 -33.56 38.13
+@f1102 status
+@f1200 tp 160 -33.56 38.3; press x 30
+@f1250 status
+@f1260 fsm e00150015 InActive
+@f1262 tp 158.69 -33.56 55
+@f1290 tp 142.69 -33.56 55
+@f1320 tp 150.69 -25.56 55
+@f1350 tp 150.69 -41.56 55
+@f1380 status; fsm e00150015 GetUp
+@f1382 tp 158.69 -33.56 38.3
+@f1390 tp 142.69 -33.56 38.3
+@f1398 tp 150.69 -25.56 38.3
+@f1406 tp 150.69 -41.56 38.3
+@f1414 tp 150.69 -33.56 38.3
+@f1430 status; obj e00150015
+@f1500 tp 160 -33.56 40; press x 30
+@f1560 status; fsm e00150015 Run
+@f1570 beam 1
+@f1580 shoot e00150015
+@f1600 fsm e00150015 Run; beam 2
+@f1610 shoot e00150015
+@f1640 fsm e00150015 Run; beam 0
+@f1650 shoot e00150015 1 dir 0 0.2 1
+@f1680 fsm e00150015 Run
+@f1690 shoot e00150015 missile
+@f1720 obj e00150015
+@f1800 send e00150015 Delete
+@f1850 objs PuddleSpore

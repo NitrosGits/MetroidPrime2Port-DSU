@@ -39,6 +39,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Attack", static_cast< CPatterned::StateMachine::StateFunc >(&CPuddleSpore::Attack)},
 };
 
+// @ fn_51_37D4
 CPuddleSpore::CPuddleSpore(TUniqueId uid, const rstl::string& name, EFlavorType flavor,
                            const CEntityInfo& info, const CTransform4f& xf,
                            const CModelData& modelData, const CPatternedInfo& patternedInfo,
@@ -64,11 +65,13 @@ CPuddleSpore::CPuddleSpore(TUniqueId uid, const rstl::string& name, EFlavorType 
   KnockBackController().EnableBurn(false);
 }
 
+// @ fn_51_3780
 void CPuddleSpore::PreThink(float dt, CStateManager& mgr) {
   UpdatePlayerContact(dt, mgr);
   CPatterned::PreThink(dt, mgr);
 }
 
+// @ fn_51_3714
 void CPuddleSpore::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -76,6 +79,7 @@ void CPuddleSpore::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// fn_51_34E0
 void CPuddleSpore::Think(float dt, CStateManager& mgr) {
   mAimPosition = GetAimPosition(mgr, 0.f);
   if (mSecondaryTimerRunning) {
@@ -108,10 +112,13 @@ void CPuddleSpore::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
 }
 
+// @ fn_51_34C0
 void CPuddleSpore::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_51_34BC
 void CPuddleSpore::FluidFXThink(EFluidState state, CScriptWater& water, CStateManager& mgr) {}
 
+// fn_51_330C
 void CPuddleSpore::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   bool handled = false;
   switch (msg.GetMessage()) {
@@ -152,12 +159,14 @@ void CPuddleSpore::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// fn_51_32B0
 void CPuddleSpore::KnockBack(CStateManager& mgr, const CKnockBackInfo& info) {
   if (IsOpen()) {
     CPatterned::KnockBack(mgr, info);
   }
 }
 
+// fn_51_2FB0
 void CPuddleSpore::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                    EUserEventType type, float dt) {
   bool handled = false;
@@ -177,10 +186,19 @@ void CPuddleSpore::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
         mShockWaveSfx = CSfxManager::AddEmitter(mData.mShockWaveSound, GetTranslation(),
                                                 GetCurrentAreaId().Value(), true, false,
                                                 CSfxManager::kMedPriority);
+#ifndef TARGET_PC
         SetState(mgr, kPS_Closed);
         handled = true;
+#endif
       }
     }
+#ifdef TARGET_PC
+    // fn_51_2FB0: retail closes even without a shock wave: 0x3014 beq .L_00003178 (no
+    // particle) and 0x3130 beq .L_00003178 (alloc failed) both reach
+    // 0x3184 bl SetState (kPS_Closed) / 0x3188 li r30,0x1.
+    SetState(mgr, kPS_Closed);
+    handled = true;
+#endif
     break;
   }
   case 0x1d:
@@ -194,6 +212,7 @@ void CPuddleSpore::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
   }
 }
 
+// @ fn_51_2F84
 void CPuddleSpore::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                 CStateManager& mgr) {
   if (mState != kPS_Platform) {
@@ -201,6 +220,7 @@ void CPuddleSpore::CollidedWith(const TUniqueId& id, const CCollisionInfoList& l
   }
 }
 
+// fn_51_2EE4
 void CPuddleSpore::Touch(CActor& actor, CStateManager& mgr) {
   if (mAlive) {
     if (CGameProjectile* projectile = TCastToPtr< CGameProjectile >(actor)) {
@@ -212,8 +232,10 @@ void CPuddleSpore::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_51_2EA8
 rstl::optional_object< CAABox > CPuddleSpore::GetTouchBounds() const { return mTouchBounds; }
 
+// fn_51_2DA4
 bool CPuddleSpore::WeaponHitsWeakSpot(const CVector3f& position, const CWeaponMode& mode) const {
   if (IsOpen() && GetDamageVulnerability()->WeaponHits(mode, false)) {
     const CUnitVector3f direction(position - mTouchBounds.GetCenterPoint());
@@ -225,8 +247,10 @@ bool CPuddleSpore::WeaponHitsWeakSpot(const CVector3f& position, const CWeaponMo
   return true;
 }
 
+// @ fn_51_2D90
 bool CPuddleSpore::IsOpen() const { return mState == kPS_Open; }
 
+// @ fn_51_2D5C
 EWeaponCollisionResponseTypes CPuddleSpore::GetCollisionResponseType(const CVector3f& position,
                                                                      const CVector3f& direction,
                                                                      const CWeaponMode& mode,
@@ -234,6 +258,7 @@ EWeaponCollisionResponseTypes CPuddleSpore::GetCollisionResponseType(const CVect
   return WeaponHitsWeakSpot(position, mode) ? kWCR_PuddleSporeWeakSpot : kWCR_Unknown34;
 }
 
+// @ fn_51_2D18
 const CDamageVulnerability* CPuddleSpore::GetDamageVulnerability() const {
   if (IsOpen()) {
     return CPatterned::GetDamageVulnerability();
@@ -243,6 +268,7 @@ const CDamageVulnerability* CPuddleSpore::GetDamageVulnerability() const {
 
 static CVector3f skKnockOffDirection(-1.f, 0.f, 0.3f); // Guessed name
 
+// fn_51_2B98
 void CPuddleSpore::KnockOffPlayers(float force, CStateManager& mgr) {
   for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
     CPlayer* player = mgr.GetPlayer(i);
@@ -263,6 +289,7 @@ void CPuddleSpore::KnockOffPlayers(float force, CStateManager& mgr) {
   }
 }
 
+// fn_51_23F0
 void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
   if (!mCollisionActorManager.get()) {
     return;
@@ -316,10 +343,20 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
                        (mTouchBounds.GetMaxPoint().GetZ() - playerBounds.GetMinPoint().GetZ());
     if (push > 0.f && mTouchBounds.GetMaxPoint().GetZ() < playerBounds.GetMaxPoint().GetZ()) {
       const bool hasGroundCollider = player->GetMaterialList().HasMaterial(kMT_GroundCollider);
+#ifdef TARGET_PC
+      // fn_51_23F0: only GroundCollider is conditional; kMT_Player goes unconditionally:
+      // 0x2810 beq .L_00002824 / 0x281C li r4,0x25 / 0x2820 bl RemoveMaterial;
+      // 0x282C li r4,0x20 / 0x2830 bl RemoveMaterial.
+      if (hasGroundCollider) {
+        player->RemoveMaterial(kMT_GroundCollider, mgr);
+      }
+      player->RemoveMaterial(kMT_Player, mgr);
+#else
       if (hasGroundCollider) {
         player->RemoveMaterial(kMT_GroundCollider, mgr);
         player->RemoveMaterial(kMT_Player, mgr);
       }
+#endif
       CPhysicsState state = player->GetPhysicsState();
       CVector3f direction = player->GetTranslation() - GetTranslation();
       if (direction.CanBeNormalized()) {
@@ -331,10 +368,19 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
       CGameCollision::Move(mgr, *player, dt, nullptr);
       state.SetTranslation(player->GetTranslation());
       player->SetPhysicsState(state);
+#ifdef TARGET_PC
+      // 0x2924 beq .L_00002938 / 0x2930 li r4,0x25 / 0x2934 bl AddMaterial;
+      // 0x2940 li r4,0x20 / 0x2944 bl AddMaterial.
+      if (hasGroundCollider) {
+        player->AddMaterial(kMT_GroundCollider, mgr);
+      }
+      player->AddMaterial(kMT_Player, mgr);
+#else
       if (hasGroundCollider) {
         player->AddMaterial(kMT_GroundCollider, mgr);
         player->AddMaterial(kMT_Player, mgr);
       }
+#endif
     }
 
     if (mState != kPS_Platform && mCurDamageRemTime <= 0.f) {
@@ -345,6 +391,7 @@ void CPuddleSpore::UpdatePlayerContact(float dt, CStateManager& mgr) {
   }
 }
 
+// fn_51_23C4
 void CPuddleSpore::SetCollisionActive(CStateManager& mgr, bool active) {
   if (mCollisionActorManager.get()) {
     mCollisionActorManager->SetActive(mgr, active);
@@ -358,6 +405,7 @@ static EMaterialTypes skNormalAddMaterial0 = kMT_NoPlayerCollision;     // Guess
 static EMaterialTypes skNormalAddMaterial1 = kMT_Character;             // Guessed name
 static EMaterialTypes skNormalRemoveMaterial = kMT_SolidCharacter;      // Guessed name
 
+// @ fn_51_21AC
 void CPuddleSpore::SetState(CStateManager& mgr, EPuddleState state) {
   mState = state;
   if (mCollisionActorManager.get()) {
@@ -378,6 +426,7 @@ void CPuddleSpore::SetState(CStateManager& mgr, EPuddleState state) {
   }
 }
 
+// @ fn_51_21A8
 void CPuddleSpore::UpdateEffects(CStateManager& mgr) {}
 
 static EMaterialTypes skFilterMaterial0 = kMT_Solid;          // Guessed name
@@ -385,6 +434,7 @@ static EMaterialTypes skFilterMaterial1 = kMT_CollisionActor; // Guessed name
 static EMaterialTypes skFilterMaterial2 = kMT_AIPassthrough;  // Guessed name
 static EMaterialTypes skFilterMaterial3 = kMT_Player;         // Guessed name
 
+// fn_51_19C4
 void CPuddleSpore::SetupCollisionManager(CStateManager& mgr) {
   const CVector3f& scale = GetModelData()->GetScale();
   const CAnimData* animData = GetModelData()->GetAnimationData();
@@ -428,14 +478,17 @@ void CPuddleSpore::SetupCollisionManager(CStateManager& mgr) {
       CMaterialList(skFilterMaterial0, skFilterMaterial1, skFilterMaterial2, skFilterMaterial3)));
 }
 
+// @ fn_51_19A8
 bool CPuddleSpore::InAttackPosition(CStateManager& mgr, const CTriggerData& data) const {
   return mStateTimer >= mData.mChargeTime;
 }
 
+// @ fn_51_198C
 bool CPuddleSpore::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mStateTimer >= mData.mTimeOpen;
 }
 
+// fn_51_1880
 bool CPuddleSpore::ShouldTurn(CStateManager& mgr, const CTriggerData& data) const {
   for (uint i = 0; i < mgr.GetNumPlayers(); ++i) {
     const CPlayer* player = mgr.GetPlayer(i);
@@ -453,14 +506,17 @@ bool CPuddleSpore::ShouldTurn(CStateManager& mgr, const CTriggerData& data) cons
   return mStateTimer >= mData.mPlatformTime;
 }
 
+// @ fn_51_186C
 bool CPuddleSpore::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimPhase == 2;
 }
 
+// @ fn_51_1858
 bool CPuddleSpore::StateOver(CStateManager& mgr, const CTriggerData& data) const {
   return mAnimationState.IsOver();
 }
 
+// @ fn_51_17FC
 void CPuddleSpore::InActive(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -472,6 +528,7 @@ void CPuddleSpore::InActive(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_51_1758
 void CPuddleSpore::Active(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -488,6 +545,7 @@ void CPuddleSpore::Active(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_51_1574
 void CPuddleSpore::Run(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -520,6 +578,7 @@ void CPuddleSpore::Run(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_51_135C
 void CPuddleSpore::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -547,6 +606,7 @@ void CPuddleSpore::TurnAround(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_51_118C
 void CPuddleSpore::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -573,6 +633,7 @@ void CPuddleSpore::GetUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_51_FC0
 void CPuddleSpore::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -589,6 +650,7 @@ void CPuddleSpore::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_51_42C
 CEntity* LoadPuddleSpore(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrPuddleSpore sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrPuddleSpore.inc"
@@ -615,13 +677,16 @@ CEntity* LoadPuddleSpore(CStateManager& mgr, CInputStream& input, CEntityInfo& i
 }
 
 #ifndef MONOLITHIC
+// @ fn_51_3FC
 static void SetFuncPtrs() {
   static SPuddleSpore_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadPuddleSpore;
   SetSPuddleSpore_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_51_3DC
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_51_3B8
 extern "C" void RELExit() { SetSPuddleSpore_FuncPtrs(nullptr); }
 #endif
