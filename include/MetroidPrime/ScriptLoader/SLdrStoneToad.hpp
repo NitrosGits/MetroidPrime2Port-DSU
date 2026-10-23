@@ -18,6 +18,16 @@ struct SLdrStoneToad {
 
 inline SLdrStoneToad::SLdrStoneToad() : editorProperties(), patterned(), actorInformation() {
   patterned.creatureSize = 1;
+#ifdef TARGET_PC
+  // fn_77_4C8 (LoadStoneToad, ctor inlined; sldr base sp+0x3f8, patterned +0x3c,
+  // actorInformation +0x280): retail defaults upstream lacks:
+  // 0x510 lfs f0 (rodata_0 = 2.0) / 0x528 stfs f0,0x480(r1) = health.hI_KnockBackResistance;
+  // 0x52C bl __ct__6CColorFffff (rodata_4 = 1.0) / 0x548 stw r3,0x68c(r1) = ambientColor;
+  // 0x534 li r0,0xf / 0x538 stw r0,0x6dc(r1) = visorFlags.
+  patterned.health.hI_KnockBackResistance = 2.0f;
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f);
+  actorInformation.visor.visorFlags = 0x0000000fu;
+#endif
 }
 
 inline SLdrStoneToad::~SLdrStoneToad() {}

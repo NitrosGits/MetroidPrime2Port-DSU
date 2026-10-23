@@ -55,6 +55,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"ReactToWeapon",
      static_cast< CPatterned::StateMachine::StateFunc >(&CStoneToad::ReactToWeapon)},
 };
+// fn_77_2F74 (unmarked: see docs/module-analysis/StoneToad.md)
 CStoneToad::CStoneToad(TUniqueId uid, const rstl::string& name, CEntityInfo& info,
                        const CTransform4f& xf, const CModelData& modelData,
                        const CPatternedInfo& patternedInfo, const CActorParameters& actorParams)
@@ -108,6 +109,8 @@ CStoneToad::CStoneToad(TUniqueId uid, const rstl::string& name, CEntityInfo& inf
   }
 }
 
+// @ fn_77_2F08
+// @ fn_77_2F08
 void CStoneToad::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -115,6 +118,7 @@ void CStoneToad::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// fn_77_22F4 (unmarked: see docs/module-analysis/StoneToad.md)
 void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const bool wasActive = GetActive();
   const TUniqueId senderId = msg.GetSenderId();
@@ -243,8 +247,11 @@ void CStoneToad::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   }
 }
 
+// @ fn_77_22D4
+// @ fn_77_22D4
 void CStoneToad::PreThink(float dt, CStateManager& mgr) { CPatterned::PreThink(dt, mgr); }
 
+// fn_77_21E4 (unmarked: see docs/module-analysis/StoneToad.md)
 void CStoneToad::Think(float dt, CStateManager& mgr) {
   if (!GetActive()) {
     return;
@@ -261,12 +268,20 @@ void CStoneToad::Think(float dt, CStateManager& mgr) {
   AnimationData()->AddAdditiveAnimation(mLookRightAnim, mLookRightWeight, false, false);
 }
 
+// @ fn_77_21C4
+// @ fn_77_21C4
 void CStoneToad::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_77_21A4
+// @ fn_77_21A4
 void CStoneToad::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_77_2184
+// @ fn_77_2184
 void CStoneToad::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
 
+// @ fn_77_2168
+// @ fn_77_2168
 void CStoneToad::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -278,6 +293,7 @@ void CStoneToad::Sleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_77_1EC0 (unmarked: see docs/module-analysis/StoneToad.md)
 void CStoneToad::WakeUp(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -308,6 +324,7 @@ void CStoneToad::WakeUp(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_77_1C84 (unmarked: see docs/module-analysis/StoneToad.md)
 void CStoneToad::ReactToSafeZone(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -327,6 +344,7 @@ void CStoneToad::ReactToSafeZone(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_77_1A48 (unmarked: see docs/module-analysis/StoneToad.md)
 void CStoneToad::ReactToWeapon(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -346,6 +364,8 @@ void CStoneToad::ReactToWeapon(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_77_1978
+// @ fn_77_1978
 void CStoneToad::MoveAway(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -363,6 +383,8 @@ void CStoneToad::MoveAway(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_77_193C
+// @ fn_77_193C
 void CStoneToad::Wait(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -376,6 +398,8 @@ void CStoneToad::Wait(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_77_186C
+// @ fn_77_186C
 void CStoneToad::MoveBack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -393,6 +417,7 @@ void CStoneToad::MoveBack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// fn_77_158C (unmarked: see docs/module-analysis/StoneToad.md)
 void CStoneToad::GoToSleep(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -412,38 +437,54 @@ void CStoneToad::GoToSleep(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_77_156C
+// @ fn_77_156C
 bool CStoneToad::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_77_1560
+// @ fn_77_1560
 bool CStoneToad::ShouldPatrol(CStateManager& mgr, const CTriggerData& data) const {
   return mProvoked;
 }
 
+// @ fn_77_1534
+// @ fn_77_1534
 bool CStoneToad::MoveAwayFinished(CStateManager& mgr, const CTriggerData& data) const {
   return !IsMovingAwayFromStart();
 }
 
+// @ fn_77_14E8
+// @ fn_77_14E8
 bool CStoneToad::ShouldMoveAway(CStateManager& mgr, const CTriggerData& data) const {
   return mStateMachine->GetTime() > mAwayDelay;
 }
 
+// fn_77_14C8 (unmarked: see docs/module-analysis/StoneToad.md)
 bool CStoneToad::ShouldMoveBack(CStateManager& mgr, const CTriggerData& data) const {
   return !mProvoked && mReturnRequested;
 }
 
+// @ fn_77_149C
+// @ fn_77_149C
 bool CStoneToad::MoveBackFinished(CStateManager& mgr, const CTriggerData& data) const {
   return !IsMovingBackToStart();
 }
 
+// @ fn_77_148C
+// @ fn_77_148C
 bool CStoneToad::HitBySafeZone(CStateManager& mgr, const CTriggerData& data) const {
   return mProvoker == kP_SafeZone;
 }
 
+// fn_77_1478 (unmarked: see docs/module-analysis/StoneToad.md)
 bool CStoneToad::HitByWeapon(CStateManager& mgr, const CTriggerData& data) const {
   return mProvoker == kP_Weapon;
 }
 
+// @ fn_77_13CC
+// @ fn_77_13CC
 void CStoneToad::Touch(CActor& actor, CStateManager& mgr) {
   CPatterned::Touch(actor, mgr);
   if (TCastToPtr< CScriptSafeZone >(&actor) != nullptr && !mProvoked) {
@@ -454,6 +495,7 @@ void CStoneToad::Touch(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// fn_77_12D4 (unmarked: see docs/module-analysis/StoneToad.md)
 bool CStoneToad::IsMovingAwayFromStart() const {
   const CVector3f direction = GetMoveDirection(kMV_Away);
   CVector3f toAway = mAwayPosition - GetTranslation();
@@ -464,6 +506,7 @@ bool CStoneToad::IsMovingAwayFromStart() const {
   return CVector3f::Dot(direction, toAway) > 0.f;
 }
 
+// fn_77_11DC (unmarked: see docs/module-analysis/StoneToad.md)
 bool CStoneToad::IsMovingBackToStart() const {
   const CVector3f direction = GetMoveDirection(kMV_Back);
   CVector3f toStart = mInitialTransform.GetTranslation() - GetTranslation();
@@ -474,6 +517,7 @@ bool CStoneToad::IsMovingBackToStart() const {
   return CVector3f::Dot(direction, toStart) > 0.f;
 }
 
+// fn_77_10B0 (unmarked: see docs/module-analysis/StoneToad.md)
 CVector3f CStoneToad::GetMoveDirection(EMoveType type) const {
   CVector3f direction = CVector3f::Zero();
   switch (type) {
@@ -507,6 +551,8 @@ static inline void ApproachWeight(float& weight, float target) {
   }
 }
 
+// @ fn_77_B48
+// fn_77_B48 (unmarked: see docs/module-analysis/StoneToad.md)
 void CStoneToad::UpdateLookAt(CStateManager& mgr) {
   const CTransform4f toLocal = GetTransform().GetQuickInverse();
   const CVector3f eyePosition = GetScaledLocatorTransform(rstl::string_l("Eye")).GetTranslation();
@@ -538,6 +584,8 @@ void CStoneToad::UpdateLookAt(CStateManager& mgr) {
   }
 }
 
+// @ fn_77_B40
+// @ fn_77_B40
 EWeaponCollisionResponseTypes CStoneToad::GetCollisionResponseType(const CVector3f& position,
                                                                    const CVector3f& direction,
                                                                    const CWeaponMode& mode,
@@ -545,6 +593,7 @@ EWeaponCollisionResponseTypes CStoneToad::GetCollisionResponseType(const CVector
   return kWCR_EnemyShielded;
 }
 
+// fn_77_4C8 (unmarked: see docs/module-analysis/StoneToad.md)
 CEntity* LoadStoneToad(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrStoneToad sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrStoneToad.inc"
@@ -564,13 +613,18 @@ CEntity* LoadStoneToad(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
 }
 
 #ifndef MONOLITHIC
+// @ fn_77_498
 static void SetFuncPtrs() {
   static SStoneToad_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadStoneToad;
   SetSStoneToad_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_77_478
+// @ fn_77_478
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_77_454
+// @ fn_77_454
 extern "C" void RELExit() { SetSStoneToad_FuncPtrs(nullptr); }
 #endif

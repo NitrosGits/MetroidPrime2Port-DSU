@@ -1,0 +1,23 @@
+# StoneToad driver (tools/cov/specs/stonetoad.py): Torvus Bog 09_swamp_catacombs_dark has two
+# Watchdrones, e00410048 and e00410066, each sleeping beside an inactive safe zone (e00410043,
+# e0041002c) that the room's light crystals switch on. e00410048: the safe zone's Touch wakes it
+# (ReactToSafeZone, WakeUp, MoveAway, Wait), Decrement plus the zone switched off send it back
+# (MoveBack, GoToSleep, Sleep). e00410066: a direct hit (no projectile) does nothing, light-beam
+# and missile shots provoke it (ReactToWeapon), then Increment/Decrement, the message arms, kill.
+@f300 god 1; give LightBeam 1; beam light; objs StoneToad; obj e00410048; obj e00410066
+@f320 send e00410043 Activate
+@f330 damage e00410066 1
+@f340 shoot e00410066
+@f380 obj e00410048; obj e00410066
+@f460 obj e00410048; obj e00410066
+@f560 obj e00410048; obj e00410066
+@f600 send e00410043 Deactivate; send e00410048 Decrement
+@f660 obj e00410048; obj e00410066
+@f760 obj e00410048; obj e00410066; shoot e00410066 missile
+@f860 obj e00410048; obj e00410066; send e00410066 Increment
+@f960 obj e00410048; obj e00410066; send e00410066 Decrement
+@f1060 obj e00410048; obj e00410066; send e00410066 AIUpdateDisabled
+@f1100 send e00410066 Deactivate; obj e00410066
+@f1140 send e00410066 Activate; obj e00410066
+@f1200 obj e00410048; kill e00410066
+@f1300 obj e00410048; objs StoneToad
