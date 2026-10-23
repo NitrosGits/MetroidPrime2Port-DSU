@@ -33,7 +33,7 @@ offset	fn	size	class	name	slice	what	marker
 00A70	fn_77_A70	60	H	__dt__Q24rstl29optional_object<10CModelData>Fv	-	weak/template copy	no
 00AD0	fn_77_AD0	70	H	__dt__13SLdrStoneToadFv	-	weak/template copy	no
 00B40	fn_77_B40	8	B	CStoneToad::GetCollisionResponseType(...) const	st1	upstream body (CStoneToad)	yes
-00B48	fn_77_B48	518	B	CStoneToad::UpdateLookAt(CStateManager&)	st1	upstream body (CStoneToad)	yes
+00B48	fn_77_B48	518	B	CStoneToad::UpdateLookAt(CStateManager&)	-	upstream body (CStoneToad); open: 524 look.GetX()<0 never ran; 497 1/2 inlined constant-false	no
 01060	fn_77_1060	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
 010B0	fn_77_10B0	12C	B	CStoneToad::GetMoveDirection(EMoveType) const	-	upstream body (CStoneToad); open: 479 default (dead), 481 zero away pos, 490 1/2	no
 011DC	fn_77_11DC	F8	B	CStoneToad::IsMovingBackToStart() const	-	upstream body (CStoneToad); open: 471 1/2 (exactly at start, data)	no

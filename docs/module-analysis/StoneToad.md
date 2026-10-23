@@ -34,10 +34,9 @@ WakeUp → MoveAway → Wait), damages and shoots e00410066, deactivates the saf
 (MoveBack → GoToSleep → Sleep), sends Increment/Decrement/AIUpdateDisabled/Deactivate/Activate to e00410066 and
 kills it. 0 `[port] caught` / `reach-stub`, exit 0.
 
-Marked (21, every live arm ran): UpdateLookAt, GetCollisionResponseType, Touch, Sleep, MoveAway, Wait, MoveBack,
-the triggers HitBySafeZone/MoveBackFinished/ShouldMoveAway/MoveAwayFinished/ShouldPatrol/AnimOver, PreThink, Render,
-PreRender, AddToRenderer, SetupStateMachine, SetFuncPtrs, RELMain, RELExit. UpdateLookAt's one open gcov arm
-(cpp:497 1/2) belongs to the inlined `ApproachWeight(w, 0.f)` copies, where `0.f > 0.f` is constant false.
+Marked (20, every live arm ran): GetCollisionResponseType, Touch, Sleep, MoveAway, Wait, MoveBack, the triggers
+HitBySafeZone/MoveBackFinished/ShouldMoveAway/MoveAwayFinished/ShouldPatrol/AnimOver, PreThink, Render, PreRender,
+AddToRenderer, SetupStateMachine, SetFuncPtrs, RELMain, RELExit.
 
 Not reached: the weapon provoke. Beam, charged, missile, morph-ball bomb and power bomb hits on e00410066 never made
 `WeaponHurts` true (only console `damage ... bomb` took hp 5→4, without a projectile), so AcceptScriptMsg's weapon
@@ -58,6 +57,7 @@ Open arms (cpp line), so these bodies stay unmarked:
 | GetMoveDirection 10B0 | 479 (default, dead), 481 (zero away position), 490 1/2 |
 | IsMovingAway/BackToStart 12D4/11DC | 461/471 1/2 (exactly at the target, data) |
 | ctor 2F74 | 85/92/99/106 (missing look animation, data) |
+| UpdateLookAt B48 | `look.GetX() >= 0` 1/2 (player never below the eye in the drive); ApproachWeight 497 1/2 is the inlined `0.f > 0.f` copy, constant false |
 | LoadStoneToad 4C8 | 555 (no model data) |
 
 Not driven arm by arm: the SLdr ctor and dtor, the implicit dtor, `__sinit` and the weak copies (H).
@@ -66,3 +66,8 @@ Not driven arm by arm: the SLdr ctor and dtor, the implicit dtor, `__sinit` and 
 
 `stod`: area `3dfd2249,09_swamp_catacombs_dark`, driver `tools/cov/specs/stonetoad.con`, 1500 frames, not fast.
 Expect `objs StoneToad` to end with only e00410048. The pass condition is 0 `[port] caught` / `reach-stub`.
+
+## asmcheck
+
+`tools/asmcheck.py check StoneToad src/MetroidPrime/Enemies/CStoneToad.cpp`: 0 findings over the 20 markers
+(the bitfields carry their `0x860` masks in CStoneToad.hpp).
