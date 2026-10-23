@@ -387,6 +387,12 @@ Shuffle -> Taunt -> Lurk -> Hurled -> Deactivate -> Start), the visors, touches,
 missile shots, damage and kills, then spawns a third ghost, with `objs ChozoGhost` before the
 steps and at the end. drkc drives Temple Grounds dark 06_temple_sacredpath_dark's two Dark Commandos u051a and u041c through
 Activate, placement, damage and `obj` reads, with `objs DarkCommando` listing both at f200 and f4000.
+mree wakes three of Agon Wastes 0c_sand_hall's eleven CMetarees (u044d/u044b/u044a): Create drops
+them (hp 2/2), u044a is killed at once (11 -> 8 objects), u044b takes a shot, and u044d is forced
+to Halt and takes a 1-damage hit (hp 2/2 -> 1/2) before it transitions to Attack, with `objs
+Metaree` at f320 and f2200. puff wakes Agon Wastes dark 07_sand_alamoportalobservation_dark's
+CPuffer u05d9 (hp 5/5), forces PathFind and Start, takes a 1-damage hit (hp 5/5 -> 4/5) and a
+shot (hp 4/5 -> 2/5), then kills it (0 objects), with `objs CPuffer` at f320 and f2200.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.
