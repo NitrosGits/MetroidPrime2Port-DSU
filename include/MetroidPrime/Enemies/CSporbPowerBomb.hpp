@@ -41,10 +41,12 @@ public:
 
   // CEnergyProjectile
   void ResolveCollisionWithWorld(const CRayCastResult& result, CStateManager& mgr) override;
+  // @ fn_76_11CE8
   rstl::optional_object< TLockedToken< CGenDescription > >
   GetImpactParticle(CStateManager& mgr) override {
     return rstl::optional_object_null();
   }
+  // @ fn_76_11CCC
   CVector3f GetExplosionNormal() const override { return mExplosionNormal; }
 
 private:

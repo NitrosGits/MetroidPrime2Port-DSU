@@ -1,0 +1,27 @@
+# 11_swamp_bloggtank_dark layer 2: the Power Bomb Guardian u05f8 fires its power bombs
+# (CSporbPowerBomb): first at its picked floor targets (the timer scale is maxed on load), then,
+# after SetToZero, at the player itself: impacts on the world and on the
+# player, the blast's player and actor arms. Natural: run.sh tools/cov/specs/sporb_pbomb.py;
+# the TestRayDamage-false arms: force.sh tools/cov/specs/sporb_pbomb_force.py (same driver).
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/sporb_pbomb.py <out>
+#   3dfd2249,11_swamp_bloggtank_dark --con tools/cov/specs/sporb_pbomb.con --fast --frames 2000
+@f200 layer 2
+@f300 god 1; give morphBall 1; give boostBall 1; give powerBomb 5
+@f305 tp -159 -106 -138
+@f320 send u05f8 Activate; send u05f8 Alert; fsm u05f8 WakeUp
+@f420 fsm u05f8 Attack
+@f425 fsm u05f8 Fire
+@f620 fsm u05f8 Attack
+@f625 fsm u05f8 Fire
+@f800 send u05f8 SetToZero
+@f830 status
+@f840 fsm u05f8 Attack
+@f845 fsm u05f8 Fire
+@f1040 fsm u05f8 Attack
+@f1045 fsm u05f8 Fire
+@f1240 fsm u05f8 Attack
+@f1245 fsm u05f8 Fire
+@f1440 tp -159 -112 -125
+@f1450 fsm u05f8 Attack
+@f1455 fsm u05f8 Fire
+@f1700 status

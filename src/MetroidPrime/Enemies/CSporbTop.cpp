@@ -105,8 +105,10 @@ void CSporbTop::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
 // @ fn_76_205C
 void CSporbTop::Think(float dt, CStateManager& mgr) { CPatterned::Think(dt, mgr); }
 
+// @ fn_76_203C
 void CSporbTop::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_76_201C
 void CSporbTop::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
 // @ fn_76_1FFC
@@ -266,30 +268,37 @@ void CSporbTop::Reload(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_76_126C
 bool CSporbTop::ShouldPatrol(CStateManager& mgr, const CTriggerData& data) const {
   return mState >= kS_Patrol;
 }
 
+// @ fn_76_1250
 bool CSporbTop::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mState >= kS_Attack;
 }
 
+// @ fn_76_1230
 bool CSporbTop::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_76_1214
 bool CSporbTop::ShouldFire(CStateManager& mgr, const CTriggerData& data) const {
   return mState >= kS_Fire;
 }
 
+// @ fn_76_11F8
 bool CSporbTop::ShouldReload(CStateManager& mgr, const CTriggerData& data) const {
   return mState >= kS_Reload;
 }
 
+// @ fn_76_11E8
 bool CSporbTop::ShouldClose(CStateManager& mgr, const CTriggerData& data) const {
   return mState == kS_Close;
 }
 
+// @ fn_76_11D4
 bool CSporbTop::ShouldSpit(CStateManager& mgr, const CTriggerData& data) const {
   return mState == kS_Spit;
 }
@@ -422,4 +431,5 @@ CEntity* LoadSporbTop(CStateManager& mgr, CInputStream& input, CEntityInfo& info
                           LdrToActorParameters(sldrThis.actorInformation));
 }
 
+// @ fn_76_0
 CSporbTop::~CSporbTop() {}

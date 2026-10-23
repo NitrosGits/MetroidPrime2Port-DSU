@@ -32,6 +32,7 @@ static EMaterialTypes skCollideFloor = kMT_Floor;           // Guessed name
 static EMaterialTypes skNearCharacter = kMT_Character;      // Guessed name
 static EMaterialTypes skNearPlayer = kMT_Player;            // Guessed name
 
+// @ fn_76_12230
 CSporbPowerBomb::CSporbPowerBomb(bool active, const TToken< CWeaponDescription >& description,
                                  EWeaponType type, const CTransform4f& xf,
                                  EMaterialTypes excludeMaterial, const CDamageInfo& damage,
@@ -55,6 +56,7 @@ CSporbPowerBomb::CSporbPowerBomb(bool active, const TToken< CWeaponDescription >
 , mDamageWaitTime(damageWaitTime)
 , mDamageWaitTimer(0.f) {}
 
+// @ fn_76_11E24
 void CSporbPowerBomb::Think(float dt, CStateManager& mgr) {
   mDamageWaitTimer = rstl::max_val(0.f, mDamageWaitTimer - dt);
   if ((mState == kS_HitActor || mState == kS_HitWorld) && mFuseTimer >= mFuseTime) {
@@ -104,6 +106,7 @@ void CSporbPowerBomb::Think(float dt, CStateManager& mgr) {
   CEnergyProjectile::Think(dt, mgr);
 }
 
+// @ fn_76_11DB8
 void CSporbPowerBomb::ResolveCollisionWithWorld(const CRayCastResult& result, CStateManager& mgr) {
   mState = kS_HitWorld;
   mExplosionNormal = result.GetPlane().GetNormal();
@@ -111,6 +114,7 @@ void CSporbPowerBomb::ResolveCollisionWithWorld(const CRayCastResult& result, CS
   mProjectile.SetGravity(CVector3f::Zero());
 }
 
+// @ fn_76_11D44
 void CSporbPowerBomb::ResolveCollisionWithActor(const CRayCastResult& result, CActor& actor,
                                                 CStateManager& mgr) {
   mState = kS_HitActor;
@@ -120,6 +124,7 @@ void CSporbPowerBomb::ResolveCollisionWithActor(const CRayCastResult& result, CA
   mProjectile.SetGravity(CVector3f::Zero());
 }
 
+// @ fn_76_11D14
 CRayCastResult
 CSporbPowerBomb::RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& start,
                                             const CVector3f& end, float magnitude,
@@ -129,8 +134,10 @@ CSporbPowerBomb::RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& s
                                                      kSGT_CollisionGeometry);
 }
 
+// @ fn_76_11CF4
 void CSporbPowerBomb::Render(const CStateManager& mgr) const { CEnergyProjectile::Render(mgr); }
 
+// @ fn_76_11A50
 CSporbPowerBomb::~CSporbPowerBomb() {}
 
 static CElementGen* CreateElementGen(CAssetId id) {
@@ -196,6 +203,7 @@ void CSporbNeedle::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CActor::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_76_1136C
 void CSporbNeedle::PreThink(float dt, CStateManager& mgr) { CEntity::PreThink(dt, mgr); }
 
 // @ fn_76_1115C
@@ -219,6 +227,7 @@ void CSporbNeedle::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_76_1113C
 void CSporbNeedle::Touch(CActor& actor, CStateManager& mgr) { CActor::Touch(actor, mgr); }
 
 void CSporbNeedle::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,

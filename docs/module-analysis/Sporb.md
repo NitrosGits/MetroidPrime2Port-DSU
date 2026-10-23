@@ -59,8 +59,10 @@ Build `-B build-port-cov -DMP_PORT_COVERAGE=ON`. Merge the runs with
 | `sporb_grab.con` | `COV_GDB_SCRIPT=$PWD/tools/cov/cov_force.py force.sh specs/sporb_force.py`, 0e hall, 2000 frames | grab, hold, retract with the ball, attach, spit, boost escape |
 | `sporb_undertemple.con` | `run.sh`, 06 area, 2800 frames | the ordinary sporb there |
 | `sporb_pbg.con` | `run.sh`, 11 dark layer 2, 3200 frames | guardian: power bombs, waypoint targets, stages, flinch, sleep |
+| `sporb_pbomb.con` | `run.sh specs/sporb_pbomb.py`, 11 dark layer 2, 2000 frames | CSporbPowerBomb: bombs at the picked floor targets, then (after `send u05f8 SetToZero`) at the player: a direct hit, the blast's player and actor arms, the wait timer |
+| `sporb_pbomb.con` | `COV_GDB_SCRIPT=$PWD/tools/cov/cov_force.py force.sh specs/sporb_pbomb_force.py`, same | the blast's TestRayDamage-false arms |
 
-Merged: 171 bodies.
+Merged: 171 bodies (sporb1). sporb2 adds the two pbomb runs to sporb1's five profiles.
 
 Forced arms:
 
@@ -68,6 +70,7 @@ Forced arms:
 |---|---|
 | CSporbProjectile::Think ball-inside (fn_76_F084) | `forced (force.sh: mBallEscapeRadius = 100 while launched)`. The aimed grabber lands about 2 units from a resting ball, outside the 2x sphere radius. Everything after this arm runs unforced. |
 | ContinueFlail, ContinueSpit, SpitExit, GoToSleep | `forced (fsm)` |
+| CSporbPowerBomb::Think (fn_76_11E24) TestRayDamage false: 0x12038 `beq` (player, wait timer out), 0x12088 `beq` (player, inside the wait time), 0x1218C `beq` (other actor) | `forced (force.sh: specs/sporb_pbomb_force.py)`. After the first ray test of the run, every CStateManager::TestRayDamage starts 500 units lower (the write lands in Think's `center`, unread after a failed test). Nothing in the arena stands between a blast and the player. |
 
 **Marked by sporb1 (60).** Each has every line run and every arm taken, or is branch-free.
 asmcheck findings are explained below.
@@ -97,14 +100,49 @@ asmcheck/retail_diff findings, all explained:
 - Top GetTouchBounds: GetCollisionPrimitive is a virtual call (vtable 0x7c).
 - BuildLookAtTransform: 6.2831855 is `2.f * M_PIF`.
 
+**Marked by sporb2 (24).** Same rule; each body was read against the retail asm.
+
+- **CSporbPowerBomb:** ctor (fn_76_12230), Think (11E24), ResolveCollisionWithWorld (11DB8),
+  ResolveCollisionWithActor (11D44), RayCollisionCheckWithWorld (11D14), Render (11CF4), dtor
+  (11A50), and the header's GetExplosionNormal (11CCC) and GetImpactParticle (11CE8).
+- **CSporbTop:** ShouldPatrol, ShouldAttack, AnimOver, ShouldFire, ShouldReload, ShouldClose,
+  ShouldSpit, Render, PreRender, dtor (fn_76_0).
+- **CSporbProjectile:** Render, PreRender, dtor (fn_76_DDE0).
+- **CSporbNeedle:** PreThink, Touch.
+
+asm checks (sporb2), all equivalent to the port:
+- ctor 0x122B4-0x12310: CEnergyProjectile gets `false, 1.0, 4.0, 4.0` (stack 0x2c = 0; rodata
+  3BC = 1.0, 3C0 = 4.0). 0x12318-0x1235C: growth rate = `damage+0xc` (radius) / (end - start).
+  0x12348-0x12388: three timers, the radius and the wait timer start at rodata 3B8 = 0. 0x12380:
+  state -1. 0x1236C: normal = up.
+- Think: 0x11E58 `fcmpo 0, t; bge` -> 0 is `rstl::max_val(0, t)` (`a < b ? b : a`, keeps 0 on
+  NaN). 0x11E74/0x11E7C state 0 or 1. 0x11E8C `cror gt,eq` fuse >=. 0x11EA0 `cror gt,eq` and
+  0x11EB0 `cror lt,eq`: start <= elapsed <= end. 0x11EC0 `rlwimi 4,27,27` (0x10 at 0x562) is
+  SetExplodePending. 0x11EE4 radius -> 0x18c (mOrigDamageInfo + 0xc). 0x11ED0/0x11EF4 `li -3;
+  and` on the exclude list's high word clears bit 33, kMT_Character. 0x12004/0x12170 `bge` skip:
+  `distSq < r*r`. 0x12018 `cror lt,eq; bne`: wait timer <= 0. 0x120F8/0x120FC: the copy's damage
+  (+4) and radius damage (+8) = 0. 0x121D8 `fmadds` radius += rate * dt, then 0x121E4 elapsed
+  += dt. 0x121F0-0x12200: otherwise state 1 adds dt to the fuse timer.
+- ResolveCollisionWithActor 0x11D64 state 0, 0x11D70/0x11D78 fuse timer = fuse time; World
+  0x11DD8 state 1; both copy the plane normal (result +0x10) and zero velocity and gravity.
+- RayCollisionCheckWithWorld 0x11D1C `li r10,1`: kSGT_CollisionGeometry.
+- GetImpactParticle 0x11CEC `stb 0, 0xc(r3)`: an empty optional.
+- Top Should*: `subfic 1; cntlzw` is `== 1` (Spit), `cntlzw` alone `== 0` (Close); the
+  `li c; srawi; subfc; adde` idiom is signed `state >= c` with c = 3/4/5/6 (Patrol, Attack,
+  Fire, Reload; kS_* values in CSporbTop.hpp).
+- dtors: Top 0x24 CCollidableSphere at 0x7d8, Projectile 0xDE04 at 0x7c8, then the base dtor;
+  PowerBomb calls fn_76_11AB0, the REL-local CEnergyProjectile dtor.
+
+Dead arm: CSporbPowerBomb::Think 0x12130 `beq` (`TCastToPtr<CActor>` null). The near list comes
+from CSortedListManager::BuildNearList (CSortedLists.cpp:278), which pushes only the ids of its
+nodes' CActor. Deletions are deferred, so an id in the list is always a live actor.
+
 **Covered but not marked.** These were held back by the cap or not proven:
 - DecayAim: its 4 compares are in `rstl::max_val`, and the template's arms are not attributed
   to the body.
-- CSporbTop's Should*/AnimOver/Render/PreRender, CSporbProjectile Render/PreRender, and
-  CSporbNeedle PreThink/Touch: under the cap.
-- CSporbPowerBomb ctor, Render, RayCollisionCheckWithWorld, ResolveCollisionWithWorld: all
-  branch-free with every line run. They are defined in CSporbNeedle.cpp. A follow-up can mark
-  them.
+- CSporbNeedle and CSporbBase dtors: their owned-pointer deletes carry null-test arms not
+  checked here.
+- CSporbTop::ResetAttack: an empty port body with no retail function.
 
 Near-complete, not marked (gcov line:arm untaken):
 
@@ -115,10 +153,14 @@ Near-complete, not marked (gcov line:arm untaken):
 | SpitPlayer | 7/14 arms (morph-state variants) |
 | UpdateShooting, ResetShotTimers, AttackExit, Fire, Attack | 1-4 arms each |
 | CSporbProjectile::Think | 157/158 (no locator), 169 (ball leaves while launched) |
-| CSporbPowerBomb::Think | 79, 83, 90, 92 |
+| CreatePowerBomb | the emitter loop ending with no free slot (1844, 1846) |
+| ShootPowerBomb | TryCache / CanCreateProjectile false, a null bomb (1914-1926) |
 
 Never ran:
 - ScanVisorRender and GetScanVisorRenderBounds (Base, Top, Projectile): `visor scan` without a
   scan target did not reach them.
-- FindTargetPlayer, GetContactDamage, GetTopAttachPosition, GetLeanDirection, CSporbTop::Freeze,
-  CSporbPowerBomb::ResolveCollisionWithActor.
+- FindTargetPlayer, GetContactDamage, GetTopAttachPosition, GetLeanDirection, CSporbTop::Freeze.
+
+Guardian note (sporb2): the guardian loads with its timer scale maxed, so it fires at
+PickTargetPosition floor points (the impacts land 5-20 units from the player). `send u05f8
+SetToZero` makes it aim at the player (mPowerBombAimPosition), and then a bomb can hit the player.

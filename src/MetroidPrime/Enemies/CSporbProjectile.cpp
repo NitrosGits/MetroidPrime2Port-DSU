@@ -176,8 +176,10 @@ void CSporbProjectile::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_76_F064
 void CSporbProjectile::Render(const CStateManager& mgr) const { CPatterned::Render(mgr); }
 
+// @ fn_76_F044
 void CSporbProjectile::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
 // @ fn_76_F024
@@ -467,4 +469,5 @@ CEntity* LoadSporbProjectile(CStateManager& mgr, CInputStream& input, CEntityInf
       sldrThis.ballEscapeParticleEffect);
 }
 
+// @ fn_76_DDE0
 CSporbProjectile::~CSporbProjectile() {}
