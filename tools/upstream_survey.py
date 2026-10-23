@@ -427,7 +427,7 @@ def run_module(r, args, idx, area_override=None):
         if shot.suffix != ".png":
             (out / ("shot" + shot.suffix)).unlink()
         res["shot"] = str(out / "shot.png")
-    res["crash"] = (rc not in (0, 124, 143) and not (res.get("driver_done") and rc in (-15, 143))) \
+    res["crash"] = (rc not in (0, 124, 143) and not (res.get("driver_done") and rc in (-15, 15, 143))) \
         or res["caught"] > 0
     (out / "result.json").write_text(json.dumps(res, indent=1))
     with LOCK:
