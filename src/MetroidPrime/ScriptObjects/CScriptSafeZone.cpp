@@ -36,6 +36,7 @@
 CEntity* LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info);
 CEntity* LoadSafeZoneCrystal(CStateManager& mgr, CInputStream& input, CEntityInfo& info);
 
+// @ fn_66_4C78
 CScriptSafeZone::CScriptSafeZone(
     TUniqueId uid, const rstl::string& name, CEntityInfo& info, const CVector3f& scale,
     const CTransform4f& xf, const CDamageInfo& damage, const CVector3f& forceField,
@@ -103,8 +104,10 @@ CScriptSafeZone::CScriptSafeZone(
 // The REL carries its own weak copy of the base destructor and inlines it here.
 inline CScriptTriggerEllipsoid::~CScriptTriggerEllipsoid() {}
 
+// @ fn_66_4BB0
 CScriptSafeZone::~CScriptSafeZone() {}
 
+// @ fn_66_4B90
 void CScriptSafeZone::SetActive(const bool active) { CActor::SetActive(active); }
 
 CLight CScriptSafeZone::BuildLight() const {
@@ -137,17 +140,20 @@ void CScriptSafeZone::SetZoneType(EZoneType type) {
   }
 }
 
+// @ fn_66_48B0
 void CScriptSafeZone::PlaySound(CStateManager& mgr, ushort sfx, uint flags) {
   const int areaId = mgr.mNextAreaId.Value();
   ProcessSoundEvent(flags | sfx, 1.f, 0, 1.f, 75.f, CSegId(0), 0x2000, 0x2000, 0.f, 0x14, 0x7f,
                     GetDistanceToCamera(mgr), GetTranslation(), areaId, mgr, true);
 }
 
+// @ fn_66_4860
 void CScriptSafeZone::PlayDeactivateSound(CStateManager& mgr) {
   StopLoopedSounds();
   PlaySound(mgr, mCurrentInfo->x4_, 0);
 }
 
+// @ fn_66_4804
 void CScriptSafeZone::PlayActivateSound(CStateManager& mgr) {
   mLoopSoundDelay = 0.f;
   StopLoopedSounds();
@@ -198,7 +204,13 @@ void CScriptSafeZone::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     if (mgr.GetIsDarkWorld()) {
       if (mActivation < 1.f) {
+#ifdef TARGET_PC
+        // fn_66_3A40 0x3B80 fcmpo f0(1.0),f1(new); 0x3B84 bge -> new: (1 < new) ? 1 : new, so a
+        // NaN step keeps the new value.
+        mActivation = rstl::min_val((1.f / mActivationTime) * dt + mActivation, 1.f);
+#else
         mActivation = rstl::min_val(1.f, (1.f / mActivationTime) * dt + mActivation);
+#endif
         changed = true;
       } else if (mShellPulse > 0.f) {
         mShellPulse = rstl::max_val(mShellPulse - (1.f / mActivationTime) * dt, 0.f);
@@ -278,6 +290,7 @@ void CScriptSafeZone::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_38F4
 void CScriptSafeZone::UpdateEchoEmitter(float dt, CStateManager& mgr) {
   CEchoEmitter* emitter = EchoEmitter();
   const float half = 0.75f * (mActivation * (0.70710677f * GetScale().GetX()));
@@ -448,6 +461,7 @@ void CScriptSafeZone::UpdateLoopSound(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_401C
 void CScriptSafeZone::UpdateFlash(float dt, CStateManager& mgr) {
   if (mFlashTimer > 0.f) {
     mFlashTimer -= dt / mFlashBrightness;
@@ -457,6 +471,7 @@ void CScriptSafeZone::UpdateFlash(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_3F84
 void CScriptSafeZone::UpdateInsideAlpha(float dt, CStateManager& mgr) {
   if (mCameraInside) {
     mInsideTime += dt;
@@ -474,6 +489,7 @@ void CScriptSafeZone::UpdateInsideAlpha(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_36E0
 void CScriptSafeZone::ApplyInsideFilter(CStateManager& mgr) {
   CCameraFilterPass& pass = mgr.CameraFilterPass(0, 10);
   if (pass.GetCurrentType() == CCameraFilterPass::kFT_Passthru) {
@@ -495,6 +511,7 @@ void CScriptSafeZone::ApplyFog(CStateManager& mgr, const CSafeZoneFog& fog) {
   }
 }
 
+// @ fn_66_3498
 void CScriptSafeZone::PreRenderAllViewports(CStateManager& mgr) {
   float x = mActivation * GetScale().GetX();
   float y = mActivation * GetScale().GetY();
@@ -622,6 +639,7 @@ void CScriptSafeZone::HandleProjectile(CActor& actor, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_31F8
 void CScriptSafeZone::InhabitantExited(CActor& actor, CStateManager& mgr) {
   CScriptTrigger::InhabitantExited(actor, mgr);
   HandleProjectile(actor, mgr);
@@ -657,6 +675,7 @@ void CScriptSafeZone::AddToRenderer(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_66_27E0
 bool CScriptSafeZone::ShouldSendScriptMsgs(CActor& actor, CStateManager& mgr) const {
   return TCastToPtr< CPlayer >(actor) != nullptr;
 }
@@ -743,6 +762,7 @@ void CScriptSafeZone::Render(const CStateManager& mgr) const {
   CScriptTriggerEllipsoid::Render(mgr);
 }
 
+// @ fn_66_1F80
 void CScriptSafeZone::InhabitantIdle(CActor& actor, CStateManager& mgr, float dt) {
   CScriptTrigger::InhabitantIdle(actor, mgr, dt);
   if (IsAI(mgr, actor)) {
@@ -755,6 +775,7 @@ static inline CDamageInfo ScaleDamage(const CDamageInfo& info, float dt) {
   return CDamageInfo(info, dt);
 }
 
+// @ fn_66_1E50
 void CScriptSafeZone::DamageActor(CStateManager& mgr, TUniqueId id, float dt) {
   CDamageInfo damage =
       mZoneType == kZT_Normal ? ScaleDamage(mNormalDamage, dt) : ScaleDamage(mHurtfulDamage, dt);
@@ -763,6 +784,7 @@ void CScriptSafeZone::DamageActor(CStateManager& mgr, TUniqueId id, float dt) {
                   CVector3f::Zero());
 }
 
+// @ fn_66_1DB0
 void CScriptSafeZone::UpdateObstruction(CStateManager& mgr, bool enable) {
   if (mObstructionType != -1) {
     ModifyObstruction(mgr, -1, mObstructionType);
@@ -796,6 +818,7 @@ void CScriptSafeZone::ModifyObstruction(CStateManager& mgr, int delta, int type)
   }
 }
 
+// @ fn_66_1BE4
 CSafeZoneFog::CSafeZoneFog(bool enabled, ERglFogMode mode, const CColor& color,
                            const CVector2f& range, float colorRate, const CVector2f& rangeRate)
 : mEnabled(enabled)
@@ -805,11 +828,13 @@ CSafeZoneFog::CSafeZoneFog(bool enabled, ERglFogMode mode, const CColor& color,
 , mColorRate(colorRate)
 , mRangeRate(rangeRate) {}
 
+// @ fn_66_1C1C
 bool CScriptSafeZone::IsHurtful() const {
   return mZoneType == kZT_Hurtful || mZoneType == kZT_Echo;
 }
 
 // Guessed name.
+// @ fn_66_1630
 CSafeZoneFog LdrToSafeZoneFog(const SLdrSafeZoneFog& data) {
   return CSafeZoneFog(data.enabled, FogSelectionToFogMode(data.mode), data.color,
                       LdrToVector2f(data.nearFarPlane), data.colorRate,
@@ -846,6 +871,28 @@ CEntity* LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info
   const TUniqueId uid = mgr.AllocateUniqueId();
   const CScriptTriggerEllipsoid::EShapeType shape =
       static_cast< CScriptTriggerEllipsoid::EShapeType >(sldrThis.safezoneShape);
+#ifdef TARGET_PC
+  // fn_66_CC (LoadSafeZone): the flash floats go in swapped. 0x0578-0x0580 property 0x48b4b865
+  // (flashTime) -> 0x528(r1), 0x0588-0x0590 0x452f7876 (flashBrightness) -> 0x52c(r1); at the ctor
+  // call 0x0A2C lfs f8,0x52c(r1) (the `flashTime` slot) and 0x09F0/0x09F4 lfs f0,0x528(r1);
+  // stfs 0x54(r1) (the `flashBrightness` slot). UpdateFlash divides by the second (0x244).
+  const float flashTimeArg = sldrThis.flashBrightness;
+  const float flashBrightnessArg = sldrThis.flashTime;
+  return rs_new CScriptSafeZone(
+      uid, sldrThis.editorProperties.name, LdrToEntityInfo(info, sldrThis.editorProperties), scale,
+      LdrToTransform4f(sldrThis.editorProperties), LdrToDamageInfo(sldrThis.trigger.damage),
+      forceField, sldrThis.activationTime, sldrThis.deactivationTime, sldrThis.lifetime,
+      sldrThis.randomLifetimeOffset, sldrThis.insideFadeStart,
+      sldrThis.insideFadeStart + sldrThis.insideFadeTime, sldrThis.insideFadeMinAlpha,
+      flashTimeArg, sldrThis.trigger.flagsTrigger, sldrThis.deactivateOnEnter,
+      sldrThis.deactivateOnExit, sldrThis.impactEffect, infos[0], infos[1], infos[2],
+      LdrToDamageInfo(sldrThis.normalDamage), LdrToDamageInfo(sldrThis.hurtfulDamage),
+      sldrThis.filterSoundEffects, sldrThis.filterCutoffFrequency, sldrThis.ignoreCinematicCamera,
+      sldrThis.mobile, sldrThis.generateMobileLight, sldrThis.mobileLightOffset, shape,
+      LdrToSafeZoneFog(sldrThis.fogEntering), LdrToSafeZoneFog(sldrThis.fogLeaving),
+      LdrToEchoParameters(sldrThis.echoParameters), flashBrightnessArg, sldrThis.flashSound,
+      sldrThis.unknown_0xe71b43e1, sldrThis.unknown_0x9f638987);
+#else
   return rs_new CScriptSafeZone(
       uid, sldrThis.editorProperties.name, LdrToEntityInfo(info, sldrThis.editorProperties), scale,
       LdrToTransform4f(sldrThis.editorProperties), LdrToDamageInfo(sldrThis.trigger.damage),
@@ -860,11 +907,13 @@ CEntity* LoadSafeZone(CStateManager& mgr, CInputStream& input, CEntityInfo& info
       LdrToSafeZoneFog(sldrThis.fogEntering), LdrToSafeZoneFog(sldrThis.fogLeaving),
       LdrToEchoParameters(sldrThis.echoParameters), sldrThis.flashBrightness, sldrThis.flashSound,
       sldrThis.unknown_0xe71b43e1, sldrThis.unknown_0x9f638987);
+#endif
 }
 
 #ifndef MONOLITHIC
 SSafeZone_FuncPtrs REL_loader_SafeZone;
 
+// @ fn_66_70
 void SetRelLoaderFunctionToLoader() {
   REL_loader_SafeZone.mLoadSafeZone = LoadSafeZone;
   REL_loader_SafeZone.mLoadSafeZoneCrystal = LoadSafeZoneCrystal;
@@ -873,7 +922,9 @@ void SetRelLoaderFunctionToLoader() {
   SetSSafeZone_FuncPtrs(&REL_loader_SafeZone);
 }
 
+// @ fn_66_50
 extern "C" void RELMain() { SetRelLoaderFunctionToLoader(); }
 
+// @ fn_66_2C
 extern "C" void RELExit() { SetSSafeZone_FuncPtrs(nullptr); }
 #endif

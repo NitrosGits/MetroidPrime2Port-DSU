@@ -58,6 +58,7 @@ LoadOptionalEffect(CAssetId id) {
   return rstl::optional_object< TLockedToken< CGenDescription > >();
 }
 
+// @ fn_66_88A8
 static inline CDamageVulnerability GetCrystalVulnerability(bool isLight) {
   if (isLight) {
     return CDamageVulnerability(CDamageVulnerability::PassThroughVulnerabilty(),
@@ -129,6 +130,7 @@ CScriptSafeZoneCrystal::CScriptSafeZoneCrystal(
   UpdateVulnerability();
 }
 
+// @ fn_66_7B2C
 CScriptSafeZoneCrystal::~CScriptSafeZoneCrystal() {}
 
 void CScriptSafeZoneCrystal::Touch(CActor& actor, CStateManager& mgr) {
@@ -175,6 +177,7 @@ void CScriptSafeZoneCrystal::AddEffectToRenderer(CElementGen* gen) {
   }
 }
 
+// @ fn_66_7750
 void CScriptSafeZoneCrystal::AddToRenderer(const CStateManager& mgr) const {
   if (!mIsLight || mgr.GetPlayerState()->GetActiveVisor(mgr) == CPlayerState::kPV_Scan) {
     CActor::AddToRenderer(mgr);
@@ -187,8 +190,10 @@ void CScriptSafeZoneCrystal::AddToRenderer(const CStateManager& mgr) const {
   AddEffectToRenderer(mRefreshEffect.get());
 }
 
+// @ fn_66_7748
 CHealthInfo* CScriptSafeZoneCrystal::HealthInfo() { return &mHealthInfo; }
 
+// @ fn_66_772C
 void CScriptSafeZoneCrystal::ResetHealth() {
   mHealthInfo.SetHP(mHealthInfo.GetInitialHP());
   mDamaged = false;
@@ -308,6 +313,7 @@ void CScriptSafeZoneCrystal::SetState(CStateManager& mgr, EState state) {
   mFadeDone = false;
 }
 
+// @ fn_66_7220
 void CScriptSafeZoneCrystal::UpdateVulnerability() {
   if (mIsLight) {
     const CWeaponTypeVulnerability& vuln =
@@ -345,13 +351,16 @@ void CScriptSafeZoneCrystal::UpdateModel(CStateManager& mgr) {
   }
 }
 
+// @ fn_66_7064
 void CScriptSafeZoneCrystal::UpdateBounds() {
   const CVector3f center = GetTranslation() + mHitOffset;
   mBounds = CAABox(center - mHitRadius, center + mHitRadius);
 }
 
+// @ fn_66_7028
 rstl::optional_object< CAABox > CScriptSafeZoneCrystal::GetTouchBounds() const { return mBounds; }
 
+// @ fn_66_6DDC
 void CScriptSafeZoneCrystal::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     if (GetTransformDirtySpare()) {
@@ -406,6 +415,7 @@ void CScriptSafeZoneCrystal::UpdateStateTimer(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_66_6C00
 void CScriptSafeZoneCrystal::UpdateRegeneration(float dt, CStateManager& mgr) {
   if (mIsLight && mState != kS_Entangled && mState != kS_Collapsed && mStateTimer <= mRefreshTime) {
     if (mRefreshTimer <= 0.f) {
@@ -460,6 +470,7 @@ void CScriptSafeZoneCrystal::UpdateEffectsVisibility(float dt, CStateManager& mg
   mFadeDone = hidden;
 }
 
+// @ fn_66_68F4
 bool CScriptSafeZoneCrystal::KillEffectIfInactive(CElementGen* gen, EState state) const {
   if (mState != state) {
     gen->DestroyParticles();
@@ -488,6 +499,7 @@ bool CScriptSafeZoneCrystal::UpdateEffect(float dt, CElementGen* gen, bool alive
   return true;
 }
 
+// @ fn_66_67C4
 const CDamageVulnerability* CScriptSafeZoneCrystal::GetDamageVulnerability() const {
   return &mVulnerability;
 }
@@ -516,6 +528,7 @@ CScannableObjectInfo* CScriptSafeZoneCrystal::GetScannableObjectInfo() const {
   return CActor::GetScannableObjectInfo();
 }
 
+// @ fn_66_65D0
 SSafeZoneCrystalModels::SSafeZoneCrystalModels(const CModelData& normal,
                                                const CModelData& entangled,
                                                const CModelData& hurtful, const CModelData& echo)
