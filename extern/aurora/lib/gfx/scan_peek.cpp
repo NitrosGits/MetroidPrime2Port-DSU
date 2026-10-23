@@ -377,10 +377,16 @@ void after_submit() noexcept {
 }
 
 void shutdown() noexcept {
-  std::lock_guard lock{g_mutex};
-  for (auto& slot : g_slots) {
-    slot = {};
+  // The buffers are released after the lock: releasing one with a map still pending runs
+  // complete_map at once, which takes g_mutex (it then sees an Available slot and returns).
+  std::array<Slot, SlotCount> released;
+  {
+    std::lock_guard lock{g_mutex};
+    for (size_t i = 0; i < g_slots.size(); ++i) {
+      released[i] = std::move(g_slots[i]);
+      g_slots[i] = {};
+    }
+    g_loggedFirstRequest = false;
   }
-  g_loggedFirstRequest = false;
 }
 } // namespace aurora::gfx::scan_peek
