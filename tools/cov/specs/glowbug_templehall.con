@@ -1,0 +1,36 @@
+# Great Temple 0i_temple_hall L0: three Lightflyers (GBUG e000500f0, e000500f8, e000500f9), light
+# world. God-mode player listed, Created/Activated, stood at several distances from each (attack
+# range window: telegraph, attack, beam damage; inside the minimum range), shot (hit colour),
+# scanned (scan display model: ScanVisorRender), two killed by missiles (light Dead:
+# timer to DeathDelete), one Deactivated, one Deleted. For tools/cov/specs/glowbug.py.
+@f300 god 1; give missile 50; give scanVisor 1
+@f320 objs Glowbug; obj e000500f0; obj e000500f8; obj e000500f9
+@f340 send e000500f0 Create; send e000500f8 Create; send e000500f9 Create
+@f360 send e000500f0 Activate; send e000500f8 Activate; send e000500f9 Activate
+@f400 obj e000500f0; obj e000500f8; obj e000500f9
+@f450 place e000500f0 player 6
+@f700 obj e000500f0
+@f750 place e000500f0 player 12
+@f1000 obj e000500f0
+@f1050 place e000500f8 player 3
+@f1300 obj e000500f8
+@f1350 shoot e000500f8
+@f1400 shoot e000500f8 missile
+@f1450 obj e000500f8
+@f1500 place e000500f9 player 20
+@f1700 obj e000500f9
+@f1600 place e000500f0 player 0.5
+@f1650 obj e000500f0
+@f1750 scan e000500f9 20 150
+@f1780 scan e000500f9 20 150
+@f1810 scan e000500f9 20 150
+@f1840 scan e000500f9 20 150
+@f1870 scan e000500f9
+@f1900 visor combat
+@f2000 obj e000500f8
+@f2050 shoot e000500f0 missile; shoot e000500f0 missile
+@f2150 obj e000500f0
+@f2200 objs Glowbug
+@f2300 send e000500f9 Deactivate
+@f2400 send e000500f9 Delete
+@f2500 objs Glowbug

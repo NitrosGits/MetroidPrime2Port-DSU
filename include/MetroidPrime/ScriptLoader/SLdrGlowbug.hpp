@@ -30,6 +30,7 @@ struct SLdrGlowbug {
   bool isInLightWorld;                   // 0x1917a180
 };
 
+// @ fn_26_D68
 inline SLdrGlowbug::SLdrGlowbug()
 : editorProperties()
 , patterned()
@@ -46,6 +47,15 @@ inline SLdrGlowbug::SLdrGlowbug()
   attackTelegraphSound = 0;
   attackSound = 0;
   isInLightWorld = false;
+#ifdef TARGET_PC
+  // fn_26_D68: retail defaults upstream lacks
+  attackTelegraphSound = -1;                      // 0xD90 li r7,-0x1; 0xDF4 stw r7,0x320
+  attackSound = -1;                               // 0xDF8 stw r7,0x324
+  patterned.echoParameters.isEchoEmitter = true;  // 0xDBC li r0,1; 0xE08 stb r0,0x26c
+  patterned.health.hI_KnockBackResistance = 2.0f; // 0xDB4 lfs rodata_8 (2.0); 0xE04 stfs 0x88
+  actorInformation.lighting.ambientColor = CColor(1.0f, 1.0f, 1.0f, 1.0f); // 0xDC0 rodata_C x4; 0xE20 0x294
+  actorInformation.visor.visorFlags = 0x0000000fu; // 0xE1C li r4,0xf; 0xE2C stw r4,0x2e4
+#endif
 }
 
 inline SLdrGlowbug::~SLdrGlowbug() {}
