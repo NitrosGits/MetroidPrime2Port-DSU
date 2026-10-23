@@ -341,8 +341,13 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
     for (int i = 0; i < results.mPlayerCount; ++i) {
       const CGameState::SPlayerResult& player = results.mPlayers[i];
       SPlayerSetup& setup = mPlayerSetups[player.mPlayerSelection];
+#ifdef TARGET_PC
+      setup.mInvertMenu->SetSelection(player.xc_, mgr);
+      setup.mRumbleMenu->SetSelection(player.mRumbleEnabled, mgr);
+#else
       setup.mInvertMenu->SetSelection(player.mRumbleEnabled, mgr);
       setup.mRumbleMenu->SetSelection(player.xc_, mgr);
+#endif
       mgr.SendScriptMsg(setup.mJoinedSwitch, GetUniqueId(), kSM_Open, GetUniqueId());
       mgr.SendScriptMsg(setup.mReadySwitch, GetUniqueId(), kSM_Open, GetUniqueId());
       if (gameState->PreviousGameResults().mGameMode == CFrontEndGameMode::kSGM_Coin) {
