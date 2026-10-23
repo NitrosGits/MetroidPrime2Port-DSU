@@ -1150,8 +1150,8 @@ void CSporbBase::UpdateGrabber(float dt, CStateManager& mgr) {
           const float aimDistSq = (mAimTarget - GetTranslation()).MagSquared();
 #ifdef TARGET_PC
           // retail 0x7934/0x7958/0x795C `fcmpo dot,0; cror eq,lt,eq; beq hold`, 0x7978/0x797C
-          // `fcmpo |dot|,1e-5; blt hold`, 0x7998/0x799C `fcmpo next,aim; ble extend`: a NaN extends.
-          if (!(dot <= 0.f) && !(CMath::AbsF(dot) < 1e-5f) && !(nextDistSq > aimDistSq)) {
+          // `fcmpo |dot|,1e-5; blt hold`, 0x7998/0x799C `fcmpo next,aim; ble extend`: a NaN dot extends, a NaN distance holds.
+          if (!(dot <= 0.f) && !(CMath::AbsF(dot) < 1e-5f) && nextDistSq <= aimDistSq) {
             projectile->SetVelocityWR(velocity);
           } else {
             projectile->SetTranslation(mAimTarget - (attachWorld - projectile->GetTranslation()));
