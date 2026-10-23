@@ -72,6 +72,10 @@ void StandIn(const char* what) {
 // DeployFromHoldingTube (fn_75_E034), ShotAt (fn_75_E5B8), PatrolPathOver (fn_75_E478),
 // LostHead (fn_75_E5AC), ShouldWaitForSnatch (fn_75_E5D0) and PrepareForDocking (fn_75_DFEC)
 // triggers; each other entry below is a once-logging shell for the retail function it names.
+// fn_75_FED0 is straight-line code (no arms): `tools/fsm_ctor_tables.py <asm dir> fn_75_FED0
+// lbl_75_data_720:28 lbl_75_data_9E8:22 lbl_75_data_BCC:11` replays it (215 stores, every entry
+// {0, 0xFFFFFFFF, fn}) and the names and functions match the tables below in order, so the marker
+// sits above them (the MinorIng fn_44_ABCC precedent).
 #define SPLITTER_TRIGGER(name) \
   { #name, static_cast< CPatterned::StateMachine::TriggerFunc >(&CSplitterMainChassis::name) }
 #define SPLITTER_STATE(name) \
@@ -83,6 +87,7 @@ void StandIn(const char* what) {
 #define SPLITTER_STATE_PORTED(name) \
   { #name, static_cast< CPatterned::StateMachine::StateFunc >(&CSplitterMainChassis::name) }
 
+// @ fn_75_FED0
 CPatterned::StateMachine::STriggerFunction skTriggers[] = {
     SPLITTER_TRIGGER(StateOver),
     SPLITTER_TRIGGER(IsIntact),
@@ -432,6 +437,8 @@ void CSplitterMainChassis::SetMorphballStabLeg(CStateManager&, float) { mStabLeg
 // ble): ahead and right is leg 1, ahead and left 2, behind and right 3, behind and left 4.
 // The null-target arm is unreachable: the state follows ShouldLegStab, which needs the target,
 // and the target id is only ever the player's (see PortTargetDistanceSq).
+// Arms: ALL-ARMS, splitter_split25 (tools/cov/specs/splitter_split25.py, 914f1381, gcov merged): no target and the four legs
+// (the Y and X columns set to the offset or its negation) by gdb calls.
 // @ fn_75_B57C
 void CSplitterMainChassis::FindBestStabLeg(CStateManager& mgr, float) {
   mStabLeg = -1;
@@ -440,11 +447,13 @@ void CSplitterMainChassis::FindBestStabLeg(CStateManager& mgr, float) {
     return;
   }
   const CVector3f offset = target->GetTranslation() - GetTranslation();
-  const bool right = CVector3f::Dot(GetTransform().GetColumn(kDX), offset) > 0.f;
+  const CVector3f side = GetTransform().GetColumn(kDX);
+  // 0xB604 fcmpo, 0xB608 ble: ahead only for a dot above 0.0f (a NaN dot is behind); each half
+  // then tests the X column with its own fcmpo/ble (0xB618-0xB61C, 0xB640-0xB644: a NaN is left).
   if (CVector3f::Dot(GetTransform().GetColumn(kDY), offset) > 0.f) {
-    mStabLeg = right ? 1 : 2;
+    mStabLeg = CVector3f::Dot(side, offset) > 0.f ? 1 : 2;  // 0xB620 li 1, 0xB628 li 2
   } else {
-    mStabLeg = right ? 3 : 4;
+    mStabLeg = CVector3f::Dot(side, offset) > 0.f ? 3 : 4;  // 0xB648 li 3, 0xB650 li 4
   }
 }
 
@@ -563,14 +572,26 @@ int CSplitterMainChassis::PortFindDodgeDirection(CStateManager& mgr, const CVect
 // (the weapon's 0x160 is 6, kWT_Missile) in the chassis's area (0x4) (0xB44C-0xB484). For it the
 // flag bit 0x20 sets the direction to 5 (0xB488-0xB498), and the bit 0x10 replaces it with
 // fn_75_91E4's answer for the offset from the missile (0xB49C-0xB4DC).
+// Arms: ALL-ARMS, splitter_split25 (tools/cov/specs/splitter_split25.py, 914f1381, gcov merged): the gates
+// (no flag bit, 0xD34 at 1.0f, 0xD1C above 0.0f, a missed roll, no target, the player orbiting
+// nothing, the chassis or the head) by gdb calls; in the game's own calls the player orbits the
+// chassis, the near list gets the player (the null cast) and a live energy projectile in front,
+// and the flags cycle 0x30 / 0x20 / 0x10 / 0x30 with the chassis's area 99 (missile and beam shot,
+// both halves, another area).
+// @ fn_75_B2A0
 void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
   mDodgeDirection = -1;
-  if ((mData.mUnknownCEF5C2FE & 0x30) == 0 || mTimerD34 >= 1.f || mDodgeTimer > 0.f) {
+  // 0xB2E8/0xB2F0 rlwinm 27,27 / 26,26 (0x10, 0x20). 0xB304 fcmpo, 0xB308 bge: leaves when
+  // !(0xD34 < 1.0f) (a NaN leaves). 0xB31C fcmpo, 0xB320 cror eq,lt,eq, 0xB324 bne: leaves when
+  // !(0xD1C <= 0.0f) (a NaN leaves).
+  if ((mData.mUnknownCEF5C2FE & 0x30) == 0 || !(mTimerD34 < 1.f) || !(mDodgeTimer <= 0.f)) {
     return;
   }
   // Every shipped placement has a dodge chance of 100.0f (0x47be3298) and the flag bits 0x30
   // set, so neither this arm nor the flag half of the test above runs.
-  if (mgr.Random()->Range(0.f, 100.f) > mData.mDodgeChance) {
+  // 0xB344 fcmpo, 0xB348 cror eq,lt,eq, 0xB34C bne 0xB500: the timer restarts when
+  // !(roll <= chance) (a NaN chance restarts it).
+  if (!(mgr.Random()->Range(0.f, 100.f) <= mData.mDodgeChance)) {
     mDodgeTimer = mData.mMinDodgeInterval;
     return;
   }
@@ -611,6 +632,10 @@ void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
 // sweep ends are the offset turned -45 and +45 degrees about z (FastCosR/FastSinR of 45 degrees,
 // 0xB8BC-0xB92C) from the origin; the head takes them (0xB930 fn_75_5AD8) and the team starts a
 // projectile attack (0xB958 StartAttack with 1).
+// Arms: ALL-ARMS, splitter_split25 (tools/cov/specs/splitter_split25.py, 914f1381, gcov merged): no head, the
+// player target, no target with the Y column steep up and down (both clamps), gently up and down
+// (no clamp), straight up (the flat form unsafe) and zero (the offset unsafe) by gdb calls.
+// @ fn_75_B678
 void CSplitterMainChassis::SetupLaserSweep(CStateManager& mgr, float) {
   CSplitterCommandModule* head =
       TCastToPtr< CSplitterCommandModule >(mgr.ObjectById(mCommandModuleId));
@@ -629,10 +654,17 @@ void CSplitterMainChassis::SetupLaserSweep(CStateManager& mgr, float) {
   }
   const float angle = CVector3f::GetAngleDiff(offset, flat);
   CVector3f dir = offset;
-  const float limit = offset.GetZ() > 0.f ? 0.7853982f : 0.2617994f;
-  if (angle > limit) {
+  // 0xB7EC fcmpo, 0xB7F4 ble: a climb only for z above 0.0f (a NaN z takes the drop limit). Each
+  // half's fcmpo/ble (0xB800-0xB804, 0xB864-0xB868) clamps only above its limit (a NaN keeps it).
+  if (offset.GetZ() > 0.f) {
+    if (angle > 0.7853982f) {
+      dir = CVector3f::Slerp(flat.AsNormalized(), offset.AsNormalized(),
+                             CRelAngle::FromRadians(0.7853982f)) *
+            offset.Magnitude();
+    }
+  } else if (angle > 0.2617994f) {
     dir = CVector3f::Slerp(flat.AsNormalized(), offset.AsNormalized(),
-                           CRelAngle::FromRadians(limit)) *
+                           CRelAngle::FromRadians(0.2617994f)) *
           offset.Magnitude();
   }
   const float c = CMath::FastCosR(0.7853982f);
@@ -2536,11 +2568,17 @@ rstl::optional_object< CAABox > CSplitterMainChassis::GetTouchBounds() const {
 // 0xEE5C-0xEE8C: `cror eq, lt, eq; bne` leaves on damage > 0); then a safe object-to-chassis
 // offset (0xEE90-0xEECC) sets the 0x04 bit and, normalized, is the collision normal
 // (0xEED0-0xEF00).
-// Not marked: a non-CAi object with no health info, or one the spin damage hurts, never collided.
+// Arms: ALL-ARMS, splitter_split25 (tools/cov/specs/splitter_split25.py, 914f1381, gcov merged): the 0x80 bit
+// clear, the timer at 0.2f, the world (no infos, a floor, a wall material, a steep normal), a
+// missing object, the player (hurt, then with the spin damage 0.0f), an actor with no health info,
+// the chassis itself (a CAi, a zero offset) by gdb calls.
+// @ fn_75_ECA4
 void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInfoList& list,
                                         CStateManager& mgr) {
   CPatterned::CollidedWith(id, list, mgr);
-  if ((mFlagsD41 & 0x80) == 0 || mTimerD30 <= 0.2f) {
+  // 0xECD8 extrwi 1,24 (0x80). 0xECEC fcmpo, 0xECF0 ble: leaves when !(0xD30 > 0.2f) (a NaN
+  // leaves).
+  if ((mFlagsD41 & 0x80) == 0 || !(mTimerD30 > 0.2f)) {
     return;
   }
   if (id == kInvalidUniqueId) {
@@ -2563,8 +2601,10 @@ void CSplitterMainChassis::CollidedWith(const TUniqueId& id, const CCollisionInf
   if (actor == nullptr) {
     return;
   }
+  // 0xEE84 fcmpo, 0xEE88 cror eq,lt,eq, 0xEE8C bne: leaves when !(damage <= 0.0f) (a NaN
+  // damage leaves).
   if (actor->TypesMatch(kET_Ai) == nullptr && actor->GetHealthInfo() != nullptr &&
-      mData.mSpinAttackDamage.GetDamage(*actor->GetDamageVulnerability()) > 0.f) {
+      !(mData.mSpinAttackDamage.GetDamage(*actor->GetDamageVulnerability()) <= 0.f)) {
     return;
   }
   const CVector3f offset = GetTranslation() - actor->GetTranslation();
@@ -2880,6 +2920,10 @@ void CSplitterMainChassis::PortStartDeathTimer(float time) {
 // SLdrSplitterMainChassis reader's, which the analysis checked against the REL's switch id by id:
 // the loader's dispatch tree reads all four blocks (0x255a4580 editor properties, 0xB3774750
 // patterned AI, 0x7E397FED actor parameters, 0x15E03A2F the chassis data).
+// The SLdr defaults the REL writes inline (0x82F0-0x8358) equal the generated reader's. Arms: 14/15
+// in every run; the null model (0x8490) is dead in the data: tools/scan_splitter_loader.py finds
+// an ANCS in all 28 placements and no unknown top-level id (the ReadBytes skip, 0x8434).
+// @ fn_75_82B0
 static CEntity* PortLoadSplitterMainChassis(CStateManager& mgr, CInputStream& input,
                                              CEntityInfo& info) {
   SLdrSplitterMainChassis sldrThis;

@@ -14,7 +14,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xAC	0x8	CSplitter	-	virtual	H	lbl_75_data_448+A8 lbl_75_data_CB8+A8	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_75_AC
 0xB4	0x1C	CSplitter	-	virtual	H	lbl_75_data_448+B4 lbl_75_data_CB8+B4	same body as SwampBossStage2 0xb4 (see SwampBossStage2_functions.tsv)	not-port	fn_75_B4
 0xD0	0x2C	CSplitter	-	virtual	H	lbl_75_data_448+3C lbl_75_data_CB8+3C lbl_75_data_E34+3C	same body as SandBoss 0xd8 (CActor::GetHealthInfo (header inline))	not-port	fn_75_D0
-0xFC	0x370	CSplitter	-	func	B	fn_75_8254	module loader (SpacePirate LoadSpacePirate precedent)	not-port	fn_75_FC
+0xFC	0x370	CSplitter	-	func	B	fn_75_8254	marked	marked	fn_75_FC
 0x46C	0x40	CSplitter	-	func	H	fn_75_82B0 fn_75_FC	same body as ElitePirate 0xca8 (fn_15_CA8)	not-port	fn_75_46C
 0x4AC	0x20	CSplitter	-	func	H	fn_75_46C	same body as CommandoPirate 0x118 (see CommandoPirate_functions.tsv)	not-port	fn_75_4AC
 0x4CC	0x28	CSplitter	-	func	H	fn_75_4AC fn_75_8678	same body as ElitePirate 0xd08 (fn_15_D08)	not-port	fn_75_4CC
@@ -50,7 +50,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x2280	0x170	CSplitter	-	func	B	fn_75_31A8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_2280
 0x23F0	0x1D4	CSplitter	-	func	B	fn_75_4E90	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_23F0
 0x25C4	0x148	CSplitter	-	func	B	fn_75_270C	marked	marked	fn_75_25C4
-0x270C	0x288	CSplitter	-	func	B	fn_75_3B34	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_270C
+0x270C	0x288	CSplitter	-	func	B	fn_75_3B34	marked	marked	fn_75_270C
 0x2994	0x24C	CSplitter	-	func	B	fn_75_42F8	unique to the module and referenced (bl): module behaviour, port body pending	not-port	fn_75_2994
 0x2BE0	0xE0	CSplitter	-	func	B	fn_75_3004	marked	marked	fn_75_2BE0
 0x2CC0	0x20	CSplitter	-	func	B	fn_75_654C	marked	marked	fn_75_2CC0
@@ -82,7 +82,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x42F8	0x140	CSplitter	-	virtual	B	lbl_75_data_260+8	marked	marked	fn_75_42F8
 0x4438	0x5C	CSplitter	-	virtual	H	lbl_75_data_5B8+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_4438
 0x4494	0x48	CSplitter	-	virtual	H	lbl_75_data_5C4+8	same body as CommandoPirate 0x2a50 (see CommandoPirate_functions.tsv)	not-port	fn_75_4494
-0x44DC	0x388	CSplitter	-	virtual	B	lbl_75_data_254+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_44DC
+0x44DC	0x388	CSplitter	-	virtual	B	lbl_75_data_254+8	marked	marked	fn_75_44DC
 0x4864	0x200	CSplitter	-	virtual	B	lbl_75_data_248+8	marked	marked	fn_75_4864
 0x4A64	0x5C	CSplitter	-	virtual	H	lbl_75_data_5AC+8	same body as CommandoPirate 0x29f4 (see CommandoPirate_functions.tsv)	not-port	fn_75_4A64
 0x4AC0	0x1E8	CSplitter	-	virtual	B	lbl_75_data_23C+8	marked	marked	fn_75_4AC0
@@ -155,14 +155,14 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0x7B1C	0xC0	CSplitter	-	func	H	fn_75_3460 fn_75_A4E4	same body as ElitePirate 0xbf6c (fn_15_BF6C)	not-port	fn_75_7B1C
 0x7BDC	0x68	CSplitter	-	func	H	fn_75_7B1C	same body as ElitePirate 0xc02c (fn_15_C02C)	not-port	fn_75_7BDC
 0x7C44	0x3C	CSplitter	-	func	H	fn_75_18	same body as ElitePirate 0xc094 (fn_15_C094)	not-port	fn_75_7C44
-0x7C80	0x578	CSplitter	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_75_7C80
+0x7C80	0x578	CSplitter	-	static-init	B	-	marked	marked	fn_75_7C80
 0x81F8	0x8	CSplitter	-	virtual	B	lbl_75_data_CB8+E0	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_81F8
 0x8200	0x8	CSplitter	-	virtual	H	lbl_75_data_CB8+AC	same body as SpacePirate 0x5c (CAi::CanBeShot (CAi.hpp:44))	not-port	fn_75_8200
 0x8208	0x8	CSplitter	-	virtual	H	lbl_75_data_CB8+DC	same body as SpacePirate 0x40 (CPatterned::GetPointSearchPath (CPatterned.hpp:170))	not-port	fn_75_8208
 0x8210	0x24	REL runtime	RELExit	runtime	T	_epilog	REL exit (called by _epilog)	not-port	RELExit
 0x8234	0x20	REL runtime	RELMain	runtime	T	_prolog	REL entry (called by _prolog)	not-port	RELMain
 0x8254	0x5C	CSplitter	-	func	T	RELMain	RegisterFuncPtrs-style REL setup (only caller RELMain)	not-port	fn_75_8254
-0x82B0	0x364	CSplitter	-	func	B	fn_75_8254	module loader for the command module (SpacePirate LoadSpacePirate precedent)	not-port	fn_75_82B0
+0x82B0	0x364	CSplitter	-	func	B	fn_75_8254	marked	marked	fn_75_82B0
 0x8614	0x64	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_8614
 0x8678	0x20	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_8678
 0x8698	0x7C	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_8698
@@ -196,11 +196,11 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xAFE8	0x11C	CSplitter	-	func	B	fn_75_F0E8	marked	marked	fn_75_AFE8
 0xB104	0xD4	CSplitter	-	virtual	B	lbl_75_data_BC0+8	marked	marked	fn_75_B104
 0xB1D8	0xC8	CSplitter	-	virtual	B	lbl_75_data_BB4+8	marked	marked	fn_75_B1D8
-0xB2A0	0x2A0	CSplitter	-	virtual	B	lbl_75_data_BA8+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_B2A0
+0xB2A0	0x2A0	CSplitter	-	virtual	B	lbl_75_data_BA8+8	marked	marked	fn_75_B2A0
 0xB540	0x3C	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_B540
 0xB57C	0xF0	CSplitter	-	virtual	B	lbl_75_data_B9C+8	marked	marked	fn_75_B57C
 0xB66C	0xC	CSplitter	-	virtual	B	lbl_75_data_B90+8	marked	marked	fn_75_B66C
-0xB678	0x338	CSplitter	-	virtual	B	lbl_75_data_B84+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_B678
+0xB678	0x338	CSplitter	-	virtual	B	lbl_75_data_B84+8	marked	marked	fn_75_B678
 0xB9B0	0xF8	CSplitter	-	virtual	B	lbl_75_data_B78+8	marked	marked	fn_75_B9B0
 0xBAA8	0x118	CSplitter	-	virtual	B	lbl_75_data_B6C+8	marked	marked	fn_75_BAA8
 0xBBC0	0xB0	CSplitter	-	virtual	B	lbl_75_data_B60+8	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_BBC0
@@ -276,7 +276,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xEA70	0x94	CSplitter	-	virtual	B	lbl_75_data_CB8+B0	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_EA70
 0xEB04	0xF0	CSplitter	-	virtual	B	lbl_75_data_CB8+98	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_EB04
 0xEBF4	0xB0	CSplitter	-	virtual	B	lbl_75_data_CB8+9C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_EBF4
-0xECA4	0x280	CSplitter	-	virtual	B	lbl_75_data_CB8+84	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_ECA4
+0xECA4	0x280	CSplitter	-	virtual	B	lbl_75_data_CB8+84	marked	marked	fn_75_ECA4
 0xEF24	0x20	CSplitter	-	virtual	B	lbl_75_data_CB8+40	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_EF24
 0xEF44	0x20	CSplitter	-	virtual	H	lbl_75_data_CB8+28	same body in 3 other modules (CommandoPirate,ElitePirate,MinorIng)	not-port	fn_75_EF44
 0xEF64	0x20	CSplitter	-	virtual	H	lbl_75_data_CB8+24	same body in 3 other modules (MinorIng,Sandworm,SwampBossStage2)	not-port	fn_75_EF64
@@ -291,7 +291,7 @@ offset	size	owner	name	kind	class	callers	counterpart_or_proof	port	symbol
 0xFC10	0x148	CSplitter	-	func	H	fn_75_FB30 fn_75_FD58	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_FC10
 0xFD58	0x110	CSplitter	-	func	H	fn_75_82B0	loader parameter plumbing for the SLdr structs (Splitter_helpers.md lists no B row for it); the port reads properties through the upstream SLdr class	not-port	fn_75_FD58
 0xFE68	0x68	CSplitter	-	func	T	-	unreferenced: no bl/b, no table, no address in the module	not-port	fn_75_FE68
-0xFED0	0x8A8	CSplitter	-	static-init	B	-	static initialiser (.ctors entry) that builds the FSM state/trigger table: the port builds the same table (MinorIng fn_44_ABCC precedent)	not-port	fn_75_FED0
+0xFED0	0x8A8	CSplitter	-	static-init	B	-	marked	marked	fn_75_FED0
 0x10778	0x64C	CSplitter	-	virtual	B	lbl_75_data_E34+2C	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10778
 0x10DC4	0x12C	CSplitter	-	virtual	B	lbl_75_data_E34+14	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10DC4
 0x10EF0	0x2C	CSplitter	-	virtual	B	lbl_75_data_E34+28	unique to the module and referenced (table/vtable): module behaviour, port body pending	not-port	fn_75_10EF0
