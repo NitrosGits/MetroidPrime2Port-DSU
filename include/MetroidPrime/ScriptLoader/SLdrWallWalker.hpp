@@ -40,6 +40,7 @@ struct SLdrWallWalker {
   SLdrCameraShakerData projectileExplosionShaker; // 0x22bbdd0a
 };
 
+// @ fn_85_1790
 inline SLdrWallWalker::SLdrWallWalker()
 : editorProperties()
 , patterned()

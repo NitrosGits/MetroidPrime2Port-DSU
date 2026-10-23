@@ -20,6 +20,7 @@
 #include "Kyoto/Math/CMath.hpp"
 #include "Kyoto/Math/CRelAngle.hpp"
 
+// @ fn_85_3DD8
 CWallWalker::CWallWalker(TUniqueId uid, const rstl::string& name, CEntityInfo& info,
                          const CTransform4f& xf, const CModelData& mData,
                          const CActorParameters& actParms, const CPatternedInfo& pInfo,
@@ -52,6 +53,7 @@ CWallWalker::CWallWalker(TUniqueId uid, const rstl::string& name, CEntityInfo& i
   mWaypointNavigation.SetHorizontalMovement(true);
 }
 
+// @ fn_85_3D10
 CWallWalker::~CWallWalker() {}
 
 static CPatterned::StateMachine::SStateFunction skStates[] = {
@@ -81,6 +83,7 @@ static CPatterned::StateMachine::SCodeFunction skCodeFuncs[] = {
      static_cast< CPatterned::StateMachine::CodeFunc >(&CWallWalker::SetNumberShots)},
 };
 
+// @ fn_85_3C84
 void CWallWalker::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -147,6 +150,7 @@ void CWallWalker::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_85_3664
 void CWallWalker::LeftLegHitReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -165,6 +169,7 @@ void CWallWalker::LeftLegHitReaction(CStateManager& mgr, EStateMsg msg, float dt
   }
 }
 
+// @ fn_85_3484
 void CWallWalker::RightLegHitReaction(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -183,6 +188,7 @@ void CWallWalker::RightLegHitReaction(CStateManager& mgr, EStateMsg msg, float d
   }
 }
 
+// @ fn_85_32B8
 void CWallWalker::ShootProjectile(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -201,18 +207,22 @@ void CWallWalker::ShootProjectile(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_85_32AC
 bool CWallWalker::IsLeftLegHit(CStateManager& mgr, const CTriggerData& data) const {
   return mLeftLegHit;
 }
 
+// @ fn_85_32A0
 bool CWallWalker::IsRightLegHit(CStateManager& mgr, const CTriggerData& data) const {
   return mRightLegHit;
 }
 
+// @ fn_85_3280
 bool CWallWalker::AreBothLegsHit(CStateManager& mgr, const CTriggerData& data) const {
   return mLeftLegHit & mRightLegHit;
 }
 
+// @ fn_85_3178
 bool CWallWalker::ShouldShootProjectile(CStateManager& mgr, const CTriggerData& data) const {
   if (!mgr.CanCreateProjectile(GetUniqueId(), kWT_AI, 4)) {
     return false;
@@ -228,6 +238,7 @@ bool CWallWalker::ShouldShootProjectile(CStateManager& mgr, const CTriggerData& 
   return false;
 }
 
+// @ fn_85_313C
 void CWallWalker::SetNumberShots(CStateManager& mgr, float arg) {
   mNumShots = mgr.Random()->Range(1, 4);
 }
@@ -242,6 +253,7 @@ static const SSphereJointInfo skSphereJointList[] = {
     {"RightLeg_3", 2.f},
 };
 
+// @ fn_85_2C48
 void CWallWalker::SetupCollisionManager(CStateManager& mgr) {
   rstl::vector< CJointCollisionDescription > joints;
   joints.reserve(2);
@@ -267,6 +279,7 @@ void CWallWalker::SetupCollisionManager(CStateManager& mgr) {
   }
 }
 
+// @ fn_85_2BFC
 void CWallWalker::DestroyCollisionManager(CStateManager& mgr) {
   if (mCollisionActorManager.get() != nullptr) {
     mCollisionActorManager->Destroy(mgr);
@@ -299,6 +312,7 @@ void CWallWalker::UpdateCollisionManager(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_85_28B4
 void CWallWalker::Think(float dt, CStateManager& mgr) {
   if (!mExploded) {
     mProjectileTimer -= dt;
@@ -332,10 +346,12 @@ void CWallWalker::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_85_2894
 void CWallWalker::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   CPatterned::Death(mgr, direction, state);
 }
 
+// @ fn_85_2748
 static CVector3f RandomVectorInCone(CStateManager& mgr, float coneAngle, float minMagnitude,
                                     float maxMagnitude) {
   const float magnitude = (maxMagnitude - minMagnitude) * mgr.Random()->Float() + minMagnitude;
@@ -347,6 +363,7 @@ static CVector3f RandomVectorInCone(CStateManager& mgr, float coneAngle, float m
   return CVector3f(radius * CMath::FastCosR(theta), radius * CMath::FastSinR(theta), magnitude * z);
 }
 
+// @ fn_85_2340
 void CWallWalker::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Dead(mgr, msg, dt);
   switch (msg) {
@@ -378,6 +395,7 @@ void CWallWalker::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_85_221C
 void CWallWalker::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
                                   EUserEventType type, float dt) {
   bool handled = false;
@@ -396,6 +414,7 @@ void CWallWalker::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node,
   }
 }
 
+// @ fn_85_18DC
 void CWallWalker::LaunchProjectiles(const CTransform4f& xf, CStateManager& mgr) {
   float angle = 0.f;
   float angleStep = 0.f;
@@ -466,6 +485,7 @@ CEntity* LoadWallWalker(CStateManager& mgr, CInputStream& input, CEntityInfo& in
 #ifndef MONOLITHIC
 SWallWalker_FuncPtrs REL_loader_WallWalker;
 
+// @ fn_85_10C
 void SetRelLoaderFunctionToLoader() {
   REL_loader_WallWalker.mLoadWallWalker = LoadWallWalker;
   SetSWallWalker_FuncPtrs(&REL_loader_WallWalker);
