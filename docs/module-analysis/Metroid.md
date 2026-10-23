@@ -76,20 +76,35 @@ GetDamageMultiplier, SelectNewTarget, DisableSolidCollision, InterpolateToPosRot
 ComputeSuckTargetPosRot, GetCollisionPrimitive, StateOver, ShotAt, SpotPlayer, ShouldWallHang,
 ShouldDodge, SetupStateMachine, FaceHugVulnerability.
 
-Near-complete, not marked (gcov line:arm untaken):
+## Coverage (met2, 2026-10-23): the arms met1 left
+
+Build and report as in met1 ("Coverage (met1)"); the merged profile is runs `met2_a` (arms +
+`metroid_arms.con`), `met2_b` (`metroid_arms2.con`), `met2_c` (testtube, `metroid_patrol.con`),
+`met2_d` (`metroid_target.con`), `met2_e` (`metroid_attach.con`), and the forced ones
+(`tools/cov/force.sh`, `COV_GDB_SCRIPT=tools/cov/cov_force.py`, spec `tools/cov/specs/metroid_force*.py`,
+drivers `metroid_force.con`, `metroid_force2.con`, `metroid_suck.con`). Every row below ends
+`ALL-ARMS` in that profile.
+
+| function | arms (forced in bold where the fight cannot take it) |
+|---|---|
+| `fn_40_4E44` WallHang | msg switch default (`statecall u0547 WallHang 3`), then Zero -> One -> Two; the `mState` switch default is `mState == kAiState_Over`, which the state body never sets itself: `fsm u0547 Dodge` writes Over, then `statecall u0547 WallHang 1` (**forced (statecall)**) |
+| `fn_40_3B18` DetachFromTarget | player arm (unmorphed, `statecall u0547 Attack 2`), **morphed arm (`press x` then `statecall u0547 Attack 2`: the quaternion/`GetAimPosition` branch)**, and the **pirate arm**: `place u0539 366 -279 3; fsm u0539 Attack` latches u04d8, `statecall u0539 Attack 2` detaches it (`pirate->GetAttachedActor() == GetUniqueId()`) |
+| `fn_40_3DCC` AttachToTarget | true arm (latch on the player) and **false arm (`statecall u0547 Attack 0` while the player already holds u0547: `AttachActorToPlayer` refuses**, `metroid_attach.con`) |
+| `fn_40_3E88` SwarmRemove | true path twice over (team member deleted; `kill`/`send Deactivate`), then **the three early-outs forced**: `mTeamAiManagerId` = kInvalidUniqueId, = an id no object has, = u0554 (the area's other team, which does not hold the metroid) — `tools/cov/specs/metroid_force.py` |
+| `fn_40_4300` PreDamageSpacePirate | true path (met1), IsPirateValidTarget false (u053d's Attack on the pirate u0539 holds), **no target and not-a-pirate forced** (`mAttackTarget` = kInvalidUniqueId, = 0x0fff; `metroid_force.py`). The fourth early return (`AttachActorToPirate` false) is **dead**: fn_72_E0D8 returns false only when the pirate's 0xa84 is not kInvalidUniqueId (0xE0DC-0xE0E8, 0xE118), and IsPirateValidTarget has just required 0xa84 == kInvalidUniqueId (fn_40_471C-0x4728, 0x4360-0x4368), with no write in between |
+| `fn_40_44EC` GetGrowthStage | 1.f/2.f arms naturally; **the 3.f arm forced**: every MTDA placement on the disc has 1 hp, so the growth energy never reaches the explosion threshold — `mGrowthEnergy` written at `GetDamageMultiplier`'s entry while a metroid drains the player (`metroid_force5.py`, driver `metroid_suck.con`; the drain inlines GetGrowthStage, so the body is reached through the multiplier) |
+| `fn_40_47AC` SetPatrolDest | false arm (no patrol path, `codecall u0547 SetPatrolDest` in 08_sand_casualpirates) and **true arm in 09_sand_testtubepuzzle_dark L4 (`codecall u05f8 SetPatrolDest`; its MTDA placements have a kSS_Patrol/kSM_Follow connection, the casual pirates' have none — a full disc scan of every MREA: 26 MTDA placements, 18 with that connection)** |
+| `fn_40_5AC0` SelectTarget | msg default and `mState` default (`statecall u0547 SelectTarget 3` / `1` with Over), One -> Two with a target (`place u0547 player 2; fsm u0547 SelectTarget`), **Two with no target forced (`mAttackTarget` = kInvalidUniqueId while `mState` == Two, `metroid_force2.py`) and Two with a target id that is no object (`0x0fff`, `metroid_force3.py`)** |
+| `fn_40_1698` GetOrigin | the team manager's PositionTeam asks for it (mode 0); player target unmorphed and morphed, the **zero-direction arm (`place u0547 player 0`, exactly on the player, so `(this - player).ToVec2f()` cannot be normalized**, `metroid_arms2.con`), the pirate target arm, and **the same zero direction on the pirate arm: player teleported away, `place u04d8` and `place u0547` on the same point (`metroid_force.con`)** |
+
+Still not marked:
 
 | function | untaken |
 |---|---|
-| WallHang | 520:3/4 msg switch default, 528:3/4 mState default (not provably dead) |
-| DetachFromTarget | 724:0/2 |
-| AttachToTarget | 598:1/2 |
-| SetPatrolDest | 746:0/2 |
-| GetGrowthStage | 584:1/2 |
-| SelectTarget | 830:1/2, 831:1/2 |
-| GetOrigin | 910:1/2 |
-| SwarmRemove | 348:1/2 |
 | GetDamageVulnerability() | 170:3/4, 173:0/2 |
 | DoUserAnimEvent | 198:0/2 |
-| PreDamageSpacePirate | 612:0/2, 616:0/2 (622:0/2 dead) |
 
 Never ran: Leash, CanBeIngPossessed, all of CBabyMetroid (no spawn known).
+
+Marked by met2: SwarmRemove, WallHang, GetGrowthStage, AttachToTarget, PreDamageSpacePirate,
+DetachFromTarget, SetPatrolDest, SelectTarget, GetOrigin (Metroid 33/167 marked).

@@ -1,0 +1,18 @@
+# Agon 08_sand_casualpirates layers 6+7: AttachToTarget's false return. The player is taken away
+# from the pirates and a metroid latches on; the second Attack Activate then asks the player to
+# take this metroid again, and AttachActorToPlayer refuses while the player already holds one.
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give missile 20
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate; send u0538 Activate
+@f600 tp 300 -300 0
+@f620 place u0547 player 2; fsm u0547 SelectTarget
+@f650 place u0547 player 2; fsm u0547 Attack
+@f700 obj u0547
+@f720 statecall u0547 Attack 0
+@f760 obj u0547; status
+@f800 statecall u0547 Attack 0
+@f840 obj u0547
+@f900 place u0538 player 2; fsm u0538 SelectTarget
+@f950 statecall u0538 Attack 0
+@f1000 obj u0538; obj u0547

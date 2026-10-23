@@ -1,0 +1,33 @@
+# Agon 08_sand_casualpirates layers 6+7: SelectTarget's Two-state arms.  Two needs the body in the
+# generate animation with a valid target (the SetTargetVector arm, taken), then the target deleted
+# (the cast arm's false side) and then no target at all (the "is there a target" false side) while
+# mState is still Two; the cycle is repeated because Two lasts only while the body is Generating.
+@f300 layer 6
+@f340 layer 7
+@f560 god 1; give morphBall 1; give missile 20
+@f580 send u0547 Activate; send u053d Activate; send u0539 Activate; send u0538 Activate; send u0535 Activate
+@f600 objs pirate
+@f620 place u04d8 355.43 -240.26 3.79; place u0547 355.43 -240.26 3.79
+@f650 fsm u0547 SelectTarget
+@f900 obj u0547
+@f950 send u04d8 Delete
+@f1000 obj u0547; obj u04d8
+@f1050 codecall u0547 SetPatrolDest
+@f1080 statecall u0547 SelectTarget 1
+@f1110 statecall u0547 SelectTarget 1
+@f1140 obj u0547
+@f1200 place u0547 player 2; fsm u0547 SelectTarget
+@f1400 send u0547 Alert
+@f1500 codecall u0547 SetPatrolDest
+@f1530 statecall u0547 SelectTarget 1
+@f1560 statecall u0547 SelectTarget 1
+@f1600 obj u0547; status
+@f1700 place u0547 player 2; fsm u0547 SelectTarget
+@f1800 codecall u0547 SetPatrolDest
+@f1830 statecall u0547 SelectTarget 1
+@f1860 statecall u0547 SelectTarget 1
+@f1900 obj u0547
+@f2000 place u0547 player 2; fsm u0547 SelectTarget
+@f2100 codecall u0547 SetPatrolDest
+@f2130 statecall u0547 SelectTarget 1
+@f2200 obj u0547; status
