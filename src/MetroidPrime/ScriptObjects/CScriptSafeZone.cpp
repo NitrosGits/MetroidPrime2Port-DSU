@@ -204,13 +204,7 @@ void CScriptSafeZone::Think(float dt, CStateManager& mgr) {
   if (GetActive()) {
     if (mgr.GetIsDarkWorld()) {
       if (mActivation < 1.f) {
-#ifdef TARGET_PC
-        // fn_66_3A40 0x3B80 fcmpo f0(1.0),f1(new); 0x3B84 bge -> new: (1 < new) ? 1 : new, so a
-        // NaN step keeps the new value.
-        mActivation = rstl::min_val((1.f / mActivationTime) * dt + mActivation, 1.f);
-#else
         mActivation = rstl::min_val(1.f, (1.f / mActivationTime) * dt + mActivation);
-#endif
         changed = true;
       } else if (mShellPulse > 0.f) {
         mShellPulse = rstl::max_val(mShellPulse - (1.f / mActivationTime) * dt, 0.f);
