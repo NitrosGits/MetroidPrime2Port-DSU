@@ -14,6 +14,7 @@
 
 #include <math.h>
 
+// @ fn_60_9B10
 CScriptGuiSlider::CScriptGuiSlider(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                    int controller, const rstl::string& label, bool locked,
                                    float minValue, float maxValue, float increment,
@@ -134,11 +135,13 @@ void CScriptGuiSlider::Think(float dt, CStateManager& mgr) {
   mSlideRequested = false;
 }
 
+// @ fn_60_95E0
 void CScriptGuiSlider::StartIncrease(CStateManager& mgr) {
   mSlideState = kSS_Increasing;
   mSlideRequested = true;
 }
 
+// @ fn_60_95C8
 void CScriptGuiSlider::StartDecrease(CStateManager& mgr) {
   mSlideState = kSS_Decreasing;
   mSlideRequested = true;
@@ -220,6 +223,7 @@ void CScriptGuiSlider::UpdatePlatforms(CStateManager& mgr) {
   }
 }
 
+// @ fn_60_8E90
 CEntity* LoadGuiSlider(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGuiSlider sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrGuiSlider.inc"
@@ -233,4 +237,5 @@ CEntity* LoadGuiSlider(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
                                  sldrThis.slideSound, sldrThis.slideSoundVolume);
 }
 
+// @ fn_60_8E30
 CScriptGuiSlider::~CScriptGuiSlider() {}

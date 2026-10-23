@@ -46,7 +46,7 @@ private:
   TUniqueId mPrimaryPlatform;
   TUniqueId mSecondaryPlatform;
   int mSlideState;
-  bool mSlideRequested : 1;
+  bool mSlideRequested : 1; // 0x90 bit 0x80
   CSfxHandle mSlideSfxHandle;
   ushort mSlideSfx;
   int mSlideSfxVolume;

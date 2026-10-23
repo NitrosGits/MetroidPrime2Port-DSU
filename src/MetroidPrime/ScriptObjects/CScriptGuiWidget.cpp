@@ -8,6 +8,7 @@
 #include "MetroidPrime/ScriptLoader/SLdrGuiWidget.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+// @ fn_60_7BE0
 CScriptGuiWidget::CScriptGuiWidget(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                                    int controller, const rstl::string& label, bool locked)
 : CEntity(uid, info, name, 0)
@@ -131,6 +132,7 @@ bool CScriptGuiWidget::ProcessInput(const CFinalInput& input, CStateManager& mgr
   return false;
 }
 
+// @ fn_60_721C
 void CScriptGuiWidget::SetLocked(bool locked, CStateManager& mgr) {
   mLocked = locked;
   if (mLocked) {
@@ -149,11 +151,13 @@ void CScriptGuiWidget::AddController(int controller) {
   mControllers.push_back_unsafe(controller);
 }
 
+// @ fn_60_7190
 void CScriptGuiWidget::ClearControllers() {
   mControllers.clear();
   mActiveController = 0;
 }
 
+// @ fn_60_6FF0
 CEntity* LoadGuiWidget(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGuiWidget sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrGuiWidget.inc"
@@ -165,4 +169,5 @@ CEntity* LoadGuiWidget(CStateManager& mgr, CInputStream& input, CEntityInfo& inf
                                  sldrThis.widgetProperties.isLocked);
 }
 
+// @ fn_60_6F70
 CScriptGuiWidget::~CScriptGuiWidget() {}

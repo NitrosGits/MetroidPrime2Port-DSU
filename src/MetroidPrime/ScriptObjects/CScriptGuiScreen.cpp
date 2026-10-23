@@ -47,6 +47,7 @@ static inline float RoundToNearest(float value) {
   return value - lower < upper - value ? lower : upper;
 }
 
+// @ fn_60_62D0
 CScriptGuiFrontEndScreen::CScriptGuiFrontEndScreen(TUniqueId uid, const rstl::string& name,
                                                    const CEntityInfo& info, CAssetId stringTable)
 : CScriptGuiScreen(uid, name, info)
@@ -105,6 +106,7 @@ CScriptGuiFrontEndScreen::CScriptGuiFrontEndScreen(TUniqueId uid, const rstl::st
   CGameOptions::SetFrontEndActive(true);
 }
 
+// @ fn_60_6060
 CScriptGuiFrontEndScreen::~CScriptGuiFrontEndScreen() { CGameOptions::SetFrontEndActive(false); }
 
 void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
@@ -341,8 +343,13 @@ void CScriptGuiFrontEndScreen::CollectWidgets(CStateManager& mgr) {
     for (int i = 0; i < results.mPlayerCount; ++i) {
       const CGameState::SPlayerResult& player = results.mPlayers[i];
       SPlayerSetup& setup = mPlayerSetups[player.mPlayerSelection];
+#ifdef TARGET_PC
+      setup.mInvertMenu->SetSelection(player.xc_, mgr);
+      setup.mRumbleMenu->SetSelection(player.mRumbleEnabled, mgr);
+#else
       setup.mInvertMenu->SetSelection(player.mRumbleEnabled, mgr);
       setup.mRumbleMenu->SetSelection(player.xc_, mgr);
+#endif
       mgr.SendScriptMsg(setup.mJoinedSwitch, GetUniqueId(), kSM_Open, GetUniqueId());
       mgr.SendScriptMsg(setup.mReadySwitch, GetUniqueId(), kSM_Open, GetUniqueId());
       if (gameState->PreviousGameResults().mGameMode == CFrontEndGameMode::kSGM_Coin) {
@@ -463,8 +470,10 @@ void CScriptGuiFrontEndScreen::AcceptScriptMsg(CStateManager& mgr, const CScript
   }
 }
 
+// @ fn_60_424C
 void CScriptGuiFrontEndScreen::PreRender(CStateManager& mgr) { mgr.RenderLastHUD(GetUniqueId()); }
 
+// @ fn_60_4220
 void CScriptGuiFrontEndScreen::Render(const CStateManager& mgr) const {
   if (CSaveGameScreen* saveScreen = mgr.mSaveGameScreen.get()) {
     saveScreen->Draw();
@@ -576,6 +585,7 @@ void CScriptGuiFrontEndScreen::StartSelectedGame(CStateManager& mgr) {
   mgr.SendScriptMsg(mSaveSlots[mSelectedSlot].mSlotEntity, GetUniqueId(), kSM_Open);
 }
 
+// @ fn_60_312C
 void CScriptGuiFrontEndScreen::RefreshSaveSlots(CStateManager& mgr) {
   UpdateSaveSlots(mgr);
   UpdateUnlocks(mgr);
@@ -683,6 +693,7 @@ void CScriptGuiFrontEndScreen::UpdateUnlocks(CStateManager& mgr) {
                     galleriesUnlocked ? kSM_Activate : kSM_Deactivate, GetUniqueId());
 }
 
+// @ fn_60_2908
 void CScriptGuiFrontEndScreen::OpenSaveGameScreen(CStateManager& mgr) {
   if (mgr.mSaveGameScreen.get() == nullptr) {
     mgr.CreateSaveGameScreen();
@@ -1003,6 +1014,7 @@ void CScriptGuiFrontEndScreen::CopySelectedGame(CStateManager& mgr) {
   saveScreen->CopyGame(mSelectedSlot, target);
 }
 
+// @ fn_60_1234
 void CScriptGuiFrontEndScreen::EraseSelectedGame(CStateManager& mgr) {
   mgr.mSaveGameScreen->EraseGame(mSelectedSlot);
 }
@@ -1073,6 +1085,7 @@ void CScriptGuiFrontEndScreen::UpdateSoundVolumes() {
   }
 }
 
+// @ fn_60_EB4
 void CScriptGuiFrontEndScreen::SetPercentText(CScriptTextPane* pane, float value) {
   char buf[16];
   sprintf(buf, "%02d", static_cast< int >(RoundToNearest(100.f * value)));
@@ -1085,6 +1098,7 @@ void CScriptGuiFrontEndScreen::ShowSlideShow(CStateManager& mgr) {
                                         sSlideShowDrawPriority, rs_new CSlideShow()));
 }
 
+// @ fn_60_BD0
 CScriptGuiScreen::CScriptGuiScreen(TUniqueId uid, const rstl::string& name, const CEntityInfo& info)
 : CActor(uid, name, info, 0, CTransform4f::Identity(), CModelData::CModelDataNull(),
          CMaterialList(), CActorParameters::None(), kInvalidUniqueId) {}

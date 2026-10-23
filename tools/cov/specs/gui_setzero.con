@@ -1,0 +1,15 @@
+@f100 send e6 SetToZero
+@f160 objs GuiMenu
+@f161 objs GuiWidget
+@f170 send eed SetToZero
+@f230 objs GuiMenu
+@f231 objs GuiWidget
+@f232 objs GuiPlayer
+@f300 press a
+@f360 objs GuiMenu
+@f400 press down
+@f440 press a
+@f500 objs GuiMenu
+@f501 objs GuiSlider
+@f600 press b
+@f660 objs GuiMenu
