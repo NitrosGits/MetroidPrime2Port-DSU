@@ -71,11 +71,22 @@ inline SLdrDestructibleBarrier::SLdrDestructibleBarrier()
   unknown_0x2e11003d = 4;
   unknown_0x409d1b7c = 1;
   unknown_0x92485dfa = 1;
+#ifdef TARGET_PC
+  // fn_13_C1C (__ct__23SLdrDestructibleBarrier): -1 (no sound) in the five sound ids at
+  // +0x8C..+0x9C (0xC38 li r0,-0x1; 0xC84 0xC88 0xC8C 0xC90 0xC94 stw r0). The other stores
+  // (3 at +0x38, CColor(1,1,1,1) at +0x228, 0xF at +0x278) repeat the sub-ctors' defaults.
+  soundEffectOnChunkGenerated = -1;
+  soundEffectOnChunkDestroyed = -1;
+  soundEffectOnMoveDown = -1;
+  soundEffectOnMoveUp = -1;
+  soundEffectOnStop = -1;
+#else
   soundEffectOnChunkGenerated = 0;
   soundEffectOnChunkDestroyed = 0;
   soundEffectOnMoveDown = 0;
   soundEffectOnMoveUp = 0;
   soundEffectOnStop = 0;
+#endif
   unknown_0x605847b9 = 50.0f;
   unknown_0xcd9c67fe = 10.0f;
   unknown_0x0af428b4 = 10.0f;
