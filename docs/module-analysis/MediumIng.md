@@ -5,23 +5,31 @@ loader, the ctors and empty stubs; the port's bodies are in
 `src/MetroidPrime/Enemies/PortCMediumIng.cpp` (the upstream stubs they replace sit under
 `#ifndef TARGET_PC`). Function table: `MediumIng_functions.tsv` (class B/H/T, slice, marker).
 
-## Status (2026-10-23, slice 1 of 2, lane mi1)
+## Status (2026-10-23, lanes mi1 + mi2 + mi3)
 
-- Slice 1 (the non-state bodies) is in: CMediumIng Think, AcceptScriptMsg, PreRender, Render,
-  Touch, Death, UpdateCurrentSafeZone, UpdateMistEffect, CreateMistEffect, Listen, SetFlagE1,
-  CalculateSeparation and retail's unnamed helpers UpdateTimers 3274, ScanProjectileThreats 4644,
-  SetMistCollision 49CC, IsMistDecayed 5DC8, IsBlocked 5E0C, UpdateMistState 6078; the tentacle's
-  Think, PreRender, Touch, GetTouchBounds, GetProgress, Extend, Retract, UpdateShake.
-- 24 of 156 B functions marked: every slice-1 body that ran in play. Not marked: CalculateSeparation
-  2024 (only PathFind calls it, at 0x7374: slice 2). SetFlagE1 1B04 is T: nothing in the REL
-  references it.
-- Slice 2 (open): the FSM states SubStart..Dead, SelectTargetState, SelectTarget*, Set*Destination,
-  FindSafeZoneRetreatPoint, FindClosest*, and the unidentified fn_41_* helpers of the table.
-- Without slice 2, `mC1` (0xcfc 0x40, cleared by SubStart) stays set: the Ing is pre-render clipped,
-  CanBeShot is false, and the projectile scan and mist arms do not run. The console clears it:
-  `var <ing> ming.c1 0`. ArmAttack is what extends a tentacle; the console does its calls:
-  `var <tentacle> ming.extend 1` (Extend towards the player, one unit up) and
-  `var <tentacle> ming.retract 1` (Retract, then mRetracting as ArmAttack sets it at 0x41CC).
+- mi1 (slice 1, `PortCMediumIng.cpp`): Think, AcceptScriptMsg, PreRender, Render, Touch, Death,
+  the mist/safe-zone/listen bodies, CalculateSeparation and the helpers UpdateTimers 3274,
+  ScanProjectileThreats 4644, SetMistCollision 49CC, IsMistDecayed 5DC8, IsBlocked 5E0C,
+  UpdateMistState 6078; the tentacle. mi2 (slice 2, TARGET_PC in `CMediumIng.cpp`): every FSM
+  state, SelectTarget, Set*Destination, FindSafeZoneRetreatPoint, FindClosest*, the tentacle
+  helpers 4308/43E8/4470/4598 and the jump-route statics 6F18/6D08/6BFC.
+- mi3: one definition each for 49CC/5DC8/5E0C (mi1's kept; both equal to the asm); the states
+  played in area 46. 32 of 156 B functions marked; per-state open arms: `MediumIng_states.md`.
+- Unmarked bodies with open arms: most states (team-AI, jump-point, safe-zone-success and null
+  guards), CalculateSeparation 2024 (hx < hy, the zone loop). JumpRouteEstimate 6D08 /
+  SearchJumpRoute 6BFC never ran: area 46 has no AiJumpPoint.
+- Death runs more than once per kill, as in retail: 1B18 has no guard (CPatterned::Death, then
+  RemoveEmitter 0xce8/0xcec, AddMaterial 0x25) and CPatterned::Death guards on mAlive. The first
+  call comes from CStateManager::ApplyLocalDamage (mAlive 1); later ones (mAlive 0) come from
+  CPatterned::KnockBack under projectile damage while the dead Ing is still shot (gdb
+  `$_any_caller_matches(".*KnockBack", 12)`: 27 of 28 in the forced run).
+- Dead 30B0 deletes only through DeathDelete when the body state is kAS_Death (0x31D0) or when
+  the mist effect drains (mE1). A console kill (`damage <id> 999` without knockback) leaves the
+  Ing in Dead indefinitely; a shot kill gets it deleted. Treat the console case as a harness
+  artefact.
+- asmcheck: the bitfield run mC0..mE2 (0xCFC..0xCFE, MSB first: mC0 = 0xCFC 0x80) has no stated
+  anchor in the upstream header, so every bit is NOPOS/BIT. Checked by hand for the marked
+  states.
 
 ## Where it spawns
 
@@ -67,6 +75,20 @@ death, kept by the lane in `/tmp/opencode/mi1-shots/`.
 | 91B0 | T Touch | mCanDamage 1 (400 cap) | mCanDamage 0 (early return) |
 | 9A34 / 9CE0 / 9ED0 | T Extend / Retract / UpdateShake | 2 / 2 / 2 | - |
 | 2024 | CalculateSeparation | not run | slice 2 (PathFind) |
+
+## States run (mi3)
+
+    BUILD=$PWD/build-port-cov tools/cov/run.sh tools/cov/specs/mediuming_states.py <out> \
+      3bfa3eff,02_temple_exploration_dark --con tools/cov/specs/mediuming_play.con \
+      --fast --frames 6000 --env MP2_GODMODE=1      # natural; forced: mediuming_forced{,2}.con
+    tools/cov/gcov_report.py build-port-cov <out>/gcov ... --module MediumIng
+
+Exit 0, `caught`/`reach-stub` 0, no NaN. Natural play reaches SubStart, MistIn, PathFind,
+ArmAttack (tentacles extend), MeleeAttack, Jump, Dash, Taunt, BackUp and WaitForLocomotion.
+`mediuming_forced.con` kills u0417 with charged shots (Dead, Death x2) and sends XENZ
+(SafezoneReaction). `mediuming_forced2.con` activates safe zone u0451 (crystal u0452), then
+MoveToSafeZone, MistAttack, Follow*Pattern, Idle and SelectTargetState via `fsm`, a leash teleport
+to area 40, and mist states 1 and 4. Screenshots: `/tmp/opencode/mi3-shots/`.
 
 ## Port notes
 
