@@ -672,39 +672,6 @@ void CMediumIng::FaceTarget(CStateManager& mgr, float dt) {
   BodyController()->FaceDirection(mgr.GetPlayer(0)->GetTranslation() - GetTranslation(), dt);
 }
 
-void CMediumIng::UpdateCollisionFilter(bool solid) {
-  CMaterialFilter filter = GetMaterialFilter();
-  if (solid) {
-    filter.IncludeList().Add(kMT_Solid);
-    filter.ExcludeList().Remove(CMaterialList(kMT_Player, kMT_Projectile, kMT_Bomb));
-  } else {
-    filter.IncludeList().Remove(kMT_Solid);
-    filter.ExcludeList().Add(CMaterialList(kMT_Player, kMT_Projectile, kMT_Bomb));
-  }
-  SetMaterialFilter(filter);
-}
-
-bool CMediumIng::ShouldUseWideSearch() const {
-  // 0x5DEC fcmpo + blt: |mF64 - 0| < 1e-5 (rodata_8C), else the C7 bit (0x5DF8 clrlwi. 31).
-  return CMath::AbsF(mF64 - 0.f) < 0.00001f || mC7;
-}
-
-bool CMediumIng::IsSweepBlocked(CStateManager& mgr, const CVector3f& delta) {
-  // 0x5E34/0x5E48: data_5A0 = 0x20 (Player), data_5A4 = 0x3C (NoPlatformCollision); kFT_Include.
-  const CMaterialFilter filter =
-      CMaterialFilter::MakeInclude(CMaterialList(kMT_Player, kMT_NoPlatformCollision));
-  const CTransform4f moved = CTransform4f::Translate(delta) * GetPrimitiveTransform();
-  CAABox box = GetCollisionPrimitive()->CalculateAABox(GetPrimitiveTransform());
-  const CAABox movedBox = GetCollisionPrimitive()->CalculateAABox(moved);
-  box.AccumulateBounds(movedBox.GetMinPoint()); // 0x5F74
-  box.AccumulateBounds(movedBox.GetMaxPoint()); // 0x5F80
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
-  mgr.BuildNearList(nearList, box, filter, this);
-  const CCollidableAABox collidable(box, GetMaterialList());
-  return CGameCollision::DetectCollisionBoolean(mgr, collidable, CTransform4f::Identity(), filter,
-                                                nearList);
-}
-
 void CMediumIng::ExtendTentacle(CStateManager& mgr, int index) {
   if (index < 0 || index >= mTentacleIds.size()) { // 0x4330, 0x433C
     return;
@@ -757,7 +724,7 @@ void CMediumIng::SubStart(CStateManager& mgr, EStateMsg msg, float dt) {
     mC1 = true;         // 0x73DC 0xCFC |= 0x40
     mE2 = false;        // 0x73F0 0xCFE &= ~0x20
     SetMovable(false);  // 0x73FC 0x168 &= ~0x80
-    UpdateCollisionFilter(false);
+    SetMistCollision(false);
     RemoveMaterial(kMT_Orbit, kMT_Target, kMT_Solid, mgr); // 0x7410 0x29 0x28 0x3B
     SetMuted(true);
     break;
@@ -777,7 +744,7 @@ void CMediumIng::PathFind(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
     mC4 = false; // 0x7314 0xCFC &= ~0x08
-    if (ShouldUseWideSearch()) {
+    if (IsMistDecayed()) {
       GetSearchPath()->SetFlags(0x30b); // 0x7340
     } else {
       GetSearchPath()->SetFlags(0x303); // 0x7360
@@ -829,7 +796,7 @@ void CMediumIng::MistIn(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
     AddMaterial(kMT_Orbit, kMT_Target, kMT_Solid, mgr); // 0x58C8 0x29 0x28 0x3B
-    UpdateCollisionFilter(true);
+    SetMistCollision(true);
     mC0 = true; // 0x58EC 0xCFC |= 0x80
     mV78 = GetTranslation();
     mAnimationState.SetState(CAnimationState::kAS_Ready); // 0x590C
@@ -1104,7 +1071,7 @@ void CMediumIng::Jump(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   case kStateMsg_Update:
     // 0x57CC rodata_78 = 0.25
-    mC7 = IsSweepBlocked(mgr, PredictLinearMotion(0.25f).GetTranslation()); // 0x5818/0x582C
+    mC7 = IsBlocked(mgr, PredictLinearMotion(0.25f).GetTranslation()); // 0x5818/0x582C
     if (!mInPosition) { // 0x5838
       ApproachDest(mgr);
     }
@@ -1249,7 +1216,7 @@ void CMediumIng::MoveToSafeZone(CStateManager& mgr, EStateMsg msg, float dt) {
     break;
   }
   case kStateMsg_Update:
-    mC7 = IsSweepBlocked(mgr, PredictLinearMotion(0.25f).GetTranslation()); // 0x530C rodata_78
+    mC7 = IsBlocked(mgr, PredictLinearMotion(0.25f).GetTranslation()); // 0x530C rodata_78
     if (!mInPosition) { // 0x5380
       ApproachDest(mgr);
     }
@@ -1286,7 +1253,7 @@ void CMediumIng::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
     RemoveMaterial(kMT_Orbit, kMT_Target, mgr); // 0x30F4 0x29 0x28
-    UpdateCollisionFilter(true);
+    SetMistCollision(true);
     break;
   case kStateMsg_Update: {
     Stop();

@@ -191,12 +191,15 @@ void CMediumIng::ScanProjectileThreats(CStateManager& mgr, float dt) {
 
 // @ fn_41_5DC8
 bool CMediumIng::IsMistDecayed() const {
+  // 0x5DEC fcmpo + blt: |mF64 - 0| < 1e-5 (rodata_40 0, rodata_8C), else the C7 bit (0x5DF8).
   return CMath::AbsF(mF64) < 1e-5f || mC7; // rodata_8C
 }
 
 // @ fn_41_49CC
 void CMediumIng::SetMistCollision(bool solid) {
   CMaterialFilter filter = GetMaterialFilter();
+  // 0x49F8 lis 0x800 on the high word = 1ull << 59 (kMT_Solid); data_5A8/5AC/5B0 (and
+  // 0x5B4/5B8/5BC) = 0x20 Player, 0x23 Projectile, 0x24 Bomb.
   const CMaterialList passThrough(kMT_Player, kMT_Projectile, kMT_Bomb);
   if (solid) {
     filter.IncludeList().Add(kMT_Solid);
@@ -210,6 +213,7 @@ void CMediumIng::SetMistCollision(bool solid) {
 
 // @ fn_41_5E0C
 bool CMediumIng::IsBlocked(CStateManager& mgr, const CVector3f& offset) {
+  // 0x5E34/0x5E48: data_5A0 = 0x20 (Player), data_5A4 = 0x3C (NoPlatformCollision); kFT_Include.
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(
       CMaterialList(kMT_Player, kMT_NoPlatformCollision));
   const CCollisionPrimitive* prim = GetCollisionPrimitive();

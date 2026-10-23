@@ -303,9 +303,6 @@ private:
   bool mE2 : 1;
 #ifdef TARGET_PC
   // Guessed names: unnamed retail helpers the states call (fn_41_<off>).
-  void UpdateCollisionFilter(bool solid);                            // fn_41_49CC
-  bool ShouldUseWideSearch() const;                                  // fn_41_5DC8
-  bool IsSweepBlocked(CStateManager& mgr, const CVector3f& delta);   // fn_41_5E0C
   void ExtendTentacle(CStateManager& mgr, int index);                // fn_41_4308
   void RetractTentacles(CStateManager& mgr);                         // fn_41_43E8
   void PositionTentacles(CStateManager& mgr);                        // fn_41_4470
