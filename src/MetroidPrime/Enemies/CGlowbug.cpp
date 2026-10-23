@@ -43,6 +43,7 @@ static CPatterned::StateMachine::SStateFunction skStates[] = {
     {"Dead", static_cast< CPatterned::StateMachine::StateFunc >(&CGlowbug::Dead)},
 };
 
+// @ fn_26_2140
 CGlowbug::CGlowbug(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                    const CTransform4f& xf, const CModelData& modelData,
                    const CPatternedInfo& patternedInfo, const CActorParameters& actorParams,
@@ -104,8 +105,10 @@ CGlowbug::CGlowbug(TUniqueId uid, const rstl::string& name, const CEntityInfo& i
       rstl::vector< CAssetId >(), rstl::vector< CAssetId >()));
 }
 
+// @ fn_26_0
 CGlowbug::~CGlowbug() {}
 
+// @ fn_26_20D4
 void CGlowbug::SetupStateMachine(CStateManager& mgr) {
   StateMachine* stateMachine = mStateMachine.get();
   CPatterned::SetupStateMachine(mgr);
@@ -113,6 +116,7 @@ void CGlowbug::SetupStateMachine(CStateManager& mgr) {
   stateMachine->SetStateFunctions(skStates, ARRAY_SIZE(skStates));
 }
 
+// @ fn_26_1F68
 void CGlowbug::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   switch (msg.GetMessage()) {
   case kSM_AreaLoaded: {
@@ -142,6 +146,7 @@ void CGlowbug::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   CPatterned::AcceptScriptMsg(mgr, msg);
 }
 
+// @ fn_26_1AE4
 void CGlowbug::Think(float dt, CStateManager& mgr) {
   CPatterned::Think(dt, mgr);
   mCurDamageRemTime = rstl::max_val(mCurDamageRemTime - dt, 0.f);
@@ -187,10 +192,13 @@ void CGlowbug::Think(float dt, CStateManager& mgr) {
   }
 }
 
+// @ fn_26_19C0
 void CGlowbug::PreRender(CStateManager& mgr) { CPatterned::PreRender(mgr); }
 
+// @ fn_26_19A0
 void CGlowbug::AddToRenderer(const CStateManager& mgr) const { CPatterned::AddToRenderer(mgr); }
 
+// @ fn_26_19E0
 void CGlowbug::Render(const CStateManager& mgr) const {
   const int alpha = GetRenderAlphaBufferAlpha(mgr);
   if (alpha != -1) {
@@ -208,6 +216,7 @@ void CGlowbug::Render(const CStateManager& mgr) const {
   }
 }
 
+// @ fn_26_151C
 void CGlowbug::Death(CStateManager& mgr, const CVector3f& direction, EScriptObjectState state) {
   BodyController()->SetLocomotionType(pas::kLT_Internal9);
   AnimationData()->SetEffectState(rstl::string_l(skGlowEffect), false, mgr);
@@ -218,8 +227,10 @@ void CGlowbug::Death(CStateManager& mgr, const CVector3f& direction, EScriptObje
   CPatterned::Death(mgr, direction, state);
 }
 
+// @ fn_26_F14
 bool CGlowbug::IsScanVisorSelfRender() const { return true; }
 
+// @ fn_26_EAC
 CAABox CGlowbug::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   if (mScanModel.IsNull()) {
     return CPatterned::GetScanVisorRenderBounds(mgr);
@@ -227,6 +238,7 @@ CAABox CGlowbug::GetScanVisorRenderBounds(const CStateManager& mgr) const {
   return mScanModel.GetBounds();
 }
 
+// @ fn_26_E50
 void CGlowbug::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
                                const CModelFlags& flags) const {
   if (!mScanModel.IsNull()) {
@@ -236,6 +248,7 @@ void CGlowbug::ScanVisorRender(const CStateManager& mgr, const CTransform4f& xf,
   }
 }
 
+// @ fn_26_10D4
 void CGlowbug::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -287,6 +300,7 @@ void CGlowbug::Dead(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_26_16FC
 void CGlowbug::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -301,6 +315,7 @@ void CGlowbug::Attack(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_26_1740
 void CGlowbug::AttackTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate: {
@@ -323,6 +338,7 @@ void CGlowbug::AttackTelegraph(CStateManager& mgr, EStateMsg msg, float dt) {
   }
 }
 
+// @ fn_26_18F8
 void CGlowbug::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   switch (msg) {
   case kStateMsg_Activate:
@@ -336,14 +352,17 @@ void CGlowbug::Patrol(CStateManager& mgr, EStateMsg msg, float dt) {
   CPatterned::Patrol(mgr, msg, dt);
 }
 
+// @ fn_26_160C
 bool CGlowbug::AttackTelegraphDelay(CStateManager& mgr, const CTriggerData& data) const {
   return mStateMachine->GetTime() > mAttackTelegraphDuration;
 }
 
+// @ fn_26_1658
 bool CGlowbug::AttackFinished(CStateManager& mgr, const CTriggerData& data) const {
   return mStateMachine->GetTime() > mAttackDuration;
 }
 
+// @ fn_26_16A4
 bool CGlowbug::ShouldAttack(CStateManager& mgr, const CTriggerData& data) const {
   return mAttackTargetId != kInvalidUniqueId && mCurDamageRemTime == 0.f;
 }
@@ -352,6 +371,7 @@ bool CGlowbug::AnimOver(CStateManager& mgr, const CTriggerData& data) const {
   return CPatterned::AnimOver(mgr, data);
 }
 
+// @ fn_26_F7C
 void CGlowbug::FindAttackTarget(CStateManager& mgr) {
   mAttackTargetId = kInvalidUniqueId;
   float bestScore = FLT_MAX;
@@ -371,10 +391,12 @@ void CGlowbug::FindAttackTarget(CStateManager& mgr) {
   }
 }
 
+// @ fn_26_F1C
 bool CGlowbug::IsInRange(const CActor& other, float range) const {
   return (other.GetTranslation() - GetTranslation()).MagSquared() < range * range;
 }
 
+// @ fn_26_4C8
 CEntity* LoadGlowbug(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrGlowbug sldrThis;
 #include "MetroidPrime/ScriptLoader/SLdrGlowbug.inc"
@@ -398,13 +420,16 @@ CEntity* LoadGlowbug(CStateManager& mgr, CInputStream& input, CEntityInfo& info)
 }
 
 #ifndef MONOLITHIC
+// @ fn_26_498
 static void SetFuncPtrs() {
   static SGlowbug_FuncPtrs funcPtrs;
   funcPtrs.mLoader = &LoadGlowbug;
   SetSGlowbug_FuncPtrs(&funcPtrs);
 }
 
+// @ fn_26_478
 extern "C" void RELMain() { SetFuncPtrs(); }
 
+// @ fn_26_454
 extern "C" void RELExit() { SetSGlowbug_FuncPtrs(nullptr); }
 #endif

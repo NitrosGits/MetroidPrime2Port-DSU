@@ -1,0 +1,78 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_26_0	D8	B	CGlowbug::~CGlowbug	gb2	upstream body (CGlowbug)	yes
+000D8	fn_26_D8	1E4	H	CPatterned::~CPatterned	-	weak copy / template instance	no
+002BC	fn_26_2BC	94	H	__dt__14CAiKnockBackMgrFv	-	weak copy / template instance	no
+00350	fn_26_350	3C	H	CPatterned::GetTouchBounds	-	weak copy / template instance	no
+0038C	fn_26_38C	10	H	CPatterned::TakeDamage	-	weak copy / template instance	no
+0039C	fn_26_39C	8	H	CPatterned::GetModelAlphau8	-	weak copy / template instance	no
+003A4	fn_26_3A4	8	H	CPatterned::ProjectileInfo	-	weak copy / template instance	no
+003AC	fn_26_3AC	8	H	CPatterned::GetSearchPath	-	weak copy / template instance	no
+003B4	fn_26_3B4	8	H	CPatterned::GetPointSearchPath	-	weak copy / template instance	no
+003BC	fn_26_3BC	8	H	CPatterned::GetRagDoll	-	weak copy / template instance	no
+003C4	fn_26_3C4	10	H	CPatterned::GetAttackTarget	-	weak copy / template instance	no
+003D4	fn_26_3D4	C	H	CPatterned::IsOnGround	-	weak copy / template instance	no
+003E0	fn_26_3E0	C	H	CPatterned::GetGravityConstant	-	weak copy / template instance	no
+003EC	fn_26_3EC	8	H	CPatterned::GetDeathExplosionParticle	-	weak copy / template instance	no
+003F4	fn_26_3F4	8	H	CAi::CanBeShot	-	weak copy / template instance	no
+003FC	fn_26_3FC	8	H	CAi::IsListening	-	weak copy / template instance	no
+00404	fn_26_404	8	H	CAi::Listen	-	weak copy / template instance	no
+0040C	fn_26_40C	1C	H	CAi::GetOrigin	-	weak copy / template instance	no
+00428	fn_26_428	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+00454	fn_26_454	24	T	RELExit	gb2	REL runtime (module entry)	yes
+00478	fn_26_478	20	T	RELMain	gb2	REL runtime (module entry)	yes
+00498	fn_26_498	30	B	SetFuncPtrs	gb2	upstream body (CGlowbug)	yes
+004C8	fn_26_4C8	4E8	B	LoadGlowbug	gb2	upstream body (CGlowbug)	yes
+009B0	fn_26_9B0	40	H	rstl::optional_object<CModelData>::optional_object	-	weak copy / template instance	no
+009F0	fn_26_9F0	20	H	rstl::construct<CModelData>	-	weak copy / template instance	no
+00A10	fn_26_A10	28	H	rstl::construction_policy<CModelData, 0>::construct	-	weak copy / template instance	no
+00A38	fn_26_A38	13C	H	CModelData::CModelData	-	weak copy / template instance	no
+00B74	fn_26_B74	6C	H	rstl::optional_object<TLockedToken<CModel>>::~optional_object	-	weak copy / template instance	no
+00BE0	fn_26_BE0	54	H	TToken<CModel>::~TToken	-	weak copy / template instance	no
+00C34	fn_26_C34	64	H	rstl::auto_ptr<CAnimData>::~auto_ptr	-	weak copy / template instance	no
+00C98	fn_26_C98	60	H	rstl::optional_object<CModelData>::~optional_object	-	weak copy / template instance	no
+00CF8	fn_26_CF8	70	B	SLdrGlowbug::~SLdrGlowbug	-	upstream body (CGlowbug)	no
+00D68	fn_26_D68	E8	B	SLdrGlowbug::SLdrGlowbug	gb2	upstream body (CGlowbug); fixed (TARGET_PC): retail defaults	yes
+00E50	fn_26_E50	5C	B	CGlowbug::ScanVisorRender	gb2	upstream body (CGlowbug)	yes
+00EAC	fn_26_EAC	68	B	CGlowbug::GetScanVisorRenderBounds	gb2	upstream body (CGlowbug)	yes
+00F14	fn_26_F14	8	B	CGlowbug::IsScanVisorSelfRender	gb2	upstream body (CGlowbug)	yes
+00F1C	fn_26_F1C	60	B	CGlowbug::IsInRange	gb2	upstream body (CGlowbug)	yes
+00F7C	fn_26_F7C	158	B	CGlowbug::FindAttackTarget	gb2	upstream body (CGlowbug)	yes
+010D4	fn_26_10D4	3B0	B	CGlowbug::Dead	gb2	upstream body (CGlowbug)	yes
+01484	fn_26_1484	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string	-	weak copy / template instance	no
+014D4	fn_26_14D4	48	H	CBodyStateCmd::~CBodyStateCmd	-	weak copy / template instance	no
+0151C	fn_26_151C	F0	B	CGlowbug::Death	gb2	upstream body (CGlowbug)	yes
+0160C	fn_26_160C	4C	B	CGlowbug::AttackTelegraphDelay	gb2	upstream body (CGlowbug)	yes
+01658	fn_26_1658	4C	B	CGlowbug::AttackFinished	gb2	upstream body (CGlowbug)	yes
+016A4	fn_26_16A4	38	B	CGlowbug::ShouldAttack	gb2	upstream body (CGlowbug)	yes
+016DC	fn_26_16DC	20	B	CGlowbug::AnimOver	-	upstream body (CGlowbug); never called: FSM a5800138 has no AnimOver trigger	no
+016FC	fn_26_16FC	44	B	CGlowbug::Attack	gb2	upstream body (CGlowbug)	yes
+01740	fn_26_1740	1B8	B	CGlowbug::AttackTelegraph	gb2	upstream body (CGlowbug)	yes
+018F8	fn_26_18F8	A8	B	CGlowbug::Patrol	gb2	upstream body (CGlowbug)	yes
+019A0	fn_26_19A0	20	B	CGlowbug::AddToRenderer	gb2	upstream body (CGlowbug)	yes
+019C0	fn_26_19C0	20	B	CGlowbug::PreRender	gb2	upstream body (CGlowbug)	yes
+019E0	fn_26_19E0	104	B	CGlowbug::Render	gb2	upstream body (CGlowbug)	yes
+01AE4	fn_26_1AE4	3EC	B	CGlowbug::Think	gb2	upstream body (CGlowbug)	yes
+01ED0	fn_26_1ED0	4C	H	CParticleElectric::SetOverrideFPos	-	weak copy / template instance	no
+01F1C	fn_26_1F1C	4C	H	CParticleElectric::SetOverrideIPos	-	weak copy / template instance	no
+01F68	fn_26_1F68	16C	B	CGlowbug::AcceptScriptMsg	gb2	upstream body (CGlowbug)	yes
+020D4	fn_26_20D4	6C	B	CGlowbug::SetupStateMachine	gb2	upstream body (CGlowbug)	yes
+02140	fn_26_2140	704	B	CGlowbug::CGlowbug	gb2	upstream body (CGlowbug)	yes
+02844	fn_26_2844	94	H	CCECharacterInfo::CParticleResData::~CParticleResData	-	weak copy / template instance	no
+028D8	fn_26_28D8	80	H	CCECharacterInfo::CParticleResData::CParticleResData	-	weak copy / template instance	no
+02958	fn_26_2958	100	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::vector	-	weak copy / template instance	no
+02A58	fn_26_2A58	54	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+02AAC	fn_26_2AAC	20	H	CModelData::None	-	weak copy / template instance	no
+02ACC	fn_26_2ACC	54	H	TToken<CElectricDescriptio, >::~TToken	-	weak copy / template instance	no
+02B20	fn_26_2B20	58	H	TCachedToken<CElectricDescriptio, >::~TCachedToken	-	weak copy / template instance	no
+02B78	fn_26_2B78	78	H	rstl::auto_ptr<CElementGen>::~auto_ptr	-	weak copy / template instance	no
+02BF0	fn_26_2BF0	54	H	TToken<CGenDescription>::~TToken	-	weak copy / template instance	no
+02C44	fn_26_2C44	58	H	TCachedToken<CGenDescription>::~TCachedToken	-	weak copy / template instance	no
+02C9C	fn_26_2C9C	78	H	rstl::auto_ptr<CParticleElectric>::~auto_ptr	-	weak copy / template instance	no
+02D14	fn_26_2D14	A4	H	rstl::vector<unsigned int, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+02DB8	fn_26_2DB8	3C	H	rstl::optional_object<CAABox>::optional_object	-	weak copy / template instance	no
+02DF4	fn_26_2DF4	124	B	__sinit_CGlowbug_cpp	-	upstream body (CGlowbug)	no
+00000	fn_26_0	C4	T	_unresolved	gb2	REL runtime	yes
+000C4	fn_26_C4	24	T	_epilog	-	REL runtime	no
+000E8	fn_26_E8	24	T	_prolog	-	REL runtime	no
+0010C	fn_26_10C	4C	T	ModuleDestructors	-	REL runtime	no
+00158	fn_26_158	4C	T	ModuleConstructors	-	REL runtime	no

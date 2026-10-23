@@ -30,6 +30,7 @@ struct SLdrGlowbug {
   bool isInLightWorld;                   // 0x1917a180
 };
 
+// @ fn_26_D68
 inline SLdrGlowbug::SLdrGlowbug()
 : editorProperties()
 , patterned()
