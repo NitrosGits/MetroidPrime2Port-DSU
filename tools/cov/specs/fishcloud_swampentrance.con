@@ -1,0 +1,26 @@
+# Torvus Bog 01_swamp_entrance L0: CFishCloud e00020042 (static model, killable with a death effect,
+# repel 0, ball priority 0.6). The player stands in the cloud, shoots it in every beam (KillBoid,
+# AddParticles), looks at it in the scan visor (destination alpha), morphs inside it, then
+# Deactivate/Activate and Delete.
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f320 obj e00020042
+@f340 tp 198.2 -91.9 23.2
+@f500 shoot e00020042
+@f530 shoot e00020042 charged
+@f570 shoot e00020042 missile
+@f600 beam dark; shoot e00020042
+@f640 beam light; shoot e00020042
+@f680 beam annihilator; shoot e00020042
+@f720 beam power
+@f760 shoot e00020042 6
+@f800 visor scan
+@f900 visor combat
+@f950 press x 30
+@f1050 boost
+@f1100 tp 198.2 -91.9 23.2
+@f1200 press x 30
+@f1300 send e00020042 Deactivate
+@f1400 obj e00020042
+@f1450 send e00020042 Activate
+@f1600 send e00020042 Delete
+@f1700 objs Fish

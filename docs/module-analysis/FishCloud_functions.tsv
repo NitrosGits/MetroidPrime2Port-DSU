@@ -1,0 +1,107 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_20_0	2C	H	CActor::GetHealthInfo	-	weak copy / template instance	no
+0002C	fn_20_2C	24	T	RELExit	-	REL runtime	no
+00050	fn_20_50	20	T	RELMain	-	REL runtime	no
+00070	fn_20_70	3C	B	SetRelLoaderFunctionToLoader	fish1	upstream body (CFishCloud)	yes
+000AC	fn_20_AC	240	B	LoadFishCloudModifier	fish1	upstream body (CFishCloud)	yes
+002EC	fn_20_2EC	54	B	SLdrFishCloudModifier::~SLdrFishCloudModifier	-	header inline dtor	no
+00340	fn_20_340	838	B	LoadFishCloud	fish1	upstream body (CFishCloud)	yes
+00B78	fn_20_B78	94	H	CActorParameters::operator=	-	weak copy / template instance	no
+00C0C	fn_20_C0C	7C	H	CLightParameters::operator=	-	weak copy / template instance	no
+00C88	fn_20_C88	94	H	CActorParameters::CActorParameters	-	weak copy / template instance	no
+00D1C	fn_20_D1C	7C	H	CLightParameters::CLightParameters	-	weak copy / template instance	no
+00D98	fn_20_D98	64	B	SLdrFishCloud::~SLdrFishCloud	-	header inline dtor	no
+00DFC	fn_20_DFC	1A4	B	SLdrFishCloud::SLdrFishCloud	-	retail deathSound default -1 fixed (fish1, TARGET_PC); header inline, unmarked	no
+00FA0	fn_20_FA0	80	B	CFishCloud::RenderParticles	fish1	upstream body (CFishCloud)	yes
+01020	fn_20_1020	7C	B	CFishCloud::UpdateParticles	fish1	upstream body (CFishCloud)	yes
+0109C	fn_20_109C	A8	B	CFishCloud::AddParticles	fish1	upstream body (CFishCloud)	yes
+01144	fn_20_1144	100	B	CFishCloud::ApplyContainment	fish1	upstream body; forced arms (fishcloud_force.py)	yes
+01244	fn_20_1244	20	B	CFishCloud::ApplyRepulsion	fish1	upstream body (CFishCloud)	yes
+01264	fn_20_1264	124	B	CFishCloud::ApplyAttraction	-	963 CanBeNormalized-false arm not reached (out-of-line copy forced, inline copies not)	no
+01388	fn_20_1388	124	B	CFishCloud::ApplySeparation	fish1	upstream body; forced arms (fishcloud_force.py)	yes
+014AC	fn_20_14AC	C4	B	CFishCloud::ApplySeparation	fish1	upstream body (CFishCloud)	yes
+01570	fn_20_1570	11C	B	CFishCloud::ApplyCohesion	fish1	upstream body; forced arms (fishcloud_force.py)	yes
+0168C	fn_20_168C	F4	B	CFishCloud::ApplyCohesion	fish1	upstream body (CFishCloud)	yes
+01780	fn_20_1780	120	B	CFishCloud::ApplyWander	fish1	upstream body (CFishCloud)	yes
+018A0	fn_20_18A0	17C	B	CFishCloud::ApplyAlignment	fish1	upstream body (CFishCloud)	yes
+01A1C	fn_20_1A1C	1E4	B	CFishCloud::ApplyRotation	fish1	877 clockwise=false data-dead (every swirl FSHM is a repulsor)	yes
+01C00	fn_20_1C00	40	B	FishCloudCross	fish1	upstream body (CFishCloud)	yes
+01C40	fn_20_1C40	E4	B	CFishCloud::OldBuildBoidNearList	-	dead: only caller is Think's mUpdateWithoutPartitions arm, never set (no bl in retail)	no
+01D24	fn_20_1D24	330	B	CFishCloud::BuildBoidNearList	-	partly covered: partition edges (801/820-826/835)	no
+02054	fn_20_2054	F4	B	CFishCloud::GetListAt	-	dead: only caller OldBuildBoidNearList	no
+02148	fn_20_2148	158	B	CFishCloud::UpdatePartitionList	-	partly covered: out-of-partition index 766/768	no
+022A0	fn_20_22A0	C	H	rstl::vector<CFishCloud::CBoid*, rstl::rmemory_allocator>::clear	-	weak copy / template instance	no
+022AC	fn_20_22AC	40	B	CFishCloud::CreatePartitionList	fish1	upstream body (CFishCloud)	yes
+022EC	fn_20_22EC	7DC	B	CFishCloud::Touch	-	partly covered: 669 no touch bounds, 686/688 spawned morph, 690/711/721 morph-ball arms	no
+02AC8	fn_20_2AC8	3C	H	rstl::optional_object<CAABox>::~optional_object	-	weak copy / template instance	no
+02B04	fn_20_2B04	D4	B	CFishCloud::KillBoid	fish1	upstream body (CFishCloud)	yes
+02BD8	fn_20_2BD8	2EC	B	CFishCloud::Render	fish1	upstream body; forced arms (fishcloud_force.py)	yes
+02EC4	fn_20_2EC4	114	B	CFishCloud::RenderBoid	fish1	upstream body (CFishCloud)	yes
+02FD8	fn_20_2FD8	7C	B	CFishCloud::PreRender	fish1	upstream body (CFishCloud)	yes
+03054	fn_20_3054	6A0	B	CFishCloud::Think	-	partly covered: 451/452 occluded, 479 dead (mUpdateWithoutPartitions), 510/522 missing source, 514 data-dead	no
+036F4	fn_20_36F4	3C	H	rstl::reserved_vector<CFishCloud::CBoid*, 25>::~reserved_vector	-	weak copy / template instance	no
+03730	fn_20_3730	68	B	CFishCloud::GetTouchBounds	fish1	upstream body (CFishCloud)	yes
+03798	fn_20_3798	F8	B	CFishCloud::RemoveRepulsor	fish1	upstream body (CFishCloud)	yes
+03890	fn_20_3890	4C	H	rstl::vector<CFishCloud::CModifierSource, rstl::rmemory_allocator>::erase	-	weak copy / template instance	no
+038DC	fn_20_38DC	B4	H	rstl::vector<CFishCloud::CModifierSource, rstl::rmemory_allocator>::erase	-	weak copy / template instance	no
+03990	fn_20_3990	F8	B	CFishCloud::RemoveAttractor	fish1	upstream body (CFishCloud)	yes
+03A88	fn_20_3A88	15C	B	CFishCloud::AddRepulsor	fish1	upstream body; forced arms (fishcloud_force.py)	yes
+03BE4	fn_20_3BE4	8C	H	rstl::vector<CFishCloud::CModifierSource, rstl::rmemory_allocator>::insert	-	weak copy / template instance	no
+03C70	fn_20_3C70	2BC	H	rstl::vector<CFishCloud::CModifierSource, rstl::rmemory_allocator>::insert_into<rstl::const_counting_iterator<CFishCloud::CModifierSource>>	-	weak copy / template instance	no
+03F2C	fn_20_3F2C	15C	B	CFishCloud::AddAttractor	fish1	upstream body; forced arms (fishcloud_force.py)	yes
+04088	fn_20_4088	2C4	B	CFishCloud::AcceptScriptMsg	fish1	upstream body (CFishCloud)	yes
+0434C	fn_20_434C	38	H	rstl::vector<CFishCloud::CBoid, rstl::rmemory_allocator>::push_back_unsafe	-	weak copy / template instance	no
+04384	fn_20_4384	20	H	rstl::construct<CFishCloud::CBoid>	-	weak copy / template instance	no
+043A4	fn_20_43A4	54	H	rstl::construction_policy<CFishCloud::CBoid, 0>::construct	-	weak copy / template instance	no
+043F8	fn_20_43F8	2A8	B	CFishCloud::PlaceBoid	-	partly covered: !mWorldSpace arms dead, 347 re-place arm not reached	no
+046A0	fn_20_46A0	2F8	B	CFishCloud::FindFarthestPlane	-	dead: no bl callers in retail	no
+04998	fn_20_4998	6C	H	CTri::CTri	-	weak copy / template instance	no
+04A04	fn_20_4A04	300	B	CFishCloud::FindClosestPlane	-	partly covered: !mWorldSpace arm dead, 292 NaN arm	no
+04D04	fn_20_4D04	B8	B	CFishCloud::PointInBox	fish1	260 !mWorldSpace dead (ctor 188 always sets it)	yes
+04DBC	fn_20_4DBC	6C	B	CFishCloud::GetUntransformedBoundingBox	fish1	upstream body (CFishCloud)	yes
+04E28	fn_20_4E28	7C	B	CFishCloud::GetBoundingBox	fish1	upstream body (CFishCloud)	yes
+04EA4	fn_20_4EA4	D0	B	CFishCloud::PreRenderAllViewports	fish1	upstream body (CFishCloud)	yes
+04F74	fn_20_4F74	188	B	CFishCloud::InitAnimBoids	fish1	upstream body (CFishCloud)	yes
+050FC	fn_20_50FC	50	H	rstl::basic_string<char, rstl::char_traits<char>, rstl::rmemory_allocator>::~basic_string	-	weak copy / template instance	no
+0514C	fn_20_514C	9C	H	rstl::reserved_vector<SwarmRenderHelpers::CSwarmSkinnedModelState, 4>::push_back	-	weak copy / template instance	no
+051E8	fn_20_51E8	60	H	rstl::auto_ptr<CVector3f>::~auto_ptr	-	weak copy / template instance	no
+05248	fn_20_5248	90	H	SwarmRenderHelpers::CSwarmSkinnedModelState::~CSwarmSkinnedModelState	-	weak copy / template instance	no
+052D8	fn_20_52D8	34	H	rstl::reserved_vector<SwarmRenderHelpers::CSwarmSkinnedModelState, 4>::clear	-	weak copy / template instance	no
+0530C	fn_20_530C	A4	H	rstl::reserved_vector<SwarmRenderHelpers::CSwarmSkinnedModelState, 4>::destroy_elements	-	weak copy / template instance	no
+053B0	fn_20_53B0	150	B	CFishCloud::~CFishCloud	fish1	upstream body (CFishCloud)	yes
+05500	fn_20_5500	84	H	rstl::vector<CFishCloud::CBoid, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+05584	fn_20_5584	54	H	rstl::vector<CFishCloud::CBoid*, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+055D8	fn_20_55D8	84	H	rstl::vector<CFishCloud::CModifierSource, rstl::rmemory_allocator>::~vector	-	weak copy / template instance	no
+0565C	fn_20_565C	50	H	rstl::reserved_vector<SwarmRenderHelpers::CSwarmSkinnedModelState, 4>::~reserved_vector	-	weak copy / template instance	no
+056AC	fn_20_56AC	90	H	rstl::reserved_vector<rstl::ncrc_ptr<CModelData>, 4>::~reserved_vector	-	weak copy / template instance	no
+0573C	fn_20_573C	94	H	rstl::reserved_vector<TLockedToken<CGenDescription>, 4>::~reserved_vector	-	weak copy / template instance	no
+057D0	fn_20_57D0	C34	B	CFishCloud::CFishCloud	-	partly covered: particle 2-4 / sfx arms not in the driven clouds	no
+06404	fn_20_6404	78	H	rstl::auto_ptr<CElementGen>::~auto_ptr	-	weak copy / template instance	no
+0647C	fn_20_647C	58	H	TLockedToken<CGenDescription>::~TLockedToken	-	weak copy / template instance	no
+064D4	fn_20_64D4	54	H	TToken<CGenDescription>::~TToken	-	weak copy / template instance	no
+06528	fn_20_6528	54	H	rstl::ncrc_ptr<CModelData>::~ncrc_ptr	-	weak copy / template instance	no
+0657C	fn_20_657C	50	H	rstl::rc_ptr<CModelData>::~rc_ptr	-	weak copy / template instance	no
+065CC	fn_20_65CC	84	H	rstl::single_ptr<SwarmRenderHelpers::CSwarmDisplayList>::~single_ptr	-	weak copy / template instance	no
+06650	fn_20_6650	3C	H	rstl::reserved_vector<int, 4>::~reserved_vector	-	weak copy / template instance	no
+0668C	fn_20_668C	B0	H	rstl::reserved_vector<rstl::auto_ptr<CElementGen>, 4>::~reserved_vector	-	weak copy / template instance	no
+0673C	fn_20_673C	48	B	CFishCloud::CBoid::CBoid	fish1	upstream body (CFishCloud)	yes
+06784	fn_20_6784	30	B	CFishCloud::CModifierSource::operator<	fish1	upstream body (CFishCloud)	yes
+067B4	fn_20_67B4	1C	B	CFishCloud::CModifierSource::CModifierSource	fish1	upstream body (CFishCloud)	yes
+067D0	fn_20_67D0	104	B	CFishCloudModifier::RemoveSelf	-	data arms (85/89/92) not run; Delete on area unload not proven	no
+068D4	fn_20_68D4	11C	B	CFishCloudModifier::AddSelf	-	data arms (85/89/92): every FSHM has one MDFY/FOLW link to a FISH in its area	no
+069F0	fn_20_69F0	BC	B	CFishCloudModifier::AcceptScriptMsg	fish1	upstream body (CFishCloud)	yes
+06AAC	fn_20_6AAC	120	B	CFishCloudModifier::CFishCloudModifier	fish1	upstream body (CFishCloud)	yes
+06BCC	fn_20_6BCC	20	B	CModelDataNull	-	static CModelDataNull, folded into the ctor on host	no
+06BEC	fn_20_6BEC	60	B	CFishCloudModifier::~CFishCloudModifier	fish1	upstream body (CFishCloud)	yes
+06C4C	fn_20_6C4C	A8	H	rstl::lower_bound<rstl::pointer_iterator<CFishCloud::CModifierSource, rstl::vector<CFishCloud::CModifierSource, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CFishCloud::CModifierSource>	-	weak copy / template instance	no
+06CF4	fn_20_6CF4	B8	H	rstl::vector<CFishCloud::CModifierSource, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+06DAC	fn_20_6DAC	54	H	rstl::uninitialized_copy<rstl::pointer_iterator<CFishCloud::CModifierSource, rstl::vector<CFishCloud::CModifierSource, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CFishCloud::CModifierSource*>	-	weak copy / template instance	no
+06E00	fn_20_6E00	A4	H	rstl::vector<CFishCloud::CBoid*, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+06EA4	fn_20_6EA4	B8	H	rstl::vector<CFishCloud::CBoid, rstl::rmemory_allocator>::reserve	-	weak copy / template instance	no
+06F5C	fn_20_6F5C	68	H	rstl::uninitialized_copy<rstl::pointer_iterator<CFishCloud::CBoid, rstl::vector<CFishCloud::CBoid, rstl::rmemory_allocator>, rstl::rmemory_allocator>, CFishCloud::CBoid*>	-	weak copy / template instance	no
+06FC4	fn_20_6FC4	50	H	rstl::rc_ptr<CModelData>::ReleaseData	-	weak copy / template instance	no
+07014	fn_20_7014	C4	T	_unresolved	-	REL runtime	no
+070D8	fn_20_70D8	24	T	_epilog	-	REL runtime	no
+070FC	fn_20_70FC	24	T	_prolog	-	REL runtime	no
+07120	fn_20_7120	4C	T	ModuleDestructors	-	REL runtime	no
+0716C	fn_20_716C	4C	T	ModuleConstructors	-	REL runtime	no

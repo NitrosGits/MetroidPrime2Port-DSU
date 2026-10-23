@@ -1,0 +1,39 @@
+# Temple Grounds 06_temple_sacredpath L0: CFishCloud e00340081 (animated, repel 1, ball priority 1, the
+# attractor e00340143 follows it), e00340014 (animated, repel 1), e0034011c (animated, repel 0, ball
+# priority 0). God-mode player stands in each cloud, shoots it, morphs and boosts inside 0081; the
+# attractor is activated twice (insert, then found), deactivated twice (found, then not found), reactivated
+# and deleted; the spawned morph state is set while in 0081 (Touch's spawned-morph arm).
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 50; give chargeBeam 1; give darkBeam 1; give lightBeam 1
+@f320 send e00340143 Activate
+@f340 send e00340143 Activate
+@f360 obj e00340143; obj e00340081
+@f380 tp -29.1 264.2 -23.1
+@f600 shoot e00340081
+@f630 shoot e00340081 charged
+@f670 shoot e00340081 missile
+@f700 press x 30
+@f800 boost
+@f860 tp -29.1 264.2 -23.1
+@f900 boost
+@f1000 press x 30
+@f1020 var player spawnmorph 1
+@f1080 var player spawnmorph 0
+@f1100 tp 21.1 274.0 -28.8
+@f1300 shoot e00340014
+@f1350 beam dark; shoot e00340014
+@f1380 beam power
+@f1400 tp -6.3 246.4 -2.4
+@f1500 shoot e0034011c
+@f1550 press x 30
+@f1650 press x 30
+@f1700 send e00340143 Deactivate
+@f1730 send e00340143 Deactivate
+@f1760 send e00340143 Activate
+@f1800 send e00340081 Deactivate
+@f1900 obj e00340081
+@f1950 send e00340081 Activate
+@f2000 tp -29.1 264.2 -23.1
+@f2200 send e00340143 Delete
+@f2300 objs Fish
+@f2400 send e00340081 Delete
+@f2450 objs Fish
