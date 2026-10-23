@@ -137,6 +137,10 @@ directory; the normal build is unaffected. See docs/LANE_BRIEF.md, 'Coverage wit
 if(MP_PORT_COVERAGE)
     # "ModuleName;source path" per line: the port's own module bodies.
     file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/tools/modules_port.txt" _mp_port_module_lines)
+    # The upstream-source modules too (tools/modules_upstream.txt, same format), for the
+    # behaviour survey of the modules upstream decompiled (tools/upstream_survey.py).
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/tools/modules_upstream.txt" _mp_upstream_module_lines)
+    list(APPEND _mp_port_module_lines ${_mp_upstream_module_lines})
     set(MP_PORT_COVERAGE_SOURCES)
     foreach(_line IN LISTS _mp_port_module_lines)
         string(STRIP "${_line}" _line)
