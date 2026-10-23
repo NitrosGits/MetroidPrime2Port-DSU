@@ -1,0 +1,12 @@
+# 04_temple_unknownenemies (layers 2 3): Splinters u0499 u0498. Wake them, then let them fight a god-mode player, hurt and kill them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 3bfa3eff,04_temple_unknownenemies --con <this> --fast --frames 3400
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 2; layer 3
+@f305 send u0499 Activate; send u0498 Activate
+@f310 tp 192 140 -33
+@f330 send u0499 Alert; send u0498 Alert
+@f1200 obj u0499; obj u0498
+@f2200 damage u0499 2; damage u0498 2
+@f2500 damage u0499 2 kb; damage u0498 2 kb
+@f2800 damage u0499 20 missile; damage u0498 20 missile
+@f3300 objs Splinter

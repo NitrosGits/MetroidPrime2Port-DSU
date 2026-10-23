@@ -1,0 +1,4 @@
+# Discovery: list the Splinter parts of an area.
+@f300 objs Splinter
+@f310 objs SplinterAcidSac
+@f320 status

@@ -1,0 +1,16 @@
+# 07_temple_mothlordsanctuary (layers 2): Splinters u04f4 u04ec u04ea u04df u04d8 u04d3. Wake them, then sit in morph ball among them, boost away, then kill them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 863fcd72,07_temple_mothlordsanctuary --con <this> --fast --frames 3400
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 2
+@f305 send u04f4 Activate; send u04ec Activate; send u04ea Activate; send u04df Activate; send u04d8 Activate; send u04d3 Activate
+@f310 tp 2 -38 -17.5
+@f330 send u04f4 Alert; send u04ec Alert; send u04ea Alert; send u04df Alert; send u04d8 Alert; send u04d3 Alert
+@f600 press x 30
+@f1400 boost
+@f1600 boost
+@f1900 press x 30
+@f1200 obj u04f4; obj u04ec; obj u04ea
+@f2200 damage u04f4 2; damage u04ec 2; damage u04ea 2; damage u04df 2; damage u04d8 2; damage u04d3 2
+@f2500 damage u04f4 2 kb; damage u04ec 2 kb; damage u04ea 2 kb; damage u04df 2 kb; damage u04d8 2 kb; damage u04d3 2 kb
+@f2800 damage u04f4 20 missile; damage u04ec 20 missile; damage u04ea 20 missile; damage u04df 20 missile; damage u04d8 20 missile; damage u04d3 20 missile
+@f3300 objs Splinter

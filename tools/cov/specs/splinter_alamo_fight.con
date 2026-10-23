@@ -1,0 +1,12 @@
+# 07_sand_alamoportalobservation_dark (layers 4): Splinters u0611 u0607 u0603 u05f9 u05ec. Wake them, then let them fight a god-mode player, hurt and kill them.
+# Run: BUILD=build-port-cov tools/cov/run.sh tools/cov/specs/splinter.py <out> 42b935e4,07_sand_alamoportalobservation_dark --con <this> --fast --frames 3400
+@f300 god 1; give missile 50; give morphBall 1; give boostBall 1; fastmorph 1
+@f302 layer 4
+@f305 send u0611 Activate; send u0607 Activate; send u0603 Activate; send u05f9 Activate; send u05ec Activate
+@f310 tp 342 -80 6.5
+@f330 send u0611 Alert; send u0607 Alert; send u0603 Alert; send u05f9 Alert; send u05ec Alert
+@f1200 obj u0611; obj u0607; obj u0603
+@f2200 damage u0611 2; damage u0607 2; damage u0603 2; damage u05f9 2; damage u05ec 2
+@f2500 damage u0611 2 kb; damage u0607 2 kb; damage u0603 2 kb; damage u05f9 2 kb; damage u05ec 2 kb
+@f2800 damage u0611 20 missile; damage u0607 20 missile; damage u0603 20 missile; damage u05f9 20 missile; damage u05ec 20 missile
+@f3300 objs Splinter
