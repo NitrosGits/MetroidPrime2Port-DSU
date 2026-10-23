@@ -58,10 +58,13 @@ def read_cache(build):
 def module_sources(root):
     """{module name: [source paths]} and {source path: module name}, from tools/modules_port.txt."""
     by_module, by_source = {}, {}
-    path = pathlib.Path(root) / "tools" / "modules_port.txt"
-    if not path.exists():
-        return by_module, by_source
-    for line in path.read_text().splitlines():
+    text = ""
+    # The upstream-source modules (tools/modules_upstream.txt) are instrumented too.
+    for name in ("modules_port.txt", "modules_upstream.txt"):
+        path = pathlib.Path(root) / "tools" / name
+        if path.exists():
+            text += path.read_text() + "\n"
+    for line in text.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
@@ -299,6 +302,8 @@ def main():
     ap.add_argument("--fn", action="append", default=[],
                     help="only these retail ids (repeatable, or comma-separated)")
     ap.add_argument("--source-root", default=None, help="the source tree (default: the build's)")
+    ap.add_argument("--summary", action="store_true",
+                    help="one line per module instead: lines and branches hit, in total and percent")
     args = ap.parse_args()
 
     build = pathlib.Path(args.build).resolve()
@@ -356,6 +361,19 @@ def main():
                 or (r["id"] and r["id"].split("_")[1] == want)]
     if wanted:
         rows = [r for r in rows if r["id"] in wanted]
+
+    if args.summary:
+        totals = {}
+        for r in rows:
+            t = totals.setdefault(r["module"], [0, 0, 0, 0, 0, 0])
+            t[0] += r["hit"]; t[1] += r["lines"]; t[2] += r["taken"]; t[3] += r["branches"]
+            t[4] += 1; t[5] += 1 if r["hit"] else 0
+        print(f"{'module':<26} {'functions run':>14} {'lines':>13} {'line%':>6} {'branches':>13} {'br%':>6}")
+        for mod, t in sorted(totals.items()):
+            print(f"{mod:<26} {str(t[5]) + '/' + str(t[4]):>14} {str(t[0]) + '/' + str(t[1]):>13} "
+                  f"{100.0 * t[0] / max(t[1], 1):6.1f} {str(t[2]) + '/' + str(t[3]):>13} "
+                  f"{100.0 * t[2] / max(t[3], 1):6.1f}")
+        return
 
     print(f"{'module':<12} {'id':<14} {'function':<52} {'lines':>9} {'branches':>10}  arms")
     print("-" * 120)
