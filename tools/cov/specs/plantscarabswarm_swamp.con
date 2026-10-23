@@ -1,0 +1,29 @@
+# Torvus Bog 0g_swamp_hall layer 3: CPlantScarabSwarm e001e00b6 (uids vary per boot). For tools/cov/specs/plantscarabswarm.py: god-mode
+# player stands beside the boids without shooting so they launch, play the attack animation out and
+# drop grenades (shared-model render, launched-boid touch), then stands in them in morph ball, walks
+# behind them (attack angle), leaves and returns, shoots them, and ends with Deactivate/Activate/Delete.
+@f220 layer 3
+@f300 god 1; give morphBall 1; give boostBall 1; give missile 250; give chargeBeam 1; give darkBeam 1; give lightBeam 1; fastmorph 1
+@f380 send e001e00b6 Activate
+@f420 tp -153.0 -66.0 37.0
+@f600 obj e001e00b6
+@f900 obj e001e00b6
+@f1000 tp -150.5 -67.5 36.0
+@f1200 obj e001e00b6
+@f1220 press x 30
+@f1400 tp -150.5 -67.5 36.0
+@f1600 press x 30
+@f1640 tp -146.0 -70.0 36.0
+@f1840 tp -157.4 -63.1 39.5
+@f2000 obj e001e00b6
+@f2020 tp 142.6 -63.1 119.5
+@f2200 tp -153.0 -66.0 37.0
+@f2400 lockon 1
+@f2420 shoot e001e00b6; shoot e001e00b6 charged
+@f2460 shoot e001e00b6 missile
+@f2500 obj e001e00b6
+@f2600 send e001e00b6 Deactivate
+@f2640 send e001e00b6 Activate
+@f2700 tp -153.0 -66.0 37.0
+@f2900 send e001e00b6 Delete
+@f2950 obj e001e00b6

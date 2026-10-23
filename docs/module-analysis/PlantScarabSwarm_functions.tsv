@@ -1,0 +1,72 @@
+offset	fn	size	class	name	slice	what	marker
+00000	fn_49_0	3C	H	GetLockOnLocationValid__12CSwarmBasicsCFi	-	weak/template copy	no
+0003C	fn_49_3C	28	H	GetLockOnLocation__12CSwarmBasicsCFi	-	weak/template copy	no
+00064	fn_49_64	24	T	RELExit	pss1	REL runtime	yes
+00088	fn_49_88	20	T	RELMain	pss1	REL runtime	yes
+000A8	fn_49_A8	30	B	SetFuncPtrs__Fv	pss1	upstream body (CPlantScarabSwarm)	yes
+000D8	fn_49_D8	6A0	B	LoadPlantScarabSwarm__FR13CStateManagerR12CInputStreamR11CEntityInfo	pss1	upstream body (CPlantScarabSwarm)	yes
+00778	fn_49_778	58	H	__dt__15CBasicSwarmDataFv	-	weak/template copy	no
+007D0	fn_49_7D0	88	H	__dt__20SLdrPlantScarabSwarmFv	-	weak/template copy	no
+00858	fn_49_858	11C	B	__ct__20SLdrPlantScarabSwarmFv	pss1	upstream body (SLdrPlantScarabSwarm), TARGET_PC fix	no
+00974	fn_49_974	54	B	GetGrenadeBounds__17CPlantScarabSwarmCFv	pss1	upstream body (CPlantScarabSwarm)	yes
+009C8	fn_49_9C8	1D8	B	IsSpaceAboveBoidClear__17CPlantScarabSwarmCFRC13CStateManagerRCQ212CSwarmBasics5CBoid	pss1	upstream body (CPlantScarabSwarm)	yes
+00BA0	fn_49_BA0	48	H	__dt__19CCollisionPrimitiveFv	-	weak/template copy	no
+00BE8	fn_49_BE8	3C	H	__dt__Q24rstl32reserved_vector<9TUniqueId,1024>Fv	-	weak/template copy	no
+00C24	fn_49_C24	48	B	GetBoidTopPosition__17CPlantScarabSwarmCFRCQ212CSwarmBasics5CBoid	pss1	upstream body (CPlantScarabSwarm)	yes
+00C6C	fn_49_C6C	348	B	SpawnGrenades__17CPlantScarabSwarmFR13CStateManagerR9CAnimDatai	-	upstream body (CPlantScarabSwarm)	no
+00FB4	fn_49_FB4	20	H	CModelDataNull__10CModelDataFv	-	weak/template copy	no
+00FD4	fn_49_FD4	50	H	__dt__Q24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+01024	fn_49_1024	58	H	__dt__11CEntityInfoFv	-	weak/template copy	no
+0107C	fn_49_107C	54	H	__dt__Q24rstl48vector<11SConnection,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+010D0	fn_49_10D0	74	B	KillBoid__17CPlantScarabSwarmFRQ212CSwarmBasics5CBoidR13CStateManagerRC11CWeaponMode	pss1	upstream body (CPlantScarabSwarm)	yes
+01144	fn_49_1144	7C	B	BoidCollidedWithPlayerCallback__17CPlantScarabSwarmFR13CStateManagerRQ212CSwarmBasics5CBoid	-	upstream body (CPlantScarabSwarm)	no
+011C0	fn_49_11C0	68	B	BoidCollidedCallback__17CPlantScarabSwarmFR13CStateManagerRQ212CSwarmBasics5CBoid	-	upstream body (CPlantScarabSwarm)	no
+01228	fn_49_1228	2C	B	ApplySteeringBehaviors__17CPlantScarabSwarmFR13CStateManagerRQ212CSwarmBasics5CBoidR9CVector3fRCQ24rstl43reserved_vector<PQ212CSwarmBasics5CBoid,50>	-	upstream body (CPlantScarabSwarm)	no
+01254	fn_49_1254	58	B	RenderBoid__17CPlantScarabSwarmCFPQ212CSwarmBasics5CBoid	-	upstream body (CPlantScarabSwarm)	no
+012AC	fn_49_12AC	F0	B	PreRenderBoid__17CPlantScarabSwarmFPQ212CSwarmBasics5CBoidPUi	pss1	upstream body (CPlantScarabSwarm), TARGET_PC fix	no
+0139C	fn_49_139C	1D4	B	UpdateBoid__17CPlantScarabSwarmFR19CAreaCollisionCacheR13CStateManagerfRQ212CSwarmBasics5CBoidi	pss1	upstream body (CPlantScarabSwarm)	yes
+01570	fn_49_1570	E4	B	UpdateAllBoidMovement__17CPlantScarabSwarmFR13CStateManagerf	pss1	upstream body (CPlantScarabSwarm)	yes
+01654	fn_49_1654	1C4	B	UpdateSwarmAnimations__17CPlantScarabSwarmFR13CStateManagerf	pss1	upstream body (CPlantScarabSwarm)	yes
+01818	fn_49_1818	134	B	AllocateSkinnedModels__17CPlantScarabSwarmFR13CStateManagerQ210CModelData11EWhichModel	pss1	upstream body (CPlantScarabSwarm)	yes
+0194C	fn_49_194C	9C	H	__as__Q24rstl59single_ptr<Q218SwarmRenderHelpers23CSwarmSkinnedModelState>FPQ218SwarmRenderHelpers23CSwarmSkinnedModelState	-	weak/template copy	no
+019E8	fn_49_19E8	8C	H	push_back_unsafe__Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>FRCQ218SwarmRenderHelpers23CSwarmSkinnedModelState	-	weak/template copy	no
+01A74	fn_49_1A74	60	H	__dt__Q24rstl20auto_ptr<9CVector3f>Fv	-	weak/template copy	no
+01AD4	fn_49_1AD4	90	H	__dt__Q218SwarmRenderHelpers23CSwarmSkinnedModelStateFv	-	weak/template copy	no
+01B64	fn_49_1B64	344	B	Think__17CPlantScarabSwarmFfR13CStateManager	-	upstream body (CPlantScarabSwarm)	no
+01EA8	fn_49_1EA8	20	B	AcceptScriptMsg__17CPlantScarabSwarmFR13CStateManagerRC10CScriptMsg	pss1	upstream body (CPlantScarabSwarm)	yes
+01EC8	fn_49_1EC8	C4	B	__dt__17CPlantScarabSwarmFv	pss1	upstream body (CPlantScarabSwarm)	yes
+01F8C	fn_49_1F8C	84	H	__dt__Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+02010	fn_49_2010	38	H	destroy<Q24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>>__4rstlFQ24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>	-	weak/template copy	no
+02048	fn_49_2048	94	H	destroy_impl<Q24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>>__4rstlFQ24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>	-	weak/template copy	no
+020DC	fn_49_20DC	A0	H	__dt__Q24rstl47vector<10CModelData,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+0217C	fn_49_217C	84	H	__dt__Q24rstl55vector<18CAdvancementDeltas,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+02200	fn_49_2200	54	H	__dt__Q24rstl36vector<i,Q24rstl17rmemory_allocator>Fv	-	weak/template copy	no
+02254	fn_49_2254	AC	H	__dt__Q24rstl59single_ptr<Q218SwarmRenderHelpers23CSwarmSkinnedModelState>Fv	-	weak/template copy	no
+02300	fn_49_2300	534	B	__ct__17CPlantScarabSwarmF9TUniqueIdRCQ24rstl66basic_string<c,Q24rstl14char_traits<c>,Q24rstl17rmemory_allocator>RC11CEntityInfoRC9CVector3fRC12CTransform4fRC8CAnimRes16CActorParametersRC15CBasicSwarmDataiiffffff11CDamageInfofUiUiUiUiUiUsUsffff	-	upstream body (CPlantScarabSwarm)	no
+02834	fn_49_2834	58	H	push_back_unsafe__Q24rstl55vector<18CAdvancementDeltas,Q24rstl17rmemory_allocator>FRC18CAdvancementDeltas	-	weak/template copy	no
+0288C	fn_49_288C	38	H	push_back_unsafe__Q24rstl47vector<10CModelData,Q24rstl17rmemory_allocator>FRC10CModelData	-	weak/template copy	no
+028C4	fn_49_28C4	20	H	construct<10CModelData>__4rstlFPvRC10CModelData	-	weak/template copy	no
+028E4	fn_49_28E4	28	H	construct__Q24rstl35construction_policy<10CModelData,0>FPvRC10CModelData	-	weak/template copy	no
+0290C	fn_49_290C	13C	H	__ct__10CModelDataFRC10CModelData	-	weak/template copy	no
+02A48	fn_49_2A48	6C	H	__dt__Q24rstl40optional_object<21TLockedToken<6CModel>>Fv	-	weak/template copy	no
+02AB4	fn_49_2AB4	54	H	__dt__15TToken<6CModel>Fv	-	weak/template copy	no
+02B08	fn_49_2B08	64	H	__dt__Q24rstl20auto_ptr<9CAnimData>Fv	-	weak/template copy	no
+02B6C	fn_49_2B6C	94	H	__ct__18CBouncyGrenadeDataFff11CDamageInfoUiUiUiUiUiUsUsffffb	-	weak/template copy	no
+02C00	fn_49_2C00	54	H	__dt__Q24rstl32single_ptr<18CAdvancementDeltas>Fv	-	weak/template copy	no
+02C54	fn_49_2C54	58	H	__dt__Q24rstl24single_ptr<10CModelData>Fv	-	weak/template copy	no
+02CAC	fn_49_2CAC	94	H	__ct__16CActorParametersFRC16CActorParameters	-	weak/template copy	no
+02D40	fn_49_2D40	7C	H	__ct__16CLightParametersFRC16CLightParameters	-	weak/template copy	no
+02DBC	fn_49_2DBC	A4	H	reserve__Q24rstl36vector<i,Q24rstl17rmemory_allocator>Fi	-	weak/template copy	no
+02E60	fn_49_2E60	AC	H	reserve__Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>Fi	-	weak/template copy	no
+02F0C	fn_49_2F0C	20	H	destroy<PQ218SwarmRenderHelpers23CSwarmSkinnedModelState>__4rstlFPQ218SwarmRenderHelpers23CSwarmSkinnedModelStatePQ218SwarmRenderHelpers23CSwarmSkinnedModelState	-	weak/template copy	no
+02F2C	fn_49_2F2C	90	H	destroy_impl<PQ218SwarmRenderHelpers23CSwarmSkinnedModelState>__4rstlFPQ218SwarmRenderHelpers23CSwarmSkinnedModelStatePQ218SwarmRenderHelpers23CSwarmSkinnedModelState	-	weak/template copy	no
+02FBC	fn_49_2FBC	AC	H	uninitialized_copy<Q24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,PQ218SwarmRenderHelpers23CSwarmSkinnedModelState>__4rstlFQ24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl184pointer_iterator<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl82vector<Q218SwarmRenderHelpers23CSwarmSkinnedModelState,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>PQ218SwarmRenderHelpers23CSwarmSkinnedModelState	-	weak/template copy	no
+03068	fn_49_3068	B4	H	reserve__Q24rstl47vector<10CModelData,Q24rstl17rmemory_allocator>Fi	-	weak/template copy	no
+0311C	fn_49_311C	68	H	uninitialized_copy<Q24rstl114pointer_iterator<10CModelData,Q24rstl47vector<10CModelData,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P10CModelData>__4rstlFQ24rstl114pointer_iterator<10CModelData,Q24rstl47vector<10CModelData,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl114pointer_iterator<10CModelData,Q24rstl47vector<10CModelData,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P10CModelData	-	weak/template copy	no
+03184	fn_49_3184	B8	H	reserve__Q24rstl55vector<18CAdvancementDeltas,Q24rstl17rmemory_allocator>Fi	-	weak/template copy	no
+0323C	fn_49_323C	64	H	uninitialized_copy<Q24rstl130pointer_iterator<18CAdvancementDeltas,Q24rstl55vector<18CAdvancementDeltas,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>,P18CAdvancementDeltas>__4rstlFQ24rstl130pointer_iterator<18CAdvancementDeltas,Q24rstl55vector<18CAdvancementDeltas,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>Q24rstl130pointer_iterator<18CAdvancementDeltas,Q24rstl55vector<18CAdvancementDeltas,Q24rstl17rmemory_allocator>,Q24rstl17rmemory_allocator>P18CAdvancementDeltas	-	weak/template copy	no
+032A0	fn_49_32A0	C4	T	_unresolved	-	REL runtime	no
+03364	fn_49_3364	24	T	_epilog	-	REL runtime	no
+03388	fn_49_3388	24	T	_prolog	-	REL runtime	no
+033AC	fn_49_33AC	4C	T	ModuleDestructors	-	REL runtime	no
+033F8	fn_49_33F8	4C	T	ModuleConstructors	-	REL runtime	no
