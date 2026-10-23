@@ -15,18 +15,18 @@
 @f1340 obj e002500f9
 @f1500 shoot u05fd missile; shoot u05fc missile
 @f1540 obj e002500f9
-@f1700 damage e002500f9 10
+@f1700 hurt u05fd 10 6; hurt u05fc 10 6
 @f1740 obj e002500f9
 @f1800 objs Grenade
 @f1900 obj e002500f9
 @f2100 objs WallWalker
 @f2200 tp 47 22 -30
-@f2400 beam dark; shoot e0025014e charged
+@f2400 beam dark; shoot e0025014e charged; hurt e0025014e 10 9
 @f2440 obj e0025014e
-@f2700 damage e00250156 10
+@f2700 hurt e00250156 10 9
 @f2740 obj e00250156
 @f2900 send e0025009e Activate
 @f3000 obj e0025009e
-@f3100 damage e0025009e 10
+@f3100 hurt e0025009e 10 9
 @f3300 send e0025009e Delete
 @f3350 objs WallWalker
