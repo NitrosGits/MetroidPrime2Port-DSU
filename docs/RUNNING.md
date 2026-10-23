@@ -221,6 +221,7 @@ Thirty-two of the families keep a checked module's actors loading: grenchler (To
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and pbug): their areas
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and szone): their areas
 tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and rptl): their areas
+tryclops, wisptentacle, octapede, amt, spa, wallwalker, isbg, spor, scriptgui and chog): their areas
 boot so quickly that 2400 unpaced updates end in 0.3 s, before con.py's 0.5 s retry gets a console
 connection, so nothing would be driven (~40-50 s each capped, ~95 s for isbg's 5700, ~110 s for
 wisptentacle's 6200, and spor's 2000 updates leave only ~100 ms of uncapped run after the connect,
@@ -252,6 +253,8 @@ and pbug (Agon Wastes 0b_sand_hall)
 and szone (Agon Wastes dark 02_sand_sandfalls_dark)
 splinter (Temple Grounds 02_temple_exploration)
 and rptl (Temple Grounds 12_temple_finalgate)
+and chog (Agon Wastes 08_sand_casualpirates, which spawns two ChozoGhosts with a borrowed
+SpacePirate body and drives every state)
 boot the area the module lanes' coverage driver used and repeat its console steps
 (`tools/cov/specs/*.con`, `tools/drivers/`), with a kill near the end - the console `kill` where a
 weapon cannot take the actor (the Sporb base's vulnerability, the Grenguard's reflected weapons),
@@ -399,6 +402,12 @@ clamp), looking away (culled), dropping from above and laying morph-ball bombs i
 box (a kMT_Projectile that is not a CGameProjectile), with `objs RiftPortal` before and after.
 The portal's projectile box and late `objs RiftPortal` listings follow the update rate, so the
 family stays capped (NC).
+to 132; chog spawns two ChozoGhosts (e0036ff00/e0036ff01) in Agon Wastes
+08_sand_casualpirates with a borrowed SpacePirate body and AFSM 5652a12f, drives every state
+(InActive -> Growth -> Generate -> WallDetach -> Run -> SelectTarget -> Attack -> Land ->
+Shuffle -> Taunt -> Lurk -> Hurled -> Deactivate -> Start), the visors, touches, charged and
+missile shots, damage and kills, then spawns a third ghost, with `objs ChozoGhost` before the
+steps and at the end.
 A new family is appended at the end of the `ALL` table in
 `tools/smoke/run.sh` (its index is its X display) with the next free console port, and added to
 `tools/smoke/compare.py`.

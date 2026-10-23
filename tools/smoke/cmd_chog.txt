@@ -1,0 +1,280 @@
+# ChozoGhost (REL 8: CChozoGhost). Agon Wastes 08_sand_casualpirates (world 42b935e4, layer 0):
+# two ChozoGhosts spawned with a borrowed SpacePirate body (ANCS u04d0, character 1), AFSM 5652a12f
+# and pirate WPSC 681f3907; the second has fadeOutDelay 0, startStyle 3, flags 3 and near/mid
+# distances 0.5/1. The steps repeat tools/drivers/chozoghost_forced.con: statecall/trigcall/send
+# drive every state, then shots, damage and kills, with `objs ChozoGhost` before the steps and at
+# the end. The forced con's knockbackRules write is unnecessary here: `spawn` defaults to 0x393ca543.
+# Checks are game updates (@f<n>), not wall seconds. The family stays capped (NC): the `frame`
+# barriers keep the console queue under 256 commands. F=1020 (last step @f920 +100).
+@f300 god 1; give missile 50; give chargeBeam 1
+@f330 spawn CHOG inactive ancs u04d0 1 34 fsm 5652a12f prop 54151870 0x681f3907 prop 3a58089c 0x681f3907
+@f332 spawn CHOG ancs u04d0 1 34 fsm 5652a12f prop 54151870 0x681f3907 prop 3a58089c 0x681f3907 prop fb12f672 0.0 prop ec76940c 3 prop fe9eac26 3 prop 61e511b3 0.5 prop 2369607a 1.0
+@f340 send e0036ff00 Activate; objs ChozoGhost
+@f342 place e0036ff00 player 6; place e0036ff01 player 30
+@f350 statecall e0036ff00 InActive 0; statecall e0036ff01 InActive 0
+@f351 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f352 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f353 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f354 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f355 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f356 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f357 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f358 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f359 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f360 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f361 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f362 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f363 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f364 statecall e0036ff00 InActive 1 0.1; statecall e0036ff01 InActive 1 0.1
+@f365 statecall e0036ff00 InActive 2; statecall e0036ff01 InActive 2
+@f367 statecall e0036ff00 Growth 0; statecall e0036ff01 Growth 0
+@f368 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f369 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+frame
+@f370 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f371 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f372 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f373 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f374 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f375 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f376 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f377 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f378 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f379 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f380 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f381 statecall e0036ff00 Growth 1 0.1; statecall e0036ff01 Growth 1 0.1
+@f382 statecall e0036ff00 Growth 2; statecall e0036ff01 Growth 2
+@f384 statecall e0036ff00 Generate 0; statecall e0036ff01 Generate 0
+@f385 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f386 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f387 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f388 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f389 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f390 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f391 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f392 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f393 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f394 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f395 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+frame
+@f396 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f397 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f398 statecall e0036ff00 Generate 1 0.1; statecall e0036ff01 Generate 1 0.1
+@f399 statecall e0036ff00 Generate 2; statecall e0036ff01 Generate 2
+@f401 statecall e0036ff00 WallDetach 0; statecall e0036ff01 WallDetach 0
+@f402 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f403 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f404 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f405 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f406 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f407 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f408 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f409 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f410 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f411 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f412 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f413 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f414 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f415 statecall e0036ff00 WallDetach 1 0.1; statecall e0036ff01 WallDetach 1 0.1
+@f416 statecall e0036ff00 WallDetach 2; statecall e0036ff01 WallDetach 2
+@f418 statecall e0036ff00 Run 0; statecall e0036ff01 Run 0
+@f419 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f420 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f421 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f422 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+frame
+@f423 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f424 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f425 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f426 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f427 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f428 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f429 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f430 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f431 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f432 statecall e0036ff00 Run 1 0.1; statecall e0036ff01 Run 1 0.1
+@f433 statecall e0036ff00 Run 2; statecall e0036ff01 Run 2
+@f435 statecall e0036ff00 SelectTarget 0; statecall e0036ff01 SelectTarget 0
+@f436 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f437 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f438 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f439 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f440 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f441 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f442 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f443 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f444 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f445 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f446 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f447 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f448 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+frame
+@f449 statecall e0036ff00 SelectTarget 1 0.1; statecall e0036ff01 SelectTarget 1 0.1
+@f450 statecall e0036ff00 SelectTarget 2; statecall e0036ff01 SelectTarget 2
+@f452 statecall e0036ff00 Attack 0; statecall e0036ff01 Attack 0
+@f453 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f454 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f455 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f456 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f457 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f458 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f459 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f460 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f461 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f462 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f463 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f464 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f465 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f466 statecall e0036ff00 Attack 1 0.1; statecall e0036ff01 Attack 1 0.1
+@f467 statecall e0036ff00 Attack 2; statecall e0036ff01 Attack 2
+@f469 statecall e0036ff00 Land 0; statecall e0036ff01 Land 0
+@f470 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f471 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f472 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f473 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f474 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f475 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+frame
+@f476 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f477 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f478 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f479 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f480 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f481 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f482 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f483 statecall e0036ff00 Land 1 0.1; statecall e0036ff01 Land 1 0.1
+@f484 statecall e0036ff00 Land 2; statecall e0036ff01 Land 2
+@f486 statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0
+@f487 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f488 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f489 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f490 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f491 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f492 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f493 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f494 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f495 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f496 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f497 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f498 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f499 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f500 statecall e0036ff00 Shuffle 1 0.1; statecall e0036ff01 Shuffle 1 0.1
+@f501 statecall e0036ff00 Shuffle 2; statecall e0036ff01 Shuffle 2
+frame
+@f503 statecall e0036ff00 Taunt 0; statecall e0036ff01 Taunt 0
+@f504 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f505 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f506 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f507 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f508 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f509 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f510 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f511 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f512 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f513 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f514 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f515 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f516 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f517 statecall e0036ff00 Taunt 1 0.1; statecall e0036ff01 Taunt 1 0.1
+@f518 statecall e0036ff00 Taunt 2; statecall e0036ff01 Taunt 2
+@f520 statecall e0036ff00 Lurk 0; statecall e0036ff01 Lurk 0
+@f521 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f522 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f523 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f524 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f525 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f526 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f527 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f528 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+frame
+@f529 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f530 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f531 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f532 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f533 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f534 statecall e0036ff00 Lurk 1 0.1; statecall e0036ff01 Lurk 1 0.1
+@f535 statecall e0036ff00 Lurk 2; statecall e0036ff01 Lurk 2
+@f537 statecall e0036ff00 Hurled 0; statecall e0036ff01 Hurled 0
+@f538 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f539 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f540 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f541 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f542 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f543 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f544 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f545 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f546 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f547 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f548 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f549 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f550 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f551 statecall e0036ff00 Hurled 1 0.1; statecall e0036ff01 Hurled 1 0.1
+@f552 statecall e0036ff00 Hurled 2; statecall e0036ff01 Hurled 2
+@f554 statecall e0036ff00 Deactivate 0; statecall e0036ff01 Deactivate 0
+@f555 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+frame
+@f556 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f557 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f558 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f559 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f560 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f561 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f562 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f563 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f564 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f565 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f566 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f567 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f568 statecall e0036ff00 Deactivate 1 0.1; statecall e0036ff01 Deactivate 1 0.1
+@f569 statecall e0036ff00 Deactivate 2; statecall e0036ff01 Deactivate 2
+@f571 statecall e0036ff00 Start 0; statecall e0036ff01 Start 0
+@f572 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f573 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f574 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f575 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f576 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f577 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f578 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f579 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f580 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f581 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+frame
+@f582 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f583 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f584 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f585 statecall e0036ff00 Start 1 0.1; statecall e0036ff01 Start 1 0.1
+@f586 statecall e0036ff00 Start 2; statecall e0036ff01 Start 2
+@f588 statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0
+@f589 statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0
+@f590 statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0
+@f591 statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0; statecall e0036ff00 Shuffle 0; statecall e0036ff01 Shuffle 0
+frame
+@f598 trigcall e0036ff00 ShouldAttack; trigcall e0036ff00 InRange; trigcall e0036ff00 ShouldTaunt; trigcall e0036ff00 ShouldMove; trigcall e0036ff00 AIStage; trigcall e0036ff00 AIStage 1; trigcall e0036ff00 Leash; trigcall e0036ff00 Leash 5; trigcall e0036ff00 ShouldFlinch; trigcall e0036ff00 AggressionCheck
+@f600 trigcall e0036ff01 ShouldAttack; trigcall e0036ff01 InRange; trigcall e0036ff01 ShouldTaunt; trigcall e0036ff01 ShouldMove; trigcall e0036ff01 AIStage; trigcall e0036ff01 AIStage 1; trigcall e0036ff01 Leash; trigcall e0036ff01 Leash 5; trigcall e0036ff01 ShouldFlinch; trigcall e0036ff01 AggressionCheck
+@f602 send e0036ff00 Activate; send e0036ff00 AreaLoaded; send e0036ff00 Alert; send e0036ff00 Alert; send e0036ff00 Action; send e0036ff00 OffGround; send e0036ff00 Launching
+@f604 send e0036ff01 Activate; send e0036ff01 AreaLoaded; send e0036ff01 Alert; send e0036ff01 Alert; send e0036ff01 Action; send e0036ff01 OffGround; send e0036ff01 Launching
+@f606 uevent e0036ff00 15; uevent e0036ff00 15; uevent e0036ff00 14; uevent e0036ff00 14; uevent e0036ff00 15; uevent e0036ff00 14; uevent e0036ff00 3; uevent e0036ff00 14
+@f608 uevent e0036ff01 15; uevent e0036ff01 15; uevent e0036ff01 14; uevent e0036ff01 14; uevent e0036ff01 15; uevent e0036ff01 14; uevent e0036ff01 3; uevent e0036ff01 14
+@f610 statecall e0036ff00 Attack 0; uevent e0036ff00 0; statecall e0036ff00 Attack 2
+@f612 statecall e0036ff00 Attack 0; uevent e0036ff00 0; statecall e0036ff00 Attack 2
+@f614 statecall e0036ff00 Attack 0; uevent e0036ff00 0; statecall e0036ff00 Attack 2
+@f616 statecall e0036ff00 Attack 0; uevent e0036ff00 0; statecall e0036ff00 Attack 2
+frame
+@f618 statecall e0036ff00 Attack 0; uevent e0036ff00 0; statecall e0036ff00 Attack 2
+@f620 statecall e0036ff00 Attack 0; uevent e0036ff00 0; statecall e0036ff00 Attack 2
+@f621 statecall e0036ff01 Hurled 0; send e0036ff01 OffGround; statecall e0036ff01 Hurled 2; send e0036ff01 OffGround; place e0036ff01 player 0.75; statecall e0036ff01 Shuffle 0; place e0036ff01 player 30
+@f622 give echoVisor 1; visor echo
+@f637 obj e0036ff00; visor scan
+@f652 give darkVisor 1; visor dark
+@f667 visor combat
+@f672 place e0036ff00 player 0; place e0036ff01 player 0
+@f692 uevent e0036ff00 14; uevent e0036ff01 14; obj e0036ff00
+@f712 place e0036ff00 player 5; place e0036ff01 player 8
+@f717 statecall e0036ff00 Growth 2; statecall e0036ff01 Growth 2; obj e0036ff00; damage e0036ff00 1 5 power; damage e0036ff01 1 5 missile
+@f737 shoot e0036ff00 charged; shoot e0036ff01 charged
+@f767 obj e0036ff00; obj e0036ff01; shoot e0036ff00 charged
+@f807 obj e0036ff00; obj e0036ff01
+@f812 statecall e0036ff01 Dead 0; statecall e0036ff01 Dead 1 0.1; statecall e0036ff01 Dead 2; damage e0036ff00 1000 5; damage e0036ff01 1000 5 missile
+@f877 spawn CHOG ancs u04d0 1 34 fsm 5652a12f prop 54151870 0x681f3907 prop 3a58089c 0x681f3907
+@f887 statecall e0036ff00 Dead 0; statecall e0036ff00 Dead 1 0.1; statecall e0036ff00 Dead 2; uevent e0036ff00 6; send e0036ff00 Deactivate; send e0036ff00 Delete
+@f920 objs ChozoGhost

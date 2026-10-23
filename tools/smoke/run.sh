@@ -130,7 +130,8 @@ declare -A W=( [swamp1]="3dfd2249,04_swamp_temple_dark" [swamp2]="3dfd2249,04_sw
                [kral]="3bfa3eff,0b_temple_hall" [gbug]="863fcd72,0i_temple_hall"
                [pssm]="3dfd2249,0g_swamp_hall" [stod]="3dfd2249,09_swamp_catacombs_dark"
                [pbug]="42b935e4,0b_sand_hall" [szone]="42b935e4,02_sand_sandfalls_dark"
-               [splinter]="3bfa3eff,02_temple_exploration" [rptl]="3bfa3eff,12_temple_finalgate" )
+               [splinter]="3bfa3eff,02_temple_exploration" [rptl]="3bfa3eff,12_temple_finalgate"
+               [chog]="42b935e4,08_sand_casualpirates" )
 declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boostg]=2000
                [boostg_fsm]=2000 [digig]=2000 [cmdpirate]=2000 [emp1]=2000 [spacepirate]=2400
                [ing]=16000 [ep]=6000 [plain]=2000 [emp3]=2400 [turret]=2400 [agon54]=2400
@@ -141,7 +142,7 @@ declare -A F=( [swamp1]=2000 [swamp2]=2000 [sandboss]=2000 [sandworm]=2000 [boos
                [tryclops]=2600 [wisptentacle]=6200 [octapede]=3000 [amt]=9400 [dbar]=1200
                [sjguard]=6000 [fishcloud]=2500 [spa]=2000 [wallwalker]=3600 [isbg]=5700 [spp]=1700
                [mysf]=3200 [spor]=2000 [scriptgui]=700 [kral]=1300 [gbug]=2600 [pssm]=3000
-               [stod]=1500 [pbug]=3600 [szone]=2400 [splinter]=3200 [rptl]=2040 )
+               [stod]=1500 [pbug]=3600 [szone]=2400 [splinter]=3200 [rptl]=2040 [chog]=1020 )
 declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=280 [boostg_fsm]=280
                [digig]=280 [cmdpirate]=280 [emp1]=280 [spacepirate]=280 [ing]=420 [ep]=330
                [plain]=280 [emp3]=280 [turret]=280 [agon54]=280 [darksamus]=280 [splitter]=280
@@ -151,7 +152,7 @@ declare -A S=( [swamp1]=280 [swamp2]=280 [sandboss]=280 [sandworm]=280 [boostg]=
                [tryclops]=280 [wisptentacle]=280 [octapede]=280 [amt]=280 [dbar]=280 [sjguard]=280
                [fishcloud]=280 [spa]=280 [wallwalker]=280 [isbg]=280 [spp]=280 [mysf]=280 [spor]=280
                [scriptgui]=280 [kral]=280 [gbug]=280 [pssm]=280 [stod]=280 [pbug]=280 [szone]=280
-               [splinter]=280 [rptl]=280 )
+               [splinter]=280 [rptl]=280 [chog]=280 )
 declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [boostg]=49705
                [digig]=49706 [cmdpirate]=49707 [emp1]=49708 [spacepirate]=49709 [boostg_fsm]=49710
                [emp3]=49711 [turret]=49712 [agon54]=49713 [ing]=49714 [ep]=49715 [darksamus]=49716
@@ -162,7 +163,8 @@ declare -A P=( [swamp1]=49701 [swamp2]=49702 [sandboss]=49703 [sandworm]=49704 [
                [tryclops]=49735 [wisptentacle]=49736 [octapede]=49737 [amt]=49738 [dbar]=49739
                [sjguard]=49740 [fishcloud]=49741 [spa]=49742 [wallwalker]=49743 [isbg]=49744
                [spp]=49745 [mysf]=49746 [spor]=49747 [scriptgui]=49748 [kral]=49749 [gbug]=49750
-               [pssm]=49751 [stod]=49752 [pbug]=49753 [szone]=49754 [splinter]=49755 [rptl]=49756 )
+               [pssm]=49751 [stod]=49752 [pbug]=49753 [szone]=49754 [splinter]=49755 [rptl]=49756
+               [chog]=49757 )
 declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sandboss.txt
                [sandworm]=cmd_sandworm.txt [boostg]=cmd_boostg.txt [boostg_fsm]=cmd_boostg_fsm.txt
                [digig]=cmd_digig.txt [cmdpirate]=cmd_cmdpirate.txt [emp1]=cmd_emp1.txt
@@ -181,7 +183,7 @@ declare -A C=( [swamp1]=cmd_swamp1.txt [swamp2]=cmd_swamp2.txt [sandboss]=cmd_sa
                [mysf]=cmd_mysf.txt [spor]=cmd_spor.txt [scriptgui]=cmd_scriptgui.txt
                [kral]=cmd_kral.txt [gbug]=cmd_gbug.txt [pssm]=cmd_pssm.txt [stod]=cmd_stod.txt
                [pbug]=cmd_pbug.txt [szone]=cmd_szone.txt [splinter]=cmd_splinter.txt
-               [rptl]=cmd_rptl.txt )
+               [rptl]=cmd_rptl.txt [chog]=cmd_chog.txt )
 declare -A I=( [ep]=in_ep.txt )
 declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 # Fast mode (MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8, unpaced: ~5x shorter runs) for every family whose
@@ -218,7 +220,7 @@ declare -A V=( [ing]=ing [ep]=ep [darksamus]=darksamus )
 FASTENV="MP2_FRAME_LIMIT=0 MP2_TICKS_PER_FRAME=8"
 declare -A NC=( [ingswarm]=1 [darktrooper]=1 [bacteriaswarm]=1 [tryclops]=1 [wisptentacle]=1
                [octapede]=1 [amt]=1 [spa]=1 [wallwalker]=1 [isbg]=1 [spor]=1 [scriptgui]=1 [kral]=1
-               [pssm]=1 [stod]=1 [pbug]=1 [szone]=1 [rptl]=1 )
+               [pssm]=1 [stod]=1 [pbug]=1 [szone]=1 [rptl]=1 [chog]=1 )
 # Extra environment per family: tools/run_gameplay.sh's variables, not the game's directly. The
 # harness passes them on to the game, and run_gameplay.sh maps a few of its own onto MP2_* names
 # (SKIP_FRONTEND -> MP2_SKIP_FRONTEND, SKIP_INTRO, SKIP_CINEMATICS, FAST_LOAD). scriptgui needs the
@@ -231,7 +233,7 @@ ALL=(swamp1 swamp2 sandboss sandworm boostg boostg_fsm digig cmdpirate emp1 spac
      emp3 turret agon54 darksamus splitter grenchler grenguard flyingpirate mediuming metroid sporb
      blogg swarm gunturret rezbit parasite lumite shrieker ingswarm darktrooper bacteriaswarm
      tryclops wisptentacle octapede amt dbar sjguard fishcloud spa wallwalker isbg spp mysf spor
-     scriptgui kral gbug pssm stod pbug szone splinter rptl)
+     scriptgui kral gbug pssm stod pbug szone splinter rptl chog)
 declare -A IDX=(  )
 for i in "${!ALL[@]}"; do IDX[${ALL[$i]}]=$i; done
 if [ ${#ALL[@]} -ge $SLOTSTEP ]; then
