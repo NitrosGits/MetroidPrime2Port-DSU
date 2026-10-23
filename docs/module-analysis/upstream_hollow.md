@@ -59,8 +59,18 @@ dropping dead or inlined ones). TARGET_PC bodies count as the port's (listed, no
    delete reachstub_311. Agon Wastes/01_sand_entrance[L3] (Parasite contact damage). Small.
 4. **string operator==** (reachstub_178): find its port callers (CAutoMapper) and define it in
    the rstl header TARGET_PC block. Small.
-5. Review-only: CVirtualBone::BuildSkinningMatrices vs fn_80310838; fn_33_4F44 has an
-   upstream equivalent?
+5. Review-only, judged equivalent (judge1, 2026-10-23), no port change:
+   - BuildSkinningMatrices fn_80310838: same flow and offsets (PSMTXConcat(mGxModelView, xf,
+     out); `clrlwi. r0,r30,24; beq` at 0x80310860 picks the copy of out rows (0x0/0x10/0x20, 12 B)
+     or PSMTXInvXpose(out, sp+8) rows into mNormal 0x30/0x3C/0x48). Retail copies each row as
+     lfd/stfd + lfs/stfs (struct copy), upstream's memcpy as lwz/stw x3: 0xB8 vs 0xE8. Host build
+     emits the same copies.
+   - fn_33_4F44 is the REL's weak copy of `CParticleGen::ShouldDraw` (CParticleGen.hpp:44): slot
+     23 of the CParticleGen vtable lbl_33_data_2E0 (+0x64, emitted with ~CParticleGen 0x4168);
+     body calls slot 22 GetDrawFlags (+0x60, fn_33_4F3C `lwz r3,0x1c(r3)`), `and sDrawMask;
+     subf sDrawFlags; cntlzw; srwi 5` = `(flags & sDrawMask) == sDrawFlags`. Host uses the header
+     inline (the `return false` stub in PortTenthSyncStubs.cpp is unbuilt). Siblings: fn_33_4F28
+     SetDrawFlags, fn_33_4F30 GetGeneratorRate, fn_33_4F3C GetDrawFlags.
 
 ## Generated table (base bbbf6584d, `--dol --top 120`)
 
